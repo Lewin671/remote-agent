@@ -13,7 +13,6 @@ import io.github.lewin671.remoteagent.RaApp
 import io.github.lewin671.remoteagent.core.Release
 import io.github.lewin671.remoteagent.core.Updates
 import io.github.lewin671.remoteagent.ui.displayError
-import io.github.lewin671.remoteagent.core.isNewer
 import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -134,7 +133,7 @@ object Updater {
             checkedAt = System.currentTimeMillis()
             when {
                 // This build is the latest: nothing downloaded for an older one is worth keeping.
-                !isNewer(found, installedCode) -> {
+                found.versionCode <= installedCode -> {
                     _checking.value = UpdateCheck()
                     _state.value = UpdateState.Latest(checkedAt)
                     clearDownloads()

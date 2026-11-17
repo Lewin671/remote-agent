@@ -33,7 +33,10 @@ class ArchiveDeletionTest {
             isAuthority = true,
         )
     private val current =
-        archive.copy(devices = mapOf(id to DeviceView(id, DeviceKind.DEVICE_KIND_MACHINE, 0)))
+        archive.copy(
+            conn = ConnState.ONLINE,
+            devices = mapOf(id to DeviceView(id, DeviceKind.DEVICE_KIND_MACHINE, 0)),
+        )
 
     @After
     fun close() {
@@ -50,14 +53,15 @@ class ArchiveDeletionTest {
                 }
             }
         }
-        ui.onNodeWithText("已移除 · 保留的会话档案").assertExists()
+        ui.waitUntil(3000) { remote.machineSettingsView.value.machineId == id && remote.machineSettingsView.value.found }
+        ui.onNodeWithText("本机已被移出账户").assertExists()
         ui.onNodeWithText("移除这台电脑…").assertDoesNotExist()
         ui.onNodeWithText("移除会立即断开连接，保留中继上的会话和图片；它需要重新加入账户才能连接。").assertDoesNotExist()
-        ui.onNodeWithText("重新加入并接续会话").assertExists()
-        ui.onNodeWithText("删除这台电脑的记录…").assertExists()
+        ui.onNodeWithText("删除这台电脑的记录…").performScrollTo().assertIsDisplayed()
         ui.runOnIdle { remote.showForTest(current) }
-        ui.onNodeWithText("已移除 · 保留的会话档案").assertDoesNotExist()
-        ui.onNodeWithText("移除这台电脑…").assertExists()
+        ui.waitUntil(3000) { remote.machineSettingsView.value.member }
+        ui.onNodeWithText("本机已被移出账户").assertDoesNotExist()
+        ui.onNodeWithText("移除这台电脑…").performScrollTo().assertIsDisplayed()
         ui.onNodeWithText("删除这台电脑的记录…").assertDoesNotExist()
     }
 
@@ -71,15 +75,18 @@ class ArchiveDeletionTest {
                 }
             }
         }
+        ui.waitUntil(3000) { remote.clientDetailView.value.deviceId == id }
         ui.onNodeWithText("这个客户端已不在当前成员列表中").assertExists()
         ui.onNodeWithText("移除这个客户端").assertDoesNotExist()
         ui.runOnIdle {
             remote.showForTest(
                 archive.copy(
+                    conn = ConnState.ONLINE,
                     devices = mapOf(id to DeviceView(id, DeviceKind.DEVICE_KIND_CLIENT, 0)),
                 ),
             )
         }
+        ui.waitUntil(3000) { remote.clientDetailView.value.found && remote.clientDetailView.value.canRemove }
         ui.onNodeWithText("这个客户端已不在当前成员列表中").assertDoesNotExist()
         ui.onNodeWithText("移除这个客户端").assertExists()
     }
@@ -94,17 +101,20 @@ class ArchiveDeletionTest {
                 }
             }
         }
+        ui.waitUntil(3000) { remote.machineSettingsView.value.found && remote.machineSettingsView.value.member }
         ui.onNodeWithText("删除这台电脑的记录…").assertDoesNotExist()
         ui.runOnIdle { remote.showForTest(archive) }
+        ui.waitUntil(3000) { !remote.machineSettingsView.value.member }
         ui.onNodeWithText("删除这台电脑的记录…").performScrollTo().assertIsDisplayed()
         ui.runOnIdle { remote.showForTest(archive.copy(isAuthority = false)) }
+        ui.waitForIdle()
         ui.onNodeWithText("删除这台电脑的记录…").assertDoesNotExist()
         ui.onNodeWithText("重新加入并接续会话").assertDoesNotExist()
-        ui.onNodeWithText("档案重接和删除记录，请在管理端（客户端）上操作。").assertExists()
         ui.runOnIdle { remote.showForTest(current.copy(isAuthority = false)) }
+        ui.waitUntil(3000) { remote.machineSettingsView.value.member }
         ui.onNodeWithText("移除这台电脑…").assertDoesNotExist()
-        ui.onNodeWithText("请在管理端（客户端）上移除设备。").assertExists()
         ui.runOnIdle { remote.showForTest(current) }
+        ui.waitForIdle()
         ui.onNodeWithText("删除这台电脑的记录…").assertDoesNotExist()
     }
 }

@@ -1229,86 +1229,8 @@ fun defaultClientName(d: DeviceView?, id: String, clients: Collection<DeviceView
     return base.display(copy) + if (duplicate) " · ${shortId(id)}" else ""
 }
 
-/**
- * What a client is, under its name in the list: an app or a browser, and what it says it runs on.
- */
-fun clientDetail(d: DeviceView?, copy: MessageResolver): String {
-    val kind =
-        when (d?.meta?.platform) {
-            "android",
-            "ios" -> "App"
-            "web" -> copy(UiMessages.securityBrowser())
-            else -> ""
-        }
-    return listOf(kind, d?.meta?.description.orEmpty().trim())
-        .filter { it.isNotEmpty() }
-        .joinToString(" · ")
-        .ifEmpty { copy(UiMessages.securityUnknownType()) }
-}
-
-/** A day as lists write it: 9月27日, with the year when it is not this one. */
-fun dayText(
-    ms: Long,
-    now: Long = System.currentTimeMillis(),
-    zone: ZoneId = ZoneId.systemDefault(),
-    copy: MessageResolver): String {
-    val day = Instant.ofEpochMilli(ms).atZone(zone).toLocalDate()
-    return if (day.year == Instant.ofEpochMilli(now).atZone(zone).year) copy(UiMessages.timeMonthDay(day.dayOfMonth, day.monthValue))
-        else copy(UiMessages.timeCalendarDateYear(day.dayOfMonth, day.monthValue, day.year))
-}
-
-/**
- * When a client was last used: 刚刚, 3 分钟前, 今天 9:12, 昨天, 9月27日; "" when the server has no record of
- * it.
- */
-fun lastUsed(
-    d: DeviceView?,
-    now: Long = System.currentTimeMillis(),
-    zone: ZoneId = ZoneId.systemDefault(),
-    copy: MessageResolver): String {
-    val t = d?.lastSeenMs ?: 0
-    if (t <= 0) return ""
-    val ago = now - t
-    if (ago < 60_000) return copy(UiMessages.timeJustNow())
-    if (ago < 3_600_000) return copy(UiMessages.timeMinutesAgo((ago / 60_000).toInt()))
-    val then = Instant.ofEpochMilli(t).atZone(zone).toLocalDate()
-    val today = Instant.ofEpochMilli(now).atZone(zone).toLocalDate()
-    if (then == today) {
-        val clock = Instant.ofEpochMilli(t).atZone(zone)
-        return copy(UiMessages.timeTodayClock("%02d".format(clock.minute), clock.hour.toString()))
-    }
-    if (then == today.minusDays(1)) return copy(UiMessages.timeYesterday())
-    return dayText(t, now, zone, copy = copy)
-}
-
-/** What the list says beside a client: when it was last used, else the day it was added. */
-fun clientUsed(
-    d: DeviceView?,
-    now: Long = System.currentTimeMillis(),
-    zone: ZoneId = ZoneId.systemDefault(),
-    copy: MessageResolver): String {
-    val used = lastUsed(d, now, zone, copy = copy)
-    if (used.isNotEmpty()) {
-        val at = d!!.lastSeenMs
-        val clock = now - at >= 3_600_000 && Instant.ofEpochMilli(at).atZone(zone).toLocalDate() == Instant.ofEpochMilli(now).atZone(zone).toLocalDate()
-        return copy(if (clock) UiMessages.timeAndroidUsedClock(used) else UiMessages.timeAndroidUsedRelative(used))
-    }
-    return if ((d?.createdMs ?: 0) > 0) copy(UiMessages.securityAdded((dayText(d!!.createdMs, now, zone, copy = copy)).toString())) else copy(UiMessages.securityPaired())
-}
-
-/**
- * Clients as the list orders them: this one, then the most recently used first, then those with no
- * record, the newest first.
- */
-fun sortClients(clients: Collection<DeviceView>, me: String): List<DeviceView> =
-    clients.sortedWith(
-        compareBy<DeviceView> { it.id != me }
-            .thenByDescending { it.lastSeenMs }
-            .thenByDescending { it.createdMs },
-    )
-
 /** The last four hex digits of a device ID, as shown next to a name. */
-fun shortId(id: String): String = id.takeLast(4)
+private fun shortId(id: String): String = id.takeLast(4)
 
 /**
  * Who an event says caused it (Event.origin), for display, or null when the event does not say.

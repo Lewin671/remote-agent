@@ -585,20 +585,6 @@
     }
   },
   {
-    "key": "transport.unsupported_device",
-    "zh-CN": "这台设备不支持直连",
-    "en": "This device doesn't support direct connection",
-    "notes": "本机不支持 WebRTC 直连时显示的状态说明或连接检测页脚追加说明。",
-    "params": {},
-    "platforms": [
-      "android"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
     "key": "transport.conn_footer_unsupported_device",
     "zh-CN": "这台设备不支持直连。",
     "en": "This device doesn't support direct connections.",

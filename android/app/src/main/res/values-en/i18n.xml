@@ -105,7 +105,6 @@
     <string name="common_android_each_cli_saves_its_own_settings_only_future_sessions_are" formatted="false">"Each CLI saves its own settings. Only future sessions are affected; active sessions stay unchanged. Synced across your devices."</string>
     <string name="common_android_more" formatted="false">"More"</string>
     <string name="common_android_new_full_access_sessions_start_directly_with_these_settings" formatted="false">"New full-access sessions start directly with these settings."</string>
-    <string name="common_android_offline" formatted="false">"Offline"</string>
     <string name="common_android_project_settings_may_differ" formatted="false">"(Project settings may differ)"</string>
     <string name="common_android_the_original_request_and_keys_are_saved_for_retry_if" formatted="false">". The original request and keys are saved for retry. If approval expired or was rejected, exit and pair again or create an account."</string>
     <string name="common_android_this_app_version_is_old_update_and_retry" formatted="false">"This app version is old. Update and retry"</string>
@@ -1018,9 +1017,6 @@
     <string name="queue_unrecognized" formatted="false">"Input field not recognized; paused"</string>
     <string name="queue_when_ready" formatted="false">"Send when ready"</string>
     <string name="quota_account">" · Account %1$s"</string>
-    <string name="quota_android_last_record" formatted="false">"(Last record)"</string>
-    <string name="quota_android_reset_at">"%3$s · %2$s %1$s"</string>
-    <string name="quota_android_value1_value2_value3">"%1$s/%2$s %3$s"</string>
     <string name="quota_android_you_can_view_usage_in_claude_code_on_this_computer" formatted="false">" You can view /usage in Claude Code on this computer."</string>
     <string name="quota_awaiting_update" formatted="false">"Awaiting update"</string>
     <plurals name="quota_days">
@@ -1505,8 +1501,6 @@
     <string name="security_android_no_computers_yet" formatted="false">"No computers yet"</string>
     <string name="security_android_no_device_has_joined_yet" formatted="false">"No device has joined yet"</string>
     <string name="security_android_not_read_yet" formatted="false">"Not read yet"</string>
-    <string name="security_android_offline" formatted="false">"Offline"</string>
-    <string name="security_android_online" formatted="false">"Online"</string>
     <string name="security_android_only_a_removed_computer_s_archive_from_the_same_account" formatted="false">"Only a removed computer\'s archive from the same account can be resumed"</string>
     <string name="security_android_only_the_managing_client_can_add_devices" formatted="false">"Only the managing client can add devices"</string>
     <string name="security_android_only_the_managing_client_can_approve" formatted="false">"Only the managing client can approve"</string>
@@ -1980,13 +1974,11 @@
     <string name="settings_android_could_not_read_release_information_value1">"Could not read release information (%1$s)"</string>
     <string name="settings_android_could_not_save_installation_package" formatted="false">"Could not save installation package"</string>
     <string name="settings_android_current_version_value1">"Current version %1$s"</string>
-    <string name="settings_android_default_value1_s_own_configuration">"Default (%1$s\'s own configuration)"</string>
     <string name="settings_android_download_again" formatted="false">"Download again"</string>
     <string name="settings_android_download_and_install_value1">"Download and install (%1$s)"</string>
     <string name="settings_android_download_failed" formatted="false">"Download failed"</string>
     <string name="settings_android_download_failed_value1">"Download failed (%1$s)"</string>
     <string name="settings_android_downloaded_file_does_not_match_release_information" formatted="false">"Downloaded file does not match release information"</string>
-    <string name="settings_android_downloading_value1">"Downloading %1$s"</string>
     <string name="settings_android_downloading_value1_value2">"Downloading %1$s / %2$s"</string>
     <string name="settings_android_fonts_sil_open_font_license_1_1" formatted="false">"Fonts · SIL Open Font License 1.1"</string>
     <string name="settings_android_for_an_unverified_version_run_remote_agent_doctor_on_the" formatted="false">"For an unverified version, run remote-agent doctor on the computer"</string>
@@ -2005,27 +1997,19 @@
     <string name="settings_android_new_device_joined" formatted="false">"New device joined"</string>
     <string name="settings_android_new_version_value1">"New version %1$s"</string>
     <string name="settings_android_new_version_value1_available">"New version %1$s available"</string>
-    <string name="settings_android_offline_last_online_value1">"Offline · Last online %1$s"</string>
-    <string name="settings_android_online" formatted="false">"Online"</string>
     <string name="settings_android_online_b90866" formatted="false">"Online"</string>
     <string name="settings_android_only_affects_system_notifications_while_the_app_is_in_the" formatted="false">"\nOnly affects system notifications while the app is in the background; chat and approvals are unaffected"</string>
     <string name="settings_android_open_source_licenses" formatted="false">"Open source licenses"</string>
     <string name="settings_android_pairing_qr_code" formatted="false">"Pairing QR code"</string>
     <string name="settings_android_pending_and_unconfirmed_attachments" formatted="false">"Pending and unconfirmed attachments"</string>
-    <string name="settings_android_reconnect_archives_or_delete_records_on_the_managing_client_value1">"Reconnect archives or delete records on the managing client (%1$s)."</string>
     <string name="settings_android_recovery_code_qr_code" formatted="false">"Recovery code QR code"</string>
-    <string name="settings_android_recovery_pending_eligible_at_value1">"Recovery pending · Eligible at: %1$s"</string>
     <string name="settings_android_rejoin_this_computer_and_resume_sessions" formatted="false">"Rejoin this computer and resume sessions"</string>
     <string name="settings_android_release_information_is_missing_value1">"Release information is missing %1$s"</string>
     <string name="settings_android_release_protocol_is_not_a_number" formatted="false">"Release protocol is not a number"</string>
     <string name="settings_android_release_size_is_not_a_number" formatted="false">"Release size is not a number"</string>
     <string name="settings_android_release_versioncode_is_not_a_number" formatted="false">"Release versionCode is not a number"</string>
-    <string name="settings_android_remote_agent_on_this_computer_cannot_read_value1_quotas">"remote-agent on this computer cannot read %1$s quotas."</string>
-    <string name="settings_android_removal_immediately_disconnects_it_and_keeps_sessions_and_images_on" formatted="false">"Removal immediately disconnects it and keeps sessions and images on the relay. It must rejoin the account to connect again."</string>
-    <string name="settings_android_remove_devices_on_the_managing_client_value1">"Remove devices on the managing client (%1$s)."</string>
     <string name="settings_android_remove_reclaimable_originals_and_cache_large_images_not_yet_synced" formatted="false">"Remove reclaimable originals and cache. Large images not yet synced will show previews only. Originals queued or in use, and session history, are kept."</string>
     <string name="settings_android_remove_this_machine" formatted="false">"Remove this machine…"</string>
-    <string name="settings_android_removed_retained_session_archive" formatted="false">"Removed · Retained session archive"</string>
     <string name="settings_android_requests_to_join" formatted="false">" requests to join"</string>
     <string name="settings_android_sarasa_fixed_sc_symbol_subset" formatted="false">"Sarasa Fixed SC (symbol subset)"</string>
     <string name="settings_android_sessions_end_automatically_after_prolonged_inactivity_not_running_no_pending" formatted="false">"Sessions end automatically after prolonged inactivity (not running, no pending actions, and no terminal input). You can resume at any time; chat history is kept."</string>
@@ -2038,7 +2022,6 @@
     <string name="settings_android_the_system_could_not_install_this_package" formatted="false">"The system could not install this package."</string>
     <string name="settings_android_the_system_will_confirm_installation_after_downloading_the_first_time" formatted="false">"The system will confirm installation after downloading. The first time, you will be asked to allow remote-agent to install apps."</string>
     <string name="settings_android_this_computer_is_outside_the_current_trusted_directory_check_the" formatted="false">"This computer is outside the current trusted directory. Check the receipt for its revocation status"</string>
-    <string name="settings_android_this_is_the_managing_device_ordinary_removal_is_unavailable" formatted="false">"This is the managing device. Ordinary removal is unavailable"</string>
     <string name="settings_android_this_machine_has_been_removed" formatted="false">"This machine has been removed"</string>
     <string name="settings_android_this_release_changes_the_protocol_after_installing_also_update_remote" formatted="false">"This release changes the protocol. After installing, also update remote-agent on the computer to continue."</string>
     <string name="settings_android_to_resume_a_removed_computer_s_sessions_open_its_retained" formatted="false">"To resume a removed computer\'s sessions, open its retained archive and choose “Rejoin and resume sessions”."</string>
@@ -2046,11 +2029,8 @@
     <string name="settings_android_unverified" formatted="false">"Unverified"</string>
     <string name="settings_android_up_to_date" formatted="false">"Up to date"</string>
     <string name="settings_android_update" formatted="false">"Update"</string>
-    <string name="settings_android_update_available_value1">"Update available: %1$s"</string>
     <string name="settings_android_value1_approval_mode">"%1$s · Approval mode"</string>
-    <string name="settings_android_value1_default">"%1$s (default)"</string>
     <string name="settings_android_value1_default_model_for_new_sessions">"%1$s · Default model for new sessions"</string>
-    <string name="settings_android_value1_downloaded">"%1$s downloaded"</string>
     <string name="settings_android_value1_is_offline_connect_to_read_and_edit_new_session">"%1$s is offline. Connect to read and edit new-session defaults"</string>
     <string name="settings_android_version" formatted="false">"Version"</string>
     <string name="settings_android_viewing_cache" formatted="false">"Viewing cache"</string>
@@ -2270,8 +2250,6 @@
     <string name="terminal_up" formatted="false">"Up"</string>
     <string name="terminal_view_details" formatted="false">"View details"</string>
     <string name="time_android_day_clock">"%2$s %1$s"</string>
-    <string name="time_android_used_clock">"Used %1$s"</string>
-    <string name="time_android_used_relative">"Used %1$s"</string>
     <string name="time_calendar_date_year">"%3$d/%2$d/%1$d"</string>
     <string name="time_day_clock">"%2$s %1$s"</string>
     <string name="time_duration_hours_minutes">"%1$d hr %2$d min"</string>
@@ -2367,7 +2345,6 @@
     <string name="transport_status_relay" formatted="false">"Using relay"</string>
     <string name="transport_summary_off" formatted="false">"Direct is off"</string>
     <string name="transport_unavailable">"Direct unavailable: %1$s"</string>
-    <string name="transport_unsupported_device" formatted="false">"This device doesn\'t support direct connection"</string>
     <string name="transport_use_file" formatted="false">"Used for files"</string>
     <string name="transport_use_read" formatted="false">"Used for loading"</string>
 </resources>

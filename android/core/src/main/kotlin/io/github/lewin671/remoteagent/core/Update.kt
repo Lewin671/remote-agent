@@ -61,9 +61,6 @@ fun parseRelease(text: String): Release {
     return release
 }
 
-/** Whether [release] is newer than the installed build. Only the version code decides, as it does for the system. */
-fun isNewer(release: Release, installedCode: Long): Boolean = release.versionCode > installedCode
-
 class Updates(http: OkHttpClient, private val base: String = RELEASES_URL) {
     // A release's files are served from another host by redirect, which the client for the
     // relay refuses; never down to plain HTTP.

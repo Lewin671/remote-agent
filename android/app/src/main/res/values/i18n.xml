@@ -98,7 +98,6 @@
     <string name="common_android_each_cli_saves_its_own_settings_only_future_sessions_are" formatted="false">"各 CLI 独立保存一套。只影响之后新建的会话，进行中的不变；在你的设备之间同步。"</string>
     <string name="common_android_more" formatted="false">"更多"</string>
     <string name="common_android_new_full_access_sessions_start_directly_with_these_settings" formatted="false">"完全放行的新会话直接按此设置启动。"</string>
-    <string name="common_android_offline" formatted="false">"不在线"</string>
     <string name="common_android_project_settings_may_differ" formatted="false">"（项目设置可能不同）"</string>
     <string name="common_android_the_original_request_and_keys_are_saved_for_retry_if" formatted="false">"。原请求和密钥已保留，可重试；若批准已过期或被拒绝，请退出并重新配对或创建。"</string>
     <string name="common_android_this_app_version_is_old_update_and_retry" formatted="false">"这个 App 版本较旧，请更新后再试"</string>
@@ -969,9 +968,6 @@
     <string name="queue_unrecognized" formatted="false">"认不出输入框，已暂停"</string>
     <string name="queue_when_ready" formatted="false">"就绪后发送"</string>
     <string name="quota_account">" · 账户 %1$s"</string>
-    <string name="quota_android_last_record" formatted="false">"（上次记录）"</string>
-    <string name="quota_android_reset_at">"%3$s · %2$s %1$s"</string>
-    <string name="quota_android_value1_value2_value3">"%1$s月%2$s日 %3$s"</string>
     <string name="quota_android_you_can_view_usage_in_claude_code_on_this_computer" formatted="false">" 可在本机 Claude Code 中查看 /usage。"</string>
     <string name="quota_awaiting_update" formatted="false">"等待更新"</string>
     <plurals name="quota_days">
@@ -1422,8 +1418,6 @@
     <string name="security_android_no_computers_yet" formatted="false">"还没有电脑"</string>
     <string name="security_android_no_device_has_joined_yet" formatted="false">"还没有设备加入"</string>
     <string name="security_android_not_read_yet" formatted="false">"尚未读取"</string>
-    <string name="security_android_offline" formatted="false">"不在线"</string>
-    <string name="security_android_online" formatted="false">"在线"</string>
     <string name="security_android_only_a_removed_computer_s_archive_from_the_same_account" formatted="false">"只能接续同一账户已移除电脑的档案"</string>
     <string name="security_android_only_the_managing_client_can_add_devices" formatted="false">"只有管理端能添加设备"</string>
     <string name="security_android_only_the_managing_client_can_approve" formatted="false">"只有管理端能批准"</string>
@@ -1893,13 +1887,11 @@
     <string name="settings_android_could_not_read_release_information_value1">"读取发布信息失败（%1$s）"</string>
     <string name="settings_android_could_not_save_installation_package" formatted="false">"没能保存安装包"</string>
     <string name="settings_android_current_version_value1">"当前版本 %1$s"</string>
-    <string name="settings_android_default_value1_s_own_configuration">"默认（%1$s 自己的配置）"</string>
     <string name="settings_android_download_again" formatted="false">"重新下载"</string>
     <string name="settings_android_download_and_install_value1">"下载并安装（%1$s）"</string>
     <string name="settings_android_download_failed" formatted="false">"下载失败"</string>
     <string name="settings_android_download_failed_value1">"下载失败（%1$s）"</string>
     <string name="settings_android_downloaded_file_does_not_match_release_information" formatted="false">"下载的文件和发布信息不一致"</string>
-    <string name="settings_android_downloading_value1">"正在下载 %1$s"</string>
     <string name="settings_android_downloading_value1_value2">"正在下载 %1$s / %2$s"</string>
     <string name="settings_android_fonts_sil_open_font_license_1_1" formatted="false">"字体 · SIL Open Font License 1.1"</string>
     <string name="settings_android_for_an_unverified_version_run_remote_agent_doctor_on_the" formatted="false">"未验证的版本请在电脑上运行 remote-agent doctor"</string>
@@ -1918,27 +1910,19 @@
     <string name="settings_android_new_device_joined" formatted="false">"设备已加入"</string>
     <string name="settings_android_new_version_value1">"新版本 %1$s"</string>
     <string name="settings_android_new_version_value1_available">"有新版本 %1$s"</string>
-    <string name="settings_android_offline_last_online_value1">"不在线 · 最后在线 %1$s"</string>
-    <string name="settings_android_online" formatted="false">"在线"</string>
     <string name="settings_android_online_b90866" formatted="false">"在线"</string>
     <string name="settings_android_only_affects_system_notifications_while_the_app_is_in_the" formatted="false">"\n仅影响 App 在后台时的系统通知，不影响聊天和审批"</string>
     <string name="settings_android_open_source_licenses" formatted="false">"开源许可"</string>
     <string name="settings_android_pairing_qr_code" formatted="false">"配对二维码"</string>
     <string name="settings_android_pending_and_unconfirmed_attachments" formatted="false">"待发和待确认附件"</string>
-    <string name="settings_android_reconnect_archives_or_delete_records_on_the_managing_client_value1">"档案重接和删除记录，请在管理端（%1$s）上操作。"</string>
     <string name="settings_android_recovery_code_qr_code" formatted="false">"恢复码二维码"</string>
-    <string name="settings_android_recovery_pending_eligible_at_value1">"恢复申请待处理 · 可生效时间：%1$s"</string>
     <string name="settings_android_rejoin_this_computer_and_resume_sessions" formatted="false">"重新加入并接续会话"</string>
     <string name="settings_android_release_information_is_missing_value1">"发布信息缺少 %1$s"</string>
     <string name="settings_android_release_protocol_is_not_a_number" formatted="false">"发布信息的 protocol 不是数字"</string>
     <string name="settings_android_release_size_is_not_a_number" formatted="false">"发布信息的 size 不是数字"</string>
     <string name="settings_android_release_versioncode_is_not_a_number" formatted="false">"发布信息的 versionCode 不是数字"</string>
-    <string name="settings_android_remote_agent_on_this_computer_cannot_read_value1_quotas">"这台电脑上的 remote-agent 读不到 %1$s 的额度。"</string>
-    <string name="settings_android_removal_immediately_disconnects_it_and_keeps_sessions_and_images_on" formatted="false">"移除会立即断开连接，保留中继上的会话和图片；它需要重新加入账户才能连接。"</string>
-    <string name="settings_android_remove_devices_on_the_managing_client_value1">"请在管理端（%1$s）上移除设备。"</string>
     <string name="settings_android_remove_reclaimable_originals_and_cache_large_images_not_yet_synced" formatted="false">"清除可回收原图和缓存，尚未同步的大图会只显示预览。排队和当前执行中的原图、会话历史保留。"</string>
     <string name="settings_android_remove_this_machine" formatted="false">"移除这台电脑…"</string>
-    <string name="settings_android_removed_retained_session_archive" formatted="false">"已移除 · 保留的会话档案"</string>
     <string name="settings_android_requests_to_join" formatted="false">" 请求加入"</string>
     <string name="settings_android_sarasa_fixed_sc_symbol_subset" formatted="false">"Sarasa Fixed SC（符号子集）"</string>
     <string name="settings_android_sessions_end_automatically_after_prolonged_inactivity_not_running_no_pending" formatted="false">"会话这么久没有任何活动（没在运行、没有待处理、终端里没人输入）就自动结束，随时可以恢复，聊天记录都在。"</string>
@@ -1951,7 +1935,6 @@
     <string name="settings_android_the_system_could_not_install_this_package" formatted="false">"系统没能安装这个包。"</string>
     <string name="settings_android_the_system_will_confirm_installation_after_downloading_the_first_time" formatted="false">"下载后由系统确认安装。第一次会请你允许 remote-agent 安装应用。"</string>
     <string name="settings_android_this_computer_is_outside_the_current_trusted_directory_check_the" formatted="false">"这台电脑不在当前可信目录中，撤销状态以回执为准"</string>
-    <string name="settings_android_this_is_the_managing_device_ordinary_removal_is_unavailable" formatted="false">"这是管理端设备，普通移除不可用"</string>
     <string name="settings_android_this_machine_has_been_removed" formatted="false">"这台电脑已经移除了"</string>
     <string name="settings_android_this_release_changes_the_protocol_after_installing_also_update_remote" formatted="false">"这一版换了协议版本：装好后，电脑上的 remote-agent 也要升级才能继续用。"</string>
     <string name="settings_android_to_resume_a_removed_computer_s_sessions_open_its_retained" formatted="false">"已移除的电脑要接续原会话，请从那台电脑的保留档案进入“重新加入并接续会话”。"</string>
@@ -1959,11 +1942,8 @@
     <string name="settings_android_unverified" formatted="false">"未验证"</string>
     <string name="settings_android_up_to_date" formatted="false">"已是最新版本"</string>
     <string name="settings_android_update" formatted="false">"更新"</string>
-    <string name="settings_android_update_available_value1">"可更新到 %1$s"</string>
     <string name="settings_android_value1_approval_mode">"%1$s · 审批模式"</string>
-    <string name="settings_android_value1_default">"%1$s（默认）"</string>
     <string name="settings_android_value1_default_model_for_new_sessions">"%1$s · 新会话默认模型"</string>
-    <string name="settings_android_value1_downloaded">"%1$s 已下载"</string>
     <string name="settings_android_value1_is_offline_connect_to_read_and_edit_new_session">"%1$s 不在线，连上后才能读取和修改新会话默认设置"</string>
     <string name="settings_android_version" formatted="false">"版本"</string>
     <string name="settings_android_viewing_cache" formatted="false">"查看缓存"</string>
@@ -2180,8 +2160,6 @@
     <string name="terminal_up" formatted="false">"上"</string>
     <string name="terminal_view_details" formatted="false">"查看详情"</string>
     <string name="time_android_day_clock">"%2$s %1$s"</string>
-    <string name="time_android_used_clock">"%1$s 使用"</string>
-    <string name="time_android_used_relative">"%1$s 使用"</string>
     <string name="time_calendar_date_year">"%3$d年%2$d月%1$d日"</string>
     <string name="time_day_clock">"%2$s %1$s"</string>
     <string name="time_duration_hours_minutes">"%1$d 小时 %2$d 分"</string>
@@ -2271,7 +2249,6 @@
     <string name="transport_status_relay" formatted="false">"正在用中继"</string>
     <string name="transport_summary_off" formatted="false">"直连已关闭"</string>
     <string name="transport_unavailable">"直连不可用：%1$s"</string>
-    <string name="transport_unsupported_device" formatted="false">"这台设备不支持直连"</string>
     <string name="transport_use_file" formatted="false">"用于文件"</string>
     <string name="transport_use_read" formatted="false">"用于加载"</string>
 </resources>

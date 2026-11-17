@@ -33,7 +33,6 @@ import io.github.lewin671.remoteagent.core.RecoverySubmission
 import io.github.lewin671.remoteagent.core.Secret
 import io.github.lewin671.remoteagent.core.SigningKey
 import io.github.lewin671.remoteagent.core.createAccount
-import io.github.lewin671.remoteagent.core.dayText
 import io.github.lewin671.remoteagent.core.deviceId
 import io.github.lewin671.remoteagent.ui.displayError
 import io.github.lewin671.remoteagent.core.randomBytes

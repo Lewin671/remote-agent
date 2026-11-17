@@ -319,25 +319,6 @@
     }
   },
   {
-    "key": "settings.android_default_value1_s_own_configuration",
-    "zh-CN": "默认（{value1} 自己的配置）",
-    "en": "Default ({value1}'s own configuration)",
-    "notes": "Android Settings 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。value1：CLI 产品名，不翻译产品标识。英文为待审初稿；不要替换成浏览器专属安全说明。",
-    "params": {
-      "value1": {
-        "type": "string",
-        "example": "Example"
-      }
-    },
-    "platforms": [
-      "android"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
     "key": "settings.android_download_again",
     "zh-CN": "重新下载",
     "en": "Download again",
@@ -409,25 +390,6 @@
     "en": "Downloaded file does not match release information",
     "notes": "Android Update 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
     "params": {},
-    "platforms": [
-      "android"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "settings.android_downloading_value1",
-    "zh-CN": "正在下载 {value1}",
-    "en": "Downloading {value1}",
-    "notes": "Android Update 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。value1：界面字段或用户/CLI 原文，保留变量内容，仅翻译完整句外壳。英文为待审初稿；不要替换成浏览器专属安全说明。",
-    "params": {
-      "value1": {
-        "type": "string",
-        "example": "Example"
-      }
-    },
     "platforms": [
       "android"
     ],
@@ -708,39 +670,6 @@
     }
   },
   {
-    "key": "settings.android_offline_last_online_value1",
-    "zh-CN": "不在线 · 最后在线 {value1}",
-    "en": "Offline · Last online {value1}",
-    "notes": "Android Settings 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。value1：按照本地日历显示的时间字段，不能改变原始时间戳或调度时区。英文为待审初稿；不要替换成浏览器专属安全说明。",
-    "params": {
-      "value1": {
-        "type": "string",
-        "example": "Example"
-      }
-    },
-    "platforms": [
-      "android"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "settings.android_online",
-    "zh-CN": "在线",
-    "en": "Online",
-    "notes": "Android Settings 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
-    "params": {},
-    "platforms": [
-      "android"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
     "key": "settings.android_online_b90866",
     "zh-CN": "在线",
     "en": "Online",
@@ -811,49 +740,11 @@
     }
   },
   {
-    "key": "settings.android_reconnect_archives_or_delete_records_on_the_managing_client_value1",
-    "zh-CN": "档案重接和删除记录，请在管理端（{value1}）上操作。",
-    "en": "Reconnect archives or delete records on the managing client ({value1}).",
-    "notes": "Android Settings 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。value1：管理端的设备名称，用户内容原样保留。英文为待审初稿；不要替换成浏览器专属安全说明。",
-    "params": {
-      "value1": {
-        "type": "string",
-        "example": "Example"
-      }
-    },
-    "platforms": [
-      "android"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
     "key": "settings.android_recovery_code_qr_code",
     "zh-CN": "恢复码二维码",
     "en": "Recovery code QR code",
     "notes": "Android Settings 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
     "params": {},
-    "platforms": [
-      "android"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "settings.android_recovery_pending_eligible_at_value1",
-    "zh-CN": "恢复申请待处理 · 可生效时间：{value1}",
-    "en": "Recovery pending · Eligible at: {value1}",
-    "notes": "Android Settings 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。value1：按照本地日历显示的时间字段，不能改变原始时间戳或调度时区。英文为待审初稿；不要替换成浏览器专属安全说明。",
-    "params": {
-      "value1": {
-        "type": "string",
-        "example": "Example"
-      }
-    },
     "platforms": [
       "android"
     ],
@@ -938,58 +829,6 @@
     }
   },
   {
-    "key": "settings.android_remote_agent_on_this_computer_cannot_read_value1_quotas",
-    "zh-CN": "这台电脑上的 remote-agent 读不到 {value1} 的额度。",
-    "en": "remote-agent on this computer cannot read {value1} quotas.",
-    "notes": "Android Settings 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。value1：CLI 产品名，不翻译产品标识。英文为待审初稿；不要替换成浏览器专属安全说明。",
-    "params": {
-      "value1": {
-        "type": "string",
-        "example": "Example"
-      }
-    },
-    "platforms": [
-      "android"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "settings.android_removal_immediately_disconnects_it_and_keeps_sessions_and_images_on",
-    "zh-CN": "移除会立即断开连接，保留中继上的会话和图片；它需要重新加入账户才能连接。",
-    "en": "Removal immediately disconnects it and keeps sessions and images on the relay. It must rejoin the account to connect again.",
-    "notes": "Android Settings 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
-    "params": {},
-    "platforms": [
-      "android"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "settings.android_remove_devices_on_the_managing_client_value1",
-    "zh-CN": "请在管理端（{value1}）上移除设备。",
-    "en": "Remove devices on the managing client ({value1}).",
-    "notes": "Android Settings 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。value1：管理端的设备名称，用户内容原样保留。英文为待审初稿；不要替换成浏览器专属安全说明。",
-    "params": {
-      "value1": {
-        "type": "string",
-        "example": "Example"
-      }
-    },
-    "platforms": [
-      "android"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
     "key": "settings.android_remove_reclaimable_originals_and_cache_large_images_not_yet_synced",
     "zh-CN": "清除可回收原图和缓存，尚未同步的大图会只显示预览。排队和当前执行中的原图、会话历史保留。",
     "en": "Remove reclaimable originals and cache. Large images not yet synced will show previews only. Originals queued or in use, and session history, are kept.",
@@ -1007,20 +846,6 @@
     "key": "settings.android_remove_this_machine",
     "zh-CN": "移除这台电脑…",
     "en": "Remove this machine…",
-    "notes": "Android Settings 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
-    "params": {},
-    "platforms": [
-      "android"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "settings.android_removed_retained_session_archive",
-    "zh-CN": "已移除 · 保留的会话档案",
-    "en": "Removed · Retained session archive",
     "notes": "Android Settings 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
     "params": {},
     "platforms": [
@@ -1200,20 +1025,6 @@
     }
   },
   {
-    "key": "settings.android_this_is_the_managing_device_ordinary_removal_is_unavailable",
-    "zh-CN": "这是管理端设备，普通移除不可用",
-    "en": "This is the managing device. Ordinary removal is unavailable",
-    "notes": "Android Settings 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
-    "params": {},
-    "platforms": [
-      "android"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
     "key": "settings.android_this_machine_has_been_removed",
     "zh-CN": "这台电脑已经移除了",
     "en": "This machine has been removed",
@@ -1312,25 +1123,6 @@
     }
   },
   {
-    "key": "settings.android_update_available_value1",
-    "zh-CN": "可更新到 {value1}",
-    "en": "Update available: {value1}",
-    "notes": "Android Update 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。value1：界面字段或用户/CLI 原文，保留变量内容，仅翻译完整句外壳。英文为待审初稿；不要替换成浏览器专属安全说明。",
-    "params": {
-      "value1": {
-        "type": "string",
-        "example": "Example"
-      }
-    },
-    "platforms": [
-      "android"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
     "key": "settings.android_value1_approval_mode",
     "zh-CN": "{value1} · 审批模式",
     "en": "{value1} · Approval mode",
@@ -1350,48 +1142,10 @@
     }
   },
   {
-    "key": "settings.android_value1_default",
-    "zh-CN": "{value1}（默认）",
-    "en": "{value1} (default)",
-    "notes": "Android Settings 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。value1：界面字段或用户/CLI 原文，保留变量内容，仅翻译完整句外壳。英文为待审初稿；不要替换成浏览器专属安全说明。",
-    "params": {
-      "value1": {
-        "type": "string",
-        "example": "Example"
-      }
-    },
-    "platforms": [
-      "android"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
     "key": "settings.android_value1_default_model_for_new_sessions",
     "zh-CN": "{value1} · 新会话默认模型",
     "en": "{value1} · Default model for new sessions",
     "notes": "Android Settings 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。value1：CLI 产品名，不翻译产品标识。英文为待审初稿；不要替换成浏览器专属安全说明。",
-    "params": {
-      "value1": {
-        "type": "string",
-        "example": "Example"
-      }
-    },
-    "platforms": [
-      "android"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "settings.android_value1_downloaded",
-    "zh-CN": "{value1} 已下载",
-    "en": "{value1} downloaded",
-    "notes": "Android Update 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。value1：界面字段或用户/CLI 原文，保留变量内容，仅翻译完整句外壳。英文为待审初稿；不要替换成浏览器专属安全说明。",
     "params": {
       "value1": {
         "type": "string",

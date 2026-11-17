@@ -282,16 +282,24 @@ class Remote(
         publishDirectReports(syncState.machinesList.map { it.machineId })
     }
 
+    private fun effectiveDirectStatus(machineId: String): io.github.lewin671.remoteagent.core.transport.DirectStatus {
+        val overrideStatus = testStateOverride?.machines?.get(machineId)?.pathState?.directStatus
+            ?: return direct.directStatus(machineId)
+        val enabled = direct.directStatus(machineId).enabled
+        return if (enabled) overrideStatus
+        else overrideStatus.copy(enabled = false, stage = io.github.lewin671.remoteagent.core.transport.DirectStage.OFF)
+    }
+
     private fun publishDirectReports(machineIds: List<String>) {
         for (id in machineIds) {
-            val report = direct.directStatus(id).toRouteReport()
+            val report = effectiveDirectStatus(id).toRouteReport()
             if (lastDirectReports.put(id, report) != report) {
                 coreHost.reportMachineDirectStatus(id, report)
             }
         }
     }
 
-    fun directStatusReport(machineId: String): DirectRouteReport = direct.directStatus(machineId).toRouteReport()
+    fun directStatusReport(machineId: String): DirectRouteReport = effectiveDirectStatus(machineId).toRouteReport()
 
     internal val deviceLink = DeviceLink(RelayPath(
         api = api,
@@ -397,7 +405,7 @@ class Remote(
     init {
         coreHost.onDirectPreference = { eff ->
             direct.setEnabled(eff.machineId, eff.enabled)
-            val report = direct.directStatus(eff.machineId).toRouteReport()
+            val report = effectiveDirectStatus(eff.machineId).toRouteReport()
             lastDirectReports[eff.machineId] = report
             coreHost.reportMachineDirectStatus(eff.machineId, report)
         }
@@ -1721,6 +1729,10 @@ class Remote(
                 SessionEvents(list, loaded = true, live = live[sid])
         }
         seedCoreForTest(coreHost, account.deviceId, state, modelLists)
+        for (m in state.machines.values) {
+            direct.setEnabled(m.id, m.pathState.directStatus.enabled)
+        }
+        publishDirectReports(state.machines.keys.toList())
     }
 
     fun events(sid: String): StateFlow<SessionEvents> {

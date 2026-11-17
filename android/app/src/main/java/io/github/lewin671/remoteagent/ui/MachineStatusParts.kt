@@ -80,6 +80,9 @@ fun Palette.pressureToneInk(tone: MachinePressureTone, normal: Color, text: Bool
     else -> normal
 }
 
+/** Tabular numerals in TextStyle without pulling any font asset. */
+fun TextStyle.digits(): TextStyle = copy(fontFeatureSettings = "tnum")
+
 fun Palette.diskToneInk(state: DiskPressureState, normal: Color, text: Boolean = true): Color = when (state) {
     DiskPressureState.DISK_PRESSURE_STATE_LOW -> if (text) orangeInk else orange
     DiskPressureState.DISK_PRESSURE_STATE_CRITICAL -> red
@@ -94,9 +97,6 @@ fun Modifier.statusCard(p: Palette): Modifier {
         .background(p.gbg)
         .border(0.5.dp, edge, Radii.R22)
 }
-
-/** Tabular numerals in TextStyle without pulling any font asset. */
-fun TextStyle.digits(): TextStyle = copy(fontFeatureSettings = "tnum")
 
 /**
  * Each character glides up/down on its own rail when [value] changes (machine-status.md
@@ -197,7 +197,6 @@ fun StatusRing(
     val animated by animateFloatAsState(
         targetValue = (fraction ?: 0f).coerceIn(0f, 1f),
         animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
-        label = "ring",
     )
     Box(modifier.size(34.dp), contentAlignment = Alignment.Center) {
         Canvas(Modifier.fillMaxSize()) {
@@ -221,7 +220,6 @@ fun PressureScale(position: Float, modifier: Modifier = Modifier) {
     val animated by animateFloatAsState(
         targetValue = clamped,
         animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
-        label = "pressure",
     )
     val blue = p.blue
     val orange = p.orange

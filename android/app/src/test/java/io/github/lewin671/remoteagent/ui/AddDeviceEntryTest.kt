@@ -3,6 +3,8 @@ package io.github.lewin671.remoteagent.ui
 import android.app.Application
 import androidx.compose.foundation.layout.Column
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
 import io.github.lewin671.remoteagent.core.*
@@ -43,65 +45,98 @@ class AddDeviceEntryTest {
         remote.close()
     }
 
-    private fun show(state: RemoteState, content: @androidx.compose.runtime.Composable (RemoteState) -> Unit) {
+    private val addHintText get() = messageTextForTest(UiMessages.securityAddOnAuthority("Desk Browser"))
+    private val noMachinesHintText get() = messageTextForTest(UiMessages.homeAddViaManager("Desk Browser"))
+
+    private fun settingsVm(canAdd: Boolean, hasMachine: Boolean): io.github.lewin671.remoteagent.core.proto.SettingsViewModel =
+        io.github.lewin671.remoteagent.core.proto.SettingsViewModel.newBuilder().apply {
+            canAddDevice = canAdd
+            addDeviceHint = io.github.lewin671.remoteagent.core.proto.Text.newBuilder().setLiteral(addHintText).build()
+            emptyMachinesText = io.github.lewin671.remoteagent.core.proto.Text.newBuilder().setLiteral(noMachinesHintText).build()
+            if (hasMachine) {
+                addMachines(
+                    io.github.lewin671.remoteagent.core.proto.MachineListCardView.newBuilder()
+                        .setMachineId(machine)
+                        .setName(machine)
+                        .setOnline(true)
+                        .setMember(true),
+                )
+            }
+        }.build()
+
+    private fun devicesVm(canAdd: Boolean): io.github.lewin671.remoteagent.core.proto.DevicesViewModel =
+        io.github.lewin671.remoteagent.core.proto.DevicesViewModel.newBuilder().apply {
+            isManager = canAdd
+            canAddDevice = canAdd
+            addDeviceHint = io.github.lewin671.remoteagent.core.proto.Text.newBuilder().setLiteral(addHintText).build()
+            addComputers(
+                io.github.lewin671.remoteagent.core.proto.MachineListCardView.newBuilder()
+                    .setMachineId(machine)
+                    .setName(machine)
+                    .setOnline(true)
+                    .setMember(true),
+            )
+        }.build()
+
+    private fun show(state: RemoteState, content: @androidx.compose.runtime.Composable () -> Unit) {
         remote.showForTest(state)
         ui.setContent {
             RaTheme(ThemeMode.LIGHT) {
-                CompositionLocalProvider(LocalRemote provides remote, LocalNav provides nav) { content(state) }
+                CompositionLocalProvider(LocalRemote provides remote, LocalNav provides nav) { content() }
             }
         }
     }
 
     @Test
-    fun theWordsAreTheOnesWebAndIosUse() {
-        assertEquals("要添加电脑或客户端，在管理端（Desk Browser）上打开「设置 › 添加设备」。", addDeviceHint(empty))
-        assertEquals("还没有电脑。在管理端（Desk Browser）上打开「设置 › 添加设备」，把电脑加进来。", noMachinesHint(empty))
-    }
-
-    @Test
     fun settingsOffersAddingOnlyOnTheAuthority() {
-        show(withMachine.copy(isAuthority = true)) { Column { MachinesGroup(it, 0) } }
+        show(withMachine.copy(isAuthority = true)) {
+            Column { MachinesGroup(settingsVm(canAdd = true, hasMachine = true), onPair = { nav.pair() }) }
+        }
         ui.onNodeWithText("添加设备").performClick()
         assertEquals(1, paired)
-        ui.onNodeWithText(addDeviceHint(empty)).assertDoesNotExist()
+        ui.onNodeWithText(addHintText).assertDoesNotExist()
     }
 
     @Test
     fun settingsOnAnotherClientSaysWhereToAdd() {
-        show(withMachine) { Column { MachinesGroup(it, 0) } }
+        show(withMachine) {
+            Column { MachinesGroup(settingsVm(canAdd = false, hasMachine = true), onPair = { nav.pair() }) }
+        }
         ui.onNodeWithText("添加设备").assertDoesNotExist()
-        ui.onNodeWithText(addDeviceHint(empty)).assertExists()
+        ui.onNodeWithText(addHintText).assertExists()
     }
 
     @Test
     fun settingsOnAnotherClientWithNoComputerSaysSo() {
-        show(empty) { Column { MachinesGroup(it, 0) } }
+        show(empty) {
+            Column { MachinesGroup(settingsVm(canAdd = false, hasMachine = false), onPair = { nav.pair() }) }
+        }
         ui.onNodeWithText("添加设备").assertDoesNotExist()
-        ui.onNodeWithText(noMachinesHint(empty)).assertExists()
+        ui.onNodeWithText(noMachinesHintText).assertExists()
     }
 
     @Test
     fun homeEmptyStateKeepsItsButtonOnlyOnTheAuthority() {
         val emptyView = io.github.lewin671.remoteagent.core.proto.HomeEmptyView.newBuilder()
             .setKind(io.github.lewin671.remoteagent.core.proto.HomeEmptyKind.HOME_EMPTY_KIND_NO_MACHINES)
-            .setMessage(io.github.lewin671.remoteagent.core.proto.Text.newBuilder().setLiteral(addDeviceHint(empty)))
+            .setMessage(io.github.lewin671.remoteagent.core.proto.Text.newBuilder().setLiteral(addHintText))
             .setCanAddDevice(true)
             .build()
         show(empty.copy(isAuthority = true)) { EmptyHomeView(emptyView, onPair = { nav.pair() }, onRetry = {}) }
         ui.onNodeWithText("添加设备").performClick()
         assertEquals(1, paired)
-        ui.onNodeWithText(noMachinesHint(empty)).assertDoesNotExist()
+        ui.onNodeWithText(noMachinesHintText).assertDoesNotExist()
     }
 
     @Test
     fun homeEmptyStateOnAnotherClientSaysWhereToAdd() {
         val memberView = io.github.lewin671.remoteagent.core.proto.HomeEmptyView.newBuilder()
             .setKind(io.github.lewin671.remoteagent.core.proto.HomeEmptyKind.HOME_EMPTY_KIND_NO_MACHINES_MEMBER)
-            .setMessage(io.github.lewin671.remoteagent.core.proto.Text.newBuilder().setLiteral(noMachinesHint(empty)))
+            .setMessage(io.github.lewin671.remoteagent.core.proto.Text.newBuilder().setLiteral(noMachinesHintText))
             .build()
         show(empty) { EmptyHomeView(memberView, onPair = { nav.pair() }, onRetry = {}) }
         ui.onNodeWithText("添加设备").assertDoesNotExist()
-        ui.onNodeWithText(noMachinesHint(empty)).assertExists()
+        ui.onNodeWithText(noMachinesHintText).assertExists()
     }
 
     @Test
@@ -110,25 +145,31 @@ class AddDeviceEntryTest {
             io.github.lewin671.remoteagent.proto.DeviceKind.DEVICE_KIND_MACHINE, 0,
             io.github.lewin671.remoteagent.proto.DeviceMeta.newBuilder().setPlatform("android").build())
         show(empty.copy(devices = empty.devices + (machineClient.id to machineClient))) {
-            Column { MachinesGroup(it, 0) }
+            val vm by remote.settingsView.collectAsState()
+            Column { MachinesGroup(vm, onPair = { nav.pair() }) }
         }
+        ui.waitUntil(3000) { !remote.settingsView.value.isManager && remote.settingsView.value.authorityName == "Desk Browser" }
         ui.onNodeWithText("添加设备").assertDoesNotExist()
-        ui.onNodeWithText(noMachinesHint(empty)).assertExists()
+        ui.onNodeWithText(addHintText).assertExists()
     }
 
     @Test
     fun devicesPageNamesItsEntryAsSettingsDoes() {
-        show(withMachine.copy(isAuthority = true)) { DevicesScreen() }
+        show(withMachine.copy(isAuthority = true)) {
+            DevicesScreenContent(devicesVm(canAdd = true), onPair = { nav.pair() })
+        }
         ui.onNodeWithText("添加电脑或客户端").assertDoesNotExist()
         ui.onNodeWithText("添加设备").performScrollTo().performClick()
         assertEquals(1, paired)
-        ui.onNodeWithText(addDeviceHint(empty)).assertDoesNotExist()
+        ui.onNodeWithText(addHintText).assertDoesNotExist()
     }
 
     @Test
     fun devicesPageOnAnotherClientSaysWhereToAdd() {
-        show(withMachine) { DevicesScreen() }
+        show(withMachine) {
+            DevicesScreenContent(devicesVm(canAdd = false), onPair = { nav.pair() })
+        }
         ui.onNodeWithText("添加设备").assertDoesNotExist()
-        ui.onNodeWithText(addDeviceHint(empty)).performScrollTo().assertExists()
+        ui.onNodeWithText(addHintText).performScrollTo().assertExists()
     }
 }

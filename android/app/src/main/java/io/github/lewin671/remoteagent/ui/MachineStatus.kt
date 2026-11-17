@@ -118,7 +118,7 @@ fun MachineRingsCard(
             val accent = p.ringToneInk(r.tone, p.ink)
             val labelStr = uiText(r.label)
             val valueStr = uiText(r.valueText).ifEmpty { "—" }
-            val spoken = uiText(r.a11YLabel).ifEmpty { "$labelStr $valueStr" }
+            val spoken = uiText(r.a11YLabel).ifEmpty { listOf(labelStr, valueStr).filter { it.isNotEmpty() }.joinToString(" ") }
             Row(
                 itemMod.semantics(mergeDescendants = true) { contentDescription = spoken },
                 verticalAlignment = Alignment.CenterVertically,
@@ -176,11 +176,10 @@ private fun LiveDot(dot: MachineStatusDot) {
     }
     val live = dot == MachineStatusDot.MACHINE_STATUS_DOT_GREEN_LIVE && !Motion.reduced && !LocalChartFrozen.current
     val pulse = if (live) {
-        rememberInfiniteTransition(label = "dot").animateFloat(
+        rememberInfiniteTransition().animateFloat(
             1f,
             0.35f,
             infiniteRepeatable(tween(1100), RepeatMode.Reverse),
-            label = "alpha",
         ).value
     } else 1f
     Box(Modifier.size(7.dp).clip(CircleShape).background(color.copy(alpha = pulse)))

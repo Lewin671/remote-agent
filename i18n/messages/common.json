@@ -192,20 +192,6 @@
     }
   },
   {
-    "key": "common.android_offline",
-    "zh-CN": "不在线",
-    "en": "Offline",
-    "notes": "Android ConnCheck 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
-    "params": {},
-    "platforms": [
-      "android"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
     "key": "common.android_project_settings_may_differ",
     "zh-CN": "（项目设置可能不同）",
     "en": "(Project settings may differ)",

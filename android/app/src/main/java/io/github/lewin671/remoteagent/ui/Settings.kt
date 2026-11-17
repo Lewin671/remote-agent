@@ -60,32 +60,23 @@ import com.google.zxing.EncodeHintType
 import com.google.zxing.qrcode.QRCodeWriter
 import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel
 import io.github.lewin671.remoteagent.RaApp
-import io.github.lewin671.remoteagent.core.DEFAULT_AGENT
 import androidx.compose.foundation.relocation.bringIntoViewRequester
-import io.github.lewin671.remoteagent.core.Mode
 import io.github.lewin671.remoteagent.core.PairingUiState
 import io.github.lewin671.remoteagent.core.RemoteState
-import io.github.lewin671.remoteagent.core.agentInfo
 import io.github.lewin671.remoteagent.core.agentName
-import io.github.lewin671.remoteagent.core.defaultsFor
-import io.github.lewin671.remoteagent.ui.displayError
-import io.github.lewin671.remoteagent.core.machineAgents
-import io.github.lewin671.remoteagent.core.machineVersions
-import io.github.lewin671.remoteagent.core.modeOf
-import io.github.lewin671.remoteagent.core.projectName
-import io.github.lewin671.remoteagent.core.shortPath
-import io.github.lewin671.remoteagent.core.whenText
-import io.github.lewin671.remoteagent.core.withDefaults
+import io.github.lewin671.remoteagent.core.proto.AttachmentStorageView
+import io.github.lewin671.remoteagent.core.proto.MachineListCardView
+import io.github.lewin671.remoteagent.core.proto.MachinePollMode
+import io.github.lewin671.remoteagent.core.proto.MachineSettingsViewModel
+import io.github.lewin671.remoteagent.core.proto.QuotaTone
+import io.github.lewin671.remoteagent.core.proto.SettingsViewModel
+import io.github.lewin671.remoteagent.core.proto.ThemePreference
 import io.github.lewin671.remoteagent.data.Settings
-import io.github.lewin671.remoteagent.data.ThemeMode
 import io.github.lewin671.remoteagent.proto.Agent
-import io.github.lewin671.remoteagent.proto.AgentDefaults
-import io.github.lewin671.remoteagent.proto.DaemonSettings
+import io.github.lewin671.remoteagent.proto.ApprovalMode
 import io.github.lewin671.remoteagent.proto.DeviceKind
-import io.github.lewin671.remoteagent.proto.GetSettingsRequest
-import io.github.lewin671.remoteagent.proto.ImageStorageUsage
-import io.github.lewin671.remoteagent.proto.UpdateSettingsRequest
 import io.github.lewin671.remoteagent.push.Push
+import io.github.lewin671.remoteagent.push.PushStatus
 import io.github.lewin671.remoteagent.update.Updater
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -139,25 +130,95 @@ internal fun clientIcon(meta: io.github.lewin671.remoteagent.proto.DeviceMeta?):
     else -> Lucide.Smartphone
 }
 
+private fun clientIconForDescription(desc: String): ImageVector = when {
+    desc.contains("iPad", ignoreCase = true) -> Lucide.Tablet
+    desc.contains("Web", ignoreCase = true) ||
+        desc.contains("Chrome", ignoreCase = true) ||
+        desc.contains("Firefox", ignoreCase = true) ||
+        desc.contains("Safari", ignoreCase = true) ||
+        desc.contains("Edge", ignoreCase = true) -> Lucide.Globe
+    else -> Lucide.Smartphone
+}
+
 /**
  * 设置 (client-v7): computers, clients, notifications, this phone's storage, appearance and the
  * account, on a grey page.
  */
 @Composable
 fun SettingsScreen() {
-    val copy = uiText()
     val app = RaApp.instance
     val remote = LocalRemote.current
     val nav = LocalNav.current
     val state by remote.state.collectAsState()
-    val settings by app.prefs.settings.collectAsState(Settings())
+    val vm by remote.settingsView.collectAsState()
     val push by Push.status.collectAsState()
-    val p = pal
-    val scope = rememberCoroutineScope()
     var checking by remember { mutableStateOf(false) }
     var updating by remember { mutableStateOf(false) }
-    val update by Updater.state.collectAsState()
-    val t = now()
+    LaunchedEffect(Unit) { remote.coreHost.openSettings() }
+    val version =
+        app.versionName.let { v ->
+            val c = app.buildCommit.take(7)
+            if (c.isEmpty() || c in v) v else "$v · $c"
+        }
+    SettingsScreenContent(
+        vm = vm,
+        state = state,
+        push = push,
+        serverDisplay = remote.account.server.removePrefix("https://"),
+        versionFallback = version,
+        updaterEnabled = Updater.enabled(app),
+        onBack = nav.back,
+        onRecovery = { nav.recovery() },
+        onDevices = { nav.devices() },
+        onDevice = { nav.device(it) },
+        onClient = { nav.client(it) },
+        onPair = { nav.pair() },
+        onNotifyAttention = { remote.coreHost.reportNotificationPrefs(notifyAttention = it) },
+        onNotifyTurnEnded = { remote.coreHost.reportNotificationPrefs(notifyTurnEnded = it) },
+        onNotifyScheduled = { remote.coreHost.reportNotificationPrefs(notifyScheduled = it) },
+        onShowContent = { remote.coreHost.reportNotificationPrefs(showContent = it) },
+        onFixPush = { Push.fix(app, remote) },
+        onPhoneStorage = nav.phoneStorage,
+        onTheme = { remote.coreHost.setAppearancePref(it) },
+        onOpenUpdate = { updating = true },
+        onLicenses = nav.licenses,
+        onOpenConnCheck = { checking = true },
+        readExitPending = { withContext(Dispatchers.IO) { app.vault.readSecurityOperation() != null } },
+        onExitAccount = { app.logout() },
+    )
+    if (checking) ConnCheckSheet(state) { checking = false }
+    if (updating) UpdateSheet { updating = false }
+}
+
+@Composable
+internal fun SettingsScreenContent(
+    vm: SettingsViewModel,
+    state: RemoteState = RemoteState(),
+    push: PushStatus = PushStatus(),
+    serverDisplay: String = "",
+    versionFallback: String = "",
+    updaterEnabled: Boolean = false,
+    onBack: () -> Unit = {},
+    onRecovery: () -> Unit = {},
+    onDevices: () -> Unit = {},
+    onDevice: (String) -> Unit = {},
+    onClient: (String) -> Unit = {},
+    onPair: () -> Unit = {},
+    onNotifyAttention: (Boolean) -> Unit = {},
+    onNotifyTurnEnded: (Boolean) -> Unit = {},
+    onNotifyScheduled: (Boolean) -> Unit = {},
+    onShowContent: (Boolean) -> Unit = {},
+    onFixPush: () -> Unit = {},
+    onPhoneStorage: () -> Unit = {},
+    onTheme: (ThemePreference) -> Unit = {},
+    onOpenUpdate: () -> Unit = {},
+    onLicenses: () -> Unit = {},
+    onOpenConnCheck: () -> Unit = {},
+    readExitPending: suspend () -> Boolean = { false },
+    onExitAccount: suspend () -> Unit = {},
+) {
+    val copy = uiText()
+    val p = pal
     androidx.compose.runtime.CompositionLocalProvider(LocalOnSoft provides false) {
         Column(
             Modifier.fillMaxSize()
@@ -165,59 +226,51 @@ fun SettingsScreen() {
                 .verticalScrollFaded()
                 .readableColumn(),
         ) {
-            BackRow(nav.back)
+            BackRow(onBack)
             LargeTitle(copy(UiMessages.commonSettings()))
             ConnBanner(state)
-            if (state.clockWarning)
+            if (vm.clockSkewed) {
+                val skewMsg = uiText(vm.clockSkewBannerText).ifEmpty {
+                    copy(UiMessages.settingsAndroidThePhoneClockIsAheadOfTheServerRemoteControl())
+                }
                 Notice(
-                    copy(UiMessages.settingsAndroidThePhoneClockIsAheadOfTheServerRemoteControl()),
+                    skewMsg,
                     Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
                     NoticeTone.WARN,
                 )
-            MachinesGroup(state, t)
+            }
+            if (vm.isManager && vm.recoveryPending) {
+                val recMsg = uiText(vm.recoveryBannerText)
+                if (recMsg.isNotEmpty())
+                    Notice(
+                        recMsg,
+                        Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
+                        NoticeTone.ERROR,
+                        action = copy(UiMessages.dockHandle()),
+                        onAction = onRecovery,
+                    )
+            }
+            MachinesGroup(vm, onDevices = onDevices, onDevice = onDevice, onPair = onPair)
             GLabel(copy(UiMessages.securityClient()))
-            val me = remote.account.deviceId
-            val others =
-                state.devices.values
-                    .filter {
-                        it.kind ==
-                            io.github.lewin671.remoteagent.proto.DeviceKind.DEVICE_KIND_CLIENT &&
-                            it.id != me
-                    }
-                    .sortedBy { it.createdMs }
-                    .take(3)
             Group(
                 rows =
-                    listOf<@Composable () -> Unit>(
-                        {
+                    vm.recentClientsList.map { c ->
+                        @Composable {
+                            val sub = uiText(c.roleLabel).ifEmpty { uiText(c.lastUsedText) }
                             GRow(
-                                io.github.lewin671.remoteagent.core.clientName(
-                                    state.devices[me],
-                                    me,
-                                    state.devices.values,
-                                 copy = copy),
-                                copy(UiMessages.settingsCurrent()),
-                                lead = { Ico(clientIcon(state.devices[me]?.meta)) },
-                                onClick = { nav.client(me) },
+                                c.displayName,
+                                sub,
+                                lead = { Ico(clientIconForDescription(c.description)) },
+                                onClick = { onClient(c.deviceId) },
+                                chevron = !c.isSelf,
                             )
-                        },
-                    ) +
-                        others.map { c ->
-                            @Composable {
-                                GRow(
-                                    io.github.lewin671.remoteagent.core.clientName(c, c.id, state.devices.values, copy = copy),
-                                    copy(UiMessages.securityPaired()),
-                                    lead = { Ico(clientIcon(c.meta)) },
-                                    onClick = { nav.client(c.id) },
-                                    chevron = true,
-                                )
-                            }
-                        } +
+                        }
+                    } +
                         listOf(
                             @Composable {
                                 GRow(
                                     copy(UiMessages.settingsAllClients()),
-                                    onClick = { nav.devices() },
+                                    onClick = onDevices,
                                     action = true,
                                     chevron = true,
                                 )
@@ -225,60 +278,52 @@ fun SettingsScreen() {
                         ),
             )
             GLabel(copy(UiMessages.securityAccountSecurity()))
-            Group(rows = listOf({ GRow(copy(UiMessages.securityAccountSecurity()), if (state.isAuthority) copy(UiMessages.securityThisDeviceManagesTheAccount()) else uiText(state.authorityName), onClick = { nav.recovery() }, chevron = true) }))
-            if (state.isAuthority && state.recoveryPending)
-                Notice(copy(UiMessages.settingsAndroidRecoveryPendingEligibleAtValue1((io.github.lewin671.remoteagent.core.securityTime(state.recoveryReadyMs, t, copy = copy)).toString())), Modifier.padding(horizontal = 16.dp, vertical = 6.dp), NoticeTone.WARN, action = copy(UiMessages.dockHandle()), onAction = { nav.recovery() })
+            Group(
+                rows = listOf {
+                    GRow(
+                        copy(UiMessages.securityAccountSecurity()),
+                        uiText(vm.security.summaryText),
+                        onClick = onRecovery,
+                        chevron = true,
+                    )
+                },
+            )
             GLabel(copy(UiMessages.settingsNotificationsOnThisClient()))
+            val n = vm.notifications
             Group(
                 rows =
                     listOf(
                         {
-                            ToggleRow(copy(UiMessages.settingsWhenINeedToAct()), "", settings.notifyAttention) { v ->
-                                scope.launch {
-                                    app.prefs.update { it.copy(notifyAttention = v) }
-                                    Push.register(app, remote)
-                                }
-                            }
+                            ToggleRow(copy(UiMessages.settingsWhenINeedToAct()), "", n.notifyAttention, onChange = onNotifyAttention)
                         },
                         {
-                            ToggleRow(copy(UiMessages.settingsWhenATurnEnds()), "", settings.notifyTurnEnded) { v ->
-                                scope.launch {
-                                    app.prefs.update { it.copy(notifyTurnEnded = v) }
-                                    Push.register(app, remote)
-                                }
-                            }
+                            ToggleRow(copy(UiMessages.settingsWhenATurnEnds()), "", n.notifyTurnEnded, onChange = onNotifyTurnEnded)
                         },
                         {
-                            ToggleRow(copy(UiMessages.settingsScheduledTaskResults()), "", settings.notifyScheduled) { v ->
-                                scope.launch {
-                                    app.prefs.update { it.copy(notifyScheduled = v) }
-                                    Push.register(app, remote)
-                                }
-                            }
+                            ToggleRow(copy(UiMessages.settingsScheduledTaskResults()), "", n.notifyScheduled, onChange = onNotifyScheduled)
                         },
                         {
                             ToggleRow(
                                 copy(UiMessages.settingsAndroidShowContentAndApproveInNotifications()),
                                 copy(UiMessages.settingsAndroidApprovalCommandsWillAppearInSystemNotificationsAndMayRemain()),
-                                settings.showContent,
-                            ) { v ->
-                                scope.launch { app.prefs.update { it.copy(showContent = v) } }
-                            }
+                                n.showContent,
+                                onChange = onShowContent,
+                            )
                         },
                     ),
             )
-            PushNotice(push) { Push.fix(app, remote) }
+            PushNotice(push, onAction = onFixPush)
             GLabel(copy(UiMessages.settingsAndroidLocalStorage()))
-            Group(rows = listOf { GRow(copy(UiMessages.settingsAttachmentStorage()), onClick = nav.phoneStorage, chevron = true) })
+            Group(rows = listOf { GRow(copy(UiMessages.settingsAttachmentStorage()), onClick = onPhoneStorage, chevron = true) })
             GLabel(copy(UiMessages.settingsAppearance()))
             Group(
                 rows =
                     listOf {
                         val opts =
                             listOf(
-                                ThemeMode.SYSTEM to copy(UiMessages.modesAuto()),
-                                ThemeMode.LIGHT to copy(UiMessages.settingsLight()),
-                                ThemeMode.DARK to copy(UiMessages.settingsDark()),
+                                ThemePreference.THEME_PREFERENCE_AUTO to copy(UiMessages.modesAuto()),
+                                ThemePreference.THEME_PREFERENCE_LIGHT to copy(UiMessages.settingsLight()),
+                                ThemePreference.THEME_PREFERENCE_DARK to copy(UiMessages.settingsDark()),
                             )
                         Row(
                             Modifier.fillMaxWidth()
@@ -294,56 +339,57 @@ fun SettingsScreen() {
                             )
                             SegPick(
                                 opts.map { it.second },
-                                opts.indexOfFirst { it.first == settings.theme },
+                                opts.indexOfFirst { it.first == vm.appearance.theme }.coerceAtLeast(0),
                             ) { i ->
-                                scope.launch { app.prefs.update { it.copy(theme = opts[i].first) } }
+                                onTheme(opts[i].first)
                             }
                         }
                     },
             )
             GLabel(copy(UiMessages.settingsAndroidVersion()))
+            val u = vm.update
+            val version = u.currentVersion.ifEmpty { versionFallback }
+            val updateStatus = if (u.checking || u.hasUpdate) uiText(u.statusText) else ""
             Group(
                 rows =
                     listOf(
                         {
-                            val version =
-                                app.versionName.let { v ->
-                                    val c = app.buildCommit.take(7)
-                                    if (c.isEmpty() || c in v) v else "$v · $c"
-                                }
-                            // A development copy does not update itself: its row only says what it
-                            // is.
-                            if (!Updater.enabled(app)) GRow("remote-agent", version)
+                            // A development copy does not update itself: its row only says what it is.
+                            if (!updaterEnabled) GRow("remote-agent", version)
                             else
                                 GRow(
                                     "remote-agent",
-                                    updateWord(update, copy = copy) ?: version,
-                                    onClick = { updating = true },
+                                    updateStatus.ifEmpty { version },
+                                    onClick = onOpenUpdate,
                                     chevron = true,
-                                    valueColor = if (updateWord(update, copy = copy) != null) p.blue else null,
+                                    valueColor = if (updateStatus.isNotEmpty()) p.blue else null,
                                 )
                         },
-                        { GRow(copy(UiMessages.settingsAndroidOpenSourceLicenses()), onClick = nav.licenses, chevron = true) },
+                        { GRow(copy(UiMessages.settingsAndroidOpenSourceLicenses()), onClick = onLicenses, chevron = true) },
                     ),
             )
             GLabel(copy(UiMessages.settingsAccount()))
+            val cc = vm.connCheck
+            val connValue = listOf(uiText(cc.statusWord), uiText(cc.summaryText))
+                .filter { it.isNotEmpty() }
+                .joinToString(" · ")
             Group(
                 rows =
                     listOf(
-                        { GRow(copy(UiMessages.securityServer()), remote.account.server.removePrefix("https://")) },
+                        { GRow(copy(UiMessages.securityServer()), serverDisplay) },
                         {
                             GRow(
                                 copy(UiMessages.homeConnectionCheck()),
-                                connWord(state, copy = copy),
-                                onClick = { checking = true },
+                                connValue,
+                                onClick = onOpenConnCheck,
                                 chevron = true,
                             )
                         },
                         {
                             AccountExitAction(
                                 state,
-                                readPending = { withContext(Dispatchers.IO) { app.vault.readSecurityOperation() != null } },
-                                exit = { app.logout() },
+                                readPending = readExitPending,
+                                exit = onExitAccount,
                             )
                         },
                     ),
@@ -351,8 +397,6 @@ fun SettingsScreen() {
             Spacer(Modifier.height(24.dp))
         }
     }
-    if (checking) ConnCheckSheet(state) { checking = false }
-    if (updating) UpdateSheet { updating = false }
 }
 
 /**
@@ -362,57 +406,59 @@ fun SettingsScreen() {
  * authority has it, other clients name it.
  */
 @Composable
-internal fun MachinesGroup(state: RemoteState, t: Long) {
+internal fun MachinesGroup(
+    vm: SettingsViewModel,
+    onDevices: () -> Unit = {},
+    onDevice: (String) -> Unit = {},
+    onPair: () -> Unit = {},
+) {
     val copy = uiText()
-    val nav = LocalNav.current
     val p = pal
-    GLabel(copy(UiMessages.settingsComputer()), copy(UiMessages.settingsAllDevices()), onAction = { nav.devices() })
-    val machines = state.machines.values.sortedBy { machineLabel(state, it.id) }
-    for (m in machines) MachineCard(state, m, t) { nav.device(m.id) }
-    if (state.isAuthority)
+    GLabel(copy(UiMessages.settingsComputer()), copy(UiMessages.settingsAllDevices()), onAction = onDevices)
+    for (m in vm.machinesList) MachineCard(m) { onDevice(m.machineId) }
+    val emptyHint = if (vm.machinesList.isEmpty()) uiText(vm.emptyMachinesText) else ""
+    if (emptyHint.isNotEmpty()) Hint(emptyHint)
+    if (vm.canAddDevice)
         Row(
             Modifier.fillMaxWidth().padding(horizontal = 16.dp).heightIn(min = 52.dp).clip(Radii.Pill).background(p.gbg)
-                .clickable(role = androidx.compose.ui.semantics.Role.Button) { nav.pair() },
+                .clickable(role = androidx.compose.ui.semantics.Role.Button) { onPair() },
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
         ) {
             Ic(Lucide.Plus, 20.dp, p.blue)
             Text(copy(UiMessages.homeAddDevice()), style = T.s17b, color = p.blue)
         }
-    else Hint(
-        if (machines.isEmpty()) noMachinesHint(state, copy = copy) else addDeviceHint(state, copy = copy),
-    )
+    else {
+        val addHint = uiText(vm.addDeviceHint)
+        if (addHint.isNotEmpty() && addHint !in emptyHint) Hint(addHint)
+    }
     Spacer(Modifier.height(12.dp))
 }
 
 /** One computer's card: gbg, radius 28, outlined only when it is away. */
 @Composable
-private fun MachineCard(state: RemoteState, m: io.github.lewin671.remoteagent.core.MachineView, t: Long, onClick: () -> Unit) {
-    val copy = uiText()
+private fun MachineCard(m: MachineListCardView, onClick: () -> Unit) {
     val p = pal
     Column(
         Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, bottom = 10.dp).clip(Radii.R28)
-            .then(if (m.pathState.reachable) Modifier.background(p.gbg) else Modifier.border(0.5.dp, p.sep, Radii.R28))
+            .then(if (m.online) Modifier.background(p.gbg) else Modifier.border(0.5.dp, p.sep, Radii.R28))
             .clickable(onClick = onClick).padding(18.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(machineLabel(state, m.id), style = T.h20, color = p.ink, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+            Text(m.name, style = T.h20, color = p.ink, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
             Arrow(p.ink3, T.s17)
         }
         Row(Modifier.padding(top = 3.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            StatusMark(if (m.pathState.reachable) MarkKind.ONLINE else MarkKind.OFF, size = 8.dp)
+            StatusMark(if (m.online) MarkKind.ONLINE else MarkKind.OFF, size = 8.dp)
             Text(
-                if (m.pathState.reachable) copy(UiMessages.settingsAndroidOnline()) else io.github.lewin671.remoteagent.core.ago(m.lastSeenMs, t, copy = copy).let { if (it.isEmpty()) copy(UiMessages.settingsOffline()) else copy(UiMessages.settingsOnline((it).toString())) },
+                uiText(m.statusText),
                 style = T.s13, color = p.ink2, maxLines = 1,
             )
         }
-        val settingsView by LocalRemote.current.settingsView.collectAsState()
-        val mCard = settingsView.machinesList.firstOrNull { it.machineId == m.id }
-        if (m.pathState.reachable && mCard != null) for (sec in mCard.quotaSummariesList) {
+        if (m.online) for (sec in m.quotaSummariesList) {
             val row = sec.takeIf { it.hasSummaryRow() }?.summaryRow?.takeIf { it.hasPercent } ?: continue
             val left = row.remainingPercent.coerceIn(0, 100)
-            val low = row.tone == io.github.lewin671.remoteagent.core.proto.QuotaTone.QUOTA_TONE_WARN ||
-                row.tone == io.github.lewin671.remoteagent.core.proto.QuotaTone.QUOTA_TONE_FULL
+            val low = row.tone == QuotaTone.QUOTA_TONE_WARN || row.tone == QuotaTone.QUOTA_TONE_FULL
             Column(Modifier.padding(top = 14.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
@@ -508,192 +554,183 @@ private fun ChoiceSheet(
 
 /**
  * 设备详情 (client-v7): quota, CLI versions, the defaults for new sessions, image storage, projects,
- * remove.
+ * remove. Renders Core's [MachineSettingsViewModel] directly.
  */
 @Composable
 fun DeviceScreen(
     id: String,
-    readSettings: suspend (io.github.lewin671.remoteagent.core.Remote, String) -> io.github.lewin671.remoteagent.proto.GetSettingsResponse = { remote, machine ->
-        remote.machineCommand(machine, remote.cmd { getSettings = GetSettingsRequest.getDefaultInstance() }).getSettings
-    },
     scrollToStorage: Boolean = false,
 ) {
-    val copy = uiText()
     val remote = LocalRemote.current
     val nav = LocalNav.current
     val state by remote.state.collectAsState()
-    val m = state.machines[id]
-    val member = id in state.devices
-    val p = pal
-    var confirm by remember { mutableStateOf(false) }
+    val vm by remote.machineSettingsView.collectAsState()
     val remove = rememberAction(authority = true)
-    var settings by remember { mutableStateOf<DaemonSettings?>(null) }
-    var imageStorage by remember { mutableStateOf<ImageStorageUsage?>(null) }
-    var loadError by remember { mutableStateOf("") }
-    val save = rememberAction()
-    val storageAt = remember { androidx.compose.foundation.relocation.BringIntoViewRequester() }
-    var attempt by remember { mutableStateOf(0) }
-    LaunchedEffect(id, member, m?.pathState?.reachable, attempt) {
-        if (!member || m?.pathState?.reachable != true) return@LaunchedEffect
-        try {
-            val reply = readSettings(remote, id)
-            settings = reply.settings
-            if (reply.hasImageStorage()) imageStorage = reply.imageStorage
-            loadError = ""
-        } catch (e: Exception) {
-            loadError = displayError(e, remote.state.value)
-        }
-    }
-    var pickModel by remember { mutableStateOf<Agent?>(null) }
-    var pickMode by remember { mutableStateOf<Agent?>(null) }
-    var pickTimeout by remember { mutableStateOf(false) }
-    var pickIdleClose by remember { mutableStateOf(false) }
-    var directOn by remember(id, remote, m?.pathState?.directStatus?.enabled) {
-        mutableStateOf(m?.pathState?.directStatus?.enabled ?: remote.directEnabled(id))
-    }
-    var directTurnedOnAt by remember(id, remote) { mutableStateOf<Long?>(null) }
-    // Opening the page refreshes the numbers it shows (one bounded warm-up when the window is thin).
-    LaunchedEffect(id, remote) { remote.refreshDirect(id) }
-    val directNow by produceState(System.currentTimeMillis(), directTurnedOnAt) {
-        while (directTurnedOnAt != null) {
-            value = System.currentTimeMillis()
-            delay(1000)
-        }
-    }
-    var activeAgent by remember(id) { mutableStateOf<Agent?>(null) }
-    fun update(s: DaemonSettings, cleanImages: Boolean = false) =
-        save.run(
-            {
-                remote.machineCommand(
-                    id,
-                    remote.cmd {
-                        updateSettings =
-                            UpdateSettingsRequest.newBuilder()
-                                .setSettings(s)
-                                .setCleanImages(cleanImages)
-                                .build()
-                    },
-                )
-            },
-        ) { r ->
-            r?.updateSettings?.let {
-                settings = it.settings
-                if (it.hasImageStorage()) imageStorage = it.imageStorage
+    LaunchedEffect(id) { remote.coreHost.openMachineSettings(id) }
+    if (vm.showStatusEntry) {
+        val owner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+        DisposableEffect(id, owner) {
+            val obs = androidx.lifecycle.LifecycleEventObserver { _, ev ->
+                when (ev) {
+                    androidx.lifecycle.Lifecycle.Event.ON_START ->
+                        remote.coreHost.watchMachineStatus(id, true, MachinePollMode.MACHINE_POLL_MODE_OVERVIEW)
+                    androidx.lifecycle.Lifecycle.Event.ON_STOP ->
+                        remote.coreHost.watchMachineStatus(id, false, MachinePollMode.MACHINE_POLL_MODE_OVERVIEW)
+                    else -> {}
+                }
+            }
+            owner.lifecycle.addObserver(obs)
+            if (owner.lifecycle.currentState.isAtLeast(androidx.lifecycle.Lifecycle.State.STARTED)) {
+                remote.coreHost.watchMachineStatus(id, true, MachinePollMode.MACHINE_POLL_MODE_OVERVIEW)
+            }
+            onDispose {
+                owner.lifecycle.removeObserver(obs)
+                remote.coreHost.watchMachineStatus(id, false, MachinePollMode.MACHINE_POLL_MODE_OVERVIEW)
             }
         }
-    PageScaffold(machineLabel(state, id), readable = true) {
-        if (m == null) {
+    }
+    DeviceScreenContent(
+        vm = vm,
+        scrollToStorage = scrollToStorage,
+        isAuthority = state.isAuthority,
+        appOnline = state.conn == io.github.lewin671.remoteagent.core.ConnState.ONLINE,
+        removeRunning = remove.running,
+        removeError = remove.error,
+        onOpenStatus = { nav.machineStatus(id) },
+        onOpenQuota = { nav.quota(id) },
+        onToggleDirect = { enabled -> remote.coreHost.updateDirectPreference(id, enabled) },
+        onRetrySettings = { remote.coreHost.openMachineSettings(id) },
+        onSelectAgent = { agent -> remote.coreHost.selectMachineSettingsAgent(id, agent) },
+        onUpdateAgentDefaults = { agent, model, effort, mode ->
+            remote.coreHost.updateMachineAgentDefaults(id, agent, model = model, effort = effort, mode = mode)
+        },
+        onUpdateDaemonSettings = { timeoutSec, idleMin, quotaBytes, clean ->
+            remote.coreHost.updateMachineDaemonSettings(
+                id,
+                approvalTimeoutSeconds = timeoutSec,
+                idleCloseMinutes = idleMin,
+                imageUploadQuotaBytes = quotaBytes,
+                cleanImages = clean,
+            )
+        },
+        onProject = { path -> nav.project(path) },
+        onRejoin = { nav.rejoin(id) },
+        onRemove = {
+            remove.run(
+                {
+                    remote.removeDevice(id)
+                    null
+                },
+            )
+        },
+    )
+}
+
+@Composable
+internal fun DeviceScreenContent(
+    vm: MachineSettingsViewModel,
+    scrollToStorage: Boolean = false,
+    isAuthority: Boolean = false,
+    appOnline: Boolean = true,
+    removeRunning: Boolean = false,
+    removeError: String = "",
+    onOpenStatus: () -> Unit = {},
+    onOpenQuota: () -> Unit = {},
+    onToggleDirect: (Boolean) -> Unit = {},
+    onRetrySettings: () -> Unit = {},
+    onSelectAgent: (Agent) -> Unit = {},
+    onUpdateAgentDefaults: (agent: Agent, model: String?, effort: String?, mode: ApprovalMode?) -> Unit = { _, _, _, _ -> },
+    onUpdateDaemonSettings: (approvalTimeoutSeconds: Int?, idleCloseMinutes: Int?, imageUploadQuotaBytes: Long?, cleanImages: Boolean) -> Unit = { _, _, _, _ -> },
+    onProject: (String) -> Unit = {},
+    onRejoin: () -> Unit = {},
+    onRemove: () -> Unit = {},
+) {
+    val copy = uiText()
+    val p = pal
+    var confirm by remember(vm.machineId) { mutableStateOf(false) }
+    var pickModel by remember(vm.machineId) { mutableStateOf(false) }
+    var pickEffort by remember(vm.machineId) { mutableStateOf(false) }
+    var pickMode by remember(vm.machineId) { mutableStateOf(false) }
+    var pickTimeout by remember(vm.machineId) { mutableStateOf(false) }
+    var pickIdleClose by remember(vm.machineId) { mutableStateOf(false) }
+    val storageAt = remember { androidx.compose.foundation.relocation.BringIntoViewRequester() }
+    val title = vm.name.ifEmpty { vm.machineId }
+    PageScaffold(title, readable = true) {
+        if (!vm.found) {
             PageNote(copy(UiMessages.settingsAndroidThisComputerIsOutsideTheCurrentTrustedDirectoryCheckThe()))
             return@PageScaffold
         }
         Column(Modifier.verticalScrollFaded()) {
-            val machineSettings by remote.machineSettingsView.collectAsState()
-            LaunchedEffect(id) { remote.coreHost.openMachineSettings(id) }
-            if (member && m.pathState.capabilities?.machineStatus == true) {
-                val owner = androidx.lifecycle.compose.LocalLifecycleOwner.current
-                DisposableEffect(id, owner) {
-                    val obs = androidx.lifecycle.LifecycleEventObserver { _, ev ->
-                        when (ev) {
-                            androidx.lifecycle.Lifecycle.Event.ON_START ->
-                                remote.coreHost.watchMachineStatus(id, true, io.github.lewin671.remoteagent.core.proto.MachinePollMode.MACHINE_POLL_MODE_OVERVIEW)
-                            androidx.lifecycle.Lifecycle.Event.ON_STOP ->
-                                remote.coreHost.watchMachineStatus(id, false, io.github.lewin671.remoteagent.core.proto.MachinePollMode.MACHINE_POLL_MODE_OVERVIEW)
-                            else -> {}
-                        }
-                    }
-                    owner.lifecycle.addObserver(obs)
-                    if (owner.lifecycle.currentState.isAtLeast(androidx.lifecycle.Lifecycle.State.STARTED)) {
-                        remote.coreHost.watchMachineStatus(id, true, io.github.lewin671.remoteagent.core.proto.MachinePollMode.MACHINE_POLL_MODE_OVERVIEW)
-                    }
-                    onDispose {
-                        owner.lifecycle.removeObserver(obs)
-                        remote.coreHost.watchMachineStatus(id, false, io.github.lewin671.remoteagent.core.proto.MachinePollMode.MACHINE_POLL_MODE_OVERVIEW)
-                    }
-                }
-                MachineRingsCard(machineSettings.statusRingsList, m.pathState.reachable, onOpen = { nav.machineStatus(id) })
+            if (vm.showStatusEntry) {
+                MachineRingsCard(vm.statusRingsList, vm.online, onOpen = onOpenStatus)
             }
-            if (!member)
+            val removedText = uiText(vm.removedBanner)
+            val offlineOrMismatch = uiText(vm.offlineOrMismatchBanner)
+            if (removedText.isNotEmpty()) {
                 Notice(
-                    copy(UiMessages.settingsAndroidRemovedRetainedSessionArchive()),
+                    removedText,
                     Modifier.padding(horizontal = 16.dp).padding(bottom = 12.dp),
                 )
-            else if (!m.pathState.reachable)
+            } else if (offlineOrMismatch.isNotEmpty()) {
                 Notice(
-                    copy(UiMessages.settingsAndroidOfflineLastOnlineValue1((whenText(m.lastSeenMs, copy = copy)).toString())),
+                    offlineOrMismatch,
                     Modifier.padding(horizontal = 16.dp).padding(bottom = 12.dp),
                 )
-            val meta = m.meta
-            // A line for each CLI's quota, leading to all of it.
-            GLabel(copy(UiMessages.settingsAccountQuota()))
-            Group(
-                rows =
-                    machineSettings.quotaRowsList.map { sec ->
-                        @Composable {
-                            val summary = sec.takeIf { it.hasSummaryRow() }?.summaryRow
-                            val rem = summary?.let { uiText(it.remainingText) }.orEmpty()
-                            val win = summary?.let { uiText(it.label) }.orEmpty()
-                            val fallback = uiText(sec.emptyOrErrorText)
-                            GRow(
-                                sec.agentName,
-                                icon = AgentMarks.of(sec.agent),
-                                trailing = {
-                                    if (rem.isNotEmpty() && win.isNotEmpty()) {
-                                        Text(
-                                            androidx.compose.ui.text.buildAnnotatedString {
-                                                append(rem)
-                                                pushStyle(androidx.compose.ui.text.SpanStyle(color = p.ink2))
-                                                append(" · ")
-                                                append(win)
-                                                pop()
-                                            },
-                                            style = T.s13,
-                                            color = p.ink,
-                                        )
-                                    } else {
-                                        Text(
-                                            rem.ifEmpty { fallback },
-                                            style = T.s13,
-                                            color = p.ink2,
-                                        )
-                                    }
-                                },
-                                onClick = { nav.quota(id) },
-                                chevron = true,
-                            )
-                        }
-                    },
-            )
-            if (member) {
-                val baseDirect = m.pathState.directStatus
-                val uiDirect = baseDirect.copy(
-                    enabled = directOn,
-                    stage = when {
-                        !directOn -> io.github.lewin671.remoteagent.core.transport.DirectStage.OFF
-                        baseDirect.stage == io.github.lewin671.remoteagent.core.transport.DirectStage.OFF ->
-                            io.github.lewin671.remoteagent.core.transport.DirectStage.TRYING
-                        else -> baseDirect.stage
-                    },
-                )
-                DirectConnectionGroup(
-                    status = uiDirect,
-                    online = m.pathState.reachable,
-                    turnedOnAt = directTurnedOnAt,
-                    nowMs = directNow,
-                    onToggle = { next ->
-                        remote.setDirectEnabled(id, next)
-                        directOn = next
-                        directTurnedOnAt = if (next) System.currentTimeMillis() else null
-                    },
-                )
             }
-            if (meta != null) {
-                val agents = machineVersions(meta)
+            if (vm.quotaRowsList.isNotEmpty()) {
+                GLabel(copy(UiMessages.settingsAccountQuota()))
                 Group(
                     rows =
-                        agents.map { a ->
+                        vm.quotaRowsList.map { sec ->
                             @Composable {
+                                val summary = sec.takeIf { it.hasSummaryRow() }?.summaryRow
+                                val rem = summary?.let { uiText(it.remainingText) }.orEmpty()
+                                val win = summary?.let { uiText(it.label) }.orEmpty()
+                                val fallback = uiText(sec.emptyOrErrorText)
                                 GRow(
-                                    copy(UiMessages.settingsCliVersion((agentName(a.agent, copy = copy)).toString())),
+                                    sec.agentName,
+                                    icon = AgentMarks.of(sec.agent),
+                                    trailing = {
+                                        if (rem.isNotEmpty() && win.isNotEmpty()) {
+                                            Text(
+                                                androidx.compose.ui.text.buildAnnotatedString {
+                                                    append(rem)
+                                                    pushStyle(androidx.compose.ui.text.SpanStyle(color = p.ink2))
+                                                    append(" · ")
+                                                    append(win)
+                                                    pop()
+                                                },
+                                                style = T.s13,
+                                                color = p.ink,
+                                            )
+                                        } else {
+                                            Text(
+                                                rem.ifEmpty { fallback },
+                                                style = T.s13,
+                                                color = p.ink2,
+                                            )
+                                        }
+                                    },
+                                    onClick = onOpenQuota,
+                                    chevron = true,
+                                )
+                            }
+                        },
+                )
+            }
+            if (vm.member && vm.hasConnection()) {
+                DirectConnectionGroup(vm.connection, onToggle = onToggleDirect)
+            }
+            if (vm.cliVersionsList.isNotEmpty()) {
+                Group(
+                    rows =
+                        vm.cliVersionsList.map { a ->
+                            @Composable {
+                                val unverifiedWord = uiText(a.unverifiedLabel).ifEmpty {
+                                    copy(UiMessages.settingsAndroidUnverified())
+                                }
+                                GRow(
+                                    copy(UiMessages.settingsCliVersion(a.name)),
                                     trailing = {
                                         Text(
                                             androidx.compose.ui.text.buildAnnotatedString {
@@ -703,7 +740,7 @@ fun DeviceScreen(
                                                             color = p.orangeInk,
                                                         ),
                                                     )
-                                                    append(copy(UiMessages.settingsAndroidUnverified()))
+                                                    append(unverifiedWord)
                                                     pop()
                                                     append(" · ")
                                                 }
@@ -717,95 +754,112 @@ fun DeviceScreen(
                             }
                         },
                 )
-                if (agents.any { !it.verified })
+                if (vm.hasUnverifiedCli)
                     Hint(
                         copy(UiMessages.settingsAndroidForAnUnverifiedVersionRunRemoteAgentDoctorOnThe()),
                         Modifier.padding(bottom = 12.dp),
                     )
             }
-            val s = settings
+            val readError = uiText(vm.settingsError)
+            val editableControls = vm.online && vm.editable && !vm.savePending
             when {
-                !m.pathState.reachable ->
+                !vm.online ->
                     Hint(
-                        copy(UiMessages.settingsAndroidValue1IsOfflineConnectToReadAndEditNewSession((machineLabel(state, id)).toString())),
+                        copy(UiMessages.settingsAndroidValue1IsOfflineConnectToReadAndEditNewSession(title)),
                         Modifier.padding(bottom = 12.dp),
                     )
-                loadError.isNotEmpty() ->
+                readError.isNotEmpty() ->
                     Notice(
-                        copy(UiMessages.settingsReadError((loadError).toString())),
+                        readError,
                         Modifier.padding(horizontal = 16.dp).padding(bottom = 12.dp),
                         NoticeTone.ERROR,
                         action = uiText(UiMessages.commonRetry()),
-                        onAction = { attempt++ },
+                        onAction = onRetrySettings,
                     )
-                s == null ->
+                vm.settingsLoading ->
                     Hint(copy(UiMessages.projectsReadingDirectory()), Modifier.padding(bottom = 12.dp))
-                else -> {
-                    val mAgents = machineAgents(m)
-                    val currentAgent = if (activeAgent in mAgents) activeAgent!! else mAgents.firstOrNull() ?: DEFAULT_AGENT
+                vm.hasAgentDefaults() -> {
+                    val agents = vm.availableAgentsList
+                    val d = vm.agentDefaults
+                    val currentAgent = if (vm.selectedAgent in agents) vm.selectedAgent else agents.firstOrNull() ?: d.agent
                     GLabel(
-                        if (mAgents.size > 1) copy(UiMessages.settingsNewProjectDefaults())
-                        else copy(UiMessages.settingsNewProjectDefaultsSettings((agentName(currentAgent, copy = copy)).toString()))
+                        if (agents.size > 1) copy(UiMessages.settingsNewProjectDefaults())
+                        else copy(UiMessages.settingsNewProjectDefaultsSettings(d.agentName))
                     )
-                    if (mAgents.size > 1) {
+                    if (agents.size > 1) {
                         Segmented(
-                            mAgents.map { agentName(it, copy = copy) },
-                            mAgents.indexOf(currentAgent),
-                            { activeAgent = mAgents[it] },
+                            agents.map { agentName(it, copy = copy) },
+                            agents.indexOf(currentAgent).coerceAtLeast(0),
+                            { onSelectAgent(agents[it]) },
                             Modifier.padding(start = 16.dp, end = 16.dp, bottom = 10.dp).fillMaxWidth(),
                         )
                     }
-                    val d = defaultsFor(s, currentAgent)
-                    val eff = defaultModeOf(m, currentAgent)
-                    val cur = modeOf(d.mode)
+                    val modelLabel = uiText(d.selectedModelLabel).ifEmpty {
+                        d.selectedModel.ifEmpty { copy(UiMessages.modelsDefault()) }
+                    }
+                    val selectedEffort = d.effortChoicesList.firstOrNull { it.selected }
+                    val effortLabel = selectedEffort?.let { uiText(it.label) }?.ifEmpty { null }
+                        ?: d.selectedEffort.ifEmpty { copy(UiMessages.modelsDefault()) }
+                    val selectedMode = d.modeChoicesList.firstOrNull { it.selected }
+                    val modeLabel = selectedMode?.let { uiText(it.label) }.orEmpty()
                     Group(
                         rows = listOf(
                             @Composable {
                                 GRow(
                                     copy(UiMessages.modelsTitle()),
-                                    d.model.ifEmpty { copy(UiMessages.modelsDefault()) },
-                                    onClick = if (save.running) null else ({ pickModel = currentAgent }),
+                                    modelLabel,
+                                    onClick = if (editableControls) ({ pickModel = true }) else null,
                                     chevron = true,
                                 )
                             },
                             @Composable {
                                 GRow(
                                     copy(UiMessages.modelsEffort()),
-                                    d.effort.ifEmpty { copy(UiMessages.modelsDefault()) },
-                                    onClick = if (save.running) null else ({ pickModel = currentAgent }),
+                                    effortLabel,
+                                    onClick = if (editableControls) {
+                                        {
+                                            if (d.effortChoicesList.size > 1) pickEffort = true
+                                            else pickModel = true
+                                        }
+                                    } else null,
                                     chevron = true,
                                 )
                             },
                             @Composable {
                                 GRow(
                                     copy(UiMessages.modesTitle()),
-                                    cur?.text?.let(copy) ?: modeLabel(null, eff.copy(varies = false), currentAgent, copy = copy),
-                                    onClick = if (save.running) null else ({ pickMode = currentAgent }),
-                                    valueColor = if (cur == null && (eff.mode == Mode.FULL || !eff.known)) p.red else null,
+                                    modeLabel,
+                                    onClick = if (editableControls) ({ pickMode = true }) else null,
+                                    valueColor = if (d.selectedMode == ApprovalMode.APPROVAL_MODE_FULL_ACCESS) p.red else null,
                                     chevron = true,
                                 )
                             },
                         ),
                     )
+                    val selectedTimeout = vm.approvalTimeoutChoicesList.firstOrNull { it.selected }
+                    val timeoutLabel = selectedTimeout?.let { uiText(it.label) }
+                        ?: copy(UiMessages.quotaMin(vm.selectedApprovalTimeoutSeconds / 60))
                     Group(
                         rows = listOf(
                             @Composable {
                                 GRow(
                                     copy(UiMessages.settingsApprovalTimeout()),
-                                    copy(UiMessages.quotaMin((s.approvalTimeoutSeconds / 60).toInt())),
-                                    onClick = if (save.running) null else ({ pickTimeout = true }),
+                                    timeoutLabel,
+                                    onClick = if (editableControls) ({ pickTimeout = true }) else null,
                                     chevron = true,
                                 )
                             },
                         ),
                     )
+                    val selectedIdle = vm.idleCloseChoicesList.firstOrNull { it.selected }
+                    val idleLabel = selectedIdle?.let { uiText(it.label) }.orEmpty()
                     Group(
                         rows = listOf(
                             @Composable {
                                 GRow(
                                     copy(UiMessages.settingsAutomaticallyEndIdleSessions()),
-                                    idleCloseLabel(s.idleCloseMinutes, copy = copy),
-                                    onClick = if (save.running) null else ({ pickIdleClose = true }),
+                                    idleLabel,
+                                    onClick = if (editableControls) ({ pickIdleClose = true }) else null,
                                     chevron = true,
                                 )
                             },
@@ -819,20 +873,21 @@ fun DeviceScreen(
                     )
                 }
             }
-            if (save.error.isNotEmpty())
+            val saveErr = uiText(vm.saveError)
+            if (saveErr.isNotEmpty())
                 Notice(
-                    copy(UiMessages.settingsSaveError((save.error).toString())),
+                    saveErr,
                     Modifier.padding(horizontal = 16.dp).padding(bottom = 12.dp),
                     NoticeTone.ERROR,
                 )
-            settings?.let { s ->
+            if (vm.hasAttachmentStorage() && vm.attachmentStorage.loaded) {
                 Box(Modifier.bringIntoViewRequester(storageAt)) {
                     Column {
-                        MachineImageStorage(
-                            s,
-                            imageStorage,
-                            m.pathState.reachable && !save.running,
-                            onChange = { next, clean -> update(next, clean) },
+                        MachineAttachmentStorage(
+                            storage = vm.attachmentStorage,
+                            enabled = editableControls && !vm.attachmentStorage.cleaning,
+                            onQuota = { bytes -> onUpdateDaemonSettings(null, null, bytes, false) },
+                            onClean = { onUpdateDaemonSettings(null, null, null, true) },
                         )
                     }
                 }
@@ -841,182 +896,144 @@ fun DeviceScreen(
                     if (scrollToStorage) { androidx.compose.runtime.withFrameNanos { }; storageAt.bringIntoView() }
                 }
             }
-            val projects = io.github.lewin671.remoteagent.core.machineProjects(state, id)
-            if (projects.isNotEmpty()) {
+            if (vm.projectsList.isNotEmpty()) {
                 GLabel(copy(UiMessages.scheduleProject()))
                 Group(
                     rows =
-                        projects.map { cwd ->
+                        vm.projectsList.map { proj ->
                             @Composable {
+                                val sub = uiText(proj.lastActiveText).ifEmpty { proj.path }
                                 GRow(
-                                    projectName(cwd, copy = copy),
-                                    shortPath(cwd),
-                                    onClick = { nav.project(cwd) },
+                                    proj.name,
+                                    sub,
+                                    onClick = { onProject(proj.path) },
                                 )
                             }
                         },
                 )
             }
-            if (state.isAuthority && id !in state.devices) {
+            val mgmt = vm.management
+            if (mgmt.canRejoin) {
                 Group(
                     rows =
                         listOf {
                             GRow(
                                 copy(UiMessages.settingsAndroidRejoinThisComputerAndResumeSessions()),
-                                onClick = { nav.rejoin(id) },
-                                enabled =
-                                    state.conn ==
-                                        io.github.lewin671.remoteagent.core.ConnState.ONLINE,
+                                onClick = onRejoin,
+                                enabled = appOnline,
                             )
                         },
                 )
             }
-            DeleteMachineRecordsAction(id, state.isAuthority)
-            if (!member && !state.isAuthority)
-                Hint(copy(UiMessages.settingsAndroidReconnectArchivesOrDeleteRecordsOnTheManagingClientValue1(state.authorityName.resolve(copy))))
-            if (member) {
-                if (id == state.authorityDeviceId) Hint(copy(UiMessages.settingsAndroidThisIsTheManagingDeviceOrdinaryRemovalIsUnavailable()))
-                else if (state.isAuthority)
-                    Group(
-                        rows =
-                            listOf {
-                                GRow(
-                                    // It asks first, as every row that ends in an ellipsis does (design-system §8).
-                                    copy(UiMessages.settingsAndroidRemoveThisMachine()),
-                                    onClick = { confirm = true },
-                                    danger = true,
-                                    enabled =
-                                        state.isAuthority &&
-                                            !remove.running &&
-                                            state.conn ==
-                                                io.github.lewin671.remoteagent.core.ConnState
-                                                    .ONLINE,
-                                )
-                            },
-                    )
-                Hint(
-                    if (state.isAuthority) copy(UiMessages.settingsAndroidRemovalImmediatelyDisconnectsItAndKeepsSessionsAndImagesOn())
-                    else copy(UiMessages.settingsAndroidRemoveDevicesOnTheManagingClientValue1(state.authorityName.resolve(copy))),
-                    Modifier.padding(bottom = 8.dp),
+            DeleteMachineRecordsAction(vm.machineId, isAuthority)
+            val expHint = uiText(mgmt.explanationText)
+            if (mgmt.canRemove) {
+                Group(
+                    rows =
+                        listOf {
+                            GRow(
+                                // It asks first, as every row that ends in an ellipsis does (design-system §8).
+                                copy(UiMessages.settingsAndroidRemoveThisMachine()),
+                                onClick = { confirm = true },
+                                danger = true,
+                                enabled = !removeRunning && appOnline,
+                            )
+                        },
                 )
             }
-            if (remove.error.isNotEmpty())
-                Notice(remove.error, Modifier.padding(16.dp), NoticeTone.ERROR)
+            if (expHint.isNotEmpty()) {
+                Hint(expHint, Modifier.padding(bottom = 8.dp))
+            }
+            if (removeError.isNotEmpty())
+                Notice(removeError, Modifier.padding(16.dp), NoticeTone.ERROR)
             Spacer(Modifier.height(24.dp))
         }
     }
-    if (confirm && member) {
-        val (title, text) = removalDialog(machineLabel(state, id), machine = true, copy = copy)
+    if (confirm && vm.member) {
+        val (titleText, text) = removalDialog(title, machine = true, copy = copy)
         Alert(
-            title,
+            titleText,
             text,
             uiText(UiMessages.commonRemove()),
             danger = true,
             onDismiss = { confirm = false },
         ) {
-            remove.run(
-                {
-                    remote.removeDevice(id)
-                    null
-                },
-            )
+            onRemove()
         }
     }
-    val cur = settings
-    pickModel?.let { agent ->
-        if (cur != null)
-            DefaultModelSheet(
-                id,
-                agent,
-                cur,
-                onPick = { model, effort ->
-                    pickModel = null
-                    update(withModel(cur, agent, model, effort))
-                },
-                onClose = { pickModel = null },
-            )
+    val d = vm.agentDefaults
+    val currentAgent = if (vm.selectedAgent != Agent.AGENT_UNSPECIFIED) vm.selectedAgent else d.agent
+    if (pickModel && vm.hasAgentDefaults() && d.modelChoicesList.isNotEmpty()) {
+        val opts = d.modelChoicesList.map { uiText(it.label) to it.desc.ifEmpty { null } }
+        ChoiceSheet(
+            copy(UiMessages.settingsAndroidValue1DefaultModelForNewSessions(d.agentName)),
+            opts,
+            d.modelChoicesList.indexOfFirst { it.selected }.coerceAtLeast(0),
+            onPick = { i ->
+                pickModel = false
+                onUpdateAgentDefaults(currentAgent, d.modelChoicesList[i].id, "", null)
+            },
+            onClose = { pickModel = false },
+        )
     }
-    pickMode?.let { agent ->
-        if (cur != null) {
-            val eff = defaultModeOf(m, agent)
-            val d = defaultsFor(cur, agent)
-            var models by remember(id, agent) {
-                mutableStateOf<io.github.lewin671.remoteagent.proto.ListModelsResponse?>(null)
+    if (pickEffort && vm.hasAgentDefaults() && d.effortChoicesList.isNotEmpty()) {
+        val opts = d.effortChoicesList.map { uiText(it.label) to null }
+        ChoiceSheet(
+            copy(UiMessages.modelsEffort()),
+            opts,
+            d.effortChoicesList.indexOfFirst { it.selected }.coerceAtLeast(0),
+            onPick = { i ->
+                pickEffort = false
+                onUpdateAgentDefaults(currentAgent, d.selectedModel, d.effortChoicesList[i].id, null)
+            },
+            onClose = { pickEffort = false },
+        )
+    }
+    if (pickMode && vm.hasAgentDefaults() && d.modeChoicesList.isNotEmpty()) {
+        val autoNotice = uiText(d.autoUnavailableNotice)
+        val opts = d.modeChoicesList.map { c ->
+            val reason = uiText(c.disabledReason).ifEmpty {
+                if (c.disabled) autoNotice else ""
             }
-            LaunchedEffect(id, agent) {
-                if (agentInfo(agent).autoMayBeUnavailable) {
-                    runCatching { models = remote.listModels(id, agent) }
-                }
-            }
-            val allNoAuto = agentInfo(agent).autoMayBeUnavailable && io.github.lewin671.remoteagent.core.allAutoUnavailable(models?.modelsList)
-            val noAuto = allNoAuto || (agentInfo(agent).autoMayBeUnavailable && io.github.lewin671.remoteagent.core.autoUnavailable(models?.modelsList, d.model))
-            val opts = listOf(null, Mode.ASK, Mode.AUTO)
-            ChoiceSheet(
-                copy(UiMessages.settingsAndroidValue1ApprovalMode((agentName(agent, copy = copy)).toString())),
-                opts.map { mode ->
-                    val desc = when {
-                        mode == null -> copy(UiMessages.settingsWhenUnspecifiedUses()) + modeLabel(null, eff, agent, includeDefault = false, copy = copy)
-                        mode == Mode.AUTO && noAuto -> if (allNoAuto) copy(UiMessages.modesAccountUnsupported()) else copy(UiMessages.modesModelUnsupported())
-                        else -> modeHelp.getValue(mode).replace("CLI", agentName(agent, copy = copy))
-                    }
-                    (mode?.text?.let(copy) ?: copy(UiMessages.modelsDefault())) to desc
-                },
-                opts.indexOf(modeOf(d.mode)).coerceAtLeast(0),
-                enabled = { i -> !(opts[i] == Mode.AUTO && noAuto) },
-                onPick = { i ->
-                    pickMode = null
-                    update(withMode(cur, agent, opts[i]))
-                },
-                onClose = { pickMode = null },
-            )
+            uiText(c.label) to reason.ifEmpty { null }
         }
+        ChoiceSheet(
+            copy(UiMessages.settingsAndroidValue1ApprovalMode(d.agentName)),
+            opts,
+            d.modeChoicesList.indexOfFirst { it.selected }.coerceAtLeast(0),
+            enabled = { i -> !d.modeChoicesList[i].disabled },
+            onPick = { i ->
+                pickMode = false
+                onUpdateAgentDefaults(currentAgent, null, null, d.modeChoicesList[i].mode)
+            },
+            onClose = { pickMode = false },
+        )
     }
-    if (pickTimeout && cur != null) {
-        val mins = listOf(2, 5, 10, 30)
+    if (pickTimeout && vm.approvalTimeoutChoicesList.isNotEmpty()) {
         ChoiceSheet(
             copy(UiMessages.settingsApprovalTimeout()),
-            mins.map { copy(UiMessages.quotaMin((it).toInt())) to null },
-            mins.indexOf(cur.approvalTimeoutSeconds / 60),
+            vm.approvalTimeoutChoicesList.map { uiText(it.label) to null },
+            vm.approvalTimeoutChoicesList.indexOfFirst { it.selected }.coerceAtLeast(0),
             onPick = { i ->
                 pickTimeout = false
-                update(cur.toBuilder().setApprovalTimeoutSeconds(mins[i] * 60).build())
+                onUpdateDaemonSettings(vm.approvalTimeoutChoicesList[i].seconds, null, null, false)
             },
             onClose = { pickTimeout = false },
         )
     }
-    if (pickIdleClose && cur != null) {
+    if (pickIdleClose && vm.idleCloseChoicesList.isNotEmpty()) {
         ChoiceSheet(
             copy(UiMessages.settingsAutomaticallyEndIdleSessions()),
-            IDLE_CLOSE_CHOICES.map { (if (it == IDLE_CLOSE_DEFAULT) copy(UiMessages.settingsAndroidValue1Default((idleCloseLabel(it, copy = copy)).toString())) else idleCloseLabel(it, copy = copy)) to null },
-            idleCloseChoice(cur.idleCloseMinutes),
+            vm.idleCloseChoicesList.map { uiText(it.label) to null },
+            vm.idleCloseChoicesList.indexOfFirst { it.selected }.coerceAtLeast(0),
             onPick = { i ->
                 pickIdleClose = false
-                update(cur.toBuilder().setIdleCloseMinutes(IDLE_CLOSE_CHOICES[i]).build())
+                onUpdateDaemonSettings(null, vm.idleCloseChoicesList[i].minutes, null, false)
             },
             onClose = { pickIdleClose = false },
         )
     }
 }
-
-/** The daemon closes a session idle for 6 hours unless told otherwise; 0 stands for that. */
-internal const val IDLE_CLOSE_DEFAULT = 360
-
-/** Idle close choices in minutes; -1 never closes. */
-internal val IDLE_CLOSE_CHOICES = listOf(-1, 60, 120, IDLE_CLOSE_DEFAULT, 720, 1440)
-
-/** An idle close setting in words: 关闭, whole hours, or minutes for anything else. */
-internal fun idleCloseLabel(minutes: Int, copy: io.github.lewin671.remoteagent.core.MessageResolver = ::sessionText): String {
-    val m = if (minutes == 0) IDLE_CLOSE_DEFAULT else minutes
-    return when {
-        m < 0 -> copy(UiMessages.commonClose())
-        m % 60 == 0 -> copy(UiMessages.quotaHr((m / 60).toInt()))
-        else -> copy(UiMessages.quotaMin((m).toInt()))
-    }
-}
-
-/** Which choice the setting is, or -1 for a value set elsewhere. */
-internal fun idleCloseChoice(minutes: Int): Int =
-    IDLE_CLOSE_CHOICES.indexOf(if (minutes < 0) -1 else if (minutes == 0) IDLE_CLOSE_DEFAULT else minutes)
 
 /** One usage window rendered from Core's [QuotaRowView]. */
 @Composable
@@ -1074,104 +1091,6 @@ private fun QuotaRowItem(r: io.github.lewin671.remoteagent.core.proto.QuotaRowVi
         val sub = listOf(reset, clock, footnote).filter { it.isNotEmpty() }.joinToString(" · ")
         if (sub.isNotEmpty()) {
             Text(sub, style = T.s12, color = p.ink2, modifier = Modifier.padding(top = 8.dp))
-        }
-    }
-}
-
-private fun withModel(
-    s: DaemonSettings,
-    agent: Agent,
-    model: String,
-    effort: String,
-): DaemonSettings =
-    withDefaults(s, agent, model = model, effort = effort)
-
-/** A CLI's default model and effort for new sessions on this machine, from the models it offers. */
-@Composable
-private fun DefaultModelSheet(
-    machineId: String,
-    agent: Agent,
-    s: DaemonSettings,
-    onPick: (String, String) -> Unit,
-    onClose: () -> Unit,
-) {
-    val copy = uiText()
-    val p = pal
-    val remote = LocalRemote.current
-    var models by remember {
-        mutableStateOf<io.github.lewin671.remoteagent.proto.ListModelsResponse?>(null)
-    }
-    var error by remember { mutableStateOf("") }
-    LaunchedEffect(machineId, agent) {
-        try {
-            models = remote.listModels(machineId, agent, fresh = true)
-        } catch (e: Exception) {
-            error = displayError(e, remote.state.value)
-        }
-    }
-    val d = defaultsFor(s, agent)
-    var model by remember { mutableStateOf(d.model) }
-    var all by remember { mutableStateOf(false) }
-    Sheet(onClose) {
-        SheetHead(copy(UiMessages.settingsAndroidValue1DefaultModelForNewSessions((agentName(agent, copy = copy)).toString())))
-        val ms = models
-        when {
-            error.isNotEmpty() -> Notice(copy(UiMessages.sessionAndroidModelsFailed((error).toString())), tone = NoticeTone.ERROR)
-            ms == null ->
-                Text(
-                    copy(UiMessages.projectsReadingDirectory()),
-                    style = T.s13,
-                    color = p.ink2,
-                    modifier = Modifier.padding(vertical = 12.dp),
-                )
-            else -> {
-                val shown =
-                    io.github.lewin671.remoteagent.core.shownModels(
-                        ms.modelsList,
-                        ms.modelsList.firstOrNull { it.slug == model },
-                        all,
-                    )
-                val few = shown.size == ms.modelsCount
-                SheetList {
-                ListItem(
-                    copy(UiMessages.settingsAndroidDefaultValue1SOwnConfiguration((agentName(agent, copy = copy)).toString())),
-                    checked = model.isEmpty(),
-                    last = shown.isEmpty(),
-                    onClick = { onPick("", "") },
-                )
-                shown.forEachIndexed { i, m ->
-                    ListItem(
-                        m.displayName.ifEmpty { m.slug },
-                        small =
-                            if (m.effortsList.size == 1) copy(UiMessages.modelsFixedEffort((m.effortsList[0]).toString()))
-                            else
-                                listOfNotNull(
-                                    io.github.lewin671.remoteagent.core.contextText(
-                                        m.contextWindow,
-                                     copy = copy),
-                                    if (m.effortsList.isEmpty()) copy(UiMessages.sessionNoEffort()) else null,
-                                )
-                                .joinToString(" · ")
-                                .ifEmpty { null },
-                        checked = m.slug == model,
-                        last = i == shown.size - 1,
-                        onClick = {
-                            if (m.effortsList.isEmpty()) onPick(m.slug, "") else model = m.slug
-                        },
-                    )
-                }
-                }
-                if (!few) AllModels { all = true }
-                ms.modelsList
-                    .firstOrNull { it.slug == model }
-                    ?.takeIf { it.effortsList.isNotEmpty() }
-                    ?.let { m ->
-                        FieldLabel(copy(UiMessages.modelsEffort()))
-                        ChoiceGrid(m.effortsList, if (d.model == m.slug) d.effort else null, true) {
-                            onPick(m.slug, it)
-                        }
-                    }
-            }
         }
     }
 }
@@ -1299,12 +1218,6 @@ internal fun QuotaScreenContent(view: io.github.lewin671.remoteagent.core.proto.
             )
         }
     }
-}
-
-private fun withMode(s: DaemonSettings, agent: Agent, mode: Mode?): DaemonSettings {
-    val m =
-        mode?.proto ?: io.github.lewin671.remoteagent.proto.ApprovalMode.APPROVAL_MODE_UNSPECIFIED
-    return withDefaults(s, agent, mode = m)
 }
 
 fun qrBitmap(text: String, size: Int = 512): Bitmap {
@@ -1532,59 +1445,47 @@ private fun imageBytes(n: Long, copy: io.github.lewin671.remoteagent.core.Messag
     else if (n >= 1L shl 30) "%.1f GiB".format(n / 1073741824.0)
     else "%.1f MiB".format(n / 1048576.0)
 
-private fun mib(n: Long) =
-    if (n >= 1L shl 30 && n % (1L shl 30) == 0L) "${n shr 30} GiB" else "${n shr 20} MiB"
-
 @Composable
-internal fun MachineImageStorage(
-    settings: DaemonSettings,
-    usage: ImageStorageUsage?,
+internal fun MachineAttachmentStorage(
+    storage: AttachmentStorageView,
     enabled: Boolean,
-    onChange: (DaemonSettings, Boolean) -> Unit,
+    onQuota: (Long) -> Unit,
+    onClean: () -> Unit,
 ) {
     val copy = uiText()
     var clean by remember { mutableStateOf(false) }
     var limit by remember { mutableStateOf(false) }
-    val free = usage?.let { it.reclaimableBytes + it.cacheBytes } ?: 0L
-    // What is worth saying: sizes that are not zero.
-    val parts =
-        usage
-            ?.let { u ->
-                listOfNotNull(
-                        if (u.reclaimableBytes > 0) copy(UiMessages.settingsCanClear((imageBytes(u.reclaimableBytes, copy = copy)).toString()))
-                        else null,
-                        if (u.reservedBytes > 0) copy(UiMessages.settingsUploading((imageBytes(u.reservedBytes, copy = copy)).toString())) else null,
-                    )
-                    .joinToString(" · ")
-            }
-            .orEmpty()
+    val uploaded = uiText(storage.uploadedText).ifEmpty { copy(UiMessages.projectsReadingDirectory()) }
+    val detail = uiText(storage.uploadedDetail)
+    val uploadedValue = listOf(uploaded, detail).filter { it.isNotEmpty() }.joinToString(" · ")
+    val quotaLabel =
+        storage.quotaChoicesList.firstOrNull { it.selected }?.let { uiText(it.label) }.orEmpty()
+    val previewCache = uiText(storage.previewCacheText).ifEmpty { "—" }
+    val emergencyText = uiText(storage.emergencyReserveText)
+    val clearLabel = uiText(storage.clearButtonLabel)
+    val footerText = uiText(storage.footerText).ifEmpty {
+        copy(UiMessages.settingsAttachmentsAreStoredOnThisComputerSessionFilesRemain())
+    }
     GLabel(copy(UiMessages.settingsAttachmentStorage()))
     Group(
         rows =
             listOf(
-                {
-                    GRow(
-                        copy(UiMessages.settingsUploadedImagesAndFiles()),
-                        usage?.let {
-                            imageBytes(it.uploadBytes, copy = copy) + if (parts.isNotEmpty()) " · $parts" else ""
-                        } ?: copy(UiMessages.projectsReadingDirectory()),
-                    )
-                },
+                { GRow(copy(UiMessages.settingsUploadedImagesAndFiles()), uploadedValue) },
                 {
                     GRow(
                         copy(UiMessages.settingsStorageLimit()),
-                        mib(settings.imageUploadQuotaBytes),
-                        onClick = if (enabled) ({ limit = true }) else null,
+                        quotaLabel,
+                        onClick = if (enabled && storage.quotaChoicesList.isNotEmpty()) ({ limit = true }) else null,
                         chevron = true,
                     )
                 },
-                { GRow(copy(UiMessages.settingsPreviewCache()), usage?.let { imageBytes(it.cacheBytes, copy = copy) } ?: "—") },
-                *(if (usage != null && usage.emergencyReserveBytes > 0) arrayOf<@Composable () -> Unit>({
+                { GRow(copy(UiMessages.settingsPreviewCache()), previewCache) },
+                *(if (storage.showEmergencyReserve && emergencyText.isNotEmpty()) arrayOf<@Composable () -> Unit>({
                     // 应急预留 (ui-spec B2): not clearable, so no action; the line under it says why it is there.
                     Column(Modifier.fillMaxWidth().padding(start = 18.dp, end = 16.dp, top = 11.dp, bottom = 11.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                             Text(copy(UiMessages.machineStatusEmergencyReserve()), style = T.s17, color = pal.ink, modifier = Modifier.weight(1f))
-                            Text(mib(usage.emergencyReserveBytes), style = T.s17, color = pal.ink2)
+                            Text(emergencyText, style = T.s17, color = pal.ink2)
                         }
                         Text(copy(UiMessages.machineStatusEmergencyReserveNote()), style = T.s13, color = pal.ink2, modifier = Modifier.padding(top = 2.dp))
                     }
@@ -1592,31 +1493,28 @@ internal fun MachineImageStorage(
                 {
                     GRow(
                         copy(UiMessages.settingsClear()),
-                        usage
-                            ?.let { if (free > 0) copy(UiMessages.settingsCanFree((imageBytes(free, copy = copy)).toString())) else copy(UiMessages.settingsNothingToClear()) }
-                            .orEmpty(),
-                        onClick = if (enabled && free > 0) ({ clean = true }) else null,
+                        clearLabel,
+                        onClick = if (enabled && storage.canClear && !storage.cleaning) ({ clean = true }) else null,
                         action = true,
-                        enabled = enabled && free > 0,
+                        enabled = enabled && storage.canClear && !storage.cleaning,
                     )
                 },
             ),
     )
     Text(
-        copy(UiMessages.settingsAttachmentsAreStoredOnThisComputerSessionFilesRemain()),
+        footerText,
         style = T.s13,
         color = pal.ink2,
         modifier = Modifier.padding(start = 30.dp, end = 30.dp, bottom = 12.dp),
     )
-    if (limit) {
-        val opts = listOf(256L shl 20, 1L shl 30, 5L shl 30)
+    if (limit && storage.quotaChoicesList.isNotEmpty()) {
         ChoiceSheet(
             copy(UiMessages.settingsStorageLimit()),
-            opts.map { mib(it) to null },
-            opts.indexOf(settings.imageUploadQuotaBytes),
+            storage.quotaChoicesList.map { uiText(it.label) to null },
+            storage.quotaChoicesList.indexOfFirst { it.selected }.coerceAtLeast(0),
             onPick = { i ->
                 limit = false
-                onChange(settings.toBuilder().setImageUploadQuotaBytes(opts[i]).build(), false)
+                onQuota(storage.quotaChoicesList[i].bytes)
             },
             onClose = { limit = false },
         )
@@ -1629,7 +1527,7 @@ internal fun MachineImageStorage(
             onDismiss = { clean = false },
         ) {
             clean = false
-            onChange(settings, true)
+            onClean()
         }
 }
 
@@ -1638,12 +1536,6 @@ internal fun MachineImageStorage(
  * drafts.
  */
 /** Fonts bundled in the app, each with its SIL OFL 1.1 text from res/raw. */
-/** Where devices are added; shared wording with web and iOS. */
-fun addDeviceHint(state: RemoteState, copy: io.github.lewin671.remoteagent.core.MessageResolver = ::sessionText) = copy(UiMessages.securityAddOnAuthority(state.authorityName.resolve(copy)))
-
-/** An account with no computer, seen from a client that cannot add one. */
-fun noMachinesHint(state: RemoteState, copy: io.github.lewin671.remoteagent.core.MessageResolver = ::sessionText) = copy(UiMessages.homeAddViaManager(state.authorityName.resolve(copy)))
-
 private fun bundledFonts(copy: io.github.lewin671.remoteagent.core.MessageResolver) =
     listOf(
         Triple("Inter", copy(UiMessages.settingsAndroidLatinTextAndNumbersInTheInterface()), io.github.lewin671.remoteagent.R.raw.ofl_inter),

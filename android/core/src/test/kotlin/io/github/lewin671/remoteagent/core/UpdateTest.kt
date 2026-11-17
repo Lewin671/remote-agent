@@ -63,8 +63,6 @@ class UpdateTest {
         assertEquals(82L, r.versionCode)
         assertEquals(4, r.protocol)
         assertEquals("项目列表统一。\n协议版本不变。", r.notes)
-        assertTrue(isNewer(r, 81))
-        assertFalse(isNewer(r, 82))
     }
 
     @Test

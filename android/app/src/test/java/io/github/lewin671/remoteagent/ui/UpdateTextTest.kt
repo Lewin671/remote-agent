@@ -17,15 +17,6 @@ class UpdateTextTest {
     private val release = Release("0.29.0", 82, 4, "remote-agent-v0.29.0.apk", "0".repeat(64), 5_976_883, "")
 
     @Test
-    fun theVersionRowNamesANewerReleaseOnlyWhenThereIsOne() {
-        assertNull(updateWord(UpdateState.Unknown))
-        assertNull(updateWord(UpdateState.Latest(0)))
-        assertEquals("可更新到 0.29.0", updateWord(UpdateState.Available(release)))
-        assertEquals("可更新到 0.29.0", updateWord(UpdateState.DownloadFailed(release, "x")))
-        assertEquals("0.29.0 已下载", updateWord(UpdateState.Ready(release, File("x"))))
-    }
-
-    @Test
     fun onlyThisAppsPackageOfThePromisedVersionGoesToTheInstaller() {
         val id = "io.github.lewin671.remoteagent"
         assertNull(io.github.lewin671.remoteagent.update.Updater.packageMismatch(id, id, 82, release))

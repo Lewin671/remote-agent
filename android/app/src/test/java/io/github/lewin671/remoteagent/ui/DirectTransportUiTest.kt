@@ -105,13 +105,11 @@ class DirectTransportUiTest {
             ui.setContent {
                 RaTheme(ThemeMode.LIGHT) {
                     CompositionLocalProvider(LocalRemote provides remote, LocalNav provides nav) {
-                        DeviceScreen(
-                            id = machineId,
-                            readSettings = { _, _ -> io.github.lewin671.remoteagent.proto.GetSettingsResponse.getDefaultInstance() },
-                        )
+                        DeviceScreen(id = machineId)
                     }
                 }
             }
+            ui.waitUntil(3000) { remote.machineSettingsView.value.hasConnection() && remote.machineSettingsView.value.connection.toggleEnabled }
             ui.onNodeWithText("连接").performScrollTo().assertIsDisplayed()
             ui.onNodeWithText("直连").performScrollTo().assertIsDisplayed()
             ui.onNodeWithText("正在用直连").assertIsDisplayed()
@@ -122,16 +120,15 @@ class DirectTransportUiTest {
             ui.onNodeWithText("直连只用于加载和文件，发消息和审批始终经中继。").performScrollTo().assertIsDisplayed()
 
             ui.onNodeWithText("直连").performScrollTo().performClick()
-            ui.mainClock.advanceTimeBy(400)
-            ui.waitForIdle()
+            ui.waitUntil(3000) { !remote.directEnabled(machineId) }
             assertFalse(remote.directEnabled(machineId))
             assertFalse(SharedPrefsDirectPreferenceStore(context).isEnabled("https://example.com", acct.deviceId, machineId))
+            ui.waitUntil(3000) { !remote.machineSettingsView.value.connection.toggleChecked }
             ui.onAllNodesWithText("正在用直连").assertCountEquals(0)
             ui.onAllNodesWithText("文件传输").assertCountEquals(0)
 
             ui.onNodeWithText("直连").performScrollTo().performClick()
-            ui.mainClock.advanceTimeBy(400)
-            ui.waitForIdle()
+            ui.waitUntil(3000) { remote.directEnabled(machineId) }
             assertTrue(remote.directEnabled(machineId))
         } finally {
             remote.close()
@@ -139,111 +136,67 @@ class DirectTransportUiTest {
     }
 
     @Test
-    fun directConnectionGroupCoversAllStatesReasonsAndOffline() {
-        val statusState = mutableStateOf(DirectStatus(stage = DirectStage.MEASURING))
-        val onlineState = mutableStateOf(true)
+    fun directConnectionGroupCoversGoldenRelayDiagAndCoreStates() {
+        val relayFailedVm = ScreenGoldenLoader.machineSettingsView("machine_settings_edit", "relayFailedDiag")
+        val viewState = mutableStateOf(relayFailedVm.connection)
+        var toggledTo: Boolean? = null
         ui.setContent {
             RaTheme(ThemeMode.LIGHT) {
-                DirectConnectionGroup(statusState.value, onlineState.value, null, 0L) {}
+                DirectConnectionGroup(viewState.value) { toggledTo = it }
             }
         }
+        ui.onNodeWithText("连接").assertIsDisplayed()
+        ui.onNodeWithText("直连").assertIsDisplayed()
+        ui.onNodeWithText("直连").performClick()
+        assertFalse(toggledTo!!)
+
+        fun lit(s: String) = io.github.lewin671.remoteagent.core.proto.Text.newBuilder().setLiteral(s).build()
+        ui.runOnUiThread {
+            viewState.value = io.github.lewin671.remoteagent.core.proto.ConnectionGroupView.newBuilder()
+                .setToggleVisible(true)
+                .setToggleEnabled(true)
+                .setToggleChecked(true)
+                .setStage(io.github.lewin671.remoteagent.core.proto.ConnectionGroupStage.CONNECTION_GROUP_STAGE_MEASURING)
+                .setTone(io.github.lewin671.remoteagent.core.proto.ConnectionGroupTone.CONNECTION_GROUP_TONE_MUTED)
+                .setStatusText(lit("直连已连上，正在测速"))
+                .setFileSpeedText(lit("下次传输时比较"))
+                .build()
+        }
+        ui.waitForIdle()
         ui.onNodeWithText("直连已连上，正在测速").assertIsDisplayed()
         ui.onNodeWithText("下次传输时比较").assertIsDisplayed()
 
-        ui.runOnUiThread { statusState.value = DirectStatus(stage = DirectStage.CONNECTED_RELAY, relayNotSlower = false) }
-        ui.waitForIdle()
-        ui.onNodeWithText("正在用中继").assertIsDisplayed()
-        ui.onNodeWithText("直连没有明显更快").assertIsDisplayed()
-
         ui.runOnUiThread {
-            statusState.value = DirectStatus(stage = DirectStage.CONNECTED_RELAY, relayNotSlower = true, readDirectMs = 200.0, readRelayMs = 15.0)
+            viewState.value = io.github.lewin671.remoteagent.core.proto.ConnectionGroupView.newBuilder()
+                .setToggleVisible(true)
+                .setToggleEnabled(true)
+                .setToggleChecked(true)
+                .setStage(io.github.lewin671.remoteagent.core.proto.ConnectionGroupStage.CONNECTION_GROUP_STAGE_DIRECT)
+                .setTone(io.github.lewin671.remoteagent.core.proto.ConnectionGroupTone.CONNECTION_GROUP_TONE_LIVE)
+                .setStatusText(lit("正在用直连"))
+                .setDetailText(lit("用于加载"))
+                .setFileSpeedText(lit("中继 4.1 MiB/s"))
+                .build()
         }
-        ui.waitForIdle()
-        ui.onNodeWithText("中继更快").assertIsDisplayed()
-        ui.onNodeWithText("直连 200 · 中继 15 ms").assertIsDisplayed()
-
-        ui.runOnUiThread { statusState.value = DirectStatus(stage = DirectStage.DIRECT_ACTIVE, readDirect = true, bulkRelayMibPerSec = 4.1) }
         ui.waitForIdle()
         ui.onNodeWithText("正在用直连").assertIsDisplayed()
         ui.onNodeWithText("用于加载").assertIsDisplayed()
         ui.onNodeWithText("中继 4.1 MiB/s").assertIsDisplayed()
 
-        ui.runOnUiThread { statusState.value = DirectStatus(stage = DirectStage.TRYING) }
-        ui.waitForIdle()
-        ui.onNodeWithText("正在建立直连…").assertIsDisplayed()
-
-        for ((reason, text) in listOf(
-            DirectFailReason.PEER_UNSUPPORTED to "电脑上的版本太旧，更新后可用",
-            DirectFailReason.NO_RESPONSE to "电脑没有回应，可能在电脑上关了直连",
-            DirectFailReason.NO_TRAVERSAL to "两边的网络不能直接连通",
-            DirectFailReason.FAILED to "没连上，稍后会自动再试",
-        )) {
-            ui.runOnUiThread { statusState.value = DirectStatus(stage = DirectStage.UNCONNECTED, reason = reason) }
-            ui.waitForIdle()
-            ui.onNodeWithText("正在用中继").assertIsDisplayed()
-            ui.onNodeWithText("直连不可用：$text").assertIsDisplayed()
+        ui.runOnUiThread {
+            viewState.value = io.github.lewin671.remoteagent.core.proto.ConnectionGroupView.newBuilder()
+                .setToggleVisible(false)
+                .setStage(io.github.lewin671.remoteagent.core.proto.ConnectionGroupStage.CONNECTION_GROUP_STAGE_UNSUPPORTED)
+                .setTone(io.github.lewin671.remoteagent.core.proto.ConnectionGroupTone.CONNECTION_GROUP_TONE_MUTED)
+                .setStatusText(lit("这台设备不支持直连"))
+                .build()
         }
-
-        ui.runOnUiThread { onlineState.value = false }
-        ui.waitForIdle()
-        ui.onAllNodesWithText("正在用中继").assertCountEquals(0)
-
-        ui.runOnUiThread { statusState.value = DirectStatus(supported = false, enabled = true); onlineState.value = true }
         ui.waitForIdle()
         ui.onNodeWithText("这台设备不支持直连").assertIsDisplayed()
     }
 
     @Test
-    fun aSwitchJustTurnedOnSaysTryingUntilTheEngineReportsOrTenSecondsPass() {
-        val atState = mutableStateOf<Long?>(1_000L)
-        val nowState = mutableStateOf(2_000L)
-        ui.setContent {
-            RaTheme(ThemeMode.LIGHT) {
-                DirectConnectionGroup(DirectStatus(stage = DirectStage.UNCONNECTED), true, atState.value, nowState.value) {}
-            }
-        }
-        ui.onNodeWithText("正在建立直连…").assertIsDisplayed()
-        ui.runOnUiThread { nowState.value = 12_000L }
-        ui.waitForIdle()
-        ui.onNodeWithText("正在用中继").assertIsDisplayed()
-    }
-
-    @Test
-    fun directViewWordsMatchTheWebForEveryState() {
-        val copy: io.github.lewin671.remoteagent.core.MessageResolver = ::sessionText
-        fun v(s: DirectStatus) = directView(s, copy)
-        v(DirectStatus(stage = DirectStage.DIRECT_ACTIVE, readDirect = true, fileDirect = true)).also {
-            assertEquals(DirectKind.DIRECT, it.kind); assertEquals("正在用直连", it.word); assertNull(it.sub)
-            assertEquals("正在用直连", it.summary)
-        }
-        v(DirectStatus(stage = DirectStage.DIRECT_ACTIVE, fileDirect = true)).also {
-            assertEquals("用于文件", it.sub); assertEquals("正在用直连 · 用于文件", it.summary)
-        }
-        v(DirectStatus(stage = DirectStage.MEASURING)).also {
-            assertEquals(DirectKind.MEASURING, it.kind); assertEquals(MarkKind.RUNNING, it.mark); assertEquals("直连已连上，正在测速", it.word)
-        }
-        v(DirectStatus(stage = DirectStage.TRYING)).also {
-            assertEquals(MarkKind.RUNNING, it.mark); assertEquals("正在建立直连…", it.word)
-        }
-        v(DirectStatus(stage = DirectStage.CONNECTED_RELAY)).also {
-            assertEquals(MarkKind.OFF, it.mark); assertEquals("正在用中继 · 直连没有明显更快", it.summary)
-        }
-        v(DirectStatus(stage = DirectStage.UNCONNECTED, reason = DirectFailReason.NO_TRAVERSAL)).also {
-            assertEquals("正在用中继 · 直连不可用：两边的网络不能直接连通", it.summary)
-        }
-        v(DirectStatus(stage = DirectStage.UNCONNECTED)).also { assertEquals("正在用中继", it.summary) }
-        v(DirectStatus(enabled = false, stage = DirectStage.OFF)).also { assertEquals("直连已关闭", it.summary); assertEquals(DirectKind.OFF, it.kind) }
-        // The hollow ring is never used.
-        for (stage in DirectStage.values()) assertTrue(v(DirectStatus(stage = stage)).mark != MarkKind.IDLE)
-        // Speeds: one row per purpose, only what was measured; files not yet measured say so only when connected.
-        assertEquals(emptyList<Pair<String, String>>(), v(DirectStatus(stage = DirectStage.UNCONNECTED)).speeds)
-        assertEquals(listOf("文件传输" to "下次传输时比较"), v(DirectStatus(stage = DirectStage.CONNECTED_RELAY)).speeds)
-        assertEquals("直连 120 · 中继 99.9 MiB/s", v(DirectStatus(stage = DirectStage.CONNECTED_RELAY, bulkDirectMibPerSec = 119.96, bulkRelayMibPerSec = 99.9)).speeds[0].second)
-        assertEquals("直连 12 ms", v(DirectStatus(stage = DirectStage.CONNECTED_RELAY, bulkDirectMibPerSec = 1.0, bulkRelayMibPerSec = 1.0, readDirectMs = 12.2)).speeds[1].second)
-    }
-
-    @Test
-    fun connCheckDisplaysDirectSummaryPerComputer() {
+    fun connCheckDisplaysLatencyPerComputerAndUnsupportedFooter() {
         val state = RemoteState(
             conn = ConnState.ONLINE,
             link = Link.ONLINE,
@@ -253,11 +206,7 @@ class DirectTransportUiTest {
                     "m1",
                     online = true,
                     lastSeenMs = 0L,
-                    linkState = PeerState(
-                        reachable = true,
-                        ready = true,
-                        directStatus = DirectStatus(stage = DirectStage.DIRECT_ACTIVE, fileDirect = true, readDirect = true),
-                    ),
+                    linkState = PeerState(reachable = true, ready = true),
                     meta = MachineMeta.newBuilder().setHostname("alpha").build(),
                 ),
                 "m2" to MachineView(
@@ -267,23 +216,12 @@ class DirectTransportUiTest {
                     linkState = PeerState(
                         reachable = true,
                         ready = true,
-                        directStatus = DirectStatus(enabled = false, stage = DirectStage.OFF),
+                        directStatus = DirectStatus(supported = false),
                     ),
                     meta = MachineMeta.newBuilder().setHostname("beta").build(),
                 ),
                 "m3" to MachineView(
                     "m3",
-                    online = true,
-                    lastSeenMs = 0L,
-                    linkState = PeerState(
-                        reachable = true,
-                        ready = true,
-                        directStatus = DirectStatus(stage = DirectStage.UNCONNECTED, reason = DirectFailReason.NO_TRAVERSAL),
-                    ),
-                    meta = MachineMeta.newBuilder().setHostname("gamma").build(),
-                ),
-                "m4" to MachineView(
-                    "m4",
                     online = false,
                     lastSeenMs = 0L,
                     linkState = PeerState(reachable = false),
@@ -297,7 +235,7 @@ class DirectTransportUiTest {
                     state = state,
                     onClose = {},
                     serverAddress = "https://example.com",
-                    onlineMachines = { listOf("m1", "m2", "m3") },
+                    onlineMachines = { listOf("m1", "m2") },
                     pingServer = { 20L },
                     pingMachine = { 40L },
                     reconnectNow = {},
@@ -306,10 +244,12 @@ class DirectTransportUiTest {
             }
         }
         ui.waitForIdle()
-        ui.onNodeWithText("正在用直连").performScrollTo().assertIsDisplayed()
-        ui.onNodeWithText("直连已关闭").performScrollTo().assertIsDisplayed()
-        ui.onNodeWithText("正在用中继 · 直连不可用：两边的网络不能直接连通").performScrollTo().assertIsDisplayed()
-        ui.onAllNodesWithText("这台设备不支持直连。", substring = true).assertCountEquals(0)
+        ui.onNodeWithText("alpha").performScrollTo().assertIsDisplayed()
+        ui.onNodeWithText("beta").performScrollTo().assertIsDisplayed()
+        ui.onNodeWithText("delta").performScrollTo().assertIsDisplayed()
+        ui.onAllNodesWithText("40 ms").assertCountEquals(2)
+        ui.onNodeWithText("离线").performScrollTo().assertIsDisplayed()
+        ui.onNodeWithText("这台设备不支持直连。", substring = true).performScrollTo().assertIsDisplayed()
     }
 
     @Test

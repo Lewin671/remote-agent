@@ -455,20 +455,42 @@ class LayoutTest {
         ui.onNodeWithText("自动").assertIsSelected()
     }
     @Test fun machineCardKeepsStatusAndQuotaUnderTheNameWithLargeFont() {
-        // Keep both readings today in every simulator timezone.
-        val now = java.time.LocalDate.now().atTime(12, 0).atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli()
         val name = "A very long workstation name that must leave room for status"
         var dark by mutableStateOf(false)
         var online by mutableStateOf(true)
-        val meta = MachineMeta.newBuilder().setHostname(name)
-            .addQuotas(AgentQuota.newBuilder().setAgent(Agent.AGENT_CODEX).setState(QuotaState.QUOTA_STATE_OK).setObservedMs(now)
-                .addWindows(QuotaWindow.newBuilder().setWindowMinutes(300).setUsedPercent(62.0).setResetsAtMs(now + (63 * 60 + 5) * 60_000L))).build()
+        fun cardVm(isOnline: Boolean): io.github.lewin671.remoteagent.core.proto.SettingsViewModel {
+            val row = io.github.lewin671.remoteagent.core.proto.QuotaRowView.newBuilder()
+                .setHasPercent(true)
+                .setRemainingPercent(38)
+                .setRemainingText(io.github.lewin671.remoteagent.core.proto.Text.newBuilder().setLiteral("剩 38%"))
+                .setResetText(io.github.lewin671.remoteagent.core.proto.Text.newBuilder().setLiteral("63 小时 5 分钟后重置"))
+                .build()
+            val card = io.github.lewin671.remoteagent.core.proto.MachineListCardView.newBuilder()
+                .setMachineId(machineId)
+                .setName(name)
+                .setOnline(isOnline)
+                .setStatusText(
+                    io.github.lewin671.remoteagent.core.proto.Text.newBuilder()
+                        .setLiteral(if (isOnline) "在线" else "2 小时前在线"),
+                )
+                .addQuotaSummaries(
+                    io.github.lewin671.remoteagent.core.proto.QuotaCliSection.newBuilder()
+                        .setAgent(Agent.AGENT_CODEX)
+                        .setAgentName("Codex")
+                        .setSummaryRow(row),
+                )
+                .build()
+            return io.github.lewin671.remoteagent.core.proto.SettingsViewModel.newBuilder()
+                .addMachines(card)
+                .setCanAddDevice(true)
+                .build()
+        }
         ui.setContent {
             val density = LocalDensity.current
             RaTheme(if (dark) ThemeMode.DARK else ThemeMode.LIGHT) {
                 CompositionLocalProvider(LocalRemote provides remote, LocalNav provides nav, LocalDensity provides Density(density.density, 2f)) {
                     Column(Modifier.width(320.dp).testTag("frame")) {
-                        MachinesGroup(RemoteState(machines = mapOf(machineId to MachineView(machineId, online, now - 7_200_000, meta))), now)
+                        MachinesGroup(cardVm(online))
                     }
                 }
             }

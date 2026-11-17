@@ -28,14 +28,6 @@ import kotlinx.coroutines.launch
 /** 5.7 MiB: a download's size, to one decimal. */
 fun mibText(bytes: Long): String = "%.1f MiB".format(bytes / 1048576.0)
 
-/** What the 版本 row says after the installed version, when there is something to say. */
-fun updateWord(state: UpdateState, copy: io.github.lewin671.remoteagent.core.MessageResolver = ::sessionText): String? = when (state) {
-    is UpdateState.Available, is UpdateState.DownloadFailed -> copy(UiMessages.settingsAndroidUpdateAvailableValue1((state.release!!.version).toString()))
-    is UpdateState.Downloading -> copy(UiMessages.settingsAndroidDownloadingValue1((state.release.version).toString()))
-    is UpdateState.Ready -> copy(UiMessages.settingsAndroidValue1Downloaded((state.release.version).toString()))
-    else -> null
-}
-
 /**
  * The one line the sheet writes about the last look, under what the look was about: why a look
  * the user asked for failed, or that the release on screen is still the latest published one.
@@ -72,11 +64,15 @@ fun updateStep(state: UpdateState, copy: io.github.lewin671.remoteagent.core.Mes
 fun UpdateNotice(modifier: Modifier = Modifier, onOpen: () -> Unit) {
     val copy = uiText()
     val app = RaApp.instance
+    val remote = LocalRemote.current
+    val settingsView by remote.settingsView.collectAsState()
     val state by Updater.state.collectAsState()
     val settings by app.prefs.settings.collectAsState(Settings())
     val release = state.release ?: return
+    if (!settingsView.update.hasUpdate && release.versionCode <= settings.skippedUpdate) return
     if (release.versionCode <= settings.skippedUpdate) return
-    Notice(copy(UiMessages.settingsAndroidNewVersionValue1Available((release.version).toString())), modifier, action = copy(UiMessages.settingsAndroidUpdate()), onAction = onOpen)
+    val ver = settingsView.update.availableVersion.ifEmpty { release.version }
+    Notice(copy(UiMessages.settingsAndroidNewVersionValue1Available(ver)), modifier, action = copy(UiMessages.settingsAndroidUpdate()), onAction = onOpen)
 }
 
 /** How handing the download to the system went, when there is something to say about it. */
@@ -93,6 +89,8 @@ fun UpdateSheet(onClose: () -> Unit) {
     val copy = uiText()
     val app = RaApp.instance
     val context = androidx.compose.ui.platform.LocalContext.current
+    val remote = app.remote.collectAsState().value
+    val settingsView = remote?.settingsView?.collectAsState()?.value
     val p = pal
     val state by Updater.state.collectAsState()
     val release = state.release
@@ -158,10 +156,17 @@ fun UpdateSheet(onClose: () -> Unit) {
     Sheet(onClose) {
         if (release == null) {
             SheetHead(copy(UiMessages.settingsAndroidVersion()), copy(UiMessages.commonDone()), onClose)
-            Text("remote-agent ${app.versionName}", style = T.s15, color = p.ink)
+            val productName = context.getString(io.github.lewin671.remoteagent.R.string.app_name)
+            val shownVersion = settingsView?.update?.currentVersion?.takeIf { it.isNotEmpty() } ?: app.versionName
+            Text(listOf(productName, shownVersion).filter { it.isNotEmpty() }.joinToString(" "), style = T.s15, color = p.ink)
             if (state is UpdateState.Latest) Text(copy(UiMessages.settingsAndroidUpToDate()), style = T.s13, color = p.ink2, modifier = Modifier.padding(top = 6.dp))
             checkLine(check, releaseOnScreen = false, copy = copy)?.let { Text(it.text, style = T.s13, color = p.red, modifier = Modifier.padding(top = 6.dp)) }
-            PillButton(if (check.running) copy(UiMessages.settingsAndroidCheckingForUpdates()) else copy(UiMessages.settingsCheckForUpdates()), { Updater.check(app, manual = true) }, Modifier.fillMaxWidth().padding(top = 14.dp), enabled = !check.running)
+            PillButton(
+                if (check.running) copy(UiMessages.settingsAndroidCheckingForUpdates()) else copy(UiMessages.settingsCheckForUpdates()),
+                { if (remote != null) remote.coreHost.checkForUpdates() else Updater.check(app, manual = true) },
+                Modifier.fillMaxWidth().padding(top = 14.dp),
+                enabled = !check.running,
+            )
             return@Sheet
         }
         SheetHead(copy(UiMessages.settingsAndroidNewVersionValue1((release.version).toString())), copy(UiMessages.settingsAndroidLater()), {
@@ -186,7 +191,7 @@ fun UpdateSheet(onClose: () -> Unit) {
         }
         TextAction(
             if (check.running) copy(UiMessages.settingsAndroidCheckingForUpdates()) else copy(UiMessages.settingsCheckForUpdates()),
-            { Updater.check(app, manual = true) },
+            { if (remote != null) remote.coreHost.checkForUpdates() else Updater.check(app, manual = true) },
             Modifier.fillMaxWidth().padding(top = 8.dp),
             style = T.s15b,
             enabled = !check.running && state !is UpdateState.Downloading,

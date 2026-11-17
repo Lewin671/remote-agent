@@ -31,16 +31,9 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
 import io.github.lewin671.remoteagent.core.ConnState
 import io.github.lewin671.remoteagent.core.DeviceSecurity
-import io.github.lewin671.remoteagent.core.clientDetail
-import io.github.lewin671.remoteagent.core.clientName
-import io.github.lewin671.remoteagent.core.clientUsed
-import io.github.lewin671.remoteagent.core.dayText
-import io.github.lewin671.remoteagent.core.defaultClientName
-import io.github.lewin671.remoteagent.core.lastUsed
-import io.github.lewin671.remoteagent.core.shortId
-import io.github.lewin671.remoteagent.core.sortClients
-import io.github.lewin671.remoteagent.core.whenText
-import io.github.lewin671.remoteagent.proto.DeviceKind
+import io.github.lewin671.remoteagent.core.proto.ClientDetailViewModel
+import io.github.lewin671.remoteagent.core.proto.ClientRowView
+import io.github.lewin671.remoteagent.core.proto.DevicesViewModel
 import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -56,55 +49,95 @@ fun DevicesScreen() {
     val remote = LocalRemote.current
     val nav = LocalNav.current
     val state by remote.state.collectAsState()
-    val p = pal
+    val vm by remote.devicesView.collectAsState()
     val t = now()
-    val me = remote.account.deviceId
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    // The times on this page are as of opening it.
     LaunchedEffect(Unit) {
+        remote.coreHost.openDevices()
         if (remote.state.value.conn == ConnState.ONLINE) remote.refreshDevices()
     }
+    DevicesScreenContent(
+        vm = vm,
+        clockWarning = state.clockWarning,
+        recoveryPending = state.isAuthority && state.recoveryPending,
+        leaseEndMs = state.leaseEndMs,
+        nowMs = t,
+        onRecovery = { nav.recovery() },
+        onMachineClick = { nav.device(it) },
+        onClientClick = { nav.client(it) },
+        onPair = { nav.pair() },
+        onExportGenesis = {
+            scope.launch {
+                val genesis =
+                    withContext(Dispatchers.IO) {
+                        DeviceSecurity.stateBytes(remote.chain().first())
+                    }
+                withContext(Dispatchers.Main) {
+                    shareGenesis(context, genesis, copy = copy)
+                }
+            }
+        },
+    )
+}
+
+@Composable
+internal fun DevicesScreenContent(
+    vm: DevicesViewModel,
+    clockWarning: Boolean = false,
+    recoveryPending: Boolean = false,
+    leaseEndMs: Long = 0L,
+    nowMs: Long = System.currentTimeMillis(),
+    onRecovery: () -> Unit = {},
+    onMachineClick: (String) -> Unit = {},
+    onClientClick: (String) -> Unit = {},
+    onPair: () -> Unit = {},
+    onExportGenesis: () -> Unit = {},
+) {
+    val copy = uiText()
+    val p = pal
     PageScaffold(copy(UiMessages.settingsDevices())) {
         Column(Modifier.weight(1f).verticalScrollFaded()) {
-            if (state.clockWarning)
+            if (clockWarning)
                 Notice(
                     copy(UiMessages.settingsAndroidThePhoneClockIsAheadOfTheServerRemoteControl()),
                     Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                     NoticeTone.WARN,
                 )
-            if (state.isAuthority && state.recoveryPending)
+            if (recoveryPending)
                 Notice(
                     copy(UiMessages.securityAndroidSomeoneIsRequestingManagementTakeoverWithARecoveryCodeVeto()),
                     Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                     NoticeTone.ERROR,
                     action = copy(UiMessages.securityAndroidView()),
-                    onAction = { nav.recovery() },
+                    onAction = onRecovery,
+                )
+            val err = uiText(vm.errorText)
+            if (err.isNotEmpty())
+                Notice(
+                    err,
+                    Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                    NoticeTone.ERROR,
                 )
             GLabel(copy(UiMessages.settingsComputersRunClis()))
-            val ms = state.machines.values.sortedBy { machineLabel(state, it.id) }
-            if (ms.isEmpty())
+            if (vm.computersList.isEmpty())
                 Hint(copy(UiMessages.securityAndroidNoComputersYet()), Modifier.padding(bottom = 12.dp))
             else
                 Group(
                     rows =
-                        ms.map { m ->
+                        vm.computersList.map { m ->
                             @Composable {
                                 GRow(
-                                    machineLabel(state, m.id),
-                                    onClick = { nav.device(m.id) },
+                                    m.name,
+                                    onClick = { onMachineClick(m.machineId) },
                                     trailing = {
                                         Row(
                                             verticalAlignment = Alignment.CenterVertically,
                                             horizontalArrangement = Arrangement.spacedBy(5.dp),
                                         ) {
-                                            if (m.pathState.reachable) StatusMark(MarkKind.ONLINE)
+                                            if (m.online) StatusMark(MarkKind.ONLINE)
                                             ArrowText(
-                                                (if (m.pathState.reachable) copy(UiMessages.securityAndroidOnline())
-                                                else
-                                                    whenText(m.lastSeenMs, t, copy = copy).ifEmpty {
-                                                        copy(UiMessages.securityAndroidOffline())
-                                                    }),
+                                                uiText(m.statusText),
                                                 p.ink2,
                                                 T.s13,
                                             )
@@ -115,45 +148,20 @@ fun DevicesScreen() {
                         },
                 )
             GLabel(copy(UiMessages.settingsClientsControlSessions()))
-            val clients =
-                sortClients(
-                    state.devices.values.filter { it.kind == DeviceKind.DEVICE_KIND_CLIENT },
-                    me,
-                )
+            val clientRows = vm.clientsList + vm.unfinishedPairingsList
             Group(
                 rows =
-                    clients.map { c ->
+                    clientRows.map { c ->
                         @Composable {
-                            Row(
-                                Modifier.fillMaxWidth()
-                                    .heightIn(min = 44.dp)
-                                    .clickable { nav.client(c.id) }
-                                    .padding(horizontal = 14.dp, vertical = 8.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                            ) {
-                                Column(Modifier.weight(1f)) {
-                                    Text(clientName(c, c.id, state.devices.values, copy = copy), style = T.s15, color = p.ink)
-                                    Text(
-                                        clientDetail(c, copy = copy),
-                                        style = T.s13,
-                                        color = p.ink2,
-                                        modifier = Modifier.padding(top = 2.dp),
-                                    )
-                                }
-                                if (c.id == state.authorityDeviceId)
-                                    Text(copy(UiMessages.settingsManagingClient()), style = T.s13, color = p.ink2)
-                                else if (c.id == me) Text(copy(UiMessages.securityThisDevice()), style = T.s13, color = p.ink2)
-                                else ArrowText(clientUsed(c, t, copy = copy), p.ink2, T.s13)
-                            }
+                            DeviceClientRow(c, onClick = { onClientClick(c.deviceId) })
                         }
                     },
             )
-            if (state.isAuthority) {
+            if (vm.isManager) {
                 GLabel(copy(UiMessages.securityAndroidRemoteControl()))
                 Hint(
-                    if (state.leaseEndMs > 0)
-                        copy(UiMessages.securityAndroidControlValidityAdvice(io.github.lewin671.remoteagent.core.securityTime(state.leaseEndMs, t, copy = copy)))
+                    if (leaseEndMs > 0)
+                        copy(UiMessages.securityAndroidControlValidityAdvice(io.github.lewin671.remoteagent.core.securityTime(leaseEndMs, nowMs, copy = copy)))
                     else copy(UiMessages.securityAndroidReadingMembershipState()),
                 )
             }
@@ -163,35 +171,28 @@ fun DevicesScreen() {
                 color = p.ink2,
                 modifier = Modifier.padding(horizontal = 16.dp),
             )
-            if (state.isAuthority)
+            if (vm.canAddDevice)
                 Box(
                     Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                         .heightIn(min = 44.dp)
-                        .clickable { nav.pair() },
+                        .clickable { onPair() },
                     contentAlignment = Alignment.CenterStart,
                 ) {
                     IconText(Lucide.Plus, copy(UiMessages.homeAddDevice()), p.blue, T.s15)
                 }
-            else
-                Hint(
-                    addDeviceHint(state, copy = copy),
-                    Modifier.padding(bottom = 8.dp),
-                )
-            if (state.isAuthority) {
+            else {
+                val addHint = uiText(vm.addDeviceHint)
+                if (addHint.isNotEmpty())
+                    Hint(
+                        addHint,
+                        Modifier.padding(bottom = 8.dp),
+                    )
+            }
+            if (vm.isManager) {
                 Box(Modifier.padding(horizontal = 16.dp)) {
                     TextAction(
                         copy(UiMessages.securityAndroidExportGenesisStateForOfflineRelayPinning()),
-                        {
-                            scope.launch {
-                                val genesis =
-                                    withContext(Dispatchers.IO) {
-                                        DeviceSecurity.stateBytes(remote.chain().first())
-                                    }
-                                withContext(Dispatchers.Main) {
-                                    shareGenesis(context, genesis, copy = copy)
-                                }
-                            }
-                        },
+                        onExportGenesis,
                         arrow = true,
                     )
                 }
@@ -205,144 +206,198 @@ fun DevicesScreen() {
     }
 }
 
+@Composable
+private fun DeviceClientRow(c: ClientRowView, onClick: () -> Unit) {
+    val p = pal
+    val detail = listOfNotNull(
+        c.description.ifEmpty { null },
+        c.shortId.ifEmpty { null },
+    ).joinToString(" · ")
+    val role = uiText(c.roleLabel)
+    val used = uiText(c.lastUsedText)
+    Row(
+        Modifier.fillMaxWidth()
+            .heightIn(min = 44.dp)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 14.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text(c.displayName, style = T.s15, color = p.ink)
+            if (detail.isNotEmpty())
+                Text(
+                    detail,
+                    style = T.s13,
+                    color = p.ink2,
+                    modifier = Modifier.padding(top = 2.dp),
+                )
+        }
+        if (role.isNotEmpty())
+            Text(role, style = T.s13, color = p.ink2)
+        else
+            ArrowText(used, p.ink2, T.s13)
+    }
+}
+
 /** A client's details: its name for the whole account, its ID to compare, and removing it. */
 @Composable
 fun ClientScreen(id: String) {
-    val copy = uiText()
     val remote = LocalRemote.current
     val nav = LocalNav.current
     val state by remote.state.collectAsState()
-    val p = pal
-    val me = remote.account.deviceId
-    val canRename = id in state.devices && clientCanRename(id, me, state.conn)
-    val d = state.devices[id]
-    val t = now()
-    var editing by remember { mutableStateOf(false) }
-    var confirmRemove by remember { mutableStateOf(false) }
-    val save = rememberAction()
+    val vm by remote.clientDetailView.collectAsState()
+    val rename by SettingsExecutor.renameState.collectAsState()
     val remove = rememberAction(authority = true)
+    LaunchedEffect(id) {
+        SettingsExecutor.clearRenameError()
+        remote.coreHost.openClientDetail(id)
+    }
+    ClientScreenContent(
+        vm = vm,
+        rename = rename,
+        canRemoveNow = vm.canRemove && state.conn == ConnState.ONLINE && !remove.running,
+        removeError = remove.error,
+        onSettings = { nav.settings() },
+        onRename = { name ->
+            SettingsExecutor.clearRenameError()
+            remote.coreHost.renameClient(id, name)
+        },
+        onRemove = {
+            remove.run(
+                {
+                    remote.removeDevice(id)
+                    null
+                },
+            )
+        },
+    )
+}
+
+@Composable
+internal fun ClientScreenContent(
+    vm: ClientDetailViewModel,
+    rename: RenameClientUiState = RenameClientUiState(),
+    canRemoveNow: Boolean = vm.canRemove,
+    removeError: String = "",
+    onSettings: () -> Unit = {},
+    onRename: (String) -> Unit = {},
+    onRemove: () -> Unit = {},
+) {
+    val copy = uiText()
+    val p = pal
+    var editing by remember(vm.deviceId) { mutableStateOf(false) }
+    var confirmRemove by remember(vm.deviceId) { mutableStateOf(false) }
+    val renameBusy = vm.renameSaving || (rename.savingDeviceId != null && rename.savingDeviceId == vm.deviceId)
+    val renameError = rename.error.ifEmpty { uiText(vm.renameError) }
     PageScaffold(
-        clientName(d, id, state.devices.values, copy = copy),
-        subtitle = if (d == null) copy(UiMessages.securityAndroidRemoved()) else if (id == me) copy(UiMessages.securityAndroidCurrentClient()) else copy(UiMessages.settingsPairedClient()),
+        vm.displayName,
+        subtitle =
+            if (!vm.found) copy(UiMessages.securityAndroidRemoved())
+            else if (vm.isSelf) copy(UiMessages.securityAndroidCurrentClient())
+            else copy(UiMessages.settingsPairedClient()),
     ) {
-        if (d == null) {
+        if (!vm.found) {
             PageNote(copy(UiMessages.securityAndroidThisClientIsNoLongerInTheCurrentMemberList()))
             return@PageScaffold
         }
+        val groupLabel =
+            uiText(vm.roleLabel).ifEmpty {
+                if (vm.isAuthority) copy(UiMessages.settingsManagingClient()) else copy(UiMessages.securityClient())
+            }
+        val lastUsedWord = uiText(vm.lastUsedText).ifEmpty { copy(UiMessages.settingsNoRecord()) }
+        val addedWord = uiText(vm.addedText)
         Column(Modifier.weight(1f).verticalScrollFaded()) {
-            GLabel(if (id == state.authorityDeviceId) copy(UiMessages.settingsManagingClient()) else copy(UiMessages.securityClient()))
+            GLabel(groupLabel)
             Group(
                 rows =
                     listOfNotNull<@Composable () -> Unit>(
                         {
                             GRow(
                                 copy(UiMessages.settingsName()),
-                                (d?.meta?.name?.ifEmpty { null } ?: copy(UiMessages.settingsUnnamed())),
-                                onClick = if (canRename) ({ editing = true }) else null,
-                                chevron = canRename,
+                                vm.customName.ifEmpty { copy(UiMessages.settingsUnnamed()) },
+                                onClick = if (vm.canRename && !renameBusy) ({ editing = true }) else null,
+                                chevron = vm.canRename,
                             )
                         },
-                        d?.meta
-                            ?.name
-                            ?.takeIf { it.isNotEmpty() }
-                            ?.let {
-                                {
-                                    GRow(
-                                        copy(UiMessages.settingsRestoreDefaultName()),
-                                        defaultClientName(d, id, state.devices.values, copy = copy),
-                                        onClick = {
-                                            save.run(
-                                                {
-                                                    remote.renameDevice(id, "")
-                                                    null
-                                                },
-                                            )
-                                        },
-                                        action = true,
-                                        enabled = canRename,
-                                    )
-                                }
-                            },
-                        d?.meta
-                            ?.description
-                            ?.takeIf { it.isNotEmpty() }
+                        if (vm.canRestoreDefault) {
+                            {
+                                GRow(
+                                    copy(UiMessages.settingsRestoreDefaultName()),
+                                    vm.defaultName,
+                                    onClick = { onRename("") },
+                                    action = true,
+                                    enabled = vm.canRename && !renameBusy,
+                                )
+                            }
+                        } else null,
+                        vm.description
+                            .takeIf { it.isNotEmpty() }
                             ?.let { desc -> { GRow(copy(UiMessages.settingsRunsOn()), desc) } },
-                        { GRow(copy(UiMessages.settingsLastUsed()), if (id == me) copy(UiMessages.settingsNow()) else lastUsed(d, t, copy = copy).ifEmpty { copy(UiMessages.settingsNoRecord()) }) },
-                        d?.createdMs
-                            ?.takeIf { it > 0 }
-                            ?.let { created -> { GRow(copy(UiMessages.settingsAdded()), dayText(created, t, copy = copy)) } },
+                        { GRow(copy(UiMessages.settingsLastUsed()), lastUsedWord) },
+                        addedWord
+                            .takeIf { it.isNotEmpty() }
+                            ?.let { added -> { GRow(copy(UiMessages.settingsAdded()), added) } },
                         {
                             GRow(
                                 copy(UiMessages.settingsDeviceId()),
                                 trailing = {
-                                    Text("…" + shortId(id), style = T.mono13, color = p.ink2)
+                                    Text(vm.shortId, style = T.mono13, color = p.ink2)
                                 },
                             )
                         },
                     ),
             )
-            if (save.error.isNotEmpty())
+            if (renameError.isNotEmpty())
                 Notice(
-                    copy(UiMessages.settingsNameSaveError((save.error).toString())),
+                    copy(UiMessages.settingsNameSaveError((renameError).toString())),
                     Modifier.padding(horizontal = 16.dp).padding(bottom = 8.dp),
                     NoticeTone.ERROR,
                 )
             Text(
-                if (id == me) copy(UiMessages.securityAndroidNameChangesSyncToOtherClientsSetNotificationsOnThis())
+                if (vm.isSelf) copy(UiMessages.securityAndroidNameChangesSyncToOtherClientsSetNotificationsOnThis())
                 else copy(UiMessages.securityAndroidOnlyThisClientCanChangeItsNameNotificationSettingsMust()),
                 style = T.s13,
                 color = p.ink2,
                 modifier = Modifier.padding(horizontal = 16.dp),
             )
-            if (id == me) {
+            val mgmtHint = uiText(vm.managementHint)
+            if (vm.showExitAction) {
                 Box(
                     Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
                         .heightIn(min = 44.dp)
-                        .clickable { nav.settings() },
+                        .clickable { onSettings() },
                     contentAlignment = Alignment.CenterStart,
                 ) {
                     ArrowText(copy(UiMessages.securityAndroidExitAndDeleteLocalKeysInSettings()), p.ink2, T.s15)
                 }
-            } else if (state.isAuthority) {
-                if (id == state.authorityDeviceId) {
-                    Text(
-                        copy(UiMessages.securityTheManagingClientCannotBeRemovedDirectlyTransferManagementDeviceManagement()),
-                        style = T.s13,
-                        color = p.ink2,
-                        modifier = Modifier.padding(horizontal = 16.dp),
-                    )
-                } else {
-                    Box(
-                        Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
-                            .heightIn(min = 44.dp)
-                            .clickable(
-                                enabled = state.conn == ConnState.ONLINE && !remove.running,
-                            ) {
-                                confirmRemove = true
-                            },
-                        contentAlignment = Alignment.CenterStart,
-                    ) {
-                        Text(copy(UiMessages.securityAndroidRemoveThisClient()), style = T.s15, color = p.red)
-                    }
-                    Text(
-                        copy(UiMessages.securityAndroidRemovalDisconnectsItsLoginAndClearsPushSubscriptionsComputerSessions()),
-                        style = T.s13,
-                        color = p.ink2,
-                        modifier = Modifier.padding(horizontal = 16.dp),
-                    )
+            } else if (vm.canRemove) {
+                Box(
+                    Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
+                        .heightIn(min = 44.dp)
+                        .clickable(enabled = canRemoveNow) { confirmRemove = true },
+                    contentAlignment = Alignment.CenterStart,
+                ) {
+                    Text(copy(UiMessages.securityAndroidRemoveThisClient()), style = T.s15, color = p.red)
                 }
-                if (remove.error.isNotEmpty())
-                    Notice(remove.error, Modifier.padding(16.dp), NoticeTone.ERROR)
-            } else {
+                Text(
+                    copy(UiMessages.securityAndroidRemovalDisconnectsItsLoginAndClearsPushSubscriptionsComputerSessions()),
+                    style = T.s13,
+                    color = p.ink2,
+                    modifier = Modifier.padding(horizontal = 16.dp),
+                )
+                if (removeError.isNotEmpty())
+                    Notice(removeError, Modifier.padding(16.dp), NoticeTone.ERROR)
+            } else if (mgmtHint.isNotEmpty()) {
                 Hint(
-                    copy(UiMessages.settingsAndroidRemoveDevicesOnTheManagingClientValue1(state.authorityName.resolve(copy))),
-                    Modifier.padding(bottom = 8.dp),
+                    mgmtHint,
+                    Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                 )
             }
         }
     }
-    if (confirmRemove && d != null) {
-        val (title, text) = removalDialog(clientName(d, id, state.devices.values, copy = copy), machine = false, copy = copy)
+    if (confirmRemove && vm.found) {
+        val (title, text) = removalDialog(vm.displayName, machine = false, copy = copy)
         Alert(
             title,
             text,
@@ -350,28 +405,18 @@ fun ClientScreen(id: String) {
             danger = true,
             onDismiss = { confirmRemove = false },
         ) {
-            remove.run(
-                {
-                    remote.removeDevice(id)
-                    null
-                },
-            )
+            onRemove()
         }
     }
-    if (editing && canRename)
+    if (editing && vm.canRename)
         InputAlert(
             copy(UiMessages.settingsClientName()),
-            d?.meta?.name.orEmpty(),
-            defaultClientName(d, id, state.devices.values, copy = copy),
+            vm.customName,
+            vm.defaultName,
             copy(UiMessages.commonSave()),
             onDismiss = { editing = false },
         ) { name ->
-            save.run(
-                {
-                    remote.renameDevice(id, name.trim())
-                    null
-                },
-            )
+            onRename(name.trim())
         }
 }
 

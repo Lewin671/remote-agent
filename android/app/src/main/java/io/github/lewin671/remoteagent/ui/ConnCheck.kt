@@ -37,19 +37,6 @@ import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 
-/** The link to the server in a word: what 设置 says before anything is measured. */
-fun connWord(state: RemoteState, copy: io.github.lewin671.remoteagent.core.MessageResolver = ::sessionText): String = when {
-    state.conn == ConnState.ONLINE -> copy(UiMessages.connectionConnected())
-    state.synced -> copy(UiMessages.connectionReconnectingConnCheck())
-    state.link == Link.NO_SERVER -> copy(UiMessages.connectionUnreachable())
-    else -> copy(UiMessages.connectionConnectingConnCheck())
-}
-
-/**
- * 连接检测 (client-v34): how long a round trip takes now on each stretch of the way, the
- * nearest first: this device's network, the server, then each computer through the
- * server. Measured when opened and on 再测一次; nothing runs in the background.
- */
 @Composable
 fun ConnCheckSheet(state: RemoteState, onClose: () -> Unit) {
     val remote = LocalRemote.current
@@ -59,6 +46,7 @@ fun ConnCheckSheet(state: RemoteState, onClose: () -> Unit) {
         { remote.pingServer() }, { remote.pingMachine(it) },
         { remote.reconnectNow() },
         refreshDirect = { remote.refreshDirect(it) },
+        onProbeStatus = { s, ms, err -> remote.coreHost.reportConnCheckStatus(s, ms, err) },
     )
 }
 
@@ -74,6 +62,7 @@ internal fun ConnCheckSheet(
     clock: () -> Long = System::currentTimeMillis,
     /** Opening the check warms the direct numbers once when a computer's window is thin. */
     refreshDirect: (String) -> Unit = {},
+    onProbeStatus: (io.github.lewin671.remoteagent.core.proto.ConnProbeState, Int, String) -> Unit = { _, _, _ -> },
 ) {
     val copy = uiText()
     val p = pal
@@ -96,6 +85,7 @@ internal fun ConnCheckSheet(
     val list = state.machines.values.sortedWith(compareByDescending<io.github.lewin671.remoteagent.core.MachineView> { it.pathState.reachable }.thenBy { machineLabel(state, it.id) })
     LaunchedEffect(run) {
         busy = true
+        onProbeStatus(io.github.lewin671.remoteagent.core.proto.ConnProbeState.CONN_PROBE_STATE_CHECKING, 0, "")
         val online = onlineMachines()
         online.forEach { refreshDirect(it) }
         server = Ping.Wait
@@ -103,12 +93,21 @@ internal fun ConnCheckSheet(
         online.forEach { machines[it] = Ping.Wait }
         var reached = true
         try {
-            server = Ping.Ok(median(List(3) { pingServer() }))
+            val ms = median(List(3) { pingServer() })
+            server = Ping.Ok(ms)
+            onProbeStatus(
+                if (ms >= SLOW_SERVER_MS) io.github.lewin671.remoteagent.core.proto.ConnProbeState.CONN_PROBE_STATE_SLOW
+                else io.github.lewin671.remoteagent.core.proto.ConnProbeState.CONN_PROBE_STATE_WORKING,
+                ms.toInt(),
+                "",
+            )
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e
         } catch (e: Exception) {
             reached = false
-            server = Ping.Fail(displayError(e).ifEmpty { copy(UiMessages.connectionNoResponse()) })
+            val err = displayError(e).ifEmpty { copy(UiMessages.connectionNoResponse()) }
+            server = Ping.Fail(err)
+            onProbeStatus(io.github.lewin671.remoteagent.core.proto.ConnProbeState.CONN_PROBE_STATE_UNAVAILABLE, 0, err)
             online.filter { !state.peer(it).canProbe(false) }.forEach { machines[it] = Ping.Skip }
         }
         coroutineScope {
@@ -145,7 +144,14 @@ internal fun ConnCheckSheet(
         SheetHead(copy(UiMessages.homeConnectionCheck()), copy(UiMessages.commonDone()), onClose)
         Column(Modifier.fillMaxWidth().clip(Radii.R14).background(if (LocalOnSoft.current) p.raised else p.gbg)) {
             line(copy(UiMessages.connectionLivePush())) {
-                dotted(if (state.conn == ConnState.ONLINE) p.green else if (state.synced) p.orange else p.faint, connWord(state, copy = uiText()))
+                val connLabel = when (state.conn) {
+                    ConnState.ONLINE -> copy(UiMessages.connectionConnected())
+                    ConnState.CONNECTING -> copy(UiMessages.connectionConnectingConnCheck())
+                    ConnState.OFFLINE ->
+                        if (state.synced) copy(UiMessages.connectionReconnectingConnCheck())
+                        else copy(UiMessages.connectionUnreachable())
+                }
+                dotted(if (state.conn == ConnState.ONLINE) p.green else if (state.synced) p.orange else p.faint, connLabel)
             }
             HorizontalDivider(color = p.sep, thickness = 0.5.dp)
             val network = state.link != Link.NO_NETWORK
@@ -154,13 +160,9 @@ internal fun ConnCheckSheet(
             line(copy(UiMessages.securityServer()), serverAddress.substringAfter("://")) { result(server, SLOW_SERVER_MS) }
             for (m in list) {
                 HorizontalDivider(color = p.sep, thickness = 0.5.dp)
-                // One line, the same words as the computer's page; none for a computer that is not online, nor where this device cannot do it (the footer says so).
-                val summary = if (m.pathState.reachable && m.pathState.directStatus.supported) {
-                    directView(m.pathState.directStatus, copy).summary
-                } else null
-                line(machineLabel(state, m.id), sub = summary) {
+                line(machineLabel(state, m.id)) {
                     if (m.pathState.reachable) result(machines[m.id], SLOW_MACHINE_MS)
-                    else dotted(p.faint, copy(UiMessages.commonAndroidOffline()), p.ink2)
+                    else dotted(p.faint, copy(UiMessages.settingsOffline()), p.ink2)
                 }
             }
         }
@@ -180,11 +182,13 @@ internal fun ConnCheckSheet(
                 else -> copy(UiMessages.connectionLivePushIsNotConnected())
             })
         }
-        val foot = connFooter(
-            list.filter { it.pathState.reachable }.map { it.pathState.directStatus },
-            LocalMessageLocale.current,
-            copy,
-        )
+        val locale = LocalMessageLocale.current
+        val foot = buildList {
+            add(copy(UiMessages.connectionLatencyIsOneRoundTripTheServerRowMeasures()))
+            if (list.any { it.pathState.reachable && !it.pathState.directStatus.supported }) {
+                add(copy(UiMessages.transportConnFooterUnsupportedDevice()))
+            }
+        }.joinToString(if (locale.startsWith("zh")) "" else " ")
         Hint(foot)
         Btns(Modifier.padding(top = 12.dp)) {
             if (state.conn != ConnState.ONLINE) PillButton(copy(UiMessages.connectionReconnectNow()), reconnectNow, Modifier.weight(1f))

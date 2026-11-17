@@ -678,34 +678,6 @@
     }
   },
   {
-    "key": "security.android_offline",
-    "zh-CN": "不在线",
-    "en": "Offline",
-    "notes": "Android Devices 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
-    "params": {},
-    "platforms": [
-      "android"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "security.android_online",
-    "zh-CN": "在线",
-    "en": "Online",
-    "notes": "Android Devices 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
-    "params": {},
-    "platforms": [
-      "android"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
     "key": "security.android_only_a_removed_computer_s_archive_from_the_same_account",
     "zh-CN": "只能接续同一账户已移除电脑的档案",
     "en": "Only a removed computer's archive from the same account can be resumed",

@@ -105,21 +105,83 @@ class I18nBatchCTest(private val locale: String) {
         ui.onNodeWithText(text(UiMessages.settingsAppearance())).performScrollTo(); shot("appearance-notifications")
         ui.onNodeWithText(text(UiMessages.settingsAndroidOpenSourceLicenses())).performScrollTo(); shot("about")
     }
-    private fun settingsReply() = GetSettingsResponse.newBuilder().setSettings(DaemonSettings.newBuilder()
-        .setApprovalTimeoutSeconds(600).setIdleCloseMinutes(360).setImageUploadQuotaBytes(1L shl 30)
-        .setClaude(AgentDefaults.newBuilder().setMode(ApprovalMode.APPROVAL_MODE_ASK).setModel("example-model")))
-        .setImageStorage(ImageStorageUsage.newBuilder().setUploadBytes(14L shl 20).setReclaimableBytes(2L shl 20).setCacheBytes(3L shl 20)).build()
+    private fun machineSettingsFixture(): io.github.lewin671.remoteagent.core.proto.MachineSettingsViewModel {
+        fun keyText(msg: UiMessage) = io.github.lewin671.remoteagent.core.proto.Text.newBuilder().apply {
+            key = msg.key
+            msg.args.forEach { (k, v) ->
+                val arg = io.github.lewin671.remoteagent.core.proto.TextArg.newBuilder().setName(k)
+                when (v) {
+                    is Int -> arg.setIntValue(v.toLong())
+                    is Long -> arg.setIntValue(v)
+                    else -> arg.setStrValue(v.toString())
+                }
+                addArgs(arg)
+            }
+        }.build()
+        fun lit(s: String) = io.github.lewin671.remoteagent.core.proto.Text.newBuilder().setLiteral(s).build()
+        return io.github.lewin671.remoteagent.core.proto.MachineSettingsViewModel.newBuilder()
+            .setMachineId("m")
+            .setName("Example computer")
+            .setFound(true)
+            .setMember(true)
+            .setOnline(true)
+            .setEditable(true)
+            .addAvailableAgents(Agent.AGENT_CLAUDE)
+            .setSelectedAgent(Agent.AGENT_CLAUDE)
+            .setAgentDefaults(
+                io.github.lewin671.remoteagent.core.proto.MachineAgentDefaultsView.newBuilder()
+                    .setAgent(Agent.AGENT_CLAUDE)
+                    .setAgentName("Claude Code")
+                    .setSelectedModel("example-model")
+                    .setSelectedModelLabel(lit("example-model"))
+                    .setSelectedMode(ApprovalMode.APPROVAL_MODE_ASK)
+                    .addModeChoices(
+                        io.github.lewin671.remoteagent.core.proto.ModeChoiceView.newBuilder()
+                            .setMode(ApprovalMode.APPROVAL_MODE_ASK)
+                            .setLabel(keyText(UiMessages.modesAsk()))
+                            .setSelected(true),
+                    ),
+            )
+            .addApprovalTimeoutChoices(
+                io.github.lewin671.remoteagent.core.proto.TimeoutChoiceView.newBuilder()
+                    .setSeconds(600)
+                    .setLabel(keyText(UiMessages.quotaMin(10)))
+                    .setSelected(true),
+            )
+            .addIdleCloseChoices(
+                io.github.lewin671.remoteagent.core.proto.IdleCloseChoiceView.newBuilder()
+                    .setMinutes(360)
+                    .setLabel(keyText(UiMessages.quotaHr(6)))
+                    .setSelected(true),
+            )
+            .setAttachmentStorage(
+                io.github.lewin671.remoteagent.core.proto.AttachmentStorageView.newBuilder()
+                    .setLoaded(true)
+                    .setUploadedText(lit("14.0 MiB"))
+                    .setUploadedDetail(keyText(UiMessages.settingsCanClear("2.0 MiB")))
+                    .setPreviewCacheText(lit("3.0 MiB"))
+                    .setClearButtonLabel(keyText(UiMessages.settingsCanFree("5.0 MiB")))
+                    .setCanClear(true)
+                    .addQuotaChoices(
+                        io.github.lewin671.remoteagent.core.proto.QuotaSizeChoiceView.newBuilder()
+                            .setBytes(1L shl 30)
+                            .setLabel(lit("1 GiB"))
+                            .setSelected(true),
+                    ),
+            )
+            .build()
+    }
     @Test fun machine() {
-        show { DeviceScreen("m", { _, _ -> settingsReply() }) }; shot("computer-settings")
+        show { DeviceScreenContent(machineSettingsFixture()) }; shot("computer-settings")
         ui.onNodeWithText(text(UiMessages.settingsApprovalTimeout())).performScrollTo(); shot("daemon-settings")
         ui.onNodeWithText(text(UiMessages.settingsPreviewCache())).performScrollTo(); shot("computer-storage")
     }
     @Test fun approvalTimeout() {
-        show { DeviceScreen("m", { _, _ -> settingsReply() }) }
+        show { DeviceScreenContent(machineSettingsFixture()) }
         ui.onNodeWithText(text(UiMessages.settingsApprovalTimeout())).performScrollTo().performClick(); shot("approval-timeout")
     }
     @Test fun idleClose() {
-        show { DeviceScreen("m", { _, _ -> settingsReply() }) }
+        show { DeviceScreenContent(machineSettingsFixture()) }
         ui.onNodeWithText(text(UiMessages.settingsAutomaticallyEndIdleSessions())).performScrollTo().performClick(); shot("idle-close")
     }
     @Test fun quota() { show { QuotaScreen("m") }; shot("quota") }
@@ -158,7 +220,22 @@ class I18nBatchCTest(private val locale: String) {
         @Suppress("UNCHECKED_CAST")
         val updates = Updater::class.java.getDeclaredField("_state").apply { isAccessible = true }.get(Updater) as MutableStateFlow<UpdateState>
         updates.value = UpdateState.Available(Release("99.0.0", 999999, PROTOCOL_VERSION + 1, "example.apk", "00".repeat(32), 42L shl 20, "Original release notes remain unchanged."))
-        try { show { UpdateSheet {} }; shot("update") } finally { updates.value = UpdateState.Unknown }
+        remote.coreHost.reportClientUpdateState(
+            io.github.lewin671.remoteagent.core.proto.ClientUpdateStateEvent.newBuilder()
+                .setAvailableVersion("99.0.0")
+                .addReleases(
+                    io.github.lewin671.remoteagent.core.proto.ReleaseCandidateInfo.newBuilder()
+                        .setVersion("99.0.0")
+                        .setProtocolChanged(true),
+                )
+                .build(),
+        )
+        remote.coreHost.openSettings()
+        try {
+            show { UpdateSheet {} }
+            ui.waitUntil(3000) { remote.settingsView.value.update.hasUpdate }
+            shot("update")
+        } finally { updates.value = UpdateState.Unknown }
     }
     @Test fun imageErrors() { show { Column(Modifier.padding(20.dp)) { for (error in listOf("20 MB", "dimensions", "source missing", "decode", "quota", "network", "opaque")) {
         Text(imageProblem(rawAttachmentFailure(error), copy = uiText()).message, style = T.s15, modifier = Modifier.padding(vertical = 10.dp))
