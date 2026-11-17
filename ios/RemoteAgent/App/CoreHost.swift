@@ -623,6 +623,15 @@ actor CoreHost: SyncEngine {
                     }
                 }
 
+            // Settings, machine, schedules and session screens still render
+            // in Swift on iOS and never send the events behind these effects.
+            case .scheduleMachinePoll, .directPreference, .renameClient,
+                 .checkUpdates, .persistClientPrefs, .prepareCleanupSession,
+                 .sessionRestoreComposer, .scheduleReadCache, .scheduleDeleteCache,
+                 .scheduleLoadSeen, .scheduleSaveSeen, .scheduleNavigate,
+                 .scheduleDismissNotifications:
+                break
+
             case nil:
                 break
             }
