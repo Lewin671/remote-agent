@@ -135,21 +135,26 @@ class CoreHost(
 
     init {
         if (!closed.get()) {
-            // Seed initial calendar, entropy pool, and default view models synchronously.
-            dispatchOnWorker(
-                CoreEvent.newBuilder()
-                    .setEntropyProvided(buildEntropyProvided(INITIAL_ENTROPY_IDS, INITIAL_ENTROPY_FLOATS))
-                    .build(),
-            )
-            dispatchOnWorker(
-                CoreEvent.newBuilder()
-                    .setClockUpdated(buildLocalCalendar(clock(), zone()))
-                    .build(),
-            )
-            refreshScreenOnWorker(ScreenTarget.SCREEN_TARGET_HOME)
-            refreshScreenOnWorker(ScreenTarget.SCREEN_TARGET_PROJECT)
-            refreshScreenOnWorker(ScreenTarget.SCREEN_TARGET_NEW_SESSION)
-            refreshScreenOnWorker(ScreenTarget.SCREEN_TARGET_SYNC_STATE)
+            // Queue initial calendar, entropy pool, and default view models onto the serial mailbox
+            // before starting the worker loop so initialization never runs on the caller thread.
+            mailbox.trySend {
+                if (!closed.get()) {
+                    dispatchOnWorker(
+                        CoreEvent.newBuilder()
+                            .setEntropyProvided(buildEntropyProvided(INITIAL_ENTROPY_IDS, INITIAL_ENTROPY_FLOATS))
+                            .build(),
+                    )
+                    dispatchOnWorker(
+                        CoreEvent.newBuilder()
+                            .setClockUpdated(buildLocalCalendar(clock(), zone()))
+                            .build(),
+                    )
+                    refreshScreenOnWorker(ScreenTarget.SCREEN_TARGET_HOME)
+                    refreshScreenOnWorker(ScreenTarget.SCREEN_TARGET_PROJECT)
+                    refreshScreenOnWorker(ScreenTarget.SCREEN_TARGET_NEW_SESSION)
+                    refreshScreenOnWorker(ScreenTarget.SCREEN_TARGET_SYNC_STATE)
+                }
+            }
             scope.launch(dispatcher) {
                 for (item in mailbox) {
                     if (closed.get()) break

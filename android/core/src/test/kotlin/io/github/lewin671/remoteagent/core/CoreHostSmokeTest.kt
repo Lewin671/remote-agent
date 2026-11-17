@@ -53,6 +53,7 @@ import io.github.lewin671.remoteagent.proto.ProjectSummary
 import io.github.lewin671.remoteagent.proto.Session
 import io.github.lewin671.remoteagent.proto.SessionStatus
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.asCoroutineDispatcher
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -430,6 +431,46 @@ class CoreHostSmokeTest {
             assertTrue(navigated.any { it.route == NavigateRoute.NAVIGATE_ROUTE_SESSION && it.sessionId == "s-created" })
         } finally {
             h.close()
+        }
+    }
+
+    @Test
+    fun initRunsOnSerialWorkerMailboxInsteadOfConstructorThread() = kotlinx.coroutines.runBlocking<Unit> {
+        val callerThread = Thread.currentThread()
+        val workerName = "corehost-init-serial-test"
+        val executor = java.util.concurrent.Executors.newSingleThreadExecutor { r ->
+            Thread(r, workerName)
+        }
+        val dispatcher = executor.asCoroutineDispatcher()
+        val clockThreads = java.util.concurrent.CopyOnWriteArrayList<Thread>()
+        var h: CoreHost? = null
+        try {
+            val created = CoreHost(
+                workerDispatcher = dispatcher,
+                clock = {
+                    clockThreads += Thread.currentThread()
+                    nowMs
+                },
+                monotonic = { 1_000L },
+                zone = { ZoneId.of("UTC") },
+            )
+            h = created
+            // Constructor must not invoke clock() synchronously on caller thread.
+            assertTrue(clockThreads.none { it === callerThread })
+
+            created.dispatchAndWait(
+                CoreEvent.newBuilder()
+                    .setSyncLifecycle(
+                        SyncLifecycleAction.newBuilder().setKind(SyncLifecycleKind.SYNC_LIFECYCLE_KIND_STOP),
+                    )
+                    .build(),
+            )
+            assertTrue("clockThreads empty after dispatchAndWait", clockThreads.isNotEmpty())
+            assertEquals("clockThreads should only run on $workerName (caller=${callerThread.name})", listOf(workerName), clockThreads.map { it.name }.distinct())
+            assertTrue("headline should be populated after init", created.homeView.value.hasHeadline())
+        } finally {
+            h?.close()
+            dispatcher.close()
         }
     }
 }
