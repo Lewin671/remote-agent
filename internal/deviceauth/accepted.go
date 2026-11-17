@@ -116,6 +116,10 @@ type AcceptOptions struct {
 	// PeerBinding is set only by an authenticated direct connection owner.
 	// It is rechecked atomically at new admission, including after slot waits.
 	PeerBinding *PeerBinding
+	// DynamicPeerBinding resolves whether at least one coalesced waiter is still
+	// permitted to admit the command and returns the PeerBinding to verify when
+	// only direct waiters remain. Returning ok=false refuses new admission.
+	DynamicPeerBinding func() (binding *PeerBinding, ok bool)
 
 	AllowNew func() bool
 	Acquire  func(ctx context.Context) (release func(), err error)
@@ -576,8 +580,17 @@ func (e *Endpoint) AcceptAuthenticated(ctx context.Context, a *Authenticated, no
 			e.mu.Unlock()
 			return nil, notAdmitted("authorization_unavailable", ErrUntrusted)
 		}
-		if options.PeerBinding != nil {
-			if err := e.checkPeerLocked(*options.PeerBinding, clock); err != nil {
+		binding := options.PeerBinding
+		if options.DynamicPeerBinding != nil {
+			var ok bool
+			binding, ok = options.DynamicPeerBinding()
+			if !ok {
+				e.mu.Unlock()
+				return nil, notAdmitted("authorization_unavailable", ErrUntrusted)
+			}
+		}
+		if binding != nil {
+			if err := e.checkPeerLocked(*binding, clock); err != nil {
 				e.mu.Unlock()
 				return nil, notAdmitted("authorization_unavailable", err)
 			}

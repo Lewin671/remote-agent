@@ -682,7 +682,7 @@ type dualSendLocal struct {
 
 type dualSendBackendWithLocal struct {
 	publishBackend
-	local *dualSendLocal
+	local remoteagentv1connect.LocalServiceHandler
 }
 
 func (b dualSendBackendWithLocal) SessionIDs() []string { return []string{"s-dual"} }
@@ -830,4 +830,238 @@ func TestDirectDualSentInteractiveDeduplicatesAndSharesResult(t *testing.T) {
 			t.Fatalf("%s unexpected command result: %+v", name, res)
 		}
 	}
+}
+
+type blockingInterruptLocal struct {
+	*dualSendLocal
+	blockEntered chan struct{}
+	blockRelease chan struct{}
+}
+
+func (l *blockingInterruptLocal) Interrupt(ctx context.Context, _ *connect.Request[pb.InterruptRequest]) (*connect.Response[pb.InterruptResponse], error) {
+	close(l.blockEntered)
+	select {
+	case <-l.blockRelease:
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	}
+	return connect.NewResponse(&pb.InterruptResponse{}), nil
+}
+
+func setupDualAdmissionFixture(t *testing.T) (
+	ctx context.Context,
+	cancel context.CancelFunc,
+	ep *endpoint,
+	clientEndpoint *deviceauth.Endpoint,
+	binding deviceauth.PeerBinding,
+	execCount *atomic.Int32,
+	blockEntered chan struct{},
+	blockRelease chan struct{},
+	sendRelease chan struct{},
+	sealCmd func(reqID string, cmd *pb.Command) *pb.Envelope,
+) {
+	t.Helper()
+	t.Setenv("REMOTE_AGENT_HOME", t.TempDir())
+	ctx, cancel = context.WithTimeout(context.Background(), 10*time.Second)
+
+	execCount = &atomic.Int32{}
+	started := make(chan struct{})
+	sendRelease = make(chan struct{})
+	blockEntered = make(chan struct{})
+	blockRelease = make(chan struct{})
+
+	local := &blockingInterruptLocal{
+		dualSendLocal: &dualSendLocal{started: started, release: sendRelease, calls: execCount},
+		blockEntered:  blockEntered,
+		blockRelease:  blockRelease,
+	}
+	r := New(dualSendBackendWithLocal{local: local})
+	c := &conn{r: r}
+	keys := initializeTestSecurityKeys(t, c)
+	pin, head, selfID := c.security.endpoint.Snapshot()
+	c.acct.Security = &SecurityConfig{XPrivate: keys.x}
+	hash, err := head.Hash()
+	if err != nil {
+		t.Fatal(err)
+	}
+	now := c.security.now()
+	c.security.directFresh.Store(&directFreshness{
+		head:       hash,
+		until:      now + 60000,
+		leaseUntil: c.security.endpoint.LeaseExpiration(),
+	})
+
+	link := transport.NewLink(ctx)
+	t.Cleanup(func() { link.Close() })
+	ep = &endpoint{r: r, acct: c.acct, security: c.security, lifetime: link.Context(), link: link, sessionKey: c.sessionKey}
+	ep.admissionOwner()
+	t.Cleanup(ep.admission.close)
+
+	clientID := head.Core.AuthorityID
+	lease, err := deviceauth.BuildLease(head, keys.phone, head.Core.IssuedAt)
+	if err != nil {
+		t.Fatal(err)
+	}
+	clientEndpoint, err = deviceauth.InitEndpoint("", pin, keys.states, make([]*deviceauth.RecoveryStatement, len(keys.states)), clientID, keys.phone.Seed(), keys.phoneX, lease)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { clientEndpoint.Close() })
+
+	selfMember, _ := head.Core.Member(selfID)
+	peerMember, _ := head.Core.Member(clientID)
+	binding = deviceauth.PeerBinding{Self: selfMember, Peer: peerMember, Head: hash}
+
+	sealCmd = func(reqID string, cmd *pb.Command) *pb.Envelope {
+		t.Helper()
+		plain, err := proto.Marshal(cmd)
+		if err != nil {
+			t.Fatal(err)
+		}
+		h := deviceauth.Header{Kind: 5, Purpose: deviceauth.Command, Machine: selfID, Request: reqID, Session: "s-dual", Deadline: uint64(time.Now().Add(5 * time.Second).UnixMilli())}
+		sealed, err := clientEndpoint.Prepare(h, nil, plain)
+		if err != nil {
+			t.Fatal(err)
+		}
+		env, err := sealed.Envelope()
+		if err != nil {
+			t.Fatal(err)
+		}
+		return env
+	}
+	return
+}
+
+func assertExecutedSendReply(t *testing.T, clientEndpoint *deviceauth.Endpoint, rep *pb.ForwardReply) {
+	t.Helper()
+	if rep.Result == nil {
+		t.Fatalf("empty reply: %+v", rep)
+	}
+	wire, err := deviceauth.FromEnvelope(rep.Result)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, body, err := clientEndpoint.Open(wire, nil, true, uint64(time.Now().UnixMilli()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	body, err = deviceauth.Unpack(got, body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	res := &pb.CommandResult{}
+	if err := proto.Unmarshal(body, res); err != nil {
+		t.Fatal(err)
+	}
+	if res.Outcome != "executed" || res.GetSend() == nil || res.GetSend().QueuePosition != 1 {
+		t.Fatalf("expected executed Send, got outcome=%q reason=%q res=%+v", res.Outcome, res.Reason, res)
+	}
+}
+
+func TestCoalescedDirectOwnerCloseDoesNotPoisonSurvivingRelayWaiter(t *testing.T) {
+	ctx, cancel, ep, clientEndpoint, binding, execCount, blockEntered, blockRelease, sendRelease, sealCmd := setupDualAdmissionFixture(t)
+	defer cancel()
+	close(sendRelease)
+
+	// Occupy session s-dual in scheduler so the dual-sent Send queues in admission.
+	blockerEnv := sealCmd("req-blocker-close-1111", &pb.Command{ProtocolVersion: protocol.Version, Kind: &pb.Command_Interrupt{Interrupt: &pb.InterruptRequest{SessionId: "s-dual"}}})
+	go ep.dispatch(ctx, &pb.ForwardCall{CallId: 1, Command: blockerEnv}, func(*pb.ForwardReply) {})
+	<-blockEntered
+
+	var directAllowed atomic.Bool
+	directAllowed.Store(true)
+	sendEnv := sealCmd("req-dual-close-1111111", &pb.Command{ProtocolVersion: protocol.Version, Kind: &pb.Command_Send{Send: &pb.SendRequest{SessionId: "s-dual", Text: "hello"}}})
+	directCh := make(chan *pb.ForwardReply, 1)
+	relayCh := make(chan *pb.ForwardReply, 1)
+
+	// Direct arrives first and owns the coalesced inflight entry.
+	ep.dispatchDirect(ctx, binding, 1, directAllowed.Load, sendEnv, func(rep *pb.ForwardReply) { directCh <- rep })
+	deadline := time.Now().Add(2 * time.Second)
+	for time.Now().Before(deadline) {
+		ep.admission.mu.Lock()
+		n := len(ep.admission.inflight)
+		ep.admission.mu.Unlock()
+		if n == 1 {
+			break
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+	// Relay arrives while queued behind the blocker and joins inflight.
+	ep.dispatch(ctx, &pb.ForwardCall{CallId: 2, Command: sendEnv}, func(rep *pb.ForwardReply) { relayCh <- rep })
+	for time.Now().Before(deadline) {
+		ep.admission.mu.Lock()
+		w := ep.admission.inflightWaiters
+		ep.admission.mu.Unlock()
+		if w == 1 {
+			break
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+
+	// Simulate Direct closing (e.g., backgrounding) before the scheduler grants the slot.
+	directAllowed.Store(false)
+	close(blockRelease)
+
+	select {
+	case rep := <-relayCh:
+		assertExecutedSendReply(t, clientEndpoint, rep)
+	case <-ctx.Done():
+		t.Fatal("surviving relay waiter never received reply")
+	}
+	if got := execCount.Load(); got != 1 {
+		t.Fatalf("expected 1 execution for surviving relay waiter, got %d", got)
+	}
+	_ = directCh
+}
+
+func TestCoalescedOwnerContextCancelDoesNotAbortSurvivingWaiter(t *testing.T) {
+	ctx, cancel, ep, clientEndpoint, binding, execCount, blockEntered, blockRelease, sendRelease, sealCmd := setupDualAdmissionFixture(t)
+	defer cancel()
+	close(sendRelease)
+
+	blockerEnv := sealCmd("req-blocker-cancel-111", &pb.Command{ProtocolVersion: protocol.Version, Kind: &pb.Command_Interrupt{Interrupt: &pb.InterruptRequest{SessionId: "s-dual"}}})
+	go ep.dispatch(ctx, &pb.ForwardCall{CallId: 1, Command: blockerEnv}, func(*pb.ForwardReply) {})
+	<-blockEntered
+
+	sendEnv := sealCmd("req-dual-cancel-111111", &pb.Command{ProtocolVersion: protocol.Version, Kind: &pb.Command_Send{Send: &pb.SendRequest{SessionId: "s-dual", Text: "hello"}}})
+	ownerCtx, cancelOwner := context.WithCancel(ctx)
+	leg1Ch := make(chan *pb.ForwardReply, 1)
+	leg2Ch := make(chan *pb.ForwardReply, 1)
+
+	ep.dispatch(ownerCtx, &pb.ForwardCall{CallId: 2, Command: sendEnv}, func(rep *pb.ForwardReply) { leg1Ch <- rep })
+	deadline := time.Now().Add(2 * time.Second)
+	for time.Now().Before(deadline) {
+		ep.admission.mu.Lock()
+		n := len(ep.admission.inflight)
+		ep.admission.mu.Unlock()
+		if n == 1 {
+			break
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+	ep.dispatchDirect(ctx, binding, 1, func() bool { return true }, sendEnv, func(rep *pb.ForwardReply) { leg2Ch <- rep })
+	for time.Now().Before(deadline) {
+		ep.admission.mu.Lock()
+		w := ep.admission.inflightWaiters
+		ep.admission.mu.Unlock()
+		if w == 1 {
+			break
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+
+	// Cancel the first leg's context before admission runs.
+	cancelOwner()
+	close(blockRelease)
+
+	select {
+	case rep := <-leg2Ch:
+		assertExecutedSendReply(t, clientEndpoint, rep)
+	case <-ctx.Done():
+		t.Fatal("surviving leg never received reply")
+	}
+	if got := execCount.Load(); got != 1 {
+		t.Fatalf("expected 1 execution for surviving leg, got %d", got)
+	}
+	_ = leg1Ch
 }

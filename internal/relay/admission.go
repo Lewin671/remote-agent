@@ -43,6 +43,13 @@ type callResult struct {
 	raw    bool
 	entry  string
 }
+type inflightLeg struct {
+	waiting context.Context
+	binding *deviceauth.PeerBinding
+	allow   func() bool
+	active  bool
+}
+
 type pendingExecution struct {
 	key      string
 	payload  deviceauth.Hash
@@ -51,6 +58,7 @@ type pendingExecution struct {
 	cancel   context.CancelFunc
 	active   int
 	waiters  int
+	legs     []*inflightLeg
 	stops    []func() bool
 	finished bool
 	body     []byte
@@ -358,7 +366,7 @@ func (a *commandAdmission) classify(waiting context.Context, route *callRoute, p
 	}
 	j.Run = func(ctx context.Context, execution *transport.Execution) {
 		observe(true, execution.GrantedAt())
-		a.execute(ctx, waiting, route, p, raw, execution, pc)
+		a.execute(ctx, waitCtx, waiting, route, p, raw, execution, pc)
 	}
 	if !a.scheduler.Submit(waitCtx, j) {
 		j.Reject()
@@ -403,6 +411,8 @@ func (a *commandAdmission) claimInflight(waiting context.Context, route *callRou
 			a.result(route, p, nil, p.Decision("busy", deviceauth.ErrOutcomeUnknown), raw)
 			return nil, nil, false
 		}
+		leg := &inflightLeg{waiting: waiting, binding: route.binding, allow: route.allow, active: true}
+		pc.legs = append(pc.legs, leg)
 		pc.waiters++
 		a.inflightWaiters++
 		pc.active++
@@ -413,6 +423,7 @@ func (a *commandAdmission) claimInflight(waiting context.Context, route *callRou
 			defer func() {
 				stop()
 				a.mu.Lock()
+				leg.active = false
 				pc.waiters--
 				a.inflightWaiters--
 				a.mu.Unlock()
@@ -436,6 +447,7 @@ func (a *commandAdmission) claimInflight(waiting context.Context, route *callRou
 		}) {
 			stop()
 			a.mu.Lock()
+			leg.active = false
 			pc.waiters--
 			a.inflightWaiters--
 			a.mu.Unlock()
@@ -450,6 +462,7 @@ func (a *commandAdmission) claimInflight(waiting context.Context, route *callRou
 		done:    make(chan struct{}),
 		cancel:  cancel,
 		active:  1,
+		legs:    []*inflightLeg{{waiting: waiting, binding: route.binding, allow: route.allow, active: true}},
 	}
 	a.inflight[pc.key] = pc
 	a.mu.Unlock()
@@ -481,7 +494,7 @@ func (a *commandAdmission) finishInflight(pc *pendingExecution, body []byte, err
 	pc.cancel()
 }
 
-func (a *commandAdmission) execute(ctx, waiting context.Context, route *callRoute, p *deviceauth.Authenticated, raw bool, execution *transport.Execution, pc *pendingExecution) {
+func (a *commandAdmission) execute(ctx, waitCtx, waiting context.Context, route *callRoute, p *deviceauth.Authenticated, raw bool, execution *transport.Execution, pc *pendingExecution) {
 	if ctx.Err() != nil {
 		err := p.Decision("outcome_unknown", deviceauth.ErrOutcomeUnknown)
 		a.finishInflight(pc, nil, err, raw, false)
@@ -489,7 +502,7 @@ func (a *commandAdmission) execute(ctx, waiting context.Context, route *callRout
 		return
 	}
 	ctx, work := contextio.Track(ctx)
-	admitting, cancel := context.WithCancel(waiting)
+	admitting, cancel := context.WithCancel(waitCtx)
 	defer cancel()
 	stop := context.AfterFunc(ctx, cancel)
 	defer stop()
@@ -512,7 +525,7 @@ func (a *commandAdmission) execute(ctx, waiting context.Context, route *callRout
 	// Exactly one backend goroutine per reserved execution slot. The owner
 	// below cannot release the slot until this callback and tracked I/O exit.
 	go func() {
-		options := a.acceptOptions(route)
+		options := a.acceptOptionsForInflight(pc)
 		options.NoWait = true
 		options.Running = func(fn func()) {
 			runningMu.Lock()
@@ -629,6 +642,31 @@ type awaitExecution struct{}
 func (*awaitExecution) Error() string { return deviceauth.ErrCapacity.Error() }
 
 var errAwaitExecution error = &awaitExecution{}
+
+func (a *commandAdmission) acceptOptionsForInflight(pc *pendingExecution) deviceauth.AcceptOptions {
+	options := a.endpoint.security.acceptOptions()
+	options.DynamicPeerBinding = func() (*deviceauth.PeerBinding, bool) {
+		a.mu.Lock()
+		defer a.mu.Unlock()
+		var liveDirect *deviceauth.PeerBinding
+		for _, leg := range pc.legs {
+			if !leg.active || leg.waiting.Err() != nil {
+				continue
+			}
+			if leg.binding == nil {
+				return nil, true
+			}
+			if leg.allow != nil && leg.allow() && liveDirect == nil {
+				liveDirect = leg.binding
+			}
+		}
+		if liveDirect != nil {
+			return liveDirect, true
+		}
+		return nil, false
+	}
+	return options
+}
 
 func (a *commandAdmission) acceptOptions(route *callRoute) deviceauth.AcceptOptions {
 	options := a.endpoint.security.acceptOptions()
