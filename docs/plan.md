@@ -206,6 +206,7 @@ v61 整理时按当前代码核对，以下实现仍偏离负责人裁定，尚�
 - `auto_review` 直接拒绝时，模型是否会在对话里请求批准（目前没复现出来）
 - 模型提问：多个问题时按编号是否逐题前进；`None of the above` 加备注怎么按；非 Plan 模式下模型会不会用这两个工具
 - `[notice]` 下除 `hide_rate_limit_model_nudge` 以外的几个开关是否有效
+- rollout `token_count` 事件的 `info.last_token_usage` 中，`input_tokens` 是否已包含 `cached_input_tokens` / `cache_write_input_tokens`、`output_tokens` 是否已包含 `reasoning_output_tokens`，以及不同模型下 `cache_write_input_tokens` 缺省与显式 `0` 的出现条件（[architecture §22](architecture.md#22-模型用量与输出速度待实现)）
 
 **Claude Code 待实测**
 
@@ -216,10 +217,11 @@ v61 整理时按当前代码核对，以下实现仍偏离负责人裁定，尚�
 - AskUserQuestion 的选择框里按 Esc、选 `Type something.` 和 `Chat about this` 的结果
 - 2.1.293 忽略项目设置里的 bypass 默认值（[notes §5](claude-code-notes.md#5-权限模式)），daemon 读出的默认模式（[architecture §7](architecture.md#7-审批)）这时仍报「完全放行」。被忽略后是退回用户级的 `defaultMode` 还是直接 manual、托管设置里的算不算，都没测；测清后再改读法
 - Plan 模式里会话的模型会被临时换掉（回复用 sonnet），这时 Shift+Tab 的循环按哪个模型算（Haiku 4.5 的会话在 Plan 模式下有没有 auto）没测
+- transcript 的 `message.usage` 中，`output_tokens` 是否已包含 `output_tokens_details.thinking_tokens`（[architecture §22](architecture.md#22-模型用量与输出速度待实现)）
 
 **Antigravity 待实测**
 
-- 本地 brain / 日志里是否记录每次模型请求的起止时间戳、首字到达时刻与 `output_tokens`，供 daemon 被动计算模型输出速度与首字延迟（[architecture §22](architecture.md#22-模型输出速度与首字延迟待实现)）
+- 本地 brain / 日志里是否记录每次模型请求的输入、缓存读写、输出与推理 token 以及起止和首字时间戳，供 daemon 被动统计模型用量、缓存命中率与输出速度（[architecture §22](architecture.md#22-模型用量与输出速度待实现)）
 
 **Android 待验证**
 
