@@ -187,6 +187,52 @@ class SettingsGoldenUiTest {
     }
 
     @Test
+    fun machineSettingsRendersCompactQuotaFallbackAndSingleSeparatorForUnverifiedCli() {
+        val base = ScreenGoldenLoader.machineSettingsView("machine_settings_edit", "initialLoaded")
+        val longMsg = "尚未收到 Claude Code 的额度。仅从这台电脑上由 remote-agent 管理的 CLI 会话读取；安装 CLI 或在其他会话中使用不会触发这里更新。"
+        val unvText = io.github.lewin671.remoteagent.core.proto.Text.newBuilder()
+            .setKey("settings.unverified")
+            .build()
+        val vm = base.toBuilder()
+            .clearQuotaRows()
+            .addQuotaRows(
+                io.github.lewin671.remoteagent.core.proto.QuotaCliSection.newBuilder()
+                    .setAgent(Agent.AGENT_CLAUDE)
+                    .setAgentName("Claude Code")
+                    .setEmptyOrErrorText(
+                        io.github.lewin671.remoteagent.core.proto.Text.newBuilder()
+                            .setLiteral(longMsg)
+                            .build(),
+                    )
+                    .build(),
+            )
+            .clearCliVersions()
+            .addCliVersions(
+                io.github.lewin671.remoteagent.core.proto.CliVersionView.newBuilder()
+                    .setAgent(Agent.AGENT_CODEX)
+                    .setName("Codex")
+                    .setVersion("0.166.0")
+                    .setVerified(false)
+                    .setUnverifiedLabel(unvText)
+                    .build(),
+            )
+            .build()
+        val nav = Nav({}, {}, {}, {}, {}, {}, {}, {}, { _, _ -> }, {}, {}, {})
+        ui.setContent {
+            RaTheme(ThemeMode.LIGHT) {
+                CompositionLocalProvider(LocalChartFrozen provides true, LocalNav provides nav) {
+                    DeviceScreenContent(vm = vm)
+                }
+            }
+        }
+        val labelBounds = ui.onAllNodesWithText("Claude Code").onFirst().fetchSemanticsNode().boundsInRoot
+        assertTrue("quota label squeezed vertically: $labelBounds", labelBounds.height < 80f)
+        ui.onNodeWithText(longMsg).assertIsDisplayed()
+        ui.onNodeWithText("未验证 · 0.166.0").performScrollTo().assertIsDisplayed()
+        ui.onAllNodesWithText("·  ·", substring = true).assertCountEquals(0)
+    }
+
+    @Test
     fun coreHostDispatchesSettingsAppearanceDirectAndRenameEffects() = runBlocking {
         val remote = Remote(
             Account("https://example.com", ByteArray(32), ByteArray(32), "self-client"),

@@ -686,31 +686,33 @@ internal fun DeviceScreenContent(
                                 val summary = sec.takeIf { it.hasSummaryRow() }?.summaryRow
                                 val rem = summary?.let { uiText(it.remainingText) }.orEmpty()
                                 val win = summary?.let { uiText(it.label) }.orEmpty()
+                                val hasSplitSummary = rem.isNotEmpty() && win.isNotEmpty()
                                 val fallback = uiText(sec.emptyOrErrorText)
                                 GRow(
                                     sec.agentName,
                                     icon = AgentMarks.of(sec.agent),
-                                    trailing = {
-                                        if (rem.isNotEmpty() && win.isNotEmpty()) {
-                                            Text(
-                                                androidx.compose.ui.text.buildAnnotatedString {
-                                                    append(rem)
-                                                    pushStyle(androidx.compose.ui.text.SpanStyle(color = p.ink2))
-                                                    append(" · ")
-                                                    append(win)
-                                                    pop()
-                                                },
-                                                style = T.s13,
-                                                color = p.ink,
-                                            )
+                                    value = if (hasSplitSummary) null else rem.ifEmpty { fallback },
+                                    singleLineValue = !hasSplitSummary,
+                                    trailing =
+                                        if (hasSplitSummary) {
+                                            {
+                                                Text(
+                                                    androidx.compose.ui.text.buildAnnotatedString {
+                                                        append(rem)
+                                                        pushStyle(androidx.compose.ui.text.SpanStyle(color = p.ink2))
+                                                        append(" · ")
+                                                        append(win)
+                                                        pop()
+                                                    },
+                                                    style = T.s13,
+                                                    color = p.ink,
+                                                    maxLines = 1,
+                                                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                                                )
+                                            }
                                         } else {
-                                            Text(
-                                                rem.ifEmpty { fallback },
-                                                style = T.s13,
-                                                color = p.ink2,
-                                            )
-                                        }
-                                    },
+                                            null
+                                        },
                                     onClick = onOpenQuota,
                                     chevron = true,
                                 )
@@ -726,9 +728,12 @@ internal fun DeviceScreenContent(
                     rows =
                         vm.cliVersionsList.map { a ->
                             @Composable {
-                                val unverifiedWord = uiText(a.unverifiedLabel).ifEmpty {
-                                    copy(UiMessages.settingsAndroidUnverified())
-                                }
+                                val unverifiedWord =
+                                    uiText(a.unverifiedLabel)
+                                        .ifEmpty { copy(UiMessages.settingsAndroidUnverified()) }
+                                        .trimEnd()
+                                        .removeSuffix("·")
+                                        .trimEnd()
                                 GRow(
                                     copy(UiMessages.settingsCliVersion(a.name)),
                                     trailing = {
