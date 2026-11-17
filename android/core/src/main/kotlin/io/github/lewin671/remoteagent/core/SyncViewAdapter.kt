@@ -433,7 +433,7 @@ internal fun seedCoreForTest(
         }
     }
     if (!sentDevices) {
-        send { setDevicesFetched(DevicesFetchedEvent.newBuilder().addAllDevices(plainDevices)) }
+        send { setDevicesFetched(DevicesFetchedEvent.newBuilder().setPushSeq(seedGen.toLong()).addAllDevices(plainDevices)) }
     }
     if (state.conn == ConnState.OFFLINE) {
         send { setSyncLifecycle(SyncLifecycleAction.newBuilder().setKind(SyncLifecycleKind.SYNC_LIFECYCLE_KIND_STOP)) }
