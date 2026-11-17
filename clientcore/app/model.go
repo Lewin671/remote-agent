@@ -33,6 +33,7 @@ type Model struct {
 	pendingCmdMeta map[string]cmdMeta
 	settings       *screens.SettingsExtra
 	settingsDirty  settingsDirtyFlags
+	sessions       *sessionStore
 }
 
 func newModel() *Model {

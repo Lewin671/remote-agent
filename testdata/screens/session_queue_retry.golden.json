@@ -1,0 +1,978 @@
+{
+  "steps": [
+    {
+      "effects": {
+        "effects": [
+          {
+            "render": {
+              "screens": [
+                "SCREEN_TARGET_HOME",
+                "SCREEN_TARGET_PROJECT",
+                "SCREEN_TARGET_SYNC_STATE"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "effects": {
+        "effects": [
+          {
+            "cacheRead": {
+              "bootstrap": {
+                "opId": "1"
+              }
+            }
+          },
+          {
+            "ensureToken": {
+              "opId": "2",
+              "forceLogin": true,
+              "timeoutMs": "15000"
+            }
+          },
+          {
+            "syncSecurity": {
+              "opId": "3",
+              "touch": true
+            }
+          },
+          {
+            "render": {
+              "screens": [
+                "SCREEN_TARGET_HOME",
+                "SCREEN_TARGET_PROJECT",
+                "SCREEN_TARGET_NEW_SESSION",
+                "SCREEN_TARGET_SYNC_STATE",
+                "SCREEN_TARGET_SESSION_DATA"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "effects": {
+        "effects": [
+          {
+            "render": {
+              "screens": [
+                "SCREEN_TARGET_HOME",
+                "SCREEN_TARGET_PROJECT",
+                "SCREEN_TARGET_NEW_SESSION",
+                "SCREEN_TARGET_SYNC_STATE",
+                "SCREEN_TARGET_SESSION_DATA"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "effects": {
+        "effects": [
+          {
+            "openStream": {
+              "legId": "1",
+              "token": "tok-1",
+              "timeoutMs": "15000"
+            }
+          },
+          {
+            "scheduleTimer": {
+              "timerId": "1",
+              "kind": "TIMER_KIND_STREAM_OPEN",
+              "delayMs": "15000"
+            }
+          },
+          {
+            "render": {
+              "screens": [
+                "SCREEN_TARGET_HOME",
+                "SCREEN_TARGET_SYNC_STATE"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "effects": {
+        "effects": [
+          {
+            "cancelTimer": {
+              "timerId": "1",
+              "kind": "TIMER_KIND_STREAM_OPEN"
+            }
+          },
+          {
+            "scheduleTimer": {
+              "timerId": "2",
+              "kind": "TIMER_KIND_LIVENESS",
+              "delayMs": "1000"
+            }
+          },
+          {
+            "rpc": {
+              "opId": "4",
+              "fetchLists": {
+                "limit": 50
+              }
+            }
+          },
+          {
+            "rpc": {
+              "opId": "5",
+              "getAccountPrefs": {
+                "objectId": "project-prefs"
+              }
+            }
+          },
+          {
+            "render": {
+              "screens": [
+                "SCREEN_TARGET_HOME",
+                "SCREEN_TARGET_PROJECT",
+                "SCREEN_TARGET_NEW_SESSION",
+                "SCREEN_TARGET_SYNC_STATE",
+                "SCREEN_TARGET_SESSION_DATA"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "effects": {
+        "effects": [
+          {
+            "render": {
+              "screens": [
+                "SCREEN_TARGET_HOME",
+                "SCREEN_TARGET_PROJECT",
+                "SCREEN_TARGET_NEW_SESSION",
+                "SCREEN_TARGET_SYNC_STATE",
+                "SCREEN_TARGET_SESSION_DATA"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "effects": {
+        "effects": [
+          {
+            "render": {
+              "screens": [
+                "SCREEN_TARGET_HOME",
+                "SCREEN_TARGET_PROJECT",
+                "SCREEN_TARGET_NEW_SESSION",
+                "SCREEN_TARGET_SYNC_STATE",
+                "SCREEN_TARGET_SESSION_DATA"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "effects": {
+        "effects": [
+          {
+            "dispatchCommand": {
+              "requestId": "r-1",
+              "attemptId": "r-2",
+              "machineId": "m1",
+              "deadlineMs": "1791078120060",
+              "commandBytes": "qgECCAGgBhA=",
+              "routeHint": "COMMAND_ROUTE_HINT_READ"
+            }
+          },
+          {
+            "dispatchCommand": {
+              "requestId": "r-3",
+              "attemptId": "r-4",
+              "machineId": "m1",
+              "deadlineMs": "1791078120060",
+              "commandBytes": "ugEAoAYQ",
+              "routeHint": "COMMAND_ROUTE_HINT_READ"
+            }
+          },
+          {
+            "render": {
+              "screens": [
+                "SCREEN_TARGET_SESSION"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "effects": {
+        "effects": [
+          {
+            "cacheRead": {
+              "events": {
+                "opId": "6",
+                "sessionId": "s-qr",
+                "newest": true,
+                "limit": 128
+              }
+            }
+          },
+          {
+            "scheduleTimer": {
+              "timerId": "3",
+              "kind": "TIMER_KIND_HISTORY_SWEEP",
+              "delayMs": "15000"
+            }
+          },
+          {
+            "dispatchCommand": {
+              "requestId": "r-5",
+              "attemptId": "r-6",
+              "machineId": "m1",
+              "sessionId": "s-qr",
+              "deadlineMs": "1791078120070",
+              "commandBytes": "+gEGCgRzLXFyoAYQ",
+              "routeHint": "COMMAND_ROUTE_HINT_READ"
+            }
+          },
+          {
+            "render": {
+              "screens": [
+                "SCREEN_TARGET_SYNC_STATE",
+                "SCREEN_TARGET_SESSION_DATA",
+                "SCREEN_TARGET_SESSION"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "effects": {
+        "effects": [
+          {
+            "dispatchCommand": {
+              "requestId": "r-7",
+              "attemptId": "r-8",
+              "machineId": "m1",
+              "sessionId": "s-qr",
+              "deadlineMs": "1791078120080",
+              "commandBytes": "CiQKBHMtcXISEHN0ZWVyIGZhaWxlZCBtc2caCG1zZy1mYWlsKAGgBhA=",
+              "routeHint": "COMMAND_ROUTE_HINT_NORMAL"
+            }
+          },
+          {
+            "render": {
+              "screens": [
+                "SCREEN_TARGET_SESSION"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "effects": {
+        "effects": [
+          {
+            "render": {
+              "screens": [
+                "SCREEN_TARGET_HOME",
+                "SCREEN_TARGET_PROJECT",
+                "SCREEN_TARGET_NEW_SESSION",
+                "SCREEN_TARGET_SYNC_STATE",
+                "SCREEN_TARGET_SESSION"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "effects": {
+        "effects": [
+          {
+            "dispatchCommand": {
+              "requestId": "r-9",
+              "attemptId": "r-10",
+              "machineId": "m1",
+              "sessionId": "s-qr",
+              "deadlineMs": "1791078120100",
+              "commandBytes": "Ch4KBHMtcXISDXF1ZXVlZCBzZWNvbmQaBW1zZy1xKAKgBhA=",
+              "routeHint": "COMMAND_ROUTE_HINT_NORMAL"
+            }
+          },
+          {
+            "render": {
+              "screens": [
+                "SCREEN_TARGET_SESSION"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "effects": {
+        "effects": [
+          {
+            "render": {
+              "screens": [
+                "SCREEN_TARGET_HOME",
+                "SCREEN_TARGET_PROJECT",
+                "SCREEN_TARGET_NEW_SESSION",
+                "SCREEN_TARGET_SYNC_STATE",
+                "SCREEN_TARGET_SESSION"
+              ]
+            }
+          }
+        ]
+      },
+      "views": {
+        "outgoingFailedAndUnknown": {
+          "session": {
+            "sessionId": "s-qr",
+            "header": {
+              "found": true,
+              "sessionsListed": true,
+              "liveLoaded": true,
+              "title": {
+                "literal": "Queue \u0026 Retry"
+              },
+              "projectName": {
+                "literal": "~/Code/app"
+              },
+              "projectKey": "/Users/me/Code/app",
+              "cwd": "/Users/me/Code/app",
+              "agent": "AGENT_CODEX",
+              "agentName": "Codex",
+              "status": "SESSION_DISPLAY_STATUS_RUNNING",
+              "tone": "SESSION_TONE_LIVE",
+              "statusText": {
+                "key": "list_state.running"
+              },
+              "approvalModeLabel": {
+                "key": "modes.agent_own"
+              },
+              "modelUnknown": true,
+              "machineId": "m1",
+              "computerName": {
+                "literal": "MacStudio"
+              },
+              "computerOnline": true,
+              "connState": "CONN_STATE_CONNECTED",
+              "daemonProtocolVersion": 16,
+              "clientProtocolVersion": 16,
+              "endedAtMs": "1791075600000",
+              "capabilities": {
+                "canSend": true,
+                "supportsImages": true,
+                "supportsFiles": true,
+                "supportsSendModes": true,
+                "supportsSharedFiles": true,
+                "supportsAlwaysAllow": true,
+                "supportsSteer": true,
+                "supportsCompact": true,
+                "supportsFork": true,
+                "supportsModelSwitch": true,
+                "supportsModeSwitch": true,
+                "supportsSchedule": true,
+                "terminalAvailable": true,
+                "maxImages": 6
+              }
+            },
+            "actions": {
+              "canInterrupt": true,
+              "interrupt": {
+                "slotKey": "interrupt:s-qr",
+                "status": "SESSION_COMMAND_STATUS_IDLE"
+              },
+              "canEnd": true,
+              "end": {
+                "slotKey": "stop:s-qr",
+                "status": "SESSION_COMMAND_STATUS_IDLE"
+              },
+              "endConfirmNote": {
+                "key": "session.end_note",
+                "args": [
+                  {
+                    "name": "agent",
+                    "strValue": "Codex"
+                  },
+                  {
+                    "name": "name",
+                    "strValue": "MacStudio"
+                  }
+                ]
+              },
+              "resume": {
+                "slotKey": "resume:s-qr",
+                "status": "SESSION_COMMAND_STATUS_IDLE"
+              },
+              "resumeNote": {
+                "key": "session.resume_note",
+                "args": [
+                  {
+                    "name": "name",
+                    "strValue": "MacStudio"
+                  }
+                ]
+              },
+              "canRename": true,
+              "rename": {
+                "slotKey": "rename:s-qr",
+                "status": "SESSION_COMMAND_STATUS_IDLE"
+              },
+              "forkBlockedReason": {
+                "key": "session.fork_after_turn"
+              },
+              "fork": {
+                "slotKey": "fork:s-qr",
+                "status": "SESSION_COMMAND_STATUS_IDLE"
+              },
+              "compact": {
+                "slotKey": "compact:s-qr",
+                "status": "SESSION_COMMAND_STATUS_IDLE"
+              },
+              "modelSwitchBlockedReason": {
+                "key": "session.switch_after_turn"
+              },
+              "setModel": {
+                "slotKey": "set_model:s-qr",
+                "status": "SESSION_COMMAND_STATUS_IDLE"
+              },
+              "modelsLoading": true,
+              "modelsError": {
+                "key": "models.reading_machine",
+                "args": [
+                  {
+                    "name": "name",
+                    "strValue": "MacStudio"
+                  }
+                ]
+              },
+              "canSwitchMode": true,
+              "setMode": {
+                "slotKey": "set_mode:s-qr",
+                "status": "SESSION_COMMAND_STATUS_IDLE"
+              },
+              "modeChoices": [
+                {
+                  "mode": "APPROVAL_MODE_ASK",
+                  "label": {
+                    "key": "modes.ask"
+                  },
+                  "note": {
+                    "key": "modes.ask_desc"
+                  },
+                  "available": true,
+                  "switchAfterTurn": true
+                },
+                {
+                  "mode": "APPROVAL_MODE_AUTO",
+                  "label": {
+                    "key": "modes.auto"
+                  },
+                  "note": {
+                    "key": "modes.auto_desc"
+                  },
+                  "available": true,
+                  "switchAfterTurn": true
+                },
+                {
+                  "mode": "APPROVAL_MODE_PLAN",
+                  "label": {
+                    "key": "modes.plan"
+                  },
+                  "note": {
+                    "key": "modes.ask_generic_desc"
+                  },
+                  "available": true,
+                  "switchAfterTurn": true
+                },
+                {
+                  "mode": "APPROVAL_MODE_FULL_ACCESS",
+                  "label": {
+                    "key": "modes.full_access"
+                  },
+                  "note": {
+                    "key": "modes.auto_desc"
+                  },
+                  "available": true,
+                  "switchAfterTurn": true
+                }
+              ]
+            },
+            "dock": {},
+            "composer": {
+              "enabled": true,
+              "placeholder": {
+                "key": "composer.queue_hint"
+              },
+              "hasActiveTurn": true,
+              "steerModeDefault": true,
+              "supportsQueueMode": true,
+              "canAttachImages": true,
+              "canAttachFiles": true,
+              "interruptVisible": true,
+              "outgoing": [
+                {
+                  "requestId": "msg-fail",
+                  "slotKey": "send:s-qr:msg-fail",
+                  "text": "steer failed msg",
+                  "mode": "SEND_MODE_STEER",
+                  "state": "SESSION_OUTGOING_STATE_FAILED",
+                  "canRetry": true,
+                  "canRestore": true,
+                  "canDismiss": true,
+                  "caption": {
+                    "key": "composer.send_failure",
+                    "args": [
+                      {
+                        "name": "reason",
+                        "textValue": {
+                          "key": "errors.disconnected_from_server"
+                        }
+                      }
+                    ]
+                  },
+                  "feedback": {
+                    "key": "composer.send_failure",
+                    "args": [
+                      {
+                        "name": "reason",
+                        "textValue": {
+                          "key": "errors.disconnected_from_server"
+                        }
+                      }
+                    ]
+                  },
+                  "createdMs": "1791078060080"
+                },
+                {
+                  "requestId": "msg-q",
+                  "slotKey": "send:s-qr:msg-q",
+                  "text": "queued second",
+                  "mode": "SEND_MODE_QUEUE",
+                  "state": "SESSION_OUTGOING_STATE_UNKNOWN",
+                  "frozen": true,
+                  "canRetry": true,
+                  "canRestore": true,
+                  "canDismiss": true,
+                  "caption": {
+                    "key": "composer.maybe_failure",
+                    "args": [
+                      {
+                        "name": "reason",
+                        "textValue": {
+                          "key": "errors.the_computer_s_reply_could_not_be_verified_command"
+                        }
+                      }
+                    ]
+                  },
+                  "feedback": {
+                    "key": "composer.maybe_failure",
+                    "args": [
+                      {
+                        "name": "reason",
+                        "textValue": {
+                          "key": "errors.the_computer_s_reply_could_not_be_verified_command"
+                        }
+                      }
+                    ]
+                  },
+                  "feedbackUncertain": true,
+                  "createdMs": "1791078060100"
+                }
+              ]
+            },
+            "timeline": {
+              "loading": true,
+              "awaitingCache": true,
+              "hasGap": true,
+              "canLoadEarlier": true
+            }
+          }
+        }
+      }
+    },
+    {
+      "effects": {
+        "effects": [
+          {
+            "dispatchCommand": {
+              "requestId": "r-9",
+              "attemptId": "r-11",
+              "machineId": "m1",
+              "sessionId": "s-qr",
+              "deadlineMs": "1791078120100",
+              "commandBytes": "Ch4KBHMtcXISDXF1ZXVlZCBzZWNvbmQaBW1zZy1xKAKgBhA=",
+              "routeHint": "COMMAND_ROUTE_HINT_NORMAL",
+              "retryOfUnknown": true
+            }
+          },
+          {
+            "render": {
+              "screens": [
+                "SCREEN_TARGET_SESSION"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "effects": {
+        "effects": [
+          {
+            "render": {
+              "screens": [
+                "SCREEN_TARGET_HOME",
+                "SCREEN_TARGET_PROJECT",
+                "SCREEN_TARGET_NEW_SESSION",
+                "SCREEN_TARGET_SYNC_STATE",
+                "SCREEN_TARGET_SESSION"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "effects": {
+        "effects": [
+          {
+            "rpc": {
+              "opId": "7",
+              "getEvents": {
+                "sessionId": "s-qr",
+                "afterSeq": "2",
+                "limit": 500
+              }
+            }
+          },
+          {
+            "render": {
+              "screens": [
+                "SCREEN_TARGET_HOME",
+                "SCREEN_TARGET_PROJECT",
+                "SCREEN_TARGET_SYNC_STATE",
+                "SCREEN_TARGET_SESSION_DATA",
+                "SCREEN_TARGET_SESSION"
+              ]
+            }
+          }
+        ]
+      },
+      "views": {
+        "queuedPendingAndFailedOutgoing": {
+          "session": {
+            "sessionId": "s-qr",
+            "header": {
+              "found": true,
+              "sessionsListed": true,
+              "liveLoaded": true,
+              "title": {
+                "literal": "Queue \u0026 Retry"
+              },
+              "projectName": {
+                "literal": "~/Code/app"
+              },
+              "projectKey": "/Users/me/Code/app",
+              "cwd": "/Users/me/Code/app",
+              "agent": "AGENT_CODEX",
+              "agentName": "Codex",
+              "status": "SESSION_DISPLAY_STATUS_RUNNING",
+              "tone": "SESSION_TONE_LIVE",
+              "statusText": {
+                "key": "list_state.running"
+              },
+              "approvalModeLabel": {
+                "key": "modes.agent_own"
+              },
+              "modelUnknown": true,
+              "machineId": "m1",
+              "computerName": {
+                "literal": "MacStudio"
+              },
+              "computerOnline": true,
+              "connState": "CONN_STATE_CONNECTED",
+              "daemonProtocolVersion": 16,
+              "clientProtocolVersion": 16,
+              "endedAtMs": "1791075600000",
+              "capabilities": {
+                "canSend": true,
+                "supportsImages": true,
+                "supportsFiles": true,
+                "supportsSendModes": true,
+                "supportsSharedFiles": true,
+                "supportsAlwaysAllow": true,
+                "supportsSteer": true,
+                "supportsCompact": true,
+                "supportsFork": true,
+                "supportsModelSwitch": true,
+                "supportsModeSwitch": true,
+                "supportsSchedule": true,
+                "terminalAvailable": true,
+                "maxImages": 6
+              }
+            },
+            "actions": {
+              "canInterrupt": true,
+              "interrupt": {
+                "slotKey": "interrupt:s-qr",
+                "status": "SESSION_COMMAND_STATUS_IDLE"
+              },
+              "canEnd": true,
+              "end": {
+                "slotKey": "stop:s-qr",
+                "status": "SESSION_COMMAND_STATUS_IDLE"
+              },
+              "endConfirmNote": {
+                "key": "session.end_note",
+                "args": [
+                  {
+                    "name": "agent",
+                    "strValue": "Codex"
+                  },
+                  {
+                    "name": "name",
+                    "strValue": "MacStudio"
+                  }
+                ]
+              },
+              "resume": {
+                "slotKey": "resume:s-qr",
+                "status": "SESSION_COMMAND_STATUS_IDLE"
+              },
+              "resumeNote": {
+                "key": "session.resume_note",
+                "args": [
+                  {
+                    "name": "name",
+                    "strValue": "MacStudio"
+                  }
+                ]
+              },
+              "canRename": true,
+              "rename": {
+                "slotKey": "rename:s-qr",
+                "status": "SESSION_COMMAND_STATUS_IDLE"
+              },
+              "forkBlockedReason": {
+                "key": "session.fork_after_turn"
+              },
+              "fork": {
+                "slotKey": "fork:s-qr",
+                "status": "SESSION_COMMAND_STATUS_IDLE"
+              },
+              "compact": {
+                "slotKey": "compact:s-qr",
+                "status": "SESSION_COMMAND_STATUS_IDLE"
+              },
+              "modelSwitchBlockedReason": {
+                "key": "session.switch_after_turn"
+              },
+              "setModel": {
+                "slotKey": "set_model:s-qr",
+                "status": "SESSION_COMMAND_STATUS_IDLE"
+              },
+              "modelsLoading": true,
+              "modelsError": {
+                "key": "models.reading_machine",
+                "args": [
+                  {
+                    "name": "name",
+                    "strValue": "MacStudio"
+                  }
+                ]
+              },
+              "canSwitchMode": true,
+              "setMode": {
+                "slotKey": "set_mode:s-qr",
+                "status": "SESSION_COMMAND_STATUS_IDLE"
+              },
+              "modeChoices": [
+                {
+                  "mode": "APPROVAL_MODE_ASK",
+                  "label": {
+                    "key": "modes.ask"
+                  },
+                  "note": {
+                    "key": "modes.ask_desc"
+                  },
+                  "available": true,
+                  "switchAfterTurn": true
+                },
+                {
+                  "mode": "APPROVAL_MODE_AUTO",
+                  "label": {
+                    "key": "modes.auto"
+                  },
+                  "note": {
+                    "key": "modes.auto_desc"
+                  },
+                  "available": true,
+                  "switchAfterTurn": true
+                },
+                {
+                  "mode": "APPROVAL_MODE_PLAN",
+                  "label": {
+                    "key": "modes.plan"
+                  },
+                  "note": {
+                    "key": "modes.ask_generic_desc"
+                  },
+                  "available": true,
+                  "switchAfterTurn": true
+                },
+                {
+                  "mode": "APPROVAL_MODE_FULL_ACCESS",
+                  "label": {
+                    "key": "modes.full_access"
+                  },
+                  "note": {
+                    "key": "modes.auto_desc"
+                  },
+                  "available": true,
+                  "switchAfterTurn": true
+                }
+              ]
+            },
+            "dock": {},
+            "composer": {
+              "enabled": true,
+              "placeholder": {
+                "key": "composer.queue_hint"
+              },
+              "hasActiveTurn": true,
+              "steerModeDefault": true,
+              "supportsQueueMode": true,
+              "canAttachImages": true,
+              "canAttachFiles": true,
+              "interruptVisible": true,
+              "pendingInputs": [
+                {
+                  "requestId": "msg-q",
+                  "text": "queued second",
+                  "mode": "SEND_MODE_QUEUE",
+                  "status": "INPUT_STATUS_QUEUED",
+                  "rank": 1,
+                  "totalPending": 1,
+                  "label": {
+                    "key": "queue.after_turn"
+                  },
+                  "caption": {
+                    "key": "queue.after_turn"
+                  },
+                  "canCancel": true,
+                  "cancel": {
+                    "slotKey": "cancel_input:s-qr:msg-q",
+                    "status": "SESSION_COMMAND_STATUS_IDLE"
+                  },
+                  "resume": {
+                    "slotKey": "resume_input:s-qr:msg-q",
+                    "status": "SESSION_COMMAND_STATUS_IDLE"
+                  }
+                }
+              ],
+              "outgoing": [
+                {
+                  "requestId": "msg-fail",
+                  "slotKey": "send:s-qr:msg-fail",
+                  "text": "steer failed msg",
+                  "mode": "SEND_MODE_STEER",
+                  "state": "SESSION_OUTGOING_STATE_FAILED",
+                  "canRetry": true,
+                  "canRestore": true,
+                  "canDismiss": true,
+                  "caption": {
+                    "key": "composer.send_failure",
+                    "args": [
+                      {
+                        "name": "reason",
+                        "textValue": {
+                          "key": "errors.disconnected_from_server"
+                        }
+                      }
+                    ]
+                  },
+                  "feedback": {
+                    "key": "composer.send_failure",
+                    "args": [
+                      {
+                        "name": "reason",
+                        "textValue": {
+                          "key": "errors.disconnected_from_server"
+                        }
+                      }
+                    ]
+                  },
+                  "createdMs": "1791078060080"
+                }
+              ]
+            },
+            "timeline": {
+              "items": [
+                {
+                  "id": "e1",
+                  "seq": "1",
+                  "endSeq": "1",
+                  "timestampMs": "1791076201000",
+                  "userMessage": {
+                    "text": "initial task",
+                    "originCaption": {
+                      "key": "session.origin_terminal",
+                      "args": [
+                        {
+                          "name": "name",
+                          "strValue": "MacStudio"
+                        }
+                      ]
+                    },
+                    "typedLocally": true
+                  }
+                }
+              ],
+              "windowFirstSeq": "1",
+              "windowLastSeq": "1",
+              "totalItems": 1,
+              "loading": true,
+              "fetching": true
+            }
+          }
+        }
+      }
+    },
+    {
+      "effects": {
+        "effects": [
+          {
+            "sessionRestoreComposer": {
+              "sessionId": "s-qr",
+              "requestId": "msg-fail",
+              "text": "steer failed msg"
+            }
+          },
+          {
+            "render": {
+              "screens": [
+                "SCREEN_TARGET_HOME",
+                "SCREEN_TARGET_PROJECT",
+                "SCREEN_TARGET_NEW_SESSION",
+                "SCREEN_TARGET_SYNC_STATE",
+                "SCREEN_TARGET_SESSION"
+              ]
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

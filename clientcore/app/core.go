@@ -93,6 +93,9 @@ func (c *Core) View(screen *corev1.Screen) (*corev1.ViewModel, error) {
 			},
 		}, nil
 
+	case *corev1.Screen_Session:
+		return c.viewSession(s.Session)
+
 	default:
 		if vm, ok, err := c.viewSettings(screen); ok || err != nil {
 			return vm, err
@@ -116,6 +119,7 @@ func (c *Core) Dispatch(ev *corev1.Event) *corev1.EffectBatch {
 			effects = append(effects, r)
 		}
 		effects = c.appendSettingsRender(effects, syncRes.Dirty)
+		effects = c.appendSessionRenderTarget(syncRes.Dirty, effects)
 		return &corev1.EffectBatch{Effects: effects}
 	}
 
@@ -134,6 +138,7 @@ func (c *Core) Dispatch(ev *corev1.Event) *corev1.EffectBatch {
 		effects = append(effects, r)
 	}
 	effects = c.appendSettingsRender(effects, stepRes.Dirty)
+	effects = c.appendSessionRenderTarget(stepRes.Dirty, effects)
 	return &corev1.EffectBatch{Effects: effects}
 }
 
@@ -144,6 +149,7 @@ func (c *Core) processSyncStep(res sync.StepResult) ([]*corev1.Effect, sync.Dirt
 	var effects []*corev1.Effect
 	var dirty sync.DirtyFlags
 	for _, sc := range res.Settled {
+		c.processSessionSettled(sc, &effects, &dirty)
 		meta, hasMeta := c.m.pendingCmdMeta[sc.RequestID]
 		if hasMeta {
 			delete(c.m.pendingCmdMeta, sc.RequestID)
@@ -718,6 +724,7 @@ func (c *Core) dispatchUI(ctx *sync.StepContext, ev *corev1.Event) []*corev1.Eff
 					d.StartErrorText = nil
 					d.ActiveStartRequestID = reqID
 				}
+				c.noteCreateSessionSubmitted(key, cmd.GetCreateSession())
 				ctx.Dirty.Add(true, true, true)
 			}
 		}
@@ -741,6 +748,7 @@ func (c *Core) dispatchUI(ctx *sync.StepContext, ev *corev1.Event) []*corev1.Eff
 		ctx.Dirty.Add(false, false, true)
 	default:
 		effects = append(effects, c.dispatchSettingsUI(ctx, ev)...)
+		effects = append(effects, c.dispatchSessionUI(ctx, ev)...)
 	}
 
 	return effects

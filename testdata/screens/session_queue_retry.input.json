@@ -1,0 +1,386 @@
+{
+  "steps": [
+    {
+      "event": {
+        "nowMs": "1791078060000",
+        "clockUpdated": {
+          "nowMs": "1791078060000",
+          "todayStartMs": "1791043200000",
+          "yesterdayStartMs": "1790956800000",
+          "weekStartMs": "1790524800000",
+          "nowYear": 2026,
+          "months": [
+            {
+              "year": 2026,
+              "month": 10,
+              "startMs": "1790812800000"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "event": {
+        "nowMs": "1791078060000",
+        "monoMs": "1000",
+        "randomIds": [
+          "r-1",
+          "r-2",
+          "r-3",
+          "r-4",
+          "r-5",
+          "r-6",
+          "r-7",
+          "r-8",
+          "r-9",
+          "r-10",
+          "r-11",
+          "r-12",
+          "r-13",
+          "r-14",
+          "r-15",
+          "r-16",
+          "r-17",
+          "r-18",
+          "r-19",
+          "r-20",
+          "r-21",
+          "r-22",
+          "r-23",
+          "r-24",
+          "r-25",
+          "r-26",
+          "r-27",
+          "r-28",
+          "r-29"
+        ],
+        "unitFloats": [
+          0.5,
+          0.5,
+          0.5,
+          0.5,
+          0.5,
+          0.5,
+          0.5,
+          0.5,
+          0.5,
+          0.5,
+          0.5,
+          0.5
+        ],
+        "syncLifecycle": {
+          "kind": "SYNC_LIFECYCLE_KIND_START"
+        }
+      }
+    },
+    {
+      "event": {
+        "nowMs": "1791078060010",
+        "securitySnapshot": {
+          "opId": "3",
+          "isMember": true,
+          "selfDeviceId": "dev-1",
+          "authorityDeviceId": "dev-1",
+          "leaseEndMs": "1791164460000",
+          "trustedMachineIds": [
+            "m1"
+          ],
+          "trustedClientIds": [
+            "dev-1"
+          ]
+        }
+      }
+    },
+    {
+      "event": {
+        "nowMs": "1791078060020",
+        "tokenResult": {
+          "opId": "2",
+          "token": "tok-1"
+        }
+      }
+    },
+    {
+      "event": {
+        "nowMs": "1791078060030",
+        "streamReady": {
+          "legId": "1",
+          "serverTimeMs": "1791078060030"
+        }
+      }
+    },
+    {
+      "event": {
+        "nowMs": "1791078060040",
+        "listsFetched": {
+          "opId": "4",
+          "machines": [
+            {
+              "machineId": "m1",
+              "online": true,
+              "lastSeenMs": "1791078060000",
+              "meta": {
+                "hostname": "MacStudio",
+                "home": "/Users/me",
+                "protocolVersion": 16,
+                "capabilities": {
+                  "imageUpload": true,
+                  "maxImagesPerMessage": 6,
+                  "approvalAlways": true,
+                  "scheduledTasks": true,
+                  "fileUpload": true,
+                  "sharedFiles": true
+                },
+                "agents": [
+                  {
+                    "agent": "AGENT_CODEX",
+                    "defaultMode": "APPROVAL_MODE_ASK"
+                  },
+                  {
+                    "agent": "AGENT_CLAUDE",
+                    "defaultMode": "APPROVAL_MODE_ASK"
+                  }
+                ]
+              }
+            }
+          ],
+          "sessions": [
+            {
+              "sessionId": "s-qr",
+              "machineId": "m1",
+              "lastSeq": "1",
+              "updatedMs": "1791078060000",
+              "meta": {
+                "id": "s-qr",
+                "cwd": "/Users/me/Code/app",
+                "agent": "AGENT_CODEX",
+                "status": "SESSION_STATUS_RUNNING",
+                "title": "Queue & Retry",
+                "createdAt": "2026-10-04T01:00:00Z"
+              },
+              "checkpoint": {
+                "running": true
+              }
+            }
+          ],
+          "devices": [
+            {
+              "deviceId": "dev-1",
+              "kind": "DEVICE_KIND_CLIENT",
+              "createdMs": "1791000000000",
+              "meta": {
+                "name": "Phone",
+                "platform": "iOS"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "event": {
+        "nowMs": "1791078060050",
+        "accountPrefsFetched": {
+          "opId": "5",
+          "prefs": {
+            "revision": "1",
+            "prefs": {
+              "schema": 1
+            }
+          }
+        }
+      }
+    },
+    {
+      "event": {
+        "nowMs": "1791078060060",
+        "monoMs": "1100",
+        "sessionOpen": {
+          "sessionId": "s-qr"
+        }
+      }
+    },
+    {
+      "event": {
+        "nowMs": "1791078060070",
+        "monoMs": "1150",
+        "sessionWatch": {
+          "sessionId": "s-qr",
+          "watched": true
+        }
+      }
+    },
+    {
+      "event": {
+        "nowMs": "1791078060080",
+        "monoMs": "1200",
+        "sessionSubmitCommand": {
+          "sessionId": "s-qr",
+          "command": {
+            "send": {
+              "sessionId": "s-qr",
+              "requestId": "msg-fail",
+              "text": "steer failed msg",
+              "mode": "SEND_MODE_STEER"
+            }
+          }
+        }
+      }
+    },
+    {
+      "event": {
+        "nowMs": "1791078060090",
+        "monoMs": "1250",
+        "commandOutcome": {
+          "requestId": "r-7",
+          "attemptId": "r-8",
+          "source": "OUTCOME_SOURCE_SERVER",
+          "notForwarded": true,
+          "attemptBound": true,
+          "outerOutcome": "not_sent",
+          "outerReason": "computer_offline"
+        }
+      }
+    },
+    {
+      "event": {
+        "nowMs": "1791078060100",
+        "monoMs": "1300",
+        "sessionSubmitCommand": {
+          "sessionId": "s-qr",
+          "command": {
+            "send": {
+              "sessionId": "s-qr",
+              "requestId": "msg-q",
+              "text": "queued second",
+              "mode": "SEND_MODE_QUEUE"
+            }
+          }
+        }
+      }
+    },
+    {
+      "event": {
+        "nowMs": "1791078060110",
+        "monoMs": "1350",
+        "commandOutcome": {
+          "requestId": "r-9",
+          "attemptId": "r-10",
+          "source": "OUTCOME_SOURCE_DAEMON",
+          "signed": false,
+          "hashesMatch": true,
+          "attemptBound": true
+        }
+      },
+      "views": [
+        {
+          "name": "outgoingFailedAndUnknown",
+          "screen": {
+            "session": {
+              "sessionId": "s-qr"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "event": {
+        "nowMs": "1791078060120",
+        "monoMs": "1400",
+        "sessionSubmitCommand": {
+          "sessionId": "s-qr",
+          "command": {
+            "send": {
+              "sessionId": "s-qr",
+              "requestId": "msg-q",
+              "text": "queued second",
+              "mode": "SEND_MODE_QUEUE"
+            }
+          }
+        }
+      }
+    },
+    {
+      "event": {
+        "nowMs": "1791078060130",
+        "monoMs": "1450",
+        "commandOutcome": {
+          "requestId": "r-9",
+          "attemptId": "r-11",
+          "source": "OUTCOME_SOURCE_DAEMON",
+          "signed": true,
+          "hashesMatch": true,
+          "attemptBound": true,
+          "outerMatchesInner": true,
+          "outerOutcome": "executed",
+          "outerReason": "ok",
+          "result": {
+            "outcome": "executed",
+            "reason": "ok",
+            "resultAvailable": true,
+            "send": {}
+          }
+        }
+      }
+    },
+    {
+      "event": {
+        "nowMs": "1791078060140",
+        "monoMs": "1500",
+        "cacheEventsLoaded": {
+          "opId": "6",
+          "sessionId": "s-qr",
+          "events": [
+            {
+              "seq": "1",
+              "verified": true,
+              "approxBytes": "64",
+              "event": {
+                "seq": "1",
+                "time": "2026-10-04T01:10:01Z",
+                "userMessage": {
+                  "text": "initial task"
+                }
+              }
+            },
+            {
+              "seq": "2",
+              "verified": true,
+              "approxBytes": "64",
+              "event": {
+                "seq": "2",
+                "time": "2026-10-04T01:10:02Z",
+                "inputState": {
+                  "requestId": "msg-q",
+                  "status": "INPUT_STATUS_QUEUED",
+                  "text": "queued second",
+                  "mode": "SEND_MODE_QUEUE"
+                }
+              }
+            }
+          ]
+        }
+      },
+      "views": [
+        {
+          "name": "queuedPendingAndFailedOutgoing",
+          "screen": {
+            "session": {
+              "sessionId": "s-qr"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "event": {
+        "nowMs": "1791078060150",
+        "monoMs": "1550",
+        "sessionRestoreOutgoing": {
+          "sessionId": "s-qr",
+          "requestId": "msg-fail"
+        }
+      }
+    }
+  ]
+}

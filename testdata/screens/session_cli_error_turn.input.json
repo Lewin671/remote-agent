@@ -1,0 +1,341 @@
+{
+  "steps": [
+    {
+      "event": {
+        "nowMs": "1791078060000",
+        "clockUpdated": {
+          "nowMs": "1791078060000",
+          "todayStartMs": "1791043200000",
+          "yesterdayStartMs": "1790956800000",
+          "weekStartMs": "1790524800000",
+          "nowYear": 2026,
+          "months": [
+            {
+              "year": 2026,
+              "month": 10,
+              "startMs": "1790812800000"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "event": {
+        "nowMs": "1791078060000",
+        "monoMs": "1000",
+        "randomIds": [
+          "r-1",
+          "r-2",
+          "r-3",
+          "r-4",
+          "r-5",
+          "r-6",
+          "r-7",
+          "r-8",
+          "r-9",
+          "r-10",
+          "r-11",
+          "r-12",
+          "r-13",
+          "r-14",
+          "r-15",
+          "r-16",
+          "r-17",
+          "r-18",
+          "r-19",
+          "r-20",
+          "r-21",
+          "r-22",
+          "r-23",
+          "r-24",
+          "r-25",
+          "r-26",
+          "r-27",
+          "r-28",
+          "r-29"
+        ],
+        "unitFloats": [
+          0.5,
+          0.5,
+          0.5,
+          0.5,
+          0.5,
+          0.5,
+          0.5,
+          0.5,
+          0.5,
+          0.5,
+          0.5,
+          0.5
+        ],
+        "syncLifecycle": {
+          "kind": "SYNC_LIFECYCLE_KIND_START"
+        }
+      }
+    },
+    {
+      "event": {
+        "nowMs": "1791078060010",
+        "securitySnapshot": {
+          "opId": "3",
+          "isMember": true,
+          "selfDeviceId": "dev-1",
+          "authorityDeviceId": "dev-1",
+          "leaseEndMs": "1791164460000",
+          "trustedMachineIds": [
+            "m1"
+          ],
+          "trustedClientIds": [
+            "dev-1"
+          ]
+        }
+      }
+    },
+    {
+      "event": {
+        "nowMs": "1791078060020",
+        "tokenResult": {
+          "opId": "2",
+          "token": "tok-1"
+        }
+      }
+    },
+    {
+      "event": {
+        "nowMs": "1791078060030",
+        "streamReady": {
+          "legId": "1",
+          "serverTimeMs": "1791078060030"
+        }
+      }
+    },
+    {
+      "event": {
+        "nowMs": "1791078060040",
+        "listsFetched": {
+          "opId": "4",
+          "machines": [
+            {
+              "machineId": "m1",
+              "online": true,
+              "lastSeenMs": "1791078060000",
+              "meta": {
+                "hostname": "MacStudio",
+                "home": "/Users/me",
+                "protocolVersion": 16,
+                "capabilities": {
+                  "imageUpload": true,
+                  "maxImagesPerMessage": 6,
+                  "approvalAlways": true,
+                  "scheduledTasks": true,
+                  "fileUpload": true,
+                  "sharedFiles": true
+                },
+                "agents": [
+                  {
+                    "agent": "AGENT_CODEX",
+                    "defaultMode": "APPROVAL_MODE_ASK"
+                  },
+                  {
+                    "agent": "AGENT_CLAUDE",
+                    "defaultMode": "APPROVAL_MODE_ASK"
+                  }
+                ]
+              }
+            }
+          ],
+          "sessions": [
+            {
+              "sessionId": "s-err",
+              "machineId": "m1",
+              "lastSeq": "9",
+              "updatedMs": "1791078060000",
+              "meta": {
+                "id": "s-err",
+                "cwd": "/Users/me/Code/app",
+                "agent": "AGENT_CODEX",
+                "status": "SESSION_STATUS_IDLE",
+                "title": "CLI Error Turn",
+                "createdAt": "2026-10-04T01:00:00Z"
+              }
+            }
+          ],
+          "devices": [
+            {
+              "deviceId": "dev-1",
+              "kind": "DEVICE_KIND_CLIENT",
+              "createdMs": "1791000000000",
+              "meta": {
+                "name": "Phone",
+                "platform": "iOS"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "event": {
+        "nowMs": "1791078060050",
+        "accountPrefsFetched": {
+          "opId": "5",
+          "prefs": {
+            "revision": "1",
+            "prefs": {
+              "schema": 1
+            }
+          }
+        }
+      }
+    },
+    {
+      "event": {
+        "nowMs": "1791078060060",
+        "monoMs": "1100",
+        "sessionOpen": {
+          "sessionId": "s-err"
+        }
+      }
+    },
+    {
+      "event": {
+        "nowMs": "1791078060070",
+        "monoMs": "1150",
+        "sessionWatch": {
+          "sessionId": "s-err",
+          "watched": true
+        }
+      }
+    },
+    {
+      "event": {
+        "nowMs": "1791078060080",
+        "monoMs": "1200",
+        "cacheEventsLoaded": {
+          "opId": "6",
+          "sessionId": "s-err",
+          "events": [
+            {
+              "seq": "1",
+              "verified": true,
+              "approxBytes": "64",
+              "event": {
+                "seq": "1",
+                "time": "2026-10-04T01:10:01Z",
+                "userMessage": {
+                  "text": "refactor auth"
+                }
+              }
+            },
+            {
+              "seq": "2",
+              "verified": true,
+              "approxBytes": "64",
+              "event": {
+                "seq": "2",
+                "time": "2026-10-04T01:10:02Z",
+                "turnStarted": {}
+              }
+            },
+            {
+              "seq": "3",
+              "verified": true,
+              "approxBytes": "64",
+              "event": {
+                "seq": "3",
+                "time": "2026-10-04T01:10:03Z",
+                "turnEnded": {
+                  "outcome": "TURN_OUTCOME_COMPLETED",
+                  "reason": "You've hit your usage limit. Try again later.",
+                  "durationMs": "1200"
+                }
+              }
+            },
+            {
+              "seq": "4",
+              "verified": true,
+              "approxBytes": "64",
+              "event": {
+                "seq": "4",
+                "time": "2026-10-04T01:10:04Z",
+                "userMessage": {
+                  "text": "retry"
+                }
+              }
+            },
+            {
+              "seq": "5",
+              "verified": true,
+              "approxBytes": "64",
+              "event": {
+                "seq": "5",
+                "time": "2026-10-04T01:10:05Z",
+                "turnStarted": {}
+              }
+            },
+            {
+              "seq": "6",
+              "verified": true,
+              "approxBytes": "64",
+              "event": {
+                "seq": "6",
+                "time": "2026-10-04T01:10:06Z",
+                "turnEnded": {
+                  "outcome": "TURN_OUTCOME_ABORTED",
+                  "reason": "rate_limit_exceeded",
+                  "durationMs": "400"
+                }
+              }
+            },
+            {
+              "seq": "7",
+              "verified": true,
+              "approxBytes": "64",
+              "event": {
+                "seq": "7",
+                "time": "2026-10-04T01:10:07Z",
+                "userMessage": {
+                  "text": "abort manually"
+                }
+              }
+            },
+            {
+              "seq": "8",
+              "verified": true,
+              "approxBytes": "64",
+              "event": {
+                "seq": "8",
+                "time": "2026-10-04T01:10:08Z",
+                "turnStarted": {}
+              }
+            },
+            {
+              "seq": "9",
+              "verified": true,
+              "approxBytes": "64",
+              "event": {
+                "seq": "9",
+                "time": "2026-10-04T01:10:09Z",
+                "turnEnded": {
+                  "outcome": "TURN_OUTCOME_ABORTED",
+                  "reason": "interrupted",
+                  "durationMs": "2500"
+                }
+              }
+            }
+          ]
+        }
+      },
+      "views": [
+        {
+          "name": "cliErrorTurns",
+          "screen": {
+            "session": {
+              "sessionId": "s-err"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

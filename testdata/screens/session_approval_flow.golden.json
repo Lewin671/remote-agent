@@ -1,0 +1,1105 @@
+{
+  "steps": [
+    {
+      "effects": {
+        "effects": [
+          {
+            "render": {
+              "screens": [
+                "SCREEN_TARGET_HOME",
+                "SCREEN_TARGET_PROJECT",
+                "SCREEN_TARGET_SYNC_STATE"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "effects": {
+        "effects": [
+          {
+            "cacheRead": {
+              "bootstrap": {
+                "opId": "1"
+              }
+            }
+          },
+          {
+            "ensureToken": {
+              "opId": "2",
+              "forceLogin": true,
+              "timeoutMs": "15000"
+            }
+          },
+          {
+            "syncSecurity": {
+              "opId": "3",
+              "touch": true
+            }
+          },
+          {
+            "render": {
+              "screens": [
+                "SCREEN_TARGET_HOME",
+                "SCREEN_TARGET_PROJECT",
+                "SCREEN_TARGET_NEW_SESSION",
+                "SCREEN_TARGET_SYNC_STATE",
+                "SCREEN_TARGET_SESSION_DATA"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "effects": {
+        "effects": [
+          {
+            "render": {
+              "screens": [
+                "SCREEN_TARGET_HOME",
+                "SCREEN_TARGET_PROJECT",
+                "SCREEN_TARGET_NEW_SESSION",
+                "SCREEN_TARGET_SYNC_STATE",
+                "SCREEN_TARGET_SESSION_DATA"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "effects": {
+        "effects": [
+          {
+            "openStream": {
+              "legId": "1",
+              "token": "tok-1",
+              "timeoutMs": "15000"
+            }
+          },
+          {
+            "scheduleTimer": {
+              "timerId": "1",
+              "kind": "TIMER_KIND_STREAM_OPEN",
+              "delayMs": "15000"
+            }
+          },
+          {
+            "render": {
+              "screens": [
+                "SCREEN_TARGET_HOME",
+                "SCREEN_TARGET_SYNC_STATE"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "effects": {
+        "effects": [
+          {
+            "cancelTimer": {
+              "timerId": "1",
+              "kind": "TIMER_KIND_STREAM_OPEN"
+            }
+          },
+          {
+            "scheduleTimer": {
+              "timerId": "2",
+              "kind": "TIMER_KIND_LIVENESS",
+              "delayMs": "1000"
+            }
+          },
+          {
+            "rpc": {
+              "opId": "4",
+              "fetchLists": {
+                "limit": 50
+              }
+            }
+          },
+          {
+            "rpc": {
+              "opId": "5",
+              "getAccountPrefs": {
+                "objectId": "project-prefs"
+              }
+            }
+          },
+          {
+            "render": {
+              "screens": [
+                "SCREEN_TARGET_HOME",
+                "SCREEN_TARGET_PROJECT",
+                "SCREEN_TARGET_NEW_SESSION",
+                "SCREEN_TARGET_SYNC_STATE",
+                "SCREEN_TARGET_SESSION_DATA"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "effects": {
+        "effects": [
+          {
+            "render": {
+              "screens": [
+                "SCREEN_TARGET_HOME",
+                "SCREEN_TARGET_PROJECT",
+                "SCREEN_TARGET_NEW_SESSION",
+                "SCREEN_TARGET_SYNC_STATE",
+                "SCREEN_TARGET_SESSION_DATA"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "effects": {
+        "effects": [
+          {
+            "render": {
+              "screens": [
+                "SCREEN_TARGET_HOME",
+                "SCREEN_TARGET_PROJECT",
+                "SCREEN_TARGET_NEW_SESSION",
+                "SCREEN_TARGET_SYNC_STATE",
+                "SCREEN_TARGET_SESSION_DATA"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "effects": {
+        "effects": [
+          {
+            "dispatchCommand": {
+              "requestId": "r-1",
+              "attemptId": "r-2",
+              "machineId": "m1",
+              "deadlineMs": "1791078120060",
+              "commandBytes": "qgECCAKgBhA=",
+              "routeHint": "COMMAND_ROUTE_HINT_READ"
+            }
+          },
+          {
+            "dispatchCommand": {
+              "requestId": "r-3",
+              "attemptId": "r-4",
+              "machineId": "m1",
+              "deadlineMs": "1791078120060",
+              "commandBytes": "ugEAoAYQ",
+              "routeHint": "COMMAND_ROUTE_HINT_READ"
+            }
+          },
+          {
+            "render": {
+              "screens": [
+                "SCREEN_TARGET_SESSION"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "effects": {
+        "effects": [
+          {
+            "cacheRead": {
+              "events": {
+                "opId": "6",
+                "sessionId": "s-ap",
+                "newest": true,
+                "limit": 128
+              }
+            }
+          },
+          {
+            "scheduleTimer": {
+              "timerId": "3",
+              "kind": "TIMER_KIND_HISTORY_SWEEP",
+              "delayMs": "15000"
+            }
+          },
+          {
+            "dispatchCommand": {
+              "requestId": "r-5",
+              "attemptId": "r-6",
+              "machineId": "m1",
+              "sessionId": "s-ap",
+              "deadlineMs": "1791078120070",
+              "commandBytes": "+gEGCgRzLWFwoAYQ",
+              "routeHint": "COMMAND_ROUTE_HINT_READ"
+            }
+          },
+          {
+            "render": {
+              "screens": [
+                "SCREEN_TARGET_SYNC_STATE",
+                "SCREEN_TARGET_SESSION_DATA",
+                "SCREEN_TARGET_SESSION"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "effects": {
+        "effects": [
+          {
+            "rpc": {
+              "opId": "7",
+              "getEvents": {
+                "sessionId": "s-ap",
+                "afterSeq": "2",
+                "limit": 500
+              }
+            }
+          },
+          {
+            "render": {
+              "screens": [
+                "SCREEN_TARGET_HOME",
+                "SCREEN_TARGET_PROJECT",
+                "SCREEN_TARGET_SYNC_STATE",
+                "SCREEN_TARGET_SESSION_DATA",
+                "SCREEN_TARGET_SESSION"
+              ]
+            }
+          }
+        ]
+      },
+      "views": {
+        "pendingApprovalDock": {
+          "session": {
+            "sessionId": "s-ap",
+            "header": {
+              "found": true,
+              "sessionsListed": true,
+              "liveLoaded": true,
+              "title": {
+                "literal": "Approval test"
+              },
+              "projectName": {
+                "literal": "~/Code/app"
+              },
+              "projectKey": "/Users/me/Code/app",
+              "cwd": "/Users/me/Code/app",
+              "agent": "AGENT_CLAUDE",
+              "agentName": "Claude Code",
+              "status": "SESSION_DISPLAY_STATUS_APPROVAL",
+              "tone": "SESSION_TONE_WARN",
+              "statusText": {
+                "key": "list_state.approval"
+              },
+              "approvalModeLabel": {
+                "key": "modes.agent_own"
+              },
+              "model": "claude-sonnet-4-6",
+              "modelLabel": "claude-sonnet-4-6",
+              "machineId": "m1",
+              "computerName": {
+                "literal": "MacStudio"
+              },
+              "computerOnline": true,
+              "connState": "CONN_STATE_CONNECTED",
+              "daemonProtocolVersion": 16,
+              "clientProtocolVersion": 16,
+              "endedAtMs": "1791075600000",
+              "capabilities": {
+                "canSend": true,
+                "supportsImages": true,
+                "supportsFiles": true,
+                "supportsSendModes": true,
+                "supportsSharedFiles": true,
+                "supportsAlwaysAllow": true,
+                "supportsSteer": true,
+                "supportsCompact": true,
+                "supportsFork": true,
+                "supportsModelSwitch": true,
+                "supportsModeSwitch": true,
+                "supportsSchedule": true,
+                "terminalAvailable": true,
+                "maxImages": 6
+              }
+            },
+            "actions": {
+              "canInterrupt": true,
+              "interrupt": {
+                "slotKey": "interrupt:s-ap",
+                "status": "SESSION_COMMAND_STATUS_IDLE"
+              },
+              "canEnd": true,
+              "end": {
+                "slotKey": "stop:s-ap",
+                "status": "SESSION_COMMAND_STATUS_IDLE"
+              },
+              "endConfirmNote": {
+                "key": "session.end_note",
+                "args": [
+                  {
+                    "name": "agent",
+                    "strValue": "Claude Code"
+                  },
+                  {
+                    "name": "name",
+                    "strValue": "MacStudio"
+                  }
+                ]
+              },
+              "resume": {
+                "slotKey": "resume:s-ap",
+                "status": "SESSION_COMMAND_STATUS_IDLE"
+              },
+              "resumeNote": {
+                "key": "session.resume_note",
+                "args": [
+                  {
+                    "name": "name",
+                    "strValue": "MacStudio"
+                  }
+                ]
+              },
+              "canRename": true,
+              "rename": {
+                "slotKey": "rename:s-ap",
+                "status": "SESSION_COMMAND_STATUS_IDLE"
+              },
+              "forkBlockedReason": {
+                "key": "session.fork_after_turn"
+              },
+              "fork": {
+                "slotKey": "fork:s-ap",
+                "status": "SESSION_COMMAND_STATUS_IDLE"
+              },
+              "compact": {
+                "slotKey": "compact:s-ap",
+                "status": "SESSION_COMMAND_STATUS_IDLE"
+              },
+              "modelSwitchBlockedReason": {
+                "key": "session.switch_after_turn"
+              },
+              "setModel": {
+                "slotKey": "set_model:s-ap",
+                "status": "SESSION_COMMAND_STATUS_IDLE"
+              },
+              "modelsLoading": true,
+              "modelsError": {
+                "key": "models.reading_machine",
+                "args": [
+                  {
+                    "name": "name",
+                    "strValue": "MacStudio"
+                  }
+                ]
+              },
+              "canSwitchMode": true,
+              "setMode": {
+                "slotKey": "set_mode:s-ap",
+                "status": "SESSION_COMMAND_STATUS_IDLE"
+              },
+              "modeChoices": [
+                {
+                  "mode": "APPROVAL_MODE_ASK",
+                  "label": {
+                    "key": "modes.ask"
+                  },
+                  "note": {
+                    "key": "modes.ask_desc"
+                  },
+                  "available": true,
+                  "switchAfterTurn": true
+                },
+                {
+                  "mode": "APPROVAL_MODE_AUTO",
+                  "label": {
+                    "key": "modes.auto"
+                  },
+                  "note": {
+                    "key": "modes.auto_desc"
+                  },
+                  "available": true,
+                  "switchAfterTurn": true
+                },
+                {
+                  "mode": "APPROVAL_MODE_PLAN",
+                  "label": {
+                    "key": "modes.plan"
+                  },
+                  "note": {
+                    "key": "modes.ask_generic_desc"
+                  },
+                  "available": true,
+                  "switchAfterTurn": true
+                },
+                {
+                  "mode": "APPROVAL_MODE_FULL_ACCESS",
+                  "label": {
+                    "key": "modes.full_access"
+                  },
+                  "note": {
+                    "key": "modes.auto_desc"
+                  },
+                  "available": true,
+                  "switchAfterTurn": true
+                }
+              ]
+            },
+            "dock": {
+              "hasItem": true,
+              "kind": "SESSION_DOCK_KIND_APPROVAL",
+              "itemId": "ap-1",
+              "observedSeq": "2",
+              "title": {
+                "key": "approval.title"
+              },
+              "summary": {
+                "literal": "git status \u0026\u0026 ls src"
+              },
+              "meta": {
+                "literal": "Bash"
+              },
+              "command": {
+                "slotKey": "approval:s-ap:ap-1",
+                "status": "SESSION_COMMAND_STATUS_IDLE"
+              },
+              "approval": {
+                "approvalId": "ap-1",
+                "toolName": "Bash",
+                "commandPreview": "git status \u0026\u0026 ls src",
+                "body": "git status \u0026\u0026 ls src",
+                "description": "Inspect git workspace",
+                "denyReasonPlaceholder": {
+                  "key": "approval.reason_placeholder"
+                }
+              }
+            },
+            "composer": {
+              "enabled": true,
+              "placeholder": {
+                "key": "composer.queue_after_answer"
+              },
+              "hasActiveTurn": true,
+              "steerModeDefault": true,
+              "supportsQueueMode": true,
+              "canAttachImages": true,
+              "canAttachFiles": true,
+              "interruptVisible": true
+            },
+            "timeline": {
+              "items": [
+                {
+                  "id": "e1",
+                  "seq": "1",
+                  "endSeq": "1",
+                  "timestampMs": "1791076201000",
+                  "userMessage": {
+                    "text": "check status",
+                    "originCaption": {
+                      "key": "session.origin_terminal",
+                      "args": [
+                        {
+                          "name": "name",
+                          "strValue": "MacStudio"
+                        }
+                      ]
+                    },
+                    "typedLocally": true
+                  }
+                }
+              ],
+              "windowFirstSeq": "1",
+              "windowLastSeq": "1",
+              "totalItems": 1,
+              "loading": true,
+              "fetching": true
+            }
+          }
+        }
+      }
+    },
+    {
+      "effects": {
+        "effects": [
+          {
+            "dispatchCommand": {
+              "requestId": "r-7",
+              "attemptId": "r-8",
+              "machineId": "m1",
+              "sessionId": "s-ap",
+              "deadlineMs": "1791078120090",
+              "commandBytes": "GhIKBHMtYXASBGFwLTEYASgBMAKgBhA=",
+              "routeHint": "COMMAND_ROUTE_HINT_NORMAL"
+            }
+          },
+          {
+            "render": {
+              "screens": [
+                "SCREEN_TARGET_SESSION"
+              ]
+            }
+          }
+        ]
+      },
+      "views": {
+        "approvalSubmitting": {
+          "session": {
+            "sessionId": "s-ap",
+            "header": {
+              "found": true,
+              "sessionsListed": true,
+              "liveLoaded": true,
+              "title": {
+                "literal": "Approval test"
+              },
+              "projectName": {
+                "literal": "~/Code/app"
+              },
+              "projectKey": "/Users/me/Code/app",
+              "cwd": "/Users/me/Code/app",
+              "agent": "AGENT_CLAUDE",
+              "agentName": "Claude Code",
+              "status": "SESSION_DISPLAY_STATUS_APPROVAL",
+              "tone": "SESSION_TONE_WARN",
+              "statusText": {
+                "key": "list_state.approval"
+              },
+              "approvalModeLabel": {
+                "key": "modes.agent_own"
+              },
+              "model": "claude-sonnet-4-6",
+              "modelLabel": "claude-sonnet-4-6",
+              "machineId": "m1",
+              "computerName": {
+                "literal": "MacStudio"
+              },
+              "computerOnline": true,
+              "connState": "CONN_STATE_CONNECTED",
+              "daemonProtocolVersion": 16,
+              "clientProtocolVersion": 16,
+              "endedAtMs": "1791075600000",
+              "capabilities": {
+                "canSend": true,
+                "supportsImages": true,
+                "supportsFiles": true,
+                "supportsSendModes": true,
+                "supportsSharedFiles": true,
+                "supportsAlwaysAllow": true,
+                "supportsSteer": true,
+                "supportsCompact": true,
+                "supportsFork": true,
+                "supportsModelSwitch": true,
+                "supportsModeSwitch": true,
+                "supportsSchedule": true,
+                "terminalAvailable": true,
+                "maxImages": 6
+              }
+            },
+            "actions": {
+              "canInterrupt": true,
+              "interrupt": {
+                "slotKey": "interrupt:s-ap",
+                "status": "SESSION_COMMAND_STATUS_IDLE"
+              },
+              "canEnd": true,
+              "end": {
+                "slotKey": "stop:s-ap",
+                "status": "SESSION_COMMAND_STATUS_IDLE"
+              },
+              "endConfirmNote": {
+                "key": "session.end_note",
+                "args": [
+                  {
+                    "name": "agent",
+                    "strValue": "Claude Code"
+                  },
+                  {
+                    "name": "name",
+                    "strValue": "MacStudio"
+                  }
+                ]
+              },
+              "resume": {
+                "slotKey": "resume:s-ap",
+                "status": "SESSION_COMMAND_STATUS_IDLE"
+              },
+              "resumeNote": {
+                "key": "session.resume_note",
+                "args": [
+                  {
+                    "name": "name",
+                    "strValue": "MacStudio"
+                  }
+                ]
+              },
+              "canRename": true,
+              "rename": {
+                "slotKey": "rename:s-ap",
+                "status": "SESSION_COMMAND_STATUS_IDLE"
+              },
+              "forkBlockedReason": {
+                "key": "session.fork_after_turn"
+              },
+              "fork": {
+                "slotKey": "fork:s-ap",
+                "status": "SESSION_COMMAND_STATUS_IDLE"
+              },
+              "compact": {
+                "slotKey": "compact:s-ap",
+                "status": "SESSION_COMMAND_STATUS_IDLE"
+              },
+              "modelSwitchBlockedReason": {
+                "key": "session.switch_after_turn"
+              },
+              "setModel": {
+                "slotKey": "set_model:s-ap",
+                "status": "SESSION_COMMAND_STATUS_IDLE"
+              },
+              "modelsLoading": true,
+              "modelsError": {
+                "key": "models.reading_machine",
+                "args": [
+                  {
+                    "name": "name",
+                    "strValue": "MacStudio"
+                  }
+                ]
+              },
+              "canSwitchMode": true,
+              "setMode": {
+                "slotKey": "set_mode:s-ap",
+                "status": "SESSION_COMMAND_STATUS_IDLE"
+              },
+              "modeChoices": [
+                {
+                  "mode": "APPROVAL_MODE_ASK",
+                  "label": {
+                    "key": "modes.ask"
+                  },
+                  "note": {
+                    "key": "modes.ask_desc"
+                  },
+                  "available": true,
+                  "switchAfterTurn": true
+                },
+                {
+                  "mode": "APPROVAL_MODE_AUTO",
+                  "label": {
+                    "key": "modes.auto"
+                  },
+                  "note": {
+                    "key": "modes.auto_desc"
+                  },
+                  "available": true,
+                  "switchAfterTurn": true
+                },
+                {
+                  "mode": "APPROVAL_MODE_PLAN",
+                  "label": {
+                    "key": "modes.plan"
+                  },
+                  "note": {
+                    "key": "modes.ask_generic_desc"
+                  },
+                  "available": true,
+                  "switchAfterTurn": true
+                },
+                {
+                  "mode": "APPROVAL_MODE_FULL_ACCESS",
+                  "label": {
+                    "key": "modes.full_access"
+                  },
+                  "note": {
+                    "key": "modes.auto_desc"
+                  },
+                  "available": true,
+                  "switchAfterTurn": true
+                }
+              ]
+            },
+            "dock": {
+              "hasItem": true,
+              "kind": "SESSION_DOCK_KIND_APPROVAL",
+              "itemId": "ap-1",
+              "observedSeq": "2",
+              "title": {
+                "key": "approval.title"
+              },
+              "summary": {
+                "literal": "git status \u0026\u0026 ls src"
+              },
+              "meta": {
+                "literal": "Bash"
+              },
+              "command": {
+                "slotKey": "approval:s-ap:ap-1",
+                "requestId": "r-7",
+                "status": "SESSION_COMMAND_STATUS_PENDING",
+                "busy": true
+              },
+              "approval": {
+                "approvalId": "ap-1",
+                "toolName": "Bash",
+                "commandPreview": "git status \u0026\u0026 ls src",
+                "body": "git status \u0026\u0026 ls src",
+                "description": "Inspect git workspace",
+                "denyReasonPlaceholder": {
+                  "key": "approval.reason_placeholder"
+                }
+              }
+            },
+            "composer": {
+              "enabled": true,
+              "placeholder": {
+                "key": "composer.queue_after_answer"
+              },
+              "hasActiveTurn": true,
+              "steerModeDefault": true,
+              "supportsQueueMode": true,
+              "canAttachImages": true,
+              "canAttachFiles": true,
+              "interruptVisible": true
+            },
+            "timeline": {
+              "items": [
+                {
+                  "id": "e1",
+                  "seq": "1",
+                  "endSeq": "1",
+                  "timestampMs": "1791076201000",
+                  "userMessage": {
+                    "text": "check status",
+                    "originCaption": {
+                      "key": "session.origin_terminal",
+                      "args": [
+                        {
+                          "name": "name",
+                          "strValue": "MacStudio"
+                        }
+                      ]
+                    },
+                    "typedLocally": true
+                  }
+                }
+              ],
+              "windowFirstSeq": "1",
+              "windowLastSeq": "1",
+              "totalItems": 1,
+              "loading": true,
+              "fetching": true
+            }
+          }
+        }
+      }
+    },
+    {
+      "effects": {
+        "effects": [
+          {
+            "render": {
+              "screens": [
+                "SCREEN_TARGET_HOME",
+                "SCREEN_TARGET_PROJECT",
+                "SCREEN_TARGET_NEW_SESSION",
+                "SCREEN_TARGET_SYNC_STATE",
+                "SCREEN_TARGET_SESSION"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "effects": {
+        "effects": [
+          {
+            "render": {
+              "screens": [
+                "SCREEN_TARGET_HOME",
+                "SCREEN_TARGET_PROJECT",
+                "SCREEN_TARGET_SYNC_STATE",
+                "SCREEN_TARGET_SESSION_DATA",
+                "SCREEN_TARGET_SESSION"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "effects": {
+        "effects": [
+          {
+            "render": {
+              "screens": [
+                "SCREEN_TARGET_HOME",
+                "SCREEN_TARGET_PROJECT",
+                "SCREEN_TARGET_NEW_SESSION",
+                "SCREEN_TARGET_SYNC_STATE",
+                "SCREEN_TARGET_SESSION_DATA",
+                "SCREEN_TARGET_SESSION"
+              ]
+            }
+          }
+        ]
+      },
+      "views": {
+        "approvalMergedOnToolCall": {
+          "session": {
+            "sessionId": "s-ap",
+            "header": {
+              "found": true,
+              "sessionsListed": true,
+              "liveLoaded": true,
+              "title": {
+                "literal": "Approval test"
+              },
+              "projectName": {
+                "literal": "~/Code/app"
+              },
+              "projectKey": "/Users/me/Code/app",
+              "cwd": "/Users/me/Code/app",
+              "agent": "AGENT_CLAUDE",
+              "agentName": "Claude Code",
+              "status": "SESSION_DISPLAY_STATUS_IDLE",
+              "tone": "SESSION_TONE_NEUTRAL",
+              "statusText": {
+                "key": "list_state.idle"
+              },
+              "approvalModeLabel": {
+                "key": "modes.agent_own"
+              },
+              "model": "claude-sonnet-4-6",
+              "modelLabel": "claude-sonnet-4-6",
+              "machineId": "m1",
+              "computerName": {
+                "literal": "MacStudio"
+              },
+              "computerOnline": true,
+              "connState": "CONN_STATE_CONNECTED",
+              "daemonProtocolVersion": 16,
+              "clientProtocolVersion": 16,
+              "capabilities": {
+                "canSend": true,
+                "supportsImages": true,
+                "supportsFiles": true,
+                "supportsSendModes": true,
+                "supportsSharedFiles": true,
+                "supportsAlwaysAllow": true,
+                "supportsSteer": true,
+                "supportsCompact": true,
+                "supportsFork": true,
+                "supportsModelSwitch": true,
+                "supportsModeSwitch": true,
+                "supportsSchedule": true,
+                "terminalAvailable": true,
+                "maxImages": 6
+              }
+            },
+            "actions": {
+              "interrupt": {
+                "slotKey": "interrupt:s-ap",
+                "status": "SESSION_COMMAND_STATUS_IDLE"
+              },
+              "canEnd": true,
+              "end": {
+                "slotKey": "stop:s-ap",
+                "status": "SESSION_COMMAND_STATUS_IDLE"
+              },
+              "endConfirmNote": {
+                "key": "session.end_note",
+                "args": [
+                  {
+                    "name": "agent",
+                    "strValue": "Claude Code"
+                  },
+                  {
+                    "name": "name",
+                    "strValue": "MacStudio"
+                  }
+                ]
+              },
+              "resume": {
+                "slotKey": "resume:s-ap",
+                "status": "SESSION_COMMAND_STATUS_IDLE"
+              },
+              "resumeNote": {
+                "key": "session.resume_note",
+                "args": [
+                  {
+                    "name": "name",
+                    "strValue": "MacStudio"
+                  }
+                ]
+              },
+              "canRename": true,
+              "rename": {
+                "slotKey": "rename:s-ap",
+                "status": "SESSION_COMMAND_STATUS_IDLE"
+              },
+              "canFork": true,
+              "fork": {
+                "slotKey": "fork:s-ap",
+                "status": "SESSION_COMMAND_STATUS_IDLE"
+              },
+              "canCompact": true,
+              "compact": {
+                "slotKey": "compact:s-ap",
+                "status": "SESSION_COMMAND_STATUS_IDLE"
+              },
+              "canSwitchModel": true,
+              "setModel": {
+                "slotKey": "set_model:s-ap",
+                "status": "SESSION_COMMAND_STATUS_IDLE"
+              },
+              "modelsLoading": true,
+              "modelsError": {
+                "key": "models.reading_machine",
+                "args": [
+                  {
+                    "name": "name",
+                    "strValue": "MacStudio"
+                  }
+                ]
+              },
+              "canSwitchMode": true,
+              "setMode": {
+                "slotKey": "set_mode:s-ap",
+                "status": "SESSION_COMMAND_STATUS_IDLE"
+              },
+              "modeChoices": [
+                {
+                  "mode": "APPROVAL_MODE_ASK",
+                  "label": {
+                    "key": "modes.ask"
+                  },
+                  "note": {
+                    "key": "modes.ask_desc"
+                  },
+                  "available": true
+                },
+                {
+                  "mode": "APPROVAL_MODE_AUTO",
+                  "label": {
+                    "key": "modes.auto"
+                  },
+                  "note": {
+                    "key": "modes.auto_desc"
+                  },
+                  "available": true
+                },
+                {
+                  "mode": "APPROVAL_MODE_PLAN",
+                  "label": {
+                    "key": "modes.plan"
+                  },
+                  "note": {
+                    "key": "modes.ask_generic_desc"
+                  },
+                  "available": true
+                },
+                {
+                  "mode": "APPROVAL_MODE_FULL_ACCESS",
+                  "label": {
+                    "key": "modes.full_access"
+                  },
+                  "note": {
+                    "key": "modes.auto_desc"
+                  },
+                  "available": true
+                }
+              ]
+            },
+            "dock": {},
+            "composer": {
+              "enabled": true,
+              "placeholder": {
+                "key": "composer.message"
+              },
+              "steerModeDefault": true,
+              "supportsQueueMode": true,
+              "canAttachImages": true,
+              "canAttachFiles": true
+            },
+            "timeline": {
+              "items": [
+                {
+                  "id": "e1",
+                  "seq": "1",
+                  "endSeq": "1",
+                  "timestampMs": "1791076201000",
+                  "userMessage": {
+                    "text": "check status",
+                    "originCaption": {
+                      "key": "session.origin_terminal",
+                      "args": [
+                        {
+                          "name": "name",
+                          "strValue": "MacStudio"
+                        }
+                      ]
+                    },
+                    "typedLocally": true
+                  }
+                },
+                {
+                  "id": "e4",
+                  "seq": "4",
+                  "endSeq": "4",
+                  "timestampMs": "1791076204000",
+                  "toolCall": {
+                    "callId": "tc-1",
+                    "toolKind": "TOOL_KIND_COMMAND",
+                    "itemType": "Bash",
+                    "title": "git status",
+                    "status": "SESSION_TOOL_STATUS_OK",
+                    "decisionLabel": {
+                      "join": [
+                        {
+                          "join": [
+                            {
+                              "key": "approval.always_allowed"
+                            },
+                            {
+                              "literal": "git status"
+                            }
+                          ],
+                          "separatorLiteral": " · "
+                        },
+                        {
+                          "join": [
+                            {
+                              "literal": " · "
+                            },
+                            {
+                              "key": "session.origin_elsewhere"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    "decisionAllowed": true
+                  }
+                }
+              ],
+              "windowFirstSeq": "1",
+              "windowLastSeq": "4",
+              "totalItems": 2,
+              "loaded": true
+            }
+          }
+        }
+      }
+    }
+  ]
+}
