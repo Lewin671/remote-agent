@@ -591,9 +591,9 @@ it("starts account delivery polling at approval handoff without its page", async
   const c = await clients(account);
   class PairRemote extends Remote { constructor(a: StoredAccount) { super(a, undefined); } }
   const remote = new PairRemote(account);
-  const state = remote as unknown as { token: string; connect(): Promise<void>; continuePairing(): Promise<void>; pairingTimer?: ReturnType<typeof setInterval> };
+  const state = remote as unknown as { token: string; ensureHost(): { start(): void; stop(): void }; continuePairing(): Promise<void>; pairingTimer?: ReturnType<typeof setInterval> };
   state.token = c.token;
-  vi.spyOn(state, "connect").mockResolvedValue();
+  vi.spyOn(state, "ensureHost").mockReturnValue({ start: () => undefined, stop: () => undefined });
   vi.stubGlobal("document", { visibilityState: "visible", hidden: false });
   const resume = vi.spyOn(remote.authority, "resumeSecurityOperation");
   vi.useFakeTimers({ toFake: ["setInterval", "clearInterval"] });

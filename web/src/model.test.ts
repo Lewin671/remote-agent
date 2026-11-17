@@ -4,7 +4,7 @@ import { t } from "./i18n";
 import { create } from "@bufbuild/protobuf";
 import { timestampFromMs } from "@bufbuild/protobuf/wkt";
 import { describe, expect, it } from "vitest";
-import { Agent, ApprovalDecision, ApprovalMode, EventSchema, InputStage, ToolBackground, InputStatus, SendMode, QuestionAskedSchema, SessionStatus, ToolKind, TurnOutcome, type Event } from "./gen/remoteagent/v1/event_pb";
+import { Agent, ApprovalDecision, ApprovalMode, EventSchema, InputStage, ToolBackground, InputStatus, SendMode, SessionStatus, ToolKind, TurnOutcome, type Event } from "./gen/remoteagent/v1/event_pb";
 import { ModelInfoSchema, SessionSchema, type Session } from "./gen/remoteagent/v1/local_pb";
 import { AgentInfoSchema, DefaultModeSource, MachineMetaSchema } from "./gen/remoteagent/v1/remote_pb";
 import {
@@ -19,15 +19,11 @@ import {
   forkBlocked,
   findModel,
   modelLabel,
-  pathCrumbs,
   popupTitle,
   defaultModeOf,
-  inheritConfig,
   modeLabel,
   inputFailure,
   inputTimingLabel,
-  newConfigIssue,
-  switchMachine,
   machineAgents,
   minutesLeft,
   modeOf,
@@ -35,7 +31,6 @@ import {
   optionLabel,
   phaseOf,
   plain,
-  previewOf,
   projects,
   queueReason,
   queuedIds,
@@ -43,17 +38,12 @@ import {
   shortenPaths,
   shownStateOf,
   stateOf,
-  statePriority,
-  tailPath,
   timeline,
   titleOf,
   toolsSummary,
   toolClock,
-  backgroundNote,
-  when,
   type MachineLike,
   type SessionLike,
-  contextText,
   dayTime,
   futureTime,
 } from "./model";
@@ -91,7 +81,6 @@ describe("state priority", () => {
     expect(stateOf(sess({ pendingQuestions: 1 }), online)).toEqual({ kind: "question", tone: "wait", text: t("list_state.question", {}, "zh-CN") });
     expect(stateOf(sess({ status: SessionStatus.EXITED })).text).toBe(t("list_state.ended", {}, "zh-CN"));
     expect(stateOf(sess(), offline)).toEqual({ kind: "offline", tone: "off", text: t("list_state.offline", {}, "zh-CN") });
-    expect(statePriority.slice(0, 2)).toEqual(["ended", "offline"]);
   });
 
   it("does not show the last state heard as if it held while the server is out of reach", () => {
@@ -100,20 +89,6 @@ describe("state priority", () => {
     expect(shownStateOf(sess(), offline, true).text).toBe(t("list_state.unlinked", {}, "zh-CN"));
     expect(shownStateOf(sess({ status: SessionStatus.EXITED }), online, true).kind).toBe("ended");
     expect(shownStateOf(sess({ status: SessionStatus.RUNNING }), online, false).kind).toBe("running");
-  });
-
-  it("previews by state", () => {
-    const d = derive(events({ case: "approvalRequested", value: { approvalId: "a", command: "go test ./...\n-count=1" } }));
-    const s = sess({ pendingApprovals: 1, preview: "✓ ls" });
-    expect(previewOf(s, stateOf(s, online), { approval: d.approvals.get("a") })).toBe(t("list_state.request_command", {"command":"go test ./... -count=1"}, "zh-CN"));
-    const q = sess({ pendingQuestions: 1 });
-    expect(previewOf(q, stateOf(q, online), { question: create(QuestionAskedSchema, {}) })).toBe(t("list_state.question", {}, "zh-CN"));
-    const q2 = create(QuestionAskedSchema, { questions: [{ text: "大版本也一起升吗？" }] });
-    expect(previewOf(q, stateOf(q, online), { question: q2 })).toBe("大版本也一起升吗？");
-    const idle = sess({ preview: "改了 `a.go`，见 [文档](x)", title: "t" });
-    expect(previewOf(idle, stateOf(idle, online))).toBe("改了 a.go，见 文档");
-    const fresh = sess();
-    expect(previewOf(fresh, stateOf(fresh, online))).toBe(t("list_state.no_message", {}, "zh-CN"));
   });
 });
 
@@ -365,63 +340,6 @@ describe("agents", () => {
   });
 });
 
-describe("new sessions follow the project", () => {
-  const ctx = { mode: ApprovalMode.AUTO };
-  const machines = (m1: boolean, m2: boolean) =>
-    new Map<string, MachineLike>([
-      ["m1", { id: "m1", online: m1, lastSeenMs: 0n }],
-      ["m2", { id: "m2", online: m2, lastSeenMs: 0n }],
-    ]);
-
-  it("copies the latest session", () => {
-    const list = [
-      sess({ model: "old", ...ctx, createdAt: timestampFromMs(1) }, { id: "a", machineId: "m2", updatedMs: 1n }),
-      sess({ model: "gpt-6-astra", effort: "medium", agent: Agent.CLAUDE, ...ctx, createdAt: timestampFromMs(5) }, { id: "b", updatedMs: 5n }),
-    ];
-    const c = inheritConfig(projects(list)[0], machines(true, true));
-    expect(c).toMatchObject({ machineId: "m1", agent: Agent.CLAUDE, model: "gpt-6-astra", effort: "medium", mode: ApprovalMode.UNSPECIFIED, cwd: "/Users/me/Code/foo" });
-    expect(c?.from?.id).toBe("b");
-  });
-
-  it("never inherits the approval mode: a new task starts in the machine's default", () => {
-    for (const mode of [ApprovalMode.ASK, ApprovalMode.AUTO, ApprovalMode.FULL_ACCESS, ApprovalMode.PLAN]) {
-      expect(inheritConfig(projects([sess({ mode })])[0], machines(true, true))?.mode).toBe(ApprovalMode.UNSPECIFIED);
-    }
-  });
-
-  it("keeps the last machine until the user picks another", () => {
-    const list = [sess({ model: "x", ...ctx, createdAt: timestampFromMs(1) }, { id: "a", machineId: "m2", updatedMs: 1n }), sess({ model: "y", ...ctx, createdAt: timestampFromMs(5) }, { id: "b", updatedMs: 5n })];
-    expect(inheritConfig(projects(list)[0], machines(false, true))).toMatchObject({ machineId: "m1", model: "y" });
-  });
-
-  it("keeps the last CLI with an offline machine", () => {
-    const meta = (...agents: Agent[]) => create(MachineMetaSchema, { agents: agents.map((agent) => create(AgentInfoSchema, { agent })) });
-    const ms = new Map<string, MachineLike>([
-      ["m1", { id: "m1", online: false, lastSeenMs: 0n }],
-      ["m2", { id: "m2", online: true, lastSeenMs: 0n, meta: meta(Agent.CLAUDE) }],
-    ]);
-    // The latest session ran Codex on m1, which is offline; m2 only has
-    // Claude Code.
-    const list = [sess({ ...ctx, createdAt: timestampFromMs(1) }, { id: "a", machineId: "m2", updatedMs: 1n }), sess({ ...ctx, createdAt: timestampFromMs(5) }, { id: "b", updatedMs: 5n })];
-    expect(inheritConfig(projects(list)[0], ms)).toMatchObject({ machineId: "m1", agent: Agent.CODEX });
-  });
-
-  it("has nothing to copy for a new project", () => {
-    expect(inheritConfig(undefined, machines(true, true))).toBeUndefined();
-  });
-
-  it("takes each CLI's settings from the project's latest session on that CLI", () => {
-    const codex = sess({ model: "gpt-6-sol", effort: "high", createdAt: timestampFromMs(5) }, { id: "a", updatedMs: 5n });
-    const claude = sess({ model: "sonnet", agent: Agent.CLAUDE, createdAt: timestampFromMs(1) }, { id: "b", machineId: "m2", updatedMs: 1n });
-    const p = projects([codex, claude])[0];
-    // The machine is the latest session's, whichever CLI is asked for.
-    expect(inheritConfig(p, machines(true, true), p.key, Agent.CLAUDE)).toMatchObject({ machineId: "m1", agent: Agent.CLAUDE, model: "sonnet" });
-    expect(inheritConfig(p, machines(true, true), p.key, Agent.CODEX)).toMatchObject({ machineId: "m1", agent: Agent.CODEX, model: "gpt-6-sol", effort: "high" });
-    // A CLI the project never ran starts from the machine's defaults.
-    expect(inheritConfig(projects([codex])[0], machines(true, true), p.key, Agent.CLAUDE)).toMatchObject({ machineId: "m1", agent: Agent.CLAUDE, model: "", effort: "", mode: ApprovalMode.UNSPECIFIED });
-  });
-});
-
 describe("approval modes", () => {
   it("prefers Session.mode, for either CLI", () => {
     expect(modeOf(sess({ mode: ApprovalMode.AUTO, approvalsReviewer: "user", approvalPolicy: "on-request" }))?.text).toBe(message("modes.auto"));
@@ -536,19 +454,9 @@ describe("text", () => {
 
   it("formats times like the mockup", () => {
     const now = new Date(2026, 8, 29, 9, 41).getTime();
-    expect(when(now - 20_000, now)).toBe(t("time.just_now", {}, "zh-CN"));
-    expect(when(now - 3 * 60_000, now)).toBe(t("time.minutes_ago", {"count":3}, "zh-CN"));
-    expect(when(new Date(2026, 8, 29, 8, 12).getTime(), now)).toBe("8:12");
-    expect(when(new Date(2026, 8, 28, 20, 0).getTime(), now)).toBe(t("time.yesterday", {}, "zh-CN"));
-    expect(when(new Date(2026, 8, 27, 20, 0).getTime(), now)).toBe(message("time.month_day", {"month":9,"day":27}));
     expect(ago(new Date(2026, 8, 29, 7, 30).getTime(), now)).toBe(t("time.hours_ago", {"count":2}, "zh-CN"));
     expect(minutesLeft(now + 7.5 * 60_000, now)).toBe(message("home.ios_approval_remaining", {"count":8}));
     expect(minutesLeft(now - 1, now)).toBe(message("approval.expired"));
-  });
-
-  it("keeps the end of long paths", () => {
-    expect(tailPath("/Users/me/Code/ai-bot/remote-agent", 24)).toBe("…/ai-bot/remote-agent");
-    expect(tailPath("/Users/me/Code/foo")).toBe("~/Code/foo");
   });
 });
 
@@ -602,28 +510,6 @@ describe("approval records", () => {
       "tool mkdir x 已允许",
       "tools",
     ]);
-  });
-});
-
-describe("switching a new session's machine (v2)", () => {
-  const base = { machineId: "m1", cwd: "/Users/me/Code/foo", agent: Agent.CODEX, model: "gpt-6-sol", effort: "high", mode: ApprovalMode.AUTO };
-
-  it("takes a CLI the new machine has, and its defaults", () => {
-    const claudeOnly: MachineLike = { id: "m2", online: true, lastSeenMs: 0n, meta: create(MachineMetaSchema, { agents: [create(AgentInfoSchema, { agent: Agent.CLAUDE })] }) };
-    expect(switchMachine(base, claudeOnly)).toEqual({ ...base, machineId: "m2", agent: Agent.CLAUDE, model: "", effort: "", mode: ApprovalMode.UNSPECIFIED });
-    const codex: MachineLike = { id: "m3", online: true, lastSeenMs: 0n };
-    expect(switchMachine(base, codex)).toMatchObject({ machineId: "m3", agent: Agent.CODEX, model: "", mode: ApprovalMode.UNSPECIFIED });
-  });
-
-  it("refuses a mode the model cannot run in", () => {
-    const models = [create(ModelInfoSchema, { slug: "claude-haiku-4-5-20251001", autoUnavailable: true }), create(ModelInfoSchema, { slug: "claude-sonnet-5-5" })];
-    expect(newConfigIssue(Agent.CLAUDE, "claude-haiku-4-5-20251001", ApprovalMode.AUTO, models)).toBe(message("modes.model_no_auto"));
-    expect(newConfigIssue(Agent.CLAUDE, "claude-sonnet-5-5", ApprovalMode.AUTO, models)).toBe("");
-    expect(newConfigIssue(Agent.CLAUDE, "haiku", ApprovalMode.AUTO, models)).toBe("");
-    expect(newConfigIssue(Agent.CODEX, "claude-haiku-4-5-20251001", ApprovalMode.AUTO, models)).toBe("");
-    expect(newConfigIssue(Agent.CLAUDE, "claude-haiku-4-5-20251001", ApprovalMode.ASK, models)).toBe("");
-    const agyModels = [create(ModelInfoSchema, { slug: "gemini-3.1-pro-high", autoUnavailable: true }), create(ModelInfoSchema, { slug: "gemini-3-flash", autoUnavailable: true })];
-    expect(newConfigIssue(Agent.ANTIGRAVITY, "", ApprovalMode.AUTO, agyModels)).toBe(message("modes.account_no_auto"));
   });
 });
 
@@ -684,18 +570,7 @@ describe("background calls", () => {
       { case: "turnEnded", value: { outcome: TurnOutcome.COMPLETED } },
     );
     expect(shape(list)[0]).toBe("background:c1");
-    expect(backgroundNote(ToolBackground.STILL_RUNNING)).toContain("这一轮结束时它仍在运行");
-    expect(backgroundNote(ToolBackground.TIMED_OUT)).toContain("超时");
-    expect(backgroundNote(ToolBackground.BY_USER)).toContain("Ctrl+B");
-    expect(backgroundNote(ToolBackground.REQUESTED)).toContain("要求");
   });
-});
-
-it("writes a model's context window, and nothing when it is unknown", () => {
-  expect(contextText(1_000_000n)).toBe(message("models.context_size", {"size":"1M"}));
-  expect(contextText(200_000n)).toBe(message("models.context_size", {"size":"200k"}));
-  expect(contextText(0n)).toBe("");
-  expect(contextText(undefined)).toBe("");
 });
 
 it("finds the model of a session started under its 1M name", () => {
@@ -743,16 +618,6 @@ it("keeps task-owned sessions out of projects while retaining by-ID session data
   expect(projects([hidden, ordinary], []).map((p) => p.key)).toEqual(["/ordinary"]);
 });
 
-describe("the folder picker's path", () => {
-  it("is written piece by piece, a path outside the home folder keeping its slash", () => {
-    expect(pathCrumbs("/Users/me/Code/ai-bot")).toEqual(["~", "Code", "ai-bot"]);
-    expect(pathCrumbs("/home/me")).toEqual(["~"]);
-    expect(pathCrumbs("/srv/www")).toEqual(["/srv", "www"]);
-    expect(pathCrumbs("/Users")).toEqual(["/Users"]);
-    expect(pathCrumbs("/")).toEqual(["/"]);
-  });
-});
-
 // Shared with native clients: preview text is independent of rendering.
 import previewVectors from "../../testdata/preview-plain.json";
 it.each(previewVectors)("plain preview: $name", ({ input, expected }) => {
@@ -765,7 +630,6 @@ it("localizes popup diagnostics without exposing native titles", () => {
   localeStore.overrideForTesting(locale);
   for (const detail of ["trust folder", "hooks need review", "update available", "approval", "permission", "model menu", "model picker", "question", "plan", "permissions menu", "bypass warning", "menu", "artifacts", "unknown panel", "Native unrecognized panel"]) {
     expect(popupTitle(detail)).toBe(t("list_state.popup"));
-    expect(previewOf(sess({ status: SessionStatus.BLOCKED, statusDetail: detail }), { kind: "popup", tone: "wait", text: t("list_state.popup") })).toBe(t("list_state.popup"));
   }
   expect(popupTitle("")).toBe("");
   } } finally { localeStore.overrideForTesting(); }

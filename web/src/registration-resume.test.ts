@@ -104,7 +104,6 @@ it("persists the exact approved registration before account state and resumes it
     }),
   ).rejects.toThrow();
   // Restart's loader must finish registration before exposing the saved account.
-  vi.spyOn(Remote.prototype as any, "warm").mockResolvedValue(undefined);
   expect(await loadAccount()).toBeDefined();
   expect(await Remote.load()).toBeDefined();
   expect(calls).toBe(2);

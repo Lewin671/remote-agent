@@ -3,6 +3,7 @@ import { afterEach, expect, it, vi } from "vitest";
 import { closeScheduleNotification, pushPrefs, restorePushPrefs, setPushPrefs } from "./push";
 import { NotifyKind } from "./gen/remoteagent/v1/relay_pb";
 import { Remote } from "./remote";
+import { patchSyncState } from "./test/remote-fixture";
 import { run } from "./test/schedule-fixture";
 
 afterEach(() => { localStorage.clear(); vi.unstubAllGlobals(); vi.restoreAllMocks(); });
@@ -18,10 +19,7 @@ it("registers existing push preferences for the newly paired device without aski
   class Probe extends Remote { constructor() { super({ server: "https://ra.example.com", deviceId: "new-device" } as any, {} as any); } }
   const remote = new Probe();
   remote.setPushSubscription = setPushSubscription;
-  remote.refresh = vi.fn(async () => undefined);
-  remote.loadDevices = vi.fn(async () => undefined);
-  remote.loadPrefs = vi.fn(async () => undefined);
-  await (remote as any).onFrame({ case: "ready", value: {} });
+  patchSyncState(remote, { conn: "online" });
   await vi.waitFor(() => expect(setPushSubscription).toHaveBeenCalled());
   expect(setPushSubscription).toHaveBeenCalledWith(JSON.stringify(subscription), [NotifyKind.ATTENTION, NotifyKind.TURN_ENDED, NotifyKind.SECURITY, NotifyKind.SCHEDULED]);
   expect(requestPermission).not.toHaveBeenCalled();
@@ -36,7 +34,7 @@ it("does not register a subscription after the account was removed during the re
   const remote = { conn: "online", removed: false, setPushSubscription: vi.fn() } as unknown as Remote;
   const work = restorePushPrefs(remote);
   await vi.waitFor(() => expect(finish).toBeDefined());
-  remote.removed = true;
+  (remote as { removed: boolean }).removed = true;
   finish({ endpoint: "https://push.example.com/subscription" });
   await work;
   expect(remote.setPushSubscription).not.toHaveBeenCalled();

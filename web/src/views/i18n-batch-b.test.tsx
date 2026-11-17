@@ -22,7 +22,7 @@ afterEach(() => {
   localeStore.overrideForTesting(); localStorage.clear(); vi.restoreAllMocks(); vi.unstubAllGlobals();
 });
 function mount(sid: string) {
-  vi.stubGlobal("ResizeObserver", class { observe() {} disconnect() {} });
+  vi.stubGlobal("ResizeObserver", class { observe() {} unobserve() {} disconnect() {} });
   function Page() {
     useLocale(); useRemote(remote);
     return <SessionPage remote={remote} session={remote.sessions.get(sid)!} wide onBack={() => {}} />;
@@ -35,7 +35,8 @@ it.each(["zh-CN", "en"] as const)("keeps Full access red and sends the original 
   localeStore.overrideForTesting(locale);
   remote = DemoRemote.create(new URLSearchParams(), async () => {}); remote.start();
   const session = remote.sessions.get("s-appr")!;
-  session.info!.mode = ApprovalMode.FULL_ACCESS;
+  (remote as unknown as { demoSessions: Map<string, { info?: { mode: number } }>; syncDemoToCore(): void }).demoSessions.get("s-appr")!.info!.mode = ApprovalMode.FULL_ACCESS;
+  (remote as unknown as { syncDemoToCore(): void }).syncDemoToCore();
   const command = vi.spyOn(remote, "command").mockResolvedValue({} as never);
   mount(session.id);
   expect(host.querySelector(".red")?.textContent).toBe(t("modes.full_access"));
@@ -51,7 +52,8 @@ it("updates existing history and preserves the draft and structured changes on l
   events.push(create(EventSchema, { seq: 100n, kind: { case: "turnContext", value: { permissionMode: "default", model: "old-model" } } }));
   events.push(create(EventSchema, { seq: 101n, kind: { case: "turnContext", value: { permissionMode: "auto", model: "new-model" } } }));
   const d = derive(events);
-  remote.sessions.get("s-idle")!.info!.mode = ApprovalMode.AUTO;
+  (remote as unknown as { demoSessions: Map<string, { info?: { mode: number } }>; syncDemoToCore(): void }).demoSessions.get("s-idle")!.info!.mode = ApprovalMode.AUTO;
+  (remote as unknown as { syncDemoToCore(): void }).syncDemoToCore();
   remote.drafts.set("s-idle", "User draft 原文");
   mount("s-idle");
   const input = host.querySelector<HTMLTextAreaElement>("textarea")!;
@@ -67,10 +69,11 @@ it("updates existing history and preserves the draft and structured changes on l
   expect(modeOf(remote.sessions.get("s-idle")!)?.mode).toBe(ApprovalMode.AUTO);
 });
 
-it.each(["zh-CN", "en"] as const)("uses origin IDs even if another device is named like the self label in %s", locale => {
+it.each(["zh-CN", "en"] as const)("uses origin IDs even if another device is named like the self label in %s", async locale => {
   localeStore.overrideForTesting(locale);
   remote = DemoRemote.create(new URLSearchParams(), async () => {}); remote.start();
-  remote.devices.get(ANDROID)!.meta!.name = t("session.origin_self");
+  (remote as unknown as { metas: Map<string, { meta: { name: string } }> }).metas.get(ANDROID)!.meta.name = t("session.origin_self");
+  await remote.loadDevices();
   remote.events("s-idle").push(create(EventSchema, { seq: 100n, origin: { kind: OriginKind.CLIENT, deviceId: ANDROID }, kind: { case: "settingsChanged", value: { mode: ApprovalMode.FULL_ACCESS } } }));
   mount("s-idle");
   expect(host.textContent).toContain(t("session.mode_changed_by", { origin: t("session.origin_self"), value: t("modes.full_access") }));

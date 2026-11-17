@@ -4,6 +4,7 @@ import { createRoot, type Root } from "react-dom/client";
 import { afterEach, expect, it, vi } from "vitest";
 import { App } from "./App";
 import { DemoRemote } from "./dev/demo";
+import { patchSyncState } from "./test/remote-fixture";
 import * as remoteModule from "./remote";
 import * as storage from "./storage";
 import * as authoritySetup from "./authority-setup";
@@ -102,24 +103,36 @@ it("leaves an initially hidden page stopped until visible", async () => {
 });
 
 it("uses the delayed waiting notice on the home page too", async () => {
-  const { remote } = await mount();
+  const { remote, start } = await mount();
+  start.mockRestore();
+  remote.start();
+  const demoStream = (remote as unknown as { demoStream?: { legId: bigint; callbacks: { onClosed: (id: bigint, err: { policyViolation: boolean; errorCode: string; error: string; unresolvedHost: boolean }) => void } } }).demoStream;
   const waiting = vi.spyOn(remote, "showWaiting", "get").mockReturnValue(false);
-  await act(async () => { remote.conn = "offline"; remote.everOnline = true; remote.listed = true; remote.touch(); });
+  await act(async () => {
+    demoStream?.callbacks.onClosed(demoStream.legId, { policyViolation: false, errorCode: "unavailable", error: "连接超时", unresolvedHost: false });
+    patchSyncState(remote, { conn: "connecting", everOnline: true, listed: true });
+  });
   expect(host!.textContent).not.toMatch(/正在重连|重连中/);
   waiting.mockReturnValue(true);
   await act(async () => remote.touch());
   expect(host!.textContent).toMatch(/正在重连|重连中/);
+  remote.stop();
 });
 
 it("uses the same waiting delay in the narrow home header", async () => {
-  const { remote } = await mount();
+  const { remote, start } = await mount();
+  start.mockRestore();
+  remote.start();
+  const demoStream = (remote as unknown as { demoStream?: { legId: bigint; callbacks: { onClosed: (id: bigint, err: { policyViolation: boolean; errorCode: string; error: string; unresolvedHost: boolean }) => void } } }).demoStream;
   const waiting = vi.spyOn(remote, "showWaiting", "get").mockReturnValue(false);
   await act(async () => {
-    remote.conn = "offline"; remote.everOnline = true; remote.listed = true;
+    demoStream?.callbacks.onClosed(demoStream.legId, { policyViolation: false, errorCode: "unavailable", error: "连接超时", unresolvedHost: false });
+    patchSyncState(remote, { conn: "connecting", everOnline: true, listed: true });
     root!.render(<Home remote={remote} go={() => {}} />);
   });
   expect(host!.textContent).not.toContain("正在重连");
   waiting.mockReturnValue(true);
   await act(async () => remote.touch());
   expect(host!.textContent).toContain("正在重连");
+  remote.stop();
 });

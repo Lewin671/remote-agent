@@ -3,6 +3,7 @@ import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, expect, it, vi } from "vitest";
 import { DemoRemote } from "../dev/demo";
+import { patchSyncState } from "../test/remote-fixture";
 import { useRemote } from "../ui";
 import { useTray } from "./Attach";
 import type { Tray } from "../attach";
@@ -14,7 +15,7 @@ it("renews on the deadline and on return from a suspended page, and cancels when
   vi.useFakeTimers();
   vi.setSystemTime(1000);
   const remote = DemoRemote.create(new URLSearchParams());
-  remote.conn = "online";
+  patchSyncState(remote, { conn: "online" });
   remote.prepareImage = async () => ({ bytes: new Uint8Array(1), format: "png", width: 1, height: 1 });
   let count = 0;
   remote.uploadImage = async () => ({ imageId: "id-" + ++count, expiresMs: Date.now() + 100 });

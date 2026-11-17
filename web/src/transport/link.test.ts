@@ -2,12 +2,12 @@ import { afterEach, expect, test, vi } from "vitest";
 import { create } from "@bufbuild/protobuf";
 import { Link } from "./link";
 import { RelayPath, RelayStream } from "./relay-path";
-import { SyntheticRemote } from "../test/remote-fixture";
+import { patchSyncState, SyntheticRemote } from "../test/remote-fixture";
 import { CommandResultSchema, MachineMetaSchema } from "../gen/remoteagent/v1/remote_pb";
 import { MachineCapabilitiesSchema } from "../gen/remoteagent/v1/capabilities_pb";
 import { PROTOCOL_VERSION } from "../protocol";
 import { parseHeader, SecurityError } from "../device-security";
-import { newSlot } from "./request";
+import { newSlot } from "../remote";
 import type { Envelope } from "../gen/remoteagent/v1/envelope_pb";
 
 afterEach(() => vi.unstubAllGlobals());
@@ -20,8 +20,10 @@ test("operation gates and capability checks use Link despite stale relay discove
     return { result: await r.seal({ kind: 6, requestId: h.request }, CommandResultSchema, create(CommandResultSchema)) };
   });
   (r as unknown as { api: unknown }).api = { forward };
-  r.conn = "offline";
-  r.machines.set(r.machine, { id: r.machine, online: false, lastSeenMs: 0n, metaRev: 0n, meta: create(MachineMetaSchema, { protocolVersion: PROTOCOL_VERSION - 1, capabilities: { fileUpload: false } }) });
+  patchSyncState(r, {
+    conn: "offline",
+    machines: new Map([[r.machine, { id: r.machine, online: false, lastSeenMs: 0n, metaRev: 0n, meta: create(MachineMetaSchema, { protocolVersion: PROTOCOL_VERSION - 1, capabilities: { fileUpload: false } }) }]]),
+  });
   const link = new Link({ status: () => ({ reachable: true, ready: true, authorized: true, unlinked: false, relayRequired: false, protocolVersion: PROTOCOL_VERSION, capabilities: create(MachineCapabilitiesSchema, { fileUpload: true, scheduledTasks: true }) }), attempt: handoff => relay.attempt(handoff), openStream: address => relay.openStream(address) });
   Object.defineProperty(r, "deviceLink", { value: link });
   try {
@@ -30,7 +32,7 @@ test("operation gates and capability checks use Link despite stale relay discove
     link.changed();
     expect(changed).toHaveBeenCalledTimes(1);
     unsubscribe();
-    Object.assign(r, { listed: true });
+    patchSyncState(r, { listed: true });
     expect(r.presence.get(r.machine)?.online).toBe(true);
     expect(r.machines.get(r.machine)?.online).toBe(false);
     expect(r.peer(r.machine).canProbe(false)).toBe(true);

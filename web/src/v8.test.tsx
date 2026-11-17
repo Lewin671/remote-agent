@@ -9,8 +9,9 @@ import { DemoRemote, ANDROID, ME } from "./dev/demo";
 import { ApprovalCard } from "./views/ApprovalCard";
 import { Home, Sidebar } from "./views/Home";
 import { SessionPage } from "./views/Session";
-import { useNewSession } from "./views/NewSession";
-import { switchMachine } from "./model";
+import { getCoreHost } from "./core/host";
+import { NewBox } from "./views/NewSession";
+import { patchSyncState } from "./test/remote-fixture";
 import { RowState } from "./views/RowState";
 import { ActiveTool, BackgroundTool, ToolGroup, ToolRow, commandOf } from "./views/Tools";
 import { PendingBubbles } from "./views/Queue";
@@ -189,16 +190,27 @@ it("lists every running session in the wide sidebar, which scrolls as one column
   expect(host.querySelector(".scroll")!.textContent).toContain("项目 7 的会话");
 });
 
-it("uses another machine only for this start when a project's saved machine is offline", () => {
+it("keeps saved machine when offline and offers another machine for this start", async () => {
   const r = demo();
-  r.machines.get("mac")!.online = false;
-  let ns: ReturnType<typeof useNewSession>;
-  function Probe() { ns = useNewSession(r, "/Users/me/Code/foo", () => undefined); return null; }
-  mount(<Probe />);
-  expect(ns!.cfg.machineId).toBe("mac");
-  act(() => ns!.setCfg(switchMachine(ns!.cfg, r.machines.get("vps")!), true));
-  expect(ns!.cfg.machineId).toBe("vps");
+  const nextMachines = new Map(r.machines);
+  const mac = nextMachines.get("mac")!;
+  nextMachines.set("mac", { ...mac, online: false });
+  patchSyncState(r, { machines: nextMachines });
+  mount(<NewBox remote={r} projectKey="/Users/me/Code/foo" go={() => undefined} />);
+  const core = getCoreHost(r);
+  expect(core.viewNewSession("/Users/me/Code/foo").config?.machineId).toBe("mac");
   expect(r.projectPrefs().settings.find((s) => s.path === "/Users/me/Code/foo")?.machineId).toBe("mac");
+  const input = host.querySelector("textarea")!;
+  await act(async () => {
+    Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!.call(input, "用另一台");
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  const useVps = [...host.querySelectorAll<HTMLButtonElement>(".offline-draft .mi")].find((b) =>
+    b.textContent?.includes("VPS-dev"),
+  );
+  expect(useVps).toBeTruthy();
+  await act(async () => useVps!.click());
+  expect(core.viewNewSession("/Users/me/Code/foo").config?.machineId).toBe("vps");
 });
 
 // A failed first prompt has its own event row. It must never also appear

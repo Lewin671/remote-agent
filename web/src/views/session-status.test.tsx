@@ -7,7 +7,9 @@ import { t as message } from "../i18n";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, describe, expect, it } from "vitest";
+import { getCoreHost } from "../core/host";
 import { DemoRemote } from "../dev/demo";
+import { patchSyncState } from "../test/remote-fixture";
 import { SessionPage } from "./Session";
 import { SessionRow } from "./Home";
 
@@ -21,8 +23,8 @@ afterEach(() => {
   root = undefined;
 });
 
-function open(setup: (r: DemoRemote) => void) {
-  const r = DemoRemote.create(new URLSearchParams(), async () => undefined);
+function open(setup: (r: DemoRemote) => void, query = "") {
+  const r = DemoRemote.create(new URLSearchParams(query), async () => undefined);
   r.start();
   setup(r);
   host = document.createElement("div");
@@ -34,48 +36,54 @@ function open(setup: (r: DemoRemote) => void) {
 const status = () => host.querySelector(".dh .st")?.textContent ?? "";
 
 it("shows the last state heard, and no connection word, before the lists are in", () => {
-  open((r) => Object.assign(r, { conn: "connecting", listed: false, network: true, begun: true, waited: false }));
+  open((r) => patchSyncState(r, { conn: "connecting", listed: false }), "conn=connecting");
   expect(status()).not.toContain(message("list_state.unlinked"));
   expect(status()).not.toContain(message("list_state.offline"));
   expect(status()).toContain(message("list_state.idle"));
 });
 
 it("shows the state once the lists are in", () => {
-  open((r) => Object.assign(r, { conn: "online", listed: true }));
+  open((r) => patchSyncState(r, { conn: "online", listed: true }));
   expect(status()).toContain(message("list_state.idle"));
 });
 
 it("still says 未连接 when the server cannot be reached", () => {
-  open((r) => Object.assign(r, { conn: "offline", listed: false, network: true, begun: true, waited: true }));
+  open((r) => patchSyncState(r, { conn: "offline", listed: false }), "conn=nonetwork");
   expect(status()).toContain(message("list_state.unlinked"));
 });
 
 describe("a list row", () => {
-  function row(setup: (r: DemoRemote) => void) {
-    const r = DemoRemote.create(new URLSearchParams(), async () => undefined);
+  function row(setup: (r: DemoRemote) => void, query = "") {
+    const r = DemoRemote.create(new URLSearchParams(query), async () => undefined);
     r.start();
-    for (const m of r.machines.values()) m.online = false; // as the copy kept in the browser says
+    const demo = r as unknown as { demoMachines: Map<string, { online: boolean }>; syncDemoToCore(): void };
+    for (const m of demo.demoMachines.values()) m.online = false;
+    const offlineMachines = new Map([...r.machines].map(([id, m]) => [id, { ...m, online: false }]));
+    patchSyncState(r, { machines: offlineMachines });
+    demo.syncDemoToCore();
     setup(r);
+    const core = getCoreHost(r);
+    const vm = core.viewHome(30).running.find((x) => x.sessionId === "s-idle")!;
     host = document.createElement("div");
     document.body.append(host);
     root = createRoot(host);
-    act(() => root!.render(<SessionRow remote={r} s={r.sessions.get("s-idle")!} go={() => undefined} />));
+    act(() => root!.render(<SessionRow row={vm} remote={r} onSelect={() => undefined} />));
     return host.textContent ?? "";
   }
 
   it("shows the last state heard, not 未连接 or 电脑离线, while the lists are on their way", () => {
-    const text = row((r) => Object.assign(r, { conn: "connecting", listed: false, network: true, begun: true, waited: false }));
+    const text = row((r) => patchSyncState(r, { conn: "connecting", listed: false }), "conn=connecting");
     expect(text).not.toContain(message("list_state.unlinked"));
     expect(text).not.toContain(message("list_state.offline"));
     expect(text).toContain(message("list_state.idle"));
   });
 
   it("says 电脑离线 once the lists are in and the computer is not", () => {
-    expect(row((r) => Object.assign(r, { conn: "online", listed: true }))).toContain(message("list_state.offline"));
+    expect(row((r) => patchSyncState(r, { conn: "online", listed: true }))).toContain(message("list_state.offline"));
   });
 
   it("says 未连接 when the server cannot be reached", () => {
-    expect(row((r) => Object.assign(r, { conn: "offline", listed: false, network: true, begun: true, waited: true }))).toContain(message("list_state.unlinked"));
+    expect(row((r) => patchSyncState(r, { conn: "offline", listed: false }), "conn=nonetwork")).toContain(message("list_state.unlinked"));
   });
 });
 
@@ -83,11 +91,18 @@ it("counts a computer as the copy kept in the browser had it until the lists are
   const r = DemoRemote.create(new URLSearchParams(), async () => undefined);
   r.start();
   const m = [...r.machines.values()][0];
-  Object.assign(m, { online: false, keptOnline: true });
-  Object.assign(r, { listed: false });
-  expect(r.onlineOf(m)).toBe(true);
-  expect(r.presence.get(m.id)).toBeUndefined();
-  Object.assign(r, { listed: true });
-  expect(r.onlineOf(m)).toBe(false);
-  expect(r.presence.get(m.id)).toBe(m);
+  patchSyncState(r, {
+    listed: false,
+    machines: new Map([[m.id, { ...m, online: true }]]),
+  });
+  const mKept = r.machines.get(m.id)!;
+  expect(r.onlineOf(mKept)).toBe(true);
+  expect(r.presence.get(mKept.id)).toBeUndefined();
+  patchSyncState(r, {
+    listed: true,
+    machines: new Map([[m.id, { ...m, online: false }]]),
+  });
+  const mListed = r.machines.get(m.id)!;
+  expect(r.onlineOf(mListed)).toBe(false);
+  expect(r.presence.get(mListed.id)).toBe(mListed);
 });

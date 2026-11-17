@@ -4,6 +4,7 @@ import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, expect, it, vi } from "vitest";
 import { DemoRemote } from "./dev/demo";
+import { patchSyncState } from "./test/remote-fixture";
 import { ConnCheck, connWord } from "./views/ConnCheck";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -11,10 +12,7 @@ afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks(); });
 
 it("shows a disconnected push stream even when server and computer round trips succeed", async () => {
   const remote = DemoRemote.create(new URLSearchParams());
-  remote.conn = "offline";
-  remote.everOnline = true;
-  remote.listed = true;
-  remote.connError = "同步设备状态超时，正在重连";
+  patchSyncState(remote, { conn: "connecting", everOnline: true, listed: true, connError: "同步设备状态超时，正在重连" });
   vi.spyOn(remote, "showWaiting", "get").mockReturnValue(false);
   const server = vi.spyOn(remote, "pingServer").mockResolvedValue(12);
   const machine = vi.spyOn(remote, "pingMachine").mockResolvedValue(34);
@@ -36,7 +34,7 @@ it("shows a disconnected push stream even when server and computer round trips s
     await act(async () => retry.click());
     expect(reconnect).toHaveBeenCalledExactlyOnceWith(true);
     expect(server).toHaveBeenCalledTimes(3); expect(machine).toHaveBeenCalledTimes(probes);
-    await act(async () => { remote.conn = "online"; remote.connError = ""; remote.touch(); });
+    await act(async () => { patchSyncState(remote, { conn: "online", connError: "" }); });
     expect(push()?.textContent).toBe("实时推送已连接");
     expect(host.textContent).not.toContain("实时推送未连接");
     expect(host.textContent).not.toContain(message("connection.reconnect_now"));
@@ -53,7 +51,7 @@ it("shows a disconnected push stream even when server and computer round trips s
 it("shows the current attempt's step and ticking seconds without a failure warning", async () => {
   vi.useFakeTimers(); vi.setSystemTime(10_000);
   const remote = DemoRemote.create(new URLSearchParams());
-  remote.conn = "connecting"; remote.everOnline = true;
+  patchSyncState(remote, { conn: "connecting", everOnline: true });
   let startedAt = 7_000;
   let step = "同步设备状态";
   vi.spyOn(remote, "connStartedAt", "get").mockImplementation(() => startedAt);
@@ -72,12 +70,13 @@ it("shows the current attempt's step and ticking seconds without a failure warni
     expect(host.textContent).toContain("正在重连：建立推送连接，已 4 秒。");
     await act(async () => { startedAt = Date.now(); remote.touch(); });
     expect(host.textContent).toContain("已 0 秒。");
-    await act(async () => { remote.connError = "连接超时"; remote.touch(); });
+    await act(async () => { patchSyncState(remote, { connError: "连接超时" }); });
     expect(host.textContent).toContain("正在重连：建立推送连接，已 0 秒。上一次失败：连接超时");
     expect(host.textContent).not.toContain("会话变化可能延迟");
     await act(async () => { step = ""; remote.touch(); });
     expect(host.textContent).toContain("最近一次失败：连接超时");
     expect(host.textContent).not.toContain("正在重连：");
+    remote.stop();
     expect(vi.getTimerCount()).toBe(0);
   } finally {
     await act(async () => root.unmount()); host.remove(); remote.stop();

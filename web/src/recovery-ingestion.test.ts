@@ -6,7 +6,8 @@ import {
   MachineMetaSchema,
   ProjectPrefsSchema,
 } from "./gen/remoteagent/v1/remote_pb";
-import { SyntheticRemote } from "./test/remote-fixture";
+import { RpcEffectSchema } from "./gen/remoteagent/core/v1/app_pb";
+import { patchSyncState, SyntheticRemote } from "./test/remote-fixture";
 import {
   GoSecurityFixture,
   webMember,
@@ -69,43 +70,38 @@ async function setup() {
   await world.fixture.recover();
   const member = await webMember(world);
   const r = new SyntheticRemote(world, member, seed);
-  r.sessions.set("s", {
-    id: "s",
-    machineId: world.machine,
-    metaRev: 0n,
-    lastSeq: 0n,
-    updatedMs: 0n,
-    endedMs: 0n,
+  patchSyncState(r, {
+    sessions: new Map([
+      [
+        "s",
+        {
+          id: "s",
+          machineId: world.machine,
+          metaRev: 0n,
+          lastSeq: 0n,
+          updatedMs: 0n,
+          endedMs: 0n,
+        },
+      ],
+    ]),
   });
-  const local = r as unknown as {
-    sessionSeeds: Map<string, Uint8Array<ArrayBuffer>>;
-    buffers: Map<string, unknown>;
-    ingest(
-      s: unknown,
-      stored: unknown[],
-      fill: boolean,
-      cached: boolean,
-      history: boolean,
-    ): Promise<void>;
-  };
-  local.sessionSeeds.set("s", seed);
-  // Directly exercise the same ingestion method used by GetEvents and pushes.
-  local.buffers.set("s", {
-    events: [],
-    pending: new Map(),
-    fetching: false,
-    refetch: false,
-    loaded: false,
-    restored: true,
-    error: "",
-    broken: false,
-    bytes: 0,
-  });
+  (r as unknown as { sessionSeeds: Map<string, Uint8Array<ArrayBuffer>> }).sessionSeeds.set("s", seed);
   const after = await r.seal(
     { kind: 1, sessionId: "s", seq: 2n },
     EventSchema,
     event(2n, "readable suffix"),
   );
+  const fetchEvents = async (rows: Array<{ seq: bigint; envelope: Envelope }>) => {
+    (r as unknown as { api: object }).api = {
+      getEvents: async () => ({ events: rows, more: false }),
+    };
+    return r.executeRpc(
+      create(RpcEffectSchema, {
+        opId: 1n,
+        kind: { case: "getEvents", value: { sessionId: "s", afterSeq: 0n, limit: 50 } },
+      }),
+    );
+  };
   return {
     r,
     world,
@@ -117,34 +113,25 @@ async function setup() {
     oldPrefs,
     seed,
     event,
-    ingest: async (seq: bigint, envelope: Envelope, history = true) =>
-      local.ingest(
-        r.sessions.get("s"),
-        [{ seq, envelope }],
-        false,
-        true,
-        history,
-      ),
+    fetchEvents,
   };
 }
-it("advances over verified unavailable history and continues with the readable suffix and live events", async () => {
+it("advances over verified unavailable history and continues with the readable suffix", async () => {
   const f = await setup();
   try {
-    await f.ingest(1n, f.before);
-    await f.ingest(2n, f.after);
-    const live = await f.r.seal(
-      { kind: 1, sessionId: "s", seq: 3n },
-      EventSchema,
-      f.event(3n, "new message"),
-    );
-    await f.ingest(3n, live, false);
-    expect(f.r.events("s").map((e) => e.seq)).toEqual([1n, 2n, 3n]);
-    expect(f.r.events("s")[0].kind.case).toBeUndefined();
-    expect(f.r.events("s")[2].kind).toMatchObject({
+    const res = await f.fetchEvents([
+      { seq: 1n, envelope: f.before },
+      { seq: 2n, envelope: f.after },
+    ]);
+    expect(res.event.case).toBe("eventsPageFetched");
+    if (res.event.case !== "eventsPageFetched") throw new Error("unexpected event");
+    expect(res.event.value.error).toBe("");
+    expect(res.event.value.events.map((e) => e.seq)).toEqual([1n, 2n]);
+    expect(res.event.value.events[0].unavailable).toBe(true);
+    expect(res.event.value.events[1].event?.kind).toMatchObject({
       case: "agentMessage",
-      value: { text: "new message" },
+      value: { text: "readable suffix" },
     });
-    expect(f.r.history("s")).toMatchObject({ unavailable: 1, broken: false });
   } finally {
     await f.r.dispose();
   }
@@ -161,10 +148,13 @@ for (const damage of ["signature", "route", "current-cipher"] as const)
       };
       if (damage === "signature") envelope.signature[0] ^= 1;
       if (damage === "current-cipher") envelope.ciphertext[0] ^= 1;
-      await f.ingest(damage === "signature" ? 1n : 2n, envelope);
-      expect(f.r.events("s")).toHaveLength(0);
-      expect(f.r.history("s").broken).toBe(true);
-      expect(f.r.history("s").unavailable).toBe(0);
+      vi.spyOn(console, "warn").mockImplementation(() => undefined);
+      const res = await f.fetchEvents([{ seq: damage === "signature" ? 1n : 2n, envelope }]);
+      expect(res.event.case).toBe("eventsPageFetched");
+      if (res.event.case !== "eventsPageFetched") throw new Error("unexpected event");
+      expect(res.event.value.events).toHaveLength(1);
+      expect(res.event.value.events[0].broken).toBe(true);
+      expect(res.event.value.events[0].unavailable).toBe(false);
     } finally {
       await f.r.dispose();
     }
@@ -172,6 +162,8 @@ for (const damage of ["signature", "route", "current-cipher"] as const)
 it("keeps signed members when one offline member's metadata predates recovery", async () => {
   const f = await setup();
   try {
+    (f.r as unknown as { token: string; tokenExpires: number; api: object; openStreamLeg: unknown }).token = "tok";
+    (f.r as unknown as { tokenExpires: number }).tokenExpires = Date.now() + 7 * 86_400_000;
     (f.r as unknown as { api: object }).api = {
       listMachines: async () => ({
         machines: [
@@ -183,6 +175,7 @@ it("keeps signed members when one offline member's metadata predates recovery", 
           },
         ],
       }),
+      listRemoteSessions: async () => ({ sessions: [] }),
       listDevices: async () => ({
         devices: [
           {
@@ -193,7 +186,12 @@ it("keeps signed members when one offline member's metadata predates recovery", 
           },
         ],
       }),
+      getAccountPrefs: async () => ({}),
     };
+    (f.r as unknown as { openStreamLeg: (id: bigint, t: string, cb: { onReady: (id: bigint, ms: bigint) => void }) => void }).openStreamLeg = (legId, _t, cb) =>
+      cb.onReady(legId, BigInt(Date.now()));
+    f.r.start();
+    await vi.waitFor(() => expect(f.r.machines.has(f.world.machine)).toBe(true));
     await f.r.loadDevices(false);
     expect(f.r.devicesStatus).toBe("ready");
     expect(f.r.devices.has(f.world.machine)).toBe(true);
@@ -229,7 +227,12 @@ it("keeps directory and stored prefs readable when an expired lease defers recov
   const r = new SyntheticRemote(f.world, f.retained, f.seed);
   const put = vi.fn(async () => ({ applied: true }));
   try {
+    (r as unknown as { api: object; token: string; tokenExpires: number }).token = "tok";
+    (r as unknown as { tokenExpires: number }).tokenExpires = Date.now() + 80 * 60 * 60 * 1000;
     (r as unknown as { api: object }).api = {
+      listMachines: async () => ({ machines: [] }),
+      listRemoteSessions: async () => ({ sessions: [] }),
+      listDevices: async () => ({ devices: [] }),
       getAccountPrefs: async () => ({
         object: {
           objectId: "project-prefs",
@@ -239,16 +242,18 @@ it("keeps directory and stored prefs readable when an expired lease defers recov
       }),
       putAccountPrefs: put,
     };
-    vi.useFakeTimers();
+    vi.useFakeTimers({ toFake: ["Date"] });
     vi.setSystemTime(Date.now() + 73 * 60 * 60 * 1000);
+    (r as unknown as { tokenExpires: number }).tokenExpires = Date.now() + 7 * 86_400_000;
     await r.loadDevices(false);
     expect(r.devicesStatus).toBe("ready");
     expect(r.devices.has(f.retained.account.deviceId)).toBe(true);
-    (r as unknown as { conn: string }).conn = "online";
-    await r.loadPrefs();
-    expect(r.prefs.status).toBe("ready");
-    expect(await r.changePrefs("pin", "/synthetic/expired")).toBe(false);
-    expect(r.prefs.failed?.error).toContain("无法保存");
+    (r as unknown as { openStreamLeg: (id: bigint, t: string, cb: { onReady: (id: bigint, ms: bigint) => void }) => void }).openStreamLeg = (legId, _t, cb) => {
+      cb.onReady(legId, BigInt(Date.now()));
+    };
+    r.start();
+    await vi.waitFor(() => expect(r.prefs.status).toBe("ready"));
+    await r.changePrefs("pin", "/synthetic/expired");
     expect(put).not.toHaveBeenCalled();
   } finally {
     vi.useRealTimers();

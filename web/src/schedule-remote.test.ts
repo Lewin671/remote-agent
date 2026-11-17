@@ -7,6 +7,7 @@ import {
 } from "./gen/remoteagent/v1/remote_pb";
 import { task, run } from "./test/schedule-fixture";
 import { PROTOCOL_VERSION } from "./protocol";
+import { patchSyncState } from "./test/remote-fixture";
 
 class Probe extends Remote {
   constructor() {
@@ -18,17 +19,25 @@ class Probe extends Remote {
 }
 function probe() {
   const r = new Probe();
-  r.conn = "online";
-  r.machines.set("computer", {
-    id: "computer",
-    online: true,
-    lastSeenMs: 0n,
-    metaRev: 1n,
-    meta: create(MachineMetaSchema, {
-      protocolVersion: PROTOCOL_VERSION,
-      capabilities: { scheduledTasks: true },
-      scheduleRevision: 1n,
-    }),
+  patchSyncState(r, {
+    conn: "online",
+    listed: true,
+    machines: new Map([
+      [
+        "computer",
+        {
+          id: "computer",
+          online: true,
+          lastSeenMs: 0n,
+          metaRev: 1n,
+          meta: create(MachineMetaSchema, {
+            protocolVersion: PROTOCOL_VERSION,
+            capabilities: { scheduledTasks: true },
+            scheduleRevision: 1n,
+          }),
+        },
+      ],
+    ]),
   });
   return r;
 }
@@ -53,10 +62,10 @@ it("refreshes on capabilities, revision and reconnect without polling", async ()
   r.machines.get("computer")!.meta!.scheduleRevision++;
   r.syncSchedules();
   await vi.waitFor(() => expect(send).toHaveBeenCalledTimes(2));
-  r.conn = "offline";
+  patchSyncState(r, { conn: "offline" });
   r.syncSchedules();
   expect(r.taskEntries()).toHaveLength(1);
-  r.conn = "online";
+  patchSyncState(r, { conn: "online" });
   r.syncSchedules();
   await vi.waitFor(() => expect(send).toHaveBeenCalledTimes(3));
   r.machines.get("computer")!.meta!.capabilities!.scheduledTasks = false;
@@ -154,13 +163,21 @@ it("stores only the verified encrypted list and restores it as an offline snapsh
     scheduleRevision: 9n,
     capabilities: { scheduledTasks: true },
   });
-  r.conn = "online";
-  r.machines.set(r.machine, {
-    id: r.machine,
-    online: true,
-    lastSeenMs: 0n,
-    metaRev: 1n,
-    meta,
+  patchSyncState(r, {
+    conn: "online",
+    listed: true,
+    machines: new Map([
+      [
+        r.machine,
+        {
+          id: r.machine,
+          online: true,
+          lastSeenMs: 0n,
+          metaRev: 1n,
+          meta,
+        },
+      ],
+    ]),
   });
   const machineRow = {
     id: r.machine,
@@ -210,7 +227,10 @@ it("stores only the verified encrypted list and restores it as an offline snapsh
     });
     other = new SyntheticRemote(r.world, r.member, r.seed);
     (other as any).cache = cache;
-    await (other as any).warm();
+    (other as any).openStreamLeg = () => {};
+    other.start();
+    await vi.waitFor(() => expect(other!.machines.has(r.machine)).toBe(true));
+    await vi.waitFor(() => expect(other!.taskEntries().length).toBe(1));
     expect(other.machines.get(r.machine)?.online).toBe(false);
     expect(other.taskEntries().map((e) => e.task.spec.message)).toEqual([
       task().spec.message,
@@ -225,7 +245,23 @@ it("stores only the verified encrypted list and restores it as an offline snapsh
 
 it("combines task lists from supported computers while retaining an offline computer's snapshot", async () => {
   const r = probe();
-  r.machines.set("second", { ...r.machines.get("computer")!, id: "second", meta: create(MachineMetaSchema, { protocolVersion: PROTOCOL_VERSION, capabilities: { scheduledTasks: true }, scheduleRevision: 2n }) });
+  patchSyncState(r, {
+    machines: new Map([
+      ...r.machines,
+      [
+        "second",
+        {
+          ...r.machines.get("computer")!,
+          id: "second",
+          meta: create(MachineMetaSchema, {
+            protocolVersion: PROTOCOL_VERSION,
+            capabilities: { scheduledTasks: true },
+            scheduleRevision: 2n,
+          }),
+        },
+      ],
+    ]),
+  });
   vi.spyOn(r, "machineCommand").mockImplementation(async machineId => result({ tasks: [task({ id: machineId + "-task" })] }));
   r.syncSchedules();
   await vi.waitFor(() => expect(r.taskEntries()).toHaveLength(2));
@@ -247,7 +283,7 @@ it("deletes a removed computer's encrypted task snapshot and rejects a late list
  (r as any).cache={set:async(k:string,v:unknown)=>{if(v===undefined)stored.delete(k);else stored.set(k,v);}};
  r.schedules.set("computer",{tasks:[task()],revision:1n,error:"",loading:false});
  let finish!:(value:ReturnType<typeof result>)=>void;vi.spyOn(r,"machineCommand").mockImplementation(()=>new Promise(resolve=>{finish=resolve;}));
- const pending=r.refreshSchedules("computer");r.machines.delete("computer");r.syncSchedules();finish(result({tasks:[task()]}));await pending;
+ const pending=r.refreshSchedules("computer");const next=new Map(r.machines);next.delete("computer");patchSyncState(r,{machines:next});r.syncSchedules();finish(result({tasks:[task()]}));await pending;
  expect(r.schedules.has("computer")).toBe(false);expect(stored.has("schedules:computer")).toBe(false);
 });
 

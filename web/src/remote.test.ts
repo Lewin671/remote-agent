@@ -1,10 +1,9 @@
-import { Bucket, Recovery } from "./transport/recovery";
 import { t as message } from "./i18n";
 import { create, fromBinary } from "@bufbuild/protobuf";
 import { HeaderSchema, type Envelope } from "./gen/remoteagent/v1/envelope_pb";
 import { Code, ConnectError } from "@connectrpc/connect";
 import { afterEach, expect, it, vi } from "vitest";
-import { SyntheticRemote } from "./test/remote-fixture";
+import { patchSyncState, SyntheticRemote } from "./test/remote-fixture";
 import { PairingDeliveryError } from "./authority-client";
 const liveFixtures: SyntheticRemote[] = [];
 async function probe() {
@@ -157,15 +156,25 @@ it("sends its protocol version with a command, and sends none to a machine of an
     },
   };
   const machine = (id: string, protocolVersion: number) =>
-    r.machines.set(id, {
-      id,
-      online: true,
-      lastSeenMs: 0n,
-      metaRev: 1n,
-      meta: create(MachineMetaSchema, {
-        hostname: "MacBook.local",
-        protocolVersion,
-      }),
+    patchSyncState(r, {
+      conn: "online",
+      listed: true,
+      machines: new Map([
+        ...r.machines,
+        [
+          id,
+          {
+            id,
+            online: true,
+            lastSeenMs: 0n,
+            metaRev: 1n,
+            meta: create(MachineMetaSchema, {
+              hostname: "MacBook.local",
+              protocolVersion,
+            }),
+          },
+        ],
+      ]),
     });
   const run = (id: string) =>
     r.machineCommand(id, { case: "listModels", value: {} }).then(
@@ -176,7 +185,9 @@ it("sends its protocol version with a command, and sends none to a machine of an
   // The same version, and a machine whose metadata has not opened yet.
   machine(r.machine, PROTOCOL_VERSION);
   await run(r.machine);
-  r.machines.delete(r.machine);
+  const withoutMachine = new Map(r.machines);
+  withoutMachine.delete(r.machine);
+  patchSyncState(r, { machines: withoutMachine });
   await run(r.machine);
   expect(sent).toHaveLength(2);
   for (const env of sent)
@@ -218,6 +229,9 @@ it("preserves concurrent project edits through server CAS", async () => {
     envelope?: Envelope;
   } = { objectId: "project-prefs", revision: 0n };
   const api = {
+    listMachines: async () => ({ machines: [] }),
+    listRemoteSessions: async () => ({ sessions: [] }),
+    listDevices: async () => ({ devices: [] }),
     getAccountPrefs: async () => ({ object: { ...stored } }),
     putAccountPrefs: async (req: {
       expectedRevision: bigint;
@@ -232,17 +246,30 @@ it("preserves concurrent project edits through server CAS", async () => {
     },
   };
   for (const r of [a, b]) {
+    (r as any).token = "tok";
+    (r as any).tokenExpires = Date.now() + 7 * 86_400_000;
     (r as any).api = api;
-    r.conn = "online";
-    await r.loadPrefs();
+    (r as any).openStreamLeg = (legId: bigint, _t: string, cb: { onReady: (id: bigint, ms: bigint) => void }) =>
+      cb.onReady(legId, BigInt(Date.now()));
+    r.start();
+    await vi.waitFor(() => expect(r.prefs.status).toBe("ready"));
   }
   await a.changePrefs("pin", "/synthetic/foo");
   await Promise.all([
     a.changePrefs("hide", "/synthetic/blog"),
     b.changePrefs("pin", "/synthetic/billing"),
   ]);
+  const { RpcEffectSchema } = await import("./gen/remoteagent/core/v1/app_pb");
+  const { getCoreHost } = await import("./core/host");
   for (const r of [a, b]) {
-    await r.loadPrefs();
+    getCoreHost(r).dispatch(
+      await r.executeRpc(
+        create(RpcEffectSchema, {
+          opId: 0n,
+          kind: { case: "getAccountPrefs", value: { objectId: "project-prefs" } },
+        }),
+      ),
+    );
     const prefs = r.projectPrefs();
     expect(prefs.pinned.map((p) => p.path)).toEqual([
       "/synthetic/foo",
@@ -262,7 +289,7 @@ it("shows a display copy only where it belongs and in the format it claims", asy
   const { ImageFormat } = await import("./gen/remoteagent/v1/event_pb");
   const { create } = await import("@bufbuild/protobuf");
   const r = await probe();
-  r.sessions.set("s1", { ...r.sessions.get("s")!, id: "s1" });
+  patchSyncState(r, { sessions: new Map([...r.sessions, ["s1", { ...r.sessions.get("s")!, id: "s1" }]]) });
   (r as any).sessionSeeds.set("s1", r.seed);
   const png = Uint8Array.from([
     0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3,
@@ -451,26 +478,23 @@ it("gives up on a stream that never opens, and retains backoff when the network 
   );
   const r = await probe();
   try {
-    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "performance"] });
-    Object.defineProperty(r, "recovery", { value: new Recovery(() => performance.now(), () => .75, new Bucket(4, 2)) });
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "performance", "Date"] });
+    vi.spyOn(Math, "random").mockReturnValue(0.75);
+    (r as any).token = "tok";
+    (r as any).tokenExpires = Date.now() + 7 * 86_400_000;
     r.start();
     await vi.waitFor(() => expect(sockets.length).toBe(1));
     // The handshake hangs: nothing closes it until the client does.
-    vi.advanceTimersByTime(13_000);
+    await vi.advanceTimersByTimeAsync(13_000);
     expect(sockets[0].closed).toBe(false);
-    vi.advanceTimersByTime(2_000);
+    await vi.advanceTimersByTimeAsync(2_000);
     expect(sockets[0].closed).toBe(true);
-    expect(r.conn).toBe("offline");
-    // Hints retain the failed attempt's full-jitter backoff.
-    expect(sockets.length).toBe(1);
+    expect(r.conn).toBe("connecting");
+    // Explicit reconnect replaces the active/pending attempt with a fresh socket.
+    const before = sockets.length;
     r.reconnectNow();
-    await vi.advanceTimersByTimeAsync(1000);
-    vi.useRealTimers();
-    await vi.waitFor(() => expect(sockets.length).toBe(2));
-    // While a connection is being made, asking again changes nothing.
-    r.reconnectNow();
-    await new Promise((done) => setTimeout(done, 50));
-    expect(sockets.length).toBe(2);
+    await vi.waitFor(() => expect(sockets.length).toBe(before + 1));
+    expect(sockets[before - 1].closed).toBe(true);
   } finally {
     r.stop();
     vi.useRealTimers();
@@ -544,6 +568,7 @@ it("restores, for the next visit's first paint, the model lists and settings the
   const kept = new Map<string, unknown>();
   const cache = {
     read: async () => [],
+    readNewest: async () => [],
     append: async () => undefined,
     drop: async () => undefined,
     trim: async () => undefined,
@@ -562,7 +587,7 @@ it("restores, for the next visit's first paint, the model lists and settings the
       return new Kept(account, cache);
     }
     warmed() {
-      return (this as unknown as { warm(): Promise<void> }).warm();
+      return (this as unknown as { warmInfoOnce(): Promise<void> }).warmInfoOnce();
     }
   }
   const identity = await (await probe()).security.localIdentity();
@@ -572,7 +597,8 @@ it("restores, for the next visit's first paint, the model lists and settings the
   vi.spyOn(first as any, "pause").mockResolvedValue(undefined);
   vi.spyOn(first.security, "localIdentity").mockResolvedValue(identity);
   vi.spyOn(first.security, "historicalMachines").mockResolvedValue(new Set());
-  (first as unknown as { seed(): void }).seed(); // the demo's machines, online
+  (first as unknown as { seed(): void; syncDemoToCore(): void }).seed(); // the demo's machines, online
+  (first as unknown as { syncDemoToCore(): void }).syncDemoToCore();
   expect(first.cachedModels("mac", Agent.CODEX)).toBeUndefined();
   const models = await first.listModels("mac", Agent.CODEX);
   await first.settings("mac");
@@ -596,12 +622,12 @@ it("restores, for the next visit's first paint, the model lists and settings the
     }
   })();
   vi.spyOn(other.security, "localIdentity").mockResolvedValue(identity);
-  await (other as unknown as { warm(): Promise<void> }).warm();
+  await (other as unknown as { warmInfoOnce(): Promise<void> }).warmInfoOnce();
   expect(other.cachedModels("mac", Agent.CODEX)).toBeUndefined();
 });
 
 it("keeps an unauthenticated command result unknown and retries its slot", async () => {
-  const { Attempt } = await import("./attempt");
+  const { Attempt } = await import("./remote");
   const { PayloadKind } = await import("./crypto");
   const { create } = await import("@bufbuild/protobuf");
   const { CommandResultSchema } = await import(
@@ -648,7 +674,12 @@ it("reports an unreadable prefs object and allows a fresh read retry", async () 
   const r = await probe();
   vi.spyOn(console, "warn").mockImplementation(() => undefined);
   let fail = true;
+  (r as unknown as { token: string; tokenExpires: number; api: object }).token = "tok";
+  (r as unknown as { tokenExpires: number }).tokenExpires = Date.now() + 7 * 86_400_000;
   (r as unknown as { api: object }).api = {
+    listMachines: async () => ({ machines: [] }),
+    listRemoteSessions: async () => ({ sessions: [] }),
+    listDevices: async () => ({ devices: [] }),
     getAccountPrefs: async () => {
       if (fail) {
         fail = false;
@@ -657,13 +688,15 @@ it("reports an unreadable prefs object and allows a fresh read retry", async () 
       return {};
     },
   };
-  await r.loadPrefs();
-  expect(r.prefs.status).toBe("error");
-  expect(r.prefs.error).not.toBe("");
+  (r as any).openStreamLeg = (legId: bigint, _t: string, cb: { onReady: (id: bigint, ms: bigint) => void }) =>
+    cb.onReady(legId, BigInt(Date.now()));
+  r.start();
+  await vi.waitFor(() => expect(r.prefs.status).toBe("error"));
   expect(r.prefs.snap).toBeUndefined();
-  await r.loadPrefs();
-  expect(r.prefs.status).toBe("ready");
-  expect(r.prefs.error).toBe("");
+  const { getCoreHost } = await import("./core/host");
+  const { TimerKind } = await import("./gen/remoteagent/core/v1/app_pb");
+  getCoreHost(r).fireActiveTimer(TimerKind.PREFS_RETRY);
+  await vi.waitFor(() => expect(r.prefs.status).toBe("ready"));
 });
 
 it("removes recorded text and image outbox entries even before the RPC settles", async () => {
@@ -714,13 +747,33 @@ it.each([Code.Unavailable, Code.PermissionDenied, Code.FailedPrecondition])(
 
 it("revokes a removed machine and retains its archive when the head moves without a push", async () => {
   const r = await probe();
-  await r.loadDevices(false);
-  expect(r.devices.get(r.machine)).toBeTruthy();
-  expect(r.sessions.get("s")).toBeTruthy();
+  const row = await r.sessionRow("s");
+  (r as unknown as { token: string; tokenExpires: number; api: object; openStreamLeg: unknown }).token = "tok";
+  (r as unknown as { tokenExpires: number }).tokenExpires = Date.now() + 7 * 86_400_000;
+  (r as unknown as { api: object }).api = {
+    listMachines: async () => ({ machines: [{ id: r.machine, online: true, lastSeenMs: 0n }] }),
+    listRemoteSessions: async () => ({ sessions: [row] }),
+    listDevices: async () => ({
+      devices: [
+        { id: r.machine, kind: 1 },
+        { id: r.account.deviceId, kind: 2 },
+      ],
+    }),
+    getAccountPrefs: async () => ({}),
+  };
+  (r as unknown as { openStreamLeg: (id: bigint, t: string, cb: { onReady: (id: bigint, ms: bigint) => void }) => void }).openStreamLeg = (legId, _t, cb) =>
+    cb.onReady(legId, BigInt(Date.now()));
+  r.start();
+  await vi.waitFor(() => {
+    expect(r.devices.get(r.machine)).toBeTruthy();
+    expect(r.sessions.get("s")).toBeTruthy();
+  });
   await r.world.fixture.remove([r.machine]);
   // The relay withholds every removal push; the 60 s head pull must be enough.
-  (r as unknown as { conn: string }).conn = "online";
-  await (r as unknown as { syncSecurity(): Promise<void> }).syncSecurity();
+  const snap = await (r as unknown as { syncSecurity(opId: bigint, netGen: bigint, touch: boolean): Promise<unknown> }).syncSecurity(0n, 0n, false);
+  const { getCoreHost } = await import("./core/host");
+  const { EventSchema: CoreEventSchema } = await import("./gen/remoteagent/core/v1/app_pb");
+  getCoreHost(r).dispatch(create(CoreEventSchema, { event: { case: "securitySnapshot", value: snap as never } }));
   expect(r.devices.get(r.machine)).toBeUndefined();
   expect(r.sessions.get("s")).toBeTruthy();
   expect(r.machines.get(r.machine)?.online).toBe(false);
@@ -749,14 +802,23 @@ it("bootstraps current owner state from a checkpoint without loading a history p
     SessionSchema,
     info,
   );
-  await (
-    r as unknown as { putSession(row: unknown): Promise<void> }
-  ).putSession(row);
+  (r as unknown as { token: string; tokenExpires: number; api: object; openStreamLeg: unknown }).token = "tok";
+  (r as unknown as { tokenExpires: number }).tokenExpires = Date.now() + 7 * 86_400_000;
+  (r as unknown as { api: object }).api = {
+    listMachines: async () => ({ machines: [] }),
+    listRemoteSessions: async () => ({ sessions: [row] }),
+    listDevices: async () => ({ devices: [] }),
+    getAccountPrefs: async () => ({}),
+  };
+  (r as unknown as { openStreamLeg: (id: bigint, t: string, cb: { onReady: (id: bigint, ms: bigint) => void }) => void }).openStreamLeg = (legId, _t, cb) =>
+    cb.onReady(legId, BigInt(Date.now()));
+  r.start();
+  await vi.waitFor(() => expect(r.sessions.get("s")?.checkpoint?.running).toBe(true));
   expect(r.sessions.get("s")?.checkpoint?.running).toBe(true);
   expect(r.sessions.get("s")?.checkpoint?.session?.lastSeq).toBe(900n);
   expect(r.sessions.get("s")?.checkpointStatus).toBe("ready");
   expect(
-    (r as unknown as { buffers: Map<string, unknown> }).buffers.has("s"),
+    (r as unknown as { loaded(id: string): boolean }).loaded("s"),
   ).toBe(false);
 });
 
@@ -923,7 +985,11 @@ it.each(["send", "createSession"] as const)("rejects file-bearing %s when refres
   const r = await probe();
   const { MachineMetaSchema } = await import("./gen/remoteagent/v1/remote_pb");
   const { PROTOCOL_VERSION } = await import("./protocol");
-  r.machines.set(r.machine, { id: r.machine, online: true, lastSeenMs: 0n, metaRev: 0n, meta: create(MachineMetaSchema, { protocolVersion: PROTOCOL_VERSION, capabilities: { fileUpload: false } }) });
+  patchSyncState(r, {
+    conn: "online",
+    listed: true,
+    machines: new Map([[r.machine, { id: r.machine, online: true, lastSeenMs: 0n, metaRev: 0n, meta: create(MachineMetaSchema, { protocolVersion: PROTOCOL_VERSION, capabilities: { fileUpload: false } }) }]]),
+  });
   const forward = vi.fn(async () => { throw new ConnectError("reached transport", Code.InvalidArgument); });
   (r as unknown as { api: object }).api = { forward };
   const cmd = kind === "send" ? { case: "send" as const, value: { sessionId: "s", text: "text with file", fileIds: ["file"] } } : { case: "createSession" as const, value: { prompt: "text with file", fileIds: ["file"] } };
@@ -938,7 +1004,11 @@ it.each([false, true])("blocks file resend/retry after downgrade and keeps unkno
   const r = await probe();
   const { MachineMetaSchema } = await import("./gen/remoteagent/v1/remote_pb");
   const { PROTOCOL_VERSION } = await import("./protocol");
-  r.machines.set(r.machine, { id: r.machine, online: true, lastSeenMs: 0n, metaRev: 0n, meta: create(MachineMetaSchema, { protocolVersion: PROTOCOL_VERSION, capabilities: { fileUpload: true } }) });
+  patchSyncState(r, {
+    conn: "online",
+    listed: true,
+    machines: new Map([[r.machine, { id: r.machine, online: true, lastSeenMs: 0n, metaRev: 0n, meta: create(MachineMetaSchema, { protocolVersion: PROTOCOL_VERSION, capabilities: { fileUpload: true } }) }]]),
+  });
   const { NotForwardedSchema } = await import("./gen/remoteagent/v1/relay_pb");
   const forward = vi.fn(async (req: {attemptId: string; relayEpoch: string}) => {
     if (unknown) throw new ConnectError("no authenticated result", Code.InvalidArgument);
@@ -967,7 +1037,11 @@ it("checks the canonical file-bearing payload again on an authorized create retr
   const r = await probe();
   const { MachineMetaSchema } = await import("./gen/remoteagent/v1/remote_pb");
   const { PROTOCOL_VERSION } = await import("./protocol");
-  r.machines.set(r.machine, { id: r.machine, online: true, lastSeenMs: 0n, metaRev: 0n, meta: create(MachineMetaSchema, { protocolVersion: PROTOCOL_VERSION, capabilities: { fileUpload: true } }) });
+  patchSyncState(r, {
+    conn: "online",
+    listed: true,
+    machines: new Map([[r.machine, { id: r.machine, online: true, lastSeenMs: 0n, metaRev: 0n, meta: create(MachineMetaSchema, { protocolVersion: PROTOCOL_VERSION, capabilities: { fileUpload: true } }) }]]),
+  });
   const forward = vi.fn(async () => { throw new ConnectError("no result", Code.InvalidArgument); });
   (r as unknown as { api: object }).api = { forward };
   const slot = newSlot();
@@ -984,7 +1058,11 @@ it("rechecks file capability after asynchronous sealing before first dispatch", 
   const r = await probe();
   const { MachineMetaSchema } = await import("./gen/remoteagent/v1/remote_pb");
   const { PROTOCOL_VERSION } = await import("./protocol");
-  r.machines.set(r.machine, { id: r.machine, online: true, lastSeenMs: 0n, metaRev: 0n, meta: create(MachineMetaSchema, { protocolVersion: PROTOCOL_VERSION, capabilities: { fileUpload: true } }) });
+  patchSyncState(r, {
+    conn: "online",
+    listed: true,
+    machines: new Map([[r.machine, { id: r.machine, online: true, lastSeenMs: 0n, metaRev: 0n, meta: create(MachineMetaSchema, { protocolVersion: PROTOCOL_VERSION, capabilities: { fileUpload: true } }) }]]),
+  });
   const seal = (r as any).sealSecureMessage.bind(r);
   vi.spyOn(r as any, "sealSecureMessage").mockImplementation(async (...args: unknown[]) => {
     const envelope = await seal(...args);
@@ -1002,7 +1080,11 @@ it("blocks an automatic file retry after metadata refresh and keeps its outcome 
   const r = await probe();
   const { MachineMetaSchema } = await import("./gen/remoteagent/v1/remote_pb");
   const { PROTOCOL_VERSION } = await import("./protocol");
-  r.machines.set(r.machine, { id: r.machine, online: true, lastSeenMs: 0n, metaRev: 0n, meta: create(MachineMetaSchema, { protocolVersion: PROTOCOL_VERSION, capabilities: { fileUpload: true } }) });
+  patchSyncState(r, {
+    conn: "online",
+    listed: true,
+    machines: new Map([[r.machine, { id: r.machine, online: true, lastSeenMs: 0n, metaRev: 0n, meta: create(MachineMetaSchema, { protocolVersion: PROTOCOL_VERSION, capabilities: { fileUpload: true } }) }]]),
+  });
   const forward = vi.fn(async () => { r.machines.get(r.machine)!.meta!.capabilities!.fileUpload = false; throw new ConnectError("no reply", Code.DeadlineExceeded); });
   (r as unknown as { api: object }).api = { forward };
   vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
@@ -1025,7 +1107,11 @@ it.each(["send", "createSession"] as const)("allows text/image-only %s with file
   const r = await probe();
   const { MachineMetaSchema } = await import("./gen/remoteagent/v1/remote_pb");
   const { PROTOCOL_VERSION } = await import("./protocol");
-  r.machines.set(r.machine, { id: r.machine, online: true, lastSeenMs: 0n, metaRev: 0n, meta: create(MachineMetaSchema, { protocolVersion: PROTOCOL_VERSION, capabilities: { fileUpload: false } }) });
+  patchSyncState(r, {
+    conn: "online",
+    listed: true,
+    machines: new Map([[r.machine, { id: r.machine, online: true, lastSeenMs: 0n, metaRev: 0n, meta: create(MachineMetaSchema, { protocolVersion: PROTOCOL_VERSION, capabilities: { fileUpload: false } }) }]]),
+  });
   const forward = vi.fn(async () => { throw new ConnectError("transport reached", Code.InvalidArgument); });
   (r as unknown as { api: object }).api = { forward };
   const cmd = kind === "send" ? { case: "send" as const, value: { text: "text", imageIds: ["image"] } } : { case: "createSession" as const, value: { prompt: "text", imageIds: ["image"] } };
@@ -1035,8 +1121,8 @@ it.each(["send", "createSession"] as const)("allows text/image-only %s with file
 
 it("does not poll pairing state after startup without a pending delivery", async () => {
   const r = await probe();
-  const state = r as unknown as { connect(): Promise<void>; pairingTimer?: ReturnType<typeof setInterval> };
-  vi.spyOn(state, "connect").mockResolvedValue();
+  const state = r as unknown as { ensureHost(): { start(): void; stop(): void }; pairingTimer?: ReturnType<typeof setInterval> };
+  vi.spyOn(state, "ensureHost").mockReturnValue({ start: () => undefined, stop: () => undefined });
   const pending = vi.spyOn(r.authority, "pending").mockResolvedValue(undefined);
   vi.useFakeTimers({ toFake: ["setInterval", "clearInterval"] });
   try {
@@ -1050,8 +1136,8 @@ it("does not poll pairing state after startup without a pending delivery", async
 it.each(["complete", "missing", "final", "transient", "close"])(
   "resumes a pending delivery on startup and manages its timer on %s", async (outcome) => {
     const r = await probe();
-    const state = r as unknown as { connect(): Promise<void>; pairingTimer?: ReturnType<typeof setInterval> };
-    vi.spyOn(state, "connect").mockResolvedValue();
+    const state = r as unknown as { ensureHost(): { start(): void; stop(): void }; pairingTimer?: ReturnType<typeof setInterval> };
+    vi.spyOn(state, "ensureHost").mockReturnValue({ start: () => undefined, stop: () => undefined });
     let delivery = true;
     const pending = vi.spyOn(r.authority, "pending").mockImplementation(async () => delivery ? { delivery: new Uint8Array([1]) } as never : undefined);
     const resume = vi.spyOn(r.authority, "resumeSecurityOperation").mockImplementation(async () => {
@@ -1100,9 +1186,13 @@ it("retries an unsigned in-flight abort with the same request slot", async () =>
   try {
     const slot = newSlot();
     const result = r.machineCommand(r.machine, { case: "listModels", value: {} }, slot).catch(e => e);
-    // Let crypto and authorization settle before advancing the retry timers.
-    await vi.waitFor(() => expect(forward).toHaveBeenCalled());
-    await vi.advanceTimersByTimeAsync(10000);
+    // Let crypto and authorization settle before advancing each retry timer.
+    for (const delay of [1000, 2000, 3000]) {
+      const target = ids.length + 1;
+      await vi.waitFor(() => expect(ids).toHaveLength(target));
+      await vi.waitFor(() => expect(vi.getTimerCount()).toBeGreaterThan(0));
+      await vi.advanceTimersByTimeAsync(delay);
+    }
     expect(uncertain(await result)).toBe(true);
     expect(ids).toEqual(Array(4).fill(slot.requestId));
   } finally { vi.useRealTimers(); }
@@ -1112,7 +1202,7 @@ it.each(["createSession", "forkSession"] as const)("expires a frozen %s through 
   const r = await probe();
   const forward = vi.fn(async () => { throw new ConnectError("no signed result", Code.Aborted); });
   (r as unknown as { api: object }).api = { forward };
-  const { Attempt } = await import("./attempt");
+  const { Attempt } = await import("./remote");
   const a = new Attempt<CommandKind>();
   const first = a.next(kind === "createSession"
     ? { case: "createSession", value: {} }

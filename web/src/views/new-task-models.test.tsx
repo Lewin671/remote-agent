@@ -4,9 +4,8 @@ import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { expect, it, vi } from "vitest";
 import { create } from "@bufbuild/protobuf";
-import { Agent, ApprovalMode } from "../gen/remoteagent/v1/event_pb";
-import { ListModelsResponseSchema, DaemonSettingsSchema } from "../gen/remoteagent/v1/local_pb";
-import { chooseNewTaskModel, NewTaskModelPanel, NewTaskTools, shouldPinModelControls } from "./NewTaskModels";
+import { NewSessionModelPanelViewSchema } from "../gen/remoteagent/core/v1/new_session_view_pb";
+import { NewTaskModelPanel, NewTaskTools, shouldPinModelControls } from "./NewTaskModels";
 import { ConfigSummary } from "./NewSession";
 
 it("pins only when the remaining height fits two actual model rows and padding", () => {
@@ -14,23 +13,6 @@ it("pins only when the remaining height fits two actual model rows and padding",
   expect(shouldPinModelControls(227, 132, 44)).toBe(false);
   expect(shouldPinModelControls(228, 132, 52)).toBe(false);
   expect(shouldPinModelControls(204, 132, 32)).toBe(true);
-});
-
-it("keeps only explicitly configured effort across models, otherwise leaves the CLI default", () => {
-  const info = {
-    models: create(ListModelsResponseSchema, { defaultModel: "a", models: [
-      { slug: "a", efforts: ["low", "high"], defaultEffort: "low" },
-      { slug: "b", efforts: ["low", "high"], defaultEffort: "low" },
-      { slug: "c", efforts: ["medium"], defaultEffort: "medium" },
-      { slug: "d" },
-    ] }),
-    settings: create(DaemonSettingsSchema, { defaultEffort: "high" }),
-  };
-  const cfg = { machineId: "example", cwd: "/example", agent: Agent.CODEX, mode: ApprovalMode.UNSPECIFIED, model: "", effort: "" };
-  expect(chooseNewTaskModel(cfg, "b", info).effort).toBe("");
-  expect(chooseNewTaskModel(cfg, "c", info).effort).toBe("");
-  expect(chooseNewTaskModel(cfg, "d", info).effort).toBe("");
-  expect(chooseNewTaskModel({ ...cfg, model: "b", effort: "low" }, "", info).effort).toBe("low");
 });
 
 it.each([
@@ -69,18 +51,22 @@ it.each(["zh-CN", "en"] as const)("selects the context window by stable option v
   const host = document.createElement("div");
   document.body.append(host);
   const root = createRoot(host);
-  const onChange = vi.fn();
-  const cfg = { machineId: "example", cwd: "/example", agent: Agent.CLAUDE, mode: ApprovalMode.UNSPECIFIED, model: "", effort: "" };
-  const info = { models: create(ListModelsResponseSchema), error: "", retry: vi.fn() };
+  const onSelectModel = vi.fn();
+  const basePanel = (standardContext: boolean) =>
+    create(NewSessionModelPanelViewSchema, {
+      panelEnabled: true,
+      supportsContextWindow: true,
+      standardContext,
+    });
   try {
-    act(() => root.render(<NewTaskModelPanel cfg={cfg} info={info} enabled pending={false} onChange={onChange} onClose={() => {}} />));
+    act(() => root.render(<NewTaskModelPanel panel={basePanel(false)} selectedModel="" configEffort="" onSelectModel={onSelectModel} onRetryModels={() => {}} onClose={() => {}} />));
     const controls = host.querySelectorAll(".seg");
     const buttons = controls[controls.length - 1].querySelectorAll("button");
     act(() => buttons[1].click());
-    expect(onChange).toHaveBeenLastCalledWith({ ...cfg, standardContext: true });
-    act(() => root.render(<NewTaskModelPanel cfg={{ ...cfg, standardContext: true }} info={info} enabled pending={false} onChange={onChange} onClose={() => {}} />));
+    expect(onSelectModel).toHaveBeenLastCalledWith("", "", true);
+    act(() => root.render(<NewTaskModelPanel panel={basePanel(true)} selectedModel="" configEffort="" onSelectModel={onSelectModel} onRetryModels={() => {}} onClose={() => {}} />));
     act(() => host.querySelectorAll(".seg button")[0].dispatchEvent(new MouseEvent("click", { bubbles: true })));
-    expect(onChange).toHaveBeenLastCalledWith({ ...cfg, standardContext: false });
+    expect(onSelectModel).toHaveBeenLastCalledWith("", "", false);
   } finally {
     act(() => root.unmount()); host.remove(); localeStore.overrideForTesting();
   }

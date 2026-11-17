@@ -3,6 +3,7 @@ import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, expect, it, vi } from "vitest";
 import { DemoRemote } from "../dev/demo";
+import { patchSyncState } from "../test/remote-fixture";
 import { Remote } from "../remote";
 import * as model from "../model";
 import { SessionPage } from "./Session";
@@ -14,7 +15,7 @@ afterEach(async () => {
   root = undefined; host?.remove(); vi.restoreAllMocks(); vi.unstubAllGlobals();
 });
 it("does not rebuild the displayed timeline or recorded index on unrelated notifications", async () => {
-  vi.stubGlobal("ResizeObserver", class { observe() {} disconnect() {} });
+  vi.stubGlobal("ResizeObserver", class { observe() {} unobserve() {} disconnect() {} });
   const r = DemoRemote.create(new URLSearchParams());
   vi.spyOn(r, "currentDerived").mockImplementation((sid, d) => Remote.prototype.currentDerived.call(r, sid, d));
   vi.spyOn(r, "refreshLiveSnapshot").mockResolvedValue(undefined);
@@ -27,8 +28,7 @@ it("does not rebuild the displayed timeline or recorded index on unrelated notif
   const indexBuilds = () => flatMap.mock.calls.filter(([f]) => f.toString().includes("requestId")).length;
   expect(indexBuilds()).toBeGreaterThan(0);
   const counts = [fromProjectionState.mock.calls.length, timeline.mock.calls.length, indexBuilds()];
-  await act(async () => { r.conn = "offline"; r.touch(); });
-  await act(async () => { r.devices.clear(); r.touch(); });
+  await act(async () => { patchSyncState(r, { conn: "offline", devices: new Map() }); });
   await act(async () => { r.sessions.get("s-plan")!.updatedMs++; r.touch(); });
   expect([fromProjectionState.mock.calls.length, timeline.mock.calls.length, indexBuilds()]).toEqual(counts);
   r.stop();

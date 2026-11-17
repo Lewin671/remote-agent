@@ -13,7 +13,7 @@ import {
   TurnOutcome,
 } from "../gen/remoteagent/v1/event_pb";
 import { LiveSnapshotSchema } from "../gen/remoteagent/v1/remote_pb";
-import { DemoRemote } from "../dev/demo";
+import { CoreHost } from "./host";
 import * as coreRuntimeModule from "./runtime";
 import { getCore } from "./runtime";
 
@@ -82,21 +82,18 @@ describe("core WASM projection binding smoke", () => {
     expect(() => proj.snapshot()).toThrow(/already freed/);
   });
 
-  it("frees session projection handle on retain release and remote stop", () => {
+  it("closes WasmAppCore handle on CoreHost dispose", () => {
     const core = getCore();
-    const proj = core.newProjection(Agent.CODEX);
-    const freeSpy = vi.spyOn(proj, "free");
-    const newProjSpy = vi.spyOn(core, "newProjection").mockReturnValue(proj);
+    const appCore = core.newAppCore();
+    const closeSpy = vi.spyOn(appCore, "close");
+    const newAppSpy = vi.spyOn(core, "newAppCore").mockReturnValue(appCore);
     vi.spyOn(coreRuntimeModule, "getCore").mockReturnValue(core);
-    const r = DemoRemote.create(new URLSearchParams());
+    const host = new CoreHost();
     try {
-      const release = r.retainHistory("s-run");
-      r.historicalDerived("s-run");
-      expect(newProjSpy).toHaveBeenCalledTimes(1);
-      release();
-      expect(freeSpy).toHaveBeenCalledTimes(1);
+      expect(newAppSpy).toHaveBeenCalledTimes(1);
+      host.dispose();
+      expect(closeSpy).toHaveBeenCalledTimes(1);
     } finally {
-      r.stop();
       vi.restoreAllMocks();
     }
   });

@@ -91,9 +91,12 @@ it.each([false, true])("keeps approved delivery after leaving the page (approval
 it("labels an unfinished candidate and offers explicit removal to pair again", async () => {
   const { DevicesPage } = await import("./Settings");
   const { DeviceKind } = await import("../gen/remoteagent/v1/relay_pb");
+  const { patchSyncState } = await import("../test/remote-fixture");
   const r = demo("role=authority");
   vi.spyOn(r, "loadDevices").mockResolvedValue();
-  r.devices.set("candidate", { id: "candidate", kind: DeviceKind.CLIENT, createdMs: 0n, lastSeenMs: 0n, metaRev: 0n, pairingIncomplete: true });
+  const nextDevices = new Map(r.devices);
+  nextDevices.set("candidate", { id: "candidate", kind: DeviceKind.CLIENT, createdMs: 0n, lastSeenMs: 0n, metaRev: 0n, pairingIncomplete: true });
+  patchSyncState(r, { devices: nextDevices });
   await mount(<DevicesPage remote={r} go={() => {}} onBack={() => {}} />);
   expect(host.textContent).toContain(message("settings.unfinished_pairing"));
   expect(host.textContent).toContain("移除后重新配对");

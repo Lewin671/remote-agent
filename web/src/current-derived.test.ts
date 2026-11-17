@@ -3,6 +3,7 @@ import { expect, it } from "vitest";
 import { EventSchema, InputStatus } from "./gen/remoteagent/v1/event_pb";
 import { LiveSnapshotSchema } from "./gen/remoteagent/v1/remote_pb";
 import { DemoRemote } from "./dev/demo";
+import { patchSyncState } from "./test/remote-fixture";
 import { Remote } from "./remote";
 import { derive } from "./model";
 
@@ -28,8 +29,7 @@ it("reuses historical and live projections, invalidating only their actual input
   const current = () => Remote.prototype.currentDerived.call(r, "s-run", r.historicalDerived("s-run"));
   const historical = r.historicalDerived("s-run");
   const first = current();
-  r.conn = "offline"; r.touch();
-  r.devices.clear(); r.touch();
+  patchSyncState(r, { conn: "offline", devices: new Map() });
   r.sessions.get("s-plan")!.updatedMs++; r.touch();
   expect(r.historicalDerived("s-run")).toBe(historical);
   expect(current()).toBe(first);

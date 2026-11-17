@@ -3,6 +3,7 @@ import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, expect, it, vi } from "vitest";
 import { DemoRemote } from "../dev/demo";
+import { patchSyncState } from "../test/remote-fixture";
 import type { Remote } from "../remote";
 import { TerminalView } from "./Terminal";
 import { resetProcessBudgetForTest } from "../transport/recovery";
@@ -62,9 +63,15 @@ it("keeps the healthy independent terminal through hiding and main reconnects", 
   expect(close).not.toHaveBeenCalled(); expect(open).toHaveBeenCalledTimes(1);
   await act(async () => { await frame({ kind: { case: "output", value: new Uint8Array([66]) } } as never); });
   expect(terminal.writes).toHaveBeenLastCalledWith(new Uint8Array([66]));
-  await act(async () => { remote.conn = "offline"; remote.touch(); });
+  await act(async () => {
+    const { patchSyncState } = await import("../test/remote-fixture");
+    patchSyncState(remote, { conn: "offline" });
+  });
   expect(close).not.toHaveBeenCalled();
-  await act(async () => { remote.conn = "online"; remote.touch(); });
+  await act(async () => {
+    const { patchSyncState } = await import("../test/remote-fixture");
+    patchSyncState(remote, { conn: "online" });
+  });
   expect(open).toHaveBeenCalledTimes(1);
   expect(terminal.writes).toHaveBeenLastCalledWith(new Uint8Array([66]));
 });
@@ -84,8 +91,15 @@ it("does not resize tmux while hidden, including a refit already scheduled befor
 it("defers the first fit of a terminal reopened in the background until visible", async () => {
   const state = await mount();
   await act(async () => { state.hide(true); document.dispatchEvent(new Event("visibilitychange")); });
-  await act(async () => { state.end("closed"); state.remote.conn = "offline"; state.remote.touch(); });
-  await act(async () => { state.remote.conn = "online"; state.remote.touch(); });
+  await act(async () => {
+    const { patchSyncState } = await import("../test/remote-fixture");
+    state.end("closed");
+    patchSyncState(state.remote, { conn: "offline" });
+  });
+  await act(async () => {
+    const { patchSyncState } = await import("../test/remote-fixture");
+    patchSyncState(state.remote, { conn: "online" });
+  });
   await act(async () => { await state.frame({ kind: { case: "snapshot", value: { cols: 80, rows: 24, data: new Uint8Array([65]) } } } as never); });
   expect(state.send).not.toHaveBeenCalled();
   await act(async () => { state.hide(false); document.dispatchEvent(new Event("visibilitychange")); });
@@ -148,8 +162,9 @@ it("keeps the terminal prompt at the bottom when its pane shrinks, without resiz
 
 it("recovers a terminal leg that closes after the main path is already online", async () => {
  const vm=await mount();
- await act(async()=>{vm.remote.conn="offline";vm.remote.touch();});
- await act(async()=>{vm.remote.conn="online";vm.remote.touch();});
+ const { patchSyncState } = await import("../test/remote-fixture");
+ await act(async()=>{patchSyncState(vm.remote,{conn:"offline"});});
+ await act(async()=>{patchSyncState(vm.remote,{conn:"online"});});
  expect(vm.open).toHaveBeenCalledTimes(1);
  await act(async()=>{vm.end("late loss");});
  expect(vm.open).toHaveBeenCalledTimes(2);
@@ -171,9 +186,9 @@ it("reopens after an opening failure when main transitions from offline to onlin
  await act(async () => root!.render(<TerminalView remote={remote} session={session} running />));
  expect(open).toHaveBeenCalledTimes(1);
  // Transitions offline -> online should reopen even though the first attempt never opened.
- await act(async () => { remote.conn = "offline"; remote.touch(); });
+ await act(async () => { patchSyncState(remote, { conn: "offline" }); });
  expect(open).toHaveBeenCalledTimes(1);
- await act(async () => { remote.conn = "online"; remote.touch(); });
+ await act(async () => { patchSyncState(remote, { conn: "online" }); });
  expect(open).toHaveBeenCalledTimes(2);
 });
 
@@ -182,8 +197,9 @@ it("does not open a newly selected session while offline, and opens it once onli
  vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockReturnValue(600);
  vi.spyOn(HTMLElement.prototype, "clientHeight", "get").mockReturnValue(480);
  vi.stubGlobal("ResizeObserver", class { observe() {} disconnect() {} });
- const remote = DemoRemote.create(new URLSearchParams()); remote.start();
- remote.conn = "offline";
+ const remote = DemoRemote.create(new URLSearchParams());
+ await act(async () => { remote.start(); });
+ patchSyncState(remote, { conn: "offline" });
  const openedSids: string[] = [];
  vi.spyOn(remote, "openTerminal").mockImplementation(async (sid) => {
    openedSids.push(sid);
@@ -198,7 +214,7 @@ it("does not open a newly selected session while offline, and opens it once onli
  await act(async () => root!.render(<TerminalView remote={remote} session={s2} running />));
  expect(openedSids).toEqual([]);
  // Once main becomes online, only the newly selected session opens.
- await act(async () => { remote.conn = "online"; remote.touch(); });
+ await act(async () => { patchSyncState(remote, { conn: "online" }); });
  expect(openedSids).toEqual(["s-next"]);
 });
 

@@ -5,6 +5,7 @@ import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, expect, it, vi } from "vitest";
 import { DemoRemote } from "./dev/demo";
+import { patchSyncState } from "./test/remote-fixture";
 import { Remote } from "./remote";
 import * as storage from "./storage";
 import * as authoritySetup from "./authority-setup";
@@ -25,9 +26,12 @@ const { App } = await import("./App");
 (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
 let root: Root | undefined;
 let host: HTMLDivElement;
+let activeRemote: DemoRemote | undefined;
 afterEach(async () => {
   if (root) await act(async () => root!.unmount());
   root = undefined;
+  activeRemote?.stop();
+  activeRemote = undefined;
   host?.remove();
   localStorage.clear();
   history.replaceState(null, "", "/");
@@ -41,12 +45,14 @@ async function mount() {
   vi.spyOn(authoritySetup, "authorityStartup").mockResolvedValue({ kind: "none" } as never);
   vi.spyOn(remoteModule, "resumeRegistration").mockResolvedValue();
   const remote = DemoRemote.create(new URLSearchParams());
+  activeRemote = remote;
   vi.spyOn(Remote, "load").mockResolvedValue(remote);
-  vi.spyOn(remote, "start").mockImplementation(() => {});
-  vi.spyOn(remote, "stop").mockImplementation(() => {});
   vi.spyOn(remote, "syncSchedules").mockImplementation(() => {});
-  remote.conn = "online";
-  remote.machines.get("mac")!.meta!.capabilities!.scheduledTasks = true;
+  const demoMachines = (remote as unknown as { demoMachines: Map<string, import("./remote").MachineView> }).demoMachines;
+  const mac = demoMachines.get("mac")!;
+  mac.meta!.capabilities!.scheduledTasks = true;
+  remote.start();
+  patchSyncState(remote, { conn: "online", listed: true, machines: new Map(demoMachines) });
   let tasks: ScheduleTask[] = [];
   vi.spyOn(remote, "machineCommand").mockImplementation(async () => create(CommandResultSchema, {
     kind: { case: "schedule", value: { resultJson: new TextEncoder().encode(JSON.stringify({ tasks })) } },
@@ -181,8 +187,10 @@ it.each(["context", "keyboard"])("marking another task unread via %s preserves t
 it("keeps a source-session result unread through the sidebar action and route handoff, then reads it on the next visit", async () => {
   wide = true;
   const { remote, tasks, refresh } = await mount();
-  const source = remote.sessions.get("s-idle")!;
-  source.info!.taskOwned = true; source.info!.scheduledTaskId = tasks[0].id;
+  const demoSessions = (remote as unknown as { demoSessions: Map<string, import("./remote").SessionView> }).demoSessions;
+  const source = { ...demoSessions.get("s-idle")!, info: { ...demoSessions.get("s-idle")!.info!, taskOwned: true, scheduledTaskId: tasks[0].id } };
+  demoSessions.set("s-idle", source);
+  patchSyncState(remote, { sessions: new Map(demoSessions) });
   tasks[0].spec.target = { type: "resume_session", session: source.id };
   tasks[0].runs![0].session_id = source.id;
   await act(async () => { await refresh(); });

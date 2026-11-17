@@ -4,6 +4,7 @@ import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, expect, it, vi } from "vitest";
 import { DemoRemote } from "./dev/demo";
+import { patchSyncState } from "./test/remote-fixture";
 import Workspace from "./Workspace";
 import { SessionPage } from "./views/Session";
 import type { SessionView } from "./remote";
@@ -36,7 +37,7 @@ it("keeps the same input, draft and focus when an unresolved route becomes a ver
 
 it("draws an unresolved link as a chat page before lookup returns", async () => {
   const remote = DemoRemote.create(new URLSearchParams(), async () => undefined);
-  remote.listed = true;
+  patchSyncState(remote, { listed: true });
   const lookup = vi.spyOn(remote, "ensureSession").mockImplementation(() => new Promise(() => undefined));
   history.replaceState(null, "", "/#/s/linked-session");
   host = document.createElement("div"); document.body.append(host); root = createRoot(host);

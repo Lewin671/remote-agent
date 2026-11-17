@@ -9,7 +9,9 @@ import { act, StrictMode } from "react";
 import { Sidebar } from "./Home";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, expect, it, vi } from "vitest";
+import { getCoreHost } from "../core/host";
 import { DemoRemote } from "../dev/demo";
+import { patchSyncState } from "../test/remote-fixture";
 import {
   ScheduleCreate,
   ScheduleDetail,
@@ -57,9 +59,21 @@ function remote(tasks: ScheduleTask[] = [task()]) {
   const r = DemoRemote.create(new URLSearchParams(), async () => undefined);
   remotes.push(r);
   r.start();
-  r.conn = "online";
+  const demoMac = (r as unknown as { demoMachines: Map<string, { meta?: { capabilities?: { scheduledTasks?: boolean } } }> }).demoMachines.get("mac");
+  if (demoMac?.meta) {
+    demoMac.meta.capabilities = { ...demoMac.meta.capabilities, scheduledTasks: true } as typeof demoMac.meta.capabilities;
+  }
+  const machines = new Map(r.machines);
+  const mac = machines.get("mac");
+  if (mac?.meta) {
+    mac.meta = { ...mac.meta, capabilities: { ...mac.meta.capabilities, scheduledTasks: true } as typeof mac.meta.capabilities };
+    machines.set("mac", { ...mac });
+  }
+  const skipSync = vi.spyOn(r, "refreshSchedules").mockResolvedValue();
+  patchSyncState(r, { conn: "online", listed: true, machines });
+  r.syncDemoToCore();
+  skipSync.mockRestore();
   vi.spyOn(r, "hasLiveSchedules").mockReturnValue(true);
-  r.machines.get("mac")!.meta!.capabilities!.scheduledTasks = true;
   r.schedules.set("mac", { tasks, revision: 1n, loading: false, error: "" });
   return r;
 }
@@ -119,8 +133,9 @@ it("renders attention first, combines machines and keeps cached tasks read-only 
   await click(/失败任务/);
   expect(go).toHaveBeenCalledWith("tasks/mac/bad");
   await act(async () => {
-    r.machines.get("mac")!.online = false;
-    r.touch();
+    patchSyncState(r, {
+      machines: new Map([...r.machines].map(([id, m]) => [id, id === "mac" ? { ...m, online: false } : m])),
+    });
   });
   expect(host.textContent).toContain(scheduleOffline());
   expect(host.querySelectorAll(".schedule-line.off")).toHaveLength(2);
@@ -381,9 +396,10 @@ it("edits a task's run settings without replacing the project's defaults", async
 it("creates a new-conversation task without borrowing a source session", async () => {
   const r = remote([]);
   const sourceSession = r.sessions.get("s-idle")!;
-  r.sessions.clear();
-  r.sessions.set(sourceSession.id, sourceSession);
-  for (const id of r.machines.keys()) if (id !== "mac") r.machines.delete(id);
+  patchSyncState(r, {
+    sessions: new Map([[sourceSession.id, sourceSession]]),
+    machines: new Map([["mac", r.machines.get("mac")!]]),
+  });
   const write = vi.spyOn(r, "changeSchedule").mockResolvedValue(task());
   await mount(<ScheduleCreate remote={r} go={() => {}} onBack={() => {}} />);
   await input(host.querySelector("textarea")!, "新建来源测试");
@@ -651,8 +667,9 @@ it.each<Partial<ScheduleTask>>([
     spec: { ...original.spec, title: "新任务名" },
   });
   await act(async () => {
-    r.machines.get("mac")!.online = false;
-    r.touch();
+    patchSyncState(r, {
+      machines: new Map([...r.machines].map(([id, m]) => [id, id === "mac" ? { ...m, online: false } : m])),
+    });
   });
   expect(button(/^任务名/)?.disabled).toBe(true);
 });
@@ -691,7 +708,7 @@ it("uses shared empty copy and resolves a missing conversation before naming it"
   await act(async()=>r.touch());
   expect(host.querySelector(".sess .mc")?.textContent).toContain(message("schedule.in_conversation"));
   expect(host.querySelector(".sess .mc")?.textContent).toContain(message("schedule.beijing_time"));
-  r.sessions.set("not-loaded",{id:"not-loaded",machineId:"mac",metaRev:0n,lastSeq:0n,updatedMs:0n,endedMs:0n});
+  patchSyncState(r, { sessions: new Map([...r.sessions, ["not-loaded", { id: "not-loaded", machineId: "mac", metaRev: 0n, lastSeq: 0n, updatedMs: 0n, endedMs: 0n }]]) });
   await act(async()=>r.touch());
   expect(host.querySelector(".sess .mc")?.textContent).toContain(message("schedule.in_conversation"));
 });
@@ -711,9 +728,12 @@ it("submits the editor's snapshot revision and spec even after remote changes", 
   expect(send.mock.calls[0][2]).toMatchObject({revision:1,spec:{...old.spec,message:"我的修改"}});
 });
 it("keeps plan permission visible and disables scheduled creation", async () => {
-  const r=remote([]);r.sessions.clear();
-  for(const m of r.machines.values())for(const agent of m.meta?.agents??[])agent.defaultMode=ApprovalMode.PLAN;
-  for(const project of r.prefs.snap?.prefs.settings??[]) for(const agent of project.agents) agent.mode=ApprovalMode.PLAN;
+  const r=remote([]);patchSyncState(r,{sessions:new Map()});
+  const storedPrefs = (r as unknown as { stored: { prefs: { settings: Array<{ agents: Array<{ mode: ApprovalMode }> }> } } }).stored.prefs;
+  const demoMachines = (r as unknown as { demoMachines: Map<string, { meta?: { agents: Array<{ defaultMode: ApprovalMode }> } }> }).demoMachines;
+  for(const m of demoMachines.values())for(const agent of m.meta?.agents??[])agent.defaultMode=ApprovalMode.PLAN;
+  for(const project of storedPrefs.settings) for(const agent of project.agents) agent.mode=ApprovalMode.PLAN;
+  r.syncDemoToCore();
   const send=vi.spyOn(r,"changeSchedule").mockResolvedValue(task());
   await mount(<ScheduleCreate remote={r} go={()=>{}} onBack={()=>{}} />);
   await input(host.querySelector("textarea")!,"检查更新");
@@ -748,8 +768,9 @@ it("defaults dual limits to count and preserves the deadline when only the zone 
 });
 
 it("edits CLI choices and inherited settings only on the task computer",async()=>{
- const t=task();const r=remote([t]);r.sessions.clear();
- const m=r.machines.get("mac")!;const other=structuredClone(m);other.id="other";other.meta!.hostname="另一个电脑";other.meta!.agents=other.meta!.agents.filter(a=>a.agent===Agent.CLAUDE);r.machines.set("other",other);
+ const t=task();const r=remote([t]);
+ const m=r.machines.get("mac")!;const other=structuredClone(m);other.id="other";other.meta!.hostname="另一个电脑";other.meta!.agents=other.meta!.agents.filter(a=>a.agent===Agent.CLAUDE);
+ patchSyncState(r,{sessions:new Map(),machines:new Map([...r.machines,["other",other]])});
  r.prefs.snap!.prefs.settings[0].path=t.spec.target.cwd!;r.prefs.snap!.prefs.settings[0].machineId="other";
  r.prefs.snap!.prefs.settings[0].agents.forEach(a=>{a.model="other-only-model";a.mode=ApprovalMode.FULL_ACCESS;});
  const send=vi.spyOn(r,"changeSchedule").mockResolvedValue(t);
@@ -764,8 +785,7 @@ it("edits CLI choices and inherited settings only on the task computer",async()=
 it("shows CLI as plain text on a single-CLI computer and a segmented control when multiple CLIs are installed", async () => {
   const r = remote([task()]);
   const idle = r.sessions.get("s-idle")!;
-  r.sessions.clear();
-  r.sessions.set("s-idle", idle);
+  patchSyncState(r, { sessions: new Map([["s-idle", idle]]) });
   await mount(<ScheduleCreate remote={r} go={() => {}} onBack={() => {}} />);
   expect(host.querySelector(".schedule-field .seg")).not.toBeNull();
   await act(async () => {
@@ -779,7 +799,7 @@ it("shows CLI as plain text on a single-CLI computer and a segmented control whe
 
 it("shows the shared destination placeholder until target metadata is loaded",async()=>{
  const t=task();t.spec.target={type:"resume_session",session:"missing"};const r=remote([t]);
- r.sessions.set("missing",{id:"missing",machineId:"mac",updatedMs:0n,metaRev:0n,lastSeq:0n,endedMs:0n});
+ patchSyncState(r,{sessions:new Map([...r.sessions,["missing",{id:"missing",machineId:"mac",updatedMs:0n,metaRev:0n,lastSeq:0n,endedMs:0n}]])});
  await mount(<ScheduleDetail remote={r} machineId="mac" id={t.id} go={()=>{}} onBack={()=>{}} />);
  expect(button("发到对话")).toBeTruthy();
 });
@@ -798,9 +818,12 @@ it.each(["2027-10-24T15:00:00Z","2027-10-24T15:00:00+08:00"])("uses the local IA
 });
 
 it("requires a concrete permission when neither project nor CLI has a known default",async()=>{
- const r=remote([]);r.sessions.clear();
- for(const machine of r.machines.values()) for(const agent of machine.meta?.agents??[]) {agent.defaultMode=ApprovalMode.UNSPECIFIED;agent.defaultModeSource=0;}
- for(const setting of r.prefs.snap?.prefs.settings??[]) for(const agent of setting.agents) agent.mode=ApprovalMode.UNSPECIFIED;
+ const r=remote([]);patchSyncState(r,{sessions:new Map()});
+ const storedPrefs = (r as unknown as { stored: { prefs: { settings: Array<{ agents: Array<{ mode: ApprovalMode }> }> } } }).stored.prefs;
+ const demoMachines = (r as unknown as { demoMachines: Map<string, { meta?: { agents: Array<{ defaultMode: ApprovalMode; defaultModeSource: number }> } }> }).demoMachines;
+ for(const machine of demoMachines.values()) for(const agent of machine.meta?.agents??[]) {agent.defaultMode=ApprovalMode.UNSPECIFIED;agent.defaultModeSource=0;}
+ for(const setting of storedPrefs.settings) for(const agent of setting.agents) agent.mode=ApprovalMode.UNSPECIFIED;
+ r.syncDemoToCore();
  await mount(<ScheduleCreate remote={r} go={()=>{}} onBack={()=>{}} />);await input(host.querySelector("textarea")!,"检查");
  expect(button(message("schedule.create"))?.disabled).toBe(true);expect(host.textContent).toContain(message("schedule.select_explicit_permissions_before_creating_a_scheduled_task"));
 });
@@ -842,10 +865,12 @@ it("creates with the new computer's displayed defaults after switching without e
   old.meta!.agents=old.meta!.agents.filter(a=>a.agent===Agent.CODEX);
   old.meta!.agents[0].defaultMode=ApprovalMode.FULL_ACCESS;old.meta!.agents[0].defaultModeSource=DefaultModeSource.CLI_CONFIG;
   next.id="new";next.meta!.hostname="新电脑";next.meta!.agents=[{...old.meta!.agents[0],agent:Agent.CLAUDE,defaultMode:ApprovalMode.ASK}];
-  r.machines.clear();r.machines.set("mac",old);r.machines.set("new",next);
   const source=r.sessions.get("s-idle")!, path=source.info!.cwd;
   const another={...source,id:"new-session",machineId:"new",info:{...source.info!,id:"new-session",agent:Agent.CLAUDE}};
-  r.sessions.clear();r.sessions.set(source.id,source);r.sessions.set(another.id,another);
+  patchSyncState(r,{
+    machines:new Map([["mac",old],["new",next]]),
+    sessions:new Map([[source.id,source],[another.id,another]]),
+  });
   const stored=r.prefs.snap!.prefs.settings[0];stored.path=path;stored.machineId="mac";stored.agent=Agent.CODEX;
   stored.agents=[{...stored.agents[0],agent:Agent.CODEX,model:"gpt-6-astra",effort:"high",mode:ApprovalMode.FULL_ACCESS}];
   const send=vi.spyOn(r,"changeSchedule").mockResolvedValue(task());
@@ -910,7 +935,7 @@ it("keeps unread on opening the list, reads only the detail, and keeps entry dot
   await act(async () => root!.render(<SchedulesPage remote={r} go={() => {}} />));
   tasks[0].runs!.push(run("after-leaving", { notified: true }));
   await act(async () => { await r.refreshSchedules("mac"); });
-  r.conn = "offline";
+  patchSyncState(r, { conn: "offline" });
   expect(r.scheduleNewResults()).toBe(true);
   await act(async () => root!.render(<ScheduleDetail remote={r} machineId="mac" id="task-1" go={() => {}} onBack={() => {}} />));
   expect(host.querySelectorAll(".schedule-unread-dot")).toHaveLength(1);
@@ -961,7 +986,10 @@ it("leaves 新定时 to the bottom row and remembers the ended group on this dev
   expect(host.querySelectorAll(".schedule-line")).toHaveLength(1);
 });
 it("uses short offline rows and hides editing arrows with the computer disconnected", async () => {
-  const r = remote(); r.machines.get("mac")!.online = false;
+  const r = remote();
+  patchSyncState(r, {
+    machines: new Map([...r.machines].map(([id, m]) => [id, id === "mac" ? { ...m, online: false } : m])),
+  });
   await mount(<SchedulesPage remote={r} go={()=>{}} />);
   expect(host.querySelector(".mc")?.textContent).toContain(message("list_state.unlinked"));
   expect(host.querySelector(".row1")?.textContent).not.toContain("上次");
@@ -1213,9 +1241,9 @@ it("connects session/detail read transitions to exact notification cleanup witho
 it("renders verified run history as full Markdown and quietly falls back while loading or unavailable", async () => {
   const execution = run("markdown", { session_id: "s-idle", notified: true, notification_text: "检查完成", final_summary: "短摘要" });
   const r = remote([task({ runs: [execution] })]);
-  const release = vi.fn();
-  vi.spyOn(r, "ensureSession").mockResolvedValue();
-  const retain = vi.spyOn(r, "retainHistory").mockReturnValue(release);
+  const core = getCoreHost(r);
+  const watch = vi.spyOn(core, "watchSession");
+  const unwatch = vi.spyOn(core, "unwatchSession");
   const history = vi.spyOn(r, "history").mockReturnValue({ loaded: false, ready: false, backfilling: false, broken: false, error: "", unavailable: 0 });
   const full = "完整回复\n\n| 项目 | 结果 |\n| --- | --- |\n| 检查 | 通过 |\n\n- 第一项\n- 第二项\n\n```sh\necho ok\n```";
   vi.spyOn(r, "events").mockReturnValue([
@@ -1223,7 +1251,7 @@ it("renders verified run history as full Markdown and quietly falls back while l
     create(EventSchema, { kind: { case: "agentMessage", value: { text: full, phase: "final_answer" } } }),
   ]);
   await mount(<ScheduleDetail remote={r} machineId="mac" id="task-1" go={() => {}} onBack={() => {}} />);
-  expect(retain).toHaveBeenCalledWith("s-idle");
+  await vi.waitFor(() => expect(watch).toHaveBeenCalledWith("s-idle"));
   expect(host.querySelector(".schedule-result .ai")?.textContent).toBe("短摘要");
   history.mockReturnValue({ loaded: true, ready: true, backfilling: false, broken: false, error: "", unavailable: 0 });
   await act(async () => r.touch());
@@ -1235,7 +1263,7 @@ it("renders verified run history as full Markdown and quietly falls back while l
   expect(host.querySelector(".schedule-result .ai")?.textContent).toBe("短摘要");
   expect(host.textContent).not.toContain("private read failure");
   await act(async () => root!.render(null));
-  expect(release).toHaveBeenCalledOnce();
+  expect(unwatch).toHaveBeenCalledWith("s-idle");
 });
 
 it("keeps the latest card unchanged until the new-result prompt is clicked", async () => {
@@ -1484,19 +1512,23 @@ it("does not put a running status in the preview when the run record is present 
 it.each(["offline", "list-error"])("shows the latest cached result without reading it or showing entry dots (%s)", async mode => {
   const t = task({ runs: [run("cached", { notified: true, session_id: "s-idle", notification_source: "agent", notification_text: "缓存结论", final_summary: "缓存正文" })] });
   const r = remote([]);
+  vi.spyOn(r, "syncSchedules").mockImplementation(() => {});
   vi.mocked(r.hasLiveSchedules).mockReturnValue(false);
   localStorage.setItem("ra-schedule-seen:" + JSON.stringify([r.account.server, r.account.deviceId, "mac"]), "[]");
   vi.spyOn(r as any, "openSecureMessage").mockResolvedValue({ msg: create(CommandResultSchema, { kind: { case: "schedule", value: { resultJson: new TextEncoder().encode(JSON.stringify({ tasks: [t] })) } } }) });
-  await (r as any).restoreScheduleSnapshot("mac", { bytes: toBinary(EnvelopeSchema, create(EnvelopeSchema)), requestId: "cache" });
+  await (r as any).restoreScheduleSnapshot("mac", { bytes: toBinary(EnvelopeSchema, create(EnvelopeSchema)), requestId: "cache" }, true);
   vi.spyOn(r, "ensureSession").mockResolvedValue();
-  vi.spyOn(r, "retainHistory").mockReturnValue(() => {});
   vi.spyOn(r, "history").mockReturnValue({ loaded: true, ready: true, backfilling: false, broken: false, error: "", unavailable: 0 });
   vi.spyOn(r, "events").mockReturnValue([
     create(EventSchema, { origin: { scheduledRunId: "cached" }, kind: { case: "userMessage", value: { text: "定时检查" } } }),
     create(EventSchema, { kind: { case: "agentMessage", value: { phase: "final_answer", text: "缓存的完整回复" } } }),
   ]);
-  if (mode === "offline") { r.conn = "offline"; r.machines.get("mac")!.online = false; }
-  else r.schedules.get("mac")!.error = "读取失败";
+  if (mode === "offline") {
+    patchSyncState(r, {
+      conn: "offline",
+      machines: new Map([...r.machines].map(([id, m]) => [id, id === "mac" ? { ...m, online: false } : m])),
+    });
+  } else r.schedules.get("mac")!.error = "读取失败";
   await mount(<ScheduleDetail remote={r} machineId="mac" id={t.id} go={() => {}} onBack={() => {}} />);
   expect(host.querySelector(".schedule-result h4")?.textContent).toBe("缓存结论");
   expect(host.querySelector(".schedule-result .ai")?.textContent).toBe("缓存的完整回复");

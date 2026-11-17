@@ -130,7 +130,7 @@ it.each(["authority", "member", "machine"])(
     expect(!!button(message("home.add_device"))).toBe(role === "authority");
     if (role !== "authority")
       expect(host.textContent).toContain(
-        "还没有电脑。在管理端（Android · Pixel 9）上打开「设置 › 添加设备」，把电脑加进来。",
+        message("home.add_via_manager", { name: message("settings.unnamed") }),
       );
   },
 );

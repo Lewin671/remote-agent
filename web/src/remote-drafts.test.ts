@@ -72,7 +72,7 @@ it("does not discard a put-back owner before the draft copy lands, including tex
 });
 it("reconciles restored sends against verified tail events before offering them again", async () => {
   const t = setup(); const event = create(EventSchema, { seq: 99n, kind: { case: "userMessage", value: { requestId: "sent" } } });
-  Object.defineProperty(t.r, "buffers", { value: new Map([["s", { events: [], pending: new Map([[99n, event]]), recent: [event], verifiedSeqs: new Set([99n]) }]]) });
+  vi.spyOn(t.r, "events").mockReturnValue([event]);
   t.readOutbox.mockResolvedValue([{ sendId: "sent", requestId: "cmd", text: "already sent", deadline: 1, status: "sending" } as Outgoing]);
   await t.r.restoreDraft("s", t.tray); await vi.waitFor(() => expect(t.readOutbox).toHaveBeenCalled()); expect(t.r.outbox("s")).toEqual([]);
 });
@@ -87,7 +87,8 @@ it("forgets local drafts and pending sends with a removed session, even during r
   const remove = vi.spyOn(t.store, "removeSession").mockResolvedValue();
   const restored = t.r.restoreDraft("s", t.tray); await restored;
   t.r.drafts.set("s", "draft"); t.r.send("s", "pending");
-  (t.r as unknown as { forget(id: string): void }).forget("s");
+  const { CacheDeleteEffectSchema } = await import("./gen/remoteagent/core/v1/app_pb");
+  await t.r.deleteCache(create(CacheDeleteEffectSchema, { kind: { case: "removeSessionId", value: "s" } }));
   gate.resolve([{ sendId: "old", requestId: "cmd", text: "old", deadline: 1, status: "sending" }]);
   await vi.waitFor(() => expect(remove).toHaveBeenCalledWith("s"));
   expect(t.r.outbox("s")).toEqual([]); expect(t.r.drafts.has("s")).toBe(false); expect(t.r.trays.has("s")).toBe(false);

@@ -16,8 +16,7 @@ import {
 } from "./shared-files";
 import { MemorySharedFileStore } from "./shared-file-store";
 import outcomes from "../../testdata/transport/outcomes.json";
-import { classifyOutcome } from "./outcome";
-import { uncertain, CommandError } from "./remote";
+import { uncertain, CommandError, type Outcome } from "./remote";
 
 function hexToBytes(hex?: string): Uint8Array {
   if (!hex) return new Uint8Array();
@@ -519,9 +518,8 @@ describe("download outcome policy", () => {
  afterEach(() => vi.useRealTimers());
 it.each(outcomes.downloads)("download outcome $code signed=$signed", async v => {
  vi.useFakeTimers();
- const error=new CommandError(v.code,"fixture",v.signed,true,v.outcome as import("./outcome").Outcome);
- const result=classifyOutcome({source:v.signed ? "daemon":"local",code:v.code,signed:v.signed,prior:false,readOnly:true,declared:v.outcome,dispatched:v.outcome==="unknown",conflictKind:v.outcome==="conflict"?"business":""});
- expect(result).toBe(v.outcome);expect(uncertain(error)).toBe(result==="unknown");
+ const error=new CommandError(v.code,"fixture",v.signed,true,v.outcome as Outcome);
+ expect(uncertain(error)).toBe(v.outcome==="unknown");
  let calls=0;
  const mgr=new SharedFileManager({store:new MemorySharedFileStore(),isConnected:()=>true,isMachineOnline:()=>true,isSessionEnded:()=>false,sharedFileChunkBytes:()=>16,
   getChunk:async (_sid,_id,offset)=>{calls++;if(offset>0n)throw error;return {data:new Uint8Array(16),totalBytes:32n};}});

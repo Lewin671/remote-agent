@@ -1,4 +1,4 @@
-import { create, toBinary } from "@bufbuild/protobuf";
+import { create } from "@bufbuild/protobuf";
 import { renderToStaticMarkup } from "react-dom/server";
 import { expect, it } from "vitest";
 import { DemoRemote } from "./dev/demo";
@@ -7,7 +7,6 @@ import { derive, queuedIds } from "./model";
 import { EventSchema, InputStage, InputStatus, SendMode } from "./gen/remoteagent/v1/event_pb";
 import { SessionSchema } from "./gen/remoteagent/v1/local_pb";
 import { LiveSnapshotSchema } from "./gen/remoteagent/v1/remote_pb";
-import { HeaderSchema } from "./gen/remoteagent/v1/envelope_pb";
 import { PendingBubbles } from "./views/Queue";
 
 const sid = "s-run", id = "request-example";
@@ -165,28 +164,4 @@ it("delayed snapshot response cannot resurrect a submitted message", async () =>
   finish({ kind: { case: "liveSnapshot", value: live } });
   await job;
   expect(queuedIds(current())).toEqual([]);
-});
-
-it("out-of-order ingest clears outbox and queue despite the old snapshot", async () => {
-  const { r } = fixture(InputStatus.QUEUED);
-  const b = { events: [], pending: new Map(), bytes: 0, loaded: true };
-  (r as any).buffers.set(sid, b);
-  (r as any).outboxes.set(sid, [{ sendId: id, text: "example prompt" }]);
-  const all = completed().map(e => ({ ...e, sessionId: sid }));
-  // Only transport authentication is stubbed; run the production ingest/reducer path.
-  (r as any).openSecureMessage = async (_envelope: unknown, want: { seq: bigint }) => ({
-    msg: all.find(e => e.seq === want.seq), size: 1,
-  });
-  const row = (seq: bigint) => ({ seq, envelope: {
-    header: toBinary(HeaderSchema, create(HeaderSchema, { version: 3 })),
-  } });
-  await (r as any).ingest(r.sessions.get(sid), [row(2n)], false, true, false);
-  expect(b.events).toHaveLength(0);
-  await (r as any).ingest(r.sessions.get(sid), [row(1n), ...[3n, 4n, 5n, 6n].map(row)], false, true, false);
-  expect((b as any).inputStatuses.get(id)).toBe(InputStatus.SUBMITTED);
-  expect(r.outbox(sid)).toEqual([]);
-  const historical = derive(b.events);
-  expect(queuedIds(historical)).toEqual([]);
-  const current = Remote.prototype.currentDerived.call(r, sid, historical);
-  expect(queuedIds(current)).toEqual([]);
 });

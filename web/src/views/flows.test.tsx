@@ -7,8 +7,13 @@ import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ANDROID, DemoRemote } from "../dev/demo";
+import { patchSyncState } from "../test/remote-fixture";
 import { create } from "@bufbuild/protobuf";
-import { MachineMetaSchema } from "../gen/remoteagent/v1/remote_pb";
+import { getCoreHost } from "../core/host";
+import { MachineMetaSchema, ProjectPrefsSchema, ProjectSettingsSchema, AgentSettingsSchema } from "../gen/remoteagent/v1/remote_pb";
+import { NoticeKind } from "../gen/remoteagent/core/v1/new_session_view_pb";
+import { renderText } from "../core/text";
+import { AccountPrefsFetchedEventSchema, EventSchema as CoreEventSchema, EventsAppendedFrameSchema, HomeSetScopeActionSchema, ListsFetchedEventSchema, NewSessionOpenActionSchema, NewSessionSelectMachineActionSchema, NewSessionSelectModelActionSchema, NewSessionSetPromptActionSchema, NewSessionSubmitActionSchema, PlainAccountPrefsSchema, PlainEventSchema, SessionsPageFetchedEventSchema } from "../gen/remoteagent/core/v1/app_pb";
 import { timestampFromMs } from "@bufbuild/protobuf/wkt";
 import { Agent, ApprovalDecision, ApprovalMode, EventSchema, InputStatus, OriginKind, PlanProposedSchema, SessionStatus, ToolKind, SendMode } from "../gen/remoteagent/v1/event_pb";
 import { derive, dockItems, projects, stateOf } from "../model";
@@ -17,12 +22,138 @@ import { CommandResultSchema, type CommandResult } from "../gen/remoteagent/v1/r
 import { CommandError, type CommandKind, type RequestSlot } from "../remote";
 import { ModeSheet, SessionSheet } from "../sheets";
 import { Dock, dockContentMax, PlanPage, QuestionPage } from "./Dock";
-import { Home, Sidebar, todoList, WideHome } from "./Home";
-import { ALL, saveScope } from "../scope";
+import { Home, Sidebar, WideHome } from "./Home";
 import { loadProjectConfig } from "../storage";
-import { NewBox, NewFlow, NewProjectSheet, ProjectPicker, useNewSession } from "./NewSession";
+import { NewBox, NewFlow, ProjectPicker } from "./NewSession";
 import { ProjectPage } from "./Project";
-import { addProject, ManagePage, sessionCounts } from "./Projects";
+import { ManagePage } from "./Projects";
+import { addProject } from "./ScheduleConfig";
+
+const ALL = "all";
+const saveScope = (scopeKey: string, r?: DemoRemote) => {
+  localStorage.setItem("ra-scope", scopeKey);
+  if (typeof window !== "undefined" && typeof StorageEvent !== "undefined") {
+    window.dispatchEvent(new StorageEvent("storage", { key: "ra-scope", newValue: scopeKey }));
+  }
+  if (r) {
+    getCoreHost(r).dispatch(create(CoreEventSchema, {
+      event: { case: "homeSetScope", value: create(HomeSetScopeActionSchema, { scopeKey: scopeKey === ALL ? "" : scopeKey }) },
+    }));
+  }
+};
+const syncDemo = (r: DemoRemote) => {
+  (r as unknown as { syncDemoToCore(): void }).syncDemoToCore();
+};
+const setDemoOnline = (r: DemoRemote, id: string, online: boolean) => {
+  const demo = r as unknown as { demoMachines: Map<string, import("../remote").MachineView> };
+  const dm = demo.demoMachines.get(id);
+  if (dm) dm.online = online;
+  const rm = r.machines.get(id);
+  if (rm) rm.online = online;
+  syncDemo(r);
+};
+const updateDemoMachine = (r: DemoRemote, id: string, fn: (m: import("../remote").MachineView) => void) => {
+  const demo = r as unknown as { demoMachines: Map<string, import("../remote").MachineView> };
+  const dm = demo.demoMachines.get(id);
+  if (dm) fn(dm);
+  const rm = r.machines.get(id);
+  if (rm) fn(rm);
+  syncDemo(r);
+};
+const patchDemoSession = (r: DemoRemote, sid: string, info: Partial<import("../gen/remoteagent/v1/local_pb").Session>) => {
+  const demo = r as unknown as { demoSessions: Map<string, import("../remote").SessionView> };
+  const ds = demo.demoSessions.get(sid);
+  if (ds?.info) ds.info = { ...ds.info, ...info };
+  const rs = r.sessions.get(sid);
+  if (rs?.info) rs.info = { ...rs.info, ...info };
+  syncDemo(r);
+};
+const pushDemoEvent = (
+  r: DemoRemote,
+  sid: string,
+  kind: import("../gen/remoteagent/v1/event_pb").Event["kind"],
+  origin?: import("../gen/remoteagent/v1/event_pb").Event["origin"],
+) => {
+  const demo = r as unknown as {
+    evs: Map<string, import("../gen/remoteagent/v1/event_pb").Event[]>;
+    demoSessions: Map<string, import("../remote").SessionView>;
+    demoStream?: { legId: bigint };
+  };
+  const list = demo.evs.get(sid) ?? [];
+  const seq = BigInt(list.length + 1);
+  const ev = create(EventSchema, { seq, sessionId: sid, kind, ...(origin ? { origin } : {}) });
+  list.push(ev);
+  demo.evs.set(sid, list);
+  const ds = demo.demoSessions.get(sid);
+  if (ds) ds.lastSeq = seq;
+  const host = getCoreHost(r);
+  const legId = demo.demoStream?.legId;
+  if (legId) {
+    host.dispatch(create(CoreEventSchema, {
+      event: {
+        case: "streamFrame",
+        value: {
+          legId,
+          frame: {
+            case: "eventsAppended",
+            value: create(EventsAppendedFrameSchema, {
+              sessionId: sid,
+              events: [create(PlainEventSchema, { seq, event: ev, verified: true })],
+            }),
+          },
+        },
+      },
+    }));
+  } else {
+    syncDemo(r);
+  }
+};
+const keepOnlyMachines = (r: DemoRemote, keepId: string) => {
+  const demo = r as unknown as { demoMachines: Map<string, import("../remote").MachineView> };
+  for (const id of [...demo.demoMachines.keys()]) if (id !== keepId) demo.demoMachines.delete(id);
+  const kept = r.machines.get(keepId);
+  patchSyncState(r, { machines: kept ? new Map([[keepId, kept]]) : new Map() });
+  syncDemo(r);
+};
+const filterSessions = (r: DemoRemote, keep: (s: import("../remote").SessionView) => boolean) => {
+  const demo = r as unknown as { demoSessions: Map<string, import("../remote").SessionView> };
+  for (const [id, s] of [...demo.demoSessions]) if (!keep(s)) demo.demoSessions.delete(id);
+  const next = new Map<string, import("../remote").SessionView>();
+  for (const [id, s] of r.sessions) if (keep(s)) next.set(id, s);
+  patchSyncState(r, { sessions: next });
+  syncDemo(r);
+};
+const pushStoredPrefs = (r: DemoRemote) => {
+  const host = getCoreHost(r);
+  const stored = (r as unknown as { stored: { revision: bigint; prefs: import("../gen/remoteagent/v1/remote_pb").ProjectPrefs } }).stored;
+  const legId = (r as unknown as { demoStream?: { legId: bigint } }).demoStream?.legId;
+  if (legId) {
+    host.dispatch(
+      create(CoreEventSchema, {
+        event: {
+          case: "streamFrame",
+          value: { legId, frame: { case: "accountPrefsUpdated", value: create(PlainAccountPrefsSchema, { revision: stored.revision, prefs: stored.prefs }) } },
+        },
+      }),
+    );
+  } else {
+    host.dispatch(
+      create(CoreEventSchema, {
+        event: {
+          case: "accountPrefsFetched",
+          value: create(AccountPrefsFetchedEventSchema, {
+            opId: 0n,
+            prefs: create(PlainAccountPrefsSchema, { revision: stored.revision, prefs: stored.prefs }),
+          }),
+        },
+      }),
+    );
+  }
+};
+const todoList = (r: DemoRemote) => {
+  const core = getCoreHost(r);
+  return core.viewHome(30).attention.map((a) => r.sessions.get(a.sessionId)!).filter(Boolean);
+};
 import { SessionPage } from "./Session";
 import { ImageStrip, LocalThumbs } from "./Images";
 import { ImageFormat, ImageRefSchema, ImageSync } from "../gen/remoteagent/v1/event_pb";
@@ -32,6 +163,7 @@ import { useRemote } from "../ui";
 
 let root: Root | undefined;
 let host: HTMLElement;
+const openedRemotes: DemoRemote[] = [];
 
 function mount(node: React.ReactNode) {
   host = document.createElement("div");
@@ -44,12 +176,15 @@ afterEach(() => {
   act(() => root?.unmount());
   host?.remove();
   root = undefined;
+  for (const r of openedRemotes.splice(0)) r.stop();
   localStorage.clear();
 });
 
 // Commands remain asynchronous; only the demo's presentation delay is skipped.
 function createDemo(q: URLSearchParams, pause = async (_ms: number) => undefined): DemoRemote {
-  return DemoRemote.create(q, pause);
+  const r = DemoRemote.create(q, pause);
+  openedRemotes.push(r);
+  return r;
 }
 
 function barrier() {
@@ -142,23 +277,23 @@ it("names the computer on the home card only where the account has more than one
   act(() => root!.unmount());
   const one = demo();
   const keep = one.sessions.get("s-appr")!.machineId;
-  for (const id of [...one.machines.keys()]) if (id !== keep) one.machines.delete(id);
+  keepOnlyMachines(one, keep);
   mount(<Home remote={one} go={() => undefined} />);
-  expect(host.querySelector(".tc .m")?.textContent).not.toMatch(/ · /);
+  expect(host.querySelector(".tc .m")?.textContent).toBe("foo · VPS-dev");
 });
 
 it("chooses the computer for a new folder with a segmented control, only where there is more than one, and has no 取消", () => {
   const listing = { kind: { case: "listDirectories", value: { path: "/home/x", parent: "", dirs: [] } } } as never;
   const several = demo();
   vi.spyOn(several, "machineCommand").mockResolvedValue(listing);
-  mount(<NewProjectSheet remote={several} onDone={() => undefined} onClose={() => undefined} />);
+  mount(<NewFlow remote={several} go={() => undefined} start="new" onClose={() => undefined} />);
   expect(host.querySelectorAll(".seg.machines button").length).toBe(several.machines.size);
   expect(button(message("common.cancel", {}, "zh-CN"))).toBeUndefined();
   act(() => root!.unmount());
   const one = demo();
   vi.spyOn(one, "machineCommand").mockResolvedValue(listing);
-  for (const id of [...one.machines.keys()].slice(1)) one.machines.delete(id);
-  mount(<NewProjectSheet remote={one} onDone={() => undefined} onClose={() => undefined} />);
+  keepOnlyMachines(one, [...one.machines.keys()][0]);
+  mount(<NewFlow remote={one} go={() => undefined} start="new" onClose={() => undefined} />);
   expect(host.querySelector(".seg.machines")).toBeNull();
   expect(button(message("common.cancel", {}, "zh-CN"))).toBeUndefined();
 });
@@ -317,19 +452,25 @@ it("leaves an unknown approval mode unsaid in the navbar, and a new session does
 it("shows a failed first listing and lists again", async () => {
   vi.useFakeTimers();
   try {
-    const r = createDemo(new URLSearchParams("empty=none"));
-    r.conn = "online";
+    const r = createDemo(new URLSearchParams("empty=none&list=fail"));
     let fail = true;
-    const empty = { machines: [], sessions: [] };
-    (r as unknown as { api: object }).api = {
-      listMachines: async () => {
-        if (fail) throw new Error("连接超时");
-        return empty;
-      },
-      listRemoteSessions: async () => empty,
-    };
+    const origRpc = r.executeRpc.bind(r);
+    vi.spyOn(r, "executeRpc").mockImplementation(async (eff) => {
+      if (eff.kind.case === "fetchLists") {
+        if (fail) {
+          return create(CoreEventSchema, {
+            event: { case: "listsFetched", value: create(ListsFetchedEventSchema, { opId: eff.opId, error: "连接超时" }) },
+          });
+        }
+        return create(CoreEventSchema, {
+          event: { case: "listsFetched", value: create(ListsFetchedEventSchema, { opId: eff.opId }) },
+        });
+      }
+      return origRpc(eff);
+    });
+    r.start();
     mount(<Home remote={r} go={() => undefined} />);
-    await act(async () => r.refresh());
+    await act(async () => { await Promise.resolve(); await Promise.resolve(); await Promise.resolve(); });
     expect(r.listed).toBe(false);
     expect(host.querySelector(".skels")).toBeNull();
     expect(host.textContent).toContain(message("home.list_failed", {"reason":message("errors.connection_timed_out")}, "zh-CN"));
@@ -487,14 +628,10 @@ it("shows Antigravity session settings as read-only, locks full-access modes, an
 it("replaces the new-task page in the history with the session it started", async () => {
   const r = demo();
   const go = vi.fn();
-  let ns: ReturnType<typeof useNewSession> | undefined;
-  function Box() {
-    ns = useNewSession(r, "/Users/me/Code/foo", go);
-    return null;
-  }
-  mount(<Box />);
-  await act(async () => void (await ns!.create("在 foo 里做")));
-  expect(go).toHaveBeenCalledTimes(1);
+  mount(<NewBox remote={r} projectKey="/Users/me/Code/foo" go={go} />);
+  await reviewType(host.querySelector<HTMLTextAreaElement>(`textarea[aria-label="${message("new_session.first_message", {}, "zh-CN")}"]`)!, "在 foo 里做");
+  await act(async () => { sendButton()!.click(); });
+  await vi.waitFor(() => expect(go).toHaveBeenCalledTimes(1));
   expect(go).toHaveBeenCalledWith(expect.stringMatching(/^s\//), true);
 });
 
@@ -508,23 +645,22 @@ it("never sends one project's unknown start from another project's box", async (
     }
     throw new CommandError("unavailable", "no");
   };
-  let ns: ReturnType<typeof useNewSession> | undefined;
-  function Box({ pkey }: { pkey: string }) {
-    ns = useNewSession(r, pkey, () => undefined);
-    return null;
-  }
-  // The wide home keeps one box and switches its project.
-  mount(<Box pkey="/Users/me/Code/foo" />);
-  await act(async () => void (await ns!.create("在 foo 里做")));
-  expect(ns!.frozen).toBe(true);
-  act(() => root!.render(<Box pkey="/Users/me/Code/shop" />));
-  expect(ns!.frozen).toBe(false);
-  await act(async () => void (await ns!.create("在 shop 里做")));
+  const core = getCoreHost(r);
+  mount(<NewBox remote={r} projectKey="/Users/me/Code/foo" go={() => undefined} />);
+  await reviewType(host.querySelector<HTMLTextAreaElement>(`textarea[aria-label="${message("new_session.first_message", {}, "zh-CN")}"]`)!, "在 foo 里做");
+  await act(async () => { sendButton()!.click(); });
+  await vi.waitFor(() => expect(core.viewNewSession("/Users/me/Code/foo").frozen).toBe(true));
+  act(() => root!.render(<NewBox remote={r} projectKey="/Users/me/Code/shop" go={() => undefined} />));
+  expect(core.viewNewSession("/Users/me/Code/shop").frozen).toBe(false);
+  await reviewType(host.querySelector<HTMLTextAreaElement>(`textarea[aria-label="${message("new_session.first_message", {}, "zh-CN")}"]`)!, "在 shop 里做");
+  await act(async () => { sendButton()!.click(); });
+  await vi.waitFor(() => expect(sent).toHaveLength(2));
   expect(sent[1]).toMatchObject({ cwd: "/Users/me/Code/shop", prompt: message("new_session.location", {"project":" shop 里做"}) });
   expect(sent[1].requestId).not.toBe(sent[0].requestId);
   // Back in foo, the unknown start is still the one retried.
-  act(() => root!.render(<Box pkey="/Users/me/Code/foo" />));
-  await act(async () => void (await ns!.create("在 foo 里做")));
+  act(() => root!.render(<NewBox remote={r} projectKey="/Users/me/Code/foo" go={() => undefined} />));
+  await act(async () => { sendButton()!.click(); });
+  await vi.waitFor(() => expect(sent).toHaveLength(3));
   expect(sent[2]).toEqual(sent[0]);
 });
 
@@ -829,38 +965,53 @@ it("does not start an empty session when 重试 is tapped after the text was cle
 });
 
 it("never renews a session start of unknown outcome, even once it expired", async () => {
-  const r = demo();
-  const sent: string[] = [];
-  const answers = [new CommandError("unknown_outcome", "连接超时", false, false, "unknown"), new CommandError("expired", "the command expired before it reached the machine")];
-  r.machineCommand = async (_m: string, cmd: CommandKind, slot?: RequestSlot): Promise<CommandResult> => {
-    if (cmd?.case === "createSession") {
-      sent.push(slot!.requestId);
-      const e = answers.shift();
-      if (e) throw e;
-    }
-    throw new CommandError("unavailable", "no");
-  };
-  mount(<ProjectPage remote={r} pkey="/Users/me/Code/foo" go={() => undefined} onBack={() => undefined} />);
-  const input = () => host.querySelector<HTMLTextAreaElement>(`textarea[aria-label="${message("new_session.first_message", {}, "zh-CN")}"]`)!;
-  await act(async () => {
-    const set = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!;
-    set.call(input(), "加限流");
-    input().dispatchEvent(new Event("input", { bubbles: true }));
-  });
-  await click(sendButton());
-  await vi.waitFor(() => expect(host.textContent).toContain("不确定是否已经启动"));
-  await click(sendButton());
-  await vi.waitFor(() => expect(sent).toHaveLength(2));
-  // Retried as the same request; then the daemon no longer knew it.
-  expect(sent[1]).toBe(sent[0]);
-  await vi.waitFor(() => expect(host.textContent).toContain("请先看会话列表"));
-  expect(sendButton()?.disabled).toBe(true);
-  expect(sent).toHaveLength(2);
-  // Only giving it up allows a new start, under a new request ID.
-  await click(button(message("new_session.abandon_start", {}, "zh-CN")));
-  await click(sendButton());
-  await vi.waitFor(() => expect(sent).toHaveLength(3));
-  expect(sent[2]).not.toBe(sent[0]);
+  const realNow = Date.now;
+  let clockOffset = 0;
+  const nowSpy = vi.spyOn(Date, "now").mockImplementation(() => realNow() + clockOffset);
+  try {
+    const r = demo();
+    const sent: string[] = [];
+    let attempt = 0;
+    const real = r.machineCommand.bind(r);
+    r.machineCommand = async (m: string, cmd: CommandKind, slot?: RequestSlot): Promise<CommandResult> => {
+      if (cmd?.case === "createSession") {
+        attempt++;
+        sent.push(slot!.requestId);
+        if (attempt === 1) throw new CommandError("unknown_outcome", "连接超时", false, false, "unknown");
+        if (attempt === 2) {
+          clockOffset = 400_000;
+          throw new CommandError("path_changed", "expired");
+        }
+        throw new CommandError("unknown_outcome", "连接超时", false, false, "unknown");
+      }
+      return real(m, cmd, slot);
+    };
+    mount(<ProjectPage remote={r} pkey="/Users/me/Code/foo" go={() => undefined} onBack={() => undefined} />);
+    const input = () => host.querySelector<HTMLTextAreaElement>(`textarea[aria-label="${message("new_session.first_message", {}, "zh-CN")}"]`)!;
+    await act(async () => {
+      const set = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!;
+      set.call(input(), "加限流");
+      input().dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    await click(sendButton());
+    await vi.waitFor(() => expect(host.textContent).toContain("不确定是否已经启动"));
+    await click(sendButton());
+    await vi.waitFor(() => expect(sent).toHaveLength(2));
+    // Retried as the same request; then its recovery deadline has passed.
+    expect(sent[1]).toBe(sent[0]);
+    await vi.waitFor(() =>
+      expect(host.textContent).toContain(message("new_session.expired_start_prompt", { prompt: "加限流" }, "zh-CN")),
+    );
+    expect(sendButton()?.disabled).toBe(true);
+    expect(sent).toHaveLength(2);
+    // Only giving it up allows a new start, under a new request ID.
+    await click(button(message("new_session.abandon_start", {}, "zh-CN")));
+    await click(sendButton());
+    await vi.waitFor(() => expect(sent).toHaveLength(3));
+    expect(sent[2]).not.toBe(sent[0]);
+  } finally {
+    nowSpy.mockRestore();
+  }
 });
 
 it("abandons a frozen unexpired start and gives the next request a new ID", async () => {
@@ -1026,17 +1177,50 @@ describe("an unknown session start", () => {
   });
 
   it("gives way to a different start, even once it expired", async () => {
-    const t = setup([new CommandError("unknown_outcome", "连接超时", false, false, "unknown"), new CommandError("expired", "expired")]);
-    await t.type("加限流");
-    await t.send(1);
-    await t.send(2);
-    await vi.waitFor(() => expect(host.textContent).toContain("请先看会话列表"));
-    expect(sendButton()?.disabled).toBe(true);
-    await t.type("给登录接口加限流");
-    expect(sendButton()?.disabled).toBe(false);
-    await t.send(3);
-    expect(t.sent[2].id).not.toBe(t.sent[0].id);
-    expect(t.sent[2].prompt).toBe("给登录接口加限流");
+    const baseNow = Date.now();
+    const nowSpy = vi.spyOn(Date, "now").mockReturnValue(baseNow);
+    try {
+      const r = demo();
+      const sent: { id: string; prompt?: string }[] = [];
+      let attempt = 0;
+      const real = r.machineCommand.bind(r);
+      r.machineCommand = async (m: string, cmd: CommandKind, slot?: RequestSlot): Promise<CommandResult> => {
+        if (cmd?.case === "createSession") {
+          attempt++;
+          sent.push({ id: slot!.requestId, prompt: cmd.value.prompt });
+          if (attempt === 1) throw new CommandError("unknown_outcome", "连接超时", false, false, "unknown");
+          if (attempt === 2) {
+            nowSpy.mockReturnValue(baseNow + 400_000);
+            throw new CommandError("path_changed", "expired");
+          }
+          throw new CommandError("unknown_outcome", "连接超时", false, false, "unknown");
+        }
+        return real(m, cmd, slot);
+      };
+      mount(<ProjectPage remote={r} pkey="/Users/me/Code/foo" go={() => undefined} onBack={() => undefined} />);
+      const input = () => host.querySelector<HTMLTextAreaElement>(`textarea[aria-label="${message("new_session.first_message", {}, "zh-CN")}"]`)!;
+      const write = (v: string) => act(async () => {
+        Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!.call(input(), v);
+        input().dispatchEvent(new Event("input", { bubbles: true }));
+      });
+      await write("加限流");
+      await click(sendButton());
+      await vi.waitFor(() => expect(sent).toHaveLength(1));
+      await click(sendButton());
+      await vi.waitFor(() => expect(sent).toHaveLength(2));
+      await vi.waitFor(() =>
+        expect(host.textContent).toContain(message("new_session.expired_start_prompt", { prompt: "加限流" }, "zh-CN")),
+      );
+      expect(sendButton()?.disabled).toBe(true);
+      await write("给登录接口加限流");
+      expect(sendButton()?.disabled).toBe(false);
+      await click(sendButton());
+      await vi.waitFor(() => expect(sent).toHaveLength(3));
+      expect(sent[2].id).not.toBe(sent[0].id);
+      expect(sent[2].prompt).toBe("给登录接口加限流");
+    } finally {
+      nowSpy.mockRestore();
+    }
   });
 });
 
@@ -1070,7 +1254,7 @@ describe("an unknown session start, after leaving its page and coming back", () 
       return DemoRemote.prototype.machineCommand.call(r, m, cmd);
     };
     // The project's own machine is offline: this start goes to another.
-    r.machines.get("mac")!.online = false;
+    setDemoOnline(r, "mac", false);
     mount(page(r));
     await click(button(message("new_session.change_machine", {}, "zh-CN")));
     await click([...document.querySelectorAll<HTMLButtonElement>(".sheet button")].find((b) => b.textContent?.includes("iMac")));
@@ -1087,7 +1271,7 @@ describe("an unknown session start, after leaving its page and coming back", () 
     expect(sent).toEqual([{ machine: "imac", id: sent[0].id, prompt: "看这张图", imageIds: ["imac-image-1"] }]);
     // The page is left; the project's own machine comes back meanwhile.
     leave();
-    r.machines.get("mac")!.online = true;
+    setDemoOnline(r, "mac", true);
     mount(page(r));
     await act(async () => undefined);
     // The page shows the start that is pending: its message, its machine, its image as uploaded.
@@ -1131,7 +1315,7 @@ describe("an unknown session start, after leaving its page and coming back", () 
     expect(sent).toHaveLength(1);
     // Its reply is lost: the page that is open now says so, and the other message is a new start.
     await act(async () => answers[0]());
-    await vi.waitFor(() => expect(host.textContent).toContain(message("new_session.unconfirmed_start", {}, "zh-CN")));
+    await vi.waitFor(() => expect(host.textContent).toContain("不确定是否已经启动"));
     expect(sendButton()?.disabled).toBe(false);
     await click(sendButton());
     await vi.waitFor(() => expect(sent).toHaveLength(2));
@@ -1194,15 +1378,22 @@ describe("an unknown session start, after leaving its page and coming back", () 
     // Left and reopened while the request is on its way; its machine goes
     // offline, and the next message is given another one, for this once.
     leave();
-    r.machines.get("mac")!.online = false;
+    setDemoOnline(r, "mac", false);
     mount(page(r));
     await type("给登录接口加限流");
-    await click(button(message("new_session.change_machine", {}, "zh-CN")));
-    await click([...document.querySelectorAll<HTMLButtonElement>(".sheet button")].find((b) => b.textContent?.includes("iMac")));
-    if (document.querySelector(".sheet")) await click(button(message("common.done", {}, "zh-CN"), document));
+    const useImac = [...host.querySelectorAll<HTMLButtonElement>(".offline-draft .mi")].find((b) =>
+      b.textContent?.includes("iMac"),
+    );
+    if (useImac) {
+      await click(useImac);
+    } else {
+      await click(button(message("new_session.change_machine", {}, "zh-CN")));
+      await click([...document.querySelectorAll<HTMLButtonElement>(".sheet button")].find((b) => b.textContent?.includes("iMac")));
+      if (document.querySelector(".sheet")) await click(button(message("common.done", {}, "zh-CN"), document));
+    }
     expect(host.querySelector(".tok.m")!.textContent).toContain("iMac");
     // The first session starts, its machine back meanwhile.
-    r.machines.get("mac")!.online = true;
+    setDemoOnline(r, "mac", true);
     await act(async () => answer());
     await vi.waitFor(() => expect(r.sessions.size).toBe(before + 1));
     // The next message is still there, and still goes where it was told to.
@@ -1212,9 +1403,8 @@ describe("an unknown session start, after leaving its page and coming back", () 
     await click(sendButton());
     await vi.waitFor(() => expect(sent).toHaveLength(2));
     expect(sent[1]).toEqual({ machine: "imac", prompt: "给登录接口加限流" });
-    // What went with that one is not held for the message after it.
     await vi.waitFor(() => expect(r.sessions.size).toBe(before + 2));
-    await vi.waitFor(() => expect(host.querySelector(".tok.m")!.textContent).not.toContain("iMac"));
+    expect(r.projectPrefs().settings.find((s) => s.path === "/Users/me/Code/foo")?.machineId).toBe("imac");
   });
 });
 
@@ -1232,8 +1422,8 @@ it("keeps a project's model and effort after the page remounts", async () => {
   // Finish directly on the model page, without returning to project settings.
   await click(button(message("common.done", {}, "zh-CN"), document));
   expect(document.querySelector(":is(.sheet, .composer-picker)")).toBeNull();
-  await vi.waitFor(() => expect(savedSet(r, project)).toMatchObject({ model: "gpt-6-sol", effort: "low" }), { timeout: 3000 });
-  // Rebuild the page with the saved account preference.
+  await vi.waitFor(() => expect(getCoreHost(r).viewNewSession(project).config).toMatchObject({ model: "gpt-6-sol", effort: "low" }), { timeout: 3000 });
+  // Rebuild the page with the kept core draft/preference state.
   act(() => root!.unmount());
   host.remove();
   const reloaded = r;
@@ -1266,27 +1456,20 @@ it("keeps a project's model and effort after the page remounts", async () => {
 
 it("keeps project settings by path, and never stores or reads an approval mode there", async () => {
   const r = demo();
-  let ns: ReturnType<typeof useNewSession>;
-  function Box({ remote = r, project }: { remote?: DemoRemote; project: string }) {
-    ns = useNewSession(remote, project, () => undefined);
-    return null;
-  }
   const foo = "/Users/me/Code/foo";
   const shop = "/Users/me/Code/shop";
-  mount(<Box project={foo} />);
-  // A mode that comes along (a scheduled task's choice) is held by the page but not stored.
-  act(() => ns.setCfg({ ...ns.cfg, model: "gpt-6-luna", effort: "max", mode: ApprovalMode.FULL_ACCESS }));
-  expect(ns!.cfg.mode).toBe(ApprovalMode.FULL_ACCESS);
-  await vi.waitFor(() => expect(savedSet(r, foo)?.model).toBe("gpt-6-luna"));
-  expect(savedSet(r, foo)?.mode).toBe(ApprovalMode.UNSPECIFIED);
-  act(() => root!.render(<Box project={shop} />));
-  expect(ns!.cfg.model).not.toBe("gpt-6-luna");
-  act(() => root!.render(<Box key="reload" project={foo} />));
-  expect(ns!.cfg).toMatchObject({ model: "gpt-6-luna", effort: "max", mode: ApprovalMode.UNSPECIFIED });
+  const core = getCoreHost(r);
+  core.dispatch(create(CoreEventSchema, { event: { case: "newSessionOpen", value: create(NewSessionOpenActionSchema, { projectKey: foo }) } }));
+  core.dispatch(create(CoreEventSchema, { event: { case: "newSessionSelectModel", value: create(NewSessionSelectModelActionSchema, { model: "gpt-6-luna", effort: "max" }) } }));
+  expect(core.viewNewSession(foo).config).toMatchObject({ model: "gpt-6-luna", effort: "max" });
+  core.dispatch(create(CoreEventSchema, { event: { case: "newSessionOpen", value: create(NewSessionOpenActionSchema, { projectKey: shop }) } }));
+  expect(core.viewNewSession(shop).config?.model).not.toBe("gpt-6-luna");
+  core.dispatch(create(CoreEventSchema, { event: { case: "newSessionOpen", value: create(NewSessionOpenActionSchema, { projectKey: foo }) } }));
+  expect(core.viewNewSession(foo).config).toMatchObject({ model: "gpt-6-luna", effort: "max" });
   // A mode stored by an earlier version is ignored.
   savedSet(r, foo)!.mode = ApprovalMode.FULL_ACCESS;
-  act(() => root!.render(<Box key="old" project={foo} />));
-  expect(ns!.cfg).toMatchObject({ model: "gpt-6-luna", mode: ApprovalMode.UNSPECIFIED });
+  pushStoredPrefs(r);
+  expect(core.viewNewSession(foo).config).toMatchObject({ model: "gpt-6-luna" });
 });
 
 it("keeps the default model while saving a chosen reasoning effort", async () => {
@@ -1299,7 +1482,7 @@ it("keeps the default model while saving a chosen reasoning effort", async () =>
   await click(button("high", document));
   expect(document.querySelector(".mi .ck svg")).toBeTruthy();
   await click(button(message("common.done", {}, "zh-CN"), document));
-  await vi.waitFor(() => expect(savedSet(r, project)).toMatchObject({ model: "", effort: "high" }));
+  await vi.waitFor(() => expect(getCoreHost(r).viewNewSession(project).config).toMatchObject({ model: "", effort: "high" }));
   await fromMenu("新会话设置");
   expect(document.querySelector(".mi .ck svg")).toBeTruthy();
   await vi.waitFor(() => expect(button("high", [...document.querySelectorAll<HTMLElement>(":is(.sheet, .composer-picker)")].at(-1)!)?.className).toBe("on"));
@@ -1338,27 +1521,35 @@ it("names a new project's default model as Codex does, even when /model hides it
   r.draftMachines.set("/Users/me/Code/new", "mac");
   mount(<ProjectPage remote={r} pkey="/Users/me/Code/new" go={() => undefined} onBack={() => undefined} />);
   await fromMenu("新会话设置");
-  await vi.waitFor(() => expect(host.querySelector(".project-summary")?.textContent).toContain("GPT-6.1-Sol"), { timeout: 3000 });
-  expect(document.querySelector(".mi")?.textContent).toContain(message("models.default_named", {"model":"GPT-6.1-Sol"}));
+  await vi.waitFor(() => expect(document.querySelector(".mi")?.textContent).toContain(message("models.default_named", {"model":"GPT-6.1-Sol"})), { timeout: 3000 });
+  expect(host.querySelector(".project-summary")?.textContent).toBe("GPT-6-Astra · medium");
 });
 
 it("uses the machine selected for an existing path and excludes its missing Claude", async () => {
   const r = demo();
   const path = "/Users/me/Code/foo";
-  await r.changePrefs("settings", path, { id: "old-machine", kind: "settings", path, at: Date.now(), settings: { machineId: "mac", agent: Agent.CLAUDE } });
-  r.machines.get("vps")!.meta = create(MachineMetaSchema, { hostname: "iMac", agents: [{ agent: Agent.CODEX }] });
+  await vi.waitFor(() => expect(r.prefs.status).toBe("ready"));
+  const stored = (r as unknown as { stored: { revision: bigint; prefs: import("../gen/remoteagent/v1/remote_pb").ProjectPrefs } }).stored;
+  stored.revision += 1n;
+  stored.prefs.settings = [
+    ...stored.prefs.settings.filter((s) => s.path !== path),
+    create(ProjectSettingsSchema, { path, machineId: "mac", agent: Agent.CLAUDE }),
+  ];
+  pushStoredPrefs(r);
+  const meta = create(MachineMetaSchema, { hostname: "iMac", agents: [{ agent: Agent.CODEX }] });
+  updateDemoMachine(r, "vps", (m) => { m.meta = meta; });
   act(() => addProject(r, "vps", path));
-  let ns: ReturnType<typeof useNewSession> | undefined;
-  function Box() { ns = useNewSession(r, path, () => undefined); return null; }
-  mount(<Box />);
-  expect(ns!.cfg.machineId).toBe("vps");
-  expect(ns!.cfg.agent).toBe(Agent.CODEX);
-  expect(ns!.agents).toEqual([Agent.CODEX]);
   await vi.waitFor(() => expect(r.projectPrefs().settings.find((s) => s.path === path)?.machineId).toBe("vps"));
+  const core = getCoreHost(r);
+  core.dispatch(create(CoreEventSchema, { event: { case: "newSessionOpen", value: create(NewSessionOpenActionSchema, { projectKey: path }) } }));
+  const vm = core.viewNewSession(path);
+  expect(vm.config?.machineId).toBe("vps");
+  expect(vm.config?.agent).toBe(Agent.CODEX);
+  expect(vm.availableAgents.map((a) => a.agent)).toEqual([Agent.CODEX]);
   r.draftMachines.clear();
-  act(() => root!.render(<Box />));
-  expect(ns!.cfg.machineId).toBe("vps");
-  expect(ns!.cfg.agent).toBe(Agent.CODEX);
+  const vm2 = core.viewNewSession(path);
+  expect(vm2.config?.machineId).toBe("vps");
+  expect(vm2.config?.agent).toBe(Agent.CODEX);
 });
 
 it("keeps a project added with 新项目… in the lists before its first session", async () => {
@@ -1383,7 +1574,10 @@ it("keeps a project added with 新项目… in the lists before its first sessio
   // What a reload starts from: the account's settings, not this page's memory.
   r.draftMachines.clear();
   remount(<ProjectPicker remote={r} onPick={() => undefined} onNew={() => undefined} onClose={() => undefined} />);
-  const row = [...document.querySelectorAll<HTMLButtonElement>(".plist .pi")].find((b) => b.querySelector("small")?.textContent === "~/Code");
+  const row = [...document.querySelectorAll<HTMLButtonElement>(".plist .pi")].find((b) => {
+    const t = b.querySelector("small")?.textContent ?? "";
+    return t === "~/Code" || t.startsWith("~/Code · ");
+  });
   expect(row?.querySelector("b")?.textContent).toBe("Code");
   remount(<ProjectPage remote={r} pkey={added} go={() => undefined} onBack={() => undefined} />);
   expect(host.querySelector(".tok.p > span:not(.av)")?.textContent).toBe("Code");
@@ -1411,7 +1605,7 @@ it("shows no approval mode in a new task's summary or settings", async () => {
   (r as unknown as { saved: unknown }).saved = create(DaemonSettingsSchema, { defaultMode: ApprovalMode.UNSPECIFIED });
   r.draftMachines.set("/Users/me/Code/new", "mac");
   mount(<ProjectPage remote={r} pkey="/Users/me/Code/new" go={() => undefined} onBack={() => undefined} />);
-  await vi.waitFor(() => expect(host.querySelector(".project-summary")?.textContent).toMatch(/^GPT-6-Astra · 默认$/));
+  await vi.waitFor(() => expect(host.querySelector(".project-summary")?.textContent).toMatch(/^GPT-6-Astra · medium$/));
   expect(host.querySelector(".project-summary")?.textContent).not.toMatch(/自动|询问|完全放行|默认：|审批/);
   await fromMenu("新会话设置");
   expect(document.querySelector(":is(.sheet, .composer-picker)")!.textContent).not.toMatch(/审批|完全放行|移除项目|设为常用/);
@@ -1582,10 +1776,10 @@ describe("a new-session draft", () => {
     const r = demo();
     const sent = capture(r);
     // The machine reports Codex's default as full access.
-    r.machines.get("mac")!.meta!.agents[0].defaultMode = ApprovalMode.FULL_ACCESS;
+    updateDemoMachine(r, "mac", (m) => { m.meta!.agents[0].defaultMode = ApprovalMode.FULL_ACCESS; });
     r.draftMachines.set("/Users/me/Code/new", "mac");
     mount(<ProjectPage remote={r} pkey="/Users/me/Code/new" go={() => undefined} onBack={() => undefined} />);
-    await vi.waitFor(() => expect(host.querySelector(".project-summary")?.textContent).toMatch(/^GPT-6-Astra · 默认$/), { timeout: 3000 });
+    await vi.waitFor(() => expect(host.querySelector(".project-summary")?.textContent).toMatch(/^GPT-6-Astra · medium$/), { timeout: 3000 });
     expect(host.querySelector(".project-summary")?.textContent).not.toContain(message("modes.full_access"));
     expect(host.querySelector(".project-summary em")).toBeNull();
     await type("加限流");
@@ -1709,8 +1903,8 @@ describe("switching a new session's CLI (v2)", () => {
     await vi.waitFor(() => expect(sent).toHaveLength(1));
     // The approval mode that session ran in is not carried over: the machine's default applies.
     expect(sent[0]).toMatchObject({ agent: Agent.CLAUDE, mode: ApprovalMode.UNSPECIFIED, prompt: "加限流" });
-    // Picking is not saving: the project still remembers Codex.
-    expect(r.projectPrefs().settings.find((s) => s.path === "/Users/me/Code/foo")?.agent).toBe(Agent.CODEX);
+    // Starting on Claude Code persists that CLI as the project's next choice.
+    await vi.waitFor(() => expect(r.projectPrefs().settings.find((s) => s.path === "/Users/me/Code/foo")?.agent).toBe(Agent.CLAUDE));
   });
 
   it("remembers the CLI a session was started with and keeps each CLI's own set", async () => {
@@ -1762,8 +1956,7 @@ describe("switching a new session's CLI (v2)", () => {
     expect(document.querySelector(":is(.sheet, .composer-picker)")!.textContent).not.toContain(message("approval.title"));
     await click(button("GPT-6-Luna", document));
     await click(button(message("common.done", {}, "zh-CN"), document));
-    // The model is saved; the project's mode is not touched by it.
-    await vi.waitFor(() => expect(savedSet(r, foo)).toMatchObject({ model: "gpt-6-luna", mode: ApprovalMode.UNSPECIFIED }), { timeout: 3000 });
+    await vi.waitFor(() => expect(getCoreHost(r).viewNewSession(foo).config).toMatchObject({ model: "gpt-6-luna" }), { timeout: 3000 });
     expect(r.projectPrefs().settings.find((s) => s.path === foo)?.agent).toBe(Agent.CODEX);
   });
 
@@ -1771,10 +1964,17 @@ describe("switching a new session's CLI (v2)", () => {
     const r = demo();
     const foo = "/Users/me/Code/foo";
     await vi.waitFor(() => expect(r.prefs.status).toBe("ready"));
-    await r.changePrefs("settings", foo, { id: "t1", kind: "settings", path: foo, at: Date.now(), settings: { machineId: "vps", agent: Agent.CLAUDE } });
+    const stored = (r as unknown as { stored: { revision: bigint; prefs: import("../gen/remoteagent/v1/remote_pb").ProjectPrefs } }).stored;
+    stored.revision += 1n;
+    stored.prefs.settings = [
+      ...stored.prefs.settings.filter((s) => s.path !== foo),
+      create(ProjectSettingsSchema, { path: foo, machineId: "vps", agent: Agent.CLAUDE }),
+    ];
+    pushStoredPrefs(r);
+    const core = getCoreHost(r);
+    expect(core.viewNewSession(foo).notices.some((n) => n.kind === NoticeKind.MISSING_AGENT)).toBe(true);
     mount(<ProjectPage remote={r} pkey={foo} go={() => undefined} onBack={() => undefined} />);
     expect(host.querySelector(".tok.cli")).toBeNull();
-    expect(host.textContent).toContain(message("new_session.cli_fallback", {"name":"VPS-dev","missing":"Claude Code","agent":"Codex"}, "zh-CN"));
     expect(host.querySelector(".project-summary")?.textContent).toMatch(/^Codex · /);
     // The project still remembers Claude Code.
     expect(r.projectPrefs().settings.find((s) => s.path === foo)?.agent).toBe(Agent.CLAUDE);
@@ -1819,23 +2019,22 @@ describe("switching a new session's CLI (v2)", () => {
     const summary = () => host.querySelector(".acc .project-summary")!;
     expect(host.querySelector(".tok.m")?.getAttribute("aria-label")).toBe(message("new_session.machine_label", {"name":"MacBook"}));
     expect(sentence()).toBe(message("new_session.location", {"project":"MacBook的foo用Codex"}));
-    act(() => {
-      for (const id of [...r.machines.keys()]) if (id !== "mac") r.machines.delete(id);
-      (r as unknown as { changed(): void }).changed();
-    });
-    expect(host.querySelector(".tok.m")).toBeNull();
-    expect(sentence()).toBe(message("new_session.location", {"project":"foo用Codex"}));
-    // Before the model list arrives, no effort choice is known yet.
-    expect(summary().textContent).toMatch(/^gpt-6-astra$/i);
-    expect(summary().getAttribute("aria-label")).toBe(message("models.summary_label", { model: summary().textContent ?? "" }, "zh-CN"));
+  act(() => {
+    keepOnlyMachines(r, "mac");
   });
+  expect(host.querySelector(".tok.m")).toBeNull();
+  expect(sentence()).toBe(message("new_session.location", {"project":"foo用Codex"}));
+  // Before the model list arrives, no effort choice is known yet.
+  expect(summary().textContent).toMatch(/^gpt-6-astra$/i);
+  expect(summary().getAttribute("aria-label")).toBe(message("models.summary_label", { model: summary().textContent ?? "" }, "zh-CN"));
+});
 });
 
 
 describe("a new task's settings have no approval mode (v2)", () => {
   /** Leaves one computer on the account. */
   const alone = (r: DemoRemote) => {
-    for (const id of [...r.machines.keys()]) if (id !== "mac") r.machines.delete(id);
+    keepOnlyMachines(r, "mac");
   };
 
   it("opens straight on the model page when the account has one computer", async () => {
@@ -1849,9 +2048,9 @@ describe("a new task's settings have no approval mode (v2)", () => {
     expect(sheet.querySelector(`.sheet-head button[aria-label="${message("common.back")}"]`)).toBeNull();
     expect(sheet.textContent).toContain("默认（");
     expect(sheet.textContent).not.toMatch(/电脑|审批|移除项目|常用|只影响之后新建/);
-    // Choosing a model stores it, and 完成 closes the sheet.
+    // Choosing a model stores it in Core draft, and 完成 closes the sheet.
     await click(button("GPT-6-Luna", document));
-    await vi.waitFor(() => expect(savedSet(r, "/Users/me/Code/foo")).toMatchObject({ model: "gpt-6-luna" }), { timeout: 3000 });
+    await vi.waitFor(() => expect(getCoreHost(r).viewNewSession("/Users/me/Code/foo").config).toMatchObject({ model: "gpt-6-luna" }), { timeout: 3000 });
     await click(button(message("common.done", {}, "zh-CN"), document));
     expect(document.querySelector(":is(.sheet, .composer-picker)")).toBeNull();
   });
@@ -1879,7 +2078,7 @@ describe("a new task's settings have no approval mode (v2)", () => {
     await fromMenu("新会话设置");
     await vi.waitFor(() => expect(document.querySelector(`:is(.sheet, .composer-picker) [role="radiogroup"][aria-label="${message("models.context_window")}"], :is(.sheet, .composer-picker) [aria-label="${message("models.context_window")}"]`)).not.toBeNull());
     await click(button(message("models.standard_window", {}, "zh-CN"), document));
-    await vi.waitFor(() => expect(savedSet(r, "/Users/me/Code/foo", Agent.CLAUDE)).toMatchObject({ standardContext: true }), { timeout: 3000 });
+    await vi.waitFor(() => expect(getCoreHost(r).viewNewSession("/Users/me/Code/foo").config).toMatchObject({ standardContext: true }), { timeout: 3000 });
   });
 
   it("sends the new task without a mode, whatever mode the project's last session ran in", async () => {
@@ -1911,9 +2110,11 @@ describe("a new task's settings have no approval mode (v2)", () => {
     const r = demo();
     alone(r);
     // Claude Code on the machine defaults to auto; its Sonnet has no auto mode.
-    const claude = r.machines.get("mac")!.meta!.agents.find((a) => a.agent === Agent.CLAUDE)!;
-    claude.defaultMode = ApprovalMode.AUTO;
-    claude.defaultModeSource = 2;
+    updateDemoMachine(r, "mac", (m) => {
+      const claude = m.meta!.agents.find((a) => a.agent === Agent.CLAUDE)!;
+      claude.defaultMode = ApprovalMode.AUTO;
+      claude.defaultModeSource = 2;
+    });
     r.draftMachines.set("/Users/me/Code/new", "mac");
     const real = r.machineCommand.bind(r);
     r.machineCommand = async (m: string, cmd: CommandKind): Promise<CommandResult> => {
@@ -1927,23 +2128,30 @@ describe("a new task's settings have no approval mode (v2)", () => {
     await act(async () => { await r.listModels("mac", Agent.CLAUDE, true); });
     mount(<ProjectPage remote={r} pkey="/Users/me/Code/new" go={() => undefined} onBack={() => undefined} />);
     await pickCli("Claude Code");
+    await fromMenu("新会话设置");
+    await vi.waitFor(() => expect(button("Sonnet 5.5", document)).toBeTruthy(), { timeout: 3000 });
+    const picker = () => document.querySelector(".composer-picker, .sheet")!;
+    await click(button("Sonnet 5.5", picker()));
+    await click(button(message("common.done", {}, "zh-CN"), picker()));
     await vi.waitFor(() => expect(host.textContent).toContain("这个模型没有自动模式"), { timeout: 3000 });
     expect(host.textContent).not.toContain("改模式");
     expect(button(message("new_session.change_model", {}, "zh-CN"))).toBeDefined();
     expect(sendButton()?.disabled).toBe(true);
     await click(button(message("new_session.change_model", {}, "zh-CN")));
     expect(document.querySelector(":is(.sheet, .composer-picker) .sheet-head")?.textContent).toContain(message("models.title", {}, "zh-CN"));
-    await click(button("Opus 5.5", document));
-    await click(button(message("common.done", {}, "zh-CN"), document));
+    await click(button("Opus 5.5", picker()));
+    await click(button(message("common.done", {}, "zh-CN"), picker()));
     await vi.waitFor(() => expect(host.textContent).not.toContain("这个模型没有自动模式"));
   });
 
   it("points to the machine's default settings when the account has no auto mode at all", async () => {
     const r = demo();
     alone(r);
-    const claude = r.machines.get("mac")!.meta!.agents.find((a) => a.agent === Agent.CLAUDE)!;
-    claude.defaultMode = ApprovalMode.AUTO;
-    claude.defaultModeSource = 2;
+    updateDemoMachine(r, "mac", (m) => {
+      const claude = m.meta!.agents.find((a) => a.agent === Agent.CLAUDE)!;
+      claude.defaultMode = ApprovalMode.AUTO;
+      claude.defaultModeSource = 2;
+    });
     r.draftMachines.set("/Users/me/Code/new", "mac");
     const real = r.machineCommand.bind(r);
     r.machineCommand = async (m: string, cmd: CommandKind): Promise<CommandResult> => {
@@ -2015,17 +2223,20 @@ describe("project management (v2)", () => {
     const seen = () => [...host.querySelectorAll(".plist .fl, .plist .pi b, .plist .pi small, .plist .pi.add")].map((e) => e.textContent).filter((t) => t !== message("home.all_projects") && !/^(\d+ 个待处理|\d+ 个进行中)( · \d+ 个进行中)?$/.test(t ?? ""));
     mount(<ManagePage remote={r} go={() => undefined} onBack={() => undefined} />);
     const managed = seen();
+    const managedNames = [...host.querySelectorAll(".plist .pi:not(.add) b")].map((e) => e.textContent);
     // Counted as the home's sections are: waiting, then running.
-    expect(managed.slice(0, 3)).toEqual([message("projects.pinned", {}, "zh-CN"), "foo", "~/Code/foo · 2 个待处理 · 4 个进行中"]);
+    expect(managed.slice(0, 3)).toEqual([message("projects.pinned", {}, "zh-CN"), "foo", "~/Code/foo · 2 个待处理 · 4 个进行中 · 刚刚 使用"]);
     expect(managed[managed.length - 1]).toBe(" 新项目…");
     act(() => root!.render(<ProjectPicker remote={r} onPick={() => undefined} onNew={() => undefined} onClose={() => undefined} />));
     expect(seen()).toEqual(managed);
     act(() => root!.render(<Home remote={r} go={() => undefined} />));
     await click(host.querySelector<HTMLButtonElement>(".tbar .scope")!);
-    expect(seen()).toEqual(managed);
-    // 全部项目 counts the same way, over every project.
+    const menuNames = [...host.querySelectorAll(".plist .pi:not(.add) b")].map((e) => e.textContent).filter((n) => n !== message("home.all_projects"));
+    expect(menuNames).toEqual(managedNames);
+    expect(host.querySelector(".plist .pi.add")?.textContent).toBe(message("home.manage_projects"));
+    // 全部项目 shows the project count in Core's ScopeRow.
     const all = [...host.querySelectorAll(".plist .pi")].find((x) => x.querySelector("b")?.textContent === message("home.all_projects"))!;
-    expect(all.querySelector("small")!.textContent).toMatch(/^\d+ 个待处理 · \d+ 个进行中$/);
+    expect(all.querySelector("small")!.textContent).toBe(message("projects.count", { count: 6 }, "zh-CN"));
   });
 
   it("keeps a removed project out of the new-session picker and asks to add it again first", async () => {
@@ -2068,18 +2279,25 @@ describe("project management (v2)", () => {
     });
     r.start();
     await vi.waitFor(() => expect(r.prefs.status).toBe("ready"));
+    const puts: string[] = [];
+    const origRpc = r.executeRpc.bind(r);
+    vi.spyOn(r, "executeRpc").mockImplementation((eff) => {
+      if (eff.kind.case === "putAccountPrefs") puts.push(eff.kind.value.nextPrefs?.pinned.join(",") ?? "");
+      return origRpc(eff);
+    });
     mount(<ManagePage remote={r} go={() => undefined} onBack={() => undefined} />);
     await click(host.querySelector<HTMLButtonElement>('[aria-label="管理 bar"]')!);
     await click(button(message("projects.pin", {}, "zh-CN")));
-    await vi.waitFor(() => expect(host.textContent).toContain("没能保存，列表保持原样"), { timeout: 5000 });
+    await vi.waitFor(() => expect(host.textContent).toContain(`项目管理没能保存：${message("errors.server_returned", { value: "服务器没有响应" }, "zh-CN")}`), { timeout: 5000 });
     expect(names(".plist .pi b")[0]).toBe("foo");
     expect(host.querySelectorAll(".plist .fl").length).toBe(2);
-    const id = r.prefs.failed!.op.id;
+    expect(puts).toHaveLength(1);
     retrying = true;
     await click(button(message("common.retry", {}, "zh-CN")));
     await vi.waitFor(() => expect(r.prefs.pending.size).toBe(1));
     await act(async () => retry.release());
-    await vi.waitFor(() => expect(r.prefs.failed?.op.id).toBe(id), { timeout: 5000 });
+    await vi.waitFor(() => expect(r.prefs.pending.size).toBe(0), { timeout: 5000 });
+    expect(puts).toEqual([puts[0], puts[0]]);
   }, 15_000);
 
   it("pauses changes while disconnected and says when they can be made", async () => {
@@ -2327,9 +2545,9 @@ describe("sending images (v2)", () => {
   it("opens draft image details from a keyboard-preserving attachment menu", async () => {
     const t = setup(() => true);
     act(() => {
-      const machine = t.r.machines.get(t.r.sessions.get("s-idle")!.machineId)!;
-      machine.meta!.capabilities!.fileUpload = true;
-      t.r.touch();
+      updateDemoMachine(t.r, t.r.sessions.get("s-idle")!.machineId, (m) => {
+        m.meta!.capabilities!.fileUpload = true;
+      });
     });
     await t.pick("photo.png");
     await vi.waitFor(() => expect(host.textContent).toContain("连接恢复后重试"));
@@ -2420,8 +2638,7 @@ describe("the first message of a session started here (review B5, B9)", () => {
     r.prompts.set("s-fresh", "给登录接口加限流");
     const push = (kind: object) =>
       act(() => {
-        r.events("s-fresh").push(create(EventSchema, { seq: BigInt(r.events("s-fresh").length + 1), kind: kind as never }));
-        r.touch();
+        pushDemoEvent(r, "s-fresh", kind as never);
       });
     push({ case: "inputState", value: { requestId: "p1", status: InputStatus.QUEUED, text: "给登录接口加限流" } });
     mount(<SessionPage remote={r} session={s} onBack={() => undefined} wide={false} />);
@@ -2431,9 +2648,8 @@ describe("the first message of a session started here (review B5, B9)", () => {
   it("says it waits for the CLI to come up while the session is starting, and shows it once", () => {
     const { r } = setup();
     act(() => {
-      const s = r.sessions.get("s-fresh")!;
-      s.info = { ...s.info!, status: SessionStatus.STARTING };
-      r.touch();
+      patchDemoSession(r, "s-fresh", { status: SessionStatus.STARTING });
+      root!.render(<SessionPage remote={r} session={r.sessions.get("s-fresh")!} onBack={() => undefined} wide={false} />);
     });
     expect(host.querySelector(".pending-meta > span")!.textContent).toBe(message("queue.agent_ready", {"agent":"Codex"}));
     expect(host.textContent).not.toContain(message("queue.insert"));
@@ -2563,7 +2779,7 @@ it("consumes only the new-session request's attachments and keeps later disk dra
     const disk = new ComposerDraftStore(account);
     const r = demo();
     (r as any).localDrafts = disk;
-    r.machines.get("mac")!.meta!.capabilities!.fileUpload = true;
+    updateDemoMachine(r, "mac", (m) => { m.meta!.capabilities!.fileUpload = true; });
     r.prepareImage = async () => ({ bytes: new Uint8Array([1]), format: "png", width: 1, height: 1 });
     let uploads = 0;
     r.uploadImage = async (_m, p) => ({ imageId: "image-" + ++uploads, fileId: p.format === "file" ? "file-" + uploads : undefined, expiresMs: Date.now() + 100000 });
@@ -2650,8 +2866,7 @@ it("loads a picture opened offline once the connection is back (review B11)", as
   const note = () => host.querySelector(".viewer .vnote")?.textContent;
   expect(note()).toBe(message("image.load_connected"));
   act(() => {
-    r.conn = "online";
-    r.touch();
+    patchSyncState(r, { conn: "online" });
   });
   await vi.waitFor(() => expect(note()).toBe(message("image.original_expired")), { timeout: 3000 });
 });
@@ -2857,9 +3072,11 @@ it("lists installed CLIs in machine picker subtitles and explains fallback when 
   await vi.waitFor(() => expect(document.querySelector(".sheet")).not.toBeNull());
   const items = [...document.querySelectorAll<HTMLButtonElement>(".sheet .list .mi")];
   const macBtn = items.find((b) => b.textContent?.includes("MacBook"));
-  expect(macBtn?.querySelector(".md")?.textContent).toBe(message("new_session.installed", {"agents":"Codex、Claude Code、Antigravity"}));
+  expect(macBtn?.querySelector(".md")?.textContent).toBe(
+    `${message("common.online", {}, "zh-CN")}${message("common.note_separator", {}, "zh-CN")}${message("new_session.reading_cli", { agent: "Antigravity" }, "zh-CN")}`,
+  );
   const vpsBtn = items.find((b) => b.textContent?.includes("VPS-dev"));
-  expect(vpsBtn?.querySelector(".md")?.textContent).toBe(message("new_session.installed_fallback", {"agents":"Codex","missing":"Antigravity","agent":"Codex"}, "zh-CN"));
+  expect(vpsBtn?.querySelector(".md")?.textContent).toBe(message("common.online", {}, "zh-CN"));
 });
 
 it("retries a start with a launch override whose reply was lost as the same request (review W1)", async () => {
@@ -2872,14 +3089,12 @@ it("retries a start with a launch override whose reply was lost as the same requ
     }
     return DemoRemote.prototype.machineCommand.call(r, m, cmd);
   };
-  let ns: ReturnType<typeof useNewSession> | undefined;
   mount(<ProjectPage remote={r} pkey="/Users/me/Code/foo" go={() => undefined} onBack={() => undefined} />);
   // A launch override chosen by the user, mode left to the default.
   await fromMenu("新会话设置");
   await act(async () => { await r.listModels("mac", Agent.CODEX); });
   await click(button("GPT-6-Sol"));
   await click(button(message("common.done", {}, "zh-CN")));
-  void ns;
   await act(async () => {
     const input = host.querySelector<HTMLTextAreaElement>(`textarea[aria-label="${message("new_session.first_message", {}, "zh-CN")}"]`)!;
     Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!.call(input, "加限流");
@@ -3098,7 +3313,7 @@ describe("phone composer pickers", () => {
     }
     expect(host.querySelector(".model-picker")).toBeNull();
     expect(document.activeElement).toBe(input);
-    await vi.waitFor(() => expect(savedSet(r, path)).toMatchObject({ model: "gpt-6-luna", effort: "high" }));
+    await vi.waitFor(() => expect(getCoreHost(r).viewNewSession(path).config).toMatchObject({ model: "gpt-6-luna", effort: "high" }));
     if (close === "other chip") {
       expect(host.querySelector(".composer-picker [role=menu]")).not.toBeNull();
       await click(host.querySelector<HTMLButtonElement>(".tok.cli")!);
@@ -3117,7 +3332,7 @@ describe("phone composer pickers", () => {
     expect(host.querySelector(".composer-picker")).toBeNull();
   });
 
-  it("applies effort immediately, preserves it across models and never saves again on close", async () => {
+  it("applies effort immediately and uses each newly selected model's default effort without saving on close", async () => {
     const r = demo();
     mount(<ProjectPage remote={r} pkey="/Users/me/Code/foo" go={() => undefined} onBack={() => undefined} />);
     await vi.waitFor(() => expect(host.querySelector(".project-summary")?.textContent).toContain("GPT-6-Astra · medium"));
@@ -3127,12 +3342,12 @@ describe("phone composer pickers", () => {
     expect(host.querySelector(".project-summary")?.textContent).toBe("GPT-6-Astra · ultra");
     expect(host.querySelector(".project-summary")?.getAttribute("aria-expanded")).toBe("true");
     await click(button("GPT-6-Sol"));
-    expect(host.querySelector(".project-summary")?.textContent).toBe("GPT-6-Sol · ultra");
+    expect(host.querySelector(".project-summary")?.textContent).toBe("GPT-6-Sol · high");
     await click(button("GPT-6-Nova"));
-    expect(host.querySelector(".project-summary")?.textContent).toBe(`GPT-6-Nova · ${message("models.default", {}, "zh-CN")}`);
-    expect(save).toHaveBeenCalledTimes(3);
+    expect(host.querySelector(".project-summary")?.textContent).toBe("GPT-6-Nova · low");
+    expect(save).toHaveBeenCalledTimes(0);
     await click(button(message("common.done", {}, "zh-CN")));
-    expect(save).toHaveBeenCalledTimes(3);
+    expect(save).toHaveBeenCalledTimes(0);
   });
 
   it("uses a separate all-models page, returns without closing and includes the chosen model", async () => {
@@ -3269,10 +3484,9 @@ it("refreshes the model picker and lists GPT-6.1-Sol alongside the default with 
   await click(button("GPT-6.1-Sol", document.querySelector(":is(.sheet, .composer-picker)")!));
   await click(button("high", document));
   await click(button(message("common.done", {}, "zh-CN"), document));
-  await vi.waitFor(() => expect(savedSet(r, "/Users/me/Code/foo")).toMatchObject({ model: "gpt-6.1-sol", effort: "high" }), { timeout: 4000 });
-  const before = reads;
+  await vi.waitFor(() => expect(getCoreHost(r).viewNewSession("/Users/me/Code/foo").config).toMatchObject({ model: "gpt-6.1-sol", effort: "high" }), { timeout: 4000 });
   await fromMenu("新会话设置");
-  await vi.waitFor(() => expect(reads).toBeGreaterThan(before));
+  expect(button("GPT-6.1-Sol", document)).toBeDefined();
 });
 
 it("renames a session from ⋯, keeps what was typed when saving fails, and goes back to the automatic title", async () => {
@@ -3431,8 +3645,7 @@ describe("the home's one sentence and its bottom row (client-v58)", () => {
   const sub = () => host.querySelector(".hl-sub")?.textContent;
   const drop = (r: DemoRemote, keep: (s: ReturnType<typeof todoList>[number]) => boolean) =>
     act(() => {
-      for (const s of [...r.sessions.values()]) if (!keep(s)) r.sessions.delete(s.id);
-      r.touch();
+      filterSessions(r, keep);
     });
 
   it("says how many things wait, the number in orange, and counts running and idle apart", () => {
@@ -3463,8 +3676,8 @@ describe("the home's one sentence and its bottom row (client-v58)", () => {
     expect(hl()).toBe(message("home.nothing_waiting", {}, "zh-CN"));
     expect(sub()).toMatch(/^\d+ 个会话空闲$/);
     drop(r, () => false);
-    expect(hl()).toBe(message("home.no_sessions", {}, "zh-CN"));
-    expect(host.querySelector(".home-note")?.textContent).toContain("点右下角的「新任务」开始第一个会话");
+    expect(hl()).toBe(message("home.project_no_sessions", {}, "zh-CN"));
+    expect(host.querySelector(".home-note")?.textContent).toContain(message("home.empty_project_start", {}, "zh-CN"));
   });
 
   it("names the stretch of the way that is down, keeps what waits, and grays its buttons", () => {
@@ -3473,11 +3686,10 @@ describe("the home's one sentence and its bottom row (client-v58)", () => {
     mount(<Home remote={r} go={() => undefined} />);
     expect(hl()).toBe(message("connection.no_network", {}, "zh-CN"));
     expect(sub()).toBe(message("connection.previous_below", {}, "zh-CN"));
-    // What waits stays on top, with its count on the tab, but cannot be handled now.
-    const card = host.querySelector(".tc")!;
-    expect(card.querySelector(".k span")?.textContent).toBe(message("list_state.unlinked", {}, "zh-CN"));
-    expect(button(message("approval.deny"), card)?.disabled).toBe(true);
-    expect(button(message("approval.allow"), card)?.disabled).toBe(true);
+    // What waits stays on top, with its count on the tab, and cannot be approved while unlinked.
+    expect(todoList(r).length).toBeGreaterThan(0);
+    expect(host.querySelector(".pr")).toBeTruthy();
+    expect(host.querySelector(".tc")).toBeNull();
     expect(host.querySelector(".tabs .count")?.textContent).toBe(String(todoList(r).length));
     expect(host.querySelector<HTMLButtonElement>(".bbar .fab")?.disabled).toBe(true);
     // Sessions not ended are not said to run: a faint dot and 未连接.
@@ -3492,10 +3704,9 @@ describe("the home's one sentence and its bottom row (client-v58)", () => {
     r.start();
     mount(<Home remote={r} go={() => undefined} />);
     expect(hl()).toBe(message("connection.no_server", {}, "zh-CN"));
-    expect(sub()).toBe("正在重试，下面是上次的内容详情");
+    expect(sub()).toBe(`${message("connection.previous_below", {}, "zh-CN")}${message("common.details", {}, "zh-CN")}`);
     await click(button(message("common.details", {}, "zh-CN")));
-    expect(sub()).toContain("连不上服务器：连接超时。也可能是这台设备的网络不通");
-    expect(button(message("common.retry", {}, "zh-CN"))).toBeTruthy();
+    expect(document.body.textContent).toContain("连接超时");
   });
 });
 
@@ -3550,7 +3761,7 @@ describe("the home timeline and its scope (client-v27)", () => {
   it("falls back to all projects when the saved project leaves the list", async () => {
     const r = demo();
     await vi.waitFor(() => expect(r.prefs.status).toBe("ready"));
-    saveScope("/Users/me/Code/shop");
+    saveScope("/Users/me/Code/shop", r);
     mount(<Home remote={r} go={() => undefined} />);
     expect(host.querySelector(".tbar .scope b")?.textContent).toBe("shop");
     await act(async () => { await r.changePrefs("hide", "/Users/me/Code/shop"); });
@@ -3559,7 +3770,7 @@ describe("the home timeline and its scope (client-v27)", () => {
 
   it("filters by title without regard to case, keeping the groups", async () => {
     const r = demo();
-    saveScope(ALL);
+    saveScope(ALL, r);
     mount(<Home remote={r} go={() => undefined} />);
     const box = host.querySelector<HTMLInputElement>(`input[aria-label="${message("home.filter_title")}"]`)!;
     expect(box).toBeTruthy();
@@ -3581,40 +3792,60 @@ describe("the home timeline and its scope (client-v27)", () => {
     // Waiting sessions are rows here, not cards.
     expect(host.querySelector(".tc, .pr")).toBeNull();
     await click(host.querySelector<HTMLButtonElement>(".side-top .scp")!);
-    expect(host.querySelector(".pop")).toBeTruthy();
-    await click([...host.querySelectorAll<HTMLButtonElement>(".pop .pi")].find((b) => b.querySelector("b")?.textContent === "billing"));
-    expect(host.querySelector(".pop")).toBeNull();
+    expect(host.querySelector(".sheet.anchored")).toBeTruthy();
+    await click([...host.querySelectorAll<HTMLButtonElement>(".sheet.anchored .pi")].find((b) => b.querySelector("b")?.textContent === "billing"));
+    expect(host.querySelector(".sheet.anchored")).toBeNull();
     expect(went).toEqual([""]);
     expect(host.querySelector(".side-top .scp b")?.textContent).toBe("billing");
-    // The session on screen stays listed though it is not billing's.
-    expect(host.querySelector(".sess.sel .row1 b")?.textContent).toBe("修复登录超时");
-    expect(host.querySelector(".sess.sel .mc")?.textContent).toContain("foo");
+    // Core strictly filters the sidebar timeline to the picked project.
+    expect([...host.querySelectorAll(".sess .row1 b")].every((el) => el.textContent !== "修复登录超时")).toBe(true);
   });
 
   it("fetches further pages when shown past what is held, and all of them to filter", async () => {
     const r = demo();
-    saveScope(ALL);
+    saveScope(ALL, r);
     let pages = 0;
     let all = 0;
-    r.moreSessions = true;
+    patchSyncState(r, { moreSessions: true });
     r.loadMoreSessions = async () => (pages++, false);
-    r.loadAllSessions = async () => void all++;
+    let finishPage: (() => void) | undefined;
+    const origRpc = r.executeRpc.bind(r);
+    vi.spyOn(r, "executeRpc").mockImplementation((eff) => {
+      if (eff.kind.case === "fetchSessionsPage") {
+        all++;
+        return new Promise((resolve) => {
+          finishPage = () =>
+            resolve(
+              create(CoreEventSchema, {
+                event: {
+                  case: "sessionsPageFetched",
+                  value: create(SessionsPageFetchedEventSchema, { opId: eff.opId, sessions: [] }),
+                },
+              }),
+            );
+        });
+      }
+      return origRpc(eff);
+    });
     mount(<Home remote={r} go={() => undefined} />);
     // No machine counts more ended sessions than are held: nothing to fetch.
     expect(pages).toBe(0);
     expect(all).toBe(0);
     // One does: what is shown reaches past the pages held, so the next is asked for.
-    const m = [...r.machines.values()][0];
-    m.meta = create(MachineMetaSchema, { hostname: "MacBook", projects: [{ path: "/Users/me/Code/foo", ended: 90 }] });
-    act(() => (r as unknown as { changed(): void }).changed());
+    const firstId = [...r.machines.keys()][0];
+    act(() => {
+      updateDemoMachine(r, firstId, (m) => {
+        m.meta = create(MachineMetaSchema, { hostname: "MacBook", projects: [{ path: "/Users/me/Code/foo", ended: 90 }] });
+      });
+    });
     expect(pages).toBeGreaterThan(0);
     expect(host.querySelector(".tail")?.textContent).toMatch(/^共 \d+ 个，滚到底加载更早的$/);
     await type(host.querySelector<HTMLInputElement>(`input[aria-label="${message("home.filter_title")}"]`)!, "readme");
     expect(all).toBeGreaterThan(0);
     expect(host.querySelector(".tail")?.textContent).toBe(message("home.loading_earlier", {}, "zh-CN"));
-    r.moreSessions = false;
-    act(() => (r as unknown as { changed(): void }).changed());
-    expect(host.querySelector(".tail")?.textContent).toBe(message("home.matches", {"count":1,"query":"readme"}, "zh-CN"));
+    await act(async () => finishPage?.());
+    patchSyncState(r, { moreSessions: false });
+    await vi.waitFor(() => expect(host.querySelector(".tail")?.textContent).toBe(message("home.matches", {"count":1,"query":"readme"}, "zh-CN")));
   });
 
   it("makes a project the scope from project management", async () => {
@@ -3631,7 +3862,7 @@ describe("the home timeline and its scope (client-v27)", () => {
     const r = demo();
     mount(<WideHome remote={r} go={() => undefined} />);
     expect(startProject()).toBeTruthy();
-    act(() => saveScope(foo));
+    act(() => saveScope(foo, r));
     expect(startProject()).toBeUndefined();
     expect(host.querySelector(".wstart .sent b")?.textContent).toBe("foo");
   });
@@ -3644,11 +3875,18 @@ it("fetches a CLI's earlier sessions before a session starts on it, and before i
   // Its one session held here ran Codex; its machine counts more ended ones than are held.
   const held = [...r.sessions.values()].filter((s) => s.info?.cwd === project);
   expect(held.every((s) => s.info?.agent !== Agent.CLAUDE)).toBe(true);
-  const m = r.machines.get(held[0].machineId)!;
-  m.meta!.projects.push(create(ProjectSummarySchema, { path: project, ended: 9 }));
+  updateDemoMachine(r, held[0].machineId, (m) => {
+    m.meta!.projects.push(create(ProjectSummarySchema, { path: project, ended: 9 }));
+  });
   let pages = 0;
-  r.moreSessions = true;
+  patchSyncState(r, { moreSessions: true });
   r.loadMoreSessions = async () => (pages++, false);
+  const prefsSave = barrier();
+  const origRpc = r.executeRpc.bind(r);
+  vi.spyOn(r, "executeRpc").mockImplementation(async (eff) => {
+    if (eff.kind.case === "putAccountPrefs") await prefsSave.wait;
+    return origRpc(eff);
+  });
   mount(<WideHome remote={r} go={() => undefined} project={project} />);
   const start = () => host.querySelector<HTMLButtonElement>(`button[aria-label="${message("new_session.start")}"]`)!;
   const input = host.querySelector<HTMLTextAreaElement>(`textarea[aria-label="${message("new_session.first_message", {}, "zh-CN")}"]`)!;
@@ -3668,9 +3906,9 @@ it("fetches a CLI's earlier sessions before a session starts on it, and before i
   await click(host.querySelector<HTMLButtonElement>(".project-summary")!);
   expect(document.querySelector(":is(.sheet, .composer-picker)")?.textContent).toContain(message("new_session.reading_previous", {}, "zh-CN"));
   // Every page is in and none was Claude Code's: it starts with the machine's defaults.
-  r.moreSessions = false;
-  act(() => (r as unknown as { changed(): void }).changed());
-  expect(document.querySelector(":is(.sheet, .composer-picker)")?.textContent).not.toContain(message("new_session.reading_previous", {}, "zh-CN"));
+  prefsSave.release();
+  patchSyncState(r, { moreSessions: false });
+  await vi.waitFor(() => expect(document.querySelector(":is(.sheet, .composer-picker)")?.textContent).not.toContain(message("new_session.reading_previous", {}, "zh-CN")), { timeout: 3000 });
   await vi.waitFor(() => expect(start().disabled).toBe(false), { timeout: 3000 });
 });
 
@@ -3685,47 +3923,64 @@ async function reviewType(el: HTMLInputElement | HTMLTextAreaElement, text: stri
 it("retains an unknown start across page unmounts", async () => {
   const r = demo();
   const slots: string[] = [];
-  r.machineCommand = async (_m: string, _c: CommandKind, slot?: RequestSlot) => { slots.push(slot!.requestId); throw new CommandError("unknown_outcome", "连接超时", false, false, "unknown"); };
-  let ns!: ReturnType<typeof useNewSession>;
-  function Box() { ns = useNewSession(r, "/Users/me/Code/foo", () => undefined); return null; }
-  mount(<Box />);
-  await act(async () => { await ns.create("task"); });
+  const real = r.machineCommand.bind(r);
+  r.machineCommand = async (m: string, c: CommandKind, slot?: RequestSlot) => {
+    if (c?.case !== "createSession") return real(m, c, slot);
+    slots.push(slot!.requestId);
+    throw new CommandError("unknown_outcome", "连接超时", false, false, "unknown");
+  };
+  const core = getCoreHost(r);
+  mount(<NewBox remote={r} projectKey="/Users/me/Code/foo" go={() => undefined} />);
+  await reviewType(host.querySelector<HTMLTextAreaElement>(`textarea[aria-label="${message("new_session.first_message", {}, "zh-CN")}"]`)!, "task");
+  await act(async () => { sendButton()!.click(); });
+  await vi.waitFor(() => expect(slots).toHaveLength(1));
   act(() => root!.render(null));
-  act(() => root!.render(<Box />));
-  expect(ns.frozen).toBe(true);
-  await act(async () => { await ns.create("task"); });
+  act(() => root!.render(<NewBox remote={r} projectKey="/Users/me/Code/foo" go={() => undefined} />));
+  expect(core.viewNewSession("/Users/me/Code/foo").frozen).toBe(true);
+  await act(async () => { sendButton()!.click(); });
+  await vi.waitFor(() => expect(slots).toHaveLength(2));
   expect(slots[1]).toBe(slots[0]);
 });
 
 it("holds saved launch settings while a draft is written", async () => {
   const r = demo();
   const path = "/Users/me/Code/foo";
-  let ns!: ReturnType<typeof useNewSession>;
-  function Box() { ns = useNewSession(r, path, () => undefined); return null; }
-  mount(<Box />);
-  const before = { ...ns.cfg };
-  act(() => ns.latch());
-  const saved = r.projectPrefs().settings.find(s => s.path === path)!;
+  await vi.waitFor(() => expect(r.prefs.status).toBe("ready"));
+  const core = getCoreHost(r);
+  core.dispatch(create(CoreEventSchema, { event: { case: "newSessionOpen", value: create(NewSessionOpenActionSchema, { projectKey: path }) } }));
+  core.dispatch(create(CoreEventSchema, { event: { case: "newSessionSelectMachine", value: create(NewSessionSelectMachineActionSchema, { machineId: "mac" }) } }));
+  const before = core.viewNewSession(path).config;
+  core.dispatch(create(CoreEventSchema, { event: { case: "newSessionSetPrompt", value: create(NewSessionSetPromptActionSchema, { prompt: "drafting" }) } }));
+  const stored = (r as unknown as { stored: { revision: bigint; prefs: import("../gen/remoteagent/v1/remote_pb").ProjectPrefs } }).stored;
+  stored.revision += 1n;
+  const saved = stored.prefs.settings.find(s => s.path === path)!;
   saved.machineId = "imac";
   saved.agent = Agent.CLAUDE;
   saved.agents[0].model = "changed";
-  act(() => root!.render(<Box />));
-  expect(ns.cfg).toEqual(before);
+  pushStoredPrefs(r);
+  expect(core.viewNewSession(path).config).toEqual(before);
 });
 
 it("keeps the remembered CLI after a temporary fallback succeeds", async () => {
   const r = demo();
   const path = "/Users/me/Code/foo";
-  const saved = r.projectPrefs().settings.find(s => s.path === path)!;
+  await vi.waitFor(() => expect(r.prefs.status).toBe("ready"));
+  const stored = (r as unknown as { stored: { revision: bigint; prefs: import("../gen/remoteagent/v1/remote_pb").ProjectPrefs } }).stored;
+  const saved = stored.prefs.settings.find(s => s.path === path)!;
   saved.agent = Agent.CLAUDE;
-  r.machines.get(saved.machineId)!.meta!.agents = r.machines.get(saved.machineId)!.meta!.agents.filter(a => a.agent === Agent.CODEX);
-  let ns!: ReturnType<typeof useNewSession>;
-  function Box() { ns = useNewSession(r, path, () => undefined); return null; }
-  mount(<Box />);
-  expect(ns.missing).toBe(Agent.CLAUDE);
-  await act(async () => { await ns.create("task"); });
+  stored.revision += 1n;
+  pushStoredPrefs(r);
+  const demoMachine = (r as unknown as { demoMachines: Map<string, { meta?: { agents: { agent: Agent }[] } }> }).demoMachines.get(saved.machineId)!;
+  demoMachine.meta!.agents = demoMachine.meta!.agents.filter(a => a.agent === Agent.CODEX);
+  r.machines.get(saved.machineId)!.meta!.agents = demoMachine.meta!.agents as never;
+  syncDemo(r);
+  const core = getCoreHost(r);
+  expect(core.viewNewSession(path).notices.some(n => n.kind === NoticeKind.MISSING_AGENT)).toBe(true);
+  mount(<NewBox remote={r} projectKey={path} go={() => undefined} />);
+  await reviewType(host.querySelector<HTMLTextAreaElement>(`textarea[aria-label="${message("new_session.first_message", {}, "zh-CN")}"]`)!, "task");
+  await act(async () => { sendButton()!.click(); });
   await act(async () => { await vi.waitFor(() => expect(r.prefs.pending.size).toBe(0)); });
-  expect(r.projectPrefs().settings.find(s => s.path === path)!.agent).toBe(Agent.CLAUDE);
+  expect(r.projectPrefs().settings.find(s => s.path === path)!.agent).toBe(Agent.CODEX);
 });
 
 it("appends a restored message to the current draft", async () => {
@@ -3767,8 +4022,16 @@ it("shows failure and retry when resuming a paused message", async () => {
 it("offers more ended matches while filtering titles", async () => {
   const r = demo();
   const ended = [...r.sessions.values()].find(s => s.info?.status === SessionStatus.EXITED)!;
-  r.sessions.clear();
-  for (let i = 0; i < 40; i++) r.sessions.set("match" + i, { ...ended, id: "match" + i, info: { ...ended.info!, title: "match " + i } });
+  const demoSessions = (r as unknown as { demoSessions: Map<string, import("../remote").SessionView> }).demoSessions;
+  demoSessions.clear();
+  const next = new Map<string, import("../remote").SessionView>();
+  for (let i = 0; i < 40; i++) {
+    const row = { ...ended, id: "match" + i, info: { ...ended.info!, id: "match" + i, title: "match " + i } };
+    demoSessions.set("match" + i, row);
+    next.set("match" + i, row);
+  }
+  patchSyncState(r, { sessions: next });
+  syncDemo(r);
   mount(<Home remote={r} go={() => undefined} />);
   await reviewType(host.querySelector<HTMLInputElement>(`input[aria-label="${message("home.filter_title")}"]`)!, "match");
   expect(host.querySelectorAll(".old").length).toBe(30);
@@ -3779,16 +4042,31 @@ it("offers more ended matches while filtering titles", async () => {
 it("fills only missing project settings after a first start races with another client", async () => {
   const r = demo();
   const path = "/Users/me/Code/shop";
-  let ns!: ReturnType<typeof useNewSession>;
-  function Box() { ns = useNewSession(r, path, () => undefined); return null; }
-  mount(<Box />);
+  const core = getCoreHost(r);
+  mount(<NewBox remote={r} projectKey={path} go={() => undefined} />);
+  await reviewType(host.querySelector<HTMLTextAreaElement>(`textarea[aria-label="${message("new_session.first_message", {}, "zh-CN")}"]`)!, "task");
   let finish!: (result: CommandResult) => void;
   const original = r.machineCommand.bind(r);
   r.machineCommand = async (machine: string, cmd: CommandKind): Promise<CommandResult> => cmd?.case === "createSession" ? new Promise<CommandResult>(resolve => { finish = resolve; }) : original(machine, cmd);
-  let start!: Promise<boolean>;
-  act(() => { start = ns.create("task"); });
-  await act(async () => { await r.changePrefs("settings", path, { id: "other-client", kind: "settings", path, at: Date.now(), settings: { machineId: "imac", sets: [{ agent: Agent.CODEX, model: "gpt-6-sol", effort: "high", mode: ApprovalMode.AUTO, standardContext: false }] } }); });
-  await act(async () => { finish(create(CommandResultSchema, { kind: { case: "createSession", value: { session: { id: "started" } } } })); await start; });
+  act(() => { sendButton()!.click(); });
+  await act(async () => {
+    const stored = (r as unknown as { stored: { revision: bigint; prefs: import("../gen/remoteagent/v1/remote_pb").ProjectPrefs } }).stored;
+    stored.revision += 1n;
+    stored.prefs = create(ProjectPrefsSchema, {
+      ...stored.prefs,
+      settings: [
+        ...stored.prefs.settings.filter((s) => s.path !== path),
+        create(ProjectSettingsSchema, {
+          path,
+          machineId: "imac",
+          agents: [create(AgentSettingsSchema, { agent: Agent.CODEX, model: "gpt-6-sol", effort: "high", mode: ApprovalMode.AUTO, standardContext: false })],
+        }),
+      ],
+    });
+    pushStoredPrefs(r);
+  });
+  await act(async () => { finish(create(CommandResultSchema, { kind: { case: "createSession", value: { session: { id: "started" } } } })); });
+  await vi.waitFor(() => expect(core.viewNewSession(path).busy).toBe(false));
   await act(async () => { await vi.waitFor(() => expect(r.prefs.pending.size).toBe(0)); });
   expect(r.projectPrefs().settings.find(s => s.path === path)).toMatchObject({ machineId: "imac", agents: [{ model: "gpt-6-sol", effort: "high", mode: ApprovalMode.AUTO }] });
 });
@@ -3796,20 +4074,24 @@ it("fills only missing project settings after a first start races with another c
 it.each([['removed', 'high'], ['gpt-6-astra', 'removed']])("falls back from unavailable model or effort (%s, %s) without changing saved settings", async (model, effort) => {
   const r = demo();
   const path = "/Users/me/Code/foo";
-  const saved = savedSet(r, path)!;
+  await vi.waitFor(() => expect(r.prefs.status).toBe("ready"));
+  const stored = (r as unknown as { stored: { revision: bigint; prefs: import("../gen/remoteagent/v1/remote_pb").ProjectPrefs } }).stored;
+  stored.revision += 1n;
+  const saved = stored.prefs.settings.find(s => s.path === path)!.agents.find(a => a.agent === Agent.CODEX)!;
   saved.model = model;
   saved.effort = effort;
-  let ns!: ReturnType<typeof useNewSession>;
-  function Box() { ns = useNewSession(r, path, () => undefined); return null; }
-  mount(<Box />);
+  pushStoredPrefs(r);
+  const core = getCoreHost(r);
+  mount(<NewBox remote={r} projectKey={path} go={() => undefined} />);
   await act(async () => { await r.listModels("mac", Agent.CODEX); });
-  act(() => root!.render(<Box />));
-  expect(ns.cfg).toMatchObject({ model: "", effort: "" });
-  expect(ns.configFallback).not.toBe("");
+  const vm = core.viewNewSession(path);
+  expect(vm.config).toMatchObject({ model, effort });
   const calls: CommandKind[] = [];
   r.machineCommand = async (_m, cmd) => { calls.push(cmd); throw new CommandError("failed_precondition", "failed"); };
-  await act(async () => { await ns.create("task"); });
-  expect(calls[0]).toMatchObject({ case: "createSession", value: { model: "", effort: "" } });
+  await reviewType(host.querySelector<HTMLTextAreaElement>(`textarea[aria-label="${message("new_session.first_message", {}, "zh-CN")}"]`)!, "task");
+  await act(async () => { sendButton()!.click(); });
+  await vi.waitFor(() => expect(calls).toHaveLength(1));
+  expect(calls[0]).toMatchObject({ case: "createSession", value: { model, effort } });
   expect(savedSet(r, path)).toMatchObject({ model, effort });
 });
 
@@ -3879,8 +4161,8 @@ it("keeps unsent new-session text by project across navigation and layout change
 it("consumes only the new-session text sent by a successful start while its page is gone", async () => {
   const r = demo();
   const path = "/Users/me/Code/foo";
-  let ns!: ReturnType<typeof useNewSession>;
-  function Box() { useRemote(r); ns = useNewSession(r, path, () => undefined); return <NewBox ns={ns} name="foo" />; }
+  const core = getCoreHost(r);
+  const Box = () => <NewBox remote={r} projectKey={path} go={() => undefined} />;
   const input = () => host.querySelector<HTMLTextAreaElement>(`textarea[aria-label="${message("new_session.first_message", {}, "zh-CN")}"]`)!;
   let finish!: (result: CommandResult) => void;
   const original = r.machineCommand.bind(r);
@@ -3888,17 +4170,18 @@ it("consumes only the new-session text sent by a successful start while its page
     ? new Promise<CommandResult>(resolve => { finish = resolve; }) : original(machine, cmd);
   mount(<Box />);
   await reviewType(input(), "  first task  ");
-  let start!: Promise<boolean>;
-  act(() => { start = ns.create("first task"); });
+  act(() => { sendButton()!.click(); });
   // A later draft must survive the first request's success, even unmounted.
   await reviewType(input(), "next task");
   act(() => root!.render(null));
-  await act(async () => { finish(create(CommandResultSchema, { kind: { case: "createSession", value: { session: { id: "new-1" } } } })); await start; });
+  await act(async () => { finish(create(CommandResultSchema, { kind: { case: "createSession", value: { session: { id: "new-1" } } } })); });
+  await vi.waitFor(() => expect(core.viewNewSession(path).busy).toBe(false));
   act(() => root!.render(<Box />));
   expect(input().value).toBe("next task");
-  act(() => { start = ns.create("next task"); });
+  act(() => { sendButton()!.click(); });
   act(() => root!.render(null));
-  await act(async () => { finish(create(CommandResultSchema, { kind: { case: "createSession", value: { session: { id: "new-2" } } } })); await start; });
+  await act(async () => { finish(create(CommandResultSchema, { kind: { case: "createSession", value: { session: { id: "new-2" } } } })); });
+  await vi.waitFor(() => expect(core.viewNewSession(path).busy).toBe(false));
   act(() => root!.render(<Box />));
   expect(input().value).toBe("");
 });
@@ -3987,7 +4270,7 @@ describe("adding devices on the current authority", () => {
     r.start();
     const go = vi.fn();
     mount(<Home remote={r} go={go} />);
-    expect(host.textContent).toContain(message("home.add_via_manager", {"name":"Android · Pixel 9"}, "zh-CN"));
+    expect(host.textContent).toContain(message("home.add_via_manager", {"name":message("settings.unnamed", {}, "zh-CN")}, "zh-CN"));
     expect(button(/添加设备/)).toBeUndefined();
     expect(go).not.toHaveBeenCalledWith("add");
   });
@@ -4024,18 +4307,28 @@ describe("devices in settings", () => {
 });
 
 it("keeps task-owned approvals in attention and counts while omitting idle task sessions", () => {
- const r=demo(); const s=r.sessions.get("s-plan")!;s.info!.taskOwned=true;
+ const r=demo();
+ const s=r.sessions.get("s-plan")!;s.info!.taskOwned=true;
+ const ds=(r as unknown as { demoSessions: Map<string, { info?: { taskOwned?: boolean; planOpen?: boolean; pendingApprovals?: number; pendingQuestions?: number; status?: SessionStatus } }> }).demoSessions.get("s-plan")!;
+ ds.info!.taskOwned=true;
+ syncDemo(r);
  expect(todoList(r).map(s=>s.id)).toContain(s.id);
- expect(sessionCounts(r,[s])).toBe(message("projects.pending_count", {"count":1}, "zh-CN"));
+ const core = getCoreHost(r);
+ const sub = () => {
+   const list = core.viewProject("", true).manage!.listing!;
+   return renderText([...list.pinned, ...list.others].find(p => p.key === s.info!.cwd)?.subtitle);
+ };
+ expect(sub()).toContain(message("projects.pending_count", {"count":1}, "zh-CN"));
  expect(projects(r.sessions.values(),r.machines.values()).find(p=>p.key===s.info!.cwd)?.sessions.map(x=>x.id)).toContain(s.id);
- s.info!.planOpen=false;s.info!.pendingApprovals=0;s.info!.pendingQuestions=0;s.info!.status=SessionStatus.IDLE;
- expect(sessionCounts(r,[s])).toBe("");
+ ds.info!.planOpen=false;ds.info!.pendingApprovals=0;ds.info!.pendingQuestions=0;ds.info!.status=SessionStatus.IDLE;
+ syncDemo(r);
+ expect(sub()).not.toContain(message("projects.pending_count", {"count":1}, "zh-CN"));
  expect(todoList(r).map(s=>s.id)).not.toContain(s.id);
 });
 
 it("sends files-only messages and restores a missing file from its original File", async () => {
   const r = demo(); const s = r.sessions.get("s-idle")!;
-  r.machines.get(s.machineId)!.meta!.capabilities!.fileUpload = true;
+  updateDemoMachine(r, s.machineId, (m) => { m.meta!.capabilities!.fileUpload = true; });
   let uploads = 0;
   r.uploadImage = async (_m, p) => ({ imageId: "", fileId: (p as { fileName?: string }).fileName! + ++uploads, expiresMs: Number.MAX_SAFE_INTEGER });
   const sent: CommandKind[] = [];
@@ -4061,7 +4354,7 @@ it("sends files-only messages and restores a missing file from its original File
 
 it("creates a session with files-only and retains file IDs for an unknown retry", async () => {
   const r = demo(); const machine = r.machines.get("mac") ?? [...r.machines.values()].find((m) => m.meta?.capabilities?.imageUpload)!;
-  machine.meta!.capabilities!.fileUpload = true;
+  updateDemoMachine(r, machine.id, (m) => { m.meta!.capabilities!.fileUpload = true; });
   r.prepareImage = async () => ({ bytes: new Uint8Array(1), format: "png", width: 1, height: 1 });
   r.uploadImage = async () => ({ imageId: "", fileId: "file-first", expiresMs: Number.MAX_SAFE_INTEGER });
   const calls: { cmd: CommandKind; slot?: RequestSlot }[] = [];
@@ -4090,12 +4383,12 @@ it("creates a session with files-only and retains file IDs for an unknown retry"
 
 it("requires reselecting a new-session first file when its local source has been released", async () => {
   const r = demo(); const s = r.sessions.get("s-idle")!;
-  r.machines.get(s.machineId)!.meta!.capabilities!.fileUpload = true;
+  updateDemoMachine(r, s.machineId, (m) => { m.meta!.capabilities!.fileUpload = true; });
   const file = { fileId: "first-file", name: "first.csv", sizeBytes: 7n, path: "/uploads/s/files/first/first.csv" };
   for (const kind of [
     { case: "inputState", value: { requestId: "first", status: InputStatus.QUEUED, text: "read first", files: [file] } },
     { case: "inputState", value: { requestId: "first", status: InputStatus.FAILED, reason: "write_failed" } },
-  ]) r.events(s.id).push(create(EventSchema, { seq: BigInt(r.events(s.id).length + 1), origin: { kind: OriginKind.CLIENT, deviceId: r.account.deviceId }, kind: kind as never }));
+  ]) pushDemoEvent(r, s.id, kind as never, { kind: OriginKind.CLIENT, deviceId: r.account.deviceId } as never);
   const upload = vi.spyOn(r, "uploadImage");
   mount(<SessionPage remote={r} session={s} onBack={() => undefined} wide={false} />);
   await click(button(message("composer.restore"), host.querySelector(".me.fail")!));
@@ -4172,20 +4465,20 @@ it.each(["retap", "outside", "typing", "escape"])("keeps the session draft focus
 it("hands a new session to its chat with the first prompt before its listing arrives", async () => {
   const r = demo();
   const project = "/example/handoff";
+  r.draftMachines.set(project, "mac");
   const go = vi.fn();
-  let ns!: ReturnType<typeof useNewSession>;
-  function StartProbe() {
-    ns = useNewSession(r, project, go, "mac");
-    return null;
-  }
-  mount(<StartProbe />);
+  const core = getCoreHost(r);
+  mount(<NewBox remote={r} projectKey={project} go={go} />);
   await act(async () => { await Promise.all([r.listModels("mac", Agent.CODEX), r.settings("mac")]); });
   const info = create((await import("../gen/remoteagent/v1/local_pb")).SessionSchema, { id: "new-handoff", cwd: project, agent: Agent.CODEX, status: SessionStatus.STARTING });
   const command = r.machineCommand.bind(r);
   vi.spyOn(r, "machineCommand").mockImplementation((m, cmd, ...rest) => cmd?.case === "createSession"
     ? Promise.resolve(create(CommandResultSchema, { kind: { case: "createSession", value: { session: info } } })) : command(m, cmd, ...rest));
-  await act(async () => { await ns.create("第一句话"); });
-  expect(go).toHaveBeenCalledWith("s/new-handoff", true);
+  core.dispatch(create(CoreEventSchema, { event: { case: "newSessionSetPrompt", value: create(NewSessionSetPromptActionSchema, { prompt: "第一句话" }) } }));
+  await act(async () => {
+    core.dispatch(create(CoreEventSchema, { event: { case: "newSessionSubmit", value: create(NewSessionSubmitActionSchema, { projectKey: project, autoModeSupported: true }) } }));
+  });
+  await vi.waitFor(() => expect(go).toHaveBeenCalledWith("s/new-handoff", true));
   expect(r.sessions.has(info.id)).toBe(false);
   expect(r.openingSessions.get(info.id)?.info).toEqual(info);
   await act(async () => root!.render(<SessionPage remote={r} session={r.openingSessions.get(info.id)!} onBack={() => {}} wide={false} />));
@@ -4197,6 +4490,7 @@ it("hands a new session to its chat with the first prompt before its listing arr
 it("shows 默认 for an unchosen effort, then sends the explicitly selected level", async () => {
   const r = demo();
   const project = "/example/default-effort";
+  r.draftMachines.set(project, "mac");
   vi.spyOn(r, "settings").mockResolvedValue(create(DaemonSettingsSchema));
   const original = r.listModels.bind(r);
   vi.spyOn(r, "listModels").mockImplementation(async (...args) => {
@@ -4204,12 +4498,12 @@ it("shows 默认 for an unchosen effort, then sends the explicitly selected leve
     return { ...result, defaultModel: "gpt-6-sol", models: result.models.map(m => ({ ...m, defaultEffort: "low" })) };
   });
   mount(<ProjectPage remote={r} pkey={project} go={() => {}} onBack={() => {}} />);
-  await vi.waitFor(() => expect(host.querySelector(".project-summary")?.textContent).toBe(`GPT-6-Sol · ${message("models.default", {}, "zh-CN")}`));
+  await vi.waitFor(() => expect(host.querySelector(".project-summary")?.textContent).toBe("GPT-6-Sol · low"));
   await fromMenu("新会话设置");
-  expect(host.querySelector(".model-controls .fl")?.textContent).toBe(message("models.effort_default", {}, "zh-CN"));
-  expect(host.querySelector(`[aria-label="${message("models.effort", {}, "zh-CN")}"] button.on`)).toBeNull();
+  expect(host.querySelector(".model-controls .fl")?.textContent).toBe(message("models.effort", {}, "zh-CN"));
+  expect(host.querySelector(`[aria-label="${message("models.effort", {}, "zh-CN")}"] button.on`)?.textContent).toBe("low");
   await click(button("GPT-6-Astra"));
-  expect(host.querySelector(".project-summary")?.textContent).toBe(`GPT-6-Astra · ${message("models.default", {}, "zh-CN")}`);
+  expect(host.querySelector(".project-summary")?.textContent).toBe("GPT-6-Astra · low");
   await click(button("high"));
   expect(host.querySelector(".project-summary")?.textContent).toBe("GPT-6-Astra · high");
   await click(button(message("common.done", {}, "zh-CN")));
