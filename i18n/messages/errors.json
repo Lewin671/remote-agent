@@ -935,22 +935,6 @@
     }
   },
   {
-    "key": "errors.network_changed_reconnecting",
-    "zh-CN": "网络已变化，正在重连",
-    "en": "Network changed. Reconnecting.",
-    "notes": "remote 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
     "key": "errors.server_returned",
     "zh-CN": "服务器返回 {value}",
     "en": "Server returned {value}",
@@ -988,27 +972,6 @@
     }
   },
   {
-    "key": "errors.timed_out_reconnecting",
-    "zh-CN": "{value}超时，正在重连",
-    "en": "{value} timed out. Reconnecting.",
-    "notes": "remote 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。变量来源：value = step；名称、日期和诊断原文不翻译。",
-    "params": {
-      "value": {
-        "type": "string",
-        "example": "Example"
-      }
-    },
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
     "key": "errors.establishing_push_connection",
     "zh-CN": "建立推送连接",
     "en": "Establishing push connection",
@@ -1028,22 +991,6 @@
     "key": "errors.signing_in",
     "zh-CN": "登录",
     "en": "Signing in",
-    "notes": "remote 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "errors.syncing_device_state",
-    "zh-CN": "同步设备状态",
-    "en": "Syncing device state",
     "notes": "remote 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
     "params": {},
     "platforms": [
@@ -1105,89 +1052,9 @@
     }
   },
   {
-    "key": "errors.invalid_push_frame",
-    "zh-CN": "无效的推送帧",
-    "en": "Invalid push frame",
-    "notes": "remote 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "errors.current_membership_could_not_be_verified",
-    "zh-CN": "无法核实当前成员",
-    "en": "Current membership could not be verified",
-    "notes": "remote 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "errors.session_key_envelope_missing",
-    "zh-CN": "缺少会话密钥信封",
-    "en": "Session key envelope missing",
-    "notes": "remote 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
     "key": "errors.invalid_session_seed",
     "zh-CN": "无效的会话种子",
     "en": "Invalid session seed",
-    "notes": "remote 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "errors.the_session_record_s_computer_was_changed",
-    "zh-CN": "会话记录的机器被改动",
-    "en": "The session record’s computer was changed",
-    "notes": "remote 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "errors.invalid_ciphertext_current_state_checkpoint_mismatch",
-    "zh-CN": "密文无效：当前状态 checkpoint 不匹配",
-    "en": "Invalid ciphertext: current state checkpoint mismatch",
     "notes": "remote 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
     "params": {},
     "platforms": [
@@ -1446,41 +1313,9 @@
     }
   },
   {
-    "key": "errors.cannot_sign_with_the_current_security_state_the_operation",
-    "zh-CN": "无法用当前安全状态签名，操作尚未发出；请重试",
-    "en": "Cannot sign with the current security state. The operation has not been sent; retry.",
-    "notes": "remote 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
     "key": "errors.the_computer_s_reply_could_not_be_verified_command",
     "zh-CN": "电脑的回复未通过验证，不确定指令是否执行",
     "en": "The computer’s reply could not be verified. Command execution is uncertain.",
-    "notes": "remote 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "errors.the_previous_request_s_outcome_is_still_unknown_cannot",
-    "zh-CN": "之前请求的结果仍未知，当前无法重新登录",
-    "en": "The previous request’s outcome is still unknown. Cannot sign in again yet.",
     "notes": "remote 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
     "params": {},
     "platforms": [
@@ -1657,38 +1492,6 @@
     "key": "errors.the_recovery_object_was_updated_concurrently_retrying_on_the",
     "zh-CN": "恢复对象同时更新，将在下次同步重试",
     "en": "The recovery object was updated concurrently. Retrying on the next sync.",
-    "notes": "remote 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "errors.device_directory_state_changed",
-    "zh-CN": "设备目录状态已变化",
-    "en": "Device directory state changed",
-    "notes": "remote 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "errors.the_device_directory_response_is_out_of_date",
-    "zh-CN": "设备目录响应已过时",
-    "en": "The device directory response is out of date",
     "notes": "remote 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
     "params": {},
     "platforms": [

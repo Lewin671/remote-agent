@@ -253,22 +253,6 @@
     }
   },
   {
-    "key": "home.computer_runs_cli",
-    "zh-CN": "电脑运行 CLI，客户端操作会话。",
-    "en": "Run the CLI on your computer and control sessions from a client.",
-    "notes": "首页无电脑时的说明段落。 无变量。",
-    "params": {},
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
     "key": "home.connection_check",
     "zh-CN": "连接检测",
     "en": "Check connection",
@@ -836,27 +820,6 @@
     "en": "Nothing needs your attention",
     "notes": "首页没有待处理事项的主标题。 无变量。",
     "params": {},
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "home.online_new_task",
-    "zh-CN": "{name} 在线，点右下角的「新任务」开始第一个会话。",
-    "en": "{name} is online. Tap “New task” at the bottom right to start your first session.",
-    "notes": "手机首页空状态说明；name 为电脑名 空间：短标签/列表行保持紧凑，正文可多行。 变量：name，来自当前界面数据；示例只供翻译。",
-    "params": {
-      "name": {
-        "type": "string",
-        "example": "Example Computer"
-      }
-    },
     "platforms": [
       "web",
       "android",

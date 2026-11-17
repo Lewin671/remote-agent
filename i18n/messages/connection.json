@@ -352,22 +352,6 @@
     }
   },
   {
-    "key": "connection.retrying_previous",
-    "zh-CN": "正在重试，下面是上次的内容",
-    "en": "Retrying, showing previous content below",
-    "notes": "首页断线副标题。 无变量。",
-    "params": {},
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
     "key": "connection.server_details",
     "zh-CN": "连不上服务器：{reason}。也可能是这台设备的网络不通，会一直自动重试",
     "en": "Cannot connect to server: {reason}. This device’s network may also be unavailable. Retrying automatically.",

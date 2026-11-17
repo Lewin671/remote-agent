@@ -179,7 +179,6 @@ export interface MessageArgs {
   "connection.reconnecting": { [name: string]: never };
   "connection.reconnecting_conn_check": { [name: string]: never };
   "connection.reconnecting_conn_check_label": { [name: string]: never };
-  "connection.retrying_previous": { [name: string]: never };
   "connection.sec_elapsed": { count: number; detail: string; previousFailure: string; value: string };
   "connection.server_details": { reason: string };
   "connection.server_retrying": { [name: string]: never };
@@ -244,7 +243,6 @@ export interface MessageArgs {
   "errors.invalid_ciphertext_signature_key_or_content_verification_failed": { [name: string]: never };
   "errors.invalid_current_request_snapshot": { [name: string]: never };
   "errors.invalid_pairing_approval_signature": { [name: string]: never };
-  "errors.invalid_push_frame": { [name: string]: never };
   "errors.invalid_session_seed": { [name: string]: never };
   "errors.it_may_have_been_deleted_or_belong_to_a": { [name: string]: never };
   "errors.membership_chain_conflict_security_operations_stopped_verify_devices_and": { [name: string]: never };
@@ -252,6 +250,7 @@ export interface MessageArgs {
   "errors.not_connected": { [name: string]: never };
   "errors.other_clients_kept_changing_the_project_list_changes_could": { [name: string]: never };
   "errors.pending_requests_on_the_computer_could_not_be_verified": { [name: string]: never };
+  "errors.project_preferences_format_is_not_supported": { [name: string]: never };
   "errors.push_backlog_reconnecting": { [name: string]: never };
   "errors.queued_records_could_not_be_restored_you_can_still": { [name: string]: never };
   "errors.queued_records_could_not_be_saved_locally_messages_will": { [name: string]: never };
@@ -292,7 +291,6 @@ export interface MessageArgs {
   "errors.the_server_does_not_recognize_this_device_it_may": { [name: string]: never };
   "errors.the_server_must_use_https": { [name: string]: never };
   "errors.the_server_returned_an_unexpected_device_id": { [name: string]: never };
-  "errors.the_session_record_s_computer_was_changed": { [name: string]: never };
   "errors.the_task_list_returned_by_the_computer_could_not": { [name: string]: never };
   "errors.the_task_was_just_changed_updated_to_the_latest": { [name: string]: never };
   "errors.this_browser_has_already_joined_an_account_open_this": { [name: string]: never };
@@ -341,7 +339,6 @@ export interface MessageArgs {
   "home.no_online_computer": { command: string };
   "home.no_sessions": { [name: string]: never };
   "home.nothing_waiting": { [name: string]: never };
-  "home.online_new_task": { name: string };
   "home.online_start": { name: string };
   "home.other_idle": { count: number };
   "home.pending_label": { count: number };
@@ -1499,7 +1496,6 @@ export interface MessageArgs {
   "time.hours_ago": { count: number };
   "time.ios_date_time": { day: number; month: number; time: string };
   "time.just_now": { [name: string]: never };
-  "time.last_week": { [name: string]: never };
   "time.minutes_ago": { count: number };
   "time.month_day": { day: number; month: number };
   "time.month_group": { month: number };
@@ -1854,7 +1850,6 @@ export const messages = {
     "connection.reconnecting": "Reconnecting…",
     "connection.reconnecting_conn_check": "Reconnecting",
     "connection.reconnecting_conn_check_label": "Reconnecting",
-    "connection.retrying_previous": "Retrying, showing previous content below",
     "connection.sec_elapsed": {
       "forms": {
         "one": "{value}: {detail}, {count} sec elapsed. {previousFailure}",
@@ -1949,7 +1944,6 @@ export const messages = {
     "errors.invalid_ciphertext_signature_key_or_content_verification_failed": "Invalid ciphertext: signature, key, or content verification failed",
     "errors.invalid_current_request_snapshot": "Invalid current request snapshot",
     "errors.invalid_pairing_approval_signature": "Invalid pairing approval signature",
-    "errors.invalid_push_frame": "Invalid push frame",
     "errors.invalid_session_seed": "Invalid session seed",
     "errors.it_may_have_been_deleted_or_belong_to_a": "It may have been deleted, or belong to a computer that was removed.",
     "errors.membership_chain_conflict_security_operations_stopped_verify_devices_and": "Membership chain conflict. Security operations stopped; verify devices and explicitly rejoin.",
@@ -1957,6 +1951,7 @@ export const messages = {
     "errors.not_connected": "Not connected to the server",
     "errors.other_clients_kept_changing_the_project_list_changes_could": "Other clients kept changing the project list. Changes could not be saved.",
     "errors.pending_requests_on_the_computer_could_not_be_verified": "Pending requests on the computer could not be verified. Retry or handle them in the computer’s terminal.",
+    "errors.project_preferences_format_is_not_supported": "Project preferences format is not supported",
     "errors.push_backlog_reconnecting": "Push backlog. Reconnecting.",
     "errors.queued_records_could_not_be_restored_you_can_still": "Queued records could not be restored. You can still type and send; retry next time.",
     "errors.queued_records_could_not_be_saved_locally_messages_will": "Queued records could not be saved locally. Messages will still send; verify delivery before closing the page.",
@@ -1997,7 +1992,6 @@ export const messages = {
     "errors.the_server_does_not_recognize_this_device_it_may": "The server does not recognize this device (it may have been removed or the service rebuilt)",
     "errors.the_server_must_use_https": "The server must use HTTPS",
     "errors.the_server_returned_an_unexpected_device_id": "The server returned an unexpected device ID",
-    "errors.the_session_record_s_computer_was_changed": "The session record’s computer was changed",
     "errors.the_task_list_returned_by_the_computer_could_not": "The task list returned by the computer could not be read",
     "errors.the_task_was_just_changed_updated_to_the_latest": "The task was just changed. Updated to the latest content.",
     "errors.this_browser_has_already_joined_an_account_open_this": "This browser has already joined an account. Open this link on the new device to join.",
@@ -2088,7 +2082,6 @@ export const messages = {
     "home.no_online_computer": "No computers are online. Run {command} on your computer",
     "home.no_sessions": "No sessions yet",
     "home.nothing_waiting": "Nothing needs your attention",
-    "home.online_new_task": "{name} is online. Tap “New task” at the bottom right to start your first session.",
     "home.online_start": "{name} is online. Start your first session.",
     "home.other_idle": {
       "forms": {
@@ -3666,7 +3659,6 @@ export const messages = {
     },
     "time.ios_date_time": "{month}/{day} {time}",
     "time.just_now": "Just now",
-    "time.last_week": "Last 7 days",
     "time.minutes_ago": {
       "forms": {
         "one": "{count} minute ago",
@@ -4048,7 +4040,6 @@ export const messages = {
     "connection.reconnecting": "正在重连…",
     "connection.reconnecting_conn_check": "重连中",
     "connection.reconnecting_conn_check_label": "重连",
-    "connection.retrying_previous": "正在重试，下面是上次的内容",
     "connection.sec_elapsed": {
       "forms": {
         "other": "正在{value}：{detail}，已 {count} 秒。{previousFailure}"
@@ -4138,7 +4129,6 @@ export const messages = {
     "errors.invalid_ciphertext_signature_key_or_content_verification_failed": "密文无效：签名、密钥或内容校验失败",
     "errors.invalid_current_request_snapshot": "当前请求快照无效",
     "errors.invalid_pairing_approval_signature": "配对批准签名无效",
-    "errors.invalid_push_frame": "无效的推送帧",
     "errors.invalid_session_seed": "无效的会话种子",
     "errors.it_may_have_been_deleted_or_belong_to_a": "它可能已经被删除，或者属于一台被移除的电脑。",
     "errors.membership_chain_conflict_security_operations_stopped_verify_devices_and": "成员链冲突，安全操作已停止；请核对设备后明确重新加入",
@@ -4146,6 +4136,7 @@ export const messages = {
     "errors.not_connected": "连不上服务器",
     "errors.other_clients_kept_changing_the_project_list_changes_could": "项目列表一直在被别的客户端修改，没能保存",
     "errors.pending_requests_on_the_computer_could_not_be_verified": "无法核实电脑上的待处理请求，请重试或在电脑终端处理",
+    "errors.project_preferences_format_is_not_supported": "项目偏好格式不受支持",
     "errors.push_backlog_reconnecting": "推送积压，正在重连",
     "errors.queued_records_could_not_be_restored_you_can_still": "待发记录没能恢复，仍可输入和发送，下次重试",
     "errors.queued_records_could_not_be_saved_locally_messages_will": "待发记录没能保存到本机，消息仍会发送；关闭页面前请核对发送结果",
@@ -4186,7 +4177,6 @@ export const messages = {
     "errors.the_server_does_not_recognize_this_device_it_may": "服务器不认识这台设备（可能已被移除，或服务已重建）",
     "errors.the_server_must_use_https": "server 必须使用 https",
     "errors.the_server_returned_an_unexpected_device_id": "服务器返回了意外的设备 ID",
-    "errors.the_session_record_s_computer_was_changed": "会话记录的机器被改动",
     "errors.the_task_list_returned_by_the_computer_could_not": "电脑返回的任务列表无法读取",
     "errors.the_task_was_just_changed_updated_to_the_latest": "任务刚被修改，已更新为最新内容",
     "errors.this_browser_has_already_joined_an_account_open_this": "这个浏览器已经加入了账户。要让新设备加入，在新设备上打开这个链接。",
@@ -4270,7 +4260,6 @@ export const messages = {
     "home.no_online_computer": "没有在线的电脑。在电脑上运行 {command}",
     "home.no_sessions": "还没有会话",
     "home.nothing_waiting": "没有等你的事",
-    "home.online_new_task": "{name} 在线，点右下角的「新任务」开始第一个会话。",
     "home.online_start": "{name} 在线，可以开始第一个会话。",
     "home.other_idle": {
       "forms": {
@@ -5778,7 +5767,6 @@ export const messages = {
     },
     "time.ios_date_time": "{month}月{day}日 {time}",
     "time.just_now": "刚刚",
-    "time.last_week": "近 7 天",
     "time.minutes_ago": {
       "forms": {
         "other": "{count} 分钟前"

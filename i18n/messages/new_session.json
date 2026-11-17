@@ -320,42 +320,10 @@
     }
   },
   {
-    "key": "new_session.config_fallback",
-    "zh-CN": "所选模型或推理强度在这台电脑上不可用，这次用电脑的默认值",
-    "en": "The selected model or reasoning effort is unavailable on this computer. Using its defaults for this session.",
-    "notes": "新任务配置回退横幅，允许多行。 无变量。",
-    "params": {},
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
     "key": "new_session.default_model",
     "zh-CN": "默认模型",
     "en": "Default model",
     "notes": "模型选择首行与未加载配置摘要。 无变量。",
-    "params": {},
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "new_session.disconnected",
-    "zh-CN": "和服务器断线了",
-    "en": "Disconnected from server",
-    "notes": "新会话禁用原因。 无变量。",
     "params": {},
     "platforms": [
       "web",
@@ -842,43 +810,6 @@
     }
   },
   {
-    "key": "new_session.offline_last_seen",
-    "zh-CN": "{time}在线，现在不能新建",
-    "en": "Last online {time}. Cannot start a session now",
-    "notes": "新任务机器选择行下说明；time 为本地化的相对时间 空间：短标签/列表行保持紧凑，正文可多行。 变量：time，来自当前界面数据；示例只供翻译。",
-    "params": {
-      "time": {
-        "type": "string",
-        "example": "2 hours ago"
-      }
-    },
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "new_session.offline_no_start",
-    "zh-CN": "现在不能新建",
-    "en": "Cannot start a session now",
-    "notes": "新任务机器选择行下离线说明 空间：短标签/列表行保持紧凑，正文可多行。 无变量。",
-    "params": {},
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
     "key": "new_session.offline_with_draft",
     "zh-CN": "{name} 已离线，任务还没开始。草稿已保留，换一台在线的机器吧。",
     "en": "{name} is offline. The task has not started. Your draft is saved. Choose an online computer.",
@@ -946,22 +877,6 @@
     "zh-CN": "要做什么",
     "en": "What would you like to do?",
     "notes": "新任务输入框占位。 无变量。",
-    "params": {},
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "new_session.reading_models",
-    "zh-CN": "正在读取模型列表…",
-    "en": "Loading models…",
-    "notes": "新任务禁用原因。 无变量。",
     "params": {},
     "platforms": [
       "web",
@@ -1154,22 +1069,6 @@
     }
   },
   {
-    "key": "new_session.unconfirmed_start",
-    "zh-CN": "上次的启动结果还没有确认",
-    "en": "The previous start is still unconfirmed",
-    "notes": "新会话启动结果未知时的错误原因。 无变量。",
-    "params": {},
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
     "key": "new_session.unexpected_reply",
     "zh-CN": "意外的回复",
     "en": "Unexpected response",
@@ -1279,22 +1178,6 @@
     "key": "new_session.only_changes_this_task_existing_conversations_keep_their_settings",
     "zh-CN": "只修改这个任务；已开出的对话保留原来的设置。",
     "en": "Only changes this task. Existing conversations keep their settings.",
-    "notes": "NewSession 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "new_session.each_cli_has_its_own_settings_choose_the_cli",
-    "zh-CN": "每个 CLI 各存一套，新建时用哪个在句子里选。",
-    "en": "Each CLI has its own settings. Choose the CLI in the sentence when creating a task.",
     "notes": "NewSession 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
     "params": {},
     "platforms": [

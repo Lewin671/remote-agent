@@ -222,22 +222,6 @@
     }
   },
   {
-    "key": "time.last_week",
-    "zh-CN": "近 7 天",
-    "en": "Last 7 days",
-    "notes": "结束会话列表日期分组标题。 无变量。",
-    "params": {},
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
     "key": "time.minutes_ago",
     "zh-CN": {
       "plural": "count",
