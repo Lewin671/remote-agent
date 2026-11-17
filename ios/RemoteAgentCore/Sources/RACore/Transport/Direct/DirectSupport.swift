@@ -1,10 +1,11 @@
 import Foundation
 import os
 
-/// Wall and monotonic time, replaceable so backoff and deadlines are testable without waiting.
+/// Wall and monotonic time plus sleep, replaceable so backoff, timeouts and deadlines are testable without waiting.
 struct DirectClock: Sendable {
     var now: @Sendable () -> UInt64 = { UInt64(Date().timeIntervalSince1970 * 1000) }
     var monotonic: @Sendable () -> Double = { Double(DispatchTime.now().uptimeNanoseconds) / 1e6 }
+    var sleep: @Sendable (UInt64) async throws -> Void = { ms in try await Task.sleep(nanoseconds: ms * 1_000_000) }
 }
 
 /// One job at a time, in order, each after the previous one finished: the shape of the web's

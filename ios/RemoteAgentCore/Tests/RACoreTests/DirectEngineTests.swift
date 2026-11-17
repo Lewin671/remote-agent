@@ -4,15 +4,45 @@ import RAProto
 import Testing
 @testable import RACore
 
-/// Real time plus an offset the test can jump: waiting still lets timers run, and a 10 second
-/// round can be ended without waiting for it.
+/// Purely virtual clock controlled by the test: waiting never drifts with wall-clock load.
 final class FakeClock: @unchecked Sendable {
     private let lock = NSLock(); private var offset: UInt64 = 0
-    private let start = DispatchTime.now().uptimeNanoseconds, base: UInt64
+    private var waiters: [(until: UInt64, id: UUID, cont: CheckedContinuation<Void, any Error>)] = []
+    private let base: UInt64
     init(_ ms: UInt64) { base = ms }
-    var now: UInt64 { lock.withLock { base + offset + (DispatchTime.now().uptimeNanoseconds - start) / 1_000_000 } }
-    func advance(_ by: UInt64) { lock.withLock { offset += by } }
-    var clock: DirectClock { DirectClock(now: { [self] in now }, monotonic: { [self] in Double(now) }) }
+    var now: UInt64 { lock.withLock { base + offset } }
+    func advance(_ by: UInt64) {
+        let ready: [CheckedContinuation<Void, any Error>] = lock.withLock {
+            offset += by
+            let cur = base + offset
+            let ready = waiters.filter { $0.until <= cur }.map(\.cont)
+            waiters.removeAll { $0.until <= cur }
+            return ready
+        }
+        for c in ready { c.resume() }
+    }
+    func sleep(_ ms: UInt64) async throws {
+        try Task.checkCancellation()
+        if ms == 0 { return }
+        let id = UUID()
+        try await withTaskCancellationHandler {
+            try await withCheckedThrowingContinuation { (c: CheckedContinuation<Void, any Error>) in
+                let cancelNow = lock.withLock { () -> Bool in
+                    if Task.isCancelled { return true }
+                    waiters.append((base + offset + ms, id, c))
+                    return false
+                }
+                if cancelNow { c.resume(throwing: CancellationError()) }
+            }
+        } onCancel: {
+            let cont: CheckedContinuation<Void, any Error>? = lock.withLock {
+                guard let i = waiters.firstIndex(where: { $0.id == id }) else { return nil }
+                return waiters.remove(at: i).cont
+            }
+            cont?.resume(throwing: CancellationError())
+        }
+    }
+    var clock: DirectClock { DirectClock(now: { [self] in now }, monotonic: { [self] in Double(now) }, sleep: { [self] ms in try await sleep(ms) }) }
 }
 
 final class FakeLeg: FrameStream, @unchecked Sendable {
@@ -103,6 +133,12 @@ final class EngineRig: @unchecked Sendable {
         for s in lock.withLock({ Array(sessions.values) }) { s.receive(delivery) }
     }
     private func makeSession(_ peer: W.Public, _ connection: W.Bytes, _ deadline: UInt64) -> DirectSession {
+        let key = W.hex(connection)
+        let retireOld: @Sendable () -> Void = { [weak self] in
+            guard let self else { return }
+            let old = self.lock.withLock { self.sessions.filter { $0.key != key }.map(\.value) }
+            for s in old { s.retire() }
+        }
         let o = DirectSessionOptions(
             selfID: machine, peer: peer, codec: codec, connection: connection, deadline: min(deadline, time.now + 10_000), budget: machineBudget, stun: ["stun:127.0.0.1:3478"], factory: FakeRtcFactory(net: net),
             valid: { true }, authorize: {},
@@ -110,7 +146,7 @@ final class EngineRig: @unchecked Sendable {
                 let bytes = out.raw
                 Task.detached { if let self { self.engine.receive(bytes, from: self.leg) } }; return true
             },
-            chosen: {}, beforeOffer: {}, ready: { [weak self] use, path in self?.register(use, path) }, closed: { _ in },
+            chosen: retireOld, beforeOffer: retireOld, ready: { [weak self] use, path in self?.register(use, path) }, closed: { _ in },
             frame: { [weak self] raw, use in
                 guard let self else { return }
                 self.lock.withLock { self._frames.append((use, raw)) }

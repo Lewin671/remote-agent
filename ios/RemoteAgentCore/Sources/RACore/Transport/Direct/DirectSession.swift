@@ -421,7 +421,8 @@ final class DirectSession: @unchecked Sendable {
             p.confirmed = confirmed
         }
         if p.confirmed && !p.announced && p.gate.ready {
-            p.announced = true; lock.withLock { _established = true }; channel.confirm(); options.ready(index + 1, channel)
+            p.announced = true; lock.withLock { _established = true }
+            channel.confirm { options.ready(index + 1, channel) }
         }
     }
 

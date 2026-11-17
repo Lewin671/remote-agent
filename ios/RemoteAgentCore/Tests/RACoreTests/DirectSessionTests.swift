@@ -13,6 +13,7 @@ func eventually(_ seconds: Double = 5, _ condition: @Sendable () -> Bool) async 
 final class SessionPair: @unchecked Sendable {
     typealias W = PeerWire
     let net = FakeRtcNet(), clientBudget = DirectBudget(), machineBudget = DirectBudget()
+    let time: FakeClock
     let client: W.Identity, machine: W.Identity
     var clientSession: DirectSession!, machineSession: DirectSession!
     private let lock = NSLock()
@@ -29,6 +30,7 @@ final class SessionPair: @unchecked Sendable {
         client = try PeerSignalVectorsTests.identity("client", 1); machine = try PeerSignalVectorsTests.identity("machine", 2)
         let codec = PeerCodec(scope: PeerSignalVectorsTests.scope), factory = FakeRtcFactory(net: net)
         let now = UInt64(Date().timeIntervalSince1970 * 1000), connection = W.random(16)
+        time = FakeClock(now)
         func options(_ me: W.Identity, _ other: W.Public, _ budget: DirectBudget, isClient: Bool) -> DirectSessionOptions {
             DirectSessionOptions(
                 selfID: me, peer: other, codec: codec, connection: connection, deadline: now + deadlineMs, budget: budget, stun: ["stun:127.0.0.1:3478"], factory: factory,
@@ -41,7 +43,7 @@ final class SessionPair: @unchecked Sendable {
                 ready: { [unowned self] use, path in self.lock.withLock { if isClient { self._clientPaths[use] = path } else { self._machinePaths[use] = path } } },
                 closed: { [unowned self] use in if isClient { self.lock.withLock { self._clientClosed.append(use) } } },
                 frame: { [unowned self] raw, use in self.lock.withLock { if isClient { self._clientFrames.append((use, raw)) } else { self._machineFrames.append((use, raw)) } } },
-                capability: { _ in })
+                capability: { _ in }, clock: time.clock)
         }
         clientSession = try DirectSession(options(client, W.member(machine.peer), clientBudget, isClient: true))
         machineSession = try DirectSession(options(machine, W.member(client.peer), machineBudget, isClient: false))
@@ -77,6 +79,8 @@ final class SessionPair: @unchecked Sendable {
         blocked.net.stunWorks = false
         blocked.net.blackhole = true
         await blocked.clientSession.start()
+        #expect(await eventually(5) { blocked.net.all.count == 4 && blocked.net.all.allSatisfy { $0.hasExchangedSDP } }, "both uses negotiated SDP before deadline")
+        blocked.time.advance(3_001)
         #expect(await eventually(5) { blocked.clientClosed.contains(where: { $0 == nil }) }, "the round ends at its deadline")
         #expect(blocked.clientPaths.isEmpty && !blocked.clientSession.established)
         #expect(blocked.clientSession.failure == .noTraversal)
@@ -88,6 +92,7 @@ final class SessionPair: @unchecked Sendable {
         let pair = try SessionPair(deadlineMs: 2_500)
         pair.dropFrames = true
         await pair.clientSession.start()
+        pair.time.advance(2_501)
         #expect(await eventually(5) { pair.clientClosed.contains(where: { $0 == nil }) })
         #expect(pair.clientPaths.isEmpty)
         #expect(pair.clientSession.failure == .noResponse)

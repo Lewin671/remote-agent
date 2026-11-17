@@ -112,7 +112,7 @@ final class DirectEngine: @unchecked Sendable {
     private var pumpTask: Task<Void, Never>?
     private var warmShown: [String: Bool] = [:]
     private let receiveChain = SerialChain()
-    private var discovering = false
+    private var discovering = false, discoverPending = false
     /// Sends one authorized background read on the given path and returns when it ends; the owner
     /// of the keys (Remote) provides it. Without it no warm-up sample is taken.
     /// What the engine decided, in words (never keys, content or addresses); the Remote hands its own log.
@@ -278,6 +278,26 @@ final class DirectEngine: @unchecked Sendable {
     // MARK: discovery
     func discover() async {
         guard factory != nil else { return }
+        let enter = lock.withLock { () -> Bool in
+            if discovering { discoverPending = true; return false }
+            discovering = true
+            discoverPending = false
+            return true
+        }
+        guard enter else { return }
+        while true {
+            await discoverOnce()
+            let again = lock.withLock { () -> Bool in
+                if discoverPending { discoverPending = false; return true }
+                discovering = false
+                return false
+            }
+            if !again { return }
+        }
+    }
+
+    private func discoverOnce() async {
+        guard factory != nil else { return }
         guard let (snapHead, snapLeg, snapLife, members) = lock.withLock({ () -> (String, any FrameStream, Int, [DeviceSecurity.Member])? in
             guard currentLocked(), let leg, let r = record else { return nil }
             return (head, leg, lifetime, r.state.core.members)
@@ -288,30 +308,36 @@ final class DirectEngine: @unchecked Sendable {
             // A failed use starts a new bounded pair round after its cooldown. Closing the old SDK
             // objects stays charged to the shared budget.
             let retire: DirectSession? = lock.withLock {
-                if let prior = peers[member.id], let at = prior.redialAt, clock.now() >= at, prior.session.live {
+                if let prior = peers[member.id], let at = prior.redialAt, clock.now() >= at, prior.live {
+                    prior.live = false
                     peers.removeValue(forKey: member.id); retryAfter.removeValue(forKey: member.id); return prior.session
                 }
                 return nil
             }
             retire?.retire()
-            let skip = lock.withLock { member.kind != 1 || !enabledLocked(member.id) || peers[member.id]?.session.live == true || clock.now() < (retryAfter[member.id] ?? 0) }
+            let skip = lock.withLock { member.kind != 1 || !enabledLocked(member.id) || peers[member.id]?.live == true || clock.now() < (retryAfter[member.id] ?? 0) }
             if skip { continue }
             if lock.withLock({ peers.count >= 4 }) { break }
             let pub = lock.withLock { try? publicIdentityLocked(member.id) }
             guard let pub, still() else { continue }
-            if lock.withLock({ peers[member.id]?.session.live == true }) { continue }
-            trace?("direct: starting a round")
-            if let p = create(pub, W.random(16), clock.now() + 10_000) { await p.session.start() } else { trace?("direct: a round could not be made") }
+            if lock.withLock({ peers[member.id]?.live == true || clock.now() < (retryAfter[member.id] ?? 0) }) { continue }
+            if let p = create(pub, W.random(16), clock.now() + 10_000, outbound: true) {
+                trace?("direct: starting a round")
+                await p.session.start()
+            } else {
+                trace?("direct: a round could not be made")
+            }
         }
     }
 
-    private func create(_ peer: W.Public, _ connection: W.Bytes, _ deadline: UInt64) -> Peer? {
+    private func create(_ peer: W.Public, _ connection: W.Bytes, _ deadline: UInt64, outbound: Bool = false) -> Peer? {
         let id = String(decoding: peer.id, as: UTF8.self), now = clock.now()
         var expired: [DirectSession] = []
         let made: Peer? = lock.withLock {
             for (key, p) in sessions where now > p.session.retainUntil { p.live = false; expired.append(p.session); sessions.removeValue(forKey: key) }
+            if outbound && (peers[id]?.live == true || now < (retryAfter[id] ?? 0)) { return nil }
             guard currentLocked(), enabledLocked(id), sessions.count < 128, sessions.values.filter({ $0.id == id }).count < 32, peers[id] != nil || peers.count < 4,
-                  let selfID, let codec, factory != nil else { return nil }
+                  selfID != nil, codec != nil, factory != nil else { return nil }
             return Peer(id: id, head: head)
         }
         expired.forEach { $0.close() }
@@ -362,6 +388,7 @@ final class DirectEngine: @unchecked Sendable {
             guard validLocked(p), p.session.live, peers[id] === p else { return false }
             p.paths[use] = path
             if p.readyAt == nil { p.readyAt = clock.now() }
+            if p.paths[1]?.usable == true && p.paths[2]?.usable == true { p.redialAt = nil }
             failures.removeValue(forKey: id)
             if use == 1 { routingLocked(id).arm(fresh: true) }
             return true
@@ -370,6 +397,7 @@ final class DirectEngine: @unchecked Sendable {
     }
     private func pathClosed(_ p: Peer?, _ id: String, _ use: Int?) {
         guard let p else { return }
+        var retire: DirectSession?
         lock.withLock {
             guard peers[id] === p else { return }
             if use != nil && p.session.live && p.session.established {
@@ -381,10 +409,13 @@ final class DirectEngine: @unchecked Sendable {
                 failures[id] = p.session.failure.map(Self.reason) ?? .failed
                 routingLocked(id).fail()
                 if peers[id] === p { peers.removeValue(forKey: id) }
+                p.live = false
+                retire = p.session
                 retryAfter[id] = clock.now() + delay(id, p)
                 trace?("direct: no usable path left, next round in \(retryAfter[id]! &- clock.now()) ms (reason \(String(describing: failures[id])))")
             }
         }
+        retire?.retire()
         failPending(for: p, use: use)
         notify()
     }
@@ -646,7 +677,8 @@ final class DirectEngine: @unchecked Sendable {
             }
             guard registered else { throw PathChanged() }
             let remaining = max(1, min(3000, Int64(header.deadline) - Int64(engine.clock.now())))
-            let timeout = Task { try? await Task.sleep(nanoseconds: UInt64(remaining) * 1_000_000); box.settle(.failure(PathChanged())) }
+            let clock = engine.clock
+            let timeout = Task { try? await clock.sleep(UInt64(remaining)); box.settle(.failure(PathChanged())) }
             defer { timeout.cancel(); engine.lock.withLock { if engine.pending[request] === box { engine.pending.removeValue(forKey: request) } } }
             do {
                 let raw = try command.serializedData()

@@ -11,8 +11,30 @@ final class FakeRtcNet: @unchecked Sendable {
     var stunWorks = true { didSet {} }
     var blackhole = false
     var failCreate = false
-    /// Seconds a PeerConnection takes to shut down: closing an SDK object can block.
-    var closeDelay = 0.0
+    /// Explicit close barrier so tests can pause SDK shutdown without sleeping on the cooperative pool.
+    private var closeGate: DispatchSemaphore?
+    private var _closeEntered = 0
+    private var _closeFinished = 0
+    var closeEntered: Int { lock.withLock { _closeEntered } }
+    var closeFinished: Int { lock.withLock { _closeFinished } }
+    func holdClose() { lock.withLock { closeGate = DispatchSemaphore(value: 0) } }
+    func releaseClose() {
+        let gate = lock.withLock { () -> DispatchSemaphore? in
+            let g = closeGate
+            closeGate = nil
+            return g
+        }
+        // Unblock any waiters (up to a few concurrent PCs).
+        for _ in 0..<16 { gate?.signal() }
+    }
+    fileprivate func waitCloseIfHeld() {
+        let gate = lock.withLock { () -> DispatchSemaphore? in
+            _closeEntered += 1
+            return closeGate
+        }
+        _ = gate?.wait(timeout: .now() + 10)
+        lock.withLock { _closeFinished += 1 }
+    }
     func register(_ pc: FakePC) { lock.withLock { byUfrag[pc.ufrag] = pc; created.append(pc) } }
     func find(_ ufrag: String) -> FakePC? { lock.withLock { byUfrag[ufrag] } }
     var all: [FakePC] { lock.withLock { created } }
@@ -103,8 +125,10 @@ final class FakePC: RtcPeerConnection, @unchecked Sendable {
         guard was || peer != nil else { return }
         listener.onConnectionStateChange(.failed)
     }
+    var hasExchangedSDP: Bool { lock.withLock { local && remote } }
+    var isConnectedAndOpen: Bool { lock.withLock { connected && !closed && !_channels.isEmpty && _channels.values.allSatisfy { $0.state == .open } } }
     func close() {
-        if net.closeDelay > 0 { Thread.sleep(forTimeInterval: net.closeDelay) }
+        net.waitCloseIfHeld()
         let first = lock.withLock { () -> Bool in if closed { return false }; closed = true; return true }
         guard first else { return }
         for c in channels.values { c.set(.closed) }

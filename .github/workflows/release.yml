@@ -443,7 +443,7 @@ jobs:
           xcrun xcstringstool compile ios/RemoteAgentCore/Localization/Localizable.xcstrings --output-directory "$resources"
           scripts/core/build.sh ios
       - name: Swift package tests (RACoreTests)
-        run: swift test --no-parallel --package-path ios/RemoteAgentCore --jobs 4
+        run: swift test --package-path ios/RemoteAgentCore --jobs 4
       - name: App build and tests (RemoteAgentTests, excluding performance and UI tests)
         run: |
           set -euo pipefail

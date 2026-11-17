@@ -14,8 +14,7 @@ platform :ios do
     root = Publishing.source
     sh(File.join(root, 'scripts/core/build.sh'), 'ios')
     if options[:tests].to_s != 'false'
-      # Swift Testing otherwise runs socket/deadline tests alongside unrelated fixture builds.
-      sh('swift', 'test', '--no-parallel', '--package-path', File.join(root, 'ios/RemoteAgentCore'), '--jobs', '4')
+      sh('swift', 'test', '--package-path', File.join(root, 'ios/RemoteAgentCore'), '--jobs', '4')
     end
     # A publishing run archives with its distribution signature in the next lane.
     if options[:archive].to_s != 'false'

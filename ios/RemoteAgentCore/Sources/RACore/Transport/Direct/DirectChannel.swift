@@ -173,11 +173,12 @@ final class DirectChannel: @unchecked Sendable {
         if let candidate { try await pc.addIceCandidate(candidate.candidate, sdpMid: candidate.sdpMid, sdpMLineIndex: candidate.sdpMLineIndex, usernameFragment: "") }
         guard valid() else { throw PathChanged() }
     }
-    func confirm() {
+    func confirm(_ beforeDeliver: () -> Void = {}) {
         lock.lock()
         guard !ended, options.valid(), confirmed || options.clock.now() < options.deadline else { lock.unlock(); return }
         confirmed = true; let queued = waiting; waiting = []
         lock.unlock()
+        beforeDeliver()
         for raw in queued { deliver(raw) }
     }
 
