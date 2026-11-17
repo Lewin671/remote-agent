@@ -1724,4 +1724,69 @@ class DirectTransportTest {
             server.close()
         }
     }
+
+    @Test
+    fun dualSendPreservesServerNotForwardedWhenDirectNeverHandedOff(): Unit = runBlocking {
+        val server = TestServer()
+        val http = Api.defaultHttp()
+        try {
+            val phone = newAuthorityAccount(ByteArray(32) { 15 }, server.url, http, server.setupToken)
+            val daemonAccount = approvedClient(phone, http, DeviceKind.DEVICE_KIND_MACHINE)
+            val clientAccount = approvedClient(phone, http, DeviceKind.DEVICE_KIND_CLIENT)
+            val bridge = FakeRtcBridge()
+            val daemon = DirectBridgeDaemon(daemonAccount, server.url, http, System::currentTimeMillis, bridge.daemonFactory)
+            daemon.start()
+            val remote = Remote(
+                account = clientAccount,
+                http = http,
+                securityStorage = TestSecurity.find(server.url)?.stores?.get(clientAccount.deviceId),
+                rtcFactory = bridge.phoneFactory,
+                directPrefs = InMemoryDirectPreferenceStore(),
+                stunUrls = emptyList(),
+            )
+            val id = daemonAccount.deviceId
+            try {
+                remote.start()
+                remote.foregroundChanged(true)
+                withTimeout(10_000) { remote.state.first { it.conn == ConnState.ONLINE && id in it.machines } }
+                remote.syncSecurity()
+                awaitCondition("direct ready", 10_000) { remote.direct.ready(id, RouteHint.Read) }
+
+                // Hold direct DataChannel before first byte (handoff() NOT called) and take daemon relay offline so TestServer returns NotForwarded.
+                bridge.phonePcs.forEach { it.localChannels[0]?.buffered = 128L shl 10 }
+                daemon.close()
+                awaitCondition("daemon offline on server", 3_000) { remote.state.value.machines[id]?.online != true }
+
+                val closer = launch {
+                    delay(120)
+                    bridge.phonePcs.toList().forEach { it.dropAllChannels() }
+                }
+
+                val cmd = Command.newBuilder()
+                    .setProtocolVersion(PROTOCOL_VERSION)
+                    .setSend(io.github.lewin671.remoteagent.proto.SendRequest.newBuilder().setSessionId("s1").setText("pre-handoff-not-forwarded").build())
+                    .build()
+                val eff = io.github.lewin671.remoteagent.core.proto.DispatchCommandEffect.newBuilder()
+                    .setRequestId("req-dual-prehandoff-nf-1")
+                    .setAttemptId(io.github.lewin671.remoteagent.core.newRequestId())
+                    .setMachineId(id)
+                    .setSessionId("s1")
+                    .setDeadlineMs(System.currentTimeMillis() + 5_000L)
+                    .setCommandBytes(cmd.toByteString())
+                    .build()
+
+                val outcome = withTimeout(5_000) { remote.dispatchSingleCommand(eff) }
+                closer.join()
+                assertTrue("must preserve notForwarded=true when Direct never handed off: $outcome", outcome.notForwarded)
+                assertTrue("must preserve attemptBound=true from server refusal: $outcome", outcome.attemptBound)
+                assertEquals(io.github.lewin671.remoteagent.core.proto.OutcomeSource.OUTCOME_SOURCE_SERVER, outcome.source)
+                assertEquals("machine_offline", outcome.outerReason)
+            } finally {
+                remote.close()
+                daemon.close()
+            }
+        } finally {
+            server.close()
+        }
+    }
 }

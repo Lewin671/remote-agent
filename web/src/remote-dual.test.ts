@@ -210,3 +210,31 @@ test("Remote dual-send ignores late Relay settlement after Direct already won", 
     await r.dispose();
   }
 });
+
+test("Remote dual-send preserves not_sent (unknown=false) when Direct fails BEFORE handoff and Relay returns NotForwarded", async () => {
+  const r = await SyntheticRemote.create();
+  installDirectReadPath(r, async () => {
+    // Reject BEFORE calling handoff()
+    throw new Error("dc1 failed before handoff");
+  });
+
+  (r as unknown as { api: unknown }).api = {
+    forward: async (q: { attemptId: string }) => {
+      throw new ConnectError("refused", Code.Unavailable, undefined, [
+        { desc: NotForwardedSchema, value: { attemptId: q.attemptId, relayEpoch: "fixture-epoch", reason: "machine_offline" } },
+      ]);
+    },
+  };
+
+  try {
+    const sendId = r.send("s", "pre-handoff-not-forwarded");
+    await vi.waitFor(() => expect(r.outbox("s")[0]?.status).toBe("failed"));
+    expect(r.outbox("s")[0]).toMatchObject({
+      sendId,
+      unknown: false,
+      text: "pre-handoff-not-forwarded",
+    });
+  } finally {
+    await r.dispose();
+  }
+});

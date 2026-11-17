@@ -1622,15 +1622,21 @@ class Remote(
                         },
                     )
                 } catch (failed: LegOutcomeException) {
-                    val anyHandedOff = directHandedOff.get() || relayHandedOff.get()
-                    val b = failed.outcome.toBuilder()
-                    if (anyHandedOff) {
-                        b.setNotForwarded(false)
-                        if (failed.outcome.source == OutcomeSource.OUTCOME_SOURCE_LOCAL || failed.outcome.source == OutcomeSource.OUTCOME_SOURCE_SERVER) {
+                    val out = failed.outcome
+                    // RelayPath.send invokes handoff() on entry before the HTTP call; a bound NotForwarded refusal
+                    // proves the relay server never forwarded its leg, so only overwrite if Direct also handed off.
+                    val serverNotForwarded =
+                        out.source == OutcomeSource.OUTCOME_SOURCE_SERVER && out.notForwarded && out.attemptBound
+                    val relayPossiblyForwarded = relayHandedOff.get() && !serverNotForwarded
+                    if (directHandedOff.get() || relayPossiblyForwarded) {
+                        val b = out.toBuilder().setNotForwarded(false)
+                        if (out.source == OutcomeSource.OUTCOME_SOURCE_LOCAL || out.source == OutcomeSource.OUTCOME_SOURCE_SERVER) {
                             b.setSource(OutcomeSource.OUTCOME_SOURCE_TRANSPORT)
                         }
+                        b.build()
+                    } else {
+                        out
                     }
-                    b.build()
                 } catch (e: Exception) {
                     if (e is CancellationException) throw e
                     val anyHandedOff = directHandedOff.get() || relayHandedOff.get()
