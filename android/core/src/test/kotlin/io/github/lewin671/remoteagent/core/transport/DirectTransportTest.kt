@@ -1976,6 +1976,8 @@ class DirectTransportTest {
         val server = TestServer()
         val http = Api.defaultHttp()
         val nowMs = java.util.concurrent.atomic.AtomicLong(System.currentTimeMillis())
+        val monoStartNs = System.nanoTime()
+        val testMonotonic: () -> Long = { nowMs.get() + (System.nanoTime() - monoStartNs) / 1_000_000L }
         try {
             val phone = newAuthorityAccount(ByteArray(32) { 18 }, server.url, http, server.setupToken)
             val daemonAccount = approvedClient(phone, http, DeviceKind.DEVICE_KIND_MACHINE)
@@ -1983,11 +1985,11 @@ class DirectTransportTest {
             val bridge = FakeRtcBridge()
             val keepaliveSyncs = AtomicInteger(0)
             val delayedHttp = http.newBuilder().addInterceptor { chain ->
-                if (chain.request().url.encodedPath.endsWith("/GetSecurityStates") && System.getProperty("slowKeepaliveTest") == "1") {
-                    Thread.sleep(350)
-                    keepaliveSyncs.incrementAndGet()
+                val slow = chain.request().url.encodedPath.endsWith("/GetSecurityStates") && System.getProperty("slowKeepaliveTest") == "1"
+                if (slow) Thread.sleep(350)
+                chain.proceed(chain.request()).also {
+                    if (slow) keepaliveSyncs.incrementAndGet()
                 }
-                chain.proceed(chain.request())
             }.build()
             val remote = Remote(
                 account = phone,
@@ -1997,7 +1999,7 @@ class DirectTransportTest {
                 directPrefs = InMemoryDirectPreferenceStore(),
                 stunUrls = emptyList(),
                 clock = { nowMs.get() },
-                monotonic = { nowMs.get() },
+                monotonic = testMonotonic,
             )
             val daemon = DirectBridgeDaemon(daemonAccount, server.url, http, { nowMs.get() }, bridge.daemonFactory)
             try {
