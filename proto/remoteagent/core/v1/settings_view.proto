@@ -1,0 +1,519 @@
+syntax = "proto3";
+
+package remoteagent.core.v1;
+
+import "remoteagent/core/v1/machine_view.proto";
+import "remoteagent/core/v1/text.proto";
+import "remoteagent/v1/event.proto";
+
+// ---- Enums: Settings, Direct Connection, Devices ----
+
+enum DirectRouteState {
+  DIRECT_ROUTE_STATE_UNSPECIFIED = 0;
+  DIRECT_ROUTE_STATE_UNSUPPORTED = 1;
+  DIRECT_ROUTE_STATE_CONNECTED = 2;
+  DIRECT_ROUTE_STATE_CONNECTING = 3;
+  DIRECT_ROUTE_STATE_NONE = 4;
+}
+
+enum DirectRouteReason {
+  DIRECT_ROUTE_REASON_UNSPECIFIED = 0;
+  DIRECT_ROUTE_REASON_DISABLED = 1;
+  DIRECT_ROUTE_REASON_PEER_UNSUPPORTED = 2;
+  DIRECT_ROUTE_REASON_NO_RESPONSE = 3;
+  DIRECT_ROUTE_REASON_NO_TRAVERSAL = 4;
+  DIRECT_ROUTE_REASON_FAILED = 5;
+  DIRECT_ROUTE_REASON_AT_CAP = 6;
+  DIRECT_ROUTE_REASON_DAEMON_DISABLED = 7;
+}
+
+enum DirectPathChoice {
+  DIRECT_PATH_CHOICE_UNSPECIFIED = 0;
+  DIRECT_PATH_CHOICE_DIRECT = 1;
+  DIRECT_PATH_CHOICE_RELAY = 2;
+}
+
+enum ConnectionGroupStage {
+  CONNECTION_GROUP_STAGE_UNSPECIFIED = 0;
+  CONNECTION_GROUP_STAGE_DIRECT = 1;
+  CONNECTION_GROUP_STAGE_CONNECTING = 2;
+  CONNECTION_GROUP_STAGE_MEASURING = 3;
+  CONNECTION_GROUP_STAGE_RELAY = 4;
+  CONNECTION_GROUP_STAGE_RELAY_FAILED = 5;
+  CONNECTION_GROUP_STAGE_DISABLED = 6;
+  CONNECTION_GROUP_STAGE_UNSUPPORTED = 7;
+  CONNECTION_GROUP_STAGE_OFFLINE = 8;
+}
+
+enum ConnectionGroupTone {
+  CONNECTION_GROUP_TONE_UNSPECIFIED = 0;
+  CONNECTION_GROUP_TONE_MUTED = 1;
+  CONNECTION_GROUP_TONE_LIVE = 2;
+  CONNECTION_GROUP_TONE_WARN = 3;
+  CONNECTION_GROUP_TONE_FAIL = 4;
+}
+
+enum ThemePreference {
+  THEME_PREFERENCE_UNSPECIFIED = 0;
+  THEME_PREFERENCE_AUTO = 1;
+  THEME_PREFERENCE_LIGHT = 2;
+  THEME_PREFERENCE_DARK = 3;
+}
+
+enum NotificationPermissionState {
+  NOTIFICATION_PERMISSION_STATE_UNSPECIFIED = 0;
+  NOTIFICATION_PERMISSION_STATE_GRANTED = 1;
+  NOTIFICATION_PERMISSION_STATE_DENIED = 2;
+  NOTIFICATION_PERMISSION_STATE_UNSUPPORTED = 3;
+  NOTIFICATION_PERMISSION_STATE_NEEDS_HOME_SCREEN = 4;
+}
+
+enum PushRegistrationState {
+  PUSH_REGISTRATION_STATE_UNSPECIFIED = 0;
+  PUSH_REGISTRATION_STATE_ACTIVE = 1;
+  PUSH_REGISTRATION_STATE_REGISTERING = 2;
+  PUSH_REGISTRATION_STATE_DISABLED = 3;
+  PUSH_REGISTRATION_STATE_FAILED = 4;
+}
+
+enum ConnProbeState {
+  CONN_PROBE_STATE_UNSPECIFIED = 0;
+  CONN_PROBE_STATE_NOT_CHECKED = 1;
+  CONN_PROBE_STATE_CHECKING = 2;
+  CONN_PROBE_STATE_WORKING = 3;
+  CONN_PROBE_STATE_SLOW = 4;
+  CONN_PROBE_STATE_UNAVAILABLE = 5;
+}
+
+// ---- Settings Screen ----
+
+message SettingsScreenRequest {}
+
+message MachineListCardView {
+  string machine_id = 1;
+  string name = 2;
+  bool online = 3;
+  bool member = 4;
+  int32 protocol_mismatch = 5;
+  Text status_text = 6;
+  repeated QuotaCliSection quota_summaries = 7;
+  int64 last_seen_ms = 8;
+}
+
+message ClientRowView {
+  string device_id = 1;
+  string display_name = 2;
+  string description = 3;
+  string short_id = 4;
+  bool is_self = 5;
+  bool is_authority = 6;
+  bool member = 7;
+  bool pairing_incomplete = 8;
+  Text role_label = 9;
+  Text last_used_text = 10;
+  Text added_text = 11;
+}
+
+message SecuritySummaryView {
+  bool is_manager = 1;
+  bool unlinked = 2;
+  string authority_device_id = 3;
+  string authority_name = 4;
+  bool recovery_pending = 5;
+  int64 recovery_ready_ms = 6;
+  Text summary_text = 7;
+  Text recovery_notice = 8;
+}
+
+message NotificationsView {
+  bool supported = 1;
+  NotificationPermissionState permission = 2;
+  PushRegistrationState push_state = 3;
+  bool notify_attention = 4;
+  bool notify_turn_ended = 5;
+  bool notify_scheduled = 6;
+  bool show_content = 7;
+  Text status_text = 8;
+  Text hint_text = 9;
+  string error_detail = 10;
+}
+
+message AppearanceView {
+  ThemePreference theme = 1;
+  Text label = 2;
+}
+
+message ReleaseCandidateInfo {
+  string version = 1;
+  bool prerelease = 2;
+  bool draft = 3;
+  string notes = 4;
+  bool protocol_changed = 5;
+}
+
+message ClientUpdateView {
+  string current_version = 1;
+  uint32 protocol_version = 2;
+  string channel = 3;
+  bool checking = 4;
+  bool has_update = 5;
+  string available_version = 6;
+  string downloaded_version = 7;
+  int32 download_progress_percent = 8;
+  bool protocol_changed = 9;
+  Text status_text = 10;
+  Text error_text = 11;
+}
+
+message ConnCheckSummaryView {
+  ConnProbeState server_state = 1;
+  int32 latency_ms = 2;
+  Text status_word = 3;
+  Text summary_text = 4;
+  Text last_failure_text = 5;
+}
+
+message SettingsViewModel {
+  bool online = 1;
+  bool clock_skewed = 2;
+  bool unlinked = 3;
+  bool has_account = 4;
+  bool is_manager = 5;
+  string authority_name = 6;
+  bool recovery_pending = 7;
+  int64 recovery_ready_ms = 8;
+  Text recovery_banner_text = 9;
+  Text unlinked_banner_text = 10;
+  Text clock_skew_banner_text = 11;
+  repeated MachineListCardView machines = 12;
+  bool can_add_device = 13;
+  Text add_device_hint = 14;
+  Text empty_machines_text = 15;
+  repeated ClientRowView recent_clients = 16;
+  bool has_more_clients = 17;
+  int32 total_devices_count = 18;
+  SecuritySummaryView security = 19;
+  NotificationsView notifications = 20;
+  AppearanceView appearance = 21;
+  ClientUpdateView update = 22;
+  ConnCheckSummaryView conn_check = 23;
+  repeated DiskReminderView disk_reminders = 24;
+  QuotaBannerView quota_banner = 25;
+  bool can_exit_account = 26;
+  bool exit_needs_transfer = 27;
+}
+
+// ---- Per-Machine Settings Screen ----
+
+message MachineSettingsScreenRequest {
+  string machine_id = 1;
+}
+
+message DirectRouteReport {
+  bool enabled = 1;
+  bool capable = 2;
+  bool daemon_disabled = 3;
+  DirectRouteState state = 4;
+  DirectRouteReason reason = 5;
+  DirectPathChoice file_route = 6;
+  DirectPathChoice read_route = 7;
+  bool has_active_rtt_ms = 8;
+  int32 active_rtt_ms = 9;
+  bool has_direct_file_mibps = 10;
+  double direct_file_mibps = 11;
+  bool has_relay_file_mibps = 12;
+  double relay_file_mibps = 13;
+  bool has_direct_read_ms = 14;
+  int32 direct_read_ms = 15;
+  bool has_relay_read_ms = 16;
+  int32 relay_read_ms = 17;
+  bool warming = 18;
+  bool compared = 19;
+  bool has_diagnostics = 20;
+}
+
+message ConnectionGroupView {
+  bool toggle_visible = 1;
+  bool toggle_enabled = 2;
+  bool toggle_checked = 3;
+  ConnectionGroupStage stage = 4;
+  ConnectionGroupTone tone = 5;
+  Text status_text = 6;
+  Text metric_text = 7;
+  Text detail_text = 8;
+  Text file_speed_text = 9;
+  Text read_latency_text = 10;
+  bool show_diagnostics_entry = 11;
+  Text footer_text = 12;
+}
+
+message CliVersionView {
+  remoteagent.v1.Agent agent = 1;
+  string name = 2;
+  string version = 3;
+  bool verified = 4;
+  Text unverified_label = 5;
+}
+
+message ModelChoiceView {
+  string id = 1;
+  Text label = 2;
+  string desc = 3;
+  bool selected = 4;
+  bool is_default = 5;
+}
+
+message EffortChoiceView {
+  string id = 1;
+  Text label = 2;
+  bool selected = 3;
+  bool is_default = 4;
+}
+
+message ModeChoiceView {
+  remoteagent.v1.ApprovalMode mode = 1;
+  Text label = 2;
+  bool selected = 3;
+  bool disabled = 4;
+  Text disabled_reason = 5;
+}
+
+message MachineAgentDefaultsView {
+  remoteagent.v1.Agent agent = 1;
+  string agent_name = 2;
+  string selected_model = 3;
+  Text selected_model_label = 4;
+  repeated ModelChoiceView model_choices = 5;
+  string selected_effort = 6;
+  repeated EffortChoiceView effort_choices = 7;
+  remoteagent.v1.ApprovalMode selected_mode = 8;
+  repeated ModeChoiceView mode_choices = 9;
+  Text auto_unavailable_notice = 10;
+  Text footer_text = 11;
+}
+
+message TimeoutChoiceView {
+  int32 seconds = 1;
+  Text label = 2;
+  bool selected = 3;
+}
+
+message IdleCloseChoiceView {
+  int32 minutes = 1;
+  Text label = 2;
+  bool selected = 3;
+}
+
+message QuotaSizeChoiceView {
+  int64 bytes = 1;
+  Text label = 2;
+  bool selected = 3;
+}
+
+message AttachmentStorageView {
+  bool loaded = 1;
+  Text uploaded_text = 2;
+  Text uploaded_detail = 3;
+  int64 selected_quota_bytes = 4;
+  repeated QuotaSizeChoiceView quota_choices = 5;
+  Text preview_cache_text = 6;
+  bool show_emergency_reserve = 7;
+  Text emergency_reserve_text = 8;
+  bool can_clear = 9;
+  bool cleaning = 10;
+  Text clear_button_label = 11;
+  Text footer_text = 12;
+}
+
+message MachineProjectView {
+  string project_key = 1;
+  string name = 2;
+  string path = 3;
+  Text last_active_text = 4;
+}
+
+message MachineManagementActionsView {
+  bool can_rejoin = 1;
+  bool can_delete_records = 2;
+  bool can_remove = 3;
+  bool is_authority_device = 4;
+  Text explanation_text = 5;
+}
+
+message MachineSettingsViewModel {
+  string machine_id = 1;
+  string name = 2;
+  bool found = 3;
+  bool member = 4;
+  bool online = 5;
+  bool unlinked = 6;
+  int32 protocol_mismatch = 7;
+  bool editable = 8;
+  Text offline_or_mismatch_banner = 9;
+  Text removed_banner = 10;
+  bool show_status_entry = 11;
+  repeated MachineRingView status_rings = 12;
+  repeated QuotaCliSection quota_rows = 13;
+  ConnectionGroupView connection = 14;
+  repeated CliVersionView cli_versions = 15;
+  bool has_unverified_cli = 16;
+  bool settings_loading = 17;
+  Text settings_error = 18;
+  bool save_pending = 19;
+  bool save_unknown = 20;
+  Text save_error = 21;
+  repeated remoteagent.v1.Agent available_agents = 22;
+  remoteagent.v1.Agent selected_agent = 23;
+  MachineAgentDefaultsView agent_defaults = 24;
+  repeated TimeoutChoiceView approval_timeout_choices = 25;
+  int32 selected_approval_timeout_seconds = 26;
+  repeated IdleCloseChoiceView idle_close_choices = 27;
+  int32 selected_idle_close_minutes = 28;
+  AttachmentStorageView attachment_storage = 29;
+  repeated MachineProjectView projects = 30;
+  MachineManagementActionsView management = 31;
+}
+
+// ---- Devices & Client Detail Screens ----
+
+message DevicesScreenRequest {}
+
+message DevicesViewModel {
+  bool is_manager = 1;
+  bool online = 2;
+  bool unlinked = 3;
+  string authority_device_id = 4;
+  string authority_name = 5;
+  bool can_add_device = 6;
+  Text add_device_hint = 7;
+  repeated MachineListCardView computers = 8;
+  repeated ClientRowView clients = 9;
+  repeated ClientRowView unfinished_pairings = 10;
+  Text error_text = 11;
+}
+
+message ClientDetailScreenRequest {
+  string device_id = 1;
+}
+
+message ClientDetailViewModel {
+  string device_id = 1;
+  bool found = 2;
+  bool is_self = 3;
+  bool is_authority = 4;
+  bool member = 5;
+  string display_name = 6;
+  string custom_name = 7;
+  string default_name = 8;
+  string description = 9;
+  string short_id = 10;
+  Text role_label = 11;
+  Text last_used_text = 12;
+  Text added_text = 13;
+  bool can_rename = 14;
+  int32 max_name_length = 15;
+  bool can_restore_default = 16;
+  bool rename_saving = 17;
+  Text rename_error = 18;
+  bool show_exit_action = 19;
+  bool can_remove = 20;
+  Text management_hint = 21;
+}
+
+// ---- Events & Effects (Settings & Devices) ----
+
+message MachineSettingsOpenEvent {
+  string machine_id = 1;
+}
+
+message MachineSettingsSelectAgentEvent {
+  string machine_id = 1;
+  remoteagent.v1.Agent agent = 2;
+}
+
+message UpdateMachineAgentDefaultsEvent {
+  string machine_id = 1;
+  remoteagent.v1.Agent agent = 2;
+  optional string model = 3;
+  optional string effort = 4;
+  optional remoteagent.v1.ApprovalMode mode = 5;
+}
+
+message UpdateMachineDaemonSettingsEvent {
+  string machine_id = 1;
+  optional int32 approval_timeout_seconds = 2;
+  optional int32 idle_close_minutes = 3;
+  optional int64 image_upload_quota_bytes = 4;
+  bool clean_images = 5;
+}
+
+message UpdateDirectPreferenceEvent {
+  string machine_id = 1;
+  bool enabled = 2;
+}
+
+message MachineDirectStatusEvent {
+  string machine_id = 1;
+  DirectRouteReport report = 2;
+}
+
+message UpdateClientNameEvent {
+  string device_id = 1;
+  string name = 2;
+  bool restore_default = 3;
+}
+
+message SetNotificationPrefEvent {
+  optional bool supported = 1;
+  optional NotificationPermissionState permission = 2;
+  optional PushRegistrationState push_state = 3;
+  optional bool notify_attention = 4;
+  optional bool notify_turn_ended = 5;
+  optional bool notify_scheduled = 6;
+  optional bool show_content = 7;
+  optional string error_detail = 8;
+}
+
+message SetAppearancePrefEvent {
+  ThemePreference theme = 1;
+}
+
+message ConnCheckStatusEvent {
+  ConnProbeState server_state = 1;
+  int32 latency_ms = 2;
+  string last_failure = 3;
+}
+
+message ClientUpdateStateEvent {
+  string current_version = 1;
+  uint32 protocol_version = 2;
+  string channel = 3;
+  bool checking = 4;
+  string available_version = 5;
+  string downloaded_version = 6;
+  int32 download_progress_percent = 7;
+  string error_message = 8;
+  repeated ReleaseCandidateInfo releases = 9;
+}
+
+message CheckForUpdatesEvent {}
+
+message DirectPreferenceEffect {
+  string machine_id = 1;
+  bool enabled = 2;
+}
+
+message RenameClientEffect {
+  string device_id = 1;
+  string name = 2;
+}
+
+message CheckUpdatesEffect {}
+
+message PersistClientPrefsEffect {
+  bool notify_attention = 1;
+  bool notify_turn_ended = 2;
+  bool notify_scheduled = 3;
+  bool show_content = 4;
+  ThemePreference theme = 5;
+}

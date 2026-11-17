@@ -1,0 +1,159 @@
+{
+  "steps": [
+    {
+      "event": {
+        "nowMs": "1791078060000",
+        "clockUpdated": {
+          "nowMs": "1791078060000",
+          "todayStartMs": "1791043200000",
+          "yesterdayStartMs": "1790956800000",
+          "weekStartMs": "1790524800000",
+          "nowYear": 2026,
+          "months": [{ "year": 2026, "month": 10, "startMs": "1790812800000" }]
+        }
+      }
+    },
+    {
+      "event": {
+        "nowMs": "1791078060000",
+        "monoMs": "1000",
+        "syncLifecycle": { "kind": "SYNC_LIFECYCLE_KIND_START" }
+      }
+    },
+    {
+      "event": {
+        "nowMs": "1791078060010",
+        "securitySnapshot": {
+          "opId": "3",
+          "isMember": true,
+          "selfDeviceId": "dev-self",
+          "authorityDeviceId": "dev-auth",
+          "leaseEndMs": "1791164460000",
+          "recoveryPending": true,
+          "recoveryReadyMs": "1791250860000",
+          "trustedMachineIds": ["m1", "m2"],
+          "trustedClientIds": ["dev-self", "dev-auth", "dev-2", "dev-3", "dev-4"]
+        }
+      }
+    },
+    {
+      "event": {
+        "nowMs": "1791078060020",
+        "tokenResult": { "opId": "2", "token": "tok-1" }
+      }
+    },
+    {
+      "event": {
+        "nowMs": "1791078060030",
+        "streamReady": { "legId": "1", "serverTimeMs": "1791078060030" }
+      }
+    },
+    {
+      "event": {
+        "nowMs": "1791078060040",
+        "listsFetched": {
+          "opId": "4",
+          "machines": [
+            {
+              "machineId": "m1",
+              "online": true,
+              "lastSeenMs": "1791078060000",
+              "meta": {
+                "hostname": "BuildBox",
+                "protocolVersion": 16,
+                "capabilities": { "machineStatus": true },
+                "diskStatus": { "totalBytes": "500000000000", "availableBytes": "1500000000", "pressure": "RESOURCE_PRESSURE_CRITICAL" },
+                "quotas": [
+                  {
+                    "agent": "AGENT_CODEX",
+                    "state": "QUOTA_STATE_OK",
+                    "observedMs": "1791077900000",
+                    "windows": [{ "name": "primary", "usedPercent": 90.0, "resetsAtMs": "1791081660000" }]
+                  }
+                ]
+              }
+            },
+            {
+              "machineId": "m2",
+              "online": false,
+              "lastSeenMs": "1791000000000",
+              "meta": {
+                "hostname": "BackupMac",
+                "protocolVersion": 15
+              }
+            }
+          ],
+          "devices": [
+            { "deviceId": "dev-self", "kind": "DEVICE_KIND_CLIENT", "createdMs": "1790000000000", "lastSeenMs": "1791078000000", "meta": { "name": "My Phone", "description": "Pixel 9" } },
+            { "deviceId": "dev-auth", "kind": "DEVICE_KIND_CLIENT", "createdMs": "1789000000000", "lastSeenMs": "1791077000000", "meta": { "description": "iPad Pro" } },
+            { "deviceId": "dev-2", "kind": "DEVICE_KIND_CLIENT", "createdMs": "1789500000000", "lastSeenMs": "1791076000000", "meta": { "description": "Chrome on macOS" } },
+            { "deviceId": "dev-3", "kind": "DEVICE_KIND_CLIENT", "createdMs": "1789600000000", "lastSeenMs": "1791075000000", "meta": { "description": "Firefox" } },
+            { "deviceId": "dev-4", "kind": "DEVICE_KIND_CLIENT", "createdMs": "1789700000000", "lastSeenMs": "1791074000000", "meta": { "description": "Safari" } },
+            { "deviceId": "dev-untrusted", "kind": "DEVICE_KIND_CLIENT", "createdMs": "1791070000000", "lastSeenMs": "1791070000000", "meta": { "description": "New Tablet" } }
+          ]
+        }
+      }
+    },
+    {
+      "event": {
+        "nowMs": "1791078060050",
+        "setNotificationPref": {
+          "supported": true,
+          "permission": "NOTIFICATION_PERMISSION_STATE_GRANTED",
+          "pushState": "PUSH_REGISTRATION_STATE_ACTIVE",
+          "notifyAttention": true,
+          "notifyTurnEnded": false,
+          "notifyScheduled": true,
+          "showContent": false
+        }
+      }
+    },
+    {
+      "event": {
+        "nowMs": "1791078060060",
+        "setAppearancePref": { "theme": "THEME_PREFERENCE_DARK" }
+      }
+    },
+    {
+      "event": {
+        "nowMs": "1791078060070",
+        "connCheckStatus": { "serverState": "CONN_PROBE_STATE_WORKING", "latencyMs": 38 }
+      }
+    },
+    {
+      "event": {
+        "nowMs": "1791078060080",
+        "clientUpdateState": {
+          "currentVersion": "0.32.0",
+          "protocolVersion": 16,
+          "channel": "stable",
+          "releases": [
+            { "version": "v0.33.0-rc1", "prerelease": true },
+            { "version": "v0.32.4", "protocolChanged": false }
+          ]
+        }
+      },
+      "views": [
+        { "name": "settings", "screen": { "settings": {} } },
+        { "name": "devices", "screen": { "devices": {} } },
+        { "name": "selfClient", "screen": { "clientDetail": { "deviceId": "dev-self" } } },
+        { "name": "authClient", "screen": { "clientDetail": { "deviceId": "dev-auth" } } }
+      ]
+    },
+    {
+      "event": {
+        "nowMs": "1791078060090",
+        "updateClientName": { "deviceId": "dev-self", "name": "Work Phone 1234567890123456789012345678901234567890" }
+      }
+    },
+    {
+      "event": {
+        "nowMs": "1791078060100",
+        "checkForUpdates": {}
+      },
+      "views": [
+        { "name": "checkingUpdate", "screen": { "settings": {} } }
+      ]
+    }
+  ]
+}

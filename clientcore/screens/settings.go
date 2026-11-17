@@ -1,0 +1,879 @@
+package screens
+
+import (
+	"fmt"
+	"sort"
+	"strings"
+
+	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
+	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
+	"github.com/Lewin671/remote-agent/clientcore/domain/lists"
+	"github.com/Lewin671/remote-agent/clientcore/domain/machine"
+	"github.com/Lewin671/remote-agent/clientcore/domain/quota"
+	"github.com/Lewin671/remote-agent/clientcore/text"
+)
+
+// MachineSettingsExtra holds per-machine transient and UI-owned settings state in Core.
+type MachineSettingsExtra struct {
+	SelectedAgent  v1.Agent
+	ImageStorage   *v1.ImageStorageUsage
+	SavePending    bool
+	SaveUnknown    bool
+	CleaningImages bool
+	SaveError      *corev1.Text
+	DirectEnabled  bool
+	DirectHasPref  bool
+	DirectReport   *corev1.DirectRouteReport
+}
+
+// NotificationPrefs holds client-local notification preferences and push registration state.
+type NotificationPrefs struct {
+	Supported       bool
+	Permission      corev1.NotificationPermissionState
+	PushState       corev1.PushRegistrationState
+	NotifyAttention bool
+	NotifyTurnEnded bool
+	NotifyScheduled bool
+	ShowContent     bool
+	ErrorDetail     string
+}
+
+// ConnCheckState holds shell-reported relay connectivity check telemetry.
+type ConnCheckState struct {
+	ServerState corev1.ConnProbeState
+	LatencyMs   int32
+	LastFailure string
+}
+
+// UpdateState holds shell-reported client release check/download state.
+type UpdateState struct {
+	CurrentVersion          string
+	ProtocolVersion         uint32
+	Channel                 string
+	Checking                bool
+	AvailableVersion        string
+	DownloadedVersion       string
+	DownloadProgressPercent int32
+	ErrorMessage            string
+	Releases                []*corev1.ReleaseCandidateInfo
+}
+
+// SettingsExtra holds all screen & controller state owned by the Settings / Machine / Devices domain.
+type SettingsExtra struct {
+	Active                  bool
+	Machines                map[string]*MachineSettingsExtra
+	PollFeeds               map[string]*MachinePollFeed
+	PendingCleanupMachineID string
+	RenameSaving            bool
+	RenameError             *corev1.Text
+	Notifications           NotificationPrefs
+	Theme                   corev1.ThemePreference
+	ConnCheck               ConnCheckState
+	Update                  UpdateState
+}
+
+// NewSettingsExtra initializes default SettingsExtra state matching shell defaults.
+func NewSettingsExtra() *SettingsExtra {
+	return &SettingsExtra{
+		Machines:  make(map[string]*MachineSettingsExtra),
+		PollFeeds: make(map[string]*MachinePollFeed),
+		Notifications: NotificationPrefs{
+			Supported:       true,
+			Permission:      corev1.NotificationPermissionState_NOTIFICATION_PERMISSION_STATE_UNSPECIFIED,
+			PushState:       corev1.PushRegistrationState_PUSH_REGISTRATION_STATE_UNSPECIFIED,
+			NotifyAttention: true,
+			NotifyTurnEnded: true,
+			NotifyScheduled: true,
+			ShowContent:     true,
+		},
+		Theme: corev1.ThemePreference_THEME_PREFERENCE_AUTO,
+		ConnCheck: ConnCheckState{
+			ServerState: corev1.ConnProbeState_CONN_PROBE_STATE_NOT_CHECKED,
+		},
+	}
+}
+
+func (s *SettingsExtra) EnsureMachine(id string) *MachineSettingsExtra {
+	if s.Machines == nil {
+		s.Machines = make(map[string]*MachineSettingsExtra)
+	}
+	e := s.Machines[id]
+	if e == nil {
+		e = &MachineSettingsExtra{DirectEnabled: true}
+		s.Machines[id] = e
+	}
+	return e
+}
+
+func (s *SettingsExtra) EnsureFeed(id string) *MachinePollFeed {
+	if s.PollFeeds == nil {
+		s.PollFeeds = make(map[string]*MachinePollFeed)
+	}
+	f := s.PollFeeds[id]
+	if f == nil {
+		f = &MachinePollFeed{
+			Tab: corev1.MachineUsageTab_MACHINE_USAGE_TAB_SESSIONS,
+		}
+		s.PollFeeds[id] = f
+	}
+	return f
+}
+
+func buildMachineListCards(st *State, machines []*lists.Machine, includeSummary bool) []*corev1.MachineListCardView {
+	sorted := make([]*lists.Machine, 0, len(machines))
+	for _, m := range machines {
+		if m != nil {
+			sorted = append(sorted, m)
+		}
+	}
+	clientVer := st.World.ClientVersion
+	sort.Slice(sorted, func(i, j int) bool {
+		ni := strings.ToLower(lists.MachineName(sorted[i], sorted[i].ID))
+		nj := strings.ToLower(lists.MachineName(sorted[j], sorted[j].ID))
+		if ni != nj {
+			return ni < nj
+		}
+		return sorted[i].ID < sorted[j].ID
+	})
+
+	out := make([]*corev1.MachineListCardView, 0, len(sorted))
+	for _, m := range sorted {
+		online := lists.MachineReachable(m)
+		unlinked := lists.MachineUnlinked(m, &st.World)
+		mismatch := lists.ProtocolMismatchDirection(m, clientVer)
+		var statusTxt *corev1.Text
+		if unlinked {
+			statusTxt = text.Msg(text.KeySettingsThisDeviceWasRemovedFromTheAccount)
+		} else if online {
+			statusTxt = text.Msg(text.KeyCommonOnline)
+		} else if m.LastSeenMs > 0 {
+			statusTxt = text.Join(text.KeyCommonNoteSeparator, text.Msg(text.KeyCommonOffline), formatRelativeTime(m.LastSeenMs, st.Cal))
+		} else {
+			statusTxt = text.Msg(text.KeyCommonOffline)
+		}
+		card := &corev1.MachineListCardView{
+			MachineId:        m.ID,
+			Name:             lists.MachineName(m, m.ID),
+			Online:           online,
+			Member:           !unlinked,
+			ProtocolMismatch: mismatch,
+			StatusText:       statusTxt,
+			LastSeenMs:       m.LastSeenMs,
+		}
+		if includeSummary {
+			card.QuotaSummaries = quota.MachineCardSummaries(m, st.Cal.NowMs)
+		}
+		out = append(out, card)
+	}
+	return out
+}
+
+func buildClientRows(st *State, syncView *corev1.SyncStateView, onlyComplete bool) (rows []*corev1.ClientRowView, unfinished []*corev1.ClientRowView) {
+	selfID := syncView.GetSelfDeviceId()
+	authID := syncView.GetAuthorityDeviceId()
+	sorted := machine.SortClients(syncView.GetDevices(), selfID)
+
+	for _, d := range sorted {
+		name := machine.ClientName(d)
+		if name == "" {
+			name = d.DeviceId
+		}
+		isSelf := d.DeviceId == selfID
+		isAuth := d.DeviceId == authID
+		incomplete := !d.Trusted && !isSelf && !isAuth
+
+		var role *corev1.Text
+		switch {
+		case isSelf:
+			role = text.Msg(text.KeySettingsCurrent)
+		case isAuth:
+			role = text.Msg(text.KeySettingsManagingClient)
+		default:
+			role = text.Msg(text.KeySettingsPairedClient)
+		}
+
+		var lastUsed *corev1.Text
+		switch {
+		case isSelf:
+			lastUsed = text.Msg(text.KeySettingsNow)
+		case d.LastSeenMs <= 0:
+			lastUsed = text.Msg(text.KeySettingsNoRecord)
+		default:
+			lastUsed = formatRelativeTime(d.LastSeenMs, st.Cal)
+		}
+
+		row := &corev1.ClientRowView{
+			DeviceId:          d.DeviceId,
+			DisplayName:       name,
+			Description:       machine.DefaultClientName(d),
+			ShortId:           machine.ShortID(d.DeviceId),
+			IsSelf:            isSelf,
+			IsAuthority:       isAuth,
+			Member:            d.Trusted || isSelf || isAuth,
+			PairingIncomplete: incomplete,
+			RoleLabel:         role,
+			LastUsedText:      lastUsed,
+			AddedText:         formatCalendarDay(d.CreatedMs, st.Cal),
+		}
+		if incomplete && onlyComplete {
+			unfinished = append(unfinished, row)
+		} else {
+			rows = append(rows, row)
+		}
+	}
+	return rows, unfinished
+}
+
+func formatCalendarDay(ms int64, cal lists.Calendar) *corev1.Text {
+	if ms <= 0 {
+		return text.Msg(text.KeySettingsNoRecord)
+	}
+	y, m, d, _, _, _ := lists.CivilFromUnixMs(ms, cal.UTCOffsetMinutes)
+	if cal.NowMs > 0 {
+		cy, _, _, _, _, _ := lists.CivilFromUnixMs(cal.NowMs, cal.UTCOffsetMinutes)
+		if cy == y {
+			return text.Msg(text.KeyTimeMonthDay, text.Int("month", int64(m)), text.Int("day", int64(d)))
+		}
+	}
+	return text.Msg(text.KeyTimeCalendarDateYear, text.Int("year", int64(y)), text.Int("month", int64(m)), text.Int("day", int64(d)))
+}
+
+func buildNotificationsView(n NotificationPrefs) *corev1.NotificationsView {
+	v := &corev1.NotificationsView{
+		Supported:       n.Supported,
+		Permission:      n.Permission,
+		PushState:       n.PushState,
+		NotifyAttention: n.NotifyAttention,
+		NotifyTurnEnded: n.NotifyTurnEnded,
+		NotifyScheduled: n.NotifyScheduled,
+		ShowContent:     n.ShowContent,
+		ErrorDetail:     n.ErrorDetail,
+	}
+	if !n.Supported {
+		v.StatusText = text.Msg(text.KeySettingsThisBrowserDoesNotSupportPushNotifications)
+		return v
+	}
+	if n.Permission == corev1.NotificationPermissionState_NOTIFICATION_PERMISSION_STATE_NEEDS_HOME_SCREEN {
+		v.StatusText = text.Msg(text.KeySettingsCannotReceive)
+		v.HintText = text.Msg(text.KeySettingsIphonePushHelp)
+		return v
+	}
+	if n.Permission == corev1.NotificationPermissionState_NOTIFICATION_PERMISSION_STATE_DENIED {
+		v.StatusText = text.Msg(text.KeySettingsCannotReceive)
+		v.HintText = text.Msg(text.KeySettingsNotificationPermissionHelp)
+		return v
+	}
+	switch n.PushState {
+	case corev1.PushRegistrationState_PUSH_REGISTRATION_STATE_DISABLED:
+		v.StatusText = text.Msg(text.KeySettingsSessionAlertsAreOffYouWillNotBeNotified)
+	case corev1.PushRegistrationState_PUSH_REGISTRATION_STATE_FAILED:
+		v.StatusText = text.Msg(text.KeySettingsSubscriptionError, reasonArg("reason", nil, n.ErrorDetail))
+	default:
+		v.StatusText = text.Msg(text.KeySettingsEnabled)
+	}
+	return v
+}
+
+func buildAppearanceView(theme corev1.ThemePreference) *corev1.AppearanceView {
+	if theme == corev1.ThemePreference_THEME_PREFERENCE_UNSPECIFIED {
+		theme = corev1.ThemePreference_THEME_PREFERENCE_AUTO
+	}
+	var lbl *corev1.Text
+	switch theme {
+	case corev1.ThemePreference_THEME_PREFERENCE_LIGHT:
+		lbl = text.Msg(text.KeySettingsLight)
+	case corev1.ThemePreference_THEME_PREFERENCE_DARK:
+		lbl = text.Msg(text.KeySettingsDark)
+	default:
+		lbl = text.Msg(text.KeySettingsThemeAuto)
+	}
+	return &corev1.AppearanceView{
+		Theme: theme,
+		Label: lbl,
+	}
+}
+
+func buildConnCheckSummary(st *State, cc ConnCheckState) *corev1.ConnCheckSummaryView {
+	out := &corev1.ConnCheckSummaryView{
+		ServerState: cc.ServerState,
+		LatencyMs:   cc.LatencyMs,
+	}
+	if st != nil && st.ConnectionReasonText != nil {
+		out.LastFailureText = st.ConnectionReasonText
+	} else if cc.LastFailure != "" {
+		out.LastFailureText = text.Msg(text.KeyConnectionLastFailure, text.Str("value", cc.LastFailure))
+	}
+
+	switch st.World.Connection {
+	case lists.ConnNoNetwork:
+		out.StatusWord = text.Msg(text.KeyConnectionUnavailable)
+	case lists.ConnConnecting:
+		out.StatusWord = text.Msg(text.KeyConnectionConnectingConnCheckLabel)
+	case lists.ConnReconnecting:
+		out.StatusWord = text.Msg(text.KeyConnectionReconnectingConnCheckLabel)
+	case lists.ConnOffline:
+		out.StatusWord = text.Msg(text.KeyConnectionUnreachable)
+	default:
+		switch cc.ServerState {
+		case corev1.ConnProbeState_CONN_PROBE_STATE_CHECKING:
+			out.StatusWord = text.Msg(text.KeyConnectionChecking)
+		case corev1.ConnProbeState_CONN_PROBE_STATE_WORKING:
+			out.StatusWord = text.Msg(text.KeyConnectionWorking)
+			if cc.LatencyMs > 0 {
+				out.SummaryText = text.Msg(text.KeyTransportReadLatencyRelay, text.Str("relay", fmt.Sprintf("%d", cc.LatencyMs)))
+			}
+		case corev1.ConnProbeState_CONN_PROBE_STATE_SLOW:
+			out.StatusWord = text.Msg(text.KeyConnectionSlow)
+			if cc.LatencyMs > 0 {
+				out.SummaryText = text.Msg(text.KeyTransportReadLatencyRelay, text.Str("relay", fmt.Sprintf("%d", cc.LatencyMs)))
+			}
+		case corev1.ConnProbeState_CONN_PROBE_STATE_UNAVAILABLE:
+			out.StatusWord = text.Msg(text.KeyConnectionUnavailable)
+		default:
+			out.StatusWord = text.Msg(text.KeyConnectionConnected)
+		}
+	}
+	return out
+}
+
+func buildClientUpdateView(u UpdateState, clientProto uint32) *corev1.ClientUpdateView {
+	protoVer := u.ProtocolVersion
+	if protoVer == 0 {
+		protoVer = clientProto
+	}
+	v := &corev1.ClientUpdateView{
+		CurrentVersion:          u.CurrentVersion,
+		ProtocolVersion:         protoVer,
+		Channel:                 u.Channel,
+		Checking:                u.Checking,
+		AvailableVersion:        u.AvailableVersion,
+		DownloadedVersion:       u.DownloadedVersion,
+		DownloadProgressPercent: u.DownloadProgressPercent,
+	}
+	if u.AvailableVersion == "" && u.CurrentVersion != "" && len(u.Releases) > 0 {
+		if pick := machine.PickUpgradeRelease(u.CurrentVersion, u.Channel, u.Releases); pick != nil {
+			v.AvailableVersion = pick.Version
+			v.ProtocolChanged = pick.ProtocolChanged
+		}
+	}
+	v.HasUpdate = v.AvailableVersion != "" || v.DownloadedVersion != ""
+	if u.ErrorMessage != "" {
+		v.ErrorText = text.Plain(u.ErrorMessage)
+	}
+	switch {
+	case u.Checking:
+		v.StatusText = text.Msg(text.KeySettingsChecking)
+	case v.HasUpdate:
+		ver := v.DownloadedVersion
+		if ver == "" {
+			ver = v.AvailableVersion
+		}
+		v.StatusText = text.Plain(ver)
+	case u.ErrorMessage == "":
+		v.StatusText = text.Msg(text.KeySettingsUpToDate)
+	}
+	return v
+}
+
+// BuildSettings builds the top-level Settings screen ViewModel.
+func BuildSettings(st *State, syncView *corev1.SyncStateView, extra *SettingsExtra) *corev1.SettingsViewModel {
+	if extra == nil {
+		extra = NewSettingsExtra()
+	}
+	unlinked := syncView.GetUnlinked() || lists.WorldUnlinked(&st.World)
+	isMgr := syncView.GetIsManager() || st.World.IsManager
+	authName := machine.AuthorityName(syncView, st.World.Machines)
+	online := st.World.Connection == lists.ConnConnected
+
+	allClients, unfinished := buildClientRows(st, syncView, true)
+	recent := allClients
+	hasMore := false
+	if len(allClients) > 4 {
+		recent = allClients[:4]
+		hasMore = true
+	} else if len(unfinished) > 0 {
+		hasMore = true
+	}
+
+	otherClients := 0
+	for _, c := range allClients {
+		if !c.IsSelf {
+			otherClients++
+		}
+	}
+
+	vm := &corev1.SettingsViewModel{
+		Online:             online,
+		ClockSkewed:        st.World.AccountClockSkewed || syncView.GetAccountClockSkewed(),
+		Unlinked:           unlinked,
+		HasAccount:         syncView.GetSelfDeviceId() != "",
+		IsManager:          isMgr,
+		AuthorityName:      authName,
+		RecoveryPending:    syncView.GetRecoveryPending(),
+		RecoveryReadyMs:    syncView.GetRecoveryReadyMs(),
+		Machines:           buildMachineListCards(st, st.World.Machines, true),
+		CanAddDevice:       isMgr && !unlinked,
+		RecentClients:      recent,
+		HasMoreClients:     hasMore,
+		TotalDevicesCount:  int32(len(st.World.Machines) + len(allClients)),
+		Notifications:      buildNotificationsView(extra.Notifications),
+		Appearance:         buildAppearanceView(extra.Theme),
+		Update:             buildClientUpdateView(extra.Update, st.World.ClientVersion),
+		ConnCheck:          buildConnCheckSummary(st, extra.ConnCheck),
+		DiskReminders:      machine.BuildDiskReminders(st.World.Machines),
+		QuotaBanner:        quota.Banner(st.World.Machines, st.Cal.NowMs),
+		CanExitAccount:     syncView.GetSelfDeviceId() != "",
+		ExitNeedsTransfer:  isMgr && otherClients > 0,
+	}
+
+	if vm.ClockSkewed {
+		vm.ClockSkewBannerText = text.Msg(text.KeyErrorsThisDeviceSClockIsBehindTheAccountStateRemote)
+	}
+	if vm.Unlinked {
+		vm.UnlinkedBannerText = text.Msg(text.KeySettingsThisDeviceWasRemovedFromTheAccount)
+	}
+	if vm.RecoveryPending && isMgr {
+		vm.RecoveryBannerText = text.Msg(text.KeySecuritySomeoneIsRequestingManagementTakeoverWithARecoveryCode)
+	}
+	if !isMgr && authName != "" {
+		vm.AddDeviceHint = text.Msg(text.KeySecurityAddOnAuthority, text.Str("name", authName))
+	}
+	if len(vm.Machines) == 0 {
+		vm.EmptyMachinesText = text.Msg(text.KeySettingsNoComputersYet)
+	}
+
+	secSummary := text.Msg(text.KeySecurityManageOnAuthority, text.Str("name", authName))
+	if isMgr {
+		secSummary = text.Msg(text.KeySecurityThisDeviceManagesTheAccount)
+	}
+	vm.Security = &corev1.SecuritySummaryView{
+		IsManager:         isMgr,
+		Unlinked:          unlinked,
+		AuthorityDeviceId: syncView.GetAuthorityDeviceId(),
+		AuthorityName:     authName,
+		RecoveryPending:   syncView.GetRecoveryPending(),
+		RecoveryReadyMs:   syncView.GetRecoveryReadyMs(),
+		SummaryText:       secSummary,
+		RecoveryNotice:    vm.RecoveryBannerText,
+	}
+	return vm
+}
+
+// BuildMachineSettings builds the per-machine details & daemon configuration ViewModel.
+func BuildMachineSettings(st *State, syncView *corev1.SyncStateView, extra *SettingsExtra, machineID string) *corev1.MachineSettingsViewModel {
+	if extra == nil {
+		extra = NewSettingsExtra()
+	}
+	m := findMachineByID(st, machineID)
+	unlinked := syncView.GetUnlinked() || lists.WorldUnlinked(&st.World)
+	isMgr := syncView.GetIsManager() || st.World.IsManager
+	authID := syncView.GetAuthorityDeviceId()
+	onlineWorld := st.World.Connection == lists.ConnConnected
+
+	vm := &corev1.MachineSettingsViewModel{
+		MachineId: machineID,
+		Unlinked:  unlinked,
+	}
+	if m == nil {
+		vm.Name = machine.ShortID(machineID)
+		vm.OfflineOrMismatchBanner = text.Msg(text.KeySettingsDeviceNotFound)
+		return vm
+	}
+
+	vm.Found = true
+	vm.Name = lists.MachineName(m, machineID)
+	vm.Member = !lists.MachineUnlinked(m, &st.World)
+	vm.Online = lists.MachineReachable(m)
+	vm.ProtocolMismatch = lists.ProtocolMismatchDirection(m, st.World.ClientVersion)
+	vm.Editable = vm.Member && vm.Online && !unlinked && vm.ProtocolMismatch == 0
+
+	if !vm.Member {
+		vm.RemovedBanner = text.Msg(text.KeySettingsThisDeviceWasRemovedFromTheAccount)
+	} else if !vm.Online {
+		vm.OfflineOrMismatchBanner = text.Msg(text.KeySettingsComputerSettingsOffline, text.Str("name", vm.Name))
+	} else if vm.ProtocolMismatch != 0 {
+		vm.OfflineOrMismatchBanner = text.Msg(text.KeySettingsComputerSettingsOffline, text.Str("name", vm.Name))
+	}
+
+	// Overview telemetry rings
+	if m.Meta != nil && m.Meta.Capabilities != nil && m.Meta.Capabilities.MachineStatus {
+		vm.ShowStatusEntry = true
+		var feed *MachinePollFeed
+		if extra.PollFeeds != nil {
+			feed = extra.PollFeeds[machineID]
+		}
+		var shown *v1.MachineStatus
+		if vm.Online && feed != nil {
+			shown = feed.Last
+		}
+		vm.StatusRings = machine.BuildRings(vm.Online && shown != nil, shown)
+	}
+
+	// Account quota rows
+	vm.QuotaRows = quota.BuildCliSections(m, v1.Agent_AGENT_UNSPECIFIED, st.Cal.NowMs)
+
+	// Direct connection group
+	mExtra := extra.Machines[machineID]
+	directPref := true
+	var directReport *corev1.DirectRouteReport
+	if mExtra != nil {
+		if mExtra.DirectHasPref {
+			directPref = mExtra.DirectEnabled
+		}
+		directReport = mExtra.DirectReport
+	}
+	vm.Connection = machine.BuildConnectionGroup(vm.Online && vm.Member, directPref, directReport)
+
+	// CLI versions
+	for _, info := range lists.MachineVersions(m.Meta) {
+		if info == nil {
+			continue
+		}
+		cliName := lists.AgentInfo(info.Agent).Name
+		var unv *corev1.Text
+		if !info.Verified {
+			vm.HasUnverifiedCli = true
+			unv = text.Msg(text.KeySettingsUnverified)
+		}
+		vm.CliVersions = append(vm.CliVersions, &corev1.CliVersionView{
+			Agent:           info.Agent,
+			Name:            cliName,
+			Version:         info.Version,
+			Verified:        info.Verified,
+			UnverifiedLabel: unv,
+		})
+	}
+
+	// Available CLIs for per-CLI defaults
+	agents := lists.MachineAgents(m.Meta)
+	if len(agents) == 0 {
+		agents = []v1.Agent{v1.Agent_AGENT_CODEX}
+	}
+	vm.AvailableAgents = agents
+	selAgent := agents[0]
+	if mExtra != nil && mExtra.SelectedAgent != v1.Agent_AGENT_UNSPECIFIED {
+		for _, a := range agents {
+			if a == mExtra.SelectedAgent {
+				selAgent = a
+				break
+			}
+		}
+	}
+	vm.SelectedAgent = selAgent
+
+	// Daemon Settings & Cache
+	sEntry := st.MachineSettings[machineID]
+	if sEntry != nil {
+		vm.SettingsLoading = sEntry.Loading
+		if sEntry.ErrorText != nil {
+			vm.SettingsError = sEntry.ErrorText
+		} else if sEntry.Error != "" {
+			vm.SettingsError = text.Msg(text.KeySettingsReadError, text.Str("reason", sEntry.Error))
+		}
+	}
+	if mExtra != nil {
+		vm.SavePending = mExtra.SavePending
+		vm.SaveUnknown = mExtra.SaveUnknown
+		vm.SaveError = mExtra.SaveError
+	}
+
+	var ds *v1.DaemonSettings
+	if sEntry != nil && sEntry.Settings != nil {
+		ds = sEntry.Settings
+	}
+	vm.AgentDefaults = buildAgentDefaultsView(st, m, ds, selAgent)
+
+	var timeoutSec int32
+	var idleMin int32
+	var imgQuotaBytes int64
+	if ds != nil {
+		timeoutSec = ds.ApprovalTimeoutSeconds
+		idleMin = ds.IdleCloseMinutes
+		imgQuotaBytes = ds.ImageUploadQuotaBytes
+	}
+	vm.SelectedApprovalTimeoutSeconds = timeoutSec
+	vm.ApprovalTimeoutChoices = machine.BuildTimeoutChoices(timeoutSec)
+	vm.SelectedIdleCloseMinutes = machine.IdleCloseValue(idleMin)
+	vm.IdleCloseChoices = machine.BuildIdleCloseChoices(idleMin)
+	vm.AttachmentStorage = buildAttachmentStorageView(imgQuotaBytes, mExtra)
+
+	// Projects on machine
+	for _, p := range machine.CollectMachineProjects(m, st.World.Sessions) {
+		vm.Projects = append(vm.Projects, &corev1.MachineProjectView{
+			ProjectKey:     p.Path,
+			Name:           p.Name,
+			Path:           p.Path,
+			LastActiveText: formatRelativeTime(p.LastActiveMs, st.Cal),
+		})
+	}
+
+	// Machine management availability
+	isAuth := m.ID == authID
+	vm.Management = &corev1.MachineManagementActionsView{
+		IsAuthorityDevice: isAuth,
+		CanRejoin:         !vm.Member && isMgr && onlineWorld,
+		CanDeleteRecords:  !vm.Member && isMgr,
+		CanRemove:         vm.Member && isMgr && !isAuth && onlineWorld,
+	}
+	if isAuth {
+		vm.Management.ExplanationText = text.Msg(text.KeySecurityThisDeviceManagesTheAccount)
+	}
+	return vm
+}
+
+func buildAgentDefaultsView(st *State, m *lists.Machine, ds *v1.DaemonSettings, agent v1.Agent) *corev1.MachineAgentDefaultsView {
+	info := lists.AgentInfo(agent)
+	def := lists.DefaultsFor(ds, agent)
+	selModel := ""
+	selEffort := ""
+	selMode := v1.ApprovalMode_APPROVAL_MODE_UNSPECIFIED
+	if def != nil {
+		selModel = def.Model
+		selEffort = def.Effort
+		selMode = def.Mode
+	}
+
+	mEntry := st.MachineModels[MachineAgentKey{MachineID: m.ID, Agent: agent}]
+	var models []*v1.ModelInfo
+	hasModels := false
+	if mEntry != nil && mEntry.Response != nil {
+		models = mEntry.Response.Models
+		hasModels = true
+	}
+
+	pickedModel := lists.FindModel(models, selModel)
+	shownModels := lists.ShownModels(models, pickedModel, false)
+
+	var selModelLbl *corev1.Text
+	if selModel == "" {
+		selModelLbl = text.Msg(text.KeyModelsDefault)
+	} else {
+		selModelLbl = text.Plain(lists.ModelLabel(models, hasModels, selModel, agent))
+	}
+
+	modelChoices := []*corev1.ModelChoiceView{
+		{
+			Id:        "",
+			Label:     text.Msg(text.KeyModelsDefault),
+			Selected:  selModel == "",
+			IsDefault: true,
+		},
+	}
+	for _, mod := range shownModels {
+		if mod == nil {
+			continue
+		}
+		modelChoices = append(modelChoices, &corev1.ModelChoiceView{
+			Id:       mod.Slug,
+			Label:    text.Plain(lists.ModelLabel(models, hasModels, mod.Slug, agent)),
+			Desc:     mod.Description,
+			Selected: selModel == mod.Slug,
+		})
+	}
+
+	effortChoices := []*corev1.EffortChoiceView{
+		{
+			Id:        "",
+			Label:     text.Msg(text.KeyModelsEffortDefault),
+			Selected:  selEffort == "",
+			IsDefault: true,
+		},
+	}
+	if pickedModel != nil {
+		for _, eff := range pickedModel.Efforts {
+			effortChoices = append(effortChoices, &corev1.EffortChoiceView{
+				Id:       eff,
+				Label:    text.Plain(eff),
+				Selected: selEffort == eff,
+			})
+		}
+	}
+
+	// Approval modes in Settings: [UNSPECIFIED (follow CLI), ASK, AUTO]
+	var cliDefaultModeLbl *corev1.Text
+	dm := lists.DefaultModeOf(m, agent)
+	if dm.Mode == v1.ApprovalMode_APPROVAL_MODE_ASK || dm.Mode == v1.ApprovalMode_APPROVAL_MODE_AUTO {
+		cliDefaultModeLbl = modeNameText(dm.Mode)
+	}
+	var followLbl *corev1.Text
+	if cliDefaultModeLbl != nil && !dm.Varies {
+		followLbl = text.Msg(text.KeyModesDefaultNamed, text.ArgText("mode", cliDefaultModeLbl))
+	} else {
+		followLbl = text.Msg(text.KeySettingsFollowConfiguration, text.Str("value", info.Name))
+	}
+
+	autoUnavail := false
+	var autoReason *corev1.Text
+	if lists.AutoUnavailable(models, hasModels, selModel) {
+		autoUnavail = true
+		if lists.AllAutoUnavailable(models) {
+			autoReason = text.Msg(text.KeyModesAccountNoAuto)
+		} else {
+			autoReason = text.Msg(text.KeyModesModelNoAuto)
+		}
+	}
+
+	modeChoices := []*corev1.ModeChoiceView{
+		{
+			Mode:     v1.ApprovalMode_APPROVAL_MODE_UNSPECIFIED,
+			Label:    followLbl,
+			Selected: selMode == v1.ApprovalMode_APPROVAL_MODE_UNSPECIFIED,
+		},
+		{
+			Mode:     v1.ApprovalMode_APPROVAL_MODE_ASK,
+			Label:    text.Msg(text.KeyModesAsk),
+			Selected: selMode == v1.ApprovalMode_APPROVAL_MODE_ASK,
+		},
+		{
+			Mode:           v1.ApprovalMode_APPROVAL_MODE_AUTO,
+			Label:          text.Msg(text.KeyModesAuto),
+			Selected:       selMode == v1.ApprovalMode_APPROVAL_MODE_AUTO,
+			Disabled:       autoUnavail,
+			DisabledReason: autoReason,
+		},
+	}
+
+	return &corev1.MachineAgentDefaultsView{
+		Agent:                 agent,
+		AgentName:             info.Name,
+		SelectedModel:         selModel,
+		SelectedModelLabel:    selModelLbl,
+		ModelChoices:          modelChoices,
+		SelectedEffort:        selEffort,
+		EffortChoices:         effortChoices,
+		SelectedMode:          selMode,
+		ModeChoices:           modeChoices,
+		AutoUnavailableNotice: autoReason,
+		FooterText:            text.Msg(text.KeySettingsNewProjectDefaultsSettings, text.Str("value", info.Name)),
+	}
+}
+
+func buildAttachmentStorageView(quotaBytes int64, extra *MachineSettingsExtra) *corev1.AttachmentStorageView {
+	v := &corev1.AttachmentStorageView{
+		SelectedQuotaBytes: quotaBytes,
+		QuotaChoices:       machine.BuildImageQuotaChoices(quotaBytes),
+		FooterText:         text.Msg(text.KeySettingsAttachmentsAreStoredOnThisComputerSessionFilesRemain),
+	}
+	if extra == nil || extra.ImageStorage == nil {
+		return v
+	}
+	st := extra.ImageStorage
+	v.Loaded = true
+	v.Cleaning = extra.CleaningImages
+	v.UploadedText = machine.FormatAttachmentSize(st.UploadBytes)
+	v.PreviewCacheText = machine.FormatAttachmentSize(st.CacheBytes)
+
+	reclaim := st.ReclaimableBytes + st.CacheBytes
+	v.CanClear = reclaim > 0 && !extra.CleaningImages
+	if st.ReservedBytes > 0 {
+		v.UploadedDetail = text.Msg(text.KeySettingsUploading, text.ArgText("value", machine.FormatAttachmentSize(st.ReservedBytes)))
+	} else if st.ReclaimableBytes > 0 {
+		v.UploadedDetail = text.Msg(text.KeySettingsCanClear, text.ArgText("value", machine.FormatAttachmentSize(st.ReclaimableBytes)))
+	}
+	if st.EmergencyReserveBytes > 0 {
+		v.ShowEmergencyReserve = true
+		v.EmergencyReserveText = machine.FormatAttachmentSize(st.EmergencyReserveBytes)
+	}
+	if reclaim > 0 {
+		v.ClearButtonLabel = text.Msg(text.KeySettingsCanFree, text.ArgText("value", machine.FormatAttachmentSize(reclaim)))
+	} else {
+		v.ClearButtonLabel = text.Msg(text.KeySettingsNothingToClear)
+	}
+	return v
+}
+
+// BuildDevices builds the Devices / Clients list screen ViewModel.
+func BuildDevices(st *State, syncView *corev1.SyncStateView, extra *SettingsExtra) *corev1.DevicesViewModel {
+	if extra == nil {
+		extra = NewSettingsExtra()
+	}
+	isMgr := syncView.GetIsManager() || st.World.IsManager
+	unlinked := syncView.GetUnlinked() || lists.WorldUnlinked(&st.World)
+	online := st.World.Connection == lists.ConnConnected
+	authName := machine.AuthorityName(syncView, st.World.Machines)
+	clients, unfinished := buildClientRows(st, syncView, true)
+
+	vm := &corev1.DevicesViewModel{
+		IsManager:         isMgr,
+		Online:            online,
+		Unlinked:          unlinked,
+		AuthorityDeviceId: syncView.GetAuthorityDeviceId(),
+		AuthorityName:     authName,
+		CanAddDevice:      isMgr && !unlinked,
+		Computers:         buildMachineListCards(st, st.World.Machines, false),
+		Clients:           clients,
+		UnfinishedPairings: unfinished,
+	}
+	if !isMgr && authName != "" {
+		vm.AddDeviceHint = text.Msg(text.KeySecurityAddOnAuthority, text.Str("name", authName))
+	}
+	return vm
+}
+
+// BuildClientDetail builds the single-client details & rename/remove ViewModel.
+func BuildClientDetail(st *State, syncView *corev1.SyncStateView, extra *SettingsExtra, deviceID string) *corev1.ClientDetailViewModel {
+	if extra == nil {
+		extra = NewSettingsExtra()
+	}
+	selfID := syncView.GetSelfDeviceId()
+	authID := syncView.GetAuthorityDeviceId()
+	isMgr := syncView.GetIsManager() || st.World.IsManager
+	online := st.World.Connection == lists.ConnConnected
+
+	var dev *corev1.SyncDeviceView
+	for _, d := range syncView.GetDevices() {
+		if d != nil && d.DeviceId == deviceID {
+			dev = d
+			break
+		}
+	}
+
+	vm := &corev1.ClientDetailViewModel{
+		DeviceId:      deviceID,
+		IsSelf:        deviceID == selfID,
+		IsAuthority:   deviceID == authID,
+		MaxNameLength: machine.MaxClientNameLength,
+		RenameSaving:  extra.RenameSaving,
+		RenameError:   extra.RenameError,
+	}
+	if dev == nil {
+		vm.DisplayName = machine.ShortID(deviceID)
+		vm.ShortId = machine.ShortID(deviceID)
+		return vm
+	}
+
+	vm.Found = true
+	vm.Member = dev.Trusted || vm.IsSelf || vm.IsAuthority
+	vm.DefaultName = machine.DefaultClientName(dev)
+	if dev.Meta != nil {
+		vm.CustomName = dev.Meta.Name
+	}
+	vm.DisplayName = machine.ClientName(dev)
+	vm.Description = vm.DefaultName
+	vm.ShortId = machine.ShortID(deviceID)
+
+	if vm.IsSelf {
+		vm.RoleLabel = text.Msg(text.KeySettingsCurrent)
+		vm.LastUsedText = text.Msg(text.KeySettingsNow)
+		vm.ShowExitAction = true
+		vm.ManagementHint = text.Msg(text.KeySettingsNamesSyncEncryptedTheServerCannotReadThemLeave)
+	} else {
+		if vm.IsAuthority {
+			vm.RoleLabel = text.Msg(text.KeySettingsManagingClient)
+		} else {
+			vm.RoleLabel = text.Msg(text.KeySettingsPairedClient)
+		}
+		if dev.LastSeenMs <= 0 {
+			vm.LastUsedText = text.Msg(text.KeySettingsNoRecord)
+		} else {
+			vm.LastUsedText = formatRelativeTime(dev.LastSeenMs, st.Cal)
+		}
+		vm.ManagementHint = text.Msg(text.KeySettingsSetTheNameAndNotificationPreferencesOnThatDevice)
+	}
+
+	vm.AddedText = formatCalendarDay(dev.CreatedMs, st.Cal)
+	vm.CanRename = vm.IsSelf && online && vm.Member
+	vm.CanRestoreDefault = vm.CanRename && strings.TrimSpace(vm.CustomName) != ""
+	vm.CanRemove = isMgr && !vm.IsSelf && !vm.IsAuthority && online && vm.Member
+	return vm
+}

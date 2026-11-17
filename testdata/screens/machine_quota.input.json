@@ -1,0 +1,107 @@
+{
+  "steps": [
+    {
+      "event": {
+        "nowMs": "1791078060000",
+        "clockUpdated": {
+          "nowMs": "1791078060000",
+          "todayStartMs": "1791043200000",
+          "yesterdayStartMs": "1790956800000",
+          "weekStartMs": "1790524800000",
+          "nowYear": 2026,
+          "months": [{ "year": 2026, "month": 10, "startMs": "1790812800000" }]
+        }
+      }
+    },
+    {
+      "event": {
+        "nowMs": "1791078060000",
+        "monoMs": "1000",
+        "syncLifecycle": { "kind": "SYNC_LIFECYCLE_KIND_START" }
+      }
+    },
+    {
+      "event": {
+        "nowMs": "1791078060010",
+        "securitySnapshot": {
+          "opId": "3",
+          "isMember": true,
+          "selfDeviceId": "dev-1",
+          "authorityDeviceId": "dev-1",
+          "leaseEndMs": "1791164460000",
+          "trustedMachineIds": ["m1"]
+        }
+      }
+    },
+    {
+      "event": {
+        "nowMs": "1791078060020",
+        "tokenResult": { "opId": "2", "token": "tok-1" }
+      }
+    },
+    {
+      "event": {
+        "nowMs": "1791078060030",
+        "streamReady": { "legId": "1", "serverTimeMs": "1791078060030" }
+      }
+    },
+    {
+      "event": {
+        "nowMs": "1791078060040",
+        "listsFetched": {
+          "opId": "4",
+          "machines": [
+            {
+              "machineId": "m1",
+              "online": true,
+              "meta": {
+                "hostname": "MacPro",
+                "protocolVersion": 16,
+                "agents": [
+                  { "agent": "AGENT_CODEX", "version": "0.42.0", "verified": true },
+                  { "agent": "AGENT_CLAUDE", "version": "2.1.0", "verified": true },
+                  { "agent": "AGENT_ANTIGRAVITY", "version": "1.2.0", "verified": false }
+                ],
+                "quotas": [
+                  {
+                    "agent": "AGENT_CODEX",
+                    "state": "QUOTA_STATE_OK",
+                    "plan": "prolite",
+                    "login": "QUOTA_LOGIN_SUBSCRIPTION",
+                    "account": "dev@example.com",
+                    "observedMs": "1791077460000",
+                    "windows": [
+                      { "name": "primary", "usedPercent": 85.0, "resetsAtMs": "1791081660000" },
+                      { "name": "secondary", "usedPercent": 40.0, "resetsAtMs": "1791070000000" }
+                    ]
+                  },
+                  {
+                    "agent": "AGENT_CLAUDE",
+                    "state": "QUOTA_STATE_FAILED",
+                    "plan": "claude_max",
+                    "observedMs": "1791072000000",
+                    "detail": "Status line unavailable"
+                  },
+                  {
+                    "agent": "AGENT_ANTIGRAVITY",
+                    "state": "QUOTA_STATE_OK",
+                    "observedMs": "1791077900000",
+                    "windows": [
+                      { "name": "gemini-5h", "usedPercent": 100.0, "resetsAtMs": "1791088860000" },
+                      { "name": "3p-5h", "usedPercent": 35.0, "resetsAtMs": "1791085260000" },
+                      { "name": "3p-weekly" }
+                    ]
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "views": [
+        { "name": "allQuotas", "screen": { "quota": { "machineId": "m1" } } },
+        { "name": "codexOnly", "screen": { "quota": { "machineId": "m1", "filterAgent": "AGENT_CODEX" } } }
+      ]
+    }
+  ]
+}

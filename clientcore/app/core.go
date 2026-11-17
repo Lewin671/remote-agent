@@ -94,6 +94,9 @@ func (c *Core) View(screen *corev1.Screen) (*corev1.ViewModel, error) {
 		}, nil
 
 	default:
+		if vm, ok, err := c.viewSettings(screen); ok || err != nil {
+			return vm, err
+		}
 		return nil, errors.New("app: unsupported screen")
 	}
 }
@@ -112,6 +115,7 @@ func (c *Core) Dispatch(ev *corev1.Event) *corev1.EffectBatch {
 		if r := renderEffect(syncRes.Dirty); r != nil {
 			effects = append(effects, r)
 		}
+		effects = c.appendSettingsRender(effects, syncRes.Dirty)
 		return &corev1.EffectBatch{Effects: effects}
 	}
 
@@ -129,6 +133,7 @@ func (c *Core) Dispatch(ev *corev1.Event) *corev1.EffectBatch {
 	if r := renderEffect(stepRes.Dirty); r != nil {
 		effects = append(effects, r)
 	}
+	effects = c.appendSettingsRender(effects, stepRes.Dirty)
 	return &corev1.EffectBatch{Effects: effects}
 }
 
@@ -194,6 +199,7 @@ func (c *Core) processSyncStep(res sync.StepResult) ([]*corev1.Effect, sync.Dirt
 					se.Error = "failed"
 				}
 			}
+			effects = append(effects, c.onGetSettingsSettled(sc, meta)...)
 			dirty.Add(false, false, true)
 
 		case cmdKindListDirs:
@@ -314,6 +320,8 @@ func (c *Core) processSyncStep(res sync.StepResult) ([]*corev1.Effect, sync.Dirt
 				})
 			}
 			dirty.Add(true, true, true)
+		default:
+			effects = append(effects, c.onOtherSettingsCmdSettled(sc, meta)...)
 		}
 	}
 
@@ -731,6 +739,8 @@ func (c *Core) dispatchUI(ctx *sync.StepContext, ev *corev1.Event) []*corev1.Eff
 			d.ActiveStartRequestID = ""
 		}
 		ctx.Dirty.Add(false, false, true)
+	default:
+		effects = append(effects, c.dispatchSettingsUI(ctx, ev)...)
 	}
 
 	return effects

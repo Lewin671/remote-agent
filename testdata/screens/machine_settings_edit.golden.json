@@ -1,0 +1,2437 @@
+{
+  "steps": [
+    {
+      "effects": {
+        "effects": [
+          {
+            "render": {
+              "screens": [
+                "SCREEN_TARGET_HOME",
+                "SCREEN_TARGET_PROJECT",
+                "SCREEN_TARGET_SYNC_STATE"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "effects": {
+        "effects": [
+          {
+            "cacheRead": {
+              "bootstrap": {
+                "opId": "1"
+              }
+            }
+          },
+          {
+            "ensureToken": {
+              "opId": "2",
+              "forceLogin": true,
+              "timeoutMs": "15000"
+            }
+          },
+          {
+            "syncSecurity": {
+              "opId": "3",
+              "touch": true
+            }
+          },
+          {
+            "render": {
+              "screens": [
+                "SCREEN_TARGET_HOME",
+                "SCREEN_TARGET_PROJECT",
+                "SCREEN_TARGET_NEW_SESSION",
+                "SCREEN_TARGET_SYNC_STATE",
+                "SCREEN_TARGET_SESSION_DATA"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "effects": {
+        "effects": [
+          {
+            "render": {
+              "screens": [
+                "SCREEN_TARGET_HOME",
+                "SCREEN_TARGET_PROJECT",
+                "SCREEN_TARGET_NEW_SESSION",
+                "SCREEN_TARGET_SYNC_STATE",
+                "SCREEN_TARGET_SESSION_DATA"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "effects": {
+        "effects": [
+          {
+            "openStream": {
+              "legId": "1",
+              "token": "tok-1",
+              "timeoutMs": "15000"
+            }
+          },
+          {
+            "scheduleTimer": {
+              "timerId": "1",
+              "kind": "TIMER_KIND_STREAM_OPEN",
+              "delayMs": "15000"
+            }
+          },
+          {
+            "render": {
+              "screens": [
+                "SCREEN_TARGET_HOME",
+                "SCREEN_TARGET_SYNC_STATE"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "effects": {
+        "effects": [
+          {
+            "cancelTimer": {
+              "timerId": "1",
+              "kind": "TIMER_KIND_STREAM_OPEN"
+            }
+          },
+          {
+            "scheduleTimer": {
+              "timerId": "2",
+              "kind": "TIMER_KIND_LIVENESS",
+              "delayMs": "1000"
+            }
+          },
+          {
+            "rpc": {
+              "opId": "4",
+              "fetchLists": {
+                "limit": 50
+              }
+            }
+          },
+          {
+            "rpc": {
+              "opId": "5",
+              "getAccountPrefs": {
+                "objectId": "project-prefs"
+              }
+            }
+          },
+          {
+            "render": {
+              "screens": [
+                "SCREEN_TARGET_HOME",
+                "SCREEN_TARGET_PROJECT",
+                "SCREEN_TARGET_NEW_SESSION",
+                "SCREEN_TARGET_SYNC_STATE",
+                "SCREEN_TARGET_SESSION_DATA"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "effects": {
+        "effects": [
+          {
+            "render": {
+              "screens": [
+                "SCREEN_TARGET_HOME",
+                "SCREEN_TARGET_PROJECT",
+                "SCREEN_TARGET_NEW_SESSION",
+                "SCREEN_TARGET_SYNC_STATE",
+                "SCREEN_TARGET_SESSION_DATA"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "effects": {
+        "effects": [
+          {
+            "dispatchCommand": {
+              "requestId": "r1",
+              "attemptId": "a1",
+              "machineId": "m1",
+              "deadlineMs": "1791078120050",
+              "commandBytes": "qgECCAGgBhA=",
+              "routeHint": "COMMAND_ROUTE_HINT_READ"
+            }
+          },
+          {
+            "dispatchCommand": {
+              "requestId": "r2",
+              "attemptId": "a2",
+              "machineId": "m1",
+              "deadlineMs": "1791078120050",
+              "commandBytes": "ugEAoAYQ",
+              "routeHint": "COMMAND_ROUTE_HINT_READ"
+            }
+          },
+          {
+            "render": {
+              "screens": [
+                "SCREEN_TARGET_MACHINE_SETTINGS"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "effects": {
+        "effects": [
+          {
+            "render": {
+              "screens": [
+                "SCREEN_TARGET_HOME",
+                "SCREEN_TARGET_PROJECT",
+                "SCREEN_TARGET_NEW_SESSION",
+                "SCREEN_TARGET_SYNC_STATE",
+                "SCREEN_TARGET_SETTINGS",
+                "SCREEN_TARGET_MACHINE_STATUS",
+                "SCREEN_TARGET_MACHINE_SETTINGS",
+                "SCREEN_TARGET_QUOTA",
+                "SCREEN_TARGET_DEVICES",
+                "SCREEN_TARGET_CLIENT_DETAIL"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "effects": {
+        "effects": [
+          {
+            "render": {
+              "screens": [
+                "SCREEN_TARGET_HOME",
+                "SCREEN_TARGET_PROJECT",
+                "SCREEN_TARGET_NEW_SESSION",
+                "SCREEN_TARGET_SYNC_STATE",
+                "SCREEN_TARGET_SETTINGS",
+                "SCREEN_TARGET_MACHINE_STATUS",
+                "SCREEN_TARGET_MACHINE_SETTINGS",
+                "SCREEN_TARGET_QUOTA",
+                "SCREEN_TARGET_DEVICES",
+                "SCREEN_TARGET_CLIENT_DETAIL"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "effects": {
+        "effects": [
+          {
+            "render": {
+              "screens": [
+                "SCREEN_TARGET_MACHINE_SETTINGS"
+              ]
+            }
+          }
+        ]
+      },
+      "views": {
+        "initialLoaded": {
+          "machineSettings": {
+            "machineId": "m1",
+            "name": "MacStudio",
+            "found": true,
+            "member": true,
+            "online": true,
+            "editable": true,
+            "showStatusEntry": true,
+            "statusRings": [
+              {
+                "kind": "MACHINE_RING_KIND_CPU",
+                "label": {
+                  "key": "machine_status.cpu"
+                },
+                "valueText": {
+                  "literal": "—"
+                },
+                "tone": "MACHINE_RING_TONE_NORMAL",
+                "a11yLabel": {
+                  "key": "machine_status.a11y_ring",
+                  "args": [
+                    {
+                      "name": "name",
+                      "textValue": {
+                        "key": "machine_status.cpu"
+                      }
+                    },
+                    {
+                      "name": "value",
+                      "textValue": {
+                        "literal": "—"
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "kind": "MACHINE_RING_KIND_MEMORY",
+                "label": {
+                  "key": "machine_status.memory"
+                },
+                "valueText": {
+                  "literal": "—"
+                },
+                "tone": "MACHINE_RING_TONE_NORMAL",
+                "a11yLabel": {
+                  "key": "machine_status.a11y_ring",
+                  "args": [
+                    {
+                      "name": "name",
+                      "textValue": {
+                        "key": "machine_status.memory"
+                      }
+                    },
+                    {
+                      "name": "value",
+                      "textValue": {
+                        "literal": "—"
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "kind": "MACHINE_RING_KIND_DISK",
+                "label": {
+                  "key": "machine_status.disk_available"
+                },
+                "valueText": {
+                  "literal": "—"
+                },
+                "tone": "MACHINE_RING_TONE_NORMAL",
+                "a11yLabel": {
+                  "key": "machine_status.a11y_ring",
+                  "args": [
+                    {
+                      "name": "name",
+                      "textValue": {
+                        "key": "machine_status.disk_available"
+                      }
+                    },
+                    {
+                      "name": "value",
+                      "textValue": {
+                        "literal": "—"
+                      }
+                    }
+                  ]
+                }
+              }
+            ],
+            "quotaRows": [
+              {
+                "agent": "AGENT_CODEX",
+                "agentName": "Codex",
+                "state": "QUOTA_SECTION_STATE_UNSUPPORTED",
+                "unsupported": true,
+                "emptyOrErrorText": {
+                  "key": "quota.quota_lookup_is_not_supported_yet"
+                },
+                "summaryTone": "QUOTA_TONE_STALE",
+                "summaryMeta": {
+                  "key": "quota.quota_lookup_is_not_supported_yet"
+                }
+              },
+              {
+                "agent": "AGENT_CLAUDE",
+                "agentName": "Claude Code",
+                "state": "QUOTA_SECTION_STATE_UNSUPPORTED",
+                "unsupported": true,
+                "emptyOrErrorText": {
+                  "key": "quota.quota_lookup_is_not_supported_yet"
+                },
+                "usageHint": {
+                  "key": "settings.view_usage_in_the_local_cli"
+                },
+                "summaryTone": "QUOTA_TONE_STALE",
+                "summaryMeta": {
+                  "key": "quota.quota_lookup_is_not_supported_yet"
+                }
+              }
+            ],
+            "connection": {
+              "toggleVisible": true,
+              "toggleEnabled": true,
+              "toggleChecked": true,
+              "stage": "CONNECTION_GROUP_STAGE_DIRECT",
+              "tone": "CONNECTION_GROUP_TONE_LIVE",
+              "statusText": {
+                "key": "transport.status_direct"
+              },
+              "metricText": {
+                "key": "transport.read_latency_direct",
+                "args": [
+                  {
+                    "name": "direct",
+                    "strValue": "12"
+                  }
+                ]
+              },
+              "footerText": {
+                "key": "transport.footer"
+              }
+            },
+            "cliVersions": [
+              {
+                "agent": "AGENT_CODEX",
+                "name": "Codex",
+                "version": "0.42.0",
+                "verified": true
+              },
+              {
+                "agent": "AGENT_CLAUDE",
+                "name": "Claude Code",
+                "version": "2.1.0",
+                "unverifiedLabel": {
+                  "key": "settings.unverified"
+                }
+              }
+            ],
+            "hasUnverifiedCli": true,
+            "availableAgents": [
+              "AGENT_CODEX",
+              "AGENT_CLAUDE"
+            ],
+            "selectedAgent": "AGENT_CODEX",
+            "agentDefaults": {
+              "agent": "AGENT_CODEX",
+              "agentName": "Codex",
+              "selectedModel": "gpt-5.4",
+              "selectedModelLabel": {
+                "literal": "GPT-5.4"
+              },
+              "modelChoices": [
+                {
+                  "label": {
+                    "key": "models.default"
+                  },
+                  "isDefault": true
+                },
+                {
+                  "id": "gpt-5.4",
+                  "label": {
+                    "literal": "GPT-5.4"
+                  },
+                  "selected": true
+                }
+              ],
+              "selectedEffort": "high",
+              "effortChoices": [
+                {
+                  "label": {
+                    "key": "models.effort_default"
+                  },
+                  "isDefault": true
+                },
+                {
+                  "id": "medium",
+                  "label": {
+                    "literal": "medium"
+                  }
+                },
+                {
+                  "id": "high",
+                  "label": {
+                    "literal": "high"
+                  },
+                  "selected": true
+                }
+              ],
+              "selectedMode": "APPROVAL_MODE_ASK",
+              "modeChoices": [
+                {
+                  "label": {
+                    "key": "settings.follow_configuration",
+                    "args": [
+                      {
+                        "name": "value",
+                        "strValue": "Codex"
+                      }
+                    ]
+                  }
+                },
+                {
+                  "mode": "APPROVAL_MODE_ASK",
+                  "label": {
+                    "key": "modes.ask"
+                  },
+                  "selected": true
+                },
+                {
+                  "mode": "APPROVAL_MODE_AUTO",
+                  "label": {
+                    "key": "modes.auto"
+                  }
+                }
+              ],
+              "footerText": {
+                "key": "settings.new_project_defaults_settings",
+                "args": [
+                  {
+                    "name": "value",
+                    "strValue": "Codex"
+                  }
+                ]
+              }
+            },
+            "approvalTimeoutChoices": [
+              {
+                "seconds": 120,
+                "label": {
+                  "key": "quota.min",
+                  "args": [
+                    {
+                      "name": "count",
+                      "intValue": "2"
+                    }
+                  ]
+                }
+              },
+              {
+                "seconds": 300,
+                "label": {
+                  "key": "quota.min",
+                  "args": [
+                    {
+                      "name": "count",
+                      "intValue": "5"
+                    }
+                  ]
+                },
+                "selected": true
+              },
+              {
+                "seconds": 600,
+                "label": {
+                  "key": "quota.min",
+                  "args": [
+                    {
+                      "name": "count",
+                      "intValue": "10"
+                    }
+                  ]
+                }
+              },
+              {
+                "seconds": 1800,
+                "label": {
+                  "key": "quota.min",
+                  "args": [
+                    {
+                      "name": "count",
+                      "intValue": "30"
+                    }
+                  ]
+                }
+              }
+            ],
+            "selectedApprovalTimeoutSeconds": 300,
+            "idleCloseChoices": [
+              {
+                "minutes": -1,
+                "label": {
+                  "key": "settings.idle_close_off"
+                }
+              },
+              {
+                "minutes": 60,
+                "label": {
+                  "key": "quota.hr",
+                  "args": [
+                    {
+                      "name": "count",
+                      "intValue": "1"
+                    }
+                  ]
+                }
+              },
+              {
+                "minutes": 120,
+                "label": {
+                  "key": "quota.hr",
+                  "args": [
+                    {
+                      "name": "count",
+                      "intValue": "2"
+                    }
+                  ]
+                }
+              },
+              {
+                "minutes": 360,
+                "label": {
+                  "join": [
+                    {
+                      "key": "quota.hr",
+                      "args": [
+                        {
+                          "name": "count",
+                          "intValue": "6"
+                        }
+                      ]
+                    },
+                    {
+                      "key": "settings.default"
+                    }
+                  ],
+                  "separatorLiteral": " "
+                },
+                "selected": true
+              },
+              {
+                "minutes": 720,
+                "label": {
+                  "key": "quota.hr",
+                  "args": [
+                    {
+                      "name": "count",
+                      "intValue": "12"
+                    }
+                  ]
+                }
+              },
+              {
+                "minutes": 1440,
+                "label": {
+                  "key": "quota.hr",
+                  "args": [
+                    {
+                      "name": "count",
+                      "intValue": "24"
+                    }
+                  ]
+                }
+              }
+            ],
+            "selectedIdleCloseMinutes": 360,
+            "attachmentStorage": {
+              "loaded": true,
+              "uploadedText": {
+                "key": "machine_status.size_mb",
+                "args": [
+                  {
+                    "name": "size",
+                    "strValue": "100"
+                  }
+                ]
+              },
+              "uploadedDetail": {
+                "key": "settings.can_clear",
+                "args": [
+                  {
+                    "name": "value",
+                    "textValue": {
+                      "key": "machine_status.size_mb",
+                      "args": [
+                        {
+                          "name": "size",
+                          "strValue": "25"
+                        }
+                      ]
+                    }
+                  }
+                ]
+              },
+              "selectedQuotaBytes": "1073741824",
+              "quotaChoices": [
+                {
+                  "bytes": "268435456",
+                  "label": {
+                    "key": "machine_status.size_mb",
+                    "args": [
+                      {
+                        "name": "size",
+                        "strValue": "256"
+                      }
+                    ]
+                  }
+                },
+                {
+                  "bytes": "1073741824",
+                  "label": {
+                    "key": "machine_status.size_gb",
+                    "args": [
+                      {
+                        "name": "size",
+                        "strValue": "1"
+                      }
+                    ]
+                  },
+                  "selected": true
+                },
+                {
+                  "bytes": "5368709120",
+                  "label": {
+                    "key": "machine_status.size_gb",
+                    "args": [
+                      {
+                        "name": "size",
+                        "strValue": "5"
+                      }
+                    ]
+                  }
+                },
+                {
+                  "bytes": "10737418240",
+                  "label": {
+                    "key": "machine_status.size_gb",
+                    "args": [
+                      {
+                        "name": "size",
+                        "strValue": "10"
+                      }
+                    ]
+                  }
+                }
+              ],
+              "previewCacheText": {
+                "key": "machine_status.size_mb",
+                "args": [
+                  {
+                    "name": "size",
+                    "strValue": "10"
+                  }
+                ]
+              },
+              "showEmergencyReserve": true,
+              "emergencyReserveText": {
+                "key": "machine_status.size_mb",
+                "args": [
+                  {
+                    "name": "size",
+                    "strValue": "50"
+                  }
+                ]
+              },
+              "canClear": true,
+              "clearButtonLabel": {
+                "key": "settings.can_free",
+                "args": [
+                  {
+                    "name": "value",
+                    "textValue": {
+                      "key": "machine_status.size_mb",
+                      "args": [
+                        {
+                          "name": "size",
+                          "strValue": "35"
+                        }
+                      ]
+                    }
+                  }
+                ]
+              },
+              "footerText": {
+                "key": "settings.attachments_are_stored_on_this_computer_session_files_remain"
+              }
+            },
+            "projects": [
+              {
+                "projectKey": "/Users/me/Code/alpha",
+                "name": "alpha",
+                "path": "/Users/me/Code/alpha",
+                "lastActiveText": {
+                  "key": "time.minutes_ago",
+                  "args": [
+                    {
+                      "name": "count",
+                      "intValue": "17"
+                    }
+                  ]
+                }
+              }
+            ],
+            "management": {
+              "canRemove": true
+            }
+          }
+        }
+      }
+    },
+    {
+      "effects": {
+        "effects": [
+          {
+            "dispatchCommand": {
+              "requestId": "r3",
+              "attemptId": "a3",
+              "machineId": "m1",
+              "deadlineMs": "1791078120090",
+              "commandBytes": "qgECCAKgBhA=",
+              "routeHint": "COMMAND_ROUTE_HINT_READ"
+            }
+          },
+          {
+            "render": {
+              "screens": [
+                "SCREEN_TARGET_MACHINE_SETTINGS"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "effects": {
+        "effects": [
+          {
+            "render": {
+              "screens": [
+                "SCREEN_TARGET_HOME",
+                "SCREEN_TARGET_PROJECT",
+                "SCREEN_TARGET_NEW_SESSION",
+                "SCREEN_TARGET_SYNC_STATE",
+                "SCREEN_TARGET_SETTINGS",
+                "SCREEN_TARGET_MACHINE_STATUS",
+                "SCREEN_TARGET_MACHINE_SETTINGS",
+                "SCREEN_TARGET_QUOTA",
+                "SCREEN_TARGET_DEVICES",
+                "SCREEN_TARGET_CLIENT_DETAIL"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "effects": {
+        "effects": [
+          {
+            "dispatchCommand": {
+              "requestId": "r4",
+              "attemptId": "a4",
+              "machineId": "m1",
+              "deadlineMs": "1791078120110",
+              "commandBytes": "wgFACjwI2AQSB2dwdC01LjQaBGhpZ2ggASoVChFjbGF1ZGUtc29ubmV0LTQtNRgCMICAgIAEQP///////////wEQAaAGEA==",
+              "routeHint": "COMMAND_ROUTE_HINT_NORMAL"
+            }
+          },
+          {
+            "render": {
+              "screens": [
+                "SCREEN_TARGET_MACHINE_SETTINGS"
+              ]
+            }
+          }
+        ]
+      },
+      "views": {
+        "savingClaudeAndClean": {
+          "machineSettings": {
+            "machineId": "m1",
+            "name": "MacStudio",
+            "found": true,
+            "member": true,
+            "online": true,
+            "editable": true,
+            "showStatusEntry": true,
+            "statusRings": [
+              {
+                "kind": "MACHINE_RING_KIND_CPU",
+                "label": {
+                  "key": "machine_status.cpu"
+                },
+                "valueText": {
+                  "literal": "—"
+                },
+                "tone": "MACHINE_RING_TONE_NORMAL",
+                "a11yLabel": {
+                  "key": "machine_status.a11y_ring",
+                  "args": [
+                    {
+                      "name": "name",
+                      "textValue": {
+                        "key": "machine_status.cpu"
+                      }
+                    },
+                    {
+                      "name": "value",
+                      "textValue": {
+                        "literal": "—"
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "kind": "MACHINE_RING_KIND_MEMORY",
+                "label": {
+                  "key": "machine_status.memory"
+                },
+                "valueText": {
+                  "literal": "—"
+                },
+                "tone": "MACHINE_RING_TONE_NORMAL",
+                "a11yLabel": {
+                  "key": "machine_status.a11y_ring",
+                  "args": [
+                    {
+                      "name": "name",
+                      "textValue": {
+                        "key": "machine_status.memory"
+                      }
+                    },
+                    {
+                      "name": "value",
+                      "textValue": {
+                        "literal": "—"
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "kind": "MACHINE_RING_KIND_DISK",
+                "label": {
+                  "key": "machine_status.disk_available"
+                },
+                "valueText": {
+                  "literal": "—"
+                },
+                "tone": "MACHINE_RING_TONE_NORMAL",
+                "a11yLabel": {
+                  "key": "machine_status.a11y_ring",
+                  "args": [
+                    {
+                      "name": "name",
+                      "textValue": {
+                        "key": "machine_status.disk_available"
+                      }
+                    },
+                    {
+                      "name": "value",
+                      "textValue": {
+                        "literal": "—"
+                      }
+                    }
+                  ]
+                }
+              }
+            ],
+            "quotaRows": [
+              {
+                "agent": "AGENT_CODEX",
+                "agentName": "Codex",
+                "state": "QUOTA_SECTION_STATE_UNSUPPORTED",
+                "unsupported": true,
+                "emptyOrErrorText": {
+                  "key": "quota.quota_lookup_is_not_supported_yet"
+                },
+                "summaryTone": "QUOTA_TONE_STALE",
+                "summaryMeta": {
+                  "key": "quota.quota_lookup_is_not_supported_yet"
+                }
+              },
+              {
+                "agent": "AGENT_CLAUDE",
+                "agentName": "Claude Code",
+                "state": "QUOTA_SECTION_STATE_UNSUPPORTED",
+                "unsupported": true,
+                "emptyOrErrorText": {
+                  "key": "quota.quota_lookup_is_not_supported_yet"
+                },
+                "usageHint": {
+                  "key": "settings.view_usage_in_the_local_cli"
+                },
+                "summaryTone": "QUOTA_TONE_STALE",
+                "summaryMeta": {
+                  "key": "quota.quota_lookup_is_not_supported_yet"
+                }
+              }
+            ],
+            "connection": {
+              "toggleVisible": true,
+              "toggleEnabled": true,
+              "toggleChecked": true,
+              "stage": "CONNECTION_GROUP_STAGE_DIRECT",
+              "tone": "CONNECTION_GROUP_TONE_LIVE",
+              "statusText": {
+                "key": "transport.status_direct"
+              },
+              "metricText": {
+                "key": "transport.read_latency_direct",
+                "args": [
+                  {
+                    "name": "direct",
+                    "strValue": "12"
+                  }
+                ]
+              },
+              "footerText": {
+                "key": "transport.footer"
+              }
+            },
+            "cliVersions": [
+              {
+                "agent": "AGENT_CODEX",
+                "name": "Codex",
+                "version": "0.42.0",
+                "verified": true
+              },
+              {
+                "agent": "AGENT_CLAUDE",
+                "name": "Claude Code",
+                "version": "2.1.0",
+                "unverifiedLabel": {
+                  "key": "settings.unverified"
+                }
+              }
+            ],
+            "hasUnverifiedCli": true,
+            "savePending": true,
+            "availableAgents": [
+              "AGENT_CODEX",
+              "AGENT_CLAUDE"
+            ],
+            "selectedAgent": "AGENT_CLAUDE",
+            "agentDefaults": {
+              "agent": "AGENT_CLAUDE",
+              "agentName": "Claude Code",
+              "selectedModel": "claude-sonnet-4-5",
+              "selectedModelLabel": {
+                "literal": "Sonnet 4.5"
+              },
+              "modelChoices": [
+                {
+                  "label": {
+                    "key": "models.default"
+                  },
+                  "isDefault": true
+                },
+                {
+                  "id": "claude-sonnet-4-5",
+                  "label": {
+                    "literal": "Sonnet 4.5"
+                  },
+                  "selected": true
+                }
+              ],
+              "effortChoices": [
+                {
+                  "label": {
+                    "key": "models.effort_default"
+                  },
+                  "selected": true,
+                  "isDefault": true
+                }
+              ],
+              "selectedMode": "APPROVAL_MODE_AUTO",
+              "modeChoices": [
+                {
+                  "label": {
+                    "key": "settings.follow_configuration",
+                    "args": [
+                      {
+                        "name": "value",
+                        "strValue": "Claude Code"
+                      }
+                    ]
+                  }
+                },
+                {
+                  "mode": "APPROVAL_MODE_ASK",
+                  "label": {
+                    "key": "modes.ask"
+                  }
+                },
+                {
+                  "mode": "APPROVAL_MODE_AUTO",
+                  "label": {
+                    "key": "modes.auto"
+                  },
+                  "selected": true,
+                  "disabled": true,
+                  "disabledReason": {
+                    "key": "modes.account_no_auto"
+                  }
+                }
+              ],
+              "autoUnavailableNotice": {
+                "key": "modes.account_no_auto"
+              },
+              "footerText": {
+                "key": "settings.new_project_defaults_settings",
+                "args": [
+                  {
+                    "name": "value",
+                    "strValue": "Claude Code"
+                  }
+                ]
+              }
+            },
+            "approvalTimeoutChoices": [
+              {
+                "seconds": 120,
+                "label": {
+                  "key": "quota.min",
+                  "args": [
+                    {
+                      "name": "count",
+                      "intValue": "2"
+                    }
+                  ]
+                }
+              },
+              {
+                "seconds": 300,
+                "label": {
+                  "key": "quota.min",
+                  "args": [
+                    {
+                      "name": "count",
+                      "intValue": "5"
+                    }
+                  ]
+                },
+                "selected": true
+              },
+              {
+                "seconds": 600,
+                "label": {
+                  "key": "quota.min",
+                  "args": [
+                    {
+                      "name": "count",
+                      "intValue": "10"
+                    }
+                  ]
+                }
+              },
+              {
+                "seconds": 1800,
+                "label": {
+                  "key": "quota.min",
+                  "args": [
+                    {
+                      "name": "count",
+                      "intValue": "30"
+                    }
+                  ]
+                }
+              }
+            ],
+            "selectedApprovalTimeoutSeconds": 300,
+            "idleCloseChoices": [
+              {
+                "minutes": -1,
+                "label": {
+                  "key": "settings.idle_close_off"
+                }
+              },
+              {
+                "minutes": 60,
+                "label": {
+                  "key": "quota.hr",
+                  "args": [
+                    {
+                      "name": "count",
+                      "intValue": "1"
+                    }
+                  ]
+                }
+              },
+              {
+                "minutes": 120,
+                "label": {
+                  "key": "quota.hr",
+                  "args": [
+                    {
+                      "name": "count",
+                      "intValue": "2"
+                    }
+                  ]
+                }
+              },
+              {
+                "minutes": 360,
+                "label": {
+                  "join": [
+                    {
+                      "key": "quota.hr",
+                      "args": [
+                        {
+                          "name": "count",
+                          "intValue": "6"
+                        }
+                      ]
+                    },
+                    {
+                      "key": "settings.default"
+                    }
+                  ],
+                  "separatorLiteral": " "
+                },
+                "selected": true
+              },
+              {
+                "minutes": 720,
+                "label": {
+                  "key": "quota.hr",
+                  "args": [
+                    {
+                      "name": "count",
+                      "intValue": "12"
+                    }
+                  ]
+                }
+              },
+              {
+                "minutes": 1440,
+                "label": {
+                  "key": "quota.hr",
+                  "args": [
+                    {
+                      "name": "count",
+                      "intValue": "24"
+                    }
+                  ]
+                }
+              }
+            ],
+            "selectedIdleCloseMinutes": 360,
+            "attachmentStorage": {
+              "loaded": true,
+              "uploadedText": {
+                "key": "machine_status.size_mb",
+                "args": [
+                  {
+                    "name": "size",
+                    "strValue": "100"
+                  }
+                ]
+              },
+              "uploadedDetail": {
+                "key": "settings.can_clear",
+                "args": [
+                  {
+                    "name": "value",
+                    "textValue": {
+                      "key": "machine_status.size_mb",
+                      "args": [
+                        {
+                          "name": "size",
+                          "strValue": "25"
+                        }
+                      ]
+                    }
+                  }
+                ]
+              },
+              "selectedQuotaBytes": "1073741824",
+              "quotaChoices": [
+                {
+                  "bytes": "268435456",
+                  "label": {
+                    "key": "machine_status.size_mb",
+                    "args": [
+                      {
+                        "name": "size",
+                        "strValue": "256"
+                      }
+                    ]
+                  }
+                },
+                {
+                  "bytes": "1073741824",
+                  "label": {
+                    "key": "machine_status.size_gb",
+                    "args": [
+                      {
+                        "name": "size",
+                        "strValue": "1"
+                      }
+                    ]
+                  },
+                  "selected": true
+                },
+                {
+                  "bytes": "5368709120",
+                  "label": {
+                    "key": "machine_status.size_gb",
+                    "args": [
+                      {
+                        "name": "size",
+                        "strValue": "5"
+                      }
+                    ]
+                  }
+                },
+                {
+                  "bytes": "10737418240",
+                  "label": {
+                    "key": "machine_status.size_gb",
+                    "args": [
+                      {
+                        "name": "size",
+                        "strValue": "10"
+                      }
+                    ]
+                  }
+                }
+              ],
+              "previewCacheText": {
+                "key": "machine_status.size_mb",
+                "args": [
+                  {
+                    "name": "size",
+                    "strValue": "10"
+                  }
+                ]
+              },
+              "showEmergencyReserve": true,
+              "emergencyReserveText": {
+                "key": "machine_status.size_mb",
+                "args": [
+                  {
+                    "name": "size",
+                    "strValue": "50"
+                  }
+                ]
+              },
+              "cleaning": true,
+              "clearButtonLabel": {
+                "key": "settings.can_free",
+                "args": [
+                  {
+                    "name": "value",
+                    "textValue": {
+                      "key": "machine_status.size_mb",
+                      "args": [
+                        {
+                          "name": "size",
+                          "strValue": "35"
+                        }
+                      ]
+                    }
+                  }
+                ]
+              },
+              "footerText": {
+                "key": "settings.attachments_are_stored_on_this_computer_session_files_remain"
+              }
+            },
+            "projects": [
+              {
+                "projectKey": "/Users/me/Code/alpha",
+                "name": "alpha",
+                "path": "/Users/me/Code/alpha",
+                "lastActiveText": {
+                  "key": "time.minutes_ago",
+                  "args": [
+                    {
+                      "name": "count",
+                      "intValue": "17"
+                    }
+                  ]
+                }
+              }
+            ],
+            "management": {
+              "canRemove": true
+            }
+          }
+        }
+      }
+    },
+    {
+      "effects": {
+        "effects": [
+          {
+            "dispatchCommand": {
+              "requestId": "r5",
+              "attemptId": "a5",
+              "machineId": "m1",
+              "deadlineMs": "1791078120120",
+              "commandBytes": "ugEAoAYQ",
+              "routeHint": "COMMAND_ROUTE_HINT_READ"
+            }
+          },
+          {
+            "render": {
+              "screens": [
+                "SCREEN_TARGET_HOME",
+                "SCREEN_TARGET_PROJECT",
+                "SCREEN_TARGET_NEW_SESSION",
+                "SCREEN_TARGET_SYNC_STATE",
+                "SCREEN_TARGET_SETTINGS",
+                "SCREEN_TARGET_MACHINE_STATUS",
+                "SCREEN_TARGET_MACHINE_SETTINGS",
+                "SCREEN_TARGET_QUOTA",
+                "SCREEN_TARGET_DEVICES",
+                "SCREEN_TARGET_CLIENT_DETAIL"
+              ]
+            }
+          }
+        ]
+      },
+      "views": {
+        "unknownTriggersReread": {
+          "machineSettings": {
+            "machineId": "m1",
+            "name": "MacStudio",
+            "found": true,
+            "member": true,
+            "online": true,
+            "editable": true,
+            "showStatusEntry": true,
+            "statusRings": [
+              {
+                "kind": "MACHINE_RING_KIND_CPU",
+                "label": {
+                  "key": "machine_status.cpu"
+                },
+                "valueText": {
+                  "literal": "—"
+                },
+                "tone": "MACHINE_RING_TONE_NORMAL",
+                "a11yLabel": {
+                  "key": "machine_status.a11y_ring",
+                  "args": [
+                    {
+                      "name": "name",
+                      "textValue": {
+                        "key": "machine_status.cpu"
+                      }
+                    },
+                    {
+                      "name": "value",
+                      "textValue": {
+                        "literal": "—"
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "kind": "MACHINE_RING_KIND_MEMORY",
+                "label": {
+                  "key": "machine_status.memory"
+                },
+                "valueText": {
+                  "literal": "—"
+                },
+                "tone": "MACHINE_RING_TONE_NORMAL",
+                "a11yLabel": {
+                  "key": "machine_status.a11y_ring",
+                  "args": [
+                    {
+                      "name": "name",
+                      "textValue": {
+                        "key": "machine_status.memory"
+                      }
+                    },
+                    {
+                      "name": "value",
+                      "textValue": {
+                        "literal": "—"
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "kind": "MACHINE_RING_KIND_DISK",
+                "label": {
+                  "key": "machine_status.disk_available"
+                },
+                "valueText": {
+                  "literal": "—"
+                },
+                "tone": "MACHINE_RING_TONE_NORMAL",
+                "a11yLabel": {
+                  "key": "machine_status.a11y_ring",
+                  "args": [
+                    {
+                      "name": "name",
+                      "textValue": {
+                        "key": "machine_status.disk_available"
+                      }
+                    },
+                    {
+                      "name": "value",
+                      "textValue": {
+                        "literal": "—"
+                      }
+                    }
+                  ]
+                }
+              }
+            ],
+            "quotaRows": [
+              {
+                "agent": "AGENT_CODEX",
+                "agentName": "Codex",
+                "state": "QUOTA_SECTION_STATE_UNSUPPORTED",
+                "unsupported": true,
+                "emptyOrErrorText": {
+                  "key": "quota.quota_lookup_is_not_supported_yet"
+                },
+                "summaryTone": "QUOTA_TONE_STALE",
+                "summaryMeta": {
+                  "key": "quota.quota_lookup_is_not_supported_yet"
+                }
+              },
+              {
+                "agent": "AGENT_CLAUDE",
+                "agentName": "Claude Code",
+                "state": "QUOTA_SECTION_STATE_UNSUPPORTED",
+                "unsupported": true,
+                "emptyOrErrorText": {
+                  "key": "quota.quota_lookup_is_not_supported_yet"
+                },
+                "usageHint": {
+                  "key": "settings.view_usage_in_the_local_cli"
+                },
+                "summaryTone": "QUOTA_TONE_STALE",
+                "summaryMeta": {
+                  "key": "quota.quota_lookup_is_not_supported_yet"
+                }
+              }
+            ],
+            "connection": {
+              "toggleVisible": true,
+              "toggleEnabled": true,
+              "toggleChecked": true,
+              "stage": "CONNECTION_GROUP_STAGE_DIRECT",
+              "tone": "CONNECTION_GROUP_TONE_LIVE",
+              "statusText": {
+                "key": "transport.status_direct"
+              },
+              "metricText": {
+                "key": "transport.read_latency_direct",
+                "args": [
+                  {
+                    "name": "direct",
+                    "strValue": "12"
+                  }
+                ]
+              },
+              "footerText": {
+                "key": "transport.footer"
+              }
+            },
+            "cliVersions": [
+              {
+                "agent": "AGENT_CODEX",
+                "name": "Codex",
+                "version": "0.42.0",
+                "verified": true
+              },
+              {
+                "agent": "AGENT_CLAUDE",
+                "name": "Claude Code",
+                "version": "2.1.0",
+                "unverifiedLabel": {
+                  "key": "settings.unverified"
+                }
+              }
+            ],
+            "hasUnverifiedCli": true,
+            "settingsLoading": true,
+            "saveUnknown": true,
+            "availableAgents": [
+              "AGENT_CODEX",
+              "AGENT_CLAUDE"
+            ],
+            "selectedAgent": "AGENT_CLAUDE",
+            "agentDefaults": {
+              "agent": "AGENT_CLAUDE",
+              "agentName": "Claude Code",
+              "selectedModel": "claude-sonnet-4-5",
+              "selectedModelLabel": {
+                "literal": "Sonnet 4.5"
+              },
+              "modelChoices": [
+                {
+                  "label": {
+                    "key": "models.default"
+                  },
+                  "isDefault": true
+                },
+                {
+                  "id": "claude-sonnet-4-5",
+                  "label": {
+                    "literal": "Sonnet 4.5"
+                  },
+                  "selected": true
+                }
+              ],
+              "effortChoices": [
+                {
+                  "label": {
+                    "key": "models.effort_default"
+                  },
+                  "selected": true,
+                  "isDefault": true
+                }
+              ],
+              "selectedMode": "APPROVAL_MODE_AUTO",
+              "modeChoices": [
+                {
+                  "label": {
+                    "key": "settings.follow_configuration",
+                    "args": [
+                      {
+                        "name": "value",
+                        "strValue": "Claude Code"
+                      }
+                    ]
+                  }
+                },
+                {
+                  "mode": "APPROVAL_MODE_ASK",
+                  "label": {
+                    "key": "modes.ask"
+                  }
+                },
+                {
+                  "mode": "APPROVAL_MODE_AUTO",
+                  "label": {
+                    "key": "modes.auto"
+                  },
+                  "selected": true,
+                  "disabled": true,
+                  "disabledReason": {
+                    "key": "modes.account_no_auto"
+                  }
+                }
+              ],
+              "autoUnavailableNotice": {
+                "key": "modes.account_no_auto"
+              },
+              "footerText": {
+                "key": "settings.new_project_defaults_settings",
+                "args": [
+                  {
+                    "name": "value",
+                    "strValue": "Claude Code"
+                  }
+                ]
+              }
+            },
+            "approvalTimeoutChoices": [
+              {
+                "seconds": 120,
+                "label": {
+                  "key": "quota.min",
+                  "args": [
+                    {
+                      "name": "count",
+                      "intValue": "2"
+                    }
+                  ]
+                }
+              },
+              {
+                "seconds": 300,
+                "label": {
+                  "key": "quota.min",
+                  "args": [
+                    {
+                      "name": "count",
+                      "intValue": "5"
+                    }
+                  ]
+                },
+                "selected": true
+              },
+              {
+                "seconds": 600,
+                "label": {
+                  "key": "quota.min",
+                  "args": [
+                    {
+                      "name": "count",
+                      "intValue": "10"
+                    }
+                  ]
+                }
+              },
+              {
+                "seconds": 1800,
+                "label": {
+                  "key": "quota.min",
+                  "args": [
+                    {
+                      "name": "count",
+                      "intValue": "30"
+                    }
+                  ]
+                }
+              }
+            ],
+            "selectedApprovalTimeoutSeconds": 300,
+            "idleCloseChoices": [
+              {
+                "minutes": -1,
+                "label": {
+                  "key": "settings.idle_close_off"
+                }
+              },
+              {
+                "minutes": 60,
+                "label": {
+                  "key": "quota.hr",
+                  "args": [
+                    {
+                      "name": "count",
+                      "intValue": "1"
+                    }
+                  ]
+                }
+              },
+              {
+                "minutes": 120,
+                "label": {
+                  "key": "quota.hr",
+                  "args": [
+                    {
+                      "name": "count",
+                      "intValue": "2"
+                    }
+                  ]
+                }
+              },
+              {
+                "minutes": 360,
+                "label": {
+                  "join": [
+                    {
+                      "key": "quota.hr",
+                      "args": [
+                        {
+                          "name": "count",
+                          "intValue": "6"
+                        }
+                      ]
+                    },
+                    {
+                      "key": "settings.default"
+                    }
+                  ],
+                  "separatorLiteral": " "
+                },
+                "selected": true
+              },
+              {
+                "minutes": 720,
+                "label": {
+                  "key": "quota.hr",
+                  "args": [
+                    {
+                      "name": "count",
+                      "intValue": "12"
+                    }
+                  ]
+                }
+              },
+              {
+                "minutes": 1440,
+                "label": {
+                  "key": "quota.hr",
+                  "args": [
+                    {
+                      "name": "count",
+                      "intValue": "24"
+                    }
+                  ]
+                }
+              }
+            ],
+            "selectedIdleCloseMinutes": 360,
+            "attachmentStorage": {
+              "loaded": true,
+              "uploadedText": {
+                "key": "machine_status.size_mb",
+                "args": [
+                  {
+                    "name": "size",
+                    "strValue": "100"
+                  }
+                ]
+              },
+              "uploadedDetail": {
+                "key": "settings.can_clear",
+                "args": [
+                  {
+                    "name": "value",
+                    "textValue": {
+                      "key": "machine_status.size_mb",
+                      "args": [
+                        {
+                          "name": "size",
+                          "strValue": "25"
+                        }
+                      ]
+                    }
+                  }
+                ]
+              },
+              "selectedQuotaBytes": "1073741824",
+              "quotaChoices": [
+                {
+                  "bytes": "268435456",
+                  "label": {
+                    "key": "machine_status.size_mb",
+                    "args": [
+                      {
+                        "name": "size",
+                        "strValue": "256"
+                      }
+                    ]
+                  }
+                },
+                {
+                  "bytes": "1073741824",
+                  "label": {
+                    "key": "machine_status.size_gb",
+                    "args": [
+                      {
+                        "name": "size",
+                        "strValue": "1"
+                      }
+                    ]
+                  },
+                  "selected": true
+                },
+                {
+                  "bytes": "5368709120",
+                  "label": {
+                    "key": "machine_status.size_gb",
+                    "args": [
+                      {
+                        "name": "size",
+                        "strValue": "5"
+                      }
+                    ]
+                  }
+                },
+                {
+                  "bytes": "10737418240",
+                  "label": {
+                    "key": "machine_status.size_gb",
+                    "args": [
+                      {
+                        "name": "size",
+                        "strValue": "10"
+                      }
+                    ]
+                  }
+                }
+              ],
+              "previewCacheText": {
+                "key": "machine_status.size_mb",
+                "args": [
+                  {
+                    "name": "size",
+                    "strValue": "10"
+                  }
+                ]
+              },
+              "showEmergencyReserve": true,
+              "emergencyReserveText": {
+                "key": "machine_status.size_mb",
+                "args": [
+                  {
+                    "name": "size",
+                    "strValue": "50"
+                  }
+                ]
+              },
+              "canClear": true,
+              "clearButtonLabel": {
+                "key": "settings.can_free",
+                "args": [
+                  {
+                    "name": "value",
+                    "textValue": {
+                      "key": "machine_status.size_mb",
+                      "args": [
+                        {
+                          "name": "size",
+                          "strValue": "35"
+                        }
+                      ]
+                    }
+                  }
+                ]
+              },
+              "footerText": {
+                "key": "settings.attachments_are_stored_on_this_computer_session_files_remain"
+              }
+            },
+            "projects": [
+              {
+                "projectKey": "/Users/me/Code/alpha",
+                "name": "alpha",
+                "path": "/Users/me/Code/alpha",
+                "lastActiveText": {
+                  "key": "time.minutes_ago",
+                  "args": [
+                    {
+                      "name": "count",
+                      "intValue": "17"
+                    }
+                  ]
+                }
+              }
+            ],
+            "management": {
+              "canRemove": true
+            }
+          }
+        }
+      }
+    },
+    {
+      "effects": {
+        "effects": [
+          {
+            "render": {
+              "screens": [
+                "SCREEN_TARGET_MACHINE_SETTINGS"
+              ]
+            }
+          }
+        ]
+      },
+      "views": {
+        "relayFailedDiag": {
+          "machineSettings": {
+            "machineId": "m1",
+            "name": "MacStudio",
+            "found": true,
+            "member": true,
+            "online": true,
+            "editable": true,
+            "showStatusEntry": true,
+            "statusRings": [
+              {
+                "kind": "MACHINE_RING_KIND_CPU",
+                "label": {
+                  "key": "machine_status.cpu"
+                },
+                "valueText": {
+                  "literal": "—"
+                },
+                "tone": "MACHINE_RING_TONE_NORMAL",
+                "a11yLabel": {
+                  "key": "machine_status.a11y_ring",
+                  "args": [
+                    {
+                      "name": "name",
+                      "textValue": {
+                        "key": "machine_status.cpu"
+                      }
+                    },
+                    {
+                      "name": "value",
+                      "textValue": {
+                        "literal": "—"
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "kind": "MACHINE_RING_KIND_MEMORY",
+                "label": {
+                  "key": "machine_status.memory"
+                },
+                "valueText": {
+                  "literal": "—"
+                },
+                "tone": "MACHINE_RING_TONE_NORMAL",
+                "a11yLabel": {
+                  "key": "machine_status.a11y_ring",
+                  "args": [
+                    {
+                      "name": "name",
+                      "textValue": {
+                        "key": "machine_status.memory"
+                      }
+                    },
+                    {
+                      "name": "value",
+                      "textValue": {
+                        "literal": "—"
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "kind": "MACHINE_RING_KIND_DISK",
+                "label": {
+                  "key": "machine_status.disk_available"
+                },
+                "valueText": {
+                  "literal": "—"
+                },
+                "tone": "MACHINE_RING_TONE_NORMAL",
+                "a11yLabel": {
+                  "key": "machine_status.a11y_ring",
+                  "args": [
+                    {
+                      "name": "name",
+                      "textValue": {
+                        "key": "machine_status.disk_available"
+                      }
+                    },
+                    {
+                      "name": "value",
+                      "textValue": {
+                        "literal": "—"
+                      }
+                    }
+                  ]
+                }
+              }
+            ],
+            "quotaRows": [
+              {
+                "agent": "AGENT_CODEX",
+                "agentName": "Codex",
+                "state": "QUOTA_SECTION_STATE_UNSUPPORTED",
+                "unsupported": true,
+                "emptyOrErrorText": {
+                  "key": "quota.quota_lookup_is_not_supported_yet"
+                },
+                "summaryTone": "QUOTA_TONE_STALE",
+                "summaryMeta": {
+                  "key": "quota.quota_lookup_is_not_supported_yet"
+                }
+              },
+              {
+                "agent": "AGENT_CLAUDE",
+                "agentName": "Claude Code",
+                "state": "QUOTA_SECTION_STATE_UNSUPPORTED",
+                "unsupported": true,
+                "emptyOrErrorText": {
+                  "key": "quota.quota_lookup_is_not_supported_yet"
+                },
+                "usageHint": {
+                  "key": "settings.view_usage_in_the_local_cli"
+                },
+                "summaryTone": "QUOTA_TONE_STALE",
+                "summaryMeta": {
+                  "key": "quota.quota_lookup_is_not_supported_yet"
+                }
+              }
+            ],
+            "connection": {
+              "toggleVisible": true,
+              "toggleEnabled": true,
+              "toggleChecked": true,
+              "stage": "CONNECTION_GROUP_STAGE_RELAY_FAILED",
+              "tone": "CONNECTION_GROUP_TONE_WARN",
+              "statusText": {
+                "key": "transport.status_relay"
+              },
+              "detailText": {
+                "key": "transport.reason_no_traversal"
+              },
+              "showDiagnosticsEntry": true,
+              "footerText": {
+                "key": "transport.footer"
+              }
+            },
+            "cliVersions": [
+              {
+                "agent": "AGENT_CODEX",
+                "name": "Codex",
+                "version": "0.42.0",
+                "verified": true
+              },
+              {
+                "agent": "AGENT_CLAUDE",
+                "name": "Claude Code",
+                "version": "2.1.0",
+                "unverifiedLabel": {
+                  "key": "settings.unverified"
+                }
+              }
+            ],
+            "hasUnverifiedCli": true,
+            "settingsLoading": true,
+            "saveUnknown": true,
+            "availableAgents": [
+              "AGENT_CODEX",
+              "AGENT_CLAUDE"
+            ],
+            "selectedAgent": "AGENT_CLAUDE",
+            "agentDefaults": {
+              "agent": "AGENT_CLAUDE",
+              "agentName": "Claude Code",
+              "selectedModel": "claude-sonnet-4-5",
+              "selectedModelLabel": {
+                "literal": "Sonnet 4.5"
+              },
+              "modelChoices": [
+                {
+                  "label": {
+                    "key": "models.default"
+                  },
+                  "isDefault": true
+                },
+                {
+                  "id": "claude-sonnet-4-5",
+                  "label": {
+                    "literal": "Sonnet 4.5"
+                  },
+                  "selected": true
+                }
+              ],
+              "effortChoices": [
+                {
+                  "label": {
+                    "key": "models.effort_default"
+                  },
+                  "selected": true,
+                  "isDefault": true
+                }
+              ],
+              "selectedMode": "APPROVAL_MODE_AUTO",
+              "modeChoices": [
+                {
+                  "label": {
+                    "key": "settings.follow_configuration",
+                    "args": [
+                      {
+                        "name": "value",
+                        "strValue": "Claude Code"
+                      }
+                    ]
+                  }
+                },
+                {
+                  "mode": "APPROVAL_MODE_ASK",
+                  "label": {
+                    "key": "modes.ask"
+                  }
+                },
+                {
+                  "mode": "APPROVAL_MODE_AUTO",
+                  "label": {
+                    "key": "modes.auto"
+                  },
+                  "selected": true,
+                  "disabled": true,
+                  "disabledReason": {
+                    "key": "modes.account_no_auto"
+                  }
+                }
+              ],
+              "autoUnavailableNotice": {
+                "key": "modes.account_no_auto"
+              },
+              "footerText": {
+                "key": "settings.new_project_defaults_settings",
+                "args": [
+                  {
+                    "name": "value",
+                    "strValue": "Claude Code"
+                  }
+                ]
+              }
+            },
+            "approvalTimeoutChoices": [
+              {
+                "seconds": 120,
+                "label": {
+                  "key": "quota.min",
+                  "args": [
+                    {
+                      "name": "count",
+                      "intValue": "2"
+                    }
+                  ]
+                }
+              },
+              {
+                "seconds": 300,
+                "label": {
+                  "key": "quota.min",
+                  "args": [
+                    {
+                      "name": "count",
+                      "intValue": "5"
+                    }
+                  ]
+                },
+                "selected": true
+              },
+              {
+                "seconds": 600,
+                "label": {
+                  "key": "quota.min",
+                  "args": [
+                    {
+                      "name": "count",
+                      "intValue": "10"
+                    }
+                  ]
+                }
+              },
+              {
+                "seconds": 1800,
+                "label": {
+                  "key": "quota.min",
+                  "args": [
+                    {
+                      "name": "count",
+                      "intValue": "30"
+                    }
+                  ]
+                }
+              }
+            ],
+            "selectedApprovalTimeoutSeconds": 300,
+            "idleCloseChoices": [
+              {
+                "minutes": -1,
+                "label": {
+                  "key": "settings.idle_close_off"
+                }
+              },
+              {
+                "minutes": 60,
+                "label": {
+                  "key": "quota.hr",
+                  "args": [
+                    {
+                      "name": "count",
+                      "intValue": "1"
+                    }
+                  ]
+                }
+              },
+              {
+                "minutes": 120,
+                "label": {
+                  "key": "quota.hr",
+                  "args": [
+                    {
+                      "name": "count",
+                      "intValue": "2"
+                    }
+                  ]
+                }
+              },
+              {
+                "minutes": 360,
+                "label": {
+                  "join": [
+                    {
+                      "key": "quota.hr",
+                      "args": [
+                        {
+                          "name": "count",
+                          "intValue": "6"
+                        }
+                      ]
+                    },
+                    {
+                      "key": "settings.default"
+                    }
+                  ],
+                  "separatorLiteral": " "
+                },
+                "selected": true
+              },
+              {
+                "minutes": 720,
+                "label": {
+                  "key": "quota.hr",
+                  "args": [
+                    {
+                      "name": "count",
+                      "intValue": "12"
+                    }
+                  ]
+                }
+              },
+              {
+                "minutes": 1440,
+                "label": {
+                  "key": "quota.hr",
+                  "args": [
+                    {
+                      "name": "count",
+                      "intValue": "24"
+                    }
+                  ]
+                }
+              }
+            ],
+            "selectedIdleCloseMinutes": 360,
+            "attachmentStorage": {
+              "loaded": true,
+              "uploadedText": {
+                "key": "machine_status.size_mb",
+                "args": [
+                  {
+                    "name": "size",
+                    "strValue": "100"
+                  }
+                ]
+              },
+              "uploadedDetail": {
+                "key": "settings.can_clear",
+                "args": [
+                  {
+                    "name": "value",
+                    "textValue": {
+                      "key": "machine_status.size_mb",
+                      "args": [
+                        {
+                          "name": "size",
+                          "strValue": "25"
+                        }
+                      ]
+                    }
+                  }
+                ]
+              },
+              "selectedQuotaBytes": "1073741824",
+              "quotaChoices": [
+                {
+                  "bytes": "268435456",
+                  "label": {
+                    "key": "machine_status.size_mb",
+                    "args": [
+                      {
+                        "name": "size",
+                        "strValue": "256"
+                      }
+                    ]
+                  }
+                },
+                {
+                  "bytes": "1073741824",
+                  "label": {
+                    "key": "machine_status.size_gb",
+                    "args": [
+                      {
+                        "name": "size",
+                        "strValue": "1"
+                      }
+                    ]
+                  },
+                  "selected": true
+                },
+                {
+                  "bytes": "5368709120",
+                  "label": {
+                    "key": "machine_status.size_gb",
+                    "args": [
+                      {
+                        "name": "size",
+                        "strValue": "5"
+                      }
+                    ]
+                  }
+                },
+                {
+                  "bytes": "10737418240",
+                  "label": {
+                    "key": "machine_status.size_gb",
+                    "args": [
+                      {
+                        "name": "size",
+                        "strValue": "10"
+                      }
+                    ]
+                  }
+                }
+              ],
+              "previewCacheText": {
+                "key": "machine_status.size_mb",
+                "args": [
+                  {
+                    "name": "size",
+                    "strValue": "10"
+                  }
+                ]
+              },
+              "showEmergencyReserve": true,
+              "emergencyReserveText": {
+                "key": "machine_status.size_mb",
+                "args": [
+                  {
+                    "name": "size",
+                    "strValue": "50"
+                  }
+                ]
+              },
+              "canClear": true,
+              "clearButtonLabel": {
+                "key": "settings.can_free",
+                "args": [
+                  {
+                    "name": "value",
+                    "textValue": {
+                      "key": "machine_status.size_mb",
+                      "args": [
+                        {
+                          "name": "size",
+                          "strValue": "35"
+                        }
+                      ]
+                    }
+                  }
+                ]
+              },
+              "footerText": {
+                "key": "settings.attachments_are_stored_on_this_computer_session_files_remain"
+              }
+            },
+            "projects": [
+              {
+                "projectKey": "/Users/me/Code/alpha",
+                "name": "alpha",
+                "path": "/Users/me/Code/alpha",
+                "lastActiveText": {
+                  "key": "time.minutes_ago",
+                  "args": [
+                    {
+                      "name": "count",
+                      "intValue": "17"
+                    }
+                  ]
+                }
+              }
+            ],
+            "management": {
+              "canRemove": true
+            }
+          }
+        }
+      }
+    }
+  ]
+}

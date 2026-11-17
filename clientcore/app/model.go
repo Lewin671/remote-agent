@@ -31,6 +31,8 @@ type Model struct {
 	sync           *sync.Engine
 	state          *screens.State
 	pendingCmdMeta map[string]cmdMeta
+	settings       *screens.SettingsExtra
+	settingsDirty  settingsDirtyFlags
 }
 
 func newModel() *Model {

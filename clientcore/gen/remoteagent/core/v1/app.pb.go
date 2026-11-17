@@ -51,12 +51,18 @@ const (
 type ScreenTarget int32
 
 const (
-	ScreenTarget_SCREEN_TARGET_UNSPECIFIED  ScreenTarget = 0
-	ScreenTarget_SCREEN_TARGET_HOME         ScreenTarget = 1
-	ScreenTarget_SCREEN_TARGET_PROJECT      ScreenTarget = 2
-	ScreenTarget_SCREEN_TARGET_NEW_SESSION  ScreenTarget = 3
-	ScreenTarget_SCREEN_TARGET_SYNC_STATE   ScreenTarget = 4
-	ScreenTarget_SCREEN_TARGET_SESSION_DATA ScreenTarget = 5
+	ScreenTarget_SCREEN_TARGET_UNSPECIFIED      ScreenTarget = 0
+	ScreenTarget_SCREEN_TARGET_HOME             ScreenTarget = 1
+	ScreenTarget_SCREEN_TARGET_PROJECT          ScreenTarget = 2
+	ScreenTarget_SCREEN_TARGET_NEW_SESSION      ScreenTarget = 3
+	ScreenTarget_SCREEN_TARGET_SYNC_STATE       ScreenTarget = 4
+	ScreenTarget_SCREEN_TARGET_SESSION_DATA     ScreenTarget = 5
+	ScreenTarget_SCREEN_TARGET_SETTINGS         ScreenTarget = 30
+	ScreenTarget_SCREEN_TARGET_MACHINE_STATUS   ScreenTarget = 31
+	ScreenTarget_SCREEN_TARGET_MACHINE_SETTINGS ScreenTarget = 32
+	ScreenTarget_SCREEN_TARGET_QUOTA            ScreenTarget = 33
+	ScreenTarget_SCREEN_TARGET_DEVICES          ScreenTarget = 34
+	ScreenTarget_SCREEN_TARGET_CLIENT_DETAIL    ScreenTarget = 35
 )
 
 type CommandRouteHint int32
@@ -422,6 +428,30 @@ type Screen_SessionData struct{ SessionData *SessionDataScreenRequest }
 
 func (*Screen_SessionData) isScreen_Screen() {}
 
+type Screen_Settings struct{ Settings *SettingsScreenRequest }
+
+func (*Screen_Settings) isScreen_Screen() {}
+
+type Screen_MachineStatus struct{ MachineStatus *MachineStatusScreenRequest }
+
+func (*Screen_MachineStatus) isScreen_Screen() {}
+
+type Screen_MachineSettings struct{ MachineSettings *MachineSettingsScreenRequest }
+
+func (*Screen_MachineSettings) isScreen_Screen() {}
+
+type Screen_Quota struct{ Quota *QuotaScreenRequest }
+
+func (*Screen_Quota) isScreen_Screen() {}
+
+type Screen_Devices struct{ Devices *DevicesScreenRequest }
+
+func (*Screen_Devices) isScreen_Screen() {}
+
+type Screen_ClientDetail struct{ ClientDetail *ClientDetailScreenRequest }
+
+func (*Screen_ClientDetail) isScreen_Screen() {}
+
 func (m *Screen) Reset() {
 	if m != nil {
 		*m = Screen{}
@@ -464,6 +494,42 @@ func (m *Screen) GetSessionData() *SessionDataScreenRequest {
 	}
 	return nil
 }
+func (m *Screen) GetSettings() *SettingsScreenRequest {
+	if x, ok := m.GetScreen().(*Screen_Settings); ok && x != nil {
+		return x.Settings
+	}
+	return nil
+}
+func (m *Screen) GetMachineStatus() *MachineStatusScreenRequest {
+	if x, ok := m.GetScreen().(*Screen_MachineStatus); ok && x != nil {
+		return x.MachineStatus
+	}
+	return nil
+}
+func (m *Screen) GetMachineSettings() *MachineSettingsScreenRequest {
+	if x, ok := m.GetScreen().(*Screen_MachineSettings); ok && x != nil {
+		return x.MachineSettings
+	}
+	return nil
+}
+func (m *Screen) GetQuota() *QuotaScreenRequest {
+	if x, ok := m.GetScreen().(*Screen_Quota); ok && x != nil {
+		return x.Quota
+	}
+	return nil
+}
+func (m *Screen) GetDevices() *DevicesScreenRequest {
+	if x, ok := m.GetScreen().(*Screen_Devices); ok && x != nil {
+		return x.Devices
+	}
+	return nil
+}
+func (m *Screen) GetClientDetail() *ClientDetailScreenRequest {
+	if x, ok := m.GetScreen().(*Screen_ClientDetail); ok && x != nil {
+		return x.ClientDetail
+	}
+	return nil
+}
 
 func (m *Screen) Clone() *Screen {
 	if m == nil {
@@ -490,6 +556,30 @@ func (m *Screen) Clone() *Screen {
 	case *Screen_SessionData:
 		if v != nil {
 			cp.Screen = &Screen_SessionData{SessionData: v.SessionData.Clone()}
+		}
+	case *Screen_Settings:
+		if v != nil {
+			cp.Screen = &Screen_Settings{Settings: v.Settings.Clone()}
+		}
+	case *Screen_MachineStatus:
+		if v != nil {
+			cp.Screen = &Screen_MachineStatus{MachineStatus: v.MachineStatus.Clone()}
+		}
+	case *Screen_MachineSettings:
+		if v != nil {
+			cp.Screen = &Screen_MachineSettings{MachineSettings: v.MachineSettings.Clone()}
+		}
+	case *Screen_Quota:
+		if v != nil {
+			cp.Screen = &Screen_Quota{Quota: v.Quota.Clone()}
+		}
+	case *Screen_Devices:
+		if v != nil {
+			cp.Screen = &Screen_Devices{Devices: v.Devices.Clone()}
+		}
+	case *Screen_ClientDetail:
+		if v != nil {
+			cp.Screen = &Screen_ClientDetail{ClientDetail: v.ClientDetail.Clone()}
 		}
 	}
 	return &cp
@@ -532,6 +622,42 @@ func (m *Screen) AppendMarshal(b []byte) []byte {
 		if x != nil {
 			if x.SessionData != nil {
 				b = litewire.AppendBytesAlways(b, 5, x.SessionData.AppendMarshal(nil))
+			}
+		}
+	case *Screen_Settings:
+		if x != nil {
+			if x.Settings != nil {
+				b = litewire.AppendBytesAlways(b, 30, x.Settings.AppendMarshal(nil))
+			}
+		}
+	case *Screen_MachineStatus:
+		if x != nil {
+			if x.MachineStatus != nil {
+				b = litewire.AppendBytesAlways(b, 31, x.MachineStatus.AppendMarshal(nil))
+			}
+		}
+	case *Screen_MachineSettings:
+		if x != nil {
+			if x.MachineSettings != nil {
+				b = litewire.AppendBytesAlways(b, 32, x.MachineSettings.AppendMarshal(nil))
+			}
+		}
+	case *Screen_Quota:
+		if x != nil {
+			if x.Quota != nil {
+				b = litewire.AppendBytesAlways(b, 33, x.Quota.AppendMarshal(nil))
+			}
+		}
+	case *Screen_Devices:
+		if x != nil {
+			if x.Devices != nil {
+				b = litewire.AppendBytesAlways(b, 34, x.Devices.AppendMarshal(nil))
+			}
+		}
+	case *Screen_ClientDetail:
+		if x != nil {
+			if x.ClientDetail != nil {
+				b = litewire.AppendBytesAlways(b, 35, x.ClientDetail.AppendMarshal(nil))
 			}
 		}
 	}
@@ -640,6 +766,120 @@ func (m *Screen) Unmarshal(b []byte) error {
 				m.Screen = &Screen_SessionData{SessionData: sub}
 				continue
 			}
+		case 30:
+			if wtyp == protowire.BytesType {
+				raw, err := litewire.ReadBytesRaw(&b)
+				if err != nil {
+					return err
+				}
+				var sub *SettingsScreenRequest
+				if cur, ok := m.Screen.(*Screen_Settings); ok && cur != nil {
+					sub = cur.Settings
+				}
+				if sub == nil {
+					sub = &SettingsScreenRequest{}
+				}
+				if err := sub.Unmarshal(raw); err != nil {
+					return err
+				}
+				m.Screen = &Screen_Settings{Settings: sub}
+				continue
+			}
+		case 31:
+			if wtyp == protowire.BytesType {
+				raw, err := litewire.ReadBytesRaw(&b)
+				if err != nil {
+					return err
+				}
+				var sub *MachineStatusScreenRequest
+				if cur, ok := m.Screen.(*Screen_MachineStatus); ok && cur != nil {
+					sub = cur.MachineStatus
+				}
+				if sub == nil {
+					sub = &MachineStatusScreenRequest{}
+				}
+				if err := sub.Unmarshal(raw); err != nil {
+					return err
+				}
+				m.Screen = &Screen_MachineStatus{MachineStatus: sub}
+				continue
+			}
+		case 32:
+			if wtyp == protowire.BytesType {
+				raw, err := litewire.ReadBytesRaw(&b)
+				if err != nil {
+					return err
+				}
+				var sub *MachineSettingsScreenRequest
+				if cur, ok := m.Screen.(*Screen_MachineSettings); ok && cur != nil {
+					sub = cur.MachineSettings
+				}
+				if sub == nil {
+					sub = &MachineSettingsScreenRequest{}
+				}
+				if err := sub.Unmarshal(raw); err != nil {
+					return err
+				}
+				m.Screen = &Screen_MachineSettings{MachineSettings: sub}
+				continue
+			}
+		case 33:
+			if wtyp == protowire.BytesType {
+				raw, err := litewire.ReadBytesRaw(&b)
+				if err != nil {
+					return err
+				}
+				var sub *QuotaScreenRequest
+				if cur, ok := m.Screen.(*Screen_Quota); ok && cur != nil {
+					sub = cur.Quota
+				}
+				if sub == nil {
+					sub = &QuotaScreenRequest{}
+				}
+				if err := sub.Unmarshal(raw); err != nil {
+					return err
+				}
+				m.Screen = &Screen_Quota{Quota: sub}
+				continue
+			}
+		case 34:
+			if wtyp == protowire.BytesType {
+				raw, err := litewire.ReadBytesRaw(&b)
+				if err != nil {
+					return err
+				}
+				var sub *DevicesScreenRequest
+				if cur, ok := m.Screen.(*Screen_Devices); ok && cur != nil {
+					sub = cur.Devices
+				}
+				if sub == nil {
+					sub = &DevicesScreenRequest{}
+				}
+				if err := sub.Unmarshal(raw); err != nil {
+					return err
+				}
+				m.Screen = &Screen_Devices{Devices: sub}
+				continue
+			}
+		case 35:
+			if wtyp == protowire.BytesType {
+				raw, err := litewire.ReadBytesRaw(&b)
+				if err != nil {
+					return err
+				}
+				var sub *ClientDetailScreenRequest
+				if cur, ok := m.Screen.(*Screen_ClientDetail); ok && cur != nil {
+					sub = cur.ClientDetail
+				}
+				if sub == nil {
+					sub = &ClientDetailScreenRequest{}
+				}
+				if err := sub.Unmarshal(raw); err != nil {
+					return err
+				}
+				m.Screen = &Screen_ClientDetail{ClientDetail: sub}
+				continue
+			}
 		}
 		if err := litewire.Skip(&b, num, wtyp); err != nil {
 			return err
@@ -672,6 +912,30 @@ func (*ViewModel_SyncState) isViewModel_View() {}
 type ViewModel_SessionData struct{ SessionData *SessionDataView }
 
 func (*ViewModel_SessionData) isViewModel_View() {}
+
+type ViewModel_Settings struct{ Settings *SettingsViewModel }
+
+func (*ViewModel_Settings) isViewModel_View() {}
+
+type ViewModel_MachineStatus struct{ MachineStatus *MachineStatusViewModel }
+
+func (*ViewModel_MachineStatus) isViewModel_View() {}
+
+type ViewModel_MachineSettings struct{ MachineSettings *MachineSettingsViewModel }
+
+func (*ViewModel_MachineSettings) isViewModel_View() {}
+
+type ViewModel_Quota struct{ Quota *QuotaViewModel }
+
+func (*ViewModel_Quota) isViewModel_View() {}
+
+type ViewModel_Devices struct{ Devices *DevicesViewModel }
+
+func (*ViewModel_Devices) isViewModel_View() {}
+
+type ViewModel_ClientDetail struct{ ClientDetail *ClientDetailViewModel }
+
+func (*ViewModel_ClientDetail) isViewModel_View() {}
 
 func (m *ViewModel) Reset() {
 	if m != nil {
@@ -715,6 +979,42 @@ func (m *ViewModel) GetSessionData() *SessionDataView {
 	}
 	return nil
 }
+func (m *ViewModel) GetSettings() *SettingsViewModel {
+	if x, ok := m.GetView().(*ViewModel_Settings); ok && x != nil {
+		return x.Settings
+	}
+	return nil
+}
+func (m *ViewModel) GetMachineStatus() *MachineStatusViewModel {
+	if x, ok := m.GetView().(*ViewModel_MachineStatus); ok && x != nil {
+		return x.MachineStatus
+	}
+	return nil
+}
+func (m *ViewModel) GetMachineSettings() *MachineSettingsViewModel {
+	if x, ok := m.GetView().(*ViewModel_MachineSettings); ok && x != nil {
+		return x.MachineSettings
+	}
+	return nil
+}
+func (m *ViewModel) GetQuota() *QuotaViewModel {
+	if x, ok := m.GetView().(*ViewModel_Quota); ok && x != nil {
+		return x.Quota
+	}
+	return nil
+}
+func (m *ViewModel) GetDevices() *DevicesViewModel {
+	if x, ok := m.GetView().(*ViewModel_Devices); ok && x != nil {
+		return x.Devices
+	}
+	return nil
+}
+func (m *ViewModel) GetClientDetail() *ClientDetailViewModel {
+	if x, ok := m.GetView().(*ViewModel_ClientDetail); ok && x != nil {
+		return x.ClientDetail
+	}
+	return nil
+}
 
 func (m *ViewModel) Clone() *ViewModel {
 	if m == nil {
@@ -741,6 +1041,30 @@ func (m *ViewModel) Clone() *ViewModel {
 	case *ViewModel_SessionData:
 		if v != nil {
 			cp.View = &ViewModel_SessionData{SessionData: v.SessionData.Clone()}
+		}
+	case *ViewModel_Settings:
+		if v != nil {
+			cp.View = &ViewModel_Settings{Settings: v.Settings.Clone()}
+		}
+	case *ViewModel_MachineStatus:
+		if v != nil {
+			cp.View = &ViewModel_MachineStatus{MachineStatus: v.MachineStatus.Clone()}
+		}
+	case *ViewModel_MachineSettings:
+		if v != nil {
+			cp.View = &ViewModel_MachineSettings{MachineSettings: v.MachineSettings.Clone()}
+		}
+	case *ViewModel_Quota:
+		if v != nil {
+			cp.View = &ViewModel_Quota{Quota: v.Quota.Clone()}
+		}
+	case *ViewModel_Devices:
+		if v != nil {
+			cp.View = &ViewModel_Devices{Devices: v.Devices.Clone()}
+		}
+	case *ViewModel_ClientDetail:
+		if v != nil {
+			cp.View = &ViewModel_ClientDetail{ClientDetail: v.ClientDetail.Clone()}
 		}
 	}
 	return &cp
@@ -783,6 +1107,42 @@ func (m *ViewModel) AppendMarshal(b []byte) []byte {
 		if x != nil {
 			if x.SessionData != nil {
 				b = litewire.AppendBytesAlways(b, 5, x.SessionData.AppendMarshal(nil))
+			}
+		}
+	case *ViewModel_Settings:
+		if x != nil {
+			if x.Settings != nil {
+				b = litewire.AppendBytesAlways(b, 30, x.Settings.AppendMarshal(nil))
+			}
+		}
+	case *ViewModel_MachineStatus:
+		if x != nil {
+			if x.MachineStatus != nil {
+				b = litewire.AppendBytesAlways(b, 31, x.MachineStatus.AppendMarshal(nil))
+			}
+		}
+	case *ViewModel_MachineSettings:
+		if x != nil {
+			if x.MachineSettings != nil {
+				b = litewire.AppendBytesAlways(b, 32, x.MachineSettings.AppendMarshal(nil))
+			}
+		}
+	case *ViewModel_Quota:
+		if x != nil {
+			if x.Quota != nil {
+				b = litewire.AppendBytesAlways(b, 33, x.Quota.AppendMarshal(nil))
+			}
+		}
+	case *ViewModel_Devices:
+		if x != nil {
+			if x.Devices != nil {
+				b = litewire.AppendBytesAlways(b, 34, x.Devices.AppendMarshal(nil))
+			}
+		}
+	case *ViewModel_ClientDetail:
+		if x != nil {
+			if x.ClientDetail != nil {
+				b = litewire.AppendBytesAlways(b, 35, x.ClientDetail.AppendMarshal(nil))
 			}
 		}
 	}
@@ -889,6 +1249,120 @@ func (m *ViewModel) Unmarshal(b []byte) error {
 					return err
 				}
 				m.View = &ViewModel_SessionData{SessionData: sub}
+				continue
+			}
+		case 30:
+			if wtyp == protowire.BytesType {
+				raw, err := litewire.ReadBytesRaw(&b)
+				if err != nil {
+					return err
+				}
+				var sub *SettingsViewModel
+				if cur, ok := m.View.(*ViewModel_Settings); ok && cur != nil {
+					sub = cur.Settings
+				}
+				if sub == nil {
+					sub = &SettingsViewModel{}
+				}
+				if err := sub.Unmarshal(raw); err != nil {
+					return err
+				}
+				m.View = &ViewModel_Settings{Settings: sub}
+				continue
+			}
+		case 31:
+			if wtyp == protowire.BytesType {
+				raw, err := litewire.ReadBytesRaw(&b)
+				if err != nil {
+					return err
+				}
+				var sub *MachineStatusViewModel
+				if cur, ok := m.View.(*ViewModel_MachineStatus); ok && cur != nil {
+					sub = cur.MachineStatus
+				}
+				if sub == nil {
+					sub = &MachineStatusViewModel{}
+				}
+				if err := sub.Unmarshal(raw); err != nil {
+					return err
+				}
+				m.View = &ViewModel_MachineStatus{MachineStatus: sub}
+				continue
+			}
+		case 32:
+			if wtyp == protowire.BytesType {
+				raw, err := litewire.ReadBytesRaw(&b)
+				if err != nil {
+					return err
+				}
+				var sub *MachineSettingsViewModel
+				if cur, ok := m.View.(*ViewModel_MachineSettings); ok && cur != nil {
+					sub = cur.MachineSettings
+				}
+				if sub == nil {
+					sub = &MachineSettingsViewModel{}
+				}
+				if err := sub.Unmarshal(raw); err != nil {
+					return err
+				}
+				m.View = &ViewModel_MachineSettings{MachineSettings: sub}
+				continue
+			}
+		case 33:
+			if wtyp == protowire.BytesType {
+				raw, err := litewire.ReadBytesRaw(&b)
+				if err != nil {
+					return err
+				}
+				var sub *QuotaViewModel
+				if cur, ok := m.View.(*ViewModel_Quota); ok && cur != nil {
+					sub = cur.Quota
+				}
+				if sub == nil {
+					sub = &QuotaViewModel{}
+				}
+				if err := sub.Unmarshal(raw); err != nil {
+					return err
+				}
+				m.View = &ViewModel_Quota{Quota: sub}
+				continue
+			}
+		case 34:
+			if wtyp == protowire.BytesType {
+				raw, err := litewire.ReadBytesRaw(&b)
+				if err != nil {
+					return err
+				}
+				var sub *DevicesViewModel
+				if cur, ok := m.View.(*ViewModel_Devices); ok && cur != nil {
+					sub = cur.Devices
+				}
+				if sub == nil {
+					sub = &DevicesViewModel{}
+				}
+				if err := sub.Unmarshal(raw); err != nil {
+					return err
+				}
+				m.View = &ViewModel_Devices{Devices: sub}
+				continue
+			}
+		case 35:
+			if wtyp == protowire.BytesType {
+				raw, err := litewire.ReadBytesRaw(&b)
+				if err != nil {
+					return err
+				}
+				var sub *ClientDetailViewModel
+				if cur, ok := m.View.(*ViewModel_ClientDetail); ok && cur != nil {
+					sub = cur.ClientDetail
+				}
+				if sub == nil {
+					sub = &ClientDetailViewModel{}
+				}
+				if err := sub.Unmarshal(raw); err != nil {
+					return err
+				}
+				m.View = &ViewModel_ClientDetail{ClientDetail: sub}
 				continue
 			}
 		}
@@ -7231,6 +7705,84 @@ type Event_NewSessionAbandonStart struct{ NewSessionAbandonStart *NewSessionProj
 
 func (*Event_NewSessionAbandonStart) isEvent_Event() {}
 
+type Event_MachineStatusWatch struct{ MachineStatusWatch *MachineStatusWatchEvent }
+
+func (*Event_MachineStatusWatch) isEvent_Event() {}
+
+type Event_MachineStatusRetry struct{ MachineStatusRetry *MachineStatusRetryEvent }
+
+func (*Event_MachineStatusRetry) isEvent_Event() {}
+
+type Event_MachineStatusTab struct{ MachineStatusTab *MachineStatusTabEvent }
+
+func (*Event_MachineStatusTab) isEvent_Event() {}
+
+type Event_MachineStatusScrub struct{ MachineStatusScrub *MachineStatusScrubEvent }
+
+func (*Event_MachineStatusScrub) isEvent_Event() {}
+
+type Event_MachineStatusCleanup struct{ MachineStatusCleanup *MachineStatusCleanupEvent }
+
+func (*Event_MachineStatusCleanup) isEvent_Event() {}
+
+type Event_MachineStatusPollTick struct{ MachineStatusPollTick *MachineStatusPollTickEvent }
+
+func (*Event_MachineStatusPollTick) isEvent_Event() {}
+
+type Event_MachineSettingsOpen struct{ MachineSettingsOpen *MachineSettingsOpenEvent }
+
+func (*Event_MachineSettingsOpen) isEvent_Event() {}
+
+type Event_MachineSettingsSelectAgent struct {
+	MachineSettingsSelectAgent *MachineSettingsSelectAgentEvent
+}
+
+func (*Event_MachineSettingsSelectAgent) isEvent_Event() {}
+
+type Event_UpdateMachineAgentDefaults struct {
+	UpdateMachineAgentDefaults *UpdateMachineAgentDefaultsEvent
+}
+
+func (*Event_UpdateMachineAgentDefaults) isEvent_Event() {}
+
+type Event_UpdateMachineDaemonSettings struct {
+	UpdateMachineDaemonSettings *UpdateMachineDaemonSettingsEvent
+}
+
+func (*Event_UpdateMachineDaemonSettings) isEvent_Event() {}
+
+type Event_UpdateDirectPreference struct{ UpdateDirectPreference *UpdateDirectPreferenceEvent }
+
+func (*Event_UpdateDirectPreference) isEvent_Event() {}
+
+type Event_MachineDirectStatus struct{ MachineDirectStatus *MachineDirectStatusEvent }
+
+func (*Event_MachineDirectStatus) isEvent_Event() {}
+
+type Event_UpdateClientName struct{ UpdateClientName *UpdateClientNameEvent }
+
+func (*Event_UpdateClientName) isEvent_Event() {}
+
+type Event_SetNotificationPref struct{ SetNotificationPref *SetNotificationPrefEvent }
+
+func (*Event_SetNotificationPref) isEvent_Event() {}
+
+type Event_SetAppearancePref struct{ SetAppearancePref *SetAppearancePrefEvent }
+
+func (*Event_SetAppearancePref) isEvent_Event() {}
+
+type Event_ConnCheckStatus struct{ ConnCheckStatus *ConnCheckStatusEvent }
+
+func (*Event_ConnCheckStatus) isEvent_Event() {}
+
+type Event_ClientUpdateState struct{ ClientUpdateState *ClientUpdateStateEvent }
+
+func (*Event_ClientUpdateState) isEvent_Event() {}
+
+type Event_CheckForUpdates struct{ CheckForUpdates *CheckForUpdatesEvent }
+
+func (*Event_CheckForUpdates) isEvent_Event() {}
+
 func (m *Event) Reset() {
 	if m != nil {
 		*m = Event{}
@@ -7537,6 +8089,114 @@ func (m *Event) GetNewSessionAbandonStart() *NewSessionProjectAction {
 	}
 	return nil
 }
+func (m *Event) GetMachineStatusWatch() *MachineStatusWatchEvent {
+	if x, ok := m.GetEvent().(*Event_MachineStatusWatch); ok && x != nil {
+		return x.MachineStatusWatch
+	}
+	return nil
+}
+func (m *Event) GetMachineStatusRetry() *MachineStatusRetryEvent {
+	if x, ok := m.GetEvent().(*Event_MachineStatusRetry); ok && x != nil {
+		return x.MachineStatusRetry
+	}
+	return nil
+}
+func (m *Event) GetMachineStatusTab() *MachineStatusTabEvent {
+	if x, ok := m.GetEvent().(*Event_MachineStatusTab); ok && x != nil {
+		return x.MachineStatusTab
+	}
+	return nil
+}
+func (m *Event) GetMachineStatusScrub() *MachineStatusScrubEvent {
+	if x, ok := m.GetEvent().(*Event_MachineStatusScrub); ok && x != nil {
+		return x.MachineStatusScrub
+	}
+	return nil
+}
+func (m *Event) GetMachineStatusCleanup() *MachineStatusCleanupEvent {
+	if x, ok := m.GetEvent().(*Event_MachineStatusCleanup); ok && x != nil {
+		return x.MachineStatusCleanup
+	}
+	return nil
+}
+func (m *Event) GetMachineStatusPollTick() *MachineStatusPollTickEvent {
+	if x, ok := m.GetEvent().(*Event_MachineStatusPollTick); ok && x != nil {
+		return x.MachineStatusPollTick
+	}
+	return nil
+}
+func (m *Event) GetMachineSettingsOpen() *MachineSettingsOpenEvent {
+	if x, ok := m.GetEvent().(*Event_MachineSettingsOpen); ok && x != nil {
+		return x.MachineSettingsOpen
+	}
+	return nil
+}
+func (m *Event) GetMachineSettingsSelectAgent() *MachineSettingsSelectAgentEvent {
+	if x, ok := m.GetEvent().(*Event_MachineSettingsSelectAgent); ok && x != nil {
+		return x.MachineSettingsSelectAgent
+	}
+	return nil
+}
+func (m *Event) GetUpdateMachineAgentDefaults() *UpdateMachineAgentDefaultsEvent {
+	if x, ok := m.GetEvent().(*Event_UpdateMachineAgentDefaults); ok && x != nil {
+		return x.UpdateMachineAgentDefaults
+	}
+	return nil
+}
+func (m *Event) GetUpdateMachineDaemonSettings() *UpdateMachineDaemonSettingsEvent {
+	if x, ok := m.GetEvent().(*Event_UpdateMachineDaemonSettings); ok && x != nil {
+		return x.UpdateMachineDaemonSettings
+	}
+	return nil
+}
+func (m *Event) GetUpdateDirectPreference() *UpdateDirectPreferenceEvent {
+	if x, ok := m.GetEvent().(*Event_UpdateDirectPreference); ok && x != nil {
+		return x.UpdateDirectPreference
+	}
+	return nil
+}
+func (m *Event) GetMachineDirectStatus() *MachineDirectStatusEvent {
+	if x, ok := m.GetEvent().(*Event_MachineDirectStatus); ok && x != nil {
+		return x.MachineDirectStatus
+	}
+	return nil
+}
+func (m *Event) GetUpdateClientName() *UpdateClientNameEvent {
+	if x, ok := m.GetEvent().(*Event_UpdateClientName); ok && x != nil {
+		return x.UpdateClientName
+	}
+	return nil
+}
+func (m *Event) GetSetNotificationPref() *SetNotificationPrefEvent {
+	if x, ok := m.GetEvent().(*Event_SetNotificationPref); ok && x != nil {
+		return x.SetNotificationPref
+	}
+	return nil
+}
+func (m *Event) GetSetAppearancePref() *SetAppearancePrefEvent {
+	if x, ok := m.GetEvent().(*Event_SetAppearancePref); ok && x != nil {
+		return x.SetAppearancePref
+	}
+	return nil
+}
+func (m *Event) GetConnCheckStatus() *ConnCheckStatusEvent {
+	if x, ok := m.GetEvent().(*Event_ConnCheckStatus); ok && x != nil {
+		return x.ConnCheckStatus
+	}
+	return nil
+}
+func (m *Event) GetClientUpdateState() *ClientUpdateStateEvent {
+	if x, ok := m.GetEvent().(*Event_ClientUpdateState); ok && x != nil {
+		return x.ClientUpdateState
+	}
+	return nil
+}
+func (m *Event) GetCheckForUpdates() *CheckForUpdatesEvent {
+	if x, ok := m.GetEvent().(*Event_CheckForUpdates); ok && x != nil {
+		return x.CheckForUpdates
+	}
+	return nil
+}
 func (m *Event) GetNowMs() int64 {
 	if m != nil {
 		return m.NowMs
@@ -7763,6 +8423,78 @@ func (m *Event) Clone() *Event {
 	case *Event_NewSessionAbandonStart:
 		if v != nil {
 			cp.Event = &Event_NewSessionAbandonStart{NewSessionAbandonStart: v.NewSessionAbandonStart.Clone()}
+		}
+	case *Event_MachineStatusWatch:
+		if v != nil {
+			cp.Event = &Event_MachineStatusWatch{MachineStatusWatch: v.MachineStatusWatch.Clone()}
+		}
+	case *Event_MachineStatusRetry:
+		if v != nil {
+			cp.Event = &Event_MachineStatusRetry{MachineStatusRetry: v.MachineStatusRetry.Clone()}
+		}
+	case *Event_MachineStatusTab:
+		if v != nil {
+			cp.Event = &Event_MachineStatusTab{MachineStatusTab: v.MachineStatusTab.Clone()}
+		}
+	case *Event_MachineStatusScrub:
+		if v != nil {
+			cp.Event = &Event_MachineStatusScrub{MachineStatusScrub: v.MachineStatusScrub.Clone()}
+		}
+	case *Event_MachineStatusCleanup:
+		if v != nil {
+			cp.Event = &Event_MachineStatusCleanup{MachineStatusCleanup: v.MachineStatusCleanup.Clone()}
+		}
+	case *Event_MachineStatusPollTick:
+		if v != nil {
+			cp.Event = &Event_MachineStatusPollTick{MachineStatusPollTick: v.MachineStatusPollTick.Clone()}
+		}
+	case *Event_MachineSettingsOpen:
+		if v != nil {
+			cp.Event = &Event_MachineSettingsOpen{MachineSettingsOpen: v.MachineSettingsOpen.Clone()}
+		}
+	case *Event_MachineSettingsSelectAgent:
+		if v != nil {
+			cp.Event = &Event_MachineSettingsSelectAgent{MachineSettingsSelectAgent: v.MachineSettingsSelectAgent.Clone()}
+		}
+	case *Event_UpdateMachineAgentDefaults:
+		if v != nil {
+			cp.Event = &Event_UpdateMachineAgentDefaults{UpdateMachineAgentDefaults: v.UpdateMachineAgentDefaults.Clone()}
+		}
+	case *Event_UpdateMachineDaemonSettings:
+		if v != nil {
+			cp.Event = &Event_UpdateMachineDaemonSettings{UpdateMachineDaemonSettings: v.UpdateMachineDaemonSettings.Clone()}
+		}
+	case *Event_UpdateDirectPreference:
+		if v != nil {
+			cp.Event = &Event_UpdateDirectPreference{UpdateDirectPreference: v.UpdateDirectPreference.Clone()}
+		}
+	case *Event_MachineDirectStatus:
+		if v != nil {
+			cp.Event = &Event_MachineDirectStatus{MachineDirectStatus: v.MachineDirectStatus.Clone()}
+		}
+	case *Event_UpdateClientName:
+		if v != nil {
+			cp.Event = &Event_UpdateClientName{UpdateClientName: v.UpdateClientName.Clone()}
+		}
+	case *Event_SetNotificationPref:
+		if v != nil {
+			cp.Event = &Event_SetNotificationPref{SetNotificationPref: v.SetNotificationPref.Clone()}
+		}
+	case *Event_SetAppearancePref:
+		if v != nil {
+			cp.Event = &Event_SetAppearancePref{SetAppearancePref: v.SetAppearancePref.Clone()}
+		}
+	case *Event_ConnCheckStatus:
+		if v != nil {
+			cp.Event = &Event_ConnCheckStatus{ConnCheckStatus: v.ConnCheckStatus.Clone()}
+		}
+	case *Event_ClientUpdateState:
+		if v != nil {
+			cp.Event = &Event_ClientUpdateState{ClientUpdateState: v.ClientUpdateState.Clone()}
+		}
+	case *Event_CheckForUpdates:
+		if v != nil {
+			cp.Event = &Event_CheckForUpdates{CheckForUpdates: v.CheckForUpdates.Clone()}
 		}
 	}
 	cp.RandomIds = slices.Clone(m.RandomIds)
@@ -8071,6 +8803,114 @@ func (m *Event) AppendMarshal(b []byte) []byte {
 		if x != nil {
 			if x.NewSessionAbandonStart != nil {
 				b = litewire.AppendBytesAlways(b, 59, x.NewSessionAbandonStart.AppendMarshal(nil))
+			}
+		}
+	case *Event_MachineStatusWatch:
+		if x != nil {
+			if x.MachineStatusWatch != nil {
+				b = litewire.AppendBytesAlways(b, 350, x.MachineStatusWatch.AppendMarshal(nil))
+			}
+		}
+	case *Event_MachineStatusRetry:
+		if x != nil {
+			if x.MachineStatusRetry != nil {
+				b = litewire.AppendBytesAlways(b, 351, x.MachineStatusRetry.AppendMarshal(nil))
+			}
+		}
+	case *Event_MachineStatusTab:
+		if x != nil {
+			if x.MachineStatusTab != nil {
+				b = litewire.AppendBytesAlways(b, 352, x.MachineStatusTab.AppendMarshal(nil))
+			}
+		}
+	case *Event_MachineStatusScrub:
+		if x != nil {
+			if x.MachineStatusScrub != nil {
+				b = litewire.AppendBytesAlways(b, 353, x.MachineStatusScrub.AppendMarshal(nil))
+			}
+		}
+	case *Event_MachineStatusCleanup:
+		if x != nil {
+			if x.MachineStatusCleanup != nil {
+				b = litewire.AppendBytesAlways(b, 354, x.MachineStatusCleanup.AppendMarshal(nil))
+			}
+		}
+	case *Event_MachineStatusPollTick:
+		if x != nil {
+			if x.MachineStatusPollTick != nil {
+				b = litewire.AppendBytesAlways(b, 355, x.MachineStatusPollTick.AppendMarshal(nil))
+			}
+		}
+	case *Event_MachineSettingsOpen:
+		if x != nil {
+			if x.MachineSettingsOpen != nil {
+				b = litewire.AppendBytesAlways(b, 360, x.MachineSettingsOpen.AppendMarshal(nil))
+			}
+		}
+	case *Event_MachineSettingsSelectAgent:
+		if x != nil {
+			if x.MachineSettingsSelectAgent != nil {
+				b = litewire.AppendBytesAlways(b, 361, x.MachineSettingsSelectAgent.AppendMarshal(nil))
+			}
+		}
+	case *Event_UpdateMachineAgentDefaults:
+		if x != nil {
+			if x.UpdateMachineAgentDefaults != nil {
+				b = litewire.AppendBytesAlways(b, 362, x.UpdateMachineAgentDefaults.AppendMarshal(nil))
+			}
+		}
+	case *Event_UpdateMachineDaemonSettings:
+		if x != nil {
+			if x.UpdateMachineDaemonSettings != nil {
+				b = litewire.AppendBytesAlways(b, 363, x.UpdateMachineDaemonSettings.AppendMarshal(nil))
+			}
+		}
+	case *Event_UpdateDirectPreference:
+		if x != nil {
+			if x.UpdateDirectPreference != nil {
+				b = litewire.AppendBytesAlways(b, 364, x.UpdateDirectPreference.AppendMarshal(nil))
+			}
+		}
+	case *Event_MachineDirectStatus:
+		if x != nil {
+			if x.MachineDirectStatus != nil {
+				b = litewire.AppendBytesAlways(b, 365, x.MachineDirectStatus.AppendMarshal(nil))
+			}
+		}
+	case *Event_UpdateClientName:
+		if x != nil {
+			if x.UpdateClientName != nil {
+				b = litewire.AppendBytesAlways(b, 370, x.UpdateClientName.AppendMarshal(nil))
+			}
+		}
+	case *Event_SetNotificationPref:
+		if x != nil {
+			if x.SetNotificationPref != nil {
+				b = litewire.AppendBytesAlways(b, 375, x.SetNotificationPref.AppendMarshal(nil))
+			}
+		}
+	case *Event_SetAppearancePref:
+		if x != nil {
+			if x.SetAppearancePref != nil {
+				b = litewire.AppendBytesAlways(b, 376, x.SetAppearancePref.AppendMarshal(nil))
+			}
+		}
+	case *Event_ConnCheckStatus:
+		if x != nil {
+			if x.ConnCheckStatus != nil {
+				b = litewire.AppendBytesAlways(b, 377, x.ConnCheckStatus.AppendMarshal(nil))
+			}
+		}
+	case *Event_ClientUpdateState:
+		if x != nil {
+			if x.ClientUpdateState != nil {
+				b = litewire.AppendBytesAlways(b, 378, x.ClientUpdateState.AppendMarshal(nil))
+			}
+		}
+	case *Event_CheckForUpdates:
+		if x != nil {
+			if x.CheckForUpdates != nil {
+				b = litewire.AppendBytesAlways(b, 379, x.CheckForUpdates.AppendMarshal(nil))
 			}
 		}
 	}
@@ -9025,6 +9865,348 @@ func (m *Event) Unmarshal(b []byte) error {
 					return err
 				}
 				m.Event = &Event_NewSessionAbandonStart{NewSessionAbandonStart: sub}
+				continue
+			}
+		case 350:
+			if wtyp == protowire.BytesType {
+				raw, err := litewire.ReadBytesRaw(&b)
+				if err != nil {
+					return err
+				}
+				var sub *MachineStatusWatchEvent
+				if cur, ok := m.Event.(*Event_MachineStatusWatch); ok && cur != nil {
+					sub = cur.MachineStatusWatch
+				}
+				if sub == nil {
+					sub = &MachineStatusWatchEvent{}
+				}
+				if err := sub.Unmarshal(raw); err != nil {
+					return err
+				}
+				m.Event = &Event_MachineStatusWatch{MachineStatusWatch: sub}
+				continue
+			}
+		case 351:
+			if wtyp == protowire.BytesType {
+				raw, err := litewire.ReadBytesRaw(&b)
+				if err != nil {
+					return err
+				}
+				var sub *MachineStatusRetryEvent
+				if cur, ok := m.Event.(*Event_MachineStatusRetry); ok && cur != nil {
+					sub = cur.MachineStatusRetry
+				}
+				if sub == nil {
+					sub = &MachineStatusRetryEvent{}
+				}
+				if err := sub.Unmarshal(raw); err != nil {
+					return err
+				}
+				m.Event = &Event_MachineStatusRetry{MachineStatusRetry: sub}
+				continue
+			}
+		case 352:
+			if wtyp == protowire.BytesType {
+				raw, err := litewire.ReadBytesRaw(&b)
+				if err != nil {
+					return err
+				}
+				var sub *MachineStatusTabEvent
+				if cur, ok := m.Event.(*Event_MachineStatusTab); ok && cur != nil {
+					sub = cur.MachineStatusTab
+				}
+				if sub == nil {
+					sub = &MachineStatusTabEvent{}
+				}
+				if err := sub.Unmarshal(raw); err != nil {
+					return err
+				}
+				m.Event = &Event_MachineStatusTab{MachineStatusTab: sub}
+				continue
+			}
+		case 353:
+			if wtyp == protowire.BytesType {
+				raw, err := litewire.ReadBytesRaw(&b)
+				if err != nil {
+					return err
+				}
+				var sub *MachineStatusScrubEvent
+				if cur, ok := m.Event.(*Event_MachineStatusScrub); ok && cur != nil {
+					sub = cur.MachineStatusScrub
+				}
+				if sub == nil {
+					sub = &MachineStatusScrubEvent{}
+				}
+				if err := sub.Unmarshal(raw); err != nil {
+					return err
+				}
+				m.Event = &Event_MachineStatusScrub{MachineStatusScrub: sub}
+				continue
+			}
+		case 354:
+			if wtyp == protowire.BytesType {
+				raw, err := litewire.ReadBytesRaw(&b)
+				if err != nil {
+					return err
+				}
+				var sub *MachineStatusCleanupEvent
+				if cur, ok := m.Event.(*Event_MachineStatusCleanup); ok && cur != nil {
+					sub = cur.MachineStatusCleanup
+				}
+				if sub == nil {
+					sub = &MachineStatusCleanupEvent{}
+				}
+				if err := sub.Unmarshal(raw); err != nil {
+					return err
+				}
+				m.Event = &Event_MachineStatusCleanup{MachineStatusCleanup: sub}
+				continue
+			}
+		case 355:
+			if wtyp == protowire.BytesType {
+				raw, err := litewire.ReadBytesRaw(&b)
+				if err != nil {
+					return err
+				}
+				var sub *MachineStatusPollTickEvent
+				if cur, ok := m.Event.(*Event_MachineStatusPollTick); ok && cur != nil {
+					sub = cur.MachineStatusPollTick
+				}
+				if sub == nil {
+					sub = &MachineStatusPollTickEvent{}
+				}
+				if err := sub.Unmarshal(raw); err != nil {
+					return err
+				}
+				m.Event = &Event_MachineStatusPollTick{MachineStatusPollTick: sub}
+				continue
+			}
+		case 360:
+			if wtyp == protowire.BytesType {
+				raw, err := litewire.ReadBytesRaw(&b)
+				if err != nil {
+					return err
+				}
+				var sub *MachineSettingsOpenEvent
+				if cur, ok := m.Event.(*Event_MachineSettingsOpen); ok && cur != nil {
+					sub = cur.MachineSettingsOpen
+				}
+				if sub == nil {
+					sub = &MachineSettingsOpenEvent{}
+				}
+				if err := sub.Unmarshal(raw); err != nil {
+					return err
+				}
+				m.Event = &Event_MachineSettingsOpen{MachineSettingsOpen: sub}
+				continue
+			}
+		case 361:
+			if wtyp == protowire.BytesType {
+				raw, err := litewire.ReadBytesRaw(&b)
+				if err != nil {
+					return err
+				}
+				var sub *MachineSettingsSelectAgentEvent
+				if cur, ok := m.Event.(*Event_MachineSettingsSelectAgent); ok && cur != nil {
+					sub = cur.MachineSettingsSelectAgent
+				}
+				if sub == nil {
+					sub = &MachineSettingsSelectAgentEvent{}
+				}
+				if err := sub.Unmarshal(raw); err != nil {
+					return err
+				}
+				m.Event = &Event_MachineSettingsSelectAgent{MachineSettingsSelectAgent: sub}
+				continue
+			}
+		case 362:
+			if wtyp == protowire.BytesType {
+				raw, err := litewire.ReadBytesRaw(&b)
+				if err != nil {
+					return err
+				}
+				var sub *UpdateMachineAgentDefaultsEvent
+				if cur, ok := m.Event.(*Event_UpdateMachineAgentDefaults); ok && cur != nil {
+					sub = cur.UpdateMachineAgentDefaults
+				}
+				if sub == nil {
+					sub = &UpdateMachineAgentDefaultsEvent{}
+				}
+				if err := sub.Unmarshal(raw); err != nil {
+					return err
+				}
+				m.Event = &Event_UpdateMachineAgentDefaults{UpdateMachineAgentDefaults: sub}
+				continue
+			}
+		case 363:
+			if wtyp == protowire.BytesType {
+				raw, err := litewire.ReadBytesRaw(&b)
+				if err != nil {
+					return err
+				}
+				var sub *UpdateMachineDaemonSettingsEvent
+				if cur, ok := m.Event.(*Event_UpdateMachineDaemonSettings); ok && cur != nil {
+					sub = cur.UpdateMachineDaemonSettings
+				}
+				if sub == nil {
+					sub = &UpdateMachineDaemonSettingsEvent{}
+				}
+				if err := sub.Unmarshal(raw); err != nil {
+					return err
+				}
+				m.Event = &Event_UpdateMachineDaemonSettings{UpdateMachineDaemonSettings: sub}
+				continue
+			}
+		case 364:
+			if wtyp == protowire.BytesType {
+				raw, err := litewire.ReadBytesRaw(&b)
+				if err != nil {
+					return err
+				}
+				var sub *UpdateDirectPreferenceEvent
+				if cur, ok := m.Event.(*Event_UpdateDirectPreference); ok && cur != nil {
+					sub = cur.UpdateDirectPreference
+				}
+				if sub == nil {
+					sub = &UpdateDirectPreferenceEvent{}
+				}
+				if err := sub.Unmarshal(raw); err != nil {
+					return err
+				}
+				m.Event = &Event_UpdateDirectPreference{UpdateDirectPreference: sub}
+				continue
+			}
+		case 365:
+			if wtyp == protowire.BytesType {
+				raw, err := litewire.ReadBytesRaw(&b)
+				if err != nil {
+					return err
+				}
+				var sub *MachineDirectStatusEvent
+				if cur, ok := m.Event.(*Event_MachineDirectStatus); ok && cur != nil {
+					sub = cur.MachineDirectStatus
+				}
+				if sub == nil {
+					sub = &MachineDirectStatusEvent{}
+				}
+				if err := sub.Unmarshal(raw); err != nil {
+					return err
+				}
+				m.Event = &Event_MachineDirectStatus{MachineDirectStatus: sub}
+				continue
+			}
+		case 370:
+			if wtyp == protowire.BytesType {
+				raw, err := litewire.ReadBytesRaw(&b)
+				if err != nil {
+					return err
+				}
+				var sub *UpdateClientNameEvent
+				if cur, ok := m.Event.(*Event_UpdateClientName); ok && cur != nil {
+					sub = cur.UpdateClientName
+				}
+				if sub == nil {
+					sub = &UpdateClientNameEvent{}
+				}
+				if err := sub.Unmarshal(raw); err != nil {
+					return err
+				}
+				m.Event = &Event_UpdateClientName{UpdateClientName: sub}
+				continue
+			}
+		case 375:
+			if wtyp == protowire.BytesType {
+				raw, err := litewire.ReadBytesRaw(&b)
+				if err != nil {
+					return err
+				}
+				var sub *SetNotificationPrefEvent
+				if cur, ok := m.Event.(*Event_SetNotificationPref); ok && cur != nil {
+					sub = cur.SetNotificationPref
+				}
+				if sub == nil {
+					sub = &SetNotificationPrefEvent{}
+				}
+				if err := sub.Unmarshal(raw); err != nil {
+					return err
+				}
+				m.Event = &Event_SetNotificationPref{SetNotificationPref: sub}
+				continue
+			}
+		case 376:
+			if wtyp == protowire.BytesType {
+				raw, err := litewire.ReadBytesRaw(&b)
+				if err != nil {
+					return err
+				}
+				var sub *SetAppearancePrefEvent
+				if cur, ok := m.Event.(*Event_SetAppearancePref); ok && cur != nil {
+					sub = cur.SetAppearancePref
+				}
+				if sub == nil {
+					sub = &SetAppearancePrefEvent{}
+				}
+				if err := sub.Unmarshal(raw); err != nil {
+					return err
+				}
+				m.Event = &Event_SetAppearancePref{SetAppearancePref: sub}
+				continue
+			}
+		case 377:
+			if wtyp == protowire.BytesType {
+				raw, err := litewire.ReadBytesRaw(&b)
+				if err != nil {
+					return err
+				}
+				var sub *ConnCheckStatusEvent
+				if cur, ok := m.Event.(*Event_ConnCheckStatus); ok && cur != nil {
+					sub = cur.ConnCheckStatus
+				}
+				if sub == nil {
+					sub = &ConnCheckStatusEvent{}
+				}
+				if err := sub.Unmarshal(raw); err != nil {
+					return err
+				}
+				m.Event = &Event_ConnCheckStatus{ConnCheckStatus: sub}
+				continue
+			}
+		case 378:
+			if wtyp == protowire.BytesType {
+				raw, err := litewire.ReadBytesRaw(&b)
+				if err != nil {
+					return err
+				}
+				var sub *ClientUpdateStateEvent
+				if cur, ok := m.Event.(*Event_ClientUpdateState); ok && cur != nil {
+					sub = cur.ClientUpdateState
+				}
+				if sub == nil {
+					sub = &ClientUpdateStateEvent{}
+				}
+				if err := sub.Unmarshal(raw); err != nil {
+					return err
+				}
+				m.Event = &Event_ClientUpdateState{ClientUpdateState: sub}
+				continue
+			}
+		case 379:
+			if wtyp == protowire.BytesType {
+				raw, err := litewire.ReadBytesRaw(&b)
+				if err != nil {
+					return err
+				}
+				var sub *CheckForUpdatesEvent
+				if cur, ok := m.Event.(*Event_CheckForUpdates); ok && cur != nil {
+					sub = cur.CheckForUpdates
+				}
+				if sub == nil {
+					sub = &CheckForUpdatesEvent{}
+				}
+				if err := sub.Unmarshal(raw); err != nil {
+					return err
+				}
+				m.Event = &Event_CheckForUpdates{CheckForUpdates: sub}
 				continue
 			}
 		case 98:
@@ -12237,6 +13419,30 @@ type Effect_RequestEntropy struct{ RequestEntropy *RequestEntropyEffect }
 
 func (*Effect_RequestEntropy) isEffect_Effect() {}
 
+type Effect_ScheduleMachinePoll struct{ ScheduleMachinePoll *ScheduleMachinePollEffect }
+
+func (*Effect_ScheduleMachinePoll) isEffect_Effect() {}
+
+type Effect_DirectPreference struct{ DirectPreference *DirectPreferenceEffect }
+
+func (*Effect_DirectPreference) isEffect_Effect() {}
+
+type Effect_RenameClient struct{ RenameClient *RenameClientEffect }
+
+func (*Effect_RenameClient) isEffect_Effect() {}
+
+type Effect_CheckUpdates struct{ CheckUpdates *CheckUpdatesEffect }
+
+func (*Effect_CheckUpdates) isEffect_Effect() {}
+
+type Effect_PersistClientPrefs struct{ PersistClientPrefs *PersistClientPrefsEffect }
+
+func (*Effect_PersistClientPrefs) isEffect_Effect() {}
+
+type Effect_PrepareCleanupSession struct{ PrepareCleanupSession *PrepareCleanupSessionEffect }
+
+func (*Effect_PrepareCleanupSession) isEffect_Effect() {}
+
 func (m *Effect) Reset() {
 	if m != nil {
 		*m = Effect{}
@@ -12351,6 +13557,42 @@ func (m *Effect) GetRequestEntropy() *RequestEntropyEffect {
 	}
 	return nil
 }
+func (m *Effect) GetScheduleMachinePoll() *ScheduleMachinePollEffect {
+	if x, ok := m.GetEffect().(*Effect_ScheduleMachinePoll); ok && x != nil {
+		return x.ScheduleMachinePoll
+	}
+	return nil
+}
+func (m *Effect) GetDirectPreference() *DirectPreferenceEffect {
+	if x, ok := m.GetEffect().(*Effect_DirectPreference); ok && x != nil {
+		return x.DirectPreference
+	}
+	return nil
+}
+func (m *Effect) GetRenameClient() *RenameClientEffect {
+	if x, ok := m.GetEffect().(*Effect_RenameClient); ok && x != nil {
+		return x.RenameClient
+	}
+	return nil
+}
+func (m *Effect) GetCheckUpdates() *CheckUpdatesEffect {
+	if x, ok := m.GetEffect().(*Effect_CheckUpdates); ok && x != nil {
+		return x.CheckUpdates
+	}
+	return nil
+}
+func (m *Effect) GetPersistClientPrefs() *PersistClientPrefsEffect {
+	if x, ok := m.GetEffect().(*Effect_PersistClientPrefs); ok && x != nil {
+		return x.PersistClientPrefs
+	}
+	return nil
+}
+func (m *Effect) GetPrepareCleanupSession() *PrepareCleanupSessionEffect {
+	if x, ok := m.GetEffect().(*Effect_PrepareCleanupSession); ok && x != nil {
+		return x.PrepareCleanupSession
+	}
+	return nil
+}
 
 func (m *Effect) Clone() *Effect {
 	if m == nil {
@@ -12425,6 +13667,30 @@ func (m *Effect) Clone() *Effect {
 	case *Effect_RequestEntropy:
 		if v != nil {
 			cp.Effect = &Effect_RequestEntropy{RequestEntropy: v.RequestEntropy.Clone()}
+		}
+	case *Effect_ScheduleMachinePoll:
+		if v != nil {
+			cp.Effect = &Effect_ScheduleMachinePoll{ScheduleMachinePoll: v.ScheduleMachinePoll.Clone()}
+		}
+	case *Effect_DirectPreference:
+		if v != nil {
+			cp.Effect = &Effect_DirectPreference{DirectPreference: v.DirectPreference.Clone()}
+		}
+	case *Effect_RenameClient:
+		if v != nil {
+			cp.Effect = &Effect_RenameClient{RenameClient: v.RenameClient.Clone()}
+		}
+	case *Effect_CheckUpdates:
+		if v != nil {
+			cp.Effect = &Effect_CheckUpdates{CheckUpdates: v.CheckUpdates.Clone()}
+		}
+	case *Effect_PersistClientPrefs:
+		if v != nil {
+			cp.Effect = &Effect_PersistClientPrefs{PersistClientPrefs: v.PersistClientPrefs.Clone()}
+		}
+	case *Effect_PrepareCleanupSession:
+		if v != nil {
+			cp.Effect = &Effect_PrepareCleanupSession{PrepareCleanupSession: v.PrepareCleanupSession.Clone()}
 		}
 	}
 	return &cp
@@ -12539,6 +13805,42 @@ func (m *Effect) AppendMarshal(b []byte) []byte {
 		if x != nil {
 			if x.RequestEntropy != nil {
 				b = litewire.AppendBytesAlways(b, 17, x.RequestEntropy.AppendMarshal(nil))
+			}
+		}
+	case *Effect_ScheduleMachinePoll:
+		if x != nil {
+			if x.ScheduleMachinePoll != nil {
+				b = litewire.AppendBytesAlways(b, 70, x.ScheduleMachinePoll.AppendMarshal(nil))
+			}
+		}
+	case *Effect_DirectPreference:
+		if x != nil {
+			if x.DirectPreference != nil {
+				b = litewire.AppendBytesAlways(b, 71, x.DirectPreference.AppendMarshal(nil))
+			}
+		}
+	case *Effect_RenameClient:
+		if x != nil {
+			if x.RenameClient != nil {
+				b = litewire.AppendBytesAlways(b, 72, x.RenameClient.AppendMarshal(nil))
+			}
+		}
+	case *Effect_CheckUpdates:
+		if x != nil {
+			if x.CheckUpdates != nil {
+				b = litewire.AppendBytesAlways(b, 73, x.CheckUpdates.AppendMarshal(nil))
+			}
+		}
+	case *Effect_PersistClientPrefs:
+		if x != nil {
+			if x.PersistClientPrefs != nil {
+				b = litewire.AppendBytesAlways(b, 74, x.PersistClientPrefs.AppendMarshal(nil))
+			}
+		}
+	case *Effect_PrepareCleanupSession:
+		if x != nil {
+			if x.PrepareCleanupSession != nil {
+				b = litewire.AppendBytesAlways(b, 75, x.PrepareCleanupSession.AppendMarshal(nil))
 			}
 		}
 	}
@@ -12873,6 +14175,120 @@ func (m *Effect) Unmarshal(b []byte) error {
 					return err
 				}
 				m.Effect = &Effect_RequestEntropy{RequestEntropy: sub}
+				continue
+			}
+		case 70:
+			if wtyp == protowire.BytesType {
+				raw, err := litewire.ReadBytesRaw(&b)
+				if err != nil {
+					return err
+				}
+				var sub *ScheduleMachinePollEffect
+				if cur, ok := m.Effect.(*Effect_ScheduleMachinePoll); ok && cur != nil {
+					sub = cur.ScheduleMachinePoll
+				}
+				if sub == nil {
+					sub = &ScheduleMachinePollEffect{}
+				}
+				if err := sub.Unmarshal(raw); err != nil {
+					return err
+				}
+				m.Effect = &Effect_ScheduleMachinePoll{ScheduleMachinePoll: sub}
+				continue
+			}
+		case 71:
+			if wtyp == protowire.BytesType {
+				raw, err := litewire.ReadBytesRaw(&b)
+				if err != nil {
+					return err
+				}
+				var sub *DirectPreferenceEffect
+				if cur, ok := m.Effect.(*Effect_DirectPreference); ok && cur != nil {
+					sub = cur.DirectPreference
+				}
+				if sub == nil {
+					sub = &DirectPreferenceEffect{}
+				}
+				if err := sub.Unmarshal(raw); err != nil {
+					return err
+				}
+				m.Effect = &Effect_DirectPreference{DirectPreference: sub}
+				continue
+			}
+		case 72:
+			if wtyp == protowire.BytesType {
+				raw, err := litewire.ReadBytesRaw(&b)
+				if err != nil {
+					return err
+				}
+				var sub *RenameClientEffect
+				if cur, ok := m.Effect.(*Effect_RenameClient); ok && cur != nil {
+					sub = cur.RenameClient
+				}
+				if sub == nil {
+					sub = &RenameClientEffect{}
+				}
+				if err := sub.Unmarshal(raw); err != nil {
+					return err
+				}
+				m.Effect = &Effect_RenameClient{RenameClient: sub}
+				continue
+			}
+		case 73:
+			if wtyp == protowire.BytesType {
+				raw, err := litewire.ReadBytesRaw(&b)
+				if err != nil {
+					return err
+				}
+				var sub *CheckUpdatesEffect
+				if cur, ok := m.Effect.(*Effect_CheckUpdates); ok && cur != nil {
+					sub = cur.CheckUpdates
+				}
+				if sub == nil {
+					sub = &CheckUpdatesEffect{}
+				}
+				if err := sub.Unmarshal(raw); err != nil {
+					return err
+				}
+				m.Effect = &Effect_CheckUpdates{CheckUpdates: sub}
+				continue
+			}
+		case 74:
+			if wtyp == protowire.BytesType {
+				raw, err := litewire.ReadBytesRaw(&b)
+				if err != nil {
+					return err
+				}
+				var sub *PersistClientPrefsEffect
+				if cur, ok := m.Effect.(*Effect_PersistClientPrefs); ok && cur != nil {
+					sub = cur.PersistClientPrefs
+				}
+				if sub == nil {
+					sub = &PersistClientPrefsEffect{}
+				}
+				if err := sub.Unmarshal(raw); err != nil {
+					return err
+				}
+				m.Effect = &Effect_PersistClientPrefs{PersistClientPrefs: sub}
+				continue
+			}
+		case 75:
+			if wtyp == protowire.BytesType {
+				raw, err := litewire.ReadBytesRaw(&b)
+				if err != nil {
+					return err
+				}
+				var sub *PrepareCleanupSessionEffect
+				if cur, ok := m.Effect.(*Effect_PrepareCleanupSession); ok && cur != nil {
+					sub = cur.PrepareCleanupSession
+				}
+				if sub == nil {
+					sub = &PrepareCleanupSessionEffect{}
+				}
+				if err := sub.Unmarshal(raw); err != nil {
+					return err
+				}
+				m.Effect = &Effect_PrepareCleanupSession{PrepareCleanupSession: sub}
 				continue
 			}
 		}

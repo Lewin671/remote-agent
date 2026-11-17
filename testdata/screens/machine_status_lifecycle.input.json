@@ -1,0 +1,278 @@
+{
+  "steps": [
+    {
+      "event": {
+        "nowMs": "1791078060000",
+        "clockUpdated": {
+          "nowMs": "1791078060000",
+          "todayStartMs": "1791043200000",
+          "yesterdayStartMs": "1790956800000",
+          "weekStartMs": "1790524800000",
+          "nowYear": 2026,
+          "months": [{ "year": 2026, "month": 10, "startMs": "1790812800000" }]
+        }
+      }
+    },
+    {
+      "event": {
+        "nowMs": "1791078060000",
+        "monoMs": "1000",
+        "randomIds": [
+          "ms-req-1", "ms-att-1",
+          "ms-req-2", "ms-att-2",
+          "ms-req-3", "ms-att-3",
+          "ms-req-4", "ms-att-4",
+          "ms-req-5", "ms-att-5",
+          "ms-req-6", "ms-att-6",
+          "ms-req-7", "ms-att-7"
+        ],
+        "unitFloats": [0.5, 0.5, 0.5, 0.5],
+        "syncLifecycle": { "kind": "SYNC_LIFECYCLE_KIND_START" }
+      }
+    },
+    {
+      "event": {
+        "nowMs": "1791078060010",
+        "securitySnapshot": {
+          "opId": "3",
+          "isMember": true,
+          "selfDeviceId": "dev-1",
+          "authorityDeviceId": "dev-1",
+          "leaseEndMs": "1791164460000",
+          "trustedMachineIds": ["m1"]
+        }
+      }
+    },
+    {
+      "event": {
+        "nowMs": "1791078060020",
+        "tokenResult": { "opId": "2", "token": "tok-1" }
+      }
+    },
+    {
+      "event": {
+        "nowMs": "1791078060030",
+        "streamReady": { "legId": "1", "serverTimeMs": "1791078060030" }
+      }
+    },
+    {
+      "event": {
+        "nowMs": "1791078060040",
+        "listsFetched": {
+          "opId": "4",
+          "machines": [
+            {
+              "machineId": "m1",
+              "online": true,
+              "meta": {
+                "hostname": "MacStudio",
+                "protocolVersion": 16,
+                "capabilities": { "machineStatus": true },
+                "projects": [
+                  { "path": "/Users/me/Code/alpha", "latestCreatedMs": "1791070000000", "latestEndedMs": "1791075000000" }
+                ]
+              }
+            }
+          ],
+          "sessions": [
+            {
+              "sessionId": "s-1",
+              "machineId": "m1",
+              "updatedMs": "1791077000000",
+              "meta": {
+                "id": "s-1",
+                "cwd": "/Users/me/Code/alpha",
+                "agent": "AGENT_CODEX",
+                "status": "SESSION_STATUS_RUNNING",
+                "title": "Build status view"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "event": {
+        "nowMs": "1791078060050",
+        "machineStatusWatch": {
+          "machineId": "m1",
+          "visible": true,
+          "mode": "MACHINE_POLL_MODE_LIVE"
+        }
+      },
+      "views": [
+        { "name": "loading", "screen": { "machineStatus": { "machineId": "m1" } } }
+      ]
+    },
+    {
+      "event": {
+        "nowMs": "1791078060500",
+        "commandOutcome": {
+          "requestId": "ms-req-1",
+          "attemptId": "ms-att-1",
+          "source": "OUTCOME_SOURCE_DAEMON",
+          "signed": true,
+          "hashesMatch": true,
+          "attemptBound": true,
+          "outerMatchesInner": true,
+          "outerOutcome": "executed",
+          "outerReason": "ok",
+          "result": {
+            "outcome": "executed",
+            "reason": "ok",
+            "resultAvailable": true,
+            "machineStatus": {
+              "observedMs": "1791078060400",
+              "cpuPercent": 24.4,
+              "cores": 10,
+              "loadOne": 3.2,
+              "memoryUsedBytes": "12025908428",
+              "memoryTotalBytes": "34359738368",
+              "memoryPressure": "RESOURCE_PRESSURE_WARNING",
+              "memoryPressurePosition": 0.45,
+              "swapUsedBytes": "1363148800",
+              "agentBytes": "4800000000",
+              "uptimeSeconds": "100800",
+              "battery": { "percent": 82.0, "charging": true },
+              "disk": {
+                "observedMs": "1791078060400",
+                "totalBytes": "500000000000",
+                "availableBytes": "1500000000",
+                "pressure": "RESOURCE_PRESSURE_CRITICAL"
+              },
+              "sessions": [
+                { "id": "u-1", "sessionId": "s-1", "executable": "codex", "cpuPercent": 15.0, "memoryBytes": "900000000" },
+                { "id": "u-2", "sessionId": "s-unknown", "executable": "claude", "cpuPercent": 8.0, "memoryBytes": "400000000" }
+              ],
+              "processes": [
+                { "id": "p-1", "sessionId": "s-1", "executable": "node", "cpuPercent": 12.0, "memoryBytes": "600000000" }
+              ],
+              "samples": [
+                { "timeMs": "1791078056400", "cpuPercent": 18.0, "memoryUsedBytes": "11500000000" },
+                { "timeMs": "1791078060400", "cpuPercent": 24.4, "memoryUsedBytes": "12025908428" }
+              ]
+            }
+          }
+        }
+      },
+      "views": [
+        { "name": "liveCriticalDisk", "screen": { "machineStatus": { "machineId": "m1" } } }
+      ]
+    },
+    {
+      "event": {
+        "nowMs": "1791078060600",
+        "machineStatusScrub": {
+          "machineId": "m1",
+          "kind": "MACHINE_CHART_KIND_CPU",
+          "pointIndex": 0
+        }
+      }
+    },
+    {
+      "event": {
+        "nowMs": "1791078060650",
+        "machineStatusTab": {
+          "machineId": "m1",
+          "tab": "MACHINE_USAGE_TAB_PROCESSES"
+        }
+      },
+      "views": [
+        { "name": "processesAndScrub", "screen": { "machineStatus": { "machineId": "m1" } } }
+      ]
+    },
+    {
+      "event": {
+        "nowMs": "1791078060700",
+        "machineStatusCleanup": { "machineId": "m1" }
+      }
+    },
+    {
+      "event": {
+        "nowMs": "1791078062050",
+        "machineStatusPollTick": { "machineId": "m1", "generation": "1" }
+      }
+    },
+    {
+      "event": {
+        "nowMs": "1791078077050",
+        "machineStatusPollTick": { "machineId": "m1", "generation": "1" }
+      }
+    },
+    {
+      "event": {
+        "nowMs": "1791078077060",
+        "machineStatusPollTick": { "machineId": "m1", "generation": "1" }
+      }
+    },
+    {
+      "event": {
+        "nowMs": "1791078092060",
+        "machineStatusPollTick": { "machineId": "m1", "generation": "1" }
+      }
+    },
+    {
+      "event": {
+        "nowMs": "1791078092070",
+        "machineStatusPollTick": { "machineId": "m1", "generation": "1" }
+      }
+    },
+    {
+      "event": {
+        "nowMs": "1791078107070",
+        "machineStatusPollTick": { "machineId": "m1", "generation": "1" }
+      },
+      "views": [
+        { "name": "staleAfter3Timeouts", "screen": { "machineStatus": { "machineId": "m1" } } }
+      ]
+    },
+    {
+      "event": {
+        "nowMs": "1791078107100",
+        "machineStatusPollTick": { "machineId": "m1", "generation": "1" }
+      }
+    },
+    {
+      "event": {
+        "nowMs": "1791078107300",
+        "commandOutcome": {
+          "requestId": "ms-req-5",
+          "attemptId": "ms-att-5",
+          "source": "OUTCOME_SOURCE_DAEMON",
+          "signed": true,
+          "hashesMatch": true,
+          "attemptBound": true,
+          "outerMatchesInner": true,
+          "outerOutcome": "executed",
+          "outerReason": "ok",
+          "result": {
+            "outcome": "executed",
+            "reason": "ok",
+            "resultAvailable": true,
+            "machineStatus": {
+              "observedMs": "1791078107200",
+              "cpuPercent": 11.0,
+              "cores": 10,
+              "memoryUsedBytes": "10737418240",
+              "memoryTotalBytes": "34359738368",
+              "memoryPressure": "RESOURCE_PRESSURE_NORMAL",
+              "disk": {
+                "observedMs": "1791078107200",
+                "totalBytes": "500000000000",
+                "availableBytes": "42000000000",
+                "pressure": "RESOURCE_PRESSURE_NORMAL"
+              },
+              "samples": [
+                { "timeMs": "1791078060400", "cpuPercent": 24.4, "memoryUsedBytes": "12025908428" },
+                { "timeMs": "1791078107200", "cpuPercent": 11.0, "memoryUsedBytes": "10737418240" }
+              ]
+            }
+          }
+        }
+      },
+      "views": [
+        { "name": "recoveredFreshCurve", "screen": { "machineStatus": { "machineId": "m1" } } }
+      ]
+    }
+  ]
+}

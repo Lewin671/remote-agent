@@ -1,0 +1,255 @@
+{
+  "steps": [
+    {
+      "event": {
+        "nowMs": "1791078060000",
+        "clockUpdated": {
+          "nowMs": "1791078060000",
+          "todayStartMs": "1791043200000",
+          "yesterdayStartMs": "1790956800000",
+          "weekStartMs": "1790524800000",
+          "nowYear": 2026,
+          "months": [{ "year": 2026, "month": 10, "startMs": "1790812800000" }]
+        }
+      }
+    },
+    {
+      "event": {
+        "nowMs": "1791078060000",
+        "monoMs": "1000",
+        "randomIds": [
+          "r1", "a1",
+          "r2", "a2",
+          "r3", "a3",
+          "r4", "a4",
+          "r5", "a5",
+          "r6", "a6",
+          "r7", "a7"
+        ],
+        "unitFloats": [0.5, 0.5, 0.5, 0.5],
+        "syncLifecycle": { "kind": "SYNC_LIFECYCLE_KIND_START" }
+      }
+    },
+    {
+      "event": {
+        "nowMs": "1791078060010",
+        "securitySnapshot": {
+          "opId": "3",
+          "isMember": true,
+          "selfDeviceId": "dev-1",
+          "authorityDeviceId": "dev-1",
+          "leaseEndMs": "1791164460000",
+          "trustedMachineIds": ["m1"]
+        }
+      }
+    },
+    {
+      "event": {
+        "nowMs": "1791078060020",
+        "tokenResult": { "opId": "2", "token": "tok-1" }
+      }
+    },
+    {
+      "event": {
+        "nowMs": "1791078060030",
+        "streamReady": { "legId": "1", "serverTimeMs": "1791078060030" }
+      }
+    },
+    {
+      "event": {
+        "nowMs": "1791078060040",
+        "listsFetched": {
+          "opId": "4",
+          "machines": [
+            {
+              "machineId": "m1",
+              "online": true,
+              "meta": {
+                "hostname": "MacStudio",
+                "protocolVersion": 16,
+                "capabilities": { "machineStatus": true },
+                "agents": [
+                  { "agent": "AGENT_CODEX", "version": "0.42.0", "verified": true, "defaultMode": "APPROVAL_MODE_ASK" },
+                  { "agent": "AGENT_CLAUDE", "version": "2.1.0", "verified": false, "defaultMode": "APPROVAL_MODE_ASK" }
+                ],
+                "projects": [
+                  { "path": "/Users/me/Code/alpha", "latestCreatedMs": "1791077000000" }
+                ]
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "event": {
+        "nowMs": "1791078060050",
+        "machineSettingsOpen": { "machineId": "m1" }
+      }
+    },
+    {
+      "event": {
+        "nowMs": "1791078060060",
+        "commandOutcome": {
+          "requestId": "r1",
+          "attemptId": "a1",
+          "source": "OUTCOME_SOURCE_DAEMON",
+          "signed": true,
+          "hashesMatch": true,
+          "attemptBound": true,
+          "outerMatchesInner": true,
+          "outerOutcome": "executed",
+          "outerReason": "ok",
+          "result": {
+            "outcome": "executed",
+            "reason": "ok",
+            "resultAvailable": true,
+            "listModels": {
+              "defaultModel": "gpt-5.4",
+              "models": [
+                { "slug": "gpt-5.4", "displayName": "GPT-5.4", "efforts": ["medium", "high"], "defaultEffort": "high" }
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "event": {
+        "nowMs": "1791078060070",
+        "commandOutcome": {
+          "requestId": "r2",
+          "attemptId": "a2",
+          "source": "OUTCOME_SOURCE_DAEMON",
+          "signed": true,
+          "hashesMatch": true,
+          "attemptBound": true,
+          "outerMatchesInner": true,
+          "outerOutcome": "executed",
+          "outerReason": "ok",
+          "result": {
+            "outcome": "executed",
+            "reason": "ok",
+            "resultAvailable": true,
+            "getSettings": {
+              "settings": {
+                "approvalTimeoutSeconds": 300,
+                "idleCloseMinutes": 0,
+                "imageUploadQuotaBytes": "1073741824",
+                "defaultModel": "gpt-5.4",
+                "defaultEffort": "high",
+                "defaultMode": "APPROVAL_MODE_ASK",
+                "claude": { "model": "claude-sonnet-4-5", "mode": "APPROVAL_MODE_AUTO" }
+              },
+              "imageStorage": {
+                "emergencyReserveBytes": "52428800",
+                "uploadBytes": "104857600",
+                "reclaimableBytes": "26214400",
+                "cacheBytes": "10485760"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "event": {
+        "nowMs": "1791078060080",
+        "machineDirectStatus": {
+          "machineId": "m1",
+          "report": {
+            "enabled": true,
+            "capable": true,
+            "state": "DIRECT_ROUTE_STATE_CONNECTED",
+            "readRoute": "DIRECT_PATH_CHOICE_DIRECT",
+            "hasActiveRttMs": true,
+            "activeRttMs": 12
+          }
+        }
+      },
+      "views": [
+        { "name": "initialLoaded", "screen": { "machineSettings": { "machineId": "m1" } } }
+      ]
+    },
+    {
+      "event": {
+        "nowMs": "1791078060090",
+        "machineSettingsSelectAgent": { "machineId": "m1", "agent": "AGENT_CLAUDE" }
+      }
+    },
+    {
+      "event": {
+        "nowMs": "1791078060100",
+        "commandOutcome": {
+          "requestId": "r3",
+          "attemptId": "a3",
+          "source": "OUTCOME_SOURCE_DAEMON",
+          "signed": true,
+          "hashesMatch": true,
+          "attemptBound": true,
+          "outerMatchesInner": true,
+          "outerOutcome": "executed",
+          "outerReason": "ok",
+          "result": {
+            "outcome": "executed",
+            "reason": "ok",
+            "resultAvailable": true,
+            "listModels": {
+              "defaultModel": "claude-sonnet-4-5",
+              "models": [
+                { "slug": "claude-sonnet-4-5", "displayName": "Sonnet 4.5", "autoUnavailable": true }
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "event": {
+        "nowMs": "1791078060110",
+        "updateMachineDaemonSettings": {
+          "machineId": "m1",
+          "approvalTimeoutSeconds": 600,
+          "idleCloseMinutes": -1,
+          "cleanImages": true
+        }
+      },
+      "views": [
+        { "name": "savingClaudeAndClean", "screen": { "machineSettings": { "machineId": "m1" } } }
+      ]
+    },
+    {
+      "event": {
+        "nowMs": "1791078060120",
+        "commandOutcome": {
+          "requestId": "r4",
+          "attemptId": "a4",
+          "source": "OUTCOME_SOURCE_DAEMON",
+          "signed": false,
+          "outerOutcome": "unknown",
+          "outerReason": "timeout"
+        }
+      },
+      "views": [
+        { "name": "unknownTriggersReread", "screen": { "machineSettings": { "machineId": "m1" } } }
+      ]
+    },
+    {
+      "event": {
+        "nowMs": "1791078060130",
+        "machineDirectStatus": {
+          "machineId": "m1",
+          "report": {
+            "enabled": true,
+            "capable": true,
+            "state": "DIRECT_ROUTE_STATE_NONE",
+            "reason": "DIRECT_ROUTE_REASON_NO_TRAVERSAL"
+          }
+        }
+      },
+      "views": [
+        { "name": "relayFailedDiag", "screen": { "machineSettings": { "machineId": "m1" } } }
+      ]
+    }
+  ]
+}

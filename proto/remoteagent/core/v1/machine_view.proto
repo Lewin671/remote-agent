@@ -1,0 +1,345 @@
+syntax = "proto3";
+
+package remoteagent.core.v1;
+
+import "remoteagent/core/v1/text.proto";
+import "remoteagent/v1/event.proto";
+
+// ---- Enums: Machine Status & Quota ----
+
+enum MachinePollState {
+  MACHINE_POLL_STATE_UNSPECIFIED = 0;
+  MACHINE_POLL_STATE_LOADING = 1;
+  MACHINE_POLL_STATE_LIVE = 2;
+  MACHINE_POLL_STATE_STALE = 3;
+  MACHINE_POLL_STATE_UNAVAILABLE = 4;
+}
+
+enum MachinePollMode {
+  MACHINE_POLL_MODE_UNSPECIFIED = 0;
+  MACHINE_POLL_MODE_OFF = 1;
+  MACHINE_POLL_MODE_LIVE = 2;
+  MACHINE_POLL_MODE_OVERVIEW = 3;
+}
+
+enum MachineStatusDot {
+  MACHINE_STATUS_DOT_UNSPECIFIED = 0;
+  MACHINE_STATUS_DOT_GRAY_STATIC = 1;
+  MACHINE_STATUS_DOT_GREEN_LIVE = 2;
+  MACHINE_STATUS_DOT_ORANGE_STATIC = 3;
+  MACHINE_STATUS_DOT_RED_STATIC = 4;
+}
+
+enum MachinePressureTone {
+  MACHINE_PRESSURE_TONE_UNSPECIFIED = 0;
+  MACHINE_PRESSURE_TONE_NORMAL = 1;
+  MACHINE_PRESSURE_TONE_HIGH = 2;
+  MACHINE_PRESSURE_TONE_CRITICAL = 3;
+}
+
+enum DiskPressureState {
+  DISK_PRESSURE_STATE_UNSPECIFIED = 0;
+  DISK_PRESSURE_STATE_OK = 1;
+  DISK_PRESSURE_STATE_LOW = 2;
+  DISK_PRESSURE_STATE_CRITICAL = 3;
+}
+
+enum MachineUsageTab {
+  MACHINE_USAGE_TAB_UNSPECIFIED = 0;
+  MACHINE_USAGE_TAB_SESSIONS = 1;
+  MACHINE_USAGE_TAB_PROCESSES = 2;
+}
+
+enum MachineChartKind {
+  MACHINE_CHART_KIND_UNSPECIFIED = 0;
+  MACHINE_CHART_KIND_CPU = 1;
+  MACHINE_CHART_KIND_MEMORY = 2;
+}
+
+enum MachineRingKind {
+  MACHINE_RING_KIND_UNSPECIFIED = 0;
+  MACHINE_RING_KIND_CPU = 1;
+  MACHINE_RING_KIND_MEMORY = 2;
+  MACHINE_RING_KIND_DISK = 3;
+}
+
+enum MachineRingTone {
+  MACHINE_RING_TONE_UNSPECIFIED = 0;
+  MACHINE_RING_TONE_NORMAL = 1;
+  MACHINE_RING_TONE_WARN = 2;
+  MACHINE_RING_TONE_CRITICAL = 3;
+}
+
+enum QuotaTone {
+  QUOTA_TONE_UNSPECIFIED = 0;
+  QUOTA_TONE_NORMAL = 1;
+  QUOTA_TONE_WARN = 2;
+  QUOTA_TONE_FULL = 3;
+  QUOTA_TONE_STALE = 4;
+}
+
+enum QuotaSectionState {
+  QUOTA_SECTION_STATE_UNSPECIFIED = 0;
+  QUOTA_SECTION_STATE_OK = 1;
+  QUOTA_SECTION_STATE_WAITING = 2;
+  QUOTA_SECTION_STATE_FAILED = 3;
+  QUOTA_SECTION_STATE_UNSUPPORTED = 4;
+  QUOTA_SECTION_STATE_MISSING = 5;
+}
+
+enum QuotaBannerSeverity {
+  QUOTA_BANNER_SEVERITY_UNSPECIFIED = 0;
+  QUOTA_BANNER_SEVERITY_WARN = 1;
+  QUOTA_BANNER_SEVERITY_FULL = 2;
+}
+
+// ---- Machine Status Screens & ViewModels ----
+
+message MachineStatusScreenRequest {
+  string machine_id = 1;
+}
+
+message MachineRingView {
+  MachineRingKind kind = 1;
+  Text label = 2;
+  bool has_value = 3;
+  double fraction = 4;
+  Text value_text = 5;
+  MachineRingTone tone = 6;
+  Text a11y_label = 7;
+}
+
+message MachineChartPoint {
+  int64 time_ms = 1;
+  double value = 2;
+}
+
+message MachineChartView {
+  bool visible = 1;
+  repeated MachineChartPoint points = 2;
+  int64 window_start_ms = 3;
+  int64 window_end_ms = 4;
+  int64 gap_threshold_ms = 5;
+  double ceiling = 6;
+  bool has_scrub = 7;
+  int32 scrub_index = 8;
+  Text scrub_value = 9;
+  Text scrub_age = 10;
+  Text a11y_summary = 11;
+  bool can_step_prev = 12;
+  bool can_step_next = 13;
+}
+
+message MachineCpuSection {
+  bool has_value = 1;
+  string headline = 2;
+  Text detail = 3;
+  Text detail2 = 4;
+  Text a11y_label = 5;
+  MachineChartView chart = 6;
+}
+
+message MachineMemorySection {
+  bool has_value = 1;
+  Text headline = 2;
+  Text caption = 3;
+  MachinePressureTone pressure = 4;
+  Text pressure_text = 5;
+  bool has_pressure_position = 6;
+  double pressure_position = 7;
+  Text total_text = 8;
+  Text swap_text = 9;
+  Text a11y_label = 10;
+  MachineChartView chart = 11;
+}
+
+message MachineDiskSection {
+  bool has_value = 1;
+  Text headline = 2;
+  Text caption = 3;
+  DiskPressureState state = 4;
+  Text state_badge = 5;
+  bool has_used_fraction = 6;
+  double used_fraction = 7;
+  Text detail = 8;
+  Text detail2 = 9;
+  bool show_actions = 10;
+  Text cleanup_action_label = 11;
+  Text agent_usage_label = 12;
+  Text agent_usage_value = 13;
+  Text a11y_label = 14;
+}
+
+message MachineUsageRow {
+  string id = 1;
+  Text title = 2;
+  Text secondary = 3;
+  double cpu_percent = 4;
+  uint64 memory_bytes = 5;
+  remoteagent.v1.Agent agent = 6;
+  string session_id = 7;
+}
+
+message MachineTopUsageSection {
+  MachineUsageTab selected_tab = 1;
+  repeated MachineUsageRow rows = 2;
+  Text empty_text = 3;
+}
+
+message MachineStatusViewModel {
+  string machine_id = 1;
+  string machine_name = 2;
+  bool found = 3;
+  bool supported = 4;
+  bool online = 5;
+  MachinePollState poll_state = 6;
+  bool dim = 7;
+  MachineStatusDot status_dot = 8;
+  Text status_badge = 9;
+  bool show_retry = 10;
+  Text unavailable_title = 11;
+  repeated MachineRingView rings = 12;
+  MachineCpuSection cpu = 13;
+  MachineMemorySection memory = 14;
+  MachineDiskSection disk = 15;
+  MachineTopUsageSection top_usage = 16;
+  Text uptime_text = 17;
+  Text battery_text = 18;
+}
+
+message DiskReminderView {
+  string machine_id = 1;
+  string machine_name = 2;
+  bool critical = 3;
+  uint64 available_bytes = 4;
+  Text title = 5;
+  Text detail = 6;
+  Text action_label = 7;
+}
+
+// ---- Quota Screens & ViewModels ----
+
+message QuotaScreenRequest {
+  string machine_id = 1;
+  remoteagent.v1.Agent filter_agent = 2;
+}
+
+message QuotaBannerView {
+  QuotaBannerSeverity severity = 1;
+  Text message = 2;
+  string machine_id = 3;
+  remoteagent.v1.Agent agent = 4;
+  string window_name = 5;
+}
+
+message QuotaRowView {
+  string window_name = 1;
+  Text label = 2;
+  Text pool_name = 3;
+  bool has_percent = 4;
+  int32 used_percent = 5;
+  int32 remaining_percent = 6;
+  bool exhausted = 7;
+  bool past_reset = 8;
+  bool stale = 9;
+  QuotaTone tone = 10;
+  Text remaining_text = 11;
+  Text reset_text = 12;
+  Text reset_clock_text = 13;
+  Text footnote = 14;
+}
+
+message QuotaWindowGroupView {
+  Text group_label = 1;
+  repeated QuotaRowView rows = 2;
+}
+
+message QuotaAccountGroupView {
+  string account = 1;
+  string plan = 2;
+  QuotaSectionState state = 3;
+  bool last_record = 4;
+  Text status_text = 5;
+  Text freshness_text = 6;
+  Text error_text = 7;
+  repeated QuotaWindowGroupView groups = 8;
+  Text usage_hint = 9;
+  bool is_subscription_login = 10;
+}
+
+message QuotaCliSection {
+  remoteagent.v1.Agent agent = 1;
+  string agent_name = 2;
+  QuotaSectionState state = 3;
+  bool unsupported = 4;
+  repeated QuotaAccountGroupView accounts = 5;
+  Text empty_or_error_text = 6;
+  Text usage_hint = 7;
+  QuotaRowView summary_row = 8;
+  Text summary_line = 9;
+  QuotaTone summary_tone = 10;
+  Text summary_meta = 11;
+}
+
+message QuotaViewModel {
+  string machine_id = 1;
+  string machine_name = 2;
+  bool found = 3;
+  bool reachable = 4;
+  bool unlinked = 5;
+  bool member = 6;
+  bool has_agents_reported = 7;
+  Text offline_notice = 8;
+  QuotaBannerView banner = 9;
+  repeated QuotaCliSection sections = 10;
+  Text footer_note = 11;
+  Text empty_text = 12;
+}
+
+// ---- Events & Effects (Machine Status) ----
+
+message MachineStatusWatchEvent {
+  string machine_id = 1;
+  bool visible = 2;
+  MachinePollMode mode = 3;
+}
+
+message MachineStatusRetryEvent {
+  string machine_id = 1;
+}
+
+message MachineStatusTabEvent {
+  string machine_id = 1;
+  MachineUsageTab tab = 2;
+}
+
+message MachineStatusScrubEvent {
+  string machine_id = 1;
+  MachineChartKind kind = 2;
+  int32 point_index = 3;
+  bool clear = 4;
+}
+
+message MachineStatusCleanupEvent {
+  string machine_id = 1;
+}
+
+message MachineStatusPollTickEvent {
+  string machine_id = 1;
+  uint64 generation = 2;
+}
+
+message ScheduleMachinePollEffect {
+  string machine_id = 1;
+  int64 delay_ms = 2;
+  uint64 generation = 3;
+  bool cancel = 4;
+}
+
+message PrepareCleanupSessionEffect {
+  string machine_id = 1;
+  string project_key = 2;
+  string cwd = 3;
+  string prompt = 4;
+  bool needs_directory_picker = 5;
+}

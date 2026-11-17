@@ -1,0 +1,801 @@
+{
+  "steps": [
+    {
+      "effects": {
+        "effects": [
+          {
+            "render": {
+              "screens": [
+                "SCREEN_TARGET_HOME",
+                "SCREEN_TARGET_PROJECT",
+                "SCREEN_TARGET_SYNC_STATE"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "effects": {
+        "effects": [
+          {
+            "cacheRead": {
+              "bootstrap": {
+                "opId": "1"
+              }
+            }
+          },
+          {
+            "ensureToken": {
+              "opId": "2",
+              "forceLogin": true,
+              "timeoutMs": "15000"
+            }
+          },
+          {
+            "syncSecurity": {
+              "opId": "3",
+              "touch": true
+            }
+          },
+          {
+            "render": {
+              "screens": [
+                "SCREEN_TARGET_HOME",
+                "SCREEN_TARGET_PROJECT",
+                "SCREEN_TARGET_NEW_SESSION",
+                "SCREEN_TARGET_SYNC_STATE",
+                "SCREEN_TARGET_SESSION_DATA"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "effects": {
+        "effects": [
+          {
+            "render": {
+              "screens": [
+                "SCREEN_TARGET_HOME",
+                "SCREEN_TARGET_PROJECT",
+                "SCREEN_TARGET_NEW_SESSION",
+                "SCREEN_TARGET_SYNC_STATE",
+                "SCREEN_TARGET_SESSION_DATA"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "effects": {
+        "effects": [
+          {
+            "openStream": {
+              "legId": "1",
+              "token": "tok-1",
+              "timeoutMs": "15000"
+            }
+          },
+          {
+            "scheduleTimer": {
+              "timerId": "1",
+              "kind": "TIMER_KIND_STREAM_OPEN",
+              "delayMs": "15000"
+            }
+          },
+          {
+            "render": {
+              "screens": [
+                "SCREEN_TARGET_HOME",
+                "SCREEN_TARGET_SYNC_STATE"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "effects": {
+        "effects": [
+          {
+            "cancelTimer": {
+              "timerId": "1",
+              "kind": "TIMER_KIND_STREAM_OPEN"
+            }
+          },
+          {
+            "scheduleTimer": {
+              "timerId": "2",
+              "kind": "TIMER_KIND_LIVENESS",
+              "delayMs": "1000"
+            }
+          },
+          {
+            "rpc": {
+              "opId": "4",
+              "fetchLists": {
+                "limit": 50
+              }
+            }
+          },
+          {
+            "rpc": {
+              "opId": "5",
+              "getAccountPrefs": {
+                "objectId": "project-prefs"
+              }
+            }
+          },
+          {
+            "render": {
+              "screens": [
+                "SCREEN_TARGET_HOME",
+                "SCREEN_TARGET_PROJECT",
+                "SCREEN_TARGET_NEW_SESSION",
+                "SCREEN_TARGET_SYNC_STATE",
+                "SCREEN_TARGET_SESSION_DATA"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "effects": {
+        "effects": [
+          {
+            "render": {
+              "screens": [
+                "SCREEN_TARGET_HOME",
+                "SCREEN_TARGET_PROJECT",
+                "SCREEN_TARGET_NEW_SESSION",
+                "SCREEN_TARGET_SYNC_STATE",
+                "SCREEN_TARGET_SESSION_DATA"
+              ]
+            }
+          }
+        ]
+      },
+      "views": {
+        "allQuotas": {
+          "quota": {
+            "machineId": "m1",
+            "machineName": "MacPro",
+            "found": true,
+            "reachable": true,
+            "member": true,
+            "hasAgentsReported": true,
+            "banner": {
+              "severity": "QUOTA_BANNER_SEVERITY_FULL",
+              "message": {
+                "key": "quota.exhausted",
+                "args": [
+                  {
+                    "name": "name",
+                    "strValue": "Antigravity"
+                  },
+                  {
+                    "name": "window",
+                    "textValue": {
+                      "literal": "Gemini"
+                    }
+                  }
+                ]
+              },
+              "machineId": "m1",
+              "agent": "AGENT_ANTIGRAVITY",
+              "windowName": "gemini-5h"
+            },
+            "sections": [
+              {
+                "agent": "AGENT_CODEX",
+                "agentName": "Codex",
+                "state": "QUOTA_SECTION_STATE_OK",
+                "accounts": [
+                  {
+                    "account": "dev@example.com",
+                    "plan": "Pro Lite",
+                    "state": "QUOTA_SECTION_STATE_OK",
+                    "statusText": {
+                      "key": "quota.received_success",
+                      "args": [
+                        {
+                          "name": "time",
+                          "strValue": "09:31"
+                        }
+                      ]
+                    },
+                    "groups": [
+                      {
+                        "rows": [
+                          {
+                            "windowName": "primary",
+                            "label": {
+                              "key": "quota.hr",
+                              "args": [
+                                {
+                                  "name": "count",
+                                  "intValue": "5"
+                                }
+                              ]
+                            },
+                            "hasPercent": true,
+                            "usedPercent": 85,
+                            "remainingPercent": 15,
+                            "tone": "QUOTA_TONE_WARN",
+                            "remainingText": {
+                              "key": "quota.left",
+                              "args": [
+                                {
+                                  "name": "value",
+                                  "strValue": "15%"
+                                }
+                              ]
+                            },
+                            "resetText": {
+                              "key": "quota.resets_in_min",
+                              "args": [
+                                {
+                                  "name": "count",
+                                  "intValue": "59"
+                                }
+                              ]
+                            },
+                            "resetClockText": {
+                              "literal": "10:41"
+                            }
+                          },
+                          {
+                            "windowName": "secondary",
+                            "label": {
+                              "key": "quota.days",
+                              "args": [
+                                {
+                                  "name": "count",
+                                  "intValue": "7"
+                                }
+                              ]
+                            },
+                            "hasPercent": true,
+                            "usedPercent": 40,
+                            "remainingPercent": 60,
+                            "pastReset": true,
+                            "stale": true,
+                            "tone": "QUOTA_TONE_STALE",
+                            "remainingText": {
+                              "key": "quota.awaiting_update"
+                            },
+                            "resetText": {
+                              "key": "quota.awaiting_update"
+                            },
+                            "footnote": {
+                              "key": "quota.previously_reset_time_passed_but_quota_recovery_is_unconfirmed",
+                              "args": [
+                                {
+                                  "name": "value",
+                                  "textValue": {
+                                    "key": "quota.last_reading"
+                                  }
+                                }
+                              ]
+                            }
+                          }
+                        ]
+                      }
+                    ],
+                    "isSubscriptionLogin": true
+                  }
+                ],
+                "summaryRow": {
+                  "windowName": "primary",
+                  "label": {
+                    "key": "quota.hr",
+                    "args": [
+                      {
+                        "name": "count",
+                        "intValue": "5"
+                      }
+                    ]
+                  },
+                  "hasPercent": true,
+                  "usedPercent": 85,
+                  "remainingPercent": 15,
+                  "tone": "QUOTA_TONE_WARN",
+                  "remainingText": {
+                    "key": "quota.left",
+                    "args": [
+                      {
+                        "name": "value",
+                        "strValue": "15%"
+                      }
+                    ]
+                  },
+                  "resetText": {
+                    "key": "quota.resets_in_min",
+                    "args": [
+                      {
+                        "name": "count",
+                        "intValue": "59"
+                      }
+                    ]
+                  },
+                  "resetClockText": {
+                    "literal": "10:41"
+                  }
+                },
+                "summaryLine": {
+                  "join": [
+                    {
+                      "key": "quota.hr",
+                      "args": [
+                        {
+                          "name": "count",
+                          "intValue": "5"
+                        }
+                      ]
+                    },
+                    {
+                      "key": "quota.left",
+                      "args": [
+                        {
+                          "name": "value",
+                          "strValue": "15%"
+                        }
+                      ]
+                    }
+                  ],
+                  "separatorKey": "common.note_separator"
+                },
+                "summaryTone": "QUOTA_TONE_WARN"
+              },
+              {
+                "agent": "AGENT_CLAUDE",
+                "agentName": "Claude Code",
+                "state": "QUOTA_SECTION_STATE_FAILED",
+                "accounts": [
+                  {
+                    "plan": "Max",
+                    "state": "QUOTA_SECTION_STATE_FAILED",
+                    "lastRecord": true,
+                    "statusText": {
+                      "key": "quota.failure",
+                      "args": [
+                        {
+                          "name": "name",
+                          "strValue": "Claude Code"
+                        },
+                        {
+                          "name": "detail",
+                          "strValue": "Status line unavailable"
+                        }
+                      ]
+                    },
+                    "freshnessText": {
+                      "key": "quota.old_hours",
+                      "args": [
+                        {
+                          "name": "count",
+                          "intValue": "1"
+                        }
+                      ]
+                    },
+                    "errorText": {
+                      "literal": "Status line unavailable"
+                    },
+                    "usageHint": {
+                      "key": "settings.view_usage_in_the_local_cli"
+                    }
+                  }
+                ],
+                "emptyOrErrorText": {
+                  "literal": "Status line unavailable"
+                },
+                "usageHint": {
+                  "key": "settings.view_usage_in_the_local_cli"
+                },
+                "summaryTone": "QUOTA_TONE_STALE",
+                "summaryMeta": {
+                  "key": "quota.failure",
+                  "args": [
+                    {
+                      "name": "name",
+                      "strValue": "Claude Code"
+                    },
+                    {
+                      "name": "detail",
+                      "strValue": "Status line unavailable"
+                    }
+                  ]
+                }
+              },
+              {
+                "agent": "AGENT_ANTIGRAVITY",
+                "agentName": "Antigravity",
+                "state": "QUOTA_SECTION_STATE_OK",
+                "accounts": [
+                  {
+                    "state": "QUOTA_SECTION_STATE_OK",
+                    "statusText": {
+                      "key": "quota.received_success",
+                      "args": [
+                        {
+                          "name": "time",
+                          "strValue": "09:38"
+                        }
+                      ]
+                    },
+                    "groups": [
+                      {
+                        "groupLabel": {
+                          "literal": "Gemini"
+                        },
+                        "rows": [
+                          {
+                            "windowName": "gemini-5h",
+                            "label": {
+                              "key": "quota.named_hours",
+                              "args": [
+                                {
+                                  "name": "name",
+                                  "strValue": "Gemini"
+                                },
+                                {
+                                  "name": "count",
+                                  "intValue": "5"
+                                }
+                              ]
+                            },
+                            "poolName": {
+                              "literal": "Gemini"
+                            },
+                            "hasPercent": true,
+                            "usedPercent": 100,
+                            "exhausted": true,
+                            "tone": "QUOTA_TONE_FULL",
+                            "remainingText": {
+                              "key": "quota.exhausted_quota"
+                            },
+                            "resetText": {
+                              "key": "quota.resets_in_hr_min",
+                              "args": [
+                                {
+                                  "name": "count",
+                                  "intValue": "2"
+                                },
+                                {
+                                  "name": "detail",
+                                  "strValue": "59"
+                                }
+                              ]
+                            },
+                            "resetClockText": {
+                              "literal": "12:41"
+                            }
+                          }
+                        ]
+                      },
+                      {
+                        "groupLabel": {
+                          "key": "quota.third_party_models_claude_gpt_oss"
+                        },
+                        "rows": [
+                          {
+                            "windowName": "3p-5h",
+                            "label": {
+                              "key": "quota.named_hours",
+                              "args": [
+                                {
+                                  "name": "name",
+                                  "textValue": {
+                                    "key": "quota.third_party_models"
+                                  }
+                                },
+                                {
+                                  "name": "count",
+                                  "intValue": "5"
+                                }
+                              ]
+                            },
+                            "poolName": {
+                              "key": "quota.third_party_models"
+                            },
+                            "hasPercent": true,
+                            "usedPercent": 35,
+                            "remainingPercent": 65,
+                            "tone": "QUOTA_TONE_NORMAL",
+                            "remainingText": {
+                              "key": "quota.left",
+                              "args": [
+                                {
+                                  "name": "value",
+                                  "strValue": "65%"
+                                }
+                              ]
+                            },
+                            "resetText": {
+                              "key": "quota.resets_in_hr_min",
+                              "args": [
+                                {
+                                  "name": "count",
+                                  "intValue": "1"
+                                },
+                                {
+                                  "name": "detail",
+                                  "strValue": "59"
+                                }
+                              ]
+                            },
+                            "resetClockText": {
+                              "literal": "11:41"
+                            }
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ],
+                "summaryRow": {
+                  "windowName": "gemini-5h",
+                  "label": {
+                    "key": "quota.named_hours",
+                    "args": [
+                      {
+                        "name": "name",
+                        "strValue": "Gemini"
+                      },
+                      {
+                        "name": "count",
+                        "intValue": "5"
+                      }
+                    ]
+                  },
+                  "poolName": {
+                    "literal": "Gemini"
+                  },
+                  "hasPercent": true,
+                  "usedPercent": 100,
+                  "exhausted": true,
+                  "tone": "QUOTA_TONE_FULL",
+                  "remainingText": {
+                    "key": "quota.exhausted_quota"
+                  },
+                  "resetText": {
+                    "key": "quota.resets_in_hr_min",
+                    "args": [
+                      {
+                        "name": "count",
+                        "intValue": "2"
+                      },
+                      {
+                        "name": "detail",
+                        "strValue": "59"
+                      }
+                    ]
+                  },
+                  "resetClockText": {
+                    "literal": "12:41"
+                  }
+                },
+                "summaryLine": {
+                  "join": [
+                    {
+                      "literal": "Gemini"
+                    },
+                    {
+                      "key": "quota.exhausted_quota"
+                    }
+                  ],
+                  "separatorKey": "common.note_separator"
+                },
+                "summaryTone": "QUOTA_TONE_FULL"
+              }
+            ],
+            "footerNote": {
+              "key": "settings.times_are_shown_in_beijing_time_quotas_belong_to"
+            }
+          }
+        },
+        "codexOnly": {
+          "quota": {
+            "machineId": "m1",
+            "machineName": "MacPro",
+            "found": true,
+            "reachable": true,
+            "member": true,
+            "hasAgentsReported": true,
+            "banner": {
+              "severity": "QUOTA_BANNER_SEVERITY_FULL",
+              "message": {
+                "key": "quota.exhausted",
+                "args": [
+                  {
+                    "name": "name",
+                    "strValue": "Antigravity"
+                  },
+                  {
+                    "name": "window",
+                    "textValue": {
+                      "literal": "Gemini"
+                    }
+                  }
+                ]
+              },
+              "machineId": "m1",
+              "agent": "AGENT_ANTIGRAVITY",
+              "windowName": "gemini-5h"
+            },
+            "sections": [
+              {
+                "agent": "AGENT_CODEX",
+                "agentName": "Codex",
+                "state": "QUOTA_SECTION_STATE_OK",
+                "accounts": [
+                  {
+                    "account": "dev@example.com",
+                    "plan": "Pro Lite",
+                    "state": "QUOTA_SECTION_STATE_OK",
+                    "statusText": {
+                      "key": "quota.received_success",
+                      "args": [
+                        {
+                          "name": "time",
+                          "strValue": "09:31"
+                        }
+                      ]
+                    },
+                    "groups": [
+                      {
+                        "rows": [
+                          {
+                            "windowName": "primary",
+                            "label": {
+                              "key": "quota.hr",
+                              "args": [
+                                {
+                                  "name": "count",
+                                  "intValue": "5"
+                                }
+                              ]
+                            },
+                            "hasPercent": true,
+                            "usedPercent": 85,
+                            "remainingPercent": 15,
+                            "tone": "QUOTA_TONE_WARN",
+                            "remainingText": {
+                              "key": "quota.left",
+                              "args": [
+                                {
+                                  "name": "value",
+                                  "strValue": "15%"
+                                }
+                              ]
+                            },
+                            "resetText": {
+                              "key": "quota.resets_in_min",
+                              "args": [
+                                {
+                                  "name": "count",
+                                  "intValue": "59"
+                                }
+                              ]
+                            },
+                            "resetClockText": {
+                              "literal": "10:41"
+                            }
+                          },
+                          {
+                            "windowName": "secondary",
+                            "label": {
+                              "key": "quota.days",
+                              "args": [
+                                {
+                                  "name": "count",
+                                  "intValue": "7"
+                                }
+                              ]
+                            },
+                            "hasPercent": true,
+                            "usedPercent": 40,
+                            "remainingPercent": 60,
+                            "pastReset": true,
+                            "stale": true,
+                            "tone": "QUOTA_TONE_STALE",
+                            "remainingText": {
+                              "key": "quota.awaiting_update"
+                            },
+                            "resetText": {
+                              "key": "quota.awaiting_update"
+                            },
+                            "footnote": {
+                              "key": "quota.previously_reset_time_passed_but_quota_recovery_is_unconfirmed",
+                              "args": [
+                                {
+                                  "name": "value",
+                                  "textValue": {
+                                    "key": "quota.last_reading"
+                                  }
+                                }
+                              ]
+                            }
+                          }
+                        ]
+                      }
+                    ],
+                    "isSubscriptionLogin": true
+                  }
+                ],
+                "summaryRow": {
+                  "windowName": "primary",
+                  "label": {
+                    "key": "quota.hr",
+                    "args": [
+                      {
+                        "name": "count",
+                        "intValue": "5"
+                      }
+                    ]
+                  },
+                  "hasPercent": true,
+                  "usedPercent": 85,
+                  "remainingPercent": 15,
+                  "tone": "QUOTA_TONE_WARN",
+                  "remainingText": {
+                    "key": "quota.left",
+                    "args": [
+                      {
+                        "name": "value",
+                        "strValue": "15%"
+                      }
+                    ]
+                  },
+                  "resetText": {
+                    "key": "quota.resets_in_min",
+                    "args": [
+                      {
+                        "name": "count",
+                        "intValue": "59"
+                      }
+                    ]
+                  },
+                  "resetClockText": {
+                    "literal": "10:41"
+                  }
+                },
+                "summaryLine": {
+                  "join": [
+                    {
+                      "key": "quota.hr",
+                      "args": [
+                        {
+                          "name": "count",
+                          "intValue": "5"
+                        }
+                      ]
+                    },
+                    {
+                      "key": "quota.left",
+                      "args": [
+                        {
+                          "name": "value",
+                          "strValue": "15%"
+                        }
+                      ]
+                    }
+                  ],
+                  "separatorKey": "common.note_separator"
+                },
+                "summaryTone": "QUOTA_TONE_WARN"
+              }
+            ],
+            "footerNote": {
+              "key": "settings.times_are_shown_in_beijing_time_quotas_belong_to"
+            }
+          }
+        }
+      }
+    }
+  ]
+}
