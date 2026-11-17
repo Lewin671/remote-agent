@@ -222,7 +222,11 @@ func buildDirPickerView(st *State) *corev1.DirPickerView {
 	canConfirm := dp.Open && dp.CurrentPath != "" && !dp.Loading && !hasReason(dp.ErrorText, dp.Error)
 	var confirmLabel *corev1.Text
 	if dp.CurrentPath != "" {
-		confirmLabel = text.Msg(text.KeyProjectsUseDirectory, text.Str("name", lists.ProjectName(dp.CurrentPath)))
+		dirName := lists.ProjectName(dp.CurrentPath)
+		if dirName == "" {
+			dirName = dp.CurrentPath
+		}
+		confirmLabel = text.Msg(text.KeyProjectsUseDirectory, text.Str("name", dirName))
 	}
 
 	return &corev1.DirPickerView{

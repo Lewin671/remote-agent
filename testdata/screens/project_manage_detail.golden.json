@@ -659,6 +659,153 @@
           }
         }
       }
+    },
+    {
+      "effects": {
+        "effects": [
+          {
+            "requestEntropy": {
+              "minIds": 16
+            }
+          },
+          {
+            "dispatchCommand": {
+              "requestId": "r5",
+              "attemptId": "r6",
+              "machineId": "m1",
+              "deadlineMs": "1791078120140",
+              "commandBytes": "sgEDCgEvoAYQ",
+              "routeHint": "COMMAND_ROUTE_HINT_READ"
+            }
+          },
+          {
+            "render": {
+              "screens": [
+                "SCREEN_TARGET_PROJECT",
+                "SCREEN_TARGET_NEW_SESSION",
+                "SCREEN_TARGET_SYNC_STATE"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "effects": {
+        "effects": [
+          {
+            "render": {
+              "screens": [
+                "SCREEN_TARGET_HOME",
+                "SCREEN_TARGET_PROJECT",
+                "SCREEN_TARGET_NEW_SESSION",
+                "SCREEN_TARGET_SYNC_STATE"
+              ]
+            }
+          }
+        ]
+      },
+      "views": {
+        "manageDirPickerRoot": {
+          "project": {
+            "kind": "PROJECT_VIEW_KIND_MANAGE",
+            "manage": {
+              "listing": {
+                "pinned": [
+                  {
+                    "key": "/Users/me/Code/alpha",
+                    "name": {
+                      "literal": "alpha"
+                    },
+                    "shortPath": "~/Code/alpha",
+                    "subtitle": {
+                      "key": "time.used_time",
+                      "args": [
+                        {
+                          "name": "time",
+                          "textValue": {
+                            "key": "time.hours_ago",
+                            "args": [
+                              {
+                                "name": "count",
+                                "intValue": "5"
+                              }
+                            ]
+                          }
+                        }
+                      ]
+                    },
+                    "pinned": true
+                  },
+                  {
+                    "key": "/Users/me/Code/beta",
+                    "name": {
+                      "literal": "beta"
+                    },
+                    "shortPath": "~/Code/beta",
+                    "pinned": true
+                  }
+                ],
+                "others": [
+                  {
+                    "key": "/Users/me/Code/delta",
+                    "name": {
+                      "literal": "delta"
+                    },
+                    "shortPath": "~/Code/delta"
+                  }
+                ],
+                "titled": true
+              },
+              "canEdit": true,
+              "dirPicker": {
+                "open": true,
+                "machines": [
+                  {
+                    "machineId": "m1",
+                    "name": "MacBook",
+                    "online": true,
+                    "statusText": {
+                      "key": "common.online"
+                    }
+                  }
+                ],
+                "machineId": "m1",
+                "currentPath": "/",
+                "crumbs": [
+                  {
+                    "label": {
+                      "literal": "/"
+                    },
+                    "path": "/"
+                  }
+                ],
+                "dirs": [
+                  {
+                    "name": "Users",
+                    "path": "/Users"
+                  },
+                  {
+                    "name": "tmp",
+                    "path": "/tmp"
+                  }
+                ],
+                "confirmLabel": {
+                  "key": "projects.use_directory",
+                  "args": [
+                    {
+                      "name": "name",
+                      "strValue": "/"
+                    }
+                  ]
+                },
+                "canConfirm": true
+              },
+              "projectCount": 3
+            }
+          }
+        }
+      }
     }
   ]
 }
