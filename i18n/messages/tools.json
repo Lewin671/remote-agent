@@ -53,7 +53,9 @@
       }
     },
     "platforms": [
-      "android"
+      "web",
+      "android",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",

@@ -146,6 +146,7 @@
     <string name="composer_input_unconfirmed" formatted="false">"Could not confirm terminal input"</string>
     <string name="composer_insert_hint" formatted="false">"This is what ↑ does"</string>
     <string name="composer_insert_now" formatted="false">"Insert into this turn now"</string>
+    <string name="composer_ios_connect_send" formatted="false">"Connect to the server to send"</string>
     <string name="composer_maybe_failure">"Possibly not sent: %1$s"</string>
     <string name="composer_message" formatted="false">"Message"</string>
     <string name="composer_message_fallback" formatted="false">"A message"</string>
@@ -1852,6 +1853,14 @@
     <string name="session_interrupt" formatted="false">"Interrupt"</string>
     <string name="session_interrupt_turn" formatted="false">"Interrupt turn"</string>
     <string name="session_interrupted" formatted="false">"Interrupted"</string>
+    <plurals name="session_ios_turn_k_tokens">
+        <item quantity="one">"%1$dk tokens"</item>
+        <item quantity="other">"%1$dk tokens"</item>
+    </plurals>
+    <plurals name="session_ios_turn_tokens">
+        <item quantity="one">"%1$d token"</item>
+        <item quantity="other">"%1$d tokens"</item>
+    </plurals>
     <string name="session_latest" formatted="false">"Back to latest"</string>
     <string name="session_loading_earlier" formatted="false">"Loading earlier history…"</string>
     <string name="session_manually_closed" formatted="false">"The session was ended manually."</string>
@@ -1911,10 +1920,12 @@
     <string name="session_terminal_mode_change">"switched approval mode to %1$s"</string>
     <string name="session_terminal_model_change">"switched model to %1$s"</string>
     <string name="session_thinking" formatted="false">"Thinking"</string>
+    <string name="session_title" formatted="false">"Conversation"</string>
     <string name="session_title_label" formatted="false">"Session title"</string>
     <string name="session_tmux_missing" formatted="false">"The tmux session no longer exists."</string>
     <string name="session_try_again" formatted="false">"Try again"</string>
     <string name="session_turn_duration">"Turn took %1$s"</string>
+    <string name="session_turn_error">"Turn failed: %1$s"</string>
     <string name="session_update_computer" formatted="false">"Update remote-agent on the computer"</string>
     <string name="session_view" formatted="false">"View"</string>
     <string name="settings_about" formatted="false">"About"</string>

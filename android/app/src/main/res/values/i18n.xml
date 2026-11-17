@@ -139,6 +139,7 @@
     <string name="composer_input_unconfirmed" formatted="false">"无法确认终端输入框的内容"</string>
     <string name="composer_insert_hint" formatted="false">"点 ↑ 就是这个"</string>
     <string name="composer_insert_now" formatted="false">"现在插入这一轮"</string>
+    <string name="composer_ios_connect_send" formatted="false">"连上服务器后才能发送"</string>
     <string name="composer_maybe_failure">"可能没发出去：%1$s"</string>
     <string name="composer_message" formatted="false">"消息"</string>
     <string name="composer_message_fallback" formatted="false">"一条消息"</string>
@@ -1769,6 +1770,12 @@
     <string name="session_interrupt" formatted="false">"中断"</string>
     <string name="session_interrupt_turn" formatted="false">"中断本轮"</string>
     <string name="session_interrupted" formatted="false">"已中断"</string>
+    <plurals name="session_ios_turn_k_tokens">
+        <item quantity="other">"%1$dk tokens"</item>
+    </plurals>
+    <plurals name="session_ios_turn_tokens">
+        <item quantity="other">"%1$d tokens"</item>
+    </plurals>
     <string name="session_latest" formatted="false">"回到最新消息"</string>
     <string name="session_loading_earlier" formatted="false">"正在读取更早的记录…"</string>
     <string name="session_manually_closed" formatted="false">"会话是被手动结束的。"</string>
@@ -1827,10 +1834,12 @@
     <string name="session_terminal_mode_change">"模式切到了 %1$s"</string>
     <string name="session_terminal_model_change">"模型切到了 %1$s"</string>
     <string name="session_thinking" formatted="false">"思考过程"</string>
+    <string name="session_title" formatted="false">"会话"</string>
     <string name="session_title_label" formatted="false">"会话标题"</string>
     <string name="session_tmux_missing" formatted="false">"tmux 会话已经不在了。"</string>
     <string name="session_try_again" formatted="false">"再试一次"</string>
     <string name="session_turn_duration">"本轮用时 %1$s"</string>
+    <string name="session_turn_error">"本轮出错：%1$s"</string>
     <string name="session_update_computer" formatted="false">"请更新电脑上的 remote-agent"</string>
     <string name="session_view" formatted="false">"视图"</string>
     <string name="settings_about" formatted="false">"关于"</string>

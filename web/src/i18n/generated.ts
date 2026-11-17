@@ -43,6 +43,9 @@ export interface MessageArgs {
   "approval.always_allowed": { [name: string]: never };
   "approval.always_directory": { path: string };
   "approval.always_prefix": { command: string };
+  "approval.android_minutes_meta": { count: number };
+  "approval.android_reply_expired": { decision: string };
+  "approval.android_unknown_result": { [name: string]: never };
   "approval.approve": { [name: string]: never };
   "approval.approve_execute": { [name: string]: never };
   "approval.auto_edits": { [name: string]: never };
@@ -91,7 +94,9 @@ export interface MessageArgs {
   "attachment.uploading": { [name: string]: never };
   "attachment.zip_folder": { [name: string]: never };
   "common.all_projects_avatar": { [name: string]: never };
+  "common.android_cannot_find_this_session": { [name: string]: never };
   "common.android_more": { [name: string]: never };
+  "common.android_this_app_version_is_old_update_and_retry": { [name: string]: never };
   "common.back": { [name: string]: never };
   "common.cancel": { [name: string]: never };
   "common.clear_search": { [name: string]: never };
@@ -122,12 +127,14 @@ export interface MessageArgs {
   "common.settings": { [name: string]: never };
   "common.unknown_computer": { [name: string]: never };
   "composer.after_turn": { [name: string]: never };
+  "composer.android_unknown_reason": { [name: string]: never };
   "composer.await_record": { agent: string };
   "composer.computer_restarted": { [name: string]: never };
   "composer.images_unrecognized": { agent: string };
   "composer.input_unconfirmed": { [name: string]: never };
   "composer.insert_hint": { [name: string]: never };
   "composer.insert_now": { [name: string]: never };
+  "composer.ios_connect_send": { [name: string]: never };
   "composer.maybe_failure": { reason: string };
   "composer.message": { [name: string]: never };
   "composer.message_fallback": { [name: string]: never };
@@ -184,6 +191,10 @@ export interface MessageArgs {
   "connection.working": { [name: string]: never };
   "dock.agent_waiting": { agent: string };
   "dock.agy_plan_note": { [name: string]: never };
+  "dock.android_answer_expired": { answer: string };
+  "dock.android_answer_unknown": { answer: string };
+  "dock.android_plan_expired": { choice: string };
+  "dock.android_plan_unknown": { choice: string };
   "dock.answer_title": { [name: string]: never };
   "dock.answer_unknown": { [name: string]: never };
   "dock.answered": { answers: string };
@@ -674,7 +685,10 @@ export interface MessageArgs {
   "queue.after_turn": { [name: string]: never };
   "queue.agent_ready": { agent: string };
   "queue.already_submitted": { [name: string]: never };
+  "queue.android_agent_note": { agent: string };
   "queue.android_scheduled": { [name: string]: never };
+  "queue.android_sending_soon": { [name: string]: never };
+  "queue.android_unconfirmed": { [name: string]: never };
   "queue.cancel_failed": { [name: string]: never };
   "queue.canceled": { [name: string]: never };
   "queue.canceled_elsewhere": { [name: string]: never };
@@ -1143,6 +1157,9 @@ export interface MessageArgs {
   "security.waiting_for_the_successor_device_to_generate_and_save": { [name: string]: never };
   "session.abandon_fork": { [name: string]: never };
   "session.action_failed": { action: string; reason: string };
+  "session.android_compacted_usage": { after: string; before: string };
+  "session.android_fork_connected": { [name: string]: never };
+  "session.android_interrupted_by": { origin: string };
   "session.android_unknown": { [name: string]: never };
   "session.approval_resolved": { [name: string]: never };
   "session.auto_title_hint": { [name: string]: never };
@@ -1189,6 +1206,8 @@ export interface MessageArgs {
   "session.interrupt_turn": { [name: string]: never };
   "session.interrupted": { [name: string]: never };
   "session.ios_missing": { [name: string]: never };
+  "session.ios_turn_k_tokens": { count: number };
+  "session.ios_turn_tokens": { count: number };
   "session.latest": { [name: string]: never };
   "session.loading_earlier": { [name: string]: never };
   "session.manually_closed": { [name: string]: never };
@@ -1251,6 +1270,7 @@ export interface MessageArgs {
   "session.tmux_missing": { [name: string]: never };
   "session.try_again": { [name: string]: never };
   "session.turn_duration": { duration: string };
+  "session.turn_error": { reason: string };
   "session.update_computer": { [name: string]: never };
   "session.view": { [name: string]: never };
   "settings.about": { [name: string]: never };
@@ -1462,6 +1482,7 @@ export interface MessageArgs {
   "time.weekday": { day: string };
   "time.year_month_group": { month: number; year: number };
   "time.yesterday": { [name: string]: never };
+  "tools.android_background_label": { name: string };
   "tools.android_edit": { [name: string]: never };
   "tools.background": { [name: string]: never };
   "tools.background_agent": { [name: string]: never };
@@ -1622,6 +1643,15 @@ export const messages = {
     "approval.always_allowed": "Allowed; always allow",
     "approval.always_directory": "Always allow access to {path} in this project",
     "approval.always_prefix": "Always allow commands starting with “{command}”",
+    "approval.android_minutes_meta": {
+      "forms": {
+        "one": " · {count} min left",
+        "other": " · {count} min left"
+      },
+      "plural": "count"
+    },
+    "approval.android_reply_expired": "It is unclear whether “{decision}” arrived. It has expired and will not be resent",
+    "approval.android_unknown_result": "Result unknown",
     "approval.approve": "Approve",
     "approval.approve_execute": "Approve execution",
     "approval.auto_edits": "Automatically accept edits in this session",
@@ -1694,7 +1724,9 @@ export const messages = {
     "attachment.uploading": "Uploading",
     "attachment.zip_folder": "Folders cannot be sent directly. Compress the folder as a ZIP, then select the file.",
     "common.all_projects_avatar": "All",
+    "common.android_cannot_find_this_session": "Cannot find this session",
     "common.android_more": "More",
+    "common.android_this_app_version_is_old_update_and_retry": "This app version is old. Update and retry",
     "common.back": "Back",
     "common.cancel": "Cancel",
     "common.clear_search": "Clear search",
@@ -1725,12 +1757,14 @@ export const messages = {
     "common.settings": "Settings",
     "common.unknown_computer": "Unknown computer",
     "composer.after_turn": "Send after this turn",
+    "composer.android_unknown_reason": "Unknown reason",
     "composer.await_record": "Written to terminal, waiting for {agent} to record it",
     "composer.computer_restarted": "remote-agent on the computer restarted while writing",
     "composer.images_unrecognized": "{agent} did not recognize the images",
     "composer.input_unconfirmed": "Could not confirm terminal input",
     "composer.insert_hint": "This is what ↑ does",
     "composer.insert_now": "Insert into this turn now",
+    "composer.ios_connect_send": "Connect to the server to send",
     "composer.maybe_failure": "Possibly not sent: {reason}",
     "composer.message": "Message",
     "composer.message_fallback": "A message",
@@ -1805,6 +1839,10 @@ export const messages = {
     "connection.working": "Working",
     "dock.agent_waiting": "{agent} is waiting for you",
     "dock.agy_plan_note": "Return to the default mode (Ask) after approval",
+    "dock.android_answer_expired": "It is unclear whether “{answer}” was submitted. It has expired and will not be resent. Check the terminal",
+    "dock.android_answer_unknown": "The previous answer “{answer}” could not be confirmed; the terminal question may have changed. Tap any option to resend the same answer",
+    "dock.android_plan_expired": "It is unclear whether “{choice}” arrived. It has expired and will not be resent. Check the terminal first; abandon it to choose again",
+    "dock.android_plan_unknown": "The result of “{choice}” is unknown. Retry resends the same request; the computer will not execute it twice",
     "dock.answer_title": "Answer question",
     "dock.answer_unknown": "Submission is unconfirmed. Retry sends the same answer.",
     "dock.answered": "Answered {answers}",
@@ -2511,7 +2549,10 @@ export const messages = {
     "queue.after_turn": "Send after this turn",
     "queue.agent_ready": "Send when {agent} is ready",
     "queue.already_submitted": "The previous message is already in the terminal and cannot be canceled",
+    "queue.android_agent_note": "Waiting for {agent} to be ready",
     "queue.android_scheduled": "Scheduled task",
+    "queue.android_sending_soon": "Sending soon",
+    "queue.android_unconfirmed": "Written to the terminal but unconfirmed",
     "queue.cancel_failed": "Could not cancel; still queued",
     "queue.canceled": "Canceled",
     "queue.canceled_elsewhere": "The previous message was canceled on another client",
@@ -3142,6 +3183,9 @@ export const messages = {
     "security.waiting_for_the_successor_device_to_generate_and_save": "Waiting for the successor device to generate and save a recovery code",
     "session.abandon_fork": "Abandon previous fork",
     "session.action_failed": "{action} failed: {reason}",
+    "session.android_compacted_usage": "Context compacted · {before}% → {after}%",
+    "session.android_fork_connected": "Available after connecting to the server",
+    "session.android_interrupted_by": "Interrupted ({origin})",
     "session.android_unknown": "Unknown session",
     "session.approval_resolved": "This approval has already been handled.",
     "session.auto_title_hint": "Save an empty title to restore the automatic title",
@@ -3194,6 +3238,20 @@ export const messages = {
     "session.interrupt_turn": "Interrupt turn",
     "session.interrupted": "Interrupted",
     "session.ios_missing": "Session not found",
+    "session.ios_turn_k_tokens": {
+      "forms": {
+        "one": "{count}k tokens",
+        "other": "{count}k tokens"
+      },
+      "plural": "count"
+    },
+    "session.ios_turn_tokens": {
+      "forms": {
+        "one": "{count} token",
+        "other": "{count} tokens"
+      },
+      "plural": "count"
+    },
     "session.latest": "Back to latest",
     "session.loading_earlier": "Loading earlier history…",
     "session.manually_closed": "The session was ended manually.",
@@ -3262,6 +3320,7 @@ export const messages = {
     "session.tmux_missing": "The tmux session no longer exists.",
     "session.try_again": "Try again",
     "session.turn_duration": "Turn took {duration}",
+    "session.turn_error": "Turn failed: {reason}",
     "session.update_computer": "Update remote-agent on the computer",
     "session.view": "View",
     "settings.about": "About",
@@ -3527,6 +3586,7 @@ export const messages = {
     },
     "time.year_month_group": "{year}/{month}",
     "time.yesterday": "Yesterday",
+    "tools.android_background_label": "{name} (background)",
     "tools.android_edit": "Edit",
     "tools.background": "Running in background",
     "tools.background_agent": "Running in the background at the model’s request. Its completion time is unknown here; check the terminal.",
@@ -3703,6 +3763,14 @@ export const messages = {
     "approval.always_allowed": "已允许，以后不再问",
     "approval.always_directory": "本项目访问 {path} 以后不再问",
     "approval.always_prefix": "「{command}」开头的命令以后不再问",
+    "approval.android_minutes_meta": {
+      "forms": {
+        "other": " · 剩 {count} 分钟"
+      },
+      "plural": "count"
+    },
+    "approval.android_reply_expired": "不确定「{decision}」有没有送到，它已过期，不会再重发",
+    "approval.android_unknown_result": "结果未知",
     "approval.approve": "批准",
     "approval.approve_execute": "批准执行",
     "approval.auto_edits": "本会话自动接受编辑",
@@ -3771,7 +3839,9 @@ export const messages = {
     "attachment.uploading": "上传中",
     "attachment.zip_folder": "不能直接发送文件夹，请先压缩成 ZIP 再选择文件",
     "common.all_projects_avatar": "全",
+    "common.android_cannot_find_this_session": "找不到这个会话",
     "common.android_more": "更多",
+    "common.android_this_app_version_is_old_update_and_retry": "这个 App 版本较旧，请更新后再试",
     "common.back": "返回",
     "common.cancel": "取消",
     "common.clear_search": "清空搜索",
@@ -3802,12 +3872,14 @@ export const messages = {
     "common.settings": "设置",
     "common.unknown_computer": "未知电脑",
     "composer.after_turn": "这一轮结束后再发",
+    "composer.android_unknown_reason": "原因未知",
     "composer.await_record": "已送入终端，等 {agent} 记录",
     "composer.computer_restarted": "电脑上的 remote-agent 写入时重启了",
     "composer.images_unrecognized": "{agent} 没认出图片",
     "composer.input_unconfirmed": "无法确认终端输入框的内容",
     "composer.insert_hint": "点 ↑ 就是这个",
     "composer.insert_now": "现在插入这一轮",
+    "composer.ios_connect_send": "连上服务器后才能发送",
     "composer.maybe_failure": "可能没发出去：{reason}",
     "composer.message": "消息",
     "composer.message_fallback": "一条消息",
@@ -3879,6 +3951,10 @@ export const messages = {
     "connection.working": "正常",
     "dock.agent_waiting": "{agent} 在等你",
     "dock.agy_plan_note": "批准后回到默认模式（询问）",
+    "dock.android_answer_expired": "不确定「{answer}」有没有提交，它已过期，不会再重发。请去终端看看",
+    "dock.android_answer_unknown": "上次的回答「{answer}」没能确认，终端里的问题可能已经变了。再点任一选项会重发同一个回答",
+    "dock.android_plan_expired": "不确定「{choice}」有没有送到，它已过期，不会再重发。请先去终端确认，放弃后可以重新选择",
+    "dock.android_plan_unknown": "「{choice}」的结果不确定。重试会重发同一个请求，电脑收到过就不会再执行一次",
     "dock.answer_title": "回答提问",
     "dock.answer_unknown": "不确定提交了没有，重试会发送同一个回答",
     "dock.answered": "已回答：{answers}",
@@ -4549,7 +4625,10 @@ export const messages = {
     "queue.after_turn": "这一轮结束后发",
     "queue.agent_ready": "等 {agent} 就绪后发出",
     "queue.already_submitted": "上一条已送入终端，不能取消",
+    "queue.android_agent_note": "等 {agent} 就绪",
     "queue.android_scheduled": "定时任务",
+    "queue.android_sending_soon": "即将发送",
+    "queue.android_unconfirmed": "已送到终端但没确认",
     "queue.cancel_failed": "取消没成功，仍在排队",
     "queue.canceled": "已取消",
     "queue.canceled_elsewhere": "上一条已在另一客户端取消",
@@ -5153,6 +5232,9 @@ export const messages = {
     "security.waiting_for_the_successor_device_to_generate_and_save": "等待接任设备生成并保存恢复码",
     "session.abandon_fork": "放弃上次的分叉",
     "session.action_failed": "{action}失败：{reason}",
+    "session.android_compacted_usage": "上下文已压缩 · {before}% → {after}%",
+    "session.android_fork_connected": "连上服务器后可用",
+    "session.android_interrupted_by": "已中断（{origin}）",
     "session.android_unknown": "未知会话",
     "session.approval_resolved": "这条审批已经处理了。",
     "session.auto_title_hint": "留空保存会恢复自动标题",
@@ -5204,6 +5286,18 @@ export const messages = {
     "session.interrupt_turn": "中断本轮",
     "session.interrupted": "已中断",
     "session.ios_missing": "找不到这个会话",
+    "session.ios_turn_k_tokens": {
+      "forms": {
+        "other": "{count}k tokens"
+      },
+      "plural": "count"
+    },
+    "session.ios_turn_tokens": {
+      "forms": {
+        "other": "{count} tokens"
+      },
+      "plural": "count"
+    },
     "session.latest": "回到最新消息",
     "session.loading_earlier": "正在读取更早的记录…",
     "session.manually_closed": "会话是被手动结束的。",
@@ -5271,6 +5365,7 @@ export const messages = {
     "session.tmux_missing": "tmux 会话已经不在了。",
     "session.try_again": "再试一次",
     "session.turn_duration": "本轮用时 {duration}",
+    "session.turn_error": "本轮出错：{reason}",
     "session.update_computer": "请更新电脑上的 remote-agent",
     "session.view": "视图",
     "settings.about": "关于",
@@ -5529,6 +5624,7 @@ export const messages = {
     },
     "time.year_month_group": "{year} 年 {month} 月",
     "time.yesterday": "昨天",
+    "tools.android_background_label": "{name}（后台）",
     "tools.android_edit": "编辑",
     "tools.background": "后台运行",
     "tools.background_agent": "按模型的要求在后台运行；它什么时候结束这里不知道，请到终端确认。",

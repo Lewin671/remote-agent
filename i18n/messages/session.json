@@ -75,7 +75,9 @@
       }
     },
     "platforms": [
-      "android"
+      "web",
+      "android",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -150,7 +152,9 @@
     "notes": "Android 会话与聊天显示边界使用；保留当前中文标点。无变量。英文初稿待审。",
     "params": {},
     "platforms": [
-      "android"
+      "web",
+      "android",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -240,7 +244,9 @@
       }
     },
     "platforms": [
-      "android"
+      "web",
+      "android",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -1703,6 +1709,8 @@
       }
     },
     "platforms": [
+      "web",
+      "android",
       "ios"
     ],
     "status": {
@@ -1733,6 +1741,8 @@
       }
     },
     "platforms": [
+      "web",
+      "android",
       "ios"
     ],
     "status": {
@@ -2840,7 +2850,9 @@
     "notes": "会话尚未读到标题时的顶栏标题。 无变量。",
     "params": {},
     "platforms": [
-      "web"
+      "web",
+      "android",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -2904,6 +2916,27 @@
       "duration": {
         "type": "string",
         "example": "Example"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "session.turn_error",
+    "zh-CN": "本轮出错：{reason}",
+    "en": "Turn failed: {reason}",
+    "notes": "会话历史里 CLI 报错结束一轮时的错误行；保留原文错误原因。",
+    "params": {
+      "reason": {
+        "type": "string",
+        "example": "Usage limit reached"
       }
     },
     "platforms": [

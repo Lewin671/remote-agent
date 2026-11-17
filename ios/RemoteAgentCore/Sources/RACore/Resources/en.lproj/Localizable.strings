@@ -5,6 +5,8 @@
 "approval_always_allowed" = "Allowed; always allow";
 "approval_always_directory" = "Always allow access to %1$@ in this project";
 "approval_always_prefix" = "Always allow commands starting with “%1$@”";
+"approval_android_reply_expired" = "It is unclear whether “%1$@” arrived. It has expired and will not be resent";
+"approval_android_unknown_result" = "Result unknown";
 "approval_approve" = "Approve";
 "approval_approve_execute" = "Approve execution";
 "approval_auto_edits" = "Automatically accept edits in this session";
@@ -90,6 +92,8 @@
 "attachment_uploading" = "Uploading";
 "attachment_zip_folder" = "Folders cannot be sent directly. Compress the folder as a ZIP, then select the file.";
 "common_all_projects_avatar" = "All";
+"common_android_cannot_find_this_session" = "Cannot find this session";
+"common_android_this_app_version_is_old_update_and_retry" = "This app version is old. Update and retry";
 "common_back" = "Back";
 "common_cancel" = "Cancel";
 "common_clear_search" = "Clear search";
@@ -124,6 +128,7 @@
 "common_settings" = "Settings";
 "common_unknown_computer" = "Unknown computer";
 "composer_after_turn" = "Send after this turn";
+"composer_android_unknown_reason" = "Unknown reason";
 "composer_await_record" = "Written to terminal, waiting for %1$@ to record it";
 "composer_computer_restarted" = "remote-agent on the computer restarted while writing";
 "composer_images_unrecognized" = "%1$@ did not recognize the images";
@@ -195,6 +200,10 @@
 "connection_working" = "Working";
 "dock_agent_waiting" = "%1$@ is waiting for you";
 "dock_agy_plan_note" = "Return to the default mode (Ask) after approval";
+"dock_android_answer_expired" = "It is unclear whether “%1$@” was submitted. It has expired and will not be resent. Check the terminal";
+"dock_android_answer_unknown" = "The previous answer “%1$@” could not be confirmed; the terminal question may have changed. Tap any option to resend the same answer";
+"dock_android_plan_expired" = "It is unclear whether “%1$@” arrived. It has expired and will not be resent. Check the terminal first; abandon it to choose again";
+"dock_android_plan_unknown" = "The result of “%1$@” is unknown. Retry resends the same request; the computer will not execute it twice";
 "dock_answer_title" = "Answer question";
 "dock_answer_unknown" = "Submission is unconfirmed. Retry sends the same answer.";
 "dock_answered" = "Answered %1$@";
@@ -814,6 +823,9 @@
 "queue_after_turn" = "Send after this turn";
 "queue_agent_ready" = "Send when %1$@ is ready";
 "queue_already_submitted" = "The previous message is already in the terminal and cannot be canceled";
+"queue_android_agent_note" = "Waiting for %1$@ to be ready";
+"queue_android_sending_soon" = "Sending soon";
+"queue_android_unconfirmed" = "Written to the terminal but unconfirmed";
 "queue_cancel_failed" = "Could not cancel; still queued";
 "queue_canceled" = "Canceled";
 "queue_canceled_elsewhere" = "The previous message was canceled on another client";
@@ -1476,6 +1488,9 @@
 "security_waiting_for_the_successor_device_to_generate_and_save" = "Waiting for the successor device to generate and save a recovery code";
 "session_abandon_fork" = "Abandon previous fork";
 "session_action_failed" = "%1$@ failed: %2$@";
+"session_android_compacted_usage" = "Context compacted · %2$@%% → %1$@%%";
+"session_android_fork_connected" = "Available after connecting to the server";
+"session_android_interrupted_by" = "Interrupted (%1$@)";
 "session_approval_resolved" = "This approval has already been handled.";
 "session_auto_title_hint" = "Save an empty title to restore the automatic title";
 "session_back_task" = "Back to task";
@@ -1607,10 +1622,12 @@
 "session_terminal_mode_change" = "switched approval mode to %1$@";
 "session_terminal_model_change" = "switched model to %1$@";
 "session_thinking" = "Thinking";
+"session_title" = "Conversation";
 "session_title_label" = "Session title";
 "session_tmux_missing" = "The tmux session no longer exists.";
 "session_try_again" = "Try again";
 "session_turn_duration" = "Turn took %1$@";
+"session_turn_error" = "Turn failed: %1$@";
 "session_update_computer" = "Update remote-agent on the computer";
 "session_view" = "View";
 "settings_about" = "About";
@@ -1900,6 +1917,7 @@
 "time_weekday_wed" = "Wed";
 "time_year_month_group" = "%2$lld/%1$lld";
 "time_yesterday" = "Yesterday";
+"tools_android_background_label" = "%1$@ (background)";
 "tools_background" = "Running in background";
 "tools_background_agent" = "Running in the background at the model’s request. Its completion time is unknown here; check the terminal.";
 "tools_background_returned" = "The call returned and the command moved to the background. Its completion time is unknown here; check the terminal.";

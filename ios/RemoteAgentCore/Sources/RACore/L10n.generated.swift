@@ -37,6 +37,18 @@ public enum L10n {
         let key = "approval_always_prefix"
         return format(key, locale: locale, args: [command])
     }
+    public static func approvalAndroidMinutesMeta(count: Int, locale: String = MessageLocale.current) -> String {
+        let key = "approval_android_minutes_meta"
+        return format(key, locale: locale, args: [Int64(count)])
+    }
+    public static func approvalAndroidReplyExpired(decision: String, locale: String = MessageLocale.current) -> String {
+        let key = "approval_android_reply_expired"
+        return format(key, locale: locale, args: [decision])
+    }
+    public static func approvalAndroidUnknownResult(locale: String = MessageLocale.current) -> String {
+        let key = "approval_android_unknown_result"
+        return format(key, locale: locale, args: [])
+    }
     public static func approvalApprove(locale: String = MessageLocale.current) -> String {
         let key = "approval_approve"
         return format(key, locale: locale, args: [])
@@ -409,6 +421,14 @@ public enum L10n {
         let key = "common_all_projects_avatar"
         return format(key, locale: locale, args: [])
     }
+    public static func commonAndroidCannotFindThisSession(locale: String = MessageLocale.current) -> String {
+        let key = "common_android_cannot_find_this_session"
+        return format(key, locale: locale, args: [])
+    }
+    public static func commonAndroidThisAppVersionIsOldUpdateAndRetry(locale: String = MessageLocale.current) -> String {
+        let key = "common_android_this_app_version_is_old_update_and_retry"
+        return format(key, locale: locale, args: [])
+    }
     public static func commonBack(locale: String = MessageLocale.current) -> String {
         let key = "common_back"
         return format(key, locale: locale, args: [])
@@ -543,6 +563,10 @@ public enum L10n {
     }
     public static func composerAfterTurn(locale: String = MessageLocale.current) -> String {
         let key = "composer_after_turn"
+        return format(key, locale: locale, args: [])
+    }
+    public static func composerAndroidUnknownReason(locale: String = MessageLocale.current) -> String {
+        let key = "composer_android_unknown_reason"
         return format(key, locale: locale, args: [])
     }
     public static func composerAwaitRecord(agent: String, locale: String = MessageLocale.current) -> String {
@@ -840,6 +864,22 @@ public enum L10n {
     public static func dockAgyPlanNote(locale: String = MessageLocale.current) -> String {
         let key = "dock_agy_plan_note"
         return format(key, locale: locale, args: [])
+    }
+    public static func dockAndroidAnswerExpired(answer: String, locale: String = MessageLocale.current) -> String {
+        let key = "dock_android_answer_expired"
+        return format(key, locale: locale, args: [answer])
+    }
+    public static func dockAndroidAnswerUnknown(answer: String, locale: String = MessageLocale.current) -> String {
+        let key = "dock_android_answer_unknown"
+        return format(key, locale: locale, args: [answer])
+    }
+    public static func dockAndroidPlanExpired(choice: String, locale: String = MessageLocale.current) -> String {
+        let key = "dock_android_plan_expired"
+        return format(key, locale: locale, args: [choice])
+    }
+    public static func dockAndroidPlanUnknown(choice: String, locale: String = MessageLocale.current) -> String {
+        let key = "dock_android_plan_unknown"
+        return format(key, locale: locale, args: [choice])
     }
     public static func dockAnswerTitle(locale: String = MessageLocale.current) -> String {
         let key = "dock_answer_title"
@@ -3487,6 +3527,18 @@ public enum L10n {
     }
     public static func queueAlreadySubmitted(locale: String = MessageLocale.current) -> String {
         let key = "queue_already_submitted"
+        return format(key, locale: locale, args: [])
+    }
+    public static func queueAndroidAgentNote(agent: String, locale: String = MessageLocale.current) -> String {
+        let key = "queue_android_agent_note"
+        return format(key, locale: locale, args: [agent])
+    }
+    public static func queueAndroidSendingSoon(locale: String = MessageLocale.current) -> String {
+        let key = "queue_android_sending_soon"
+        return format(key, locale: locale, args: [])
+    }
+    public static func queueAndroidUnconfirmed(locale: String = MessageLocale.current) -> String {
+        let key = "queue_android_unconfirmed"
         return format(key, locale: locale, args: [])
     }
     public static func queueCancelFailed(locale: String = MessageLocale.current) -> String {
@@ -6245,6 +6297,18 @@ public enum L10n {
         let key = "session_action_failed"
         return format(key, locale: locale, args: [action, reason])
     }
+    public static func sessionAndroidCompactedUsage(after: String, before: String, locale: String = MessageLocale.current) -> String {
+        let key = "session_android_compacted_usage"
+        return format(key, locale: locale, args: [after, before])
+    }
+    public static func sessionAndroidForkConnected(locale: String = MessageLocale.current) -> String {
+        let key = "session_android_fork_connected"
+        return format(key, locale: locale, args: [])
+    }
+    public static func sessionAndroidInterruptedBy(origin: String, locale: String = MessageLocale.current) -> String {
+        let key = "session_android_interrupted_by"
+        return format(key, locale: locale, args: [origin])
+    }
     public static func sessionApprovalResolved(locale: String = MessageLocale.current) -> String {
         let key = "session_approval_resolved"
         return format(key, locale: locale, args: [])
@@ -6785,6 +6849,10 @@ public enum L10n {
         let key = "session_thinking"
         return format(key, locale: locale, args: [])
     }
+    public static func sessionTitle(locale: String = MessageLocale.current) -> String {
+        let key = "session_title"
+        return format(key, locale: locale, args: [])
+    }
     public static func sessionTitleLabel(locale: String = MessageLocale.current) -> String {
         let key = "session_title_label"
         return format(key, locale: locale, args: [])
@@ -6800,6 +6868,10 @@ public enum L10n {
     public static func sessionTurnDuration(duration: String, locale: String = MessageLocale.current) -> String {
         let key = "session_turn_duration"
         return format(key, locale: locale, args: [duration])
+    }
+    public static func sessionTurnError(reason: String, locale: String = MessageLocale.current) -> String {
+        let key = "session_turn_error"
+        return format(key, locale: locale, args: [reason])
     }
     public static func sessionUpdateComputer(locale: String = MessageLocale.current) -> String {
         let key = "session_update_computer"
@@ -7963,6 +8035,10 @@ public enum L10n {
         let key = "time_yesterday"
         return format(key, locale: locale, args: [])
     }
+    public static func toolsAndroidBackgroundLabel(name: String, locale: String = MessageLocale.current) -> String {
+        let key = "tools_android_background_label"
+        return format(key, locale: locale, args: [name])
+    }
     public static func toolsBackground(locale: String = MessageLocale.current) -> String {
         let key = "tools_background"
         return format(key, locale: locale, args: [])
@@ -8192,6 +8268,18 @@ public enum L10nMessage {
     public static func approvalAlwaysPrefix(command: String) -> LocalizedMessage {
         let key = "approval_always_prefix"
         return LocalizedMessage(key: key, arguments: [.string(command)])
+    }
+    public static func approvalAndroidMinutesMeta(count: Int) -> LocalizedMessage {
+        let key = "approval_android_minutes_meta"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(count))])
+    }
+    public static func approvalAndroidReplyExpired(decision: String) -> LocalizedMessage {
+        let key = "approval_android_reply_expired"
+        return LocalizedMessage(key: key, arguments: [.string(decision)])
+    }
+    public static func approvalAndroidUnknownResult() -> LocalizedMessage {
+        let key = "approval_android_unknown_result"
+        return LocalizedMessage(key: key, arguments: [])
     }
     public static func approvalApprove() -> LocalizedMessage {
         let key = "approval_approve"
@@ -8565,6 +8653,14 @@ public enum L10nMessage {
         let key = "common_all_projects_avatar"
         return LocalizedMessage(key: key, arguments: [])
     }
+    public static func commonAndroidCannotFindThisSession() -> LocalizedMessage {
+        let key = "common_android_cannot_find_this_session"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func commonAndroidThisAppVersionIsOldUpdateAndRetry() -> LocalizedMessage {
+        let key = "common_android_this_app_version_is_old_update_and_retry"
+        return LocalizedMessage(key: key, arguments: [])
+    }
     public static func commonBack() -> LocalizedMessage {
         let key = "common_back"
         return LocalizedMessage(key: key, arguments: [])
@@ -8699,6 +8795,10 @@ public enum L10nMessage {
     }
     public static func composerAfterTurn() -> LocalizedMessage {
         let key = "composer_after_turn"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func composerAndroidUnknownReason() -> LocalizedMessage {
+        let key = "composer_android_unknown_reason"
         return LocalizedMessage(key: key, arguments: [])
     }
     public static func composerAwaitRecord(agent: String) -> LocalizedMessage {
@@ -8996,6 +9096,22 @@ public enum L10nMessage {
     public static func dockAgyPlanNote() -> LocalizedMessage {
         let key = "dock_agy_plan_note"
         return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func dockAndroidAnswerExpired(answer: String) -> LocalizedMessage {
+        let key = "dock_android_answer_expired"
+        return LocalizedMessage(key: key, arguments: [.string(answer)])
+    }
+    public static func dockAndroidAnswerUnknown(answer: String) -> LocalizedMessage {
+        let key = "dock_android_answer_unknown"
+        return LocalizedMessage(key: key, arguments: [.string(answer)])
+    }
+    public static func dockAndroidPlanExpired(choice: String) -> LocalizedMessage {
+        let key = "dock_android_plan_expired"
+        return LocalizedMessage(key: key, arguments: [.string(choice)])
+    }
+    public static func dockAndroidPlanUnknown(choice: String) -> LocalizedMessage {
+        let key = "dock_android_plan_unknown"
+        return LocalizedMessage(key: key, arguments: [.string(choice)])
     }
     public static func dockAnswerTitle() -> LocalizedMessage {
         let key = "dock_answer_title"
@@ -11643,6 +11759,18 @@ public enum L10nMessage {
     }
     public static func queueAlreadySubmitted() -> LocalizedMessage {
         let key = "queue_already_submitted"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func queueAndroidAgentNote(agent: String) -> LocalizedMessage {
+        let key = "queue_android_agent_note"
+        return LocalizedMessage(key: key, arguments: [.string(agent)])
+    }
+    public static func queueAndroidSendingSoon() -> LocalizedMessage {
+        let key = "queue_android_sending_soon"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func queueAndroidUnconfirmed() -> LocalizedMessage {
+        let key = "queue_android_unconfirmed"
         return LocalizedMessage(key: key, arguments: [])
     }
     public static func queueCancelFailed() -> LocalizedMessage {
@@ -14401,6 +14529,18 @@ public enum L10nMessage {
         let key = "session_action_failed"
         return LocalizedMessage(key: key, arguments: [.string(action), .string(reason)])
     }
+    public static func sessionAndroidCompactedUsage(after: String, before: String) -> LocalizedMessage {
+        let key = "session_android_compacted_usage"
+        return LocalizedMessage(key: key, arguments: [.string(after), .string(before)])
+    }
+    public static func sessionAndroidForkConnected() -> LocalizedMessage {
+        let key = "session_android_fork_connected"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func sessionAndroidInterruptedBy(origin: String) -> LocalizedMessage {
+        let key = "session_android_interrupted_by"
+        return LocalizedMessage(key: key, arguments: [.string(origin)])
+    }
     public static func sessionApprovalResolved() -> LocalizedMessage {
         let key = "session_approval_resolved"
         return LocalizedMessage(key: key, arguments: [])
@@ -14941,6 +15081,10 @@ public enum L10nMessage {
         let key = "session_thinking"
         return LocalizedMessage(key: key, arguments: [])
     }
+    public static func sessionTitle() -> LocalizedMessage {
+        let key = "session_title"
+        return LocalizedMessage(key: key, arguments: [])
+    }
     public static func sessionTitleLabel() -> LocalizedMessage {
         let key = "session_title_label"
         return LocalizedMessage(key: key, arguments: [])
@@ -14956,6 +15100,10 @@ public enum L10nMessage {
     public static func sessionTurnDuration(duration: String) -> LocalizedMessage {
         let key = "session_turn_duration"
         return LocalizedMessage(key: key, arguments: [.string(duration)])
+    }
+    public static func sessionTurnError(reason: String) -> LocalizedMessage {
+        let key = "session_turn_error"
+        return LocalizedMessage(key: key, arguments: [.string(reason)])
     }
     public static func sessionUpdateComputer() -> LocalizedMessage {
         let key = "session_update_computer"
@@ -16118,6 +16266,10 @@ public enum L10nMessage {
     public static func timeYesterday() -> LocalizedMessage {
         let key = "time_yesterday"
         return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func toolsAndroidBackgroundLabel(name: String) -> LocalizedMessage {
+        let key = "tools_android_background_label"
+        return LocalizedMessage(key: key, arguments: [.string(name)])
     }
     public static func toolsBackground() -> LocalizedMessage {
         let key = "tools_background"

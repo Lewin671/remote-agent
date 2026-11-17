@@ -138,7 +138,9 @@
       }
     },
     "platforms": [
-      "android"
+      "web",
+      "android",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -265,7 +267,9 @@
     "notes": "Android 会话排队/工具状态 helper 的现有显示原句，返回延迟消息，不以文字判断状态。无变量。英文初稿待审。",
     "params": {},
     "platforms": [
-      "android"
+      "web",
+      "android",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -293,7 +297,9 @@
     "notes": "Android 会话与聊天显示边界使用；保留当前中文标点。无变量。英文初稿待审。",
     "params": {},
     "platforms": [
-      "android"
+      "web",
+      "android",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",

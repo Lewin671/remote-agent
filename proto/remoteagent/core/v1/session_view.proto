@@ -1,0 +1,654 @@
+syntax = "proto3";
+
+package remoteagent.core.v1;
+
+import "remoteagent/core/v1/home_view.proto";
+import "remoteagent/core/v1/text.proto";
+import "remoteagent/v1/event.proto";
+import "remoteagent/v1/local.proto";
+import "remoteagent/v1/remote.proto";
+
+// SessionScreenRequest requests the computed view model for one session.
+message SessionScreenRequest {
+  string session_id = 1;
+  SessionWindowRequest window = 2;
+}
+
+// SessionWindowRequest controls timeline tail windowing, earlier paging, and schedule reveals.
+message SessionWindowRequest {
+  // Maximum timeline items returned; defaults to 80 when <= 0.
+  int32 limit = 1;
+  // When non-zero, returns items ending strictly before this sequence number.
+  uint64 before_seq = 2;
+  // When non-zero, centers the returned window around this sequence number.
+  uint64 around_seq = 3;
+  // When non-zero, expands any quiet scheduled run group covering this seq and anchors to it.
+  uint64 reveal_seq = 4;
+  // When non-empty, expands any quiet scheduled run group matching this run_id and anchors to it.
+  string reveal_run_id = 5;
+  // Additional quiet scheduled or tool group IDs to keep expanded.
+  repeated string expanded_group_ids = 6;
+}
+
+// SessionViewModel is the complete screen state for a single session across Web, Android, and iOS.
+message SessionViewModel {
+  string session_id = 1;
+  SessionHeaderView header = 2;
+  SessionActionsView actions = 3;
+  SessionDockView dock = 4;
+  SessionComposerView composer = 5;
+  SessionTimelineView timeline = 6;
+}
+
+enum SessionCommandStatus {
+  SESSION_COMMAND_STATUS_UNSPECIFIED = 0;
+  SESSION_COMMAND_STATUS_IDLE = 1;
+  SESSION_COMMAND_STATUS_PENDING = 2;
+  SESSION_COMMAND_STATUS_FAILED = 3;
+  SESSION_COMMAND_STATUS_UNKNOWN = 4;
+}
+
+// SessionCommandState captures the sync.SubmitCommand lifecycle for one action slot.
+message SessionCommandState {
+  string slot_key = 1;
+  string request_id = 2;
+  SessionCommandStatus status = 3;
+  bool busy = 4;
+  bool frozen = 5;
+  bool expired = 6;
+  bool can_retry = 7;
+  bool can_abandon = 8;
+  string error_code = 9;
+  Text error_text = 10;
+  Text status_text = 11;
+}
+
+message SessionCapabilitiesView {
+  bool can_send = 1;
+  bool supports_images = 2;
+  bool supports_files = 3;
+  bool supports_send_modes = 4;
+  bool supports_shared_files = 5;
+  bool supports_always_allow = 6;
+  bool supports_steer = 7;
+  bool supports_compact = 8;
+  bool supports_fork = 9;
+  bool supports_model_switch = 10;
+  bool supports_mode_switch = 11;
+  bool supports_schedule = 12;
+  bool terminal_available = 13;
+  Text terminal_hint = 14;
+  int32 max_images = 15;
+}
+
+message SessionHeaderView {
+  bool found = 1;
+  bool sessions_listed = 2;
+  bool live_loaded = 3;
+  bool missing = 4;
+
+  Text title = 5;
+  Text project_name = 6;
+  string project_key = 7;
+  string cwd = 8;
+
+  remoteagent.v1.Agent agent = 9;
+  string agent_name = 10;
+
+  SessionDisplayStatus status = 11;
+  SessionTone tone = 12;
+  Text status_text = 13;
+  Text live_summary = 14;
+
+  remoteagent.v1.ApprovalMode approval_mode = 15;
+  string approval_mode_raw = 16;
+  Text approval_mode_label = 17;
+  bool terminal_mode_override = 18;
+
+  string model = 19;
+  string model_label = 20;
+  string effort = 21;
+  Text effort_label = 22;
+  bool standard_context = 23;
+  bool model_unknown = 24;
+
+  bool has_context = 25;
+  int32 context_percent = 26;
+  int64 context_tokens = 27;
+  int64 context_window = 28;
+  Text context_text = 29;
+  bool high_context_warning = 30;
+
+  string machine_id = 31;
+  Text computer_name = 32;
+  bool computer_online = 33;
+  bool computer_unlinked = 34;
+  int64 offline_since_ms = 35;
+  Text offline_text = 36;
+  ConnState conn_state = 37;
+
+  bool protocol_mismatch = 38;
+  uint32 daemon_protocol_version = 39;
+  uint32 client_protocol_version = 40;
+  Text protocol_mismatch_text = 41;
+
+  bool exited = 42;
+  int64 ended_at_ms = 43;
+  Text ended_text = 44;
+  bool idle_closed = 45;
+
+  string forked_from_id = 46;
+  Text forked_from_title = 47;
+
+  bool is_scheduled = 48;
+  string scheduled_task_id = 49;
+  string scheduled_title = 50;
+  bool scheduled_closed = 51;
+
+  SessionCapabilitiesView capabilities = 52;
+  Text missing_text = 53;
+}
+
+message SessionModelChoiceView {
+  string slug = 1;
+  string display_name = 2;
+  Text fixed_effort_note = 3;
+  repeated string efforts = 4;
+  string default_effort = 5;
+  bool is_auto = 6;
+  bool selected = 7;
+  bool supports_standard_context = 8;
+}
+
+message SessionEffortChoiceView {
+  string id = 1;
+  Text label = 2;
+  bool selected = 3;
+}
+
+message SessionModeChoiceView {
+  remoteagent.v1.ApprovalMode mode = 1;
+  Text label = 2;
+  Text note = 3;
+  bool available = 4;
+  Text unavailable_reason = 5;
+  bool selected = 6;
+  bool switch_after_turn = 7;
+}
+
+message SessionActionsView {
+  bool can_interrupt = 1;
+  SessionCommandState interrupt = 2;
+
+  bool can_end = 3;
+  SessionCommandState end = 4;
+  Text end_confirm_note = 5;
+
+  bool can_resume = 6;
+  SessionCommandState resume = 7;
+  Text resume_note = 8;
+
+  bool can_rename = 9;
+  SessionCommandState rename = 10;
+
+  bool can_fork = 11;
+  Text fork_blocked_reason = 12;
+  SessionCommandState fork = 13;
+
+  bool can_compact = 14;
+  Text compact_blocked_reason = 15;
+  SessionCommandState compact = 16;
+
+  bool can_switch_model = 17;
+  Text model_switch_blocked_reason = 18;
+  SessionCommandState set_model = 19;
+  bool models_loading = 20;
+  bool models_loaded = 21;
+  Text models_error = 22;
+  repeated SessionModelChoiceView model_choices = 23;
+  repeated SessionEffortChoiceView effort_choices = 24;
+
+  bool can_switch_mode = 25;
+  Text mode_switch_blocked_reason = 26;
+  SessionCommandState set_mode = 27;
+  repeated SessionModeChoiceView mode_choices = 28;
+}
+
+enum SessionDockKind {
+  SESSION_DOCK_KIND_UNSPECIFIED = 0;
+  SESSION_DOCK_KIND_APPROVAL = 1;
+  SESSION_DOCK_KIND_QUESTION = 2;
+  SESSION_DOCK_KIND_PLAN = 3;
+  SESSION_DOCK_KIND_TERMINAL_POPUP = 4;
+}
+
+message SessionDockView {
+  bool has_item = 1;
+  SessionDockKind kind = 2;
+  string item_id = 3;
+  uint64 observed_seq = 4;
+  int32 more_count = 5;
+
+  Text title = 6;
+  Text summary = 7;
+  Text meta = 8;
+  Text time_left = 9;
+  int64 deadline_ms = 10;
+  bool waiting_confirmation = 11;
+
+  SessionCommandState command = 12;
+
+  oneof detail {
+    SessionApprovalDockView approval = 20;
+    SessionQuestionDockView question = 21;
+    SessionPlanDockView plan = 22;
+    SessionTerminalPopupDockView terminal_popup = 23;
+  }
+}
+
+message SessionApprovalDockView {
+  string approval_id = 1;
+  string tool_name = 2;
+  string command_preview = 3;
+  string body = 4;
+  bool body_truncated = 5;
+  bool is_skeleton = 6;
+  string description = 7;
+  bool can_always_allow = 8;
+  AlwaysAllowKind always_kind = 9;
+  string always_target = 10;
+  Text always_label = 11;
+  Text deny_reason_placeholder = 12;
+  Text delivery_failed_note = 13;
+}
+
+message SessionQuestionOptionView {
+  int32 option_num = 1;
+  string label = 2;
+  string description = 3;
+  bool recommended = 4;
+}
+
+message SessionQuestionStepView {
+  string header = 1;
+  string question_text = 2;
+  bool multi_select = 3;
+  repeated SessionQuestionOptionView options = 4;
+  bool can_free_text = 5;
+}
+
+message SessionQuestionDockView {
+  string question_id = 1;
+  int32 active_index = 2;
+  int32 total_questions = 3;
+  Text progress_text = 4;
+  SessionQuestionStepView question = 5;
+  repeated int32 answered_indices = 6;
+}
+
+message SessionPlanChoiceOptionView {
+  remoteagent.v1.PlanChoice choice = 1;
+  Text label = 2;
+  bool recommended = 3;
+}
+
+message SessionPlanDockView {
+  string markdown = 1;
+  bytes screen_hash = 2;
+  Text note = 3;
+  bool clear_context_available = 4;
+  repeated SessionPlanChoiceOptionView choices = 5;
+}
+
+message SessionTerminalPopupDockView {
+  Text popup_title = 1;
+  Text hint = 2;
+  bool can_go_terminal = 3;
+}
+
+enum SessionOutgoingState {
+  SESSION_OUTGOING_STATE_UNSPECIFIED = 0;
+  SESSION_OUTGOING_STATE_SENDING = 1;
+  SESSION_OUTGOING_STATE_SENT = 2;
+  SESSION_OUTGOING_STATE_FAILED = 3;
+  SESSION_OUTGOING_STATE_UNKNOWN = 4;
+}
+
+message SessionPendingInputView {
+  string request_id = 1;
+  string text = 2;
+  int32 image_count = 3;
+  int32 file_count = 4;
+  remoteagent.v1.SendMode mode = 5;
+  remoteagent.v1.InputStatus status = 6;
+  bool held = 7;
+  bool paused = 8;
+  int32 rank = 9;
+  int32 total_pending = 10;
+  Text label = 11;
+  Text caption = 12;
+  Text origin_label = 13;
+  string scheduled_run_id = 14;
+  bool can_cancel = 15;
+  bool can_resume = 16;
+  SessionCommandState cancel = 17;
+  SessionCommandState resume = 18;
+  Text feedback = 19;
+  bool feedback_uncertain = 20;
+}
+
+message SessionOutgoingView {
+  string request_id = 1;
+  string slot_key = 2;
+  string text = 3;
+  repeated string image_ids = 4;
+  repeated string file_ids = 5;
+  remoteagent.v1.SendMode mode = 6;
+  SessionOutgoingState state = 7;
+  bool frozen = 8;
+  bool expired = 9;
+  bool can_retry = 10;
+  bool can_restore = 11;
+  bool can_dismiss = 12;
+  Text caption = 13;
+  Text feedback = 14;
+  bool feedback_uncertain = 15;
+  int64 created_ms = 16;
+}
+
+message SessionComposerView {
+  bool enabled = 1;
+  Text disabled_reason = 2;
+  Text placeholder = 3;
+  bool has_active_turn = 4;
+  bool steer_mode_default = 5;
+  bool supports_queue_mode = 6;
+  bool can_attach_images = 7;
+  bool can_attach_files = 8;
+  bool interrupt_visible = 9;
+  repeated SessionPendingInputView pending_inputs = 10;
+  repeated SessionOutgoingView outgoing = 11;
+}
+
+message SessionTimelineView {
+  repeated SessionTimelineItem items = 1;
+  bool has_earlier = 2;
+  uint64 next_before_seq = 3;
+  uint64 window_first_seq = 4;
+  uint64 window_last_seq = 5;
+  int32 total_items = 6;
+  uint64 anchor_seq = 7;
+  string anchor_item_id = 8;
+
+  bool loading = 9;
+  bool loaded = 10;
+  bool awaiting_cache = 11;
+  bool backfilling = 12;
+  bool fetching = 13;
+  bool has_gap = 14;
+  bool retired = 15;
+  bool retrying_corrupt_cache = 16;
+
+  bool history_partial = 17;
+  uint32 unavailable_count = 18;
+  Text history_notice = 19;
+  Text error = 20;
+  Text fetch_error = 21;
+  bool can_load_earlier = 22;
+}
+
+message SessionTimelineItem {
+  string id = 1;
+  uint64 seq = 2;
+  uint64 end_seq = 3;
+  int64 timestamp_ms = 4;
+  string turn_id = 5;
+
+  oneof kind {
+    SessionUserMessageItem user_message = 10;
+    SessionAgentMessageItem agent_message = 11;
+    SessionReasoningItem reasoning = 12;
+    SessionToolCallItem tool_call = 13;
+    SessionToolGroupItem tool_group = 14;
+    SessionSharedFilesItem shared_files = 15;
+    SessionGeneratedImagesItem generated_images = 16;
+    SessionAsyncQuestionItem async_question = 17;
+    SessionPlanItem plan = 18;
+    SessionNoteItem note = 19;
+    SessionTurnEndItem turn_end = 20;
+    SessionErrorLineItem error_line = 21;
+    SessionForkItem fork_marker = 22;
+    SessionInputStateItem input_state = 23;
+    SessionQuietScheduledGroupItem quiet_scheduled_group = 24;
+    SessionSkeletonItem skeleton = 25;
+  }
+}
+
+message SessionFileRefView {
+  string name = 1;
+  string path = 2;
+  int64 size_bytes = 3;
+  string mime_type = 4;
+}
+
+message SessionUserMessageItem {
+  string text = 1;
+  repeated remoteagent.v1.ImageRef images = 2;
+  repeated SessionFileRefView files = 3;
+  remoteagent.v1.Origin origin = 4;
+  Text origin_caption = 5;
+  string scheduled_task_id = 6;
+  string scheduled_run_id = 7;
+  bool is_scheduled = 8;
+  bool typed_locally = 9;
+}
+
+message SessionAgentMessageItem {
+  string markdown = 1;
+  bool intermediate = 2;
+}
+
+message SessionReasoningItem {
+  string markdown = 1;
+  bool streaming = 2;
+}
+
+enum SessionToolStatus {
+  SESSION_TOOL_STATUS_UNSPECIFIED = 0;
+  SESSION_TOOL_STATUS_RUNNING = 1;
+  SESSION_TOOL_STATUS_OK = 2;
+  SESSION_TOOL_STATUS_ERROR = 3;
+  SESSION_TOOL_STATUS_DENIED = 4;
+  SESSION_TOOL_STATUS_UNCONFIRMED = 5;
+  SESSION_TOOL_STATUS_BACKGROUND = 6;
+}
+
+message SessionToolCallItem {
+  string call_id = 1;
+  remoteagent.v1.ToolKind tool_kind = 2;
+  string item_type = 3;
+  string title = 4;
+  string raw_input = 5;
+  string detail = 6;
+  SessionToolStatus status = 7;
+  int32 exit_code = 8;
+  bool has_exit_code = 9;
+  int64 elapsed_ms = 10;
+  int64 since_ms = 11;
+  int64 frozen_at_ms = 12;
+  bool is_background = 13;
+  remoteagent.v1.ToolBackground background_kind = 20;
+  string background_id = 21;
+  Text background_label = 14;
+  bool unconfirmed = 15;
+  bool no_result = 16;
+  Text decision_label = 17;
+  bool decision_allowed = 18;
+  repeated remoteagent.v1.ImageRef images = 19;
+}
+
+message SessionToolGroupItem {
+  repeated SessionToolCallItem calls = 1;
+  Text summary = 2;
+  int32 command_count = 3;
+  int32 edit_count = 4;
+  int32 other_count = 5;
+  int32 image_count = 6;
+}
+
+message SessionSharedFileItem {
+  string path = 1;
+  string name = 2;
+  int64 size_bytes = 3;
+  string mime_type = 4;
+  string file_id = 5;
+  bool available = 6;
+}
+
+message SessionSharedFilesItem {
+  repeated SessionSharedFileItem files = 1;
+}
+
+message SessionGeneratedImagesItem {
+  string revised_prompt = 1;
+  repeated remoteagent.v1.ImageRef images = 2;
+}
+
+message SessionAsyncQuestionItem {
+  string question_id = 1;
+  repeated SessionQuestionStepView questions = 2;
+}
+
+message SessionPlanItem {
+  string markdown = 1;
+}
+
+enum SessionNoteTone {
+  SESSION_NOTE_TONE_UNSPECIFIED = 0;
+  SESSION_NOTE_TONE_NEUTRAL = 1;
+  SESSION_NOTE_TONE_POSITIVE = 2;
+  SESSION_NOTE_TONE_NEGATIVE = 3;
+  SESSION_NOTE_TONE_WARNING = 4;
+}
+
+enum SessionNoteKind {
+  SESSION_NOTE_KIND_UNSPECIFIED = 0;
+  SESSION_NOTE_KIND_NOTIFICATION = 1;
+  SESSION_NOTE_KIND_APPROVAL = 2;
+  SESSION_NOTE_KIND_QUESTION = 3;
+  SESSION_NOTE_KIND_INTERRUPTED = 4;
+  SESSION_NOTE_KIND_COMPACTED = 5;
+  SESSION_NOTE_KIND_MODEL_CHANGED = 6;
+  SESSION_NOTE_KIND_MODE_CHANGED = 7;
+  SESSION_NOTE_KIND_TERMINAL_CHANGES = 8;
+}
+
+message SessionNoteItem {
+  SessionNoteKind kind = 1;
+  SessionNoteTone tone = 2;
+  Text text = 3;
+  Text meta = 4;
+  Text emphasis = 5;
+  string scheduled_run_id = 6;
+}
+
+message SessionTurnEndItem {
+  remoteagent.v1.TurnOutcome outcome = 1;
+  int64 duration_ms = 2;
+  int64 turn_tokens = 3;
+  Text label = 4;
+  bool interrupted = 5;
+  bool is_session_ended = 6;
+}
+
+message SessionErrorLineItem {
+  string raw_reason = 1;
+  Text text = 2;
+}
+
+message SessionForkItem {
+  string source_session_id = 1;
+  Text source_title = 2;
+  Text text = 3;
+}
+
+enum SessionInputNoticeKind {
+  SESSION_INPUT_NOTICE_KIND_UNSPECIFIED = 0;
+  SESSION_INPUT_NOTICE_KIND_UNSENT_ON_EXIT = 1;
+  SESSION_INPUT_NOTICE_KIND_CANCELED = 2;
+  SESSION_INPUT_NOTICE_KIND_FAILED = 3;
+  SESSION_INPUT_NOTICE_KIND_NEEDS_TERMINAL = 4;
+  SESSION_INPUT_NOTICE_KIND_UNCONFIRMED = 5;
+}
+
+message SessionInputStateItem {
+  SessionInputNoticeKind kind = 1;
+  string request_id = 2;
+  string preview = 3;
+  Text status_text = 4;
+  Text reason_text = 5;
+}
+
+message SessionQuietScheduledGroupItem {
+  string group_id = 1;
+  string scheduled_task_id = 2;
+  int32 run_count = 3;
+  repeated int64 run_times_ms = 4;
+  repeated string run_ids = 5;
+  Text title = 6;
+  bool expanded = 7;
+  repeated SessionTimelineItem items = 8;
+}
+
+message SessionSkeletonItem {
+  Text text = 1;
+}
+
+// SessionSubmitCommandAction dispatches any session/machine command through sync.SubmitCommand.
+message SessionSubmitCommandAction {
+  string slot_key = 1;
+  string machine_id = 2;
+  string session_id = 3;
+  remoteagent.v1.Command command = 4;
+}
+
+// SessionSlotAction references one command attempt slot (e.g. abandon).
+message SessionSlotAction {
+  string slot_key = 1;
+  string session_id = 2;
+}
+
+// SessionOpenAction opens the session screen, fetching models/settings as needed.
+message SessionOpenAction {
+  string session_id = 1;
+  bool refresh_models = 2;
+  bool refresh_settings = 3;
+}
+
+// SessionOutgoingAction acts on an outgoing message entry (dismiss / restore to composer).
+message SessionOutgoingAction {
+  string session_id = 1;
+  string request_id = 2;
+}
+
+// SessionQuestionStepAction sets or moves the active step index on a multi-question dock item.
+message SessionQuestionStepAction {
+  string session_id = 1;
+  string question_id = 2;
+  int32 question_index = 3;
+}
+
+// SessionRefreshHistoryAction requests earlier session history backfill when available.
+message SessionRefreshHistoryAction {
+  string session_id = 1;
+}
+
+// SessionRestoreComposerEffect instructs the shell to restore a failed/unknown message draft into the composer.
+message SessionRestoreComposerEffect {
+  string session_id = 1;
+  string request_id = 2;
+  string text = 3;
+  repeated string image_ids = 4;
+  repeated string file_ids = 5;
+}
+

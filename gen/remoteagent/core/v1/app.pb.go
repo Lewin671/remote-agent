@@ -225,6 +225,7 @@ const (
 	ScreenTarget_SCREEN_TARGET_QUOTA            ScreenTarget = 33
 	ScreenTarget_SCREEN_TARGET_DEVICES          ScreenTarget = 34
 	ScreenTarget_SCREEN_TARGET_CLIENT_DETAIL    ScreenTarget = 35
+	ScreenTarget_SCREEN_TARGET_SESSION          ScreenTarget = 10
 )
 
 // Enum value maps for ScreenTarget.
@@ -242,6 +243,7 @@ var (
 		33: "SCREEN_TARGET_QUOTA",
 		34: "SCREEN_TARGET_DEVICES",
 		35: "SCREEN_TARGET_CLIENT_DETAIL",
+		10: "SCREEN_TARGET_SESSION",
 	}
 	ScreenTarget_value = map[string]int32{
 		"SCREEN_TARGET_UNSPECIFIED":      0,
@@ -256,6 +258,7 @@ var (
 		"SCREEN_TARGET_QUOTA":            33,
 		"SCREEN_TARGET_DEVICES":          34,
 		"SCREEN_TARGET_CLIENT_DETAIL":    35,
+		"SCREEN_TARGET_SESSION":          10,
 	}
 )
 
@@ -638,6 +641,7 @@ type Screen struct {
 	//	*Screen_Quota
 	//	*Screen_Devices
 	//	*Screen_ClientDetail
+	//	*Screen_Session
 	Screen        isScreen_Screen `protobuf_oneof:"screen"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -779,6 +783,15 @@ func (x *Screen) GetClientDetail() *ClientDetailScreenRequest {
 	return nil
 }
 
+func (x *Screen) GetSession() *SessionScreenRequest {
+	if x != nil {
+		if x, ok := x.Screen.(*Screen_Session); ok {
+			return x.Session
+		}
+	}
+	return nil
+}
+
 type isScreen_Screen interface {
 	isScreen_Screen()
 }
@@ -829,6 +842,10 @@ type Screen_ClientDetail struct {
 	ClientDetail *ClientDetailScreenRequest `protobuf:"bytes,35,opt,name=client_detail,json=clientDetail,proto3,oneof"`
 }
 
+type Screen_Session struct {
+	Session *SessionScreenRequest `protobuf:"bytes,10,opt,name=session,proto3,oneof"`
+}
+
 func (*Screen_Home) isScreen_Screen() {}
 
 func (*Screen_Project) isScreen_Screen() {}
@@ -851,6 +868,8 @@ func (*Screen_Devices) isScreen_Screen() {}
 
 func (*Screen_ClientDetail) isScreen_Screen() {}
 
+func (*Screen_Session) isScreen_Screen() {}
+
 type ViewModel struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Types that are valid to be assigned to View:
@@ -866,6 +885,7 @@ type ViewModel struct {
 	//	*ViewModel_Quota
 	//	*ViewModel_Devices
 	//	*ViewModel_ClientDetail
+	//	*ViewModel_Session
 	View          isViewModel_View `protobuf_oneof:"view"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -1007,6 +1027,15 @@ func (x *ViewModel) GetClientDetail() *ClientDetailViewModel {
 	return nil
 }
 
+func (x *ViewModel) GetSession() *SessionViewModel {
+	if x != nil {
+		if x, ok := x.View.(*ViewModel_Session); ok {
+			return x.Session
+		}
+	}
+	return nil
+}
+
 type isViewModel_View interface {
 	isViewModel_View()
 }
@@ -1057,6 +1086,10 @@ type ViewModel_ClientDetail struct {
 	ClientDetail *ClientDetailViewModel `protobuf:"bytes,35,opt,name=client_detail,json=clientDetail,proto3,oneof"`
 }
 
+type ViewModel_Session struct {
+	Session *SessionViewModel `protobuf:"bytes,10,opt,name=session,proto3,oneof"`
+}
+
 func (*ViewModel_Home) isViewModel_View() {}
 
 func (*ViewModel_Project) isViewModel_View() {}
@@ -1078,6 +1111,8 @@ func (*ViewModel_Quota) isViewModel_View() {}
 func (*ViewModel_Devices) isViewModel_View() {}
 
 func (*ViewModel_ClientDetail) isViewModel_View() {}
+
+func (*ViewModel_Session) isViewModel_View() {}
 
 type MonthStart struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
@@ -4701,6 +4736,13 @@ type Event struct {
 	//	*Event_ConnCheckStatus
 	//	*Event_ClientUpdateState
 	//	*Event_CheckForUpdates
+	//	*Event_SessionSubmitCommand
+	//	*Event_SessionAbandonCommand
+	//	*Event_SessionOpen
+	//	*Event_SessionDismissOutgoing
+	//	*Event_SessionRestoreOutgoing
+	//	*Event_SessionSetQuestionIndex
+	//	*Event_SessionLoadEarlier
 	Event         isEvent_Event `protobuf_oneof:"event"`
 	NowMs         int64         `protobuf:"varint,98,opt,name=now_ms,json=nowMs,proto3" json:"now_ms,omitempty"`
 	MonoMs        int64         `protobuf:"varint,99,opt,name=mono_ms,json=monoMs,proto3" json:"mono_ms,omitempty"`
@@ -5350,6 +5392,69 @@ func (x *Event) GetCheckForUpdates() *CheckForUpdatesEvent {
 	return nil
 }
 
+func (x *Event) GetSessionSubmitCommand() *SessionSubmitCommandAction {
+	if x != nil {
+		if x, ok := x.Event.(*Event_SessionSubmitCommand); ok {
+			return x.SessionSubmitCommand
+		}
+	}
+	return nil
+}
+
+func (x *Event) GetSessionAbandonCommand() *SessionSlotAction {
+	if x != nil {
+		if x, ok := x.Event.(*Event_SessionAbandonCommand); ok {
+			return x.SessionAbandonCommand
+		}
+	}
+	return nil
+}
+
+func (x *Event) GetSessionOpen() *SessionOpenAction {
+	if x != nil {
+		if x, ok := x.Event.(*Event_SessionOpen); ok {
+			return x.SessionOpen
+		}
+	}
+	return nil
+}
+
+func (x *Event) GetSessionDismissOutgoing() *SessionOutgoingAction {
+	if x != nil {
+		if x, ok := x.Event.(*Event_SessionDismissOutgoing); ok {
+			return x.SessionDismissOutgoing
+		}
+	}
+	return nil
+}
+
+func (x *Event) GetSessionRestoreOutgoing() *SessionOutgoingAction {
+	if x != nil {
+		if x, ok := x.Event.(*Event_SessionRestoreOutgoing); ok {
+			return x.SessionRestoreOutgoing
+		}
+	}
+	return nil
+}
+
+func (x *Event) GetSessionSetQuestionIndex() *SessionQuestionStepAction {
+	if x != nil {
+		if x, ok := x.Event.(*Event_SessionSetQuestionIndex); ok {
+			return x.SessionSetQuestionIndex
+		}
+	}
+	return nil
+}
+
+func (x *Event) GetSessionLoadEarlier() *SessionRefreshHistoryAction {
+	if x != nil {
+		if x, ok := x.Event.(*Event_SessionLoadEarlier); ok {
+			return x.SessionLoadEarlier
+		}
+	}
+	return nil
+}
+
 func (x *Event) GetNowMs() int64 {
 	if x != nil {
 		return x.NowMs
@@ -5650,6 +5755,34 @@ type Event_CheckForUpdates struct {
 	CheckForUpdates *CheckForUpdatesEvent `protobuf:"bytes,379,opt,name=check_for_updates,json=checkForUpdates,proto3,oneof"`
 }
 
+type Event_SessionSubmitCommand struct {
+	SessionSubmitCommand *SessionSubmitCommandAction `protobuf:"bytes,200,opt,name=session_submit_command,json=sessionSubmitCommand,proto3,oneof"`
+}
+
+type Event_SessionAbandonCommand struct {
+	SessionAbandonCommand *SessionSlotAction `protobuf:"bytes,201,opt,name=session_abandon_command,json=sessionAbandonCommand,proto3,oneof"`
+}
+
+type Event_SessionOpen struct {
+	SessionOpen *SessionOpenAction `protobuf:"bytes,202,opt,name=session_open,json=sessionOpen,proto3,oneof"`
+}
+
+type Event_SessionDismissOutgoing struct {
+	SessionDismissOutgoing *SessionOutgoingAction `protobuf:"bytes,203,opt,name=session_dismiss_outgoing,json=sessionDismissOutgoing,proto3,oneof"`
+}
+
+type Event_SessionRestoreOutgoing struct {
+	SessionRestoreOutgoing *SessionOutgoingAction `protobuf:"bytes,204,opt,name=session_restore_outgoing,json=sessionRestoreOutgoing,proto3,oneof"`
+}
+
+type Event_SessionSetQuestionIndex struct {
+	SessionSetQuestionIndex *SessionQuestionStepAction `protobuf:"bytes,205,opt,name=session_set_question_index,json=sessionSetQuestionIndex,proto3,oneof"`
+}
+
+type Event_SessionLoadEarlier struct {
+	SessionLoadEarlier *SessionRefreshHistoryAction `protobuf:"bytes,206,opt,name=session_load_earlier,json=sessionLoadEarlier,proto3,oneof"`
+}
+
 func (*Event_ClockUpdated) isEvent_Event() {}
 
 func (*Event_EntropyProvided) isEvent_Event() {}
@@ -5783,6 +5916,20 @@ func (*Event_ConnCheckStatus) isEvent_Event() {}
 func (*Event_ClientUpdateState) isEvent_Event() {}
 
 func (*Event_CheckForUpdates) isEvent_Event() {}
+
+func (*Event_SessionSubmitCommand) isEvent_Event() {}
+
+func (*Event_SessionAbandonCommand) isEvent_Event() {}
+
+func (*Event_SessionOpen) isEvent_Event() {}
+
+func (*Event_SessionDismissOutgoing) isEvent_Event() {}
+
+func (*Event_SessionRestoreOutgoing) isEvent_Event() {}
+
+func (*Event_SessionSetQuestionIndex) isEvent_Event() {}
+
+func (*Event_SessionLoadEarlier) isEvent_Event() {}
 
 type RenderEffect struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
@@ -7699,6 +7846,7 @@ type Effect struct {
 	//	*Effect_CheckUpdates
 	//	*Effect_PersistClientPrefs
 	//	*Effect_PrepareCleanupSession
+	//	*Effect_SessionRestoreComposer
 	Effect        isEffect_Effect `protobuf_oneof:"effect"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -7948,6 +8096,15 @@ func (x *Effect) GetPrepareCleanupSession() *PrepareCleanupSessionEffect {
 	return nil
 }
 
+func (x *Effect) GetSessionRestoreComposer() *SessionRestoreComposerEffect {
+	if x != nil {
+		if x, ok := x.Effect.(*Effect_SessionRestoreComposer); ok {
+			return x.SessionRestoreComposer
+		}
+	}
+	return nil
+}
+
 type isEffect_Effect interface {
 	isEffect_Effect()
 }
@@ -8044,6 +8201,10 @@ type Effect_PrepareCleanupSession struct {
 	PrepareCleanupSession *PrepareCleanupSessionEffect `protobuf:"bytes,75,opt,name=prepare_cleanup_session,json=prepareCleanupSession,proto3,oneof"`
 }
 
+type Effect_SessionRestoreComposer struct {
+	SessionRestoreComposer *SessionRestoreComposerEffect `protobuf:"bytes,40,opt,name=session_restore_composer,json=sessionRestoreComposer,proto3,oneof"`
+}
+
 func (*Effect_Render) isEffect_Effect() {}
 
 func (*Effect_OpenStream) isEffect_Effect() {}
@@ -8089,6 +8250,8 @@ func (*Effect_CheckUpdates) isEffect_Effect() {}
 func (*Effect_PersistClientPrefs) isEffect_Effect() {}
 
 func (*Effect_PrepareCleanupSession) isEffect_Effect() {}
+
+func (*Effect_SessionRestoreComposer) isEffect_Effect() {}
 
 type EffectBatch struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
@@ -8138,7 +8301,7 @@ var File_remoteagent_core_v1_app_proto protoreflect.FileDescriptor
 
 const file_remoteagent_core_v1_app_proto_rawDesc = "" +
 	"\n" +
-	"\x1dremoteagent/core/v1/app.proto\x12\x13remoteagent.core.v1\x1a#remoteagent/core/v1/home_view.proto\x1a&remoteagent/core/v1/machine_view.proto\x1a*remoteagent/core/v1/new_session_view.proto\x1a&remoteagent/core/v1/project_view.proto\x1a'remoteagent/core/v1/settings_view.proto\x1a#remoteagent/core/v1/sync_view.proto\x1a\x1aremoteagent/v1/event.proto\x1a\x1aremoteagent/v1/local.proto\x1a\x1aremoteagent/v1/relay.proto\x1a\x1bremoteagent/v1/remote.proto\"4\n" +
+	"\x1dremoteagent/core/v1/app.proto\x12\x13remoteagent.core.v1\x1a#remoteagent/core/v1/home_view.proto\x1a&remoteagent/core/v1/machine_view.proto\x1a*remoteagent/core/v1/new_session_view.proto\x1a&remoteagent/core/v1/project_view.proto\x1a'remoteagent/core/v1/settings_view.proto\x1a&remoteagent/core/v1/session_view.proto\x1a#remoteagent/core/v1/sync_view.proto\x1a\x1aremoteagent/v1/event.proto\x1a\x1aremoteagent/v1/local.proto\x1a\x1aremoteagent/v1/relay.proto\x1a\x1bremoteagent/v1/remote.proto\"4\n" +
 	"\x11HomeScreenRequest\x12\x1f\n" +
 	"\vended_limit\x18\x01 \x01(\x05R\n" +
 	"endedLimit\"p\n" +
@@ -8154,7 +8317,7 @@ const file_remoteagent_core_v1_app_proto_rawDesc = "" +
 	"\x16SyncStateScreenRequest\"9\n" +
 	"\x18SessionDataScreenRequest\x12\x1d\n" +
 	"\n" +
-	"session_id\x18\x01 \x01(\tR\tsessionId\"\xed\x06\n" +
+	"session_id\x18\x01 \x01(\tR\tsessionId\"\xb4\a\n" +
 	"\x06Screen\x12<\n" +
 	"\x04home\x18\x01 \x01(\v2&.remoteagent.core.v1.HomeScreenRequestH\x00R\x04home\x12E\n" +
 	"\aproject\x18\x02 \x01(\v2).remoteagent.core.v1.ProjectScreenRequestH\x00R\aproject\x12O\n" +
@@ -8168,8 +8331,10 @@ const file_remoteagent_core_v1_app_proto_rawDesc = "" +
 	"\x10machine_settings\x18  \x01(\v21.remoteagent.core.v1.MachineSettingsScreenRequestH\x00R\x0fmachineSettings\x12?\n" +
 	"\x05quota\x18! \x01(\v2'.remoteagent.core.v1.QuotaScreenRequestH\x00R\x05quota\x12E\n" +
 	"\adevices\x18\" \x01(\v2).remoteagent.core.v1.DevicesScreenRequestH\x00R\adevices\x12U\n" +
-	"\rclient_detail\x18# \x01(\v2..remoteagent.core.v1.ClientDetailScreenRequestH\x00R\fclientDetailB\b\n" +
-	"\x06screen\"\xb8\x06\n" +
+	"\rclient_detail\x18# \x01(\v2..remoteagent.core.v1.ClientDetailScreenRequestH\x00R\fclientDetail\x12E\n" +
+	"\asession\x18\n" +
+	" \x01(\v2).remoteagent.core.v1.SessionScreenRequestH\x00R\asessionB\b\n" +
+	"\x06screen\"\xfb\x06\n" +
 	"\tViewModel\x128\n" +
 	"\x04home\x18\x01 \x01(\v2\".remoteagent.core.v1.HomeViewModelH\x00R\x04home\x12A\n" +
 	"\aproject\x18\x02 \x01(\v2%.remoteagent.core.v1.ProjectViewModelH\x00R\aproject\x12K\n" +
@@ -8183,7 +8348,9 @@ const file_remoteagent_core_v1_app_proto_rawDesc = "" +
 	"\x10machine_settings\x18  \x01(\v2-.remoteagent.core.v1.MachineSettingsViewModelH\x00R\x0fmachineSettings\x12;\n" +
 	"\x05quota\x18! \x01(\v2#.remoteagent.core.v1.QuotaViewModelH\x00R\x05quota\x12A\n" +
 	"\adevices\x18\" \x01(\v2%.remoteagent.core.v1.DevicesViewModelH\x00R\adevices\x12Q\n" +
-	"\rclient_detail\x18# \x01(\v2*.remoteagent.core.v1.ClientDetailViewModelH\x00R\fclientDetailB\x06\n" +
+	"\rclient_detail\x18# \x01(\v2*.remoteagent.core.v1.ClientDetailViewModelH\x00R\fclientDetail\x12A\n" +
+	"\asession\x18\n" +
+	" \x01(\v2%.remoteagent.core.v1.SessionViewModelH\x00R\asessionB\x06\n" +
 	"\x04view\"Q\n" +
 	"\n" +
 	"MonthStart\x12\x12\n" +
@@ -8480,7 +8647,7 @@ const file_remoteagent_core_v1_app_proto_rawDesc = "" +
 	"projectKey\x12.\n" +
 	"\x13auto_mode_supported\x18\x02 \x01(\bR\x11autoModeSupported\x12\x1b\n" +
 	"\timage_ids\x18\x03 \x03(\tR\bimageIds\x12\x19\n" +
-	"\bfile_ids\x18\x04 \x03(\tR\afileIds\"\xe62\n" +
+	"\bfile_ids\x18\x04 \x03(\tR\afileIds\"\xaa8\n" +
 	"\x05Event\x12I\n" +
 	"\rclock_updated\x18\x01 \x01(\v2\".remoteagent.core.v1.LocalCalendarH\x00R\fclockUpdated\x12Q\n" +
 	"\x10entropy_provided\x18\x02 \x01(\v2$.remoteagent.core.v1.EntropyProvidedH\x00R\x0fentropyProvided\x12Q\n" +
@@ -8552,7 +8719,14 @@ const file_remoteagent_core_v1_app_proto_rawDesc = "" +
 	"\x13set_appearance_pref\x18\xf8\x02 \x01(\v2+.remoteagent.core.v1.SetAppearancePrefEventH\x00R\x11setAppearancePref\x12X\n" +
 	"\x11conn_check_status\x18\xf9\x02 \x01(\v2).remoteagent.core.v1.ConnCheckStatusEventH\x00R\x0fconnCheckStatus\x12^\n" +
 	"\x13client_update_state\x18\xfa\x02 \x01(\v2+.remoteagent.core.v1.ClientUpdateStateEventH\x00R\x11clientUpdateState\x12X\n" +
-	"\x11check_for_updates\x18\xfb\x02 \x01(\v2).remoteagent.core.v1.CheckForUpdatesEventH\x00R\x0fcheckForUpdates\x12\x15\n" +
+	"\x11check_for_updates\x18\xfb\x02 \x01(\v2).remoteagent.core.v1.CheckForUpdatesEventH\x00R\x0fcheckForUpdates\x12h\n" +
+	"\x16session_submit_command\x18\xc8\x01 \x01(\v2/.remoteagent.core.v1.SessionSubmitCommandActionH\x00R\x14sessionSubmitCommand\x12a\n" +
+	"\x17session_abandon_command\x18\xc9\x01 \x01(\v2&.remoteagent.core.v1.SessionSlotActionH\x00R\x15sessionAbandonCommand\x12L\n" +
+	"\fsession_open\x18\xca\x01 \x01(\v2&.remoteagent.core.v1.SessionOpenActionH\x00R\vsessionOpen\x12g\n" +
+	"\x18session_dismiss_outgoing\x18\xcb\x01 \x01(\v2*.remoteagent.core.v1.SessionOutgoingActionH\x00R\x16sessionDismissOutgoing\x12g\n" +
+	"\x18session_restore_outgoing\x18\xcc\x01 \x01(\v2*.remoteagent.core.v1.SessionOutgoingActionH\x00R\x16sessionRestoreOutgoing\x12n\n" +
+	"\x1asession_set_question_index\x18\xcd\x01 \x01(\v2..remoteagent.core.v1.SessionQuestionStepActionH\x00R\x17sessionSetQuestionIndex\x12e\n" +
+	"\x14session_load_earlier\x18\xce\x01 \x01(\v20.remoteagent.core.v1.SessionRefreshHistoryActionH\x00R\x12sessionLoadEarlier\x12\x15\n" +
 	"\x06now_ms\x18b \x01(\x03R\x05nowMs\x12\x17\n" +
 	"\amono_ms\x18c \x01(\x03R\x06monoMs\x12\x1d\n" +
 	"\n" +
@@ -8704,7 +8878,7 @@ const file_remoteagent_core_v1_app_proto_rawDesc = "" +
 	"\x14RequestEntropyEffect\x12\x17\n" +
 	"\amin_ids\x18\x01 \x01(\x05R\x06minIds\x12\x1d\n" +
 	"\n" +
-	"min_floats\x18\x02 \x01(\x05R\tminFloats\"\xde\x0e\n" +
+	"min_floats\x18\x02 \x01(\x05R\tminFloats\"\xcd\x0f\n" +
 	"\x06Effect\x12;\n" +
 	"\x06render\x18\x01 \x01(\v2!.remoteagent.core.v1.RenderEffectH\x00R\x06render\x12H\n" +
 	"\vopen_stream\x18\x02 \x01(\v2%.remoteagent.core.v1.OpenStreamEffectH\x00R\n" +
@@ -8732,7 +8906,8 @@ const file_remoteagent_core_v1_app_proto_rawDesc = "" +
 	"\rrename_client\x18H \x01(\v2'.remoteagent.core.v1.RenameClientEffectH\x00R\frenameClient\x12N\n" +
 	"\rcheck_updates\x18I \x01(\v2'.remoteagent.core.v1.CheckUpdatesEffectH\x00R\fcheckUpdates\x12a\n" +
 	"\x14persist_client_prefs\x18J \x01(\v2-.remoteagent.core.v1.PersistClientPrefsEffectH\x00R\x12persistClientPrefs\x12j\n" +
-	"\x17prepare_cleanup_session\x18K \x01(\v20.remoteagent.core.v1.PrepareCleanupSessionEffectH\x00R\x15prepareCleanupSessionB\b\n" +
+	"\x17prepare_cleanup_session\x18K \x01(\v20.remoteagent.core.v1.PrepareCleanupSessionEffectH\x00R\x15prepareCleanupSession\x12m\n" +
+	"\x18session_restore_composer\x18( \x01(\v21.remoteagent.core.v1.SessionRestoreComposerEffectH\x00R\x16sessionRestoreComposerB\b\n" +
 	"\x06effect\"D\n" +
 	"\vEffectBatch\x125\n" +
 	"\aeffects\x18\x01 \x03(\v2\x1b.remoteagent.core.v1.EffectR\aeffects*\x89\x02\n" +
@@ -8760,7 +8935,7 @@ const file_remoteagent_core_v1_app_proto_rawDesc = "" +
 	"\x14OUTCOME_SOURCE_LOCAL\x10\x01\x12\x19\n" +
 	"\x15OUTCOME_SOURCE_SERVER\x10\x02\x12\x19\n" +
 	"\x15OUTCOME_SOURCE_DAEMON\x10\x03\x12\x1c\n" +
-	"\x18OUTCOME_SOURCE_TRANSPORT\x10\x04*\xf4\x02\n" +
+	"\x18OUTCOME_SOURCE_TRANSPORT\x10\x04*\x8f\x03\n" +
 	"\fScreenTarget\x12\x1d\n" +
 	"\x19SCREEN_TARGET_UNSPECIFIED\x10\x00\x12\x16\n" +
 	"\x12SCREEN_TARGET_HOME\x10\x01\x12\x19\n" +
@@ -8773,7 +8948,9 @@ const file_remoteagent_core_v1_app_proto_rawDesc = "" +
 	"\x1eSCREEN_TARGET_MACHINE_SETTINGS\x10 \x12\x17\n" +
 	"\x13SCREEN_TARGET_QUOTA\x10!\x12\x19\n" +
 	"\x15SCREEN_TARGET_DEVICES\x10\"\x12\x1f\n" +
-	"\x1bSCREEN_TARGET_CLIENT_DETAIL\x10#*\x8f\x01\n" +
+	"\x1bSCREEN_TARGET_CLIENT_DETAIL\x10#\x12\x19\n" +
+	"\x15SCREEN_TARGET_SESSION\x10\n" +
+	"*\x8f\x01\n" +
 	"\x10CommandRouteHint\x12\"\n" +
 	"\x1eCOMMAND_ROUTE_HINT_UNSPECIFIED\x10\x00\x12\x1d\n" +
 	"\x19COMMAND_ROUTE_HINT_NORMAL\x10\x01\x12\x1b\n" +
@@ -8905,52 +9082,61 @@ var file_remoteagent_core_v1_app_proto_goTypes = []any{
 	(*QuotaScreenRequest)(nil),               // 100: remoteagent.core.v1.QuotaScreenRequest
 	(*DevicesScreenRequest)(nil),             // 101: remoteagent.core.v1.DevicesScreenRequest
 	(*ClientDetailScreenRequest)(nil),        // 102: remoteagent.core.v1.ClientDetailScreenRequest
-	(*HomeViewModel)(nil),                    // 103: remoteagent.core.v1.HomeViewModel
-	(*ProjectViewModel)(nil),                 // 104: remoteagent.core.v1.ProjectViewModel
-	(*NewSessionViewModel)(nil),              // 105: remoteagent.core.v1.NewSessionViewModel
-	(*SyncStateView)(nil),                    // 106: remoteagent.core.v1.SyncStateView
-	(*SessionDataView)(nil),                  // 107: remoteagent.core.v1.SessionDataView
-	(*SettingsViewModel)(nil),                // 108: remoteagent.core.v1.SettingsViewModel
-	(*MachineStatusViewModel)(nil),           // 109: remoteagent.core.v1.MachineStatusViewModel
-	(*MachineSettingsViewModel)(nil),         // 110: remoteagent.core.v1.MachineSettingsViewModel
-	(*QuotaViewModel)(nil),                   // 111: remoteagent.core.v1.QuotaViewModel
-	(*DevicesViewModel)(nil),                 // 112: remoteagent.core.v1.DevicesViewModel
-	(*ClientDetailViewModel)(nil),            // 113: remoteagent.core.v1.ClientDetailViewModel
-	(*v1.MachineMeta)(nil),                   // 114: remoteagent.v1.MachineMeta
-	(*v1.Session)(nil),                       // 115: remoteagent.v1.Session
-	(*v1.LiveSnapshot)(nil),                  // 116: remoteagent.v1.LiveSnapshot
-	(*v1.Event)(nil),                         // 117: remoteagent.v1.Event
-	(v1.DeviceKind)(0),                       // 118: remoteagent.v1.DeviceKind
-	(*v1.DeviceMeta)(nil),                    // 119: remoteagent.v1.DeviceMeta
-	(*v1.ProjectPrefs)(nil),                  // 120: remoteagent.v1.ProjectPrefs
-	(*v1.SessionCursor)(nil),                 // 121: remoteagent.v1.SessionCursor
-	(*v1.CommandResult)(nil),                 // 122: remoteagent.v1.CommandResult
-	(v1.Agent)(0),                            // 123: remoteagent.v1.Agent
-	(v1.ApprovalMode)(0),                     // 124: remoteagent.v1.ApprovalMode
-	(*MachineStatusWatchEvent)(nil),          // 125: remoteagent.core.v1.MachineStatusWatchEvent
-	(*MachineStatusRetryEvent)(nil),          // 126: remoteagent.core.v1.MachineStatusRetryEvent
-	(*MachineStatusTabEvent)(nil),            // 127: remoteagent.core.v1.MachineStatusTabEvent
-	(*MachineStatusScrubEvent)(nil),          // 128: remoteagent.core.v1.MachineStatusScrubEvent
-	(*MachineStatusCleanupEvent)(nil),        // 129: remoteagent.core.v1.MachineStatusCleanupEvent
-	(*MachineStatusPollTickEvent)(nil),       // 130: remoteagent.core.v1.MachineStatusPollTickEvent
-	(*MachineSettingsOpenEvent)(nil),         // 131: remoteagent.core.v1.MachineSettingsOpenEvent
-	(*MachineSettingsSelectAgentEvent)(nil),  // 132: remoteagent.core.v1.MachineSettingsSelectAgentEvent
-	(*UpdateMachineAgentDefaultsEvent)(nil),  // 133: remoteagent.core.v1.UpdateMachineAgentDefaultsEvent
-	(*UpdateMachineDaemonSettingsEvent)(nil), // 134: remoteagent.core.v1.UpdateMachineDaemonSettingsEvent
-	(*UpdateDirectPreferenceEvent)(nil),      // 135: remoteagent.core.v1.UpdateDirectPreferenceEvent
-	(*MachineDirectStatusEvent)(nil),         // 136: remoteagent.core.v1.MachineDirectStatusEvent
-	(*UpdateClientNameEvent)(nil),            // 137: remoteagent.core.v1.UpdateClientNameEvent
-	(*SetNotificationPrefEvent)(nil),         // 138: remoteagent.core.v1.SetNotificationPrefEvent
-	(*SetAppearancePrefEvent)(nil),           // 139: remoteagent.core.v1.SetAppearancePrefEvent
-	(*ConnCheckStatusEvent)(nil),             // 140: remoteagent.core.v1.ConnCheckStatusEvent
-	(*ClientUpdateStateEvent)(nil),           // 141: remoteagent.core.v1.ClientUpdateStateEvent
-	(*CheckForUpdatesEvent)(nil),             // 142: remoteagent.core.v1.CheckForUpdatesEvent
-	(*ScheduleMachinePollEffect)(nil),        // 143: remoteagent.core.v1.ScheduleMachinePollEffect
-	(*DirectPreferenceEffect)(nil),           // 144: remoteagent.core.v1.DirectPreferenceEffect
-	(*RenameClientEffect)(nil),               // 145: remoteagent.core.v1.RenameClientEffect
-	(*CheckUpdatesEffect)(nil),               // 146: remoteagent.core.v1.CheckUpdatesEffect
-	(*PersistClientPrefsEffect)(nil),         // 147: remoteagent.core.v1.PersistClientPrefsEffect
-	(*PrepareCleanupSessionEffect)(nil),      // 148: remoteagent.core.v1.PrepareCleanupSessionEffect
+	(*SessionScreenRequest)(nil),             // 103: remoteagent.core.v1.SessionScreenRequest
+	(*HomeViewModel)(nil),                    // 104: remoteagent.core.v1.HomeViewModel
+	(*ProjectViewModel)(nil),                 // 105: remoteagent.core.v1.ProjectViewModel
+	(*NewSessionViewModel)(nil),              // 106: remoteagent.core.v1.NewSessionViewModel
+	(*SyncStateView)(nil),                    // 107: remoteagent.core.v1.SyncStateView
+	(*SessionDataView)(nil),                  // 108: remoteagent.core.v1.SessionDataView
+	(*SettingsViewModel)(nil),                // 109: remoteagent.core.v1.SettingsViewModel
+	(*MachineStatusViewModel)(nil),           // 110: remoteagent.core.v1.MachineStatusViewModel
+	(*MachineSettingsViewModel)(nil),         // 111: remoteagent.core.v1.MachineSettingsViewModel
+	(*QuotaViewModel)(nil),                   // 112: remoteagent.core.v1.QuotaViewModel
+	(*DevicesViewModel)(nil),                 // 113: remoteagent.core.v1.DevicesViewModel
+	(*ClientDetailViewModel)(nil),            // 114: remoteagent.core.v1.ClientDetailViewModel
+	(*SessionViewModel)(nil),                 // 115: remoteagent.core.v1.SessionViewModel
+	(*v1.MachineMeta)(nil),                   // 116: remoteagent.v1.MachineMeta
+	(*v1.Session)(nil),                       // 117: remoteagent.v1.Session
+	(*v1.LiveSnapshot)(nil),                  // 118: remoteagent.v1.LiveSnapshot
+	(*v1.Event)(nil),                         // 119: remoteagent.v1.Event
+	(v1.DeviceKind)(0),                       // 120: remoteagent.v1.DeviceKind
+	(*v1.DeviceMeta)(nil),                    // 121: remoteagent.v1.DeviceMeta
+	(*v1.ProjectPrefs)(nil),                  // 122: remoteagent.v1.ProjectPrefs
+	(*v1.SessionCursor)(nil),                 // 123: remoteagent.v1.SessionCursor
+	(*v1.CommandResult)(nil),                 // 124: remoteagent.v1.CommandResult
+	(v1.Agent)(0),                            // 125: remoteagent.v1.Agent
+	(v1.ApprovalMode)(0),                     // 126: remoteagent.v1.ApprovalMode
+	(*MachineStatusWatchEvent)(nil),          // 127: remoteagent.core.v1.MachineStatusWatchEvent
+	(*MachineStatusRetryEvent)(nil),          // 128: remoteagent.core.v1.MachineStatusRetryEvent
+	(*MachineStatusTabEvent)(nil),            // 129: remoteagent.core.v1.MachineStatusTabEvent
+	(*MachineStatusScrubEvent)(nil),          // 130: remoteagent.core.v1.MachineStatusScrubEvent
+	(*MachineStatusCleanupEvent)(nil),        // 131: remoteagent.core.v1.MachineStatusCleanupEvent
+	(*MachineStatusPollTickEvent)(nil),       // 132: remoteagent.core.v1.MachineStatusPollTickEvent
+	(*MachineSettingsOpenEvent)(nil),         // 133: remoteagent.core.v1.MachineSettingsOpenEvent
+	(*MachineSettingsSelectAgentEvent)(nil),  // 134: remoteagent.core.v1.MachineSettingsSelectAgentEvent
+	(*UpdateMachineAgentDefaultsEvent)(nil),  // 135: remoteagent.core.v1.UpdateMachineAgentDefaultsEvent
+	(*UpdateMachineDaemonSettingsEvent)(nil), // 136: remoteagent.core.v1.UpdateMachineDaemonSettingsEvent
+	(*UpdateDirectPreferenceEvent)(nil),      // 137: remoteagent.core.v1.UpdateDirectPreferenceEvent
+	(*MachineDirectStatusEvent)(nil),         // 138: remoteagent.core.v1.MachineDirectStatusEvent
+	(*UpdateClientNameEvent)(nil),            // 139: remoteagent.core.v1.UpdateClientNameEvent
+	(*SetNotificationPrefEvent)(nil),         // 140: remoteagent.core.v1.SetNotificationPrefEvent
+	(*SetAppearancePrefEvent)(nil),           // 141: remoteagent.core.v1.SetAppearancePrefEvent
+	(*ConnCheckStatusEvent)(nil),             // 142: remoteagent.core.v1.ConnCheckStatusEvent
+	(*ClientUpdateStateEvent)(nil),           // 143: remoteagent.core.v1.ClientUpdateStateEvent
+	(*CheckForUpdatesEvent)(nil),             // 144: remoteagent.core.v1.CheckForUpdatesEvent
+	(*SessionSubmitCommandAction)(nil),       // 145: remoteagent.core.v1.SessionSubmitCommandAction
+	(*SessionSlotAction)(nil),                // 146: remoteagent.core.v1.SessionSlotAction
+	(*SessionOpenAction)(nil),                // 147: remoteagent.core.v1.SessionOpenAction
+	(*SessionOutgoingAction)(nil),            // 148: remoteagent.core.v1.SessionOutgoingAction
+	(*SessionQuestionStepAction)(nil),        // 149: remoteagent.core.v1.SessionQuestionStepAction
+	(*SessionRefreshHistoryAction)(nil),      // 150: remoteagent.core.v1.SessionRefreshHistoryAction
+	(*ScheduleMachinePollEffect)(nil),        // 151: remoteagent.core.v1.ScheduleMachinePollEffect
+	(*DirectPreferenceEffect)(nil),           // 152: remoteagent.core.v1.DirectPreferenceEffect
+	(*RenameClientEffect)(nil),               // 153: remoteagent.core.v1.RenameClientEffect
+	(*CheckUpdatesEffect)(nil),               // 154: remoteagent.core.v1.CheckUpdatesEffect
+	(*PersistClientPrefsEffect)(nil),         // 155: remoteagent.core.v1.PersistClientPrefsEffect
+	(*PrepareCleanupSessionEffect)(nil),      // 156: remoteagent.core.v1.PrepareCleanupSessionEffect
+	(*SessionRestoreComposerEffect)(nil),     // 157: remoteagent.core.v1.SessionRestoreComposerEffect
 }
 var file_remoteagent_core_v1_app_proto_depIdxs = []int32{
 	6,   // 0: remoteagent.core.v1.Screen.home:type_name -> remoteagent.core.v1.HomeScreenRequest
@@ -8964,167 +9150,177 @@ var file_remoteagent_core_v1_app_proto_depIdxs = []int32{
 	100, // 8: remoteagent.core.v1.Screen.quota:type_name -> remoteagent.core.v1.QuotaScreenRequest
 	101, // 9: remoteagent.core.v1.Screen.devices:type_name -> remoteagent.core.v1.DevicesScreenRequest
 	102, // 10: remoteagent.core.v1.Screen.client_detail:type_name -> remoteagent.core.v1.ClientDetailScreenRequest
-	103, // 11: remoteagent.core.v1.ViewModel.home:type_name -> remoteagent.core.v1.HomeViewModel
-	104, // 12: remoteagent.core.v1.ViewModel.project:type_name -> remoteagent.core.v1.ProjectViewModel
-	105, // 13: remoteagent.core.v1.ViewModel.new_session:type_name -> remoteagent.core.v1.NewSessionViewModel
-	106, // 14: remoteagent.core.v1.ViewModel.sync_state:type_name -> remoteagent.core.v1.SyncStateView
-	107, // 15: remoteagent.core.v1.ViewModel.session_data:type_name -> remoteagent.core.v1.SessionDataView
-	108, // 16: remoteagent.core.v1.ViewModel.settings:type_name -> remoteagent.core.v1.SettingsViewModel
-	109, // 17: remoteagent.core.v1.ViewModel.machine_status:type_name -> remoteagent.core.v1.MachineStatusViewModel
-	110, // 18: remoteagent.core.v1.ViewModel.machine_settings:type_name -> remoteagent.core.v1.MachineSettingsViewModel
-	111, // 19: remoteagent.core.v1.ViewModel.quota:type_name -> remoteagent.core.v1.QuotaViewModel
-	112, // 20: remoteagent.core.v1.ViewModel.devices:type_name -> remoteagent.core.v1.DevicesViewModel
-	113, // 21: remoteagent.core.v1.ViewModel.client_detail:type_name -> remoteagent.core.v1.ClientDetailViewModel
-	13,  // 22: remoteagent.core.v1.LocalCalendar.months:type_name -> remoteagent.core.v1.MonthStart
-	0,   // 23: remoteagent.core.v1.SyncLifecycleAction.kind:type_name -> remoteagent.core.v1.SyncLifecycleKind
-	1,   // 24: remoteagent.core.v1.TimerFiredEvent.kind:type_name -> remoteagent.core.v1.TimerKind
-	114, // 25: remoteagent.core.v1.PlainMachine.meta:type_name -> remoteagent.v1.MachineMeta
-	115, // 26: remoteagent.core.v1.PlainSession.meta:type_name -> remoteagent.v1.Session
-	116, // 27: remoteagent.core.v1.PlainSession.checkpoint:type_name -> remoteagent.v1.LiveSnapshot
-	117, // 28: remoteagent.core.v1.PlainEvent.event:type_name -> remoteagent.v1.Event
-	118, // 29: remoteagent.core.v1.PlainDevice.kind:type_name -> remoteagent.v1.DeviceKind
-	119, // 30: remoteagent.core.v1.PlainDevice.meta:type_name -> remoteagent.v1.DeviceMeta
-	120, // 31: remoteagent.core.v1.PlainAccountPrefs.prefs:type_name -> remoteagent.v1.ProjectPrefs
-	19,  // 32: remoteagent.core.v1.CacheBootstrapLoadedEvent.machines:type_name -> remoteagent.core.v1.PlainMachine
-	20,  // 33: remoteagent.core.v1.CacheBootstrapLoadedEvent.sessions:type_name -> remoteagent.core.v1.PlainSession
-	23,  // 34: remoteagent.core.v1.CacheBootstrapLoadedEvent.prefs:type_name -> remoteagent.core.v1.PlainAccountPrefs
-	21,  // 35: remoteagent.core.v1.CacheEventsLoadedEvent.events:type_name -> remoteagent.core.v1.PlainEvent
-	21,  // 36: remoteagent.core.v1.EventsAppendedFrame.events:type_name -> remoteagent.core.v1.PlainEvent
-	19,  // 37: remoteagent.core.v1.StreamFrameEvent.machine_updated:type_name -> remoteagent.core.v1.PlainMachine
-	20,  // 38: remoteagent.core.v1.StreamFrameEvent.session_updated:type_name -> remoteagent.core.v1.PlainSession
-	30,  // 39: remoteagent.core.v1.StreamFrameEvent.events_appended:type_name -> remoteagent.core.v1.EventsAppendedFrame
-	23,  // 40: remoteagent.core.v1.StreamFrameEvent.account_prefs_updated:type_name -> remoteagent.core.v1.PlainAccountPrefs
-	22,  // 41: remoteagent.core.v1.StreamFrameEvent.device_updated:type_name -> remoteagent.core.v1.PlainDevice
-	19,  // 42: remoteagent.core.v1.ListsFetchedEvent.machines:type_name -> remoteagent.core.v1.PlainMachine
-	20,  // 43: remoteagent.core.v1.ListsFetchedEvent.sessions:type_name -> remoteagent.core.v1.PlainSession
-	121, // 44: remoteagent.core.v1.ListsFetchedEvent.next:type_name -> remoteagent.v1.SessionCursor
-	22,  // 45: remoteagent.core.v1.ListsFetchedEvent.devices:type_name -> remoteagent.core.v1.PlainDevice
-	20,  // 46: remoteagent.core.v1.SessionsPageFetchedEvent.sessions:type_name -> remoteagent.core.v1.PlainSession
-	121, // 47: remoteagent.core.v1.SessionsPageFetchedEvent.next:type_name -> remoteagent.v1.SessionCursor
-	20,  // 48: remoteagent.core.v1.SessionByIdFetchedEvent.session:type_name -> remoteagent.core.v1.PlainSession
-	21,  // 49: remoteagent.core.v1.EventsPageFetchedEvent.events:type_name -> remoteagent.core.v1.PlainEvent
-	23,  // 50: remoteagent.core.v1.AccountPrefsFetchedEvent.prefs:type_name -> remoteagent.core.v1.PlainAccountPrefs
-	23,  // 51: remoteagent.core.v1.AccountPrefsPutResultEvent.current:type_name -> remoteagent.core.v1.PlainAccountPrefs
-	22,  // 52: remoteagent.core.v1.DevicesFetchedEvent.devices:type_name -> remoteagent.core.v1.PlainDevice
-	2,   // 53: remoteagent.core.v1.CommandOutcomeEvent.source:type_name -> remoteagent.core.v1.OutcomeSource
-	122, // 54: remoteagent.core.v1.CommandOutcomeEvent.result:type_name -> remoteagent.v1.CommandResult
-	45,  // 55: remoteagent.core.v1.SessionScheduleHintsEvent.hints:type_name -> remoteagent.core.v1.SessionScheduleHint
-	123, // 56: remoteagent.core.v1.NewSessionSelectAgentAction.agent:type_name -> remoteagent.v1.Agent
-	124, // 57: remoteagent.core.v1.NewSessionSelectModelAction.mode:type_name -> remoteagent.v1.ApprovalMode
-	14,  // 58: remoteagent.core.v1.Event.clock_updated:type_name -> remoteagent.core.v1.LocalCalendar
-	15,  // 59: remoteagent.core.v1.Event.entropy_provided:type_name -> remoteagent.core.v1.EntropyProvided
-	16,  // 60: remoteagent.core.v1.Event.sync_lifecycle:type_name -> remoteagent.core.v1.SyncLifecycleAction
-	17,  // 61: remoteagent.core.v1.Event.network_changed:type_name -> remoteagent.core.v1.NetworkChangedEvent
-	18,  // 62: remoteagent.core.v1.Event.timer_fired:type_name -> remoteagent.core.v1.TimerFiredEvent
-	24,  // 63: remoteagent.core.v1.Event.cache_bootstrap_loaded:type_name -> remoteagent.core.v1.CacheBootstrapLoadedEvent
-	25,  // 64: remoteagent.core.v1.Event.cache_events_loaded:type_name -> remoteagent.core.v1.CacheEventsLoadedEvent
-	26,  // 65: remoteagent.core.v1.Event.token_result:type_name -> remoteagent.core.v1.TokenResultEvent
-	27,  // 66: remoteagent.core.v1.Event.security_snapshot:type_name -> remoteagent.core.v1.SecuritySnapshotEvent
-	28,  // 67: remoteagent.core.v1.Event.stream_ready:type_name -> remoteagent.core.v1.StreamReadyEvent
-	29,  // 68: remoteagent.core.v1.Event.stream_closed:type_name -> remoteagent.core.v1.StreamClosedEvent
-	31,  // 69: remoteagent.core.v1.Event.stream_frame:type_name -> remoteagent.core.v1.StreamFrameEvent
-	32,  // 70: remoteagent.core.v1.Event.lists_fetched:type_name -> remoteagent.core.v1.ListsFetchedEvent
-	33,  // 71: remoteagent.core.v1.Event.sessions_page_fetched:type_name -> remoteagent.core.v1.SessionsPageFetchedEvent
-	34,  // 72: remoteagent.core.v1.Event.session_by_id_fetched:type_name -> remoteagent.core.v1.SessionByIdFetchedEvent
-	35,  // 73: remoteagent.core.v1.Event.events_page_fetched:type_name -> remoteagent.core.v1.EventsPageFetchedEvent
-	36,  // 74: remoteagent.core.v1.Event.account_prefs_fetched:type_name -> remoteagent.core.v1.AccountPrefsFetchedEvent
-	37,  // 75: remoteagent.core.v1.Event.account_prefs_put_result:type_name -> remoteagent.core.v1.AccountPrefsPutResultEvent
-	38,  // 76: remoteagent.core.v1.Event.devices_fetched:type_name -> remoteagent.core.v1.DevicesFetchedEvent
-	39,  // 77: remoteagent.core.v1.Event.command_outcome:type_name -> remoteagent.core.v1.CommandOutcomeEvent
-	40,  // 78: remoteagent.core.v1.Event.session_watch:type_name -> remoteagent.core.v1.SessionWatchEvent
-	41,  // 79: remoteagent.core.v1.Event.session_pin:type_name -> remoteagent.core.v1.SessionPinEvent
-	42,  // 80: remoteagent.core.v1.Event.retry_session_events:type_name -> remoteagent.core.v1.RetrySessionEventsAction
-	43,  // 81: remoteagent.core.v1.Event.fetch_session:type_name -> remoteagent.core.v1.FetchSessionAction
-	44,  // 82: remoteagent.core.v1.Event.machine_route_status:type_name -> remoteagent.core.v1.MachineRouteStatusEvent
-	46,  // 83: remoteagent.core.v1.Event.session_schedule_hints:type_name -> remoteagent.core.v1.SessionScheduleHintsEvent
-	47,  // 84: remoteagent.core.v1.Event.home_set_scope:type_name -> remoteagent.core.v1.HomeSetScopeAction
-	48,  // 85: remoteagent.core.v1.Event.home_set_filter:type_name -> remoteagent.core.v1.HomeSetFilterAction
-	49,  // 86: remoteagent.core.v1.Event.home_load_more_ended:type_name -> remoteagent.core.v1.HomeLoadMoreEndedAction
-	50,  // 87: remoteagent.core.v1.Event.home_retry_load:type_name -> remoteagent.core.v1.HomeRetryLoadAction
-	51,  // 88: remoteagent.core.v1.Event.home_select_session:type_name -> remoteagent.core.v1.HomeSelectSessionAction
-	52,  // 89: remoteagent.core.v1.Event.project_set_search:type_name -> remoteagent.core.v1.ProjectSetSearchAction
-	53,  // 90: remoteagent.core.v1.Event.project_toggle_pin:type_name -> remoteagent.core.v1.ProjectKeyAction
-	53,  // 91: remoteagent.core.v1.Event.project_toggle_hide:type_name -> remoteagent.core.v1.ProjectKeyAction
-	54,  // 92: remoteagent.core.v1.Event.project_add:type_name -> remoteagent.core.v1.ProjectAddAction
-	53,  // 93: remoteagent.core.v1.Event.project_load_more_ended:type_name -> remoteagent.core.v1.ProjectKeyAction
-	55,  // 94: remoteagent.core.v1.Event.project_open_dir_picker:type_name -> remoteagent.core.v1.DirPickerOpenAction
-	56,  // 95: remoteagent.core.v1.Event.project_dir_navigate:type_name -> remoteagent.core.v1.DirNavigateAction
-	57,  // 96: remoteagent.core.v1.Event.project_close_dir_picker:type_name -> remoteagent.core.v1.DirPickerCloseAction
-	58,  // 97: remoteagent.core.v1.Event.new_session_open:type_name -> remoteagent.core.v1.NewSessionOpenAction
-	59,  // 98: remoteagent.core.v1.Event.new_session_select_project:type_name -> remoteagent.core.v1.NewSessionSelectProjectAction
-	60,  // 99: remoteagent.core.v1.Event.new_session_select_machine:type_name -> remoteagent.core.v1.NewSessionSelectMachineAction
-	61,  // 100: remoteagent.core.v1.Event.new_session_select_agent:type_name -> remoteagent.core.v1.NewSessionSelectAgentAction
-	62,  // 101: remoteagent.core.v1.Event.new_session_select_model:type_name -> remoteagent.core.v1.NewSessionSelectModelAction
-	63,  // 102: remoteagent.core.v1.Event.new_session_set_prompt:type_name -> remoteagent.core.v1.NewSessionSetPromptAction
-	64,  // 103: remoteagent.core.v1.Event.new_session_retry_models:type_name -> remoteagent.core.v1.NewSessionProjectAction
-	64,  // 104: remoteagent.core.v1.Event.new_session_retry_save_config:type_name -> remoteagent.core.v1.NewSessionProjectAction
-	65,  // 105: remoteagent.core.v1.Event.new_session_submit:type_name -> remoteagent.core.v1.NewSessionSubmitAction
-	64,  // 106: remoteagent.core.v1.Event.new_session_abandon_start:type_name -> remoteagent.core.v1.NewSessionProjectAction
-	125, // 107: remoteagent.core.v1.Event.machine_status_watch:type_name -> remoteagent.core.v1.MachineStatusWatchEvent
-	126, // 108: remoteagent.core.v1.Event.machine_status_retry:type_name -> remoteagent.core.v1.MachineStatusRetryEvent
-	127, // 109: remoteagent.core.v1.Event.machine_status_tab:type_name -> remoteagent.core.v1.MachineStatusTabEvent
-	128, // 110: remoteagent.core.v1.Event.machine_status_scrub:type_name -> remoteagent.core.v1.MachineStatusScrubEvent
-	129, // 111: remoteagent.core.v1.Event.machine_status_cleanup:type_name -> remoteagent.core.v1.MachineStatusCleanupEvent
-	130, // 112: remoteagent.core.v1.Event.machine_status_poll_tick:type_name -> remoteagent.core.v1.MachineStatusPollTickEvent
-	131, // 113: remoteagent.core.v1.Event.machine_settings_open:type_name -> remoteagent.core.v1.MachineSettingsOpenEvent
-	132, // 114: remoteagent.core.v1.Event.machine_settings_select_agent:type_name -> remoteagent.core.v1.MachineSettingsSelectAgentEvent
-	133, // 115: remoteagent.core.v1.Event.update_machine_agent_defaults:type_name -> remoteagent.core.v1.UpdateMachineAgentDefaultsEvent
-	134, // 116: remoteagent.core.v1.Event.update_machine_daemon_settings:type_name -> remoteagent.core.v1.UpdateMachineDaemonSettingsEvent
-	135, // 117: remoteagent.core.v1.Event.update_direct_preference:type_name -> remoteagent.core.v1.UpdateDirectPreferenceEvent
-	136, // 118: remoteagent.core.v1.Event.machine_direct_status:type_name -> remoteagent.core.v1.MachineDirectStatusEvent
-	137, // 119: remoteagent.core.v1.Event.update_client_name:type_name -> remoteagent.core.v1.UpdateClientNameEvent
-	138, // 120: remoteagent.core.v1.Event.set_notification_pref:type_name -> remoteagent.core.v1.SetNotificationPrefEvent
-	139, // 121: remoteagent.core.v1.Event.set_appearance_pref:type_name -> remoteagent.core.v1.SetAppearancePrefEvent
-	140, // 122: remoteagent.core.v1.Event.conn_check_status:type_name -> remoteagent.core.v1.ConnCheckStatusEvent
-	141, // 123: remoteagent.core.v1.Event.client_update_state:type_name -> remoteagent.core.v1.ClientUpdateStateEvent
-	142, // 124: remoteagent.core.v1.Event.check_for_updates:type_name -> remoteagent.core.v1.CheckForUpdatesEvent
-	3,   // 125: remoteagent.core.v1.RenderEffect.screens:type_name -> remoteagent.core.v1.ScreenTarget
-	1,   // 126: remoteagent.core.v1.ScheduleTimerEffect.kind:type_name -> remoteagent.core.v1.TimerKind
-	1,   // 127: remoteagent.core.v1.CancelTimerEffect.kind:type_name -> remoteagent.core.v1.TimerKind
-	75,  // 128: remoteagent.core.v1.CacheReadEffect.bootstrap:type_name -> remoteagent.core.v1.CacheReadBootstrap
-	76,  // 129: remoteagent.core.v1.CacheReadEffect.events:type_name -> remoteagent.core.v1.CacheReadEvents
-	78,  // 130: remoteagent.core.v1.CacheWriteEffect.write_events:type_name -> remoteagent.core.v1.CacheWriteEvents
-	79,  // 131: remoteagent.core.v1.CacheWriteEffect.set_session_open:type_name -> remoteagent.core.v1.CacheSessionOpen
-	121, // 132: remoteagent.core.v1.FetchSessionsPageRpc.after:type_name -> remoteagent.v1.SessionCursor
-	120, // 133: remoteagent.core.v1.PutAccountPrefsRpc.next_prefs:type_name -> remoteagent.v1.ProjectPrefs
-	82,  // 134: remoteagent.core.v1.RpcEffect.fetch_lists:type_name -> remoteagent.core.v1.FetchListsRpc
-	83,  // 135: remoteagent.core.v1.RpcEffect.fetch_sessions_page:type_name -> remoteagent.core.v1.FetchSessionsPageRpc
-	84,  // 136: remoteagent.core.v1.RpcEffect.fetch_session_by_id:type_name -> remoteagent.core.v1.FetchSessionByIdRpc
-	85,  // 137: remoteagent.core.v1.RpcEffect.get_events:type_name -> remoteagent.core.v1.GetEventsRpc
-	86,  // 138: remoteagent.core.v1.RpcEffect.get_account_prefs:type_name -> remoteagent.core.v1.GetAccountPrefsRpc
-	87,  // 139: remoteagent.core.v1.RpcEffect.put_account_prefs:type_name -> remoteagent.core.v1.PutAccountPrefsRpc
-	88,  // 140: remoteagent.core.v1.RpcEffect.fetch_devices:type_name -> remoteagent.core.v1.FetchDevicesRpc
-	4,   // 141: remoteagent.core.v1.DispatchCommandEffect.route_hint:type_name -> remoteagent.core.v1.CommandRouteHint
-	5,   // 142: remoteagent.core.v1.NavigateEffect.route:type_name -> remoteagent.core.v1.NavigateRoute
-	67,  // 143: remoteagent.core.v1.Effect.render:type_name -> remoteagent.core.v1.RenderEffect
-	68,  // 144: remoteagent.core.v1.Effect.open_stream:type_name -> remoteagent.core.v1.OpenStreamEffect
-	69,  // 145: remoteagent.core.v1.Effect.close_stream:type_name -> remoteagent.core.v1.CloseStreamEffect
-	70,  // 146: remoteagent.core.v1.Effect.ensure_token:type_name -> remoteagent.core.v1.EnsureTokenEffect
-	71,  // 147: remoteagent.core.v1.Effect.discard_token:type_name -> remoteagent.core.v1.DiscardTokenEffect
-	72,  // 148: remoteagent.core.v1.Effect.sync_security:type_name -> remoteagent.core.v1.SyncSecurityEffect
-	73,  // 149: remoteagent.core.v1.Effect.schedule_timer:type_name -> remoteagent.core.v1.ScheduleTimerEffect
-	74,  // 150: remoteagent.core.v1.Effect.cancel_timer:type_name -> remoteagent.core.v1.CancelTimerEffect
-	77,  // 151: remoteagent.core.v1.Effect.cache_read:type_name -> remoteagent.core.v1.CacheReadEffect
-	80,  // 152: remoteagent.core.v1.Effect.cache_write:type_name -> remoteagent.core.v1.CacheWriteEffect
-	81,  // 153: remoteagent.core.v1.Effect.cache_delete:type_name -> remoteagent.core.v1.CacheDeleteEffect
-	89,  // 154: remoteagent.core.v1.Effect.rpc:type_name -> remoteagent.core.v1.RpcEffect
-	90,  // 155: remoteagent.core.v1.Effect.dispatch_command:type_name -> remoteagent.core.v1.DispatchCommandEffect
-	91,  // 156: remoteagent.core.v1.Effect.save_home_scope:type_name -> remoteagent.core.v1.SaveHomeScopeEffect
-	92,  // 157: remoteagent.core.v1.Effect.navigate:type_name -> remoteagent.core.v1.NavigateEffect
-	93,  // 158: remoteagent.core.v1.Effect.attachments_settled:type_name -> remoteagent.core.v1.AttachmentsSettledEffect
-	94,  // 159: remoteagent.core.v1.Effect.request_entropy:type_name -> remoteagent.core.v1.RequestEntropyEffect
-	143, // 160: remoteagent.core.v1.Effect.schedule_machine_poll:type_name -> remoteagent.core.v1.ScheduleMachinePollEffect
-	144, // 161: remoteagent.core.v1.Effect.direct_preference:type_name -> remoteagent.core.v1.DirectPreferenceEffect
-	145, // 162: remoteagent.core.v1.Effect.rename_client:type_name -> remoteagent.core.v1.RenameClientEffect
-	146, // 163: remoteagent.core.v1.Effect.check_updates:type_name -> remoteagent.core.v1.CheckUpdatesEffect
-	147, // 164: remoteagent.core.v1.Effect.persist_client_prefs:type_name -> remoteagent.core.v1.PersistClientPrefsEffect
-	148, // 165: remoteagent.core.v1.Effect.prepare_cleanup_session:type_name -> remoteagent.core.v1.PrepareCleanupSessionEffect
-	95,  // 166: remoteagent.core.v1.EffectBatch.effects:type_name -> remoteagent.core.v1.Effect
-	167, // [167:167] is the sub-list for method output_type
-	167, // [167:167] is the sub-list for method input_type
-	167, // [167:167] is the sub-list for extension type_name
-	167, // [167:167] is the sub-list for extension extendee
-	0,   // [0:167] is the sub-list for field type_name
+	103, // 11: remoteagent.core.v1.Screen.session:type_name -> remoteagent.core.v1.SessionScreenRequest
+	104, // 12: remoteagent.core.v1.ViewModel.home:type_name -> remoteagent.core.v1.HomeViewModel
+	105, // 13: remoteagent.core.v1.ViewModel.project:type_name -> remoteagent.core.v1.ProjectViewModel
+	106, // 14: remoteagent.core.v1.ViewModel.new_session:type_name -> remoteagent.core.v1.NewSessionViewModel
+	107, // 15: remoteagent.core.v1.ViewModel.sync_state:type_name -> remoteagent.core.v1.SyncStateView
+	108, // 16: remoteagent.core.v1.ViewModel.session_data:type_name -> remoteagent.core.v1.SessionDataView
+	109, // 17: remoteagent.core.v1.ViewModel.settings:type_name -> remoteagent.core.v1.SettingsViewModel
+	110, // 18: remoteagent.core.v1.ViewModel.machine_status:type_name -> remoteagent.core.v1.MachineStatusViewModel
+	111, // 19: remoteagent.core.v1.ViewModel.machine_settings:type_name -> remoteagent.core.v1.MachineSettingsViewModel
+	112, // 20: remoteagent.core.v1.ViewModel.quota:type_name -> remoteagent.core.v1.QuotaViewModel
+	113, // 21: remoteagent.core.v1.ViewModel.devices:type_name -> remoteagent.core.v1.DevicesViewModel
+	114, // 22: remoteagent.core.v1.ViewModel.client_detail:type_name -> remoteagent.core.v1.ClientDetailViewModel
+	115, // 23: remoteagent.core.v1.ViewModel.session:type_name -> remoteagent.core.v1.SessionViewModel
+	13,  // 24: remoteagent.core.v1.LocalCalendar.months:type_name -> remoteagent.core.v1.MonthStart
+	0,   // 25: remoteagent.core.v1.SyncLifecycleAction.kind:type_name -> remoteagent.core.v1.SyncLifecycleKind
+	1,   // 26: remoteagent.core.v1.TimerFiredEvent.kind:type_name -> remoteagent.core.v1.TimerKind
+	116, // 27: remoteagent.core.v1.PlainMachine.meta:type_name -> remoteagent.v1.MachineMeta
+	117, // 28: remoteagent.core.v1.PlainSession.meta:type_name -> remoteagent.v1.Session
+	118, // 29: remoteagent.core.v1.PlainSession.checkpoint:type_name -> remoteagent.v1.LiveSnapshot
+	119, // 30: remoteagent.core.v1.PlainEvent.event:type_name -> remoteagent.v1.Event
+	120, // 31: remoteagent.core.v1.PlainDevice.kind:type_name -> remoteagent.v1.DeviceKind
+	121, // 32: remoteagent.core.v1.PlainDevice.meta:type_name -> remoteagent.v1.DeviceMeta
+	122, // 33: remoteagent.core.v1.PlainAccountPrefs.prefs:type_name -> remoteagent.v1.ProjectPrefs
+	19,  // 34: remoteagent.core.v1.CacheBootstrapLoadedEvent.machines:type_name -> remoteagent.core.v1.PlainMachine
+	20,  // 35: remoteagent.core.v1.CacheBootstrapLoadedEvent.sessions:type_name -> remoteagent.core.v1.PlainSession
+	23,  // 36: remoteagent.core.v1.CacheBootstrapLoadedEvent.prefs:type_name -> remoteagent.core.v1.PlainAccountPrefs
+	21,  // 37: remoteagent.core.v1.CacheEventsLoadedEvent.events:type_name -> remoteagent.core.v1.PlainEvent
+	21,  // 38: remoteagent.core.v1.EventsAppendedFrame.events:type_name -> remoteagent.core.v1.PlainEvent
+	19,  // 39: remoteagent.core.v1.StreamFrameEvent.machine_updated:type_name -> remoteagent.core.v1.PlainMachine
+	20,  // 40: remoteagent.core.v1.StreamFrameEvent.session_updated:type_name -> remoteagent.core.v1.PlainSession
+	30,  // 41: remoteagent.core.v1.StreamFrameEvent.events_appended:type_name -> remoteagent.core.v1.EventsAppendedFrame
+	23,  // 42: remoteagent.core.v1.StreamFrameEvent.account_prefs_updated:type_name -> remoteagent.core.v1.PlainAccountPrefs
+	22,  // 43: remoteagent.core.v1.StreamFrameEvent.device_updated:type_name -> remoteagent.core.v1.PlainDevice
+	19,  // 44: remoteagent.core.v1.ListsFetchedEvent.machines:type_name -> remoteagent.core.v1.PlainMachine
+	20,  // 45: remoteagent.core.v1.ListsFetchedEvent.sessions:type_name -> remoteagent.core.v1.PlainSession
+	123, // 46: remoteagent.core.v1.ListsFetchedEvent.next:type_name -> remoteagent.v1.SessionCursor
+	22,  // 47: remoteagent.core.v1.ListsFetchedEvent.devices:type_name -> remoteagent.core.v1.PlainDevice
+	20,  // 48: remoteagent.core.v1.SessionsPageFetchedEvent.sessions:type_name -> remoteagent.core.v1.PlainSession
+	123, // 49: remoteagent.core.v1.SessionsPageFetchedEvent.next:type_name -> remoteagent.v1.SessionCursor
+	20,  // 50: remoteagent.core.v1.SessionByIdFetchedEvent.session:type_name -> remoteagent.core.v1.PlainSession
+	21,  // 51: remoteagent.core.v1.EventsPageFetchedEvent.events:type_name -> remoteagent.core.v1.PlainEvent
+	23,  // 52: remoteagent.core.v1.AccountPrefsFetchedEvent.prefs:type_name -> remoteagent.core.v1.PlainAccountPrefs
+	23,  // 53: remoteagent.core.v1.AccountPrefsPutResultEvent.current:type_name -> remoteagent.core.v1.PlainAccountPrefs
+	22,  // 54: remoteagent.core.v1.DevicesFetchedEvent.devices:type_name -> remoteagent.core.v1.PlainDevice
+	2,   // 55: remoteagent.core.v1.CommandOutcomeEvent.source:type_name -> remoteagent.core.v1.OutcomeSource
+	124, // 56: remoteagent.core.v1.CommandOutcomeEvent.result:type_name -> remoteagent.v1.CommandResult
+	45,  // 57: remoteagent.core.v1.SessionScheduleHintsEvent.hints:type_name -> remoteagent.core.v1.SessionScheduleHint
+	125, // 58: remoteagent.core.v1.NewSessionSelectAgentAction.agent:type_name -> remoteagent.v1.Agent
+	126, // 59: remoteagent.core.v1.NewSessionSelectModelAction.mode:type_name -> remoteagent.v1.ApprovalMode
+	14,  // 60: remoteagent.core.v1.Event.clock_updated:type_name -> remoteagent.core.v1.LocalCalendar
+	15,  // 61: remoteagent.core.v1.Event.entropy_provided:type_name -> remoteagent.core.v1.EntropyProvided
+	16,  // 62: remoteagent.core.v1.Event.sync_lifecycle:type_name -> remoteagent.core.v1.SyncLifecycleAction
+	17,  // 63: remoteagent.core.v1.Event.network_changed:type_name -> remoteagent.core.v1.NetworkChangedEvent
+	18,  // 64: remoteagent.core.v1.Event.timer_fired:type_name -> remoteagent.core.v1.TimerFiredEvent
+	24,  // 65: remoteagent.core.v1.Event.cache_bootstrap_loaded:type_name -> remoteagent.core.v1.CacheBootstrapLoadedEvent
+	25,  // 66: remoteagent.core.v1.Event.cache_events_loaded:type_name -> remoteagent.core.v1.CacheEventsLoadedEvent
+	26,  // 67: remoteagent.core.v1.Event.token_result:type_name -> remoteagent.core.v1.TokenResultEvent
+	27,  // 68: remoteagent.core.v1.Event.security_snapshot:type_name -> remoteagent.core.v1.SecuritySnapshotEvent
+	28,  // 69: remoteagent.core.v1.Event.stream_ready:type_name -> remoteagent.core.v1.StreamReadyEvent
+	29,  // 70: remoteagent.core.v1.Event.stream_closed:type_name -> remoteagent.core.v1.StreamClosedEvent
+	31,  // 71: remoteagent.core.v1.Event.stream_frame:type_name -> remoteagent.core.v1.StreamFrameEvent
+	32,  // 72: remoteagent.core.v1.Event.lists_fetched:type_name -> remoteagent.core.v1.ListsFetchedEvent
+	33,  // 73: remoteagent.core.v1.Event.sessions_page_fetched:type_name -> remoteagent.core.v1.SessionsPageFetchedEvent
+	34,  // 74: remoteagent.core.v1.Event.session_by_id_fetched:type_name -> remoteagent.core.v1.SessionByIdFetchedEvent
+	35,  // 75: remoteagent.core.v1.Event.events_page_fetched:type_name -> remoteagent.core.v1.EventsPageFetchedEvent
+	36,  // 76: remoteagent.core.v1.Event.account_prefs_fetched:type_name -> remoteagent.core.v1.AccountPrefsFetchedEvent
+	37,  // 77: remoteagent.core.v1.Event.account_prefs_put_result:type_name -> remoteagent.core.v1.AccountPrefsPutResultEvent
+	38,  // 78: remoteagent.core.v1.Event.devices_fetched:type_name -> remoteagent.core.v1.DevicesFetchedEvent
+	39,  // 79: remoteagent.core.v1.Event.command_outcome:type_name -> remoteagent.core.v1.CommandOutcomeEvent
+	40,  // 80: remoteagent.core.v1.Event.session_watch:type_name -> remoteagent.core.v1.SessionWatchEvent
+	41,  // 81: remoteagent.core.v1.Event.session_pin:type_name -> remoteagent.core.v1.SessionPinEvent
+	42,  // 82: remoteagent.core.v1.Event.retry_session_events:type_name -> remoteagent.core.v1.RetrySessionEventsAction
+	43,  // 83: remoteagent.core.v1.Event.fetch_session:type_name -> remoteagent.core.v1.FetchSessionAction
+	44,  // 84: remoteagent.core.v1.Event.machine_route_status:type_name -> remoteagent.core.v1.MachineRouteStatusEvent
+	46,  // 85: remoteagent.core.v1.Event.session_schedule_hints:type_name -> remoteagent.core.v1.SessionScheduleHintsEvent
+	47,  // 86: remoteagent.core.v1.Event.home_set_scope:type_name -> remoteagent.core.v1.HomeSetScopeAction
+	48,  // 87: remoteagent.core.v1.Event.home_set_filter:type_name -> remoteagent.core.v1.HomeSetFilterAction
+	49,  // 88: remoteagent.core.v1.Event.home_load_more_ended:type_name -> remoteagent.core.v1.HomeLoadMoreEndedAction
+	50,  // 89: remoteagent.core.v1.Event.home_retry_load:type_name -> remoteagent.core.v1.HomeRetryLoadAction
+	51,  // 90: remoteagent.core.v1.Event.home_select_session:type_name -> remoteagent.core.v1.HomeSelectSessionAction
+	52,  // 91: remoteagent.core.v1.Event.project_set_search:type_name -> remoteagent.core.v1.ProjectSetSearchAction
+	53,  // 92: remoteagent.core.v1.Event.project_toggle_pin:type_name -> remoteagent.core.v1.ProjectKeyAction
+	53,  // 93: remoteagent.core.v1.Event.project_toggle_hide:type_name -> remoteagent.core.v1.ProjectKeyAction
+	54,  // 94: remoteagent.core.v1.Event.project_add:type_name -> remoteagent.core.v1.ProjectAddAction
+	53,  // 95: remoteagent.core.v1.Event.project_load_more_ended:type_name -> remoteagent.core.v1.ProjectKeyAction
+	55,  // 96: remoteagent.core.v1.Event.project_open_dir_picker:type_name -> remoteagent.core.v1.DirPickerOpenAction
+	56,  // 97: remoteagent.core.v1.Event.project_dir_navigate:type_name -> remoteagent.core.v1.DirNavigateAction
+	57,  // 98: remoteagent.core.v1.Event.project_close_dir_picker:type_name -> remoteagent.core.v1.DirPickerCloseAction
+	58,  // 99: remoteagent.core.v1.Event.new_session_open:type_name -> remoteagent.core.v1.NewSessionOpenAction
+	59,  // 100: remoteagent.core.v1.Event.new_session_select_project:type_name -> remoteagent.core.v1.NewSessionSelectProjectAction
+	60,  // 101: remoteagent.core.v1.Event.new_session_select_machine:type_name -> remoteagent.core.v1.NewSessionSelectMachineAction
+	61,  // 102: remoteagent.core.v1.Event.new_session_select_agent:type_name -> remoteagent.core.v1.NewSessionSelectAgentAction
+	62,  // 103: remoteagent.core.v1.Event.new_session_select_model:type_name -> remoteagent.core.v1.NewSessionSelectModelAction
+	63,  // 104: remoteagent.core.v1.Event.new_session_set_prompt:type_name -> remoteagent.core.v1.NewSessionSetPromptAction
+	64,  // 105: remoteagent.core.v1.Event.new_session_retry_models:type_name -> remoteagent.core.v1.NewSessionProjectAction
+	64,  // 106: remoteagent.core.v1.Event.new_session_retry_save_config:type_name -> remoteagent.core.v1.NewSessionProjectAction
+	65,  // 107: remoteagent.core.v1.Event.new_session_submit:type_name -> remoteagent.core.v1.NewSessionSubmitAction
+	64,  // 108: remoteagent.core.v1.Event.new_session_abandon_start:type_name -> remoteagent.core.v1.NewSessionProjectAction
+	127, // 109: remoteagent.core.v1.Event.machine_status_watch:type_name -> remoteagent.core.v1.MachineStatusWatchEvent
+	128, // 110: remoteagent.core.v1.Event.machine_status_retry:type_name -> remoteagent.core.v1.MachineStatusRetryEvent
+	129, // 111: remoteagent.core.v1.Event.machine_status_tab:type_name -> remoteagent.core.v1.MachineStatusTabEvent
+	130, // 112: remoteagent.core.v1.Event.machine_status_scrub:type_name -> remoteagent.core.v1.MachineStatusScrubEvent
+	131, // 113: remoteagent.core.v1.Event.machine_status_cleanup:type_name -> remoteagent.core.v1.MachineStatusCleanupEvent
+	132, // 114: remoteagent.core.v1.Event.machine_status_poll_tick:type_name -> remoteagent.core.v1.MachineStatusPollTickEvent
+	133, // 115: remoteagent.core.v1.Event.machine_settings_open:type_name -> remoteagent.core.v1.MachineSettingsOpenEvent
+	134, // 116: remoteagent.core.v1.Event.machine_settings_select_agent:type_name -> remoteagent.core.v1.MachineSettingsSelectAgentEvent
+	135, // 117: remoteagent.core.v1.Event.update_machine_agent_defaults:type_name -> remoteagent.core.v1.UpdateMachineAgentDefaultsEvent
+	136, // 118: remoteagent.core.v1.Event.update_machine_daemon_settings:type_name -> remoteagent.core.v1.UpdateMachineDaemonSettingsEvent
+	137, // 119: remoteagent.core.v1.Event.update_direct_preference:type_name -> remoteagent.core.v1.UpdateDirectPreferenceEvent
+	138, // 120: remoteagent.core.v1.Event.machine_direct_status:type_name -> remoteagent.core.v1.MachineDirectStatusEvent
+	139, // 121: remoteagent.core.v1.Event.update_client_name:type_name -> remoteagent.core.v1.UpdateClientNameEvent
+	140, // 122: remoteagent.core.v1.Event.set_notification_pref:type_name -> remoteagent.core.v1.SetNotificationPrefEvent
+	141, // 123: remoteagent.core.v1.Event.set_appearance_pref:type_name -> remoteagent.core.v1.SetAppearancePrefEvent
+	142, // 124: remoteagent.core.v1.Event.conn_check_status:type_name -> remoteagent.core.v1.ConnCheckStatusEvent
+	143, // 125: remoteagent.core.v1.Event.client_update_state:type_name -> remoteagent.core.v1.ClientUpdateStateEvent
+	144, // 126: remoteagent.core.v1.Event.check_for_updates:type_name -> remoteagent.core.v1.CheckForUpdatesEvent
+	145, // 127: remoteagent.core.v1.Event.session_submit_command:type_name -> remoteagent.core.v1.SessionSubmitCommandAction
+	146, // 128: remoteagent.core.v1.Event.session_abandon_command:type_name -> remoteagent.core.v1.SessionSlotAction
+	147, // 129: remoteagent.core.v1.Event.session_open:type_name -> remoteagent.core.v1.SessionOpenAction
+	148, // 130: remoteagent.core.v1.Event.session_dismiss_outgoing:type_name -> remoteagent.core.v1.SessionOutgoingAction
+	148, // 131: remoteagent.core.v1.Event.session_restore_outgoing:type_name -> remoteagent.core.v1.SessionOutgoingAction
+	149, // 132: remoteagent.core.v1.Event.session_set_question_index:type_name -> remoteagent.core.v1.SessionQuestionStepAction
+	150, // 133: remoteagent.core.v1.Event.session_load_earlier:type_name -> remoteagent.core.v1.SessionRefreshHistoryAction
+	3,   // 134: remoteagent.core.v1.RenderEffect.screens:type_name -> remoteagent.core.v1.ScreenTarget
+	1,   // 135: remoteagent.core.v1.ScheduleTimerEffect.kind:type_name -> remoteagent.core.v1.TimerKind
+	1,   // 136: remoteagent.core.v1.CancelTimerEffect.kind:type_name -> remoteagent.core.v1.TimerKind
+	75,  // 137: remoteagent.core.v1.CacheReadEffect.bootstrap:type_name -> remoteagent.core.v1.CacheReadBootstrap
+	76,  // 138: remoteagent.core.v1.CacheReadEffect.events:type_name -> remoteagent.core.v1.CacheReadEvents
+	78,  // 139: remoteagent.core.v1.CacheWriteEffect.write_events:type_name -> remoteagent.core.v1.CacheWriteEvents
+	79,  // 140: remoteagent.core.v1.CacheWriteEffect.set_session_open:type_name -> remoteagent.core.v1.CacheSessionOpen
+	123, // 141: remoteagent.core.v1.FetchSessionsPageRpc.after:type_name -> remoteagent.v1.SessionCursor
+	122, // 142: remoteagent.core.v1.PutAccountPrefsRpc.next_prefs:type_name -> remoteagent.v1.ProjectPrefs
+	82,  // 143: remoteagent.core.v1.RpcEffect.fetch_lists:type_name -> remoteagent.core.v1.FetchListsRpc
+	83,  // 144: remoteagent.core.v1.RpcEffect.fetch_sessions_page:type_name -> remoteagent.core.v1.FetchSessionsPageRpc
+	84,  // 145: remoteagent.core.v1.RpcEffect.fetch_session_by_id:type_name -> remoteagent.core.v1.FetchSessionByIdRpc
+	85,  // 146: remoteagent.core.v1.RpcEffect.get_events:type_name -> remoteagent.core.v1.GetEventsRpc
+	86,  // 147: remoteagent.core.v1.RpcEffect.get_account_prefs:type_name -> remoteagent.core.v1.GetAccountPrefsRpc
+	87,  // 148: remoteagent.core.v1.RpcEffect.put_account_prefs:type_name -> remoteagent.core.v1.PutAccountPrefsRpc
+	88,  // 149: remoteagent.core.v1.RpcEffect.fetch_devices:type_name -> remoteagent.core.v1.FetchDevicesRpc
+	4,   // 150: remoteagent.core.v1.DispatchCommandEffect.route_hint:type_name -> remoteagent.core.v1.CommandRouteHint
+	5,   // 151: remoteagent.core.v1.NavigateEffect.route:type_name -> remoteagent.core.v1.NavigateRoute
+	67,  // 152: remoteagent.core.v1.Effect.render:type_name -> remoteagent.core.v1.RenderEffect
+	68,  // 153: remoteagent.core.v1.Effect.open_stream:type_name -> remoteagent.core.v1.OpenStreamEffect
+	69,  // 154: remoteagent.core.v1.Effect.close_stream:type_name -> remoteagent.core.v1.CloseStreamEffect
+	70,  // 155: remoteagent.core.v1.Effect.ensure_token:type_name -> remoteagent.core.v1.EnsureTokenEffect
+	71,  // 156: remoteagent.core.v1.Effect.discard_token:type_name -> remoteagent.core.v1.DiscardTokenEffect
+	72,  // 157: remoteagent.core.v1.Effect.sync_security:type_name -> remoteagent.core.v1.SyncSecurityEffect
+	73,  // 158: remoteagent.core.v1.Effect.schedule_timer:type_name -> remoteagent.core.v1.ScheduleTimerEffect
+	74,  // 159: remoteagent.core.v1.Effect.cancel_timer:type_name -> remoteagent.core.v1.CancelTimerEffect
+	77,  // 160: remoteagent.core.v1.Effect.cache_read:type_name -> remoteagent.core.v1.CacheReadEffect
+	80,  // 161: remoteagent.core.v1.Effect.cache_write:type_name -> remoteagent.core.v1.CacheWriteEffect
+	81,  // 162: remoteagent.core.v1.Effect.cache_delete:type_name -> remoteagent.core.v1.CacheDeleteEffect
+	89,  // 163: remoteagent.core.v1.Effect.rpc:type_name -> remoteagent.core.v1.RpcEffect
+	90,  // 164: remoteagent.core.v1.Effect.dispatch_command:type_name -> remoteagent.core.v1.DispatchCommandEffect
+	91,  // 165: remoteagent.core.v1.Effect.save_home_scope:type_name -> remoteagent.core.v1.SaveHomeScopeEffect
+	92,  // 166: remoteagent.core.v1.Effect.navigate:type_name -> remoteagent.core.v1.NavigateEffect
+	93,  // 167: remoteagent.core.v1.Effect.attachments_settled:type_name -> remoteagent.core.v1.AttachmentsSettledEffect
+	94,  // 168: remoteagent.core.v1.Effect.request_entropy:type_name -> remoteagent.core.v1.RequestEntropyEffect
+	151, // 169: remoteagent.core.v1.Effect.schedule_machine_poll:type_name -> remoteagent.core.v1.ScheduleMachinePollEffect
+	152, // 170: remoteagent.core.v1.Effect.direct_preference:type_name -> remoteagent.core.v1.DirectPreferenceEffect
+	153, // 171: remoteagent.core.v1.Effect.rename_client:type_name -> remoteagent.core.v1.RenameClientEffect
+	154, // 172: remoteagent.core.v1.Effect.check_updates:type_name -> remoteagent.core.v1.CheckUpdatesEffect
+	155, // 173: remoteagent.core.v1.Effect.persist_client_prefs:type_name -> remoteagent.core.v1.PersistClientPrefsEffect
+	156, // 174: remoteagent.core.v1.Effect.prepare_cleanup_session:type_name -> remoteagent.core.v1.PrepareCleanupSessionEffect
+	157, // 175: remoteagent.core.v1.Effect.session_restore_composer:type_name -> remoteagent.core.v1.SessionRestoreComposerEffect
+	95,  // 176: remoteagent.core.v1.EffectBatch.effects:type_name -> remoteagent.core.v1.Effect
+	177, // [177:177] is the sub-list for method output_type
+	177, // [177:177] is the sub-list for method input_type
+	177, // [177:177] is the sub-list for extension type_name
+	177, // [177:177] is the sub-list for extension extendee
+	0,   // [0:177] is the sub-list for field type_name
 }
 
 func init() { file_remoteagent_core_v1_app_proto_init() }
@@ -9137,6 +9333,7 @@ func file_remoteagent_core_v1_app_proto_init() {
 	file_remoteagent_core_v1_new_session_view_proto_init()
 	file_remoteagent_core_v1_project_view_proto_init()
 	file_remoteagent_core_v1_settings_view_proto_init()
+	file_remoteagent_core_v1_session_view_proto_init()
 	file_remoteagent_core_v1_sync_view_proto_init()
 	file_remoteagent_core_v1_app_proto_msgTypes[5].OneofWrappers = []any{
 		(*Screen_Home)(nil),
@@ -9150,6 +9347,7 @@ func file_remoteagent_core_v1_app_proto_init() {
 		(*Screen_Quota)(nil),
 		(*Screen_Devices)(nil),
 		(*Screen_ClientDetail)(nil),
+		(*Screen_Session)(nil),
 	}
 	file_remoteagent_core_v1_app_proto_msgTypes[6].OneofWrappers = []any{
 		(*ViewModel_Home)(nil),
@@ -9163,6 +9361,7 @@ func file_remoteagent_core_v1_app_proto_init() {
 		(*ViewModel_Quota)(nil),
 		(*ViewModel_Devices)(nil),
 		(*ViewModel_ClientDetail)(nil),
+		(*ViewModel_Session)(nil),
 	}
 	file_remoteagent_core_v1_app_proto_msgTypes[25].OneofWrappers = []any{
 		(*StreamFrameEvent_Heartbeat)(nil),
@@ -9243,6 +9442,13 @@ func file_remoteagent_core_v1_app_proto_init() {
 		(*Event_ConnCheckStatus)(nil),
 		(*Event_ClientUpdateState)(nil),
 		(*Event_CheckForUpdates)(nil),
+		(*Event_SessionSubmitCommand)(nil),
+		(*Event_SessionAbandonCommand)(nil),
+		(*Event_SessionOpen)(nil),
+		(*Event_SessionDismissOutgoing)(nil),
+		(*Event_SessionRestoreOutgoing)(nil),
+		(*Event_SessionSetQuestionIndex)(nil),
+		(*Event_SessionLoadEarlier)(nil),
 	}
 	file_remoteagent_core_v1_app_proto_msgTypes[71].OneofWrappers = []any{
 		(*CacheReadEffect_Bootstrap)(nil),
@@ -9295,6 +9501,7 @@ func file_remoteagent_core_v1_app_proto_init() {
 		(*Effect_CheckUpdates)(nil),
 		(*Effect_PersistClientPrefs)(nil),
 		(*Effect_PrepareCleanupSession)(nil),
+		(*Effect_SessionRestoreComposer)(nil),
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{

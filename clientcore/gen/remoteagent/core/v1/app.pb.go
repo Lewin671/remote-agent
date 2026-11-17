@@ -63,6 +63,7 @@ const (
 	ScreenTarget_SCREEN_TARGET_QUOTA            ScreenTarget = 33
 	ScreenTarget_SCREEN_TARGET_DEVICES          ScreenTarget = 34
 	ScreenTarget_SCREEN_TARGET_CLIENT_DETAIL    ScreenTarget = 35
+	ScreenTarget_SCREEN_TARGET_SESSION          ScreenTarget = 10
 )
 
 type CommandRouteHint int32
@@ -452,6 +453,10 @@ type Screen_ClientDetail struct{ ClientDetail *ClientDetailScreenRequest }
 
 func (*Screen_ClientDetail) isScreen_Screen() {}
 
+type Screen_Session struct{ Session *SessionScreenRequest }
+
+func (*Screen_Session) isScreen_Screen() {}
+
 func (m *Screen) Reset() {
 	if m != nil {
 		*m = Screen{}
@@ -530,6 +535,12 @@ func (m *Screen) GetClientDetail() *ClientDetailScreenRequest {
 	}
 	return nil
 }
+func (m *Screen) GetSession() *SessionScreenRequest {
+	if x, ok := m.GetScreen().(*Screen_Session); ok && x != nil {
+		return x.Session
+	}
+	return nil
+}
 
 func (m *Screen) Clone() *Screen {
 	if m == nil {
@@ -580,6 +591,10 @@ func (m *Screen) Clone() *Screen {
 	case *Screen_ClientDetail:
 		if v != nil {
 			cp.Screen = &Screen_ClientDetail{ClientDetail: v.ClientDetail.Clone()}
+		}
+	case *Screen_Session:
+		if v != nil {
+			cp.Screen = &Screen_Session{Session: v.Session.Clone()}
 		}
 	}
 	return &cp
@@ -658,6 +673,12 @@ func (m *Screen) AppendMarshal(b []byte) []byte {
 		if x != nil {
 			if x.ClientDetail != nil {
 				b = litewire.AppendBytesAlways(b, 35, x.ClientDetail.AppendMarshal(nil))
+			}
+		}
+	case *Screen_Session:
+		if x != nil {
+			if x.Session != nil {
+				b = litewire.AppendBytesAlways(b, 10, x.Session.AppendMarshal(nil))
 			}
 		}
 	}
@@ -880,6 +901,25 @@ func (m *Screen) Unmarshal(b []byte) error {
 				m.Screen = &Screen_ClientDetail{ClientDetail: sub}
 				continue
 			}
+		case 10:
+			if wtyp == protowire.BytesType {
+				raw, err := litewire.ReadBytesRaw(&b)
+				if err != nil {
+					return err
+				}
+				var sub *SessionScreenRequest
+				if cur, ok := m.Screen.(*Screen_Session); ok && cur != nil {
+					sub = cur.Session
+				}
+				if sub == nil {
+					sub = &SessionScreenRequest{}
+				}
+				if err := sub.Unmarshal(raw); err != nil {
+					return err
+				}
+				m.Screen = &Screen_Session{Session: sub}
+				continue
+			}
 		}
 		if err := litewire.Skip(&b, num, wtyp); err != nil {
 			return err
@@ -936,6 +976,10 @@ func (*ViewModel_Devices) isViewModel_View() {}
 type ViewModel_ClientDetail struct{ ClientDetail *ClientDetailViewModel }
 
 func (*ViewModel_ClientDetail) isViewModel_View() {}
+
+type ViewModel_Session struct{ Session *SessionViewModel }
+
+func (*ViewModel_Session) isViewModel_View() {}
 
 func (m *ViewModel) Reset() {
 	if m != nil {
@@ -1015,6 +1059,12 @@ func (m *ViewModel) GetClientDetail() *ClientDetailViewModel {
 	}
 	return nil
 }
+func (m *ViewModel) GetSession() *SessionViewModel {
+	if x, ok := m.GetView().(*ViewModel_Session); ok && x != nil {
+		return x.Session
+	}
+	return nil
+}
 
 func (m *ViewModel) Clone() *ViewModel {
 	if m == nil {
@@ -1065,6 +1115,10 @@ func (m *ViewModel) Clone() *ViewModel {
 	case *ViewModel_ClientDetail:
 		if v != nil {
 			cp.View = &ViewModel_ClientDetail{ClientDetail: v.ClientDetail.Clone()}
+		}
+	case *ViewModel_Session:
+		if v != nil {
+			cp.View = &ViewModel_Session{Session: v.Session.Clone()}
 		}
 	}
 	return &cp
@@ -1143,6 +1197,12 @@ func (m *ViewModel) AppendMarshal(b []byte) []byte {
 		if x != nil {
 			if x.ClientDetail != nil {
 				b = litewire.AppendBytesAlways(b, 35, x.ClientDetail.AppendMarshal(nil))
+			}
+		}
+	case *ViewModel_Session:
+		if x != nil {
+			if x.Session != nil {
+				b = litewire.AppendBytesAlways(b, 10, x.Session.AppendMarshal(nil))
 			}
 		}
 	}
@@ -1363,6 +1423,25 @@ func (m *ViewModel) Unmarshal(b []byte) error {
 					return err
 				}
 				m.View = &ViewModel_ClientDetail{ClientDetail: sub}
+				continue
+			}
+		case 10:
+			if wtyp == protowire.BytesType {
+				raw, err := litewire.ReadBytesRaw(&b)
+				if err != nil {
+					return err
+				}
+				var sub *SessionViewModel
+				if cur, ok := m.View.(*ViewModel_Session); ok && cur != nil {
+					sub = cur.Session
+				}
+				if sub == nil {
+					sub = &SessionViewModel{}
+				}
+				if err := sub.Unmarshal(raw); err != nil {
+					return err
+				}
+				m.View = &ViewModel_Session{Session: sub}
 				continue
 			}
 		}
@@ -7783,6 +7862,34 @@ type Event_CheckForUpdates struct{ CheckForUpdates *CheckForUpdatesEvent }
 
 func (*Event_CheckForUpdates) isEvent_Event() {}
 
+type Event_SessionSubmitCommand struct{ SessionSubmitCommand *SessionSubmitCommandAction }
+
+func (*Event_SessionSubmitCommand) isEvent_Event() {}
+
+type Event_SessionAbandonCommand struct{ SessionAbandonCommand *SessionSlotAction }
+
+func (*Event_SessionAbandonCommand) isEvent_Event() {}
+
+type Event_SessionOpen struct{ SessionOpen *SessionOpenAction }
+
+func (*Event_SessionOpen) isEvent_Event() {}
+
+type Event_SessionDismissOutgoing struct{ SessionDismissOutgoing *SessionOutgoingAction }
+
+func (*Event_SessionDismissOutgoing) isEvent_Event() {}
+
+type Event_SessionRestoreOutgoing struct{ SessionRestoreOutgoing *SessionOutgoingAction }
+
+func (*Event_SessionRestoreOutgoing) isEvent_Event() {}
+
+type Event_SessionSetQuestionIndex struct{ SessionSetQuestionIndex *SessionQuestionStepAction }
+
+func (*Event_SessionSetQuestionIndex) isEvent_Event() {}
+
+type Event_SessionLoadEarlier struct{ SessionLoadEarlier *SessionRefreshHistoryAction }
+
+func (*Event_SessionLoadEarlier) isEvent_Event() {}
+
 func (m *Event) Reset() {
 	if m != nil {
 		*m = Event{}
@@ -8197,6 +8304,48 @@ func (m *Event) GetCheckForUpdates() *CheckForUpdatesEvent {
 	}
 	return nil
 }
+func (m *Event) GetSessionSubmitCommand() *SessionSubmitCommandAction {
+	if x, ok := m.GetEvent().(*Event_SessionSubmitCommand); ok && x != nil {
+		return x.SessionSubmitCommand
+	}
+	return nil
+}
+func (m *Event) GetSessionAbandonCommand() *SessionSlotAction {
+	if x, ok := m.GetEvent().(*Event_SessionAbandonCommand); ok && x != nil {
+		return x.SessionAbandonCommand
+	}
+	return nil
+}
+func (m *Event) GetSessionOpen() *SessionOpenAction {
+	if x, ok := m.GetEvent().(*Event_SessionOpen); ok && x != nil {
+		return x.SessionOpen
+	}
+	return nil
+}
+func (m *Event) GetSessionDismissOutgoing() *SessionOutgoingAction {
+	if x, ok := m.GetEvent().(*Event_SessionDismissOutgoing); ok && x != nil {
+		return x.SessionDismissOutgoing
+	}
+	return nil
+}
+func (m *Event) GetSessionRestoreOutgoing() *SessionOutgoingAction {
+	if x, ok := m.GetEvent().(*Event_SessionRestoreOutgoing); ok && x != nil {
+		return x.SessionRestoreOutgoing
+	}
+	return nil
+}
+func (m *Event) GetSessionSetQuestionIndex() *SessionQuestionStepAction {
+	if x, ok := m.GetEvent().(*Event_SessionSetQuestionIndex); ok && x != nil {
+		return x.SessionSetQuestionIndex
+	}
+	return nil
+}
+func (m *Event) GetSessionLoadEarlier() *SessionRefreshHistoryAction {
+	if x, ok := m.GetEvent().(*Event_SessionLoadEarlier); ok && x != nil {
+		return x.SessionLoadEarlier
+	}
+	return nil
+}
 func (m *Event) GetNowMs() int64 {
 	if m != nil {
 		return m.NowMs
@@ -8495,6 +8644,34 @@ func (m *Event) Clone() *Event {
 	case *Event_CheckForUpdates:
 		if v != nil {
 			cp.Event = &Event_CheckForUpdates{CheckForUpdates: v.CheckForUpdates.Clone()}
+		}
+	case *Event_SessionSubmitCommand:
+		if v != nil {
+			cp.Event = &Event_SessionSubmitCommand{SessionSubmitCommand: v.SessionSubmitCommand.Clone()}
+		}
+	case *Event_SessionAbandonCommand:
+		if v != nil {
+			cp.Event = &Event_SessionAbandonCommand{SessionAbandonCommand: v.SessionAbandonCommand.Clone()}
+		}
+	case *Event_SessionOpen:
+		if v != nil {
+			cp.Event = &Event_SessionOpen{SessionOpen: v.SessionOpen.Clone()}
+		}
+	case *Event_SessionDismissOutgoing:
+		if v != nil {
+			cp.Event = &Event_SessionDismissOutgoing{SessionDismissOutgoing: v.SessionDismissOutgoing.Clone()}
+		}
+	case *Event_SessionRestoreOutgoing:
+		if v != nil {
+			cp.Event = &Event_SessionRestoreOutgoing{SessionRestoreOutgoing: v.SessionRestoreOutgoing.Clone()}
+		}
+	case *Event_SessionSetQuestionIndex:
+		if v != nil {
+			cp.Event = &Event_SessionSetQuestionIndex{SessionSetQuestionIndex: v.SessionSetQuestionIndex.Clone()}
+		}
+	case *Event_SessionLoadEarlier:
+		if v != nil {
+			cp.Event = &Event_SessionLoadEarlier{SessionLoadEarlier: v.SessionLoadEarlier.Clone()}
 		}
 	}
 	cp.RandomIds = slices.Clone(m.RandomIds)
@@ -8911,6 +9088,48 @@ func (m *Event) AppendMarshal(b []byte) []byte {
 		if x != nil {
 			if x.CheckForUpdates != nil {
 				b = litewire.AppendBytesAlways(b, 379, x.CheckForUpdates.AppendMarshal(nil))
+			}
+		}
+	case *Event_SessionSubmitCommand:
+		if x != nil {
+			if x.SessionSubmitCommand != nil {
+				b = litewire.AppendBytesAlways(b, 200, x.SessionSubmitCommand.AppendMarshal(nil))
+			}
+		}
+	case *Event_SessionAbandonCommand:
+		if x != nil {
+			if x.SessionAbandonCommand != nil {
+				b = litewire.AppendBytesAlways(b, 201, x.SessionAbandonCommand.AppendMarshal(nil))
+			}
+		}
+	case *Event_SessionOpen:
+		if x != nil {
+			if x.SessionOpen != nil {
+				b = litewire.AppendBytesAlways(b, 202, x.SessionOpen.AppendMarshal(nil))
+			}
+		}
+	case *Event_SessionDismissOutgoing:
+		if x != nil {
+			if x.SessionDismissOutgoing != nil {
+				b = litewire.AppendBytesAlways(b, 203, x.SessionDismissOutgoing.AppendMarshal(nil))
+			}
+		}
+	case *Event_SessionRestoreOutgoing:
+		if x != nil {
+			if x.SessionRestoreOutgoing != nil {
+				b = litewire.AppendBytesAlways(b, 204, x.SessionRestoreOutgoing.AppendMarshal(nil))
+			}
+		}
+	case *Event_SessionSetQuestionIndex:
+		if x != nil {
+			if x.SessionSetQuestionIndex != nil {
+				b = litewire.AppendBytesAlways(b, 205, x.SessionSetQuestionIndex.AppendMarshal(nil))
+			}
+		}
+	case *Event_SessionLoadEarlier:
+		if x != nil {
+			if x.SessionLoadEarlier != nil {
+				b = litewire.AppendBytesAlways(b, 206, x.SessionLoadEarlier.AppendMarshal(nil))
 			}
 		}
 	}
@@ -10207,6 +10426,139 @@ func (m *Event) Unmarshal(b []byte) error {
 					return err
 				}
 				m.Event = &Event_CheckForUpdates{CheckForUpdates: sub}
+				continue
+			}
+		case 200:
+			if wtyp == protowire.BytesType {
+				raw, err := litewire.ReadBytesRaw(&b)
+				if err != nil {
+					return err
+				}
+				var sub *SessionSubmitCommandAction
+				if cur, ok := m.Event.(*Event_SessionSubmitCommand); ok && cur != nil {
+					sub = cur.SessionSubmitCommand
+				}
+				if sub == nil {
+					sub = &SessionSubmitCommandAction{}
+				}
+				if err := sub.Unmarshal(raw); err != nil {
+					return err
+				}
+				m.Event = &Event_SessionSubmitCommand{SessionSubmitCommand: sub}
+				continue
+			}
+		case 201:
+			if wtyp == protowire.BytesType {
+				raw, err := litewire.ReadBytesRaw(&b)
+				if err != nil {
+					return err
+				}
+				var sub *SessionSlotAction
+				if cur, ok := m.Event.(*Event_SessionAbandonCommand); ok && cur != nil {
+					sub = cur.SessionAbandonCommand
+				}
+				if sub == nil {
+					sub = &SessionSlotAction{}
+				}
+				if err := sub.Unmarshal(raw); err != nil {
+					return err
+				}
+				m.Event = &Event_SessionAbandonCommand{SessionAbandonCommand: sub}
+				continue
+			}
+		case 202:
+			if wtyp == protowire.BytesType {
+				raw, err := litewire.ReadBytesRaw(&b)
+				if err != nil {
+					return err
+				}
+				var sub *SessionOpenAction
+				if cur, ok := m.Event.(*Event_SessionOpen); ok && cur != nil {
+					sub = cur.SessionOpen
+				}
+				if sub == nil {
+					sub = &SessionOpenAction{}
+				}
+				if err := sub.Unmarshal(raw); err != nil {
+					return err
+				}
+				m.Event = &Event_SessionOpen{SessionOpen: sub}
+				continue
+			}
+		case 203:
+			if wtyp == protowire.BytesType {
+				raw, err := litewire.ReadBytesRaw(&b)
+				if err != nil {
+					return err
+				}
+				var sub *SessionOutgoingAction
+				if cur, ok := m.Event.(*Event_SessionDismissOutgoing); ok && cur != nil {
+					sub = cur.SessionDismissOutgoing
+				}
+				if sub == nil {
+					sub = &SessionOutgoingAction{}
+				}
+				if err := sub.Unmarshal(raw); err != nil {
+					return err
+				}
+				m.Event = &Event_SessionDismissOutgoing{SessionDismissOutgoing: sub}
+				continue
+			}
+		case 204:
+			if wtyp == protowire.BytesType {
+				raw, err := litewire.ReadBytesRaw(&b)
+				if err != nil {
+					return err
+				}
+				var sub *SessionOutgoingAction
+				if cur, ok := m.Event.(*Event_SessionRestoreOutgoing); ok && cur != nil {
+					sub = cur.SessionRestoreOutgoing
+				}
+				if sub == nil {
+					sub = &SessionOutgoingAction{}
+				}
+				if err := sub.Unmarshal(raw); err != nil {
+					return err
+				}
+				m.Event = &Event_SessionRestoreOutgoing{SessionRestoreOutgoing: sub}
+				continue
+			}
+		case 205:
+			if wtyp == protowire.BytesType {
+				raw, err := litewire.ReadBytesRaw(&b)
+				if err != nil {
+					return err
+				}
+				var sub *SessionQuestionStepAction
+				if cur, ok := m.Event.(*Event_SessionSetQuestionIndex); ok && cur != nil {
+					sub = cur.SessionSetQuestionIndex
+				}
+				if sub == nil {
+					sub = &SessionQuestionStepAction{}
+				}
+				if err := sub.Unmarshal(raw); err != nil {
+					return err
+				}
+				m.Event = &Event_SessionSetQuestionIndex{SessionSetQuestionIndex: sub}
+				continue
+			}
+		case 206:
+			if wtyp == protowire.BytesType {
+				raw, err := litewire.ReadBytesRaw(&b)
+				if err != nil {
+					return err
+				}
+				var sub *SessionRefreshHistoryAction
+				if cur, ok := m.Event.(*Event_SessionLoadEarlier); ok && cur != nil {
+					sub = cur.SessionLoadEarlier
+				}
+				if sub == nil {
+					sub = &SessionRefreshHistoryAction{}
+				}
+				if err := sub.Unmarshal(raw); err != nil {
+					return err
+				}
+				m.Event = &Event_SessionLoadEarlier{SessionLoadEarlier: sub}
 				continue
 			}
 		case 98:
@@ -13443,6 +13795,10 @@ type Effect_PrepareCleanupSession struct{ PrepareCleanupSession *PrepareCleanupS
 
 func (*Effect_PrepareCleanupSession) isEffect_Effect() {}
 
+type Effect_SessionRestoreComposer struct{ SessionRestoreComposer *SessionRestoreComposerEffect }
+
+func (*Effect_SessionRestoreComposer) isEffect_Effect() {}
+
 func (m *Effect) Reset() {
 	if m != nil {
 		*m = Effect{}
@@ -13593,6 +13949,12 @@ func (m *Effect) GetPrepareCleanupSession() *PrepareCleanupSessionEffect {
 	}
 	return nil
 }
+func (m *Effect) GetSessionRestoreComposer() *SessionRestoreComposerEffect {
+	if x, ok := m.GetEffect().(*Effect_SessionRestoreComposer); ok && x != nil {
+		return x.SessionRestoreComposer
+	}
+	return nil
+}
 
 func (m *Effect) Clone() *Effect {
 	if m == nil {
@@ -13691,6 +14053,10 @@ func (m *Effect) Clone() *Effect {
 	case *Effect_PrepareCleanupSession:
 		if v != nil {
 			cp.Effect = &Effect_PrepareCleanupSession{PrepareCleanupSession: v.PrepareCleanupSession.Clone()}
+		}
+	case *Effect_SessionRestoreComposer:
+		if v != nil {
+			cp.Effect = &Effect_SessionRestoreComposer{SessionRestoreComposer: v.SessionRestoreComposer.Clone()}
 		}
 	}
 	return &cp
@@ -13841,6 +14207,12 @@ func (m *Effect) AppendMarshal(b []byte) []byte {
 		if x != nil {
 			if x.PrepareCleanupSession != nil {
 				b = litewire.AppendBytesAlways(b, 75, x.PrepareCleanupSession.AppendMarshal(nil))
+			}
+		}
+	case *Effect_SessionRestoreComposer:
+		if x != nil {
+			if x.SessionRestoreComposer != nil {
+				b = litewire.AppendBytesAlways(b, 40, x.SessionRestoreComposer.AppendMarshal(nil))
 			}
 		}
 	}
@@ -14289,6 +14661,25 @@ func (m *Effect) Unmarshal(b []byte) error {
 					return err
 				}
 				m.Effect = &Effect_PrepareCleanupSession{PrepareCleanupSession: sub}
+				continue
+			}
+		case 40:
+			if wtyp == protowire.BytesType {
+				raw, err := litewire.ReadBytesRaw(&b)
+				if err != nil {
+					return err
+				}
+				var sub *SessionRestoreComposerEffect
+				if cur, ok := m.Effect.(*Effect_SessionRestoreComposer); ok && cur != nil {
+					sub = cur.SessionRestoreComposer
+				}
+				if sub == nil {
+					sub = &SessionRestoreComposerEffect{}
+				}
+				if err := sub.Unmarshal(raw); err != nil {
+					return err
+				}
+				m.Effect = &Effect_SessionRestoreComposer{SessionRestoreComposer: sub}
 				continue
 			}
 		}

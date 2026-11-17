@@ -420,6 +420,9 @@ private fun resolveUiMessage0(resources: android.content.res.Resources, message:
         "composer.insert_now" -> {
             resources.getString(R.string.composer_insert_now)
         }
+        "composer.ios_connect_send" -> {
+            resources.getString(R.string.composer_ios_connect_send)
+        }
         "composer.maybe_failure" -> {
             val reason = message.args.getValue("reason") as String
             resources.getString(R.string.composer_maybe_failure, reason)
@@ -503,16 +506,16 @@ private fun resolveUiMessage0(resources: android.content.res.Resources, message:
         "connection.android_retry_now" -> {
             resources.getString(R.string.connection_android_retry_now)
         }
-        "connection.android_server" -> {
-            val name = message.args.getValue("name") as String
-            resources.getString(R.string.connection_android_server, name)
-        }
         else -> null
     }
 }
 
 private fun resolveUiMessage1(resources: android.content.res.Resources, message: UiMessage): String? {
     return when (message.key) {
+        "connection.android_server" -> {
+            val name = message.args.getValue("name") as String
+            resources.getString(R.string.connection_android_server, name)
+        }
         "connection.android_server_failed" -> {
             val reason = message.args.getValue("reason") as String
             resources.getString(R.string.connection_android_server_failed, reason)
@@ -995,15 +998,15 @@ private fun resolveUiMessage1(resources: android.content.res.Resources, message:
         "errors.project_preferences_format_is_not_supported" -> {
             resources.getString(R.string.errors_project_preferences_format_is_not_supported)
         }
-        "errors.push_backlog_reconnecting" -> {
-            resources.getString(R.string.errors_push_backlog_reconnecting)
-        }
         else -> null
     }
 }
 
 private fun resolveUiMessage2(resources: android.content.res.Resources, message: UiMessage): String? {
     return when (message.key) {
+        "errors.push_backlog_reconnecting" -> {
+            resources.getString(R.string.errors_push_backlog_reconnecting)
+        }
         "errors.queued_records_could_not_be_restored_you_can_still" -> {
             resources.getString(R.string.errors_queued_records_could_not_be_restored_you_can_still)
         }
@@ -1497,15 +1500,15 @@ private fun resolveUiMessage2(resources: android.content.res.Resources, message:
         "image.android_restore_wait" -> {
             resources.getString(R.string.image_android_restore_wait)
         }
-        "image.android_restoring" -> {
-            resources.getString(R.string.image_android_restoring)
-        }
         else -> null
     }
 }
 
 private fun resolveUiMessage3(resources: android.content.res.Resources, message: UiMessage): String? {
     return when (message.key) {
+        "image.android_restoring" -> {
+            resources.getString(R.string.image_android_restoring)
+        }
         "image.android_rotate_to_the_capture_orientation_and_re_encode_at_maximum" -> {
             resources.getString(R.string.image_android_rotate_to_the_capture_orientation_and_re_encode_at_maximum)
         }
@@ -2008,16 +2011,16 @@ private fun resolveUiMessage3(resources: android.content.res.Resources, message:
             val size = message.args.getValue("size") as String
             resources.getString(R.string.machine_status_size_mb, size)
         }
-        "machine_status.stale_minutes" -> {
-            val count = message.args.getValue("count") as Int
-            resources.getQuantityString(R.plurals.machine_status_stale_minutes, count, count)
-        }
         else -> null
     }
 }
 
 private fun resolveUiMessage4(resources: android.content.res.Resources, message: UiMessage): String? {
     return when (message.key) {
+        "machine_status.stale_minutes" -> {
+            val count = message.args.getValue("count") as Int
+            resources.getQuantityString(R.plurals.machine_status_stale_minutes, count, count)
+        }
         "machine_status.stale_seconds" -> {
             val count = message.args.getValue("count") as Int
             resources.getQuantityString(R.plurals.machine_status_stale_seconds, count, count)
@@ -2534,15 +2537,15 @@ private fun resolveUiMessage4(resources: android.content.res.Resources, message:
         "notifications.android_background_push_is_disabled_in_this_build" -> {
             resources.getString(R.string.notifications_android_background_push_is_disabled_in_this_build)
         }
-        "notifications.android_cannot_reach_google_push_services_retrying_automatically_check_your_network" -> {
-            resources.getString(R.string.notifications_android_cannot_reach_google_push_services_retrying_automatically_check_your_network)
-        }
         else -> null
     }
 }
 
 private fun resolveUiMessage5(resources: android.content.res.Resources, message: UiMessage): String? {
     return when (message.key) {
+        "notifications.android_cannot_reach_google_push_services_retrying_automatically_check_your_network" -> {
+            resources.getString(R.string.notifications_android_cannot_reach_google_push_services_retrying_automatically_check_your_network)
+        }
         "notifications.android_could_not_read_the_account_open_the_app_to_continue" -> {
             resources.getString(R.string.notifications_android_could_not_read_the_account_open_the_app_to_continue)
         }
@@ -3046,17 +3049,17 @@ private fun resolveUiMessage5(resources: android.content.res.Resources, message:
             val detail = message.args.getValue("detail") as Int
             resources.getQuantityString(R.plurals.quota_resets_in_days_hr, count, count, detail)
         }
-        "quota.resets_in_hr_min" -> {
-            val count = message.args.getValue("count") as Int
-            val detail = message.args.getValue("detail") as String
-            resources.getQuantityString(R.plurals.quota_resets_in_hr_min, count, count, detail)
-        }
         else -> null
     }
 }
 
 private fun resolveUiMessage6(resources: android.content.res.Resources, message: UiMessage): String? {
     return when (message.key) {
+        "quota.resets_in_hr_min" -> {
+            val count = message.args.getValue("count") as Int
+            val detail = message.args.getValue("detail") as String
+            resources.getQuantityString(R.plurals.quota_resets_in_hr_min, count, count, detail)
+        }
         "quota.resets_in_min" -> {
             val count = message.args.getValue("count") as Int
             resources.getQuantityString(R.plurals.quota_resets_in_min, count, count)
@@ -3558,15 +3561,15 @@ private fun resolveUiMessage6(resources: android.content.res.Resources, message:
         "schedule.mark_all_as_read" -> {
             resources.getString(R.string.schedule_mark_all_as_read)
         }
-        "schedule.mark_as_read" -> {
-            resources.getString(R.string.schedule_mark_as_read)
-        }
         else -> null
     }
 }
 
 private fun resolveUiMessage7(resources: android.content.res.Resources, message: UiMessage): String? {
     return when (message.key) {
+        "schedule.mark_as_read" -> {
+            resources.getString(R.string.schedule_mark_as_read)
+        }
         "schedule.mark_as_unread" -> {
             resources.getString(R.string.schedule_mark_as_unread)
         }
@@ -4046,16 +4049,16 @@ private fun resolveUiMessage7(resources: android.content.res.Resources, message:
             val time = message.args.getValue("time") as String
             resources.getString(R.string.security_android_control_validity_advice, time)
         }
-        "security.android_could_not_read_security_operation_state_before_exiting_value1" -> {
-            val value1 = message.args.getValue("value1") as String
-            resources.getString(R.string.security_android_could_not_read_security_operation_state_before_exiting_value1, value1)
-        }
         else -> null
     }
 }
 
 private fun resolveUiMessage8(resources: android.content.res.Resources, message: UiMessage): String? {
     return when (message.key) {
+        "security.android_could_not_read_security_operation_state_before_exiting_value1" -> {
+            val value1 = message.args.getValue("value1") as String
+            resources.getString(R.string.security_android_could_not_read_security_operation_state_before_exiting_value1, value1)
+        }
         "security.android_create_account" -> {
             resources.getString(R.string.security_android_create_account)
         }
@@ -4507,15 +4510,15 @@ private fun resolveUiMessage8(resources: android.content.res.Resources, message:
         "security.compare_the_managing_client_s_4_patterns_if_they" -> {
             resources.getString(R.string.security_compare_the_managing_client_s_4_patterns_if_they)
         }
-        "security.complete_recovery" -> {
-            resources.getString(R.string.security_complete_recovery)
-        }
         else -> null
     }
 }
 
 private fun resolveUiMessage9(resources: android.content.res.Resources, message: UiMessage): String? {
     return when (message.key) {
+        "security.complete_recovery" -> {
+            resources.getString(R.string.security_complete_recovery)
+        }
         "security.completing_takeover_keep_this_page_in_the_foreground_and" -> {
             resources.getString(R.string.security_completing_takeover_keep_this_page_in_the_foreground_and)
         }
@@ -4970,15 +4973,15 @@ private fun resolveUiMessage9(resources: android.content.res.Resources, message:
         "security.the_other_device_refused_this_join_request" -> {
             resources.getString(R.string.security_the_other_device_refused_this_join_request)
         }
-        "security.the_page_is_paused_return_to_the_foreground_to" -> {
-            resources.getString(R.string.security_the_page_is_paused_return_to_the_foreground_to)
-        }
         else -> null
     }
 }
 
 private fun resolveUiMessage10(resources: android.content.res.Resources, message: UiMessage): String? {
     return when (message.key) {
+        "security.the_page_is_paused_return_to_the_foreground_to" -> {
+            resources.getString(R.string.security_the_page_is_paused_return_to_the_foreground_to)
+        }
         "security.the_pairing_code_belongs_to_another_security_domain_original" -> {
             resources.getString(R.string.security_the_pairing_code_belongs_to_another_security_domain_original)
         }
@@ -5313,6 +5316,14 @@ private fun resolveUiMessage10(resources: android.content.res.Resources, message
         "session.interrupted" -> {
             resources.getString(R.string.session_interrupted)
         }
+        "session.ios_turn_k_tokens" -> {
+            val count = message.args.getValue("count") as Int
+            resources.getQuantityString(R.plurals.session_ios_turn_k_tokens, count, count)
+        }
+        "session.ios_turn_tokens" -> {
+            val count = message.args.getValue("count") as Int
+            resources.getQuantityString(R.plurals.session_ios_turn_tokens, count, count)
+        }
         "session.latest" -> {
             resources.getString(R.string.session_latest)
         }
@@ -5471,6 +5482,12 @@ private fun resolveUiMessage10(resources: android.content.res.Resources, message
         "session.skeleton" -> {
             resources.getString(R.string.session_skeleton)
         }
+        else -> null
+    }
+}
+
+private fun resolveUiMessage11(resources: android.content.res.Resources, message: UiMessage): String? {
+    return when (message.key) {
         "session.split" -> {
             resources.getString(R.string.session_split)
         }
@@ -5482,12 +5499,6 @@ private fun resolveUiMessage10(resources: android.content.res.Resources, message
         "session.switch_after_turn" -> {
             resources.getString(R.string.session_switch_after_turn)
         }
-        else -> null
-    }
-}
-
-private fun resolveUiMessage11(resources: android.content.res.Resources, message: UiMessage): String? {
-    return when (message.key) {
         "session.switch_connected" -> {
             resources.getString(R.string.session_switch_connected)
         }
@@ -5517,6 +5528,9 @@ private fun resolveUiMessage11(resources: android.content.res.Resources, message
         "session.thinking" -> {
             resources.getString(R.string.session_thinking)
         }
+        "session.title" -> {
+            resources.getString(R.string.session_title)
+        }
         "session.title_label" -> {
             resources.getString(R.string.session_title_label)
         }
@@ -5529,6 +5543,10 @@ private fun resolveUiMessage11(resources: android.content.res.Resources, message
         "session.turn_duration" -> {
             val duration = message.args.getValue("duration") as String
             resources.getString(R.string.session_turn_duration, duration)
+        }
+        "session.turn_error" -> {
+            val reason = message.args.getValue("reason") as String
+            resources.getString(R.string.session_turn_error, reason)
         }
         "session.update_computer" -> {
             resources.getString(R.string.session_update_computer)
@@ -5958,6 +5976,12 @@ private fun resolveUiMessage11(resources: android.content.res.Resources, message
         "settings.default_approval_mode" -> {
             resources.getString(R.string.settings_default_approval_mode)
         }
+        else -> null
+    }
+}
+
+private fun resolveUiMessage12(resources: android.content.res.Resources, message: UiMessage): String? {
+    return when (message.key) {
         "settings.default_reasoning_effort" -> {
             resources.getString(R.string.settings_default_reasoning_effort)
         }
@@ -5973,12 +5997,6 @@ private fun resolveUiMessage11(resources: android.content.res.Resources, message
         "settings.devices" -> {
             resources.getString(R.string.settings_devices)
         }
-        else -> null
-    }
-}
-
-private fun resolveUiMessage12(resources: android.content.res.Resources, message: UiMessage): String? {
-    return when (message.key) {
         "settings.enable" -> {
             resources.getString(R.string.settings_enable)
         }
@@ -6450,6 +6468,12 @@ private fun resolveUiMessage12(resources: android.content.res.Resources, message
         "terminal.disconnected" -> {
             resources.getString(R.string.terminal_disconnected)
         }
+        else -> null
+    }
+}
+
+private fun resolveUiMessage13(resources: android.content.res.Resources, message: UiMessage): String? {
+    return when (message.key) {
         "terminal.down" -> {
             resources.getString(R.string.terminal_down)
         }
@@ -6465,12 +6489,6 @@ private fun resolveUiMessage12(resources: android.content.res.Resources, message
         "terminal.fit_short" -> {
             resources.getString(R.string.terminal_fit_short)
         }
-        else -> null
-    }
-}
-
-private fun resolveUiMessage13(resources: android.content.res.Resources, message: UiMessage): String? {
-    return when (message.key) {
         "terminal.fitted_size" -> {
             val cols = message.args.getValue("cols") as Int
             val rows = message.args.getValue("rows") as Int

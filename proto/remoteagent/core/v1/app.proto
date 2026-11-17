@@ -7,6 +7,7 @@ import "remoteagent/core/v1/machine_view.proto";
 import "remoteagent/core/v1/new_session_view.proto";
 import "remoteagent/core/v1/project_view.proto";
 import "remoteagent/core/v1/settings_view.proto";
+import "remoteagent/core/v1/session_view.proto";
 import "remoteagent/core/v1/sync_view.proto";
 import "remoteagent/v1/event.proto";
 import "remoteagent/v1/local.proto";
@@ -50,6 +51,7 @@ message Screen {
     QuotaScreenRequest quota = 33;
     DevicesScreenRequest devices = 34;
     ClientDetailScreenRequest client_detail = 35;
+    SessionScreenRequest session = 10;
   }
 }
 
@@ -68,6 +70,7 @@ message ViewModel {
     QuotaViewModel quota = 33;
     DevicesViewModel devices = 34;
     ClientDetailViewModel client_detail = 35;
+    SessionViewModel session = 10;
   }
 }
 
@@ -530,6 +533,13 @@ message Event {
     ConnCheckStatusEvent conn_check_status = 377;
     ClientUpdateStateEvent client_update_state = 378;
     CheckForUpdatesEvent check_for_updates = 379;
+    SessionSubmitCommandAction session_submit_command = 200;
+    SessionSlotAction session_abandon_command = 201;
+    SessionOpenAction session_open = 202;
+    SessionOutgoingAction session_dismiss_outgoing = 203;
+    SessionOutgoingAction session_restore_outgoing = 204;
+    SessionQuestionStepAction session_set_question_index = 205;
+    SessionRefreshHistoryAction session_load_earlier = 206;
   }
   int64 now_ms = 98;
   int64 mono_ms = 99;
@@ -552,6 +562,7 @@ enum ScreenTarget {
   SCREEN_TARGET_QUOTA = 33;
   SCREEN_TARGET_DEVICES = 34;
   SCREEN_TARGET_CLIENT_DETAIL = 35;
+  SCREEN_TARGET_SESSION = 10;
 }
 
 message RenderEffect {
@@ -770,6 +781,7 @@ message Effect {
     CheckUpdatesEffect check_updates = 73;
     PersistClientPrefsEffect persist_client_prefs = 74;
     PrepareCleanupSessionEffect prepare_cleanup_session = 75;
+    SessionRestoreComposerEffect session_restore_composer = 40;
   }
 }
 
