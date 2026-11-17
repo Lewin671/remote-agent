@@ -1116,6 +1116,41 @@ class DirectTransportTest {
     }
 
     @Test
+    fun routerDualReturnsFastWinnerWithoutWaitingForStuckLosingLeg() = runBlocking {
+        val router = Router(
+            object : Path {
+                override fun status(machineId: String) = PeerState(ready = true, reachable = true, authorized = true, unlinked = false, relayRequired = false)
+                override fun attempt(handoff: () -> Unit): PathAttempt = throw UnsupportedOperationException()
+                override fun openStream(address: String, listener: FrameListener): FrameStream = throw UnsupportedOperationException()
+            },
+        )
+        val stuckEntered = CompletableDeferred<Unit>()
+        val stuckRelease = CompletableDeferred<Unit>()
+        try {
+            val got = kotlinx.coroutines.withContext(Dispatchers.IO) {
+                withTimeout(400) {
+                    router.dual(
+                        primary = {
+                            stuckEntered.await()
+                            DualLegResult.Trusted("fast-direct")
+                        },
+                        fallback = {
+                            stuckEntered.complete(Unit)
+                            // Simulate non-interruptible blocking I/O (e.g., DNS lookup).
+                            Thread.sleep(1_500)
+                            stuckRelease.complete(Unit)
+                            DualLegResult.Trusted("late-relay")
+                        },
+                    )
+                }
+            }
+            assertEquals("fast-direct", got)
+        } finally {
+            stuckRelease.complete(Unit)
+        }
+    }
+
+    @Test
     fun dispatchCommandNeverReportsNotSentWhenDirectHandedOffAndRelayThrowsRuntimeException() = runBlocking {
         val server = TestServer()
         val http = Api.defaultHttp()

@@ -2,10 +2,13 @@ package io.github.lewin671.remoteagent.core.transport
 
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.launch
 
 internal sealed interface DualLegResult<out T> {
@@ -25,7 +28,16 @@ internal class Router(val path: Path) {
     suspend fun <T> dual(
         primary: suspend CoroutineScope.() -> DualLegResult<T>,
         fallback: suspend CoroutineScope.() -> DualLegResult<T>,
-    ): T = coroutineScope {
+    ): T {
+        val parentCtx = currentCoroutineContext()
+        // Run legs on an independent SupervisorJob so a stuck non-interruptible losing
+        // leg cannot delay returning a fast trusted winner, while still propagating
+        // caller cancellation downward.
+        val callScope = CoroutineScope(
+            parentCtx.minusKey(Job) +
+                SupervisorJob() +
+                CoroutineExceptionHandler { _, _ -> },
+        )
         val lock = Any()
         var settled = false
         var pending = 2
@@ -63,7 +75,7 @@ internal class Router(val path: Path) {
             }
         }
 
-        primaryJob = launch(start = CoroutineStart.LAZY) {
+        primaryJob = callScope.launch(start = CoroutineStart.LAZY) {
             val res = try {
                 primary()
             } catch (e: CancellationException) {
@@ -74,7 +86,7 @@ internal class Router(val path: Path) {
             }
             finish(isPrimary = true, res)
         }
-        fallbackJob = launch(start = CoroutineStart.LAZY) {
+        fallbackJob = callScope.launch(start = CoroutineStart.LAZY) {
             val res = try {
                 fallback()
             } catch (e: CancellationException) {
@@ -85,14 +97,16 @@ internal class Router(val path: Path) {
             }
             finish(isPrimary = false, res)
         }
+        val parentHandle = parentCtx[Job]?.invokeOnCompletion { cause ->
+            callScope.cancel(cause as? CancellationException ?: CancellationException("Parent cancelled", cause))
+        }
         primaryJob.start()
         fallbackJob.start()
-        try {
+        return try {
             winner.await()
-        } catch (e: CancellationException) {
-            primaryJob.cancel()
-            fallbackJob.cancel()
-            throw e
+        } finally {
+            parentHandle?.dispose()
+            callScope.cancel()
         }
     }
 }
