@@ -18,20 +18,66 @@ on:
 permissions:
   contents: read
 
-# The three check and build jobs run side by side; R8 alone needs both cores
-# of a hosted runner, so sharing a job with lint and tests doubles its time.
+# Check and build jobs run side by side on the single commit resolved by source;
+# R8 alone needs both cores of a hosted runner, so sharing a job with lint and
+# tests doubles its time.
 jobs:
-  checks:
+  source:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 5
+    outputs:
+      commit: ${{ steps.resolve.outputs.commit }}
+      tag: ${{ steps.resolve.outputs.tag }}
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
-          ref: ${{ inputs.tag }}
+          fetch-depth: 0
+      - name: Resolve single source commit
+        id: resolve
+        env:
+          INPUT_TAG: ${{ inputs.tag }}
+        run: |
+          set -euo pipefail
+          if [ "$GITHUB_EVENT_NAME" = push ]; then
+            version=$(sed -n 's/^version=//p' version.properties)
+            tag="v$version"
+            [[ "$tag" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]
+            git fetch origin "refs/tags/$tag:refs/tags/$tag"
+            commit=$(git rev-parse HEAD)
+            tag_commit=$(git rev-parse "refs/tags/$tag^{commit}")
+            [ "$commit" = "$tag_commit" ] || {
+              echo "Tag $tag ($tag_commit) does not match pushed commit $commit" >&2
+              exit 1
+            }
+          elif [ -n "$INPUT_TAG" ]; then
+            tag="$INPUT_TAG"
+            [[ "$tag" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]
+            git fetch origin "refs/tags/$tag:refs/tags/$tag" main
+            commit=$(git rev-parse "refs/tags/$tag^{commit}")
+            git merge-base --is-ancestor "$commit" origin/main
+          else
+            tag=""
+            commit=$(git rev-parse HEAD)
+          fi
+          echo "commit=$commit" >> "$GITHUB_OUTPUT"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+
+  go-checks:
+    needs: source
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    outputs:
+      commit: ${{ steps.source.outputs.commit }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: ${{ needs.source.outputs.commit }}
+      - id: source
+        run: echo "commit=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
       - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
         with:
           go-version-file: go.mod
-          # Cached below under a key android-checks can restore.
+          # Cached below under a key sibling jobs and apk.yml can restore.
           cache: false
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
@@ -39,11 +85,7 @@ jobs:
             ~/go/pkg/mod
             ~/.cache/go-build
           key: go-${{ hashFiles('go.mod', 'go.sum') }}
-      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
-        with:
-          node-version: '24'
-      - name: Install pnpm
-        run: npm install --global pnpm@10.19.0
+          restore-keys: go-
       - name: Localized resources and new hardcoded text
         run: |
           python3 scripts/i18n.py generate --check
@@ -57,27 +99,19 @@ jobs:
           (cd clientcore && go test -count=1 ./...)
       - name: Check reachable Go vulnerabilities
         run: go run golang.org/x/vuln/cmd/govulncheck@v1.8.0 ./...
-      - name: Web tests and build
-        working-directory: web
-        env:
-          RA_OFFICIAL_RELEASE: 'true'
-          VITE_DEFAULT_SERVER: https://ra.remote-agent.top
-        run: |
-          pnpm install --frozen-lockfile
-          pnpm test
-          pnpm build
 
-  # What other people deploy from: the daemon and the server for each
-  # platform and the web client, built with nothing of our deployment in them.
-  dist:
+  web-checks:
+    needs: source
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    outputs:
+      commit: ${{ steps.source.outputs.commit }}
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
-          ref: ${{ inputs.tag }}
-          # scripts/build-go.sh names a build by its tag only when it has the tags.
-          fetch-depth: 0
+          ref: ${{ needs.source.outputs.commit }}
+      - id: source
+        run: echo "commit=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
       - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
         with:
           go-version-file: go.mod
@@ -88,11 +122,84 @@ jobs:
             ~/go/pkg/mod
             ~/.cache/go-build
           key: go-${{ hashFiles('go.mod', 'go.sum') }}
+          restore-keys: go-
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
           node-version: '24'
       - name: Install pnpm
-        run: npm install --global pnpm@10.19.0
+        run: |
+          npm install --global pnpm@10.19.0
+          echo "PNPM_STORE_PATH=$(pnpm store path --silent)" >> "$GITHUB_ENV"
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ env.PNPM_STORE_PATH }}
+          key: pnpm-${{ runner.os }}-${{ hashFiles('web/pnpm-lock.yaml') }}
+          restore-keys: pnpm-${{ runner.os }}-
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        id: core-web-cache
+        with:
+          path: build/core/web
+          key: core-web-${{ runner.os }}-${{ hashFiles('clientcore/**', 'proto/**', 'scripts/core/build.sh', 'go.mod', 'go.sum') }}
+      - name: Refresh cached web core timestamp
+        if: steps.core-web-cache.outputs.cache-hit == 'true'
+        run: touch build/core/web/core.wasm
+      - name: Web tests and build
+        working-directory: web
+        env:
+          RA_OFFICIAL_RELEASE: 'true'
+          VITE_DEFAULT_SERVER: https://ra.remote-agent.top
+        run: |
+          pnpm install --frozen-lockfile --prefer-offline
+          pnpm test
+          pnpm build
+
+  # What other people deploy from: the daemon and the server for each
+  # platform and the web client, built with nothing of our deployment in them.
+  dist:
+    needs: source
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    outputs:
+      commit: ${{ steps.source.outputs.commit }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: ${{ needs.source.outputs.commit }}
+          # scripts/build-go.sh names a build by its tag only when it has the tags.
+          fetch-depth: 0
+      - id: source
+        run: echo "commit=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version-file: go.mod
+          cache: false
+      - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/go/pkg/mod
+            ~/.cache/go-build
+          key: go-${{ hashFiles('go.mod', 'go.sum') }}
+          restore-keys: go-
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '24'
+      - name: Install pnpm
+        run: |
+          npm install --global pnpm@10.19.0
+          echo "PNPM_STORE_PATH=$(pnpm store path --silent)" >> "$GITHUB_ENV"
+      - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ env.PNPM_STORE_PATH }}
+          key: pnpm-${{ runner.os }}-${{ hashFiles('web/pnpm-lock.yaml') }}
+          restore-keys: pnpm-${{ runner.os }}-
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        id: core-web-cache
+        with:
+          path: build/core/web
+          key: core-web-${{ runner.os }}-${{ hashFiles('clientcore/**', 'proto/**', 'scripts/core/build.sh', 'go.mod', 'go.sum') }}
+      - name: Refresh cached web core timestamp
+        if: steps.core-web-cache.outputs.cache-hit == 'true'
+        run: touch build/core/web/core.wasm
       - name: Build the archives
         env:
           RA_PUBLIC_DENY: ${{ secrets.RA_PUBLIC_DENY }}
@@ -113,12 +220,17 @@ jobs:
           if-no-files-found: error
 
   android-checks:
+    needs: source
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    outputs:
+      commit: ${{ steps.source.outputs.commit }}
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
-          ref: ${{ inputs.tag }}
+          ref: ${{ needs.source.outputs.commit }}
+      - id: source
+        run: echo "commit=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
       - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
         with:
           go-version-file: go.mod
@@ -130,10 +242,27 @@ jobs:
             ~/go/pkg/mod
             ~/.cache/go-build
           key: go-${{ hashFiles('go.mod', 'go.sum') }}
+          restore-keys: go-
       - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
         with:
           distribution: temurin
           java-version: '17'
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        id: core-android-cache
+        with:
+          path: build/core/android
+          key: core-android-${{ runner.os }}-${{ hashFiles('clientcore/**', 'proto/**', 'scripts/core/build.sh', 'go.mod', 'go.sum') }}
+      - name: Refresh cached Android core AAR timestamp
+        if: steps.core-android-cache.outputs.cache-hit == 'true'
+        run: touch build/core/android/corebind.aar
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        id: core-android-host-cache
+        with:
+          path: build/core/android-host
+          key: core-android-host-${{ runner.os }}-${{ hashFiles('clientcore/**', 'proto/**', 'scripts/core/build.sh', 'go.mod', 'go.sum') }}
+      - name: Refresh cached Android host JNI timestamp
+        if: steps.core-android-host-cache.outputs.cache-hit == 'true'
+        run: touch build/core/android-host/libgojni.so
       # Each Gradle job keeps its own cache: they resolve different
       # dependencies, and a shared key would keep only the first one saved.
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -147,7 +276,7 @@ jobs:
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.gradle/caches/build-cache-1
-          key: gradle-check-outputs-${{ runner.os }}-${{ hashFiles('android/**/*.gradle.kts', 'android/gradle.properties', 'android/gradle/**') }}-${{ github.sha }}
+          key: gradle-check-outputs-${{ runner.os }}-${{ hashFiles('android/**/*.gradle.kts', 'android/gradle.properties', 'android/gradle/**') }}-${{ needs.source.outputs.commit }}
           restore-keys: gradle-check-outputs-${{ runner.os }}-${{ hashFiles('android/**/*.gradle.kts', 'android/gradle.properties', 'android/gradle/**') }}-
       - name: Restore APK configuration
         env:
@@ -174,6 +303,7 @@ jobs:
         run: rm -rf "$HOME/.config/remote-agent" android/app/google-services.json
 
   android-build:
+    needs: source
     runs-on: ubuntu-latest
     timeout-minutes: 20
     outputs:
@@ -181,7 +311,7 @@ jobs:
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
-          ref: ${{ inputs.tag }}
+          ref: ${{ needs.source.outputs.commit }}
       - id: source
         run: echo "commit=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
       - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
@@ -194,10 +324,19 @@ jobs:
             ~/go/pkg/mod
             ~/.cache/go-build
           key: go-${{ hashFiles('go.mod', 'go.sum') }}
+          restore-keys: go-
       - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
         with:
           distribution: temurin
           java-version: '17'
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        id: core-android-cache
+        with:
+          path: build/core/android
+          key: core-android-${{ runner.os }}-${{ hashFiles('clientcore/**', 'proto/**', 'scripts/core/build.sh', 'go.mod', 'go.sum') }}
+      - name: Refresh cached Android core AAR timestamp
+        if: steps.core-android-cache.outputs.cache-hit == 'true'
+        run: touch build/core/android/corebind.aar
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: |
@@ -241,6 +380,8 @@ jobs:
           if [ "$(du -sm "$outputs" | cut -f1)" -gt 150 ]; then
             find "$outputs" -type f ! -newer "$RUNNER_TEMP/build-start" -delete
           fi
+      - name: Verify BouncyCastle JCA SPI in release APK
+        run: python3 scripts/verify_apk.py android/app/build/outputs/apk/release/app-release.apk
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: apk
@@ -252,12 +393,80 @@ jobs:
         if: always()
         run: rm -rf "$HOME/.config/remote-agent" android/app/google-services.json
 
+  ios-checks:
+    needs: source
+    runs-on: xcode-27
+    timeout-minutes: 25
+    outputs:
+      commit: ${{ steps.source.outputs.commit }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: ${{ needs.source.outputs.commit }}
+      - id: source
+        run: echo "commit=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version-file: go.mod
+          cache: false
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/go/pkg/mod
+            ~/.cache/go-build
+          key: go-${{ runner.os }}-${{ hashFiles('go.mod', 'go.sum', 'clientcore/go.mod', 'clientcore/go.sum') }}
+          restore-keys: go-${{ runner.os }}-
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        id: core-ios-cache
+        with:
+          path: build/core/ios
+          key: core-ios-${{ runner.os }}-${{ hashFiles('clientcore/**', 'proto/**', 'scripts/core/build.sh', 'go.mod', 'go.sum') }}
+      - name: Refresh cached Corebind timestamp
+        if: steps.core-ios-cache.outputs.cache-hit == 'true'
+        run: touch build/core/ios/Corebind.xcframework/Info.plist
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ios/RemoteAgentCore/.build
+          key: spm-core-${{ runner.os }}-${{ hashFiles('ios/RemoteAgentCore/Package.swift', 'ios/RemoteAgentCore/Package.resolved', 'clientcore/**', 'proto/**', 'scripts/core/build.sh', 'go.mod', 'go.sum') }}
+          restore-keys: spm-core-${{ runner.os }}-
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ runner.temp }}/SourcePackages
+          key: xcode-spm-${{ runner.os }}-${{ hashFiles('ios/RemoteAgentCore/Package.swift', 'ios/RemoteAgentCore/Package.resolved', 'ios/RemoteAgent.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved') }}
+          restore-keys: xcode-spm-${{ runner.os }}-
+      - name: Build Corebind.xcframework and validate localization
+        run: |
+          set -euo pipefail
+          python3 scripts/i18n.py generate --check
+          resources=$(mktemp -d)
+          trap 'rm -rf "$resources"' EXIT
+          xcrun xcstringstool compile ios/RemoteAgentCore/Localization/Localizable.xcstrings --output-directory "$resources"
+          scripts/core/build.sh ios
+      - name: Swift package tests (RACoreTests)
+        run: swift test --no-parallel --package-path ios/RemoteAgentCore --jobs 4
+      - name: App build and tests (RemoteAgentTests, excluding performance and UI tests)
+        run: |
+          set -euo pipefail
+          default="iPhone 18 Pro"
+          devices=$(xcrun simctl list devices available)
+          if printf '%s\n' "$devices" | grep -q "^ *$default ("; then
+            destination="platform=iOS Simulator,name=$default"
+          else
+            id=$(printf '%s\n' "$devices" | sed -n 's/^ *iPhone[^(]* (\([0-9A-F-]\{36\}\)) (Booted).*/\1/p' | head -n 1)
+            [ -n "$id" ] || id=$(printf '%s\n' "$devices" | sed -n 's/^ *iPhone[^(]* (\([0-9A-F-]\{36\}\)).*/\1/p' | head -n 1)
+            [ -n "$id" ] || { printf '%s\n' "$devices" >&2; exit 1; }
+            destination="platform=iOS Simulator,id=$id"
+          fi
+          xcodebuild -quiet -test-timeouts-enabled YES -default-test-execution-time-allowance 180 -maximum-test-execution-time-allowance 180 -collect-test-diagnostics never -parallel-testing-enabled NO -jobs 4 -project ios/RemoteAgent.xcodeproj -scheme RemoteAgent -destination "$destination" -clonedSourcePackagesDirPath "$RUNNER_TEMP/SourcePackages" -only-testing:RemoteAgentTests -skip-testing:RemoteAgentTests/ToolExpansionPerformanceTests SWIFT_COMPILATION_MODE=wholemodule test
+
   publish:
-    needs: [checks, android-checks, android-build, dist]
+    needs: [source, go-checks, web-checks, android-checks, android-build, dist, ios-checks]
     if: >-
       ${{ !cancelled() && (github.event_name == 'push' || inputs.tag != '') &&
-          needs.checks.result == 'success' && needs.android-checks.result == 'success' &&
-          needs.android-build.result == 'success' && needs.dist.result == 'success' }}
+          needs.source.result == 'success' && needs.go-checks.result == 'success' &&
+          needs.web-checks.result == 'success' && needs.android-checks.result == 'success' &&
+          needs.android-build.result == 'success' && needs.dist.result == 'success' &&
+          needs.ios-checks.result == 'success' }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -273,7 +482,7 @@ jobs:
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
-          ref: ${{ inputs.tag }}
+          ref: ${{ needs.source.outputs.commit }}
           fetch-depth: 0
       # The workflow's publishing tools, even when the product checkout is
       # an older tag. A retry must use the repaired publisher and scanner.
@@ -284,11 +493,17 @@ jobs:
           persist-credentials: false
       - name: Publishing policy tests
         run: python3 -m unittest discover -s release-tools/scripts -p '*_test.py'
-      - name: Validate shared version and skip published releases
+      - name: Validate shared version, artifact origin and skip published releases
         id: plan
         env:
-          TAG_INPUT: ${{ inputs.tag }}
-          BUILT_COMMIT: ${{ needs.android-build.outputs.commit }}
+          TAG_INPUT: ${{ needs.source.outputs.tag }}
+          SOURCE_COMMIT: ${{ needs.source.outputs.commit }}
+          GO_CHECKS_COMMIT: ${{ needs.go-checks.outputs.commit }}
+          WEB_CHECKS_COMMIT: ${{ needs.web-checks.outputs.commit }}
+          ANDROID_CHECKS_COMMIT: ${{ needs.android-checks.outputs.commit }}
+          ANDROID_BUILD_COMMIT: ${{ needs.android-build.outputs.commit }}
+          DIST_COMMIT: ${{ needs.dist.outputs.commit }}
+          IOS_CHECKS_COMMIT: ${{ needs.ios-checks.outputs.commit }}
         run: |
           RELEASE_TAG=${TAG_INPUT:-v$(sed -n 's/^version=//p' version.properties)}
           [[ "$RELEASE_TAG" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]
@@ -297,7 +512,9 @@ jobs:
           # on main; no unvalidated tag is published.
           git merge-base --is-ancestor HEAD origin/main
           python3 scripts/release.py validate "$RELEASE_TAG"
-          [ "$(git rev-parse HEAD)" = "$BUILT_COMMIT" ]
+          for built_commit in "$SOURCE_COMMIT" "$GO_CHECKS_COMMIT" "$WEB_CHECKS_COMMIT" "$ANDROID_CHECKS_COMMIT" "$ANDROID_BUILD_COMMIT" "$DIST_COMMIT" "$IOS_CHECKS_COMMIT"; do
+            [ "$(git rev-parse HEAD)" = "$built_commit" ]
+          done
           if gh release view "$RELEASE_TAG" --json isDraft --jq '.isDraft' > "$RUNNER_TEMP/is-draft"; then
             if [ "$(cat "$RUNNER_TEMP/is-draft")" = false ]; then
               echo 'skip=true' >> "$GITHUB_OUTPUT"
@@ -317,11 +534,24 @@ jobs:
         with:
           name: dist
           path: dist
-      - name: Package immutable release assets
+      - name: Verify release APK and package immutable release assets
         if: steps.plan.outputs.skip != 'true'
         env:
           RA_PUBLIC_DENY: ${{ secrets.RA_PUBLIC_DENY }}
+          SOURCE_COMMIT: ${{ needs.source.outputs.commit }}
         run: |
+          python3 release-tools/scripts/verify_apk.py android/app/build/outputs/apk/release/app-release.apk
+          check=$(mktemp -d)
+          tar -xzf "dist/remote-agent-$RELEASE_TAG-linux-amd64.tar.gz" -C "$check"
+          built=$("$check/remote-agent-$RELEASE_TAG-linux-amd64/remote-agent" --version)
+          rm -rf "$check"
+          case $built in
+            "remote-agent ${RELEASE_TAG#v} ($SOURCE_COMMIT)"*) ;;
+            *)
+              echo "dist binary commit mismatch: '$built' (expected $SOURCE_COMMIT)" >&2
+              exit 1
+              ;;
+          esac
           scripts/package-release.sh "$RELEASE_TAG"
       # The release is public: its notes are only the tag's user-facing
       # message. A draft is uploaded and checked file by file before it is

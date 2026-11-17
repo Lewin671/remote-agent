@@ -67,7 +67,7 @@ for f in web/.env*; do
 		exit 1
 	}
 done
-(cd web && pnpm install --frozen-lockfile --silent && env -u VITE_DEFAULT_SERVER -u VITE_SAME_ORIGIN_API RA_OFFICIAL_RELEASE=true pnpm build)
+(cd web && pnpm install --frozen-lockfile --prefer-offline --silent && env -u VITE_DEFAULT_SERVER -u VITE_SAME_ORIGIN_API RA_OFFICIAL_RELEASE=true pnpm build)
 cp -R web/dist "$stage/$name"
 scripts/notices.py web >"$stage/$name/licenses/THIRD_PARTY_NOTICES.txt"
 pack "$name"

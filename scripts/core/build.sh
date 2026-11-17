@@ -91,6 +91,18 @@ find_android_sdk() {
   fi
 }
 
+core_output_current() {
+  local ref="$1"
+  [[ "${RA_CORE_FORCE:-0}" != "1" ]] || return 1
+  [[ -s "$ref" ]] || return 1
+  [[ "$ROOT/scripts/core/build.sh" -nt "$ref" ]] && return 1
+  [[ "$ROOT/go.mod" -nt "$ref" ]] && return 1
+  [[ "$ROOT/go.sum" -nt "$ref" ]] && return 1
+  local newer
+  newer="$(find "$CORE_ROOT" "$ROOT/proto" -type f \( -name '*.go' -o -name '*.proto' -o -name 'go.mod' -o -name 'go.sum' \) -newer "$ref" | head -n 1)"
+  [[ -z "$newer" ]]
+}
+
 build_web() {
   local out="$OUT_ROOT/web"
   mkdir -p "$out"
@@ -104,10 +116,7 @@ build_web() {
     echo "wasm_exec.js not found under GOROOT=$goroot" >&2
     exit 1
   fi
-  if [[ -z "${RA_CORE_FORCE:-}" && -f "$out/core.wasm" && -f "$out/wasm_exec.js" ]] && \
-     cmp -s "$wasm_exec" "$out/wasm_exec.js" && \
-     [[ ! "$ROOT/scripts/core/build.sh" -nt "$out/core.wasm" ]] && \
-     [[ -z "$(find "$CORE_ROOT" -type f \( -name '*.go' -o -name 'go.mod' -o -name 'go.sum' \) -newer "$out/core.wasm" | head -n 1)" ]]; then
+  if core_output_current "$out/core.wasm" && [[ -f "$out/wasm_exec.js" ]] && cmp -s "$wasm_exec" "$out/wasm_exec.js"; then
     return 0
   fi
   (
@@ -119,9 +128,12 @@ build_web() {
 }
 
 build_android() {
+  local out="$OUT_ROOT/android"
+  if core_output_current "$out/corebind.aar"; then
+    return 0
+  fi
   ensure_gomobile_tools
   find_android_sdk
-  local out="$OUT_ROOT/android"
   mkdir -p "$out"
   local host_cc="${CC:-}"
   if [[ -z "$host_cc" && "$(uname -s)" == "Darwin" && -x /usr/bin/clang ]]; then
@@ -163,9 +175,7 @@ PY
 }
 
 build_android_host() {
-  ensure_gomobile_tools
   local java_home uname_s jni_os lib_name
-  java_home="$(find_java_home)"
   uname_s="$(uname -s)"
   case "$uname_s" in
     Darwin)
@@ -181,6 +191,12 @@ build_android_host() {
       exit 1
       ;;
   esac
+  local out="$OUT_ROOT/android-host"
+  if core_output_current "$out/$lib_name"; then
+    return 0
+  fi
+  ensure_gomobile_tools
+  java_home="$(find_java_home)"
   if [[ ! -d "$java_home/include/$jni_os" ]]; then
     echo "JNI platform headers not found under $java_home/include/$jni_os" >&2
     exit 1
@@ -260,7 +276,6 @@ with open(os.path.join(mod_dir, "go.mod"), "w", encoding="utf-8") as f:
 shutil.copy(os.path.join(core_root, "go.sum"), os.path.join(mod_dir, "go.sum"))
 PY
 
-  local out="$OUT_ROOT/android-host"
   mkdir -p "$out"
   local host_cc="${CC:-}"
   if [[ -z "$host_cc" && "$uname_s" == "Darwin" && -x /usr/bin/clang ]]; then
@@ -280,15 +295,10 @@ PY
 ios_up_to_date() {
   local xcf="$1"
   local plist="$xcf/Info.plist"
-  [[ "${RA_CORE_FORCE:-0}" != "1" ]] || return 1
-  [[ -f "$plist" ]] || return 1
+  core_output_current "$plist" || return 1
   [[ -f "$xcf/ios-arm64/Corebind.framework/Corebind" ]] || return 1
   [[ -f "$xcf/ios-arm64-simulator/Corebind.framework/Corebind" ]] || return 1
   [[ -f "$xcf/macos-arm64/Corebind.framework/Corebind" ]] || return 1
-  [[ "$ROOT/scripts/core/build.sh" -nt "$plist" ]] && return 1
-  local newer
-  newer="$(find "$CORE_ROOT" -type f \( -name '*.go' -o -name 'go.mod' -o -name 'go.sum' \) -newer "$plist" | head -n 1)"
-  [[ -z "$newer" ]]
 }
 
 build_ios() {
