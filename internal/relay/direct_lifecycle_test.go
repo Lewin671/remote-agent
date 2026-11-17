@@ -1336,3 +1336,70 @@ func TestDirectCoalescedInflightPayloadConflict(t *testing.T) {
 		t.Fatalf("expected empty inflight after owner completed, got %d", remaining)
 	}
 }
+
+func TestClaimInflightLockDropClaimsExecutionWhenPriorOwnerExitsPreAdmission(t *testing.T) {
+	ctx, cancel, ep, clientEndpoint, binding, execCount, blockEntered, blockRelease, sendRelease, sealCmd := setupDualAdmissionFixture(t)
+	defer cancel()
+	close(sendRelease)
+
+	blockerEnv := sealCmd("req-blocker-lockdrop-1", &pb.Command{ProtocolVersion: protocol.Version, Kind: &pb.Command_Interrupt{Interrupt: &pb.InterruptRequest{SessionId: "s-dual"}}})
+	go ep.dispatch(ctx, &pb.ForwardCall{CallId: 1, Command: blockerEnv}, func(*pb.ForwardReply) {})
+	<-blockEntered
+
+	sendEnv := sealCmd("req-lockdrop-11111111", &pb.Command{ProtocolVersion: protocol.Version, Kind: &pb.Command_Send{Send: &pb.SendRequest{SessionId: "s-dual", Text: "hello"}}})
+	var allowDirect atomic.Bool
+	allowDirect.Store(true)
+	directCh := make(chan *pb.ForwardReply, 1)
+	relayCh := make(chan *pb.ForwardReply, 1)
+
+	// Direct arrives first, claims inflight, and sits queued behind blockerEnv.
+	ep.dispatchDirect(ctx, binding, 1, allowDirect.Load, sendEnv, func(rep *pb.ForwardReply) { directCh <- rep })
+	deadline := time.Now().Add(2 * time.Second)
+	for time.Now().Before(deadline) {
+		ep.admission.mu.Lock()
+		n := len(ep.admission.inflight)
+		ep.admission.mu.Unlock()
+		if n == 1 {
+			break
+		}
+		time.Sleep(2 * time.Millisecond)
+	}
+
+	// Hook ReserveWaiter so while the second leg unlocks a.mu, Direct closes pre-admission,
+	// deleting a.inflight[key] with no durable admission in deviceauth.Endpoint.
+	origReserve := ep.admission.reserveWaiter
+	var hooked atomic.Bool
+	ep.admission.reserveWaiter = func(key string) (func(), bool) {
+		if hooked.CompareAndSwap(false, true) {
+			allowDirect.Store(false)
+			close(blockRelease)
+			cleared := false
+			for wDeadline := time.Now().Add(2 * time.Second); time.Now().Before(wDeadline); {
+				ep.admission.mu.Lock()
+				left := len(ep.admission.inflight)
+				ep.admission.mu.Unlock()
+				if left == 0 {
+					cleared = true
+					break
+				}
+				time.Sleep(2 * time.Millisecond)
+			}
+			if !cleared {
+				t.Errorf("direct owner did not clear a.inflight in time")
+			}
+		}
+		return origReserve(key)
+	}
+
+	ep.dispatch(ctx, &pb.ForwardCall{CallId: 2, Command: sendEnv}, func(rep *pb.ForwardReply) { relayCh <- rep })
+
+	select {
+	case rep := <-relayCh:
+		assertExecutedSendReply(t, clientEndpoint, rep)
+	case <-time.After(3 * time.Second):
+		t.Fatal("surviving relay leg did not complete")
+	}
+	if got := execCount.Load(); got != 1 {
+		t.Fatalf("expected 1 execution after claiming dropped inflight key, got %d", got)
+	}
+}

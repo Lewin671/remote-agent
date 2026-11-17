@@ -68,6 +68,7 @@ type pendingExecution struct {
 
 type commandAdmission struct {
 	authenticate    func(deviceauth.Wire) (*deviceauth.Authenticated, error)
+	reserveWaiter   func(string) (func(), bool)
 	endpoint        *endpoint
 	ctx             context.Context
 	cancel          context.CancelFunc
@@ -92,6 +93,7 @@ func (c *endpoint) admissionOwner() *commandAdmission {
 		a.authenticate = func(w deviceauth.Wire) (*deviceauth.Authenticated, error) {
 			return c.security.endpoint.Authenticate(w, nil, uint64(time.Now().UnixMilli()))
 		}
+		a.reserveWaiter = c.security.endpoint.ReserveWaiter
 		c.admission = a
 		c.r.scheduling.Store(a.scheduler)
 		for range 2 {
@@ -395,55 +397,86 @@ func (a *commandAdmission) watchInflight(waiting context.Context, pc *pendingExe
 }
 
 func (a *commandAdmission) claimInflight(waiting context.Context, route *callRoute, p *deviceauth.Authenticated, raw bool) (*pendingExecution, context.Context, bool) {
-	a.mu.Lock()
-	if a.closed || waiting.Err() != nil {
-		a.mu.Unlock()
-		return nil, nil, false
-	}
-	if pc := a.inflight[p.Key()]; pc != nil {
-		if pc.payload != p.Payload() {
-			a.mu.Unlock()
-			a.result(route, p, nil, p.Conflict(), false)
-			return nil, nil, false
-		}
-		a.mu.Unlock()
-		// Reserve against Endpoint's shared waiter table outside a.mu so e.mu -> a.mu lock order is never inverted.
-		releaseWaiter, ok := a.endpoint.security.endpoint.ReserveWaiter(p.Key())
-		if !ok {
-			a.result(route, p, nil, p.Decision("busy", deviceauth.ErrOutcomeUnknown), raw)
-			return nil, nil, false
-		}
+	for {
 		a.mu.Lock()
 		if a.closed || waiting.Err() != nil {
 			a.mu.Unlock()
-			releaseWaiter()
 			return nil, nil, false
 		}
-		pc = a.inflight[p.Key()]
-		if pc == nil {
-			a.mu.Unlock()
-			releaseWaiter()
-			if !a.existing(waiting, route, p) {
-				a.result(route, p, nil, p.Decision("outcome_unknown", deviceauth.ErrOutcomeUnknown), raw)
+		if pc := a.inflight[p.Key()]; pc != nil {
+			if pc.payload != p.Payload() {
+				a.mu.Unlock()
+				a.result(route, p, nil, p.Conflict(), false)
+				return nil, nil, false
 			}
-			return nil, nil, false
-		}
-		if pc.payload != p.Payload() {
 			a.mu.Unlock()
-			releaseWaiter()
-			a.result(route, p, nil, p.Conflict(), false)
-			return nil, nil, false
-		}
-		leg := &inflightLeg{waiting: waiting, binding: route.binding, allow: route.allow, active: true}
-		pc.legs = append(pc.legs, leg)
-		pc.waiters++
-		a.inflightWaiters++
-		pc.active++
-		a.mu.Unlock()
-		stop := a.watchInflight(waiting, pc)
-		timeout := min(max(time.Until(time.UnixMilli(int64(p.Header().Deadline))), 0), 30*time.Second)
-		if !a.endpoint.link.Run(func(runCtx context.Context) {
-			defer func() {
+			// Reserve against Endpoint's shared waiter table outside a.mu so e.mu -> a.mu lock order is never inverted.
+			releaseWaiter, ok := a.reserveWaiter(p.Key())
+			if !ok {
+				a.result(route, p, nil, p.Decision("busy", deviceauth.ErrOutcomeUnknown), raw)
+				return nil, nil, false
+			}
+			a.mu.Lock()
+			if a.closed || waiting.Err() != nil {
+				a.mu.Unlock()
+				releaseWaiter()
+				return nil, nil, false
+			}
+			pc = a.inflight[p.Key()]
+			if pc == nil {
+				a.mu.Unlock()
+				releaseWaiter()
+				if a.existing(waiting, route, p) {
+					return nil, nil, false
+				}
+				// Prior owner exited pre-admission without recording in Endpoint; retry to claim or join.
+				continue
+			}
+			if pc.payload != p.Payload() {
+				a.mu.Unlock()
+				releaseWaiter()
+				a.result(route, p, nil, p.Conflict(), false)
+				return nil, nil, false
+			}
+			leg := &inflightLeg{waiting: waiting, binding: route.binding, allow: route.allow, active: true}
+			pc.legs = append(pc.legs, leg)
+			pc.waiters++
+			a.inflightWaiters++
+			pc.active++
+			a.mu.Unlock()
+			stop := a.watchInflight(waiting, pc)
+			timeout := min(max(time.Until(time.UnixMilli(int64(p.Header().Deadline))), 0), 30*time.Second)
+			if !a.endpoint.link.Run(func(runCtx context.Context) {
+				defer func() {
+					stop()
+					releaseWaiter()
+					a.mu.Lock()
+					leg.active = false
+					pc.waiters--
+					a.inflightWaiters--
+					a.mu.Unlock()
+				}()
+				timer := time.NewTimer(timeout)
+				defer timer.Stop()
+				select {
+				case <-pc.done:
+					if pc.retry {
+						if !a.existing(waiting, route, p) {
+							a.result(route, p, nil, p.Decision("outcome_unknown", deviceauth.ErrOutcomeUnknown), raw)
+						}
+						return
+					}
+					a.result(route, p, bytes.Clone(pc.body), pc.err, pc.raw)
+				case <-waiting.Done():
+					a.result(route, p, nil, p.Decision("outcome_unknown", deviceauth.ErrOutcomeUnknown), raw)
+				case <-runCtx.Done():
+					a.result(route, p, nil, p.Decision("outcome_unknown", deviceauth.ErrOutcomeUnknown), raw)
+				case <-a.ctx.Done():
+					a.result(route, p, nil, p.Decision("outcome_unknown", deviceauth.ErrOutcomeUnknown), raw)
+				case <-timer.C:
+					a.result(route, p, nil, p.Decision("outcome_unknown", deviceauth.ErrOutcomeUnknown), raw)
+				}
+			}) {
 				stop()
 				releaseWaiter()
 				a.mu.Lock()
@@ -451,52 +484,24 @@ func (a *commandAdmission) claimInflight(waiting context.Context, route *callRou
 				pc.waiters--
 				a.inflightWaiters--
 				a.mu.Unlock()
-			}()
-			timer := time.NewTimer(timeout)
-			defer timer.Stop()
-			select {
-			case <-pc.done:
-				if pc.retry {
-					if !a.existing(waiting, route, p) {
-						a.result(route, p, nil, p.Decision("outcome_unknown", deviceauth.ErrOutcomeUnknown), raw)
-					}
-					return
-				}
-				a.result(route, p, bytes.Clone(pc.body), pc.err, pc.raw)
-			case <-waiting.Done():
-				a.result(route, p, nil, p.Decision("outcome_unknown", deviceauth.ErrOutcomeUnknown), raw)
-			case <-runCtx.Done():
-				a.result(route, p, nil, p.Decision("outcome_unknown", deviceauth.ErrOutcomeUnknown), raw)
-			case <-a.ctx.Done():
-				a.result(route, p, nil, p.Decision("outcome_unknown", deviceauth.ErrOutcomeUnknown), raw)
-			case <-timer.C:
-				a.result(route, p, nil, p.Decision("outcome_unknown", deviceauth.ErrOutcomeUnknown), raw)
 			}
-		}) {
-			stop()
-			releaseWaiter()
-			a.mu.Lock()
-			leg.active = false
-			pc.waiters--
-			a.inflightWaiters--
-			a.mu.Unlock()
+			return nil, nil, false
 		}
-		return nil, nil, false
+		waitCtx, cancel := context.WithCancel(a.ctx)
+		pc := &pendingExecution{
+			key:     p.Key(),
+			payload: p.Payload(),
+			raw:     raw,
+			done:    make(chan struct{}),
+			cancel:  cancel,
+			active:  1,
+			legs:    []*inflightLeg{{waiting: waiting, binding: route.binding, allow: route.allow, active: true}},
+		}
+		a.inflight[pc.key] = pc
+		a.mu.Unlock()
+		a.watchInflight(waiting, pc)
+		return pc, waitCtx, true
 	}
-	waitCtx, cancel := context.WithCancel(a.ctx)
-	pc := &pendingExecution{
-		key:     p.Key(),
-		payload: p.Payload(),
-		raw:     raw,
-		done:    make(chan struct{}),
-		cancel:  cancel,
-		active:  1,
-		legs:    []*inflightLeg{{waiting: waiting, binding: route.binding, allow: route.allow, active: true}},
-	}
-	a.inflight[pc.key] = pc
-	a.mu.Unlock()
-	a.watchInflight(waiting, pc)
-	return pc, waitCtx, true
 }
 
 func (a *commandAdmission) finishInflight(pc *pendingExecution, body []byte, err error, raw, retry bool) {
