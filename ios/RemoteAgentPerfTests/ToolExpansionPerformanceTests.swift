@@ -1,3 +1,4 @@
+import Foundation
 import RACore
 import RAProto
 import SwiftUI
@@ -42,8 +43,6 @@ import UIKit
 
     @Test(.timeLimit(.minutes(2)))
     func commandAndGroupComparedWithScrolling() async throws {
-        await WindowTestGate.shared.acquire()
-        defer { WindowTestGate.shared.release() }
         let tracker = ChatScrollTracker()
         let controller = ChatCollectionController(tracker: tracker)
         tracker.controller = controller

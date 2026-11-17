@@ -16,11 +16,12 @@
 # drive a simulator for minutes, stall when the machine is busy, and only tell
 # something new when the app's views or the tests themselves changed. Run
 # `check.sh ui` for those changes and before an App Store submission, one
-# simulator at a time; `check.sh full` is everything. `core` and `app` are for
+# simulator at a time; `check.sh perf` runs simulator frame-rate benchmarks;
+# `check.sh full` is everything except perf. `core` and `app` are for
 # iterating.
 set -u
 mode=${1:-std}
-case "$mode" in std|full|core|app|ui) ;; *) echo "usage: check.sh [core|app|ui|full]" >&2; exit 2 ;; esac
+case "$mode" in std|full|core|app|ui|perf) ;; *) echo "usage: check.sh [core|app|ui|perf|full]" >&2; exit 2 ;; esac
 
 ios=$(cd "$(dirname "$0")/.." && pwd)
 out=$(mktemp -t ra-ios-check)
@@ -80,11 +81,13 @@ fi
 # Component runs select tests explicitly; full keeps the complete scheme.
 # The test action builds its targets. A preceding build repeats the app build
 # action (including the always-run version stamp) without adding coverage.
+scheme=RemoteAgent
 set --
 case "$mode" in
     std|app) set -- -only-testing:RemoteAgentTests ;;
     ui) set -- -only-testing:RemoteAgentUITests ;;
+    perf) scheme=RemoteAgentPerfTests; set -- -only-testing:RemoteAgentPerfTests ;;
 esac
 [ -z "${IOS_DERIVED_DATA_PATH:-}" ] || set -- "$@" -derivedDataPath "$IOS_DERIVED_DATA_PATH"
-xcodebuild -quiet -test-timeouts-enabled YES -default-test-execution-time-allowance 180 -maximum-test-execution-time-allowance 180 -collect-test-diagnostics never -parallel-testing-enabled NO -jobs "${IOS_BUILD_JOBS:-4}" -project "$ios/RemoteAgent.xcodeproj" -scheme RemoteAgent -destination "$destination" "$@" SWIFT_COMPILATION_MODE=wholemodule test >"$out" 2>&1 \
+xcodebuild -quiet -test-timeouts-enabled YES -default-test-execution-time-allowance 180 -maximum-test-execution-time-allowance 180 -collect-test-diagnostics never -parallel-testing-enabled NO -jobs "${IOS_BUILD_JOBS:-4}" -project "$ios/RemoteAgent.xcodeproj" -scheme "$scheme" -destination "$destination" "$@" SWIFT_COMPILATION_MODE=wholemodule test >"$out" 2>&1 \
     || fail "the app did not build or its tests failed (xcodebuild build test, $destination)"

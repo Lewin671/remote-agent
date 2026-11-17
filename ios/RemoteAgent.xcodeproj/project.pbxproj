@@ -29,6 +29,7 @@
 /* Begin PBXFileReference section */
 		A20000000000000000000002 /* RemoteAgent.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = RemoteAgent.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A20000000000000000000003 /* RemoteAgentTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = RemoteAgentTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		C40000000000000000000003 /* RemoteAgentPerfTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = RemoteAgentPerfTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		B30000000000000000000002 /* RemoteAgentUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = RemoteAgentUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -57,6 +58,11 @@
 			path = RemoteAgentTests;
 			sourceTree = "<group>";
 		};
+		C40000000000000000000005 /* RemoteAgentPerfTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = RemoteAgentPerfTests;
+			sourceTree = "<group>";
+		};
 		B30000000000000000000004 /* RemoteAgentUITests */ = {isa = PBXFileSystemSynchronizedRootGroup; path = RemoteAgentUITests; sourceTree = "<group>"; };
 /* End PBXFileSystemSynchronizedRootGroup section */
 
@@ -82,6 +88,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		C40000000000000000000022 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		B30000000000000000000012 = {isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXFrameworksBuildPhase section */
 
@@ -91,6 +104,7 @@
 			children = (
 				A20000000000000000000004 /* RemoteAgent */,
 				A20000000000000000000005 /* RemoteAgentTests */,
+				C40000000000000000000005 /* RemoteAgentPerfTests */,
 				B30000000000000000000004 /* RemoteAgentUITests */,
 				A20000000000000000000008 /* Products */,
 			);
@@ -101,6 +115,7 @@
 			children = (
 				A20000000000000000000002 /* RemoteAgent.app */,
 				A20000000000000000000003 /* RemoteAgentTests.xctest */,
+				C40000000000000000000003 /* RemoteAgentPerfTests.xctest */,
 				B30000000000000000000002 /* RemoteAgentUITests.xctest */,
 			);
 			name = Products;
@@ -160,6 +175,27 @@
 			productReference = A20000000000000000000003 /* RemoteAgentTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
+		C40000000000000000000020 /* RemoteAgentPerfTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = C40000000000000000000061 /* Build configuration list for PBXNativeTarget "RemoteAgentPerfTests" */;
+			buildPhases = (
+				C40000000000000000000021 /* Sources */,
+				C40000000000000000000022 /* Frameworks */,
+				C40000000000000000000023 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				A20000000000000000000051 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				C40000000000000000000005 /* RemoteAgentPerfTests */,
+			);
+			name = RemoteAgentPerfTests;
+			productName = RemoteAgentPerfTests;
+			productReference = C40000000000000000000003 /* RemoteAgentPerfTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 		B30000000000000000000010 /* RemoteAgentUITests */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = B30000000000000000000060;
@@ -182,6 +218,9 @@
 				LastUpgradeCheck = 2700;
 				TargetAttributes = {
 					A20000000000000000000020 = {
+						TestTargetID = A20000000000000000000010;
+					};
+					C40000000000000000000020 = {
 						TestTargetID = A20000000000000000000010;
 					};
 				};
@@ -207,6 +246,7 @@
 			targets = (
 				A20000000000000000000010 /* RemoteAgent */,
 				A20000000000000000000020 /* RemoteAgentTests */,
+				C40000000000000000000020 /* RemoteAgentPerfTests */,
 				B30000000000000000000010 /* RemoteAgentUITests */,
 			);
 		};
@@ -221,6 +261,13 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		A20000000000000000000023 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		C40000000000000000000023 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -263,6 +310,13 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		A20000000000000000000021 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		C40000000000000000000021 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -392,6 +446,36 @@
 			};
 			name = Release;
 		};
+		C40000000000000000000074 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 0.0.0;
+				PRODUCT_BUNDLE_IDENTIFIER = io.github.lewin671.remoteagent.perftests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/RemoteAgent.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/RemoteAgent";
+			};
+			name = Debug;
+		};
+		C40000000000000000000075 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 0.0.0;
+				PRODUCT_BUNDLE_IDENTIFIER = io.github.lewin671.remoteagent.perftests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/RemoteAgent.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/RemoteAgent";
+			};
+			name = Release;
+		};
 		B30000000000000000000072 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -433,6 +517,15 @@
 			buildConfigurations = (
 				A20000000000000000000074 /* Debug */,
 				A20000000000000000000075 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		C40000000000000000000061 /* Build configuration list for PBXNativeTarget "RemoteAgentPerfTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				C40000000000000000000074 /* Debug */,
+				C40000000000000000000075 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

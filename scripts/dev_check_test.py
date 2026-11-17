@@ -63,7 +63,7 @@ with open(os.environ["RA_MODE_PROBE"], "a") as output:
                        IOS_DESTINATION="platform=iOS Simulator,id=isolated-device",
                        IOS_SWIFT_BUILD_PATH=str(root / "swift-cache"), IOS_DERIVED_DATA_PATH=str(root / "derived"),
                        RA_CORE_BUILD=str(root / "core-build"))
-            for mode in (None, "full", "core", "app", "ui"):
+            for mode in (None, "full", "core", "app", "ui", "perf"):
                 with self.subTest(mode=mode):
                     probe.unlink(missing_ok=True)
                     args = ["/bin/sh", str(ROOT / "ios/scripts/check.sh")]
@@ -89,8 +89,8 @@ with open(os.environ["RA_MODE_PROBE"], "a") as output:
                         native = next(call for call in calls if call["tool"] == "xcodebuild")
                         self.assertIn(str(root / "derived"), native["args"])
                         selected = [arg for arg in native["args"] if arg.startswith("-only-testing:")]
-                        # No argument is the delivery check: everything except UI automation.
-                        expected = {None: ["-only-testing:RemoteAgentTests"], "full": [], "app": ["-only-testing:RemoteAgentTests"], "ui": ["-only-testing:RemoteAgentUITests"]}[mode]
+                        # No argument is the delivery check: everything except UI automation and perf benchmarks.
+                        expected = {None: ["-only-testing:RemoteAgentTests"], "full": [], "app": ["-only-testing:RemoteAgentTests"], "ui": ["-only-testing:RemoteAgentUITests"], "perf": ["-only-testing:RemoteAgentPerfTests"]}[mode]
                         self.assertEqual(selected, expected)
 
 
