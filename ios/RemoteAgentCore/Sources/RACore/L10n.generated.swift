@@ -8199,6 +8199,30 @@ public enum L10n {
         let key = "tools_waiting_sync"
         return format(key, locale: locale, args: [])
     }
+    public static func transportDiag(locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportDiagCopy(locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_copy"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportDiagCopyFailed(locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_copy_failed"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportDiagFooter(locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_footer"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportDiagRetry(locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_retry"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportDiagVerdictNone(locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_verdict_none"
+        return format(key, locale: locale, args: [])
+    }
     public static func transportDirect(locale: String = MessageLocale.current) -> String {
         let key = "transport_direct"
         return format(key, locale: locale, args: [])
@@ -8235,10 +8259,6 @@ public enum L10n {
         let key = "transport_group"
         return format(key, locale: locale, args: [])
     }
-    public static func transportNotClearlyFaster(locale: String = MessageLocale.current) -> String {
-        let key = "transport_not_clearly_faster"
-        return format(key, locale: locale, args: [])
-    }
     public static func transportReadFallback(locale: String = MessageLocale.current) -> String {
         let key = "transport_read_fallback"
         return format(key, locale: locale, args: [])
@@ -8254,6 +8274,18 @@ public enum L10n {
     public static func transportReadLatencyRelay(relay: String, locale: String = MessageLocale.current) -> String {
         let key = "transport_read_latency_relay"
         return format(key, locale: locale, args: [relay])
+    }
+    public static func transportReasonAtCap(locale: String = MessageLocale.current) -> String {
+        let key = "transport_reason_at_cap"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportReasonChannelPending(locale: String = MessageLocale.current) -> String {
+        let key = "transport_reason_channel_pending"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportReasonDaemonDisabled(locale: String = MessageLocale.current) -> String {
+        let key = "transport_reason_daemon_disabled"
+        return format(key, locale: locale, args: [])
     }
     public static func transportReasonFailed(locale: String = MessageLocale.current) -> String {
         let key = "transport_reason_failed"
@@ -8271,8 +8303,12 @@ public enum L10n {
         let key = "transport_reason_peer_unsupported"
         return format(key, locale: locale, args: [])
     }
-    public static func transportRelayFaster(locale: String = MessageLocale.current) -> String {
-        let key = "transport_relay_faster"
+    public static func transportReasonSecurityPending(locale: String = MessageLocale.current) -> String {
+        let key = "transport_reason_security_pending"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportReasonStarting(locale: String = MessageLocale.current) -> String {
+        let key = "transport_reason_starting"
         return format(key, locale: locale, args: [])
     }
     public static func transportSpeedFile(locale: String = MessageLocale.current) -> String {
@@ -16503,6 +16539,30 @@ public enum L10nMessage {
         let key = "tools_waiting_sync"
         return LocalizedMessage(key: key, arguments: [])
     }
+    public static func transportDiag() -> LocalizedMessage {
+        let key = "transport_diag"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportDiagCopy() -> LocalizedMessage {
+        let key = "transport_diag_copy"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportDiagCopyFailed() -> LocalizedMessage {
+        let key = "transport_diag_copy_failed"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportDiagFooter() -> LocalizedMessage {
+        let key = "transport_diag_footer"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportDiagRetry() -> LocalizedMessage {
+        let key = "transport_diag_retry"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportDiagVerdictNone() -> LocalizedMessage {
+        let key = "transport_diag_verdict_none"
+        return LocalizedMessage(key: key, arguments: [])
+    }
     public static func transportDirect() -> LocalizedMessage {
         let key = "transport_direct"
         return LocalizedMessage(key: key, arguments: [])
@@ -16539,10 +16599,6 @@ public enum L10nMessage {
         let key = "transport_group"
         return LocalizedMessage(key: key, arguments: [])
     }
-    public static func transportNotClearlyFaster() -> LocalizedMessage {
-        let key = "transport_not_clearly_faster"
-        return LocalizedMessage(key: key, arguments: [])
-    }
     public static func transportReadFallback() -> LocalizedMessage {
         let key = "transport_read_fallback"
         return LocalizedMessage(key: key, arguments: [])
@@ -16558,6 +16614,18 @@ public enum L10nMessage {
     public static func transportReadLatencyRelay(relay: String) -> LocalizedMessage {
         let key = "transport_read_latency_relay"
         return LocalizedMessage(key: key, arguments: [.string(relay)])
+    }
+    public static func transportReasonAtCap() -> LocalizedMessage {
+        let key = "transport_reason_at_cap"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportReasonChannelPending() -> LocalizedMessage {
+        let key = "transport_reason_channel_pending"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportReasonDaemonDisabled() -> LocalizedMessage {
+        let key = "transport_reason_daemon_disabled"
+        return LocalizedMessage(key: key, arguments: [])
     }
     public static func transportReasonFailed() -> LocalizedMessage {
         let key = "transport_reason_failed"
@@ -16575,8 +16643,12 @@ public enum L10nMessage {
         let key = "transport_reason_peer_unsupported"
         return LocalizedMessage(key: key, arguments: [])
     }
-    public static func transportRelayFaster() -> LocalizedMessage {
-        let key = "transport_relay_faster"
+    public static func transportReasonSecurityPending() -> LocalizedMessage {
+        let key = "transport_reason_security_pending"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportReasonStarting() -> LocalizedMessage {
+        let key = "transport_reason_starting"
         return LocalizedMessage(key: key, arguments: [])
     }
     public static func transportSpeedFile() -> LocalizedMessage {
@@ -18815,6 +18887,12 @@ public enum L10nText {
         case "tools.ios_unconfirmed": return L10n.format("tools_ios_unconfirmed", locale: locale, args: [])
         case "tools.tool": return L10n.format("tools_tool", locale: locale, args: [])
         case "tools.waiting_sync": return L10n.format("tools_waiting_sync", locale: locale, args: [])
+        case "transport.diag": return L10n.format("transport_diag", locale: locale, args: [])
+        case "transport.diag_copy": return L10n.format("transport_diag_copy", locale: locale, args: [])
+        case "transport.diag_copy_failed": return L10n.format("transport_diag_copy_failed", locale: locale, args: [])
+        case "transport.diag_footer": return L10n.format("transport_diag_footer", locale: locale, args: [])
+        case "transport.diag_retry": return L10n.format("transport_diag_retry", locale: locale, args: [])
+        case "transport.diag_verdict_none": return L10n.format("transport_diag_verdict_none", locale: locale, args: [])
         case "transport.direct": return L10n.format("transport_direct", locale: locale, args: [])
         case "transport.direct_slow": return L10n.format("transport_direct_slow", locale: locale, args: [])
         case "transport.file_fallback": return L10n.format("transport_file_fallback", locale: locale, args: [])
@@ -18824,16 +18902,19 @@ public enum L10nText {
         case "transport.file_speed_relay": return L10n.format("transport_file_speed_relay", locale: locale, args: [strArg(args["relay"])])
         case "transport.footer": return L10n.format("transport_footer", locale: locale, args: [])
         case "transport.group": return L10n.format("transport_group", locale: locale, args: [])
-        case "transport.not_clearly_faster": return L10n.format("transport_not_clearly_faster", locale: locale, args: [])
         case "transport.read_fallback": return L10n.format("transport_read_fallback", locale: locale, args: [])
         case "transport.read_latency_both": return L10n.format("transport_read_latency_both", locale: locale, args: [strArg(args["direct"]), strArg(args["relay"])])
         case "transport.read_latency_direct": return L10n.format("transport_read_latency_direct", locale: locale, args: [strArg(args["direct"])])
         case "transport.read_latency_relay": return L10n.format("transport_read_latency_relay", locale: locale, args: [strArg(args["relay"])])
+        case "transport.reason_at_cap": return L10n.format("transport_reason_at_cap", locale: locale, args: [])
+        case "transport.reason_channel_pending": return L10n.format("transport_reason_channel_pending", locale: locale, args: [])
+        case "transport.reason_daemon_disabled": return L10n.format("transport_reason_daemon_disabled", locale: locale, args: [])
         case "transport.reason_failed": return L10n.format("transport_reason_failed", locale: locale, args: [])
         case "transport.reason_no_response": return L10n.format("transport_reason_no_response", locale: locale, args: [])
         case "transport.reason_no_traversal": return L10n.format("transport_reason_no_traversal", locale: locale, args: [])
         case "transport.reason_peer_unsupported": return L10n.format("transport_reason_peer_unsupported", locale: locale, args: [])
-        case "transport.relay_faster": return L10n.format("transport_relay_faster", locale: locale, args: [])
+        case "transport.reason_security_pending": return L10n.format("transport_reason_security_pending", locale: locale, args: [])
+        case "transport.reason_starting": return L10n.format("transport_reason_starting", locale: locale, args: [])
         case "transport.speed_file": return L10n.format("transport_speed_file", locale: locale, args: [])
         case "transport.speed_read": return L10n.format("transport_speed_read", locale: locale, args: [])
         case "transport.status_connecting": return L10n.format("transport_status_connecting", locale: locale, args: [])

@@ -21,6 +21,7 @@ in: remoteagent.core.v1.Screen
 in: remoteagent.core.v1.Event
 in: remoteagent.core.v1.EventBatch
 in: remoteagent.v1.LiveSnapshot
+in: remoteagent.core.v1.DirectViewsRequest
 
 # Core -> Shell (Size, AppendMarshal, Marshal)
 out: remoteagent.core.v1.ViewModel
@@ -28,6 +29,7 @@ out: remoteagent.core.v1.EffectBatch
 out: remoteagent.core.v1.Effect
 out: remoteagent.core.v1.ProjectionState
 out: remoteagent.v1.Command
+out: remoteagent.core.v1.DirectViewsResponse
 
 # Core internal .Clone() call sites (enforced by Go compiler)
 clone: remoteagent.core.v1.DirectRouteReport

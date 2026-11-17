@@ -4,6 +4,7 @@ import (
 	"errors"
 
 	"github.com/Lewin671/remote-agent/clientcore/app"
+	"github.com/Lewin671/remote-agent/clientcore/domain/machine"
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
 )
 
@@ -58,4 +59,19 @@ func (c *Core) Close() {
 		return
 	}
 	c.inner.Close()
+}
+
+// BuildDirectViews computes ConnectionGroupView and ConnCheckDirectRowView from a DirectViewsRequest protobuf.
+func BuildDirectViews(reqBytes []byte) ([]byte, error) {
+	var req corev1.DirectViewsRequest
+	if len(reqBytes) > 0 {
+		if err := req.Unmarshal(reqBytes); err != nil {
+			return nil, err
+		}
+	}
+	resp := &corev1.DirectViewsResponse{
+		Connection:      machine.BuildConnectionGroup(req.Online, req.PrefEnabled, req.Report),
+		ConnCheckDirect: machine.BuildConnCheckDirectRow(req.Online, req.PrefEnabled, req.Report),
+	}
+	return resp.Marshal()
 }

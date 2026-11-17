@@ -242,6 +242,7 @@
           {
             "render": {
               "screens": [
+                "SCREEN_TARGET_SETTINGS",
                 "SCREEN_TARGET_MACHINE_SETTINGS"
               ]
             }
@@ -1921,6 +1922,7 @@
           {
             "render": {
               "screens": [
+                "SCREEN_TARGET_SETTINGS",
                 "SCREEN_TARGET_MACHINE_SETTINGS"
               ]
             }

@@ -119,7 +119,22 @@ func (s *SettingsExtra) EnsureFeed(id string) *MachinePollFeed {
 	return f
 }
 
-func buildMachineListCards(st *State, machines []*lists.Machine, includeSummary bool) []*corev1.MachineListCardView {
+func machineDirectInputs(extra *SettingsExtra, machineID string) (bool, *corev1.DirectRouteReport) {
+	directPref := true
+	if extra == nil {
+		return directPref, nil
+	}
+	mExtra := extra.Machines[machineID]
+	if mExtra == nil {
+		return directPref, nil
+	}
+	if mExtra.DirectHasPref {
+		directPref = mExtra.DirectEnabled
+	}
+	return directPref, mExtra.DirectReport
+}
+
+func buildMachineListCards(st *State, machines []*lists.Machine, extra *SettingsExtra, includeSummary bool) []*corev1.MachineListCardView {
 	sorted := make([]*lists.Machine, 0, len(machines))
 	for _, m := range machines {
 		if m != nil {
@@ -162,6 +177,8 @@ func buildMachineListCards(st *State, machines []*lists.Machine, includeSummary 
 		}
 		if includeSummary {
 			card.QuotaSummaries = quota.MachineCardSummaries(m, st.Cal.NowMs)
+			directPref, directReport := machineDirectInputs(extra, m.ID)
+			card.DirectRow = machine.BuildConnCheckDirectRow(online && !unlinked, directPref, directReport)
 		}
 		out = append(out, card)
 	}
@@ -411,7 +428,7 @@ func BuildSettings(st *State, syncView *corev1.SyncStateView, extra *SettingsExt
 		AuthorityName:     authName,
 		RecoveryPending:   syncView.GetRecoveryPending(),
 		RecoveryReadyMs:   syncView.GetRecoveryReadyMs(),
-		Machines:          buildMachineListCards(st, st.World.Machines, true),
+		Machines:          buildMachineListCards(st, st.World.Machines, extra, true),
 		CanAddDevice:      isMgr && !unlinked,
 		RecentClients:     recent,
 		HasMoreClients:    hasMore,
@@ -514,14 +531,7 @@ func BuildMachineSettings(st *State, syncView *corev1.SyncStateView, extra *Sett
 
 	// Direct connection group
 	mExtra := extra.Machines[machineID]
-	directPref := true
-	var directReport *corev1.DirectRouteReport
-	if mExtra != nil {
-		if mExtra.DirectHasPref {
-			directPref = mExtra.DirectEnabled
-		}
-		directReport = mExtra.DirectReport
-	}
+	directPref, directReport := machineDirectInputs(extra, machineID)
 	vm.Connection = machine.BuildConnectionGroup(vm.Online && vm.Member, directPref, directReport)
 
 	// CLI versions
@@ -800,7 +810,7 @@ func BuildDevices(st *State, syncView *corev1.SyncStateView, extra *SettingsExtr
 		AuthorityDeviceId:  syncView.GetAuthorityDeviceId(),
 		AuthorityName:      authName,
 		CanAddDevice:       isMgr && !unlinked,
-		Computers:          buildMachineListCards(st, st.World.Machines, false),
+		Computers:          buildMachineListCards(st, st.World.Machines, extra, false),
 		Clients:            clients,
 		UnfinishedPairings: unfinished,
 	}

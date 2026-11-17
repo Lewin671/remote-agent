@@ -656,6 +656,7 @@ func (c *Core) dispatchSettingsUI(ctx *sync.StepContext, ev *corev1.Event) []*co
 		me.DirectEnabled = u.Enabled
 		me.DirectHasPref = true
 		c.m.settingsDirty.MachineSettings = true
+		c.m.settingsDirty.Settings = true
 		effects = append(effects, &corev1.Effect{
 			Effect: &corev1.Effect_DirectPreference{
 				DirectPreference: &corev1.DirectPreferenceEffect{
@@ -676,6 +677,7 @@ func (c *Core) dispatchSettingsUI(ctx *sync.StepContext, ev *corev1.Event) []*co
 			me.DirectEnabled = r.Report.Enabled
 		}
 		c.m.settingsDirty.MachineSettings = true
+		c.m.settingsDirty.Settings = true
 
 	case *corev1.Event_UpdateClientName:
 		if a.UpdateClientName == nil {

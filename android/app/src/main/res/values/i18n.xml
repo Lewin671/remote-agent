@@ -2188,6 +2188,12 @@
     <string name="tools_tool" formatted="false">"工具"</string>
     <string name="tools_waiting_sync" formatted="false">"等待同步"</string>
     <string name="transport_conn_footer_unsupported_device" formatted="false">"这台设备不支持直连。"</string>
+    <string name="transport_diag" formatted="false">"诊断信息"</string>
+    <string name="transport_diag_copy" formatted="false">"复制诊断信息"</string>
+    <string name="transport_diag_copy_failed" formatted="false">"没能复制"</string>
+    <string name="transport_diag_footer" formatted="false">"诊断信息只包含地址的类型和范围，不含具体地址。"</string>
+    <string name="transport_diag_retry" formatted="false">"重新尝试"</string>
+    <string name="transport_diag_verdict_none" formatted="false">"还没有直连尝试的记录"</string>
     <string name="transport_direct" formatted="false">"直连"</string>
     <string name="transport_direct_slow" formatted="false">"直连较慢，暂时改用中继"</string>
     <string name="transport_file_fallback" formatted="false">"文件暂时用中继"</string>
@@ -2201,10 +2207,15 @@
     <string name="transport_read_latency_both">"直连 %1$s · 中继 %2$s ms"</string>
     <string name="transport_read_latency_direct">"直连 %1$s ms"</string>
     <string name="transport_read_latency_relay">"中继 %1$s ms"</string>
+    <string name="transport_reason_at_cap" formatted="false">"同时直连的电脑已达上限"</string>
+    <string name="transport_reason_channel_pending" formatted="false">"直连通道尚未就绪"</string>
+    <string name="transport_reason_daemon_disabled" formatted="false">"电脑未开直连"</string>
     <string name="transport_reason_failed" formatted="false">"没连上，稍后会自动再试"</string>
     <string name="transport_reason_no_response" formatted="false">"电脑没有回应，可能在电脑上关了直连"</string>
     <string name="transport_reason_no_traversal" formatted="false">"两边的网络不能直接连通"</string>
     <string name="transport_reason_peer_unsupported" formatted="false">"电脑上的版本太旧，更新后可用"</string>
+    <string name="transport_reason_security_pending" formatted="false">"安全状态待刷新"</string>
+    <string name="transport_reason_starting" formatted="false">"正在准备直连"</string>
     <string name="transport_speed_file" formatted="false">"文件传输"</string>
     <string name="transport_speed_read" formatted="false">"响应时间"</string>
     <string name="transport_status_connecting" formatted="false">"正在建立直连…"</string>

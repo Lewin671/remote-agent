@@ -1667,10 +1667,15 @@ export interface MessageArgs {
   "transport.read_latency_both": { direct: string; relay: string };
   "transport.read_latency_direct": { direct: string };
   "transport.read_latency_relay": { relay: string };
+  "transport.reason_at_cap": { [name: string]: never };
+  "transport.reason_channel_pending": { [name: string]: never };
+  "transport.reason_daemon_disabled": { [name: string]: never };
   "transport.reason_failed": { [name: string]: never };
   "transport.reason_no_response": { [name: string]: never };
   "transport.reason_no_traversal": { [name: string]: never };
   "transport.reason_peer_unsupported": { [name: string]: never };
+  "transport.reason_security_pending": { [name: string]: never };
+  "transport.reason_starting": { [name: string]: never };
   "transport.speed_file": { [name: string]: never };
   "transport.speed_read": { [name: string]: never };
   "transport.status_connecting": { [name: string]: never };
@@ -3885,10 +3890,15 @@ export const messages = {
     "transport.read_latency_both": "Direct {direct} · Relay {relay} ms",
     "transport.read_latency_direct": "Direct {direct} ms",
     "transport.read_latency_relay": "Relay {relay} ms",
+    "transport.reason_at_cap": "Direct connection limit reached",
+    "transport.reason_channel_pending": "Direct channel not ready yet",
+    "transport.reason_daemon_disabled": "Direct is off on this computer",
     "transport.reason_failed": "Couldn't connect; will try again shortly",
     "transport.reason_no_response": "The computer didn't answer; direct may be turned off there",
     "transport.reason_no_traversal": "The two networks can't reach each other directly",
     "transport.reason_peer_unsupported": "The computer's version is too old; update it to use direct",
+    "transport.reason_security_pending": "Waiting for security refresh",
+    "transport.reason_starting": "Preparing direct connection",
     "transport.speed_file": "File transfer",
     "transport.speed_read": "Response time",
     "transport.status_connecting": "Setting up direct…",
@@ -6008,10 +6018,15 @@ export const messages = {
     "transport.read_latency_both": "直连 {direct} · 中继 {relay} ms",
     "transport.read_latency_direct": "直连 {direct} ms",
     "transport.read_latency_relay": "中继 {relay} ms",
+    "transport.reason_at_cap": "同时直连的电脑已达上限",
+    "transport.reason_channel_pending": "直连通道尚未就绪",
+    "transport.reason_daemon_disabled": "电脑未开直连",
     "transport.reason_failed": "没连上，稍后会自动再试",
     "transport.reason_no_response": "电脑没有回应，可能在电脑上关了直连",
     "transport.reason_no_traversal": "两边的网络不能直接连通",
     "transport.reason_peer_unsupported": "电脑上的版本太旧，更新后可用",
+    "transport.reason_security_pending": "安全状态待刷新",
+    "transport.reason_starting": "正在准备直连",
     "transport.speed_file": "文件传输",
     "transport.speed_read": "响应时间",
     "transport.status_connecting": "正在建立直连…",

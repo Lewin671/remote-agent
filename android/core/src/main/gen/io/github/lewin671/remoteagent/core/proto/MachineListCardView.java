@@ -365,6 +365,54 @@ public  final class MachineListCardView extends
     lastSeenMs_ = 0L;
   }
 
+  public static final int DIRECT_ROW_FIELD_NUMBER = 9;
+  private io.github.lewin671.remoteagent.core.proto.ConnCheckDirectRowView directRow_;
+  /**
+   * <code>.remoteagent.core.v1.ConnCheckDirectRowView direct_row = 9 [json_name = "directRow"];</code>
+   */
+  @java.lang.Override
+  public boolean hasDirectRow() {
+    return ((bitField0_ & 0x00000002) != 0);
+  }
+  /**
+   * <code>.remoteagent.core.v1.ConnCheckDirectRowView direct_row = 9 [json_name = "directRow"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.ConnCheckDirectRowView getDirectRow() {
+    return directRow_ == null ? io.github.lewin671.remoteagent.core.proto.ConnCheckDirectRowView.getDefaultInstance() : directRow_;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ConnCheckDirectRowView direct_row = 9 [json_name = "directRow"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setDirectRow(io.github.lewin671.remoteagent.core.proto.ConnCheckDirectRowView value) {
+    value.getClass();  // minimal bytecode null check
+    directRow_ = value;
+    bitField0_ |= 0x00000002;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ConnCheckDirectRowView direct_row = 9 [json_name = "directRow"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeDirectRow(io.github.lewin671.remoteagent.core.proto.ConnCheckDirectRowView value) {
+    value.getClass();  // minimal bytecode null check
+    if (directRow_ != null &&
+        directRow_ != io.github.lewin671.remoteagent.core.proto.ConnCheckDirectRowView.getDefaultInstance()) {
+      directRow_ =
+        io.github.lewin671.remoteagent.core.proto.ConnCheckDirectRowView.newBuilder(directRow_).mergeFrom(value).buildPartial();
+    } else {
+      directRow_ = value;
+    }
+    bitField0_ |= 0x00000002;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ConnCheckDirectRowView direct_row = 9 [json_name = "directRow"];</code>
+   */
+  private void clearDirectRow() {
+    directRow_ = null;
+    bitField0_ = (bitField0_ & ~0x00000002);
+  }
+
   public static io.github.lewin671.remoteagent.core.proto.MachineListCardView parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -821,6 +869,53 @@ public  final class MachineListCardView extends
       return this;
     }
 
+    /**
+     * <code>.remoteagent.core.v1.ConnCheckDirectRowView direct_row = 9 [json_name = "directRow"];</code>
+     */
+    @java.lang.Override
+    public boolean hasDirectRow() {
+      return instance.hasDirectRow();
+    }
+    /**
+     * <code>.remoteagent.core.v1.ConnCheckDirectRowView direct_row = 9 [json_name = "directRow"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.ConnCheckDirectRowView getDirectRow() {
+      return instance.getDirectRow();
+    }
+    /**
+     * <code>.remoteagent.core.v1.ConnCheckDirectRowView direct_row = 9 [json_name = "directRow"];</code>
+     */
+    public Builder setDirectRow(io.github.lewin671.remoteagent.core.proto.ConnCheckDirectRowView value) {
+      copyOnWrite();
+      instance.setDirectRow(value);
+      return this;
+      }
+    /**
+     * <code>.remoteagent.core.v1.ConnCheckDirectRowView direct_row = 9 [json_name = "directRow"];</code>
+     */
+    public Builder setDirectRow(
+        io.github.lewin671.remoteagent.core.proto.ConnCheckDirectRowView.Builder builderForValue) {
+      copyOnWrite();
+      instance.setDirectRow(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ConnCheckDirectRowView direct_row = 9 [json_name = "directRow"];</code>
+     */
+    public Builder mergeDirectRow(io.github.lewin671.remoteagent.core.proto.ConnCheckDirectRowView value) {
+      copyOnWrite();
+      instance.mergeDirectRow(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ConnCheckDirectRowView direct_row = 9 [json_name = "directRow"];</code>
+     */
+    public Builder clearDirectRow() {  copyOnWrite();
+      instance.clearDirectRow();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.MachineListCardView)
   }
   @java.lang.Override
@@ -847,10 +942,11 @@ public  final class MachineListCardView extends
             "quotaSummaries_",
             io.github.lewin671.remoteagent.core.proto.QuotaCliSection.class,
             "lastSeenMs_",
+            "directRow_",
           };
           java.lang.String info =
-              "\u0000\b\u0000\u0001\u0001\b\b\u0000\u0001\u0000\u0001\u0208\u0002\u0208\u0003\u0007" +
-              "\u0004\u0007\u0005\u0004\u0006\u1009\u0000\u0007\u001b\b\u0002";
+              "\u0000\t\u0000\u0001\u0001\t\t\u0000\u0001\u0000\u0001\u0208\u0002\u0208\u0003\u0007" +
+              "\u0004\u0007\u0005\u0004\u0006\u1009\u0000\u0007\u001b\b\u0002\t\u1009\u0001";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

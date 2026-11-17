@@ -473,34 +473,6 @@
     }
   },
   {
-    "key": "transport.relay_faster",
-    "zh-CN": "中继更快",
-    "en": "Relay is faster",
-    "notes": "仅 iOS 旧占位视图保留，Web/Android 已改为直连优先并移除。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "transport.not_clearly_faster",
-    "zh-CN": "直连没有明显更快",
-    "en": "Direct isn't clearly faster",
-    "notes": "仅 iOS 旧占位视图保留，Web/Android 已改为直连优先并移除。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
     "key": "transport.direct_slow",
     "zh-CN": "直连较慢，暂时改用中继",
     "en": "Direct is slow; using relay for now",
@@ -647,7 +619,9 @@
     "notes": "「连接」组最后一行的名称，也是诊断页的标题。导航行，行尾 ›。",
     "params": {},
     "platforms": [
-      "web"
+      "web",
+      "android",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -661,7 +635,9 @@
     "notes": "直连诊断页（电脑设置页「连接」组最后一行「诊断信息」点开）里的文字操作：把同样内容（地址已隐去）复制成纯文字，方便发给支持。",
     "params": {},
     "platforms": [
-      "web"
+      "web",
+      "android",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -675,7 +651,9 @@
     "notes": "复制诊断信息失败时，替换操作文字一会儿。成功时用 common.copied。",
     "params": {},
     "platforms": [
-      "web"
+      "web",
+      "android",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -689,7 +667,9 @@
     "notes": "直连诊断页（电脑设置页「连接」组最后一行「诊断信息」点开）里的文字操作：立即再试一次直连。正在建立或已连上时置灰。",
     "params": {},
     "platforms": [
-      "web"
+      "web",
+      "android",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -703,7 +683,9 @@
     "notes": "直连诊断页（电脑设置页「连接」组最后一行「诊断信息」点开）底部的一句隐私说明。",
     "params": {},
     "platforms": [
-      "web"
+      "web",
+      "android",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -717,7 +699,9 @@
     "notes": "诊断页顶部的一句结论：本次打开页面后还没有尝试过直连。",
     "params": {},
     "platforms": [
-      "web"
+      "web",
+      "android",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -2233,6 +2217,86 @@
     },
     "platforms": [
       "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.reason_daemon_disabled",
+    "zh-CN": "电脑未开直连",
+    "en": "Direct is off on this computer",
+    "notes": "状态行「正在用中继」或连接检测摘要的第二行：电脑侧本机或策略关闭了直连。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.reason_security_pending",
+    "zh-CN": "安全状态待刷新",
+    "en": "Waiting for security refresh",
+    "notes": "状态行「正在用中继」或连接检测摘要的第二行：直连开关开着，但安全状态尚未同步或刚过期等待刷新，暂走中继。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.reason_at_cap",
+    "zh-CN": "同时直连的电脑已达上限",
+    "en": "Direct connection limit reached",
+    "notes": "状态行「正在用中继」或连接检测摘要的第二行：本设备已连接最多台直连电脑，这台暂时走中继。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.reason_starting",
+    "zh-CN": "正在准备直连",
+    "en": "Preparing direct connection",
+    "notes": "状态行「正在用中继」或连接检测摘要的第二行：直连开关开着，正在等待下一轮建立尝试。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.reason_channel_pending",
+    "zh-CN": "直连通道尚未就绪",
+    "en": "Direct channel not ready yet",
+    "notes": "状态行「正在用中继」或连接检测摘要的第二行：直连连接已建立，但业务通道尚未就绪。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",

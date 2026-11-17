@@ -25,6 +25,8 @@ enum DirectRouteReason {
   DIRECT_ROUTE_REASON_FAILED = 5;
   DIRECT_ROUTE_REASON_AT_CAP = 6;
   DIRECT_ROUTE_REASON_DAEMON_DISABLED = 7;
+  DIRECT_ROUTE_REASON_SECURITY_PENDING = 8;
+  DIRECT_ROUTE_REASON_STARTING = 9;
 }
 
 enum DirectPathChoice {
@@ -98,6 +100,7 @@ message MachineListCardView {
   Text status_text = 6;
   repeated QuotaCliSection quota_summaries = 7;
   int64 last_seen_ms = 8;
+  ConnCheckDirectRowView direct_row = 9;
 }
 
 message ClientRowView {
@@ -230,6 +233,29 @@ message DirectRouteReport {
   bool warming = 18;
   bool compared = 19;
   bool has_diagnostics = 20;
+  bool read_slow = 21;
+  bool file_slow = 22;
+}
+
+message ConnCheckDirectRowView {
+  bool visible = 1;
+  ConnectionGroupStage stage = 2;
+  ConnectionGroupTone tone = 3;
+  Text label_text = 4;
+  Text status_text = 5;
+  Text detail_text = 6;
+  Text metric_text = 7;
+}
+
+message DirectViewsRequest {
+  bool online = 1;
+  bool pref_enabled = 2;
+  DirectRouteReport report = 3;
+}
+
+message DirectViewsResponse {
+  ConnectionGroupView connection = 1;
+  ConnCheckDirectRowView conn_check_direct = 2;
 }
 
 message ConnectionGroupView {

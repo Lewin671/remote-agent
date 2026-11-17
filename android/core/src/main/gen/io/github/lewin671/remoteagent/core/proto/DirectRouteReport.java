@@ -600,6 +600,58 @@ public  final class DirectRouteReport extends
     hasDiagnostics_ = false;
   }
 
+  public static final int READ_SLOW_FIELD_NUMBER = 21;
+  private boolean readSlow_;
+  /**
+   * <code>bool read_slow = 21 [json_name = "readSlow"];</code>
+   * @return The readSlow.
+   */
+  @java.lang.Override
+  public boolean getReadSlow() {
+    return readSlow_;
+  }
+  /**
+   * <code>bool read_slow = 21 [json_name = "readSlow"];</code>
+   * @param value The readSlow to set.
+   */
+  private void setReadSlow(boolean value) {
+    
+    readSlow_ = value;
+  }
+  /**
+   * <code>bool read_slow = 21 [json_name = "readSlow"];</code>
+   */
+  private void clearReadSlow() {
+
+    readSlow_ = false;
+  }
+
+  public static final int FILE_SLOW_FIELD_NUMBER = 22;
+  private boolean fileSlow_;
+  /**
+   * <code>bool file_slow = 22 [json_name = "fileSlow"];</code>
+   * @return The fileSlow.
+   */
+  @java.lang.Override
+  public boolean getFileSlow() {
+    return fileSlow_;
+  }
+  /**
+   * <code>bool file_slow = 22 [json_name = "fileSlow"];</code>
+   * @param value The fileSlow to set.
+   */
+  private void setFileSlow(boolean value) {
+    
+    fileSlow_ = value;
+  }
+  /**
+   * <code>bool file_slow = 22 [json_name = "fileSlow"];</code>
+   */
+  private void clearFileSlow() {
+
+    fileSlow_ = false;
+  }
+
   public static io.github.lewin671.remoteagent.core.proto.DirectRouteReport parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -1329,6 +1381,62 @@ public  final class DirectRouteReport extends
       return this;
     }
 
+    /**
+     * <code>bool read_slow = 21 [json_name = "readSlow"];</code>
+     * @return The readSlow.
+     */
+    @java.lang.Override
+    public boolean getReadSlow() {
+      return instance.getReadSlow();
+    }
+    /**
+     * <code>bool read_slow = 21 [json_name = "readSlow"];</code>
+     * @param value The readSlow to set.
+     * @return This builder for chaining.
+     */
+    public Builder setReadSlow(boolean value) {
+      copyOnWrite();
+      instance.setReadSlow(value);
+      return this;
+    }
+    /**
+     * <code>bool read_slow = 21 [json_name = "readSlow"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearReadSlow() {
+      copyOnWrite();
+      instance.clearReadSlow();
+      return this;
+    }
+
+    /**
+     * <code>bool file_slow = 22 [json_name = "fileSlow"];</code>
+     * @return The fileSlow.
+     */
+    @java.lang.Override
+    public boolean getFileSlow() {
+      return instance.getFileSlow();
+    }
+    /**
+     * <code>bool file_slow = 22 [json_name = "fileSlow"];</code>
+     * @param value The fileSlow to set.
+     * @return This builder for chaining.
+     */
+    public Builder setFileSlow(boolean value) {
+      copyOnWrite();
+      instance.setFileSlow(value);
+      return this;
+    }
+    /**
+     * <code>bool file_slow = 22 [json_name = "fileSlow"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearFileSlow() {
+      copyOnWrite();
+      instance.clearFileSlow();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.DirectRouteReport)
   }
   @java.lang.Override
@@ -1365,12 +1473,14 @@ public  final class DirectRouteReport extends
             "warming_",
             "compared_",
             "hasDiagnostics_",
+            "readSlow_",
+            "fileSlow_",
           };
           java.lang.String info =
-              "\u0000\u0014\u0000\u0000\u0001\u0014\u0014\u0000\u0000\u0000\u0001\u0007\u0002\u0007" +
+              "\u0000\u0016\u0000\u0000\u0001\u0016\u0016\u0000\u0000\u0000\u0001\u0007\u0002\u0007" +
               "\u0003\u0007\u0004\f\u0005\f\u0006\f\u0007\f\b\u0007\t\u0004\n\u0007\u000b\u0000" +
               "\f\u0007\r\u0000\u000e\u0007\u000f\u0004\u0010\u0007\u0011\u0004\u0012\u0007\u0013" +
-              "\u0007\u0014\u0007";
+              "\u0007\u0014\u0007\u0015\u0007\u0016\u0007";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

@@ -76,6 +76,8 @@ public enum PBDirectRouteReason: SwiftProtobuf.Enum, Swift.CaseIterable {
   case failed // = 5
   case atCap // = 6
   case daemonDisabled // = 7
+  case securityPending // = 8
+  case starting // = 9
   case UNRECOGNIZED(Int)
 
   public init() {
@@ -92,6 +94,8 @@ public enum PBDirectRouteReason: SwiftProtobuf.Enum, Swift.CaseIterable {
     case 5: self = .failed
     case 6: self = .atCap
     case 7: self = .daemonDisabled
+    case 8: self = .securityPending
+    case 9: self = .starting
     default: self = .UNRECOGNIZED(rawValue)
     }
   }
@@ -106,6 +110,8 @@ public enum PBDirectRouteReason: SwiftProtobuf.Enum, Swift.CaseIterable {
     case .failed: return 5
     case .atCap: return 6
     case .daemonDisabled: return 7
+    case .securityPending: return 8
+    case .starting: return 9
     case .UNRECOGNIZED(let i): return i
     }
   }
@@ -120,6 +126,8 @@ public enum PBDirectRouteReason: SwiftProtobuf.Enum, Swift.CaseIterable {
     .failed,
     .atCap,
     .daemonDisabled,
+    .securityPending,
+    .starting,
   ]
 
 }
@@ -492,11 +500,21 @@ public struct PBMachineListCardView: Sendable {
 
   public var lastSeenMs: Int64 = 0
 
+  public var directRow: PBConnCheckDirectRowView {
+    get {return _directRow ?? PBConnCheckDirectRowView()}
+    set {_directRow = newValue}
+  }
+  /// Returns true if `directRow` has been explicitly set.
+  public var hasDirectRow: Bool {return self._directRow != nil}
+  /// Clears the value of `directRow`. Subsequent reads from it will return its default value.
+  public mutating func clearDirectRow() {self._directRow = nil}
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
 
   fileprivate var _statusText: PBCoreText? = nil
+  fileprivate var _directRow: PBConnCheckDirectRowView? = nil
 }
 
 public struct PBClientRowView: @unchecked Sendable {
@@ -1183,11 +1201,140 @@ public struct PBDirectRouteReport: @unchecked Sendable {
     set {_uniqueStorage()._hasDiagnostics_p = newValue}
   }
 
+  public var readSlow: Bool {
+    get {return _storage._readSlow}
+    set {_uniqueStorage()._readSlow = newValue}
+  }
+
+  public var fileSlow: Bool {
+    get {return _storage._fileSlow}
+    set {_uniqueStorage()._fileSlow = newValue}
+  }
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
 
   fileprivate var _storage = _StorageClass.defaultInstance
+}
+
+public struct PBConnCheckDirectRowView: @unchecked Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var visible: Bool {
+    get {return _storage._visible}
+    set {_uniqueStorage()._visible = newValue}
+  }
+
+  public var stage: PBConnectionGroupStage {
+    get {return _storage._stage}
+    set {_uniqueStorage()._stage = newValue}
+  }
+
+  public var tone: PBConnectionGroupTone {
+    get {return _storage._tone}
+    set {_uniqueStorage()._tone = newValue}
+  }
+
+  public var labelText: PBCoreText {
+    get {return _storage._labelText ?? PBCoreText()}
+    set {_uniqueStorage()._labelText = newValue}
+  }
+  /// Returns true if `labelText` has been explicitly set.
+  public var hasLabelText: Bool {return _storage._labelText != nil}
+  /// Clears the value of `labelText`. Subsequent reads from it will return its default value.
+  public mutating func clearLabelText() {_uniqueStorage()._labelText = nil}
+
+  public var statusText: PBCoreText {
+    get {return _storage._statusText ?? PBCoreText()}
+    set {_uniqueStorage()._statusText = newValue}
+  }
+  /// Returns true if `statusText` has been explicitly set.
+  public var hasStatusText: Bool {return _storage._statusText != nil}
+  /// Clears the value of `statusText`. Subsequent reads from it will return its default value.
+  public mutating func clearStatusText() {_uniqueStorage()._statusText = nil}
+
+  public var detailText: PBCoreText {
+    get {return _storage._detailText ?? PBCoreText()}
+    set {_uniqueStorage()._detailText = newValue}
+  }
+  /// Returns true if `detailText` has been explicitly set.
+  public var hasDetailText: Bool {return _storage._detailText != nil}
+  /// Clears the value of `detailText`. Subsequent reads from it will return its default value.
+  public mutating func clearDetailText() {_uniqueStorage()._detailText = nil}
+
+  public var metricText: PBCoreText {
+    get {return _storage._metricText ?? PBCoreText()}
+    set {_uniqueStorage()._metricText = newValue}
+  }
+  /// Returns true if `metricText` has been explicitly set.
+  public var hasMetricText: Bool {return _storage._metricText != nil}
+  /// Clears the value of `metricText`. Subsequent reads from it will return its default value.
+  public mutating func clearMetricText() {_uniqueStorage()._metricText = nil}
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+
+  fileprivate var _storage = _StorageClass.defaultInstance
+}
+
+public struct PBDirectViewsRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var online: Bool = false
+
+  public var prefEnabled: Bool = false
+
+  public var report: PBDirectRouteReport {
+    get {return _report ?? PBDirectRouteReport()}
+    set {_report = newValue}
+  }
+  /// Returns true if `report` has been explicitly set.
+  public var hasReport: Bool {return self._report != nil}
+  /// Clears the value of `report`. Subsequent reads from it will return its default value.
+  public mutating func clearReport() {self._report = nil}
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+
+  fileprivate var _report: PBDirectRouteReport? = nil
+}
+
+public struct PBDirectViewsResponse: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var connection: PBConnectionGroupView {
+    get {return _connection ?? PBConnectionGroupView()}
+    set {_connection = newValue}
+  }
+  /// Returns true if `connection` has been explicitly set.
+  public var hasConnection: Bool {return self._connection != nil}
+  /// Clears the value of `connection`. Subsequent reads from it will return its default value.
+  public mutating func clearConnection() {self._connection = nil}
+
+  public var connCheckDirect: PBConnCheckDirectRowView {
+    get {return _connCheckDirect ?? PBConnCheckDirectRowView()}
+    set {_connCheckDirect = newValue}
+  }
+  /// Returns true if `connCheckDirect` has been explicitly set.
+  public var hasConnCheckDirect: Bool {return self._connCheckDirect != nil}
+  /// Clears the value of `connCheckDirect`. Subsequent reads from it will return its default value.
+  public mutating func clearConnCheckDirect() {self._connCheckDirect = nil}
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+
+  fileprivate var _connection: PBConnectionGroupView? = nil
+  fileprivate var _connCheckDirect: PBConnCheckDirectRowView? = nil
 }
 
 public struct PBConnectionGroupView: @unchecked Sendable {
@@ -2548,7 +2695,7 @@ extension PBDirectRouteState: SwiftProtobuf._ProtoNameProviding {
 }
 
 extension PBDirectRouteReason: SwiftProtobuf._ProtoNameProviding {
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0DIRECT_ROUTE_REASON_UNSPECIFIED\0\u{1}DIRECT_ROUTE_REASON_DISABLED\0\u{1}DIRECT_ROUTE_REASON_PEER_UNSUPPORTED\0\u{1}DIRECT_ROUTE_REASON_NO_RESPONSE\0\u{1}DIRECT_ROUTE_REASON_NO_TRAVERSAL\0\u{1}DIRECT_ROUTE_REASON_FAILED\0\u{1}DIRECT_ROUTE_REASON_AT_CAP\0\u{1}DIRECT_ROUTE_REASON_DAEMON_DISABLED\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0DIRECT_ROUTE_REASON_UNSPECIFIED\0\u{1}DIRECT_ROUTE_REASON_DISABLED\0\u{1}DIRECT_ROUTE_REASON_PEER_UNSUPPORTED\0\u{1}DIRECT_ROUTE_REASON_NO_RESPONSE\0\u{1}DIRECT_ROUTE_REASON_NO_TRAVERSAL\0\u{1}DIRECT_ROUTE_REASON_FAILED\0\u{1}DIRECT_ROUTE_REASON_AT_CAP\0\u{1}DIRECT_ROUTE_REASON_DAEMON_DISABLED\0\u{1}DIRECT_ROUTE_REASON_SECURITY_PENDING\0\u{1}DIRECT_ROUTE_REASON_STARTING\0")
 }
 
 extension PBDirectPathChoice: SwiftProtobuf._ProtoNameProviding {
@@ -2600,7 +2747,7 @@ extension PBSettingsScreenRequest: SwiftProtobuf.Message, SwiftProtobuf._Message
 
 extension PBMachineListCardView: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".MachineListCardView"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}machine_id\0\u{1}name\0\u{1}online\0\u{1}member\0\u{3}protocol_mismatch\0\u{3}status_text\0\u{3}quota_summaries\0\u{3}last_seen_ms\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}machine_id\0\u{1}name\0\u{1}online\0\u{1}member\0\u{3}protocol_mismatch\0\u{3}status_text\0\u{3}quota_summaries\0\u{3}last_seen_ms\0\u{3}direct_row\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -2616,6 +2763,7 @@ extension PBMachineListCardView: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
       case 6: try { try decoder.decodeSingularMessageField(value: &self._statusText) }()
       case 7: try { try decoder.decodeRepeatedMessageField(value: &self.quotaSummaries) }()
       case 8: try { try decoder.decodeSingularInt64Field(value: &self.lastSeenMs) }()
+      case 9: try { try decoder.decodeSingularMessageField(value: &self._directRow) }()
       default: break
       }
     }
@@ -2650,6 +2798,9 @@ extension PBMachineListCardView: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
     if self.lastSeenMs != 0 {
       try visitor.visitSingularInt64Field(value: self.lastSeenMs, fieldNumber: 8)
     }
+    try { if let v = self._directRow {
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 9)
+    } }()
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -2662,6 +2813,7 @@ extension PBMachineListCardView: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
     if lhs._statusText != rhs._statusText {return false}
     if lhs.quotaSummaries != rhs.quotaSummaries {return false}
     if lhs.lastSeenMs != rhs.lastSeenMs {return false}
+    if lhs._directRow != rhs._directRow {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -3670,7 +3822,7 @@ extension PBMachineSettingsScreenRequest: SwiftProtobuf.Message, SwiftProtobuf._
 
 extension PBDirectRouteReport: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".DirectRouteReport"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}enabled\0\u{1}capable\0\u{3}daemon_disabled\0\u{1}state\0\u{1}reason\0\u{3}file_route\0\u{3}read_route\0\u{3}has_active_rtt_ms\0\u{3}active_rtt_ms\0\u{3}has_direct_file_mibps\0\u{3}direct_file_mibps\0\u{3}has_relay_file_mibps\0\u{3}relay_file_mibps\0\u{3}has_direct_read_ms\0\u{3}direct_read_ms\0\u{3}has_relay_read_ms\0\u{3}relay_read_ms\0\u{1}warming\0\u{1}compared\0\u{3}has_diagnostics\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}enabled\0\u{1}capable\0\u{3}daemon_disabled\0\u{1}state\0\u{1}reason\0\u{3}file_route\0\u{3}read_route\0\u{3}has_active_rtt_ms\0\u{3}active_rtt_ms\0\u{3}has_direct_file_mibps\0\u{3}direct_file_mibps\0\u{3}has_relay_file_mibps\0\u{3}relay_file_mibps\0\u{3}has_direct_read_ms\0\u{3}direct_read_ms\0\u{3}has_relay_read_ms\0\u{3}relay_read_ms\0\u{1}warming\0\u{1}compared\0\u{3}has_diagnostics\0\u{3}read_slow\0\u{3}file_slow\0")
 
   fileprivate class _StorageClass {
     var _enabled: Bool = false
@@ -3693,6 +3845,8 @@ extension PBDirectRouteReport: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
     var _warming: Bool = false
     var _compared: Bool = false
     var _hasDiagnostics_p: Bool = false
+    var _readSlow: Bool = false
+    var _fileSlow: Bool = false
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -3723,6 +3877,8 @@ extension PBDirectRouteReport: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
       _warming = source._warming
       _compared = source._compared
       _hasDiagnostics_p = source._hasDiagnostics_p
+      _readSlow = source._readSlow
+      _fileSlow = source._fileSlow
     }
   }
 
@@ -3761,6 +3917,8 @@ extension PBDirectRouteReport: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
         case 18: try { try decoder.decodeSingularBoolField(value: &_storage._warming) }()
         case 19: try { try decoder.decodeSingularBoolField(value: &_storage._compared) }()
         case 20: try { try decoder.decodeSingularBoolField(value: &_storage._hasDiagnostics_p) }()
+        case 21: try { try decoder.decodeSingularBoolField(value: &_storage._readSlow) }()
+        case 22: try { try decoder.decodeSingularBoolField(value: &_storage._fileSlow) }()
         default: break
         }
       }
@@ -3829,6 +3987,12 @@ extension PBDirectRouteReport: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
       if _storage._hasDiagnostics_p != false {
         try visitor.visitSingularBoolField(value: _storage._hasDiagnostics_p, fieldNumber: 20)
       }
+      if _storage._readSlow != false {
+        try visitor.visitSingularBoolField(value: _storage._readSlow, fieldNumber: 21)
+      }
+      if _storage._fileSlow != false {
+        try visitor.visitSingularBoolField(value: _storage._fileSlow, fieldNumber: 22)
+      }
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -3858,10 +4022,207 @@ extension PBDirectRouteReport: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
         if _storage._warming != rhs_storage._warming {return false}
         if _storage._compared != rhs_storage._compared {return false}
         if _storage._hasDiagnostics_p != rhs_storage._hasDiagnostics_p {return false}
+        if _storage._readSlow != rhs_storage._readSlow {return false}
+        if _storage._fileSlow != rhs_storage._fileSlow {return false}
         return true
       }
       if !storagesAreEqual {return false}
     }
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension PBConnCheckDirectRowView: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".ConnCheckDirectRowView"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}visible\0\u{1}stage\0\u{1}tone\0\u{3}label_text\0\u{3}status_text\0\u{3}detail_text\0\u{3}metric_text\0")
+
+  fileprivate class _StorageClass {
+    var _visible: Bool = false
+    var _stage: PBConnectionGroupStage = .unspecified
+    var _tone: PBConnectionGroupTone = .unspecified
+    var _labelText: PBCoreText? = nil
+    var _statusText: PBCoreText? = nil
+    var _detailText: PBCoreText? = nil
+    var _metricText: PBCoreText? = nil
+
+      // This property is used as the initial default value for new instances of the type.
+      // The type itself is protecting the reference to its storage via CoW semantics.
+      // This will force a copy to be made of this reference when the first mutation occurs;
+      // hence, it is safe to mark this as `nonisolated(unsafe)`.
+      static nonisolated(unsafe) let defaultInstance = _StorageClass()
+
+    private init() {}
+
+    init(copying source: _StorageClass) {
+      _visible = source._visible
+      _stage = source._stage
+      _tone = source._tone
+      _labelText = source._labelText
+      _statusText = source._statusText
+      _detailText = source._detailText
+      _metricText = source._metricText
+    }
+  }
+
+  fileprivate mutating func _uniqueStorage() -> _StorageClass {
+    if !isKnownUniquelyReferenced(&_storage) {
+      _storage = _StorageClass(copying: _storage)
+    }
+    return _storage
+  }
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    _ = _uniqueStorage()
+    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+      while let fieldNumber = try decoder.nextFieldNumber() {
+        // The use of inline closures is to circumvent an issue where the compiler
+        // allocates stack space for every case branch when no optimizations are
+        // enabled. https://github.com/apple/swift-protobuf/issues/1034
+        switch fieldNumber {
+        case 1: try { try decoder.decodeSingularBoolField(value: &_storage._visible) }()
+        case 2: try { try decoder.decodeSingularEnumField(value: &_storage._stage) }()
+        case 3: try { try decoder.decodeSingularEnumField(value: &_storage._tone) }()
+        case 4: try { try decoder.decodeSingularMessageField(value: &_storage._labelText) }()
+        case 5: try { try decoder.decodeSingularMessageField(value: &_storage._statusText) }()
+        case 6: try { try decoder.decodeSingularMessageField(value: &_storage._detailText) }()
+        case 7: try { try decoder.decodeSingularMessageField(value: &_storage._metricText) }()
+        default: break
+        }
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every if/case branch local when no optimizations
+      // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+      // https://github.com/apple/swift-protobuf/issues/1182
+      if _storage._visible != false {
+        try visitor.visitSingularBoolField(value: _storage._visible, fieldNumber: 1)
+      }
+      if _storage._stage != .unspecified {
+        try visitor.visitSingularEnumField(value: _storage._stage, fieldNumber: 2)
+      }
+      if _storage._tone != .unspecified {
+        try visitor.visitSingularEnumField(value: _storage._tone, fieldNumber: 3)
+      }
+      try { if let v = _storage._labelText {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 4)
+      } }()
+      try { if let v = _storage._statusText {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 5)
+      } }()
+      try { if let v = _storage._detailText {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 6)
+      } }()
+      try { if let v = _storage._metricText {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 7)
+      } }()
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: PBConnCheckDirectRowView, rhs: PBConnCheckDirectRowView) -> Bool {
+    if lhs._storage !== rhs._storage {
+      let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
+        let _storage = _args.0
+        let rhs_storage = _args.1
+        if _storage._visible != rhs_storage._visible {return false}
+        if _storage._stage != rhs_storage._stage {return false}
+        if _storage._tone != rhs_storage._tone {return false}
+        if _storage._labelText != rhs_storage._labelText {return false}
+        if _storage._statusText != rhs_storage._statusText {return false}
+        if _storage._detailText != rhs_storage._detailText {return false}
+        if _storage._metricText != rhs_storage._metricText {return false}
+        return true
+      }
+      if !storagesAreEqual {return false}
+    }
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension PBDirectViewsRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".DirectViewsRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}online\0\u{3}pref_enabled\0\u{1}report\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularBoolField(value: &self.online) }()
+      case 2: try { try decoder.decodeSingularBoolField(value: &self.prefEnabled) }()
+      case 3: try { try decoder.decodeSingularMessageField(value: &self._report) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    // The use of inline closures is to circumvent an issue where the compiler
+    // allocates stack space for every if/case branch local when no optimizations
+    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+    // https://github.com/apple/swift-protobuf/issues/1182
+    if self.online != false {
+      try visitor.visitSingularBoolField(value: self.online, fieldNumber: 1)
+    }
+    if self.prefEnabled != false {
+      try visitor.visitSingularBoolField(value: self.prefEnabled, fieldNumber: 2)
+    }
+    try { if let v = self._report {
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 3)
+    } }()
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: PBDirectViewsRequest, rhs: PBDirectViewsRequest) -> Bool {
+    if lhs.online != rhs.online {return false}
+    if lhs.prefEnabled != rhs.prefEnabled {return false}
+    if lhs._report != rhs._report {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension PBDirectViewsResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".DirectViewsResponse"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}connection\0\u{3}conn_check_direct\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularMessageField(value: &self._connection) }()
+      case 2: try { try decoder.decodeSingularMessageField(value: &self._connCheckDirect) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    // The use of inline closures is to circumvent an issue where the compiler
+    // allocates stack space for every if/case branch local when no optimizations
+    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+    // https://github.com/apple/swift-protobuf/issues/1182
+    try { if let v = self._connection {
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 1)
+    } }()
+    try { if let v = self._connCheckDirect {
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 2)
+    } }()
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: PBDirectViewsResponse, rhs: PBDirectViewsResponse) -> Bool {
+    if lhs._connection != rhs._connection {return false}
+    if lhs._connCheckDirect != rhs._connCheckDirect {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

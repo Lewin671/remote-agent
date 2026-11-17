@@ -225,8 +225,81 @@ func TestDirectConnectionAndClientsAndUpdates(t *testing.T) {
 		ReadRoute: corev1.DirectPathChoice_DIRECT_PATH_CHOICE_RELAY,
 		FileRoute: corev1.DirectPathChoice_DIRECT_PATH_CHOICE_RELAY,
 	})
-	if connectedRelay.Stage != corev1.ConnectionGroupStage_CONNECTION_GROUP_STAGE_RELAY || connectedRelay.DetailText != nil {
-		t.Fatalf("expected RELAY with nil DetailText without slow fallback, got stage=%v detail=%+v", connectedRelay.Stage, connectedRelay.DetailText)
+	if connectedRelay.Stage != corev1.ConnectionGroupStage_CONNECTION_GROUP_STAGE_RELAY || keyOf(connectedRelay.DetailText) != text.KeyTransportReasonChannelPending {
+		t.Fatalf("expected RELAY with ChannelPending DetailText without slow fallback, got stage=%v detail=%+v", connectedRelay.Stage, connectedRelay.DetailText)
+	}
+
+	readFallback := BuildConnectionGroup(true, true, &corev1.DirectRouteReport{
+		Enabled:   true,
+		Capable:   true,
+		State:     corev1.DirectRouteState_DIRECT_ROUTE_STATE_CONNECTED,
+		ReadRoute: corev1.DirectPathChoice_DIRECT_PATH_CHOICE_RELAY,
+		FileRoute: corev1.DirectPathChoice_DIRECT_PATH_CHOICE_DIRECT,
+		ReadSlow:  true,
+	})
+	if keyOf(readFallback.DetailText) != text.KeyTransportReadFallback {
+		t.Fatalf("expected ReadFallback when file is direct and read fell back slow, got %q", keyOf(readFallback.DetailText))
+	}
+
+	fileFallback := BuildConnectionGroup(true, true, &corev1.DirectRouteReport{
+		Enabled:   true,
+		Capable:   true,
+		State:     corev1.DirectRouteState_DIRECT_ROUTE_STATE_CONNECTED,
+		ReadRoute: corev1.DirectPathChoice_DIRECT_PATH_CHOICE_DIRECT,
+		FileRoute: corev1.DirectPathChoice_DIRECT_PATH_CHOICE_RELAY,
+		FileSlow:  true,
+	})
+	if keyOf(fileFallback.DetailText) != text.KeyTransportFileFallback {
+		t.Fatalf("expected FileFallback when read is direct and file fell back slow, got %q", keyOf(fileFallback.DetailText))
+	}
+
+	bothSlow := BuildConnectionGroup(true, true, &corev1.DirectRouteReport{
+		Enabled:   true,
+		Capable:   true,
+		State:     corev1.DirectRouteState_DIRECT_ROUTE_STATE_CONNECTED,
+		ReadRoute: corev1.DirectPathChoice_DIRECT_PATH_CHOICE_RELAY,
+		FileRoute: corev1.DirectPathChoice_DIRECT_PATH_CHOICE_RELAY,
+		ReadSlow:  true,
+		FileSlow:  true,
+	})
+	if bothSlow.Stage != corev1.ConnectionGroupStage_CONNECTION_GROUP_STAGE_RELAY || keyOf(bothSlow.DetailText) != text.KeyTransportDirectSlow {
+		t.Fatalf("expected DirectSlow when connected but both channels fell back, got %+v", bothSlow)
+	}
+
+	for _, tc := range []struct {
+		name   string
+		report *corev1.DirectRouteReport
+		want   string
+		diag   bool
+	}{
+		{"daemon_disabled", &corev1.DirectRouteReport{Enabled: true, Capable: true, DaemonDisabled: true, State: corev1.DirectRouteState_DIRECT_ROUTE_STATE_NONE, Reason: corev1.DirectRouteReason_DIRECT_ROUTE_REASON_DAEMON_DISABLED}, text.KeyTransportReasonDaemonDisabled, false},
+		{"at_cap", &corev1.DirectRouteReport{Enabled: true, Capable: true, State: corev1.DirectRouteState_DIRECT_ROUTE_STATE_NONE, Reason: corev1.DirectRouteReason_DIRECT_ROUTE_REASON_AT_CAP}, text.KeyTransportReasonAtCap, false},
+		{"security_pending", &corev1.DirectRouteReport{Enabled: true, Capable: true, State: corev1.DirectRouteState_DIRECT_ROUTE_STATE_NONE, Reason: corev1.DirectRouteReason_DIRECT_ROUTE_REASON_SECURITY_PENDING}, text.KeyTransportReasonSecurityPending, false},
+		{"starting", &corev1.DirectRouteReport{Enabled: true, Capable: true, State: corev1.DirectRouteState_DIRECT_ROUTE_STATE_NONE, Reason: corev1.DirectRouteReason_DIRECT_ROUTE_REASON_STARTING}, text.KeyTransportReasonStarting, false},
+		{"unspecified_when_enabled", &corev1.DirectRouteReport{Enabled: true, Capable: true, State: corev1.DirectRouteState_DIRECT_ROUTE_STATE_NONE}, text.KeyTransportReasonStarting, false},
+		{"no_response", &corev1.DirectRouteReport{Enabled: true, Capable: true, State: corev1.DirectRouteState_DIRECT_ROUTE_STATE_NONE, Reason: corev1.DirectRouteReason_DIRECT_ROUTE_REASON_NO_RESPONSE}, text.KeyTransportReasonNoResponse, true},
+		{"failed", &corev1.DirectRouteReport{Enabled: true, Capable: true, State: corev1.DirectRouteState_DIRECT_ROUTE_STATE_NONE, Reason: corev1.DirectRouteReason_DIRECT_ROUTE_REASON_FAILED}, text.KeyTransportReasonFailed, true},
+	} {
+		got := BuildConnectionGroup(true, true, tc.report)
+		if keyOf(got.DetailText) != tc.want || got.ShowDiagnosticsEntry != tc.diag {
+			t.Fatalf("%s: expected detail=%q diag=%v, got detail=%q diag=%v", tc.name, tc.want, tc.diag, keyOf(got.DetailText), got.ShowDiagnosticsEntry)
+		}
+	}
+
+	if row := BuildConnCheckDirectRow(false, true, &corev1.DirectRouteReport{Enabled: true, Capable: true}); row.Visible {
+		t.Fatalf("offline machine should hide ConnCheck direct row")
+	}
+	if row := BuildConnCheckDirectRow(true, true, &corev1.DirectRouteReport{Enabled: true, Capable: false}); row.Visible {
+		t.Fatalf("incapable client should hide ConnCheck direct row")
+	}
+	if row := BuildConnCheckDirectRow(true, false, &corev1.DirectRouteReport{Enabled: false, Capable: true, State: corev1.DirectRouteState_DIRECT_ROUTE_STATE_NONE, Reason: corev1.DirectRouteReason_DIRECT_ROUTE_REASON_DISABLED}); !row.Visible || keyOf(row.StatusText) != text.KeyTransportSummaryOff || row.DetailText != nil {
+		t.Fatalf("unexpected disabled ConnCheck direct row: %+v", row)
+	}
+	if row := BuildConnCheckDirectRow(true, true, &corev1.DirectRouteReport{Enabled: true, Capable: true, State: corev1.DirectRouteState_DIRECT_ROUTE_STATE_CONNECTED, ReadRoute: corev1.DirectPathChoice_DIRECT_PATH_CHOICE_DIRECT, HasActiveRttMs: true, ActiveRttMs: 14}); !row.Visible || keyOf(row.StatusText) != text.KeyTransportStatusDirect || keyOf(row.MetricText) != text.KeyTransportReadLatencyDirect {
+		t.Fatalf("unexpected connected ConnCheck direct row: %+v", row)
+	}
+	if row := BuildConnCheckDirectRow(true, true, &corev1.DirectRouteReport{Enabled: true, Capable: true, State: corev1.DirectRouteState_DIRECT_ROUTE_STATE_NONE, Reason: corev1.DirectRouteReason_DIRECT_ROUTE_REASON_SECURITY_PENDING}); !row.Visible || keyOf(row.StatusText) != text.KeyTransportStatusRelay || keyOf(row.DetailText) != text.KeyTransportReasonSecurityPending {
+		t.Fatalf("unexpected security-pending ConnCheck direct row: %+v", row)
 	}
 
 	// Client sort puts self first, then LastSeen desc

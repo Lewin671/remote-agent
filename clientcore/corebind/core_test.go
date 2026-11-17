@@ -128,3 +128,35 @@ func TestCoreRoundTrip(t *testing.T) {
 		t.Fatalf("unexpected HomeViewModel: %+v", vm.GetHome())
 	}
 }
+
+func TestBuildDirectViews(t *testing.T) {
+	reqBytes, err := proto.Marshal(&stdcorev1.DirectViewsRequest{
+		Online:      true,
+		PrefEnabled: true,
+		Report: &stdcorev1.DirectRouteReport{
+			Enabled:        true,
+			Capable:        true,
+			State:          stdcorev1.DirectRouteState_DIRECT_ROUTE_STATE_CONNECTED,
+			ReadRoute:      stdcorev1.DirectPathChoice_DIRECT_PATH_CHOICE_DIRECT,
+			HasActiveRttMs: true,
+			ActiveRttMs:    18,
+		},
+	})
+	if err != nil {
+		t.Fatalf("marshal DirectViewsRequest: %v", err)
+	}
+	respBytes, err := BuildDirectViews(reqBytes)
+	if err != nil {
+		t.Fatalf("BuildDirectViews: %v", err)
+	}
+	var resp stdcorev1.DirectViewsResponse
+	if err := proto.Unmarshal(respBytes, &resp); err != nil {
+		t.Fatalf("unmarshal DirectViewsResponse: %v", err)
+	}
+	if resp.GetConnection().GetStage() != stdcorev1.ConnectionGroupStage_CONNECTION_GROUP_STAGE_DIRECT {
+		t.Fatalf("expected DIRECT stage, got %+v", resp.GetConnection())
+	}
+	if !resp.GetConnCheckDirect().GetVisible() || resp.GetConnCheckDirect().GetMetricText().GetKey() != "transport.read_latency_direct" {
+		t.Fatalf("unexpected ConnCheckDirect row: %+v", resp.GetConnCheckDirect())
+	}
+}

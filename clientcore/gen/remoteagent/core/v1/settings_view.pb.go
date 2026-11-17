@@ -30,6 +30,8 @@ const (
 	DirectRouteReason_DIRECT_ROUTE_REASON_FAILED           DirectRouteReason = 5
 	DirectRouteReason_DIRECT_ROUTE_REASON_AT_CAP           DirectRouteReason = 6
 	DirectRouteReason_DIRECT_ROUTE_REASON_DAEMON_DISABLED  DirectRouteReason = 7
+	DirectRouteReason_DIRECT_ROUTE_REASON_SECURITY_PENDING DirectRouteReason = 8
+	DirectRouteReason_DIRECT_ROUTE_REASON_STARTING         DirectRouteReason = 9
 )
 
 type DirectPathChoice int32
@@ -129,6 +131,7 @@ type MachineListCardView struct {
 	StatusText       *Text
 	QuotaSummaries   []*QuotaCliSection
 	LastSeenMs       int64
+	DirectRow        *ConnCheckDirectRowView
 }
 
 func (m *MachineListCardView) GetMachineId() string {
@@ -179,6 +182,12 @@ func (m *MachineListCardView) GetLastSeenMs() int64 {
 	}
 	return 0
 }
+func (m *MachineListCardView) GetDirectRow() *ConnCheckDirectRowView {
+	if m != nil {
+		return m.DirectRow
+	}
+	return nil
+}
 
 func (m *MachineListCardView) Size() int {
 	if m == nil {
@@ -199,6 +208,9 @@ func (m *MachineListCardView) Size() int {
 		}
 	}
 	n += litewire.SizeVarintField(8, uint64(m.LastSeenMs))
+	if m.DirectRow != nil {
+		n += litewire.SizeMessage(9, m.DirectRow.Size())
+	}
 	return n
 }
 
@@ -231,6 +243,9 @@ func (m *MachineListCardView) AppendMarshal(b []byte) []byte {
 		}
 	}
 	b = litewire.AppendVarint(b, 8, uint64(m.LastSeenMs))
+	if m.DirectRow != nil {
+		b = litewire.AppendMessage(b, 9, m.DirectRow)
+	}
 	return b
 }
 
@@ -1385,6 +1400,8 @@ type DirectRouteReport struct {
 	Warming            bool
 	Compared           bool
 	HasDiagnostics     bool
+	ReadSlow           bool
+	FileSlow           bool
 }
 
 func (m *DirectRouteReport) GetEnabled() bool {
@@ -1504,6 +1521,18 @@ func (m *DirectRouteReport) GetCompared() bool {
 func (m *DirectRouteReport) GetHasDiagnostics() bool {
 	if m != nil {
 		return m.HasDiagnostics
+	}
+	return false
+}
+func (m *DirectRouteReport) GetReadSlow() bool {
+	if m != nil {
+		return m.ReadSlow
+	}
+	return false
+}
+func (m *DirectRouteReport) GetFileSlow() bool {
+	if m != nil {
+		return m.FileSlow
 	}
 	return false
 }
@@ -1703,12 +1732,263 @@ func (m *DirectRouteReport) Unmarshal(b []byte) error {
 				m.HasDiagnostics = litewire.DecodeBool(v)
 				continue
 			}
+		case 21:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.ReadSlow = litewire.DecodeBool(v)
+				continue
+			}
+		case 22:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.FileSlow = litewire.DecodeBool(v)
+				continue
+			}
 		}
 		if err := litewire.Skip(&b, num, wtyp); err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+type ConnCheckDirectRowView struct {
+	Visible    bool
+	Stage      ConnectionGroupStage
+	Tone       ConnectionGroupTone
+	LabelText  *Text
+	StatusText *Text
+	DetailText *Text
+	MetricText *Text
+}
+
+func (m *ConnCheckDirectRowView) GetVisible() bool {
+	if m != nil {
+		return m.Visible
+	}
+	return false
+}
+func (m *ConnCheckDirectRowView) GetStage() ConnectionGroupStage {
+	if m != nil {
+		return m.Stage
+	}
+	return 0
+}
+func (m *ConnCheckDirectRowView) GetTone() ConnectionGroupTone {
+	if m != nil {
+		return m.Tone
+	}
+	return 0
+}
+func (m *ConnCheckDirectRowView) GetLabelText() *Text {
+	if m != nil {
+		return m.LabelText
+	}
+	return nil
+}
+func (m *ConnCheckDirectRowView) GetStatusText() *Text {
+	if m != nil {
+		return m.StatusText
+	}
+	return nil
+}
+func (m *ConnCheckDirectRowView) GetDetailText() *Text {
+	if m != nil {
+		return m.DetailText
+	}
+	return nil
+}
+func (m *ConnCheckDirectRowView) GetMetricText() *Text {
+	if m != nil {
+		return m.MetricText
+	}
+	return nil
+}
+
+func (m *ConnCheckDirectRowView) Size() int {
+	if m == nil {
+		return 0
+	}
+	n := 0
+	n += litewire.SizeBool(1, m.Visible)
+	n += litewire.SizeInt32(2, int32(m.Stage))
+	n += litewire.SizeInt32(3, int32(m.Tone))
+	if m.LabelText != nil {
+		n += litewire.SizeMessage(4, m.LabelText.Size())
+	}
+	if m.StatusText != nil {
+		n += litewire.SizeMessage(5, m.StatusText.Size())
+	}
+	if m.DetailText != nil {
+		n += litewire.SizeMessage(6, m.DetailText.Size())
+	}
+	if m.MetricText != nil {
+		n += litewire.SizeMessage(7, m.MetricText.Size())
+	}
+	return n
+}
+
+func (m *ConnCheckDirectRowView) Marshal() ([]byte, error) {
+	if m == nil {
+		return nil, nil
+	}
+	sz := m.Size()
+	if sz == 0 {
+		return nil, nil
+	}
+	return m.AppendMarshal(make([]byte, 0, sz)), nil
+}
+
+func (m *ConnCheckDirectRowView) AppendMarshal(b []byte) []byte {
+	if m == nil {
+		return b
+	}
+	b = litewire.AppendBool(b, 1, m.Visible)
+	b = litewire.AppendInt32(b, 2, int32(m.Stage))
+	b = litewire.AppendInt32(b, 3, int32(m.Tone))
+	if m.LabelText != nil {
+		b = litewire.AppendMessage(b, 4, m.LabelText)
+	}
+	if m.StatusText != nil {
+		b = litewire.AppendMessage(b, 5, m.StatusText)
+	}
+	if m.DetailText != nil {
+		b = litewire.AppendMessage(b, 6, m.DetailText)
+	}
+	if m.MetricText != nil {
+		b = litewire.AppendMessage(b, 7, m.MetricText)
+	}
+	return b
+}
+
+type DirectViewsRequest struct {
+	Online      bool
+	PrefEnabled bool
+	Report      *DirectRouteReport
+}
+
+func (m *DirectViewsRequest) GetOnline() bool {
+	if m != nil {
+		return m.Online
+	}
+	return false
+}
+func (m *DirectViewsRequest) GetPrefEnabled() bool {
+	if m != nil {
+		return m.PrefEnabled
+	}
+	return false
+}
+func (m *DirectViewsRequest) GetReport() *DirectRouteReport {
+	if m != nil {
+		return m.Report
+	}
+	return nil
+}
+
+func (m *DirectViewsRequest) Unmarshal(b []byte) error {
+	for len(b) > 0 {
+		num, wtyp, err := litewire.ReadTag(&b)
+		if err != nil {
+			return err
+		}
+		switch num {
+		case 1:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.Online = litewire.DecodeBool(v)
+				continue
+			}
+		case 2:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.PrefEnabled = litewire.DecodeBool(v)
+				continue
+			}
+		case 3:
+			if wtyp == litewire.BytesType {
+				if m.Report == nil {
+					m.Report = &DirectRouteReport{}
+				}
+				if err := litewire.ReadMessage(&b, m.Report); err != nil {
+					return err
+				}
+				continue
+			}
+		}
+		if err := litewire.Skip(&b, num, wtyp); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+type DirectViewsResponse struct {
+	Connection      *ConnectionGroupView
+	ConnCheckDirect *ConnCheckDirectRowView
+}
+
+func (m *DirectViewsResponse) GetConnection() *ConnectionGroupView {
+	if m != nil {
+		return m.Connection
+	}
+	return nil
+}
+func (m *DirectViewsResponse) GetConnCheckDirect() *ConnCheckDirectRowView {
+	if m != nil {
+		return m.ConnCheckDirect
+	}
+	return nil
+}
+
+func (m *DirectViewsResponse) Size() int {
+	if m == nil {
+		return 0
+	}
+	n := 0
+	if m.Connection != nil {
+		n += litewire.SizeMessage(1, m.Connection.Size())
+	}
+	if m.ConnCheckDirect != nil {
+		n += litewire.SizeMessage(2, m.ConnCheckDirect.Size())
+	}
+	return n
+}
+
+func (m *DirectViewsResponse) Marshal() ([]byte, error) {
+	if m == nil {
+		return nil, nil
+	}
+	sz := m.Size()
+	if sz == 0 {
+		return nil, nil
+	}
+	return m.AppendMarshal(make([]byte, 0, sz)), nil
+}
+
+func (m *DirectViewsResponse) AppendMarshal(b []byte) []byte {
+	if m == nil {
+		return b
+	}
+	if m.Connection != nil {
+		b = litewire.AppendMessage(b, 1, m.Connection)
+	}
+	if m.ConnCheckDirect != nil {
+		b = litewire.AppendMessage(b, 2, m.ConnCheckDirect)
+	}
+	return b
 }
 
 type ConnectionGroupView struct {

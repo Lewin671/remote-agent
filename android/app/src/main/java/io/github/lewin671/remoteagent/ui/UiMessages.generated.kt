@@ -6621,6 +6621,24 @@ private fun resolveUiMessage13(resources: android.content.res.Resources, message
         "transport.conn_footer_unsupported_device" -> {
             resources.getString(R.string.transport_conn_footer_unsupported_device)
         }
+        "transport.diag" -> {
+            resources.getString(R.string.transport_diag)
+        }
+        "transport.diag_copy" -> {
+            resources.getString(R.string.transport_diag_copy)
+        }
+        "transport.diag_copy_failed" -> {
+            resources.getString(R.string.transport_diag_copy_failed)
+        }
+        "transport.diag_footer" -> {
+            resources.getString(R.string.transport_diag_footer)
+        }
+        "transport.diag_retry" -> {
+            resources.getString(R.string.transport_diag_retry)
+        }
+        "transport.diag_verdict_none" -> {
+            resources.getString(R.string.transport_diag_verdict_none)
+        }
         "transport.direct" -> {
             resources.getString(R.string.transport_direct)
         }
@@ -6668,6 +6686,15 @@ private fun resolveUiMessage13(resources: android.content.res.Resources, message
             val relay = message.args.getValue("relay") as String
             resources.getString(R.string.transport_read_latency_relay, relay)
         }
+        "transport.reason_at_cap" -> {
+            resources.getString(R.string.transport_reason_at_cap)
+        }
+        "transport.reason_channel_pending" -> {
+            resources.getString(R.string.transport_reason_channel_pending)
+        }
+        "transport.reason_daemon_disabled" -> {
+            resources.getString(R.string.transport_reason_daemon_disabled)
+        }
         "transport.reason_failed" -> {
             resources.getString(R.string.transport_reason_failed)
         }
@@ -6679,6 +6706,12 @@ private fun resolveUiMessage13(resources: android.content.res.Resources, message
         }
         "transport.reason_peer_unsupported" -> {
             resources.getString(R.string.transport_reason_peer_unsupported)
+        }
+        "transport.reason_security_pending" -> {
+            resources.getString(R.string.transport_reason_security_pending)
+        }
+        "transport.reason_starting" -> {
+            resources.getString(R.string.transport_reason_starting)
         }
         "transport.speed_file" -> {
             resources.getString(R.string.transport_speed_file)

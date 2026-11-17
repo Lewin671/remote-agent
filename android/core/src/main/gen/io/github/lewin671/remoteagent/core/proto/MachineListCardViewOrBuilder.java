@@ -82,4 +82,15 @@ public interface MachineListCardViewOrBuilder extends
    * @return The lastSeenMs.
    */
   long getLastSeenMs();
+
+  /**
+   * <code>.remoteagent.core.v1.ConnCheckDirectRowView direct_row = 9 [json_name = "directRow"];</code>
+   * @return Whether the directRow field is set.
+   */
+  boolean hasDirectRow();
+  /**
+   * <code>.remoteagent.core.v1.ConnCheckDirectRowView direct_row = 9 [json_name = "directRow"];</code>
+   * @return The directRow.
+   */
+  io.github.lewin671.remoteagent.core.proto.ConnCheckDirectRowView getDirectRow();
 }

@@ -149,4 +149,16 @@ public interface DirectRouteReportOrBuilder extends
    * @return The hasDiagnostics.
    */
   boolean getHasDiagnostics();
+
+  /**
+   * <code>bool read_slow = 21 [json_name = "readSlow"];</code>
+   * @return The readSlow.
+   */
+  boolean getReadSlow();
+
+  /**
+   * <code>bool file_slow = 22 [json_name = "fileSlow"];</code>
+   * @return The fileSlow.
+   */
+  boolean getFileSlow();
 }

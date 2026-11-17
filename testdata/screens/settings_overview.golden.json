@@ -567,7 +567,11 @@
                   ],
                   "separatorKey": "common.note_separator"
                 },
-                "lastSeenMs": "1791000000000"
+                "lastSeenMs": "1791000000000",
+                "directRow": {
+                  "stage": "CONNECTION_GROUP_STAGE_OFFLINE",
+                  "tone": "CONNECTION_GROUP_TONE_MUTED"
+                }
               },
               {
                 "machineId": "m1",
@@ -702,7 +706,21 @@
                     "summaryTone": "QUOTA_TONE_WARN"
                   }
                 ],
-                "lastSeenMs": "1791078060000"
+                "lastSeenMs": "1791078060000",
+                "directRow": {
+                  "visible": true,
+                  "stage": "CONNECTION_GROUP_STAGE_RELAY",
+                  "tone": "CONNECTION_GROUP_TONE_MUTED",
+                  "labelText": {
+                    "key": "transport.direct"
+                  },
+                  "statusText": {
+                    "key": "transport.status_relay"
+                  },
+                  "detailText": {
+                    "key": "transport.reason_starting"
+                  }
+                }
               }
             ],
             "addDeviceHint": {
@@ -1025,7 +1043,11 @@
                   ],
                   "separatorKey": "common.note_separator"
                 },
-                "lastSeenMs": "1791000000000"
+                "lastSeenMs": "1791000000000",
+                "directRow": {
+                  "stage": "CONNECTION_GROUP_STAGE_OFFLINE",
+                  "tone": "CONNECTION_GROUP_TONE_MUTED"
+                }
               },
               {
                 "machineId": "m1",
@@ -1160,7 +1182,21 @@
                     "summaryTone": "QUOTA_TONE_WARN"
                   }
                 ],
-                "lastSeenMs": "1791078060000"
+                "lastSeenMs": "1791078060000",
+                "directRow": {
+                  "visible": true,
+                  "stage": "CONNECTION_GROUP_STAGE_RELAY",
+                  "tone": "CONNECTION_GROUP_TONE_MUTED",
+                  "labelText": {
+                    "key": "transport.direct"
+                  },
+                  "statusText": {
+                    "key": "transport.status_relay"
+                  },
+                  "detailText": {
+                    "key": "transport.reason_starting"
+                  }
+                }
               }
             ],
             "addDeviceHint": {
