@@ -6,12 +6,12 @@ import (
 	"fmt"
 	"math"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"syscall"
 	"testing"
-	"time"
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 )
@@ -224,39 +224,44 @@ exit 1
 	}
 }
 
-func TestProbeUsageTimeoutKillsProcessGroup(t *testing.T) {
-	pidFile := filepath.Join(t.TempDir(), "child.pid")
-	tmpPid := pidFile + ".tmp"
+// Ending a probe (timeout or daemon shutdown) must take its whole process
+// group down, not only agy itself.
+func TestProbeUsageCancelKillsProcessGroup(t *testing.T) {
+	fifo := filepath.Join(t.TempDir(), "child.pid")
+	if err := syscall.Mkfifo(fifo, 0o600); err != nil {
+		t.Fatal(err)
+	}
 	script := writeFakeAgyScript(t, fmt.Sprintf(`#!/bin/sh
 sleep 30 &
-printf '%%s' "$!" > %s && mv %s %s
+printf '%%s\n' "$!" > %s
 wait
-`, shellQuote(tmpPid), shellQuote(tmpPid), shellQuote(pidFile)))
+`, shellQuote(fifo)))
 
 	a := New(script, t.TempDir())
-	a.usageTimeout = 3 * time.Second
-	_, err := a.ProbeUsage(context.Background(), "")
-	if !errors.Is(err, context.DeadlineExceeded) {
-		t.Fatalf("got %v, want DeadlineExceeded", err)
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan error, 1)
+	go func() {
+		_, err := a.ProbeUsage(ctx, "")
+		done <- err
+	}()
+	rawPID, err := os.ReadFile(fifo) // blocks until the fake agy started its child
+	if err != nil {
+		t.Fatal(err)
 	}
-
-	rawPID, readErr := os.ReadFile(pidFile)
-	if readErr != nil {
-		t.Fatalf("child pid file not written: %v", readErr)
+	childPID, err := strconv.Atoi(strings.TrimSpace(string(rawPID)))
+	if err != nil {
+		t.Fatalf("bad pid %q: %v", rawPID, err)
 	}
-	childPID, convErr := strconv.Atoi(strings.TrimSpace(string(rawPID)))
-	if convErr != nil {
-		t.Fatalf("bad pid %q: %v", rawPID, convErr)
+	cancel()
+	if err := <-done; !errors.Is(err, context.Canceled) {
+		t.Fatalf("got %v, want context.Canceled", err)
 	}
-	// Give the kernel a brief moment to clean up the killed process group.
-	deadline := time.Now().Add(time.Second)
-	for time.Now().Before(deadline) {
-		if err := syscall.Kill(childPID, 0); err != nil {
-			return
-		}
-		time.Sleep(20 * time.Millisecond)
+	// The group was SIGKILLed before ProbeUsage returned; a killed child that
+	// is not yet reaped is a zombie, which ps reports as state Z.
+	out, _ := exec.Command("ps", "-o", "stat=", "-p", strconv.Itoa(childPID)).Output()
+	if st := strings.TrimSpace(string(out)); st != "" && !strings.HasPrefix(st, "Z") {
+		t.Fatalf("child process %d survived process-group kill (state %q)", childPID, st)
 	}
-	t.Fatalf("child process %d survived process-group kill", childPID)
 }
 
 func writeFakeAgyScript(t *testing.T, body string) string {

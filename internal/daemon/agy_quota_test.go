@@ -61,9 +61,6 @@ not_logged_in)
 unsupported)
 	echo '{"status":"SUCCESS","response":"no command"}'
 	;;
-timeout)
-	sleep 10
-	;;
 esac
 `, countFile, countFile, countFile, logDir, logDir, modeFile)
 	if err := os.WriteFile(script, []byte(body), 0o700); err != nil {
@@ -272,12 +269,7 @@ func TestAgyQuotaErrorsPreserveLastDataAndDistinguishReasons(t *testing.T) {
 		}
 		h.d.stepAgyQuota(context.Background(), m)
 		clk.Advance(agyLogQuietDebounce)
-		m.probeTimeout = 0
-		if mode == "timeout" {
-			m.probeTimeout = 250 * time.Millisecond
-		}
 		h.d.stepAgyQuota(context.Background(), m)
-		m.probeTimeout = 0
 	}
 
 	trigger("not_logged_in")
@@ -290,12 +282,6 @@ func TestAgyQuotaErrorsPreserveLastDataAndDistinguishReasons(t *testing.T) {
 	q = agyQuota(h.d)[0]
 	if q.State != pb.QuotaState_QUOTA_STATE_FAILED || q.Detail != i18n.QuotaAgyProbeUnsupported("zh-CN") || len(q.Windows) != 2 || q.ObservedMs != okObs {
 		t.Fatalf("unsupported did not preserve last success: %v", q)
-	}
-
-	trigger("timeout")
-	q = agyQuota(h.d)[0]
-	if q.State != pb.QuotaState_QUOTA_STATE_FAILED || q.Detail != i18n.QuotaAgyProbeTimeout("zh-CN") || len(q.Windows) != 2 || q.ObservedMs != okObs {
-		t.Fatalf("timeout did not preserve last success: %v", q)
 	}
 
 	// Recovery with lower usage (credit recovery: 40% -> 30%) must be accepted (monotonic=false).

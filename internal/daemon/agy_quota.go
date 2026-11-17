@@ -29,7 +29,6 @@ type agyFileStamp struct {
 
 type agyQuotaMonitor struct {
 	now             func() time.Time
-	probeTimeout    time.Duration // test override when > 0; production uses adapter's 60s timeout
 	baseline        map[string]agyFileStamp
 	baselineReady   bool
 	startupChecked  bool
@@ -138,15 +137,7 @@ func (d *Daemon) stepAgyQuota(ctx context.Context, m *agyQuotaMonitor) {
 
 func (d *Daemon) runAgyQuotaProbe(ctx context.Context, m *agyQuotaMonitor, src agent.UsageProbeSource, triggerLog string) {
 	started := m.clockNow()
-	probeCtx := ctx
-	var cancel context.CancelFunc
-	if m != nil && m.probeTimeout > 0 {
-		probeCtx, cancel = context.WithTimeout(ctx, m.probeTimeout)
-	}
-	q, err := src.ProbeUsage(probeCtx, triggerLog)
-	if cancel != nil {
-		cancel()
-	}
+	q, err := src.ProbeUsage(ctx, triggerLog)
 	finished := m.clockNow()
 	elapsed := finished.Sub(started)
 	if elapsed < 0 {
