@@ -28,14 +28,14 @@ class ComposerMenuKeyboardTest {
             .setTitle("Composer menus").setAgent(Agent.AGENT_CODEX).setStatus(SessionStatus.SESSION_STATUS_RUNNING).build()
         val machine = MachineView("machine", true, 0, MachineMeta.newBuilder().setHostname("Test computer")
             .setProtocolVersion(PROTOCOL_VERSION).setCapabilities(MachineCapabilities.newBuilder().setFileUpload(true).setImageUpload(true)).build())
-        remote.showForTest(RemoteState(conn = ConnState.ONLINE, link = Link.ONLINE, loaded = true, synced = true,
-            machines = mapOf("machine" to machine), sessions = mapOf("menu-session" to SessionView("menu-session", "machine", session))),
-            events = mapOf("menu-session" to listOf(
-                Event.newBuilder().setSessionId("menu-session").setSeq(1).setUserMessage(UserMessage.newBuilder().setText("Check the composer menus while typing.")).build(),
-                Event.newBuilder().setSessionId("menu-session").setSeq(2).setAgentMessage(AgentMessage.newBuilder().setText("Keep the draft and keyboard in place.")).build(),
-                Event.newBuilder().setSessionId("menu-session").setSeq(3).setTurnStarted(TurnStarted.getDefaultInstance()).build(),
-            )),
-            live = mapOf("menu-session" to LiveSnapshot.newBuilder().setSession(session).setRunning(true).build()))
+        val st = RemoteState(conn = ConnState.ONLINE, link = Link.ONLINE, loaded = true, synced = true,
+            machines = mapOf("machine" to machine), sessions = mapOf("menu-session" to SessionView("menu-session", "machine", session)))
+        val evs = listOf(
+            Event.newBuilder().setSessionId("menu-session").setSeq(1).setUserMessage(UserMessage.newBuilder().setText("Check the composer menus while typing.")).build(),
+            Event.newBuilder().setSessionId("menu-session").setSeq(2).setAgentMessage(AgentMessage.newBuilder().setText("Keep the draft and keyboard in place.")).build(),
+            Event.newBuilder().setSessionId("menu-session").setSeq(3).setTurnStarted(TurnStarted.getDefaultInstance()).build(),
+        )
+        remote.showForTest(st, sessions = sessionVmsForTest(st, mapOf("menu-session" to evs), mapOf("menu-session" to LiveSnapshot.newBuilder().setSession(session).setRunning(true).build())))
         val nav = Nav({}, {}, {}, {}, {}, {}, {}, {}, { _, _ -> }, {}, {}, {})
         val instrumentation = InstrumentationRegistry.getInstrumentation()
         val output = File(instrumentation.targetContext.getExternalFilesDir(null), "composer-menus").apply { mkdirs() }

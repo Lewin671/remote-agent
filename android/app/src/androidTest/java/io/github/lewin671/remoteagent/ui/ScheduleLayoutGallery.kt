@@ -92,11 +92,11 @@ class ScheduleLayoutGallery {
             buildJsonObject { put("tasks",JsonArray(tasks.map { it.json })) }.toString().toByteArray()
         })
         remote.javaClass.getDeclaredField("scheduleRepository").apply { isAccessible=true }.set(remote,lazy { repository })
-        remote.showForTest(state.copy(conn=ConnState.OFFLINE),histories,live=live)
+        remote.showForTest(state.copy(conn=ConnState.OFFLINE), sessions=sessionVmsForTest(state.copy(conn=ConnState.OFFLINE),histories,live))
         @Suppress("UNCHECKED_CAST")
         val snapshots=repository.javaClass.getDeclaredField("_state").apply { isAccessible=true }.get(repository) as MutableStateFlow<Map<String,ScheduleSnapshot>>
         snapshots.value=mapOf(machine to ScheduleSnapshot(1,tasks,cached=offline))
-        remote.showForTest(state,histories,live=live)
+        remote.showForTest(state, sessions=sessionVmsForTest(state,histories,live))
         ui.activityRule.scenario.onActivity { it.enableEdgeToEdge() }
     }
     private fun content(screen: @Composable () -> Unit) {
@@ -233,7 +233,8 @@ class ScheduleLayoutGallery {
         prepare();val origin=Origin.newBuilder().setScheduledTaskId(current.id).build()
         val queued=Event.newBuilder().setSeq(9).setTime(stamp(15)).setOrigin(origin).setInputState(InputState.newBuilder().setRequestId("queued-schedule").setText(current.message).setStatus(InputStatus.INPUT_STATUS_QUEUED).setMode(SendMode.SEND_MODE_QUEUE)).build()
         val status=Event.newBuilder().setSeq(10).setTime(stamp(15)).setInputState(InputState.newBuilder().setRequestId("queued-schedule").setStatus(InputStatus.INPUT_STATUS_QUEUED).setMode(SendMode.SEND_MODE_QUEUE)).build()
-        remote.showForTest(remote.state.value,mapOf("layout-session" to history()+listOf(queued,status)),live=mapOf("layout-session" to LiveSnapshot.newBuilder().setSession(remote.state.value.sessions["layout-session"]!!.info).addActions(queued).build()))
+        val liveMap = mapOf("layout-session" to LiveSnapshot.newBuilder().setSession(remote.state.value.sessions["layout-session"]!!.info).addActions(queued).build())
+        remote.showForTest(remote.state.value, sessions=sessionVmsForTest(remote.state.value,mapOf("layout-session" to history()+listOf(queued,status)),liveMap))
         content { SessionScreen("layout-session") };ui.onNodeWithText("定时任务 · 15:00 · 这一轮结束后发").assertExists();both("chat-queued-scheduled")
     }
     private fun shell(command: String) {

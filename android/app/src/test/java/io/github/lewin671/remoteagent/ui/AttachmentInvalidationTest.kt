@@ -200,21 +200,6 @@ class AttachmentInvalidationTest {
         assertFalse(restored.ready("A"))
     }
 
-    @Test fun detachingAndReleasingASentOrUnknownRequestNeverAbortItsFrozenSnapshot() = runBlocking {
-        val entry = ready(); val d = draft().apply { images += entry }
-        var aborts = 0; entry.abortTransfer = { aborts++ }
-        val outgoing = Outgoing("same-request", "text", images = listOf(entry), fileIds = listOf(entry.fileId!!))
-        val requests = mutableListOf<SendRequest>()
-        outgoing.deliver { requests += it; throw CommandException(CommandException.UNKNOWN, "reply lost", outcome = io.github.lewin671.remoteagent.core.Outcome.UNKNOWN) }
-        val old = entry.generation
-        d.detach(listOf(entry))
-        assertFalse(d.ready("A")); assertFalse(entry.change(old, "A") { error("late progress after send") })
-        entry.release(abort = false)
-        outgoing.deliver { requests += it }
-        assertEquals(0, aborts); assertEquals(requests[0], requests[1])
-        assertEquals(listOf("file-file"), requests.last().fileIdsList)
-    }
-
     @Test fun aRejectedNewStartDoesNotUnprotectAnEarlierUnknownRequestUsingTheSameTransfer() {
         val entry = ready(); val d = draft().apply { images += entry }
         var aborts = 0; entry.abortTransfer = { aborts++ }

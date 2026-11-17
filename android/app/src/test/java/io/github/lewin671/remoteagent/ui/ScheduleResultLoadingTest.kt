@@ -14,25 +14,45 @@ class ScheduleResultLoadingTest {
         put("id", "run"); put("session_id", "session"); put("final_summary", "Plain saved summary")
     })
     private val answer = "**Final result**\n\n# Report\n\nDetails."
-    private val complete = SessionEvents(events = listOf(
-        Event.newBuilder().setSeq(1).setOrigin(Origin.newBuilder().setScheduledRunId("run"))
-            .setUserMessage(UserMessage.newBuilder().setText("Check layout")).build(),
-        Event.newBuilder().setSeq(2).setAgentMessage(AgentMessage.newBuilder().setPhase("final_answer").setText(answer)).build(),
-    ), loaded = true)
+    private val complete = io.github.lewin671.remoteagent.core.proto.SessionViewModel.newBuilder()
+        .setSessionId("session")
+        .setTimeline(
+            io.github.lewin671.remoteagent.core.proto.SessionTimelineView.newBuilder()
+                .setLoaded(true)
+                .addItems(
+                    io.github.lewin671.remoteagent.core.proto.SessionTimelineItem.newBuilder()
+                        .setId("e1").setSeq(1)
+                        .setUserMessage(
+                            io.github.lewin671.remoteagent.core.proto.SessionUserMessageItem.newBuilder()
+                                .setText("Check layout")
+                                .setScheduledRunId("run"),
+                        ),
+                )
+                .addItems(
+                    io.github.lewin671.remoteagent.core.proto.SessionTimelineItem.newBuilder()
+                        .setId("e2").setSeq(2)
+                        .setAgentMessage(
+                            io.github.lewin671.remoteagent.core.proto.SessionAgentMessageItem.newBuilder()
+                                .setMarkdown(answer),
+                        ),
+                ),
+        )
+        .build()
 
     @Test fun aPendingReadNeverPublishesTheInterimPlainSummary() = runTest {
-        val events = CompletableDeferred<SessionEvents>()
-        val result = async { loadScheduleResultText(run) { events.await() } }
+        val vm = CompletableDeferred<io.github.lewin671.remoteagent.core.proto.SessionViewModel>()
+        val result = async { loadScheduleResultText(run) { vm.await() } }
         runCurrent()
         advanceTimeBy(1_000)
         assertFalse(result.isCompleted)
-        events.complete(complete)
+        vm.complete(complete)
         assertEquals(answer, result.await())
     }
 
     @Test fun failedOrIncompleteHistoryUsesTheSavedSummaryWithoutBorrowingAnAnswer() = runTest {
         assertEquals("Plain saved summary", loadScheduleResultText(run) { throw java.io.IOException("synthetic failure") })
-        assertEquals("Plain saved summary", resolvedScheduleResult(run, complete.copy(historyPartial = true)))
+        val partial = complete.toBuilder().setTimeline(complete.timeline.toBuilder().setHistoryPartial(true)).build()
+        assertEquals("Plain saved summary", resolvedScheduleResult(run, partial))
         val result = async { loadScheduleResultText(run) { awaitCancellation() } }
         advanceUntilIdle()
         assertEquals("Plain saved summary", result.await())

@@ -79,39 +79,6 @@
     }
   },
   {
-    "key": "dock.android_answered",
-    "zh-CN": "已回答提问",
-    "en": "Question answered",
-    "notes": "Android 批次 B：Chat.kt 的现有显示文案，保留原中文措辞与标点。无变量。短标签保持紧凑；说明正文可多行。英文初稿待审。",
-    "params": {},
-    "platforms": [
-      "android"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "dock.android_answered_values",
-    "zh-CN": "已回答：{answers}",
-    "en": "Answered: {answers}",
-    "notes": "Android 批次 B：Chat.kt 的现有显示文案，保留原中文措辞与标点。参数：answers 为显示值/原始内容，不翻译用户或 CLI 内容。短标签保持紧凑；说明正文可多行。英文初稿待审。",
-    "params": {
-      "answers": {
-        "type": "string",
-        "example": "Example"
-      }
-    },
-    "platforms": [
-      "android"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
     "key": "dock.android_plan_expired",
     "zh-CN": "不确定「{choice}」有没有送到，它已过期，不会再重发。请先去终端确认，放弃后可以重新选择",
     "en": "It is unclear whether “{choice}” arrived. It has expired and will not be resent. Check the terminal first; abandon it to choose again",
@@ -188,39 +155,6 @@
     "notes": "Android 批次 B：Dock.kt 的现有显示文案，保留原中文措辞与标点。参数：reason 为显示值/原始内容，不翻译用户或 CLI 内容。短标签保持紧凑；说明正文可多行。英文初稿待审。",
     "params": {
       "reason": {
-        "type": "string",
-        "example": "Example"
-      }
-    },
-    "platforms": [
-      "android"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "dock.android_reply_pending",
-    "zh-CN": "上一次回复的结果还不确定，请先重试或放弃它",
-    "en": "The previous reply is still unconfirmed. Retry or abandon it first",
-    "notes": "Android 批次 B：Plans.kt 的现有显示文案，保留原中文措辞与标点。无变量。短标签保持紧凑；说明正文可多行。英文初稿待审。",
-    "params": {},
-    "platforms": [
-      "android"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "dock.android_retry_choice",
-    "zh-CN": "重试「{choice}」",
-    "en": "Retry “{choice}”",
-    "notes": "Android 批次 B：Plans.kt 的现有显示文案，保留原中文措辞与标点。参数：choice 为显示值/原始内容，不翻译用户或 CLI 内容。短标签保持紧凑；说明正文可多行。英文初稿待审。",
-    "params": {
-      "choice": {
         "type": "string",
         "example": "Example"
       }

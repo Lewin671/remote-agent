@@ -102,6 +102,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 /** Sessions whose terminal another page asked to show. */
+private const val TAIL_ERROR_KEY = "tail-error"
+
 object OpenTerminal {
     val requested = mutableStateMapOf<String, Boolean>()
 }
@@ -350,8 +352,13 @@ private fun SessionTopBar(
     )
     val high = header.hasContext && header.highContextWarning
     val statusStr = uiText(header.statusText)
-    val modeStr = if (!header.exited && header.hasApprovalModeLabel()) uiText(header.approvalModeLabel) else ""
-    val subtitleText = if (modeStr.isEmpty()) statusStr else "$statusStr · $modeStr"
+    val modeStr = when {
+        header.exited || !header.hasApprovalModeLabel() -> ""
+        header.approvalModeLabel.key == UiMessages.modesAgentOwn("").key && header.approvalModeLabel.argsCount == 0 ->
+            copy(UiMessages.modesAgentOwn(agent = header.agentName.ifEmpty { io.github.lewin671.remoteagent.core.agentName(header.agent, copy = copy) }))
+        else -> uiText(header.approvalModeLabel)
+    }
+    val subtitleText = listOf(statusStr, modeStr).filter { it.isNotEmpty() }.joinToString(" · ")
     val rich = if (!header.exited && header.approvalMode == ApprovalMode.APPROVAL_MODE_FULL_ACCESS && modeStr.isNotEmpty()) {
         buildAnnotatedString {
             append("$statusStr · ")
@@ -611,9 +618,9 @@ internal fun ChatPane(
         if (follow && items.isNotEmpty()) list.pinBottom({ endIndex }, { followState.on }, { list.moved() })
     }
     LaunchedEffect(list) {
-        snapshotFlow { list.layoutInfo }.collect { layout ->
-            if (followState.on && !list.isScrollInProgress && list.canScrollForward && layout.totalItemsCount > 0) {
-                list.requestScrollToItem(layout.totalItemsCount - 1)
+        snapshotFlow { list.layoutInfo.totalItemsCount to list.layoutInfo.viewportEndOffset }.collect { (count, _) ->
+            if (followState.on && !list.isScrollInProgress && list.canScrollForward && count > 0) {
+                list.scrollToItem(count - 1, 1_000_000)
             }
         }
     }
@@ -696,7 +703,7 @@ internal fun ChatPane(
                             }
                         }
                         if (tl.hasError()) {
-                            item(key = "tail-error") {
+                            item(key = TAIL_ERROR_KEY) {
                                 Notice(
                                     copy(UiMessages.sessionAndroidHistoryTailFailed(reason = uiText(tl.error))),
                                     Modifier.padding(horizontal = ChatSide, vertical = 8.dp),
@@ -1030,7 +1037,7 @@ private fun EndCard(
 }
 
 @Composable
-private fun Composer(
+internal fun Composer(
     sid: String,
     state: RemoteState,
     vm: SessionViewModel,

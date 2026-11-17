@@ -2463,7 +2463,7 @@ class Remote(
                 throw e
             }
         }
-        error("unreachable")
+        throw IllegalStateException()
     }
 
     suspend fun listModels(

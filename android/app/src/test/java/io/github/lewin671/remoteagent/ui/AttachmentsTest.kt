@@ -1,6 +1,5 @@
 package io.github.lewin671.remoteagent.ui
 
-import io.github.lewin671.remoteagent.core.derive
 import io.github.lewin671.remoteagent.proto.Agent
 import io.github.lewin671.remoteagent.proto.ApprovalDecision
 import io.github.lewin671.remoteagent.proto.ApprovalRequested
@@ -129,8 +128,8 @@ class AttachmentsTest {
         }
         val pool = java.util.concurrent.Executors.newFixedThreadPool(2)
         try {
-            val a = pool.submit { OutgoingRecords(racing).save("a", Outgoing("r1", "a"), false) }
-            val b = pool.submit { OutgoingRecords(racing).save("b", Outgoing("r2", "b"), false) }
+            val a = pool.submit { OutgoingRecords(racing).save("a", Outgoing("r1"), false) }
+            val b = pool.submit { OutgoingRecords(racing).save("b", Outgoing("r2"), false) }
             a.get(5, java.util.concurrent.TimeUnit.SECONDS)
             b.get(5, java.util.concurrent.TimeUnit.SECONDS)
             assertEquals(listOf("r1"), OutgoingRecords(racing).load("a").map { it.requestId })
@@ -154,30 +153,15 @@ class AttachmentsTest {
     @Test
     fun aSentMessagesImagesStayOnDiskUntilTheCliHasThem() {
         val files = MemoryFiles()
-        val o = Outgoing("r1", "看这两张", listOf("img-a", "img-b"), listOf(img("a"), img("b")), original = false)
+        val o = Outgoing("r1", listOf(img("a"), img("b")), original = false)
         OutgoingRecords(files).save("s", o, false)
-        // The process is gone; a new run finds it, images in order, outcome unknown.
         val back = OutgoingRecords(files).load("s").single()
         assertEquals("r1", back.requestId)
-        assertEquals("看这两张", back.text)
-        assertEquals(listOf("img-a", "img-b"), back.imageIds)
         assertEquals(listOf("a", "b"), back.images.map { it.id })
-        assertEquals(Outgoing.State.UNKNOWN, back.state)
+        assertTrue(back.hasLocalAttachments)
         OutgoingRecords(files).remove("s", "r1")
         assertTrue(OutgoingRecords(files).load("s").isEmpty())
         assertTrue(files.data.keys.none { it.startsWith("out:s:r1/") })
-    }
-
-    @Test
-    fun submittedAndCanceledMessagesAreLetGo() {
-        val a = Outgoing("a", "x", images = listOf(img("1")))
-        val b = Outgoing("b", "y", images = listOf(img("2")))
-        val c = Outgoing("c", "z")
-        fun state(status: InputStatus, reason: String = "") = io.github.lewin671.remoteagent.proto.InputState.newBuilder().setStatus(status).setReason(reason).build()
-        val done = recorded(listOf(a, b, c), mapOf("a" to state(InputStatus.INPUT_STATUS_SUBMITTED), "b" to state(InputStatus.INPUT_STATUS_CANCELED)))
-        assertEquals(listOf(a, b), done)
-        // The session ended on it: the chat still offers to put it back, images included.
-        assertEquals(emptyList<Outgoing>(), recorded(listOf(b), mapOf("b" to state(InputStatus.INPUT_STATUS_CANCELED, "exited"))))
     }
 
     @Test
@@ -296,13 +280,13 @@ class AttachmentsTest {
     @Test
     fun aMessageThatCouldNotBeKeptWholeLeavesNothingBehind() {
         val files = MemoryFiles()
-        val o = Outgoing("r1", "看这两张", listOf("img-a", "img-b"), listOf(img("a"), img("b")))
+        val o = Outgoing("r1", listOf(img("a"), img("b")))
         // Room for the first image and half of the second, as near the store's limit.
         files.room = 3
         assertTrue(runCatching { OutgoingRecords(files).save("s", o, false) }.isFailure)
         assertTrue(files.data.isEmpty())
         // Everything but the index went in: the same.
-        files.room = 8
+        files.room = 5
         assertTrue(runCatching { OutgoingRecords(files).save("s", o, false) }.isFailure)
         assertTrue(files.data.isEmpty())
         files.room = null

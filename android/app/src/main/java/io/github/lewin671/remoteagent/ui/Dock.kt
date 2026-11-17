@@ -193,7 +193,7 @@ private fun PendingCoreDock(
     actions: @Composable ColumnScope.() -> Unit,
 ) {
     val copy = uiText()
-    val itemId = "${dock.kind.name}:${dock.itemId}"
+    val itemId = dock.kind.name + ":" + dock.itemId
     val open = DockFolds.isOpen(sid, itemId) { hasDraft(sid) }
     val keyboard = LocalSoftwareKeyboardController.current
     val focus = LocalFocusManager.current
@@ -244,7 +244,7 @@ fun ApprovalContent(a: SessionApprovalDockView) {
 }
 
 @Composable
-private fun ApprovalDock(sid: String, vm: SessionViewModel, onFull: (String) -> Unit) {
+internal fun ApprovalDock(sid: String, vm: SessionViewModel, onFull: (String) -> Unit) {
     val copy = uiText()
     val dock = vm.dock
     val a = dock.approval
@@ -489,7 +489,7 @@ fun QuestionPage(sid: String, qid: String) {
 }
 
 @Composable
-private fun PlanDock(sid: String, vm: SessionViewModel, onFull: () -> Unit) {
+internal fun PlanDock(sid: String, vm: SessionViewModel, onFull: () -> Unit) {
     val copy = uiText()
     val dock = vm.dock
     val plan = dock.plan

@@ -506,6 +506,7 @@ class CoreHost(
 
     private fun refreshSessionOnWorker(sessionId: String) {
         if (sessionId.isEmpty() || closed.get() || testOverrideViews) return
+        if (synchronized(sessionWatchers) { sessionId in testSessionViews }) return
         val (watcher, window) = synchronized(sessionWatchers) {
             val w = sessionWatchers[sessionId] ?: return
             w to w.window
@@ -962,7 +963,9 @@ class CoreHost(
         clientDetail: ClientDetailViewModel? = null,
         sessions: Map<String, SessionViewModel> = emptyMap(),
     ) {
-        testOverrideViews = true
+        if (home != null || project != null || newSession != null || syncState != null) {
+            testOverrideViews = true
+        }
         home?.let { _homeView.value = it }
         project?.let { _projectView.value = it }
         newSession?.let { _newSessionView.value = it }

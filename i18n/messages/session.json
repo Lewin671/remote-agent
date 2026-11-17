@@ -85,57 +85,10 @@
     }
   },
   {
-    "key": "session.android_connect_read",
-    "zh-CN": "连上服务器后读取这个会话",
-    "en": "This session will load after connecting to the server",
-    "notes": "Android 批次 B：Session.kt 的现有显示文案，保留原中文措辞与标点。无变量。短标签保持紧凑；说明正文可多行。英文初稿待审。",
-    "params": {},
-    "platforms": [
-      "android"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
     "key": "session.android_context_usage",
     "zh-CN": "上下文占用",
     "en": "Context usage",
     "notes": "Android 批次 B：Sheets.kt 的现有显示文案，保留原中文措辞与标点。无变量。短标签保持紧凑；说明正文可多行。英文初稿待审。",
-    "params": {},
-    "platforms": [
-      "android"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "session.android_ended_at",
-    "zh-CN": "{time} 结束",
-    "en": "{time} ended",
-    "notes": "Android 批次 B：Chat.kt 的现有显示文案，保留原中文措辞与标点。参数：time 为显示值/原始内容，不翻译用户或 CLI 内容。短标签保持紧凑；说明正文可多行。英文初稿待审。",
-    "params": {
-      "time": {
-        "type": "string",
-        "example": "Example"
-      }
-    },
-    "platforms": [
-      "android"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "session.android_execution_unknown",
-    "zh-CN": "不确定电脑有没有执行",
-    "en": "It is unclear whether the computer executed the command",
-    "notes": "Android 批次 B：Session.kt 的现有显示文案，保留原中文措辞与标点。无变量。短标签保持紧凑；说明正文可多行。英文初稿待审。",
     "params": {},
     "platforms": [
       "android"
@@ -155,25 +108,6 @@
       "web",
       "android",
       "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "session.android_fork_prefix",
-    "zh-CN": "{time} 分叉自",
-    "en": "{time} forked from",
-    "notes": "Android 批次 B：Chat.kt 的现有显示文案，保留原中文措辞与标点。参数：time 为显示值/原始内容，不翻译用户或 CLI 内容。短标签保持紧凑；说明正文可多行。英文初稿待审。",
-    "params": {
-      "time": {
-        "type": "string",
-        "example": "Example"
-      }
-    },
-    "platforms": [
-      "android"
     ],
     "status": {
       "zh-CN": "source",
@@ -311,29 +245,6 @@
     "en": "Only levels supported by the current model are shown. Choose while idle to submit; the value updates after the computer confirms.",
     "notes": "Android 批次 B：Sheets.kt 的现有显示文案，保留原中文措辞与标点。无变量。短标签保持紧凑；说明正文可多行。英文初稿待审。",
     "params": {},
-    "platforms": [
-      "android"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "session.android_terminal_changes",
-    "zh-CN": "{name} 终端里{changes}",
-    "en": "In the terminal on {name}, {changes}",
-    "notes": "Android 批次 B：Chat.kt 的现有显示文案，保留原中文措辞与标点。参数：name 为显示值/原始内容，不翻译用户或 CLI 内容；changes 为显示值/原始内容，不翻译用户或 CLI 内容。短标签保持紧凑；说明正文可多行。英文初稿待审。",
-    "params": {
-      "name": {
-        "type": "string",
-        "example": "Example"
-      },
-      "changes": {
-        "type": "string",
-        "example": "Example"
-      }
-    },
     "platforms": [
       "android"
     ],

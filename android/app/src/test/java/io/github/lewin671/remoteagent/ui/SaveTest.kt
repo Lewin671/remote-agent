@@ -1,6 +1,5 @@
 package io.github.lewin671.remoteagent.ui
 
-import io.github.lewin671.remoteagent.core.derive
 import io.github.lewin671.remoteagent.proto.Agent
 import io.github.lewin671.remoteagent.proto.ApprovalDecision
 import io.github.lewin671.remoteagent.proto.ApprovalRequested

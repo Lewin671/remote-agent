@@ -36,18 +36,5 @@ class EventProjectionTest {
         assertTrue(ps.running)
         assertEquals(listOf("r1"), ps.pendingInputsList.map { it.requestId })
         assertEquals(listOf(4L), ps.typedLocallySeqsList)
-
-        val projection = EventProjection()
-        val first = projection.update(events.take(2), Agent.AGENT_CLAUDE)
-        assertSame(first, projection.update(events.take(2), Agent.AGENT_CLAUDE))
-        val second = projection.update(events, Agent.AGENT_CLAUDE)
-        assertEquals(derive(events, Agent.AGENT_CLAUDE).tools.map { it.seq }, second.tools.map { it.seq })
-
-        val approval = ev(5, Event.newBuilder().setApprovalRequested(ApprovalRequested.newBuilder().setApprovalId("a1").setInputDigest("d1")))
-        val live = LiveSnapshot.newBuilder().setSession(Session.newBuilder().setId("s").setLastSeq(4)).setRunning(true).addActions(approval).build()
-        val overlaid = projection.currentActions(live)
-        assertEquals(listOf("a1"), overlaid.approvals.keys.toList())
-        assertTrue(awaitingApproval(overlaid.tools.single(), overlaid))
-        assertFalse(projection.currentActions(null).approvals.containsKey("a1"))
     }
 }

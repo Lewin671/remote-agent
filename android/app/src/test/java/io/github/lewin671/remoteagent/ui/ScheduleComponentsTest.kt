@@ -95,7 +95,20 @@ class ScheduleComponentsTest {
         ui.onNodeWithText("fmt.Println(1)", substring = true).assertExists()
     }
     @Test fun quietTurnsExpandToTheirOriginalText() {
-        ui.setContent { RaTheme(io.github.lewin671.remoteagent.data.ThemeMode.LIGHT) { ChatItemView(ChatItem.QuietScheduled("quiet", listOf(ChatItem.Agent("e1", "Original result")), listOf(1_800_000_000_000), 3), "Codex") } }
+        val group = io.github.lewin671.remoteagent.core.proto.SessionTimelineItem.newBuilder()
+            .setId("quiet")
+            .setQuietScheduledGroup(
+                io.github.lewin671.remoteagent.core.proto.SessionQuietScheduledGroupItem.newBuilder()
+                    .setGroupId("quiet")
+                    .setTitle(io.github.lewin671.remoteagent.core.proto.Text.newBuilder().setLiteral("已折叠 3 次定时检查"))
+                    .addItems(
+                        io.github.lewin671.remoteagent.core.proto.SessionTimelineItem.newBuilder()
+                            .setId("e1")
+                            .setAgentMessage(io.github.lewin671.remoteagent.core.proto.SessionAgentMessageItem.newBuilder().setMarkdown("Original result")),
+                    ),
+            )
+            .build()
+        ui.setContent { RaTheme(io.github.lewin671.remoteagent.data.ThemeMode.LIGHT) { TimelineItemView(group) } }
         ui.onNodeWithText("Original result").assertDoesNotExist()
         ui.onNodeWithText("定时检查", substring = true).performClick()
         ui.onNodeWithText("Original result").assertExists()

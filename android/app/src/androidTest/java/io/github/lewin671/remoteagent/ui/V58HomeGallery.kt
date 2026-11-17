@@ -157,7 +157,7 @@ class V58HomeGallery {
         val shown = if (state.conn == ConnState.ONLINE) state.copy(link = Link.ONLINE, synced = true) else state
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         HomeScopes.clear(context)
-        remote.showForTest(shown, history, emptyMap(), history.mapValues { (sid, list) -> liveOf(state.sessions[sid], list) })
+        remote.showForTest(shown)
         if (scope != null) remote.coreHost.setHomeScope(scope) else remote.coreHost.setHomeScope("")
         ui.setContent {
             val base = LocalDensity.current
@@ -177,15 +177,6 @@ class V58HomeGallery {
             save("$name-large")
             font = 1f
         }
-    }
-
-    private fun liveOf(s: SessionView?, list: List<Event>): io.github.lewin671.remoteagent.proto.LiveSnapshot {
-        val d = io.github.lewin671.remoteagent.core.derive(list, s?.info?.agent ?: Agent.AGENT_CODEX)
-        val b = io.github.lewin671.remoteagent.proto.LiveSnapshot.newBuilder().setRunning(d.running)
-        s?.info?.let { b.setSession(it) }
-        list.filter { (it.hasApprovalRequested() && it.approvalRequested.approvalId in d.approvals) || (it.hasQuestionAsked() && it.questionAsked.questionId in d.questions) }
-            .forEach { b.addActions(it) }
-        return b.build()
     }
 
     private fun save(name: String) {

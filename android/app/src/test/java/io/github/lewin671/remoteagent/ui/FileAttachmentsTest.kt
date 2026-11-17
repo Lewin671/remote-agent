@@ -63,23 +63,6 @@ class FileAttachmentsTest {
         assertTrue(needsUpload(f, "computer"))
     }
 
-    @Test fun outgoingRestoresTheFrozenFileIdsAndRetriesAnUnknownRequestVerbatim() = runBlocking {
-        val store = MemoryFiles()
-        val out = Outgoing("request", "text", images = listOf(file()), fileIds = listOf("first-id"))
-        OutgoingRecords(store).save("s", out, false)
-        val loaded = OutgoingRecords(store).load("s").single()
-        assertEquals(listOf("first-id"), loaded.fileIds)
-        assertEquals("content://documents/file", loaded.images.single().uri)
-        val requests = mutableListOf<SendRequest>()
-        loaded.deliver { requests += it; throw CommandException(CommandException.UNKNOWN, "reply lost", outcome = io.github.lewin671.remoteagent.core.Outcome.UNKNOWN) }
-        assertTrue(loaded.canPutBack) // Restoring local sources is explicit; retry still reuses the frozen request below.
-        loaded.images.single().fileId = "new-upload"
-        loaded.deliver { requests += it }
-        assertEquals(requests[0], requests[1])
-        assertEquals(listOf("first-id"), requests.last().fileIdsList)
-        assertTrue(requests.last().imageIdsList.isEmpty())
-    }
-
     @Test fun aFileExpiringWhileTheOutgoingRecordIsSavedStaysInTheDraft() = runBlocking {
         val f = file()
         val store = MemoryFiles()
@@ -92,8 +75,9 @@ class FileAttachmentsTest {
         val result = kotlinx.coroutines.CompletableDeferred<Result<Unit>>()
         try {
             Outbox.sendWithImages(this, remote, "expired-file", "", emptyList(), listOf(f), false,
+                fileIds = listOf("uploaded-file"),
                 store = { sid, outgoing, original -> records.save(sid, outgoing, original); f.expiresMs = 0 },
-                discard = records::remove, fileIds = listOf("uploaded-file"),
+                discard = records::remove,
             ) { result.complete(it) }
             assertTrue(result.await().isFailure)
             assertTrue(records.load("expired-file").isEmpty())
@@ -101,13 +85,5 @@ class FileAttachmentsTest {
             assertEquals("content://documents/file", f.uri)
             assertTrue(needsUpload(f, "computer"))
         } finally { remote.close() }
-    }
-
-    @Test fun definitiveMissingFilesOfferRestoration() = runBlocking {
-        val out = Outgoing("r", "keep", images = listOf(file()), fileIds = listOf("missing"))
-        out.deliver { throw CommandException("not_found", "file missing is not on this machine; upload it again", fromDaemon = true,outcome=io.github.lewin671.remoteagent.core.Outcome.EXECUTED) }
-        assertTrue(out.canPutBack)
-        assertTrue(out.missingImages)
-        assertTrue(out.error.contains("附件"))
     }
 }

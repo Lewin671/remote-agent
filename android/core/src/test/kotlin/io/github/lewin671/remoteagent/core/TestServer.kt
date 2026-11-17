@@ -409,28 +409,37 @@ class FakeDaemon(val account: Account, private val http: OkHttpClient, val phone
                             if (cmd.hasGetLiveSnapshot()) {
                                 val sid = cmd.getLiveSnapshot.sessionId
                                 val current = history[sid]?.toList() ?: emptyList()
-                                val d = derive(current)
+                                val ps = ProjectionState.parseFrom(
+                                    io.github.lewin671.remoteagent.corebind.Corebind.reduce(
+                                        DEFAULT_AGENT.number,
+                                        EventBatch.newBuilder().addAllEvents(current).build().toByteArray(),
+                                    ),
+                                )
+                                val pendingApprovals = ps.approvalsList.mapTo(HashSet()) { it.approvalId }
+                                val pendingQuestions = ps.questionsList.mapTo(HashSet()) { it.questionId }
+                                val pendingInputs =
+                                    ps.inputsList
+                                        .filter {
+                                            it.status in
+                                                setOf(
+                                                    InputStatus.INPUT_STATUS_QUEUED,
+                                                    InputStatus.INPUT_STATUS_HELD_BY_CLI,
+                                                )
+                                        }
+                                        .mapTo(HashSet()) { it.requestId }
                                 val actions =
                                     current.filter {
                                         it.hasApprovalRequested() &&
-                                            d.approvals.containsKey(
-                                                it.approvalRequested.approvalId
-                                            ) ||
+                                            it.approvalRequested.approvalId in pendingApprovals ||
                                             it.hasQuestionAsked() &&
-                                                d.questions.containsKey(
-                                                    it.questionAsked.questionId
-                                                ) ||
+                                                it.questionAsked.questionId in pendingQuestions ||
                                             it.hasInputState() &&
-                                                d.inputs[it.inputState.requestId] in
-                                                    setOf(
-                                                        InputStatus.INPUT_STATUS_QUEUED,
-                                                        InputStatus.INPUT_STATUS_HELD_BY_CLI,
-                                                    )
+                                                it.inputState.requestId in pendingInputs
                                     }
                                 CommandResult.newBuilder()
                                     .setLiveSnapshot(
                                         liveSnapshot?.invoke(sid) ?: LiveSnapshot.newBuilder()
-                                            .setRunning(d.running)
+                                            .setRunning(ps.running)
                                             .setSession(
                                                 info[sid] ?: Session.newBuilder().setId(sid).build()
                                             )

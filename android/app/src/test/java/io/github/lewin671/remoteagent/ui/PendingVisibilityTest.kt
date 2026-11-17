@@ -33,34 +33,59 @@ class PendingVisibilityTest {
 
     @After fun close() { remote.close(); Outbox.clear(); ImageDrafts.clear() }
 
+    private fun vmWithPending(pending: io.github.lewin671.remoteagent.core.proto.SessionPendingInputView?): io.github.lewin671.remoteagent.core.proto.SessionViewModel {
+        val tl = io.github.lewin671.remoteagent.core.proto.SessionTimelineView.newBuilder().setLoaded(true)
+        for (i in 1..12) {
+            tl.addItems(
+                io.github.lewin671.remoteagent.core.proto.SessionTimelineItem.newBuilder()
+                    .setId("e$i").setSeq(i.toLong())
+                    .setAgentMessage(io.github.lewin671.remoteagent.core.proto.SessionAgentMessageItem.newBuilder().setMarkdown("Reply $i\nA second line of history.")),
+            )
+        }
+        val composer = io.github.lewin671.remoteagent.core.proto.SessionComposerView.newBuilder().setEnabled(true).setHasActiveTurn(true)
+        if (pending != null) composer.addPendingInputs(pending)
+        return io.github.lewin671.remoteagent.core.proto.SessionViewModel.newBuilder()
+            .setSessionId("s")
+            .setHeader(io.github.lewin671.remoteagent.core.proto.SessionHeaderView.newBuilder().setFound(true).setMachineId("m").setAgent(Agent.AGENT_CODEX).setAgentName("Codex"))
+            .setComposer(composer)
+            .setTimeline(tl)
+            .build()
+    }
+
     @Test fun queuedRowAndItsGrowingActionsStayInShortViewport() {
-        remote.showForTest(state, events = mapOf("s" to history))
+        val baseVm = vmWithPending(null)
+        remote.showForTest(state, sessions = mapOf("s" to baseVm))
         ui.setContent {
             RaTheme(ThemeMode.LIGHT) {
                 CompositionLocalProvider(LocalRemote provides remote, LocalNav provides Nav({}, {}, {}, {}, {}, {}, {}, {}, { _, _ -> }, {}, {}, {})) {
-                    val current by remote.events("s").collectAsState()
-                    // The available chat height above a real keyboard, without testing fake IME insets.
+                    val vm by remote.watchSession("s").collectAsState(initial = baseVm)
                     Box(Modifier.height(320.dp)) {
-                        ChatPane(state, session, Status.RUNNING, current.events, derive(current.events), true, null, null, Modifier, {})
+                        ChatPane("s", state, vm, Modifier, {}, {}, {})
                     }
                 }
             }
         }
         ui.waitUntil(5000) { ui.onAllNodesWithText("Reply 12", substring = true).fetchSemanticsNodes().isNotEmpty() }
         ui.waitForIdle()
-        val queued = Event.newBuilder().setSeq(13).setInputState(InputState.newBuilder().setRequestId("queued").setText("Queued message\nline two\nline three\nline four").setStatus(InputStatus.INPUT_STATUS_QUEUED).setMode(SendMode.SEND_MODE_QUEUE)).build()
-        ui.runOnIdle { remote.showForTest(state, events = mapOf("s" to history + queued)) }
+        val queued = io.github.lewin671.remoteagent.core.proto.SessionPendingInputView.newBuilder()
+            .setRequestId("queued")
+            .setText("Queued message\nline two\nline three\nline four")
+            .setStatus(InputStatus.INPUT_STATUS_QUEUED)
+            .setMode(SendMode.SEND_MODE_QUEUE)
+            .setCanCancel(true)
+            .setLabel(io.github.lewin671.remoteagent.core.proto.Text.newBuilder().setKey(UiMessages.queueAfterTurn().key))
+            .build()
+        ui.runOnIdle { remote.showForTest(state, sessions = mapOf("s" to vmWithPending(queued))) }
         ui.waitForIdle()
-        fun trace(label: String) {
-            println("$label " + ui.onRoot().printToString())
-        }
-        trace("queued layout")
         ui.onNodeWithText("Queued message", substring = true).assertIsDisplayed()
         ui.onNodeWithText("取消").assertIsDisplayed()
-        val paused = queued.toBuilder().setInputState(queued.inputState.toBuilder().setPaused(true)).build()
-        ui.runOnIdle { remote.showForTest(state, events = mapOf("s" to history + paused)) }
+        val paused = queued.toBuilder()
+            .setPaused(true)
+            .setCanResume(true)
+            .setLabel(io.github.lewin671.remoteagent.core.proto.Text.newBuilder().setKey(UiMessages.queuePaused().key))
+            .build()
+        ui.runOnIdle { remote.showForTest(state, sessions = mapOf("s" to vmWithPending(paused))) }
         ui.waitForIdle()
-        trace("paused layout")
         ui.onNodeWithText("发送", substring = false).assertIsDisplayed()
         ui.onNodeWithText("取消").assertIsDisplayed()
     }

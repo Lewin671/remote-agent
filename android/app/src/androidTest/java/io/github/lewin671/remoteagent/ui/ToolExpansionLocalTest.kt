@@ -44,9 +44,10 @@ class ToolExpansionLocalTest {
             event { turnEnded = TurnEnded.newBuilder().setDurationMs(1000).build() }
         }
         val remote = Remote(Account("http://127.0.0.1:1", ByteArray(32), ByteArray(32), "benchmark-client"), Api.defaultHttp())
-        remote.showForTest(RemoteState(conn = ConnState.ONLINE, link = Link.ONLINE, loaded = true, synced = true,
-            machines = mapOf("machine" to machine), sessions = mapOf(session.id to SessionView(session.id, "machine", session))), events = mapOf(session.id to events),
-            live = mapOf(session.id to LiveSnapshot.newBuilder().setSession(session).build()))
+        val st = RemoteState(conn = ConnState.ONLINE, link = Link.ONLINE, loaded = true, synced = true,
+            machines = mapOf("machine" to machine), sessions = mapOf(session.id to SessionView(session.id, "machine", session)))
+        val vm = sessionFixtureVm(session.id, st.sessions[session.id], machine, events, LiveSnapshot.newBuilder().setSession(session).build())
+        remote.showForTest(st, sessions = mapOf(session.id to vm))
         val nav = Nav({}, {}, {}, {}, {}, {}, {}, {}, { _, _ -> }, {}, {}, {})
         fun shell(s: String): String = inst.uiAutomation.executeShellCommand(s).let { fd -> android.os.ParcelFileDescriptor.AutoCloseInputStream(fd).bufferedReader().use { it.readText() } }
         fun find(text: String): Rect? {
@@ -70,7 +71,7 @@ class ToolExpansionLocalTest {
                 activity.setContent { RaTheme(ThemeMode.LIGHT) { CompositionLocalProvider(LocalRemote provides remote, LocalNav provides nav) { AppSafeArea { SessionScreen(session.id) } } } }
             }
             Thread.sleep(3500)
-            File(output, "$phase-fixture.txt").writeText("events=${events.size} rows=${buildChat(events, derive(events, Agent.AGENT_CODEX), "Test computer").size}\n")
+            File(output, "$phase-fixture.txt").writeText("events=${events.size} rows=${vm.timeline.itemsCount}\n")
             fun swipe(up: Boolean) { shell("input swipe 500 ${if (up) 1500 else 600} 500 ${if (up) 600 else 1500} 300"); Thread.sleep(200) }
             fun bottom() { repeat(5) { swipe(true) }; Thread.sleep(500) }
             bottom(); tap("benchmark single command"); Thread.sleep(400); capture("command-open"); tap("benchmark single command")

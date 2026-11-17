@@ -114,25 +114,6 @@ class ScheduleBadgeTest {
         val opened = seen(); opened.observe("m",listOf(t)); assertEquals(0,opened.count(listOf(t)))
         assertEquals("[\"[\\\"t\\\",\\\"r\\\"]\"]",data["ra-schedule-seen:[\"relay-a\",\"account-a\",\"m\"]"])
     }
-    @Test fun scheduledCloseComesFromTheLatestStateAndResetsOnResumeOrManualStop() {
-        fun state(status: SessionStatus, automatic: Boolean) = Event.newBuilder().setSessionState(SessionState.newBuilder().setStatus(status).setDetail("stopped").setScheduledClosed(automatic)).build()
-        val auto = state(SessionStatus.SESSION_STATUS_EXITED,true)
-        assertTrue(derive(listOf(auto)).scheduledClosed)
-        assertTrue(currentActions(listOf(auto), null).scheduledClosed)
-        assertFalse(derive(listOf(state(SessionStatus.SESSION_STATUS_EXITED,false))).scheduledClosed)
-        assertFalse(derive(listOf(auto,state(SessionStatus.SESSION_STATUS_STARTING,false))).scheduledClosed)
-        assertFalse(derive(listOf(auto,state(SessionStatus.SESSION_STATUS_EXITED,false))).scheduledClosed)
-    }
-    @Test fun idleCloseComesFromTheLatestStateAndResetsOnResumeOrManualStop() {
-        fun state(status: SessionStatus, idle: Boolean) = Event.newBuilder().setSessionState(SessionState.newBuilder().setStatus(status).setDetail("stopped").setIdleClosed(idle)).build()
-        val idle = state(SessionStatus.SESSION_STATUS_EXITED,true)
-        assertTrue(derive(listOf(idle)).idleClosed)
-        assertFalse(derive(listOf(idle)).scheduledClosed)
-        assertTrue(currentActions(listOf(idle), null).idleClosed)
-        assertFalse(derive(listOf(state(SessionStatus.SESSION_STATUS_EXITED,false))).idleClosed)
-        assertFalse(derive(listOf(idle,state(SessionStatus.SESSION_STATUS_STARTING,false))).idleClosed)
-        assertFalse(derive(listOf(idle,state(SessionStatus.SESSION_STATUS_EXITED,false))).idleClosed)
-    }
     @Test fun markingUnreadOnlyRemovesLatestResultAndReadDismissesAllNotices() {
         val dismissed = mutableListOf<String>()
         val seen = ScheduleSeen(onRead = { dismissed += it.map { r -> r.id } })

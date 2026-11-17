@@ -32,13 +32,6 @@ class FileUploadLifecycleTest {
     private fun file(id: String) = PendingImage(id, "content://documents/$id", "$id.txt", 999)
     private fun draft(id: String, store: MemoryFiles = MemoryFiles()) = ImageDraft("session:$id", store)
 
-    @Test fun sentFilesOnlyHaveNoEmptyTextBubble() {
-        assertNull(sentBubbleText("", false, true))
-        assertNull(sentBubbleText(" \n", false, true))
-        assertEquals("hello", sentBubbleText("hello", false, true))
-        assertEquals("", sentBubbleText("", false, false))
-    }
-
     @Test fun actualSizeAndTransferStateSurviveRestartAndReceivingFullCompletesAgain() = runBlocking {
         val store = MemoryFiles()
         val d = draft("resume", store)
@@ -180,7 +173,7 @@ class FileUploadLifecycleTest {
             expiresMs = Long.MAX_VALUE; state = PendingImage.State.Ready
         }
         val records = OutgoingRecords(disk)
-        records.save("s", Outgoing("request", "message", images = listOf(original), fileIds = listOf("old-file")), false)
+        records.save("s", Outgoing("request", images = listOf(original)), false)
         val restored = records.load("s").single().images.single()
         assertNull(restored.abortTransfer)
         val channel = Channel()

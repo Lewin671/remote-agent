@@ -418,38 +418,10 @@
     }
   },
   {
-    "key": "errors.android_the_computer_has_not_verified_the_current_request",
-    "zh-CN": "当前请求尚未由电脑核实",
-    "en": "The computer has not verified the current request",
-    "notes": "Android Remote 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
-    "params": {},
-    "platforms": [
-      "android"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
     "key": "errors.android_the_computer_returned_invalid_file_progress",
     "zh-CN": "电脑返回的文件上传进度无效",
     "en": "The computer returned invalid file progress",
     "notes": "Android Files 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
-    "params": {},
-    "platforms": [
-      "android"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "errors.android_the_current_request_changed_review_it_again",
-    "zh-CN": "电脑上的请求已变化，请重新核对",
-    "en": "The current request changed. Review it again",
-    "notes": "Android Remote 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
     "params": {},
     "platforms": [
       "android"
@@ -516,56 +488,9 @@
     }
   },
   {
-    "key": "errors.android_the_previous_outcome_is_still_unknown_value1_retrying_sends_the",
-    "zh-CN": "上一次的结果仍不确定：{value1}。重试会发送同一个请求",
-    "en": "The previous outcome is still unknown: {value1}. Retrying sends the same request",
-    "notes": "Android Attempt 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。value1：原始错误详情或已经本地化的完整错误，不翻译 CLI/daemon 原文。英文为待审初稿；不要替换成浏览器专属安全说明。",
-    "params": {
-      "value1": {
-        "type": "string",
-        "example": "Example"
-      }
-    },
-    "platforms": [
-      "android"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "errors.android_the_previous_outcome_is_unknown_the_request_expired_and_will",
-    "zh-CN": "不确定上一次是否已经执行，它已过期，不会再重发。请先去列表里确认，需要时放弃后重新开始",
-    "en": "The previous outcome is unknown. The request expired and will not be resent. Check the list first; abandon and start again if needed",
-    "notes": "Android Attempt 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
-    "params": {},
-    "platforms": [
-      "android"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
     "key": "errors.android_this_command_expired_and_was_not_sent",
     "zh-CN": "这条指令已过期，没有发出",
     "en": "This command expired and was not sent",
-    "notes": "Android Remote 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
-    "params": {},
-    "platforms": [
-      "android"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "errors.android_this_request_can_no_longer_be_acted_on",
-    "zh-CN": "当前请求已不可操作",
-    "en": "This request can no longer be acted on",
     "notes": "Android Remote 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
     "params": {},
     "platforms": [

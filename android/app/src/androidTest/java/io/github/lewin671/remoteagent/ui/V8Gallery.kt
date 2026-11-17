@@ -161,13 +161,17 @@ class V8Gallery {
     private fun shoot(name: String, state: RemoteState, history: Map<String, List<Event>> = emptyMap(), then: (() -> Unit)? = null, content: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit) {
         // Online means reached and synced, or the screens take the state for stale (RemoteState.unlinked).
         val shown = if (state.conn == ConnState.ONLINE) state.copy(link = io.github.lewin671.remoteagent.core.Link.ONLINE, synced = true) else state
-        remote.showForTest(shown, history, mapOf(
-            ("mac" to Agent.AGENT_CODEX) to codexModels,
-            ("mac" to Agent.AGENT_CLAUDE) to claudeModels,
-            ("mac" to Agent.AGENT_ANTIGRAVITY) to agyModels,
-            ("vps" to Agent.AGENT_CODEX) to codexModels,
-            ("imac" to Agent.AGENT_CODEX) to codexModels,
-        ), history.mapValues { (sid, list) -> liveOf(state.sessions[sid], list) })
+        remote.showForTest(
+            shown,
+            mapOf(
+                ("mac" to Agent.AGENT_CODEX) to codexModels,
+                ("mac" to Agent.AGENT_CLAUDE) to claudeModels,
+                ("mac" to Agent.AGENT_ANTIGRAVITY) to agyModels,
+                ("vps" to Agent.AGENT_CODEX) to codexModels,
+                ("imac" to Agent.AGENT_CODEX) to codexModels,
+            ),
+            sessionVmsForTest(shown, history),
+        )
         ui.setContent {
             RaTheme(if (dark) DarkPalette else LightPalette) {
                 CompositionLocalProvider(LocalRemote provides remote, LocalNav provides nav) {
@@ -179,23 +183,6 @@ class V8Gallery {
         save("$name-light")
         dark = true
         save("$name-dark")
-    }
-
-    /** What the computer would report as waiting now: the pending approvals, questions and inputs, and an open plan. */
-    private fun liveOf(s: SessionView?, list: List<Event>): io.github.lewin671.remoteagent.proto.LiveSnapshot {
-        val d = io.github.lewin671.remoteagent.core.derive(list, s?.info?.agent ?: Agent.AGENT_CODEX)
-        val b = io.github.lewin671.remoteagent.proto.LiveSnapshot.newBuilder().setRunning(d.running)
-        s?.info?.let { b.setSession(it) }
-        list.filter {
-            (it.hasApprovalRequested() && it.approvalRequested.approvalId in d.approvals) ||
-                (it.hasQuestionAsked() && it.questionAsked.questionId in d.questions) ||
-                (it.hasInputState() && d.inputs[it.inputState.requestId] in setOf(InputStatus.INPUT_STATUS_QUEUED, InputStatus.INPUT_STATUS_HELD_BY_CLI))
-        }
-            .forEach { b.addActions(it) }
-        val plan = list.lastOrNull { it.hasPlanProposed() }
-        if (s?.info?.planOpen == true && plan != null)
-            b.setPlanEventSeq(plan.seq).setPlanScreen(plan.planProposed.text).setPlanScreenHash(com.google.protobuf.ByteString.copyFrom(ByteArray(32)))
-        return b.build()
     }
 
     private fun save(name: String) {
@@ -300,7 +287,7 @@ class V8Gallery {
     )
 
     @Test fun queueSendMenu() {
-        Outbox.draft("queue-menu").value = "改完顺便跑一下 lint"
+        ImageDrafts.forSession("queue-menu").text.value = "改完顺便跑一下 lint"
         try {
             shoot("10-queue-send-menu", sessionState(session("queue-menu", "mac", foo, "修复登录超时", SessionStatus.SESSION_STATUS_RUNNING)),
                 mapOf("queue-menu" to events(turn(), user("修复登录超时"))),
@@ -308,7 +295,7 @@ class V8Gallery {
                     ui.onNodeWithContentDescription("发送").performTouchInput { longClick() }
                     ui.onNodeWithText("这一轮结束后再发").assertIsDisplayed()
                 }) { SessionScreen("queue-menu") }
-        } finally { Outbox.draft("queue-menu").value = "" }
+        } finally { ImageDrafts.forSession("queue-menu").text.value = "" }
     }
 
     @Test fun sessionMenu() {
@@ -590,8 +577,7 @@ class V8Gallery {
                 .addOptions(QuestionOption.newBuilder().setLabel("机器离线").setDescription("验证排队反馈和恢复路径"))
                 .addOptions(QuestionOption.newBuilder().setLabel("网络短暂中断").setDescription("不重复发送原指令"))
                 .addOptions(QuestionOption.newBuilder().setLabel("返回终端手动操作")))))
-        QuestionPicks.index["Q9"] = 1
-        QuestionPicks.multi["Q9#1"] = setOf(0, 2)
+        QuestionMultiPicks.selected["Q9#1"] = setOf(0, 2)
         shoot("39-question-page", sessionState(session("q", "mac", foo, "梳理登录流程", agent = Agent.AGENT_CLAUDE, questions = 1)), mapOf("q" to ev)) { QuestionPage("q", "Q9") }
     }
 }

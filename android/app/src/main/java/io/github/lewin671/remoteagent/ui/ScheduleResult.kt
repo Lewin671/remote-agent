@@ -35,6 +35,7 @@ internal fun rememberScheduleResultText(run: ScheduledRun): String? {
         val text by produceState<String?>(initial) {
             value = loadScheduleResultText(run) {
                 if (remote.state.value.sessions[run.session]?.info == null) remote.fetchSession(run.session)
+                remote.openSession(run.session)
                 flow!!.first(::scheduleResultSettled)
             }
         }

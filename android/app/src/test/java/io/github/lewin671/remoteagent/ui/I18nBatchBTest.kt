@@ -16,6 +16,7 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.unit.dp
 import com.google.protobuf.Timestamp
 import io.github.lewin671.remoteagent.core.*
+import io.github.lewin671.remoteagent.core.proto.*
 import io.github.lewin671.remoteagent.data.ThemeMode
 import io.github.lewin671.remoteagent.proto.*
 import io.github.lewin671.remoteagent.term.*
@@ -49,29 +50,111 @@ class I18nBatchBTest(private val locale: String) {
         .setModel("example-model").setCreatedAt(Timestamp.newBuilder().setSeconds(stamp / 1000)).build())
     private val machine = MachineView("m", true, stamp, MachineMeta.newBuilder().setHostname("Example computer").setProtocolVersion(PROTOCOL_VERSION)
         .addAgents(AgentInfo.newBuilder().setAgent(Agent.AGENT_CLAUDE)).build())
-    private val state = RemoteState(conn = ConnState.ONLINE, link = Link.ONLINE, loaded = true, synced = true, isAuthority = true,
+    private val state = RemoteState(conn = io.github.lewin671.remoteagent.core.ConnState.ONLINE, link = Link.ONLINE, loaded = true, synced = true, isAuthority = true,
         prefs = PrefsObject.EMPTY, machines = mapOf("m" to machine), sessions = mapOf("s" to session))
-    private val approval = ApprovalRequested.newBuilder().setApprovalId("a").setCommand("git diff --stat")
-        .setDescription("Inspect the proposed changes").setDeadline(Timestamp.newBuilder().setSeconds(stamp / 1000 + 480)).build()
-    private val question = QuestionAsked.newBuilder().setQuestionId("q").addQuestions(Question.newBuilder().setId("first")
-        .setText("Which implementation should we use?").setMultiSelect(true)
-        .addOptions(QuestionOption.newBuilder().setLabel("Small change (Recommended)").setDescription("Keep the public interface"))
-        .addOptions(QuestionOption.newBuilder().setLabel("Broader cleanup").setDescription("Update the implementation"))).build()
-    private val plan = "## Proposed plan\n\n1. Inspect the implementation\n2. Apply a focused change\n3. Verify behavior"
-    private fun event(seq: Long, block: Event.Builder.() -> Unit) = Event.newBuilder().setSeq(seq).setSessionId("s").apply(block).build()
-    private val history get() = listOf(
-        event(1) { userMessage = UserMessage.newBuilder().setText("Keep this original input unchanged").build() },
-        event(2) { agentMessage = AgentMessage.newBuilder().setText("The original CLI reply stays unchanged.").build() },
-        event(3) { toolCall = ToolCall.newBuilder().setKind(ToolKind.TOOL_KIND_COMMAND).setTitle("git status --short").setStatus("completed").build() },
-        event(4) { toolCall = ToolCall.newBuilder().setKind(ToolKind.TOOL_KIND_COMMAND).setTitle("git diff --stat").setStatus("completed").build() },
-        event(5) { turnEnded = TurnEnded.newBuilder().setOutcome(TurnOutcome.TURN_OUTCOME_COMPLETED).setDurationMs(72_000).build() },
+    private fun text(message: UiMessage) = messageTextForTest(message, language)
+    private val defaultSessionVm: SessionViewModel get() = sessionVm(history)
+    private fun sessionVm(
+        items: List<SessionTimelineItem> = history,
+        dock: SessionDockView = SessionDockView.getDefaultInstance(),
+        pending: List<SessionPendingInputView> = emptyList(),
+        exited: Boolean = false,
+        canSwitchModel: Boolean = true,
+        modelsLoading: Boolean = false,
+        modelChoices: List<SessionModelChoiceView> = emptyList(),
+    ): SessionViewModel = SessionViewModel.newBuilder()
+        .setSessionId("s")
+        .setHeader(
+            SessionHeaderView.newBuilder()
+                .setFound(true)
+                .setSessionsListed(true)
+                .setLiveLoaded(true)
+                .setTitle(Text.newBuilder().setLiteral("Example task"))
+                .setProjectName(Text.newBuilder().setLiteral("demo"))
+                .setProjectKey("/example/demo")
+                .setCwd("/example/demo")
+                .setAgent(Agent.AGENT_CLAUDE)
+                .setAgentName("Claude Code")
+                .setStatus(if (exited) SessionDisplayStatus.SESSION_DISPLAY_STATUS_ENDED else SessionDisplayStatus.SESSION_DISPLAY_STATUS_IDLE)
+                .setStatusText(Text.newBuilder().setKey(if (exited) UiMessages.listStateEnded().key else UiMessages.listStateIdle().key))
+                .setModel("example-model")
+                .setModelLabel("example-model")
+                .setMachineId("m")
+                .setComputerName(Text.newBuilder().setLiteral("Example computer"))
+                .setComputerOnline(true)
+                .setConnState(io.github.lewin671.remoteagent.core.proto.ConnState.CONN_STATE_CONNECTED)
+                .apply {
+                    if (exited) {
+                        setExited(true)
+                        setEndedAtMs(stamp)
+                        setEndedText(Text.newBuilder().setKey(UiMessages.sessionManuallyClosed().key))
+                    }
+                }
+                .setCapabilities(
+                    SessionCapabilitiesView.newBuilder()
+                        .setCanSend(!exited)
+                        .setSupportsImages(true)
+                        .setSupportsFiles(true)
+                        .setSupportsSendModes(true)
+                        .setSupportsCompact(true)
+                        .setSupportsFork(true)
+                        .setSupportsModeSwitch(true)
+                        .setSupportsModelSwitch(true)
+                        .setTerminalAvailable(!exited),
+                ),
+        )
+        .setActions(
+            SessionActionsView.newBuilder()
+                .setCanRename(true)
+                .setCanFork(true)
+                .setCanEnd(!exited)
+                .setCanSwitchMode(!exited)
+                .setCanSwitchModel(canSwitchModel)
+                .setModelsLoading(modelsLoading)
+                .addAllModelChoices(modelChoices)
+                .addModeChoices(
+                    SessionModeChoiceView.newBuilder()
+                        .setMode(ApprovalMode.APPROVAL_MODE_ASK)
+                        .setLabel(Text.newBuilder().setKey(UiMessages.modesAsk().key))
+                        .setSelected(true)
+                        .setAvailable(true),
+                ),
+        )
+        .setDock(dock)
+        .setComposer(
+            SessionComposerView.newBuilder()
+                .setEnabled(!exited)
+                .setPlaceholder(Text.newBuilder().setKey(UiMessages.composerMessage().key))
+                .addAllPendingInputs(pending),
+        )
+        .setTimeline(SessionTimelineView.newBuilder().setLoaded(true).addAllItems(items))
+        .build()
+
+    private fun tl(seq: Long, id: String, b: SessionTimelineItem.Builder.() -> Unit) =
+        SessionTimelineItem.newBuilder().setId(id).setSeq(seq).setEndSeq(seq).apply(b).build()
+
+    private val history: List<SessionTimelineItem> get() = listOf(
+        tl(1, "e1") { userMessage = SessionUserMessageItem.newBuilder().setText("Keep this original input unchanged").build() },
+        tl(2, "e2") { agentMessage = SessionAgentMessageItem.newBuilder().setMarkdown("The original CLI reply stays unchanged.").build() },
+        tl(3, "e3") {
+            toolGroup = SessionToolGroupItem.newBuilder()
+                .setSummary(Text.newBuilder().setKey(UiMessages.toolsCompletedCommands(2).key).addArgs(TextArg.newBuilder().setName("count").setIntValue(2)))
+                .setCommandCount(2)
+                .addCalls(SessionToolCallItem.newBuilder().setCallId("c1").setToolKind(ToolKind.TOOL_KIND_COMMAND).setTitle("git status --short").setStatus(SessionToolStatus.SESSION_TOOL_STATUS_OK))
+                .addCalls(SessionToolCallItem.newBuilder().setCallId("c2").setToolKind(ToolKind.TOOL_KIND_COMMAND).setTitle("git diff --stat").setStatus(SessionToolStatus.SESSION_TOOL_STATUS_OK))
+                .build()
+        },
+        tl(5, "e5") {
+            turnEnd = SessionTurnEndItem.newBuilder()
+                .setDurationMs(72_000)
+                .setLabel(Text.newBuilder().setKey(UiMessages.sessionTurnDuration("{duration}").key).addArgs(TextArg.newBuilder().setName("duration").setStrValue("1m12s")))
+                .build()
+        },
     )
     @Before fun prepare() {
-        remote.showForTest(state, events = mapOf("s" to history), modelLists = mapOf(("m" to Agent.AGENT_CLAUDE) to
-            ListModelsResponse.newBuilder().setDefaultModel("example-model").addModels(ModelInfo.newBuilder().setSlug("example-model").setDisplayName("Example model").addEfforts("high")).build()))
+        remote.showForTest(state, sessions = mapOf("s" to defaultSessionVm))
     }
-    @After fun close() { remote.close(); Outbox.clear(); ImageDrafts.clear(); Drafts.clear(); Plans.clear(); Answers.clear(); Resolves.clear(); DockFolds.clear() }
-    private fun text(message: UiMessage) = messageTextForTest(message, language)
+    @After fun close() { remote.close(); Outbox.clear(); ImageDrafts.clear(); Drafts.clear(); DockFolds.clear(); QuestionMultiPicks.clear() }
     private fun show(content: @Composable () -> Unit) = ui.setContent {
         RaTheme(ThemeMode.LIGHT) {
             CompositionLocalProvider(LocalRemote provides remote, LocalNav provides nav, LocalMessageLocale provides language) {
@@ -96,8 +179,7 @@ class I18nBatchBTest(private val locale: String) {
         ui.onNodeWithContentDescription(text(UiMessages.commonAndroidMore())).performClick(); shot("session-menu")
     }
     @Test fun sessionRecovery() {
-        val ended = session.copy(info = session.info!!.toBuilder().setStatus(SessionStatus.SESSION_STATUS_EXITED).setStatusDetail("stopped").build())
-        remote.showForTest(state.copy(sessions = mapOf("s" to ended)), events = mapOf("s" to history))
+        remote.showForTest(state, sessions = mapOf("s" to sessionVm(exited = true)))
         show { SessionScreen("s") }; shot("session-recovery")
     }
     @Test fun composerMenus() {
@@ -114,59 +196,108 @@ class I18nBatchBTest(private val locale: String) {
         } }
         ui.onNodeWithContentDescription(text(UiMessages.newSessionIosAttach())).performClick(); shot("attachment-menu")
     }
+    private val samplePlanMarkdown = "## Proposed plan\n\n1. Inspect the implementation\n2. Apply a focused change\n3. Verify behavior"
     @Test fun historyRows() {
-        val events = history + event(6) { reasoning = Reasoning.newBuilder().setText("Original reasoning text").build() } +
-            event(7) { planProposed = PlanProposed.newBuilder().setText(plan).build() } +
-            event(8) { settingsChanged = SettingsChanged.newBuilder().setMode(ApprovalMode.APPROVAL_MODE_PLAN).build() }
-        val rows = buildChat(events, derive(events), "Example computer", copy = ::text)
-        show { Column(Modifier.fillMaxSize()) { rows.forEach { ChatItemView(it, agentName(Agent.AGENT_CLAUDE, copy = ::messageTextForTest), "/example/demo", "/example") } } }
+        val items = history + listOf(
+            tl(7, "e7") { plan = SessionPlanItem.newBuilder().setMarkdown(samplePlanMarkdown).build() },
+            tl(8, "e8") { note = SessionNoteItem.newBuilder().setKind(SessionNoteKind.SESSION_NOTE_KIND_MODE_CHANGED).setText(Text.newBuilder().setKey(UiMessages.modesPlan().key)).build() },
+        )
+        show { Column(Modifier.fillMaxSize()) { items.forEach { TimelineItemView(it) } } }
         shot("history")
     }
     @Test fun queuedMessages() {
-        val queued = event(6) { inputState = InputState.newBuilder().setRequestId("queued").setText("A pending message with original content")
-            .setStatus(InputStatus.INPUT_STATUS_QUEUED).setMode(SendMode.SEND_MODE_QUEUE).setPaused(true).build() }
-        remote.showForTest(state, events = mapOf("s" to history + queued))
+        val pending = SessionPendingInputView.newBuilder()
+            .setRequestId("queued")
+            .setText("A pending message with original content")
+            .setStatus(InputStatus.INPUT_STATUS_QUEUED)
+            .setMode(SendMode.SEND_MODE_QUEUE)
+            .setPaused(true)
+            .setCanCancel(true)
+            .setCanResume(true)
+            .setLabel(Text.newBuilder().setKey(UiMessages.queuePaused().key))
+            .build()
+        remote.showForTest(state, sessions = mapOf("s" to sessionVm(pending = listOf(pending))))
         show { SessionScreen("s") }; shot("queue")
         ui.onNodeWithText(text(UiMessages.queuePaused())).assertExists()
     }
     @Test fun approvalDockAndPage() {
-        remote.showForTest(state, events = mapOf("s" to history + event(6) { approvalRequested = approval }), live = mapOf("s" to LiveSnapshot.newBuilder().setSession(session.info).addActions(event(6) { approvalRequested = approval }).build()))
-        show { Column { ApprovalDock(session, approval, 2) } }; shot("approval-dock")
+        val dock = SessionDockView.newBuilder()
+            .setHasItem(true).setKind(SessionDockKind.SESSION_DOCK_KIND_APPROVAL).setItemId("a").setObservedSeq(6)
+            .setTitle(Text.newBuilder().setKey(UiMessages.listStateApproval().key))
+            .setMeta(Text.newBuilder().setLiteral("git diff --stat"))
+            .setApproval(SessionApprovalDockView.newBuilder().setApprovalId("a").setCommandPreview("git diff --stat").setDescription("Inspect the proposed changes").setCanAlwaysAllow(true))
+            .build()
+        val vm = sessionVm(dock = dock)
+        remote.showForTest(state, sessions = mapOf("s" to vm))
+        show { Column { SessionDock(vm, {}, {}, {}, {}) } }; shot("approval-dock")
     }
     @Test fun approvalPage() {
-        remote.showForTest(state, events = mapOf("s" to history + event(6) { approvalRequested = approval }), live = mapOf("s" to LiveSnapshot.newBuilder().setSession(session.info).addActions(event(6) { approvalRequested = approval }).build()))
+        val dock = SessionDockView.newBuilder()
+            .setHasItem(true).setKind(SessionDockKind.SESSION_DOCK_KIND_APPROVAL).setItemId("a").setObservedSeq(6)
+            .setTitle(Text.newBuilder().setKey(UiMessages.listStateApproval().key))
+            .setApproval(SessionApprovalDockView.newBuilder().setApprovalId("a").setCommandPreview("git diff --stat").setBody("git diff --stat").setDescription("Inspect the proposed changes"))
+            .build()
+        remote.showForTest(state, sessions = mapOf("s" to sessionVm(dock = dock)))
         show { ApprovalPage("s", "a") }; ui.waitUntil(5000) { ui.onAllNodesWithText("git diff --stat", substring = true).fetchSemanticsNodes().isNotEmpty() }; shot("approval-page")
     }
     @Test fun questionDock() {
-        remote.showForTest(state, events = mapOf("s" to history + event(6) { questionAsked = question }), live = mapOf("s" to LiveSnapshot.newBuilder().setSession(session.info).addActions(event(6) { questionAsked = question }).build()))
-        show { QuestionDock(session, question, 1) {} }; shot("question-dock")
+        val q = SessionQuestionStepView.newBuilder().setQuestionText("Which implementation should we use?").setMultiSelect(true)
+            .addOptions(SessionQuestionOptionView.newBuilder().setOptionNum(1).setLabel("Small change (Recommended)").setDescription("Keep the public interface"))
+            .addOptions(SessionQuestionOptionView.newBuilder().setOptionNum(2).setLabel("Broader cleanup").setDescription("Update the implementation")).build()
+        val dock = SessionDockView.newBuilder()
+            .setHasItem(true).setKind(SessionDockKind.SESSION_DOCK_KIND_QUESTION).setItemId("q").setObservedSeq(6)
+            .setTitle(Text.newBuilder().setKey(UiMessages.listStateQuestion().key))
+            .setQuestion(SessionQuestionDockView.newBuilder().setQuestionId("q").setTotalQuestions(1).setQuestion(q))
+            .build()
+        val vm = sessionVm(dock = dock)
+        remote.showForTest(state, sessions = mapOf("s" to vm))
+        show { SessionDock(vm, {}, {}, {}, {}) }; shot("question-dock")
     }
     @Test fun questionPage() {
-        remote.showForTest(state, events = mapOf("s" to history + event(6) { questionAsked = question }), live = mapOf("s" to LiveSnapshot.newBuilder().setSession(session.info).addActions(event(6) { questionAsked = question }).build()))
+        val q = SessionQuestionStepView.newBuilder().setQuestionText("Which implementation should we use?").setMultiSelect(true)
+            .addOptions(SessionQuestionOptionView.newBuilder().setOptionNum(1).setLabel("Small change (Recommended)").setDescription("Keep the public interface"))
+            .addOptions(SessionQuestionOptionView.newBuilder().setOptionNum(2).setLabel("Broader cleanup").setDescription("Update the implementation")).build()
+        val dock = SessionDockView.newBuilder()
+            .setHasItem(true).setKind(SessionDockKind.SESSION_DOCK_KIND_QUESTION).setItemId("q").setObservedSeq(6)
+            .setTitle(Text.newBuilder().setKey(UiMessages.listStateQuestion().key))
+            .setQuestion(SessionQuestionDockView.newBuilder().setQuestionId("q").setTotalQuestions(1).setQuestion(q))
+            .build()
+        remote.showForTest(state, sessions = mapOf("s" to sessionVm(dock = dock)))
         show { QuestionPage("s", "q") }; ui.waitUntil(5000) { ui.onAllNodesWithText("Which implementation should we use?", substring = true).fetchSemanticsNodes().isNotEmpty() }; shot("question-page")
     }
     @Test fun planDock() {
-        show { PlanDock(session, plan, 1) {} }; shot("plan-dock")
+        val dock = SessionDockView.newBuilder()
+            .setHasItem(true).setKind(SessionDockKind.SESSION_DOCK_KIND_PLAN).setItemId("plan").setObservedSeq(6)
+            .setTitle(Text.newBuilder().setKey(UiMessages.listStatePlan().key))
+            .setPlan(SessionPlanDockView.newBuilder().setMarkdown(samplePlanMarkdown).addChoices(SessionPlanChoiceOptionView.newBuilder().setChoice(PlanChoice.PLAN_CHOICE_IMPLEMENT).setLabel(Text.newBuilder().setLiteral("Implement plan"))))
+            .build()
+        val vm = sessionVm(dock = dock)
+        show { SessionDock(vm, {}, {}, {}, {}) }; shot("plan-dock")
     }
     @Test fun planPage() {
-        remote.showForTest(state.copy(sessions = mapOf("s" to session.copy(info = session.info!!.toBuilder().setPlanOpen(true).build()))), events = mapOf("s" to history + event(6) { planProposed = PlanProposed.newBuilder().setText(plan).build() }), live = mapOf("s" to LiveSnapshot.newBuilder().setSession(session.info!!.toBuilder().setPlanOpen(true)).setPlanEventSeq(6).setPlanScreenHash(com.google.protobuf.ByteString.copyFrom(ByteArray(32))).setPlanScreen(plan).build()))
+        val dock = SessionDockView.newBuilder()
+            .setHasItem(true).setKind(SessionDockKind.SESSION_DOCK_KIND_PLAN).setItemId("plan").setObservedSeq(6)
+            .setTitle(Text.newBuilder().setKey(UiMessages.listStatePlan().key))
+            .setPlan(SessionPlanDockView.newBuilder().setMarkdown(samplePlanMarkdown).addChoices(SessionPlanChoiceOptionView.newBuilder().setChoice(PlanChoice.PLAN_CHOICE_IMPLEMENT).setLabel(Text.newBuilder().setLiteral("Implement plan"))))
+            .build()
+        remote.showForTest(state, sessions = mapOf("s" to sessionVm(dock = dock)))
         show { PlanPage("s") }; ui.waitUntil(5000) { ui.onAllNodesWithText("Proposed plan", substring = true).fetchSemanticsNodes().isNotEmpty() }; shot("plan-page")
     }
-    @Suppress("UNCHECKED_CAST")
     @Test fun modelAndModeSheets() {
-        val response = ListModelsResponse.newBuilder().setDefaultModel("example-model").addModels(ModelInfo.newBuilder().setSlug("example-model").setDisplayName("Example model").addAllEfforts(listOf("low", "high"))).build()
-        val inFlight = kotlinx.coroutines.CompletableDeferred<ListModelsResponse>()
-        val cache = Remote::class.java.getDeclaredField("models").apply { isAccessible = true }.get(remote) as MutableMap<String, kotlinx.coroutines.Deferred<ListModelsResponse>>
-        cache["m/${Agent.AGENT_CLAUDE.number}"] = inFlight
-        show { ModelSheet(state, session, false) {} }; ui.runOnIdle { inFlight.complete(response) }; ui.waitUntil(5000) { ui.onAllNodesWithText("Example model", substring = true).fetchSemanticsNodes().isNotEmpty() }; shot("session-settings") }
-    @Test fun modeSheet() { show { ModeSheet(session) {} }; shot("approval-mode") }
-    @Test fun renameDialog() { show { RenameDialog(session) {} }; shot("rename") }
+        val choices = listOf(SessionModelChoiceView.newBuilder().setSlug("example-model").setDisplayName("Example model").addEfforts("high").setSelected(true).build())
+        remote.showForTest(state, sessions = mapOf("s" to sessionVm(modelsLoading = true)))
+        show { val current by remote.watchSession("s").collectAsState(initial = defaultSessionVm); ModelSheet("s", current) {} }
+        ui.runOnIdle { remote.showForTest(state, sessions = mapOf("s" to sessionVm(modelChoices = choices))) }
+        ui.waitUntil(5000) { ui.onAllNodesWithText("Example model", substring = true).fetchSemanticsNodes().isNotEmpty() }; shot("session-settings")
+    }
+    @Test fun modeSheet() { show { ModeSheet("s", defaultSessionVm) {} }; shot("approval-mode") }
+    @Test fun renameDialog() { show { RenameDialog("s", defaultSessionVm) {} }; shot("rename") }
     @Test fun attachmentRows() {
         show { Column(Modifier.padding(16.dp)) {
             FileChip("example.patch", 2048, PendingImage.State.Uploading(.42f), {}, {})
             FileChip("notes.txt", 320, PendingImage.State.Failed.raw("Raw transport diagnostic"), {}, {})
             Text(uiText(FILES_AS_THEY_ARE))
-            GeneratedCard(ChatItem.Generated("generated", 1, "Original image prompt", listOf(ImageRef.newBuilder().setImageId("image").setWidth(640).setHeight(360).build()))) {}
+            GeneratedCard("generated", listOf(ImageRef.newBuilder().setImageId("image").setWidth(640).setHeight(360).build()), "Original image prompt") {}
         } }; shot("attachments")
     }
     @Test fun imageViewer() {
@@ -175,7 +306,8 @@ class I18nBatchBTest(private val locale: String) {
         val image = ImageRef.newBuilder().setImageId("image").setPath("/example/demo/example.png")
             .setPreview(com.google.protobuf.ByteString.copyFrom(bytes)).setPreviewWidth(240).setPreviewHeight(160)
             .setWidth(240).setHeight(160).setSync(ImageSync.IMAGE_SYNC_NAME_ONLY).setSource(ImageSource.IMAGE_SOURCE_USER).build()
-        remote.showForTest(state, events = mapOf("s" to history + event(6) { userMessage = UserMessage.newBuilder().addImages(image).build() }))
+        val imgItem = tl(6, "e6") { userMessage = SessionUserMessageItem.newBuilder().addImages(image).build() }
+        remote.showForTest(state, sessions = mapOf("s" to sessionVm(items = history + imgItem)))
         show { ImageViewer("s", 6, 0) }; shot("image-viewer")
     }
     @Test fun draftViewer() {
@@ -200,13 +332,13 @@ class I18nBatchBTest(private val locale: String) {
     }
     @Test fun languageChangeKeepsComposerAndRebuildsChat() {
         val draft = mutableStateOf("保留原始输入 / original input")
-        show { Column { ChatPane(state, session, Status.IDLE, history, derive(history), true, null, null, Modifier.weight(1f), {})
+        show { Column { ChatPane("s", state, defaultSessionVm, Modifier.weight(1f), {}, {}, {})
             ComposeBox(draft.value, { draft.value = it }, text(UiMessages.composerMessage()), true, {}, {}) } }
         ui.waitForIdle()
         ui.runOnIdle { language = if (locale == "en") "zh-CN" else "en" }
         ui.onAllNodes(hasSetTextAction()).onLast().assertTextEquals(draft.value)
         ui.onAllNodesWithContentDescription(text(UiMessages.composerSend())).onLast().assertExists()
-        ui.waitUntil(5000) { ui.onAllNodesWithText(text(UiMessages.sessionTurnDuration(duration(72_000, ::text)))).fetchSemanticsNodes().isNotEmpty() }
+        ui.waitUntil(5000) { ui.onAllNodesWithText(text(UiMessages.sessionTurnDuration("1m12s"))).fetchSemanticsNodes().isNotEmpty() }
     }
     @Test fun quantitiesAndSourceIdentity() {
         for (count in listOf(0, 1, 2, 1000)) {
@@ -217,16 +349,8 @@ class I18nBatchBTest(private val locale: String) {
             val restore = text(UiMessages.imageAndroidRestoreLimit(count, 1, 9))
             if (locale == "en") Assert.assertTrue(restore.contains("Returning $count ${if (count == 1) "image would" else "images would"}"))
         }
-        val label = text(UiMessages.sessionOriginSelf())
-        Assert.assertEquals(label, messageSource(ChatSource(label), false, "computer", ::text))
-        val other = DeviceView("other", DeviceKind.DEVICE_KIND_CLIENT, 0, DeviceMeta.newBuilder().setName(label).build())
-        val origin = Origin.newBuilder().setKind(OriginKind.ORIGIN_KIND_CLIENT).setDeviceId(other.id).build()
-        val namedSource = chatSource(origin, state.copy(devices = mapOf(other.id to other)), "me", "computer", ::text)!!
-        Assert.assertFalse(namedSource.self)
-        Assert.assertEquals(label, messageSource(namedSource, false, "computer", ::text))
         val closed = RemoteTerminal.State.Closed(UiMessages.terminalAndroidClosed().messageText())
         Assert.assertEquals(text(UiMessages.terminalAndroidClosed()), closed.reason.resolve(::text))
-        Assert.assertNull(messageSource(ChatSource(label, true), true, "computer", ::text))
         Assert.assertEquals("Unchanged CLI text", "Unchanged CLI text".messageText().resolve(::text))
     }
 }

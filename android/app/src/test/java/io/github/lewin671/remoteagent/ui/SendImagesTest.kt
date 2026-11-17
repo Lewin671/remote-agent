@@ -43,39 +43,17 @@ class SendImagesTest {
     }
 
     @Test
-    fun missingImagesOfferRecoveryWithTextAndOriginalBytes() = kotlinx.coroutines.runBlocking {
+    fun takeBackAttachesRetainedImagesToDraftWithoutDuplicates() {
+        val sid = "s-takeback"
         val image = PendingImage("picked", null).apply {
             processed = Processed(byteArrayOf(1, 2), io.github.lewin671.remoteagent.proto.ImageFormat.IMAGE_FORMAT_PNG, 8, 8)
         }
-        val outgoing = Outgoing("same-request", "保留文字", listOf("expired"), listOf(image), original = true)
-        outgoing.deliver { throw io.github.lewin671.remoteagent.core.CommandException("not_found", "image expired is not on this machine; upload it again", fromDaemon = true,outcome=io.github.lewin671.remoteagent.core.Outcome.EXECUTED) }
-        assertEquals(Outgoing.State.FAILED, outgoing.state)
-        assertTrue(outgoing.missingImages)
-        assertTrue(outgoing.canPutBack)
-        assertTrue(outgoing.error.contains("文字和图片都会保留"))
+        Outbox.of(sid) += Outgoing("same-request", listOf(image), original = true)
         val draft = ImageDraft("session:recover", MemoryFiles())
-        assertTrue(draft.attach(outgoing.images, 6, outgoing.original))
+        assertTrue(Outbox.takeBack(sid, "same-request", draft))
         assertSame(image, draft.images.single())
         assertTrue(draft.original)
-        assertEquals("保留文字", outgoing.text)
         assertTrue(needsUpload(image, "mac"))
-    }
-
-    @Test
-    fun unknownMessagesRetryTheSameRequestAndImagesWithoutOfferingANewSend() = kotlinx.coroutines.runBlocking {
-        val outgoing = Outgoing("same-request", "看图", listOf("original-id"), listOf(PendingImage("picked", null)))
-        val requests = mutableListOf<io.github.lewin671.remoteagent.proto.SendRequest>()
-        outgoing.deliver { requests += it; throw io.github.lewin671.remoteagent.core.CommandException(io.github.lewin671.remoteagent.core.CommandException.UNKNOWN, "reply lost", outcome=io.github.lewin671.remoteagent.core.Outcome.UNKNOWN) }
-        assertEquals(Outgoing.State.UNKNOWN, outgoing.state)
-        assertFalse(outgoing.canPutBack)
-        outgoing.deliver { requests += it; throw io.github.lewin671.remoteagent.core.CommandException("unavailable", "offline") }
-        assertEquals(Outgoing.State.UNKNOWN, outgoing.state)
-        assertFalse(outgoing.canPutBack)
-        outgoing.deliver { requests += it }
-        assertEquals(Outgoing.State.SENT, outgoing.state)
-        assertEquals(listOf(requests.first(), requests.first(), requests.first()), requests)
-        assertEquals("same-request", requests.last().requestId)
-        assertEquals(listOf("original-id"), requests.last().imageIdsList)
     }
 
     @Test
@@ -138,69 +116,21 @@ class SendImagesTest {
     }
 
     @Test
-    fun theLatestStateOfEachMessageComesFromTheEvents() {
-        fun input(seq: Long, id: String, st: InputStatus) = Event.newBuilder().setSeq(seq).setInputState(InputState.newBuilder().setRequestId(id).setStatus(st)).build()
-        val m = inputStates(listOf(input(1, "a", InputStatus.INPUT_STATUS_QUEUED), input(2, "a", InputStatus.INPUT_STATUS_SUBMITTED), input(3, "b", InputStatus.INPUT_STATUS_QUEUED)))
-        assertEquals(InputStatus.INPUT_STATUS_SUBMITTED, m["a"]?.status)
-        assertEquals(InputStatus.INPUT_STATUS_QUEUED, m["b"]?.status)
-    }
-
-    @Test
-    fun aMessageIsShownUnderTheChatUntilTheEventsHaveIt() {
-        assertTrue(outgoingShown(null))
-        assertFalse(outgoingShown(InputStatus.INPUT_STATUS_QUEUED))
-        assertFalse(outgoingShown(InputStatus.INPUT_STATUS_HELD_BY_CLI))
-        // Whatever the try from here ended with, lost answer included: the CLI recorded the message.
-        assertFalse(outgoingShown(InputStatus.INPUT_STATUS_SUBMITTED))
-        assertFalse(outgoingShown(InputStatus.INPUT_STATUS_CANCELED))
-        assertTrue(outgoingShown(InputStatus.INPUT_STATUS_FAILED))
-        assertTrue(outgoingShown(InputStatus.INPUT_STATUS_NEEDS_TERMINAL))
-        assertTrue(outgoingShown(InputStatus.INPUT_STATUS_UNCONFIRMED))
-    }
-
-    @Test
-    fun aMessageWhoseAnswerWasLostIsLetGoOnceTheCliRecordedIt() {
-        val sid = "s-settle-text"
-        val lost = Outgoing("a", "甲").also { it.state = Outgoing.State.UNKNOWN }
-        val failed = Outgoing("b", "乙").also { it.state = Outgoing.State.FAILED }
-        Outbox.of(sid) += listOf(lost, failed)
-        Outbox.settle(sid, mapOf("a" to state(InputStatus.INPUT_STATUS_SUBMITTED)))
-        // The one the events say nothing of stays, with its retry.
-        assertEquals(listOf(failed), Outbox.of(sid).toList())
-    }
-
-    @Test
-    fun aMessageCanceledElsewhereIsLetGoAfterItsAnswerWasLost() {
-        val sid = "s-canceled-text"
-        val lost = Outgoing("a", "甲").also { it.state = Outgoing.State.UNKNOWN }
-        val failed = Outgoing("b", "乙").also { it.state = Outgoing.State.FAILED }
-        Outbox.of(sid) += listOf(lost, failed)
-        Outbox.settle(sid, mapOf("a" to state(InputStatus.INPUT_STATUS_CANCELED)))
-        assertEquals(listOf(failed), Outbox.of(sid).toList())
-    }
-
-    @Test
-    fun aMessageTheSessionEndedOnIsKeptToBePutBack() {
-        val sid = "s-exited"
-        val image = PendingImage("i1", null).apply {
+    fun pruneSettledReleasesLocalCopiesWhenCoreNoLongerListsRequest() {
+        val sid = "s-settled"
+        val keepImg = PendingImage("i1", null).apply {
             processed = Processed(byteArrayOf(1, 2, 3), io.github.lewin671.remoteagent.proto.ImageFormat.IMAGE_FORMAT_JPEG, 10, 20)
         }
-        val waiting = Outgoing("a", "甲", listOf("on-mac"), listOf(image))
-        Outbox.of(sid) += waiting
-        Outbox.settle(sid, mapOf("a" to state(InputStatus.INPUT_STATUS_QUEUED)))
-        Outbox.settle(sid, mapOf("a" to state(InputStatus.INPUT_STATUS_CANCELED, "exited")))
-        // What 放回输入框 on the chat's row finds: the text and the images.
-        assertSame(waiting, Outbox.find(sid, "a"))
-        assertEquals("甲", Outbox.text(sid, "a"))
-        assertEquals(listOf(image), Outbox.find(sid, "a")?.images)
-        assertNotNull(image.processed)
-        // Canceled by the user instead, it is let go of with its images.
-        Outbox.settle(sid, mapOf("a" to state(InputStatus.INPUT_STATUS_CANCELED)))
-        assertNull(Outbox.find(sid, "a"))
-        assertNull(image.processed)
+        val dropImg = PendingImage("i2", null).apply {
+            processed = Processed(byteArrayOf(4, 5, 6), io.github.lewin671.remoteagent.proto.ImageFormat.IMAGE_FORMAT_JPEG, 10, 20)
+        }
+        Outbox.of(sid) += listOf(Outgoing("keep", listOf(keepImg)), Outgoing("drop", listOf(dropImg)))
+        Outbox.pruneSettled(sid, setOf("keep"))
+        assertNotNull(Outbox.find(sid, "keep"))
+        assertNull(Outbox.find(sid, "drop"))
+        assertNotNull(keepImg.processed)
+        assertNull(dropImg.processed)
     }
-
-    private fun state(status: InputStatus, reason: String = "") = InputState.newBuilder().setStatus(status).setReason(reason).build()
 
     /** A Remote that is never reached when keeping the images fails. */
     private fun throwingRemote(): io.github.lewin671.remoteagent.core.Remote =

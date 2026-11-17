@@ -58,20 +58,6 @@
     }
   },
   {
-    "key": "attachment.android_missing_files",
-    "zh-CN": "附件不在电脑上。放回输入框后会重新上传，文字和附件都会保留",
-    "en": "Attachments are not on the computer. Returning to the composer uploads them again and keeps the text and attachments",
-    "notes": "Android 批次 B：Actions.kt 的现有显示文案，保留原中文措辞与标点。无变量。短标签保持紧凑；说明正文可多行。英文初稿待审。",
-    "params": {},
-    "platforms": [
-      "android"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
     "key": "attachment.android_name_too_long",
     "zh-CN": "文件名过长，请重命名后重新选择",
     "en": "Filename is too long. Rename the file and select it again",

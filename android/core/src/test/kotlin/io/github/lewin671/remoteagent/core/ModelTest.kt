@@ -39,21 +39,11 @@ class ModelTest {
     @Test fun nativeSendCapabilityControlsOperationAndCaption() {
         for (agent in listOf(Agent.AGENT_CODEX, Agent.AGENT_CLAUDE)) {
             assertEquals(SendMode.SEND_MODE_STEER, sendModeFor(agent, running = true))
-            assertEquals(UiMessages.queueInsert(), inputTimingLabel(agent, SendMode.SEND_MODE_STEER, false, null))
         }
         for (mode in listOf(SendMode.SEND_MODE_UNSPECIFIED, SendMode.SEND_MODE_STEER, SendMode.SEND_MODE_QUEUE)) {
             assertEquals(SendMode.SEND_MODE_QUEUE, sendModeFor(Agent.AGENT_ANTIGRAVITY, mode, true))
-            for (held in listOf(false, true)) assertEquals(UiMessages.queueAfterTurn(), inputTimingLabel(Agent.AGENT_ANTIGRAVITY, mode, held, null))
         }
         assertEquals(SendMode.SEND_MODE_STEER, sendModeFor(Agent.AGENT_ANTIGRAVITY, SendMode.SEND_MODE_STEER, false))
-        assertEquals(UiMessages.queueAgentReady("Antigravity"), inputTimingLabel(Agent.AGENT_ANTIGRAVITY, SendMode.SEND_MODE_STEER, false, "Antigravity"))
-    }
-
-    @Test fun popupDiagnosticsAreLocalized() {
-        for (detail in listOf("trust folder", "hooks need review", "update available", "approval", "permission", "model menu", "model picker", "question", "plan", "permissions menu", "bypass warning", "menu", "artifacts", "unknown panel", "Native unrecognized panel")) {
-            assertEquals(UiMessages.listStatePopup().messageText(), popupTitle(detail))
-        }
-        assertTrue(popupTitle("").isEmpty())
     }
 
     @Test fun markdownTablePreviewMatchesSharedVectors() {
@@ -82,60 +72,6 @@ class ModelTest {
         assertEquals(Status.RUNNING, statusOf(s { status = SessionStatus.SESSION_STATUS_RUNNING }, online))
         assertEquals(Status.IDLE, statusOf(s { status = SessionStatus.SESSION_STATUS_IDLE }, online))
         assertEquals(Status.LOADING, statusOf(SessionView("s", "m"), online))
-    }
-
-    @Test
-    fun renameStartsFromTheTitleAndSendsOnlyAChange() {
-        fun s(b: Session.Builder.() -> Unit) = SessionView("s", "m", Session.newBuilder().apply(b).build())
-        assertEquals("登录接口偶尔超时", renameInitial(s { title = " 登录接口偶尔超时 " }))
-        // The "<folder> · <start time>" placeholder is not a title to edit.
-        assertEquals("", renameInitial(s { cwd = "/Users/me/Code/billing" }))
-        assertEquals("", renameInitial(SessionView("s", "m")))
-
-        // 60 code points, not UTF-16 units: an emoji counts once and is never cut in half.
-        assertEquals("字".repeat(60), titleInput("字".repeat(61)))
-        assertEquals("😀".repeat(60), titleInput("😀".repeat(61)))
-        assertEquals("a".repeat(59) + "😀", titleInput("a".repeat(59) + "😀" + "b"))
-        assertEquals("第一行 第二行", titleInput("第一行\r\n第二行"))
-
-        assertEquals(null, renameTitle("  登录超时 ", "登录超时"))
-        assertEquals("登录超时：限流和重试", renameTitle(" 登录超时：限流和重试\u3000", "登录超时"))
-        // Emptied: back to the automatic title; nothing to do when there was none.
-        assertEquals("", renameTitle("  ", "登录超时"))
-        assertEquals(null, renameTitle("", ""))
-    }
-
-    @Test
-    fun forkNeedsAnIdleOrEndedSessionWithAMessage() {
-        assertEquals(null, forkBlocked(Status.IDLE, running = false, sent = true))
-        assertEquals(null, forkBlocked(Status.EXITED, running = false, sent = true))
-        for (st in listOf(Status.RUNNING, Status.APPROVAL, Status.QUESTION)) assertEquals(messageTextForTest(io.github.lewin671.remoteagent.core.UiMessages.sessionForkAfterTurn()), forkBlocked(st, running = false, sent = true))
-        // The events show a turn before the session's status does.
-        assertEquals(messageTextForTest(io.github.lewin671.remoteagent.core.UiMessages.sessionForkAfterTurn()), forkBlocked(Status.IDLE, running = true, sent = true))
-        for (st in listOf(Status.PLAN, Status.POPUP)) assertEquals(messageTextForTest(io.github.lewin671.remoteagent.core.UiMessages.sessionForkAfterPending()), forkBlocked(st, running = false, sent = true))
-        assertEquals(messageTextForTest(io.github.lewin671.remoteagent.core.UiMessages.sessionForkAfterStart()), forkBlocked(Status.STARTING, running = false, sent = false))
-        assertEquals(messageTextForTest(io.github.lewin671.remoteagent.core.UiMessages.sessionForkAfterMessage()), forkBlocked(Status.IDLE, running = false, sent = false))
-        assertEquals(messageTextForTest(io.github.lewin671.remoteagent.core.UiMessages.sessionForkAfterMessage()), forkBlocked(Status.EXITED, running = false, sent = false))
-        // What it waits for comes before the missing message.
-        assertEquals(messageTextForTest(io.github.lewin671.remoteagent.core.UiMessages.sessionForkAfterTurn()), forkBlocked(Status.RUNNING, running = true, sent = false))
-
-        fun s(b: Session.Builder.() -> Unit) = SessionView("s", "m", Session.newBuilder().apply(b).build())
-        val message = listOf(ev(1, Event.newBuilder().setUserMessage(UserMessage.newBuilder().setText("hi"))))
-        assertTrue(sentMessage(s { title = "登录接口偶尔超时" }, emptyList()))
-        assertTrue(sentMessage(s {}, message))
-        assertEquals(false, sentMessage(s { cwd = "/Users/me/Code/foo" }, listOf(ev(1, Event.newBuilder().setTurnContext(TurnContext.newBuilder().setModel("m"))))))
-        assertEquals(false, sentMessage(SessionView("s", "m"), emptyList()))
-
-        assertTrue(forked(s { forkedFrom = "a1" }))
-        assertEquals(false, forked(s {}))
-        assertEquals(false, forked(SessionView("s", "m")))
-
-        val made = io.github.lewin671.remoteagent.proto.CommandResult.newBuilder().setForkSession(
-            io.github.lewin671.remoteagent.proto.ForkSessionResponse.newBuilder().setSession(Session.newBuilder().setId("new")),
-        ).build()
-        assertEquals("new", forkedSession(made))
-        assertEquals(null, forkedSession(io.github.lewin671.remoteagent.proto.CommandResult.getDefaultInstance()))
-        assertEquals(null, forkedSession(null))
     }
 
     @Test
@@ -228,14 +164,6 @@ class ModelTest {
         assertEquals(listOf("a", "b", "c"), shownModels(many, "b", false))
         assertEquals(listOf("a", "b", "c", "g"), shownModels(many, "g", false))
         assertEquals(many, shownModels(many, "g", true))
-    }
-
-    @Test
-    fun warnsAboutClaudeCodesTrustDialogOnly() {
-        assertEquals(messageTextForTest(io.github.lewin671.remoteagent.core.UiMessages.dockTrustFolder()), popupHint(Agent.AGENT_CLAUDE, "trust folder"))
-        assertEquals("", popupHint(Agent.AGENT_CODEX, "trust folder"))
-        assertEquals("", popupHint(Agent.AGENT_UNSPECIFIED, "trust folder"))
-        assertEquals("", popupHint(Agent.AGENT_CLAUDE, "hooks review"))
     }
 
     @Test

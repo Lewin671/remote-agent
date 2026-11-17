@@ -55,6 +55,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 
 private const val TAG = "remote-agent"
+private const val ERROR_CODE_NETWORK = "network"
 
 /** Receives FCM data messages; decrypts them with the notify key and shows a notification. */
 class RaMessagingService : FirebaseMessagingService() {
@@ -605,7 +606,7 @@ class ApprovalWorker(context: Context, params: WorkerParameters) :
                 } else cmdState.errorCode.ifEmpty { sessionText(UiMessages.approvalAndroidUnknownResult()) }
                 return finish(sessionText(UiMessages.dockSubmitFailed(msg)))
             }
-            if (cmdState.errorCode == "network" || !cmdState.expired) {
+            if (cmdState.errorCode == ERROR_CODE_NETWORK || !cmdState.expired) {
                 if ((deadline == 0L || System.currentTimeMillis() + 5_000 < deadline) && runAttemptCount < 5) {
                     val msg = if (cmdState.hasErrorText()) {
                         coreTextToMessageText(cmdState.errorText).resolve { resolveUiMessage(applicationContext, it) }

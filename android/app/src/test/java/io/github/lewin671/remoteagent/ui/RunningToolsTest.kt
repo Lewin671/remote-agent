@@ -1,26 +1,14 @@
 package io.github.lewin671.remoteagent.ui
 
-import io.github.lewin671.remoteagent.core.UiMessages
-
-import io.github.lewin671.remoteagent.core.derive
-import io.github.lewin671.remoteagent.proto.Agent
-import io.github.lewin671.remoteagent.proto.ApprovalRequested
-import io.github.lewin671.remoteagent.proto.AgentMessage
-import io.github.lewin671.remoteagent.proto.Event
-import io.github.lewin671.remoteagent.proto.ToolBackground
-import io.github.lewin671.remoteagent.proto.ToolCall
 import io.github.lewin671.remoteagent.proto.ToolKind
-import io.github.lewin671.remoteagent.proto.ToolStarted
-import io.github.lewin671.remoteagent.proto.TurnEnded
-import io.github.lewin671.remoteagent.proto.TurnStarted
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertTrue
 import org.junit.Test
 
 @org.junit.runner.RunWith(org.robolectric.RobolectricTestRunner::class)
 @org.robolectric.annotation.Config(sdk = [35], application = android.app.Application::class)
 class RunningToolsTest {
     @get:org.junit.Rule(order = 0) val sessionMessages = io.github.lewin671.remoteagent.ui.SessionMessageContextRule()
+
     @Test
     fun expandedTextUsesOriginalInputAndFullPaths() {
         val kind = ToolKind.TOOL_KIND_COMMAND
@@ -34,118 +22,5 @@ class RunningToolsTest {
         assertEquals("true", commandOf(kind, "preview", "true"))
         assertEquals("echo /work/file\nnext", commandOf(kind, "preview", "echo /work/file\nnext"))
         assertEquals("/work/full/path", commandOf(ToolKind.TOOL_KIND_FILE_CHANGE, "/work/full/path", "{}"))
-    }
-
-    private fun ev(seq: Long, b: Event.Builder) = b.setSeq(seq).build()
-    private fun start(seq: Long, title: String, id: String, input: String = "") =
-        ev(seq, Event.newBuilder().setToolStarted(ToolStarted.newBuilder().setTitle(title).setCallId(id).setInput(input).setKind(ToolKind.TOOL_KIND_COMMAND).setItemType("Bash")))
-    private fun call(seq: Long, title: String, id: String, status: String = "completed", input: String = "") =
-        ev(seq, Event.newBuilder().setToolCall(ToolCall.newBuilder().setTitle(title).setCallId(id).setStatus(status).setInput(input).setKind(ToolKind.TOOL_KIND_COMMAND)))
-    private fun say(seq: Long, text: String) = ev(seq, Event.newBuilder().setAgentMessage(AgentMessage.newBuilder().setText(text)))
-    private val turn = ev(1, Event.newBuilder().setTurnStarted(TurnStarted.getDefaultInstance()))
-
-    private fun chat(events: List<Event>) = buildChat(events, derive(events, Agent.AGENT_CLAUDE), "MacBook")
-
-    @Test
-    fun aStartedToolShowsAtOnceWhereItStarted() {
-        val items = chat(listOf(turn, start(2, "go test ./...", "a"), say(3, "等测试跑完")))
-        assertTrue(items[0] is ChatItem.Running)
-        assertEquals("e2", items[0].key)
-        assertTrue(items[1] is ChatItem.Agent)
-    }
-
-    @Test
-    fun itsResultUpdatesTheSameRow() {
-        val items = chat(listOf(turn, start(2, "go test ./...", "a"), say(3, "等测试跑完"), call(4, "go test ./...", "a")))
-        assertEquals(listOf("e2", "e3"), items.map { it.key })
-        assertTrue(items[0] is ChatItem.Tool)
-    }
-
-    @Test
-    fun parallelCallsKeepTheirOwnStateAndFailuresShow() {
-        val items = chat(
-            listOf(
-                turn, start(2, "go test ./...", "a"), start(3, "go build ./...", "b"), start(4, "pnpm lint", "c"),
-                call(5, "go build ./...", "b"), call(6, "pnpm lint", "c", status = "failed"),
-            ),
-        )
-        assertEquals(listOf("e2", "e3", "e4"), items.map { it.key })
-        assertTrue(items[0] is ChatItem.Running)
-        assertTrue(items[1] is ChatItem.Tool)
-        assertTrue(items[2] is ChatItem.Tool && !toolOk((items[2] as ChatItem.Tool).call))
-    }
-
-    @Test
-    fun aRunningToolIsNeverFoldedIntoTheCompletedOnes() {
-        val items = chat(
-            listOf(
-                turn, call(2, "ls", "x"), call(3, "pwd", "y"), start(4, "go test", "a"), call(5, "cat a", "z"),
-            ),
-        )
-        assertTrue(items[0] is ChatItem.Tools)
-        assertTrue(items[1] is ChatItem.Running)
-        assertTrue(items[2] is ChatItem.Tool)
-    }
-
-    @Test
-    fun anUnfinishedToolStaysUnconfirmedAfterTheTurn() {
-        val items = chat(listOf(turn, start(2, "go test ./...", "a"), ev(3, Event.newBuilder().setTurnEnded(TurnEnded.getDefaultInstance()))))
-        val r = items[0] as ChatItem.Running
-        assertTrue(r.unfinished)
-    }
-
-    @Test
-    fun aBackgroundCallIsNotShownAsASuccess() {
-        val input = """{"command":"npm run dev","run_in_background":true}"""
-        val items = chat(listOf(turn, start(2, "npm run dev", "a", input), ev(3, Event.newBuilder().setToolCall(ToolCall.newBuilder().setCallId("a").setInput(input).setBackground(ToolBackground.TOOL_BACKGROUND_REQUESTED)))))
-        assertTrue((items[0] as ChatItem.Tool).background)
-    }
-
-    @Test
-    fun elapsedTimeNamesItsPurposeAndFreezesWhileDisconnected() {
-        val tool = io.github.lewin671.remoteagent.core.RunningTool("test", "c", 1_000)
-        assertEquals("已运行 4:15", toolTimer(tool, ToolState.RUNNING, 256_000, 0))
-        assertEquals("已运行 4:15 · 等待同步", toolTimer(tool, ToolState.SYNC, 999_000, 256_000))
-        assertEquals("", toolTimer(io.github.lewin671.remoteagent.core.RunningTool("test", "c", 0), ToolState.RUNNING, 256_000, 0))
-        assertEquals("—", toolTimer(tool, ToolState.UNCONFIRMED, 999_000, 0))
-    }
-
-    @Test
-    fun aMatchingCodexApprovalReplacesTheRunningTimer() {
-        val events = listOf(turn, start(2, "exec", "a", "go test ./..."),
-            ev(3, Event.newBuilder().setApprovalRequested(ApprovalRequested.newBuilder().setApprovalId("p").setCommand("go test ./..."))))
-        val d = derive(events, Agent.AGENT_CODEX)
-        val tool = d.tools.single()
-        val state = toolState(tool, false, d, 0)
-        assertEquals(ToolState.APPROVAL, state)
-        assertEquals("—", toolTimer(tool, state, 500_000, 0))
-        assertEquals(ToolState.RUNNING, toolState(io.github.lewin671.remoteagent.core.RunningTool("other", "b", tool.since, input = "ls"), false, d, 0))
-    }
-
-}
-
-@org.junit.runner.RunWith(org.robolectric.RobolectricTestRunner::class)
-@org.robolectric.annotation.Config(sdk = [35], application = android.app.Application::class)
-class BackgroundFieldTest {
-    @get:org.junit.Rule(order = 0) val sessionMessages = io.github.lewin671.remoteagent.ui.SessionMessageContextRule()
-    private fun ev(seq: Long, b: Event.Builder) = b.setSeq(seq).build()
-
-    @Test
-    fun theDaemonsBackgroundFieldMakesTheRowUnconfirmedWithItsReason() {
-        val events = listOf(
-            ev(1, Event.newBuilder().setTurnStarted(TurnStarted.getDefaultInstance())),
-            ev(2, Event.newBuilder().setToolStarted(ToolStarted.newBuilder().setCallId("c").setTitle("sleep 100").setKind(ToolKind.TOOL_KIND_COMMAND))),
-            ev(3, Event.newBuilder().setTurnEnded(TurnEnded.newBuilder().setOutcome(io.github.lewin671.remoteagent.proto.TurnOutcome.TURN_OUTCOME_COMPLETED))),
-            ev(4, Event.newBuilder().setToolCall(ToolCall.newBuilder().setCallId("c").setTitle("sleep 100").setStatus("running").setKind(ToolKind.TOOL_KIND_COMMAND)
-                .setBackground(io.github.lewin671.remoteagent.proto.ToolBackground.TOOL_BACKGROUND_STILL_RUNNING))),
-        )
-        val items = buildChat(events, derive(events, Agent.AGENT_CODEX), "M")
-        val tool = items.filterIsInstance<ChatItem.Tool>().single()
-        assertEquals("e2", tool.key)
-        assertTrue(tool.background)
-        assertTrue(items.none { it is ChatItem.Running })
-        assertEquals(messageTextForTest(io.github.lewin671.remoteagent.core.UiMessages.toolsBackgroundTurn()), messageTextForTest(io.github.lewin671.remoteagent.core.backgroundNote(tool.call.background)))
-        assertEquals(messageTextForTest(UiMessages.toolsAndroidBackgroundCommand()), io.github.lewin671.remoteagent.core.backgroundTitle(ToolKind.TOOL_KIND_COMMAND, "Bash", Agent.AGENT_CLAUDE).testText())
-        assertEquals("Task（后台）", io.github.lewin671.remoteagent.core.backgroundTitle(ToolKind.TOOL_KIND_OTHER, "Task", Agent.AGENT_CLAUDE).testText())
     }
 }

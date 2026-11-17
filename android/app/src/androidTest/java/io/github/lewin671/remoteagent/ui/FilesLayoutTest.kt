@@ -100,8 +100,12 @@ class FilesLayoutTest {
     }
 
     @Test fun filesOnlyHistoryHasChipsWithoutAnEmptyBubble() {
-        val file = io.github.lewin671.remoteagent.proto.SentFile.newBuilder().setName("data.csv").setSizeBytes(3).build()
-        ui.setContent { RaTheme(ThemeMode.LIGHT) { ChatItemView(ChatItem.User("u", "", false, 0, files = listOf(file)), "Codex") } }
+        val file = io.github.lewin671.remoteagent.core.proto.SessionFileRefView.newBuilder().setName("data.csv").setSizeBytes(3).build()
+        val item = io.github.lewin671.remoteagent.core.proto.SessionTimelineItem.newBuilder()
+            .setId("u")
+            .setUserMessage(io.github.lewin671.remoteagent.core.proto.SessionUserMessageItem.newBuilder().addFiles(file))
+            .build()
+        ui.setContent { RaTheme(ThemeMode.LIGHT) { TimelineItemView(item) } }
         ui.onNodeWithText("data.csv").assertIsDisplayed()
         ui.onAllNodes(hasText("", substring = false), useUnmergedTree = true).assertCountEquals(0)
     }

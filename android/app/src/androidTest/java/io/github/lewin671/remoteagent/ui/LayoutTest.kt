@@ -45,28 +45,6 @@ class LayoutTest {
         }
     }
 
-    @Test fun pendingPlanUpdatesWhenOnlyTheContiguousHistoryBackfills() {
-        val screen = "终端中的计划预览"
-        val markdown = "# 计划正文\n\n- 验证历史回填"
-        val live = LiveSnapshot.newBuilder().setSession(Session.newBuilder().setId("plan").setPlanOpen(true))
-            .setPlanEventSeq(2).setPlanScreen(screen).setPlanScreenHash(com.google.protobuf.ByteString.copyFrom(ByteArray(32))).build()
-        val tail = listOf(Event.newBuilder().setSeq(9).setSessionId("plan").build())
-        var snapshot by mutableStateOf(SessionEvents(events = tail, stateEvents = emptyList(), live = live, historyPartial = true))
-        ui.setContent {
-            RaTheme(ThemeMode.LIGHT) { Text(rememberDerived(snapshot, Agent.AGENT_CODEX).plan?.text.orEmpty()) }
-        }
-        ui.onNodeWithText(screen).assertIsDisplayed()
-        ui.runOnIdle {
-            snapshot = snapshot.copy(stateEvents = listOf(
-                Event.newBuilder().setSeq(1).setSessionId("plan").build(),
-                Event.newBuilder().setSeq(2).setSessionId("plan").setPlanProposed(PlanProposed.newBuilder().setText(markdown)).build(),
-            ))
-        }
-        ui.onNodeWithText(markdown).assertIsDisplayed()
-        ui.onNodeWithText(screen).assertDoesNotExist()
-        assertEquals(tail, snapshot.events)
-    }
-
     @Test fun aKnownUpdateKeepsItsStepAndOffersALightweightCheck() {
         showUpdate(UpdateState.Available(newer))
         ui.onNodeWithText("新版本 0.36.2").assertIsDisplayed()
@@ -172,24 +150,26 @@ class LayoutTest {
         updaterBefore = null
     }
     @Test fun largeFontModeSheetCanScrollToAllOptions() {
+        val vm = sessionFixtureVm("s", session())
         ui.setContent {
             val base = LocalDensity.current
             RaTheme(ThemeMode.LIGHT) {
                 CompositionLocalProvider(LocalRemote provides remote, LocalNav provides nav, LocalDensity provides Density(base.density, 2f)) {
-                    ModeSheet(session()) {}
+                    ModeSheet("s", vm) {}
                 }
             }
         }
         ui.onNodeWithText("所有操作都不审批").performScrollTo().assertIsDisplayed()
     }
     @Test fun narrowComposerPreservesControlsAtTwoHundredPercentFont() {
+        val vm = sessionFixtureVm("s", session())
         ui.setContent {
             val base = LocalDensity.current
             RaTheme(ThemeMode.DARK) {
                 CompositionLocalProvider(LocalRemote provides remote, LocalNav provides nav, LocalDensity provides Density(base.density, 2f)) {
                     Column(Modifier.testTag("frame").width(320.dp).background(pal.paper)) {
                         Segmented(listOf("聊天", "终端"), 0, {}, dot = 1)
-                        Composer(state, session(), Derived(), Status.IDLE) {}
+                        Composer("s", state, vm, {}, {})
                     }
                 }
             }
@@ -268,13 +248,19 @@ class LayoutTest {
     @Test fun aWaitingItemOpensWithOneHeadLineAndFoldsByItsId() {
         DockFolds.clear()
         val a = approval(40)
+        val vm = sessionFixtureVm(
+            "s",
+            session(),
+            events = listOf(Event.newBuilder().setSeq(1).setApprovalRequested(a).build()),
+            live = LiveSnapshot.newBuilder().setSession(session().info).addActions(Event.newBuilder().setSeq(1).setApprovalRequested(a)).build(),
+        )
         ui.setContent {
             val base = LocalDensity.current
             RaTheme(ThemeMode.LIGHT) {
                 CompositionLocalProvider(LocalRemote provides remote, LocalNav provides nav, LocalDensity provides Density(base.density, 1.3f)) {
                     Column(Modifier.testTag("frame").width(320.dp).height(640.dp).background(pal.paper)) {
                         Spacer(Modifier.weight(1f))
-                        CompositionLocalProvider(LocalDockMax provides 384.dp) { ApprovalDock(session(), a, 1) }
+                        CompositionLocalProvider(LocalDockMax provides 384.dp) { ApprovalDock("s", vm) {} }
                     }
                 }
             }
@@ -291,32 +277,28 @@ class LayoutTest {
         ui.onNodeWithText("收起", substring = true).performClick()
         ui.onNodeWithText("处理", substring = true).assertIsDisplayed()
         ui.onNodeWithText("允许").assertDoesNotExist()
-        ui.runOnIdle { assertTrue(!DockFolds.isOpen("s", DockItem.Approval(a).id)) }
+        ui.runOnIdle { assertTrue(!DockFolds.isOpen("s", "${vm.dock.kind.name}:${vm.dock.itemId}")) }
         DockFolds.clear()
     }
 
     @Test fun aPlanOpensItsPageFromItsHeadLine() {
         DockFolds.clear()
         var full = 0
-        // What the computer says is pending: its terminal's box, and the plan event it names.
         val markdown = "# 计划：在 run-P 目录创建 5 个 beta 前缀文件\n\n## Context\n\n用户要求用前缀 beta 创建 5 个文本文件。\n\n## 步骤\n\n" +
             (1..30).joinToString("\n") { "${it}. 第 $it 步" }
-        val events = listOf(
-            io.github.lewin671.remoteagent.proto.Event.newBuilder().setSessionId("s").setSeq(1)
-                .setPlanProposed(io.github.lewin671.remoteagent.proto.PlanProposed.newBuilder().setText(markdown)).build(),
+        val planSession = SessionView("s", machineId, session().info!!.toBuilder().setPlanOpen(true).build())
+        val vm = sessionFixtureVm(
+            "s",
+            planSession,
+            events = listOf(Event.newBuilder().setSessionId("s").setSeq(1).setPlanProposed(PlanProposed.newBuilder().setText(markdown)).build()),
+            live = LiveSnapshot.newBuilder().setSession(planSession.info).setPlanEventSeq(1).setPlanScreen(markdown).build(),
         )
-        val live = io.github.lewin671.remoteagent.proto.LiveSnapshot.newBuilder()
-            .setSession(Session.newBuilder().setId("s").setPlanOpen(true)).setPlanEventSeq(1)
-            .setPlanScreenHash(com.google.protobuf.ByteString.copyFrom(ByteArray(32)))
-            .setPlanScreen("⎿ /plan to preview\n──────\nReady to code?\nHere is Claude's plan:\n──────\n" + markdown)
-            .build()
-        val plan = io.github.lewin671.remoteagent.core.currentActions(events, live).plan!!.text
         ui.setContent {
             RaTheme(ThemeMode.LIGHT) {
                 CompositionLocalProvider(LocalRemote provides remote, LocalNav provides nav) {
                     Column(Modifier.testTag("frame").width(360.dp).height(640.dp).background(pal.paper)) {
                         Spacer(Modifier.weight(1f))
-                        PlanDock(session(), plan, 0) { full++ }
+                        PlanDock("s", vm) { full++ }
                     }
                 }
             }
@@ -353,7 +335,7 @@ class LayoutTest {
             .setBody(a.command)
             .setToolName(a.toolName)
             .setIsCommand(a.command.isNotEmpty())
-            .setTruncated(approvalTruncated(a))
+            .setTruncated(a.command.lines().size > CARD_LINES)
             .build()
         ui.setContent {
             RaTheme(if (dark) ThemeMode.DARK else ThemeMode.LIGHT) {
@@ -405,12 +387,18 @@ class LayoutTest {
     }
 
     @Test fun theDockKeepsToTheChatWidthOnATablet() {
+        val s = session()
+        val a = approval(1)
+        val appVm = sessionFixtureVm("s", s, events = listOf(Event.newBuilder().setSeq(1).setApprovalRequested(a).build()),
+            live = LiveSnapshot.newBuilder().setSession(s.info).addActions(Event.newBuilder().setSeq(1).setApprovalRequested(a)).build())
+        val planVm = sessionFixtureVm("s", SessionView("s", machineId, s.info!!.toBuilder().setPlanOpen(true).build()),
+            events = listOf(Event.newBuilder().setSeq(1).setPlanProposed(PlanProposed.newBuilder().setText("## Plan\n1. step")).build()))
         ui.setContent {
             RaTheme(ThemeMode.LIGHT) {
                 CompositionLocalProvider(LocalRemote provides remote, LocalNav provides nav) {
                     Column(Modifier.testTag("frame").requiredWidth(1000.dp).background(pal.paper)) {
-                        ApprovalDock(session(), approval(1), 0)
-                        PlanDock(session(), "## Plan\n1. step", 0) {}
+                        ApprovalDock("s", appVm) {}
+                        PlanDock("s", planVm) {}
                     }
                 }
             }

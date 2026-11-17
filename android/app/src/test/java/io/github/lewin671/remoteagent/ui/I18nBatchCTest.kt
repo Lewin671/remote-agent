@@ -67,7 +67,7 @@ class I18nBatchCTest(private val locale: String) {
             put("started_at", now.minusSeconds(600).toString()); put("ended_at", now.minusSeconds(300).toString()); put("notification_text", "Original agent notification"); put("final_summary", "Original CLI summary") })))
     })
     @Before fun prepare() {
-        remote.showForTest(state, events = mapOf("s" to emptyList()))
+        remote.showForTest(state)
         @Suppress("UNCHECKED_CAST")
         val snapshots = ScheduleRepository::class.java.getDeclaredField("_state").apply { isAccessible = true }.get(remote.schedules) as MutableStateFlow<Map<String, ScheduleSnapshot>>
         snapshots.value = mapOf("m" to ScheduleSnapshot(revision = 0, tasks = listOf(task), cached = false))

@@ -43,6 +43,8 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 
+private val GENERIC_TOOL_TYPES = setOf("ToolCall", "CommandExecution")
+
 /** Original input, never the shortened preview or just its first line. */
 fun commandOf(kind: ToolKind, title: String, input: String): String {
     if (kind == ToolKind.TOOL_KIND_FILE_CHANGE || input.isEmpty() || input == title) return title
@@ -150,8 +152,7 @@ internal fun ToolCallRow(
         }
         SessionToolStatus.SESSION_TOOL_STATUS_BACKGROUND -> {
             val title = tool.title.lines().firstOrNull().orEmpty()
-            val generic = (title.isEmpty() || title == "ToolCall" || title == "CommandExecution") &&
-                (tool.itemType == "ToolCall" || tool.itemType == "CommandExecution")
+            val generic = (title.isEmpty() || title in GENERIC_TOOL_TYPES) && tool.itemType in GENERIC_TOOL_TYPES
             val meta = listOfNotNull(
                 if (generic) null else bgLabel.ifEmpty { copy(UiMessages.toolsBackground()) },
                 decision.takeIf { it.isNotEmpty() },

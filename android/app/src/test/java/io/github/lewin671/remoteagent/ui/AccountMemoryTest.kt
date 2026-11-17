@@ -11,21 +11,17 @@ class AccountMemoryTest {
     private fun write() {
         ImageDrafts.forProject("/work/app").text.value = "上一个账户的草稿"
         Drafts.of("deny:a1").value = "别删"
-        Outbox.draft("s1").value = "没发完的话"
-        Outbox.of("s1") += Outgoing("r1", "发过的话")
-        Outbox.rememberPrompt("s1", "第一句")
+        ImageDrafts.forSession("s1").text.value = "没发完的话"
+        Outbox.of("s1") += Outgoing("r1")
         Starts.of("/work/app").prompt = "启动时的话"
-        Answers.of("q1", 0).options = listOf(1)
     }
 
     private fun assertEmpty() {
         assertEquals("", ImageDrafts.forProject("/work/app").text.value)
         assertEquals("", Drafts.of("deny:a1").value)
-        assertEquals("", Outbox.draft("s1").value)
+        assertEquals("", ImageDrafts.forSession("s1").text.value)
         assertTrue(Outbox.of("s1").isEmpty())
-        assertNull(Outbox.prompt("s1"))
         assertEquals("", Starts.of("/work/app").prompt)
-        assertEquals(emptyList<Int>(), Answers.of("q1", 0).options)
     }
 
     @Test

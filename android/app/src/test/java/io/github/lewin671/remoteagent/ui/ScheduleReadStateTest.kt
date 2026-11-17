@@ -52,12 +52,39 @@ class ScheduleReadStateTest {
         active.value = remote
         val meta = MachineMeta.newBuilder().setProtocolVersion(PROTOCOL_VERSION).setCapabilities(MachineCapabilities.newBuilder().setScheduledTasks(true)).build()
         val sessions = mapOf("shared" to SessionView("shared", "computer", Session.newBuilder().setId("shared").setTitle("来源对话").build()))
-        val events = if (cachedTranscript) mapOf("shared" to listOf(
-            Event.newBuilder().setSeq(1).setOrigin(Origin.newBuilder().setScheduledRunId("r1")).setUserMessage(UserMessage.newBuilder().setText("检查项目")).build(),
-            Event.newBuilder().setSeq(2).setAgentMessage(AgentMessage.newBuilder().setPhase("final_answer").setText("缓存会话里的完整回复")).build(),
-        )) else mapOf("shared" to emptyList())
-        remote.showForTest(RemoteState(conn = if (cacheOnly) ConnState.OFFLINE else ConnState.ONLINE, loaded = true,
-            machines = mapOf("computer" to MachineView("computer", !cacheOnly, 0, meta)), sessions = sessions), events)
+        val sharedVm = io.github.lewin671.remoteagent.core.proto.SessionViewModel.newBuilder()
+            .setSessionId("shared")
+            .setTimeline(
+                io.github.lewin671.remoteagent.core.proto.SessionTimelineView.newBuilder()
+                    .setLoaded(true)
+                    .apply {
+                        if (cachedTranscript) {
+                            addItems(
+                                io.github.lewin671.remoteagent.core.proto.SessionTimelineItem.newBuilder()
+                                    .setId("e1").setSeq(1)
+                                    .setUserMessage(
+                                        io.github.lewin671.remoteagent.core.proto.SessionUserMessageItem.newBuilder()
+                                            .setText("检查项目")
+                                            .setScheduledRunId("r1"),
+                                    ),
+                            )
+                            addItems(
+                                io.github.lewin671.remoteagent.core.proto.SessionTimelineItem.newBuilder()
+                                    .setId("e2").setSeq(2)
+                                    .setAgentMessage(
+                                        io.github.lewin671.remoteagent.core.proto.SessionAgentMessageItem.newBuilder()
+                                            .setMarkdown("缓存会话里的完整回复"),
+                                    ),
+                            )
+                        }
+                    },
+            )
+            .build()
+        remote.showForTest(
+            RemoteState(conn = if (cacheOnly) ConnState.OFFLINE else ConnState.ONLINE, loaded = true,
+                machines = mapOf("computer" to MachineView("computer", !cacheOnly, 0, meta)), sessions = sessions),
+            sessions = mapOf("shared" to sharedVm),
+        )
         val nav = Nav({ page.value = "list" }, {}, {}, {}, {}, {}, {}, {}, { _, _ -> }, {}, {}, {},
             schedules = { page.value = if (unreadReturnToSession) "session" else "list" }, task = { _, _ -> page.value = "detail" }, scheduledSession = { _, _ -> page.value = "session" })
         ui.setContent { RaTheme(ThemeMode.LIGHT) { CompositionLocalProvider(LocalRemote provides remote, LocalNav provides nav, LocalLifecycleOwner provides (owner ?: LocalLifecycleOwner.current)) {

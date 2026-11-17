@@ -20,12 +20,11 @@ class ImageProblemTest {
 
     @Test fun uncertainMessagesAreRecoverableOnlyWhileTheirLocalAttachmentSurvives() {
         val image = PendingImage("image", null)
-        val outgoing = Outgoing("request", "text", imageIds = listOf("uploaded"), images = listOf(image))
-        outgoing.state = Outgoing.State.UNKNOWN
-        assertFalse(outgoing.canPutBack)
+        val outgoing = Outgoing("request", images = listOf(image))
+        assertFalse(outgoing.hasLocalAttachments)
         image.processed = Processed(byteArrayOf(1), ImageFormat.IMAGE_FORMAT_PNG, 1, 1)
-        assertTrue(outgoing.canPutBack)
+        assertTrue(outgoing.hasLocalAttachments)
         image.processed = null
-        assertFalse(outgoing.canPutBack)
+        assertFalse(outgoing.hasLocalAttachments)
     }
 }

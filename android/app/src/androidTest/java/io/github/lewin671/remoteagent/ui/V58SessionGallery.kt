@@ -148,23 +148,9 @@ class V58SessionGallery {
         sessions = sessions.toMap(),
     )
 
-    private fun liveOf(s: SessionView?, list: List<Event>): io.github.lewin671.remoteagent.proto.LiveSnapshot {
-        val d = io.github.lewin671.remoteagent.core.derive(list, s?.info?.agent ?: Agent.AGENT_CODEX)
-        val b = io.github.lewin671.remoteagent.proto.LiveSnapshot.newBuilder().setRunning(d.running)
-        s?.info?.let { b.setSession(it) }
-        list.filter { (it.hasApprovalRequested() && it.approvalRequested.approvalId in d.approvals) || (it.hasQuestionAsked() && it.questionAsked.questionId in d.questions) }
-            .forEach { b.addActions(it) }
-        // What the terminal shows of a plan waiting for approval (as LayoutTest's plan).
-        list.lastOrNull { it.hasPlanProposed() }?.let {
-            b.setPlanEventSeq(it.seq).setPlanScreenHash(com.google.protobuf.ByteString.copyFrom(ByteArray(32)))
-                .setPlanScreen("⎿ /plan to preview\n──────\nReady to code?\nHere is Claude's plan:\n──────\n" + it.planProposed.text)
-        }
-        return b.build()
-    }
-
     /** Shows the session with [state] and [history], then saves it light and dark (and large when [large]) as session-[name]. */
     private fun shoot(name: String, state: RemoteState, history: List<Event>, large: Boolean = false, home: Boolean = false, then: (() -> Unit)? = null) {
-        remote.showForTest(state, mapOf("s" to history), emptyMap(), mapOf("s" to liveOf(state.sessions["s"], history)))
+        remote.showForTest(state, sessions = sessionVmsForTest(state, mapOf("s" to history)))
         ui.setContent {
             val base = LocalDensity.current
             RaTheme(if (dark) DarkPalette else LightPalette) {

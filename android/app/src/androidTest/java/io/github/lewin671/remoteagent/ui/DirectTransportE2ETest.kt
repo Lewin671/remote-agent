@@ -18,7 +18,7 @@ import androidx.test.platform.app.InstrumentationRegistry
 import io.github.lewin671.remoteagent.MainActivity
 import io.github.lewin671.remoteagent.RaApp
 import io.github.lewin671.remoteagent.core.PairingUiState
-import io.github.lewin671.remoteagent.core.CommandPhases
+import io.github.lewin671.remoteagent.core.proto.SessionDockKind
 import io.github.lewin671.remoteagent.core.transport.DirectDiag
 import io.github.lewin671.remoteagent.core.transport.DirectStage
 import io.github.lewin671.remoteagent.core.transport.RouteName
@@ -277,7 +277,6 @@ class DirectTransportE2ETest {
 
             suspend fun waitDirectReady(timeoutMs: Long = 30_000) {
                 DirectDiag.sink = { android.util.Log.i("DirectDiag", it) }
-                CommandPhases.sink = { android.util.Log.i("CmdPhases", it) }
                 android.util.Log.i("DirectE2E", "waitDirectReady start")
                 val deadline = System.currentTimeMillis() + timeoutMs
                 while (System.currentTimeMillis() < deadline) {
@@ -557,19 +556,22 @@ class DirectTransportE2ETest {
                 var pendingId: String? = null
                 val waitHook = System.currentTimeMillis() + 10_000
                 while (pendingId == null && System.currentTimeMillis() < waitHook) {
-                    val snap = remote.command(sessionId, Command.newBuilder().setGetLiveSnapshot(GetLiveSnapshotRequest.newBuilder().setSessionId(sessionId)).build()).liveSnapshot
+                    val snap = remote.machineCommand(machineId, Command.newBuilder().setGetLiveSnapshot(GetLiveSnapshotRequest.newBuilder().setSessionId(sessionId)).build()).liveSnapshot
                     pendingId = snap.actionsList.firstOrNull { it.hasApprovalRequested() }?.approvalRequested?.approvalId
                     if (pendingId == null) delay(15)
                 }
                 val bid = checkNotNull(pendingId)
-                val evJob = launch { remote.events(sessionId).collect { } }
-                val liveEv = withTimeout(5_000) {
-                    remote.events(sessionId).first { ev -> ev.loaded && ev.live?.actionsList?.any { it.hasApprovalRequested() && it.approvalRequested.approvalId == bid } == true }
+                remote.openSession(sessionId)
+                val evJob = launch { remote.watchSession(sessionId).collect { } }
+                val liveVm = withTimeout(5_000) {
+                    remote.watchSession(sessionId).first { vm ->
+                        vm.timeline.loaded && vm.dock.hasItem && vm.dock.kind == SessionDockKind.SESSION_DOCK_KIND_APPROVAL && vm.dock.approval.approvalId == bid
+                    }
                 }
                 delay(30)
-                val app = liveEv.live!!.actionsList.first { it.hasApprovalRequested() && it.approvalRequested.approvalId == bid }
+                val observedSeq = liveVm.dock.observedSeq
                 val t0 = System.nanoTime()
-                remote.command(sessionId, Command.newBuilder().setResolveApproval(ResolveApprovalRequest.newBuilder().setSessionId(sessionId).setApprovalId(bid).setAllow(true).setObservedEventSeq(app.seq)).build())
+                remote.machineCommand(machineId, Command.newBuilder().setResolveApproval(ResolveApprovalRequest.newBuilder().setSessionId(sessionId).setApprovalId(bid).setAllow(true).setObservedEventSeq(observedSeq)).build())
                 val baseMs = (System.nanoTime() - t0) / 1_000_000.0
                 android.util.Log.i("DirectE2E", "baseline_approval_ms=$baseMs")
                 evJob.cancelAndJoin()
@@ -606,8 +608,8 @@ class DirectTransportE2ETest {
                 var pendingApproval: Pair<String, Long>? = null
                 val waitHook = System.currentTimeMillis() + 10_000
                 while (pendingApproval == null && System.currentTimeMillis() < waitHook) {
-                    val snapProbe = remote.command(
-                        sessionId,
+                    val snapProbe = remote.machineCommand(
+                        machineId,
                         Command.newBuilder().setGetLiveSnapshot(
                             GetLiveSnapshotRequest.newBuilder().setSessionId(sessionId),
                         ).build(),
@@ -621,30 +623,27 @@ class DirectTransportE2ETest {
                 }
                 val (approvalId, _) = checkNotNull(pendingApproval) { "Hook approval $i never appeared" }
 
-                // Subscribe outside timing window so Remote.liveSnapshots[sessionId] is verified just like SessionScreen.
-                val evJob = launch { remote.events(sessionId).collect { } }
-                val liveEvent = withTimeout(5_000) {
-                    remote.events(sessionId).first { ev ->
-                        ev.loaded && ev.live?.actionsList?.any {
-                            it.hasApprovalRequested() && it.approvalRequested.approvalId == approvalId
-                        } == true
+                // Subscribe outside timing window so SessionViewModel updates are verified just like SessionScreen.
+                remote.openSession(sessionId)
+                val evJob = launch { remote.watchSession(sessionId).collect { } }
+                val liveVm = withTimeout(5_000) {
+                    remote.watchSession(sessionId).first { vm ->
+                        vm.timeline.loaded && vm.dock.hasItem && vm.dock.kind == SessionDockKind.SESSION_DOCK_KIND_APPROVAL && vm.dock.approval.approvalId == approvalId
                     }
                 }
                 delay(30) // Let initial loadEvents/updateLivePollers settle before timing ResolveApproval
-                val approval = liveEvent.live!!.actionsList.first {
-                    it.hasApprovalRequested() && it.approvalRequested.approvalId == approvalId
-                }
+                val observedSeq = liveVm.dock.observedSeq
 
-                // Measure full Android ResolveApproval (includes internal refreshLiveSnapshot + Forward) under saturated Direct bulk load
+                // Measure full Android ResolveApproval under saturated Direct bulk load
                 val t0 = System.nanoTime()
-                remote.command(
-                    sessionId,
+                remote.machineCommand(
+                    machineId,
                     Command.newBuilder().setResolveApproval(
                         ResolveApprovalRequest.newBuilder()
                             .setSessionId(sessionId)
-                            .setApprovalId(approval.approvalRequested.approvalId)
+                            .setApprovalId(approvalId)
                             .setAllow(true)
-                            .setObservedEventSeq(approval.seq),
+                            .setObservedEventSeq(observedSeq),
                     ).build(),
                 )
                 val dtMs = (System.nanoTime() - t0) / 1_000_000.0

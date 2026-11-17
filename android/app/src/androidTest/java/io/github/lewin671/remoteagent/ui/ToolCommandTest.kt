@@ -35,8 +35,21 @@ class ToolCommandTest {
     }
 
     @Test fun groupCommandsKeepIndependentExpansionWhenGroupReopens() {
-        val calls = listOf("one", "two").map { name -> ToolCall.newBuilder().setCallId(name).setKind(ToolKind.TOOL_KIND_COMMAND).setTitle("echo $name\n/work/$name").build() }
-        ui.setContent { RaTheme(LightPalette) { Column { ChatItemView(ChatItem.Tools("group", calls), "codex", "/work") } } }
+        val calls = listOf("one", "two").map { name ->
+            io.github.lewin671.remoteagent.core.proto.SessionToolCallItem.newBuilder()
+                .setCallId(name).setToolKind(ToolKind.TOOL_KIND_COMMAND)
+                .setTitle("echo $name\n/work/$name").setStatus(io.github.lewin671.remoteagent.core.proto.SessionToolStatus.SESSION_TOOL_STATUS_OK).build()
+        }
+        val group = io.github.lewin671.remoteagent.core.proto.SessionTimelineItem.newBuilder()
+            .setId("group")
+            .setToolGroup(
+                io.github.lewin671.remoteagent.core.proto.SessionToolGroupItem.newBuilder()
+                    .setSummary(io.github.lewin671.remoteagent.core.proto.Text.newBuilder().setLiteral("运行了 2 条命令"))
+                    .setCommandCount(2)
+                    .addAllCalls(calls),
+            )
+            .build()
+        ui.setContent { RaTheme(LightPalette) { Column { TimelineItemView(group) } } }
         ui.onNodeWithText("运行了 2 条命令").performClick()
         ui.onNodeWithText("echo one").performClick()
         ui.onNodeWithText(calls[0].title).assertIsDisplayed()

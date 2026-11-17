@@ -14,7 +14,7 @@ import androidx.test.platform.app.InstrumentationRegistry
 import io.github.lewin671.remoteagent.MainActivity
 import io.github.lewin671.remoteagent.RaApp
 import io.github.lewin671.remoteagent.core.CommandException
-import io.github.lewin671.remoteagent.core.CommandPhases
+import io.github.lewin671.remoteagent.core.proto.SessionDockKind
 import io.github.lewin671.remoteagent.core.transport.DirectDiag
 import io.github.lewin671.remoteagent.core.transport.DirectStage
 import io.github.lewin671.remoteagent.core.transport.RouteName
@@ -117,7 +117,6 @@ class ApprovalLatencyE2ETest {
         RaApp.instance.testRtcFactory = AndroidRtcFactory(RaApp.instance)
         RaApp.instance.testStunUrls = listOf("stun:$stunHost:$stunPort")
         DirectDiag.sink = { android.util.Log.i("DirectDiag", it) }
-        CommandPhases.sink = { android.util.Log.i("CmdPhases", it) }
 
         // Account and pairing, as in the full direct suite.
         ui.waitUntil(30_000) { RaApp.instance.remote.value != null || ui.onAllNodesWithText("创建账户").fetchSemanticsNodes().isNotEmpty() }
@@ -192,7 +191,7 @@ class ApprovalLatencyE2ETest {
                 val deadline = System.currentTimeMillis() + 20_000
                 while (true) {
                     try {
-                        remote.command(sessionId, snapshotCmd)
+                        remote.machineCommand(machineId, snapshotCmd)
                         break
                     } catch (e: CommandException) {
                         if (System.currentTimeMillis() > deadline) throw e
@@ -201,30 +200,32 @@ class ApprovalLatencyE2ETest {
                 }
             }
 
-            // One approval: trigger it on the host, wait (untimed) until it is visible, then time the ResolveApproval command, which
-            // does its own fresh read of the latest state before it sends the resolve.
+            // One approval: trigger it on the host, wait (untimed) until it is visible, then time the ResolveApproval command.
             suspend fun approvalRound(caseName: String, i: Int, extra: () -> String): Double {
                 ctrlPost(ctrlBase, "/trigger-approval", JSONObject().put("sessionId", sessionId).put("command", "echo $caseName-$i"))
                 var approvalId: String? = null
                 val waitHook = System.currentTimeMillis() + 10_000
                 while (approvalId == null && System.currentTimeMillis() < waitHook) {
-                    val snap = remote.command(sessionId, snapshotCmd).liveSnapshot
+                    val snap = remote.machineCommand(machineId, snapshotCmd).liveSnapshot
                     approvalId = snap.actionsList.firstOrNull { it.hasApprovalRequested() }?.approvalRequested?.approvalId
                     if (approvalId == null) delay(15)
                 }
                 val id = checkNotNull(approvalId) { "Hook approval $caseName-$i never appeared" }
-                val evJob = launch { remote.events(sessionId).collect { } }
-                val liveEvent = withTimeout(5_000) {
-                    remote.events(sessionId).first { ev -> ev.loaded && ev.live?.actionsList?.any { it.hasApprovalRequested() && it.approvalRequested.approvalId == id } == true }
+                remote.openSession(sessionId)
+                val evJob = launch { remote.watchSession(sessionId).collect { } }
+                val liveVm = withTimeout(5_000) {
+                    remote.watchSession(sessionId).first { vm ->
+                        vm.timeline.loaded && vm.dock.hasItem && vm.dock.kind == SessionDockKind.SESSION_DOCK_KIND_APPROVAL && vm.dock.approval.approvalId == id
+                    }
                 }
                 delay(30) // let the first loadEvents / live pollers settle before timing
-                val approval = liveEvent.live!!.actionsList.first { it.hasApprovalRequested() && it.approvalRequested.approvalId == id }
+                val observedSeq = liveVm.dock.observedSeq
                 mark("t0 $caseName $i")
                 val t0 = System.nanoTime()
-                remote.command(
-                    sessionId,
+                remote.machineCommand(
+                    machineId,
                     Command.newBuilder().setResolveApproval(
-                        ResolveApprovalRequest.newBuilder().setSessionId(sessionId).setApprovalId(id).setAllow(true).setObservedEventSeq(approval.seq),
+                        ResolveApprovalRequest.newBuilder().setSessionId(sessionId).setApprovalId(id).setAllow(true).setObservedEventSeq(observedSeq),
                     ).build(),
                 )
                 val dt = (System.nanoTime() - t0) / 1_000_000.0
@@ -283,11 +284,11 @@ class ApprovalLatencyE2ETest {
 
             // Harness relay latency, 2: one relay command (GetLiveSnapshot, emulator to daemon and back), direct path off.
             mark("case relay_snapshot")
-            repeat(5) { remote.command(sessionId, snapshotCmd) }
+            repeat(5) { remote.machineCommand(machineId, snapshotCmd) }
             val snapMs = ArrayList<Double>()
             repeat(rounds) {
                 val t0 = System.nanoTime()
-                remote.command(sessionId, snapshotCmd)
+                remote.machineCommand(machineId, snapshotCmd)
                 snapMs.add((System.nanoTime() - t0) / 1_000_000.0)
                 delay(20)
             }

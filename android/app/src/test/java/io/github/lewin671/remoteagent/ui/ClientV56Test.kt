@@ -31,21 +31,32 @@ class ClientV56Test {
 
     @Test
     fun modeSheetLocksAllModesWhenModeLockedIsTrue() {
-        val session = SessionView(
-            "s1", "m1",
-            Session.newBuilder()
-                .setId("s1")
-                .setCwd("/work")
-                .setAgent(Agent.AGENT_CODEX)
-                .setMode(ApprovalMode.APPROVAL_MODE_FULL_ACCESS)
-                .setModeLocked(true)
-                .build(),
-        )
+        val lockNote = io.github.lewin671.remoteagent.core.proto.Text.newBuilder().setKey("modes.locked").build()
+        fun choice(m: ApprovalMode, key: String, sel: Boolean = false) = io.github.lewin671.remoteagent.core.proto.SessionModeChoiceView.newBuilder()
+            .setMode(m)
+            .setLabel(io.github.lewin671.remoteagent.core.proto.Text.newBuilder().setKey(key))
+            .setNote(lockNote)
+            .setSelected(sel)
+            .setAvailable(false)
+            .build()
+        val vm = io.github.lewin671.remoteagent.core.proto.SessionViewModel.newBuilder()
+            .setSessionId("s1")
+            .setHeader(io.github.lewin671.remoteagent.core.proto.SessionHeaderView.newBuilder().setFound(true).setMachineId("m1").setAgent(Agent.AGENT_CODEX))
+            .setActions(
+                io.github.lewin671.remoteagent.core.proto.SessionActionsView.newBuilder()
+                    .setCanSwitchMode(false)
+                    .setModeSwitchBlockedReason(io.github.lewin671.remoteagent.core.proto.Text.newBuilder().setLiteral("以完全放行启动后本次会话内无法退回需审批的模式；要恢复审批请新建会话。"))
+                    .addModeChoices(choice(ApprovalMode.APPROVAL_MODE_ASK, "modes.ask"))
+                    .addModeChoices(choice(ApprovalMode.APPROVAL_MODE_AUTO, "modes.auto"))
+                    .addModeChoices(choice(ApprovalMode.APPROVAL_MODE_PLAN, "modes.plan"))
+                    .addModeChoices(choice(ApprovalMode.APPROVAL_MODE_FULL_ACCESS, "modes.full_access", sel = true)),
+            )
+            .build()
         remote.showForTest(RemoteState())
         ui.setContent {
             RaTheme(ThemeMode.LIGHT) {
                 CompositionLocalProvider(LocalRemote provides remote) {
-                    ModeSheet(session) {}
+                    ModeSheet("s1", vm) {}
                 }
             }
         }
@@ -60,55 +71,66 @@ class ClientV56Test {
 
     @Test
     fun modeSheetDisablesAutoModeWhenAllAutoUnavailable() {
-        val session = SessionView(
-            "s2", "m1",
-            Session.newBuilder()
-                .setId("s2")
-                .setCwd("/work")
-                .setAgent(Agent.AGENT_ANTIGRAVITY)
-                .setMode(ApprovalMode.APPROVAL_MODE_ASK)
-                .build(),
-        )
-        val models = ListModelsResponse.newBuilder()
-            .addModels(ModelInfo.newBuilder().setSlug("gemini-2.5-pro").setAutoUnavailable(true))
-            .addModels(ModelInfo.newBuilder().setSlug("gemini-2.5-flash").setAutoUnavailable(true))
+        val unavailable = io.github.lewin671.remoteagent.core.proto.Text.newBuilder().setKey("modes.account_unsupported").build()
+        val vm = io.github.lewin671.remoteagent.core.proto.SessionViewModel.newBuilder()
+            .setSessionId("s2")
+            .setHeader(io.github.lewin671.remoteagent.core.proto.SessionHeaderView.newBuilder().setFound(true).setMachineId("m1").setAgent(Agent.AGENT_ANTIGRAVITY))
+            .setActions(
+                io.github.lewin671.remoteagent.core.proto.SessionActionsView.newBuilder()
+                    .setCanSwitchMode(true)
+                    .addModeChoices(
+                        io.github.lewin671.remoteagent.core.proto.SessionModeChoiceView.newBuilder()
+                            .setMode(ApprovalMode.APPROVAL_MODE_ASK)
+                            .setLabel(io.github.lewin671.remoteagent.core.proto.Text.newBuilder().setKey("modes.ask"))
+                            .setSelected(true)
+                            .setAvailable(true),
+                    )
+                    .addModeChoices(
+                        io.github.lewin671.remoteagent.core.proto.SessionModeChoiceView.newBuilder()
+                            .setMode(ApprovalMode.APPROVAL_MODE_AUTO)
+                            .setLabel(io.github.lewin671.remoteagent.core.proto.Text.newBuilder().setKey("modes.auto"))
+                            .setUnavailableReason(unavailable)
+                            .setAvailable(false),
+                    ),
+            )
             .build()
-        remote.showForTest(RemoteState(), modelLists = mapOf(("m1" to Agent.AGENT_ANTIGRAVITY) to models))
+        remote.showForTest(RemoteState())
         ui.setContent {
             RaTheme(ThemeMode.LIGHT) {
                 CompositionLocalProvider(LocalRemote provides remote) {
-                    ModeSheet(session) {}
+                    ModeSheet("s2", vm) {}
                 }
             }
         }
 
-        ui.waitUntil(5000) {
-            runCatching {
-                ui.onNodeWithText("当前账户不支持自动模式").assertIsDisplayed()
-                true
-            }.getOrDefault(false)
-        }
         ui.onNodeWithText("自动").assertIsNotEnabled()
         ui.onNodeWithText("当前账户不支持自动模式").assertIsDisplayed()
     }
 
     @Test
     fun modelSheetShowsReadOnlyRowsForAntigravity() {
-        val session = SessionView(
-            "s3", "m1",
-            Session.newBuilder()
-                .setId("s3")
-                .setCwd("/work")
-                .setAgent(Agent.AGENT_ANTIGRAVITY)
-                .setModel("gemini-2.5-pro")
-                .setEffort("high")
-                .build(),
-        )
+        val vm = io.github.lewin671.remoteagent.core.proto.SessionViewModel.newBuilder()
+            .setSessionId("s3")
+            .setHeader(
+                io.github.lewin671.remoteagent.core.proto.SessionHeaderView.newBuilder()
+                    .setFound(true)
+                    .setMachineId("m1")
+                    .setAgent(Agent.AGENT_ANTIGRAVITY)
+                    .setModel("gemini-2.5-pro")
+                    .setModelLabel("gemini-2.5-pro")
+                    .setEffort("high"),
+            )
+            .setActions(
+                io.github.lewin671.remoteagent.core.proto.SessionActionsView.newBuilder()
+                    .setCanSwitchModel(false)
+                    .setModelSwitchBlockedReason(io.github.lewin671.remoteagent.core.proto.Text.newBuilder().setKey("session.model_locked")),
+            )
+            .build()
         remote.showForTest(RemoteState())
         ui.setContent {
             RaTheme(ThemeMode.LIGHT) {
                 CompositionLocalProvider(LocalRemote provides remote) {
-                    ModelSheet(RemoteState(), session, running = false) {}
+                    ModelSheet("s3", vm) {}
                 }
             }
         }

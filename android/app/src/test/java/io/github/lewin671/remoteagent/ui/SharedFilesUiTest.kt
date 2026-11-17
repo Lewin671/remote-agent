@@ -67,7 +67,12 @@ import io.github.lewin671.remoteagent.core.SharedFileFailureKind
 import io.github.lewin671.remoteagent.core.SharedFileTransferState
 import io.github.lewin671.remoteagent.core.UiMessage
 import io.github.lewin671.remoteagent.core.UiMessages
-import io.github.lewin671.remoteagent.core.derive
+import io.github.lewin671.remoteagent.core.proto.SessionAgentMessageItem
+import io.github.lewin671.remoteagent.core.proto.SessionSharedFileItem
+import io.github.lewin671.remoteagent.core.proto.SessionSharedFilesItem
+import io.github.lewin671.remoteagent.core.proto.SessionTimelineItem
+import io.github.lewin671.remoteagent.core.proto.SessionToolCallItem
+import io.github.lewin671.remoteagent.core.proto.SessionToolStatus
 import io.github.lewin671.remoteagent.data.SharedFileManager
 import io.github.lewin671.remoteagent.data.ThemeMode
 import io.github.lewin671.remoteagent.proto.Agent
@@ -83,6 +88,7 @@ import io.github.lewin671.remoteagent.proto.Session
 import io.github.lewin671.remoteagent.proto.SessionStatus
 import io.github.lewin671.remoteagent.proto.SharedFile
 import io.github.lewin671.remoteagent.proto.ToolCall
+import io.github.lewin671.remoteagent.proto.ToolKind
 import io.github.lewin671.remoteagent.proto.AgentMessage
 import io.github.lewin671.remoteagent.proto.UserMessage
 import io.github.lewin671.remoteagent.push.Notifier
@@ -248,42 +254,6 @@ class SharedFilesUiTest {
     }
 
     @Test
-    fun buildChatReplacesOnlySupportedSharedFilesAndBreaksToolFold() {
-        val sf = sharedFile("f1", "clip.mp4", 24_300_000L)
-        val events = listOf(
-            Event.newBuilder().setSeq(1).setToolCall(ToolCall.newBuilder().setTitle("ls").setStatus("completed")).build(),
-            Event.newBuilder().setSeq(2).setToolCall(ToolCall.newBuilder().setTitle("pwd").setStatus("completed")).build(),
-            Event.newBuilder().setSeq(3).setToolCall(ToolCall.newBuilder().setTitle("send_file").setStatus("completed").addSharedFiles(sf)).build(),
-            Event.newBuilder().setSeq(4).setToolCall(ToolCall.newBuilder().setTitle("cat").setStatus("completed")).build(),
-            Event.newBuilder().setSeq(5).setToolCall(ToolCall.newBuilder().setTitle("echo").setStatus("completed")).build(),
-            Event.newBuilder().setSeq(6).setToolCall(ToolCall.newBuilder().setTitle("send_file").setStatus("failed")).build(),
-        )
-        val d = derive(events)
-
-        // When capability is true: Tools(1,2) -> SharedFiles(3) -> Tools(4,5) -> Tool(6 with 0 files).
-        val supported = buildChat(events, d, "Mac", sharedFilesSupported = true)
-        assertEquals(4, supported.size)
-        assertTrue(supported[0] is ChatItem.Tools)
-        assertEquals(listOf(1L, 2L), (supported[0] as ChatItem.Tools).callSeqs)
-        assertTrue(supported[1] is ChatItem.SharedFiles)
-        assertEquals(listOf(sf), (supported[1] as ChatItem.SharedFiles).files)
-        assertTrue(supported[2] is ChatItem.Tools)
-        assertEquals(listOf(4L, 5L), (supported[2] as ChatItem.Tools).callSeqs)
-        assertTrue(supported[3] is ChatItem.Tool)
-
-        // When capability is false: events 1..5 remain folded as normal tools, seq 6 stays failed Tool.
-        val unsupported = buildChat(events, d, "Mac", sharedFilesSupported = false)
-        assertEquals(2, unsupported.size)
-        assertTrue(unsupported[0] is ChatItem.Tools)
-        assertTrue(unsupported[1] is ChatItem.Tool)
-
-        // ChatProjection updates cleanly when capability flips.
-        val projection = ChatProjection()
-        assertEquals(2, projection.update(events, d, "Mac", sharedFilesSupported = false).size)
-        assertEquals(4, projection.update(events, d, "Mac", sharedFilesSupported = true).size)
-    }
-
-    @Test
     fun contextMenuEntriesMatchFileStateAndExcludedWhenCleaned() {
         val videoFile = sharedFile("v1", "daocheng-final.mp4", 24_300_000L, "/Users/alex/Movies/daocheng/out/daocheng-final.mp4")
         val pdfFile = sharedFile("p1", "report.pdf", 2_100_000L, "/Users/alex/Docs/report.pdf")
@@ -406,22 +376,26 @@ class SharedFilesUiTest {
 
     private fun captureInChat(theme: ThemeMode, tag: String) {
         val sf = sharedFile("v-chat", "daocheng-final.mp4", 24_300_000L)
-        val events = listOf(
-            Event.newBuilder().setSeq(1).setUserMessage(UserMessage.newBuilder().setText("把剪好的成片发我手机上看看")).build(),
-            Event.newBuilder().setSeq(2).setToolCall(ToolCall.newBuilder().setTitle("ffmpeg -i cut.mov -c:v libx264 out/daocheng-final.mp4").setStatus("completed")).build(),
-            Event.newBuilder().setSeq(3).setAgentMessage(AgentMessage.newBuilder().setText("成片导出好了，时长 1 分 42 秒，1080p。")).build(),
-            Event.newBuilder().setSeq(4).setToolCall(ToolCall.newBuilder().setTitle("send_file").setStatus("completed").addSharedFiles(sf)).build(),
-            Event.newBuilder().setSeq(5).setAgentMessage(AgentMessage.newBuilder().setText("需要我再出一版竖屏的吗？")).build(),
+        val items = listOf(
+            SessionTimelineItem.newBuilder().setId("e1").setSeq(1)
+                .setUserMessage(io.github.lewin671.remoteagent.core.proto.SessionUserMessageItem.newBuilder().setText("把剪好的成片发我手机上看看")).build(),
+            SessionTimelineItem.newBuilder().setId("e2").setSeq(2)
+                .setToolCall(SessionToolCallItem.newBuilder().setToolKind(ToolKind.TOOL_KIND_COMMAND).setTitle("ffmpeg -i cut.mov -c:v libx264 out/daocheng-final.mp4").setStatus(SessionToolStatus.SESSION_TOOL_STATUS_OK)).build(),
+            SessionTimelineItem.newBuilder().setId("e3").setSeq(3)
+                .setAgentMessage(SessionAgentMessageItem.newBuilder().setMarkdown("成片导出好了，时长 1 分 42 秒，1080p。")).build(),
+            SessionTimelineItem.newBuilder().setId("e4").setSeq(4)
+                .setSharedFiles(SessionSharedFilesItem.newBuilder().addFiles(SessionSharedFileItem.newBuilder().setFileId(sf.fileId).setName(sf.name).setPath(sf.path).setSizeBytes(sf.sizeBytes).setAvailable(true))).build(),
+            SessionTimelineItem.newBuilder().setId("e5").setSeq(5)
+                .setAgentMessage(SessionAgentMessageItem.newBuilder().setMarkdown("需要我再出一版竖屏的吗？")).build(),
         )
-        val items = buildChat(events, derive(events), "MacBook Pro", sharedFilesSupported = true)
         render(theme) {
             SharedFileHost("s-chat", "MacBook Pro", machineOnline = true, sessionExited = false, manager = manager) {
-                CompositionLocalProvider(LocalChat provides ChatContext("s-chat", Agent.AGENT_CLAUDE, derive(events), 0L, machineName = "MacBook Pro", machineOnline = true, sessionExited = false)) {
+                CompositionLocalProvider(LocalChat provides ChatContext("s-chat", Agent.AGENT_CLAUDE, "Claude", machineName = "MacBook Pro", machineOnline = true, sessionExited = false)) {
                     Column(Modifier.fillMaxSize().padding(top = 18.dp)) {
                         PageBar("稻城剪辑", {}, subtitle = "MacBook Pro · 询问")
                         Spacer(Modifier.height(10.dp))
                         items.forEach { item ->
-                            ChatItemView(item, "Claude")
+                            TimelineItemView(item)
                         }
                     }
                 }
@@ -494,7 +468,7 @@ class SharedFilesUiTest {
             val px = with(LocalDensity.current) { SharedTileSize.roundToPx() }
             manager.putThumbnailForTest(imgFile, px, createMockThumbnailBitmap(warm = false).asImageBitmap())
             SharedFileHost("s-multi", "MacBook Pro", machineOnline = true, sessionExited = false, manager = manager) {
-                CompositionLocalProvider(LocalChat provides ChatContext("s-multi", Agent.AGENT_CLAUDE, derive(emptyList()), 0L, machineName = "MacBook Pro", machineOnline = true, sessionExited = false)) {
+                CompositionLocalProvider(LocalChat provides ChatContext("s-multi", Agent.AGENT_CLAUDE, "Claude", machineName = "MacBook Pro", machineOnline = true, sessionExited = false)) {
                     Column(Modifier.fillMaxSize().padding(top = 18.dp)) {
                         MeBubble("封面图、成片和工程包都给我")
                         SharedFilesBlock(
@@ -504,7 +478,10 @@ class SharedFilesUiTest {
                             machineOnline = true,
                             sessionExited = false,
                         )
-                        ChatItemView(ChatItem.Agent("ag-multi", "三个文件都放这儿了。"), "Claude")
+                        TimelineItemView(
+                            SessionTimelineItem.newBuilder().setId("ag-multi")
+                                .setAgentMessage(SessionAgentMessageItem.newBuilder().setMarkdown("三个文件都放这儿了。")).build(),
+                        )
                     }
                 }
             }
@@ -535,11 +512,14 @@ class SharedFilesUiTest {
             Column(Modifier.fillMaxSize().padding(top = 18.dp)) {
                 PageBar("稻城剪辑", {}, subtitle = "MacBook Pro · 询问")
                 SharedFileHost(session, "MacBook Pro", machineOnline = true, sessionExited = false, modifier = Modifier.weight(1f), manager = manager) {
-                    CompositionLocalProvider(LocalChat provides ChatContext(session, Agent.AGENT_CLAUDE, derive(emptyList()), 0L, machineName = "MacBook Pro", machineOnline = true, sessionExited = false)) {
+                    CompositionLocalProvider(LocalChat provides ChatContext(session, Agent.AGENT_CLAUDE, "Claude", machineName = "MacBook Pro", machineOnline = true, sessionExited = false)) {
                         Column(Modifier.fillMaxSize().padding(top = 10.dp)) {
                             if (nearBottom) Spacer(Modifier.weight(1f))
                             MeBubble("把剪好的成片发我手机上看看")
-                            ChatItemView(ChatItem.Agent("ag-$id-1", "成片导出好了，时长 1 分 42 秒，1080p。"), "Claude")
+                            TimelineItemView(
+                                SessionTimelineItem.newBuilder().setId("ag-$id-1")
+                                    .setAgentMessage(SessionAgentMessageItem.newBuilder().setMarkdown("成片导出好了，时长 1 分 42 秒，1080p。")).build(),
+                            )
                             SharedFilesBlock(
                                 files = listOf(sf),
                                 sessionId = session,
@@ -547,7 +527,10 @@ class SharedFilesUiTest {
                                 machineOnline = true,
                                 sessionExited = false,
                             )
-                            if (!nearBottom) ChatItemView(ChatItem.Agent("ag-$id-2", "需要我再出一版竖屏的吗？"), "Claude")
+                            if (!nearBottom) TimelineItemView(
+                                SessionTimelineItem.newBuilder().setId("ag-$id-2")
+                                    .setAgentMessage(SessionAgentMessageItem.newBuilder().setMarkdown("需要我再出一版竖屏的吗？")).build(),
+                            )
                         }
                     }
                 }

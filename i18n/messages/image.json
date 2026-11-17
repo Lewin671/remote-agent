@@ -251,20 +251,6 @@
     }
   },
   {
-    "key": "image.android_missing_uploads",
-    "zh-CN": "图片不在电脑上。放回输入框后会重新上传，文字和图片都会保留",
-    "en": "Images are not on the computer. Returning to the composer uploads them again and keeps the text and images",
-    "notes": "Android 批次 B：Actions.kt 的现有显示文案，保留原中文措辞与标点。无变量。短标签保持紧凑；说明正文可多行。英文初稿待审。",
-    "params": {},
-    "platforms": [
-      "android"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
     "key": "image.android_name_only",
     "zh-CN": "图片没有同步：只有文件名，原图在电脑上",
     "en": "Image not synced: filename only; the original is on the computer",

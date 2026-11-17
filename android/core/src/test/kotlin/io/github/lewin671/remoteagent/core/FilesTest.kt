@@ -187,13 +187,4 @@ class FilesTest {
         assertEquals(2, opens)
         assertEquals(2, closes)
     }
-
-    @Test fun fileOnlyQueueRetainsMetadataThroughAStatusOnlyUpdate() {
-        val file = SentFile.newBuilder().setFileId("f").setName("data.csv").setSizeBytes(7).build()
-        val queued = Event.newBuilder().setSeq(1).setInputState(InputState.newBuilder().setRequestId("r")
-            .setStatus(InputStatus.INPUT_STATUS_QUEUED).addFiles(file)).build()
-        val held = Event.newBuilder().setSeq(2).setInputState(InputState.newBuilder().setRequestId("r")
-            .setStatus(InputStatus.INPUT_STATUS_HELD_BY_CLI)).build()
-        assertEquals(listOf(file), pendingInputs(derive(listOf(queued, held))).single().files)
-    }
 }

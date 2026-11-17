@@ -3,6 +3,15 @@ package io.github.lewin671.remoteagent.ui
 import io.github.lewin671.remoteagent.core.proto.*
 import io.github.lewin671.remoteagent.proto.Agent
 import io.github.lewin671.remoteagent.proto.ApprovalMode
+import io.github.lewin671.remoteagent.proto.ImageRef
+import io.github.lewin671.remoteagent.proto.InputStatus
+import io.github.lewin671.remoteagent.proto.Origin
+import io.github.lewin671.remoteagent.proto.OriginKind
+import io.github.lewin671.remoteagent.proto.PlanChoice
+import io.github.lewin671.remoteagent.proto.SendMode
+import io.github.lewin671.remoteagent.proto.SentFile
+import io.github.lewin671.remoteagent.proto.ToolKind
+import io.github.lewin671.remoteagent.proto.TurnOutcome
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
@@ -83,6 +92,11 @@ object ScreenGoldenLoader {
     fun clientDetailView(scenario: String, viewName: String): ClientDetailViewModel {
         val v = namedViews(scenario).getValue(viewName)
         return parseClientDetail(v["clientDetail"]!!.jsonObject)
+    }
+
+    fun sessionView(scenario: String, viewName: String): SessionViewModel {
+        val v = namedViews(scenario).getValue(viewName)
+        return parseSession(v["session"]!!.jsonObject)
     }
 
     private fun JsonObject.str(k: String): String = (this[k]?.jsonPrimitive)?.contentOrNull.orEmpty()
@@ -1062,5 +1076,462 @@ object ScreenGoldenLoader {
         o.obj("addedText")?.let { setAddedText(parseText(it)) }
         o.obj("renameError")?.let { setRenameError(parseText(it)) }
         o.obj("managementHint")?.let { setManagementHint(parseText(it)) }
+    }.build()
+
+    private fun parseSession(o: JsonObject): SessionViewModel = SessionViewModel.newBuilder().apply {
+        setSessionId(o.str("sessionId"))
+        o.obj("header")?.let { h ->
+            setHeader(
+                SessionHeaderView.newBuilder().apply {
+                    setFound(h.bool("found"))
+                    setSessionsListed(h.bool("sessionsListed"))
+                    setLiveLoaded(h.bool("liveLoaded"))
+                    h.obj("title")?.let { setTitle(parseText(it)) }
+                    h.obj("projectName")?.let { setProjectName(parseText(it)) }
+                    setProjectKey(h.str("projectKey"))
+                    setCwd(h.str("cwd"))
+                    setAgent(h.enum("agent", Agent.AGENT_UNSPECIFIED))
+                    setAgentName(h.str("agentName"))
+                    setStatus(h.enum("status", SessionDisplayStatus.SESSION_DISPLAY_STATUS_UNSPECIFIED))
+                    setTone(h.enum("tone", SessionTone.SESSION_TONE_UNSPECIFIED))
+                    h.obj("statusText")?.let { setStatusText(parseText(it)) }
+                    setApprovalMode(h.enum("approvalMode", ApprovalMode.APPROVAL_MODE_UNSPECIFIED))
+                    h.obj("approvalModeLabel")?.let { setApprovalModeLabel(parseText(it)) }
+                    setModel(h.str("model"))
+                    setModelLabel(h.str("modelLabel"))
+                    setModelUnknown(h.bool("modelUnknown"))
+                    setContextPercent(h.i32("contextPercent"))
+                    setHasContext(h.bool("hasContext") || "contextPercent" in h)
+                    h.obj("contextText")?.let { setContextText(parseText(it)) }
+                    setMachineId(h.str("machineId"))
+                    h.obj("computerName")?.let { setComputerName(parseText(it)) }
+                    setComputerOnline(h.bool("computerOnline"))
+                    setConnState(h.enum("connState", ConnState.CONN_STATE_UNSPECIFIED))
+                    setDaemonProtocolVersion(h.i32("daemonProtocolVersion"))
+                    setClientProtocolVersion(h.i32("clientProtocolVersion"))
+                    setForkedFromId(h.str("forkedFromId"))
+                    setIsScheduled(h.bool("isScheduled"))
+                    setScheduledTitle(h.str("scheduledTitle"))
+                    setScheduledTaskId(h.str("scheduledTaskId"))
+                    setExited(h.bool("exited"))
+                    setEndedAtMs(h.i64("endedAtMs"))
+                    setScheduledClosed(h.bool("scheduledClosed"))
+                    setIdleClosed(h.bool("idleClosed"))
+                    h.obj("endedText")?.let { setEndedText(parseText(it)) }
+                    h.obj("capabilities")?.let { cp ->
+                        setCapabilities(
+                            SessionCapabilitiesView.newBuilder()
+                                .setCanSend(cp.bool("canSend"))
+                                .setSupportsImages(cp.bool("supportsImages"))
+                                .setSupportsFiles(cp.bool("supportsFiles"))
+                                .setSupportsSendModes(cp.bool("supportsSendModes"))
+                                .setSupportsSharedFiles(cp.bool("supportsSharedFiles"))
+                                .setSupportsAlwaysAllow(cp.bool("supportsAlwaysAllow"))
+                                .setSupportsSteer(cp.bool("supportsSteer"))
+                                .setSupportsCompact(cp.bool("supportsCompact"))
+                                .setSupportsFork(cp.bool("supportsFork"))
+                                .setSupportsModeSwitch(cp.bool("supportsModeSwitch"))
+                                .setSupportsModelSwitch(cp.bool("supportsModelSwitch"))
+                                .setSupportsSchedule(cp.bool("supportsSchedule"))
+                                .setTerminalAvailable(cp.bool("terminalAvailable"))
+                                .setMaxImages(cp.i32("maxImages")),
+                        )
+                    }
+                },
+            )
+        }
+        o.obj("actions")?.let { a ->
+            setActions(
+                SessionActionsView.newBuilder().apply {
+                    setCanRename(a.bool("canRename"))
+                    setCanFork(a.bool("canFork"))
+                    a.obj("forkBlockedReason")?.let { setForkBlockedReason(parseText(it)) }
+                    setCanCompact(a.bool("canCompact"))
+                    setCanInterrupt(a.bool("canInterrupt"))
+                    setCanEnd(a.bool("canEnd"))
+                    setCanSwitchMode(a.bool("canSwitchMode"))
+                    setCanSwitchModel(a.bool("canSwitchModel"))
+                    a.obj("modelSwitchBlockedReason")?.let { setModelSwitchBlockedReason(parseText(it)) }
+                    a.obj("endConfirmNote")?.let { setEndConfirmNote(parseText(it)) }
+                    a.obj("resumeNote")?.let { setResumeNote(parseText(it)) }
+                    a.obj("rename")?.let { setRename(parseCommandState(it)) }
+                    a.obj("fork")?.let { setFork(parseCommandState(it)) }
+                    a.obj("compact")?.let { setCompact(parseCommandState(it)) }
+                    a.obj("interrupt")?.let { setInterrupt(parseCommandState(it)) }
+                    a.obj("end")?.let { setEnd(parseCommandState(it)) }
+                    a.obj("resume")?.let { setResume(parseCommandState(it)) }
+                    a.obj("setMode")?.let { setSetMode(parseCommandState(it)) }
+                    a.obj("setModel")?.let { setSetModel(parseCommandState(it)) }
+                    setModelsLoading(a.bool("modelsLoading"))
+                    a.obj("modelsError")?.let { setModelsError(parseText(it)) }
+                    a.arr("modeChoices").forEach { mce ->
+                        val mc = mce.jsonObject
+                        addModeChoices(
+                            SessionModeChoiceView.newBuilder()
+                                .setMode(mc.enum("mode", ApprovalMode.APPROVAL_MODE_UNSPECIFIED))
+                                .setLabel(parseText(mc.obj("label")))
+                                .setSelected(mc.bool("selected"))
+                                .setAvailable(mc.bool("available"))
+                                .setSwitchAfterTurn(mc.bool("switchAfterTurn"))
+                                .apply { mc.obj("note")?.let { setNote(parseText(it)) } },
+                        )
+                    }
+                },
+            )
+        }
+        o.obj("dock")?.let { d ->
+            setDock(
+                SessionDockView.newBuilder().apply {
+                    setHasItem(d.bool("hasItem"))
+                    setKind(d.enum("kind", SessionDockKind.SESSION_DOCK_KIND_UNSPECIFIED))
+                    setItemId(d.str("itemId"))
+                    setObservedSeq(d.i64("observedSeq"))
+                    d.obj("title")?.let { setTitle(parseText(it)) }
+                    d.obj("summary")?.let { setSummary(parseText(it)) }
+                    d.obj("meta")?.let { setMeta(parseText(it)) }
+                    d.obj("command")?.let { setCommand(parseCommandState(it)) }
+                    d.obj("approval")?.let { ap ->
+                        setApproval(
+                            SessionApprovalDockView.newBuilder()
+                                .setApprovalId(ap.str("approvalId"))
+                                .setToolName(ap.str("toolName"))
+                                .setDescription(ap.str("description"))
+                                .setCommandPreview(ap.str("commandPreview"))
+                                .setBody(ap.str("body"))
+                                .setBodyTruncated(ap.bool("bodyTruncated"))
+                                .setIsSkeleton(ap.bool("isSkeleton"))
+                                .setCanAlwaysAllow(ap.bool("canAlwaysAllow"))
+                                .apply {
+                                    ap.obj("alwaysLabel")?.let { setAlwaysLabel(parseText(it)) }
+                                    ap.obj("denyReasonPlaceholder")?.let { setDenyReasonPlaceholder(parseText(it)) }
+                                },
+                        )
+                    }
+                    d.obj("question")?.let { qd ->
+                        setQuestion(
+                            SessionQuestionDockView.newBuilder()
+                                .setQuestionId(qd.str("questionId"))
+                                .setActiveIndex(qd.i32("activeIndex"))
+                                .setTotalQuestions(qd.i32("totalQuestions"))
+                                .apply {
+                                    qd.obj("progressText")?.let { setProgressText(parseText(it)) }
+                                    qd.obj("question")?.let { setQuestion(parseQuestionStep(it)) }
+                                },
+                        )
+                    }
+                    d.obj("plan")?.let { pl ->
+                        setPlan(
+                            SessionPlanDockView.newBuilder()
+                                .setScreenHash(com.google.protobuf.ByteString.copyFromUtf8(pl.str("screenHash")))
+                                .setMarkdown(pl.str("markdown"))
+                                .setClearContextAvailable(pl.bool("clearContextAvailable"))
+                                .apply {
+                                    pl.arr("choices").forEach { ce ->
+                                        val c = ce.jsonObject
+                                        addChoices(
+                                            SessionPlanChoiceOptionView.newBuilder()
+                                                .setChoice(c.enum("choice", PlanChoice.PLAN_CHOICE_UNSPECIFIED))
+                                                .setLabel(parseText(c.obj("label")))
+                                                .setRecommended(c.bool("recommended")),
+                                        )
+                                    }
+                                },
+                        )
+                    }
+                    d.obj("terminalPopup")?.let { tp ->
+                        setTerminalPopup(
+                            SessionTerminalPopupDockView.newBuilder()
+                                .setCanGoTerminal(tp.bool("canGoTerminal"))
+                                .apply {
+                                    tp.obj("popupTitle")?.let { setPopupTitle(parseText(it)) }
+                                    tp.obj("hint")?.let { setHint(parseText(it)) }
+                                },
+                        )
+                    }
+                },
+            )
+        }
+        o.obj("composer")?.let { cp ->
+            setComposer(
+                SessionComposerView.newBuilder().apply {
+                    setEnabled(cp.bool("enabled"))
+                    cp.obj("placeholder")?.let { setPlaceholder(parseText(it)) }
+                    cp.obj("disabledReason")?.let { setDisabledReason(parseText(it)) }
+                    setSupportsQueueMode(cp.bool("supportsQueueMode"))
+                    setSteerModeDefault(cp.bool("steerModeDefault"))
+                    setCanAttachImages(cp.bool("canAttachImages"))
+                    setCanAttachFiles(cp.bool("canAttachFiles"))
+                    setHasActiveTurn(cp.bool("hasActiveTurn"))
+                    setInterruptVisible(cp.bool("interruptVisible"))
+                    cp.arr("pendingInputs").forEach { pe ->
+                        val p = pe.jsonObject
+                        addPendingInputs(
+                            SessionPendingInputView.newBuilder()
+                                .setRequestId(p.str("requestId"))
+                                .setText(p.str("text"))
+                                .setImageCount(p.i32("imageCount"))
+                                .setFileCount(p.i32("fileCount"))
+                                .setStatus(p.enum("status", InputStatus.INPUT_STATUS_UNSPECIFIED))
+                                .setMode(p.enum("mode", SendMode.SEND_MODE_UNSPECIFIED))
+                                .setHeld(p.bool("held"))
+                                .setPaused(p.bool("paused"))
+                                .setCanCancel(p.bool("canCancel"))
+                                .setCanResume(p.bool("canResume"))
+                                .setRank(p.i32("rank"))
+                                .setTotalPending(p.i32("totalPending"))
+                                .apply {
+                                    p.obj("label")?.let { setLabel(parseText(it)) }
+                                    p.obj("caption")?.let { setCaption(parseText(it)) }
+                                    p.obj("originLabel")?.let { setOriginLabel(parseText(it)) }
+                                    p.obj("cancel")?.let { setCancel(parseCommandState(it)) }
+                                    p.obj("resume")?.let { setResume(parseCommandState(it)) }
+                                },
+                        )
+                    }
+                    cp.arr("outgoing").forEach { oe ->
+                        val ov = oe.jsonObject
+                        addOutgoing(
+                            SessionOutgoingView.newBuilder()
+                                .setSlotKey(ov.str("slotKey"))
+                                .setRequestId(ov.str("requestId"))
+                                .setText(ov.str("text"))
+                                .addAllImageIds(ov.arr("imageIds").map { it.jsonPrimitive.content })
+                                .addAllFileIds(ov.arr("fileIds").map { it.jsonPrimitive.content })
+                                .setMode(ov.enum("mode", SendMode.SEND_MODE_UNSPECIFIED))
+                                .setState(ov.enum("state", SessionOutgoingState.SESSION_OUTGOING_STATE_UNSPECIFIED))
+                                .setFrozen(ov.bool("frozen"))
+                                .setCanRetry(ov.bool("canRetry"))
+                                .setCanRestore(ov.bool("canRestore"))
+                                .setCanDismiss(ov.bool("canDismiss"))
+                                .setCreatedMs(ov.i64("createdMs"))
+                                .setFeedbackUncertain(ov.bool("feedbackUncertain"))
+                                .apply {
+                                    ov.obj("caption")?.let { setCaption(parseText(it)) }
+                                    ov.obj("feedback")?.let { setFeedback(parseText(it)) }
+                                },
+                        )
+                    }
+                },
+            )
+        }
+        o.obj("timeline")?.let { tl ->
+            setTimeline(
+                SessionTimelineView.newBuilder().apply {
+                    tl.arr("items").forEach { ie -> addItems(parseTimelineItem(ie.jsonObject)) }
+                    setWindowFirstSeq(tl.i64("windowFirstSeq"))
+                    setWindowLastSeq(tl.i64("windowLastSeq"))
+                    setAnchorSeq(tl.i64("anchorSeq"))
+                    setAnchorItemId(tl.str("anchorItemId"))
+                    setTotalItems(tl.i32("totalItems"))
+                    setHasEarlier(tl.bool("hasEarlier"))
+                    setCanLoadEarlier(tl.bool("canLoadEarlier"))
+                    setHasGap(tl.bool("hasGap"))
+                    setLoaded(tl.bool("loaded"))
+                    setLoading(tl.bool("loading"))
+                    setFetching(tl.bool("fetching"))
+                    setAwaitingCache(tl.bool("awaitingCache"))
+                    setNextBeforeSeq(tl.i64("nextBeforeSeq"))
+                },
+            )
+        }
+    }.build()
+
+    private fun parseCommandState(o: JsonObject): SessionCommandState = SessionCommandState.newBuilder().apply {
+        setSlotKey(o.str("slotKey"))
+        setRequestId(o.str("requestId"))
+        setStatus(o.enum("status", SessionCommandStatus.SESSION_COMMAND_STATUS_UNSPECIFIED))
+        setBusy(o.bool("busy"))
+        setFrozen(o.bool("frozen"))
+        setCanRetry(o.bool("canRetry"))
+        setCanAbandon(o.bool("canAbandon"))
+        setErrorCode(o.str("errorCode"))
+        o.obj("statusText")?.let { setStatusText(parseText(it)) }
+        o.obj("errorText")?.let { setErrorText(parseText(it)) }
+    }.build()
+
+    private fun parseQuestionStep(q: JsonObject): SessionQuestionStepView = SessionQuestionStepView.newBuilder().apply {
+        setHeader(q.str("header"))
+        setQuestionText(q.str("questionText"))
+        setMultiSelect(q.bool("multiSelect"))
+        setCanFreeText(q.bool("canFreeText"))
+        q.arr("options").forEach { oe ->
+            val o = oe.jsonObject
+            addOptions(
+                SessionQuestionOptionView.newBuilder()
+                    .setOptionNum(o.i32("optionNum"))
+                    .setLabel(o.str("label"))
+                    .setDescription(o.str("description"))
+                    .setRecommended(o.bool("recommended")),
+            )
+        }
+    }.build()
+
+    private fun parseTimelineItem(o: JsonObject): SessionTimelineItem = SessionTimelineItem.newBuilder().apply {
+        setId(o.str("id"))
+        setSeq(o.i64("seq"))
+        setEndSeq(o.i64("endSeq"))
+        setTimestampMs(o.i64("timestampMs"))
+        o.obj("userMessage")?.let { u ->
+            setUserMessage(
+                SessionUserMessageItem.newBuilder().apply {
+                    setText(u.str("text"))
+                    setTypedLocally(u.bool("typedLocally"))
+                    setIsScheduled(u.bool("isScheduled"))
+                    setScheduledTaskId(u.str("scheduledTaskId"))
+                    setScheduledRunId(u.str("scheduledRunId"))
+                    u.obj("originCaption")?.let { setOriginCaption(parseText(it)) }
+                    u.obj("origin")?.let { orig ->
+                        setOrigin(
+                            Origin.newBuilder()
+                                .setKind(orig.enum("kind", OriginKind.ORIGIN_KIND_UNSPECIFIED))
+                                .setDeviceId(orig.str("deviceId"))
+                                .setScheduledTaskId(orig.str("scheduledTaskId"))
+                                .setScheduledRunId(orig.str("scheduledRunId")),
+                        )
+                    }
+                    u.arr("images").forEach { ie -> addImages(parseImageRef(ie.jsonObject)) }
+                    u.arr("files").forEach { fe ->
+                        val f = fe.jsonObject
+                        addFiles(SessionFileRefView.newBuilder().setName(f.str("name")).setSizeBytes(f.i64("sizeBytes")).setMimeType(f.str("mimeType")))
+                    }
+                },
+            )
+        }
+        o.obj("agentMessage")?.let { a ->
+            setAgentMessage(SessionAgentMessageItem.newBuilder().setMarkdown(a.str("markdown")))
+        }
+        o.obj("toolCall")?.let { tc ->
+            setToolCall(parseToolCallItem(tc))
+        }
+        o.obj("toolGroup")?.let { tg ->
+            setToolGroup(
+                SessionToolGroupItem.newBuilder().apply {
+                    tg.obj("summary")?.let { setSummary(parseText(it)) }
+                    setCommandCount(tg.i32("commandCount"))
+                    tg.arr("calls").forEach { ce -> addCalls(parseToolCallItem(ce.jsonObject)) }
+                },
+            )
+        }
+        o.obj("sharedFiles")?.let { sf ->
+            setSharedFiles(
+                SessionSharedFilesItem.newBuilder().apply {
+                    sf.arr("files").forEach { fe ->
+                        val f = fe.jsonObject
+                        addFiles(
+                            SessionSharedFileItem.newBuilder()
+                                .setFileId(f.str("fileId"))
+                                .setName(f.str("name"))
+                                .setPath(f.str("path"))
+                                .setSizeBytes(f.i64("sizeBytes"))
+                                .setAvailable(f.bool("available")),
+                        )
+                    }
+                },
+            )
+        }
+        o.obj("generatedImages")?.let { gi ->
+            setGeneratedImages(
+                SessionGeneratedImagesItem.newBuilder().apply {
+                    setRevisedPrompt(gi.str("revisedPrompt"))
+                    gi.arr("images").forEach { ie -> addImages(parseImageRef(ie.jsonObject)) }
+                },
+            )
+        }
+        o.obj("asyncQuestion")?.let { aq ->
+            setAsyncQuestion(
+                SessionAsyncQuestionItem.newBuilder().apply {
+                    aq.arr("questions").forEach { qe -> addQuestions(parseQuestionStep(qe.jsonObject)) }
+                },
+            )
+        }
+        o.obj("plan")?.let { p ->
+            setPlan(SessionPlanItem.newBuilder().setMarkdown(p.str("markdown")))
+        }
+        o.obj("note")?.let { n ->
+            setNote(
+                SessionNoteItem.newBuilder().apply {
+                    setKind(n.enum("kind", SessionNoteKind.SESSION_NOTE_KIND_UNSPECIFIED))
+                    setTone(n.enum("tone", SessionNoteTone.SESSION_NOTE_TONE_UNSPECIFIED))
+                    n.obj("text")?.let { setText(parseText(it)) }
+                },
+            )
+        }
+        o.obj("errorLine")?.let { e ->
+            setErrorLine(
+                SessionErrorLineItem.newBuilder().apply {
+                    setRawReason(e.str("rawReason"))
+                    e.obj("text")?.let { setText(parseText(it)) }
+                },
+            )
+        }
+        o.obj("inputState")?.let { ins ->
+            setInputState(
+                SessionInputStateItem.newBuilder().apply {
+                    setKind(ins.enum("kind", SessionInputNoticeKind.SESSION_INPUT_NOTICE_KIND_UNSPECIFIED))
+                    setRequestId(ins.str("requestId"))
+                    setPreview(ins.str("preview"))
+                    ins.obj("statusText")?.let { setStatusText(parseText(it)) }
+                    ins.obj("reasonText")?.let { setReasonText(parseText(it)) }
+                },
+            )
+        }
+        o.obj("forkMarker")?.let { fm ->
+            setForkMarker(
+                SessionForkItem.newBuilder().apply {
+                    setSourceSessionId(fm.str("sourceSessionId"))
+                    fm.obj("sourceTitle")?.let { setSourceTitle(parseText(it)) }
+                    fm.obj("text")?.let { setText(parseText(it)) }
+                },
+            )
+        }
+        o.obj("turnEnd")?.let { te ->
+            setTurnEnd(
+                SessionTurnEndItem.newBuilder().apply {
+                    setDurationMs(te.i64("durationMs"))
+                    setInterrupted(te.bool("interrupted"))
+                    setOutcome(te.enum("outcome", TurnOutcome.TURN_OUTCOME_UNSPECIFIED))
+                    te.obj("label")?.let { setLabel(parseText(it)) }
+                },
+            )
+        }
+        o.obj("quietScheduledGroup")?.let { qsg ->
+            setQuietScheduledGroup(
+                SessionQuietScheduledGroupItem.newBuilder().apply {
+                    setGroupId(qsg.str("groupId"))
+                    setRunCount(qsg.i32("runCount"))
+                    setExpanded(qsg.bool("expanded"))
+                    setScheduledTaskId(qsg.str("scheduledTaskId"))
+                    qsg.arr("runIds").forEach { addRunIds(it.jsonPrimitive.content) }
+                    qsg.arr("runTimesMs").forEach { addRunTimesMs(it.jsonPrimitive.longOrNull ?: 0L) }
+                    qsg.obj("title")?.let { setTitle(parseText(it)) }
+                    qsg.arr("items").forEach { ie -> addItems(parseTimelineItem(ie.jsonObject)) }
+                },
+            )
+        }
+    }.build()
+
+    private fun parseToolCallItem(o: JsonObject): SessionToolCallItem = SessionToolCallItem.newBuilder().apply {
+        setCallId(o.str("callId"))
+        setToolKind(o.enum("toolKind", ToolKind.TOOL_KIND_UNSPECIFIED))
+        setItemType(o.str("itemType"))
+        setTitle(o.str("title"))
+        setRawInput(o.str("rawInput"))
+        setDetail(o.str("detail"))
+        setStatus(o.enum("status", SessionToolStatus.SESSION_TOOL_STATUS_UNSPECIFIED))
+        setExitCode(o.i32("exitCode"))
+        setHasExitCode("exitCode" in o)
+        setElapsedMs(o.i64("elapsedMs"))
+        setFrozenAtMs(o.i64("frozenAtMs"))
+        setNoResult(o.bool("noResult"))
+        setDecisionAllowed(o.bool("decisionAllowed"))
+        o.obj("decisionLabel")?.let { setDecisionLabel(parseText(it)) }
+        o.obj("backgroundLabel")?.let { setBackgroundLabel(parseText(it)) }
+    }.build()
+
+    private fun parseImageRef(o: JsonObject): ImageRef = ImageRef.newBuilder().apply {
+        setImageId(o.str("imageId"))
+        setWidth(o.i32("width"))
+        setHeight(o.i32("height"))
+        setPath(o.str("path"))
     }.build()
 }

@@ -205,6 +205,8 @@ object Outbox {
         original: Boolean,
         mode: SendMode = SendMode.SEND_MODE_STEER,
         fileIds: List<String> = emptyList(),
+        store: (String, Outgoing, Boolean) -> Unit = { s, outgoing, orig -> records.save(s, outgoing, orig) },
+        discard: (String, String) -> Unit = { s, req -> records.remove(s, req) },
         onKept: (Result<Unit>) -> Unit,
     ) {
         if (keeping(sid)) return
@@ -222,25 +224,25 @@ object Outbox {
         scope.launch {
             val kept = withContext(Dispatchers.IO) {
                 runCatching {
-                    records.save(sid, o, original)
+                    store(sid, o, original)
                     try {
                         remote.requireFileSupport(machine, fileIds.isNotEmpty())
                     } catch (e: CommandException) {
-                        records.remove(sid, reqId)
+                        discard(sid, reqId)
                         throw e
                     }
                     if (machine == null || images.any { !it.readyFor(machine) } ||
                         images.filterNot { it.isFile }.mapNotNull { it.imageId } != imageIds ||
                         images.filter { it.isFile }.mapNotNull { it.fileId } != fileIds
                     ) {
-                        records.remove(sid, reqId)
+                        discard(sid, reqId)
                         throw io.github.lewin671.remoteagent.core.MessageException(UiMessages.attachmentAndroidUploadRequired().messageText())
                     }
                 }
             }
             if (account !== AccountMemory.token) return@launch
             if (sid in forgotten) {
-                withContext(Dispatchers.IO) { runCatching { records.remove(sid, reqId) } }
+                withContext(Dispatchers.IO) { runCatching { discard(sid, reqId) } }
                 return@launch
             }
             keepingNow.remove(sid)

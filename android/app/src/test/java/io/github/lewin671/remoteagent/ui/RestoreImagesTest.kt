@@ -121,7 +121,7 @@ class RestoreImagesTest {
     fun outgoingReadsAndThumbnailsRunOffTheUiCallerAndMergeNewMessages() = runBlocking {
         AccountMemory.clear()
         val backing = MemoryFiles()
-        val original = Outgoing("old", "看图", listOf("uploaded"), listOf(image()), true)
+        val original = Outgoing("old", listOf(image()), true)
         OutgoingRecords(backing).save("restore-out", original, true)
         val reads = Reads(backing).apply { block = true }
         val caller = Thread.currentThread()
@@ -131,12 +131,12 @@ class RestoreImagesTest {
         assertTrue(list.isEmpty())
         try {
             reads.entered.await()
-            list += Outgoing("new", "新消息")
+            list += Outgoing("new")
         } finally { reads.release.countDown() }
         job.join()
         assertEquals(listOf("new", "old"), list.map { it.requestId })
-        assertEquals(Outgoing.State.UNKNOWN, list.last().state)
-        assertEquals(listOf("uploaded"), list.last().imageIds)
+        assertTrue(list.last().original)
+        assertEquals(listOf("picked"), list.last().images.map { it.id })
         assertEquals(1, thumbnails)
         assertTrue(reads.threads.all { it !== caller })
         AccountMemory.clear()
@@ -146,7 +146,7 @@ class RestoreImagesTest {
     fun outgoingFinishingAfterAccountSwitchCannotRepopulateEitherList() = runBlocking {
         AccountMemory.clear()
         val backing = MemoryFiles()
-        OutgoingRecords(backing).save("shared-session", Outgoing("old", "旧账户", listOf("uploaded"), listOf(image())), false)
+        OutgoingRecords(backing).save("shared-session", Outgoing("old", listOf(image())), false)
         val reads = Reads(backing).apply { block = true }
         val oldList = Outbox.of("shared-session")
         val job = Outbox.restore("shared-session", this, OutgoingRecords(reads)) { null }
