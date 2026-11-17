@@ -100,12 +100,7 @@ func (a *Adapter) ParseStatusLine(raw []byte, sessionDir string) (*agent.StatusL
 		if reset, err := time.Parse(time.RFC3339Nano, v.Reset); err == nil {
 			w.ResetsAtMs = reset.UnixMilli()
 		}
-		switch name {
-		case "gemini-5h", "3p-5h":
-			w.WindowMinutes = 300
-		case "gemini-weekly", "gemini-argon-wtu-weekly", "3p-weekly":
-			w.WindowMinutes = 7 * 24 * 60
-		}
+		w.WindowMinutes = quotaWindowMinutes(name, "")
 		q.Windows = append(q.Windows, w)
 	}
 	out.Quota = q

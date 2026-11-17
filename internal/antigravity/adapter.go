@@ -23,11 +23,13 @@ var TestedVersions = []string{"1.4.12", "1.5.0"}
 
 // Adapter is Antigravity's agent.Adapter implementation.
 type Adapter struct {
-	mu         sync.Mutex // guards mutable fields
-	bin        string
-	commandEnv []string
-	home       string
-	history    string
+	mu           sync.Mutex // guards mutable fields
+	probeMu      sync.Mutex // serializes /usage quota probes
+	bin          string
+	commandEnv   []string
+	home         string
+	history      string
+	usageTimeout time.Duration // defaults to usageProbeTimeout when zero
 
 	version agent.BinVersion
 	models  *ModelCache
@@ -60,6 +62,14 @@ func New(bin, home string) *Adapter {
 func (a *Adapter) ID() string     { return "agy" }
 func (a *Adapter) Kind() pb.Agent { return pb.Agent_AGENT_ANTIGRAVITY }
 func (a *Adapter) Name() string   { return "Antigravity" }
+
+// LogDir returns the CLI log directory (~/.gemini/antigravity-cli/log).
+func (a *Adapter) LogDir() string {
+	if a.home == "" {
+		return ""
+	}
+	return filepath.Join(a.home, "log")
+}
 
 func (a *Adapter) Bin() string {
 	a.mu.Lock()
@@ -172,6 +182,17 @@ func (a *Adapter) SetAccountInfo(email, planTier string) {
 	}
 	if planTier != "" {
 		a.planTier = planTier
+	}
+}
+
+func (a *Adapter) setAccountFingerprint(fp string) {
+	if fp == "" {
+		return
+	}
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	if a.account == "" {
+		a.account = fp
 	}
 }
 

@@ -109,6 +109,13 @@ type AccountLimitsSource interface {
 	AccountLimits(since time.Time) (limits *pb.TokenUsage, at, seen time.Time)
 }
 
+// UsageProbeSource is optionally implemented by adapters whose CLI quota can be
+// actively probed via a non-model command after passive log-directory activity.
+type UsageProbeSource interface {
+	LogDir() string
+	ProbeUsage(ctx context.Context, triggerLogPath string) (*pb.AgentQuota, error)
+}
+
 // QuotaWindowOrder orders a provider's merged windows for all clients.
 type QuotaWindowOrder interface {
 	OrderQuotaWindows(windows []*pb.QuotaWindow)
