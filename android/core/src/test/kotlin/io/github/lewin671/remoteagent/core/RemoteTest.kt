@@ -1331,6 +1331,48 @@ class RemoteTest {
         assertNull(memory.blob(key));assertNull(r.cachedSchedules(daemon.account.deviceId))
     }
 
+    @Test fun coreRejectsUnsequencedZeroOpSecurityAndDevicesEvents() = runBlocking<Unit> {
+        val r = client()
+        r.start()
+        r.awaitState("connected") { it.conn == ConnState.ONLINE && r.coreHost.syncStateView.value.securityLoaded }
+        val expectedAuthority = r.coreHost.syncStateView.value.authorityDeviceId
+        assertTrue(r.coreHost.syncStateView.value.securityLoaded)
+        assertTrue(r.coreHost.syncStateView.value.isMember)
+        assertTrue(expectedAuthority.isNotEmpty())
+
+        // Dispatching op_id=0, push_seq=0 SecuritySnapshot must be ignored by core.
+        r.coreHost.dispatchAndWait(
+            io.github.lewin671.remoteagent.core.proto.Event.newBuilder()
+                .setSecuritySnapshot(
+                    io.github.lewin671.remoteagent.core.proto.SecuritySnapshotEvent.newBuilder()
+                        .setOpId(0L)
+                        .setPushSeq(0L)
+                        .setIsMember(false)
+                        .setAuthorityDeviceId("spoofed")
+                        .setHeadEpoch(999L),
+                )
+                .build(),
+        )
+        assertEquals(expectedAuthority, r.coreHost.syncStateView.value.authorityDeviceId)
+        assertTrue(r.coreHost.syncStateView.value.isMember)
+
+        // Shell refreshDevices sends a monotonic push_seq and keeps devices populated.
+        r.refreshDevices()
+        assertTrue(r.state.value.devices.containsKey(r.account.deviceId))
+
+        // Dispatching op_id=0, push_seq=0 DevicesFetched must be ignored by core.
+        r.coreHost.dispatchAndWait(
+            io.github.lewin671.remoteagent.core.proto.Event.newBuilder()
+                .setDevicesFetched(
+                    io.github.lewin671.remoteagent.core.proto.DevicesFetchedEvent.newBuilder()
+                        .setOpId(0L)
+                        .setPushSeq(0L),
+                )
+                .build(),
+        )
+        assertTrue(r.state.value.devices.containsKey(r.account.deviceId))
+    }
+
 }
 
 /** A CipherCache in memory, as the Room one behaves. */

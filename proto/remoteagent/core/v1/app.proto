@@ -247,6 +247,7 @@ message SecuritySnapshotEvent {
   string error = 14;
   bool unresolved_host = 15;
   string self_device_id = 16;
+  uint64 push_seq = 17;
 }
 
 message StreamReadyEvent {
@@ -330,6 +331,7 @@ message DevicesFetchedEvent {
   uint64 op_id = 1;
   repeated PlainDevice devices = 2;
   string error = 3;
+  uint64 push_seq = 4;
 }
 
 enum OutcomeSource {

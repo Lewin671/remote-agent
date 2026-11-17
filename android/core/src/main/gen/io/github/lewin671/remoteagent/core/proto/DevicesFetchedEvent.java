@@ -189,6 +189,32 @@ public  final class DevicesFetchedEvent extends
 
   }
 
+  public static final int PUSH_SEQ_FIELD_NUMBER = 4;
+  private long pushSeq_;
+  /**
+   * <code>uint64 push_seq = 4 [json_name = "pushSeq"];</code>
+   * @return The pushSeq.
+   */
+  @java.lang.Override
+  public long getPushSeq() {
+    return pushSeq_;
+  }
+  /**
+   * <code>uint64 push_seq = 4 [json_name = "pushSeq"];</code>
+   * @param value The pushSeq to set.
+   */
+  private void setPushSeq(long value) {
+    
+    pushSeq_ = value;
+  }
+  /**
+   * <code>uint64 push_seq = 4 [json_name = "pushSeq"];</code>
+   */
+  private void clearPushSeq() {
+
+    pushSeq_ = 0L;
+  }
+
   public static io.github.lewin671.remoteagent.core.proto.DevicesFetchedEvent parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -465,6 +491,34 @@ public  final class DevicesFetchedEvent extends
       return this;
     }
 
+    /**
+     * <code>uint64 push_seq = 4 [json_name = "pushSeq"];</code>
+     * @return The pushSeq.
+     */
+    @java.lang.Override
+    public long getPushSeq() {
+      return instance.getPushSeq();
+    }
+    /**
+     * <code>uint64 push_seq = 4 [json_name = "pushSeq"];</code>
+     * @param value The pushSeq to set.
+     * @return This builder for chaining.
+     */
+    public Builder setPushSeq(long value) {
+      copyOnWrite();
+      instance.setPushSeq(value);
+      return this;
+    }
+    /**
+     * <code>uint64 push_seq = 4 [json_name = "pushSeq"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearPushSeq() {
+      copyOnWrite();
+      instance.clearPushSeq();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.DevicesFetchedEvent)
   }
   @java.lang.Override
@@ -485,10 +539,11 @@ public  final class DevicesFetchedEvent extends
             "devices_",
             io.github.lewin671.remoteagent.core.proto.PlainDevice.class,
             "error_",
+            "pushSeq_",
           };
           java.lang.String info =
-              "\u0000\u0003\u0000\u0000\u0001\u0003\u0003\u0000\u0001\u0000\u0001\u0003\u0002\u001b" +
-              "\u0003\u0208";
+              "\u0000\u0004\u0000\u0000\u0001\u0004\u0004\u0000\u0001\u0000\u0001\u0003\u0002\u001b" +
+              "\u0003\u0208\u0004\u0003";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

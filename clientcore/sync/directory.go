@@ -317,7 +317,7 @@ func (e *Engine) handleListsFetched(ctx *StepContext, ev *corev1.ListsFetchedEve
 		e.putSession(ctx, s, true)
 	}
 
-	e.reconcileDevices(ev.Devices, rp)
+	e.reconcileDevices(ev.Devices, rp, false)
 	e.sessionsNext = pageNext
 	e.hasMoreSessions = pageNext != nil
 
@@ -384,14 +384,30 @@ func (e *Engine) handleSessionByIDFetched(ctx *StepContext, ev *corev1.SessionBy
 }
 
 func (e *Engine) handleDevicesFetched(ctx *StepContext, ev *corev1.DevicesFetchedEvent) {
-	if ev == nil || (ev.OpId != 0 && ev.OpId != e.devicesOpID) {
+	if ev == nil {
 		return
 	}
-	e.devicesOpID = 0
+	var removedSnapshot map[string]uint64
+	switch {
+	case ev.OpId != 0:
+		if ev.OpId != e.devicesOpID {
+			return
+		}
+		e.devicesOpID = 0
+		removedSnapshot = e.devicesSnapshotR
+	case ev.PushSeq != 0:
+		if ev.PushSeq <= e.lastDevicesPushSeq {
+			return
+		}
+		e.lastDevicesPushSeq = ev.PushSeq
+		removedSnapshot = nil
+	default:
+		return
+	}
 	if ev.Error != "" {
 		return
 	}
-	e.reconcileDevices(ev.Devices, e.devicesSnapshotR)
+	e.reconcileDevices(ev.Devices, removedSnapshot, true)
 	ctx.Dirty.MarkAll()
 }
 
@@ -427,6 +443,7 @@ func (e *Engine) handleStreamFrame(ctx *StepContext, ev *corev1.StreamFrameEvent
 			e.nextPushSeq++
 			e.removedPushes[f.MachineRemovedId] = e.nextPushSeq
 			e.dropMachine(ctx, f.MachineRemovedId)
+			e.requestSyncSecurity(ctx, true)
 			e.updateLivePollers(ctx)
 			ctx.Dirty.MarkAll()
 		}
@@ -469,6 +486,7 @@ func (e *Engine) handleStreamFrame(ctx *StepContext, ev *corev1.StreamFrameEvent
 			e.nextPushSeq++
 			e.removedPushes[f.DeviceRemovedId] = e.nextPushSeq
 			delete(e.devices, f.DeviceRemovedId)
+			e.requestSyncSecurity(ctx, true)
 			ctx.Dirty.Add(true, false, false)
 		}
 	}
@@ -608,8 +626,8 @@ func (e *Engine) removeSession(ctx *StepContext, sid string, dropFromCache bool)
 	}
 }
 
-func (e *Engine) reconcileDevices(items []*corev1.PlainDevice, removedSnapshot map[string]uint64) {
-	if len(items) == 0 && e.devicesOpID == 0 {
+func (e *Engine) reconcileDevices(items []*corev1.PlainDevice, removedSnapshot map[string]uint64, allowEmpty bool) {
+	if len(items) == 0 && !allowEmpty {
 		return
 	}
 	next := make(map[string]*DeviceEntry, len(items))

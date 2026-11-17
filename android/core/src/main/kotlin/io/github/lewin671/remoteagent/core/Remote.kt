@@ -151,6 +151,8 @@ class Remote(
     @Volatile private var networkAvailable = true
     @Volatile private var lastNetworkSignature: String? = null
     @Volatile private var networkGeneration = 0L
+    private val securityPushSeq = AtomicLong(1L)
+    private val devicesPushSeq = AtomicLong(1L)
     @Volatile private var running = false
     @Volatile private var serverAhead = false
 
@@ -610,12 +612,21 @@ class Remote(
     private suspend fun syncSecurityForCore(opId: Long, networkGeneration: Long) =
         sendEvent { setSecuritySnapshot(buildSecuritySnapshotEvent(opId, networkGeneration, sync = true)) }
 
-    private suspend fun buildSecuritySnapshotEvent(opId: Long, networkGeneration: Long, sync: Boolean): SecuritySnapshotEvent {
-        val b = SecuritySnapshotEvent.newBuilder().setOpId(opId).setNetworkGeneration(networkGeneration).setSelfDeviceId(account.deviceId)
+    private suspend fun buildSecuritySnapshotEvent(
+        opId: Long,
+        networkGeneration: Long,
+        sync: Boolean,
+        pushSeq: Long = 0L,
+    ): SecuritySnapshotEvent {
+        val b = SecuritySnapshotEvent.newBuilder()
+            .setOpId(opId)
+            .setNetworkGeneration(networkGeneration)
+            .setSelfDeviceId(account.deviceId)
+        if (pushSeq != 0L) b.setPushSeq(pushSeq)
         try {
             val record = if (sync) {
                 security.sync().also { r ->
-                    runCatching { resumeSecurityOperation() }.onFailure { if (it !is DeviceSecurity.Failure) throw it }
+                    runCatching { resumeSecurityOperation(dispatchSnapshot = false) }.onFailure { if (it !is DeviceSecurity.Failure) throw it }
                     try {
                         recoveryObjectsPending = true
                         republishRecoveryObjects(r)
@@ -756,7 +767,6 @@ class Remote(
                         }
                         ServerFrame.KindCase.MACHINE_REMOVED -> {
                             sendFrame { setMachineRemovedId(frame.machineRemoved.machineId) }
-                            syncSecurityForCore(0L, 0L)
                         }
                         ServerFrame.KindCase.SESSION_UPDATED -> {
                             val refs = ArrayList<String>(1)
@@ -800,7 +810,6 @@ class Remote(
                         }
                         ServerFrame.KindCase.DEVICE_REMOVED -> {
                             sendFrame { setDeviceRemovedId(frame.deviceRemoved.deviceId) }
-                            syncSecurityForCore(0L, 0L)
                         }
                         else -> {}
                     }
@@ -893,7 +902,8 @@ class Remote(
         if (env.securityHeader.isEmpty) return
         val epoch = runCatching { DeviceSecurity.parseHeader(env.securityHeader.toByteArray()).epoch }.getOrNull() ?: return
         if (security.stateAt(epoch) != null) return
-        val ev = buildSecuritySnapshotEvent(0L, 0L, sync = true)
+        val pushSeq = securityPushSeq.getAndIncrement()
+        val ev = buildSecuritySnapshotEvent(0L, networkGeneration, sync = true, pushSeq = pushSeq)
         coreHost.dispatch(CoreEvent.newBuilder().setSecuritySnapshot(ev).build())
     }
 
@@ -1701,10 +1711,11 @@ class Remote(
     // --- Security Management & Recovery (preserved for Security screens & DeviceSecurity tests) ---
 
     suspend fun syncSecurity(budgetMs: Long = Long.MAX_VALUE) {
+        val pushSeq = securityPushSeq.getAndIncrement()
         try {
             val r = withContext(dispatcher) {
                 security.sync(budgetMs).also { synced ->
-                    resumeSecurityOperation()
+                    resumeSecurityOperation(dispatchSnapshot = false)
                     try {
                         recoveryObjectsPending = true
                         republishRecoveryObjects(synced)
@@ -1719,13 +1730,16 @@ class Remote(
         } catch (e: DeviceSecurity.Failure) {
             if (e.code != "clock") throw e
         }
-        coreHost.dispatchAndWait(CoreEvent.newBuilder().setSecuritySnapshot(buildSecuritySnapshotEvent(0L, 0L, sync = false)).build())
+        val ev = buildSecuritySnapshotEvent(0L, networkGeneration, sync = false, pushSeq = pushSeq)
+        coreHost.dispatchAndWait(CoreEvent.newBuilder().setSecuritySnapshot(ev).build())
     }
 
     suspend fun refreshDevices() {
+        val pushSeq = devicesPushSeq.getAndIncrement()
         val ds = api.client.listDevices(ListDevicesRequest.getDefaultInstance(), Api.headers(currentToken())).value()
         val plain = ds.devicesList.map { openPlainDevice(it) }
-        coreHost.dispatchAndWait(CoreEvent.newBuilder().setDevicesFetched(DevicesFetchedEvent.newBuilder().setOpId(0L).addAllDevices(plain)).build())
+        val ev = DevicesFetchedEvent.newBuilder().setOpId(0L).setPushSeq(pushSeq).addAllDevices(plain).build()
+        coreHost.dispatchAndWait(CoreEvent.newBuilder().setDevicesFetched(ev).build())
         updateProjectedStateNow()
     }
 
@@ -1775,11 +1789,11 @@ class Remote(
 
     private val securityOperationLock = Mutex()
 
-    suspend fun resumeSecurityOperation() = securityOperationLock.withLock {
-        resumeSecurityOperationLocked()
+    suspend fun resumeSecurityOperation(dispatchSnapshot: Boolean = true) = securityOperationLock.withLock {
+        resumeSecurityOperationLocked(dispatchSnapshot)
     }
 
-    private suspend fun resumeSecurityOperationLocked() {
+    private suspend fun resumeSecurityOperationLocked(dispatchSnapshot: Boolean) {
         val storage = securityStorage ?: throw DeviceSecurity.Failure("storage")
         var op = storage.readSecurityOperation() ?: return
         if (op.kind == "lease") {
@@ -1805,8 +1819,11 @@ class Remote(
             api.client.putSecurityState(req, Api.headers(currentToken())).value()
             security.install(emptyList(), lease = cert)
             storage.clearSecurityOperation()
-            val ev = buildSecuritySnapshotEvent(0L, 0L, sync = false)
-            coreHost.dispatch(CoreEvent.newBuilder().setSecuritySnapshot(ev).build())
+            if (dispatchSnapshot) {
+                val pushSeq = securityPushSeq.getAndIncrement()
+                val ev = buildSecuritySnapshotEvent(0L, networkGeneration, sync = false, pushSeq = pushSeq)
+                coreHost.dispatch(CoreEvent.newBuilder().setSecuritySnapshot(ev).build())
+            }
             return
         }
         if (op.kind != "state") {
@@ -1886,8 +1903,11 @@ class Remote(
         }
         storage.writeSecurityOperation(op.advanced(SecurityOperation.Phase.DELIVERED))
         storage.clearSecurityOperation()
-        val ev = buildSecuritySnapshotEvent(0L, 0L, sync = false)
-        coreHost.dispatch(CoreEvent.newBuilder().setSecuritySnapshot(ev).build())
+        if (dispatchSnapshot) {
+            val pushSeq = securityPushSeq.getAndIncrement()
+            val ev = buildSecuritySnapshotEvent(0L, networkGeneration, sync = false, pushSeq = pushSeq)
+            coreHost.dispatch(CoreEvent.newBuilder().setSecuritySnapshot(ev).build())
+        }
     }
 
     private suspend fun retryCertificate(

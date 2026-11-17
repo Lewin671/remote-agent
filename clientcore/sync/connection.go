@@ -239,18 +239,22 @@ func (e *Engine) beginConnect(ctx *StepContext) {
 		},
 	})
 	if !e.security.Loaded || e.security.VerifiedNetGen != e.networkGen {
-		e.activeSecOpID = e.allocOpID()
-		ctx.emit(&corev1.Effect{
-			Effect: &corev1.Effect_SyncSecurity{
-				SyncSecurity: &corev1.SyncSecurityEffect{
-					OpId:              e.activeSecOpID,
-					NetworkGeneration: e.networkGen,
-					Touch:             true,
-				},
-			},
-		})
+		e.requestSyncSecurity(ctx, true)
 	}
 	ctx.Dirty.Add(true, true, true)
+}
+
+func (e *Engine) requestSyncSecurity(ctx *StepContext, touch bool) {
+	e.activeSecOpID = e.allocOpID()
+	ctx.emit(&corev1.Effect{
+		Effect: &corev1.Effect_SyncSecurity{
+			SyncSecurity: &corev1.SyncSecurityEffect{
+				OpId:              e.activeSecOpID,
+				NetworkGeneration: e.networkGen,
+				Touch:             touch,
+			},
+		},
+	})
 }
 
 func (e *Engine) handleTokenResult(ctx *StepContext, ev *corev1.TokenResultEvent) {
@@ -423,9 +427,18 @@ func (e *Engine) handleSecuritySnapshot(ctx *StepContext, ev *corev1.SecuritySna
 	if ev == nil {
 		return
 	}
-	if ev.OpId != 0 && ev.OpId == e.activeSecOpID {
+	switch {
+	case ev.OpId != 0:
+		if ev.OpId != e.activeSecOpID {
+			return
+		}
 		e.activeSecOpID = 0
-	} else if ev.OpId != 0 && e.activeSecOpID != 0 && ev.OpId != e.activeSecOpID {
+	case ev.PushSeq != 0:
+		if ev.PushSeq <= e.lastSecPushSeq {
+			return
+		}
+		e.lastSecPushSeq = ev.PushSeq
+	default:
 		return
 	}
 	if ev.Error != "" {

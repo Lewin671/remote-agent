@@ -2397,6 +2397,7 @@ type SecuritySnapshotEvent struct {
 	Error                  string                 `protobuf:"bytes,14,opt,name=error,proto3" json:"error,omitempty"`
 	UnresolvedHost         bool                   `protobuf:"varint,15,opt,name=unresolved_host,json=unresolvedHost,proto3" json:"unresolved_host,omitempty"`
 	SelfDeviceId           string                 `protobuf:"bytes,16,opt,name=self_device_id,json=selfDeviceId,proto3" json:"self_device_id,omitempty"`
+	PushSeq                uint64                 `protobuf:"varint,17,opt,name=push_seq,json=pushSeq,proto3" json:"push_seq,omitempty"`
 	unknownFields          protoimpl.UnknownFields
 	sizeCache              protoimpl.SizeCache
 }
@@ -2541,6 +2542,13 @@ func (x *SecuritySnapshotEvent) GetSelfDeviceId() string {
 		return x.SelfDeviceId
 	}
 	return ""
+}
+
+func (x *SecuritySnapshotEvent) GetPushSeq() uint64 {
+	if x != nil {
+		return x.PushSeq
+	}
+	return 0
 }
 
 type StreamReadyEvent struct {
@@ -3346,6 +3354,7 @@ type DevicesFetchedEvent struct {
 	OpId          uint64                 `protobuf:"varint,1,opt,name=op_id,json=opId,proto3" json:"op_id,omitempty"`
 	Devices       []*PlainDevice         `protobuf:"bytes,2,rep,name=devices,proto3" json:"devices,omitempty"`
 	Error         string                 `protobuf:"bytes,3,opt,name=error,proto3" json:"error,omitempty"`
+	PushSeq       uint64                 `protobuf:"varint,4,opt,name=push_seq,json=pushSeq,proto3" json:"push_seq,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -3399,6 +3408,13 @@ func (x *DevicesFetchedEvent) GetError() string {
 		return x.Error
 	}
 	return ""
+}
+
+func (x *DevicesFetchedEvent) GetPushSeq() uint64 {
+	if x != nil {
+		return x.PushSeq
+	}
+	return 0
 }
 
 type CommandOutcomeEvent struct {
@@ -9267,7 +9283,7 @@ const file_remoteagent_core_v1_app_proto_rawDesc = "" +
 	"\n" +
 	"error_code\x18\x05 \x01(\tR\terrorCode\x12\x14\n" +
 	"\x05error\x18\x06 \x01(\tR\x05error\x12'\n" +
-	"\x0funresolved_host\x18\a \x01(\bR\x0eunresolvedHost\"\x90\x05\n" +
+	"\x0funresolved_host\x18\a \x01(\bR\x0eunresolvedHost\"\xab\x05\n" +
 	"\x15SecuritySnapshotEvent\x12\x13\n" +
 	"\x05op_id\x18\x01 \x01(\x04R\x04opId\x12\x1b\n" +
 	"\tis_member\x18\x02 \x01(\bR\bisMember\x12.\n" +
@@ -9287,7 +9303,8 @@ const file_remoteagent_core_v1_app_proto_rawDesc = "" +
 	"\x12network_generation\x18\r \x01(\x04R\x11networkGeneration\x12\x14\n" +
 	"\x05error\x18\x0e \x01(\tR\x05error\x12'\n" +
 	"\x0funresolved_host\x18\x0f \x01(\bR\x0eunresolvedHost\x12$\n" +
-	"\x0eself_device_id\x18\x10 \x01(\tR\fselfDeviceId\"O\n" +
+	"\x0eself_device_id\x18\x10 \x01(\tR\fselfDeviceId\x12\x19\n" +
+	"\bpush_seq\x18\x11 \x01(\x04R\apushSeq\"O\n" +
 	"\x10StreamReadyEvent\x12\x15\n" +
 	"\x06leg_id\x18\x01 \x01(\x04R\x05legId\x12$\n" +
 	"\x0eserver_time_ms\x18\x02 \x01(\x03R\fserverTimeMs\"\xb3\x01\n" +
@@ -9346,11 +9363,12 @@ const file_remoteagent_core_v1_app_proto_rawDesc = "" +
 	"\aapplied\x18\x02 \x01(\bR\aapplied\x12@\n" +
 	"\acurrent\x18\x03 \x01(\v2&.remoteagent.core.v1.PlainAccountPrefsR\acurrent\x12#\n" +
 	"\rseal_conflict\x18\x04 \x01(\bR\fsealConflict\x12\x14\n" +
-	"\x05error\x18\x05 \x01(\tR\x05error\"|\n" +
+	"\x05error\x18\x05 \x01(\tR\x05error\"\x97\x01\n" +
 	"\x13DevicesFetchedEvent\x12\x13\n" +
 	"\x05op_id\x18\x01 \x01(\x04R\x04opId\x12:\n" +
 	"\adevices\x18\x02 \x03(\v2 .remoteagent.core.v1.PlainDeviceR\adevices\x12\x14\n" +
-	"\x05error\x18\x03 \x01(\tR\x05error\"\xbf\x04\n" +
+	"\x05error\x18\x03 \x01(\tR\x05error\x12\x19\n" +
+	"\bpush_seq\x18\x04 \x01(\x04R\apushSeq\"\xbf\x04\n" +
 	"\x13CommandOutcomeEvent\x12\x1d\n" +
 	"\n" +
 	"request_id\x18\x01 \x01(\tR\trequestId\x12\x1d\n" +

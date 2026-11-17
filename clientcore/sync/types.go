@@ -340,6 +340,7 @@ type Engine struct {
 
 	activeTokenOpID     uint64
 	activeSecOpID       uint64
+	lastSecPushSeq      uint64
 	activeCacheBootID   uint64
 	cachedToken         string
 	tokenExpiresMs      int64
@@ -375,8 +376,9 @@ type Engine struct {
 	refreshSnapshotR  map[string]uint64
 	pageOpID          uint64
 	pageListingGen    uint64
-	devicesOpID       uint64
-	devicesSnapshotR  map[string]uint64
+	devicesOpID         uint64
+	lastDevicesPushSeq  uint64
+	devicesSnapshotR    map[string]uint64
 	sessionByIDOps    map[uint64]string
 	machinePushes     map[string]uint64
 	sessionPushes     map[string]uint64

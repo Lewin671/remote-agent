@@ -2636,6 +2636,7 @@ type SecuritySnapshotEvent struct {
 	Error                  string
 	UnresolvedHost         bool
 	SelfDeviceId           string
+	PushSeq                uint64
 }
 
 func (m *SecuritySnapshotEvent) GetOpId() uint64 {
@@ -2733,6 +2734,12 @@ func (m *SecuritySnapshotEvent) GetSelfDeviceId() string {
 		return m.SelfDeviceId
 	}
 	return ""
+}
+func (m *SecuritySnapshotEvent) GetPushSeq() uint64 {
+	if m != nil {
+		return m.PushSeq
+	}
+	return 0
 }
 
 func (m *SecuritySnapshotEvent) Unmarshal(b []byte) error {
@@ -2884,6 +2891,15 @@ func (m *SecuritySnapshotEvent) Unmarshal(b []byte) error {
 					return err
 				}
 				m.SelfDeviceId = v
+				continue
+			}
+		case 17:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.PushSeq = v
 				continue
 			}
 		}
@@ -3875,6 +3891,7 @@ type DevicesFetchedEvent struct {
 	OpId    uint64
 	Devices []*PlainDevice
 	Error   string
+	PushSeq uint64
 }
 
 func (m *DevicesFetchedEvent) GetOpId() uint64 {
@@ -3894,6 +3911,12 @@ func (m *DevicesFetchedEvent) GetError() string {
 		return m.Error
 	}
 	return ""
+}
+func (m *DevicesFetchedEvent) GetPushSeq() uint64 {
+	if m != nil {
+		return m.PushSeq
+	}
+	return 0
 }
 
 func (m *DevicesFetchedEvent) Unmarshal(b []byte) error {
@@ -3928,6 +3951,15 @@ func (m *DevicesFetchedEvent) Unmarshal(b []byte) error {
 					return err
 				}
 				m.Error = v
+				continue
+			}
+		case 4:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.PushSeq = v
 				continue
 			}
 		}

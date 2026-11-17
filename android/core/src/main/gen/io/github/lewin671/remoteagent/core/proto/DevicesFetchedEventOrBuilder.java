@@ -41,4 +41,10 @@ public interface DevicesFetchedEventOrBuilder extends
    */
   com.google.protobuf.ByteString
       getErrorBytes();
+
+  /**
+   * <code>uint64 push_seq = 4 [json_name = "pushSeq"];</code>
+   * @return The pushSeq.
+   */
+  long getPushSeq();
 }

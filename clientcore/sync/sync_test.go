@@ -1200,3 +1200,160 @@ func TestSyncStateAndSessionDataTransitionViews(t *testing.T) {
 			doneView.Projection != nil, doneView.LiveSnapshot != nil, doneView.Pending, len(doneView.Events))
 	}
 }
+
+func TestSecurityAndDevicesGenerationChecks(t *testing.T) {
+	e := NewEngine()
+	now := int64(1_700_000_000_000)
+
+	// 1. opId=0, pushSeq=0 SecuritySnapshot must be ignored.
+	_, zeroSecRes := e.HandleEvent(&corev1.Event{
+		NowMs: now,
+		Event: &corev1.Event_SecuritySnapshot{
+			SecuritySnapshot: &corev1.SecuritySnapshotEvent{
+				IsMember:     true,
+				SelfDeviceId: "dev1",
+				HeadEpoch:    1,
+			},
+		},
+	})
+	if zeroSecRes.Dirty.SyncState || e.security.Loaded {
+		t.Fatalf("expected SecuritySnapshot with opId=0 and pushSeq=0 to be dropped")
+	}
+
+	// 2. Shell push with monotonic pushSeq=2 is accepted; stale pushSeq=1 is rejected.
+	e.HandleEvent(&corev1.Event{
+		NowMs: now + 10,
+		Event: &corev1.Event_SecuritySnapshot{
+			SecuritySnapshot: &corev1.SecuritySnapshotEvent{
+				PushSeq:      2,
+				IsMember:     true,
+				SelfDeviceId: "dev1",
+				HeadEpoch:    2,
+			},
+		},
+	})
+	if !e.security.Loaded || e.security.HeadEpoch != 2 {
+		t.Fatalf("expected pushSeq=2 SecuritySnapshot to apply, got loaded=%v epoch=%d", e.security.Loaded, e.security.HeadEpoch)
+	}
+	e.HandleEvent(&corev1.Event{
+		NowMs: now + 20,
+		Event: &corev1.Event_SecuritySnapshot{
+			SecuritySnapshot: &corev1.SecuritySnapshotEvent{
+				PushSeq:      1,
+				IsMember:     false,
+				SelfDeviceId: "dev1",
+				HeadEpoch:    1,
+			},
+		},
+	})
+	if !e.security.Loaded || e.security.HeadEpoch != 2 || !e.security.IsMember {
+		t.Fatalf("expected stale pushSeq=1 SecuritySnapshot to be dropped, got member=%v epoch=%d", e.security.IsMember, e.security.HeadEpoch)
+	}
+
+	// 3. MachineRemovedId stream frame emits SyncSecurityEffect; wrong opId is rejected; matching opId succeeds even with pushSeq=0.
+	e.running = true
+	e.legID = 42
+	_, mrRes := e.HandleEvent(&corev1.Event{
+		NowMs: now + 30,
+		Event: &corev1.Event_StreamFrame{
+			StreamFrame: &corev1.StreamFrameEvent{
+				LegId: 42,
+				Frame: &corev1.StreamFrameEvent_MachineRemovedId{MachineRemovedId: "m1"},
+			},
+		},
+	})
+	var secOp uint64
+	for _, eff := range mrRes.Effects {
+		if ss := eff.GetSyncSecurity(); ss != nil {
+			secOp = ss.OpId
+		}
+	}
+	if secOp == 0 {
+		t.Fatalf("expected MachineRemovedId stream frame to emit SyncSecurityEffect with non-zero OpId")
+	}
+	e.HandleEvent(&corev1.Event{
+		NowMs: now + 35,
+		Event: &corev1.Event_SecuritySnapshot{
+			SecuritySnapshot: &corev1.SecuritySnapshotEvent{
+				OpId:      secOp + 99,
+				HeadEpoch: 99,
+			},
+		},
+	})
+	if e.security.HeadEpoch != 2 {
+		t.Fatalf("expected wrong opId SecuritySnapshot to be ignored, got epoch=%d", e.security.HeadEpoch)
+	}
+	e.HandleEvent(&corev1.Event{
+		NowMs: now + 40,
+		Event: &corev1.Event_SecuritySnapshot{
+			SecuritySnapshot: &corev1.SecuritySnapshotEvent{
+				OpId:      secOp,
+				IsMember:  true,
+				HeadEpoch: 3,
+			},
+		},
+	})
+	if e.security.HeadEpoch != 3 {
+		t.Fatalf("expected matching opId SecuritySnapshot to apply epoch=3, got %d", e.security.HeadEpoch)
+	}
+
+	// 4. DevicesFetched: opId=0, pushSeq=0 is rejected; pushSeq=2 accepted; pushSeq=1 rejected.
+	e.HandleEvent(&corev1.Event{
+		NowMs: now + 50,
+		Event: &corev1.Event_DevicesFetched{
+			DevicesFetched: &corev1.DevicesFetchedEvent{
+				Devices: []*corev1.PlainDevice{{DeviceId: "d-bad"}},
+			},
+		},
+	})
+	if _, ok := e.devices["d-bad"]; ok {
+		t.Fatalf("expected DevicesFetched with opId=0 and pushSeq=0 to be dropped")
+	}
+	e.HandleEvent(&corev1.Event{
+		NowMs: now + 55,
+		Event: &corev1.Event_DevicesFetched{
+			DevicesFetched: &corev1.DevicesFetchedEvent{
+				PushSeq: 2,
+				Devices: []*corev1.PlainDevice{{DeviceId: "d-2"}},
+			},
+		},
+	})
+	if _, ok := e.devices["d-2"]; !ok {
+		t.Fatalf("expected DevicesFetched pushSeq=2 to populate d-2")
+	}
+	e.HandleEvent(&corev1.Event{
+		NowMs: now + 60,
+		Event: &corev1.Event_DevicesFetched{
+			DevicesFetched: &corev1.DevicesFetchedEvent{
+				PushSeq: 1,
+				Devices: []*corev1.PlainDevice{{DeviceId: "d-stale"}},
+			},
+		},
+	})
+	if _, ok := e.devices["d-2"]; !ok {
+		t.Fatalf("expected stale DevicesFetched pushSeq=1 to be ignored")
+	}
+	if _, ok := e.devices["d-stale"]; ok {
+		t.Fatalf("expected stale DevicesFetched pushSeq=1 not to add d-stale")
+	}
+
+	// 5. DeviceRemovedId stream frame also emits SyncSecurityEffect directly from core.
+	_, drRes := e.HandleEvent(&corev1.Event{
+		NowMs: now + 70,
+		Event: &corev1.Event_StreamFrame{
+			StreamFrame: &corev1.StreamFrameEvent{
+				LegId: 42,
+				Frame: &corev1.StreamFrameEvent_DeviceRemovedId{DeviceRemovedId: "d-2"},
+			},
+		},
+	})
+	var gotSecSync bool
+	for _, eff := range drRes.Effects {
+		if eff.GetSyncSecurity() != nil && eff.GetSyncSecurity().OpId != 0 {
+			gotSecSync = true
+		}
+	}
+	if !gotSecSync {
+		t.Fatalf("expected DeviceRemovedId stream frame to emit SyncSecurityEffect with non-zero OpId")
+	}
+}

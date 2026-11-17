@@ -180,4 +180,10 @@ public interface SecuritySnapshotEventOrBuilder extends
    */
   com.google.protobuf.ByteString
       getSelfDeviceIdBytes();
+
+  /**
+   * <code>uint64 push_seq = 17 [json_name = "pushSeq"];</code>
+   * @return The pushSeq.
+   */
+  long getPushSeq();
 }
