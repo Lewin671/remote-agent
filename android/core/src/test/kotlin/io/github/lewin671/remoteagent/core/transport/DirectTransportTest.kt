@@ -1915,4 +1915,59 @@ class DirectTransportTest {
             server.close()
         }
     }
+
+    @Test
+    fun pairingNewMachineAndSetEnabledAfterFreshWindowRecoverDirectWithoutManualSync(): Unit = runBlocking {
+        val server = TestServer()
+        val http = Api.defaultHttp()
+        val nowMs = java.util.concurrent.atomic.AtomicLong(System.currentTimeMillis())
+        try {
+            val phone = newAuthorityAccount(ByteArray(32) { 17 }, server.url, http, server.setupToken)
+            val bridge = FakeRtcBridge()
+            val remote = Remote(
+                account = phone,
+                http = http,
+                securityStorage = TestSecurity.find(server.url)?.stores?.get(phone.deviceId),
+                rtcFactory = bridge.phoneFactory,
+                directPrefs = InMemoryDirectPreferenceStore(),
+                stunUrls = emptyList(),
+                clock = { nowMs.get() },
+            )
+            var daemon: DirectBridgeDaemon? = null
+            try {
+                remote.start()
+                remote.foregroundChanged(true)
+                withTimeout(10_000) { remote.state.first { it.conn == ConnState.ONLINE } }
+
+                // Pair a new machine while the authority client stays open in foreground, matching Remote's
+                // PutSecurityState pairing flow (security.install fires onInstall -> direct.install).
+                val daemonAccount = approvedClient(phone, http, DeviceKind.DEVICE_KIND_MACHINE)
+                val updated = TestSecurity.find(server.url)!!.stores.getValue(phone.deviceId).readSecurity()
+                remote.direct.install(updated)
+                daemon = DirectBridgeDaemon(daemonAccount, server.url, http, { nowMs.get() }, bridge.daemonFactory)
+                daemon.start()
+
+                val id = daemonAccount.deviceId
+                awaitCondition("paired machine becomes DIRECT_ACTIVE without manual syncSecurity", 10_000) {
+                    remote.direct.ready(id, RouteHint.Read) &&
+                        remote.peer(id)?.directStatus?.stage == DirectStage.DIRECT_ACTIVE
+                }
+
+                // Advance clock past the 20s freshUntil window and toggle Direct off/on (as E2E tests do).
+                remote.setDirectEnabled(id, false)
+                awaitCondition("direct turns off", 3_000) { !remote.direct.ready(id, RouteHint.Read) }
+                nowMs.addAndGet(25_000L)
+                remote.setDirectEnabled(id, true)
+                awaitCondition("setDirectEnabled(true) after 20s window re-authorizes and recovers Direct", 10_000) {
+                    remote.direct.ready(id, RouteHint.Read) &&
+                        remote.peer(id)?.directStatus?.stage == DirectStage.DIRECT_ACTIVE
+                }
+            } finally {
+                remote.close()
+                daemon?.close()
+            }
+        } finally {
+            server.close()
+        }
+    }
 }

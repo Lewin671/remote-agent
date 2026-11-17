@@ -139,7 +139,15 @@ export class DirectEngine {
     this.failureCount.delete(id);
     this.routing(id).reset();
     this.notify();
-    if (enabled && this.foreground) void this.discover();
+    if (enabled && this.foreground) this.refreshAndDiscover();
+  }
+
+  private refreshAndDiscover() {
+    if (this.current()) {
+      void this.discover();
+    } else if (this.leg?.ready) {
+      void this.authorize().then(() => this.discover()).catch(() => undefined);
+    }
   }
 
   setForeground(active: boolean) {
@@ -163,16 +171,15 @@ export class DirectEngine {
       this.timer = timer;
     }
     this.retryAfter.clear();
-    if (this.current()) {
-      void this.discover();
-    } else if (this.leg?.ready) {
-      void this.authorize().then(() => this.discover()).catch(() => undefined);
-    }
+    this.refreshAndDiscover();
   }
 
   install(record: SecurityRecord) {
     if (!record.member || record.pin.account !== this.record?.pin.account || w.hex(record.stateHash) !== this.head) {
       this.invalidate();
+      if (record.member && this.foreground && this.leg?.ready) {
+        this.refreshAndDiscover();
+      }
     }
   }
 
@@ -259,11 +266,7 @@ export class DirectEngine {
     // The main connection is back: the computer can be reached again, so a retry waiting out its delay need not.
     this.retryAfter.clear();
     for (const p of this.sessions.values()) p.session.discovered();
-    if (!this.current()) {
-      void this.authorize().then(() => this.discover()).catch(() => undefined);
-    } else {
-      void this.discover();
-    }
+    this.refreshAndDiscover();
   }
 
   detach(leg: FrameStream) {

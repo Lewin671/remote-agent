@@ -354,3 +354,26 @@ test("attach authorizes stale direct state before discovering peers after backgr
     expect(discover).toHaveBeenCalledTimes(1);
   });
 });
+
+test("install of new security state and setEnabled(true) when stale re-authorize before discovering", async () => {
+  const { engine } = readyEngine();
+  const rec = { pin: { account: "acct" }, stateHash: Uint8Array.from({ length: 32 }, (_, i) => i + 1), member: true };
+  Object.assign(engine, { leg: { ready: true, send: vi.fn() }, record: { ...rec, stateHash: new Uint8Array(32) } });
+  const discover = vi.spyOn(engine as unknown as { discover(): Promise<void> }, "discover").mockResolvedValue();
+  const authorize = vi.spyOn(engine as unknown as { authorize(): Promise<void> }, "authorize").mockImplementation(async () => {
+    (engine as unknown as { freshUntil: number }).freshUntil = Date.now() + 20_000;
+  });
+
+  engine.install(rec as never);
+  await vi.waitFor(() => {
+    expect(authorize).toHaveBeenCalledTimes(1);
+    expect(discover).toHaveBeenCalledTimes(1);
+  });
+
+  (engine as unknown as { freshUntil: number }).freshUntil = 0;
+  engine.setEnabled("machine", true);
+  await vi.waitFor(() => {
+    expect(authorize).toHaveBeenCalledTimes(2);
+    expect(discover).toHaveBeenCalledTimes(2);
+  });
+});

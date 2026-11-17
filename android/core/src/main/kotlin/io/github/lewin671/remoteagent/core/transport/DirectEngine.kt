@@ -107,6 +107,7 @@ internal class DirectEngine(
     private var codec: Wire? = null
     private var head = ""
     private var freshUntil = 0L
+    private var lastAuthorizeAttemptMs = Long.MIN_VALUE
     private var syncRevision = 0L
     private var lifetime = 0L
     private var foreground = true
@@ -158,7 +159,24 @@ internal class DirectEngine(
         }
         for (s in toClose) s.close()
         notifyChanged()
-        if (shouldDiscover) scope.launch { discover() }
+        if (shouldDiscover) refreshAndDiscover(forceAuthorize = true)
+    }
+
+    private fun refreshAndDiscover(forceAuthorize: Boolean) {
+        scope.launch {
+            val shouldAuthorize = synchronized(stateLock) {
+                if (!foreground || leg == null || currentLocked()) {
+                    false
+                } else {
+                    val now = monotonic()
+                    val allowed = forceAuthorize || lastAuthorizeAttemptMs == Long.MIN_VALUE || now - lastAuthorizeAttemptMs >= 15_000L
+                    if (allowed) lastAuthorizeAttemptMs = now
+                    allowed
+                }
+            }
+            if (shouldAuthorize) runCatching { authorize() }
+            discover()
+        }
     }
 
     fun setForeground(active: Boolean) {
@@ -171,6 +189,7 @@ internal class DirectEngine(
             if (!active) {
                 timerToCancel = discoverTimer
                 discoverTimer = null
+                lastAuthorizeAttemptMs = Long.MIN_VALUE
                 canDiscoverNow = false
                 shouldAuthorize = false
             } else {
@@ -181,6 +200,7 @@ internal class DirectEngine(
                 }
                 canDiscoverNow = currentLocked()
                 shouldAuthorize = !canDiscoverNow && leg != null
+                if (shouldAuthorize) lastAuthorizeAttemptMs = monotonic()
             }
         }
         if (!active) {
@@ -222,23 +242,35 @@ internal class DirectEngine(
         job = scope.launch {
             while (isActive) {
                 delay(1000)
-                val shouldInvalidate = synchronized(stateLock) {
+                val (shouldInvalidate, shouldAuthorize) = synchronized(stateLock) {
                     if (discoverTimer !== job) return@launch
-                    !currentLocked() && peers.isNotEmpty()
+                    val fresh = currentLocked()
+                    val inv = !fresh && peers.isNotEmpty()
+                    val now = monotonic()
+                    val auth = foreground && leg != null &&
+                        (lastAuthorizeAttemptMs == Long.MIN_VALUE || now - lastAuthorizeAttemptMs >= 15_000L)
+                    if (auth) lastAuthorizeAttemptMs = now
+                    inv to auth
                 }
-                if (shouldInvalidate) invalidate() else discover()
+                if (shouldInvalidate) invalidate()
+                if (shouldAuthorize) runCatching { authorize() }
+                discover()
             }
         }
         discoverTimer = job
     }
 
     fun install(r: DeviceSecurity.Record) {
-        val shouldInvalidate = synchronized(stateLock) {
-            !r.member ||
+        val shouldInvalidate: Boolean
+        val shouldRefresh: Boolean
+        synchronized(stateLock) {
+            shouldInvalidate = !r.member ||
                 r.pin.account != record?.pin?.account ||
                 Wire.hex(DeviceSecurity.stateHash(r.head)) != head
+            shouldRefresh = shouldInvalidate && r.member && foreground && leg != null
         }
         if (shouldInvalidate) invalidate()
+        if (shouldRefresh) refreshAndDiscover(forceAuthorize = true)
     }
 
     fun invalidate() = closePeers()
@@ -278,6 +310,7 @@ internal class DirectEngine(
                 record = r
                 head = hash
                 freshUntil = minOf(started + 20_000L, r.leaseExpiration())
+                lastAuthorizeAttemptMs = monotonic()
                 self = nextSelf
                 codec = nextCodec
                 closedSessions
@@ -303,12 +336,7 @@ internal class DirectEngine(
             toDiscover = sessions.values.map { it.session }
         }
         for (s in toDiscover) s.discovered()
-        scope.launch {
-            if (!synchronized(stateLock) { currentLocked() }) {
-                runCatching { authorize() }
-            }
-            discover()
-        }
+        refreshAndDiscover(forceAuthorize = true)
     }
 
     fun detach(stream: FrameStream) {
@@ -320,6 +348,7 @@ internal class DirectEngine(
     fun detachAll() {
         synchronized(stateLock) {
             leg = null
+            lastAuthorizeAttemptMs = Long.MIN_VALUE
         }
     }
 
