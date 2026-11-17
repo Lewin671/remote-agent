@@ -41,7 +41,7 @@ final class DirectConnectionModel {
         var next = DirectView.make(s)
         if let at = turnedOn {
             if now().timeIntervalSince(at) > Self.tryingSeconds { turnedOn = nil }
-            else if s.state == .none && s.reason == nil { next = DirectView.trying() }
+            else if s.state == .none && (s.reason == nil || s.reason == .starting || s.reason == .securityPending) { next = DirectView.trying() }
         }
         if next != view { view = next }
     }
@@ -71,6 +71,7 @@ struct ConnectionGroup: View {
     let machine: String
     let online: Bool
     @State private var model: DirectConnectionModel?
+    @State private var showDiag = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
@@ -108,9 +109,53 @@ struct ConnectionGroup: View {
             if model.on {
                 for s in view.speeds { GRow(s.name, value: s.value) }
             }
+            if model.on && online && view.showDiagnosticsEntry {
+                GRow(L10n.transportDiag(), chevron: true) { showDiag = true }
+            }
         }
         .animation(reduceMotion ? nil : .easeInOut(duration: 0.2), value: view)
         GroupNote(L10n.transportFooter())
+        .sheet(isPresented: $showDiag) {
+            DirectDiagnosticsSheet(
+                verdict: view.sub ?? L10n.transportDiagVerdictNone(),
+                canRetry: view.kind != .direct && view.kind != .trying,
+                onRetry: { remote.refreshDirect(machine) },
+                onClose: { showDiag = false }
+            )
+        }
+    }
+}
+
+private struct DirectDiagnosticsSheet: View {
+    let verdict: String
+    let canRetry: Bool
+    let onRetry: () -> Void
+    let onClose: () -> Void
+    @State private var copied = false
+
+    var body: some View {
+        NavigationStack {
+            SettingsPage {
+                GroupCard {
+                    GRow(L10n.transportDiag(), sub: verdict)
+                    GRow(copied ? L10n.commonCopied() : L10n.transportDiagCopy(), action: true) {
+                        UIPasteboard.general.string = verdict
+                        copied = true
+                    }
+                    GRow(L10n.transportDiagRetry(), action: true, enabled: canRetry) {
+                        onRetry()
+                        onClose()
+                    }
+                }
+                GroupNote(L10n.transportDiagFooter())
+            }
+            .navBar(L10n.transportDiag())
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button(L10n.commonDone(), action: onClose)
+                }
+            }
+        }
     }
 }
 

@@ -420,7 +420,7 @@ final class DirectSession: @unchecked Sendable {
             if !active || p.channel !== channel || p.gate.generation != generation || channel.isClosed { return }
             p.confirmed = confirmed
         }
-        if channel.traversalReady && p.confirmed && !p.announced && p.gate.ready {
+        if p.confirmed && !p.announced && p.gate.ready {
             p.announced = true; lock.withLock { _established = true }; channel.confirm(); options.ready(index + 1, channel)
         }
     }

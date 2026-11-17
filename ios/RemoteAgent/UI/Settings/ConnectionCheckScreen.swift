@@ -29,8 +29,12 @@ struct ConnectionCheckScreen: View {
                 for m in machines {
                     let name = machineLabel(state, id: m.id)
                     if m.pathState.reachable, !state.peer(m.id).unlinked || model.isDemo {
-                        // One line of the 「连接」group's words under an online computer's name (design-system §6).
-                        result(name, sub: directSummary(m.id), check?.machines[m.id] ?? .wait, slow: slowMachineMs)
+                        result(name, check?.machines[m.id] ?? .wait, slow: slowMachineMs)
+                        if let row = directRow(m.id) {
+                            let trailing = [row.status, row.metric].compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " · ")
+                            GRow(row.label, sub: row.detail, value: trailing.isEmpty ? nil : trailing)
+                                .valueLead { directMark(row) }
+                        }
                     } else if state.peer(m.id).unlinked {
                         // Whether it is there is not known from here; the server's row says why.
                         GRow(name, value: L10n.connectionNotChecked())
@@ -59,12 +63,22 @@ struct ConnectionCheckScreen: View {
         }
     }
 
-    /// What the computer's direct path is in words, or nothing when this build has no direct path.
-    private func directSummary(_ id: String) -> String? {
+    /// Direct-path row computed by `clientcore`, or nil when this build/device cannot run direct.
+    private func directRow(_ id: String) -> DirectView.ConnCheckRow? {
         _ = directTick
         let remote = context.remote
         guard remote.directSupported else { return nil }
-        return DirectView.make(remote.directStatus(id)).summary
+        let row = DirectView.connCheckRow(remote.directStatus(id), online: true)
+        return row.visible ? row : nil
+    }
+
+    @ViewBuilder
+    private func directMark(_ row: DirectView.ConnCheckRow) -> some View {
+        switch row.mark {
+        case .online: Dot(DS.green)
+        case .run: Mark(Mark.progress, color: DS.ink2, size: 13, relativeTo: .footnote)
+        case .off: Dot(row.tone == .warn ? DS.orange : DS.faint)
+        }
     }
 
     /// A row with what its stretch measured.

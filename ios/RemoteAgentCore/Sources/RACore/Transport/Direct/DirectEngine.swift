@@ -21,7 +21,7 @@ public struct UserDefaultsDirectPreferences: DirectPreferenceStore, @unchecked S
 public enum DirectState: Sendable, Equatable { case unsupported, connected, connecting, none }
 /// Only causes this side can establish. `noResponse` means the computer never answered the
 /// handshake: its direct setting may be off, or it may not support it.
-public enum DirectReason: Sendable, Equatable { case disabled, peerUnsupported, noResponse, noTraversal, failed }
+public enum DirectReason: Sendable, Equatable { case disabled, peerUnsupported, noResponse, noTraversal, failed, atCap, securityPending, starting }
 public struct DirectStatus: Sendable, Equatable {
     public var state: DirectState
     public var reason: DirectReason?
@@ -92,6 +92,8 @@ final class DirectEngine: @unchecked Sendable {
     private var codec: PeerCodec?
     private var head = ""
     private var freshUntil: UInt64 = 0
+    private var lastAuthorizeStartMs: UInt64 = 0
+    private var authorizeInFlight = false
     private var syncRevision = 0, lifetime = 0
     private var routingOwners: [String: Owner] = [:]
     private var peers: [String: Peer] = [:], sessions: [String: Peer] = [:]
@@ -199,7 +201,9 @@ final class DirectEngine: @unchecked Sendable {
                     close = sessions.values.map { $0.live = false; return $0.session }
                     peers.removeAll(); sessions.removeAll(); retryAfter.removeAll(); failureCount.removeAll()
                 }
-                record = r; head = hash; freshUntil = min(started + 20_000, lease.notAfter); selfID = identity; codec = PeerCodec(scope: scope)
+                record = r; head = hash; freshUntil = min(started + 20_000, lease.notAfter)
+                if lastAuthorizeStartMs == 0 { lastAuthorizeStartMs = clock.now() }
+                selfID = identity; codec = PeerCodec(scope: scope)
                 return true
             }
             close.forEach { $0.close() }
@@ -235,8 +239,28 @@ final class DirectEngine: @unchecked Sendable {
     func detach(_ stream: any FrameStream) { lock.withLock { if leg === stream { leg = nil } } }
     /// One second of upkeep (the timer's body; tests call it with a fake clock).
     func timerStep() async {
-        let (current, any) = lock.withLock { (currentLocked(), !peers.isEmpty) }
+        let now = clock.now()
+        let (current, any, shouldAuth) = lock.withLock { () -> (Bool, Bool, Bool) in
+            let c = currentLocked()
+            let remaining = freshUntil > now ? freshUntil - now : 0
+            let dueByCadence = lastAuthorizeStartMs == 0 || now >= lastAuthorizeStartMs + 12_000
+            let dueByExpiry = remaining <= 7_000 && (lastAuthorizeStartMs == 0 || now >= lastAuthorizeStartMs + 2_000)
+            let auth = leg != nil && !authorizeInFlight && (dueByCadence || dueByExpiry)
+            if auth {
+                authorizeInFlight = true
+                lastAuthorizeStartMs = now
+            }
+            return (c, !peers.isEmpty, auth)
+        }
         if !current { if any { invalidate() } } else { await discover() }
+        if shouldAuth {
+            Task.detached { [weak self] in
+                guard let self else { return }
+                defer { self.lock.withLock { self.authorizeInFlight = false } }
+                try? await self.authorize()
+                await self.discover()
+            }
+        }
     }
     /// The network changed (a new generation): an old failure must not delay the new start.
     func networkChanged() {
@@ -674,7 +698,9 @@ final class DirectEngine: @unchecked Sendable {
                 return s
             }
             if live { s.state = .connecting; return s }
-            s.reason = failures[id]
+            let resolved: DirectReason = failures[id]
+                ?? (!currentLocked() ? .securityPending : peers.count >= 4 ? .atCap : .starting)
+            s.reason = resolved
             s.retryScheduled = (retryAfter[id] ?? 0) > clock.now()
             return s
         }

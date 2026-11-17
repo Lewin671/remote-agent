@@ -2,7 +2,7 @@ import Foundation
 import Testing
 @testable import RACore
 
-/// The 「连接」group's words (docs/design-system.md §6) for every state, in both languages.
+/// The 「连接」group's words (docs/design-system.md §6) for every state, driven by clientcore.
 @Suite struct DirectViewTests {
     func status(_ state: DirectState, reason: DirectReason? = nil, file: Bool = false, read: Bool = false, warming: Bool = false, compared: Bool = false, files: [Int: Double] = [:], reads: [Int: Double] = [:]) -> DirectStatus {
         var s = DirectStatus(state: state, reason: reason)
@@ -26,25 +26,32 @@ import Testing
         #expect(v.speeds.map(\.value) == [L10n.transportFileSpeedPending(), L10n.transportReadLatencyRelay(relay: "217")], "a file not yet measured says so, and a path not measured is never made up")
     }
 
-    @Test func relayHeadlineClaimsOnlyAFinishedComparison() {
-        let faster = DirectView.make(status(.connected, compared: true, reads: [DirectPath.direct: 220, DirectPath.relay: 180]))
-        #expect(faster.kind == .relay && faster.mark == .off && faster.sub == L10n.transportRelayFaster())
-        let similar = DirectView.make(status(.connected, compared: true, reads: [DirectPath.direct: 160, DirectPath.relay: 175]))
-        #expect(similar.sub == L10n.transportNotClearlyFaster())
+    @Test func relayHeadlineExplainsSlowFallbackOrPendingChannel() {
+        let slow = DirectView.make(status(.connected, compared: true, reads: [DirectPath.direct: 220, DirectPath.relay: 180]))
+        #expect(slow.kind == .relay && slow.mark == .off && slow.sub == L10n.transportDirectSlow())
         let sparse = DirectView.make(status(.connected, compared: false, reads: [DirectPath.direct: 160, DirectPath.relay: 175]))
-        #expect(sparse.word == L10n.transportStatusRelay() && sparse.sub == nil, "kept numbers never drive the headline")
-        #expect(sparse.speeds.count == 2, "but they stay in the rows")
+        #expect(sparse.word == L10n.transportStatusRelay() && sparse.sub == L10n.transportReasonChannelPending())
+        #expect(sparse.speeds.count == 2, "kept numbers stay in the rows")
     }
 
-    @Test func tryingUnavailableAndOff() {
+    @Test func tryingUnavailableExplicitReasonsAndOff() {
         #expect(DirectView.make(status(.connecting)).kind == .trying && DirectView.make(status(.connecting)).word == L10n.transportStatusConnecting())
         let none = DirectView.make(status(.none, reason: .noTraversal))
-        #expect(none.kind == .relay && none.mark == .off && none.sub == L10n.transportUnavailable(reason: L10n.transportReasonNoTraversal()))
-        #expect(none.summary == "\(L10n.transportStatusRelay()) · \(none.sub!)")
-        #expect(DirectView.make(status(.none, reason: nil)).sub == nil, "an unknown cause writes nothing")
+        #expect(none.kind == .relay && none.mark == .off && none.sub == L10n.transportReasonNoTraversal() && none.showDiagnosticsEntry)
+        #expect(none.summary == "\(L10n.transportStatusRelay()) · \(L10n.transportReasonNoTraversal())")
+        #expect(DirectView.make(status(.none, reason: nil)).sub == L10n.transportReasonStarting())
+        #expect(DirectView.make(status(.none, reason: .securityPending)).sub == L10n.transportReasonSecurityPending())
+        #expect(DirectView.make(status(.none, reason: .atCap)).sub == L10n.transportReasonAtCap())
         let off = DirectView.make(status(.none, reason: .disabled))
         #expect(off.kind == .off && off.summary == L10n.transportSummaryOff())
         #expect(DirectView.trying().mark == .run)
+    }
+
+    @Test func connCheckRowCarriesStatusReasonAndMetric() {
+        let row = DirectView.connCheckRow(status(.connected, read: true, reads: [DirectPath.direct: 14]))
+        #expect(row.visible && row.mark == .online && row.label == L10n.transportDirect() && row.status == L10n.transportStatusDirect() && row.metric == L10n.transportReadLatencyDirect(direct: "14"))
+        let offline = DirectView.connCheckRow(status(.connected, read: true), online: false)
+        #expect(!offline.visible)
     }
 
     @Test func numbersFollowTheWebsRounding() {

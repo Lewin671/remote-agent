@@ -65,15 +65,23 @@ final class SessionPair: @unchecked Sendable {
         #expect(await eventually { pair.clientBudget.isEmpty && pair.machineBudget.isEmpty }, "nothing stays reserved after close")
     }
 
-    @Test func stunUnreachableNeverEstablishes() async throws {
-        let pair = try SessionPair(deadlineMs: 3_000)
-        pair.net.stunWorks = false
-        await pair.clientSession.start()
-        #expect(await eventually(5) { pair.clientClosed.contains(where: { $0 == nil }) }, "the round ends at its deadline")
-        #expect(pair.clientPaths.isEmpty && !pair.clientSession.established)
-        #expect(pair.clientSession.failure == .noTraversal)
-        pair.close()
-        #expect(await eventually { pair.clientBudget.isEmpty })
+    @Test func stunUnreachableStillEstablishesOverHostAndBlockedFailsNoTraversal() async throws {
+        let lan = try SessionPair(deadlineMs: 3_000)
+        lan.net.stunWorks = false
+        await lan.clientSession.start()
+        #expect(await eventually { lan.clientPaths.count == 2 && lan.machinePaths.count == 2 && lan.clientSession.established }, "host/prflx establishes without srflx")
+        lan.close()
+        #expect(await eventually { lan.clientBudget.isEmpty })
+
+        let blocked = try SessionPair(deadlineMs: 3_000)
+        blocked.net.stunWorks = false
+        blocked.net.blackhole = true
+        await blocked.clientSession.start()
+        #expect(await eventually(5) { blocked.clientClosed.contains(where: { $0 == nil }) }, "the round ends at its deadline")
+        #expect(blocked.clientPaths.isEmpty && !blocked.clientSession.established)
+        #expect(blocked.clientSession.failure == .noTraversal)
+        blocked.close()
+        #expect(await eventually { blocked.clientBudget.isEmpty })
     }
 
     @Test func lostSignallingNeverEstablishesAndLeavesNothingBehind() async throws {

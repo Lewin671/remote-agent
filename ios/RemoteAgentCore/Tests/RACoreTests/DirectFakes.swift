@@ -91,7 +91,7 @@ final class FakePC: RtcPeerConnection, @unchecked Sendable {
     private func tryConnect() async throws {
         guard let other = peer else { return }
         let ready = lock.withLock { local && remote && !closed } && other.lock.withLock { other.local && other.remote && !other.closed }
-        guard ready, !lock.withLock({ connected }) else { return }
+        guard !net.blackhole, ready, !lock.withLock({ connected }) else { return }
         lock.withLock { connected = true }; other.lock.withLock { other.connected = true }
         for pc in [self, other] {
             pc.listener.onConnectionStateChange(.connected)

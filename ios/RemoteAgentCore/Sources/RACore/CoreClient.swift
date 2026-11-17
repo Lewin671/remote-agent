@@ -51,6 +51,15 @@ public final class CoreClient: @unchecked Sendable {
     deinit {
         if !closed { raw.close() }
     }
+
+    public static func buildDirectViews(_ request: PBDirectViewsRequest) throws -> PBDirectViewsResponse {
+        let input = try request.serializedData()
+        var err: NSError?
+        guard let out = CorebindBuildDirectViews(input, &err) else {
+            throw CoreClientError.bind(err?.localizedDescription ?? "CorebindBuildDirectViews returned nil")
+        }
+        return try PBDirectViewsResponse(serializedBytes: out)
+    }
 }
 
 /// Derives the account-specific HMAC key used to obfuscate remembered home scopes on disk.
