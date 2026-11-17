@@ -1930,15 +1930,15 @@
 "transport_file_speed_relay" = "中继 %1$@ MiB/s";
 "transport_footer" = "直连只用于加载和文件，发消息和审批始终经中继。";
 "transport_group" = "连接";
-"transport_not_clearly_faster" = "当前网络下中继同样顺畅，已自动选用";
+"transport_not_clearly_faster" = "直连没有明显更快";
 "transport_read_latency_both" = "直连 %1$@ · 中继 %2$@ ms";
 "transport_read_latency_direct" = "直连 %1$@ ms";
 "transport_read_latency_relay" = "中继 %1$@ ms";
 "transport_reason_failed" = "没连上，稍后会自动再试";
 "transport_reason_no_response" = "电脑没有回应，可能在电脑上关了直连";
-"transport_reason_no_traversal" = "两边的网络隔开了，不能直接连通";
+"transport_reason_no_traversal" = "两边的网络不能直接连通";
 "transport_reason_peer_unsupported" = "电脑上的版本太旧，更新后可用";
-"transport_relay_faster" = "当前网络下中继响应更快，已自动选用";
+"transport_relay_faster" = "中继更快";
 "transport_speed_file" = "文件传输";
 "transport_speed_read" = "响应时间";
 "transport_status_connecting" = "正在建立直连…";
@@ -1946,6 +1946,6 @@
 "transport_status_measuring" = "直连已连上，正在测速";
 "transport_status_relay" = "正在用中继";
 "transport_summary_off" = "直连已关闭";
-"transport_unavailable" = "%1$@";
+"transport_unavailable" = "直连不可用：%1$@";
 "transport_use_file" = "用于文件";
 "transport_use_read" = "用于加载";

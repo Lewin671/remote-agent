@@ -147,7 +147,7 @@
     "key": "transport.reason_peer_unsupported",
     "zh-CN": "电脑上的版本太旧，更新后可用",
     "en": "The computer's version is too old; update it to use direct",
-    "notes": "状态行「正在用中继」的第二行，也接在连接检测电脑摘要「正在用中继 · 」后面，必须是能单独读懂的人话短句，可换行。",
+    "notes": "接在「直连不可用：」后面的原因（状态行第二行和连接检测摘要共用），必须是能单独读懂的短句，可换行。",
     "params": {},
     "platforms": [
       "web",
@@ -163,7 +163,7 @@
     "key": "transport.reason_no_response",
     "zh-CN": "电脑没有回应，可能在电脑上关了直连",
     "en": "The computer didn't answer; direct may be turned off there",
-    "notes": "状态行「正在用中继」的第二行，也接在连接检测电脑摘要「正在用中继 · 」后面，必须是能单独读懂的人话短句，可换行。",
+    "notes": "接在「直连不可用：」后面的原因（状态行第二行和连接检测摘要共用），必须是能单独读懂的短句，可换行。",
     "params": {},
     "platforms": [
       "web",
@@ -177,9 +177,9 @@
   },
   {
     "key": "transport.reason_no_traversal",
-    "zh-CN": "两边的网络隔开了，不能直接连通",
-    "en": "The two networks are isolated and can't reach each other directly",
-    "notes": "状态行「正在用中继」的第二行，也接在连接检测电脑摘要「正在用中继 · 」后面，必须是能单独读懂的人话短句，可换行。",
+    "zh-CN": "两边的网络不能直接连通",
+    "en": "The two networks can't reach each other directly",
+    "notes": "接在「直连不可用：」后面的原因（状态行第二行和连接检测摘要共用），必须是能单独读懂的短句，可换行。",
     "params": {},
     "platforms": [
       "web",
@@ -195,7 +195,7 @@
     "key": "transport.reason_failed",
     "zh-CN": "没连上，稍后会自动再试",
     "en": "Couldn't connect; will try again shortly",
-    "notes": "状态行「正在用中继」的第二行，也接在连接检测电脑摘要「正在用中继 · 」后面，必须是能单独读懂的人话短句，可换行。",
+    "notes": "接在「直连不可用：」后面的原因（状态行第二行和连接检测摘要共用），必须是能单独读懂的短句，可换行。",
     "params": {},
     "platforms": [
       "web",
@@ -209,13 +209,13 @@
   },
   {
     "key": "transport.unavailable",
-    "zh-CN": "{reason}",
-    "en": "{reason}",
-    "notes": "状态行「正在用中继」的第二行包装器（连接检测摘要接在「正在用中继 · 」后面）：v63 起去掉生硬的「直连不可用：」前缀，直接显示 transport.reason_* 的人话原因整句。",
+    "zh-CN": "直连不可用：{reason}",
+    "en": "Direct unavailable: {reason}",
+    "notes": "状态行「正在用中继」的第二行，也出现在连接检测摘要里：直连没建立，{reason} 是下面 transport.reason_* 之一的整句，必须能接在冒号后面读通。",
     "params": {
       "reason": {
         "type": "string",
-        "example": "两边的网络隔开了，不能直接连通"
+        "example": "两边的网络不能直接连通"
       }
     },
     "platforms": [
@@ -476,9 +476,9 @@
   },
   {
     "key": "transport.relay_faster",
-    "zh-CN": "当前网络下中继响应更快，已自动选用",
-    "en": "Relay responds faster on this network; using it automatically",
-    "notes": "状态行「正在用中继」下面的第二行：直连已连上，最近的窗口里两条路都测够了样本，且中继不慢于直连，所以自动继续走中继，无故障感。样本不足时不写。",
+    "zh-CN": "中继更快",
+    "en": "Relay is faster",
+    "notes": "状态行「正在用中继」下面的第二行：直连已连上，最近的窗口里两条路都测够了样本，且中继不慢于直连，所以继续走中继。样本不足时不写。",
     "params": {},
     "platforms": [
       "web",
@@ -492,9 +492,9 @@
   },
   {
     "key": "transport.not_clearly_faster",
-    "zh-CN": "当前网络下中继同样顺畅，已自动选用",
-    "en": "Relay is just as smooth on this network; using it automatically",
-    "notes": "状态行「正在用中继」下面的第二行：直连已连上，最近的窗口里两条路都测够了样本、比较做完了，中继与直连同样顺畅（未达切换阈值），自动留在中继以避免来回抖动。没有直连、直连正在建立、或窗口里样本不足时不写这一句。",
+    "zh-CN": "直连没有明显更快",
+    "en": "Direct isn't clearly faster",
+    "notes": "状态行「正在用中继」下面的第二行：直连已连上，最近的窗口里两条路都测够了样本、比较做完了，但直连没有快到值得切换（差距小，未达升级条件）。没有直连、直连正在建立、或窗口里样本不足时不写这一句。",
     "params": {},
     "platforms": [
       "web",
@@ -614,9 +614,9 @@
   },
   {
     "key": "transport.diag",
-    "zh-CN": "为什么没连上",
-    "en": "Why direct didn't connect",
-    "notes": "电脑设置页「连接」组在直连未连通时露出的最后一行导航名称（行尾 ›），也是点开后半屏人话排障单/对话框的标题。",
+    "zh-CN": "诊断信息",
+    "en": "Diagnostics",
+    "notes": "「连接」组最后一行的名称，也是诊断页的标题。导航行，行尾 ›。",
     "params": {},
     "platforms": [
       "web"
@@ -628,9 +628,9 @@
   },
   {
     "key": "transport.diag_copy",
-    "zh-CN": "复制诊断给支持",
-    "en": "Copy diagnostics for support",
-    "notes": "「为什么没连上」排障单里的文字操作：把内存中最近三轮完整无地址诊断复制成纯文本，方便发给支持人员。",
+    "zh-CN": "复制诊断信息",
+    "en": "Copy diagnostics",
+    "notes": "直连诊断页（电脑设置页「连接」组最后一行「诊断信息」点开）里的文字操作：把同样内容（地址已隐去）复制成纯文字，方便发给支持。",
     "params": {},
     "platforms": [
       "web"
@@ -644,7 +644,7 @@
     "key": "transport.diag_copy_failed",
     "zh-CN": "没能复制",
     "en": "Couldn't copy",
-    "notes": "复制诊断给支持失败时，替换操作文字一会儿。成功时用 common.copied。",
+    "notes": "复制诊断信息失败时，替换操作文字一会儿。成功时用 common.copied。",
     "params": {},
     "platforms": [
       "web"
@@ -658,7 +658,7 @@
     "key": "transport.diag_retry",
     "zh-CN": "重新尝试",
     "en": "Try again",
-    "notes": "「为什么没连上」排障单里的主操作按钮：立即再试一次直连。正在建立或已连上时置灰。",
+    "notes": "直连诊断页（电脑设置页「连接」组最后一行「诊断信息」点开）里的文字操作：立即再试一次直连。正在建立或已连上时置灰。",
     "params": {},
     "platforms": [
       "web"
@@ -670,9 +670,9 @@
   },
   {
     "key": "transport.diag_footer",
-    "zh-CN": "复制的诊断只含地址类型和范围，不含具体地址、端口或对话内容。",
-    "en": "Copied diagnostics include address types and ranges only, never addresses, ports or messages.",
-    "notes": "「为什么没连上」排障单底部的一句隐私说明。",
+    "zh-CN": "诊断信息只包含地址的类型和范围，不含具体地址。",
+    "en": "Diagnostics show address types and ranges only, never the addresses themselves.",
+    "notes": "直连诊断页（电脑设置页「连接」组最后一行「诊断信息」点开）底部的一句隐私说明。",
     "params": {},
     "platforms": [
       "web"
@@ -810,9 +810,9 @@
   },
   {
     "key": "transport.diag_verdict_no_stun",
-    "zh-CN": "所在网络限制了直连探测，不能直接连通",
-    "en": "This network restricts direct discovery, so a direct link couldn't be set up",
-    "notes": "「为什么没连上」排障单顶部的一句人话结论：没有拿到公网映射地址，不用 STUN 等术语。",
+    "zh-CN": "本机没有拿到公网映射地址，网络可能挡了 STUN",
+    "en": "This device got no public mapped address; its network may block STUN",
+    "notes": "诊断页顶部的一句结论：STUN 是用来发现本机公网地址的服务。保留 STUN 一词。",
     "params": {},
     "platforms": [
       "web"
@@ -826,7 +826,7 @@
     "key": "transport.diag_verdict_no_remote",
     "zh-CN": "没有收到电脑的任何地址",
     "en": "No addresses arrived from the computer",
-    "notes": "「为什么没连上」排障单顶部的一句人话结论。",
+    "notes": "诊断页顶部的一句结论。",
     "params": {},
     "platforms": [
       "web"
@@ -840,7 +840,7 @@
     "key": "transport.diag_verdict_no_sdp",
     "zh-CN": "和电脑没有完成连接信息的交换",
     "en": "Connection details were not exchanged with the computer",
-    "notes": "「为什么没连上」排障单顶部的一句人话结论：握手通了，但双方的连接描述没有交换完。",
+    "notes": "诊断页顶部的一句结论：握手通了，但双方的连接描述没有交换完。",
     "params": {},
     "platforms": [
       "web"
@@ -852,9 +852,9 @@
   },
   {
     "key": "transport.diag_verdict_ipv6_silent",
-    "zh-CN": "两边的 IPv6 网络没能直接连通",
-    "en": "The two IPv6 networks couldn't reach each other directly",
-    "notes": "「为什么没连上」排障单顶部的一句人话结论：两边都给出了公网 IPv6，但防火墙或网关拦截了直通。",
+    "zh-CN": "本机拿到了 IPv6，但电脑的 IPv6 地址没有回应",
+    "en": "This device has IPv6, but the computer's IPv6 address didn't answer",
+    "notes": "诊断页顶部的一句结论：两边都给出了公网 IPv6，本机发出的检查一个回应也没收到。",
     "params": {},
     "platforms": [
       "web"
@@ -866,9 +866,9 @@
   },
   {
     "key": "transport.diag_verdict_all_failed",
-    "zh-CN": "两边的网络隔开了，不能直接连通",
-    "en": "The two networks are isolated and can't reach each other directly",
-    "notes": "「为什么没连上」排障单顶部最常见的人话结论（如蜂窝移动网、公司防火墙、访客隔离或运营商共享网关）。",
+    "zh-CN": "两边地址都有，连通检查全部失败",
+    "en": "Both sides have addresses, but every connectivity check failed",
+    "notes": "诊断页顶部的一句结论。",
     "params": {},
     "platforms": [
       "web"
@@ -880,9 +880,9 @@
   },
   {
     "key": "transport.diag_verdict_dtls",
-    "zh-CN": "网络已连通，但安全校验没能完成",
-    "en": "Reached the computer, but security verification didn't finish",
-    "notes": "「为什么没连上」排障单顶部的一句人话结论：底层网络通了，安全校验未完成，不用 DTLS 等术语。",
+    "zh-CN": "已连上，加密握手没完成",
+    "en": "Connected, but the encryption handshake didn't finish",
+    "notes": "诊断页顶部的一句结论：网络层连上了，DTLS 加密握手没完成。",
     "params": {},
     "platforms": [
       "web"
@@ -894,9 +894,9 @@
   },
   {
     "key": "transport.diag_verdict_channel",
-    "zh-CN": "安全校验已完成，但直连通道没能打开",
-    "en": "Verified the computer, but the direct link didn't open",
-    "notes": "「为什么没连上」排障单顶部的一句人话结论。",
+    "zh-CN": "加密握手完成，数据通道没有打开",
+    "en": "Encrypted, but the data channel didn't open",
+    "notes": "诊断页顶部的一句结论。",
     "params": {},
     "platforms": [
       "web"
@@ -908,9 +908,9 @@
   },
   {
     "key": "transport.diag_verdict_confirm",
-    "zh-CN": "直连通道已打开，但电脑没有完成确认",
-    "en": "The direct link opened, but the computer didn't confirm",
-    "notes": "「为什么没连上」排障单顶部的一句人话结论。",
+    "zh-CN": "数据通道已打开，但电脑没有确认",
+    "en": "The data channel opened, but the computer didn't confirm",
+    "notes": "诊断页顶部的一句结论。",
     "params": {},
     "platforms": [
       "web"
