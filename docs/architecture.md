@@ -264,6 +264,8 @@ Android 和 iOS 解锁后私钥字节在内存里，可以交给核心直接用�
 - `domain`：共享向量（`testdata/projection/`、`testdata/lists/` 等），只在 Go 跑
 - `screens` 和 `app`：一套 Go 金样测试——一串 Event 进去，核对 Effect 和 ViewModel（JSON 金样）。同一批金样导出给壳当界面测试的输入
 - 壳：界面测试从金样 ViewModel 渲染，只验布局和交互，不验规则；执行器各自测与平台 API 的对接；每端一个绑定冒烟测试
+- 金样的输入必须与真实 daemon 的返回一致：响应夹具由 `internal/daemon` 的真实 handler 产出或由契约测试核对，不手写 daemon 不会产出的形状（曾因手写的目录列表把文件夹名写成完整路径而漏掉 bug）。金样同时导出二进制 protobuf，三端直接解析，不各写一个 JSON 加载器
+- 依赖方向由测试守住：`clientcore` 非测试包不得反向依赖上层（如 `sync` 引用 `screens`），不得引入主 module 的 `internal`、`net`、`os`、`time` 和反射
 - 端到端：真实 server、daemon 和 CLI 的链路，按 AGENTS.md 执行
 - 迁移的验收看产品代码净减少，不只看删了多少：壳里不应出现「把旧类型组装成请求、再把结果转回旧类型」的转换层
 
@@ -276,7 +278,7 @@ Android 和 iOS 解锁后私钥字节在内存里，可以交给核心直接用�
 3. session 界面：聊天行、审批、提问、队列、计划，复用 `projection`
 4. schedules、machine status、quota、settings
 5. `security`：信封、成员链、配对、恢复，密钥操作走 Effect；安全门并入核心
-6. 直连传输的路由和会话状态机、附件和共享文件的状态机
+6. 附件和共享文件的状态机；直连的选路策略（路径可用性、退回与等待、指令两路同发的编排、响应时间统计）提前到 iOS 接入直连之前进 `sync`，壳只按核心指定的路径收发，iOS 不再自己写一套
 7. Markdown 和终端 SGR 的解析（渲染留在壳）
 
 同步必须先于各界面进核心：第 1 步曾让同步留在壳里、由宿主把壳的状态翻成 Event，三端宿主各写了 600 到 1100 行翻译代码，产品代码不减反增。界面迁移只在核心已持有它所需的状态之后进行。
