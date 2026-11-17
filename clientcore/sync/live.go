@@ -87,6 +87,28 @@ func (e *Engine) dispatchLivePoll(ctx *StepContext, sid string) {
 	e.livePollReqToSid[reqID] = sid
 }
 
+// ApplyLiveSnapshot stores a fresh LiveSnapshot checkpoint for sid and marks affected views dirty.
+func (e *Engine) ApplyLiveSnapshot(ctx *StepContext, sid string, snap *v1.LiveSnapshot) {
+	if snap == nil || sid == "" {
+		return
+	}
+	s := e.sessions[sid]
+	if s == nil {
+		return
+	}
+	s.Checkpoint = snap.Clone()
+	s.CheckpointInvalid = false
+	if snap.Session != nil {
+		if snap.Session.LastSeq > s.LastSeq {
+			s.LastSeq = snap.Session.LastSeq
+		}
+		s.Meta = snap.Session.Clone()
+	}
+	e.refreshSessionPending(s)
+	ctx.Dirty.Add(true, true, false)
+	ctx.Dirty.MarkSessionData()
+}
+
 func (e *Engine) onLivePollSettled(ctx *StepContext, reqID string, res *v1.CommandResult) {
 	sid, ok := e.livePollReqToSid[reqID]
 	if !ok {
@@ -97,21 +119,7 @@ func (e *Engine) onLivePollSettled(ctx *StepContext, reqID string, res *v1.Comma
 		delete(e.livePollInFlight, sid)
 	}
 	if res != nil {
-		if snap := res.GetLiveSnapshot(); snap != nil {
-			if s := e.sessions[sid]; s != nil {
-				s.Checkpoint = snap.Clone()
-				s.CheckpointInvalid = false
-				if snap.Session != nil {
-					if snap.Session.LastSeq > s.LastSeq {
-						s.LastSeq = snap.Session.LastSeq
-					}
-					s.Meta = snap.Session.Clone()
-				}
-				e.refreshSessionPending(s)
-				ctx.Dirty.Add(true, true, false)
-				ctx.Dirty.MarkSessionData()
-			}
-		}
+		e.ApplyLiveSnapshot(ctx, sid, res.GetLiveSnapshot())
 	}
 	if e.canPollLive(sid) {
 		e.scheduleTimer(ctx, corev1.TimerKind_TIMER_KIND_LIVE_POLL, sid, LivePollIntervalMs)

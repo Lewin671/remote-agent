@@ -1,6 +1,8 @@
 package sync
 
 import (
+	"bytes"
+
 	"github.com/Lewin671/remote-agent/clientcore/domain/lists"
 	"github.com/Lewin671/remote-agent/clientcore/domain/outcome"
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
@@ -38,23 +40,23 @@ func (d *DispatchState) HasPrior() bool {
 
 // PreparedCommand preserves a fixed RequestID, DeadlineMs, and serialized command payload across retries.
 type PreparedCommand struct {
-	RequestID         string
-	SlotKey           string
-	MachineID         string
-	SessionID         string
-	DeadlineMs        int64
+	RequestID          string
+	SlotKey            string
+	MachineID          string
+	SessionID          string
+	DeadlineMs         int64
 	RecoveryDeadlineMs int64
-	Command           *v1.Command
-	CommandBytes      []byte
-	RouteHint         corev1.CommandRouteHint
-	ForceRelay        bool
-	Dispatch          DispatchState
-	AttemptCount      int
-	RecoveryUntilMs   int64
-	PendingAttempts   map[string]bool
-	BulkFileKey       string
-	BulkBytes         int64
-	BulkUpload        bool
+	Command            *v1.Command
+	CommandBytes       []byte
+	RouteHint          corev1.CommandRouteHint
+	ForceRelay         bool
+	Dispatch           DispatchState
+	AttemptCount       int
+	RecoveryUntilMs    int64
+	PendingAttempts    map[string]bool
+	BulkFileKey        string
+	BulkBytes          int64
+	BulkUpload         bool
 }
 
 // AttemptTracker preserves one unknown command per UI action slot until settled or explicitly abandoned.
@@ -142,6 +144,15 @@ func (e *Engine) SubmitCommand(ctx *StepContext, in SubmitCommandParams) (reques
 		return prep.RequestID, false
 	}
 	return prep.RequestID, true
+}
+
+// HasFrozenAttempt reports whether slotKey holds a frozen or expired unknown-outcome attempt.
+func (e *Engine) HasFrozenAttempt(slotKey string) bool {
+	if slotKey == "" {
+		return false
+	}
+	tr := e.attemptTrackers[slotKey]
+	return tr != nil && (tr.Frozen || tr.Expired)
 }
 
 // AbandonAttempt clears any frozen/expired attempt associated with slotKey.
@@ -625,18 +636,19 @@ func (e *Engine) checkObservedAction(prep *PreparedCommand) *corev1.Text {
 		}
 		return text.Msg(text.KeyErrorsTheRequestOnTheComputerChangedReviewItAgain)
 	case *v1.Command_AnswerPlan:
-		if k.AnswerPlan == nil {
-			return text.Msg(text.KeyErrorsTheRequestOnTheComputerChangedReviewItAgain)
+		if k.AnswerPlan == nil || s.Checkpoint.PlanEventSeq == 0 || len(s.Checkpoint.PlanScreenHash) != 32 {
+			return text.Msg(text.KeyErrorsThePlanDisplayChangedReviewItAgain)
 		}
-		for _, a := range actions {
-			if a != nil && a.GetPlanProposed() != nil {
-				if k.AnswerPlan.ObservedEventSeq != 0 && a.Seq != k.AnswerPlan.ObservedEventSeq {
-					return text.Msg(text.KeyErrorsTheRequestOnTheComputerChangedReviewItAgain)
-				}
-				return nil
-			}
+		if s.Checkpoint.Session != nil && !s.Checkpoint.Session.PlanOpen {
+			return text.Msg(text.KeyErrorsThePlanDisplayChangedReviewItAgain)
 		}
-		return text.Msg(text.KeyErrorsTheRequestOnTheComputerChangedReviewItAgain)
+		if k.AnswerPlan.ObservedEventSeq != 0 && s.Checkpoint.PlanEventSeq != k.AnswerPlan.ObservedEventSeq {
+			return text.Msg(text.KeyErrorsThePlanDisplayChangedReviewItAgain)
+		}
+		if len(k.AnswerPlan.ObservedScreenHash) != 0 && !bytes.Equal(s.Checkpoint.PlanScreenHash, k.AnswerPlan.ObservedScreenHash) {
+			return text.Msg(text.KeyErrorsThePlanDisplayChangedReviewItAgain)
+		}
+		return nil
 	}
 	return nil
 }

@@ -1,6 +1,7 @@
 package app
 
 import (
+	"bytes"
 	"testing"
 
 	"github.com/Lewin671/remote-agent/clientcore/domain/lists"
@@ -550,4 +551,332 @@ func TestSessionMissingLookupMismatchOfflineAndRichTimeline(t *testing.T) {
 		t.Fatalf("expected rich timeline rows present and typed cleanly: %+v", tlItems)
 	}
 	var _ = lists.DefaultAgent
+}
+
+func setupPlanSessionForTest(t *testing.T, hashA []byte) *Core {
+	t.Helper()
+	machines := []*corev1.PlainMachine{
+		{
+			MachineId: "m-on",
+			Online:    true,
+			Meta: &v1.MachineMeta{
+				Hostname: "MacStudio",
+			},
+		},
+	}
+	sessions := []*corev1.PlainSession{
+		{
+			SessionId: "s-plan",
+			MachineId: "m-on",
+			Meta: &v1.Session{
+				Id:       "s-plan",
+				Cwd:      "/Users/me/proj",
+				Agent:    v1.Agent_AGENT_CLAUDE,
+				Status:   v1.SessionStatus_SESSION_STATUS_RUNNING,
+				PlanOpen: true,
+			},
+			UpdatedMs: 1_791_078_060_000,
+			LastSeq:   10,
+			Checkpoint: &v1.LiveSnapshot{
+				Running:        true,
+				PlanEventSeq:   10,
+				PlanScreenHash: append([]byte(nil), hashA...),
+				PlanScreen:     "## Initial Plan\n1. Step 1",
+				Session: &v1.Session{
+					Id:       "s-plan",
+					Agent:    v1.Agent_AGENT_CLAUDE,
+					Status:   v1.SessionStatus_SESSION_STATUS_RUNNING,
+					PlanOpen: true,
+				},
+			},
+		},
+	}
+	c := bootstrapReadyApp(t, machines, sessions)
+	c.Dispatch(&corev1.Event{
+		NowMs: 1_791_078_060_050,
+		Event: &corev1.Event_SessionOpen{
+			SessionOpen: &corev1.SessionOpenAction{SessionId: "s-plan"},
+		},
+	})
+	watch := c.Dispatch(&corev1.Event{
+		NowMs: 1_791_078_060_055,
+		Event: &corev1.Event_SessionWatch{
+			SessionWatch: &corev1.SessionWatchEvent{SessionId: "s-plan", Watched: true},
+		},
+	})
+	c.Dispatch(&corev1.Event{
+		NowMs: 1_791_078_060_060,
+		Event: &corev1.Event_CacheEventsLoaded{
+			CacheEventsLoaded: &corev1.CacheEventsLoadedEvent{
+				OpId:      watchCacheReadOpID(watch),
+				SessionId: "s-plan",
+			},
+		},
+	})
+	return c
+}
+
+func findDispatchedCommands(batch *corev1.EffectBatch) ([]*corev1.DispatchCommandEffect, []*v1.Command) {
+	if batch == nil {
+		return nil, nil
+	}
+	var effs []*corev1.DispatchCommandEffect
+	var cmds []*v1.Command
+	for _, eff := range batch.Effects {
+		if dc := eff.GetDispatchCommand(); dc != nil {
+			var cmd v1.Command
+			if err := cmd.Unmarshal(dc.CommandBytes); err == nil {
+				effs = append(effs, dc)
+				cmds = append(cmds, &cmd)
+			}
+		}
+	}
+	return effs, cmds
+}
+
+func TestAnswerPlanPreflightRejectsChangedSnapshot(t *testing.T) {
+	hashA := bytes.Repeat([]byte{0x11}, 32)
+	hashB := bytes.Repeat([]byte{0x22}, 32)
+	c := setupPlanSessionForTest(t, hashA)
+
+	// Submit AnswerPlan: must dispatch GetLiveSnapshot first, NOT AnswerPlan.
+	sub := c.Dispatch(&corev1.Event{
+		NowMs: 1_791_078_060_100,
+		Event: &corev1.Event_SessionSubmitCommand{
+			SessionSubmitCommand: &corev1.SessionSubmitCommandAction{
+				SessionId: "s-plan",
+				Command: &v1.Command{
+					Kind: &v1.Command_AnswerPlan{
+						AnswerPlan: &v1.AnswerPlanRequest{
+							SessionId: "s-plan",
+							Choice:    v1.PlanChoice_PLAN_CHOICE_IMPLEMENT,
+						},
+					},
+				},
+			},
+		},
+	})
+	effs, cmds := findDispatchedCommands(sub)
+	if len(effs) != 1 || cmds[0].GetGetLiveSnapshot() == nil {
+		t.Fatalf("expected single GetLiveSnapshot preflight dispatch, got %d cmds: %+v", len(cmds), cmds)
+	}
+	for _, cmd := range cmds {
+		if cmd.GetAnswerPlan() != nil {
+			t.Fatalf("AnswerPlan must not be dispatched before GetLiveSnapshot settles")
+		}
+	}
+
+	vmPending, err := c.View(&corev1.Screen{Screen: &corev1.Screen_Session{Session: &corev1.SessionScreenRequest{SessionId: "s-plan"}}})
+	if err != nil {
+		t.Fatalf("View pending: %v", err)
+	}
+	if vmPending.GetSession().GetDock().GetCommand().GetStatus() != corev1.SessionCommandStatus_SESSION_COMMAND_STATUS_PENDING {
+		t.Fatalf("expected PENDING status during preflight, got %+v", vmPending.GetSession().GetDock().GetCommand())
+	}
+
+	// Settle GetLiveSnapshot with a changed hash: must NOT send AnswerPlan, must refresh UI and show review error.
+	afterSnap := c.Dispatch(&corev1.Event{
+		NowMs: 1_791_078_060_120,
+		Event: &corev1.Event_CommandOutcome{
+			CommandOutcome: &corev1.CommandOutcomeEvent{
+				RequestId:         effs[0].RequestId,
+				AttemptId:         effs[0].AttemptId,
+				Source:            corev1.OutcomeSource_OUTCOME_SOURCE_DAEMON,
+				Signed:            true,
+				HashesMatch:       true,
+				AttemptBound:      true,
+				OuterMatchesInner: true,
+				OuterOutcome:      "executed",
+				OuterReason:       "ok",
+				Result: &v1.CommandResult{
+					Outcome:         "executed",
+					Reason:          "ok",
+					ResultAvailable: true,
+					Kind: &v1.CommandResult_LiveSnapshot{
+						LiveSnapshot: &v1.LiveSnapshot{
+							PlanEventSeq:   10,
+							PlanScreenHash: append([]byte(nil), hashB...),
+							PlanScreen:     "## Updated Plan\n1. Step X",
+							Session: &v1.Session{
+								Id:       "s-plan",
+								Agent:    v1.Agent_AGENT_CLAUDE,
+								Status:   v1.SessionStatus_SESSION_STATUS_RUNNING,
+								PlanOpen: true,
+							},
+						},
+					},
+				},
+			},
+		},
+	})
+	_, afterCmds := findDispatchedCommands(afterSnap)
+	for _, cmd := range afterCmds {
+		if cmd.GetAnswerPlan() != nil {
+			t.Fatalf("AnswerPlan must NOT be dispatched when live snapshot hash changed")
+		}
+	}
+
+	vmAfter, err := c.View(&corev1.Screen{Screen: &corev1.Screen_Session{Session: &corev1.SessionScreenRequest{SessionId: "s-plan"}}})
+	if err != nil {
+		t.Fatalf("View after mismatch: %v", err)
+	}
+	dock := vmAfter.GetSession().GetDock()
+	if dock.GetCommand().GetStatus() != corev1.SessionCommandStatus_SESSION_COMMAND_STATUS_FAILED {
+		t.Fatalf("expected FAILED dock status on changed plan snapshot, got %+v", dock.GetCommand())
+	}
+	if dock.GetCommand().GetErrorText().GetKey() != "errors.the_plan_display_changed_review_it_again" {
+		t.Fatalf("expected the_plan_display_changed_review_it_again, got %+v", dock.GetCommand().GetErrorText())
+	}
+	if !bytes.Equal(dock.GetPlan().GetScreenHash(), hashB) {
+		t.Fatalf("expected refreshed plan hash %x, got %x", hashB, dock.GetPlan().GetScreenHash())
+	}
+	if dock.GetPlan().GetMarkdown() != "## Updated Plan\n1. Step X" {
+		t.Fatalf("expected refreshed plan markdown, got %q", dock.GetPlan().GetMarkdown())
+	}
+}
+
+func TestAnswerPlanPreflightMatchesAndFrozenRetry(t *testing.T) {
+	hashA := bytes.Repeat([]byte{0x33}, 32)
+	c := setupPlanSessionForTest(t, hashA)
+
+	// Submit AnswerPlan -> dispatches GetLiveSnapshot.
+	sub := c.Dispatch(&corev1.Event{
+		NowMs: 1_791_078_060_100,
+		Event: &corev1.Event_SessionSubmitCommand{
+			SessionSubmitCommand: &corev1.SessionSubmitCommandAction{
+				SessionId: "s-plan",
+				Command: &v1.Command{
+					Kind: &v1.Command_AnswerPlan{
+						AnswerPlan: &v1.AnswerPlanRequest{
+							SessionId: "s-plan",
+							Choice:    v1.PlanChoice_PLAN_CHOICE_CLEAR_AND_IMPLEMENT,
+						},
+					},
+				},
+			},
+		},
+	})
+	effs, cmds := findDispatchedCommands(sub)
+	if len(effs) != 1 || cmds[0].GetGetLiveSnapshot() == nil {
+		t.Fatalf("expected GetLiveSnapshot preflight, got %+v", cmds)
+	}
+
+	// Settle GetLiveSnapshot with matching seq/hash -> dispatches AnswerPlan carrying fresh seq/hash.
+	snapMatch := c.Dispatch(&corev1.Event{
+		NowMs: 1_791_078_060_120,
+		Event: &corev1.Event_CommandOutcome{
+			CommandOutcome: &corev1.CommandOutcomeEvent{
+				RequestId:         effs[0].RequestId,
+				AttemptId:         effs[0].AttemptId,
+				Source:            corev1.OutcomeSource_OUTCOME_SOURCE_DAEMON,
+				Signed:            true,
+				HashesMatch:       true,
+				AttemptBound:      true,
+				OuterMatchesInner: true,
+				OuterOutcome:      "executed",
+				OuterReason:       "ok",
+				Result: &v1.CommandResult{
+					Outcome:         "executed",
+					Reason:          "ok",
+					ResultAvailable: true,
+					Kind: &v1.CommandResult_LiveSnapshot{
+						LiveSnapshot: &v1.LiveSnapshot{
+							PlanEventSeq:   10,
+							PlanScreenHash: append([]byte(nil), hashA...),
+							PlanScreen:     "## Initial Plan\n1. Step 1",
+							Session: &v1.Session{
+								Id:       "s-plan",
+								Agent:    v1.Agent_AGENT_CLAUDE,
+								Status:   v1.SessionStatus_SESSION_STATUS_RUNNING,
+								PlanOpen: true,
+							},
+						},
+					},
+				},
+			},
+		},
+	})
+	apEffs, apCmds := findDispatchedCommands(snapMatch)
+	if len(apEffs) != 1 || apCmds[0].GetAnswerPlan() == nil {
+		t.Fatalf("expected AnswerPlan dispatch after matching preflight, got %d cmds: %+v", len(apCmds), apCmds)
+	}
+	ap := apCmds[0].GetAnswerPlan()
+	if ap.GetObservedEventSeq() != 10 || !bytes.Equal(ap.GetObservedScreenHash(), hashA) {
+		t.Fatalf("expected AnswerPlan observed seq=10 hash=%x, got seq=%d hash=%x", hashA, ap.GetObservedEventSeq(), ap.GetObservedScreenHash())
+	}
+	if ap.GetChoice() != v1.PlanChoice_PLAN_CHOICE_CLEAR_AND_IMPLEMENT {
+		t.Fatalf("expected choice CLEAR_AND_IMPLEMENT, got %v", ap.GetChoice())
+	}
+
+	// Simulate UNKNOWN outcome -> freezes the AnswerPlan attempt.
+	c.Dispatch(&corev1.Event{
+		NowMs: 1_791_078_060_140,
+		Event: &corev1.Event_CommandOutcome{
+			CommandOutcome: &corev1.CommandOutcomeEvent{
+				RequestId:    apEffs[0].RequestId,
+				AttemptId:    apEffs[0].AttemptId,
+				Source:       corev1.OutcomeSource_OUTCOME_SOURCE_DAEMON,
+				Signed:       false,
+				HashesMatch:  true,
+				AttemptBound: true,
+			},
+		},
+	})
+	vmFrozen, _ := c.View(&corev1.Screen{Screen: &corev1.Screen_Session{Session: &corev1.SessionScreenRequest{SessionId: "s-plan"}}})
+	if !vmFrozen.GetSession().GetDock().GetCommand().GetFrozen() {
+		t.Fatalf("expected frozen plan command after UNKNOWN outcome, got %+v", vmFrozen.GetSession().GetDock().GetCommand())
+	}
+
+	// Retry frozen attempt: must bypass GetLiveSnapshot and resend AnswerPlan directly.
+	retryBatch := c.Dispatch(&corev1.Event{
+		NowMs: 1_791_078_060_160,
+		Event: &corev1.Event_SessionSubmitCommand{
+			SessionSubmitCommand: &corev1.SessionSubmitCommandAction{
+				SessionId: "s-plan",
+				Command: &v1.Command{
+					Kind: &v1.Command_AnswerPlan{
+						AnswerPlan: &v1.AnswerPlanRequest{
+							SessionId: "s-plan",
+							Choice:    v1.PlanChoice_PLAN_CHOICE_CLEAR_AND_IMPLEMENT,
+						},
+					},
+				},
+			},
+		},
+	})
+	retryEffs, retryCmds := findDispatchedCommands(retryBatch)
+	if len(retryEffs) != 1 || retryCmds[0].GetAnswerPlan() == nil {
+		t.Fatalf("expected frozen AnswerPlan retry without new GetLiveSnapshot, got %+v", retryCmds)
+	}
+	if retryEffs[0].RequestId != apEffs[0].RequestId {
+		t.Fatalf("expected frozen retry to reuse requestId %q, got %q", apEffs[0].RequestId, retryEffs[0].RequestId)
+	}
+
+	// Settle retried AnswerPlan as executed.
+	c.Dispatch(&corev1.Event{
+		NowMs: 1_791_078_060_180,
+		Event: &corev1.Event_CommandOutcome{
+			CommandOutcome: &corev1.CommandOutcomeEvent{
+				RequestId:         retryEffs[0].RequestId,
+				AttemptId:         retryEffs[0].AttemptId,
+				Source:            corev1.OutcomeSource_OUTCOME_SOURCE_DAEMON,
+				Signed:            true,
+				HashesMatch:       true,
+				AttemptBound:      true,
+				OuterMatchesInner: true,
+				OuterOutcome:      "executed",
+				OuterReason:       "ok",
+				Result: &v1.CommandResult{
+					Outcome:         "executed",
+					Reason:          "ok",
+					ResultAvailable: true,
+					Kind:            &v1.CommandResult_AnswerPlan{AnswerPlan: &v1.AnswerPlanResponse{}},
+				},
+			},
+		},
+	})
+	vmDone, _ := c.View(&corev1.Screen{Screen: &corev1.Screen_Session{Session: &corev1.SessionScreenRequest{SessionId: "s-plan"}}})
+	if vmDone.GetSession().GetDock().GetCommand().GetStatus() != corev1.SessionCommandStatus_SESSION_COMMAND_STATUS_IDLE {
+		t.Fatalf("expected IDLE command status after executed AnswerPlan, got %+v", vmDone.GetSession().GetDock().GetCommand())
+	}
 }

@@ -1,6 +1,7 @@
 package app
 
 import (
+	"bytes"
 	"slices"
 	"strconv"
 
@@ -10,6 +11,7 @@ import (
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/clientcore/screens"
 	"github.com/Lewin671/remote-agent/clientcore/sync"
+	"github.com/Lewin671/remote-agent/clientcore/text"
 )
 
 type sessionSlotKind uint8
@@ -34,22 +36,33 @@ type sessionSlotMeta struct {
 	questionIndex int32
 }
 
+type pendingPlanPreflight struct {
+	sessionID string
+	machineID string
+	slotKey   string
+	command   *v1.Command
+	shownSeq  uint64
+	shownHash []byte
+}
+
 type sessionStore struct {
-	uiBySession          map[string]*screens.SessionUIState
-	opened               map[string]bool
-	slotsByReqID         map[string]string
-	slotMeta             map[string]sessionSlotMeta
-	pendingCreatePrompts map[string]*screens.PendingStartPrompt
-	pendingDirty         bool
+	uiBySession           map[string]*screens.SessionUIState
+	opened                map[string]bool
+	slotsByReqID          map[string]string
+	slotMeta              map[string]sessionSlotMeta
+	pendingPlanPreflights map[string]*pendingPlanPreflight
+	pendingCreatePrompts  map[string]*screens.PendingStartPrompt
+	pendingDirty          bool
 }
 
 func newSessionStore() *sessionStore {
 	return &sessionStore{
-		uiBySession:          make(map[string]*screens.SessionUIState),
-		opened:               make(map[string]bool),
-		slotsByReqID:         make(map[string]string),
-		slotMeta:             make(map[string]sessionSlotMeta),
-		pendingCreatePrompts: make(map[string]*screens.PendingStartPrompt),
+		uiBySession:           make(map[string]*screens.SessionUIState),
+		opened:                make(map[string]bool),
+		slotsByReqID:          make(map[string]string),
+		slotMeta:              make(map[string]sessionSlotMeta),
+		pendingPlanPreflights: make(map[string]*pendingPlanPreflight),
+		pendingCreatePrompts:  make(map[string]*screens.PendingStartPrompt),
 	}
 }
 
@@ -268,6 +281,211 @@ func (c *Core) processSessionSettled(
 	store.pendingDirty = true
 }
 
+func (c *Core) submitSessionCommandDirect(
+	ctx *sync.StepContext,
+	store *sessionStore,
+	ui *screens.SessionUIState,
+	sid, machineID, slotKey string,
+	kind sessionSlotKind,
+	qID string,
+	qIdx int32,
+	outReqID string,
+	cmd *v1.Command,
+) {
+	reqID, dispatched := c.m.sync.SubmitCommand(ctx, sync.SubmitCommandParams{
+		SlotKey:   slotKey,
+		MachineID: machineID,
+		SessionID: sid,
+		Command:   cmd,
+	})
+
+	store.slotMeta[slotKey] = sessionSlotMeta{
+		sessionID:     sid,
+		machineID:     machineID,
+		kind:          kind,
+		outgoingReqID: outReqID,
+		questionID:    qID,
+		questionIndex: qIdx,
+	}
+	if reqID != "" {
+		store.slotsByReqID[reqID] = slotKey
+	}
+
+	rec := ui.Commands[slotKey]
+	if rec == nil {
+		rec = &screens.SessionCommandRecord{SlotKey: slotKey}
+		ui.Commands[slotKey] = rec
+	}
+	rec.RequestID = reqID
+	rec.Command = cmd
+	if rec.SubmittedAtMs == 0 {
+		rec.SubmittedAtMs = c.m.sync.NowMs()
+	}
+	if dispatched {
+		rec.Status = corev1.SessionCommandStatus_SESSION_COMMAND_STATUS_PENDING
+		rec.Busy = true
+		rec.ErrorCode = ""
+		rec.ErrorText = nil
+	}
+
+	if kind == slotKindSend && cmd.GetSend() != nil && outReqID != "" {
+		sr := cmd.GetSend()
+		og := findOrAppendOutgoing(ui, outReqID, slotKey, sr, c.m.sync.NowMs())
+		if dispatched {
+			og.State = corev1.SessionOutgoingState_SESSION_OUTGOING_STATE_SENDING
+			og.ErrorCode = ""
+			og.ErrorText = nil
+		}
+	}
+	store.pendingDirty = true
+}
+
+func setPlanPreflightFailed(rec *screens.SessionCommandRecord, code string, errText *corev1.Text) {
+	rec.Busy = false
+	rec.Status = corev1.SessionCommandStatus_SESSION_COMMAND_STATUS_FAILED
+	rec.Frozen = false
+	rec.Expired = false
+	rec.ErrorCode = code
+	rec.ErrorText = errText
+}
+
+func (c *Core) submitPlanPreflight(
+	ctx *sync.StepContext,
+	store *sessionStore,
+	ui *screens.SessionUIState,
+	sid, machineID, slotKey string,
+	cmd *v1.Command,
+) {
+	rec := ui.Commands[slotKey]
+	if rec == nil {
+		rec = &screens.SessionCommandRecord{SlotKey: slotKey}
+		ui.Commands[slotKey] = rec
+	}
+	rec.Command = cmd
+	if rec.SubmittedAtMs == 0 {
+		rec.SubmittedAtMs = c.m.sync.NowMs()
+	}
+
+	ap := cmd.GetAnswerPlan()
+	if ap == nil || ap.ObservedEventSeq == 0 || len(ap.ObservedScreenHash) == 0 {
+		setPlanPreflightFailed(rec, "failed_precondition", text.Msg(text.KeyErrorsThePlanDisplayChangedReviewItAgain))
+		store.pendingDirty = true
+		return
+	}
+
+	liveCmd := &v1.Command{
+		ProtocolVersion: sync.ProtocolVersion,
+		Kind: &v1.Command_GetLiveSnapshot{
+			GetLiveSnapshot: &v1.GetLiveSnapshotRequest{SessionId: sid},
+		},
+	}
+	liveReqID, dispatched := c.m.sync.SubmitCommand(ctx, sync.SubmitCommandParams{
+		SlotKey:   "",
+		MachineID: machineID,
+		SessionID: sid,
+		Command:   liveCmd,
+	})
+	if !dispatched || liveReqID == "" {
+		setPlanPreflightFailed(rec, "failed_precondition", nil)
+		store.pendingDirty = true
+		return
+	}
+
+	for reqID, prev := range store.pendingPlanPreflights {
+		if prev != nil && prev.slotKey == slotKey {
+			delete(store.pendingPlanPreflights, reqID)
+		}
+	}
+	store.pendingPlanPreflights[liveReqID] = &pendingPlanPreflight{
+		sessionID: sid,
+		machineID: machineID,
+		slotKey:   slotKey,
+		command:   cmd.Clone(),
+		shownSeq:  ap.ObservedEventSeq,
+		shownHash: slices.Clone(ap.ObservedScreenHash),
+	}
+	rec.RequestID = liveReqID
+	rec.Status = corev1.SessionCommandStatus_SESSION_COMMAND_STATUS_PENDING
+	rec.Busy = true
+	rec.Frozen = false
+	rec.Expired = false
+	rec.ErrorCode = ""
+	rec.ErrorText = nil
+	store.pendingDirty = true
+}
+
+func (c *Core) settlePlanPreflight(
+	sc sync.SettledCommand,
+	effects *[]*corev1.Effect,
+	dirty *sync.DirtyFlags,
+) bool {
+	store := c.m.ensureSessionStore()
+	pf, ok := store.pendingPlanPreflights[sc.RequestID]
+	if !ok || pf == nil {
+		return false
+	}
+	delete(store.pendingPlanPreflights, sc.RequestID)
+
+	stepRes := c.m.sync.Run(func(ctx *sync.StepContext) {
+		ui := store.ensureUI(pf.sessionID)
+		rec := ui.Commands[pf.slotKey]
+		if rec == nil {
+			rec = &screens.SessionCommandRecord{SlotKey: pf.slotKey}
+			ui.Commands[pf.slotKey] = rec
+		}
+
+		var fresh *v1.LiveSnapshot
+		if sc.Category == outcome.Executed && sc.ErrorCode == "" && sc.Result != nil {
+			fresh = sc.Result.GetLiveSnapshot()
+		}
+		if fresh == nil {
+			code := sc.ErrorCode
+			if code == "" && sc.ErrorText == nil {
+				code = "failed_precondition"
+			}
+			setPlanPreflightFailed(rec, code, sc.ErrorText)
+			store.pendingDirty = true
+			ctx.Dirty.Add(true, true, false)
+			ctx.Dirty.MarkSessionData()
+			return
+		}
+
+		c.m.sync.ApplyLiveSnapshot(ctx, pf.sessionID, fresh)
+		snap := c.m.sync.SessionSnapshot(pf.sessionID)
+		reconcileSessionSnapshot(snap, ui)
+
+		planOpen := fresh.GetSession() == nil || fresh.GetSession().GetPlanOpen()
+		matches := planOpen &&
+			fresh.PlanEventSeq > 0 &&
+			fresh.PlanEventSeq == pf.shownSeq &&
+			len(fresh.PlanScreenHash) == 32 &&
+			bytes.Equal(fresh.PlanScreenHash, pf.shownHash)
+		if !matches {
+			setPlanPreflightFailed(rec, "failed_precondition", text.Msg(text.KeyErrorsThePlanDisplayChangedReviewItAgain))
+			store.pendingDirty = true
+			return
+		}
+
+		cmd := pf.command.Clone()
+		if ap := cmd.GetAnswerPlan(); ap != nil {
+			ap.ObservedEventSeq = fresh.PlanEventSeq
+			ap.ObservedScreenHash = slices.Clone(fresh.PlanScreenHash)
+		}
+		c.submitSessionCommandDirect(ctx, store, ui, pf.sessionID, pf.machineID, pf.slotKey, slotKindAnswerPlan, "", 0, "", cmd)
+	})
+
+	c.m.sync.SyncToState(c.m.state)
+	*effects = append(*effects, stepRes.Effects...)
+	dirty.Add(stepRes.Dirty.Home, stepRes.Dirty.Project, stepRes.Dirty.NewSession)
+	if stepRes.Dirty.SessionData {
+		dirty.MarkSessionData()
+	}
+	for _, nested := range stepRes.Settled {
+		c.processSessionSettled(nested, effects, dirty)
+	}
+	return true
+}
+
 func (s *sessionStore) settleOutgoing(ui *screens.SessionUIState, reqID string, sc sync.SettledCommand) {
 	for _, og := range ui.Outgoing {
 		if og == nil || og.RequestID != reqID {
@@ -356,52 +574,12 @@ func (c *Core) dispatchSessionUI(ctx *sync.StepContext, ev *corev1.Event) []*cor
 			slotKey = canonicalSlotKey(cmd, sid, qIdx)
 		}
 
-		reqID, dispatched := c.m.sync.SubmitCommand(ctx, sync.SubmitCommandParams{
-			SlotKey:   slotKey,
-			MachineID: machineID,
-			SessionID: sid,
-			Command:   cmd,
-		})
-
-		store.slotMeta[slotKey] = sessionSlotMeta{
-			sessionID:     sid,
-			machineID:     machineID,
-			kind:          kind,
-			outgoingReqID: outReqID,
-			questionID:    qID,
-			questionIndex: qIdx,
-		}
-		if reqID != "" {
-			store.slotsByReqID[reqID] = slotKey
+		if kind == slotKindAnswerPlan && !c.m.sync.HasFrozenAttempt(slotKey) {
+			c.submitPlanPreflight(ctx, store, ui, sid, machineID, slotKey, cmd)
+			return nil
 		}
 
-		rec := ui.Commands[slotKey]
-		if rec == nil {
-			rec = &screens.SessionCommandRecord{SlotKey: slotKey}
-			ui.Commands[slotKey] = rec
-		}
-		rec.RequestID = reqID
-		rec.Command = cmd
-		if rec.SubmittedAtMs == 0 {
-			rec.SubmittedAtMs = c.m.sync.NowMs()
-		}
-		if dispatched {
-			rec.Status = corev1.SessionCommandStatus_SESSION_COMMAND_STATUS_PENDING
-			rec.Busy = true
-			rec.ErrorCode = ""
-			rec.ErrorText = nil
-		}
-
-		if kind == slotKindSend && cmd.GetSend() != nil && outReqID != "" {
-			sr := cmd.GetSend()
-			og := findOrAppendOutgoing(ui, outReqID, slotKey, sr, c.m.sync.NowMs())
-			if dispatched {
-				og.State = corev1.SessionOutgoingState_SESSION_OUTGOING_STATE_SENDING
-				og.ErrorCode = ""
-				og.ErrorText = nil
-			}
-		}
-		store.pendingDirty = true
+		c.submitSessionCommandDirect(ctx, store, ui, sid, machineID, slotKey, kind, qID, qIdx, outReqID, cmd)
 		return nil
 
 	case *corev1.Event_SessionAbandonCommand:
@@ -409,6 +587,11 @@ func (c *Core) dispatchSessionUI(ctx *sync.StepContext, ev *corev1.Event) []*cor
 			return nil
 		}
 		act := k.SessionAbandonCommand
+		for reqID, pf := range store.pendingPlanPreflights {
+			if pf != nil && pf.slotKey == act.SlotKey {
+				delete(store.pendingPlanPreflights, reqID)
+			}
+		}
 		c.m.sync.AbandonAttempt(ctx, act.SlotKey)
 		if ui := store.uiBySession[act.SessionId]; ui != nil {
 			delete(ui.Commands, act.SlotKey)

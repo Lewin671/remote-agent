@@ -118,7 +118,12 @@ func (c *Core) Dispatch(ev *corev1.Event) *corev1.EffectBatch {
 		var hookEffects []*corev1.Effect
 		c.onSyncEventConsumed(ev, &hookEffects)
 		extra, extraDirty := c.processSyncStep(syncRes)
-		syncRes.Dirty.Add(extraDirty.Home, extraDirty.Project, extraDirty.NewSession)
+		if extraDirty.Home || extraDirty.Project || extraDirty.NewSession {
+			syncRes.Dirty.Add(extraDirty.Home, extraDirty.Project, extraDirty.NewSession)
+		}
+		if extraDirty.SessionData {
+			syncRes.Dirty.MarkSessionData()
+		}
 		effects := append(syncRes.Effects, hookEffects...)
 		effects = append(effects, extra...)
 		if r := renderEffect(syncRes.Dirty); r != nil {
@@ -136,6 +141,9 @@ func (c *Core) Dispatch(ev *corev1.Event) *corev1.EffectBatch {
 	})
 	extra, extraDirty := c.processSyncStep(stepRes)
 	stepRes.Dirty.Add(extraDirty.Home, extraDirty.Project, extraDirty.NewSession)
+	if extraDirty.SessionData {
+		stepRes.Dirty.MarkSessionData()
+	}
 
 	effects := make([]*corev1.Effect, 0, len(stepRes.Effects)+len(uiEffects)+len(extra)+1)
 	effects = append(effects, stepRes.Effects...)
@@ -157,6 +165,9 @@ func (c *Core) processSyncStep(res sync.StepResult) ([]*corev1.Effect, sync.Dirt
 	var effects []*corev1.Effect
 	var dirty sync.DirtyFlags
 	for _, sc := range res.Settled {
+		if c.settlePlanPreflight(sc, &effects, &dirty) {
+			continue
+		}
 		c.processSessionSettled(sc, &effects, &dirty)
 		meta, hasMeta := c.m.pendingCmdMeta[sc.RequestID]
 		if hasMeta {

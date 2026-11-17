@@ -1194,8 +1194,8 @@
               "machineId": "m1",
               "sessionId": "s-qp",
               "deadlineMs": "1791078120120",
-              "commandBytes": "UiwKBHMtcXAQAhgDIiAAAQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eH6AGEA==",
-              "routeHint": "COMMAND_ROUTE_HINT_NORMAL"
+              "commandBytes": "+gEGCgRzLXFwoAYQ",
+              "routeHint": "COMMAND_ROUTE_HINT_READ"
             }
           },
           {
@@ -1218,6 +1218,7 @@
                 "SCREEN_TARGET_PROJECT",
                 "SCREEN_TARGET_NEW_SESSION",
                 "SCREEN_TARGET_SYNC_STATE",
+                "SCREEN_TARGET_SESSION_DATA",
                 "SCREEN_TARGET_SESSION"
               ]
             }
@@ -1436,22 +1437,14 @@
               "command": {
                 "slotKey": "plan:s-qp",
                 "requestId": "r-9",
-                "status": "SESSION_COMMAND_STATUS_UNKNOWN",
-                "frozen": true,
+                "status": "SESSION_COMMAND_STATUS_FAILED",
                 "canRetry": true,
-                "canAbandon": true,
                 "errorCode": "unknown",
                 "errorText": {
                   "key": "errors.the_computer_s_reply_could_not_be_verified_command"
                 },
                 "statusText": {
-                  "key": "dock.android_plan_unknown",
-                  "args": [
-                    {
-                      "name": "choice",
-                      "strValue": "clear_and_implement"
-                    }
-                  ]
+                  "key": "errors.the_computer_s_reply_could_not_be_verified_command"
                 }
               },
               "plan": {
