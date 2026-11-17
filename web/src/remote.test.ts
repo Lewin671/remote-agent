@@ -1,6 +1,7 @@
 import { t as message } from "./i18n";
-import { create, fromBinary } from "@bufbuild/protobuf";
+import { create, fromBinary, fromJson, toBinary } from "@bufbuild/protobuf";
 import { HeaderSchema, type Envelope } from "./gen/remoteagent/v1/envelope_pb";
+import { LoginResponseSchema } from "./gen/remoteagent/v1/relay_pb";
 import { Code, ConnectError } from "@connectrpc/connect";
 import { afterEach, expect, it, vi } from "vitest";
 import { patchSyncState, SyntheticRemote } from "./test/remote-fixture";
@@ -525,9 +526,12 @@ it("stops and says so once the server no longer knows this device", async () => 
         JSON.stringify({ code: "permission_denied", message: "login failed" }),
         { status: 403, headers: { "Content-Type": "application/json" } },
       );
-    return new Response(new Uint8Array(), {
-      headers: { "Content-Type": "application/proto" },
-    });
+    return new Response(
+      name === "Login"
+        ? new Uint8Array(toBinary(LoginResponseSchema, create(LoginResponseSchema, { token: "t", expiresMs: BigInt(Date.now() + 7 * 86_400_000) })))
+        : new Uint8Array(),
+      { headers: { "Content-Type": "application/proto" } },
+    );
   });
   try {
     // One denial alone is a challenge the server forgot: the next login works.
@@ -1376,5 +1380,21 @@ it("seals terminal frames with purpose-specific domains and a default deadline",
     const opened = await r.world.fixture.open(r.machine, env, seed);
     expect(opened.header.deadlineMs).toBeGreaterThanOrEqual(BigInt(nowBefore + 50000));
     expect(fromBinary(TerminalFrameSchema, opened.plaintext).kind.case).toBe(kind.case);
+  }
+});
+
+it("classifies readOnlyCommand consistently with shared transport fixtures", async () => {
+  const { default: fixture } = await import("../../testdata/transport/outcomes.json");
+  const { readOnlyCommand } = await import("./remote");
+  const { CommandSchema } = await import("./gen/remoteagent/v1/remote_pb");
+  expect(fixture.protocol).toBe(15);
+  for (const v of fixture.commands) {
+    const body: Record<string, string> = v.kind === "schedule" ? { operation: ("operation" in v ? v.operation : "") ?? "" } : {};
+    const cmd = v.kind ? fromJson(CommandSchema, { [v.kind]: body }) : create(CommandSchema);
+    const readOnly = readOnlyCommand(cmd.kind);
+    expect(readOnly, `${v.kind}/${"operation" in v ? v.operation : ""}`).toBe(v.readOnly);
+    for (const code of ["canceled", "deadline_exceeded", "aborted"]) {
+      expect(uncertain(new CommandError(code, "fixture", true, readOnly, "executed"))).toBe(false);
+    }
   }
 });

@@ -51,7 +51,11 @@ export function patchSyncState(r: Remote, patch: SyncStatePatch): void {
     demoSessions?: Map<string, SessionView>;
     demoDevices?: Map<string, DeviceInfo>;
     demoHasMoreSessions?: boolean;
+    opts?: URLSearchParams;
   };
+  if (patch.conn === "online" && demo.opts?.has("conn")) {
+    demo.opts.delete("conn");
+  }
   if (patch.moreSessions !== undefined && "demoHasMoreSessions" in demo) {
     demo.demoHasMoreSessions = patch.moreSessions;
   }
