@@ -334,16 +334,17 @@ class DirectTransportE2ETest {
             val wantSha1 = f1.getString("sha256Hex")
             val chunkSize = 768 * 1024
             val dlStart = System.currentTimeMillis()
-            var upgradedAtMs = -1L
+            val startedDirect = remote.filePath(machineId) == RouteName.DIRECT
+            var upgradedAtMs = if (startedDirect) 0L else -1L
             var relayChunksBytes = 0L
             var relayChunksMs = 0L
             var directChunksBytes = 0L
             var directChunksMs = 0L
-            var acceptedAtUpgrade = -1
+            var acceptedAtUpgrade = if (startedDirect) ctrlGet(ctrlBase, "/accepted-count").getInt("count") else -1
             val out1 = ByteArrayOutputStream(totalBytes24M)
             var offset = 0L
             var relayStartMs = System.currentTimeMillis()
-            var directStartMs = -1L
+            var directStartMs = if (startedDirect) dlStart else -1L
             while (offset < totalBytes24M) {
                 val isDirectNow = remote.filePath(machineId) == RouteName.DIRECT
                 val cStart = System.currentTimeMillis()
@@ -395,7 +396,8 @@ class DirectTransportE2ETest {
 
             // Also verify ConnCheckSheet
             ui.onNodeWithText("连接检测").performScrollTo().performClick()
-            waitText("正在用直连", 15_000)
+            waitText("已连接", 15_000)
+            waitText("ms", 15_000)
             ui.onNodeWithText("完成").performClick()
 
             android.util.Log.i("DirectE2E", "step // 4. Mid-download")
