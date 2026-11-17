@@ -65,6 +65,7 @@ if name=='git':
         print('const Version = '+(os.environ['SHIP_TEST_PROTOCOL'] if args[1].startswith('bbbbbbb:') else '13'))
 elif name=='gh':
     if args[:2]==['run','list']: print('123')
+    elif args[:2]==['run','view']: print('completed success' if 'jobs' in args else 'completed')
 elif name=='pnpm':
     if args[:2]==['run','deploy']:
         (root/'deployed').touch()
@@ -82,7 +83,7 @@ elif name in ('ssh','daemon','curl'): sys.exit('forbidden non-web operation')
                        TMPDIR=str(root / 'temp'), SHIP_TEST_ROOT=str(root), SHIP_TEST_PROTOCOL=protocol,
                        BIN=str(root / 'bin' / 'daemon'))
             result = subprocess.run(['sh', str(root / 'scripts/ship.sh'), '--web-only', 'v0.56.3'],
-                                    cwd=root, env=env, text=True, capture_output=True)
+                                    cwd=root, env=env, text=True, capture_output=True, timeout=120)
             return result, (root / 'calls').read_text(), (root / 'reused_core').exists()
 
     def test_deploys_and_verifies_web_without_server_daemon_or_public_http(self):
