@@ -858,6 +858,61 @@ git status --short gen/</div><div class="y">清理旧的生成文件后重新生
 
   enter continue · esc quit<span class="cur"> </span></div><div class="keys k2 glass"><div class="kr"><span>Esc</span><span><svg class="ic" width="18" height="18"><use href="#lu-arrow-left"/></svg></span><span><svg class="ic" width="18" height="18"><use href="#lu-arrow-up"/></svg></span><span><svg class="ic" width="18" height="18"><use href="#lu-arrow-down"/></svg></span><span><svg class="ic" width="18" height="18"><use href="#lu-arrow-right"/></svg></span><span><svg class="ic" width="18" height="18"><use href="#lu-corner-down-left"/></svg></span></div><div class="kr"><span>Tab</span><span>Ctrl+C</span><span class="w"><svg class="ic" width="18" height="18"><use href="#lu-keyboard"/></svg> 键盘</span></div></div><div class="homebar"></div></div><p class="cap"><span class="plat">Android</span> <b>终端 · 处理弹窗</b>：进入终端自动适配后，可以用 A− / A+ 调字号，在这里处理信任目录这类弹窗。底部按键栏第一行是 Esc、方向键和确认，第二行是 Tab、Ctrl+C 和键盘；每个键的点击区至少 44×44。</p></div>
 </div>
+
+<h3 class="sub" id="dock-reject-demote-states">细节详态 · 停靠区主动作避让与「拒绝时保留命令」全场景</h3>
+<div class="screens" style="align-items:flex-start">
+  <div style="width:375px;background:var(--paper);border-radius:24px;padding:16px;box-shadow:inset 0 0 0 .5px var(--sep)" id="dock-demote-compare">
+    <div style="font-size:13px;font-weight:600;color:var(--ink2);margin-bottom:10px">停靠卡展开 vs 收起 · 下方主动作圆钮避让对照</div>
+    <div style="background:var(--gbg);border-radius:18px;padding:12px">
+      <div style="font-size:12px;color:var(--ink2);margin-bottom:8px">① 停靠卡展开（含携带草稿又手动点「处理」展开时）→ 圆钮降为 <code>fill2 + ink</code>（仍可点，不置灰 40%）</div>
+      <div class="tc" style="margin:0 0 8px"><div class="k"><i></i>请求执行<span>剩 8 分钟</span><a>收起</a></div><div class="cmd mono" style="margin-top:8px"><b>❯ </b>go test ./... -count=1</div><div class="bs"><button class="cb no">拒绝</button><button class="cb">允许</button></div></div>
+      <div class="cbar glass" style="position:static;box-shadow:0 2px 10px rgba(0,0,0,.08)"><span class="plus"><svg class="ic" width="20" height="20"><use href="#lu-plus"/></svg></span><span class="tx">顺便看下 lint</span><span class="snd sec" title="次级样式但照常可点"><svg class="ic" width="20" height="20"><use href="#lu-arrow-up"/></svg></span></div>
+    </div>
+    <div style="background:var(--gbg);border-radius:18px;padding:12px;margin-top:10px">
+      <div style="font-size:12px;color:var(--ink2);margin-bottom:8px">② 收成单行 <code>.tc.line</code> 或处理完消失 → 120 ms 恢复 <code>btn</code> 墨色主按钮</div>
+      <div class="tc line" style="margin:0 0 8px"><div class="k"><i></i>请求执行<span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">go test ./... -count=1</span><a>处理<svg class="ic" width="15" height="15"><use href="#lu-chevron-down"/></svg></a></div></div>
+      <div class="cbar glass" style="position:static"><span class="plus"><svg class="ic" width="20" height="20"><use href="#lu-plus"/></svg></span><span class="tx">顺便看下 lint</span><span class="snd"><svg class="ic" width="20" height="20"><use href="#lu-arrow-up"/></svg></span></div>
+    </div>
+    <p style="font-size:13px;line-height:1.55;color:var(--ink2);margin:10px 0 0">严格满足第 1 节「一屏最多一个墨色实心按钮」：展开期间即使暗色模式下 <code>btn</code> 是近白实心圆，也不会和深色卡上的白底「允许」上下撞车；读屏标签与可用态保持不变。</p>
+  </div>
+
+  <div style="width:375px;background:var(--paper);border-radius:24px;padding:16px;box-shadow:inset 0 0 0 .5px var(--sep)" id="reject-keep-cmd-err">
+    <div style="font-size:13px;font-weight:600;color:var(--ink2);margin-bottom:10px">拒绝写理由 · 保留 5 行命令 + 送达失败不丢理由</div>
+    <div class="tc" style="margin:0">
+      <div class="k"><i></i>请求执行<span>剩 6 分钟</span></div>
+      <div class="cmd mono clamp" style="-webkit-line-clamp:5"><b>❯ </b>rm -rf gen/remoteagent &amp;&amp; \
+buf generate --template buf.gen.yaml &amp;&amp; \
+go build ./... &amp;&amp; \
+go test ./internal/... -count=1 -run 'Test(Pair|Session|Terminal)' &amp;&amp; \
+git status --short gen/</div>
+      <div class="ml">还有 2 行没显示<a>看完整命令</a></div>
+      <div class="inp typed" style="border:1px solid rgba(255,255,255,.28)">别删 gen，直接 buf generate 覆盖就行</div>
+      <div style="font-size:13px;color:#ff6b6b;margin-top:8px" role="alert">没送到：连接中断，已保留你写的理由</div>
+      <div class="bs"><button class="cb no">取消</button><button class="cb">重试拒绝</button></div>
+    </div>
+    <p style="font-size:13px;line-height:1.55;color:var(--ink2);margin:10px 0 0">① 写理由期间命令仍保持 5 行且可点「看完整命令」展开；② 点「取消」在当前审批生命周期内暂存已写文字，再点「拒绝」原样带回；③ 断线或超时失败绝不清空理由；④ 横屏/200% 字号下键盘上方空间 &lt;220px 时整张卡转为全幅纵向滚动。</p>
+  </div>
+
+  <div style="width:460px;max-width:100%;background:var(--s1);border-radius:20px;padding:16px;box-shadow:inset 0 0 0 .5px var(--sep)" id="reject-wide-dock">
+    <div style="font-size:13px;font-weight:600;color:var(--ink2);margin-bottom:10px">宽屏停靠区 · 拒绝写理由（圆角 14 / 6 / 8 同心 + 快捷键）</div>
+    <div class="wdock" style="position:static">
+      <div class="tc" style="max-width:none">
+        <div class="k"><i></i>请求执行<span>剩 7 分钟</span><a>收起</a></div>
+        <div class="cmd mono" style="max-height:118px;overflow:auto"><b>❯ </b>rm -rf gen/remoteagent &amp;&amp; \
+buf generate --template buf.gen.yaml &amp;&amp; \
+go build ./... &amp;&amp; \
+go test ./internal/... -count=1 \
+  -run 'Test(Pair|Session|Terminal)'</div>
+        <div class="inp typed" style="border-radius:6px;font-size:13px;padding:9px 10px;border:1px solid rgba(255,255,255,.28)">别删 gen，直接 buf generate 覆盖就行<i></i></div>
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:12px">
+          <span style="font-size:12px;color:rgba(245,245,247,.55)">Enter 拒绝 · Shift+Enter 换行 · Esc 取消</span>
+          <div style="display:flex;gap:8px"><button class="cb no" style="min-width:88px;height:34px;border-radius:8px;font-size:13px">取消</button><button class="cb" style="min-width:96px;height:34px;border-radius:8px;font-size:13px">拒绝</button></div>
+        </div>
+      </div>
+    </div>
+    <p style="font-size:13px;line-height:1.55;color:var(--ink2);margin:10px 0 0">宽屏停靠区点「拒绝」同样收起 2 行说明、完整保留 5 行可滚动命令块，支持键盘 <code>Enter</code> 直接提交、<code>Esc</code> 取消。</p>
+  </div>
+</div>
 </section>
 <!-- ===== reply ===== -->
 <style>
@@ -1004,6 +1059,84 @@ git status --short gen/</div><div class="y">清理旧的生成文件后重新生
   <div><div class="phone"><div class="sb"><span>9:41</span><i></i></div><div class="edge t tall"></div><div class="edge b"></div><div class="tbar"><div class="gbtn glass"><svg class="ic" width="24" height="24"><use href="#lu-chevron-left"/></svg></div><div class="ttl"><b>修复登录超时</b><span>运行中 · 自动</span></div><div class="gbtn glass"><svg class="ic" width="22" height="22"><use href="#lu-ellipsis"/></svg></div></div><div class="vseg glass"><span class="on">聊天</span><span>终端</span></div><div class="scroll chat end" style="padding-bottom:150px"><div class="ai">正在补充限流测试。</div><div class="queued"><div>检查 Redis 连接池是否会在超时后泄漏连接，补一个回归测试。</div><span>这一轮结束后发 · 第 1 条<a>取消</a></span></div><div class="queued wait"><div>更新 README 的配置说明。</div><span>正在取消…</span></div><div class="queued"><div>最后汇总改动，不要提交。</div><span>取消没成功，仍在排队<a>重试</a></span></div></div><div class="toast glass">上一条已送入终端，不能取消</div><div class="cbar glass"><span class="plus"><svg class="ic" width="20" height="20"><use href="#lu-plus"/></svg></span><span class="ph">消息</span><span class="snd"><svg class="ic" width="20" height="20"><use href="#lu-stop"/></svg></span></div><div class="homebar"></div></div><p class="cap"><b>还没送到的消息</b>：插入这一轮或排队的消息按顺序留在对话末尾，正文最多 4 行，点开看全文。每条都能就地取消，取消中和取消失败也写在气泡下面；送进终端后变成普通消息。不另开队列页，不能重新排序。</p></div>
   <div><div class="phone"><div class="sb"><span>9:41</span><i></i></div><div class="edge t tall"></div><div class="edge b"></div><div class="tbar"><div class="gbtn glass"><svg class="ic" width="24" height="24"><use href="#lu-chevron-left"/></svg></div><div class="ttl"><b>修复登录超时</b><span>空闲 · 询问</span></div><div class="gbtn glass"><svg class="ic" width="22" height="22"><use href="#lu-ellipsis"/></svg></div></div><div class="vseg glass"><span class="on">聊天</span><span>终端</span></div><div class="strip glass"><svg class="ic" width="16" height="16"><use href="#lu-loader-circle"/></svg><span>正在重连…</span></div><div class="scroll chat" style="padding-top:208px"><div class="me"><div>把登录接口的限流补齐，跑完测试</div></div><div class="tl"><svg class="ic" width="14" height="14"><use href="#lu-check"/></svg><code>读取 auth/login.go</code></div><div class="ai">下面是断开前的内容。</div></div><div class="cbar glass"><span class="plus dis"><svg class="ic" width="20" height="20"><use href="#lu-plus"/></svg></span><span class="tx">写好的消息继续留在这里</span><span class="snd off"><svg class="ic" width="20" height="20"><use href="#lu-arrow-up"/></svg></span></div><div class="homebar"></div></div><p class="cap"><b>断线</b>：分段控件下面出现一条提示。草稿可以继续写，加图片和发送暂停；连上后由你自己发送，不会自动排队。</p></div>
   <div><div class="phone"><div class="sb"><span>9:41</span><i></i></div><div class="edge t tall"></div><div class="edge b"></div><div class="tbar"><div class="gbtn glass"><svg class="ic" width="24" height="24"><use href="#lu-chevron-left"/></svg></div><div class="ttl"><b>修复登录超时</b><span>空闲 · 询问</span></div><div class="gbtn glass"><svg class="ic" width="22" height="22"><use href="#lu-ellipsis"/></svg></div></div><div class="vseg glass"><span class="on">聊天</span><span>终端</span></div><div class="scroll chat"><div class="me"><div>把登录接口的限流补齐，跑完测试</div></div><div class="tl"><svg class="ic" width="14" height="14"><use href="#lu-check"/></svg><code>读取 auth/login.go</code></div><div class="ai">限流和测试都已补齐。</div><div class="me f"><div>顺便补一个测试</div><small class="err">没发出去：电脑不在线<a>重试</a><a>移除此提示</a></small></div><div class="me f"><div>顺便补一个测试</div><small class="warn">可能没发出去：连接超时<a>重试</a><a>移除此提示</a></small></div><div class="me f"><div>把 lint 也跑一下</div><small class="warn">可能没发出去：已送到终端但没确认</small></div></div><div class="cbar glass"><span class="plus"><svg class="ic" width="20" height="20"><use href="#lu-plus"/></svg></span><span class="ph">消息</span><span class="snd off"><svg class="ic" width="20" height="20"><use href="#lu-arrow-up"/></svg></span></div><div class="homebar"></div></div><p class="cap"><b>发送失败</b>：只分两类，原因写短。确定没发出去的（会话已结束、CLI 没认出图片、电脑明确拒绝）用红字「没发出去：原因」，配「重试」「放回输入框」中能用的；不确定的（已送到终端但没确认、读不到终端输入框、连接超时）用橙字「可能没发出去：原因」，连接中途断开时原因统一写「连接中途断了」，配原来的操作。</p></div>
+</div>
+
+<h3 class="sub" id="send-mode-states">细节详态 · 「插入这一轮 ⌄」胶囊全状态、宽屏菜单、断线记忆与 200% 字号</h3>
+<div class="screens" style="align-items:flex-start">
+  <div style="width:440px;max-width:100%;background:var(--s1);border-radius:20px;padding:16px;box-shadow:inset 0 0 0 .5px var(--sep);position:relative" id="send-mode-wide-menu">
+    <div style="font-size:13px;font-weight:600;color:var(--ink2);margin-bottom:10px">宽屏双项菜单 · 快捷键、右对齐与不夺取输入焦点</div>
+    <div style="height:126px;position:relative">
+      <div class="smenu" style="position:absolute;right:0;bottom:0;width:276px;border-radius:14px;background:var(--s3);box-shadow:var(--elev);padding:5px">
+        <div class="it on" style="border-radius:8px;padding:8px 10px;font-size:13px">
+          <div>插入这一轮<small style="font-size:12px">立即发给正在运行的会话</small></div>
+          <span style="font-size:11px;color:var(--ink3);margin-right:4px">⌘↵</span>
+          <svg class="ic ck" width="15" height="15"><use href="#lu-check"/></svg>
+        </div>
+        <div class="it" style="border-radius:8px;padding:8px 10px;font-size:13px">
+          <div>这一轮结束后发<small style="font-size:12px">排在当前回复完成后发出</small></div>
+          <span style="font-size:11px;color:var(--ink3)">⌥↵</span>
+        </div>
+      </div>
+    </div>
+    <div class="wcomp" style="position:static;max-width:none;margin-top:8px;border-color:var(--in-edge-hi)">
+      <div class="tx">顺便检查 Redis 连接池回收<i style="display:inline-block;width:2px;height:16px;background:var(--orange);vertical-align:-3px;margin-left:2px"></i></div>
+      <div class="wbar">
+        <span class="plus"><svg class="ic" width="18" height="18"><use href="#lu-plus"/></svg></span>
+        <span class="smode" style="background:var(--s3);color:var(--ink);box-shadow:inset 0 0 0 .5px var(--rim)" role="button" aria-expanded="true" aria-label="发送方式：插入这一轮，点按切换">插入这一轮<svg class="ic" width="13" height="13"><use href="#lu-chevron-down"/></svg></span>
+        <span class="snd"><svg class="ic" width="16" height="16"><use href="#lu-arrow-up"/></svg></span>
+      </div>
+    </div>
+    <p style="font-size:13px;line-height:1.55;color:var(--ink2);margin:10px 0 0">胶囊紧贴发送键左侧 6px（高 32、圆角 8 同心）；点开或关闭菜单均不改变文本框焦点与软键盘（<code>onPointerDown preventDefault</code> / iOS <code>UIMenu</code> / Android <code>Popup(focusable=false)</code>）。<code>Enter</code> 换行，<code>⌘/Ctrl+Enter</code> 按当前胶囊发出，<code>⌥/Alt+Enter</code> 单次直接排到本轮结束后发。</p>
+  </div>
+
+  <div style="width:375px;background:var(--paper);border-radius:24px;padding:16px;box-shadow:inset 0 0 0 .5px var(--sep)" id="send-mode-disconnect-reset">
+    <div style="font-size:13px;font-weight:600;color:var(--ink2);margin-bottom:10px">运行中途断线 · 发出后复位 · 本轮跑完消失</div>
+    <div style="font-size:12px;color:var(--ink2);margin-bottom:6px">① 运行中写草稿时断线：保留草稿与已选「本轮结束后发 ⌄」（40% 只读），重连恢复</div>
+    <div class="cbar glass run-draft" style="position:static;background:var(--gbg)">
+      <span class="tx">库存回滚也保留并发压测</span>
+      <div class="crow">
+        <span class="plus dis"><svg class="ic" width="20" height="20"><use href="#lu-plus"/></svg></span>
+        <span class="smode q" style="opacity:.4">本轮结束后发<svg class="ic" width="13" height="13"><use href="#lu-chevron-down"/></svg></span>
+        <span class="snd off"><svg class="ic" width="18" height="18"><use href="#lu-arrow-up"/></svg></span>
+      </div>
+    </div>
+    <div style="font-size:12px;color:var(--ink2);margin:12px 0 6px">② 写草稿期间本轮跑完变为空闲：胶囊 160 ms 淡出，草稿不丢直接发下一轮；发出任一条后自动复位回默认「插入这一轮 ⌄」</div>
+    <div class="cbar glass" style="position:static;background:var(--gbg)">
+      <span class="plus"><svg class="ic" width="20" height="20"><use href="#lu-plus"/></svg></span>
+      <span class="tx">库存回滚也保留并发压测</span>
+      <span class="snd"><svg class="ic" width="20" height="20"><use href="#lu-arrow-up"/></svg></span>
+    </div>
+    <p style="font-size:13px;line-height:1.55;color:var(--ink2);margin:10px 0 0">当前 CLI 不支持选择发送时机时直接隐藏该胶囊，不画永远灰着的按钮。</p>
+  </div>
+
+  <div style="width:375px;background:var(--paper);border-radius:24px;padding:16px;box-shadow:inset 0 0 0 .5px var(--sep)" id="send-mode-en-200pct">
+    <div style="font-size:13px;font-weight:600;color:var(--ink2);margin-bottom:10px">English 文案与 200% 大字号自适应</div>
+    <div class="cbar glass run-draft" style="position:static;background:var(--gbg)">
+      <span class="tx">Also check pool teardown on timeout</span>
+      <div class="crow">
+        <span class="plus"><svg class="ic" width="20" height="20"><use href="#lu-plus"/></svg></span>
+        <span class="smode">Send into turn<svg class="ic" width="13" height="13"><use href="#lu-chevron-down"/></svg></span>
+        <span class="snd"><svg class="ic" width="18" height="18"><use href="#lu-arrow-up"/></svg></span>
+      </div>
+    </div>
+    <div class="cbar glass run-draft" style="position:static;background:var(--gbg);margin-top:8px">
+      <span class="tx">Run integration tests after this</span>
+      <div class="crow">
+        <span class="plus"><svg class="ic" width="20" height="20"><use href="#lu-plus"/></svg></span>
+        <span class="smode q">After this turn<svg class="ic" width="13" height="13"><use href="#lu-chevron-down"/></svg></span>
+        <span class="snd"><svg class="ic" width="18" height="18"><use href="#lu-arrow-up"/></svg></span>
+      </div>
+    </div>
+    <div class="cbar glass run-draft" style="position:static;background:var(--gbg);margin-top:10px;padding:14px 10px 10px">
+      <span class="tx" style="font-size:30px;line-height:1.3">顺便检查连接池</span>
+      <div class="crow" style="flex-wrap:wrap;row-gap:8px">
+        <span class="plus" style="width:48px;height:48px;border-radius:24px"><svg class="ic" width="24" height="24"><use href="#lu-plus"/></svg></span>
+        <span class="smode" style="height:48px;border-radius:24px;font-size:22px;padding:0 14px;max-width:calc(100% - 60px);overflow:hidden;text-overflow:ellipsis">本轮结束后发<svg class="ic" width="18" height="18"><use href="#lu-chevron-down"/></svg></span>
+        <span class="snd" style="width:48px;height:48px;border-radius:24px;margin-left:auto"><svg class="ic" width="22" height="22"><use href="#lu-arrow-up"/></svg></span>
+      </div>
+    </div>
+    <p style="font-size:13px;line-height:1.55;color:var(--ink2);margin:10px 0 0">200% 字号下底栏支持自动折行，<code>＋</code> 与 <code>↑</code> 始终保持 ≥44×44 完整触区。</p>
+  </div>
 </div>
 </section>
 <!-- ===== boundaries ===== -->
