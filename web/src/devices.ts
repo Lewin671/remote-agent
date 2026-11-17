@@ -115,7 +115,7 @@ export function describeBrowser(ua: string): string {
 
 export interface OriginContext {
   me: string; // this device's ID
-  devices: Map<string, DeviceInfo>;
+  devices: ReadonlyMap<string, DeviceInfo>;
   machine: string; // the session's computer, by name
 }
 

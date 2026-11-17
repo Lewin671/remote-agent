@@ -37,7 +37,6 @@ export class Recovery {
   private target: Bucket;
   private failures = 0;
   private retryAt = 0;
-  private listeners = new Set<() => void>();
   revision = 0;
   constructor(private now = () => performance.now(), private random = Math.random, private global = processBudget) {
     this.target = new Bucket(2, 1, now);
@@ -50,22 +49,6 @@ export class Recovery {
   failed() { this.retryAt = this.now() + this.random() * Math.min(1000 * 2 ** Math.min(this.failures++, 5), 30_000); }
   ready() {
     this.failures = 0; this.retryAt = 0; this.revision++;
-    for (const wake of [...this.listeners]) wake();
-  }
-  /** A new authenticated path retires only this HTTP waiter. Its delivery
-   * evidence survives in Link; the next attempt authorizes the original request bytes again. */
-  async follow<T>(send: (signal: AbortSignal) => Promise<T>, parent?: AbortSignal): Promise<T> {
-    const controller = new AbortController();
-    const abort = () => controller.abort(parent?.reason);
-    parent?.addEventListener("abort", abort, { once: true });
-    if (parent?.aborted) abort();
-    let wake!: () => void;
-    const changed = new Promise<never>((_, reject) => {
-      wake = () => { reject(new PathChanged()); controller.abort(); };
-      this.listeners.add(wake);
-    });
-    try { return await Promise.race([send(controller.signal), changed]); }
-    finally { this.listeners.delete(wake); parent?.removeEventListener("abort", abort); }
   }
 }
 

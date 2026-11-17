@@ -18,8 +18,10 @@ export interface CachedEvent {
 export const CACHE_PAGE_SIZE = 128;
 
 export interface EventCache {
-  /** At most 128 contiguous events after a previously restored prefix. */
-  read(sid: string, afterSeq?: bigint): Promise<CachedEvent[]>;
+  /** At most `limit` contiguous events after a previously restored prefix. */
+  read(sid: string, afterSeq?: bigint, limit?: number): Promise<CachedEvent[]>;
+  /** At most `limit` newest contiguous events ending at the highest stored seq, ordered ascending. */
+  readNewest(sid: string, limit?: number): Promise<CachedEvent[]>;
   append(sid: string, events: CachedEvent[]): Promise<void>;
   drop(sid: string): Promise<void>;
   /** Forgets the least recently opened sessions until the rest fits the
@@ -102,7 +104,8 @@ function forget(tx: IDBTransaction, sid: string) {
 }
 
 const idbCache: EventCache = {
-  async read(sid, afterSeq = 0n) {
+  async read(sid, afterSeq = 0n, limit = CACHE_PAGE_SIZE) {
+    const cap = limit > 0 ? limit : CACHE_PAGE_SIZE;
     const tx = (await db()).transaction([EVENTS, SESSIONS], "readwrite");
     const finished = done(tx);
     const rows = new Promise<Uint8Array[]>((resolve, reject) => {
@@ -111,7 +114,7 @@ const idbCache: EventCache = {
       req.onerror = () => reject(req.error);
       req.onsuccess = () => {
         const cursor = req.result;
-        if (!cursor || out.length === CACHE_PAGE_SIZE ||
+        if (!cursor || out.length === cap ||
             (cursor.key as [string, number])[1] !== Number(afterSeq) + out.length + 1) {
           resolve(out);
           return;
@@ -129,6 +132,41 @@ const idbCache: EventCache = {
         out.push({ seq: afterSeq + BigInt(out.length) + 1n, envelope: fromBinary(EnvelopeSchema, value) });
       } catch { break; }
     }
+    return out;
+  },
+  async readNewest(sid, limit = CACHE_PAGE_SIZE) {
+    const cap = limit > 0 ? limit : CACHE_PAGE_SIZE;
+    const tx = (await db()).transaction([EVENTS, SESSIONS], "readwrite");
+    const finished = done(tx);
+    const rows = new Promise<Array<{ seq: bigint; bytes: Uint8Array }>>((resolve, reject) => {
+      const out: Array<{ seq: bigint; bytes: Uint8Array }> = [];
+      const req = tx.objectStore(EVENTS).openCursor(IDBKeyRange.bound([sid, 1], [sid, Infinity]), "prev");
+      req.onerror = () => reject(req.error);
+      req.onsuccess = () => {
+        const cursor = req.result;
+        if (!cursor || out.length === cap) {
+          resolve(out);
+          return;
+        }
+        const seq = (cursor.key as [string, number])[1];
+        if (out.length > 0 && seq !== Number(out[out.length - 1].seq) - 1) {
+          resolve(out);
+          return;
+        }
+        out.push({ seq: BigInt(seq), bytes: cursor.value as Uint8Array });
+        cursor.continue();
+      };
+    });
+    const usage = (await result(tx.objectStore(SESSIONS).get(sid) as IDBRequest<Usage | undefined>)) ?? { bytes: 0, usedAt: 0 };
+    tx.objectStore(SESSIONS).put({ ...usage, usedAt: Date.now() }, sid);
+    const [values] = await Promise.all([rows, finished]);
+    const out: CachedEvent[] = [];
+    for (const row of values) {
+      try {
+        out.push({ seq: row.seq, envelope: fromBinary(EnvelopeSchema, row.bytes) });
+      } catch { break; }
+    }
+    out.reverse();
     return out;
   },
   async append(sid, events) {

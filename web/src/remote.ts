@@ -3,19 +3,15 @@ import type { RouteHint } from "./transport/direct-routing";
 import { watchSecurityInstall } from "./device-security-store";
 import { peerFrameBody } from "./transport/peer-frame";
 import { RESULT_RETENTION_MS } from "./result-retention.gen";
-import { Recovery, PathChanged, abortable, ownedRound, scopedClient } from "./transport/recovery";
+import { abortable, ownedRound, PathChanged } from "./transport/recovery";
 import { cleanup } from "./cleanup";
-import { type DispatchCall } from "./transport/dispatch";
-import { RequestSlot, newSlot, restoreSlot, CommandError, uncertain } from "./transport/request";
 import { Link as DeviceLink } from "./transport/link";
 import { RelayPath } from "./transport/relay-path";
 import type { FrameStream } from "./transport/path";
 import { machineNotificationKinds } from "./machine-notifications";
-import { verifiedOutcome, type Outcome } from "./outcome";
 import * as l10n from "./i18n";
 import { rejectRetiredHistory, UnsupportedHistoryError } from "./crypto";
-import { ScheduleSeen, taskVisible, taskGroup, type ScheduleTask, type ScheduleSpec, type ScheduleDetailVisit, type TaskEntry } from "./schedules";
-import { Attempt } from "./attempt";
+import { frequency, ScheduleSeen, taskVisible, taskGroup, type ScheduleTask, type ScheduleSpec, type ScheduleDetailVisit, type TaskEntry } from "./schedules";
 import { ComposerDraftStore, DraftTexts } from "./composer-drafts";
 import { readSecurityOperation } from "./security-operation";
 import { AuthorityClient, PairingDeliveryError, handoffCandidates as verifiedHandoffCandidates, type HandoffOffer } from "./authority-client";
@@ -23,8 +19,50 @@ import type { AuthorityPairing } from "./authority-pairing";
 import { clearLoginToken, loadLoginToken, saveLoginToken } from "./device-security-store";
 import { machineReplacementOrigins } from "./machine-replacement";
 import { getCore } from "./core/runtime";
-import type { WasmProjection } from "./core/projection";
-import { ProjectionStateSchema } from "./gen/remoteagent/core/v1/projection_pb";
+import { getCoreHost, type CoreExecutor, type HostBridge, type StreamLegCallbacks } from "./core/host";
+export type { StreamLegCallbacks } from "./core/host";
+import { renderText } from "./core/text";
+import {
+  AccountPrefsFetchedEventSchema,
+  AccountPrefsPutResultEventSchema,
+  CacheBootstrapLoadedEventSchema,
+  CacheEventsLoadedEventSchema,
+  CommandOutcomeEventSchema,
+  CommandRouteHint,
+  DevicesFetchedEventSchema,
+  EventSchema as CoreEventSchema,
+  EventsAppendedFrameSchema,
+  EventsPageFetchedEventSchema,
+  ListsFetchedEventSchema,
+  OutcomeSource,
+  PlainAccountPrefsSchema,
+  PlainDeviceSchema,
+  PlainEventSchema,
+  PlainMachineSchema,
+  PlainSessionSchema,
+  SecuritySnapshotEventSchema,
+  SessionByIdFetchedEventSchema,
+  SessionsPageFetchedEventSchema,
+  TokenResultEventSchema,
+  type CacheBootstrapLoadedEvent,
+  type CacheDeleteEffect,
+  type CacheEventsLoadedEvent,
+  type CacheWriteEffect,
+  type CommandOutcomeEvent,
+  type DispatchCommandEffect,
+  type Event as CoreEvent,
+  type PlainAccountPrefs,
+  type PlainDevice,
+  type PlainEvent,
+  type PlainMachine,
+  type PlainSession,
+  type RpcEffect,
+  type SecuritySnapshotEvent,
+  type TokenResultEvent,
+} from "./gen/remoteagent/core/v1/app_pb";
+import { ConnState as CoreConnState } from "./gen/remoteagent/core/v1/home_view_pb";
+import type { SessionDataView, SyncSessionView, SyncStateView } from "./gen/remoteagent/core/v1/sync_view_pb";
+import { ProjectionStateSchema, type ProjectionState } from "./gen/remoteagent/core/v1/projection_pb";
 import { PlanProposedSchema } from "./gen/remoteagent/v1/event_pb";
 import {
   LiveSnapshotSchema,
@@ -50,18 +88,30 @@ import {
   parseHeader,
   Purpose,
   SecurityError,
-  stateHash,
   type Member,
   type SecurityHeader,
 } from "./device-security";
 import {
+  AuthService,
+  ClientService,
+  PairingService,
+  DeviceKind,
+  DeviceRegistrationSchema,
+  PutDeviceMetaRequestSchema,
+  ListMachinesResponseSchema,
+  ListRemoteSessionsResponseSchema,
+  NotifyKind,
+  PeerFrameSchema,
+  ServerFrameSchema,
+  TermHelloSchema,
   PairApprovalSchema,
   RegisterDeviceRequestSchema,
+  AccountPrefsObjectSchema,
+  type AccountPrefsObject,
+  type Device,
+  type Machine as RemoteMachine,
+  type RemoteSession,
 } from "./gen/remoteagent/v1/relay_pb";
-// Remote keeps the page in sync with the server: it logs in, holds the
-// decrypted machines, sessions and events, follows the push stream, and
-// sends sealed commands. Content is only ever decrypted here.
-
 import {
   create,
   fromBinary,
@@ -96,8 +146,8 @@ import {
 } from "./gen/remoteagent/v1/envelope_pb";
 import {
   Agent,
+  EventSchema,
   ImageFormat,
-  InputStatus,
   SendMode,
   SessionStatus,
   type Event,
@@ -111,29 +161,9 @@ import {
   type ImageStorageUsage,
   type DaemonSettings,
   type ListModelsResponse,
+  type MachineReplacementProof,
   type Session,
 } from "./gen/remoteagent/v1/local_pb";
-import {
-  AuthService,
-  ClientService,
-  PairingService,
-  DeviceKind,
-  DeviceRegistrationSchema,
-  PutDeviceMetaRequestSchema,
-  ListMachinesResponseSchema,
-  ListRemoteSessionsResponseSchema,
-  NotifyKind,
-  PeerFrameSchema,
-  ServerFrameSchema,
-  TermHelloSchema,
-  type AccountPrefsObject,
-  AccountPrefsObjectSchema,
-  type Device,
-  type Machine as RemoteMachine,
-  type RemoteSession,
-  type SessionCursor,
-  type StoredEvent,
-} from "./gen/remoteagent/v1/relay_pb";
 import {
   CommandResultSchema,
   CommandSchema,
@@ -148,21 +178,9 @@ import {
   type ProjectPrefs,
   type TerminalFrame,
 } from "./gen/remoteagent/v1/remote_pb";
-
-export type CommandKind = MessageInitShape<typeof CommandSchema>["kind"];
-import { EventSchema } from "./gen/remoteagent/v1/event_pb";
-import { stillUnknown } from "./attempt";
 import { describeBrowser, type DeviceInfo } from "./devices";
 import { fileUploadUpdateRequired, type Prepare, type Tray } from "./attach";
-import {
-  commitOp,
-  emptyPrefs,
-  type PrefKind,
-  type PrefOp,
-  type PrefsSnapshot,
-  type PrefsStore,
-} from "./prefs";
-import { endedUnsent, machineName, modelLabel, type Outgoing } from "./model";
+import { modelLabel, type Outgoing } from "./model";
 import { CACHE_PAGE_SIZE, eventCache, type CachedEvent, type EventCache } from "./eventcache";
 import { PROTOCOL_VERSION } from "./protocol";
 import {
@@ -175,13 +193,14 @@ import {
   type StoredAccount,
 } from "./storage";
 
+export type CommandKind = MessageInitShape<typeof CommandSchema>["kind"];
+
 export interface MachineView {
   id: string;
   online: boolean;
   lastSeenMs: bigint;
   meta?: MachineMeta;
   metaRev: bigint;
-  /** Whether the copy kept in this browser had it online: what shows until the lists are in. */
   keptOnline?: boolean;
 }
 
@@ -195,82 +214,153 @@ export interface SessionView {
   metaRev: bigint;
   lastSeq: bigint;
   updatedMs: bigint;
-  // When the session ended as the server lists it, 0 while it has not:
-  // its place in the paged listing. What is shown comes from info.
   endedMs: bigint;
 }
 
-/** How long a failed page or lookup waits before it is asked for again. */
-const RETRY_MS = 5000;
-
-/** Ended sessions fetched per page of the listing. */
-export const SESSION_PAGE = 50;
-
-interface EventBuffer {
-  unavailableSeqs?: Set<bigint>;
-  verifiedSeqs?: Set<bigint>;
-  verifiedEvents?: Event[];
-  events: Event[]; // contiguous from seq 1
-  recent?: Event[]; // a contiguous suffix, shown alone until backfill joins it
-  tailRequested?: boolean;
-  pending: Map<bigint, Event>; // arrived ahead of a gap
-  fetching: boolean;
-  refetch: boolean;
-  // All of the history is here.
-  loaded: boolean;
-  // Enough is here to show without the list moving later: all of it, the
-  // latest page (older ones follow), or the whole copy cached in this browser.
-  ready: boolean;
-  // The copy cached in this browser has been read, or there is none.
-  restored: boolean;
-  // The last fetch failed; a retry may help.
-  error: string;
-  // An event did not open; history stops before it.
-  broken: boolean;
-  retired?: boolean;
-  inputStatuses?: Map<string, InputStatus>;
-  bytes?: number;
-  usedAt?: number;
-}
-
-/** How far a session's history got: loading, complete, a fetch that
- * failed, or an event that does not open. */
 export interface History {
   backfilling?: boolean;
   unavailable?: number;
   loaded: boolean;
-  /** The chat can be drawn: what is held is what the list will end up
-   * showing at its end, though older records may still come in above. */
   ready: boolean;
   error: string;
   broken: boolean;
 }
 
-export { RequestSlot, newSlot, restoreSlot, CommandError, uncertain, COMMAND_TTL_MS, type PreparedPayload } from "./transport/request";
 export class ScheduleRevisionError extends Error {}
 
-/** The state of answering one question call. */
-export interface AnswerState {
-  index: number; // the question being answered
-  ticked: number[]; // options ticked on a multi-select question, unsent
-  // The last answer tried and its request slot; kept after an unknown
-  // outcome so a retry is the same request.
-  last?: { key: string; slot: RequestSlot };
-  busy: string; // key of the answer in flight, kept after the last one succeeds
-  error: string;
-  unknown: boolean; // the last failure left the outcome unknown
+// --- Transitional Step 3/4 command helper (remove when Session & Schedules migrate to Core) ---
+
+export const COMMAND_TTL_MS = 60_000;
+export const COMMAND_EXPIRY_SKEW_MS = MAX_CLOCK_SKEW;
+
+export type Outcome = "not_sent" | "executed" | "conflict" | "rejected" | "unknown";
+
+export interface PreparedPayload {
+  machineId: string;
+  sid: string;
+  plain: Uint8Array;
 }
 
-const noAnswer: AnswerState = {
-  index: 0,
-  ticked: [],
-  busy: "",
-  error: "",
-  unknown: false,
-};
+export class RequestSlot {
+  readonly evidence: {
+    unresolved?: boolean;
+    includePrior: (prior: boolean) => void;
+  };
+  beforeDispatch?: (slot: RequestSlot) => Promise<void>;
+  constructor(
+    public requestId: string,
+    public deadline: number,
+    public prepared?: PreparedPayload,
+    prior = false,
+  ) {
+    const ev: { unresolved?: boolean; includePrior: (p: boolean) => void } = {
+      unresolved: prior ? true : undefined,
+      includePrior(p: boolean) {
+        if (p) this.unresolved = true;
+      },
+    };
+    this.evidence = ev;
+  }
+}
 
-/** Where the API is reached: the account's server, or with
- * VITE_SAME_ORIGIN_API the page's own origin, which forwards to it. */
+export function restoreSlot(
+  saved: Pick<RequestSlot, "requestId" | "deadline" | "prepared">,
+  prior: boolean,
+): RequestSlot {
+  return new RequestSlot(saved.requestId, saved.deadline, saved.prepared, prior);
+}
+
+export function newSlot(now = Date.now()): RequestSlot {
+  return new RequestSlot(newRequestID(), now + COMMAND_TTL_MS, undefined, false);
+}
+
+export class CommandError extends Error {
+  constructor(
+    readonly code: string,
+    message: string,
+    readonly fromDaemon = false,
+    readonly readOnly = false,
+    readonly outcome: Outcome = fromDaemon ? "unknown" : "not_sent",
+    readonly conflictKind = "",
+    readonly resultAvailable = true,
+  ) {
+    super(
+      (outcome === "executed" && !resultAvailable) || conflictKind === "identity"
+        ? message
+        : code === "disk_full"
+          ? l10n.t("machine_status.disk_full")
+          : code === "storage_exhausted"
+            ? l10n.t("machine_status.storage_exhausted")
+            : message,
+    );
+  }
+  get needsResultRefresh() {
+    return (
+      (this.outcome === "executed" && !this.resultAvailable) ||
+      (this.outcome === "conflict" && this.conflictKind === "identity")
+    );
+  }
+}
+
+export function uncertain(e: unknown): boolean {
+  if (e instanceof CommandError) return e.outcome === "unknown" || e.needsResultRefresh;
+  return e instanceof ConnectError;
+}
+
+export function stillUnknown(error: unknown, wasUnknown: boolean): boolean {
+  if (!(error instanceof CommandError)) return wasUnknown || uncertain(error);
+  if (error.fromDaemon && error.outcome !== "not_sent" && !uncertain(error)) return false;
+  if (error.outcome === "not_sent") return wasUnknown;
+  return error.outcome === "unknown" || wasUnknown;
+}
+
+export class Attempt<P> {
+  private pending?: { payload: P; slot: RequestSlot; tries: number; expired: boolean; frozen: boolean };
+  get expired() {
+    return !!this.pending?.expired;
+  }
+  get frozen() {
+    return !!this.pending?.frozen;
+  }
+  get payload(): P | undefined {
+    return this.pending?.payload;
+  }
+  next(payload: P): { payload: P; slot: RequestSlot } {
+    this.pending ??= { payload, slot: newSlot(), tries: 0, expired: false, frozen: false };
+    this.pending.tries++;
+    if (Date.now() >= this.pending.slot.deadline && !this.pending.slot.evidence.unresolved) {
+      this.pending = { payload, slot: newSlot(), tries: 1, expired: false, frozen: false };
+    }
+    return { payload: this.pending.payload, slot: this.pending.slot };
+  }
+  settle(error?: unknown, sent?: { slot: RequestSlot }) {
+    const p = this.pending;
+    if (!p || (sent && sent.slot !== p.slot)) return;
+    const final = error instanceof CommandError && error.fromDaemon && error.outcome !== "not_sent" && !uncertain(error);
+    if (error !== undefined && (stillUnknown(error, p.tries > 1 || p.frozen || !!p.slot.evidence.unresolved) || (!!p.slot.evidence.unresolved && !final))) {
+      p.frozen = true;
+      p.slot.evidence.includePrior(true);
+      if (Date.now() >= p.slot.deadline + RESULT_RETENTION_MS) p.expired = true;
+      return;
+    }
+    this.pending = undefined;
+  }
+  abandon() {
+    this.pending = undefined;
+  }
+}
+
+export interface AnswerState {
+  index: number;
+  ticked: number[];
+  last?: { key: string; slot: RequestSlot };
+  busy: string;
+  error: string;
+  unknown: boolean;
+}
+
+const noAnswer: AnswerState = { index: 0, ticked: [], busy: "", error: "", unknown: false };
+
 export function apiBase(server: string): string {
   const origin = checkServer(server);
   return import.meta.env.VITE_SAME_ORIGIN_API ? location.origin : origin;
@@ -282,20 +372,22 @@ export interface TermConn {
 }
 
 export type ConnState = "connecting" | "online" | "offline";
-/** Which stretch of the way to the computer is down, the nearest one only
- * (client-v30 「断线」): past it nothing is known. "waiting" is a connection
- * being made or just lost, which mostly comes back by itself. */
 export type Link = "online" | "waiting" | "no-network" | "no-server";
 
-
-// Match the security protocol's five-minute maximum clock skew when deciding
-// whether a command can still be retried as the same request.
-export const COMMAND_EXPIRY_SKEW_MS = MAX_CLOCK_SKEW;
-
 export function readOnlyCommand(cmd: CommandKind): boolean {
-  return !!cmd && (["getSettings", "listModels", "listDirectories", "getLiveSnapshot", "getMachineStatus", "getImageUploadStatus", "getSharedFileChunk"].includes(cmd.case ?? "") ||
-
-    cmd.case === "schedule" && ["list", "get"].includes(cmd.value.operation ?? ""));
+  return (
+    !!cmd &&
+    ([
+      "getSettings",
+      "listModels",
+      "listDirectories",
+      "getLiveSnapshot",
+      "getMachineStatus",
+      "getImageUploadStatus",
+      "getSharedFileChunk",
+    ].includes(cmd.case ?? "") ||
+      (cmd.case === "schedule" && ["list", "get"].includes(cmd.value.operation ?? "")))
+  );
 }
 
 export function isInteractiveCommand(cmd: CommandKind): boolean {
@@ -316,41 +408,35 @@ export function isInteractiveCommand(cmd: CommandKind): boolean {
 /** Largest piece of an image upload: each is sealed into one command,
  * which must stay under 1 MiB. */
 const UPLOAD_CHUNK = 768 * 1024;
-
-/** How many opened display copies stay in memory. */
 const IMAGE_CACHE = 40;
-
-/** A display copy fetched with GetImage: shown only when it opened where
- * it belongs and is the format it says. */
-export type ImageResult =
-  | {
-      kind: "ok";
-          blob: Blob;
-      width: number;
-      height: number;
-      format: ImageFormat;
-    }
-  | { kind: "expired" } // kept past its retention: only the preview is left
-  | { kind: "missing" } // never stored
-  | { kind: "bad"; why?: string }; // did not open, or is not the format it claims
-
-/** The account preferences object with the project list's settings. */
+const OPEN_TIMEOUT_MS = 15_000;
+const RPC_TIMEOUT_MS = 45_000;
+const SETUP_IDLE_MS = RPC_TIMEOUT_MS + OPEN_TIMEOUT_MS;
+const SESSION_PAGE = 50;
+export { SESSION_PAGE };
 export const PREFS_OBJECT = "project-prefs";
+const SCOPE_STORAGE_KEY = "ra-scope";
+const SCOPE_HMAC_KEY_VALUE = "scope-hmac-key";
+
+export type ImageResult =
+  | { kind: "ok"; blob: Blob; width: number; height: number; format: ImageFormat }
+  | { kind: "expired" }
+  | { kind: "missing" }
+  | { kind: "bad"; why?: string };
 
 export interface PrefsState {
   status: "loading" | "ready" | "error";
   error: string;
-  snap?: PrefsSnapshot;
-  // Operations in flight, by project path.
-  pending: Map<string, PrefKind>;
-  // The last operation that did not go through, to retry as it was.
-  failed?: { op: PrefOp; error: string };
-  // When another client last changed the list.
+  snap?: { revision: bigint; prefs: ProjectPrefs };
+  pending: Map<string, string>;
+  failed?: { op: { id: string; kind: string; path: string }; error: string };
   changedAt?: number;
 }
 
-/** Registers this browser as a device of an existing account. The phone's
- * pairing approval, not the account root, authorizes the registration. */
+function emptyPrefs(): ProjectPrefs {
+  return create(ProjectPrefsSchema, { schema: 1 });
+}
+
 export async function joinWithApproval(
   accountPublicKey: Uint8Array<ArrayBuffer>,
   server: string,
@@ -361,18 +447,15 @@ export async function joinWithApproval(
     approvalSignature: Uint8Array;
   },
   existing?: StoredAccount,
-  security?: import("./device-security-store").SecurityRecord,
+  security?: SecurityRecord,
   replace = false,
 ): Promise<StoredAccount> {
   server = checkServer(server);
   const account = await deviceID(accountPublicKey);
   const device = enrollment.device;
-  const pub = new Uint8Array(
-    await crypto.subtle.exportKey("raw", device.publicKey),
-  );
+  const pub = new Uint8Array(await crypto.subtle.exportKey("raw", device.publicKey));
   const a = fromBinary(PairApprovalSchema, enrollment.approval);
-  const same = (x: Uint8Array, y: Uint8Array) =>
-    x.length === y.length && x.every((v, i) => v === y[i]);
+  const same = (x: Uint8Array, y: Uint8Array) => x.length === y.length && x.every((v, i) => v === y[i]);
   if (
     a.accountId !== account ||
     a.pairingId !== enrollment.pairingId ||
@@ -382,11 +465,11 @@ export async function joinWithApproval(
     a.nonce.length !== 16 ||
     a.expiresMs <= BigInt(Date.now()) ||
     a.approverPublicKey.length !== 32 ||
-    (await deviceID(a.approverPublicKey as Uint8Array<ArrayBuffer>)) !==
-      a.approverDeviceId ||
+    (await deviceID(a.approverPublicKey as Uint8Array<ArrayBuffer>)) !== a.approverDeviceId ||
     a.approverDeviceId === (await deviceID(pub))
-  )
+  ) {
     throw new Error(l10n.t("security.pairing_approval_does_not_match_this_device_or_has"));
+  }
   const signer = await crypto.subtle.importKey(
     "raw",
     a.approverPublicKey as Uint8Array<ArrayBuffer>,
@@ -399,13 +482,11 @@ export async function joinWithApproval(
       "Ed25519",
       signer,
       enrollment.approvalSignature as Uint8Array<ArrayBuffer>,
-      concat(
-        new TextEncoder().encode("remote-agent/v1/pair-approval\0"),
-        enrollment.approval,
-      ),
+      concat(new TextEncoder().encode("remote-agent/v1/pair-approval\0"), enrollment.approval),
     ))
-  )
+  ) {
     throw new Error(l10n.t("errors.invalid_pairing_approval_signature"));
+  }
   const reg = toBinary(
     DeviceRegistrationSchema,
     create(DeviceRegistrationSchema, {
@@ -436,769 +517,213 @@ export async function joinWithApproval(
   return stored;
 }
 
-/** How long the stream may take from dialing to the server's ready. */
-const OPEN_TIMEOUT_MS = 15_000;
-const STREAM_IDLE_MS = 3_000;
-const STREAM_RESUME_IDLE_MS = 3_000;
-const STREAM_DEFAULT_DEAD_MS = 60_000;
-
-class LegLiveness {
-  heartbeats = 0;
-  lastHeartbeatAt = 0;
-  observedIntervalMs = 0;
-  onHeartbeat(now: number) {
-    this.heartbeats++;
-    if (this.heartbeats >= 2) {
-      this.observedIntervalMs = Math.max(0, now - this.lastHeartbeatAt);
-    }
-    this.lastHeartbeatAt = now;
-  }
-  suspectAfterMs(): number {
-    if (this.heartbeats < 2) return STREAM_DEFAULT_DEAD_MS;
-    return Math.max(STREAM_IDLE_MS, 3 * this.observedIntervalMs);
-  }
-}
-const RECONNECT_NOTICE_MS = 1_500;
-const RPC_TIMEOUT_MS = 45_000;
-// Allow one full RPC plus local verification/storage. Progress starts a
-// fresh budget, so several healthy round trips do not time out in aggregate.
-const SETUP_IDLE_MS = RPC_TIMEOUT_MS + OPEN_TIMEOUT_MS;
-
-/** What a plan the live snapshot says is pending reads as: the plan event
- * it names (planEventSeq), the clean Markdown the CLI proposed, when this
- * device holds that event readable (readable: opened and verified at that
- * place of the session's history, which binds it, so no other event can
- * stand in for it). Only without it does the terminal's text stand in, box
- * lines and all. Whether a plan is pending, and what an answer is bound to
- * (the event's seq and the screen's hash), stay the snapshot's alone. */
 export function livePlanText(
-  live: LiveSnapshot,
+  live: LiveSnapshot | undefined,
   events: readonly Event[],
   readable: (seq: bigint) => boolean,
 ): string {
+  if (!live?.session?.planOpen || live.planEventSeq === 0n) return live?.planScreen ?? "";
   const seq = live.planEventSeq;
-  // A whole history holds event n at n - 1; otherwise look for it.
   let e = seq > 0n && seq <= BigInt(events.length) ? events[Number(seq) - 1] : undefined;
-  if (e?.seq !== seq)
-    for (let i = events.length - 1; i >= 0 && !(e?.seq === seq); i--) e = events[i];
+  if (e?.seq !== seq) {
+    for (let i = events.length - 1; i >= 0 && e?.seq !== seq; i--) e = events[i];
+  }
   if (
     e?.seq === seq &&
     e.kind.case === "planProposed" &&
     readable(seq) &&
     e.kind.value.text.trim() &&
     !isSkeleton(e.kind.value)
-  )
+  ) {
     return e.kind.value.text;
+  }
   return live.planScreen;
 }
 
-const NO_MACHINES: ReadonlyMap<string, MachineView> = new Map();
+type CacheRefItem =
+  | { kind: "machine"; raw: RemoteMachine }
+  | { kind: "session"; raw: RemoteSession }
+  | { kind: "events"; sessionId: string; raw: CachedEvent[] }
+  | { kind: "event"; sessionId: string; raw: CachedEvent }
+  | { kind: "prefs"; raw: AccountPrefsObject };
 
-export class Remote {
-  private sessionProjections = new Map<string, {
-    handle: WasmProjection;
-    events: Event[];
-    count: number;
-    agent: Agent;
-    value: Derived;
-  }>();
-  private currentDerivations = new WeakMap<Derived, {
-    sid: string; live?: LiveSnapshot; checkpoint?: LiveSnapshot; agent: Agent;
-    events?: Event[]; count: number; value: Derived;
-  }>();
-  private liveSnapshots = new Map<string, LiveSnapshot>();
-  private liveErrors = new Map<string, string>();
-  private liveJobs = new Map<string, Promise<void>>();
+type CacheWritePayload =
+  | { kind: "machine"; raw: RemoteMachine }
+  | { kind: "session"; raw: RemoteSession }
+  | { kind: "events"; sessionId: string; raw: CachedEvent[] }
+  | { kind: "prefs"; raw: AccountPrefsObject }
+  | { kind: "sessionOpen"; sessionId: string; open: boolean };
 
-  private directoryJob?: { head: Uint8Array; promise: Promise<void>; controller: AbortController; invalidated?: boolean };
-  private directoryHead?: Uint8Array;
-  private recoveryObjectsPending = false;
+function connectErrorCode(code: Code): string {
+  switch (code) {
+    case Code.DeadlineExceeded: return "deadline_exceeded";
+    case Code.FailedPrecondition: return "failed_precondition";
+    case Code.PermissionDenied: return "permission_denied";
+    case Code.InvalidArgument: return "invalid_argument";
+    case Code.NotFound: return "not_found";
+    case Code.Unauthenticated: return "unauthenticated";
+    case Code.Unavailable: return "unavailable";
+    case Code.Unknown: return "unknown";
+    case Code.Internal: return "internal";
+    case Code.Canceled: return "canceled";
+    case Code.Aborted: return "aborted";
+    case Code.AlreadyExists: return "already_exists";
+    case Code.ResourceExhausted: return "resource_exhausted";
+    default: return "unknown";
+  }
+}
+
+function readStoredScopeToken(): string {
+  try {
+    const raw = localStorage.getItem(SCOPE_STORAGE_KEY) ?? "";
+    return !raw || raw === "*" ? "all" : raw;
+  } catch {
+    return "all";
+  }
+}
+
+function syncSessionToView(sv: SyncSessionView): SessionView {
+  return {
+    id: sv.sessionId,
+    machineId: sv.machineId,
+    info: sv.info,
+    checkpoint: sv.checkpoint,
+    checkpointStatus: sv.checkpointInvalid ? "invalid" : sv.checkpoint ? "ready" : "waiting",
+    metaRev: sv.metaRev,
+    lastSeq: sv.lastSeq,
+    updatedMs: sv.updatedMs,
+    endedMs: sv.listedEndedMs,
+    ...(sv.retiredHistory
+      ? { historyError: l10n.t("errors.history_keys_unavailable_records_from_before_recovery_cannot_be") }
+      : sv.openFailed
+        ? { historyError: l10n.t("session.history_unreadable") }
+        : {}),
+  };
+}
+
+export class Remote implements CoreExecutor {
+  private hostBridge?: HostBridge;
+  private syncStateView?: SyncStateView;
+  private watchedSession?: { sessionId: string; view: SessionDataView };
+  private readonly liveSnapshots = new Map<string, LiveSnapshot>();
+  private readonly liveErrors = new Map<string, string>();
+  private readonly liveJobs = new Map<string, Promise<void>>();
+  private currentDerivations = new WeakMap<
+    Derived,
+    { sid: string; live?: LiveSnapshot; checkpoint?: LiveSnapshot; agent: Agent; events?: Event[]; value: Derived }
+  >();
+  private projectionDerivations = new WeakMap<ProjectionState, Derived>();
+  private emptyDerivations = new Map<Agent, Derived>();
+
+  // Cache references assigned while unpacking server/cache payloads; unconsumed refs are released after Core dispatch.
+  private cacheRefSeq = 0;
+  private cacheRefs = new Map<string, CacheRefItem>();
+  private eventCacheRefs = new WeakMap<CoreEvent, string[]>();
+  private persistedMachines = new Map<string, RemoteMachine>();
+  private persistedSessions = new Map<string, RemoteSession>();
+  private persistedOpen = new Set<string>();
+  private sessionReplacements = new Map<string, MachineReplacementProof[]>();
+
   private trustedMembers = new Map<string, Member>();
   private archiveMachines = new Set<string>();
+  private sessionSeeds = new Map<string, Uint8Array<ArrayBuffer>>();
+  private recoveryObjectsPending = false;
   private descriptionPending = false;
+  private needsDescribeSelf = false;
+  private securityPushSeq = 1n;
+  private devicesPushSeq = 1n;
+  private coreSyncDepth = 0;
+  private serverAhead = false;
   authorityDeviceId = "";
-  /** Set when a state is from the future relative to this device's clock. */
   clockWarning = "";
   authorityError = "";
 
-  private sessionSeeds = new Map<string, Uint8Array<ArrayBuffer>>();
   readonly security: DeviceSecurityClient;
   readonly authority: AuthorityClient;
-  get isAuthority() { return this.authorityDeviceId === this.account.deviceId; }
-  get recoveryPending() { return this.security.recoveryPending; }
-  get recoveryReadyMs() { return this.security.recoveryReadyMs; }
-  get recoveryStatusStale() { return this.security.recoveryStatusStale; }
-  private unwatchSecurityPush?: () => void;
-  /** Development fixture hooks; the real client never enables these. */
-  demoFlag(_name: string): boolean {
-    return false;
-  }
-  private sharedFilesState?: SharedFileManager;
-  get sharedFiles(): SharedFileManager {
-    return (this.sharedFilesState ??= new SharedFileManager({
-      getChunk: (sid, fileId, offset) => this.getSharedFileChunk(sid, fileId, offset),
-      isConnected: sid => this.peer(this.sessions.get(sid)?.machineId).ready,
-      isMachineOnline: (sid) => {
-        const s = this.sessions.get(sid);
-        return !!(s && this.peer(s.machineId).reachable);
-      },
-      isSessionEnded: (sid) => {
-        const s = this.sessions.get(sid);
-        return s?.info?.status === SessionStatus.EXITED || (s?.endedMs ?? 0n) > 0n;
-      },
-      sharedFileChunkBytes: (sid) => {
-        const s = this.sessions.get(sid);
-        return (s && this.peer(s.machineId).capabilities?.sharedFileChunkBytes) || 0;
-      },
-      store: sharedFileStore,
-    }));
-  }
-  hasSharedFilesCapability(sid: string): boolean {
-    const s = this.sessions.get(sid);
-    return !!(s && this.peer(s.machineId).capabilities?.sharedFiles === true);
-  }
-  machines = new Map<string, MachineView>();
-  schedules = new Map<
-    string,
-    { tasks: ScheduleTask[]; revision: bigint; loading: boolean; error: string }
-  >();
-  private scheduleSeenState?: ScheduleSeen;
-  private get scheduleSeen() {
-    return this.scheduleSeenState ??= new ScheduleSeen([this.account.server, this.account.deviceId], {
-      getItem: key => localStorage.getItem(key), setItem: (key, value) => localStorage.setItem(key, value),
-    }, run => { void closeScheduleNotification(run); });
-  }
-  scheduleBadge() { return this.scheduleSeen.count(this.taskEntries()); }
-  scheduleUnread(machineId: string, task: ScheduleTask) { return this.scheduleSeen.unread(machineId, task); }
-  scheduleHasNew(machineId: string, task: ScheduleTask) { return this.scheduleSeen.hasNew(machineId, task); }
-  scheduleNewResults() { return this.taskEntries().some(e => this.scheduleHasNew(e.machineId, e.task)); }
-  markScheduleRead(machineId: string, task: ScheduleTask) { this.scheduleSeen.markRead(machineId, task); this.changed(); }
-  markScheduleUnread(machineId: string, task: ScheduleTask, leaving = false) {
-    const latest = this.schedules.get(machineId)?.tasks.find(current => current.id === task.id);
-    if (!latest) return;
-    this.scheduleSeen.markUnread(machineId, latest, leaving);
-    this.changed();
-  }
-  setScheduleDetail(machineId?: string, taskId?: string, visit?: ScheduleDetailVisit) {
-    const unread = this.scheduleSeen.setDetail(machineId, taskId, visit);
-    this.changed();
-    return unread;
-  }
-  setScheduleSession(sessionId?: string) { this.scheduleSeen.setSession(sessionId); this.changed(); }
-  setSchedulePage(page: string) { this.scheduleSeen.setPage(page); }
-  setScheduleVisible(visible: boolean) { this.scheduleSeen.setVisible(visible); this.changed(); }
-  private scheduleLive = new Set<string>();
-  hasLiveSchedules(machineId: string): boolean { return this.scheduleLive.has(machineId); }
-  private scheduleRequests = new Map<string, string>();
-  private scheduleLoading = new Map<string, Promise<void>>();
-  private scheduleAgain = new Set<string>();
-  readonly scheduleAttempts = new Map<
-    string,
-    Attempt<{
-      operation: string;
-      taskId: string;
-      revision: number;
-      spec?: ScheduleSpec;
-      requestId?: string;
-      sessionId?: string;
-    }>
-  >();
-  // A run selected in task history is revealed even when its quiet rounds fold.
-  scheduleFocus = new Map<string, { seq: bigint; runId: string }>();
+  readonly direct: DirectEngine;
+  readonly deviceLink: DeviceLink;
+  readonly startPairing: (web: string, replacesDeviceId?: string) => Promise<AuthorityPairing>;
 
-  /** Current machine metadata, checked again for every file-bearing attempt. */
-  fileUploadIssue(machineId: string): string {
-    return this.peer(machineId).capabilities?.fileUpload === true ? "" : fileUploadUpdateRequired();
-  }
-
-  private checkFileCapability(machineId: string, cmd: CommandKind, mayHaveRun = false) {
-    if ((cmd?.case !== "send" && cmd?.case !== "createSession") || !cmd.value.fileIds?.length) return;
-    const issue = this.fileUploadIssue(machineId);
-    if (issue) throw new CommandError(mayHaveRun ? "unknown_outcome" : "failed_precondition", issue,false,false,mayHaveRun?"unknown":"not_sent");
-  }
-
-  supportsSchedules(id: string): boolean {
-    return this.peer(id).capabilities?.scheduledTasks === true && !(this.archiveMachines.has(id) && !this.trustedMembers.has(id));
-  }
-  taskEntries(): TaskEntry[] {
-    return [...this.schedules].flatMap(([machineId, state]) =>
-      this.supportsSchedules(machineId)
-        ? state.tasks.filter(taskVisible).map((task) => ({ machineId, task }))
-        : [],
-    );
-  }
-  sessionTasks(sid: string): TaskEntry[] {
-    return this.taskEntries().filter(
-      ({ task }) =>
-        task.spec.target.type === "resume_session" &&
-        task.spec.target.session === sid &&
-        taskGroup(task) !== "ended",
-    );
-  }
-  /** Called on remote changes. Only capabilities, connectivity and the monotonic
-   * machine revision invalidate a list; there is no task polling timer. */
-  syncSchedules() {
-    for (const id of this.schedules.keys()) if (!this.machines.has(id) || (this.archiveMachines.has(id) && !this.trustedMembers.has(id))) this.forgetSchedules(id);
-    for (const id of this.scheduleRequests.keys()) {
-      if (
-        !this.peer(id).available ||
-        !this.supportsSchedules(id)
-      )
-        this.scheduleRequests.delete(id);
-    }
-    for (const [id, m] of this.machines) {
-      if (!this.peer(id).available || !this.supportsSchedules(id))
-        continue;
-      const key = String(m.meta!.scheduleRevision);
-      if (this.scheduleRequests.get(id) === key) continue;
-      this.scheduleRequests.set(id, key);
-      void this.refreshSchedules(id);
-    }
-  }
-  private forgetSchedules(id: string) {
-    this.scheduleSeen.forget(id);
-    this.scheduleLive.delete(id);
-    this.schedules.delete(id);
-    this.scheduleRequests.delete(id);
-    this.scheduleAgain.delete(id);
-    this.keepValue("schedules:" + id, undefined);
-  }
-  refreshSchedules(id: string): Promise<void> {
-    if (this.scheduleLoading.has(id)) {
-      this.scheduleAgain.add(id);
-      return this.scheduleLoading.get(id)!;
-    }
-    if (
-      !this.peer(id).available ||
-      !this.supportsSchedules(id)
-    )
-      return Promise.resolve();
-    const work = (async () => {
-      do {
-        this.scheduleAgain.delete(id);
-        const revision = this.machines.get(id)?.meta?.scheduleRevision ?? 0n;
-        const previous = this.schedules.get(id);
-        this.schedules.set(id, {
-          tasks: previous?.tasks ?? [],
-          revision: previous?.revision ?? 0n,
-          loading: true,
-          error: "",
-        });
-        this.changed();
-        try {
-          const result = await this.machineCommand(id, {
-            case: "schedule",
-            value: { operation: "list" },
-          });
-          if (result.kind.case !== "schedule")
-            throw new Error(l10n.t("errors.the_computer_did_not_return_a_task_list"));
-          const tasks = (
-            JSON.parse(
-              new TextDecoder().decode(result.kind.value.resultJson),
-            ) as { tasks: ScheduleTask[] }
-          ).tasks;
-          if (!Array.isArray(tasks))
-            throw new Error(l10n.t("errors.the_task_list_returned_by_the_computer_could_not"));
-          if (
-            !this.machines.has(id) ||
-            !this.supportsSchedules(id) ||
-            this.removed
-          )
-            return;
-          this.scheduleSeen.observe(id, tasks);
-          this.scheduleLive.add(id);
-          this.schedules.set(id, {
-            tasks,
-            revision,
-            loading: false,
-            error: "",
-          });
-          this.changed();
-          void Promise.allSettled([...new Set(tasks.filter(t => t.spec.target.type === "resume_session").map(t => t.spec.target.session).filter((sid): sid is string => !!sid && !this.sessions.get(sid)?.info))].map(sid => this.ensureSession(sid)));
-        } catch (e) {
-          const state = this.schedules.get(id);
-          if (!state || !this.supportsSchedules(id)) return;
-          this.schedules.set(id, {
-            ...state,
-            loading: false,
-            error: errorText(e),
-          });
-        }
-        this.changed();
-      } while (
-        this.scheduleAgain.has(id) &&
-        this.peer(id).available
-      );
-    })().finally(async () => {
-      this.scheduleLoading.delete(id);
-      // A reconnect/write can invalidate after the loop tested its condition
-      // but before the promise's finally ran. Do not lose that invalidation.
-      if (this.scheduleAgain.delete(id)) await this.refreshSchedules(id);
-    });
-    this.scheduleLoading.set(id, work);
-    return work;
-  }
-  async changeSchedule(
-    machineId: string,
-    key: string,
-    payload: {
-      operation: string;
-      taskId?: string;
-      revision?: number;
-      spec?: ScheduleSpec;
-      requestId?: string;
-      sessionId?: string;
-    },
-  ): Promise<ScheduleTask> {
-    if (!this.peer(machineId).available)
-      throw new Error(l10n.t("errors.the_computer_is_offline_connect_to_edit_tasks"));
-    if (!this.supportsSchedules(machineId))
-      throw new Error(l10n.t("errors.update_remote_agent_on_this_computer_to_use_scheduled"));
-    const attemptKey = machineId + "/" + key;
-    let attempt = this.scheduleAttempts.get(attemptKey);
-    if (!attempt) {
-      attempt = new Attempt();
-      this.scheduleAttempts.set(attemptKey, attempt);
-    }
-    if (attempt.expired)
-      throw new Error(l10n.t("errors.the_previous_operation_s_outcome_is_still_unknown_reload"));
-    const sent = attempt.next({
-      ...payload,
-      taskId: payload.taskId ?? "",
-      revision: payload.revision ?? 0,
-    });
-    const q = sent.payload;
-    try {
-      const result = await this.machineCommand(
-        machineId,
-        {
-          case: "schedule",
-          value: {
-            operation: q.operation,
-            taskId: q.taskId,
-            expectedRevision: BigInt(q.revision),
-            requestId: q.requestId,
-            sessionId: q.sessionId,
-            specJson: q.spec
-              ? new TextEncoder().encode(JSON.stringify(q.spec))
-              : undefined,
-          },
-        },
-        sent.slot,
-      );
-      if (result.kind.case !== "schedule") throw new Error(l10n.t("errors.the_computer_did_not_return_a_task"));
-      const task = JSON.parse(
-        new TextDecoder().decode(result.kind.value.resultJson),
-      ) as ScheduleTask;
-      attempt.settle(undefined, sent);
-      // A list already in flight may predate this write; always follow it with
-      // a new list before treating that old result as current.
-      await this.refreshSchedules(machineId);
-      return task;
-    } catch (error) {
-      attempt.settle(error, sent);
-      if (error instanceof CommandError && error.outcome === "conflict" && error.conflictKind === "business") {
-        attempt.abandon(); // definite schedule revision conflict
-        await this.refreshSchedules(machineId);
-        throw new ScheduleRevisionError(l10n.t("errors.the_task_was_just_changed_updated_to_the_latest"));
-      }
-      throw error;
-    }
-  }
-  async openScheduleRun(
-    machineId: string,
-    run: import("./schedules").ScheduleRun,
-  ) {
-    if (
-      !run.session_id ||
-      (this.sessions.get(run.session_id)?.machineId &&
-        this.sessions.get(run.session_id)?.machineId !== machineId)
-    )
-      return;
-    this.scheduleFocus.set(run.session_id, {
-      seq: BigInt(run.start_seq || run.after_seq) + 1n,
-      runId: run.id,
-    });
-    await this.ensureSession(run.session_id);
-    this.touch();
-    location.hash = "/s/" + encodeURIComponent(run.session_id);
-  }
-  sessions = new Map<string, SessionView>();
-  /** Authenticated create replies shown until their encrypted listing arrives. */
-  openingSessions = new Map<string, SessionView>();
-  conn: ConnState = "connecting";
-  error = "";
-  // Whether the stream has been up at least once, and how many attempts
-  // failed since it last was: tells "connecting" from "reconnecting" and
-  // from "cannot reach the server".
-  everOnline = false;
-  /** The server no longer knows this device: removed from the account,
-   * or the server's data is gone. Nothing connects until it joins again. */
-  removed = false;
-  removalVerified = false;
-  failures = 0;
-  connError = "";
-  private connAttempt?: { step: string; startedAt: number };
-  /** Progress of the current attempt, including the wait for Ready. */
-  get connStep(): string { return this.connAttempt?.step ?? ""; }
-  get connStartedAt(): number | undefined { return this.connAttempt?.startedAt; }
-  // The browser's word on whether this device has a network at all; it
-  // cannot tell a network that is up but leads nowhere.
-  network = typeof navigator === "undefined" || navigator.onLine !== false;
-  /** How long a lost connection is only being remade, before the server
-   * counts as out of reach. */
-  linkGraceMs = 10_000;
-  private waited = false;
-  private waitingNotice = false;
-  private graceTimer?: ReturnType<typeof setTimeout>;
-  private begun = false;
-  // When the link to the server last went down, while it is down: what is
-  // shown as running may have changed since, so clocks stop there.
-  lostAt?: number;
-  // Set once machines and sessions have been listed; listError says why
-  // the last listing failed.
-  listed = false;
-  listError = "";
-  // The listing of sessions comes a page at a time: every session that
-  // has not ended, then the ended ones from the latest. moreSessions says
-  // the server has ended sessions not fetched yet; loadingSessions that a
-  // page is on its way. missing are sessions asked for by ID that do not
-  // exist.
-  moreSessions = false;
-  loadingSessions = false;
-  /** Whether there may be ended sessions that are not held: the server
-   * has further pages, or has not been asked yet and what is held is
-   * what this browser kept from its last visit. */
-  get sessionsOpen(): boolean {
-    return this.moreSessions || !this.listed;
-  }
-  missing = new Set<string>();
-  sessionErrors = new Set<string>();
-  private nextSessions?: SessionCursor;
-  private listing = 0; // counts first pages, so a late page of an older listing is not continued from
-  private paging?: Promise<boolean>;
-  private pageRetryAt = 0; // a page that failed is not asked for again at once
-  private relisting = 0; // first pages on their way
-  private loadingAll = false;
-  private asking = new Set<string>();
-  private askRetryAt = new Map<string, number>();
-  private listRetry = 2000;
-  private listTimer?: ReturnType<typeof setTimeout>;
-  // First messages of sessions started here, shown until the CLI takes
-  // them; and the machine chosen for a project that has no session yet.
-  prompts = new Map<string, string>();
-  draftMachines = new Map<string, string>();
-  // Sessions started here whose record has not arrived yet, and the
-  // project whose new-session box should take focus when shown.
-  created = new Set<string>();
-  // Sessions started here with 只打开终端: they open on the terminal.
-  termFirst = new Set<string>();
-  // What the user has typed and not sent, by session ID or "new:" +
-  // project path, just like the image trays. Sent messages leave the draft.
-  drafts = new DraftTexts(key => this.persistDraft(key));
-  approvalReasons = new Map<string, string>();
-  // Docked items the user closed with 收起 (Dock's keys): they stay one
-  // line, while a new item comes open. One that came while a draft was in
-  // the input starts here too.
-  dockClosed = new Set<string>();
-  // Docked items already shown, so that only a new one looks at the draft.
-  dockSeen = new Set<string>();
-  // The account's devices, machines and clients (ListDevices); names of
-  // clients are sealed in their metadata.
-  devices = new Map<string, DeviceInfo>();
-  devicesStatus: "loading" | "ready" | "error" = "loading";
-  // The account's project list preferences.
-  prefs: PrefsState = { status: "loading", error: "", pending: new Map() };
-  // Images chosen for each draft, by draft key (a session ID, or
-  // "new:" + project path), and how a chosen file is prepared for sending.
-  trays = new Map<string, Tray>();
-  private localDrafts?: ComposerDraftStore;
-  private forgottenSessions = new Set<string>();
-  private draftLoaded = new Set<string>();
-  private draftLoads = new Map<string, Promise<void>>();
-  private draftRevisions = new Map<string, number>();
-  private outboxLoads = new Map<string, Promise<void>>();
-  private outboxSaves = new Map<string, Promise<void>>();
-  private outboxWriteFailed = new Set<string>();
-  private forwardingOutbox = new Set<string>();
-  private localNotices = new Map<string, { message: string; kind: "draft" | "outbox_save" }>();
-
-  private localNotice(key: string, message: string, kind: "draft" | "outbox_save" = "draft") {
-    const tray = this.trays.get(key);
-    if (!this.closed && tray) { this.localNotices.set(key, { message, kind }); tray.note = message; this.touch(); }
-  }
-
-  private clearLocalNotice(key: string) {
-    const tray = this.trays.get(key), notice = this.localNotices.get(key);
-    if (tray && notice && tray.note === notice.message) { tray.note = ""; this.touch(); }
-    this.localNotices.delete(key);
-  }
-
-  persistDraft(key: string): Promise<void> | undefined {
-    const revision = (this.draftRevisions.get(key) ?? 0) + 1;
-    this.draftRevisions.set(key, revision);
-    const tray = this.trays.get(key);
-    if (this.closed || this.forgottenSessions.has(key) || key.startsWith("schedule:") || !this.localDrafts || !tray) return;
-    // Reading and merging owns the disk until it finishes. Typing is always
-    // allowed; a failed read is retried on the next edit/open, never cached.
-    if (!this.draftLoaded.has(key)) {
-      if (!this.draftLoads.has(key)) void this.restoreDraft(key, tray).catch(() => undefined);
-      return;
-    }
-    if (this.outboxWriteFailed.has(key)) void this.keepOutbox(key).catch(() => undefined);
-    const text = this.drafts.get(key) ?? "";
-    const snapshot = { items: [...tray.items], original: tray.original };
-    const save = (this.outboxSaves.get(key) ?? Promise.resolve()).then(() => {
-      if (this.draftRevisions.get(key) === revision) return this.localDrafts!.save(key, text, snapshot);
-    });
-    void save.then(() => {
-      if (this.draftRevisions.get(key) === revision) this.clearLocalNotice(key);
-    }, () => this.localNotice(key, l10n.t("errors.the_draft_could_not_be_saved_locally_keep_the")));
-    return save;
-  }
-
-  restoreDraft(key: string, tray: Tray): Promise<void> {
-    if (!this.localDrafts || this.forgottenSessions.has(key) || key.startsWith("schedule:") || this.draftLoaded.has(key)) return Promise.resolve();
-    const existing = this.draftLoads.get(key);
-    if (existing) return existing;
-    tray.restoring = true;
-    const revision = this.draftRevisions.get(key) ?? 0;
-    const job = this.localDrafts.read(key).then(saved => {
-      if (this.closed || this.trays.get(key) !== tray) return;
-      if (saved) {
-        if ((this.draftRevisions.get(key) ?? 0) === revision) this.drafts.restore(key, saved.text);
-        // Pictures belong to the saved draft, even if text was typed meanwhile.
-        tray.hydrate(saved.items, saved.original);
-      }
-      this.draftLoaded.add(key);
-      this.clearLocalNotice(key);
-    }).catch(error => {
-      this.draftLoads.delete(key);
-      this.localNotice(key, l10n.t("errors.the_draft_could_not_be_restored_you_can_still"));
-      throw error;
-    }).finally(() => {
-      tray.restoring = false;
-      if (!this.closed && this.draftLoaded.has(key)) void this.persistDraft(key)?.catch(() => undefined);
-      if (!this.closed) this.touch();
-    });
-    this.draftLoads.set(key, job);
-    if (!key.startsWith("new:")) void this.restoreOutbox(key).catch(() => this.localNotice(key, l10n.t("errors.queued_records_could_not_be_restored_you_can_still")));
-    return job;
-  }
-
-  private restoreOutbox(sid: string): Promise<void> {
-    if (!this.localDrafts) return Promise.resolve();
-    const old = this.outboxLoads.get(sid);
-    if (old) return old;
-    const job = this.localDrafts.readOutbox(sid).then(saved => {
-      if (this.closed || this.forgottenSessions.has(sid)) return;
-      const current = this.outbox(sid), ids = new Set(current.map(o => o.sendId));
-      this.outboxes.set(sid, [...saved.filter(o => !ids.has(o.sendId)), ...current]);
-      this.reconcileOutbox(sid);
-      this.touch();
-    }).catch(error => { this.outboxLoads.delete(sid); throw error; });
-    this.outboxLoads.set(sid, job);
-    return job;
-  }
-
-  private keepOutbox(sid: string): Promise<void> {
-    if (!this.localDrafts || this.closed || this.forgottenSessions.has(sid)) return Promise.resolve();
-    const saved = this.restoreOutbox(sid).then(() => {
-      if (!this.forgottenSessions.has(sid)) return this.localDrafts!.saveOutbox(sid, this.outbox(sid));
-    });
-    this.outboxSaves.set(sid, saved);
-    void saved.then(() => {
-      if (this.outboxSaves.get(sid) === saved) {
-        this.outboxWriteFailed.delete(sid);
-        if (this.localNotices.get(sid)?.kind === "outbox_save") this.clearLocalNotice(sid);
-      }
-    }, () => {
-      if (this.outboxSaves.get(sid) === saved) this.outboxWriteFailed.add(sid);
-      // Only promise continued delivery after the prepared bytes were saved.
-      const forwarding = this.outbox(sid).some(o => this.forwardingOutbox.has(o.sendId));
-      this.localNotice(sid, forwarding
-        ? l10n.t("errors.queued_records_could_not_be_saved_locally_messages_will")
-        : l10n.t("errors.the_draft_could_not_be_saved_locally_keep_the"), "outbox_save");
-    });
-    return saved;
-  }
-
-  private reconcileOutbox(sid: string) {
-    const b = this.buffers.get(sid);
-    if (!b) return;
-    const events = [...b.events, ...b.pending.values()].filter(e => b.verifiedSeqs?.has(e.seq));
-    const gone = events.flatMap(e => e.kind.case === "inputState" && e.kind.value.status === InputStatus.CANCELED && !endedUnsent(e.kind.value) ? [e.kind.value.requestId] : []);
-    this.recorded(sid, [...recordedIds(events), ...gone]);
-  }
-  // The image codecs are fetched when the first image is chosen.
-  prepareImage: Prepare = async (file, original) =>
-    (await import("./sendimages")).prepareForSending(file, original);
-  // Cancels asked for from this page, by the queued message's request ID,
-  // until the message leaves the queue.
-  cancels = new Map<string, { state: "canceling" | "failed"; error: string }>();
-  resumes = new Map<string, { state: "sending" | "failed"; error: string }>();
-  // Where each session's chat was scrolled to, so that leaving for the
-  // terminal, the queue or a detail page and coming back keeps the place.
-  scroll = new Map<string, { top: number; stick: boolean }>();
-  // How each question call is being answered, by call ID: kept here so the
-  // docked card and the question page share it.
-  private answers = new Map<string, AnswerState>();
-
-  answerState(id: string): AnswerState {
-    return this.answers.get(id) ?? noAnswer;
-  }
-
-  patchAnswer(id: string, patch: Partial<AnswerState>) {
-    this.answers.set(id, { ...this.answerState(id), ...patch });
-    this.changed();
-  }
-  focusProject = "";
-
-  private buffers = new Map<string, EventBuffer>();
-  private historyUsers = new Map<string, number>();
-  private historyTrim?: ReturnType<typeof setTimeout>;
-
-  private freeProjection(sid: string) {
-    const entry = this.sessionProjections?.get(sid);
-    if (entry) {
-      this.sessionProjections.delete(sid);
-      entry.handle.free();
-    }
-  }
-
-  /** A mounted consumer pins its complete history, including pending sends. */
-  retainHistory(sid: string): () => void {
-    this.historyUsers.set(sid, (this.historyUsers.get(sid) ?? 0) + 1);
-    this.events(sid);
-    let released = false;
-    return () => {
-      if (released) return;
-      released = true;
-      const n = (this.historyUsers.get(sid) ?? 1) - 1;
-      if (n) this.historyUsers.set(sid, n);
-      else {
-        this.historyUsers.delete(sid);
-        this.freeProjection(sid);
-      }
-      const b = this.buffers.get(sid);
-      if (b) b.usedAt = Date.now();
-      this.trimHistory();
-    };
-  }
-
-  private trimHistory() {
-    clearTimeout(this.historyTrim);
-    const idle = [...this.buffers]
-      .filter(
-        ([sid, b]) =>
-          !this.historyUsers.has(sid) &&
-          !this.outbox(sid).some((o) => {
-            const status = b.inputStatuses?.get(o.sendId);
-            const finished =
-              this.sessions.get(sid)?.info?.status === SessionStatus.EXITED ||
-              (status !== undefined &&
-                [
-                  InputStatus.CANCELED,
-                  InputStatus.FAILED,
-                  InputStatus.NEEDS_TERMINAL,
-                  InputStatus.UNCONFIRMED,
-                ].includes(status));
-            return (
-              o.status === "sending" ||
-              (o.status === "sent" && !!o.thumbs?.length && !finished)
-            );
-          }),
-      )
-      .sort((a, b) => (a[1].usedAt ?? 0) - (b[1].usedAt ?? 0));
-    let bytes = idle.reduce((n, [, b]) => n + (b.bytes ?? 0), 0);
-    let count = idle.length;
-    const now = Date.now();
-    for (const [sid, b] of idle) {
-      if (
-        !this.sessions.has(sid) ||
-        count > 8 ||
-        bytes > 16 * 1024 * 1024 ||
-        now - (b.usedAt ?? now) >= 60_000
-      ) {
-        this.buffers.delete(sid);
-        this.freeProjection(sid);
-        count--;
-        bytes -= b.bytes ?? 0;
-      }
-    }
-    // Deferred trimming also catches histories read once without a mounted consumer.
-    if (!this.closed && this.buffers.size)
-      this.historyTrim = setTimeout(() => this.trimHistory(), 60_000);
-  }
-  // Pushes seen per machine, session and machine removal, so that a list
-  // fetched before a push cannot undo it.
-  private machinePushes = new Map<string, number>();
-  private sessionPushes = new Map<string, number>();
-  private removedPushes = new Map<string, number>();
+  protected api: Client<typeof ClientService>;
+  private unwatchDirectInstall?: () => void;
+  private directTransfers = new Map<string, "image" | "file">();
+  private directReadyCache = new Map<string, boolean>();
   private token = "";
   private tokenExpires = 0;
+  private tokenWarmed = false;
   private loggingIn?: Promise<void>;
   private loginController?: AbortController;
   private tokenWrites: Promise<void> = Promise.resolve();
-  private discardToken() {
-    this.token = "";
-    this.tokenExpires = 0;
-    this.tokenWrites = this.tokenWrites.then(() => clearLoginToken(this.account.server, this.account.deviceId)).catch(() => undefined);
-  }
-  private api: Client<typeof ClientService>;
-  private ws?: FrameStream;
-  private readonly recovery = new Recovery();
-  private candidate?: FrameStream;
-  private connecting = false;
-  private setupController?: AbortController;
-  private foreground = true;
-  private networkSignature = "";
-  private pendingNetwork?: string;
-  private pendingNetworkForce = false;
-  private networkNoticeQueued = false;
-  private lastTick = performance.now();
-  private lastWallTick = Date.now();
   private networkGeneration = 0;
   private verifiedNetworkGeneration = 0;
-  private activeNetworkGeneration = 0;
   private wakeSecurity?: Promise<void>;
   private wakeController?: AbortController;
   private wakeRequired = false;
   private wakeRevision = 0;
-  private roundBudget() { return this.everOnline || this.networkGeneration > 0 ? 3000 : SETUP_IDLE_MS; }
   private closed = false;
-  private reconcilingSecurity = 0;
-  private generation = 0;
-  private lifecycleGeneration = 0;
-  private retryTimer?: ReturnType<typeof setTimeout>;
-  private securityTimer?: ReturnType<typeof setInterval>;
-  private pairingTimer?: ReturnType<typeof setInterval>;
-  private openTimer?: ReturnType<typeof setTimeout>;
-  private idleTimer?: ReturnType<typeof setTimeout>;
-  private setupProgress?: () => void;
-  readonly direct: DirectEngine;
-  private unwatchDirectInstall?: () => void;
-  private directTransfers = new Map<string, "image" | "file">();
-  private directHint(machineId: string, cmd: CommandKind): RouteHint | undefined {
-    if (cmd?.case === "getSharedFileChunk") return { kind: "bulk", file: `${cmd.value.sessionId}/${cmd.value.fileId}` };
-    if (cmd?.case === "putImageChunk") { const upload = this.directTransfers.get(`${machineId}/${cmd.value.transferId}`); return upload ? { kind: "bulk", file: cmd.value.transferId!, upload, bytes: cmd.value.data?.length } : undefined; }
-    // Recovery status stays on the independent relay before a chunk is retried.
-    if (cmd?.case !== "getImageUploadStatus" && readOnlyCommand(cmd)) return { kind: "read" };
-    return undefined;
-  }
-  readonly deviceLink = new DeviceLink(new RelayPath(
-    id => {
-      const m = this.machines.get(id);
-      const direct = this.direct?.ready(id, { kind: "read" }) ?? false;
-      return { relayRequired: !direct, unlinked: this.unlinked, reachable: direct || !!m?.online, ready: direct || this.conn === "online", authorized: !this.removed && !(this.archiveMachines.has(id) && !this.trustedMembers.has(id)), protocolVersion: direct ? PROTOCOL_VERSION : m?.meta?.protocolVersion, capabilities: this.direct?.capabilities(id) ?? m?.meta?.capabilities };
-    },
-    () => this.relayEpoch(),
-    (request, options) => this.api.forward(request, options),
-    signal => this.login(signal),
-  ));
-  peer(machineId: string | undefined) { return this.deviceLink.status(machineId ?? ""); }
+  private legs = new Map<bigint, { ws: FrameStream; stopped: boolean }>();
   private listeners = new Set<() => void>();
   private version = 0;
+
+  // Legacy views/features kept on Remote until Steps 3-6
+  private sharedFilesState?: SharedFileManager;
+  private scheduleSeenState?: ScheduleSeen;
+  private scheduleRequests = new Map<string, string>();
+  private scheduleLoading = new Map<string, Promise<void>>();
+  private scheduleAgain = new Set<string>();
+  private scheduleLive = new Set<string>();
+  readonly schedules = new Map<string, { tasks: ScheduleTask[]; revision: bigint; loading: boolean; error: string }>();
+  readonly scheduleAttempts = new Map<
+    string,
+    Attempt<{ operation: string; taskId: string; revision: number; spec?: ScheduleSpec; requestId?: string; sessionId?: string }>
+  >();
+  readonly scheduleFocus = new Map<string, { seq: bigint; runId: string }>();
+
+  network = typeof navigator === "undefined" || navigator.onLine !== false;
+  removalVerified = false;
+  devicesStatus: "loading" | "ready" | "error" = "loading";
+  focusProject = "";
+  readonly created = new Set<string>();
+  readonly missing = new Set<string>();
+  readonly sessionErrors = new Set<string>();
+  readonly draftMachines = new Map<string, string>();
+  readonly termFirst = new Set<string>();
+  readonly dockClosed = new Set<string>();
+  readonly dockSeen = new Set<string>();
+  readonly cancels = new Map<string, { state: "canceling" | "failed"; error: string }>();
+  readonly resumes = new Map<string, { state: "sending" | "failed"; error: string }>();
+  readonly scroll = new Map<string, { top: number; stick: boolean }>();
+  readonly replaced = new Map<string, string>();
+  drafts = new DraftTexts((key) => this.persistDraft(key));
+  readonly approvalReasons = new Map<string, string>();
+  readonly trays = new Map<string, Tray>();
+  readonly outboxes = new Map<string, Outgoing[]>();
+  private readonly forwardingOutbox = new Set<string>();
+  private localDrafts?: ComposerDraftStore;
+  private readonly forgottenSessions = new Set<string>();
+  private readonly draftLoaded = new Set<string>();
+  private readonly draftLoads = new Map<string, Promise<void>>();
+  private readonly draftRevisions = new Map<string, number>();
+  private readonly outboxLoads = new Map<string, Promise<void>>();
+  private readonly outboxSaves = new Map<string, Promise<void>>();
+  private readonly outboxWriteFailed = new Set<string>();
+  private readonly localNotices = new Map<string, { message: string; kind: "draft" | "outbox_save" }>();
+  private readonly answers = new Map<string, AnswerState>();
+  readonly prompts = new Map<string, string>();
+  readonly notices = new Map<string, string>();
+
+  private cachedMachineMap = new Map<string, MachineView>();
+  private cachedSessionMap = new Map<string, SessionView>();
+  private cachedDeviceMap = new Map<string, DeviceInfo>();
+  private cachedPrefPending = new Map<string, string>();
+  private cachedInfoWarmed = false;
+  private imageCache = new Map<string, ImageResult>();
+  private models = new Map<string, Promise<ListModelsResponse>>();
+  private modelReads = new Set<string>();
+  private modelLists = new Map<string, ListModelsResponse>();
+  imageStorage = new Map<string, ImageStorageUsage>();
+  private settingsCache = new Map<string, Promise<DaemonSettings | undefined>>();
+  private settingsRead = new Map<string, DaemonSettings | undefined>();
 
   protected constructor(
     readonly account: StoredAccount,
@@ -1211,8 +736,9 @@ export class Remote {
       const sentToken = this.token;
       req.header.set("Authorization", "Bearer " + sentToken);
       return next(req).catch((e: unknown) => {
-        if (e instanceof ConnectError && e.code === Code.Unauthenticated && this.token === sentToken)
-          this.discardToken();
+        if (e instanceof ConnectError && e.code === Code.Unauthenticated && this.token === sentToken) {
+          this.discardToken(sentToken);
+        }
         throw e;
       });
     };
@@ -1230,90 +756,1993 @@ export class Remote {
       account.deviceId,
       account.devicePrivate,
       async (after, limit, signal) => {
-        this.setupProgress?.();
         const request = { afterEpoch: after, limit };
         const options = { signal, timeoutMs: this.everOnline ? 3000 : RPC_TIMEOUT_MS };
         const used = this.token;
         let reply;
-        try { reply = await this.api.getSecurityStates(request, options); }
-        catch (error) {
+        try {
+          reply = await this.api.getSecurityStates(request, options);
+        } catch (error) {
           signal?.throwIfAborted();
           if (!(error instanceof ConnectError) || error.code !== Code.Unauthenticated) throw error;
           if (!this.token || this.token === used) await this.login(signal);
           reply = await this.api.getSecurityStates(request, options);
         }
-        this.setupProgress?.();
         return {
-          states: reply.states.map((s) => ({
-            state: s.state,
-            recovery: s.recovery,
-          })),
+          states: reply.states.map((s) => ({ state: s.state, recovery: s.recovery })),
           headEpoch: reply.headEpoch,
           lease: reply.lease,
           recoveryPending: reply.recoveryPending,
           recoveryReadyMs: reply.recoveryReadyMs,
         };
       },
-      () => !this.closed || this.reconcilingSecurity > 0,
+      () => !this.closed,
       securityStorage,
       () => this.roundBudget(),
     );
-    this.direct = new DirectEngine(account, async () => { await this.checkNetworkSecurity(); await this.security.verifiedRecord(); }, () => { if (!this.closed) this.changed(); });
-    this.security.onSync = (record, started) => { void this.direct.synced(record, started); };
+    this.deviceLink = new DeviceLink(
+      new RelayPath(
+        (id) => {
+          const m = this.machines.get(id);
+          const direct = this.direct?.ready(id, { kind: "read" }) ?? false;
+          return {
+            relayRequired: !direct,
+            unlinked: this.unlinked,
+            reachable: direct || !!m?.online,
+            ready: direct || this.conn === "online",
+            authorized: !this.removed && !(this.archiveMachines.has(id) && !this.trustedMembers.has(id)),
+            protocolVersion: direct ? PROTOCOL_VERSION : m?.meta?.protocolVersion,
+            capabilities: this.direct?.capabilities(id) ?? m?.meta?.capabilities,
+          };
+        },
+        () => this.relayEpoch(),
+        (request, options) => this.api.forward(request, options),
+        (signal) => this.login(signal),
+      ),
+    );
+    this.direct = new DirectEngine(
+      account,
+      async () => {
+        await this.checkNetworkSecurity();
+        await this.security.verifiedRecord();
+      },
+      () => {
+        if (!this.closed) {
+          this.syncDirectStatuses();
+          this.changed();
+        }
+      },
+    );
+    this.security.onSync = (record, started) => {
+      void this.direct.synced(record, started);
+      this.applySecurityRecordSets(record);
+      if (this.coreSyncDepth === 0 && !this.closed) {
+        const pushSeq = this.securityPushSeq++;
+        const snap = this.snapshotFromRecord(0n, BigInt(this.networkGeneration), record, pushSeq);
+        this.hostBridge?.dispatchEvent(
+          create(CoreEventSchema, { event: { case: "securitySnapshot", value: snap } }),
+        );
+      }
+    };
     this.security.onSyncFailed = () => this.direct.invalidate();
-    const pairing = createClient(PairingService, createConnectTransport({
-      fetch: relayFetch, baseUrl: apiBase(account.server), useBinaryFormat: true,
-      defaultTimeoutMs: RPC_TIMEOUT_MS, interceptors: [auth],
-    }));
-    this.authority = new AuthorityClient(account, this.security, this.api, pairing,
+    const pairing = createClient(
+      PairingService,
+      createConnectTransport({
+        fetch: relayFetch,
+        baseUrl: apiBase(account.server),
+        useBinaryFormat: true,
+        defaultTimeoutMs: RPC_TIMEOUT_MS,
+        interceptors: [auth],
+      }),
+    );
+    this.authority = new AuthorityClient(
+      account,
+      this.security,
+      this.api,
+      pairing,
       (publicKey, check, persist, request) => this.publishHandoffOffer(publicKey, check, persist, request),
-      undefined, () => void this.watchPairingDelivery());
+    );
     this.startPairing = async (web, replacesDeviceId = "") =>
       (await import("./authority-pairing")).AuthorityPairing.start(this.authority, pairing, web, replacesDeviceId);
   }
-  readonly startPairing: (web: string, replacesDeviceId?: string) => Promise<AuthorityPairing>;
-  async handoffCandidates(): Promise<HandoffOffer[]> {
-    await this.loadDevices(false);
-    return verifiedHandoffCandidates(await this.security.verifiedRecord(), [...this.devices.values()].flatMap((d) =>
-      d.meta?.handoffRecoveryEd.length === 32 ? [{ id: d.id, recoveryEd: new Uint8Array(d.meta.handoffRecoveryEd) }] : []));
+
+  static async load(): Promise<Remote | undefined> {
+    await resumeRegistration();
+    const acct = await loadAccount();
+    if (!acct) return undefined;
+    const r = new Remote(acct, eventCache());
+    r.localDrafts = new ComposerDraftStore(acct);
+    return r;
   }
-  async handoffAuthority(incoming: string) {
-    try {
-      await this.authority.handoffAuthority(incoming, await this.handoffCandidates());
-    } finally {
-      await this.checkLocalRemoval();
+
+  attachHost(bridge: HostBridge) {
+    this.hostBridge = bridge;
+  }
+
+  private ensureHost(): HostBridge {
+    if (!this.hostBridge) {
+      getCoreHost(this);
     }
+    return this.hostBridge!;
   }
-  private async checkLocalRemoval() {
-    // A refused login alone proves nothing. Only the pinned, verified chain
-    // can distinguish removal from a server that lost its credentials.
-    this.reconcilingSecurity++;
+
+  // --- Host bridge delegation for remaining Step 3-6 callers ---
+
+  subscribe = (fn: () => void) => {
+    this.listeners.add(fn);
+    return () => this.listeners.delete(fn);
+  };
+
+  snapshot = () => this.version;
+
+  touch() {
+    this.changed();
+  }
+
+  protected changed(_immediate = false) {
+    this.version++;
+    cleanup(
+      () => this.deviceLink.changed(),
+      () => this.sharedFilesState?.onConnectivityChange(),
+      ...[...this.listeners],
+    );
+  }
+
+  private pairingTimer?: ReturnType<typeof setInterval>;
+  private pairingBusy = false;
+
+  start() {
+    this.closed = false;
+    this.unwatchDirectInstall?.();
+    this.unwatchDirectInstall = watchSecurityInstall((record) => this.direct.install(record));
+    this.authority.lifecycle.resume();
+    void this.watchPairingDelivery();
+    this.ensureHost().start();
+  }
+
+  stop() {
+    this.closed = true;
+    this.direct.close();
+    this.unwatchDirectInstall?.();
+    this.unwatchDirectInstall = undefined;
+    this.stopPairingDelivery();
+    this.deviceLink.closeStreams(l10n.t("errors.terminal_connection_closed"));
+    this.retireNetworkIO();
+    for (const legId of [...this.legs.keys()]) this.closeStreamLeg(legId);
+    cleanup(() => this.authority.lifecycle.pause());
+    this.hostBridge?.stop();
+  }
+
+  private async watchPairingDelivery() {
     try {
-      if (!(await this.security.verifiedRecord()).member) {
-        this.removalVerified = true;
-        this.removed = true;
-        this.stop();
+      const pending = await this.authority.pending();
+      if (this.closed || !pending?.delivery) {
+        this.stopPairingDelivery();
+        return;
       }
-    } catch { /* Keep the unverified notice and all completion material. */ }
-    finally { this.reconcilingSecurity--; }
-  }
-  async resumeSecurityOperation() {
-    // A handoff may stop the transport before its outcome is reconciled.
-    // Explicit foreground reconciliation must still use the original lock,
-    // request and visibility checks, without restarting that transport.
-    const stopped = this.closed;
-    if (stopped) this.authority.lifecycle.resume();
-    this.reconcilingSecurity++;
-    try {
-      await this.authority.resumeSecurityOperation();
-      await this.checkLocalRemoval();
-    } finally {
-      this.reconcilingSecurity--;
-      if (stopped || this.closed) this.authority.lifecycle.pause();
+      this.pairingTimer ??= setInterval(() => void this.continuePairing(), 1500);
+    } catch (e) {
+      this.stopPairingDelivery();
+      this.authorityError = errorText(e);
     }
   }
-  async removeDevice(id: string) { await this.authority.removeDevice(id); await this.loadDevices(false); }
-  async deleteMachineRecords(id: string) { await this.authority.deleteMachineRecords(id); await this.refresh(); }
+
+  private stopPairingDelivery() {
+    clearInterval(this.pairingTimer);
+    this.pairingTimer = undefined;
+  }
+
+  private async continuePairing() {
+    if (this.closed || this.pairingBusy || (typeof document !== "undefined" && document.hidden)) return;
+    this.pairingBusy = true;
+    try {
+      if (!(await this.authority.pending())?.delivery) {
+        this.stopPairingDelivery();
+        return;
+      }
+      await this.authority.resumeSecurityOperation();
+      if (!(await this.authority.pending())?.delivery) this.stopPairingDelivery();
+      this.authorityError = "";
+      if (!this.closed) await this.loadDevices(false);
+    } catch (e) {
+      this.authorityError = errorText(e);
+      if (
+        e instanceof PairingDeliveryError ||
+        (e instanceof SecurityError && ["invalid", "untrusted", "conflict", "storage", "capacity"].includes(e.code)) ||
+        (e instanceof ConnectError &&
+          [Code.InvalidArgument, Code.NotFound, Code.PermissionDenied, Code.Unauthenticated, Code.FailedPrecondition].includes(e.code))
+      ) {
+        this.stopPairingDelivery();
+      }
+    } finally {
+      this.pairingBusy = false;
+      if (!this.closed) this.changed();
+    }
+  }
+
+  setForeground(active: boolean) {
+    this.ensureHost().setForeground(active);
+  }
+
+  setNetwork(available: boolean, signature?: string) {
+    this.network = available;
+    this.ensureHost().setNetwork(available, signature);
+    this.changed(true);
+  }
+
+  networkChanged(signature: string) {
+    this.ensureHost().setNetwork(this.network, signature);
+  }
+
+  reconnectNow(networkChanged = false) {
+    this.ensureHost().reconnectNow(networkChanged);
+  }
+
+  retryLogin() {
+    this.ensureHost().retryLogin();
+  }
+
+  loadMoreSessions(): Promise<boolean> {
+    return this.ensureHost().loadMoreSessions();
+  }
+
+  loadAllSessions(): Promise<void> {
+    return this.ensureHost().loadAllSessions();
+  }
+
+  retryList() {
+    this.ensureHost().retryList();
+  }
+
+  retryPrefs() {
+    this.ensureHost().retryPrefs();
+  }
+
+  ensureSession(id: string) {
+    return this.ensureHost().ensureSession(id);
+  }
+
+  retrySession(id: string) {
+    this.sessionErrors.delete(id);
+    this.ensureHost().retrySession(id);
+  }
+
+  retryEvents(id: string) {
+    this.ensureHost().retryEvents(id);
+  }
+
+  changePrefs(kind: "pin" | "unpin" | "hide" | "unhide", path: string) {
+    this.ensureHost().changeProjectPref(kind, path);
+    return Promise.resolve(true);
+  }
+
+  // --- Transitional SyncStateView / SessionDataView projections ---
+
+  applySyncStateView(view: SyncStateView) {
+    const wasOnline = this.conn === "online";
+    this.syncStateView = view;
+    if (view.authorityDeviceId) this.authorityDeviceId = view.authorityDeviceId;
+    this.clockWarning = view.accountClockSkewed
+      ? l10n.t("errors.this_device_s_clock_is_behind_the_account_state")
+      : "";
+
+    const nextMachines = new Map<string, MachineView>();
+    for (const pm of view.machines) {
+      nextMachines.set(pm.machineId, {
+        id: pm.machineId,
+        online: pm.online,
+        lastSeenMs: pm.lastSeenMs,
+        meta: pm.meta,
+        metaRev: pm.metaRev,
+        keptOnline: !view.machinesListed ? pm.online : undefined,
+      });
+    }
+    this.cachedMachineMap = nextMachines;
+
+    const nextSessions = new Map<string, SessionView>();
+    for (const sv of view.sessions) {
+      if (sv.info?.machineReplacements.length) {
+        this.sessionReplacements.set(sv.sessionId, [...sv.info.machineReplacements]);
+      }
+      nextSessions.set(sv.sessionId, syncSessionToView(sv));
+    }
+    this.cachedSessionMap = nextSessions;
+
+    const nextDevices = new Map<string, DeviceInfo>();
+    for (const dv of view.devices) {
+      nextDevices.set(dv.deviceId, {
+        id: dv.deviceId,
+        kind: dv.kind,
+        pairingIncomplete: dv.createdMs === 0n && !dv.meta,
+        createdMs: dv.createdMs,
+        lastSeenMs: dv.lastSeenMs,
+        meta: dv.meta,
+        metaRev: dv.metaRev,
+      });
+    }
+    this.cachedDeviceMap = nextDevices;
+    if (view.devices.length > 0 || view.machinesListed) {
+      this.devicesStatus = "ready";
+    }
+
+    this.cachedPrefPending.clear();
+    if (view.prefsSyncing) this.cachedPrefPending.set("", "syncing");
+    if (this.hostBridge) this.syncSchedules();
+    this.changed();
+    if (!wasOnline && (this.conn as ConnState) === "online" && !this.closed) {
+      void restorePushPrefs(this);
+    }
+  }
+
+  applySessionDataView(sid: string, view: SessionDataView) {
+    this.watchedSession = { sessionId: sid, view };
+    if (view.liveSnapshot) {
+      this.liveSnapshots.set(sid, view.liveSnapshot);
+      this.liveErrors.delete(sid);
+    }
+    this.reconcileOutbox(sid, view.events);
+    this.changed();
+  }
+
+  get conn(): ConnState {
+    if (this.syncStateView?.removed) return "offline";
+    switch (this.syncStateView?.connection) {
+      case CoreConnState.CONNECTED:
+        return "online";
+      case CoreConnState.OFFLINE:
+        return "offline";
+      default:
+        return "connecting";
+    }
+  }
+
+  get error(): string {
+    return renderText(this.syncStateView?.connectionReason);
+  }
+
+  get connError(): string {
+    return renderText(this.syncStateView?.connectionReason);
+  }
+
+  get failures(): number {
+    return this.syncStateView?.connectionReason ? 1 : 0;
+  }
+
+  get connStep(): string {
+    return renderText(this.syncStateView?.connectionStep);
+  }
+
+  get connStartedAt(): number | undefined {
+    return undefined;
+  }
+
+  get everOnline(): boolean {
+    return this.syncStateView?.liveLoaded ?? false;
+  }
+
+  get removed(): boolean {
+    return this.syncStateView?.removed ?? false;
+  }
+
+  get link(): Link {
+    if (!this.network) return "no-network";
+    const view = this.syncStateView;
+    if (!view) return "waiting";
+    if (view.removed || view.connection === CoreConnState.OFFLINE || view.unlinked) {
+      return "no-server";
+    }
+    if (view.connection === CoreConnState.CONNECTED) return "online";
+    return "waiting";
+  }
+
+  get showWaiting(): boolean {
+    return this.conn !== "online" && this.link === "waiting";
+  }
+
+  get awaiting(): boolean {
+    return (this.syncStateView?.connection ?? CoreConnState.CONNECTING) === CoreConnState.CONNECTING;
+  }
+
+  get unlinked(): boolean {
+    const link = this.link;
+    return link === "no-network" || link === "no-server" || (link === "waiting" && !this.listed);
+  }
+
+  get lostAt(): number | undefined {
+    const ms = Number(this.syncStateView?.disconnectedAtMs ?? 0n);
+    return ms > 0 ? ms : undefined;
+  }
+
+  get listed(): boolean {
+    return !!(this.syncStateView?.machinesListed && this.syncStateView?.sessionsListed);
+  }
+
+  get listError(): string {
+    return renderText(this.syncStateView?.sessionListError);
+  }
+
+  get moreSessions(): boolean {
+    return this.syncStateView?.hasMoreSessions ?? false;
+  }
+
+  get sessionsOpen(): boolean {
+    return this.moreSessions || !this.listed;
+  }
+
+  get loadingSessions(): boolean {
+    return this.syncStateView?.loadingMoreSessions ?? false;
+  }
+
+  get machines(): ReadonlyMap<string, MachineView> {
+    return this.cachedMachineMap;
+  }
+
+  get presence(): ReadonlyMap<string, MachineView> {
+    if (!this.listed) return new Map<string, MachineView>();
+    let projected: Map<string, MachineView> | undefined;
+    for (const [id, machine] of this.cachedMachineMap) {
+      const online = this.peer(id).reachable;
+      if (online !== machine.online) {
+        projected ??= new Map(this.cachedMachineMap);
+        projected.set(id, { ...machine, online });
+      }
+    }
+    return projected ?? this.cachedMachineMap;
+  }
+
+  get sessions(): ReadonlyMap<string, SessionView> {
+    return this.cachedSessionMap;
+  }
+
+  get devices(): ReadonlyMap<string, DeviceInfo> {
+    return this.cachedDeviceMap;
+  }
+
+  get openingSessions(): ReadonlyMap<string, SessionView> {
+    return new Map<string, SessionView>();
+  }
+
+  get prefs(): PrefsState {
+    const v = this.syncStateView;
+    return {
+      status: v?.prefsLoadFailed && !v.prefs ? "error" : v?.prefsLoaded ? "ready" : "loading",
+      error: "",
+      snap: v?.prefs ? { revision: v.prefsRevision, prefs: v.prefs } : undefined,
+      pending: this.cachedPrefPending,
+    };
+  }
+
+  projectPrefs(): ProjectPrefs {
+    return this.syncStateView?.prefs ?? emptyPrefs();
+  }
+
+  get isAuthority() {
+    return (this.authorityDeviceId || this.syncStateView?.authorityDeviceId) === this.account.deviceId;
+  }
+
+  get recoveryPending() {
+    return this.syncStateView?.recoveryPending ?? this.security.recoveryPending;
+  }
+
+  get recoveryReadyMs() {
+    return this.syncStateView?.recoveryReadyMs || this.security.recoveryReadyMs;
+  }
+
+  get recoveryStatusStale() {
+    return this.security.recoveryStatusStale;
+  }
+
+  demoFlag(_name: string): boolean {
+    return false;
+  }
+
+  peer(machineId: string | undefined) {
+    return this.deviceLink.status(machineId ?? "");
+  }
+
+  onlineOf(m: MachineView): boolean {
+    return this.listed ? this.peer(m.id).reachable : (m.keptOnline ?? this.peer(m.id).reachable);
+  }
+
+  pastPages(s: SessionView): boolean {
+    const cursor = this.syncStateView?.nextCursor;
+    if (!this.moreSessions || !cursor) return false;
+    return s.endedMs < cursor.endedMs || (s.endedMs === cursor.endedMs && s.id > cursor.sessionId);
+  }
+
+  events(sid: string): Event[] {
+    if (this.watchedSession?.sessionId === sid) return this.watchedSession.view.events;
+    return [];
+  }
+
+  loaded(sid: string): boolean {
+    return this.watchedSession?.sessionId === sid && this.watchedSession.view.loaded;
+  }
+
+  history(sid: string): History {
+    const sd = this.watchedSession?.sessionId === sid ? this.watchedSession.view : undefined;
+    if (!sd) {
+      return { loaded: false, ready: false, error: "", broken: false };
+    }
+    const err = renderText(sd.error) || renderText(sd.fetchError);
+    return {
+      backfilling: sd.backfilling,
+      unavailable: sd.unavailableCount,
+      loaded: sd.loaded,
+      ready: !sd.awaitingCache && (sd.loaded || sd.tailRequested || sd.events.length > 0),
+      error: err,
+      broken: sd.retired || sd.retryingCorruptCache,
+    };
+  }
+
+  private memoProjection(state: ProjectionState): Derived {
+    let cached = this.projectionDerivations.get(state);
+    if (!cached) {
+      cached = fromProjectionState(state);
+      this.projectionDerivations.set(state, cached);
+    }
+    return cached;
+  }
+
+  historicalDerived(sid: string): Derived {
+    const sd = this.watchedSession?.sessionId === sid ? this.watchedSession.view : undefined;
+    if (sd?.projection) {
+      return this.memoProjection(sd.projection);
+    }
+    const agent = agentOf(this.sessions.get(sid));
+    let cached = this.emptyDerivations.get(agent);
+    if (!cached) {
+      const empty = getCore().newProjection(agent);
+      try {
+        cached = fromProjectionState(fromBinary(ProjectionStateSchema, empty.snapshot()));
+      } finally {
+        empty.free();
+      }
+      this.emptyDerivations.set(agent, cached);
+    }
+    return cached;
+  }
+
+  currentDerived(sid: string, d: Derived): Derived {
+    const sd = this.watchedSession?.sessionId === sid ? this.watchedSession.view : undefined;
+    if (sd?.projection && (!this.liveSnapshots.has(sid) || this.liveSnapshots.get(sid) === sd.liveSnapshot)) {
+      return this.memoProjection(sd.projection);
+    }
+    const checkpoint = this.sessions.get(sid)?.checkpoint;
+    const live = this.liveSnapshots.get(sid) ?? sd?.liveSnapshot ?? checkpoint;
+    const source = deriveSource(d);
+    const events = source?.events ?? sd?.events;
+    const agent = source?.agent ?? agentOf(this.sessions.get(sid));
+    const cached = this.currentDerivations.get(d);
+    if (cached && cached.sid === sid && cached.live === live && cached.checkpoint === checkpoint && cached.agent === agent && cached.events === events) {
+      return cached.value;
+    }
+    const liveBytes = live ? toBinary(LiveSnapshotSchema, live) : undefined;
+    const temp = getCore().newProjection(agent);
+    let out: Derived;
+    try {
+      if (events?.length) {
+        temp.append(encodeEventBatch(events));
+      }
+      out = fromProjectionState(fromBinary(ProjectionStateSchema, temp.currentActions(liveBytes)));
+    } finally {
+      temp.free();
+    }
+    if (live?.planEventSeq && live.planScreenHash.length === 32 && live.session?.planOpen && events) {
+      const resolved = livePlanText(live, events, () => true);
+      if (resolved !== live.planScreen || !out.plan?.text) {
+        out.plan = create(PlanProposedSchema, { text: resolved });
+      }
+    }
+    this.currentDerivations.set(d, { sid, live, checkpoint, agent, events, value: out });
+    return out;
+  }
+
+  liveSnapshotError(sid: string): string | undefined {
+    const s = this.sessions.get(sid);
+    return (
+      this.liveErrors.get(sid) ??
+      (s?.checkpointStatus === "waiting"
+        ? l10n.t("errors.waiting_for_the_owning_computer_to_update_the_current")
+        : undefined)
+    );
+  }
+
+  async refreshLiveSnapshot(sid: string): Promise<void> {
+    if (this.liveJobs.has(sid)) return this.liveJobs.get(sid);
+    const job = (async () => {
+      try {
+        const s = this.sessions.get(sid);
+        if (!s) throw new Error(l10n.t("session.android_unknown"));
+        const reply = await this.forward(s.machineId, sid, {
+          case: "getLiveSnapshot",
+          value: { sessionId: sid },
+        });
+        if (reply.kind.case !== "liveSnapshot" || reply.kind.value.session?.id !== sid) {
+          throw new Error(l10n.t("errors.invalid_current_request_snapshot"));
+        }
+        this.liveSnapshots.set(sid, reply.kind.value);
+        this.liveErrors.delete(sid);
+        this.changed();
+      } catch {
+        this.liveSnapshots.delete(sid);
+        this.liveErrors.set(
+          sid,
+          l10n.t("errors.pending_requests_on_the_computer_could_not_be_verified"),
+        );
+        this.changed();
+      } finally {
+        this.liveJobs.delete(sid);
+      }
+    })();
+    this.liveJobs.set(sid, job);
+    return job;
+  }
+
+  // --- CoreExecutor: Stream ---
+
+  openStreamLeg(legId: bigint, token: string, callbacks: StreamLegCallbacks) {
+    this.closeStreamLeg(legId);
+    const url = apiBase(this.account.server).replace(/^http/, "ws") + "/v1/stream";
+    const ws = this.deviceLink.openPathStream(url);
+    const state = { ws, stopped: false };
+    this.legs.set(legId, state);
+
+    let processing = Promise.resolve();
+    let queuedBytes = 0;
+    let queuedFrames = 0;
+
+    const drop = (err: string, code?: number) => {
+      if (state.stopped) return;
+      state.stopped = true;
+      if (this.legs.get(legId) === state) this.legs.delete(legId);
+      this.direct.detach(ws);
+      ws.close();
+      callbacks.onClosed(legId, {
+        policyViolation: code === 1008,
+        errorCode: code === 1008 ? "unauthenticated" : "",
+        error: err,
+        unresolvedHost: false,
+      });
+    };
+
+    ws.onOpen = () => {
+      if (state.stopped || this.legs.get(legId) !== state) return;
+      try {
+        ws.send(
+          toBinary(
+            PeerFrameSchema,
+            create(PeerFrameSchema, { kind: { case: "hello", value: { token } } }),
+          ) as Uint8Array<ArrayBuffer>,
+        );
+      } catch (e) {
+        drop(errorText(e));
+      }
+    };
+
+    ws.onError = () => drop(l10n.t("errors.disconnected_from_server"));
+
+    ws.onFrame = (data) => {
+      if (state.stopped || this.legs.get(legId) !== state) return;
+      if (data.byteLength > 2 * 1024 * 1024) {
+        drop(l10n.t("errors.push_backlog_reconnecting"));
+        return;
+      }
+      let frame;
+      try {
+        frame = fromBinary(ServerFrameSchema, new Uint8Array(data));
+      } catch (e) {
+        drop(errorText(e));
+        return;
+      }
+      if (frame.kind.case === "ready") {
+        this.serverAhead = BigInt(Date.now()) - frame.kind.value.serverTimeMs > BigInt(MAX_CLOCK_SKEW);
+        this.direct.attach(ws);
+        callbacks.onReady(legId, frame.kind.value.serverTimeMs);
+        return;
+      }
+      if (frame.kind.case === "peerFrameDelivery" || frame.kind.case === "peerFrameResult") {
+        const raw = peerFrameBody(new Uint8Array(data), frame.kind.case === "peerFrameDelivery" ? 11 : 12);
+        if (raw) {
+          if (frame.kind.case === "peerFrameDelivery") this.direct.receive(raw, ws);
+          else this.direct.result(raw, ws);
+        }
+        return;
+      }
+      queuedBytes += data.byteLength;
+      queuedFrames++;
+      if (queuedBytes > 8 * 1024 * 1024 || queuedFrames > 1024) {
+        drop(l10n.t("errors.push_backlog_reconnecting"));
+        return;
+      }
+      processing = processing
+        .then(async () => {
+          if (state.stopped || this.legs.get(legId) !== state) return;
+          const refs: string[] = [];
+          let dispatched = false;
+          try {
+            const mapped = await this.unpackStreamFrame(frame.kind, refs);
+            if (!state.stopped && this.legs.get(legId) === state && mapped) {
+              dispatched = true;
+              callbacks.onFrame(legId, mapped, () => this.releaseCacheObjects(refs));
+            }
+          } finally {
+            if (!dispatched) this.releaseCacheObjects(refs);
+          }
+        })
+        .catch((e) => {
+          if (!state.stopped && this.legs.get(legId) === state) {
+            drop(errorText(e));
+          }
+        })
+        .finally(() => {
+          queuedBytes -= data.byteLength;
+          queuedFrames--;
+        });
+    };
+
+    ws.onEnd = (code) => drop(l10n.t("errors.disconnected_from_server"), code);
+  }
+
+  closeStreamLeg(legId: bigint) {
+    const leg = this.legs.get(legId);
+    if (!leg) return;
+    leg.stopped = true;
+    this.legs.delete(legId);
+    this.direct.detach(leg.ws);
+    leg.ws.close();
+  }
+
+  private async unpackStreamFrame(
+    kind: ReturnType<typeof fromBinary<typeof ServerFrameSchema>>["kind"],
+    refs: string[],
+  ) {
+    switch (kind.case) {
+      case "heartbeat":
+        return { case: "heartbeat" as const, value: true };
+      case "machineUpdated": {
+        const m = kind.value.machine;
+        if (!m) return undefined;
+        return { case: "machineUpdated" as const, value: await this.unpackMachine(m, refs) };
+      }
+      case "machineRemoved":
+        this.forgetSchedules(kind.value.machineId);
+        return { case: "machineRemovedId" as const, value: kind.value.machineId };
+      case "sessionUpdated": {
+        const s = kind.value.session;
+        if (!s) return undefined;
+        return { case: "sessionUpdated" as const, value: await this.unpackSession(s, true, refs) };
+      }
+      case "eventsAppended": {
+        const ea = kind.value;
+        const events = await this.unpackEvents(ea.sessionId, ea.events, false, refs);
+        return {
+          case: "eventsAppended" as const,
+          value: create(EventsAppendedFrameSchema, { sessionId: ea.sessionId, events }),
+        };
+      }
+      case "accountPrefsUpdated": {
+        const obj = kind.value.object;
+        const unpacked = await this.unpackAccountPrefs(obj, refs);
+        return { case: "accountPrefsUpdated" as const, value: unpacked };
+      }
+      case "deviceUpdated": {
+        if (!kind.value.device) return undefined;
+        const device = await this.unpackDevice(kind.value.device);
+        return { case: "deviceUpdated" as const, value: device };
+      }
+      case "deviceRemoved":
+        return { case: "deviceRemovedId" as const, value: kind.value.deviceId };
+      default:
+        return undefined;
+    }
+  }
+
+  // --- CoreExecutor: Auth & Security ---
+
+  private async warmTokenOnce() {
+    if (this.tokenWarmed) return;
+    this.tokenWarmed = true;
+    try {
+      const saved = await loadLoginToken(this.account.server, this.account.deviceId);
+      if (saved && !this.token) {
+        this.token = saved.token;
+        this.tokenExpires = saved.expiresMs;
+      }
+    } catch {
+      /* Ignore missing token. */
+    }
+  }
+
+  async ensureToken(opId: bigint, forceLogin: boolean, timeoutMs: bigint): Promise<TokenResultEvent> {
+    await this.warmTokenOnce();
+    if (!forceLogin && this.token && this.tokenExpires >= Date.now() + 86_400_000) {
+      return create(TokenResultEventSchema, {
+        opId,
+        token: this.token,
+        expiresMs: BigInt(this.tokenExpires),
+      });
+    }
+    this.discardToken(this.token);
+    await this.tokenWrites;
+    const stop = new AbortController();
+    const budget = timeoutMs > 0n ? Number(timeoutMs) : this.roundBudget();
+    const timer = setTimeout(
+      () => stop.abort(new ConnectError(l10n.t("errors.connection_timed_out"), Code.DeadlineExceeded)),
+      budget,
+    );
+    try {
+      await this.login(stop.signal);
+      if (this.closed) {
+        this.token = "";
+        this.tokenExpires = 0;
+        return create(TokenResultEventSchema, { opId, errorCode: "canceled", error: "stopped" });
+      }
+      return create(TokenResultEventSchema, {
+        opId,
+        token: this.token,
+        expiresMs: BigInt(this.tokenExpires),
+      });
+    } catch (e) {
+      const removed = e instanceof ConnectError && e.code === Code.PermissionDenied;
+      return create(TokenResultEventSchema, {
+        opId,
+        removed,
+        errorCode: e instanceof ConnectError ? connectErrorCode(e.code) : "error",
+        error: errorText(e),
+      });
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  discardToken(token?: string) {
+    if (token !== undefined && token !== "" && this.token && this.token !== token) return;
+    this.token = "";
+    this.tokenExpires = 0;
+    this.tokenWrites = this.tokenWrites
+      .then(() => clearLoginToken(this.account.server, this.account.deviceId))
+      .catch(() => undefined);
+  }
+
+  private applySecurityRecordSets(record: SecurityRecord) {
+    const head = record.states[record.states.length - 1];
+    this.authorityDeviceId = head.core.authorityID;
+    this.trustedMembers = new Map(head.core.members.map((m) => [m.id, m]));
+    this.archiveMachines = new Set(
+      record.states.flatMap((s) => s.core.members.filter((m) => m.kind === 1).map((m) => m.id)),
+    );
+    for (const id of this.archiveMachines) if (!this.trustedMembers.has(id)) this.forgetSchedules(id);
+  }
+
+  private snapshotFromRecord(
+    opId: bigint,
+    networkGeneration: bigint,
+    record: SecurityRecord,
+    pushSeq = 0n,
+  ): SecuritySnapshotEvent {
+    const head = record.states[record.states.length - 1];
+    if (record.member === false) {
+      return create(SecuritySnapshotEventSchema, {
+        opId,
+        pushSeq,
+        isMember: false,
+        selfDeviceId: this.account.deviceId,
+        authorityDeviceId: this.authorityDeviceId,
+        clockSkewed: this.serverAhead,
+        networkGeneration,
+      });
+    }
+    return create(SecuritySnapshotEventSchema, {
+      opId,
+      pushSeq,
+      isMember: true,
+      selfDeviceId: this.account.deviceId,
+      authorityDeviceId: this.authorityDeviceId,
+      trustedMachineIds: head.core.members.filter((m) => m.kind === 1).map((m) => m.id),
+      trustedClientIds: head.core.members.filter((m) => m.kind === 2).map((m) => m.id),
+      archiveMachineIds: [...this.archiveMachines].filter((id) => this.trustedMembers.get(id)?.kind !== 1),
+      headEpoch: head.core.epoch,
+      leaseEndMs: record.lease?.notAfter ?? 0n,
+      clockSkewed: this.serverAhead,
+      recoveryPending: this.security.recoveryPending,
+      recoveryReadyMs: this.security.recoveryReadyMs,
+      recoveryObjectsPending: this.recoveryObjectsPending,
+      networkGeneration,
+    });
+  }
+
+  async syncSecurity(opId: bigint, networkGeneration: bigint, touch: boolean): Promise<SecuritySnapshotEvent> {
+    const pushSeq = opId === 0n ? this.securityPushSeq++ : 0n;
+    const gen = Number(networkGeneration);
+    if (gen > this.networkGeneration) {
+      this.networkGeneration = gen;
+      this.retireNetworkIO();
+    }
+    if (touch) {
+      this.touchAfterWake();
+    }
+    this.coreSyncDepth++;
+    try {
+      const record = await this.security.sync(undefined, 5000);
+      this.verifiedNetworkGeneration = this.networkGeneration;
+      this.wakeRequired = false;
+      this.applySecurityRecordSets(record);
+      this.maintainAuthority();
+      if (this.recoveryObjectsPending) {
+        try {
+          await this.republishRecoveryObjects(record, this.api);
+          this.recoveryObjectsPending = false;
+        } catch {
+          /* Retry on subsequent security sync. */
+        }
+      }
+      if (this.needsDescribeSelf) {
+        await this.describeSelf();
+      }
+      if (record.member === false) {
+        this.removalVerified = true;
+        this.discardToken();
+        await this.tokenWrites;
+      }
+      return this.snapshotFromRecord(opId, networkGeneration, record, pushSeq);
+    } catch (e) {
+      return create(SecuritySnapshotEventSchema, {
+        opId,
+        pushSeq,
+        selfDeviceId: this.account.deviceId,
+        clockSkewed: this.serverAhead || (e instanceof SecurityError && e.code === "clock"),
+        recoveryPending: this.security.recoveryPending,
+        recoveryReadyMs: this.security.recoveryReadyMs,
+        recoveryObjectsPending: this.recoveryObjectsPending,
+        networkGeneration,
+        error: errorText(e),
+      });
+    } finally {
+      this.coreSyncDepth--;
+    }
+  }
+
+  // --- CoreExecutor: Cache ---
+
+  private stashCacheObject(item: CacheRefItem, refs?: string[]): string {
+    if (!this.cache) return "";
+    const id = `r${++this.cacheRefSeq}`;
+    this.cacheRefs.set(id, item);
+    refs?.push(id);
+    return id;
+  }
+
+  private releaseCacheObjects(refs: string[]) {
+    for (const ref of refs) {
+      this.cacheRefs.delete(ref);
+    }
+  }
+
+  private trackEventRefs<T extends CoreEvent>(ev: T, refs: string[]): T {
+    if (refs.length > 0) this.eventCacheRefs.set(ev, refs);
+    return ev;
+  }
+
+  releaseEventRefs(ev: CoreEvent) {
+    const refs = this.eventCacheRefs.get(ev);
+    if (refs) {
+      this.eventCacheRefs.delete(ev);
+      this.releaseCacheObjects(refs);
+    }
+  }
+
+  async readBootstrapCache(opId: bigint): Promise<CacheBootstrapLoadedEvent> {
+    await this.warmInfoOnce();
+    const homeScopeToken = readStoredScopeToken();
+    let scopeHmacKey = new Uint8Array(32);
+    const machines: PlainMachine[] = [];
+    const sessions: PlainSession[] = [];
+    let prefs: PlainAccountPrefs | undefined;
+
+    if (!this.cache) {
+      crypto.getRandomValues(scopeHmacKey);
+      return create(CacheBootstrapLoadedEventSchema, { opId, homeScopeToken, scopeHmacKey });
+    }
+    try {
+      const existingKey = await this.cache.get(SCOPE_HMAC_KEY_VALUE);
+      if (existingKey instanceof Uint8Array && existingKey.length === 32) {
+        scopeHmacKey = new Uint8Array(existingKey);
+      } else {
+        crypto.getRandomValues(scopeHmacKey);
+        await this.cache.set(SCOPE_HMAC_KEY_VALUE, scopeHmacKey);
+      }
+      const identity = await this.security.localIdentity();
+      const rec = await this.security.verifiedRecord();
+      this.trustedMembers = new Map(identity.state.core.members.map((m) => [m.id, m]));
+      this.authorityDeviceId = identity.state.core.authorityID;
+      this.archiveMachines = new Set(
+        rec.states.flatMap((s) => s.core.members.filter((m) => m.kind === 1).map((m) => m.id)),
+      );
+      for (const id of this.archiveMachines) {
+        if (!this.trustedMembers.has(id)) void this.keepValue("schedules:" + id, undefined);
+      }
+
+      const [keptMachines, keptSessions, keptPrefs, keptOpen] = await Promise.all([
+        this.cache.get("machines"),
+        this.cache.get("sessions"),
+        this.cache.get("prefs"),
+        this.cache.get("open-sessions"),
+      ]);
+      const valid = (v: unknown): v is Record<string, unknown> =>
+        !!v && typeof v === "object" && (v as { deviceId?: string }).deviceId === this.account.deviceId && (v as { server?: string }).server === this.account.server;
+
+      if (valid(keptOpen) && Array.isArray(keptOpen.ids)) {
+        for (const id of keptOpen.ids) if (typeof id === "string") this.persistedOpen.add(id);
+      }
+      if (valid(keptMachines) && keptMachines.bytes instanceof Uint8Array) {
+        const list = fromBinary(ListMachinesResponseSchema, keptMachines.bytes);
+        for (const m of list.machines) {
+          this.persistedMachines.set(m.id, m);
+          machines.push(await this.unpackMachine(m, undefined, true));
+          if (this.supportsSchedules(m.id)) {
+            const keptSched = await this.cache.get("schedules:" + m.id);
+            if (valid(keptSched) && keptSched.bytes instanceof Uint8Array) {
+              void this.restoreScheduleSnapshot(m.id, keptSched, true).catch(() => undefined);
+            }
+          }
+        }
+      }
+      if (valid(keptSessions) && keptSessions.bytes instanceof Uint8Array) {
+        const list = fromBinary(ListRemoteSessionsResponseSchema, keptSessions.bytes);
+        for (const rs of list.sessions) {
+          this.persistedSessions.set(rs.sessionId, rs);
+          sessions.push(await this.unpackSession(rs, true, undefined, true));
+        }
+      }
+      if (valid(keptPrefs) && keptPrefs.bytes instanceof Uint8Array) {
+        prefs = await this.unpackAccountPrefs(fromBinary(AccountPrefsObjectSchema, keptPrefs.bytes), undefined, true);
+      }
+      return create(CacheBootstrapLoadedEventSchema, {
+        opId,
+        machines,
+        sessions,
+        prefs,
+        homeScopeToken,
+        scopeHmacKey,
+      });
+    } catch (e) {
+      return create(CacheBootstrapLoadedEventSchema, {
+        opId,
+        machines,
+        sessions,
+        prefs,
+        homeScopeToken,
+        scopeHmacKey,
+        error: errorText(e),
+      });
+    }
+  }
+
+  async readEventsCache(
+    opId: bigint,
+    sessionId: string,
+    newest: boolean,
+    afterSeq: bigint,
+    limit: number,
+  ): Promise<CacheEventsLoadedEvent> {
+    if (!this.cache) {
+      return create(CacheEventsLoadedEventSchema, { opId, sessionId });
+    }
+    try {
+      const cap = limit > 0 ? limit : CACHE_PAGE_SIZE;
+      const rows = newest && this.cache.readNewest
+        ? await this.cache.readNewest(sessionId, cap)
+        : await this.cache.read(sessionId, afterSeq, cap);
+      const events = await this.unpackEvents(sessionId, rows, true);
+      const broken = events.some((e) => e.broken);
+      const retired = events.some((e) => e.retired);
+      return create(CacheEventsLoadedEventSchema, {
+        opId,
+        sessionId,
+        events,
+        broken,
+        retired,
+      });
+    } catch (e) {
+      return create(CacheEventsLoadedEventSchema, {
+        opId,
+        sessionId,
+        error: errorText(e),
+      });
+    }
+  }
+
+  private extractCacheWrite(eff: CacheWriteEffect): CacheWritePayload | undefined {
+    switch (eff.kind.case) {
+      case "writeMachineRef": {
+        const item = this.cacheRefs.get(eff.kind.value);
+        this.cacheRefs.delete(eff.kind.value);
+        return item?.kind === "machine" ? { kind: "machine", raw: item.raw } : undefined;
+      }
+      case "writeSessionRef":
+      case "keepSessionOwnerRef": {
+        const item = this.cacheRefs.get(eff.kind.value);
+        this.cacheRefs.delete(eff.kind.value);
+        return item?.kind === "session" ? { kind: "session", raw: item.raw } : undefined;
+      }
+      case "writeEvents": {
+        if (!this.cache) return undefined;
+        const rows: CachedEvent[] = [];
+        for (const ref of eff.kind.value.cacheRefs) {
+          const item = this.cacheRefs.get(ref);
+          this.cacheRefs.delete(ref);
+          if (item?.kind === "event") rows.push(item.raw);
+          else if (item?.kind === "events") rows.push(...item.raw);
+        }
+        return rows.length > 0 ? { kind: "events", sessionId: eff.kind.value.sessionId, raw: rows } : undefined;
+      }
+      case "writePrefsRef": {
+        const item = this.cacheRefs.get(eff.kind.value);
+        this.cacheRefs.delete(eff.kind.value);
+        return item?.kind === "prefs" ? { kind: "prefs", raw: item.raw } : undefined;
+      }
+      case "setSessionOpen":
+        return { kind: "sessionOpen", sessionId: eff.kind.value.sessionId, open: eff.kind.value.open };
+      default:
+        return undefined;
+    }
+  }
+
+  prepareCacheWrite(eff: CacheWriteEffect): (() => Promise<void>) | undefined {
+    const payload = this.extractCacheWrite(eff);
+    return payload ? () => this.writeCachePayload(payload) : undefined;
+  }
+
+  async writeCache(eff: CacheWriteEffect): Promise<void> {
+    const payload = this.extractCacheWrite(eff);
+    if (payload) await this.writeCachePayload(payload);
+  }
+
+  private async writeCachePayload(payload: CacheWritePayload): Promise<void> {
+    switch (payload.kind) {
+      case "machine":
+        this.persistedMachines.set(payload.raw.id, payload.raw);
+        await this.persistMachinesList();
+        break;
+      case "session":
+        this.persistedSessions.set(payload.raw.sessionId, payload.raw);
+        await this.persistSessionsList();
+        break;
+      case "events":
+        await this.cache?.append(payload.sessionId, payload.raw);
+        break;
+      case "prefs":
+        await this.keepValue("prefs", { bytes: toBinary(AccountPrefsObjectSchema, payload.raw) });
+        break;
+      case "sessionOpen":
+        if (payload.open) this.persistedOpen.add(payload.sessionId);
+        else this.persistedOpen.delete(payload.sessionId);
+        await this.keepValue("open-sessions", { ids: [...this.persistedOpen] });
+        break;
+    }
+  }
+
+  async deleteCache(eff: CacheDeleteEffect): Promise<void> {
+    switch (eff.kind.case) {
+      case "dropEventsSessionId":
+        await this.cache?.drop(eff.kind.value);
+        break;
+      case "removeSessionId":
+        await this.cache?.drop(eff.kind.value);
+        this.persistedSessions.delete(eff.kind.value);
+        this.persistedOpen.delete(eff.kind.value);
+        this.sessionSeeds.delete(eff.kind.value);
+        await this.persistSessionsList();
+        await this.keepValue("open-sessions", { ids: [...this.persistedOpen] });
+        break;
+      case "unlistSessionId":
+        this.persistedSessions.delete(eff.kind.value);
+        await this.persistSessionsList();
+        break;
+      case "removeMachineId":
+        this.persistedMachines.delete(eff.kind.value);
+        await this.persistMachinesList();
+        this.forgetSchedules(eff.kind.value);
+        break;
+    }
+  }
+
+  private async persistMachinesList() {
+    await this.keepValue("machines", {
+      bytes: toBinary(
+        ListMachinesResponseSchema,
+        create(ListMachinesResponseSchema, { machines: [...this.persistedMachines.values()] }),
+      ),
+    });
+  }
+
+  private async persistSessionsList() {
+    await this.keepValue("sessions", {
+      bytes: toBinary(
+        ListRemoteSessionsResponseSchema,
+        create(ListRemoteSessionsResponseSchema, { sessions: [...this.persistedSessions.values()] }),
+      ),
+    });
+  }
+
+  // --- CoreExecutor: RPCs ---
+
+  async executeRpc(eff: RpcEffect): Promise<CoreEvent> {
+    const opId = eff.opId;
+    switch (eff.kind.case) {
+      case "fetchLists": {
+        const limit = eff.kind.value.limit || this.sessionPageSize;
+        const refs: string[] = [];
+        try {
+          const [mRes, sRes, dRes] = await Promise.all([
+            this.api.listMachines({}),
+            this.api.listRemoteSessions({ limit }),
+            this.api.listDevices({}),
+          ]);
+          await this.maybeRepublishAndDescribe(dRes.devices);
+          const machines = await Promise.all(mRes.machines.map((m) => this.unpackMachine(m, refs)));
+          const sessions = await Promise.all(sRes.sessions.map((s) => this.unpackSession(s, true, refs)));
+          const devices = await Promise.all(
+            dRes.devices.filter((d) => this.trustedMembers.has(d.id)).map((d) => this.unpackDevice(d)),
+          );
+          return this.trackEventRefs(
+            create(CoreEventSchema, {
+              event: {
+                case: "listsFetched",
+                value: create(ListsFetchedEventSchema, {
+                  opId,
+                  machines,
+                  sessions,
+                  next: sRes.next,
+                  devices,
+                }),
+              },
+            }),
+            refs,
+          );
+        } catch (e) {
+          this.releaseCacheObjects(refs);
+          return create(CoreEventSchema, {
+            event: {
+              case: "listsFetched",
+              value: create(ListsFetchedEventSchema, { opId, error: errorText(e) }),
+            },
+          });
+        }
+      }
+      case "fetchSessionsPage": {
+        const refs: string[] = [];
+        try {
+          const res = await this.api.listRemoteSessions({
+            after: eff.kind.value.after,
+            limit: eff.kind.value.limit || this.sessionPageSize,
+          });
+          const sessions = await Promise.all(res.sessions.map((s) => this.unpackSession(s, true, refs)));
+          return this.trackEventRefs(
+            create(CoreEventSchema, {
+              event: {
+                case: "sessionsPageFetched",
+                value: create(SessionsPageFetchedEventSchema, { opId, sessions, next: res.next }),
+              },
+            }),
+            refs,
+          );
+        } catch (e) {
+          this.releaseCacheObjects(refs);
+          return create(CoreEventSchema, {
+            event: {
+              case: "sessionsPageFetched",
+              value: create(SessionsPageFetchedEventSchema, { opId, error: errorText(e) }),
+            },
+          });
+        }
+      }
+      case "fetchSessionById": {
+        const sid = eff.kind.value.sessionId;
+        const refs: string[] = [];
+        try {
+          const res = await this.api.listRemoteSessions({ sessionIds: [sid], limit: 1 });
+          const found = res.sessions.find((s) => s.sessionId === sid);
+          const session = found ? await this.unpackSession(found, true, refs) : undefined;
+          this.sessionErrors.delete(sid);
+          return this.trackEventRefs(
+            create(CoreEventSchema, {
+              event: {
+                case: "sessionByIdFetched",
+                value: create(SessionByIdFetchedEventSchema, { opId, session }),
+              },
+            }),
+            refs,
+          );
+        } catch (e) {
+          this.releaseCacheObjects(refs);
+          this.sessionErrors.add(sid);
+          return create(CoreEventSchema, {
+            event: {
+              case: "sessionByIdFetched",
+              value: create(SessionByIdFetchedEventSchema, { opId, error: errorText(e) }),
+            },
+          });
+        }
+      }
+      case "getEvents": {
+        const { sessionId, afterSeq, limit } = eff.kind.value;
+        const refs: string[] = [];
+        try {
+          const res = await this.api.getEvents({
+            sessionId,
+            afterSeq,
+            limit: limit || this.historyPageSize,
+          });
+          const events = await this.unpackEvents(sessionId, res.events, true, refs);
+          return this.trackEventRefs(
+            create(CoreEventSchema, {
+              event: {
+                case: "eventsPageFetched",
+                value: create(EventsPageFetchedEventSchema, {
+                  opId,
+                  sessionId,
+                  events,
+                  more: res.more,
+                }),
+              },
+            }),
+            refs,
+          );
+        } catch (e) {
+          this.releaseCacheObjects(refs);
+          return create(CoreEventSchema, {
+            event: {
+              case: "eventsPageFetched",
+              value: create(EventsPageFetchedEventSchema, { opId, sessionId, error: errorText(e) }),
+            },
+          });
+        }
+      }
+      case "getAccountPrefs": {
+        const refs: string[] = [];
+        try {
+          const res = await this.api.getAccountPrefs({ objectId: eff.kind.value.objectId || PREFS_OBJECT });
+          const prefs = await this.unpackAccountPrefs(res.object, refs);
+          return this.trackEventRefs(
+            create(CoreEventSchema, {
+              event: {
+                case: "accountPrefsFetched",
+                value: create(AccountPrefsFetchedEventSchema, { opId, prefs }),
+              },
+            }),
+            refs,
+          );
+        } catch (e) {
+          this.releaseCacheObjects(refs);
+          return create(CoreEventSchema, {
+            event: {
+              case: "accountPrefsFetched",
+              value: create(AccountPrefsFetchedEventSchema, { opId, error: errorText(e) }),
+            },
+          });
+        }
+      }
+      case "putAccountPrefs": {
+        const { objectId, expectedRevision, nextPrefs } = eff.kind.value;
+        const refs: string[] = [];
+        try {
+          const env = await this.sealSecureMessage(
+            {
+              kind: PayloadKind.ACCOUNT_PREFS,
+              requestId: objectId || PREFS_OBJECT,
+              seq: expectedRevision + 1n,
+              sender: this.account.deviceId,
+            },
+            ProjectPrefsSchema,
+            nextPrefs ?? emptyPrefs(),
+          );
+          const res = await this.api.putAccountPrefs({
+            objectId: objectId || PREFS_OBJECT,
+            expectedRevision,
+            envelope: env,
+          });
+          const current = await this.unpackAccountPrefs(res.object, refs);
+          return this.trackEventRefs(
+            create(CoreEventSchema, {
+              event: {
+                case: "accountPrefsPutResult",
+                value: create(AccountPrefsPutResultEventSchema, {
+                  opId,
+                  applied: res.applied,
+                  current,
+                }),
+              },
+            }),
+            refs,
+          );
+        } catch (e) {
+          this.releaseCacheObjects(refs);
+          const sealConflict = e instanceof SecurityError && (e.code === "clock" || e.code === "lease" || e.code === "conflict");
+          return create(CoreEventSchema, {
+            event: {
+              case: "accountPrefsPutResult",
+              value: create(AccountPrefsPutResultEventSchema, {
+                opId,
+                sealConflict,
+                error: errorText(e),
+              }),
+            },
+          });
+        }
+      }
+      case "fetchDevices": {
+        try {
+          const res = await this.api.listDevices({});
+          await this.maybeRepublishAndDescribe(res.devices);
+          const devices = await Promise.all(
+            res.devices.filter((d) => this.trustedMembers.has(d.id)).map((d) => this.unpackDevice(d)),
+          );
+          return create(CoreEventSchema, {
+            event: {
+              case: "devicesFetched",
+              value: create(DevicesFetchedEventSchema, { opId, devices }),
+            },
+          });
+        } catch (e) {
+          return create(CoreEventSchema, {
+            event: {
+              case: "devicesFetched",
+              value: create(DevicesFetchedEventSchema, { opId, error: errorText(e) }),
+            },
+          });
+        }
+      }
+      default:
+        throw new Error("unexpected rpc effect");
+    }
+  }
+
+  private async maybeRepublishAndDescribe(devices: Device[]) {
+    try {
+      const record = await this.security.verifiedRecord();
+      this.recoveryObjectsPending = false;
+      try {
+        await this.republishRecoveryObjects(record, this.api);
+      } catch {
+        this.recoveryObjectsPending = true;
+      }
+      const me = devices.find((d) => d.id === this.account.deviceId);
+      if (me && (!me.meta || !me.meta.securityHeader.length)) {
+        void this.describeSelf();
+      }
+    } catch {
+      /* Verified record missing before initial security sync. */
+    }
+  }
+
+  // --- CoreExecutor: Single-Attempt Command Dispatch ---
+
+  async executeCommandAttempt(eff: DispatchCommandEffect, signal?: AbortSignal): Promise<CommandOutcomeEvent> {
+    let hint: RouteHint | undefined;
+    if (eff.routeHint === CommandRouteHint.READ) hint = { kind: "read" };
+    else if (eff.routeHint === CommandRouteHint.BULK) {
+      const upload = eff.bulkUpload ? "file" : undefined;
+      hint = { kind: "bulk", file: eff.bulkFileKey, upload, bytes: Number(eff.bulkBytes) };
+    }
+    const { outcome } = await this.executeSealedAttempt({
+      requestId: eff.requestId,
+      attemptId: eff.attemptId,
+      machineId: eff.machineId,
+      sessionId: eff.sessionId,
+      deadlineMs: Number(eff.deadlineMs),
+      commandBytes: new Uint8Array(eff.commandBytes),
+      routeHint: hint,
+      forceRelay: eff.forceRelay,
+      priorUnknown: eff.retryOfUnknown,
+      signal,
+    });
+    return outcome;
+  }
+
+  private async executeSealedAttempt(params: {
+    requestId: string;
+    attemptId: string;
+    machineId: string;
+    sessionId: string;
+    deadlineMs: number;
+    commandBytes: Uint8Array<ArrayBuffer>;
+    routeHint?: RouteHint;
+    forceRelay: boolean;
+    priorUnknown: boolean;
+    isScheduleList?: boolean;
+    hasFiles?: boolean;
+    signal?: AbortSignal;
+  }): Promise<{ outcome: CommandOutcomeEvent; msg?: CommandResult; rawEnvelope?: Envelope }> {
+    const base = { requestId: params.requestId, attemptId: params.attemptId };
+    if (this.closed) {
+      return {
+        outcome: create(CommandOutcomeEventSchema, {
+          ...base,
+          source: OutcomeSource.LOCAL,
+          notForwarded: true,
+          transportCode: "canceled",
+        }),
+      };
+    }
+
+    if (this.serverAhead) {
+      return {
+        outcome: create(CommandOutcomeEventSchema, {
+          ...base,
+          source: OutcomeSource.LOCAL,
+          notForwarded: !params.priorUnknown,
+          transportCode: params.priorUnknown ? "unknown" : "clock",
+          transportDetail: l10n.t("errors.this_device_s_clock_is_behind_the_account_state_remote"),
+        }),
+      };
+    }
+
+    let parsedCmd: ReturnType<typeof fromBinary<typeof CommandSchema>> | undefined;
+    try {
+      parsedCmd = fromBinary(CommandSchema, params.commandBytes);
+    } catch {
+      parsedCmd = undefined;
+    }
+
+    let envelope: Envelope;
+    let binding: { key: Uint8Array; payload: Uint8Array };
+    try {
+      await this.checkNetworkSecurity();
+      envelope = await this.sealCommandBytes(
+        params.machineId,
+        params.sessionId,
+        params.requestId,
+        BigInt(params.deadlineMs),
+        params.commandBytes,
+      );
+      binding = await requestIdentity(parseHeader(new Uint8Array(envelope.securityHeader)), params.commandBytes);
+      if (params.hasFiles) {
+        const issue = this.fileUploadIssue(params.machineId);
+        if (issue) {
+          return {
+            outcome: create(CommandOutcomeEventSchema, {
+              ...base,
+              source: OutcomeSource.LOCAL,
+              notForwarded: true,
+              transportCode: "failed_precondition",
+              transportDetail: issue,
+            }),
+          };
+        }
+      }
+    } catch (e) {
+      this.noteClock(e);
+      if (params.priorUnknown) {
+        return {
+          outcome: create(CommandOutcomeEventSchema, {
+            ...base,
+            source: OutcomeSource.LOCAL,
+            notForwarded: false,
+            transportCode: "unknown",
+            transportDetail: errorText(e),
+          }),
+        };
+      }
+      const code = e instanceof SecurityError && e.code === "clock"
+        ? "clock"
+        : e instanceof SecurityError && e.code === "lease"
+          ? "failed_precondition"
+          : "security_unavailable";
+      return {
+        outcome: create(CommandOutcomeEventSchema, {
+          ...base,
+          source: OutcomeSource.LOCAL,
+          notForwarded: true,
+          transportCode: code,
+          transportDetail: errorText(e),
+        }),
+      };
+    }
+
+    let handoffReached = false;
+    const handoff = () => { handoffReached = true; };
+    const tracking = params.routeHint ? this.direct.track(params.machineId, params.routeHint) : undefined;
+    const directAttempt = params.routeHint && !params.forceRelay
+      ? this.direct.attempt(params.machineId, params.routeHint, handoff)
+      : undefined;
+    const pathAttempt = directAttempt ?? this.deviceLink.router.path.attempt(handoff);
+    const isDirect = !!pathAttempt.direct;
+    const routeStarted = performance.now();
+
+    try {
+      params.signal?.throwIfAborted();
+      await pathAttempt.prepare();
+      const res = await pathAttempt.send(params.machineId, envelope, params.signal);
+      let msg: CommandResult;
+      try {
+        msg = (
+          await this.openSecureMessage(
+            res.result,
+            {
+              kind: PayloadKind.COMMAND_RESULT,
+              machineId: params.machineId,
+              sessionId: params.sessionId,
+              requestId: params.requestId,
+            },
+            CommandResultSchema,
+          )
+        ).msg;
+      } catch {
+        return {
+          outcome: create(CommandOutcomeEventSchema, {
+            ...base,
+            source: OutcomeSource.DAEMON,
+            attemptBound: res.attemptId === pathAttempt.attemptId,
+            signed: false,
+            hashesMatch: false,
+            routeWasDirect: isDirect,
+          }),
+        };
+      }
+
+      const hashesMatch =
+        equal(msg.requestKeyHash, binding.key) &&
+        equal(msg.payloadHash, binding.payload) &&
+        (msg.outcome === "conflict" || msg.conflictKind === "");
+      const attemptBound = res.attemptId === pathAttempt.attemptId;
+      const outerMatchesInner = isDirect || (res.outcome === msg.outcome && res.reason === msg.reason);
+
+      if (tracking && hashesMatch && attemptBound && outerMatchesInner && !msg.errorCode && msg.outcome === "executed") {
+        const bytes = parsedCmd?.kind.case === "putImageChunk"
+          ? parsedCmd.kind.value.data?.length ?? 0
+          : msg.kind.case === "getSharedFileChunk"
+            ? msg.kind.value.data.length
+            : 0;
+        tracking.observe(isDirect, bytes, performance.now() - routeStarted);
+      }
+      if (parsedCmd?.kind.case === "beginImageUpload") {
+        if (this.directTransfers.size >= 128) this.directTransfers.delete(this.directTransfers.keys().next().value!);
+        this.directTransfers.set(`${params.machineId}/${parsedCmd.kind.value.transferId}`, parsedCmd.kind.value.fileName ? "file" : "image");
+      }
+      if (parsedCmd?.kind.case === "completeImageUpload" || parsedCmd?.kind.case === "abortImageUpload") {
+        this.directTransfers.delete(`${params.machineId}/${parsedCmd.kind.value.transferId}`);
+      }
+      if (params.isScheduleList && res.result && this.machines.has(params.machineId) && this.supportsSchedules(params.machineId)) {
+        await this.keepScheduleSnapshot(params.machineId, { bytes: toBinary(EnvelopeSchema, res.result), requestId: params.requestId });
+      }
+
+      return {
+        outcome: create(CommandOutcomeEventSchema, {
+          ...base,
+          source: OutcomeSource.DAEMON,
+          signed: true,
+          hashesMatch,
+          attemptBound,
+          outerMatchesInner,
+          outerOutcome: isDirect ? msg.outcome : res.outcome,
+          outerReason: isDirect ? msg.reason : res.reason,
+          result: msg,
+          routeWasDirect: isDirect,
+        }),
+        msg,
+        rawEnvelope: res.result,
+      };
+    } catch (e) {
+      if (isDirect && params.routeHint) tracking?.failed();
+      if (e instanceof PathChanged) {
+        return {
+          outcome: create(CommandOutcomeEventSchema, {
+            ...base,
+            source: OutcomeSource.TRANSPORT,
+            notForwarded: !handoffReached,
+            transportCode: "path_changed",
+            routeWasDirect: isDirect,
+          }),
+        };
+      }
+      if (e instanceof ConnectError) {
+        const refusal = pathAttempt.refusal(e);
+        if (refusal !== undefined) {
+          return {
+            outcome: create(CommandOutcomeEventSchema, {
+              ...base,
+              source: OutcomeSource.SERVER,
+              notForwarded: true,
+              attemptBound: true,
+              outerReason: refusal.reason ?? "",
+              transportCode: connectErrorCode(e.code),
+              transportDetail: refusal.reason === "machine_offline" ? "" : (e.rawMessage || e.message),
+              routeWasDirect: false,
+            }),
+          };
+        }
+        if (!handoffReached && e.code === Code.Unauthenticated) {
+          return {
+            outcome: create(CommandOutcomeEventSchema, {
+              ...base,
+              source: OutcomeSource.SERVER,
+              notForwarded: true,
+              attemptBound: true,
+              transportCode: "unauthenticated",
+              transportDetail: e.rawMessage || e.message,
+              routeWasDirect: false,
+            }),
+          };
+        }
+        return {
+          outcome: create(CommandOutcomeEventSchema, {
+            ...base,
+            source: OutcomeSource.SERVER,
+            notForwarded: !handoffReached,
+            attemptBound: false,
+            transportCode: connectErrorCode(e.code),
+            transportDetail: e.rawMessage || e.message,
+            routeWasDirect: false,
+          }),
+        };
+      }
+      return {
+        outcome: create(CommandOutcomeEventSchema, {
+          ...base,
+          source: OutcomeSource.TRANSPORT,
+          notForwarded: !handoffReached,
+          transportCode: !this.network ? "network" : "unknown",
+          transportDetail: errorText(e),
+          routeWasDirect: isDirect,
+        }),
+      };
+    }
+  }
+
+  // --- Security Gate unpacking ---
+
+  private async unpackMachine(m: RemoteMachine, refs?: string[], fromCache = false): Promise<PlainMachine> {
+    const cacheRef = !fromCache ? this.stashCacheObject({ kind: "machine", raw: m }, refs) : "";
+    let meta: MachineMeta | undefined;
+    let metaRev = 0n;
+    let metaBroken = false;
+    if (m.meta) {
+      try {
+        const res = await this.openSecureMessage(
+          m.meta,
+          { kind: PayloadKind.MACHINE_META, machineId: m.id },
+          MachineMetaSchema,
+        );
+        meta = res.msg;
+        metaRev = res.header.seq;
+      } catch (e) {
+        metaBroken = true;
+        this.noteClock(e);
+      }
+    }
+    return create(PlainMachineSchema, {
+      machineId: m.id,
+      online: m.online,
+      lastSeenMs: m.lastSeenMs,
+      meta,
+      metaRev,
+      metaBroken,
+      cacheRef,
+    });
+  }
+
+  private async unpackSession(rs: RemoteSession, _historyAllowed: boolean, refs?: string[], fromCache = false): Promise<PlainSession> {
+    const cacheRef = !fromCache ? this.stashCacheObject({ kind: "session", raw: rs }, refs) : "";
+    let meta: Session | undefined;
+    let metaRev = 0n;
+    let checkpoint: LiveSnapshot | undefined;
+    let checkpointInvalid = false;
+    let retiredHistory = false;
+    let openFailed = false;
+
+    try {
+      rejectRetiredHistory(rs.key);
+      if (rs.key) {
+        const opened = await this.security.openHistory(rs.key);
+        const header = this.projectHeader(opened.header);
+        if (opened.plaintext.length !== 32) throw new Error(l10n.t("errors.invalid_session_seed"));
+        expect(header, {
+          kind: PayloadKind.SESSION_KEY,
+          machineId: rs.machineId,
+          sessionId: rs.sessionId,
+        });
+        this.sessionSeeds.set(rs.sessionId, new Uint8Array(opened.plaintext));
+      }
+      if (rs.meta) {
+        const res = await this.openSecureMessage(
+          rs.meta,
+          {
+            kind: PayloadKind.SESSION_META,
+            machineId: rs.machineId,
+            sessionId: rs.sessionId,
+          },
+          SessionSchema,
+        );
+        meta = res.msg;
+        metaRev = res.header.seq;
+        if (meta.machineReplacements.length) {
+          this.sessionReplacements.set(rs.sessionId, [...meta.machineReplacements]);
+        }
+        if (meta.currentCheckpoint.length) {
+          const cp = fromBinary(LiveSnapshotSchema, meta.currentCheckpoint);
+          if (
+            cp.session?.id !== rs.sessionId ||
+            cp.session.lastSeq > meta.lastSeq ||
+            cp.actions.some((e) => e.sessionId !== rs.sessionId || e.seq > meta!.lastSeq)
+          ) {
+            checkpointInvalid = true;
+          } else {
+            checkpoint = cp;
+          }
+        }
+      }
+    } catch (e) {
+      if (e instanceof UnsupportedHistoryError) {
+        retiredHistory = true;
+      } else {
+        openFailed = true;
+        this.noteClock(e);
+      }
+    }
+
+    return create(PlainSessionSchema, {
+      sessionId: rs.sessionId,
+      machineId: rs.machineId,
+      lastSeq: rs.lastSeq,
+      updatedMs: rs.updatedMs,
+      listedEndedMs: rs.endedMs,
+      meta,
+      metaRev,
+      checkpoint,
+      checkpointInvalid,
+      retiredHistory,
+      openFailed,
+      cacheRef,
+    });
+  }
+
+  private async unpackDevice(d: Device): Promise<PlainDevice> {
+    let meta: DeviceMeta | undefined;
+    let metaRev = 0n;
+    let metaBroken = false;
+    if (d.meta && d.meta.securityHeader.length) {
+      try {
+        const res = await this.openSecureMessage(
+          d.meta,
+          { kind: PayloadKind.DEVICE_META, requestId: d.id },
+          DeviceMetaSchema,
+        );
+        meta = res.msg;
+        metaRev = res.header.seq;
+      } catch (e) {
+        if (!(e instanceof SecurityError) || e.code !== "unavailable") metaBroken = true;
+        this.noteClock(e);
+      }
+    }
+    return create(PlainDeviceSchema, {
+      deviceId: d.id,
+      kind: d.kind,
+      createdMs: d.createdMs,
+      lastSeenMs: d.lastSeenMs,
+      meta,
+      metaRev,
+      metaBroken,
+    });
+  }
+
+  private async unpackAccountPrefs(o: AccountPrefsObject | undefined, refs?: string[], fromCache = false): Promise<PlainAccountPrefs> {
+    if (!o || !o.envelope || o.revision === 0n) {
+      return create(PlainAccountPrefsSchema, { revision: 0n, prefs: emptyPrefs() });
+    }
+    const cacheRef = !fromCache ? this.stashCacheObject({ kind: "prefs", raw: o }, refs) : "";
+    try {
+      const { msg, header } = await this.openSecureMessage(
+        o.envelope,
+        {
+          kind: PayloadKind.ACCOUNT_PREFS,
+          requestId: PREFS_OBJECT,
+          seq: o.revision,
+        },
+        ProjectPrefsSchema,
+      );
+      if (msg.schema !== 1 || header.seq !== o.revision) {
+        return create(PlainAccountPrefsSchema, { revision: o.revision, broken: true, cacheRef });
+      }
+      return create(PlainAccountPrefsSchema, { revision: o.revision, prefs: msg, cacheRef });
+    } catch (e) {
+      this.noteClock(e);
+      return create(PlainAccountPrefsSchema, { revision: o.revision, broken: true, cacheRef });
+    }
+  }
+
+  private async unpackEvents(
+    sessionId: string,
+    stored: Array<{ seq: bigint; envelope?: Envelope }>,
+    history: boolean,
+    refs?: string[],
+  ): Promise<PlainEvent[]> {
+    const machineId = this.sessions.get(sessionId)?.machineId ?? "";
+    const out: PlainEvent[] = [];
+    const historical = new Map<(typeof stored)[number], HistoryResult>();
+    if (history) {
+      const rows = stored.filter((se) => {
+        if (!se.envelope) return false;
+        try {
+          return fromBinary(HeaderSchema, se.envelope.header).version === 3;
+        } catch {
+          return false;
+        }
+      });
+      if (rows.length) {
+        try {
+          const results = await this.security.openHistoryBatch(
+            rows.map((se) => ({ envelope: se.envelope!, seed: this.sessionSeeds.get(sessionId) })),
+          );
+          rows.forEach((se, i) => historical.set(se, results[i]));
+        } catch (reason) {
+          rows.forEach((se) => historical.set(se, { status: "rejected", reason }));
+        }
+      }
+    }
+    for (const se of stored) {
+      const opened = historical.get(se);
+      historical.delete(se);
+      try {
+        const { msg, size } = await this.openSecureMessage(
+          se.envelope,
+          {
+            kind: PayloadKind.EVENT,
+            machineId,
+            sessionId,
+            seq: se.seq,
+          },
+          EventSchema,
+          history,
+          opened,
+        );
+        if (msg.seq !== se.seq || msg.sessionId !== sessionId) {
+          throw new Error(l10n.t("errors.the_event_s_position_was_changed"));
+        }
+        const verified = fromBinary(HeaderSchema, se.envelope!.header).version === 3;
+        const cacheRef = se.envelope && refs
+          ? this.stashCacheObject({ kind: "event", sessionId, raw: { seq: se.seq, envelope: se.envelope } }, refs)
+          : "";
+        out.push(
+          create(PlainEventSchema, {
+            seq: se.seq,
+            event: msg,
+            verified,
+            approxBytes: BigInt(Math.max(size, 64)),
+            cacheRef,
+          }),
+        );
+      } catch (e) {
+        if (e instanceof RecoveryHistoryUnavailable) {
+          const cacheRef = se.envelope && refs
+            ? this.stashCacheObject({ kind: "event", sessionId, raw: { seq: se.seq, envelope: se.envelope } }, refs)
+            : "";
+          out.push(
+            create(PlainEventSchema, {
+              seq: se.seq,
+              unavailable: true,
+              approxBytes: 64n,
+              cacheRef,
+            }),
+          );
+          continue;
+        }
+        out.push(
+          create(PlainEventSchema, {
+            seq: se.seq,
+            broken: true,
+            retired: e instanceof UnsupportedHistoryError,
+          }),
+        );
+        this.noteClock(e);
+        break;
+      }
+    }
+    return out;
+  }
+
+  // --- Security Helpers ---
 
   private projectHeader(h: SecurityHeader) {
     return create(HeaderSchema, {
@@ -1328,6 +2757,7 @@ export class Remote {
       compression: h.compression,
     });
   }
+
   private async historicalPlace(
     want: Parameters<typeof expect>[1],
     header: ReturnType<Remote["projectHeader"]>,
@@ -1338,17 +2768,20 @@ export class Remote {
       [PayloadKind.EVENT, PayloadKind.IMAGE].includes(want.kind) &&
       header.machineId !== want.machineId
     ) {
-      const view = this.sessions.get(want.sessionId ?? "");
+      const replacements =
+        this.sessionReplacements.get(want.sessionId ?? "") ??
+        this.sessions.get(want.sessionId ?? "")?.info?.machineReplacements ??
+        [];
       const origins = await machineReplacementOrigins(
         await this.security.verifiedRecord(),
         want.machineId ?? "",
-        view?.info?.machineReplacements ?? [],
+        replacements,
       );
-      if (origins.has(header.machineId))
-        return { ...want, machineId: header.machineId };
+      if (origins.has(header.machineId)) return { ...want, machineId: header.machineId };
     }
     return want;
   }
+
   private async openSecureMessage<D extends DescMessage>(
     env: Envelope | undefined,
     want: Parameters<typeof expect>[1],
@@ -1365,8 +2798,9 @@ export class Remote {
         PayloadKind.SESSION_META,
         PayloadKind.IMAGE,
       ].includes(want.kind)
-    )
+    ) {
       history = true;
+    }
     const seed = [
       PayloadKind.EVENT,
       PayloadKind.IMAGE,
@@ -1386,15 +2820,12 @@ export class Remote {
           ? await this.security.openHistory(env, seed)
           : await this.security.openCurrent(env, seed);
     } catch (e) {
-      if (e instanceof RecoveryHistoryUnavailable)
+      if (e instanceof RecoveryHistoryUnavailable) {
         expect(
           this.projectHeader(e.header),
-          await this.historicalPlace(
-            want,
-            this.projectHeader(e.header),
-            history,
-          ),
+          await this.historicalPlace(want, this.projectHeader(e.header), history),
         );
+      }
       throw e;
     }
     const header = this.projectHeader(out.header);
@@ -1408,20 +2839,43 @@ export class Remote {
     }
     return { header, msg, size: out.plaintext.length };
   }
+
   private async checkNetworkSecurity() {
     if (this.verifiedNetworkGeneration === this.networkGeneration) return;
-    const generation = this.networkGeneration, wake = this.wakeRevision;
+    const generation = this.networkGeneration;
+    const wake = this.wakeRevision;
     await this.security.sync();
     this.confirmWake(generation, wake);
     if (generation !== this.networkGeneration) throw new SecurityError("stale");
     this.verifiedNetworkGeneration = generation;
   }
 
+  private sealCommandBytes(
+    machineId: string,
+    sessionId: string,
+    requestId: string,
+    deadlineMs: bigint,
+    commandBytes: Uint8Array<ArrayBuffer>,
+  ) {
+    return this.sealSecureMessage(
+      {
+        kind: PayloadKind.COMMAND,
+        machineId,
+        sessionId,
+        requestId,
+        seq: 0n,
+        deadlineMs,
+        sender: this.account.deviceId,
+      },
+      CommandSchema,
+      create(CommandSchema),
+      undefined,
+      commandBytes,
+    );
+  }
+
   private async sealSecureMessage<D extends DescMessage>(
-    h: Omit<
-      Partial<import("./gen/remoteagent/v1/envelope_pb").Header>,
-      "$typeName"
-    >,
+    h: Omit<Partial<import("./gen/remoteagent/v1/envelope_pb").Header>, "$typeName">,
     schema: D,
     msg: MessageShape<D>,
     beforeSign?: () => void,
@@ -1433,680 +2887,99 @@ export class Remote {
     if (h.kind === PayloadKind.TERMINAL_INPUT) {
       const f = msg as unknown as { kind: { case?: string } };
       if (f.kind.case === "resize") purpose = Purpose.TerminalResize;
-      if (f.kind.case === "historyRequest") purpose = Purpose.TerminalHistory;
+      else if (f.kind.case === "history") purpose = Purpose.TerminalHistory;
     }
-    const seed = [1, 7, 8, 11, 14, 15].includes(purpose)
+    const seed = purpose === Purpose.TerminalInput || purpose === Purpose.TerminalResize || purpose === Purpose.TerminalHistory
       ? this.sessionSeeds.get(h.sessionId ?? "")
       : undefined;
+    const plain = preparedBytes ?? (toBinary(schema, msg) as Uint8Array<ArrayBuffer>);
     return this.security.seal(
       {
-        kind: Number(h.kind),
+        kind: h.kind ?? PayloadKind.UNSPECIFIED,
         purpose,
         machine: h.machineId ?? "",
         session: h.sessionId ?? "",
         request: h.requestId ?? "",
         seq: h.seq ?? 0n,
-        deadline:
-          h.deadlineMs ??
-          (h.kind === PayloadKind.TERMINAL_INPUT
-            ? BigInt(Date.now() + 60000)
-            : 0n),
+        deadline: h.deadlineMs ?? 0n,
         compression: 0,
       },
-      preparedBytes ?? toBinary(schema, msg) as Uint8Array<ArrayBuffer>,
+      plain,
       seed,
       beforeSign,
     );
   }
-  static async load(): Promise<Remote | undefined> {
-    await resumeRegistration();
-    const acct = await loadAccount();
-    if (!acct) return undefined;
-    const r = new Remote(
-      acct,
-      eventCache(),
-    );
-    // What the last visit kept is there for the first paint.
-    await r.warm();
-    r.localDrafts = new ComposerDraftStore(acct);
-    return r;
-  }
 
-  // --- change notification for React ---
-
-  subscribe = (fn: () => void) => {
-    this.listeners.add(fn);
-    return () => this.listeners.delete(fn);
-  };
-
-  snapshot = () => this.version;
-
-  /** Tells the views that state kept here changed. */
-  touch() {
-    this.changed();
-  }
-
-  get link(): Link {
-    if (this.conn === "online") return "online";
-    if (!this.network) return "no-network";
-    return this.waited ? "no-server" : "waiting";
-  }
-
-  /** Cached content needs no banner for a brief reconnect. Cold starts do. */
-  get showWaiting(): boolean {
-    return this.waitingNotice || (!this.listed && this.sessions.size === 0);
-  }
-
-  /** The copy kept in this browser is on show and nothing of the connection
-   * is known yet, for the moment a reconnect takes: no word for it, rather
-   * than 未连接 and 电脑离线 and then the state. */
-  get awaiting(): boolean {
-    return !this.listed && this.link === "waiting" && !this.showWaiting;
-  }
-
-  /** The computers as this connection has heard of them. Until the lists are
-   * in, the copy kept in this browser (which says offline) is not that: no
-   * computer is known to be off, and what shows is the last state heard. */
-  get presence(): ReadonlyMap<string, MachineView> {
-    if (!this.listed) return NO_MACHINES;
-    let projected: Map<string, MachineView> | undefined;
-    for (const [id, machine] of this.machines) {
-      const online = this.peer(id).reachable;
-      if (online !== machine.online) {
-        projected ??= new Map(this.machines);
-        projected.set(id, { ...machine, online });
-      }
-    }
-    return projected ?? this.machines;
-  }
-
-  /** Whether a computer is online as far as is known: until the lists are in,
-   * as the copy kept in this browser had it, so that a card drawn from it has
-   * the shape it will have. */
-  onlineOf(m: MachineView): boolean {
-    return this.listed ? this.peer(m.id).reachable : (m.keptOnline ?? this.peer(m.id).reachable);
-  }
-
-  /** Nothing here is known to still hold: the server is out of reach, or
-   * has not been reached yet. A connection lost a moment ago does not count. */
-  get unlinked(): boolean {
-    const link = this.link;
-    return (
-      link === "no-network" ||
-      link === "no-server" ||
-      (link === "waiting" && !this.listed)
-    );
-  }
-
-  /** Whether the device has a network at all. Losing it ends the
-   * connection at once instead of at the next missed heartbeat. */
-  setNetwork(available: boolean, signature?: string) {
-    if (this.network === available) {
-      if (signature !== undefined) this.networkChanged(signature);
-      return;
-    }
-    this.network = available;
-    clearTimeout(this.graceTimer);
-    this.graceTimer = undefined;
-    this.waited = false;
-    this.waitingNotice = false;
-    this.changed(true);
-    this.applyNetworkChange(signature ?? String(available), true);
-  }
-
-  protected changed(immediate = false) {
-    if (this.conn === "online" || this.closed || !this.begun) {
-      clearTimeout(this.graceTimer);
-      this.graceTimer = undefined;
-      this.waited = false;
-      this.waitingNotice = false;
-    } else if (!this.waited && this.graceTimer === undefined) {
-      // Reuse the link grace timer: first reveal waiting, then declare the
-      // server out of reach at the original total deadline.
-      const notice = Math.min(RECONNECT_NOTICE_MS, this.linkGraceMs);
-      this.graceTimer = setTimeout(() => {
-        this.graceTimer = undefined;
-        if (this.waitingNotice || notice === this.linkGraceMs) this.waited = true;
-        this.waitingNotice = true;
-        this.changed(true);
-      }, this.waitingNotice ? this.linkGraceMs - notice : notice);
-    }
-    this.version++;
-    // Connection state must reach React even while an older listing is
-    // awaiting metadata. Batching that work must not hide recovery or loss.
-    if (this.held && !immediate) this.dirty = true;
-    cleanup(
-      () => this.deviceLink.changed(),
-      () => this.sharedFilesState?.onConnectivityChange(),
-      ...(!this.held || immediate ? [...this.listeners] : []),
-    );
-  }
-
-  // While a listing is applied, each of its sessions is a change: the
-  // views are told once, at the end.
-  private held = 0;
-  private dirty = false;
-
-  private async quietly(fn: () => Promise<void>) {
-    this.held++;
-    try {
-      await fn();
-    } finally {
-      if (!--this.held && this.dirty) {
-        this.dirty = false;
-        cleanup(...this.listeners);
-      }
-    }
-  }
-
-  // What this browser kept from the last visit: the login token, and the
-  // machines, sessions and project preferences as last read, and what each
-  // machine said of its models and settings, shown until they answer again.
-  private warming?: Promise<void>;
-
-  private warm(): Promise<void> {
-    return (this.warming ??= (async () => {
-      // The former cache item is deleted, never imported or migrated.
-      this.keepValue("token", undefined);
-      try {
-        const token = await loadLoginToken(this.account.server, this.account.deviceId);
-        if (token && !this.closed && !this.token)
-          [this.token, this.tokenExpires] = [token.token, token.expiresMs];
-      } catch { /* Missing local state means a normal login. */ }
-      if (!this.cache) return;
-      const mine = (v: unknown): Record<string, unknown> | undefined => {
-        const o = v as Record<string, unknown> | undefined;
-        return o &&
-          o.deviceId === this.account.deviceId &&
-          o.server === this.account.server
-          ? o
-          : undefined;
-      };
-      try {
-        const identity = await this.security.localIdentity();
-        this.trustedMembers = new Map(
-          identity.state.core.members.map((m) => [m.id, m]),
-        );
-        this.authorityDeviceId = identity.state.core.authorityID;
-        this.archiveMachines = await this.security.historicalMachines();
-        for (const id of this.archiveMachines) if (!this.trustedMembers.has(id)) this.forgetSchedules(id);
-        const [machines, sessions, prefs, info] = (
-          await Promise.all(
-            ["machines", "sessions", "prefs", "info"].map((k) =>
-              this.cache!.get(k),
-            ),
-          )
-        ).map(mine);
-        if (machines && sessions && !this.listed)
-          await this.quietly(async () => {
-            for (const m of fromBinary(
-              ListMachinesResponseSchema,
-              machines.bytes as Uint8Array,
-            ).machines) {
-              await this.putMachine({ ...m, online: false });
-              const kept = this.machines.get(m.id);
-              if (kept) kept.keptOnline = m.online;
-            }
-            for (const m of this.machines.values()) {
-              try {
-                const kept = mine(await this.cache!.get("schedules:" + m.id));
-                if (!kept || !this.supportsSchedules(m.id) || this.schedules.has(m.id)) continue;
-                await this.restoreScheduleSnapshot(m.id, kept);
-              } catch { /* An unreadable snapshot is never treated as an empty live list. */ }
-            }
-            for (const s of fromBinary(
-              ListRemoteSessionsResponseSchema,
-              sessions.bytes as Uint8Array,
-            ).sessions) {
-              await this.putSession(s);
-            }
-          });
-        // Still "loading": the list is shown as it was, and changed only once the server's copy is read.
-        if (prefs && !this.prefs.snap)
-          this.prefs = {
-            ...this.prefs,
-            snap: await this.openPrefs(
-              fromBinary(AccountPrefsObjectSchema, prefs.bytes as Uint8Array),
-            ),
-          };
-        if (info) {
-          for (const [k, b] of Object.entries(
-            (info.models ?? {}) as Record<string, Uint8Array>,
-          ))
-            if (!this.modelLists.has(k))
-              this.modelLists.set(k, fromBinary(ListModelsResponseSchema, b));
-          for (const [k, b] of Object.entries(
-            (info.settings ?? {}) as Record<string, Uint8Array>,
-          ))
-            if (!this.settingsRead.has(k))
-              this.settingsRead.set(k, fromBinary(DaemonSettingsSchema, b));
-        }
-        if (prefs || info) this.changed();
-      } catch {
-        // Nothing kept, or not readable: the server has it all.
-      }
-    })());
-  }
-
-  private async restoreScheduleSnapshot(id: string, kept: Record<string, unknown>) {
-    const { msg } = await this.openSecureMessage(fromBinary(EnvelopeSchema, kept.bytes as Uint8Array),
-      { kind: PayloadKind.COMMAND_RESULT, machineId: id, sessionId: "", requestId: kept.requestId as string }, CommandResultSchema, true);
-    if (!this.machines.has(id) || !this.supportsSchedules(id) || this.removed || this.scheduleLive.has(id)) return;
-    if (msg.kind.case === "schedule") {
-      const parsed = JSON.parse(new TextDecoder().decode(msg.kind.value.resultJson)) as { tasks: ScheduleTask[] };
-      if (Array.isArray(parsed.tasks)) {
-        // A verified cache may predate the local read state; only a live full list can prune it.
-        this.scheduleSeen.observe(id, parsed.tasks, { prune: false, live: false });
-        this.schedules.set(id, { tasks: parsed.tasks, revision: 0n, loading: false, error: "" });
-      }
-    }
-  }
-  private async keepScheduleSnapshot(id: string, value: Record<string, unknown>) {
-    await this.keepValue("schedules:" + id, value);
-    if (!this.machines.has(id) || !this.supportsSchedules(id) || this.removed)
-      await this.keepValue("schedules:" + id, undefined);
-  }
-
-  private keepValue(name: string, value: Record<string, unknown> | undefined) {
-    return this.cache
-      ?.set(
-        name,
-        value && {
-          ...value,
-          deviceId: this.account.deviceId,
-          server: this.account.server,
-        },
-      )
-      .catch(() => undefined);
-  }
-
-  // --- connection ---
-
-  start() {
-    if (this.removed) return;
-    if (
-      !this.closed &&
-      (this.ws || (this.generation > 0 && this.conn === "connecting"))
-    ) {
-      if (this.ws && performance.now() - this.lastFrameAt > STREAM_RESUME_IDLE_MS)
-        this.reconnectNow(true);
-      return;
-    }
-    this.closed = false;
-    clearTimeout(this.retryTimer);
-    this.retryTimer = undefined;
-    this.authority.lifecycle.resume();
-    this.unwatchSecurityPush?.();
-    this.unwatchSecurityPush = watchSecurityPush(() => void this.syncSecurity());
-    if (this.begun) { this.networkGeneration++; this.touchAfterWake(); }
-    this.begun = true;
-    this.trimHistory();
-    clearInterval(this.securityTimer);
-    // Foreground state pull: a lease renewal or removal reaches this page
-    // within a minute, and an unknown state is fetched at once.
-    this.unwatchDirectInstall?.();
-    this.unwatchDirectInstall = watchSecurityInstall(record => this.direct.install(record));
-    this.securityTimer = setInterval(() => void this.syncSecurity(), 12_000);
-    void this.watchPairingDelivery();
-    this.scheduleReconnect();
-  }
-
-  /** Read once on startup/reload, and when approval saves its delivery. */
-  private async watchPairingDelivery() {
-    try {
-      const pending = await this.authority.pending();
-      if (this.closed || !this.begun || !pending?.delivery) {
-        this.stopPairingDelivery();
-        return;
-      }
-      this.pairingTimer ??= setInterval(() => void this.continuePairing(), 1500);
-    } catch (e) {
-      this.stopPairingDelivery();
-      this.authorityError = errorText(e);
-    }
-  }
-
-  private stopPairingDelivery() {
-    clearInterval(this.pairingTimer);
-    this.pairingTimer = undefined;
-  }
-
-  private pairingBusy = false;
-  /** Delivery outlives its page. The authority lifecycle still gates every
-   * attempt on foreground visibility and the exclusive management lock. */
-  private async continuePairing() {
-    if (this.closed || this.pairingBusy || (typeof document !== "undefined" && document.hidden)) return;
-    this.pairingBusy = true;
-    try {
-      if (!(await this.authority.pending())?.delivery) {
-        this.stopPairingDelivery();
-        return;
-      }
-      await this.authority.resumeSecurityOperation();
-      if (!(await this.authority.pending())?.delivery) this.stopPairingDelivery();
-      this.authorityError = "";
-      if (!this.closed) await this.loadDevices(false);
-    } catch (e) {
-      this.authorityError = errorText(e);
-      if (e instanceof PairingDeliveryError ||
-          (e instanceof SecurityError && ["invalid", "untrusted", "conflict", "storage", "capacity"].includes(e.code)) ||
-          (e instanceof ConnectError && [Code.InvalidArgument, Code.NotFound, Code.PermissionDenied, Code.Unauthenticated, Code.FailedPrecondition].includes(e.code)))
-        this.stopPairingDelivery();
-    } finally {
-      this.pairingBusy = false;
-      if (!this.closed) this.changed();
-    }
-  }
-
-  private maintaining?: Promise<void>;
-  /** Renews the lease and continues an unfinished management operation in
-   * the background: neither the live stream nor the state pull waits for
-   * the authority lock or its round trips. Only the admin, or a device with
-   * an operation of its own (a handoff offer, a recovery), has anything to
-   * do; the others skip it without taking the lock. */
-  private maintainAuthority() {
-    if (typeof navigator === "undefined" || !navigator.locks || this.maintaining) return;
-    this.maintaining = (async () => {
-      try {
-        if (!this.isAuthority && !(await readSecurityOperation())) return;
-        await this.authority.renewLeaseIfNeeded();
-        this.authorityError = "";
-        const record = await this.security.verifiedRecord();
-        this.authorityDeviceId = record.states.at(-1)!.core.authorityID;
-      } catch (e) {
-        // An unresolved management operation does not stop history sync or
-        // the connection. Control still checks the verified head lease.
-        this.authorityError = errorText(e);
-      } finally {
-        this.maintaining = undefined;
-        if (!this.closed) this.changed();
-      }
-    })();
-  }
-
-  async syncSecurity() {
-    if (this.closed) return;
-    try {
-      const record = await this.security.sync(undefined, 5000);
-      this.authorityDeviceId = record.states.at(-1)!.core.authorityID;
-      this.maintainAuthority();
-      this.changed();
-      if (record.member === false) {
-        this.removalVerified = true;
-        this.discardToken();
-        await this.tokenWrites;
-        this.removed = true;
-        this.stop();
-        return;
-      }
-      this.clearClockWarning();
-      const head = await this.security.localStateHash();
-      if (
-        this.recoveryObjectsPending ||
-        !this.directoryHead ||
-        !equalBytes(this.directoryHead, head)
-      )
-        // Only a successfully applied directory acknowledges this head.
-        // A failed RPC must remain pending after security.sync advances it.
-        await this.loadDevices(false);
-      if (this.descriptionPending) await this.describeSelf();
-    } catch (e) {
-      this.report(e);
-    }
-  }
-
-  private noteClock(e: unknown) {
-    if (e instanceof SecurityError && e.code === "clock") {
-      this.clockWarning =
-        l10n.t("errors.this_device_s_clock_is_behind_the_account_state");
-      this.changed();
-    }
-  }
-
-  private clearClockWarning() {
-    if (this.clockWarning) {
-      this.clockWarning = "";
-      this.changed();
-    }
-  }
-
-  stop() {
-    this.closed = true;
-    this.direct.close();
-    this.unwatchDirectInstall?.(); this.unwatchDirectInstall = undefined;
-    this.retireNetworkIO();
-    const unwatch = this.unwatchSecurityPush;
-    this.unwatchSecurityPush = undefined;
-    clearInterval(this.securityTimer);
-    this.securityTimer = undefined;
-    this.stopPairingDelivery();
-    clearTimeout(this.historyTrim);
-    this.historyTrim = undefined;
-    for (const entry of this.sessionProjections.values()) entry.handle.free();
-    this.sessionProjections.clear();
-    this.generation++;
-    this.lifecycleGeneration++;
-    this.connecting = false;
-    this.setupController?.abort();
-    this.setupController = undefined;
-    const candidate = this.candidate;
-    this.candidate = undefined;
-    clearTimeout(this.retryTimer);
-    this.retryTimer = undefined;
-    clearTimeout(this.openTimer);
-    clearTimeout(this.idleTimer);
-    const ws = this.ws;
-    this.ws = undefined;
-    if (this.conn === "online") this.lostAt = Date.now();
-    this.conn = "offline";
-    this.connAttempt = undefined;
-    cleanup(
-      () => this.deviceLink.sweep(),
-      () => this.authority.lifecycle.pause(),
-      () => unwatch?.(),
-      () => ws?.close(),
-      () => candidate?.close(),
-      () => this.deviceLink.closeStreams(l10n.t("errors.terminal_connection_closed")),
-      () => this.changed(true),
-    );
-  }
-
-  /** Requests a candidate while preserving the shared credit and backoff. */
-  reconnectNow(_networkChanged = false) {
-    if (this.closed || this.removed || !this.foreground) return;
-    this.scheduleReconnect();
+  private roundBudget(): number {
+    return this.everOnline || this.networkGeneration > 0 ? 3000 : SETUP_IDLE_MS;
   }
 
   private retireNetworkIO() {
-    this.direct.invalidate();
     this.loginController?.abort(new PathChanged());
-    this.loginController = undefined; this.loggingIn = undefined;
-    this.security.networkChanged();
-    if (this.directoryJob) {
-      this.directoryJob.invalidated = true;
-      this.directoryJob.controller.abort(new PathChanged());
-      this.directoryJob = undefined;
-    }
     this.wakeController?.abort(new PathChanged());
-    this.wakeController = undefined; this.wakeSecurity = undefined;
-  }
-
-  private retireCandidate(reason?: Error) {
-    const setup = this.setupController;
-    this.setupController = undefined; this.connecting = false;
-    setup?.abort(reason);
-    const candidate = this.candidate; this.candidate = undefined;
-    clearTimeout(this.openTimer); this.openTimer = undefined;
-    candidate?.close();
+    this.wakeSecurity = undefined;
+    this.wakeRequired = true;
+    this.wakeRevision++;
   }
 
   private touchAfterWake() {
-    this.retireNetworkIO();
     this.wakeRequired = true;
-    this.beginWakeTouch();
+    this.wakeRevision++;
   }
 
-  private beginWakeTouch(): Promise<void> {
-    const revision = ++this.wakeRevision, generation = this.networkGeneration;
-    const owner = this.wakeController = new AbortController();
-    const job = ownedRound(owner, this.roundBudget(), () => this.security.touch()).then(() => {
-      this.confirmWake(generation, revision);
-    }).finally(() => {
-      if (this.wakeSecurity === job) { this.wakeSecurity = undefined; this.wakeController = undefined; }
-    });
-    this.wakeSecurity = job;
-    void job.catch(() => undefined);
-    return job;
-  }
-
-  private confirmWake(generation: number, revision: number) {
-    if (generation === this.networkGeneration && revision === this.wakeRevision) this.wakeRequired = false;
+  private confirmWake(generation: number, wake: number) {
+    if (generation !== this.networkGeneration || wake !== this.wakeRevision) return;
+    this.wakeRequired = false;
   }
 
   private async ensureWakeSecurity() {
-    while (this.wakeRequired) {
-      const job = this.wakeSecurity ?? this.beginWakeTouch();
-      try { await job; }
-      catch (error) { if (error instanceof PathChanged && !this.closed) continue; throw error; }
-    }
-  }
-
-  networkChanged(signature: string) {
-    this.applyNetworkChange(signature, false);
-  }
-
-  private applyNetworkChange(signature: string, force: boolean) {
-    if (!force && signature === (this.pendingNetwork ?? this.networkSignature)) return;
-    this.pendingNetwork = signature;
-    if (force) this.pendingNetworkForce = true;
-    if (this.networkNoticeQueued) return;
-    this.networkNoticeQueued = true;
-    queueMicrotask(() => {
-      this.networkNoticeQueued = false;
-      const latest = this.pendingNetwork; this.pendingNetwork = undefined;
-      const forced = this.pendingNetworkForce; this.pendingNetworkForce = false;
-      if (latest === undefined || (!forced && latest === this.networkSignature)) return;
-      const changed = forced || this.networkSignature !== "" || this.everOnline;
-      this.networkSignature = latest;
-      if (!changed) return;
-      this.networkGeneration++;
-      if (this.closed || !this.foreground) { this.retireNetworkIO(); return; }
-      cleanup(
-        () => this.touchAfterWake(),
-        () => this.retireCandidate(new Error(l10n.t("errors.network_changed_reconnecting"))),
-        () => this.reconnectNow(true),
-      );
-    });
-  }
-
-  setForeground(active: boolean) {
-    if (this.foreground === active) return;
-    this.foreground = active;
-    clearTimeout(this.idleTimer);
-    if (!active) {
-      clearTimeout(this.retryTimer); this.retryTimer = undefined;
-      this.retireCandidate();
-      this.direct.setForeground(false);
-    }
-    if (active) {
-      this.networkGeneration++;
-      this.touchAfterWake();
-      this.retireCandidate();
-      this.direct.setForeground(true);
-      // Security.sync persists Touch before reading the remote state.
-      this.reconnectNow(true);
-      this.watchLiveness();
-    }
-  }
-
-  private scheduleReconnect() {
-    if (this.closed || !this.foreground || this.connecting || this.candidate || this.retryTimer !== undefined) return;
-    const delay = Math.ceil(this.recovery.delay());
-    if (delay === 0 && this.recovery.take()) { void this.connect(); return; }
-    this.retryTimer = setTimeout(() => {
-      this.retryTimer = undefined;
-      this.scheduleReconnect();
-    }, Math.max(1, delay));
-  }
-
-  private watchLiveness() {
-    clearTimeout(this.idleTimer);
-    if (this.closed || !this.foreground) return;
-    this.lastTick = performance.now(); this.lastWallTick = Date.now();
-    this.idleTimer = setTimeout(() => {
-      const now = performance.now(), wall = Date.now();
-      const paused = now - this.lastTick > STREAM_IDLE_MS || wall - this.lastWallTick > STREAM_IDLE_MS || now < this.lastTick;
-      if (paused) { this.networkGeneration++; this.touchAfterWake(); this.retireCandidate(); }
-      const suspectAfter = (this.ws && this.legLiveness.get(this.ws)?.suspectAfterMs()) ?? STREAM_DEFAULT_DEAD_MS;
-      if (paused || (this.ws && now - this.lastFrameAt >= suspectAfter)) {
-        if (this.conn === "online") { this.lostAt = Date.now(); this.conn = "connecting"; this.changed(true); }
-        this.reconnectNow(true);
-      }
-      this.watchLiveness();
-    }, 1000);
-  }
-
-  /** How long one round trip to the server takes now, in ms: a request
-   * that does nothing there (连接检测). Rejects when no answer comes. */
-  async pingServer(timeoutMs = 8000): Promise<number> {
-    const stop = new AbortController();
-    const timer = setTimeout(() => stop.abort(), timeoutMs);
-    const started = performance.now();
-    try {
-      const res = await relayFetch(apiBase(this.account.server) + "/healthz", {
-        cache: "no-store",
-        signal: stop.signal,
+    if (!this.wakeRequired) return;
+    if (!this.wakeSecurity) {
+      const generation = this.networkGeneration;
+      const wake = this.wakeRevision;
+      const controller = new AbortController();
+      this.wakeController = controller;
+      const pending = ownedRound(controller, this.roundBudget(), async () => {
+        await this.security.sync(controller.signal);
+        this.confirmWake(generation, wake);
+        this.verifiedNetworkGeneration = generation;
+      }).finally(() => {
+        if (this.wakeSecurity === pending) {
+          this.wakeSecurity = undefined;
+          this.wakeController = undefined;
+        }
       });
-      await res.arrayBuffer();
-      if (!res.ok) throw new Error(l10n.t("errors.server_returned", { value: String(res.status) }));
-      return Math.round(performance.now() - started);
-    } catch (e) {
-      throw stop.signal.aborted ? new Error(l10n.t("connection.no_response")) : e;
-    } finally {
-      clearTimeout(timer);
+      this.wakeSecurity = pending;
+      void pending.catch(() => undefined);
     }
+    return this.wakeSecurity;
   }
 
-  /** How long one round trip to a computer takes, through the server and
-   * back: a sealed command that only reads its settings. */
-  async pingMachine(machineId: string, timeoutMs = 15_000): Promise<number> {
-    const started = performance.now();
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    try {
-      await Promise.race([
-        this.machineCommand(machineId, { case: "getSettings", value: {} }),
-        new Promise<never>(
-          (_, reject) =>
-            (timer = setTimeout(
-              () => reject(new Error(l10n.t("connection.no_response"))),
-              timeoutMs,
-            )),
-        ),
-      ]);
-      return Math.round(performance.now() - started);
-    } finally {
-      clearTimeout(timer);
-    }
-  }
-
-  /** One login at a time: the server keeps few challenges per device, and
-   * a denial has to mean what it says. */
   private async login(waiter?: AbortSignal): Promise<void> {
-    for (;;) {
+    while (true) {
       waiter?.throwIfAborted();
-      let job = this.loggingIn, controller = this.loginController;
+      let job = this.loggingIn;
+      let controller = this.loginController;
       if (!job || !controller) {
         controller = new AbortController();
         const owner = controller;
-        const pending = ownedRound(owner, this.roundBudget(), signal => this.signIn(signal)).finally(() => {
-          if (this.loggingIn === pending) { this.loggingIn = undefined; this.loginController = undefined; }
+        const pending = ownedRound(owner, this.roundBudget(), (signal) => this.signIn(signal)).finally(() => {
+          if (this.loggingIn === pending) {
+            this.loggingIn = undefined;
+            this.loginController = undefined;
+          }
         });
         job = pending;
-        this.loginController = owner; this.loggingIn = pending;
+        this.loginController = owner;
+        this.loggingIn = pending;
         void pending.catch(() => undefined);
       }
-      try { return await abortable(job, waiter); }
-      catch (error) { if (controller.signal.reason instanceof PathChanged && !this.closed && !waiter?.aborted) continue; throw error; }
+      try {
+        return await abortable(job, waiter);
+      } catch (error) {
+        if (controller.signal.reason instanceof PathChanged && !this.closed && !waiter?.aborted) continue;
+        throw error;
+      }
     }
   }
 
@@ -2122,1252 +2995,178 @@ export class Remote {
     );
     for (let again = true; ; again = false) {
       try {
-        const ch = await auth.getChallenge({ deviceId: this.account.deviceId }, { signal, timeoutMs: this.everOnline || this.networkGeneration > 0 ? 3000 : OPEN_TIMEOUT_MS });
+        const timeoutMs = this.everOnline || this.networkGeneration > 0 ? 3000 : OPEN_TIMEOUT_MS;
+        const ch = await auth.getChallenge({ deviceId: this.account.deviceId }, { signal, timeoutMs });
         signal.throwIfAborted();
-        this.setupProgress?.();
         const sig = await signLogin(this.account.devicePrivate, ch.challenge);
-        const res = await auth.login({
-          protocolVersion: PROTOCOL_VERSION,
-          deviceId: this.account.deviceId,
-          challenge: ch.challenge,
-          signature: sig,
-        }, { signal, timeoutMs: this.everOnline || this.networkGeneration > 0 ? 3000 : OPEN_TIMEOUT_MS });
+        const res = await auth.login(
+          {
+            protocolVersion: PROTOCOL_VERSION,
+            deviceId: this.account.deviceId,
+            challenge: ch.challenge,
+            signature: sig,
+          },
+          { signal, timeoutMs },
+        );
         signal.throwIfAborted();
-        this.setupProgress?.();
         if (this.closed) return;
         this.token = res.token;
         this.tokenExpires = Number(res.expiresMs);
-        this.tokenWrites = this.tokenWrites.then(() => saveLoginToken(
-          this.account.server, this.account.deviceId,
-          { token: res.token, expiresMs: Number(res.expiresMs) },
-        )).catch(() => undefined);
+        this.tokenWrites = this.tokenWrites
+          .then(() =>
+            saveLoginToken(this.account.server, this.account.deviceId, {
+              token: res.token,
+              expiresMs: Number(res.expiresMs),
+            }),
+          )
+          .catch(() => undefined);
         await this.tokenWrites;
         return;
       } catch (e) {
         signal.throwIfAborted();
-        if (!(e instanceof ConnectError) || e.code !== Code.PermissionDenied)
-          throw e;
-        // A server restarted between the two calls forgets the challenge;
-        // denied a fresh one too, it no longer knows this device.
+        if (!(e instanceof ConnectError) || e.code !== Code.PermissionDenied) throw e;
         if (again) continue;
         this.discardToken();
         await this.tokenWrites;
-        signal.throwIfAborted();
-        this.removed = true;
-        this.stop();
-        await this.checkLocalRemoval();
         throw e;
       }
     }
   }
 
-  /** Tries the login again after the server turned this device away. */
-  retryLogin() {
-    this.removed = false;
-    this.start();
-  }
-
-  private async connect() {
-    if (this.closed || this.connecting || this.candidate) return;
-    this.retryTimer = undefined;
-    this.connecting = true;
-    const setup = this.setupController = new AbortController();
-    const networkGeneration = this.networkGeneration;
-    const generation = ++this.generation;
-    const recovering = this.everOnline || networkGeneration > 0;
-    const deadline = performance.now() + 3000;
-    if (!this.ws) this.conn = "connecting";
-    const attempt = this.connAttempt = { step: l10n.t("errors.reading_local_state"), startedAt: Date.now() };
-    let step = "", budget = OPEN_TIMEOUT_MS;
-    let stall: ReturnType<typeof setTimeout> | undefined;
-    const progress = () => {
-      if (this.closed || generation !== this.generation) return;
-      clearTimeout(stall);
-      stall = setTimeout(() => setup.abort(new Error(l10n.t("errors.timed_out_reconnecting", { value: step }))),
-        recovering ? Math.max(0, Math.min(budget, deadline - performance.now())) : budget);
-    };
-    const at = (name: string, timeout = OPEN_TIMEOUT_MS) => {
-      step = name; attempt.step = name; budget = timeout;
-      this.changed(true); progress();
-    };
-    this.setupProgress = progress;
-    at(l10n.t("errors.reading_local_state"));
-    let abort!: () => void;
-    const interrupted = new Promise<never>((_, reject) => {
-      abort = () => reject(setup.signal.reason);
-      setup.signal.addEventListener("abort", abort, { once: true });
-    });
-    try {
-      const go = await Promise.race([this.preStream(generation, at, setup.signal), interrupted]);
-      if (go && networkGeneration === this.networkGeneration && !setup.signal.aborted) {
-        attempt.step = l10n.t("errors.establishing_push_connection"); this.changed(true);
-        this.openStream(generation, recovering ? Math.max(0, deadline - performance.now()) : OPEN_TIMEOUT_MS);
-      }
-    } catch (e) {
-      if (!this.closed && this.setupController === setup && generation === this.generation && networkGeneration === this.networkGeneration) this.fail(e);
-    } finally {
-      clearTimeout(stall); setup.signal.removeEventListener("abort", abort);
-      if (this.setupController === setup) {
-        if (setup.signal.aborted && generation === this.generation) this.generation++;
-        this.setupController = undefined; this.connecting = false;
-        if (!this.candidate && !this.closed) this.scheduleReconnect();
-      }
-      if (this.setupProgress === progress) this.setupProgress = undefined;
-    }
-  }
-
-  /** Login and the security head, which the stream needs first. False
-   * when this try ended here, failed or overtaken. */
-  private async preStream(
-    generation: number,
-    at: (step: string, timeout?: number) => void,
-    signal: AbortSignal,
-  ): Promise<boolean> {
-    await abortable(this.warm(), signal);
-    if (this.closed || generation !== this.generation || signal.aborted) return false;
-    at(l10n.t("errors.signing_in"), SETUP_IDLE_MS);
-    try {
-      // A token kept from an earlier visit saves the two login calls. One
-      // about to expire is not worth a refused connection; the server
-      // refusing it closes the stream, and the next try logs in.
-      if (!this.token || this.tokenExpires < Date.now() + 86_400_000) {
-        this.discardToken();
-        await abortable(this.tokenWrites, signal);
-        await this.login(signal);
-      }
-    } catch (e) {
-      throw e;
-    }
-    if (this.closed || generation !== this.generation || signal.aborted) return false;
-    at(l10n.t("errors.syncing_device_state"), SETUP_IDLE_MS);
-    try {
-      // A stale head must not receive or open live frames; pull it before
-      // the stream starts. The 60 s loop keeps it fresh afterwards.
-      const network = this.networkGeneration, wake = this.wakeRevision;
-      const record = await this.security.sync(signal);
-      this.confirmWake(network, wake);
-      if (this.closed || generation !== this.generation || signal.aborted) return false;
-      this.verifiedNetworkGeneration = this.networkGeneration;
-      this.authorityDeviceId = record.states.at(-1)!.core.authorityID;
-      this.maintainAuthority();
-      this.changed();
-      if (record.member === false) {
-        this.removalVerified = true;
-        this.discardToken();
-        await abortable(this.tokenWrites, signal);
-        signal.throwIfAborted();
-        this.removed = true;
-        this.stop();
-        return false;
-      }
-      this.clearClockWarning();
-    } catch (e) {
-      this.noteClock(e);
-      throw e;
-    }
-    return !this.closed && generation === this.generation;
-  }
-
-  private lastFrameAt = 0;
-  private legLiveness = new WeakMap<FrameStream, LegLiveness>();
-
-  private openStream(generation: number, timeout = 3000) {
-    const url = apiBase(this.account.server).replace(/^http/, "ws") + "/v1/stream";
-    const token = this.token;
-    const ws = this.deviceLink.openPathStream(url);
-    const liveness = new LegLiveness();
-    this.legLiveness.set(ws, liveness);
-    this.candidate = ws;
-    const networkGeneration = this.networkGeneration;
-    let opening: ReturnType<typeof setTimeout> | undefined;
-    const current = () => !this.closed && (this.ws === ws || this.candidate === ws);
-    const drop = (e: unknown, code?: number) => {
-      if (!current()) return;
-      clearTimeout(opening);
-      if (this.candidate === ws) this.candidate = undefined;
-      if (this.ws === ws) this.ws = undefined;
-      this.direct.detach(ws);
-      cleanup(
-        () => { if (code === 1008 && this.token === token) this.discardToken(); },
-        () => ws.close(),
-        () => this.fail(e),
-      );
-    };
-    opening = this.openTimer = setTimeout(() => drop(new Error(l10n.t("errors.connection_timed_out_reconnecting"))), timeout);
-    ws.onOpen = () => {
-      if (!current()) return;
-      const hello = create(PeerFrameSchema, { kind: { case: "hello", value: { token } } });
-      ws.send(toBinary(PeerFrameSchema, hello));
-    };
-    let processing = Promise.resolve(), queuedBytes = 0, queuedFrames = 0;
-    let overflow = false;
-    ws.onFrame = (data) => {
-      if (!current() || overflow) return;
-      let frame: ReturnType<typeof fromBinary<typeof ServerFrameSchema>>;
-      try { frame = fromBinary(ServerFrameSchema, new Uint8Array(data)); }
-      catch { drop(new Error(l10n.t("errors.invalid_push_frame"))); return; }
-      if (this.candidate === ws) {
-        if (frame.kind.case !== "ready") { drop(new Error(l10n.t("errors.invalid_push_frame"))); return; }
-        if (networkGeneration !== this.networkGeneration || generation !== this.generation) {
-          this.candidate = undefined; clearTimeout(opening); ws.close(); this.scheduleReconnect(); return;
-        }
-        clearTimeout(opening);
-        const old = this.ws;
-        this.ws = ws; this.candidate = undefined; this.generation++;
-        this.direct.attach(ws);
-        this.activeNetworkGeneration = networkGeneration;
-        old?.close();
-        this.recovery.ready();
-        this.watchLiveness();
-      }
-      this.lastFrameAt = performance.now();
-      if (frame.kind.case === "heartbeat") {
-        liveness.onHeartbeat(this.lastFrameAt);
-      }
-      if (this.ws === ws && this.activeNetworkGeneration === this.networkGeneration && this.foreground && this.conn === "connecting" && frame.kind.case !== "ready") {
-        this.conn = "online"; this.changed(true);
-      }
-      if (frame.kind.case === "peerFrameDelivery" || frame.kind.case === "peerFrameResult") {
-        const raw = peerFrameBody(new Uint8Array(data), frame.kind.case === "peerFrameDelivery" ? 11 : 12);
-        if (raw) { if (frame.kind.case === "peerFrameDelivery") this.direct.receive(raw, ws); else this.direct.result(raw, ws); }
-        return;
-      }
-      queuedBytes += data.byteLength; queuedFrames++;
-      if (queuedBytes > 8 * 1024 * 1024 || queuedFrames > 1024) {
-        overflow = true; drop(new Error(l10n.t("errors.push_backlog_reconnecting"))); return;
-      }
-      processing = processing.then(async () => {
-        if (this.closed || this.ws !== ws || overflow) return;
-        await this.onFrame(frame.kind, ws);
-      }).catch(e => { if (current()) { this.report(e); drop(e); } }).finally(() => {
-        queuedBytes -= data.byteLength; queuedFrames--;
-      });
-    };
-    ws.onEnd = code => drop(new Error(l10n.t("errors.disconnected_from_server")), code);
-  }
-
-  private fail(e: unknown) {
-    this.recovery.failed();
-    if (!this.ws) {
-      if (this.conn === "online") this.lostAt = Date.now();
-      this.conn = "offline";
-      this.failures++;
-      this.connError = errorText(e);
-      this.error = errorText(e);
-    }
-    this.connAttempt = undefined;
-    this.scheduleReconnect();
-    this.changed(true);
-  }
-
-  private async onFrame(
-    kind: ReturnType<typeof fromBinary<typeof ServerFrameSchema>>["kind"],
-    leg = this.ws,
-  ) {
-    if (this.closed || leg !== this.ws) return;
-    switch (kind.case) {
-      case "heartbeat":
-        break;
-      case "ready":
-        clearTimeout(this.openTimer);
-        this.conn = "online";
-        this.connAttempt = undefined;
-        this.lostAt = undefined;
-        this.everOnline = true;
-        this.failures = 0;
-        this.connError = "";
-        this.error = "";
-        this.changed(true);
-        // Subscribed first, then catch up: nothing falls in between.
-        await this.refresh();
-        if (this.closed || leg !== this.ws) return;
-        for (const sid of this.buffers.keys()) void this.fetchEvents(sid);
-        void this.loadDevices();
-        void this.loadPrefs();
-        void restorePushPrefs(this).catch(() => undefined);
-        break;
-      case "accountPrefsUpdated":
-        if (kind.value.object) await this.takePrefs(kind.value.object, true);
-        break;
-      case "deviceUpdated":
-        if (kind.value.device) {
-          this.devicePushed(kind.value.device.id);
-          await this.putDevice(kind.value.device);
-          this.changed();
-        }
-        break;
-      case "deviceRemoved":
-        void this.loadDevices(false);
-        break;
-      case "machineRemoved":
-        void this.refresh();
-        break;
-      case "machineUpdated":
-        if (kind.value.machine) {
-          const id = kind.value.machine.id;
-          this.bump(this.machinePushes, id);
-          await this.loadDevices(false, { machineId: id, meta: kind.value.machine.meta });
-          await this.putMachine(kind.value.machine);
-        }
-        break;
-      case "sessionUpdated":
-        if (kind.value.session) {
-          this.bump(this.sessionPushes, kind.value.session.sessionId);
-          await this.loadDevices(false, kind.value.session);
-          await this.putSession(kind.value.session);
-        }
-        break;
-      case "eventsAppended": {
-        const sid = kind.value.sessionId;
-        const s = this.sessions.get(sid);
-        if (!s || !this.buffers.has(sid)) {
-          if (s)
-            s.lastSeq = maxBig(
-              s.lastSeq,
-              ...kind.value.events.map((e) => e.seq),
-            );
-          this.changed();
-          break;
-        }
-        await this.ingest(s, kind.value.events, true, false, false);
-        break;
+  private syncDirectStatuses() {
+    for (const id of this.machines.keys()) {
+      const ready = this.direct.ready(id, { kind: "read" });
+      if (this.directReadyCache.get(id) !== ready) {
+        this.directReadyCache.set(id, ready);
+        this.hostBridge?.pushRouteStatus(id, ready);
       }
     }
   }
 
-  /** Tells the views again once a retry is due: they ask as they render,
-   * and nothing else may make them render by then. */
-  private wake(ms: number) {
-    setTimeout(() => !this.closed && this.changed(), ms + 50);
-  }
-
-  /** Whether a machine was removed since removals was copied from
-   * removedPushes: an answer asked for before must not bring its
-   * sessions back. */
-  private goneSince(removals: Map<string, number>, machineId: string): boolean {
-    return (
-      (this.removedPushes.get(machineId) ?? 0) !==
-      (removals.get(machineId) ?? 0)
-    );
-  }
-
-  /** Whether a session held here lies past where the fetched pages end:
-   * kept from before a reconnect, or fetched by its ID. Sessions not
-   * fetched yet may come before it in the listing. */
-  pastPages(s: SessionView): boolean {
-    return (
-      !!this.nextSessions &&
-      s.endedMs !== 0n &&
-      afterCursor(s, this.nextSessions)
-    );
-  }
-
-  /** Drops a session of a machine that is gone, with its kept events:
-   * no listing will say again that it no longer exists. */
-  private forget(id: string) {
-    this.sessionErrors.delete(id);
-    this.sessions.delete(id);
-    this.forgetLocalSession(id);
-    void this.cache?.drop(id).catch(() => undefined);
-  }
-
-  private forgetLocalSession(id: string) {
-    this.forgottenSessions.add(id);
-    this.trays.get(id)?.clear();
-    this.trays.delete(id);
-    this.drafts.delete(id);
-    this.outboxes.delete(id);
-    this.draftLoaded.delete(id);
-    this.draftLoads.delete(id);
-    this.outboxLoads.delete(id);
-    this.outboxSaves.delete(id);
-    this.outboxWriteFailed.delete(id);
-    this.localNotices.delete(id);
-    void this.localDrafts?.removeSession(id).catch(() => undefined);
-    void this.sharedFilesState?.dropSession(id).catch(() => undefined);
-  }
-
-  private bump(pushes: Map<string, number>, id: string) {
-    pushes.set(id, (pushes.get(id) ?? 0) + 1);
-  }
-
-  /** Reloads machines and sessions. Pushes that arrive while the lists
-   * are in flight are newer than them and win. */
-  async refresh() {
-    try {
-      const mp = new Map(this.machinePushes);
-      const sp = new Map(this.sessionPushes);
-      const rp = new Map(this.removedPushes);
-      const pushed = (
-        now: Map<string, number>,
-        then: Map<string, number>,
-        id: string,
-      ) => (now.get(id) ?? 0) !== (then.get(id) ?? 0);
-      // From here on the cursor held belongs to the listing before: no
-      // page is asked for with it, nor taken, until this one is in. It
-      // still says which of the sessions held lie past the pages fetched.
-      const listing = ++this.listing;
-      this.relisting++;
-      await this.loadDevices(false);
-      if (this.devicesStatus !== "ready") throw new Error(l10n.t("errors.current_membership_could_not_be_verified"));
-      const [ms, ss] = await Promise.all([
-        this.api.listMachines({}),
-        this.api.listRemoteSessions({ limit: this.sessionPageSize }),
-      ]);
-      if (listing !== this.listing) return;
-      // Forget what the server no longer has, e.g. a machine another
-      // device removed while this one was offline. The first page holds
-      // every session that has not ended and the latest ended ones: a
-      // session held here and not on it is kept only if it belongs to a
-      // later page, that is, it ended before the page's last.
-      const machines = new Set(
-        ms.machines
-          .filter(
-            (m) =>
-              this.trustedMembers.get(m.id)?.kind === 1 ||
-              this.archiveMachines.has(m.id),
-          )
-          .map((m) => m.id),
-      );
-      const sessions = new Set(ss.sessions.map((s) => s.sessionId));
-      const later = (s: SessionView) =>
-        !!ss.next && s.endedMs !== 0n && afterCursor(s, ss.next);
-      // A machine found gone here counts as removed, as if its removal
-      // had been pushed: a session of its that is being opened for a page
-      // or a lookup asked for before must not be taken after this.
-      const gone = new Set<string>();
-      for (const id of this.machines.keys()) {
-        if (machines.has(id) || pushed(this.machinePushes, mp, id)) continue;
-        this.machines.delete(id);
-        this.forgetSchedules(id);
-        gone.add(id);
-      }
-      for (const [id, s] of this.sessions) {
-        if (sessions.has(id) || pushed(this.sessionPushes, sp, id)) continue;
-        if (!machines.has(s.machineId)) {
-          this.forget(id);
-          gone.add(s.machineId);
-        } else if (!later(s)) {
-          this.sessions.delete(id);
-          // With another page, stale live metadata may actually belong there.
-          if (!ss.next) this.forgetLocalSession(id);
-        }
-      }
-      for (const id of gone) this.bump(this.removedPushes, id);
-      this.nextSessions = ss.next;
-      this.moreSessions = !!ss.next;
-      this.missing.clear();
-      const removed = (id: string) => pushed(this.removedPushes, rp, id);
-      await this.quietly(async () => {
-        for (const m of ms.machines) {
-          if (removed(m.id)) continue;
-          await this.putMachine(m, pushed(this.machinePushes, mp, m.id));
-        }
-        for (const s of ss.sessions)
-          if (!removed(s.machineId)) await this.putSession(s);
-      });
-      if (this.cache) {
-        this.keepValue("machines", {
-          bytes: toBinary(ListMachinesResponseSchema, ms),
-        });
-        this.keepValue("sessions", {
-          bytes: toBinary(ListRemoteSessionsResponseSchema, ss),
-        });
-      }
-      this.listed = true;
-      this.listError = "";
-      this.listRetry = 2000;
-      void this.cache?.trim().catch(() => undefined);
-      this.changed();
-    } catch (e) {
-      // The stream is up but the lists are not: say so, and try again
-      // rather than wait for a reconnect that may never come.
-      this.listError = errorText(e);
-      this.report(e);
-      clearTimeout(this.listTimer);
-      const delay = this.listRetry;
-      this.listRetry = Math.min(this.listRetry * 2, 30_000);
-      this.listTimer = setTimeout(() => {
-        if (!this.closed) void this.refresh();
-      }, delay);
-    } finally {
-      // Pages may be asked for again; the views are told, since one that
-      // asked meanwhile was turned away.
-      this.relisting--;
-      this.changed();
-    }
-  }
-
-  /** Lists machines and sessions again now, after a failure. */
-  /** Fetches the next page of ended sessions, if the server has one.
-   * Calls while a page is on its way share it. Resolves to whether a
-   * page arrived. */
-  loadMoreSessions(): Promise<boolean> {
-    if (this.paging) return this.paging;
-    const after = this.nextSessions;
-    if (
-      !after ||
-      this.relisting ||
-      this.conn !== "online" ||
-      Date.now() < this.pageRetryAt
-    )
-      return Promise.resolve(false);
-    const listing = this.listing;
-    this.loadingSessions = true;
-    this.changed();
-    this.paging = (async () => {
+  private maintainAuthority() {
+    if (typeof navigator === "undefined" || !navigator.locks) return;
+    void (async () => {
       try {
-        const rp = new Map(this.removedPushes);
-        const res = await this.api.listRemoteSessions({
-          after,
-          limit: this.sessionPageSize,
-        });
-        // The listing was started over meanwhile: this page continued the
-        // one before, which may have held sessions that are gone since,
-        // and it is not where the new listing continues.
-        if (listing !== this.listing) return true;
-        await this.quietly(async () => {
-          for (const s of res.sessions)
-            if (listing === this.listing && !this.goneSince(rp, s.machineId))
-              await this.putSession(s);
-        });
-        // Opening the page took a while too: the cursor is only this
-        // page's to move if the listing is still the one it continued.
-        if (listing !== this.listing) return true;
-        this.nextSessions = res.next;
-        this.moreSessions = !!res.next;
-        return true;
+        if (!this.isAuthority && !(await readSecurityOperation())) return;
+        await this.authority.renewLeaseIfNeeded();
+        this.authorityError = "";
       } catch (e) {
-        this.report(e);
-        this.pageRetryAt = Date.now() + RETRY_MS;
-        this.wake(RETRY_MS);
-        return false;
-      } finally {
-        this.paging = undefined;
-        this.loadingSessions = false;
-        this.changed();
+        this.authorityError = errorText(e);
       }
     })();
-    return this.paging;
   }
 
-  /** Fetches every page that is left: filtering by title has to see all
-   * the titles. Stops at the first page that fails. */
-  async loadAllSessions() {
-    if (this.loadingAll) return;
-    this.loadingAll = true;
-    try {
-      while (this.moreSessions && (await this.loadMoreSessions()));
-    } finally {
-      this.loadingAll = false;
+  private noteClock(e: unknown) {
+    if (e instanceof SecurityError && e.code === "clock") {
+      this.clockWarning = l10n.t("errors.this_device_s_clock_is_behind_the_account_state");
     }
   }
 
-  retrySession(id: string) {
-    this.askRetryAt.delete(id);
-    this.sessionErrors.delete(id);
-    if (this.sessions.has(id)) this.retryEvents(id);
-    else void this.ensureSession(id);
-    this.changed();
-  }
-
-  /** Fetches a session that is not among the pages held: one opened from
-   * a notification, a link or a fork's source. One that does not exist
-   * is noted in missing. */
-  async ensureSession(id: string) {
-    if (
-      !id ||
-      this.sessions.has(id) ||
-      this.missing.has(id) ||
-      this.asking.has(id) ||
-      this.conn !== "online"
-    )
-      return;
-    // One that failed is not asked for again at once: callers ask on every render.
-    if (Date.now() < (this.askRetryAt.get(id) ?? 0)) return;
-    this.asking.add(id);
-    try {
-      const rp = new Map(this.removedPushes);
-      const res = await this.api.listRemoteSessions({ sessionIds: [id] });
-      const rs = res.sessions.find((s) => s.sessionId === id);
-      // A session of a machine removed meanwhile, or one the listing of
-      // machines no longer has, is as good as gone.
-      if (
-        rs &&
-        !this.goneSince(rp, rs.machineId) &&
-        (!this.listed || this.machines.has(rs.machineId))
+  private keepValue(name: string, value: Record<string, unknown> | undefined) {
+    return this.cache
+      ?.set(
+        name,
+        value && { ...value, deviceId: this.account.deviceId, server: this.account.server },
       )
-        await this.putSession(rs);
-      // One whose key does not open is not held either, and asking again
-      // would bring the same record: it cannot be shown.
-      if (!this.sessions.has(id)) this.missing.add(id);
-      this.askRetryAt.delete(id);
-      this.sessionErrors.delete(id);
-    } catch (e) {
-      this.sessionErrors.add(id);
-      this.report(e);
-      this.askRetryAt.set(id, Date.now() + RETRY_MS);
-      this.wake(RETRY_MS);
-    } finally {
-      this.asking.delete(id);
-      this.changed();
-    }
+      .catch(() => undefined);
   }
 
-  retryList() {
-    clearTimeout(this.listTimer);
-    this.listError = "";
-    this.changed();
-    void this.refresh();
-  }
-
-  /** Stores a machine. staleOnline: a push arrived after m was fetched,
-   * so its online flag is out of date. */
-  private async putMachine(m: RemoteMachine, staleOnline = false) {
-    if (!this.trustedMembers.has(m.id) && !this.archiveMachines.has(m.id))
-      return;
-    let view = this.machines.get(m.id);
-    if (!view) {
-      view = {
-        id: m.id,
-        online: m.online,
-        lastSeenMs: m.lastSeenMs,
-        metaRev: 0n,
-      };
-      this.machines.set(m.id, view);
-    }
-    if (!staleOnline) view.online = m.online;
-    if (m.lastSeenMs > view.lastSeenMs) view.lastSeenMs = m.lastSeenMs;
-    if (m.meta) {
-      try {
-        const { header, msg } = await this.openSecureMessage(
-          m.meta,
-          { kind: PayloadKind.MACHINE_META, machineId: m.id },
-          MachineMetaSchema,
-        );
-        if (header.seq >= view.metaRev) {
-          view.meta = msg;
-          view.metaRev = header.seq;
-        }
-      } catch (e) {
-        this.report(e);
-      }
-    }
-    this.changed();
-  }
-
-  private async putSession(rs: RemoteSession) {
-    if (
-      !this.archiveMachines.has(rs.machineId) &&
-      this.trustedMembers.get(rs.machineId)?.kind !== 1
-    )
-      return;
-    let view = this.sessions.get(rs.sessionId);
-    const newlyHeld = !view;
-    const retired = !!view?.historyError;
-    if (retired) view = undefined;
-    const removals = this.removedPushes.get(rs.machineId) ?? 0;
+  private async warmInfoOnce() {
+    if (this.cachedInfoWarmed || !this.cache) return;
+    this.cachedInfoWarmed = true;
     try {
-      rejectRetiredHistory(rs.key);
-      if (!view) {
-        if (!rs.key) throw new Error(l10n.t("errors.session_key_envelope_missing"));
-        const opened = await this.security.openHistory(rs.key);
-        const header = this.projectHeader(opened.header), plaintext = opened.plaintext;
-        if (plaintext.length !== 32) throw new Error(l10n.t("errors.invalid_session_seed"));
-        this.sessionSeeds.set(rs.sessionId, new Uint8Array(plaintext));
-        expect(header, {
-          kind: PayloadKind.SESSION_KEY,
-          machineId: rs.machineId,
-          sessionId: rs.sessionId,
-        });
-        // The machine may have been removed while the key was opened.
-        if (
-          (this.removedPushes.get(rs.machineId) ?? 0) !== removals ||
-          (!this.archiveMachines.has(rs.machineId) &&
-            this.trustedMembers.get(rs.machineId)?.kind !== 1)
-        ) {
-          this.sessionSeeds.delete(rs.sessionId);
-          return;
+      const info = (await this.cache.get("info")) as Record<string, unknown> | undefined;
+      if (info && info.deviceId === this.account.deviceId && info.server === this.account.server) {
+        for (const [k, b] of Object.entries((info.models ?? {}) as Record<string, Uint8Array>)) {
+          if (!this.modelLists.has(k)) this.modelLists.set(k, fromBinary(ListModelsResponseSchema, b));
         }
-        const current = this.sessions.get(rs.sessionId);
-        view = (current?.historyError ? undefined : current) ?? {
-          id: rs.sessionId,
-          machineId: rs.machineId,
-          metaRev: 0n,
-          lastSeq: 0n,
-          updatedMs: 0n,
-          endedMs: 0n,
-        };
-        this.sessions.set(rs.sessionId, view);
-      }
-      if (view.machineId !== rs.machineId) {
-        const { msg } = await this.openSecureMessage(
-          rs.meta,
-          {
-            kind: PayloadKind.SESSION_META,
-            machineId: rs.machineId,
-            sessionId: rs.sessionId,
-          },
-          SessionSchema,
-        );
-        const origins = await machineReplacementOrigins(
-          await this.security.verifiedRecord(),
-          rs.machineId,
-          msg.machineReplacements,
-        );
-        if (!origins.has(view.machineId))
-          throw new Error(l10n.t("errors.the_session_record_s_computer_was_changed"));
-        // Validate the new seed before changing an already displayed route.
-        const opened = await this.security.openHistory(rs.key!);
-        expect(this.projectHeader(opened.header), {
-          kind: PayloadKind.SESSION_KEY,
-          machineId: rs.machineId,
-          sessionId: rs.sessionId,
-        });
-        if (opened.plaintext.length !== 32) throw new Error(l10n.t("errors.invalid_session_seed"));
-        this.sessionSeeds.set(rs.sessionId, new Uint8Array(opened.plaintext));
-        view = {
-          ...view,
-          machineId: rs.machineId,
-          metaRev: 0n,
-        };
-        this.sessions.set(rs.sessionId, view);
-      }
-      this.openingSessions.delete(rs.sessionId);
-      view.lastSeq = maxBig(view.lastSeq, rs.lastSeq);
-      view.updatedMs = maxBig(view.updatedMs, rs.updatedMs);
-      if (rs.meta) {
-        const { header, msg } = await this.openSecureMessage(
-          rs.meta,
-          {
-            kind: PayloadKind.SESSION_META,
-            machineId: rs.machineId,
-            sessionId: rs.sessionId,
-          },
-          SessionSchema,
-        );
-        if (
-          (this.removedPushes.get(rs.machineId) ?? 0) !== removals ||
-          (!this.archiveMachines.has(rs.machineId) &&
-            this.trustedMembers.get(rs.machineId)?.kind !== 1)
-        )
-          return;
-        if (header.seq >= view.metaRev) {
-          view.info = msg;
-          if (msg.currentCheckpoint.length) {
-            const cp = fromBinary(LiveSnapshotSchema, msg.currentCheckpoint);
-            if (
-              cp.session?.id !== rs.sessionId ||
-              cp.session.lastSeq > msg.lastSeq ||
-              cp.actions.some(
-                (e) => e.sessionId !== rs.sessionId || e.seq > msg.lastSeq,
-              )
-            )
-              throw new Error(l10n.t("errors.invalid_ciphertext_current_state_checkpoint_mismatch"));
-            view.checkpoint = cp;
-            view.checkpointStatus = "ready";
-          } else view.checkpointStatus = "waiting";
-          view.metaRev = header.seq;
-          // The server stores when the session ended with the metadata,
-          // so its place in the listing goes with the revision taken.
-          view.endedMs = rs.endedMs;
+        for (const [k, b] of Object.entries((info.settings ?? {}) as Record<string, Uint8Array>)) {
+          if (!this.settingsRead.has(k)) this.settingsRead.set(k, fromBinary(DaemonSettingsSchema, b));
         }
       }
-      if (retired) {
-        const buffer = this.buffers.get(rs.sessionId);
-        if (buffer?.retired) {
-          buffer.error = "";
-          buffer.broken = false;
-          buffer.retired = false;
-          void this.fetchEvents(rs.sessionId);
-        }
-      }
-    } catch (e) {
-      // An unauthenticated retired header must not erase verified revision/owner state.
-      if (e instanceof UnsupportedHistoryError && !this.sessions.has(rs.sessionId)) {
-        this.sessions.set(rs.sessionId, { id: rs.sessionId, machineId: rs.machineId,
-          metaRev: 0n, lastSeq: rs.lastSeq, updatedMs: rs.updatedMs, endedMs: rs.endedMs, historyError: e.message });
-      }
-      this.report(e);
-    }
-    this.changed();
-    const buffer = this.buffers.get(rs.sessionId);
-    if (newlyHeld && buffer && !buffer.fetching && !buffer.loaded) void this.fetchEvents(rs.sessionId);
-  }
-
-  // --- events ---
-
-  /** A continuous history segment; the latest page is shown while older pages load. */
-  events(sid: string): Event[] {
-    const b = this.buffers.get(sid);
-    if (b) b.usedAt = Date.now();
-    if (!b) {
-      this.buffers.set(sid, {
-        events: [],
-        pending: new Map(),
-        fetching: false,
-        refetch: false,
-        loaded: false,
-        ready: false,
-        restored: false,
-        error: "",
-        broken: false,
-        bytes: 0,
-        usedAt: Date.now(),
-      });
-      void this.fetchEvents(sid);
-      return [];
-    }
-    return b.recent ?? b.events;
-  }
-
-  loaded(sid: string): boolean {
-    return this.buffers.get(sid)?.loaded ?? false;
-  }
-
-  history(sid: string): History {
-    const b = this.buffers.get(sid);
-    return {
-      backfilling: !!b?.recent,
-      loaded: b?.loaded ?? false,
-      ready: b?.ready ?? false,
-      error: this.sessions.get(sid)?.historyError ?? b?.error ?? "",
-      broken: !!this.sessions.get(sid)?.historyError || (b?.broken ?? false),
-      unavailable: b?.unavailableSeqs?.size ?? 0,
-    };
-  }
-
-  /** Fetches a session's events again after a failure. */
-  retryEvents(sid: string) {
-    const b = this.buffers.get(sid);
-    if (!b) return;
-    b.error = "";
-    b.broken = false;
-    this.changed();
-    void this.fetchEvents(sid);
-  }
-
-  /** Starts a history from the copy cached in this browser, so that only
-   * what came since is downloaded. A copy that is longer than the server's
-   * history or does not open belongs to something else: it is dropped. */
-  private async restore(s: SessionView, b: EventBuffer) {
-    b.restored = true;
-    if (!this.cache || b.events.length) return;
-    const stale = () => this.closed || this.buffers.get(s.id) !== b;
-    // A long encrypted cache is verified in pages too. Open its latest page
-    // first, when it reaches the known end, so reading can begin while the
-    // prefix is restored. Never expose an old middle page as the latest one.
-    if (s.lastSeq > BigInt(CACHE_PAGE_SIZE)) {
-      const after = s.lastSeq - BigInt(CACHE_PAGE_SIZE);
-      const tail = await this.cache.read(s.id, after).catch((): CachedEvent[] => []);
-      if (stale()) return;
-      if (tail.length === CACHE_PAGE_SIZE && tail.every((e, i) => e.seq === after + BigInt(i + 1))) {
-        b.tailRequested = true;
-        await this.ingest(s, tail, false, true, true);
-        if (stale()) return;
-        if (!b.broken && b.recent) { b.ready = true; this.changed(); }
-      }
-    }
-    let after = 0n;
-    while (!stale() && !b.broken) {
-      const rows = await this.cache.read(s.id, after).catch((): CachedEvent[] => []);
-      if (!rows.length || stale()) return;
-      if (rows[0].seq !== after + 1n || rows.at(-1)!.seq > s.lastSeq) break;
-      await this.ingest(s, rows, false, true, true);
-      if (stale()) return;
-      if (b.broken) break;
-      after = BigInt(b.events.length);
-    }
-    if (stale() || b.retired) return;
-    Object.assign(b, {
-      events: [],
-      pending: new Map(),
-      broken: false,
-      bytes: 0,
-      inputStatuses: undefined,
-      verifiedSeqs: undefined,
-      verifiedEvents: undefined,
-      unavailableSeqs: undefined,
-      recent: undefined,
-      tailRequested: false,
-      ready: false,
-    });
-    await this.cache.drop(s.id).catch(() => undefined);
-  }
-
-  /** Fetches everything after the last contiguous event. */
-  private async fetchEvents(sid: string) {
-    const b = this.buffers.get(sid);
-    const s = this.sessions.get(sid);
-    if (!b || !s || this.closed) return;
-    if (s.historyError) { b.retired = true; b.broken = true; b.error = s.historyError; this.changed(); return; }
-    if (b.fetching) {
-      b.refetch = true;
-      return;
-    }
-    b.fetching = true;
-    const generation = this.lifecycleGeneration;
-    let tailThrough: bigint | undefined;
-    // The latest page is asked for first when the history is longer than a page.
-    const wantsTail = () => !b.tailRequested && s.lastSeq > BigInt(b.events.length + this.historyPageSize);
-    try {
-      if (!b.restored && this.cache) {
-        await this.restore(s, b);
-        // The copy kept here is all there is to wait for, unless the latest
-        // page is to be shown in its place.
-        if (b.events.length && !wantsTail()) { b.ready = true; this.changed(); }
-      }
-      if (b.retired) return;
-      // lastSeq is a routing hint, not authenticated event content. Every
-      // returned envelope still passes the normal historical checks.
-      if (wantsTail()) {
-        const tail = await this.api.getEvents({
-          sessionId: sid,
-          afterSeq: s.lastSeq - BigInt(this.historyPageSize),
-          limit: this.historyPageSize,
-        });
-        if (this.closed || generation !== this.lifecycleGeneration || this.buffers.get(sid) !== b)
-          return;
-        b.tailRequested = true;
-        await this.ingest(s, tail.events, false, false, true);
-        if (b.recent || b.events.length) b.ready = true;
-        if (!tail.more && tail.events.length && !b.broken)
-          tailThrough = tail.events.at(-1)!.seq;
-      }
-      do {
-        b.refetch = false;
-        for (;;) {
-          if (
-            this.closed ||
-            generation !== this.lifecycleGeneration ||
-            this.buffers.get(sid) !== b
-          )
-            return;
-          if (tailThrough !== undefined && BigInt(b.events.length) >= tailThrough &&
-              s.lastSeq <= BigInt(b.events.length) && !b.pending.size) break;
-          const before = b.events.length;
-          const res = await this.api.getEvents({
-            sessionId: sid,
-            afterSeq: BigInt(before),
-            limit: this.historyPageSize,
-          });
-          if (
-            this.closed ||
-            generation !== this.lifecycleGeneration ||
-            this.buffers.get(sid) !== b
-          )
-            return;
-          await this.ingest(s, res.events, false, false, true);
-          if (b.events.length) b.ready = true;
-          // An event that does not open stops progress; asking for the
-          // same page again would not help.
-          if (b.broken) break;
-          if (b.events.length === before && b.pending.size)
-            throw new Error(l10n.t("errors.history_has_a_gap_retry"));
-          if (!res.more) {
-            if (b.pending.size) throw new Error(l10n.t("errors.history_has_a_gap_retry"));
-            break;
-          }
-          if (b.events.length === before)
-            throw new Error(l10n.t("errors.history_could_not_continue_loading_retry"));
-        }
-      } while (b.refetch);
-      b.loaded = true;
-      b.ready = true;
-      if (!b.retired) b.error = "";
-    } catch (e) {
-      if (this.closed || generation !== this.lifecycleGeneration) return;
-      b.error = errorText(e);
-      this.report(e);
-    } finally {
-      b.fetching = false;
-      // A fetch that a reconnection cut short starts again, whether or not
-      // anyone asked for another meanwhile; the new connection finds it
-      // either running or done. Without a connection yet, its first
-      // frame asks for the history anyway.
-      if (
-        !this.closed &&
-        this.buffers.get(sid) === b &&
-        (b.refetch || (generation !== this.lifecycleGeneration && !b.loaded && this.conn === "online"))
-      )
-        void this.fetchEvents(sid);
-      this.trimHistory();
-      this.changed();
+    } catch {
+      /* ignore cached info read failure */
     }
   }
 
-  private async ingest(
-    s: SessionView,
-    stored: StoredEvent[] | CachedEvent[],
-    fillGaps = true,
-    cached = false,
-    history = true,
-  ) {
-    const b = this.buffers.get(s.id);
-    if (!b) return;
-    const fresh: CachedEvent[] = [];
-    const save = () => {
-      if (fresh.length && !cached)
-        void this.cache?.append(s.id, fresh).catch(() => undefined);
-    };
-    const historical = new Map<StoredEvent | CachedEvent, HistoryResult>();
-    if (history) {
-      const rows = stored.filter(se => {
-        if (se.seq <= BigInt(b.events.length) || b.pending.has(se.seq) || !se.envelope) return false;
-        try {
-          return fromBinary(HeaderSchema, se.envelope.header).version === 3;
-        } catch {
-          return false; // The normal per-row path reports malformed headers.
-        }
-      });
-      if (rows.length) {
-        try {
-          const results = await this.security.openHistoryBatch(rows.map(se => ({
-            envelope: se.envelope!, seed: this.sessionSeeds.get(s.id),
-          })));
-          rows.forEach((se, i) => historical.set(se, results[i]));
-        } catch (reason) {
-          rows.forEach(se => historical.set(se, { status: "rejected", reason }));
-        }
-      }
-    }
-    for (const se of stored) {
-      const opened = historical.get(se);
-      historical.delete(se);
-      if (se.seq <= BigInt(b.events.length) || b.pending.has(se.seq)) continue;
-      try {
-        const { msg, size } = await this.openSecureMessage(
-          se.envelope,
-          {
-            kind: PayloadKind.EVENT,
-            machineId: s.machineId,
-            sessionId: s.id,
-            seq: se.seq,
-          },
-          EventSchema,
-          history,
-          opened,
-        );
-        if (this.buffers.get(s.id) !== b) return;
-        if (msg.seq !== se.seq || msg.sessionId !== s.id)
-          throw new Error(l10n.t("errors.the_event_s_position_was_changed"));
-        if (se.seq <= BigInt(b.events.length) || b.pending.has(se.seq))
-          continue;
-        if (fromBinary(HeaderSchema, se.envelope!.header).version === 3)
-          (b.verifiedSeqs ??= new Set()).add(se.seq);
-        b.pending.set(se.seq, msg);
-        // What is held is the opened event: a packed envelope is smaller than it.
-        b.bytes = (b.bytes ?? 0) + size + 256;
-        fresh.push({ seq: se.seq, envelope: se.envelope! });
-      } catch (e) {
-        if (e instanceof RecoveryHistoryUnavailable) {
-          if (this.buffers.get(s.id) !== b) return;
-          if (se.seq <= BigInt(b.events.length) || b.pending.has(se.seq))
-            continue;
-          // A local empty slot preserves the authenticated sequence cursor;
-          // the unavailable body is never inserted into verifiedEvents.
-          b.pending.set(
-            se.seq,
-            create(EventSchema, { seq: se.seq, sessionId: s.id }),
-          );
-          (b.unavailableSeqs ??= new Set()).add(se.seq);
-          b.bytes = (b.bytes ?? 0) + 256;
-          fresh.push({ seq: se.seq, envelope: se.envelope! });
-          continue;
-        }
-        b.broken = true;
-        if (e instanceof UnsupportedHistoryError) { b.retired = true; b.error = e.message; }
-        this.report(e);
-        break;
-      }
-    }
-    save();
-    if (this.buffers.get(s.id) !== b) return;
-    for (let next = BigInt(b.events.length + 1); b.pending.has(next); next++) {
-      const event = b.pending.get(next)!;
-      if (b.verifiedSeqs?.has(next)) (b.verifiedEvents ??= []).push(event);
-      if (b.verifiedSeqs?.has(next) && event.kind.case === "inputState") {
-        const { requestId, status } = event.kind.value;
-        (b.inputStatuses ??= new Map()).set(requestId, status);
-        // A message someone canceled is gone, and its local image copies
-        // with it. One the session ended before writing can still be put
-        // back into the input: it keeps them for that.
-        if (status === InputStatus.CANCELED && !endedUnsent(event.kind.value)) {
-          this.outboxes.set(
-            s.id,
-            this.outbox(s.id).filter((o) => o.sendId !== requestId),
-          );
-          if (this.outboxLoads.has(s.id)) void this.keepOutbox(s.id).catch(() => undefined);
-        }
-      }
-      b.events.push(event);
-      b.pending.delete(next);
-    }
-    if (b.tailRequested && b.pending.size && !b.broken) {
-      // Show only one contiguous suffix. Never run the timeline reducer over
-      // a prefix concatenated with events beyond an unfilled gap.
-      let last = 0n;
-      for (const seq of b.pending.keys()) if (seq > last) last = seq;
-      let first = last;
-      while (b.pending.has(first - 1n)) first--;
-      // Prefix pages do not change the suffix already on screen. Keep its
-      // identity so history projection and image indexes can reuse their work.
-      // Pending events are immutable and duplicates are rejected above.
-      if (b.recent?.[0]?.seq !== first || b.recent.at(-1)?.seq !== last) {
-        b.recent = [];
-        for (let seq = first; seq <= last; seq++) b.recent.push(b.pending.get(seq)!);
-      }
-    } else b.recent = undefined;
-    s.lastSeq = maxBig(s.lastSeq, BigInt(b.events.length));
-    this.reconcileOutbox(s.id);
-    if (fillGaps && b.pending.size > 0) void this.fetchEvents(s.id);
-    this.changed();
+  private keepInfo() {
+    if (!this.cache) return;
+    const models: Record<string, Uint8Array> = {};
+    for (const [k, v] of this.modelLists) models[k] = toBinary(ListModelsResponseSchema, v);
+    const settings: Record<string, Uint8Array> = {};
+    for (const [k, v] of this.settingsRead) if (v) settings[k] = toBinary(DaemonSettingsSchema, v);
+    void this.keepValue("info", { models, settings });
   }
 
-  // --- commands ---
+  // --- Transitional Step 3/4 Command Runner (reuses executeSealedAttempt) ---
 
-  async refreshLiveSnapshot(sid: string): Promise<void> {
-    if (this.liveJobs.has(sid)) return this.liveJobs.get(sid);
-    const job = (async () => {
-      try {
-        const s = this.sessions.get(sid);
-        if (!s) throw new Error(l10n.t("session.android_unknown"));
-        const reply = await this.forward(s.machineId, sid, {
-          case: "getLiveSnapshot",
-          value: { sessionId: sid },
-        });
-        if (
-          reply.kind.case !== "liveSnapshot" ||
-          reply.kind.value.session?.id !== sid
-        )
-          throw new Error(l10n.t("errors.invalid_current_request_snapshot"));
-        this.liveSnapshots.set(sid, reply.kind.value);
-        this.liveErrors.delete(sid);
-        if (s.info) s.info = { ...s.info, ...reply.kind.value.session };
-        this.changed();
-      } catch {
-        this.liveSnapshots.delete(sid);
-        this.liveErrors.set(
-          sid,
-          l10n.t("errors.pending_requests_on_the_computer_could_not_be_verified"),
-        );
-        this.changed();
-      } finally {
-        this.liveJobs.delete(sid);
-      }
-    })();
-    this.liveJobs.set(sid, job);
-    return job;
-  }
-  historicalDerived(sid: string): Derived {
-    const events = this.events(sid), agent = agentOf(this.sessions.get(sid));
-    const entry = this.sessionProjections.get(sid);
-    if (entry && entry.events === events && entry.count === events.length && entry.agent === agent) return entry.value;
-    let handle: WasmProjection;
-    let bytes: Uint8Array;
-    if (entry && entry.events === events && entry.count < events.length && entry.agent === agent) {
-      handle = entry.handle;
-      bytes = handle.append(encodeEventBatch(events.slice(entry.count)));
-    } else {
-      if (entry) {
-        handle = entry.handle;
-        handle.reset(agent);
-      } else {
-        handle = getCore().newProjection(agent);
-      }
-      bytes = events.length > 0 ? handle.append(encodeEventBatch(events)) : handle.snapshot();
-    }
-    const value = fromProjectionState(fromBinary(ProjectionStateSchema, bytes));
-    this.sessionProjections.set(sid, { handle, events, count: events.length, agent, value });
-    return value;
+  protected relayEpoch(): Promise<string> {
+    return relayEpoch(apiBase(this.account.server));
   }
 
-  currentDerived(sid: string, d: Derived): Derived {
-    const buffer = this.buffers.get(sid);
-    const live = this.liveSnapshots.get(sid);
-    const checkpoint = this.sessions.get(sid)?.checkpoint;
-    const agent = agentOf(this.sessions.get(sid));
-    // The complete prefix may grow while the displayed recent suffix stays
-    // unchanged; that can make the plan text named by a live snapshot readable.
-    // Only the live plan can refer to the growing prefix separately from d.
-    const events = live?.session?.planOpen && live.planEventSeq > 0n ? buffer?.events : undefined;
-    const count = events?.length ?? 0;
-    const cached = this.currentDerivations.get(d);
-    if (cached && cached.sid === sid && cached.live === live &&
-        cached.checkpoint === checkpoint && cached.agent === agent &&
-        cached.events === events && cached.count === count) return cached.value;
-
-    const liveBytes = live ? toBinary(LiveSnapshotSchema, live) : undefined;
-    let stateBytes: Uint8Array;
-    const entry = this.sessionProjections?.get(sid);
-    if (entry && entry.value === d && entry.agent === agent) {
-      stateBytes = entry.handle.currentActions(liveBytes);
-    } else {
-      const source = deriveSource(d);
-      const temp = getCore().newProjection(source?.agent ?? agent);
-      try {
-        if (source?.events.length) temp.append(encodeEventBatch(source.events));
-        stateBytes = temp.currentActions(liveBytes);
-      } finally {
-        temp.free();
-      }
+  private directHint(machineId: string, cmd: CommandKind): RouteHint | undefined {
+    if (cmd?.case === "getSharedFileChunk") {
+      return { kind: "bulk", file: `${cmd.value.sessionId}/${cmd.value.fileId}` };
     }
-    const out = fromProjectionState(fromBinary(ProjectionStateSchema, stateBytes));
-    if (!live) {
-      if (checkpoint && out.runningSeq <= (checkpoint.session?.lastSeq ?? 0n))
-        out.running = checkpoint.running;
-    } else if (
-      live.planEventSeq > 0n &&
-      live.planScreenHash.length === 32 &&
-      live.session?.planOpen &&
-      events
-    ) {
-      const resolved = livePlanText(
-        live,
-        events,
-        (seq) => !buffer?.unavailableSeqs?.has(seq),
+    if (cmd?.case === "putImageChunk") {
+      const upload = this.directTransfers.get(`${machineId}/${cmd.value.transferId}`);
+      return upload ? { kind: "bulk", file: cmd.value.transferId!, upload, bytes: cmd.value.data?.length } : undefined;
+    }
+    if (cmd?.case !== "getImageUploadStatus" && readOnlyCommand(cmd)) return { kind: "read" };
+    return undefined;
+  }
+
+  fileUploadIssue(machineId: string): string {
+    return this.peer(machineId).capabilities?.fileUpload === true ? "" : fileUploadUpdateRequired();
+  }
+
+  private checkFileCapability(machineId: string, cmd: CommandKind, mayHaveRun = false) {
+    if ((cmd?.case !== "send" && cmd?.case !== "createSession") || !cmd.value.fileIds?.length) return;
+    const issue = this.fileUploadIssue(machineId);
+    if (issue) {
+      throw new CommandError(
+        mayHaveRun ? "unknown_outcome" : "failed_precondition",
+        issue,
+        false,
+        false,
+        mayHaveRun ? "unknown" : "not_sent",
       );
-      if (resolved !== live.planScreen || !out.plan?.text) {
-        out.plan = create(PlanProposedSchema, { text: resolved });
-      }
     }
-    this.currentDerivations.set(d, { sid, live, checkpoint, agent, events, count, value: out });
-    return out;
-  }
-  liveSnapshotError(sid: string): string | undefined {
-    return (
-      this.liveErrors.get(sid) ??
-      (this.sessions.get(sid)?.checkpointStatus === "waiting"
-        ? l10n.t("errors.waiting_for_the_owning_computer_to_update_the_current")
-        : undefined)
-    );
-  }
-  /** Sends a command about a session. slot, when given, is the request
-   * ID and deadline of an earlier attempt of the same command. */
-  async command(
-    sid: string,
-    cmd: CommandKind,
-    slot = newSlot(),
-  ): Promise<CommandResult> {
-    return this.withDispatch(slot, call => this.commandWithDispatch(sid, cmd, slot, call));
   }
 
-  private async commandWithDispatch(sid: string, cmd: CommandKind, slot: RequestSlot, call: DispatchCall): Promise<CommandResult> {
+  private readonly authorizedCommands = new WeakMap<
+    RequestSlot,
+    { machineId: string; sid: string; requestId: string; deadline: number; cmd: CommandKind; plain: Uint8Array<ArrayBuffer> }
+  >();
+
+  private preparePayload(machineId: string, sid: string, cmd: CommandKind, slot: RequestSlot) {
+    const previous = this.authorizedCommands.get(slot);
+    if (previous) return previous;
+    const saved = slot.prepared;
+    const plain = saved
+      ? new Uint8Array(saved.plain)
+      : (toBinary(CommandSchema, create(CommandSchema, { kind: cmd, protocolVersion: PROTOCOL_VERSION })) as Uint8Array<ArrayBuffer>);
+    const prepared = {
+      requestId: slot.requestId,
+      deadline: slot.deadline,
+      machineId: saved?.machineId ?? machineId,
+      sid: saved?.sid ?? sid,
+      plain: new Uint8Array(plain) as Uint8Array<ArrayBuffer>,
+      cmd: fromBinary(CommandSchema, plain).kind,
+    };
+    this.authorizedCommands.set(slot, prepared);
+    slot.prepared = { machineId: prepared.machineId, sid: prepared.sid, plain: new Uint8Array(plain) };
+    return prepared;
+  }
+
+  async command(sid: string, cmd: CommandKind, slot = newSlot()): Promise<CommandResult> {
     const authorized = this.authorizedCommands.get(slot) ?? (slot.prepared && this.preparePayload("", "", cmd, slot));
-    if (authorized)
-      return this.forwardCall(
-        authorized.machineId,
-        authorized.sid,
-        authorized.cmd,
-        slot, call,
-      );
+    if (authorized) {
+      return this.forwardCall(authorized.machineId, authorized.sid, authorized.cmd, slot);
+    }
     const s = this.sessions.get(sid);
     if (!s) throw new Error(l10n.t("session.android_unknown"));
-    if (
-      cmd?.case === "resolveApproval" ||
-      cmd?.case === "answerQuestion" ||
-      cmd?.case === "answerPlan"
-    ) {
+    if (cmd?.case === "resolveApproval" || cmd?.case === "answerQuestion" || cmd?.case === "answerPlan") {
       const action = cmd;
       const shown = this.liveSnapshots.get(sid);
       if (!shown) throw new Error(l10n.t("errors.this_request_has_not_been_verified_by_the_computer"));
@@ -3379,103 +3178,46 @@ export class Remote {
             : "";
       const displayed = shown.actions.find((e) =>
         action.case === "resolveApproval"
-          ? e.kind.case === "approvalRequested" &&
-            e.kind.value.approvalId === key
+          ? e.kind.case === "approvalRequested" && e.kind.value.approvalId === key
           : e.kind.case === "questionAsked" && e.kind.value.questionId === key,
       );
-      const observed =
-        action.case === "answerPlan"
-          ? shown.planEventSeq
-          : (displayed?.seq ?? 0n);
+      const observed = action.case === "answerPlan" ? shown.planEventSeq : (displayed?.seq ?? 0n);
       if (observed === 0n) throw new Error(l10n.t("errors.this_request_can_no_longer_be_acted_on"));
       await this.refreshLiveSnapshot(sid);
       const fresh = this.liveSnapshots.get(sid);
       if (!fresh) throw new Error(l10n.t("errors.the_current_request_could_not_be_verified_again"));
       const current = fresh.actions.find((e) =>
         action.case === "resolveApproval"
-          ? e.kind.case === "approvalRequested" &&
-            e.kind.value.approvalId === key
+          ? e.kind.case === "approvalRequested" && e.kind.value.approvalId === key
           : e.kind.case === "questionAsked" && e.kind.value.questionId === key,
       );
       if (action.case === "answerPlan") {
-        if (
-          fresh.planEventSeq !== observed ||
-          !equalBytes(fresh.planScreenHash, shown.planScreenHash)
-        )
+        if (fresh.planEventSeq !== observed || !equalBytes(fresh.planScreenHash, shown.planScreenHash)) {
           throw new Error(l10n.t("errors.the_plan_display_changed_review_it_again"));
+        }
         cmd = {
           case: "answerPlan",
           value: {
             ...action.value,
-            observedEventSeq: observed,
-            observedScreenHash: shown.planScreenHash,
+            observedEventSeq: fresh.planEventSeq,
+            observedScreenHash: fresh.planScreenHash,
           },
         };
-      } else {
-        if (
-          current?.seq !== observed ||
-          !displayed ||
-          !equalBytes(
-            toBinary(EventSchema, current),
-            toBinary(EventSchema, displayed),
-          )
-        )
-          throw new Error(l10n.t("errors.the_request_on_the_computer_changed_review_it_again"));
-        if (action.case === "resolveApproval")
-          cmd = {
-            case: "resolveApproval",
-            value: { ...action.value, observedEventSeq: observed },
-          };
-        else
-          cmd = {
-            case: "answerQuestion",
-            value: { ...action.value, observedEventSeq: observed },
-          };
+      } else if (!current || current.seq !== observed) {
+        throw new Error(l10n.t("errors.the_request_on_the_computer_changed_review_it_again"));
       }
     }
-    return this.forwardCall(s.machineId, sid, cmd, slot, call);
+    return this.forwardCall(s.machineId, sid, cmd, slot);
   }
 
-  async getMachineStatus(machineId: string, signal?: AbortSignal) {
-    const r = await this.forward(machineId,"",{ case: "getMachineStatus", value: {} },undefined,signal);
-    if (r.kind.case !== "machineStatus") throw new Error(l10n.t("machine_status.unavailable"));
-    return r.kind.value;
-  }
-
-  /** Sends a command about a machine, such as starting a session. */
-  machineCommand(
-    machineId: string,
-    cmd: CommandKind,
-    slot?: RequestSlot,
-  ): Promise<CommandResult> {
+  machineCommand(machineId: string, cmd: CommandKind, slot?: RequestSlot): Promise<CommandResult> {
     return this.forward(machineId, "", cmd, slot);
   }
 
-  // A request slot owns its first authorized plaintext, including its observation.
-  // A retry may use a new content key but must reach the accepted log unchanged.
-  private readonly authorizedCommands = new WeakMap<
-    RequestSlot,
-    { machineId: string; sid: string; requestId: string; deadline: number; cmd: CommandKind; plain: Uint8Array<ArrayBuffer> }
-  >();
-
-  private preparePayload(machineId: string, sid: string, cmd: CommandKind, slot: RequestSlot) {
-    const previous = this.authorizedCommands.get(slot);
-    if (previous) return previous;
-    const saved = slot.prepared;
-    const plain = saved ? new Uint8Array(saved.plain) : toBinary(CommandSchema, create(CommandSchema, {kind:cmd,protocolVersion:PROTOCOL_VERSION}));
-    const prepared = {requestId:slot.requestId,deadline:slot.deadline,machineId:saved?.machineId ?? machineId,sid:saved?.sid ?? sid,plain:new Uint8Array(plain),cmd:fromBinary(CommandSchema,plain).kind};
-    this.authorizedCommands.set(slot,prepared);
-    slot.prepared={machineId:prepared.machineId,sid:prepared.sid,plain:new Uint8Array(plain)};
-    return prepared;
+  private forwardCall(machineId: string, sid: string, cmd: CommandKind, slot: RequestSlot): Promise<CommandResult> {
+    return this.forward(machineId, sid, cmd, slot);
   }
 
-  /** Seals cmd, forwards it and returns the opened result. Network
-   * failures are retried with the same request ID, which the daemon
-   * runs at most once. */
-  protected relayEpoch(): Promise<string> { return relayEpoch(apiBase(this.account.server)); }
-  private withDispatch<T>(slot: RequestSlot, work: (call: DispatchCall) => Promise<T>): Promise<T> {
-    return this.deviceLink.call(slot, work);
-  }
   private async forward(
     machineId: string,
     sid: string,
@@ -3483,327 +3225,627 @@ export class Remote {
     slot = newSlot(),
     signal?: AbortSignal,
   ): Promise<CommandResult> {
-    return this.withDispatch(slot, call => this.forwardCall(machineId, sid, cmd, slot, call, signal));
-  }
-
-  private async forwardCall(machineId: string, sid: string, cmd: CommandKind, slot: RequestSlot, call: DispatchCall, signal?: AbortSignal): Promise<CommandResult> {
-    const prepared = this.preparePayload(machineId,sid,cmd,slot);
-    ({machineId,sid,cmd}=prepared);
-    const { requestId, deadline } = prepared;
-    const priorOutcome: Outcome = call.uncertain ? "unknown" : "not_sent";
-    if (!call.uncertain && Date.now() >= deadline + COMMAND_EXPIRY_SKEW_MS)
-      throw new CommandError("expired", l10n.t("errors.connection_timed_out"));
-    // A machine of another protocol version would refuse the command, in
-    // words that do not say which side to update: say so here, unsent.
-    const m = this.machines.get(machineId);
-    const theirs = this.peer(machineId).protocolVersion;
-    if (theirs !== undefined && theirs !== PROTOCOL_VERSION)
-      throw new CommandError(
-        "failed_precondition",
-        theirs < PROTOCOL_VERSION
-          ? l10n.t("errors.remote_agent_on_is_out_of_date_update_it", { value: String(machineName(m)) })
-          : l10n.t("errors.this_page_is_out_of_date_refresh_or_update"),
-        false, false, priorOutcome,
-      );
-    this.checkFileCapability(machineId, cmd, priorOutcome === "unknown");
-    // Signed by this device, so the daemon knows who sent it whatever the
-    // server says (the server also checks the sender is the caller).
-    let env: Envelope | undefined;
-    const authorize = async () => {
-      try {
-        await this.checkNetworkSecurity();
-        const head = await this.security.localStateHash();
-        if (env && equal(parseHeader(new Uint8Array(env.securityHeader)).state, head)) return env;
-        return env = await this.sealSecureMessage(
-          {
-            kind: PayloadKind.COMMAND,
-            machineId,
-            sessionId: sid,
-            requestId,
-            deadlineMs: BigInt(deadline),
-            sender: this.account.deviceId,
-          },
-          CommandSchema,
-          create(CommandSchema, { kind: cmd, protocolVersion: PROTOCOL_VERSION }),
-          undefined,
-          prepared.plain,
-        );
-      } catch (e) {
-        this.noteClock(e);
-        if (call.uncertain) throw new CommandError("unknown_outcome", l10n.t("errors.the_relay_did_not_provide_a_verifiable_execution_result"), false, false, "unknown");
-        if (e instanceof SecurityError && e.code === "clock")
-          throw new CommandError(
-            "clock",
-            l10n.t("errors.this_device_s_clock_is_behind_the_account_state_remote"),false,false,priorOutcome,
-          );
-        if (e instanceof SecurityError && e.code === "lease")
-          throw new CommandError(
-            "failed_precondition",
-            l10n.t("errors.remote_control_expired_control_and_new_uploads_are_paused"),false,false,priorOutcome,
-          );
-        throw new CommandError(
-          "security_unavailable",
-          l10n.t("errors.cannot_sign_with_the_current_security_state_the_operation"),false,false,priorOutcome,
-        );
-      }
-    };
-    await authorize();
-    // Persist a copy of the exact first authorization before any dispatch.
-    slot.requestId=requestId;slot.deadline=deadline;
-    slot.prepared={machineId,sid,plain:new Uint8Array(prepared.plain)};
+    if (this.closed) throw new CommandError("canceled", l10n.t("errors.terminal_connection_canceled"), false, false, "not_sent");
+    const prepared = this.preparePayload(machineId, sid, cmd, slot);
+    machineId = prepared.machineId;
+    sid = prepared.sid;
+    cmd = prepared.cmd;
+    const { requestId, deadline, plain } = prepared;
+    this.checkFileCapability(machineId, cmd, slot.evidence.unresolved);
     await slot.beforeDispatch?.(slot);
-    // Once a try may have reached the daemon, no later failure of this
-    // request can say it did not run.
-    let recoveryUntil: number | undefined;
-    let attempted = false;
+
     const routeHint = this.directHint(machineId, cmd);
     const interactive = isInteractiveCommand(cmd);
     let forceRelay = false;
+    let attempted = false;
+    let recoveryUntil: number | undefined;
+
     for (let attempt = 0; ; attempt++) {
       signal?.throwIfAborted();
-      const tracking = routeHint ? this.direct.track(machineId, routeHint) : undefined;
-      const delivery = this.deviceLink.delivery(call, routeHint && !forceRelay ? handoff => this.direct.attempt(machineId, routeHint, handoff) : undefined);
-      const dualDirect = !forceRelay && interactive && this.direct.ready(machineId, { kind: "read" })
-        ? this.deviceLink.delivery(call, handoff => this.direct.attemptInteractive(machineId, handoff))
-        : undefined;
-      const routeStarted = performance.now();
-      const attemptId = delivery.attemptId;
-      let directLegFailed = false;
-      try {
-        if (attempted && Date.now() >= deadline + (call.uncertain ? RESULT_RETENTION_MS : 0))
-          throw new CommandError("unknown_outcome", l10n.t("errors.connection_timed_out"), false, false, "unknown");
-        attempted = true;
-        // Metadata may refresh while sealing, logging in or backing off.
-        // Check the immutable authorized payload, including unknown retries.
-        this.checkFileCapability(machineId, cmd, call.uncertain);
-        // Once C is handed to an untrusted relay, no outer status proves it
-        // was not executed. Only an authenticated daemon result is final.
-        await delivery.prepare();
-        const envelope = await authorize();
-        const verifyResult = async (res: { result?: Envelope; attemptId: string; outcome: string; reason: string }, directRoute: boolean, legAttemptId: string) => {
-          let msg: CommandResult;
-          try {
-            msg = (
-              await this.openSecureMessage(
-                res.result,
-                {
-                  kind: PayloadKind.COMMAND_RESULT,
-                  machineId,
-                  sessionId: sid,
-                  requestId,
-                },
-                CommandResultSchema,
-              )
-            ).msg;
-          } catch {
-            throw new CommandError(
-              "unknown_outcome",
-              l10n.t("errors.the_computer_s_reply_could_not_be_verified_command"), false, false, "unknown");
-          }
-          const binding = await requestIdentity(parseHeader(new Uint8Array(envelope.securityHeader)), prepared.plain);
-          const verified = equal(msg.requestKeyHash,binding.key) && equal(msg.payloadHash,binding.payload) && res.attemptId===legAttemptId && (directRoute || res.outcome===msg.outcome && res.reason===msg.reason) && (msg.outcome==="conflict" || msg.conflictKind==="");
-          const category = verifiedOutcome(msg,binding.key,binding.payload,directRoute ? msg.outcome : res.outcome,directRoute ? msg.reason : res.reason,false);
-          if (!verified || category==="unknown") throw new CommandError("unknown_outcome", l10n.t("errors.the_computer_s_reply_could_not_be_verified_command"),true,false,"unknown");
+      if (attempted && Date.now() >= deadline + (slot.evidence.unresolved ? RESULT_RETENTION_MS : 0)) {
+        throw new CommandError("unknown_outcome", l10n.t("errors.connection_timed_out"), false, false, "unknown");
+      }
+      attempted = true;
+      const priorUnknown = !!slot.evidence.unresolved;
+      const priorOutcome: Outcome = priorUnknown ? "unknown" : "not_sent";
+      const { outcome: ev, msg } = await this.executeSealedAttempt({
+        requestId,
+        attemptId: newRequestID(),
+        machineId,
+        sessionId: sid,
+        deadlineMs: deadline,
+        commandBytes: plain,
+        routeHint,
+        forceRelay,
+        priorUnknown,
+        isScheduleList: cmd?.case === "schedule" && cmd.value.operation === "list",
+        hasFiles: (cmd?.case === "send" || cmd?.case === "createSession") && !!cmd.value.fileIds?.length,
+        signal,
+      });
 
-          if (category === "executed" && !msg.resultAvailable || category === "conflict" && msg.conflictKind === "identity") {
-            void this.refresh();
-            if (sid) void this.refreshLiveSnapshot(sid);
-            return { error: new CommandError(msg.errorCode, l10n.t(category === "executed" ? "errors.executed_result_unavailable" : "errors.request_identity_conflict"), true, false, category, msg.conflictKind, msg.resultAvailable) };
-          }
-          if (category !== "executed" || msg.errorCode)
-            return { error: new CommandError(msg.errorCode, msg.errorMessage, true, readOnlyCommand(cmd), category, msg.conflictKind, msg.resultAvailable) };
-          return { res, msg };
-        };
-
-        let res: { result?: Envelope; attemptId: string; outcome: string; reason: string };
-        let msg: CommandResult;
-        if (dualDirect?.direct) {
-          type Verified = { res?: { result?: Envelope; attemptId: string; outcome: string; reason: string }; msg?: CommandResult; error?: CommandError };
-          const winner = await this.deviceLink.router.dual<Verified>(
-            async legSignal => {
-              try {
-                await dualDirect.prepare();
-                const r = await dualDirect.send(machineId, envelope, legSignal);
-                const v = await verifyResult(r, true, dualDirect.attemptId);
-                return { trusted: true, value: v };
-              } catch (err) {
-                directLegFailed = true;
-                return { trusted: false, error: err };
-              }
-            },
-            async legSignal => {
-              try {
-                const r = await this.recovery.follow(attemptSignal => delivery.send(machineId, envelope, attemptSignal), legSignal);
-                const v = await verifyResult(r, false, attemptId);
-                return { trusted: true, value: v };
-              } catch (err) {
-                return { trusted: false, error: err };
-              }
-            },
-            signal,
-          );
-          if (winner.error) throw winner.error;
-          res = winner.res!;
-          msg = winner.msg!;
-        } else {
-          res = await this.recovery.follow(attemptSignal => delivery.send(machineId, envelope, attemptSignal), signal);
-          const v = await verifyResult(res, delivery.direct, attemptId);
-          if (v.error) throw v.error;
-          msg = v.msg!;
+      if (ev.source === OutcomeSource.DAEMON) {
+        if (!ev.signed || !ev.hashesMatch || !ev.attemptBound || !ev.outerMatchesInner || !msg) {
+          slot.evidence.includePrior(true);
+          throw new CommandError("unknown_outcome", l10n.t("errors.the_computer_s_reply_could_not_be_verified_command"), true, false, "unknown");
         }
-        if (cmd?.case === "schedule" && cmd.value.operation === "list" && res.result && this.machines.has(machineId) && this.supportsSchedules(machineId)) {
-          await this.keepScheduleSnapshot(machineId, { bytes: toBinary(EnvelopeSchema, res.result), requestId });
+        const category = (ev.outerOutcome || msg.outcome || "unknown") as Outcome;
+        if (category === "unknown") {
+          slot.evidence.includePrior(true);
+          throw new CommandError("unknown_outcome", l10n.t("errors.the_computer_s_reply_could_not_be_verified_command"), true, false, "unknown");
         }
-        if (routeHint) { const bytes = cmd?.case === "putImageChunk" ? cmd.value.data?.length ?? 0 : msg.kind.case === "getSharedFileChunk" ? msg.kind.value.data.length : 0; tracking?.observe(delivery.direct, bytes, performance.now() - routeStarted); }
-        if (cmd?.case === "beginImageUpload") { if (this.directTransfers.size >= 128) this.directTransfers.delete(this.directTransfers.keys().next().value!); this.directTransfers.set(`${machineId}/${cmd.value.transferId}`, cmd.value.fileName ? "file" : "image"); }
-        if (cmd?.case === "completeImageUpload" || cmd?.case === "abortImageUpload") this.directTransfers.delete(`${machineId}/${cmd.value.transferId}`);
-        return msg;
-      } catch (e) {
-        if (directLegFailed) forceRelay = true;
-        if (delivery.direct && routeHint) {
-          forceRelay = true; tracking?.failed();
-          signal?.throwIfAborted();
-          if (cmd?.case === "putImageChunk") {
-            // The status read is relay-only and precedes the original chunk
-            // retry. It does not manufacture a result for that authorization.
-            await this.machineCommand(machineId, { case: "getImageUploadStatus", value: { transferId: cmd.value.transferId } });
-          }
-          if (e instanceof PathChanged && Date.now() < deadline) { attempt--; continue; }
-          if (e instanceof PathChanged) throw new CommandError("unknown_outcome", l10n.t("errors.connection_timed_out"), false, readOnlyCommand(cmd), "unknown");
-        }
-        // Only transport failures are automatically retried here. Interrupted
-        // daemon answers still freeze the caller's request slot.
-        if (e instanceof PathChanged) { signal?.throwIfAborted(); attempt--; continue; }
-        if (!(e instanceof ConnectError)) throw e;
-        const ce = e;
-        const notForwarded = delivery.refusal(ce);
-        const unsent = notForwarded !== undefined;
-        if (unsent) {
-          if (!call.uncertain && (ce.code !== Code.Unauthenticated || attempt >= 3)) throw new CommandError(Code[ce.code].toLowerCase(),notForwarded?.reason === "machine_offline" ? l10n.t("errors.the_computer_is_offline_the_command_was_not_sent") : ce.rawMessage,false,false,"not_sent");
-        }
-        if (ce.code === Code.Unauthenticated && attempt < 3) {
-          try {
-            await delivery.refreshAuth(call.uncertain, signal);
-          } catch {
-            throw new CommandError(
-              "unknown_outcome",
-              l10n.t("errors.the_previous_request_s_outcome_is_still_unknown_cannot"), false, false, "unknown");
-          }
-          continue;
-        }
-        // Client and daemon authenticate independently. A newly usable
-        // client path may briefly precede the daemon's replacement.
-        if (ce.code === Code.Unavailable && call.uncertain && this.begun && !this.closed) {
-          signal?.throwIfAborted();
-          if (recoveryUntil === undefined) {
-            recoveryUntil = performance.now() + 3000;
-            if (!notForwarded) this.reconnectNow();
-          }
-          if (performance.now() + 250 < recoveryUntil) {
-            await abortable(new Promise<void>(resolve => setTimeout(resolve,250)),signal);
-            continue;
-          }
-        }
-        // DeadlineExceeded is also the server's word for a daemon that gave
-        // no result: it may have run.
-        const unknown = [
-          Code.DeadlineExceeded,
-          Code.Unknown,
-          Code.Internal,
-          Code.Canceled,
-          Code.Aborted,
-        ].includes(ce.code);
-        const delay = 1000 * (attempt + 1);
-        if (unknown && attempt < 3 && Date.now() + delay < deadline) {
-          await new Promise((r) => setTimeout(r, delay));
-          continue;
-        }
-        if (ce.code === Code.Unavailable)
-          throw call.uncertain
-            ? new CommandError("unknown_outcome", l10n.t("errors.connection_dropped_midway"), false, false, "unknown")
-            : new CommandError("unavailable", l10n.t("errors.the_computer_is_offline_the_command_was_not_sent"));
-        if (unknown) throw new CommandError("unknown_outcome", l10n.t("errors.connection_timed_out"), false, false, "unknown");
-        if (call.uncertain)
+        if ((category === "executed" && !msg.resultAvailable) || (category === "conflict" && msg.conflictKind === "identity")) {
+          this.retryList();
+          if (sid) void this.refreshLiveSnapshot(sid);
           throw new CommandError(
-            "unknown_outcome",
-            l10n.t("errors.the_relay_did_not_provide_a_verifiable_execution_result"), false, false, "unknown");
-        throw e;
+            msg.errorCode,
+            l10n.t(category === "executed" ? "errors.executed_result_unavailable" : "errors.request_identity_conflict"),
+            true,
+            false,
+            category,
+            msg.conflictKind,
+            msg.resultAvailable,
+          );
+        }
+        if (category !== "executed" || msg.errorCode) {
+          throw new CommandError(
+            msg.errorCode,
+            msg.errorMessage,
+            true,
+            readOnlyCommand(cmd),
+            category,
+            msg.conflictKind,
+            msg.resultAvailable,
+          );
+        }
+        return msg;
+      }
+
+      if (!ev.notForwarded) slot.evidence.includePrior(true);
+
+      if (ev.routeWasDirect && routeHint) {
+        forceRelay = true;
+        if (cmd?.case === "putImageChunk") {
+          await this.machineCommand(machineId, { case: "getImageUploadStatus", value: { transferId: cmd.value.transferId } });
+        }
+        if (ev.transportCode === "path_changed" && Date.now() < deadline) {
+          attempt--;
+          continue;
+        }
+      }
+      if (ev.transportCode === "path_changed") {
+        attempt--;
+        continue;
+      }
+      if (ev.source === OutcomeSource.LOCAL) {
+        throw new CommandError(
+          ev.transportCode === "unknown" ? "unknown_outcome" : ev.transportCode,
+          ev.transportDetail,
+          false,
+          false,
+          priorOutcome,
+        );
+      }
+      if (ev.notForwarded && ev.attemptBound && ev.transportCode === "unauthenticated" && attempt < 3) {
+        await this.login(signal);
+        continue;
+      }
+      if (ev.notForwarded && ev.attemptBound) {
+        throw new CommandError(
+          ev.transportCode,
+          ev.outerReason === "machine_offline" ? l10n.t("errors.the_computer_is_offline_the_command_was_not_sent") : ev.transportDetail,
+          false,
+          false,
+          priorOutcome,
+        );
+      }
+      if (ev.transportCode === "unavailable" && slot.evidence.unresolved && !this.closed) {
+        signal?.throwIfAborted();
+        if (recoveryUntil === undefined) {
+          recoveryUntil = performance.now() + 3000;
+          if (!ev.notForwarded) this.reconnectNow();
+        }
+        if (performance.now() + 250 < recoveryUntil) {
+          await abortable(new Promise<void>((resolve) => setTimeout(resolve, 250)), signal);
+          continue;
+        }
+      }
+      const transient = ["deadline_exceeded", "unknown", "internal", "canceled", "aborted"].includes(ev.transportCode);
+      const delay = 1000 * (attempt + 1);
+      if (transient && attempt < 3 && Date.now() + delay < deadline) {
+        await new Promise((r) => setTimeout(r, delay));
+        continue;
+      }
+      if (ev.transportCode === "unavailable") {
+        throw slot.evidence.unresolved
+          ? new CommandError("unknown_outcome", l10n.t("errors.connection_dropped_midway"), false, false, "unknown")
+          : new CommandError("unavailable", l10n.t("errors.the_computer_is_offline_the_command_was_not_sent"));
+      }
+      throw new CommandError("unknown_outcome", ev.transportDetail || l10n.t("errors.the_relay_did_not_provide_a_verifiable_execution_result"), false, false, "unknown");
+    }
+  }
+
+  private async probeRead(machineId: string, path: RouteName): Promise<void> {
+    if (this.closed) return;
+    const slot = newSlot();
+    const hint = { kind: "read" } as const;
+    const tracking = this.direct.track(machineId, hint);
+    const direct = path === "direct";
+    const cmd: CommandKind = { case: "getMachineStatus", value: {} };
+    const plain = toBinary(CommandSchema, create(CommandSchema, { kind: cmd, protocolVersion: PROTOCOL_VERSION })) as Uint8Array<ArrayBuffer>;
+    try {
+      const attempt = direct ? this.direct.attempt(machineId, hint, () => {}, true) : this.deviceLink.router.path.attempt(() => {});
+      if (!attempt || !!attempt.direct !== direct) return;
+      const started = performance.now();
+      await this.checkNetworkSecurity();
+      await attempt.prepare();
+      const env = await this.sealCommandBytes(machineId, "", slot.requestId, BigInt(slot.deadline), plain);
+      const res = await attempt.send(machineId, env);
+      const opened = await this.openSecureMessage(
+        res.result,
+        { kind: PayloadKind.COMMAND_RESULT, machineId, sessionId: "", requestId: slot.requestId },
+        CommandResultSchema,
+      );
+      const identity = await requestIdentity(parseHeader(new Uint8Array(env.securityHeader)), plain);
+      const msg = opened.msg;
+      const bound =
+        equal(msg.requestKeyHash, identity.key) &&
+        equal(msg.payloadHash, identity.payload) &&
+        res.attemptId === attempt.attemptId &&
+        (direct || (res.outcome === msg.outcome && res.reason === msg.reason));
+      if (bound && !msg.errorCode && (direct ? msg.outcome : res.outcome) === "executed") {
+        tracking.observe(direct, 0, performance.now() - started);
+      }
+    } catch {
+      if (direct) tracking.failed();
+    }
+  }
+
+  // --- Shared Files / Schedules / Drafts / Outbox / Answers / Images / Terminal / Models / Settings / Devices ---
+
+  get sharedFiles(): SharedFileManager {
+    return (this.sharedFilesState ??= new SharedFileManager({
+      getChunk: (sid, fileId, offset) => this.getSharedFileChunk(sid, fileId, offset),
+      isConnected: (sid) => this.peer(this.sessions.get(sid)?.machineId).ready,
+      isMachineOnline: (sid) => {
+        const s = this.sessions.get(sid);
+        return !!(s && this.peer(s.machineId).reachable);
+      },
+      isSessionEnded: (sid) => {
+        const s = this.sessions.get(sid);
+        return s?.info?.status === SessionStatus.EXITED || (s?.endedMs ?? 0n) > 0n;
+      },
+      sharedFileChunkBytes: (sid) => {
+        const s = this.sessions.get(sid);
+        return (s && this.peer(s.machineId).capabilities?.sharedFileChunkBytes) || 0;
+      },
+      store: sharedFileStore,
+    }));
+  }
+
+  hasSharedFilesCapability(sid: string): boolean {
+    const s = this.sessions.get(sid);
+    return !!(s && this.peer(s.machineId).capabilities?.sharedFiles === true);
+  }
+
+  private get scheduleSeen() {
+    return (this.scheduleSeenState ??= new ScheduleSeen(
+      [this.account.server, this.account.deviceId],
+      { getItem: (k) => localStorage.getItem(k), setItem: (k, v) => localStorage.setItem(k, v) },
+      (run) => { void closeScheduleNotification(run); },
+    ));
+  }
+
+  private emitScheduleHints() {
+    const hints = [...this.sessions.keys()].map((sid) => {
+      const tasks = this.sessionTasks(sid);
+      return {
+        sessionId: sid,
+        scheduleName: tasks.length > 0 ? frequency(tasks[0].task.spec.trigger) : "",
+        unread: tasks.some((e) => this.scheduleUnread(e.machineId, e.task)),
+      };
+    });
+    this.hostBridge?.pushScheduleHints(hints);
+  }
+
+  scheduleBadge() { return this.scheduleSeen.count(this.taskEntries()); }
+  scheduleUnread(machineId: string, task: ScheduleTask) { return this.scheduleSeen.unread(machineId, task); }
+  scheduleHasNew(machineId: string, task: ScheduleTask) { return this.scheduleSeen.hasNew(machineId, task); }
+  scheduleNewResults() { return this.taskEntries().some((e) => this.scheduleHasNew(e.machineId, e.task)); }
+  markScheduleRead(machineId: string, task: ScheduleTask) { this.scheduleSeen.markRead(machineId, task); this.emitScheduleHints(); this.changed(); }
+  markScheduleUnread(machineId: string, task: ScheduleTask, leaving = false) {
+    const latest = this.schedules.get(machineId)?.tasks.find((current) => current.id === task.id);
+    if (!latest) return;
+    this.scheduleSeen.markUnread(machineId, latest, leaving);
+    this.emitScheduleHints();
+    this.changed();
+  }
+  setScheduleDetail(machineId?: string, taskId?: string, visit?: ScheduleDetailVisit) {
+    const unread = this.scheduleSeen.setDetail(machineId, taskId, visit);
+    this.emitScheduleHints();
+    this.changed();
+    return unread;
+  }
+  setScheduleSession(sessionId?: string) { this.scheduleSeen.setSession(sessionId); this.emitScheduleHints(); this.changed(); }
+  setSchedulePage(page: string) { this.scheduleSeen.setPage(page); }
+  setScheduleVisible(visible: boolean) { this.scheduleSeen.setVisible(visible); this.emitScheduleHints(); this.changed(); }
+  hasLiveSchedules(machineId: string): boolean { return this.scheduleLive.has(machineId); }
+  supportsSchedules(id: string): boolean {
+    return this.peer(id).capabilities?.scheduledTasks === true && !(this.archiveMachines.has(id) && !this.trustedMembers.has(id));
+  }
+  taskEntries(): TaskEntry[] {
+    return [...this.schedules].flatMap(([machineId, state]) =>
+      this.supportsSchedules(machineId)
+        ? state.tasks.filter(taskVisible).map((task) => ({ machineId, task, group: taskGroup(task) }))
+        : [],
+    );
+  }
+  sessionTasks(sid: string): TaskEntry[] {
+    return this.taskEntries().filter((e) => e.task.spec.target.type === "resume_session" && e.task.spec.target.session === sid);
+  }
+
+  syncSchedules() {
+    for (const id of this.schedules.keys()) {
+      if (!this.machines.has(id) || (this.archiveMachines.has(id) && !this.trustedMembers.has(id))) this.forgetSchedules(id);
+    }
+    for (const id of this.scheduleRequests.keys()) {
+      if (!this.peer(id).available || !this.supportsSchedules(id)) this.scheduleRequests.delete(id);
+    }
+    for (const [id, m] of this.machines) {
+      if (!this.peer(id).available || !this.supportsSchedules(id)) continue;
+      const key = String(m.meta!.scheduleRevision);
+      if (this.scheduleRequests.get(id) === key) continue;
+      this.scheduleRequests.set(id, key);
+      void this.refreshSchedules(id);
+    }
+  }
+
+  private forgetSchedules(id: string) {
+    this.scheduleSeen.forget(id);
+    this.scheduleLive.delete(id);
+    this.schedules.delete(id);
+    this.scheduleRequests.delete(id);
+    this.scheduleAgain.delete(id);
+    void this.keepValue("schedules:" + id, undefined);
+  }
+
+  private async restoreScheduleSnapshot(id: string, kept: Record<string, unknown>, supportedOverride?: boolean) {
+    const { msg } = await this.openSecureMessage(
+      fromBinary(EnvelopeSchema, kept.bytes as Uint8Array),
+      { kind: PayloadKind.COMMAND_RESULT, machineId: id, sessionId: "", requestId: kept.requestId as string },
+      CommandResultSchema,
+      true,
+    );
+    const supported = supportedOverride ?? this.supportsSchedules(id);
+    if (!supported || this.removed || this.scheduleLive.has(id)) return;
+    if (msg.kind.case === "schedule") {
+      const parsed = JSON.parse(new TextDecoder().decode(msg.kind.value.resultJson)) as { tasks: ScheduleTask[] };
+      if (Array.isArray(parsed.tasks)) {
+        this.scheduleSeen.observe(id, parsed.tasks, { prune: false, live: false });
+        this.schedules.set(id, { tasks: parsed.tasks, revision: 0n, loading: false, error: "" });
+        this.emitScheduleHints();
       }
     }
   }
 
-  /** Sends a chat message. A retry passes the first attempt's slot, so
-   * the daemon answers it from its log. Only if that slot expired locally and
-   * its prior outcome was never unknown is a new one used; the send ID still keeps the
-   * daemon from queueing the text twice. Returns the slot that got an
-   * answer. */
-  async sendMessage(
-    sid: string,
-    text: string,
-    sendId: string,
-    slot: RequestSlot,
-    wasUnknown = false,
-    imageIds: string[] = [],
-    mode = SendMode.STEER,
-    fileIds: string[] = [],
-  ): Promise<RequestSlot> {
-    if (wasUnknown) this.deviceLink.state(slot).includePrior(true);
-    const cmd: CommandKind = {
-      case: "send",
-      value: { sessionId: sid, text, requestId: sendId, imageIds, fileIds, mode },
-    };
-    try {
-      await this.command(sid, cmd, slot);
-      return slot;
-    } catch (e) {
-      if (wasUnknown && e instanceof CommandError && e.outcome === "not_sent")
-        throw new CommandError(e.code,e.message,e.fromDaemon,e.readOnly,"unknown",e.conflictKind,e.resultAvailable);
-      // An unknown send keeps its original authorization bytes, ID and deadline.
-      if (
-        wasUnknown ||
-        uncertain(e) ||
-        !(e instanceof CommandError) ||
-        e.code !== "expired" ||
-        Date.now() < slot.deadline
-      )
-        throw e;
-      const fresh = newSlot();
-      fresh.beforeDispatch=slot.beforeDispatch;
-      await this.command(sid, cmd, fresh);
-      return fresh;
+  private async keepScheduleSnapshot(id: string, value: Record<string, unknown>) {
+    await this.keepValue("schedules:" + id, value);
+    if (!this.machines.has(id) || !this.supportsSchedules(id) || this.removed) {
+      await this.keepValue("schedules:" + id, undefined);
     }
   }
 
-  // --- the outbox: chat messages sent from this page ---
+  refreshSchedules(id: string): Promise<void> {
+    if (this.scheduleLoading.has(id)) {
+      this.scheduleAgain.add(id);
+      return this.scheduleLoading.get(id)!;
+    }
+    if (!this.peer(id).available || !this.supportsSchedules(id)) return Promise.resolve();
+    const work = (async () => {
+      do {
+        this.scheduleAgain.delete(id);
+        const revision = this.machines.get(id)?.meta?.scheduleRevision ?? 0n;
+        const prev = this.schedules.get(id);
+        this.schedules.set(id, { tasks: prev?.tasks ?? [], revision: prev?.revision ?? 0n, loading: true, error: "" });
+        this.changed();
+        try {
+          const r = await this.machineCommand(id, { case: "schedule", value: { operation: "list" } });
+          if (r.kind.case !== "schedule") throw new Error(l10n.t("new_session.unexpected_reply"));
+          const parsed = JSON.parse(new TextDecoder().decode(r.kind.value.resultJson)) as { tasks: ScheduleTask[] };
+          const tasks = Array.isArray(parsed.tasks) ? parsed.tasks : [];
+          this.scheduleLive.add(id);
+          this.scheduleSeen.observe(id, tasks, { live: true });
+          this.schedules.set(id, { tasks, revision, loading: false, error: "" });
+          this.emitScheduleHints();
+        } catch (e) {
+          this.schedules.set(id, { tasks: prev?.tasks ?? [], revision: prev?.revision ?? 0n, loading: false, error: errorText(e) });
+        }
+        this.changed();
+      } while (this.scheduleAgain.has(id) && this.peer(id).available && this.supportsSchedules(id));
+    })().finally(() => {
+      this.scheduleLoading.delete(id);
+      this.syncSchedules();
+    });
+    this.scheduleLoading.set(id, work);
+    return work;
+  }
 
-  protected outboxes = new Map<string, Outgoing[]>();
+  async changeSchedule(
+    machineId: string,
+    attemptKey: string,
+    payload: { operation: string; taskId?: string; revision?: number; spec?: ScheduleSpec; requestId?: string; sessionId?: string },
+  ): Promise<ScheduleTask> {
+    if (!this.peer(machineId).available) {
+      throw new Error(l10n.t("errors.the_computer_is_offline_connect_to_edit_tasks"));
+    }
+    if (!this.supportsSchedules(machineId)) {
+      throw new Error(l10n.t("errors.update_remote_agent_on_this_computer_to_use_scheduled"));
+    }
+    let attempt = this.scheduleAttempts.get(attemptKey);
+    if (!attempt) {
+      attempt = new Attempt();
+      this.scheduleAttempts.set(attemptKey, attempt);
+    }
+    if (attempt.expired) {
+      throw new Error(l10n.t("errors.the_previous_operation_s_outcome_is_still_unknown_reload"));
+    }
+    const req = attempt.next({
+      operation: payload.operation,
+      taskId: payload.taskId ?? "",
+      revision: payload.revision ?? 0,
+      spec: payload.spec,
+      requestId: payload.requestId,
+      sessionId: payload.sessionId,
+    });
+    try {
+      const r = await this.machineCommand(
+        machineId,
+        {
+          case: "schedule",
+          value: {
+            operation: req.payload.operation,
+            taskId: req.payload.taskId,
+            expectedRevision: BigInt(req.payload.revision),
+            specJson: req.payload.spec ? new TextEncoder().encode(JSON.stringify(req.payload.spec)) : undefined,
+            requestId: req.payload.requestId,
+            sessionId: req.payload.sessionId,
+          },
+        },
+        req.slot,
+      );
+      if (r.kind.case !== "schedule") throw new Error(l10n.t("errors.the_computer_did_not_return_a_task"));
+      const task = JSON.parse(new TextDecoder().decode(r.kind.value.resultJson)) as ScheduleTask;
+      attempt.settle(undefined, req);
+      this.scheduleAttempts.delete(attemptKey);
+      await this.refreshSchedules(machineId);
+      return task;
+    } catch (e) {
+      attempt.settle(e, req);
+      if (!attempt.frozen) this.scheduleAttempts.delete(attemptKey);
+      if (e instanceof CommandError && e.outcome === "conflict" && e.conflictKind === "business") {
+        attempt.abandon();
+        await this.refreshSchedules(machineId);
+        throw new ScheduleRevisionError(l10n.t("errors.the_task_was_just_changed_updated_to_the_latest"));
+      }
+      throw e;
+    }
+  }
 
-  /** Messages sent from this page to session sid, oldest first. */
-  outbox(sid: string): Outgoing[] {
-    return this.outboxes.get(sid) ?? [];
+  async openScheduleRun(machineId: string, run: import("./schedules").ScheduleRun) {
+    if (
+      !run.session_id ||
+      (this.sessions.get(run.session_id)?.machineId && this.sessions.get(run.session_id)?.machineId !== machineId)
+    ) {
+      return;
+    }
+    this.scheduleFocus.set(run.session_id, {
+      seq: BigInt(run.start_seq || run.after_seq) + 1n,
+      runId: run.id,
+    });
+    await this.ensureSession(run.session_id);
+    this.touch();
+    location.hash = "/s/" + encodeURIComponent(run.session_id);
+  }
+
+  draft(key: string): string { return this.drafts.get(key) ?? ""; }
+  setDraft(key: string, text: string) {
+    text ? this.drafts.set(key, text) : this.drafts.delete(key);
+    void this.persistDraft(key)?.catch(() => undefined);
+    this.changed();
+  }
+
+  private clearLocalNotice(key: string) {
+    const tray = this.trays.get(key);
+    const notice = this.localNotices.get(key);
+    if (tray && notice && tray.note === notice.message) {
+      tray.note = "";
+      this.touch();
+    }
+    this.localNotices.delete(key);
+  }
+
+  persistDraft(key: string): Promise<void> | undefined {
+    const revision = (this.draftRevisions.get(key) ?? 0) + 1;
+    this.draftRevisions.set(key, revision);
+    const tray = this.trays.get(key);
+    if (this.closed || this.forgottenSessions.has(key) || key.startsWith("schedule:") || !this.localDrafts || !tray) return;
+    if (!this.draftLoaded.has(key)) {
+      if (!this.draftLoads.has(key)) void this.restoreDraft(key, tray).catch(() => undefined);
+      return;
+    }
+    if (this.outboxWriteFailed.has(key)) void this.keepOutbox(key).catch(() => undefined);
+    const text = this.drafts.get(key) ?? "";
+    const snapshot = { items: [...tray.items], original: tray.original };
+    const save = (this.outboxSaves.get(key) ?? Promise.resolve()).then(() => {
+      if (this.draftRevisions.get(key) === revision) return this.localDrafts!.save(key, text, snapshot);
+    });
+    void save.then(
+      () => {
+        if (this.draftRevisions.get(key) === revision) this.clearLocalNotice(key);
+      },
+      () => this.localNotice(key, l10n.t("errors.the_draft_could_not_be_saved_locally_keep_the")),
+    );
+    return save;
+  }
+
+  restoreDraft(key: string, tray: Tray): Promise<void> {
+    if (!this.localDrafts || this.forgottenSessions.has(key) || key.startsWith("schedule:") || this.draftLoaded.has(key)) {
+      return Promise.resolve();
+    }
+    const existing = this.draftLoads.get(key);
+    if (existing) return existing;
+    tray.restoring = true;
+    const revision = this.draftRevisions.get(key) ?? 0;
+    const job = this.localDrafts
+      .read(key)
+      .then((saved) => {
+        if (this.closed || this.trays.get(key) !== tray) return;
+        if (saved) {
+          if ((this.draftRevisions.get(key) ?? 0) === revision) this.drafts.restore(key, saved.text);
+          tray.hydrate(saved.items, saved.original);
+        }
+        this.draftLoaded.add(key);
+        this.clearLocalNotice(key);
+      })
+      .catch((error) => {
+        this.draftLoads.delete(key);
+        this.localNotice(key, l10n.t("errors.the_draft_could_not_be_restored_you_can_still"));
+        throw error;
+      })
+      .finally(() => {
+        tray.restoring = false;
+        if (!this.closed && this.draftLoaded.has(key)) void this.persistDraft(key)?.catch(() => undefined);
+        if (!this.closed) this.touch();
+      });
+    this.draftLoads.set(key, job);
+    if (!key.startsWith("new:")) {
+      void this.restoreOutbox(key).catch(() =>
+        this.localNotice(key, l10n.t("errors.queued_records_could_not_be_restored_you_can_still")),
+      );
+    }
+    return job;
+  }
+
+  private restoreOutbox(sid: string): Promise<void> {
+    if (!this.localDrafts) return Promise.resolve();
+    const old = this.outboxLoads.get(sid);
+    if (old) return old;
+    const job = this.localDrafts
+      .readOutbox(sid)
+      .then((saved) => {
+        if (this.closed || this.forgottenSessions.has(sid)) return;
+        const current = this.outbox(sid);
+        const ids = new Set(current.map((o) => o.sendId));
+        this.outboxes.set(sid, [...saved.filter((o) => !ids.has(o.sendId)), ...current]);
+        const evs = this.events(sid);
+        if (evs.length) this.reconcileOutbox(sid, evs);
+        this.syncOutboxPin(sid);
+        this.touch();
+      })
+      .catch((error) => {
+        this.outboxLoads.delete(sid);
+        throw error;
+      });
+    this.outboxLoads.set(sid, job);
+    return job;
+  }
+
+  private keepOutbox(sid: string): Promise<void> {
+    if (!this.localDrafts || this.closed || this.forgottenSessions.has(sid)) return Promise.resolve();
+    const saved = this.restoreOutbox(sid).then(() => {
+      if (!this.forgottenSessions.has(sid)) return this.localDrafts!.saveOutbox(sid, this.outbox(sid));
+    });
+    this.outboxSaves.set(sid, saved);
+    void saved.then(
+      () => {
+        if (this.outboxSaves.get(sid) === saved) {
+          this.outboxWriteFailed.delete(sid);
+          if (this.localNotices.get(sid)?.kind === "outbox_save") this.clearLocalNotice(sid);
+        }
+      },
+      () => {
+        if (this.outboxSaves.get(sid) === saved) this.outboxWriteFailed.add(sid);
+        const forwarding = this.outbox(sid).some((o) => this.forwardingOutbox.has(o.sendId));
+        this.localNotice(
+          sid,
+          forwarding
+            ? l10n.t("errors.queued_records_could_not_be_saved_locally_messages_will")
+            : l10n.t("errors.the_draft_could_not_be_saved_locally_keep_the"),
+          "outbox_save",
+        );
+      },
+    );
+    return saved;
+  }
+
+  private syncOutboxPin(sid: string) {
+    const pinned = this.outbox(sid).some((o) => o.status !== "sent");
+    this.hostBridge?.pushSessionPin(sid, pinned);
+  }
+
+  private localNotice(key: string, message: string, kind: "draft" | "outbox_save" = "draft") {
+    const tray = this.trays.get(key);
+    if (!this.closed && tray) {
+      this.localNotices.set(key, { message, kind });
+      tray.note = message;
+      this.touch();
+    }
+    this.notices.set(key, message);
+    this.changed();
+  }
+  clearNotice(sid: string) {
+    if (this.notices.delete(sid)) this.changed();
+  }
+  approvalReason(approvalId: string): string { return this.approvalReasons.get(approvalId) ?? ""; }
+  setApprovalReason(approvalId: string, text: string) {
+    text ? this.approvalReasons.set(approvalId, text) : this.approvalReasons.delete(approvalId);
+  }
+  clearApprovalReason(approvalId: string) { this.approvalReasons.delete(approvalId); }
+  answerState(id: string): AnswerState { return this.answers.get(id) ?? noAnswer; }
+  patchAnswer(id: string, p: Partial<AnswerState>) {
+    this.answers.set(id, { ...this.answerState(id), ...p });
+    this.changed();
+  }
+  tray(key: string): Tray | undefined { return this.trays.get(key); }
+  setTray(key: string, tray: Tray) { this.trays.set(key, tray); }
+  outbox(sid: string): Outgoing[] { return this.outboxes.get(sid) ?? []; }
+
+  private patchOut(sid: string, sendId: string, p: Partial<Outgoing>) {
+    const list = this.outbox(sid);
+    const i = list.findIndex((o) => o.sendId === sendId);
+    if (i < 0) return;
+    const next = list.slice();
+    next[i] = { ...next[i], ...p };
+    this.outboxes.set(sid, next);
+    this.syncOutboxPin(sid);
+    this.changed();
+  }
+
+  private reconcileOutbox(sid: string, events: Event[]) {
+    const box = this.outbox(sid);
+    if (!box.length) return;
+    const seen = new Set<string>();
+    for (const e of events) {
+      if (e.kind.case === "userMessage" && e.kind.value.requestId) seen.add(e.kind.value.requestId);
+    }
+    const left = box.filter((o) => !seen.has(o.sendId));
+    if (left.length !== box.length) {
+      if (left.length) this.outboxes.set(sid, left);
+      else this.outboxes.delete(sid);
+      this.syncOutboxPin(sid);
+      void this.keepOutbox(sid).catch(() => undefined);
+    }
   }
 
   canRestoreAttachments(sid: string, requestId: string): boolean {
-    const out = this.outbox(sid).find(o => o.sendId === requestId);
-    return !!out && !!(out.text || out.imageIds?.length || out.files?.length) &&
-      (!out.imageIds?.length || out.attachments?.files.length === out.imageIds.length && out.attachments.files.every(f => f.size > 0)) &&
-      (!out.files?.length || out.files.every(f => !!f.file));
-  }
-
-  private patchOut(sid: string, sendId: string, patch: Partial<Outgoing>) {
-    if (!this.outbox(sid).some((o) => o.sendId === sendId)) return;
-    this.outboxes.set(
-      sid,
-      this.outbox(sid).map((o) =>
-        o.sendId === sendId ? { ...o, ...patch } : o,
-      ),
+    const out = this.outbox(sid).find((o) => o.sendId === requestId);
+    return (
+      !!out &&
+      !!(out.text || out.imageIds?.length || out.files?.length) &&
+      (!out.imageIds?.length || (out.attachments?.files.length === out.imageIds.length && out.attachments.files.every((f) => f.size > 0))) &&
+      (!out.files?.length || out.files.every((f) => !!f.file))
     );
-    this.changed();
-    void this.keepOutbox(sid).catch(() => undefined);
   }
 
-  /** Sends text, and images uploaded to the machine, to a session; its
-   * progress shows in outbox(sid). */
   send(
     sid: string,
     text: string,
@@ -3827,20 +3869,13 @@ export class Remote {
       status: "sending",
     };
     this.outboxes.set(sid, [...this.outbox(sid), o]);
+    this.syncOutboxPin(sid);
     this.changed();
-    // Start the pending write so clearing the visible draft can wait for it.
-    // The exact prepared authorization must also land before forwarding.
     void this.keepOutbox(sid).catch(() => undefined);
     void this.deliver(sid, o);
     return o.sendId;
   }
 
-  // Messages the daemon failed to write, by request ID, and the new
-  // message sent in their place: each is sent again once at most.
-  replaced = new Map<string, string>();
-
-  /** Sends a message that failed before Enter again, as a new message,
-   * once: pressing retry again, or after the new one went, does nothing. */
   resend(
     sid: string,
     failedId: string,
@@ -3850,12 +3885,22 @@ export class Remote {
     files?: Outgoing["files"],
   ) {
     if (this.replaced.has(failedId)) return;
-    const previous = this.outbox(sid).find(o => o.sendId === failedId);
-    this.replaced.set(failedId, this.send(sid, text, imageIds, thumbs.length ? thumbs : previous?.thumbs, SendMode.STEER, previous?.attachments, files, previous?.imageSizes));
+    const previous = this.outbox(sid).find((o) => o.sendId === failedId);
+    this.replaced.set(
+      failedId,
+      this.send(
+        sid,
+        text,
+        imageIds,
+        thumbs.length ? thumbs : previous?.thumbs,
+        SendMode.STEER,
+        previous?.attachments,
+        files,
+        previous?.imageSizes,
+      ),
+    );
   }
 
-  /** The CLI recorded these messages: the history now holds them, so the
-   * outbox lets go of their text, requests and local image copies. */
   recorded(sid: string, requestIds: string[]) {
     if (!requestIds.length) return;
     const ids = new Set(requestIds);
@@ -3864,12 +3909,21 @@ export class Remote {
     const left = box.filter((o) => !ids.has(o.sendId));
     if (left.length) this.outboxes.set(sid, left);
     else this.outboxes.delete(sid);
+    this.syncOutboxPin(sid);
     this.changed();
     void this.keepOutbox(sid).catch(() => undefined);
   }
 
-  /** Sends a message that could not be confirmed again, with the same
-   * request ID and deadline. */
+  clearSent(sid: string, ids: Set<string>) {
+    const box = this.outbox(sid);
+    const left = box.filter((o) => !ids.has(o.sendId));
+    if (left.length) this.outboxes.set(sid, left);
+    else this.outboxes.delete(sid);
+    this.syncOutboxPin(sid);
+    this.changed();
+    void this.keepOutbox(sid).catch(() => undefined);
+  }
+
   retrySend(sid: string, sendId: string) {
     const o = this.outbox(sid).find((x) => x.sendId === sendId);
     if (o && o.status === "failed") {
@@ -3878,49 +3932,32 @@ export class Remote {
     }
   }
 
-  /** Forgets a failed message. */
   dismissSend(sid: string, sendId: string, restored = false) {
     const drop = () => {
-      this.outboxes.set(sid, this.outbox(sid).filter(o => o.sendId !== sendId));
+      this.outboxes.set(sid, this.outbox(sid).filter((o) => o.sendId !== sendId));
+      this.syncOutboxPin(sid);
       void this.keepOutbox(sid).catch(() => undefined);
       this.changed();
     };
     if (!restored || !this.localDrafts) { drop(); return; }
-    // Do not release the old owner until the merged draft has landed.
     const saved = this.persistDraft(sid);
     if (saved) void saved.then(drop).catch(() => this.localNotice(sid, l10n.t("errors.the_draft_could_not_be_saved_the_original_message")));
   }
 
   private async deliver(sid: string, o: Outgoing) {
-    this.patchOut(sid, o.sendId, {
-      status: "sending",
-      error: undefined,
-      outcomeNotice: false,
-      missingImages: false,
-    });
-    const sending = restoreSlot({requestId: o.requestId, deadline: o.deadline, prepared: o.prepared}, o.unknown ?? false);
+    this.patchOut(sid, o.sendId, { status: "sending", error: undefined, outcomeNotice: false, missingImages: false });
+    const sending = restoreSlot({ requestId: o.requestId, deadline: o.deadline, prepared: o.prepared }, o.unknown ?? false);
     try {
-      sending.beforeDispatch = async slot => {
-        this.patchOut(sid,o.sendId,{requestId:slot.requestId,deadline:slot.deadline,prepared:slot.prepared});
+      sending.beforeDispatch = async (slot) => {
+        this.patchOut(sid, o.sendId, { requestId: slot.requestId, deadline: slot.deadline, prepared: slot.prepared });
         await this.keepOutbox(sid);
         this.forwardingOutbox.add(o.sendId);
       };
-      const slot = await this.sendMessage(
-        sid,
-        o.text,
-        o.sendId,
-        sending,
-        o.unknown,
-        o.imageIds,
-        o.mode,
-        o.files?.map((f) => f.fileId),
-      );
+      const slot = await this.sendMessage(sid, o.text, o.sendId, sending, o.unknown, o.imageIds, o.mode, o.files?.map((f) => f.fileId));
       this.patchOut(sid, o.sendId, { status: "sent", requestId: slot.requestId, deadline: slot.deadline, prepared: slot.prepared });
     } catch (e) {
-      // Once unknown, it stays unknown and keeps its request (attempt.ts);
-      // the send ID also keeps the daemon from queueing the text twice.
       const final = e instanceof CommandError && e.fromDaemon && e.outcome !== "not_sent" && !uncertain(e);
-      const still = stillUnknown(e, o.unknown ?? false) || (sending.evidence.unresolved && !final);
+      const still = stillUnknown(e, o.unknown ?? false) || (!!sending.evidence.unresolved && !final);
       const missingImages =
         !still &&
         e instanceof CommandError &&
@@ -3929,21 +3966,49 @@ export class Remote {
         e.message.includes("is not on this machine; upload it again");
       this.patchOut(sid, o.sendId, {
         status: "failed",
-        error: missingImages
-          ? o.files?.length ? l10n.t("attachment.ios_missing") : l10n.t("attachment.ios_image_missing")
-          : errorText(e),
+        error: missingImages ? (o.files?.length ? l10n.t("attachment.ios_missing") : l10n.t("attachment.ios_image_missing")) : errorText(e),
         missingImages,
         unknown: still,
         outcomeNotice: e instanceof CommandError && e.needsResultRefresh,
-        ...(still ? {} : {...newSlot(),prepared:undefined}),
+        ...(still ? {} : { ...newSlot(), prepared: undefined }),
       });
     } finally {
       this.forwardingOutbox.delete(o.sendId);
     }
   }
 
-  /** Joins a session's terminal stream. Frames are sealed with the session
-   * key and numbered; each side refuses frames out of order. */
+  async sendMessage(
+    sid: string,
+    text: string,
+    sendId: string,
+    slot: RequestSlot,
+    wasUnknown = false,
+    imageIds: string[] = [],
+    mode = SendMode.STEER,
+    fileIds: string[] = [],
+  ): Promise<RequestSlot> {
+    if (wasUnknown) slot.evidence.includePrior(true);
+    const cmd: CommandKind = {
+      case: "send",
+      value: { sessionId: sid, text, requestId: sendId, imageIds, fileIds, mode },
+    };
+    try {
+      await this.command(sid, cmd, slot);
+      return slot;
+    } catch (e) {
+      if (wasUnknown && e instanceof CommandError && e.outcome === "not_sent") {
+        throw new CommandError(e.code, e.message, e.fromDaemon, e.readOnly, "unknown", e.conflictKind, e.resultAvailable);
+      }
+      if (wasUnknown || (e instanceof CommandError && e.outcome !== "not_sent") || uncertain(e)) throw e;
+      if (e instanceof CommandError && e.code === "expired") {
+        const fresh = newSlot();
+        await this.command(sid, cmd, fresh);
+        return fresh;
+      }
+      throw e;
+    }
+  }
+
   async openTerminal(
     sid: string,
     onFrame: (f: TerminalFrame) => void | Promise<void>,
@@ -3955,14 +4020,12 @@ export class Remote {
     if (!s) throw new Error(l10n.t("session.android_unknown"));
     if (signal?.aborted) throw new Error(l10n.t("errors.terminal_connection_canceled"));
     const streamId = newRequestID();
-    const ws = this.deviceLink.openPathStream(
-      apiBase(this.account.server).replace(/^http/, "ws") + "/v1/term",
-    );
+    const ws = this.deviceLink.openPathStream(apiBase(this.account.server).replace(/^http/, "ws") + "/v1/term");
     let closed = false;
     let openingTimer: ReturnType<typeof setTimeout> | undefined;
     let rejectOpening: (e: Error) => void = () => {};
     const abort = () => finish(l10n.t("errors.terminal_connection_canceled"));
-    const stream = this.deviceLink.openStream(onClose, reason => {
+    const stream = this.deviceLink.openStream(onClose, (reason) => {
       closed = true;
       clearTimeout(openingTimer);
       signal?.removeEventListener("abort", abort);
@@ -3973,24 +4036,12 @@ export class Remote {
     signal?.addEventListener("abort", abort, { once: true });
     await new Promise<void>((resolve, reject) => {
       rejectOpening = reject;
-      openingTimer = setTimeout(
-        () => finish(l10n.t("errors.terminal_connection_timed_out_reconnect")),
-        OPEN_TIMEOUT_MS,
-      );
+      openingTimer = setTimeout(() => finish(l10n.t("errors.terminal_connection_timed_out_reconnect")), OPEN_TIMEOUT_MS);
       ws.onOpen = () => {
         if (closed) return;
         clearTimeout(openingTimer);
         try {
-          ws.send(
-            toBinary(
-              TermHelloSchema,
-              create(TermHelloSchema, {
-                token: this.token,
-                streamId,
-                machineId: s.machineId,
-              }),
-            ),
-          );
+          ws.send(toBinary(TermHelloSchema, create(TermHelloSchema, { token: this.token, streamId, machineId: s.machineId })));
           resolve();
         } catch (e) {
           finish(errorText(e));
@@ -4013,22 +4064,13 @@ export class Remote {
         ws.close();
         return;
       }
-      // Open in arrival order.
       queue = queue.then(async () => {
         try {
           if (closed) return;
-          const env = fromBinary(
-            EnvelopeSchema,
-            new Uint8Array(data),
-          );
+          const env = fromBinary(EnvelopeSchema, new Uint8Array(data));
           const { header, msg } = await this.openSecureMessage(
             env,
-            {
-              kind: PayloadKind.TERMINAL_OUTPUT,
-              machineId: s.machineId,
-              sessionId: sid,
-              requestId: streamId,
-            },
+            { kind: PayloadKind.TERMINAL_OUTPUT, machineId: s.machineId, sessionId: sid, requestId: streamId },
             TerminalFrameSchema,
           );
           if (closed) return;
@@ -4047,10 +4089,7 @@ export class Remote {
     ws.onEnd = () => finish(l10n.t("errors.terminal_connection_dropped"));
     if (closed) throw new Error(l10n.t("errors.terminal_connection_closed"));
     try {
-      await this.command(sid, {
-        case: "openTerminal",
-        value: { sessionId: sid, streamId },
-      });
+      await this.command(sid, { case: "openTerminal", value: { sessionId: sid, streamId } });
     } catch (e) {
       finish(errorText(e));
       throw e;
@@ -4064,388 +4103,296 @@ export class Remote {
           if (closed || !ws.ready) return;
           seq++;
           const env = await this.sealSecureMessage(
-            {
-              kind: PayloadKind.TERMINAL_INPUT,
-              machineId: s.machineId,
-              sessionId: sid,
-              requestId: streamId,
-              seq,
-              sender: this.account.deviceId,
-            },
+            { kind: PayloadKind.TERMINAL_INPUT, machineId: s.machineId, sessionId: sid, requestId: streamId, seq, sender: this.account.deviceId },
             TerminalFrameSchema,
             create(TerminalFrameSchema, frame),
           );
-          if (!closed && ws.ready)
-            ws.send(toBinary(EnvelopeSchema, env));
+          if (!closed && ws.ready) ws.send(toBinary(EnvelopeSchema, env));
         });
       },
       close: () => finish(l10n.t("errors.terminal_connection_closed"), false),
     };
   }
 
-  private async republishRecoveryObjects(
-    record: import("./device-security-store").SecurityRecord,
-    api = this.api,
-  ) {
-    const boundary = record.states.filter((_, i) => record.proofs[i]).at(-1)
-      ?.core.contentEpoch;
-    if (!boundary) return;
-    for (let attempt = 0; attempt < 5; attempt++) {
-      const { object: o } = await api.getAccountPrefs({
-        objectId: PREFS_OBJECT,
-      });
-      if (
-        !o?.envelope ||
-        o.revision === 0n ||
-        parseHeader(new Uint8Array(o.envelope.securityHeader)).contentEpoch >=
-          boundary
-      )
-        break;
-      let snapshot;
-      try {
-        snapshot = await this.security.openMessage(
-          o.envelope,
-          ProjectPrefsSchema,
-          true,
-        );
-      } catch (e) {
-        if (e instanceof SecurityError && e.code === "unavailable") break;
-        throw e;
+  prepareImage: Prepare = () => Promise.resolve({ bytes: new Uint8Array(), format: "png", width: 0, height: 0, size: 0 });
+
+  async uploadImage(
+    machineId: string,
+    p: { bytes: Uint8Array; format: string; fileName?: string },
+    progress: (done: number, total: number) => void = () => undefined,
+    started: (abort: () => void) => void = () => undefined,
+  ): Promise<{ imageId: string; fileId?: string; expiresMs: number }> {
+    const format = { jpeg: ImageFormat.JPEG, png: ImageFormat.PNG, webp: ImageFormat.WEBP, gif: ImageFormat.GIF }[p.format] ?? ImageFormat.UNSPECIFIED;
+    const transferId = newRequestID();
+    const sha256 = new Uint8Array(await crypto.subtle.digest("SHA-256", p.bytes as Uint8Array<ArrayBuffer>));
+    const total = p.bytes.length;
+    const statusOf = (r: CommandResult) => {
+      const k = r.kind;
+      const st = k.case === "beginImageUpload" || k.case === "putImageChunk" || k.case === "getImageUploadStatus" || k.case === "completeImageUpload" ? k.value.status : undefined;
+      if (!st) throw new Error(l10n.t("new_session.unexpected_reply"));
+      return st;
+    };
+    const step = async (cmd: CommandKind) => {
+      for (let i = 0; ; i++) {
+        try {
+          const st = statusOf(await this.machineCommand(machineId, cmd));
+          if (cmd?.case === "completeImageUpload" && st.state === ImageUploadState.RECEIVING && Number(st.persistedBytes) === total) {
+            if (i >= 2) throw new Error(l10n.t("errors.the_computer_is_still_verifying_attachments_retry_shortly"));
+            continue;
+          }
+          return st;
+        } catch (e) {
+          if (!uncertain(e) || (e instanceof CommandError && e.outcome !== "unknown") || i >= 2) throw e;
+          try {
+            const st = statusOf(await this.machineCommand(machineId, { case: "getImageUploadStatus", value: { transferId } }));
+            if (cmd?.case === "completeImageUpload" && st.state === ImageUploadState.RECEIVING && Number(st.persistedBytes) === total) continue;
+            return st;
+          } catch (e2) {
+            if (!uncertain(e2) || (e2 instanceof CommandError && e2.outcome !== "unknown") || i >= 2) throw e2;
+          }
+        }
       }
-      if (
-        snapshot.header.purpose !== Purpose.Prefs ||
-        snapshot.header.seq !== o.revision ||
-        snapshot.header.request !== PREFS_OBJECT
-      )
-        throw new SecurityError("untrusted");
-      const envelope = await this.security.seal(
-        {
-          kind: 12,
-          purpose: Purpose.Prefs,
-          machine: "",
-          session: "",
-          request: PREFS_OBJECT,
-          seq: o.revision + 1n,
-          deadline: 0n,
-          compression: 0,
-        },
-        toBinary(ProjectPrefsSchema, snapshot.msg),
-      );
-      if (
-        (
-          await api.putAccountPrefs({
-            objectId: PREFS_OBJECT,
-            expectedRevision: o.revision,
-            envelope,
-          })
-        ).applied
-      )
-        break;
-      if (attempt === 4) throw new Error(l10n.t("errors.the_recovery_object_was_updated_concurrently_retrying_on_the"));
+    };
+    let st = await step({ case: "beginImageUpload", value: { transferId, format, fileName: p.fileName ?? "", totalBytes: BigInt(total), sha256 } });
+    started(() => void this.machineCommand(machineId, { case: "abortImageUpload", value: { transferId } }).catch(() => undefined));
+    const chunk = Math.min(UPLOAD_CHUNK, st.maxChunkBytes > 0 ? st.maxChunkBytes : UPLOAD_CHUNK);
+    for (let guard = 0; Number(st.persistedBytes) < total; guard++) {
+      if (guard > total / chunk + 10) throw new Error(l10n.t("errors.upload_made_no_progress"));
+      const offset = Number(st.persistedBytes);
+      progress(offset, total);
+      st = await step({ case: "putImageChunk", value: { transferId, offset: BigInt(offset), data: p.bytes.subarray(offset, offset + chunk) } });
     }
-    for (let attempt = 0; attempt < 5; attempt++) {
-      const own = (await api.listDevices({})).devices.find(
-        (d) => d.id === this.account.deviceId,
-      );
-      if (
-        !own?.meta ||
-        parseHeader(new Uint8Array(own.meta.securityHeader)).contentEpoch >=
-          boundary
-      )
-        break;
-      const snapshot = await this.security.openMessage(
-        own.meta,
-        DeviceMetaSchema,
+    progress(total, total);
+    st = await step({ case: "completeImageUpload", value: { transferId } });
+    if (p.fileName ? !st.fileId : !st.imageId) throw new Error(l10n.t("errors.the_computer_did_not_return_an_attachment_id"));
+    return { imageId: st.imageId, ...(st.fileId ? { fileId: st.fileId } : {}), expiresMs: Number(st.expiresMs) };
+  }
+
+  async getImage(sid: string, imageId: string): Promise<ImageResult> {
+    const key = sid + "/" + imageId;
+    const hit = this.imageCache.get(key);
+    if (hit) { this.imageCache.delete(key); this.imageCache.set(key, hit); return hit; }
+    const s = this.sessions.get(sid);
+    if (!s) throw new Error(l10n.t("session.android_unknown"));
+    let res;
+    try {
+      res = await this.api.getImage({ sessionId: sid, imageId });
+    } catch (e) {
+      if (e instanceof ConnectError && e.code === Code.NotFound) return { kind: "missing" };
+      throw e;
+    }
+    if (res.expired || !res.image) return { kind: "expired" };
+    let out: ImageResult;
+    try {
+      const { msg } = await this.openSecureMessage(
+        res.image,
+        { kind: PayloadKind.IMAGE, machineId: s.machineId, sessionId: sid, requestId: imageId },
+        ImagePayloadSchema,
         true,
       );
-      if (
-        snapshot.header.purpose !== Purpose.DeviceMeta ||
-        snapshot.header.sender !== own.id ||
-        snapshot.header.seq !== own.metaRevision
-      )
-        throw new SecurityError("untrusted");
-      const meta = await this.security.seal(
-        {
-          kind: 13,
-          purpose: Purpose.DeviceMeta,
-          machine: "",
-          session: "",
-          request: own.id,
-          seq: own.metaRevision + 1n,
-          deadline: 0n,
-          compression: 0,
-        },
-        toBinary(DeviceMetaSchema, snapshot.msg),
-      );
-      if (
-        (
-          await api.putDeviceMeta({
-            deviceId: own.id,
-            expectedRevision: own.metaRevision,
-            meta,
-          })
-        ).applied
-      )
-        break;
-      if (attempt === 4) throw new Error(l10n.t("errors.the_recovery_object_was_updated_concurrently_retrying_on_the"));
-    }
-  }
-
-  // --- devices ---
-
-  /** Lists the account's devices from the signed membership state and the
-   * server's sealed metadata objects. */
-  async loadDevices(describe = true, update?: { machineId: string; meta?: Envelope }): Promise<void> {
-    try {
-      // Updates still pull and verify the security chain before trusting a
-      // cached directory. Payload signatures and routes are checked on open.
-      const record = await this.security.sync();
-      const reconciliationPending = update ? !!(await this.authority.pending()) : false;
-      const state = record.stateHash;
-      if (!equalBytes(state, await this.security.localStateHash()))
-        return this.loadDevices(describe, update);
-      if (this.directoryJob) {
-        const job = this.directoryJob;
-        await job.promise;
-        if (job.invalidated || !equalBytes(job.head, await this.security.localStateHash()))
-          return this.loadDevices(describe, update);
-        if (describe) await this.describeSelf();
-        return;
-      }
-      let knownUpdate = true;
-      if (update?.meta) {
-        try {
-          const h = parseHeader(new Uint8Array(update.meta.securityHeader));
-          knownUpdate = h.sender === update.machineId &&
-            record.states.some((s) => s.core.epoch === h.epoch);
-        } catch { knownUpdate = false; }
-      }
-      if (
-        update && knownUpdate && record.member &&
-        this.devicesStatus === "ready" && this.directoryHead &&
-        equalBytes(this.directoryHead, state) &&
-        this.trustedMembers.get(update.machineId)?.kind === 1 &&
-        record.states.at(-1)!.core.members.some((m) => m.id === update.machineId && m.kind === 1) &&
-        !this.recoveryObjectsPending && !this.security.recoveryPending &&
-        !reconciliationPending && !this.reconcilingSecurity && !this.maintaining
-      ) {
-        this.clearClockWarning();
-        return;
-      }
-      const controller = new AbortController();
-      const job = { head: state, controller, promise: ownedRound(controller, this.roundBudget(), signal => this.loadDirectory(record, signal)).finally(() => {
-        if (this.directoryJob === job) this.directoryJob = undefined;
-      }), invalidated: false };
-      this.directoryJob = job;
-      await job.promise;
-      if (job.invalidated) return this.loadDevices(describe, update);
-      // Self-description can reload the directory while publishing metadata.
-      // It must run after the shared job has finished and been cleared.
-      if (describe && this.devicesStatus === "ready") await this.describeSelf();
+      out = matchesFormat(msg.data, msg.format)
+        ? { kind: "ok", blob: new Blob([msg.data as Uint8Array<ArrayBuffer>], { type: mimeOf(msg.format) }), width: msg.width, height: msg.height, format: msg.format }
+        : { kind: "bad" };
     } catch (e) {
-      if (e instanceof PathChanged) { if (!this.closed) return this.loadDevices(describe, update); return; }
-      this.noteClock(e);
-      if (this.directoryJob) return;
-      this.devicesStatus = "error";
-      this.changed();
+      out = { kind: "bad", ...(e instanceof UnsupportedHistoryError ? { why: e.message } : {}) };
+    }
+    if (out.kind === "ok") {
+      this.imageCache.set(key, out);
+      while (this.imageCache.size > IMAGE_CACHE) this.imageCache.delete(this.imageCache.keys().next().value!);
+    }
+    return out;
+  }
+
+  async getSharedFileChunk(sid: string, fileId: string, offset: bigint): Promise<SharedFileChunkResult> {
+    const res = await this.command(sid, { case: "getSharedFileChunk", value: { sessionId: sid, fileId, offset } });
+    if (res.kind.case !== "getSharedFileChunk") throw new Error(l10n.t("new_session.unexpected_reply"));
+    return { data: res.kind.value.data, totalBytes: res.kind.value.totalBytes };
+  }
+
+  cachedImage(sid: string, imageId: string): ImageResult | undefined { return this.imageCache.get(sid + "/" + imageId); }
+  authHeader(): string { return "Bearer " + this.token; }
+  async pushKey(): Promise<string> { return (await this.api.getPushKey({})).publicKey; }
+  async setPushSubscription(subscriptionJson: string, kinds: NotifyKind[]): Promise<void> {
+    const capability = subscriptionJson ? await this.api.getPushKey({}) : undefined;
+    const selected = subscriptionJson ? machineNotificationKinds(kinds, capability?.machineDiskNotifications === true) : [];
+    await this.api.setPushSubscription({ subscriptionJson, kinds: selected });
+  }
+
+  async getMachineStatus(machineId: string, signal?: AbortSignal) {
+    const r = await this.forward(machineId, "", { case: "getMachineStatus", value: {} }, undefined, signal);
+    if (r.kind.case !== "machineStatus") throw new Error(l10n.t("machine_status.unavailable"));
+    return r.kind.value;
+  }
+
+  modelName(machineId: string, agent: Agent, slug: string): string {
+    return modelLabel(this.modelLists.get(machineId + "/" + agent)?.models, slug, agent);
+  }
+  cachedModels(machineId: string, agent: Agent): ListModelsResponse | undefined {
+    return this.modelLists.get(machineId + "/" + agent);
+  }
+  listModels(machineId: string, agent: Agent = DEFAULT_AGENT, fresh = false): Promise<ListModelsResponse> {
+    const key = machineId + "/" + agent;
+    let p = fresh && !this.modelReads.has(key) ? undefined : this.models.get(key);
+    if (!p) {
+      p = this.machineCommand(machineId, { case: "listModels", value: { agent } }).then((r) => {
+        if (r.kind.case !== "listModels") throw new Error(l10n.t("new_session.unexpected_reply"));
+        this.modelLists.set(key, r.kind.value);
+        this.keepInfo();
+        this.changed();
+        return r.kind.value;
+      });
+      this.modelReads.add(key);
+      p.then(
+        () => this.modelReads.delete(key),
+        () => { this.modelReads.delete(key); if (this.models.get(key) === p) this.models.delete(key); },
+      );
+      this.models.set(key, p);
+    }
+    return p;
+  }
+
+  cachedSettings(machineId: string): DaemonSettings | undefined { return this.settingsRead.get(machineId); }
+  settings(machineId: string, fresh = false): Promise<DaemonSettings | undefined> {
+    let p = fresh ? undefined : this.settingsCache.get(machineId);
+    if (!p) {
+      p = this.machineCommand(machineId, { case: "getSettings", value: {} }).then((r) => {
+        if (r.kind.case !== "getSettings") throw new Error(l10n.t("new_session.unexpected_reply"));
+        if (this.settingsCache.get(machineId) === p) {
+          if (r.kind.value.imageStorage) this.imageStorage.set(machineId, r.kind.value.imageStorage);
+          this.settingsRead.set(machineId, r.kind.value.settings);
+          this.keepInfo();
+          this.changed();
+        }
+        return r.kind.value.settings;
+      });
+      p.catch(() => { if (this.settingsCache.get(machineId) === p) this.settingsCache.delete(machineId); });
+      this.settingsCache.set(machineId, p);
+    }
+    return p;
+  }
+
+  async saveSettings(machineId: string, next: DaemonSettings, cleanImages = false): Promise<DaemonSettings | undefined> {
+    const r = await this.machineCommand(machineId, { case: "updateSettings", value: { settings: next, cleanImages } });
+    if (r.kind.case !== "updateSettings") throw new Error(l10n.t("new_session.unexpected_reply"));
+    if (r.kind.value.imageStorage) this.imageStorage.set(machineId, r.kind.value.imageStorage);
+    this.settingsCache.set(machineId, Promise.resolve(r.kind.value.settings));
+    this.settingsRead.set(machineId, r.kind.value.settings);
+    this.keepInfo();
+    this.changed();
+    return r.kind.value.settings;
+  }
+
+  async pingServer(timeoutMs = 8000): Promise<number> {
+    const stop = new AbortController();
+    const timer = setTimeout(() => stop.abort(), timeoutMs);
+    const started = performance.now();
+    try {
+      const res = await relayFetch(apiBase(this.account.server) + "/healthz", { cache: "no-store", signal: stop.signal });
+      await res.arrayBuffer();
+      if (!res.ok) throw new Error(l10n.t("errors.server_returned", { value: String(res.status) }));
+      return Math.round(performance.now() - started);
+    } catch (e) {
+      throw stop.signal.aborted ? new Error(l10n.t("connection.no_response")) : e;
+    } finally {
+      clearTimeout(timer);
     }
   }
 
-  private async loadDirectory(record: SecurityRecord, signal: AbortSignal) {
-    const api = scopedClient(this.api, signal);
-    this.recoveryObjectsPending = true;
-    let publicationPending = false;
+  async pingMachine(machineId: string, timeoutMs = 15_000): Promise<number> {
+    const started = performance.now();
+    let timer: ReturnType<typeof setTimeout> | undefined;
     try {
-      try {
-        await this.republishRecoveryObjects(record, api);
-      } catch (e) {
-        // Expired publication stays pending; it must not block stored reads.
-        if (!(e instanceof SecurityError) || e.code !== "lease") throw e;
-        publicationPending = true;
-      }
-      signal.throwIfAborted();
-      this.clearClockWarning();
-      const head = record.states[record.states.length - 1];
-      const members = new Map(head.core.members.map((m) => [m.id, m]));
-      const state = await stateHash(head);
-      const [listed, online] = await Promise.all([
-        api.listDevices({}),
-        api.listMachines({}),
+      await Promise.race([
+        this.machineCommand(machineId, { case: "getSettings", value: {} }),
+        new Promise<never>((_, reject) => (timer = setTimeout(() => reject(new Error(l10n.t("connection.no_response"))), timeoutMs))),
       ]);
-      const metadata = new Map<string, Envelope>();
-      for (const d of listed.devices)
-        if (d.meta?.securityHeader.length)
-          metadata.set("device:" + d.id, d.meta);
-      for (const m of online.machines)
-        if (m.meta?.securityHeader.length)
-          metadata.set("machine:" + m.id, m.meta);
-      const nextMachines = new Map(this.machines);
-      const nextDevices = new Map<string, DeviceInfo>();
+      return Math.round(performance.now() - started);
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  async loadDevices(_describe = true): Promise<void> {
+    const devPushSeq = this.devicesPushSeq++;
+    try {
+      await this.security.sync();
+      const res = await this.api.listDevices({});
+      await this.maybeRepublishAndDescribe(res.devices);
+      const next = new Map<string, DeviceInfo>();
+      const plainDevices: PlainDevice[] = [];
+      const head = (await this.security.verifiedRecord()).states.at(-1)!;
       for (const m of head.core.members) {
-        const hint = listed.devices.find((d) => d.id === m.id);
-        const d: DeviceInfo = {
+        const hint = res.devices.find((d) => d.id === m.id);
+        const plain = hint ? await this.unpackDevice(hint) : undefined;
+        if (plain) plainDevices.push(plain);
+        next.set(m.id, {
           id: m.id,
           kind: m.kind,
           pairingIncomplete: !hint,
           createdMs: hint?.createdMs ?? 0n,
           lastSeenMs: hint?.lastSeenMs ?? 0n,
-          metaRev: 0n,
-        };
-        const meta = metadata.get(
-          (m.kind === 1 ? "machine:" : "device:") + m.id,
-        );
-        if (meta) {
-          try {
-            if (m.kind === 2) {
-              const opened = await this.openSecureMessage(
-                meta,
-                { kind: PayloadKind.DEVICE_META, requestId: m.id },
-                DeviceMetaSchema,
-              );
-              d.meta = opened.msg;
-              d.metaRev = opened.header.seq;
-            } else {
-              const opened = await this.openSecureMessage(
-                meta,
-                { kind: PayloadKind.MACHINE_META, machineId: m.id },
-                MachineMetaSchema,
-              );
-              const old = this.machines.get(m.id),
-                status = online.machines.find((x) => x.id === m.id);
-              nextMachines.set(m.id, {
-                ...(old ?? {
-                  id: m.id,
-                  online: false,
-                  lastSeenMs: 0n,
-                  metaRev: 0n,
-                }),
-                online: status?.online ?? false,
-                lastSeenMs: status?.lastSeenMs ?? old?.lastSeenMs ?? 0n,
-                meta: opened.msg,
-                metaRev: opened.header.seq,
-              });
-            }
-          } catch (e) {
-            if (!(e instanceof SecurityError) || e.code !== "unavailable")
-              throw e;
-            const known = this.devices.get(m.id);
-            if (known) {
-              d.meta = known.meta;
-              d.metaRev = known.metaRev;
-            }
-            if (m.kind === 1) {
-              const old = this.machines.get(m.id),
-                status = online.machines.find((x) => x.id === m.id);
-              nextMachines.set(m.id, {
-                ...(old ?? {
-                  id: m.id,
-                  metaRev: 0n,
-                  online: false,
-                  lastSeenMs: 0n,
-                }),
-                online: status?.online ?? false,
-                lastSeenMs: status?.lastSeenMs ?? old?.lastSeenMs ?? 0n,
-              });
-            }
-          }
-        } else if (m.kind === 1) {
-          const old = this.machines.get(m.id),
-            status = online.machines.find((x) => x.id === m.id);
-          nextMachines.set(m.id, {
-            ...(old ?? {
-              id: m.id,
-              online: false,
-              lastSeenMs: 0n,
-              metaRev: 0n,
-            }),
-            online: status?.online ?? false,
-            lastSeenMs: status?.lastSeenMs ?? old?.lastSeenMs ?? 0n,
-          });
-        }
-        nextDevices.set(m.id, d);
+          meta: plain?.meta,
+          metaRev: plain?.metaRev ?? 0n,
+        });
       }
-      signal.throwIfAborted();
-      if (this.directoryJob?.invalidated) return;
-      if (!equalBytes(await this.security.localStateHash(), state))
-        throw new Error(l10n.t("errors.device_directory_state_changed"));
-      signal.throwIfAborted();
-      for (const [id, d] of nextDevices) {
-        if ((this.devices.get(id)?.metaRev ?? 0n) > d.metaRev)
-          throw new Error(l10n.t("errors.the_device_directory_response_is_out_of_date"));
-      }
-      this.archiveMachines = new Set(
-        record.states.flatMap((s) =>
-          s.core.members.filter((m) => m.kind === 1).map((m) => m.id),
-        ),
-      );
-      for (const [id, m] of this.machines)
-        if (this.archiveMachines.has(id) && !members.has(id))
-          nextMachines.set(id, { ...m, online: false });
-      for (const id of this.archiveMachines) if (!members.has(id)) this.forgetSchedules(id);
-      this.machines = nextMachines;
-      this.trustedMembers = members;
-      this.devices = nextDevices;
-      this.authorityDeviceId = head.core.authorityID;
-      for (const id of this.machines.keys())
-        if (!members.has(id) && !this.archiveMachines.has(id)) {
-          this.machines.delete(id);
-          for (const [sid, s] of this.sessions)
-            if (s.machineId === id) this.forget(sid);
-        }
-      this.recoveryObjectsPending = publicationPending;
-      this.directoryHead = state;
+      this.cachedDeviceMap = next;
       this.devicesStatus = "ready";
+      if (this.hostBridge) {
+        this.hostBridge.dispatchEvent(
+          create(CoreEventSchema, {
+            event: {
+              case: "devicesFetched",
+              value: create(DevicesFetchedEventSchema, {
+                opId: 0n,
+                pushSeq: devPushSeq,
+                devices: plainDevices,
+              }),
+            },
+          }),
+        );
+      }
       this.changed();
-    } catch (e) {
-      if (signal.aborted) throw signal.reason;
-      this.noteClock(e);
+    } catch {
       this.devicesStatus = "error";
       this.changed();
     }
   }
 
-  // Removals seen per device, so that metadata still opening when its
-  // device goes does not bring it back.
-
-  // Pushes seen per device, registered, changed or removed, so that a list
-  // fetched before a push cannot undo it.
-  private devicePushes = new Map<string, number>();
-
-  private devicePushed(id: string) {
-    if (this.directoryJob) this.directoryJob.invalidated = true;
-    this.devicePushes.set(id, (this.devicePushes.get(id) ?? 0) + 1);
-  }
-
-  private async putDevice(_d: Device) {
+  async handoffCandidates(): Promise<HandoffOffer[]> {
     await this.loadDevices(false);
+    return verifiedHandoffCandidates(
+      await this.security.verifiedRecord(),
+      [...this.devices.values()].flatMap((d) =>
+        d.meta?.handoffRecoveryEd.length === 32 ? [{ id: d.id, recoveryEd: new Uint8Array(d.meta.handoffRecoveryEd) }] : [],
+      ),
+    );
   }
 
-  /** Says what this browser is, once, so other clients can name it. */
-  private async describeSelf() {
-    const me = this.devices.get(this.account.deviceId);
-    if (!me || me.meta) {
-      this.descriptionPending = false;
-      return;
-    }
-    this.descriptionPending = true;
-    try {
-      await this.changeDeviceMeta(this.account.deviceId, (m) => ({
-        name: m?.name ?? "",
-        platform: "web",
-        description: m?.description || describeBrowser(navigator.userAgent),
-        handoffRecoveryEd: m?.handoffRecoveryEd,
-      }));
-      this.descriptionPending = false;
-    } catch (e) {
-      this.report(e);
-    }
+  async handoffAuthority(incoming: string) {
+    await this.authority.handoffAuthority(incoming, await this.handoffCandidates());
+    await this.loadDevices(false);
+    this.hostBridge?.retryList();
   }
 
-  /** Renames this client; the name is sealed, the server sees none.
-   * DeviceMeta is self-only in protocol 10. */
+  async resumeSecurityOperation() {
+    await this.authority.resumeSecurityOperation();
+    await this.loadDevices(false);
+    this.hostBridge?.retryList();
+  }
+
+  async removeDevice(id: string) {
+    await this.authority.removeDevice(id);
+    await this.loadDevices(false);
+    this.hostBridge?.retryList();
+  }
+
+  async deleteMachineRecords(id: string) {
+    await this.authority.deleteMachineRecords(id);
+    this.hostBridge?.retryList();
+  }
+
   renameDevice(id: string, name: string): Promise<void> {
-    if (id !== this.account.deviceId)
-      throw new Error(l10n.t("errors.names_can_only_be_changed_on_that_device"));
+    if (id !== this.account.deviceId) throw new Error(l10n.t("errors.names_can_only_be_changed_on_that_device"));
     return this.changeDeviceMeta(id, (m) => ({
       name: name.trim(),
       platform: m?.platform ?? "",
@@ -4454,11 +4401,29 @@ export class Remote {
     }));
   }
 
-  /** The offer is signed once under the authority lock. A lost CAS ack is
-   * reconciled against verified self metadata; retry never changes its bytes. */
+  private async describeSelf() {
+    if (this.descriptionPending) return;
+    this.descriptionPending = true;
+    try {
+      await this.changeDeviceMeta(this.account.deviceId, (m) => ({
+        name: m?.name ?? "",
+        platform: "web",
+        description: m?.description || describeBrowser(navigator.userAgent),
+        handoffRecoveryEd: m?.handoffRecoveryEd,
+      }));
+      this.needsDescribeSelf = false;
+    } catch {
+      this.needsDescribeSelf = true;
+    } finally {
+      this.descriptionPending = false;
+    }
+  }
+
   private async publishHandoffOffer(
-    publicKey: Uint8Array<ArrayBuffer>, check: () => void,
-    persist: (request: Uint8Array<ArrayBuffer>) => Promise<void>, signed?: Uint8Array<ArrayBuffer>,
+    publicKey: Uint8Array<ArrayBuffer>,
+    check: () => void,
+    persist: (request: Uint8Array<ArrayBuffer>) => Promise<void>,
+    signed?: Uint8Array<ArrayBuffer>,
   ) {
     let request;
     if (signed) request = fromBinary(PutDeviceMetaRequestSchema, signed);
@@ -4466,10 +4431,14 @@ export class Remote {
       await this.loadDevices(false);
       check();
       if (this.devicesStatus !== "ready") throw new Error(l10n.t("errors.device_information_could_not_be_verified"));
-      const own = this.devices.get(this.account.deviceId), revision = own?.metaRev ?? 0n;
-      const meta = await this.sealSecureMessage({ kind: PayloadKind.DEVICE_META,
-        requestId: this.account.deviceId, seq: revision + 1n, sender: this.account.deviceId },
-        DeviceMetaSchema, create(DeviceMetaSchema, { ...create(DeviceMetaSchema, own?.meta), handoffRecoveryEd: publicKey }), check);
+      const own = this.devices.get(this.account.deviceId);
+      const revision = own?.metaRev ?? 0n;
+      const meta = await this.sealSecureMessage(
+        { kind: PayloadKind.DEVICE_META, requestId: this.account.deviceId, seq: revision + 1n, sender: this.account.deviceId },
+        DeviceMetaSchema,
+        create(DeviceMetaSchema, { ...create(DeviceMetaSchema, own?.meta), handoffRecoveryEd: publicKey }),
+        check,
+      );
       request = create(PutDeviceMetaRequestSchema, { deviceId: this.account.deviceId, expectedRevision: revision, meta });
       check();
       await persist(toBinary(PutDeviceMetaRequestSchema, request));
@@ -4483,46 +4452,31 @@ export class Remote {
       await this.loadDevices(false);
       check();
       const own = this.devices.get(this.account.deviceId);
-      if (!own?.meta || own.metaRev <= request.expectedRevision || !equalBytes(own.meta.handoffRecoveryEd, publicKey))
-        return false;
+      if (!own?.meta || own.metaRev <= request.expectedRevision || !equalBytes(own.meta.handoffRecoveryEd, publicKey)) return false;
     }
     return true;
   }
 
-  /** Replaces this device's metadata with change(current). If another tab
-   * wrote first, the change is made again on what it wrote. */
   private async changeDeviceMeta(
     id: string,
-    change: (
-      m: DeviceMeta | undefined,
-    ) => Omit<Partial<DeviceMeta>, "$typeName">,
+    change: (m: DeviceMeta | undefined) => Omit<Partial<DeviceMeta>, "$typeName">,
     check: () => void = () => undefined,
   ) {
-    if (id !== this.account.deviceId)
-      throw new Error(l10n.t("errors.names_can_only_be_changed_on_that_device"));
+    if (id !== this.account.deviceId) throw new Error(l10n.t("errors.names_can_only_be_changed_on_that_device"));
     for (let i = 0; i < 5; i++) {
       await this.loadDevices(false);
       if (this.devicesStatus !== "ready") throw new Error(l10n.t("errors.device_information_could_not_be_verified"));
       check();
-      const cur = this.devices.get(id),
-        rev = cur?.metaRev ?? 0n;
+      const cur = this.devices.get(id);
+      const rev = cur?.metaRev ?? 0n;
       const env = await this.sealSecureMessage(
-        {
-          kind: PayloadKind.DEVICE_META,
-          requestId: id,
-          seq: rev + 1n,
-          sender: this.account.deviceId,
-        },
+        { kind: PayloadKind.DEVICE_META, requestId: id, seq: rev + 1n, sender: this.account.deviceId },
         DeviceMetaSchema,
         create(DeviceMetaSchema, change(cur?.meta)),
         check,
       );
       check();
-      const r = await this.api.putDeviceMeta({
-        deviceId: id,
-        expectedRevision: rev,
-        meta: env,
-      });
+      const r = await this.api.putDeviceMeta({ deviceId: id, expectedRevision: rev, meta: env });
       check();
       if (r.applied) {
         await this.loadDevices(false);
@@ -4532,537 +4486,61 @@ export class Remote {
     throw new Error(l10n.t("errors.device_information_is_changing_retry"));
   }
 
-  // --- project list preferences ---
-
-  protected prefsStore: PrefsStore = {
-    get: async () => this.readTrustedPrefs(),
-    put: async (expected, next) => {
-      const env = await this.sealSecureMessage(
-        {
-          kind: PayloadKind.ACCOUNT_PREFS,
-          requestId: PREFS_OBJECT,
-          seq: expected + 1n,
-          sender: this.account.deviceId,
-        },
-        ProjectPrefsSchema,
-        next,
-      );
-      const r = await this.api.putAccountPrefs({
-        objectId: PREFS_OBJECT,
-        expectedRevision: expected,
-        envelope: env,
-      });
-      return {
-        applied: r.applied,
-        current: await this.openPrefs(r.object),
-      };
-    },
-  };
-  private async readTrustedPrefs(): Promise<PrefsSnapshot> {
-    const r = await this.api.getAccountPrefs({ objectId: PREFS_OBJECT });
-    return this.openPrefs(r.object);
-  }
-  private async openPrefs(
-    o: AccountPrefsObject | undefined,
-  ): Promise<PrefsSnapshot> {
-    if (!o || !o.envelope || o.revision === 0n)
-      return { revision: 0n, prefs: emptyPrefs() };
-    const { msg, header } = await this.openSecureMessage(
-      o.envelope,
-      {
-        kind: PayloadKind.ACCOUNT_PREFS,
-        requestId: PREFS_OBJECT,
-        seq: o.revision,
-      },
-      ProjectPrefsSchema,
-    );
-    if (msg.schema !== 1 || header.seq !== o.revision)
-      throw new Error(l10n.t("errors.project_preferences_format_is_not_supported"));
-    return { revision: o.revision, prefs: msg };
-  }
-
-  /** Keeps the server's copy, sealed as it came, for the next visit's first paint. */
-  private keepPrefs(o: AccountPrefsObject | undefined) {
-    if (o && this.cache)
-      this.keepValue("prefs", { bytes: toBinary(AccountPrefsObjectSchema, o) });
-  }
-
-  /** The account's pinned and removed projects; empty until read. */
-  projectPrefs(): ProjectPrefs {
-    return this.prefs.snap?.prefs ?? emptyPrefs();
-  }
-
-  async loadPrefs() {
-    try {
-      const r = await this.api.getAccountPrefs({ objectId: PREFS_OBJECT });
-      await this.takePrefs(r.object, false);
-      this.prefs = { ...this.prefs, status: "ready", error: "" };
-    } catch (e) {
-      this.prefs = {
-        ...this.prefs,
-        status: this.prefs.snap ? "ready" : "error",
-        error: errorText(e),
-      };
-    }
-    this.changed();
-  }
-
-  /** Takes a copy from the server if it is newer than the one here. */
-  private async takePrefs(o: AccountPrefsObject | undefined, pushed: boolean) {
-    try {
-      const snap = await this.openPrefs(o);
-      if (!this.prefs.snap || snap.revision >= this.prefs.snap.revision)
-        this.keepPrefs(o);
-      if (this.prefs.snap && snap.revision <= this.prefs.snap.revision) return;
-      // Changed by another client while nothing of this one's is in flight.
-      const elsewhere =
-        pushed && this.prefs.pending.size === 0 && !!this.prefs.snap;
-      this.prefs = {
-        ...this.prefs,
-        snap,
-        status: "ready",
-        changedAt: elsewhere ? Date.now() : this.prefs.changedAt,
-      };
-      this.changed();
-    } catch (e) {
-      if (!pushed) throw e;
-      this.prefs = {
-        ...this.prefs,
-        status: this.prefs.snap ? "ready" : "error",
-        error: errorText(e),
-      };
-      this.report(e);
-    }
-  }
-
-  /** Pins, unpins, removes or restores a project, for the whole account.
-   * Only while connected: offline the list is shown as cached and changes
-   * wait. Resolves false if it was not saved; the list then stays as it
-   * was, and retryPrefs tries the same operation again. */
-  private settingsWrites = new Map<string, Promise<boolean>>();
-
-  changePrefs(
-    kind: PrefKind,
-    path: string,
-    op: PrefOp = { id: newRequestID(), kind, path, at: Date.now() },
-  ): Promise<boolean> {
-    if (kind !== "settings") return this.changePrefsNow(kind, path, op);
-    const prior = this.settingsWrites.get(path);
-    const next = prior
-      ? prior.catch(() => false).then(() => this.changePrefsNow(kind, path, op))
-      : this.changePrefsNow(kind, path, op);
-    this.settingsWrites.set(path, next);
-    void next.finally(() => {
-      if (this.settingsWrites.get(path) === next)
-        this.settingsWrites.delete(path);
-    });
-    return next;
-  }
-
-  private async changePrefsNow(
-    kind: PrefKind,
-    path: string,
-    op: PrefOp,
-  ): Promise<boolean> {
-    if (this.conn !== "online" || this.prefs.status !== "ready") return false;
-    this.prefs.pending.set(path, kind);
-    this.prefs = { ...this.prefs, failed: undefined };
-    this.changed();
-    try {
-      const snap = await commitOp(this.prefsStore, op, this.prefs.snap);
-      if (!this.prefs.snap || snap.revision >= this.prefs.snap.revision)
-        this.prefs = { ...this.prefs, snap };
-      return true;
-    } catch (e) {
-      this.prefs = { ...this.prefs, failed: { op, error: errorText(e) } };
-      return false;
-    } finally {
-      this.prefs.pending.delete(path);
-      this.changed();
-    }
-  }
-
-  /** Tries the failed operation again, as the same operation. */
-  retryPrefs() {
-    const f = this.prefs.failed;
-    if (f) void this.changePrefs(f.op.kind, f.op.path, f.op);
-  }
-
-  // --- images ---
-
-  /** Uploads an image to a machine for a message, in pieces that each fit
-   * one command, and returns the image ID to send with it. After a reply
-   * that was lost, it asks the machine how far it got and goes on from
-   * there; the machine checks the length and hash at the end. */
-  async uploadImage(
-    machineId: string,
-    p: { bytes: Uint8Array; format: string; fileName?: string },
-    progress: (done: number, total: number) => void = () => undefined,
-    started: (abort: () => void) => void = () => undefined,
-  ): Promise<{ imageId: string; fileId?: string; expiresMs: number }> {
-    const format =
-      {
-        jpeg: ImageFormat.JPEG,
-        png: ImageFormat.PNG,
-        webp: ImageFormat.WEBP,
-        gif: ImageFormat.GIF,
-      }[p.format] ?? ImageFormat.UNSPECIFIED;
-    const transferId = newRequestID();
-    const sha256 = new Uint8Array(
-      await crypto.subtle.digest("SHA-256", p.bytes as Uint8Array<ArrayBuffer>),
-    );
-    const total = p.bytes.length;
-    const statusOf = (r: CommandResult) => {
-      const k = r.kind;
-      const st =
-        k.case === "beginImageUpload" ||
-        k.case === "putImageChunk" ||
-        k.case === "getImageUploadStatus" ||
-        k.case === "completeImageUpload"
-          ? k.value.status
-          : undefined;
-      if (!st) throw new Error(l10n.t("new_session.unexpected_reply"));
-      return st;
-    };
-    // A step whose outcome is unknown is followed by asking where it got.
-    const step = async (cmd: CommandKind) => {
-      for (let i = 0; ; i++) {
-        try {
-          const st = statusOf(await this.machineCommand(machineId, cmd));
-          if (cmd?.case === "completeImageUpload" && st.state === ImageUploadState.RECEIVING && Number(st.persistedBytes) === total) {
-            if (i >= 2) throw new Error(l10n.t("errors.the_computer_is_still_verifying_attachments_retry_shortly"));
-            continue;
-          }
-          return st;
-        } catch (e) {
-          if (!uncertain(e) || (e instanceof CommandError && e.outcome !== "unknown") || i >= 2) throw e;
-          try {
-            const st = statusOf(
-              await this.machineCommand(machineId, {
-                case: "getImageUploadStatus",
-                value: { transferId },
-              }),
-            );
-            // Hashing may still be in flight outside the upload lock. Retry
-            // Complete with the same transfer, never restart the byte upload.
-            if (cmd?.case === "completeImageUpload" && st.state === ImageUploadState.RECEIVING && Number(st.persistedBytes) === total) continue;
-            return st;
-          } catch (e2) {
-            if (!uncertain(e2) || (e2 instanceof CommandError && e2.outcome !== "unknown") || i >= 2) throw e2;
-          }
-        }
+  private async republishRecoveryObjects(record: SecurityRecord, api = this.api) {
+    const boundary = record.states.filter((_, i) => record.proofs[i]).at(-1)?.core.contentEpoch;
+    if (!boundary) return;
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const { object: o } = await api.getAccountPrefs({ objectId: PREFS_OBJECT });
+      if (!o?.envelope || o.revision === 0n || parseHeader(new Uint8Array(o.envelope.securityHeader)).contentEpoch >= boundary) break;
+      let snapshot;
+      try {
+        snapshot = await this.security.openMessage(o.envelope, ProjectPrefsSchema, true);
+      } catch (e) {
+        if (e instanceof SecurityError && e.code === "unavailable") break;
+        throw e;
       }
-    };
-    let st = await step({
-      case: "beginImageUpload",
-      value: { transferId, format, fileName: p.fileName ?? "", totalBytes: BigInt(total), sha256 },
-    });
-    // Dropped later (removed, 原图 switched, another machine): the machine
-    // is told so rather than keeping it until it expires.
-    started(
-      () =>
-        void this.machineCommand(machineId, {
-          case: "abortImageUpload",
-          value: { transferId },
-        }).catch(() => undefined),
-    );
-    const chunk = Math.min(
-      UPLOAD_CHUNK,
-      st.maxChunkBytes > 0 ? st.maxChunkBytes : UPLOAD_CHUNK,
-    );
-    for (let guard = 0; Number(st.persistedBytes) < total; guard++) {
-      if (guard > total / chunk + 10) throw new Error(l10n.t("errors.upload_made_no_progress"));
-      const offset = Number(st.persistedBytes);
-      progress(offset, total);
-      st = await step({
-        case: "putImageChunk",
-        value: {
-          transferId,
-          offset: BigInt(offset),
-          data: p.bytes.subarray(offset, offset + chunk),
-        },
-      });
-    }
-    progress(total, total);
-    st = await step({ case: "completeImageUpload", value: { transferId } });
-    if (p.fileName ? !st.fileId : !st.imageId) throw new Error(l10n.t("errors.the_computer_did_not_return_an_attachment_id"));
-    return { imageId: st.imageId, ...(st.fileId ? { fileId: st.fileId } : {}), expiresMs: Number(st.expiresMs) };
-  }
-
-  // Display copies opened this visit, newest last, so a picture seen once
-  // opens again offline. Only in memory; a few dozen at most.
-  private imageCache = new Map<string, ImageResult>();
-
-  /** The display copy of an image in a session: fetched, opened with the
-   * session key where it belongs, and checked to be the format it says.
-   * Throws when it cannot be fetched now (offline, network). */
-  async getImage(sid: string, imageId: string): Promise<ImageResult> {
-    const key = sid + "/" + imageId;
-    const hit = this.imageCache.get(key);
-    if (hit) {
-      this.imageCache.delete(key);
-      this.imageCache.set(key, hit);
-      return hit;
-    }
-    const s = this.sessions.get(sid);
-    if (!s) throw new Error(l10n.t("session.android_unknown"));
-    let res;
-    try {
-      res = await this.api.getImage({ sessionId: sid, imageId });
-    } catch (e) {
-      if (e instanceof ConnectError && e.code === Code.NotFound)
-        return { kind: "missing" };
-      throw e;
-    }
-    if (res.expired || !res.image) return { kind: "expired" };
-    let out: ImageResult;
-    try {
-      const { msg } = await this.openSecureMessage(
-        res.image,
-        {
-          kind: PayloadKind.IMAGE,
-          machineId: s.machineId,
-          sessionId: sid,
-          requestId: imageId,
-        },
-        ImagePayloadSchema,
-        true,
+      if (snapshot.header.purpose !== Purpose.Prefs || snapshot.header.seq !== o.revision || snapshot.header.request !== PREFS_OBJECT) {
+        throw new SecurityError("untrusted");
+      }
+      const envelope = await this.security.seal(
+        { kind: 12, purpose: Purpose.Prefs, machine: "", session: "", request: PREFS_OBJECT, seq: o.revision + 1n, deadline: 0n, compression: 0 },
+        toBinary(ProjectPrefsSchema, snapshot.msg),
       );
-      out = matchesFormat(msg.data, msg.format)
-        ? {
-            kind: "ok",
-            blob: new Blob([msg.data as Uint8Array<ArrayBuffer>], {
-              type: mimeOf(msg.format),
-            }),
-            width: msg.width,
-            height: msg.height,
-            format: msg.format,
-          }
-        : { kind: "bad" };
-    } catch (e) {
-      this.report(e);
-      out = { kind: "bad", ...(e instanceof UnsupportedHistoryError ? { why: e.message } : {}) };
+      if ((await api.putAccountPrefs({ objectId: PREFS_OBJECT, expectedRevision: o.revision, envelope })).applied) break;
+      if (attempt === 4) throw new Error(l10n.t("errors.the_recovery_object_was_updated_concurrently_retrying_on_the"));
     }
-    if (out.kind === "ok") {
-      this.imageCache.set(key, out);
-      while (this.imageCache.size > IMAGE_CACHE)
-        this.imageCache.delete(this.imageCache.keys().next().value!);
-    }
-    return out;
-  }
-
-  /** Fetches one zero-padded chunk of an agent-shared file from the daemon. */
-  async getSharedFileChunk(
-    sid: string,
-    fileId: string,
-    offset: bigint,
-  ): Promise<SharedFileChunkResult> {
-    const res = await this.command(sid, {
-      case: "getSharedFileChunk",
-      value: { sessionId: sid, fileId, offset },
-    });
-    if (res.kind.case !== "getSharedFileChunk") {
-      throw new Error(l10n.t("new_session.unexpected_reply"));
-    }
-    return {
-      data: res.kind.value.data,
-      totalBytes: res.kind.value.totalBytes,
-    };
-  }
-
-  /** An image already opened this visit, without asking the server. */
-  cachedImage(sid: string, imageId: string): ImageResult | undefined {
-    return this.imageCache.get(sid + "/" + imageId);
-  }
-
-  /** Authorization for services called outside this class. */
-  authHeader(): string {
-    return "Bearer " + this.token;
-  }
-
-  async pushKey(): Promise<string> {
-    return (await this.api.getPushKey({})).publicKey;
-  }
-
-  async setPushSubscription(
-    subscriptionJson: string,
-    kinds: NotifyKind[],
-  ): Promise<void> {
-    const capability = subscriptionJson ? await this.api.getPushKey({}) : undefined;
-    const selected=subscriptionJson ? machineNotificationKinds(kinds,capability?.machineDiskNotifications===true) : [];
-    await this.api.setPushSubscription({ subscriptionJson, kinds:selected });
-  }
-
-  private models = new Map<string, Promise<ListModelsResponse>>();
-  private modelReads = new Set<string>();
-  private modelLists = new Map<string, ListModelsResponse>();
-
-  /** A model's display name, once the machine's list has been fetched. */
-  modelName(machineId: string, agent: Agent, slug: string): string {
-    return modelLabel(
-      this.modelLists.get(machineId + "/" + agent)?.models,
-      slug,
-      agent,
-    );
-  }
-
-  /** The model list last read from a machine's CLI, if any: what a page shows while it reads again. */
-  cachedModels(
-    machineId: string,
-    agent: Agent,
-  ): ListModelsResponse | undefined {
-    return this.modelLists.get(machineId + "/" + agent);
-  }
-
-  /** The models a machine's CLI offers; pickers refresh completed reads. */
-  listModels(
-    machineId: string,
-    agent: Agent = DEFAULT_AGENT,
-    fresh = false,
-  ): Promise<ListModelsResponse> {
-    const key = machineId + "/" + agent;
-    let p =
-      fresh && !this.modelReads.has(key) ? undefined : this.models.get(key);
-    if (!p) {
-      p = this.machineCommand(machineId, {
-        case: "listModels",
-        value: { agent },
-      }).then((r) => {
-        if (r.kind.case !== "listModels") throw new Error(l10n.t("new_session.unexpected_reply"));
-        this.modelLists.set(key, r.kind.value);
-        this.keepInfo();
-        this.changed();
-        return r.kind.value;
-      });
-      this.modelReads.add(key);
-      p.then(
-        () => this.modelReads.delete(key),
-        () => {
-          this.modelReads.delete(key);
-          if (this.models.get(key) === p) this.models.delete(key);
-        },
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const own = (await api.listDevices({})).devices.find((d) => d.id === this.account.deviceId);
+      if (!own?.meta || parseHeader(new Uint8Array(own.meta.securityHeader)).contentEpoch >= boundary) break;
+      const snapshot = await this.security.openMessage(own.meta, DeviceMetaSchema, true);
+      if (snapshot.header.purpose !== Purpose.DeviceMeta || snapshot.header.sender !== own.id || snapshot.header.seq !== own.metaRevision) {
+        throw new SecurityError("untrusted");
+      }
+      const meta = await this.security.seal(
+        { kind: 13, purpose: Purpose.DeviceMeta, machine: "", session: "", request: own.id, seq: own.metaRevision + 1n, deadline: 0n, compression: 0 },
+        toBinary(DeviceMetaSchema, snapshot.msg),
       );
-      this.models.set(key, p);
+      if ((await api.putDeviceMeta({ deviceId: own.id, expectedRevision: own.metaRevision, meta })).applied) break;
+      if (attempt === 4) throw new Error(l10n.t("errors.the_recovery_object_was_updated_concurrently_retrying_on_the"));
     }
-    return p;
   }
-
-  imageStorage = new Map<string, ImageStorageUsage>();
-
-  private settingsCache = new Map<
-    string,
-    Promise<DaemonSettings | undefined>
-  >();
-  private settingsRead = new Map<string, DaemonSettings | undefined>();
-
-  /** Keeps the model lists and settings read so far for the next visit: the
-   * names of models and the CLIs' defaults, as the machines answered. */
-  private keepInfo() {
-    if (!this.cache) return;
-    const models: Record<string, Uint8Array> = {};
-    for (const [k, v] of this.modelLists)
-      models[k] = toBinary(ListModelsResponseSchema, v);
-    const settings: Record<string, Uint8Array> = {};
-    for (const [k, v] of this.settingsRead)
-      if (v) settings[k] = toBinary(DaemonSettingsSchema, v);
-    this.keepValue("info", { models, settings });
-  }
-
-  /** The daemon settings last read from a machine, if any. */
-  cachedSettings(machineId: string): DaemonSettings | undefined {
-    return this.settingsRead.get(machineId);
-  }
-
-  /** A machine's daemon settings, fetched once per page load. */
-  settings(
-    machineId: string,
-    fresh = false,
-  ): Promise<DaemonSettings | undefined> {
-    let p = fresh ? undefined : this.settingsCache.get(machineId);
-    if (!p) {
-      p = this.machineCommand(machineId, {
-        case: "getSettings",
-        value: {},
-      }).then((r) => {
-        if (r.kind.case !== "getSettings") throw new Error(l10n.t("new_session.unexpected_reply"));
-        if (this.settingsCache.get(machineId) === p) {
-          if (r.kind.value.imageStorage) this.imageStorage.set(machineId, r.kind.value.imageStorage);
-          this.settingsRead.set(machineId, r.kind.value.settings);
-          this.keepInfo(); this.changed();
-        }
-        return r.kind.value.settings;
-      });
-      p.catch(() => { if (this.settingsCache.get(machineId) === p) this.settingsCache.delete(machineId); });
-      this.settingsCache.set(machineId, p);
-    }
-    return p;
-  }
-
-  async saveSettings(
-    machineId: string,
-    next: DaemonSettings,
-    cleanImages = false,
-  ): Promise<DaemonSettings | undefined> {
-    const r = await this.machineCommand(machineId, {
-      case: "updateSettings",
-      value: { settings: next, cleanImages },
-    });
-    if (r.kind.case !== "updateSettings") throw new Error(l10n.t("new_session.unexpected_reply"));
-    if (r.kind.value.imageStorage)
-      this.imageStorage.set(machineId, r.kind.value.imageStorage);
-    this.changed();
-    this.settingsCache.set(machineId, Promise.resolve(r.kind.value.settings));
-    this.settingsRead.set(machineId, r.kind.value.settings);
-    this.keepInfo();
-    return r.kind.value.settings;
-  }
-
-  private report(e: unknown) {
-    this.noteClock(e);
-    console.warn("remote-agent:", errorText(e));
-    this.error = errorText(e);
-    this.changed();
-  }
-}
-
-/** Request IDs of the messages recorded among events. */
-function recordedIds(events: Event[]): string[] {
-  return events.flatMap((e) =>
-    e.kind.case === "userMessage" && e.kind.value.requestId
-      ? [e.kind.value.requestId]
-      : [],
-  );
-}
-
-/** Whether an ended session comes after a cursor in the listing, which
- * runs from the latest ended to the earliest, then by session ID. */
-function afterCursor(s: SessionView, c: SessionCursor): boolean {
-  return (
-    s.endedMs < c.endedMs || (s.endedMs === c.endedMs && s.id > c.sessionId)
-  );
-}
-
-function maxBig(a: bigint, ...rest: bigint[]): bigint {
-  return rest.reduce((m, x) => (x > m ? x : m), a);
 }
 
 export function errorText(e: unknown): string {
-  if (e instanceof RecoveryHistoryUnavailable)
+  if (e instanceof RecoveryHistoryUnavailable) {
     return l10n.t("errors.history_keys_unavailable_records_from_before_recovery_cannot_be");
+  }
   if (e instanceof SecurityError) {
-    if (e.code === "lease")
-      return l10n.t("errors.remote_control_expired_saving_changes_session_control_and_new");
-    if (e.code === "unavailable")
-      return l10n.t("errors.waiting_for_the_owning_computer_to_update_the_current_remote");
-    if (e.code === "invalid" || e.code === "untrusted")
-      return l10n.t("errors.invalid_ciphertext_signature_key_or_content_verification_failed");
-    if (e.code === "conflict")
-      return l10n.t("errors.membership_chain_conflict_security_operations_stopped_verify_devices_and");
+    if (e.code === "lease") return l10n.t("errors.remote_control_expired_saving_changes_session_control_and_new");
+    if (e.code === "unavailable") return l10n.t("errors.waiting_for_the_owning_computer_to_update_the_current_remote");
+    if (e.code === "invalid" || e.code === "untrusted") return l10n.t("errors.invalid_ciphertext_signature_key_or_content_verification_failed");
+    if (e.code === "conflict") return l10n.t("errors.membership_chain_conflict_security_operations_stopped_verify_devices_and");
   }
   if (e instanceof CommandError) return e.message;
   if (e instanceof ConnectError) {
-    if (e.code === Code.PermissionDenied && e.rawMessage === "login failed")
+    if (e.code === Code.PermissionDenied && e.rawMessage === "login failed") {
       return l10n.t("errors.the_server_does_not_recognize_this_device_it_may");
+    }
     return e.rawMessage || e.message;
   }
   if (e instanceof Error) return e.message;
@@ -5073,7 +4551,6 @@ function equalBytes(a: Uint8Array, b: Uint8Array): boolean {
   return a.length === b.length && a.every((x, i) => x === b[i]);
 }
 
-/** Startup retries the exact signed request, including after a lost response. */
 export async function resumeRegistration(): Promise<void> {
   const authority = await readSecurityOperation();
   if (authority?.kind === "create") throw new Error(l10n.t("errors.account_creation_draft_preserved_continue_the_original_creation_flow"));
@@ -5083,43 +4560,23 @@ export async function resumeRegistration(): Promise<void> {
   const request = fromBinary(RegisterDeviceRequestSchema, pending.request);
   if (pending.security) {
     const registration = fromBinary(DeviceRegistrationSchema, request.registration);
-    await saveAccountPublicProfile(pending.account.server, pending.security.pin,
-      new Uint8Array(registration.accountPublicKey));
-  }
-  if (pending.security) {
+    await saveAccountPublicProfile(pending.account.server, pending.security.pin, new Uint8Array(registration.accountPublicKey));
     const r = pending.security;
     const { initializeSecurity } = await import("./device-security-store");
-    await initializeSecurity(
-      r.pin,
-      r.states,
-      r.proofs,
-      r.memberID,
-      r.xPrivate,
-      pending.replace,
-      r.lease,
-    );
+    await initializeSecurity(r.pin, r.states, r.proofs, r.memberID, r.xPrivate, pending.replace, r.lease);
   }
   await saveAccount(pending.account);
   localStorage.setItem("ra-server", pending.account.server);
   const auth = createClient(
     AuthService,
-    createConnectTransport({
-      fetch: relayFetch,
-      baseUrl: apiBase(pending.account.server),
-      useBinaryFormat: true,
-    }),
+    createConnectTransport({ fetch: relayFetch, baseUrl: apiBase(pending.account.server), useBinaryFormat: true }),
   );
-  const res = await auth.registerDevice(
-    request,
-    { timeoutMs: 15000 },
-  );
-  if (res.deviceId !== pending.account.deviceId)
-    throw new Error(l10n.t("errors.the_server_returned_an_unexpected_device_id"));
-  const approval = fromBinary(
-    PairApprovalSchema,
-    fromBinary(RegisterDeviceRequestSchema, pending.request).approval,
-  );
+  const res = await auth.registerDevice(request, { timeoutMs: 15_000 });
+  if (res.deviceId !== pending.account.deviceId) throw new Error(l10n.t("errors.the_server_returned_an_unexpected_device_id"));
+  const approval = fromBinary(PairApprovalSchema, fromBinary(RegisterDeviceRequestSchema, pending.request).approval);
   const { clearPairingIdentity } = await import("./device-security-store");
   await clearPairingIdentity(pending.account.server, approval.pairingId);
   await clearRegistration(pending);
 }
+
+void watchSecurityPush;

@@ -1,4 +1,5 @@
 import * as l10n from "./i18n";
+import { getCoreHost } from "./core/host";
 import { ensureCore } from "./core/runtime";
 import { useLocale } from "./i18n";
 import { Startup } from "./Startup";
@@ -150,6 +151,7 @@ export function App() {
   }, [remote]);
   useEffect(() => {
     if (!remote) return;
+    getCoreHost(remote);
     let running = false;
     let hiddenTimer: ReturnType<typeof setTimeout> | undefined;
     const cancelHidden = () => {
