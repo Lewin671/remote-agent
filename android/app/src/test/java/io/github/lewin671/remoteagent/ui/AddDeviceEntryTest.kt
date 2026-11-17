@@ -82,7 +82,12 @@ class AddDeviceEntryTest {
 
     @Test
     fun homeEmptyStateKeepsItsButtonOnlyOnTheAuthority() {
-        show(empty.copy(isAuthority = true)) { EmptyAccount(it, accountEmpty(it, copy = ::messageTextForTest)) }
+        val emptyView = io.github.lewin671.remoteagent.core.proto.HomeEmptyView.newBuilder()
+            .setKind(io.github.lewin671.remoteagent.core.proto.HomeEmptyKind.HOME_EMPTY_KIND_NO_MACHINES)
+            .setMessage(io.github.lewin671.remoteagent.core.proto.Text.newBuilder().setLiteral(addDeviceHint(empty)))
+            .setCanAddDevice(true)
+            .build()
+        show(empty.copy(isAuthority = true)) { EmptyHomeView(emptyView, onPair = { nav.pair() }, onRetry = {}) }
         ui.onNodeWithText("添加设备").performClick()
         assertEquals(1, paired)
         ui.onNodeWithText(noMachinesHint(empty)).assertDoesNotExist()
@@ -90,7 +95,11 @@ class AddDeviceEntryTest {
 
     @Test
     fun homeEmptyStateOnAnotherClientSaysWhereToAdd() {
-        show(empty) { EmptyAccount(it, accountEmpty(it, copy = ::messageTextForTest)) }
+        val memberView = io.github.lewin671.remoteagent.core.proto.HomeEmptyView.newBuilder()
+            .setKind(io.github.lewin671.remoteagent.core.proto.HomeEmptyKind.HOME_EMPTY_KIND_NO_MACHINES_MEMBER)
+            .setMessage(io.github.lewin671.remoteagent.core.proto.Text.newBuilder().setLiteral(noMachinesHint(empty)))
+            .build()
+        show(empty) { EmptyHomeView(memberView, onPair = { nav.pair() }, onRetry = {}) }
         ui.onNodeWithText("添加设备").assertDoesNotExist()
         ui.onNodeWithText(noMachinesHint(empty)).assertExists()
     }

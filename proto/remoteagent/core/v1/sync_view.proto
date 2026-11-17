@@ -1,0 +1,161 @@
+syntax = "proto3";
+
+package remoteagent.core.v1;
+
+import "remoteagent/core/v1/home_view.proto";
+import "remoteagent/core/v1/projection.proto";
+import "remoteagent/core/v1/text.proto";
+import "remoteagent/v1/event.proto";
+import "remoteagent/v1/local.proto";
+import "remoteagent/v1/relay.proto";
+import "remoteagent/v1/remote.proto";
+
+// Pending action summary derived by Core for Home, Session, and transition views.
+// Transitional helper shared by SyncSessionView and SessionDataView; delete with SyncStateView/SessionDataView after Steps 3-4.
+message SyncPendingAction {
+  bool has_approval = 1;
+  string approval_id = 2;
+  string approval_tool_name = 3;
+  string approval_command = 4;
+  string approval_tool_input = 5;
+  bool approval_truncated = 6;
+  int64 approval_deadline_ms = 7;
+  bool has_question = 8;
+  bool has_plan = 9;
+  bool has_popup = 10;
+  string popup_preview = 11;
+}
+
+// Machine snapshot for unmigrated Step 3-4 screens (machine status, settings, schedules, session header).
+// Delete after Steps 3-4 finish migrating those screens into Core.
+message SyncMachineView {
+  string machine_id = 1;
+  bool online = 2;
+  int64 last_seen_ms = 3;
+  remoteagent.v1.MachineMeta meta = 4;
+  uint64 meta_rev = 5;
+  bool meta_broken = 6;
+  bool reachable = 7;
+  bool unlinked = 8;
+  bool direct_ready = 9;
+  uint32 protocol_version = 10;
+  bool daemon_out_of_date = 11;
+  bool client_out_of_date = 12;
+}
+
+// Session snapshot for unmigrated Step 3-4 screens (session screen, schedules).
+// Delete after Steps 3-4 finish migrating those screens into Core.
+message SyncSessionView {
+  string session_id = 1;
+  string machine_id = 2;
+  remoteagent.v1.Session info = 3;
+  uint64 meta_rev = 4;
+  uint64 last_seq = 5;
+  int64 created_ms = 6;
+  int64 updated_ms = 7;
+  int64 listed_ended_ms = 8;
+  bool listed = 9;
+  remoteagent.v1.LiveSnapshot checkpoint = 10;
+  bool checkpoint_invalid = 11;
+  bool retired_history = 12;
+  bool open_failed = 13;
+  string schedule_name = 14;
+  bool schedule_unread = 15;
+  SyncPendingAction pending = 16;
+}
+
+// Device directory entry for unmigrated Step 4 security/settings screens.
+// Delete after Step 4 migrates device management screens into Core.
+message SyncDeviceView {
+  string device_id = 1;
+  remoteagent.v1.DeviceKind kind = 2;
+  int64 created_ms = 3;
+  int64 last_seen_ms = 4;
+  remoteagent.v1.DeviceMeta meta = 5;
+  uint64 meta_rev = 6;
+  bool meta_broken = 7;
+  bool trusted = 8;
+}
+
+// Transitional view exposing Core's synchronized connection, role, machines, sessions, prefs, and devices.
+// Exists solely so unmigrated shell screens (session, schedules, settings, machine status) read from Core
+// during Steps 3-4 instead of retaining duplicate sync state in the shells; delete once Steps 3-4 complete.
+message SyncStateView {
+  ConnState connection = 1;
+  Text connection_reason = 2;
+  Text connection_step = 3;
+  int64 disconnected_at_ms = 4;
+  bool live_push_connected = 5;
+  bool unlinked = 6;
+
+  bool is_manager = 7;
+  string self_device_id = 8;
+  string authority_device_id = 9;
+  Text manager_name = 10;
+  bool account_control_lost = 11;
+  bool account_clock_skewed = 12;
+  bool removed = 13;
+  bool security_loaded = 14;
+  bool is_member = 15;
+  int64 lease_end_ms = 16;
+  bool recovery_pending = 17;
+  int64 recovery_ready_ms = 18;
+  bool recovery_objects_pending = 19;
+  uint32 client_protocol_version = 20;
+
+  repeated SyncMachineView machines = 21;
+  bool machines_listed = 22;
+  repeated SyncSessionView sessions = 23;
+  bool sessions_listed = 24;
+  bool live_loaded = 25;
+  bool has_more_sessions = 26;
+  remoteagent.v1.SessionCursor next_cursor = 27;
+  bool loading_more_sessions = 28;
+  bool session_list_failed = 29;
+  Text session_list_error = 30;
+
+  bool prefs_loaded = 31;
+  bool prefs_load_failed = 32;
+  bool prefs_broken = 33;
+  uint64 prefs_revision = 34;
+  bool prefs_syncing = 35;
+  remoteagent.v1.ProjectPrefs prefs = 36;
+
+  repeated SyncDeviceView devices = 37;
+}
+
+// Transitional view exposing per-session buffer status, Core-derived ProjectionState, latest LiveSnapshot,
+// and transitional transcript events for the unmigrated Step 3 session screen.
+// Delete once Step 3 moves the session timeline/screen into Core.
+message SessionDataView {
+  string session_id = 1;
+  bool found = 2;
+  SyncSessionView session = 3;
+
+  bool loading = 4;
+  bool loaded = 5;
+  bool awaiting_cache = 6;
+  bool backfilling = 7;
+  bool fetching = 8;
+  bool has_gap = 9;
+  bool tail_requested = 10;
+  bool retired = 11;
+  bool retrying_corrupt_cache = 12;
+  Text error = 13;
+  Text fetch_error = 14;
+
+  uint64 prefix_len = 15;
+  int32 pending_count = 16;
+  uint64 last_seq = 17;
+  repeated uint64 unavailable_seqs = 18;
+  uint32 unavailable_count = 19;
+
+  ProjectionState projection = 20;
+  remoteagent.v1.LiveSnapshot live_snapshot = 21;
+  SyncPendingAction pending = 22;
+
+  // Transitional raw transcript events (contiguous tail or prefix from Core's EventBuffer) needed only because
+  // ProjectionState does not carry chat rows (UserMessage, AgentMessage, Reasoning, ToolCall, TurnEnded, etc.)
+  // for Step 3's unmigrated shell chat builders. Remove when Step 3 migrates the session screen into Core.
+  repeated remoteagent.v1.Event events = 23;
+}

@@ -75,13 +75,12 @@ class OutgoingFailureRegressionTest {
 
     @Test fun everySenderFailureBranchKeepsTheMainChineseCaption() = runBlocking {
         val cases = listOf(
-            Triple(UiMessages.errorsAndroidComputerOutcomeUnknownTheConnectionDropped(), CommandFailureKind.CONNECTION_DROPPED, CommandException.UNKNOWN),
+            Triple(UiMessages.errorsConnectionDroppedMidway(), CommandFailureKind.CONNECTION_DROPPED, CommandException.UNKNOWN),
             Triple(UiMessages.errorsAndroidCannotOpenTheComputerSReplyCommandOutcomeUnknown(), CommandFailureKind.REPLY_UNVERIFIED, CommandException.UNKNOWN),
             Triple(UiMessages.errorsTheRelayDidNotProvideAVerifiableExecutionResult(), CommandFailureKind.REPLY_UNVERIFIED, CommandException.UNKNOWN),
-            Triple(UiMessages.errorsAndroidNoVerifiableExecutionResultReceivedRetryTheSameRequest(), CommandFailureKind.REPLY_UNVERIFIED, CommandException.UNKNOWN),
-            Triple(UiMessages.errorsAndroidComputerOutcomeUnknownStoppedWaitingForAReplyRetryingSends(), CommandFailureKind.UNKNOWN, CommandException.UNKNOWN),
-            Triple(UiMessages.errorsAndroidComputerOutcomeUnknownValue1("diagnostic"), CommandFailureKind.UNKNOWN, CommandException.UNKNOWN),
-            Triple(UiMessages.errorsAndroidComputerOutcomeUnknownTheRequestMayHaveArrivedBeforeLogin("diagnostic"), CommandFailureKind.UNKNOWN, CommandException.UNKNOWN),
+            Triple(UiMessages.errorsExecutedResultUnavailable(), CommandFailureKind.RAW, CommandException.UNKNOWN),
+            Triple(UiMessages.errorsAndroidThePreviousOutcomeIsStillUnknownValue1RetryingSendsThe("diagnostic"), CommandFailureKind.RAW, CommandException.UNKNOWN),
+            Triple(UiMessages.errorsAndroidValue1ThePreviousOutcomeIsStillUnknownRetryTheSame("diagnostic"), CommandFailureKind.RAW, CommandException.UNKNOWN),
             Triple(UiMessages.errorsTheComputerIsOfflineTheCommandWasNotSent(), CommandFailureKind.COMPUTER_OFFLINE, CommandException.UNAVAILABLE),
             Triple(UiMessages.errorsAndroidThisCommandExpiredAndWasNotSent(), CommandFailureKind.RAW, CommandException.EXPIRED),
             Triple(UiMessages.errorsAndroidThePreviousOutcomeIsUnknownTheRequestExpiredAndWill(), CommandFailureKind.RAW, CommandException.UNKNOWN),

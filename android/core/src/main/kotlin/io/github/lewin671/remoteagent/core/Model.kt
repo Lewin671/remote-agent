@@ -195,32 +195,6 @@ fun machineProjects(state: RemoteState, machineId: String): List<String> =
             state.sessions.values.filter { it.machineId == machineId }.mapNotNull { it.info?.cwd })
         .distinct()
 
-/**
- * The project list as the account arranges it (architecture §8): pinned projects first in the order
- * they were pinned, the others with live projects first, then by latest session creation; hidden
- * ones apart. Hiding only takes a project off these lists: its sessions, pending items and
- * notifications are not filtered here.
- */
-data class ProjectGroups(
-    val pinned: List<Project>,
-    val others: List<Project>,
-    val hidden: List<Project>,
-)
-
-fun projectGroups(state: RemoteState, copy: MessageResolver): ProjectGroups {
-    val all = projects(state, copy = copy)
-    val prefs = state.prefs ?: PrefsObject.EMPTY
-    val hidden = prefs.hidden
-    val byKey = all.associateBy { it.key }
-    val pinned = prefs.pinned.filter { it !in hidden }.mapNotNull { byKey[it] }
-    val pinnedKeys = pinned.map { it.key }.toSet()
-    return ProjectGroups(
-        pinned = pinned,
-        others = all.filter { it.key !in pinnedKeys && it.key !in hidden },
-        hidden = all.filter { it.key in hidden },
-    )
-}
-
 fun isHidden(state: RemoteState, key: String): Boolean = state.prefs?.hidden?.contains(key) == true
 
 fun isPinned(state: RemoteState, key: String): Boolean =
@@ -244,24 +218,12 @@ fun endedMs(s: SessionView): Long =
     s.info?.takeIf { it.hasEndedAt() }?.endedAt?.let { it.seconds * 1000 + it.nanos / 1_000_000 }
         ?: createdMs(s)
 
-fun attentionMs(s: SessionView): Long =
-    s.info
-        ?.takeIf { it.hasAttentionSince() }
-        ?.attentionSince
-        ?.let { it.seconds * 1000 + it.nanos / 1_000_000 } ?: createdMs(s)
-
-val liveOrder: Comparator<SessionView> =
-    compareByDescending<SessionView> { createdMs(it) }.thenBy { it.id }
-val endedOrder: Comparator<SessionView> =
-    compareByDescending<SessionView> { endedMs(it) }.thenBy { it.id }
 val sessionOrder: Comparator<SessionView> = Comparator { a, b ->
     val group = exited(a).compareTo(exited(b))
-    if (group != 0) group else if (exited(a)) endedOrder.compare(a, b) else liveOrder.compare(a, b)
+    if (group != 0) group
+    else if (exited(a)) compareByDescending<SessionView> { endedMs(it) }.thenBy { it.id }.compare(a, b)
+    else compareByDescending<SessionView> { createdMs(it) }.thenBy { it.id }.compare(a, b)
 }
-val attentionOrder: Comparator<SessionView> =
-    compareBy<SessionView> { statusOf(it, null).ordinal }
-        .thenBy { attentionMs(it) }
-        .thenBy { it.id }
 
 // --- sessions ---
 

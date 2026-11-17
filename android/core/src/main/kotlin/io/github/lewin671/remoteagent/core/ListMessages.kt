@@ -32,16 +32,6 @@ fun listTitle(s: SessionView, zone: ZoneId = ZoneId.systemDefault()): MessageTex
     return listOfNotNull(listProjectName(info.cwd), hhmm(created, zone).messageText().takeIf { created > 0 }).joinMessages(" · ")
 }
 
-fun listPreview(s: SessionView, status: Status): MessageText {
-    val info = s.info ?: return "".messageText()
-    return when (status) {
-        Status.PLAN -> UiMessages.listStatePlan().messageText()
-        Status.POPUP -> UiMessages.listStatePopup().messageText()
-        else -> plain(info.preview).takeIf { it.isNotEmpty() }?.messageText()
-            ?: if (info.title.isEmpty()) UiMessages.listStateNoMessage().messageText() else "".messageText()
-    }
-}
-
 fun listWhen(ms: Long, now: Long, zone: ZoneId = ZoneId.systemDefault()): MessageText {
     if (ms <= 0) return "".messageText()
     val elapsed = now - ms

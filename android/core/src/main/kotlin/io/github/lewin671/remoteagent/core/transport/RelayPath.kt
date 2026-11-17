@@ -24,8 +24,11 @@ internal class RelayPath(
     private val observe: (String) -> PeerState,
 ) : Path {
     override fun status(machineId: String) = observe(machineId)
-    override fun attempt(handoff: () -> Unit): PathAttempt = object : PathAttempt {
-        override val attemptId = newRequestId()
+    override fun attempt(handoff: () -> Unit): PathAttempt = attempt(newRequestId(), handoff)
+    override fun attempt(attemptId: String, handoff: () -> Unit): PathAttempt {
+        val id = attemptId
+        return object : PathAttempt {
+            override val attemptId = id
         private var usedToken: String? = null
         private var epoch = ""
         override suspend fun prepare(prior: Boolean) { usedToken = token() }
@@ -45,6 +48,7 @@ internal class RelayPath(
             return proof?.let { PathRefusal(it.reason) }
         }
         override suspend fun refreshAuth(prior: Boolean) { renew(usedToken, prior) }
+        }
     }
     override fun openStream(address: String, listener: FrameListener): FrameStream {
         val stream = SocketStream()

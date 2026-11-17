@@ -15,18 +15,20 @@ type MachineAgentKey struct {
 
 // ModelsCacheEntry holds the fetched model list and loading/error state for one machine and agent.
 type ModelsCacheEntry struct {
-	Response *v1.ListModelsResponse
-	Loaded   bool
-	Loading  bool
-	Error    string
+	Response  *v1.ListModelsResponse
+	Loaded    bool
+	Loading   bool
+	Error     string
+	ErrorText *corev1.Text
 }
 
 // SettingsCacheEntry holds the fetched DaemonSettings and loading/error state for one machine.
 type SettingsCacheEntry struct {
-	Settings *v1.DaemonSettings
-	Loaded   bool
-	Loading  bool
-	Error    string
+	Settings  *v1.DaemonSettings
+	Loaded    bool
+	Loading   bool
+	Error     string
+	ErrorText *corev1.Text
 }
 
 // DirPickerState holds the directory chooser state used by Manage Projects and New Task.
@@ -39,6 +41,7 @@ type DirPickerState struct {
 	Dirs            []*corev1.DirEntryView
 	Loading         bool
 	Error           string
+	ErrorText       *corev1.Text
 	ActiveRequestID string
 }
 
@@ -56,6 +59,7 @@ type NewSessionDraft struct {
 	Expired              bool
 	UnknownStart         bool
 	StartError           string
+	StartErrorText       *corev1.Text
 	DiskFull             bool
 	ActiveStartRequestID string
 	ConfigSaveError      string
@@ -65,11 +69,14 @@ type NewSessionDraft struct {
 
 // State is the full semantic client state snapshot owned by Core and rendered by screens.
 type State struct {
-	World             lists.World
-	Cal               lists.Calendar
-	ConnectionReason  string
-	DisconnectedAtMs  int64
-	LivePushConnected bool
+	World                lists.World
+	Cal                  lists.Calendar
+	ConnectionReason     string
+	ConnectionReasonText *corev1.Text
+	SessionListErrorText *corev1.Text
+	ManagerNameText      *corev1.Text
+	DisconnectedAtMs     int64
+	LivePushConnected    bool
 
 	RememberedScope       *lists.Scope
 	RememberedScopeToken  string
@@ -77,13 +84,16 @@ type State struct {
 	HomeFilterQuery       string
 	HomeSelectedSessionID string
 
-	ProjectSearch           string
-	ProjectChangedElsewhere bool
-	PrefsPendingPath        map[string]bool
-	PrefsSaveErrorByPath    map[string]string
-	PrefsGlobalError        string
-	PrefsSavingSettings     map[string]bool
-	PrefsSettingsError      map[string]string
+	ProjectSearch            string
+	ProjectChangedElsewhere  bool
+	PrefsPendingPath         map[string]bool
+	PrefsSaveErrorByPath     map[string]string
+	PrefsSaveErrorTextByPath map[string]*corev1.Text
+	PrefsGlobalError         string
+	PrefsGlobalErrorText     *corev1.Text
+	PrefsSavingSettings      map[string]bool
+	PrefsSettingsError       map[string]string
+	PrefsSettingsErrorText   map[string]*corev1.Text
 
 	DirPicker DirPickerState
 
@@ -100,12 +110,14 @@ func NewState() *State {
 		World: lists.World{
 			Connection: lists.ConnConnecting,
 		},
-		PrefsPendingPath:     make(map[string]bool),
-		PrefsSaveErrorByPath: make(map[string]string),
-		PrefsSavingSettings:  make(map[string]bool),
-		PrefsSettingsError:   make(map[string]string),
-		MachineModels:        make(map[MachineAgentKey]*ModelsCacheEntry),
-		MachineSettings:      make(map[string]*SettingsCacheEntry),
-		NewSessions:          make(map[string]*NewSessionDraft),
+		PrefsPendingPath:         make(map[string]bool),
+		PrefsSaveErrorByPath:     make(map[string]string),
+		PrefsSaveErrorTextByPath: make(map[string]*corev1.Text),
+		PrefsSavingSettings:      make(map[string]bool),
+		PrefsSettingsError:       make(map[string]string),
+		PrefsSettingsErrorText:   make(map[string]*corev1.Text),
+		MachineModels:            make(map[MachineAgentKey]*ModelsCacheEntry),
+		MachineSettings:          make(map[string]*SettingsCacheEntry),
+		NewSessions:              make(map[string]*NewSessionDraft),
 	}
 }

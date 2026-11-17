@@ -271,13 +271,15 @@ Android 和 iOS 解锁后私钥字节在内存里，可以交给核心直接用�
 
 按依赖从下往上，每一步都让壳直接用核心的视图模型、删掉旧的领域类型和转换层，进度在 [plan.md](plan.md)：
 
-1. 骨架：`app` 的 `Dispatch`/`View` 与 `Text`；壳把现有 Remote 收到的数据（机器、会话页、事件、偏好）作为 Event 喂进核心。先迁 home、project、new-session 三个界面的视图模型，删掉三端的列表规则和对应领域类型
-2. session 界面：聊天行、审批、提问、队列、计划，复用 `projection`
-3. schedules、machine status、quota、settings
-4. `sync`：连接、缓冲、分页、指令生命周期进核心，壳的 Remote 退成网络和存储执行器
-5. `security`：信封、成员链、配对、恢复，密钥操作走 Effect
+1. 骨架：`app` 的 `Dispatch`/`View` 与 `Text`，home、project、new-session 三个界面的视图模型，删掉三端的列表规则和对应领域类型
+2. `sync`：连接状态机与重连、机器和会话目录、分页、事件缓冲与补缺口、偏好、指令生命周期进核心，壳的 Remote 退成传输、安全门、存储和计时器的执行器。安全门暂留壳里：解密验签后把明文对象作为 Event 交给核心，按核心给的明文指令封包发送，并把成员链的结论（是否成员、可信机器、时期、租约）作为摘要事件给核心。与第 1 步一起交付
+3. session 界面：聊天行、审批、提问、队列、计划，复用 `projection`
+4. schedules、machine status、quota、settings
+5. `security`：信封、成员链、配对、恢复，密钥操作走 Effect；安全门并入核心
 6. 直连传输的路由和会话状态机、附件和共享文件的状态机
 7. Markdown 和终端 SGR 的解析（渲染留在壳）
+
+同步必须先于各界面进核心：第 1 步曾让同步留在壳里、由宿主把壳的状态翻成 Event，三端宿主各写了 600 到 1100 行翻译代码，产品代码不减反增。界面迁移只在核心已持有它所需的状态之后进行。
 
 ## 6. 接入 Codex
 

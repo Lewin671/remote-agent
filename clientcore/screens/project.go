@@ -61,7 +61,7 @@ func buildProjectDetailView(st *State, key string, endedLimit int) *corev1.Proje
 
 	var tail *corev1.TailRowView
 	if page.Tail != nil {
-		tail = buildTailRow(page.Tail)
+		tail = buildTailRow(page.Tail, st.SessionListErrorText)
 	} else if page.EndedTotal > int32(len(page.Ended)) {
 		tail = &corev1.TailRowView{
 			Kind: corev1.TailKind_TAIL_KIND_MORE_ENDED,
@@ -76,8 +76,8 @@ func buildProjectDetailView(st *State, key string, endedLimit int) *corev1.Proje
 
 	pendingPath := st.PrefsPendingPath[key]
 	var noticeErr *corev1.Text
-	if errMsg := st.PrefsSaveErrorByPath[key]; errMsg != "" {
-		noticeErr = text.Msg(text.KeyCommonSaveFailed, text.Str("reason", errMsg))
+	if hasReason(st.PrefsSaveErrorTextByPath[key], st.PrefsSaveErrorByPath[key]) {
+		noticeErr = text.Msg(text.KeyCommonSaveFailed, reasonArg("reason", st.PrefsSaveErrorTextByPath[key], st.PrefsSaveErrorByPath[key]))
 	}
 	noticeText := text.Msg(text.KeyProjectsRemoved)
 	if page.IsHidden && pendingPath {
@@ -92,8 +92,8 @@ func buildProjectDetailView(st *State, key string, endedLimit int) *corev1.Proje
 	}
 
 	var settingsErr *corev1.Text
-	if errMsg := st.PrefsSettingsError[key]; errMsg != "" {
-		settingsErr = text.Msg(text.KeyProjectsSettingsFailed, text.Str("reason", errMsg))
+	if hasReason(st.PrefsSettingsErrorText[key], st.PrefsSettingsError[key]) {
+		settingsErr = text.Msg(text.KeyProjectsSettingsFailed, reasonArg("reason", st.PrefsSettingsErrorText[key], st.PrefsSettingsError[key]))
 	} else if st.PrefsSavingSettings[key] {
 		settingsErr = text.Msg(text.KeyProjectsSavingSettings)
 	}
@@ -142,8 +142,8 @@ func buildManageProjectsView(st *State) *corev1.ManageProjectsView {
 		blocked = text.Msg(text.KeyProjectsConnectToEdit)
 	}
 	var saveErr *corev1.Text
-	if st.PrefsGlobalError != "" {
-		saveErr = text.Msg(text.KeyProjectsSaveFailedReason, text.Str("reason", st.PrefsGlobalError))
+	if hasReason(st.PrefsGlobalErrorText, st.PrefsGlobalError) {
+		saveErr = text.Msg(text.KeyProjectsSaveFailedReason, reasonArg("reason", st.PrefsGlobalErrorText, st.PrefsGlobalError))
 	}
 	return &corev1.ManageProjectsView{
 		Listing:          buildProjectListing(res, st, true),
@@ -215,11 +215,11 @@ func buildDirPickerView(st *State) *corev1.DirPickerView {
 	}
 
 	var errText *corev1.Text
-	if dp.Error != "" {
-		errText = text.Msg(text.KeyProjectsDirectoryFailed, text.Str("reason", dp.Error))
+	if hasReason(dp.ErrorText, dp.Error) {
+		errText = text.Msg(text.KeyProjectsDirectoryFailed, reasonArg("reason", dp.ErrorText, dp.Error))
 	}
 
-	canConfirm := dp.Open && dp.CurrentPath != "" && !dp.Loading && dp.Error == ""
+	canConfirm := dp.Open && dp.CurrentPath != "" && !dp.Loading && !hasReason(dp.ErrorText, dp.Error)
 	var confirmLabel *corev1.Text
 	if dp.CurrentPath != "" {
 		confirmLabel = text.Msg(text.KeyProjectsUseDirectory, text.Str("name", lists.ProjectName(dp.CurrentPath)))

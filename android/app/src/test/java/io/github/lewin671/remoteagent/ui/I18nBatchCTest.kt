@@ -145,7 +145,7 @@ class I18nBatchCTest(private val locale: String) {
     @Test fun join() { show { JoinScreen(appFixture.app) }; shot("join") }
     @Test fun removed() { show { RemovedScreen(appFixture.app, remote) }; shot("removed") }
     @Test fun pair() { show { PairScreen() }; shot("pair") }
-    @Test fun startup() { show { AccountLoadFailure(text(UiMessages.errorsAndroidCouldNotReadTheSessionList()), {}, {}) }; shot("startup-error") }
+    @Test fun startup() { show { AccountLoadFailure(text(UiMessages.errorsDisconnectedFromServer()), {}, {}) }; shot("startup-error") }
     @Test fun connection() { show { ConnCheckSheet(state.copy(conn = ConnState.OFFLINE), {}, "https://example.com", { listOf("m") }, { 750 }, { 1800 }, {}) }; shot("connection") }
     @Test fun schedules() { show { SchedulesScreen() }; shot("schedules") }
     @Test fun scheduleDetail() { show { ScheduleDetailScreen("m", "t") }; shot("schedule-detail") }
@@ -198,8 +198,8 @@ class I18nBatchCTest(private val locale: String) {
         ui.onAllNodes(hasSetTextAction()).onLast().assertTextEquals("Original draft stays unchanged")
     }
     @Test fun deferredErrorsAndPluralCounts() {
-        val error = CommandException(CommandException.UNKNOWN, UiMessages.errorsAndroidComputerOutcomeUnknownTheConnectionDropped().messageText(), failureKind = CommandFailureKind.CONNECTION_DROPPED, outcome = io.github.lewin671.remoteagent.core.Outcome.UNKNOWN)
-        Assert.assertEquals(text(UiMessages.errorsAndroidComputerOutcomeUnknownTheConnectionDropped()), displayError(error, copy = ::text))
+        val error = CommandException(CommandException.UNKNOWN, UiMessages.errorsConnectionDroppedMidway().messageText(), failureKind = CommandFailureKind.CONNECTION_DROPPED, outcome = io.github.lewin671.remoteagent.core.Outcome.UNKNOWN)
+        Assert.assertEquals(text(UiMessages.errorsConnectionDroppedMidway()), displayError(error, copy = ::text))
         for (count in listOf(0, 1, 2, 1000)) {
             Assert.assertTrue(text(UiMessages.scheduleRunsTotal(count)).contains(count.toString()))
             Assert.assertTrue(text(UiMessages.scheduleEveryDays(count)).contains(count.toString()))

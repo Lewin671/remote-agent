@@ -359,6 +359,7 @@ type NewSessionConfig struct {
 	Model           string                 `protobuf:"bytes,3,opt,name=model,proto3" json:"model,omitempty"`
 	Effort          string                 `protobuf:"bytes,4,opt,name=effort,proto3" json:"effort,omitempty"`
 	StandardContext bool                   `protobuf:"varint,5,opt,name=standard_context,json=standardContext,proto3" json:"standard_context,omitempty"`
+	Mode            v1.ApprovalMode        `protobuf:"varint,6,opt,name=mode,proto3,enum=remoteagent.v1.ApprovalMode" json:"mode,omitempty"`
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache
 }
@@ -426,6 +427,13 @@ func (x *NewSessionConfig) GetStandardContext() bool {
 		return x.StandardContext
 	}
 	return false
+}
+
+func (x *NewSessionConfig) GetMode() v1.ApprovalMode {
+	if x != nil {
+		return x.Mode
+	}
+	return v1.ApprovalMode(0)
 }
 
 type OfflineMachineChoiceView struct {
@@ -1241,14 +1249,15 @@ const file_remoteagent_core_v1_new_session_view_proto_rawDesc = "" +
 	"\x04mode\x18\x01 \x01(\x0e2\x1c.remoteagent.v1.ApprovalModeR\x04mode\x12\x14\n" +
 	"\x05known\x18\x02 \x01(\bR\x05known\x12\x16\n" +
 	"\x06varies\x18\x03 \x01(\bR\x06varies\x12/\n" +
-	"\x05label\x18\x04 \x01(\v2\x19.remoteagent.core.v1.TextR\x05label\"\xb7\x01\n" +
+	"\x05label\x18\x04 \x01(\v2\x19.remoteagent.core.v1.TextR\x05label\"\xe9\x01\n" +
 	"\x10NewSessionConfig\x12\x1d\n" +
 	"\n" +
 	"machine_id\x18\x01 \x01(\tR\tmachineId\x12+\n" +
 	"\x05agent\x18\x02 \x01(\x0e2\x15.remoteagent.v1.AgentR\x05agent\x12\x14\n" +
 	"\x05model\x18\x03 \x01(\tR\x05model\x12\x16\n" +
 	"\x06effort\x18\x04 \x01(\tR\x06effort\x12)\n" +
-	"\x10standard_context\x18\x05 \x01(\bR\x0fstandardContext\"\xd8\x01\n" +
+	"\x10standard_context\x18\x05 \x01(\bR\x0fstandardContext\x120\n" +
+	"\x04mode\x18\x06 \x01(\x0e2\x1c.remoteagent.v1.ApprovalModeR\x04mode\"\xd8\x01\n" +
 	"\x18OfflineMachineChoiceView\x12\x1d\n" +
 	"\n" +
 	"machine_id\x18\x01 \x01(\tR\tmachineId\x12/\n" +
@@ -1416,41 +1425,42 @@ var file_remoteagent_core_v1_new_session_view_proto_depIdxs = []int32{
 	13, // 0: remoteagent.core.v1.DefaultModeInfo.mode:type_name -> remoteagent.v1.ApprovalMode
 	14, // 1: remoteagent.core.v1.DefaultModeInfo.label:type_name -> remoteagent.core.v1.Text
 	15, // 2: remoteagent.core.v1.NewSessionConfig.agent:type_name -> remoteagent.v1.Agent
-	14, // 3: remoteagent.core.v1.OfflineMachineChoiceView.title:type_name -> remoteagent.core.v1.Text
-	14, // 4: remoteagent.core.v1.OfflineMachineChoiceView.note:type_name -> remoteagent.core.v1.Text
-	5,  // 5: remoteagent.core.v1.OfflineMachineChoiceView.config:type_name -> remoteagent.core.v1.NewSessionConfig
-	1,  // 6: remoteagent.core.v1.NewSessionNoticeView.kind:type_name -> remoteagent.core.v1.NoticeKind
-	2,  // 7: remoteagent.core.v1.NewSessionNoticeView.severity:type_name -> remoteagent.core.v1.NoticeSeverity
-	14, // 8: remoteagent.core.v1.NewSessionNoticeView.text:type_name -> remoteagent.core.v1.Text
-	3,  // 9: remoteagent.core.v1.NewSessionNoticeView.action:type_name -> remoteagent.core.v1.NoticeActionKind
-	14, // 10: remoteagent.core.v1.NewSessionNoticeView.draft_title:type_name -> remoteagent.core.v1.Text
-	14, // 11: remoteagent.core.v1.NewSessionNoticeView.draft_subtitle:type_name -> remoteagent.core.v1.Text
-	6,  // 12: remoteagent.core.v1.NewSessionNoticeView.draft_choices:type_name -> remoteagent.core.v1.OfflineMachineChoiceView
-	14, // 13: remoteagent.core.v1.NewSessionNoticeView.draft_none_text:type_name -> remoteagent.core.v1.Text
-	15, // 14: remoteagent.core.v1.AgentOptionView.agent:type_name -> remoteagent.v1.Agent
-	14, // 15: remoteagent.core.v1.ModelOptionView.fixed_effort_note:type_name -> remoteagent.core.v1.Text
-	14, // 16: remoteagent.core.v1.MachineChoiceView.note:type_name -> remoteagent.core.v1.Text
-	14, // 17: remoteagent.core.v1.NewSessionModelPanelView.models_error:type_name -> remoteagent.core.v1.Text
-	14, // 18: remoteagent.core.v1.NewSessionModelPanelView.default_model_label:type_name -> remoteagent.core.v1.Text
-	9,  // 19: remoteagent.core.v1.NewSessionModelPanelView.models:type_name -> remoteagent.core.v1.ModelOptionView
-	14, // 20: remoteagent.core.v1.NewSessionModelPanelView.effort_title:type_name -> remoteagent.core.v1.Text
-	14, // 21: remoteagent.core.v1.NewSessionModelPanelView.context_note:type_name -> remoteagent.core.v1.Text
-	10, // 22: remoteagent.core.v1.NewSessionModelPanelView.machine_choices:type_name -> remoteagent.core.v1.MachineChoiceView
-	14, // 23: remoteagent.core.v1.NewSessionViewModel.project_name:type_name -> remoteagent.core.v1.Text
-	5,  // 24: remoteagent.core.v1.NewSessionViewModel.config:type_name -> remoteagent.core.v1.NewSessionConfig
-	8,  // 25: remoteagent.core.v1.NewSessionViewModel.available_agents:type_name -> remoteagent.core.v1.AgentOptionView
-	14, // 26: remoteagent.core.v1.NewSessionViewModel.model_label:type_name -> remoteagent.core.v1.Text
-	4,  // 27: remoteagent.core.v1.NewSessionViewModel.default_mode:type_name -> remoteagent.core.v1.DefaultModeInfo
-	14, // 28: remoteagent.core.v1.NewSessionViewModel.location_text:type_name -> remoteagent.core.v1.Text
-	7,  // 29: remoteagent.core.v1.NewSessionViewModel.notices:type_name -> remoteagent.core.v1.NewSessionNoticeView
-	14, // 30: remoteagent.core.v1.NewSessionViewModel.disabled_reason:type_name -> remoteagent.core.v1.Text
-	11, // 31: remoteagent.core.v1.NewSessionViewModel.model_panel:type_name -> remoteagent.core.v1.NewSessionModelPanelView
-	0,  // 32: remoteagent.core.v1.NewSessionViewModel.auto_issue:type_name -> remoteagent.core.v1.AutoIssueKind
-	33, // [33:33] is the sub-list for method output_type
-	33, // [33:33] is the sub-list for method input_type
-	33, // [33:33] is the sub-list for extension type_name
-	33, // [33:33] is the sub-list for extension extendee
-	0,  // [0:33] is the sub-list for field type_name
+	13, // 3: remoteagent.core.v1.NewSessionConfig.mode:type_name -> remoteagent.v1.ApprovalMode
+	14, // 4: remoteagent.core.v1.OfflineMachineChoiceView.title:type_name -> remoteagent.core.v1.Text
+	14, // 5: remoteagent.core.v1.OfflineMachineChoiceView.note:type_name -> remoteagent.core.v1.Text
+	5,  // 6: remoteagent.core.v1.OfflineMachineChoiceView.config:type_name -> remoteagent.core.v1.NewSessionConfig
+	1,  // 7: remoteagent.core.v1.NewSessionNoticeView.kind:type_name -> remoteagent.core.v1.NoticeKind
+	2,  // 8: remoteagent.core.v1.NewSessionNoticeView.severity:type_name -> remoteagent.core.v1.NoticeSeverity
+	14, // 9: remoteagent.core.v1.NewSessionNoticeView.text:type_name -> remoteagent.core.v1.Text
+	3,  // 10: remoteagent.core.v1.NewSessionNoticeView.action:type_name -> remoteagent.core.v1.NoticeActionKind
+	14, // 11: remoteagent.core.v1.NewSessionNoticeView.draft_title:type_name -> remoteagent.core.v1.Text
+	14, // 12: remoteagent.core.v1.NewSessionNoticeView.draft_subtitle:type_name -> remoteagent.core.v1.Text
+	6,  // 13: remoteagent.core.v1.NewSessionNoticeView.draft_choices:type_name -> remoteagent.core.v1.OfflineMachineChoiceView
+	14, // 14: remoteagent.core.v1.NewSessionNoticeView.draft_none_text:type_name -> remoteagent.core.v1.Text
+	15, // 15: remoteagent.core.v1.AgentOptionView.agent:type_name -> remoteagent.v1.Agent
+	14, // 16: remoteagent.core.v1.ModelOptionView.fixed_effort_note:type_name -> remoteagent.core.v1.Text
+	14, // 17: remoteagent.core.v1.MachineChoiceView.note:type_name -> remoteagent.core.v1.Text
+	14, // 18: remoteagent.core.v1.NewSessionModelPanelView.models_error:type_name -> remoteagent.core.v1.Text
+	14, // 19: remoteagent.core.v1.NewSessionModelPanelView.default_model_label:type_name -> remoteagent.core.v1.Text
+	9,  // 20: remoteagent.core.v1.NewSessionModelPanelView.models:type_name -> remoteagent.core.v1.ModelOptionView
+	14, // 21: remoteagent.core.v1.NewSessionModelPanelView.effort_title:type_name -> remoteagent.core.v1.Text
+	14, // 22: remoteagent.core.v1.NewSessionModelPanelView.context_note:type_name -> remoteagent.core.v1.Text
+	10, // 23: remoteagent.core.v1.NewSessionModelPanelView.machine_choices:type_name -> remoteagent.core.v1.MachineChoiceView
+	14, // 24: remoteagent.core.v1.NewSessionViewModel.project_name:type_name -> remoteagent.core.v1.Text
+	5,  // 25: remoteagent.core.v1.NewSessionViewModel.config:type_name -> remoteagent.core.v1.NewSessionConfig
+	8,  // 26: remoteagent.core.v1.NewSessionViewModel.available_agents:type_name -> remoteagent.core.v1.AgentOptionView
+	14, // 27: remoteagent.core.v1.NewSessionViewModel.model_label:type_name -> remoteagent.core.v1.Text
+	4,  // 28: remoteagent.core.v1.NewSessionViewModel.default_mode:type_name -> remoteagent.core.v1.DefaultModeInfo
+	14, // 29: remoteagent.core.v1.NewSessionViewModel.location_text:type_name -> remoteagent.core.v1.Text
+	7,  // 30: remoteagent.core.v1.NewSessionViewModel.notices:type_name -> remoteagent.core.v1.NewSessionNoticeView
+	14, // 31: remoteagent.core.v1.NewSessionViewModel.disabled_reason:type_name -> remoteagent.core.v1.Text
+	11, // 32: remoteagent.core.v1.NewSessionViewModel.model_panel:type_name -> remoteagent.core.v1.NewSessionModelPanelView
+	0,  // 33: remoteagent.core.v1.NewSessionViewModel.auto_issue:type_name -> remoteagent.core.v1.AutoIssueKind
+	34, // [34:34] is the sub-list for method output_type
+	34, // [34:34] is the sub-list for method input_type
+	34, // [34:34] is the sub-list for extension type_name
+	34, // [34:34] is the sub-list for extension extendee
+	0,  // [0:34] is the sub-list for field type_name
 }
 
 func init() { file_remoteagent_core_v1_new_session_view_proto_init() }

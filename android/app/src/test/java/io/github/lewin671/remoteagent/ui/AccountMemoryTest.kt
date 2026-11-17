@@ -9,7 +9,7 @@ import org.junit.Test
 
 class AccountMemoryTest {
     private fun write() {
-        Drafts.newSession("/work/app", NewConfig("m1", "/work/app", Agent.AGENT_CODEX)).text.value = "上一个账户的草稿"
+        ImageDrafts.forProject("/work/app").text.value = "上一个账户的草稿"
         Drafts.of("deny:a1").value = "别删"
         Outbox.draft("s1").value = "没发完的话"
         Outbox.of("s1") += Outgoing("r1", "发过的话")
@@ -19,8 +19,7 @@ class AccountMemoryTest {
     }
 
     private fun assertEmpty() {
-        assertEquals("", Drafts.newSession("/work/app", null).text.value)
-        assertNull(Drafts.newSession("/work/app", null).config.value)
+        assertEquals("", ImageDrafts.forProject("/work/app").text.value)
         assertEquals("", Drafts.of("deny:a1").value)
         assertEquals("", Outbox.draft("s1").value)
         assertTrue(Outbox.of("s1").isEmpty())
@@ -35,7 +34,7 @@ class AccountMemoryTest {
         write()
         // The same account, e.g. the app opened again: kept.
         AccountMemory.use("https://a device-1")
-        assertEquals("上一个账户的草稿", Drafts.newSession("/work/app", null).text.value)
+        assertEquals("上一个账户的草稿", ImageDrafts.forProject("/work/app").text.value)
         assertFalse(Outbox.of("s1").isEmpty())
         // Another account sees none of it, even for the same path or IDs.
         AccountMemory.use("https://b device-2")

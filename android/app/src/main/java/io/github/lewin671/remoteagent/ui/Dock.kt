@@ -366,10 +366,24 @@ suspend fun resolveApproval(
     a: ApprovalRequested,
     allow: Boolean,
     message: String,
-    always: Boolean = false): Boolean {
+    always: Boolean = false,
+): Boolean {
     require(!isSkeleton(a)) { sessionText(UiMessages.sessionSkeleton()) }
-    val r = Resolves.of(a.approvalId)
-    require(!approvalTruncated(a) || !(allow || (r.attempt.frozen && r.allow))) {
+    return resolveApproval(remote, s.machineId, s.id, a.approvalId, approvalTruncated(a), allow, message, always)
+}
+
+suspend fun resolveApproval(
+    remote: io.github.lewin671.remoteagent.core.Remote,
+    machineId: String,
+    sessionId: String,
+    approvalId: String,
+    truncated: Boolean,
+    allow: Boolean,
+    message: String,
+    always: Boolean = false,
+): Boolean {
+    val r = Resolves.of(approvalId)
+    require(!truncated || !(allow || (r.attempt.frozen && r.allow))) {
         sessionText(approvalTruncatedMessage)
     }
     try {
@@ -380,13 +394,13 @@ suspend fun resolveApproval(
                 r.message = message
                 r.always = always
                 remote.prepare(
-                    s.machineId,
-                    s.id,
+                    machineId,
+                    sessionId,
                     remote.cmd {
                         resolveApproval =
                             ResolveApprovalRequest.newBuilder()
-                                .setSessionId(s.id)
-                                .setApprovalId(a.approvalId)
+                                .setSessionId(sessionId)
+                                .setApprovalId(approvalId)
                                 .setAllow(allow)
                                 .setMessage(message)
                                 .setAlways(always)

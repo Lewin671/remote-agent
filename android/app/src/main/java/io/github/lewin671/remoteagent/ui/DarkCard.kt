@@ -4,29 +4,12 @@ import io.github.lewin671.remoteagent.core.UiMessages
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ColumnScope
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -34,30 +17,21 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.heading
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.AnnotatedString
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.buildAnnotatedString
-import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.semantics.*
+import androidx.compose.ui.text.*
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.text.withStyle
-import androidx.compose.ui.unit.constrainHeight
-import androidx.compose.ui.unit.Constraints
-import androidx.compose.ui.unit.dp
-import io.github.lewin671.remoteagent.core.ApprovalCardText
+import androidx.compose.ui.unit.*
 import io.github.lewin671.remoteagent.core.RemoteState
 import io.github.lewin671.remoteagent.core.SessionView
 import io.github.lewin671.remoteagent.core.agent
-import io.github.lewin671.remoteagent.core.approvalBody
 import io.github.lewin671.remoteagent.core.approvalDisplay
 import io.github.lewin671.remoteagent.core.approvalTruncated
 import io.github.lewin671.remoteagent.core.approvalTruncatedMessage
 import io.github.lewin671.remoteagent.core.capabilities
 import io.github.lewin671.remoteagent.core.isSkeleton
+import io.github.lewin671.remoteagent.core.proto.AlwaysAllowKind
+import io.github.lewin671.remoteagent.core.proto.AttentionCardView
 import io.github.lewin671.remoteagent.proto.ApprovalRequested
 
 /*
@@ -230,19 +204,28 @@ class ApprovalReply internal constructor(
 }
 
 @Composable
-fun rememberApprovalReply(s: SessionView, a: ApprovalRequested): ApprovalReply {
-    val copy = uiText()
+fun rememberApprovalReply(s: SessionView, a: ApprovalRequested): ApprovalReply =
+    rememberApprovalReply(s.machineId, s.id, a.approvalId, approvalTruncated(a), skeleton = isSkeleton(a))
+
+@Composable
+fun rememberApprovalReply(
+    machineId: String,
+    sessionId: String,
+    approvalId: String,
+    truncated: Boolean,
+    skeleton: Boolean = false,
+): ApprovalReply {
     val remote = LocalRemote.current
-    val act = rememberAction(a.approvalId)
-    val r = Resolves.of(a.approvalId)
-    val which = remember(a.approvalId) { mutableStateOf(if (r.attempt.frozen) r.allow else null) }
+    val act = rememberAction(approvalId)
+    val r = Resolves.of(approvalId)
+    val which = remember(approvalId) { mutableStateOf(if (r.attempt.frozen) r.allow else null) }
     val view = androidx.compose.ui.platform.LocalView.current
     return ApprovalReply(act, r, which) { allow, message, always ->
-        // One light tap for the answer, whichever it is (§4 触感).
         Motion.tap(view)
         which.value = allow
         act.run({
-            resolveApproval(remote, s, a, allow, message, always)
+            require(!skeleton) { sessionText(UiMessages.sessionSkeleton()) }
+            resolveApproval(remote, machineId, sessionId, approvalId, truncated, allow, message, always)
             null
         })
     }
@@ -314,48 +297,43 @@ fun approvalLocked(state: RemoteState, machineId: String, a: ApprovalRequested, 
 }
 
 /**
- * The home page's dark card for the most urgent approval (design-system §6
- * 终端卡): head, title (which opens the session), 「项目 · 机器」, the
- * command, why, the buttons. A command not shown whole cannot be allowed:
- * the card offers 不允许 and 看完整命令 until it is opened in place. 不允许
- * asks for an optional reason right on the card. Once answered the card is
- * one line.
+ * The home page's dark card for the most urgent approval (design-system §6 终端卡), rendered from
+ * Core's [AttentionCardView].
  */
 @Composable
 fun ApprovalCard(
+    card: AttentionCardView,
     state: RemoteState,
-    s: SessionView,
-    a: ApprovalRequested,
-    text: ApprovalCardText,
-    now: Long,
     onOpen: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val copy = uiText()
-    val d = rememberApprovalReply(s, a)
-    var full by rememberSaveable(a.approvalId) { mutableStateOf(false) }
-    var denying by rememberSaveable(a.approvalId) { mutableStateOf(false) }
-    var lines by remember(a.approvalId) { mutableIntStateOf(0) }
-    if (isSkeleton(a)) return DarkCard(modifier) {
-        DarkCardHead(uiText(text.kind), uiText(text.time), text.hot)
-        Text(copy(UiMessages.sessionSkeleton()), style = T.s15, color = CardColors.text2, modifier = Modifier.padding(top = 12.dp))
-    }
-    // Submitted: one line of where it stands; the next item comes up when this one is gone from the session.
-    if (d.submitted) return ApprovalSubmitted(uiText(text.kind), d, modifier)
-    val command = approvalBody(a)
+    val kind = uiText(card.kindText)
+    val time = uiText(card.time)
+    val d = rememberApprovalReply(card.machineId, card.sessionId, card.approvalId, card.truncated)
+    var full by rememberSaveable(card.approvalId) { mutableStateOf(false) }
+    var denying by rememberSaveable(card.approvalId) { mutableStateOf(false) }
+    var lines by remember(card.approvalId) { mutableIntStateOf(0) }
+    if (d.submitted) return ApprovalSubmitted(kind, d, modifier)
+    val command = approvalDisplay(card.body)
     val more = lines - CARD_LINES
     val cut = command.isNotEmpty() && more > 0 && !full
+    val always = card.alwaysKind != AlwaysAllowKind.ALWAYS_ALLOW_KIND_UNSPECIFIED ||
+        capabilities(state.machines[card.machineId])?.approvalAlways == true
+    val locked = state.peer(card.machineId).unlinked
     DarkCard(modifier.semantics(mergeDescendants = false) {}) {
-        DarkCardHead(uiText(text.kind), uiText(text.time), text.hot)
+        DarkCardHead(kind, time, card.hot)
         Row(
-            Modifier.padding(top = 12.dp).heightIn(min = 32.dp).clickable(onClickLabel = copy(UiMessages.homeIosOpenSession()), role = Role.Button, onClick = onOpen).semantics { heading() },
+            Modifier.padding(top = 12.dp).heightIn(min = 32.dp)
+                .clickable(onClickLabel = copy(UiMessages.homeIosOpenSession()), role = Role.Button, onClick = onOpen)
+                .semantics { heading() },
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(uiText(text.title), style = T.h20, color = CardColors.text, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
+            Text(uiText(card.title), style = T.h20, color = CardColors.text, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
             Spacer(Modifier.width(2.dp))
             Ic(Lucide.ChevronRight, 20.dp, CardColors.text.copy(alpha = .5f))
         }
-        Text(uiText(text.place), style = T.s13, color = CardColors.text2, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 2.dp))
+        Text(uiText(card.where), style = T.s13, color = CardColors.text2, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 2.dp))
         if (command.isNotEmpty()) CommandBlock(
             command, Modifier.padding(top = 14.dp),
             maxLines = if (denying) REASON_LINES else if (cut) CARD_LINES else Int.MAX_VALUE,
@@ -370,18 +348,52 @@ fun ApprovalCard(
                 }
             }
         }
-        if (approvalTruncated(a)) Text(uiText(approvalTruncatedMessage), style = T.s13, color = CardColors.red, modifier = Modifier.padding(top = 8.dp))
-        if (!denying && a.description.isNotEmpty())
-            Text(approvalDisplay(a.description), style = T.s15, color = CardColors.text2, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 12.dp))
-        ApprovalButtons(state, s, a, d, denying, { denying = it }, approvalLocked(state, s.machineId, a, now), cut = cut) { full = true }
+        if (card.truncated) Text(uiText(approvalTruncatedMessage), style = T.s13, color = CardColors.red, modifier = Modifier.padding(top = 8.dp))
+        ApprovalCardActions(
+            approvalId = card.approvalId,
+            d = d,
+            denying = denying,
+            onDenying = { denying = it },
+            locked = locked,
+            truncated = card.truncated,
+            always = always,
+            alwaysLabel = uiText(card.alwaysLabel).ifEmpty { copy(UiMessages.approvalAlwaysAllow()) },
+            cut = cut,
+            onFull = { full = true },
+        )
     }
 }
 
-/** The approval of a session that waits on the home page, read from its events; null until they are. */
 @Composable
-fun rememberApproval(s: SessionView): ApprovalRequested? {
-    val remote = LocalRemote.current
-    val events by remote.events(s.id).collectAsState()
-    val d = rememberDerived(events, s.agent())
-    return d.approvals.values.firstOrNull()
+private fun ApprovalCardActions(
+    approvalId: String,
+    d: ApprovalReply,
+    denying: Boolean,
+    onDenying: (Boolean) -> Unit,
+    locked: Boolean,
+    truncated: Boolean,
+    always: Boolean,
+    alwaysLabel: String,
+    cut: Boolean,
+    onFull: () -> Unit,
+) {
+    val copy = uiText()
+    var reason by Drafts.of("deny:$approvalId")
+    if (denying) {
+        CardField(reason, { reason = it }, copy(UiMessages.approvalReasonPlaceholder()), Modifier.padding(top = 12.dp), label = copy(UiMessages.approvalDenialReason()))
+        Row(Modifier.fillMaxWidth().padding(top = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            CardButton(copy(UiMessages.commonCancel()), { onDenying(false) }, Modifier.weight(1f))
+            CardButton(copy(UiMessages.approvalDeny()), { d.resolve(false, reason.trim()) }, Modifier.weight(1f), primary = true, enabled = !locked)
+        }
+        return
+    }
+    Row(Modifier.fillMaxWidth().padding(top = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        CardButton(copy(UiMessages.approvalDeny()), { onDenying(true) }, Modifier.weight(1f), enabled = !locked)
+        if (cut) CardButton(copy(UiMessages.approvalFullCommand()), onFull, Modifier.weight(1f), primary = true)
+        else CardButton(copy(UiMessages.approvalAllow()), { d.resolve(true) }, Modifier.weight(1f), primary = true, enabled = !locked && !truncated)
+    }
+    if (always && !cut && !locked && !truncated) Box(
+        Modifier.fillMaxWidth().heightIn(min = 44.dp).padding(top = 4.dp).clickable(role = Role.Button) { d.resolve(true, always = true) },
+        contentAlignment = Alignment.Center,
+    ) { Text(alwaysLabel, style = T.s15, color = CardColors.link) }
 }

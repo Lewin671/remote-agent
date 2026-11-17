@@ -8,6 +8,17 @@ import (
 
 var weekdayCodes = [7]string{"mon", "tue", "wed", "thu", "fri", "sat", "sun"}
 
+func reasonArg(name string, txt *corev1.Text, raw string) *corev1.TextArg {
+	if !text.IsEmpty(txt) {
+		return text.ArgText(name, txt)
+	}
+	return text.Str(name, raw)
+}
+
+func hasReason(txt *corev1.Text, raw string) bool {
+	return !text.IsEmpty(txt) || raw != ""
+}
+
 func mapTone(t lists.SessionTone) corev1.SessionTone {
 	switch t {
 	case lists.ToneWait:
@@ -79,60 +90,47 @@ func sessionTitleText(item *lists.SessionItem) *corev1.Text {
 	if item == nil {
 		return text.Msg(text.KeyListStateNewSession)
 	}
-	if item.ResolvedTitle != "" {
-		return text.Plain(item.ResolvedTitle)
+	if item.HasCustomTitle && item.Title != "" {
+		return text.Plain(item.Title)
+	}
+	if item.ProjectName != "" && item.CreatedMs > 0 {
+		return text.JoinLiteral(" · ", text.Plain(item.ProjectName), text.Time(item.CreatedMs, corev1.TimestampStyle_TIMESTAMP_STYLE_TIME))
+	}
+	if item.ProjectName != "" {
+		return text.Plain(item.ProjectName)
+	}
+	if item.CreatedMs > 0 {
+		return text.Time(item.CreatedMs, corev1.TimestampStyle_TIMESTAMP_STYLE_TIME)
 	}
 	return text.Msg(text.KeyListStateNewSession)
 }
 
-func formatClockPair(hhmm string) (string, string) {
-	for i := 0; i < len(hhmm); i++ {
-		if hhmm[i] == ':' {
-			return hhmm[:i], hhmm[i+1:]
-		}
-	}
-	return hhmm, ""
-}
-
-func formatEndedTime(ms int64, s *lists.Session, g *lists.EndedGroup, cal lists.Calendar) *corev1.Text {
+func formatEndedTime(ms int64, g *lists.EndedGroup, cal lists.Calendar) *corev1.Text {
 	if ms <= 0 {
 		return nil
 	}
-	hhmm := ""
-	if s != nil {
-		hhmm = s.UpdatedLocalHhmm
-	}
-	if hhmm == "" {
-		hhmm = lists.FormatHHMM(ms, cal.UTCOffsetMinutes)
-	}
 	if g == nil {
-		eg := lists.EndedGroupFor(ms, cal, 0, 0)
+		eg := lists.EndedGroupFor(ms, cal)
 		g = &eg
 	}
-	if g.Kind == lists.GroupToday {
-		h, m := formatClockPair(hhmm)
-		return text.Msg(text.KeyTimeTodayClock, text.Str("value", h), text.Str("detail", m))
-	}
-	if g.Kind == lists.GroupYesterday {
-		return text.Msg(text.KeyTimeDayClock, text.ArgText("day", text.Msg(text.KeyTimeYesterday)), text.Str("clock", hhmm))
-	}
-	if g.Kind == lists.GroupWeek {
-		idx := int(g.WeekdayIndex)
-		if idx < 0 || idx >= len(weekdayCodes) {
-			idx = 0
+	const (
+		paramDay   = "day"
+		paramClock = "clock"
+	)
+	switch g.Kind {
+	case lists.GroupToday:
+		return text.Msg(text.KeyTimeDayClock, text.ArgText(paramDay, text.Msg(text.KeyTimeToday)), text.ArgTimestamp(paramClock, ms, corev1.TimestampStyle_TIMESTAMP_STYLE_TIME))
+	case lists.GroupYesterday:
+		return text.Msg(text.KeyTimeDayClock, text.ArgText(paramDay, text.Msg(text.KeyTimeYesterday)), text.ArgTimestamp(paramClock, ms, corev1.TimestampStyle_TIMESTAMP_STYLE_TIME))
+	case lists.GroupWeek:
+		return text.Msg(text.KeyTimeDayClock, text.ArgTimestamp(paramDay, ms, corev1.TimestampStyle_TIMESTAMP_STYLE_WEEKDAY), text.ArgTimestamp(paramClock, ms, corev1.TimestampStyle_TIMESTAMP_STYLE_TIME))
+	default:
+		year, _, ok := lists.MonthFor(ms, cal)
+		if ok && (cal.NowYear == 0 || year == cal.NowYear) {
+			return text.Time(ms, corev1.TimestampStyle_TIMESTAMP_STYLE_MONTH_DAY_TIME)
 		}
-		day := text.Msg(text.KeyTimeWeekday, text.Str("day", weekdayCodes[idx]))
-		return text.Msg(text.KeyTimeDayClock, text.ArgText("day", day), text.Str("clock", hhmm))
+		return text.Time(ms, corev1.TimestampStyle_TIMESTAMP_STYLE_DATE)
 	}
-	yr, mo, d, _, _, _ := lists.CivilFromUnixMs(ms, cal.UTCOffsetMinutes)
-	if s != nil && s.EndedLocalYear > 0 && s.EndedLocalMonth > 0 {
-		yr = int(s.EndedLocalYear)
-		mo = int(s.EndedLocalMonth)
-	}
-	if cal.NowYear > 0 && int32(yr) != cal.NowYear {
-		return text.Msg(text.KeyTimeCalendarDateYear, text.Int("year", int64(yr)), text.Int("month", int64(mo)), text.Int("day", int64(d)))
-	}
-	return text.Msg(text.KeyTimeDateTime, text.Int("month", int64(mo)), text.Int("day", int64(d)), text.Str("time", hhmm))
 }
 
 func formatRelativeTime(ms int64, cal lists.Calendar) *corev1.Text {
@@ -154,24 +152,20 @@ func formatRelativeTime(ms int64, cal lists.Calendar) *corev1.Text {
 		return text.Msg(text.KeyTimeYesterday)
 	}
 	if cal.WeekStartMs > 0 && ms >= cal.WeekStartMs {
-		g := lists.EndedGroupFor(ms, cal, 0, 0)
-		idx := int(g.WeekdayIndex)
-		if idx < 0 || idx >= len(weekdayCodes) {
-			idx = 0
-		}
-		return text.Msg(text.KeyTimeWeekday, text.Str("day", weekdayCodes[idx]))
+		return text.Time(ms, corev1.TimestampStyle_TIMESTAMP_STYLE_WEEKDAY)
 	}
-	yr, mo, d, _, _, _ := lists.CivilFromUnixMs(ms, cal.UTCOffsetMinutes)
-	if cal.NowYear > 0 && int32(yr) != cal.NowYear {
-		return text.Msg(text.KeyTimeCalendarDateYear, text.Int("year", int64(yr)), text.Int("month", int64(mo)), text.Int("day", int64(d)))
+	year, _, ok := lists.MonthFor(ms, cal)
+	if ok && (cal.NowYear == 0 || year == cal.NowYear) {
+		return text.Time(ms, corev1.TimestampStyle_TIMESTAMP_STYLE_MONTH_DAY)
 	}
-	return text.Msg(text.KeyTimeMonthDay, text.Int("month", int64(mo)), text.Int("day", int64(d)))
+	return text.Time(ms, corev1.TimestampStyle_TIMESTAMP_STYLE_DATE)
 }
 
 func buildConnectionStatus(st *State) *corev1.ConnectionStatusView {
+	reason := st.ConnectionReason
 	view := &corev1.ConnectionStatusView{
 		LivePushConnected: st.LivePushConnected,
-		Reason:            st.ConnectionReason,
+		Reason:            reason,
 		DisconnectedAtMs:  st.DisconnectedAtMs,
 	}
 	switch st.World.Connection {
@@ -179,8 +173,8 @@ func buildConnectionStatus(st *State) *corev1.ConnectionStatusView {
 		view.State = corev1.ConnState_CONN_STATE_CONNECTED
 		view.BadgeText = text.Msg(text.KeyConnectionConnected)
 		if !st.LivePushConnected {
-			if st.ConnectionReason != "" {
-				view.DetailText = text.Msg(text.KeyConnectionLivePushIsNotConnectedSessionChangesMayBe, text.Str("value", st.ConnectionReason))
+			if hasReason(st.ConnectionReasonText, reason) {
+				view.DetailText = text.Msg(text.KeyConnectionLivePushIsNotConnectedSessionChangesMayBe, reasonArg("value", st.ConnectionReasonText, reason))
 			} else {
 				view.DetailText = text.Msg(text.KeyConnectionLivePushIsNotConnected)
 			}
@@ -192,8 +186,8 @@ func buildConnectionStatus(st *State) *corev1.ConnectionStatusView {
 	case lists.ConnOffline:
 		view.State = corev1.ConnState_CONN_STATE_OFFLINE
 		view.BadgeText = text.Msg(text.KeyConnectionUnreachable)
-		if st.ConnectionReason != "" {
-			view.DetailText = text.Msg(text.KeyConnectionServerDetails, text.Str("reason", st.ConnectionReason))
+		if hasReason(st.ConnectionReasonText, reason) {
+			view.DetailText = text.Msg(text.KeyConnectionServerDetails, reasonArg("reason", st.ConnectionReasonText, reason))
 		} else {
 			view.DetailText = text.Msg(text.KeyConnectionNoResponse)
 		}
@@ -215,8 +209,8 @@ func buildSessionRow(item *lists.SessionItem, meta lists.RowMeta, cal lists.Cale
 	var timeText *corev1.Text
 	if item.NeedsAttention && item.CreatedMs > 0 {
 		timeText = formatRelativeTime(item.CreatedMs, cal)
-	} else if item.CreatedHHMM != "" {
-		timeText = text.Plain(item.CreatedHHMM)
+	} else if item.CreatedMs > 0 {
+		timeText = text.Time(item.CreatedMs, corev1.TimestampStyle_TIMESTAMP_STYLE_TIME)
 	} else if item.UpdatedMs > 0 {
 		timeText = formatRelativeTime(item.UpdatedMs, cal)
 	}
@@ -271,26 +265,26 @@ func buildSessionRow(item *lists.SessionItem, meta lists.RowMeta, cal lists.Cale
 	}
 
 	return &corev1.SessionRowView{
-		SessionId:     item.ID,
-		MachineId:     item.MachineID,
-		Title:         title,
-		Time:          timeText,
-		Status:        mapStatus(item.ShownStatus),
-		Tone:          mapTone(item.Tone),
-		StatusText:    stText,
-		Preview:       preview,
-		SecondLine:    secondLine,
+		SessionId:      item.ID,
+		MachineId:      item.MachineID,
+		Title:          title,
+		Time:           timeText,
+		Status:         mapStatus(item.ShownStatus),
+		Tone:           mapTone(item.Tone),
+		StatusText:     stText,
+		Preview:        preview,
+		SecondLine:     secondLine,
 		Agent:          item.Agent,
 		MultipleAgents: meta.ShowAgent,
 		MetaLine:       metaLine,
-		Selected:      selected,
-		PendingAction: item.NeedsAttention,
+		Selected:       selected,
+		PendingAction:  item.NeedsAttention,
 	}
 }
 
 func buildEndedRow(item *lists.SessionItem, meta lists.RowMeta, cal lists.Calendar, selected bool) *corev1.EndedRowView {
 	title := sessionTitleText(item)
-	endedTime := formatEndedTime(item.EndedMs, item.Session, item.EndedGroup, cal)
+	endedTime := formatEndedTime(item.EndedMs, item.EndedGroup, cal)
 	var rightParts []*corev1.Text
 	if meta.ShowProject && item.ProjectName != "" {
 		rightParts = append(rightParts, text.Plain(item.ProjectName))
@@ -310,7 +304,7 @@ func buildEndedRow(item *lists.SessionItem, meta lists.RowMeta, cal lists.Calend
 	}
 }
 
-func buildTailRow(tail *lists.HomeTailInfo) *corev1.TailRowView {
+func buildTailRow(tail *lists.HomeTailInfo, errText *corev1.Text) *corev1.TailRowView {
 	if tail == nil {
 		return nil
 	}
@@ -323,10 +317,10 @@ func buildTailRow(tail *lists.HomeTailInfo) *corev1.TailRowView {
 		row.Text = text.Msg(text.KeyHomeEarlierOffline)
 	case lists.TailEarlierListFailed:
 		row.Kind = corev1.TailKind_TAIL_KIND_FAILED
-		row.Text = text.Msg(text.KeyHomeListFailedRetry, text.Str("reason", tail.RawError))
+		row.Text = text.Msg(text.KeyHomeListFailedRetry, reasonArg("reason", errText, tail.RawError))
 	case lists.TailEarlierFailed:
 		row.Kind = corev1.TailKind_TAIL_KIND_FAILED
-		row.Text = text.Msg(text.KeyHomeEarlierFailedRetry, text.Str("reason", tail.RawError))
+		row.Text = text.Msg(text.KeyHomeEarlierFailedRetry, reasonArg("reason", errText, tail.RawError))
 	case lists.TailLoadingEarlier:
 		row.Kind = corev1.TailKind_TAIL_KIND_LOADING
 		row.Text = text.Msg(text.KeyHomeLoadingEarlier)
@@ -379,7 +373,9 @@ func buildProjectRow(p *lists.ProjectSummary, st *State) *corev1.ProjectRowView 
 	}
 	sub := projectSubtitleText(p, st.Cal, true)
 	var saveErr *corev1.Text
-	if msg := st.PrefsSaveErrorByPath[p.Key]; msg != "" {
+	if errTxt := st.PrefsSaveErrorTextByPath[p.Key]; !text.IsEmpty(errTxt) {
+		saveErr = text.Msg(text.KeyCommonSaveFailed, text.ArgText("reason", errTxt))
+	} else if msg := st.PrefsSaveErrorByPath[p.Key]; msg != "" {
 		saveErr = text.Msg(text.KeyCommonSaveFailed, text.Str("reason", msg))
 	}
 	return &corev1.ProjectRowView{

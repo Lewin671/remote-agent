@@ -7,7 +7,45 @@
             "render": {
               "screens": [
                 "SCREEN_TARGET_HOME",
-                "SCREEN_TARGET_PROJECT"
+                "SCREEN_TARGET_PROJECT",
+                "SCREEN_TARGET_SYNC_STATE"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "effects": {
+        "effects": [
+          {
+            "cacheRead": {
+              "bootstrap": {
+                "opId": "1"
+              }
+            }
+          },
+          {
+            "ensureToken": {
+              "opId": "2",
+              "forceLogin": true,
+              "timeoutMs": "15000"
+            }
+          },
+          {
+            "syncSecurity": {
+              "opId": "3",
+              "touch": true
+            }
+          },
+          {
+            "render": {
+              "screens": [
+                "SCREEN_TARGET_HOME",
+                "SCREEN_TARGET_PROJECT",
+                "SCREEN_TARGET_NEW_SESSION",
+                "SCREEN_TARGET_SYNC_STATE",
+                "SCREEN_TARGET_SESSION_DATA"
               ]
             }
           }
@@ -22,7 +60,9 @@
               "screens": [
                 "SCREEN_TARGET_HOME",
                 "SCREEN_TARGET_PROJECT",
-                "SCREEN_TARGET_NEW_SESSION"
+                "SCREEN_TARGET_NEW_SESSION",
+                "SCREEN_TARGET_SYNC_STATE",
+                "SCREEN_TARGET_SESSION_DATA"
               ]
             }
           }
@@ -35,37 +75,8 @@
           {
             "render": {
               "screens": [
-                "SCREEN_TARGET_HOME",
-                "SCREEN_TARGET_PROJECT",
-                "SCREEN_TARGET_NEW_SESSION"
-              ]
-            }
-          }
-        ]
-      }
-    },
-    {
-      "effects": {
-        "effects": [
-          {
-            "render": {
-              "screens": [
-                "SCREEN_TARGET_HOME",
-                "SCREEN_TARGET_PROJECT",
-                "SCREEN_TARGET_NEW_SESSION"
-              ]
-            }
-          }
-        ]
-      }
-    },
-    {
-      "effects": {
-        "effects": [
-          {
-            "render": {
-              "screens": [
-                "SCREEN_TARGET_NEW_SESSION"
+                "SCREEN_TARGET_NEW_SESSION",
+                "SCREEN_TARGET_SYNC_STATE"
               ]
             }
           }
@@ -80,6 +91,186 @@
             },
             "shortPath": "~/Code/app",
             "hasProjects": true,
+            "settled": true,
+            "config": {
+              "machineId": "m-off",
+              "agent": "AGENT_CODEX"
+            },
+            "machineName": "OldMac",
+            "agentName": "Codex",
+            "availableAgents": [
+              {
+                "agent": "AGENT_CODEX",
+                "displayName": "Codex",
+                "installed": true,
+                "selected": true
+              }
+            ],
+            "modelLabel": {
+              "key": "models.default"
+            },
+            "defaultMode": {
+              "label": {
+                "key": "modes.default_agent",
+                "args": [
+                  {
+                    "name": "agent",
+                    "strValue": "Codex"
+                  }
+                ]
+              }
+            },
+            "locationText": {
+              "key": "new_session.location",
+              "args": [
+                {
+                  "name": "project",
+                  "strValue": "app"
+                }
+              ]
+            },
+            "disabledReason": {
+              "key": "errors.not_connected"
+            },
+            "modelPanel": {
+              "defaultModelLabel": {
+                "key": "models.default"
+              },
+              "defaultModelChecked": true,
+              "machineChoices": [
+                {
+                  "machineId": "m-off",
+                  "name": "OldMac",
+                  "selected": true,
+                  "note": {
+                    "key": "common.offline"
+                  }
+                }
+              ],
+              "canSelectAutoMode": true
+            },
+            "autoIssue": "AUTO_ISSUE_KIND_NONE"
+          }
+        }
+      }
+    },
+    {
+      "effects": {
+        "effects": [
+          {
+            "render": {
+              "screens": [
+                "SCREEN_TARGET_HOME",
+                "SCREEN_TARGET_PROJECT",
+                "SCREEN_TARGET_NEW_SESSION",
+                "SCREEN_TARGET_SYNC_STATE",
+                "SCREEN_TARGET_SESSION_DATA"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "effects": {
+        "effects": [
+          {
+            "openStream": {
+              "legId": "1",
+              "token": "tok-1",
+              "timeoutMs": "15000"
+            }
+          },
+          {
+            "scheduleTimer": {
+              "timerId": "1",
+              "kind": "TIMER_KIND_STREAM_OPEN",
+              "delayMs": "15000"
+            }
+          },
+          {
+            "render": {
+              "screens": [
+                "SCREEN_TARGET_HOME",
+                "SCREEN_TARGET_SYNC_STATE"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "effects": {
+        "effects": [
+          {
+            "cancelTimer": {
+              "timerId": "1",
+              "kind": "TIMER_KIND_STREAM_OPEN"
+            }
+          },
+          {
+            "scheduleTimer": {
+              "timerId": "2",
+              "kind": "TIMER_KIND_LIVENESS",
+              "delayMs": "1000"
+            }
+          },
+          {
+            "rpc": {
+              "opId": "4",
+              "fetchLists": {
+                "limit": 50
+              }
+            }
+          },
+          {
+            "rpc": {
+              "opId": "5",
+              "getAccountPrefs": {
+                "objectId": "project-prefs"
+              }
+            }
+          },
+          {
+            "render": {
+              "screens": [
+                "SCREEN_TARGET_HOME",
+                "SCREEN_TARGET_PROJECT",
+                "SCREEN_TARGET_NEW_SESSION",
+                "SCREEN_TARGET_SYNC_STATE",
+                "SCREEN_TARGET_SESSION_DATA"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "effects": {
+        "effects": [
+          {
+            "render": {
+              "screens": [
+                "SCREEN_TARGET_HOME",
+                "SCREEN_TARGET_PROJECT",
+                "SCREEN_TARGET_NEW_SESSION",
+                "SCREEN_TARGET_SYNC_STATE",
+                "SCREEN_TARGET_SESSION_DATA"
+              ]
+            }
+          }
+        ]
+      },
+      "views": {
+        "offlineWithDraftChoices": {
+          "newSession": {
+            "projectKey": "/Users/me/Code/app",
+            "projectName": {
+              "literal": "app"
+            },
+            "shortPath": "~/Code/app",
+            "hasProjects": true,
+            "settled": true,
             "config": {
               "machineId": "m-off",
               "agent": "AGENT_CODEX"
@@ -99,16 +290,12 @@
               "key": "models.default"
             },
             "defaultMode": {
-              "mode": "APPROVAL_MODE_ASK",
-              "known": true,
               "label": {
-                "key": "modes.default_named",
+                "key": "modes.default_agent",
                 "args": [
                   {
-                    "name": "mode",
-                    "textValue": {
-                      "key": "modes.ask"
-                    }
+                    "name": "agent",
+                    "strValue": "Codex"
                   }
                 ]
               }
@@ -199,16 +386,109 @@
       "effects": {
         "effects": [
           {
+            "dispatchCommand": {
+              "requestId": "req-models-1",
+              "attemptId": "att-models-1",
+              "machineId": "m-on",
+              "deadlineMs": "1791078120070",
+              "commandBytes": "qgECCAGgBhA=",
+              "routeHint": "COMMAND_ROUTE_HINT_READ"
+            }
+          },
+          {
+            "dispatchCommand": {
+              "requestId": "req-settings-1",
+              "attemptId": "att-settings-1",
+              "machineId": "m-on",
+              "deadlineMs": "1791078120070",
+              "commandBytes": "ugEAoAYQ",
+              "routeHint": "COMMAND_ROUTE_HINT_READ"
+            }
+          },
+          {
+            "rpc": {
+              "opId": "6",
+              "getAccountPrefs": {
+                "objectId": "project-prefs"
+              }
+            }
+          },
+          {
             "render": {
               "screens": [
-                "SCREEN_TARGET_NEW_SESSION"
+                "SCREEN_TARGET_HOME",
+                "SCREEN_TARGET_PROJECT",
+                "SCREEN_TARGET_NEW_SESSION",
+                "SCREEN_TARGET_SYNC_STATE"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "effects": {
+        "effects": [
+          {
+            "render": {
+              "screens": [
+                "SCREEN_TARGET_HOME",
+                "SCREEN_TARGET_PROJECT",
+                "SCREEN_TARGET_NEW_SESSION",
+                "SCREEN_TARGET_SYNC_STATE"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "effects": {
+        "effects": [
+          {
+            "render": {
+              "screens": [
+                "SCREEN_TARGET_HOME",
+                "SCREEN_TARGET_PROJECT",
+                "SCREEN_TARGET_NEW_SESSION",
+                "SCREEN_TARGET_SYNC_STATE"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "effects": {
+        "effects": [
+          {
+            "render": {
+              "screens": [
+                "SCREEN_TARGET_HOME",
+                "SCREEN_TARGET_PROJECT",
+                "SCREEN_TARGET_NEW_SESSION",
+                "SCREEN_TARGET_SYNC_STATE"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "effects": {
+        "effects": [
+          {
+            "render": {
+              "screens": [
+                "SCREEN_TARGET_NEW_SESSION",
+                "SCREEN_TARGET_SYNC_STATE"
               ]
             }
           }
         ]
       },
       "views": {
-        "offlineWithDraftChoices": {
+        "readyToSubmit": {
           "newSession": {
             "projectKey": "/Users/me/Code/app",
             "projectName": {
@@ -216,13 +496,17 @@
             },
             "shortPath": "~/Code/app",
             "hasProjects": true,
-            "prompt": "Fix broken build",
+            "prompt": "Ship M2 core",
             "drafting": true,
+            "settled": true,
             "config": {
-              "machineId": "m-off",
-              "agent": "AGENT_CODEX"
+              "machineId": "m-on",
+              "agent": "AGENT_CODEX",
+              "model": "gpt-5.4",
+              "effort": "high",
+              "mode": "APPROVAL_MODE_AUTO"
             },
-            "machineName": "OldMac",
+            "machineName": "Workstation",
             "machineSelectable": true,
             "agentName": "Codex",
             "availableAgents": [
@@ -231,104 +515,77 @@
                 "displayName": "Codex",
                 "installed": true,
                 "selected": true
+              },
+              {
+                "agent": "AGENT_CLAUDE",
+                "displayName": "Claude Code",
+                "installed": true
               }
             ],
             "modelLabel": {
-              "key": "models.default"
+              "literal": "GPT-5.4"
             },
+            "effortLabel": "high",
             "defaultMode": {
-              "mode": "APPROVAL_MODE_ASK",
-              "known": true,
               "label": {
-                "key": "modes.default_named",
+                "key": "modes.default_agent",
                 "args": [
                   {
-                    "name": "mode",
-                    "textValue": {
-                      "key": "modes.ask"
-                    }
+                    "name": "agent",
+                    "strValue": "Codex"
                   }
                 ]
               }
             },
             "locationText": {
-              "key": "new_session.location_machine",
+              "key": "new_session.location_machine_cli",
               "args": [
                 {
                   "name": "machine",
-                  "strValue": "OldMac"
+                  "strValue": "Workstation"
                 },
                 {
                   "name": "project",
                   "strValue": "app"
-                }
-              ]
-            },
-            "notices": [
-              {
-                "kind": "NOTICE_KIND_OFFLINE_DRAFT_CHOICES",
-                "severity": "NOTICE_SEVERITY_WARN",
-                "text": {
-                  "key": "new_session.offline_draft",
-                  "args": [
-                    {
-                      "name": "name",
-                      "strValue": "OldMac"
-                    }
-                  ]
                 },
-                "hasDraftChoices": true,
-                "draftTitle": {
-                  "key": "new_session.offline_draft",
-                  "args": [
-                    {
-                      "name": "name",
-                      "strValue": "OldMac"
-                    }
-                  ]
-                },
-                "draftSubtitle": {
-                  "key": "new_session.draft_kept"
-                },
-                "draftChoices": [
-                  {
-                    "machineId": "m-on",
-                    "title": {
-                      "key": "new_session.use_machine",
-                      "args": [
-                        {
-                          "name": "name",
-                          "strValue": "Workstation"
-                        }
-                      ]
-                    },
-                    "config": {
-                      "machineId": "m-on",
-                      "agent": "AGENT_CODEX"
-                    }
-                  }
-                ]
-              }
-            ],
-            "disabledReason": {
-              "key": "new_session.offline_no_start_named",
-              "args": [
                 {
-                  "name": "name",
-                  "strValue": "OldMac"
+                  "name": "cli",
+                  "strValue": "Codex"
                 }
               ]
             },
+            "canStart": true,
             "modelPanel": {
               "defaultModelLabel": {
-                "key": "models.default"
+                "key": "models.default_named",
+                "args": [
+                  {
+                    "name": "model",
+                    "strValue": "GPT-5.4"
+                  }
+                ]
               },
-              "defaultModelChecked": true,
+              "models": [
+                {
+                  "slug": "gpt-5.4",
+                  "displayName": "GPT-5.4",
+                  "checked": true,
+                  "supportsAuto": true
+                }
+              ],
+              "effortChoices": [
+                "medium",
+                "high"
+              ],
+              "selectedEffort": "high",
+              "effortTitle": {
+                "key": "models.effort"
+              },
+              "panelEnabled": true,
               "machineChoices": [
                 {
                   "machineId": "m-off",
                   "name": "OldMac",
-                  "selected": true,
                   "note": {
                     "key": "common.offline"
                   }
@@ -337,6 +594,7 @@
                   "machineId": "m-on",
                   "name": "Workstation",
                   "online": true,
+                  "selected": true,
                   "note": {
                     "join": [
                       {
@@ -367,53 +625,27 @@
       "effects": {
         "effects": [
           {
-            "sendCommand": {
-              "requestId": "cmd-1",
-              "machineId": "m-on",
-              "command": {
-                "listModels": {
-                  "agent": "AGENT_CODEX"
-                }
-              }
+            "requestEntropy": {
+              "minIds": 16
             }
           },
           {
-            "sendCommand": {
-              "requestId": "cmd-2",
+            "dispatchCommand": {
+              "requestId": "req-start-1",
+              "attemptId": "att-start-1",
               "machineId": "m-on",
-              "command": {
-                "getSettings": {}
-              }
+              "deadlineMs": "1791078120120",
+              "commandBytes": "ogE8ChIvVXNlcnMvbWUvQ29kZS9hcHAiDFNoaXAgTTIgY29yZSoHZ3B0LTUuNDIEaGlnaDgCQAFKBWltZy0xoAYQ",
+              "routeHint": "COMMAND_ROUTE_HINT_NORMAL"
             }
           },
           {
             "render": {
               "screens": [
-                "SCREEN_TARGET_NEW_SESSION"
-              ]
-            }
-          }
-        ]
-      }
-    },
-    {
-      "effects": {
-        "effects": [
-          {
-            "sendCommand": {
-              "requestId": "cmd-3",
-              "machineId": "m-on",
-              "command": {
-                "listModels": {
-                  "agent": "AGENT_CLAUDE"
-                }
-              }
-            }
-          },
-          {
-            "render": {
-              "screens": [
-                "SCREEN_TARGET_NEW_SESSION"
+                "SCREEN_TARGET_HOME",
+                "SCREEN_TARGET_PROJECT",
+                "SCREEN_TARGET_NEW_SESSION",
+                "SCREEN_TARGET_SYNC_STATE"
               ]
             }
           }
@@ -426,243 +658,10 @@
           {
             "render": {
               "screens": [
-                "SCREEN_TARGET_NEW_SESSION"
-              ]
-            }
-          }
-        ]
-      }
-    },
-    {
-      "effects": {
-        "effects": [
-          {
-            "render": {
-              "screens": [
-                "SCREEN_TARGET_NEW_SESSION"
-              ]
-            }
-          }
-        ]
-      },
-      "views": {
-        "readyToSubmit": {
-          "newSession": {
-            "projectKey": "/Users/me/Code/app",
-            "projectName": {
-              "literal": "app"
-            },
-            "shortPath": "~/Code/app",
-            "hasProjects": true,
-            "prompt": "Fix broken build",
-            "drafting": true,
-            "config": {
-              "machineId": "m-on",
-              "agent": "AGENT_CLAUDE",
-              "model": "claude-sonnet",
-              "effort": "high"
-            },
-            "machineName": "Workstation",
-            "machineSelectable": true,
-            "agentName": "Claude Code",
-            "availableAgents": [
-              {
-                "agent": "AGENT_CLAUDE",
-                "displayName": "Claude Code",
-                "installed": true,
-                "selected": true
-              },
-              {
-                "agent": "AGENT_CODEX",
-                "displayName": "Codex",
-                "installed": true
-              }
-            ],
-            "modelLabel": {
-              "literal": "Sonnet 5.5"
-            },
-            "effortLabel": "high",
-            "defaultMode": {
-              "mode": "APPROVAL_MODE_AUTO",
-              "known": true,
-              "label": {
-                "key": "modes.default_named",
-                "args": [
-                  {
-                    "name": "mode",
-                    "textValue": {
-                      "key": "modes.auto"
-                    }
-                  }
-                ]
-              }
-            },
-            "locationText": {
-              "key": "new_session.location_machine_cli",
-              "args": [
-                {
-                  "name": "machine",
-                  "strValue": "Workstation"
-                },
-                {
-                  "name": "project",
-                  "strValue": "app"
-                },
-                {
-                  "name": "cli",
-                  "strValue": "Claude Code"
-                }
-              ]
-            },
-            "notices": [
-              {
-                "kind": "NOTICE_KIND_READING_PREVIOUS",
-                "severity": "NOTICE_SEVERITY_INFO",
-                "text": {
-                  "key": "new_session.reading_previous"
-                }
-              }
-            ],
-            "canStart": true,
-            "modelPanel": {
-              "defaultModelLabel": {
-                "key": "models.default_named",
-                "args": [
-                  {
-                    "name": "model",
-                    "strValue": "Haiku 4.5"
-                  }
-                ]
-              },
-              "models": [
-                {
-                  "slug": "claude-haiku",
-                  "displayName": "Haiku 4.5"
-                },
-                {
-                  "slug": "claude-sonnet",
-                  "displayName": "Sonnet 5.5",
-                  "checked": true,
-                  "supportsAuto": true,
-                  "supports1m": true
-                }
-              ],
-              "effortChoices": [
-                "low",
-                "medium",
-                "high"
-              ],
-              "selectedEffort": "high",
-              "effortTitle": {
-                "key": "models.effort"
-              },
-              "supportsContextWindow": true,
-              "contextNote": {
-                "key": "models.extended_window"
-              },
-              "panelEnabled": true,
-              "machineChoices": [
-                {
-                  "machineId": "m-off",
-                  "name": "OldMac",
-                  "note": {
-                    "key": "common.offline"
-                  }
-                },
-                {
-                  "machineId": "m-on",
-                  "name": "Workstation",
-                  "online": true,
-                  "selected": true,
-                  "note": {
-                    "join": [
-                      {
-                        "key": "common.online"
-                      },
-                      {
-                        "key": "new_session.reading_cli",
-                        "args": [
-                          {
-                            "name": "agent",
-                            "strValue": "Claude Code"
-                          }
-                        ]
-                      }
-                    ],
-                    "separatorKey": "common.note_separator"
-                  }
-                }
-              ],
-              "canSelectAutoMode": true
-            },
-            "autoIssue": "AUTO_ISSUE_KIND_NONE"
-          }
-        }
-      }
-    },
-    {
-      "effects": {
-        "effects": [
-          {
-            "saveProjectPrefs": {
-              "opId": "op-5",
-              "kind": "PROJECT_PREFS_OP_KIND_SET_SETTINGS",
-              "path": "/Users/me/Code/app",
-              "settings": {
-                "path": "/Users/me/Code/app",
-                "agent": "AGENT_CLAUDE",
-                "machineId": "m-off",
-                "updatedMs": "1791078060000"
-              },
-              "atMs": "1791078060000",
-              "nextPrefs": {
-                "schema": 1,
-                "recentOps": [
-                  "op-5"
-                ],
-                "settings": [
-                  {
-                    "path": "/Users/me/Code/app",
-                    "agent": "AGENT_CLAUDE",
-                    "machineId": "m-off",
-                    "updatedMs": "1791078060000"
-                  }
-                ]
-              }
-            }
-          },
-          {
-            "sendCommand": {
-              "requestId": "create-4",
-              "machineId": "m-on",
-              "command": {
-                "createSession": {
-                  "cwd": "/Users/me/Code/app",
-                  "prompt": "Fix broken build",
-                  "model": "claude-sonnet",
-                  "effort": "high",
-                  "agent": "AGENT_CLAUDE"
-                }
-              }
-            }
-          },
-          {
-            "render": {
-              "screens": [
-                "SCREEN_TARGET_NEW_SESSION"
-              ]
-            }
-          }
-        ]
-      }
-    },
-    {
-      "effects": {
-        "effects": [
-          {
-            "render": {
-              "screens": [
-                "SCREEN_TARGET_NEW_SESSION"
+                "SCREEN_TARGET_HOME",
+                "SCREEN_TARGET_PROJECT",
+                "SCREEN_TARGET_NEW_SESSION",
+                "SCREEN_TARGET_SYNC_STATE"
               ]
             }
           }
@@ -677,46 +676,44 @@
             },
             "shortPath": "~/Code/app",
             "hasProjects": true,
-            "prompt": "Fix broken build",
+            "prompt": "Ship M2 core",
             "drafting": true,
+            "settled": true,
             "frozen": true,
             "config": {
               "machineId": "m-on",
-              "agent": "AGENT_CLAUDE",
-              "model": "claude-sonnet",
-              "effort": "high"
+              "agent": "AGENT_CODEX",
+              "model": "gpt-5.4",
+              "effort": "high",
+              "mode": "APPROVAL_MODE_AUTO"
             },
             "machineName": "Workstation",
             "machineSelectable": true,
-            "agentName": "Claude Code",
+            "agentName": "Codex",
             "availableAgents": [
               {
-                "agent": "AGENT_CLAUDE",
-                "displayName": "Claude Code",
+                "agent": "AGENT_CODEX",
+                "displayName": "Codex",
                 "installed": true,
                 "selected": true
               },
               {
-                "agent": "AGENT_CODEX",
-                "displayName": "Codex",
+                "agent": "AGENT_CLAUDE",
+                "displayName": "Claude Code",
                 "installed": true
               }
             ],
             "modelLabel": {
-              "literal": "Sonnet 5.5"
+              "literal": "GPT-5.4"
             },
             "effortLabel": "high",
             "defaultMode": {
-              "mode": "APPROVAL_MODE_AUTO",
-              "known": true,
               "label": {
-                "key": "modes.default_named",
+                "key": "modes.default_agent",
                 "args": [
                   {
-                    "name": "mode",
-                    "textValue": {
-                      "key": "modes.auto"
-                    }
+                    "name": "agent",
+                    "strValue": "Codex"
                   }
                 ]
               }
@@ -734,7 +731,7 @@
                 },
                 {
                   "name": "cli",
-                  "strValue": "Claude Code"
+                  "strValue": "Codex"
                 }
               ]
             },
@@ -747,7 +744,9 @@
                   "args": [
                     {
                       "name": "reason",
-                      "strValue": "ack lost"
+                      "textValue": {
+                        "key": "errors.the_computer_s_reply_could_not_be_verified_command"
+                      }
                     }
                   ]
                 },
@@ -761,35 +760,25 @@
                 "args": [
                   {
                     "name": "model",
-                    "strValue": "Haiku 4.5"
+                    "strValue": "GPT-5.4"
                   }
                 ]
               },
               "models": [
                 {
-                  "slug": "claude-haiku",
-                  "displayName": "Haiku 4.5"
-                },
-                {
-                  "slug": "claude-sonnet",
-                  "displayName": "Sonnet 5.5",
+                  "slug": "gpt-5.4",
+                  "displayName": "GPT-5.4",
                   "checked": true,
-                  "supportsAuto": true,
-                  "supports1m": true
+                  "supportsAuto": true
                 }
               ],
               "effortChoices": [
-                "low",
                 "medium",
                 "high"
               ],
               "selectedEffort": "high",
               "effortTitle": {
                 "key": "models.effort"
-              },
-              "supportsContextWindow": true,
-              "contextNote": {
-                "key": "models.extended_window"
               },
               "machineChoices": [
                 {
@@ -814,7 +803,7 @@
                         "args": [
                           {
                             "name": "agent",
-                            "strValue": "Claude Code"
+                            "strValue": "Codex"
                           }
                         ]
                       }
@@ -834,53 +823,28 @@
       "effects": {
         "effects": [
           {
-            "saveProjectPrefs": {
-              "opId": "op-6",
-              "kind": "PROJECT_PREFS_OP_KIND_SET_SETTINGS",
-              "path": "/Users/me/Code/app",
-              "settings": {
-                "path": "/Users/me/Code/app",
-                "agent": "AGENT_CLAUDE",
-                "machineId": "m-off",
-                "updatedMs": "1791078060000"
-              },
-              "atMs": "1791078060000",
-              "nextPrefs": {
-                "schema": 1,
-                "recentOps": [
-                  "op-5",
-                  "op-6"
-                ],
-                "settings": [
-                  {
-                    "path": "/Users/me/Code/app",
-                    "agent": "AGENT_CLAUDE",
-                    "machineId": "m-off",
-                    "updatedMs": "1791078060000"
-                  }
-                ]
-              }
+            "requestEntropy": {
+              "minIds": 16
             }
           },
           {
-            "sendCommand": {
-              "requestId": "create-4",
+            "dispatchCommand": {
+              "requestId": "req-start-1",
+              "attemptId": "att-start-2",
               "machineId": "m-on",
-              "command": {
-                "createSession": {
-                  "cwd": "/Users/me/Code/app",
-                  "prompt": "Fix broken build",
-                  "model": "claude-sonnet",
-                  "effort": "high",
-                  "agent": "AGENT_CLAUDE"
-                }
-              }
+              "deadlineMs": "1791078120120",
+              "commandBytes": "ogE8ChIvVXNlcnMvbWUvQ29kZS9hcHAiDFNoaXAgTTIgY29yZSoHZ3B0LTUuNDIEaGlnaDgCQAFKBWltZy0xoAYQ",
+              "routeHint": "COMMAND_ROUTE_HINT_NORMAL",
+              "retryOfUnknown": true
             }
           },
           {
             "render": {
               "screens": [
-                "SCREEN_TARGET_NEW_SESSION"
+                "SCREEN_TARGET_HOME",
+                "SCREEN_TARGET_PROJECT",
+                "SCREEN_TARGET_NEW_SESSION",
+                "SCREEN_TARGET_SYNC_STATE"
               ]
             }
           }
@@ -891,15 +855,32 @@
       "effects": {
         "effects": [
           {
+            "attachmentsSettled": {
+              "projectKey": "/Users/me/Code/app",
+              "requestId": "req-start-1",
+              "consumed": true
+            }
+          },
+          {
             "navigate": {
               "route": "NAVIGATE_ROUTE_SESSION",
-              "sessionId": "s-created"
+              "projectKey": "/Users/me/Code/app",
+              "sessionId": "s-new",
+              "machineId": "m-on"
+            }
+          },
+          {
+            "requestEntropy": {
+              "minIds": 16
             }
           },
           {
             "render": {
               "screens": [
-                "SCREEN_TARGET_NEW_SESSION"
+                "SCREEN_TARGET_HOME",
+                "SCREEN_TARGET_PROJECT",
+                "SCREEN_TARGET_NEW_SESSION",
+                "SCREEN_TARGET_SYNC_STATE"
               ]
             }
           }
@@ -914,43 +895,41 @@
             },
             "shortPath": "~/Code/app",
             "hasProjects": true,
+            "settled": true,
             "config": {
               "machineId": "m-on",
-              "agent": "AGENT_CLAUDE",
-              "model": "claude-sonnet",
-              "effort": "high"
+              "agent": "AGENT_CODEX",
+              "model": "gpt-5.4",
+              "effort": "high",
+              "mode": "APPROVAL_MODE_AUTO"
             },
             "machineName": "Workstation",
             "machineSelectable": true,
-            "agentName": "Claude Code",
+            "agentName": "Codex",
             "availableAgents": [
               {
-                "agent": "AGENT_CLAUDE",
-                "displayName": "Claude Code",
+                "agent": "AGENT_CODEX",
+                "displayName": "Codex",
                 "installed": true,
                 "selected": true
               },
               {
-                "agent": "AGENT_CODEX",
-                "displayName": "Codex",
+                "agent": "AGENT_CLAUDE",
+                "displayName": "Claude Code",
                 "installed": true
               }
             ],
             "modelLabel": {
-              "literal": "Sonnet 5.5"
+              "literal": "GPT-5.4"
             },
             "effortLabel": "high",
             "defaultMode": {
-              "mode": "APPROVAL_MODE_AUTO",
-              "known": true,
               "label": {
-                "key": "modes.default_named",
+                "key": "modes.default_agent",
                 "args": [
                   {
-                    "name": "mode",
-                    "textValue": {
-                      "key": "modes.auto"
-                    }
+                    "name": "agent",
+                    "strValue": "Codex"
                   }
                 ]
               }
@@ -968,19 +947,10 @@
                 },
                 {
                   "name": "cli",
-                  "strValue": "Claude Code"
+                  "strValue": "Codex"
                 }
               ]
             },
-            "notices": [
-              {
-                "kind": "NOTICE_KIND_READING_PREVIOUS",
-                "severity": "NOTICE_SEVERITY_INFO",
-                "text": {
-                  "key": "new_session.reading_previous"
-                }
-              }
-            ],
             "disabledReason": {
               "key": "new_session.first_message"
             },
@@ -990,35 +960,25 @@
                 "args": [
                   {
                     "name": "model",
-                    "strValue": "Haiku 4.5"
+                    "strValue": "GPT-5.4"
                   }
                 ]
               },
               "models": [
                 {
-                  "slug": "claude-haiku",
-                  "displayName": "Haiku 4.5"
-                },
-                {
-                  "slug": "claude-sonnet",
-                  "displayName": "Sonnet 5.5",
+                  "slug": "gpt-5.4",
+                  "displayName": "GPT-5.4",
                   "checked": true,
-                  "supportsAuto": true,
-                  "supports1m": true
+                  "supportsAuto": true
                 }
               ],
               "effortChoices": [
-                "low",
                 "medium",
                 "high"
               ],
               "selectedEffort": "high",
               "effortTitle": {
                 "key": "models.effort"
-              },
-              "supportsContextWindow": true,
-              "contextNote": {
-                "key": "models.extended_window"
               },
               "panelEnabled": true,
               "machineChoices": [
@@ -1044,7 +1004,7 @@
                         "args": [
                           {
                             "name": "agent",
-                            "strValue": "Claude Code"
+                            "strValue": "Codex"
                           }
                         ]
                       }

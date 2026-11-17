@@ -56,6 +56,32 @@ func ArgText(name string, val *corev1.Text) *corev1.TextArg {
 	}
 }
 
+// Time constructs a standalone timestamp Text formatted by the shell in its local timezone and locale.
+func Time(unixMs int64, style corev1.TimestampStyle) *corev1.Text {
+	if unixMs <= 0 {
+		return nil
+	}
+	return &corev1.Text{
+		Timestamp: &corev1.TimestampArg{
+			UnixMs: unixMs,
+			Style:  style,
+		},
+	}
+}
+
+// ArgTimestamp constructs a timestamp TextArg formatted by the shell in its local timezone and locale.
+func ArgTimestamp(name string, unixMs int64, style corev1.TimestampStyle) *corev1.TextArg {
+	return &corev1.TextArg{
+		Name: name,
+		Value: &corev1.TextArg_TimestampValue{
+			TimestampValue: &corev1.TimestampArg{
+				UnixMs: unixMs,
+				Style:  style,
+			},
+		},
+	}
+}
+
 // Join joins non-empty Text segments using a localizable separator message key.
 func Join(separatorKey string, parts ...*corev1.Text) *corev1.Text {
 	filtered := filterNonEmpty(parts)
@@ -91,12 +117,12 @@ func SpokenJoin(parts ...*corev1.Text) *corev1.Text {
 	return Join(KeyCommonIosSpokenSeparator, parts...)
 }
 
-// IsEmpty reports whether t contains no message key, literal text, or join segments.
+// IsEmpty reports whether t contains no message key, literal text, timestamp, or join segments.
 func IsEmpty(t *corev1.Text) bool {
 	if t == nil {
 		return true
 	}
-	return t.Key == "" && t.Literal == "" && len(t.Join) == 0
+	return t.Key == "" && t.Literal == "" && len(t.Join) == 0 && t.Timestamp == nil
 }
 
 func filterNonEmpty(parts []*corev1.Text) []*corev1.Text {

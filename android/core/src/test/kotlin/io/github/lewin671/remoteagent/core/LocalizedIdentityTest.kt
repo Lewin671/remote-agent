@@ -26,7 +26,7 @@ class LocalizedIdentityTest {
             java.net.UnknownHostException("raw resolver failure"), javax.net.ssl.SSLException("raw certificate failure"),
             ConnectException(Code.UNKNOWN, "raw reply", Exception("raw reply")),
             ConnectException(Code.UNAUTHENTICATED, "raw token failure"),
-            MessageException(UiMessages.errorsAndroidCannotVerifyTheCurrentRequest().messageText()),
+            MessageException(UiMessages.errorsConnectionDroppedMidway().messageText()),
         )
         for (locale in listOf("zh-CN", "en")) for (error in cases) {
             val rawDetail = detailText(error)

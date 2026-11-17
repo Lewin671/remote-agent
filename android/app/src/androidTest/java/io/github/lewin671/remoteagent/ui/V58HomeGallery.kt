@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Density
-import io.github.lewin671.remoteagent.core.HomeScope
 import io.github.lewin671.remoteagent.core.Link
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -154,11 +153,12 @@ class V58HomeGallery {
     )
 
     /** Shows the home page with [state] and [history] in [scope], then saves it light and dark (and large when [large]) as [name]. */
-    private fun shoot(name: String, state: RemoteState, history: Map<String, List<Event>> = emptyMap(), scope: HomeScope? = null, large: Boolean = false, then: (() -> Unit)? = null) {
+    private fun shoot(name: String, state: RemoteState, history: Map<String, List<Event>> = emptyMap(), scope: String? = null, large: Boolean = false, then: (() -> Unit)? = null) {
         val shown = if (state.conn == ConnState.ONLINE) state.copy(link = Link.ONLINE, synced = true) else state
-        remote.showForTest(shown, history, emptyMap(), history.mapValues { (sid, list) -> liveOf(state.sessions[sid], list) })
         val context = InstrumentationRegistry.getInstrumentation().targetContext
-        if (scope != null) HomeScopes.choose(context, remote.account.localKey, scope) else HomeScopes.clear(context)
+        HomeScopes.clear(context)
+        remote.showForTest(shown, history, emptyMap(), history.mapValues { (sid, list) -> liveOf(state.sessions[sid], list) })
+        if (scope != null) remote.coreHost.setHomeScope(scope) else remote.coreHost.setHomeScope("")
         ui.setContent {
             val base = LocalDensity.current
             RaTheme(if (dark) DarkPalette else LightPalette) {
@@ -241,7 +241,7 @@ class V58HomeGallery {
 
     @Test fun quiet() = shoot("04-running", state(running + ended), large = true)
 
-    @Test fun projectScope() = shoot("05-scope-foo", state(mapOf(waiting(false).entries.first { it.key == "dep" }.toPair()) + running + ended), history, scope = HomeScope.Of(foo))
+    @Test fun projectScope() = shoot("05-scope-foo", state(mapOf(waiting(false).entries.first { it.key == "dep" }.toPair()) + running + ended), history, scope = foo)
 
     @Test fun scopeMenu() = shoot("06-scope-menu", state(running + ended)) {
         ui.onNodeWithTag("scope-title").performClick()
@@ -253,7 +253,7 @@ class V58HomeGallery {
         "08-empty-project",
         state(running).copy(prefs = PrefsObject(1, ProjectPrefs.newBuilder().setSchema(1).addPinned(ProjectPref.newBuilder().setPath(foo))
             .addSettings(io.github.lewin671.remoteagent.proto.ProjectSettings.newBuilder().setPath("$home/Code/ai-bot").setMachineId("mac")).build())),
-        scope = HomeScope.Of("$home/Code/ai-bot"),
+        scope = "$home/Code/ai-bot",
     )
 
     @Test fun noNetwork() = shoot("09-no-network", state(waiting(false) + running + ended, Link.NO_NETWORK), history)

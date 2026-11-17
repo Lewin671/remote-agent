@@ -190,6 +190,7 @@ type NewSessionConfig struct {
 	Model           string
 	Effort          string
 	StandardContext bool
+	Mode            v1.ApprovalMode
 }
 
 func (m *NewSessionConfig) Reset() {
@@ -228,6 +229,12 @@ func (m *NewSessionConfig) GetStandardContext() bool {
 	}
 	return false
 }
+func (m *NewSessionConfig) GetMode() v1.ApprovalMode {
+	if m != nil {
+		return m.Mode
+	}
+	return 0
+}
 
 func (m *NewSessionConfig) Clone() *NewSessionConfig {
 	if m == nil {
@@ -250,6 +257,7 @@ func (m *NewSessionConfig) AppendMarshal(b []byte) []byte {
 	b = litewire.AppendString(b, 3, m.Model)
 	b = litewire.AppendString(b, 4, m.Effort)
 	b = litewire.AppendBool(b, 5, m.StandardContext)
+	b = litewire.AppendInt32(b, 6, int32(m.Mode))
 	return b
 }
 
@@ -303,6 +311,15 @@ func (m *NewSessionConfig) Unmarshal(b []byte) error {
 					return err
 				}
 				m.StandardContext = protowire.DecodeBool(v)
+				continue
+			}
+		case 6:
+			if wtyp == protowire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.Mode = v1.ApprovalMode(int32(v))
 				continue
 			}
 		}

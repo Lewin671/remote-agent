@@ -67,11 +67,13 @@ class ScheduleLocalE2ETest {
         ui.waitUntil(60_000) { remote.state.value.machines.values.any { it.online } }
         val machine=remote.state.value.machines.values.first { it.online }.id
         // Seed a throwaway project preference; task creation and every task operation use the UI.
-        runBlocking(Dispatchers.IO) {
-            val project=requireNotNull(args.getString("scheduleProject"))
-            remote.changePrefs(PrefsOp.SetSettings(project,machine,agent=Agent.AGENT_CLAUDE,sets=listOf(AgentSettings.newBuilder().setAgent(Agent.AGENT_CLAUDE).setModel("haiku").setMode(ApprovalMode.APPROVAL_MODE_AUTO).build())))
-            remote.changePrefs(PrefsOp.Pin(project))
-        }
+        val project = requireNotNull(args.getString("scheduleProject"))
+        remote.coreHost.openNewSession(project)
+        remote.coreHost.selectNewSessionMachine(machine)
+        remote.coreHost.selectNewSessionAgent(Agent.AGENT_CLAUDE)
+        remote.coreHost.selectNewSessionModel("haiku", "", mode = ApprovalMode.APPROVAL_MODE_AUTO)
+        remote.coreHost.toggleProjectPin(project)
+        ui.waitUntil(10_000) { isPinned(remote.state.value, project) }
         ui.onNodeWithText("定时",useUnmergedTree=true).performClick()
         waitText("定时任务")
         ui.onNodeWithContentDescription("新任务").performClick()

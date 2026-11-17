@@ -125,24 +125,23 @@ type PendingAction struct {
 
 // Session represents one session known to the client core.
 type Session struct {
-	ID                string
-	MachineID         string
-	Info              *v1.Session
-	UpdatedMs         int64
-	ListedEndedMs     int64
-	Preview           string
-	Summary           string
-	Pending           PendingAction
-	ScheduleName      string
-	ScheduleUnread    bool
-	CreatedLocalHhmm  string
-	EndedLocalYear    int32
-	EndedLocalMonth   int32
-	UpdatedLocalYear  int32
-	UpdatedLocalMonth int32
-	UpdatedLocalDay   int32
-	UpdatedLocalWeek0 int32
-	UpdatedLocalHhmm  string
+	ID             string
+	MachineID      string
+	Info           *v1.Session
+	UpdatedMs      int64
+	ListedEndedMs  int64
+	Preview        string
+	Summary        string
+	Pending        PendingAction
+	ScheduleName   string
+	ScheduleUnread bool
+}
+
+// MonthStart marks the Unix-millisecond boundary where a local calendar month begins.
+type MonthStart struct {
+	Year    int32
+	Month   int32
+	StartMs int64
 }
 
 // Calendar holds host-computed local calendar boundaries and current wall clock.
@@ -153,6 +152,7 @@ type Calendar struct {
 	WeekStartMs      int64
 	NowYear          int32
 	UTCOffsetMinutes int32
+	Months           []MonthStart
 }
 
 // World holds the domain inputs used to derive home, project, and new-session state.
@@ -211,6 +211,7 @@ type EndedGroup struct {
 	Year         int32
 	Month        int32
 	WeekdayIndex int32
+	RepMs        int64
 }
 
 // DefaultMode describes a machine/CLI's resolved default approval mode.

@@ -121,15 +121,20 @@ object CleanupDraft {
  * words in the box after what was already there. Nothing is sent. The project's key, or null (the prompt is held for the
  * chooser) when the computer has no project yet.
  */
-fun prepareCleanupDraft(state: RemoteState, machine: String, prompt: String): String? {
+fun prepareCleanupDraft(
+    state: RemoteState,
+    machine: String,
+    prompt: String,
+    coreHost: io.github.lewin671.remoteagent.core.CoreHost? = null,
+): String? {
     val project = state.machines[machine]?.meta?.let { recentMachineProject(it) }
     if (project == null) {
         CleanupDraft.hold(machine, prompt)
         return null
     }
-    val seed = projectStart(state, project, machine = machine)
-    val entry = Drafts.newSession(project, seed?.config, seed?.settled != false)
-    projectConfig(state, project, null, machine)?.let { entry.config.choose(it) }
-    entry.text.value = cleanupDraft(entry.text.value, prompt)
+    val draft = ImageDrafts.forProject(project).text
+    draft.value = cleanupDraft(draft.value, prompt)
+    coreHost?.openNewSession(project)
+    coreHost?.selectNewSessionMachine(machine)
     return project
 }

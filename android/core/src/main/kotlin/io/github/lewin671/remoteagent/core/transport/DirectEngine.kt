@@ -802,7 +802,7 @@ internal class DirectEngine(
 
     /** `probe` takes a warm-up sample on the direct path whatever the routing
      * prefers; the routing already bounded it. */
-    fun attempt(id: String, hint: RouteHint, handoff: () -> Unit, probe: Boolean = false): PathAttempt? {
+    fun attempt(id: String, hint: RouteHint, handoff: () -> Unit, probe: Boolean = false, attemptId: String = newRequestId()): PathAttempt? {
         val chosen = synchronized(stateLock) {
             if (probe) {
                 if (hint !is RouteHint.Read || !readyLocked(id, hint)) return@synchronized null
@@ -816,7 +816,7 @@ internal class DirectEngine(
         } ?: return null
 
         val (peer, use, path) = chosen
-        val attemptId = newRequestId()
+        val resolvedAttemptId = attemptId
         val tracking = track(id, hint)
         fun isCurrent(): Boolean = synchronized(stateLock) {
             peers[id] === peer && peer.paths[use] === path && readyLocked(id, hint)
@@ -824,7 +824,7 @@ internal class DirectEngine(
 
         return object : PathAttempt {
             override val direct = true
-            override val attemptId = attemptId
+            override val attemptId = resolvedAttemptId
             override suspend fun prepare(prior: Boolean) {
                 if (!isCurrent()) throw PathChanged()
             }

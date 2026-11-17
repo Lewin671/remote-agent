@@ -9,6 +9,96 @@ import (
 	math "math"
 )
 
+type TimestampStyle int32
+
+const (
+	TimestampStyle_TIMESTAMP_STYLE_UNSPECIFIED    TimestampStyle = 0
+	TimestampStyle_TIMESTAMP_STYLE_TIME           TimestampStyle = 1
+	TimestampStyle_TIMESTAMP_STYLE_WEEKDAY        TimestampStyle = 2
+	TimestampStyle_TIMESTAMP_STYLE_MONTH_DAY      TimestampStyle = 3
+	TimestampStyle_TIMESTAMP_STYLE_MONTH_DAY_TIME TimestampStyle = 4
+	TimestampStyle_TIMESTAMP_STYLE_DATE           TimestampStyle = 5
+	TimestampStyle_TIMESTAMP_STYLE_DATE_TIME      TimestampStyle = 6
+)
+
+type TimestampArg struct {
+	UnixMs int64
+	Style  TimestampStyle
+}
+
+func (m *TimestampArg) Reset() {
+	if m != nil {
+		*m = TimestampArg{}
+	}
+}
+
+func (m *TimestampArg) GetUnixMs() int64 {
+	if m != nil {
+		return m.UnixMs
+	}
+	return 0
+}
+func (m *TimestampArg) GetStyle() TimestampStyle {
+	if m != nil {
+		return m.Style
+	}
+	return 0
+}
+
+func (m *TimestampArg) Clone() *TimestampArg {
+	if m == nil {
+		return nil
+	}
+	cp := *m
+	return &cp
+}
+
+func (m *TimestampArg) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *TimestampArg) AppendMarshal(b []byte) []byte {
+	if m == nil {
+		return b
+	}
+	b = litewire.AppendVarint(b, 1, uint64(m.UnixMs))
+	b = litewire.AppendInt32(b, 2, int32(m.Style))
+	return b
+}
+
+func (m *TimestampArg) Unmarshal(b []byte) error {
+	for len(b) > 0 {
+		num, wtyp, err := litewire.ReadTag(&b)
+		if err != nil {
+			return err
+		}
+		switch num {
+		case 1:
+			if wtyp == protowire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.UnixMs = int64(v)
+				continue
+			}
+		case 2:
+			if wtyp == protowire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.Style = TimestampStyle(int32(v))
+				continue
+			}
+		}
+		if err := litewire.Skip(&b, num, wtyp); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 type Text struct {
 	Key              string
 	Args             []*TextArg
@@ -16,6 +106,7 @@ type Text struct {
 	Join             []*Text
 	SeparatorKey     string
 	SeparatorLiteral string
+	Timestamp        *TimestampArg
 }
 
 func (m *Text) Reset() {
@@ -60,6 +151,12 @@ func (m *Text) GetSeparatorLiteral() string {
 	}
 	return ""
 }
+func (m *Text) GetTimestamp() *TimestampArg {
+	if m != nil {
+		return m.Timestamp
+	}
+	return nil
+}
 
 func (m *Text) Clone() *Text {
 	if m == nil {
@@ -78,6 +175,7 @@ func (m *Text) Clone() *Text {
 			cp.Join[i] = v.Clone()
 		}
 	}
+	cp.Timestamp = m.Timestamp.Clone()
 	return &cp
 }
 
@@ -103,6 +201,9 @@ func (m *Text) AppendMarshal(b []byte) []byte {
 	}
 	b = litewire.AppendString(b, 5, m.SeparatorKey)
 	b = litewire.AppendString(b, 6, m.SeparatorLiteral)
+	if m.Timestamp != nil {
+		b = litewire.AppendBytesAlways(b, 7, m.Timestamp.AppendMarshal(nil))
+	}
 	return b
 }
 
@@ -175,6 +276,20 @@ func (m *Text) Unmarshal(b []byte) error {
 				m.SeparatorLiteral = v
 				continue
 			}
+		case 7:
+			if wtyp == protowire.BytesType {
+				raw, err := litewire.ReadBytesRaw(&b)
+				if err != nil {
+					return err
+				}
+				if m.Timestamp == nil {
+					m.Timestamp = &TimestampArg{}
+				}
+				if err := m.Timestamp.Unmarshal(raw); err != nil {
+					return err
+				}
+				continue
+			}
 		}
 		if err := litewire.Skip(&b, num, wtyp); err != nil {
 			return err
@@ -204,6 +319,10 @@ func (*TextArg_FloatValue) isTextArg_Value() {}
 type TextArg_TextValue struct{ TextValue *Text }
 
 func (*TextArg_TextValue) isTextArg_Value() {}
+
+type TextArg_TimestampValue struct{ TimestampValue *TimestampArg }
+
+func (*TextArg_TimestampValue) isTextArg_Value() {}
 
 func (m *TextArg) Reset() {
 	if m != nil {
@@ -247,6 +366,12 @@ func (m *TextArg) GetTextValue() *Text {
 	}
 	return nil
 }
+func (m *TextArg) GetTimestampValue() *TimestampArg {
+	if x, ok := m.GetValue().(*TextArg_TimestampValue); ok && x != nil {
+		return x.TimestampValue
+	}
+	return nil
+}
 
 func (m *TextArg) Clone() *TextArg {
 	if m == nil {
@@ -272,6 +397,10 @@ func (m *TextArg) Clone() *TextArg {
 	case *TextArg_TextValue:
 		if v != nil {
 			cp.Value = &TextArg_TextValue{TextValue: v.TextValue.Clone()}
+		}
+	case *TextArg_TimestampValue:
+		if v != nil {
+			cp.Value = &TextArg_TimestampValue{TimestampValue: v.TimestampValue.Clone()}
 		}
 	}
 	return &cp
@@ -303,6 +432,12 @@ func (m *TextArg) AppendMarshal(b []byte) []byte {
 		if x != nil {
 			if x.TextValue != nil {
 				b = litewire.AppendBytesAlways(b, 5, x.TextValue.AppendMarshal(nil))
+			}
+		}
+	case *TextArg_TimestampValue:
+		if x != nil {
+			if x.TimestampValue != nil {
+				b = litewire.AppendBytesAlways(b, 6, x.TimestampValue.AppendMarshal(nil))
 			}
 		}
 	}
@@ -369,6 +504,25 @@ func (m *TextArg) Unmarshal(b []byte) error {
 					return err
 				}
 				m.Value = &TextArg_TextValue{TextValue: sub}
+				continue
+			}
+		case 6:
+			if wtyp == protowire.BytesType {
+				raw, err := litewire.ReadBytesRaw(&b)
+				if err != nil {
+					return err
+				}
+				var sub *TimestampArg
+				if cur, ok := m.Value.(*TextArg_TimestampValue); ok && cur != nil {
+					sub = cur.TimestampValue
+				}
+				if sub == nil {
+					sub = &TimestampArg{}
+				}
+				if err := sub.Unmarshal(raw); err != nil {
+					return err
+				}
+				m.Value = &TextArg_TimestampValue{TimestampValue: sub}
 				continue
 			}
 		}

@@ -2,60 +2,90 @@
   "steps": [
     {
       "event": {
-        "connectionChanged": { "state": "CONN_STATE_CONNECTED", "livePushConnected": true }
+        "nowMs": "1791078060000",
+        "monoMs": "1000",
+        "randomIds": ["r1", "r2", "r3", "r4", "r5", "r6", "r7", "r8"],
+        "unitFloats": [0.5, 0.5, 0.5, 0.5, 0.5, 0.5],
+        "syncLifecycle": { "kind": "SYNC_LIFECYCLE_KIND_START" }
       }
     },
     {
       "event": {
-        "accountRoleChanged": { "isManager": true }
+        "nowMs": "1791078060010",
+        "securitySnapshot": {
+          "opId": "3",
+          "isMember": true,
+          "selfDeviceId": "dev-mgr",
+          "authorityDeviceId": "dev-mgr",
+          "leaseEndMs": "1791164460000"
+        }
       }
     },
     {
       "event": {
-        "machinesUpdated": { "listed": true, "machines": [] }
+        "nowMs": "1791078060020",
+        "tokenResult": { "opId": "2", "token": "tok-1" }
       }
     },
     {
       "event": {
-        "sessionsPageReceived": { "isRefresh": true, "hasMore": false }
-      },
-      "views": [
-        { "name": "emptyManager", "screen": { "home": {} } }
-      ]
+        "nowMs": "1791078060030",
+        "streamReady": { "legId": "1", "serverTimeMs": "1791078060030" }
+      }
     },
     {
       "event": {
-        "accountRoleChanged": { "isManager": false, "managerDeviceName": "Primary iPhone" }
-      },
-      "views": [
-        { "name": "emptyMember", "screen": { "home": {} } }
-      ]
-    },
-    {
-      "event": {
-        "machinesUpdated": {
-          "listed": true,
-          "machines": [
-            { "machineId": "m-off", "online": false, "meta": { "hostname": "Desktop.local" } }
+        "nowMs": "1791078060040",
+        "listsFetched": {
+          "opId": "4",
+          "devices": [
+            { "deviceId": "dev-mgr", "kind": "DEVICE_KIND_CLIENT", "meta": { "name": "Studio", "platform": "macOS" } },
+            { "deviceId": "dev-mem", "kind": "DEVICE_KIND_CLIENT", "meta": { "name": "Phone", "platform": "Android" } }
           ]
         }
       },
       "views": [
-        { "name": "emptyAllOffline", "screen": { "home": {} } }
+        { "name": "emptyManager", "screen": { "home": { "endedLimit": 50 } } }
       ]
     },
     {
       "event": {
-        "sessionsPageReceived": { "error": "timeout waiting for relay" }
+        "nowMs": "1791078060050",
+        "securitySnapshot": {
+          "isMember": true,
+          "selfDeviceId": "dev-mem",
+          "authorityDeviceId": "dev-mgr",
+          "leaseEndMs": "1791164460000"
+        }
       },
       "views": [
-        { "name": "listFailed", "screen": { "home": {} } }
+        { "name": "emptyMember", "screen": { "home": { "endedLimit": 50 } } }
       ]
     },
     {
       "event": {
-        "homeRetryLoad": {}
-      }
+        "nowMs": "1791078060060",
+        "streamFrame": {
+          "legId": "1",
+          "machineUpdated": {
+            "machineId": "m-off",
+            "online": false,
+            "meta": { "hostname": "OldMac", "protocolVersion": 16 }
+          }
+        }
+      },
+      "views": [
+        { "name": "emptyAllOffline", "screen": { "home": { "endedLimit": 50 } } }
+      ]
+    },
+    {
+      "event": {
+        "nowMs": "1791078060070",
+        "streamClosed": { "legId": "1", "errorCode": "unavailable", "error": "server unavailable" }
+      },
+      "views": [
+        { "name": "listFailed", "screen": { "home": { "endedLimit": 50 } } }
+      ]
     }
   ]
 }

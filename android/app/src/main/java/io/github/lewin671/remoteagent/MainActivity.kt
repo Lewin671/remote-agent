@@ -224,6 +224,21 @@ class MainActivity : ComponentActivity() {
         CompositionLocalProvider(LocalRemote provides remote, LocalNav provides actions) {
             val entry by nav.currentBackStackEntryAsState()
             val route = entry?.destination?.route
+            LaunchedEffect(remote) {
+                remote.coreNavigation.collect { eff ->
+                    when (eff.route) {
+                        io.github.lewin671.remoteagent.core.proto.NavigateRoute.NAVIGATE_ROUTE_SESSION ->
+                            actions.startedSession(eff.sessionId)
+                        io.github.lewin671.remoteagent.core.proto.NavigateRoute.NAVIGATE_ROUTE_PROJECT ->
+                            actions.projectNew(eff.projectKey)
+                        io.github.lewin671.remoteagent.core.proto.NavigateRoute.NAVIGATE_ROUTE_MACHINE_SETTINGS ->
+                            actions.device(eff.machineId)
+                        io.github.lewin671.remoteagent.core.proto.NavigateRoute.NAVIGATE_ROUTE_MACHINE_STATUS ->
+                            actions.machineStatus(eff.machineId)
+                        else -> {}
+                    }
+                }
+            }
             LaunchedEffect(route) {
                 if (route != null && route != "session/{id}" && route != "task/{machine}/{id}") remote.schedules.showList()
             }
@@ -360,7 +375,7 @@ class MainActivity : ComponentActivity() {
             cleanup = { machine ->
                 val state = remote.state.value
                 val prompt = io.github.lewin671.remoteagent.ui.sessionText(UiMessages.machineStatusCleanupPrompt())
-                val project = io.github.lewin671.remoteagent.ui.prepareCleanupDraft(state, machine, prompt)
+                val project = io.github.lewin671.remoteagent.ui.prepareCleanupDraft(state, machine, prompt, remote.coreHost)
                 // A computer without a project yet: the folder chooser, and the next new session on it gets the words.
                 if (project != null) go("project/${routeArg(project)}?focus=1") else go("newproject")
             },

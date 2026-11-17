@@ -2,26 +2,84 @@
   "steps": [
     {
       "event": {
-        "clockUpdated": { "nowMs": "1791078060000", "todayStartMs": "1791043200000", "yesterdayStartMs": "1790956800000", "weekStartMs": "1790524800000", "nowYear": 2026, "utcOffsetMinutes": 480 }
+        "nowMs": "1791078060000",
+        "clockUpdated": {
+          "nowMs": "1791078060000",
+          "todayStartMs": "1791043200000",
+          "yesterdayStartMs": "1790956800000",
+          "weekStartMs": "1790524800000",
+          "nowYear": 2026,
+          "months": [{ "year": 2026, "month": 10, "startMs": "1790812800000" }]
+        }
       }
     },
     {
-      "event": { "connectionChanged": { "state": "CONN_STATE_CONNECTED", "livePushConnected": true } }
+      "event": {
+        "nowMs": "1791078060000",
+        "monoMs": "1000",
+        "randomIds": ["pref-op-1", "dir-req-1", "dir-att-1", "pref-op-2", "r5", "r6", "r7", "r8"],
+        "unitFloats": [0.5, 0.5, 0.5, 0.5],
+        "syncLifecycle": { "kind": "SYNC_LIFECYCLE_KIND_START" }
+      }
     },
     {
       "event": {
-        "machinesUpdated": {
-          "listed": true,
+        "nowMs": "1791078060010",
+        "securitySnapshot": {
+          "opId": "3",
+          "isMember": true,
+          "selfDeviceId": "dev-1",
+          "authorityDeviceId": "dev-1",
+          "leaseEndMs": "1791164460000",
+          "trustedMachineIds": ["m1"]
+        }
+      }
+    },
+    {
+      "event": {
+        "nowMs": "1791078060020",
+        "tokenResult": { "opId": "2", "token": "tok-1" }
+      }
+    },
+    {
+      "event": {
+        "nowMs": "1791078060030",
+        "streamReady": { "legId": "1", "serverTimeMs": "1791078060030" }
+      }
+    },
+    {
+      "event": {
+        "nowMs": "1791078060040",
+        "listsFetched": {
+          "opId": "4",
           "machines": [
             {
               "machineId": "m1",
               "online": true,
               "meta": {
-                "hostname": "MacBook.local",
-                "home": "/Users/me",
+                "hostname": "MacBook",
+                "protocolVersion": 16,
+                "agents": [{ "agent": "AGENT_CODEX", "defaultMode": "APPROVAL_MODE_ASK" }],
                 "projects": [
-                  { "path": "/Users/me/Code/app", "ended": 4, "latestCreatedMs": "1791070000000" }
+                  { "path": "/Users/me/Code/alpha", "ended": 1 },
+                  { "path": "/Users/me/Code/beta", "ended": 0 }
                 ]
+              }
+            }
+          ],
+          "sessions": [
+            {
+              "sessionId": "s-1",
+              "machineId": "m1",
+              "updatedMs": "1791060000000",
+              "listedEndedMs": "1791060000000",
+              "meta": {
+                "id": "s-1",
+                "cwd": "/Users/me/Code/alpha",
+                "agent": "AGENT_CODEX",
+                "status": "SESSION_STATUS_EXITED",
+                "title": "Alpha task",
+                "endedAt": "2026-10-03T20:40:00Z"
               }
             }
           ]
@@ -30,53 +88,161 @@
     },
     {
       "event": {
-        "prefsUpdated": { "loaded": true, "prefs": { "schema": 1 } }
+        "nowMs": "1791078060050",
+        "accountPrefsFetched": {
+          "opId": "5",
+          "prefs": {
+            "revision": "1",
+            "prefs": {
+              "schema": 1,
+              "pinned": [{ "path": "/Users/me/Code/alpha", "sinceMs": "1791000000000" }]
+            }
+          }
+        }
+      },
+      "views": [
+        {
+          "name": "detailInitial",
+          "screen": { "project": { "projectKey": "/Users/me/Code/alpha", "manage": false, "endedLimit": 50 } }
+        }
+      ]
+    },
+    {
+      "event": {
+        "nowMs": "1791078060060",
+        "projectTogglePin": { "projectKey": "/Users/me/Code/beta" }
       }
     },
     {
       "event": {
-        "sessionsPageReceived": {
-          "isRefresh": true,
-          "sessions": [
-            { "sessionId": "s1", "machineId": "m1", "updatedMs": "1791070000000", "info": { "id": "s1", "cwd": "/Users/me/Code/app", "status": "SESSION_STATUS_EXITED", "title": "Fix 1", "endedAt": "2026-10-04T00:00:00Z" } },
-            { "sessionId": "s2", "machineId": "m1", "updatedMs": "1791069000000", "info": { "id": "s2", "cwd": "/Users/me/Code/app", "status": "SESSION_STATUS_EXITED", "title": "Fix 2", "endedAt": "2026-10-03T23:50:00Z" } },
-            { "sessionId": "s3", "machineId": "m1", "updatedMs": "1791068000000", "info": { "id": "s3", "cwd": "/Users/me/Code/app", "status": "SESSION_STATUS_EXITED", "title": "Fix 3", "endedAt": "2026-10-03T23:40:00Z" } },
-            { "sessionId": "s4", "machineId": "m1", "updatedMs": "1791067000000", "info": { "id": "s4", "cwd": "/Users/me/Code/app", "status": "SESSION_STATUS_EXITED", "title": "Fix 4", "endedAt": "2026-10-03T23:30:00Z" } }
-          ]
+        "nowMs": "1791078060070",
+        "accountPrefsFetched": {
+          "opId": "6",
+          "prefs": {
+            "revision": "1",
+            "prefs": {
+              "schema": 1,
+              "pinned": [{ "path": "/Users/me/Code/alpha", "sinceMs": "1791000000000" }]
+            }
+          }
         }
-      },
-      "views": [
-        { "name": "detailInitial", "screen": { "project": { "projectKey": "/Users/me/Code/app", "endedLimit": 2 } } },
-        { "name": "manageInitial", "screen": { "project": { "manage": true } } }
-      ]
-    },
-    {
-      "event": { "projectTogglePin": { "projectKey": "/Users/me/Code/app" } },
-      "views": [
-        { "name": "managePinning", "screen": { "project": { "manage": true } } }
-      ]
-    },
-    {
-      "event": { "projectOpenDirPicker": { "machineId": "m1", "forNewTask": true } }
+      }
     },
     {
       "event": {
-        "dirListingReceived": {
-          "requestId": "dir-4",
-          "machineId": "m1",
-          "path": "/Users/me",
-          "parentPath": "/Users",
-          "dirs": [{ "name": "Code", "path": "/Users/me/Code" }]
+        "nowMs": "1791078060080",
+        "accountPrefsPutResult": {
+          "opId": "7",
+          "applied": true,
+          "current": {
+            "revision": "2",
+            "prefs": {
+              "schema": 1,
+              "pinned": [
+                { "path": "/Users/me/Code/alpha", "sinceMs": "1791000000000" },
+                { "path": "/Users/me/Code/beta", "sinceMs": "1791078060060" }
+              ],
+              "recentOps": ["pref-op-1"]
+            }
+          }
         }
       },
       "views": [
-        { "name": "manageDirPicker", "screen": { "project": { "manage": true } } }
+        {
+          "name": "managePinning",
+          "screen": { "project": { "projectKey": "", "manage": true, "endedLimit": 50 } }
+        }
       ]
     },
     {
-      "event": { "projectAdd": { "path": "/Users/me/Code/fresh" } },
+      "event": {
+        "nowMs": "1791078060090",
+        "projectOpenDirPicker": { "machineId": "m1", "path": "/Users/me/Code" }
+      }
+    },
+    {
+      "event": {
+        "nowMs": "1791078060100",
+        "commandOutcome": {
+          "requestId": "dir-req-1",
+          "attemptId": "dir-att-1",
+          "source": "OUTCOME_SOURCE_DAEMON",
+          "signed": true,
+          "hashesMatch": true,
+          "attemptBound": true,
+          "outerMatchesInner": true,
+          "outerOutcome": "executed",
+          "outerReason": "ok",
+          "result": {
+            "outcome": "executed",
+            "reason": "ok",
+            "resultAvailable": true,
+            "listDirectories": {
+              "path": "/Users/me/Code",
+              "parent": "/Users/me",
+              "dirs": ["/Users/me/Code/alpha", "/Users/me/Code/delta"]
+            }
+          }
+        }
+      },
       "views": [
-        { "name": "detailAfterAdd", "screen": { "project": { "projectKey": "/Users/me/Code/app", "endedLimit": 10 } } }
+        {
+          "name": "manageDirPicker",
+          "screen": { "project": { "projectKey": "", "manage": true, "endedLimit": 50 } }
+        }
+      ]
+    },
+    {
+      "event": {
+        "nowMs": "1791078060110",
+        "projectAdd": { "path": "/Users/me/Code/delta" }
+      }
+    },
+    {
+      "event": {
+        "nowMs": "1791078060120",
+        "accountPrefsFetched": {
+          "opId": "8",
+          "prefs": {
+            "revision": "2",
+            "prefs": {
+              "schema": 1,
+              "pinned": [
+                { "path": "/Users/me/Code/alpha", "sinceMs": "1791000000000" },
+                { "path": "/Users/me/Code/beta", "sinceMs": "1791078060060" }
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "event": {
+        "nowMs": "1791078060130",
+        "accountPrefsPutResult": {
+          "opId": "9",
+          "applied": true,
+          "current": {
+            "revision": "3",
+            "prefs": {
+              "schema": 1,
+              "pinned": [
+                { "path": "/Users/me/Code/alpha", "sinceMs": "1791000000000" },
+                { "path": "/Users/me/Code/beta", "sinceMs": "1791078060060" }
+              ],
+              "settings": [
+                { "path": "/Users/me/Code/delta", "machineId": "m1" }
+              ],
+              "recentOps": ["pref-op-2"]
+            }
+          }
+        }
+      },
+      "views": [
+        {
+          "name": "detailAfterAdd",
+          "screen": { "project": { "projectKey": "/Users/me/Code/delta", "manage": false, "endedLimit": 50 } }
+        }
       ]
     }
   ]

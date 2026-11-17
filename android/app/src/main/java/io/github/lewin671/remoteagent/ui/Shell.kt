@@ -45,7 +45,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.lewin671.remoteagent.core.scheduleBadgeText
-import io.github.lewin671.remoteagent.core.waitingCount
 
 /*
  * The app's shell on client-v58 (design-system §4 材质, §6 底部): no top bar
@@ -204,11 +203,11 @@ fun BackRow(onBack: () -> Unit, modifier: Modifier = Modifier, trailing: (@Compo
 fun ShellBottom(active: ShellTab, action: String, icon: ImageVector, enabled: Boolean, onAction: () -> Unit) {
     val remote = LocalRemote.current
     val nav = LocalNav.current
-    val state by remote.state.collectAsState()
+    val home by remote.homeView.collectAsState()
     val scheduled by remote.schedules.badge.collectAsState()
     val newResults by remote.schedules.hasNewResults.collectAsState()
     BottomBar(
-        active, waitingCount(state), scheduled, newResults,
+        active, home.waitingTotal, scheduled, newResults,
         onSelect = { if (it == ShellTab.SESSIONS) nav.home() else nav.schedules() },
         action = action, actionIcon = icon, onAction = onAction, actionEnabled = enabled,
     )

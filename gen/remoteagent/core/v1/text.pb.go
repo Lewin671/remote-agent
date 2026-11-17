@@ -21,9 +21,123 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+type TimestampStyle int32
+
+const (
+	TimestampStyle_TIMESTAMP_STYLE_UNSPECIFIED    TimestampStyle = 0
+	TimestampStyle_TIMESTAMP_STYLE_TIME           TimestampStyle = 1
+	TimestampStyle_TIMESTAMP_STYLE_WEEKDAY        TimestampStyle = 2
+	TimestampStyle_TIMESTAMP_STYLE_MONTH_DAY      TimestampStyle = 3
+	TimestampStyle_TIMESTAMP_STYLE_MONTH_DAY_TIME TimestampStyle = 4
+	TimestampStyle_TIMESTAMP_STYLE_DATE           TimestampStyle = 5
+	TimestampStyle_TIMESTAMP_STYLE_DATE_TIME      TimestampStyle = 6
+)
+
+// Enum value maps for TimestampStyle.
+var (
+	TimestampStyle_name = map[int32]string{
+		0: "TIMESTAMP_STYLE_UNSPECIFIED",
+		1: "TIMESTAMP_STYLE_TIME",
+		2: "TIMESTAMP_STYLE_WEEKDAY",
+		3: "TIMESTAMP_STYLE_MONTH_DAY",
+		4: "TIMESTAMP_STYLE_MONTH_DAY_TIME",
+		5: "TIMESTAMP_STYLE_DATE",
+		6: "TIMESTAMP_STYLE_DATE_TIME",
+	}
+	TimestampStyle_value = map[string]int32{
+		"TIMESTAMP_STYLE_UNSPECIFIED":    0,
+		"TIMESTAMP_STYLE_TIME":           1,
+		"TIMESTAMP_STYLE_WEEKDAY":        2,
+		"TIMESTAMP_STYLE_MONTH_DAY":      3,
+		"TIMESTAMP_STYLE_MONTH_DAY_TIME": 4,
+		"TIMESTAMP_STYLE_DATE":           5,
+		"TIMESTAMP_STYLE_DATE_TIME":      6,
+	}
+)
+
+func (x TimestampStyle) Enum() *TimestampStyle {
+	p := new(TimestampStyle)
+	*p = x
+	return p
+}
+
+func (x TimestampStyle) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (TimestampStyle) Descriptor() protoreflect.EnumDescriptor {
+	return file_remoteagent_core_v1_text_proto_enumTypes[0].Descriptor()
+}
+
+func (TimestampStyle) Type() protoreflect.EnumType {
+	return &file_remoteagent_core_v1_text_proto_enumTypes[0]
+}
+
+func (x TimestampStyle) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use TimestampStyle.Descriptor instead.
+func (TimestampStyle) EnumDescriptor() ([]byte, []int) {
+	return file_remoteagent_core_v1_text_proto_rawDescGZIP(), []int{0}
+}
+
+type TimestampArg struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	UnixMs        int64                  `protobuf:"varint,1,opt,name=unix_ms,json=unixMs,proto3" json:"unix_ms,omitempty"`
+	Style         TimestampStyle         `protobuf:"varint,2,opt,name=style,proto3,enum=remoteagent.core.v1.TimestampStyle" json:"style,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *TimestampArg) Reset() {
+	*x = TimestampArg{}
+	mi := &file_remoteagent_core_v1_text_proto_msgTypes[0]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TimestampArg) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TimestampArg) ProtoMessage() {}
+
+func (x *TimestampArg) ProtoReflect() protoreflect.Message {
+	mi := &file_remoteagent_core_v1_text_proto_msgTypes[0]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TimestampArg.ProtoReflect.Descriptor instead.
+func (*TimestampArg) Descriptor() ([]byte, []int) {
+	return file_remoteagent_core_v1_text_proto_rawDescGZIP(), []int{0}
+}
+
+func (x *TimestampArg) GetUnixMs() int64 {
+	if x != nil {
+		return x.UnixMs
+	}
+	return 0
+}
+
+func (x *TimestampArg) GetStyle() TimestampStyle {
+	if x != nil {
+		return x.Style
+	}
+	return TimestampStyle_TIMESTAMP_STYLE_UNSPECIFIED
+}
+
 // Text represents a structured localizable message produced by the shared core.
 // Shells render key+args via their generated i18n runtime, literal verbatim when
-// key is empty, or join non-empty segments with separator_key / separator_literal.
+// key is empty, format timestamp in the host local timezone and locale, or join
+// non-empty segments with separator_key / separator_literal.
 type Text struct {
 	state            protoimpl.MessageState `protogen:"open.v1"`
 	Key              string                 `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
@@ -32,13 +146,14 @@ type Text struct {
 	Join             []*Text                `protobuf:"bytes,4,rep,name=join,proto3" json:"join,omitempty"`
 	SeparatorKey     string                 `protobuf:"bytes,5,opt,name=separator_key,json=separatorKey,proto3" json:"separator_key,omitempty"`
 	SeparatorLiteral string                 `protobuf:"bytes,6,opt,name=separator_literal,json=separatorLiteral,proto3" json:"separator_literal,omitempty"`
+	Timestamp        *TimestampArg          `protobuf:"bytes,7,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
 	unknownFields    protoimpl.UnknownFields
 	sizeCache        protoimpl.SizeCache
 }
 
 func (x *Text) Reset() {
 	*x = Text{}
-	mi := &file_remoteagent_core_v1_text_proto_msgTypes[0]
+	mi := &file_remoteagent_core_v1_text_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -50,7 +165,7 @@ func (x *Text) String() string {
 func (*Text) ProtoMessage() {}
 
 func (x *Text) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_text_proto_msgTypes[0]
+	mi := &file_remoteagent_core_v1_text_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -63,7 +178,7 @@ func (x *Text) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Text.ProtoReflect.Descriptor instead.
 func (*Text) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_text_proto_rawDescGZIP(), []int{0}
+	return file_remoteagent_core_v1_text_proto_rawDescGZIP(), []int{1}
 }
 
 func (x *Text) GetKey() string {
@@ -108,6 +223,13 @@ func (x *Text) GetSeparatorLiteral() string {
 	return ""
 }
 
+func (x *Text) GetTimestamp() *TimestampArg {
+	if x != nil {
+		return x.Timestamp
+	}
+	return nil
+}
+
 // TextArg provides a typed substitution parameter for a Text key.
 type TextArg struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
@@ -118,6 +240,7 @@ type TextArg struct {
 	//	*TextArg_IntValue
 	//	*TextArg_FloatValue
 	//	*TextArg_TextValue
+	//	*TextArg_TimestampValue
 	Value         isTextArg_Value `protobuf_oneof:"value"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -125,7 +248,7 @@ type TextArg struct {
 
 func (x *TextArg) Reset() {
 	*x = TextArg{}
-	mi := &file_remoteagent_core_v1_text_proto_msgTypes[1]
+	mi := &file_remoteagent_core_v1_text_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -137,7 +260,7 @@ func (x *TextArg) String() string {
 func (*TextArg) ProtoMessage() {}
 
 func (x *TextArg) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_text_proto_msgTypes[1]
+	mi := &file_remoteagent_core_v1_text_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -150,7 +273,7 @@ func (x *TextArg) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TextArg.ProtoReflect.Descriptor instead.
 func (*TextArg) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_text_proto_rawDescGZIP(), []int{1}
+	return file_remoteagent_core_v1_text_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *TextArg) GetName() string {
@@ -203,6 +326,15 @@ func (x *TextArg) GetTextValue() *Text {
 	return nil
 }
 
+func (x *TextArg) GetTimestampValue() *TimestampArg {
+	if x != nil {
+		if x, ok := x.Value.(*TextArg_TimestampValue); ok {
+			return x.TimestampValue
+		}
+	}
+	return nil
+}
+
 type isTextArg_Value interface {
 	isTextArg_Value()
 }
@@ -223,6 +355,10 @@ type TextArg_TextValue struct {
 	TextValue *Text `protobuf:"bytes,5,opt,name=text_value,json=textValue,proto3,oneof"`
 }
 
+type TextArg_TimestampValue struct {
+	TimestampValue *TimestampArg `protobuf:"bytes,6,opt,name=timestamp_value,json=timestampValue,proto3,oneof"`
+}
+
 func (*TextArg_StrValue) isTextArg_Value() {}
 
 func (*TextArg_IntValue) isTextArg_Value() {}
@@ -231,18 +367,24 @@ func (*TextArg_FloatValue) isTextArg_Value() {}
 
 func (*TextArg_TextValue) isTextArg_Value() {}
 
+func (*TextArg_TimestampValue) isTextArg_Value() {}
+
 var File_remoteagent_core_v1_text_proto protoreflect.FileDescriptor
 
 const file_remoteagent_core_v1_text_proto_rawDesc = "" +
 	"\n" +
-	"\x1eremoteagent/core/v1/text.proto\x12\x13remoteagent.core.v1\"\xe5\x01\n" +
+	"\x1eremoteagent/core/v1/text.proto\x12\x13remoteagent.core.v1\"b\n" +
+	"\fTimestampArg\x12\x17\n" +
+	"\aunix_ms\x18\x01 \x01(\x03R\x06unixMs\x129\n" +
+	"\x05style\x18\x02 \x01(\x0e2#.remoteagent.core.v1.TimestampStyleR\x05style\"\xa6\x02\n" +
 	"\x04Text\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x120\n" +
 	"\x04args\x18\x02 \x03(\v2\x1c.remoteagent.core.v1.TextArgR\x04args\x12\x18\n" +
 	"\aliteral\x18\x03 \x01(\tR\aliteral\x12-\n" +
 	"\x04join\x18\x04 \x03(\v2\x19.remoteagent.core.v1.TextR\x04join\x12#\n" +
 	"\rseparator_key\x18\x05 \x01(\tR\fseparatorKey\x12+\n" +
-	"\x11separator_literal\x18\x06 \x01(\tR\x10separatorLiteral\"\xc3\x01\n" +
+	"\x11separator_literal\x18\x06 \x01(\tR\x10separatorLiteral\x12?\n" +
+	"\ttimestamp\x18\a \x01(\v2!.remoteagent.core.v1.TimestampArgR\ttimestamp\"\x91\x02\n" +
 	"\aTextArg\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x1d\n" +
 	"\tstr_value\x18\x02 \x01(\tH\x00R\bstrValue\x12\x1d\n" +
@@ -250,8 +392,17 @@ const file_remoteagent_core_v1_text_proto_rawDesc = "" +
 	"\vfloat_value\x18\x04 \x01(\x01H\x00R\n" +
 	"floatValue\x12:\n" +
 	"\n" +
-	"text_value\x18\x05 \x01(\v2\x19.remoteagent.core.v1.TextH\x00R\ttextValueB\a\n" +
-	"\x05valueB\xd3\x01\n" +
+	"text_value\x18\x05 \x01(\v2\x19.remoteagent.core.v1.TextH\x00R\ttextValue\x12L\n" +
+	"\x0ftimestamp_value\x18\x06 \x01(\v2!.remoteagent.core.v1.TimestampArgH\x00R\x0etimestampValueB\a\n" +
+	"\x05value*\xe4\x01\n" +
+	"\x0eTimestampStyle\x12\x1f\n" +
+	"\x1bTIMESTAMP_STYLE_UNSPECIFIED\x10\x00\x12\x18\n" +
+	"\x14TIMESTAMP_STYLE_TIME\x10\x01\x12\x1b\n" +
+	"\x17TIMESTAMP_STYLE_WEEKDAY\x10\x02\x12\x1d\n" +
+	"\x19TIMESTAMP_STYLE_MONTH_DAY\x10\x03\x12\"\n" +
+	"\x1eTIMESTAMP_STYLE_MONTH_DAY_TIME\x10\x04\x12\x18\n" +
+	"\x14TIMESTAMP_STYLE_DATE\x10\x05\x12\x1d\n" +
+	"\x19TIMESTAMP_STYLE_DATE_TIME\x10\x06B\xd3\x01\n" +
 	"\x17com.remoteagent.core.v1B\tTextProtoP\x01Z?github.com/Lewin671/remote-agent/gen/remoteagent/core/v1;corev1\xa2\x02\x03RCX\xaa\x02\x13Remoteagent.Core.V1\xca\x02\x13Remoteagent\\Core\\V1\xe2\x02\x1fRemoteagent\\Core\\V1\\GPBMetadata\xea\x02\x15Remoteagent::Core::V1b\x06proto3"
 
 var (
@@ -266,20 +417,26 @@ func file_remoteagent_core_v1_text_proto_rawDescGZIP() []byte {
 	return file_remoteagent_core_v1_text_proto_rawDescData
 }
 
-var file_remoteagent_core_v1_text_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
+var file_remoteagent_core_v1_text_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
+var file_remoteagent_core_v1_text_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
 var file_remoteagent_core_v1_text_proto_goTypes = []any{
-	(*Text)(nil),    // 0: remoteagent.core.v1.Text
-	(*TextArg)(nil), // 1: remoteagent.core.v1.TextArg
+	(TimestampStyle)(0),  // 0: remoteagent.core.v1.TimestampStyle
+	(*TimestampArg)(nil), // 1: remoteagent.core.v1.TimestampArg
+	(*Text)(nil),         // 2: remoteagent.core.v1.Text
+	(*TextArg)(nil),      // 3: remoteagent.core.v1.TextArg
 }
 var file_remoteagent_core_v1_text_proto_depIdxs = []int32{
-	1, // 0: remoteagent.core.v1.Text.args:type_name -> remoteagent.core.v1.TextArg
-	0, // 1: remoteagent.core.v1.Text.join:type_name -> remoteagent.core.v1.Text
-	0, // 2: remoteagent.core.v1.TextArg.text_value:type_name -> remoteagent.core.v1.Text
-	3, // [3:3] is the sub-list for method output_type
-	3, // [3:3] is the sub-list for method input_type
-	3, // [3:3] is the sub-list for extension type_name
-	3, // [3:3] is the sub-list for extension extendee
-	0, // [0:3] is the sub-list for field type_name
+	0, // 0: remoteagent.core.v1.TimestampArg.style:type_name -> remoteagent.core.v1.TimestampStyle
+	3, // 1: remoteagent.core.v1.Text.args:type_name -> remoteagent.core.v1.TextArg
+	2, // 2: remoteagent.core.v1.Text.join:type_name -> remoteagent.core.v1.Text
+	1, // 3: remoteagent.core.v1.Text.timestamp:type_name -> remoteagent.core.v1.TimestampArg
+	2, // 4: remoteagent.core.v1.TextArg.text_value:type_name -> remoteagent.core.v1.Text
+	1, // 5: remoteagent.core.v1.TextArg.timestamp_value:type_name -> remoteagent.core.v1.TimestampArg
+	6, // [6:6] is the sub-list for method output_type
+	6, // [6:6] is the sub-list for method input_type
+	6, // [6:6] is the sub-list for extension type_name
+	6, // [6:6] is the sub-list for extension extendee
+	0, // [0:6] is the sub-list for field type_name
 }
 
 func init() { file_remoteagent_core_v1_text_proto_init() }
@@ -287,24 +444,26 @@ func file_remoteagent_core_v1_text_proto_init() {
 	if File_remoteagent_core_v1_text_proto != nil {
 		return
 	}
-	file_remoteagent_core_v1_text_proto_msgTypes[1].OneofWrappers = []any{
+	file_remoteagent_core_v1_text_proto_msgTypes[2].OneofWrappers = []any{
 		(*TextArg_StrValue)(nil),
 		(*TextArg_IntValue)(nil),
 		(*TextArg_FloatValue)(nil),
 		(*TextArg_TextValue)(nil),
+		(*TextArg_TimestampValue)(nil),
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_remoteagent_core_v1_text_proto_rawDesc), len(file_remoteagent_core_v1_text_proto_rawDesc)),
-			NumEnums:      0,
-			NumMessages:   2,
+			NumEnums:      1,
+			NumMessages:   3,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
 		GoTypes:           file_remoteagent_core_v1_text_proto_goTypes,
 		DependencyIndexes: file_remoteagent_core_v1_text_proto_depIdxs,
+		EnumInfos:         file_remoteagent_core_v1_text_proto_enumTypes,
 		MessageInfos:      file_remoteagent_core_v1_text_proto_msgTypes,
 	}.Build()
 	File_remoteagent_core_v1_text_proto = out.File

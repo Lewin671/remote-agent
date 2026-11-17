@@ -134,14 +134,11 @@ func (s *vecSnapshot) toWorld(t testing.TB) *World {
 			info = stdToLite[stdv1.Session, *stdv1.Session, v1.Session, *v1.Session](t, sess.Info)
 		}
 		w.Sessions = append(w.Sessions, &Session{
-			ID:               sess.ID,
-			MachineID:        sess.MachineID,
-			UpdatedMs:        up,
-			ListedEndedMs:    le,
-			EndedLocalYear:   sess.EndedLocalYear,
-			EndedLocalMonth:  sess.EndedLocalMonth,
-			CreatedLocalHhmm: sess.CreatedLocalHhmm,
-			Info:             info,
+			ID:            sess.ID,
+			MachineID:     sess.MachineID,
+			UpdatedMs:     up,
+			ListedEndedMs: le,
+			Info:          info,
 		})
 	}
 	if len(s.Prefs) > 0 {

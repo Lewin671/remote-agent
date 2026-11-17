@@ -2,9 +2,25 @@ syntax = "proto3";
 
 package remoteagent.core.v1;
 
+enum TimestampStyle {
+  TIMESTAMP_STYLE_UNSPECIFIED = 0;
+  TIMESTAMP_STYLE_TIME = 1;
+  TIMESTAMP_STYLE_WEEKDAY = 2;
+  TIMESTAMP_STYLE_MONTH_DAY = 3;
+  TIMESTAMP_STYLE_MONTH_DAY_TIME = 4;
+  TIMESTAMP_STYLE_DATE = 5;
+  TIMESTAMP_STYLE_DATE_TIME = 6;
+}
+
+message TimestampArg {
+  int64 unix_ms = 1;
+  TimestampStyle style = 2;
+}
+
 // Text represents a structured localizable message produced by the shared core.
 // Shells render key+args via their generated i18n runtime, literal verbatim when
-// key is empty, or join non-empty segments with separator_key / separator_literal.
+// key is empty, format timestamp in the host local timezone and locale, or join
+// non-empty segments with separator_key / separator_literal.
 message Text {
   string key = 1;
   repeated TextArg args = 2;
@@ -12,6 +28,7 @@ message Text {
   repeated Text join = 4;
   string separator_key = 5;
   string separator_literal = 6;
+  TimestampArg timestamp = 7;
 }
 
 // TextArg provides a typed substitution parameter for a Text key.
@@ -22,5 +39,6 @@ message TextArg {
     int64 int_value = 3;
     double float_value = 4;
     Text text_value = 5;
+    TimestampArg timestamp_value = 6;
   }
 }

@@ -12,9 +12,6 @@
         <item quantity="other">" · 剩 %1$d 分钟"</item>
     </plurals>
     <string name="approval_android_prefix">"「%1$s」开头的命令以后不再问"</string>
-    <plurals name="approval_android_remaining_timeout">
-        <item quantity="other">"剩 %1$d 分钟，超时拒绝"</item>
-    </plurals>
     <string name="approval_android_reply_expired">"不确定「%1$s」有没有送到，它已过期，不会再重发"</string>
     <string name="approval_android_unknown_result" formatted="false">"结果未知"</string>
     <string name="approval_approve" formatted="false">"批准"</string>
@@ -169,7 +166,6 @@
     <string name="composer_write_failed" formatted="false">"写入终端失败"</string>
     <string name="connection_android_disconnected_at">"断开于　%1$s"</string>
     <string name="connection_android_explanation" formatted="false">"本机的网络是通的，但服务器没有回应。可能是服务器停了或正在重启，也可能是现在的网络到不了它。会一直自动重试，连上后补齐这段时间的内容。"</string>
-    <string name="connection_android_no_response" formatted="false">"服务器没有回应"</string>
     <string name="connection_android_reason">"原因　%1$s"</string>
     <string name="connection_android_retry_now" formatted="false">"重试"</string>
     <string name="connection_android_server">"服务器　%1$s"</string>
@@ -197,7 +193,6 @@
     <string name="connection_reconnecting" formatted="false">"正在重连…"</string>
     <string name="connection_reconnecting_conn_check" formatted="false">"重连中"</string>
     <string name="connection_reconnecting_conn_check_label" formatted="false">"重连"</string>
-    <string name="connection_retrying_previous" formatted="false">"正在重试，下面是上次的内容"</string>
     <plurals name="connection_sec_elapsed">
         <item quantity="other">"正在%4$s：%2$s，已 %1$d 秒。%3$s"</item>
     </plurals>
@@ -266,28 +261,15 @@
     <string name="errors_android_cannot_open_the_computer_s_reply_command_outcome_unknown" formatted="false">"电脑的回复打不开，不确定指令有没有执行"</string>
     <string name="errors_android_cannot_read_file_size_select_the_file_again" formatted="false">"无法读取文件大小，请重新选择文件"</string>
     <string name="errors_android_cannot_read_the_source_file_remove_it_and_select_the" formatted="false">"读不到源文件，请移除后重新选择"</string>
-    <string name="errors_android_cannot_verify_the_current_request" formatted="false">"无法核实当前请求"</string>
-    <string name="errors_android_computer_outcome_unknown_stopped_waiting_for_a_reply_retrying_sends" formatted="false">"不确定电脑有没有执行：已停止等待回复。重试会发送同一个请求"</string>
-    <string name="errors_android_computer_outcome_unknown_the_connection_dropped" formatted="false">"不确定电脑有没有执行：连接中途断了"</string>
-    <string name="errors_android_computer_outcome_unknown_the_request_may_have_arrived_before_login">"不确定电脑有没有执行：请求可能已经送到，之后登录失败（%1$s）"</string>
-    <string name="errors_android_computer_outcome_unknown_value1">"不确定电脑有没有执行：%1$s"</string>
-    <string name="errors_android_could_not_connect_to_the_server" formatted="false">"连不上服务器"</string>
-    <string name="errors_android_could_not_read_the_session_list" formatted="false">"没能读取会话列表"</string>
     <string name="errors_android_file_name_is_too_long_or_empty_rename_the_file" formatted="false">"文件名过长或为空，请重命名后重新选择"</string>
     <string name="errors_android_file_too_large_maximum_size_per_file_value1">"文件太大，单个文件最多 %1$s"</string>
     <string name="errors_android_file_verification_failed_retry_or_select_the_file_again" formatted="false">"文件校验失败，请重试或重新选择文件"</string>
-    <string name="errors_android_history_read_failed">"没能读取历史：%1$s"</string>
-    <string name="errors_android_history_records_are_discontinuous_retry_reading" formatted="false">"历史记录不连续，请重试读取"</string>
     <string name="errors_android_image_content_does_not_match_its_format" formatted="false">"图片内容和格式对不上"</string>
     <string name="errors_android_invalid_server_address" formatted="false">"server 地址无效"</string>
     <string name="errors_android_login_expired">"登录失效：%1$s"</string>
-    <string name="errors_android_network_unavailable_command_was_not_sent" formatted="false">"网络不通，指令没有发出"</string>
-    <string name="errors_android_no_verifiable_execution_result_received_retry_the_same_request" formatted="false">"未收到可验证的执行结果，请重试同一请求"</string>
     <string name="errors_android_only_the_managing_client_can_veto_recovery" formatted="false">"只有管理端能否决恢复"</string>
     <string name="errors_android_open_value1_to_renew">"请打开%1$s续期"</string>
-    <string name="errors_android_other_clients_kept_changing_project_preferences_could_not_save" formatted="false">"项目偏好一直在被其他客户端修改，没能保存"</string>
     <string name="errors_android_pairing_approval_does_not_match_this_device_has_expired_or" formatted="false">"配对批准与这台设备不匹配、已过期或签名无效"</string>
-    <string name="errors_android_project_preferences_are_changing_retry" formatted="false">"项目偏好正在变化，请重试"</string>
     <string name="errors_android_records_from_before_recovery_are_unreadable" formatted="false">"恢复前的记录不可读"</string>
     <string name="errors_android_remote_control_authorization_expired_cannot_save_changes_control_sessions_or">"远程控制有效期已过，无法保存更改、控制会话或上传新内容；%1$s后重试。历史仍可查看"</string>
     <string name="errors_android_remote_control_paused_value1_and_retry">"远程控制已暂停：%1$s后再试"</string>
@@ -413,10 +395,7 @@
     <string name="home_android_current_scope" formatted="false">"当前范围"</string>
     <string name="home_android_earlier_failed_retry">"没能读取更早的会话：%1$s · 点这里重试"</string>
     <string name="home_android_earlier_offline" formatted="false">"连上服务器后读取更早的会话"</string>
-    <string name="home_android_empty_project" formatted="false">"点右下角的「新任务」在这里开始一个。"</string>
     <string name="home_android_list_failed_retry">"没能读取会话列表：%1$s · 点这里重试"</string>
-    <string name="home_android_no_machines" formatted="false">"这个账户还没有电脑。点「添加设备」生成配对码，再在电脑上用它运行 remote-agent account join。"</string>
-    <string name="home_android_no_online" formatted="false">"没有在线的电脑。在电脑上运行 remote-agent daemon。"</string>
     <string name="home_android_schedules_new" formatted="false">"定时，有新结果"</string>
     <plurals name="home_android_schedules_pending">
         <item quantity="other">"定时，%1$d 件需要处理"</item>
@@ -427,7 +406,6 @@
     </plurals>
     <string name="home_choose_scope" formatted="false">"看哪个项目"</string>
     <string name="home_clear_filter" formatted="false">"清空筛选"</string>
-    <string name="home_computer_runs_cli" formatted="false">"电脑运行 CLI，客户端操作会话。"</string>
     <string name="home_connection_check" formatted="false">"连接检测"</string>
     <string name="home_connection_label">"%1$s，连接检测"</string>
     <string name="home_earlier_failed_retry">"没能读取更早的会话：%1$s · 点这里重试"</string>
@@ -466,7 +444,6 @@
     <string name="home_no_online_computer">"没有在线的电脑。在电脑上运行 %1$s"</string>
     <string name="home_no_sessions" formatted="false">"还没有会话"</string>
     <string name="home_nothing_waiting" formatted="false">"没有等你的事"</string>
-    <string name="home_online_new_task">"%1$s 在线，点右下角的「新任务」开始第一个会话。"</string>
     <string name="home_online_start">"%1$s 在线，可以开始第一个会话。"</string>
     <plurals name="home_other_idle">
         <item quantity="other">"另有 %1$d 个空闲"</item>
@@ -737,7 +714,6 @@
     <string name="models_effort_default" formatted="false">"推理强度 · 默认"</string>
     <string name="models_extended_window" formatted="false">"1M"</string>
     <string name="models_fixed_effort">"推理强度固定为 %1$s"</string>
-    <string name="models_load_failed_default">"没能读取模型列表，会用 %1$s 自己的默认模型"</string>
     <string name="models_load_failed_reason">"没能读取模型列表，会用 %1$s 自己的默认模型：%2$s"</string>
     <string name="models_reading_machine">"读取 %1$s 的设置…"</string>
     <string name="models_standard_only" formatted="false">"标准 200k · 这个模型只有标准窗口"</string>
@@ -784,22 +760,14 @@
     <string name="new_session_abandon_start" formatted="false">"放弃这次启动"</string>
     <string name="new_session_account_no_auto">"当前账户不支持自动模式，而 %1$s 的新项目默认审批模式是自动。到「设置 › 这台电脑」改默认后再开始"</string>
     <string name="new_session_android_abandon" formatted="false">"放弃"</string>
-    <string name="new_session_android_account_no_auto">"当前账户不支持自动模式，而 %1$s 的新项目默认审批模式是自动。到这台电脑的设置里改默认后再开始"</string>
     <string name="new_session_android_change_computer" formatted="false">"换电脑"</string>
     <string name="new_session_android_change_machine_hint" formatted="false">"换电脑后，各 CLI 的模型从那台电脑的默认设置开始。"</string>
     <string name="new_session_android_change_project" formatted="false">"换项目"</string>
     <string name="new_session_android_choose_project" formatted="false">"新会话 · 选项目"</string>
-    <string name="new_session_android_draft_preserved" formatted="false">"草稿已保留，请选择在线电脑；不自动换电脑或 CLI。"</string>
-    <string name="new_session_android_expired_start">"不确定「%1$s」有没有启动，它已过期，不会再重发。请先看看进行中的会话"</string>
-    <string name="new_session_android_machine_offline">"%1$s 不在线，现在不能新建"</string>
-    <string name="new_session_android_model_no_auto">"这个模型没有自动模式，而 %1$s 的新项目默认审批模式是自动。换一个模型，或到这台电脑的设置里改默认"</string>
     <string name="new_session_android_new_session" formatted="false">"新会话"</string>
-    <string name="new_session_android_offline_draft">"%1$s 已离线，任务尚未开始"</string>
     <string name="new_session_android_offline_no_start" formatted="false">"不在线，现在不能新建"</string>
-    <string name="new_session_android_others_offline">"%1$s 用过的其他电脑也都不在线。"</string>
     <string name="new_session_android_reading_cli">"正在读取 %1$s 上次的设置…"</string>
     <string name="new_session_android_start" formatted="false">"开始"</string>
-    <string name="new_session_android_unknown_start" formatted="false">"上次的启动结果不确定。再点 ↑ 会重发同一个请求，电脑收到过就不会再启动一次"</string>
     <string name="new_session_attachments_moved">"已换到 %1$s，附件正在重新上传"</string>
     <string name="new_session_change_defaults" formatted="false">"去改默认"</string>
     <string name="new_session_change_machine" formatted="false">"换电脑"</string>
@@ -808,11 +776,8 @@
     <string name="new_session_cli_fallback">"%3$s 没有 %2$s，这次用 %1$s"</string>
     <string name="new_session_cli_label">"CLI：%1$s"</string>
     <string name="new_session_cli_picker_label" formatted="false">"CLI"</string>
-    <string name="new_session_config_fallback" formatted="false">"所选模型或推理强度在这台电脑上不可用，这次用电脑的默认值"</string>
     <string name="new_session_default_model" formatted="false">"默认模型"</string>
-    <string name="new_session_disconnected" formatted="false">"和服务器断线了"</string>
     <string name="new_session_draft_kept" formatted="false">"草稿已保留，请选择在线电脑；不自动换电脑或 CLI。"</string>
-    <string name="new_session_each_cli_has_its_own_settings_choose_the_cli" formatted="false">"每个 CLI 各存一套，新建时用哪个在句子里选。"</string>
     <string name="new_session_expired_start" formatted="false">"不确定是否已经启动，请先看会话列表。这个请求已经过期，不会再发，也不会换成新的请求"</string>
     <string name="new_session_expired_start_prompt">"不确定「%1$s」有没有启动，它已过期，不会再重发。请先看看进行中的会话"</string>
     <string name="new_session_first_message" formatted="false">"新会话的第一句话"</string>
@@ -832,8 +797,6 @@
     <string name="new_session_model_list_default">"没能读取模型列表，会用 %1$s 自己的默认模型"</string>
     <string name="new_session_model_no_auto">"这个模型没有自动模式，而 %1$s 的新项目默认审批模式是自动。换一个模型，或到「设置 › 这台电脑」改默认"</string>
     <string name="new_session_offline_draft">"%1$s 已离线，任务尚未开始"</string>
-    <string name="new_session_offline_last_seen">"%1$s在线，现在不能新建"</string>
-    <string name="new_session_offline_no_start" formatted="false">"现在不能新建"</string>
     <string name="new_session_offline_no_start_named">"%1$s 不在线，现在不能新建"</string>
     <string name="new_session_offline_with_draft">"%1$s 已离线，任务还没开始。草稿已保留，换一台在线的机器吧。"</string>
     <string name="new_session_only_affects_future_sessions_active_sessions_stay_unchanged_synced" formatted="false">"只影响之后新建的会话，进行中的不变；在你的设备之间同步。"</string>
@@ -844,7 +807,6 @@
     <string name="new_session_project_session_label">"%1$s · 新会话"</string>
     <string name="new_session_prompt" formatted="false">"要做什么"</string>
     <string name="new_session_reading_cli">"正在读取 %1$s 上次的设置…"</string>
-    <string name="new_session_reading_models" formatted="false">"正在读取模型列表…"</string>
     <string name="new_session_reading_previous" formatted="false">"正在读取这个项目上次的设置…"</string>
     <string name="new_session_reading_settings" formatted="false">"读取设置…"</string>
     <string name="new_session_removed_blocked" formatted="false">"这个项目已从列表移除，先重新添加"</string>
@@ -857,7 +819,6 @@
     <string name="new_session_starting_on">"正在 %1$s 上启动…"</string>
     <string name="new_session_task_settings" formatted="false">"任务设置"</string>
     <string name="new_session_this_model_has_no_auto_mode" formatted="false">"当前模型没有自动模式"</string>
-    <string name="new_session_unconfirmed_start" formatted="false">"上次的启动结果还没有确认"</string>
     <string name="new_session_unexpected_reply" formatted="false">"意外的回复"</string>
     <string name="new_session_unknown_start_retry" formatted="false">"上次的启动结果不确定。再点 ↑ 会重发同一个请求，电脑收到过就不会再启动一次"</string>
     <string name="new_session_use_machine">"改用 %1$s"</string>
@@ -899,12 +860,9 @@
     <string name="notifications_the_browser_did_not_allow_notifications" formatted="false">"浏览器没有允许通知"</string>
     <string name="projects_add_again" formatted="false">"重新添加"</string>
     <string name="projects_adding" formatted="false">"正在添加到项目列表…"</string>
-    <string name="projects_android_adding" formatted="false">"正在添加到项目列表…"</string>
     <string name="projects_android_no_online" formatted="false">"没有在线的电脑"</string>
     <string name="projects_android_save_failed">"没能保存：%1$s"</string>
-    <string name="projects_android_saving_settings" formatted="false">"正在保存项目设置…"</string>
     <string name="projects_android_settings" formatted="false">"项目设置"</string>
-    <string name="projects_android_settings_failed">"项目设置没能保存：%1$s"</string>
     <string name="projects_android_syncing" formatted="false">"正在同步项目列表…"</string>
     <string name="projects_android_view_home" formatted="false">"在主页看这个项目"</string>
     <string name="projects_changed_elsewhere" formatted="false">"项目列表已在另一客户端更新"</string>
@@ -2181,7 +2139,6 @@
     <string name="time_android_used_clock">"%1$s 使用"</string>
     <string name="time_android_used_relative">"%1$s 使用"</string>
     <string name="time_calendar_date_year">"%3$d年%2$d月%1$d日"</string>
-    <string name="time_date_time">"%2$d月%1$d日 %3$s"</string>
     <string name="time_day_clock">"%2$s %1$s"</string>
     <string name="time_duration_hours_minutes">"%1$d 小时 %2$d 分"</string>
     <string name="time_duration_minutes_seconds">"%1$d 分 %2$d 秒"</string>
@@ -2192,7 +2149,6 @@
         <item quantity="other">"%1$d 小时前"</item>
     </plurals>
     <string name="time_just_now" formatted="false">"刚刚"</string>
-    <string name="time_last_week" formatted="false">"近 7 天"</string>
     <plurals name="time_minutes_ago">
         <item quantity="other">"%1$d 分钟前"</item>
     </plurals>

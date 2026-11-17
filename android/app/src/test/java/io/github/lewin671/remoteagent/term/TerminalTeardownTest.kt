@@ -188,13 +188,8 @@ class TerminalTeardownTest {
             dispatcher = dispatcher,
             monotonic = { elapsed },
         )
-        val drainRemotes = (1..4).map { idx ->
-            Remote(
-                Account("https://example.com", byteArrayOf(), ByteArray(32) { idx.toByte() }, "dev-$idx"),
-                stalledHttp,
-                dispatcher = dispatcher,
-                monotonic = { elapsed },
-            )
+        val drainRecoveries = (1..4).map {
+            io.github.lewin671.remoteagent.core.transport.TerminalRecovery { elapsed }
         }
         val scope = CoroutineScope(SupervisorJob() + dispatcher)
         val terminal = RemoteTerminal(hostRemote, "session", scope)
@@ -207,11 +202,8 @@ class TerminalTeardownTest {
                     sessions = mapOf("session" to SessionView("session", "machine")),
                 )
             )
-            // Exhaust all 4 global tokens on processBudget via Remote.recovery at `elapsed`.
-            drainRemotes.forEach { r ->
-                r.start()
-                dispatcher.scheduler.runCurrent()
-            }
+            // Exhaust all 4 global tokens on processBudget at `elapsed`.
+            drainRecoveries.forEach { r -> assertNull(r.takeOrDelayMs()) }
 
             // TerminalRecovery must read the same injected clock (`elapsed`), seeing 0 tokens and deferring.
             terminal.connectIfNeeded()
@@ -219,7 +211,7 @@ class TerminalTeardownTest {
             assertTrue(terminal.state.value is RemoteTerminal.State.Closed)
         } finally {
             holdHttp.countDown()
-            terminal.close(); scope.cancel(); hostRemote.close(); drainRemotes.forEach { it.close() }
+            terminal.close(); scope.cancel(); hostRemote.close()
             io.github.lewin671.remoteagent.core.transport.resetProcessBudgetForTest()
         }
     }

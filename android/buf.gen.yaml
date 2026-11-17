@@ -11,6 +11,24 @@ managed:
   override:
     - file_option: java_package
       value: io.github.lewin671.remoteagent.proto
+    - file_option: java_package
+      path: remoteagent/core/v1/app.proto
+      value: io.github.lewin671.remoteagent.core.proto
+    - file_option: java_package
+      path: remoteagent/core/v1/text.proto
+      value: io.github.lewin671.remoteagent.core.proto
+    - file_option: java_package
+      path: remoteagent/core/v1/home_view.proto
+      value: io.github.lewin671.remoteagent.core.proto
+    - file_option: java_package
+      path: remoteagent/core/v1/project_view.proto
+      value: io.github.lewin671.remoteagent.core.proto
+    - file_option: java_package
+      path: remoteagent/core/v1/new_session_view.proto
+      value: io.github.lewin671.remoteagent.core.proto
+    - file_option: java_package
+      path: remoteagent/core/v1/sync_view.proto
+      value: io.github.lewin671.remoteagent.core.proto
     - file_option: java_multiple_files
       value: true
 plugins:

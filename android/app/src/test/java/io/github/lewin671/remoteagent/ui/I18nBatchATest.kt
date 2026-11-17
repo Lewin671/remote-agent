@@ -35,7 +35,7 @@ class I18nBatchATest(private val locale: String) {
     @get:Rule(order = 2) val appJobs = appFixture.stopJobs { done ->
         ui.waitUntil(5000) { ui.mainClock.advanceTimeByFrame(); ui.waitForIdle(); done() }
     }
-    private val remote = Remote(Account("http://127.0.0.1:1", ByteArray(32), ByteArray(32), "preview-client"), Api.defaultHttp())
+    private val remote = Remote(Account("http://127.0.0.1:1", ByteArray(32), ByteArray(32), "preview-client"), Api.defaultHttp(), dispatcher = kotlinx.coroutines.Dispatchers.Unconfined)
     private val nav = Nav({}, {}, {}, {}, {}, {}, {}, {}, { _, _ -> }, {}, {}, {})
     private val path = "/example/demo"
     private var language by mutableStateOf(locale)
@@ -57,8 +57,10 @@ class I18nBatchATest(private val locale: String) {
         sessions = listOf(session("question", pending = true), session("running"), session("ended", ended = true), session("other", "/example/notes")).associateBy { it.id })
     @Before fun prepare() {
         remote.showForTest(state, modelLists = listOf("a", "b").flatMap { id -> listOf(Agent.AGENT_CODEX, Agent.AGENT_CLAUDE).map { (id to it) to models } }.toMap())
+        remote.coreHost.openManageProjects()
+        remote.coreHost.openNewSession(path)
     }
-    @After fun close() { remote.close(); Drafts.clear(); ImageDrafts.clear(); PrefsChanges.clear(); HomeScopes.clear(RuntimeEnvironment.getApplication()) }
+    @After fun close() { remote.close(); Drafts.clear(); ImageDrafts.clear(); Starts.clear(); HomeScopes.clear(RuntimeEnvironment.getApplication()) }
     private fun text(message: UiMessage) = messageTextForTest(message, language)
     private fun show(content: @Composable () -> Unit) = ui.setContent {
         RaTheme(ThemeMode.LIGHT) {
@@ -79,7 +81,11 @@ class I18nBatchATest(private val locale: String) {
             file.outputStream().use { Assert.assertTrue(bitmap.compress(Bitmap.CompressFormat.PNG, 100, it)) }
         }
     }
-    private fun composer() = show { NewSessionBox(state, NewConfig("a", path, Agent.AGENT_CLAUDE), "demo", focus = false, settled = true, onProject = {}) }
+    private fun composer() = show {
+        val vm by remote.newSessionView.collectAsState()
+        val st by remote.state.collectAsState()
+        NewSessionBox(vm, st, focus = false, onProject = {})
+    }
     @Test fun home() { show { HomeScreen() }; shot("home") }
     @Test fun scope() { show { HomeScreen() }; ui.onNodeWithTag("scope-title").performClick(); shot("scope") }
     @Test fun manage() { show { ManageProjectsScreen() }; shot("projects") }
@@ -93,20 +99,20 @@ class I18nBatchATest(private val locale: String) {
         composer(); ui.onNodeWithTag("new-model").performClick(); shot("models")
         ui.onNodeWithText(text(UiMessages.modelsStandardWindow())).performClick()
         ui.onNodeWithText(text(UiMessages.commonDone())).performClick()
-        ui.runOnIdle { Assert.assertTrue(Drafts.newSession(path, null).config.value!!.standardContext) }
+        ui.runOnIdle { Assert.assertTrue(remote.newSessionView.value.config.standardContext) }
         ui.onNodeWithTag("new-model").performClick(); ui.onNodeWithText(text(UiMessages.modelsExtendedWindow())).performClick()
         ui.onNodeWithText(text(UiMessages.commonDone())).performClick()
-        ui.runOnIdle { Assert.assertFalse(Drafts.newSession(path, null).config.value!!.standardContext) }
+        ui.runOnIdle { Assert.assertFalse(remote.newSessionView.value.config.standardContext) }
     }
     @Test fun allModels() {
-        show { Column { NewTaskModelPanel(NewConfig("a", path, Agent.AGENT_CLAUDE, model = "third"), models, "", null, "Computer a", true, {}) {} } }
+        composer(); ui.onNodeWithTag("new-model").performClick()
         ui.onNodeWithTag("new-model-show-all").performClick(); shot("all-models")
     }
     @Test fun projectSettings() { show { NewSettingsSheet(state, path, "demo", "a", Agent.AGENT_CLAUDE, onDone = {}, onClose = {}) }; shot("project-settings") }
     @Test fun projectModels() { show { NewSettingsSheet(state, path, "demo", "a", Agent.AGENT_CLAUDE, open = "model", onDone = {}, onClose = {}) }; shot("project-models") }
     @Test fun machineChoice() { show { NewSettingsSheet(state, path, "demo", "a", Agent.AGENT_CLAUDE, open = "machine", onDone = {}, onClose = {}) }; shot("choose-machine") }
-    @Test fun projectChoice() { show { PickProjectSheet(state, {}) }; shot("choose-project") }
-    @Test fun directoryOffline() { show { Column { DirPickerBody(state.copy(machines = emptyMap())) { _, _ -> } } }; shot("new-project") }
+    @Test fun projectChoice() { show { PickProjectSheet(remote.homeView.collectAsState().value.sidebarProjects, {}) }; shot("choose-project") }
+    @Test fun directoryOffline() { show { Column { CoreDirPickerBody(io.github.lewin671.remoteagent.core.proto.DirPickerView.newBuilder().setOpen(true).build(), onChosen = { _, _ -> }) } }; shot("new-project") }
     @Test fun emptyAndConnection() {
         show { HomeScreen() }; ui.runOnIdle { remote.showForTest(state.copy(sessions = emptyMap(), machines = emptyMap())) }; shot("empty")
         ui.runOnIdle { remote.showForTest(state.copy(link = Link.NO_NETWORK)) }; shot("connection")
@@ -114,11 +120,11 @@ class I18nBatchATest(private val locale: String) {
     @Test fun languageChangeKeepsDraftAndConfig() {
         composer(); val raw = "保留原始输入 / original input"
         ui.onNode(hasSetTextAction()).performTextInput(raw)
-        val before = Drafts.newSession(path, null).config.value
+        val before = remote.newSessionView.value.config
         ui.runOnIdle { language = if (locale == "en") "zh-CN" else "en" }
         ui.onNode(hasSetTextAction()).assertTextEquals(raw)
         ui.onNodeWithContentDescription(text(UiMessages.newSessionAndroidStart())).assertExists()
-        ui.runOnIdle { Assert.assertEquals(before, Drafts.newSession(path, null).config.value) }
+        ui.runOnIdle { Assert.assertEquals(before, remote.newSessionView.value.config) }
     }
     @Test fun pluralResourcesAndRawText() {
         for (count in listOf(0, 1, 2, 1000)) {

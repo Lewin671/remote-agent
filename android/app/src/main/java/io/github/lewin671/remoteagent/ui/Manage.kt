@@ -1,185 +1,56 @@
 package io.github.lewin671.remoteagent.ui
 
-import io.github.lewin671.remoteagent.core.listProjectName
-import io.github.lewin671.remoteagent.core.UiMessages
-import io.github.lewin671.remoteagent.core.UiMessage
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.unit.sp
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateMapOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import io.github.lewin671.remoteagent.RaApp
-import io.github.lewin671.remoteagent.core.ConnState
-import io.github.lewin671.remoteagent.core.HomeScope
-import io.github.lewin671.remoteagent.core.PrefsOp
-import io.github.lewin671.remoteagent.core.Project
-import io.github.lewin671.remoteagent.core.Remote
-import io.github.lewin671.remoteagent.core.RemoteState
-import io.github.lewin671.remoteagent.ui.displayError
-import io.github.lewin671.remoteagent.core.projectGroups
-import io.github.lewin671.remoteagent.core.projectName
-import io.github.lewin671.remoteagent.core.isHidden
-import io.github.lewin671.remoteagent.core.isPinned
-import io.github.lewin671.remoteagent.core.project
-import io.github.lewin671.remoteagent.core.projectDetail
-import io.github.lewin671.remoteagent.core.shortPath
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
+import io.github.lewin671.remoteagent.core.UiMessages
+import io.github.lewin671.remoteagent.core.listProjectName
+import io.github.lewin671.remoteagent.core.proto.ProjectListingView
+import io.github.lewin671.remoteagent.core.proto.ProjectRowView
 
-/**
- * Changes to the project preferences in flight, per project path, for this
- * run: the row says 正在同步 until the server has it, and a failure leaves
- * the list as it was with a retry.
- *
- * A project's changes are written one at a time, in the order they were
- * made: one made while another is on its way waits for it, and is never
- * dropped (pinning a project and then saving its settings are two changes).
- * One that fails stops those behind it. They wait with it and go once it is
- * tried again, by its 重试 or when another change is made.
- */
-object PrefsChanges {
-    sealed interface State {
-        data object Saving : State
-        data class Failed(val op: PrefsOp, val error: String) : State
-    }
-
-    /** How a project's changes stand: one is being written, or the one that failed. */
-    val states = mutableStateMapOf<String, State>()
-
-    private class Change(val op: PrefsOp, val write: suspend (PrefsOp) -> Unit, val onDone: () -> Unit)
-
-    /** Each project's changes not yet on the server, oldest first; the first is the one [states] is about. */
-    private val queues = HashMap<String, ArrayDeque<Change>>()
-
-    /** Writes [op], after the changes to the same project that are still on their way. */
-    fun run(remote: Remote, op: PrefsOp, onDone: () -> Unit = {}) = run(RaApp.instance.scope, op, onDone) { remote.changePrefs(it) }
-
-    /** The same with the write given, which tests answer in the server's place. */
-    fun run(scope: kotlinx.coroutines.CoroutineScope, op: PrefsOp, onDone: () -> Unit = {}, write: suspend (PrefsOp) -> Unit) {
-        val path = op.path
-        val failed = states[path] is State.Failed
-        val queue = queues.getOrPut(path) { ArrayDeque() }
-        if (failed && queue.firstOrNull()?.op == op) {
-            // 重试: the change that failed, again, and then those that waited behind it.
-        } else if (queue.lastOrNull()?.op != op) {
-            // Twice the same in a row is one change.
-            queue.addLast(Change(op, write, onDone))
-        }
-        if (states[path] != State.Saving) next(scope, path, queue)
-    }
-
-    /** Writes the oldest change of a project, and then the one after it. */
-    private fun next(scope: kotlinx.coroutines.CoroutineScope, path: String, queue: ArrayDeque<Change>) {
-        if (queues[path] !== queue) return
-        val change = queue.firstOrNull()
-        if (change == null) {
-            queues.remove(path)
-            states.remove(path)
-            return
-        }
-        states[path] = State.Saving
-        scope.launch {
-            try {
-                change.write(change.op)
-            } catch (e: Exception) {
-                if (queues[path] !== queue) return@launch
-                states[path] = State.Failed(change.op, displayError(e))
-                return@launch
-            }
-            if (queues[path] !== queue) return@launch
-            queue.removeFirst()
-            change.onDone()
-            next(scope, path, queue)
-        }
-    }
-
-    fun clear() {
-        states.clear()
-        queues.clear()
-    }
-}
-
-/** Why the preferences cannot be changed now, or null when they can. */
-fun prefsBlocked(state: RemoteState): UiMessage? = when {
-    state.conn != ConnState.ONLINE -> UiMessages.projectsConnectToEdit()
-    state.prefs == null -> UiMessages.projectsLoading()
-    else -> null
-}
-
-/**
- * Lists the folder at [path] on [machine] as a project before its first session, here and on
- * the account's other clients (client-v33). A folder removed from the list earlier is listed again.
- */
-fun addProject(remote: Remote, state: RemoteState, machine: String, path: String) {
-    if (isHidden(state, path)) PrefsChanges.run(remote, PrefsOp.Unhide(path))
-    if (savedSettings(state, path)?.machineId != machine) PrefsChanges.run(remote, PrefsOp.SetSettings(path, machine, moved = true))
-    val start = projectStart(state, path, machine = machine)
-    val draft = Drafts.newSession(path, start?.config, start?.settled != false)
-    val current = draft.config.value
-    if (current != null && current.machineId != machine) {
-        draft.config.choose(switchMachine(current, machine, io.github.lewin671.remoteagent.core.machineAgents(state.machines[machine])))
-    }
-}
-
-/** One project in a list (client-v34): its mark, its name, and under it [projectDetail]; [end] at the right. */
+/** One project row rendered directly from Core's [ProjectRowView]. */
 @Composable
-fun ProjectRow(state: RemoteState, pr: Project, onClick: () -> Unit, clickLabel: String? = null, end: @Composable () -> Unit) {
+fun CoreProjectRow(
+    pr: ProjectRowView,
+    onClick: () -> Unit,
+    clickLabel: String? = null,
+    retryEnabled: Boolean = true,
+    onRetry: (() -> Unit)? = null,
+    end: @Composable () -> Unit,
+) {
     val p = pal
-    val remote = LocalRemote.current
-    val change = PrefsChanges.states[pr.key]
     Row(Modifier.fillMaxWidth().heightIn(min = 52.dp), verticalAlignment = Alignment.CenterVertically) {
         Row(
             Modifier.weight(1f).heightIn(min = 52.dp).clickable(onClickLabel = clickLabel, onClick = onClick).padding(vertical = 6.dp),
-            verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             ProjectAvatar(pr.key, 28)
             Column(Modifier.weight(1f)) {
-                Text(uiText(listProjectName(pr.key)), style = T.s17b, color = p.ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text(uiText(projectDetail(pr)), style = T.s13, color = p.ink2, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                when (change) {
-                    PrefsChanges.State.Saving -> IconText(Lucide.LoaderCircle, uiText(UiMessages.projectsAndroidSyncing()), p.ink2, T.s12)
-                    is PrefsChanges.State.Failed -> Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(uiText(UiMessages.projectsSaveFailed(reason = change.error)), style = T.s12, color = p.red, modifier = Modifier.weight(1f, fill = false))
-                        Text(" · " + uiText(UiMessages.commonRetry()), style = T.s12b, color = p.blue, modifier = Modifier.clickable(enabled = prefsBlocked(state) == null) { PrefsChanges.run(remote, change.op) })
+                Text(uiText(pr.name), style = T.s17b, color = p.ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(uiText(pr.subtitle), style = T.s13, color = p.ink2, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                if (pr.syncing) IconText(Lucide.LoaderCircle, uiText(UiMessages.projectsAndroidSyncing()), p.ink2, T.s12)
+                if (pr.saveError.isCoreTextNotEmpty()) Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(uiText(pr.saveError), style = T.s12, color = p.red, modifier = Modifier.weight(1f, fill = false))
+                    if (onRetry != null) {
+                        Text(
+                            " · " + uiText(UiMessages.commonRetry()),
+                            style = T.s12b,
+                            color = p.blue,
+                            modifier = Modifier.clickable(enabled = retryEnabled, onClick = onRetry),
+                        )
                     }
-                    null -> {}
                 }
             }
         }
@@ -188,113 +59,160 @@ fun ProjectRow(state: RemoteState, pr: Project, onClick: () -> Unit, clickLabel:
 }
 
 /**
- * The projects on the list, the same in every place that shows them (client-v34, design-system §6
- * 项目行): 常用 then 其他, each a rounded card of its own in [card] and titled only when there are
- * both, a search above more than eight, and a last card with 新项目… and [foot]. [first] is a card
- * above the projects while nothing is searched for.
+ * The projects list driven by Core's [ProjectListingView]: pinned then others, search when
+ * [ProjectListingView.canSearch] is true, empty match notice, and New Project + optional footer.
  */
 @Composable
-fun ProjectList(
-    state: RemoteState,
+fun CoreProjectList(
+    listing: ProjectListingView,
+    onSearch: (String) -> Unit,
     onNew: () -> Unit,
     card: Color = pal.raised,
     first: (@Composable () -> Unit)? = null,
     foot: (@Composable () -> Unit)? = null,
-    row: @Composable (Project) -> Unit,
+    row: @Composable (ProjectRowView) -> Unit,
 ) {
-    val copy = uiText()
     val p = pal
-    val g = projectGroups(state, copy = copy)
-    var search by remember { mutableStateOf("") }
-    val q = search.trim()
-    val match: (Project) -> Boolean = { q.isEmpty() || it.name.contains(q, true) || it.key.contains(q, true) }
-    val pinned = g.pinned.filter(match)
-    val others = g.others.filter(match)
-    val titled = pinned.isNotEmpty() && others.isNotEmpty()
+    var search by remember { mutableStateOf(listing.searchQuery) }
+    LaunchedEffect(listing.searchQuery) {
+        if (listing.searchQuery.isEmpty() && search.isNotEmpty()) search = ""
+    }
     @Composable
-    fun Card(rows: List<@Composable () -> Unit>) = Column(Modifier.fillMaxWidth().padding(bottom = 12.dp).clip(Radii.R20).background(card).padding(start = 18.dp, end = 4.dp)) {
+    fun Card(rows: List<@Composable () -> Unit>) = Column(
+        Modifier.fillMaxWidth().padding(bottom = 12.dp).clip(Radii.R20).background(card).padding(start = 18.dp, end = 4.dp),
+    ) {
         rows.forEachIndexed { i, r -> Box(if (i > 0) Modifier.topLine(p.sep) else Modifier) { r() } }
     }
     @Composable
     fun Title(text: String) = Text(text, style = T.s13, color = p.ink2, modifier = Modifier.padding(start = 12.dp, top = 2.dp, bottom = 6.dp))
-    if (g.pinned.size + g.others.size > 8) FilterField(search, { search = it }, Modifier.padding(bottom = 12.dp), placeholder = uiText(UiMessages.projectsSearch()))
-    if (q.isEmpty() && first != null) Card(listOf(first))
-    if (titled) Title(uiText(UiMessages.projectsPinned()))
-    if (pinned.isNotEmpty()) Card(pinned.map { pr -> @Composable { row(pr) } })
-    if (titled) Title(uiText(UiMessages.projectsOthers()))
-    if (others.isNotEmpty()) Card(others.map { pr -> @Composable { row(pr) } })
-    if (q.isNotEmpty() && pinned.isEmpty() && others.isEmpty()) Hint(uiText(UiMessages.projectsSearchEmpty(query = q)), Modifier.padding(bottom = 12.dp))
-    Card(listOfNotNull(
-        @Composable {
-            Row(Modifier.fillMaxWidth().heightIn(min = 52.dp).clickable(role = androidx.compose.ui.semantics.Role.Button, onClick = onNew), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Box(Modifier.width(28.dp), contentAlignment = Alignment.Center) { Ic(Lucide.Plus, 20.dp, p.blue) }
-                Text(uiText(UiMessages.projectsNew()), style = T.s17, color = p.blue)
-            }
-        },
-        foot,
-    ))
+
+    if (listing.canSearch) FilterField(search, { search = it; onSearch(it) }, Modifier.padding(bottom = 12.dp), placeholder = uiText(UiMessages.projectsSearch()))
+    if (!listing.searching && first != null) Card(listOf(first))
+    if (listing.titled) Title(uiText(UiMessages.projectsPinned()))
+    if (listing.pinnedCount > 0) Card(listing.pinnedList.map { pr -> @Composable { row(pr) } })
+    if (listing.titled) Title(uiText(UiMessages.projectsOthers()))
+    if (listing.othersCount > 0) Card(listing.othersList.map { pr -> @Composable { row(pr) } })
+    if (listing.emptyMatch.isCoreTextNotEmpty()) Hint(uiText(listing.emptyMatch), Modifier.padding(bottom = 12.dp))
+    Card(
+        listOfNotNull(
+            @Composable {
+                Row(
+                    Modifier.fillMaxWidth().heightIn(min = 52.dp).clickable(role = androidx.compose.ui.semantics.Role.Button, onClick = onNew),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    Box(Modifier.width(28.dp), contentAlignment = Alignment.Center) { Ic(Lucide.Plus, 20.dp, p.blue) }
+                    Text(uiText(UiMessages.projectsNew()), style = T.s17, color = p.blue)
+                }
+            },
+            foot,
+        ),
+    )
 }
 
 /** Asks before a project leaves the list: there is no undo, only adding it again. */
 @Composable
-fun RemoveProjectConfirm(key: String, onDismiss: () -> Unit, onRemoved: () -> Unit = {}) {
-    val remote = LocalRemote.current
+fun RemoveProjectConfirm(key: String, onDismiss: () -> Unit, onConfirm: () -> Unit) {
     Confirm(
-        uiText(UiMessages.projectsRemoveTitle(name = uiText(listProjectName(key)))), uiText(UiMessages.projectsRemoveExplanation()), uiText(UiMessages.commonRemove()), danger = true,
+        uiText(UiMessages.projectsRemoveTitle(name = uiText(listProjectName(key)))),
+        uiText(UiMessages.projectsRemoveExplanation()),
+        uiText(UiMessages.commonRemove()),
+        danger = true,
         onDismiss = onDismiss,
     ) {
         onDismiss()
-        PrefsChanges.run(remote, PrefsOp.Hide(key), onRemoved)
+        onConfirm()
     }
 }
 
-/** 项目管理: the list, with ⋯ on each project for 常用 and 移除; only the entries change, never folders on the computer. */
+/** 项目管理: renders Core's [io.github.lewin671.remoteagent.core.proto.ManageProjectsView]. */
 @Composable
 fun ManageProjectsScreen() {
     val remote = LocalRemote.current
     val nav = LocalNav.current
-    val context = androidx.compose.ui.platform.LocalContext.current
-    val state by remote.state.collectAsState()
+    val projectView by remote.projectView.collectAsState()
+    LaunchedEffect(Unit) { remote.coreHost.openManageProjects() }
+    val manage = projectView.manage
     val p = pal
-    val blocked = prefsBlocked(state)
-    var menu by remember { mutableStateOf<Project?>(null) }
+    var menu by remember { mutableStateOf<ProjectRowView?>(null) }
     var removing by remember { mutableStateOf<String?>(null) }
     var adding by remember { mutableStateOf(false) }
-    // A change from another client while this page is open is said once.
-    var seenRev by remember { mutableStateOf(state.prefs?.revision) }
-    var elsewhere by remember { mutableStateOf(false) }
-    LaunchedEffect(state.prefs?.revision) {
-        val rev = state.prefs?.revision
-        if (seenRev != null && rev != null && rev != seenRev && PrefsChanges.states.isEmpty()) elsewhere = true
-        seenRev = rev
-    }
-    PageScaffold(uiText(UiMessages.projectsManage())) {
-        FormColumn(Modifier.weight(1f).verticalScrollFaded()) {
-            if (elsewhere) Notice(uiText(UiMessages.projectsChangedElsewhere()), Modifier.padding(vertical = 4.dp), action = uiText(UiMessages.commonGotIt()), onAction = { elsewhere = false })
-            ProjectList(state, onNew = { adding = true }, card = p.gbg) { pr ->
-                // The name makes the project the home page's scope and goes there (client-v27); it only changes this device.
-                ProjectRow(state, pr, onClick = { HomeScopes.choose(context, remote.account.localKey, HomeScope.Of(pr.key)); nav.home() }, clickLabel = uiText(UiMessages.projectsAndroidViewHome())) {
-                    Box(Modifier.size(44.dp).clickable(enabled = PrefsChanges.states[pr.key] != PrefsChanges.State.Saving) { menu = pr }, contentAlignment = Alignment.Center) {
-                        Ic(Lucide.Ellipsis, 20.dp, p.blue, contentDescription = uiText(UiMessages.projectsManageNamed(name = pr.name)))
+
+    PageScaffold(uiText(UiMessages.homeManageProjects())) {
+        LazyColumn(
+            Modifier.weight(1f).padding(horizontal = 16.dp).testTag("manage-projects-list"),
+            contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 24.dp),
+        ) {
+            if (!manage.canEdit && manage.blockedReason.isCoreTextNotEmpty()) {
+                item(key = "blocked") { Notice(uiText(manage.blockedReason), Modifier.padding(bottom = 12.dp)) }
+            }
+            if (manage.saveError.isCoreTextNotEmpty()) {
+                item(key = "save-error") { Notice(uiText(manage.saveError), Modifier.padding(bottom = 12.dp), tone = NoticeTone.ERROR) }
+            }
+            item(key = "list") {
+                CoreProjectList(
+                    manage.listing,
+                    onSearch = { remote.coreHost.setProjectSearch(it) },
+                    onNew = { remote.coreHost.openDirPicker(forNewTask = false); adding = true },
+                    card = p.gbg,
+                ) { pr ->
+                    CoreProjectRow(
+                        pr,
+                        retryEnabled = manage.canEdit,
+                        onClick = { remote.coreHost.setHomeScope(pr.key); nav.home() },
+                        clickLabel = uiText(UiMessages.projectsAndroidViewHome()),
+                        onRetry = {
+                            if (pr.pinned) remote.coreHost.toggleProjectPin(pr.key)
+                            else remote.coreHost.toggleProjectHide(pr.key)
+                        },
+                    ) {
+                        val name = uiText(pr.name)
+                        Box(
+                            Modifier.size(44.dp).clickable(enabled = manage.canEdit && !pr.syncing) { menu = pr },
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Ic(Lucide.Ellipsis, 20.dp, if (manage.canEdit) p.blue else p.ink3, contentDescription = uiText(UiMessages.projectsManageNamed(name = name)))
+                        }
                     }
                 }
             }
-            Hint(uiText(UiMessages.projectsRemoveNote()), Modifier.padding(top = 4.dp, bottom = 16.dp))
         }
     }
+
     menu?.let { pr ->
-        val pinned = isPinned(state, pr.key)
         ActionSheet(
-            info = { SheetInfo(pr.name, shortPath(pr.key), mono = true) },
+            info = { SheetInfo(uiText(pr.name), pr.shortPath, mono = true) },
             groups = listOf(
-                listOf(SheetAction(if (pinned) uiText(UiMessages.projectsUnpin()) else uiText(UiMessages.projectsPin()), enabled = blocked == null, note = blocked?.let { uiText(it) }.orEmpty()) { PrefsChanges.run(remote, if (pinned) PrefsOp.Unpin(pr.key) else PrefsOp.Pin(pr.key)) }),
-                listOf(SheetAction(uiText(UiMessages.projectsRemoveAction()), danger = true, enabled = blocked == null) { removing = pr.key }),
+                listOf(
+                    SheetAction(
+                        if (pr.pinned) uiText(UiMessages.projectsUnpin()) else uiText(UiMessages.projectsPin()),
+                        enabled = manage.canEdit,
+                        note = if (!manage.canEdit) uiText(manage.blockedReason) else "",
+                    ) {
+                        remote.coreHost.toggleProjectPin(pr.key)
+                    },
+                ),
+                listOf(
+                    SheetAction(uiText(UiMessages.projectsRemoveAction()), danger = true, enabled = manage.canEdit) {
+                        removing = pr.key
+                    },
+                ),
             ),
             onDismiss = { menu = null },
         )
     }
-    removing?.let { key -> RemoveProjectConfirm(key, onDismiss = { removing = null }) }
-    if (adding) Sheet({ adding = false }, scroll = false) {
-        DirPickerBody(state) { machine, path -> addProject(remote, state, machine, path); adding = false }
+    removing?.let { key ->
+        RemoveProjectConfirm(key, onDismiss = { removing = null }) {
+            remote.coreHost.toggleProjectHide(key)
+        }
+    }
+    if (adding) Sheet({ remote.coreHost.closeDirPicker(); adding = false }, scroll = false) {
+        CoreDirPickerBody(
+            manage.dirPicker,
+            onBack = { remote.coreHost.closeDirPicker(); adding = false },
+        ) { _, path ->
+            remote.coreHost.addProject(path)
+            adding = false
+        }
     }
 }

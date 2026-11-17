@@ -1,46 +1,22 @@
 package io.github.lewin671.remoteagent.ui
 
-import io.github.lewin671.remoteagent.core.listProjectName
-import io.github.lewin671.remoteagent.core.UiMessages
 import android.content.Context
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.MutableState
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.semantics.clearAndSetSemantics
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.heading
-import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.*
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.style.TextAlign
@@ -48,121 +24,107 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import io.github.lewin671.remoteagent.core.AccountEmpty
-import io.github.lewin671.remoteagent.core.ENDED_PAGE
-import io.github.lewin671.remoteagent.core.HomeEmpty
-import io.github.lewin671.remoteagent.core.HomeHeadline
-import io.github.lewin671.remoteagent.core.HomeItem
-import io.github.lewin671.remoteagent.core.HomeScope
-import io.github.lewin671.remoteagent.core.HomeShown
-import io.github.lewin671.remoteagent.core.HomeTail
-import io.github.lewin671.remoteagent.core.RemoteState
-import io.github.lewin671.remoteagent.core.RowMeta
-import io.github.lewin671.remoteagent.core.SessionView
-import io.github.lewin671.remoteagent.core.agent
-import io.github.lewin671.remoteagent.core.approvalCardText
-import io.github.lewin671.remoteagent.core.decodeScope
-import io.github.lewin671.remoteagent.core.encodeScope
-import io.github.lewin671.remoteagent.core.homeHeadline
-import io.github.lewin671.remoteagent.core.homeList
-import io.github.lewin671.remoteagent.core.listedProjects
-import io.github.lewin671.remoteagent.core.pendingRowText
-import io.github.lewin671.remoteagent.core.projectName
-import io.github.lewin671.remoteagent.core.projects
-import io.github.lewin671.remoteagent.core.resolveScope
-import io.github.lewin671.remoteagent.core.scopeKey
-import io.github.lewin671.remoteagent.core.scopeRows
+import io.github.lewin671.remoteagent.core.HomeScopeStore
+import io.github.lewin671.remoteagent.core.UiMessages
+import io.github.lewin671.remoteagent.core.proto.*
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
+
+private const val ATTENTION_MAX = 3
+private const val RUNNING_MAX = 5
 
 /**
- * The home page's scope as this device remembers it (client-v27, architecture §8): kept with the
- * device's own settings and not in the account's preferences, because different devices often look
- * at different projects. Those settings are plaintext on disk, so a project is kept as a mark made
- * with the account's key ([encodeScope]) and never as its path. Nothing is remembered until the
- * user chose a scope; what the page then uses is resolveScope's answer. `root` is the account's
- * root key.
+ * Device-local Home scope persistence storing only an HMAC token ("all" or "project:<hmac>")
+ * in SharedPreferences, never plaintext project paths.
  */
 object HomeScopes {
-    private var stored: MutableState<String?>? = null
-
     private fun store(context: Context) =
         context.applicationContext.getSharedPreferences("home-scope", Context.MODE_PRIVATE)
 
-    private fun stored(context: Context): MutableState<String?> =
-        stored ?: mutableStateOf(store(context).getString("scope", null)).also { stored = it }
-
-    /** The scope chosen, while the project it names is one of [state]'s lists. */
-    fun remembered(context: Context, root: ByteArray, state: RemoteState): HomeScope? =
-        decodeScope(stored(context).value, scopeKey(root), listedProjects(state, copy = ::sessionText))
-
-    fun choose(context: Context, root: ByteArray, scope: HomeScope) {
-        val mark = encodeScope(scope, scopeKey(root))
-        stored(context).value = mark
-        store(context).edit().putString("scope", mark).apply()
+    fun storeAdapter(context: Context): HomeScopeStore = object : HomeScopeStore {
+        override fun readToken(): String? = store(context).getString("scope", null)
+        override fun writeToken(token: String) {
+            store(context).edit().putString("scope", token).apply()
+        }
+        override fun clear() {
+            store(context).edit().clear().apply()
+        }
     }
 
     /** Forgotten with the account: the mark is one of its projects'. */
     fun clear(context: Context) {
-        stored(context).value = null
         store(context).edit().clear().apply()
     }
 }
 
 /**
- * 主页 (client-v58 #home): one sentence of how things stand, then what waits for the whole
- * account (the most urgent approval as the dark card, the rest one row each), then what runs in
- * the scope and the ended sessions by day, a page at a time. The scope capsule at the top left and
- * the gear at the top right float over it; at the bottom the tabs and 新任务. The list's shape is
- * core's [homeList], the sentence [homeHeadline].
+ * 主页 (client-v58 #home): renders Core's [HomeViewModel] directly.
  */
 @Composable
 fun HomeScreen() {
-    val copy = uiText()
     val remote = LocalRemote.current
     val nav = LocalNav.current
-    val context = LocalContext.current
+    val vm by remote.homeView.collectAsState()
     val state by remote.state.collectAsState()
-    val t = now()
-    val scope = resolveScope(HomeScopes.remembered(context, remote.account.localKey, state), state, copy = copy)
-    // What is typed stays in memory: saved instance state is plaintext on disk (architecture §15).
-    var query by remember(scope) { mutableStateOf("") }
-    val wide = LocalConfiguration.current.screenWidthDp >= 600
-    var shown by remember(scope) { mutableStateOf(HomeShown()) }
-    // A wide window lists all of what waits and runs (design-system §6 「长内容」).
-    val list = remember(state, scope, query, shown, t, wide) {
-        homeList(state, scope, query, if (wide) shown.copy(allAttention = true, allRunning = true) else shown, t, copy = copy)
+    var filterText by remember(vm.scopeKey) { mutableStateOf(vm.filterQuery) }
+    LaunchedEffect(vm.filterQuery) {
+        if (vm.filterQuery.isEmpty() && filterText.isNotEmpty()) filterText = ""
     }
-    val headline = remember(state, scope) { homeHeadline(state, scope, copy = copy) }
+    val wide = LocalConfiguration.current.screenWidthDp >= 600
+    var allAttention by remember(vm.scopeKey) { mutableStateOf(false) }
+    var allRunning by remember(vm.scopeKey, vm.filterQuery) { mutableStateOf(false) }
+
+    val showCard = vm.topAttentionActionable && vm.hasTopAttentionCard() && vm.topAttentionCard.approvalId.isNotEmpty()
+    if (vm.topAttentionActionable && !showCard && vm.topAttentionSessionId.isNotEmpty()) {
+        // Hydrate approval details for the top attention item when only metadata was available.
+        remote.events(vm.topAttentionSessionId).collectAsState()
+    }
+    val attentionRows =
+        if (showCard && vm.attentionList.firstOrNull()?.sessionId == vm.topAttentionSessionId) {
+            vm.attentionList.drop(1)
+        } else {
+            vm.attentionList
+        }
+    val visibleAttention =
+        if (wide || allAttention || attentionRows.size <= ATTENTION_MAX) attentionRows
+        else attentionRows.take(ATTENTION_MAX)
+    val hiddenAttentionCount = attentionRows.size - visibleAttention.size
+
+    val visibleRunning =
+        if (wide || allRunning || vm.runningList.size <= RUNNING_MAX) vm.runningList
+        else vm.runningList.take(RUNNING_MAX)
+    val hiddenRunningCount = vm.runningList.size - visibleRunning.size
+
+    val hasRows = showCard || visibleAttention.isNotEmpty() || visibleRunning.isNotEmpty() || vm.endedGroupsCount > 0 || vm.hasEndedTail()
     var calm by remember { mutableStateOf(false) }
-    val hasRows = list.items.isNotEmpty()
-    LaunchedEffect(scope, query, hasRows) {
+    LaunchedEffect(vm.scopeKey, vm.filterQuery, hasRows) {
         calm = false
         if (hasRows) {
             delay(Motion.SLOW + 120L)
             calm = true
         }
     }
+
     var pick by rememberSaveable { mutableStateOf(false) }
     var menu by rememberSaveable { mutableStateOf(false) }
     var details by remember { mutableStateOf(false) }
     var updating by remember { mutableStateOf(false) }
-    // Without any project, removed ones included, there is nothing to scope by.
-    val anyProject = remember(state) { projects(state, copy = copy).isNotEmpty() }
-    FetchEarlier(state, page = list.wantPage, all = list.wantAll)
-    // A new session needs the server and a computer to run on.
-    val canStart = state.machines.keys.any { !state.peer(it).unlinked }
+
+    val hasHeadline = vm.hasHeadline() && (vm.headline.kind != HeadlineKind.HEADLINE_KIND_UNSPECIFIED || vm.headline.title.isCoreTextNotEmpty())
+
     ShellPage(
         Modifier.fillMaxSize(),
         top = {
-            Box(Modifier.weight(1f)) { if (anyProject) ScopeCapsule(scope) { menu = true } }
+            Box(Modifier.weight(1f)) {
+                if (vm.scopeSelectable) {
+                    ScopeCapsule(vm.scopeKey, uiText(vm.scopeTitle)) { menu = true }
+                }
+            }
             GlassButton(Lucide.Settings, uiText(UiMessages.commonSettings()), nav.settings)
         },
         bottom = {
             ShellBottom(
-                ShellTab.SESSIONS, uiText(UiMessages.homeNewTask()), Lucide.SquarePen, enabled = canStart,
-                // A project as the scope is where the new session goes; every project asks which first.
-                onAction = { if (scope is HomeScope.Of) nav.projectNew(scope.key) else pick = true },
+                ShellTab.SESSIONS, uiText(UiMessages.homeNewTask()), Lucide.SquarePen, enabled = vm.canStart,
+                onAction = { if (vm.scopeKey.isNotEmpty()) nav.projectNew(vm.scopeKey) else pick = true },
             )
         },
     ) {
@@ -172,116 +134,144 @@ fun HomeScreen() {
         ) {
             item(key = "headline") {
                 Column {
-                    if (headline != null) Headline(headline) { details = true }
+                    if (hasHeadline) Headline(vm.headline) { details = true }
                     UpdateNotice(Modifier.padding(start = 16.dp, end = 16.dp, top = 10.dp)) { updating = true }
-                    if (list.showFilter) FilterField(query, { query = it }, Modifier.padding(start = 16.dp, end = 16.dp, top = 18.dp))
+                    if (vm.canFilter) FilterField(
+                        filterText,
+                        { filterText = it; remote.coreHost.setHomeFilter(it) },
+                        Modifier.padding(start = 16.dp, end = 16.dp, top = 18.dp),
+                    )
                 }
             }
             item(key = "disk-reminders") { DiskReminderCards(state) }
-            when (val e = list.empty) {
-                // Out of reach of the server the sentence says why nothing is here.
-                HomeEmpty.Loading -> if (headline == null) item(key = "loading") { Skeleton() }
-                is HomeEmpty.Account -> item(key = "empty") { EmptyAccount(state, e.why) }
-                HomeEmpty.Scope -> item(key = "empty") { EmptyNote(uiText(UiMessages.homeAndroidEmptyProject())) }
-                null -> {}
+            val emptyKind = if (vm.hasEmpty()) vm.empty.kind else HomeEmptyKind.HOME_EMPTY_KIND_UNSPECIFIED
+            if (!hasHeadline && emptyKind == HomeEmptyKind.HOME_EMPTY_KIND_NONE && !hasRows) {
+                item(key = "loading") { Skeleton() }
+            } else if (emptyKind != HomeEmptyKind.HOME_EMPTY_KIND_UNSPECIFIED && emptyKind != HomeEmptyKind.HOME_EMPTY_KIND_NONE) {
+                item(key = "empty") { EmptyHomeView(vm.empty, onPair = nav.pair, onRetry = { remote.coreHost.retryHomeLoad() }) }
             }
-            items(list.items, key = { it.id }) { item ->
-                // Rows coming, going and moving (§4 动效, 常), once the page has settled: the rows a page
-                // opens with, or a new scope or filter brings in one go, do not play it.
-                Box(
-                    if (calm) Modifier.animateItem(Motion.fadeInSpec(), Motion.enter(Motion.BASE), Motion.fadeOutSpec())
-                    else Modifier,
-                ) { HomeLine(state, item, list.meta, scope, t, list.grows) { shown = it(shown) } }
+
+            if (showCard) {
+                item(key = "card:${vm.topAttentionCard.approvalId}") {
+                    val anim = if (calm) Modifier.animateItem(Motion.fadeInSpec(), Motion.enter(Motion.BASE), Motion.fadeOutSpec()) else Modifier
+                    Box(anim) {
+                        androidx.compose.runtime.key(vm.topAttentionCard.approvalId) {
+                            ApprovalCard(
+                                vm.topAttentionCard,
+                                state,
+                                onOpen = { nav.session(vm.topAttentionCard.sessionId) },
+                                modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 20.dp),
+                            )
+                        }
+                    }
+                }
+            }
+            itemsIndexed(visibleAttention, key = { _, r -> "att:${r.sessionId}" }) { idx, row ->
+                val first = !showCard && idx == 0
+                val last = idx == visibleAttention.lastIndex && hiddenAttentionCount == 0
+                val anim = if (calm) Modifier.animateItem(Motion.fadeInSpec(), Motion.enter(Motion.BASE), Motion.fadeOutSpec()) else Modifier
+                Box(anim) {
+                    PendingRow(row, first = first, last = last) { nav.session(row.sessionId) }
+                }
+            }
+            if (hiddenAttentionCount > 0) {
+                item(key = "more:attention") {
+                    val anim = if (calm) Modifier.animateItem(Motion.fadeInSpec(), Motion.enter(Motion.BASE), Motion.fadeOutSpec()) else Modifier
+                    Box(anim) {
+                        MoreRow(uiText(UiMessages.homeMoreWaiting(count = hiddenAttentionCount))) { allAttention = true }
+                    }
+                }
+            }
+
+            if (visibleRunning.isNotEmpty()) {
+                item(key = "label:running") {
+                    val anim = if (calm) Modifier.animateItem(Motion.fadeInSpec(), Motion.enter(Motion.BASE), Motion.fadeOutSpec()) else Modifier
+                    Box(anim) { GroupTitle(uiText(UiMessages.homeLive()), date = false) }
+                }
+                itemsIndexed(visibleRunning, key = { _, r -> "run:${r.sessionId}" }) { idx, row ->
+                    val anim = if (calm) Modifier.animateItem(Motion.fadeInSpec(), Motion.enter(Motion.BASE), Motion.fadeOutSpec()) else Modifier
+                    Box(anim) {
+                        SessionRow(row, last = idx == visibleRunning.lastIndex) {
+                            remote.coreHost.selectHomeSession(row.sessionId)
+                            nav.session(row.sessionId)
+                        }
+                    }
+                }
+                if (hiddenRunningCount > 0) {
+                    item(key = "more:running") {
+                        val anim = if (calm) Modifier.animateItem(Motion.fadeInSpec(), Motion.enter(Motion.BASE), Motion.fadeOutSpec()) else Modifier
+                        Box(anim) {
+                            ListMore(uiText(UiMessages.homeMoreLive(count = hiddenRunningCount)), { allRunning = true })
+                        }
+                    }
+                }
+            }
+
+            for (group in vm.endedGroupsList) {
+                item(key = "label:${group.groupKey}") {
+                    val anim = if (calm) Modifier.animateItem(Motion.fadeInSpec(), Motion.enter(Motion.BASE), Motion.fadeOutSpec()) else Modifier
+                    Box(anim) { GroupTitle(uiText(group.label), date = true) }
+                }
+                itemsIndexed(group.itemsList, key = { _, r -> "end:${r.sessionId}" }) { idx, row ->
+                    val anim = if (calm) Modifier.animateItem(Motion.fadeInSpec(), Motion.enter(Motion.BASE), Motion.fadeOutSpec()) else Modifier
+                    Box(anim) {
+                        EndedRow(row, last = idx == group.itemsList.lastIndex) {
+                            remote.coreHost.selectHomeSession(row.sessionId)
+                            nav.session(row.sessionId)
+                        }
+                    }
+                }
+            }
+
+            if (vm.hasEndedTail() && vm.endedTail.text.isCoreTextNotEmpty()) {
+                item(key = "tail") {
+                    val tail = vm.endedTail
+                    if (tail.kind == TailKind.TAIL_KIND_MORE_ON_SERVER) {
+                        LaunchedEffect(vm.endedTotal, vm.endedGroupsCount) {
+                            remote.coreHost.loadMoreHomeEnded()
+                        }
+                    }
+                    val anim = if (calm) Modifier.animateItem(Motion.fadeInSpec(), Motion.enter(Motion.BASE), Motion.fadeOutSpec()) else Modifier
+                    Box(anim) {
+                        ListMore(
+                            uiText(tail.text),
+                            if (tail.retry) ({ remote.coreHost.retryHomeLoad() }) else null,
+                            Modifier.testTag("timeline-tail"),
+                        )
+                    }
+                }
             }
         }
     }
+
     if (updating) UpdateSheet { updating = false }
     if (details) ServerDetails(state) { details = false }
-    if (pick) PickProjectSheet(state, { pick = false })
-    if (menu) ScopeSheet(state, scope, onPick = { HomeScopes.choose(context, remote.account.localKey, it) }) { menu = false }
-}
-
-/** One line of the list; [change] opens more of a part ([HomeShown]). */
-@Composable
-private fun HomeLine(
-    state: RemoteState,
-    item: HomeItem,
-    meta: RowMeta,
-    scope: HomeScope,
-    t: Long,
-    grows: Boolean,
-    change: ((HomeShown) -> HomeShown) -> Unit,
-) {
-    val nav = LocalNav.current
-    val remote = LocalRemote.current
-    val coroutines = rememberCoroutineScope()
-    when (item) {
-        is HomeItem.AttentionCard -> {
-            val a = rememberApproval(item.session)
-            // Until the approval itself is read it is a row like the rest.
-            if (a == null) PendingItem(state, item.session, scope, first = true, last = true)
-            else androidx.compose.runtime.key(a.approvalId) {
-                // Keyed by approval: the next one must not inherit this one's state.
-                ApprovalCard(
-                    state, item.session, a, approvalCardText(state, item.session, a, timeoutNote = true, now = t), t,
-                    onOpen = { nav.session(item.session.id) },
-                    modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 20.dp),
-                )
-            }
-        }
-        is HomeItem.Attention -> PendingItem(state, item.session, scope, item.first, item.last)
-        is HomeItem.MoreAttention -> MoreRow(uiText(UiMessages.homeMoreWaiting(count = item.count))) { change { it.copy(allAttention = true) } }
-        is HomeItem.Label -> GroupTitle(uiText(item.title), date = item.key != "running")
-        is HomeItem.Running -> SessionRow(state, item.session, t, meta, last = item.last, selected = LocalSelectedSession.current == item.session.id)
-        is HomeItem.MoreRunning -> ListMore(uiText(UiMessages.homeMoreLive(count = item.count)), { change { it.copy(allRunning = true) } })
-        is HomeItem.Ended -> EndedRow(item.session, t, project = meta.project, selected = LocalSelectedSession.current == item.session.id)
-        is HomeItem.Tail -> {
-            // Reaching the end shows the next page, once the ones before it are all rendered.
-            if (grows) LaunchedEffect(Unit) { change { it.copy(ended = it.ended + ENDED_PAGE) } }
-            when (val tail = item.tail) {
-                is HomeTail.Text -> ListMore(tail.text?.let { uiText(it) }.orEmpty(), null, Modifier.testTag("timeline-tail"))
-                is HomeTail.Earlier -> ListMore(
-                    uiText(tail.text),
-                    if (tail.retry) ({ coroutines.launch { runCatching { remote.loadMoreSessions() } } }) else null,
-                    Modifier.testTag("timeline-tail"),
-                )
-            }
-        }
-    }
-}
-
-/** A row of what waits, from the session's own events: its approval or question. */
-@Composable
-private fun PendingItem(state: RemoteState, s: SessionView, scope: HomeScope, first: Boolean, last: Boolean) {
-    val copy = uiText()
-    val nav = LocalNav.current
-    val remote = LocalRemote.current
-    val events by remote.events(s.id).collectAsState()
-    val d = rememberDerived(events, s.agent())
-    val row = pendingRowText(
-        state, s, scope, d.approvals.values.firstOrNull(),
-        d.questions.values.firstOrNull()?.questionsList?.firstOrNull()?.text,
-     copy = copy)
-    PendingRow(row, first, last) { nav.session(s.id) }
+    if (pick) PickProjectSheet(vm.sidebarProjects, onClose = { pick = false })
+    if (menu) ScopeSheet(vm, onPick = { remote.coreHost.setHomeScope(it) }) { menu = false }
 }
 
 /**
- * The sentence at the top (design-system §6 大标题): 34 / 700, the count of what waits in orange,
- * and the line under it, 17 ink2: red when it is why the server cannot be reached with nothing to
- * show, a path in mono, and 详情 in blue when there is more to say about the connection.
+ * The sentence at the top (design-system §6 大标题): 34 / 700, count in orange, and subtitle.
  */
 @Composable
-internal fun Headline(h: HomeHeadline, onDetails: () -> Unit) {
+internal fun Headline(h: HomeHeadlineView, onDetails: () -> Unit) {
     val p = pal
-    val count = (h.kind as? HomeHeadline.Kind.Waiting)?.count
+    val count = h.highlightCount.takeIf { h.kind == HeadlineKind.HEADLINE_KIND_WAITING && it > 0 }
     val title = uiText(h.title)
     val sub = uiText(h.sub)
     Text(
         buildAnnotatedString {
             if (count == null) append(title)
             else {
-                withStyle(SpanStyle(color = p.orange)) { append("$count") }
-                append(title.removePrefix("$count"))
+                val n = count.toString()
+                val idx = title.indexOf(n)
+                if (idx >= 0) {
+                    append(title.substring(0, idx))
+                    withStyle(SpanStyle(color = p.orange)) { append(n) }
+                    append(title.substring(idx + n.length))
+                } else {
+                    append(title)
+                }
             }
         },
         style = T.title, color = p.ink,
@@ -292,7 +282,6 @@ internal fun Headline(h: HomeHeadline, onDetails: () -> Unit) {
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
-            // Measure the same localized line while empty, without painting or announcing it.
             sub.ifEmpty { uiText(UiMessages.connectionPreviousBelow()) },
             minLines = 1,
             maxLines = 1,
@@ -303,78 +292,69 @@ internal fun Headline(h: HomeHeadline, onDetails: () -> Unit) {
                 if (sub.isEmpty()) Modifier.alpha(0f).clearAndSetSemantics {} else Modifier,
             ),
         )
-        if (h.details) Box(
+        if (h.detailsAction) Box(
             Modifier.heightIn(min = 44.dp).clickable(role = Role.Button, onClick = onDetails).padding(start = 12.dp, end = 4.dp),
             contentAlignment = Alignment.Center,
         ) { Text(uiText(UiMessages.commonDetails()), style = T.s17, color = p.blue) }
     }
 }
 
-/** A sentence under the title of a page with nothing to list, 17 ink2. */
 @Composable
 private fun EmptyNote(text: String) {
     Text(text, style = T.s17.copy(lineHeight = 24.sp), color = pal.ink2, modifier = Modifier.padding(start = 24.dp, end = 24.dp, top = 14.dp))
 }
 
-/**
- * Under 还没有会话: what to do first, by what computers the account has. The bottom right's
- * 新任务 is the screen's one ink button; only with no computer yet is 添加设备 the thing to do, on
- * the authority (the others name it). Out of reach of the server the title says why.
- */
 @Composable
-internal fun EmptyAccount(state: RemoteState, why: AccountEmpty) {
-    val nav = LocalNav.current
-    when (why) {
-        AccountEmpty.NoMachines -> if (state.isAuthority) Column {
-            EmptyNote(uiText(UiMessages.homeAndroidNoMachines()))
-            PillButton(uiText(UiMessages.homeAddDevice()), { nav.pair() }, Modifier.padding(start = 24.dp, top = 20.dp), ButtonKind.INK, icon = Lucide.Plus)
-        } else EmptyNote(uiText(UiMessages.homeAddViaManager(uiText(state.authorityName))))
-        AccountEmpty.NoneOnline -> EmptyNote(uiText(UiMessages.homeAndroidNoOnline()))
-        is AccountEmpty.Ready -> EmptyNote(uiText(UiMessages.homeOnlineNewTask(name = why.machine)))
-        AccountEmpty.Unlinked -> {}
+internal fun EmptyHomeView(
+    empty: HomeEmptyView,
+    onPair: () -> Unit,
+    onRetry: () -> Unit,
+) {
+    val msg = uiText(empty.message)
+    when (empty.kind) {
+        HomeEmptyKind.HOME_EMPTY_KIND_NO_MACHINES -> Column {
+            if (msg.isNotEmpty()) EmptyNote(msg)
+            if (empty.canAddDevice) PillButton(uiText(UiMessages.homeAddDevice()), onPair, Modifier.padding(start = 24.dp, top = 20.dp), ButtonKind.INK, icon = Lucide.Plus)
+        }
+        HomeEmptyKind.HOME_EMPTY_KIND_LIST_FAILED -> Column {
+            if (msg.isNotEmpty()) EmptyNote(msg)
+            if (empty.canRetry) PillButton(uiText(UiMessages.commonRetry()), onRetry, Modifier.padding(start = 24.dp, top = 20.dp), ButtonKind.INK)
+        }
+        else -> if (msg.isNotEmpty()) EmptyNote(msg)
     }
 }
 
-/**
- * The scope capsule (design-system §6 范围胶囊): glass, 44 tall, the project's avatar and name or
- * 全 and 全部项目, then ⌄; a tap opens the scope menu.
- */
 @Composable
-private fun ScopeCapsule(scope: HomeScope, modifier: Modifier = Modifier, onOpen: () -> Unit) {
+private fun ScopeCapsule(scopeKey: String, title: String, modifier: Modifier = Modifier, onOpen: () -> Unit) {
     val p = pal
     GlassCapsule(onOpen, modifier.testTag("scope-title"), onClickLabel = uiText(UiMessages.homeAndroidChangeScope())) {
-        ProjectAvatar((scope as? HomeScope.Of)?.key.orEmpty(), 28, all = scope == HomeScope.All)
+        ProjectAvatar(scopeKey, 28, all = scopeKey.isEmpty())
         Spacer(Modifier.size(7.dp))
-        Text(scopeName(scope), style = T.s15b, color = p.ink, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
+        Text(title, style = T.s15b, color = p.ink, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
         Spacer(Modifier.size(4.dp))
         Ic(Lucide.ChevronDown, 15.dp, p.ink3)
     }
 }
 
 @Composable
-private fun scopeName(scope: HomeScope): String =
-    when (scope) {
-        HomeScope.All -> uiText(UiMessages.homeAllProjects())
-        is HomeScope.Of -> uiText(listProjectName(scope.key))
-    }
-
-/**
- * 看哪个项目 (client-v58 #home): 全部项目 when there is more than one project, then the projects as
- * every list of them draws them, a blue ✓ on the current scope; a search above more than eight.
- * 新项目… picks a machine and a folder in the same sheet; 管理项目 goes to 项目管理.
- */
-@Composable
-private fun ScopeSheet(state: RemoteState, scope: HomeScope, onPick: (HomeScope) -> Unit, onClose: () -> Unit) {
-    val copy = uiText()
+private fun ScopeSheet(vm: HomeViewModel, onPick: (String) -> Unit, onClose: () -> Unit) {
     val p = pal
     val nav = LocalNav.current
+    val remote = LocalRemote.current
+    val projectView by remote.projectView.collectAsState()
     var browsing by remember { mutableStateOf(false) }
     Sheet(onClose, scroll = !browsing) {
         if (browsing) {
-            DirPickerBody(state, onBack = { browsing = false }) { machine, path ->
-                onClose()
-                nav.newProjectAt(machine, path)
-            }
+            CoreDirPickerBody(
+                projectView.manage.dirPicker,
+                onBack = { remote.coreHost.closeDirPicker(); browsing = false },
+                onChosen = { _, path ->
+                    remote.coreHost.addProject(path)
+                    browsing = false
+                    onClose()
+                    nav.projectNew(path)
+                },
+            )
             return@Sheet
         }
         Box(Modifier.fillMaxWidth().padding(bottom = 10.dp)) {
@@ -390,15 +370,16 @@ private fun ScopeSheet(state: RemoteState, scope: HomeScope, onPick: (HomeScope)
                 if (on) Ic(Lucide.Check, 18.dp, p.blue)
             }
         }
-        ProjectList(
-            state,
-            onNew = { browsing = true },
-            // 全部项目, when there is more than one project to choose between.
-            first = scopeRows(state, scope, copy = copy).firstOrNull { it.scope == HomeScope.All }?.let { all ->
+        val allRow = vm.scopeMenuList.firstOrNull { it.allProjects }
+        CoreProjectList(
+            vm.sidebarProjects,
+            onSearch = { remote.coreHost.setProjectSearch(it) },
+            onNew = { remote.coreHost.openDirPicker(forNewTask = false); browsing = true },
+            first = allRow?.let { all ->
                 @Composable {
                     Row(
                         Modifier.fillMaxWidth().heightIn(min = 52.dp).clickable(role = Role.Button) {
-                            onPick(all.scope)
+                            onPick("")
                             onClose()
                         }.padding(vertical = 6.dp),
                         verticalAlignment = Alignment.CenterVertically,
@@ -407,9 +388,9 @@ private fun ScopeSheet(state: RemoteState, scope: HomeScope, onPick: (HomeScope)
                         ProjectAvatar("", 28, all = true)
                         Column(Modifier.weight(1f)) {
                             Text(uiText(all.name), style = T.s17b, color = p.ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                            Text(uiText(all.detail), style = T.s13, color = p.ink2, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            Text(uiText(all.subtitle), style = T.s13, color = p.ink2, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         }
-                        check(all.current)
+                        check(all.checked)
                     }
                 }
             },
@@ -427,10 +408,11 @@ private fun ScopeSheet(state: RemoteState, scope: HomeScope, onPick: (HomeScope)
                 }
             },
         ) { pr ->
-            ProjectRow(state, pr, onClick = {
-                onPick(HomeScope.Of(pr.key))
-                onClose()
-            }) { check(scope == HomeScope.Of(pr.key)) }
+            CoreProjectRow(
+                pr,
+                retryEnabled = false,
+                onClick = { onPick(pr.key); onClose() },
+            ) { check(vm.scopeKey == pr.key) }
         }
     }
 }

@@ -101,9 +101,16 @@ fun FetchEarlier(state: RemoteState, page: Boolean, all: Boolean = false) {
 fun EarlierTail(state: RemoteState, modifier: Modifier = Modifier) {
     val remote = LocalRemote.current
     val scope = androidx.compose.runtime.rememberCoroutineScope()
+    val copy = uiText()
     val failed = state.conn == ConnState.ONLINE && state.sessionsError.isNotEmpty()
+    val tailMsg = when {
+        state.conn != ConnState.ONLINE -> uiText(UiMessages.homeAndroidEarlierOffline())
+        state.sessionsError.isNotEmpty() && !state.sessionsListed -> copy(UiMessages.homeAndroidListFailedRetry(state.sessionsError.resolve(copy)))
+        state.sessionsError.isNotEmpty() -> copy(UiMessages.homeAndroidEarlierFailedRetry(state.sessionsError.resolve(copy)))
+        else -> uiText(UiMessages.homeLoadingEarlier())
+    }
     Text(
-        uiText(io.github.lewin671.remoteagent.core.earlierTail(state)),
+        tailMsg,
         style = T.s12,
         color = pal.ink2,
         modifier =
@@ -319,8 +326,6 @@ fun Confirm(
     onDismiss: () -> Unit,
     onConfirm: () -> Unit,
 ) = Alert(title, text, confirm, danger, onDismiss, onConfirm)
-
-fun machineOf(state: RemoteState, s: SessionView): MachineView? = state.machines[s.machineId]
 
 fun statusIn(state: RemoteState, s: SessionView): Status = shownStatus(state, s)
 

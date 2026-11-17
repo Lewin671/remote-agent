@@ -26,8 +26,8 @@ class OpenLatencyBenchmarkTest {
             assertEquals(500, page.events.size)
             assertEquals(listOf(1L), peer.after)
             assertEquals(0, peer.calls.count { it == "Login" || it == "GetChallenge" })
-            // Upgrade, parallel lists, devices, then newest history: four dependent 50 ms waits.
-            assertEquals(200L, testScheduler.currentTime)
+            // Upgrade, parallel lists/security, then newest history: three dependent 50 ms waits.
+            assertEquals(150L, testScheduler.currentTime)
         } finally { r.close(); runCurrent() }
     }
 }

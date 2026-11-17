@@ -18,6 +18,7 @@ message NewSessionConfig {
   string model = 3;
   string effort = 4;
   bool standard_context = 5;
+  remoteagent.v1.ApprovalMode mode = 6;
 }
 
 enum AutoIssueKind {

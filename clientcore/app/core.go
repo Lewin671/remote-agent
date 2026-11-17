@@ -1,55 +1,39 @@
+// Package app hosts the shared Core state machine and Dispatch/View entrypoints
+// exposed to Web, Android, and iOS shells.
 package app
 
 import (
 	"errors"
-	"slices"
 
 	"github.com/Lewin671/remote-agent/clientcore/domain/lists"
+	"github.com/Lewin671/remote-agent/clientcore/domain/outcome"
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/clientcore/screens"
+	"github.com/Lewin671/remote-agent/clientcore/sync"
 )
 
-var (
-	errNilScreen    = errors.New("app: nil screen request")
-	errCoreClosed   = errors.New("app: core closed")
-	errUnknownRoute = errors.New("app: unsupported screen")
-)
-
-// Core is the stateful client core implementing Dispatch(Event) -> Effects and View(Screen) -> ViewModel.
+// Core wraps the unified sync Engine and screen ViewModel builders behind a single Dispatch/View API.
 type Core struct {
-	model     *Model
-	opPaths   map[string]string
-	startKeys map[string]string
+	m *Model
 }
 
-// New constructs an initialized Core instance.
+// New constructs a Core instance with fresh sync state and screen caches.
 func New() *Core {
-	return &Core{
-		model:     newModel(),
-		opPaths:   make(map[string]string),
-		startKeys: make(map[string]string),
-	}
+	return &Core{m: newModel()}
 }
 
-// Close releases internal state references.
-func (c *Core) Close() {
-	if c == nil || c.model == nil {
-		return
-	}
-	c.model.closed = true
-	c.opPaths = nil
-	c.startKeys = nil
-}
+// Close releases references held by Core.
+func (c *Core) Close() {}
 
-// View computes the screen-ready ViewModel for screen from current Model state without side effects.
+// View renders the requested screen from the current synchronized state.
 func (c *Core) View(screen *corev1.Screen) (*corev1.ViewModel, error) {
-	if c == nil || c.model == nil || c.model.closed {
-		return nil, errCoreClosed
-	}
 	if screen == nil {
-		return nil, errNilScreen
+		return nil, errors.New("app: nil screen request")
 	}
+	c.m.sync.SyncToState(c.m.state)
+	c.m.decodeScopeIfReady()
+
 	switch s := screen.Screen.(type) {
 	case *corev1.Screen_Home:
 		var endedLimit int
@@ -58,9 +42,10 @@ func (c *Core) View(screen *corev1.Screen) (*corev1.ViewModel, error) {
 		}
 		return &corev1.ViewModel{
 			View: &corev1.ViewModel_Home{
-				Home: screens.BuildHome(c.model.state, endedLimit),
+				Home: screens.BuildHome(c.m.state, endedLimit),
 			},
 		}, nil
+
 	case *corev1.Screen_Project:
 		var key string
 		var manage bool
@@ -72,726 +57,547 @@ func (c *Core) View(screen *corev1.Screen) (*corev1.ViewModel, error) {
 		}
 		return &corev1.ViewModel{
 			View: &corev1.ViewModel_Project{
-				Project: screens.BuildProject(c.model.state, key, manage, endedLimit),
+				Project: screens.BuildProject(c.m.state, key, manage, endedLimit),
 			},
 		}, nil
+
 	case *corev1.Screen_NewSession:
 		var key string
 		if s.NewSession != nil {
 			key = s.NewSession.ProjectKey
 		}
+		if key == "" {
+			key = c.m.state.StandaloneProjectKey
+		}
 		return &corev1.ViewModel{
 			View: &corev1.ViewModel_NewSession{
-				NewSession: screens.BuildNewSession(c.model.state, key),
+				NewSession: screens.BuildNewSession(c.m.state, key),
 			},
 		}, nil
+
+	case *corev1.Screen_SyncState:
+		return &corev1.ViewModel{
+			View: &corev1.ViewModel_SyncState{
+				SyncState: c.m.sync.BuildSyncStateView(),
+			},
+		}, nil
+
+	case *corev1.Screen_SessionData:
+		var sid string
+		if s.SessionData != nil {
+			sid = s.SessionData.SessionId
+		}
+		return &corev1.ViewModel{
+			View: &corev1.ViewModel_SessionData{
+				SessionData: c.m.sync.BuildSessionDataView(sid),
+			},
+		}, nil
+
 	default:
-		return nil, errUnknownRoute
+		return nil, errors.New("app: unsupported screen")
 	}
 }
 
-// Dispatch applies one Event transition to Model and returns ordered Effects for the host shell.
+// Dispatch advances sync and UI state for ev and returns ordered side effects for the shell.
 func (c *Core) Dispatch(ev *corev1.Event) *corev1.EffectBatch {
-	batch := &corev1.EffectBatch{}
-	if c == nil || c.model == nil || c.model.closed || ev == nil {
-		return batch
+	if ev == nil {
+		return &corev1.EffectBatch{}
 	}
-	m := c.model
-	st := m.state
+
+	consumed, syncRes := c.m.sync.HandleEvent(ev)
+	if consumed {
+		extra, extraDirty := c.processSyncStep(syncRes)
+		syncRes.Dirty.Add(extraDirty.Home, extraDirty.Project, extraDirty.NewSession)
+		effects := append(syncRes.Effects, extra...)
+		if r := renderEffect(syncRes.Dirty); r != nil {
+			effects = append(effects, r)
+		}
+		return &corev1.EffectBatch{Effects: effects}
+	}
+
+	var uiEffects []*corev1.Effect
+	stepRes := c.m.sync.Run(func(ctx *sync.StepContext) {
+		uiEffects = c.dispatchUI(ctx, ev)
+	})
+	extra, extraDirty := c.processSyncStep(stepRes)
+	stepRes.Dirty.Add(extraDirty.Home, extraDirty.Project, extraDirty.NewSession)
+
+	effects := make([]*corev1.Effect, 0, len(stepRes.Effects)+len(uiEffects)+len(extra)+1)
+	effects = append(effects, stepRes.Effects...)
+	effects = append(effects, uiEffects...)
+	effects = append(effects, extra...)
+	if r := renderEffect(stepRes.Dirty); r != nil {
+		effects = append(effects, r)
+	}
+	return &corev1.EffectBatch{Effects: effects}
+}
+
+func (c *Core) processSyncStep(res sync.StepResult) ([]*corev1.Effect, sync.DirtyFlags) {
+	c.m.sync.SyncToState(c.m.state)
+	c.m.decodeScopeIfReady()
 
 	var effects []*corev1.Effect
-	emit := func(e *corev1.Effect) {
-		if e != nil {
-			effects = append(effects, e)
+	var dirty sync.DirtyFlags
+	for _, sc := range res.Settled {
+		meta, hasMeta := c.m.pendingCmdMeta[sc.RequestID]
+		if hasMeta {
+			delete(c.m.pendingCmdMeta, sc.RequestID)
+		} else if sc.SlotKey == "" {
+			continue
+		}
+
+		kind := meta.kind
+		if !hasMeta && len(sc.SlotKey) > len("create_session:") && sc.SlotKey[:len("create_session:")] == "create_session:" {
+			kind = cmdKindCreateSession
+			meta.projectKey = sc.SlotKey[len("create_session:"):]
+		}
+
+		switch kind {
+		case cmdKindListModels:
+			k := screens.MachineAgentKey{MachineID: meta.machineID, Agent: meta.agent}
+			me := c.m.state.MachineModels[k]
+			if me == nil {
+				me = &screens.ModelsCacheEntry{}
+				c.m.state.MachineModels[k] = me
+			}
+			me.Loading = false
+			if sc.Category == outcome.Executed && sc.Result != nil && sc.Result.GetListModels() != nil {
+				me.Response = sc.Result.GetListModels().Clone()
+				me.Loaded = true
+				me.Error = ""
+				me.ErrorText = nil
+			} else {
+				me.ErrorText = sc.ErrorText
+				me.Error = sc.ErrorCode
+				if me.Error == "" && me.ErrorText == nil {
+					me.Error = "failed"
+				}
+			}
+			dirty.Add(false, false, true)
+
+		case cmdKindGetSettings:
+			se := c.m.state.MachineSettings[meta.machineID]
+			if se == nil {
+				se = &screens.SettingsCacheEntry{}
+				c.m.state.MachineSettings[meta.machineID] = se
+			}
+			se.Loading = false
+			if sc.Category == outcome.Executed && sc.Result != nil && sc.Result.GetGetSettings() != nil {
+				se.Settings = sc.Result.GetGetSettings().GetSettings().Clone()
+				se.Loaded = true
+				se.Error = ""
+				se.ErrorText = nil
+			} else {
+				se.ErrorText = sc.ErrorText
+				se.Error = sc.ErrorCode
+				if se.Error == "" && se.ErrorText == nil {
+					se.Error = "failed"
+				}
+			}
+			dirty.Add(false, false, true)
+
+		case cmdKindListDirs:
+			dp := &c.m.state.DirPicker
+			if dp.ActiveRequestID != "" && sc.RequestID != "" && dp.ActiveRequestID != sc.RequestID {
+				continue
+			}
+			dp.Loading = false
+			dp.ActiveRequestID = ""
+			if sc.Category == outcome.Executed && sc.Result != nil && sc.Result.GetListDirectories() != nil {
+				lr := sc.Result.GetListDirectories()
+				if lr.Path != "" {
+					dp.CurrentPath = lr.Path
+				}
+				dp.ParentPath = lr.Parent
+				dp.Dirs = dirEntriesFromPaths(lr.Dirs, lr.Parent)
+				dp.Error = ""
+				dp.ErrorText = nil
+			} else {
+				dp.ErrorText = sc.ErrorText
+				dp.Error = sc.ErrorCode
+				if dp.Error == "" && dp.ErrorText == nil {
+					dp.Error = "failed"
+				}
+			}
+			dirty.Add(false, true, true)
+
+		case cmdKindCreateSession:
+			d := c.m.ensureDraft(meta.projectKey)
+			if d == nil {
+				continue
+			}
+			d.Busy = false
+			if sc.Category == outcome.Executed && sc.ErrorCode == "" && sc.Result != nil && sc.Result.GetCreateSession() != nil {
+				sess := sc.Result.GetCreateSession().GetSession()
+				sessionID := ""
+				if sess != nil {
+					sessionID = sess.Id
+				}
+				d.Frozen = false
+				d.Expired = false
+				d.UnknownStart = false
+				d.StartError = ""
+				d.StartErrorText = nil
+				d.ActiveStartRequestID = ""
+				d.Prompt = ""
+				d.AttachmentCount = 0
+				d.AttachmentsMoved = false
+
+				effects = append(effects, &corev1.Effect{
+					Effect: &corev1.Effect_AttachmentsSettled{
+						AttachmentsSettled: &corev1.AttachmentsSettledEffect{
+							ProjectKey: meta.projectKey,
+							RequestId:  sc.RequestID,
+							Consumed:   true,
+						},
+					},
+				})
+				if sessionID != "" {
+					effects = append(effects, &corev1.Effect{
+						Effect: &corev1.Effect_Navigate{
+							Navigate: &corev1.NavigateEffect{
+								Route:      corev1.NavigateRoute_NAVIGATE_ROUTE_SESSION,
+								ProjectKey: meta.projectKey,
+								SessionId:  sessionID,
+								MachineId:  sc.MachineID,
+							},
+						},
+					})
+				}
+				saveRes := c.m.sync.Run(func(ctx *sync.StepContext) {
+					cfg := d.Config
+					if cfg.Cwd == "" {
+						cfg.Cwd = meta.projectKey
+					}
+					saved := lists.SavedSettings(c.m.state.World.Prefs, cfg.Cwd)
+					if op := lists.PlanStartSettings(cfg, &cfg, saved); op != nil {
+						c.m.sync.EnqueuePrefsOp(ctx, op, true, meta.projectKey)
+					}
+				})
+				effects = append(effects, saveRes.Effects...)
+			} else if sc.Category == outcome.Unknown {
+				d.Frozen = true
+				d.Expired = sc.Expired
+				d.UnknownStart = true
+				d.StartErrorText = sc.ErrorText
+				d.StartError = sc.ErrorCode
+				if sc.Expired {
+					effects = append(effects, &corev1.Effect{
+						Effect: &corev1.Effect_AttachmentsSettled{
+							AttachmentsSettled: &corev1.AttachmentsSettledEffect{
+								ProjectKey: meta.projectKey,
+								RequestId:  sc.RequestID,
+								Consumed:   false,
+							},
+						},
+					})
+				}
+			} else {
+				d.Frozen = false
+				d.Expired = false
+				d.UnknownStart = false
+				d.ActiveStartRequestID = ""
+				d.StartErrorText = sc.ErrorText
+				d.StartError = sc.ErrorCode
+				if d.StartError == "" && d.StartErrorText == nil {
+					d.StartError = "failed"
+				}
+				effects = append(effects, &corev1.Effect{
+					Effect: &corev1.Effect_AttachmentsSettled{
+						AttachmentsSettled: &corev1.AttachmentsSettledEffect{
+							ProjectKey: meta.projectKey,
+							RequestId:  sc.RequestID,
+							Consumed:   false,
+						},
+					},
+				})
+			}
+			dirty.Add(true, true, true)
 		}
 	}
 
+	if res.Dirty.NewSession || dirty.NewSession {
+		extraRes := c.m.sync.Run(func(ctx *sync.StepContext) {
+			for key, d := range c.m.state.NewSessions {
+				if d == nil {
+					continue
+				}
+				psr := c.m.resolveDraftConfig(key, d)
+				c.m.syncDraftAutoSupport(key, psr)
+				if d.Config.MachineID != "" {
+					c.m.maybeFetchMachineConfig(ctx, d.Config.MachineID, d.Config.Agent)
+				}
+			}
+		})
+		effects = append(effects, extraRes.Effects...)
+	}
+
+	return effects, dirty
+}
+
+func (c *Core) dispatchUI(ctx *sync.StepContext, ev *corev1.Event) []*corev1.Effect {
+	c.m.sync.SyncToState(c.m.state)
+	var effects []*corev1.Effect
+	st := c.m.state
+
 	switch k := ev.Event.(type) {
-	case *corev1.Event_ClockUpdated:
-		if k.ClockUpdated != nil {
-			st.Cal = lists.Calendar{
-				NowMs:            k.ClockUpdated.NowMs,
-				TodayStartMs:     k.ClockUpdated.TodayStartMs,
-				YesterdayStartMs: k.ClockUpdated.YesterdayStartMs,
-				WeekStartMs:      k.ClockUpdated.WeekStartMs,
-				NowYear:          k.ClockUpdated.NowYear,
-				UTCOffsetMinutes: k.ClockUpdated.UtcOffsetMinutes,
-			}
-			emit(renderEffect(corev1.ScreenTarget_SCREEN_TARGET_HOME, corev1.ScreenTarget_SCREEN_TARGET_PROJECT))
-		}
-
-	case *corev1.Event_ConnectionChanged:
-		if k.ConnectionChanged != nil {
-			cc := k.ConnectionChanged
-			st.World.Connection = mapConnState(cc.State)
-			st.ConnectionReason = cc.Reason
-			st.DisconnectedAtMs = cc.DisconnectedAtMs
-			st.LivePushConnected = cc.LivePushConnected
-			emit(renderEffect(
-				corev1.ScreenTarget_SCREEN_TARGET_HOME,
-				corev1.ScreenTarget_SCREEN_TARGET_PROJECT,
-				corev1.ScreenTarget_SCREEN_TARGET_NEW_SESSION,
-			))
-		}
-
-	case *corev1.Event_AccountRoleChanged:
-		if k.AccountRoleChanged != nil {
-			ar := k.AccountRoleChanged
-			st.World.IsManager = ar.IsManager
-			st.World.ManagerName = ar.ManagerDeviceName
-			st.World.AccountControlLost = ar.ControlExpired
-			st.World.AccountClockSkewed = ar.ClockSkewed
-			emit(renderEffect(corev1.ScreenTarget_SCREEN_TARGET_HOME, corev1.ScreenTarget_SCREEN_TARGET_PROJECT))
-		}
-
-	case *corev1.Event_MachinesUpdated:
-		if k.MachinesUpdated != nil {
-			mu := k.MachinesUpdated
-			st.World.MachinesListed = mu.Listed
-			if mu.ClientProtocolVersion > 0 {
-				st.World.ClientVersion = mu.ClientProtocolVersion
-			}
-			st.World.Machines = make([]*lists.Machine, 0, len(mu.Machines))
-			for _, mi := range mu.Machines {
-				if lm := machineFromInput(mi); lm != nil {
-					st.World.Machines = append(st.World.Machines, lm)
-				}
-			}
-			if key := m.activeNewSessionKey(""); key != "" {
-				d := st.NewSessions[key]
-				res := m.resolveDraftConfig(key, d)
-				if res.Found {
-					for _, eff := range m.maybeFetchMachineConfig(res.Config.MachineID, res.Config.Agent) {
-						emit(eff)
-					}
-				}
-			}
-			emit(renderEffect(
-				corev1.ScreenTarget_SCREEN_TARGET_HOME,
-				corev1.ScreenTarget_SCREEN_TARGET_PROJECT,
-				corev1.ScreenTarget_SCREEN_TARGET_NEW_SESSION,
-			))
-		}
-
-	case *corev1.Event_SessionsPageReceived:
-		if k.SessionsPageReceived != nil {
-			p := k.SessionsPageReceived
-			st.World.LoadingMoreSessions = false
-			if p.Error != "" {
-				st.World.SessionListFailed = true
-				st.World.SessionListError = p.Error
-			} else {
-				st.World.LiveLoaded = true
-				st.World.SessionListFailed = false
-				st.World.SessionListError = ""
-				st.World.SessionsListed = true
-				st.World.HasMoreSessions = p.HasMore
-				st.World.SessionsCursor = p.NextCursor
-				if p.NextEndedMs > 0 || p.NextSessionId != "" {
-					st.World.SessionsNext = &lists.SessionPlace{
-						EndedMs:   p.NextEndedMs,
-						SessionID: p.NextSessionId,
-					}
-				} else if !p.HasMore {
-					st.World.SessionsNext = nil
-				}
-				if p.IsRefresh && p.NextCursor == "" && len(p.Sessions) == 0 {
-					st.World.Sessions = nil
-					m.sessionIndex = make(map[string]int)
-				}
-				for _, si := range p.Sessions {
-					m.upsertSession(sessionFromInput(si))
-				}
-			}
-			emit(renderEffect(
-				corev1.ScreenTarget_SCREEN_TARGET_HOME,
-				corev1.ScreenTarget_SCREEN_TARGET_PROJECT,
-				corev1.ScreenTarget_SCREEN_TARGET_NEW_SESSION,
-			))
-		}
-
-	case *corev1.Event_SessionUpserted:
-		if k.SessionUpserted != nil {
-			st.World.LiveLoaded = true
-			ls := sessionFromInput(k.SessionUpserted)
-			m.upsertSession(ls)
-			emit(renderEffect(corev1.ScreenTarget_SCREEN_TARGET_HOME, corev1.ScreenTarget_SCREEN_TARGET_PROJECT))
-		}
-
-	case *corev1.Event_SessionRemoved:
-		if k.SessionRemoved != nil {
-			m.removeSession(k.SessionRemoved.SessionId)
-			emit(renderEffect(corev1.ScreenTarget_SCREEN_TARGET_HOME, corev1.ScreenTarget_SCREEN_TARGET_PROJECT))
-		}
-
-	case *corev1.Event_PrefsUpdated:
-		if k.PrefsUpdated != nil {
-			pu := k.PrefsUpdated
-			st.World.Prefs = pu.Prefs
-			st.World.PrefsLoaded = pu.Loaded
-			st.World.PrefsLoadFailed = pu.LoadFailed
-			if pu.ChangedElsewhere {
-				st.ProjectChangedElsewhere = true
-			}
-			if pu.HomeScope == "all" {
-				st.RememberedScope = &lists.Scope{AllProjects: true}
-				st.RememberedScopeToken = "all"
-				st.Scope = st.RememberedScope
-			} else if pu.HomeScope != "" {
-				if len(pu.HomeScope) > 8 && pu.HomeScope[:8] == "project:" {
-					st.RememberedScopeToken = pu.HomeScope
-					st.RememberedScope = nil
-					st.Scope = nil
-				} else {
-					st.RememberedScope = &lists.Scope{Key: pu.HomeScope, Name: lists.ProjectName(pu.HomeScope), ShortPath: lists.ShortPath(pu.HomeScope)}
-					st.Scope = st.RememberedScope
-				}
-			}
-			if pu.Prefs != nil {
-				for _, opID := range pu.Prefs.RecentOps {
-					if path, ok := c.opPaths[opID]; ok {
-						delete(st.PrefsPendingPath, path)
-						delete(st.PrefsSaveErrorByPath, path)
-						delete(st.PrefsSavingSettings, path)
-						delete(st.PrefsSettingsError, path)
-						delete(c.opPaths, opID)
-					}
-				}
-			}
-			emit(renderEffect(
-				corev1.ScreenTarget_SCREEN_TARGET_HOME,
-				corev1.ScreenTarget_SCREEN_TARGET_PROJECT,
-				corev1.ScreenTarget_SCREEN_TARGET_NEW_SESSION,
-			))
-		}
-
-	case *corev1.Event_PrefsSyncResult:
-		if k.PrefsSyncResult != nil {
-			pr := k.PrefsSyncResult
-			st.World.PrefsSyncing = false
-			if pr.ChangedElsewhere {
-				st.ProjectChangedElsewhere = true
-			}
-			path := c.opPaths[pr.OpId]
-			delete(c.opPaths, pr.OpId)
-			if path != "" {
-				delete(st.PrefsPendingPath, path)
-				delete(st.PrefsSavingSettings, path)
-			}
-			if pr.Error != "" {
-				if path != "" {
-					st.PrefsSaveErrorByPath[path] = pr.Error
-				}
-				st.PrefsGlobalError = pr.Error
-			} else {
-				if path != "" {
-					delete(st.PrefsSaveErrorByPath, path)
-					delete(st.PrefsSettingsError, path)
-				}
-				st.PrefsGlobalError = ""
-			}
-			emit(renderEffect(
-				corev1.ScreenTarget_SCREEN_TARGET_HOME,
-				corev1.ScreenTarget_SCREEN_TARGET_PROJECT,
-				corev1.ScreenTarget_SCREEN_TARGET_NEW_SESSION,
-			))
-		}
-
-	case *corev1.Event_MachineModelsReceived:
-		if k.MachineModelsReceived != nil {
-			mr := k.MachineModelsReceived
-			st.MachineModels[screens.MachineAgentKey{
-				MachineID: mr.MachineId,
-				Agent:     lists.EffectiveAgent(mr.Agent),
-			}] = &screens.ModelsCacheEntry{
-				Response: mr.Response,
-				Loaded:   mr.Error == "",
-				Loading:  false,
-				Error:    mr.Error,
-			}
-			emit(renderEffect(corev1.ScreenTarget_SCREEN_TARGET_NEW_SESSION))
-		}
-
-	case *corev1.Event_MachineSettingsReceived:
-		if k.MachineSettingsReceived != nil {
-			sr := k.MachineSettingsReceived
-			st.MachineSettings[sr.MachineId] = &screens.SettingsCacheEntry{
-				Settings: sr.Settings,
-				Loaded:   sr.Error == "",
-				Loading:  false,
-				Error:    sr.Error,
-			}
-			emit(renderEffect(corev1.ScreenTarget_SCREEN_TARGET_NEW_SESSION))
-		}
-
-	case *corev1.Event_DirListingReceived:
-		if k.DirListingReceived != nil {
-			dl := k.DirListingReceived
-			if dl.RequestId == "" || dl.RequestId == st.DirPicker.ActiveRequestID {
-				st.DirPicker.Loading = false
-				if dl.Error != "" {
-					st.DirPicker.Error = dl.Error
-				} else {
-					st.DirPicker.Error = ""
-					if dl.Path != "" {
-						st.DirPicker.CurrentPath = dl.Path
-					}
-					st.DirPicker.ParentPath = dl.ParentPath
-					st.DirPicker.Dirs = slices.Clone(dl.Dirs)
-				}
-				emit(renderEffect(corev1.ScreenTarget_SCREEN_TARGET_PROJECT))
-			}
-		}
-
-	case *corev1.Event_CreateSessionResult:
-		if k.CreateSessionResult != nil {
-			cr := k.CreateSessionResult
-			key := c.startKeys[cr.RequestId]
-			if key == "" {
-				key = m.activeNewSessionKey("")
-			}
-			d := st.NewSessions[key]
-			if d != nil && (cr.RequestId == "" || d.ActiveStartRequestID == cr.RequestId) {
-				d.Busy = false
-				switch {
-				case cr.Outcome == "executed":
-					delete(c.startKeys, cr.RequestId)
-					d.Prompt = ""
-					d.AttachmentCount = 0
-					d.AttachmentsMoved = false
-					d.Frozen = false
-					d.Expired = false
-					d.UnknownStart = false
-					d.StartError = ""
-					d.DiskFull = false
-					d.ActiveStartRequestID = ""
-					if cr.SessionId != "" {
-						st.HomeSelectedSessionID = cr.SessionId
-						emit(&corev1.Effect{
-							Effect: &corev1.Effect_Navigate{
-								Navigate: &corev1.NavigateEffect{
-									Route:     corev1.NavigateRoute_NAVIGATE_ROUTE_SESSION,
-									SessionId: cr.SessionId,
-								},
-							},
-						})
-					}
-				case cr.Unknown || cr.Expired:
-					d.Frozen = true
-					d.Expired = cr.Expired
-					d.UnknownStart = true
-					d.StartError = cr.Error
-					if d.StartError == "" {
-						d.StartError = cr.Reason
-					}
-				default:
-					delete(c.startKeys, cr.RequestId)
-					d.Frozen = false
-					d.DiskFull = cr.DiskFull
-					d.StartError = cr.Error
-					if d.StartError == "" {
-						d.StartError = cr.Reason
-					}
-				}
-				emit(renderEffect(corev1.ScreenTarget_SCREEN_TARGET_NEW_SESSION))
-			}
-		}
-
 	case *corev1.Event_HomeSetScope:
-		if k.HomeSetScope != nil {
-			key := k.HomeSetScope.ScopeKey
-			if key == "" {
-				st.RememberedScope = &lists.Scope{AllProjects: true}
-			} else {
-				st.RememberedScope = &lists.Scope{
-					Key:       key,
-					Name:      lists.ProjectName(key),
-					ShortPath: lists.ShortPath(key),
-				}
-			}
-			st.Scope = st.RememberedScope
-			st.RememberedScopeToken = ""
-			emit(&corev1.Effect{
+		if k.HomeSetScope == nil {
+			return nil
+		}
+		projects := lists.BuildProjects(&st.World, "", nil, "", nil, nil)
+		target := lists.ResolveScope(&lists.Scope{
+			AllProjects: k.HomeSetScope.ScopeKey == "",
+			Key:         k.HomeSetScope.ScopeKey,
+		}, projects.Listed)
+		st.Scope = &target
+		st.RememberedScope = &target
+		tok := lists.EncodeScope(target, c.m.sync.ScopeHMACKey())
+		if tok != "" {
+			st.RememberedScopeToken = tok
+			effects = append(effects, &corev1.Effect{
 				Effect: &corev1.Effect_SaveHomeScope{
 					SaveHomeScope: &corev1.SaveHomeScopeEffect{
-						ScopeKey: key,
+						ScopeKey:   target.Key,
+						ScopeToken: tok,
 					},
 				},
 			})
-			emit(renderEffect(corev1.ScreenTarget_SCREEN_TARGET_HOME))
 		}
+		ctx.Dirty.Add(true, false, false)
 
 	case *corev1.Event_HomeSetFilter:
-		if k.HomeSetFilter != nil {
-			st.HomeFilterQuery = k.HomeSetFilter.Query
-			if st.HomeFilterQuery != "" && lists.MoreSessions(&st.World) && !st.World.LoadingMoreSessions {
-				st.World.LoadingMoreSessions = true
-				emit(&corev1.Effect{
-					Effect: &corev1.Effect_FetchSessionsPage{
-						FetchSessionsPage: &corev1.FetchSessionsPageEffect{
-							RequestId: m.nextID("page-"),
-							Cursor:    st.World.SessionsCursor,
-							Limit:     lists.EndedPage,
-						},
-					},
-				})
-			}
-			emit(renderEffect(corev1.ScreenTarget_SCREEN_TARGET_HOME))
+		if k.HomeSetFilter == nil {
+			return nil
 		}
+		st.HomeFilterQuery = k.HomeSetFilter.Query
+		if st.HomeFilterQuery != "" {
+			c.m.sync.RequestAllSessions(ctx)
+		} else {
+			c.m.sync.ClearWantAllSessions()
+		}
+		ctx.Dirty.Add(true, false, false)
 
 	case *corev1.Event_HomeLoadMoreEnded:
-		if k.HomeLoadMoreEnded != nil {
-			step := int(k.HomeLoadMoreEnded.Step)
-			if step <= 0 {
-				step = lists.EndedPage
-			}
-			homeData := lists.BuildHome(&st.World, st.Scope, true, st.HomeFilterQuery, st.Cal, lists.HomeShown{Ended: int(^uint(0)>>1) - step})
-			if (homeData.WantPage || lists.MoreSessions(&st.World)) && !st.World.LoadingMoreSessions {
-				st.World.LoadingMoreSessions = true
-				emit(&corev1.Effect{
-					Effect: &corev1.Effect_FetchSessionsPage{
-						FetchSessionsPage: &corev1.FetchSessionsPageEffect{
-							RequestId: m.nextID("page-"),
-							Cursor:    st.World.SessionsCursor,
-							Limit:     int32(step),
-						},
-					},
-				})
-			}
-			emit(renderEffect(corev1.ScreenTarget_SCREEN_TARGET_HOME))
-		}
+		c.m.sync.RequestMoreSessions(ctx)
 
 	case *corev1.Event_HomeRetryLoad:
-		st.World.SessionListError = ""
-		st.World.SessionListFailed = false
-		st.World.LoadingMoreSessions = true
-		emit(&corev1.Effect{
-			Effect: &corev1.Effect_FetchSessionsPage{
-				FetchSessionsPage: &corev1.FetchSessionsPageEffect{
-					RequestId: m.nextID("page-"),
-					Cursor:    st.World.SessionsCursor,
-					Limit:     lists.EndedPage,
-				},
-			},
-		})
-		emit(renderEffect(corev1.ScreenTarget_SCREEN_TARGET_HOME))
+		c.m.sync.RequestMoreSessions(ctx)
 
 	case *corev1.Event_HomeSelectSession:
 		if k.HomeSelectSession != nil {
 			st.HomeSelectedSessionID = k.HomeSelectSession.SessionId
-			emit(renderEffect(corev1.ScreenTarget_SCREEN_TARGET_HOME, corev1.ScreenTarget_SCREEN_TARGET_PROJECT))
+			ctx.Dirty.Add(true, false, false)
 		}
 
 	case *corev1.Event_ProjectSetSearch:
 		if k.ProjectSetSearch != nil {
 			st.ProjectSearch = k.ProjectSetSearch.Query
-			emit(renderEffect(corev1.ScreenTarget_SCREEN_TARGET_HOME, corev1.ScreenTarget_SCREEN_TARGET_PROJECT))
+			ctx.Dirty.Add(false, true, false)
 		}
 
 	case *corev1.Event_ProjectTogglePin:
-		if k.ProjectTogglePin != nil {
+		if k.ProjectTogglePin != nil && k.ProjectTogglePin.ProjectKey != "" {
 			key := k.ProjectTogglePin.ProjectKey
 			kind := lists.PrefsOpPin
 			if lists.IsPinned(st.World.Prefs, key) {
 				kind = lists.PrefsOpUnpin
 			}
-			emit(c.applyAndEmitPrefsOp(key, &lists.FullPrefsOp{Kind: kind, Path: key}, nil))
-			emit(renderEffect(corev1.ScreenTarget_SCREEN_TARGET_HOME, corev1.ScreenTarget_SCREEN_TARGET_PROJECT))
+			c.m.sync.EnqueuePrefsOp(ctx, &lists.FullPrefsOp{Kind: kind, Path: key}, false, "")
+			c.m.sync.SyncToState(st)
+			ctx.Dirty.Add(true, true, false)
 		}
 
 	case *corev1.Event_ProjectToggleHide:
-		if k.ProjectToggleHide != nil {
+		if k.ProjectToggleHide != nil && k.ProjectToggleHide.ProjectKey != "" {
 			key := k.ProjectToggleHide.ProjectKey
 			kind := lists.PrefsOpHide
 			if lists.IsHidden(st.World.Prefs, key) {
 				kind = lists.PrefsOpUnhide
 			}
-			emit(c.applyAndEmitPrefsOp(key, &lists.FullPrefsOp{Kind: kind, Path: key}, nil))
-			emit(renderEffect(corev1.ScreenTarget_SCREEN_TARGET_HOME, corev1.ScreenTarget_SCREEN_TARGET_PROJECT))
+			c.m.sync.EnqueuePrefsOp(ctx, &lists.FullPrefsOp{Kind: kind, Path: key}, false, "")
+			c.m.sync.SyncToState(st)
+			ctx.Dirty.Add(true, true, false)
 		}
 
 	case *corev1.Event_ProjectAdd:
-		if k.ProjectAdd != nil {
-			path := k.ProjectAdd.Path
-			machineID := st.DirPicker.MachineID
-			if machineID == "" {
-				for _, mach := range st.World.Machines {
-					if lists.MachineReachable(mach) {
-						machineID = mach.ID
-						break
-					}
-				}
-			}
-			op := lists.PlanAddProject(&st.World, machineID, path)
-			if op != nil {
-				var settings *v1.ProjectSettings
-				if op.SetSettings != nil {
-					settings = lists.ApplySettings(lists.SavedSettings(st.World.Prefs, path), op.SetSettings, st.Cal.NowMs)
-				}
-				emit(c.applyAndEmitPrefsOp(path, op, settings))
+		if k.ProjectAdd != nil && k.ProjectAdd.Path != "" {
+			machID := st.DirPicker.MachineID
+			forNewTask := st.DirPicker.ForNewTask
+			if op := lists.PlanAddProject(&st.World, machID, k.ProjectAdd.Path); op != nil {
+				c.m.sync.EnqueuePrefsOp(ctx, op, false, "")
 			}
 			st.DirPicker.Open = false
-			st.StandaloneProjectKey = path
-			emit(renderEffect(corev1.ScreenTarget_SCREEN_TARGET_HOME, corev1.ScreenTarget_SCREEN_TARGET_PROJECT, corev1.ScreenTarget_SCREEN_TARGET_NEW_SESSION))
+			st.DirPicker.ForNewTask = false
+			st.DirPicker.Loading = false
+			st.DirPicker.Error = ""
+			st.DirPicker.ErrorText = nil
+			st.DirPicker.ActiveRequestID = ""
+			c.m.sync.SyncToState(st)
+			if forNewTask {
+				d := c.m.ensureDraft(k.ProjectAdd.Path)
+				d.Config.MachineID = machID
+				d.Config.Cwd = k.ProjectAdd.Path
+				d.ConfigInitialized = true
+				effects = append(effects, &corev1.Effect{
+					Effect: &corev1.Effect_Navigate{
+						Navigate: &corev1.NavigateEffect{
+							Route:      corev1.NavigateRoute_NAVIGATE_ROUTE_PROJECT,
+							ProjectKey: k.ProjectAdd.Path,
+							MachineId:  machID,
+						},
+					},
+				})
+			}
+			ctx.Dirty.Add(true, true, true)
 		}
 
 	case *corev1.Event_ProjectLoadMoreEnded:
-		if k.ProjectLoadMoreEnded != nil {
-			key := k.ProjectLoadMoreEnded.ProjectKey
-			page := lists.BuildProjectPage(&st.World, key, int(^uint(0)>>1), st.Cal)
-			if page.WantPage && !st.World.LoadingMoreSessions {
-				st.World.LoadingMoreSessions = true
-				emit(&corev1.Effect{
-					Effect: &corev1.Effect_FetchSessionsPage{
-						FetchSessionsPage: &corev1.FetchSessionsPageEffect{
-							RequestId: m.nextID("page-"),
-							Cursor:    st.World.SessionsCursor,
-							Limit:     lists.EndedPage,
-						},
-					},
-				})
-			}
-			emit(renderEffect(corev1.ScreenTarget_SCREEN_TARGET_PROJECT))
-		}
+		c.m.sync.RequestMoreSessions(ctx)
 
 	case *corev1.Event_ProjectOpenDirPicker:
 		if k.ProjectOpenDirPicker != nil {
-			dp := k.ProjectOpenDirPicker
-			machID := dp.MachineId
+			machID := k.ProjectOpenDirPicker.MachineId
 			if machID == "" {
-				for _, mach := range st.World.Machines {
-					if lists.MachineReachable(mach) {
-						machID = mach.ID
-						break
+				c.m.sync.SyncToState(st)
+				for _, m := range st.World.Machines {
+					if m != nil && lists.MachineReachable(m) && (machID == "" || m.ID < machID) {
+						machID = m.ID
 					}
 				}
 			}
-			path := dp.Path
-			if path == "" {
-				if mach := m.findMachine(machID); mach != nil && mach.Meta != nil {
-					path = mach.Meta.Home
-				}
-			}
-			reqID := m.nextID("dir-")
-			st.DirPicker = screens.DirPickerState{
-				Open:            true,
-				ForNewTask:      dp.ForNewTask,
-				MachineID:       machID,
-				CurrentPath:     path,
-				Loading:         machID != "",
-				ActiveRequestID: reqID,
-			}
+			st.DirPicker.Open = true
+			st.DirPicker.ForNewTask = k.ProjectOpenDirPicker.ForNewTask
+			st.DirPicker.MachineID = machID
+			st.DirPicker.CurrentPath = k.ProjectOpenDirPicker.Path
+			st.DirPicker.Error = ""
+			st.DirPicker.ErrorText = nil
 			if machID != "" {
-				emit(&corev1.Effect{
-					Effect: &corev1.Effect_SendCommand{
-						SendCommand: &corev1.SendCommandEffect{
-							RequestId: reqID,
-							MachineId: machID,
-							Command: &v1.Command{
-								Kind: &v1.Command_ListDirectories{
-									ListDirectories: &v1.ListDirectoriesRequest{Path: path},
-								},
-							},
-						},
-					},
-				})
+				st.DirPicker.Loading = true
+				c.submitListDirs(ctx, machID, k.ProjectOpenDirPicker.Path)
+			} else {
+				st.DirPicker.Loading = false
+				st.DirPicker.ActiveRequestID = ""
 			}
-			emit(renderEffect(corev1.ScreenTarget_SCREEN_TARGET_PROJECT))
+			ctx.Dirty.Add(false, true, true)
 		}
 
 	case *corev1.Event_ProjectDirNavigate:
 		if k.ProjectDirNavigate != nil {
-			dn := k.ProjectDirNavigate
-			machID := dn.MachineId
+			machID := k.ProjectDirNavigate.MachineId
 			if machID == "" {
 				machID = st.DirPicker.MachineID
 			}
-			path := dn.Path
-			if path == "" {
-				if mach := m.findMachine(machID); mach != nil && mach.Meta != nil {
-					path = mach.Meta.Home
-				}
-			}
-			reqID := m.nextID("dir-")
 			st.DirPicker.MachineID = machID
-			st.DirPicker.CurrentPath = path
-			st.DirPicker.Loading = machID != ""
+			st.DirPicker.CurrentPath = k.ProjectDirNavigate.Path
 			st.DirPicker.Error = ""
-			st.DirPicker.ActiveRequestID = reqID
-			if machID != "" {
-				emit(&corev1.Effect{
-					Effect: &corev1.Effect_SendCommand{
-						SendCommand: &corev1.SendCommandEffect{
-							RequestId: reqID,
-							MachineId: machID,
-							Command: &v1.Command{
-								Kind: &v1.Command_ListDirectories{
-									ListDirectories: &v1.ListDirectoriesRequest{Path: path},
-								},
-							},
-						},
-					},
-				})
-			}
-			emit(renderEffect(corev1.ScreenTarget_SCREEN_TARGET_PROJECT))
+			st.DirPicker.ErrorText = nil
+			st.DirPicker.Loading = true
+			c.submitListDirs(ctx, machID, k.ProjectDirNavigate.Path)
+			ctx.Dirty.Add(false, true, true)
 		}
 
 	case *corev1.Event_ProjectCloseDirPicker:
-		st.DirPicker.Open = false
-		emit(renderEffect(corev1.ScreenTarget_SCREEN_TARGET_PROJECT))
+		st.DirPicker = screens.DirPickerState{}
+		ctx.Dirty.Add(false, true, true)
 
 	case *corev1.Event_NewSessionOpen:
 		if k.NewSessionOpen != nil {
-			key := k.NewSessionOpen.ProjectKey
-			if key == "" {
-				key = m.activeNewSessionKey("")
-			} else {
-				st.StandaloneProjectKey = key
+			if k.NewSessionOpen.ProjectKey != "" {
+				st.StandaloneProjectKey = k.NewSessionOpen.ProjectKey
 			}
+			key := c.m.activeNewSessionKey(k.NewSessionOpen.ProjectKey)
 			if key != "" {
-				d := m.ensureDraft(key)
-				res := m.resolveDraftConfig(key, d)
-				if res.Found {
-					if !d.ConfigInitialized {
-						d.Config = res.Config
-						d.ConfigInitialized = true
-					}
-					for _, eff := range m.maybeFetchMachineConfig(d.Config.MachineID, d.Config.Agent) {
-						emit(eff)
-					}
+				d := c.m.ensureDraft(key)
+				psr := c.m.resolveDraftConfig(key, d)
+				c.m.syncDraftAutoSupport(key, psr)
+				if d.Config.MachineID != "" {
+					c.m.maybeFetchMachineConfig(ctx, d.Config.MachineID, d.Config.Agent)
 				}
 			}
-			emit(renderEffect(corev1.ScreenTarget_SCREEN_TARGET_NEW_SESSION))
+			ctx.Dirty.Add(false, false, true)
 		}
 
 	case *corev1.Event_NewSessionSelectProject:
-		if k.NewSessionSelectProject != nil {
-			key := k.NewSessionSelectProject.ProjectKey
-			st.StandaloneProjectKey = key
-			if key != "" {
-				d := m.ensureDraft(key)
-				res := m.resolveDraftConfig(key, d)
-				if res.Found {
-					if !d.ConfigInitialized {
-						d.Config = res.Config
-						d.ConfigInitialized = true
-					}
-					for _, eff := range m.maybeFetchMachineConfig(d.Config.MachineID, d.Config.Agent) {
-						emit(eff)
-					}
-				}
+		if k.NewSessionSelectProject != nil && k.NewSessionSelectProject.ProjectKey != "" {
+			st.StandaloneProjectKey = k.NewSessionSelectProject.ProjectKey
+			d := c.m.ensureDraft(st.StandaloneProjectKey)
+			psr := c.m.resolveDraftConfig(st.StandaloneProjectKey, d)
+			c.m.syncDraftAutoSupport(st.StandaloneProjectKey, psr)
+			if d.Config.MachineID != "" {
+				c.m.maybeFetchMachineConfig(ctx, d.Config.MachineID, d.Config.Agent)
 			}
-			emit(renderEffect(corev1.ScreenTarget_SCREEN_TARGET_NEW_SESSION))
+			ctx.Dirty.Add(false, false, true)
 		}
 
 	case *corev1.Event_NewSessionSelectMachine:
 		if k.NewSessionSelectMachine != nil {
-			key := m.activeNewSessionKey("")
-			if key != "" {
-				d := m.ensureDraft(key)
-				if !d.ConfigInitialized {
-					d.Config = m.resolveDraftConfig(key, d).Config
-				}
-				mach := m.findMachine(k.NewSessionSelectMachine.MachineId)
-				var meta *v1.MachineMeta
-				if mach != nil {
-					meta = mach.Meta
-				}
-				agents := lists.MachineAgents(meta)
-				if d.Config.MachineID != k.NewSessionSelectMachine.MachineId && d.AttachmentCount > 0 {
-					d.AttachmentsMoved = true
+			key := c.m.activeNewSessionKey("")
+			if d := c.m.ensureDraft(key); d != nil {
+				mac := c.m.findMachine(k.NewSessionSelectMachine.MachineId)
+				var agents []v1.Agent
+				if mac != nil {
+					agents = lists.MachineAgents(mac.Meta)
 				}
 				d.Config = lists.SwitchMachine(d.Config, k.NewSessionSelectMachine.MachineId, agents)
-				d.Config.Cwd = key
 				d.ConfigInitialized = true
-				for _, eff := range m.maybeFetchMachineConfig(d.Config.MachineID, d.Config.Agent) {
-					emit(eff)
-				}
+				d.AgentOverride = d.Config.Agent
+				c.m.maybeFetchMachineConfig(ctx, d.Config.MachineID, d.Config.Agent)
+				op := buildFullSettingsOp(d.Config, true)
+				c.m.sync.EnqueuePrefsOp(ctx, op, true, key)
+				c.m.sync.SyncToState(st)
+				ctx.Dirty.Add(false, false, true)
 			}
-			emit(renderEffect(corev1.ScreenTarget_SCREEN_TARGET_NEW_SESSION))
 		}
 
 	case *corev1.Event_NewSessionSelectAgent:
 		if k.NewSessionSelectAgent != nil {
-			key := m.activeNewSessionKey("")
-			if key != "" {
-				d := m.ensureDraft(key)
-				base := m.resolveDraftConfig(key, d)
-				if !d.ConfigInitialized {
-					d.Config = base.Config
-				}
-				var projCfg *lists.StartConfig
-				if saved := lists.SavedSettings(st.World.Prefs, key); saved != nil {
-					r := lists.ResolveProjectStart(&st.World, key, "", k.NewSessionSelectAgent.Agent, nil, false)
-					if r.Found {
-						projCfg = &r.Config
-					}
-				}
-				d.Config = lists.SwitchAgent(d.Config, projCfg, k.NewSessionSelectAgent.Agent)
-				d.Config.Cwd = key
+			key := c.m.activeNewSessionKey("")
+			if d := c.m.ensureDraft(key); d != nil {
+				d.AgentOverride = lists.EffectiveAgent(k.NewSessionSelectAgent.Agent)
+				psr := lists.ResolveProjectStart(&st.World, key, d.Config.MachineID, d.AgentOverride, nil, false)
+				d.Config = lists.SwitchAgent(psr.Config, &d.Config, d.AgentOverride)
 				d.ConfigInitialized = true
-				d.AgentOverride = k.NewSessionSelectAgent.Agent
-				for _, eff := range m.maybeFetchMachineConfig(d.Config.MachineID, d.Config.Agent) {
-					emit(eff)
-				}
+				c.m.maybeFetchMachineConfig(ctx, d.Config.MachineID, d.Config.Agent)
+				op := buildFullSettingsOp(d.Config, false)
+				c.m.sync.EnqueuePrefsOp(ctx, op, true, key)
+				c.m.sync.SyncToState(st)
+				ctx.Dirty.Add(false, false, true)
 			}
-			emit(renderEffect(corev1.ScreenTarget_SCREEN_TARGET_NEW_SESSION))
 		}
 
 	case *corev1.Event_NewSessionSelectModel:
 		if k.NewSessionSelectModel != nil {
-			key := m.activeNewSessionKey("")
-			if key != "" {
-				d := m.ensureDraft(key)
-				if !d.ConfigInitialized {
-					d.Config = m.resolveDraftConfig(key, d).Config
+			key := c.m.activeNewSessionKey("")
+			if d := c.m.ensureDraft(key); d != nil {
+				act := k.NewSessionSelectModel
+				d.Config.Model = act.Model
+				if act.Effort != "" || act.Model != "" {
+					d.Config.Effort = act.Effort
 				}
-				sel := k.NewSessionSelectModel
-				mc := st.MachineModels[screens.MachineAgentKey{
-					MachineID: d.Config.MachineID,
-					Agent:     lists.EffectiveAgent(d.Config.Agent),
-				}]
-				if sel.Model == "" {
-					d.Config.Model = ""
-					d.Config.Effort = sel.Effort
-				} else if mc != nil && mc.Response != nil {
-					if mi := lists.FindModel(mc.Response.Models, sel.Model); mi != nil {
-						d.Config = lists.PickModel(d.Config, mi)
-						if sel.Effort != "" {
-							d.Config.Effort = sel.Effort
-						}
-					} else {
-						d.Config.Model = sel.Model
-						d.Config.Effort = sel.Effort
-					}
-				} else {
-					d.Config.Model = sel.Model
-					d.Config.Effort = sel.Effort
+				if act.StandardContext != nil {
+					d.Config.StandardContext = *act.StandardContext
 				}
-				if sel.StandardContext != nil {
-					d.Config.StandardContext = *sel.StandardContext
+				if act.Mode != nil {
+					d.Config.Mode = *act.Mode
 				}
 				d.ConfigInitialized = true
+				op := buildFullSettingsOp(d.Config, false)
+				c.m.sync.EnqueuePrefsOp(ctx, op, true, key)
+				c.m.sync.SyncToState(st)
+				ctx.Dirty.Add(false, false, true)
 			}
-			emit(renderEffect(corev1.ScreenTarget_SCREEN_TARGET_NEW_SESSION))
 		}
 
 	case *corev1.Event_NewSessionSetPrompt:
 		if k.NewSessionSetPrompt != nil {
-			key := m.activeNewSessionKey("")
-			if key != "" {
-				d := m.ensureDraft(key)
-				if !d.ConfigInitialized && (k.NewSessionSetPrompt.Prompt != "" || k.NewSessionSetPrompt.AttachmentCount > 0) {
-					if res := m.resolveDraftConfig(key, d); res.Found {
-						d.Config = res.Config
-						d.ConfigInitialized = true
-					}
-				}
+			key := c.m.activeNewSessionKey("")
+			if d := c.m.ensureDraft(key); d != nil {
 				d.Prompt = k.NewSessionSetPrompt.Prompt
 				d.AttachmentCount = k.NewSessionSetPrompt.AttachmentCount
 				d.AttachmentsMoved = k.NewSessionSetPrompt.AttachmentsMoved
+				ctx.Dirty.Add(false, false, true)
 			}
-			emit(renderEffect(corev1.ScreenTarget_SCREEN_TARGET_NEW_SESSION))
 		}
 
 	case *corev1.Event_NewSessionRetryModels:
@@ -799,162 +605,120 @@ func (c *Core) Dispatch(ev *corev1.Event) *corev1.EffectBatch {
 		if k.NewSessionRetryModels != nil {
 			key = k.NewSessionRetryModels.ProjectKey
 		}
-		key = m.activeNewSessionKey(key)
-		if key != "" {
-			d := m.ensureDraft(key)
-			if !d.ConfigInitialized {
-				d.Config = m.resolveDraftConfig(key, d).Config
-			}
+		key = c.m.activeNewSessionKey(key)
+		if d := c.m.ensureDraft(key); d != nil && d.Config.MachineID != "" {
 			delete(st.MachineModels, screens.MachineAgentKey{
 				MachineID: d.Config.MachineID,
 				Agent:     lists.EffectiveAgent(d.Config.Agent),
 			})
-			for _, eff := range m.maybeFetchMachineConfig(d.Config.MachineID, d.Config.Agent) {
-				emit(eff)
-			}
+			delete(st.MachineSettings, d.Config.MachineID)
+			c.m.maybeFetchMachineConfig(ctx, d.Config.MachineID, d.Config.Agent)
+			ctx.Dirty.Add(false, false, true)
 		}
-		emit(renderEffect(corev1.ScreenTarget_SCREEN_TARGET_NEW_SESSION))
 
 	case *corev1.Event_NewSessionRetrySaveConfig:
 		key := ""
 		if k.NewSessionRetrySaveConfig != nil {
 			key = k.NewSessionRetrySaveConfig.ProjectKey
 		}
-		key = m.activeNewSessionKey(key)
-		if key != "" {
-			d := m.ensureDraft(key)
-			res := m.resolveDraftConfig(key, d)
-			cfg := d.Config
-			if !d.ConfigInitialized {
-				cfg = res.Config
-			}
-			var projCfg *lists.StartConfig
-			if res.Found {
-				projCfg = &res.Config
-			}
-			if op := lists.PlanStartSettings(cfg, projCfg, lists.SavedSettings(st.World.Prefs, key)); op != nil {
-				d.ConfigSaving = true
-				d.ConfigSaveError = ""
-				var settings *v1.ProjectSettings
-				if op.SetSettings != nil {
-					settings = lists.ApplySettings(lists.SavedSettings(st.World.Prefs, key), op.SetSettings, st.Cal.NowMs)
-				}
-				emit(c.applyAndEmitPrefsOp(key, op, settings))
-			}
+		key = c.m.activeNewSessionKey(key)
+		if d := c.m.ensureDraft(key); d != nil && d.Config.Cwd != "" {
+			op := buildFullSettingsOp(d.Config, false)
+			c.m.sync.EnqueuePrefsOp(ctx, op, true, key)
+			c.m.sync.SyncToState(st)
+			ctx.Dirty.Add(false, false, true)
 		}
-		emit(renderEffect(corev1.ScreenTarget_SCREEN_TARGET_NEW_SESSION))
 
 	case *corev1.Event_NewSessionSubmit:
-		var reqKey string
 		if k.NewSessionSubmit != nil {
-			reqKey = k.NewSessionSubmit.ProjectKey
-		}
-		key := m.activeNewSessionKey(reqKey)
-		if key != "" {
-			vm := screens.BuildNewSession(st, reqKey)
-			if vm.CanStart {
-				d := m.ensureDraft(key)
-				reqID := d.ActiveStartRequestID
-				if reqID == "" || !d.Frozen {
-					reqID = m.nextID("create-")
-				}
-				d.Busy = true
-				d.StartError = ""
-				d.DiskFull = false
-				d.ActiveStartRequestID = reqID
-				c.startKeys[reqID] = key
-
-				cfg := d.Config
+			key := c.m.activeNewSessionKey(k.NewSessionSubmit.ProjectKey)
+			if d := c.m.ensureDraft(key); d != nil {
+				d.AutoModeSupported = k.NewSessionSubmit.AutoModeSupported
 				if !d.ConfigInitialized {
-					cfg = m.resolveDraftConfig(key, d).Config
+					c.m.resolveDraftConfig(key, d)
 				}
-				res := lists.ResolveProjectStart(&st.World, key, "", v1.Agent_AGENT_UNSPECIFIED, nil, false)
-				var projCfg *lists.StartConfig
-				if res.Found {
-					projCfg = &res.Config
+				cfg := d.Config
+				if cfg.Cwd == "" {
+					cfg.Cwd = key
 				}
-				if op := lists.PlanStartSettings(cfg, projCfg, lists.SavedSettings(st.World.Prefs, key)); op != nil {
-					var settings *v1.ProjectSettings
-					if op.SetSettings != nil {
-						settings = lists.ApplySettings(lists.SavedSettings(st.World.Prefs, key), op.SetSettings, st.Cal.NowMs)
-					}
-					emit(c.applyAndEmitPrefsOp(key, op, settings))
-				}
-
-				emit(&corev1.Effect{
-					Effect: &corev1.Effect_SendCommand{
-						SendCommand: &corev1.SendCommandEffect{
-							RequestId: reqID,
-							MachineId: vm.Config.MachineId,
-							Command: &v1.Command{
-								Kind: &v1.Command_CreateSession{
-									CreateSession: &v1.CreateSessionRequest{
-										Cwd:             key,
-										Prompt:          d.Prompt,
-										Agent:           vm.Config.Agent,
-										Model:           vm.Config.Model,
-										Effort:          vm.Config.Effort,
-										StandardContext: vm.Config.StandardContext,
-									},
-								},
-							},
+				cmd := &v1.Command{
+					Kind: &v1.Command_CreateSession{
+						CreateSession: &v1.CreateSessionRequest{
+							Cwd:             cfg.Cwd,
+							Prompt:          d.Prompt,
+							Model:           cfg.Model,
+							Effort:          cfg.Effort,
+							Mode:            cfg.Mode,
+							Agent:           lists.EffectiveAgent(cfg.Agent),
+							ImageIds:        k.NewSessionSubmit.ImageIds,
+							FileIds:         k.NewSessionSubmit.FileIds,
+							StandardContext: cfg.StandardContext,
 						},
 					},
+				}
+				reqID, dispatched := c.m.sync.SubmitCommand(ctx, sync.SubmitCommandParams{
+					SlotKey:   "create_session:" + key,
+					MachineID: cfg.MachineID,
+					Command:   cmd,
 				})
+				if reqID != "" {
+					c.m.pendingCmdMeta[reqID] = cmdMeta{
+						kind:       cmdKindCreateSession,
+						machineID:  cfg.MachineID,
+						projectKey: key,
+					}
+				}
+				if dispatched {
+					d.Busy = true
+					d.StartError = ""
+					d.StartErrorText = nil
+					d.ActiveStartRequestID = reqID
+				}
+				ctx.Dirty.Add(true, true, true)
 			}
 		}
-		emit(renderEffect(corev1.ScreenTarget_SCREEN_TARGET_NEW_SESSION))
 
 	case *corev1.Event_NewSessionAbandonStart:
-		var reqKey string
+		key := ""
 		if k.NewSessionAbandonStart != nil {
-			reqKey = k.NewSessionAbandonStart.ProjectKey
+			key = k.NewSessionAbandonStart.ProjectKey
 		}
-		key := m.activeNewSessionKey(reqKey)
-		if key != "" {
-			if d := st.NewSessions[key]; d != nil {
-				reqID := d.ActiveStartRequestID
-				d.Frozen = false
-				d.Expired = false
-				d.UnknownStart = false
-				d.StartError = ""
-				d.ActiveStartRequestID = ""
-				if reqID != "" {
-					delete(c.startKeys, reqID)
-					emit(&corev1.Effect{
-						Effect: &corev1.Effect_AbandonRequest{
-							AbandonRequest: &corev1.AbandonRequestEffect{
-								RequestId: reqID,
-							},
-						},
-					})
-				}
-			}
+		key = c.m.activeNewSessionKey(key)
+		c.m.sync.AbandonAttempt(ctx, "create_session:"+key)
+		if d := c.m.state.NewSessions[key]; d != nil {
+			d.Busy = false
+			d.Frozen = false
+			d.Expired = false
+			d.UnknownStart = false
+			d.StartError = ""
+			d.StartErrorText = nil
+			d.ActiveStartRequestID = ""
 		}
-		emit(renderEffect(corev1.ScreenTarget_SCREEN_TARGET_NEW_SESSION))
+		ctx.Dirty.Add(false, false, true)
 	}
 
-	batch.Effects = effects
-	return batch
+	return effects
 }
 
-func (c *Core) applyAndEmitPrefsOp(path string, op *lists.FullPrefsOp, settings *v1.ProjectSettings) *corev1.Effect {
-	opID := c.model.nextID("op-")
-	c.opPaths[opID] = path
-	c.model.state.PrefsPendingPath[path] = true
-	delete(c.model.state.PrefsSaveErrorByPath, path)
-	next := lists.ApplyPrefsOp(c.model.state.World.Prefs, op, opID, c.model.state.Cal.NowMs)
-	c.model.state.World.Prefs = next
-	return &corev1.Effect{
-		Effect: &corev1.Effect_SaveProjectPrefs{
-			SaveProjectPrefs: &corev1.SaveProjectPrefsEffect{
-				OpId:      opID,
-				Kind:      mapPrefsOpKind(op.Kind),
-				Path:      path,
-				Settings:  settings,
-				AtMs:      c.model.state.Cal.NowMs,
-				NextPrefs: next,
+func (c *Core) submitListDirs(ctx *sync.StepContext, machineID, dirPath string) {
+	reqID, ok := c.m.sync.SubmitCommand(ctx, sync.SubmitCommandParams{
+		MachineID: machineID,
+		Command: &v1.Command{
+			Kind: &v1.Command_ListDirectories{
+				ListDirectories: &v1.ListDirectoriesRequest{Path: dirPath},
 			},
 		},
+	})
+	if reqID != "" {
+		c.m.pendingCmdMeta[reqID] = cmdMeta{
+			kind:      cmdKindListDirs,
+			machineID: machineID,
+		}
+	}
+	if ok {
+		c.m.state.DirPicker.ActiveRequestID = reqID
+	} else {
+		c.m.state.DirPicker.Loading = false
+		c.m.state.DirPicker.ActiveRequestID = ""
 	}
 }

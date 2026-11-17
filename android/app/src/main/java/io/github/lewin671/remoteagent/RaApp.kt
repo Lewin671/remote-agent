@@ -402,6 +402,8 @@ class RaApp : Application() {
                 directPrefs = directPrefs,
                 stunUrls = testStunUrls,
             )
+        r.homeScopeStore = io.github.lewin671.remoteagent.ui.HomeScopes.storeAdapter(this@RaApp)
+        r.uiMessageResolver = { msg -> io.github.lewin671.remoteagent.ui.sessionText(msg) }
         io.github.lewin671.remoteagent.ui.ViewerImages.use(r)
         attachNetwork(r)
         Push.open()

@@ -2,37 +2,63 @@
   "steps": [
     {
       "event": {
-        "clockUpdated": { "nowMs": "1791078060000", "todayStartMs": "1791043200000", "yesterdayStartMs": "1790956800000", "weekStartMs": "1790524800000", "nowYear": 2026, "utcOffsetMinutes": 480 }
+        "nowMs": "1791078060000",
+        "clockUpdated": {
+          "nowMs": "1791078060000",
+          "todayStartMs": "1791043200000",
+          "yesterdayStartMs": "1790956800000",
+          "weekStartMs": "1790524800000",
+          "nowYear": 2026,
+          "months": [{ "year": 2026, "month": 10, "startMs": "1790812800000" }]
+        }
       }
     },
-    { "event": { "connectionChanged": { "state": "CONN_STATE_CONNECTED", "livePushConnected": true } } },
     {
       "event": {
-        "machinesUpdated": {
-          "listed": true,
-          "clientProtocolVersion": 14,
+        "nowMs": "1791078060000",
+        "monoMs": "1000",
+        "randomIds": [
+          "req-models-1", "att-models-1",
+          "req-settings-1", "att-settings-1",
+          "pref-mach-1",
+          "pref-mode-1",
+          "req-start-1", "att-start-1",
+          "att-start-2",
+          "pref-start-1"
+        ],
+        "unitFloats": [0.5, 0.5, 0.5, 0.5],
+        "syncLifecycle": { "kind": "SYNC_LIFECYCLE_KIND_START" }
+      }
+    },
+    {
+      "event": {
+        "nowMs": "1791078060010",
+        "cacheBootstrapLoaded": {
+          "opId": "1",
           "machines": [
             {
               "machineId": "m-off",
               "online": false,
-              "protocolVersion": 14,
+              "lastSeenMs": "1791000000000",
               "meta": {
-                "hostname": "OldMac.local",
-                "agents": [{ "agent": "AGENT_CODEX", "defaultMode": "APPROVAL_MODE_ASK", "defaultModeSource": "DEFAULT_MODE_SOURCE_CLI_CONFIG" }],
-                "projects": [{ "path": "/Users/me/Code/app", "ended": 1, "latestCreatedMs": "1791000000000" }]
+                "hostname": "OldMac",
+                "protocolVersion": 16,
+                "agents": [{ "agent": "AGENT_CODEX", "defaultMode": "APPROVAL_MODE_ASK" }]
               }
-            },
+            }
+          ],
+          "sessions": [
             {
-              "machineId": "m-on",
-              "online": true,
-              "protocolVersion": 14,
+              "sessionId": "s-old",
+              "machineId": "m-off",
+              "updatedMs": "1791000000000",
+              "listedEndedMs": "1791000000000",
               "meta": {
-                "hostname": "Workstation.local",
-                "agents": [
-                  { "agent": "AGENT_CLAUDE", "defaultMode": "APPROVAL_MODE_AUTO", "defaultModeSource": "DEFAULT_MODE_SOURCE_CLI_CONFIG" },
-                  { "agent": "AGENT_CODEX", "defaultMode": "APPROVAL_MODE_ASK", "defaultModeSource": "DEFAULT_MODE_SOURCE_CLI_CONFIG" }
-                ],
-                "projects": [{ "path": "/Users/me/Code/app", "ended": 1, "latestCreatedMs": "1790900000000" }]
+                "id": "s-old",
+                "cwd": "/Users/me/Code/app",
+                "agent": "AGENT_CODEX",
+                "status": "SESSION_STATUS_EXITED",
+                "endedAt": "2026-10-03T04:00:00Z"
               }
             }
           ]
@@ -41,71 +67,221 @@
     },
     {
       "event": {
-        "prefsUpdated": {
-          "loaded": true,
-          "prefs": {
-            "schema": 1,
-            "settings": [{ "path": "/Users/me/Code/app", "machineId": "m-off", "agent": "AGENT_CODEX" }]
-          }
-        }
-      }
-    },
-    {
-      "event": { "newSessionOpen": { "projectKey": "/Users/me/Code/app" } },
+        "nowMs": "1791078060020",
+        "newSessionOpen": { "projectKey": "/Users/me/Code/app" }
+      },
       "views": [
         { "name": "offlineInit", "screen": { "newSession": { "projectKey": "/Users/me/Code/app" } } }
       ]
     },
     {
-      "event": { "newSessionSetPrompt": { "prompt": "Fix broken build" } },
+      "event": {
+        "nowMs": "1791078060030",
+        "securitySnapshot": {
+          "opId": "3",
+          "isMember": true,
+          "selfDeviceId": "dev-1",
+          "authorityDeviceId": "dev-1",
+          "leaseEndMs": "1791164460000",
+          "trustedMachineIds": ["m-off", "m-on"]
+        }
+      }
+    },
+    {
+      "event": {
+        "nowMs": "1791078060040",
+        "tokenResult": { "opId": "2", "token": "tok-1" }
+      }
+    },
+    {
+      "event": {
+        "nowMs": "1791078060050",
+        "streamReady": { "legId": "1", "serverTimeMs": "1791078060050" }
+      }
+    },
+    {
+      "event": {
+        "nowMs": "1791078060060",
+        "listsFetched": {
+          "opId": "4",
+          "machines": [
+            {
+              "machineId": "m-off",
+              "online": false,
+              "lastSeenMs": "1791000000000",
+              "meta": {
+                "hostname": "OldMac",
+                "protocolVersion": 16,
+                "agents": [{ "agent": "AGENT_CODEX", "defaultMode": "APPROVAL_MODE_ASK" }]
+              }
+            },
+            {
+              "machineId": "m-on",
+              "online": true,
+              "meta": {
+                "hostname": "Workstation",
+                "protocolVersion": 16,
+                "agents": [
+                  { "agent": "AGENT_CODEX", "defaultMode": "APPROVAL_MODE_ASK" },
+                  { "agent": "AGENT_CLAUDE", "defaultMode": "APPROVAL_MODE_ASK" }
+                ],
+                "projects": [{ "path": "/Users/me/Code/app", "ended": 1 }]
+              }
+            }
+          ],
+          "sessions": [
+            {
+              "sessionId": "s-old",
+              "machineId": "m-off",
+              "updatedMs": "1791000000000",
+              "listedEndedMs": "1791000000000",
+              "meta": {
+                "id": "s-old",
+                "cwd": "/Users/me/Code/app",
+                "agent": "AGENT_CODEX",
+                "status": "SESSION_STATUS_EXITED",
+                "endedAt": "2026-10-03T04:00:00Z"
+              }
+            }
+          ]
+        }
+      },
       "views": [
         { "name": "offlineWithDraftChoices", "screen": { "newSession": { "projectKey": "/Users/me/Code/app" } } }
       ]
     },
     {
-      "event": { "newSessionSelectMachine": { "machineId": "m-on" } }
-    },
-    {
-      "event": { "newSessionSelectAgent": { "agent": "AGENT_CLAUDE" } }
+      "event": {
+        "nowMs": "1791078060070",
+        "newSessionSelectMachine": { "machineId": "m-on" }
+      }
     },
     {
       "event": {
-        "machineModelsReceived": {
-          "machineId": "m-on",
-          "agent": "AGENT_CLAUDE",
-          "response": {
-            "defaultModel": "claude-haiku",
-            "models": [
-              { "slug": "claude-haiku", "displayName": "Haiku 4.5", "autoUnavailable": true, "contextWindow": "200000" },
-              { "slug": "claude-sonnet", "displayName": "Sonnet 5.5", "efforts": ["low", "medium", "high"], "defaultEffort": "medium", "contextWindow": "1000000" }
-            ]
+        "nowMs": "1791078060080",
+        "commandOutcome": {
+          "requestId": "req-models-1",
+          "attemptId": "att-models-1",
+          "source": "OUTCOME_SOURCE_DAEMON",
+          "signed": true,
+          "hashesMatch": true,
+          "attemptBound": true,
+          "outerMatchesInner": true,
+          "outerOutcome": "executed",
+          "outerReason": "ok",
+          "result": {
+            "outcome": "executed",
+            "reason": "ok",
+            "resultAvailable": true,
+            "listModels": {
+              "defaultModel": "gpt-5.4",
+              "models": [
+                { "slug": "gpt-5.4", "displayName": "GPT-5.4", "efforts": ["medium", "high"], "defaultEffort": "high" }
+              ]
+            }
           }
         }
       }
     },
     {
-      "event": { "newSessionSelectModel": { "model": "claude-sonnet", "effort": "high" } },
+      "event": {
+        "nowMs": "1791078060090",
+        "commandOutcome": {
+          "requestId": "req-settings-1",
+          "attemptId": "att-settings-1",
+          "source": "OUTCOME_SOURCE_DAEMON",
+          "signed": true,
+          "hashesMatch": true,
+          "attemptBound": true,
+          "outerMatchesInner": true,
+          "outerOutcome": "executed",
+          "outerReason": "ok",
+          "result": {
+            "outcome": "executed",
+            "reason": "ok",
+            "resultAvailable": true,
+            "getSettings": {
+              "settings": { "defaultModel": "gpt-5.4", "defaultEffort": "high", "defaultMode": "APPROVAL_MODE_ASK" }
+            }
+          }
+        }
+      }
+    },
+    {
+      "event": {
+        "nowMs": "1791078060100",
+        "newSessionSelectModel": {
+          "model": "gpt-5.4",
+          "effort": "high",
+          "mode": "APPROVAL_MODE_AUTO"
+        }
+      }
+    },
+    {
+      "event": {
+        "nowMs": "1791078060110",
+        "newSessionSetPrompt": { "prompt": "Ship M2 core", "attachmentCount": 1 }
+      },
       "views": [
         { "name": "readyToSubmit", "screen": { "newSession": { "projectKey": "/Users/me/Code/app" } } }
       ]
     },
     {
-      "event": { "newSessionSubmit": { "projectKey": "/Users/me/Code/app" } }
+      "event": {
+        "nowMs": "1791078060120",
+        "newSessionSubmit": { "projectKey": "/Users/me/Code/app", "autoModeSupported": true, "imageIds": ["img-1"] }
+      }
     },
     {
       "event": {
-        "createSessionResult": { "requestId": "create-4", "unknown": true, "error": "ack lost" }
+        "nowMs": "1791078060130",
+        "commandOutcome": {
+          "requestId": "req-start-1",
+          "attemptId": "att-start-1",
+          "source": "OUTCOME_SOURCE_DAEMON",
+          "signed": true,
+          "hashesMatch": false,
+          "attemptBound": true
+        }
       },
       "views": [
         { "name": "unknownRetry", "screen": { "newSession": { "projectKey": "/Users/me/Code/app" } } }
       ]
     },
     {
-      "event": { "newSessionSubmit": { "projectKey": "/Users/me/Code/app" } }
+      "event": {
+        "nowMs": "1791078060200",
+        "newSessionSubmit": { "projectKey": "/Users/me/Code/app", "autoModeSupported": true, "imageIds": ["img-1"] }
+      }
     },
     {
       "event": {
-        "createSessionResult": { "requestId": "create-4", "outcome": "executed", "sessionId": "s-created" }
+        "nowMs": "1791078060250",
+        "commandOutcome": {
+          "requestId": "req-start-1",
+          "attemptId": "att-start-2",
+          "source": "OUTCOME_SOURCE_DAEMON",
+          "signed": true,
+          "hashesMatch": true,
+          "attemptBound": true,
+          "outerMatchesInner": true,
+          "outerOutcome": "executed",
+          "outerReason": "ok",
+          "result": {
+            "outcome": "executed",
+            "reason": "ok",
+            "resultAvailable": true,
+            "createSession": {
+              "session": {
+                "id": "s-new",
+                "cwd": "/Users/me/Code/app",
+                "agent": "AGENT_CODEX",
+                "status": "SESSION_STATUS_RUNNING",
+                "title": "Ship M2 core"
+              }
+            }
+          }
+        }
       },
       "views": [
         { "name": "afterExecuted", "screen": { "newSession": { "projectKey": "/Users/me/Code/app" } } }

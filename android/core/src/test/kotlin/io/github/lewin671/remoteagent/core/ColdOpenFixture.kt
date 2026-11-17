@@ -83,6 +83,15 @@ internal class ColdOpenFixture(val historySize: Int = 501) {
 
 /** The real Connect codec, Remote, security verification and cache; only I/O and time are fake. */
 @OptIn(ExperimentalCoroutinesApi::class)
+internal class MemoryTokens : LoginTokenStore {
+    var saved: LoginToken? = null
+    var reads = 0
+    var clears = 0
+    override fun loadLoginToken(account: Account): LoginToken? { reads++; return saved }
+    override fun saveLoginToken(account: Account, token: LoginToken) { saved = token }
+    override fun clearLoginToken(account: Account) { clears++; saved = null }
+}
+
 internal class ColdOpenPeer(val fixture: ColdOpenFixture, val test: TestScope) : HTTPClientInterface, WebSocket.Factory {
     val calls = mutableListOf<String>()
     val after = mutableListOf<Long>()
@@ -111,10 +120,7 @@ internal class ColdOpenPeer(val fixture: ColdOpenFixture, val test: TestScope) :
         securityStorage = TestSecurityStore(fixture.record), tokenStorage = tokens,
         dispatcher = StandardTestDispatcher(test.testScheduler), socketFactory = sockets, rpcTransport = this,
         monotonic = { test.testScheduler.currentTime },
-    ).also { remote ->
-        Remote::class.java.getDeclaredField("recovery").apply { isAccessible = true }.set(remote,
-            io.github.lewin671.remoteagent.core.transport.Recovery({ test.testScheduler.currentTime }, { .75 }, io.github.lewin671.remoteagent.core.transport.RecoveryBudget()))
-    }
+    )
 
     override fun unary(request: UnaryHTTPRequest, onResult: (HTTPResponse) -> Unit): () -> Unit {
         val job = test.backgroundScope.launch {

@@ -1,50 +1,24 @@
 package io.github.lewin671.remoteagent.ui
 
-import io.github.lewin671.remoteagent.core.UiMessages
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.semantics.*
+import androidx.compose.ui.text.*
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
-import io.github.lewin671.remoteagent.core.PendingRowText
 import io.github.lewin671.remoteagent.core.agentName
-import io.github.lewin671.remoteagent.core.RemoteState
-import io.github.lewin671.remoteagent.core.RowMeta
-import io.github.lewin671.remoteagent.core.SessionView
-import io.github.lewin671.remoteagent.core.TaskGroup
-import io.github.lewin671.remoteagent.core.endedRowText
-import io.github.lewin671.remoteagent.core.exited
-import io.github.lewin671.remoteagent.core.scheduleFrequency
-import io.github.lewin671.remoteagent.core.scheduleSupported
-import io.github.lewin671.remoteagent.core.sessionRowText
-import io.github.lewin671.remoteagent.core.taskGroup
-import io.github.lewin671.remoteagent.core.text
+import io.github.lewin671.remoteagent.core.proto.*
+import io.github.lewin671.remoteagent.proto.Agent
 
 /*
  * The rows of client-v58's lists (design-system §6 会话行, 等你的事): a
@@ -53,94 +27,123 @@ import io.github.lewin671.remoteagent.core.text
  * text does.
  */
 
-/** The 26 wide first column of a session row, which holds its status graphic. */
 private val Gutter = 26.dp
 
+private fun markKindFor(status: SessionDisplayStatus): MarkKind? = when (status) {
+    SessionDisplayStatus.SESSION_DISPLAY_STATUS_APPROVAL,
+    SessionDisplayStatus.SESSION_DISPLAY_STATUS_QUESTION,
+    SessionDisplayStatus.SESSION_DISPLAY_STATUS_PLAN,
+    SessionDisplayStatus.SESSION_DISPLAY_STATUS_POPUP -> MarkKind.WAITING
+    SessionDisplayStatus.SESSION_DISPLAY_STATUS_STARTING,
+    SessionDisplayStatus.SESSION_DISPLAY_STATUS_RUNNING -> MarkKind.RUNNING
+    SessionDisplayStatus.SESSION_DISPLAY_STATUS_IDLE,
+    SessionDisplayStatus.SESSION_DISPLAY_STATUS_OFFLINE,
+    SessionDisplayStatus.SESSION_DISPLAY_STATUS_UNLINKED -> MarkKind.IDLE
+    else -> null
+}
+
 /**
- * A session that has not ended: its status graphic, the title (17 / 600) and
- * time, 「状态 · 预览」 (15 ink2, at most two lines; one when [oneLine]), and a
- * third line of only what differs in this list ([meta]) and its scheduled
- * tasks. The status word is not coloured: the graphic says it. An ended
- * session is an [EndedRow].
+ * A live session row rendered from Core's [SessionRowView]: status graphic, title & time,
+ * status/preview line, and optional third metadata line.
  */
 @Composable
 fun SessionRow(
-    state: RemoteState,
-    s: SessionView,
-    t: Long,
-    meta: RowMeta = RowMeta(),
+    r: SessionRowView,
     last: Boolean = false,
-    selected: Boolean = false,
+    onClick: () -> Unit,
 ) {
-    val copy = uiText()
-    if (exited(s)) return EndedRow(s, t, project = meta.project, selected = selected, last = last)
     val p = pal
-    val nav = LocalNav.current
-    val row = sessionRowText(state, s, meta, t)
-    val rowMeta = uiText(row.meta)
-    val spoken = uiText(row.spoken)
-    val preview = uiText(row.preview)
-    val schedules by LocalRemote.current.schedules.state.collectAsState()
-    val timed = schedules.values.flatMap { it.tasks }.filter {
-        scheduleSupported(state.machines[it.machine]) && it.target.text("type") == "resume_session" &&
-            it.target.text("session") == s.id && taskGroup(it) != TaskGroup.ENDED
-    }
-    val third = listOf(
-        rowMeta,
-        when {
-            timed.size > 1 -> uiText(UiMessages.homeScheduledTasks(count = timed.size))
-            timed.size == 1 -> uiText(UiMessages.homeScheduledFrequency(scheduleFrequency(timed.single().trigger, copy = copy)))
-            else -> ""
-        },
-    ).filter { it.isNotEmpty() }.joinToString(" · ")
+    val copy = uiText()
+    val title = uiText(r.title)
+    val time = uiText(r.time)
+    val statusStr = uiText(r.statusText)
+    val previewStr = uiText(r.preview)
+    val secondText = listOf(statusStr, previewStr).filter { it.isNotEmpty() }.joinToString(" · ")
+        .ifEmpty { uiText(r.secondLine) }
+    val hasAgent = r.agent != Agent.AGENT_UNSPECIFIED && r.agent != Agent.UNRECOGNIZED
+    val metaText = uiText(r.metaLine)
+    val spoken = listOf(
+        title,
+        time,
+        secondText,
+        if (hasAgent) agentName(r.agent, copy = copy) else "",
+        metaText,
+    ).filter { it.isNotEmpty() }.joinToString("，")
+
     Row(
-        Modifier.fillMaxWidth().background(if (selected) p.fill else Color.Transparent)
-            .clickable(role = Role.Button) { nav.session(s.id) }
-            .semantics(mergeDescendants = true) { contentDescription = listOf(spoken, third.takeIf { it != rowMeta }.orEmpty()).filter { it.isNotEmpty() }.joinToString("，") }
+        Modifier.fillMaxWidth().background(if (r.selected || LocalSelectedSession.current == r.sessionId) p.fill else Color.Transparent)
+            .clickable(role = Role.Button, onClick = onClick)
+            .semantics(mergeDescendants = true) { contentDescription = spoken }
             .padding(start = 24.dp),
     ) {
-        // Running, waiting, unread and idle change shape: the one fades into the other (§4 动效, 快).
         Box(Modifier.width(Gutter).padding(top = 17.dp)) {
-            androidx.compose.animation.Crossfade(markOf(row.status), animationSpec = Motion.fadeInSpec(Motion.FAST), label = "row-mark") { kind -> kind?.let { StatusMark(it) } }
+            androidx.compose.animation.Crossfade(
+                markKindFor(r.status),
+                animationSpec = Motion.fadeInSpec(Motion.FAST),
+                label = "row-mark",
+            ) { kind -> kind?.let { StatusMark(it) } }
         }
         Column(
-            Modifier.weight(1f).then(if (last) Modifier else Modifier.bottomLine(p.sep)).padding(top = 13.dp, bottom = 13.dp, end = 24.dp),
+            Modifier.weight(1f)
+                .then(if (last) Modifier else Modifier.bottomLine(p.sep))
+                .padding(top = 13.dp, bottom = 13.dp, end = 24.dp),
         ) {
-            TitleAndTime(uiText(row.title), uiText(row.time), T.s17b)
-            Text(
-                listOf(uiText(io.github.lewin671.remoteagent.core.listStatus(row.status)), preview).filter { it.isNotEmpty() }.joinToString(" · "),
-                style = T.s15, color = p.ink2, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 3.dp),
-            )
-            if (third.isNotEmpty() || row.agent != null) Row(Modifier.padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                // The CLI leads the line as its mark (design-system §5); the row's spoken text already names it.
-                row.agent?.let { AgentMarkLead(it, T.s13, p.ink2, scale = 1.15f) }
-                // A mark alone looks unfinished: with nothing else to say, the line names the CLI.
-                val words = third.ifEmpty { row.agent?.let { agentName(it, copy = copy) }.orEmpty() }
-                if (words.isNotEmpty()) Text(words, style = T.s13, color = p.ink2, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
+            TitleAndTime(title, time, T.s17b)
+            if (secondText.isNotEmpty()) {
+                Text(
+                    secondText,
+                    style = T.s15,
+                    color = p.ink2,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(top = 3.dp),
+                )
+            }
+            if (metaText.isNotEmpty() || hasAgent) Row(
+                Modifier.padding(top = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                if (hasAgent) AgentMarkLead(r.agent, T.s13, p.ink2, scale = 1.15f)
+                val words = metaText.ifEmpty { if (hasAgent) agentName(r.agent, copy = copy) else "" }
+                if (words.isNotEmpty()) Text(
+                    words,
+                    style = T.s13,
+                    color = p.ink2,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f, fill = false),
+                )
             }
         }
     }
 }
 
 /**
- * An ended session on one line: the title (17 / 400) and at the right when
- * it ended, after the project where the list spans projects. No graphic:
- * its date group says it has ended.
+ * An ended session on one line rendered from Core's [EndedRowView]: title and right timestamp/meta.
  */
 @Composable
-fun EndedRow(s: SessionView, t: Long, project: Boolean = false, selected: Boolean = false, last: Boolean = false) {
+fun EndedRow(
+    r: EndedRowView,
+    last: Boolean = false,
+    onClick: () -> Unit,
+) {
     val p = pal
-    val nav = LocalNav.current
-    val row = endedRowText(s, project, t)
-    val spoken = uiText(row.spoken)
+    val title = uiText(r.title)
+    val right = uiText(r.right)
+    val spoken = listOf(title, right).filter { it.isNotEmpty() }.joinToString("，")
     Row(
-        Modifier.fillMaxWidth().background(if (selected) p.fill else Color.Transparent)
-            .clickable(role = Role.Button) { nav.session(s.id) }
+        Modifier.fillMaxWidth().background(if (r.selected || LocalSelectedSession.current == r.sessionId) p.fill else Color.Transparent)
+            .clickable(role = Role.Button, onClick = onClick)
             .semantics(mergeDescendants = true) { contentDescription = spoken }
             .padding(start = 24.dp),
     ) {
-        Box(Modifier.weight(1f).then(if (last) Modifier else Modifier.bottomLine(p.sep)).heightIn(min = 48.dp).padding(top = 12.dp, bottom = 12.dp, end = 24.dp)) {
-            TitleAndTime(uiText(row.title), uiText(row.right), T.s17)
+        Box(
+            Modifier.weight(1f)
+                .then(if (last) Modifier else Modifier.bottomLine(p.sep))
+                .heightIn(min = 48.dp)
+                .padding(top = 12.dp, bottom = 12.dp, end = 24.dp),
+        ) {
+            TitleAndTime(title, right, T.s17)
         }
     }
 }
@@ -173,19 +176,22 @@ fun groupShape(first: Boolean, last: Boolean, radius: Int = 24): RoundedCornerSh
 }
 
 /**
- * A row of the grey list of what waits (design-system §6 等你的事): the
- * orange dot, the title (17 / 600), then 「类型 · 摘要」 with the type in
- * orange-ink 600, and ›. [first] and [last] say where the list's corners are.
+ * A row of the grey list of what waits (design-system §6 等你的事), rendered from Core's [AttentionRowView].
  */
 @Composable
-fun PendingRow(row: PendingRowText, first: Boolean, last: Boolean, onClick: () -> Unit) {
-    val spoken = uiText(row.spoken)
-    val kind = uiText(row.kind)
-    val summary = uiText(row.summary)
+fun PendingRow(r: AttentionRowView, first: Boolean, last: Boolean, onClick: () -> Unit) {
+    val title = uiText(r.title)
+    val kind = uiText(r.kindText)
+    val rawSummary = uiText(r.summary)
+    val detail = if (kind.isEmpty()) "" else rawSummary.removePrefix(kind + " · ").removePrefix(kind).trimStart(' ', '·')
+    val spoken = listOf(title, kind, detail.ifEmpty { if (kind.isEmpty()) rawSummary else "" })
+        .filter { it.isNotEmpty() }.joinToString("，")
     val p = pal
     Row(
-        Modifier.padding(horizontal = 16.dp).padding(top = if (first) 10.dp else 0.dp).fillMaxWidth().clip(groupShape(first, last)).background(p.gbg)
-            .clickable(role = Role.Button, onClick = onClick).semantics(mergeDescendants = true) { contentDescription = spoken }
+        Modifier.padding(horizontal = 16.dp).padding(top = if (first) 10.dp else 0.dp)
+            .fillMaxWidth().clip(groupShape(first, last)).background(p.gbg)
+            .clickable(role = Role.Button, onClick = onClick)
+            .semantics(mergeDescendants = true) { contentDescription = spoken }
             .then(if (first) Modifier else Modifier.topLine(p.sep, start = 39.dp))
             .padding(start = 18.dp, end = 14.dp, top = 12.dp, bottom = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -193,11 +199,15 @@ fun PendingRow(row: PendingRowText, first: Boolean, last: Boolean, onClick: () -
     ) {
         StatusMark(MarkKind.WAITING)
         Column(Modifier.weight(1f)) {
-            Text(uiText(row.title), style = T.s17b, color = p.ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(title, style = T.s17b, color = p.ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text(
                 buildAnnotatedString {
-                    withStyle(SpanStyle(color = p.orangeInk, fontWeight = platformWeight(FontWeight.SemiBold))) { append(kind) }
-                    if (row.summary.isNotEmpty()) append(" · $summary")
+                    if (kind.isNotEmpty()) {
+                        withStyle(SpanStyle(color = p.orangeInk, fontWeight = platformWeight(FontWeight.SemiBold))) { append(kind) }
+                        if (detail.isNotEmpty()) append(" · " + detail)
+                    } else {
+                        append(rawSummary)
+                    }
                 },
                 style = T.s15, color = p.ink2, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 1.dp),
             )

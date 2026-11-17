@@ -59,7 +59,7 @@ class ScheduleCreationMachineTest {
     }
     @Test fun switchingToAComputerWithoutTheOpenedCliFallsBackToItsFirstAndReturnsExactlyTheDisplayedConfig() {
         // The new computer has Codex only: the sheet, opened for Claude Code, shows and returns Codex's set.
-        val state=state();prepare(state);var result:PrefsOp.SetSettings?=null
+        val state=state();prepare(state);var result:NewSettingsResult?=null
         ui.setContent { RaTheme(ThemeMode.LIGHT) { CompositionLocalProvider(LocalRemote provides remote,LocalNav provides nav) { NewSettingsSheet(state,path,"project","old",Agent.AGENT_CLAUDE,onDone={result=it},onClose={},initial=initial,scheduling=true) } } }
         ui.onNodeWithText("电脑",useUnmergedTree=true).performClick();ui.onNodeWithText("新电脑",useUnmergedTree=true).performClick()
         ui.onNodeWithText("默认模型",useUnmergedTree=true).assertExists()

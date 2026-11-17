@@ -641,11 +641,36 @@ fun ScheduleEditor(session: String, onClose: () -> Unit) {
     }
     if (timeOpen) ScheduleTimeSheet(trigger, { triggerText = it.toString(); timeOpen = false }, { timeOpen = false })
     if (pickProject) Sheet({ pickProject = false }) {
+        val home by remote.homeView.collectAsState()
         SheetHead(copy(UiMessages.projectsChoose()), copy(UiMessages.commonCancel()), { pickProject = false })
-        ProjectPickList(state, { path -> project = path; config = null; pickProject = false }, { pickProject = false; pickDirectory = true })
+        CoreProjectList(
+            home.sidebarProjects,
+            onSearch = { remote.coreHost.setProjectSearch(it) },
+            onNew = {
+                remote.coreHost.openDirPicker(forNewTask = false)
+                pickProject = false
+                pickDirectory = true
+            },
+        ) { pr ->
+            CoreProjectRow(pr, retryEnabled = false, onClick = {
+                project = pr.key
+                config = null
+                pickProject = false
+            }) { Arrow(pal.ink3, ts(18.sp)) }
+        }
     }
-    if (pickDirectory) Sheet({ pickDirectory = false }, scroll = false) {
-        DirPickerBody(state, copy(UiMessages.scheduleAndroidChooseDirectory())) { m, path -> project = path; config = NewConfig(m, path, machineAgents(state.machines[m]).first()); pickDirectory = false }
+    if (pickDirectory) Sheet({ remote.coreHost.closeDirPicker(); pickDirectory = false }, scroll = false) {
+        val projectView by remote.projectView.collectAsState()
+        CoreDirPickerBody(
+            projectView.manage.dirPicker,
+            title = copy(UiMessages.scheduleAndroidChooseDirectory()),
+            onBack = { remote.coreHost.closeDirPicker(); pickDirectory = false },
+        ) { m, path ->
+            remote.coreHost.closeDirPicker()
+            project = path
+            config = NewConfig(m, path, machineAgents(state.machines[m]).first())
+            pickDirectory = false
+        }
     }
     val settingsPage = settings
     if (settingsPage != null && cfg != null) NewSettingsSheet(state, project, projectName(project, copy = copy), cfg.machineId, cfg.agent, settingsPage,

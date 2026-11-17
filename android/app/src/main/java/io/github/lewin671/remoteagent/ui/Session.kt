@@ -489,8 +489,15 @@ private fun SessionTopBar(
         2 -> ModelSheet(state, s, running, onClose = { sheet = 0 })
         3 -> projectConfig(state, projectKey(s))?.let { initial ->
             val key = projectKey(s)
-            NewSettingsSheet(state, key, projectName(key, copy = copy), initial.machineId, s.agent(), onDone = { op ->
-                if (op != null) PrefsChanges.run(remote, op)
+            NewSettingsSheet(state, key, projectName(key, copy = copy), initial.machineId, s.agent(), onDone = { res ->
+                if (res != null) {
+                    remote.coreHost.openNewSession(key)
+                    remote.coreHost.selectNewSessionMachine(res.machineId)
+                    res.sets.forEach { set ->
+                        remote.coreHost.selectNewSessionAgent(set.agent)
+                        remote.coreHost.selectNewSessionModel(set.model, set.effort, set.standardContext, set.mode)
+                    }
+                }
                 sheet = 0
             }, onClose = { sheet = 0 })
         }

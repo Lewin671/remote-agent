@@ -1,0 +1,329 @@
+package sync
+
+import (
+	"slices"
+
+	"github.com/Lewin671/remote-agent/clientcore/domain/lists"
+	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
+	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
+	"github.com/Lewin671/remote-agent/clientcore/text"
+)
+
+type prefsPhase uint8
+
+const (
+	prefsPhaseIdle prefsPhase = iota
+	prefsPhaseGet
+	prefsPhasePut
+)
+
+type prefsQueueItem struct {
+	OpID        string
+	Path        string
+	ForSettings bool
+	DraftKey    string
+	Op          *lists.FullPrefsOp
+	Attempt     int
+	ActiveOpID  uint64
+	Phase       prefsPhase
+	InitialBase uint64
+}
+
+// PrefsResultCallback can be handled via SettledPrefs if needed by UI drafts.
+type SettledPrefs struct {
+	Path        string
+	DraftKey    string
+	ForSettings bool
+	OK          bool
+	ErrorText   *corev1.Text
+}
+
+func (e *Engine) startLoadPrefs(ctx *StepContext) {
+	if !e.running {
+		return
+	}
+	e.cancelTimer(ctx, corev1.TimerKind_TIMER_KIND_PREFS_RETRY, "")
+	e.prefsLoadOpID = e.allocOpID()
+	ctx.emit(&corev1.Effect{
+		Effect: &corev1.Effect_Rpc{
+			Rpc: &corev1.RpcEffect{
+				OpId: e.prefsLoadOpID,
+				Kind: &corev1.RpcEffect_GetAccountPrefs{
+					GetAccountPrefs: &corev1.GetAccountPrefsRpc{ObjectId: ProjectPrefsObjectID},
+				},
+			},
+		},
+	})
+}
+
+// EnqueuePrefsOp enqueues an idempotent ProjectPrefs CAS mutation.
+// For settings mutations pass forSettings=true and optional draftKey for draft tracking.
+func (e *Engine) EnqueuePrefsOp(ctx *StepContext, op *lists.FullPrefsOp, forSettings bool, draftKey string) bool {
+	if op == nil {
+		return false
+	}
+	e.prefsGlobalErr = nil
+	if forSettings {
+		delete(e.prefsSettingsErr, op.Path)
+	} else {
+		delete(e.prefsErrorByPath, op.Path)
+	}
+
+	if errText := e.prefsMutationGuardError(); errText != nil {
+		if forSettings {
+			e.prefsSettingsErr[op.Path] = errText
+		} else {
+			e.prefsErrorByPath[op.Path] = errText
+			e.prefsGlobalErr = errText
+		}
+		ctx.Dirty.Add(true, true, true)
+		return false
+	}
+
+	opID := e.entropy.nextID(ctx)
+	item := prefsQueueItem{
+		OpID:        opID,
+		Path:        op.Path,
+		ForSettings: forSettings,
+		DraftKey:    draftKey,
+		Op:          op,
+	}
+	if forSettings {
+		e.prefsSettingsSaving[op.Path] = true
+	} else {
+		e.prefsPendingByPath[op.Path] = true
+	}
+	e.prefsQueue = append(e.prefsQueue, item)
+	if len(e.prefsQueue) == 1 {
+		e.startNextPrefsOp(ctx)
+	}
+	ctx.Dirty.Add(true, true, true)
+	return true
+}
+
+func (e *Engine) prefsMutationGuardError() *corev1.Text {
+	if e.accountClockSkewed() {
+		return text.Msg(text.KeyErrorsThisDeviceSClockIsBehindTheAccountStateRemote)
+	}
+	if e.accountControlLost() {
+		return text.Msg(text.KeyErrorsRemoteControlExpiredSavingChangesSessionControlAndNew)
+	}
+	if !e.networkAvailable {
+		return text.Msg(text.KeyConnectionNoNetwork)
+	}
+	if e.conn != lists.ConnConnected {
+		return text.Msg(text.KeyErrorsNotConnected)
+	}
+	return nil
+}
+
+func (e *Engine) startNextPrefsOp(ctx *StepContext) {
+	if len(e.prefsQueue) == 0 || !e.running {
+		return
+	}
+	head := &e.prefsQueue[0]
+	head.Phase = prefsPhaseGet
+	head.ActiveOpID = e.allocOpID()
+	if head.Attempt == 0 {
+		head.InitialBase = e.prefs.Revision
+	}
+	ctx.emit(&corev1.Effect{
+		Effect: &corev1.Effect_Rpc{
+			Rpc: &corev1.RpcEffect{
+				OpId: head.ActiveOpID,
+				Kind: &corev1.RpcEffect_GetAccountPrefs{
+					GetAccountPrefs: &corev1.GetAccountPrefsRpc{ObjectId: ProjectPrefsObjectID},
+				},
+			},
+		},
+	})
+}
+
+func (e *Engine) handleAccountPrefsFetched(ctx *StepContext, ev *corev1.AccountPrefsFetchedEvent) {
+	if ev == nil {
+		return
+	}
+	if len(e.prefsQueue) > 0 && e.prefsQueue[0].Phase == prefsPhaseGet && ev.OpId == e.prefsQueue[0].ActiveOpID {
+		e.handlePrefsCASGetResult(ctx, ev)
+		return
+	}
+	if ev.OpId != e.prefsLoadOpID && ev.OpId != 0 {
+		return
+	}
+	e.prefsLoadOpID = 0
+	if ev.Error != "" {
+		e.prefs.LoadFailed = !e.prefs.Loaded
+		if e.running && e.streamOpen && !e.prefs.Loaded {
+			wait := e.prefsBackoffMs
+			if wait <= 0 {
+				wait = PrefsRetryInitialMs
+			}
+			e.prefsBackoffMs = min(wait*2, PrefsRetryMaxMs)
+			e.scheduleTimer(ctx, corev1.TimerKind_TIMER_KIND_PREFS_RETRY, "", wait)
+		}
+		ctx.Dirty.MarkAll()
+		return
+	}
+	e.prefsBackoffMs = PrefsRetryInitialMs
+	e.prefs.LoadFailed = false
+	e.applyAccountPrefs(ev.Prefs, true)
+	if ev.Prefs != nil && ev.Prefs.CacheRef != "" {
+		ctx.emit(&corev1.Effect{
+			Effect: &corev1.Effect_CacheWrite{
+				CacheWrite: &corev1.CacheWriteEffect{
+					Kind: &corev1.CacheWriteEffect_WritePrefsRef{WritePrefsRef: ev.Prefs.CacheRef},
+				},
+			},
+		})
+	}
+	ctx.Dirty.MarkAll()
+}
+
+func (e *Engine) handlePrefsCASGetResult(ctx *StepContext, ev *corev1.AccountPrefsFetchedEvent) {
+	head := &e.prefsQueue[0]
+	head.ActiveOpID = 0
+	if ev.Error != "" {
+		e.finishPrefsOp(ctx, text.Msg(text.KeyErrorsServerReturned, text.Str("value", ev.Error)))
+		return
+	}
+	var baseRev uint64
+	var basePrefs *v1.ProjectPrefs
+	if ev.Prefs != nil {
+		baseRev = ev.Prefs.Revision
+		basePrefs = ev.Prefs.Prefs
+	}
+	if head.Attempt == 0 {
+		head.InitialBase = baseRev
+	} else if baseRev > head.InitialBase {
+		e.prefsChangedElsewhere = true
+	}
+
+	if basePrefs != nil && slices.Contains(basePrefs.RecentOps, head.OpID) {
+		e.applyAccountPrefs(ev.Prefs, true)
+		if ev.Prefs != nil && ev.Prefs.CacheRef != "" {
+			ctx.emit(&corev1.Effect{
+				Effect: &corev1.Effect_CacheWrite{
+					CacheWrite: &corev1.CacheWriteEffect{
+						Kind: &corev1.CacheWriteEffect_WritePrefsRef{WritePrefsRef: ev.Prefs.CacheRef},
+					},
+				},
+			})
+		}
+		e.finishPrefsOp(ctx, nil)
+		return
+	}
+
+	nextPrefs := lists.ApplyPrefsOp(basePrefs, head.Op, head.OpID, e.nowMs)
+	head.Phase = prefsPhasePut
+	head.ActiveOpID = e.allocOpID()
+	ctx.emit(&corev1.Effect{
+		Effect: &corev1.Effect_Rpc{
+			Rpc: &corev1.RpcEffect{
+				OpId: head.ActiveOpID,
+				Kind: &corev1.RpcEffect_PutAccountPrefs{
+					PutAccountPrefs: &corev1.PutAccountPrefsRpc{
+						ObjectId:         ProjectPrefsObjectID,
+						ExpectedRevision: baseRev,
+						NextPrefs:        nextPrefs,
+					},
+				},
+			},
+		},
+	})
+}
+
+func (e *Engine) handleAccountPrefsPutResult(ctx *StepContext, ev *corev1.AccountPrefsPutResultEvent) {
+	if ev == nil || len(e.prefsQueue) == 0 {
+		return
+	}
+	head := &e.prefsQueue[0]
+	if head.Phase != prefsPhasePut || ev.OpId != head.ActiveOpID {
+		return
+	}
+	head.ActiveOpID = 0
+	if ev.Error != "" {
+		e.finishPrefsOp(ctx, text.Msg(text.KeyErrorsServerReturned, text.Str("value", ev.Error)))
+		return
+	}
+	if !ev.Applied || ev.SealConflict {
+		head.Attempt++
+		e.prefsChangedElsewhere = true
+		if head.Attempt >= PrefsCASMaxAttempts {
+			e.finishPrefsOp(ctx, text.Msg(text.KeyErrorsOtherClientsKeptChangingTheProjectListChangesCould))
+			return
+		}
+		e.startNextPrefsOp(ctx)
+		return
+	}
+	if ev.Current != nil {
+		e.applyAccountPrefs(ev.Current, true)
+		if ev.Current.CacheRef != "" {
+			ctx.emit(&corev1.Effect{
+				Effect: &corev1.Effect_CacheWrite{
+					CacheWrite: &corev1.CacheWriteEffect{
+						Kind: &corev1.CacheWriteEffect_WritePrefsRef{WritePrefsRef: ev.Current.CacheRef},
+					},
+				},
+			})
+		}
+	}
+	e.finishPrefsOp(ctx, nil)
+}
+
+func (e *Engine) finishPrefsOp(ctx *StepContext, errText *corev1.Text) {
+	if len(e.prefsQueue) == 0 {
+		return
+	}
+	done := e.prefsQueue[0]
+	e.prefsQueue = e.prefsQueue[1:]
+
+	if done.ForSettings {
+		delete(e.prefsSettingsSaving, done.Path)
+		if errText != nil {
+			e.prefsSettingsErr[done.Path] = errText
+		} else {
+			delete(e.prefsSettingsErr, done.Path)
+		}
+	} else {
+		delete(e.prefsPendingByPath, done.Path)
+		if errText != nil {
+			e.prefsErrorByPath[done.Path] = errText
+			e.prefsGlobalErr = errText
+		} else {
+			delete(e.prefsErrorByPath, done.Path)
+			e.prefsGlobalErr = nil
+		}
+	}
+
+	if len(e.prefsQueue) > 0 && e.running {
+		e.startNextPrefsOp(ctx)
+	}
+	ctx.Dirty.MarkAll()
+}
+
+func (e *Engine) applyAccountPrefs(in *corev1.PlainAccountPrefs, forceAccept bool) {
+	if in == nil {
+		if !e.prefs.Loaded {
+			e.prefs = PrefsState{Loaded: true}
+		}
+		return
+	}
+	if in.Broken {
+		if !e.prefs.Loaded {
+			e.prefs.Broken = true
+		}
+		return
+	}
+	if !e.prefs.Loaded || in.Revision > e.prefs.Revision || (forceAccept && in.Revision == e.prefs.Revision) {
+		var clone *v1.ProjectPrefs
+		if in.Prefs != nil {
+			clone = in.Prefs.Clone()
+		}
+		e.prefs = PrefsState{
+			Loaded:   true,
+			Revision: in.Revision,
+			Prefs:    clone,
+			CacheRef: in.CacheRef,
+		}
+	}
+}

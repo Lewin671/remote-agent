@@ -4,40 +4,33 @@
       "effects": {
         "effects": [
           {
-            "render": {
-              "screens": [
-                "SCREEN_TARGET_HOME",
-                "SCREEN_TARGET_PROJECT",
-                "SCREEN_TARGET_NEW_SESSION"
-              ]
+            "cacheRead": {
+              "bootstrap": {
+                "opId": "1"
+              }
             }
-          }
-        ]
-      }
-    },
-    {
-      "effects": {
-        "effects": [
+          },
           {
-            "render": {
-              "screens": [
-                "SCREEN_TARGET_HOME",
-                "SCREEN_TARGET_PROJECT"
-              ]
+            "ensureToken": {
+              "opId": "2",
+              "forceLogin": true,
+              "timeoutMs": "15000"
             }
-          }
-        ]
-      }
-    },
-    {
-      "effects": {
-        "effects": [
+          },
+          {
+            "syncSecurity": {
+              "opId": "3",
+              "touch": true
+            }
+          },
           {
             "render": {
               "screens": [
                 "SCREEN_TARGET_HOME",
                 "SCREEN_TARGET_PROJECT",
-                "SCREEN_TARGET_NEW_SESSION"
+                "SCREEN_TARGET_NEW_SESSION",
+                "SCREEN_TARGET_SYNC_STATE",
+                "SCREEN_TARGET_SESSION_DATA"
               ]
             }
           }
@@ -52,7 +45,100 @@
               "screens": [
                 "SCREEN_TARGET_HOME",
                 "SCREEN_TARGET_PROJECT",
-                "SCREEN_TARGET_NEW_SESSION"
+                "SCREEN_TARGET_NEW_SESSION",
+                "SCREEN_TARGET_SYNC_STATE",
+                "SCREEN_TARGET_SESSION_DATA"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "effects": {
+        "effects": [
+          {
+            "openStream": {
+              "legId": "1",
+              "token": "tok-1",
+              "timeoutMs": "15000"
+            }
+          },
+          {
+            "scheduleTimer": {
+              "timerId": "1",
+              "kind": "TIMER_KIND_STREAM_OPEN",
+              "delayMs": "15000"
+            }
+          },
+          {
+            "render": {
+              "screens": [
+                "SCREEN_TARGET_HOME",
+                "SCREEN_TARGET_SYNC_STATE"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "effects": {
+        "effects": [
+          {
+            "cancelTimer": {
+              "timerId": "1",
+              "kind": "TIMER_KIND_STREAM_OPEN"
+            }
+          },
+          {
+            "scheduleTimer": {
+              "timerId": "2",
+              "kind": "TIMER_KIND_LIVENESS",
+              "delayMs": "1000"
+            }
+          },
+          {
+            "rpc": {
+              "opId": "4",
+              "fetchLists": {
+                "limit": 50
+              }
+            }
+          },
+          {
+            "rpc": {
+              "opId": "5",
+              "getAccountPrefs": {
+                "objectId": "project-prefs"
+              }
+            }
+          },
+          {
+            "render": {
+              "screens": [
+                "SCREEN_TARGET_HOME",
+                "SCREEN_TARGET_PROJECT",
+                "SCREEN_TARGET_NEW_SESSION",
+                "SCREEN_TARGET_SYNC_STATE",
+                "SCREEN_TARGET_SESSION_DATA"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "effects": {
+        "effects": [
+          {
+            "render": {
+              "screens": [
+                "SCREEN_TARGET_HOME",
+                "SCREEN_TARGET_PROJECT",
+                "SCREEN_TARGET_NEW_SESSION",
+                "SCREEN_TARGET_SYNC_STATE",
+                "SCREEN_TARGET_SESSION_DATA"
               ]
             }
           }
@@ -105,7 +191,10 @@
             "render": {
               "screens": [
                 "SCREEN_TARGET_HOME",
-                "SCREEN_TARGET_PROJECT"
+                "SCREEN_TARGET_PROJECT",
+                "SCREEN_TARGET_NEW_SESSION",
+                "SCREEN_TARGET_SYNC_STATE",
+                "SCREEN_TARGET_SESSION_DATA"
               ]
             }
           }
@@ -137,7 +226,9 @@
                 "args": [
                   {
                     "name": "name",
-                    "strValue": "Primary iPhone"
+                    "textValue": {
+                      "literal": "Studio"
+                    }
                   }
                 ]
               }
@@ -157,7 +248,9 @@
               "screens": [
                 "SCREEN_TARGET_HOME",
                 "SCREEN_TARGET_PROJECT",
-                "SCREEN_TARGET_NEW_SESSION"
+                "SCREEN_TARGET_NEW_SESSION",
+                "SCREEN_TARGET_SYNC_STATE",
+                "SCREEN_TARGET_SESSION_DATA"
               ]
             }
           }
@@ -206,11 +299,33 @@
       "effects": {
         "effects": [
           {
+            "cancelTimer": {
+              "timerId": "2",
+              "kind": "TIMER_KIND_LIVENESS"
+            }
+          },
+          {
+            "scheduleTimer": {
+              "timerId": "3",
+              "kind": "TIMER_KIND_LINK_GRACE",
+              "delayMs": "10000"
+            }
+          },
+          {
+            "scheduleTimer": {
+              "timerId": "4",
+              "kind": "TIMER_KIND_RECONNECT",
+              "delayMs": "500"
+            }
+          },
+          {
             "render": {
               "screens": [
                 "SCREEN_TARGET_HOME",
                 "SCREEN_TARGET_PROJECT",
-                "SCREEN_TARGET_NEW_SESSION"
+                "SCREEN_TARGET_NEW_SESSION",
+                "SCREEN_TARGET_SYNC_STATE",
+                "SCREEN_TARGET_SESSION_DATA"
               ]
             }
           }
@@ -223,17 +338,23 @@
               "key": "home.all_projects"
             },
             "connection": {
-              "state": "CONN_STATE_CONNECTED",
+              "state": "CONN_STATE_RECONNECTING",
               "badgeText": {
-                "key": "connection.connected"
+                "key": "connection.reconnecting_conn_check"
               },
-              "livePushConnected": true
+              "detailText": {
+                "key": "connection.reconnecting"
+              }
             },
             "headline": {
-              "kind": "HEADLINE_KIND_EMPTY",
+              "kind": "HEADLINE_KIND_ERROR",
               "title": {
-                "key": "home.no_sessions"
-              }
+                "key": "connection.reconnecting"
+              },
+              "sub": {
+                "key": "connection.previous_below"
+              },
+              "unlinked": true
             },
             "empty": {
               "kind": "HOME_EMPTY_KIND_NO_ONLINE",
@@ -253,25 +374,6 @@
             }
           }
         }
-      }
-    },
-    {
-      "effects": {
-        "effects": [
-          {
-            "fetchSessionsPage": {
-              "requestId": "page-1",
-              "limit": 30
-            }
-          },
-          {
-            "render": {
-              "screens": [
-                "SCREEN_TARGET_HOME"
-              ]
-            }
-          }
-        ]
       }
     }
   ]

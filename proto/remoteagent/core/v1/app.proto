@@ -5,8 +5,10 @@ package remoteagent.core.v1;
 import "remoteagent/core/v1/home_view.proto";
 import "remoteagent/core/v1/new_session_view.proto";
 import "remoteagent/core/v1/project_view.proto";
+import "remoteagent/core/v1/sync_view.proto";
 import "remoteagent/v1/event.proto";
 import "remoteagent/v1/local.proto";
+import "remoteagent/v1/relay.proto";
 import "remoteagent/v1/remote.proto";
 
 message HomeScreenRequest {
@@ -23,11 +25,23 @@ message NewSessionScreenRequest {
   string project_key = 1;
 }
 
+// Transitional screen request for SyncStateView (Step 3-4 migration bridge; delete afterward).
+message SyncStateScreenRequest {}
+
+// Transitional screen request for SessionDataView (Step 3 migration bridge; delete afterward).
+message SessionDataScreenRequest {
+  string session_id = 1;
+}
+
 message Screen {
   oneof screen {
     HomeScreenRequest home = 1;
     ProjectScreenRequest project = 2;
     NewSessionScreenRequest new_session = 3;
+    // Transitional screen; delete after Steps 3-4 migrate remaining views into Core.
+    SyncStateScreenRequest sync_state = 4;
+    // Transitional screen; delete after Step 3 migrates the session view into Core.
+    SessionDataScreenRequest session_data = 5;
   }
 }
 
@@ -36,7 +50,17 @@ message ViewModel {
     HomeViewModel home = 1;
     ProjectViewModel project = 2;
     NewSessionViewModel new_session = 3;
+    // Transitional view; delete after Steps 3-4 migrate remaining views into Core.
+    SyncStateView sync_state = 4;
+    // Transitional view; delete after Step 3 migrates the session view into Core.
+    SessionDataView session_data = 5;
   }
+}
+
+message MonthStart {
+  int32 year = 1;
+  int32 month = 2;
+  int64 start_ms = 3;
 }
 
 message LocalCalendar {
@@ -45,138 +69,299 @@ message LocalCalendar {
   int64 yesterday_start_ms = 3;
   int64 week_start_ms = 4;
   int32 now_year = 5;
-  int32 utc_offset_minutes = 6;
+  repeated MonthStart months = 6;
 }
 
-message ConnectionChanged {
-  ConnState state = 1;
-  string reason = 2;
-  int64 disconnected_at_ms = 3;
-  bool live_push_connected = 4;
+message EntropyProvided {
+  repeated string random_ids = 1;
+  repeated double unit_floats = 2;
 }
 
-message AccountRoleChanged {
-  bool is_manager = 1;
-  string manager_device_name = 2;
-  bool control_expired = 3;
-  bool clock_skewed = 4;
+enum SyncLifecycleKind {
+  SYNC_LIFECYCLE_KIND_UNSPECIFIED = 0;
+  SYNC_LIFECYCLE_KIND_START = 1;
+  SYNC_LIFECYCLE_KIND_STOP = 2;
+  SYNC_LIFECYCLE_KIND_FOREGROUND = 3;
+  SYNC_LIFECYCLE_KIND_BACKGROUND = 4;
+  SYNC_LIFECYCLE_KIND_RECONNECT_NOW = 5;
+  SYNC_LIFECYCLE_KIND_RETRY_LOGIN = 6;
 }
 
-message MachineInput {
+message SyncLifecycleAction {
+  SyncLifecycleKind kind = 1;
+  string home_scope_token = 2;
+  bytes scope_hmac_key = 3;
+}
+
+message NetworkChangedEvent {
+  bool available = 1;
+  string signature = 2;
+}
+
+enum TimerKind {
+  TIMER_KIND_UNSPECIFIED = 0;
+  TIMER_KIND_RECONNECT = 1;
+  TIMER_KIND_STREAM_OPEN = 2;
+  TIMER_KIND_LIVENESS = 3;
+  TIMER_KIND_LINK_GRACE = 4;
+  TIMER_KIND_LIST_RETRY = 5;
+  TIMER_KIND_PREFS_RETRY = 6;
+  TIMER_KIND_HISTORY_SWEEP = 7;
+  TIMER_KIND_LIVE_POLL = 8;
+  TIMER_KIND_COMMAND_RETRY = 9;
+}
+
+message TimerFiredEvent {
+  uint64 timer_id = 1;
+  TimerKind kind = 2;
+  string key = 3;
+}
+
+// Plaintext machine decrypted and verified by the shell's security gate.
+message PlainMachine {
   string machine_id = 1;
   bool online = 2;
   int64 last_seen_ms = 3;
   remoteagent.v1.MachineMeta meta = 4;
-  bool daemon_out_of_date = 5;
-  bool client_out_of_date = 6;
-  optional bool reachable = 7;
-  optional bool unlinked = 8;
-  uint32 protocol_version = 9;
+  uint64 meta_rev = 5;
+  bool meta_broken = 6;
+  string cache_ref = 7;
 }
 
-message MachinesUpdated {
-  repeated MachineInput machines = 1;
-  bool listed = 2;
-  uint32 client_protocol_version = 3;
-}
-
-message PendingActionSummary {
-  bool has_pending_approval = 1;
-  string approval_id = 2;
-  string approval_tool_name = 3;
-  string approval_command = 4;
-  string approval_tool_input = 5;
-  bool approval_truncated = 6;
-  int64 approval_deadline_ms = 7;
-  bool has_pending_question = 8;
-  bool has_pending_plan = 9;
-  bool has_popup = 10;
-  string popup_preview = 11;
-}
-
-message SessionInput {
+// Plaintext session decrypted and verified by the shell's security gate.
+message PlainSession {
   string session_id = 1;
   string machine_id = 2;
-  remoteagent.v1.Session info = 3;
+  uint64 last_seq = 3;
   int64 updated_ms = 4;
-  PendingActionSummary pending = 14;
-  string schedule_name = 15;
-  bool schedule_unread = 16;
-  int32 created_local_year = 17;
-  int32 created_local_month = 18;
-  int32 created_local_day = 19;
-  string created_local_hhmm = 20;
-  int32 updated_local_year = 21;
-  int32 updated_local_month = 22;
-  int32 updated_local_day = 23;
-  int32 updated_local_weekday = 24;
-  string updated_local_hhmm = 25;
-  int32 ended_local_year = 26;
-  int32 ended_local_month = 27;
-  int64 listed_ended_ms = 28;
+  int64 listed_ended_ms = 5;
+  remoteagent.v1.Session meta = 6;
+  uint64 meta_rev = 7;
+  remoteagent.v1.LiveSnapshot checkpoint = 8;
+  bool checkpoint_invalid = 9;
+  bool retired_history = 10;
+  bool open_failed = 11;
+  string cache_ref = 12;
 }
 
-message SessionsPageResult {
-  string request_id = 1;
-  repeated SessionInput sessions = 2;
-  string next_cursor = 3;
-  bool has_more = 4;
-  bool is_refresh = 5;
+// Plaintext event decrypted and verified by the shell's security gate.
+message PlainEvent {
+  uint64 seq = 1;
+  remoteagent.v1.Event event = 2;
+  bool verified = 3;
+  bool unavailable = 4;
+  bool broken = 5;
+  bool retired = 6;
+  int64 approx_bytes = 7;
+  string cache_ref = 8;
+}
+
+// Plaintext device decrypted and verified by the shell's security gate.
+message PlainDevice {
+  string device_id = 1;
+  remoteagent.v1.DeviceKind kind = 2;
+  int64 created_ms = 3;
+  int64 last_seen_ms = 4;
+  remoteagent.v1.DeviceMeta meta = 5;
+  uint64 meta_rev = 6;
+  bool meta_broken = 7;
+}
+
+// Plaintext account preferences decrypted and verified by the shell's security gate.
+message PlainAccountPrefs {
+  uint64 revision = 1;
+  remoteagent.v1.ProjectPrefs prefs = 2;
+  bool broken = 3;
+  string cache_ref = 4;
+}
+
+message CacheBootstrapLoadedEvent {
+  uint64 op_id = 1;
+  repeated PlainMachine machines = 2;
+  repeated PlainSession sessions = 3;
+  PlainAccountPrefs prefs = 4;
+  string home_scope_token = 5;
+  bytes scope_hmac_key = 6;
+  string error = 7;
+}
+
+message CacheEventsLoadedEvent {
+  uint64 op_id = 1;
+  string session_id = 2;
+  repeated PlainEvent events = 3;
+  bool broken = 4;
+  bool retired = 5;
   string error = 6;
-  int64 next_ended_ms = 7;
-  string next_session_id = 8;
 }
 
-message SessionRemoved {
+message TokenResultEvent {
+  uint64 op_id = 1;
+  string token = 2;
+  int64 expires_ms = 3;
+  bool removed = 4;
+  string error_code = 5;
+  string error = 6;
+  bool unresolved_host = 7;
+}
+
+message SecuritySnapshotEvent {
+  uint64 op_id = 1;
+  bool is_member = 2;
+  string authority_device_id = 3;
+  repeated string trusted_machine_ids = 4;
+  repeated string trusted_client_ids = 5;
+  repeated string archive_machine_ids = 6;
+  uint64 head_epoch = 7;
+  int64 lease_end_ms = 8;
+  bool clock_skewed = 9;
+  bool recovery_pending = 10;
+  int64 recovery_ready_ms = 11;
+  bool recovery_objects_pending = 12;
+  uint64 network_generation = 13;
+  string error = 14;
+  bool unresolved_host = 15;
+  string self_device_id = 16;
+}
+
+message StreamReadyEvent {
+  uint64 leg_id = 1;
+  int64 server_time_ms = 2;
+}
+
+message StreamClosedEvent {
+  uint64 leg_id = 1;
+  bool policy_violation = 2;
+  string error_code = 3;
+  string error = 4;
+  bool unresolved_host = 5;
+}
+
+message EventsAppendedFrame {
   string session_id = 1;
+  repeated PlainEvent events = 2;
 }
 
-message PrefsUpdated {
-  remoteagent.v1.ProjectPrefs prefs = 1;
-  bool loaded = 2;
-  bool load_failed = 3;
-  bool changed_elsewhere = 4;
-  string home_scope = 5;
+message StreamFrameEvent {
+  uint64 leg_id = 1;
+  oneof frame {
+    bool heartbeat = 2;
+    PlainMachine machine_updated = 3;
+    string machine_removed_id = 4;
+    PlainSession session_updated = 5;
+    EventsAppendedFrame events_appended = 6;
+    PlainAccountPrefs account_prefs_updated = 7;
+    PlainDevice device_updated = 8;
+    string device_removed_id = 9;
+  }
 }
 
-message PrefsSyncResult {
-  string op_id = 1;
-  string error = 2;
-  bool changed_elsewhere = 3;
-  bool conflict = 4;
+message ListsFetchedEvent {
+  uint64 op_id = 1;
+  repeated PlainMachine machines = 2;
+  repeated PlainSession sessions = 3;
+  remoteagent.v1.SessionCursor next = 4;
+  repeated PlainDevice devices = 5;
+  string error = 6;
+  bool unresolved_host = 7;
 }
 
-message MachineModelsResult {
-  string machine_id = 1;
-  remoteagent.v1.Agent agent = 2;
-  remoteagent.v1.ListModelsResponse response = 3;
+message SessionsPageFetchedEvent {
+  uint64 op_id = 1;
+  repeated PlainSession sessions = 2;
+  remoteagent.v1.SessionCursor next = 3;
   string error = 4;
 }
 
-message MachineSettingsResult {
-  string machine_id = 1;
-  remoteagent.v1.DaemonSettings settings = 2;
+message SessionByIdFetchedEvent {
+  uint64 op_id = 1;
+  PlainSession session = 2;
   string error = 3;
 }
 
-message DirListingResult {
-  string request_id = 1;
-  string machine_id = 2;
-  string path = 3;
-  string parent_path = 4;
-  repeated DirEntryView dirs = 5;
-  string error = 6;
+message EventsPageFetchedEvent {
+  uint64 op_id = 1;
+  string session_id = 2;
+  repeated PlainEvent events = 3;
+  bool more = 4;
+  string error = 5;
 }
 
-message CreateSessionOutcome {
+message AccountPrefsFetchedEvent {
+  uint64 op_id = 1;
+  PlainAccountPrefs prefs = 2;
+  string error = 3;
+}
+
+message AccountPrefsPutResultEvent {
+  uint64 op_id = 1;
+  bool applied = 2;
+  PlainAccountPrefs current = 3;
+  bool seal_conflict = 4;
+  string error = 5;
+}
+
+message DevicesFetchedEvent {
+  uint64 op_id = 1;
+  repeated PlainDevice devices = 2;
+  string error = 3;
+}
+
+enum OutcomeSource {
+  OUTCOME_SOURCE_UNSPECIFIED = 0;
+  OUTCOME_SOURCE_LOCAL = 1;
+  OUTCOME_SOURCE_SERVER = 2;
+  OUTCOME_SOURCE_DAEMON = 3;
+  OUTCOME_SOURCE_TRANSPORT = 4;
+}
+
+message CommandOutcomeEvent {
   string request_id = 1;
-  string session_id = 2;
-  string outcome = 3;
-  string reason = 4;
-  bool disk_full = 5;
-  bool expired = 6;
-  bool unknown = 7;
-  string error = 8;
+  string attempt_id = 2;
+  OutcomeSource source = 3;
+  bool not_forwarded = 4;
+  bool attempt_bound = 5;
+  bool signed = 6;
+  bool hashes_match = 7;
+  bool outer_matches_inner = 8;
+  string outer_outcome = 9;
+  string outer_reason = 10;
+  remoteagent.v1.CommandResult result = 11;
+  string transport_code = 12;
+  string transport_detail = 13;
+  bool route_was_direct = 14;
+}
+
+message SessionWatchEvent {
+  string session_id = 1;
+  bool watched = 2;
+}
+
+message SessionPinEvent {
+  string session_id = 1;
+  bool pinned = 2;
+}
+
+message RetrySessionEventsAction {
+  string session_id = 1;
+}
+
+message FetchSessionAction {
+  string session_id = 1;
+}
+
+message MachineRouteStatusEvent {
+  string machine_id = 1;
+  bool direct_ready = 2;
+}
+
+message SessionScheduleHint {
+  string session_id = 1;
+  string schedule_name = 2;
+  bool unread = 3;
+}
+
+message SessionScheduleHintsEvent {
+  repeated SessionScheduleHint hints = 1;
 }
 
 message HomeSetScopeAction {
@@ -242,6 +427,7 @@ message NewSessionSelectModelAction {
   string model = 1;
   string effort = 2;
   optional bool standard_context = 3;
+  optional remoteagent.v1.ApprovalMode mode = 4;
 }
 
 message NewSessionSetPromptAction {
@@ -257,47 +443,66 @@ message NewSessionProjectAction {
 message NewSessionSubmitAction {
   string project_key = 1;
   bool auto_mode_supported = 2;
+  repeated string image_ids = 3;
+  repeated string file_ids = 4;
 }
 
 message Event {
   oneof event {
     LocalCalendar clock_updated = 1;
-    ConnectionChanged connection_changed = 2;
-    AccountRoleChanged account_role_changed = 3;
-    MachinesUpdated machines_updated = 4;
-    SessionsPageResult sessions_page_received = 5;
-    SessionInput session_upserted = 6;
-    SessionRemoved session_removed = 7;
-    PrefsUpdated prefs_updated = 8;
-    PrefsSyncResult prefs_sync_result = 9;
-    MachineModelsResult machine_models_received = 10;
-    MachineSettingsResult machine_settings_received = 11;
-    DirListingResult dir_listing_received = 12;
-    CreateSessionOutcome create_session_result = 13;
-    HomeSetScopeAction home_set_scope = 20;
-    HomeSetFilterAction home_set_filter = 21;
-    HomeLoadMoreEndedAction home_load_more_ended = 24;
-    HomeRetryLoadAction home_retry_load = 25;
-    HomeSelectSessionAction home_select_session = 26;
-    ProjectSetSearchAction project_set_search = 30;
-    ProjectKeyAction project_toggle_pin = 31;
-    ProjectKeyAction project_toggle_hide = 32;
-    ProjectAddAction project_add = 33;
-    ProjectKeyAction project_load_more_ended = 34;
-    DirPickerOpenAction project_open_dir_picker = 35;
-    DirNavigateAction project_dir_navigate = 36;
-    DirPickerCloseAction project_close_dir_picker = 37;
-    NewSessionOpenAction new_session_open = 40;
-    NewSessionSelectProjectAction new_session_select_project = 41;
-    NewSessionSelectMachineAction new_session_select_machine = 42;
-    NewSessionSelectAgentAction new_session_select_agent = 43;
-    NewSessionSelectModelAction new_session_select_model = 44;
-    NewSessionSetPromptAction new_session_set_prompt = 45;
-    NewSessionProjectAction new_session_retry_models = 47;
-    NewSessionProjectAction new_session_retry_save_config = 48;
-    NewSessionSubmitAction new_session_submit = 49;
-    NewSessionProjectAction new_session_abandon_start = 50;
+    EntropyProvided entropy_provided = 2;
+    SyncLifecycleAction sync_lifecycle = 3;
+    NetworkChangedEvent network_changed = 4;
+    TimerFiredEvent timer_fired = 5;
+    CacheBootstrapLoadedEvent cache_bootstrap_loaded = 6;
+    CacheEventsLoadedEvent cache_events_loaded = 7;
+    TokenResultEvent token_result = 8;
+    SecuritySnapshotEvent security_snapshot = 9;
+    StreamReadyEvent stream_ready = 10;
+    StreamClosedEvent stream_closed = 11;
+    StreamFrameEvent stream_frame = 12;
+    ListsFetchedEvent lists_fetched = 13;
+    SessionsPageFetchedEvent sessions_page_fetched = 14;
+    SessionByIdFetchedEvent session_by_id_fetched = 15;
+    EventsPageFetchedEvent events_page_fetched = 16;
+    AccountPrefsFetchedEvent account_prefs_fetched = 17;
+    AccountPrefsPutResultEvent account_prefs_put_result = 18;
+    DevicesFetchedEvent devices_fetched = 19;
+    CommandOutcomeEvent command_outcome = 20;
+    SessionWatchEvent session_watch = 21;
+    SessionPinEvent session_pin = 22;
+    RetrySessionEventsAction retry_session_events = 23;
+    FetchSessionAction fetch_session = 24;
+    MachineRouteStatusEvent machine_route_status = 25;
+    SessionScheduleHintsEvent session_schedule_hints = 26;
+    HomeSetScopeAction home_set_scope = 30;
+    HomeSetFilterAction home_set_filter = 31;
+    HomeLoadMoreEndedAction home_load_more_ended = 32;
+    HomeRetryLoadAction home_retry_load = 33;
+    HomeSelectSessionAction home_select_session = 34;
+    ProjectSetSearchAction project_set_search = 40;
+    ProjectKeyAction project_toggle_pin = 41;
+    ProjectKeyAction project_toggle_hide = 42;
+    ProjectAddAction project_add = 43;
+    ProjectKeyAction project_load_more_ended = 44;
+    DirPickerOpenAction project_open_dir_picker = 45;
+    DirNavigateAction project_dir_navigate = 46;
+    DirPickerCloseAction project_close_dir_picker = 47;
+    NewSessionOpenAction new_session_open = 50;
+    NewSessionSelectProjectAction new_session_select_project = 51;
+    NewSessionSelectMachineAction new_session_select_machine = 52;
+    NewSessionSelectAgentAction new_session_select_agent = 53;
+    NewSessionSelectModelAction new_session_select_model = 54;
+    NewSessionSetPromptAction new_session_set_prompt = 55;
+    NewSessionProjectAction new_session_retry_models = 56;
+    NewSessionProjectAction new_session_retry_save_config = 57;
+    NewSessionSubmitAction new_session_submit = 58;
+    NewSessionProjectAction new_session_abandon_start = 59;
   }
+  int64 now_ms = 98;
+  int64 mono_ms = 99;
+  repeated string random_ids = 100;
+  repeated double unit_floats = 101;
 }
 
 enum ScreenTarget {
@@ -305,45 +510,175 @@ enum ScreenTarget {
   SCREEN_TARGET_HOME = 1;
   SCREEN_TARGET_PROJECT = 2;
   SCREEN_TARGET_NEW_SESSION = 3;
+  // Transitional render target; delete after Steps 3-4 complete.
+  SCREEN_TARGET_SYNC_STATE = 4;
+  // Transitional render target; delete after Step 3 completes.
+  SCREEN_TARGET_SESSION_DATA = 5;
 }
 
 message RenderEffect {
   repeated ScreenTarget screens = 1;
 }
 
+message OpenStreamEffect {
+  uint64 leg_id = 1;
+  string token = 2;
+  int64 timeout_ms = 3;
+}
+
+message CloseStreamEffect {
+  uint64 leg_id = 1;
+}
+
+message EnsureTokenEffect {
+  uint64 op_id = 1;
+  bool force_login = 2;
+  int64 timeout_ms = 3;
+}
+
+message DiscardTokenEffect {
+  string token = 1;
+}
+
+message SyncSecurityEffect {
+  uint64 op_id = 1;
+  uint64 network_generation = 2;
+  bool touch = 3;
+}
+
+message ScheduleTimerEffect {
+  uint64 timer_id = 1;
+  TimerKind kind = 2;
+  string key = 3;
+  int64 delay_ms = 4;
+}
+
+message CancelTimerEffect {
+  uint64 timer_id = 1;
+  TimerKind kind = 2;
+  string key = 3;
+}
+
+message CacheReadBootstrap {
+  uint64 op_id = 1;
+}
+
+message CacheReadEvents {
+  uint64 op_id = 1;
+  string session_id = 2;
+  bool newest = 3;
+  uint64 after_seq = 4;
+  int32 limit = 5;
+}
+
+message CacheReadEffect {
+  oneof kind {
+    CacheReadBootstrap bootstrap = 1;
+    CacheReadEvents events = 2;
+  }
+}
+
+message CacheWriteEvents {
+  string session_id = 1;
+  repeated string cache_refs = 2;
+}
+
+message CacheSessionOpen {
+  string session_id = 1;
+  bool open = 2;
+}
+
+message CacheWriteEffect {
+  oneof kind {
+    string write_machine_ref = 1;
+    string write_session_ref = 2;
+    string keep_session_owner_ref = 3;
+    CacheWriteEvents write_events = 4;
+    string write_prefs_ref = 5;
+    CacheSessionOpen set_session_open = 6;
+  }
+}
+
+message CacheDeleteEffect {
+  oneof kind {
+    string drop_events_session_id = 1;
+    string remove_session_id = 2;
+    string unlist_session_id = 3;
+    string remove_machine_id = 4;
+  }
+}
+
+message FetchListsRpc {
+  uint32 limit = 1;
+}
+
+message FetchSessionsPageRpc {
+  remoteagent.v1.SessionCursor after = 1;
+  uint32 limit = 2;
+}
+
+message FetchSessionByIdRpc {
+  string session_id = 1;
+}
+
+message GetEventsRpc {
+  string session_id = 1;
+  uint64 after_seq = 2;
+  uint32 limit = 3;
+}
+
+message GetAccountPrefsRpc {
+  string object_id = 1;
+}
+
+message PutAccountPrefsRpc {
+  string object_id = 1;
+  uint64 expected_revision = 2;
+  remoteagent.v1.ProjectPrefs next_prefs = 3;
+}
+
+message FetchDevicesRpc {
+  bool force = 1;
+}
+
+message RpcEffect {
+  uint64 op_id = 1;
+  oneof kind {
+    FetchListsRpc fetch_lists = 2;
+    FetchSessionsPageRpc fetch_sessions_page = 3;
+    FetchSessionByIdRpc fetch_session_by_id = 4;
+    GetEventsRpc get_events = 5;
+    GetAccountPrefsRpc get_account_prefs = 6;
+    PutAccountPrefsRpc put_account_prefs = 7;
+    FetchDevicesRpc fetch_devices = 8;
+  }
+}
+
+enum CommandRouteHint {
+  COMMAND_ROUTE_HINT_UNSPECIFIED = 0;
+  COMMAND_ROUTE_HINT_NORMAL = 1;
+  COMMAND_ROUTE_HINT_READ = 2;
+  COMMAND_ROUTE_HINT_BULK = 3;
+}
+
+message DispatchCommandEffect {
+  string request_id = 1;
+  string attempt_id = 2;
+  string machine_id = 3;
+  string session_id = 4;
+  int64 deadline_ms = 5;
+  bytes command_bytes = 6;
+  CommandRouteHint route_hint = 7;
+  bool retry_of_unknown = 8;
+  bool force_relay = 9;
+  string bulk_file_key = 10;
+  int64 bulk_bytes = 11;
+  bool bulk_upload = 12;
+}
+
 message SaveHomeScopeEffect {
   string scope_key = 1;
-}
-
-enum ProjectPrefsOpKind {
-  PROJECT_PREFS_OP_KIND_UNSPECIFIED = 0;
-  PROJECT_PREFS_OP_KIND_PIN = 1;
-  PROJECT_PREFS_OP_KIND_UNPIN = 2;
-  PROJECT_PREFS_OP_KIND_HIDE = 3;
-  PROJECT_PREFS_OP_KIND_UNHIDE = 4;
-  PROJECT_PREFS_OP_KIND_ADD = 5;
-  PROJECT_PREFS_OP_KIND_SET_SETTINGS = 6;
-}
-
-message SaveProjectPrefsEffect {
-  string op_id = 1;
-  ProjectPrefsOpKind kind = 2;
-  string path = 3;
-  remoteagent.v1.ProjectSettings settings = 4;
-  int64 at_ms = 5;
-  remoteagent.v1.ProjectPrefs next_prefs = 6;
-}
-
-message FetchSessionsPageEffect {
-  string request_id = 1;
-  string cursor = 2;
-  int32 limit = 3;
-}
-
-message SendCommandEffect {
-  string request_id = 1;
-  string machine_id = 2;
-  remoteagent.v1.Command command = 3;
+  string scope_token = 2;
 }
 
 enum NavigateRoute {
@@ -361,19 +696,36 @@ message NavigateEffect {
   string machine_id = 4;
 }
 
-message AbandonRequestEffect {
-  string request_id = 1;
+message AttachmentsSettledEffect {
+  string project_key = 1;
+  string request_id = 2;
+  bool consumed = 3;
+}
+
+message RequestEntropyEffect {
+  int32 min_ids = 1;
+  int32 min_floats = 2;
 }
 
 message Effect {
   oneof effect {
     RenderEffect render = 1;
-    SaveHomeScopeEffect save_home_scope = 2;
-    SaveProjectPrefsEffect save_project_prefs = 3;
-    FetchSessionsPageEffect fetch_sessions_page = 4;
-    SendCommandEffect send_command = 5;
-    NavigateEffect navigate = 6;
-    AbandonRequestEffect abandon_request = 7;
+    OpenStreamEffect open_stream = 2;
+    CloseStreamEffect close_stream = 3;
+    EnsureTokenEffect ensure_token = 4;
+    DiscardTokenEffect discard_token = 5;
+    SyncSecurityEffect sync_security = 6;
+    ScheduleTimerEffect schedule_timer = 7;
+    CancelTimerEffect cancel_timer = 8;
+    CacheReadEffect cache_read = 9;
+    CacheWriteEffect cache_write = 10;
+    CacheDeleteEffect cache_delete = 11;
+    RpcEffect rpc = 12;
+    DispatchCommandEffect dispatch_command = 13;
+    SaveHomeScopeEffect save_home_scope = 14;
+    NavigateEffect navigate = 15;
+    AttachmentsSettledEffect attachments_settled = 16;
+    RequestEntropyEffect request_entropy = 17;
   }
 }
 

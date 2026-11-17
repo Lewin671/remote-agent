@@ -90,5 +90,6 @@ internal interface PathAttempt {
 internal interface Path {
     fun status(machineId: String): PeerState
     fun attempt(handoff: () -> Unit): PathAttempt
+    fun attempt(attemptId: String, handoff: () -> Unit): PathAttempt = attempt(handoff)
     fun openStream(address: String, listener: FrameListener): FrameStream
 }

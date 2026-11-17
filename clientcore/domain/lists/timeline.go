@@ -38,8 +38,6 @@ type SessionItem struct {
 	Title          string
 	HasCustomTitle bool
 	ResolvedTitle  string
-	CreatedHHMM    string
-	UpdatedHHMM    string
 	ProjectKey     string
 	ProjectName    string
 	MachineName    string
@@ -377,18 +375,7 @@ func ResolveTitle(s *Session, cal Calendar) (plainTitle string, hasCustom bool, 
 		return t, true, t
 	}
 	proj := ProjectName(s.Info.Cwd)
-	hhmm := s.CreatedLocalHhmm
-	if hhmm == "" && s.Info.CreatedAt != nil && s.Info.CreatedAt.Seconds > 0 {
-		hhmm = FormatHHMM(s.Info.CreatedAt.Seconds*1000, cal.UTCOffsetMinutes)
-	}
-	switch {
-	case proj != "" && hhmm != "":
-		return "", false, proj + " · " + hhmm
-	case proj != "":
-		return "", false, proj
-	default:
-		return "", false, hhmm
-	}
+	return "", false, proj
 }
 
 // TitleMatches reports whether session s's resolved title matches query (case-insensitive substring).
@@ -401,8 +388,29 @@ func TitleMatches(s *Session, query string, cal Calendar) bool {
 	return strings.Contains(strings.ToLower(resolved), strings.ToLower(q))
 }
 
+// MonthFor resolves local (year, month) for ms using host-supplied calendar month boundaries,
+// falling back to fixed UTCOffsetMinutes when no month boundaries were provided.
+func MonthFor(ms int64, cal Calendar) (year, month int32, ok bool) {
+	if len(cal.Months) > 0 {
+		var best MonthStart
+		found := false
+		for _, m := range cal.Months {
+			if m.StartMs <= ms && (!found || m.StartMs > best.StartMs) {
+				best = m
+				found = true
+			}
+		}
+		if found {
+			return best.Year, best.Month, true
+		}
+		return 0, 0, false
+	}
+	yr, mo, _, _, _, _ := CivilFromUnixMs(ms, cal.UTCOffsetMinutes)
+	return int32(yr), int32(mo), true
+}
+
 // EndedGroupFor computes the local calendar group (Today, Yesterday, Week, Month) for endedMs.
-func EndedGroupFor(endedMs int64, cal Calendar, overrideYear, overrideMonth int32) EndedGroup {
+func EndedGroupFor(endedMs int64, cal Calendar) EndedGroup {
 	todayStart := cal.TodayStartMs
 	yesterdayStart := cal.YesterdayStartMs
 	weekStart := cal.WeekStartMs
@@ -417,18 +425,19 @@ func EndedGroupFor(endedMs int64, cal Calendar, overrideYear, overrideMonth int3
 		weekStart = midnightMsFromDays(days-6, cal.UTCOffsetMinutes)
 	}
 
-	yr, mo, _, weekdayMon0, _, _ := CivilFromUnixMs(endedMs, cal.UTCOffsetMinutes)
-	year := int32(yr)
-	month := int32(mo)
-	if overrideYear > 0 && overrideMonth > 0 {
-		year = overrideYear
-		month = overrideMonth
+	_, _, _, weekdayMon0, _, _ := CivilFromUnixMs(endedMs, cal.UTCOffsetMinutes)
+	year, month, ok := MonthFor(endedMs, cal)
+	if !ok {
+		yr, mo, _, _, _, _ := CivilFromUnixMs(endedMs, cal.UTCOffsetMinutes)
+		year = int32(yr)
+		month = int32(mo)
 	}
 
 	g := EndedGroup{
 		Year:         year,
 		Month:        month,
 		WeekdayIndex: int32(weekdayMon0),
+		RepMs:        endedMs,
 	}
 	switch {
 	case endedMs >= todayStart:
@@ -473,16 +482,8 @@ func buildSessionItem(
 	var endedGroup *EndedGroup
 	endedMsVal := EndedMs(s)
 	if Exited(s) {
-		g := EndedGroupFor(endedMsVal, cal, s.EndedLocalYear, s.EndedLocalMonth)
+		g := EndedGroupFor(endedMsVal, cal)
 		endedGroup = &g
-	}
-	createdHHMM := s.CreatedLocalHhmm
-	if createdHHMM == "" && CreatedMs(s) > 0 {
-		createdHHMM = FormatHHMM(CreatedMs(s), cal.UTCOffsetMinutes)
-	}
-	updatedHHMM := s.UpdatedLocalHhmm
-	if updatedHHMM == "" && s.UpdatedMs > 0 {
-		updatedHHMM = FormatHHMM(s.UpdatedMs, cal.UTCOffsetMinutes)
 	}
 	var minsLeft int64
 	if s.Pending.ApprovalDeadlineMs > 0 && cal.NowMs > 0 {
@@ -503,8 +504,6 @@ func buildSessionItem(
 		Title:          plainTitle,
 		HasCustomTitle: hasCustom,
 		ResolvedTitle:  resolvedTitle,
-		CreatedHHMM:    createdHHMM,
-		UpdatedHHMM:    updatedHHMM,
 		ProjectKey:     projKey,
 		ProjectName:    ProjectName(projKey),
 		MachineName:    MachineName(m, s.MachineID),
@@ -1011,7 +1010,7 @@ func buildHomeWithAgg(
 	groupInfos := make(map[string]EndedGroup)
 	groupSessions := make(map[string][]*Session)
 	for _, s := range endedSlice {
-		g := EndedGroupFor(EndedMs(s), cal, s.EndedLocalYear, s.EndedLocalMonth)
+		g := EndedGroupFor(EndedMs(s), cal)
 		if _, exists := groupInfos[g.Key]; !exists {
 			groupKeys = append(groupKeys, g.Key)
 			groupInfos[g.Key] = g

@@ -73,7 +73,7 @@ class AttachmentsTest {
         val draft = ImageDraft("session:expiry", MemoryFiles()).apply { images += image }
         assertFalse(draft.ready("mac"))
         assertTrue(draft.ids("mac").isEmpty())
-        assertFalse(startable("看图", draft.images, "mac"))
+        assertFalse(draft.images.all { it.readyFor("mac") })
         assertTrue(needsUpload(image, "mac"))
     }
 

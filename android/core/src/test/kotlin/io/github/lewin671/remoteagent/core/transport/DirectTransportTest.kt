@@ -1224,7 +1224,7 @@ class DirectTransportTest {
                 val ctx = Wire.probeContext(dId, cId, conn2, 1L, now)
                 val probeBody = Wire.pb(Wire.b(1, conn2), Wire.b(2, dId.instance), Wire.b(3, dId.boot))
                 val rawProbe = codec.seal(dId, cId, ctx, 1L, probeBody, null, null, null)
-                val activeWs = Remote::class.java.getDeclaredField("ws").apply { isAccessible = true }.get(remote) as FrameStream
+                val activeWs = remote.activeStreamForTest!!
                 remote.direct.receive(rawProbe, activeWs)
                 delay(100)
                 assertTrue(remote.direct.ready(daemonAccount.deviceId, RouteHint.Read))

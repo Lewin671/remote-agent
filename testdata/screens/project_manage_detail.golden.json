@@ -7,22 +7,8 @@
             "render": {
               "screens": [
                 "SCREEN_TARGET_HOME",
-                "SCREEN_TARGET_PROJECT"
-              ]
-            }
-          }
-        ]
-      }
-    },
-    {
-      "effects": {
-        "effects": [
-          {
-            "render": {
-              "screens": [
-                "SCREEN_TARGET_HOME",
                 "SCREEN_TARGET_PROJECT",
-                "SCREEN_TARGET_NEW_SESSION"
+                "SCREEN_TARGET_SYNC_STATE"
               ]
             }
           }
@@ -33,23 +19,23 @@
       "effects": {
         "effects": [
           {
-            "sendCommand": {
-              "requestId": "cmd-1",
-              "machineId": "m1",
-              "command": {
-                "listModels": {
-                  "agent": "AGENT_CODEX"
-                }
+            "cacheRead": {
+              "bootstrap": {
+                "opId": "1"
               }
             }
           },
           {
-            "sendCommand": {
-              "requestId": "cmd-2",
-              "machineId": "m1",
-              "command": {
-                "getSettings": {}
-              }
+            "ensureToken": {
+              "opId": "2",
+              "forceLogin": true,
+              "timeoutMs": "15000"
+            }
+          },
+          {
+            "syncSecurity": {
+              "opId": "3",
+              "touch": true
             }
           },
           {
@@ -57,7 +43,9 @@
               "screens": [
                 "SCREEN_TARGET_HOME",
                 "SCREEN_TARGET_PROJECT",
-                "SCREEN_TARGET_NEW_SESSION"
+                "SCREEN_TARGET_NEW_SESSION",
+                "SCREEN_TARGET_SYNC_STATE",
+                "SCREEN_TARGET_SESSION_DATA"
               ]
             }
           }
@@ -72,7 +60,83 @@
               "screens": [
                 "SCREEN_TARGET_HOME",
                 "SCREEN_TARGET_PROJECT",
-                "SCREEN_TARGET_NEW_SESSION"
+                "SCREEN_TARGET_NEW_SESSION",
+                "SCREEN_TARGET_SYNC_STATE",
+                "SCREEN_TARGET_SESSION_DATA"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "effects": {
+        "effects": [
+          {
+            "openStream": {
+              "legId": "1",
+              "token": "tok-1",
+              "timeoutMs": "15000"
+            }
+          },
+          {
+            "scheduleTimer": {
+              "timerId": "1",
+              "kind": "TIMER_KIND_STREAM_OPEN",
+              "delayMs": "15000"
+            }
+          },
+          {
+            "render": {
+              "screens": [
+                "SCREEN_TARGET_HOME",
+                "SCREEN_TARGET_SYNC_STATE"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "effects": {
+        "effects": [
+          {
+            "cancelTimer": {
+              "timerId": "1",
+              "kind": "TIMER_KIND_STREAM_OPEN"
+            }
+          },
+          {
+            "scheduleTimer": {
+              "timerId": "2",
+              "kind": "TIMER_KIND_LIVENESS",
+              "delayMs": "1000"
+            }
+          },
+          {
+            "rpc": {
+              "opId": "4",
+              "fetchLists": {
+                "limit": 50
+              }
+            }
+          },
+          {
+            "rpc": {
+              "opId": "5",
+              "getAccountPrefs": {
+                "objectId": "project-prefs"
+              }
+            }
+          },
+          {
+            "render": {
+              "screens": [
+                "SCREEN_TARGET_HOME",
+                "SCREEN_TARGET_PROJECT",
+                "SCREEN_TARGET_NEW_SESSION",
+                "SCREEN_TARGET_SYNC_STATE",
+                "SCREEN_TARGET_SESSION_DATA"
               ]
             }
           }
@@ -87,7 +151,26 @@
               "screens": [
                 "SCREEN_TARGET_HOME",
                 "SCREEN_TARGET_PROJECT",
-                "SCREEN_TARGET_NEW_SESSION"
+                "SCREEN_TARGET_NEW_SESSION",
+                "SCREEN_TARGET_SYNC_STATE",
+                "SCREEN_TARGET_SESSION_DATA"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "effects": {
+        "effects": [
+          {
+            "render": {
+              "screens": [
+                "SCREEN_TARGET_HOME",
+                "SCREEN_TARGET_PROJECT",
+                "SCREEN_TARGET_NEW_SESSION",
+                "SCREEN_TARGET_SYNC_STATE",
+                "SCREEN_TARGET_SESSION_DATA"
               ]
             }
           }
@@ -98,15 +181,15 @@
           "project": {
             "kind": "PROJECT_VIEW_KIND_DETAIL",
             "detail": {
-              "key": "/Users/me/Code/app",
+              "key": "/Users/me/Code/alpha",
               "name": {
-                "literal": "app"
+                "literal": "alpha"
               },
-              "shortPath": "~/Code/app",
+              "shortPath": "~/Code/alpha",
               "subtitle": {
                 "join": [
                   {
-                    "literal": "~/Code/app"
+                    "literal": "~/Code/alpha"
                   },
                   {
                     "literal": "MacBook"
@@ -121,61 +204,35 @@
                 "MacBook"
               ],
               "anyOnline": true,
-              "endedTotal": 4,
+              "endedTotal": 1,
               "ended": [
                 {
-                  "sessionId": "s1",
+                  "sessionId": "s-1",
                   "machineId": "m1",
                   "title": {
-                    "literal": "Fix 1"
+                    "literal": "Alpha task"
                   },
                   "right": {
-                    "key": "time.today_clock",
+                    "key": "time.day_clock",
                     "args": [
                       {
-                        "name": "value",
-                        "strValue": "8"
+                        "name": "day",
+                        "textValue": {
+                          "key": "time.today"
+                        }
                       },
                       {
-                        "name": "detail",
-                        "strValue": "00"
-                      }
-                    ]
-                  }
-                },
-                {
-                  "sessionId": "s2",
-                  "machineId": "m1",
-                  "title": {
-                    "literal": "Fix 2"
-                  },
-                  "right": {
-                    "key": "time.today_clock",
-                    "args": [
-                      {
-                        "name": "value",
-                        "strValue": "7"
-                      },
-                      {
-                        "name": "detail",
-                        "strValue": "50"
+                        "name": "clock",
+                        "timestampValue": {
+                          "unixMs": "1791060000000",
+                          "style": "TIMESTAMP_STYLE_TIME"
+                        }
                       }
                     ]
                   }
                 }
               ],
-              "tail": {
-                "kind": "TAIL_KIND_MORE_ENDED",
-                "text": {
-                  "key": "home.total",
-                  "args": [
-                    {
-                      "name": "count",
-                      "intValue": "4"
-                    }
-                  ]
-                }
-              },
+              "isPinned": true,
               "hiddenNotice": {
                 "text": {
                   "key": "projects.removed"
@@ -184,66 +241,7 @@
               },
               "canStart": true,
               "canPin": true,
-              "canRemove": true,
-              "hasMoreEnded": true
-            }
-          }
-        },
-        "manageInitial": {
-          "project": {
-            "kind": "PROJECT_VIEW_KIND_MANAGE",
-            "manage": {
-              "listing": {
-                "others": [
-                  {
-                    "key": "/Users/me/Code/app",
-                    "name": {
-                      "literal": "app"
-                    },
-                    "shortPath": "~/Code/app",
-                    "subtitle": {
-                      "key": "time.used_time",
-                      "args": [
-                        {
-                          "name": "time",
-                          "textValue": {
-                            "key": "time.hours_ago",
-                            "args": [
-                              {
-                                "name": "count",
-                                "intValue": "2"
-                              }
-                            ]
-                          }
-                        }
-                      ]
-                    }
-                  }
-                ]
-              },
-              "canEdit": true,
-              "dirPicker": {
-                "machines": [
-                  {
-                    "machineId": "m1",
-                    "name": "MacBook",
-                    "online": true,
-                    "statusText": {
-                      "key": "common.online"
-                    },
-                    "home": "/Users/me"
-                  }
-                ],
-                "crumbs": [
-                  {
-                    "label": {
-                      "literal": "/"
-                    },
-                    "path": "/"
-                  }
-                ]
-              },
-              "projectCount": 1
+              "canRemove": true
             }
           }
         }
@@ -253,22 +251,10 @@
       "effects": {
         "effects": [
           {
-            "saveProjectPrefs": {
-              "opId": "op-3",
-              "kind": "PROJECT_PREFS_OP_KIND_PIN",
-              "path": "/Users/me/Code/app",
-              "atMs": "1791078060000",
-              "nextPrefs": {
-                "schema": 1,
-                "pinned": [
-                  {
-                    "path": "/Users/me/Code/app",
-                    "sinceMs": "1791078060000"
-                  }
-                ],
-                "recentOps": [
-                  "op-3"
-                ]
+            "rpc": {
+              "opId": "6",
+              "getAccountPrefs": {
+                "objectId": "project-prefs"
               }
             }
           },
@@ -276,7 +262,57 @@
             "render": {
               "screens": [
                 "SCREEN_TARGET_HOME",
-                "SCREEN_TARGET_PROJECT"
+                "SCREEN_TARGET_PROJECT",
+                "SCREEN_TARGET_NEW_SESSION",
+                "SCREEN_TARGET_SYNC_STATE"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "effects": {
+        "effects": [
+          {
+            "rpc": {
+              "opId": "7",
+              "putAccountPrefs": {
+                "objectId": "project-prefs",
+                "expectedRevision": "1",
+                "nextPrefs": {
+                  "schema": 1,
+                  "pinned": [
+                    {
+                      "path": "/Users/me/Code/alpha",
+                      "sinceMs": "1791000000000"
+                    },
+                    {
+                      "path": "/Users/me/Code/beta",
+                      "sinceMs": "1791078060070"
+                    }
+                  ],
+                  "recentOps": [
+                    "pref-op-1"
+                  ]
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "effects": {
+        "effects": [
+          {
+            "render": {
+              "screens": [
+                "SCREEN_TARGET_HOME",
+                "SCREEN_TARGET_PROJECT",
+                "SCREEN_TARGET_NEW_SESSION",
+                "SCREEN_TARGET_SYNC_STATE",
+                "SCREEN_TARGET_SESSION_DATA"
               ]
             }
           }
@@ -290,11 +326,11 @@
               "listing": {
                 "pinned": [
                   {
-                    "key": "/Users/me/Code/app",
+                    "key": "/Users/me/Code/alpha",
                     "name": {
-                      "literal": "app"
+                      "literal": "alpha"
                     },
-                    "shortPath": "~/Code/app",
+                    "shortPath": "~/Code/alpha",
                     "subtitle": {
                       "key": "time.used_time",
                       "args": [
@@ -305,15 +341,22 @@
                             "args": [
                               {
                                 "name": "count",
-                                "intValue": "2"
+                                "intValue": "5"
                               }
                             ]
                           }
                         }
                       ]
                     },
-                    "pinned": true,
-                    "syncing": true
+                    "pinned": true
+                  },
+                  {
+                    "key": "/Users/me/Code/beta",
+                    "name": {
+                      "literal": "beta"
+                    },
+                    "shortPath": "~/Code/beta",
+                    "pinned": true
                   }
                 ]
               },
@@ -326,8 +369,7 @@
                     "online": true,
                     "statusText": {
                       "key": "common.online"
-                    },
-                    "home": "/Users/me"
+                    }
                   }
                 ],
                 "crumbs": [
@@ -339,7 +381,7 @@
                   }
                 ]
               },
-              "projectCount": 1
+              "projectCount": 2
             }
           }
         }
@@ -349,20 +391,21 @@
       "effects": {
         "effects": [
           {
-            "sendCommand": {
-              "requestId": "dir-4",
+            "dispatchCommand": {
+              "requestId": "dir-req-1",
+              "attemptId": "dir-att-1",
               "machineId": "m1",
-              "command": {
-                "listDirectories": {
-                  "path": "/Users/me"
-                }
-              }
+              "deadlineMs": "1791078120090",
+              "commandBytes": "sgEQCg4vVXNlcnMvbWUvQ29kZaAGEA==",
+              "routeHint": "COMMAND_ROUTE_HINT_READ"
             }
           },
           {
             "render": {
               "screens": [
-                "SCREEN_TARGET_PROJECT"
+                "SCREEN_TARGET_PROJECT",
+                "SCREEN_TARGET_NEW_SESSION",
+                "SCREEN_TARGET_SYNC_STATE"
               ]
             }
           }
@@ -375,7 +418,10 @@
           {
             "render": {
               "screens": [
-                "SCREEN_TARGET_PROJECT"
+                "SCREEN_TARGET_HOME",
+                "SCREEN_TARGET_PROJECT",
+                "SCREEN_TARGET_NEW_SESSION",
+                "SCREEN_TARGET_SYNC_STATE"
               ]
             }
           }
@@ -389,11 +435,11 @@
               "listing": {
                 "pinned": [
                   {
-                    "key": "/Users/me/Code/app",
+                    "key": "/Users/me/Code/alpha",
                     "name": {
-                      "literal": "app"
+                      "literal": "alpha"
                     },
-                    "shortPath": "~/Code/app",
+                    "shortPath": "~/Code/alpha",
                     "subtitle": {
                       "key": "time.used_time",
                       "args": [
@@ -404,22 +450,28 @@
                             "args": [
                               {
                                 "name": "count",
-                                "intValue": "2"
+                                "intValue": "5"
                               }
                             ]
                           }
                         }
                       ]
                     },
-                    "pinned": true,
-                    "syncing": true
+                    "pinned": true
+                  },
+                  {
+                    "key": "/Users/me/Code/beta",
+                    "name": {
+                      "literal": "beta"
+                    },
+                    "shortPath": "~/Code/beta",
+                    "pinned": true
                   }
                 ]
               },
               "canEdit": true,
               "dirPicker": {
                 "open": true,
-                "forNewTask": true,
                 "machines": [
                   {
                     "machineId": "m1",
@@ -427,25 +479,34 @@
                     "online": true,
                     "statusText": {
                       "key": "common.online"
-                    },
-                    "home": "/Users/me"
+                    }
                   }
                 ],
                 "machineId": "m1",
-                "currentPath": "/Users/me",
+                "currentPath": "/Users/me/Code",
                 "crumbs": [
                   {
                     "label": {
                       "literal": "~"
                     },
                     "path": "~"
+                  },
+                  {
+                    "label": {
+                      "literal": "Code"
+                    },
+                    "path": "Code"
                   }
                 ],
-                "parentPath": "/Users",
+                "parentPath": "/Users/me",
                 "dirs": [
                   {
-                    "name": "Code",
-                    "path": "/Users/me/Code"
+                    "name": "alpha",
+                    "path": "/Users/me/Code/alpha"
+                  },
+                  {
+                    "name": "delta",
+                    "path": "/Users/me/Code/delta"
                   }
                 ],
                 "confirmLabel": {
@@ -453,13 +514,13 @@
                   "args": [
                     {
                       "name": "name",
-                      "strValue": "me"
+                      "strValue": "Code"
                     }
                   ]
                 },
                 "canConfirm": true
               },
-              "projectCount": 1
+              "projectCount": 2
             }
           }
         }
@@ -469,57 +530,10 @@
       "effects": {
         "effects": [
           {
-            "saveProjectPrefs": {
-              "opId": "op-5",
-              "kind": "PROJECT_PREFS_OP_KIND_SET_SETTINGS",
-              "path": "/Users/me/Code/fresh",
-              "settings": {
-                "path": "/Users/me/Code/fresh",
-                "machineId": "m1",
-                "updatedMs": "1791078060000",
-                "agents": [
-                  {
-                    "agent": "AGENT_CODEX"
-                  },
-                  {
-                    "agent": "AGENT_CLAUDE"
-                  },
-                  {
-                    "agent": "AGENT_ANTIGRAVITY"
-                  }
-                ]
-              },
-              "atMs": "1791078060000",
-              "nextPrefs": {
-                "schema": 1,
-                "pinned": [
-                  {
-                    "path": "/Users/me/Code/app",
-                    "sinceMs": "1791078060000"
-                  }
-                ],
-                "recentOps": [
-                  "op-3",
-                  "op-5"
-                ],
-                "settings": [
-                  {
-                    "path": "/Users/me/Code/fresh",
-                    "machineId": "m1",
-                    "updatedMs": "1791078060000",
-                    "agents": [
-                      {
-                        "agent": "AGENT_CODEX"
-                      },
-                      {
-                        "agent": "AGENT_CLAUDE"
-                      },
-                      {
-                        "agent": "AGENT_ANTIGRAVITY"
-                      }
-                    ]
-                  }
-                ]
+            "rpc": {
+              "opId": "8",
+              "getAccountPrefs": {
+                "objectId": "project-prefs"
               }
             }
           },
@@ -528,7 +542,74 @@
               "screens": [
                 "SCREEN_TARGET_HOME",
                 "SCREEN_TARGET_PROJECT",
-                "SCREEN_TARGET_NEW_SESSION"
+                "SCREEN_TARGET_NEW_SESSION",
+                "SCREEN_TARGET_SYNC_STATE"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "effects": {
+        "effects": [
+          {
+            "rpc": {
+              "opId": "9",
+              "putAccountPrefs": {
+                "objectId": "project-prefs",
+                "expectedRevision": "2",
+                "nextPrefs": {
+                  "schema": 1,
+                  "pinned": [
+                    {
+                      "path": "/Users/me/Code/alpha",
+                      "sinceMs": "1791000000000"
+                    },
+                    {
+                      "path": "/Users/me/Code/beta",
+                      "sinceMs": "1791078060060"
+                    }
+                  ],
+                  "recentOps": [
+                    "pref-op-2"
+                  ],
+                  "settings": [
+                    {
+                      "path": "/Users/me/Code/delta",
+                      "machineId": "m1",
+                      "updatedMs": "1791078060120",
+                      "agents": [
+                        {
+                          "agent": "AGENT_CODEX"
+                        },
+                        {
+                          "agent": "AGENT_CLAUDE"
+                        },
+                        {
+                          "agent": "AGENT_ANTIGRAVITY"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "effects": {
+        "effects": [
+          {
+            "render": {
+              "screens": [
+                "SCREEN_TARGET_HOME",
+                "SCREEN_TARGET_PROJECT",
+                "SCREEN_TARGET_NEW_SESSION",
+                "SCREEN_TARGET_SYNC_STATE",
+                "SCREEN_TARGET_SESSION_DATA"
               ]
             }
           }
@@ -539,15 +620,15 @@
           "project": {
             "kind": "PROJECT_VIEW_KIND_DETAIL",
             "detail": {
-              "key": "/Users/me/Code/app",
+              "key": "/Users/me/Code/delta",
               "name": {
-                "literal": "app"
+                "literal": "delta"
               },
-              "shortPath": "~/Code/app",
+              "shortPath": "~/Code/delta",
               "subtitle": {
                 "join": [
                   {
-                    "literal": "~/Code/app"
+                    "literal": "~/Code/delta"
                   },
                   {
                     "literal": "MacBook"
@@ -562,100 +643,18 @@
                 "MacBook"
               ],
               "anyOnline": true,
-              "endedTotal": 4,
-              "ended": [
-                {
-                  "sessionId": "s1",
-                  "machineId": "m1",
-                  "title": {
-                    "literal": "Fix 1"
-                  },
-                  "right": {
-                    "key": "time.today_clock",
-                    "args": [
-                      {
-                        "name": "value",
-                        "strValue": "8"
-                      },
-                      {
-                        "name": "detail",
-                        "strValue": "00"
-                      }
-                    ]
-                  }
-                },
-                {
-                  "sessionId": "s2",
-                  "machineId": "m1",
-                  "title": {
-                    "literal": "Fix 2"
-                  },
-                  "right": {
-                    "key": "time.today_clock",
-                    "args": [
-                      {
-                        "name": "value",
-                        "strValue": "7"
-                      },
-                      {
-                        "name": "detail",
-                        "strValue": "50"
-                      }
-                    ]
-                  }
-                },
-                {
-                  "sessionId": "s3",
-                  "machineId": "m1",
-                  "title": {
-                    "literal": "Fix 3"
-                  },
-                  "right": {
-                    "key": "time.today_clock",
-                    "args": [
-                      {
-                        "name": "value",
-                        "strValue": "7"
-                      },
-                      {
-                        "name": "detail",
-                        "strValue": "40"
-                      }
-                    ]
-                  }
-                },
-                {
-                  "sessionId": "s4",
-                  "machineId": "m1",
-                  "title": {
-                    "literal": "Fix 4"
-                  },
-                  "right": {
-                    "key": "time.today_clock",
-                    "args": [
-                      {
-                        "name": "value",
-                        "strValue": "7"
-                      },
-                      {
-                        "name": "detail",
-                        "strValue": "30"
-                      }
-                    ]
-                  }
-                }
-              ],
-              "isPinned": true,
+              "emptyNote": {
+                "key": "projects.no_sessions"
+              },
               "hiddenNotice": {
                 "text": {
                   "key": "projects.removed"
                 },
-                "busy": true
+                "actionEnabled": true
               },
               "canStart": true,
-              "saveStatus": {
-                "key": "common.saving"
-              }
+              "canPin": true,
+              "canRemove": true
             }
           }
         }

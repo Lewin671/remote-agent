@@ -143,11 +143,13 @@ func BuildNewSession(st *State, projectKey string) *corev1.NewSessionViewModel {
 	var modelsResp *v1.ListModelsResponse
 	var hasModels, modelsLoading bool
 	var modelsErr string
+	var modelsErrText *corev1.Text
 	if modelsEntry != nil {
 		modelsResp = modelsEntry.Response
 		hasModels = modelsEntry.Loaded && modelsResp != nil
 		modelsLoading = modelsEntry.Loading
 		modelsErr = modelsEntry.Error
+		modelsErrText = modelsEntry.ErrorText
 	}
 	var daemonSettings *v1.DaemonSettings
 	if settingsEntry != nil {
@@ -364,8 +366,8 @@ func BuildNewSession(st *State, projectKey string) *corev1.NewSessionViewModel {
 			} else {
 				msg = text.Msg(text.KeyNewSessionExpiredStart)
 			}
-		} else if draft.StartError != "" {
-			msg = text.Msg(text.KeyNewSessionStartUnknown, text.Str("reason", draft.StartError))
+		} else if hasReason(draft.StartErrorText, draft.StartError) {
+			msg = text.Msg(text.KeyNewSessionStartUnknown, reasonArg("reason", draft.StartErrorText, draft.StartError))
 		}
 		notices = append(notices, &corev1.NewSessionNoticeView{
 			Kind:     corev1.NoticeKind_NOTICE_KIND_UNKNOWN_START,
@@ -381,11 +383,11 @@ func BuildNewSession(st *State, projectKey string) *corev1.NewSessionViewModel {
 			Action:          corev1.NoticeActionKind_NOTICE_ACTION_KIND_OPEN_DISK_USAGE,
 			TargetMachineId: cfg.MachineID,
 		})
-	} else if draft != nil && draft.StartError != "" {
+	} else if draft != nil && hasReason(draft.StartErrorText, draft.StartError) {
 		notices = append(notices, &corev1.NewSessionNoticeView{
 			Kind:     corev1.NoticeKind_NOTICE_KIND_FAILED,
 			Severity: corev1.NoticeSeverity_NOTICE_SEVERITY_ERROR,
-			Text:     text.Msg(text.KeyNewSessionStartFailed, text.Str("reason", draft.StartError)),
+			Text:     text.Msg(text.KeyNewSessionStartFailed, reasonArg("reason", draft.StartErrorText, draft.StartError)),
 			Action:   corev1.NoticeActionKind_NOTICE_ACTION_KIND_RETRY_START,
 		})
 	}
@@ -441,7 +443,7 @@ func BuildNewSession(st *State, projectKey string) *corev1.NewSessionViewModel {
 		protoAutoIssue = corev1.AutoIssueKind_AUTO_ISSUE_KIND_NONE
 	}
 
-	modelPanel := buildModelPanelView(st, cfg, modelsResp, hasModels, modelsLoading, modelsErr, pickedModel, efforts, selectedEffort, defaultModelLabel, frozen, busy, machineOnline)
+	modelPanel := buildModelPanelView(st, cfg, modelsResp, hasModels, modelsLoading, modelsErrText, modelsErr, pickedModel, efforts, selectedEffort, defaultModelLabel, frozen, busy, machineOnline)
 
 	return &corev1.NewSessionViewModel{
 		ProjectSelectable: projectSelectable,
@@ -460,6 +462,7 @@ func BuildNewSession(st *State, projectKey string) *corev1.NewSessionViewModel {
 			Model:           cfg.Model,
 			Effort:          cfg.Effort,
 			StandardContext: cfg.StandardContext,
+			Mode:            cfg.Mode,
 		},
 		MachineName:       machineName,
 		MachineSelectable: machineSelectable,
@@ -484,6 +487,7 @@ func buildModelPanelView(
 	modelsResp *v1.ListModelsResponse,
 	hasModels bool,
 	modelsLoading bool,
+	modelsErrText *corev1.Text,
 	modelsErr string,
 	picked *v1.ModelInfo,
 	efforts []string,
@@ -518,8 +522,8 @@ func buildModelPanelView(
 	}
 
 	var errText *corev1.Text
-	if modelsErr != "" {
-		errText = text.Msg(text.KeyModelsLoadFailedReason, text.Str("agent", agentCap.Name), text.Str("reason", modelsErr))
+	if hasReason(modelsErrText, modelsErr) {
+		errText = text.Msg(text.KeyModelsLoadFailedReason, text.Str("agent", agentCap.Name), reasonArg("reason", modelsErrText, modelsErr))
 	} else if modelsLoading {
 		machine := findMachine(st, cfg.MachineID)
 		errText = text.Msg(text.KeyModelsReadingMachine, text.Str("name", lists.MachineName(machine, cfg.MachineID)))

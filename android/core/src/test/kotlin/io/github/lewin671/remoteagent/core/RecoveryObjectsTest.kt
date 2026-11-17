@@ -35,7 +35,10 @@ class RecoveryObjectsTest {
                 }
                 r.renameDevice(kept.deviceId, "retained-client")
                 o.renameDevice(offline.deviceId, "offline-client")
-                r.changePrefs(PrefsOp.Pin("/synthetic/kept"))
+                r.coreHost.toggleProjectPin("/synthetic/kept")
+                withTimeout(10000) {
+                    r.state.first { it.prefs?.prefs?.pinnedList?.any { p -> p.path == "/synthetic/kept" } == true }
+                }
                 o.close()
                 val context = Recovery.context(server.url, http, SigningKey(seed).publicKey, seed)
                 val submitted =
@@ -89,7 +92,10 @@ class RecoveryObjectsTest {
                 val failure=runCatching {expired.renameDevice(kept.deviceId,"cannot-publish")}.exceptionOrNull()
                 assertTrue(failure is DeviceSecurity.Failure && failure.code=="lease")
                 r.syncSecurity()
-                recovered.changePrefs(PrefsOp.Hide("/synthetic/new"))
+                recovered.coreHost.toggleProjectHide("/synthetic/new")
+                withTimeout(10000) {
+                    recovered.state.first { it.prefs?.prefs?.hiddenList?.any { p -> p.path == "/synthetic/new" } == true }
+                }
                 val prefs = recovered.state.value.prefs!!
                 assertTrue(prefs.pinned.contains("/synthetic/kept"))
                 assertTrue(prefs.hidden.contains("/synthetic/new"))

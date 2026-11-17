@@ -43,7 +43,7 @@ func BuildHome(st *State, endedLimit int) *corev1.HomeViewModel {
 		ScopeTitle:        scopeTitle,
 		ScopeShortPath:    scope.ShortPath,
 		Connection:        buildConnectionStatus(st),
-		Headline:          buildHomeHeadlineView(homeData.Headline, st.World.LiveLoaded),
+		Headline:          buildHomeHeadlineView(homeData.Headline, st.World.LiveLoaded, st.SessionListErrorText),
 		Empty:             buildHomeEmptyView(homeData.Empty, st),
 		CanFilter:         homeData.ShowFilter,
 		FilterQuery:       st.HomeFilterQuery,
@@ -85,7 +85,7 @@ func BuildHome(st *State, endedLimit int) *corev1.HomeViewModel {
 			vm.Running = append(vm.Running, buildSessionRow(row.Item, homeData.Meta, st.Cal, st.HomeSelectedSessionID == row.Item.ID))
 		case lists.HomeRowSectionLabel:
 			if row.EndedGroup != nil {
-				gk, label := mapEndedGroup(row.EndedGroup)
+				gk, label := mapEndedGroup(row.EndedGroup, st.Cal)
 				curGroup = &corev1.EndedGroupView{
 					GroupKey:  row.EndedGroup.Key,
 					GroupKind: gk,
@@ -98,7 +98,7 @@ func BuildHome(st *State, endedLimit int) *corev1.HomeViewModel {
 				curGroup.Items = append(curGroup.Items, buildEndedRow(row.Item, homeData.Meta, st.Cal, st.HomeSelectedSessionID == row.Item.ID))
 			}
 		case lists.HomeRowTail:
-			vm.EndedTail = buildTailRow(row.Tail)
+			vm.EndedTail = buildTailRow(row.Tail, st.SessionListErrorText)
 		}
 	}
 
@@ -143,7 +143,7 @@ func BuildHome(st *State, endedLimit int) *corev1.HomeViewModel {
 	return vm
 }
 
-func buildHomeHeadlineView(h *lists.HomeHeadlineInfo, liveLoaded bool) *corev1.HomeHeadlineView {
+func buildHomeHeadlineView(h *lists.HomeHeadlineInfo, liveLoaded bool, errText *corev1.Text) *corev1.HomeHeadlineView {
 	if h == nil {
 		return &corev1.HomeHeadlineView{
 			Kind: corev1.HeadlineKind_HEADLINE_KIND_EMPTY,
@@ -191,8 +191,8 @@ func buildHomeHeadlineView(h *lists.HomeHeadlineInfo, liveLoaded bool) *corev1.H
 	case lists.HeadlineNoServer:
 		v.Kind = corev1.HeadlineKind_HEADLINE_KIND_ERROR
 		v.Title = text.Msg(text.KeyConnectionNoServer)
-		if h.SubError && h.RawError != "" {
-			v.Sub = text.Msg(text.KeyHomeListFailed, text.Str("reason", h.RawError))
+		if h.SubError && hasReason(errText, h.RawError) {
+			v.Sub = text.Msg(text.KeyHomeListFailed, reasonArg("reason", errText, h.RawError))
 		} else if h.Kept {
 			v.Sub = text.Msg(text.KeyConnectionPreviousBelow)
 		}
@@ -214,8 +214,8 @@ func buildHomeHeadlineView(h *lists.HomeHeadlineInfo, liveLoaded bool) *corev1.H
 	case lists.HeadlineUnreadable:
 		v.Kind = corev1.HeadlineKind_HEADLINE_KIND_ERROR
 		v.Title = text.Msg(text.KeyHomeSessionsUnavailable)
-		if h.RawError != "" {
-			v.Sub = text.Msg(text.KeyHomeListFailed, text.Str("reason", h.RawError))
+		if hasReason(errText, h.RawError) {
+			v.Sub = text.Msg(text.KeyHomeListFailed, reasonArg("reason", errText, h.RawError))
 		}
 	case lists.HeadlineNoSessions:
 		v.Kind = corev1.HeadlineKind_HEADLINE_KIND_EMPTY
@@ -239,10 +239,10 @@ func buildHomeEmptyView(e *lists.HomeEmptyInfo, st *State) *corev1.HomeEmptyView
 	case lists.HomeEmptyLoading:
 		v.Kind = corev1.HomeEmptyKind_HOME_EMPTY_KIND_NONE
 		v.Message = text.Msg(text.KeyCommonLoading)
-		case lists.HomeEmptyNoMachines:
-		if !st.World.IsManager && st.World.ManagerName != "" {
+	case lists.HomeEmptyNoMachines:
+		if !st.World.IsManager && hasReason(st.ManagerNameText, st.World.ManagerName) {
 			v.Kind = corev1.HomeEmptyKind_HOME_EMPTY_KIND_NO_MACHINES_MEMBER
-			v.Message = text.Msg(text.KeyHomeAddViaManager, text.Str("name", st.World.ManagerName))
+			v.Message = text.Msg(text.KeyHomeAddViaManager, reasonArg("name", st.ManagerNameText, st.World.ManagerName))
 		} else {
 			v.Kind = corev1.HomeEmptyKind_HOME_EMPTY_KIND_NO_MACHINES
 			v.Command = "remote-agent account join"
@@ -392,20 +392,23 @@ func buildAttentionRowView(item *lists.SessionItem, meta lists.RowMeta) *corev1.
 	}
 }
 
-func mapEndedGroup(g *lists.EndedGroup) (corev1.EndedGroupKind, *corev1.Text) {
+func mapEndedGroup(g *lists.EndedGroup, cal lists.Calendar) (corev1.EndedGroupKind, *corev1.Text) {
 	switch g.Kind {
 	case lists.GroupToday:
 		return corev1.EndedGroupKind_ENDED_GROUP_KIND_TODAY, text.Msg(text.KeyTimeToday)
 	case lists.GroupYesterday:
 		return corev1.EndedGroupKind_ENDED_GROUP_KIND_YESTERDAY, text.Msg(text.KeyTimeYesterday)
 	case lists.GroupWeek:
+		if g.RepMs > 0 {
+			return corev1.EndedGroupKind_ENDED_GROUP_KIND_LAST_WEEK, text.Time(g.RepMs, corev1.TimestampStyle_TIMESTAMP_STYLE_WEEKDAY)
+		}
 		idx := int(g.WeekdayIndex)
 		if idx < 0 || idx >= len(weekdayCodes) {
 			idx = 0
 		}
 		return corev1.EndedGroupKind_ENDED_GROUP_KIND_LAST_WEEK, text.Msg(text.KeyTimeWeekday, text.Str("day", weekdayCodes[idx]))
 	default:
-		if g.Year != 0 {
+		if g.Year != 0 && (cal.NowYear == 0 || g.Year != cal.NowYear) {
 			return corev1.EndedGroupKind_ENDED_GROUP_KIND_YEAR_MONTH, text.Msg(text.KeyTimeYearMonthGroup, text.Int("year", int64(g.Year)), text.Int("month", int64(g.Month)))
 		}
 		return corev1.EndedGroupKind_ENDED_GROUP_KIND_MONTH, text.Msg(text.KeyTimeMonthGroup, text.Int("month", int64(g.Month)))

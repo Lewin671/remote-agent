@@ -218,8 +218,25 @@ class LayoutTest {
                 CompositionLocalProvider(LocalRemote provides remote, LocalNav provides nav) {
                     Column(Modifier.testTag("frame").width(320.dp).height(640.dp).background(pal.paper)) {
                         GroupTitle("今天", date = true)
-                        SessionRow(state, session(ended = true), System.currentTimeMillis())
-                        NewSessionBox(state, NewConfig(machineId, key, model = "long-model-name"), "remote-agent-with-a-very-long-project-name", false)
+                        EndedRow(
+                            io.github.lewin671.remoteagent.core.proto.EndedRowView.newBuilder()
+                                .setSessionId("s")
+                                .setMachineId(machineId)
+                                .setTitle(io.github.lewin671.remoteagent.core.proto.Text.newBuilder().setLiteral("test"))
+                                .setRight(io.github.lewin671.remoteagent.core.proto.Text.newBuilder().setLiteral("12:00"))
+                                .build(),
+                            onClick = {},
+                        )
+                        NewSessionBox(
+                            io.github.lewin671.remoteagent.core.proto.NewSessionViewModel.newBuilder()
+                                .setProjectKey(key)
+                                .setProjectName(io.github.lewin671.remoteagent.core.proto.Text.newBuilder().setLiteral("remote-agent-with-a-very-long-project-name"))
+                                .setConfig(io.github.lewin671.remoteagent.core.proto.NewSessionConfig.newBuilder().setMachineId(machineId).setModel("long-model-name"))
+                                .setModelLabel(io.github.lewin671.remoteagent.core.proto.Text.newBuilder().setLiteral("long-model-name"))
+                                .build(),
+                            state,
+                            focus = false,
+                        )
                     }
                 }
             }
@@ -326,12 +343,23 @@ class LayoutTest {
     private fun showCard(a: ApprovalRequested, dark: Boolean = false, unlinked: Boolean = false) {
         val online = RemoteState(machines = mapOf(machineId to MachineView(machineId, true, 0)), conn = ConnState.ONLINE, link = Link.ONLINE, synced = true, loaded = true)
         val st = if (unlinked) online.copy(conn = ConnState.OFFLINE, link = Link.NO_NETWORK) else online
-        val t = System.currentTimeMillis()
+        val card = io.github.lewin671.remoteagent.core.proto.AttentionCardView.newBuilder()
+            .setSessionId("s")
+            .setMachineId(machineId)
+            .setApprovalId(a.approvalId)
+            .setTitle(io.github.lewin671.remoteagent.core.proto.Text.newBuilder().setLiteral("Approval"))
+            .setKindText(io.github.lewin671.remoteagent.core.proto.Text.newBuilder().setLiteral("请求运行命令"))
+            .setWhere(io.github.lewin671.remoteagent.core.proto.Text.newBuilder().setLiteral("remote-agent"))
+            .setBody(a.command)
+            .setToolName(a.toolName)
+            .setIsCommand(a.command.isNotEmpty())
+            .setTruncated(approvalTruncated(a))
+            .build()
         ui.setContent {
             RaTheme(if (dark) ThemeMode.DARK else ThemeMode.LIGHT) {
                 CompositionLocalProvider(LocalRemote provides remote, LocalNav provides nav) {
                     Column(Modifier.testTag("frame").width(360.dp).background(pal.paper).padding(16.dp)) {
-                        ApprovalCard(st, session(), a, approvalCardText(st, session(), a, timeoutNote = true, now = t), t, onOpen = {})
+                        ApprovalCard(card, st, onOpen = {})
                     }
                 }
             }

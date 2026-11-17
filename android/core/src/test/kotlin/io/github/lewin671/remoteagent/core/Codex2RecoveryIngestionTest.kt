@@ -1,6 +1,8 @@
 package io.github.lewin671.remoteagent.core
 
 import io.github.lewin671.remoteagent.proto.*
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.ResponseBody.Companion.toResponseBody
 import java.io.File
 import java.nio.file.Files
 import kotlinx.coroutines.flow.first
@@ -138,12 +140,23 @@ class Codex2RecoveryIngestionTest {
                     failure is DeviceSecurity.Failure && failure.code == "untrusted",
                 )
             }
-            val r = fixtureRemote(account, http)
-            remote = r
             if (damage == null) {
+                val r = fixtureRemote(account, http)
+                remote = r
                 r.start()
                 withTimeout(5000) {
                     r.state.first { it.conn == ConnState.ONLINE && it.sessions["s"]?.info != null }
+                }
+                val events = r.events("s")
+                run {
+                    val suffix = withTimeout(5000) { events.first { it.events.size == 2 } }
+                    assertEquals(1, suffix.unavailableCount)
+                    assertEquals(Event.KindCase.KIND_NOT_SET, suffix.events[0].kindCase)
+                    assertEquals(listOf(2L), suffix.verifiedEvents.map { it.seq })
+                    d.upload("s", message("live message"))
+                    val live = withTimeout(5000) { events.first { it.events.size == 3 } }
+                    assertEquals("live message", live.events[2].agentMessage.text)
+                    assertNull(live.error)
                 }
             } else {
                 val api = Api(server.url, http)
@@ -170,25 +183,31 @@ class Codex2RecoveryIngestionTest {
                 }
                 event.envelope = env.build()
                 stored[index] = event.build()
-                prepareIngestion(r, machine.deviceId, d.sessionKeys.getValue("s"))
-                invokeIngestion(r, stored)
-                val failed = eventSnapshot(r)
+                val damagedResponse = GetEventsResponse.newBuilder().addAllEvents(stored).setMore(false).build().toByteArray()
+                val damagedHttp = http.newBuilder().addInterceptor { chain ->
+                    if (chain.request().url.encodedPath.endsWith("/GetEvents")) {
+                        okhttp3.Response.Builder()
+                            .request(chain.request())
+                            .protocol(okhttp3.Protocol.HTTP_1_1)
+                            .code(200)
+                            .message("OK")
+                            .addHeader("content-type", "application/proto")
+                            .body(damagedResponse.toResponseBody("application/proto".toMediaType()))
+                            .build()
+                    } else {
+                        chain.proceed(chain.request())
+                    }
+                }.build()
+                val r = fixtureRemote(account, damagedHttp)
+                remote = r
+                val events = r.events("s")
+                r.start()
+                val failed = withTimeout(5000) { events.first { it.error != null } }
                 assertNotNull(failed.error)
                 assertEquals(if (damage == "current-cipher") 1 else 0, failed.events.size)
                 assertTrue(failed.verifiedEvents.isEmpty())
                 assertEquals(if (damage == "current-cipher") 1 else 0, failed.unavailableCount)
                 return
-            }
-            val events = r.events("s")
-            run {
-                val suffix = withTimeout(5000) { events.first { it.events.size == 2 } }
-                assertEquals(1, suffix.unavailableCount)
-                assertEquals(Event.KindCase.KIND_NOT_SET, suffix.events[0].kindCase)
-                assertEquals(listOf(2L), suffix.verifiedEvents.map { it.seq })
-                d.upload("s", message("live message"))
-                val live = withTimeout(5000) { events.first { it.events.size == 3 } }
-                assertEquals("live message", live.events[2].agentMessage.text)
-                assertNull(live.error)
             }
         } finally {
             remote?.close()
@@ -196,45 +215,6 @@ class Codex2RecoveryIngestionTest {
             server.close()
         }
     }
-
-    @Suppress("UNCHECKED_CAST")
-    private fun <T> field(remote: Remote, name: String): T =
-        Remote::class.java.getDeclaredField(name).apply { isAccessible = true }.get(remote) as T
-
-    private fun prepareIngestion(remote: Remote, machine: String, seed: ByteArray) {
-        field<MutableMap<String, SessionView>>(remote, "sessions")["s"] = SessionView("s", machine)
-        field<MutableMap<String, ByteArray>>(remote, "sessionKeys")["s"] = seed
-        val type = Remote::class.java.declaredClasses.first { it.simpleName == "Buffer" }
-        val buffer = type.getDeclaredConstructor().apply { isAccessible = true }.newInstance()
-        type
-            .getDeclaredField("usedAt")
-            .apply { isAccessible = true }
-            .setLong(buffer, System.currentTimeMillis())
-        field<MutableMap<String, Any>>(remote, "buffers")["s"] = buffer
-    }
-
-    private suspend fun invokeIngestion(remote: Remote, stored: List<StoredEvent>): Unit =
-        kotlin.coroutines.intrinsics.suspendCoroutineUninterceptedOrReturn { continuation ->
-            val method =
-                Remote::class
-                    .java
-                    .declaredMethods
-                    .first { it.name == "ingest" }
-                    .apply { isAccessible = true }
-            try {
-                method.invoke(remote, "s", stored, false, false, false, continuation)
-            } catch (e: java.lang.reflect.InvocationTargetException) {
-                throw e.targetException
-            }
-        }
-
-    private fun eventSnapshot(remote: Remote) =
-        field<MutableMap<String, kotlinx.coroutines.flow.MutableStateFlow<SessionEvents>>>(
-                remote,
-                "eventFlows",
-            )
-            .getValue("s")
-            .value
 
     private fun message(text: String) =
         Event.newBuilder().setAgentMessage(AgentMessage.newBuilder().setText(text))

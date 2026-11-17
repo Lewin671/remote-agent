@@ -515,9 +515,8 @@ class MachineStatusShotsTest {
         val state = stateOf(m)
         val prompt = text(UiMessages.machineStatusCleanupPrompt())
         assertEquals("/example/demo", prepareCleanupDraft(state, "m", prompt))
-        val entry = Drafts.newSession("/example/demo", null)
+        val entry = ImageDrafts.forProject("/example/demo")
         assertEquals(prompt, entry.text.value)
-        assertEquals("m", entry.config.value?.machineId)
         // A second press adds nothing but the words, after what the user wrote meanwhile.
         entry.text.value = "先看看日志"
         prepareCleanupDraft(state, "m", prompt)

@@ -33,13 +33,6 @@ fun assertMessageEquals(expected: Any?, actual: Any?) {
         is SessionLookup.Failed -> listOf("failed", rendered(value.reason))
         is QuotaWindowDescriptor -> listOf(rendered(value.label), rendered(value.group), value.groupId)
         is List<*> -> value.map { rendered(it) }
-        is HomeItem.Tail -> rendered(value.tail)
-        is HomeTail.Text -> listOf("text", rendered(value.text))
-        is HomeTail.Earlier -> listOf("earlier", rendered(value.text), value.retry)
-        is ApprovalCardText -> listOf(rendered(value.kind), rendered(value.time), value.hot, rendered(value.title), rendered(value.place))
-        is HomeHeadline -> listOf(value.kind, rendered(value.title), rendered(value.sub), value.subError, value.subPath, value.details)
-        is SessionRowText -> listOf(rendered(value.title), rendered(value.time), value.status, rendered(value.preview), rendered(value.meta), value.agent)
-        is PendingRowText -> listOf(rendered(value.title), rendered(value.kind), rendered(value.summary))
         else -> value
     }
     org.junit.Assert.assertEquals(rendered(expected), rendered(actual))

@@ -140,6 +140,8 @@ tasks.withType<Test>().configureEach {
     systemProperty("scheduleClients", rootProject.file("../testdata/schedules/clients.json").absolutePath)
     inputs.file(rootProject.file("../testdata/markdown/cases.json")).withPathSensitivity(PathSensitivity.NONE)
     inputs.file(rootProject.file("../testdata/terminal/history-sgr.json")).withPathSensitivity(PathSensitivity.NONE)
+    inputs.dir(rootProject.file("../testdata/screens")).withPathSensitivity(PathSensitivity.RELATIVE)
+    systemProperty("screenGoldens", rootProject.file("../testdata/screens").absolutePath)
 }
 
 ksp {

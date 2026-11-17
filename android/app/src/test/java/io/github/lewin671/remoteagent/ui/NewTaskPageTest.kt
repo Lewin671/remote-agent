@@ -1,23 +1,61 @@
 package io.github.lewin671.remoteagent.ui
 
 import android.app.Application
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.width
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.semantics.SemanticsActions
-import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.test.*
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.test.assert
+import androidx.compose.ui.test.assertContentDescriptionEquals
+import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsFocused
+import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.assertTextContains
+import androidx.compose.ui.test.assertTextEquals
+import androidx.compose.ui.test.click
+import androidx.compose.ui.test.hasSetTextAction
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
-import io.github.lewin671.remoteagent.core.*
+import androidx.compose.ui.test.onAllNodesWithContentDescription
+import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performSemanticsAction
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.text.TextLayoutResult
+import androidx.compose.ui.unit.dp
+import io.github.lewin671.remoteagent.core.Account
+import io.github.lewin671.remoteagent.core.Api
+import io.github.lewin671.remoteagent.core.ConnState
+import io.github.lewin671.remoteagent.core.MachineView
+import io.github.lewin671.remoteagent.core.PROTOCOL_VERSION
+import io.github.lewin671.remoteagent.core.PrefsObject
+import io.github.lewin671.remoteagent.core.Remote
+import io.github.lewin671.remoteagent.core.RemoteState
+import io.github.lewin671.remoteagent.core.UiMessages
+import io.github.lewin671.remoteagent.core.proto.ModelOptionView
+import io.github.lewin671.remoteagent.core.proto.NewSessionModelPanelView
+import io.github.lewin671.remoteagent.core.proto.Text as CoreText
 import io.github.lewin671.remoteagent.data.ThemeMode
-import io.github.lewin671.remoteagent.proto.*
-import org.junit.*
+import io.github.lewin671.remoteagent.proto.Agent
+import io.github.lewin671.remoteagent.proto.AgentInfo
+import io.github.lewin671.remoteagent.proto.DaemonSettings
+import io.github.lewin671.remoteagent.proto.ListModelsResponse
+import io.github.lewin671.remoteagent.proto.MachineMeta
+import io.github.lewin671.remoteagent.proto.ModelInfo
+import io.github.lewin671.remoteagent.proto.ProjectPrefs
+import io.github.lewin671.remoteagent.proto.ProjectSummary
+import org.junit.After
+import org.junit.Assert
+import org.junit.Rule
+import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
@@ -31,12 +69,18 @@ class NewTaskPageTest {
     @get:Rule(order = 2) val appJobs = appFixture.stopJobs { done ->
         ui.waitUntil(5000) { ui.mainClock.advanceTimeByFrame(); ui.waitForIdle(); done() }
     }
-    private val remote = Remote(Account("http://127.0.0.1:1", ByteArray(32), ByteArray(32), "test-client"), Api.defaultHttp())
+    private val remote = Remote(Account("http://127.0.0.1:1", ByteArray(32), ByteArray(32), "test-client"), Api.defaultHttp(), dispatcher = kotlinx.coroutines.Dispatchers.Unconfined)
     private val nav = Nav({}, {}, {}, {}, {}, {}, {}, {}, { _, _ -> }, {}, {}, {})
     private val path = "/example/demo"
 
-    private fun machine(id: String) = MachineView(id, true, 0, MachineMeta.newBuilder().setHostname("host-$id").setProtocolVersion(PROTOCOL_VERSION)
-        .addAgents(AgentInfo.newBuilder().setAgent(Agent.AGENT_CODEX)).addAgents(AgentInfo.newBuilder().setAgent(Agent.AGENT_CLAUDE)).build())
+    private fun machine(id: String) = MachineView(
+        id, true, 0,
+        MachineMeta.newBuilder().setHostname("host-$id").setProtocolVersion(PROTOCOL_VERSION)
+            .addProjects(ProjectSummary.newBuilder().setPath(path))
+            .addAgents(AgentInfo.newBuilder().setAgent(Agent.AGENT_CODEX))
+            .addAgents(AgentInfo.newBuilder().setAgent(Agent.AGENT_CLAUDE))
+            .build(),
+    )
 
     private val models = ListModelsResponse.newBuilder().setDefaultModel("first")
         .addModels(ModelInfo.newBuilder().setSlug("first").setDisplayName("First").setDefaultEffort("medium").addAllEfforts(listOf("low", "medium", "high")))
@@ -48,19 +92,32 @@ class NewTaskPageTest {
         .build()
 
     private fun show(vararg ids: String) {
-        val state = RemoteState(conn = ConnState.ONLINE, loaded = true, synced = true, prefs = PrefsObject.EMPTY, machines = ids.associateWith { machine(it) })
-        remote.showForTest(state, modelLists = ids.associate { (it to Agent.AGENT_CODEX) to models })
+        val state = RemoteState(
+            conn = ConnState.ONLINE,
+            loaded = true,
+            synced = true,
+            prefs = PrefsObject(1, ProjectPrefs.newBuilder().setSchema(1).build()),
+            machines = ids.associateWith { machine(it) },
+        )
+        remote.showForTest(
+            state,
+            modelLists = ids.flatMap { id ->
+                listOf(Agent.AGENT_CODEX, Agent.AGENT_CLAUDE).map { (id to it) to models }
+            }.toMap(),
+        )
+        remote.coreHost.openNewSession(path)
         ui.setContent {
             RaTheme(ThemeMode.LIGHT) {
                 CompositionLocalProvider(LocalRemote provides remote, LocalNav provides nav) {
+                    val vm by remote.newSessionView.collectAsState()
                     val current by remote.state.collectAsState()
-                    NewSessionBox(current, NewConfig(ids.first(), path, Agent.AGENT_CODEX), "demo", focus = false, settled = current.loaded, onProject = {})
+                    NewSessionBox(vm, current, focus = false, onProject = {})
                 }
             }
         }
     }
 
-    @After fun close() { remote.close(); Drafts.clear(); ImageDrafts.clear(); PrefsChanges.clear() }
+    @After fun close() { remote.close(); Drafts.clear(); ImageDrafts.clear(); Starts.clear() }
 
     @Test fun theTitleSaysWhereAndTheBoxHoldsTheRest() {
         show("a", "b")
@@ -110,107 +167,53 @@ class NewTaskPageTest {
         field.assertIsFocused()
     }
 
-    private fun selectSecondModel() {
-        ui.waitUntil(5000) { ui.onAllNodesWithContentDescription(messageTextForTest(UiMessages.modelsSummaryEffortLabel(messageTextForTest(UiMessages.modelsDefault()), "First"))).fetchSemanticsNodes().isNotEmpty() }
-        ui.onNodeWithTag("new-model").performClick()
-        ui.onNodeWithText("Second").performClick()
-    }
-
-    @Test fun selectingModelThenTappingTextSavesAndUpdatesChip() {
-        show("a")
-        val field = ui.onNode(hasSetTextAction())
-        field.performClick()
-        val box = ui.onNodeWithTag("new-composer").fetchSemanticsNode().boundsInRoot
-        selectSecondModel()
-        field.performTouchInput { click() }
-        ui.onNodeWithTag("new-model-popover").assertDoesNotExist()
-        ui.onNodeWithTag("new-model").assertContentDescriptionEquals(messageTextForTest(UiMessages.modelsSummaryEffortLabel(messageTextForTest(UiMessages.modelsDefault()), "Second")))
-        field.assertIsFocused()
-        Assert.assertEquals(box, ui.onNodeWithTag("new-composer").fetchSemanticsNode().boundsInRoot)
-        ui.runOnIdle {
-            val config = Drafts.newSession(path, null).config.value!!
-            Assert.assertEquals("second", config.model)
-            Assert.assertEquals("", config.effort)
-            Assert.assertNotNull(PrefsChanges.states[path])
-        }
-    }
-
-    @Test fun machineChangeCancelsPendingModelWithoutSavingToEitherMachine() {
+    @Test fun machineChangeClosesPopoverAndUpdatesMachine() {
         show("a", "b")
-        selectSecondModel()
-        ui.runOnIdle { Drafts.newSession(path, null).config.choose(NewConfig("b", path, Agent.AGENT_CODEX)) }
+        ui.onNodeWithTag("new-model").performClick()
+        ui.onNodeWithTag("new-model-popover").assertExists()
+        ui.runOnIdle { remote.coreHost.selectNewSessionMachine("b") }
+        ui.waitUntil(2000) { remote.newSessionView.value.config.machineId == "b" }
+        ui.waitForIdle()
         ui.onNodeWithTag("new-model-popover").assertDoesNotExist()
         ui.runOnIdle {
-            Assert.assertEquals("b", Drafts.newSession(path, null).config.value!!.machineId)
-            Assert.assertEquals("", Drafts.newSession(path, null).config.value!!.model)
-            Assert.assertNull(PrefsChanges.states[path])
+            Assert.assertEquals("b", remote.newSessionView.value.config.machineId)
+            Assert.assertEquals("first", remote.newSessionView.value.config.model)
         }
     }
-
-    @Test fun agentChangeCancelsPendingModel() {
-        show("a")
-        selectSecondModel()
-        ui.runOnIdle { Drafts.newSession(path, null).config.choose(NewConfig("a", path, Agent.AGENT_CLAUDE)) }
-        ui.onNodeWithTag("new-model-popover").assertDoesNotExist()
-        ui.runOnIdle {
-            Assert.assertEquals(Agent.AGENT_CLAUDE, Drafts.newSession(path, null).config.value!!.agent)
-            Assert.assertEquals("", Drafts.newSession(path, null).config.value!!.model)
-            Assert.assertNull(PrefsChanges.states[path])
-        }
-    }
-
-    private fun closingBlockedEditDoesNotSave(change: (RemoteState) -> RemoteState) {
-        show("a")
-        selectSecondModel()
-        ui.runOnIdle { remote.showForTest(change(remote.state.value)) }
-        ui.onNode(hasSetTextAction()).performTouchInput { click() }
-        ui.onNodeWithTag("new-model-popover").assertDoesNotExist()
-        ui.runOnIdle {
-            Assert.assertEquals("", Drafts.newSession(path, null).config.value!!.model)
-            Assert.assertNull(PrefsChanges.states[path])
-        }
-    }
-
-    @Test fun blockedPreferencesPreventDismissalSave() = closingBlockedEditDoesNotSave { it.copy(conn = ConnState.OFFLINE) }
-    @Test fun unsettledSettingsPreventDismissalSave() = closingBlockedEditDoesNotSave { it.copy(loaded = false) }
 
     @Test fun doneAndNativeDismissalCommitOnlyOnceAndCancellationDoesNotCommit() {
         var saves = 0
         val picker = ComposerPicker { saves++ }
         picker.toggle("model")
-        picker.close() // 完成
-        picker.dismissOutside() // queued native outside event
-        picker.close() // underlying page DOWN
+        picker.close()
+        picker.dismissOutside()
+        picker.close()
         Assert.assertEquals(1, saves)
         picker.toggle("model")
-        picker.cancel() // destination changed
+        picker.cancel()
         picker.dismissOutside()
         Assert.assertEquals(1, saves)
         picker.toggle("model")
-        picker.toggle("model") // re-tap
+        picker.toggle("model")
         Assert.assertEquals(2, saves)
     }
 
-    @Test fun unchosenEffortStaysEmptyInRequestAndChosenEffortIsForwarded() {
-        val initial = NewConfig("a", path, Agent.AGENT_CODEX)
-        Assert.assertEquals("", newTaskRequest(initial, "hello", emptyList(), emptyList()).effort)
-        Assert.assertEquals("low", newTaskRequest(initial.copy(effort = "low"), "hello", emptyList(), emptyList()).effort)
-        val selected = chooseNewTaskModel(initial, "second", models, null)
-        Assert.assertEquals("", newTaskRequest(selected, "hello", emptyList(), emptyList()).effort)
-        Assert.assertEquals("Second · 默认", newTaskModelSummary(selected, models, null, true, false).label.testText())
-    }
-
-    @Test fun effortAndModelApplyImmediatelyAndAllModelsIsASeparatePage() {
+    @Test fun effortAndModelApplyAndAllModelsIsASeparatePage() {
         show("a")
-        ui.waitUntil(5000) { ui.onAllNodesWithContentDescription(messageTextForTest(UiMessages.modelsSummaryEffortLabel(messageTextForTest(UiMessages.modelsDefault()), "First"))).fetchSemanticsNodes().isNotEmpty() }
+        ui.runOnIdle {
+            Assert.assertTrue(
+                "models=${remote.newSessionView.value.modelPanel.modelsCount} key=${remote.newSessionView.value.projectKey} cfg=${remote.newSessionView.value.config.machineId}/${remote.newSessionView.value.config.agent} err=${remote.newSessionView.value.modelPanel.modelsError.key}:${remote.newSessionView.value.modelPanel.modelsError.literal}",
+                remote.newSessionView.value.modelPanel.modelsCount > 0,
+            )
+        }
         ui.onNodeWithTag("new-model").performClick()
         ui.onNodeWithTag("new-model").assertIsSelected()
         ui.onNodeWithText("low").performClick()
+        ui.waitUntil(2000) { remote.newSessionView.value.config.effort == "low" }
         ui.onNodeWithTag("new-model").assertContentDescriptionEquals("模型：First，推理强度：low")
         ui.onNodeWithText("Second").performClick()
-        ui.onNodeWithTag("new-model").assertContentDescriptionEquals("模型：Second，推理强度：low")
+        ui.onNodeWithTag("new-model").assertContentDescriptionEquals("模型：Second，推理强度：high")
         ui.onNodeWithTag("new-model-popover").assertExists()
-        ui.runOnIdle { Assert.assertNull(PrefsChanges.states[path]) }
         ui.onNodeWithTag("new-model-show-all").performScrollTo().performClick()
         ui.onNodeWithTag("new-model-all").assertExists()
         ui.onNodeWithTag("new-model-main").assertDoesNotExist()
@@ -220,45 +223,26 @@ class NewTaskPageTest {
         ui.onNodeWithText("Sixth").performScrollTo().performClick()
         ui.onNodeWithTag("new-model-main").assertExists()
         ui.onNodeWithTag("new-model-all").assertDoesNotExist()
+        ui.onNodeWithTag("new-model").assertContentDescriptionEquals("模型：Sixth，推理强度：ultra")
+        ui.onNodeWithText("low").performClick()
         ui.onNodeWithTag("new-model").assertContentDescriptionEquals("模型：Sixth，推理强度：low")
         ui.onNodeWithText(messageTextForTest(UiMessages.commonDone())).performClick()
         ui.onNodeWithTag("new-model-popover").assertDoesNotExist()
         ui.runOnIdle {
-            Assert.assertEquals("sixth", Drafts.newSession(path, null).config.value!!.model)
-            Assert.assertEquals("low", Drafts.newSession(path, null).config.value!!.effort)
-            Assert.assertNotNull(PrefsChanges.states[path])
+            Assert.assertEquals("sixth", remote.newSessionView.value.config.model)
+            Assert.assertEquals("low", remote.newSessionView.value.config.effort)
         }
-    }
-
-    @Test fun summaryUsesExplicitEffortAndOmitsFixedMissingAndUnknownEfforts() {
-        val c = NewConfig("a", path, Agent.AGENT_CODEX)
-        fun summary(config: NewConfig = c, single: Boolean = false) = newTaskModelSummary(config, models, null, true, single)
-        Assert.assertEquals("First · 默认", summary().label.testText())
-        Assert.assertEquals("Codex · First · high", summary(c.copy(effort = "high"), true).label.testText())
-        Assert.assertEquals("Third", summary(c.copy(model = "third")).label.testText())
-        Assert.assertEquals("Fourth", summary(c.copy(model = "fourth")).label.testText())
-        Assert.assertEquals("custom", summary(c.copy(model = "custom", effort = "high")).label.testText())
-        Assert.assertEquals(messageTextForTest(UiMessages.newSessionReadingSettings()), newTaskModelSummary(c, null, null, false, false).label.testText())
-        Assert.assertEquals(messageTextForTest(UiMessages.newSessionDefaultModel()), newTaskModelSummary(c, null, null, true, false).label.testText())
-        val settings = DaemonSettings.newBuilder().setDefaultModel("second").setDefaultEffort("low").build()
-        Assert.assertEquals("Second · 默认", newTaskModelSummary(c, models, settings, true, false).label.testText())
-        Assert.assertEquals("custom", newTaskModelSummary(c, models, settings.toBuilder().setDefaultModel("custom").build(), true, false).label.testText())
-    }
-
-    @Test fun changingModelKeepsExplicitSupportedEffortOtherwiseLeavesDefault() {
-        val c = NewConfig("a", path, Agent.AGENT_CODEX)
-        Assert.assertEquals("", chooseNewTaskModel(c, "second", models, null).effort)
-        Assert.assertEquals("low", chooseNewTaskModel(c.copy(effort = "low"), "second", models, null).effort)
-        Assert.assertEquals("", chooseNewTaskModel(c.copy(model = "sixth", effort = "ultra"), "", models, null).effort)
-        Assert.assertEquals("", chooseNewTaskModel(c, "fourth", models, null).effort)
-        Assert.assertEquals("", chooseNewTaskModel(c, "third", models, null).effort)
     }
 
     @org.robolectric.annotation.GraphicsMode(org.robolectric.annotation.GraphicsMode.Mode.NATIVE)
     @Test fun longSummaryEllipsizesOnlyModelKeepingWholeEffort() {
-        ui.setContent { RaTheme(ThemeMode.LIGHT) {
-            Box(Modifier.width(200.dp)) { NewTaskModelLabel(NewTaskModelSummary("A very long model display name that cannot fit", "medium", "Codex · ")) }
-        } }
+        ui.setContent {
+            RaTheme(ThemeMode.LIGHT) {
+                Box(Modifier.width(200.dp)) {
+                    NewTaskModelLabel("A very long model display name that cannot fit", "medium", "Codex · ")
+                }
+            }
+        }
         fun layout(tag: String): TextLayoutResult {
             val results = mutableListOf<TextLayoutResult>()
             ui.onNodeWithTag(tag).performSemanticsAction(SemanticsActions.GetTextLayoutResult) { it(results) }
@@ -272,9 +256,11 @@ class NewTaskPageTest {
     }
 
     private fun toolRow(width: Int, model: String) {
-        ui.setContent { RaTheme(ThemeMode.LIGHT) {
-            NewTaskTools(Agent.AGENT_CLAUDE, NewTaskModelSummary(model, "medium"), false, {}, {}, Modifier.width(width.dp))
-        } }
+        ui.setContent {
+            RaTheme(ThemeMode.LIGHT) {
+                NewTaskToolsRow(Agent.AGENT_CLAUDE, "Claude Code", model, "medium", "", false, {}, {}, Modifier.width(width.dp))
+            }
+        }
     }
 
     private fun modelTextLayout(): TextLayoutResult {
@@ -302,7 +288,6 @@ class NewTaskPageTest {
 
     @org.robolectric.annotation.GraphicsMode(org.robolectric.annotation.GraphicsMode.Mode.NATIVE)
     @Test fun toolRowTruncatesLongModelAfterCollapsingCliKeepingUsefulPrefixAndEffort() {
-        // Comparable to the space between the attachment/send buttons on a narrow phone.
         toolRow(220, "Opus 5.5 with a very long model name")
         ui.onNodeWithTag("new-agent").assertContentDescriptionEquals(messageTextForTest(UiMessages.newSessionCliLabel("Claude Code")))
             .assert(hasText("Claude Code").not())
@@ -323,12 +308,25 @@ class NewTaskPageTest {
     }
 
     @Test fun effortAndContextStayFixedWhileModelListScrolls() {
-        ui.setContent { RaTheme(ThemeMode.LIGHT) {
-            Column(Modifier.width(360.dp).height(320.dp)) {
-                NewTaskModelPanel(NewConfig("a", path, Agent.AGENT_CLAUDE, model = "first"), models, "", null,
-                    "test computer", true, {}, edit = {})
+        val panel = NewSessionModelPanelView.newBuilder()
+            .setPanelEnabled(true)
+            .setDefaultModelLabel(CoreText.newBuilder().setKey(UiMessages.modelsDefault().key))
+            .addAllModels(
+                models.modelsList.map { m ->
+                    ModelOptionView.newBuilder().setSlug(m.slug).setDisplayName(m.displayName).setChecked(m.slug == "first").build()
+                },
+            )
+            .addAllEffortChoices(listOf("low", "medium", "high"))
+            .setSelectedEffort("medium")
+            .setSupportsContextWindow(true)
+            .build()
+        ui.setContent {
+            RaTheme(ThemeMode.LIGHT) {
+                Column(Modifier.width(360.dp).height(320.dp)) {
+                    NewTaskModelPanel(panel, "test computer", "first", { _, _, _ -> }, {}, {})
+                }
             }
-        } }
+        }
         val controls = ui.onNodeWithTag("new-model-controls")
         val before = controls.fetchSemanticsNode().boundsInRoot
         val header = ui.onNodeWithText("模型").fetchSemanticsNode().boundsInRoot
