@@ -3,6 +3,7 @@ package io.github.lewin671.remoteagent.core.transport
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
@@ -62,7 +63,7 @@ internal class Router(val path: Path) {
             }
         }
 
-        primaryJob = launch {
+        primaryJob = launch(start = CoroutineStart.LAZY) {
             val res = try {
                 primary()
             } catch (e: CancellationException) {
@@ -73,7 +74,7 @@ internal class Router(val path: Path) {
             }
             finish(isPrimary = true, res)
         }
-        fallbackJob = launch {
+        fallbackJob = launch(start = CoroutineStart.LAZY) {
             val res = try {
                 fallback()
             } catch (e: CancellationException) {
@@ -84,6 +85,8 @@ internal class Router(val path: Path) {
             }
             finish(isPrimary = false, res)
         }
+        primaryJob.start()
+        fallbackJob.start()
         try {
             winner.await()
         } catch (e: CancellationException) {

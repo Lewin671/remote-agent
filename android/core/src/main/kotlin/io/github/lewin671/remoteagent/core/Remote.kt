@@ -274,7 +274,7 @@ class Remote(
 
     fun directStatusReport(machineId: String): DirectRouteReport = effectiveDirectStatus(machineId).toRouteReport()
 
-    internal val deviceLink = DeviceLink(RelayPath(
+    internal var deviceLink = DeviceLink(RelayPath(
         api = api,
         sockets = { socketFactory ?: streamHttp },
         token = { currentToken() },
@@ -1512,7 +1512,7 @@ class Remote(
         else -> false
     }
 
-    private suspend fun dispatchSingleCommand(
+    internal suspend fun dispatchSingleCommand(
         eff: io.github.lewin671.remoteagent.core.proto.DispatchCommandEffect,
     ): CommandOutcomeEvent {
         fun localFailure(code: String, detail: String = ""): CommandOutcomeEvent =
@@ -1593,6 +1593,14 @@ class Remote(
                 false to baseOutcome(OutcomeSource.OUTCOME_SOURCE_TRANSPORT).setNotForwarded(!handed)
                     .setTransportCode(if (unresolvedHost(e)) "unresolved_host" else "network")
                     .setTransportDetail(e.message ?: e.javaClass.simpleName).build()
+            } catch (e: Exception) {
+                if (e is CancellationException) throw e
+                val handed = handedOffRef()
+                false to baseOutcome(if (handed) OutcomeSource.OUTCOME_SOURCE_TRANSPORT else OutcomeSource.OUTCOME_SOURCE_LOCAL)
+                    .setNotForwarded(!handed)
+                    .setTransportCode("failed_precondition")
+                    .setTransportDetail(e.message ?: e.javaClass.simpleName)
+                    .build()
             }
         }
 
@@ -1614,7 +1622,26 @@ class Remote(
                         },
                     )
                 } catch (failed: LegOutcomeException) {
-                    failed.outcome.toBuilder().setNotForwarded(failed.outcome.notForwarded && !directHandedOff.get()).build()
+                    val anyHandedOff = directHandedOff.get() || relayHandedOff.get()
+                    val b = failed.outcome.toBuilder()
+                    if (anyHandedOff) {
+                        b.setNotForwarded(false)
+                        if (failed.outcome.source == OutcomeSource.OUTCOME_SOURCE_LOCAL || failed.outcome.source == OutcomeSource.OUTCOME_SOURCE_SERVER) {
+                            b.setSource(OutcomeSource.OUTCOME_SOURCE_TRANSPORT)
+                        }
+                    }
+                    b.build()
+                } catch (e: Exception) {
+                    if (e is CancellationException) throw e
+                    val anyHandedOff = directHandedOff.get() || relayHandedOff.get()
+                    CommandOutcomeEvent.newBuilder()
+                        .setRequestId(eff.requestId)
+                        .setAttemptId(eff.attemptId)
+                        .setSource(if (anyHandedOff) OutcomeSource.OUTCOME_SOURCE_TRANSPORT else OutcomeSource.OUTCOME_SOURCE_LOCAL)
+                        .setNotForwarded(!anyHandedOff)
+                        .setTransportCode("failed_precondition")
+                        .setTransportDetail(e.message ?: e.javaClass.simpleName)
+                        .build()
                 }
             }
         }

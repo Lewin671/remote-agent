@@ -448,7 +448,7 @@ private class DirectBridgeDaemon(
                         val (h, pt) = open(env)
                         val cmd = Command.parseFrom(pt)
                         directCommands += cmd
-                        if (cmd.hasPutImageChunk() && dropDirectOnNextPut) {
+                        if ((cmd.hasPutImageChunk() || cmd.hasSend()) && dropDirectOnNextPut) {
                             dropDirectOnNextPut = false
                             onDropDirect()
                             return@DirectSessionOptions
@@ -1090,6 +1090,103 @@ class DirectTransportTest {
         assertEquals("from-direct", got)
         releaseRelay.complete(DualLegResult.Trusted("late-relay"))
         assertEquals("from-direct", got)
+    }
+
+    @Test
+    fun routerDualMultiThreadedStressDoesNotCrashOnUninitializedFallbackJob() = runBlocking {
+        val router = Router(
+            object : Path {
+                override fun status(machineId: String) = PeerState(ready = true, reachable = true, authorized = true, unlinked = false, relayRequired = false)
+                override fun attempt(handoff: () -> Unit): PathAttempt = throw UnsupportedOperationException()
+                override fun openStream(address: String, listener: FrameListener): FrameStream = throw UnsupportedOperationException()
+            },
+        )
+        repeat(200) {
+            val got = kotlinx.coroutines.withContext(Dispatchers.Default) {
+                router.dual(
+                    primary = { DualLegResult.Trusted("direct") },
+                    fallback = {
+                        delay(1)
+                        DualLegResult.Trusted("relay")
+                    },
+                )
+            }
+            assertEquals("direct", got)
+        }
+    }
+
+    @Test
+    fun dispatchCommandNeverReportsNotSentWhenDirectHandedOffAndRelayThrowsRuntimeException() = runBlocking {
+        val server = TestServer()
+        val http = Api.defaultHttp()
+        try {
+            val phone = newAuthorityAccount(ByteArray(32) { 11 }, server.url, http, server.setupToken)
+            val daemonAccount = approvedClient(phone, http, DeviceKind.DEVICE_KIND_MACHINE)
+            val clientAccount = approvedClient(phone, http, DeviceKind.DEVICE_KIND_CLIENT)
+            val bridge = FakeRtcBridge()
+            val daemon = DirectBridgeDaemon(daemonAccount, server.url, http, System::currentTimeMillis, bridge.daemonFactory)
+            daemon.onDropDirect = {
+                bridge.phonePcs.toList().forEach { it.dropAllChannels() }
+            }
+            daemon.dropDirectOnNextPut = true
+            daemon.start()
+            val remote = Remote(
+                account = clientAccount,
+                http = http,
+                securityStorage = TestSecurity.find(server.url)?.stores?.get(clientAccount.deviceId),
+                rtcFactory = bridge.phoneFactory,
+                directPrefs = InMemoryDirectPreferenceStore(),
+                stunUrls = emptyList(),
+            )
+            val id = daemonAccount.deviceId
+            try {
+                remote.start()
+                withTimeout(10_000) { remote.state.first { it.conn == ConnState.ONLINE && id in it.machines } }
+                remote.syncSecurity()
+                awaitCondition("direct ready", 10_000) { remote.direct.ready(id, RouteHint.Read) }
+
+                val origPath = remote.deviceLink.router.path
+                remote.deviceLink = Link(
+                    object : Path {
+                        override fun status(machineId: String) = origPath.status(machineId)
+                        override fun attempt(handoff: () -> Unit): PathAttempt = object : PathAttempt {
+                            override val attemptId = "relay-runtime-ex"
+                            override suspend fun prepare(prior: Boolean) {}
+                            override suspend fun send(machineId: String, command: Envelope): io.github.lewin671.remoteagent.proto.ForwardResponse {
+                                throw SecurityException("simulated OS background socket restriction")
+                            }
+                            override fun refusal(error: com.connectrpc.ConnectException): PathRefusal? = null
+                            override suspend fun refreshAuth(prior: Boolean) {}
+                        }
+                        override fun openStream(address: String, listener: FrameListener) = origPath.openStream(address, listener)
+                    },
+                )
+                val cmd = Command.newBuilder()
+                    .setProtocolVersion(PROTOCOL_VERSION)
+                    .setSend(io.github.lewin671.remoteagent.proto.SendRequest.newBuilder().setSessionId("s1").setText("hello").build())
+                    .build()
+                val eff = io.github.lewin671.remoteagent.core.proto.DispatchCommandEffect.newBuilder()
+                    .setRequestId("req-dual-runtime-ex")
+                    .setAttemptId("att-1")
+                    .setMachineId(id)
+                    .setSessionId("s1")
+                    .setDeadlineMs(System.currentTimeMillis() + 5_000L)
+                    .setCommandBytes(cmd.toByteString())
+                    .build()
+                val outcome = try {
+                    remote.dispatchSingleCommand(eff)
+                } catch (e: Exception) {
+                    fail("dispatchSingleCommand leaked exception into executeDispatchCommand where it would become not_sent: $e")
+                    return@runBlocking
+                }
+                assertFalse("must never report notForwarded=true after direct handed off: $outcome", outcome.notForwarded)
+            } finally {
+                remote.close()
+                daemon.close()
+            }
+        } finally {
+            server.close()
+        }
     }
 
     @Test
