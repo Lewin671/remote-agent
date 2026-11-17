@@ -343,6 +343,7 @@ type Engine struct {
 	activeCacheBootID   uint64
 	cachedToken         string
 	tokenExpiresMs      int64
+	forceLogin          bool
 	legID               uint64
 	offlineSinceMs      int64
 	connStartedAtMs     int64

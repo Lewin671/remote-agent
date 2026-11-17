@@ -28,7 +28,6 @@
           {
             "ensureToken": {
               "opId": "2",
-              "forceLogin": true,
               "timeoutMs": "15000"
             }
           },

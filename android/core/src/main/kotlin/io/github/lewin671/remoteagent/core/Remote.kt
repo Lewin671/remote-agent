@@ -439,10 +439,10 @@ class Remote(
 
     // --- Token Gate ---
 
-    private suspend fun ensureTokenForCore(opId: Long, @Suppress("UNUSED_PARAMETER") forceLogin: Boolean) {
+    private suspend fun ensureTokenForCore(opId: Long, forceLogin: Boolean) {
         val b = TokenResultEvent.newBuilder().setOpId(opId)
         try {
-            val tok = resolveLoginToken(forceLogin = false)
+            val tok = resolveLoginToken(forceLogin = forceLogin)
             b.setToken(tok.token).setExpiresMs(tok.expiresMs)
         } catch (_: AccountRemoved) {
             b.setRemoved(true).setErrorCode("unauthenticated")
@@ -477,6 +477,9 @@ class Remote(
                 val nowLocked = clock()
                 if (!forceLogin) {
                     cachedToken?.takeIf { it.expiresMs - LOGIN_REFRESH_MARGIN_MS > nowLocked }?.let { return it }
+                } else {
+                    cachedToken = null
+                    tokenStorage?.clearLoginToken(account)
                 }
                 val cur = inFlightToken
                 if (cur != null && !cur.isCompleted) {

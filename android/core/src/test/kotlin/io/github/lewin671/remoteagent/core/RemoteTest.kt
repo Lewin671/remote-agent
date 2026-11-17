@@ -795,6 +795,36 @@ class RemoteTest {
             r.awaitState("new title") { it.sessions["s1"]?.info?.title == "新的标题" }
         }
 
+    @Test
+    fun rejectedSavedTokenTriggersForceLoginAndReconnects() =
+        runBlocking<Unit> {
+            val acct = approvedClient(daemon.phone, http)
+            val stale = LoginToken("stale-token", System.currentTimeMillis() + 30L * 24 * 60 * 60 * 1000)
+            var clears = 0
+            var savedToken: LoginToken? = stale
+            val tokenStore = object : LoginTokenStore {
+                override fun loadLoginToken(account: Account): LoginToken? = savedToken
+                override fun saveLoginToken(account: Account, token: LoginToken) { savedToken = token }
+                override fun clearLoginToken(account: Account) {
+                    clears++
+                    // Keep returning stale if clear raced or failed; forceLogin must bypass storage.
+                }
+            }
+            val loginCalls = java.util.concurrent.atomic.AtomicInteger()
+            val trackedHttp = http.newBuilder().addInterceptor { chain ->
+                if (chain.request().url.encodedPath.endsWith("/Login")) loginCalls.incrementAndGet()
+                chain.proceed(chain.request())
+            }.build()
+            val r = fixtureRemote(acct, trackedHttp, tokenStorage = tokenStore)
+            closers += AutoCloseable { r.close() }
+            r.start()
+            val st = r.awaitState("online after forced relogin") { it.conn == ConnState.ONLINE && it.sessions["s1"]?.info != null }
+            assertEquals(ConnState.ONLINE, st.conn)
+            assertTrue("expected fresh Login RPC after 1008 rejection, got ${loginCalls.get()}", loginCalls.get() >= 1)
+            assertTrue("expected clearLoginToken called", clears >= 1)
+            assertTrue("expected fresh token saved", savedToken != null && savedToken?.value != stale.value)
+        }
+
     @Test fun generationConflictStopsTheFileUploadWithoutResync() = runBlocking<Unit> {
         val r = client()
         r.start()

@@ -273,6 +273,112 @@ func TestConnectionLifecycleRecoveryAndLiveness(t *testing.T) {
 	}
 }
 
+func TestForceLoginSemantics(t *testing.T) {
+	e := NewEngine()
+	now := int64(1_700_000_000_000)
+	ids, fs := seedEntropy(10)
+	_, startRes := e.HandleEvent(&corev1.Event{
+		NowMs:      now,
+		MonoMs:     1_000,
+		RandomIds:  ids,
+		UnitFloats: fs,
+		Event: &corev1.Event_SyncLifecycle{
+			SyncLifecycle: &corev1.SyncLifecycleAction{Kind: corev1.SyncLifecycleKind_SYNC_LIFECYCLE_KIND_START},
+		},
+	})
+	var tokOp uint64
+	var force bool
+	for _, eff := range startRes.Effects {
+		if et := eff.GetEnsureToken(); et != nil {
+			tokOp = et.OpId
+			force = et.ForceLogin
+		}
+	}
+	if tokOp == 0 || force {
+		t.Fatalf("expected cold START EnsureToken with ForceLogin=false, got op=%d force=%v", tokOp, force)
+	}
+
+	_, tokRes := e.HandleEvent(&corev1.Event{
+		NowMs:  now + 10,
+		MonoMs: 1_010,
+		Event: &corev1.Event_TokenResult{
+			TokenResult: &corev1.TokenResultEvent{OpId: tokOp, Token: "tok-stale", ExpiresMs: now + 60_000},
+		},
+	})
+	var legID uint64
+	for _, eff := range tokRes.Effects {
+		if os := eff.GetOpenStream(); os != nil {
+			legID = os.LegId
+		}
+	}
+	if legID == 0 {
+		t.Fatalf("expected OpenStreamEffect")
+	}
+
+	_, pvRes := e.HandleEvent(&corev1.Event{
+		NowMs:  now + 20,
+		MonoMs: 1_020,
+		Event: &corev1.Event_StreamClosed{
+			StreamClosed: &corev1.StreamClosedEvent{LegId: legID, PolicyViolation: true},
+		},
+	})
+	var pvTokOp uint64
+	var pvForce bool
+	var reconnectTimer uint64
+	var reconnectDelay int64
+	for _, eff := range pvRes.Effects {
+		if et := eff.GetEnsureToken(); et != nil {
+			pvTokOp = et.OpId
+			pvForce = et.ForceLogin
+		}
+		if st := eff.GetScheduleTimer(); st != nil && st.Kind == corev1.TimerKind_TIMER_KIND_RECONNECT {
+			reconnectTimer = st.TimerId
+			reconnectDelay = st.DelayMs
+		}
+	}
+	if pvTokOp == 0 && reconnectTimer != 0 {
+		_, timerRes := e.HandleEvent(&corev1.Event{
+			NowMs:  now + 20 + reconnectDelay,
+			MonoMs: 1_020 + reconnectDelay,
+			Event: &corev1.Event_TimerFired{
+				TimerFired: &corev1.TimerFiredEvent{
+					TimerId: reconnectTimer,
+					Kind:    corev1.TimerKind_TIMER_KIND_RECONNECT,
+				},
+			},
+		})
+		for _, eff := range timerRes.Effects {
+			if et := eff.GetEnsureToken(); et != nil {
+				pvTokOp = et.OpId
+				pvForce = et.ForceLogin
+			}
+		}
+	}
+	if pvTokOp == 0 || !pvForce {
+		t.Fatalf("expected PolicyViolation reconnect EnsureToken with ForceLogin=true, got op=%d force=%v", pvTokOp, pvForce)
+	}
+
+	_, retryTokRes := e.HandleEvent(&corev1.Event{
+		NowMs:  now + 30,
+		MonoMs: 1_030,
+		Event: &corev1.Event_TokenResult{
+			TokenResult: &corev1.TokenResultEvent{OpId: pvTokOp, Token: "tok-fresh", ExpiresMs: now + 120_000},
+		},
+	})
+	var leg2 uint64
+	for _, eff := range retryTokRes.Effects {
+		if os := eff.GetOpenStream(); os != nil {
+			leg2 = os.LegId
+		}
+	}
+	if leg2 == 0 {
+		t.Fatalf("expected OpenStreamEffect after forced login")
+	}
+	if e.forceLogin {
+		t.Fatalf("expected forceLogin cleared after TokenResult succeeded")
+	}
+}
+
 func TestPaginationAndPushRemovalRaces(t *testing.T) {
 	e := NewEngine()
 	now := int64(1_700_000_000_000)

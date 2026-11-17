@@ -119,6 +119,7 @@ func (e *Engine) handleLifecycle(ctx *StepContext, act *corev1.SyncLifecycleActi
 			return
 		}
 		e.removed = false
+		e.forceLogin = true
 		if e.cachedToken != "" {
 			ctx.emit(&corev1.Effect{
 				Effect: &corev1.Effect_DiscardToken{
@@ -222,12 +223,17 @@ func (e *Engine) beginConnect(ctx *StepContext) {
 	if e.everReady || e.networkGen > 0 {
 		timeout = min(StreamOpenTimeoutMs, TokenFastTimeoutMs)
 	}
+	if e.tokenExpiresMs > 0 && e.nowMs > 0 && e.nowMs >= e.tokenExpiresMs {
+		e.cachedToken = ""
+		e.tokenExpiresMs = 0
+		e.forceLogin = true
+	}
 	e.activeTokenOpID = e.allocOpID()
 	ctx.emit(&corev1.Effect{
 		Effect: &corev1.Effect_EnsureToken{
 			EnsureToken: &corev1.EnsureTokenEffect{
 				OpId:       e.activeTokenOpID,
-				ForceLogin: e.cachedToken == "",
+				ForceLogin: e.forceLogin,
 				TimeoutMs:  timeout,
 			},
 		},
@@ -258,6 +264,7 @@ func (e *Engine) handleTokenResult(ctx *StepContext, ev *corev1.TokenResultEvent
 		e.streamOpen = false
 		e.cachedToken = ""
 		e.tokenExpiresMs = 0
+		e.forceLogin = false
 		e.conn = lists.ConnOffline
 		if e.offlineSinceMs == 0 && e.nowMs > 0 {
 			e.offlineSinceMs = e.nowMs
@@ -278,6 +285,7 @@ func (e *Engine) handleTokenResult(ctx *StepContext, ev *corev1.TokenResultEvent
 	}
 	e.cachedToken = ev.Token
 	e.tokenExpiresMs = ev.ExpiresMs
+	e.forceLogin = false
 	e.connStepText = text.Msg(text.KeyErrorsEstablishingPushConnection)
 	legID := e.allocLegID()
 	e.legID = legID
@@ -352,14 +360,17 @@ func (e *Engine) onLegDropped(ctx *StepContext, legID uint64, policyViolation, u
 	e.cancelTimer(ctx, corev1.TimerKind_TIMER_KIND_STREAM_OPEN, "")
 	e.cancelTimer(ctx, corev1.TimerKind_TIMER_KIND_LIVENESS, "")
 
-	if policyViolation && e.cachedToken != "" {
-		ctx.emit(&corev1.Effect{
-			Effect: &corev1.Effect_DiscardToken{
-				DiscardToken: &corev1.DiscardTokenEffect{Token: e.cachedToken},
-			},
-		})
-		e.cachedToken = ""
-		e.tokenExpiresMs = 0
+	if policyViolation {
+		e.forceLogin = true
+		if e.cachedToken != "" {
+			ctx.emit(&corev1.Effect{
+				Effect: &corev1.Effect_DiscardToken{
+					DiscardToken: &corev1.DiscardTokenEffect{Token: e.cachedToken},
+				},
+			})
+			e.cachedToken = ""
+			e.tokenExpiresMs = 0
+		}
 	}
 
 	if !e.running {
