@@ -1,7 +1,7 @@
 import { create, fromBinary, toBinary } from "@bufbuild/protobuf";
 import * as l10n from "../i18n";
 import { getCore } from "../core/runtime";
-import { renderCoreText } from "../core/text";
+import { renderText as renderCoreText } from "../core/text";
 import {
   type ConnCheckDirectRowView,
   ConnectionGroupStage,
