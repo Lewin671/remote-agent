@@ -169,36 +169,6 @@
     }
   },
   {
-    "key": "approval.android_remaining_timeout",
-    "zh-CN": {
-      "plural": "count",
-      "forms": {
-        "other": "剩 {count} 分钟，超时拒绝"
-      }
-    },
-    "en": {
-      "plural": "count",
-      "forms": {
-        "one": "{count} min left; denied on timeout",
-        "other": "{count} min left; denied on timeout"
-      }
-    },
-    "notes": "Android 审批卡现有原句。剩余分钟向上取整，完整数量句；英文初稿待审。",
-    "params": {
-      "count": {
-        "type": "integer",
-        "example": 8
-      }
-    },
-    "platforms": [
-      "android"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
     "key": "approval.android_reply_expired",
     "zh-CN": "不确定「{decision}」有没有送到，它已过期，不会再重发",
     "en": "It is unclear whether “{decision}” arrived. It has expired and will not be resent",

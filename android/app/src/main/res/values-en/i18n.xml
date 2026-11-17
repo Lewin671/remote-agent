@@ -13,10 +13,6 @@
         <item quantity="other">" · %1$d min left"</item>
     </plurals>
     <string name="approval_android_prefix">"Do not ask again for commands starting with `%1$s`"</string>
-    <plurals name="approval_android_remaining_timeout">
-        <item quantity="one">"%1$d min left; denied on timeout"</item>
-        <item quantity="other">"%1$d min left; denied on timeout"</item>
-    </plurals>
     <string name="approval_android_reply_expired">"It is unclear whether “%1$s” arrived. It has expired and will not be resent"</string>
     <string name="approval_android_unknown_result" formatted="false">"Result unknown"</string>
     <string name="approval_approve" formatted="false">"Approve"</string>
@@ -179,7 +175,6 @@
     <string name="composer_write_failed" formatted="false">"Could not write to terminal"</string>
     <string name="connection_android_disconnected_at">"Disconnected at  %1$s"</string>
     <string name="connection_android_explanation" formatted="false">"This device is online, but the server is not responding. It may be stopped, restarting, or unreachable from this network. Reconnection will continue automatically, and missing content will be fetched once connected."</string>
-    <string name="connection_android_no_response" formatted="false">"The server is not responding"</string>
     <string name="connection_android_reason">"Reason  %1$s"</string>
     <string name="connection_android_retry_now" formatted="false">"Retry now"</string>
     <string name="connection_android_server">"Server  %1$s"</string>
@@ -289,7 +284,6 @@
     <string name="errors_android_login_expired">"Login expired: %1$s"</string>
     <string name="errors_android_only_the_managing_client_can_veto_recovery" formatted="false">"Only the managing client can veto recovery"</string>
     <string name="errors_android_open_value1_to_renew">"Open %1$s to renew"</string>
-    <string name="errors_android_other_clients_kept_changing_project_preferences_could_not_save" formatted="false">"Other clients kept changing project preferences. Could not save"</string>
     <string name="errors_android_pairing_approval_does_not_match_this_device_has_expired_or" formatted="false">"Pairing approval does not match this device, has expired, or has an invalid signature"</string>
     <string name="errors_android_records_from_before_recovery_are_unreadable" formatted="false">"Records from before recovery are unreadable"</string>
     <string name="errors_android_remote_control_authorization_expired_cannot_save_changes_control_sessions_or">"Remote control authorization expired. Cannot save changes, control sessions, or upload new content. %1$s and retry. History remains viewable"</string>

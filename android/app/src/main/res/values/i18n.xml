@@ -12,9 +12,6 @@
         <item quantity="other">" · 剩 %1$d 分钟"</item>
     </plurals>
     <string name="approval_android_prefix">"「%1$s」开头的命令以后不再问"</string>
-    <plurals name="approval_android_remaining_timeout">
-        <item quantity="other">"剩 %1$d 分钟，超时拒绝"</item>
-    </plurals>
     <string name="approval_android_reply_expired">"不确定「%1$s」有没有送到，它已过期，不会再重发"</string>
     <string name="approval_android_unknown_result" formatted="false">"结果未知"</string>
     <string name="approval_approve" formatted="false">"批准"</string>
@@ -169,7 +166,6 @@
     <string name="composer_write_failed" formatted="false">"写入终端失败"</string>
     <string name="connection_android_disconnected_at">"断开于　%1$s"</string>
     <string name="connection_android_explanation" formatted="false">"本机的网络是通的，但服务器没有回应。可能是服务器停了或正在重启，也可能是现在的网络到不了它。会一直自动重试，连上后补齐这段时间的内容。"</string>
-    <string name="connection_android_no_response" formatted="false">"服务器没有回应"</string>
     <string name="connection_android_reason">"原因　%1$s"</string>
     <string name="connection_android_retry_now" formatted="false">"重试"</string>
     <string name="connection_android_server">"服务器　%1$s"</string>
@@ -274,7 +270,6 @@
     <string name="errors_android_login_expired">"登录失效：%1$s"</string>
     <string name="errors_android_only_the_managing_client_can_veto_recovery" formatted="false">"只有管理端能否决恢复"</string>
     <string name="errors_android_open_value1_to_renew">"请打开%1$s续期"</string>
-    <string name="errors_android_other_clients_kept_changing_project_preferences_could_not_save" formatted="false">"项目偏好一直在被其他客户端修改，没能保存"</string>
     <string name="errors_android_pairing_approval_does_not_match_this_device_has_expired_or" formatted="false">"配对批准与这台设备不匹配、已过期或签名无效"</string>
     <string name="errors_android_records_from_before_recovery_are_unreadable" formatted="false">"恢复前的记录不可读"</string>
     <string name="errors_android_remote_control_authorization_expired_cannot_save_changes_control_sessions_or">"远程控制有效期已过，无法保存更改、控制会话或上传新内容；%1$s后重试。历史仍可查看"</string>

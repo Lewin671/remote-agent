@@ -211,20 +211,6 @@
     }
   },
   {
-    "key": "errors.android_other_clients_kept_changing_project_preferences_could_not_save",
-    "zh-CN": "项目偏好一直在被其他客户端修改，没能保存",
-    "en": "Other clients kept changing project preferences. Could not save",
-    "notes": "Android Prefs 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
-    "params": {},
-    "platforms": [
-      "android"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
     "key": "errors.android_pairing_approval_does_not_match_this_device_has_expired_or",
     "zh-CN": "配对批准与这台设备不匹配、已过期或签名无效",
     "en": "Pairing approval does not match this device, has expired, or has an invalid signature",
