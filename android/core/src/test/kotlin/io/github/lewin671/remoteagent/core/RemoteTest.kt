@@ -825,6 +825,56 @@ class RemoteTest {
             assertTrue("expected fresh token saved", savedToken != null && savedToken?.value != stale.value)
         }
 
+    @Test
+    fun initialSyncOver4096EventsNeverDropsCacheWrites() =
+        runBlocking<Unit> {
+            val sessionCount = 10
+            val eventsPerSession = 460 // 4,600 events total > previous 4,096 CACHE_REF_LIMIT
+            val sids = (0 until sessionCount).map { "bulk-$it" }
+            for (sid in sids) {
+                daemon.putSession(sid, session("/Users/me/Code/bulk", "Bulk $sid"))
+                val batch = (1..eventsPerSession).map { seq -> agent("msg-$sid-$seq") }.toTypedArray()
+                daemon.upload(sid, *batch)
+            }
+            val memory = MemoryCache()
+            val putGate = CompletableDeferred<Unit>()
+            val cache = object : CipherCache by memory {
+                override suspend fun putEvents(sessionId: String, events: List<StoredEvent>) {
+                    putGate.await()
+                    memory.putEvents(sessionId, events)
+                }
+            }
+            val r = client(cache = cache)
+            r.start()
+            r.awaitState("all bulk sessions listed") { st -> sids.all { st.sessions[it]?.info != null } }
+            // Watch all 10 sessions concurrently while cache disk writes are gated,
+            // so >4096 event objects pass through Core before cache writes drain.
+            val jobs = sids.map { sid ->
+                async {
+                    r.events(sid).first { it.events.size == eventsPerSession }
+                }
+            }
+            jobs.forEach { it.await() }
+            putGate.complete(Unit)
+            val deadline = System.currentTimeMillis() + 10_000L
+            while (System.currentTimeMillis() < deadline && sids.any { memory.events(it).size < eventsPerSession }) {
+                delay(20)
+            }
+            for (sid in sids) {
+                assertEquals("cache missing events for $sid", eventsPerSession, memory.events(sid).size)
+            }
+            assertEquals("expected zero leaked pending cache refs", 0, r.pendingCacheSizeForTest())
+
+            // Cold start against the populated cache restores every event without network.
+            val cold = fixtureRemote(r.account, http, memory)
+            closers += AutoCloseable { cold.close() }
+            cold.start()
+            for (sid in sids) {
+                val restored = withTimeout(10_000) { cold.events(sid).first { it.events.size == eventsPerSession } }
+                assertEquals(eventsPerSession, restored.events.size)
+            }
+        }
+
     @Test fun generationConflictStopsTheFileUploadWithoutResync() = runBlocking<Unit> {
         val r = client()
         r.start()

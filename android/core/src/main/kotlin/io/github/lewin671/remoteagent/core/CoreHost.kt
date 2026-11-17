@@ -169,9 +169,19 @@ class CoreHost(
         }
     }
 
-    fun dispatch(event: CoreEvent) {
-        if (closed.get()) return
-        mailbox.trySend { dispatchOnWorker(event) }
+    fun dispatch(event: CoreEvent, onProcessed: (() -> Unit)? = null) {
+        if (closed.get()) {
+            onProcessed?.invoke()
+            return
+        }
+        val res = mailbox.trySend {
+            try {
+                dispatchOnWorker(event)
+            } finally {
+                onProcessed?.invoke()
+            }
+        }
+        if (res.isFailure) onProcessed?.invoke()
     }
 
     suspend fun dispatchAndWait(event: CoreEvent): EffectBatch {

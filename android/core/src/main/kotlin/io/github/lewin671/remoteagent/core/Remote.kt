@@ -94,7 +94,6 @@ private const val STREAM_OPEN_MS = 15_000L
 private const val STREAM_FRAME_BYTES = 2 * 1024 * 1024
 private const val STREAM_QUEUE_BYTES = 8L * 1024 * 1024
 private const val POLICY_VIOLATION = 1008
-private const val CACHE_REF_LIMIT = 4096
 
 private class AccountRemoved : Exception()
 
@@ -168,22 +167,75 @@ class Remote(
         class PrefsObj(val p: AccountPrefsObject) : PendingCacheObject
     }
 
-    private val nextCacheRefId = AtomicLong(1L)
-    private val pendingCacheObjects = object : LinkedHashMap<String, PendingCacheObject>(256) {
-        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, PendingCacheObject>?): Boolean =
-            size > CACHE_REF_LIMIT
+    private sealed interface CacheWritePayload {
+        class MachineWrite(val m: Machine) : CacheWritePayload
+        class SessionWrite(val s: RemoteSession) : CacheWritePayload
+        class KeepOwnerWrite(val s: RemoteSession) : CacheWritePayload
+        class EventsWrite(val sessionId: String, val events: List<StoredEvent>) : CacheWritePayload
+        class PrefsWrite(val p: AccountPrefsObject) : CacheWritePayload
+        class SessionOpenWrite(val sessionId: String, val open: Boolean) : CacheWritePayload
     }
 
-    private fun stashCacheObject(obj: PendingCacheObject): String {
+    private val nextCacheRefId = AtomicLong(1L)
+    // Unbounded while events are in flight; Core's synchronous onCacheWrite extracts
+    // accepted payloads and onProcessed cleans up any refs Core declined to cache.
+    private val pendingCacheObjects = HashMap<String, PendingCacheObject>(256)
+    private val pendingCacheOps = ArrayDeque<suspend () -> Unit>()
+    private var cacheWriterActive = false
+
+    private fun stashCacheObject(obj: PendingCacheObject, refs: MutableList<String>? = null): String {
+        if (cache == null) return ""
         val ref = "c:${nextCacheRefId.getAndIncrement()}"
         synchronized(pendingCacheObjects) {
             pendingCacheObjects[ref] = obj
         }
+        refs?.add(ref)
         return ref
     }
 
     private fun takeCacheObject(ref: String): PendingCacheObject? =
         synchronized(pendingCacheObjects) { pendingCacheObjects.remove(ref) }
+
+    private fun releaseCacheObjects(refs: List<String>) {
+        if (refs.isEmpty()) return
+        synchronized(pendingCacheObjects) {
+            for (ref in refs) pendingCacheObjects.remove(ref)
+        }
+    }
+
+    internal fun pendingCacheSizeForTest(): Int =
+        synchronized(pendingCacheObjects) { pendingCacheObjects.size }
+
+    private fun enqueueCacheOp(op: suspend () -> Unit) {
+        val start = synchronized(pendingCacheOps) {
+            pendingCacheOps.addLast(op)
+            if (!cacheWriterActive) {
+                cacheWriterActive = true
+                true
+            } else {
+                false
+            }
+        }
+        if (!start) return
+        scope.launch {
+            while (true) {
+                val next = synchronized(pendingCacheOps) {
+                    if (pendingCacheOps.isEmpty()) {
+                        cacheWriterActive = false
+                        null
+                    } else {
+                        pendingCacheOps.removeFirst()
+                    }
+                } ?: break
+                try {
+                    next()
+                } catch (e: Exception) {
+                    if (e is CancellationException) throw e
+                    report(e)
+                }
+            }
+        }
+    }
 
     // --- Direct peer engine & Security ---
 
@@ -430,9 +482,18 @@ class Remote(
         coreHost.onSyncSecurity = { eff -> scope.launch { syncSecurityForCore(eff.opId, eff.networkGeneration) } }
         coreHost.onOpenStream = { eff -> scope.launch { openStreamForCore(eff.legId, eff.token) } }
         coreHost.onCloseStream = { eff -> scope.launch { closeStreamLeg(eff.legId) } }
-        coreHost.onCacheRead = { eff -> scope.launch { executeCacheRead(eff) } }
-        coreHost.onCacheWrite = { eff -> scope.launch { executeCacheWrite(eff) } }
-        coreHost.onCacheDelete = { eff -> scope.launch { executeCacheDelete(eff) } }
+        coreHost.onCacheRead = { eff ->
+            if (cache == null) scope.launch { executeCacheRead(eff) }
+            else enqueueCacheOp { executeCacheRead(eff) }
+        }
+        coreHost.onCacheWrite = { eff ->
+            extractCacheWrite(eff)?.let { payload -> enqueueCacheOp { writeCachePayload(payload) } }
+        }
+        coreHost.onCacheDelete = { eff ->
+            if (cache != null || eff.kindCase == CacheDeleteEffect.KindCase.REMOVE_SESSION_ID || eff.kindCase == CacheDeleteEffect.KindCase.REMOVE_MACHINE_ID) {
+                enqueueCacheOp { executeCacheDelete(eff) }
+            }
+        }
         coreHost.onRpc = { eff -> scope.launch { executeRpc(eff) } }
         coreHost.onDispatchCommand = { eff -> scope.launch { executeDispatchCommand(eff) } }
     }
@@ -666,8 +727,8 @@ class Remote(
             }
         }
 
-        fun sendFrame(block: StreamFrameEvent.Builder.() -> Unit) =
-            sendEvent { setStreamFrame(StreamFrameEvent.newBuilder().setLegId(legId).apply(block)) }
+        fun sendFrame(refs: List<String> = emptyList(), block: StreamFrameEvent.Builder.() -> Unit) =
+            sendEvent(refs) { setStreamFrame(StreamFrameEvent.newBuilder().setLegId(legId).apply(block)) }
 
         val socket = deviceLink.router.path.openStream(url, listener)
         legJob = scope.launch {
@@ -684,29 +745,53 @@ class Remote(
                         }
                         ServerFrame.KindCase.HEARTBEAT -> sendFrame { setHeartbeat(true) }
                         ServerFrame.KindCase.MACHINE_UPDATED -> {
-                            val pm = openPlainMachine(frame.machineUpdated.machine)
-                            sendFrame { setMachineUpdated(pm) }
+                            val refs = ArrayList<String>(1)
+                            try {
+                                val pm = openPlainMachine(frame.machineUpdated.machine, refs = refs)
+                                sendFrame(refs) { setMachineUpdated(pm) }
+                            } catch (t: Throwable) {
+                                releaseCacheObjects(refs)
+                                throw t
+                            }
                         }
                         ServerFrame.KindCase.MACHINE_REMOVED -> {
                             sendFrame { setMachineRemovedId(frame.machineRemoved.machineId) }
                             syncSecurityForCore(0L, 0L)
                         }
                         ServerFrame.KindCase.SESSION_UPDATED -> {
-                            val ps = openPlainSession(frame.sessionUpdated.session)
-                            sendFrame { setSessionUpdated(ps) }
+                            val refs = ArrayList<String>(1)
+                            try {
+                                val ps = openPlainSession(frame.sessionUpdated.session, refs = refs)
+                                sendFrame(refs) { setSessionUpdated(ps) }
+                            } catch (t: Throwable) {
+                                releaseCacheObjects(refs)
+                                throw t
+                            }
                         }
                         ServerFrame.KindCase.EVENTS_APPENDED -> {
                             val ea = frame.eventsAppended
                             val sid = ea.sessionId
                             val machineId = ea.machineId.ifEmpty { sessionMachineId(sid) }
-                            val opened = ea.eventsList.map { openPlainEvent(sid, machineId, it, live = true) }
-                            sendFrame { setEventsAppended(EventsAppendedFrame.newBuilder().setSessionId(sid).addAllEvents(opened)) }
+                            val refs = ArrayList<String>(ea.eventsCount)
+                            try {
+                                val opened = ea.eventsList.map { openPlainEvent(sid, machineId, it, live = true, refs = refs) }
+                                sendFrame(refs) { setEventsAppended(EventsAppendedFrame.newBuilder().setSessionId(sid).addAllEvents(opened)) }
+                            } catch (t: Throwable) {
+                                releaseCacheObjects(refs)
+                                throw t
+                            }
                         }
                         ServerFrame.KindCase.ACCOUNT_PREFS_UPDATED -> {
                             val obj = frame.accountPrefsUpdated.`object`
                             if (obj.objectId == PROJECT_PREFS) {
-                                val pp = openPlainPrefs(obj)
-                                sendFrame { setAccountPrefsUpdated(pp) }
+                                val refs = ArrayList<String>(1)
+                                try {
+                                    val pp = openPlainPrefs(obj, refs = refs)
+                                    sendFrame(refs) { setAccountPrefsUpdated(pp) }
+                                } catch (t: Throwable) {
+                                    releaseCacheObjects(refs)
+                                    throw t
+                                }
                             }
                         }
                         ServerFrame.KindCase.DEVICE_UPDATED -> {
@@ -812,8 +897,12 @@ class Remote(
         coreHost.dispatch(CoreEvent.newBuilder().setSecuritySnapshot(ev).build())
     }
 
-    private suspend fun openPlainMachine(m: Machine, fromCache: Boolean = false): PlainMachine {
-        val cacheRef = if (!fromCache) stashCacheObject(PendingCacheObject.MachineObj(m)) else ""
+    private suspend fun openPlainMachine(
+        m: Machine,
+        fromCache: Boolean = false,
+        refs: MutableList<String>? = null,
+    ): PlainMachine {
+        val cacheRef = if (!fromCache) stashCacheObject(PendingCacheObject.MachineObj(m), refs) else ""
         val b = PlainMachine.newBuilder()
             .setMachineId(m.id)
             .setOnline(m.online)
@@ -836,8 +925,12 @@ class Remote(
         }
     }
 
-    private suspend fun openPlainSession(rs: RemoteSession, fromCache: Boolean = false): PlainSession {
-        val cacheRef = if (!fromCache) stashCacheObject(PendingCacheObject.SessionObj(rs)) else ""
+    private suspend fun openPlainSession(
+        rs: RemoteSession,
+        fromCache: Boolean = false,
+        refs: MutableList<String>? = null,
+    ): PlainSession {
+        val cacheRef = if (!fromCache) stashCacheObject(PendingCacheObject.SessionObj(rs), refs) else ""
         val b = PlainSession.newBuilder()
             .setSessionId(rs.sessionId)
             .setMachineId(rs.machineId)
@@ -905,11 +998,11 @@ class Remote(
         se: StoredEvent,
         live: Boolean,
         fromCache: Boolean = false,
+        refs: MutableList<String>? = null,
     ): PlainEvent {
         if (!se.hasEnvelope() || (se.envelope.securityHeader.isEmpty && se.envelope.header.isEmpty)) {
             return PlainEvent.newBuilder().setSeq(se.seq).setUnavailable(true).build()
         }
-        val cacheRef = if (!fromCache) stashCacheObject(PendingCacheObject.EventObj(se)) else ""
         return try {
             if (!fromCache) ensureEpochForEnvelope(se.envelope)
             val (_, ev) = openSecureMessage(
@@ -921,6 +1014,7 @@ class Remote(
             if (ev.seq != se.seq || ev.sessionId != sid) {
                 throw OpenException(UiMessages.errorsTheEventSPositionWasChanged().messageText())
             }
+            val cacheRef = if (!fromCache) stashCacheObject(PendingCacheObject.EventObj(se), refs) else ""
             PlainEvent.newBuilder()
                 .setSeq(se.seq)
                 .setEvent(ev)
@@ -929,6 +1023,7 @@ class Remote(
                 .apply { if (cacheRef.isNotEmpty()) setCacheRef(cacheRef) }
                 .build()
         } catch (_: RecoveryHistoryUnavailable) {
+            val cacheRef = if (!fromCache) stashCacheObject(PendingCacheObject.EventObj(se), refs) else ""
             PlainEvent.newBuilder()
                 .setSeq(se.seq)
                 .setUnavailable(true)
@@ -976,8 +1071,12 @@ class Remote(
         }
     }
 
-    private suspend fun openPlainPrefs(o: AccountPrefsObject, fromCache: Boolean = false): PlainAccountPrefs {
-        val cacheRef = if (!fromCache) stashCacheObject(PendingCacheObject.PrefsObj(o)) else ""
+    private suspend fun openPlainPrefs(
+        o: AccountPrefsObject,
+        fromCache: Boolean = false,
+        refs: MutableList<String>? = null,
+    ): PlainAccountPrefs {
+        val cacheRef = if (!fromCache) stashCacheObject(PendingCacheObject.PrefsObj(o), refs) else ""
         val b = PlainAccountPrefs.newBuilder().setRevision(o.revision)
         if (cacheRef.isNotEmpty()) b.setCacheRef(cacheRef)
         if (o.revision == 0L || !o.hasEnvelope() || o.envelope.securityHeader.isEmpty) {
@@ -1050,21 +1149,31 @@ class Remote(
         }
     }
 
-    private suspend fun executeCacheWrite(eff: CacheWriteEffect) {
-        try {
-            if (eff.hasWriteMachineRef()) (takeCacheObject(eff.writeMachineRef) as? PendingCacheObject.MachineObj)?.let { cache?.putMachine(it.m) }
-            if (eff.hasWriteSessionRef()) (takeCacheObject(eff.writeSessionRef) as? PendingCacheObject.SessionObj)?.let { cache?.putSession(it.s) }
-            if (eff.hasKeepSessionOwnerRef()) (takeCacheObject(eff.keepSessionOwnerRef) as? PendingCacheObject.SessionObj)?.let { cache?.keepOwner(it.s) }
-            if (eff.hasWriteEvents()) {
+    private fun extractCacheWrite(eff: CacheWriteEffect): CacheWritePayload? {
+        if (cache == null) return null
+        return when {
+            eff.hasWriteMachineRef() -> (takeCacheObject(eff.writeMachineRef) as? PendingCacheObject.MachineObj)?.let { CacheWritePayload.MachineWrite(it.m) }
+            eff.hasWriteSessionRef() -> (takeCacheObject(eff.writeSessionRef) as? PendingCacheObject.SessionObj)?.let { CacheWritePayload.SessionWrite(it.s) }
+            eff.hasKeepSessionOwnerRef() -> (takeCacheObject(eff.keepSessionOwnerRef) as? PendingCacheObject.SessionObj)?.let { CacheWritePayload.KeepOwnerWrite(it.s) }
+            eff.hasWriteEvents() -> {
                 val we = eff.writeEvents
                 val stored = we.cacheRefsList.mapNotNull { (takeCacheObject(it) as? PendingCacheObject.EventObj)?.e }
-                if (stored.isNotEmpty()) cache?.putEvents(we.sessionId, stored)
+                if (stored.isNotEmpty()) CacheWritePayload.EventsWrite(we.sessionId, stored) else null
             }
-            if (eff.hasWritePrefsRef()) (takeCacheObject(eff.writePrefsRef) as? PendingCacheObject.PrefsObj)?.let { cache?.putBlob(PROJECT_PREFS, it.p.toByteArray()) }
-            if (eff.hasSetSessionOpen()) cache?.setSessionOpen(eff.setSessionOpen.sessionId, eff.setSessionOpen.open)
-        } catch (e: Exception) {
-            if (e is CancellationException) throw e
-            report(e)
+            eff.hasWritePrefsRef() -> (takeCacheObject(eff.writePrefsRef) as? PendingCacheObject.PrefsObj)?.let { CacheWritePayload.PrefsWrite(it.p) }
+            eff.hasSetSessionOpen() -> CacheWritePayload.SessionOpenWrite(eff.setSessionOpen.sessionId, eff.setSessionOpen.open)
+            else -> null
+        }
+    }
+
+    private suspend fun writeCachePayload(payload: CacheWritePayload) {
+        when (payload) {
+            is CacheWritePayload.MachineWrite -> cache?.putMachine(payload.m)
+            is CacheWritePayload.SessionWrite -> cache?.putSession(payload.s)
+            is CacheWritePayload.KeepOwnerWrite -> cache?.keepOwner(payload.s)
+            is CacheWritePayload.EventsWrite -> cache?.putEvents(payload.sessionId, payload.events)
+            is CacheWritePayload.PrefsWrite -> cache?.putBlob(PROJECT_PREFS, payload.p.toByteArray())
+            is CacheWritePayload.SessionOpenWrite -> cache?.setSessionOpen(payload.sessionId, payload.open)
         }
     }
 
@@ -1097,24 +1206,36 @@ class Remote(
 
     // --- RPC Executor ---
 
-    private inline fun sendEvent(block: CoreEvent.Builder.() -> Unit) =
-        coreHost.dispatch(CoreEvent.newBuilder().apply(block).build())
+    private inline fun sendEvent(
+        refs: List<String> = emptyList(),
+        block: CoreEvent.Builder.() -> Unit,
+    ) = coreHost.dispatch(
+        CoreEvent.newBuilder().apply(block).build(),
+        onProcessed = if (refs.isEmpty()) null else ({ releaseCacheObjects(refs) }),
+    )
 
     private suspend inline fun <B> runRpc(
         make: () -> B,
         onError: B.(String, Boolean) -> Unit,
         crossinline emit: CoreEvent.Builder.(B) -> Unit,
-        block: B.() -> Unit,
+        block: B.(MutableList<String>) -> Unit,
     ) {
         val b = make()
+        val refs = ArrayList<String>()
+        var dispatched = false
         try {
-            b.block()
-        } catch (e: Exception) {
-            if (e is CancellationException) throw e
-            report(e)
-            b.onError(rpcErrorString(e), unresolvedHost(e))
+            try {
+                b.block(refs)
+            } catch (e: Exception) {
+                if (e is CancellationException) throw e
+                report(e)
+                b.onError(rpcErrorString(e), unresolvedHost(e))
+            }
+            sendEvent(refs) { emit(b) }
+            dispatched = true
+        } finally {
+            if (!dispatched) releaseCacheObjects(refs)
         }
-        sendEvent { emit(b) }
     }
 
     private suspend fun executeRpc(eff: RpcEffect) {
@@ -1124,7 +1245,7 @@ class Remote(
                 make = { ListsFetchedEvent.newBuilder().setOpId(opId) },
                 onError = { err, host -> setUnresolvedHost(host).setError(err) },
                 emit = { setListsFetched(it) },
-            ) {
+            ) { refs ->
                 val headers = Api.headers(currentToken())
                 coroutineScope {
                     val reqSessions = ListRemoteSessionsRequest.newBuilder().apply {
@@ -1136,8 +1257,8 @@ class Remote(
                     val machinesRes = ms.await()
                     val sessionsRes = ss.await()
                     val devicesRes = ds.await()
-                    addAllMachines(machinesRes.machinesList.map { openPlainMachine(it) })
-                    addAllSessions(sessionsRes.sessionsList.map { openPlainSession(it) })
+                    addAllMachines(machinesRes.machinesList.map { openPlainMachine(it, refs = refs) })
+                    addAllSessions(sessionsRes.sessionsList.map { openPlainSession(it, refs = refs) })
                     if (sessionsRes.hasNext()) setNext(sessionsRes.next)
                     addAllDevices(devicesRes.devicesList.map { openPlainDevice(it) })
                 }
@@ -1146,13 +1267,13 @@ class Remote(
                 make = { SessionsPageFetchedEvent.newBuilder().setOpId(opId) },
                 onError = { err, _ -> setError(err) },
                 emit = { setSessionsPageFetched(it) },
-            ) {
+            ) { refs ->
                 val req = ListRemoteSessionsRequest.newBuilder().apply {
                     if (eff.fetchSessionsPage.hasAfter()) setAfter(eff.fetchSessionsPage.after)
                     if (eff.fetchSessionsPage.limit > 0) setLimit(eff.fetchSessionsPage.limit)
                 }.build()
                 val res = api.client.listRemoteSessions(req, Api.headers(currentToken())).value()
-                addAllSessions(res.sessionsList.map { openPlainSession(it) })
+                addAllSessions(res.sessionsList.map { openPlainSession(it, refs = refs) })
                 if (res.hasNext()) setNext(res.next)
             }
             RpcEffect.KindCase.FETCH_SESSION_BY_ID -> {
@@ -1160,20 +1281,25 @@ class Remote(
                 val b = SessionByIdFetchedEvent.newBuilder().setOpId(opId)
                 var failure: Throwable? = null
                 var foundSession = false
+                val refs = ArrayList<String>(1)
                 try {
-                    val req = ListRemoteSessionsRequest.newBuilder().addSessionIds(sid).setLimit(1).build()
-                    val found = api.client.listRemoteSessions(req, Api.headers(currentToken())).value().sessionsList.firstOrNull { it.sessionId == sid }
-                    if (found != null) {
-                        b.setSession(openPlainSession(found))
-                        foundSession = true
+                    try {
+                        val req = ListRemoteSessionsRequest.newBuilder().addSessionIds(sid).setLimit(1).build()
+                        val found = api.client.listRemoteSessions(req, Api.headers(currentToken())).value().sessionsList.firstOrNull { it.sessionId == sid }
+                        if (found != null) {
+                            b.setSession(openPlainSession(found, refs = refs))
+                            foundSession = true
+                        }
+                    } catch (e: Exception) {
+                        if (e is CancellationException) throw e
+                        report(e)
+                        failure = e
+                        b.setError(rpcErrorString(e))
                     }
-                } catch (e: Exception) {
-                    if (e is CancellationException) throw e
-                    report(e)
-                    failure = e
-                    b.setError(rpcErrorString(e))
+                    coreHost.dispatchAndWait(CoreEvent.newBuilder().setSessionByIdFetched(b).build())
+                } finally {
+                    releaseCacheObjects(refs)
                 }
-                coreHost.dispatchAndWait(CoreEvent.newBuilder().setSessionByIdFetched(b).build())
                 pendingSessionLookups.remove(sid)?.forEach { w ->
                     if (failure != null) w.completeExceptionally(failure) else w.complete(foundSession)
                 }
@@ -1182,51 +1308,58 @@ class Remote(
                 make = { EventsPageFetchedEvent.newBuilder().setOpId(opId).setSessionId(eff.getEvents.sessionId) },
                 onError = { err, _ -> setError(err) },
                 emit = { setEventsPageFetched(it) },
-            ) {
+            ) { refs ->
                 val r = eff.getEvents
                 val req = GetEventsRequest.newBuilder().setSessionId(r.sessionId).setAfterSeq(r.afterSeq).setLimit(r.limit).build()
                 val res = api.client.getEvents(req, Api.headers(currentToken())).value()
                 val machineId = sessionMachineId(r.sessionId)
-                setMore(res.more).addAllEvents(res.eventsList.map { openPlainEvent(r.sessionId, machineId, it, live = false) })
+                setMore(res.more).addAllEvents(res.eventsList.map { openPlainEvent(r.sessionId, machineId, it, live = false, refs = refs) })
             }
             RpcEffect.KindCase.GET_ACCOUNT_PREFS -> runRpc(
                 make = { AccountPrefsFetchedEvent.newBuilder().setOpId(opId) },
                 onError = { err, _ -> setError(err) },
                 emit = { setAccountPrefsFetched(it) },
-            ) {
+            ) { refs ->
                 val objectId = eff.getAccountPrefs.objectId.ifEmpty { PROJECT_PREFS }
                 val obj = api.client.getAccountPrefs(GetAccountPrefsRequest.newBuilder().setObjectId(objectId).build(), Api.headers(currentToken())).value().`object`
-                setPrefs(openPlainPrefs(obj))
+                setPrefs(openPlainPrefs(obj, refs = refs))
             }
             RpcEffect.KindCase.PUT_ACCOUNT_PREFS -> {
                 val putRpc = eff.putAccountPrefs
                 val objectId = putRpc.objectId.ifEmpty { PROJECT_PREFS }
                 val b = AccountPrefsPutResultEvent.newBuilder().setOpId(opId)
+                val refs = ArrayList<String>(1)
+                var dispatched = false
                 try {
-                    val env = withContext(cpuDispatcher) {
-                        security.seal(DeviceSecurity.Purpose.PREFS, request = objectId, seq = (putRpc.expectedRevision + 1).toULong(), plain = putRpc.nextPrefs.toByteArray())
+                    try {
+                        val env = withContext(cpuDispatcher) {
+                            security.seal(DeviceSecurity.Purpose.PREFS, request = objectId, seq = (putRpc.expectedRevision + 1).toULong(), plain = putRpc.nextPrefs.toByteArray())
+                        }
+                        val res = api.client.putAccountPrefs(
+                            PutAccountPrefsRequest.newBuilder().setObjectId(objectId).setExpectedRevision(putRpc.expectedRevision).setEnvelope(env).build(),
+                            Api.headers(currentToken()),
+                        ).value()
+                        b.setApplied(res.applied)
+                        if (res.hasObject()) b.setCurrent(openPlainPrefs(res.`object`, refs = refs))
+                    } catch (e: DeviceSecurity.Failure) {
+                        if (e.code == "conflict") b.setSealConflict(true)
+                        b.setError(e.message ?: e.code)
+                    } catch (e: Exception) {
+                        if (e is CancellationException) throw e
+                        report(e)
+                        b.setError(rpcErrorString(e))
                     }
-                    val res = api.client.putAccountPrefs(
-                        PutAccountPrefsRequest.newBuilder().setObjectId(objectId).setExpectedRevision(putRpc.expectedRevision).setEnvelope(env).build(),
-                        Api.headers(currentToken()),
-                    ).value()
-                    b.setApplied(res.applied)
-                    if (res.hasObject()) b.setCurrent(openPlainPrefs(res.`object`))
-                } catch (e: DeviceSecurity.Failure) {
-                    if (e.code == "conflict") b.setSealConflict(true)
-                    b.setError(e.message ?: e.code)
-                } catch (e: Exception) {
-                    if (e is CancellationException) throw e
-                    report(e)
-                    b.setError(rpcErrorString(e))
+                    sendEvent(refs) { setAccountPrefsPutResult(b) }
+                    dispatched = true
+                } finally {
+                    if (!dispatched) releaseCacheObjects(refs)
                 }
-                sendEvent { setAccountPrefsPutResult(b) }
             }
             RpcEffect.KindCase.FETCH_DEVICES -> runRpc(
                 make = { DevicesFetchedEvent.newBuilder().setOpId(opId) },
                 onError = { err, _ -> setError(err) },
                 emit = { setDevicesFetched(it) },
-            ) {
+            ) { _ ->
                 val ds = api.client.listDevices(ListDevicesRequest.getDefaultInstance(), Api.headers(currentToken())).value()
                 addAllDevices(ds.devicesList.map { openPlainDevice(it) })
             }
@@ -1516,6 +1649,11 @@ class Remote(
                         try {
                             coreHost.close()
                         } finally {
+                            synchronized(pendingCacheObjects) { pendingCacheObjects.clear() }
+                            synchronized(pendingCacheOps) {
+                                pendingCacheOps.clear()
+                                cacheWriterActive = false
+                            }
                             scope.cancel()
                         }
                     }
