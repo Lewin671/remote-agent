@@ -163,6 +163,8 @@ type session struct {
 	// unproven are the remembered messages that were reported
 	// UNCONFIRMED: a record of one, coming late, still confirms it.
 	unproven           map[string]bool
+	now                func() time.Time
+	sleep              func(time.Duration)
 	wake               chan struct{} // pokes the injector
 	nativePending      map[string]*agent.Hook
 	nativeCalls        map[string]*agent.Hook
@@ -188,6 +190,21 @@ type session struct {
 type sessionLoops struct {
 	stop context.CancelFunc
 	done chan struct{}
+}
+
+func (s *session) nowTime() time.Time {
+	if s.now != nil {
+		return s.now()
+	}
+	return time.Now()
+}
+
+func (s *session) sleepFor(d time.Duration) {
+	if s.sleep != nil {
+		s.sleep(d)
+		return
+	}
+	time.Sleep(d)
 }
 
 type approval struct {

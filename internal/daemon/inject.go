@@ -59,6 +59,7 @@ const recentInputs = 20
 // deadline, after which the PTY host lets the hold lapse.
 type lease struct {
 	c        control
+	now      func() time.Time
 	deadline time.Time
 	stop     chan struct{}
 	done     sync.WaitGroup
@@ -67,11 +68,26 @@ type lease struct {
 	ok time.Time // last hold the PTY host confirmed
 }
 
+func (l *lease) nowTime() time.Time {
+	if l.now != nil {
+		return l.now()
+	}
+	return time.Now()
+}
+
 func holdLease(c control, total time.Duration) (*lease, error) {
+	return holdLeaseAt(c, total, nil)
+}
+
+func holdLeaseAt(c control, total time.Duration, now func() time.Time) (*lease, error) {
 	if err := c.Hold(holdFor); err != nil {
 		return nil, err
 	}
-	l := &lease{c: c, deadline: time.Now().Add(total), stop: make(chan struct{}), ok: time.Now()}
+	cur := time.Now()
+	if now != nil {
+		cur = now()
+	}
+	l := &lease{c: c, now: now, deadline: cur.Add(total), stop: make(chan struct{}), ok: cur}
 	l.done.Add(1)
 	go func() {
 		defer l.done.Done()
@@ -82,11 +98,12 @@ func holdLease(c control, total time.Duration) (*lease, error) {
 			case <-l.stop:
 				return
 			case <-t.C:
-				if time.Until(l.deadline) <= 0 {
+				left := l.deadline.Sub(l.nowTime())
+				if left <= 0 {
 					return
 				}
-				at := time.Now()
-				if c.Hold(min(holdFor, time.Until(l.deadline)+time.Second)) == nil {
+				at := l.nowTime()
+				if c.Hold(min(holdFor, left+time.Second)) == nil {
 					l.mu.Lock()
 					l.ok = at
 					l.mu.Unlock()
@@ -103,12 +120,13 @@ func holdLease(c control, total time.Duration) (*lease, error) {
 func (l *lease) holding() bool {
 	l.mu.Lock()
 	defer l.mu.Unlock()
-	return time.Since(l.ok) < holdFor-time.Second && time.Now().Before(l.deadline)
+	now := l.nowTime()
+	return now.Sub(l.ok) < holdFor-time.Second && now.Before(l.deadline)
 }
 
 // left is how long the lease still holds for sure: what remains of the
 // total, less a margin for a cleanup.
-func (l *lease) left() time.Duration { return time.Until(l.deadline) - clearWait }
+func (l *lease) left() time.Duration { return l.deadline.Sub(l.nowTime()) - clearWait }
 
 func (l *lease) end() {
 	close(l.stop)

@@ -180,12 +180,12 @@ func (s *session) cancelHeld(requestID string, origin *pb.Origin) (resultErr err
 		return err
 	}
 	defer c.Close()
-	l, err := holdLease(c, injectBase)
+	l, err := holdLeaseAt(c, injectBase, s.now)
 	if err != nil {
 		return err
 	}
 	defer l.end()
-	time.Sleep(settle)
+	s.sleepFor(settle)
 	styled, err := s.term.Capture()
 	if err != nil {
 		return err
@@ -331,9 +331,9 @@ func (s *session) releaseRequeued(moved []input) error {
 
 // waitComposer waits for the input box to hold text.
 func (s *session) waitComposer(footer string) (string, bool) {
-	deadline := time.Now().Add(2 * time.Second)
-	for time.Now().Before(deadline) {
-		time.Sleep(100 * time.Millisecond)
+	deadline := s.nowTime().Add(2 * time.Second)
+	for s.nowTime().Before(deadline) {
+		s.sleepFor(100 * time.Millisecond)
 		styled, err := s.term.Capture()
 		if err != nil {
 			return "", false
@@ -362,7 +362,7 @@ func (s *session) emptyBox(c control, l *lease, footer string, tries int) bool {
 		if err := c.Write(append(s.ag.ClearInput(), 0x7f)); err != nil {
 			return false
 		}
-		time.Sleep(80 * time.Millisecond)
+		s.sleepFor(80 * time.Millisecond)
 	}
 	styled, err := s.term.Capture()
 	return err == nil && s.ag.Analyze(styled).DraftEmpty

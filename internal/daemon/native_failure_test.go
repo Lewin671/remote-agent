@@ -3,16 +3,22 @@ package daemon
 import (
 	"context"
 	"errors"
-	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
-	"github.com/Lewin671/remote-agent/internal/remoteclient"
+	"sync/atomic"
 	"testing"
 	"time"
+
+	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
+	"github.com/Lewin671/remote-agent/internal/remoteclient"
 )
 
 func TestCancelHeldAfterKeysRemainsUnknownAndDoesNotRepeat(t *testing.T) {
 	t.Setenv("REMOTE_AGENT_HOME", t.TempDir())
 	h, _, stuck := heldPair(t)
 	*stuck = true
+	var clockNs atomic.Int64
+	clockNs.Store(time.Now().UnixNano())
+	h.s.now = func() time.Time { return time.Unix(0, clockNs.Load()) }
+	h.s.sleep = func(d time.Duration) { clockNs.Add(int64(d)) }
 	h.d.sessions[h.s.meta.ID] = h.s
 	client, machine := startCancellationTestRelay(t, outcomeAuditBackend{interruptedModelBackend{Daemon: h.d}})
 	cmd, err := client.Seal(machine, h.s.meta.ID, remoteclient.NewRequestID(), time.Now().Add(time.Minute), &pb.Command{Kind: &pb.Command_CancelInput{CancelInput: &pb.CancelInputRequest{SessionId: h.s.meta.ID, RequestId: "a"}}})
