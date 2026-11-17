@@ -1824,14 +1824,11 @@ class DirectTransportTest {
 
                 // Direct stop() sets running=false before direct.setForeground(false), which previously skipped onDirectChanged().
                 remote.stop()
-                delay(150)
-                val coreMachine = remote.coreHost.syncStateView.value.machinesList.firstOrNull { it.machineId == id }
-                assertFalse("machine must not stay directReady in clientcore after stop", coreMachine?.directReady == true)
-                assertNotEquals(
-                    "peer must not stay DIRECT_ACTIVE after stop",
-                    DirectStage.DIRECT_ACTIVE,
-                    remote.peer(id)?.directStatus?.stage,
-                )
+                awaitCondition("direct cleared in clientcore and peer after stop", 5_000) {
+                    val coreMachine = remote.coreHost.syncStateView.value.machinesList.firstOrNull { it.machineId == id }
+                    coreMachine?.directReady != true &&
+                        remote.peer(id)?.directStatus?.stage != DirectStage.DIRECT_ACTIVE
+                }
             } finally {
                 remote.close()
                 daemon.close()
@@ -1932,6 +1929,7 @@ class DirectTransportTest {
                 directPrefs = InMemoryDirectPreferenceStore(),
                 stunUrls = emptyList(),
                 clock = { nowMs.get() },
+                monotonic = { nowMs.get() },
             )
             var daemon: DirectBridgeDaemon? = null
             try {
@@ -1941,11 +1939,13 @@ class DirectTransportTest {
 
                 // Pair a new machine while the authority client stays open in foreground, matching Remote's
                 // PutSecurityState pairing flow (security.install fires onInstall -> direct.install).
+                // Start the daemon's stream before install() triggers Probe so TestServer does not bounce
+                // the initial Probe with OFFLINE while the virtual clock is stationary.
                 val daemonAccount = approvedClient(phone, http, DeviceKind.DEVICE_KIND_MACHINE)
-                val updated = TestSecurity.find(server.url)!!.stores.getValue(phone.deviceId).readSecurity()
-                remote.direct.install(updated)
                 daemon = DirectBridgeDaemon(daemonAccount, server.url, http, { nowMs.get() }, bridge.daemonFactory)
                 daemon.start()
+                val updated = TestSecurity.find(server.url)!!.stores.getValue(phone.deviceId).readSecurity()
+                remote.direct.install(updated)
 
                 val id = daemonAccount.deviceId
                 awaitCondition("paired machine becomes DIRECT_ACTIVE without manual syncSecurity", 10_000) {
@@ -1981,9 +1981,11 @@ class DirectTransportTest {
             val daemonAccount = approvedClient(phone, http, DeviceKind.DEVICE_KIND_MACHINE)
             val unreachableDaemon = approvedClient(phone, http, DeviceKind.DEVICE_KIND_MACHINE)
             val bridge = FakeRtcBridge()
+            val keepaliveSyncs = AtomicInteger(0)
             val delayedHttp = http.newBuilder().addInterceptor { chain ->
                 if (chain.request().url.encodedPath.endsWith("/GetSecurityStates") && System.getProperty("slowKeepaliveTest") == "1") {
                     Thread.sleep(350)
+                    keepaliveSyncs.incrementAndGet()
                 }
                 chain.proceed(chain.request())
             }.build()
@@ -1995,6 +1997,7 @@ class DirectTransportTest {
                 directPrefs = InMemoryDirectPreferenceStore(),
                 stunUrls = emptyList(),
                 clock = { nowMs.get() },
+                monotonic = { nowMs.get() },
             )
             val daemon = DirectBridgeDaemon(daemonAccount, server.url, http, { nowMs.get() }, bridge.daemonFactory)
             try {
@@ -2019,9 +2022,12 @@ class DirectTransportTest {
                 assertFalse("no closed_by_owner after duplicate networkChanged", DirectDiag.lines().drop(diagBefore).any { "not_allowed" in it })
 
                 // Advance clock inside the proactive <=7s window with slow GetSecurityStates and wait for timer keepalive.
+                keepaliveSyncs.set(0)
                 System.setProperty("slowKeepaliveTest", "1")
                 nowMs.addAndGet(14_000L)
-                delay(1_800)
+                awaitCondition("proactive keepalive completes GetSecurityStates", 5_000) {
+                    keepaliveSyncs.get() >= 1
+                }
                 System.clearProperty("slowKeepaliveTest")
                 assertTrue("proactive keepalive must preserve Direct across 14s mark", remote.direct.ready(id, RouteHint.Read))
 

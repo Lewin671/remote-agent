@@ -109,6 +109,8 @@ internal class DirectEngine(
     private var freshUntil = 0L
     private var lastAuthorizeAttemptMs = Long.MIN_VALUE
     private var authorizeInFlight = false
+    private var pendingAuthorize = false
+    private var pendingForceAuthorize = false
     private var syncRevision = 0L
     private var lifetime = 0L
     private var foreground = true
@@ -182,10 +184,39 @@ internal class DirectEngine(
         return true
     }
 
+    private suspend fun runAuthorizeLoop() {
+        while (true) {
+            try {
+                runCatching { authorize() }.onFailure { DirectDiag.trace("engine authorize failed kind=${it::class.simpleName}") }
+            } finally {
+                val again = synchronized(stateLock) {
+                    val runAgain = pendingAuthorize && foreground && leg != null && (!currentLocked() || pendingForceAuthorize)
+                    pendingAuthorize = false
+                    pendingForceAuthorize = false
+                    if (!runAgain) {
+                        authorizeInFlight = false
+                        false
+                    } else {
+                        lastAuthorizeAttemptMs = monotonic()
+                        true
+                    }
+                }
+                if (!again) break
+            }
+        }
+        discover()
+    }
+
     private fun refreshAndDiscover(forceAuthorize: Boolean) {
         scope.launch {
             val shouldAuthorize = synchronized(stateLock) {
-                if (!foreground || leg == null || authorizeInFlight) {
+                if (!foreground || leg == null) {
+                    false
+                } else if (authorizeInFlight) {
+                    if (forceAuthorize || !currentLocked()) {
+                        pendingAuthorize = true
+                        if (forceAuthorize) pendingForceAuthorize = true
+                    }
                     false
                 } else if (currentLocked() && !forceAuthorize) {
                     false
@@ -200,13 +231,10 @@ internal class DirectEngine(
                 }
             }
             if (shouldAuthorize) {
-                try {
-                    runCatching { authorize() }.onFailure { DirectDiag.trace("engine authorize failed kind=${it::class.simpleName}") }
-                } finally {
-                    synchronized(stateLock) { authorizeInFlight = false }
-                }
+                runAuthorizeLoop()
+            } else {
+                discover()
             }
-            discover()
         }
     }
 
@@ -221,6 +249,8 @@ internal class DirectEngine(
                 timerToCancel = discoverTimer
                 discoverTimer = null
                 lastAuthorizeAttemptMs = Long.MIN_VALUE
+                pendingAuthorize = false
+                pendingForceAuthorize = false
                 canDiscoverNow = false
                 shouldAuthorize = false
             } else {
@@ -230,6 +260,9 @@ internal class DirectEngine(
                     startDiscoverTimerLocked()
                 }
                 canDiscoverNow = currentLocked()
+                if (!canDiscoverNow && leg != null && authorizeInFlight) {
+                    pendingAuthorize = true
+                }
                 shouldAuthorize = !canDiscoverNow && leg != null && !authorizeInFlight
                 if (shouldAuthorize) {
                     authorizeInFlight = true
@@ -243,14 +276,7 @@ internal class DirectEngine(
         } else if (canDiscoverNow) {
             scope.launch { discover() }
         } else if (shouldAuthorize) {
-            scope.launch {
-                try {
-                    runCatching { authorize() }.onFailure { DirectDiag.trace("engine authorize failed kind=${it::class.simpleName}") }
-                } finally {
-                    synchronized(stateLock) { authorizeInFlight = false }
-                }
-                discover()
-            }
+            scope.launch { runAuthorizeLoop() }
         }
     }
 
@@ -301,14 +327,7 @@ internal class DirectEngine(
                 }
                 if (shouldInvalidate) invalidate("stale")
                 if (shouldAuthorize) {
-                    scope.launch {
-                        try {
-                            runCatching { authorize() }.onFailure { DirectDiag.trace("engine authorize failed kind=${it::class.simpleName}") }
-                        } finally {
-                            synchronized(stateLock) { authorizeInFlight = false }
-                        }
-                        discover()
-                    }
+                    scope.launch { runAuthorizeLoop() }
                 }
                 discover()
             }

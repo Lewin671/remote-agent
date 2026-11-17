@@ -109,21 +109,33 @@ class DirectTransportUiTest {
                     }
                 }
             }
-            ui.waitUntil(3000) { remote.machineSettingsView.value.hasConnection() && remote.machineSettingsView.value.connection.toggleEnabled }
+            ui.waitUntil(3000) {
+                val vm = remote.machineSettingsView.value
+                vm.found && vm.member && vm.hasConnection() && vm.connection.toggleEnabled &&
+                    ui.onAllNodesWithText("连接").fetchSemanticsNodes().isNotEmpty() &&
+                    ui.onAllNodesWithText("直连").fetchSemanticsNodes().isNotEmpty() &&
+                    ui.onAllNodesWithText("正在用直连").fetchSemanticsNodes().isNotEmpty()
+            }
+            ui.waitForIdle()
             ui.onNodeWithText("连接").performScrollTo().assertIsDisplayed()
             ui.onNodeWithText("直连").performScrollTo().assertIsDisplayed()
-            ui.onNodeWithText("正在用直连").assertIsDisplayed()
-            ui.onNodeWithText("文件传输").assertIsDisplayed()
-            ui.onNodeWithText("直连 6.3 · 中继 4.1 MiB/s").assertIsDisplayed()
-            ui.onNodeWithText("响应时间").assertIsDisplayed()
-            ui.onNodeWithText("直连 12 · 中继 180 ms").assertIsDisplayed()
+            ui.onNodeWithText("正在用直连").performScrollTo().assertIsDisplayed()
+            ui.onNodeWithText("文件传输").performScrollTo().assertIsDisplayed()
+            ui.onNodeWithText("直连 6.3 · 中继 4.1 MiB/s").performScrollTo().assertIsDisplayed()
+            ui.onNodeWithText("响应时间").performScrollTo().assertIsDisplayed()
+            ui.onNodeWithText("直连 12 · 中继 180 ms").performScrollTo().assertIsDisplayed()
             ui.onNodeWithText("发消息和审批同时经直连和中继发出，以先到的为准；后台时只用中继。").performScrollTo().assertIsDisplayed()
 
             ui.onNodeWithText("直连").performScrollTo().performClick()
             ui.waitUntil(3000) { !remote.directEnabled(machineId) }
             assertFalse(remote.directEnabled(machineId))
             assertFalse(SharedPrefsDirectPreferenceStore(context).isEnabled("https://example.com", acct.deviceId, machineId))
-            ui.waitUntil(3000) { !remote.machineSettingsView.value.connection.toggleChecked }
+            ui.waitUntil(3000) {
+                !remote.machineSettingsView.value.connection.toggleChecked &&
+                    ui.onAllNodesWithText("正在用直连").fetchSemanticsNodes().isEmpty() &&
+                    ui.onAllNodesWithText("文件传输").fetchSemanticsNodes().isEmpty()
+            }
+            ui.waitForIdle()
             ui.onAllNodesWithText("正在用直连").assertCountEquals(0)
             ui.onAllNodesWithText("文件传输").assertCountEquals(0)
 
