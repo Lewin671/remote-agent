@@ -1,5 +1,5 @@
 // Command protoc-gen-go-lite generates minimal, reflection-free Go protobuf structs and
-// litewire Marshal/Unmarshal/Size/Clone methods covering the subset of proto3 used in this repo.
+// direction-aware litewire Marshal/Unmarshal/Size/Clone methods covering the subset of proto3 used in this repo.
 package main
 
 import (
@@ -21,8 +21,22 @@ var (
 	slicesPkg   = protogen.GoImportPath("slices")
 )
 
+type msgFlags struct {
+	marshal   bool
+	unmarshal bool
+	clone     bool
+}
+
+func (a msgFlags) or(b msgFlags) msgFlags {
+	return msgFlags{
+		marshal:   a.marshal || b.marshal,
+		unmarshal: a.unmarshal || b.unmarshal,
+		clone:     a.clone || b.clone,
+	}
+}
+
 type reachSet struct {
-	msgs  map[*protogen.Message]bool
+	msgs  map[*protogen.Message]msgFlags
 	enums map[*protogen.Enum]bool
 }
 
@@ -77,16 +91,21 @@ func computeReachable(files []*protogen.File, entriesPath string) (*reachSet, er
 	}
 
 	reach := &reachSet{
-		msgs:  make(map[*protogen.Message]bool),
+		msgs:  make(map[*protogen.Message]msgFlags),
 		enums: make(map[*protogen.Enum]bool),
 	}
 	var queue []*protogen.Message
 
-	markMsg := func(m *protogen.Message) {
-		if m == nil || m.Desc.IsMapEntry() || reach.msgs[m] {
+	markMsg := func(m *protogen.Message, add msgFlags) {
+		if m == nil || m.Desc.IsMapEntry() {
 			return
 		}
-		reach.msgs[m] = true
+		cur := reach.msgs[m]
+		next := cur.or(add)
+		if next == cur {
+			return
+		}
+		reach.msgs[m] = next
 		queue = append(queue, m)
 	}
 	markEnum := func(e *protogen.Enum) {
@@ -95,39 +114,38 @@ func computeReachable(files []*protogen.File, entriesPath string) (*reachSet, er
 		}
 	}
 
-	var markAllInMsgs func([]*protogen.Message)
-	markAllInMsgs = func(msgs []*protogen.Message) {
-		for _, m := range msgs {
-			markMsg(m)
-			for _, e := range m.Enums {
-				markEnum(e)
-			}
-			markAllInMsgs(m.Messages)
-		}
-	}
-
-	for _, f := range files {
-		if f.Generate && f.Desc.Package() == "remoteagent.core.v1" {
-			for _, e := range f.Enums {
-				markEnum(e)
-			}
-			markAllInMsgs(f.Messages)
-		}
-	}
-
 	for _, line := range strings.Split(string(raw), "\n") {
 		if idx := strings.IndexByte(line, '#'); idx >= 0 {
 			line = line[:idx]
 		}
-		name := strings.TrimSpace(line)
-		if name == "" {
+		entry := strings.TrimSpace(line)
+		if entry == "" {
 			continue
 		}
+		flags := msgFlags{marshal: true, unmarshal: true}
+		name := entry
+		if colon := strings.IndexByte(entry, ':'); colon >= 0 {
+			kind := strings.TrimSpace(entry[:colon])
+			name = strings.TrimSpace(entry[colon+1:])
+			switch kind {
+			case "in":
+				flags = msgFlags{unmarshal: true}
+			case "out":
+				flags = msgFlags{marshal: true}
+			case "clone":
+				flags = msgFlags{clone: true}
+			default:
+				return nil, errors.New("protoc-gen-go-lite: unknown entry directive " + kind + " in " + entriesPath)
+			}
+		}
 		if m, ok := msgByName[name]; ok {
-			markMsg(m)
+			markMsg(m, flags)
 			continue
 		}
 		if e, ok := enumByName[name]; ok {
+			if flags.clone && !flags.marshal && !flags.unmarshal {
+				return nil, errors.New("protoc-gen-go-lite: clone directive cannot target enum " + name)
+			}
 			markEnum(e)
 			continue
 		}
@@ -138,11 +156,12 @@ func computeReachable(files []*protogen.File, entriesPath string) (*reachSet, er
 	for len(queue) > 0 {
 		m := queue[0]
 		queue = queue[1:]
+		flags := reach.msgs[m]
 		for _, f := range m.Fields {
 			if f.Desc.IsMap() {
 				vf := f.Message.Fields[1]
 				if vf.Message != nil {
-					markMsg(vf.Message)
+					markMsg(vf.Message, flags)
 				}
 				if vf.Enum != nil {
 					markEnum(vf.Enum)
@@ -150,7 +169,7 @@ func computeReachable(files []*protogen.File, entriesPath string) (*reachSet, er
 				continue
 			}
 			if f.Message != nil {
-				markMsg(f.Message)
+				markMsg(f.Message, flags)
 			}
 			if f.Enum != nil {
 				markEnum(f.Enum)
@@ -176,7 +195,7 @@ func fileHasReachable(f *protogen.File, reach *reachSet) bool {
 			if m.Desc.IsMapEntry() {
 				continue
 			}
-			if reach.msgs[m] {
+			if _, ok := reach.msgs[m]; ok {
 				return true
 			}
 			for _, e := range m.Enums {
@@ -350,8 +369,13 @@ func genMessage(g *protogen.GeneratedFile, msg *protogen.Message, reach *reachSe
 	for _, nested := range msg.Messages {
 		genMessage(g, nested, reach)
 	}
-	if reach != nil && !reach.msgs[msg] {
-		return
+	flags := msgFlags{marshal: true, unmarshal: true, clone: true}
+	if reach != nil {
+		var ok bool
+		flags, ok = reach.msgs[msg]
+		if !ok {
+			return
+		}
 	}
 
 	name := msg.GoIdent.GoName
@@ -385,11 +409,6 @@ func genMessage(g *protogen.GeneratedFile, msg *protogen.Message, reach *reachSe
 		g.P()
 	}
 
-	g.P("func (m *", name, ") Reset() {")
-	g.P("\tif m != nil { *m = ", name, "{} }")
-	g.P("}")
-	g.P()
-
 	for _, o := range msg.Oneofs {
 		if o.Desc.IsSynthetic() {
 			continue
@@ -422,10 +441,16 @@ func genMessage(g *protogen.GeneratedFile, msg *protogen.Message, reach *reachSe
 	}
 	g.P()
 
-	genClone(g, msg)
-	genSize(g, msg)
-	genMarshal(g, msg)
-	genUnmarshal(g, msg)
+	if flags.clone {
+		genClone(g, msg)
+	}
+	if flags.marshal {
+		genSize(g, msg)
+		genMarshal(g, msg)
+	}
+	if flags.unmarshal {
+		genUnmarshal(g, msg)
+	}
 }
 
 func genClone(g *protogen.GeneratedFile, msg *protogen.Message) {
@@ -760,8 +785,8 @@ func emitMarshalField(g *protogen.GeneratedFile, indent, buf string, f *protogen
 	}
 	switch f.Desc.Kind() {
 	case protoreflect.MessageKind:
-		fn := g.QualifiedGoIdent(litewirePkg.Ident("AppendMessagePrefix"))
-		g.P(indent, "if ", expr, " != nil { ", buf, " = ", fn, "(", buf, ", ", num, ", ", expr, ".Size()); ", buf, " = ", expr, ".AppendMarshal(", buf, ") }")
+		fn := g.QualifiedGoIdent(litewirePkg.Ident("AppendMessage"))
+		g.P(indent, "if ", expr, " != nil { ", buf, " = ", fn, "(", buf, ", ", num, ", ", expr, ") }")
 	case protoreflect.BytesKind:
 		fn := g.QualifiedGoIdent(litewirePkg.Ident("AppendBytes" + suffix))
 		g.P(indent, buf, " = ", fn, "(", buf, ", ", num, ", ", expr, ")")
@@ -854,6 +879,7 @@ func genUnmarshal(g *protogen.GeneratedFile, msg *protogen.Message) {
 func emitUnmarshalField(g *protogen.GeneratedFile, f *protogen.Field) {
 	bytesType := g.QualifiedGoIdent(litewirePkg.Ident("BytesType"))
 	readBytesRaw := g.QualifiedGoIdent(litewirePkg.Ident("ReadBytesRaw"))
+	readMessage := g.QualifiedGoIdent(litewirePkg.Ident("ReadMessage"))
 	readTag := g.QualifiedGoIdent(litewirePkg.Ident("ReadTag"))
 	skip := g.QualifiedGoIdent(litewirePkg.Ident("Skip"))
 
@@ -880,9 +906,7 @@ func emitUnmarshalField(g *protogen.GeneratedFile, f *protogen.Field) {
 		g.P("\t\t\t\t\tcase 2:")
 		if vf.Desc.Kind() == protoreflect.MessageKind {
 			g.P("\t\t\t\t\t\tif mwtyp == ", bytesType, " {")
-			g.P("\t\t\t\t\t\t\tvraw, err := ", readBytesRaw, "(&raw)")
-			g.P("\t\t\t\t\t\t\tif err != nil { return err }")
-			g.P("\t\t\t\t\t\t\tif err := mv.Unmarshal(vraw); err != nil { return err }")
+			g.P("\t\t\t\t\t\t\tif err := ", readMessage, "(&raw, mv); err != nil { return err }")
 			g.P("\t\t\t\t\t\t\tcontinue")
 			g.P("\t\t\t\t\t\t}")
 		} else {
@@ -916,10 +940,8 @@ func emitUnmarshalField(g *protogen.GeneratedFile, f *protogen.Field) {
 		}
 		if f.Desc.Kind() == protoreflect.MessageKind {
 			g.P("\t\t\tif wtyp == ", bytesType, " {")
-			g.P("\t\t\t\traw, err := ", readBytesRaw, "(&b)")
-			g.P("\t\t\t\tif err != nil { return err }")
 			g.P("\t\t\t\telem := &", g.QualifiedGoIdent(f.Message.GoIdent), "{}")
-			g.P("\t\t\t\tif err := elem.Unmarshal(raw); err != nil { return err }")
+			g.P("\t\t\t\tif err := ", readMessage, "(&b, elem); err != nil { return err }")
 			g.P("\t\t\t\tm.", f.GoName, " = append(m.", f.GoName, ", elem)")
 			g.P("\t\t\t\tcontinue")
 			g.P("\t\t\t}")
@@ -934,18 +956,16 @@ func emitUnmarshalField(g *protogen.GeneratedFile, f *protogen.Field) {
 
 	if f.Desc.Kind() == protoreflect.MessageKind {
 		g.P("\t\t\tif wtyp == ", bytesType, " {")
-		g.P("\t\t\t\traw, err := ", readBytesRaw, "(&b)")
-		g.P("\t\t\t\tif err != nil { return err }")
 		if isRealOneof(f) {
 			wrap := f.GoIdent.GoName
 			g.P("\t\t\t\tvar sub *", g.QualifiedGoIdent(f.Message.GoIdent))
 			g.P("\t\t\t\tif cur, ok := m.", f.Oneof.GoName, ".(*", wrap, "); ok && cur != nil { sub = cur.", f.GoName, " }")
 			g.P("\t\t\t\tif sub == nil { sub = &", g.QualifiedGoIdent(f.Message.GoIdent), "{} }")
-			g.P("\t\t\t\tif err := sub.Unmarshal(raw); err != nil { return err }")
+			g.P("\t\t\t\tif err := ", readMessage, "(&b, sub); err != nil { return err }")
 			g.P("\t\t\t\tm.", f.Oneof.GoName, " = &", wrap, "{", f.GoName, ": sub}")
 		} else {
 			g.P("\t\t\t\tif m.", f.GoName, " == nil { m.", f.GoName, " = &", g.QualifiedGoIdent(f.Message.GoIdent), "{} }")
-			g.P("\t\t\t\tif err := m.", f.GoName, ".Unmarshal(raw); err != nil { return err }")
+			g.P("\t\t\t\tif err := ", readMessage, "(&b, m.", f.GoName, "); err != nil { return err }")
 		}
 		g.P("\t\t\t\tcontinue")
 		g.P("\t\t\t}")

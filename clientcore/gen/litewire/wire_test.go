@@ -80,3 +80,57 @@ func TestLitewireMatchesProtowire(t *testing.T) {
 		t.Fatalf("ConsumeVarint(overflow) = %d, want %d", n, errCodeOverflow)
 	}
 }
+
+type fakeMsg struct {
+	text string
+}
+
+func (m *fakeMsg) Size() int {
+	return SizeString(1, m.text)
+}
+
+func (m *fakeMsg) AppendMarshal(b []byte) []byte {
+	return AppendString(b, 1, m.text)
+}
+
+func (m *fakeMsg) Unmarshal(b []byte) error {
+	for len(b) > 0 {
+		num, wtyp, err := ReadTag(&b)
+		if err != nil {
+			return err
+		}
+		if num == 1 && wtyp == BytesType {
+			v, err := ReadString(&b)
+			if err != nil {
+				return err
+			}
+			m.text = v
+			continue
+		}
+		if err := Skip(&b, num, wtyp); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func TestAppendAndReadMessage(t *testing.T) {
+	in := &fakeMsg{text: "hello"}
+	wire := AppendMessage(nil, 4, in)
+	num, wtyp, err := ReadTag(&wire)
+	if err != nil || num != 4 || wtyp != BytesType {
+		t.Fatalf("ReadTag = (%d, %d, %v)", num, wtyp, err)
+	}
+	var out fakeMsg
+	if err := ReadMessage(&wire, &out); err != nil {
+		t.Fatalf("ReadMessage: %v", err)
+	}
+	if out.text != "hello" || len(wire) != 0 {
+		t.Fatalf("got %q rem=%d", out.text, len(wire))
+	}
+
+	trunc := []byte{0x05, 'a', 'b'}
+	if err := ReadMessage(&trunc, &out); err == nil {
+		t.Fatal("expected error for truncated message")
+	}
+}

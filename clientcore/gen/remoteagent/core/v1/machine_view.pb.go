@@ -6,7 +6,6 @@ package corev1
 import (
 	litewire "github.com/Lewin671/remote-agent/clientcore/gen/litewire"
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
-	math "math"
 )
 
 type MachinePollState int32
@@ -123,53 +122,11 @@ type MachineStatusScreenRequest struct {
 	MachineId string
 }
 
-func (m *MachineStatusScreenRequest) Reset() {
-	if m != nil {
-		*m = MachineStatusScreenRequest{}
-	}
-}
-
 func (m *MachineStatusScreenRequest) GetMachineId() string {
 	if m != nil {
 		return m.MachineId
 	}
 	return ""
-}
-
-func (m *MachineStatusScreenRequest) Clone() *MachineStatusScreenRequest {
-	if m == nil {
-		return nil
-	}
-	cp := *m
-	return &cp
-}
-
-func (m *MachineStatusScreenRequest) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeString(1, m.MachineId)
-	return n
-}
-
-func (m *MachineStatusScreenRequest) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
-}
-
-func (m *MachineStatusScreenRequest) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendString(b, 1, m.MachineId)
-	return b
 }
 
 func (m *MachineStatusScreenRequest) Unmarshal(b []byte) error {
@@ -204,12 +161,6 @@ type MachineRingView struct {
 	ValueText *Text
 	Tone      MachineRingTone
 	A11YLabel *Text
-}
-
-func (m *MachineRingView) Reset() {
-	if m != nil {
-		*m = MachineRingView{}
-	}
 }
 
 func (m *MachineRingView) GetKind() MachineRingKind {
@@ -255,17 +206,6 @@ func (m *MachineRingView) GetA11YLabel() *Text {
 	return nil
 }
 
-func (m *MachineRingView) Clone() *MachineRingView {
-	if m == nil {
-		return nil
-	}
-	cp := *m
-	cp.Label = m.Label.Clone()
-	cp.ValueText = m.ValueText.Clone()
-	cp.A11YLabel = m.A11YLabel.Clone()
-	return &cp
-}
-
 func (m *MachineRingView) Size() int {
 	if m == nil {
 		return 0
@@ -304,125 +244,23 @@ func (m *MachineRingView) AppendMarshal(b []byte) []byte {
 	}
 	b = litewire.AppendInt32(b, 1, int32(m.Kind))
 	if m.Label != nil {
-		b = litewire.AppendMessagePrefix(b, 2, m.Label.Size())
-		b = m.Label.AppendMarshal(b)
+		b = litewire.AppendMessage(b, 2, m.Label)
 	}
 	b = litewire.AppendBool(b, 3, m.HasValue)
 	b = litewire.AppendDouble(b, 4, m.Fraction)
 	if m.ValueText != nil {
-		b = litewire.AppendMessagePrefix(b, 5, m.ValueText.Size())
-		b = m.ValueText.AppendMarshal(b)
+		b = litewire.AppendMessage(b, 5, m.ValueText)
 	}
 	b = litewire.AppendInt32(b, 6, int32(m.Tone))
 	if m.A11YLabel != nil {
-		b = litewire.AppendMessagePrefix(b, 7, m.A11YLabel.Size())
-		b = m.A11YLabel.AppendMarshal(b)
+		b = litewire.AppendMessage(b, 7, m.A11YLabel)
 	}
 	return b
-}
-
-func (m *MachineRingView) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.Kind = MachineRingKind(int32(v))
-				continue
-			}
-		case 2:
-			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
-				if m.Label == nil {
-					m.Label = &Text{}
-				}
-				if err := m.Label.Unmarshal(raw); err != nil {
-					return err
-				}
-				continue
-			}
-		case 3:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.HasValue = litewire.DecodeBool(v)
-				continue
-			}
-		case 4:
-			if wtyp == litewire.Fixed64Type {
-				v, err := litewire.ReadFixed64(&b)
-				if err != nil {
-					return err
-				}
-				m.Fraction = math.Float64frombits(v)
-				continue
-			}
-		case 5:
-			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
-				if m.ValueText == nil {
-					m.ValueText = &Text{}
-				}
-				if err := m.ValueText.Unmarshal(raw); err != nil {
-					return err
-				}
-				continue
-			}
-		case 6:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.Tone = MachineRingTone(int32(v))
-				continue
-			}
-		case 7:
-			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
-				if m.A11YLabel == nil {
-					m.A11YLabel = &Text{}
-				}
-				if err := m.A11YLabel.Unmarshal(raw); err != nil {
-					return err
-				}
-				continue
-			}
-		}
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 type MachineChartPoint struct {
 	TimeMs int64
 	Value  float64
-}
-
-func (m *MachineChartPoint) Reset() {
-	if m != nil {
-		*m = MachineChartPoint{}
-	}
 }
 
 func (m *MachineChartPoint) GetTimeMs() int64 {
@@ -436,14 +274,6 @@ func (m *MachineChartPoint) GetValue() float64 {
 		return m.Value
 	}
 	return 0
-}
-
-func (m *MachineChartPoint) Clone() *MachineChartPoint {
-	if m == nil {
-		return nil
-	}
-	cp := *m
-	return &cp
 }
 
 func (m *MachineChartPoint) Size() int {
@@ -476,39 +306,6 @@ func (m *MachineChartPoint) AppendMarshal(b []byte) []byte {
 	return b
 }
 
-func (m *MachineChartPoint) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.TimeMs = int64(v)
-				continue
-			}
-		case 2:
-			if wtyp == litewire.Fixed64Type {
-				v, err := litewire.ReadFixed64(&b)
-				if err != nil {
-					return err
-				}
-				m.Value = math.Float64frombits(v)
-				continue
-			}
-		}
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 type MachineChartView struct {
 	Visible        bool
 	Points         []*MachineChartPoint
@@ -523,12 +320,6 @@ type MachineChartView struct {
 	A11YSummary    *Text
 	CanStepPrev    bool
 	CanStepNext    bool
-}
-
-func (m *MachineChartView) Reset() {
-	if m != nil {
-		*m = MachineChartView{}
-	}
 }
 
 func (m *MachineChartView) GetVisible() bool {
@@ -610,23 +401,6 @@ func (m *MachineChartView) GetCanStepNext() bool {
 	return false
 }
 
-func (m *MachineChartView) Clone() *MachineChartView {
-	if m == nil {
-		return nil
-	}
-	cp := *m
-	if m.Points != nil {
-		cp.Points = make([]*MachineChartPoint, len(m.Points))
-		for i, v := range m.Points {
-			cp.Points[i] = v.Clone()
-		}
-	}
-	cp.ScrubValue = m.ScrubValue.Clone()
-	cp.ScrubAge = m.ScrubAge.Clone()
-	cp.A11YSummary = m.A11YSummary.Clone()
-	return &cp
-}
-
 func (m *MachineChartView) Size() int {
 	if m == nil {
 		return 0
@@ -676,8 +450,7 @@ func (m *MachineChartView) AppendMarshal(b []byte) []byte {
 	b = litewire.AppendBool(b, 1, m.Visible)
 	for _, v := range m.Points {
 		if v != nil {
-			b = litewire.AppendMessagePrefix(b, 2, v.Size())
-			b = v.AppendMarshal(b)
+			b = litewire.AppendMessage(b, 2, v)
 		}
 	}
 	b = litewire.AppendVarint(b, 3, uint64(m.WindowStartMs))
@@ -687,171 +460,17 @@ func (m *MachineChartView) AppendMarshal(b []byte) []byte {
 	b = litewire.AppendBool(b, 7, m.HasScrub)
 	b = litewire.AppendInt32(b, 8, int32(m.ScrubIndex))
 	if m.ScrubValue != nil {
-		b = litewire.AppendMessagePrefix(b, 9, m.ScrubValue.Size())
-		b = m.ScrubValue.AppendMarshal(b)
+		b = litewire.AppendMessage(b, 9, m.ScrubValue)
 	}
 	if m.ScrubAge != nil {
-		b = litewire.AppendMessagePrefix(b, 10, m.ScrubAge.Size())
-		b = m.ScrubAge.AppendMarshal(b)
+		b = litewire.AppendMessage(b, 10, m.ScrubAge)
 	}
 	if m.A11YSummary != nil {
-		b = litewire.AppendMessagePrefix(b, 11, m.A11YSummary.Size())
-		b = m.A11YSummary.AppendMarshal(b)
+		b = litewire.AppendMessage(b, 11, m.A11YSummary)
 	}
 	b = litewire.AppendBool(b, 12, m.CanStepPrev)
 	b = litewire.AppendBool(b, 13, m.CanStepNext)
 	return b
-}
-
-func (m *MachineChartView) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.Visible = litewire.DecodeBool(v)
-				continue
-			}
-		case 2:
-			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
-				elem := &MachineChartPoint{}
-				if err := elem.Unmarshal(raw); err != nil {
-					return err
-				}
-				m.Points = append(m.Points, elem)
-				continue
-			}
-		case 3:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.WindowStartMs = int64(v)
-				continue
-			}
-		case 4:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.WindowEndMs = int64(v)
-				continue
-			}
-		case 5:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.GapThresholdMs = int64(v)
-				continue
-			}
-		case 6:
-			if wtyp == litewire.Fixed64Type {
-				v, err := litewire.ReadFixed64(&b)
-				if err != nil {
-					return err
-				}
-				m.Ceiling = math.Float64frombits(v)
-				continue
-			}
-		case 7:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.HasScrub = litewire.DecodeBool(v)
-				continue
-			}
-		case 8:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.ScrubIndex = int32(v)
-				continue
-			}
-		case 9:
-			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
-				if m.ScrubValue == nil {
-					m.ScrubValue = &Text{}
-				}
-				if err := m.ScrubValue.Unmarshal(raw); err != nil {
-					return err
-				}
-				continue
-			}
-		case 10:
-			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
-				if m.ScrubAge == nil {
-					m.ScrubAge = &Text{}
-				}
-				if err := m.ScrubAge.Unmarshal(raw); err != nil {
-					return err
-				}
-				continue
-			}
-		case 11:
-			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
-				if m.A11YSummary == nil {
-					m.A11YSummary = &Text{}
-				}
-				if err := m.A11YSummary.Unmarshal(raw); err != nil {
-					return err
-				}
-				continue
-			}
-		case 12:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.CanStepPrev = litewire.DecodeBool(v)
-				continue
-			}
-		case 13:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.CanStepNext = litewire.DecodeBool(v)
-				continue
-			}
-		}
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 type MachineCpuSection struct {
@@ -861,12 +480,6 @@ type MachineCpuSection struct {
 	Detail2   *Text
 	A11YLabel *Text
 	Chart     *MachineChartView
-}
-
-func (m *MachineCpuSection) Reset() {
-	if m != nil {
-		*m = MachineCpuSection{}
-	}
 }
 
 func (m *MachineCpuSection) GetHasValue() bool {
@@ -904,18 +517,6 @@ func (m *MachineCpuSection) GetChart() *MachineChartView {
 		return m.Chart
 	}
 	return nil
-}
-
-func (m *MachineCpuSection) Clone() *MachineCpuSection {
-	if m == nil {
-		return nil
-	}
-	cp := *m
-	cp.Detail = m.Detail.Clone()
-	cp.Detail2 = m.Detail2.Clone()
-	cp.A11YLabel = m.A11YLabel.Clone()
-	cp.Chart = m.Chart.Clone()
-	return &cp
 }
 
 func (m *MachineCpuSection) Size() int {
@@ -958,111 +559,18 @@ func (m *MachineCpuSection) AppendMarshal(b []byte) []byte {
 	b = litewire.AppendBool(b, 1, m.HasValue)
 	b = litewire.AppendString(b, 2, m.Headline)
 	if m.Detail != nil {
-		b = litewire.AppendMessagePrefix(b, 3, m.Detail.Size())
-		b = m.Detail.AppendMarshal(b)
+		b = litewire.AppendMessage(b, 3, m.Detail)
 	}
 	if m.Detail2 != nil {
-		b = litewire.AppendMessagePrefix(b, 4, m.Detail2.Size())
-		b = m.Detail2.AppendMarshal(b)
+		b = litewire.AppendMessage(b, 4, m.Detail2)
 	}
 	if m.A11YLabel != nil {
-		b = litewire.AppendMessagePrefix(b, 5, m.A11YLabel.Size())
-		b = m.A11YLabel.AppendMarshal(b)
+		b = litewire.AppendMessage(b, 5, m.A11YLabel)
 	}
 	if m.Chart != nil {
-		b = litewire.AppendMessagePrefix(b, 6, m.Chart.Size())
-		b = m.Chart.AppendMarshal(b)
+		b = litewire.AppendMessage(b, 6, m.Chart)
 	}
 	return b
-}
-
-func (m *MachineCpuSection) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.HasValue = litewire.DecodeBool(v)
-				continue
-			}
-		case 2:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.Headline = v
-				continue
-			}
-		case 3:
-			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
-				if m.Detail == nil {
-					m.Detail = &Text{}
-				}
-				if err := m.Detail.Unmarshal(raw); err != nil {
-					return err
-				}
-				continue
-			}
-		case 4:
-			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
-				if m.Detail2 == nil {
-					m.Detail2 = &Text{}
-				}
-				if err := m.Detail2.Unmarshal(raw); err != nil {
-					return err
-				}
-				continue
-			}
-		case 5:
-			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
-				if m.A11YLabel == nil {
-					m.A11YLabel = &Text{}
-				}
-				if err := m.A11YLabel.Unmarshal(raw); err != nil {
-					return err
-				}
-				continue
-			}
-		case 6:
-			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
-				if m.Chart == nil {
-					m.Chart = &MachineChartView{}
-				}
-				if err := m.Chart.Unmarshal(raw); err != nil {
-					return err
-				}
-				continue
-			}
-		}
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 type MachineMemorySection struct {
@@ -1077,12 +585,6 @@ type MachineMemorySection struct {
 	SwapText            *Text
 	A11YLabel           *Text
 	Chart               *MachineChartView
-}
-
-func (m *MachineMemorySection) Reset() {
-	if m != nil {
-		*m = MachineMemorySection{}
-	}
 }
 
 func (m *MachineMemorySection) GetHasValue() bool {
@@ -1152,21 +654,6 @@ func (m *MachineMemorySection) GetChart() *MachineChartView {
 	return nil
 }
 
-func (m *MachineMemorySection) Clone() *MachineMemorySection {
-	if m == nil {
-		return nil
-	}
-	cp := *m
-	cp.Headline = m.Headline.Clone()
-	cp.Caption = m.Caption.Clone()
-	cp.PressureText = m.PressureText.Clone()
-	cp.TotalText = m.TotalText.Clone()
-	cp.SwapText = m.SwapText.Clone()
-	cp.A11YLabel = m.A11YLabel.Clone()
-	cp.Chart = m.Chart.Clone()
-	return &cp
-}
-
 func (m *MachineMemorySection) Size() int {
 	if m == nil {
 		return 0
@@ -1217,186 +704,30 @@ func (m *MachineMemorySection) AppendMarshal(b []byte) []byte {
 	}
 	b = litewire.AppendBool(b, 1, m.HasValue)
 	if m.Headline != nil {
-		b = litewire.AppendMessagePrefix(b, 2, m.Headline.Size())
-		b = m.Headline.AppendMarshal(b)
+		b = litewire.AppendMessage(b, 2, m.Headline)
 	}
 	if m.Caption != nil {
-		b = litewire.AppendMessagePrefix(b, 3, m.Caption.Size())
-		b = m.Caption.AppendMarshal(b)
+		b = litewire.AppendMessage(b, 3, m.Caption)
 	}
 	b = litewire.AppendInt32(b, 4, int32(m.Pressure))
 	if m.PressureText != nil {
-		b = litewire.AppendMessagePrefix(b, 5, m.PressureText.Size())
-		b = m.PressureText.AppendMarshal(b)
+		b = litewire.AppendMessage(b, 5, m.PressureText)
 	}
 	b = litewire.AppendBool(b, 6, m.HasPressurePosition)
 	b = litewire.AppendDouble(b, 7, m.PressurePosition)
 	if m.TotalText != nil {
-		b = litewire.AppendMessagePrefix(b, 8, m.TotalText.Size())
-		b = m.TotalText.AppendMarshal(b)
+		b = litewire.AppendMessage(b, 8, m.TotalText)
 	}
 	if m.SwapText != nil {
-		b = litewire.AppendMessagePrefix(b, 9, m.SwapText.Size())
-		b = m.SwapText.AppendMarshal(b)
+		b = litewire.AppendMessage(b, 9, m.SwapText)
 	}
 	if m.A11YLabel != nil {
-		b = litewire.AppendMessagePrefix(b, 10, m.A11YLabel.Size())
-		b = m.A11YLabel.AppendMarshal(b)
+		b = litewire.AppendMessage(b, 10, m.A11YLabel)
 	}
 	if m.Chart != nil {
-		b = litewire.AppendMessagePrefix(b, 11, m.Chart.Size())
-		b = m.Chart.AppendMarshal(b)
+		b = litewire.AppendMessage(b, 11, m.Chart)
 	}
 	return b
-}
-
-func (m *MachineMemorySection) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.HasValue = litewire.DecodeBool(v)
-				continue
-			}
-		case 2:
-			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
-				if m.Headline == nil {
-					m.Headline = &Text{}
-				}
-				if err := m.Headline.Unmarshal(raw); err != nil {
-					return err
-				}
-				continue
-			}
-		case 3:
-			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
-				if m.Caption == nil {
-					m.Caption = &Text{}
-				}
-				if err := m.Caption.Unmarshal(raw); err != nil {
-					return err
-				}
-				continue
-			}
-		case 4:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.Pressure = MachinePressureTone(int32(v))
-				continue
-			}
-		case 5:
-			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
-				if m.PressureText == nil {
-					m.PressureText = &Text{}
-				}
-				if err := m.PressureText.Unmarshal(raw); err != nil {
-					return err
-				}
-				continue
-			}
-		case 6:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.HasPressurePosition = litewire.DecodeBool(v)
-				continue
-			}
-		case 7:
-			if wtyp == litewire.Fixed64Type {
-				v, err := litewire.ReadFixed64(&b)
-				if err != nil {
-					return err
-				}
-				m.PressurePosition = math.Float64frombits(v)
-				continue
-			}
-		case 8:
-			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
-				if m.TotalText == nil {
-					m.TotalText = &Text{}
-				}
-				if err := m.TotalText.Unmarshal(raw); err != nil {
-					return err
-				}
-				continue
-			}
-		case 9:
-			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
-				if m.SwapText == nil {
-					m.SwapText = &Text{}
-				}
-				if err := m.SwapText.Unmarshal(raw); err != nil {
-					return err
-				}
-				continue
-			}
-		case 10:
-			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
-				if m.A11YLabel == nil {
-					m.A11YLabel = &Text{}
-				}
-				if err := m.A11YLabel.Unmarshal(raw); err != nil {
-					return err
-				}
-				continue
-			}
-		case 11:
-			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
-				if m.Chart == nil {
-					m.Chart = &MachineChartView{}
-				}
-				if err := m.Chart.Unmarshal(raw); err != nil {
-					return err
-				}
-				continue
-			}
-		}
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 type MachineDiskSection struct {
@@ -1414,12 +745,6 @@ type MachineDiskSection struct {
 	AgentUsageLabel    *Text
 	AgentUsageValue    *Text
 	A11YLabel          *Text
-}
-
-func (m *MachineDiskSection) Reset() {
-	if m != nil {
-		*m = MachineDiskSection{}
-	}
 }
 
 func (m *MachineDiskSection) GetHasValue() bool {
@@ -1507,23 +832,6 @@ func (m *MachineDiskSection) GetA11YLabel() *Text {
 	return nil
 }
 
-func (m *MachineDiskSection) Clone() *MachineDiskSection {
-	if m == nil {
-		return nil
-	}
-	cp := *m
-	cp.Headline = m.Headline.Clone()
-	cp.Caption = m.Caption.Clone()
-	cp.StateBadge = m.StateBadge.Clone()
-	cp.Detail = m.Detail.Clone()
-	cp.Detail2 = m.Detail2.Clone()
-	cp.CleanupActionLabel = m.CleanupActionLabel.Clone()
-	cp.AgentUsageLabel = m.AgentUsageLabel.Clone()
-	cp.AgentUsageValue = m.AgentUsageValue.Clone()
-	cp.A11YLabel = m.A11YLabel.Clone()
-	return &cp
-}
-
 func (m *MachineDiskSection) Size() int {
 	if m == nil {
 		return 0
@@ -1581,232 +889,37 @@ func (m *MachineDiskSection) AppendMarshal(b []byte) []byte {
 	}
 	b = litewire.AppendBool(b, 1, m.HasValue)
 	if m.Headline != nil {
-		b = litewire.AppendMessagePrefix(b, 2, m.Headline.Size())
-		b = m.Headline.AppendMarshal(b)
+		b = litewire.AppendMessage(b, 2, m.Headline)
 	}
 	if m.Caption != nil {
-		b = litewire.AppendMessagePrefix(b, 3, m.Caption.Size())
-		b = m.Caption.AppendMarshal(b)
+		b = litewire.AppendMessage(b, 3, m.Caption)
 	}
 	b = litewire.AppendInt32(b, 4, int32(m.State))
 	if m.StateBadge != nil {
-		b = litewire.AppendMessagePrefix(b, 5, m.StateBadge.Size())
-		b = m.StateBadge.AppendMarshal(b)
+		b = litewire.AppendMessage(b, 5, m.StateBadge)
 	}
 	b = litewire.AppendBool(b, 6, m.HasUsedFraction)
 	b = litewire.AppendDouble(b, 7, m.UsedFraction)
 	if m.Detail != nil {
-		b = litewire.AppendMessagePrefix(b, 8, m.Detail.Size())
-		b = m.Detail.AppendMarshal(b)
+		b = litewire.AppendMessage(b, 8, m.Detail)
 	}
 	if m.Detail2 != nil {
-		b = litewire.AppendMessagePrefix(b, 9, m.Detail2.Size())
-		b = m.Detail2.AppendMarshal(b)
+		b = litewire.AppendMessage(b, 9, m.Detail2)
 	}
 	b = litewire.AppendBool(b, 10, m.ShowActions)
 	if m.CleanupActionLabel != nil {
-		b = litewire.AppendMessagePrefix(b, 11, m.CleanupActionLabel.Size())
-		b = m.CleanupActionLabel.AppendMarshal(b)
+		b = litewire.AppendMessage(b, 11, m.CleanupActionLabel)
 	}
 	if m.AgentUsageLabel != nil {
-		b = litewire.AppendMessagePrefix(b, 12, m.AgentUsageLabel.Size())
-		b = m.AgentUsageLabel.AppendMarshal(b)
+		b = litewire.AppendMessage(b, 12, m.AgentUsageLabel)
 	}
 	if m.AgentUsageValue != nil {
-		b = litewire.AppendMessagePrefix(b, 13, m.AgentUsageValue.Size())
-		b = m.AgentUsageValue.AppendMarshal(b)
+		b = litewire.AppendMessage(b, 13, m.AgentUsageValue)
 	}
 	if m.A11YLabel != nil {
-		b = litewire.AppendMessagePrefix(b, 14, m.A11YLabel.Size())
-		b = m.A11YLabel.AppendMarshal(b)
+		b = litewire.AppendMessage(b, 14, m.A11YLabel)
 	}
 	return b
-}
-
-func (m *MachineDiskSection) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.HasValue = litewire.DecodeBool(v)
-				continue
-			}
-		case 2:
-			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
-				if m.Headline == nil {
-					m.Headline = &Text{}
-				}
-				if err := m.Headline.Unmarshal(raw); err != nil {
-					return err
-				}
-				continue
-			}
-		case 3:
-			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
-				if m.Caption == nil {
-					m.Caption = &Text{}
-				}
-				if err := m.Caption.Unmarshal(raw); err != nil {
-					return err
-				}
-				continue
-			}
-		case 4:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.State = DiskPressureState(int32(v))
-				continue
-			}
-		case 5:
-			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
-				if m.StateBadge == nil {
-					m.StateBadge = &Text{}
-				}
-				if err := m.StateBadge.Unmarshal(raw); err != nil {
-					return err
-				}
-				continue
-			}
-		case 6:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.HasUsedFraction = litewire.DecodeBool(v)
-				continue
-			}
-		case 7:
-			if wtyp == litewire.Fixed64Type {
-				v, err := litewire.ReadFixed64(&b)
-				if err != nil {
-					return err
-				}
-				m.UsedFraction = math.Float64frombits(v)
-				continue
-			}
-		case 8:
-			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
-				if m.Detail == nil {
-					m.Detail = &Text{}
-				}
-				if err := m.Detail.Unmarshal(raw); err != nil {
-					return err
-				}
-				continue
-			}
-		case 9:
-			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
-				if m.Detail2 == nil {
-					m.Detail2 = &Text{}
-				}
-				if err := m.Detail2.Unmarshal(raw); err != nil {
-					return err
-				}
-				continue
-			}
-		case 10:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.ShowActions = litewire.DecodeBool(v)
-				continue
-			}
-		case 11:
-			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
-				if m.CleanupActionLabel == nil {
-					m.CleanupActionLabel = &Text{}
-				}
-				if err := m.CleanupActionLabel.Unmarshal(raw); err != nil {
-					return err
-				}
-				continue
-			}
-		case 12:
-			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
-				if m.AgentUsageLabel == nil {
-					m.AgentUsageLabel = &Text{}
-				}
-				if err := m.AgentUsageLabel.Unmarshal(raw); err != nil {
-					return err
-				}
-				continue
-			}
-		case 13:
-			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
-				if m.AgentUsageValue == nil {
-					m.AgentUsageValue = &Text{}
-				}
-				if err := m.AgentUsageValue.Unmarshal(raw); err != nil {
-					return err
-				}
-				continue
-			}
-		case 14:
-			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
-				if m.A11YLabel == nil {
-					m.A11YLabel = &Text{}
-				}
-				if err := m.A11YLabel.Unmarshal(raw); err != nil {
-					return err
-				}
-				continue
-			}
-		}
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 type MachineUsageRow struct {
@@ -1817,12 +930,6 @@ type MachineUsageRow struct {
 	MemoryBytes uint64
 	Agent       v1.Agent
 	SessionId   string
-}
-
-func (m *MachineUsageRow) Reset() {
-	if m != nil {
-		*m = MachineUsageRow{}
-	}
 }
 
 func (m *MachineUsageRow) GetId() string {
@@ -1868,16 +975,6 @@ func (m *MachineUsageRow) GetSessionId() string {
 	return ""
 }
 
-func (m *MachineUsageRow) Clone() *MachineUsageRow {
-	if m == nil {
-		return nil
-	}
-	cp := *m
-	cp.Title = m.Title.Clone()
-	cp.Secondary = m.Secondary.Clone()
-	return &cp
-}
-
 func (m *MachineUsageRow) Size() int {
 	if m == nil {
 		return 0
@@ -1914,12 +1011,10 @@ func (m *MachineUsageRow) AppendMarshal(b []byte) []byte {
 	}
 	b = litewire.AppendString(b, 1, m.Id)
 	if m.Title != nil {
-		b = litewire.AppendMessagePrefix(b, 2, m.Title.Size())
-		b = m.Title.AppendMarshal(b)
+		b = litewire.AppendMessage(b, 2, m.Title)
 	}
 	if m.Secondary != nil {
-		b = litewire.AppendMessagePrefix(b, 3, m.Secondary.Size())
-		b = m.Secondary.AppendMarshal(b)
+		b = litewire.AppendMessage(b, 3, m.Secondary)
 	}
 	b = litewire.AppendDouble(b, 4, m.CpuPercent)
 	b = litewire.AppendVarint(b, 5, uint64(m.MemoryBytes))
@@ -1928,104 +1023,10 @@ func (m *MachineUsageRow) AppendMarshal(b []byte) []byte {
 	return b
 }
 
-func (m *MachineUsageRow) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.Id = v
-				continue
-			}
-		case 2:
-			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
-				if m.Title == nil {
-					m.Title = &Text{}
-				}
-				if err := m.Title.Unmarshal(raw); err != nil {
-					return err
-				}
-				continue
-			}
-		case 3:
-			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
-				if m.Secondary == nil {
-					m.Secondary = &Text{}
-				}
-				if err := m.Secondary.Unmarshal(raw); err != nil {
-					return err
-				}
-				continue
-			}
-		case 4:
-			if wtyp == litewire.Fixed64Type {
-				v, err := litewire.ReadFixed64(&b)
-				if err != nil {
-					return err
-				}
-				m.CpuPercent = math.Float64frombits(v)
-				continue
-			}
-		case 5:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.MemoryBytes = v
-				continue
-			}
-		case 6:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.Agent = v1.Agent(int32(v))
-				continue
-			}
-		case 7:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.SessionId = v
-				continue
-			}
-		}
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 type MachineTopUsageSection struct {
 	SelectedTab MachineUsageTab
 	Rows        []*MachineUsageRow
 	EmptyText   *Text
-}
-
-func (m *MachineTopUsageSection) Reset() {
-	if m != nil {
-		*m = MachineTopUsageSection{}
-	}
 }
 
 func (m *MachineTopUsageSection) GetSelectedTab() MachineUsageTab {
@@ -2045,21 +1046,6 @@ func (m *MachineTopUsageSection) GetEmptyText() *Text {
 		return m.EmptyText
 	}
 	return nil
-}
-
-func (m *MachineTopUsageSection) Clone() *MachineTopUsageSection {
-	if m == nil {
-		return nil
-	}
-	cp := *m
-	if m.Rows != nil {
-		cp.Rows = make([]*MachineUsageRow, len(m.Rows))
-		for i, v := range m.Rows {
-			cp.Rows[i] = v.Clone()
-		}
-	}
-	cp.EmptyText = m.EmptyText.Clone()
-	return &cp
 }
 
 func (m *MachineTopUsageSection) Size() int {
@@ -2097,66 +1083,13 @@ func (m *MachineTopUsageSection) AppendMarshal(b []byte) []byte {
 	b = litewire.AppendInt32(b, 1, int32(m.SelectedTab))
 	for _, v := range m.Rows {
 		if v != nil {
-			b = litewire.AppendMessagePrefix(b, 2, v.Size())
-			b = v.AppendMarshal(b)
+			b = litewire.AppendMessage(b, 2, v)
 		}
 	}
 	if m.EmptyText != nil {
-		b = litewire.AppendMessagePrefix(b, 3, m.EmptyText.Size())
-		b = m.EmptyText.AppendMarshal(b)
+		b = litewire.AppendMessage(b, 3, m.EmptyText)
 	}
 	return b
-}
-
-func (m *MachineTopUsageSection) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.SelectedTab = MachineUsageTab(int32(v))
-				continue
-			}
-		case 2:
-			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
-				elem := &MachineUsageRow{}
-				if err := elem.Unmarshal(raw); err != nil {
-					return err
-				}
-				m.Rows = append(m.Rows, elem)
-				continue
-			}
-		case 3:
-			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
-				if m.EmptyText == nil {
-					m.EmptyText = &Text{}
-				}
-				if err := m.EmptyText.Unmarshal(raw); err != nil {
-					return err
-				}
-				continue
-			}
-		}
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 type MachineStatusViewModel struct {
@@ -2178,12 +1111,6 @@ type MachineStatusViewModel struct {
 	TopUsage         *MachineTopUsageSection
 	UptimeText       *Text
 	BatteryText      *Text
-}
-
-func (m *MachineStatusViewModel) Reset() {
-	if m != nil {
-		*m = MachineStatusViewModel{}
-	}
 }
 
 func (m *MachineStatusViewModel) GetMachineId() string {
@@ -2295,28 +1222,6 @@ func (m *MachineStatusViewModel) GetBatteryText() *Text {
 	return nil
 }
 
-func (m *MachineStatusViewModel) Clone() *MachineStatusViewModel {
-	if m == nil {
-		return nil
-	}
-	cp := *m
-	cp.StatusBadge = m.StatusBadge.Clone()
-	cp.UnavailableTitle = m.UnavailableTitle.Clone()
-	if m.Rings != nil {
-		cp.Rings = make([]*MachineRingView, len(m.Rings))
-		for i, v := range m.Rings {
-			cp.Rings[i] = v.Clone()
-		}
-	}
-	cp.Cpu = m.Cpu.Clone()
-	cp.Memory = m.Memory.Clone()
-	cp.Disk = m.Disk.Clone()
-	cp.TopUsage = m.TopUsage.Clone()
-	cp.UptimeText = m.UptimeText.Clone()
-	cp.BatteryText = m.BatteryText.Clone()
-	return &cp
-}
-
 func (m *MachineStatusViewModel) Size() int {
 	if m == nil {
 		return 0
@@ -2387,266 +1292,36 @@ func (m *MachineStatusViewModel) AppendMarshal(b []byte) []byte {
 	b = litewire.AppendBool(b, 7, m.Dim)
 	b = litewire.AppendInt32(b, 8, int32(m.StatusDot))
 	if m.StatusBadge != nil {
-		b = litewire.AppendMessagePrefix(b, 9, m.StatusBadge.Size())
-		b = m.StatusBadge.AppendMarshal(b)
+		b = litewire.AppendMessage(b, 9, m.StatusBadge)
 	}
 	b = litewire.AppendBool(b, 10, m.ShowRetry)
 	if m.UnavailableTitle != nil {
-		b = litewire.AppendMessagePrefix(b, 11, m.UnavailableTitle.Size())
-		b = m.UnavailableTitle.AppendMarshal(b)
+		b = litewire.AppendMessage(b, 11, m.UnavailableTitle)
 	}
 	for _, v := range m.Rings {
 		if v != nil {
-			b = litewire.AppendMessagePrefix(b, 12, v.Size())
-			b = v.AppendMarshal(b)
+			b = litewire.AppendMessage(b, 12, v)
 		}
 	}
 	if m.Cpu != nil {
-		b = litewire.AppendMessagePrefix(b, 13, m.Cpu.Size())
-		b = m.Cpu.AppendMarshal(b)
+		b = litewire.AppendMessage(b, 13, m.Cpu)
 	}
 	if m.Memory != nil {
-		b = litewire.AppendMessagePrefix(b, 14, m.Memory.Size())
-		b = m.Memory.AppendMarshal(b)
+		b = litewire.AppendMessage(b, 14, m.Memory)
 	}
 	if m.Disk != nil {
-		b = litewire.AppendMessagePrefix(b, 15, m.Disk.Size())
-		b = m.Disk.AppendMarshal(b)
+		b = litewire.AppendMessage(b, 15, m.Disk)
 	}
 	if m.TopUsage != nil {
-		b = litewire.AppendMessagePrefix(b, 16, m.TopUsage.Size())
-		b = m.TopUsage.AppendMarshal(b)
+		b = litewire.AppendMessage(b, 16, m.TopUsage)
 	}
 	if m.UptimeText != nil {
-		b = litewire.AppendMessagePrefix(b, 17, m.UptimeText.Size())
-		b = m.UptimeText.AppendMarshal(b)
+		b = litewire.AppendMessage(b, 17, m.UptimeText)
 	}
 	if m.BatteryText != nil {
-		b = litewire.AppendMessagePrefix(b, 18, m.BatteryText.Size())
-		b = m.BatteryText.AppendMarshal(b)
+		b = litewire.AppendMessage(b, 18, m.BatteryText)
 	}
 	return b
-}
-
-func (m *MachineStatusViewModel) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.MachineId = v
-				continue
-			}
-		case 2:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.MachineName = v
-				continue
-			}
-		case 3:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.Found = litewire.DecodeBool(v)
-				continue
-			}
-		case 4:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.Supported = litewire.DecodeBool(v)
-				continue
-			}
-		case 5:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.Online = litewire.DecodeBool(v)
-				continue
-			}
-		case 6:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.PollState = MachinePollState(int32(v))
-				continue
-			}
-		case 7:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.Dim = litewire.DecodeBool(v)
-				continue
-			}
-		case 8:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.StatusDot = MachineStatusDot(int32(v))
-				continue
-			}
-		case 9:
-			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
-				if m.StatusBadge == nil {
-					m.StatusBadge = &Text{}
-				}
-				if err := m.StatusBadge.Unmarshal(raw); err != nil {
-					return err
-				}
-				continue
-			}
-		case 10:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.ShowRetry = litewire.DecodeBool(v)
-				continue
-			}
-		case 11:
-			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
-				if m.UnavailableTitle == nil {
-					m.UnavailableTitle = &Text{}
-				}
-				if err := m.UnavailableTitle.Unmarshal(raw); err != nil {
-					return err
-				}
-				continue
-			}
-		case 12:
-			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
-				elem := &MachineRingView{}
-				if err := elem.Unmarshal(raw); err != nil {
-					return err
-				}
-				m.Rings = append(m.Rings, elem)
-				continue
-			}
-		case 13:
-			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
-				if m.Cpu == nil {
-					m.Cpu = &MachineCpuSection{}
-				}
-				if err := m.Cpu.Unmarshal(raw); err != nil {
-					return err
-				}
-				continue
-			}
-		case 14:
-			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
-				if m.Memory == nil {
-					m.Memory = &MachineMemorySection{}
-				}
-				if err := m.Memory.Unmarshal(raw); err != nil {
-					return err
-				}
-				continue
-			}
-		case 15:
-			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
-				if m.Disk == nil {
-					m.Disk = &MachineDiskSection{}
-				}
-				if err := m.Disk.Unmarshal(raw); err != nil {
-					return err
-				}
-				continue
-			}
-		case 16:
-			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
-				if m.TopUsage == nil {
-					m.TopUsage = &MachineTopUsageSection{}
-				}
-				if err := m.TopUsage.Unmarshal(raw); err != nil {
-					return err
-				}
-				continue
-			}
-		case 17:
-			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
-				if m.UptimeText == nil {
-					m.UptimeText = &Text{}
-				}
-				if err := m.UptimeText.Unmarshal(raw); err != nil {
-					return err
-				}
-				continue
-			}
-		case 18:
-			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
-				if m.BatteryText == nil {
-					m.BatteryText = &Text{}
-				}
-				if err := m.BatteryText.Unmarshal(raw); err != nil {
-					return err
-				}
-				continue
-			}
-		}
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 type DiskReminderView struct {
@@ -2657,12 +1332,6 @@ type DiskReminderView struct {
 	Title          *Text
 	Detail         *Text
 	ActionLabel    *Text
-}
-
-func (m *DiskReminderView) Reset() {
-	if m != nil {
-		*m = DiskReminderView{}
-	}
 }
 
 func (m *DiskReminderView) GetMachineId() string {
@@ -2708,17 +1377,6 @@ func (m *DiskReminderView) GetActionLabel() *Text {
 	return nil
 }
 
-func (m *DiskReminderView) Clone() *DiskReminderView {
-	if m == nil {
-		return nil
-	}
-	cp := *m
-	cp.Title = m.Title.Clone()
-	cp.Detail = m.Detail.Clone()
-	cp.ActionLabel = m.ActionLabel.Clone()
-	return &cp
-}
-
 func (m *DiskReminderView) Size() int {
 	if m == nil {
 		return 0
@@ -2760,122 +1418,20 @@ func (m *DiskReminderView) AppendMarshal(b []byte) []byte {
 	b = litewire.AppendBool(b, 3, m.Critical)
 	b = litewire.AppendVarint(b, 4, uint64(m.AvailableBytes))
 	if m.Title != nil {
-		b = litewire.AppendMessagePrefix(b, 5, m.Title.Size())
-		b = m.Title.AppendMarshal(b)
+		b = litewire.AppendMessage(b, 5, m.Title)
 	}
 	if m.Detail != nil {
-		b = litewire.AppendMessagePrefix(b, 6, m.Detail.Size())
-		b = m.Detail.AppendMarshal(b)
+		b = litewire.AppendMessage(b, 6, m.Detail)
 	}
 	if m.ActionLabel != nil {
-		b = litewire.AppendMessagePrefix(b, 7, m.ActionLabel.Size())
-		b = m.ActionLabel.AppendMarshal(b)
+		b = litewire.AppendMessage(b, 7, m.ActionLabel)
 	}
 	return b
-}
-
-func (m *DiskReminderView) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.MachineId = v
-				continue
-			}
-		case 2:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.MachineName = v
-				continue
-			}
-		case 3:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.Critical = litewire.DecodeBool(v)
-				continue
-			}
-		case 4:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.AvailableBytes = v
-				continue
-			}
-		case 5:
-			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
-				if m.Title == nil {
-					m.Title = &Text{}
-				}
-				if err := m.Title.Unmarshal(raw); err != nil {
-					return err
-				}
-				continue
-			}
-		case 6:
-			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
-				if m.Detail == nil {
-					m.Detail = &Text{}
-				}
-				if err := m.Detail.Unmarshal(raw); err != nil {
-					return err
-				}
-				continue
-			}
-		case 7:
-			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
-				if m.ActionLabel == nil {
-					m.ActionLabel = &Text{}
-				}
-				if err := m.ActionLabel.Unmarshal(raw); err != nil {
-					return err
-				}
-				continue
-			}
-		}
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 type QuotaScreenRequest struct {
 	MachineId   string
 	FilterAgent v1.Agent
-}
-
-func (m *QuotaScreenRequest) Reset() {
-	if m != nil {
-		*m = QuotaScreenRequest{}
-	}
 }
 
 func (m *QuotaScreenRequest) GetMachineId() string {
@@ -2889,44 +1445,6 @@ func (m *QuotaScreenRequest) GetFilterAgent() v1.Agent {
 		return m.FilterAgent
 	}
 	return 0
-}
-
-func (m *QuotaScreenRequest) Clone() *QuotaScreenRequest {
-	if m == nil {
-		return nil
-	}
-	cp := *m
-	return &cp
-}
-
-func (m *QuotaScreenRequest) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeString(1, m.MachineId)
-	n += litewire.SizeInt32(2, int32(m.FilterAgent))
-	return n
-}
-
-func (m *QuotaScreenRequest) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
-}
-
-func (m *QuotaScreenRequest) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendString(b, 1, m.MachineId)
-	b = litewire.AppendInt32(b, 2, int32(m.FilterAgent))
-	return b
 }
 
 func (m *QuotaScreenRequest) Unmarshal(b []byte) error {
@@ -2970,12 +1488,6 @@ type QuotaBannerView struct {
 	WindowName string
 }
 
-func (m *QuotaBannerView) Reset() {
-	if m != nil {
-		*m = QuotaBannerView{}
-	}
-}
-
 func (m *QuotaBannerView) GetSeverity() QuotaBannerSeverity {
 	if m != nil {
 		return m.Severity
@@ -3005,15 +1517,6 @@ func (m *QuotaBannerView) GetWindowName() string {
 		return m.WindowName
 	}
 	return ""
-}
-
-func (m *QuotaBannerView) Clone() *QuotaBannerView {
-	if m == nil {
-		return nil
-	}
-	cp := *m
-	cp.Message = m.Message.Clone()
-	return &cp
 }
 
 func (m *QuotaBannerView) Size() int {
@@ -3048,78 +1551,12 @@ func (m *QuotaBannerView) AppendMarshal(b []byte) []byte {
 	}
 	b = litewire.AppendInt32(b, 1, int32(m.Severity))
 	if m.Message != nil {
-		b = litewire.AppendMessagePrefix(b, 2, m.Message.Size())
-		b = m.Message.AppendMarshal(b)
+		b = litewire.AppendMessage(b, 2, m.Message)
 	}
 	b = litewire.AppendString(b, 3, m.MachineId)
 	b = litewire.AppendInt32(b, 4, int32(m.Agent))
 	b = litewire.AppendString(b, 5, m.WindowName)
 	return b
-}
-
-func (m *QuotaBannerView) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.Severity = QuotaBannerSeverity(int32(v))
-				continue
-			}
-		case 2:
-			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
-				if m.Message == nil {
-					m.Message = &Text{}
-				}
-				if err := m.Message.Unmarshal(raw); err != nil {
-					return err
-				}
-				continue
-			}
-		case 3:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.MachineId = v
-				continue
-			}
-		case 4:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.Agent = v1.Agent(int32(v))
-				continue
-			}
-		case 5:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.WindowName = v
-				continue
-			}
-		}
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 type QuotaRowView struct {
@@ -3137,12 +1574,6 @@ type QuotaRowView struct {
 	ResetText        *Text
 	ResetClockText   *Text
 	Footnote         *Text
-}
-
-func (m *QuotaRowView) Reset() {
-	if m != nil {
-		*m = QuotaRowView{}
-	}
 }
 
 func (m *QuotaRowView) GetWindowName() string {
@@ -3230,20 +1661,6 @@ func (m *QuotaRowView) GetFootnote() *Text {
 	return nil
 }
 
-func (m *QuotaRowView) Clone() *QuotaRowView {
-	if m == nil {
-		return nil
-	}
-	cp := *m
-	cp.Label = m.Label.Clone()
-	cp.PoolName = m.PoolName.Clone()
-	cp.RemainingText = m.RemainingText.Clone()
-	cp.ResetText = m.ResetText.Clone()
-	cp.ResetClockText = m.ResetClockText.Clone()
-	cp.Footnote = m.Footnote.Clone()
-	return &cp
-}
-
 func (m *QuotaRowView) Size() int {
 	if m == nil {
 		return 0
@@ -3295,12 +1712,10 @@ func (m *QuotaRowView) AppendMarshal(b []byte) []byte {
 	}
 	b = litewire.AppendString(b, 1, m.WindowName)
 	if m.Label != nil {
-		b = litewire.AppendMessagePrefix(b, 2, m.Label.Size())
-		b = m.Label.AppendMarshal(b)
+		b = litewire.AppendMessage(b, 2, m.Label)
 	}
 	if m.PoolName != nil {
-		b = litewire.AppendMessagePrefix(b, 3, m.PoolName.Size())
-		b = m.PoolName.AppendMarshal(b)
+		b = litewire.AppendMessage(b, 3, m.PoolName)
 	}
 	b = litewire.AppendBool(b, 4, m.HasPercent)
 	b = litewire.AppendInt32(b, 5, int32(m.UsedPercent))
@@ -3310,204 +1725,23 @@ func (m *QuotaRowView) AppendMarshal(b []byte) []byte {
 	b = litewire.AppendBool(b, 9, m.Stale)
 	b = litewire.AppendInt32(b, 10, int32(m.Tone))
 	if m.RemainingText != nil {
-		b = litewire.AppendMessagePrefix(b, 11, m.RemainingText.Size())
-		b = m.RemainingText.AppendMarshal(b)
+		b = litewire.AppendMessage(b, 11, m.RemainingText)
 	}
 	if m.ResetText != nil {
-		b = litewire.AppendMessagePrefix(b, 12, m.ResetText.Size())
-		b = m.ResetText.AppendMarshal(b)
+		b = litewire.AppendMessage(b, 12, m.ResetText)
 	}
 	if m.ResetClockText != nil {
-		b = litewire.AppendMessagePrefix(b, 13, m.ResetClockText.Size())
-		b = m.ResetClockText.AppendMarshal(b)
+		b = litewire.AppendMessage(b, 13, m.ResetClockText)
 	}
 	if m.Footnote != nil {
-		b = litewire.AppendMessagePrefix(b, 14, m.Footnote.Size())
-		b = m.Footnote.AppendMarshal(b)
+		b = litewire.AppendMessage(b, 14, m.Footnote)
 	}
 	return b
-}
-
-func (m *QuotaRowView) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.WindowName = v
-				continue
-			}
-		case 2:
-			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
-				if m.Label == nil {
-					m.Label = &Text{}
-				}
-				if err := m.Label.Unmarshal(raw); err != nil {
-					return err
-				}
-				continue
-			}
-		case 3:
-			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
-				if m.PoolName == nil {
-					m.PoolName = &Text{}
-				}
-				if err := m.PoolName.Unmarshal(raw); err != nil {
-					return err
-				}
-				continue
-			}
-		case 4:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.HasPercent = litewire.DecodeBool(v)
-				continue
-			}
-		case 5:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.UsedPercent = int32(v)
-				continue
-			}
-		case 6:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.RemainingPercent = int32(v)
-				continue
-			}
-		case 7:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.Exhausted = litewire.DecodeBool(v)
-				continue
-			}
-		case 8:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.PastReset = litewire.DecodeBool(v)
-				continue
-			}
-		case 9:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.Stale = litewire.DecodeBool(v)
-				continue
-			}
-		case 10:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.Tone = QuotaTone(int32(v))
-				continue
-			}
-		case 11:
-			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
-				if m.RemainingText == nil {
-					m.RemainingText = &Text{}
-				}
-				if err := m.RemainingText.Unmarshal(raw); err != nil {
-					return err
-				}
-				continue
-			}
-		case 12:
-			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
-				if m.ResetText == nil {
-					m.ResetText = &Text{}
-				}
-				if err := m.ResetText.Unmarshal(raw); err != nil {
-					return err
-				}
-				continue
-			}
-		case 13:
-			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
-				if m.ResetClockText == nil {
-					m.ResetClockText = &Text{}
-				}
-				if err := m.ResetClockText.Unmarshal(raw); err != nil {
-					return err
-				}
-				continue
-			}
-		case 14:
-			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
-				if m.Footnote == nil {
-					m.Footnote = &Text{}
-				}
-				if err := m.Footnote.Unmarshal(raw); err != nil {
-					return err
-				}
-				continue
-			}
-		}
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 type QuotaWindowGroupView struct {
 	GroupLabel *Text
 	Rows       []*QuotaRowView
-}
-
-func (m *QuotaWindowGroupView) Reset() {
-	if m != nil {
-		*m = QuotaWindowGroupView{}
-	}
 }
 
 func (m *QuotaWindowGroupView) GetGroupLabel() *Text {
@@ -3521,21 +1755,6 @@ func (m *QuotaWindowGroupView) GetRows() []*QuotaRowView {
 		return m.Rows
 	}
 	return nil
-}
-
-func (m *QuotaWindowGroupView) Clone() *QuotaWindowGroupView {
-	if m == nil {
-		return nil
-	}
-	cp := *m
-	cp.GroupLabel = m.GroupLabel.Clone()
-	if m.Rows != nil {
-		cp.Rows = make([]*QuotaRowView, len(m.Rows))
-		for i, v := range m.Rows {
-			cp.Rows[i] = v.Clone()
-		}
-	}
-	return &cp
 }
 
 func (m *QuotaWindowGroupView) Size() int {
@@ -3570,58 +1789,14 @@ func (m *QuotaWindowGroupView) AppendMarshal(b []byte) []byte {
 		return b
 	}
 	if m.GroupLabel != nil {
-		b = litewire.AppendMessagePrefix(b, 1, m.GroupLabel.Size())
-		b = m.GroupLabel.AppendMarshal(b)
+		b = litewire.AppendMessage(b, 1, m.GroupLabel)
 	}
 	for _, v := range m.Rows {
 		if v != nil {
-			b = litewire.AppendMessagePrefix(b, 2, v.Size())
-			b = v.AppendMarshal(b)
+			b = litewire.AppendMessage(b, 2, v)
 		}
 	}
 	return b
-}
-
-func (m *QuotaWindowGroupView) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
-				if m.GroupLabel == nil {
-					m.GroupLabel = &Text{}
-				}
-				if err := m.GroupLabel.Unmarshal(raw); err != nil {
-					return err
-				}
-				continue
-			}
-		case 2:
-			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
-				elem := &QuotaRowView{}
-				if err := elem.Unmarshal(raw); err != nil {
-					return err
-				}
-				m.Rows = append(m.Rows, elem)
-				continue
-			}
-		}
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 type QuotaAccountGroupView struct {
@@ -3635,12 +1810,6 @@ type QuotaAccountGroupView struct {
 	Groups              []*QuotaWindowGroupView
 	UsageHint           *Text
 	IsSubscriptionLogin bool
-}
-
-func (m *QuotaAccountGroupView) Reset() {
-	if m != nil {
-		*m = QuotaAccountGroupView{}
-	}
 }
 
 func (m *QuotaAccountGroupView) GetAccount() string {
@@ -3704,24 +1873,6 @@ func (m *QuotaAccountGroupView) GetIsSubscriptionLogin() bool {
 	return false
 }
 
-func (m *QuotaAccountGroupView) Clone() *QuotaAccountGroupView {
-	if m == nil {
-		return nil
-	}
-	cp := *m
-	cp.StatusText = m.StatusText.Clone()
-	cp.FreshnessText = m.FreshnessText.Clone()
-	cp.ErrorText = m.ErrorText.Clone()
-	if m.Groups != nil {
-		cp.Groups = make([]*QuotaWindowGroupView, len(m.Groups))
-		for i, v := range m.Groups {
-			cp.Groups[i] = v.Clone()
-		}
-	}
-	cp.UsageHint = m.UsageHint.Clone()
-	return &cp
-}
-
 func (m *QuotaAccountGroupView) Size() int {
 	if m == nil {
 		return 0
@@ -3772,158 +1923,24 @@ func (m *QuotaAccountGroupView) AppendMarshal(b []byte) []byte {
 	b = litewire.AppendInt32(b, 3, int32(m.State))
 	b = litewire.AppendBool(b, 4, m.LastRecord)
 	if m.StatusText != nil {
-		b = litewire.AppendMessagePrefix(b, 5, m.StatusText.Size())
-		b = m.StatusText.AppendMarshal(b)
+		b = litewire.AppendMessage(b, 5, m.StatusText)
 	}
 	if m.FreshnessText != nil {
-		b = litewire.AppendMessagePrefix(b, 6, m.FreshnessText.Size())
-		b = m.FreshnessText.AppendMarshal(b)
+		b = litewire.AppendMessage(b, 6, m.FreshnessText)
 	}
 	if m.ErrorText != nil {
-		b = litewire.AppendMessagePrefix(b, 7, m.ErrorText.Size())
-		b = m.ErrorText.AppendMarshal(b)
+		b = litewire.AppendMessage(b, 7, m.ErrorText)
 	}
 	for _, v := range m.Groups {
 		if v != nil {
-			b = litewire.AppendMessagePrefix(b, 8, v.Size())
-			b = v.AppendMarshal(b)
+			b = litewire.AppendMessage(b, 8, v)
 		}
 	}
 	if m.UsageHint != nil {
-		b = litewire.AppendMessagePrefix(b, 9, m.UsageHint.Size())
-		b = m.UsageHint.AppendMarshal(b)
+		b = litewire.AppendMessage(b, 9, m.UsageHint)
 	}
 	b = litewire.AppendBool(b, 10, m.IsSubscriptionLogin)
 	return b
-}
-
-func (m *QuotaAccountGroupView) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.Account = v
-				continue
-			}
-		case 2:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.Plan = v
-				continue
-			}
-		case 3:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.State = QuotaSectionState(int32(v))
-				continue
-			}
-		case 4:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.LastRecord = litewire.DecodeBool(v)
-				continue
-			}
-		case 5:
-			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
-				if m.StatusText == nil {
-					m.StatusText = &Text{}
-				}
-				if err := m.StatusText.Unmarshal(raw); err != nil {
-					return err
-				}
-				continue
-			}
-		case 6:
-			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
-				if m.FreshnessText == nil {
-					m.FreshnessText = &Text{}
-				}
-				if err := m.FreshnessText.Unmarshal(raw); err != nil {
-					return err
-				}
-				continue
-			}
-		case 7:
-			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
-				if m.ErrorText == nil {
-					m.ErrorText = &Text{}
-				}
-				if err := m.ErrorText.Unmarshal(raw); err != nil {
-					return err
-				}
-				continue
-			}
-		case 8:
-			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
-				elem := &QuotaWindowGroupView{}
-				if err := elem.Unmarshal(raw); err != nil {
-					return err
-				}
-				m.Groups = append(m.Groups, elem)
-				continue
-			}
-		case 9:
-			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
-				if m.UsageHint == nil {
-					m.UsageHint = &Text{}
-				}
-				if err := m.UsageHint.Unmarshal(raw); err != nil {
-					return err
-				}
-				continue
-			}
-		case 10:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.IsSubscriptionLogin = litewire.DecodeBool(v)
-				continue
-			}
-		}
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 type QuotaCliSection struct {
@@ -3938,12 +1955,6 @@ type QuotaCliSection struct {
 	SummaryLine      *Text
 	SummaryTone      QuotaTone
 	SummaryMeta      *Text
-}
-
-func (m *QuotaCliSection) Reset() {
-	if m != nil {
-		*m = QuotaCliSection{}
-	}
 }
 
 func (m *QuotaCliSection) GetAgent() v1.Agent {
@@ -4013,25 +2024,6 @@ func (m *QuotaCliSection) GetSummaryMeta() *Text {
 	return nil
 }
 
-func (m *QuotaCliSection) Clone() *QuotaCliSection {
-	if m == nil {
-		return nil
-	}
-	cp := *m
-	if m.Accounts != nil {
-		cp.Accounts = make([]*QuotaAccountGroupView, len(m.Accounts))
-		for i, v := range m.Accounts {
-			cp.Accounts[i] = v.Clone()
-		}
-	}
-	cp.EmptyOrErrorText = m.EmptyOrErrorText.Clone()
-	cp.UsageHint = m.UsageHint.Clone()
-	cp.SummaryRow = m.SummaryRow.Clone()
-	cp.SummaryLine = m.SummaryLine.Clone()
-	cp.SummaryMeta = m.SummaryMeta.Clone()
-	return &cp
-}
-
 func (m *QuotaCliSection) Size() int {
 	if m == nil {
 		return 0
@@ -4086,175 +2078,26 @@ func (m *QuotaCliSection) AppendMarshal(b []byte) []byte {
 	b = litewire.AppendBool(b, 4, m.Unsupported)
 	for _, v := range m.Accounts {
 		if v != nil {
-			b = litewire.AppendMessagePrefix(b, 5, v.Size())
-			b = v.AppendMarshal(b)
+			b = litewire.AppendMessage(b, 5, v)
 		}
 	}
 	if m.EmptyOrErrorText != nil {
-		b = litewire.AppendMessagePrefix(b, 6, m.EmptyOrErrorText.Size())
-		b = m.EmptyOrErrorText.AppendMarshal(b)
+		b = litewire.AppendMessage(b, 6, m.EmptyOrErrorText)
 	}
 	if m.UsageHint != nil {
-		b = litewire.AppendMessagePrefix(b, 7, m.UsageHint.Size())
-		b = m.UsageHint.AppendMarshal(b)
+		b = litewire.AppendMessage(b, 7, m.UsageHint)
 	}
 	if m.SummaryRow != nil {
-		b = litewire.AppendMessagePrefix(b, 8, m.SummaryRow.Size())
-		b = m.SummaryRow.AppendMarshal(b)
+		b = litewire.AppendMessage(b, 8, m.SummaryRow)
 	}
 	if m.SummaryLine != nil {
-		b = litewire.AppendMessagePrefix(b, 9, m.SummaryLine.Size())
-		b = m.SummaryLine.AppendMarshal(b)
+		b = litewire.AppendMessage(b, 9, m.SummaryLine)
 	}
 	b = litewire.AppendInt32(b, 10, int32(m.SummaryTone))
 	if m.SummaryMeta != nil {
-		b = litewire.AppendMessagePrefix(b, 11, m.SummaryMeta.Size())
-		b = m.SummaryMeta.AppendMarshal(b)
+		b = litewire.AppendMessage(b, 11, m.SummaryMeta)
 	}
 	return b
-}
-
-func (m *QuotaCliSection) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.Agent = v1.Agent(int32(v))
-				continue
-			}
-		case 2:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.AgentName = v
-				continue
-			}
-		case 3:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.State = QuotaSectionState(int32(v))
-				continue
-			}
-		case 4:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.Unsupported = litewire.DecodeBool(v)
-				continue
-			}
-		case 5:
-			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
-				elem := &QuotaAccountGroupView{}
-				if err := elem.Unmarshal(raw); err != nil {
-					return err
-				}
-				m.Accounts = append(m.Accounts, elem)
-				continue
-			}
-		case 6:
-			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
-				if m.EmptyOrErrorText == nil {
-					m.EmptyOrErrorText = &Text{}
-				}
-				if err := m.EmptyOrErrorText.Unmarshal(raw); err != nil {
-					return err
-				}
-				continue
-			}
-		case 7:
-			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
-				if m.UsageHint == nil {
-					m.UsageHint = &Text{}
-				}
-				if err := m.UsageHint.Unmarshal(raw); err != nil {
-					return err
-				}
-				continue
-			}
-		case 8:
-			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
-				if m.SummaryRow == nil {
-					m.SummaryRow = &QuotaRowView{}
-				}
-				if err := m.SummaryRow.Unmarshal(raw); err != nil {
-					return err
-				}
-				continue
-			}
-		case 9:
-			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
-				if m.SummaryLine == nil {
-					m.SummaryLine = &Text{}
-				}
-				if err := m.SummaryLine.Unmarshal(raw); err != nil {
-					return err
-				}
-				continue
-			}
-		case 10:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.SummaryTone = QuotaTone(int32(v))
-				continue
-			}
-		case 11:
-			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
-				if m.SummaryMeta == nil {
-					m.SummaryMeta = &Text{}
-				}
-				if err := m.SummaryMeta.Unmarshal(raw); err != nil {
-					return err
-				}
-				continue
-			}
-		}
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 type QuotaViewModel struct {
@@ -4270,12 +2113,6 @@ type QuotaViewModel struct {
 	Sections          []*QuotaCliSection
 	FooterNote        *Text
 	EmptyText         *Text
-}
-
-func (m *QuotaViewModel) Reset() {
-	if m != nil {
-		*m = QuotaViewModel{}
-	}
 }
 
 func (m *QuotaViewModel) GetMachineId() string {
@@ -4351,24 +2188,6 @@ func (m *QuotaViewModel) GetEmptyText() *Text {
 	return nil
 }
 
-func (m *QuotaViewModel) Clone() *QuotaViewModel {
-	if m == nil {
-		return nil
-	}
-	cp := *m
-	cp.OfflineNotice = m.OfflineNotice.Clone()
-	cp.Banner = m.Banner.Clone()
-	if m.Sections != nil {
-		cp.Sections = make([]*QuotaCliSection, len(m.Sections))
-		for i, v := range m.Sections {
-			cp.Sections[i] = v.Clone()
-		}
-	}
-	cp.FooterNote = m.FooterNote.Clone()
-	cp.EmptyText = m.EmptyText.Clone()
-	return &cp
-}
-
 func (m *QuotaViewModel) Size() int {
 	if m == nil {
 		return 0
@@ -4424,187 +2243,29 @@ func (m *QuotaViewModel) AppendMarshal(b []byte) []byte {
 	b = litewire.AppendBool(b, 6, m.Member)
 	b = litewire.AppendBool(b, 7, m.HasAgentsReported)
 	if m.OfflineNotice != nil {
-		b = litewire.AppendMessagePrefix(b, 8, m.OfflineNotice.Size())
-		b = m.OfflineNotice.AppendMarshal(b)
+		b = litewire.AppendMessage(b, 8, m.OfflineNotice)
 	}
 	if m.Banner != nil {
-		b = litewire.AppendMessagePrefix(b, 9, m.Banner.Size())
-		b = m.Banner.AppendMarshal(b)
+		b = litewire.AppendMessage(b, 9, m.Banner)
 	}
 	for _, v := range m.Sections {
 		if v != nil {
-			b = litewire.AppendMessagePrefix(b, 10, v.Size())
-			b = v.AppendMarshal(b)
+			b = litewire.AppendMessage(b, 10, v)
 		}
 	}
 	if m.FooterNote != nil {
-		b = litewire.AppendMessagePrefix(b, 11, m.FooterNote.Size())
-		b = m.FooterNote.AppendMarshal(b)
+		b = litewire.AppendMessage(b, 11, m.FooterNote)
 	}
 	if m.EmptyText != nil {
-		b = litewire.AppendMessagePrefix(b, 12, m.EmptyText.Size())
-		b = m.EmptyText.AppendMarshal(b)
+		b = litewire.AppendMessage(b, 12, m.EmptyText)
 	}
 	return b
-}
-
-func (m *QuotaViewModel) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.MachineId = v
-				continue
-			}
-		case 2:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.MachineName = v
-				continue
-			}
-		case 3:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.Found = litewire.DecodeBool(v)
-				continue
-			}
-		case 4:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.Reachable = litewire.DecodeBool(v)
-				continue
-			}
-		case 5:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.Unlinked = litewire.DecodeBool(v)
-				continue
-			}
-		case 6:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.Member = litewire.DecodeBool(v)
-				continue
-			}
-		case 7:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.HasAgentsReported = litewire.DecodeBool(v)
-				continue
-			}
-		case 8:
-			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
-				if m.OfflineNotice == nil {
-					m.OfflineNotice = &Text{}
-				}
-				if err := m.OfflineNotice.Unmarshal(raw); err != nil {
-					return err
-				}
-				continue
-			}
-		case 9:
-			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
-				if m.Banner == nil {
-					m.Banner = &QuotaBannerView{}
-				}
-				if err := m.Banner.Unmarshal(raw); err != nil {
-					return err
-				}
-				continue
-			}
-		case 10:
-			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
-				elem := &QuotaCliSection{}
-				if err := elem.Unmarshal(raw); err != nil {
-					return err
-				}
-				m.Sections = append(m.Sections, elem)
-				continue
-			}
-		case 11:
-			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
-				if m.FooterNote == nil {
-					m.FooterNote = &Text{}
-				}
-				if err := m.FooterNote.Unmarshal(raw); err != nil {
-					return err
-				}
-				continue
-			}
-		case 12:
-			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
-				if m.EmptyText == nil {
-					m.EmptyText = &Text{}
-				}
-				if err := m.EmptyText.Unmarshal(raw); err != nil {
-					return err
-				}
-				continue
-			}
-		}
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 type MachineStatusWatchEvent struct {
 	MachineId string
 	Visible   bool
 	Mode      MachinePollMode
-}
-
-func (m *MachineStatusWatchEvent) Reset() {
-	if m != nil {
-		*m = MachineStatusWatchEvent{}
-	}
 }
 
 func (m *MachineStatusWatchEvent) GetMachineId() string {
@@ -4624,46 +2285,6 @@ func (m *MachineStatusWatchEvent) GetMode() MachinePollMode {
 		return m.Mode
 	}
 	return 0
-}
-
-func (m *MachineStatusWatchEvent) Clone() *MachineStatusWatchEvent {
-	if m == nil {
-		return nil
-	}
-	cp := *m
-	return &cp
-}
-
-func (m *MachineStatusWatchEvent) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeString(1, m.MachineId)
-	n += litewire.SizeBool(2, m.Visible)
-	n += litewire.SizeInt32(3, int32(m.Mode))
-	return n
-}
-
-func (m *MachineStatusWatchEvent) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
-}
-
-func (m *MachineStatusWatchEvent) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendString(b, 1, m.MachineId)
-	b = litewire.AppendBool(b, 2, m.Visible)
-	b = litewire.AppendInt32(b, 3, int32(m.Mode))
-	return b
 }
 
 func (m *MachineStatusWatchEvent) Unmarshal(b []byte) error {
@@ -4712,53 +2333,11 @@ type MachineStatusRetryEvent struct {
 	MachineId string
 }
 
-func (m *MachineStatusRetryEvent) Reset() {
-	if m != nil {
-		*m = MachineStatusRetryEvent{}
-	}
-}
-
 func (m *MachineStatusRetryEvent) GetMachineId() string {
 	if m != nil {
 		return m.MachineId
 	}
 	return ""
-}
-
-func (m *MachineStatusRetryEvent) Clone() *MachineStatusRetryEvent {
-	if m == nil {
-		return nil
-	}
-	cp := *m
-	return &cp
-}
-
-func (m *MachineStatusRetryEvent) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeString(1, m.MachineId)
-	return n
-}
-
-func (m *MachineStatusRetryEvent) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
-}
-
-func (m *MachineStatusRetryEvent) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendString(b, 1, m.MachineId)
-	return b
 }
 
 func (m *MachineStatusRetryEvent) Unmarshal(b []byte) error {
@@ -4790,12 +2369,6 @@ type MachineStatusTabEvent struct {
 	Tab       MachineUsageTab
 }
 
-func (m *MachineStatusTabEvent) Reset() {
-	if m != nil {
-		*m = MachineStatusTabEvent{}
-	}
-}
-
 func (m *MachineStatusTabEvent) GetMachineId() string {
 	if m != nil {
 		return m.MachineId
@@ -4807,44 +2380,6 @@ func (m *MachineStatusTabEvent) GetTab() MachineUsageTab {
 		return m.Tab
 	}
 	return 0
-}
-
-func (m *MachineStatusTabEvent) Clone() *MachineStatusTabEvent {
-	if m == nil {
-		return nil
-	}
-	cp := *m
-	return &cp
-}
-
-func (m *MachineStatusTabEvent) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeString(1, m.MachineId)
-	n += litewire.SizeInt32(2, int32(m.Tab))
-	return n
-}
-
-func (m *MachineStatusTabEvent) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
-}
-
-func (m *MachineStatusTabEvent) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendString(b, 1, m.MachineId)
-	b = litewire.AppendInt32(b, 2, int32(m.Tab))
-	return b
 }
 
 func (m *MachineStatusTabEvent) Unmarshal(b []byte) error {
@@ -4887,12 +2422,6 @@ type MachineStatusScrubEvent struct {
 	Clear      bool
 }
 
-func (m *MachineStatusScrubEvent) Reset() {
-	if m != nil {
-		*m = MachineStatusScrubEvent{}
-	}
-}
-
 func (m *MachineStatusScrubEvent) GetMachineId() string {
 	if m != nil {
 		return m.MachineId
@@ -4916,48 +2445,6 @@ func (m *MachineStatusScrubEvent) GetClear() bool {
 		return m.Clear
 	}
 	return false
-}
-
-func (m *MachineStatusScrubEvent) Clone() *MachineStatusScrubEvent {
-	if m == nil {
-		return nil
-	}
-	cp := *m
-	return &cp
-}
-
-func (m *MachineStatusScrubEvent) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeString(1, m.MachineId)
-	n += litewire.SizeInt32(2, int32(m.Kind))
-	n += litewire.SizeInt32(3, int32(m.PointIndex))
-	n += litewire.SizeBool(4, m.Clear)
-	return n
-}
-
-func (m *MachineStatusScrubEvent) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
-}
-
-func (m *MachineStatusScrubEvent) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendString(b, 1, m.MachineId)
-	b = litewire.AppendInt32(b, 2, int32(m.Kind))
-	b = litewire.AppendInt32(b, 3, int32(m.PointIndex))
-	b = litewire.AppendBool(b, 4, m.Clear)
-	return b
 }
 
 func (m *MachineStatusScrubEvent) Unmarshal(b []byte) error {
@@ -5015,53 +2502,11 @@ type MachineStatusCleanupEvent struct {
 	MachineId string
 }
 
-func (m *MachineStatusCleanupEvent) Reset() {
-	if m != nil {
-		*m = MachineStatusCleanupEvent{}
-	}
-}
-
 func (m *MachineStatusCleanupEvent) GetMachineId() string {
 	if m != nil {
 		return m.MachineId
 	}
 	return ""
-}
-
-func (m *MachineStatusCleanupEvent) Clone() *MachineStatusCleanupEvent {
-	if m == nil {
-		return nil
-	}
-	cp := *m
-	return &cp
-}
-
-func (m *MachineStatusCleanupEvent) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeString(1, m.MachineId)
-	return n
-}
-
-func (m *MachineStatusCleanupEvent) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
-}
-
-func (m *MachineStatusCleanupEvent) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendString(b, 1, m.MachineId)
-	return b
 }
 
 func (m *MachineStatusCleanupEvent) Unmarshal(b []byte) error {
@@ -5093,12 +2538,6 @@ type MachineStatusPollTickEvent struct {
 	Generation uint64
 }
 
-func (m *MachineStatusPollTickEvent) Reset() {
-	if m != nil {
-		*m = MachineStatusPollTickEvent{}
-	}
-}
-
 func (m *MachineStatusPollTickEvent) GetMachineId() string {
 	if m != nil {
 		return m.MachineId
@@ -5110,44 +2549,6 @@ func (m *MachineStatusPollTickEvent) GetGeneration() uint64 {
 		return m.Generation
 	}
 	return 0
-}
-
-func (m *MachineStatusPollTickEvent) Clone() *MachineStatusPollTickEvent {
-	if m == nil {
-		return nil
-	}
-	cp := *m
-	return &cp
-}
-
-func (m *MachineStatusPollTickEvent) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeString(1, m.MachineId)
-	n += litewire.SizeVarintField(2, uint64(m.Generation))
-	return n
-}
-
-func (m *MachineStatusPollTickEvent) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
-}
-
-func (m *MachineStatusPollTickEvent) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendString(b, 1, m.MachineId)
-	b = litewire.AppendVarint(b, 2, uint64(m.Generation))
-	return b
 }
 
 func (m *MachineStatusPollTickEvent) Unmarshal(b []byte) error {
@@ -5190,12 +2591,6 @@ type ScheduleMachinePollEffect struct {
 	Cancel     bool
 }
 
-func (m *ScheduleMachinePollEffect) Reset() {
-	if m != nil {
-		*m = ScheduleMachinePollEffect{}
-	}
-}
-
 func (m *ScheduleMachinePollEffect) GetMachineId() string {
 	if m != nil {
 		return m.MachineId
@@ -5219,14 +2614,6 @@ func (m *ScheduleMachinePollEffect) GetCancel() bool {
 		return m.Cancel
 	}
 	return false
-}
-
-func (m *ScheduleMachinePollEffect) Clone() *ScheduleMachinePollEffect {
-	if m == nil {
-		return nil
-	}
-	cp := *m
-	return &cp
 }
 
 func (m *ScheduleMachinePollEffect) Size() int {
@@ -5263,69 +2650,12 @@ func (m *ScheduleMachinePollEffect) AppendMarshal(b []byte) []byte {
 	return b
 }
 
-func (m *ScheduleMachinePollEffect) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.MachineId = v
-				continue
-			}
-		case 2:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.DelayMs = int64(v)
-				continue
-			}
-		case 3:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.Generation = v
-				continue
-			}
-		case 4:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.Cancel = litewire.DecodeBool(v)
-				continue
-			}
-		}
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 type PrepareCleanupSessionEffect struct {
 	MachineId            string
 	ProjectKey           string
 	Cwd                  string
 	Prompt               string
 	NeedsDirectoryPicker bool
-}
-
-func (m *PrepareCleanupSessionEffect) Reset() {
-	if m != nil {
-		*m = PrepareCleanupSessionEffect{}
-	}
 }
 
 func (m *PrepareCleanupSessionEffect) GetMachineId() string {
@@ -5357,14 +2687,6 @@ func (m *PrepareCleanupSessionEffect) GetNeedsDirectoryPicker() bool {
 		return m.NeedsDirectoryPicker
 	}
 	return false
-}
-
-func (m *PrepareCleanupSessionEffect) Clone() *PrepareCleanupSessionEffect {
-	if m == nil {
-		return nil
-	}
-	cp := *m
-	return &cp
 }
 
 func (m *PrepareCleanupSessionEffect) Size() int {
@@ -5401,64 +2723,4 @@ func (m *PrepareCleanupSessionEffect) AppendMarshal(b []byte) []byte {
 	b = litewire.AppendString(b, 4, m.Prompt)
 	b = litewire.AppendBool(b, 5, m.NeedsDirectoryPicker)
 	return b
-}
-
-func (m *PrepareCleanupSessionEffect) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.MachineId = v
-				continue
-			}
-		case 2:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.ProjectKey = v
-				continue
-			}
-		case 3:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.Cwd = v
-				continue
-			}
-		case 4:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.Prompt = v
-				continue
-			}
-		case 5:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.NeedsDirectoryPicker = litewire.DecodeBool(v)
-				continue
-			}
-		}
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
 }

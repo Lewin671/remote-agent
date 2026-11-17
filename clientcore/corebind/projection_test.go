@@ -3,7 +3,6 @@ package corebind
 import (
 	"testing"
 
-	litecore "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
 	litev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
 	stdcore "github.com/Lewin671/remote-agent/gen/remoteagent/core/v1"
 	stdv1 "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
@@ -101,11 +100,11 @@ func TestProjectionRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	var sEmpty, sRed litecore.ProjectionState
-	if err := sEmpty.Unmarshal(emptySnap); err != nil {
+	var sEmpty, sRed stdcore.ProjectionState
+	if err := proto.Unmarshal(emptySnap, &sEmpty); err != nil {
 		t.Fatal(err)
 	}
-	if err := sRed.Unmarshal(reducedEmpty); err != nil {
+	if err := proto.Unmarshal(reducedEmpty, &sRed); err != nil {
 		t.Fatal(err)
 	}
 	if len(sEmpty.Inputs) != 0 || len(sRed.Inputs) != 0 || sEmpty.Running != sRed.Running {

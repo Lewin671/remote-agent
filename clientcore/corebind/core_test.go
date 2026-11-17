@@ -3,13 +3,14 @@ package corebind
 import (
 	"testing"
 
-	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
-	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
+	stdcorev1 "github.com/Lewin671/remote-agent/gen/remoteagent/core/v1"
+	stdv1 "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
+	"google.golang.org/protobuf/proto"
 )
 
-func dispatchEvent(t *testing.T, c *Core, ev *corev1.Event) *corev1.EffectBatch {
+func dispatchEvent(t *testing.T, c *Core, ev *stdcorev1.Event) *stdcorev1.EffectBatch {
 	t.Helper()
-	b, err := ev.Marshal()
+	b, err := proto.Marshal(ev)
 	if err != nil {
 		t.Fatalf("marshal event: %v", err)
 	}
@@ -17,8 +18,8 @@ func dispatchEvent(t *testing.T, c *Core, ev *corev1.Event) *corev1.EffectBatch 
 	if err != nil {
 		t.Fatalf("Dispatch: %v", err)
 	}
-	var batch corev1.EffectBatch
-	if err := batch.Unmarshal(effBytes); err != nil {
+	var batch stdcorev1.EffectBatch
+	if err := proto.Unmarshal(effBytes, &batch); err != nil {
 		t.Fatalf("unmarshal effects: %v", err)
 	}
 	return &batch
@@ -28,12 +29,12 @@ func TestCoreRoundTrip(t *testing.T) {
 	c := New()
 	defer c.Close()
 
-	startBatch := dispatchEvent(t, c, &corev1.Event{
+	startBatch := dispatchEvent(t, c, &stdcorev1.Event{
 		NowMs:  1_700_000_000_000,
 		MonoMs: 1_000,
-		Event: &corev1.Event_SyncLifecycle{
-			SyncLifecycle: &corev1.SyncLifecycleAction{
-				Kind: corev1.SyncLifecycleKind_SYNC_LIFECYCLE_KIND_START,
+		Event: &stdcorev1.Event_SyncLifecycle{
+			SyncLifecycle: &stdcorev1.SyncLifecycleAction{
+				Kind: stdcorev1.SyncLifecycleKind_SYNC_LIFECYCLE_KIND_START,
 			},
 		},
 	})
@@ -51,10 +52,10 @@ func TestCoreRoundTrip(t *testing.T) {
 		t.Fatalf("expected render and ensure_token effects, got %+v", startBatch.Effects)
 	}
 
-	tokBatch := dispatchEvent(t, c, &corev1.Event{
+	tokBatch := dispatchEvent(t, c, &stdcorev1.Event{
 		NowMs: 1_700_000_000_100,
-		Event: &corev1.Event_TokenResult{
-			TokenResult: &corev1.TokenResultEvent{
+		Event: &stdcorev1.Event_TokenResult{
+			TokenResult: &stdcorev1.TokenResultEvent{
 				OpId:  tokenOpID,
 				Token: "tok-1",
 			},
@@ -70,10 +71,10 @@ func TestCoreRoundTrip(t *testing.T) {
 		t.Fatalf("expected open_stream effect, got %+v", tokBatch.Effects)
 	}
 
-	readyBatch := dispatchEvent(t, c, &corev1.Event{
+	readyBatch := dispatchEvent(t, c, &stdcorev1.Event{
 		NowMs: 1_700_000_000_200,
-		Event: &corev1.Event_StreamReady{
-			StreamReady: &corev1.StreamReadyEvent{
+		Event: &stdcorev1.Event_StreamReady{
+			StreamReady: &stdcorev1.StreamReadyEvent{
 				LegId:        legID,
 				ServerTimeMs: 1_700_000_000_200,
 			},
@@ -89,20 +90,20 @@ func TestCoreRoundTrip(t *testing.T) {
 		t.Fatalf("expected fetch_lists rpc effect, got %+v", readyBatch.Effects)
 	}
 
-	dispatchEvent(t, c, &corev1.Event{
+	dispatchEvent(t, c, &stdcorev1.Event{
 		NowMs: 1_700_000_000_300,
-		Event: &corev1.Event_ListsFetched{
-			ListsFetched: &corev1.ListsFetchedEvent{
+		Event: &stdcorev1.Event_ListsFetched{
+			ListsFetched: &stdcorev1.ListsFetchedEvent{
 				OpId: fetchOpID,
-				Machines: []*corev1.PlainMachine{
+				Machines: []*stdcorev1.PlainMachine{
 					{
 						MachineId: "m1",
 						Online:    true,
-						Meta: &v1.MachineMeta{
+						Meta: &stdv1.MachineMeta{
 							Hostname:        "DevBook.local",
 							ProtocolVersion: 16,
-							Agents: []*v1.AgentInfo{
-								{Agent: v1.Agent_AGENT_CODEX, DefaultMode: v1.ApprovalMode_APPROVAL_MODE_ASK, DefaultModeSource: v1.DefaultModeSource_DEFAULT_MODE_SOURCE_CLI_CONFIG},
+							Agents: []*stdv1.AgentInfo{
+								{Agent: stdv1.Agent_AGENT_CODEX, DefaultMode: stdv1.ApprovalMode_APPROVAL_MODE_ASK, DefaultModeSource: stdv1.DefaultModeSource_DEFAULT_MODE_SOURCE_CLI_CONFIG},
 							},
 						},
 					},
@@ -111,13 +112,16 @@ func TestCoreRoundTrip(t *testing.T) {
 		},
 	})
 
-	scBytes, _ := (&corev1.Screen{Screen: &corev1.Screen_Home{Home: &corev1.HomeScreenRequest{}}}).Marshal()
+	scBytes, err := proto.Marshal(&stdcorev1.Screen{Screen: &stdcorev1.Screen_Home{Home: &stdcorev1.HomeScreenRequest{}}})
+	if err != nil {
+		t.Fatalf("marshal Screen: %v", err)
+	}
 	vmBytes, err := c.View(scBytes)
 	if err != nil {
 		t.Fatalf("View: %v", err)
 	}
-	var vm corev1.ViewModel
-	if err := vm.Unmarshal(vmBytes); err != nil {
+	var vm stdcorev1.ViewModel
+	if err := proto.Unmarshal(vmBytes, &vm); err != nil {
 		t.Fatalf("unmarshal ViewModel: %v", err)
 	}
 	if vm.GetHome() == nil || !vm.GetHome().CanStart {

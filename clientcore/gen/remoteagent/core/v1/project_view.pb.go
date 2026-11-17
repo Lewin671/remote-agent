@@ -5,7 +5,6 @@ package corev1
 
 import (
 	litewire "github.com/Lewin671/remote-agent/clientcore/gen/litewire"
-	slices "slices"
 )
 
 type ProjectViewKind int32
@@ -22,12 +21,6 @@ type HiddenProjectNoticeView struct {
 	ActionEnabled bool
 	Busy          bool
 	Error         *Text
-}
-
-func (m *HiddenProjectNoticeView) Reset() {
-	if m != nil {
-		*m = HiddenProjectNoticeView{}
-	}
 }
 
 func (m *HiddenProjectNoticeView) GetActive() bool {
@@ -59,16 +52,6 @@ func (m *HiddenProjectNoticeView) GetError() *Text {
 		return m.Error
 	}
 	return nil
-}
-
-func (m *HiddenProjectNoticeView) Clone() *HiddenProjectNoticeView {
-	if m == nil {
-		return nil
-	}
-	cp := *m
-	cp.Text = m.Text.Clone()
-	cp.Error = m.Error.Clone()
-	return &cp
 }
 
 func (m *HiddenProjectNoticeView) Size() int {
@@ -105,86 +88,14 @@ func (m *HiddenProjectNoticeView) AppendMarshal(b []byte) []byte {
 	}
 	b = litewire.AppendBool(b, 1, m.Active)
 	if m.Text != nil {
-		b = litewire.AppendMessagePrefix(b, 2, m.Text.Size())
-		b = m.Text.AppendMarshal(b)
+		b = litewire.AppendMessage(b, 2, m.Text)
 	}
 	b = litewire.AppendBool(b, 3, m.ActionEnabled)
 	b = litewire.AppendBool(b, 4, m.Busy)
 	if m.Error != nil {
-		b = litewire.AppendMessagePrefix(b, 5, m.Error.Size())
-		b = m.Error.AppendMarshal(b)
+		b = litewire.AppendMessage(b, 5, m.Error)
 	}
 	return b
-}
-
-func (m *HiddenProjectNoticeView) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.Active = litewire.DecodeBool(v)
-				continue
-			}
-		case 2:
-			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
-				if m.Text == nil {
-					m.Text = &Text{}
-				}
-				if err := m.Text.Unmarshal(raw); err != nil {
-					return err
-				}
-				continue
-			}
-		case 3:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.ActionEnabled = litewire.DecodeBool(v)
-				continue
-			}
-		case 4:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.Busy = litewire.DecodeBool(v)
-				continue
-			}
-		case 5:
-			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
-				if m.Error == nil {
-					m.Error = &Text{}
-				}
-				if err := m.Error.Unmarshal(raw); err != nil {
-					return err
-				}
-				continue
-			}
-		}
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 type ProjectDetailView struct {
@@ -212,12 +123,6 @@ type ProjectDetailView struct {
 	CanRemove      bool
 	SaveStatus     *Text
 	HasMoreEnded   bool
-}
-
-func (m *ProjectDetailView) Reset() {
-	if m != nil {
-		*m = ProjectDetailView{}
-	}
 }
 
 func (m *ProjectDetailView) GetKey() string {
@@ -365,35 +270,6 @@ func (m *ProjectDetailView) GetHasMoreEnded() bool {
 	return false
 }
 
-func (m *ProjectDetailView) Clone() *ProjectDetailView {
-	if m == nil {
-		return nil
-	}
-	cp := *m
-	cp.Name = m.Name.Clone()
-	cp.Subtitle = m.Subtitle.Clone()
-	cp.MachineIds = slices.Clone(m.MachineIds)
-	cp.MachineNames = slices.Clone(m.MachineNames)
-	if m.Active != nil {
-		cp.Active = make([]*SessionRowView, len(m.Active))
-		for i, v := range m.Active {
-			cp.Active[i] = v.Clone()
-		}
-	}
-	if m.Ended != nil {
-		cp.Ended = make([]*EndedRowView, len(m.Ended))
-		for i, v := range m.Ended {
-			cp.Ended[i] = v.Clone()
-		}
-	}
-	cp.Tail = m.Tail.Clone()
-	cp.EmptyNote = m.EmptyNote.Clone()
-	cp.HiddenNotice = m.HiddenNotice.Clone()
-	cp.SettingsError = m.SettingsError.Clone()
-	cp.SaveStatus = m.SaveStatus.Clone()
-	return &cp
-}
-
 func (m *ProjectDetailView) Size() int {
 	if m == nil {
 		return 0
@@ -469,13 +345,11 @@ func (m *ProjectDetailView) AppendMarshal(b []byte) []byte {
 	}
 	b = litewire.AppendString(b, 1, m.Key)
 	if m.Name != nil {
-		b = litewire.AppendMessagePrefix(b, 2, m.Name.Size())
-		b = m.Name.AppendMarshal(b)
+		b = litewire.AppendMessage(b, 2, m.Name)
 	}
 	b = litewire.AppendString(b, 3, m.ShortPath)
 	if m.Subtitle != nil {
-		b = litewire.AppendMessagePrefix(b, 4, m.Subtitle.Size())
-		b = m.Subtitle.AppendMarshal(b)
+		b = litewire.AppendMessage(b, 4, m.Subtitle)
 	}
 	for _, v := range m.MachineIds {
 		b = litewire.AppendStringAlways(b, 5, v)
@@ -488,319 +362,38 @@ func (m *ProjectDetailView) AppendMarshal(b []byte) []byte {
 	b = litewire.AppendInt32(b, 9, int32(m.EndedTotal))
 	for _, v := range m.Active {
 		if v != nil {
-			b = litewire.AppendMessagePrefix(b, 10, v.Size())
-			b = v.AppendMarshal(b)
+			b = litewire.AppendMessage(b, 10, v)
 		}
 	}
 	for _, v := range m.Ended {
 		if v != nil {
-			b = litewire.AppendMessagePrefix(b, 11, v.Size())
-			b = v.AppendMarshal(b)
+			b = litewire.AppendMessage(b, 11, v)
 		}
 	}
 	b = litewire.AppendBool(b, 12, m.CanLoadEarlier)
 	if m.Tail != nil {
-		b = litewire.AppendMessagePrefix(b, 13, m.Tail.Size())
-		b = m.Tail.AppendMarshal(b)
+		b = litewire.AppendMessage(b, 13, m.Tail)
 	}
 	if m.EmptyNote != nil {
-		b = litewire.AppendMessagePrefix(b, 14, m.EmptyNote.Size())
-		b = m.EmptyNote.AppendMarshal(b)
+		b = litewire.AppendMessage(b, 14, m.EmptyNote)
 	}
 	b = litewire.AppendBool(b, 15, m.IsHidden)
 	b = litewire.AppendBool(b, 16, m.IsPinned)
 	if m.HiddenNotice != nil {
-		b = litewire.AppendMessagePrefix(b, 17, m.HiddenNotice.Size())
-		b = m.HiddenNotice.AppendMarshal(b)
+		b = litewire.AppendMessage(b, 17, m.HiddenNotice)
 	}
 	b = litewire.AppendBool(b, 18, m.SavingSettings)
 	if m.SettingsError != nil {
-		b = litewire.AppendMessagePrefix(b, 19, m.SettingsError.Size())
-		b = m.SettingsError.AppendMarshal(b)
+		b = litewire.AppendMessage(b, 19, m.SettingsError)
 	}
 	b = litewire.AppendBool(b, 20, m.CanStart)
 	b = litewire.AppendBool(b, 21, m.CanPin)
 	b = litewire.AppendBool(b, 22, m.CanRemove)
 	if m.SaveStatus != nil {
-		b = litewire.AppendMessagePrefix(b, 23, m.SaveStatus.Size())
-		b = m.SaveStatus.AppendMarshal(b)
+		b = litewire.AppendMessage(b, 23, m.SaveStatus)
 	}
 	b = litewire.AppendBool(b, 24, m.HasMoreEnded)
 	return b
-}
-
-func (m *ProjectDetailView) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.Key = v
-				continue
-			}
-		case 2:
-			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
-				if m.Name == nil {
-					m.Name = &Text{}
-				}
-				if err := m.Name.Unmarshal(raw); err != nil {
-					return err
-				}
-				continue
-			}
-		case 3:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.ShortPath = v
-				continue
-			}
-		case 4:
-			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
-				if m.Subtitle == nil {
-					m.Subtitle = &Text{}
-				}
-				if err := m.Subtitle.Unmarshal(raw); err != nil {
-					return err
-				}
-				continue
-			}
-		case 5:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.MachineIds = append(m.MachineIds, v)
-				continue
-			}
-		case 6:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.MachineNames = append(m.MachineNames, v)
-				continue
-			}
-		case 7:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.AnyOnline = litewire.DecodeBool(v)
-				continue
-			}
-		case 8:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.ActiveCount = int32(v)
-				continue
-			}
-		case 9:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.EndedTotal = int32(v)
-				continue
-			}
-		case 10:
-			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
-				elem := &SessionRowView{}
-				if err := elem.Unmarshal(raw); err != nil {
-					return err
-				}
-				m.Active = append(m.Active, elem)
-				continue
-			}
-		case 11:
-			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
-				elem := &EndedRowView{}
-				if err := elem.Unmarshal(raw); err != nil {
-					return err
-				}
-				m.Ended = append(m.Ended, elem)
-				continue
-			}
-		case 12:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.CanLoadEarlier = litewire.DecodeBool(v)
-				continue
-			}
-		case 13:
-			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
-				if m.Tail == nil {
-					m.Tail = &TailRowView{}
-				}
-				if err := m.Tail.Unmarshal(raw); err != nil {
-					return err
-				}
-				continue
-			}
-		case 14:
-			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
-				if m.EmptyNote == nil {
-					m.EmptyNote = &Text{}
-				}
-				if err := m.EmptyNote.Unmarshal(raw); err != nil {
-					return err
-				}
-				continue
-			}
-		case 15:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.IsHidden = litewire.DecodeBool(v)
-				continue
-			}
-		case 16:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.IsPinned = litewire.DecodeBool(v)
-				continue
-			}
-		case 17:
-			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
-				if m.HiddenNotice == nil {
-					m.HiddenNotice = &HiddenProjectNoticeView{}
-				}
-				if err := m.HiddenNotice.Unmarshal(raw); err != nil {
-					return err
-				}
-				continue
-			}
-		case 18:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.SavingSettings = litewire.DecodeBool(v)
-				continue
-			}
-		case 19:
-			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
-				if m.SettingsError == nil {
-					m.SettingsError = &Text{}
-				}
-				if err := m.SettingsError.Unmarshal(raw); err != nil {
-					return err
-				}
-				continue
-			}
-		case 20:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.CanStart = litewire.DecodeBool(v)
-				continue
-			}
-		case 21:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.CanPin = litewire.DecodeBool(v)
-				continue
-			}
-		case 22:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.CanRemove = litewire.DecodeBool(v)
-				continue
-			}
-		case 23:
-			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
-				if m.SaveStatus == nil {
-					m.SaveStatus = &Text{}
-				}
-				if err := m.SaveStatus.Unmarshal(raw); err != nil {
-					return err
-				}
-				continue
-			}
-		case 24:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.HasMoreEnded = litewire.DecodeBool(v)
-				continue
-			}
-		}
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 type DirPickerMachineView struct {
@@ -809,12 +402,6 @@ type DirPickerMachineView struct {
 	Online     bool
 	StatusText *Text
 	Home       string
-}
-
-func (m *DirPickerMachineView) Reset() {
-	if m != nil {
-		*m = DirPickerMachineView{}
-	}
 }
 
 func (m *DirPickerMachineView) GetMachineId() string {
@@ -846,15 +433,6 @@ func (m *DirPickerMachineView) GetHome() string {
 		return m.Home
 	}
 	return ""
-}
-
-func (m *DirPickerMachineView) Clone() *DirPickerMachineView {
-	if m == nil {
-		return nil
-	}
-	cp := *m
-	cp.StatusText = m.StatusText.Clone()
-	return &cp
 }
 
 func (m *DirPickerMachineView) Size() int {
@@ -891,87 +469,15 @@ func (m *DirPickerMachineView) AppendMarshal(b []byte) []byte {
 	b = litewire.AppendString(b, 2, m.Name)
 	b = litewire.AppendBool(b, 3, m.Online)
 	if m.StatusText != nil {
-		b = litewire.AppendMessagePrefix(b, 4, m.StatusText.Size())
-		b = m.StatusText.AppendMarshal(b)
+		b = litewire.AppendMessage(b, 4, m.StatusText)
 	}
 	b = litewire.AppendString(b, 5, m.Home)
 	return b
 }
 
-func (m *DirPickerMachineView) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.MachineId = v
-				continue
-			}
-		case 2:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.Name = v
-				continue
-			}
-		case 3:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.Online = litewire.DecodeBool(v)
-				continue
-			}
-		case 4:
-			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
-				if m.StatusText == nil {
-					m.StatusText = &Text{}
-				}
-				if err := m.StatusText.Unmarshal(raw); err != nil {
-					return err
-				}
-				continue
-			}
-		case 5:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.Home = v
-				continue
-			}
-		}
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 type DirCrumbView struct {
 	Label *Text
 	Path  string
-}
-
-func (m *DirCrumbView) Reset() {
-	if m != nil {
-		*m = DirCrumbView{}
-	}
 }
 
 func (m *DirCrumbView) GetLabel() *Text {
@@ -985,15 +491,6 @@ func (m *DirCrumbView) GetPath() string {
 		return m.Path
 	}
 	return ""
-}
-
-func (m *DirCrumbView) Clone() *DirCrumbView {
-	if m == nil {
-		return nil
-	}
-	cp := *m
-	cp.Label = m.Label.Clone()
-	return &cp
 }
 
 func (m *DirCrumbView) Size() int {
@@ -1024,60 +521,15 @@ func (m *DirCrumbView) AppendMarshal(b []byte) []byte {
 		return b
 	}
 	if m.Label != nil {
-		b = litewire.AppendMessagePrefix(b, 1, m.Label.Size())
-		b = m.Label.AppendMarshal(b)
+		b = litewire.AppendMessage(b, 1, m.Label)
 	}
 	b = litewire.AppendString(b, 2, m.Path)
 	return b
 }
 
-func (m *DirCrumbView) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
-				if m.Label == nil {
-					m.Label = &Text{}
-				}
-				if err := m.Label.Unmarshal(raw); err != nil {
-					return err
-				}
-				continue
-			}
-		case 2:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.Path = v
-				continue
-			}
-		}
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 type DirEntryView struct {
 	Name string
 	Path string
-}
-
-func (m *DirEntryView) Reset() {
-	if m != nil {
-		*m = DirEntryView{}
-	}
 }
 
 func (m *DirEntryView) GetName() string {
@@ -1091,14 +543,6 @@ func (m *DirEntryView) GetPath() string {
 		return m.Path
 	}
 	return ""
-}
-
-func (m *DirEntryView) Clone() *DirEntryView {
-	if m == nil {
-		return nil
-	}
-	cp := *m
-	return &cp
 }
 
 func (m *DirEntryView) Size() int {
@@ -1131,39 +575,6 @@ func (m *DirEntryView) AppendMarshal(b []byte) []byte {
 	return b
 }
 
-func (m *DirEntryView) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.Name = v
-				continue
-			}
-		case 2:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.Path = v
-				continue
-			}
-		}
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 type DirPickerView struct {
 	Open         bool
 	ForNewTask   bool
@@ -1177,12 +588,6 @@ type DirPickerView struct {
 	Error        *Text
 	ConfirmLabel *Text
 	CanConfirm   bool
-}
-
-func (m *DirPickerView) Reset() {
-	if m != nil {
-		*m = DirPickerView{}
-	}
 }
 
 func (m *DirPickerView) GetOpen() bool {
@@ -1258,34 +663,6 @@ func (m *DirPickerView) GetCanConfirm() bool {
 	return false
 }
 
-func (m *DirPickerView) Clone() *DirPickerView {
-	if m == nil {
-		return nil
-	}
-	cp := *m
-	if m.Machines != nil {
-		cp.Machines = make([]*DirPickerMachineView, len(m.Machines))
-		for i, v := range m.Machines {
-			cp.Machines[i] = v.Clone()
-		}
-	}
-	if m.Crumbs != nil {
-		cp.Crumbs = make([]*DirCrumbView, len(m.Crumbs))
-		for i, v := range m.Crumbs {
-			cp.Crumbs[i] = v.Clone()
-		}
-	}
-	if m.Dirs != nil {
-		cp.Dirs = make([]*DirEntryView, len(m.Dirs))
-		for i, v := range m.Dirs {
-			cp.Dirs[i] = v.Clone()
-		}
-	}
-	cp.Error = m.Error.Clone()
-	cp.ConfirmLabel = m.ConfirmLabel.Clone()
-	return &cp
-}
-
 func (m *DirPickerView) Size() int {
 	if m == nil {
 		return 0
@@ -1341,181 +718,31 @@ func (m *DirPickerView) AppendMarshal(b []byte) []byte {
 	b = litewire.AppendBool(b, 2, m.ForNewTask)
 	for _, v := range m.Machines {
 		if v != nil {
-			b = litewire.AppendMessagePrefix(b, 3, v.Size())
-			b = v.AppendMarshal(b)
+			b = litewire.AppendMessage(b, 3, v)
 		}
 	}
 	b = litewire.AppendString(b, 4, m.MachineId)
 	b = litewire.AppendString(b, 5, m.CurrentPath)
 	for _, v := range m.Crumbs {
 		if v != nil {
-			b = litewire.AppendMessagePrefix(b, 6, v.Size())
-			b = v.AppendMarshal(b)
+			b = litewire.AppendMessage(b, 6, v)
 		}
 	}
 	b = litewire.AppendString(b, 7, m.ParentPath)
 	for _, v := range m.Dirs {
 		if v != nil {
-			b = litewire.AppendMessagePrefix(b, 8, v.Size())
-			b = v.AppendMarshal(b)
+			b = litewire.AppendMessage(b, 8, v)
 		}
 	}
 	b = litewire.AppendBool(b, 9, m.Loading)
 	if m.Error != nil {
-		b = litewire.AppendMessagePrefix(b, 10, m.Error.Size())
-		b = m.Error.AppendMarshal(b)
+		b = litewire.AppendMessage(b, 10, m.Error)
 	}
 	if m.ConfirmLabel != nil {
-		b = litewire.AppendMessagePrefix(b, 11, m.ConfirmLabel.Size())
-		b = m.ConfirmLabel.AppendMarshal(b)
+		b = litewire.AppendMessage(b, 11, m.ConfirmLabel)
 	}
 	b = litewire.AppendBool(b, 12, m.CanConfirm)
 	return b
-}
-
-func (m *DirPickerView) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.Open = litewire.DecodeBool(v)
-				continue
-			}
-		case 2:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.ForNewTask = litewire.DecodeBool(v)
-				continue
-			}
-		case 3:
-			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
-				elem := &DirPickerMachineView{}
-				if err := elem.Unmarshal(raw); err != nil {
-					return err
-				}
-				m.Machines = append(m.Machines, elem)
-				continue
-			}
-		case 4:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.MachineId = v
-				continue
-			}
-		case 5:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.CurrentPath = v
-				continue
-			}
-		case 6:
-			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
-				elem := &DirCrumbView{}
-				if err := elem.Unmarshal(raw); err != nil {
-					return err
-				}
-				m.Crumbs = append(m.Crumbs, elem)
-				continue
-			}
-		case 7:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.ParentPath = v
-				continue
-			}
-		case 8:
-			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
-				elem := &DirEntryView{}
-				if err := elem.Unmarshal(raw); err != nil {
-					return err
-				}
-				m.Dirs = append(m.Dirs, elem)
-				continue
-			}
-		case 9:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.Loading = litewire.DecodeBool(v)
-				continue
-			}
-		case 10:
-			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
-				if m.Error == nil {
-					m.Error = &Text{}
-				}
-				if err := m.Error.Unmarshal(raw); err != nil {
-					return err
-				}
-				continue
-			}
-		case 11:
-			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
-				if m.ConfirmLabel == nil {
-					m.ConfirmLabel = &Text{}
-				}
-				if err := m.ConfirmLabel.Unmarshal(raw); err != nil {
-					return err
-				}
-				continue
-			}
-		case 12:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.CanConfirm = litewire.DecodeBool(v)
-				continue
-			}
-		}
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 type ManageProjectsView struct {
@@ -1527,12 +754,6 @@ type ManageProjectsView struct {
 	SaveError        *Text
 	DirPicker        *DirPickerView
 	ProjectCount     int32
-}
-
-func (m *ManageProjectsView) Reset() {
-	if m != nil {
-		*m = ManageProjectsView{}
-	}
 }
 
 func (m *ManageProjectsView) GetListing() *ProjectListingView {
@@ -1584,18 +805,6 @@ func (m *ManageProjectsView) GetProjectCount() int32 {
 	return 0
 }
 
-func (m *ManageProjectsView) Clone() *ManageProjectsView {
-	if m == nil {
-		return nil
-	}
-	cp := *m
-	cp.Listing = m.Listing.Clone()
-	cp.BlockedReason = m.BlockedReason.Clone()
-	cp.SaveError = m.SaveError.Clone()
-	cp.DirPicker = m.DirPicker.Clone()
-	return &cp
-}
-
 func (m *ManageProjectsView) Size() int {
 	if m == nil {
 		return 0
@@ -1636,145 +845,28 @@ func (m *ManageProjectsView) AppendMarshal(b []byte) []byte {
 		return b
 	}
 	if m.Listing != nil {
-		b = litewire.AppendMessagePrefix(b, 1, m.Listing.Size())
-		b = m.Listing.AppendMarshal(b)
+		b = litewire.AppendMessage(b, 1, m.Listing)
 	}
 	b = litewire.AppendBool(b, 2, m.CanEdit)
 	if m.BlockedReason != nil {
-		b = litewire.AppendMessagePrefix(b, 3, m.BlockedReason.Size())
-		b = m.BlockedReason.AppendMarshal(b)
+		b = litewire.AppendMessage(b, 3, m.BlockedReason)
 	}
 	b = litewire.AppendBool(b, 4, m.ChangedElsewhere)
 	b = litewire.AppendBool(b, 5, m.Syncing)
 	if m.SaveError != nil {
-		b = litewire.AppendMessagePrefix(b, 6, m.SaveError.Size())
-		b = m.SaveError.AppendMarshal(b)
+		b = litewire.AppendMessage(b, 6, m.SaveError)
 	}
 	if m.DirPicker != nil {
-		b = litewire.AppendMessagePrefix(b, 7, m.DirPicker.Size())
-		b = m.DirPicker.AppendMarshal(b)
+		b = litewire.AppendMessage(b, 7, m.DirPicker)
 	}
 	b = litewire.AppendInt32(b, 8, int32(m.ProjectCount))
 	return b
-}
-
-func (m *ManageProjectsView) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
-				if m.Listing == nil {
-					m.Listing = &ProjectListingView{}
-				}
-				if err := m.Listing.Unmarshal(raw); err != nil {
-					return err
-				}
-				continue
-			}
-		case 2:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.CanEdit = litewire.DecodeBool(v)
-				continue
-			}
-		case 3:
-			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
-				if m.BlockedReason == nil {
-					m.BlockedReason = &Text{}
-				}
-				if err := m.BlockedReason.Unmarshal(raw); err != nil {
-					return err
-				}
-				continue
-			}
-		case 4:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.ChangedElsewhere = litewire.DecodeBool(v)
-				continue
-			}
-		case 5:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.Syncing = litewire.DecodeBool(v)
-				continue
-			}
-		case 6:
-			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
-				if m.SaveError == nil {
-					m.SaveError = &Text{}
-				}
-				if err := m.SaveError.Unmarshal(raw); err != nil {
-					return err
-				}
-				continue
-			}
-		case 7:
-			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
-				if m.DirPicker == nil {
-					m.DirPicker = &DirPickerView{}
-				}
-				if err := m.DirPicker.Unmarshal(raw); err != nil {
-					return err
-				}
-				continue
-			}
-		case 8:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.ProjectCount = int32(v)
-				continue
-			}
-		}
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 type ProjectViewModel struct {
 	Kind   ProjectViewKind
 	Detail *ProjectDetailView
 	Manage *ManageProjectsView
-}
-
-func (m *ProjectViewModel) Reset() {
-	if m != nil {
-		*m = ProjectViewModel{}
-	}
 }
 
 func (m *ProjectViewModel) GetKind() ProjectViewKind {
@@ -1794,16 +886,6 @@ func (m *ProjectViewModel) GetManage() *ManageProjectsView {
 		return m.Manage
 	}
 	return nil
-}
-
-func (m *ProjectViewModel) Clone() *ProjectViewModel {
-	if m == nil {
-		return nil
-	}
-	cp := *m
-	cp.Detail = m.Detail.Clone()
-	cp.Manage = m.Manage.Clone()
-	return &cp
 }
 
 func (m *ProjectViewModel) Size() int {
@@ -1838,64 +920,10 @@ func (m *ProjectViewModel) AppendMarshal(b []byte) []byte {
 	}
 	b = litewire.AppendInt32(b, 1, int32(m.Kind))
 	if m.Detail != nil {
-		b = litewire.AppendMessagePrefix(b, 2, m.Detail.Size())
-		b = m.Detail.AppendMarshal(b)
+		b = litewire.AppendMessage(b, 2, m.Detail)
 	}
 	if m.Manage != nil {
-		b = litewire.AppendMessagePrefix(b, 3, m.Manage.Size())
-		b = m.Manage.AppendMarshal(b)
+		b = litewire.AppendMessage(b, 3, m.Manage)
 	}
 	return b
-}
-
-func (m *ProjectViewModel) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.Kind = ProjectViewKind(int32(v))
-				continue
-			}
-		case 2:
-			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
-				if m.Detail == nil {
-					m.Detail = &ProjectDetailView{}
-				}
-				if err := m.Detail.Unmarshal(raw); err != nil {
-					return err
-				}
-				continue
-			}
-		case 3:
-			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
-				if m.Manage == nil {
-					m.Manage = &ManageProjectsView{}
-				}
-				if err := m.Manage.Unmarshal(raw); err != nil {
-					return err
-				}
-				continue
-			}
-		}
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
 }

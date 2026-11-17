@@ -25,12 +25,6 @@ type MachineCapabilities struct {
 	MachineStatus        bool
 }
 
-func (m *MachineCapabilities) Reset() {
-	if m != nil {
-		*m = MachineCapabilities{}
-	}
-}
-
 func (m *MachineCapabilities) GetImageUpload() bool {
 	if m != nil {
 		return m.ImageUpload

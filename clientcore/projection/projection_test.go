@@ -532,14 +532,15 @@ func TestAdditionalProjectionRules(t *testing.T) {
 	})
 }
 
-// TestLiteWireCompatibility verifies standard protobuf <-> lite protobuf wire round-trips
-// across representative v1 features: Timestamp, oneof, optional scalars, bytes, enum, repeated, and map.
+// TestLiteWireCompatibility verifies standard protobuf <-> lite protobuf wire compatibility
+// across representative features: Timestamp, oneof, optional scalars, bytes, enum, repeated, and map.
+// Direction-only types are tested in their generated direction (Unmarshal for inbound, Marshal/Size for outbound).
 func TestLiteWireCompatibility(t *testing.T) {
 	exitCode := int32(0)
 	usedPct := float64(42.5)
 	totalBytes := uint64(4096)
 
-	cases := []struct {
+	roundTripCases := []struct {
 		name string
 		std  proto.Message
 		lite interface {
@@ -599,26 +600,6 @@ func TestLiteWireCompatibility(t *testing.T) {
 			freshStd: func() proto.Message { return &stdv1.Event{} },
 		},
 		{
-			name: "quota-window-optional-double-and-fixed64",
-			std: &stdv1.GetSharedFileChunkResponse{
-				Data:       []byte("hello"),
-				TotalBytes: &totalBytes,
-			},
-			lite:     &v1.GetSharedFileChunkResponse{},
-			freshStd: func() proto.Message { return &stdv1.GetSharedFileChunkResponse{} },
-		},
-		{
-			name: "quota-window-optional-double",
-			std: &stdv1.QuotaWindow{
-				Name:          "five_hour",
-				UsedPercent:   &usedPct,
-				ResetsAtMs:    1700005000000,
-				WindowMinutes: 300,
-			},
-			lite:     &v1.QuotaWindow{},
-			freshStd: func() proto.Message { return &stdv1.QuotaWindow{} },
-		},
-		{
 			name: "machine-capabilities-packed-enum",
 			std: &stdv1.MachineCapabilities{
 				ImageUpload:    true,
@@ -647,67 +628,10 @@ func TestLiteWireCompatibility(t *testing.T) {
 			freshStd: func() proto.Message { return &stdv1.AnswerQuestionRequest{} },
 		},
 		{
-			name: "entropy-packed-double",
-			std: &stdcorev1.EntropyProvided{
-				RandomIds:  []string{"id1", "id2"},
-				UnitFloats: []float64{0.0, 0.25, 0.75, 1.0},
-			},
-			lite:     &corev1.EntropyProvided{},
-			freshStd: func() proto.Message { return &stdcorev1.EntropyProvided{} },
-		},
-		{
 			name:     "maps-string-scalar",
 			std:      &stdv1.CreateSessionRequest{Cwd: "/w", Env: map[string]string{"A": "1", "B": ""}},
 			lite:     &v1.CreateSessionRequest{},
 			freshStd: func() proto.Message { return &stdv1.CreateSessionRequest{} },
-		},
-		{
-			name: "maps-uint64-and-message-values-and-packed-uint64",
-			std: &stdcorev1.ProjectionState{
-				Resolved: map[string]*stdcorev1.ResolvedApproval{
-					"a1": {
-						Decision: stdv1.ApprovalDecision(1),
-						Message:  "ok",
-						Origin:   &stdv1.Origin{Kind: stdv1.OriginKind_ORIGIN_KIND_CLIENT, DeviceId: "d1", RequestId: "r1"},
-					},
-					"a2": {Decision: stdv1.ApprovalDecision(2), Message: ""},
-				},
-				CompletedAt:      map[uint64]uint64{3: 7, 0: 1},
-				ApprovalCallIds:  map[uint64]string{5: "call-5"},
-				UnfinishedSeqs:   []uint64{10, 200, 300000},
-				NoResultSeqs:     []uint64{11},
-				TypedLocallySeqs: []uint64{12, 13},
-			},
-			lite:     &corev1.ProjectionState{},
-			freshStd: func() proto.Message { return &stdcorev1.ProjectionState{} },
-		},
-		{
-			name: "deep-nested-viewmodel-home",
-			std: &stdcorev1.ViewModel{
-				View: &stdcorev1.ViewModel_Home{
-					Home: &stdcorev1.HomeViewModel{
-						Headline: &stdcorev1.HomeHeadlineView{
-							Title: &stdcorev1.Text{
-								Key: "home.running",
-								Args: []*stdcorev1.TextArg{
-									{Name: "count", Value: &stdcorev1.TextArg_IntValue{IntValue: 3}},
-									{Name: "sub", Value: &stdcorev1.TextArg_TextValue{TextValue: &stdcorev1.Text{Key: "common.ok"}}},
-								},
-							},
-						},
-						Running: []*stdcorev1.SessionRowView{
-							{
-								SessionId:  "s-1",
-								Title:      &stdcorev1.Text{Key: "common.plain", Args: []*stdcorev1.TextArg{{Name: "value", Value: &stdcorev1.TextArg_StrValue{StrValue: "Fix bug"}}}},
-								SecondLine: &stdcorev1.Text{Key: "status.running"},
-								Agent:      stdv1.Agent_AGENT_CODEX,
-							},
-						},
-					},
-				},
-			},
-			lite:     &corev1.ViewModel{},
-			freshStd: func() proto.Message { return &stdcorev1.ViewModel{} },
 		},
 		{
 			name: "nested-project-prefs",
@@ -732,7 +656,7 @@ func TestLiteWireCompatibility(t *testing.T) {
 		},
 	}
 
-	for _, tc := range cases {
+	for _, tc := range roundTripCases {
 		t.Run(tc.name, func(t *testing.T) {
 			wire, err := proto.Marshal(tc.std)
 			if err != nil {
@@ -755,6 +679,178 @@ func TestLiteWireCompatibility(t *testing.T) {
 			}
 			if !proto.Equal(tc.std, gotStd) {
 				t.Fatalf("round-trip mismatch:\ngot:  %v\nwant: %v", gotStd, tc.std)
+			}
+		})
+	}
+
+	t.Run("shared-file-chunk-bytes-optional-fixed64", func(t *testing.T) {
+		std := &stdv1.GetSharedFileChunkResponse{
+			Data:       []byte("hello"),
+			TotalBytes: &totalBytes,
+		}
+		wire, err := proto.Marshal(std)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var lite v1.GetSharedFileChunkResponse
+		if err := lite.Unmarshal(wire); err != nil {
+			t.Fatal(err)
+		}
+		if !bytes.Equal(lite.Data, std.Data) || lite.TotalBytes == nil || *lite.TotalBytes != totalBytes {
+			t.Fatalf("decoded GetSharedFileChunkResponse mismatch: %+v", lite)
+		}
+	})
+
+	t.Run("quota-window-optional-double", func(t *testing.T) {
+		std := &stdv1.QuotaWindow{
+			Name:          "five_hour",
+			UsedPercent:   &usedPct,
+			ResetsAtMs:    1700005000000,
+			WindowMinutes: 300,
+		}
+		wire, err := proto.Marshal(std)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var lite v1.QuotaWindow
+		if err := lite.Unmarshal(wire); err != nil {
+			t.Fatal(err)
+		}
+		if lite.Name != "five_hour" || lite.UsedPercent == nil || *lite.UsedPercent != usedPct ||
+			lite.ResetsAtMs != 1700005000000 || lite.WindowMinutes != 300 {
+			t.Fatalf("decoded QuotaWindow mismatch: %+v", lite)
+		}
+	})
+
+	t.Run("entropy-packed-double", func(t *testing.T) {
+		std := &stdcorev1.EntropyProvided{
+			RandomIds:  []string{"id1", "id2"},
+			UnitFloats: []float64{0.0, 0.25, 0.75, 1.0},
+		}
+		wire, err := proto.Marshal(std)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var lite corev1.EntropyProvided
+		if err := lite.Unmarshal(wire); err != nil {
+			t.Fatal(err)
+		}
+		if !reflect.DeepEqual(lite.RandomIds, std.RandomIds) || !reflect.DeepEqual(lite.UnitFloats, std.UnitFloats) {
+			t.Fatalf("decoded EntropyProvided mismatch: %+v", lite)
+		}
+	})
+
+	marshalCases := []struct {
+		name string
+		lite interface {
+			Size() int
+			Marshal() ([]byte, error)
+		}
+		want     proto.Message
+		freshStd func() proto.Message
+	}{
+		{
+			name: "maps-uint64-and-message-values-and-packed-uint64",
+			lite: &corev1.ProjectionState{
+				Resolved: map[string]*corev1.ResolvedApproval{
+					"a1": {
+						Decision: v1.ApprovalDecision(1),
+						Message:  "ok",
+						Origin:   &v1.Origin{Kind: v1.OriginKind_ORIGIN_KIND_CLIENT, DeviceId: "d1", RequestId: "r1"},
+					},
+					"a2": {Decision: v1.ApprovalDecision(2), Message: ""},
+				},
+				CompletedAt:      map[uint64]uint64{3: 7, 0: 1},
+				ApprovalCallIds:  map[uint64]string{5: "call-5"},
+				UnfinishedSeqs:   []uint64{10, 200, 300000},
+				NoResultSeqs:     []uint64{11},
+				TypedLocallySeqs: []uint64{12, 13},
+			},
+			want: &stdcorev1.ProjectionState{
+				Resolved: map[string]*stdcorev1.ResolvedApproval{
+					"a1": {
+						Decision: stdv1.ApprovalDecision(1),
+						Message:  "ok",
+						Origin:   &stdv1.Origin{Kind: stdv1.OriginKind_ORIGIN_KIND_CLIENT, DeviceId: "d1", RequestId: "r1"},
+					},
+					"a2": {Decision: stdv1.ApprovalDecision(2), Message: ""},
+				},
+				CompletedAt:      map[uint64]uint64{3: 7, 0: 1},
+				ApprovalCallIds:  map[uint64]string{5: "call-5"},
+				UnfinishedSeqs:   []uint64{10, 200, 300000},
+				NoResultSeqs:     []uint64{11},
+				TypedLocallySeqs: []uint64{12, 13},
+			},
+			freshStd: func() proto.Message { return &stdcorev1.ProjectionState{} },
+		},
+		{
+			name: "deep-nested-viewmodel-home",
+			lite: &corev1.ViewModel{
+				View: &corev1.ViewModel_Home{
+					Home: &corev1.HomeViewModel{
+						Headline: &corev1.HomeHeadlineView{
+							Title: &corev1.Text{
+								Key: "home.running",
+								Args: []*corev1.TextArg{
+									{Name: "count", Value: &corev1.TextArg_IntValue{IntValue: 3}},
+									{Name: "sub", Value: &corev1.TextArg_TextValue{TextValue: &corev1.Text{Key: "common.ok"}}},
+								},
+							},
+						},
+						Running: []*corev1.SessionRowView{
+							{
+								SessionId:  "s-1",
+								Title:      &corev1.Text{Key: "common.plain", Args: []*corev1.TextArg{{Name: "value", Value: &corev1.TextArg_StrValue{StrValue: "Fix bug"}}}},
+								SecondLine: &corev1.Text{Key: "status.running"},
+								Agent:      v1.Agent_AGENT_CODEX,
+							},
+						},
+					},
+				},
+			},
+			want: &stdcorev1.ViewModel{
+				View: &stdcorev1.ViewModel_Home{
+					Home: &stdcorev1.HomeViewModel{
+						Headline: &stdcorev1.HomeHeadlineView{
+							Title: &stdcorev1.Text{
+								Key: "home.running",
+								Args: []*stdcorev1.TextArg{
+									{Name: "count", Value: &stdcorev1.TextArg_IntValue{IntValue: 3}},
+									{Name: "sub", Value: &stdcorev1.TextArg_TextValue{TextValue: &stdcorev1.Text{Key: "common.ok"}}},
+								},
+							},
+						},
+						Running: []*stdcorev1.SessionRowView{
+							{
+								SessionId:  "s-1",
+								Title:      &stdcorev1.Text{Key: "common.plain", Args: []*stdcorev1.TextArg{{Name: "value", Value: &stdcorev1.TextArg_StrValue{StrValue: "Fix bug"}}}},
+								SecondLine: &stdcorev1.Text{Key: "status.running"},
+								Agent:      stdv1.Agent_AGENT_CODEX,
+							},
+						},
+					},
+				},
+			},
+			freshStd: func() proto.Message { return &stdcorev1.ViewModel{} },
+		},
+	}
+
+	for _, tc := range marshalCases {
+		t.Run(tc.name, func(t *testing.T) {
+			wantSize := tc.lite.Size()
+			wire, err := tc.lite.Marshal()
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(wire) != wantSize {
+				t.Fatalf("Size() = %d, len(Marshal()) = %d", wantSize, len(wire))
+			}
+			gotStd := tc.freshStd()
+			if err := proto.Unmarshal(wire, gotStd); err != nil {
+				t.Fatal(err)
+			}
+			if !proto.Equal(tc.want, gotStd) {
+				t.Fatalf("marshal mismatch:\ngot:  %v\nwant: %v", gotStd, tc.want)
 			}
 		})
 	}

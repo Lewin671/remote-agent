@@ -8,6 +8,9 @@ import (
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/clientcore/gen/timestamppb"
 	"github.com/Lewin671/remote-agent/clientcore/sync"
+	stdcorev1 "github.com/Lewin671/remote-agent/gen/remoteagent/core/v1"
+	stdv1 "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
+	"google.golang.org/protobuf/proto"
 )
 
 func seedBenchmarkCore(b *testing.B, numMachines, numProjects, numSessions int) (*Core, uint64) {
@@ -236,22 +239,22 @@ func BenchmarkMarshalDispatchSessionPush1000Sessions(b *testing.B) {
 	defer c.Close()
 
 	baseNow := int64(1_776_100_000_000)
-	ev := &corev1.Event{
+	ev := &stdcorev1.Event{
 		NowMs: baseNow + 100,
-		Event: &corev1.Event_StreamFrame{
-			StreamFrame: &corev1.StreamFrameEvent{
+		Event: &stdcorev1.Event_StreamFrame{
+			StreamFrame: &stdcorev1.StreamFrameEvent{
 				LegId: legID,
-				Frame: &corev1.StreamFrameEvent_SessionUpdated{
-					SessionUpdated: &corev1.PlainSession{
+				Frame: &stdcorev1.StreamFrameEvent_SessionUpdated{
+					SessionUpdated: &stdcorev1.PlainSession{
 						SessionId: "s-0001",
 						MachineId: "m-1",
 						LastSeq:   500,
 						UpdatedMs: baseNow + 100,
-						Meta: &v1.Session{
+						Meta: &stdv1.Session{
 							Id:      "s-0001",
 							Cwd:     "/Users/dev/work/proj-01",
-							Agent:   v1.Agent_AGENT_CODEX,
-							Status:  v1.SessionStatus_SESSION_STATUS_RUNNING,
+							Agent:   stdv1.Agent_AGENT_CODEX,
+							Status:  stdv1.SessionStatus_SESSION_STATUS_RUNNING,
 							Title:   "Session 1",
 							Preview: "Applying patch",
 						},
@@ -266,7 +269,7 @@ func BenchmarkMarshalDispatchSessionPush1000Sessions(b *testing.B) {
 		ev.NowMs = baseNow + int64(i)
 		ev.GetStreamFrame().GetSessionUpdated().UpdatedMs = baseNow + int64(i)
 		ev.GetStreamFrame().GetSessionUpdated().LastSeq = uint64(500 + i)
-		evBytes, err := ev.Marshal()
+		evBytes, err := proto.Marshal(ev)
 		if err != nil {
 			b.Fatal(err)
 		}

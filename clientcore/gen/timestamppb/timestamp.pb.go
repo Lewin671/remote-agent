@@ -10,12 +10,6 @@ type Timestamp struct {
 	Nanos   int32
 }
 
-func (m *Timestamp) Reset() {
-	if m != nil {
-		*m = Timestamp{}
-	}
-}
-
 func (m *Timestamp) GetSeconds() int64 {
 	if m != nil {
 		return m.Seconds

@@ -1,16 +1,49 @@
-# Extra protobuf full names (outside package remoteagent.core.v1) directly
-# constructed or referenced by clientcore Go code.
+# Direction-aware code generation roots for cmd/protoc-gen-go-lite.
 #
-# cmd/protoc-gen-go-lite automatically includes:
-#   1. All messages and enums in proto/remoteagent/core/v1/*.proto (package remoteagent.core.v1).
-#   2. Any remoteagent.v1 message or enum transitively reachable via field, map,
-#      or oneof references from (1) or from the entry types listed below.
+# Directives (one per line, comments start with #):
+#   in: <full_name>     Shell -> Core boundary; generates Unmarshal transitively.
+#   out: <full_name>    Core -> Shell boundary; generates Size, AppendMarshal, Marshal transitively.
+#   clone: <full_name>  Core deep-copy call sites; generates Clone transitively.
+#   <full_name>         Bare entry without prefix is treated as both in + out.
 #
-# How to add an entry:
-#   1. Add the fully-qualified proto message or enum name below (one per line, no leading dot),
-#      for example when clientcore directly marshals/unmarshals a remoteagent.v1 type
-#      carried only as raw bytes in remoteagent.core.v1 (such as Command).
-#   2. Regenerate lite Go bindings: buf generate --template buf.gen.lite.yaml
-#   3. Verify: cd clientcore && go test ./...
+# How to add entries:
+#   - New Screen/Event/ViewModel/Effect messages wired into app.proto are
+#     picked up automatically from the in:/out: roots below.
+#   - If clientcore calls .Unmarshal() or .Marshal() on a new top-level or
+#     byte-embedded proto type (such as remoteagent.v1.Command), add in:/out:.
+#   - If clientcore calls .Clone() on a message type, compilation will fail
+#     until you add `clone: <full.proto.Name>` here and regenerate.
+#   - Regenerate lite Go bindings: buf generate --template buf.gen.lite.yaml
+#   - Verify: cd clientcore && CC=/usr/bin/clang go test ./...
 
-remoteagent.v1.Command
+# Shell -> Core (Unmarshal)
+in: remoteagent.core.v1.Screen
+in: remoteagent.core.v1.Event
+in: remoteagent.core.v1.EventBatch
+in: remoteagent.v1.LiveSnapshot
+
+# Core -> Shell (Size, AppendMarshal, Marshal)
+out: remoteagent.core.v1.ViewModel
+out: remoteagent.core.v1.EffectBatch
+out: remoteagent.core.v1.Effect
+out: remoteagent.core.v1.ProjectionState
+out: remoteagent.v1.Command
+
+# Core internal .Clone() call sites (enforced by Go compiler)
+clone: remoteagent.core.v1.DirectRouteReport
+clone: remoteagent.v1.AgentDefaults
+clone: remoteagent.v1.AgentInfo
+clone: remoteagent.v1.AgentSettings
+clone: remoteagent.v1.Command
+clone: remoteagent.v1.DaemonSettings
+clone: remoteagent.v1.DeviceMeta
+clone: remoteagent.v1.Event
+clone: remoteagent.v1.ImageStorageUsage
+clone: remoteagent.v1.InputState
+clone: remoteagent.v1.ListModelsResponse
+clone: remoteagent.v1.LiveSnapshot
+clone: remoteagent.v1.MachineMeta
+clone: remoteagent.v1.MachineStatus
+clone: remoteagent.v1.ProjectPrefs
+clone: remoteagent.v1.ProjectSettings
+clone: remoteagent.v1.Session

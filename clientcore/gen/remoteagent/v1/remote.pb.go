@@ -49,12 +49,6 @@ type MachineMeta struct {
 	DiskStatus       *DiskStatus
 }
 
-func (m *MachineMeta) Reset() {
-	if m != nil {
-		*m = MachineMeta{}
-	}
-}
-
 func (m *MachineMeta) GetHostname() string {
 	if m != nil {
 		return m.Hostname
@@ -214,31 +208,26 @@ func (m *MachineMeta) AppendMarshal(b []byte) []byte {
 	b = litewire.AppendBool(b, 8, m.CodexVerified)
 	for _, v := range m.Agents {
 		if v != nil {
-			b = litewire.AppendMessagePrefix(b, 9, v.Size())
-			b = v.AppendMarshal(b)
+			b = litewire.AppendMessage(b, 9, v)
 		}
 	}
 	if m.Capabilities != nil {
-		b = litewire.AppendMessagePrefix(b, 10, m.Capabilities.Size())
-		b = m.Capabilities.AppendMarshal(b)
+		b = litewire.AppendMessage(b, 10, m.Capabilities)
 	}
 	for _, v := range m.Quotas {
 		if v != nil {
-			b = litewire.AppendMessagePrefix(b, 11, v.Size())
-			b = v.AppendMarshal(b)
+			b = litewire.AppendMessage(b, 11, v)
 		}
 	}
 	b = litewire.AppendVarint(b, 12, uint64(m.ProtocolVersion))
 	for _, v := range m.Projects {
 		if v != nil {
-			b = litewire.AppendMessagePrefix(b, 13, v.Size())
-			b = v.AppendMarshal(b)
+			b = litewire.AppendMessage(b, 13, v)
 		}
 	}
 	b = litewire.AppendVarint(b, 14, uint64(m.ScheduleRevision))
 	if m.DiskStatus != nil {
-		b = litewire.AppendMessagePrefix(b, 15, m.DiskStatus.Size())
-		b = m.DiskStatus.AppendMarshal(b)
+		b = litewire.AppendMessage(b, 15, m.DiskStatus)
 	}
 	return b
 }
@@ -297,12 +286,8 @@ func (m *MachineMeta) Unmarshal(b []byte) error {
 			}
 		case 9:
 			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
 				elem := &AgentInfo{}
-				if err := elem.Unmarshal(raw); err != nil {
+				if err := litewire.ReadMessage(&b, elem); err != nil {
 					return err
 				}
 				m.Agents = append(m.Agents, elem)
@@ -310,26 +295,18 @@ func (m *MachineMeta) Unmarshal(b []byte) error {
 			}
 		case 10:
 			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
 				if m.Capabilities == nil {
 					m.Capabilities = &MachineCapabilities{}
 				}
-				if err := m.Capabilities.Unmarshal(raw); err != nil {
+				if err := litewire.ReadMessage(&b, m.Capabilities); err != nil {
 					return err
 				}
 				continue
 			}
 		case 11:
 			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
 				elem := &AgentQuota{}
-				if err := elem.Unmarshal(raw); err != nil {
+				if err := litewire.ReadMessage(&b, elem); err != nil {
 					return err
 				}
 				m.Quotas = append(m.Quotas, elem)
@@ -346,12 +323,8 @@ func (m *MachineMeta) Unmarshal(b []byte) error {
 			}
 		case 13:
 			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
 				elem := &ProjectSummary{}
-				if err := elem.Unmarshal(raw); err != nil {
+				if err := litewire.ReadMessage(&b, elem); err != nil {
 					return err
 				}
 				m.Projects = append(m.Projects, elem)
@@ -368,14 +341,10 @@ func (m *MachineMeta) Unmarshal(b []byte) error {
 			}
 		case 15:
 			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
 				if m.DiskStatus == nil {
 					m.DiskStatus = &DiskStatus{}
 				}
-				if err := m.DiskStatus.Unmarshal(raw); err != nil {
+				if err := litewire.ReadMessage(&b, m.DiskStatus); err != nil {
 					return err
 				}
 				continue
@@ -393,12 +362,6 @@ type ProjectSummary struct {
 	Ended           uint32
 	LatestCreatedMs int64
 	LatestEndedMs   int64
-}
-
-func (m *ProjectSummary) Reset() {
-	if m != nil {
-		*m = ProjectSummary{}
-	}
 }
 
 func (m *ProjectSummary) GetPath() string {
@@ -531,12 +494,6 @@ type AgentQuota struct {
 	Detail          string
 }
 
-func (m *AgentQuota) Reset() {
-	if m != nil {
-		*m = AgentQuota{}
-	}
-}
-
 func (m *AgentQuota) GetAgent() Agent {
 	if m != nil {
 		return m.Agent
@@ -646,8 +603,7 @@ func (m *AgentQuota) AppendMarshal(b []byte) []byte {
 	b = litewire.AppendInt32(b, 2, int32(m.State))
 	for _, v := range m.Windows {
 		if v != nil {
-			b = litewire.AppendMessagePrefix(b, 3, v.Size())
-			b = v.AppendMarshal(b)
+			b = litewire.AppendMessage(b, 3, v)
 		}
 	}
 	b = litewire.AppendString(b, 4, m.Plan)
@@ -686,12 +642,8 @@ func (m *AgentQuota) Unmarshal(b []byte) error {
 			}
 		case 3:
 			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
 				elem := &QuotaWindow{}
-				if err := elem.Unmarshal(raw); err != nil {
+				if err := litewire.ReadMessage(&b, elem); err != nil {
 					return err
 				}
 				m.Windows = append(m.Windows, elem)
@@ -764,12 +716,6 @@ type QuotaWindow struct {
 	UsedPercent   *float64
 	ResetsAtMs    int64
 	WindowMinutes int64
-}
-
-func (m *QuotaWindow) Reset() {
-	if m != nil {
-		*m = QuotaWindow{}
-	}
 }
 
 func (m *QuotaWindow) GetName() string {
@@ -906,12 +852,6 @@ type AgentInfo struct {
 	DefaultMode       ApprovalMode
 	DefaultModeSource DefaultModeSource
 	DefaultModeVaries bool
-}
-
-func (m *AgentInfo) Reset() {
-	if m != nil {
-		*m = AgentInfo{}
-	}
 }
 
 func (m *AgentInfo) GetAgent() Agent {
@@ -1187,12 +1127,6 @@ func (*Command_GetSharedFileChunk) isCommand_Kind() {}
 type Command_GetMachineStatus struct{ GetMachineStatus *GetMachineStatusRequest }
 
 func (*Command_GetMachineStatus) isCommand_Kind() {}
-
-func (m *Command) Reset() {
-	if m != nil {
-		*m = Command{}
-	}
-}
 
 func (m *Command) GetKind() isCommand_Kind {
 	if m != nil {
@@ -1711,204 +1645,175 @@ func (m *Command) AppendMarshal(b []byte) []byte {
 	case *Command_Send:
 		if x != nil {
 			if x.Send != nil {
-				b = litewire.AppendMessagePrefix(b, 1, x.Send.Size())
-				b = x.Send.AppendMarshal(b)
+				b = litewire.AppendMessage(b, 1, x.Send)
 			}
 		}
 	case *Command_Interrupt:
 		if x != nil {
 			if x.Interrupt != nil {
-				b = litewire.AppendMessagePrefix(b, 2, x.Interrupt.Size())
-				b = x.Interrupt.AppendMarshal(b)
+				b = litewire.AppendMessage(b, 2, x.Interrupt)
 			}
 		}
 	case *Command_ResolveApproval:
 		if x != nil {
 			if x.ResolveApproval != nil {
-				b = litewire.AppendMessagePrefix(b, 3, x.ResolveApproval.Size())
-				b = x.ResolveApproval.AppendMarshal(b)
+				b = litewire.AppendMessage(b, 3, x.ResolveApproval)
 			}
 		}
 	case *Command_AnswerQuestion:
 		if x != nil {
 			if x.AnswerQuestion != nil {
-				b = litewire.AppendMessagePrefix(b, 4, x.AnswerQuestion.Size())
-				b = x.AnswerQuestion.AppendMarshal(b)
+				b = litewire.AppendMessage(b, 4, x.AnswerQuestion)
 			}
 		}
 	case *Command_StopSession:
 		if x != nil {
 			if x.StopSession != nil {
-				b = litewire.AppendMessagePrefix(b, 5, x.StopSession.Size())
-				b = x.StopSession.AppendMarshal(b)
+				b = litewire.AppendMessage(b, 5, x.StopSession)
 			}
 		}
 	case *Command_CancelInput:
 		if x != nil {
 			if x.CancelInput != nil {
-				b = litewire.AppendMessagePrefix(b, 6, x.CancelInput.Size())
-				b = x.CancelInput.AppendMarshal(b)
+				b = litewire.AppendMessage(b, 6, x.CancelInput)
 			}
 		}
 	case *Command_SetModel:
 		if x != nil {
 			if x.SetModel != nil {
-				b = litewire.AppendMessagePrefix(b, 7, x.SetModel.Size())
-				b = x.SetModel.AppendMarshal(b)
+				b = litewire.AppendMessage(b, 7, x.SetModel)
 			}
 		}
 	case *Command_SetApprovalMode:
 		if x != nil {
 			if x.SetApprovalMode != nil {
-				b = litewire.AppendMessagePrefix(b, 8, x.SetApprovalMode.Size())
-				b = x.SetApprovalMode.AppendMarshal(b)
+				b = litewire.AppendMessage(b, 8, x.SetApprovalMode)
 			}
 		}
 	case *Command_Compact:
 		if x != nil {
 			if x.Compact != nil {
-				b = litewire.AppendMessagePrefix(b, 9, x.Compact.Size())
-				b = x.Compact.AppendMarshal(b)
+				b = litewire.AppendMessage(b, 9, x.Compact)
 			}
 		}
 	case *Command_AnswerPlan:
 		if x != nil {
 			if x.AnswerPlan != nil {
-				b = litewire.AppendMessagePrefix(b, 10, x.AnswerPlan.Size())
-				b = x.AnswerPlan.AppendMarshal(b)
+				b = litewire.AppendMessage(b, 10, x.AnswerPlan)
 			}
 		}
 	case *Command_OpenTerminal:
 		if x != nil {
 			if x.OpenTerminal != nil {
-				b = litewire.AppendMessagePrefix(b, 11, x.OpenTerminal.Size())
-				b = x.OpenTerminal.AppendMarshal(b)
+				b = litewire.AppendMessage(b, 11, x.OpenTerminal)
 			}
 		}
 	case *Command_ResumeSession:
 		if x != nil {
 			if x.ResumeSession != nil {
-				b = litewire.AppendMessagePrefix(b, 12, x.ResumeSession.Size())
-				b = x.ResumeSession.AppendMarshal(b)
+				b = litewire.AppendMessage(b, 12, x.ResumeSession)
 			}
 		}
 	case *Command_ResumeInput:
 		if x != nil {
 			if x.ResumeInput != nil {
-				b = litewire.AppendMessagePrefix(b, 13, x.ResumeInput.Size())
-				b = x.ResumeInput.AppendMarshal(b)
+				b = litewire.AppendMessage(b, 13, x.ResumeInput)
 			}
 		}
 	case *Command_RenameSession:
 		if x != nil {
 			if x.RenameSession != nil {
-				b = litewire.AppendMessagePrefix(b, 14, x.RenameSession.Size())
-				b = x.RenameSession.AppendMarshal(b)
+				b = litewire.AppendMessage(b, 14, x.RenameSession)
 			}
 		}
 	case *Command_ForkSession:
 		if x != nil {
 			if x.ForkSession != nil {
-				b = litewire.AppendMessagePrefix(b, 15, x.ForkSession.Size())
-				b = x.ForkSession.AppendMarshal(b)
+				b = litewire.AppendMessage(b, 15, x.ForkSession)
 			}
 		}
 	case *Command_CreateSession:
 		if x != nil {
 			if x.CreateSession != nil {
-				b = litewire.AppendMessagePrefix(b, 20, x.CreateSession.Size())
-				b = x.CreateSession.AppendMarshal(b)
+				b = litewire.AppendMessage(b, 20, x.CreateSession)
 			}
 		}
 	case *Command_ListModels:
 		if x != nil {
 			if x.ListModels != nil {
-				b = litewire.AppendMessagePrefix(b, 21, x.ListModels.Size())
-				b = x.ListModels.AppendMarshal(b)
+				b = litewire.AppendMessage(b, 21, x.ListModels)
 			}
 		}
 	case *Command_ListDirectories:
 		if x != nil {
 			if x.ListDirectories != nil {
-				b = litewire.AppendMessagePrefix(b, 22, x.ListDirectories.Size())
-				b = x.ListDirectories.AppendMarshal(b)
+				b = litewire.AppendMessage(b, 22, x.ListDirectories)
 			}
 		}
 	case *Command_GetSettings:
 		if x != nil {
 			if x.GetSettings != nil {
-				b = litewire.AppendMessagePrefix(b, 23, x.GetSettings.Size())
-				b = x.GetSettings.AppendMarshal(b)
+				b = litewire.AppendMessage(b, 23, x.GetSettings)
 			}
 		}
 	case *Command_UpdateSettings:
 		if x != nil {
 			if x.UpdateSettings != nil {
-				b = litewire.AppendMessagePrefix(b, 24, x.UpdateSettings.Size())
-				b = x.UpdateSettings.AppendMarshal(b)
+				b = litewire.AppendMessage(b, 24, x.UpdateSettings)
 			}
 		}
 	case *Command_BeginImageUpload:
 		if x != nil {
 			if x.BeginImageUpload != nil {
-				b = litewire.AppendMessagePrefix(b, 25, x.BeginImageUpload.Size())
-				b = x.BeginImageUpload.AppendMarshal(b)
+				b = litewire.AppendMessage(b, 25, x.BeginImageUpload)
 			}
 		}
 	case *Command_PutImageChunk:
 		if x != nil {
 			if x.PutImageChunk != nil {
-				b = litewire.AppendMessagePrefix(b, 26, x.PutImageChunk.Size())
-				b = x.PutImageChunk.AppendMarshal(b)
+				b = litewire.AppendMessage(b, 26, x.PutImageChunk)
 			}
 		}
 	case *Command_GetImageUploadStatus:
 		if x != nil {
 			if x.GetImageUploadStatus != nil {
-				b = litewire.AppendMessagePrefix(b, 27, x.GetImageUploadStatus.Size())
-				b = x.GetImageUploadStatus.AppendMarshal(b)
+				b = litewire.AppendMessage(b, 27, x.GetImageUploadStatus)
 			}
 		}
 	case *Command_CompleteImageUpload:
 		if x != nil {
 			if x.CompleteImageUpload != nil {
-				b = litewire.AppendMessagePrefix(b, 28, x.CompleteImageUpload.Size())
-				b = x.CompleteImageUpload.AppendMarshal(b)
+				b = litewire.AppendMessage(b, 28, x.CompleteImageUpload)
 			}
 		}
 	case *Command_AbortImageUpload:
 		if x != nil {
 			if x.AbortImageUpload != nil {
-				b = litewire.AppendMessagePrefix(b, 29, x.AbortImageUpload.Size())
-				b = x.AbortImageUpload.AppendMarshal(b)
+				b = litewire.AppendMessage(b, 29, x.AbortImageUpload)
 			}
 		}
 	case *Command_Schedule:
 		if x != nil {
 			if x.Schedule != nil {
-				b = litewire.AppendMessagePrefix(b, 30, x.Schedule.Size())
-				b = x.Schedule.AppendMarshal(b)
+				b = litewire.AppendMessage(b, 30, x.Schedule)
 			}
 		}
 	case *Command_GetLiveSnapshot:
 		if x != nil {
 			if x.GetLiveSnapshot != nil {
-				b = litewire.AppendMessagePrefix(b, 31, x.GetLiveSnapshot.Size())
-				b = x.GetLiveSnapshot.AppendMarshal(b)
+				b = litewire.AppendMessage(b, 31, x.GetLiveSnapshot)
 			}
 		}
 	case *Command_GetSharedFileChunk:
 		if x != nil {
 			if x.GetSharedFileChunk != nil {
-				b = litewire.AppendMessagePrefix(b, 32, x.GetSharedFileChunk.Size())
-				b = x.GetSharedFileChunk.AppendMarshal(b)
+				b = litewire.AppendMessage(b, 32, x.GetSharedFileChunk)
 			}
 		}
 	case *Command_GetMachineStatus:
 		if x != nil {
 			if x.GetMachineStatus != nil {
-				b = litewire.AppendMessagePrefix(b, 33, x.GetMachineStatus.Size())
-				b = x.GetMachineStatus.AppendMarshal(b)
+				b = litewire.AppendMessage(b, 33, x.GetMachineStatus)
 			}
 		}
 	}
@@ -1925,10 +1830,6 @@ func (m *Command) Unmarshal(b []byte) error {
 		switch num {
 		case 1:
 			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
 				var sub *SendRequest
 				if cur, ok := m.Kind.(*Command_Send); ok && cur != nil {
 					sub = cur.Send
@@ -1936,7 +1837,7 @@ func (m *Command) Unmarshal(b []byte) error {
 				if sub == nil {
 					sub = &SendRequest{}
 				}
-				if err := sub.Unmarshal(raw); err != nil {
+				if err := litewire.ReadMessage(&b, sub); err != nil {
 					return err
 				}
 				m.Kind = &Command_Send{Send: sub}
@@ -1944,10 +1845,6 @@ func (m *Command) Unmarshal(b []byte) error {
 			}
 		case 2:
 			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
 				var sub *InterruptRequest
 				if cur, ok := m.Kind.(*Command_Interrupt); ok && cur != nil {
 					sub = cur.Interrupt
@@ -1955,7 +1852,7 @@ func (m *Command) Unmarshal(b []byte) error {
 				if sub == nil {
 					sub = &InterruptRequest{}
 				}
-				if err := sub.Unmarshal(raw); err != nil {
+				if err := litewire.ReadMessage(&b, sub); err != nil {
 					return err
 				}
 				m.Kind = &Command_Interrupt{Interrupt: sub}
@@ -1963,10 +1860,6 @@ func (m *Command) Unmarshal(b []byte) error {
 			}
 		case 3:
 			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
 				var sub *ResolveApprovalRequest
 				if cur, ok := m.Kind.(*Command_ResolveApproval); ok && cur != nil {
 					sub = cur.ResolveApproval
@@ -1974,7 +1867,7 @@ func (m *Command) Unmarshal(b []byte) error {
 				if sub == nil {
 					sub = &ResolveApprovalRequest{}
 				}
-				if err := sub.Unmarshal(raw); err != nil {
+				if err := litewire.ReadMessage(&b, sub); err != nil {
 					return err
 				}
 				m.Kind = &Command_ResolveApproval{ResolveApproval: sub}
@@ -1982,10 +1875,6 @@ func (m *Command) Unmarshal(b []byte) error {
 			}
 		case 4:
 			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
 				var sub *AnswerQuestionRequest
 				if cur, ok := m.Kind.(*Command_AnswerQuestion); ok && cur != nil {
 					sub = cur.AnswerQuestion
@@ -1993,7 +1882,7 @@ func (m *Command) Unmarshal(b []byte) error {
 				if sub == nil {
 					sub = &AnswerQuestionRequest{}
 				}
-				if err := sub.Unmarshal(raw); err != nil {
+				if err := litewire.ReadMessage(&b, sub); err != nil {
 					return err
 				}
 				m.Kind = &Command_AnswerQuestion{AnswerQuestion: sub}
@@ -2001,10 +1890,6 @@ func (m *Command) Unmarshal(b []byte) error {
 			}
 		case 5:
 			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
 				var sub *StopSessionRequest
 				if cur, ok := m.Kind.(*Command_StopSession); ok && cur != nil {
 					sub = cur.StopSession
@@ -2012,7 +1897,7 @@ func (m *Command) Unmarshal(b []byte) error {
 				if sub == nil {
 					sub = &StopSessionRequest{}
 				}
-				if err := sub.Unmarshal(raw); err != nil {
+				if err := litewire.ReadMessage(&b, sub); err != nil {
 					return err
 				}
 				m.Kind = &Command_StopSession{StopSession: sub}
@@ -2020,10 +1905,6 @@ func (m *Command) Unmarshal(b []byte) error {
 			}
 		case 6:
 			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
 				var sub *CancelInputRequest
 				if cur, ok := m.Kind.(*Command_CancelInput); ok && cur != nil {
 					sub = cur.CancelInput
@@ -2031,7 +1912,7 @@ func (m *Command) Unmarshal(b []byte) error {
 				if sub == nil {
 					sub = &CancelInputRequest{}
 				}
-				if err := sub.Unmarshal(raw); err != nil {
+				if err := litewire.ReadMessage(&b, sub); err != nil {
 					return err
 				}
 				m.Kind = &Command_CancelInput{CancelInput: sub}
@@ -2039,10 +1920,6 @@ func (m *Command) Unmarshal(b []byte) error {
 			}
 		case 7:
 			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
 				var sub *SetModelRequest
 				if cur, ok := m.Kind.(*Command_SetModel); ok && cur != nil {
 					sub = cur.SetModel
@@ -2050,7 +1927,7 @@ func (m *Command) Unmarshal(b []byte) error {
 				if sub == nil {
 					sub = &SetModelRequest{}
 				}
-				if err := sub.Unmarshal(raw); err != nil {
+				if err := litewire.ReadMessage(&b, sub); err != nil {
 					return err
 				}
 				m.Kind = &Command_SetModel{SetModel: sub}
@@ -2058,10 +1935,6 @@ func (m *Command) Unmarshal(b []byte) error {
 			}
 		case 8:
 			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
 				var sub *SetApprovalModeRequest
 				if cur, ok := m.Kind.(*Command_SetApprovalMode); ok && cur != nil {
 					sub = cur.SetApprovalMode
@@ -2069,7 +1942,7 @@ func (m *Command) Unmarshal(b []byte) error {
 				if sub == nil {
 					sub = &SetApprovalModeRequest{}
 				}
-				if err := sub.Unmarshal(raw); err != nil {
+				if err := litewire.ReadMessage(&b, sub); err != nil {
 					return err
 				}
 				m.Kind = &Command_SetApprovalMode{SetApprovalMode: sub}
@@ -2077,10 +1950,6 @@ func (m *Command) Unmarshal(b []byte) error {
 			}
 		case 9:
 			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
 				var sub *CompactRequest
 				if cur, ok := m.Kind.(*Command_Compact); ok && cur != nil {
 					sub = cur.Compact
@@ -2088,7 +1957,7 @@ func (m *Command) Unmarshal(b []byte) error {
 				if sub == nil {
 					sub = &CompactRequest{}
 				}
-				if err := sub.Unmarshal(raw); err != nil {
+				if err := litewire.ReadMessage(&b, sub); err != nil {
 					return err
 				}
 				m.Kind = &Command_Compact{Compact: sub}
@@ -2096,10 +1965,6 @@ func (m *Command) Unmarshal(b []byte) error {
 			}
 		case 10:
 			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
 				var sub *AnswerPlanRequest
 				if cur, ok := m.Kind.(*Command_AnswerPlan); ok && cur != nil {
 					sub = cur.AnswerPlan
@@ -2107,7 +1972,7 @@ func (m *Command) Unmarshal(b []byte) error {
 				if sub == nil {
 					sub = &AnswerPlanRequest{}
 				}
-				if err := sub.Unmarshal(raw); err != nil {
+				if err := litewire.ReadMessage(&b, sub); err != nil {
 					return err
 				}
 				m.Kind = &Command_AnswerPlan{AnswerPlan: sub}
@@ -2115,10 +1980,6 @@ func (m *Command) Unmarshal(b []byte) error {
 			}
 		case 11:
 			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
 				var sub *OpenTerminalRequest
 				if cur, ok := m.Kind.(*Command_OpenTerminal); ok && cur != nil {
 					sub = cur.OpenTerminal
@@ -2126,7 +1987,7 @@ func (m *Command) Unmarshal(b []byte) error {
 				if sub == nil {
 					sub = &OpenTerminalRequest{}
 				}
-				if err := sub.Unmarshal(raw); err != nil {
+				if err := litewire.ReadMessage(&b, sub); err != nil {
 					return err
 				}
 				m.Kind = &Command_OpenTerminal{OpenTerminal: sub}
@@ -2134,10 +1995,6 @@ func (m *Command) Unmarshal(b []byte) error {
 			}
 		case 12:
 			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
 				var sub *ResumeSessionRequest
 				if cur, ok := m.Kind.(*Command_ResumeSession); ok && cur != nil {
 					sub = cur.ResumeSession
@@ -2145,7 +2002,7 @@ func (m *Command) Unmarshal(b []byte) error {
 				if sub == nil {
 					sub = &ResumeSessionRequest{}
 				}
-				if err := sub.Unmarshal(raw); err != nil {
+				if err := litewire.ReadMessage(&b, sub); err != nil {
 					return err
 				}
 				m.Kind = &Command_ResumeSession{ResumeSession: sub}
@@ -2153,10 +2010,6 @@ func (m *Command) Unmarshal(b []byte) error {
 			}
 		case 13:
 			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
 				var sub *ResumeInputRequest
 				if cur, ok := m.Kind.(*Command_ResumeInput); ok && cur != nil {
 					sub = cur.ResumeInput
@@ -2164,7 +2017,7 @@ func (m *Command) Unmarshal(b []byte) error {
 				if sub == nil {
 					sub = &ResumeInputRequest{}
 				}
-				if err := sub.Unmarshal(raw); err != nil {
+				if err := litewire.ReadMessage(&b, sub); err != nil {
 					return err
 				}
 				m.Kind = &Command_ResumeInput{ResumeInput: sub}
@@ -2172,10 +2025,6 @@ func (m *Command) Unmarshal(b []byte) error {
 			}
 		case 14:
 			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
 				var sub *RenameSessionRequest
 				if cur, ok := m.Kind.(*Command_RenameSession); ok && cur != nil {
 					sub = cur.RenameSession
@@ -2183,7 +2032,7 @@ func (m *Command) Unmarshal(b []byte) error {
 				if sub == nil {
 					sub = &RenameSessionRequest{}
 				}
-				if err := sub.Unmarshal(raw); err != nil {
+				if err := litewire.ReadMessage(&b, sub); err != nil {
 					return err
 				}
 				m.Kind = &Command_RenameSession{RenameSession: sub}
@@ -2191,10 +2040,6 @@ func (m *Command) Unmarshal(b []byte) error {
 			}
 		case 15:
 			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
 				var sub *ForkSessionRequest
 				if cur, ok := m.Kind.(*Command_ForkSession); ok && cur != nil {
 					sub = cur.ForkSession
@@ -2202,7 +2047,7 @@ func (m *Command) Unmarshal(b []byte) error {
 				if sub == nil {
 					sub = &ForkSessionRequest{}
 				}
-				if err := sub.Unmarshal(raw); err != nil {
+				if err := litewire.ReadMessage(&b, sub); err != nil {
 					return err
 				}
 				m.Kind = &Command_ForkSession{ForkSession: sub}
@@ -2210,10 +2055,6 @@ func (m *Command) Unmarshal(b []byte) error {
 			}
 		case 20:
 			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
 				var sub *CreateSessionRequest
 				if cur, ok := m.Kind.(*Command_CreateSession); ok && cur != nil {
 					sub = cur.CreateSession
@@ -2221,7 +2062,7 @@ func (m *Command) Unmarshal(b []byte) error {
 				if sub == nil {
 					sub = &CreateSessionRequest{}
 				}
-				if err := sub.Unmarshal(raw); err != nil {
+				if err := litewire.ReadMessage(&b, sub); err != nil {
 					return err
 				}
 				m.Kind = &Command_CreateSession{CreateSession: sub}
@@ -2229,10 +2070,6 @@ func (m *Command) Unmarshal(b []byte) error {
 			}
 		case 21:
 			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
 				var sub *ListModelsRequest
 				if cur, ok := m.Kind.(*Command_ListModels); ok && cur != nil {
 					sub = cur.ListModels
@@ -2240,7 +2077,7 @@ func (m *Command) Unmarshal(b []byte) error {
 				if sub == nil {
 					sub = &ListModelsRequest{}
 				}
-				if err := sub.Unmarshal(raw); err != nil {
+				if err := litewire.ReadMessage(&b, sub); err != nil {
 					return err
 				}
 				m.Kind = &Command_ListModels{ListModels: sub}
@@ -2248,10 +2085,6 @@ func (m *Command) Unmarshal(b []byte) error {
 			}
 		case 22:
 			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
 				var sub *ListDirectoriesRequest
 				if cur, ok := m.Kind.(*Command_ListDirectories); ok && cur != nil {
 					sub = cur.ListDirectories
@@ -2259,7 +2092,7 @@ func (m *Command) Unmarshal(b []byte) error {
 				if sub == nil {
 					sub = &ListDirectoriesRequest{}
 				}
-				if err := sub.Unmarshal(raw); err != nil {
+				if err := litewire.ReadMessage(&b, sub); err != nil {
 					return err
 				}
 				m.Kind = &Command_ListDirectories{ListDirectories: sub}
@@ -2267,10 +2100,6 @@ func (m *Command) Unmarshal(b []byte) error {
 			}
 		case 23:
 			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
 				var sub *GetSettingsRequest
 				if cur, ok := m.Kind.(*Command_GetSettings); ok && cur != nil {
 					sub = cur.GetSettings
@@ -2278,7 +2107,7 @@ func (m *Command) Unmarshal(b []byte) error {
 				if sub == nil {
 					sub = &GetSettingsRequest{}
 				}
-				if err := sub.Unmarshal(raw); err != nil {
+				if err := litewire.ReadMessage(&b, sub); err != nil {
 					return err
 				}
 				m.Kind = &Command_GetSettings{GetSettings: sub}
@@ -2286,10 +2115,6 @@ func (m *Command) Unmarshal(b []byte) error {
 			}
 		case 24:
 			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
 				var sub *UpdateSettingsRequest
 				if cur, ok := m.Kind.(*Command_UpdateSettings); ok && cur != nil {
 					sub = cur.UpdateSettings
@@ -2297,7 +2122,7 @@ func (m *Command) Unmarshal(b []byte) error {
 				if sub == nil {
 					sub = &UpdateSettingsRequest{}
 				}
-				if err := sub.Unmarshal(raw); err != nil {
+				if err := litewire.ReadMessage(&b, sub); err != nil {
 					return err
 				}
 				m.Kind = &Command_UpdateSettings{UpdateSettings: sub}
@@ -2305,10 +2130,6 @@ func (m *Command) Unmarshal(b []byte) error {
 			}
 		case 25:
 			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
 				var sub *BeginImageUploadRequest
 				if cur, ok := m.Kind.(*Command_BeginImageUpload); ok && cur != nil {
 					sub = cur.BeginImageUpload
@@ -2316,7 +2137,7 @@ func (m *Command) Unmarshal(b []byte) error {
 				if sub == nil {
 					sub = &BeginImageUploadRequest{}
 				}
-				if err := sub.Unmarshal(raw); err != nil {
+				if err := litewire.ReadMessage(&b, sub); err != nil {
 					return err
 				}
 				m.Kind = &Command_BeginImageUpload{BeginImageUpload: sub}
@@ -2324,10 +2145,6 @@ func (m *Command) Unmarshal(b []byte) error {
 			}
 		case 26:
 			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
 				var sub *PutImageChunkRequest
 				if cur, ok := m.Kind.(*Command_PutImageChunk); ok && cur != nil {
 					sub = cur.PutImageChunk
@@ -2335,7 +2152,7 @@ func (m *Command) Unmarshal(b []byte) error {
 				if sub == nil {
 					sub = &PutImageChunkRequest{}
 				}
-				if err := sub.Unmarshal(raw); err != nil {
+				if err := litewire.ReadMessage(&b, sub); err != nil {
 					return err
 				}
 				m.Kind = &Command_PutImageChunk{PutImageChunk: sub}
@@ -2343,10 +2160,6 @@ func (m *Command) Unmarshal(b []byte) error {
 			}
 		case 27:
 			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
 				var sub *GetImageUploadStatusRequest
 				if cur, ok := m.Kind.(*Command_GetImageUploadStatus); ok && cur != nil {
 					sub = cur.GetImageUploadStatus
@@ -2354,7 +2167,7 @@ func (m *Command) Unmarshal(b []byte) error {
 				if sub == nil {
 					sub = &GetImageUploadStatusRequest{}
 				}
-				if err := sub.Unmarshal(raw); err != nil {
+				if err := litewire.ReadMessage(&b, sub); err != nil {
 					return err
 				}
 				m.Kind = &Command_GetImageUploadStatus{GetImageUploadStatus: sub}
@@ -2362,10 +2175,6 @@ func (m *Command) Unmarshal(b []byte) error {
 			}
 		case 28:
 			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
 				var sub *CompleteImageUploadRequest
 				if cur, ok := m.Kind.(*Command_CompleteImageUpload); ok && cur != nil {
 					sub = cur.CompleteImageUpload
@@ -2373,7 +2182,7 @@ func (m *Command) Unmarshal(b []byte) error {
 				if sub == nil {
 					sub = &CompleteImageUploadRequest{}
 				}
-				if err := sub.Unmarshal(raw); err != nil {
+				if err := litewire.ReadMessage(&b, sub); err != nil {
 					return err
 				}
 				m.Kind = &Command_CompleteImageUpload{CompleteImageUpload: sub}
@@ -2381,10 +2190,6 @@ func (m *Command) Unmarshal(b []byte) error {
 			}
 		case 29:
 			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
 				var sub *AbortImageUploadRequest
 				if cur, ok := m.Kind.(*Command_AbortImageUpload); ok && cur != nil {
 					sub = cur.AbortImageUpload
@@ -2392,7 +2197,7 @@ func (m *Command) Unmarshal(b []byte) error {
 				if sub == nil {
 					sub = &AbortImageUploadRequest{}
 				}
-				if err := sub.Unmarshal(raw); err != nil {
+				if err := litewire.ReadMessage(&b, sub); err != nil {
 					return err
 				}
 				m.Kind = &Command_AbortImageUpload{AbortImageUpload: sub}
@@ -2400,10 +2205,6 @@ func (m *Command) Unmarshal(b []byte) error {
 			}
 		case 30:
 			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
 				var sub *ScheduleRequest
 				if cur, ok := m.Kind.(*Command_Schedule); ok && cur != nil {
 					sub = cur.Schedule
@@ -2411,7 +2212,7 @@ func (m *Command) Unmarshal(b []byte) error {
 				if sub == nil {
 					sub = &ScheduleRequest{}
 				}
-				if err := sub.Unmarshal(raw); err != nil {
+				if err := litewire.ReadMessage(&b, sub); err != nil {
 					return err
 				}
 				m.Kind = &Command_Schedule{Schedule: sub}
@@ -2419,10 +2220,6 @@ func (m *Command) Unmarshal(b []byte) error {
 			}
 		case 31:
 			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
 				var sub *GetLiveSnapshotRequest
 				if cur, ok := m.Kind.(*Command_GetLiveSnapshot); ok && cur != nil {
 					sub = cur.GetLiveSnapshot
@@ -2430,7 +2227,7 @@ func (m *Command) Unmarshal(b []byte) error {
 				if sub == nil {
 					sub = &GetLiveSnapshotRequest{}
 				}
-				if err := sub.Unmarshal(raw); err != nil {
+				if err := litewire.ReadMessage(&b, sub); err != nil {
 					return err
 				}
 				m.Kind = &Command_GetLiveSnapshot{GetLiveSnapshot: sub}
@@ -2438,10 +2235,6 @@ func (m *Command) Unmarshal(b []byte) error {
 			}
 		case 32:
 			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
 				var sub *GetSharedFileChunkRequest
 				if cur, ok := m.Kind.(*Command_GetSharedFileChunk); ok && cur != nil {
 					sub = cur.GetSharedFileChunk
@@ -2449,7 +2242,7 @@ func (m *Command) Unmarshal(b []byte) error {
 				if sub == nil {
 					sub = &GetSharedFileChunkRequest{}
 				}
-				if err := sub.Unmarshal(raw); err != nil {
+				if err := litewire.ReadMessage(&b, sub); err != nil {
 					return err
 				}
 				m.Kind = &Command_GetSharedFileChunk{GetSharedFileChunk: sub}
@@ -2457,10 +2250,6 @@ func (m *Command) Unmarshal(b []byte) error {
 			}
 		case 33:
 			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
 				var sub *GetMachineStatusRequest
 				if cur, ok := m.Kind.(*Command_GetMachineStatus); ok && cur != nil {
 					sub = cur.GetMachineStatus
@@ -2468,7 +2257,7 @@ func (m *Command) Unmarshal(b []byte) error {
 				if sub == nil {
 					sub = &GetMachineStatusRequest{}
 				}
-				if err := sub.Unmarshal(raw); err != nil {
+				if err := litewire.ReadMessage(&b, sub); err != nil {
 					return err
 				}
 				m.Kind = &Command_GetMachineStatus{GetMachineStatus: sub}
@@ -2619,12 +2408,6 @@ func (*CommandResult_GetSharedFileChunk) isCommandResult_Kind() {}
 type CommandResult_MachineStatus struct{ MachineStatus *MachineStatus }
 
 func (*CommandResult_MachineStatus) isCommandResult_Kind() {}
-
-func (m *CommandResult) Reset() {
-	if m != nil {
-		*m = CommandResult{}
-	}
-}
 
 func (m *CommandResult) GetKind() isCommandResult_Kind {
 	if m != nil {
@@ -2855,557 +2638,6 @@ func (m *CommandResult) GetMachineStatus() *MachineStatus {
 	return nil
 }
 
-func (m *CommandResult) Clone() *CommandResult {
-	if m == nil {
-		return nil
-	}
-	cp := *m
-	cp.RequestKeyHash = slices.Clone(m.RequestKeyHash)
-	cp.PayloadHash = slices.Clone(m.PayloadHash)
-	switch v := m.Kind.(type) {
-	case *CommandResult_Send:
-		if v != nil {
-			cp.Kind = &CommandResult_Send{Send: v.Send.Clone()}
-		}
-	case *CommandResult_Interrupt:
-		if v != nil {
-			cp.Kind = &CommandResult_Interrupt{Interrupt: v.Interrupt.Clone()}
-		}
-	case *CommandResult_ResolveApproval:
-		if v != nil {
-			cp.Kind = &CommandResult_ResolveApproval{ResolveApproval: v.ResolveApproval.Clone()}
-		}
-	case *CommandResult_AnswerQuestion:
-		if v != nil {
-			cp.Kind = &CommandResult_AnswerQuestion{AnswerQuestion: v.AnswerQuestion.Clone()}
-		}
-	case *CommandResult_StopSession:
-		if v != nil {
-			cp.Kind = &CommandResult_StopSession{StopSession: v.StopSession.Clone()}
-		}
-	case *CommandResult_CancelInput:
-		if v != nil {
-			cp.Kind = &CommandResult_CancelInput{CancelInput: v.CancelInput.Clone()}
-		}
-	case *CommandResult_SetModel:
-		if v != nil {
-			cp.Kind = &CommandResult_SetModel{SetModel: v.SetModel.Clone()}
-		}
-	case *CommandResult_SetApprovalMode:
-		if v != nil {
-			cp.Kind = &CommandResult_SetApprovalMode{SetApprovalMode: v.SetApprovalMode.Clone()}
-		}
-	case *CommandResult_Compact:
-		if v != nil {
-			cp.Kind = &CommandResult_Compact{Compact: v.Compact.Clone()}
-		}
-	case *CommandResult_AnswerPlan:
-		if v != nil {
-			cp.Kind = &CommandResult_AnswerPlan{AnswerPlan: v.AnswerPlan.Clone()}
-		}
-	case *CommandResult_OpenTerminal:
-		if v != nil {
-			cp.Kind = &CommandResult_OpenTerminal{OpenTerminal: v.OpenTerminal.Clone()}
-		}
-	case *CommandResult_ResumeSession:
-		if v != nil {
-			cp.Kind = &CommandResult_ResumeSession{ResumeSession: v.ResumeSession.Clone()}
-		}
-	case *CommandResult_ResumeInput:
-		if v != nil {
-			cp.Kind = &CommandResult_ResumeInput{ResumeInput: v.ResumeInput.Clone()}
-		}
-	case *CommandResult_RenameSession:
-		if v != nil {
-			cp.Kind = &CommandResult_RenameSession{RenameSession: v.RenameSession.Clone()}
-		}
-	case *CommandResult_ForkSession:
-		if v != nil {
-			cp.Kind = &CommandResult_ForkSession{ForkSession: v.ForkSession.Clone()}
-		}
-	case *CommandResult_CreateSession:
-		if v != nil {
-			cp.Kind = &CommandResult_CreateSession{CreateSession: v.CreateSession.Clone()}
-		}
-	case *CommandResult_ListModels:
-		if v != nil {
-			cp.Kind = &CommandResult_ListModels{ListModels: v.ListModels.Clone()}
-		}
-	case *CommandResult_ListDirectories:
-		if v != nil {
-			cp.Kind = &CommandResult_ListDirectories{ListDirectories: v.ListDirectories.Clone()}
-		}
-	case *CommandResult_GetSettings:
-		if v != nil {
-			cp.Kind = &CommandResult_GetSettings{GetSettings: v.GetSettings.Clone()}
-		}
-	case *CommandResult_UpdateSettings:
-		if v != nil {
-			cp.Kind = &CommandResult_UpdateSettings{UpdateSettings: v.UpdateSettings.Clone()}
-		}
-	case *CommandResult_BeginImageUpload:
-		if v != nil {
-			cp.Kind = &CommandResult_BeginImageUpload{BeginImageUpload: v.BeginImageUpload.Clone()}
-		}
-	case *CommandResult_PutImageChunk:
-		if v != nil {
-			cp.Kind = &CommandResult_PutImageChunk{PutImageChunk: v.PutImageChunk.Clone()}
-		}
-	case *CommandResult_GetImageUploadStatus:
-		if v != nil {
-			cp.Kind = &CommandResult_GetImageUploadStatus{GetImageUploadStatus: v.GetImageUploadStatus.Clone()}
-		}
-	case *CommandResult_CompleteImageUpload:
-		if v != nil {
-			cp.Kind = &CommandResult_CompleteImageUpload{CompleteImageUpload: v.CompleteImageUpload.Clone()}
-		}
-	case *CommandResult_AbortImageUpload:
-		if v != nil {
-			cp.Kind = &CommandResult_AbortImageUpload{AbortImageUpload: v.AbortImageUpload.Clone()}
-		}
-	case *CommandResult_Schedule:
-		if v != nil {
-			cp.Kind = &CommandResult_Schedule{Schedule: v.Schedule.Clone()}
-		}
-	case *CommandResult_LiveSnapshot:
-		if v != nil {
-			cp.Kind = &CommandResult_LiveSnapshot{LiveSnapshot: v.LiveSnapshot.Clone()}
-		}
-	case *CommandResult_GetSharedFileChunk:
-		if v != nil {
-			cp.Kind = &CommandResult_GetSharedFileChunk{GetSharedFileChunk: v.GetSharedFileChunk.Clone()}
-		}
-	case *CommandResult_MachineStatus:
-		if v != nil {
-			cp.Kind = &CommandResult_MachineStatus{MachineStatus: v.MachineStatus.Clone()}
-		}
-	}
-	return &cp
-}
-
-func (m *CommandResult) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeString(1, m.ErrorCode)
-	n += litewire.SizeString(2, m.ErrorMessage)
-	n += litewire.SizeString(3, m.Outcome)
-	n += litewire.SizeString(4, m.Reason)
-	n += litewire.SizeString(5, m.ConflictKind)
-	n += litewire.SizeBytesField(6, m.RequestKeyHash)
-	n += litewire.SizeBytesField(7, m.PayloadHash)
-	n += litewire.SizeBool(8, m.ResultAvailable)
-	switch x := m.Kind.(type) {
-	case *CommandResult_Send:
-		if x != nil {
-			if x.Send != nil {
-				n += litewire.SizeMessage(10, x.Send.Size())
-			}
-		}
-	case *CommandResult_Interrupt:
-		if x != nil {
-			if x.Interrupt != nil {
-				n += litewire.SizeMessage(11, x.Interrupt.Size())
-			}
-		}
-	case *CommandResult_ResolveApproval:
-		if x != nil {
-			if x.ResolveApproval != nil {
-				n += litewire.SizeMessage(12, x.ResolveApproval.Size())
-			}
-		}
-	case *CommandResult_AnswerQuestion:
-		if x != nil {
-			if x.AnswerQuestion != nil {
-				n += litewire.SizeMessage(13, x.AnswerQuestion.Size())
-			}
-		}
-	case *CommandResult_StopSession:
-		if x != nil {
-			if x.StopSession != nil {
-				n += litewire.SizeMessage(14, x.StopSession.Size())
-			}
-		}
-	case *CommandResult_CancelInput:
-		if x != nil {
-			if x.CancelInput != nil {
-				n += litewire.SizeMessage(15, x.CancelInput.Size())
-			}
-		}
-	case *CommandResult_SetModel:
-		if x != nil {
-			if x.SetModel != nil {
-				n += litewire.SizeMessage(16, x.SetModel.Size())
-			}
-		}
-	case *CommandResult_SetApprovalMode:
-		if x != nil {
-			if x.SetApprovalMode != nil {
-				n += litewire.SizeMessage(17, x.SetApprovalMode.Size())
-			}
-		}
-	case *CommandResult_Compact:
-		if x != nil {
-			if x.Compact != nil {
-				n += litewire.SizeMessage(18, x.Compact.Size())
-			}
-		}
-	case *CommandResult_AnswerPlan:
-		if x != nil {
-			if x.AnswerPlan != nil {
-				n += litewire.SizeMessage(19, x.AnswerPlan.Size())
-			}
-		}
-	case *CommandResult_OpenTerminal:
-		if x != nil {
-			if x.OpenTerminal != nil {
-				n += litewire.SizeMessage(20, x.OpenTerminal.Size())
-			}
-		}
-	case *CommandResult_ResumeSession:
-		if x != nil {
-			if x.ResumeSession != nil {
-				n += litewire.SizeMessage(21, x.ResumeSession.Size())
-			}
-		}
-	case *CommandResult_ResumeInput:
-		if x != nil {
-			if x.ResumeInput != nil {
-				n += litewire.SizeMessage(22, x.ResumeInput.Size())
-			}
-		}
-	case *CommandResult_RenameSession:
-		if x != nil {
-			if x.RenameSession != nil {
-				n += litewire.SizeMessage(23, x.RenameSession.Size())
-			}
-		}
-	case *CommandResult_ForkSession:
-		if x != nil {
-			if x.ForkSession != nil {
-				n += litewire.SizeMessage(24, x.ForkSession.Size())
-			}
-		}
-	case *CommandResult_CreateSession:
-		if x != nil {
-			if x.CreateSession != nil {
-				n += litewire.SizeMessage(30, x.CreateSession.Size())
-			}
-		}
-	case *CommandResult_ListModels:
-		if x != nil {
-			if x.ListModels != nil {
-				n += litewire.SizeMessage(31, x.ListModels.Size())
-			}
-		}
-	case *CommandResult_ListDirectories:
-		if x != nil {
-			if x.ListDirectories != nil {
-				n += litewire.SizeMessage(32, x.ListDirectories.Size())
-			}
-		}
-	case *CommandResult_GetSettings:
-		if x != nil {
-			if x.GetSettings != nil {
-				n += litewire.SizeMessage(33, x.GetSettings.Size())
-			}
-		}
-	case *CommandResult_UpdateSettings:
-		if x != nil {
-			if x.UpdateSettings != nil {
-				n += litewire.SizeMessage(34, x.UpdateSettings.Size())
-			}
-		}
-	case *CommandResult_BeginImageUpload:
-		if x != nil {
-			if x.BeginImageUpload != nil {
-				n += litewire.SizeMessage(35, x.BeginImageUpload.Size())
-			}
-		}
-	case *CommandResult_PutImageChunk:
-		if x != nil {
-			if x.PutImageChunk != nil {
-				n += litewire.SizeMessage(36, x.PutImageChunk.Size())
-			}
-		}
-	case *CommandResult_GetImageUploadStatus:
-		if x != nil {
-			if x.GetImageUploadStatus != nil {
-				n += litewire.SizeMessage(37, x.GetImageUploadStatus.Size())
-			}
-		}
-	case *CommandResult_CompleteImageUpload:
-		if x != nil {
-			if x.CompleteImageUpload != nil {
-				n += litewire.SizeMessage(38, x.CompleteImageUpload.Size())
-			}
-		}
-	case *CommandResult_AbortImageUpload:
-		if x != nil {
-			if x.AbortImageUpload != nil {
-				n += litewire.SizeMessage(39, x.AbortImageUpload.Size())
-			}
-		}
-	case *CommandResult_Schedule:
-		if x != nil {
-			if x.Schedule != nil {
-				n += litewire.SizeMessage(40, x.Schedule.Size())
-			}
-		}
-	case *CommandResult_LiveSnapshot:
-		if x != nil {
-			if x.LiveSnapshot != nil {
-				n += litewire.SizeMessage(41, x.LiveSnapshot.Size())
-			}
-		}
-	case *CommandResult_GetSharedFileChunk:
-		if x != nil {
-			if x.GetSharedFileChunk != nil {
-				n += litewire.SizeMessage(42, x.GetSharedFileChunk.Size())
-			}
-		}
-	case *CommandResult_MachineStatus:
-		if x != nil {
-			if x.MachineStatus != nil {
-				n += litewire.SizeMessage(43, x.MachineStatus.Size())
-			}
-		}
-	}
-	return n
-}
-
-func (m *CommandResult) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
-}
-
-func (m *CommandResult) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendString(b, 1, m.ErrorCode)
-	b = litewire.AppendString(b, 2, m.ErrorMessage)
-	b = litewire.AppendString(b, 3, m.Outcome)
-	b = litewire.AppendString(b, 4, m.Reason)
-	b = litewire.AppendString(b, 5, m.ConflictKind)
-	b = litewire.AppendBytes(b, 6, m.RequestKeyHash)
-	b = litewire.AppendBytes(b, 7, m.PayloadHash)
-	b = litewire.AppendBool(b, 8, m.ResultAvailable)
-	switch x := m.Kind.(type) {
-	case *CommandResult_Send:
-		if x != nil {
-			if x.Send != nil {
-				b = litewire.AppendMessagePrefix(b, 10, x.Send.Size())
-				b = x.Send.AppendMarshal(b)
-			}
-		}
-	case *CommandResult_Interrupt:
-		if x != nil {
-			if x.Interrupt != nil {
-				b = litewire.AppendMessagePrefix(b, 11, x.Interrupt.Size())
-				b = x.Interrupt.AppendMarshal(b)
-			}
-		}
-	case *CommandResult_ResolveApproval:
-		if x != nil {
-			if x.ResolveApproval != nil {
-				b = litewire.AppendMessagePrefix(b, 12, x.ResolveApproval.Size())
-				b = x.ResolveApproval.AppendMarshal(b)
-			}
-		}
-	case *CommandResult_AnswerQuestion:
-		if x != nil {
-			if x.AnswerQuestion != nil {
-				b = litewire.AppendMessagePrefix(b, 13, x.AnswerQuestion.Size())
-				b = x.AnswerQuestion.AppendMarshal(b)
-			}
-		}
-	case *CommandResult_StopSession:
-		if x != nil {
-			if x.StopSession != nil {
-				b = litewire.AppendMessagePrefix(b, 14, x.StopSession.Size())
-				b = x.StopSession.AppendMarshal(b)
-			}
-		}
-	case *CommandResult_CancelInput:
-		if x != nil {
-			if x.CancelInput != nil {
-				b = litewire.AppendMessagePrefix(b, 15, x.CancelInput.Size())
-				b = x.CancelInput.AppendMarshal(b)
-			}
-		}
-	case *CommandResult_SetModel:
-		if x != nil {
-			if x.SetModel != nil {
-				b = litewire.AppendMessagePrefix(b, 16, x.SetModel.Size())
-				b = x.SetModel.AppendMarshal(b)
-			}
-		}
-	case *CommandResult_SetApprovalMode:
-		if x != nil {
-			if x.SetApprovalMode != nil {
-				b = litewire.AppendMessagePrefix(b, 17, x.SetApprovalMode.Size())
-				b = x.SetApprovalMode.AppendMarshal(b)
-			}
-		}
-	case *CommandResult_Compact:
-		if x != nil {
-			if x.Compact != nil {
-				b = litewire.AppendMessagePrefix(b, 18, x.Compact.Size())
-				b = x.Compact.AppendMarshal(b)
-			}
-		}
-	case *CommandResult_AnswerPlan:
-		if x != nil {
-			if x.AnswerPlan != nil {
-				b = litewire.AppendMessagePrefix(b, 19, x.AnswerPlan.Size())
-				b = x.AnswerPlan.AppendMarshal(b)
-			}
-		}
-	case *CommandResult_OpenTerminal:
-		if x != nil {
-			if x.OpenTerminal != nil {
-				b = litewire.AppendMessagePrefix(b, 20, x.OpenTerminal.Size())
-				b = x.OpenTerminal.AppendMarshal(b)
-			}
-		}
-	case *CommandResult_ResumeSession:
-		if x != nil {
-			if x.ResumeSession != nil {
-				b = litewire.AppendMessagePrefix(b, 21, x.ResumeSession.Size())
-				b = x.ResumeSession.AppendMarshal(b)
-			}
-		}
-	case *CommandResult_ResumeInput:
-		if x != nil {
-			if x.ResumeInput != nil {
-				b = litewire.AppendMessagePrefix(b, 22, x.ResumeInput.Size())
-				b = x.ResumeInput.AppendMarshal(b)
-			}
-		}
-	case *CommandResult_RenameSession:
-		if x != nil {
-			if x.RenameSession != nil {
-				b = litewire.AppendMessagePrefix(b, 23, x.RenameSession.Size())
-				b = x.RenameSession.AppendMarshal(b)
-			}
-		}
-	case *CommandResult_ForkSession:
-		if x != nil {
-			if x.ForkSession != nil {
-				b = litewire.AppendMessagePrefix(b, 24, x.ForkSession.Size())
-				b = x.ForkSession.AppendMarshal(b)
-			}
-		}
-	case *CommandResult_CreateSession:
-		if x != nil {
-			if x.CreateSession != nil {
-				b = litewire.AppendMessagePrefix(b, 30, x.CreateSession.Size())
-				b = x.CreateSession.AppendMarshal(b)
-			}
-		}
-	case *CommandResult_ListModels:
-		if x != nil {
-			if x.ListModels != nil {
-				b = litewire.AppendMessagePrefix(b, 31, x.ListModels.Size())
-				b = x.ListModels.AppendMarshal(b)
-			}
-		}
-	case *CommandResult_ListDirectories:
-		if x != nil {
-			if x.ListDirectories != nil {
-				b = litewire.AppendMessagePrefix(b, 32, x.ListDirectories.Size())
-				b = x.ListDirectories.AppendMarshal(b)
-			}
-		}
-	case *CommandResult_GetSettings:
-		if x != nil {
-			if x.GetSettings != nil {
-				b = litewire.AppendMessagePrefix(b, 33, x.GetSettings.Size())
-				b = x.GetSettings.AppendMarshal(b)
-			}
-		}
-	case *CommandResult_UpdateSettings:
-		if x != nil {
-			if x.UpdateSettings != nil {
-				b = litewire.AppendMessagePrefix(b, 34, x.UpdateSettings.Size())
-				b = x.UpdateSettings.AppendMarshal(b)
-			}
-		}
-	case *CommandResult_BeginImageUpload:
-		if x != nil {
-			if x.BeginImageUpload != nil {
-				b = litewire.AppendMessagePrefix(b, 35, x.BeginImageUpload.Size())
-				b = x.BeginImageUpload.AppendMarshal(b)
-			}
-		}
-	case *CommandResult_PutImageChunk:
-		if x != nil {
-			if x.PutImageChunk != nil {
-				b = litewire.AppendMessagePrefix(b, 36, x.PutImageChunk.Size())
-				b = x.PutImageChunk.AppendMarshal(b)
-			}
-		}
-	case *CommandResult_GetImageUploadStatus:
-		if x != nil {
-			if x.GetImageUploadStatus != nil {
-				b = litewire.AppendMessagePrefix(b, 37, x.GetImageUploadStatus.Size())
-				b = x.GetImageUploadStatus.AppendMarshal(b)
-			}
-		}
-	case *CommandResult_CompleteImageUpload:
-		if x != nil {
-			if x.CompleteImageUpload != nil {
-				b = litewire.AppendMessagePrefix(b, 38, x.CompleteImageUpload.Size())
-				b = x.CompleteImageUpload.AppendMarshal(b)
-			}
-		}
-	case *CommandResult_AbortImageUpload:
-		if x != nil {
-			if x.AbortImageUpload != nil {
-				b = litewire.AppendMessagePrefix(b, 39, x.AbortImageUpload.Size())
-				b = x.AbortImageUpload.AppendMarshal(b)
-			}
-		}
-	case *CommandResult_Schedule:
-		if x != nil {
-			if x.Schedule != nil {
-				b = litewire.AppendMessagePrefix(b, 40, x.Schedule.Size())
-				b = x.Schedule.AppendMarshal(b)
-			}
-		}
-	case *CommandResult_LiveSnapshot:
-		if x != nil {
-			if x.LiveSnapshot != nil {
-				b = litewire.AppendMessagePrefix(b, 41, x.LiveSnapshot.Size())
-				b = x.LiveSnapshot.AppendMarshal(b)
-			}
-		}
-	case *CommandResult_GetSharedFileChunk:
-		if x != nil {
-			if x.GetSharedFileChunk != nil {
-				b = litewire.AppendMessagePrefix(b, 42, x.GetSharedFileChunk.Size())
-				b = x.GetSharedFileChunk.AppendMarshal(b)
-			}
-		}
-	case *CommandResult_MachineStatus:
-		if x != nil {
-			if x.MachineStatus != nil {
-				b = litewire.AppendMessagePrefix(b, 43, x.MachineStatus.Size())
-				b = x.MachineStatus.AppendMarshal(b)
-			}
-		}
-	}
-	return b
-}
-
 func (m *CommandResult) Unmarshal(b []byte) error {
 	for len(b) > 0 {
 		num, wtyp, err := litewire.ReadTag(&b)
@@ -3487,10 +2719,6 @@ func (m *CommandResult) Unmarshal(b []byte) error {
 			}
 		case 10:
 			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
 				var sub *SendResponse
 				if cur, ok := m.Kind.(*CommandResult_Send); ok && cur != nil {
 					sub = cur.Send
@@ -3498,7 +2726,7 @@ func (m *CommandResult) Unmarshal(b []byte) error {
 				if sub == nil {
 					sub = &SendResponse{}
 				}
-				if err := sub.Unmarshal(raw); err != nil {
+				if err := litewire.ReadMessage(&b, sub); err != nil {
 					return err
 				}
 				m.Kind = &CommandResult_Send{Send: sub}
@@ -3506,10 +2734,6 @@ func (m *CommandResult) Unmarshal(b []byte) error {
 			}
 		case 11:
 			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
 				var sub *InterruptResponse
 				if cur, ok := m.Kind.(*CommandResult_Interrupt); ok && cur != nil {
 					sub = cur.Interrupt
@@ -3517,7 +2741,7 @@ func (m *CommandResult) Unmarshal(b []byte) error {
 				if sub == nil {
 					sub = &InterruptResponse{}
 				}
-				if err := sub.Unmarshal(raw); err != nil {
+				if err := litewire.ReadMessage(&b, sub); err != nil {
 					return err
 				}
 				m.Kind = &CommandResult_Interrupt{Interrupt: sub}
@@ -3525,10 +2749,6 @@ func (m *CommandResult) Unmarshal(b []byte) error {
 			}
 		case 12:
 			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
 				var sub *ResolveApprovalResponse
 				if cur, ok := m.Kind.(*CommandResult_ResolveApproval); ok && cur != nil {
 					sub = cur.ResolveApproval
@@ -3536,7 +2756,7 @@ func (m *CommandResult) Unmarshal(b []byte) error {
 				if sub == nil {
 					sub = &ResolveApprovalResponse{}
 				}
-				if err := sub.Unmarshal(raw); err != nil {
+				if err := litewire.ReadMessage(&b, sub); err != nil {
 					return err
 				}
 				m.Kind = &CommandResult_ResolveApproval{ResolveApproval: sub}
@@ -3544,10 +2764,6 @@ func (m *CommandResult) Unmarshal(b []byte) error {
 			}
 		case 13:
 			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
 				var sub *AnswerQuestionResponse
 				if cur, ok := m.Kind.(*CommandResult_AnswerQuestion); ok && cur != nil {
 					sub = cur.AnswerQuestion
@@ -3555,7 +2771,7 @@ func (m *CommandResult) Unmarshal(b []byte) error {
 				if sub == nil {
 					sub = &AnswerQuestionResponse{}
 				}
-				if err := sub.Unmarshal(raw); err != nil {
+				if err := litewire.ReadMessage(&b, sub); err != nil {
 					return err
 				}
 				m.Kind = &CommandResult_AnswerQuestion{AnswerQuestion: sub}
@@ -3563,10 +2779,6 @@ func (m *CommandResult) Unmarshal(b []byte) error {
 			}
 		case 14:
 			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
 				var sub *StopSessionResponse
 				if cur, ok := m.Kind.(*CommandResult_StopSession); ok && cur != nil {
 					sub = cur.StopSession
@@ -3574,7 +2786,7 @@ func (m *CommandResult) Unmarshal(b []byte) error {
 				if sub == nil {
 					sub = &StopSessionResponse{}
 				}
-				if err := sub.Unmarshal(raw); err != nil {
+				if err := litewire.ReadMessage(&b, sub); err != nil {
 					return err
 				}
 				m.Kind = &CommandResult_StopSession{StopSession: sub}
@@ -3582,10 +2794,6 @@ func (m *CommandResult) Unmarshal(b []byte) error {
 			}
 		case 15:
 			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
 				var sub *CancelInputResponse
 				if cur, ok := m.Kind.(*CommandResult_CancelInput); ok && cur != nil {
 					sub = cur.CancelInput
@@ -3593,7 +2801,7 @@ func (m *CommandResult) Unmarshal(b []byte) error {
 				if sub == nil {
 					sub = &CancelInputResponse{}
 				}
-				if err := sub.Unmarshal(raw); err != nil {
+				if err := litewire.ReadMessage(&b, sub); err != nil {
 					return err
 				}
 				m.Kind = &CommandResult_CancelInput{CancelInput: sub}
@@ -3601,10 +2809,6 @@ func (m *CommandResult) Unmarshal(b []byte) error {
 			}
 		case 16:
 			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
 				var sub *SetModelResponse
 				if cur, ok := m.Kind.(*CommandResult_SetModel); ok && cur != nil {
 					sub = cur.SetModel
@@ -3612,7 +2816,7 @@ func (m *CommandResult) Unmarshal(b []byte) error {
 				if sub == nil {
 					sub = &SetModelResponse{}
 				}
-				if err := sub.Unmarshal(raw); err != nil {
+				if err := litewire.ReadMessage(&b, sub); err != nil {
 					return err
 				}
 				m.Kind = &CommandResult_SetModel{SetModel: sub}
@@ -3620,10 +2824,6 @@ func (m *CommandResult) Unmarshal(b []byte) error {
 			}
 		case 17:
 			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
 				var sub *SetApprovalModeResponse
 				if cur, ok := m.Kind.(*CommandResult_SetApprovalMode); ok && cur != nil {
 					sub = cur.SetApprovalMode
@@ -3631,7 +2831,7 @@ func (m *CommandResult) Unmarshal(b []byte) error {
 				if sub == nil {
 					sub = &SetApprovalModeResponse{}
 				}
-				if err := sub.Unmarshal(raw); err != nil {
+				if err := litewire.ReadMessage(&b, sub); err != nil {
 					return err
 				}
 				m.Kind = &CommandResult_SetApprovalMode{SetApprovalMode: sub}
@@ -3639,10 +2839,6 @@ func (m *CommandResult) Unmarshal(b []byte) error {
 			}
 		case 18:
 			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
 				var sub *CompactResponse
 				if cur, ok := m.Kind.(*CommandResult_Compact); ok && cur != nil {
 					sub = cur.Compact
@@ -3650,7 +2846,7 @@ func (m *CommandResult) Unmarshal(b []byte) error {
 				if sub == nil {
 					sub = &CompactResponse{}
 				}
-				if err := sub.Unmarshal(raw); err != nil {
+				if err := litewire.ReadMessage(&b, sub); err != nil {
 					return err
 				}
 				m.Kind = &CommandResult_Compact{Compact: sub}
@@ -3658,10 +2854,6 @@ func (m *CommandResult) Unmarshal(b []byte) error {
 			}
 		case 19:
 			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
 				var sub *AnswerPlanResponse
 				if cur, ok := m.Kind.(*CommandResult_AnswerPlan); ok && cur != nil {
 					sub = cur.AnswerPlan
@@ -3669,7 +2861,7 @@ func (m *CommandResult) Unmarshal(b []byte) error {
 				if sub == nil {
 					sub = &AnswerPlanResponse{}
 				}
-				if err := sub.Unmarshal(raw); err != nil {
+				if err := litewire.ReadMessage(&b, sub); err != nil {
 					return err
 				}
 				m.Kind = &CommandResult_AnswerPlan{AnswerPlan: sub}
@@ -3677,10 +2869,6 @@ func (m *CommandResult) Unmarshal(b []byte) error {
 			}
 		case 20:
 			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
 				var sub *OpenTerminalResponse
 				if cur, ok := m.Kind.(*CommandResult_OpenTerminal); ok && cur != nil {
 					sub = cur.OpenTerminal
@@ -3688,7 +2876,7 @@ func (m *CommandResult) Unmarshal(b []byte) error {
 				if sub == nil {
 					sub = &OpenTerminalResponse{}
 				}
-				if err := sub.Unmarshal(raw); err != nil {
+				if err := litewire.ReadMessage(&b, sub); err != nil {
 					return err
 				}
 				m.Kind = &CommandResult_OpenTerminal{OpenTerminal: sub}
@@ -3696,10 +2884,6 @@ func (m *CommandResult) Unmarshal(b []byte) error {
 			}
 		case 21:
 			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
 				var sub *ResumeSessionResponse
 				if cur, ok := m.Kind.(*CommandResult_ResumeSession); ok && cur != nil {
 					sub = cur.ResumeSession
@@ -3707,7 +2891,7 @@ func (m *CommandResult) Unmarshal(b []byte) error {
 				if sub == nil {
 					sub = &ResumeSessionResponse{}
 				}
-				if err := sub.Unmarshal(raw); err != nil {
+				if err := litewire.ReadMessage(&b, sub); err != nil {
 					return err
 				}
 				m.Kind = &CommandResult_ResumeSession{ResumeSession: sub}
@@ -3715,10 +2899,6 @@ func (m *CommandResult) Unmarshal(b []byte) error {
 			}
 		case 22:
 			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
 				var sub *ResumeInputResponse
 				if cur, ok := m.Kind.(*CommandResult_ResumeInput); ok && cur != nil {
 					sub = cur.ResumeInput
@@ -3726,7 +2906,7 @@ func (m *CommandResult) Unmarshal(b []byte) error {
 				if sub == nil {
 					sub = &ResumeInputResponse{}
 				}
-				if err := sub.Unmarshal(raw); err != nil {
+				if err := litewire.ReadMessage(&b, sub); err != nil {
 					return err
 				}
 				m.Kind = &CommandResult_ResumeInput{ResumeInput: sub}
@@ -3734,10 +2914,6 @@ func (m *CommandResult) Unmarshal(b []byte) error {
 			}
 		case 23:
 			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
 				var sub *RenameSessionResponse
 				if cur, ok := m.Kind.(*CommandResult_RenameSession); ok && cur != nil {
 					sub = cur.RenameSession
@@ -3745,7 +2921,7 @@ func (m *CommandResult) Unmarshal(b []byte) error {
 				if sub == nil {
 					sub = &RenameSessionResponse{}
 				}
-				if err := sub.Unmarshal(raw); err != nil {
+				if err := litewire.ReadMessage(&b, sub); err != nil {
 					return err
 				}
 				m.Kind = &CommandResult_RenameSession{RenameSession: sub}
@@ -3753,10 +2929,6 @@ func (m *CommandResult) Unmarshal(b []byte) error {
 			}
 		case 24:
 			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
 				var sub *ForkSessionResponse
 				if cur, ok := m.Kind.(*CommandResult_ForkSession); ok && cur != nil {
 					sub = cur.ForkSession
@@ -3764,7 +2936,7 @@ func (m *CommandResult) Unmarshal(b []byte) error {
 				if sub == nil {
 					sub = &ForkSessionResponse{}
 				}
-				if err := sub.Unmarshal(raw); err != nil {
+				if err := litewire.ReadMessage(&b, sub); err != nil {
 					return err
 				}
 				m.Kind = &CommandResult_ForkSession{ForkSession: sub}
@@ -3772,10 +2944,6 @@ func (m *CommandResult) Unmarshal(b []byte) error {
 			}
 		case 30:
 			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
 				var sub *CreateSessionResponse
 				if cur, ok := m.Kind.(*CommandResult_CreateSession); ok && cur != nil {
 					sub = cur.CreateSession
@@ -3783,7 +2951,7 @@ func (m *CommandResult) Unmarshal(b []byte) error {
 				if sub == nil {
 					sub = &CreateSessionResponse{}
 				}
-				if err := sub.Unmarshal(raw); err != nil {
+				if err := litewire.ReadMessage(&b, sub); err != nil {
 					return err
 				}
 				m.Kind = &CommandResult_CreateSession{CreateSession: sub}
@@ -3791,10 +2959,6 @@ func (m *CommandResult) Unmarshal(b []byte) error {
 			}
 		case 31:
 			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
 				var sub *ListModelsResponse
 				if cur, ok := m.Kind.(*CommandResult_ListModels); ok && cur != nil {
 					sub = cur.ListModels
@@ -3802,7 +2966,7 @@ func (m *CommandResult) Unmarshal(b []byte) error {
 				if sub == nil {
 					sub = &ListModelsResponse{}
 				}
-				if err := sub.Unmarshal(raw); err != nil {
+				if err := litewire.ReadMessage(&b, sub); err != nil {
 					return err
 				}
 				m.Kind = &CommandResult_ListModels{ListModels: sub}
@@ -3810,10 +2974,6 @@ func (m *CommandResult) Unmarshal(b []byte) error {
 			}
 		case 32:
 			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
 				var sub *ListDirectoriesResponse
 				if cur, ok := m.Kind.(*CommandResult_ListDirectories); ok && cur != nil {
 					sub = cur.ListDirectories
@@ -3821,7 +2981,7 @@ func (m *CommandResult) Unmarshal(b []byte) error {
 				if sub == nil {
 					sub = &ListDirectoriesResponse{}
 				}
-				if err := sub.Unmarshal(raw); err != nil {
+				if err := litewire.ReadMessage(&b, sub); err != nil {
 					return err
 				}
 				m.Kind = &CommandResult_ListDirectories{ListDirectories: sub}
@@ -3829,10 +2989,6 @@ func (m *CommandResult) Unmarshal(b []byte) error {
 			}
 		case 33:
 			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
 				var sub *GetSettingsResponse
 				if cur, ok := m.Kind.(*CommandResult_GetSettings); ok && cur != nil {
 					sub = cur.GetSettings
@@ -3840,7 +2996,7 @@ func (m *CommandResult) Unmarshal(b []byte) error {
 				if sub == nil {
 					sub = &GetSettingsResponse{}
 				}
-				if err := sub.Unmarshal(raw); err != nil {
+				if err := litewire.ReadMessage(&b, sub); err != nil {
 					return err
 				}
 				m.Kind = &CommandResult_GetSettings{GetSettings: sub}
@@ -3848,10 +3004,6 @@ func (m *CommandResult) Unmarshal(b []byte) error {
 			}
 		case 34:
 			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
 				var sub *UpdateSettingsResponse
 				if cur, ok := m.Kind.(*CommandResult_UpdateSettings); ok && cur != nil {
 					sub = cur.UpdateSettings
@@ -3859,7 +3011,7 @@ func (m *CommandResult) Unmarshal(b []byte) error {
 				if sub == nil {
 					sub = &UpdateSettingsResponse{}
 				}
-				if err := sub.Unmarshal(raw); err != nil {
+				if err := litewire.ReadMessage(&b, sub); err != nil {
 					return err
 				}
 				m.Kind = &CommandResult_UpdateSettings{UpdateSettings: sub}
@@ -3867,10 +3019,6 @@ func (m *CommandResult) Unmarshal(b []byte) error {
 			}
 		case 35:
 			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
 				var sub *BeginImageUploadResponse
 				if cur, ok := m.Kind.(*CommandResult_BeginImageUpload); ok && cur != nil {
 					sub = cur.BeginImageUpload
@@ -3878,7 +3026,7 @@ func (m *CommandResult) Unmarshal(b []byte) error {
 				if sub == nil {
 					sub = &BeginImageUploadResponse{}
 				}
-				if err := sub.Unmarshal(raw); err != nil {
+				if err := litewire.ReadMessage(&b, sub); err != nil {
 					return err
 				}
 				m.Kind = &CommandResult_BeginImageUpload{BeginImageUpload: sub}
@@ -3886,10 +3034,6 @@ func (m *CommandResult) Unmarshal(b []byte) error {
 			}
 		case 36:
 			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
 				var sub *PutImageChunkResponse
 				if cur, ok := m.Kind.(*CommandResult_PutImageChunk); ok && cur != nil {
 					sub = cur.PutImageChunk
@@ -3897,7 +3041,7 @@ func (m *CommandResult) Unmarshal(b []byte) error {
 				if sub == nil {
 					sub = &PutImageChunkResponse{}
 				}
-				if err := sub.Unmarshal(raw); err != nil {
+				if err := litewire.ReadMessage(&b, sub); err != nil {
 					return err
 				}
 				m.Kind = &CommandResult_PutImageChunk{PutImageChunk: sub}
@@ -3905,10 +3049,6 @@ func (m *CommandResult) Unmarshal(b []byte) error {
 			}
 		case 37:
 			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
 				var sub *GetImageUploadStatusResponse
 				if cur, ok := m.Kind.(*CommandResult_GetImageUploadStatus); ok && cur != nil {
 					sub = cur.GetImageUploadStatus
@@ -3916,7 +3056,7 @@ func (m *CommandResult) Unmarshal(b []byte) error {
 				if sub == nil {
 					sub = &GetImageUploadStatusResponse{}
 				}
-				if err := sub.Unmarshal(raw); err != nil {
+				if err := litewire.ReadMessage(&b, sub); err != nil {
 					return err
 				}
 				m.Kind = &CommandResult_GetImageUploadStatus{GetImageUploadStatus: sub}
@@ -3924,10 +3064,6 @@ func (m *CommandResult) Unmarshal(b []byte) error {
 			}
 		case 38:
 			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
 				var sub *CompleteImageUploadResponse
 				if cur, ok := m.Kind.(*CommandResult_CompleteImageUpload); ok && cur != nil {
 					sub = cur.CompleteImageUpload
@@ -3935,7 +3071,7 @@ func (m *CommandResult) Unmarshal(b []byte) error {
 				if sub == nil {
 					sub = &CompleteImageUploadResponse{}
 				}
-				if err := sub.Unmarshal(raw); err != nil {
+				if err := litewire.ReadMessage(&b, sub); err != nil {
 					return err
 				}
 				m.Kind = &CommandResult_CompleteImageUpload{CompleteImageUpload: sub}
@@ -3943,10 +3079,6 @@ func (m *CommandResult) Unmarshal(b []byte) error {
 			}
 		case 39:
 			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
 				var sub *AbortImageUploadResponse
 				if cur, ok := m.Kind.(*CommandResult_AbortImageUpload); ok && cur != nil {
 					sub = cur.AbortImageUpload
@@ -3954,7 +3086,7 @@ func (m *CommandResult) Unmarshal(b []byte) error {
 				if sub == nil {
 					sub = &AbortImageUploadResponse{}
 				}
-				if err := sub.Unmarshal(raw); err != nil {
+				if err := litewire.ReadMessage(&b, sub); err != nil {
 					return err
 				}
 				m.Kind = &CommandResult_AbortImageUpload{AbortImageUpload: sub}
@@ -3962,10 +3094,6 @@ func (m *CommandResult) Unmarshal(b []byte) error {
 			}
 		case 40:
 			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
 				var sub *ScheduleResponse
 				if cur, ok := m.Kind.(*CommandResult_Schedule); ok && cur != nil {
 					sub = cur.Schedule
@@ -3973,7 +3101,7 @@ func (m *CommandResult) Unmarshal(b []byte) error {
 				if sub == nil {
 					sub = &ScheduleResponse{}
 				}
-				if err := sub.Unmarshal(raw); err != nil {
+				if err := litewire.ReadMessage(&b, sub); err != nil {
 					return err
 				}
 				m.Kind = &CommandResult_Schedule{Schedule: sub}
@@ -3981,10 +3109,6 @@ func (m *CommandResult) Unmarshal(b []byte) error {
 			}
 		case 41:
 			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
 				var sub *LiveSnapshot
 				if cur, ok := m.Kind.(*CommandResult_LiveSnapshot); ok && cur != nil {
 					sub = cur.LiveSnapshot
@@ -3992,7 +3116,7 @@ func (m *CommandResult) Unmarshal(b []byte) error {
 				if sub == nil {
 					sub = &LiveSnapshot{}
 				}
-				if err := sub.Unmarshal(raw); err != nil {
+				if err := litewire.ReadMessage(&b, sub); err != nil {
 					return err
 				}
 				m.Kind = &CommandResult_LiveSnapshot{LiveSnapshot: sub}
@@ -4000,10 +3124,6 @@ func (m *CommandResult) Unmarshal(b []byte) error {
 			}
 		case 42:
 			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
 				var sub *GetSharedFileChunkResponse
 				if cur, ok := m.Kind.(*CommandResult_GetSharedFileChunk); ok && cur != nil {
 					sub = cur.GetSharedFileChunk
@@ -4011,7 +3131,7 @@ func (m *CommandResult) Unmarshal(b []byte) error {
 				if sub == nil {
 					sub = &GetSharedFileChunkResponse{}
 				}
-				if err := sub.Unmarshal(raw); err != nil {
+				if err := litewire.ReadMessage(&b, sub); err != nil {
 					return err
 				}
 				m.Kind = &CommandResult_GetSharedFileChunk{GetSharedFileChunk: sub}
@@ -4019,10 +3139,6 @@ func (m *CommandResult) Unmarshal(b []byte) error {
 			}
 		case 43:
 			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
 				var sub *MachineStatus
 				if cur, ok := m.Kind.(*CommandResult_MachineStatus); ok && cur != nil {
 					sub = cur.MachineStatus
@@ -4030,7 +3146,7 @@ func (m *CommandResult) Unmarshal(b []byte) error {
 				if sub == nil {
 					sub = &MachineStatus{}
 				}
-				if err := sub.Unmarshal(raw); err != nil {
+				if err := litewire.ReadMessage(&b, sub); err != nil {
 					return err
 				}
 				m.Kind = &CommandResult_MachineStatus{MachineStatus: sub}
@@ -4047,12 +3163,6 @@ func (m *CommandResult) Unmarshal(b []byte) error {
 type OpenTerminalRequest struct {
 	SessionId string
 	StreamId  string
-}
-
-func (m *OpenTerminalRequest) Reset() {
-	if m != nil {
-		*m = OpenTerminalRequest{}
-	}
 }
 
 func (m *OpenTerminalRequest) GetSessionId() string {
@@ -4142,45 +3252,6 @@ func (m *OpenTerminalRequest) Unmarshal(b []byte) error {
 type OpenTerminalResponse struct {
 }
 
-func (m *OpenTerminalResponse) Reset() {
-	if m != nil {
-		*m = OpenTerminalResponse{}
-	}
-}
-
-func (m *OpenTerminalResponse) Clone() *OpenTerminalResponse {
-	if m == nil {
-		return nil
-	}
-	cp := *m
-	return &cp
-}
-
-func (m *OpenTerminalResponse) Size() int {
-	if m == nil {
-		return 0
-	}
-	return 0
-}
-
-func (m *OpenTerminalResponse) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
-}
-
-func (m *OpenTerminalResponse) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	return b
-}
-
 func (m *OpenTerminalResponse) Unmarshal(b []byte) error {
 	for len(b) > 0 {
 		num, wtyp, err := litewire.ReadTag(&b)
@@ -4199,12 +3270,6 @@ type DeviceMeta struct {
 	Platform          string
 	Description       string
 	HandoffRecoveryEd []byte
-}
-
-func (m *DeviceMeta) Reset() {
-	if m != nil {
-		*m = DeviceMeta{}
-	}
 }
 
 func (m *DeviceMeta) GetName() string {
@@ -4334,12 +3399,6 @@ type ProjectPrefs struct {
 	Settings  []*ProjectSettings
 }
 
-func (m *ProjectPrefs) Reset() {
-	if m != nil {
-		*m = ProjectPrefs{}
-	}
-}
-
 func (m *ProjectPrefs) GetSchema() int32 {
 	if m != nil {
 		return m.Schema
@@ -4443,14 +3502,12 @@ func (m *ProjectPrefs) AppendMarshal(b []byte) []byte {
 	b = litewire.AppendInt32(b, 1, int32(m.Schema))
 	for _, v := range m.Pinned {
 		if v != nil {
-			b = litewire.AppendMessagePrefix(b, 2, v.Size())
-			b = v.AppendMarshal(b)
+			b = litewire.AppendMessage(b, 2, v)
 		}
 	}
 	for _, v := range m.Hidden {
 		if v != nil {
-			b = litewire.AppendMessagePrefix(b, 3, v.Size())
-			b = v.AppendMarshal(b)
+			b = litewire.AppendMessage(b, 3, v)
 		}
 	}
 	for _, v := range m.RecentOps {
@@ -4458,8 +3515,7 @@ func (m *ProjectPrefs) AppendMarshal(b []byte) []byte {
 	}
 	for _, v := range m.Settings {
 		if v != nil {
-			b = litewire.AppendMessagePrefix(b, 5, v.Size())
-			b = v.AppendMarshal(b)
+			b = litewire.AppendMessage(b, 5, v)
 		}
 	}
 	return b
@@ -4483,12 +3539,8 @@ func (m *ProjectPrefs) Unmarshal(b []byte) error {
 			}
 		case 2:
 			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
 				elem := &ProjectPref{}
-				if err := elem.Unmarshal(raw); err != nil {
+				if err := litewire.ReadMessage(&b, elem); err != nil {
 					return err
 				}
 				m.Pinned = append(m.Pinned, elem)
@@ -4496,12 +3548,8 @@ func (m *ProjectPrefs) Unmarshal(b []byte) error {
 			}
 		case 3:
 			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
 				elem := &ProjectPref{}
-				if err := elem.Unmarshal(raw); err != nil {
+				if err := litewire.ReadMessage(&b, elem); err != nil {
 					return err
 				}
 				m.Hidden = append(m.Hidden, elem)
@@ -4518,12 +3566,8 @@ func (m *ProjectPrefs) Unmarshal(b []byte) error {
 			}
 		case 5:
 			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
 				elem := &ProjectSettings{}
-				if err := elem.Unmarshal(raw); err != nil {
+				if err := litewire.ReadMessage(&b, elem); err != nil {
 					return err
 				}
 				m.Settings = append(m.Settings, elem)
@@ -4543,12 +3587,6 @@ type ProjectSettings struct {
 	MachineId string
 	UpdatedMs int64
 	Agents    []*AgentSettings
-}
-
-func (m *ProjectSettings) Reset() {
-	if m != nil {
-		*m = ProjectSettings{}
-	}
 }
 
 func (m *ProjectSettings) GetPath() string {
@@ -4634,8 +3672,7 @@ func (m *ProjectSettings) AppendMarshal(b []byte) []byte {
 	b = litewire.AppendVarint(b, 7, uint64(m.UpdatedMs))
 	for _, v := range m.Agents {
 		if v != nil {
-			b = litewire.AppendMessagePrefix(b, 9, v.Size())
-			b = v.AppendMarshal(b)
+			b = litewire.AppendMessage(b, 9, v)
 		}
 	}
 	return b
@@ -4686,12 +3723,8 @@ func (m *ProjectSettings) Unmarshal(b []byte) error {
 			}
 		case 9:
 			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
 				elem := &AgentSettings{}
-				if err := elem.Unmarshal(raw); err != nil {
+				if err := litewire.ReadMessage(&b, elem); err != nil {
 					return err
 				}
 				m.Agents = append(m.Agents, elem)
@@ -4711,12 +3744,6 @@ type AgentSettings struct {
 	Effort          string
 	Mode            ApprovalMode
 	StandardContext bool
-}
-
-func (m *AgentSettings) Reset() {
-	if m != nil {
-		*m = AgentSettings{}
-	}
 }
 
 func (m *AgentSettings) GetAgent() Agent {
@@ -4859,12 +3886,6 @@ type ProjectPref struct {
 	SinceMs int64
 }
 
-func (m *ProjectPref) Reset() {
-	if m != nil {
-		*m = ProjectPref{}
-	}
-}
-
 func (m *ProjectPref) GetPath() string {
 	if m != nil {
 		return m.Path
@@ -4953,12 +3974,6 @@ type GetLiveSnapshotRequest struct {
 	SessionId string
 }
 
-func (m *GetLiveSnapshotRequest) Reset() {
-	if m != nil {
-		*m = GetLiveSnapshotRequest{}
-	}
-}
-
 func (m *GetLiveSnapshotRequest) GetSessionId() string {
 	if m != nil {
 		return m.SessionId
@@ -5033,12 +4048,6 @@ type LiveSnapshot struct {
 	PlanScreenHash []byte
 	PlanScreen     string
 	Running        bool
-}
-
-func (m *LiveSnapshot) Reset() {
-	if m != nil {
-		*m = LiveSnapshot{}
-	}
 }
 
 func (m *LiveSnapshot) GetSession() *Session {
@@ -5130,13 +4139,11 @@ func (m *LiveSnapshot) AppendMarshal(b []byte) []byte {
 		return b
 	}
 	if m.Session != nil {
-		b = litewire.AppendMessagePrefix(b, 1, m.Session.Size())
-		b = m.Session.AppendMarshal(b)
+		b = litewire.AppendMessage(b, 1, m.Session)
 	}
 	for _, v := range m.Actions {
 		if v != nil {
-			b = litewire.AppendMessagePrefix(b, 2, v.Size())
-			b = v.AppendMarshal(b)
+			b = litewire.AppendMessage(b, 2, v)
 		}
 	}
 	b = litewire.AppendVarint(b, 3, uint64(m.PlanEventSeq))
@@ -5155,26 +4162,18 @@ func (m *LiveSnapshot) Unmarshal(b []byte) error {
 		switch num {
 		case 1:
 			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
 				if m.Session == nil {
 					m.Session = &Session{}
 				}
-				if err := m.Session.Unmarshal(raw); err != nil {
+				if err := litewire.ReadMessage(&b, m.Session); err != nil {
 					return err
 				}
 				continue
 			}
 		case 2:
 			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
 				elem := &Event{}
-				if err := elem.Unmarshal(raw); err != nil {
+				if err := litewire.ReadMessage(&b, elem); err != nil {
 					return err
 				}
 				m.Actions = append(m.Actions, elem)

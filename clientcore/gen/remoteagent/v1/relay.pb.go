@@ -20,12 +20,6 @@ type SessionCursor struct {
 	SessionId string
 }
 
-func (m *SessionCursor) Reset() {
-	if m != nil {
-		*m = SessionCursor{}
-	}
-}
-
 func (m *SessionCursor) GetEndedMs() int64 {
 	if m != nil {
 		return m.EndedMs
@@ -37,14 +31,6 @@ func (m *SessionCursor) GetSessionId() string {
 		return m.SessionId
 	}
 	return ""
-}
-
-func (m *SessionCursor) Clone() *SessionCursor {
-	if m == nil {
-		return nil
-	}
-	cp := *m
-	return &cp
 }
 
 func (m *SessionCursor) Size() int {

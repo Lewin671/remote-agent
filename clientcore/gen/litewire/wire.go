@@ -118,10 +118,27 @@ func AppendRawFixed64(b []byte, v uint64) []byte {
 	)
 }
 
+// Marshaler is implemented by outbound generated protobuf messages.
+type Marshaler interface {
+	Size() int
+	AppendMarshal([]byte) []byte
+}
+
+// Unmarshaler is implemented by inbound generated protobuf messages.
+type Unmarshaler interface {
+	Unmarshal([]byte) error
+}
+
 //go:noinline
 func AppendMessagePrefix(b []byte, num Number, size int) []byte {
 	b = AppendTag(b, num, BytesType)
 	return AppendRawVarint(b, uint64(size))
+}
+
+//go:noinline
+func AppendMessage(b []byte, num Number, m Marshaler) []byte {
+	b = AppendMessagePrefix(b, num, m.Size())
+	return m.AppendMarshal(b)
 }
 
 //go:noinline
@@ -565,6 +582,15 @@ func ReadBytesRaw(b *[]byte) ([]byte, error) {
 	}
 	*b = (*b)[n:]
 	return v, nil
+}
+
+//go:noinline
+func ReadMessage(b *[]byte, dst Unmarshaler) error {
+	raw, err := ReadBytesRaw(b)
+	if err != nil {
+		return err
+	}
+	return dst.Unmarshal(raw)
 }
 
 //go:noinline
