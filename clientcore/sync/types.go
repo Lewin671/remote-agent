@@ -183,16 +183,16 @@ type SecurityState struct {
 
 // SettledCommand notifies upper layers (e.g. app) when a dispatched command finishes.
 type SettledCommand struct {
-	RequestID   string
-	SlotKey     string
-	MachineID   string
-	SessionID   string
-	Category    outcome.Category
-	Result      *v1.CommandResult
-	ErrorCode   string
-	ErrorText   *corev1.Text
-	Expired     bool
-	Frozen      bool
+	RequestID string
+	SlotKey   string
+	MachineID string
+	SessionID string
+	Category  outcome.Category
+	Result    *v1.CommandResult
+	ErrorCode string
+	ErrorText *corev1.Text
+	Expired   bool
+	Frozen    bool
 }
 
 // StepContext accumulates side effects, dirty flags, and settled command notifications for one Step call.
@@ -338,21 +338,21 @@ type Engine struct {
 	streamOpen bool
 	wantedConn bool
 
-	activeTokenOpID     uint64
-	activeSecOpID       uint64
-	lastSecPushSeq      uint64
-	activeCacheBootID   uint64
-	cachedToken         string
-	tokenExpiresMs      int64
-	forceLogin          bool
-	legID               uint64
-	offlineSinceMs      int64
-	connStartedAtMs     int64
-	connStepText        *corev1.Text
-	connReasonText      *corev1.Text
-	serverAhead         bool
-	listBackoffMs       int64
-	prefsBackoffMs      int64
+	activeTokenOpID   uint64
+	activeSecOpID     uint64
+	lastSecPushSeq    uint64
+	activeCacheBootID uint64
+	cachedToken       string
+	tokenExpiresMs    int64
+	forceLogin        bool
+	legID             uint64
+	offlineSinceMs    int64
+	connStartedAtMs   int64
+	connStepText      *corev1.Text
+	connReasonText    *corev1.Text
+	serverAhead       bool
+	listBackoffMs     int64
+	prefsBackoffMs    int64
 
 	machines        map[string]*MachineEntry
 	sessions        map[string]*SessionEntry
@@ -368,27 +368,27 @@ type Engine struct {
 	sessionListErr  *corev1.Text
 	sessionListRaw  string
 
-	listingGen        uint64
-	refreshRun        uint64
-	refreshOpID       uint64
-	refreshSnapshotM  map[string]uint64
-	refreshSnapshotS  map[string]uint64
-	refreshSnapshotR  map[string]uint64
-	pageOpID          uint64
-	pageListingGen    uint64
-	devicesOpID         uint64
-	lastDevicesPushSeq  uint64
-	devicesSnapshotR    map[string]uint64
-	sessionByIDOps    map[uint64]string
-	machinePushes     map[string]uint64
-	sessionPushes     map[string]uint64
-	removedPushes     map[string]uint64
-	devicePushes      map[string]uint64
-	directReady       map[string]bool
+	listingGen         uint64
+	refreshRun         uint64
+	refreshOpID        uint64
+	refreshSnapshotM   map[string]uint64
+	refreshSnapshotS   map[string]uint64
+	refreshSnapshotR   map[string]uint64
+	pageOpID           uint64
+	pageListingGen     uint64
+	devicesOpID        uint64
+	lastDevicesPushSeq uint64
+	devicesSnapshotR   map[string]uint64
+	sessionByIDOps     map[uint64]string
+	machinePushes      map[string]uint64
+	sessionPushes      map[string]uint64
+	removedPushes      map[string]uint64
+	devicePushes       map[string]uint64
+	directReady        map[string]bool
 
-	buffers         map[string]*EventBuffer
-	watchedSessions map[string]bool
-	pinnedSessions  map[string]bool
+	buffers          map[string]*EventBuffer
+	watchedSessions  map[string]bool
+	pinnedSessions   map[string]bool
 	livePollInFlight map[string]string // session_id -> active request_id
 	livePollReqToSid map[string]string // request_id -> session_id
 
@@ -402,9 +402,9 @@ type Engine struct {
 	prefsSettingsSaving   map[string]bool
 	prefsSettingsErr      map[string]*corev1.Text
 
-	security        SecurityState
-	homeScopeToken  string
-	scopeHMACKey    []byte
+	security       SecurityState
+	homeScopeToken string
+	scopeHMACKey   []byte
 
 	inFlightCmds    map[string]*PreparedCommand
 	reqIDByAttempt  map[string]string
@@ -415,36 +415,36 @@ type Engine struct {
 // NewEngine constructs a fresh sans-IO sync Engine.
 func NewEngine() *Engine {
 	return &Engine{
-		foreground:         true,
-		networkAvailable:   true,
-		recovery:           NewRecovery(NewRecoveryBudget(4.0, 2.0)),
-		timers:             make(map[timerKey]timerEntry),
-		conn:               lists.ConnConnecting,
-		listBackoffMs:      ListRetryInitialMs,
-		prefsBackoffMs:     PrefsRetryInitialMs,
-		machines:           make(map[string]*MachineEntry),
-		sessions:           make(map[string]*SessionEntry),
-		devices:            make(map[string]*DeviceEntry),
-		listed:             make(map[string]bool),
-		sessionByIDOps:     make(map[uint64]string),
-		machinePushes:      make(map[string]uint64),
-		sessionPushes:      make(map[string]uint64),
-		removedPushes:      make(map[string]uint64),
-		devicePushes:       make(map[string]uint64),
-		directReady:        make(map[string]bool),
-		buffers:            make(map[string]*EventBuffer),
-		watchedSessions:    make(map[string]bool),
-		pinnedSessions:     make(map[string]bool),
-		livePollInFlight:   make(map[string]string),
-		livePollReqToSid:   make(map[string]string),
-		prefsErrorByPath:   make(map[string]*corev1.Text),
-		prefsPendingByPath: make(map[string]bool),
+		foreground:          true,
+		networkAvailable:    true,
+		recovery:            NewRecovery(NewRecoveryBudget(4.0, 2.0)),
+		timers:              make(map[timerKey]timerEntry),
+		conn:                lists.ConnConnecting,
+		listBackoffMs:       ListRetryInitialMs,
+		prefsBackoffMs:      PrefsRetryInitialMs,
+		machines:            make(map[string]*MachineEntry),
+		sessions:            make(map[string]*SessionEntry),
+		devices:             make(map[string]*DeviceEntry),
+		listed:              make(map[string]bool),
+		sessionByIDOps:      make(map[uint64]string),
+		machinePushes:       make(map[string]uint64),
+		sessionPushes:       make(map[string]uint64),
+		removedPushes:       make(map[string]uint64),
+		devicePushes:        make(map[string]uint64),
+		directReady:         make(map[string]bool),
+		buffers:             make(map[string]*EventBuffer),
+		watchedSessions:     make(map[string]bool),
+		pinnedSessions:      make(map[string]bool),
+		livePollInFlight:    make(map[string]string),
+		livePollReqToSid:    make(map[string]string),
+		prefsErrorByPath:    make(map[string]*corev1.Text),
+		prefsPendingByPath:  make(map[string]bool),
 		prefsSettingsSaving: make(map[string]bool),
-		prefsSettingsErr:   make(map[string]*corev1.Text),
-		inFlightCmds:       make(map[string]*PreparedCommand),
-		reqIDByAttempt:     make(map[string]string),
-		attemptTrackers:    make(map[string]*AttemptTracker),
-		retryReqByTimer:    make(map[string]string),
+		prefsSettingsErr:    make(map[string]*corev1.Text),
+		inFlightCmds:        make(map[string]*PreparedCommand),
+		reqIDByAttempt:      make(map[string]string),
+		attemptTrackers:     make(map[string]*AttemptTracker),
+		retryReqByTimer:     make(map[string]string),
 	}
 }
 

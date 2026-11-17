@@ -94,17 +94,17 @@ type record struct {
 }
 
 type Endpoint struct {
-	execution      sync.Mutex
-	mu             sync.Mutex
-	path           string
-	db             *sql.DB
-	closed         bool
-	data           record
-	acceptedBytes  int
-	acceptedBodies int
-	volatileBytes  int
-	volatileExpiry acceptedHeap
-	durableExpiry  acceptedHeap
+	execution            sync.Mutex
+	mu                   sync.Mutex
+	path                 string
+	db                   *sql.DB
+	closed               bool
+	data                 record
+	acceptedBytes        int
+	acceptedBodies       int
+	volatileBytes        int
+	volatileExpiry       acceptedHeap
+	durableExpiry        acceptedHeap
 	running              map[string]*runningCall
 	waiters              int
 	externalWaiters      map[string]int

@@ -52,6 +52,7 @@ func observeNetworkChanges(ctx context.Context, hints <-chan struct{}, ticks <-c
 	}()
 	return out
 }
+
 type defaultRoute struct {
 	IfIndex int
 	Family  string

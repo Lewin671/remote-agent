@@ -96,7 +96,7 @@ func TestVisibilityAndGrouping(t *testing.T) {
 			name:      "target missing detected across reasons",
 			task:      &Task{ID: "t8", Status: "failed", Reason: "execution_session_exited", Spec: Spec{Target: Target{Type: "resume_session", Session: "s1"}}},
 			visible:   true,
-			group:   GroupAttention,
+			group:     GroupAttention,
 			inbox:     InboxAttention,
 			targetMis: true,
 		},

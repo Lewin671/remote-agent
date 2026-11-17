@@ -21,14 +21,14 @@ const (
 
 // EventBuffer holds the contiguous prefix + out-of-order pending events and reducer state for one session.
 type EventBuffer struct {
-	SessionID       string
-	prefix          []*v1.Event
-	pending         map[uint64]*v1.Event
-	verifiedSeqs    map[uint64]bool
-	unavailableSeqs map[uint64]bool
+	SessionID        string
+	prefix           []*v1.Event
+	pending          map[uint64]*v1.Event
+	verifiedSeqs     map[uint64]bool
+	unavailableSeqs  map[uint64]bool
 	approxBytesBySeq map[uint64]int64
-	approxBytes     int64
-	usedAtMs        int64
+	approxBytes      int64
+	usedAtMs         int64
 
 	errorText            *corev1.Text
 	fetchErrorText       *corev1.Text

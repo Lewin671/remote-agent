@@ -12,8 +12,8 @@ import (
 	"google.golang.org/protobuf/types/pluginpb"
 )
 
-func strPtr(s string) *string                                      { return &s }
-func int32Ptr(v int32) *int32                                      { return &v }
+func strPtr(s string) *string { return &s }
+func int32Ptr(v int32) *int32 { return &v }
 func labelPtr(l descriptorpb.FieldDescriptorProto_Label) *descriptorpb.FieldDescriptorProto_Label {
 	return &l
 }
@@ -236,7 +236,7 @@ func TestReachableClosureAndPruning(t *testing.T) {
 
 func TestUnknownEntryAndDirectiveReturnError(t *testing.T) {
 	req := &pluginpb.CodeGeneratorRequest{
-		Parameter: strPtr("paths=source_relative"),
+		Parameter:      strPtr("paths=source_relative"),
 		FileToGenerate: []string{"remoteagent/core/v1/app.proto"},
 		ProtoFile: []*descriptorpb.FileDescriptorProto{
 			{

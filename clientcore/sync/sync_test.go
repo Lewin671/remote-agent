@@ -677,12 +677,12 @@ func TestEventsTailFirstGapFillBrokenCacheAndLRU(t *testing.T) {
 	e.HandleEvent(&corev1.Event{
 		NowMs:  now + 100,
 		MonoMs: 5_000,
-		Event: &corev1.Event_SessionPin{SessionPin: &corev1.SessionPinEvent{SessionId: "s1", Pinned: true}},
+		Event:  &corev1.Event_SessionPin{SessionPin: &corev1.SessionPinEvent{SessionId: "s1", Pinned: true}},
 	})
 	e.HandleEvent(&corev1.Event{
 		NowMs:  now + 100,
 		MonoMs: 5_000,
-		Event: &corev1.Event_SessionWatch{SessionWatch: &corev1.SessionWatchEvent{SessionId: "s1", Watched: false}},
+		Event:  &corev1.Event_SessionWatch{SessionWatch: &corev1.SessionWatchEvent{SessionId: "s1", Watched: false}},
 	})
 	// Advance 70s and trigger sweep while still pinned -> must NOT evict.
 	e.Run(func(ctx *StepContext) {
@@ -696,7 +696,7 @@ func TestEventsTailFirstGapFillBrokenCacheAndLRU(t *testing.T) {
 	e.HandleEvent(&corev1.Event{
 		NowMs:  now + 70_200,
 		MonoMs: 75_100,
-		Event: &corev1.Event_SessionPin{SessionPin: &corev1.SessionPinEvent{SessionId: "s1", Pinned: false}},
+		Event:  &corev1.Event_SessionPin{SessionPin: &corev1.SessionPinEvent{SessionId: "s1", Pinned: false}},
 	})
 	if e.Buffer("s1") != nil {
 		t.Fatalf("unpinned idle session buffer past 60s should be evicted")
@@ -725,7 +725,7 @@ func TestLivePollingLifecycle(t *testing.T) {
 	_, watchRes := e.HandleEvent(&corev1.Event{
 		NowMs:  now + 50,
 		MonoMs: 1_100,
-		Event: &corev1.Event_SessionWatch{SessionWatch: &corev1.SessionWatchEvent{SessionId: "s1", Watched: true}},
+		Event:  &corev1.Event_SessionWatch{SessionWatch: &corev1.SessionWatchEvent{SessionId: "s1", Watched: true}},
 	})
 	var pollReq, pollAtt string
 	for _, eff := range watchRes.Effects {
@@ -982,12 +982,12 @@ func TestCommandLifecycleFrozenRetryAndObservedActions(t *testing.T) {
 		NowMs: now + 100,
 		Event: &corev1.Event_CommandOutcome{
 			CommandOutcome: &corev1.CommandOutcomeEvent{
-				RequestId:     dc1.RequestId,
-				AttemptId:     dc1.AttemptId,
-				Source:        corev1.OutcomeSource_OUTCOME_SOURCE_DAEMON,
-				Signed:        true,
-				HashesMatch:   false, // failed integrity binding -> must stay Unknown!
-				AttemptBound:  true,
+				RequestId:    dc1.RequestId,
+				AttemptId:    dc1.AttemptId,
+				Source:       corev1.OutcomeSource_OUTCOME_SOURCE_DAEMON,
+				Signed:       true,
+				HashesMatch:  false, // failed integrity binding -> must stay Unknown!
+				AttemptBound: true,
 			},
 		},
 	})
@@ -1425,7 +1425,7 @@ func TestResumeAfterStopAndBackgroundEmitsTouchSyncSecurity(t *testing.T) {
 		},
 	})
 	_, res := e.HandleEvent(&corev1.Event{
-		NowMs:      2_100,
+		NowMs: 2_100,
 		Event: &corev1.Event_SyncLifecycle{
 			SyncLifecycle: &corev1.SyncLifecycleAction{Kind: corev1.SyncLifecycleKind_SYNC_LIFECYCLE_KIND_START},
 		},

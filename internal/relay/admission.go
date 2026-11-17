@@ -51,39 +51,39 @@ type inflightLeg struct {
 }
 
 type pendingExecution struct {
-	key      string
-	payload  deviceauth.Hash
-	raw      bool
-	done     chan struct{}
-	cancel   context.CancelFunc
-	active   int
-	waiters  int
-	legs     []*inflightLeg
+	key       string
+	payload   deviceauth.Hash
+	raw       bool
+	done      chan struct{}
+	cancel    context.CancelFunc
+	active    int
+	waiters   int
+	legs      []*inflightLeg
 	stops     []func() bool
 	abandoned bool
 	finished  bool
-	body     []byte
-	err      error
-	retry    bool
+	body      []byte
+	err       error
+	retry     bool
 }
 
 type commandAdmission struct {
 	authenticate     func(deviceauth.Wire) (*deviceauth.Authenticated, error)
 	reserveWaiter    func(string) (func(), bool)
 	testBeforeFinish func(*pendingExecution)
-	endpoint        *endpoint
-	ctx             context.Context
-	cancel          context.CancelFunc
-	workers         sync.WaitGroup
-	mu              sync.Mutex
-	frames          transport.FairQueue[*authFrame]
-	results         transport.FairQueue[*callResult]
-	wake, replies   chan struct{}
-	syncing         map[string]bool
-	inflight        map[string]*pendingExecution
-	inflightWaiters int
-	scheduler       *transport.Scheduler
-	closed          bool
+	endpoint         *endpoint
+	ctx              context.Context
+	cancel           context.CancelFunc
+	workers          sync.WaitGroup
+	mu               sync.Mutex
+	frames           transport.FairQueue[*authFrame]
+	results          transport.FairQueue[*callResult]
+	wake, replies    chan struct{}
+	syncing          map[string]bool
+	inflight         map[string]*pendingExecution
+	inflightWaiters  int
+	scheduler        *transport.Scheduler
+	closed           bool
 }
 
 func (c *endpoint) admissionOwner() *commandAdmission {

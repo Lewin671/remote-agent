@@ -39,16 +39,16 @@ type Spec struct {
 
 // Trigger mirrors internal/schedule.Trigger.
 type Trigger struct {
-	Time            string   `json:"time,omitempty"`
-	Weekdays        []int    `json:"weekdays,omitempty"`
-	Timezone        string   `json:"timezone,omitempty"`
-	Until           string   `json:"until,omitempty"`
-	Type            string   `json:"type"`
-	At              string   `json:"at,omitempty"`
-	DelaySeconds    int64    `json:"delay_seconds,omitempty"`
-	IntervalSeconds int64    `json:"interval_seconds,omitempty"`
-	Repeat          bool     `json:"repeat,omitempty"`
-	MaxRuns         int64    `json:"max_runs,omitempty"`
+	Time            string `json:"time,omitempty"`
+	Weekdays        []int  `json:"weekdays,omitempty"`
+	Timezone        string `json:"timezone,omitempty"`
+	Until           string `json:"until,omitempty"`
+	Type            string `json:"type"`
+	At              string `json:"at,omitempty"`
+	DelaySeconds    int64  `json:"delay_seconds,omitempty"`
+	IntervalSeconds int64  `json:"interval_seconds,omitempty"`
+	Repeat          bool   `json:"repeat,omitempty"`
+	MaxRuns         int64  `json:"max_runs,omitempty"`
 }
 
 // Target mirrors internal/schedule.Target.
@@ -178,10 +178,10 @@ type RunGroup struct {
 
 // QuietSpan identifies a foldable span of consecutive quiet scheduled turns in chat.
 type QuietSpan struct {
-	Key    string
-	TaskID string
-	RunID  string
-	From   uint64
+	Key     string
+	TaskID  string
+	RunID   string
+	From    uint64
 	Through uint64
 	TimesMs []int64
 }
