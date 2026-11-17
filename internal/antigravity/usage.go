@@ -301,7 +301,6 @@ func classifyUsageText(parts ...string) error {
 		"unauthorized",
 		"please sign in",
 		"please log in",
-		"oauth",
 	} {
 		if strings.Contains(combined, needle) {
 			return ErrUsageNotLoggedIn

@@ -167,7 +167,7 @@ func (d *Daemon) recordQuotaWithPolicy(sessionID string, e *pb.AgentQuota, now t
 			}
 		}
 		if e.Agent == pb.Agent_AGENT_ANTIGRAVITY {
-			delete(d.quotas, "agy:session:"+agyUsageProbeSource)
+			delete(d.quotas, quotaKey(&pb.AgentQuota{Agent: e.Agent, SourceSessionId: agyUsageProbeSource}))
 		}
 	}
 	// The status line does not say whose limits it shows, and a session
