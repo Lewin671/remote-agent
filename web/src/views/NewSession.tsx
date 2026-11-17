@@ -372,7 +372,12 @@ export function NewBoxView({
         </div>
       );
     }
-    if (n.kind === NoticeKind.DISK_FULL) {
+    if (
+      n.kind === NoticeKind.DISK_FULL ||
+      (n.kind === NoticeKind.FAILED &&
+        n.action === NoticeActionKind.RETRY_START &&
+        renderText(n.text).includes(t("machine_status.disk_full")))
+    ) {
       return (
         <DiskFullCard
           key={`disk-${idx}`}
@@ -789,7 +794,18 @@ export function NewBox({
         },
       }),
     );
-  }, [host, projectKey]);
+    const draftMachine = projectKey ? remote.draftMachines.get(projectKey) : undefined;
+    if (draftMachine) {
+      host.dispatch(
+        create(EventSchema, {
+          event: {
+            case: "newSessionSelectMachine",
+            value: create(NewSessionSelectMachineActionSchema, { machineId: draftMachine }),
+          },
+        }),
+      );
+    }
+  }, [host, remote, projectKey]);
 
   useEffect(() => {
     if (!vm.settled && activeKey && remote.moreSessions) {
@@ -1071,7 +1087,12 @@ export function NewFlow({
               },
             }),
           );
-          open(path);
+          if (onPicked) {
+            open(path);
+          } else {
+            onClose();
+            remote.focusProject = path;
+          }
         }}
       />
     );

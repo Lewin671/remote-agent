@@ -1035,7 +1035,7 @@ function ChatBody({
     const watched = new Set<Element>();
     const sync = () => {
       for (const c of el.children) if (!watched.has(c)) (watched.add(c), ro.observe(c));
-      for (const c of watched) if (c.parentElement !== el) (watched.delete(c), ro.unobserve(c));
+      for (const c of watched) if (c.parentElement !== el) (watched.delete(c), ro.unobserve?.(c));
     };
     const mo = new MutationObserver(sync);
     mo.observe(el, { childList: true });

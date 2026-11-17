@@ -312,7 +312,7 @@ function PlanButtons({ remote, sid, full, shared, terminalOnly = false }: { remo
   );
 }
 
-function PlanDock({ remote, sid, plan, frame, onFull }: { remote: Remote; sid: string; plan?: PlanProposed; frame: Frame; onFull: () => void }) {
+function PlanDock({ remote, sid, agent, plan, frame, onFull }: { remote: Remote; sid: string; agent: Agent; plan?: PlanProposed; frame: Frame; onFull: () => void }) {
   const state = usePlan(remote, sid, isSkeleton(plan));
   if (isSkeleton(plan)) return <div className="dock muted">{skeletonMessage()}</div>;
   return (
@@ -333,8 +333,8 @@ function PlanDock({ remote, sid, plan, frame, onFull }: { remote: Remote; sid: s
       actions={
         <>
           <PlanButtons remote={remote} sid={sid} shared={state} terminalOnly={isSkeleton(plan)} />
-          {!isSkeleton(plan) && agentInfo(agentOf(remote.sessions.get(sid))).planNote && (
-            <div className="ml">{agentInfo(agentOf(remote.sessions.get(sid))).planNote}</div>
+          {!isSkeleton(plan) && agentInfo(agent || agentOf(remote.sessions.get(sid))).planNote && (
+            <div className="ml">{agentInfo(agent || agentOf(remote.sessions.get(sid))).planNote}</div>
           )}
         </>
       }
@@ -489,7 +489,7 @@ export function Dock({
       card = <QuestionDock key={item.id} remote={remote} sid={sid} q={item.question} agent={agent} frame={frame} onTerminal={onTerminal} />;
       break;
     case "plan":
-      card = <PlanDock key={item.id} remote={remote} sid={sid} plan={item.plan} frame={frame} onFull={onPlan} />;
+      card = <PlanDock key={item.id} remote={remote} sid={sid} agent={agent} plan={item.plan} frame={frame} onFull={onPlan} />;
       break;
     case "popup":
       card = <PopupDock key={item.id} title={item.title} agent={agent} frame={frame} onTerminal={onTerminal} />;

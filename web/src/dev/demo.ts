@@ -101,6 +101,7 @@ import {
   PlainSessionSchema,
   SecuritySnapshotEventSchema,
   SessionByIdFetchedEventSchema,
+  TimerKind,
   TokenResultEventSchema,
   type CacheBootstrapLoadedEvent,
   type CacheDeleteEffect,
@@ -113,11 +114,12 @@ import {
   type SecuritySnapshotEvent,
   type TokenResultEvent,
 } from "../gen/remoteagent/core/v1/app_pb";
-import { DeviceKind } from "../gen/remoteagent/v1/relay_pb";
+import { DeviceKind, SessionCursorSchema } from "../gen/remoteagent/v1/relay_pb";
 import {
   AgentSettingsSchema,
   DefaultModeSource,
   DeviceMetaSchema,
+  LiveSnapshotSchema,
   ProjectPrefSchema,
   ProjectSettingsSchema,
   QuotaState,
@@ -1536,6 +1538,7 @@ export class DemoRemote extends Remote {
   private demoStream?: { legId: bigint; callbacks: StreamLegCallbacks; ready: boolean };
   private demoSeedSynced = false;
   private demoSyncing = false;
+  private demoHasMoreSessions = false;
   private demoBootConsumed = false;
   private syncBootOpId = 0n;
   private syncTokenOpId = 0n;
@@ -1548,7 +1551,7 @@ export class DemoRemote extends Remote {
   private pause = sleep;
 
   /** Syncs the current demo fixtures into Core so Home/Project/NewSession/SyncStateView update. */
-  syncDemoToCore() {
+  syncDemoToCore(forceRefresh = false) {
     if (!globalThis.__remoteAgentCore) return;
     const host = getCoreHost(this);
     const conn = this.opts.get("conn");
@@ -1622,6 +1625,15 @@ export class DemoRemote extends Remote {
           const eff = this.syncRpcQueue.shift()!;
           host.dispatch(this.resolveDemoRpc(eff, failList));
         }
+        if (conn === "noserver" && this.demoStream) {
+          this.demoStream.callbacks.onClosed(this.demoStream.legId, {
+            policyViolation: false,
+            errorCode: "unavailable",
+            error: "连接超时",
+            unresolvedHost: false,
+          });
+          host.fireActiveTimer(TimerKind.LINK_GRACE);
+        }
       } finally {
         this.demoSyncing = false;
         this.syncRpcQueue = [];
@@ -1642,8 +1654,33 @@ export class DemoRemote extends Remote {
       for (const m of wantedMachines) {
         host.dispatch(create(CoreEventSchema, { event: { case: "streamFrame", value: { legId, frame: { case: "machineUpdated", value: m } } } }));
       }
-      for (const s of this.buildPlainSessions()) {
-        host.dispatch(create(CoreEventSchema, { event: { case: "streamFrame", value: { legId, frame: { case: "sessionUpdated", value: s } } } }));
+      const wantedSessions = this.buildPlainSessions();
+      const wantedSessionIds = new Set(wantedSessions.map((s) => s.sessionId));
+      const removedAnySession = curView.sessions.some((prev) => !wantedSessionIds.has(prev.sessionId));
+      if (removedAnySession || forceRefresh) {
+        this.syncRpcQueue = [];
+        this.demoSyncing = true;
+        try {
+          host.dispatch(
+            create(CoreEventSchema, {
+              event: {
+                case: "streamReady",
+                value: { legId, serverTimeMs: BigInt(Date.now()) },
+              },
+            }),
+          );
+          while (this.syncRpcQueue.length > 0) {
+            const eff = this.syncRpcQueue.shift()!;
+            host.dispatch(this.resolveDemoRpc(eff, failList));
+          }
+        } finally {
+          this.demoSyncing = false;
+          this.syncRpcQueue = [];
+        }
+      } else {
+        for (const s of wantedSessions) {
+          host.dispatch(create(CoreEventSchema, { event: { case: "streamFrame", value: { legId, frame: { case: "sessionUpdated", value: s } } } }));
+        }
       }
       for (const d of this.buildPlainDevices()) {
         host.dispatch(create(CoreEventSchema, { event: { case: "streamFrame", value: { legId, frame: { case: "deviceUpdated", value: d } } } }));
@@ -1748,8 +1785,22 @@ export class DemoRemote extends Remote {
     this.demoStream = { legId, callbacks, ready: false };
     const conn = this.opts.get("conn");
     if (conn === "connecting") return;
-    if (conn === "reconnecting" || conn === "noserver" || conn === "nonetwork" || conn === "fail" || conn === "removed") {
-      callbacks.onClosed(legId, { policyViolation: false, errorCode: "unavailable", error: "连接超时", unresolvedHost: false });
+    if (conn === "noserver" && !this.demoSyncing) {
+      callbacks.onClosed(legId, {
+        policyViolation: false,
+        errorCode: "unavailable",
+        error: "连接超时",
+        unresolvedHost: false,
+      });
+      return;
+    }
+    if (conn === "reconnecting" || conn === "nonetwork" || conn === "fail" || conn === "removed") {
+      callbacks.onClosed(legId, {
+        policyViolation: false,
+        errorCode: "unavailable",
+        error: "连接超时",
+        unresolvedHost: false,
+      });
       return;
     }
     this.demoStream.ready = true;
@@ -1801,6 +1852,7 @@ export class DemoRemote extends Remote {
                   machines: this.buildPlainMachines(),
                   sessions: this.buildPlainSessions(),
                   devices: this.buildPlainDevices(),
+                  next: this.demoHasMoreSessions ? create(SessionCursorSchema, { endedMs: 1n, sessionId: "z" }) : undefined,
                 }),
           },
         });
@@ -1838,6 +1890,7 @@ export class DemoRemote extends Remote {
                   machines: this.buildPlainMachines(),
                   sessions: this.buildPlainSessions(),
                   devices: this.buildPlainDevices(),
+                  next: this.demoHasMoreSessions ? create(SessionCursorSchema, { endedMs: 1n, sessionId: "z" }) : undefined,
                 }),
           },
         });
@@ -1963,9 +2016,26 @@ export class DemoRemote extends Remote {
     try {
       const cmd = fromBinary(CommandSchema, eff.commandBytes).kind;
       const slot = eff.requestId ? new RequestSlot(eff.requestId, Date.now() + 30_000, undefined, false) : undefined;
-      const result = eff.sessionId
-        ? await this.command(eff.sessionId, cmd, slot)
-        : await this.machineCommand(eff.machineId, cmd, slot);
+      const result =
+        !eff.sessionId && cmd.case === "listModels" && this.listModels !== Remote.prototype.listModels
+          ? create(CommandResultSchema, {
+              kind: { case: "listModels", value: await this.listModels(eff.machineId, cmd.value.agent, true) },
+            })
+          : !eff.sessionId && cmd.case === "getSettings" && this.settings !== Remote.prototype.settings
+            ? create(CommandResultSchema, {
+                kind: {
+                  case: "getSettings",
+                  value: { settings: await this.settings(eff.machineId, true) },
+                },
+              })
+            : eff.sessionId && cmd.case === "getLiveSnapshot"
+              ? this.liveSnapshotResult(eff.sessionId)
+              : eff.sessionId
+                ? await this.command(eff.sessionId, cmd, slot)
+                : await this.machineCommand(eff.machineId, cmd, slot);
+      if ((result.kind.case === "createSession" || result.kind.case === "forkSession") && result.kind.value.session) {
+        this.trackOpeningSession(eff.machineId, result.kind.value.session);
+      }
       const outcome = result.outcome || "executed";
       const reason = result.reason || "completed";
       const norm = create(CommandResultSchema, {
@@ -1974,9 +2044,8 @@ export class DemoRemote extends Remote {
         conflictKind: result.conflictKind,
         resultAvailable:
           result.resultAvailable ||
-          (result.kind.case !== undefined &&
-            (outcome === "executed" ||
-              (outcome === "conflict" && result.conflictKind === "business"))),
+          outcome === "executed" ||
+          (outcome === "conflict" && result.conflictKind === "business"),
         errorCode: result.errorCode,
         errorMessage: result.errorMessage,
         kind: result.kind,
@@ -1995,6 +2064,17 @@ export class DemoRemote extends Remote {
       });
     } catch (e) {
       if (e instanceof CommandError) {
+        if (e.code === "path_changed") {
+          return create(CommandOutcomeEventSchema, {
+            requestId: eff.requestId,
+            attemptId: eff.attemptId,
+            source: OutcomeSource.TRANSPORT,
+            notForwarded: false,
+            attemptBound: true,
+            transportCode: "path_changed",
+            transportDetail: e.message,
+          });
+        }
         if (e.fromDaemon) {
           return create(CommandOutcomeEventSchema, {
             requestId: eff.requestId,
@@ -2958,6 +3038,30 @@ export class DemoRemote extends Remote {
     this.changed();
   }
 
+  private liveSnapshotResult(sid: string): CommandResult {
+    const s = this.sessions.get(sid);
+    const evs = this.events(sid);
+    const d = derive(evs, agentOf(s));
+    const actions = evs.filter(
+      (e) =>
+        (e.kind.case === "approvalRequested" && d.approvals.has(e.kind.value.approvalId)) ||
+        (e.kind.case === "questionAsked" && d.questions.has(e.kind.value.questionId)),
+    );
+    const planEv = d.plan ? [...evs].reverse().find((e) => e.kind.case === "planProposed") : undefined;
+    return create(CommandResultSchema, {
+      kind: {
+        case: "liveSnapshot",
+        value: create(LiveSnapshotSchema, {
+          session: s?.info,
+          running: s?.info?.status === SessionStatus.RUNNING || s?.info?.status === SessionStatus.STARTING,
+          actions,
+          planEventSeq: planEv?.seq ?? 0n,
+          planScreen: d.plan?.text ?? "",
+        }),
+      },
+    });
+  }
+
   override async command(
     sid: string,
     kind: CommandKind,
@@ -3189,6 +3293,8 @@ export class DemoRemote extends Remote {
         this.patch(sid, ctx);
         return ok();
       }
+      case "getLiveSnapshot":
+        return this.liveSnapshotResult(sid);
       case "compact":
         await this.pause(1500);
         this.push(sid, { case: "settingsChanged", value: { compacted: true } });
@@ -3223,8 +3329,8 @@ export class DemoRemote extends Remote {
     const m = this.machines.get(machineId);
     if (!m?.online)
       throw new CommandError("unavailable", "电脑不在线，指令没有发出");
-    if (this.opts.has("scheduled-final") && cmd.case === "schedule" && cmd.value.operation === "list")
-      return create(CommandResultSchema, {kind:{case:"schedule",value:{resultJson:new TextEncoder().encode(JSON.stringify({tasks:this.schedules.get("mac")?.tasks ?? []}))}}});
+    if (cmd.case === "schedule" && cmd.value.operation === "list")
+      return create(CommandResultSchema, {kind:{case:"schedule",value:{resultJson:new TextEncoder().encode(JSON.stringify({tasks:this.schedules.get(machineId)?.tasks ?? []}))}}});
     switch (cmd.case) {
       case "listModels":
         if(this.opts.has("scheduled-final")) return create(CommandResultSchema,{kind:{case:"listModels",value:{defaultModel:"haiku",models:[{slug:"haiku",displayName:"haiku"}]}}});

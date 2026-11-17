@@ -69,7 +69,7 @@ import {
   type LiveSnapshot,
 } from "./gen/remoteagent/v1/remote_pb";
 import type { SecurityRecord } from "./device-security-store";
-import { agentOf, deriveSource, encodeEventBatch, fromProjectionState, type Derived } from "./model";
+import { agentOf, deriveSource, encodeEventBatch, fromProjectionState, machineName, type Derived } from "./model";
 import { DEFAULT_AGENT } from "./agents";
 import { isSkeleton } from "./skeleton";
 import { SharedFileManager, type SharedFileChunkResult } from "./shared-files";
@@ -114,6 +114,7 @@ import {
 } from "./gen/remoteagent/v1/relay_pb";
 import {
   create,
+  equals,
   fromBinary,
   toBinary,
   type MessageInitShape,
@@ -243,8 +244,9 @@ export interface PreparedPayload {
 
 export class RequestSlot {
   readonly evidence: {
-    unresolved?: boolean;
+    readonly unresolved?: boolean;
     includePrior: (prior: boolean) => void;
+    trackHandoff: () => () => void;
   };
   beforeDispatch?: (slot: RequestSlot) => Promise<void>;
   constructor(
@@ -253,13 +255,26 @@ export class RequestSlot {
     public prepared?: PreparedPayload,
     prior = false,
   ) {
-    const ev: { unresolved?: boolean; includePrior: (p: boolean) => void } = {
-      unresolved: prior ? true : undefined,
+    let priorFlag = prior;
+    let handoffs = 0;
+    this.evidence = {
+      get unresolved(): boolean | undefined {
+        return priorFlag || handoffs > 0 ? true : undefined;
+      },
       includePrior(p: boolean) {
-        if (p) this.unresolved = true;
+        if (p) priorFlag = true;
+      },
+      trackHandoff() {
+        handoffs++;
+        let undone = false;
+        return () => {
+          if (!undone) {
+            undone = true;
+            handoffs = Math.max(0, handoffs - 1);
+          }
+        };
       },
     };
-    this.evidence = ev;
   }
 }
 
@@ -632,6 +647,7 @@ export class Remote implements CoreExecutor {
   private needsDescribeSelf = false;
   private securityPushSeq = 1n;
   private devicesPushSeq = 1n;
+  private reconcilingSecurity = 0;
   private coreSyncDepth = 0;
   private serverAhead = false;
   authorityDeviceId = "";
@@ -664,6 +680,7 @@ export class Remote implements CoreExecutor {
   private legs = new Map<bigint, { ws: FrameStream; stopped: boolean }>();
   private listeners = new Set<() => void>();
   private version = 0;
+  private readonly openingSessionMap = new Map<string, SessionView>();
 
   // Legacy views/features kept on Remote until Steps 3-6
   private sharedFilesState?: SharedFileManager;
@@ -776,7 +793,7 @@ export class Remote implements CoreExecutor {
           recoveryReadyMs: reply.recoveryReadyMs,
         };
       },
-      () => !this.closed,
+      () => !this.closed || this.reconcilingSecurity > 0,
       securityStorage,
       () => this.roundBudget(),
     );
@@ -841,6 +858,8 @@ export class Remote implements CoreExecutor {
       this.api,
       pairing,
       (publicKey, check, persist, request) => this.publishHandoffOffer(publicKey, check, persist, request),
+      undefined,
+      () => void this.watchPairingDelivery(),
     );
     this.startPairing = async (web, replacesDeviceId = "") =>
       (await import("./authority-pairing")).AuthorityPairing.start(this.authority, pairing, web, replacesDeviceId);
@@ -890,8 +909,10 @@ export class Remote implements CoreExecutor {
 
   private pairingTimer?: ReturnType<typeof setInterval>;
   private pairingBusy = false;
+  private started = false;
 
   start() {
+    this.started = true;
     this.closed = false;
     this.unwatchDirectInstall?.();
     this.unwatchDirectInstall = watchSecurityInstall((record) => this.direct.install(record));
@@ -1013,7 +1034,17 @@ export class Remote implements CoreExecutor {
 
   changePrefs(kind: "pin" | "unpin" | "hide" | "unhide", path: string) {
     this.ensureHost().changeProjectPref(kind, path);
-    return Promise.resolve(true);
+    if (!this.syncStateView?.prefsSyncing && this.cachedPrefPending.size === 0) {
+      return Promise.resolve(true);
+    }
+    return new Promise<boolean>((resolve) => {
+      const unsub = this.subscribe(() => {
+        if (!this.syncStateView?.prefsSyncing && this.cachedPrefPending.size === 0) {
+          unsub();
+          resolve(true);
+        }
+      });
+    });
   }
 
   // --- Transitional SyncStateView / SessionDataView projections ---
@@ -1028,19 +1059,21 @@ export class Remote implements CoreExecutor {
 
     const nextMachines = new Map<string, MachineView>();
     for (const pm of view.machines) {
+      const authorized = !(this.archiveMachines.has(pm.machineId) && !this.trustedMembers.has(pm.machineId));
       nextMachines.set(pm.machineId, {
         id: pm.machineId,
-        online: pm.online,
+        online: authorized && pm.online,
         lastSeenMs: pm.lastSeenMs,
         meta: pm.meta,
         metaRev: pm.metaRev,
-        keptOnline: !view.machinesListed ? pm.online : undefined,
+        keptOnline: !view.machinesListed ? authorized && pm.online : undefined,
       });
     }
     this.cachedMachineMap = nextMachines;
 
     const nextSessions = new Map<string, SessionView>();
     for (const sv of view.sessions) {
+      this.openingSessionMap.delete(sv.sessionId);
       if (sv.info?.machineReplacements.length) {
         this.sessionReplacements.set(sv.sessionId, [...sv.info.machineReplacements]);
       }
@@ -1050,6 +1083,7 @@ export class Remote implements CoreExecutor {
 
     const nextDevices = new Map<string, DeviceInfo>();
     for (const dv of view.devices) {
+      if (view.securityLoaded && !dv.trusted) continue;
       nextDevices.set(dv.deviceId, {
         id: dv.deviceId,
         kind: dv.kind,
@@ -1085,7 +1119,7 @@ export class Remote implements CoreExecutor {
   }
 
   get conn(): ConnState {
-    if (this.syncStateView?.removed) return "offline";
+    if (this.removed) return "offline";
     switch (this.syncStateView?.connection) {
       case CoreConnState.CONNECTED:
         return "online";
@@ -1121,7 +1155,7 @@ export class Remote implements CoreExecutor {
   }
 
   get removed(): boolean {
-    return this.syncStateView?.removed ?? false;
+    return Boolean(this.syncStateView?.removed || this.removalVerified);
   }
 
   get link(): Link {
@@ -1198,14 +1232,27 @@ export class Remote implements CoreExecutor {
     return this.cachedDeviceMap;
   }
 
+  protected trackOpeningSession(machineId: string, info?: Session) {
+    if (!info?.id || this.cachedSessionMap.has(info.id)) return;
+    this.openingSessionMap.set(info.id, {
+      id: info.id,
+      machineId,
+      info,
+      metaRev: 0n,
+      lastSeq: 0n,
+      updatedMs: BigInt(Date.now()),
+      endedMs: 0n,
+    });
+  }
+
   get openingSessions(): ReadonlyMap<string, SessionView> {
-    return new Map<string, SessionView>();
+    return this.openingSessionMap;
   }
 
   get prefs(): PrefsState {
     const v = this.syncStateView;
     return {
-      status: v?.prefsLoadFailed && !v.prefs ? "error" : v?.prefsLoaded ? "ready" : "loading",
+      status: (v?.prefsLoadFailed || v?.prefsBroken) && !v.prefs ? "error" : v?.prefsLoaded ? "ready" : "loading",
       error: "",
       snap: v?.prefs ? { revision: v.prefsRevision, prefs: v.prefs } : undefined,
       pending: this.cachedPrefPending,
@@ -1275,10 +1322,17 @@ export class Remote implements CoreExecutor {
     };
   }
 
+  private lastProjectionCache?: { state: ProjectionState; derived: Derived };
+
   private memoProjection(state: ProjectionState): Derived {
     let cached = this.projectionDerivations.get(state);
     if (!cached) {
-      cached = fromProjectionState(state);
+      if (this.lastProjectionCache && equals(ProjectionStateSchema, this.lastProjectionCache.state, state)) {
+        cached = this.lastProjectionCache.derived;
+      } else {
+        cached = fromProjectionState(state);
+        this.lastProjectionCache = { state, derived: cached };
+      }
       this.projectionDerivations.set(state, cached);
     }
     return cached;
@@ -1779,8 +1833,12 @@ export class Remote implements CoreExecutor {
         const list = fromBinary(ListMachinesResponseSchema, keptMachines.bytes);
         for (const m of list.machines) {
           this.persistedMachines.set(m.id, m);
-          machines.push(await this.unpackMachine(m, undefined, true));
-          if (this.supportsSchedules(m.id)) {
+          const unpacked = await this.unpackMachine(m, undefined, true);
+          machines.push(unpacked);
+          const canSchedule =
+            unpacked.meta?.capabilities?.scheduledTasks === true &&
+            !(this.archiveMachines.has(m.id) && !this.trustedMembers.has(m.id));
+          if (canSchedule) {
             const keptSched = await this.cache.get("schedules:" + m.id);
             if (valid(keptSched) && keptSched.bytes instanceof Uint8Array) {
               void this.restoreScheduleSnapshot(m.id, keptSched, true).catch(() => undefined);
@@ -1834,6 +1892,10 @@ export class Remote implements CoreExecutor {
       const rows = newest && this.cache.readNewest
         ? await this.cache.readNewest(sessionId, cap)
         : await this.cache.read(sessionId, afterSeq, cap);
+      const knownLast = this.sessions.get(sessionId)?.lastSeq;
+      if (newest && knownLast !== undefined && rows.length && rows[rows.length - 1].seq > knownLast) {
+        return create(CacheEventsLoadedEventSchema, { opId, sessionId, broken: true });
+      }
       const events = await this.unpackEvents(sessionId, rows, true);
       const broken = events.some((e) => e.broken);
       const retired = events.some((e) => e.retired);
@@ -1933,6 +1995,7 @@ export class Remote implements CoreExecutor {
         this.persistedSessions.delete(eff.kind.value);
         this.persistedOpen.delete(eff.kind.value);
         this.sessionSeeds.delete(eff.kind.value);
+        this.forgetLocalSession(eff.kind.value);
         await this.persistSessionsList();
         await this.keepValue("open-sessions", { ids: [...this.persistedOpen] });
         break;
@@ -1983,9 +2046,7 @@ export class Remote implements CoreExecutor {
           await this.maybeRepublishAndDescribe(dRes.devices);
           const machines = await Promise.all(mRes.machines.map((m) => this.unpackMachine(m, refs)));
           const sessions = await Promise.all(sRes.sessions.map((s) => this.unpackSession(s, true, refs)));
-          const devices = await Promise.all(
-            dRes.devices.filter((d) => this.trustedMembers.has(d.id)).map((d) => this.unpackDevice(d)),
-          );
+          const devices = await this.unpackMemberDevices(dRes.devices);
           return this.trackEventRefs(
             create(CoreEventSchema, {
               event: {
@@ -2176,9 +2237,7 @@ export class Remote implements CoreExecutor {
         try {
           const res = await this.api.listDevices({});
           await this.maybeRepublishAndDescribe(res.devices);
-          const devices = await Promise.all(
-            res.devices.filter((d) => this.trustedMembers.has(d.id)).map((d) => this.unpackDevice(d)),
-          );
+          const devices = await this.unpackMemberDevices(res.devices);
           return create(CoreEventSchema, {
             event: {
               case: "devicesFetched",
@@ -2226,7 +2285,7 @@ export class Remote implements CoreExecutor {
       const upload = eff.bulkUpload ? "file" : undefined;
       hint = { kind: "bulk", file: eff.bulkFileKey, upload, bytes: Number(eff.bulkBytes) };
     }
-    const { outcome } = await this.executeSealedAttempt({
+    const { outcome, msg } = await this.executeSealedAttempt({
       requestId: eff.requestId,
       attemptId: eff.attemptId,
       machineId: eff.machineId,
@@ -2238,6 +2297,9 @@ export class Remote implements CoreExecutor {
       priorUnknown: eff.retryOfUnknown,
       signal,
     });
+    if ((msg?.kind.case === "createSession" || msg?.kind.case === "forkSession") && msg.kind.value.session) {
+      this.trackOpeningSession(eff.machineId, msg.kind.value.session);
+    }
     return outcome;
   }
 
@@ -2254,6 +2316,7 @@ export class Remote implements CoreExecutor {
     isScheduleList?: boolean;
     hasFiles?: boolean;
     signal?: AbortSignal;
+    onHandoff?: () => () => void;
   }): Promise<{ outcome: CommandOutcomeEvent; msg?: CommandResult; rawEnvelope?: Envelope }> {
     const base = { requestId: params.requestId, attemptId: params.attemptId };
     if (this.closed) {
@@ -2306,7 +2369,7 @@ export class Remote implements CoreExecutor {
               ...base,
               source: OutcomeSource.LOCAL,
               notForwarded: true,
-              transportCode: "failed_precondition",
+              transportCode: params.priorUnknown ? "unknown" : "failed_precondition",
               transportDetail: issue,
             }),
           };
@@ -2342,7 +2405,11 @@ export class Remote implements CoreExecutor {
     }
 
     let handoffReached = false;
-    const handoff = () => { handoffReached = true; };
+    let undoHandoff: (() => void) | undefined;
+    const handoff = () => {
+      handoffReached = true;
+      undoHandoff = params.onHandoff?.();
+    };
     const tracking = params.routeHint ? this.direct.track(params.machineId, params.routeHint) : undefined;
     const directAttempt = params.routeHint && !params.forceRelay
       ? this.direct.attempt(params.machineId, params.routeHint, handoff)
@@ -2440,6 +2507,7 @@ export class Remote implements CoreExecutor {
       if (e instanceof ConnectError) {
         const refusal = pathAttempt.refusal(e);
         if (refusal !== undefined) {
+          undoHandoff?.();
           return {
             outcome: create(CommandOutcomeEventSchema, {
               ...base,
@@ -2514,7 +2582,7 @@ export class Remote implements CoreExecutor {
     }
     return create(PlainMachineSchema, {
       machineId: m.id,
-      online: m.online,
+      online: !fromCache && m.online,
       lastSeenMs: m.lastSeenMs,
       meta,
       metaRev,
@@ -2596,6 +2664,25 @@ export class Remote implements CoreExecutor {
       openFailed,
       cacheRef,
     });
+  }
+
+  private async unpackMemberDevices(serverDevices: Device[]): Promise<PlainDevice[]> {
+    try {
+      const head = (await this.security.verifiedRecord()).states.at(-1);
+      if (head) {
+        return await Promise.all(
+          head.core.members.map((m) => {
+            const hint = serverDevices.find((d) => d.id === m.id);
+            return hint ? this.unpackDevice(hint) : Promise.resolve(create(PlainDeviceSchema, { deviceId: m.id, kind: m.kind }));
+          }),
+        );
+      }
+    } catch {
+      /* Fall back to trustedMembers when verifiedRecord is unavailable. */
+    }
+    return Promise.all(
+      serverDevices.filter((d) => this.trustedMembers.has(d.id)).map((d) => this.unpackDevice(d)),
+    );
   }
 
   private async unpackDevice(d: Device): Promise<PlainDevice> {
@@ -3231,6 +3318,22 @@ export class Remote implements CoreExecutor {
     sid = prepared.sid;
     cmd = prepared.cmd;
     const { requestId, deadline, plain } = prepared;
+    if (!slot.evidence.unresolved && Date.now() >= deadline + COMMAND_EXPIRY_SKEW_MS) {
+      throw new CommandError("expired", l10n.t("errors.connection_timed_out"));
+    }
+    const m = this.machines.get(machineId);
+    const theirs = this.peer(machineId).protocolVersion;
+    if (theirs !== undefined && theirs !== PROTOCOL_VERSION) {
+      throw new CommandError(
+        "failed_precondition",
+        theirs < PROTOCOL_VERSION
+          ? l10n.t("errors.remote_agent_on_is_out_of_date_update_it", { value: String(machineName(m)) })
+          : l10n.t("errors.this_page_is_out_of_date_refresh_or_update"),
+        false,
+        false,
+        slot.evidence.unresolved ? "unknown" : "not_sent",
+      );
+    }
     this.checkFileCapability(machineId, cmd, slot.evidence.unresolved);
     await slot.beforeDispatch?.(slot);
 
@@ -3245,6 +3348,7 @@ export class Remote implements CoreExecutor {
       if (attempted && Date.now() >= deadline + (slot.evidence.unresolved ? RESULT_RETENTION_MS : 0)) {
         throw new CommandError("unknown_outcome", l10n.t("errors.connection_timed_out"), false, false, "unknown");
       }
+      this.checkFileCapability(machineId, cmd, slot.evidence.unresolved);
       attempted = true;
       const priorUnknown = !!slot.evidence.unresolved;
       const priorOutcome: Outcome = priorUnknown ? "unknown" : "not_sent";
@@ -3261,6 +3365,7 @@ export class Remote implements CoreExecutor {
         isScheduleList: cmd?.case === "schedule" && cmd.value.operation === "list",
         hasFiles: (cmd?.case === "send" || cmd?.case === "createSession") && !!cmd.value.fileIds?.length,
         signal,
+        onHandoff: () => slot.evidence.trackHandoff(),
       });
 
       if (ev.source === OutcomeSource.DAEMON) {
@@ -3317,12 +3422,13 @@ export class Remote implements CoreExecutor {
         continue;
       }
       if (ev.source === OutcomeSource.LOCAL) {
+        const liveOutcome: Outcome = slot.evidence.unresolved ? "unknown" : priorOutcome;
         throw new CommandError(
-          ev.transportCode === "unknown" ? "unknown_outcome" : ev.transportCode,
+          ev.transportCode === "unknown" || liveOutcome === "unknown" ? "unknown_outcome" : ev.transportCode,
           ev.transportDetail,
           false,
           false,
-          priorOutcome,
+          liveOutcome,
         );
       }
       if (ev.notForwarded && ev.attemptBound && ev.transportCode === "unauthenticated" && attempt < 3) {
@@ -3338,7 +3444,7 @@ export class Remote implements CoreExecutor {
           priorOutcome,
         );
       }
-      if (ev.transportCode === "unavailable" && slot.evidence.unresolved && !this.closed) {
+      if (ev.transportCode === "unavailable" && slot.evidence.unresolved && this.started && !this.closed) {
         signal?.throwIfAborted();
         if (recoveryUntil === undefined) {
           recoveryUntil = performance.now() + 3000;
@@ -3484,8 +3590,9 @@ export class Remote implements CoreExecutor {
   }
 
   syncSchedules() {
+    const readyList = this.listed || !!this.syncStateView?.machinesListed || this.machines.size > 0;
     for (const id of this.schedules.keys()) {
-      if (!this.machines.has(id) || (this.archiveMachines.has(id) && !this.trustedMembers.has(id))) this.forgetSchedules(id);
+      if ((readyList && !this.machines.has(id)) || (this.archiveMachines.has(id) && !this.trustedMembers.has(id))) this.forgetSchedules(id);
     }
     for (const id of this.scheduleRequests.keys()) {
       if (!this.peer(id).available || !this.supportsSchedules(id)) this.scheduleRequests.delete(id);
@@ -3549,21 +3656,38 @@ export class Remote implements CoreExecutor {
         this.changed();
         try {
           const r = await this.machineCommand(id, { case: "schedule", value: { operation: "list" } });
-          if (r.kind.case !== "schedule") throw new Error(l10n.t("new_session.unexpected_reply"));
+          if (r.kind.case !== "schedule") throw new Error(l10n.t("errors.the_computer_did_not_return_a_task_list"));
           const parsed = JSON.parse(new TextDecoder().decode(r.kind.value.resultJson)) as { tasks: ScheduleTask[] };
-          const tasks = Array.isArray(parsed.tasks) ? parsed.tasks : [];
+          const tasks = parsed.tasks;
+          if (!Array.isArray(tasks)) {
+            throw new Error(l10n.t("errors.the_task_list_returned_by_the_computer_could_not"));
+          }
+          if (!this.machines.has(id) || !this.supportsSchedules(id) || this.removed) return;
           this.scheduleLive.add(id);
           this.scheduleSeen.observe(id, tasks, { live: true });
           this.schedules.set(id, { tasks, revision, loading: false, error: "" });
           this.emitScheduleHints();
+          this.changed();
+          void Promise.allSettled(
+            [
+              ...new Set(
+                tasks
+                  .filter((t) => t.spec.target.type === "resume_session")
+                  .map((t) => t.spec.target.session)
+                  .filter((sid): sid is string => !!sid && !this.sessions.get(sid)?.info),
+              ),
+            ].map((sid) => this.ensureSession(sid)),
+          );
         } catch (e) {
-          this.schedules.set(id, { tasks: prev?.tasks ?? [], revision: prev?.revision ?? 0n, loading: false, error: errorText(e) });
+          const state = this.schedules.get(id);
+          if (!state || !this.supportsSchedules(id)) return;
+          this.schedules.set(id, { ...state, loading: false, error: errorText(e) });
         }
         this.changed();
-      } while (this.scheduleAgain.has(id) && this.peer(id).available && this.supportsSchedules(id));
-    })().finally(() => {
+      } while (this.scheduleAgain.has(id) && this.peer(id).available);
+    })().finally(async () => {
       this.scheduleLoading.delete(id);
-      this.syncSchedules();
+      if (this.scheduleAgain.delete(id)) await this.refreshSchedules(id);
     });
     this.scheduleLoading.set(id, work);
     return work;
@@ -3571,7 +3695,7 @@ export class Remote implements CoreExecutor {
 
   async changeSchedule(
     machineId: string,
-    attemptKey: string,
+    key: string,
     payload: { operation: string; taskId?: string; revision?: number; spec?: ScheduleSpec; requestId?: string; sessionId?: string },
   ): Promise<ScheduleTask> {
     if (!this.peer(machineId).available) {
@@ -3580,6 +3704,7 @@ export class Remote implements CoreExecutor {
     if (!this.supportsSchedules(machineId)) {
       throw new Error(l10n.t("errors.update_remote_agent_on_this_computer_to_use_scheduled"));
     }
+    const attemptKey = machineId + "/" + key;
     let attempt = this.scheduleAttempts.get(attemptKey);
     if (!attempt) {
       attempt = new Attempt();
@@ -3615,12 +3740,10 @@ export class Remote implements CoreExecutor {
       if (r.kind.case !== "schedule") throw new Error(l10n.t("errors.the_computer_did_not_return_a_task"));
       const task = JSON.parse(new TextDecoder().decode(r.kind.value.resultJson)) as ScheduleTask;
       attempt.settle(undefined, req);
-      this.scheduleAttempts.delete(attemptKey);
       await this.refreshSchedules(machineId);
       return task;
     } catch (e) {
       attempt.settle(e, req);
-      if (!attempt.frozen) this.scheduleAttempts.delete(attemptKey);
       if (e instanceof CommandError && e.outcome === "conflict" && e.conflictKind === "business") {
         attempt.abandon();
         await this.refreshSchedules(machineId);
@@ -3747,6 +3870,23 @@ export class Remote implements CoreExecutor {
       });
     this.outboxLoads.set(sid, job);
     return job;
+  }
+
+  private forgetLocalSession(sid: string) {
+    this.forgottenSessions.add(sid);
+    this.drafts.delete(sid);
+    this.draftLoaded.delete(sid);
+    this.draftLoads.delete(sid);
+    this.draftRevisions.delete(sid);
+    for (const o of this.outbox(sid)) this.forwardingOutbox.delete(o.sendId);
+    this.outboxes.delete(sid);
+    this.outboxLoads.delete(sid);
+    this.outboxSaves.delete(sid);
+    this.outboxWriteFailed.delete(sid);
+    this.localNotices.delete(sid);
+    this.trays.delete(sid);
+    this.scroll.delete(sid);
+    void this.localDrafts?.removeSession(sid).catch(() => undefined);
   }
 
   private keepOutbox(sid: string): Promise<void> {
@@ -4318,23 +4458,21 @@ export class Remote implements CoreExecutor {
       await this.security.sync();
       const res = await this.api.listDevices({});
       await this.maybeRepublishAndDescribe(res.devices);
-      const next = new Map<string, DeviceInfo>();
-      const plainDevices: PlainDevice[] = [];
-      const head = (await this.security.verifiedRecord()).states.at(-1)!;
-      for (const m of head.core.members) {
-        const hint = res.devices.find((d) => d.id === m.id);
-        const plain = hint ? await this.unpackDevice(hint) : undefined;
-        if (plain) plainDevices.push(plain);
-        next.set(m.id, {
-          id: m.id,
-          kind: m.kind,
-          pairingIncomplete: !hint,
-          createdMs: hint?.createdMs ?? 0n,
-          lastSeenMs: hint?.lastSeenMs ?? 0n,
-          meta: plain?.meta,
-          metaRev: plain?.metaRev ?? 0n,
-        });
-      }
+      const plainDevices = await this.unpackMemberDevices(res.devices);
+      const next = new Map<string, DeviceInfo>(
+        plainDevices.map((pd) => [
+          pd.deviceId,
+          {
+            id: pd.deviceId,
+            kind: pd.kind,
+            pairingIncomplete: pd.createdMs === 0n && !pd.meta,
+            createdMs: pd.createdMs,
+            lastSeenMs: pd.lastSeenMs,
+            meta: pd.meta,
+            metaRev: pd.metaRev,
+          },
+        ]),
+      );
       this.cachedDeviceMap = next;
       this.devicesStatus = "ready";
       if (this.hostBridge) {
@@ -4374,10 +4512,34 @@ export class Remote implements CoreExecutor {
     this.hostBridge?.retryList();
   }
 
+  private async checkLocalRemoval() {
+    this.reconcilingSecurity++;
+    try {
+      if ((await this.security.verifiedRecord()).member === false) {
+        this.removalVerified = true;
+        this.discardToken();
+        this.stop();
+      }
+    } catch {
+      /* Keep unverified notice and completion material. */
+    } finally {
+      this.reconcilingSecurity--;
+    }
+  }
+
   async resumeSecurityOperation() {
-    await this.authority.resumeSecurityOperation();
-    await this.loadDevices(false);
-    this.hostBridge?.retryList();
+    const stopped = this.closed;
+    if (stopped) this.authority.lifecycle.resume();
+    this.reconcilingSecurity++;
+    try {
+      await this.authority.resumeSecurityOperation();
+      await this.checkLocalRemoval();
+      if (!this.closed) await this.loadDevices(false);
+      this.hostBridge?.retryList();
+    } finally {
+      this.reconcilingSecurity--;
+      if (stopped || this.closed) this.authority.lifecycle.pause();
+    }
   }
 
   async removeDevice(id: string) {

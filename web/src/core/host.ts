@@ -54,6 +54,7 @@ import {
   type TokenResultEvent,
 } from "../gen/remoteagent/core/v1/app_pb";
 import { ConnState, type HomeViewModel } from "../gen/remoteagent/core/v1/home_view_pb";
+import { CommandResultSchema } from "../gen/remoteagent/v1/remote_pb";
 import type { NewSessionViewModel } from "../gen/remoteagent/core/v1/new_session_view_pb";
 import type { ProjectViewModel } from "../gen/remoteagent/core/v1/project_view_pb";
 import type { SessionDataView, SyncStateView } from "../gen/remoteagent/core/v1/sync_view_pb";
@@ -263,6 +264,7 @@ export class CoreHost {
     prompt: string;
     taken: TrayItem[];
   };
+  private lastProjectPrefEvent?: Event;
 
   constructor(remote?: Remote, opts: CoreHostOptions = {}) {
     this.core = getCore().newAppCore();
@@ -478,6 +480,10 @@ export class CoreHost {
   }
 
   retryPrefs() {
+    if (this.lastProjectPrefEvent && this.viewProject("", true).manage?.saveError) {
+      this.dispatch(this.lastProjectPrefEvent);
+      return;
+    }
     this.dispatch(create(EventSchema, { event: { case: "homeRetryLoad", value: {} } }));
   }
 
@@ -658,6 +664,13 @@ export class CoreHost {
 
     if (ev.event.case === "newSessionSubmit") {
       ev = this.enrichNewSessionSubmit(ev);
+    }
+    if (
+      ev.event.case === "projectTogglePin" ||
+      ev.event.case === "projectToggleHide" ||
+      ev.event.case === "projectAdd"
+    ) {
+      this.lastProjectPrefEvent = ev;
     }
 
     this.pendingEvents.push({ ev, onProcessed });
@@ -936,18 +949,37 @@ export class CoreHost {
           },
           (err) => {
             if (!this.closed) {
+              const cmdErr = err as { code?: string; fromDaemon?: boolean; outcome?: string; message?: string };
+              const daemonOutcome = cmdErr?.fromDaemon
+                ? create(CommandOutcomeEventSchema, {
+                    requestId: cmdEff.requestId,
+                    attemptId: cmdEff.attemptId,
+                    source: OutcomeSource.DAEMON,
+                    signed: true,
+                    hashesMatch: true,
+                    attemptBound: true,
+                    outerMatchesInner: true,
+                    outerOutcome: cmdErr.outcome || "executed",
+                    outerReason: cmdErr.code || "",
+                    result: create(CommandResultSchema, {
+                      outcome: cmdErr.outcome || "executed",
+                      errorCode: cmdErr.code || "",
+                      errorMessage: cmdErr.message || "",
+                    }),
+                  })
+                : create(CommandOutcomeEventSchema, {
+                    requestId: cmdEff.requestId,
+                    attemptId: cmdEff.attemptId,
+                    source: OutcomeSource.LOCAL,
+                    notForwarded: cmdErr?.outcome !== "unknown",
+                    transportCode: cmdErr?.code || "failed_precondition",
+                    transportDetail: errorMessage(err),
+                  });
               this.dispatch(
                 create(EventSchema, {
                   event: {
                     case: "commandOutcome",
-                    value: create(CommandOutcomeEventSchema, {
-                      requestId: cmdEff.requestId,
-                      attemptId: cmdEff.attemptId,
-                      source: OutcomeSource.LOCAL,
-                      notForwarded: true,
-                      transportCode: "failed_precondition",
-                      transportDetail: errorMessage(err),
-                    }),
+                    value: daemonOutcome,
                   },
                 }),
               );
@@ -967,12 +999,13 @@ export class CoreHost {
 
       case "navigate": {
         const nav = val.value;
+        const replaceSession = nav.route === NavigateRoute.SESSION && !!this.pendingStart;
         if (nav.route === NavigateRoute.SESSION && nav.sessionId && this.remote) {
           this.remote.created.add(nav.sessionId);
           if (this.pendingStart?.prompt) this.remote.prompts.set(nav.sessionId, this.pendingStart.prompt);
           this.pendingStart = undefined;
         }
-        this.navigateTo(nav.route, nav.projectKey, nav.sessionId, nav.machineId);
+        this.navigateTo(nav.route, nav.projectKey, nav.sessionId, nav.machineId, replaceSession);
         break;
       }
 
@@ -1055,11 +1088,11 @@ export class CoreHost {
     }
   }
 
-  private navigateTo(route: NavigateRoute, projectKey: string, sessionId: string, machineId: string) {
+  private navigateTo(route: NavigateRoute, projectKey: string, sessionId: string, machineId: string, replace = false) {
     if (!this.go) return;
     switch (route) {
       case NavigateRoute.SESSION:
-        if (sessionId) this.go(routeForSession(sessionId));
+        if (sessionId) this.go(routeForSession(sessionId), replace || undefined);
         break;
       case NavigateRoute.PROJECT:
         this.go(routeForProject(projectKey));
@@ -1089,7 +1122,7 @@ export class CoreHost {
     const targets = [...this.dirtyTargets];
     this.dirtyTargets.clear();
 
-    if (targets.includes(ScreenTarget.SYNC_STATE)) {
+    if (targets.includes(ScreenTarget.SYNC_STATE) || targets.includes(ScreenTarget.HOME) || targets.includes(ScreenTarget.PROJECT)) {
       this.executor?.applySyncStateView(this.viewSyncState());
     }
     if (targets.includes(ScreenTarget.SESSION_DATA) && this.watchedSessionId) {
@@ -1100,6 +1133,25 @@ export class CoreHost {
       const listeners = this.listeners.get(target);
       if (listeners) for (const fn of [...listeners]) fn();
     }
+  }
+
+  fireActiveTimer(kind: TimerKind, key = ""): boolean {
+    const tk = timerKey(kind, key);
+    const cur = this.timers.get(tk);
+    if (!cur) return false;
+    clearTimeout(cur.handle);
+    this.timers.delete(tk);
+    if (!this.closed) {
+      this.dispatch(
+        create(EventSchema, {
+          event: {
+            case: "timerFired",
+            value: create(TimerFiredEventSchema, { timerId: cur.id, kind, key }),
+          },
+        }),
+      );
+    }
+    return true;
   }
 
   private clearTimers() {
