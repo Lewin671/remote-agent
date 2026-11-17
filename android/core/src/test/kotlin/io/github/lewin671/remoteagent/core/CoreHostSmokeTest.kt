@@ -438,8 +438,9 @@ class CoreHostSmokeTest {
     fun initRunsOnSerialWorkerMailboxInsteadOfConstructorThread() = kotlinx.coroutines.runBlocking<Unit> {
         val callerThread = Thread.currentThread()
         val workerName = "corehost-init-serial-test"
+        var workerThread: Thread? = null
         val executor = java.util.concurrent.Executors.newSingleThreadExecutor { r ->
-            Thread(r, workerName)
+            Thread(r, workerName).also { workerThread = it }
         }
         val dispatcher = executor.asCoroutineDispatcher()
         val clockThreads = java.util.concurrent.CopyOnWriteArrayList<Thread>()
@@ -466,7 +467,9 @@ class CoreHostSmokeTest {
                     .build(),
             )
             assertTrue("clockThreads empty after dispatchAndWait", clockThreads.isNotEmpty())
-            assertEquals("clockThreads should only run on $workerName (caller=${callerThread.name})", listOf(workerName), clockThreads.map { it.name }.distinct())
+            // Compare threads, not names: with coroutine debug mode on (as under -ea), a
+            // thread's name carries " @coroutine#N" while it runs a coroutine.
+            assertTrue("clockThreads should only run on $workerName", clockThreads.all { it === workerThread })
             assertTrue("headline should be populated after init", created.homeView.value.hasHeadline())
         } finally {
             h?.close()
