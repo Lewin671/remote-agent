@@ -10,6 +10,9 @@ func (e *Engine) EnsureSessionEventsLoaded(ctx *StepContext, sid string) {
 		return
 	}
 	if e.sessions[sid] == nil {
+		if e.sessionByIDFailed[sid] || !e.running || e.conn != lists.ConnConnected {
+			return
+		}
 		for _, pending := range e.sessionByIDOps {
 			if pending == sid {
 				return
@@ -35,7 +38,7 @@ func (e *Engine) SessionEventsSettled(sid string) bool {
 	}
 	offline := !e.running || e.conn != lists.ConnConnected
 	if e.sessions[sid] == nil {
-		return offline
+		return offline || e.sessionByIDFailed[sid]
 	}
 	b := e.buffers[sid]
 	if b == nil {

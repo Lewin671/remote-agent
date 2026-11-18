@@ -380,6 +380,7 @@ type Engine struct {
 	lastDevicesPushSeq uint64
 	devicesSnapshotR   map[string]uint64
 	sessionByIDOps     map[uint64]string
+	sessionByIDFailed  map[string]bool
 	machinePushes      map[string]uint64
 	sessionPushes      map[string]uint64
 	removedPushes      map[string]uint64
@@ -427,6 +428,7 @@ func NewEngine() *Engine {
 		devices:             make(map[string]*DeviceEntry),
 		listed:              make(map[string]bool),
 		sessionByIDOps:      make(map[uint64]string),
+		sessionByIDFailed:   make(map[string]bool),
 		machinePushes:       make(map[string]uint64),
 		sessionPushes:       make(map[string]uint64),
 		removedPushes:       make(map[string]uint64),

@@ -289,9 +289,25 @@ func TestScheduleDiscoveryCacheRevisionAndUnsupportedCleanup(t *testing.T) {
 			},
 		},
 	})
-	if got := findScheduleDispatches(revBatch, "list"); len(got) != 1 {
-		t.Fatalf("expected re-list on ScheduleRevision bump 5->6, got %d", len(got))
+	revList := findScheduleDispatches(revBatch, "list")
+	if len(revList) != 1 {
+		t.Fatalf("expected re-list on ScheduleRevision bump 5->6, got %d", len(revList))
 	}
+	// Failing a list for a non-zero ScheduleRevision must not immediately re-dispatch list in a loop.
+	failBatch := settleScheduleCommand(t, c, revList[0], 1791633600075, nil, "unavailable", "unavailable")
+	if got := findScheduleDispatches(failBatch, "list"); len(got) != 0 {
+		t.Fatalf("expected no retry list loop after failed list, got %d", len(got))
+	}
+	// Explicit ScheduleRefresh still retries the list.
+	retryBatch := c.Dispatch(&corev1.Event{
+		NowMs: 1791633600078,
+		Event: &corev1.Event_ScheduleRefresh{ScheduleRefresh: &corev1.ScheduleStringAction{Value: "m-1"}},
+	})
+	retryList := findScheduleDispatches(retryBatch, "list")
+	if len(retryList) != 1 {
+		t.Fatalf("expected explicit refresh to re-list, got %d", len(retryList))
+	}
+	settleScheduleCommand(t, c, retryList[0], 1791633600079, liveJSON, "", "")
 
 	// Machine loses scheduled_tasks capability -> emits ScheduleDeleteCacheEffect & forgets tasks.
 	unBatch := c.Dispatch(&corev1.Event{

@@ -548,6 +548,7 @@ func (c *Core) processSchedulesSyncStep(res sync.StepResult, effects *[]*corev1.
 				}
 			} else {
 				snap.HasFetchedOnce = true
+				snap.FetchedRevision = meta.revision
 				snap.Error = sc.ErrorCode
 				snap.ErrorText = sc.ErrorText
 				if snap.Error == "" && text.IsEmpty(snap.ErrorText) {

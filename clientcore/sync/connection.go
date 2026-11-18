@@ -83,6 +83,7 @@ func (e *Engine) handleLifecycle(ctx *StepContext, act *corev1.SyncLifecycleActi
 		e.prefsLoadOpID = 0
 		clear(e.directReady)
 		clear(e.sessionByIDOps)
+		clear(e.sessionByIDFailed)
 		e.updateLivePollers(ctx)
 		e.cancelAllTimers(ctx)
 		ctx.Dirty.MarkAll()
@@ -118,6 +119,7 @@ func (e *Engine) handleLifecycle(ctx *StepContext, act *corev1.SyncLifecycleActi
 		if !e.running || e.removed {
 			return
 		}
+		clear(e.sessionByIDFailed)
 		e.cancelTimer(ctx, corev1.TimerKind_TIMER_KIND_RECONNECT, "")
 		e.cancelTimer(ctx, corev1.TimerKind_TIMER_KIND_STREAM_OPEN, "")
 		e.cancelTimer(ctx, corev1.TimerKind_TIMER_KIND_LIVENESS, "")

@@ -162,6 +162,7 @@ func (e *Engine) fetchSessionByID(ctx *StepContext, sessionID string) {
 	if sessionID == "" || !e.running {
 		return
 	}
+	delete(e.sessionByIDFailed, sessionID)
 	opID := e.allocOpID()
 	e.sessionByIDOps[opID] = sessionID
 	ctx.emit(&corev1.Effect{
@@ -371,13 +372,19 @@ func (e *Engine) handleSessionByIDFetched(ctx *StepContext, ev *corev1.SessionBy
 	if ev == nil {
 		return
 	}
-	if _, ok := e.sessionByIDOps[ev.OpId]; !ok {
+	sid, ok := e.sessionByIDOps[ev.OpId]
+	if !ok {
 		return
 	}
 	delete(e.sessionByIDOps, ev.OpId)
 	if ev.Error != "" || ev.Session == nil || ev.Session.SessionId == "" {
+		if sid != "" {
+			e.sessionByIDFailed[sid] = true
+		}
+		ctx.Dirty.Add(false, true, false)
 		return
 	}
+	delete(e.sessionByIDFailed, sid)
 	e.putSession(ctx, ev.Session, false)
 	e.updateLivePollers(ctx)
 	ctx.Dirty.MarkAll()
@@ -568,6 +575,7 @@ func (e *Engine) putSession(ctx *StepContext, ps *corev1.PlainSession, writeCach
 	if ps == nil || ps.SessionId == "" {
 		return
 	}
+	delete(e.sessionByIDFailed, ps.SessionId)
 	prev := e.sessions[ps.SessionId]
 	entry := plainToSessionEntry(ps, prev)
 	e.refreshSessionPending(entry)
