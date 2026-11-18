@@ -80,16 +80,9 @@ extension Remote {
         }
     }
 
-    /// Transitional Step 3-4 helper used by `PreparedCommand` until Session/Schedules migrate to Core.
-    func authorizePrepared(_ p: PreparedCommand, verifyObservation: Bool = true) async throws -> PBEnvelope {
-        if verifyObservation && isObservedAction(p.command) {
-            let fresh = try await fetchLiveSnapshot(p.sessionId)
-            let verified = try observedCommand(p.command, snapshot: fresh)
-            guard verified == p.command else {
-                throw CommandError("failed_precondition", L10nMessage.securityIosTheCurrentRequestChangedReviewItAgain())
-            }
-        }
-        return try await authorizeCommandBytes(
+    /// Transitional Step 4 helper used by `PreparedCommand` until Schedules migrate to Core.
+    func authorizePrepared(_ p: PreparedCommand) async throws -> PBEnvelope {
+        try await authorizeCommandBytes(
             machineId: p.machineId, sessionId: p.sessionId,
             requestId: p.requestId, deadlineMs: p.deadlineMs,
             commandBytes: try p.commandBytes())

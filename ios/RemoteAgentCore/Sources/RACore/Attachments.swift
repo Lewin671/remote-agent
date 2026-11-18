@@ -545,7 +545,7 @@ public final class ImageDraft {
     /// is put back and `notice` says why. Returns whether they went in.
     /// `wereOriginal` nil keeps what the draft has.
     @discardableResult
-    public func attach(_ back: [PendingImage], max: Int, maxFiles: Int = 6, wereOriginal: Bool? = nil) -> Bool {
+    public func canFit(_ back: [PendingImage], max: Int, maxFiles: Int = 6) -> Bool {
         if back.isEmpty { return true }
         guard !restoring, restoreError == nil else { noticeMessage = .restoreUnavailable; return false }
         let backPhotos = back.filter { !$0.isFile }.count
@@ -557,6 +557,13 @@ public final class ImageDraft {
             noticeMessage = .restoreFiles(maxFiles)
             return false
         }
+        return true
+    }
+
+    @discardableResult
+    public func attach(_ back: [PendingImage], max: Int, maxFiles: Int = 6, wereOriginal: Bool? = nil) -> Bool {
+        if back.isEmpty { return true }
+        guard canFit(back, max: max, maxFiles: maxFiles) else { return false }
         if photos.isEmpty { original = wereOriginal ?? original }
         for img in back {
             if !img.isFile, let wereOriginal, wereOriginal != original { img.needsProcessing = true }
@@ -808,25 +815,4 @@ public struct OutgoingRecords: Sendable {
             try writeIndex(all.filter { $0 != "\(sid)\t\(requestId)" })
         }
     }
-}
-
-/// The latest state of each message by request ID, from a session's events.
-public func inputStates(_ events: some Sequence<PBEvent>) -> [String: PBInputState] {
-    var out = [String: PBInputState]()
-    for e in events { if case .inputState(let st) = e.kind { out[st.requestID] = st } }
-    return out
-}
-
-/// Whether a message in this state is let go of: submitted, or canceled by the user. One the session
-/// ended on (canceled, reason "exited") is kept: the chat offers to put it back into the message box,
-/// text and images.
-public func letsGo(_ state: PBInputState?) -> Bool {
-    guard let state else { return false }
-    return state.status == .submitted || (state.status == .canceled && state.reason != "exited")
-}
-
-/// The messages to let go of (`letsGo`).
-@MainActor
-public func recorded(_ list: [Outgoing], inputs: [String: PBInputState]) -> [Outgoing] {
-    list.filter { letsGo(inputs[$0.requestId]) }
 }

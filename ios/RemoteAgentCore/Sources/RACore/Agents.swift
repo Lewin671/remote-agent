@@ -396,7 +396,3 @@ extension PBDaemonSettings {
         withDefaults(self, agent: agent, mode: mode)
     }
 }
-
-public func sendModeFor(agent: PBAgent, requested: PBSendMode = .steer, running: Bool) -> PBSendMode {
-    running && !agentInfo(agent).steersDuringTurn ? .queue : requested
-}

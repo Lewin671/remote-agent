@@ -530,20 +530,6 @@ public struct SessionImage: Equatable, Sendable {
     }
 }
 
-/// Every image of a session in the order they appeared, for the viewer to page through.
-public func sessionImages(_ events: some Sequence<PBEvent>) -> [SessionImage] {
-    var out = [SessionImage]()
-    for e in events {
-        switch e.kind {
-        case .userMessage(let m): for r in m.images { out.append(SessionImage(ref: r, seq: e.seq, kind: .userMessage)) }
-        case .toolCall(let t): for r in t.images { out.append(SessionImage(ref: r, seq: e.seq, kind: .toolCall, toolTitle: t.title)) }
-        case .imageGenerated(let g): for r in g.images { out.append(SessionImage(ref: r, seq: e.seq, kind: .imageGenerated)) }
-        default: break
-        }
-    }
-    return out
-}
-
 private let placeholder = Rx("\\[Image #(\(Jre.digit)+)\\]")
 private let leadingPlaceholder = Rx("\\A\(Jre.space)*\\[Image #(\(Jre.digit)+)\\]")
 

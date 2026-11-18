@@ -3,7 +3,7 @@
 // prefs CAS, command retries/outcome classification) lives in Go `clientcore/sync`.
 // `Remote` only provides token login, WebSocket stream frames, RPC execution,
 // DirectEngine bypass, CipherCache I/O, and cryptographic opening/sealing, plus
-// transitional `Feed` mirrors pushed from Core's `SyncStateView` / `SessionDataView`.
+// transitional Step 4 `Feed` mirror pushed from Core's `SyncStateView`.
 import Connect
 import Foundation
 import RAProto
@@ -251,17 +251,13 @@ public final actor Remote {
     private var securityNetworkReset: (UInt64, Task<Void, Never>)?
     var models: [String: ModelList] = [:]
 
-    // Transitional Step 3-4 dumb state feeds (populated strictly by CoreHost from SyncStateView / SessionDataView)
+    // Transitional Step 4 dumb state feed (populated strictly by CoreHost from SyncStateView)
     public nonisolated let state: Feed<RemoteState>
-    private let eventFeeds = OSAllocatedUnfairLock(initialState: [String: Feed<SessionEvents>]())
-    private var watchedSessions = Set<String>()
     var sessionRemovalHandler: @Sendable (String) async -> Void = { _ in }
 
-    // Hooks installed by CoreHost so unmigrated Step 3-4 actions still route into Core
+    // Hooks installed by CoreHost so unmigrated Step 4 actions still route into Core
     private var hostHooks: CoreHooks?
     public struct CoreHooks: Sendable {
-        public var onWatchSession: @Sendable (String, Bool) async -> Void
-        public var onRetryEvents: @Sendable (String) async -> Void
         public var onFetchSession: @Sendable (String) async -> Void
         public var onRefresh: @Sendable () async -> Void
         public var onRefreshDevices: @Sendable () async -> Void
@@ -269,8 +265,6 @@ public final actor Remote {
         public var onDirectStatus: @Sendable (String, Bool) async -> Void
         public var onLoadMoreSessions: @Sendable () async -> Void
         public init(
-            onWatchSession: @escaping @Sendable (String, Bool) async -> Void,
-            onRetryEvents: @escaping @Sendable (String) async -> Void,
             onFetchSession: @escaping @Sendable (String) async -> Void,
             onRefresh: @escaping @Sendable () async -> Void,
             onRefreshDevices: @escaping @Sendable () async -> Void,
@@ -278,8 +272,6 @@ public final actor Remote {
             onDirectStatus: @escaping @Sendable (String, Bool) async -> Void,
             onLoadMoreSessions: @escaping @Sendable () async -> Void = {}
         ) {
-            self.onWatchSession = onWatchSession
-            self.onRetryEvents = onRetryEvents
             self.onFetchSession = onFetchSession
             self.onRefresh = onRefresh
             self.onRefreshDevices = onRefreshDevices
@@ -375,10 +367,6 @@ public final actor Remote {
             sessionMachines[sid] = s.machineId
         }
         if updated != state.value { state.set(updated) }
-    }
-
-    public func publishSessionData(_ sid: String, events: SessionEvents) {
-        eventFeed(sid).set(events)
     }
 
     public func setNetworkGeneration(_ gen: UInt64) {
@@ -862,14 +850,6 @@ public final actor Remote {
         return state.value.sessionsNext == nil
     }
 
-    public nonisolated func retryEvents(_ id: String) {
-        Task { await self.forwardRetryEvents(id) }
-    }
-
-    private func forwardRetryEvents(_ id: String) async {
-        await hostHooks?.onRetryEvents(id)
-    }
-
     public func changePrefs(_ op: PrefsOp) async throws {
         guard let hooks = hostHooks else {
             throw CommandError("unavailable", L10nMessage.connectionNoResponse())
@@ -877,38 +857,11 @@ public final actor Remote {
         try await hooks.onSavePrefs(op)
     }
 
-    public nonisolated func eventFeed(_ sid: String) -> Feed<SessionEvents> {
-        let feeds = eventFeeds
-        return feeds.withLock { map in
-            if let f = map[sid] { return f }
-            let f = Feed(SessionEvents()) { [weak self] in
-                Task { await self?.syncWatchCount(sid) }
-            }
-            map[sid] = f
-            return f
-        }
-    }
-
-    public nonisolated func events(_ sid: String) -> Feed<SessionEvents> {
-        eventFeed(sid)
-    }
-
-    private func syncWatchCount(_ sid: String) async {
-        let count = eventFeeds.withLock { $0[sid]?.followers ?? 0 }
-        let watched = count > 0
-        let changed = watched ? watchedSessions.insert(sid).inserted : (watchedSessions.remove(sid) != nil)
-        if changed {
-            await hostHooks?.onWatchSession(sid, watched)
-        }
-    }
-
     // MARK: - Demo / Layout Fixtures
 
     public func showForTest(
         state shown: RemoteState,
-        events: [String: [PBEvent]] = [:],
-        modelLists: [(machineId: String, agent: PBAgent, models: PBListModelsResponse)] = [],
-        live: Bool = false
+        modelLists: [(machineId: String, agent: PBAgent, models: PBListModelsResponse)] = []
     ) {
         state.set(shown)
         for (sid, s) in shown.sessions {
@@ -920,35 +873,6 @@ public final actor Remote {
             models["\(m.machineId)/\(m.agent.rawValue)"] = ModelList(
                 task: Task<PBListModelsResponse, Error> { response }, done: true)
         }
-        for (sid, list) in events {
-            var shownEvents = SessionEvents(events: PagedList(list), loaded: true)
-            if live {
-                shownEvents.live = Self.liveForTest(list, planOpen: shown.sessions[sid]?.info?.planOpen == true)
-            }
-            eventFeed(sid).set(shownEvents)
-        }
-    }
-
-    static func liveForTest(_ list: [PBEvent], planOpen: Bool) -> PBLiveSnapshot {
-        let d = derive(list)
-        var snapshot = PBLiveSnapshot()
-        snapshot.running = d.running
-        snapshot.actions = list.filter { event in
-            switch event.kind {
-            case .approvalRequested(let a)?: return d.pendingApproval(a.approvalID) != nil
-            case .questionAsked(let q)?: return d.pendingQuestion(q.questionID) != nil
-            case .inputState(let st)?:
-                let status = d.inputStatus(st.requestID)
-                return status == .queued || status == .heldByCli
-            default: return false
-            }
-        }
-        if planOpen, d.hasPlan {
-            snapshot.planEventSeq = list.last { if case .planProposed? = $0.kind { true } else { false } }?.seq ?? 1
-            snapshot.planScreenHash = Data(count: 32)
-            snapshot.planScreen = d.plan.text
-        }
-        return snapshot
     }
 
     func report(_ e: Error) {

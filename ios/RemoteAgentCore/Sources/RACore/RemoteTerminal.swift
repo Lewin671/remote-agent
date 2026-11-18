@@ -173,7 +173,7 @@ extension Remote {
             var cmd = PBCommand()
             cmd.openTerminal.sessionID = sid
             cmd.openTerminal.streamID = streamId
-            try await command(sid, cmd)
+            try await forward(try prepare(machineId: machineId, sessionId: sid, cmd))
         } catch {
             stream.end()
             throw error

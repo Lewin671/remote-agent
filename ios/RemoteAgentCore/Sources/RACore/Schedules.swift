@@ -401,7 +401,10 @@ public func scheduleHistoryGroups(_ runs: [ScheduleRun], zone: TimeZone = .curre
     return out
 }
 public func sessionSchedules(_ tasks: [MachineSchedule], session: SessionView) -> [MachineSchedule] {
-    tasks.filter { $0.machineID == session.machineId && $0.task.spec.target.type == "resume_session" && $0.task.spec.target.session == session.id && $0.task.group != .ended }
+    sessionSchedules(tasks, sessionID: session.id, machineID: session.machineId)
+}
+public func sessionSchedules(_ tasks: [MachineSchedule], sessionID: String, machineID: String) -> [MachineSchedule] {
+    tasks.filter { $0.machineID == machineID && $0.task.spec.target.type == "resume_session" && $0.task.spec.target.session == sessionID && $0.task.group != .ended }
 }
 public func scheduleBarText(_ tasks: [MachineSchedule], online: Bool, now: Date = Date(), zone: TimeZone = .current) -> String {
     guard let first = tasks.sorted(by: { ($0.task.nextRunAt ?? "~") < ($1.task.nextRunAt ?? "~") }).first else { return "" }

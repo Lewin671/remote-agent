@@ -197,7 +197,7 @@ extension Remote {
         return (env, binding.key, binding.payload)
     }
 
-    // MARK: - Transitional Step 3-4 Command & Helper APIs (delete after Step 3-4 migration)
+    // MARK: - Transitional Step 4 Command & Helper APIs (delete after Step 4 migration)
 
     public nonisolated func prepare(machineId: String, sessionId: String, _ cmd: PBCommand) throws -> PreparedCommand {
         try requireFileCapability(machineId: machineId, hasFiles: requiresFileCapability(cmd))
@@ -205,23 +205,9 @@ extension Remote {
         let deadline = clock() + commandTTLMs
         var versioned = cmd
         versioned.protocolVersion = protocolVersion
-        versioned = try observedCommand(versioned, snapshot: eventFeed(sessionId).value.live)
         return PreparedCommand(
             machineId: machineId, sessionId: sessionId, requestId: requestId, deadlineMs: deadline,
             command: versioned)
-    }
-
-    public func prepare(_ sid: String, _ command: PBCommand) throws -> PreparedCommand {
-        try requireFileCapability(machineId: state.value.sessions[sid]?.machineId ?? "", hasFiles: requiresFileCapability(command))
-        guard let session = state.value.sessions[sid] else {
-            throw CommandError("not_found", L10nMessage.errorsIosUnknownSession())
-        }
-        return try prepare(machineId: session.machineId, sessionId: sid, command)
-    }
-
-    @discardableResult
-    public func command(_ sid: String, _ cmd: PBCommand) async throws -> PBCommandResult {
-        try await forward(try prepare(sid, cmd))
     }
 
     @discardableResult
@@ -300,11 +286,12 @@ extension Remote {
                 try requireFileCapability(machineId: p.machineId, hasFiles: requiresFileCapability(p.command))
                 try await delivery.prepare(prior: p.mayHaveRun)
                 let stateHash = try await authorizationStateHash()
-                let envelope = try await p.authorizationResult(stateHash: stateHash) { verifyObservation in
+                let auth = p.authorizationResult(stateHash: stateHash) { _ in
                     Task {
-                        try await self.authorizePrepared(p, verifyObservation: verifyObservation && !prior)
+                        try await self.authorizePrepared(p)
                     }
-                }.value
+                }
+                let envelope = try await auth.value
                 try Task.checkCancellation()
                 let binding = try await securitySession().commandIdentity(envelope)
                 let res = try await delivery.send(machineId: p.machineIDOr(p.machineId), command: envelope)
@@ -386,27 +373,6 @@ extension Remote {
         }
     }
 
-    func fetchLiveSnapshot(_ sid: String) async throws -> PBLiveSnapshot {
-        var cmd = PBCommand()
-        cmd.getLiveSnapshot.sessionID = sid
-        guard let session = state.value.sessions[sid] else {
-            throw CommandError("not_found", L10nMessage.errorsIosUnknownSession())
-        }
-        let prep = try prepare(machineId: session.machineId, sessionId: sid, cmd)
-        let envelope = try await authorizePrepared(prep, verifyObservation: false)
-        let delivery = deviceLink.delivery()
-        try await delivery.prepare(prior: false)
-        let res = try await delivery.send(machineId: session.machineId, command: envelope)
-        let (_, msg) = try await openSecureMessage(
-            envelope: res.result,
-            want: Place(.commandResult, machineId: session.machineId, sessionId: sid, requestId: prep.requestId),
-            as: PBCommandResult.self)
-        guard case .liveSnapshot(let snapshot)? = msg.kind, snapshot.session.id == sid else {
-            throw DeviceSecurity.Failure.untrusted
-        }
-        return snapshot
-    }
-
     func relogin(_ mayHaveRun: Bool) async throws -> String {
         do {
             return try await signIn()
@@ -452,11 +418,14 @@ extension Remote {
     // --- shared files ---
 
     public func sharedFileChunk(sessionId: String, fileId: String, offset: Int64) async throws -> PBGetSharedFileChunkResponse {
+        guard let machineId = machineIdForSessionIfKnown(sessionId) else {
+            throw CommandError("not_found", L10nMessage.errorsIosUnknownSession())
+        }
         var cmd = PBCommand()
         cmd.getSharedFileChunk.sessionID = sessionId
         cmd.getSharedFileChunk.fileID = fileId
         cmd.getSharedFileChunk.offset = offset
-        let r = try await command(sessionId, cmd)
+        let r = try await forward(try prepare(machineId: machineId, sessionId: sessionId, cmd))
         guard case .getSharedFileChunk(let chunk)? = r.kind else {
             throw CommandError(CommandError.internalFailure, L10nMessage.newSessionUnexpectedReply())
         }
@@ -597,42 +566,4 @@ public func getSettingsCommand() -> PBCommand {
     var cmd = PBCommand()
     cmd.getSettings = PBGetSettingsRequest()
     return cmd
-}
-
-// Transitional Step 3-4 observed-action preflight helpers (Core owns this for DispatchCommandEffect).
-func isObservedAction(_ command: PBCommand) -> Bool {
-    switch command.kind {
-    case .resolveApproval?, .answerQuestion?, .answerPlan?: return true
-    default: return false
-    }
-}
-
-func observedCommand(_ command: PBCommand, snapshot: PBLiveSnapshot?) throws -> PBCommand {
-    guard isObservedAction(command) else { return command }
-    guard let snapshot else {
-        throw CommandError("failed_precondition", L10nMessage.errorsIosTheCurrentRequestHasNotBeenVerifiedByThe())
-    }
-    var result = command
-    switch command.kind {
-    case .resolveApproval(let request)?:
-        guard let event = snapshot.actions.first(where: {
-            if case .approvalRequested(let a)? = $0.kind { return a.approvalID == request.approvalID }
-            return false
-        }), event.seq > 0 else { throw DeviceSecurity.Failure.stale }
-        result.resolveApproval.observedEventSeq = event.seq
-    case .answerQuestion(let request)?:
-        guard let event = snapshot.actions.first(where: {
-            if case .questionAsked(let q)? = $0.kind { return q.questionID == request.questionID }
-            return false
-        }), event.seq > 0 else { throw DeviceSecurity.Failure.stale }
-        result.answerQuestion.observedEventSeq = event.seq
-    case .answerPlan?:
-        guard snapshot.planEventSeq > 0, snapshot.planScreenHash.count == 32 else {
-            throw DeviceSecurity.Failure.stale
-        }
-        result.answerPlan.observedEventSeq = snapshot.planEventSeq
-        result.answerPlan.observedScreenHash = snapshot.planScreenHash
-    default: break
-    }
-    return result
 }

@@ -84,19 +84,13 @@ public func statusOf(_ s: SessionView, machine: MachineView?) -> Status {
     return .idle
 }
 
-/// Adapter diagnostics and native titles are not user-facing copy.
-public func popupTitle(_ detail: String) -> String {
-    detail.isEmpty ? "" : L10n.listStatePopup()
-}
-
-/// A hint for a popup in the terminal. Claude Code's trust dialog has its
-/// cursor on "No, exit", so Enter alone ends the session
-/// (claude-code-notes.md §1); Codex's needs none. Same text as the web.
-public func popupHint(agent: PBAgent, detail: String) -> String {
-    detail == "trust folder" ? (agentInfo(agent).trustFolderHint ?? "") : ""
-}
-
 public func needsAttention(_ s: SessionView, machine: MachineView?) -> Bool { statusOf(s, machine: machine).tone == .wait }
+
+/// 2:12, 1:02:03: a running timer.
+public func clock(_ ms: Int64) -> String {
+    let s = ms / 1000
+    return s >= 3600 ? "\(s / 3600):\(pad2(Int(s % 3600 / 60))):\(pad2(Int(s % 60)))" : "\(s / 60):\(pad2(Int(s % 60)))"
+}
 
 /// The session's title; without one, "<folder> · <start time>".
 public func titleOf(_ s: SessionView, zone: TimeZone = .current) -> String {
@@ -109,10 +103,6 @@ public func titleOf(_ s: SessionView, zone: TimeZone = .current) -> String {
 
 /// The most a session's title holds, counted in code points as the daemon counts them.
 public let titleMax = 60
-
-/// What the rename field starts with: the session's title, or nothing while
-/// it only has the "<folder> · <start time>" placeholder. Same as the web.
-public func renameInitial(_ s: SessionView) -> String { titleInput((s.info?.title ?? "").jvmTrim()) }
 
 /// What the rename field takes of `text`: one line, and nothing past `titleMax`.
 public func titleInput(_ text: String) -> String {
@@ -129,46 +119,6 @@ public func titleInput(_ text: String) -> String {
         }
     }
     return line.count <= titleMax ? String(line) : String(String.UnicodeScalarView(line.prefix(titleMax)))
-}
-
-/// The title to send for what was typed, trimmed as the daemon trims it;
-/// nil when it is the title the field started with and there is nothing to
-/// save. Empty asks for the automatic title back.
-public func renameTitle(typed: String, initial: String) -> String? {
-    let t = typed.jvmTrim()
-    return t.jvmEquals(initial) ? nil : t
-}
-
-/// The session was forked from another one (Session.forked_from).
-public func forked(_ s: SessionView) -> Bool { !(s.info?.forkedFrom ?? "").isEmpty }
-
-/// Whether a message was ever sent in the session: its title comes from the
-/// first one, and the history loaded so far may show one.
-public func sentMessage(_ s: SessionView, events: some Sequence<PBEvent>) -> Bool {
-    !(s.info?.title ?? "").isEmpty || events.contains { if case .userMessage = $0.kind { return true } else { return false } }
-}
-
-/// Why the session cannot be forked now, as the ⋯ menu writes it under
-/// 分叉会话; nil when it can. A fork takes an idle or ended session in which
-/// a message was sent. `running`: a turn is going on by the events, which
-/// can be ahead of the session's status. The menu only offers a fork while
-/// the computer is reachable and the session is read, so offline and loading
-/// do not come here; they read as not up yet.
-public func forkBlocked(status: Status, running: Bool, sent: Bool) -> String? {
-    switch status {
-    case .running, .approval, .question: return L10n.sessionForkAfterTurn()
-    case .plan, .popup: return L10n.sessionForkAfterPending()
-    case .starting, .loading, .offline: return L10n.sessionForkAfterStart()
-    case .unlinked: return L10n.sessionIosForkConnect()
-    case .idle: return running ? L10n.sessionForkAfterTurn() : !sent ? L10n.sessionForkAfterMessage() : nil
-    case .exited: return !sent ? L10n.sessionForkAfterMessage() : nil
-    }
-}
-
-/// The session a fork made, or nil when the answer names none.
-public func forkedSession(_ r: PBCommandResult?) -> String? {
-    guard let r, case .forkSession(let f) = r.kind, f.hasSession, !f.session.id.isEmpty else { return nil }
-    return f.session.id
 }
 
 private let plainPlaceholder = Rx("\\[Image #\(Jre.digit)+\\]\(Jre.space)*")
@@ -486,37 +436,6 @@ public func sortClients(_ clients: some Sequence<DeviceView>, me: String) -> [De
 /// The last four hex digits of a device ID, as shown next to a name.
 public func shortId(_ id: String) -> String { id.jvmTakeLast(4) }
 
-/// Who an event says caused it (Event.origin), for display, or nil when
-/// the event does not say or this client did it: what was done here is
-/// not labelled. Only a signed client is named, and only by the account's
-/// device list; one the list no longer has was removed, and anything
-/// unsure is L10n.sessionOriginOther(), never a guess. Typing on the computer is
-/// "<machine> 终端", as is a message the client tells was typed there
-/// (`typedHere`).
-public func originLabel(_ o: PBOrigin?, state: RemoteState, me: String, machine: String) -> String? {
-    guard let o else { return nil }
-    switch o.kind {
-    case .client:
-        if o.deviceID == me { return nil }
-        // Before the device list is read nothing is known of who it was.
-        if o.deviceID.isEmpty || state.devices.isEmpty { return L10n.sessionOriginOther() }
-        if let d = state.devices[o.deviceID] { return clientName(d, id: o.deviceID, among: state.devices) }
-        return L10n.sessionOriginRemoved()
-    case .local: return terminalLabel(machine)
-    default: return nil
-    }
-}
-
-/// Who typed a message in the computer's terminal: 「MacBook 终端」.
-public func terminalLabel(_ machine: String) -> String {
-    machine.isEmpty ? L10n.sessionTerminal() : L10n.sessionOriginTerminal(name: machine)
-}
-
-extension PBEvent {
-    /// Who caused the event, when it says.
-    public var originOrNil: PBOrigin? { hasOrigin ? origin : nil }
-}
-
 /// What the machine says it offers; nil until its metadata is read.
 public func capabilities(_ m: MachineView?) -> PBMachineCapabilities? {
     m?.pathState.capabilities
@@ -543,14 +462,3 @@ public func contextText(tokens: Int64) -> String? {
 
 /// The standard context window, which a Claude Code session can be held to.
 public let standardWindow: Int64 = 200_000
-
-/// Capability restrictions reported for this session take precedence over model restrictions.
-public func sessionModeUnavailableReason(_ mode: Mode, session: SessionView, models: [PBModelInfo]?) -> String? {
-    if session.info?.modeLocked == true { return L10n.modesLocked() }
-    if mode == .full && session.info?.fullAccessUnavailable == true { return L10n.modesFullUnavailable() }
-    if mode == .auto {
-        if allAutoUnavailable(models) { return L10n.modesAccountUnsupported() }
-        if autoUnavailable(models, model: session.info?.model ?? "") { return L10n.modesModelUnsupported() }
-    }
-    return nil
-}
