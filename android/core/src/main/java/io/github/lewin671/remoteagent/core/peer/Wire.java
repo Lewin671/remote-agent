@@ -1,21 +1,17 @@
 package io.github.lewin671.remoteagent.core.peer;
 
+import io.github.lewin671.remoteagent.corebind.Corebind;
 import java.io.*;
 import java.nio.*;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
 import java.security.*;
-import java.security.spec.*;
 import java.util.*;
 import javax.crypto.*;
 import javax.crypto.spec.*;
-import org.bouncycastle.jce.provider.BouncyCastleProvider;
-import org.bouncycastle.crypto.params.Ed25519PrivateKeyParameters;
-import org.bouncycastle.crypto.params.X25519PrivateKeyParameters;
 
 // Authenticated protocol 16 codec. Scope is immutable and belongs to one verified head.
 public final class Wire {
-  static final Provider BC=new BouncyCastleProvider();
   final byte[] ACCOUNT, ACCOUNT_DOMAIN, HEAD; final long epoch;
   public Wire(byte[] account, byte[] domain, byte[] head, long epoch) { this.ACCOUNT=account.clone();this.ACCOUNT_DOMAIN=domain.clone();this.HEAD=head.clone();this.epoch=epoch; }
   public static byte[] utf8(String s){return s.getBytes(StandardCharsets.UTF_8);}
@@ -41,18 +37,16 @@ public final class Wire {
   static byte[] kdf(byte[] secret,byte[] info)throws Exception{Mac m=Mac.getInstance("HmacSHA256");m.init(new SecretKeySpec(hash(utf8("remote-agent/peer-hkdf/v1")),"HmacSHA256"));byte[] prk=m.doFinal(secret);m.init(new SecretKeySpec(prk,"HmacSHA256"));return m.doFinal(cat(info,new byte[]{1}));}
   static byte[] gcm(byte[] key,byte[] nonce,byte[] aad,byte[] body,boolean seal)throws Exception{check(nonce.length==12);Cipher c=Cipher.getInstance("AES/GCM/NoPadding");c.init(seal?Cipher.ENCRYPT_MODE:Cipher.DECRYPT_MODE,new SecretKeySpec(key,"AES"),new GCMParameterSpec(128,nonce));c.updateAAD(aad);return c.doFinal(body);}
   public static final class Identity {
-    public byte[] id,instance,boot;public long role;PrivateKey sign,box;PublicKey signPub,boxPub;
-    public Identity(byte[] id,long role,byte[] instance,byte[] boot,byte[] edPublic,byte[] xPublic,byte[] seed,byte[] xPrivate)throws Exception {
+    public byte[] id,instance,boot;public long role;byte[] edPublic,xPublic,seed,xPrivate;
+    public Identity(byte[] id,long role,byte[] instance,byte[] boot,byte[] edPublic,byte[] xPublic,byte[] seed,byte[] xPrivate) {
+      check(edPublic!=null&&edPublic.length==32&&xPublic!=null&&xPublic.length==32&&(seed==null||seed.length==32)&&(xPrivate==null||xPrivate.length==32));
       this.id=id.clone();this.role=role;this.instance=instance.clone();this.boot=boot.clone();
-      KeyFactory sk=KeyFactory.getInstance("Ed25519",BC),xk=KeyFactory.getInstance("X25519",BC);
-      signPub=sk.generatePublic(new X509EncodedKeySpec(cat(unhex("302a300506032b6570032100"),edPublic)));
-      boxPub=xk.generatePublic(new X509EncodedKeySpec(cat(unhex("302a300506032b656e032100"),xPublic)));
-      if(seed!=null)sign=sk.generatePrivate(new PKCS8EncodedKeySpec(cat(unhex("302e020100300506032b657004220420"),seed)));
-      if(xPrivate!=null)box=xk.generatePrivate(new PKCS8EncodedKeySpec(cat(unhex("302e020100300506032b656e04220420"),xPrivate)));
+      this.edPublic=edPublic.clone();this.xPublic=xPublic.clone();
+      this.seed=seed==null?null:seed.clone();this.xPrivate=xPrivate==null?null:xPrivate.clone();
     }
-    public Identity(Identity source){id=source.id.clone();instance=source.instance.clone();boot=source.boot.clone();role=source.role;signPub=source.signPub;boxPub=source.boxPub;sign=source.sign;box=source.box;}
+    public Identity(Identity source){id=source.id.clone();instance=source.instance.clone();boot=source.boot.clone();role=source.role;edPublic=source.edPublic.clone();xPublic=source.xPublic.clone();seed=source.seed==null?null:source.seed.clone();xPrivate=source.xPrivate==null?null:source.xPrivate.clone();}
   }
-  static byte[] shared(Identity from,Identity to)throws Exception{KeyAgreement k=KeyAgreement.getInstance("X25519",BC);k.init(from.box);k.doPhase(to.boxPub,true);return k.generateSecret();}
+  static byte[] shared(Identity from,Identity to)throws Exception{check(from.xPrivate!=null&&to.xPublic!=null);return Corebind.x25519Shared(from.xPrivate,to.xPublic);}
   public static final class Context {
     public byte[] domain,from,to,machine,senderInstance,receiverInstance,senderBoot,receiverBoot,connection;
     public long fromRole,toRole,use,generation,seq,issued,deadline,cls,recipientUnknown;
@@ -70,7 +64,7 @@ public final class Wire {
     SecureRandom random=new SecureRandom();if(id==null){id=new byte[16];random.nextBytes(id);}if(nc==null){nc=new byte[12];random.nextBytes(nc);}if(nb==null){nb=new byte[12];random.nextBytes(nb);}
     byte[] dh=shared(from,to),ad=aad(from.id,to.id,ctx.cls,id),ec=gcm(kdf(dh,wrapInfo(from.id,to.id)),nc,ad,ctx.encode(this),true);
     byte[] eb=gcm(kdf(dh,bodyInfo(ctx)),nb,lp(ad,hash(ec)),pb(b(1,pb(u(1,type),b(2,payload)))),true);
-    Signature signer=Signature.getInstance("Ed25519",BC);signer.initSign(from.sign);signer.update(sigInput(ad,nc,ec,nb,eb));byte[] sig=signer.sign();
+    check(from.seed!=null);byte[] sig=Corebind.ed25519Sign(from.seed,sigInput(ad,nc,ec,nb,eb));
     byte[] packet=pb(b(1,from.id),b(2,to.id),u(3,ctx.cls),b(4,id),b(5,pb(b(1,nc),b(2,ec),b(3,nb),b(4,eb),b(5,sig))));check(packet.length<=(ctx.cls==2?16384:65536));return packet;
   }
   public static final class Opened {public Context ctx;public long type;public byte[] payload,frameId,hash,raw;}
@@ -80,7 +74,7 @@ public final class Wire {
     check(raw.length<=65536);raw=raw.clone();Map<Integer,Field> f=Schema.fields(raw,"PeerFrameDelivery");need(f,"bbubb");long cls=f.get(3).u;byte[] id=f.get(4).b;
     check((cls==1||cls==2)&&raw.length<=(cls==2?16384:65536)&&id.length==16&&Arrays.equals(f.get(1).b,from.id)&&Arrays.equals(f.get(2).b,to.id));
     Map<Integer,Field> p=Schema.fields(f.get(5).b,"SealedPeerPacket");need(p,"bbbbb");byte[] nc=p.get(1).b,ec=p.get(2).b,nb=p.get(3).b,eb=p.get(4).b,sig=p.get(5).b,ad=aad(from.id,to.id,cls,id);
-    check(nc.length==12&&nb.length==12&&sig.length==64);Signature verifier=Signature.getInstance("Ed25519",BC);verifier.initVerify(from.signPub);verifier.update(sigInput(ad,nc,ec,nb,eb));check(verifier.verify(sig));
+    check(nc.length==12&&nb.length==12&&sig.length==64&&Corebind.ed25519Verify(from.edPublic,sigInput(ad,nc,ec,nb,eb),sig));
     Context c=context(gcm(kdf(dh,wrapInfo(from.id,to.id)),nc,ad,ec,false));
     check(Arrays.equals(c.from,from.id)&&Arrays.equals(c.to,to.id)&&c.cls==cls&&c.fromRole==from.role&&c.toRole==to.role&&from.role!=to.role&&c.connection.length==16&&c.seq!=0&&Long.compareUnsigned(c.issued,c.deadline)<0&&Long.compareUnsigned(c.deadline-c.issued,30000)<=0&&Long.compareUnsigned(now,c.deadline)<0&&Long.compareUnsigned(c.issued,now+300000)<=0);
     check(Arrays.equals(c.machine,from.role==2?from.id:to.id));boolean boot=Arrays.equals(c.domain,utf8("bootstrap"));

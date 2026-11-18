@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Verify a release APK keeps BouncyCastle JCA SPI classes after R8 shrinking.
+"""Verify a release APK keeps reflectively loaded WebRTC classes after R8 shrinking.
 
 Usage: scripts/verify_apk.py [APK_PATH]
 
@@ -18,23 +18,9 @@ DEX_FILE = re.compile(r"classes\d*\.dex")
 DEX_ENDIAN_CONSTANT = 0x12345678
 
 # Classes looked up by name at runtime that R8 would strip without keep rules:
-# BouncyCastle's Ed25519/X25519 JCA SPI (Wire.java; missing ones made Direct
-# never authorize) and the classes libjingle_peerconnection's JNI_OnLoad finds
-# (missing ones abort the process when Direct first loads WebRTC).
+# libjingle_peerconnection's JNI_OnLoad finds these (missing ones abort the
+# process when Direct first loads WebRTC).
 REQUIRED_CLASSES = (
-    "Lorg/bouncycastle/jce/provider/BouncyCastleProvider;",
-    "Lorg/bouncycastle/jcajce/provider/asymmetric/EdEC$Mappings;",
-    "Lorg/bouncycastle/jcajce/provider/asymmetric/edec/KeyFactorySpi;",
-    "Lorg/bouncycastle/jcajce/provider/asymmetric/edec/KeyFactorySpi$Ed25519;",
-    "Lorg/bouncycastle/jcajce/provider/asymmetric/edec/KeyFactorySpi$X25519;",
-    "Lorg/bouncycastle/jcajce/provider/asymmetric/edec/KeyAgreementSpi;",
-    "Lorg/bouncycastle/jcajce/provider/asymmetric/edec/KeyAgreementSpi$X25519;",
-    "Lorg/bouncycastle/jcajce/provider/asymmetric/edec/SignatureSpi;",
-    "Lorg/bouncycastle/jcajce/provider/asymmetric/edec/SignatureSpi$Ed25519;",
-    "Lorg/bouncycastle/jcajce/provider/asymmetric/edec/BCEdDSAPrivateKey;",
-    "Lorg/bouncycastle/jcajce/provider/asymmetric/edec/BCEdDSAPublicKey;",
-    "Lorg/bouncycastle/jcajce/provider/asymmetric/edec/BCXDHPrivateKey;",
-    "Lorg/bouncycastle/jcajce/provider/asymmetric/edec/BCXDHPublicKey;",
     "Lorg/jni_zero/JniZero;",
     "Lorg/webrtc/WebRtcClassLoader;",
 )

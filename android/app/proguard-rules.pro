@@ -1,11 +1,7 @@
 # Protobuf lite keeps field names for reflection-based parsing.
 -keep class * extends com.google.protobuf.GeneratedMessageLite { *; }
-# Bouncy Castle: the peer wire (core/peer/Wire.java) asks the BC JCA provider
-# for Ed25519/X25519 by name, and the provider loads its SPI classes by
-# reflection, so R8 must keep them or release builds throw
-# NoSuchAlgorithmException and direct never authorizes.
--keep class org.bouncycastle.jce.provider.BouncyCastleProvider { *; }
--keep class org.bouncycastle.jcajce.provider.** { *; }
+# Bouncy Castle is still used for HKDF and HPKE (DeviceSecurity/E2e) via direct
+# lightweight classes; keep -dontwarn for optional desktop/JCE references in bcprov.
 -dontwarn org.bouncycastle.**
 -dontwarn okhttp3.internal.platform.**
 -dontwarn org.conscrypt.**

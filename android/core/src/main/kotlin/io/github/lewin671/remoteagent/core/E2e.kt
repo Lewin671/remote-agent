@@ -8,16 +8,14 @@ package io.github.lewin671.remoteagent.core
 import com.google.protobuf.ByteString
 import com.google.protobuf.InvalidProtocolBufferException
 import com.google.protobuf.MessageLite
+import io.github.lewin671.remoteagent.corebind.Corebind
 import io.github.lewin671.remoteagent.proto.Compression
 import io.github.lewin671.remoteagent.proto.Envelope
 import io.github.lewin671.remoteagent.proto.Header
 import io.github.lewin671.remoteagent.proto.PayloadKind
 import org.bouncycastle.crypto.digests.SHA256Digest
 import org.bouncycastle.crypto.generators.HKDFBytesGenerator
-import org.bouncycastle.crypto.params.Ed25519PrivateKeyParameters
-import org.bouncycastle.crypto.params.Ed25519PublicKeyParameters
 import org.bouncycastle.crypto.params.HKDFParameters
-import org.bouncycastle.crypto.signers.Ed25519Signer
 import java.security.GeneralSecurityException
 import java.security.MessageDigest
 import java.security.SecureRandom
@@ -61,23 +59,15 @@ fun hkdf(secret: ByteArray, salt: ByteArray?, info: ByteArray, size: Int): ByteA
 
 /** An Ed25519 key pair from a 32-byte seed. */
 class SigningKey(seed: ByteArray) {
-    private val priv = Ed25519PrivateKeyParameters(seed.copyOf(), 0)
-    val publicKey: ByteArray = priv.generatePublicKey().encoded
+    private val seedBytes = seed.copyOf().also { require(it.size == KEY_SIZE) }
+    val publicKey: ByteArray = Corebind.ed25519PublicKey(seedBytes)
 
-    fun sign(message: ByteArray): ByteArray {
-        val s = Ed25519Signer()
-        s.init(true, priv)
-        s.update(message, 0, message.size)
-        return s.generateSignature()
-    }
+    fun sign(message: ByteArray): ByteArray = Corebind.ed25519Sign(seedBytes, message)
 }
 
 fun verifyEd25519(publicKey: ByteArray, message: ByteArray, signature: ByteArray): Boolean {
     if (publicKey.size != 32 || signature.size != 64) return false
-    val v = Ed25519Signer()
-    v.init(false, Ed25519PublicKeyParameters(publicKey, 0))
-    v.update(message, 0, message.size)
-    return v.verifySignature(signature)
+    return Corebind.ed25519Verify(publicKey, message, signature)
 }
 
 /** The keys derived from an account's root key, one per purpose. */

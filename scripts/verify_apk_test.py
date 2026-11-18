@@ -75,11 +75,11 @@ class VerifyApkTests(unittest.TestCase):
     def test_rejects_apk_missing_required_spi(self):
         with tempfile.TemporaryDirectory() as tmp:
             apk = Path(tmp) / "stripped.apk"
-            remaining = [c for c in verify_apk.REQUIRED_CLASSES if "KeyFactorySpi$Ed25519" not in c]
+            remaining = [c for c in verify_apk.REQUIRED_CLASSES if "WebRtcClassLoader" not in c]
             _write_apk(apk, {"classes.dex": _build_minimal_dex(remaining)})
             with self.assertRaises(ValueError) as ctx:
                 verify_apk.verify_apk(apk)
-            self.assertIn("edec/KeyFactorySpi$Ed25519", str(ctx.exception))
+            self.assertIn("org/webrtc/WebRtcClassLoader", str(ctx.exception))
             self.assertEqual(verify_apk.main([str(apk)]), 1)
 
     def test_rejects_apk_without_dex(self):

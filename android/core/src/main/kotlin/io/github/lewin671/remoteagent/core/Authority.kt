@@ -332,14 +332,11 @@ object Authority {
     }
 }
 
-/** X25519 helpers, using the same Bouncy Castle parameters as pairing. */
+/** X25519 helpers via corebind. */
 object X25519 {
     fun publicKey(privateKey: ByteArray): ByteArray {
         require(privateKey.size == 32)
-        return org.bouncycastle.crypto.params
-            .X25519PrivateKeyParameters(privateKey.copyOf(), 0)
-            .generatePublicKey()
-            .encoded
+        return io.github.lewin671.remoteagent.corebind.Corebind.x25519PublicKey(privateKey)
     }
 }
 

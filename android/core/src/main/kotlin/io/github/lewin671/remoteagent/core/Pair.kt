@@ -2,27 +2,22 @@
 // keys, the initiator's commitment, the transcript, and the four-emoji SAS.
 package io.github.lewin671.remoteagent.core
 
+import io.github.lewin671.remoteagent.corebind.Corebind
 import java.nio.ByteBuffer
-import org.bouncycastle.crypto.agreement.X25519Agreement
-import org.bouncycastle.crypto.params.X25519PrivateKeyParameters
-import org.bouncycastle.crypto.params.X25519PublicKeyParameters
 
 private const val PAIR_TRANSCRIPT_CONTEXT = "remote-agent/v1/pair\u0000"
 
 /** One side's ephemeral X25519 key pair. */
 class PairKey(privateKey: ByteArray = randomBytes(32)) {
-    private val priv = X25519PrivateKeyParameters(privateKey.copyOf(), 0)
-    val public: ByteArray = priv.generatePublicKey().encoded
+    private val priv = privateKey.copyOf().also { require(it.size == KEY_SIZE) }
+    val public: ByteArray = Corebind.x25519PublicKey(priv)
 
     /** The shared secrets with the other side; rejects keys that give an all-zero result. */
     fun derive(otherPublic: ByteArray, transcript: ByteArray): PairSecrets {
         if (otherPublic.size != 32) throw MessageArgumentException(UiMessages.securityInvalidPairingKey().messageText())
-        val shared = ByteArray(32)
-        val a = X25519Agreement()
-        a.init(priv)
-        try {
-            a.calculateAgreement(X25519PublicKeyParameters(otherPublic, 0), shared, 0)
-        } catch (e: IllegalStateException) {
+        val shared = try {
+            Corebind.x25519Shared(priv, otherPublic)
+        } catch (_: Exception) {
             throw MessageArgumentException(UiMessages.securityInvalidPairingKey().messageText())
         }
         if (shared.all { it == 0.toByte() }) throw MessageArgumentException(UiMessages.securityInvalidPairingKey().messageText())

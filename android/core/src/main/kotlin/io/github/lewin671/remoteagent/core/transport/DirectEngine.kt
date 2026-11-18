@@ -4,6 +4,8 @@ import com.google.protobuf.ByteString
 import io.github.lewin671.remoteagent.core.Account
 import io.github.lewin671.remoteagent.core.Authority
 import io.github.lewin671.remoteagent.core.DeviceSecurity
+import io.github.lewin671.remoteagent.core.SigningKey
+import io.github.lewin671.remoteagent.core.X25519
 import io.github.lewin671.remoteagent.core.newRequestId
 import io.github.lewin671.remoteagent.core.peer.Schema
 import io.github.lewin671.remoteagent.core.peer.Wire
@@ -25,8 +27,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeout
-import org.bouncycastle.crypto.params.Ed25519PrivateKeyParameters
-import org.bouncycastle.crypto.params.X25519PrivateKeyParameters
 import java.net.URI
 import java.security.SecureRandom
 import java.util.concurrent.ConcurrentHashMap
@@ -366,8 +366,8 @@ internal class DirectEngine(
             val member = h.core.member(r.memberID) ?: throw PathChanged()
             rejectWhy = "keys"
             val xPrivate = r.peerBoxKey()
-            val edPub = Ed25519PrivateKeyParameters(account.deviceSeed, 0).generatePublicKey().encoded
-            val xPub = X25519PrivateKeyParameters(xPrivate, 0).generatePublicKey().encoded
+            val edPub = SigningKey(account.deviceSeed).publicKey
+            val xPub = X25519.publicKey(xPrivate)
             if (!edPub.contentEquals(member.ed) || !xPub.contentEquals(member.x)) throw PathChanged()
             val nextSelf = Wire.Identity(Wire.utf8(member.id), 1L, instance, boot, member.ed, member.x, account.deviceSeed, xPrivate)
             val stateHashBytes = DeviceSecurity.stateHash(h)

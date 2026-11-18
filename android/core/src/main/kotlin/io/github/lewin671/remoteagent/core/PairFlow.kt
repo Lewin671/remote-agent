@@ -29,7 +29,6 @@ import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import okhttp3.OkHttpClient
-import org.bouncycastle.crypto.params.X25519PrivateKeyParameters
 
 class PairException(message: String, val retryable: Boolean = true, val uncertain: Boolean = false) : Exception(message), MessageFailure {
     override var display: MessageText = message.messageText()
@@ -559,7 +558,7 @@ suspend fun joinByPairing(
     val device = SigningKey(deviceSeed)
     val devicePublic = device.publicKey
     val xPrivate = identity?.x ?: randomBytes(32)
-    val xPublic = X25519PrivateKeyParameters(xPrivate, 0).generatePublicKey().encoded
+    val xPublic = X25519.publicKey(xPrivate)
     persistIdentity(PairingIdentity(link.server, peek.pairingId, deviceSeed, xPrivate))
     val joined =
         try {

@@ -1,9 +1,8 @@
 package io.github.lewin671.remoteagent.core.peer;
 
+import io.github.lewin671.remoteagent.corebind.Corebind;
 import java.security.SecureRandom;
 import java.util.*;
-import org.bouncycastle.crypto.params.Ed25519PrivateKeyParameters;
-import org.bouncycastle.crypto.params.X25519PrivateKeyParameters;
 
 /** Mobile protocol endpoint: authenticated refusal, never a WebRTC executor. */
 public final class PeerResponder {
@@ -24,7 +23,7 @@ public final class PeerResponder {
    String binding=account+Wire.hex(domain)+Wire.hex(state);if(!head.equals(binding)){sessions.clear();head=binding;}
    sessions.entrySet().removeIf(e->now>e.getValue().until);
    Wire codec=new Wire(Wire.utf8(account),domain,state,epoch);
-   Wire.Identity self=new Wire.Identity(Wire.utf8(selfID),1,instance,boot,new Ed25519PrivateKeyParameters(seed,0).generatePublicKey().getEncoded(),new X25519PrivateKeyParameters(xPrivate,0).generatePublicKey().getEncoded(),seed,xPrivate);
+   Wire.Identity self=new Wire.Identity(Wire.utf8(selfID),1,instance,boot,Corebind.ed25519PublicKey(seed),Corebind.x25519PublicKey(xPrivate),seed,xPrivate);
    Wire.Identity member=new Wire.Identity(Wire.utf8(peerID),2,new byte[0],new byte[0],ed,x,null,null);
    Wire.Opened o=null;Session session=null;String key=null;
    try{o=codec.open(raw,member,self,now);}catch(Exception ignored){}
