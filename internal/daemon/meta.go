@@ -15,7 +15,7 @@ type meta struct {
 	ExpectedConversation string            `json:"expected_conversation,omitempty"`
 	BackgroundIdleSeq    uint64            `json:"background_idle_seq,omitempty"`
 	BackgroundPossible   *bool             `json:"background_possible,omitempty"`
-	ConversationOffsets  map[string]int64  `json:"conversation_offsets,omitempty"`
+	RolloutOffsets       map[string]int64  `json:"rollout_offsets,omitempty"`
 	TaskCLIClosed        bool              `json:"task_cli_closed,omitempty"`
 	// Cause of the latest exit; TaskCLIClosed also fences resumed CLI lifetimes.
 	ScheduledClosed bool `json:"scheduled_closed,omitempty"`

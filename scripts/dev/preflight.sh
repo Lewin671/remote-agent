@@ -17,6 +17,8 @@ RELAY_MIN_FREE_BYTES = 2 * (1024 ** 3)  # 2 GiB server low watermark
 WARN_FREE_BYTES = 3 * (1024 ** 3)  # 3 GiB safe watermark
 
 POLLUTING_ENV_VARS = [
+    "RA_SESSION",
+    "RA_EXE",
     "REMOTE_AGENT_HOME",
     "REMOTE_AGENT_TMUX_SOCKET",
     "REMOTE_AGENT_SERVER",

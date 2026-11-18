@@ -110,9 +110,16 @@ func TestRPCOverUnixSocket(t *testing.T) {
 // no later hook without its transcript.
 func TestHookWaitsForAStartingSession(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
-		h := newHarness(t, Config{})
+		codexHome := t.TempDir()
+		h := newHarness(t, Config{Agents: map[pb.Agent]AgentConfig{pb.Agent_AGENT_CODEX: {Home: codexHome}}})
 		id := h.s.meta.ID
-		rollout := filepath.Join(h.dir, "rollout.jsonl")
+		rollout := filepath.Join(codexHome, "sessions", "2026", "11", "18", "rollout.jsonl")
+		if err := os.MkdirAll(filepath.Dir(rollout), 0o700); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(rollout, nil, 0o600); err != nil {
+			t.Fatal(err)
+		}
 		payload, _ := json.Marshal(map[string]string{"hook_event_name": "SessionStart", "session_id": "cli-1", "transcript_path": rollout})
 		hook := func() error {
 			_, err := (&handler{d: h.d}).Hook(context.Background(), connect.NewRequest(&pb.HookRequest{SessionId: id, Payload: payload}))

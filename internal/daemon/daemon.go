@@ -167,7 +167,8 @@ type Daemon struct {
 	diskLogMu       sync.Mutex
 	diskLogAt       map[string]time.Time
 
-	cacheMu sync.Mutex
+	cacheMu   sync.Mutex
+	parentPID func(int) (int, bool)
 }
 
 // New returns a daemon rooted at dir; call Run to start it. The caller resolves
@@ -340,6 +341,14 @@ func serveLocal(parent context.Context, ln net.Listener, handler http.Handler) e
 	srv := &http.Server{
 		Handler: handler, ReadHeaderTimeout: 10 * time.Second,
 		BaseContext: func(net.Listener) context.Context { return ctx },
+		ConnContext: func(connCtx context.Context, c net.Conn) context.Context {
+			if uc, ok := c.(*net.UnixConn); ok {
+				if pid, ok := peerPID(uc); ok {
+					return withHookPeerPID(connCtx, pid)
+				}
+			}
+			return connCtx
+		},
 	}
 	drained := make(chan struct{})
 	go func() {

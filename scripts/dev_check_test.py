@@ -17,7 +17,7 @@ class CheckIsolationTest(unittest.TestCase):
             go = root / "go"
             go.write_text(f"#!{sys.executable}\n" + '''import json, os
 from pathlib import Path
-keys = ["REMOTE_AGENT_HOME", "REMOTE_AGENT_TMUX_SOCKET", "RA_DEV_DIR", "CODEX_HOME", "CLAUDE_CONFIG_DIR", "RA_REAL_ROLLOUTS", "RA_TEST_LAUNCHD", "RA_LIVE_E2E", "GEN_VECTORS"]
+keys = ["RA_SESSION", "RA_EXE", "REMOTE_AGENT_HOME", "REMOTE_AGENT_TMUX_SOCKET", "RA_DEV_DIR", "CODEX_HOME", "CLAUDE_CONFIG_DIR", "RA_REAL_ROLLOUTS", "RA_TEST_LAUNCHD", "RA_LIVE_E2E", "GEN_VECTORS"]
 Path(os.environ["RA_CHECK_PROBE"]).write_text(json.dumps({key: os.environ.get(key) for key in keys}))
 raise SystemExit(int(os.environ["RA_CHECK_EXIT"]))
 ''')
@@ -26,6 +26,7 @@ raise SystemExit(int(os.environ["RA_CHECK_EXIT"]))
                 with self.subTest(status=status):
                     probe = root / "probe.json"
                     env = dict(os.environ, PATH=str(root) + os.pathsep + os.environ.get("PATH", ""),
+                               RA_SESSION="personal-session", RA_EXE="/personal/remote-agent",
                                REMOTE_AGENT_HOME=str(root / "personal-state"), REMOTE_AGENT_TMUX_SOCKET="personal-socket",
                                RA_CHECK_PROBE=str(probe), RA_CHECK_EXIT=str(status), RA_REAL_ROLLOUTS="personal-history",
                                RA_TEST_LAUNCHD="1", RA_LIVE_E2E="1", GEN_VECTORS="1")
@@ -38,7 +39,7 @@ raise SystemExit(int(os.environ["RA_CHECK_EXIT"]))
                         self.assertTrue(str(path).startswith(("/tmp/", "/private/tmp/")))
                         self.assertFalse(path.exists(), "state must be removed on both success and failure")
                     self.assertNotEqual(recorded["REMOTE_AGENT_TMUX_SOCKET"], "personal-socket")
-                    for key in ("RA_REAL_ROLLOUTS", "RA_TEST_LAUNCHD", "RA_LIVE_E2E", "GEN_VECTORS"):
+                    for key in ("RA_SESSION", "RA_EXE", "RA_REAL_ROLLOUTS", "RA_TEST_LAUNCHD", "RA_LIVE_E2E", "GEN_VECTORS"):
                         self.assertIsNone(recorded[key])
 
 

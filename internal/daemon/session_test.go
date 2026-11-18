@@ -35,6 +35,7 @@ type fakeTerm struct {
 	screen    string
 	alive     bool
 	hostAlive bool
+	panePID   int
 	writes    []string
 	held      bool
 	history   string
@@ -63,6 +64,14 @@ func (f *fakeTerm) CaptureContext(ctx context.Context) (string, error) {
 	return f.Capture()
 }
 func (f *fakeTerm) Alive() bool { f.mu.Lock(); defer f.mu.Unlock(); return f.alive }
+func (f *fakeTerm) PanePID() (int, bool) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.panePID <= 0 {
+		return 0, false
+	}
+	return f.panePID, true
+}
 func (f *fakeTerm) Kill() error { f.mu.Lock(); defer f.mu.Unlock(); f.alive = false; return nil }
 func (f *fakeTerm) HostAlive(context.Context) (bool, error) {
 	f.mu.Lock()

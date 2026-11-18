@@ -18,13 +18,19 @@ class DevToolsTest(unittest.TestCase):
         with tempfile.TemporaryDirectory(dir="/tmp", prefix="rad-test-") as temp_dir:
             env = os.environ.copy()
             # Clean polluting vars for test
-            for k in ["REMOTE_AGENT_HOME", "REMOTE_AGENT_TMUX_SOCKET", "REMOTE_AGENT_SERVER", "RA_DEV_AUTHORITY"]:
+            for k in ["RA_SESSION", "RA_EXE", "REMOTE_AGENT_HOME", "REMOTE_AGENT_TMUX_SOCKET", "REMOTE_AGENT_SERVER", "RA_DEV_AUTHORITY"]:
                 env.pop(k, None)
             env["RA_DEV_DIR"] = temp_dir
             proc = subprocess.run([str(script), "--dir", temp_dir], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, env=env)
             self.assertEqual(proc.returncode, 0, f"preflight failed: {proc.stdout}\n{proc.stderr}")
             self.assertIn("RA_DEV_DIR:", proc.stdout)
             self.assertIn("Loopback port bind:", proc.stdout)
+
+            env_dirty = dict(env, RA_SESSION="3b131e5c", RA_EXE="/usr/local/bin/remote-agent")
+            proc_dirty = subprocess.run([str(script), "--dir", temp_dir], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, env=env_dirty)
+            self.assertNotEqual(proc_dirty.returncode, 0)
+            self.assertIn("RA_SESSION", proc_dirty.stdout)
+            self.assertIn("RA_EXE", proc_dirty.stdout)
 
         # Verify that an overly long path fails
         long_dir = "/tmp/a_very_long_path_that_exceeds_seventy_characters_for_socket_bounds_test_directory"
@@ -99,6 +105,44 @@ class DevToolsTest(unittest.TestCase):
             self.assertTrue(contact_sheet.exists())
             self.assertTrue((out_dir / "points" / "01_0.800s" / "point.json").exists())
             self.assertTrue((out_dir / "points" / "02_2.100s" / "point.json").exists())
+
+    def test_dev_env_clears_inherited_session_vars(self):
+        with tempfile.TemporaryDirectory(dir="/tmp", prefix="rad-iso-") as temp_dir:
+            root = Path(temp_dir)
+            (root / "bin").mkdir()
+            (root / "home").mkdir()
+            (root / "url").write_text("http://127.0.0.1:1\n")
+            (root / "tmux-socket").write_text("rad-iso-test\n")
+            probe = root / "env.json"
+            fake_cli = root / "bin" / "remote-agent"
+            fake_cli.write_text("#!/usr/bin/env python3\n" + f'''import json, os
+from pathlib import Path
+Path({str(probe)!r}).write_text(json.dumps({{k: os.environ.get(k) for k in ("RA_SESSION", "RA_EXE", "REMOTE_AGENT_HOME")}}))
+''')
+            fake_cli.chmod(0o700)
+            # Keep a live PID file for need_started.
+            sleeper = subprocess.Popen(["sleep", "30"])
+            try:
+                (root / "server.pid").write_text(str(sleeper.pid))
+                env = dict(os.environ,
+                           RA_DEV_DIR=temp_dir,
+                           RA_SESSION="leaked-session",
+                           RA_EXE="/leaked/remote-agent",
+                           REMOTE_AGENT_HOME="/leaked/home")
+                for cmd in (
+                    [str(ROOT / "ios/scripts/dev-env.sh"), "cli", "ls"],
+                    [str(ROOT / "scripts/dev/e2e-up.sh"), "cli", "ls"],
+                ):
+                    probe.unlink(missing_ok=True)
+                    proc = subprocess.run(cmd, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=10)
+                    self.assertEqual(proc.returncode, 0, f"{cmd} failed: {proc.stdout}\n{proc.stderr}")
+                    got = json.loads(probe.read_text())
+                    self.assertIsNone(got["RA_SESSION"])
+                    self.assertIsNone(got["RA_EXE"])
+                    self.assertEqual(got["REMOTE_AGENT_HOME"], str(root / "home"))
+            finally:
+                sleeper.terminate()
+                sleeper.wait()
 
 
 if __name__ == "__main__":

@@ -3,6 +3,8 @@
 # (kills web server, stops daemon, stops relay, kills tmux server, removes dir).
 set -eu
 
+unset RA_SESSION RA_EXE REMOTE_AGENT_HOME || true
+
 repo=$(cd "$(dirname "$0")/../.." && pwd)
 dev_env="$repo/ios/scripts/dev-env.sh"
 pointer="${TMPDIR:-/tmp}/.ra-dev-last-dir"

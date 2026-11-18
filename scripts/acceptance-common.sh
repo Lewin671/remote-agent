@@ -1,5 +1,7 @@
 # Shared by the real-CLI acceptance scripts. Sourcing this file starts nothing.
 
+unset RA_SESSION RA_EXE REMOTE_AGENT_HOME || true
+
 # wait_for <seconds> <command...>: retry until the command succeeds.
 wait_for() {
 	n=$1; shift

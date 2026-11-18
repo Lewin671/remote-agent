@@ -82,7 +82,7 @@ quick 的整个命令预算为 60 秒，full 为 30 分钟；预算耗尽返回 
 
 ## 任务开发工具
 
-位于 `scripts/dev/`，供日常开发与 peer 任务快速拉起环境、排查故障及生成测试素材：
+位于 `scripts/dev/`，供日常开发与 peer 任务快速拉起环境、排查故障及生成测试素材。各隔离环境入口（`scripts/dev/e2e-up.sh`、`ios/scripts/dev-env.sh`、`scripts/dev/check.py` 等）启动时会清掉从宿主会话继承的 `RA_SESSION`、`RA_EXE` 与 `REMOTE_AGENT_HOME`（脚本自设的 `REMOTE_AGENT_HOME` 优先），避免测试或工具命令误连日常 daemon：
 
 - `scripts/dev/preflight.sh`：开工前检查常见环境坑：`RA_DEV_DIR` 路径长度（规避 macOS AF_UNIX 104 字符超长）、残留会话变量（提示需 unset 的列表）、磁盘可用空间与中继 2 GiB 低水位、端口可用性与核心工具（tmux/go/pnpm/adb/xcrun）、Android 设备在线与屏幕唤醒状态（`--wake` 唤醒）、iOS 模拟器可用性。
 - `scripts/dev/e2e-up.sh` / `scripts/dev/e2e-down.sh`：基于 `dev-env.sh` 一键启动与停止隔离的本地端到端环境。自动分配短路径与端口，拉起隔离 relay、初始化测试账户与 daemon、启动 Vite 网页代理服务，并打印网页地址与 CLI 示例；`e2e-down.sh` 一键停止服务、清理 tmux socket 与临时目录。

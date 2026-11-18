@@ -94,9 +94,10 @@ def main():
             path.mkdir()
             env[key] = str(path)
         env["REMOTE_AGENT_TMUX_SOCKET"] = directory.name
-        # Never inherit opt-in tests of personal sessions or installed services.
-        for key in ("RA_REAL_ROLLOUTS", "RA_TEST_LAUNCHD", "RA_LIVE_E2E", "RA_RUN_SCHEDULE_PUSH_E2E",
-                    "GEN_VECTORS", "UPDATE_REPLACEMENT_VECTORS", "RA_TEST_NO_GO"):
+        # Never inherit an active session/daemon or opt-in tests of personal sessions/services.
+        for key in ("RA_SESSION", "RA_EXE", "RA_REAL_ROLLOUTS", "RA_TEST_LAUNCHD", "RA_LIVE_E2E",
+                    "RA_RUN_SCHEDULE_PUSH_E2E", "GEN_VECTORS", "UPDATE_REPLACEMENT_VECTORS",
+                    "RA_TEST_NO_GO"):
             env.pop(key, None)
         print("Isolated state: " + env["REMOTE_AGENT_HOME"], flush=True)
         import time

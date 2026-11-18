@@ -36,6 +36,10 @@
 # machine's loopback, and debug builds allow plain HTTP to local addresses.
 set -eu
 
+# Clear inherited session variables so callers inside a managed CLI session
+# never route commands or daemons to the user's daily daemon.
+unset RA_SESSION RA_EXE REMOTE_AGENT_HOME || true
+
 repo=$(cd "$(dirname "$0")/../.." && pwd)
 tmp=${TMPDIR:-/tmp}
 dir=${RA_DEV_DIR:-${tmp%/}/ra-ios-dev}

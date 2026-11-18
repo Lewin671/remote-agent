@@ -270,6 +270,12 @@ func (a *Adapter) SetCommandEnv(overlay map[string]string) {
 		a.commandEnv = append(a.commandEnv, k+"="+v)
 	}
 }
+func (a *Adapter) ValidTranscriptPath(path string, _ bool) bool {
+	return agent.ValidTranscriptFile(a.home, "brain", path, false, func(rel string) bool {
+		return strings.HasSuffix(filepath.ToSlash(rel), "/.system_generated/logs/transcript.jsonl")
+	})
+}
+
 func (a *Adapter) execEnv() []string {
 	a.mu.Lock()
 	defer a.mu.Unlock()

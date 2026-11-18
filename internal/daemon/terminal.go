@@ -7,6 +7,7 @@ import (
 	"net"
 	"strconv"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
@@ -41,9 +42,32 @@ type control interface {
 }
 
 type tmuxTerminal struct {
-	tmux   *tmux.Client
-	name   string
-	socket string
+	tmux    *tmux.Client
+	name    string
+	socket  string
+	mu      sync.Mutex
+	panePID int
+}
+
+func (t *tmuxTerminal) PanePID() (int, bool) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	if t.panePID > 0 {
+		return t.panePID, true
+	}
+	if t.tmux == nil {
+		return 0, false
+	}
+	out, err := t.tmux.Display(t.name, "#{pane_pid}")
+	if err != nil {
+		return 0, false
+	}
+	pid, err := strconv.Atoi(strings.TrimSpace(out))
+	if err != nil || pid <= 0 {
+		return 0, false
+	}
+	t.panePID = pid
+	return pid, true
 }
 
 func (t *tmuxTerminal) Capture() (string, error) { return t.tmux.Capture(t.name, true) }

@@ -228,6 +228,9 @@ type Launch struct {
 // Source reads what the CLI records.
 type Source interface {
 	DecodeHook(raw []byte) (*Hook, error)
+	// ValidTranscriptPath reports whether path is an authentic transcript file
+	// location for this CLI.
+	ValidTranscriptPath(path string, allowMissing bool) bool
 	// NewParser returns a parser for the session's transcript.
 	NewParser() Parser
 	// SubmitLog is the file where the CLI records submitted input, given

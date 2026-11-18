@@ -9,6 +9,7 @@ import (
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/internal/agent"
+	"github.com/Lewin671/remote-agent/internal/antigravity"
 )
 
 func TestAgyRepeatedPendingCallsDoNotCreateCards(t *testing.T) {
@@ -68,9 +69,16 @@ func TestAgyResumeMismatchPausesQueuedInput(t *testing.T) {
 }
 func TestAgyReconnectFollowsLocalConversationChange(t *testing.T) {
 	h := agyHarness(t)
-	dir := t.TempDir()
-	path := filepath.Join(dir, "transcript.jsonl")
-	if err := os.WriteFile(path, nil, 0600); err != nil {
+	agyHome := t.TempDir()
+	a := antigravity.New("/bin/true", agyHome)
+	h.d.agents[a.Kind()] = a
+	h.s.ag = a
+	h.s.parser = a.NewParser()
+	path := filepath.Join(agyHome, "brain", "new-conversation", ".system_generated", "logs", "transcript.jsonl")
+	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, nil, 0o600); err != nil {
 		t.Fatal(err)
 	}
 	h.s.identityPending, h.s.identityResume = true, false

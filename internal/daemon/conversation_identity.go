@@ -2,9 +2,11 @@ package daemon
 
 import (
 	"context"
+	"log/slog"
+	"time"
+
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/internal/agent"
-	"time"
 )
 
 // observeConversation distinguishes proving a newly launched/resumed process
@@ -15,6 +17,20 @@ func (s *session) observeConversation(ctx context.Context, id, path string, obse
 	}
 	if !s.ag.Capabilities().ConversationIdentity {
 		return true
+	}
+	s.mu.Lock()
+	if observed.Before(s.identityObservedAt) {
+		s.mu.Unlock()
+		return false
+	}
+	expectedPath, expectedID := s.meta.RolloutPath, s.meta.CodexSessionID
+	s.mu.Unlock()
+	if id != "" && path != "" && path != expectedPath && !s.ag.ValidTranscriptPath(path, false) {
+		slog.Warn("ignoring conversation change with untrusted transcript path", "session", s.meta.ID, "path", path)
+		if id != expectedID {
+			return false
+		}
+		path = ""
 	}
 	s.mu.Lock()
 	if observed.Before(s.identityObservedAt) {

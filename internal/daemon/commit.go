@@ -105,11 +105,13 @@ func (s *session) commitTranscript(group []transcriptBatch) error {
 // readMu; Replay and Restore run at the start of the next read.
 func (s *session) retryTranscript(path string) {
 	checkpointPath, off := s.log.Checkpoint()
-	if checkpointPath != path {
-		off = 0
-	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if checkpointPath != path {
+		off = s.meta.RolloutOffsets[path]
+	} else if saved := s.meta.RolloutOffsets[path]; saved > off {
+		off = saved
+	}
 	off = s.rolloutOffset(path, off)
 	s.reader = tail.NewReader(path, off)
 	s.parserReplayPending = true

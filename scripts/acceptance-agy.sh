@@ -4,6 +4,7 @@
 # RA_AGY_MODEL defaults to gemini-3.8-flash; effort is always low.
 # Commands travel through an encrypted synthetic client, not the product UI.
 set -eu
+unset RA_SESSION RA_EXE REMOTE_AGENT_HOME || true
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
 RA_DEV_DIR=$(mktemp -d "/tmp/ra-agy-acc.XXXXXX")
 export RA_DEV_DIR

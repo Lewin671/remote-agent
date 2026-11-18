@@ -788,6 +788,12 @@ func (a *Adapter) Capabilities() agent.Capabilities {
 
 func (a *Adapter) DecodeHook(raw []byte) (*agent.Hook, error) { return agent.DecodeStandardHook(raw) }
 
+func (a *Adapter) ValidTranscriptPath(path string, allowMissing bool) bool {
+	return agent.ValidTranscriptFile(a.home, "projects", path, allowMissing, func(rel string) bool {
+		return filepath.Ext(rel) == ".jsonl"
+	})
+}
+
 func (a *Adapter) ImageInput(styled, footer string) (string, []int32, bool) {
 	text, ok := a.ComposerText(styled, footer)
 	// The native composer can wrap anywhere inside an image label. Read

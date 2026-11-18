@@ -343,7 +343,9 @@ func newSession(d *Daemon, dir string, m meta, term terminal, log *eventlog.Log)
 		}
 		path, off := log.Checkpoint()
 		if path != m.RolloutPath {
-			off = 0
+			off = m.RolloutOffsets[m.RolloutPath]
+		} else if saved := m.RolloutOffsets[m.RolloutPath]; saved > off {
+			off = saved
 		}
 		off = s.rolloutOffset(m.RolloutPath, off)
 		if off > 0 {
@@ -1738,24 +1740,36 @@ func (s *session) bindRollout(cliSessionID, path string) {
 	}
 	s.readMu.Lock() // the parser and reader are replaced
 	s.mu.Lock()
-	if s.meta.RolloutPath == path {
+	prevPath := s.meta.RolloutPath
+	if prevPath == path {
 		s.mu.Unlock()
 		s.readMu.Unlock()
 		return
 	}
 	s.mu.Unlock()
-	var offset int64
-	s.mu.Lock()
-	if s.ag.Capabilities().ConversationIdentity {
-		if s.meta.ConversationOffsets == nil {
-			s.meta.ConversationOffsets = map[string]int64{}
-		}
-		oldPath, oldOff := s.log.Checkpoint()
-		if oldPath == s.meta.RolloutPath && s.meta.CodexSessionID != "" {
-			s.meta.ConversationOffsets[s.meta.CodexSessionID] = oldOff
-		}
-		offset = s.meta.ConversationOffsets[cliSessionID]
+	if prevPath != "" {
+		// Drain any unread lines from the current rollout before recording its
+		// offset and switching away, so switching back does not re-read them.
+		_ = s.readRolloutLocked()
 	}
+	var readerOff int64
+	s.mu.Lock()
+	if s.reader != nil && s.reader.Path == prevPath {
+		readerOff = s.reader.Offset()
+	}
+	oldPath, oldOff := s.log.Checkpoint()
+	var prevOff int64
+	savePrev := false
+	if prevPath != "" {
+		if oldPath == prevPath {
+			prevOff = s.rolloutOffset(prevPath, oldOff)
+			savePrev = true
+		} else if readerOff > s.meta.RolloutOffsets[prevPath] {
+			prevOff = s.rolloutOffset(prevPath, readerOff)
+			savePrev = true
+		}
+	}
+	offset := s.rolloutOffset(path, s.meta.RolloutOffsets[path])
 	s.mu.Unlock()
 	p := s.ag.NewParser()
 	if located, ok := p.(interface{ SetTranscriptPath(string) }); ok {
@@ -1773,13 +1787,19 @@ func (s *session) bindRollout(cliSessionID, path string) {
 		s.readMu.Unlock()
 		return
 	}
-	if s.ag.Capabilities().ConversationIdentity {
+	if offset > 0 || s.ag.Capabilities().ConversationIdentity {
 		if err := p.Restore(path, offset); err != nil {
 			s.readMu.Unlock()
 			return
 		}
 	}
 	s.mu.Lock()
+	if savePrev {
+		if s.meta.RolloutOffsets == nil {
+			s.meta.RolloutOffsets = map[string]int64{}
+		}
+		s.meta.RolloutOffsets[prevPath] = prevOff
+	}
 	s.meta.RolloutPath = path
 	if cliSessionID != "" {
 		s.meta.CodexSessionID = cliSessionID
@@ -1797,9 +1817,66 @@ func (s *session) bindRollout(cliSessionID, path string) {
 	s.readRollout()
 }
 
+func (s *session) trustedHookProcess(ctx context.Context, event string) bool {
+	peerPID := hookPeerPID(ctx)
+	if peerPID <= 0 {
+		return true
+	}
+	tp, ok := s.term.(interface{ PanePID() (int, bool) })
+	if !ok {
+		return true
+	}
+	panePID, ok := tp.PanePID()
+	if !ok || panePID <= 0 {
+		return true
+	}
+	if !isDescendantPID(peerPID, panePID, s.d.pidParent) {
+		slog.Warn("ignoring hook from outside session tmux pane", "session", s.meta.ID, "event", event)
+		return false
+	}
+	return true
+}
+
+func (s *session) trustedHookSource(ctx context.Context, p *agent.Hook) bool {
+	s.mu.Lock()
+	curID, curPath := s.meta.CodexSessionID, s.meta.RolloutPath
+	s.mu.Unlock()
+	changesID := p.SessionID != "" && p.SessionID != curID
+	changesPath := p.TranscriptPath != "" && p.TranscriptPath != curPath
+	if !changesPath && !(p.HookEventName == "SessionStart" && changesID) {
+		return s.trustedHookProcess(ctx, p.HookEventName)
+	}
+	if !s.trustedHookProcess(ctx, p.HookEventName) {
+		return false
+	}
+	// SessionStart always requires a trusted transcript path before setting or
+	// changing the rollout path; other hooks cannot overwrite an existing path
+	// with an untrusted one.
+	if changesPath && (p.HookEventName == "SessionStart" || curPath != "") {
+		// Claude Code fires SessionStart after directory trust and before the
+		// first message creates the .jsonl file on disk.
+		allowMissing := p.HookEventName == "SessionStart" && p.Source != "resume" && p.Source != "compact"
+		if !s.ag.ValidTranscriptPath(p.TranscriptPath, allowMissing) {
+			slog.Warn("ignoring hook with untrusted transcript path", "session", s.meta.ID, "event", p.HookEventName, "path", p.TranscriptPath)
+			return false
+		}
+	}
+	return true
+}
+
 // hook handles one hook call and returns what the hook prints.
 func (s *session) hook(ctx context.Context, p *agent.Hook) ([]byte, error) {
-	if p.HookEventName != "StatusLine" && s.ag.Capabilities().ConversationIdentity {
+	if p.HookEventName == "StatusLine" {
+		if !s.trustedHookProcess(ctx, p.HookEventName) {
+			return nil, nil
+		}
+		s.d.statusLineContext(ctx, s.meta.ID, p.Status, time.Now())
+		return nil, nil
+	}
+	if !s.trustedHookSource(ctx, p) {
+		return nil, nil
+	}
+	if s.ag.Capabilities().ConversationIdentity {
 		if p.HookEventName == "SessionStart" {
 			if !s.observeConversation(ctx, p.SessionID, p.TranscriptPath, time.Now()) {
 				return nil, nil
@@ -1838,9 +1915,6 @@ func (s *session) hook(ctx context.Context, p *agent.Hook) ([]byte, error) {
 	case "PermissionRequest":
 		s.bindRollout(p.SessionID, p.TranscriptPath)
 		return s.permission(ctx, p)
-	case "StatusLine":
-		s.d.statusLineContext(ctx, s.meta.ID, p.Status, time.Now())
-		return nil, nil
 	case "PreToolUse":
 		s.bindRollout(p.SessionID, p.TranscriptPath)
 		s.rememberNative(p)

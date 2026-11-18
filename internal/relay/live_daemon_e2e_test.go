@@ -674,7 +674,7 @@ if '--version' in sys.argv:
     print('codex-cli 0.159.0')
     sys.exit(0)
 sys.stderr = open(os.path.join(os.environ['REMOTE_AGENT_HOME'], 'fake-cli.log'), 'a')
-cli_dir = pathlib.Path(os.environ['CODEX_HOME'])
+cli_dir = pathlib.Path(os.environ['CODEX_HOME']) / 'sessions' / '2026' / '11' / '18'
 cli_dir.mkdir(parents=True, exist_ok=True)
 identity = str(uuid.uuid4())
 rollout = cli_dir / ('rollout-' + identity + '.jsonl')

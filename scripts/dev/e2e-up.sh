@@ -3,6 +3,9 @@
 # (relay server, initialized dev account, running daemon, and optional Vite web server).
 set -eu
 
+# Never leak an enclosing session's daemon/session env into the isolated dev env.
+unset RA_SESSION RA_EXE REMOTE_AGENT_HOME || true
+
 repo=$(cd "$(dirname "$0")/../.." && pwd)
 dev_env="$repo/ios/scripts/dev-env.sh"
 pointer="${TMPDIR:-/tmp}/.ra-dev-last-dir"

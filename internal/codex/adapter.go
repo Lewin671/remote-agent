@@ -464,6 +464,12 @@ func (a *Adapter) Capabilities() agent.Capabilities {
 
 func (a *Adapter) DecodeHook(raw []byte) (*agent.Hook, error) { return agent.DecodeStandardHook(raw) }
 
+func (a *Adapter) ValidTranscriptPath(path string, _ bool) bool {
+	return agent.ValidTranscriptFile(a.home, "sessions", path, false, func(rel string) bool {
+		return filepath.Ext(rel) == ".jsonl"
+	})
+}
+
 func (a *Adapter) ImageInput(styled, footer string) (string, []int32, bool) {
 	text, ok := a.ComposerText(styled, footer)
 	return text, agent.ImagePlaceholders(text), ok
