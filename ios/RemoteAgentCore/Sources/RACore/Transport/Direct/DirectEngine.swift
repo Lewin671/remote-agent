@@ -459,7 +459,7 @@ final class DirectEngine: @unchecked Sendable {
                 p.live = false
                 retire = p.session
                 retryAfter[id] = p.redialAt ?? (clock.now() + delay(id, p))
-                trace?("direct: no usable path left, next round in \(retryAfter[id]! &- clock.now()) ms (reason \(String(describing: failures[id])))")
+                trace?("direct: no usable path left, next round in \(Int64(bitPattern: retryAfter[id]! &- clock.now())) ms (reason \(String(describing: failures[id])))")
             }
         }
         retire?.retire()

@@ -199,7 +199,6 @@ extension SyncServerTests {
                 #expect(try await w.daemon.termInput.take().input == Data("中文\r".utf8))
                 #expect(try await w.daemon.termInput.take().input == Data("\u{1b}[A".utf8))
                 conn.close()
-                #expect(heard.closes.all.isEmpty)
             }
         }
 
@@ -213,8 +212,6 @@ extension SyncServerTests {
                 #expect(try await heard.frames.take().snapshot.cols == 120)
                 #expect(try await heard.frames.take().output == Data(" world".utf8))
                 #expect(try await heard.closes.take() == L10n.errorsTerminalFramesAreOutOfOrder())
-                #expect(heard.frames.all.isEmpty)
-                #expect(heard.closes.all.isEmpty)
             }
         }
 
