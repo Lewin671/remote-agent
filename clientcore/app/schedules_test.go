@@ -697,3 +697,91 @@ func TestScheduleFormResetDraftPreservesCommittedTrigger(t *testing.T) {
 		t.Fatalf("expected ResetDraft to restore committed every 3h timing, got kind=%v val=%q", after.Timing.Kind, after.Timing.Interval)
 	}
 }
+
+func TestScheduleEditTargetSelectProjectKeepsLockedMachine(t *testing.T) {
+	c, batch := bootConnectedScheduleHost(t, true, 1, v1.ApprovalMode_APPROVAL_MODE_ASK)
+	defer c.Close()
+
+	listDC := findScheduleDispatches(batch, "list")[0]
+	listJSON := []byte(`{"tasks":[{"id":"t1","revision":2,"status":"active","source":"client","created_at":"2026-10-09T08:00:00Z","updated_at":"2026-10-10T08:00:00Z","spec":{"title":"Daily","message":"msg","trigger":{"type":"calendar","time":"08:00","timezone":"UTC"},"target":{"type":"new_session","cwd":"/Users/me/app","agent":"codex","mode":"ask"}}}]}`)
+	settleScheduleCommand(t, c, listDC, 1791633600050, listJSON, "", "")
+
+	// Add a second machine with a project at /Users/me/other.
+	c.Dispatch(&corev1.Event{
+		NowMs: 1791633600055,
+		Event: &corev1.Event_SecuritySnapshot{
+			SecuritySnapshot: &corev1.SecuritySnapshotEvent{
+				IsMember:          true,
+				SelfDeviceId:      "dev-1",
+				AuthorityDeviceId: "dev-1",
+				LeaseEndMs:        1799999999000,
+				TrustedMachineIds: []string{"m-1", "m-2"},
+			},
+		},
+	})
+	c.Dispatch(&corev1.Event{
+		NowMs: 1791633600060,
+		Event: &corev1.Event_ListsFetched{
+			ListsFetched: &corev1.ListsFetchedEvent{
+				Machines: []*corev1.PlainMachine{
+					{
+						MachineId: "m-1",
+						Online:    true,
+						Meta: &v1.MachineMeta{
+							Hostname:         "Mac-1",
+							ProtocolVersion:  16,
+							ScheduleRevision: 1,
+							Capabilities:     &v1.MachineCapabilities{ScheduledTasks: true},
+							Agents:           []*v1.AgentInfo{{Agent: v1.Agent_AGENT_CODEX, DefaultMode: v1.ApprovalMode_APPROVAL_MODE_ASK}},
+						},
+					},
+					{
+						MachineId: "m-2",
+						Online:    true,
+						Meta: &v1.MachineMeta{
+							Hostname:         "Mac-2",
+							ProtocolVersion:  16,
+							ScheduleRevision: 1,
+							Capabilities:     &v1.MachineCapabilities{ScheduledTasks: true},
+							Agents:           []*v1.AgentInfo{{Agent: v1.Agent_AGENT_CODEX, DefaultMode: v1.ApprovalMode_APPROVAL_MODE_ASK}},
+						},
+					},
+				},
+				Sessions: []*corev1.PlainSession{
+					{
+						SessionId: "s-other",
+						MachineId: "m-2",
+						UpdatedMs: 1791633600055,
+						Meta:      &v1.Session{Id: "s-other", Cwd: "/Users/me/other", Agent: v1.Agent_AGENT_CODEX},
+					},
+				},
+			},
+		},
+	})
+
+	c.Dispatch(&corev1.Event{
+		NowMs: 1791633600070,
+		Event: &corev1.Event_ScheduleFormOpen{
+			ScheduleFormOpen: &corev1.ScheduleFormOpenAction{
+				Mode:      corev1.ScheduleFormMode_SCHEDULE_FORM_MODE_EDIT_TARGET,
+				MachineId: "m-1",
+				TaskId:    "t1",
+			},
+		},
+	})
+	fvm := viewFormVM(t, c, "")
+	c.Dispatch(&corev1.Event{
+		NowMs: 1791633600080,
+		Event: &corev1.Event_ScheduleFormSelectProject{
+			ScheduleFormSelectProject: &corev1.ScheduleFormSelectProjectAction{
+				FormKey:    fvm.FormKey,
+				ProjectKey: "/Users/me/other",
+				MachineId:  "m-2",
+			},
+		},
+	})
+	updated := viewFormVM(t, c, fvm.FormKey)
+	if updated.MachineId != "m-1" || updated.ProjectKey != "/Users/me/other" {
+		t.Fatalf("expected locked machine m-1 and project /Users/me/other, got machine=%q project=%q", updated.MachineId, updated.ProjectKey)
+	}
+}

@@ -1835,15 +1835,18 @@ func (c *Core) handleScheduleFormSelectProject(ctx *sync.StepContext, act *corev
 	if form == nil {
 		return
 	}
+	locked := form.Mode != corev1.ScheduleFormMode_SCHEDULE_FORM_MODE_CREATE_NEW
 	form.ProjectKey = act.ProjectKey
 	form.Config.Cwd = act.ProjectKey
-	if act.MachineId != "" {
+	if !locked && act.MachineId != "" {
 		form.MachineID = act.MachineId
 		form.Config.MachineID = act.MachineId
 		form.MachineChosen = true
 	}
 	var pickMac string
-	if form.MachineChosen || form.ConfigChosen {
+	if locked {
+		pickMac = form.MachineID
+	} else if form.MachineChosen || form.ConfigChosen {
 		pickMac = form.Config.MachineID
 	}
 	var pickAgent v1.Agent
@@ -1857,8 +1860,14 @@ func (c *Core) handleScheduleFormSelectProject(ctx *sync.StepContext, act *corev
 	if psr.Found && !form.ConfigChosen {
 		form.Config = psr.Config
 		form.Config.Agent = lists.EffectiveAgent(form.Config.Agent)
-		form.MachineID = form.Config.MachineID
+		if locked {
+			form.Config.MachineID = form.MachineID
+		} else {
+			form.MachineID = form.Config.MachineID
+		}
 		form.ConfigInitialized = true
+	} else if locked {
+		form.Config.MachineID = form.MachineID
 	} else if act.MachineId != "" {
 		form.Config.MachineID = act.MachineId
 	}
