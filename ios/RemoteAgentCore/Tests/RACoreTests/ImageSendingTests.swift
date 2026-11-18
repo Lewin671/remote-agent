@@ -121,13 +121,10 @@ private final class FakeSources: @unchecked Sendable {
 
     /// Waits until nothing works on the image any more.
     private func settled(_ img: PendingImage) async {
-        for _ in 0..<2000 {
-            switch img.state {
-            case .ready, .failed: return
-            default: try? await Task.sleep(nanoseconds: 1_000_000)
-            }
+        while let job = img.job {
+            await job.value
+            if img.job == job { break }
         }
-        Issue.record("the image never settled: \(img.state)")
     }
 
     @Test func aPickedImageIsPreparedThenSentAndKept() async throws {
@@ -346,9 +343,10 @@ private final class FakeSources: @unchecked Sendable {
         await settled(img)
         await machines.hold()
         u.upload(img, machineId: "mac")
+        let job = img.job
         d.remove(img)
         await machines.letGo()
-        try? await Task.sleep(nanoseconds: 30_000_000)
+        await job?.value
         #expect(d.images.isEmpty && img.imageId == nil && img.processed == nil)
         #expect(img.imageId == nil && img.machineId == nil && !img.readyFor("mac"))
     }

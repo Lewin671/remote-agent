@@ -49,6 +49,8 @@ public actor SharedFileStore {
     private let sleep: @Sendable (Int64) async -> Void
 
     private var jobs: [SharedFileKey: Job] = [:]
+    private var runningTasks: [Int: Task<Void, Never>] = [:]
+    private var stateWaitersForTest: [(key: SharedFileKey, pred: @Sendable (SharedFileTransfer) -> Bool, cont: CheckedContinuation<SharedFileTransfer, Never>)] = []
     private var states: [SharedFileKey: SharedFileTransfer] = [:]
     private var nextToken = 0
     private let continuation: AsyncStream<SharedFileStoreEvent>.Continuation
@@ -108,6 +110,34 @@ public actor SharedFileStore {
         guard states[key] != state else { return }
         states[key] = state
         continuation.yield(.state(key, state))
+        var remaining: [(key: SharedFileKey, pred: @Sendable (SharedFileTransfer) -> Bool, cont: CheckedContinuation<SharedFileTransfer, Never>)] = []
+        for waiter in stateWaitersForTest {
+            if waiter.key == key && waiter.pred(state) {
+                waiter.cont.resume(returning: state)
+            } else {
+                remaining.append(waiter)
+            }
+        }
+        stateWaitersForTest = remaining
+    }
+
+    func waitStateForTest(_ key: SharedFileKey, _ pred: @escaping @Sendable (SharedFileTransfer) -> Bool) async -> SharedFileTransfer {
+        let current = states[key] ?? .idle
+        if pred(current) { return current }
+        return await withCheckedContinuation { cont in
+            stateWaitersForTest.append((key, pred, cont))
+        }
+    }
+
+    func drainForTest() async {
+        while !runningTasks.isEmpty {
+            let current = Array(runningTasks.values)
+            for t in current { await t.value }
+        }
+    }
+
+    private func finishRunning(_ token: Int) {
+        runningTasks.removeValue(forKey: token)
     }
 
     /// The state of `key` as the disk says it, without starting anything.
@@ -159,7 +189,12 @@ public actor SharedFileStore {
         let token = nextToken
         let done: Int64 = if case .paused(let d, _) = found { d } else { 0 }
         set(key, .downloading(done: done, total: file.sizeBytes, etaSeconds: nil, waitingReconnect: false))
-        jobs[key] = Job(token: token, task: Task { [self] in await run(key, file: file, token: token) })
+        let task = Task { [self] in
+            await run(key, file: file, token: token)
+            finishRunning(token)
+        }
+        runningTasks[token] = task
+        jobs[key] = Job(token: token, task: task)
     }
 
     /// Keeps what was fetched; nothing more is asked of the computer.

@@ -222,6 +222,7 @@ actor FileUploadGate {
     static let shared = FileUploadGate()
     private var busy = false
     private var waiting: [(UUID, CheckedContinuation<Bool, Never>)] = []
+    private var waiterWatchers: [(target: Int, cont: CheckedContinuation<Void, Never>)] = []
     func acquire() async throws {
         try Task.checkCancellation()
         if !busy { busy = true; return }
@@ -229,11 +230,25 @@ actor FileUploadGate {
         let acquired = await withTaskCancellationHandler {
             await withCheckedContinuation { continuation in
                 if Task.isCancelled { continuation.resume(returning: false) }
-                else { waiting.append((id, continuation)) }
+                else {
+                    waiting.append((id, continuation))
+                    notifyWaiters()
+                }
             }
         } onCancel: { Task { await self.cancel(id) } }
         guard acquired else { throw CancellationError() }
         if Task.isCancelled { release(); throw CancellationError() }
+    }
+    func waitForWaitersForTest(_ count: Int) async {
+        if waiting.count >= count { return }
+        await withCheckedContinuation { waiterWatchers.append((count, $0)) }
+    }
+    private func notifyWaiters() {
+        var remaining: [(target: Int, cont: CheckedContinuation<Void, Never>)] = []
+        for w in waiterWatchers {
+            if waiting.count >= w.target { w.cont.resume() } else { remaining.append(w) }
+        }
+        waiterWatchers = remaining
     }
     private func cancel(_ id: UUID) {
         guard let i = waiting.firstIndex(where: { $0.0 == id }) else { return }

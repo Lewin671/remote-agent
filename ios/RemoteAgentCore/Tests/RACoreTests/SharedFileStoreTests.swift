@@ -19,6 +19,7 @@ private final class Computer: SharedFileFetching, @unchecked Sendable {
     private var served: [Int64] = []
     private var faults: [Int: Fault] = [:]
     private var held: [CheckedContinuation<Void, Never>] = []
+    private var holdWaiters: [CheckedContinuation<Void, Never>] = []
     private var corruptTotal = false
     private var corruptData = false
 
@@ -32,6 +33,17 @@ private final class Computer: SharedFileFetching, @unchecked Sendable {
     func corrupt(total: Bool = false, data: Bool = false) { lock.withLock { corruptTotal = total; corruptData = data } }
     var offsets: [Int64] { lock.withLock { served } }
 
+    func waitForHeld() async {
+        await withCheckedContinuation { c in
+            let ready = lock.withLock { () -> Bool in
+                if !held.isEmpty { return true }
+                holdWaiters.append(c)
+                return false
+            }
+            if ready { c.resume() }
+        }
+    }
+
     func release() {
         let waiting = lock.withLock { () -> [CheckedContinuation<Void, Never>] in defer { held = [] }; return held }
         for w in waiting { w.resume() }
@@ -43,7 +55,17 @@ private final class Computer: SharedFileFetching, @unchecked Sendable {
             return (served.count - 1, faults[served.count - 1])
         }
         if case .error(let e)? = fault { throw e }
-        if case .hold? = fault { await withCheckedContinuation { c in lock.withLock { held.append(c) } } }
+        if case .hold? = fault {
+            await withCheckedContinuation { c in
+                let waiters = lock.withLock { () -> [CheckedContinuation<Void, Never>] in
+                    held.append(c)
+                    let w = holdWaiters
+                    holdWaiters.removeAll()
+                    return w
+                }
+                for w in waiters { w.resume() }
+            }
+        }
         _ = n
         var block = Data(repeating: 0, count: blockBytes)
         let from = Int(offset)
@@ -89,13 +111,8 @@ private final class Ticker: @unchecked Sendable {
     }
     private let key = SharedFileKey(sessionId: "s1", fileId: "f1")
 
-    private func wait(_ store: SharedFileStore, _ what: (SharedFileTransfer) -> Bool) async -> SharedFileTransfer {
-        for _ in 0..<2000 {
-            let s = await store.state(key)
-            if what(s) { return s }
-            try? await Task.sleep(nanoseconds: 2_000_000)
-        }
-        return await store.state(key)
+    private func wait(_ store: SharedFileStore, key overrideKey: SharedFileKey? = nil, _ what: @escaping @Sendable (SharedFileTransfer) -> Bool) async -> SharedFileTransfer {
+        await store.waitStateForTest(overrideKey ?? key, what)
     }
     private func done(_ t: SharedFileTransfer) -> Bool { if case .downloaded = t { return true } else { return false } }
     private func failed(_ t: SharedFileTransfer) -> Bool { if case .failed = t { return true } else { return false } }
@@ -175,11 +192,11 @@ private final class Ticker: @unchecked Sendable {
         let s = store(dir, computer)
         let f = file(content)
         await s.start(key, file: f)
-        for _ in 0..<2000 where computer.offsets.count < 3 { try? await Task.sleep(nanoseconds: 2_000_000) }
+        await computer.waitForHeld()
         await s.pause(key, file: f)
         #expect(await s.state(key) == .paused(done: 2000, total: 3500))
         computer.release()
-        try? await Task.sleep(nanoseconds: 50_000_000)
+        await s.drainForTest()
         // The block that was on its way is not written, and the card does not go back to downloading.
         #expect(await s.state(key) == .paused(done: 2000, total: 3500))
         #expect(computer.offsets == [0, 1000, 2000])
@@ -197,12 +214,13 @@ private final class Ticker: @unchecked Sendable {
         let f = file(content)
         let first = store(dir, computer)
         await first.start(key, file: f)
-        for _ in 0..<2000 where computer.offsets.count < 3 { try? await Task.sleep(nanoseconds: 2_000_000) }
+        await computer.waitForHeld()
         // The first process is gone: a second one reads what the disk says.
         let second = store(dir, Computer(content: content, blockBytes: block))
         #expect(await second.hydrate(key, file: f) == .paused(done: 2000, total: 3500))
         computer.release()
         await first.cancel(key)
+        await first.drainForTest()
     }
 
     @Test func blocksOfAnotherFileOrSizeAreNotResumedFrom() async {
@@ -212,13 +230,14 @@ private final class Ticker: @unchecked Sendable {
         let dir = root(); defer { try? FileManager.default.removeItem(at: dir) }
         let first = store(dir, computer)
         await first.start(key, file: file(content))
-        for _ in 0..<2000 where computer.offsets.count < 3 { try? await Task.sleep(nanoseconds: 2_000_000) }
+        await computer.waitForHeld()
         let other = pattern(3500).reversed().map { $0 } as [UInt8]
         let changed = file(Data(other))
         let second = store(dir, Computer(content: Data(other), blockBytes: block))
         #expect(await second.hydrate(key, file: changed) == .idle)
         computer.release()
         await first.cancel(key)
+        await first.drainForTest()
     }
 
     @Test func cancelDropsTheBlocks() async {
@@ -229,10 +248,10 @@ private final class Ticker: @unchecked Sendable {
         let s = store(dir, computer)
         let f = file(content)
         await s.start(key, file: f)
-        for _ in 0..<2000 where computer.offsets.count < 3 { try? await Task.sleep(nanoseconds: 2_000_000) }
+        await computer.waitForHeld()
         await s.cancel(key)
         computer.release()
-        try? await Task.sleep(nanoseconds: 50_000_000)
+        await s.drainForTest()
         #expect(await s.state(key) == .idle)
         #expect(s.inspect(key, file: f) == .idle)
     }
@@ -415,10 +434,10 @@ private final class Ticker: @unchecked Sendable {
         let dir = root(); defer { try? FileManager.default.removeItem(at: dir) }
         let s = store(dir, computer)
         await s.start(key, file: file(content))
-        for _ in 0..<2000 where computer.offsets.count < 2 { try? await Task.sleep(nanoseconds: 2_000_000) }
+        await computer.waitForHeld()
         await s.removeSession("s1")
         computer.release()
-        try? await Task.sleep(nanoseconds: 50_000_000)
+        await s.drainForTest()
         #expect(await s.state(key) == .idle)
         #expect(await s.usedBytes() == 0)
         #expect(computer.offsets == [0, 1000])
@@ -433,7 +452,7 @@ private final class Ticker: @unchecked Sendable {
         _ = await wait(s) { done($0) }
         let other = SharedFileKey(sessionId: "s2", fileId: "f9")
         await s.start(other, file: file(content, id: "f9", name: "b.zip"))
-        try? await Task.sleep(nanoseconds: 100_000_000)
+        _ = await wait(s, key: other) { done($0) }
         #expect(await s.usedBytes() > 0)
         await s.clearAll()
         #expect(await s.usedBytes() == 0)

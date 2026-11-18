@@ -15,9 +15,13 @@ private actor FileMachine {
     var completes = 0
     var holdCompletion = false
     var waitingCompletion: CheckedContinuation<Void, Never>?
+    var completionWaiters: [CheckedContinuation<Void, Never>] = []
     var heldAbort: String?
     var waitingAbort: CheckedContinuation<Void, Never>?
+    var abortWaiters: [CheckedContinuation<Void, Never>] = []
+    var abortedWaiters: [(id: String, cont: CheckedContinuation<Void, Never>)] = []
     var waiting: CheckedContinuation<Void, Never>?
+    var beginWaiters: [CheckedContinuation<Void, Never>] = []
     var validation: (@Sendable (String, String) throws -> Bool)?
     func configure(reject: Bool = false, hold: Bool = false, loseComplete: Bool = false, pendingComplete: Bool = false, validation: (@Sendable (String, String) throws -> Bool)? = nil) {
         rejectFirst = reject; holdFirst = hold; self.loseComplete = loseComplete; self.pendingComplete = pendingComplete; self.validation = validation
@@ -28,16 +32,36 @@ private actor FileMachine {
         if rejectFirst { rejectFirst = false; throw UploadError(code: "already_exists", message: "different sha256") }
         if holdFirst {
             holdFirst = false
-            await withCheckedContinuation { waiting = $0 }
+            await withCheckedContinuation {
+                waiting = $0
+                for w in beginWaiters { w.resume() }
+                beginWaiters.removeAll()
+            }
         }
         if transfers[machine + id] == nil { transfers[machine + id] = Transfer(total: total) }
         return state(machine, id)
     }
+    func waitForBeginHold() async {
+        if waiting != nil { return }
+        await withCheckedContinuation { beginWaiters.append($0) }
+    }
     func release() { waiting?.resume(); waiting = nil }
     func holdNextCompletion() { holdCompletion = true }
+    func waitForCompletionHold() async {
+        if waitingCompletion != nil { return }
+        await withCheckedContinuation { completionWaiters.append($0) }
+    }
     func releaseCompletion() { waitingCompletion?.resume(); waitingCompletion = nil }
     func holdAbort(_ transfer: String) { heldAbort = transfer }
+    func waitForAbortHold() async {
+        if waitingAbort != nil { return }
+        await withCheckedContinuation { abortWaiters.append($0) }
+    }
     func releaseAbort() { waitingAbort?.resume(); waitingAbort = nil }
+    func waitForAborted(_ transfer: String) async {
+        if aborted.contains(where: { $0.1 == transfer }) { return }
+        await withCheckedContinuation { abortedWaiters.append((transfer, $0)) }
+    }
     func state(_ machine: String, _ id: String) -> PBImageUploadStatus {
         let t = transfers[machine + id]
         return .with {
@@ -58,12 +82,31 @@ private actor FileMachine {
         if loseComplete { loseComplete = false; throw UploadError(code: "network", message: "lost Complete response") }
         if pendingComplete { pendingComplete = false; return state(machine, id) }
         transfers[machine + id]?.done = true
-        if holdCompletion { holdCompletion = false; await withCheckedContinuation { waitingCompletion = $0 } }
+        if holdCompletion {
+            holdCompletion = false
+            await withCheckedContinuation {
+                waitingCompletion = $0
+                for w in completionWaiters { w.resume() }
+                completionWaiters.removeAll()
+            }
+        }
         return state(machine, id)
     }
     func abort(_ machine: String, _ id: String) async {
         aborted.append((machine, id))
-        if heldAbort == id { heldAbort = nil; await withCheckedContinuation { waitingAbort = $0 } }
+        var remaining: [(id: String, cont: CheckedContinuation<Void, Never>)] = []
+        for w in abortedWaiters {
+            if w.id == id { w.cont.resume() } else { remaining.append(w) }
+        }
+        abortedWaiters = remaining
+        if heldAbort == id {
+            heldAbort = nil
+            await withCheckedContinuation {
+                waitingAbort = $0
+                for w in abortWaiters { w.resume() }
+                abortWaiters.removeAll()
+            }
+        }
         transfers[machine + id] = nil
     }
     func seedPartial(_ machine: String, _ id: String, bytes: Data, total: Int64) {
@@ -97,13 +140,6 @@ private struct FileMachineChannel: UploadChannel {
         let u = ImageUploads(prepare: { _, _ in throw UserError("unexpected image preparation") }, channel: { FileMachineChannel(server: server, machine: $0) })
         u.onFileChanged = { try await draft.persistFile($0) }
         return u
-    }
-    private func until(_ condition: @MainActor () async -> Bool) async {
-        for _ in 0..<300 {
-            if await condition() { return }
-            try? await Task.sleep(for: .milliseconds(5))
-        }
-        Issue.record("timed out waiting for file transfer")
     }
 
     @Test func currentTransferSurvivesRelaunchAndSupersededTargetsAreRetired() async throws {
@@ -170,10 +206,10 @@ private struct FileMachineChannel: UploadChannel {
         let server = FileMachine(); await server.configure(hold: true)
         let source = try #require(img.file)
         let first = Task { try await uploadFile(FileMachineChannel(server: server, machine: "a"), transferId: "first", source: source) }
-        await until { await server.waiting != nil }
+        await server.waitForBeginHold()
         var secondHashed = false
         let second = Task { try await uploadFile(FileMachineChannel(server: server, machine: "b"), transferId: "second", source: source, onSource: { _ in secondHashed = true }) }
-        try await Task.sleep(for: .milliseconds(40))
+        await FileUploadGate.shared.waitForWaitersForTest(1)
         #expect(await server.begins.count == 1 && !secondHashed)
         second.cancel()
         do { _ = try await second.value; Issue.record("queued file ignored cancellation") } catch { #expect(error is CancellationError) }
@@ -207,7 +243,7 @@ private struct FileMachineChannel: UploadChannel {
         await server.holdAbort(first)
         u.upload(img, machineId: "b")
         let b = img.job
-        await until { await server.waitingAbort != nil }
+        await server.waitForAbortHold()
         #expect(!img.readyFor("a") && img.imageId == nil && img.machineId == nil)
         u.upload(img, machineId: "a")
         #expect(!img.readyFor("a") && draft.fileIds(machineId: "a").isEmpty)
@@ -229,7 +265,7 @@ private struct FileMachineChannel: UploadChannel {
         u.retry(draft, img, machine: { nil })
         #expect(img.imageId == nil && img.machineId == nil && img.expiresMs == 0)
         #expect(img.file?.transfers.isEmpty == true && img.transferId != old)
-        await until { await server.aborted.contains { $0.1 == old } }
+        await server.waitForAborted(old)
         u.upload(img, machineId: "a"); await img.job?.value
         #expect(img.readyFor("a") && img.transferId != old)
     }
@@ -241,7 +277,7 @@ private struct FileMachineChannel: UploadChannel {
         await server.holdNextCompletion()
         u.upload(img, machineId: "a")
         let first = try #require(img.job)
-        await until { await server.waitingCompletion != nil }
+        await server.waitForCompletionHold()
         let transfer = img.transferId
         img.protectUpload(machineId: "a", transferId: transfer, requestId: "in-flight")
         let request = Outgoing(requestId: "in-flight", text: "", fileIds: ["file-" + transfer], images: [img])
@@ -249,15 +285,15 @@ private struct FileMachineChannel: UploadChannel {
         #expect(!first.isCancelled, "handoff must not cancel the request's transport")
         #expect(img.imageId == nil && img.machineId == nil && img.expiresMs == 0)
         draft.append([img])
-        let gate = TestLatch()
+        let gate = TestLatch(), entered = TestLatch()
         var blocked = false
         u.onFileChanged = { item in
             try await draft.persistFile(item)
-            if !blocked { blocked = true; await gate.wait() }
+            if !blocked { blocked = true; await entered.open(); await gate.wait() }
         }
         u.upload(img, machineId: "a")
         let next = img.job
-        await until { blocked }
+        await entered.wait()
         await server.releaseCompletion(); await first.value
         #expect(!draft.ready(machineId: "a") && draft.fileIds(machineId: "a").isEmpty)
         #expect(img.imageId == nil && img.machineId == nil && img.expiresMs == 0)
@@ -304,20 +340,22 @@ private struct FileMachineChannel: UploadChannel {
     }
 
     @Test func cancelingTheCallerStopsTheDetachedWorker() async throws {
-        let progress = Counter()
+        let progress = Counter(), started = Signal()
         let work = Task {
             try await fileWork {
-                for _ in 0..<2000 { try Task.checkCancellation(); progress.increment(); Thread.sleep(forTimeInterval: 0.001) }
+                while !Task.isCancelled {
+                    try Task.checkCancellation()
+                    if progress.increment() == 1 { started.set() }
+                    Thread.sleep(forTimeInterval: 0.001)
+                }
                 return 1
             }
         }
-        await until { progress.value > 0 }
+        await started.wait()
         work.cancel()
         do { _ = try await work.value; Issue.record("worker ignored cancellation") } catch { #expect(error is CancellationError) }
-        #expect(progress.value < 2000)
         let stopped = progress.value
-        try await Task.sleep(for: .milliseconds(20))
-        #expect(progress.value == stopped)
+        #expect(stopped >= 1 && progress.value == stopped)
     }
 
     @Test func staleBookmarkIsRenewedAndPersistedWithTransferState() async throws {
