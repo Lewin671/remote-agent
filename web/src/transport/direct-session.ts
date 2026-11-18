@@ -15,6 +15,7 @@ export interface DirectSessionOptions {
   ready: (use: number, channel: DirectChannel) => void;
   closed: (use?: number) => void; frame: (raw: w.Bytes, use: number) => void;
   capability: (opened: w.Opened) => void;
+  controlAck?: (type: number, seq: bigint, supported: boolean) => void;
   probe?: (use: number, milliseconds: number) => void;
   factory?: (config: RTCConfiguration) => RTCPeerConnection;
   /** Display-only record of this round (direct-diag.ts); never read by control flow. */
@@ -54,7 +55,7 @@ export class DirectSession {
       gate.roundDeadline = options.deadline; gate.current = options.valid; gate.leaseUntil = Number.MAX_SAFE_INTEGER;
       return { generation: 1n, restartSent: false, gate, sender: new Sender(options.deadline), seq: 0n, batch: new CandidateBatcher(1n, options.deadline, 1), ufrag: new Uint8Array(), mid: new Uint8Array(), ended: false, confirmed: false, announced: false, actions: [], diag: options.diag?.pc(use) };
     };
-    this.pcs = [pc(1), pc(2)]; this.boot = new Sender(options.deadline); this.controlWindow = new Sender(Number.MAX_SAFE_INTEGER); this.retainUntil = options.deadline + 300_000;
+    this.pcs = [pc(1), pc(2)]; this.boot = new Sender(options.deadline); this.controlWindow = new Sender(options.deadline); this.retainUntil = options.deadline + 300_000;
     this.timer = setInterval(() => {
       if (this.ended) return;
       const now = Date.now();
@@ -115,6 +116,10 @@ export class DirectSession {
         if (q.cls !== w.getUint(fields, 4) || q.seq !== w.getUint(fields, 5) || q.generation !== w.getUint(fields, 7) || q.use !== w.getUint(fields, 8)) return;
         if (original.type === 2 && q.cls === 1n && q.generation === 0n) for (const p of this.pcs) await p.gate.receive(raw, now);
         sender.ack(hash);
+        if (sender === this.controlWindow) {
+          this.controlWindow.discovered();
+          this.options.controlAck?.(original.type, q.seq, true);
+        }
         for (let i = 0; i < 2; i++) await this.maybeOffer(i);
         return;
       }
@@ -143,6 +148,7 @@ export class DirectSession {
       if (o.type === 1 || o.type === 14) {
         const fields = w.fields(o.payload, o.type === 1 ? "Capabilities" : "CapabilitySnapshot"), expires = w.getUint(fields, o.type === 1 ? 4 : 3);
         if (expires <= BigInt(now) || expires <= c.issued || expires - c.issued > 60_000n) return;
+        this.controlWindow.discovered();
         this.options.capability(o);
       }
       this.controls.set(key, { hash: o.hash, until: Number(c.deadline) + 300_000 });
@@ -212,6 +218,8 @@ export class DirectSession {
       const original = await this.options.codec.openSent(cwPending.raw, this.options.self, this.pcs[0].gate.peer, now);
       if (original.context.cls === w.getUint(fields, 1) && BigInt(original.type) === w.getUint(fields, 2) && original.context.seq === w.getUint(fields, 3)) {
         this.controlWindow.ack(hash);
+        this.controlWindow.discovered();
+        this.options.controlAck?.(original.type, original.context.seq, false);
       }
       return;
     }
@@ -222,16 +230,27 @@ export class DirectSession {
       p.sender.ack(hash); p.channel?.close(); p.channel = undefined; p.gate.closed = true; this.failure ??= "peer_unsupported"; this.options.diag?.note("unsupported"); this.peerScope.set(String(index), now); return;
     }
   }
-  sendControl(type: number, payload: w.Bytes): Promise<boolean> {
-    return new Promise<boolean>((resolve) => {
+  sendControl(type: number, payload: w.Bytes): Promise<bigint | undefined> {
+    return new Promise<bigint | undefined>((resolve) => {
       void this.queue(async () => {
         await this.options.authorize();
-        if (!this.active) { resolve(false); return; }
-        const now = Date.now(), context = w.context(this.options.self, this.pcs[0].gate.peer, this.options.connection, 0, 1, ++this.controlSeq, now, 2);
+        if (!this.active) { resolve(undefined); return; }
+        const now = Date.now();
+        if (this.controlWindow.timedOut || now >= this.controlWindow.deadline || this.controlWindow.pending.size === 0) {
+          this.controlWindow = new Sender(now + 10_000);
+        } else {
+          this.controlWindow.discovered();
+        }
+        const seq = ++this.controlSeq;
+        const context = w.context(this.options.self, this.pcs[0].gate.peer, this.options.connection, 0, 1, seq, now, 2);
         const raw = await this.options.codec.seal(this.options.self, this.pcs[0].gate.peer, context, type, payload);
-        resolve(await this.controlWindow.enqueue(raw, now, Number(context.deadline), 1));
-      }).catch(() => resolve(false));
+        const ok = await this.controlWindow.enqueue(raw, now, Number(context.deadline), 1);
+        resolve(ok ? seq : undefined);
+      }).catch(() => resolve(undefined));
     });
+  }
+  hasPendingControl(): boolean {
+    return !this.controlWindow.timedOut && Date.now() < this.controlWindow.deadline && this.controlWindow.pending.size > 0;
   }
   private async signal(index: number, type: number, body: w.Bytes) {
     const p = this.pcs[index], now = Date.now(), generation = p.gate.generation, sender = p.sender;

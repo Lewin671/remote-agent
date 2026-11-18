@@ -347,9 +347,13 @@ public final actor Remote {
         direct?.probe = { [holder] id, path in await holder.remote?.probeRead(id, path) }
         direct?.trace = log
         let directEvents = SerialChain()
+        let directGate = DirectEventQueueGate()
         direct?.eventHandler = { [holder] machineId, env, header, size in
+            let sid = header.session
+            guard directGate.admit(sid, bytes: size) else { return }
             directEvents.run {
                 await holder.remote?.handleDirectEvent(machineId: machineId, envelope: env, header: header, size: size)
+                directGate.release(sid, bytes: size)
             }
         }
     }
@@ -934,5 +938,40 @@ public final actor Remote {
 
     func report(_ e: Error) {
         log("remote-agent: " + errorText(e))
+    }
+}
+
+private final class DirectEventQueueGate: @unchecked Sendable {
+    private let maxPerSession = 16
+    private let maxTotalBytes = 512 * 1024
+    private let lock = NSLock()
+    private var counts: [String: Int] = [:]
+    private var totalBytes = 0
+
+    func admit(_ sessionId: String, bytes: Int) -> Bool {
+        let cost = max(bytes, 64)
+        lock.lock()
+        defer { lock.unlock() }
+        let count = counts[sessionId, default: 0]
+        if count >= maxPerSession || totalBytes + cost > maxTotalBytes {
+            return false
+        }
+        counts[sessionId] = count + 1
+        totalBytes += cost
+        return true
+    }
+
+    func release(_ sessionId: String, bytes: Int) {
+        let cost = max(bytes, 64)
+        lock.lock()
+        defer { lock.unlock() }
+        totalBytes = max(0, totalBytes - cost)
+        if let count = counts[sessionId] {
+            if count <= 1 {
+                counts.removeValue(forKey: sessionId)
+            } else {
+                counts[sessionId] = count - 1
+            }
+        }
     }
 }

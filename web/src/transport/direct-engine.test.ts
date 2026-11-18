@@ -409,10 +409,13 @@ test("proactive keepalive renews security before 20s window expires without inte
   }
 });
 
-test("Control 15 subscription respects capabilities/readiness and routes PayloadKind.EVENT only when peer matches", () => {
+test("Control 15 subscription respects capabilities/readiness and routes PayloadKind.EVENT only when peer matches", async () => {
   const { engine, peer } = readyEngine();
-  const sendControl = vi.fn<(_type: number, _payload: w.Bytes) => Promise<boolean>>(async () => true);
-  Object.assign(peer.session, { sendControl });
+  vi.spyOn(engine as unknown as { refreshAndDiscover(): void }, "refreshAndDiscover").mockImplementation(() => {});
+  let nextSeq = 0n;
+  const sendControl = vi.fn<(_type: number, _payload: w.Bytes) => Promise<bigint | undefined>>(async () => ++nextSeq);
+  const hasPendingControl = vi.fn(() => true);
+  Object.assign(peer.session, { sendControl, hasPendingControl });
   Object.assign(peer, { snapshotSeq: 0n, downloadSeq: 0n });
   peer.paths.set(1, { ready: true } as unknown as DirectChannel);
 
@@ -430,10 +433,22 @@ test("Control 15 subscription respects capabilities/readiness and routes Payload
     payload: capsPayload,
     context: { seq: 1n },
   });
+  await Promise.resolve();
   expect(sendControl).toHaveBeenCalledTimes(1);
   expect(sendControl.mock.calls[0][0]).toBe(15);
   const decodedSub = fromBinary(DirectEventSubscriptionSchema, sendControl.mock.calls[0][1]);
   expect(decodedSub.sessionIds).toEqual(["s1", "s2", "s3", "s4"]);
+
+  // Simulate relay blip: attach() before Control 15 is ACKed must resend instead of latching prematurely.
+  engine.attach({ ready: true, send: vi.fn() } as never);
+  await Promise.resolve();
+  expect(sendControl).toHaveBeenCalledTimes(2);
+
+  // Ack seq=2 confirms subscription; subsequent attach() must NOT resend duplicate Control 15.
+  (engine as unknown as { controlAck(peer: unknown, type: number, seq: bigint, supported: boolean): void }).controlAck(peer, 15, 2n, true);
+  engine.attach({ ready: true, send: vi.fn() } as never);
+  await Promise.resolve();
+  expect(sendControl).toHaveBeenCalledTimes(2);
 
   // Routing: only use=1, PayloadKind.EVENT, header.machineId === peer.id && header.sender === peer.id passes.
   const received: Array<{ machineId: string; sessionId: string; seq: bigint }> = [];

@@ -74,16 +74,13 @@ func TestDirectEventPushSubscriptionPrioritySizeImageAndRevocation(t *testing.T)
 		t.Fatal(err)
 	}
 
-	var clockOffsetMs atomic.Int64
-	nowFn := func() time.Time { return time.Now().Add(time.Duration(clockOffsetMs.Load()) * time.Millisecond) }
+	nowFn := time.Now
 
 	backend := &pushTestBackend{
 		directBackend: &directBackend{fakeBackend: e.backend},
 		holdImage:     "img-pending",
 	}
-	e.startRelayBackend(backend, relay.SetDirectLoopbackForTest, func(r *relay.Relay) {
-		relay.SetDirectClockForTest(r, nowFn)
-	})
+	e.startRelayBackend(backend, relay.SetDirectLoopbackForTest)
 	e.online(t, true)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
@@ -432,7 +429,14 @@ func TestDirectEventPushSubscriptionPrioritySizeImageAndRevocation(t *testing.T)
 	}
 gotSmall:
 
-	// 5. High-priority CommandResult on use=1 works cleanly alongside event burst.
+	// 5. Saturate low-priority direct events (> 32 queue capacity) concurrently with a high-priority CommandResult on use=1.
+	burst := make([]*pb.Event, 48)
+	for i := range burst {
+		burst[i] = &pb.Event{Kind: &pb.Event_AgentMessage{AgentMessage: &pb.AgentMessage{Text: "burst"}}}
+	}
+	if err := log1.Append(session, burst, "", 0); err != nil {
+		t.Fatal(err)
+	}
 	cmd := &pb.Command{ProtocolVersion: protocol.Version, Kind: &pb.Command_GetSettings{GetSettings: &pb.GetSettingsRequest{}}}
 	plain, _ := proto.Marshal(cmd)
 	h := deviceauth.Header{Kind: 5, Purpose: deviceauth.Command, Machine: e.acct.DeviceID, Request: "req-direct-push-priority-check", Deadline: uint64(nowFn().UnixMilli()) + 15000}

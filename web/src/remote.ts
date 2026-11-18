@@ -415,6 +415,8 @@ export class Remote implements CoreExecutor {
   private sessionSeeds = new Map<string, Uint8Array<ArrayBuffer>>();
   private watchedSessionIds: string[] = [];
   private directEventChains = new Map<string, Promise<void>>();
+  private directEventPendingCount = new Map<string, number>();
+  private directEventPendingBytes = 0;
   private recoveryObjectsPending = false;
   private descriptionPending = false;
   private needsDescribeSelf = false;
@@ -842,6 +844,12 @@ export class Remote implements CoreExecutor {
     const seed = this.sessionSeeds.get(sid);
     if (!seed || seed.byteLength === 0) return;
 
+    const entryBytes = Math.max(size, 64);
+    const curCount = this.directEventPendingCount.get(sid) ?? 0;
+    if (curCount >= 16 || this.directEventPendingBytes + entryBytes > 512 * 1024) return;
+    this.directEventPendingCount.set(sid, curCount + 1);
+    this.directEventPendingBytes += entryBytes;
+
     const prev = this.directEventChains.get(sid) ?? Promise.resolve();
     const next = prev
       .then(async () => {
@@ -860,7 +868,7 @@ export class Remote implements CoreExecutor {
           seq: header.seq,
           event: opened.msg,
           verified: header.version === 3,
-          approxBytes: BigInt(Math.max(size, 64)),
+          approxBytes: BigInt(entryBytes),
         });
         this.hostBridge?.dispatchEvent(
           create(CoreEventSchema, {
@@ -875,7 +883,13 @@ export class Remote implements CoreExecutor {
           }),
         );
       })
-      .catch(() => undefined);
+      .catch(() => undefined)
+      .finally(() => {
+        const prevCount = this.directEventPendingCount.get(sid) ?? 0;
+        if (prevCount <= 1) this.directEventPendingCount.delete(sid);
+        else this.directEventPendingCount.set(sid, prevCount - 1);
+        this.directEventPendingBytes = Math.max(0, this.directEventPendingBytes - entryBytes);
+      });
     this.directEventChains.set(sid, next);
   }
 

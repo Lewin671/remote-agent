@@ -15,7 +15,7 @@ import { DirectRouting, type RouteHint, type RouteName } from "./direct-routing"
 import { PathChanged, abortable } from "./recovery";
 import * as w from "./peer/wire";
 
-type Peer = { id: string; head: string; session: DirectSession; paths: Map<number, DirectChannel>; live: boolean; capabilities?: MachineCapabilities; snapshotUntil: number; downloadUntil: number; snapshotSeq: bigint; downloadSeq: bigint; supportsEventPush?: boolean; subscribedKey?: string; redialAt?: number; selected?: boolean; readyAt?: number; retryDelay?: number };
+type Peer = { id: string; head: string; session: DirectSession; paths: Map<number, DirectChannel>; live: boolean; capabilities?: MachineCapabilities; snapshotUntil: number; downloadUntil: number; snapshotSeq: bigint; downloadSeq: bigint; supportsEventPush?: boolean; subscribedKey?: string; pendingSubKey?: string; pendingSubSeq?: bigint; redialAt?: number; selected?: boolean; readyAt?: number; retryDelay?: number };
 type Pending = { peer: Peer; use: number; resolve: (env: Envelope) => void };
 
 export type DirectState = "unsupported" | "connected" | "connecting" | "none";
@@ -107,14 +107,36 @@ export class DirectEngine {
     for (const p of this.peers.values()) this.syncPeerSubscription(p);
   }
 
-  private syncPeerSubscription(p: Peer) {
+  private syncPeerSubscription(p: Peer, force = false) {
     if (!this.valid(p) || !p.session.active || !p.supportsEventPush || !p.paths.get(1)?.ready) return;
     const sessionIds = this.watchedByMachine.get(p.id) ?? [];
     const nextKey = sessionIds.join("\n");
     if ((p.subscribedKey ?? "") === nextKey) return;
-    p.subscribedKey = nextKey;
+    if (!force && p.pendingSubKey === nextKey && (p.pendingSubSeq === undefined || p.session.hasPendingControl())) return;
+    p.pendingSubKey = nextKey;
+    p.pendingSubSeq = undefined;
     const payload = toBinary(DirectEventSubscriptionSchema, create(DirectEventSubscriptionSchema, { sessionIds }));
-    void p.session.sendControl(15, payload);
+    void p.session.sendControl(15, payload).then((seq) => {
+      if (seq === undefined) {
+        if (p.pendingSubSeq === undefined && p.pendingSubKey === nextKey) p.pendingSubKey = undefined;
+        return;
+      }
+      if (p.pendingSubKey === nextKey) p.pendingSubSeq = seq;
+    });
+  }
+
+  private controlAck(p: Peer, type: number, seq: bigint, supported: boolean) {
+    if (type !== 15 || !this.valid(p)) return;
+    if (p.pendingSubSeq === seq) {
+      if (supported) {
+        p.subscribedKey = p.pendingSubKey ?? "";
+      } else {
+        p.supportsEventPush = false;
+      }
+      p.pendingSubKey = undefined;
+      p.pendingSubSeq = undefined;
+      if (supported) this.syncPeerSubscription(p);
+    }
   }
 
   constructor(
@@ -307,6 +329,7 @@ export class DirectEngine {
     // The main connection is back: the computer can be reached again, so a retry waiting out its delay need not.
     this.retryAfter.clear();
     for (const p of this.sessions.values()) p.session.discovered();
+    for (const p of this.peers.values()) this.syncPeerSubscription(p, true);
     this.refreshAndDiscover();
   }
 
@@ -432,6 +455,7 @@ export class DirectEngine {
       },
       frame: (raw, use) => this.frame(p, raw, use),
       capability: opened => this.capability(p, opened),
+      controlAck: (type, seq, supported) => this.controlAck(p, type, seq, supported),
     });
     this.sessions.set(w.hex(connection), p);
     this.notify();
@@ -506,7 +530,7 @@ export class DirectEngine {
       } catch {
         p.supportsEventPush = false;
       }
-      if (p.supportsEventPush) this.syncPeerSubscription(p);
+      if (p.supportsEventPush) this.syncPeerSubscription(p, true);
     }
     this.notify();
   }

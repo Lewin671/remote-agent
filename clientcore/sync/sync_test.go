@@ -1996,3 +1996,212 @@ func TestDirectEventsWhileRelayDisconnectedDoNotMarkRelayConnected(t *testing.T)
 		t.Fatalf("direct events must not mark relay ConnConnected")
 	}
 }
+
+func TestDirectAheadDuringTailFirstPreservesTailAndClearsTailRequested(t *testing.T) {
+	e := NewEngine()
+	now := int64(1_700_000_000_000)
+	_, listsOp := startAndConnect(t, e, now)
+	e.HandleEvent(&corev1.Event{
+		NowMs: now + 40,
+		Event: &corev1.Event_ListsFetched{
+			ListsFetched: &corev1.ListsFetchedEvent{
+				OpId:     listsOp,
+				Machines: []*corev1.PlainMachine{{MachineId: "m1", Online: true}},
+				Sessions: []*corev1.PlainSession{{SessionId: "s1", MachineId: "m1", LastSeq: 1200, UpdatedMs: now}},
+			},
+		},
+	})
+	_, watchRes := e.HandleEvent(&corev1.Event{
+		NowMs: now + 50,
+		Event: &corev1.Event_SessionWatch{SessionWatch: &corev1.SessionWatchEvent{SessionId: "s1", Watched: true}},
+	})
+	var cacheOp uint64
+	for _, eff := range watchRes.Effects {
+		if cr := eff.GetCacheRead().GetEvents(); cr != nil {
+			cacheOp = cr.OpId
+		}
+	}
+	_, cacheRes := e.HandleEvent(&corev1.Event{
+		NowMs: now + 60,
+		Event: &corev1.Event_CacheEventsLoaded{CacheEventsLoaded: &corev1.CacheEventsLoadedEvent{OpId: cacheOp, SessionId: "s1"}},
+	})
+	var tailOp uint64
+	for _, eff := range cacheRes.Effects {
+		if rpc := eff.GetRpc(); rpc != nil && rpc.GetGetEvents() != nil {
+			tailOp = rpc.OpId
+		}
+	}
+	// Receive tail 701..1200.
+	tail := make([]*corev1.PlainEvent, 0, 500)
+	for seq := uint64(701); seq <= 1200; seq++ {
+		tail = append(tail, &corev1.PlainEvent{Seq: seq, Verified: true, ApproxBytes: 64, Event: &v1.Event{Seq: seq, SessionId: "s1"}})
+	}
+	_, tailRes := e.HandleEvent(&corev1.Event{
+		NowMs: now + 70,
+		Event: &corev1.Event_EventsPageFetched{
+			EventsPageFetched: &corev1.EventsPageFetchedEvent{OpId: tailOp, SessionId: "s1", Events: tail},
+		},
+	})
+	var prefixOp1 uint64
+	for _, eff := range tailRes.Effects {
+		if rpc := eff.GetRpc(); rpc != nil && rpc.GetGetEvents() != nil && rpc.GetGetEvents().AfterSeq == 0 {
+			prefixOp1 = rpc.OpId
+		}
+	}
+
+	// Ahead-of-relay direct event 1202 (skipping 1201) arrives while tailRequested is active:
+	// ShownEvents must keep 701..1200 instead of collapsing to [1202].
+	e.HandleEvent(&corev1.Event{
+		NowMs: now + 75,
+		Event: &corev1.Event_DirectEventsReceived{
+			DirectEventsReceived: &corev1.DirectEventsReceivedEvent{
+				MachineId: "m1",
+				SessionId: "s1",
+				Events:    []*corev1.PlainEvent{{Seq: 1202, Verified: true, ApproxBytes: 64, Event: &v1.Event{Seq: 1202, SessionId: "s1"}}},
+			},
+		},
+	})
+	if shown := e.Buffer("s1").ShownEvents(); len(shown) != 500 || shown[0].Seq != 701 || shown[len(shown)-1].Seq != 1200 {
+		t.Fatalf("expected ShownEvents [701..1200], got len=%d", len(shown))
+	}
+
+	// Backfill 1..700: drains 701..1200 into prefix while 1202 stays in pending.
+	// tailRequested must clear so ShownEvents renders 1..1200 (not [1202]).
+	p1 := make([]*corev1.PlainEvent, 0, 500)
+	for seq := uint64(1); seq <= 500; seq++ {
+		p1 = append(p1, &corev1.PlainEvent{Seq: seq, Verified: true, ApproxBytes: 64, Event: &v1.Event{Seq: seq, SessionId: "s1"}})
+	}
+	_, p1Res := e.HandleEvent(&corev1.Event{
+		NowMs: now + 80,
+		Event: &corev1.Event_EventsPageFetched{
+			EventsPageFetched: &corev1.EventsPageFetchedEvent{OpId: prefixOp1, SessionId: "s1", Events: p1, More: true},
+		},
+	})
+	var prefixOp2 uint64
+	for _, eff := range p1Res.Effects {
+		if rpc := eff.GetRpc(); rpc != nil && rpc.GetGetEvents() != nil {
+			prefixOp2 = rpc.OpId
+		}
+	}
+	p2 := make([]*corev1.PlainEvent, 0, 200)
+	for seq := uint64(501); seq <= 700; seq++ {
+		p2 = append(p2, &corev1.PlainEvent{Seq: seq, Verified: true, ApproxBytes: 64, Event: &v1.Event{Seq: seq, SessionId: "s1"}})
+	}
+	e.HandleEvent(&corev1.Event{
+		NowMs: now + 90,
+		Event: &corev1.Event_EventsPageFetched{
+			EventsPageFetched: &corev1.EventsPageFetchedEvent{OpId: prefixOp2, SessionId: "s1", Events: p2, More: false},
+		},
+	})
+	buf := e.Buffer("s1")
+	if buf.tailRequested {
+		t.Fatalf("expected tailRequested=false after prefix caught up to tailTargetSeq")
+	}
+	if shown := buf.ShownEvents(); len(shown) != 1200 {
+		t.Fatalf("expected ShownEvents [1..1200], got len=%d", len(shown))
+	}
+}
+
+func TestDirectPendingBoundsAndEventsAppendedServerGapAndErrorClear(t *testing.T) {
+	e := NewEngine()
+	now := int64(1_700_000_000_000)
+	legID, listsOp := startAndConnect(t, e, now)
+	e.HandleEvent(&corev1.Event{
+		NowMs: now + 40,
+		Event: &corev1.Event_ListsFetched{
+			ListsFetched: &corev1.ListsFetchedEvent{
+				OpId:     listsOp,
+				Machines: []*corev1.PlainMachine{{MachineId: "m1", Online: true}},
+				Sessions: []*corev1.PlainSession{{SessionId: "s1", MachineId: "m1", LastSeq: 1, UpdatedMs: now}},
+			},
+		},
+	})
+	_, watchRes := e.HandleEvent(&corev1.Event{
+		NowMs: now + 50,
+		Event: &corev1.Event_SessionWatch{SessionWatch: &corev1.SessionWatchEvent{SessionId: "s1", Watched: true}},
+	})
+	var cacheOp uint64
+	for _, eff := range watchRes.Effects {
+		if cr := eff.GetCacheRead().GetEvents(); cr != nil {
+			cacheOp = cr.OpId
+		}
+	}
+	_, loadedRes := e.HandleEvent(&corev1.Event{
+		NowMs: now + 60,
+		Event: &corev1.Event_CacheEventsLoaded{CacheEventsLoaded: &corev1.CacheEventsLoadedEvent{OpId: cacheOp, SessionId: "s1"}},
+	})
+	var fetchOp uint64
+	for _, eff := range loadedRes.Effects {
+		if rpc := eff.GetRpc(); rpc != nil && rpc.GetGetEvents() != nil {
+			fetchOp = rpc.OpId
+		}
+	}
+	e.HandleEvent(&corev1.Event{
+		NowMs: now + 70,
+		Event: &corev1.Event_EventsPageFetched{
+			EventsPageFetched: &corev1.EventsPageFetchedEvent{
+				OpId:      fetchOp,
+				SessionId: "s1",
+				Events:    []*corev1.PlainEvent{{Seq: 1, Verified: true, ApproxBytes: 64, Event: &v1.Event{Seq: 1, SessionId: "s1"}}},
+			},
+		},
+	})
+
+	// P3 checks: direct seq=3 (ahead of server seq=1), plus an existing fetchErrorText;
+	// relay EventsAppended([2]) updates ServerLastSeq=2 with !hasServerGap(2):
+	// must clear fetchErrorText AND must NOT emit a premature GetEvents RPC for 3.
+	buf := e.Buffer("s1")
+	buf.fetchErrorText = &corev1.Text{Literal: "fetch error"}
+	e.HandleEvent(&corev1.Event{
+		NowMs: now + 80,
+		Event: &corev1.Event_DirectEventsReceived{
+			DirectEventsReceived: &corev1.DirectEventsReceivedEvent{
+				MachineId: "m1",
+				SessionId: "s1",
+				Events:    []*corev1.PlainEvent{{Seq: 3, Verified: true, ApproxBytes: 64, Event: &v1.Event{Seq: 3, SessionId: "s1"}}},
+			},
+		},
+	})
+	_, appRes := e.HandleEvent(&corev1.Event{
+		NowMs: now + 90,
+		Event: &corev1.Event_StreamFrame{
+			StreamFrame: &corev1.StreamFrameEvent{
+				LegId: legID,
+				Frame: &corev1.StreamFrameEvent_EventsAppended{
+					EventsAppended: &corev1.EventsAppendedFrame{
+						SessionId: "s1",
+						Events:    []*corev1.PlainEvent{{Seq: 2, Verified: true, ApproxBytes: 64, Event: &v1.Event{Seq: 2, SessionId: "s1"}}},
+					},
+				},
+			},
+		},
+	})
+	if buf.fetchErrorText != nil {
+		t.Fatalf("expected fetchErrorText cleared when !hasServerGap")
+	}
+	for _, eff := range appRes.Effects {
+		if eff.GetRpc().GetGetEvents() != nil {
+			t.Fatalf("must not fire premature GetEvents when ServerLastSeq=2 and prefix=3 (or <= ServerLastSeq)")
+		}
+	}
+
+	// P2 check: flooding > maxDirectPendingEvents gapped direct events is bounded at maxDirectPendingEvents.
+	flood := make([]*corev1.PlainEvent, 0, maxDirectPendingEvents+32)
+	for i := 0; i < maxDirectPendingEvents+32; i++ {
+		seq := uint64(100 + i*2)
+		flood = append(flood, &corev1.PlainEvent{Seq: seq, Verified: true, ApproxBytes: 64, Event: &v1.Event{Seq: seq, SessionId: "s1"}})
+	}
+	e.HandleEvent(&corev1.Event{
+		NowMs: now + 100,
+		Event: &corev1.Event_DirectEventsReceived{
+			DirectEventsReceived: &corev1.DirectEventsReceivedEvent{
+				MachineId: "m1",
+				SessionId: "s1",
+				Events:    flood,
+			},
+		},
+	})
+	if buf.PendingCount() > maxDirectPendingEvents {
+		t.Fatalf("expected direct pending bounded <= %d, got %d", maxDirectPendingEvents, buf.PendingCount())
+	}
+}

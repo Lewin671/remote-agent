@@ -117,7 +117,7 @@ test("Control 10 (Unsupported) for Control 15 stops controlWindow retries withou
  try {
   expect(owner.makePC(0)).toBe(true);
   owner.pcs[0].gate.peer = peer;
-  expect(await session.sendControl(15, w.pb(w.b(1, w.utf8("sess-1"))))).toBe(true);
+  expect(await session.sendControl(15, w.pb(w.b(1, w.utf8("sess-1"))))).toBe(1n);
   await owner.tick();
   expect(sent).toHaveLength(1);
   expect(owner.controlWindow.pending.size).toBe(1);
@@ -133,6 +133,40 @@ test("Control 10 (Unsupported) for Control 15 stops controlWindow retries withou
   expect(session.failure).toBeUndefined();
   expect(owner.pcs[0].gate.closed).toBe(false);
   expect(closed).not.toHaveBeenCalled();
+ } finally {
+  session.close();
+ }
+});
+
+test("controlWindow recovers after PeerFrameResult OFFLINE via discovered, Capabilities, or next sendControl", async () => {
+ vi.useFakeTimers();
+ const sdk = fakeRTC(), sent: w.Bytes[] = [];
+ const self = await fixture("client", 1), peer = await fixture("machine", 2), codec = await fixtureCodec();
+ const session = new DirectSession({
+  self, peer, codec, connection: new Uint8Array(16), deadline: Date.now() + 10_000,
+  budget: new DirectBudget(), stun: [], valid: () => true, authorize: async () => {},
+  send: (out) => { sent.push(out.raw); return true; },
+  chosen: () => {}, beforeOffer: () => {}, ready: () => {}, closed: () => {}, frame: () => {}, capability: () => {}, factory: sdk.factory,
+ });
+ const owner = session as unknown as Owner & { controlWindow: Sender };
+ try {
+  expect(owner.makePC(0)).toBe(true);
+  owner.pcs[0].gate.peer = peer;
+  session.established = true;
+  expect(await session.sendControl(15, w.pb(w.b(1, w.utf8("s1"))))).toBe(1n);
+  await owner.tick();
+  expect(sent).toHaveLength(1);
+  const f = w.parse(sent[0], 5);
+  session.delivery(w.getBytes(f, 4), 2 /* OFFLINE */, 0, () => true);
+  await owner.chain;
+  expect(owner.controlWindow.paused).toBe(true);
+
+  // Incoming Control 1 (Capabilities) or subsequent sendControl unpauses and advances window past expiry cleanly.
+  vi.setSystemTime(Date.now() + 10_001);
+  expect(await session.sendControl(15, w.pb(w.b(1, w.utf8("s2"))))).toBe(2n);
+  expect(owner.controlWindow.paused).toBe(false);
+  await owner.tick();
+  expect(sent).toHaveLength(2);
  } finally {
   session.close();
  }

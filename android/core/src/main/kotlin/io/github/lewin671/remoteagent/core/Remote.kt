@@ -351,6 +351,9 @@ class Remote(
     private val sessionKeys = ConcurrentHashMap<String, ByteArray>()
     @Volatile private var watchedSessionIds: List<String> = emptyList()
     private val directEventLocks = ConcurrentHashMap<String, Mutex>()
+    private val directQueueLock = Any()
+    private val directQueueCounts = HashMap<String, Int>()
+    private var directQueueBytes = 0
     private val archiveMachines = ConcurrentHashMap.newKeySet<String>()
     private val trustedMembers = ConcurrentHashMap<String, DeviceSecurity.Member>()
     @Volatile private var recoveryObjectsPending = true
@@ -1081,10 +1084,31 @@ class Remote(
         if (sessionMachineId(sid) != machineId || header.sender != machineId) return
         if (!sessionKeys.containsKey(sid)) return
 
+        val entryBytes = maxOf(size, 64)
+        val admitted = synchronized(directQueueLock) {
+            val cur = directQueueCounts[sid] ?: 0
+            if (cur >= 16 || directQueueBytes + entryBytes > 512 * 1024) {
+                false
+            } else {
+                directQueueCounts[sid] = cur + 1
+                directQueueBytes += entryBytes
+                true
+            }
+        }
+        if (!admitted) return
+
         val lock = directEventLocks.computeIfAbsent(sid) { Mutex() }
         scope.launch {
-            lock.withLock {
-                openDirectEvent(machineId, sid, env, header, size)
+            try {
+                lock.withLock {
+                    openDirectEvent(machineId, sid, env, header, size)
+                }
+            } finally {
+                synchronized(directQueueLock) {
+                    val cur = directQueueCounts[sid] ?: 0
+                    if (cur <= 1) directQueueCounts.remove(sid) else directQueueCounts[sid] = cur - 1
+                    directQueueBytes = maxOf(0, directQueueBytes - entryBytes)
+                }
             }
         }
     }

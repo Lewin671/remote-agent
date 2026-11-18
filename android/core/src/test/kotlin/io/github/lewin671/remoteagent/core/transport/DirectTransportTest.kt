@@ -2047,7 +2047,8 @@ class DirectTransportTest {
         val peerForDaemon = Wire.Identity(Wire.utf8("p1"), 1L, ByteArray(16) { 1 }, ByteArray(32) { 2 }, SigningKey(selfSeed).publicKey, X25519PrivateKeyParameters(selfBox, 0).generatePublicKey().encoded, null, null)
         val bridge = FakeRtcBridge().also { it.srflx = false }
         val conn = ByteArray(16) { 7 }
-        val deadline = System.currentTimeMillis() + 5_000L
+        val nowMs = java.util.concurrent.atomic.AtomicLong(1_700_000_000_000L)
+        val deadline = nowMs.get() + 5_000L
         val events = CopyOnWriteArrayList<String>()
         val clientFramesSent = CopyOnWriteArrayList<Wire.Opened>()
         val unsupportedSentBack = CopyOnWriteArrayList<Wire.Opened>()
@@ -2059,12 +2060,12 @@ class DirectTransportTest {
                 self = self, peer = peerForClient, codec = codec, connection = conn, deadline = deadline, budget = DirectBudget(), stun = emptyList(), factory = bridge.phoneFactory,
                 valid = { true }, authorize = {},
                 send = { out ->
-                    runCatching { clientFramesSent += codec.openSent(out.raw, self, peerForClient, System.currentTimeMillis()) }
+                    runCatching { clientFramesSent += codec.openSent(out.raw, self, peerForClient, nowMs.get()) }
                     daemonSession.receive(out.raw)
                     true
                 },
                 chosen = {}, beforeOffer = {}, ready = { use, _ -> events += "client:open:$use" }, closed = { events += "client:closed:$it" },
-                closeReason = { failReasons += it }, frame = { _, _ -> }, capability = {},
+                closeReason = { failReasons += it }, frame = { _, _ -> }, capability = {}, clock = { nowMs.get() },
             ),
         )
         daemonSession = DirectSession(
@@ -2073,13 +2074,13 @@ class DirectTransportTest {
                 valid = { true }, authorize = {},
                 send = { out ->
                     runCatching {
-                        val o = codec.openSent(out.raw, selfDaemon, peerForDaemon, System.currentTimeMillis())
+                        val o = codec.openSent(out.raw, selfDaemon, peerForDaemon, nowMs.get())
                         if (o.ctx.cls == 2L && o.type == 10L) unsupportedSentBack += o
                     }
                     clientSession.receive(out.raw)
                     true
                 },
-                chosen = {}, beforeOffer = {}, ready = { use, _ -> events += "daemon:open:$use" }, closed = {}, frame = { _, _ -> }, capability = {},
+                chosen = {}, beforeOffer = {}, ready = { use, _ -> events += "daemon:open:$use" }, closed = {}, frame = { _, _ -> }, capability = {}, clock = { nowMs.get() },
             ),
         )
         clientSession.start()
@@ -2089,12 +2090,15 @@ class DirectTransportTest {
             }
             val subBody = DirectEventSubscription.newBuilder().addSessionIds("sess-1").build().toByteArray()
             clientSession.sendControl(15L, subBody)
-            awaitCondition("Control 15 rejected with Control 10 Unsupported", 3_000) {
-                unsupportedSentBack.isNotEmpty()
+            awaitCondition("Control 15 rejected with Control 10 Unsupported and controlWindow cleared", 3_000) {
+                unsupportedSentBack.isNotEmpty() && clientSession.controlPendingCount == 0
             }
-            // Wait long enough for any retry (500ms) if controlWindow didn't ack.
             val countBefore = clientFramesSent.count { it.ctx.cls == 2L && it.type == 15L }
-            delay(700)
+            nowMs.addAndGet(1_600L)
+            // Drive one deterministic tick pass after advancing injected clock past retry intervals.
+            awaitCondition("tick processes advanced clock without retrying cleared Control 15", 1_000) {
+                clientSession.controlPendingCount == 0
+            }
             val countAfter = clientFramesSent.count { it.ctx.cls == 2L && it.type == 15L }
             assertEquals("Control 15 must stop retrying after Control 10 Unsupported", countBefore, countAfter)
             assertTrue("DirectSession must remain active after Control 10 on controlWindow", clientSession.active)

@@ -503,24 +503,27 @@ func (p *directPeer) enqueueLow(raw []byte) bool {
 	return true
 }
 
+func (p *directPeer) popWrite() (item peerWriteItem, isHigh, ok bool) {
+	p.writeMu.Lock()
+	defer p.writeMu.Unlock()
+	if len(p.highQueue) > 0 {
+		item = p.highQueue[0]
+		p.highQueue = p.highQueue[1:]
+		return item, true, true
+	}
+	if len(p.lowQueue) > 0 {
+		item = p.lowQueue[0]
+		p.lowQueue = p.lowQueue[1:]
+		p.lowBytes -= len(item.raw)
+		return item, false, true
+	}
+	return peerWriteItem{}, false, false
+}
+
 func (m *directManager) writePath(peer *directPeer, path *direct.Path) {
 	for {
-		peer.writeMu.Lock()
-		var item peerWriteItem
-		var isHigh, empty bool
-		if len(peer.highQueue) > 0 {
-			item = peer.highQueue[0]
-			peer.highQueue = peer.highQueue[1:]
-			isHigh = true
-		} else if len(peer.lowQueue) > 0 {
-			item = peer.lowQueue[0]
-			peer.lowQueue = peer.lowQueue[1:]
-			peer.lowBytes -= len(item.raw)
-		} else {
-			empty = true
-		}
-		peer.writeMu.Unlock()
-		if empty {
+		item, isHigh, ok := peer.popWrite()
+		if !ok {
 			select {
 			case <-m.ctx.Done():
 				return
@@ -556,7 +559,7 @@ func (m *directManager) readPath(peer *directPeer, use uint64, path *direct.Path
 		if use == 1 {
 			m.mu.Lock()
 			if peer.paths[0] == path {
-				peer.subscribed = nil
+				peer.paths[0] = nil
 				m.reconcileTailersLocked(nil)
 			}
 			m.mu.Unlock()
@@ -884,8 +887,7 @@ func (m *directManager) reconcileTailersLocked(initialAfter map[string]uint64) {
 		if _, ok := m.tailers[sid]; !ok {
 			subCtx, subCancel := context.WithCancel(m.ctx)
 			m.tailers[sid] = &directTailer{cancel: subCancel}
-			startAfter := initialAfter[sid]
-			hasInitial := initialAfter != nil
+			startAfter, hasInitial := initialAfter[sid]
 			m.workers.Go(func() { m.tailSession(subCtx, sid, startAfter, hasInitial) })
 		}
 	}

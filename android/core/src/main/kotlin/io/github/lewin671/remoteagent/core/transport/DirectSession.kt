@@ -43,6 +43,7 @@ internal class DirectSessionOptions(
     val closeReason: ((DirectFailReason) -> Unit)? = null,
     val frame: (ByteArray, Int) -> Unit,
     val capability: (Wire.Opened) -> Unit,
+    val controlAck: ((Long, Long, Boolean) -> Unit)? = null,
     val probe: ((Int, Double) -> Unit)? = null,
     val clock: () -> Long = System::currentTimeMillis,
     val monotonic: () -> Long = ::monotonicMillis,
@@ -84,7 +85,7 @@ internal class DirectSession(val options: DirectSessionOptions) {
 
     private val pcs: Array<PC>
     private val boot: Sender
-    private val controlWindow = Sender(Long.MAX_VALUE)
+    @Volatile private var controlWindow = Sender(options.deadline)
     private val endedFlag = AtomicBoolean(false)
     private val retiredFlag = AtomicBoolean(false)
     private val tickQueued = AtomicBoolean(false)
@@ -281,6 +282,10 @@ internal class DirectSession(val options: DirectSessionOptions) {
                     for (p in pcs) p.gate.receive(raw, now)
                 }
                 sender.ack(hash)
+                if (sender === controlWindow) {
+                    sender.discovered()
+                    options.controlAck?.invoke(original.type, q.seq, true)
+                }
                 for (i in 0..1) maybeOffer(i)
                 return
             }
@@ -326,6 +331,7 @@ internal class DirectSession(val options: DirectSessionOptions) {
                 val fields = Schema.fields(o.payload, if (o.type == 1L) "Capabilities" else "CapabilitySnapshot")
                 val expires = Wire.getUint(fields, if (o.type == 1L) 4 else 3)
                 if (expires <= now || expires <= c.issued || expires - c.issued > 60_000L) return
+                controlWindow.discovered()
                 options.capability(o)
             }
             controls[key] = CachedItem(o.hash, c.deadline + 300_000L)
@@ -462,6 +468,8 @@ internal class DirectSession(val options: DirectSessionOptions) {
                 original.ctx.seq == Wire.getUint(fields, 3)
             ) {
                 controlWindow.ack(hash)
+                controlWindow.discovered()
+                options.controlAck?.invoke(original.type, original.ctx.seq, false)
             }
             return
         }
@@ -483,16 +491,40 @@ internal class DirectSession(val options: DirectSessionOptions) {
         }
     }
 
-    fun sendControl(type: Long, body: ByteArray) {
+    fun sendControl(type: Long, body: ByteArray, onQueued: ((Long) -> Unit)? = null) {
         queue {
             authorizeTimed()
-            if (!active) return@queue
+            if (!active) {
+                onQueued?.invoke(0L)
+                return@queue
+            }
             val now = options.clock()
-            val ctx = Wire.Context(options.self, pcs[0].gate.peer, options.connection, 0L, 1L, ++controlSeq, now, 2L, false)
+            val cw = controlWindow
+            val emptyOrExpired = synchronized(cw) { cw.timedOut || now >= cw.deadline || cw.pending.isEmpty() }
+            if (emptyOrExpired) {
+                controlWindow = Sender(now + 10_000L)
+            } else {
+                cw.discovered()
+            }
+            val seq = ++controlSeq
+            val ctx = Wire.Context(options.self, pcs[0].gate.peer, options.connection, 0L, 1L, seq, now, 2L, false)
             val raw = options.codec.seal(options.self, pcs[0].gate.peer, ctx, type, body, null, null, null)
-            controlWindow.enqueue(raw, now, ctx.deadline, 1L)
+            val ok = controlWindow.enqueue(raw, now, ctx.deadline, 1L)
+            onQueued?.invoke(if (ok) seq else 0L)
         }
     }
+
+    fun hasPendingControl(): Boolean {
+        val cw = controlWindow
+        val now = options.clock()
+        return synchronized(cw) { !cw.timedOut && now < cw.deadline && cw.pending.isNotEmpty() }
+    }
+
+    internal val controlPendingCount: Int
+        get() {
+            val cw = controlWindow
+            return synchronized(cw) { cw.pending.size }
+        }
 
     private fun signal(index: Int, type: Long, body: ByteArray): Boolean {
         val p = pcs[index]
