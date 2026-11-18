@@ -43,6 +43,7 @@ type SessionViewInput struct {
 	PendingCount         int32
 	UnavailableCount     uint32
 	LastSeq              uint64
+	EventRev             uint64
 	Projection           *corev1.ProjectionState
 	Events               []*v1.Event
 }
@@ -106,6 +107,7 @@ type SessionUIState struct {
 	LastPlanSeq        uint64
 	LastPlanHash       []byte
 	LookupError        string
+	timeline           *timelineCache
 }
 
 // NewSessionUIState allocates an initialized SessionUIState.

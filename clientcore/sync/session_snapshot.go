@@ -90,15 +90,19 @@ func (e *Engine) SessionSnapshot(sessionID string) screens.SessionViewInput {
 		out.PrefixLen = uint64(len(buf.prefix))
 		out.PendingCount = int32(len(buf.pending))
 		out.UnavailableCount = uint32(len(buf.unavailableSeqs))
+		out.EventRev = buf.rev
 
 		if len(buf.prefix) > 0 {
 			if buf.reducer == nil {
 				buf.rebuildReducer(agent)
 			}
+			if buf.cachedSnap == nil {
+				buf.cachedSnap = buf.reducer.Snapshot()
+			}
 			if liveSnap != nil {
-				out.Projection = buf.reducer.CurrentActions(liveSnap)
+				out.Projection = projection.CurrentActions(buf.cachedSnap, liveSnap, buf.prefix)
 			} else {
-				out.Projection = buf.reducer.Snapshot()
+				out.Projection = buf.cachedSnap
 			}
 		} else if liveSnap != nil {
 			out.Projection = projection.CurrentActions(nil, liveSnap, nil)

@@ -332,6 +332,7 @@ type Engine struct {
 	nextLegSeq   uint64
 	nextTimerSeq uint64
 	nextPushSeq  uint64
+	nextEventRev uint64
 
 	recovery   *Recovery
 	liveness   *LegLiveness

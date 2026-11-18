@@ -50,7 +50,9 @@ type EventBuffer struct {
 	fetchCursor     uint64
 	endSeq          *uint64
 
-	reducer *projection.Reducer
+	reducer    *projection.Reducer
+	rev        uint64
+	cachedSnap *corev1.ProjectionState
 }
 
 func newEventBuffer(sid string, agent v1.Agent, monoMs int64) *EventBuffer {
@@ -77,6 +79,7 @@ func (b *EventBuffer) resetContent(agent v1.Agent) {
 	b.fetchErrorText = nil
 	b.loaded = false
 	b.reducer = projection.NewReducer(agent)
+	b.cachedSnap = nil
 }
 
 func (b *EventBuffer) rebuildReducer(agent v1.Agent) {
@@ -84,6 +87,7 @@ func (b *EventBuffer) rebuildReducer(agent v1.Agent) {
 	if len(b.prefix) > 0 {
 		b.reducer.Append(b.prefix)
 	}
+	b.cachedSnap = nil
 }
 
 func (b *EventBuffer) hasSeq(seq uint64) bool {
@@ -249,6 +253,13 @@ func (e *Engine) retryEvents(ctx *StepContext, sid string) {
 	ctx.Dirty.MarkSessionData()
 }
 
+func (e *Engine) bumpRev(b *EventBuffer) {
+	e.nextEventRev++
+	if b != nil {
+		b.rev = e.nextEventRev
+	}
+}
+
 func (e *Engine) markSessionRetired(sid string) {
 	b := e.buffers[sid]
 	if b == nil {
@@ -256,6 +267,7 @@ func (e *Engine) markSessionRetired(sid string) {
 	}
 	b.retired = true
 	b.errorText = text.Msg(text.KeyErrorsHistoryKeysUnavailableRecordsFromBeforeRecoveryCannotBe)
+	e.bumpRev(b)
 }
 
 func (e *Engine) startLoadEvents(ctx *StepContext, sid string) {
@@ -271,9 +283,11 @@ func (e *Engine) startLoadEvents(ctx *StepContext, sid string) {
 		agent = s.Meta.Agent
 	}
 	b := newEventBuffer(sid, agent, e.monoMs)
+	e.bumpRev(b)
 	if s.RetiredHistory {
 		b.retired = true
 		b.errorText = text.Msg(text.KeyErrorsHistoryKeysUnavailableRecordsFromBeforeRecoveryCannotBe)
+		e.bumpRev(b)
 		e.buffers[sid] = b
 		ctx.Dirty.MarkSessionData()
 		return
@@ -319,6 +333,7 @@ func (e *Engine) handleCacheEventsLoaded(ctx *StepContext, ev *corev1.CacheEvent
 		b.awaitingCache = false
 		b.backfilling = false
 		b.errorText = text.Msg(text.KeyErrorsHistoryKeysUnavailableRecordsFromBeforeRecoveryCannotBe)
+		e.bumpRev(b)
 		if s != nil {
 			s.RetiredHistory = true
 		}
@@ -331,10 +346,12 @@ func (e *Engine) handleCacheEventsLoaded(ctx *StepContext, ev *corev1.CacheEvent
 		return
 	}
 
-	ok := e.ingestEvents(ctx, ev.SessionId, b, ev.Events, false, false, true)
+	wasBackfilling := b.backfilling
+	ok := e.ingestEvents(ctx, ev.SessionId, b, ev.Events, false, false, true, !wasBackfilling)
 	if b.retired {
 		b.awaitingCache = false
 		b.backfilling = false
+		e.bumpRev(b)
 		ctx.Dirty.MarkSessionData()
 		return
 	}
@@ -343,7 +360,7 @@ func (e *Engine) handleCacheEventsLoaded(ctx *StepContext, ev *corev1.CacheEvent
 		return
 	}
 
-	if !b.backfilling {
+	if !wasBackfilling {
 		b.awaitingCache = false
 		if len(ev.Events) >= int(CacheEventPageSize) && ev.Events[0] != nil && ev.Events[0].Seq > 1 {
 			b.tailRequested = true
@@ -376,12 +393,23 @@ func (e *Engine) handleCacheEventsLoaded(ctx *StepContext, ev *corev1.CacheEvent
 			e.startFetchEvents(ctx, ev.SessionId)
 		}
 		e.trimHistory(ctx)
+		if s != nil {
+			e.refreshSessionPending(s)
+		}
+		ctx.Dirty.Add(true, true, false)
 		ctx.Dirty.MarkSessionData()
 		return
 	}
 	b.cacheAfterSeq = lastSeq
 	e.requestNextCacheBackfill(ctx, ev.SessionId, b)
-	ctx.Dirty.MarkSessionData()
+	// Keep intermediate backfill pages silent while tailRequested keeps tail visible.
+	if !b.tailRequested {
+		if s != nil {
+			e.refreshSessionPending(s)
+		}
+		ctx.Dirty.Add(true, true, false)
+		ctx.Dirty.MarkSessionData()
+	}
 }
 
 func (e *Engine) requestNextCacheBackfill(ctx *StepContext, sid string, b *EventBuffer) {
@@ -412,6 +440,7 @@ func (e *Engine) dropCorruptCacheAndRefetch(ctx *StepContext, sid string, b *Eve
 		},
 	})
 	b.resetContent(agent)
+	e.bumpRev(b)
 	b.retryingCorruptCache = true
 	b.awaitingCache = false
 	b.backfilling = false
@@ -533,9 +562,16 @@ func (e *Engine) handleEventsPageFetched(ctx *StepContext, ev *corev1.EventsPage
 		return
 	}
 
+	wasTailPrefix := b.fetchPhase == eventFetchPrefix && b.tailRequested
 	prevPrefix := len(b.prefix)
-	e.ingestEvents(ctx, ev.SessionId, b, ev.Events, false, true, true)
-	ctx.Dirty.MarkSessionData()
+	e.ingestEvents(ctx, ev.SessionId, b, ev.Events, false, true, true, !wasTailPrefix)
+	if !wasTailPrefix || !b.tailRequested || b.errorText != nil {
+		if wasTailPrefix {
+			e.refreshSessionPending(s)
+			ctx.Dirty.Add(true, true, false)
+		}
+		ctx.Dirty.MarkSessionData()
+	}
 	var lastSeq uint64
 	if len(ev.Events) > 0 && ev.Events[len(ev.Events)-1] != nil {
 		lastSeq = ev.Events[len(ev.Events)-1].Seq
@@ -613,7 +649,7 @@ func (e *Engine) handleEventsAppended(ctx *StepContext, frame *corev1.EventsAppe
 	if b == nil {
 		return
 	}
-	e.ingestEvents(ctx, sid, b, frame.Events, true, true, true)
+	e.ingestEvents(ctx, sid, b, frame.Events, true, true, true, true)
 	ctx.Dirty.MarkSessionData()
 }
 
@@ -652,7 +688,7 @@ func (e *Engine) handleDirectEvents(ctx *StepContext, ev *corev1.DirectEventsRec
 	if len(clean) == 0 {
 		return
 	}
-	e.ingestEvents(ctx, ev.SessionId, b, clean, false, false, false)
+	e.ingestEvents(ctx, ev.SessionId, b, clean, false, false, false, true)
 	ctx.Dirty.MarkSessionData()
 }
 
@@ -664,6 +700,7 @@ func (e *Engine) ingestEvents(
 	fillGaps bool,
 	save bool,
 	fromServer bool,
+	notifyDirty bool,
 ) bool {
 	s := e.sessions[sid]
 	if s == nil {
@@ -673,6 +710,7 @@ func (e *Engine) ingestEvents(
 	var cacheRefs []string
 	var maxSeq uint64
 	advancedPrefix := false
+	changedEvents := false
 	ok := true
 
 	for _, pe := range items {
@@ -686,6 +724,7 @@ func (e *Engine) ingestEvents(
 			b.retired = true
 			s.RetiredHistory = true
 			b.errorText = text.Msg(text.KeyErrorsHistoryKeysUnavailableRecordsFromBeforeRecoveryCannotBe)
+			changedEvents = true
 			ok = false
 			break
 		}
@@ -694,6 +733,7 @@ func (e *Engine) ingestEvents(
 				maxSeq = pe.Seq
 			}
 			b.errorText = text.Msg(text.KeyErrorsInvalidCiphertextSignatureKeyOrContentVerificationFailed)
+			changedEvents = true
 			ok = false
 			break
 		}
@@ -713,9 +753,15 @@ func (e *Engine) ingestEvents(
 
 		if pe.Verified {
 			b.verifiedSeqs[pe.Seq] = true
-			delete(b.unavailableSeqs, pe.Seq)
+			if b.unavailableSeqs[pe.Seq] {
+				delete(b.unavailableSeqs, pe.Seq)
+				changedEvents = true
+			}
 		} else if pe.Unavailable {
-			b.unavailableSeqs[pe.Seq] = true
+			if !b.unavailableSeqs[pe.Seq] {
+				b.unavailableSeqs[pe.Seq] = true
+				changedEvents = true
+			}
 		}
 
 		b.addApproxBytes(pe.Seq, pe.ApproxBytes)
@@ -725,8 +771,10 @@ func (e *Engine) ingestEvents(
 			b.prefix = append(b.prefix, ev)
 			if b.reducer != nil {
 				b.reducer.Append([]*v1.Event{ev})
+				b.cachedSnap = nil
 			}
 			advancedPrefix = true
+			changedEvents = true
 			for {
 				next := uint64(len(b.prefix)) + 1
 				nxtEv, found := b.pending[next]
@@ -737,6 +785,7 @@ func (e *Engine) ingestEvents(
 				b.prefix = append(b.prefix, nxtEv)
 				if b.reducer != nil {
 					b.reducer.Append([]*v1.Event{nxtEv})
+					b.cachedSnap = nil
 				}
 			}
 			if len(b.pending) == 0 {
@@ -745,7 +794,10 @@ func (e *Engine) ingestEvents(
 				b.tailRequested = false
 			}
 		case pe.Seq > expected:
-			b.pending[pe.Seq] = ev
+			if _, exists := b.pending[pe.Seq]; !exists {
+				b.pending[pe.Seq] = ev
+				changedEvents = true
+			}
 		default:
 			// seq <= len(b.prefix): keep existing verified event; replace skeleton/unavailable placeholder if incoming verified.
 			idx := int(pe.Seq - 1)
@@ -757,6 +809,7 @@ func (e *Engine) ingestEvents(
 				}
 				b.rebuildReducer(agent)
 				advancedPrefix = true
+				changedEvents = true
 			}
 		}
 
@@ -765,6 +818,9 @@ func (e *Engine) ingestEvents(
 		}
 	}
 
+	if changedEvents {
+		e.bumpRev(b)
+	}
 	if fromServer && maxSeq > s.ServerLastSeq {
 		s.ServerLastSeq = maxSeq
 	}
@@ -791,7 +847,7 @@ func (e *Engine) ingestEvents(
 			},
 		})
 	}
-	if advancedPrefix {
+	if advancedPrefix && notifyDirty {
 		e.refreshSessionPending(s)
 		ctx.Dirty.Add(true, true, false)
 	}

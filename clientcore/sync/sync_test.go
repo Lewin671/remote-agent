@@ -2672,3 +2672,97 @@ func TestStreamFrameDeviceAndMachineSecuritySync(t *testing.T) {
 		t.Fatalf("expected direct event from m-new to be ingested after SecuritySnapshot refresh, got prefix=%d", buf.PrefixLen())
 	}
 }
+
+func TestEventRevMonotonicAcrossTrimHistoryAndSnapshotCache(t *testing.T) {
+	now := int64(1_700_000_000_000)
+	e := NewEngine()
+	_, listsOp := startAndConnect(t, e, now)
+	e.HandleEvent(&corev1.Event{
+		NowMs: now + 40,
+		Event: &corev1.Event_ListsFetched{
+			ListsFetched: &corev1.ListsFetchedEvent{
+				OpId:     listsOp,
+				Machines: []*corev1.PlainMachine{{MachineId: "m1", Online: true}},
+				Sessions: []*corev1.PlainSession{{SessionId: "s1", MachineId: "m1", LastSeq: 1, UpdatedMs: now}},
+			},
+		},
+	})
+	_, watchRes := e.HandleEvent(&corev1.Event{
+		NowMs: now + 50,
+		Event: &corev1.Event_SessionWatch{SessionWatch: &corev1.SessionWatchEvent{SessionId: "s1", Watched: true}},
+	})
+	var cacheOp uint64
+	for _, eff := range watchRes.Effects {
+		if cr := eff.GetCacheRead().GetEvents(); cr != nil {
+			cacheOp = cr.OpId
+		}
+	}
+	e.HandleEvent(&corev1.Event{
+		NowMs: now + 60,
+		Event: &corev1.Event_CacheEventsLoaded{
+			CacheEventsLoaded: &corev1.CacheEventsLoadedEvent{
+				OpId:      cacheOp,
+				SessionId: "s1",
+				Events: []*corev1.PlainEvent{{
+					Seq: 1, Verified: true, ApproxBytes: 64,
+					Event: &v1.Event{Seq: 1, SessionId: "s1", Kind: &v1.Event_UserMessage{UserMessage: &v1.UserMessage{Text: "hi"}}},
+				}},
+			},
+		},
+	})
+
+	snap1 := e.SessionSnapshot("s1")
+	snap2 := e.SessionSnapshot("s1")
+	if snap1.EventRev == 0 || snap1.EventRev != snap2.EventRev {
+		t.Fatalf("expected positive stable EventRev, got %d vs %d", snap1.EventRev, snap2.EventRev)
+	}
+	if snap1.Projection == nil || snap1.Projection != snap2.Projection {
+		t.Fatalf("expected cached ProjectionState pointer reuse across snapshots")
+	}
+
+	// Unwatch and advance monotonic clock past HistoryIdleMs so trimHistory evicts buffer.
+	e.HandleEvent(&corev1.Event{
+		NowMs: now + 70,
+		Event: &corev1.Event_SessionWatch{SessionWatch: &corev1.SessionWatchEvent{SessionId: "s1", Watched: false}},
+	})
+	e.HandleEvent(&corev1.Event{
+		NowMs:  now + HistoryIdleMs + 1000,
+		MonoMs: e.MonoMs() + HistoryIdleMs + 1000,
+		Event: &corev1.Event_TimerFired{TimerFired: &corev1.TimerFiredEvent{
+			TimerId: e.timers[timerKey{kind: corev1.TimerKind_TIMER_KIND_HISTORY_SWEEP}].id,
+			Kind:    corev1.TimerKind_TIMER_KIND_HISTORY_SWEEP,
+		}},
+	})
+	if e.Buffer("s1") != nil {
+		t.Fatalf("expected trimHistory to evict idle buffer")
+	}
+
+	// Re-watch s1: new EventBuffer must receive strictly higher EventRev than snap1.EventRev.
+	_, reWatchRes := e.HandleEvent(&corev1.Event{
+		NowMs: now + HistoryIdleMs + 1001,
+		Event: &corev1.Event_SessionWatch{SessionWatch: &corev1.SessionWatchEvent{SessionId: "s1", Watched: true}},
+	})
+	var cacheOp2 uint64
+	for _, eff := range reWatchRes.Effects {
+		if cr := eff.GetCacheRead().GetEvents(); cr != nil {
+			cacheOp2 = cr.OpId
+		}
+	}
+	e.HandleEvent(&corev1.Event{
+		NowMs: now + HistoryIdleMs + 1002,
+		Event: &corev1.Event_CacheEventsLoaded{
+			CacheEventsLoaded: &corev1.CacheEventsLoadedEvent{
+				OpId:      cacheOp2,
+				SessionId: "s1",
+				Events: []*corev1.PlainEvent{{
+					Seq: 1, Verified: true, ApproxBytes: 64,
+					Event: &v1.Event{Seq: 1, SessionId: "s1", Kind: &v1.Event_UserMessage{UserMessage: &v1.UserMessage{Text: "hi"}}},
+				}},
+			},
+		},
+	})
+	snap3 := e.SessionSnapshot("s1")
+	if snap3.EventRev <= snap1.EventRev {
+		t.Fatalf("expected EventRev to remain monotonic across trimHistory eviction (%d <= %d)", snap3.EventRev, snap1.EventRev)
+	}
+}

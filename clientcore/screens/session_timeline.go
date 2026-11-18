@@ -14,6 +14,230 @@ import (
 
 const toolStatusFailed = "failed"
 
+type timelineCacheKey struct {
+	eventRev            uint64
+	eventsLen           int
+	firstSeq            uint64
+	lastSeq             uint64
+	cwd                 string
+	home                string
+	machineName         string
+	supportsSharedFiles bool
+	sessionExited       bool
+	endedAtMs           int64
+	agent               v1.Agent
+	thisDeviceID        string
+	deviceSig           uint64
+	hasPendingStart     bool
+	pendingStartCreated int64
+	pendingStartTextSig uint64
+	outgoingSig         uint64
+	resolvedCount       int
+	answeredCount       int
+	inputsSig           uint64
+	unsentCount         int
+	unfinishedCount     int
+	noResultCount       int
+	typedLocallyCount   int
+	approvalCallCount   int
+	toolsSig            uint64
+	bgSig               uint64
+	completedCount      int
+	termChangesCount    int
+	compactionsCount    int
+	unavailableCount    uint32
+}
+
+type timelineCache struct {
+	key      timelineCacheKey
+	hasFork  bool
+	rawItems []*corev1.SessionTimelineItem
+	spans    []quietSpan
+}
+
+const (
+	fnvOffset64 uint64 = 14695981039346656037
+	fnvPrime64  uint64 = 1099511628211
+)
+
+func mixUint64(h, v uint64) uint64 {
+	return (h ^ v) * fnvPrime64
+}
+
+func mixString(h uint64, s string) uint64 {
+	h = mixUint64(h, uint64(len(s)))
+	for i := 0; i < len(s); i++ {
+		h = (h ^ uint64(s[i])) * fnvPrime64
+	}
+	return h
+}
+
+func computeTimelineCacheKey(
+	in SessionViewInput,
+	events []*v1.Event,
+	p *corev1.ProjectionState,
+	caps lists.AgentCapabilities,
+	cwd, home, machineName string,
+	supportsSharedFiles, sessionExited bool,
+	endedAtMs int64,
+	ui *SessionUIState,
+) timelineCacheKey {
+	var firstSeq, lastSeq uint64
+	if len(events) > 0 {
+		if events[0] != nil {
+			firstSeq = events[0].Seq
+		}
+		if events[len(events)-1] != nil {
+			lastSeq = events[len(events)-1].Seq
+		}
+	}
+
+	devSig := fnvOffset64 ^ uint64(len(in.DeviceNames))
+	for id, name := range in.DeviceNames {
+		devSig ^= mixString(mixString(fnvOffset64, id), name)
+	}
+
+	inputsSig := mixUint64(fnvOffset64, uint64(len(p.Inputs)))
+	for _, ip := range p.Inputs {
+		if ip != nil {
+			inputsSig = mixUint64(mixUint64(inputsSig, ip.LastSeq), uint64(ip.Status))
+			inputsSig = mixString(inputsSig, ip.RequestId)
+			if ip.Accepted != nil {
+				inputsSig = mixString(inputsSig, ip.Accepted.Text)
+			}
+			if ip.Detail != nil {
+				inputsSig = mixString(mixString(inputsSig, ip.Detail.Text), ip.Detail.Reason)
+			}
+		}
+	}
+
+	toolsSig := mixUint64(fnvOffset64, uint64(len(p.Tools)))
+	for _, t := range p.Tools {
+		if t != nil {
+			toolsSig = mixUint64(mixUint64(toolsSig, t.Seq), uint64(t.Kind))
+			toolsSig = mixString(mixString(toolsSig, t.Title), t.Input)
+			if t.AwaitingApproval {
+				toolsSig = mixUint64(toolsSig, 1)
+			}
+		}
+	}
+
+	bgSig := mixUint64(fnvOffset64, uint64(len(p.Background)))
+	for _, bg := range p.Background {
+		if bg != nil && bg.Tool != nil {
+			bgSig = mixUint64(mixUint64(bgSig, bg.Tool.Seq), uint64(bg.Tool.Kind))
+			bgSig = mixString(bgSig, bg.BackgroundId)
+			if bg.Returned {
+				bgSig = mixUint64(bgSig, 1)
+			}
+		}
+	}
+
+	var hasPendingStart bool
+	var pendingCreated int64
+	var pendingTextSig uint64
+	outgoingSig := fnvOffset64
+	if ui != nil {
+		outgoingSig = mixUint64(fnvOffset64, uint64(len(ui.Outgoing)))
+		for _, og := range ui.Outgoing {
+			if og != nil {
+				outgoingSig = mixString(mixString(outgoingSig, og.RequestID), og.Text)
+			}
+		}
+		if ui.PendingStartPrompt != nil && ui.PendingStartPrompt.Text != "" {
+			hasPendingStart = true
+			pendingCreated = ui.PendingStartPrompt.CreatedMs
+			pendingTextSig = mixString(fnvOffset64, ui.PendingStartPrompt.Text)
+		}
+	}
+
+	return timelineCacheKey{
+		eventRev:            in.EventRev,
+		eventsLen:           len(events),
+		firstSeq:            firstSeq,
+		lastSeq:             lastSeq,
+		cwd:                 cwd,
+		home:                home,
+		machineName:         machineName,
+		supportsSharedFiles: supportsSharedFiles,
+		sessionExited:       sessionExited,
+		endedAtMs:           endedAtMs,
+		agent:               caps.Agent,
+		thisDeviceID:        in.ThisDeviceID,
+		deviceSig:           devSig,
+		hasPendingStart:     hasPendingStart,
+		pendingStartCreated: pendingCreated,
+		pendingStartTextSig: pendingTextSig,
+		outgoingSig:         outgoingSig,
+		resolvedCount:       len(p.Resolved),
+		answeredCount:       len(p.Answered),
+		inputsSig:           inputsSig,
+		unsentCount:         len(p.Unsent),
+		unfinishedCount:     len(p.UnfinishedSeqs),
+		noResultCount:       len(p.NoResultSeqs),
+		typedLocallyCount:   len(p.TypedLocallySeqs),
+		approvalCallCount:   len(p.ApprovalCallIds),
+		toolsSig:            toolsSig,
+		bgSig:               bgSig,
+		completedCount:      len(p.CompletedAt),
+		termChangesCount:    len(p.TerminalChanges),
+		compactionsCount:    len(p.Compactions),
+		unavailableCount:    in.UnavailableCount,
+	}
+}
+
+func findEventBySeq(events []*v1.Event, seq uint64) *v1.Event {
+	if seq == 0 || len(events) == 0 {
+		return nil
+	}
+	if idx := int(seq - 1); idx < len(events) {
+		if e := events[idx]; e != nil && e.Seq == seq {
+			return e
+		}
+	}
+	lo, hi := 0, len(events)
+	for lo < hi {
+		mid := int(uint(lo+hi) >> 1)
+		e := events[mid]
+		if e == nil || e.Seq < seq {
+			lo = mid + 1
+		} else {
+			hi = mid
+		}
+	}
+	if lo < len(events) && events[lo] != nil && events[lo].Seq == seq {
+		return events[lo]
+	}
+	if len(events) <= 32 {
+		for _, e := range events {
+			if e != nil && e.Seq == seq {
+				return e
+			}
+		}
+	}
+	return nil
+}
+
+func runningToolFromStarted(e *v1.Event) *corev1.RunningTool {
+	if e == nil {
+		return nil
+	}
+	ts := e.GetToolStarted()
+	if ts == nil {
+		return nil
+	}
+	return &corev1.RunningTool{
+		Title:       ts.Title,
+		CallId:      ts.CallId,
+		SinceMs:     projection.EventTimeMs(e),
+		Kind:        ts.Kind,
+		ItemType:    ts.ItemType,
+		Seq:         e.Seq,
+		Input:       ts.Input,
+		InputDigest: ts.InputDigest,
+	}
+}
+
 func buildSessionTimeline(
 	in SessionViewInput,
 	st *State,
@@ -46,6 +270,9 @@ func buildSessionTimeline(
 	}
 
 	if !in.Found {
+		if ui != nil {
+			ui.timeline = nil
+		}
 		return out
 	}
 
@@ -69,10 +296,26 @@ func buildSessionTimeline(
 	if lm != nil {
 		machineName = lists.MachineName(lm, lm.ID)
 	}
+	endedAtMs := int64(0)
+	if ls != nil {
+		endedAtMs = lists.EndedMs(ls)
+	}
+
+	var cacheKey timelineCacheKey
+	canUseCache := ui != nil && (in.EventRev > 0 || len(events) == 0)
+	if canUseCache {
+		cacheKey = computeTimelineCacheKey(
+			in, events, p, caps, cwd, home, machineName,
+			supportsSharedFiles, sessionExited, endedAtMs, ui,
+		)
+		if ui.timeline != nil && !ui.timeline.hasFork && ui.timeline.key == cacheKey {
+			folded := foldQuietScheduledItemsWithSpans(ui.timeline.rawItems, ui.timeline.spans, st.Cal, win)
+			applyTimelineWindow(out, folded, win)
+			return out
+		}
+	}
 
 	// Build lookup tables matching Android Chat.kt & iOS Timeline.swift.
-	eventBySeq := make(map[uint64]*v1.Event, len(events))
-	startedBySeq := make(map[uint64]*corev1.RunningTool)
 	runningBySeq := make(map[uint64]*corev1.RunningTool, len(p.Tools))
 	for _, t := range p.Tools {
 		if t != nil {
@@ -101,24 +344,11 @@ func buildSessionTimeline(
 	}
 
 	hasAnyUserMsg := false
-	for _, e := range events {
-		if e == nil {
-			continue
-		}
-		eventBySeq[e.Seq] = e
-		if e.GetUserMessage() != nil {
-			hasAnyUserMsg = true
-		}
-		if ts := e.GetToolStarted(); ts != nil {
-			startedBySeq[e.Seq] = &corev1.RunningTool{
-				Title:       ts.Title,
-				CallId:      ts.CallId,
-				SinceMs:     projection.EventTimeMs(e),
-				Kind:        ts.Kind,
-				ItemType:    ts.ItemType,
-				Seq:         e.Seq,
-				Input:       ts.Input,
-				InputDigest: ts.InputDigest,
+	if ui != nil && ui.PendingStartPrompt != nil && !sessionExited && ui.PendingStartPrompt.Text != "" {
+		for _, e := range events {
+			if e != nil && e.GetUserMessage() != nil {
+				hasAnyUserMsg = true
+				break
 			}
 		}
 	}
@@ -126,7 +356,7 @@ func buildSessionTimeline(
 	callAt := make(map[uint64]*v1.Event, len(p.CompletedAt))
 	placed := make(map[uint64]bool, len(p.CompletedAt))
 	for startSeq, callSeq := range p.CompletedAt {
-		if ce := eventBySeq[callSeq]; ce != nil {
+		if ce := findEventBySeq(events, callSeq); ce != nil {
 			callAt[startSeq] = ce
 			placed[callSeq] = true
 		}
@@ -277,10 +507,7 @@ func buildSessionTimeline(
 	var prevInputTokens, prevOutputTokens int64
 	var turnStartInputTokens, turnStartOutputTokens int64
 	hasTurnTokenBase := false
-	endedAtMs := int64(0)
-	if ls != nil {
-		endedAtMs = lists.EndedMs(ls)
-	}
+	hasFork := false
 
 	for _, e := range events {
 		if e == nil {
@@ -342,7 +569,7 @@ func buildSessionTimeline(
 				rt := r
 				unfin := false
 				if rt == nil {
-					rt = startedBySeq[e.Seq]
+					rt = runningToolFromStarted(e)
 					unfin = true
 				}
 				rawItems = append(rawItems, &corev1.SessionTimelineItem{
@@ -732,6 +959,7 @@ func buildSessionTimeline(
 
 		case *v1.Event_SessionForked:
 			if k.SessionForked != nil {
+				hasFork = true
 				flushTools()
 				sf := k.SessionForked
 				srcTitle := forkSourceTitle(sf.SourceSessionId, sf.SourceTitle, st, caps)
@@ -763,7 +991,16 @@ func buildSessionTimeline(
 	flushTools()
 
 	// Fold contiguous same-day quiet scheduled runs.
-	folded := foldQuietScheduledItems(rawItems, events, p, st.Cal, win)
+	spans := findQuietSpans(events, p)
+	if canUseCache {
+		ui.timeline = &timelineCache{
+			key:      cacheKey,
+			hasFork:  hasFork,
+			rawItems: rawItems,
+			spans:    spans,
+		}
+	}
+	folded := foldQuietScheduledItemsWithSpans(rawItems, spans, st.Cal, win)
 
 	// Apply window pagination and anchor resolution.
 	applyTimelineWindow(out, folded, win)
@@ -1509,14 +1746,12 @@ func findQuietSpans(events []*v1.Event, p *corev1.ProjectionState) []quietSpan {
 	return out
 }
 
-func foldQuietScheduledItems(
+func foldQuietScheduledItemsWithSpans(
 	items []*corev1.SessionTimelineItem,
-	events []*v1.Event,
-	p *corev1.ProjectionState,
+	spans []quietSpan,
 	cal lists.Calendar,
 	win *corev1.SessionWindowRequest,
 ) []*corev1.SessionTimelineItem {
-	spans := findQuietSpans(events, p)
 	if len(spans) < 2 {
 		return items
 	}
