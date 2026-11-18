@@ -458,7 +458,7 @@ final class DirectEngine: @unchecked Sendable {
                 if peers[id] === p { peers.removeValue(forKey: id) }
                 p.live = false
                 retire = p.session
-                retryAfter[id] = clock.now() + delay(id, p)
+                retryAfter[id] = p.redialAt ?? (clock.now() + delay(id, p))
                 trace?("direct: no usable path left, next round in \(retryAfter[id]! &- clock.now()) ms (reason \(String(describing: failures[id])))")
             }
         }

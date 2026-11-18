@@ -16,7 +16,7 @@ final class SessionPair: @unchecked Sendable {
     private var _clientPaths: [Int: DirectChannel] = [:], _machinePaths: [Int: DirectChannel] = [:]
     private var _machineFrames: [(Int, W.Bytes)] = [], _clientFrames: [(Int, W.Bytes)] = [], _clientClosed: [Int?] = []
     private var _clientControl15Count = 0, _machineUnsupportedCount = 0
-    private var stateWaiters: [(predicate: @Sendable () -> Bool, cont: CheckedContinuation<Void, Never>)] = []
+    private var stateWaiters: [(id: UUID, predicate: @Sendable () -> Bool, cont: CheckedContinuation<Void, Never>)] = []
     var dropFrames = false
     var clientPaths: [Int: DirectChannel] { lock.withLock { _clientPaths } }
     var machinePaths: [Int: DirectChannel] { lock.withLock { _machinePaths } }
@@ -74,7 +74,7 @@ final class SessionPair: @unchecked Sendable {
     private func signalStateChange() {
         let ready = waitersLock.withLock { () -> [CheckedContinuation<Void, Never>] in
             var fulfilled: [CheckedContinuation<Void, Never>] = []
-            var remaining: [(predicate: @Sendable () -> Bool, cont: CheckedContinuation<Void, Never>)] = []
+            var remaining: [(id: UUID, predicate: @Sendable () -> Bool, cont: CheckedContinuation<Void, Never>)] = []
             for w in stateWaiters {
                 if w.predicate() { fulfilled.append(w.cont) } else { remaining.append(w) }
             }
@@ -84,13 +84,22 @@ final class SessionPair: @unchecked Sendable {
         for c in ready { c.resume() }
     }
     func waitForState(_ predicate: @escaping @Sendable () -> Bool) async {
-        await withCheckedContinuation { (cont: CheckedContinuation<Void, Never>) in
-            let resumeNow = waitersLock.withLock { () -> Bool in
-                if predicate() { return true }
-                stateWaiters.append((predicate, cont))
-                return false
+        let waiterID = UUID()
+        await withTaskCancellationHandler {
+            await withCheckedContinuation { (cont: CheckedContinuation<Void, Never>) in
+                let resumeNow = waitersLock.withLock { () -> Bool in
+                    if predicate() || Task.isCancelled { return true }
+                    stateWaiters.append((waiterID, predicate, cont))
+                    return false
+                }
+                if resumeNow { cont.resume() }
             }
-            if resumeNow { cont.resume() }
+        } onCancel: {
+            let cont = waitersLock.withLock { () -> CheckedContinuation<Void, Never>? in
+                guard let idx = stateWaiters.firstIndex(where: { $0.id == waiterID }) else { return nil }
+                return stateWaiters.remove(at: idx).cont
+            }
+            cont?.resume()
         }
     }
     func waitForBudgetEmpty() async {

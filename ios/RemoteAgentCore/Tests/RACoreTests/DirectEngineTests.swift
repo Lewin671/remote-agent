@@ -65,7 +65,7 @@ final class EngineRig: @unchecked Sendable {
     var leg: FakeLeg!
     private let lock = NSRecursiveLock()
     private var sessions: [String: DirectSession] = [:], _connections: [W.Bytes] = [], _frames: [(Int, W.Bytes)] = [], _control15Subs: [[String]] = [], controlSeq: UInt64 = 0
-    private var stateWaiters: [(predicate: @Sendable () -> Bool, cont: CheckedContinuation<Void, Never>)] = []
+    private var stateWaiters: [(id: UUID, predicate: @Sendable () -> Bool, cont: CheckedContinuation<Void, Never>)] = []
     private var pendingDeliveries = 0, deliveryCounter = 0
     private var _holdUse1Confirm = false
     private var heldUse1Confirm: [W.Bytes] = []
@@ -99,7 +99,7 @@ final class EngineRig: @unchecked Sendable {
     private func signalStateChange() {
         let ready: [CheckedContinuation<Void, Never>] = lock.withLock {
             var fulfilled: [CheckedContinuation<Void, Never>] = []
-            var remaining: [(predicate: @Sendable () -> Bool, cont: CheckedContinuation<Void, Never>)] = []
+            var remaining: [(id: UUID, predicate: @Sendable () -> Bool, cont: CheckedContinuation<Void, Never>)] = []
             for w in stateWaiters {
                 if w.predicate() { fulfilled.append(w.cont) } else { remaining.append(w) }
             }
@@ -109,13 +109,22 @@ final class EngineRig: @unchecked Sendable {
         for c in ready { c.resume() }
     }
     func waitForState(_ predicate: @escaping @Sendable () -> Bool) async {
-        await withCheckedContinuation { (cont: CheckedContinuation<Void, Never>) in
-            let resumeNow = lock.withLock { () -> Bool in
-                if predicate() { return true }
-                stateWaiters.append((predicate, cont))
-                return false
+        let waiterID = UUID()
+        await withTaskCancellationHandler {
+            await withCheckedContinuation { (cont: CheckedContinuation<Void, Never>) in
+                let resumeNow = lock.withLock { () -> Bool in
+                    if predicate() || Task.isCancelled { return true }
+                    stateWaiters.append((waiterID, predicate, cont))
+                    return false
+                }
+                if resumeNow { cont.resume() }
             }
-            if resumeNow { cont.resume() }
+        } onCancel: {
+            let cont = lock.withLock { () -> CheckedContinuation<Void, Never>? in
+                guard let idx = stateWaiters.firstIndex(where: { $0.id == waiterID }) else { return nil }
+                return stateWaiters.remove(at: idx).cont
+            }
+            cont?.resume()
         }
     }
     func drainClient() async {
@@ -266,8 +275,7 @@ final class EngineRig: @unchecked Sendable {
     }
     /// A signed Control 14 from the computer, as the daemon announces what it can do.
     func announce(maxChunk: Int32 = 786_432, upload: Bool = true, download: Bool = true) {
-        guard let (key, session) = lock.withLock({ sessions.first }) else { return }
-        _ = key
+        guard let session = lock.withLock({ sessions.values.first(where: { $0.live }) ?? sessions.values.first }) else { return }
         controlSeq += 1
         var caps = PBMachineCapabilities(); caps.maxChunkBytes = maxChunk; caps.fileUpload = upload; caps.imageUpload = upload
         var snapshot = PBCapabilitySnapshot(); snapshot.capabilityID = Data(W.random(16)); snapshot.capabilities = caps; snapshot.expiresAtMs = Int64(time.now + 50_000)
