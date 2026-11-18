@@ -46,23 +46,3 @@ test("NotForwarded must bind the frozen body epoch as well as attempt ID",async(
   expect(result).toBeInstanceOf(CommandError);expect(result.outcome).toBe("unknown");
  } finally {await r.dispose();}
 });
-
-test("outbox settlement retains live evidence when a raw error follows the RPC",async()=>{
- const r=await SyntheticRemote.create();
- const original=r.sendMessage.bind(r);
- let id="";
- const send=vi.spyOn(r,"sendMessage").mockImplementation(async(...args)=>{
-  id=args[3].requestId;
-  await original(...args);
-  throw Error("canceled at UI handoff");
- });
- (r as unknown as {api:unknown}).api={forward:async(q:{command:Envelope})=>{
-  const h=parseHeader(new Uint8Array(q.command.securityHeader));
-  return {result:await r.seal({kind:6,sessionId:"s",requestId:h.request},CommandResultSchema,create(CommandResultSchema))};
- }};
- try {
-  const sent=r.send("s","original");
-  await vi.waitFor(()=>expect(r.outbox("s")[0].status).toBe("failed"));
-  expect(r.outbox("s")[0]).toMatchObject({sendId:sent,requestId:id,unknown:true,text:"original"});
- } finally {send.mockRestore();await r.dispose();}
-});

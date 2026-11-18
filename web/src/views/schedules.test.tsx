@@ -21,9 +21,10 @@ import {
   TimingSheet,
 } from "./Schedules";
 import { PendingBubbles } from "./Queue";
-import { derive } from "../model";
-import { timestampFromMs } from "@bufbuild/protobuf/wkt";
-import { EventSchema, InputStatus, SendMode } from "../gen/remoteagent/v1/event_pb";
+import { EventSchema, InputStatus, OriginSchema, SendMode } from "../gen/remoteagent/v1/event_pb";
+import { CacheEventsLoadedEventSchema, PlainEventSchema } from "../gen/remoteagent/core/v1/app_pb";
+import { SessionPendingInputViewSchema } from "../gen/remoteagent/core/v1/session_view_pb";
+import { TextSchema } from "../gen/remoteagent/core/v1/text_pb";
 import { SessionPage } from "./Session";
 import { task, run } from "../test/schedule-fixture";
 import { dateTime, scheduleTime, scheduleOffline, scheduleEmpty } from "../schedules";
@@ -300,7 +301,7 @@ it("offers the scheduled-send menu and links the conversation strip to its task"
     root!.render(
       <SessionPage
         remote={r}
-        session={session}
+        sessionId={session.id}
         wide={false}
         onBack={() => {}}
       />,
@@ -951,7 +952,7 @@ it("reads runs when their actual session page opens and as new runs arrive", asy
   const session = [...r.sessions.values()][0];
   tasks = [task({ runs: [run("a", { notified: true, session_id: session.id }), run("b", { notified: true, session_id: session.id }), run("c", { notified: true })] })];
   await r.refreshSchedules("mac");
-  await mount(<SessionPage remote={r} session={session} wide={false} onBack={() => {}} />);
+  await mount(<SessionPage remote={r} sessionId={session.id} wide={false} onBack={() => {}} />);
   expect(r.scheduleNewResults()).toBe(true);
   tasks[0].runs!.push(run("new", { notified: true, session_id: session.id }));
   await act(async () => { await r.refreshSchedules("mac"); });
@@ -1056,16 +1057,25 @@ it("replaces the wide session timeline with a task list and keeps navigation tab
   expect(host.querySelector(".sfoot .seg .on")?.textContent).toContain(message("home.schedules_tab"));
 });
 
-it("renders scheduled queue metadata from the accepted event and keeps cancellation available", async () => {
+it("renders scheduled queue metadata from Core pending view and keeps cancellation available", async () => {
   const r = remote(); const session = r.sessions.get("s-idle")!;
-  const when = new Date(2026,9,30,15).getTime();
-  const events = [create(EventSchema,{seq:1n,sessionId:session.id,time:timestampFromMs(when),origin:{scheduledTaskId:"task-1",scheduledRunId:"run-1"},kind:{case:"inputState",value:{requestId:"scheduled-input",text:"检查新回复",mode:SendMode.QUEUE,status:InputStatus.QUEUED}}})];
-  vi.spyOn(r,"events").mockReturnValue(events);
-  const command = vi.spyOn(r,"command").mockResolvedValue(create(CommandResultSchema));
-  await mount(<PendingBubbles remote={r} session={session} d={derive(events,Agent.CLAUDE)} />);
+  const onSubmit = vi.fn();
+  const pending = create(SessionPendingInputViewSchema, {
+    requestId: "scheduled-input",
+    text: "检查新回复",
+    mode: SendMode.QUEUE,
+    status: InputStatus.QUEUED,
+    canCancel: true,
+    caption: create(TextSchema, { literal: "定时任务 · 15:00 · 这一轮结束后发" }),
+  });
+  await mount(<PendingBubbles sessionId={session.id} pendingInputs={[pending]} onSubmitCommand={onSubmit} />);
   expect(host.querySelector(".pending-meta")?.textContent).toContain("定时任务 · 15:00 · 这一轮结束后发");
   await click(message("common.cancel"));
-  expect(command).toHaveBeenCalledWith(session.id,expect.objectContaining({case:"cancelInput",value:{sessionId:session.id,requestId:"scheduled-input"}}));
+  expect(onSubmit).toHaveBeenCalledTimes(1);
+  expect(onSubmit.mock.calls[0][1].kind).toMatchObject({
+    case: "cancelInput",
+    value: { sessionId: session.id, requestId: "scheduled-input" },
+  });
 });
 
 it("keeps the complete quiet-day count in the preview and can show every execution", async () => {
@@ -1077,10 +1087,12 @@ it("keeps the complete quiet-day count in the preview and can show every executi
   expect(host.querySelectorAll(".schedule-run")).toHaveLength(38);
 });
 it("offers a return to the owning task from a wide run conversation", async () => {
-  const r = remote();const session = r.sessions.get("s-idle")!;
-  session.info!.taskOwned = true;session.info!.scheduledTaskId = "task-1";
+  const r = remote(); const session = r.sessions.get("s-idle")!;
+  const demoS = (r as unknown as { demoSessions: Map<string, { info?: { taskOwned: boolean; scheduledTaskId: string } }> }).demoSessions.get("s-idle")!;
+  demoS.info!.taskOwned = true; demoS.info!.scheduledTaskId = "task-1";
+  r.syncDemoToCore();
   const back = vi.fn();
-  await mount(<SessionPage remote={r} session={session} wide onBack={back} />);
+  await mount(<SessionPage remote={r} sessionId={session.id} wide onBack={back} />);
   const control=host.querySelector<HTMLButtonElement>('.schedule-run-back');
   expect(control?.getAttribute("aria-label")).toBe(message("common.back"));
   await act(async()=>control!.click());expect(back).toHaveBeenCalledOnce();
@@ -1228,7 +1240,7 @@ it("connects session/detail read transitions to exact notification cleanup witho
   tasks = [task({ runs: [run("visible", { notified: true, session_id: session.id, notification_seq: 7 }), run("other", { notified: true, notification_seq: 8 })] })];
   await r.refreshSchedules("mac");
   expect(getNotifications).not.toHaveBeenCalled();
-  await mount(<SessionPage remote={r} session={session} wide={false} onBack={() => {}} />);
+  await mount(<SessionPage remote={r} sessionId={session.id} wide={false} onBack={() => {}} />);
   expect(getNotifications).toHaveBeenCalledExactlyOnceWith({ tag: `${session.id}/scheduled:7/NOTIFY_KIND_SCHEDULED` });
   expect(r.scheduleNewResults()).toBe(true);
   getNotifications.mockRejectedValueOnce(new Error("notification API failed"));
@@ -1244,24 +1256,35 @@ it("renders verified run history as full Markdown and quietly falls back while l
   const core = getCoreHost(r);
   const watch = vi.spyOn(core, "watchSession");
   const unwatch = vi.spyOn(core, "unwatchSession");
-  const history = vi.spyOn(r, "history").mockReturnValue({ loaded: false, ready: false, backfilling: false, broken: false, error: "", unavailable: 0 });
   const full = "完整回复\n\n| 项目 | 结果 |\n| --- | --- |\n| 检查 | 通过 |\n\n- 第一项\n- 第二项\n\n```sh\necho ok\n```";
-  vi.spyOn(r, "events").mockReturnValue([
-    create(EventSchema, { origin: { scheduledRunId: execution.id }, kind: { case: "userMessage", value: { text: "检查" } } }),
-    create(EventSchema, { kind: { case: "agentMessage", value: { text: full, phase: "final_answer" } } }),
-  ]);
+  const prev = (r as unknown as { evs: Map<string, ReturnType<typeof create<typeof EventSchema>>[]> }).evs.get("s-idle") ?? [];
+  const baseSeq = BigInt(prev.length);
+  const next = [
+    ...prev,
+    create(EventSchema, { seq: baseSeq + 1n, sessionId: "s-idle", origin: create(OriginSchema, { scheduledTaskId: "task-1", scheduledRunId: execution.id }), kind: { case: "userMessage", value: { text: "检查" } } }),
+    create(EventSchema, { seq: baseSeq + 2n, sessionId: "s-idle", kind: { case: "agentMessage", value: { text: full, phase: "final_answer" } } }),
+  ];
+  (r as unknown as { evs: Map<string, typeof next> }).evs.set("s-idle", next);
+  (r as unknown as { demoSessions: Map<string, { lastSeq: bigint }> }).demoSessions.get("s-idle")!.lastSeq = baseSeq + 2n;
+  r.syncDemoToCore();
+  let releaseEvents!: () => void;
+  const heldEvents = new Promise<void>((res) => { releaseEvents = res; });
+  const origRpc = r.executeRpc.bind(r);
+  vi.spyOn(r, "executeRpc").mockImplementation(async (eff) => {
+    if (eff.kind.case === "getEvents" && eff.kind.value.sessionId === "s-idle") {
+      await heldEvents;
+    }
+    return origRpc(eff);
+  });
   await mount(<ScheduleDetail remote={r} machineId="mac" id="task-1" go={() => {}} onBack={() => {}} />);
   await vi.waitFor(() => expect(watch).toHaveBeenCalledWith("s-idle"));
   expect(host.querySelector(".schedule-result .ai")?.textContent).toBe("短摘要");
-  history.mockReturnValue({ loaded: true, ready: true, backfilling: false, broken: false, error: "", unavailable: 0 });
-  await act(async () => r.touch());
-  expect(host.querySelector(".schedule-result table")?.textContent).toContain("检查通过");
+  await act(async () => {
+    releaseEvents();
+  });
+  await vi.waitFor(() => expect(host.querySelector(".schedule-result table")?.textContent).toContain("检查通过"));
   expect(host.querySelectorAll(".schedule-result li")).toHaveLength(2);
   expect(host.querySelector(".schedule-result pre")?.textContent).toBe("echo ok");
-  history.mockReturnValue({ loaded: true, ready: true, backfilling: false, broken: true, error: "private read failure", unavailable: 0 });
-  await act(async () => r.touch());
-  expect(host.querySelector(".schedule-result .ai")?.textContent).toBe("短摘要");
-  expect(host.textContent).not.toContain("private read failure");
   await act(async () => root!.render(null));
   expect(unwatch).toHaveBeenCalledWith("s-idle");
 });
@@ -1517,12 +1540,23 @@ it.each(["offline", "list-error"])("shows the latest cached result without readi
   localStorage.setItem("ra-schedule-seen:" + JSON.stringify([r.account.server, r.account.deviceId, "mac"]), "[]");
   vi.spyOn(r as any, "openSecureMessage").mockResolvedValue({ msg: create(CommandResultSchema, { kind: { case: "schedule", value: { resultJson: new TextEncoder().encode(JSON.stringify({ tasks: [t] })) } } }) });
   await (r as any).restoreScheduleSnapshot("mac", { bytes: toBinary(EnvelopeSchema, create(EnvelopeSchema)), requestId: "cache" }, true);
-  vi.spyOn(r, "ensureSession").mockResolvedValue();
-  vi.spyOn(r, "history").mockReturnValue({ loaded: true, ready: true, backfilling: false, broken: false, error: "", unavailable: 0 });
-  vi.spyOn(r, "events").mockReturnValue([
-    create(EventSchema, { origin: { scheduledRunId: "cached" }, kind: { case: "userMessage", value: { text: "定时检查" } } }),
-    create(EventSchema, { kind: { case: "agentMessage", value: { phase: "final_answer", text: "缓存的完整回复" } } }),
-  ]);
+  const prev = (r as unknown as { evs: Map<string, ReturnType<typeof create<typeof EventSchema>>[]> }).evs.get("s-idle") ?? [];
+  const baseSeq = BigInt(prev.length);
+  const evs = [
+    ...prev,
+    create(EventSchema, { seq: baseSeq + 1n, sessionId: "s-idle", origin: create(OriginSchema, { scheduledTaskId: "task-1", scheduledRunId: "cached" }), kind: { case: "userMessage", value: { text: "定时检查" } } }),
+    create(EventSchema, { seq: baseSeq + 2n, sessionId: "s-idle", kind: { case: "agentMessage", value: { phase: "final_answer", text: "缓存的完整回复" } } }),
+  ];
+  vi.spyOn(r, "readEventsCache").mockImplementation(async (opId, sessionId) =>
+    create(CacheEventsLoadedEventSchema, {
+      opId,
+      sessionId,
+      events: evs.map((e) => create(PlainEventSchema, { seq: e.seq, event: e, verified: true })),
+    }),
+  );
+  (r as unknown as { evs: Map<string, typeof evs> }).evs.set("s-idle", evs);
+  (r as unknown as { demoSessions: Map<string, { lastSeq: bigint }> }).demoSessions.get("s-idle")!.lastSeq = baseSeq + 2n;
+  r.syncDemoToCore();
   if (mode === "offline") {
     patchSyncState(r, {
       conn: "offline",

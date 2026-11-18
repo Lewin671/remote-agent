@@ -1,6 +1,6 @@
 import { rich } from "../i18n/rich";
 import * as l10n from "../i18n";
-import { getCoreHost } from "../core/host";
+import { useCoreHost, useSessionView } from "../core/host";
 import { ScheduleRevisionError } from "../remote";
 import { useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from "react";
 import { ApprovalMode } from "../gen/remoteagent/v1/event_pb";
@@ -59,7 +59,7 @@ import {
   runResult,
   taskGroup, weekdayLabel,
   taskRoute,
-  scheduleTime, stoppedTime, finalRunText,
+  scheduleTime, stoppedTime, finalRunTextFromTimeline,
   zonedISO,
   type ScheduleDetailVisit,
   type ScheduleRun,
@@ -595,23 +595,14 @@ export function TimingSheet({
   );
 }
 
-/** Reads through the ordinary verified GetEvents history consumer. */
 function ScheduleResult({ remote, run, unread, now, open }: { remote: Remote; run: ScheduleRun; unread: boolean; now: number; open?: () => void }) {
   useRemote(remote);
+  const host = useCoreHost(remote);
   const [expanded, setExpanded] = useState(false), [long, setLong] = useState(false);
   const body = useRef<HTMLDivElement>(null);
   const sid = run.session_id;
-  useEffect(() => {
-    if (!sid) return;
-    let cancelled = false;
-    const host = getCoreHost(remote);
-    void remote.ensureSession(sid).then(() => {
-      if (!cancelled) host.watchSession(sid);
-    }).catch(() => undefined);
-    return () => { cancelled = true; host.unwatchSession(sid); };
-  }, [remote, sid]);
-  const history = sid ? remote.history(sid) : undefined;
-  const full = sid && history?.loaded && !history.error && !history.broken && !history.backfilling ? finalRunText(remote.events(sid), run.id) : "";
+  const vm = useSessionView(host, sid ?? "", sid ? { revealRunId: run.id } : undefined);
+  const full = sid ? finalRunTextFromTimeline(vm.timeline, run.id) : "";
   const text = full || run.final_summary || (run.reason ? reasonText(run.reason) : "");
   const title = runTitle(run);
   useEffect(() => {

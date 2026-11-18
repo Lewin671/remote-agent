@@ -1,20 +1,16 @@
 // @vitest-environment happy-dom
-import { create, type MessageInitShape } from "@bufbuild/protobuf";
-import { timestampFromMs } from "@bufbuild/protobuf/wkt";
+import { create } from "@bufbuild/protobuf";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import {
-  EventSchema,
   SharedFileSchema,
-  ToolKind,
-  TurnOutcome,
   type Event,
   type SharedFile,
 } from "../gen/remoteagent/v1/event_pb";
 import { DemoRemote } from "../dev/demo";
 import * as i18n from "../i18n";
-import { derive, timeline } from "../model";
+import { patchSyncState } from "../test/remote-fixture";
 import {
   DEFAULT_SHARED_FILE_CHUNK_BYTES,
   previewBlobForFile,
@@ -81,13 +77,8 @@ async function mount(node: React.ReactNode) {
   await act(async () => root!.render(node));
 }
 
-function makeEvent(seq: number, kind: MessageInitShape<typeof EventSchema>["kind"]): Event {
-  return create(EventSchema, {
-    seq: BigInt(seq),
-    sessionId: "s-test",
-    time: timestampFromMs(1_700_000_000_000 + seq * 1000),
-    kind,
-  });
+function demoEvents(r: DemoRemote, sid: string): Event[] {
+  return (r as unknown as { evs: Map<string, Event[]> }).evs.get(sid) ?? [];
 }
 
 function makeDemo(): DemoRemote {
@@ -96,77 +87,6 @@ function makeDemo(): DemoRemote {
   r.start();
   return r;
 }
-
-it("splits ToolGroups around completed send_file calls and falls back when capability is missing or call failed", () => {
-  const f1 = create(SharedFileSchema, {
-    fileId: "f-split-1",
-    name: "cut.mp4",
-    sizeBytes: 1024n,
-    path: "/tmp/cut.mp4",
-  });
-  const events: Event[] = [
-    makeEvent(1, { case: "turnStarted", value: {} }),
-    makeEvent(2, {
-      case: "toolCall",
-      value: { callId: "c1a", kind: ToolKind.COMMAND, title: "ls", status: "completed", exitCode: 0 },
-    }),
-    makeEvent(3, {
-      case: "toolCall",
-      value: { callId: "c1b", kind: ToolKind.COMMAND, title: "stat cut.mp4", status: "completed", exitCode: 0 },
-    }),
-    makeEvent(4, {
-      case: "toolCall",
-      value: {
-        callId: "c2",
-        kind: ToolKind.OTHER,
-        title: "send_file",
-        status: "completed",
-        exitCode: 0,
-        sharedFiles: [f1],
-      },
-    }),
-    makeEvent(5, {
-      case: "toolCall",
-      value: { callId: "c3a", kind: ToolKind.COMMAND, title: "pwd", status: "completed", exitCode: 0 },
-    }),
-    makeEvent(6, {
-      case: "toolCall",
-      value: { callId: "c3b", kind: ToolKind.COMMAND, title: "echo done", status: "completed", exitCode: 0 },
-    }),
-    makeEvent(7, { case: "turnEnded", value: { durationMs: 1000n, outcome: TurnOutcome.COMPLETED } }),
-  ];
-
-  const withCap = timeline(events, derive(events), { sharedFiles: true });
-  expect(withCap.map((x) => x.kind)).toEqual(["tools", "event", "tools", "turn"]);
-  expect(withCap[1].kind === "event" && withCap[1].event.kind.case === "toolCall" && withCap[1].event.kind.value.sharedFiles.length).toBe(1);
-
-  const withoutCap = timeline(events, derive(events), { sharedFiles: false });
-  expect(withoutCap.map((x) => x.kind)).toEqual(["tools", "turn"]);
-
-  const failedEvents: Event[] = [
-    events[0],
-    events[1],
-    events[2],
-    makeEvent(4, {
-      case: "toolCall",
-      value: {
-        callId: "c2",
-        kind: ToolKind.OTHER,
-        title: "send_file",
-        status: "failed",
-        exitCode: 1,
-        sharedFiles: [f1],
-      },
-    }),
-    events[4],
-    events[5],
-    events[6],
-  ];
-  const failedTl = timeline(failedEvents, derive(failedEvents), { sharedFiles: true });
-  expect(failedTl.map((x) => x.kind)).toEqual(["tools", "event", "tools", "turn"]);
-  // Failed toolCall stays a standalone ToolRow event (not folded into completed tools),
-  // and SessionPage Row skips SharedFileCards when status !== "completed" or capability is false.
-});
 
 it("renders all 7 card states plus offline/cleaned, middle filename split, and shared state for duplicate fileId", async () => {
   const r = makeDemo();
@@ -179,7 +99,7 @@ it("renders all 7 card states plus offline/cleaned, middle filename split, and s
     "sf-pdf",
     "sf-fail",
   ].map((id) => {
-    const evs = r.events("s-sf-states");
+    const evs = demoEvents(r, "s-sf-states");
     for (const e of evs) {
       if (e.kind.case === "toolCall") {
         const hit = e.kind.value.sharedFiles.find((f) => f.fileId === id);
@@ -581,12 +501,12 @@ it("wires SessionPage to trigger non-media download on PDF click without inline 
   expect(s).toBeTruthy();
 
   const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
-  const pdf = r.events("s-sf-states")
+  const pdf = demoEvents(r, "s-sf-states")
     .flatMap((e) => (e.kind.case === "toolCall" ? e.kind.value.sharedFiles : []))
     .find((f) => f.fileId === "sf-pdf")!;
   r.sharedFiles.seedDownloaded("s-sf-states", pdf.fileId, new Blob(["%PDF-1.4"]));
 
-  await mount(<SessionPage remote={r} session={s} onBack={() => undefined} wide={false} />);
+  await mount(<SessionPage remote={r} sessionId={s.id} onBack={() => undefined} wide={false} />);
 
   await vi.waitFor(() => {
     const btn = [...host!.querySelectorAll<HTMLElement>(".sf-fc")].find((el) =>
@@ -604,9 +524,12 @@ it("wires SessionPage to trigger non-media download on PDF click without inline 
   expect(host!.querySelector(".lightbox")).toBeNull();
 
   // Turning off machine sharedFiles capability falls back to standard ToolRow.
-  r.machines.get("mac")!.meta!.capabilities!.sharedFiles = false;
+  const nextMachines = new Map(r.machines);
+  const mac = nextMachines.get("mac")!;
+  mac.meta!.capabilities!.sharedFiles = false;
+  patchSyncState(r, { machines: nextMachines });
   await act(async () => {
-    root!.render(<SessionPage remote={r} session={s} onBack={() => undefined} wide={false} />);
+    root!.render(<SessionPage remote={r} sessionId={s.id} onBack={() => undefined} wide={false} />);
   });
   expect(host!.querySelector(".sf-fc")).toBeNull();
 });

@@ -1,120 +1,241 @@
 import * as i18n from "../i18n";
-import { inputTimingLabel } from "../model";
-import { agentInfo } from "../agents";
-import { clockTime } from "../schedules";
-import { FileChips } from "./Files";
-import { isSkeleton, skeletonMessage } from "../skeleton";
-// The message queue in full (client-v2 队列完整页): every message the
-// computer accepted and has not written yet, in its order, whoever sent
-// it, each cancellable; and what became of a cancel.
+// The message queue and in-flight outgoing bubbles (design-system §6 输入框):
+// every accepted input waiting to run, and local sends not yet confirmed in chat.
 
-import { useState } from "react";
-import { InputStage, InputStatus, SendMode, SessionStatus } from "../gen/remoteagent/v1/event_pb";
-import { originLabel } from "../devices";
-import { agentName, agentOf, machineName, queuedIds, queueReason, type Derived } from "../model";
-import { errorText, type Remote, type SessionView } from "../remote";
-import { LocalThumbs } from "./Images";
-import { promptIdOf } from "./Composer";
+import { create } from "@bufbuild/protobuf";
+import { useEffect, useRef, useState } from "react";
+import type { TrayItem } from "../attach";
+import { renderText } from "../core/text";
+import {
+  SessionCommandStatus,
+  SessionOutgoingState,
+  type SessionOutgoingView,
+  type SessionPendingInputView,
+} from "../gen/remoteagent/core/v1/session_view_pb";
+import type { SentFile } from "../gen/remoteagent/v1/event_pb";
+import {
+  CommandSchema,
+  type Command,
+} from "../gen/remoteagent/v1/remote_pb";
+import { LoaderCircle } from "../icons";
 import { useFresh } from "../motion";
+import { isSkeleton, skeletonMessage } from "../skeleton";
+import { FileChips } from "./Files";
+import { LocalThumbs } from "./Images";
 
-/** How a cancel ended, as the page reports it once the message leaves
- * the queue: canceled here, canceled elsewhere, or written first. */
-export function cancelOutcome(status: InputStatus | undefined, mine: boolean): string {
-  if (status === InputStatus.CANCELED) return mine ? i18n.t("queue.canceled") : i18n.t("queue.canceled_elsewhere");
-  if (status === InputStatus.SUBMITTED || status === InputStatus.UNCONFIRMED) return mine ? i18n.t("queue.already_submitted") : "";
-  return "";
+export interface LocalSendAttachments {
+  thumbs?: Blob[];
+  imageSizes?: { width: number; height: number }[];
+  files?: Array<Pick<SentFile, "name" | "sizeBytes" | "fileId"> & { file?: File }>;
+  items?: TrayItem[];
+  original?: boolean;
 }
 
-/** How far a message got while it is written to the terminal: past the
- * point where a cancel can still take it back. */
-export function stageText(stage: InputStage | undefined): string {
-  switch (stage) {
-    case InputStage.PASTING_IMAGES:
-      return i18n.t("queue.pasting_images");
-    case InputStage.IMAGES_RECOGNIZED:
-      return i18n.t("queue.images_recognized");
-    case InputStage.SUBMITTING:
-      return i18n.t("queue.submitting");
-  }
-  return "";
-}
+export function PendingBubbles({
+  sessionId,
+  pendingInputs,
+  localAttachments,
+  defaultExpandedAll = false,
+  onSubmitCommand,
+}: {
+  sessionId: string;
+  pendingInputs: readonly SessionPendingInputView[];
+  localAttachments?: Map<string, LocalSendAttachments>;
+  defaultExpandedAll?: boolean;
+  onSubmitCommand: (slotKey: string, cmd: Command) => void;
+}) {
+  const [all, setAll] = useState(defaultExpandedAll);
+  const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
+  const shown = all || pendingInputs.length <= 3 ? pendingInputs : pendingInputs.slice(0, 2);
+  const ids = shown.map((p) => p.requestId);
+  const fresh = useFresh(ids, true, { bulk: 3 });
 
-/** Cancels a queued message, or sends one that is paused. */
-async function queueAct(remote: Remote, sid: string, d: Derived, id: string, resume = false) {
-  if (isSkeleton(id) || isSkeleton(d.accepted.get(id)?.text)) return;
-  if (resume) { remote.resumes.set(id, { state: "sending", error: "" }); remote.touch(); }
-  if (!resume) { remote.cancels.set(id, { state: "canceling", error: "" }); remote.touch(); }
-  try {
-    await remote.command(sid, resume ? { case: "resumeInput", value: { sessionId: sid, requestId: id } } : { case: "cancelInput", value: { sessionId: sid, requestId: id } });
-    if (resume) { remote.resumes.delete(id); remote.touch(); }
-  } catch (e) {
-    if (resume) remote.resumes.set(id, { state: "failed", error: errorText(e) });
-    if (!resume) remote.cancels.set(id, { state: "failed", error: errorText(e) });
-    remote.touch();
-  }
-}
+  if (pendingInputs.length === 0) return null;
 
-/** What a queued message says under its bubble: a few words for what it
- * waits for (design-system §6 输入框), and what can be done with it. `rank`
- * is its place among the `count` queued; `needed` says whether the user has
- * anything to do or know about it (a turn runs, it is paused, held or being
- * canceled), or whether it is only on its way to the terminal. */
-export function queueLine(remote: Remote, session: SessionView, d: Derived, id: string, rank: number, count: number) {
-  const sid = session.id;
-  const a = d.accepted.get(id);
-  const o = remote.outbox(sid).find((x) => x.sendId === id);
-  const c = remote.cancels.get(id);
-  const paused = d.paused.has(id);
-  const resume = paused ? remote.resumes.get(id) : undefined;
-  const held = d.inputs.get(id) === InputStatus.HELD_BY_CLI;
-  const ctx = { me: remote.account.deviceId, devices: remote.devices, machine: machineName(remote.machines.get(session.machineId)) };
-  const from = a?.origin && a.origin.deviceId !== remote.account.deviceId ? originLabel(a.origin, ctx) : "";
-  const mode = a?.mode ?? o?.mode;
-  const queueOnly = !agentInfo(agentOf(session)).steersDuringTurn;
-  const starting = session.info?.status === SessionStatus.STARTING;
-  const queuedTime = a?.origin?.scheduledTaskId ? remote.events(sid).find(e => e.kind.case === "inputState" && e.kind.value.requestId === id && e.time)?.time : undefined;
-  const scheduleLabel = a?.origin?.scheduledTaskId ? i18n.t("queue.scheduled", { time: queuedTime ? " · " + clockTime(Number(queuedTime.seconds) * 1000) : "" }) : "";
-  const status = c?.state === "canceling" ? i18n.t("queue.canceling") : c?.state === "failed" ? i18n.t("queue.cancel_failed") : resume?.state === "failed" ? i18n.t("queue.resume_failed") : resume?.state === "sending" ? i18n.t("queue.resuming") : paused ? i18n.t("queue.paused") : inputTimingLabel(agentOf(session), mode, held, starting ? agentName(agentOf(session)) : undefined);
-  const needed = queueReason(session, d) !== "" || paused || held || !!c?.state || !!resume?.state || mode === SendMode.QUEUE || starting || (queueOnly && d.running);
-  const text = scheduleLabel + status + (count > 1 && !paused && !held && !c?.state ? i18n.t("queue.rank", { rank }) : "") + (from ? ` · ${from}` : "");
-  const buttons = (
+  return (
     <>
-      {paused && <button disabled={resume?.state === "sending"} onClick={() => void queueAct(remote, sid, d, id, true)}>{resume?.state === "failed" ? i18n.t("common.retry") : i18n.t("composer.send")}</button>}
-      {c?.state === "failed" ? <button onClick={() => void queueAct(remote, sid, d, id)}>{i18n.t("common.retry")}</button> : c?.state !== "canceling" && <button onClick={() => void queueAct(remote, sid, d, id)}>{i18n.t("common.cancel")}</button>}
+      {shown.map((pi) => {
+        const id = pi.requestId;
+        if (isSkeleton(id) || isSkeleton(pi.text)) {
+          return (
+            <div className={"pending-bubble me" + (fresh(id) ? " mo-rise" : "")} key={id}>
+              {skeletonMessage()}
+            </div>
+          );
+        }
+        const att = localAttachments?.get(id);
+        const message =
+          pi.text ||
+          (pi.imageCount > 0
+            ? i18n.t("image.count", { count: pi.imageCount })
+            : pi.fileCount > 0
+              ? ""
+              : i18n.t("queue.other_message"));
+        const caption = (renderText(pi.caption) || renderText(pi.label))
+          .replace(/\s*·(?:\s*·)+\s*/g, " · ")
+          .replace(/^\s*·\s*|\s*·\s*$/g, "");
+        const feedback = renderText(pi.feedback);
+        const metaText = feedback && feedback !== caption ? `${caption} · ${feedback}` : caption;
+        const cancelFailed = pi.cancel?.status === SessionCommandStatus.FAILED || pi.cancel?.status === SessionCommandStatus.UNKNOWN;
+        const resumeFailed = pi.resume?.status === SessionCommandStatus.FAILED || pi.resume?.status === SessionCommandStatus.UNKNOWN;
+        const showCancel = pi.canCancel && !pi.cancel?.busy;
+        return (
+          <div className={"pending-bubble me" + (fresh(id) ? " mo-rise" : "")} key={id}>
+            <LocalThumbs blobs={att?.thumbs} sizes={att?.imageSizes} />
+            <FileChips files={att?.files} />
+            <button
+              className={"pending-text" + (expanded.has(id) ? " expanded" : "")}
+              onClick={() =>
+                setExpanded((old) =>
+                  new Set(old.has(id) ? [...old].filter((x) => x !== id) : [...old, id]),
+                )
+              }
+            >
+              {message}
+            </button>
+            <div className="pending-meta">
+              <span>{metaText}</span>
+              {pi.paused && (
+                <button
+                  disabled={!pi.canResume || !!pi.resume?.busy}
+                  onClick={() =>
+                    onSubmitCommand(
+                      pi.resume?.slotKey ?? "",
+                      create(CommandSchema, {
+                        kind: {
+                          case: "resumeInput",
+                          value: { sessionId, requestId: id },
+                        },
+                      }),
+                    )
+                  }
+                >
+                  {resumeFailed ? i18n.t("common.retry") : i18n.t("composer.send")}
+                </button>
+              )}
+              {showCancel && (
+                <button
+                  onClick={() =>
+                    onSubmitCommand(
+                      pi.cancel?.slotKey ?? "",
+                      create(CommandSchema, {
+                        kind: {
+                          case: "cancelInput",
+                          value: { sessionId, requestId: id },
+                        },
+                      }),
+                    )
+                  }
+                >
+                  {cancelFailed ? i18n.t("common.retry") : i18n.t("common.cancel")}
+                </button>
+              )}
+            </div>
+          </div>
+        );
+      })}
+      {!all && pendingInputs.length > 3 && (
+        <button className="more-row" onClick={() => setAll(true)}>
+          {i18n.t("queue.more", { count: pendingInputs.length - 2 })}
+        </button>
+      )}
     </>
   );
-  return { text, buttons, needed };
 }
 
-/** Pending input is shown at the end of the chat, on every client. A message
- * this page sent (`own`) is not drawn here: its bubble, which has been on
- * screen since it was sent, takes the queue's look itself (Session's Pending). */
-export function PendingBubbles({ remote, session, d, sentHere, own }: { remote: Remote; session: SessionView; d: Derived; sentHere?: { has(id: string): boolean }; own?: Set<string> }) {
-  const ids = queuedIds(d);
-  const [all, setAll] = useState(() => remote.demoFlag("queue-all"));
-  const [expanded, setExpanded] = useState<Set<string>>(new Set());
-  const shown = all || ids.length <= 3 ? ids : ids.slice(0, 2);
-  // A message that joins the queue rises in; those already there do not, and
-  // neither does one this page has sent: it rose in when it was written.
-  const fresh = useFresh(shown, true, { bulk: 3 });
-  const sid = session.id;
-  return <>
-    {shown.map((id, i) => {
-      // One this page sent is its own bubble's (Session's Pending) until the
-      // chat holds it; it does not come back as a queue bubble after that.
-      if (own?.has(id) || sentHere?.has(id)) return null;
-      const a = d.accepted.get(id);
-      if (isSkeleton(id) || isSkeleton(a?.text)) return <div className={"pending-bubble me" + (fresh(id) && !sentHere?.has(id) ? " mo-rise" : "")} key={id}>{skeletonMessage()}</div>;
-      const o = remote.outbox(sid).find((x) => x.sendId === id);
-      const message = a?.text || o?.text || (id === promptIdOf(remote, sid, d) ? remote.prompts.get(sid) : undefined) || ((a?.imageIds.length ?? o?.imageIds?.length ?? 0) ? i18n.t("image.count", { count: a?.imageIds.length ?? o?.imageIds?.length ?? 0 }) : (a?.files?.length ?? o?.files?.length ?? 0) ? "" : i18n.t("queue.other_message"));
-      const line = queueLine(remote, session, d, id, i + 1, ids.length);
-      return <div className={"pending-bubble me" + (fresh(id) && !sentHere?.has(id) ? " mo-rise" : "")} key={id}>
-        <LocalThumbs blobs={o?.thumbs} sizes={o?.imageSizes} />
-        <FileChips files={a?.files ?? o?.files} />
-        <button className={"pending-text" + (expanded.has(id) ? " expanded" : "")} onClick={() => setExpanded((old) => new Set(old.has(id) ? [...old].filter((x) => x !== id) : [...old, id]))}>{message}</button>
-        <div className="pending-meta"><span>{line.text}</span>{line.buttons}</div>
-      </div>;
-    })}
-    {!all && ids.length > 3 && <button className="more-row" onClick={() => setAll(true)}>{i18n.t("queue.more", { count: ids.length - 2 })}</button>}
-  </>;
+export function OutgoingBubbles({
+  sessionId,
+  outgoing,
+  localAttachments,
+  onRetry,
+  onRestore,
+  onDismiss,
+}: {
+  sessionId: string;
+  outgoing: readonly SessionOutgoingView[];
+  localAttachments?: Map<string, LocalSendAttachments>;
+  onRetry: (slotKey: string, cmd: Command) => void;
+  onRestore: (requestId: string) => void;
+  onDismiss: (requestId: string) => void;
+}) {
+  const retryGuard = useRef(new Set<string>());
+  useEffect(() => {
+    for (const id of [...retryGuard.current]) {
+      const og = outgoing.find((item) => item.requestId === id);
+      if (!og || (og.state !== SessionOutgoingState.FAILED && og.state !== SessionOutgoingState.UNKNOWN)) {
+        retryGuard.current.delete(id);
+      }
+    }
+  }, [outgoing]);
+
+  if (outgoing.length === 0) return null;
+
+  return (
+    <>
+      {outgoing.map((og) => {
+        const att = localAttachments?.get(og.requestId) ?? (og.slotKey ? localAttachments?.get(og.slotKey) : undefined);
+        const failed =
+          og.state === SessionOutgoingState.FAILED || og.state === SessionOutgoingState.UNKNOWN;
+        const unknown = og.state === SessionOutgoingState.UNKNOWN || og.feedbackUncertain;
+        const sending = og.state === SessionOutgoingState.SENDING || og.state === SessionOutgoingState.SENT;
+        const cls = failed ? (unknown ? " warn" : " fail") : sending ? " pending" : "";
+        const feedback = renderText(og.feedback) || renderText(og.caption);
+        const caption = renderText(og.caption) || i18n.t("composer.sending");
+        const canRestore = og.canRestore && (!og.imageIds.length ? true : !!att?.items?.length);
+        const missingUploadedAttachment =
+          !unknown && (og.imageIds.length > 0 || og.fileIds.length > 0) && /not on this machine|upload it again/i.test(feedback);
+        const canRetry = og.canRetry && !missingUploadedAttachment;
+        return (
+          <div key={og.requestId} className={"me" + cls}>
+            <LocalThumbs blobs={att?.thumbs} sizes={att?.imageSizes} />
+            <FileChips files={att?.files} />
+            {og.text && <div className="mo-text">{og.text}</div>}
+            <small>
+              {failed ? (
+                <>
+                  {feedback}{" "}
+                  {canRestore && (
+                    <button onClick={() => onRestore(og.requestId)}>{i18n.t("composer.restore")}</button>
+                  )}
+                  {canRetry && (
+                    <button
+                      onClick={() => {
+                        if (retryGuard.current.has(og.requestId)) return;
+                        retryGuard.current.add(og.requestId);
+                        onRetry(
+                          og.slotKey,
+                          create(CommandSchema, {
+                            kind: {
+                              case: "send",
+                              value: {
+                                sessionId,
+                                requestId: og.requestId,
+                                text: og.text,
+                                mode: og.mode,
+                                imageIds: [...og.imageIds],
+                                fileIds: [...og.fileIds],
+                              },
+                            },
+                          }),
+                        );
+                      }}
+                    >
+                      {i18n.t("common.retry")}
+                    </button>
+                  )}
+                  {og.canDismiss && (
+                    <button onClick={() => onDismiss(og.requestId)}>{i18n.t("session.dismiss_notice")}</button>
+                  )}
+                </>
+              ) : (
+                <span className="mo-small">
+                  {sending && <LoaderCircle />} {caption}
+                </span>
+              )}
+            </small>
+          </div>
+        );
+      })}
+    </>
+  );
 }

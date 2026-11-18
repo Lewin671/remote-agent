@@ -5,10 +5,16 @@ import { createRoot } from "react-dom/client";
 import { create, toBinary } from "@bufbuild/protobuf";
 import { expect, it, vi } from "vitest";
 import { approvalTruncated, approvalTruncatedMessage, approvalDisplay } from "./approval-display";
-import { ApprovalRequestedSchema, Agent } from "./gen/remoteagent/v1/event_pb";
-import { CommandResultSchema } from "./gen/remoteagent/v1/remote_pb";
-import { DemoRemote } from "./dev/demo";
-import { ApprovalPage, approvalText, approvalTitle } from "./views/Dock";
+import { ApprovalRequestedSchema } from "./gen/remoteagent/v1/event_pb";
+import {
+  SessionApprovalDockViewSchema,
+  SessionCommandStateSchema,
+  SessionCommandStatus,
+  SessionDockKind,
+  SessionDockViewSchema,
+} from "./gen/remoteagent/core/v1/session_view_pb";
+import { TextSchema } from "./gen/remoteagent/core/v1/text_pb";
+import { ApprovalPage } from "./views/Dock";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -19,31 +25,67 @@ it("reveals approval controls while preserving ordinary language and emoji", () 
     .toBe("\\u061c\\u200e\\u200f\\u202e\\u2066\\u2069\\u000d\\u001b\\u009b");
 });
 
-it("shows safe approval text without changing the authenticated event or decision", async () => {
+it("shows safe approval text without mutating the approval or decision command", async () => {
   const a = create(ApprovalRequestedSchema, { approvalId: "security-approval", command: "printf '\u202e'; dangerous", description: "desc\u2066hidden\u2069", toolName: "Bash\u200f" });
   const before = toBinary(ApprovalRequestedSchema, a);
-  expect(approvalText(a)).toBe("printf '\\u202e'; dangerous");
-  expect(approvalTitle({ ...a, command: "" })).toBe(message("list_state.request_permission", {"tool":"Bash\\u200f"}));
-  const remote = DemoRemote.create(new URLSearchParams());
-  remote.start();
-  const sid = "s-appr";
-  remote.machines.get(remote.sessions.get(sid)!.machineId)!.meta!.capabilities!.approvalAlways = false;
-  const command = vi.spyOn(remote, "command").mockResolvedValue(create(CommandResultSchema));
+  const approval = create(SessionApprovalDockViewSchema, {
+    approvalId: a.approvalId,
+    toolName: a.toolName,
+    commandPreview: a.command,
+    body: a.command,
+    description: a.description,
+    canAlwaysAllow: false,
+  });
+  const dock = create(SessionDockViewSchema, {
+    hasItem: true,
+    kind: SessionDockKind.APPROVAL,
+    itemId: a.approvalId,
+    observedSeq: 5n,
+    title: create(TextSchema, { key: "list_state.android_request_command" }),
+    command: create(SessionCommandStateSchema, {
+      slotKey: "approval:s-appr:" + a.approvalId,
+      status: SessionCommandStatus.IDLE,
+    }),
+    detail: { case: "approval", value: approval },
+  });
+  const onSubmitCommand = vi.fn();
   const host = document.createElement("div");
   document.body.append(host);
   const root = createRoot(host);
   try {
-    act(() => root.render(<ApprovalPage remote={remote} sid={sid} a={a} agent={Agent.CODEX} title="session" onBack={() => undefined} />));
-    expect(host.querySelector("pre")!.textContent).toBe("❯ " + approvalText(a));
+    act(() =>
+      root.render(
+        <ApprovalPage
+          sessionId="s-appr"
+          dock={dock}
+          approval={approval}
+          title="session"
+          onBack={() => undefined}
+          onSubmitCommand={onSubmitCommand}
+          onAbandonCommand={() => undefined}
+        />,
+      ),
+    );
+    expect(host.querySelector("pre")!.textContent).toBe("❯ " + approvalDisplay(a.command));
     expect(host.textContent).toContain("desc\\u2066hidden\\u2069");
     expect(host.textContent).not.toContain("以后不再问");
-    await act(async () => [...host.querySelectorAll("button")].find(b => b.textContent === message("approval.allow"))!.click());
-    expect(command.mock.calls[0][1]).toEqual({ case: "resolveApproval", value: { sessionId: sid, approvalId: a.approvalId, allow: true, message: "", always: false } });
+    act(() => [...host.querySelectorAll("button")].find((b) => b.textContent === message("approval.allow"))!.click());
+    expect(onSubmitCommand).toHaveBeenCalledTimes(1);
+    expect(onSubmitCommand.mock.calls[0][1].kind).toEqual({
+      case: "resolveApproval",
+      value: expect.objectContaining({
+        sessionId: "s-appr",
+        approvalId: a.approvalId,
+        allow: true,
+        message: "",
+        always: false,
+        observedEventSeq: 5n,
+      }),
+    });
     expect(toBinary(ApprovalRequestedSchema, a)).toEqual(before);
   } finally {
     act(() => root.unmount());
     host.remove();
-    remote.dispose();
   }
 });
 
@@ -51,25 +93,61 @@ it.each(["command", "description", "toolInputJson"] as const)("blocks allow and 
   const a = create(ApprovalRequestedSchema, { approvalId: "oversized", command: "safe prefix", [field]: "cut\n…（remote-agent：内容过长，已截断）" });
   expect(approvalTruncated(a)).toBe(true);
   expect(approvalTruncated(create(ApprovalRequestedSchema, { command: "echo 完整" }))).toBe(false);
-  const remote = DemoRemote.create(new URLSearchParams());
-  remote.start();
-  const sid = "s-appr";
-  remote.machines.get(remote.sessions.get(sid)!.machineId)!.meta!.capabilities!.approvalAlways = true;
-  const command = vi.spyOn(remote, "command").mockResolvedValue(create(CommandResultSchema));
-  const host = document.createElement("div"); document.body.append(host);
+  const approval = create(SessionApprovalDockViewSchema, {
+    approvalId: a.approvalId,
+    toolName: "Bash",
+    commandPreview: a.command,
+    body: a.command,
+    bodyTruncated: true,
+    canAlwaysAllow: true,
+    alwaysLabel: create(TextSchema, { key: "approval.always_allow" }),
+  });
+  const dock = create(SessionDockViewSchema, {
+    hasItem: true,
+    kind: SessionDockKind.APPROVAL,
+    itemId: a.approvalId,
+    observedSeq: 2n,
+    title: create(TextSchema, { key: "approval.title" }),
+    command: create(SessionCommandStateSchema, {
+      slotKey: "approval:s-appr:" + a.approvalId,
+      status: SessionCommandStatus.IDLE,
+    }),
+    detail: { case: "approval", value: approval },
+  });
+  const onSubmitCommand = vi.fn();
+  const host = document.createElement("div");
+  document.body.append(host);
   const root = createRoot(host);
   try {
-    act(() => root.render(<ApprovalPage remote={remote} sid={sid} a={a} agent={Agent.CODEX} title="session" onBack={() => undefined} />));
+    act(() =>
+      root.render(
+        <ApprovalPage
+          sessionId="s-appr"
+          dock={dock}
+          approval={approval}
+          title="session"
+          onBack={() => undefined}
+          onSubmitCommand={onSubmitCommand}
+          onAbandonCommand={() => undefined}
+        />,
+      ),
+    );
     expect(host.textContent).toContain(approvalTruncatedMessage());
     for (const label of ["允许", "允许，这类请求以后不再问"]) {
-      const button = [...host.querySelectorAll("button")].find(b => b.textContent === label)!;
+      const button = [...host.querySelectorAll("button")].find((b) => b.textContent === label)!;
       expect(button.disabled).toBe(true);
-      await act(async () => button.click());
+      act(() => button.click());
     }
-    expect(command).not.toHaveBeenCalled();
+    expect(onSubmitCommand).not.toHaveBeenCalled();
     // Refusing remains possible without approving an incomplete request.
-    await act(async () => [...host.querySelectorAll("button")].find(b => b.textContent === message("approval.deny"))!.click());
-    await act(async () => [...host.querySelectorAll("button")].find(b => b.textContent === message("approval.deny"))!.click());
-    expect(command.mock.calls[0][1]).toMatchObject({ case: "resolveApproval", value: { allow: false, approvalId: a.approvalId } });
-  } finally { act(() => root.unmount()); host.remove(); remote.dispose(); }
+    act(() => [...host.querySelectorAll("button")].find((b) => b.textContent === message("approval.deny"))!.click());
+    act(() => [...host.querySelectorAll("button")].find((b) => b.textContent === message("approval.deny"))!.click());
+    expect(onSubmitCommand.mock.calls[0][1].kind).toMatchObject({
+      case: "resolveApproval",
+      value: { allow: false, approvalId: a.approvalId },
+    });
+  } finally {
+    act(() => root.unmount());
+    host.remove();
+  }
 });

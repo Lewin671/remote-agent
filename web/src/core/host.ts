@@ -41,7 +41,6 @@ import {
   ScreenSchema,
   ScreenTarget,
   SecuritySnapshotEventSchema,
-  SessionDataScreenRequestSchema,
   SessionPinEventSchema,
   SessionScheduleHintSchema,
   SessionScheduleHintsEventSchema,
@@ -73,10 +72,22 @@ import {
 } from "../gen/remoteagent/core/v1/app_pb";
 import type { Agent } from "../gen/remoteagent/v1/event_pb";
 import { ConnState, type HomeViewModel } from "../gen/remoteagent/core/v1/home_view_pb";
-import { CommandResultSchema } from "../gen/remoteagent/v1/remote_pb";
+import { CommandResultSchema, type Command } from "../gen/remoteagent/v1/remote_pb";
 import type { NewSessionViewModel } from "../gen/remoteagent/core/v1/new_session_view_pb";
 import type { ProjectViewModel } from "../gen/remoteagent/core/v1/project_view_pb";
-import type { SessionDataView, SyncStateView } from "../gen/remoteagent/core/v1/sync_view_pb";
+import {
+  SessionOpenActionSchema,
+  SessionOutgoingActionSchema,
+  SessionQuestionStepActionSchema,
+  SessionRefreshHistoryActionSchema,
+  SessionScreenRequestSchema,
+  SessionSlotActionSchema,
+  SessionSubmitCommandActionSchema,
+  SessionWindowRequestSchema,
+  type SessionRestoreComposerEffect,
+  type SessionViewModel,
+} from "../gen/remoteagent/core/v1/session_view_pb";
+import type { SyncStateView } from "../gen/remoteagent/core/v1/sync_view_pb";
 import type { Remote } from "../remote";
 import type { WasmAppCore } from "./projection";
 import { getCore } from "./runtime";
@@ -143,7 +154,15 @@ export interface CoreExecutor {
   executeRpc(eff: RpcEffect): Promise<Event>;
   executeCommandAttempt(eff: DispatchCommandEffect): Promise<CommandOutcomeEvent>;
   applySyncStateView(view: SyncStateView): void;
-  applySessionDataView(sessionId: string, view: SessionDataView): void;
+}
+
+export interface SessionWindowOptions {
+  limit?: number;
+  beforeSeq?: bigint;
+  aroundSeq?: bigint;
+  revealSeq?: bigint;
+  revealRunId?: string;
+  expandedGroupIds?: string[];
 }
 
 export interface CoreHostOptions {
@@ -233,9 +252,9 @@ export function routeForMachineStatus(machineId: string): string {
 const ALL_TARGETS = [
   ScreenTarget.HOME,
   ScreenTarget.PROJECT,
+  ScreenTarget.SESSION,
   ScreenTarget.NEW_SESSION,
   ScreenTarget.SYNC_STATE,
-  ScreenTarget.SESSION_DATA,
 ];
 
 function timerKey(kind: TimerKind, key: string): string {
@@ -261,14 +280,14 @@ export class CoreHost {
 
   private homeCache?: { version: number; endedLimit: number; vm: HomeViewModel };
   private projectCache?: { version: number; key: string; manage: boolean; endedLimit: number; vm: ProjectViewModel };
+  private sessionCache = new Map<string, { version: number; windowKey: string; vm: SessionViewModel }>();
   private newSessionCache?: { version: number; key: string; vm: NewSessionViewModel };
   private syncStateCache?: { version: number; view: SyncStateView };
-  private sessionDataCache?: { version: number; sessionId: string; view: SessionDataView };
 
   private started = false;
   private closed = false;
-  private watchedSessionId = "";
   private watchCounts = new Map<string, number>();
+  private restoreComposerListeners = new Map<string, Set<(eff: SessionRestoreComposerEffect) => void>>();
   private timers = new Map<string, { id: bigint; handle: ReturnType<typeof setTimeout> }>();
   private clockTimer?: ReturnType<typeof setInterval>;
   private cacheWriteQueue: Promise<void> = Promise.resolve();
@@ -470,31 +489,88 @@ export class CoreHost {
     if (!sessionId) return;
     const prev = this.watchCounts.get(sessionId) ?? 0;
     this.watchCounts.set(sessionId, prev + 1);
-    if (this.watchedSessionId !== sessionId) {
-      if (this.watchedSessionId) {
-        const oldSid = this.watchedSessionId;
-        this.watchedSessionId = "";
-        this.sessionDataCache = undefined;
-        this.emit({ case: "sessionWatch", value: create(SessionWatchEventSchema, { sessionId: oldSid, watched: false }) });
-      }
-      this.watchedSessionId = sessionId;
-      this.sessionDataCache = undefined;
+    if (prev === 0) {
+      this.sessionCache.delete(sessionId);
       this.emit({ case: "sessionWatch", value: create(SessionWatchEventSchema, { sessionId, watched: true }) });
     }
   }
 
   unwatchSession(sessionId: string) {
-    const next = (this.watchCounts.get(sessionId) ?? 0) - 1;
-    if (next > 0) {
-      this.watchCounts.set(sessionId, next);
+    if (!sessionId) return;
+    const prev = this.watchCounts.get(sessionId) ?? 0;
+    if (prev <= 1) {
+      this.watchCounts.delete(sessionId);
+      this.sessionCache.delete(sessionId);
+      if (prev === 1) {
+        this.emit({ case: "sessionWatch", value: create(SessionWatchEventSchema, { sessionId, watched: false }) });
+      }
       return;
     }
-    this.watchCounts.delete(sessionId);
-    if (this.watchedSessionId === sessionId) {
-      this.watchedSessionId = "";
-      this.sessionDataCache = undefined;
-      this.emit({ case: "sessionWatch", value: create(SessionWatchEventSchema, { sessionId, watched: false }) });
+    this.watchCounts.set(sessionId, prev - 1);
+  }
+
+  sessionOpen(sessionId: string, refreshModels = false, refreshSettings = false) {
+    if (!sessionId) return;
+    this.emit({
+      case: "sessionOpen",
+      value: create(SessionOpenActionSchema, { sessionId, refreshModels, refreshSettings }),
+    });
+  }
+
+  sessionSubmitCommand(slotKey: string, machineId: string, sessionId: string, command: Command) {
+    this.emit({
+      case: "sessionSubmitCommand",
+      value: create(SessionSubmitCommandActionSchema, { slotKey, machineId, sessionId, command }),
+    });
+  }
+
+  sessionAbandonCommand(slotKey: string, sessionId: string) {
+    this.emit({
+      case: "sessionAbandonCommand",
+      value: create(SessionSlotActionSchema, { slotKey, sessionId }),
+    });
+  }
+
+  sessionDismissOutgoing(sessionId: string, requestId: string) {
+    this.emit({
+      case: "sessionDismissOutgoing",
+      value: create(SessionOutgoingActionSchema, { sessionId, requestId }),
+    });
+  }
+
+  sessionRestoreOutgoing(sessionId: string, requestId: string) {
+    this.emit({
+      case: "sessionRestoreOutgoing",
+      value: create(SessionOutgoingActionSchema, { sessionId, requestId }),
+    });
+  }
+
+  sessionSetQuestionIndex(sessionId: string, questionId: string, questionIndex: number) {
+    this.emit({
+      case: "sessionSetQuestionIndex",
+      value: create(SessionQuestionStepActionSchema, { sessionId, questionId, questionIndex }),
+    });
+  }
+
+  sessionLoadEarlier(sessionId: string) {
+    if (!sessionId) return;
+    this.emit({
+      case: "sessionLoadEarlier",
+      value: create(SessionRefreshHistoryActionSchema, { sessionId }),
+    });
+  }
+
+  onRestoreComposer(sessionId: string, fn: (eff: SessionRestoreComposerEffect) => void): () => void {
+    let set = this.restoreComposerListeners.get(sessionId);
+    if (!set) {
+      set = new Set();
+      this.restoreComposerListeners.set(sessionId, set);
     }
+    set.add(fn);
+    return () => {
+      set?.delete(fn);
+      if (set?.size === 0) this.restoreComposerListeners.delete(sessionId);
+    };
   }
 
   // --- Subscriptions & ViewModel lookups ---
@@ -573,23 +649,37 @@ export class CoreHost {
     return vm.view.value;
   }
 
-  /** Reads SessionDataView ONLY for the currently watched session (never bulk-loads other sessions). */
-  viewSessionData(sessionId: string): SessionDataView | undefined {
-    if (!sessionId || sessionId !== this.watchedSessionId) return undefined;
-    const ver = this.version(ScreenTarget.SESSION_DATA);
-    if (
-      this.sessionDataCache &&
-      this.sessionDataCache.version === ver &&
-      this.sessionDataCache.sessionId === sessionId
-    ) {
-      return this.sessionDataCache.view;
+  viewSession(sessionId: string, window?: SessionWindowOptions): SessionViewModel {
+    const ver = this.version(ScreenTarget.SESSION);
+    const expandedGroupIds = window?.expandedGroupIds ?? [];
+    const windowKey = window
+      ? `${window.limit ?? 0}:${window.beforeSeq ?? 0n}:${window.aroundSeq ?? 0n}:${window.revealSeq ?? 0n}:${window.revealRunId ?? ""}:${expandedGroupIds.join(",")}`
+      : "";
+    const cached = this.sessionCache.get(sessionId);
+    if (cached && cached.version === ver && cached.windowKey === windowKey) {
+      return cached.vm;
     }
     const req = create(ScreenSchema, {
-      screen: { case: "sessionData", value: create(SessionDataScreenRequestSchema, { sessionId }) },
+      screen: {
+        case: "session",
+        value: create(SessionScreenRequestSchema, {
+          sessionId,
+          window: window
+            ? create(SessionWindowRequestSchema, {
+                limit: window.limit ?? 0,
+                beforeSeq: window.beforeSeq ?? 0n,
+                aroundSeq: window.aroundSeq ?? 0n,
+                revealSeq: window.revealSeq ?? 0n,
+                revealRunId: window.revealRunId ?? "",
+                expandedGroupIds,
+              })
+            : undefined,
+        }),
+      },
     });
     const vm = fromBinary(ViewModelSchema, this.core.view(toBinary(ScreenSchema, req)));
-    if (vm.view.case !== "sessionData") throw new Error("unexpected view model case: " + vm.view.case);
-    this.sessionDataCache = { version: ver, sessionId, view: vm.view.value };
+    if (vm.view.case !== "session") throw new Error("unexpected view model case: " + vm.view.case);
+    this.sessionCache.set(sessionId, { version: ver, windowKey, vm: vm.view.value });
     return vm.view.value;
   }
 
@@ -828,10 +918,11 @@ export class CoreHost {
       case "navigate": {
         const nav = val.value;
         const replaceSession = nav.route === NavigateRoute.SESSION && !!this.pendingStart;
-        if (nav.route === NavigateRoute.SESSION && nav.sessionId && this.remote) {
-          this.remote.created.add(nav.sessionId);
-          if (this.pendingStart?.prompt) this.remote.prompts.set(nav.sessionId, this.pendingStart.prompt);
+        if (nav.route === NavigateRoute.SESSION && nav.sessionId) {
           this.pendingStart = undefined;
+        }
+        if (nav.route === NavigateRoute.SESSION && !replaceSession && this.watchCounts.size === 0) {
+          break;
         }
         this.navigateTo(nav.route, nav.projectKey, nav.sessionId, nav.machineId, replaceSession);
         break;
@@ -856,7 +947,14 @@ export class CoreHost {
         break;
       }
 
-      // Settings, machine, schedules, and session screens still render in React
+      case "sessionRestoreComposer": {
+        const eff = val.value;
+        const set = this.restoreComposerListeners.get(eff.sessionId);
+        if (set) for (const fn of [...set]) fn(eff);
+        break;
+      }
+
+      // Settings, machine, and schedules screens still render in React
       // on Web and never send the events behind these effects.
       case "scheduleMachinePoll":
       case "directPreference":
@@ -864,7 +962,6 @@ export class CoreHost {
       case "checkUpdates":
       case "persistClientPrefs":
       case "prepareCleanupSession":
-      case "sessionRestoreComposer":
       case "scheduleReadCache":
       case "scheduleDeleteCache":
       case "scheduleLoadSeen":
@@ -940,9 +1037,9 @@ export class CoreHost {
     this.screenVersions.set(target, (this.screenVersions.get(target) ?? 0) + 1);
     if (target === ScreenTarget.HOME) this.homeCache = undefined;
     else if (target === ScreenTarget.PROJECT) this.projectCache = undefined;
+    else if (target === ScreenTarget.SESSION) this.sessionCache.clear();
     else if (target === ScreenTarget.NEW_SESSION) this.newSessionCache = undefined;
     else if (target === ScreenTarget.SYNC_STATE) this.syncStateCache = undefined;
-    else if (target === ScreenTarget.SESSION_DATA) this.sessionDataCache = undefined;
   }
 
   private flushRenders() {
@@ -952,10 +1049,6 @@ export class CoreHost {
 
     if (targets.includes(ScreenTarget.SYNC_STATE) || targets.includes(ScreenTarget.HOME) || targets.includes(ScreenTarget.PROJECT)) {
       this.executor?.applySyncStateView(this.viewSyncState());
-    }
-    if (targets.includes(ScreenTarget.SESSION_DATA) && this.watchedSessionId) {
-      const sd = this.viewSessionData(this.watchedSessionId);
-      if (sd) this.executor?.applySessionDataView(this.watchedSessionId, sd);
     }
     for (const target of targets) {
       const listeners = this.listeners.get(target);
@@ -1057,17 +1150,41 @@ export function useSyncState(host: CoreHost): SyncStateView {
   return useMemo(() => host.viewSyncState(), [host, version]);
 }
 
-/** Transitional Step 3 hook watching and reading SessionDataView for ONLY the open session. */
-export function useSessionData(host: CoreHost, sessionId: string): SessionDataView | undefined {
+export function useSessionView(
+  host: CoreHost,
+  sessionId: string,
+  window?: SessionWindowOptions,
+  openOpts?: { refreshModels?: boolean; refreshSettings?: boolean },
+): SessionViewModel {
+  const refreshModels = !!openOpts?.refreshModels;
+  const refreshSettings = !!openOpts?.refreshSettings;
   useEffect(() => {
     if (!sessionId) return;
     host.watchSession(sessionId);
+    host.sessionOpen(sessionId, refreshModels, refreshSettings);
     return () => host.unwatchSession(sessionId);
-  }, [host, sessionId]);
-  const subscribe = useCallback((fn: () => void) => host.subscribe(ScreenTarget.SESSION_DATA, fn), [host]);
-  const getSnapshot = useCallback(() => host.version(ScreenTarget.SESSION_DATA), [host]);
+  }, [host, sessionId, refreshModels, refreshSettings]);
+  const subscribe = useCallback((fn: () => void) => host.subscribe(ScreenTarget.SESSION, fn), [host]);
+  const getSnapshot = useCallback(() => host.version(ScreenTarget.SESSION), [host]);
   const version = useSyncExternalStore(subscribe, getSnapshot);
-  return useMemo(() => host.viewSessionData(sessionId), [host, version, sessionId]);
+  const limit = window?.limit;
+  const beforeSeq = window?.beforeSeq;
+  const aroundSeq = window?.aroundSeq;
+  const revealSeq = window?.revealSeq;
+  const revealRunId = window?.revealRunId;
+  const expandedKey = (window?.expandedGroupIds ?? []).join(",");
+  return useMemo(
+    () =>
+      host.viewSession(sessionId, {
+        limit,
+        beforeSeq,
+        aroundSeq,
+        revealSeq,
+        revealRunId,
+        expandedGroupIds: expandedKey ? expandedKey.split(",") : [],
+      }),
+    [host, version, sessionId, limit, beforeSeq, aroundSeq, revealSeq, revealRunId, expandedKey],
+  );
 }
 
 export { ConnState };

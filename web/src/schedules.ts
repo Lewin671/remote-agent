@@ -1,15 +1,5 @@
 import * as l10n from "./i18n";
-// JSON contract owned by internal/schedule. Only encrypted machine commands
-// carry these definitions; the relay never receives task content in plaintext.
-import { derive, isBackground, toolOk, type Item } from "./model";
-import { isSkeleton } from "./skeleton";
-import {
-  InputStatus,
-  OriginKind,
-  SessionStatus,
-  TurnOutcome,
-  type Event,
-} from "./gen/remoteagent/v1/event_pb";
+import type { SessionTimelineItem, SessionTimelineView } from "./gen/remoteagent/core/v1/session_view_pb";
 
 export interface ScheduleTrigger {
   type: "at" | "calendar" | "interval" | "after_turn";
@@ -119,21 +109,27 @@ export function scheduleTime(at: string, now = Date.now()): string {
   if (d.getFullYear() !== today.getFullYear()) return l10n.t("time.calendar_date_year", { year: d.getFullYear(), month: d.getMonth() + 1, day: d.getDate() });
   return l10n.t("time.month_day", { month: d.getMonth() + 1, day: d.getDate() });
 }
-/** Same ownership fences as the daemon's scheduled follow-up watcher. */
-export function finalRunText(events: Event[], runId: string): string {
-  let found = false, text = "";
-  for (const e of events) {
-    const k = e.kind, origin = e.origin;
+/** Extract the final agent reply for one scheduled run from Core's timeline. */
+export function finalRunTextFromTimeline(timeline: SessionTimelineView | undefined, runId: string): string {
+  if (!timeline?.loaded || timeline.error || timeline.hasGap || timeline.backfilling) return "";
+  const items: SessionTimelineItem[] = [];
+  for (const it of timeline.items) {
+    if (it.kind.case === "quietScheduledGroup") items.push(...it.kind.value.items);
+    else items.push(it);
+  }
+  let found = false;
+  let text = "";
+  for (const it of items) {
+    if (it.kind.case === "skeleton") return "";
     if (!found) {
-      if (k.case === "userMessage" && origin?.scheduledRunId === runId) found = true;
+      if (it.kind.case === "userMessage" && it.kind.value.scheduledRunId === runId) found = true;
       continue;
     }
-    if (!k.case || isSkeleton(e)) return "";
-    const human = origin?.kind === OriginKind.CLIENT || origin?.kind === OriginKind.LOCAL;
-    if ((human && (k.case === "userMessage" || (k.case === "sessionState" && k.value.detail === "resumed"))) ||
-      (k.case === "userMessage" && origin?.scheduledRunId && origin.scheduledRunId !== runId) ||
-      (k.case === "sessionState" && k.value.status === SessionStatus.EXITED)) break;
-    if (k.case === "agentMessage" && k.value.phase === "final_answer" && !isSkeleton(e)) text = k.value.text;
+    if (it.kind.case === "userMessage") break;
+    if (it.kind.case === "turnEnd" && it.kind.value.isSessionEnded) break;
+    if (it.kind.case === "agentMessage" && !it.kind.value.intermediate) {
+      text = it.kind.value.markdown;
+    }
   }
   return text;
 }
@@ -385,193 +381,6 @@ export function oneShot(t: ScheduleTask): boolean {
 }
 export function taskRoute(machineId: string, id: string): string {
   return `tasks/${encodeURIComponent(machineId)}/${encodeURIComponent(id)}`;
-}
-
-// Fold only complete, consecutive scheduled rounds. A human message, approval,
-// failed/unfinished turn, notification or unknown event is never hidden.
-export type QuietSpan = {
-  key: string;
-  start: bigint;
-  end: bigint;
-  times: string[];
-};
-export function quietSpans(events: Event[]): QuietSpan[] {
-  const spans: QuietSpan[] = [];
-  // Only a scheduled run can be a quiet one: most chats have none, and
-  // this is asked for each time another event comes in.
-  if (!events.some((e) => e.origin?.scheduledRunId && e.origin.scheduledTaskId)) return spans;
-  const derived = derive(events);
-  const identity = (task: string, run: string) => task + "/" + run;
-  // Scheduled context can survive a completed turn and notify during a later
-  // autonomous turn. Classify the whole recorded run before hiding any of it.
-  const notifiedRuns = new Set<string>();
-  for (const e of events) {
-    const k = e.kind;
-    if (k.case === "scheduledNotification")
-      notifiedRuns.add(identity(k.value.taskId, k.value.runId));
-    if (k.case === "turnEnded" && k.value.scheduledNotified)
-      notifiedRuns.add(
-        identity(k.value.scheduledTaskId, k.value.scheduledRunId),
-      );
-  }
-  let start: Event | undefined;
-  let run = "";
-  let task = "";
-  let notified = false;
-  let safe = true;
-  let toolsThrough = 0n;
-  let boundary = true;
-  let lastDay = "";
-  let tailMayContinue = false;
-  for (const e of events) {
-    const k = e.kind;
-    const oversized = isSkeleton(e);
-    if (k.case === "userMessage") {
-      tailMayContinue = false;
-      start =
-        e.origin?.scheduledRunId && e.origin.scheduledTaskId ? e : undefined;
-      run = e.origin?.scheduledRunId ?? "";
-      task = e.origin?.scheduledTaskId ?? "";
-      notified = false;
-      safe = !oversized && !!e.time;
-      toolsThrough = 0n;
-      if (!start) boundary = true;
-    } else if (start && k.case === "scheduledNotification") notified = true;
-    else if (
-      start &&
-      (oversized ||
-        (k.case === "toolCall" && (!toolOk(k.value) || isBackground(k.value))) ||
-        (k.case === "toolStarted" && typeof derived.toolEnds.get(e.seq) !== "bigint") ||
-        (k.case === "turnContext" && derived.terminalChanges.has(e.seq)) ||
-        !k.case ||
-        [
-          "approvalRequested",
-          "questionAsked",
-          "questionAnswered",
-          "settingsChanged",
-          "imageGenerated",
-          "planProposed",
-          "sessionState",
-          "sessionForked",
-        ].includes(k.case) ||
-        (k.case === "inputState" && (k.value.paused || [InputStatus.FAILED, InputStatus.UNCONFIRMED, InputStatus.CANCELED, InputStatus.NEEDS_TERMINAL, InputStatus.HELD_BY_CLI].includes(k.value.status))))
-    )
-      safe = false;
-    // Visible follow-up content is a fence. Otherwise widening a span to the
-    // next quiet round could swallow an intervening reply, failure or notice.
-    if (
-      !start &&
-      (oversized ||
-        !k.case ||
-        [
-          "scheduledNotification",
-          "agentMessage",
-          "reasoning",
-          "toolCall",
-          "toolStarted",
-          "approvalRequested",
-          "questionAsked",
-          "planProposed",
-          "settingsChanged",
-          "questionAnswered",
-          "turnContext",
-          "turnEnded",
-          "imageGenerated",
-          "sessionForked",
-        ].includes(k.case) ||
-        (k.case === "inputState" &&
-          ![
-            InputStatus.QUEUED,
-            InputStatus.SUBMITTED,
-            InputStatus.HELD_BY_CLI,
-          ].includes(k.value.status)) ||
-        (k.case === "sessionState" && k.value.status === SessionStatus.EXITED))
-    ) {
-      boundary = true;
-      // A grouped tool row can straddle an invisible short turn end. Unfold
-      // the tail as well, so that such a group cannot hide follow-up calls.
-      if (tailMayContinue) {
-        spans.pop();
-        tailMayContinue = false;
-      }
-    }
-    if (start && k.case === "toolStarted") {
-      const end = derived.toolEnds.get(e.seq);
-      if (typeof end === "bigint" && end > toolsThrough) toolsThrough = end;
-    }
-    if (k.case !== "turnEnded") continue;
-    if (
-      start &&
-      safe &&
-      toolsThrough <= e.seq &&
-      !notified &&
-      !notifiedRuns.has(identity(task, run)) &&
-      !k.value.scheduledNotified &&
-      k.value.scheduledTaskId === task &&
-      k.value.scheduledRunId === run &&
-      k.value.outcome === TurnOutcome.COMPLETED
-    ) {
-      const at = Number(start.time!.seconds) * 1000;
-      const time = clockTime(at);
-      const day = dayKey(at);
-      const last = spans.at(-1);
-      if (!boundary && last && day === lastDay) {
-        last.end = e.seq;
-        last.times.push(time);
-      } else
-        spans.push({
-          key: "quiet-" + start.seq,
-          start: start.seq,
-          end: e.seq,
-          times: [time],
-        });
-      lastDay = day;
-      boundary = false;
-      tailMayContinue = true;
-    } else {
-      boundary = true;
-      tailMayContinue = false;
-    }
-    start = undefined;
-  }
-  return spans;
-}
-
-export type ScheduledItem =
-  Item | { kind: "quiet"; key: string; times: string[]; rows: Item[] };
-export function foldScheduled(
-  items: Item[],
-  events: Event[],
-  expanded: Set<string>,
-  revealSeq?: bigint,
-): ScheduledItem[] {
-  const spans = quietSpans(events).filter(
-    (s) =>
-      s.times.length > 1 &&
-      !expanded.has(s.key) &&
-      !(revealSeq !== undefined && s.start <= revealSeq && revealSeq <= s.end),
-  );
-  const out: ScheduledItem[] = [];
-  let spanIndex = 0;
-  for (const item of items) {
-    const seq =
-      item.kind === "event"
-        ? item.event.seq
-        : BigInt(item.key.replace(/^[a-z]+/, "") || 0);
-    while (spans[spanIndex] && seq > spans[spanIndex].end) spanIndex++;
-    const span = spans[spanIndex];
-    if (!span || seq < span.start) {
-      out.push(item);
-      continue;
-    }
-    let group = out.at(-1);
-    if (group?.kind !== "quiet" || group.key !== span.key) {
-      group = { kind: "quiet", key: span.key, times: span.times, rows: [] };
-      out.push(group);
-    }
-    group.rows.push(item);
-  }
-  return out;
 }
 
 /** Convert a wall-clock input in an IANA zone, rejecting nonexistent DST times. */

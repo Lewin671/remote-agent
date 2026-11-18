@@ -10,11 +10,19 @@ import homeTimelineGolden from "../../../testdata/screens/home_timeline.golden.j
 import homeEmptyGolden from "../../../testdata/screens/home_empty_errors.golden.json";
 import projectManageGolden from "../../../testdata/screens/project_manage_detail.golden.json";
 import newSessionGolden from "../../../testdata/screens/new_session_lifecycle.golden.json";
+import sessionApprovalGolden from "../../../testdata/screens/session_approval_flow.golden.json";
+import sessionCliErrorGolden from "../../../testdata/screens/session_cli_error_turn.golden.json";
+import sessionLongWindowGolden from "../../../testdata/screens/session_long_window.golden.json";
+import sessionQuestionPlanGolden from "../../../testdata/screens/session_question_plan.golden.json";
+import sessionQueueRetryGolden from "../../../testdata/screens/session_queue_retry.golden.json";
+import sessionScheduledFoldGolden from "../../../testdata/screens/session_scheduled_fold.golden.json";
 import { ViewModelSchema } from "../gen/remoteagent/core/v1/app_pb";
+import type { SessionViewModel } from "../gen/remoteagent/core/v1/session_view_pb";
 import { localeStore, t } from "../i18n";
 import { HomeView, SidebarView } from "./Home";
 import { NewBoxView } from "./NewSession";
 import { ManageProjectsScreen, RemovedNotice } from "./Projects";
+import { SessionScreenView, type SessionScreenViewProps } from "./Session";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -252,5 +260,200 @@ describe("golden ViewModel layout and interaction", () => {
       input.dispatchEvent(new Event("input", { bubbles: true }));
     });
     expect(onSetPrompt).toHaveBeenCalledWith("Implement feature", 0, false);
+  });
+});
+
+function sessionGoldenView(doc: GoldenDoc, viewName: string): SessionViewModel {
+  const decoded = goldenView(doc, viewName);
+  if (decoded.view.case !== "session") throw new Error(`Expected session view for ${viewName}`);
+  return decoded.view.value;
+}
+
+function renderSessionGolden(vm: SessionViewModel, overrides: Partial<SessionScreenViewProps> = {}) {
+  const props: SessionScreenViewProps = {
+    vm,
+    wide: false,
+    onBack: vi.fn(),
+    draft: "",
+    onDraft: vi.fn(),
+    onSend: vi.fn(),
+    onSubmitCommand: vi.fn(),
+    onAbandonCommand: vi.fn(),
+    onDismissOutgoing: vi.fn(),
+    onRestoreOutgoing: vi.fn(),
+    onLoadEarlier: vi.fn(),
+    onExpandGroup: vi.fn(),
+    ...overrides,
+  };
+  if (root) {
+    act(() => root!.render(<SessionScreenView {...props} />));
+  } else {
+    mount(<SessionScreenView {...props} />);
+  }
+}
+
+describe("golden SessionScreenView layout and interaction", () => {
+  it("renders approval flow states and dispatches approval command from session_approval_flow.golden.json", () => {
+    const onSubmitCommand = vi.fn();
+    const pendingVm = sessionGoldenView(sessionApprovalGolden as GoldenDoc, "pendingApprovalDock");
+    renderSessionGolden(pendingVm, { onSubmitCommand });
+
+    expect(host.textContent).toContain("Approval test");
+    expect(host.textContent).toContain("git status && ls src");
+    const approveBtn = [...host.querySelectorAll<HTMLButtonElement>(".pending button")].find((b) =>
+      b.textContent?.includes(t("approval.allow")),
+    )!;
+    expect(approveBtn).toBeTruthy();
+    act(() => approveBtn.click());
+    expect(onSubmitCommand).toHaveBeenCalled();
+    expect(onSubmitCommand.mock.calls[0][0]).toBe("approval:s-ap:ap-1");
+    expect(onSubmitCommand.mock.calls[0][1].kind).toMatchObject({
+      case: "resolveApproval",
+      value: { sessionId: "s-ap", approvalId: "ap-1", allow: true },
+    });
+
+    const submittingVm = sessionGoldenView(sessionApprovalGolden as GoldenDoc, "approvalSubmitting");
+    renderSessionGolden(submittingVm);
+    expect(host.querySelector(".pending.submitting")).toBeTruthy();
+    expect(host.textContent).toContain(t("approval.allowed"));
+
+    const mergedVm = sessionGoldenView(sessionApprovalGolden as GoldenDoc, "approvalMergedOnToolCall");
+    renderSessionGolden(mergedVm);
+    expect(host.querySelector(".pending")).toBeNull();
+    expect(host.textContent).toContain("git status");
+    expect(host.textContent).toContain(t("approval.always_allowed"));
+    expect(host.textContent).toContain(t("session.origin_elsewhere"));
+  });
+
+  it("renders CLI error turns and interrupted markers from session_cli_error_turn.golden.json", () => {
+    const vm = sessionGoldenView(sessionCliErrorGolden as GoldenDoc, "cliErrorTurns");
+    renderSessionGolden(vm);
+
+    expect(host.textContent).toContain("refactor auth");
+    expect(host.textContent).toContain("You've hit your usage limit. Try again later.");
+    expect(host.textContent).toContain("rate_limit_exceeded");
+    expect(host.textContent).toContain("abort manually");
+    expect(host.textContent).toContain(t("session.interrupted"));
+    expect(host.querySelectorAll(".sysline.fail").length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("renders windowed history slices and triggers onLoadEarlier from session_long_window.golden.json", () => {
+    const onLoadEarlier = vi.fn();
+    const tailVm = sessionGoldenView(sessionLongWindowGolden as GoldenDoc, "tail10");
+    renderSessionGolden(tailVm, { onLoadEarlier });
+
+    expect(host.textContent).toContain("Long session");
+    const moreBtn = host.querySelector<HTMLButtonElement>(".load-earlier .more-row")!;
+    expect(moreBtn).toBeTruthy();
+    expect(moreBtn.textContent).toBe(t("schedule.earlier"));
+    act(() => moreBtn.click());
+    expect(onLoadEarlier).toHaveBeenCalledTimes(1);
+
+    const earlierVm = sessionGoldenView(sessionLongWindowGolden as GoldenDoc, "earlierBefore109");
+    renderSessionGolden(earlierVm, { onLoadEarlier });
+    expect([...host.querySelectorAll(".me")].length).toBeGreaterThanOrEqual(3);
+    expect(host.textContent).toContain(t("schedule.earlier"));
+  });
+
+  it("renders question steps, plan dock, unknown frozen retry & abandon from session_question_plan.golden.json", () => {
+    const onSubmitCommand = vi.fn();
+    const onAbandonCommand = vi.fn();
+
+    const q0Vm = sessionGoldenView(sessionQuestionPlanGolden as GoldenDoc, "questionStep0");
+    renderSessionGolden(q0Vm, { onSubmitCommand, onAbandonCommand });
+    expect(host.textContent).toContain("Which package?");
+    const coreOpt = [...host.querySelectorAll<HTMLButtonElement>(".pending button")].find((b) =>
+      b.textContent?.includes("Core"),
+    )!;
+    expect(coreOpt).toBeTruthy();
+    act(() => coreOpt.click());
+    expect(onSubmitCommand).toHaveBeenCalled();
+
+    const q1Vm = sessionGoldenView(sessionQuestionPlanGolden as GoldenDoc, "questionStep1");
+    renderSessionGolden(q1Vm, { onSubmitCommand, onAbandonCommand });
+    expect(host.textContent).toContain("Select checks");
+
+    const planOpenVm = sessionGoldenView(sessionQuestionPlanGolden as GoldenDoc, "planDockOpen");
+    renderSessionGolden(planOpenVm, { onSubmitCommand, onAbandonCommand });
+    expect(host.textContent).toContain("Step A");
+    expect(host.textContent).toContain(t("dock.plan_implement_record"));
+
+    const frozenVm = sessionGoldenView(sessionQuestionPlanGolden as GoldenDoc, "planUnknownFrozen");
+    renderSessionGolden(frozenVm, { onSubmitCommand, onAbandonCommand });
+    expect(host.textContent).toContain(t("errors.the_computer_s_reply_could_not_be_verified_command"));
+    const retryBtn = [...host.querySelectorAll<HTMLButtonElement>(".pending button")].find((b) =>
+      b.textContent?.includes(t("common.retry")),
+    )!;
+    expect(retryBtn).toBeTruthy();
+    act(() => retryBtn.click());
+    expect(onSubmitCommand).toHaveBeenCalledWith(
+      "plan:s-qp",
+      expect.objectContaining({
+        kind: expect.objectContaining({ case: "answerPlan", value: expect.objectContaining({ sessionId: "s-qp" }) }),
+      }),
+    );
+
+    const abandonedVm = sessionGoldenView(sessionQuestionPlanGolden as GoldenDoc, "planAbandoned");
+    renderSessionGolden(abandonedVm, { onSubmitCommand, onAbandonCommand });
+    expect(host.textContent).toContain(t("dock.plan_implement_record"));
+  });
+
+  it("renders failed/unknown outgoing bubbles and pending queue from session_queue_retry.golden.json", () => {
+    const onSubmitCommand = vi.fn();
+    const onRestoreOutgoing = vi.fn();
+    const onDismissOutgoing = vi.fn();
+
+    const bothVm = sessionGoldenView(sessionQueueRetryGolden as GoldenDoc, "outgoingFailedAndUnknown");
+    renderSessionGolden(bothVm, { onSubmitCommand, onRestoreOutgoing, onDismissOutgoing });
+
+    expect(host.textContent).toContain("steer failed msg");
+    expect(host.textContent).toContain("queued second");
+    expect(host.querySelector(".me.fail")).toBeTruthy();
+    expect(host.querySelector(".me.warn")).toBeTruthy();
+    expect(host.textContent).toContain(t("errors.disconnected_from_server"));
+    expect(host.textContent).toContain(t("errors.the_computer_s_reply_could_not_be_verified_command"));
+
+    const restoreBtn = host.querySelector<HTMLButtonElement>(".me.fail small button")!;
+    act(() => restoreBtn.click());
+    expect(onRestoreOutgoing).toHaveBeenCalledWith("msg-fail");
+
+    const dismissBtn = [...host.querySelectorAll<HTMLButtonElement>(".me.fail small button")].find((b) =>
+      b.textContent?.includes(t("session.dismiss_notice")),
+    )!;
+    act(() => dismissBtn.click());
+    expect(onDismissOutgoing).toHaveBeenCalledWith("msg-fail");
+
+    const queuedVm = sessionGoldenView(sessionQueueRetryGolden as GoldenDoc, "queuedPendingAndFailedOutgoing");
+    renderSessionGolden(queuedVm, { onSubmitCommand, onRestoreOutgoing, onDismissOutgoing });
+    expect(host.querySelector(".pending-bubble")?.textContent).toContain("queued second");
+    expect(host.querySelector(".pending-bubble")?.textContent).toContain(t("queue.after_turn"));
+    const cancelQueueBtn = [...host.querySelectorAll<HTMLButtonElement>(".pending-bubble button")].find((b) =>
+      b.textContent?.includes(t("common.cancel")),
+    )!;
+    act(() => cancelQueueBtn.click());
+    expect(onSubmitCommand).toHaveBeenCalledWith(
+      "cancel_input:s-qr:msg-q",
+      expect.objectContaining({
+        kind: expect.objectContaining({ case: "cancelInput", value: expect.objectContaining({ sessionId: "s-qr", requestId: "msg-q" }) }),
+      }),
+    );
+  });
+
+  it("renders folded quiet scheduled runs and dispatches onExpandGroup from session_scheduled_fold.golden.json", () => {
+    const onExpandGroup = vi.fn();
+    const foldedVm = sessionGoldenView(sessionScheduledFoldGolden as GoldenDoc, "foldedQuietRuns");
+    renderSessionGolden(foldedVm, { onExpandGroup });
+
+    const foldBtn = host.querySelector<HTMLButtonElement>("button.schedule-quiet")!;
+    expect(foldBtn).toBeTruthy();
+    expect(host.textContent).toContain("Alert: disk usage 95%!");
+    expect(host.textContent).toContain("Disk warning sent");
+    act(() => foldBtn.click());
+    expect(onExpandGroup).toHaveBeenCalledWith("quiet-run-1");
+
+    const revealedVm = sessionGoldenView(sessionScheduledFoldGolden as GoldenDoc, "revealedRun2");
+    renderSessionGolden(revealedVm, { onExpandGroup });
+    expect(host.querySelector("button.schedule-quiet")).toBeNull();
+    expect([...host.querySelectorAll(".me")].filter((m) => m.textContent?.includes("Check health"))).toHaveLength(4);
   });
 });

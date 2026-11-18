@@ -5,30 +5,23 @@ import * as i18n from "../i18n";
 // turn while the draft is empty. Chosen images and files sit above the line.
 
 import { useEffect, useLayoutEffect, useRef, useState, type HTMLAttributes, type ReactNode, type RefObject } from "react";
-import { keepComposerFocus, useComposerMenuDismiss } from "./ComposerPicker";
 import type { Tray } from "../attach";
-import { agentOf, type Derived } from "../model";
-import { agentInfo, sendModeFor } from "../agents";
-import { SendMode, SessionStatus } from "../gen/remoteagent/v1/event_pb";
-import type { Remote, SessionView } from "../remote";
-import { Alert, sendKeys, usePointerFine } from "../ui";
+import { renderText } from "../core/text";
+import type { SessionComposerView } from "../gen/remoteagent/core/v1/session_view_pb";
+import { SendMode } from "../gen/remoteagent/v1/event_pb";
 import { ArrowUp, Square } from "../icons";
 import { easeBetween, easing, heightNow, stopEasing, Swap } from "../motion";
+import { Alert, sendKeys, usePointerFine } from "../ui";
+import { keepComposerFocus, useComposerMenuDismiss } from "./ComposerPicker";
 
 /** The draft grows to about six lines (17 / 1.4, and its padding), then
  * scrolls inside. */
 const DRAFT_MAX = 150;
 
-/** Whether the browser sizes this textarea by its text itself. */
 function sizesItself(el: HTMLElement): boolean {
   return typeof CSS !== "undefined" && !!CSS.supports?.("field-sizing", "content") && getComputedStyle(el).getPropertyValue("field-sizing") === "content";
 }
 
-/** A textarea that grows with its text up to max pixels. field-sizing
- * does this where the stylesheet asks for it and the browser supports it
- * (the height is then only eased here, from the size the browser reports once
- * it has laid the new text out); the height set here covers the rest, with
- * a single measure of the text per change. */
 export function useAutoGrow(ref: RefObject<HTMLTextAreaElement | null>, text: string, max = DRAFT_MAX) {
   const state = useRef<{ native: boolean; height: number }>(undefined);
   useLayoutEffect(() => {
@@ -37,10 +30,7 @@ export function useAutoGrow(ref: RefObject<HTMLTextAreaElement | null>, text: st
     const s = (state.current ??= { native: sizesItself(el), height: 0 });
     if (!s.native || typeof ResizeObserver === "undefined") return;
     s.height = el.offsetHeight;
-    // Growing a line, or falling back once the message is sent, eases.
     const ro = new ResizeObserver((entries) => {
-      // The ease's own frames are resizes too; answering them with another
-      // ease would never settle.
       if (easing(el)) return;
       const to = entries[entries.length - 1].borderBoxSize?.[0]?.blockSize ?? el.offsetHeight;
       const from = s.height;
@@ -55,33 +45,19 @@ export function useAutoGrow(ref: RefObject<HTMLTextAreaElement | null>, text: st
     if (!el) return;
     const s = (state.current ??= { native: sizesItself(el), height: 0 });
     if (s.native) return;
-    // What is on screen: the height set last, or where an ease has got to.
     const from = easing(el) ? heightNow(el) : s.height;
     stopEasing(el);
     el.style.height = "auto";
     const to = Math.min(max, el.scrollHeight);
     el.style.height = `${to}px`;
     s.height = to;
-    // Growing a line, or falling back once the message is sent, eases;
-    // the first fit, with a saved draft, is where it starts.
     if (from > 0) easeBetween(el, from, to);
   }, [ref, text, max]);
 }
 
-/** The request ID of the first message of a session started here: the
- * daemon queues it before anything else can reach the session, so it is
- * the session's first input, whatever other clients or this page sent
- * after it. */
-export function promptIdOf(remote: Remote, sid: string, d: Derived): string | undefined {
-  if (!remote.prompts.has(sid)) return undefined;
-  return d.inputs.keys().next().value;
-}
-
 export function Composer({
   ref,
-  remote,
-  session,
-  d,
+  composer,
   onSend,
   onInterrupt,
   draft,
@@ -91,27 +67,23 @@ export function Composer({
   attach,
   cardProps,
   dropping,
-  ready = true,
+  interruptDisabled = false,
+  defaultSendMenu = false,
 }: {
   ref: RefObject<HTMLTextAreaElement | null>;
-  remote: Remote;
-  session: SessionView;
-  d: Derived;
+  composer?: SessionComposerView;
   onSend: (text: string, mode: SendMode) => void;
   onInterrupt: () => void;
   draft: string;
   onDraft: (text: string) => void;
-  // Images waiting to go with the message, the ＋ that adds them,
-  // and dropping or pasting them on the card.
   tray?: Tray;
   trayView?: ReactNode;
   attach?: ReactNode;
   cardProps?: HTMLAttributes<HTMLDivElement>;
   dropping?: boolean;
-  ready?: boolean;
+  interruptDisabled?: boolean;
+  defaultSendMenu?: boolean;
 }) {
-  // The draft is the session's, not this input's: it survives opening an
-  // approval, plan, queue or tool page and coming back.
   const [text, setTextState] = useState(draft);
   useLayoutEffect(() => setTextState(draft), [draft]);
   const setText = (v: string) => {
@@ -120,42 +92,56 @@ export function Composer({
   };
   const fine = usePointerFine();
   const [slash, setSlash] = useState<SendMode>();
-  const [sendMenu, setSendMenu] = useState(() => remote.demoFlag("sendmenu"));
+  const [sendMenu, setSendMenu] = useState(defaultSendMenu);
   const hold = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const held = useRef(false);
   const sendWrap = useRef<HTMLDivElement>(null);
-  const canChooseSendMode = d.running && agentInfo(agentOf(session)).steersDuringTurn;
+
+  const running = !!composer?.hasActiveTurn;
+  const canChooseSendMode = running && !!composer?.supportsQueueMode;
   useComposerMenuDismiss(sendMenu && canChooseSendMode, sendWrap, () => setSendMenu(false));
   useEffect(() => () => clearTimeout(hold.current), []);
+
   const input = ref;
   useAutoGrow(input, text);
-  const online = ready && remote.peer(session.machineId).ready;
+
+  const online = composer?.enabled ?? false;
   const t = text.trim();
-  // While the server is away, nothing is queued behind the user's back:
-  // the text stays here until they send it themselves.
-  // With images, every one must be on the machine first; the text may
-  // then be empty.
   const images = tray?.items.length ?? 0;
-  const canSend = online && (images ? tray!.ready() : !!t);
-  const submit = (force = false, sendMode = SendMode.STEER) => {
-    sendMode = sendModeFor(agentOf(session), sendMode, d.running || session.info?.status === SessionStatus.RUNNING);
+  const canSend = online && (images ? (tray?.ready() ?? false) : !!t);
+  const defaultMode = running && !composer?.steerModeDefault ? SendMode.QUEUE : SendMode.STEER;
+
+  const submit = (force = false, sendMode = defaultMode) => {
+    const resolvedMode =
+      running && composer && !composer.supportsQueueMode ? SendMode.QUEUE : sendMode;
     tray?.refreshExpired();
     if (!canSend || (images && !tray!.ready())) return;
-    // Slash commands typed as text go to the model; menus they would open
-    // are not visible here.
-    if (t.startsWith("/") && !force && !images) return setSlash(sendMode);
-    onSend(t, sendMode);
+    if (t.startsWith("/") && !force && !images) return setSlash(resolvedMode);
+    onSend(t, resolvedMode);
     setText("");
     setSendMenu(false);
   };
-  const i = session.info;
+
   const keys = sendKeys(fine);
-  // Not by whether a tool is running: that changes every few seconds of a turn, and the field would blink.
-  const placeholder = d.questions.size > 0 ? i18n.t("composer.queue_after_answer") : i?.planOpen ? i18n.t("composer.plan_placeholder") : keys ? i18n.t("composer.shortcut", { keys }) : i18n.t("composer.message");
-  const canQueue = d.running;
-  const stopping = d.running && !t && !images;
+  const corePlaceholder = renderText(composer?.placeholder);
+  const placeholder =
+    corePlaceholder && composer?.placeholder?.key !== "composer.message"
+      ? corePlaceholder
+      : keys
+        ? i18n.t("composer.shortcut", { keys })
+        : corePlaceholder || i18n.t("composer.message");
+
+  const stopping = running && !t && !images;
+  const stopEnabled = (composer?.interruptVisible ?? online) && !interruptDisabled;
+
   const send = stopping ? (
-    <button className="snd stop" disabled={!online} onMouseDown={(e) => e.preventDefault()} onClick={onInterrupt} aria-label={i18n.t("session.interrupt_turn")}>
+    <button
+      className="snd stop"
+      disabled={!stopEnabled}
+      onMouseDown={(e) => e.preventDefault()}
+      onClick={onInterrupt}
+      aria-label={i18n.t("session.interrupt_turn")}
+    >
       <Square />
     </button>
   ) : (
@@ -164,24 +150,53 @@ export function Composer({
         className={"snd" + (canSend ? "" : " off")}
         disabled={!canSend}
         onMouseDown={(e) => e.preventDefault()}
-        onPointerDown={(e) => { keepComposerFocus(e); held.current = false; if (canChooseSendMode && !sendMenu) hold.current = setTimeout(() => { held.current = true; setSendMenu(true); }, 450); }}
+        onPointerDown={(e) => {
+          keepComposerFocus(e);
+          held.current = false;
+          if (canChooseSendMode && !sendMenu) {
+            hold.current = setTimeout(() => {
+              held.current = true;
+              setSendMenu(true);
+            }, 450);
+          }
+        }}
         onPointerUp={() => clearTimeout(hold.current)}
         onPointerLeave={() => clearTimeout(hold.current)}
         onPointerCancel={() => clearTimeout(hold.current)}
-        onContextMenu={(e) => { if (canChooseSendMode) { e.preventDefault(); setSendMenu(true); held.current = true; } }}
-        onClick={() => { if (held.current) { held.current = false; return; } if (sendMenu && canChooseSendMode) setSendMenu(false); else submit(); }}
+        onContextMenu={(e) => {
+          if (canChooseSendMode) {
+            e.preventDefault();
+            setSendMenu(true);
+            held.current = true;
+          }
+        }}
+        onClick={() => {
+          if (held.current) {
+            held.current = false;
+            return;
+          }
+          if (sendMenu && canChooseSendMode) setSendMenu(false);
+          else submit();
+        }}
         aria-label={i18n.t("composer.send")}
       >
         <ArrowUp />
       </button>
       {sendMenu && canChooseSendMode && (
         <div className="send-menu">
-          <button onClick={() => submit()}><b>{i18n.t("composer.insert_now")}</b><small>{i18n.t("composer.insert_hint")}</small></button>
-          <button onClick={() => submit(false, SendMode.QUEUE)}><b>{i18n.t("composer.after_turn")}</b><small>{i18n.t("composer.queue_hint")}</small></button>
+          <button onClick={() => submit(false, SendMode.STEER)}>
+            <b>{i18n.t("composer.insert_now")}</b>
+            <small>{i18n.t("composer.insert_hint")}</small>
+          </button>
+          <button onClick={() => submit(false, SendMode.QUEUE)}>
+            <b>{i18n.t("composer.after_turn")}</b>
+            <small>{i18n.t("composer.queue_hint")}</small>
+          </button>
         </div>
       )}
     </div>
   );
+
   return (
     <div className={"cbar glass" + (dropping ? " drop" : "")} data-drop-label={i18n.t("attachment.release_to_add")} {...cardProps}>
       {trayView}
@@ -195,19 +210,16 @@ export function Composer({
           placeholder={placeholder}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={(e) => {
-            // Enter is a new line; ⌘/Ctrl+Enter sends, but never while an
-            // input method is still composing.
             if (e.key === "Enter" && (e.metaKey || e.ctrlKey) && !e.nativeEvent.isComposing) {
               e.preventDefault();
               submit();
-            } else if (e.key === "Enter" && e.altKey && canQueue && !e.nativeEvent.isComposing) {
+            } else if (e.key === "Enter" && e.altKey && running && !e.nativeEvent.isComposing) {
               e.preventDefault();
               submit(false, SendMode.QUEUE);
             }
           }}
           aria-label={i18n.t("composer.message")}
         />
-        {/* ↑ and ■ swap by crossfade; the two are the same ink circle. */}
         <Swap k={stopping ? "stop" : "send"} className="mo-send" hold>
           {send}
         </Swap>

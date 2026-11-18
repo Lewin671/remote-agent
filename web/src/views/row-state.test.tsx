@@ -3,9 +3,10 @@ import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { expect, it } from "vitest";
 import { create } from "@bufbuild/protobuf";
-import { ToolCallSchema } from "../gen/remoteagent/v1/event_pb";
+import { SessionToolCallItemSchema, SessionToolGroupItemSchema } from "../gen/remoteagent/core/v1/session_view_pb";
+import { TextSchema } from "../gen/remoteagent/core/v1/text_pb";
 import { RowState, RememberDetails } from "./RowState";
-import { ToolGroup } from "./Tools";
+import { ToolGroupView } from "./Tools";
 import { GenCard } from "./Images";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -13,7 +14,7 @@ it("preserves expanded tools, prompts and details when a row leaves the viewport
   const host = document.createElement("div"); document.body.append(host); const root = createRoot(host);
   const states = new Map<string, boolean>();
   const row = <RowState id="row" states={states}>
-    <ToolGroup calls={[create(ToolCallSchema, { title: "one" }), create(ToolCallSchema, { title: "two" })]} short={{ text: (s) => s, path: (s) => s }} />
+    <ToolGroupView group={create(SessionToolGroupItemSchema, { summary: create(TextSchema, { literal: "2 calls" }), calls: [create(SessionToolCallItemSchema, { title: "one" }), create(SessionToolCallItemSchema, { title: "two" })] })} />
     <GenCard refs={[{ preview: new Uint8Array(), previewFormat: 0 } as any]} prompt="image prompt" />
     <RememberDetails name="thought"><summary>thought</summary>reasoning text</RememberDetails>
   </RowState>;

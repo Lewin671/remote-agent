@@ -1,32 +1,19 @@
 import { t as message } from "./i18n";
-import { create, type MessageInitShape } from "@bufbuild/protobuf";
-import { timestampFromMs } from "@bufbuild/protobuf/wkt";
 import { expect, it } from "vitest";
 import shared from "../../testdata/schedules/clients.json";
 import type { ScheduleTask } from "./schedules";
 import {
-  EventSchema,
-  TurnOutcome,
-  ToolBackground,
-  InputStatus,
-  SessionStatus,
-  type Event,
-} from "./gen/remoteagent/v1/event_pb";
-import { derive, timeline } from "./model";
-import {
   clockTime,
   dateTime,
-  foldScheduled,
   frequency,
   groupRuns,
   groupTasks,
   lastResult,
   nextText,
-  quietSpans,
   reasonText,
   taskGroup,
-  zonedISO,
   timingText,
+  zonedISO,
   scheduleEmpty, scheduleOffline, scheduleOfflineRow, validScheduleMessage,
   taskName,
   runResult,
@@ -132,92 +119,7 @@ it("derives next time labels by local date, state and active run", () => {
     frequency({ type: "calendar", weekdays: [1, 2, 3, 4, 5], time: "08:00" }),
   ).toBe("工作日 08:00");
 });
-function rounds(
-  options: {
-    notified?: boolean;
-    failed?: boolean;
-    human?: boolean;
-    active?: boolean;
-    approval?: boolean;
-  } = {},
-): Event[] {
-  const events: Event[] = [];
-  const add = (
-    kind: MessageInitShape<typeof EventSchema>["kind"],
-    origin?: { scheduledTaskId: string; scheduledRunId: string },
-  ) =>
-    events.push(
-      create(EventSchema, {
-        seq: BigInt(events.length + 1),
-        sessionId: "s",
-        time: timestampFromMs(
-          Date.parse("2026-10-24T10:00:00Z") + events.length * 60_000,
-        ),
-        origin,
-        kind,
-      }),
-    );
-  for (let i = 0; i < 2; i++) {
-    if (i && options.human)
-      add({ case: "userMessage", value: { text: "人工消息" } });
-    add(
-      { case: "userMessage", value: { text: "定时检查" } },
-      { scheduledTaskId: "task", scheduledRunId: "run" + i },
-    );
-    if (i && options.notified)
-      add({
-        case: "scheduledNotification",
-        value: { taskId: "task", runId: "run1", text: "有结果" },
-      });
-    if (i && options.approval)
-      add({ case: "approvalRequested", value: { approvalId: "a" } });
-    add({ case: "agentMessage", value: { text: "没有新消息" } });
-    if (i && options.active) continue;
-    add({
-      case: "turnEnded",
-      value: {
-        durationMs: 1000n,
-        outcome:
-          i && options.failed ? TurnOutcome.ABORTED : TurnOutcome.COMPLETED,
-        scheduledTaskId: "task",
-        scheduledRunId: "run" + i,
-        scheduledNotified: !!(i && options.notified),
-      },
-    });
-  }
-  return events;
-}
-it("folds consecutive completed quiet rounds and reveals a selected run", () => {
-  const events = rounds();
-  const raw = timeline(events, derive(events));
-  const folded = foldScheduled(raw, events, new Set());
-  expect(folded).toHaveLength(1);
-  expect(folded[0].kind).toBe("quiet");
-  expect(quietSpans(events)[0].times).toHaveLength(2);
-  expect(foldScheduled(raw, events, new Set(["quiet-1"]))).toEqual(raw);
-  expect(foldScheduled(raw, events, new Set(), 4n)).toEqual(raw);
-  for (const options of [
-    { notified: true },
-    { failed: true },
-    { human: true },
-    { active: true },
-    { approval: true },
-  ]) {
-    const es = rounds(options);
-    expect(
-      foldScheduled(timeline(es, derive(es)), es, new Set()).some(
-        (it) => it.kind === "quiet",
-      ),
-    ).toBe(false);
-  }
-  const notified = rounds({ notified: true });
-  expect(
-    timeline(notified, derive(notified)).some(
-      (it) =>
-        it.kind === "event" && it.event.kind.case === "scheduledNotification",
-    ),
-  ).toBe(true);
-});
+
 it("converts local times in the selected zone and rejects DST gaps", () => {
   expect(zonedISO("2026-10-24T08:00", "Asia/Shanghai")).toBe(
     "2026-10-24T00:00:00.000Z",
@@ -235,141 +137,6 @@ it("resolves repeated wall times to the first occurrence in western and eastern 
   expect(zonedISO("2027-11-07T01:30", "America/Los_Angeles")).toBe("2027-11-07T08:30:00.000Z");
   expect(zonedISO("2027-10-31T02:30", "Europe/Berlin")).toBe("2027-10-31T00:30:00.000Z");
   expect(() => zonedISO("2027-03-14T02:30", "America/Los_Angeles")).toThrow("这个时区在该时刻发生夏令时跳转，请换一个时间");
-});
-
-it("keeps late notifications and autonomous replies outside quiet-round folds", () => {
-  const original = rounds();
-  const notification = create(EventSchema, {
-    time: timestampFromMs(Date.parse("2026-10-24T10:03:00Z")),
-    kind: {
-      case: "scheduledNotification",
-      value: { taskId: "task", runId: "run0", text: "迟到的通知不能隐藏" },
-    },
-  });
-  for (const inserted of [
-    notification,
-    create(EventSchema, {
-      kind: { case: "agentMessage", value: { text: "后续自主回复不能隐藏" } },
-    }),
-  ]) {
-    const events = [
-      ...original.slice(0, 3),
-      inserted,
-      ...original.slice(3),
-    ].map((e, i) => ({ ...e, seq: BigInt(i + 1) }));
-    const raw = timeline(events, derive(events));
-    const folded = foldScheduled(raw, events, new Set());
-    expect(folded.some((item) => item.kind === "quiet")).toBe(false);
-    expect(folded).toEqual(raw);
-  }
-  const late = [...original, notification].map((e, i) => ({
-    ...e,
-    seq: BigInt(i + 1),
-  }));
-  expect(
-    foldScheduled(timeline(late, derive(late)), late, new Set()).some(
-      (item) => item.kind === "quiet",
-    ),
-  ).toBe(false);
-  const grouped = rounds().map((e) => {
-    if (e.kind.case === "agentMessage")
-      return create(EventSchema, {
-        seq: e.seq,
-        time: e.time,
-        origin: e.origin,
-        sessionId: e.sessionId,
-        kind: {
-          case: "toolCall",
-          value: {
-            callId: "before-" + e.seq,
-            status: "completed",
-            title: "check",
-          },
-        },
-      });
-    if (e.kind.case === "turnEnded") e.kind.value.durationMs = 0n;
-    return e;
-  });
-  grouped.push(
-    create(EventSchema, {
-      seq: 7n,
-      kind: {
-        case: "toolCall",
-        value: {
-          callId: "follow-up",
-          status: "completed",
-          title: "follow-up must stay visible",
-        },
-      },
-    }),
-  );
-  const groupedRows = timeline(grouped, derive(grouped));
-  expect(groupedRows.some((item) => item.kind === "tools")).toBe(true);
-  expect(foldScheduled(groupedRows, grouped, new Set())).toEqual(groupedRows);
-});
-it("does not fold across oversized-content markers or local date boundaries", async () => {
-  const { skeletonNote } = await import("./skeleton");
-  const oversized = rounds();
-  if (oversized[1].kind.case === "agentMessage")
-    oversized[1].kind.value.text += skeletonNote;
-  expect(
-    foldScheduled(
-      timeline(oversized, derive(oversized)),
-      oversized,
-      new Set(),
-    ).some((item) => item.kind === "quiet"),
-  ).toBe(false);
-  const dates = rounds();
-  for (const e of dates.slice(3))
-    e.time = timestampFromMs(Date.parse("2026-10-25T10:00:00Z"));
-  expect(
-    foldScheduled(timeline(dates, derive(dates)), dates, new Set()).some(
-      (item) => item.kind === "quiet",
-    ),
-  ).toBe(false);
-});
-
-it("still folds quiet rounds across ordinary scheduled queue and idle metadata", () => {
-  const events = rounds()
-    .flatMap((e) => {
-      if (e.kind.case === "userMessage")
-        return [
-          create(EventSchema, {
-            origin: e.origin,
-            kind: {
-              case: "inputState",
-              value: { requestId: "q" + e.seq, status: InputStatus.QUEUED },
-            },
-          }),
-          e,
-          create(EventSchema, {
-            origin: e.origin,
-            kind: {
-              case: "inputState",
-              value: { requestId: "q" + e.seq, status: InputStatus.SUBMITTED },
-            },
-          }),
-        ];
-      if (e.kind.case === "turnEnded")
-        return [
-          e,
-          create(EventSchema, {
-            kind: {
-              case: "sessionState",
-              value: { status: SessionStatus.IDLE },
-            },
-          }),
-        ];
-      return [e];
-    })
-    .map((e, i) => ({ ...e, seq: BigInt(i + 1) }));
-  const folded = foldScheduled(
-    timeline(events, derive(events)),
-    events,
-    new Set(),
-  );
-  expect(folded).toHaveLength(1);
-  expect(folded[0].kind).toBe("quiet");
 });
 
 it("resolves optional task names from the first sentence and keeps explicit names", () => {
@@ -447,62 +214,6 @@ it("derives the final shared grouping, attention reason and state copy from task
   expect(dateTime(new Date(2026, 9, 25, 8).toISOString(), now)).toBe("明天 08:00");
   expect(nextText(task({next_run_at: new Date(2026, 9, 24, 15).toISOString()}), now)).toBe("下次 今天 15:00");
 });
-it.each([InputStatus.FAILED, InputStatus.UNCONFIRMED, InputStatus.CANCELED, InputStatus.NEEDS_TERMINAL, InputStatus.HELD_BY_CLI])("keeps blocking scheduled input visible after its message: %s", status => {
-  const events = rounds().flatMap(e => e.kind.case === "userMessage" ? [e, create(EventSchema, {kind:{case:"inputState",value:{status,requestId:"q"}}})] : [e]).map((e,i)=>({...e,seq:BigInt(i+1)}));
-  expect(foldScheduled(timeline(events, derive(events)),events,new Set()).some(x=>x.kind==="quiet")).toBe(false);
-});
-
-it.each([
-  {case:"settingsChanged",value:{model:"new-model"}},
-  {case:"settingsChanged",value:{mode:2}},
-  {case:"questionAnswered",value:{questionId:"q"}},
-  {case:"turnContext",value:{model:"new-model"}},
-  {case:"turnEnded",value:{durationMs:1000n}},
-] as MessageInitShape<typeof EventSchema>["kind"][])("preserves visible inter-round events: $case", kind => {
-  const events=rounds();
-  events.splice(3,0,create(EventSchema,{seq:4n,kind}));
-  events.forEach((event,i)=>event.seq=BigInt(i+1));
-  const raw=timeline(events,derive(events));
-  expect(foldScheduled(raw,events,new Set())).toEqual(raw);
-  expect(quietSpans(events).every(span=>!(span.start<4n && span.end>4n))).toBe(true);
-});
-it.each([
-  {case:"toolCall",value:{title:"failed command",status:"failed"}},
-  {case:"toolCall",value:{title:"nonzero command",status:"completed",exitCode:7}},
-  {case:"toolCall",value:{title:"background command",status:"completed",background:ToolBackground.STILL_RUNNING}},
-  {case:"toolStarted",value:{title:"unfinished command",callId:"pending"}},
-  {case:"settingsChanged",value:{model:"other-model"}},
-  {case:"questionAnswered",value:{questionId:"q"}},
-  {case:"imageGenerated",value:{revisedPrompt:"image"}},
-] as MessageInitShape<typeof EventSchema>["kind"][])("keeps protected in-round content visible: $case",kind=>{
-  const events=rounds();events[1]=create(EventSchema,{seq:events[1].seq,time:events[1].time,origin:events[1].origin,kind});
-  const raw=timeline(events,derive(events));
-  expect(foldScheduled(raw,events,new Set())).toEqual(raw);
-  expect(quietSpans(events).some(s=>s.start===1n)).toBe(false);
-});
-it("still folds completed successful tool results",()=>{
-  const events=rounds();events[1]=create(EventSchema,{seq:events[1].seq,time:events[1].time,origin:events[1].origin,kind:{case:"toolCall",value:{title:"ok",status:"completed",exitCode:0}}});
-  expect(quietSpans(events)[0].times).toHaveLength(2);
-});
-
-it("preserves terminal setting changes inside a scheduled round",()=>{
-  const events=rounds();events[1]=create(EventSchema,{seq:2n,kind:{case:"turnContext",value:{model:"new-model"}}});
-  events.unshift(create(EventSchema,{seq:0n,kind:{case:"turnContext",value:{model:"old-model"}}}));
-  expect(derive(events).terminalChanges.has(2n)).toBe(true);
-  const rows=timeline(events,derive(events));expect(foldScheduled(rows,events,new Set())).toEqual(rows);
-});
-it("keeps a failed result painted back onto a tool started in an earlier round",()=>{
-  const events=rounds();
-  events[4]=create(EventSchema,{seq:5n,kind:{case:"toolStarted",value:{title:"late command",callId:"late"}}});
-  events.push(
-    create(EventSchema,{seq:7n,time:events[0].time,origin:{scheduledTaskId:"task",scheduledRunId:"late-run"},kind:{case:"userMessage",value:{text:"next check"}}}),
-    create(EventSchema,{seq:8n,kind:{case:"toolCall",value:{title:"late command",callId:"late",status:"failed",exitCode:7}}}),
-    create(EventSchema,{seq:9n,kind:{case:"turnEnded",value:{outcome:TurnOutcome.COMPLETED,scheduledTaskId:"task",scheduledRunId:"late-run"}}}),
-  );
-  expect(derive(events).toolEnds.get(5n)).toBe(8n);
-  const rows=timeline(events,derive(events));expect(foldScheduled(rows,events,new Set())).toEqual(rows);
-});
-
 it("uses the shared v52 title and offline-row vectors and UTF-8 message limit", () => {
   expect(scheduleOfflineRow()).toBe(shared.offlineRow);
   for (const [message, expected] of shared.titleFromMessage) expect(taskName("", message)).toBe(expected);

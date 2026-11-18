@@ -5,7 +5,6 @@ import { Tray } from "./attach";
 import { loadLocalData, saveLocalData, forgetSecurity } from "./device-security-store";
 import { rawSecurity, securityFixture, storedSecurity } from "./test/stored-security-fixture";
 import type { StoredAccount } from "./storage";
-import type { Outgoing } from "./model";
 
 beforeAll(securityFixture);
 beforeEach(() => vi.stubGlobal("IDBKeyRange", IDBKeyRange));
@@ -40,28 +39,7 @@ it("restores text, original source bytes, order and original mode from ciphertex
   await expect(loadLocalData(account.server, account.deviceId, 'composer/"session"')).rejects.toThrow();
 });
 
-it("keeps an uncertain send's sources across a reload and transfers ownership before deleting the old record", async () => {
-  const f = await storedSecurity();
-  const account = { server: "https://relay.example.com", deviceId: f.memberID } as StoredAccount;
-  const store = new ComposerDraftStore(account);
-  const file = new File(["original source"], "photo.png", { type: "image/png" });
-  const out: Outgoing = { sendId: "send", requestId: "command", deadline: 12345, text: "unsent", imageIds: ["uploaded"], thumbs: [file], attachments: { original: true, files: [file] }, status: "sending" };
-  await store.saveOutbox("session", [out]);
-  const reloaded = new ComposerDraftStore(account);
-  const pending = (await reloaded.readOutbox("session"))[0];
-  expect([pending.status, pending.unknown, pending.sendId, pending.requestId]).toEqual(["failed", true, "send", "command"]);
-  expect(await pending.attachments!.files[0].text()).toBe("original source");
-  const source = pending.attachments!.files[0];
-  await reloaded.save("session", pending.text, { original: pending.attachments!.original, items: [{ key: "source", file: source, state: "preparing", progress: 0 }] });
-  await reloaded.saveOutbox("session", []);
-  expect(await reloaded.readOutbox("session")).toEqual([]);
-  const draft = await new ComposerDraftStore(account).read("session");
-  expect(draft?.text).toBe("unsent");
-  expect(await draft!.items[0].file.text()).toBe("original source");
-});
-
-
-it("discards a corrupt manifest or binding without disturbing another draft or its outbox", async () => {
+it("discards a corrupt manifest or binding without disturbing another draft", async () => {
   const f = await storedSecurity(), account = { server: "https://relay.example.com", deviceId: f.memberID } as StoredAccount;
   const store = new ComposerDraftStore(account);
   await store.save("bad", "old"); await store.save("other", "keep");
@@ -84,27 +62,12 @@ it("drops only a missing picture source while keeping the draft text and other i
   expect(saved?.text).toBe("keep text"); expect(saved?.items).toHaveLength(1); expect(await saved!.items[0].file.text()).toBe("kept");
 });
 
-it("discards only the damaged outgoing record and cleans a deleted session's sources", async () => {
+it("cleans a deleted session's draft sources without disturbing other sessions", async () => {
   const f = await storedSecurity(), account = { server: "https://relay.example.com", deviceId: f.memberID } as StoredAccount;
   const store = new ComposerDraftStore(account);
-  const outgoing = ["bad", "good"].map(sendId => ({ sendId, requestId: sendId, deadline: 1, text: sendId, status: "sending" as const }));
-  await store.saveOutbox("s", outgoing); await store.save("s", "draft"); await store.save("other", "other");
-  const key = 'composer/"out:s"'; const manifest = JSON.parse(new TextDecoder().decode(await loadLocalData(account.server, account.deviceId, key)));
-  const records = JSON.parse(manifest.text); records[0].requestId = null; manifest.text = JSON.stringify(records);
-  await saveLocalData(account.server, account.deviceId, new Map([[key, new TextEncoder().encode(JSON.stringify(manifest))]]));
-  expect((await store.readOutbox("s")).map(o => o.sendId)).toEqual(["good"]);
-  await store.removeSession("s"); expect(await store.read("s")).toBeUndefined(); expect(await store.readOutbox("s")).toEqual([]);
+  await store.save("s", "draft", { original: true, items: [{ key: "1", file: new Blob(["img"]), state: "done", progress: 1 }] });
+  await store.save("other", "other");
+  await store.removeSession("s");
+  expect(await store.read("s")).toBeUndefined();
   expect((await store.read("other"))?.text).toBe("other");
-});
-
-
-it("persists the first prepared payload with its scope across store restart", async () => {
-  const f=await storedSecurity();const account={server:"https://relay.example.com",deviceId:f.memberID} as StoredAccount;
-  const fixture=(await import("../../testdata/transport/prepared-command.json")).default;
-  const plain=Uint8Array.from(atob(fixture.plain),c=>c.charCodeAt(0));
-  const outgoing:Outgoing={sendId:"message",requestId:"original-request",deadline:123456,text:"fixture",status:"sending",prepared:{machineId:"machine",sid:"",plain}};
-  await new ComposerDraftStore(account).saveOutbox("session",[outgoing]);
-  const [restored]=await new ComposerDraftStore(account).readOutbox("session");
-  expect(restored.prepared).toEqual(outgoing.prepared);expect(restored.requestId).toBe(outgoing.requestId);expect(restored.deadline).toBe(outgoing.deadline);
-  expect(restored.unknown).toBe(true);
 });

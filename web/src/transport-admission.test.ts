@@ -38,8 +38,6 @@ test.skipIf(!process.env.RA_1B_FLOW_ROOT)("full snapshot and approval flow under
     remote.start();
     await until(() => remote.conn === "online" && remote.sessions.has(sid));
     await remote.command(sid, {case:"getLiveSnapshot",value:create(GetLiveSnapshotRequestSchema,{sessionId:sid})});
-    await remote.refreshLiveSnapshot(sid);
-    expect(remote.liveSnapshotError(sid)).toBeUndefined();
     for (let i = 0; i < 20; i++) await remote.command(sid, approval(i));
     const load = await control("start"); loaded = true;
     expect(load).toMatchObject({ normal: 4, bulk: 2, input: 1, input_overdue: true });

@@ -45,7 +45,7 @@ const keys2: [ReactNode, string, string][] = [
 /** The session's terminal, streamed live. Typing goes to the session like
  * the local keyboard. Opening it fits the tmux window to this screen.
  * Scrolling up opens the read-only reader over the same area. */
-export function TerminalView({ remote, session, compact, wide, running }: { remote: Remote; session: SessionView; compact?: boolean; wide?: boolean; running: boolean }) {
+export function TerminalView({ remote, session, compact, wide, running }: { remote: Remote; session: Pick<SessionView, "id" | "machineId">; compact?: boolean; wide?: boolean; running: boolean }) {
   useRemote(remote);
   const online = remote.peer(session.machineId).ready;
   const onlineRef = useRef(online);

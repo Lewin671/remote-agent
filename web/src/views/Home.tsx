@@ -1,10 +1,13 @@
 // The home screen: scope, headline, what waits, what runs, what ended,
 // sidebar, and wide main area — all rendered straight from HomeViewModel.
 
+import { create } from "@bufbuild/protobuf";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { AgentMark } from "../agent-mark";
-import { useCoreHost, useHomeView, useNewSessionView, useProjectView, type Go } from "../core/host";
+import { useCoreHost, useHomeView, useNewSessionView, useProjectView, useSessionView, type Go } from "../core/host";
 import { renderText } from "../core/text";
+import { SessionDockKind } from "../gen/remoteagent/core/v1/session_view_pb";
+import { CommandSchema, type Command } from "../gen/remoteagent/v1/remote_pb";
 import {
   ConnState,
   HeadlineKind,
@@ -33,7 +36,6 @@ import { DiskReminders } from "./DiskReminders";
 import { NewBox, NewFlow } from "./NewSession";
 import { PrefsBanner, RemovedNotice } from "./Projects";
 import { SchedulesPage } from "./Schedules";
-import { useDerived } from "./actions";
 import { RecoveryNotice } from "./authority-notice";
 
 export type { Go } from "../core/host";
@@ -121,10 +123,72 @@ function TopApproval({ card, remote, onOpen }: { card: AttentionCardView; remote
 }
 
 function TopApprovalLive({ card, remote, onOpen }: { card: AttentionCardView; remote: Remote; onOpen: () => void }) {
-  const derived = useDerived(remote, card.sessionId);
-  const live = derived.approvals.get(card.approvalId) ?? [...derived.approvals.values()][0];
-  if (!live) return <TopApprovalPreview card={card} onOpen={onOpen} />;
-  return <ApprovalCard key={live.approvalId} remote={remote} sid={card.sessionId} a={live} title={renderText(card.title)} where={renderText(card.where)} onOpen={onOpen} timeoutNote />;
+  const host = useCoreHost(remote);
+  const vm = useSessionView(host, card.sessionId);
+  const lastCmd = useRef<Command | undefined>(undefined);
+  const dock = vm.dock;
+  const dockApproval =
+    dock?.hasItem && dock.kind === SessionDockKind.APPROVAL && dock.detail.case === "approval" && dock.detail.value.approvalId === card.approvalId
+      ? dock.detail.value
+      : undefined;
+  const command =
+    dock?.hasItem && dock.kind === SessionDockKind.APPROVAL && dock.itemId === card.approvalId
+      ? dock.command
+      : undefined;
+  const machineId = vm.header?.machineId ?? "";
+  const slotKey = command?.slotKey || `approval:${card.sessionId}:${card.approvalId}`;
+  const reason = remote.approvalReasons.get(card.approvalId) ?? "";
+
+  const makeCmd = (allow: boolean, why: string, always: boolean): Command =>
+    create(CommandSchema, {
+      kind: {
+        case: "resolveApproval",
+        value: {
+          sessionId: card.sessionId,
+          approvalId: card.approvalId,
+          allow,
+          message: why,
+          always,
+          observedEventSeq: dock?.observedSeq ?? 0n,
+        },
+      },
+    });
+
+  return (
+    <ApprovalCard
+      kind={renderText(card.kindText)}
+      body={dockApproval ? (dockApproval.body || dockApproval.commandPreview || dockApproval.toolName) : (card.body || card.toolName)}
+      description={dockApproval?.description}
+      truncated={dockApproval?.bodyTruncated ?? card.truncated}
+      isSkeleton={dockApproval?.isSkeleton}
+      canAlwaysAllow={dockApproval?.canAlwaysAllow ?? !!renderText(card.alwaysLabel)}
+      alwaysLabel={renderText(dockApproval?.alwaysLabel) || renderText(card.alwaysLabel)}
+      denyReasonPlaceholder={renderText(dockApproval?.denyReasonPlaceholder)}
+      timeText={renderText(card.time)}
+      hot={card.hot}
+      locked={!!vm.header?.computerUnlinked || !(vm.header?.capabilities?.canSend ?? true)}
+      command={command}
+      reason={reason}
+      onReasonChange={(v) => {
+        if (v) remote.approvalReasons.set(card.approvalId, v);
+        else remote.approvalReasons.delete(card.approvalId);
+        remote.touch();
+      }}
+      title={renderText(card.title)}
+      where={renderText(card.where)}
+      onOpen={onOpen}
+      onResolve={(allow, why, always) => {
+        const built = makeCmd(allow, why, always);
+        lastCmd.current = built;
+        host.sessionSubmitCommand(slotKey, machineId, card.sessionId, built);
+      }}
+      onRetry={() => {
+        const built = lastCmd.current ?? makeCmd(true, "", false);
+        host.sessionSubmitCommand(slotKey, machineId, card.sessionId, built);
+      }}
+      onAbandon={() => host.sessionAbandonCommand(slotKey, card.sessionId)}
+    />
+  );
 }
 
 function TopApprovalPreview({ card, onOpen }: { card: AttentionCardView; onOpen: () => void }) {

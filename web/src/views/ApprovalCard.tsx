@@ -8,22 +8,11 @@ import * as i18n from "../i18n";
 // the buttons, which stay in view.
 
 import { useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
-import type { ApprovalRequested } from "../gen/remoteagent/v1/event_pb";
-import { approvalDisplay, approvalTruncated, approvalTruncatedMessage } from "../approval-display";
-import { minutesLeft } from "../model";
-import type { Remote } from "../remote";
-import { isSkeleton, skeletonMessage } from "../skeleton";
-import { useNow } from "../ui";
+import { approvalDisplay, approvalTruncatedMessage } from "../approval-display";
+import { renderText } from "../core/text";
+import { SessionCommandStatus, type SessionCommandState } from "../gen/remoteagent/core/v1/session_view_pb";
 import { ChevronRight } from "../icons";
-import { deadlineOf, useApproval } from "./actions";
-
-export function approvalTitle(a: ApprovalRequested): string {
-  return a.command ? i18n.t("list_state.android_request_command") : i18n.t("list_state.request_permission", { tool: approvalDisplay(a.toolName) });
-}
-
-export function approvalText(a: ApprovalRequested): string {
-  return approvalDisplay(a.command || a.toolInputJson || a.toolName);
-}
+import { skeletonMessage } from "../skeleton";
 
 /** Whole lines a card's command shows before 看完整命令. */
 export const CARD_LINES = 5;
@@ -41,28 +30,27 @@ function linesOf(el: HTMLElement | null, text: string): number {
   return Math.max(shown, own);
 }
 
-export function ApprovalCard({
-  remote,
-  sid,
-  a,
-  title,
-  where,
-  onOpen,
-  timeoutNote,
-  docked,
-  head: dockHead,
-  onDenying,
-}: {
-  remote: Remote;
-  sid: string;
-  a: ApprovalRequested;
+export interface ApprovalCardProps {
+  kind: string;
+  body: string;
+  description?: string;
+  truncated?: boolean;
+  isSkeleton?: boolean;
+  canAlwaysAllow?: boolean;
+  alwaysLabel?: string;
+  denyReasonPlaceholder?: string;
+  timeText?: string;
+  hot?: boolean;
+  locked?: boolean;
+  command?: SessionCommandState;
+  reason?: string;
+  onReasonChange?: (v: string) => void;
+  defaultDenying?: boolean;
   /** The session's title, which opens it; none inside the session. */
   title?: string;
   /** 「项目 · 机器」 under the title. */
   where?: string;
   onOpen?: () => void;
-  /** The home's card says what the end of the time does: 「，超时拒绝」. */
-  timeoutNote?: boolean;
   /** Docked: the whole command in a scrolling content area, with the
    * buttons under it. */
   docked?: boolean;
@@ -71,17 +59,47 @@ export function ApprovalCard({
   head?: ReactNode;
   /** Writing a reason, which keeps a docked card open whatever the room. */
   onDenying?: (open: boolean) => void;
-}) {
-  const now = useNow(1000);
-  const ap = useApproval(remote, sid, a);
+  onResolve: (allow: boolean, reason: string, always: boolean) => void;
+  onRetry?: () => void;
+  onAbandon?: () => void;
+}
+
+export function ApprovalCard({
+  kind,
+  body,
+  description = "",
+  truncated = false,
+  isSkeleton = false,
+  canAlwaysAllow = false,
+  alwaysLabel = "",
+  denyReasonPlaceholder = "",
+  timeText = "",
+  hot = false,
+  locked: lockedProp = false,
+  command,
+  reason: controlledReason,
+  onReasonChange,
+  defaultDenying = false,
+  title,
+  where,
+  onOpen,
+  docked = false,
+  head: dockHead,
+  onDenying,
+  onResolve,
+  onRetry,
+  onAbandon,
+}: ApprovalCardProps) {
   const [full, setFull] = useState(false);
-  const [denying, setDenyingState] = useState(() => remote.demoFlag("deny"));
+  const [denying, setDenyingState] = useState(defaultDenying);
+  const [localReason, setLocalReason] = useState("");
+  const [lastAllow, setLastAllow] = useState<boolean | undefined>(undefined);
   const setDenying = (v: boolean) => {
     setDenyingState(v);
     onDenying?.(v);
   };
   const cmd = useRef<HTMLPreElement>(null);
-  const text = approvalText(a);
+  const text = approvalDisplay(body);
   const [lines, setLines] = useState(() => linesOf(null, "❯ " + text));
   useLayoutEffect(() => {
     // Measured open, or with no clamp: a clamped box's scroll height is
@@ -93,59 +111,84 @@ export function ApprovalCard({
     ro.observe(cmd.current);
     return () => ro.disconnect();
   }, [text]);
-  const reason = remote.approvalReasons.get(a.approvalId) ?? "";
+
+  const reason = controlledReason ?? localReason;
   const setReason = (v: string) => {
-    if (v) remote.approvalReasons.set(a.approvalId, v);
-    else remote.approvalReasons.delete(a.approvalId);
-    remote.touch();
+    if (onReasonChange) onReasonChange(v);
+    else setLocalReason(v);
   };
-  const deadline = deadlineOf(a);
-  const expired = deadline > 0 && now >= deadline;
-  const truncated = approvalTruncated(a);
-  const unlinked = remote.peer(remote.sessions.get(sid)?.machineId).unlinked;
-  // An answer whose outcome is unknown holds: only a retry of it may go.
-  const locked = !!ap.busy || expired || (!!ap.error && ap.unknown) || unlinked;
-  const kind = approvalTitle(a);
-  const head = (right: ReactNode, hot = false) => (
+
+  const cmdBusy = !!command?.busy;
+  const cmdError =
+    command && (command.status === SessionCommandStatus.FAILED || command.status === SessionCommandStatus.UNKNOWN);
+  const cmdErrorMsg = renderText(command?.errorText) || renderText(command?.statusText);
+  const cmdStatusMsg = renderText(command?.statusText);
+  // An answer whose outcome is unknown or frozen holds: only a retry or abandon may go.
+  const locked =
+    lockedProp ||
+    cmdBusy ||
+    !!command?.frozen ||
+    !!command?.expired ||
+    (!!cmdError && !command?.canRetry);
+
+  const head = (right: ReactNode, isHot = false) => (
     <div className="k">
       <i />
       {kind}
-      {right && <span className={hot ? "hot" : ""}>{right}</span>}
+      {right && <span className={isHot ? "hot" : ""}>{right}</span>}
     </div>
   );
-  if (isSkeleton(a))
+
+  if (isSkeleton) {
     return (
       <div className="tc">
         {head("")}
         <div className="y">{skeletonMessage()}</div>
       </div>
     );
-  // Submitted: one line of where it stands; the next item comes up when
-  // this one is gone from the session.
-  if (ap.busy || ap.error) {
-    const allow = (ap.busy || "").startsWith("allow");
+  }
+
+  // Submitted or failed: one line of where it stands.
+  if (cmdBusy || cmdError) {
+    const busyLabel =
+      cmdStatusMsg ||
+      (lastAllow === false
+        ? i18n.t("approval.denied")
+        : lastAllow === true
+          ? i18n.t("approval.allowed")
+          : i18n.t("dock.waiting_confirmation"));
     return (
       <div className="tc line" role="status">
         <div className="k">
           <i />
           {kind}
-          {ap.error ? (
-            <span className="red">{i18n.t("approval.delivery_failed", { reason: ap.error })}</span>
+          {cmdError ? (
+            <span className="red">{i18n.t("approval.delivery_failed", { reason: cmdErrorMsg })}</span>
           ) : (
-            <span>{allow ? i18n.t("approval.allowed") : i18n.t("approval.denied")}</span>
+            <span>{busyLabel}</span>
           )}
         </div>
-        {ap.error && <button onClick={ap.retry}>{i18n.t("common.retry")}</button>}
+        {cmdError && command?.canRetry && onRetry && (
+          <button onClick={onRetry}>{i18n.t("common.retry")}</button>
+        )}
+        {cmdError && command?.canAbandon && onAbandon && (
+          <button onClick={onAbandon}>{i18n.t("common.cancel")}</button>
+        )}
       </div>
     );
   }
-  const left = deadline - now;
-  const time = unlinked ? i18n.t("list_state.unlinked") : deadline ? timeoutNote && left > 0 ? i18n.t("approval.timeout_note", { remaining: minutesLeft(deadline, now) }) : minutesLeft(deadline, now) : "";
+
+  const submit = (allow: boolean, why = "", always = false) => {
+    setLastAllow(allow);
+    onResolve(allow, why, always);
+  };
+
   const more = docked ? 0 : lines - CARD_LINES;
   const cut = more > 0 && !full;
   const clamp = docked ? 0 : cut ? CARD_LINES : 0;
-  const always = remote.peer(remote.sessions.get(sid)?.machineId ?? "").capabilities?.approvalAlways;
-  const command = (
+  const desc = approvalDisplay(description);
+
+  const commandBody = (
     <>
       <pre ref={cmd} className={"cmd" + (clamp ? " clamp" : "")} style={clamp ? ({ "--lines": clamp } as CSSProperties) : undefined}>
         <b>❯ </b>
@@ -160,9 +203,10 @@ export function ApprovalCard({
         </div>
       ) : null}
       {truncated && <div className="ml red">{approvalTruncatedMessage()}</div>}
-      {!denying && a.description && <div className="y">{approvalDisplay(a.description)}</div>}
+      {!denying && desc && <div className="y">{desc}</div>}
     </>
   );
+
   const actions = (
     <>
       {denying ? (
@@ -172,45 +216,60 @@ export function ApprovalCard({
             autoFocus
             rows={1}
             aria-label={i18n.t("approval.denial_reason")}
-            placeholder={i18n.t("approval.reason_placeholder")}
+            placeholder={denyReasonPlaceholder || i18n.t("approval.reason_placeholder")}
             value={reason}
             onChange={(e) => setReason(e.target.value)}
           />
           <div className="btns decide">
-            <button className="btn" onClick={() => setDenying(false)}>{i18n.t("common.cancel")}</button>
-            <button className="btn pri" disabled={locked} onClick={() => void ap.resolve(false, reason.trim())}>{i18n.t("approval.deny")}</button>
+            <button className="btn" onClick={() => setDenying(false)}>
+              {i18n.t("common.cancel")}
+            </button>
+            <button className="btn pri" disabled={locked} onClick={() => submit(false, reason.trim(), false)}>
+              {i18n.t("approval.deny")}
+            </button>
           </div>
         </>
       ) : (
         <div className="btns decide">
-          <button className="btn" disabled={locked} onClick={() => setDenying(true)}>{i18n.t("approval.deny")}</button>
+          <button className="btn" disabled={locked} onClick={() => setDenying(true)}>
+            {i18n.t("approval.deny")}
+          </button>
           {cut ? (
-            <button className="btn pri" aria-expanded={false} onClick={() => setFull(true)}>{i18n.t("approval.full_command")}</button>
+            <button className="btn pri" aria-expanded={false} onClick={() => setFull(true)}>
+              {i18n.t("approval.full_command")}
+            </button>
           ) : (
-            <button className="btn pri" disabled={locked || truncated} onClick={() => void ap.resolve(true)}>{i18n.t("approval.allow")}</button>
+            <button className="btn pri" disabled={locked || truncated} onClick={() => submit(true, "", false)}>
+              {i18n.t("approval.allow")}
+            </button>
           )}
         </div>
       )}
-      {always && !denying && !cut && (
+      {canAlwaysAllow && !denying && !cut && (
         <div className="ml">
-          <button disabled={locked || truncated} onClick={() => void ap.resolve(true, "", true)}>{i18n.t("approval.always_allow")}</button>
+          <button disabled={locked || truncated} onClick={() => submit(true, "", true)}>
+            {alwaysLabel || i18n.t("approval.always_allow")}
+          </button>
         </div>
       )}
     </>
   );
-  if (docked)
+
+  if (docked) {
     return (
       <div className="tc">
-        {dockHead ?? head(time, !unlinked && deadline > 0 && left < 60_000)}
+        {dockHead ?? head(timeText, hot)}
         <div className="pending-content">
-          <div className="pending-scroll">{command}</div>
+          <div className="pending-scroll">{commandBody}</div>
           <div className="pending-actions">{actions}</div>
         </div>
       </div>
     );
+  }
+
   return (
     <div className="tc">
-      {head(time, !unlinked && deadline > 0 && left < 60_000)}
+      {head(timeText, hot)}
       {title !== undefined && (
         <h4>
           <button onClick={onOpen}>
@@ -220,7 +279,7 @@ export function ApprovalCard({
         </h4>
       )}
       {where && <div className="m">{where}</div>}
-      {command}
+      {commandBody}
       {actions}
     </div>
   );

@@ -3,8 +3,9 @@ import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, expect, it, vi } from "vitest";
 import { localeStore, t, useLocale } from "../i18n";
+import { getCoreHost } from "../core/host";
+import { renderText } from "../core/text";
 import { DemoRemote } from "../dev/demo";
-import { stateOf } from "../model";
 import { ApprovalMode } from "../gen/remoteagent/v1/event_pb";
 import { NewBox } from "./NewSession";
 import { useRemote } from "../ui";
@@ -71,13 +72,16 @@ it("keeps the draft, input node and status meaning when the test locale changes"
     Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!.call(input, "原始草稿");
     input.dispatchEvent(new Event("input", { bubbles: true }));
   });
-  const original = stateOf(remote.sessions.get("s-run")!);
+  const core = getCoreHost(remote);
+  const original = core.viewSession("s-run").header!;
   act(() => localeStore.overrideForTesting("en"));
   expect(host.querySelector("textarea")).toBe(input);
   expect(input.value).toBe("原始草稿");
   expect(input.getAttribute("placeholder")).toBe("What would you like to do?");
-  const translated = stateOf(remote.sessions.get("s-run")!);
-  expect(translated).toMatchObject({ kind: original.kind, tone: original.tone, text: "Running" });
+  const translated = core.viewSession("s-run").header!;
+  expect(translated.status).toBe(original.status);
+  expect(translated.tone).toBe(original.tone);
+  expect(renderText(translated.statusText)).toBe("Running");
 });
 
 it.each([0, 1, 2, 1000])("formats list counts and relative times with integer plural rules (%i)", count => {

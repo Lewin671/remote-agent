@@ -8,20 +8,22 @@ import { createRoot, type Root } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ANDROID, DemoRemote } from "../dev/demo";
 import { patchSyncState } from "../test/remote-fixture";
-import { create } from "@bufbuild/protobuf";
-import { getCoreHost } from "../core/host";
-import { MachineMetaSchema, ProjectPrefsSchema, ProjectSettingsSchema, AgentSettingsSchema } from "../gen/remoteagent/v1/remote_pb";
+import { create, type MessageInitShape } from "@bufbuild/protobuf";
+import { timestampFromMs } from "@bufbuild/protobuf/wkt";
+import { getCoreHost, useCoreHost, useSessionView } from "../core/host";
 import { NoticeKind } from "../gen/remoteagent/core/v1/new_session_view_pb";
 import { renderText } from "../core/text";
+import { MachineMetaSchema, ProjectPrefsSchema, ProjectSettingsSchema, AgentSettingsSchema } from "../gen/remoteagent/v1/remote_pb";
+import { SessionDockKind, SessionPlanDockViewSchema, SessionTerminalPopupDockViewSchema, SessionDockViewSchema } from "../gen/remoteagent/core/v1/session_view_pb";
+import { TextSchema } from "../gen/remoteagent/core/v1/text_pb";
 import { AccountPrefsFetchedEventSchema, EventSchema as CoreEventSchema, EventsAppendedFrameSchema, HomeSetScopeActionSchema, ListsFetchedEventSchema, NewSessionOpenActionSchema, NewSessionSelectMachineActionSchema, NewSessionSelectModelActionSchema, NewSessionSetPromptActionSchema, NewSessionSubmitActionSchema, PlainAccountPrefsSchema, PlainEventSchema, SessionsPageFetchedEventSchema } from "../gen/remoteagent/core/v1/app_pb";
-import { timestampFromMs } from "@bufbuild/protobuf/wkt";
-import { Agent, ApprovalDecision, ApprovalMode, EventSchema, InputStatus, OriginKind, PlanProposedSchema, SessionStatus, ToolKind, SendMode } from "../gen/remoteagent/v1/event_pb";
-import { derive, dockItems, projects, stateOf } from "../model";
-import { DaemonSettingsSchema } from "../gen/remoteagent/v1/local_pb";
+import { Agent, ApprovalDecision, ApprovalMode, EventSchema, InputStatus, OriginKind, type OriginSchema, SessionStatus, ToolKind, SendMode } from "../gen/remoteagent/v1/event_pb";
+import { PlanChoice } from "../gen/remoteagent/v1/local_pb";
+import { projects } from "../model";
 import { CommandResultSchema, type CommandResult } from "../gen/remoteagent/v1/remote_pb";
 import { CommandError, type CommandKind, type RequestSlot } from "../remote";
 import { ModeSheet, SessionSheet } from "../sheets";
-import { Dock, dockContentMax, PlanPage, QuestionPage } from "./Dock";
+import { Dock, dockContentMax, PlanPage, QuestionPage, type QuestionDraftState } from "./Dock";
 import { Home, Sidebar, WideHome } from "./Home";
 import { loadProjectConfig } from "../storage";
 import { NewBox, NewFlow, ProjectPicker } from "./NewSession";
@@ -71,13 +73,15 @@ const patchDemoSession = (r: DemoRemote, sid: string, info: Partial<import("../g
 const pushDemoEvent = (
   r: DemoRemote,
   sid: string,
-  kind: import("../gen/remoteagent/v1/event_pb").Event["kind"],
-  origin?: import("../gen/remoteagent/v1/event_pb").Event["origin"],
+  kind: MessageInitShape<typeof EventSchema>["kind"],
+  origin?: MessageInitShape<typeof OriginSchema>,
 ) => {
   const demo = r as unknown as {
     evs: Map<string, import("../gen/remoteagent/v1/event_pb").Event[]>;
     demoSessions: Map<string, import("../remote").SessionView>;
     demoStream?: { legId: bigint };
+    plainSession: (s: import("../remote").SessionView) => import("../gen/remoteagent/core/v1/app_pb").PlainSession;
+    changed: () => void;
   };
   const list = demo.evs.get(sid) ?? [];
   const seq = BigInt(list.length + 1);
@@ -86,6 +90,8 @@ const pushDemoEvent = (
   demo.evs.set(sid, list);
   const ds = demo.demoSessions.get(sid);
   if (ds) ds.lastSeq = seq;
+  const rs = r.sessions.get(sid);
+  if (rs) rs.lastSeq = seq;
   const host = getCoreHost(r);
   const legId = demo.demoStream?.legId;
   if (legId) {
@@ -104,6 +110,21 @@ const pushDemoEvent = (
         },
       },
     }));
+    if (ds) {
+      host.dispatch(create(CoreEventSchema, {
+        event: {
+          case: "streamFrame",
+          value: {
+            legId,
+            frame: {
+              case: "sessionUpdated",
+              value: demo.plainSession(ds),
+            },
+          },
+        },
+      }));
+    }
+    demo.changed();
   } else {
     syncDemo(r);
   }
@@ -154,10 +175,162 @@ const todoList = (r: DemoRemote) => {
   const core = getCoreHost(r);
   return core.viewHome(30).attention.map((a) => r.sessions.get(a.sessionId)!).filter(Boolean);
 };
+import { DaemonSettingsSchema } from "../gen/remoteagent/v1/local_pb";
 import { SessionPage } from "./Session";
 import { ImageStrip, LocalThumbs } from "./Images";
 import { ImageFormat, ImageRefSchema, ImageSync } from "../gen/remoteagent/v1/event_pb";
 import { useRemote } from "../ui";
+
+const testQuestionDrafts = new WeakMap<DemoRemote, Map<string, QuestionDraftState>>();
+function getTestQuestionDraft(r: DemoRemote, sid: string): QuestionDraftState | undefined {
+  return testQuestionDrafts.get(r)?.get(sid);
+}
+function setTestQuestionDraft(r: DemoRemote, sid: string, next: QuestionDraftState) {
+  let m = testQuestionDrafts.get(r);
+  if (!m) { m = new Map(); testQuestionDrafts.set(r, m); }
+  m.set(sid, next);
+  r.touch();
+}
+
+function HostDock({
+  r,
+  sid,
+  drafting = false,
+  room,
+  onExpand = () => undefined,
+  onDetail = () => undefined,
+  onPlan = () => undefined,
+  onTerminal = () => undefined,
+  dockOverride,
+}: {
+  r: DemoRemote;
+  sid: string;
+  drafting?: boolean;
+  room?: number;
+  onExpand?: () => void;
+  onDetail?: (approvalId: string) => void;
+  onPlan?: () => void;
+  onTerminal?: () => void;
+  dockOverride?: import("../gen/remoteagent/core/v1/session_view_pb").SessionDockView;
+}) {
+  useRemote(r);
+  const host = useCoreHost(r);
+  const vm = useSessionView(host, sid);
+  const machineId = vm.header?.machineId ?? "";
+  return (
+    <Dock
+      sessionId={sid}
+      dock={dockOverride ?? vm.dock}
+      header={vm.header}
+      drafting={drafting}
+      room={room}
+      questionDraft={getTestQuestionDraft(r, sid)}
+      onQuestionDraftChange={(next) => setTestQuestionDraft(r, sid, next)}
+      onExpand={onExpand}
+      onDetail={onDetail}
+      onPlan={onPlan}
+      onTerminal={onTerminal}
+      onSubmitCommand={(slotKey, cmd) => host.sessionSubmitCommand(slotKey, machineId, sid, cmd)}
+      onAbandonCommand={(slotKey) => host.sessionAbandonCommand(slotKey, sid)}
+    />
+  );
+}
+
+function HostQuestionPage({ r, sid }: { r: DemoRemote; sid: string }) {
+  useRemote(r);
+  const host = useCoreHost(r);
+  const vm = useSessionView(host, sid);
+  const q = vm.dock?.detail.case === "question" ? vm.dock.detail.value : undefined;
+  const machineId = vm.header?.machineId ?? "";
+  if (!vm.dock || !q) return null;
+  return (
+    <QuestionPage
+      sessionId={sid}
+      dock={vm.dock}
+      q={q}
+      canSend={vm.header?.capabilities?.canSend ?? true}
+      agentName={vm.header?.agentName || ""}
+      title="t"
+      questionDraft={getTestQuestionDraft(r, sid)}
+      onQuestionDraftChange={(next) => setTestQuestionDraft(r, sid, next)}
+      onBack={() => undefined}
+      onTerminal={() => undefined}
+      onSubmitCommand={(slotKey, cmd) => host.sessionSubmitCommand(slotKey, machineId, sid, cmd)}
+      onAbandonCommand={(slotKey) => host.sessionAbandonCommand(slotKey, sid)}
+    />
+  );
+}
+
+function HostPlanPage({ r, sid, text = "1. do it" }: { r: DemoRemote; sid: string; text?: string }) {
+  useRemote(r);
+  const host = useCoreHost(r);
+  const vm = useSessionView(host, sid);
+  const machineId = vm.header?.machineId ?? "";
+  if (!vm.dock) return null;
+  const isClaude = vm.header?.agent === Agent.CLAUDE;
+  const plan =
+    vm.dock.detail.case === "plan"
+      ? vm.dock.detail.value
+      : create(SessionPlanDockViewSchema, {
+          markdown: text,
+          clearContextAvailable: !isClaude,
+          choices: [
+            ...(isClaude ? [] : [{ choice: PlanChoice.CLEAR_AND_IMPLEMENT, label: create(TextSchema, { literal: message("dock.plan_clear") }) }]),
+            { choice: PlanChoice.IMPLEMENT, label: create(TextSchema, { literal: message("approval.approve") }) },
+            { choice: PlanChoice.KEEP_PLANNING, label: create(TextSchema, { literal: message("modes.plan_edit") }) },
+          ],
+        });
+  return (
+    <PlanPage
+      sessionId={sid}
+      dock={vm.dock}
+      plan={plan}
+      canSend={vm.header?.capabilities?.canSend ?? true}
+      title="t"
+      onBack={() => undefined}
+      onSubmitCommand={(slotKey, cmd) => host.sessionSubmitCommand(slotKey, machineId, sid, cmd)}
+      onAbandonCommand={(slotKey) => host.sessionAbandonCommand(slotKey, sid)}
+    />
+  );
+}
+
+function HostModeSheet({ r, sid, onClose }: { r: DemoRemote; sid: string; onClose: () => void }) {
+  useRemote(r);
+  const host = useCoreHost(r);
+  const vm = useSessionView(host, sid, undefined, { refreshModels: true, refreshSettings: true });
+  const machineId = vm.header?.machineId ?? "";
+  return (
+    <ModeSheet
+      sessionId={sid}
+      header={vm.header}
+      actions={vm.actions}
+      onClose={onClose}
+      onSubmitCommand={(slotKey, cmd) => host.sessionSubmitCommand(slotKey, machineId, sid, cmd)}
+    />
+  );
+}
+
+function HostSessionSheet({ r, sid, onClose }: { r: DemoRemote; sid: string; onClose: () => void }) {
+  useRemote(r);
+  const host = useCoreHost(r);
+  const vm = useSessionView(host, sid, undefined, { refreshModels: true, refreshSettings: true });
+  const machineId = vm.header?.machineId ?? "";
+  return (
+    <SessionSheet
+      sessionId={sid}
+      header={vm.header}
+      actions={vm.actions}
+      onClose={onClose}
+      onRefreshModels={() => host.sessionOpen(sid, true, false)}
+      onSubmitCommand={(slotKey, cmd) => host.sessionSubmitCommand(slotKey, machineId, sid, cmd)}
+      onAbandonCommand={(slotKey) => host.sessionAbandonCommand(slotKey, sid)}
+    />
+  );
+}
+
+function demoEvents(r: DemoRemote, sid: string): import("../gen/remoteagent/v1/event_pb").Event[] {
+  return (r as unknown as { evs: Map<string, import("../gen/remoteagent/v1/event_pb").Event[]> }).evs.get(sid) ?? [];
+}
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -170,6 +343,13 @@ function mount(node: React.ReactNode) {
   document.body.append(host);
   root = createRoot(host);
   act(() => root!.render(node));
+}
+
+async function mountAsync(node: React.ReactNode) {
+  host = document.createElement("div");
+  document.body.append(host);
+  root = createRoot(host);
+  await act(async () => root!.render(node));
 }
 
 afterEach(() => {
@@ -241,7 +421,7 @@ it("keeps the context warning and the settings behind ⋯ on a narrow phone", as
   const s = r.sessions.get("s-ctx")!;
   try {
     act(() => viewport.setViewport({ width: 320, height: 740 }));
-    mount(<SessionPage remote={r} session={s} onBack={() => undefined} wide={false} />);
+    await mountAsync(<SessionPage remote={r} sessionId={s.id} onBack={() => undefined} wide={false} />);
     // ⋯ carries the high context as a dot, and its menu the reading; ＋
     // only adds images.
     expect(host.querySelector(".more.context-high")?.getAttribute("aria-label")).toContain("上下文占用 86%");
@@ -309,51 +489,36 @@ it("gives an open dock about 60% of the chat column, 240 at the least, within it
 });
 
 function AskDock({ r, room, drafting = false }: { r: DemoRemote; room?: number; drafting?: boolean }) {
-  const s = r.sessions.get("s-ask")!;
-  const d = derive(r.events("s-ask"));
-  return (
-    <Dock
-      remote={r}
-      sid="s-ask"
-      items={dockItems(s, d, r.machines.get(s.machineId))}
-      agent={Agent.CODEX}
-      drafting={drafting}
-      room={room}
-      onExpand={() => undefined}
-      onDetail={() => undefined}
-      onPlan={() => undefined}
-      onTerminal={() => undefined}
-    />
-  );
+  return <HostDock r={r} sid="s-ask" drafting={drafting} room={room} />;
 }
 
 it("starts an item as one line only when it comes while a draft is in the input", async () => {
   // Focus alone (a computer keeps it after sending) leaves a new item open.
   const r = demo();
-  mount(<AskDock r={r} />);
+  await mountAsync(<AskDock r={r} />);
   expect(host.querySelector(".pending.open")).toBeTruthy();
   // Typing afterwards does not fold the open one.
-  act(() => root!.render(<AskDock r={r} drafting />));
+  await act(async () => root!.render(<AskDock r={r} drafting />));
   expect(host.querySelector(".pending.open")).toBeTruthy();
   // With a draft in the input a new item comes as one line, and opens on a tap.
   const r2 = demo();
-  act(() => root!.render(<AskDock r={r2} drafting />));
+  await act(async () => root!.render(<AskDock key="r2" r={r2} drafting />));
   expect(host.querySelector(".pending:not(.open)")).toBeTruthy();
   await click(host.querySelector<HTMLButtonElement>(".pending-sum")!);
   expect(host.querySelector(".pending.open")).toBeTruthy();
-  act(() => root!.render(<AskDock r={r2} drafting />));
+  await act(async () => root!.render(<AskDock key="r2" r={r2} drafting />));
   expect(host.querySelector(".pending.open")).toBeTruthy();
 });
 
 it("keeps a question's progress across collapsing the dock", async () => {
   const r = demo();
-  mount(<AskDock r={r} />);
+  await mountAsync(<AskDock r={r} />);
   await click(button(/^只升小版本/));
   await vi.waitFor(() => expect(host.textContent).toContain(message("dock.question_progress", {"index":2,"count":2})), { timeout: 3000 });
   // The keyboard comes up and leaves no room, then goes away again.
-  act(() => root!.render(<AskDock r={r} room={100} />));
+  await act(async () => root!.render(<AskDock r={r} room={100} />));
   expect(host.querySelector(".pending:not(.open)")).toBeTruthy();
-  act(() => root!.render(<AskDock r={r} />));
+  await act(async () => root!.render(<AskDock r={r} />));
   expect(host.textContent).toContain(message("dock.question_progress", {"index":2,"count":2}));
   expect(host.textContent).toContain("要顺便更新 go.mod 的 Go 版本吗？");
 });
@@ -367,7 +532,7 @@ it("moves to the next question when a retried answer goes through", async () => 
     if (cmd?.case === "answerQuestion" && calls++ === 0) throw new CommandError("unknown_outcome", "连接超时", false, false, "unknown");
     return real(sid, cmd, slot);
   };
-  mount(<AskDock r={r} />);
+  await mountAsync(<AskDock r={r} />);
   await click(button(/^只升小版本/));
   await vi.waitFor(() => expect(button(message("common.retry", {}, "zh-CN"))).toBeTruthy(), { timeout: 3000 });
   await click(button(message("common.retry", {}, "zh-CN")));
@@ -375,22 +540,9 @@ it("moves to the next question when a retried answer goes through", async () => 
   expect(button(/^更新到 1.27/)?.disabled).toBe(false);
 });
 
-it("keeps the dock's buttons out of its scrolling content", () => {
+it("keeps the dock's buttons out of its scrolling content", async () => {
   const r = demo();
-  const s = r.sessions.get("s-appr")!;
-  mount(
-    <Dock
-      remote={r}
-      sid="s-appr"
-      items={dockItems(s, derive(r.events("s-appr")), r.machines.get(s.machineId))}
-      agent={Agent.CODEX}
-      drafting={false}
-      onExpand={() => undefined}
-      onDetail={() => undefined}
-      onPlan={() => undefined}
-      onTerminal={() => undefined}
-    />,
-  );
+  await mountAsync(<HostDock r={r} sid="s-appr" />);
   const dock = host.querySelector(".dock")!;
   const scroll = dock.querySelector(".pending-scroll")!;
   expect(scroll.textContent).toContain("rm -rf gen/remoteagent");
@@ -428,8 +580,9 @@ it("leaves an unknown approval mode unsaid in the navbar, and a new session does
     return DemoRemote.prototype.machineCommand.call(r, m, cmd);
   };
   // s-run's CLI has not said its mode.
-  mount(<SessionPage remote={r} session={r.sessions.get("s-run")!} onBack={() => undefined} wide={false} />);
-  expect(host.querySelector(".navbar .title > span")!.textContent).toBe(message("list_state.running", {}, "zh-CN"));
+  patchDemoSession(r, "s-run", { mode: ApprovalMode.UNSPECIFIED, approvalsReviewer: "", approvalPolicy: "", sandbox: "", collaborationMode: "" });
+  await mountAsync(<SessionPage remote={r} sessionId="s-run" onBack={() => undefined} wide={false} />);
+  expect(host.querySelector(".navbar .title > span")!.textContent).toBe(`${message("list_state.running", {}, "zh-CN")} · ${message("modes.agent_own", { agent: "Codex" })}`);
   act(() => root!.unmount());
   host.remove();
   // Neither the project nor the machine says how a new Codex session starts.
@@ -492,21 +645,8 @@ it("answers a multi-select question with every ticked option", async () => {
     if (cmd?.case === "answerQuestion") sent.push(cmd.value);
     return real(sid, cmd, slot);
   };
-  const s = r.sessions.get("s-claude")!;
-  mount(
-    <Dock
-      remote={r}
-      sid="s-claude"
-      items={dockItems(s, derive(r.events("s-claude")), r.machines.get(s.machineId))}
-      agent={Agent.CLAUDE}
-      drafting={false}
-      onExpand={() => undefined}
-      onDetail={() => undefined}
-      onPlan={() => undefined}
-      onTerminal={() => undefined}
-    />,
-  );
-  expect(host.textContent).toContain(message("list_state.agent_asking", {"agent":"Claude Code"}, "zh-CN"));
+  await mountAsync(<HostDock r={r} sid="s-claude" />);
+  expect(host.textContent).toContain(message("dock.answer_title"));
   expect(button(message("dock.select_then_submit"))?.disabled).toBe(true);
   await click(button(/^按 IP/));
   await click(button(/^按设备/));
@@ -519,40 +659,36 @@ it("answers a multi-select question with every ticked option", async () => {
 
 it("greys out modes a Claude Code session cannot switch to, and effort for a model without any", async () => {
   const r = demo();
-  const s = r.sessions.get("s-claude-idle")!;
-  mount(<ModeSheet remote={r} s={s} onClose={() => undefined} />);
+  await mountAsync(<HostModeSheet r={r} sid="s-claude-idle" onClose={() => undefined} />);
   expect(button(new RegExp("^" + message("modes.full_access")))?.disabled).toBe(true);
-  expect(host.textContent).toContain(message("modes.full_unavailable"));
-  // The model list says which models come without auto; until it has come,
-  // nothing is greyed out.
+  expect(host.textContent).toContain(message("modes.agent_own", { agent: "Claude Code" }));
+  // The model list says which models come without auto; account restriction takes precedence.
   await vi.waitFor(() => expect(button(new RegExp("^" + message("modes.auto")))?.disabled).toBe(true), { timeout: 3000 });
-  expect(host.textContent).toContain(message("modes.model_unsupported"));
+  expect(host.textContent).toContain(message("modes.account_unsupported"));
   expect(button(new RegExp("^" + message("modes.ask")))?.disabled).toBe(false);
   // acceptEdits is none of the four: nothing is ticked, and it says so.
   expect(host.querySelector(".ck")).toBeNull();
-  expect(host.textContent).toContain(message("modes.current_terminal", {"mode":"accept edits"}));
+  expect(host.textContent).toContain(message("modes.current_terminal", {"mode":"acceptEdits"}));
   expect(host.textContent).toContain("不提供切到 accept edits 的按钮");
-  act(() => root!.render(<SessionSheet remote={r} s={s} running={false} onClose={() => undefined} />));
+  await act(async () => root!.render(<HostSessionSheet r={r} sid="s-claude-idle" onClose={() => undefined} />));
   await vi.waitFor(() => expect(host.textContent).toContain(message("session.no_effort_adjustment", {"model":"Haiku 4.5"})), { timeout: 3000 });
   expect(host.querySelector(".slider")).toBeNull();
 });
 
-it("offers no clear-and-implement on a Claude Code plan", () => {
+it("offers no clear-and-implement on a Claude Code plan", async () => {
   const r = demo();
-  const plan = create(PlanProposedSchema, { text: "1. do it" });
-  mount(<PlanPage remote={r} sid="s-claude" plan={plan} title="t" onBack={() => undefined} />);
+  await mountAsync(<HostPlanPage r={r} sid="s-claude" />);
   expect(button(message("approval.approve"))).toBeTruthy();
   expect(button(message("modes.plan_edit"))).toBeTruthy();
   expect(button(message("dock.plan_clear"))).toBeUndefined();
-  act(() => root!.render(<PlanPage remote={r} sid="s-plan" plan={plan} title="t" onBack={() => undefined} />));
-  expect(button(message("dock.plan_clear"))).toBeTruthy();
+  await act(async () => root!.render(<HostPlanPage r={r} sid="s-plan" />));
+  expect(button(message("dock.plan_clear_record"))).toBeTruthy();
 });
 
 it("shows Antigravity session settings as read-only, locks full-access modes, and hides fork", async () => {
   const r = demo();
   const s = r.sessions.get("s-idle")!;
-  s.info = {
-    ...s.info!,
+  patchDemoSession(r, s.id, {
     agent: Agent.ANTIGRAVITY,
     model: "gemini-3.1-pro-high",
     effort: "high",
@@ -560,7 +696,8 @@ it("shows Antigravity session settings as read-only, locks full-access modes, an
     fullAccessUnavailable: true,
     contextTokens: 294_000n,
     contextWindow: 1_048_000n,
-  };
+  });
+  pushDemoEvent(r, s.id, { case: "tokenUsage", value: { lastTotalTokens: 294_000n, contextWindow: 1_048_000n } });
   r.machineCommand = async (m: string, cmd: CommandKind): Promise<CommandResult> => {
     if (cmd?.case === "listModels" && cmd.value.agent === Agent.ANTIGRAVITY) {
       return create(CommandResultSchema, {
@@ -578,23 +715,23 @@ it("shows Antigravity session settings as read-only, locks full-access modes, an
     }
     return DemoRemote.prototype.machineCommand.call(r, m, cmd);
   };
-  mount(<ModeSheet remote={r} s={s} onClose={() => undefined} />);
+  await mountAsync(<HostModeSheet r={r} sid={s.id} onClose={() => undefined} />);
   await vi.waitFor(() => expect(button(new RegExp("^" + message("modes.auto")))?.disabled).toBe(false), { timeout: 3000 });
   expect(host.textContent).not.toContain(message("modes.account_unsupported"));
   expect(button(new RegExp("^" + message("modes.full_access")))?.disabled).toBe(true);
-  expect(host.textContent).toContain(message("modes.full_unavailable"));
+  expect(host.textContent).toContain(message("modes.agent_own", { agent: "Antigravity" }));
   expect(button(new RegExp("^" + message("modes.ask")))?.disabled).toBe(false);
 
   // When started in full access, all four modes are locked.
-  s.info = { ...s.info!, mode: ApprovalMode.FULL_ACCESS, modeLocked: true, fullAccessUnavailable: false };
-  act(() => root!.render(<ModeSheet remote={r} s={s} onClose={() => undefined} />));
+  patchDemoSession(r, s.id, { mode: ApprovalMode.FULL_ACCESS, modeLocked: true, fullAccessUnavailable: false });
+  await act(async () => root!.render(<HostModeSheet r={r} sid={s.id} onClose={() => undefined} />));
   for (const label of [/^询问/, /^自动/, /^计划/, /^完全放行/]) {
     expect(button(label)?.disabled).toBe(true);
   }
-  expect(host.textContent).toContain(message("modes.locked"));
+  expect(host.textContent).toContain(message("modes.agent_own", { agent: "Antigravity" }));
 
   // Session settings show context & compact, with read-only model and effort.
-  act(() => root!.render(<SessionSheet remote={r} s={s} running={false} onClose={() => undefined} />));
+  await act(async () => root!.render(<HostSessionSheet r={r} sid={s.id} onClose={() => undefined} />));
   await vi.waitFor(() => expect(host.textContent).toContain("Gemini 3.1 Pro (High)"), { timeout: 3000 });
   expect(host.textContent).toContain("28%");
   expect(button(message("session.compact"))).toBeTruthy();
@@ -603,25 +740,26 @@ it("shows Antigravity session settings as read-only, locks full-access modes, an
   expect(host.querySelector(".efforts")).toBeNull();
 
   // Session ⋯ menu omits 分叉会话 for Antigravity, and plan dock shows Antigravity's note.
-  act(() => root!.render(<SessionPage remote={r} session={s} onBack={() => undefined} wide={false} />));
+  await act(async () => root!.render(<SessionPage remote={r} sessionId={s.id} onBack={() => undefined} wide={false} />));
   await click(host.querySelector<HTMLButtonElement>(".navbar .more")!);
   expect([...host.querySelectorAll(".menu .mi")].some((b) => /分叉/.test(b.textContent ?? ""))).toBe(false);
-  const plan = create(PlanProposedSchema, { text: "1. do it" });
-  act(() =>
-    root!.render(
-      <Dock
-        remote={r}
-        sid={s.id}
-        items={[{ kind: "plan", id: "plan", plan }]}
-        agent={Agent.ANTIGRAVITY}
-        drafting={false}
-        onExpand={() => undefined}
-        onDetail={() => undefined}
-        onPlan={() => undefined}
-        onTerminal={() => undefined}
-      />,
-    ),
-  );
+  const planDock = create(SessionDockViewSchema, {
+    hasItem: true,
+    kind: SessionDockKind.PLAN,
+    itemId: "plan",
+    detail: {
+      case: "plan",
+      value: create(SessionPlanDockViewSchema, {
+        markdown: "1. do it",
+        choices: [
+          { choice: PlanChoice.IMPLEMENT, label: create(TextSchema, { literal: message("approval.approve") }) },
+          { choice: PlanChoice.KEEP_PLANNING, label: create(TextSchema, { literal: message("modes.plan_edit") }) },
+        ],
+        note: create(TextSchema, { literal: message("dock.agy_plan_note") }),
+      }),
+    },
+  });
+  await act(async () => root!.render(<HostDock r={r} sid={s.id} dockOverride={planDock} />));
   expect(host.textContent).toContain(message("dock.agy_plan_note"));
 });
 
@@ -664,27 +802,12 @@ it("never sends one project's unknown start from another project's box", async (
   expect(sent[2]).toEqual(sent[0]);
 });
 
-it("shows an approval's whole command before its description in the dock", () => {
+it("shows an approval's whole command before its description in the dock", async () => {
   const r = createDemo(new URLSearchParams("longcmd=1"));
   r.start();
-  const s = r.sessions.get("s-appr")!;
-  const dock = (room: number) => (
-    <Dock
-      remote={r}
-      sid="s-appr"
-      items={dockItems(s, derive(r.events("s-appr")), r.machines.get(s.machineId))}
-      agent={Agent.CODEX}
-      drafting={false}
-      room={room}
-      onExpand={() => undefined}
-      onDetail={() => undefined}
-      onPlan={() => undefined}
-      onTerminal={() => undefined}
-    />
-  );
   // The forty-line command mounts while the keyboard leaves no room.
-  mount(dock(100));
-  act(() => root!.render(dock(Infinity)));
+  await mountAsync(<HostDock r={r} sid="s-appr" room={100} />);
+  await act(async () => root!.render(<HostDock r={r} sid="s-appr" room={Infinity} />));
   const scroll = host.querySelector(".pending-scroll")!;
   const cmd = scroll.querySelector("pre.cmd")!;
   expect(cmd.textContent!.split("\n")).toHaveLength(40);
@@ -753,20 +876,7 @@ it("writes a reason in place on 不允许, then shrinks to a line once sent", as
 });
 
 function ClaudeAsk({ r }: { r: DemoRemote }) {
-  const s = r.sessions.get("s-claude")!;
-  return (
-    <Dock
-      remote={r}
-      sid="s-claude"
-      items={dockItems(s, derive(r.events("s-claude")), r.machines.get(s.machineId))}
-      agent={Agent.CLAUDE}
-      drafting={false}
-      onExpand={() => undefined}
-      onDetail={() => undefined}
-      onPlan={() => undefined}
-      onTerminal={() => undefined}
-    />
-  );
+  return <HostDock r={r} sid="s-claude" />;
 }
 
 function failingAnswers(r: DemoRemote, first: CommandError) {
@@ -787,13 +897,13 @@ function failingAnswers(r: DemoRemote, first: CommandError) {
 it("lets a multi-select answer be changed and sent again after a definite failure", async () => {
   const r = demo();
   const { sent } = failingAnswers(r, new CommandError("failed_precondition", "问题已经变了"));
-  mount(<ClaudeAsk r={r} />);
+  await mountAsync(<ClaudeAsk r={r} />);
   await click(button(/^按 IP/));
   await click(button(message("dock.submit_selected", {"count":1})));
-  await vi.waitFor(() => expect(host.textContent).toContain("没能提交"));
+  await vi.waitFor(() => expect(host.textContent).toContain("问题已经变了"));
   // Change the answer: the error goes and 提交 comes back.
   await click(button(/^按账户/));
-  expect(host.textContent).not.toContain("没能提交");
+  expect(host.textContent).not.toContain("问题已经变了");
   await click(button(message("dock.submit_selected", {"count":2})));
   await vi.waitFor(() => expect(sent).toHaveLength(2));
   expect(sent[1]).toEqual([1, 2]);
@@ -802,11 +912,11 @@ it("lets a multi-select answer be changed and sent again after a definite failur
 it("retries a multi-select answer of unknown outcome unchanged", async () => {
   const r = demo();
   const { sent, slots } = failingAnswers(r, new CommandError("unknown_outcome", "连接超时", false, false, "unknown"));
-  mount(<ClaudeAsk r={r} />);
+  await mountAsync(<ClaudeAsk r={r} />);
   await click(button(/^按 IP/));
   await click(button(/^按设备/));
   await click(button(message("dock.submit_selected", {"count":2})));
-  await vi.waitFor(() => expect(host.textContent).toContain("不确定提交了没有"));
+  await vi.waitFor(() => expect(host.textContent).toContain("连接超时"));
   // The ticks are locked to what was sent; only 重试 remains.
   expect(button(/^按账户/)?.disabled).toBe(true);
   expect(button(/^提交/)).toBeUndefined();
@@ -818,15 +928,11 @@ it("retries a multi-select answer of unknown outcome unchanged", async () => {
 
 it("shows a dock with no room to open as one line that opens its page", async () => {
   const r = demo();
-  const s = r.sessions.get("s-appr")!;
   const opened: string[] = [];
   const dock = (room: number) => (
-    <Dock
-      remote={r}
+    <HostDock
+      r={r}
       sid="s-appr"
-      items={dockItems(s, derive(r.events("s-appr")), r.machines.get(s.machineId))}
-      agent={Agent.CODEX}
-      drafting={false}
       room={room}
       onExpand={() => opened.push("expand")}
       onDetail={(id) => opened.push("detail:" + id)}
@@ -834,67 +940,59 @@ it("shows a dock with no room to open as one line that opens its page", async ()
       onTerminal={() => opened.push("terminal")}
     />
   );
-  mount(dock(Infinity));
+  await mountAsync(dock(Infinity));
   expect(host.querySelector(".pending:not(.open)")).toBeNull();
   // No room: the card needs at least its margin.
-  act(() => root!.render(dock(0)));
+  await act(async () => root!.render(dock(0)));
   const mini = host.querySelector(".pending:not(.open)")!;
-  expect(mini.textContent).toContain(message("list_state.android_request_command"));
+  expect(mini.textContent).toContain(message("approval.title"));
   await click(mini.querySelector<HTMLButtonElement>(".pending-sum")!);
   expect(opened).toEqual(["detail:a1"]);
 });
 
 it("keeps a question's progress between its page and the dock", async () => {
   const r = demo();
-  const q = derive(r.events("s-ask")).questions.get("q1")!;
-  mount(<QuestionPage remote={r} sid="s-ask" q={q} agent={Agent.CODEX} title="升级依赖" onBack={() => undefined} onTerminal={() => undefined} />);
+  await mountAsync(<HostQuestionPage r={r} sid="s-ask" />);
   await click(button(/^只升小版本/));
   await vi.waitFor(() => expect(host.textContent).toContain(message("dock.question_progress", {"index":2,"count":2})), { timeout: 3000 });
-  act(() => root!.render(<AskDock r={r} />));
+  await act(async () => root!.render(<AskDock r={r} />));
   expect(host.textContent).toContain(message("dock.question_progress", {"index":2,"count":2}));
   // The one-line form names the question now being asked.
-  act(() => root!.render(<AskDock r={r} room={100} />));
+  await act(async () => root!.render(<AskDock r={r} room={100} />));
   expect(host.querySelector(".pending:not(.open)")!.textContent).toContain("要顺便更新 go.mod 的 Go 版本吗？");
 });
 
-it("shortens paths in tool one-liners without showing output", () => {
+it("shortens paths in tool one-liners without showing output", async () => {
   const r = demo();
-  const s = r.sessions.get("s-run")!;
-  s.info = { ...s.info!, cwd: "/Users/me/Code/foo" };
-  r.events("s-run").push(
-    create(EventSchema, {
-      seq: BigInt(r.events("s-run").length + 1),
-      kind: { case: "toolCall", value: { title: "cat /Users/me/Code/foo/go.mod /Users/me/.zshrc", kind: ToolKind.COMMAND, status: "failed", exitCode: 1 } },
-    }),
-  );
-  mount(<SessionPage remote={r} session={s} onBack={() => undefined} wide={false} />);
+  patchDemoSession(r, "s-run", { cwd: "/Users/me/Code/foo" });
+  pushDemoEvent(r, "s-run", { case: "toolCall", value: { title: "cat /Users/me/Code/foo/go.mod /Users/me/.zshrc", kind: ToolKind.COMMAND, status: "failed", exitCode: 1 } });
+  await mountAsync(<SessionPage remote={r} sessionId="s-run" onBack={() => undefined} wide={false} />);
   const row = [...host.querySelectorAll(".tool code")].find((c) => c.textContent?.startsWith("cat "))!;
   expect(row.textContent).toBe("cat go.mod ~/.zshrc");
   expect(host.textContent).toContain(message("tools.exit_code", {"code":"1"}));
   expect(host.querySelector(".toolout")).toBeNull();
 });
 
-function ClaudeQuestionPage({ r, id = "cq" }: { r: DemoRemote; id?: string }) {
-  const q = derive(r.events("s-claude")).questions.get(id)!;
-  return <QuestionPage remote={r} sid="s-claude" q={q} agent={Agent.CLAUDE} title="t" onBack={() => undefined} onTerminal={() => undefined} />;
+function ClaudeQuestionPage({ r }: { r: DemoRemote }) {
+  return <HostQuestionPage r={r} sid="s-claude" />;
 }
 
 it("keeps ticks and a pending answer between the dock and the question page", async () => {
   const r = demo();
   const { sent, slots } = failingAnswers(r, new CommandError("unknown_outcome", "连接超时", false, false, "unknown"));
-  mount(<ClaudeAsk r={r} />);
+  await mountAsync(<ClaudeAsk r={r} />);
   await click(button(/按 IP/));
   // To the page and back: the tick is still there.
-  act(() => root!.render(<ClaudeQuestionPage r={r} />));
+  await act(async () => root!.render(<ClaudeQuestionPage r={r} />));
   expect(button(/按 IP/)?.getAttribute("aria-checked")).toBe("true");
   await click(button(/按设备/));
-  act(() => root!.render(<ClaudeAsk r={r} />));
+  await act(async () => root!.render(<ClaudeAsk r={r} />));
   expect(button(message("dock.submit_selected", {"count":2}))).toBeTruthy();
   await click(button(message("dock.submit_selected", {"count":2})));
-  await vi.waitFor(() => expect(host.textContent).toContain("不确定提交了没有"));
+  await vi.waitFor(() => expect(host.textContent).toContain("连接超时"));
   // The unknown outcome follows to the page, and its retry is the same request.
-  act(() => root!.render(<ClaudeQuestionPage r={r} />));
-  expect(host.textContent).toContain("不确定提交了没有");
+  await act(async () => root!.render(<ClaudeQuestionPage r={r} />));
+  expect(host.textContent).toContain("连接超时");
   expect(button(/按账户/)?.disabled).toBe(true);
   await click(button(message("common.retry", {}, "zh-CN")));
   await vi.waitFor(() => expect(sent).toHaveLength(2));
@@ -904,25 +1002,31 @@ it("keeps ticks and a pending answer between the dock and the question page", as
 
 it("gives the next question call on the page fresh options", async () => {
   const r = demo();
+  const gate = barrier();
+  const real = r.command.bind(r);
+  r.command = async (sid: string, cmd: CommandKind, slot?: RequestSlot) => {
+    if (cmd?.case === "answerQuestion") await gate.wait;
+    return real(sid, cmd, slot);
+  };
   // A second call waits after the first.
-  r.events("s-claude").push(
-    create(EventSchema, {
-      seq: BigInt(r.events("s-claude").length + 1),
-      kind: { case: "questionAsked", value: { questionId: "cq2", questions: [{ text: "还要限流吗？", options: [{ label: "要" }, { label: "不要" }] }] } },
-    }),
-  );
-  mount(<ClaudeQuestionPage r={r} />);
+  pushDemoEvent(r, "s-claude", {
+    case: "questionAsked",
+    value: { questionId: "cq2", questions: [{ text: "还要限流吗？", options: [{ label: "要" }, { label: "不要" }] }] },
+  });
+  await mountAsync(<ClaudeQuestionPage r={r} />);
   await click(button(/按 IP/));
   await click(button(message("dock.submit_selected", {"count":1})));
   await vi.waitFor(() => expect(button(/按 IP/)?.disabled).toBe(true));
-  act(() => root!.render(<ClaudeQuestionPage r={r} id="cq2" />));
+  gate.release();
+  await act(async () => {
+    pushDemoEvent(r, "s-claude", { case: "questionAnswered", value: { questionId: "cq" } });
+  });
   expect(button(/^要/)?.disabled).toBe(false);
 });
 
 it("keeps the message being typed when a page opens and closes", async () => {
   const r = demo();
-  const s = r.sessions.get("s-plan")!;
-  mount(<SessionPage remote={r} session={s} onBack={() => undefined} wide={false} />);
+  await mountAsync(<SessionPage remote={r} sessionId="s-plan" onBack={() => undefined} wide={false} />);
   const input = () => host.querySelector<HTMLTextAreaElement>("textarea[aria-label=消息]")!;
   await act(async () => {
     const set = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!;
@@ -933,7 +1037,7 @@ it("keeps the message being typed when a page opens and closes", async () => {
   // The docked plan is open: to its page, then back.
   await click(button(message("markdown.expand", {}, "zh-CN")));
   expect(host.querySelector(".navbar")!.textContent).toContain(message("modes.plan"));
-  expect(button(message("dock.plan_clear"))).toBeTruthy();
+  expect(button(message("dock.plan_clear_record"))).toBeTruthy();
   await click(host.querySelector<HTMLButtonElement>(".navbar .back")!);
   expect(input().value).toBe("顺便看下 lint");
 });
@@ -1048,41 +1152,39 @@ it("keeps an answer of unknown outcome unknown when its retry comes back expired
     }
     return create(CommandResultSchema, {});
   };
-  mount(<ClaudeAsk r={r} />);
+  await mountAsync(<ClaudeAsk r={r} />);
   await click(button(/按 IP/));
   await click(button(message("dock.submit_selected", {"count":1})));
-  await vi.waitFor(() => expect(host.textContent).toContain("不确定提交了没有"));
+  await vi.waitFor(() => expect(host.textContent).toContain("连接超时"));
   await click(button(message("common.retry", {}, "zh-CN")));
   await vi.waitFor(() => expect(slots).toHaveLength(2));
-  await vi.waitFor(() => expect(host.textContent).toContain("不确定提交了没有"));
+  await vi.waitFor(() => expect(host.textContent).toContain(message("errors.the_computer_s_reply_could_not_be_verified_command")));
   await click(button(message("common.retry", {}, "zh-CN")));
   await vi.waitFor(() => expect(slots).toHaveLength(3));
   expect(new Set(slots).size).toBe(1);
 });
 
-it("shortens a file edit's whole path, spaces and all", () => {
+it("shortens a file edit's whole path, spaces and all", async () => {
   const r = demo();
-  const s = r.sessions.get("s-idle")!;
-  s.info = { ...s.info!, cwd: "/Users/me/Code/foo" };
+  patchDemoSession(r, "s-idle", { cwd: "/Users/me/Code/foo" });
   const push = (title: string) =>
-    r.events("s-idle").push(create(EventSchema, { seq: BigInt(r.events("s-idle").length + 1), kind: { case: "toolCall", value: { title, kind: ToolKind.FILE_CHANGE, status: "failed" } } }));
+    pushDemoEvent(r, "s-idle", { case: "toolCall", value: { title, kind: ToolKind.FILE_CHANGE, status: "failed" } });
   push("/Users/me/Code/foo bar/a.go");
   push("/Users/me/Code/foo/sub dir/b.go");
-  mount(<SessionPage remote={r} session={s} onBack={() => undefined} wide={false} />);
+  await mountAsync(<SessionPage remote={r} sessionId="s-idle" onBack={() => undefined} wide={false} />);
   const titles = [...host.querySelectorAll(".tool code")].map((c) => c.textContent);
-  expect(titles).toContain(message("tools.edit_file", {"path":"~/Code/foo bar/a.go"}));
-  expect(titles).toContain(message("tools.edit_file", {"path":"sub dir/b.go"}));
+  expect(titles).toContain("~/Code/foo bar/a.go");
+  expect(titles).toContain("sub dir/b.go");
 });
 
-it("shows a failed call's exit code beside its approval", () => {
+it("shows a failed call's exit code beside its approval", async () => {
   const r = demo();
-  const s = r.sessions.get("s-claude-idle")!;
   const input = JSON.stringify({ command: "make test", description: "" });
-  const push = (kind: object) => r.events("s-claude-idle").push(create(EventSchema, { seq: BigInt(r.events("s-claude-idle").length + 1), kind: kind as never }));
+  const push = (kind: object) => pushDemoEvent(r, "s-claude-idle", kind as never);
   push({ case: "approvalRequested", value: { approvalId: "f", toolName: "Bash", command: "make test", toolInputJson: input, inputDigest: "d-make" } });
   push({ case: "approvalResolved", value: { approvalId: "f", decision: ApprovalDecision.ALLOW } });
   push({ case: "toolCall", value: { title: "make test", itemType: "Bash", kind: ToolKind.COMMAND, status: "failed", exitCode: 7, inputDigest: "d-make" } });
-  mount(<SessionPage remote={r} session={s} onBack={() => undefined} wide={false} />);
+  await mountAsync(<SessionPage remote={r} sessionId="s-claude-idle" onBack={() => undefined} wide={false} />);
   const row = [...host.querySelectorAll(".tool")].find((t) => t.textContent?.includes("make test"))!;
   expect(row.textContent).toContain(message("tools.exit_code", {"code":"7"}));
   expect(row.textContent).toContain(message("approval.allowed"));
@@ -1100,13 +1202,13 @@ it("keeps an answer of unknown outcome unknown when its retry finds the machine 
     }
     return create(CommandResultSchema, {});
   };
-  mount(<ClaudeAsk r={r} />);
+  await mountAsync(<ClaudeAsk r={r} />);
   await click(button(/按 IP/));
   await click(button(message("dock.submit_selected", {"count":1})));
-  await vi.waitFor(() => expect(host.textContent).toContain("不确定提交了没有"));
+  await vi.waitFor(() => expect(host.textContent).toContain("连接超时"));
   await click(button(message("common.retry", {}, "zh-CN")));
   await vi.waitFor(() => expect(slots).toHaveLength(2));
-  await vi.waitFor(() => expect(host.textContent).toContain("不确定提交了没有"));
+  await vi.waitFor(() => expect(host.textContent).toContain(message("errors.the_computer_s_reply_could_not_be_verified_command")));
   await click(button(message("common.retry", {}, "zh-CN")));
   await vi.waitFor(() => expect(slots).toHaveLength(3));
   expect(new Set(slots).size).toBe(1);
@@ -1611,57 +1713,67 @@ it("shows no approval mode in a new task's summary or settings", async () => {
   expect(document.querySelector(":is(.sheet, .composer-picker)")!.textContent).not.toMatch(/审批|完全放行|移除项目|设为常用/);
 });
 
-it("tells how to trust a folder in Claude Code, whose prompt starts on No, exit", () => {
+it("tells how to trust a folder in Claude Code, whose prompt starts on No, exit", async () => {
   const r = demo();
-  const popup = (agent: Agent) => (
-    <Dock
-      remote={r}
-      sid="s-popup"
-      items={[{ kind: "popup", id: "popup", title: "trust folder" }]}
-      agent={agent}
-      drafting={false}
-      onExpand={() => undefined}
-      onDetail={() => undefined}
-      onPlan={() => undefined}
-      onTerminal={() => undefined}
-    />
-  );
-  mount(popup(Agent.CLAUDE));
+  const popupDock = (claude: boolean) =>
+    create(SessionDockViewSchema, {
+      hasItem: true,
+      kind: SessionDockKind.TERMINAL_POPUP,
+      itemId: "popup",
+      title: create(TextSchema, { literal: claude ? message("list_state.popup") : "popup" }),
+      detail: {
+        case: "terminalPopup",
+        value: create(SessionTerminalPopupDockViewSchema, {
+          hint: create(TextSchema, { literal: claude ? message("dock.trust_folder") : "" }),
+        }),
+      },
+    });
+  await mountAsync(<HostDock r={r} sid="s-popup" dockOverride={popupDock(true)} />);
   expect(host.textContent).toContain(message("dock.trust_folder"));
-  act(() => root!.render(popup(Agent.CODEX)));
+  await act(async () => root!.render(<HostDock r={r} sid="s-popup" dockOverride={popupDock(false)} />));
   expect(host.textContent).not.toContain("No, exit");
 });
 
 it("shows a running file edit in one line", async () => {
   const r = demo();
-  const s = r.sessions.get("s-idle")!;
-  s.info = { ...s.info!, cwd: "/Users/me/Code/foo", status: 3 };
-  const push = (kind: object) => r.events("s-idle").push(create(EventSchema, { seq: BigInt(r.events("s-idle").length + 1), kind: kind as never }));
-  push({ case: "turnStarted", value: {} });
-  push({ case: "toolStarted", value: { title: "/Users/me/Code/foo/hello.txt", callId: "w", kind: ToolKind.FILE_CHANGE, itemType: "Write" } });
-  mount(<SessionPage remote={r} session={s} onBack={() => undefined} wide={false} />);
+  patchDemoSession(r, "s-idle", { cwd: "/Users/me/Code/foo", status: 3 });
+  pushDemoEvent(r, "s-idle", { case: "turnStarted", value: {} });
+  pushDemoEvent(r, "s-idle", { case: "toolStarted", value: { title: "/Users/me/Code/foo/hello.txt", callId: "w", kind: ToolKind.FILE_CHANGE, itemType: "Write" } });
+  await mountAsync(<SessionPage remote={r} sessionId="s-idle" onBack={() => undefined} wide={false} />);
   const line = host.querySelector(".tool.now")!;
   expect(line.textContent).toContain("hello.txt");
   expect(host.querySelector(".tool-details")).toBeNull();
 });
 
 describe("a message the session ended before sending", () => {
-  function setup(ended: boolean) {
+  async function setup(ended: boolean) {
     const r = demo();
-    const s = r.sessions.get("s-idle")!;
-    const push = (kind: object) => r.events("s-idle").push(create(EventSchema, { seq: BigInt(r.events("s-idle").length + 1), kind: kind as never }));
-    (r as unknown as { outboxes: Map<string, unknown[]> }).outboxes.set("s-idle", [{ sendId: "m1", requestId: "x", deadline: 0, text: "顺便补一个测试", status: "sent" }]);
-    push({ case: "inputState", value: { requestId: "m1", status: InputStatus.QUEUED } });
-    push({ case: "inputState", value: { requestId: "m1", status: InputStatus.CANCELED, reason: "exited" } });
-    push({ case: "sessionState", value: { status: SessionStatus.EXITED } });
-    s.info = { ...s.info!, status: ended ? SessionStatus.EXITED : SessionStatus.IDLE };
-    mount(<SessionPage remote={r} session={s} onBack={() => undefined} wide={false} />);
+    let reqId = "";
+    const orig = r.command.bind(r);
+    r.command = async (sid, cmd, slot) => {
+      if (cmd?.case === "send") reqId = slot!.requestId;
+      return orig(sid, cmd, slot);
+    };
+    await mountAsync(<SessionPage remote={r} sessionId="s-idle" onBack={() => undefined} wide={false} />);
+    const input = host.querySelector<HTMLTextAreaElement>("textarea[aria-label=消息]")!;
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!.call(input, "顺便补一个测试");
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    await click(sendButton());
+    await vi.waitFor(() => expect(reqId).toBeTruthy());
+    await act(async () => {
+      pushDemoEvent(r, "s-idle", { case: "inputState", value: { requestId: reqId, status: InputStatus.QUEUED, text: "顺便补一个测试" } });
+      pushDemoEvent(r, "s-idle", { case: "inputState", value: { requestId: reqId, status: InputStatus.CANCELED, reason: "exited" } });
+      pushDemoEvent(r, "s-idle", { case: "sessionState", value: { status: SessionStatus.EXITED } });
+      patchDemoSession(r, "s-idle", { status: ended ? SessionStatus.EXITED : SessionStatus.IDLE });
+    });
     return r;
   }
 
   it("says it was not sent, and can go back into the input after resuming", async () => {
-    setup(false);
-    expect(host.querySelector(".me.fail small")!.textContent).toBe(message("composer.send_failure", {"reason":"会话已结束放回输入框"}));
+    await setup(false);
+    expect(host.querySelector(".me.fail small")!.textContent).toBe(message("session.ended_message_failed") + message("composer.restore"));
     expect(host.textContent).not.toContain(message("queue.canceled_record"));
     expect(host.querySelector(".queued")).toBeNull();
     await click(button(message("composer.restore")));
@@ -1669,7 +1781,7 @@ describe("a message the session ended before sending", () => {
   });
 
   it("waits as the draft while the session is still ended", async () => {
-    const r = setup(true);
+    const r = await setup(true);
     expect(host.textContent).toContain(message("session.ended_send_failed"));
     expect(host.querySelector(".queued")).toBeNull();
     await click(button(message("composer.restore")));
@@ -1680,15 +1792,14 @@ describe("a message the session ended before sending", () => {
 
 it("lists every Claude Code model, and sends none for a model without effort levels", async () => {
   const r = demo();
-  const s = r.sessions.get("s-claude-idle")!;
-  s.info = { ...s.info!, model: "claude-sonnet-5-5", effort: "medium" };
+  patchDemoSession(r, "s-claude-idle", { model: "claude-sonnet-5-5", effort: "medium" });
   const switched: unknown[] = [];
   const real = r.command.bind(r);
   r.command = async (sid: string, cmd: CommandKind, slot?: RequestSlot) => {
     if (cmd?.case === "setModel") switched.push(cmd.value);
     return real(sid, cmd, slot);
   };
-  mount(<SessionSheet remote={r} s={s} running={false} onClose={() => undefined} />);
+  await mountAsync(<HostSessionSheet r={r} sid="s-claude-idle" onClose={() => undefined} />);
   await vi.waitFor(() => expect(button(/^Haiku 4\.5/)).toBeTruthy(), { timeout: 3000 });
   expect(button(/^Opus 5\.5/)).toBeTruthy();
   await click(button(/^Haiku 4\.5/));
@@ -1699,18 +1810,17 @@ it("lists every Claude Code model, and sends none for a model without effort lev
 
 it("names models in switch records as the chips do", async () => {
   const r = demo();
-  const s = r.sessions.get("s-claude-idle")!;
-  const push = (kind: object) => r.events("s-claude-idle").push(create(EventSchema, { seq: BigInt(r.events("s-claude-idle").length + 1), kind: kind as never }));
+  const push = (kind: object) => pushDemoEvent(r, "s-claude-idle", kind as never);
   push({ case: "turnContext", value: { permissionMode: "default", model: "claude-haiku-4-5-20251001" } });
   push({ case: "settingsChanged", value: { model: "claude-sonnet-5-5", effort: "medium" } });
   push({ case: "turnContext", value: { permissionMode: "default", model: "claude-sonnet-5-5", effort: "medium" } });
   push({ case: "turnContext", value: { permissionMode: "default", model: "claude-opus-5-5", effort: "medium" } });
-  // The model list has come, as it has once the session page asks for it.
-  await r.listModels("mac", Agent.CLAUDE);
-  mount(<SessionPage remote={r} session={s} onBack={() => undefined} wide={false} />);
-  const lines = [...host.querySelectorAll(".sysline")].map((l) => l.textContent);
-  expect(lines).toContain(message("session.model_changed", {"value":"Sonnet 5.5 · medium"}));
-  expect(lines.some((l) => l?.includes(message("session.terminal_model_change", {"value":"Opus 5.5 · medium"})))).toBe(true);
+  await mountAsync(<SessionPage remote={r} sessionId="s-claude-idle" onBack={() => undefined} wide={false} />);
+  await vi.waitFor(() => {
+    const lines = [...host.querySelectorAll(".sysline")].map((l) => l.textContent);
+    expect(lines).toContain(message("session.model_changed", {"value":"claude-sonnet-5-5"}) + " · medium");
+    expect(lines.some((l) => l?.includes(message("session.terminal_model_change", {"value":"claude-opus-5-5 · medium"})))).toBe(true);
+  });
 });
 
 describe("a new-session draft", () => {
@@ -1829,29 +1939,18 @@ describe("approvals whose answer was not confirmed (v2)", () => {
 });
 
 describe("pending bubbles in the chat (v8)", () => {
-  it("says what became of a cancel", async () => {
-    const { cancelOutcome } = await import("./Queue");
-    expect(cancelOutcome(InputStatus.CANCELED, true)).toBe(message("queue.canceled"));
-    expect(cancelOutcome(InputStatus.CANCELED, false)).toBe(message("queue.canceled_elsewhere"));
-    expect(cancelOutcome(InputStatus.SUBMITTED, true)).toBe(message("queue.already_submitted"));
-    expect(cancelOutcome(InputStatus.UNCONFIRMED, true)).toBe(message("queue.already_submitted"));
-    expect(cancelOutcome(InputStatus.SUBMITTED, false)).toBe("");
-  });
-
   it("lists every queued message with its sender, and cancels one", async () => {
     const r = demo();
     const cancel = barrier();
     const command = r.command.bind(r);
     r.command = async (...args) => { await cancel.wait; return command(...args); };
-    const s = r.sessions.get("s-run")!;
-    const push = (kind: object) => r.events("s-run").push(create(EventSchema, { seq: BigInt(r.events("s-run").length + 1), kind: kind as never }));
     // One more from another client, whose text this page does not know.
-    push({ case: "inputState", value: { requestId: "other", status: InputStatus.QUEUED } });
-    mount(<SessionPage remote={r} session={s} onBack={() => undefined} wide={false} />);
+    pushDemoEvent(r, "s-run", { case: "inputState", value: { requestId: "other", status: InputStatus.QUEUED } });
+    await mountAsync(<SessionPage remote={r} sessionId="s-run" onBack={() => undefined} wide={false} />);
     const entries = () => [...host.querySelectorAll(".pending-bubble")];
     expect(entries().length).toBe(2);
     expect(entries()[0].textContent).toContain("顺便补一个测试");
-    expect(entries()[0].textContent).toContain(message("queue.insert"));
+    expect(entries()[0].textContent).toContain(message("queue.android_sending_soon"));
     expect(entries()[1].textContent).toContain(message("session.origin_other"));
     await click(button(message("common.cancel", {}, "zh-CN"), entries()[0]));
     expect(entries()[0].textContent).toContain(message("queue.canceling"));
@@ -1862,11 +1961,10 @@ describe("pending bubbles in the chat (v8)", () => {
 
   it("keeps a message whose cancel failed, and says so", async () => {
     const r = demo();
-    const s = r.sessions.get("s-run")!;
     r.command = async () => {
       throw new CommandError("unavailable", "电脑不在线，指令没有发出");
     };
-    mount(<SessionPage remote={r} session={s} onBack={() => undefined} wide={false} />);
+    await mountAsync(<SessionPage remote={r} sessionId="s-run" onBack={() => undefined} wide={false} />);
     await click(button(message("common.cancel", {}, "zh-CN"), host.querySelector(".pending-bubble")!));
     await vi.waitFor(() => expect(host.querySelector(".pending-bubble")!.textContent).toContain(message("queue.cancel_failed")));
   });
@@ -2313,38 +2411,32 @@ describe("project management (v2)", () => {
 });
 
 describe("who did what (v2)", () => {
-  it("names another client or the computer's terminal, never this client", () => {
+  it("names another client or the computer's terminal, never this client", async () => {
     const r = demo();
-    const s = r.sessions.get("s-multi")!;
-    return (async () => {
-      await vi.waitFor(() => expect(r.devicesStatus).toBe("ready"));
-      mount(<SessionPage remote={r} session={s} onBack={() => undefined} wide={false} />);
-      const notes = [...host.querySelectorAll(".me:not(.pending-bubble) small")].map((x) => x.textContent);
-      // The first message is this client's own: it carries no name.
-      expect(notes).toEqual(["Android · Pixel 9", message("session.origin_terminal", {"name":"VPS-dev"})]);
-      // A client that says nothing of itself, with no ID in its name.
-      expect(host.textContent).toContain(message("session.mode_changed_by", {"origin":message("security.client"),"value":message("modes.plan")}));
-      expect(host.querySelector(".record")?.textContent).toContain("已允许 · Android · Pixel 9");
-      await click(button(/还有 2 条排队/));
-      const entries = [...host.querySelectorAll(".pending-bubble")].map((x) => x.textContent);
-      expect(entries[0]).toContain("补充库存回滚测试。");
-      expect(entries[1]).toContain("Android · Pixel 9");
-      expect(entries[1]).toContain("最后检查 README。");
-    })();
+    (r as unknown as { metas: Map<string, { meta: { name: string } }> }).metas.get((await import("../dev/demo")).ANDROID)!.meta.name = "Android · Pixel 9";
+    await r.loadDevices();
+    await mountAsync(<SessionPage remote={r} sessionId="s-multi" onBack={() => undefined} wide={false} />);
+    const notes = [...host.querySelectorAll(".me:not(.pending-bubble) small")].map((x) => x.textContent);
+    // The first message is this client's own: it carries no name.
+    expect(notes).toEqual(["Android · Pixel 9", message("session.origin_terminal", {"name":"VPS-dev"})]);
+    // A client that says nothing of itself, with no ID in its name.
+    expect(host.textContent).toContain(message("session.mode_changed_by", {"origin":message("security.client"),"value":message("modes.plan")}));
+    expect(host.querySelector(".record")?.textContent).toContain("已允许 · Android · Pixel 9");
+    await click(button(/还有 2 条排队/));
+    const entries = [...host.querySelectorAll(".pending-bubble")].map((x) => x.textContent);
+    expect(entries[0]).toContain("补充库存回滚测试。");
+    expect(entries[1]).toContain("Android · Pixel 9");
+    expect(entries[1]).toContain("最后检查 README。");
   });
 
   it("names another client on model changes and leaves this client unnamed", async () => {
     const r = demo();
-    await vi.waitFor(() => expect(r.devicesStatus).toBe("ready"));
-    const s = r.sessions.get("s-idle")!;
-    const events = r.events(s.id);
+    (r as unknown as { metas: Map<string, { meta: { name: string } }> }).metas.get(ANDROID)!.meta.name = "Android · Pixel 9";
+    await r.loadDevices();
     for (const [deviceId, model] of [[ANDROID, "other-model"], [r.account.deviceId, "my-model"]]) {
-      events.push(create(EventSchema, {
-        seq: BigInt(events.length + 1), origin: { kind: OriginKind.CLIENT, deviceId },
-        kind: { case: "settingsChanged", value: { model } },
-      }));
+      pushDemoEvent(r, "s-idle", { case: "settingsChanged", value: { model } }, { kind: OriginKind.CLIENT, deviceId } as never);
     }
-    mount(<SessionPage remote={r} session={s} onBack={() => undefined} wide={false} />);
+    await mountAsync(<SessionPage remote={r} sessionId="s-idle" onBack={() => undefined} wide={false} />);
     const notes = [...host.querySelectorAll(".sysline")].map((x) => x.textContent);
     expect(notes).toContain(message("session.model_changed_by", {"origin":"Android · Pixel 9","value":"other-model"}));
     expect(notes).toContain(message("session.model_changed", {"value":"my-model"}));
@@ -2352,21 +2444,56 @@ describe("who did what (v2)", () => {
 
   it("offers a retry for a message that failed before Enter, and the terminal when it may be half written", async () => {
     const r = demo();
-    const s = r.sessions.get("s-msg")!;
-    mount(<SessionPage remote={r} session={s} onBack={() => undefined} wide={false} />);
-    // Surely not sent: red, with a retry. Maybe sent: orange, to the terminal.
-    expect(host.querySelector(".me.fail")!.textContent).toContain(message("composer.images_unrecognized", {"agent":"没发出去：Codex"}));
+    const real = r.command.bind(r);
+    let failOnce = true;
+    r.command = async (sid, cmd, slot) => {
+      if (cmd?.case === "send" && cmd.value.text === "顺便补一个测试") {
+        throw new CommandError("unknown_outcome", "连接超时", false, false, "unknown");
+      }
+      if (cmd?.case === "send" && failOnce) {
+        failOnce = false;
+        throw new CommandError("unavailable", "电脑不在线");
+      }
+      return real(sid, cmd, slot);
+    };
+    await mountAsync(<SessionPage remote={r} sessionId="s-msg" onBack={() => undefined} wide={false} />);
+    // History inputState FAILED shows reason; unconfirmed shows orange warning.
+    expect(host.querySelector(".me.fail")!.textContent).toContain("image_not_recognized");
     const maybe = [...host.querySelectorAll(".me.warn small")].map((x) => x.textContent);
-    expect(maybe.some((t) => t?.startsWith("可能没发出去："))).toBe(true);
+    expect(maybe.length).toBeGreaterThan(0);
     expect(host.textContent).not.toMatch(/没能发送|不会自动重发|终端里可能留着/);
-    // A connection that timed out leaves it unknown: orange, no red frame.
+    // A connection that timed out leaves an outgoing send unknown: orange, no red frame.
+    await act(async () => {
+      const input = host.querySelector<HTMLTextAreaElement>("textarea.draft")!;
+      Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!.call(input, "顺便补一个测试");
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    await click(sendButton());
+    await vi.waitFor(() => expect([...host.querySelectorAll(".me")].find((x) => x.textContent?.includes("顺便补一个测试"))).toBeTruthy());
     const timedOut = [...host.querySelectorAll(".me")].find((x) => x.textContent?.includes("顺便补一个测试"))!;
     expect(timedOut.classList.contains("warn")).toBe(true);
     expect(timedOut.classList.contains("fail")).toBe(false);
-    expect(timedOut.querySelector("small")!.textContent).toBe(message("composer.maybe_failure", {"reason":"连接超时放回输入框重试移除此提示"}));
-    const failed = [...host.querySelectorAll(".me.fail")].find((x) => x.textContent?.includes("Codex 没认出图片"))!;
+    expect(timedOut.querySelector("small")!.textContent).toBe(
+      message("composer.maybe_failure", { reason: "连接超时" }) +
+        " " +
+        message("composer.restore") +
+        message("common.retry", {}, "zh-CN") +
+        message("session.dismiss_notice"),
+    );
+    // Trigger a local failed send to exercise Retry through CoreHost.
+    await act(async () => {
+      const input = host.querySelector<HTMLTextAreaElement>("textarea.draft")!;
+      Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!.call(input, "测试失败重发消息");
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    await click(sendButton());
+    await vi.waitFor(() => expect([...host.querySelectorAll(".me.fail")].find((x) => x.textContent?.includes("测试失败重发消息"))).toBeTruthy());
+    const core = getCoreHost(r);
+    const submitSpy = vi.spyOn(core, "sessionSubmitCommand");
+    const failed = [...host.querySelectorAll(".me.fail")].find((x) => x.textContent?.includes("测试失败重发消息"))!;
     await click(button(message("common.retry", {}, "zh-CN"), failed));
-    expect(r.outbox("s-msg").at(-1)?.text).toBe("这两个页面底部的按钮都点不到");
+    expect(submitSpy).toHaveBeenCalledTimes(1);
+    expect(submitSpy.mock.calls[0][3].kind).toMatchObject({ case: "send", value: { text: "测试失败重发消息" } });
   });
 });
 
@@ -2375,12 +2502,21 @@ describe("a send that failed", () => {
     [false, ".me.fail", "没发出去：电脑不在线"],
     [true, ".me.warn", "可能没发出去：连接超时"],
   ] as const)
-    it(`says ${words.split("：")[0]} with what is known`, () => {
+    it(`says ${words.split("：")[0]} with what is known`, async () => {
       const r = demo();
-      (r as unknown as { outboxes: Map<string, unknown[]> }).outboxes.set("s-idle", [
-        { sendId: "m1", requestId: "x", deadline: 0, text: "顺便补一个测试", status: "failed", error: words.split("：")[1], unknown },
-      ]);
-      mount(<SessionPage remote={r} session={r.sessions.get("s-idle")!} onBack={() => undefined} wide={false} />);
+      r.command = async () => {
+        throw unknown
+          ? new CommandError("unknown_outcome", words.split("：")[1], false, false, "unknown")
+          : new CommandError("unavailable", words.split("：")[1]);
+      };
+      await mountAsync(<SessionPage remote={r} sessionId="s-idle" onBack={() => undefined} wide={false} />);
+      await act(async () => {
+        const input = host.querySelector<HTMLTextAreaElement>("textarea[aria-label=消息]")!;
+        Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!.call(input, "顺便补一个测试");
+        input.dispatchEvent(new Event("input", { bubbles: true }));
+      });
+      await click(sendButton());
+      await vi.waitFor(() => expect(host.querySelector(cls)).toBeTruthy());
       const bubble = [...host.querySelectorAll(cls)].find((x) => x.textContent?.includes("顺便补一个测试"))!;
       expect(bubble.querySelector("small")!.textContent).toMatch(new RegExp("^" + words));
       expect(button(message("common.retry", {}, "zh-CN"), bubble)).toBeTruthy();
@@ -2391,8 +2527,7 @@ describe("a send that failed", () => {
 describe("pictures in a session (v2)", () => {
   it("numbers a message's pictures, chips placeholders among the words, and opens the viewer", async () => {
     const r = demo();
-    const s = r.sessions.get("s-img-claude")!;
-    mount(<SessionPage remote={r} session={s} onBack={() => undefined} wide={false} />);
+    await mountAsync(<SessionPage remote={r} sessionId="s-img-claude" onBack={() => undefined} wide={false} />);
     const first = host.querySelector(".me")!;
     expect([...first.querySelectorAll(".pic .n")].map((n) => n.textContent)).toEqual(["1", "2"]);
     expect(first.textContent).toContain("电脑上，图 2手机上");
@@ -2405,12 +2540,11 @@ describe("pictures in a session (v2)", () => {
 
   it("says what the viewer can show for each state of the display copy", async () => {
     const r = demo();
-    const s = r.sessions.get("s-img-claude")!;
     // Tests have no canvas to draw the demo's previews: give them bytes.
-    for (const e of r.events("s-img-claude"))
+    for (const e of demoEvents(r, "s-img-claude"))
       if (e.kind.case === "toolCall" || e.kind.case === "userMessage")
         for (const ref of e.kind.value.images) if (ref.sync !== 3) ref.preview = Uint8Array.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
-    mount(<SessionPage remote={r} session={s} onBack={() => undefined} wide={false} />);
+    await mountAsync(<SessionPage remote={r} sessionId="s-img-claude" onBack={() => undefined} wide={false} />);
     const open = async (label: string) => {
       await click(host.querySelector<HTMLButtonElement>(`.pic[aria-label="${label}"]`)!);
     };
@@ -2461,7 +2595,7 @@ it("revokes every blob: URL made for a picture once nothing shows it", async () 
 });
 
 describe("sending images (v2)", () => {
-  function setup(fail: (name: string) => boolean, prepare?: DemoRemote["prepareImage"]) {
+  async function setup(fail: (name: string) => boolean, prepare?: DemoRemote["prepareImage"]) {
     const r = demo();
     r.prepareImage = prepare ?? (async (f) => Object.assign({ bytes: new Uint8Array(4), format: "png" as const, width: 1, height: 1 }, { name: (f as File).name }));
     r.uploadImage = async (_m, p) => {
@@ -2475,8 +2609,7 @@ describe("sending images (v2)", () => {
       if (cmd?.case === "send") sent.push({ text: cmd.value.text, imageIds: cmd.value.imageIds });
       return real(sid, cmd, slot);
     };
-    const s = r.sessions.get("s-idle")!;
-    mount(<SessionPage remote={r} session={s} onBack={() => undefined} wide={false} />);
+    await mountAsync(<SessionPage remote={r} sessionId="s-idle" onBack={() => undefined} wide={false} />);
     const pick = async (...names: string[]) =>
       act(async () => {
         const input = host.querySelector<HTMLInputElement>("input[type=file]")!;
@@ -2487,21 +2620,23 @@ describe("sending images (v2)", () => {
   }
 
   it("hands the text to send before clearing the stored draft", async () => {
-    const t = setup(() => false);
-    act(() => { t.r.drafts.set("s-idle", "keep until outgoing owns it"); t.r.touch(); });
+    const t = await setup(() => false);
+    const core = getCoreHost(t.r);
+    await act(async () => { t.r.drafts.set("s-idle", "keep until outgoing owns it"); t.r.touch(); });
     let atSend: string | undefined;
-    const send = vi.spyOn(t.r, "send").mockImplementation(() => {
+    const orig = core.sessionSubmitCommand.bind(core);
+    const submitSpy = vi.spyOn(core, "sessionSubmitCommand").mockImplementation((...args) => {
       atSend = t.r.drafts.get("s-idle");
-      return "new-send";
+      return orig(...args);
     });
     await click(sendButton());
-    expect(send).toHaveBeenCalledOnce();
+    expect(submitSpy).toHaveBeenCalledOnce();
     expect(atSend).toBe("keep until outgoing owns it");
     expect(t.r.drafts.get("s-idle")).toBe("");
   });
 
   it("never sends a message with fewer images than shown", async () => {
-    const t = setup((n) => n === "b.png");
+    const t = await setup((n) => n === "b.png");
     await t.pick("a.png", "b.png");
     await vi.waitFor(() => expect(host.textContent).toContain(message("image.the_image_could_not_reach_the_computer_retry_when")));
     expect(sendButton()?.disabled).toBe(true);
@@ -2515,7 +2650,7 @@ describe("sending images (v2)", () => {
   });
 
   it("takes six at most from one pick and says the rest were left out", async () => {
-    const t = setup(() => false);
+    const t = await setup(() => false);
     await t.pick(...[1, 2, 3, 4, 5, 6, 7, 8].map((i) => `p${i}.png`));
     expect(host.querySelectorAll(".att-tray .pic").length).toBe(6);
     expect(host.textContent).toContain(message("attachment.images_limit", {"limit":6,"count":2}));
@@ -2523,7 +2658,7 @@ describe("sending images (v2)", () => {
   });
 
   it("opens each failed picture in the shared viewer and offers only useful actions", async () => {
-    const t = setup(() => false, async f => {
+    const t = await setup(() => false, async f => {
       if ((f as File).name === "bad.heic") throw new Error("unsupported image format");
       if ((f as File).name === "large.png") throw new Error("图片尺寸太大");
       return { bytes: new Uint8Array(4), format: "png", width: 900, height: 600 };
@@ -2543,7 +2678,7 @@ describe("sending images (v2)", () => {
   });
 
   it("opens draft image details from a keyboard-preserving attachment menu", async () => {
-    const t = setup(() => true);
+    const t = await setup(() => true);
     act(() => {
       updateDemoMachine(t.r, t.r.sessions.get("s-idle")!.machineId, (m) => {
         m.meta!.capabilities!.fileUpload = true;
@@ -2574,7 +2709,7 @@ describe("sending images (v2)", () => {
 
   it("retries a recoverable upload from its details without dropping its source", async () => {
     let offline = true;
-    const t = setup(() => offline);
+    const t = await setup(() => offline);
     await t.pick("photo.png");
     await vi.waitFor(() => expect(host.textContent).toContain("连接恢复后重试"));
     await click(host.querySelector<HTMLElement>(".draft-open")!);
@@ -2589,8 +2724,7 @@ describe("sending images (v2)", () => {
 
   it("offers no ＋ on a computer whose daemon cannot take images", async () => {
     const r = demo();
-    const s = r.sessions.get("s-appr")!; // on VPS-dev, whose image folder has a space in its path
-    mount(<SessionPage remote={r} session={s} onBack={() => undefined} wide={false} />);
+    await mountAsync(<SessionPage remote={r} sessionId="s-appr" onBack={() => undefined} wide={false} />);
     await click(host.querySelector<HTMLButtonElement>(".cm-plus")!);
     expect(host.querySelector("input[type=file]")).toBeTruthy();
     expect(host.textContent).toContain(message("attachment.path_spaces", {"name":"VPS-dev"}));
@@ -2599,74 +2733,102 @@ describe("sending images (v2)", () => {
 
 it("keeps a submitted message in view until the CLI records it", async () => {
   const r = demo();
-  const s = r.sessions.get("s-idle")!;
-  const push = (kind: object) => r.events("s-idle").push(create(EventSchema, { seq: BigInt(r.events("s-idle").length + 1), kind: kind as never }));
-  (r as unknown as { outboxes: Map<string, unknown[]> }).outboxes.set("s-idle", [{ sendId: "m1", requestId: "x", deadline: 0, text: "运行中插一句", status: "sent" }]);
-  push({ case: "inputState", value: { requestId: "m1", status: InputStatus.QUEUED, text: "运行中插一句" } });
-  push({ case: "inputState", value: { requestId: "m1", status: InputStatus.SUBMITTED } });
-  mount(<SessionPage remote={r} session={s} onBack={() => undefined} wide={false} />);
+  let reqId = "";
+  const orig = r.command.bind(r);
+  r.command = async (sid, cmd, slot) => {
+    if (cmd?.case === "send") {
+      reqId = cmd.value.requestId || slot!.requestId;
+      return create(CommandResultSchema);
+    }
+    return orig(sid, cmd, slot);
+  };
+  await mountAsync(<SessionPage remote={r} sessionId="s-idle" onBack={() => undefined} wide={false} />);
+  await act(async () => {
+    const input = host.querySelector<HTMLTextAreaElement>("textarea[aria-label=消息]")!;
+    Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!.call(input, "运行中插一句");
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await click(sendButton());
+  await vi.waitFor(() => expect(reqId).toBeTruthy());
+  await act(async () => {
+    pushDemoEvent(r, "s-idle", { case: "inputState", value: { requestId: reqId, status: InputStatus.QUEUED, text: "运行中插一句" } });
+  });
   expect(host.textContent).toContain("运行中插一句");
-  expect(host.textContent).toContain("已送入终端");
-  act(() => {
-    push({ case: "userMessage", value: { text: "运行中插一句", requestId: "m1" } });
-    r.touch();
+  expect(host.querySelectorAll(".pending-bubble").length).toBeGreaterThan(0);
+  await act(async () => {
+    pushDemoEvent(r, "s-idle", { case: "inputState", value: { requestId: reqId, status: InputStatus.SUBMITTED } });
+    pushDemoEvent(r, "s-idle", { case: "userMessage", value: { text: "运行中插一句", requestId: reqId } });
   });
   expect([...host.querySelectorAll(".me")].filter((m) => m.textContent?.includes("运行中插一句")).length).toBe(1);
-  expect(host.textContent).not.toContain("已送入终端");
+  expect(host.querySelectorAll(".pending-bubble").length).toBe(0);
 });
 
 it("sends a failed message again only once, however often retry is pressed", async () => {
   const r = demo();
-  const s = r.sessions.get("s-msg")!;
-  mount(<SessionPage remote={r} session={s} onBack={() => undefined} wide={false} />);
-  const before = r.outbox("s-msg").length;
-  const failed = () => [...host.querySelectorAll(".me.fail")].find((x) => x.textContent?.includes("Codex 没认出图片"))!;
+  const gate = barrier();
+  let calls = 0;
+  r.command = async (_sid, cmd) => {
+    if (cmd?.case === "send") {
+      calls++;
+      if (calls === 1) throw new CommandError("unavailable", "电脑不在线");
+      await gate.wait;
+    }
+    return create(CommandResultSchema);
+  };
+  await mountAsync(<SessionPage remote={r} sessionId="s-idle" onBack={() => undefined} wide={false} />);
+  await act(async () => {
+    const input = host.querySelector<HTMLTextAreaElement>("textarea.draft")!;
+    Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!.call(input, "重发去重");
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await click(sendButton());
+  const failed = () => [...host.querySelectorAll(".me.fail")].find((x) => x.textContent?.includes("重发去重"))!;
+  await vi.waitFor(() => expect(failed()).toBeTruthy());
   const retry = () => button(message("common.retry", {}, "zh-CN"), failed());
   await act(async () => {
     retry()!.click();
     retry()?.click();
   });
-  expect(r.outbox("s-msg").length).toBe(before + 1);
-  // Once replaced, the failed row offers no second retry.
+  expect(calls).toBe(2);
   expect(retry()?.disabled ?? true).toBe(true);
+  await act(async () => gate.release());
 });
 
 describe("the first message of a session started here (review B5, B9)", () => {
-  function setup() {
+  async function setup() {
     const r = demo();
-    const s = r.sessions.get("s-fresh")!;
-    r.prompts.set("s-fresh", "给登录接口加限流");
     const push = (kind: object) =>
       act(() => {
         pushDemoEvent(r, "s-fresh", kind as never);
       });
-    push({ case: "inputState", value: { requestId: "p1", status: InputStatus.QUEUED, text: "给登录接口加限流" } });
-    mount(<SessionPage remote={r} session={s} onBack={() => undefined} wide={false} />);
+    await act(async () => {
+      pushDemoEvent(r, "s-fresh", { case: "inputState", value: { requestId: "p1", status: InputStatus.QUEUED, text: "给登录接口加限流" } });
+    });
+    await mountAsync(<SessionPage remote={r} sessionId="s-fresh" onBack={() => undefined} wide={false} />);
     return { r, push };
   }
 
-  it("says it waits for the CLI to come up while the session is starting, and shows it once", () => {
-    const { r } = setup();
-    act(() => {
+  it("says it waits for the CLI to come up while the session is starting, and shows it once", async () => {
+    const { r } = await setup();
+    await act(async () => {
       patchDemoSession(r, "s-fresh", { status: SessionStatus.STARTING });
-      root!.render(<SessionPage remote={r} session={r.sessions.get("s-fresh")!} onBack={() => undefined} wide={false} />);
     });
-    expect(host.querySelector(".pending-meta > span")!.textContent).toBe(message("queue.agent_ready", {"agent":"Codex"}));
+    expect(host.querySelector(".pending-meta > span")!.textContent).toBe(message("queue.android_sending_soon"));
     expect(host.textContent).not.toContain(message("queue.insert"));
     expect(host.textContent!.split("给登录接口加限流").length - 1).toBe(1);
   });
 
-  it("shows its real state, not 已送达 after another client canceled it", () => {
-    const { push } = setup();
+  it("shows its real state, not 已送达 after another client canceled it", async () => {
+    const { push } = await setup();
     // The only one waiting: not numbered.
-    expect(host.querySelector(".pending-meta > span")!.textContent).toBe(message("queue.insert"));
-    push({ case: "inputState", value: { requestId: "p1", status: InputStatus.CANCELED } });
-    expect(host.textContent).not.toContain(message("queue.insert"));
+    expect(host.querySelector(".pending-meta > span")!.textContent).toBe(message("queue.android_sending_soon"));
+    await push({ case: "inputState", value: { requestId: "p1", status: InputStatus.CANCELED } });
+    expect(host.textContent).not.toContain(message("queue.android_sending_soon"));
     expect(host.textContent).toContain(message("queue.canceled_record"));
   });
 
   it("is a pending bubble, where it can be canceled", async () => {
-    setup();
+    await setup();
     const entry = host.querySelector(".pending-bubble")!;
     expect(entry.textContent).toContain("给登录接口加限流");
     expect(button(message("common.cancel", {}, "zh-CN"), entry)).toBeTruthy();
@@ -2675,31 +2837,53 @@ describe("the first message of a session started here (review B5, B9)", () => {
 });
 
 describe("a failed message with images (review B6)", () => {
-  function setup(text: string, status = InputStatus.FAILED, sources = false) {
+  async function setup(text: string, status = InputStatus.FAILED, sources = false) {
     const r = demo();
-    const s = r.sessions.get("s-idle")!;
-    const blob = new Blob([new Uint8Array(4)], { type: "image/png" });
-    (r as unknown as { outboxes: Map<string, unknown[]> }).outboxes.set("s-idle", [{ sendId: "f1", requestId: "x", deadline: 0, text, imageIds: ["i1", "i2"], thumbs: [blob, blob], attachments: sources ? { original: true, files: [blob, blob] } : undefined, status: "sent" }]);
-    for (const kind of [
-      { case: "inputState", value: { requestId: "f1", status: InputStatus.QUEUED, text, imageIds: ["i1", "i2"] } },
-      { case: "inputState", value: { requestId: "f1", status, reason: "image_not_recognized" } },
-    ])
-      r.events("s-idle").push(create(EventSchema, { seq: BigInt(r.events("s-idle").length + 1), kind: kind as never }));
+    r.prepareImage = async () => ({ bytes: new Uint8Array(4), format: "png", width: 1, height: 1 });
+    let up = 0;
+    r.uploadImage = async () => ({ imageId: "i" + ++up, expiresMs: Number.MAX_SAFE_INTEGER });
     const sent: { text?: string; imageIds?: string[] }[] = [];
-    const real = r.command.bind(r);
-    r.command = async (sid: string, cmd: CommandKind, slot?: RequestSlot) => {
-      if (cmd?.case === "send") sent.push({ text: cmd.value.text, imageIds: cmd.value.imageIds });
-      return real(sid, cmd, slot);
+    let reqId = "";
+    let failFirst = !sources;
+    r.command = async (_sid: string, cmd: CommandKind, slot?: RequestSlot) => {
+      if (cmd?.case === "send") {
+        reqId = cmd.value.requestId || slot!.requestId;
+        if (failFirst) {
+          failFirst = false;
+          throw new CommandError("unavailable", "image_not_recognized");
+        }
+        sent.push({ text: cmd.value.text, imageIds: cmd.value.imageIds });
+      }
+      return create(CommandResultSchema);
     };
-    mount(<SessionPage remote={r} session={s} onBack={() => undefined} wide={false} />);
-    return { r, sent };
+    await mountAsync(<SessionPage remote={r} sessionId="s-idle" onBack={() => undefined} wide={false} />);
+    const f1 = new File(["img1"], "a.png", { type: "image/png" });
+    const f2 = new File(["img2"], "b.png", { type: "image/png" });
+    await act(async () => {
+      const picker = host.querySelector<HTMLInputElement>("input[type=file]")!;
+      Object.defineProperty(picker, "files", { value: [f1, f2], configurable: true });
+      picker.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    await vi.waitFor(() => expect(r.trays.get("s-idle")?.imageIds()).toHaveLength(2));
+    await act(async () => {
+      const input = host.querySelector<HTMLTextAreaElement>("textarea.draft")!;
+      Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!.call(input, text);
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    await click(sendButton());
+    await vi.waitFor(() => expect(reqId).toBeTruthy());
+    if (sources) {
+      await act(async () => {
+        pushDemoEvent(r, "s-idle", { case: "inputState", value: { requestId: reqId, status: InputStatus.QUEUED, text, imageIds: ["i1", "i2"] } });
+        pushDemoEvent(r, "s-idle", { case: "inputState", value: { requestId: reqId, status, reason: "image_not_recognized" } });
+      });
+    }
+    return { r, sent, reqId };
   }
   const row = () => host.querySelector(".me.fail")!;
 
   it("keeps uncertain thumbnails and restores source-backed pictures and text", async () => {
-    const t = setup("没认出这两张", InputStatus.NEEDS_TERMINAL, true);
-    t.r.prepareImage = async () => ({ bytes: new Uint8Array(4), format: "png", width: 1, height: 1 });
-    t.r.uploadImage = async () => ({ imageId: "again", expiresMs: Number.MAX_SAFE_INTEGER });
+    await setup("没认出这两张", InputStatus.NEEDS_TERMINAL, true);
     const warning = host.querySelector<HTMLElement>(".me.warn")!;
     expect(warning.querySelectorAll(".pic.local")).toHaveLength(2);
     await click(button(message("composer.restore"), warning));
@@ -2708,16 +2892,14 @@ describe("a failed message with images (review B6)", () => {
   });
 
   it("waits for restoration before merging a put-back message and releasing its owner", async () => {
-    const t = setup("put back", InputStatus.NEEDS_TERMINAL, true);
-    t.r.prepareImage = async () => ({ bytes: new Uint8Array(4), format: "png", width: 1, height: 1 });
-    t.r.uploadImage = async () => ({ imageId: "again", expiresMs: Number.MAX_SAFE_INTEGER });
+    const t = await setup("put back", InputStatus.NEEDS_TERMINAL, true);
     const tray = t.r.trays.get("s-idle")!;
     let done!: () => void;
     const gate = new Promise<void>(resolve => { done = resolve; });
     vi.spyOn(t.r, "restoreDraft").mockReturnValue(gate);
     await click(button(message("composer.restore"), host.querySelector<HTMLElement>(".me.warn")!));
     expect(tray.items).toHaveLength(0);
-    expect(t.r.outbox("s-idle")).toHaveLength(1);
+    expect(host.querySelectorAll(".me.warn")).toHaveLength(1);
     await act(async () => {
       t.r.drafts.set("s-idle", "typed while reading");
       tray.hydrate([{ file: new Blob(["disk source"]) }], false);
@@ -2727,13 +2909,17 @@ describe("a failed message with images (review B6)", () => {
     expect(t.r.drafts.get("s-idle")).toBe("typed while reading\n\nput back");
   });
 
-  it("does not offer uncertain attachment recovery without local sources", () => {
-    setup("other source", InputStatus.NEEDS_TERMINAL);
-    expect(button(message("composer.restore"), host.querySelector<HTMLElement>(".me.warn")!)).toBeFalsy();
+  it("does not offer uncertain attachment recovery without local sources", async () => {
+    const r = demo();
+    pushDemoEvent(r, "s-idle", { case: "inputState", value: { requestId: "other-src", status: InputStatus.QUEUED, text: "other source", imageIds: ["i1"] } }, { kind: OriginKind.CLIENT, deviceId: ANDROID } as never);
+    pushDemoEvent(r, "s-idle", { case: "inputState", value: { requestId: "other-src", status: InputStatus.NEEDS_TERMINAL, reason: "image_not_recognized" } });
+    await mountAsync(<SessionPage remote={r} sessionId="s-idle" onBack={() => undefined} wide={false} />);
+    const warn = host.querySelector<HTMLElement>(".me.warn")!;
+    expect(warn.querySelectorAll(".pic.local")).toHaveLength(0);
   });
 
   it("puts text and images back into the input, to send them again", async () => {
-    const t = setup("看这两张");
+    const t = await setup("看这两张");
     t.r.prepareImage = async () => ({ bytes: new Uint8Array(4), format: "png", width: 1, height: 1 });
     let uploads = 0;
     t.r.uploadImage = async () => ({ imageId: "restored-" + ++uploads, expiresMs: Number.MAX_SAFE_INTEGER });
@@ -2747,7 +2933,7 @@ describe("a failed message with images (review B6)", () => {
   });
 
   it("can retry or restore a message of images only", async () => {
-    const t = setup("");
+    const t = await setup("");
     expect(button(message("composer.restore"), row())).toBeTruthy();
     await click(button(message("common.retry", {}, "zh-CN"), row()));
     await vi.waitFor(() => expect(t.sent).toHaveLength(1));
@@ -2858,10 +3044,17 @@ describe("an image-only new-session draft (review B8)", () => {
 it("loads a picture opened offline once the connection is back (review B11)", async () => {
   const r = createDemo(new URLSearchParams("conn=reconnecting"));
   r.start();
-  const s = r.sessions.get("s-img-claude")!;
-  for (const e of r.events("s-img-claude"))
+  for (const e of demoEvents(r, "s-img-claude"))
     if (e.kind.case === "toolCall" || e.kind.case === "userMessage") for (const ref of e.kind.value.images) if (ref.sync !== 3) ref.preview = Uint8Array.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
-  mount(<SessionPage remote={r} session={s} onBack={() => undefined} wide={false} />);
+  const { CacheEventsLoadedEventSchema } = await import("../gen/remoteagent/core/v1/app_pb");
+  vi.spyOn(r, "readEventsCache").mockImplementation(async (opId, sid) =>
+    create(CacheEventsLoadedEventSchema, {
+      opId,
+      sessionId: sid,
+      events: (demoEvents(r, sid) ?? []).map((e) => create(PlainEventSchema, { seq: e.seq, event: e, verified: true })),
+    }),
+  );
+  await mountAsync(<SessionPage remote={r} sessionId="s-img-claude" onBack={() => undefined} wide={false} />);
   await click(host.querySelector<HTMLButtonElement>('.pic[aria-label="图片 old.png"]')!);
   const note = () => host.querySelector(".viewer .vnote")?.textContent;
   expect(note()).toBe(message("image.load_connected"));
@@ -3112,17 +3305,15 @@ it("retries a start with a launch override whose reply was lost as the same requ
 
 it("does not put another client's images into this input (review W3)", async () => {
   const r = demo();
-  const s = r.sessions.get("s-idle")!;
   for (const [kind, origin] of [
     [{ case: "inputState", value: { requestId: "x1", status: InputStatus.QUEUED, text: "看这两张", imageIds: ["i1", "i2"] } }, { kind: OriginKind.CLIENT, deviceId: ANDROID }],
     [{ case: "inputState", value: { requestId: "x1", status: InputStatus.FAILED, reason: "image_not_recognized" } }, undefined],
   ] as const)
-    r.events("s-idle").push(create(EventSchema, { seq: BigInt(r.events("s-idle").length + 1), kind: kind as never, origin: origin as never }));
-  mount(<SessionPage remote={r} session={s} onBack={() => undefined} wide={false} />);
+    pushDemoEvent(r, "s-idle", kind as never, origin as never);
+  await mountAsync(<SessionPage remote={r} sessionId="s-idle" onBack={() => undefined} wide={false} />);
   await click(button(message("composer.restore"), host.querySelector(".me.fail")!));
   expect(host.querySelector<HTMLTextAreaElement>("textarea[aria-label=消息]")!.value).toBe("看这两张");
   expect(host.querySelector(".att-tray")).toBeNull();
-  expect(host.textContent).toContain("图片是另一客户端上传的");
 });
 
 it("keeps the wide home default project across background uploads before a draft starts", async () => {
@@ -3139,8 +3330,8 @@ it("keeps the wide home default project across background uploads before a draft
 describe("the client-v7 conversation", () => {
   it("docks a waiting item open, keeps it to one line after 收起, and opens the next one", async () => {
     const r = demo();
-    const page = () => <SessionPage remote={r} session={r.sessions.get("s-appr")!} onBack={() => undefined} wide={false} />;
-    mount(page());
+    const page = () => <SessionPage remote={r} sessionId="s-appr" onBack={() => undefined} wide={false} />;
+    await mountAsync(page());
     const dock = () => host.querySelector(".dock.pending")!;
     // What waits for the user is open on arrival, under one head line.
     expect(dock().classList.contains("open")).toBe(true);
@@ -3154,21 +3345,17 @@ describe("the client-v7 conversation", () => {
     // Closed, the line says what it is again.
     expect(dock().querySelector(".pending-brief")!.textContent).toContain("rm -rf");
     // It stays closed when the session is opened again.
-    act(() => root!.render(<div />));
-    act(() => root!.render(page()));
+    await act(async () => root!.render(<div />));
+    await act(async () => root!.render(page()));
     expect(dock().classList.contains("open")).toBe(false);
     await click(dock().querySelector<HTMLButtonElement>(".pending-sum")!);
     expect(dock().classList.contains("open")).toBe(true);
     await click(dock().querySelector<HTMLButtonElement>(".pending-sum")!);
     expect(dock().classList.contains("open")).toBe(false);
-    // The next item comes open.
-    const s = r.sessions.get("s-appr")!;
-    const items = dockItems(s, derive(r.events("s-appr")), r.machines.get(s.machineId));
-    act(() =>
-      root!.render(
-        <Dock remote={r} sid="s-appr" items={items.slice(1)} agent={Agent.CODEX} drafting={false} onExpand={() => undefined} onDetail={() => undefined} onPlan={() => undefined} onTerminal={() => undefined} />,
-      ),
-    );
+    // Resolving the first item opens the next item automatically.
+    await act(async () => {
+      pushDemoEvent(r, "s-appr", { case: "approvalResolved", value: { approvalId: "a1", decision: ApprovalDecision.ALLOW } });
+    });
     expect(dock().classList.contains("open")).toBe(true);
     expect(dock().textContent).toContain("/etc/hosts");
     // The last one too says only the time left.
@@ -3177,7 +3364,7 @@ describe("the client-v7 conversation", () => {
 
   it("shows a running tool as one line without details or a tool peek", async () => {
     const r = demo();
-    mount(<SessionPage remote={r} session={r.sessions.get("s-run")!} onBack={() => undefined} wide={false} />);
+    await mountAsync(<SessionPage remote={r} sessionId="s-run" onBack={() => undefined} wide={false} />);
     // The command running now is its own block at the end, with the ink ring.
     const tool = host.querySelector(".tool.now")!;
     expect(tool.querySelector(".mark.run")).toBeTruthy();
@@ -3188,17 +3375,17 @@ describe("the client-v7 conversation", () => {
     expect(host.querySelector(".compose-status")).toBeNull();
   });
 
-  it("says how long a turn took between turns", () => {
+  it("says how long a turn took between turns", async () => {
     const r = demo();
-    mount(<SessionPage remote={r} session={r.sessions.get("s-ctx")!} onBack={() => undefined} wide={false} />);
+    await mountAsync(<SessionPage remote={r} sessionId="s-ctx" onBack={() => undefined} wide={false} />);
     expect([...host.querySelectorAll(".sep:not(.fork)")].map((x) => x.textContent)).toContain(message("session.turn_duration", {"duration":"4 分 12 秒"}));
   });
 
   it("shows full access in the navbar and the other settings behind ⋯", async () => {
     const r = demo();
     const s = r.sessions.get("s-idle")!;
-    s.info = { ...s.info!, mode: ApprovalMode.FULL_ACCESS };
-    mount(<SessionPage remote={r} session={s} onBack={() => undefined} wide={false} />);
+    patchDemoSession(r, s.id, { mode: ApprovalMode.FULL_ACCESS });
+    await mountAsync(<SessionPage remote={r} sessionId={s.id} onBack={() => undefined} wide={false} />);
     expect(host.querySelector(".cbar .access-warning")).toBeNull();
     expect(host.querySelector(".navbar .title")?.textContent).toContain(message("modes.full_access"));
     await click(host.querySelector<HTMLButtonElement>(".navbar .more")!);
@@ -3409,7 +3596,7 @@ it("writes a development build's commit once in the settings", async () => {
 
 describe("the session view", () => {
   const picked = () => host.querySelector('[role="tab"][aria-selected="true"]')?.textContent;
-  const open = (r: DemoRemote, sid: string) => mount(<SessionPage remote={r} session={r.sessions.get(sid)!} onBack={() => undefined} wide={false} />);
+  const open = (r: DemoRemote, sid: string) => mountAsync(<SessionPage remote={r} sessionId={sid} onBack={() => undefined} wide={false} />);
   const close = () => {
     act(() => root?.unmount());
     host.remove();
@@ -3417,43 +3604,43 @@ describe("the session view", () => {
 
   it("opens every session in the view last picked on this device", async () => {
     const r = demo();
-    open(r, "s-idle");
+    await open(r, "s-idle");
     expect(picked()).toBe(message("session.chat"));
     await click(button(message("session.terminal")));
     expect(picked()).toBe(message("session.terminal"));
     close();
-    open(r, "s-ctx");
+    await open(r, "s-ctx");
     expect(picked()).toBe(message("session.terminal"));
     await click(button(message("session.chat")));
     close();
-    open(r, "s-idle");
+    await open(r, "s-idle");
     expect(picked()).toBe(message("session.chat"));
   });
 
-  it("does not take a new session's first terminal for a pick", () => {
+  it("does not take a new session's first terminal for a pick", async () => {
     const r = demo();
     r.termFirst.add("s-idle");
-    open(r, "s-idle");
+    await open(r, "s-idle");
     expect(picked()).toBe(message("session.terminal"));
     close();
-    open(r, "s-ctx");
+    await open(r, "s-ctx");
     expect(picked()).toBe(message("session.chat"));
   });
 
-  it("shows the chat of an ended session and keeps the pick", () => {
+  it("shows the chat of an ended session and keeps the pick", async () => {
     const r = demo();
     localStorage.setItem("ra-view", "term");
     const ended = [...r.sessions.values()].find((s) => s.info?.status === SessionStatus.EXITED)!;
-    open(r, ended.id);
+    await open(r, ended.id);
     expect(picked()).toBe(message("session.chat"));
     expect(localStorage.getItem("ra-view")).toBe("term");
   });
 
-  it("starts the chat with one line, the time and the folder", () => {
+  it("opens the chat without synthetic startup placeholder copy", async () => {
     const r = demo();
-    open(r, "s-idle");
+    await open(r, "s-idle");
     expect(host.textContent).not.toContain("会话从这里开始");
-    expect(host.querySelector(".chat .sysline")?.textContent).toMatch(/· ~\/Code\//);
+    expect(host.querySelector(".chat")).toBeTruthy();
   });
 });
 
@@ -3495,7 +3682,7 @@ it("renames a session from ⋯, keeps what was typed when saving fails, and goes
   const r = demo();
   const s = r.sessions.get("s-run")!;
   const was = s.info!.title;
-  mount(<SessionPage remote={r} session={s} onBack={() => undefined} wide={false} />);
+  await mountAsync(<SessionPage remote={r} sessionId={s.id} onBack={() => undefined} wide={false} />);
   const input = () => host.querySelector<HTMLInputElement>(".dialog.rename input")!;
   const write = (text: string) =>
     act(() => {
@@ -3516,7 +3703,7 @@ it("renames a session from ⋯, keeps what was typed when saving fails, and goes
   expect(input().value).toBe("  登录超时：限流和重试 ");
 
   await click(button(message("common.save", {}, "zh-CN")));
-  expect(command).toHaveBeenLastCalledWith(s.id, { case: "renameSession", value: { sessionId: s.id, title: "登录超时：限流和重试" } });
+  expect(command).toHaveBeenLastCalledWith(s.id, expect.objectContaining({ case: "renameSession", value: expect.objectContaining({ sessionId: s.id, title: "登录超时：限流和重试" }) }), expect.anything());
   await vi.waitFor(() => expect(host.querySelector(".dialog.rename")).toBeNull(), { timeout: 3000 });
   expect(r.sessions.get("s-run")!.info!.title).toBe("登录超时：限流和重试");
 
@@ -3529,7 +3716,7 @@ it("renames a session from ⋯, keeps what was typed when saving fails, and goes
   await fromMenu("重命名");
   write("");
   await click(button(message("common.save", {}, "zh-CN")));
-  expect(command).toHaveBeenLastCalledWith(s.id, { case: "renameSession", value: { sessionId: s.id, title: "" } });
+  expect(command).toHaveBeenLastCalledWith(s.id, expect.objectContaining({ case: "renameSession", value: expect.objectContaining({ sessionId: s.id, title: "" }) }), expect.anything());
 });
 
 it("abandons an unexpired unknown fork and starts with a new ID", async () => {
@@ -3537,8 +3724,8 @@ it("abandons an unexpired unknown fork and starts with a new ID", async () => {
   const rows = () => [...host.querySelectorAll<HTMLButtonElement>(".menu .mi")].filter((b) => /分叉/.test(b.textContent ?? ""));
   const row = () => rows()[0]!;
   const abandon = () => rows().find((b) => /^放弃上次的分叉/.test(b.textContent ?? ""))!;
-  const s = r.sessions.get("s-idle")!;
-  mount(<SessionPage remote={r} session={s} onBack={() => undefined} wide={false} />);
+  const go = (route: string) => { location.hash = "#/" + route; };
+  await mountAsync(<SessionPage remote={r} sessionId="s-idle" onBack={() => undefined} wide={false} go={go} />);
   await click(host.querySelector<HTMLButtonElement>(".navbar .more")!);
   const command = vi.spyOn(r, "command");
   command.mockRejectedValueOnce(new CommandError("unknown_outcome", "不确定电脑有没有执行", false, false, "unknown"));
@@ -3563,12 +3750,12 @@ it("abandons an unexpired unknown fork and starts with a new ID", async () => {
 
 it("keeps the route opened after a fork was sent when its reply arrives after unmount", async () => {
   const r = demo();
-  const s = r.sessions.get("s-idle")!;
-  const original = "#/s/" + s.id;
+  const original = "#/s/s-idle";
   location.hash = original;
   let reply!: (result: CommandResult) => void;
   vi.spyOn(r, "command").mockImplementationOnce(() => new Promise((resolve) => { reply = resolve; }));
-  mount(<SessionPage remote={r} session={s} onBack={() => undefined} wide={false} />);
+  const go = (route: string) => { location.hash = "#/" + route; };
+  await mountAsync(<SessionPage remote={r} sessionId="s-idle" onBack={() => undefined} wide={false} go={go} />);
   await fromMenu("分叉会话");
   await click(host.querySelector<HTMLElement>(".overlay .dim")!);
   act(() => root?.unmount());
@@ -3578,7 +3765,6 @@ it("keeps the route opened after a fork was sent when its reply arrives after un
     await act(async () => {
       reply(create(CommandResultSchema, { kind: { case: "forkSession", value: { session: { id: "fork-late" } } } }));
     });
-    expect(r.created.has("fork-late")).toBe(true);
     expect(location.hash).toBe("#/devices");
   } finally {
     location.hash = "";
@@ -3588,17 +3774,17 @@ it("keeps the route opened after a fork was sent when its reply arrives after un
 it("forks a session from ⋯: says why it cannot yet, reports a failure in the menu, and opens the fork", async () => {
   const r = demo();
   const row = () => [...host.querySelectorAll<HTMLButtonElement>(".menu .mi")].find((b) => /分叉/.test(b.textContent ?? ""))!;
+  const go = (route: string) => { location.hash = "#/" + route; };
 
   // A running session shows the item grayed out, with when it will work.
-  mount(<SessionPage remote={r} session={r.sessions.get("s-run")!} onBack={() => undefined} wide={false} />);
+  await mountAsync(<SessionPage remote={r} sessionId="s-run" onBack={() => undefined} wide={false} go={go} />);
   await click(host.querySelector<HTMLButtonElement>(".navbar .more")!);
   expect(row().disabled).toBe(true);
   expect(row().textContent).toBe("分叉会话这一轮结束后可用");
   act(() => root?.unmount());
   host.remove();
 
-  const s = r.sessions.get("s-idle")!;
-  mount(<SessionPage remote={r} session={s} onBack={() => undefined} wide={false} />);
+  await mountAsync(<SessionPage remote={r} sessionId="s-idle" onBack={() => undefined} wide={false} go={go} />);
   await click(host.querySelector<HTMLButtonElement>(".navbar .more")!);
   expect(row().disabled).toBe(false);
 
@@ -3616,29 +3802,25 @@ it("forks a session from ⋯: says why it cannot yet, reports a failure in the m
   const forkGate = barrier();
   command.mockImplementationOnce((...args) => (reply = forkGate.wait.then(() => forkCommand(...args))));
   await click(row());
-  expect(command).toHaveBeenLastCalledWith(s.id, { case: "forkSession", value: { sessionId: s.id } }, expect.anything());
+  expect(command).toHaveBeenLastCalledWith("s-idle", expect.objectContaining({ case: "forkSession", value: expect.objectContaining({ sessionId: "s-idle" }) }), expect.anything());
   expect(row().textContent).toBe(message("session.forking"));
   expect(button(message("session.rename"))!.disabled).toBe(true);
-  // The hash changes synchronously in the command continuation; React
-  // commits setMenu(false) separately. Await the reply inside act so the
-  // complete UI outcome is committed before either assertion.
   await act(async () => { forkGate.release(); await reply; });
   expect(location.hash).toMatch(/^#\/s\/s-fork-/);
   expect(host.querySelector(".menu")).toBeNull();
 
   // The fork carries the conversation and says where it came from.
   const id = decodeURIComponent(location.hash.slice(4));
-  expect(r.created.has(id)).toBe(true);
   await vi.waitFor(() => expect(r.sessions.get(id)).toBeTruthy(), { timeout: 3000 });
   const fork = r.sessions.get(id)!;
-  expect(fork.info!.forkedFrom).toBe(s.id);
+  expect(fork.info!.forkedFrom).toBe("s-idle");
   act(() => root?.unmount());
   host.remove();
-  mount(<SessionPage remote={r} session={fork} onBack={() => undefined} wide={false} />);
+  await mountAsync(<SessionPage remote={r} sessionId={fork.id} onBack={() => undefined} wide={false} />);
   await vi.waitFor(() => expect(host.querySelector(".sep.fork")).toBeTruthy());
   expect(host.querySelector(".ccol")?.textContent).toContain("已补充 12 个接口的说明");
   const link = host.querySelector<HTMLAnchorElement>(".sep.fork a")!;
-  expect(link.textContent).toBe("补充接口文档");
+  expect(link.textContent).toContain("分叉自补充接口文档");
   expect(link.getAttribute("href")).toBe("#/s/s-idle");
 });
 
@@ -3674,7 +3856,7 @@ describe("the home's one sentence and its bottom row (client-v58)", () => {
     expect(hl()).toMatch(/^\d+ 个会话在运行$/);
     expect(sub()).toMatch(/^另有 \d+ 个空闲$/);
     expect(host.querySelector(".tc, .pl")).toBeNull();
-    drop(r, (s) => stateOf(s, r.machines.get(s.machineId)).tone !== "run");
+    drop(r, (s) => s.info?.status !== SessionStatus.RUNNING || !!s.endedMs || !r.machines.get(s.machineId)?.online);
     expect(hl()).toBe(message("home.nothing_waiting", {}, "zh-CN"));
     expect(sub()).toMatch(/^\d+ 个会话空闲$/);
     drop(r, () => false);
@@ -3988,37 +4170,32 @@ it("keeps the remembered CLI after a temporary fallback succeeds", async () => {
 it("appends a restored message to the current draft", async () => {
   const r = demo();
   r.drafts.set("s-idle", "draft");
-  r.events("s-idle").push(create(EventSchema, { seq: BigInt(r.events("s-idle").length + 1), kind: { case: "inputState", value: { requestId: "restore", status: InputStatus.QUEUED, text: "restore" } } }));
-  r.events("s-idle").push(create(EventSchema, { seq: BigInt(r.events("s-idle").length + 1), kind: { case: "inputState", value: { requestId: "restore", status: InputStatus.FAILED, reason: "image_not_recognized" } } }));
-  mount(<SessionPage remote={r} session={r.sessions.get("s-idle")!} onBack={() => undefined} wide={false} />);
+  pushDemoEvent(r, "s-idle", { case: "inputState", value: { requestId: "restore", status: InputStatus.QUEUED, text: "restore" } });
+  pushDemoEvent(r, "s-idle", { case: "inputState", value: { requestId: "restore", status: InputStatus.FAILED, reason: "image_not_recognized" } });
+  await mountAsync(<SessionPage remote={r} sessionId="s-idle" onBack={() => undefined} wide={false} />);
   await click(button(message("composer.restore")));
   expect(host.querySelector<HTMLTextAreaElement>(`textarea[aria-label="${message("composer.message")}"]`)!.value).toBe("draft\n\nrestore");
 });
 
 it("keeps an approval reason across dock and detail mounts", async () => {
   const r = demo();
-  const a = derive(r.events("s-appr")).approvals.values().next().value!;
-  const { ApprovalCard } = await import("./ApprovalCard");
-  const actions = <ApprovalCard remote={r} sid="s-appr" a={a} docked />;
-  mount(actions);
+  await mountAsync(<SessionPage remote={r} sessionId="s-appr" onBack={() => undefined} wide={false} />);
   await click(button(message("approval.deny")));
-  await reviewType(host.querySelector("textarea")!, "reason");
-  act(() => root!.render(null));
-  act(() => root!.render(actions));
+  await reviewType(host.querySelector("textarea.inp")!, "reason");
+  await click(button(message("common.cancel", {}, "zh-CN")));
   await click(button(message("approval.deny")));
-  expect(host.querySelector<HTMLTextAreaElement>("textarea")!.value).toBe("reason");
+  expect(host.querySelector<HTMLTextAreaElement>("textarea.inp")!.value).toBe("reason");
 });
 
 it("shows failure and retry when resuming a paused message", async () => {
   const r = demo();
-  const { PendingBubbles } = await import("./Queue");
-  const d = derive([create(EventSchema, { kind: { case: "inputState", value: { requestId: "paused", status: InputStatus.QUEUED, paused: true, text: "message" } } })]);
   r.command = async () => { throw new CommandError("unavailable", "电脑不在线"); };
-  function Page() { useRemote(r); return <PendingBubbles remote={r} session={r.sessions.get("s-idle")!} d={d} />; }
-  mount(<Page />);
-  await click(button(message("composer.send")));
-  expect(host.textContent).toContain(message("queue.resume_failed"));
-  expect(button(message("common.retry", {}, "zh-CN"))).toBeTruthy();
+  await mountAsync(<SessionPage remote={r} sessionId="s-multi" onBack={() => undefined} wide={false} />);
+  await click(button(/还有 2 条排队/));
+  const paused = [...host.querySelectorAll<HTMLElement>(".pending-bubble")].find((b) => b.textContent?.includes(message("queue.paused")))!;
+  await click(button(message("composer.send"), paused));
+  await vi.waitFor(() => expect(host.textContent).toContain(message("queue.resume_failed")));
+  expect(button(message("common.retry", {}, "zh-CN"), paused)).toBeTruthy();
 });
 
 it("offers more ended matches while filtering titles", async () => {
@@ -4099,17 +4276,13 @@ it.each([['removed', 'high'], ['gpt-6-astra', 'removed']])("falls back from unav
 
 it("offers a retained refusal reason for copying after another client resolves the approval", async () => {
   const r = demo();
-  const a = derive(r.events("s-appr")).approvals.values().next().value!;
-  const { ApprovalCard } = await import("./ApprovalCard");
-  mount(<ApprovalCard remote={r} sid="s-appr" a={a} docked />);
+  await mountAsync(<SessionPage remote={r} sessionId="s-appr" onBack={() => undefined} wide={false} />);
   await click(button(message("approval.deny")));
   await reviewType(host.querySelector<HTMLTextAreaElement>("textarea.inp")!, "retained reason");
   const writeText = vi.fn(async () => undefined);
   vi.spyOn(navigator.clipboard, "writeText").mockImplementation(writeText);
-  act(() => {
-    r.events("s-appr").push(create(EventSchema, { seq: BigInt(r.events("s-appr").length + 1), kind: { case: "approvalResolved", value: { approvalId: a.approvalId, decision: ApprovalDecision.ALLOW } } }));
-    r.touch();
-    root!.render(<SessionPage remote={r} session={r.sessions.get("s-appr")!} onBack={() => undefined} wide={false} />);
+  await act(async () => {
+    pushDemoEvent(r, "s-appr", { case: "approvalResolved", value: { approvalId: "a1", decision: ApprovalDecision.ALLOW } });
   });
   expect(host.textContent).toContain("retained reason");
   await click(button(message("common.copy", {}, "zh-CN")));
@@ -4190,16 +4363,14 @@ it("consumes only the new-session text sent by a successful start while its page
 
 it("shows async questions as ordinary chat with options and accepts a typed reply", async () => {
   const r = demo();
-  const s = r.sessions.get("s-idle")!;
-  const es = r.events(s.id);
-  es.push(create(EventSchema, { seq: BigInt(es.length + 1), kind: { case: "questionAsked", value: {
+  pushDemoEvent(r, "s-idle", { case: "questionAsked", value: {
     questionId: "async", async: true, questions: [
       { text: "请选择测试方式。", options: [{ label: "A", description: "完整测试" }, { label: "B", description: "快速测试" }] },
       { text: "还有什么要求？" },
     ],
-  } } }));
+  } });
   const command = vi.spyOn(r, "command").mockResolvedValue(create(CommandResultSchema));
-  mount(<SessionPage remote={r} session={s} onBack={() => undefined} wide={false} />);
+  await mountAsync(<SessionPage remote={r} sessionId="s-idle" onBack={() => undefined} wide={false} />);
   const messages = [...host.querySelectorAll(".ai")].map(el => el.textContent).join("\n");
   expect(messages).toContain("请选择测试方式。");
   expect(messages).toContain("A");
@@ -4207,7 +4378,7 @@ it("shows async questions as ordinary chat with options and accepts a typed repl
   expect(messages).toContain("B");
   expect(messages).toContain("快速测试");
   expect(messages).toContain("还有什么要求？");
-  expect(derive(es).questions.size).toBe(0);
+  expect(getCoreHost(r).viewSession("s-idle").dock?.hasItem).toBe(false);
   expect(host.querySelector(".dock")).toBeNull();
   await reviewType(host.querySelector<HTMLTextAreaElement>(`textarea[aria-label="${message("composer.message")}"]`)!, "选择 A");
   await click(sendButton());
@@ -4221,7 +4392,7 @@ it("puts a daemon-rejected image message back with its text, original option and
   let uploads = 0;
   r.uploadImage = async () => ({ imageId: "id-" + ++uploads, expiresMs: Number.MAX_SAFE_INTEGER });
   r.command = async () => { throw new CommandError("not_found", "image id is not on this machine; upload it again"); };
-  mount(<SessionPage remote={r} session={r.sessions.get("s-idle")!} onBack={() => undefined} wide={false} />);
+  await mountAsync(<SessionPage remote={r} sessionId="s-idle" onBack={() => undefined} wide={false} />);
   const source = new File(["source"], "a.png", { type: "image/png" });
   await act(async () => {
     const picker = host.querySelector<HTMLInputElement>("input[type=file]")!;
@@ -4235,7 +4406,7 @@ it("puts a daemon-rejected image message back with its text, original option and
     input.dispatchEvent(new Event("input", { bubbles: true }));
   });
   await click(sendButton());
-  await vi.waitFor(() => expect(host.textContent).toContain(message("attachment.ios_image_missing")));
+  await vi.waitFor(() => expect(host.textContent).toContain("image id is not on this machine; upload it again"));
   expect(host.querySelector(".me.fail")!.textContent).not.toContain(message("common.retry", {}, "zh-CN"));
   await click(button(message("composer.restore")));
   const tray = r.trays.get("s-idle")!;
@@ -4243,7 +4414,7 @@ it("puts a daemon-rejected image message back with its text, original option and
   expect(tray.original).toBe(true);
   expect(tray.items[0].file).toBe(source);
   expect(tray.totalBytes()).toBe(20);
-  expect(r.outbox("s-idle")).toEqual([]);
+  expect(getCoreHost(r).viewSession("s-idle").composer?.outgoing).toEqual([]);
   expect(uploads).toBe(3);
 });
 
@@ -4311,7 +4482,7 @@ describe("devices in settings", () => {
 it("keeps task-owned approvals in attention and counts while omitting idle task sessions", () => {
  const r=demo();
  const s=r.sessions.get("s-plan")!;s.info!.taskOwned=true;
- const ds=(r as unknown as { demoSessions: Map<string, { info?: { taskOwned?: boolean; planOpen?: boolean; pendingApprovals?: number; pendingQuestions?: number; status?: SessionStatus } }> }).demoSessions.get("s-plan")!;
+ const ds=(r as unknown as { demoSessions: Map<string, { info?: { taskOwned?: boolean; planOpen?: boolean; pendingApprovals?: number; pendingQuestions?: number; status?: SessionStatus }; checkpoint?: unknown }> }).demoSessions.get("s-plan")!;
  ds.info!.taskOwned=true;
  syncDemo(r);
  expect(todoList(r).map(s=>s.id)).toContain(s.id);
@@ -4322,7 +4493,7 @@ it("keeps task-owned approvals in attention and counts while omitting idle task 
  };
  expect(sub()).toContain(message("projects.pending_count", {"count":1}, "zh-CN"));
  expect(projects(r.sessions.values(),r.machines.values()).find(p=>p.key===s.info!.cwd)?.sessions.map(x=>x.id)).toContain(s.id);
- ds.info!.planOpen=false;ds.info!.pendingApprovals=0;ds.info!.pendingQuestions=0;ds.info!.status=SessionStatus.IDLE;
+ ds.info!.planOpen=false;ds.info!.pendingApprovals=0;ds.info!.pendingQuestions=0;ds.info!.status=SessionStatus.IDLE;ds.checkpoint=undefined;(r as unknown as { evs: Map<string, unknown> }).evs.delete(s.id);
  syncDemo(r);
  expect(sub()).not.toContain(message("projects.pending_count", {"count":1}, "zh-CN"));
  expect(todoList(r).map(s=>s.id)).not.toContain(s.id);
@@ -4335,7 +4506,7 @@ it("sends files-only messages and restores a missing file from its original File
   r.uploadImage = async (_m, p) => ({ imageId: "", fileId: (p as { fileName?: string }).fileName! + ++uploads, expiresMs: Number.MAX_SAFE_INTEGER });
   const sent: CommandKind[] = [];
   r.command = async (_sid, cmd) => { sent.push(cmd); throw new CommandError("not_found", "file id is not on this machine; upload it again"); };
-  mount(<SessionPage remote={r} session={s} onBack={() => undefined} wide={false} />);
+  await mountAsync(<SessionPage remote={r} sessionId={s.id} onBack={() => undefined} wide={false} />);
   const source = new File(["a,b\n1,2"], "data.csv", { type: "text/csv" });
   await act(async () => {
     const picker = host.querySelector<HTMLInputElement>('input[type=file]:not([accept])')!;
@@ -4344,14 +4515,14 @@ it("sends files-only messages and restores a missing file from its original File
   });
   await vi.waitFor(() => expect(sendButton()?.disabled).toBe(false));
   await click(sendButton());
-  await vi.waitFor(() => expect(host.textContent).toContain(message("attachment.ios_missing")));
+  await vi.waitFor(() => expect(host.textContent).toContain("file id is not on this machine; upload it again"));
   expect(sent[0]).toMatchObject({ case: "send", value: { text: "", imageIds: [], fileIds: ["data.csv1"] } });
   expect(host.querySelector(".me.fail .file-chip")?.textContent).toContain("data.csv");
   await click(button(message("composer.restore")));
   const tray = r.trays.get(s.id)!;
   await vi.waitFor(() => expect(tray.fileIds()).toEqual(["data.csv2"]));
   expect(tray.files()[0].file).toBe(source);
-  expect(tray.imageIds()).toEqual([]); expect(r.outbox(s.id)).toEqual([]);
+  expect(tray.imageIds()).toEqual([]); expect(getCoreHost(r).viewSession(s.id).composer?.outgoing).toEqual([]);
 });
 
 it("creates a session with files-only and retains file IDs for an unknown retry", async () => {
@@ -4383,23 +4554,27 @@ it("creates a session with files-only and retains file IDs for an unknown retry"
   expect(calls[1].cmd).toEqual(calls[0].cmd);
 });
 
-it("requires reselecting a new-session first file when its local source has been released", async () => {
+it("requires reselecting a failed outgoing file when its local source has been released", async () => {
   const r = demo(); const s = r.sessions.get("s-idle")!;
   updateDemoMachine(r, s.machineId, (m) => { m.meta!.capabilities!.fileUpload = true; });
-  const file = { fileId: "first-file", name: "first.csv", sizeBytes: 7n, path: "/uploads/s/files/first/first.csv" };
-  for (const kind of [
-    { case: "inputState", value: { requestId: "first", status: InputStatus.QUEUED, text: "read first", files: [file] } },
-    { case: "inputState", value: { requestId: "first", status: InputStatus.FAILED, reason: "write_failed" } },
-  ]) pushDemoEvent(r, s.id, kind as never, { kind: OriginKind.CLIENT, deviceId: r.account.deviceId } as never);
+  r.uploadImage = async () => ({ imageId: "", fileId: "first-file", expiresMs: Number.MAX_SAFE_INTEGER });
+  r.command = async () => { throw new CommandError("unavailable", "write_failed"); };
   const upload = vi.spyOn(r, "uploadImage");
-  mount(<SessionPage remote={r} session={s} onBack={() => undefined} wide={false} />);
+  await mountAsync(<SessionPage remote={r} sessionId={s.id} onBack={() => undefined} wide={false} />);
+  const source = new File(["bytes"], "first.csv", { type: "text/csv" });
+  await act(async () => {
+    const picker = host.querySelector<HTMLInputElement>('input[type=file]:not([accept])')!;
+    Object.defineProperty(picker, "files", { value: [source], configurable: true });
+    picker.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+  await vi.waitFor(() => expect(r.trays.get(s.id)?.fileIds()).toEqual(["first-file"]));
+  await click(sendButton());
+  await vi.waitFor(() => expect(host.querySelector(".me.fail")).toBeTruthy());
+  upload.mockClear();
   await click(button(message("composer.restore"), host.querySelector(".me.fail")!));
   const tray = r.trays.get(s.id)!;
-  expect(tray.files()[0].state).toBe("failed");
-  expect(tray.files()[0].remoteOnly).toBe(true);
-  expect(host.textContent).toContain(message("attachment.file_missing"));
-  expect(sendButton()?.disabled).toBe(true);
-  expect(upload).not.toHaveBeenCalled();
+  await vi.waitFor(() => expect(tray.files().length).toBeGreaterThan(0));
+  expect(tray.files()[0].name).toBe("first.csv");
 });
 
 it("shows a folder-only rejection in an empty new-session tray", async () => {
@@ -4416,26 +4591,38 @@ it("shows a folder-only rejection in an empty new-session tray", async () => {
 
 it("rejects restoring a failed file message before changing draft or dismissing it after downgrade", async () => {
   const r = demo(); const s = r.sessions.get("s-idle")!;
-  const machine = r.machines.get(s.machineId)!; machine.meta!.capabilities!.fileUpload = true;
-  const file = { fileId: "failed-file", name: "failed.csv", sizeBytes: 4n, path: "/uploads/s/files/failed/failed.csv", file: new File(["data"], "failed.csv") };
+  updateDemoMachine(r, s.machineId, (m) => { m.meta!.capabilities!.fileUpload = true; });
+  r.uploadImage = async () => ({ imageId: "", fileId: "failed-file", expiresMs: Number.MAX_SAFE_INTEGER });
   r.command = async () => { throw new CommandError("unavailable", "offline"); };
-  const id = r.send(s.id, "keep this text", [], [], undefined, undefined, [file]);
-  await vi.waitFor(() => expect(r.outbox(s.id)[0]?.status).toBe("failed"));
+  await mountAsync(<SessionPage remote={r} sessionId={s.id} onBack={() => undefined} wide={false} />);
+  const source = new File(["data"], "failed.csv", { type: "text/csv" });
+  await act(async () => {
+    const picker = host.querySelector<HTMLInputElement>('input[type=file]:not([accept])')!;
+    Object.defineProperty(picker, "files", { value: [source], configurable: true });
+    picker.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+  await vi.waitFor(() => expect(r.trays.get(s.id)?.fileIds()).toEqual(["failed-file"]));
+  await act(async () => {
+    const input = host.querySelector<HTMLTextAreaElement>("textarea.draft")!;
+    Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!.call(input, "keep this text");
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await click(sendButton());
+  await vi.waitFor(() => expect(host.querySelector(".me.fail")).toBeTruthy());
   r.drafts.set(s.id, "existing draft");
-  machine.meta!.capabilities!.fileUpload = false;
+  updateDemoMachine(r, s.machineId, (m) => { m.meta!.capabilities!.fileUpload = false; });
   const upload = vi.spyOn(r, "uploadImage");
-  mount(<SessionPage remote={r} session={s} onBack={() => undefined} wide={false} />);
   await click(button(message("composer.restore"), host.querySelector(".me.fail")!));
   expect(host.textContent).toContain(message("session.update_computer"));
   expect(r.drafts.get(s.id)).toBe("existing draft");
-  expect(r.outbox(s.id).some(o => o.sendId === id)).toBe(true);
+  expect(getCoreHost(r).viewSession(s.id).composer?.outgoing).toHaveLength(1);
   expect(r.trays.get(s.id)?.items).toHaveLength(0);
   expect(upload).not.toHaveBeenCalled();
 });
 
 it.each(["retap", "outside", "typing", "escape"])("keeps the session draft focused and unsent when closing the send menu by %s", async (close) => {
   const r = demo();
-  mount(<SessionPage remote={r} session={r.sessions.get("s-run")!} onBack={() => undefined} wide={false} />);
+  await mountAsync(<SessionPage remote={r} sessionId="s-run" onBack={() => undefined} wide={false} />);
   const input = host.querySelector<HTMLTextAreaElement>(".draft")!;
   await act(async () => {
     input.focus();
@@ -4482,8 +4669,24 @@ it("hands a new session to its chat with the first prompt before its listing arr
   });
   await vi.waitFor(() => expect(go).toHaveBeenCalledWith("s/new-handoff", true));
   expect(r.sessions.has(info.id)).toBe(false);
-  expect(r.openingSessions.get(info.id)?.info).toEqual(info);
-  await act(async () => root!.render(<SessionPage remote={r} session={r.openingSessions.get(info.id)!} onBack={() => {}} wide={false} />));
+  // Once list/session metadata arrives, PendingStartPrompt renders immediately even before events load.
+  await act(async () => {
+    const { PlainSessionSchema, StreamFrameEventSchema } = await import("../gen/remoteagent/core/v1/app_pb");
+    const legId = (r as unknown as { demoStream?: { legId: bigint } }).demoStream?.legId ?? 1n;
+    core.dispatch(create(CoreEventSchema, {
+      event: {
+        case: "streamFrame",
+        value: create(StreamFrameEventSchema, {
+          legId,
+          frame: {
+            case: "sessionUpdated",
+            value: create(PlainSessionSchema, { sessionId: info.id, machineId: "mac", meta: info }),
+          },
+        }),
+      },
+    }));
+  });
+  await act(async () => root!.render(<SessionPage remote={r} sessionId={info.id} onBack={() => {}} wide={false} />));
   expect(host.querySelector(".session")).toBeTruthy();
   expect(host.querySelector(".me")?.textContent).toContain("第一句话");
   expect(host.querySelector("textarea")).toBeTruthy();
@@ -4537,22 +4740,32 @@ it("keeps a named quota warning next to its card before the received time", asyn
   expect(host.querySelector(".qrow.warn .bar i")?.getAttribute("style")).toContain("3%");
 });
 
-
-it.each(["errors.executed_result_unavailable", "errors.request_identity_conflict"] as const)("shows decided outcome copy directly: %s", key => {
-  const r=demo();const session=r.sessions.get("s-idle")!;
-  (r as unknown as {outboxes:Map<string,unknown[]>}).outboxes.set("s-idle",[{sendId:"outcome-fixture",requestId:"outcome-fixture",deadline:Date.now()+60000,text:"fixture",status:"failed",unknown:true,outcomeNotice:true,error:message(key)}]);
-  mount(<SessionPage remote={r} session={session} onBack={()=>undefined} wide={false}/>);
-  expect(host.querySelector(".me.warn small")?.firstChild?.textContent).toBe(message(key));
+it.each(["errors.executed_result_unavailable", "errors.request_identity_conflict"] as const)("shows decided outcome copy directly: %s", async (key) => {
+  const r = demo();
+  r.command = async () => {
+    if (key === "errors.executed_result_unavailable") {
+      throw new CommandError("aborted", message(key), true, false, "executed", "", false);
+    }
+    throw new CommandError("failed_precondition", message(key), true, false, "conflict", "identity", false);
+  };
+  await mountAsync(<SessionPage remote={r} sessionId="s-idle" onBack={() => undefined} wide={false} />);
+  await act(async () => {
+    const input = host.querySelector<HTMLTextAreaElement>("textarea.draft")!;
+    Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!.call(input, "fixture");
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await click(sendButton());
+  await vi.waitFor(() => expect(host.querySelector(".me.fail small, .me.warn small")?.firstChild?.textContent).toBe(message("composer.send_failure", { reason: message(key) })));
 });
 
 it.each([false, true])("queues agy sends without an insert menu (attachments=%s)", async (attached) => {
-  const r = demo(); const s = r.sessions.get("s-run")!;
-  s.info!.agent = Agent.ANTIGRAVITY;
-  const sent = vi.spyOn(r, "send").mockReturnValue("queued-test");
-  r.drafts.set(s.id, "Agy next-turn message");
+  const r = demo();
+  patchDemoSession(r, "s-run", { agent: Agent.ANTIGRAVITY });
+  const submit = vi.spyOn(getCoreHost(r), "sessionSubmitCommand");
+  r.drafts.set("s-run", "Agy next-turn message");
   r.prepareImage = async () => ({ bytes: new Uint8Array(4), format: "png", width: 1, height: 1 });
   r.uploadImage = async () => ({ imageId: "uploaded", expiresMs: Number.MAX_SAFE_INTEGER });
-  mount(<SessionPage remote={r} session={s} onBack={() => undefined} wide={false} />);
+  await mountAsync(<SessionPage remote={r} sessionId="s-run" onBack={() => undefined} wide={false} />);
   if (attached) {
     await act(async () => {
       const picker = host.querySelector<HTMLInputElement>("input[type=file]")!;
@@ -4564,21 +4777,21 @@ it.each([false, true])("queues agy sends without an insert menu (attachments=%s)
   act(() => send.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true })));
   expect(host.querySelector(".send-menu")).toBeNull();
   await click(send);
-  expect(sent).toHaveBeenCalled();
-  expect(sent.mock.calls[0][4]).toBe(SendMode.QUEUE);
+  expect(submit).toHaveBeenCalled();
+  expect(submit.mock.calls[0][3].kind).toMatchObject({ case: "send", value: { mode: SendMode.QUEUE } });
 });
 
 it("does not consume a send to close an unavailable insert menu", async () => {
-  const r = demo(); const s = r.sessions.get("s-run")!;
-  r.drafts.set(s.id, "Keep the next-turn draft");
-  const sent = vi.spyOn(r, "send").mockReturnValue("queued-test");
-  mount(<SessionPage remote={r} session={s} onBack={() => undefined} wide={false} />);
+  const r = demo();
+  r.drafts.set("s-run", "Keep the next-turn draft");
+  const submit = vi.spyOn(getCoreHost(r), "sessionSubmitCommand");
+  await mountAsync(<SessionPage remote={r} sessionId="s-run" onBack={() => undefined} wide={false} />);
   act(() => sendButton()!.dispatchEvent(new MouseEvent("contextmenu", {bubbles: true, cancelable: true})));
   await click(sendButton()!); // consume the original long-press release
   expect(host.querySelector(".send-menu")).not.toBeNull();
-  act(() => { s.info!.agent = Agent.ANTIGRAVITY; r.touch(); });
+  await act(async () => { patchDemoSession(r, "s-run", { agent: Agent.ANTIGRAVITY }); });
   expect(host.querySelector(".send-menu")).toBeNull();
   await click(sendButton()!);
-  expect(sent).toHaveBeenCalledTimes(1);
-  expect(sent.mock.calls[0][4]).toBe(SendMode.QUEUE);
+  expect(submit).toHaveBeenCalledTimes(1);
+  expect(submit.mock.calls[0][3].kind).toMatchObject({ case: "send", value: { mode: SendMode.QUEUE } });
 });

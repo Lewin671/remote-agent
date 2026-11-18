@@ -33,7 +33,7 @@ function open(setup: (r: DemoRemote) => void, query = "") {
   host = document.createElement("div");
   document.body.append(host);
   root = createRoot(host);
-  act(() => root!.render(<SessionPage remote={r} session={r.sessions.get("s-idle")!} onBack={() => undefined} wide />));
+  act(() => root!.render(<SessionPage remote={r} sessionId="s-idle" onBack={() => undefined} wide />));
   return r;
 }
 const status = () => host.querySelector(".dh .st")?.textContent ?? "";

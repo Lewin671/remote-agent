@@ -18,7 +18,6 @@ import { AuthorityClient, PairingDeliveryError, handoffCandidates as verifiedHan
 import type { AuthorityPairing } from "./authority-pairing";
 import { clearLoginToken, loadLoginToken, saveLoginToken } from "./device-security-store";
 import { machineReplacementOrigins } from "./machine-replacement";
-import { getCore } from "./core/runtime";
 import { disposeCoreHost, getCoreHost, type CoreExecutor, type HostBridge, type StreamLegCallbacks } from "./core/host";
 export type { StreamLegCallbacks } from "./core/host";
 import { renderText } from "./core/text";
@@ -61,17 +60,14 @@ import {
   type TokenResultEvent,
 } from "./gen/remoteagent/core/v1/app_pb";
 import { ConnState as CoreConnState } from "./gen/remoteagent/core/v1/home_view_pb";
-import type { SessionDataView, SyncSessionView, SyncStateView } from "./gen/remoteagent/core/v1/sync_view_pb";
-import { ProjectionStateSchema, type ProjectionState } from "./gen/remoteagent/core/v1/projection_pb";
-import { PlanProposedSchema } from "./gen/remoteagent/v1/event_pb";
+import type { SyncSessionView, SyncStateView } from "./gen/remoteagent/core/v1/sync_view_pb";
 import {
   LiveSnapshotSchema,
   type LiveSnapshot,
 } from "./gen/remoteagent/v1/remote_pb";
 import type { SecurityRecord } from "./device-security-store";
-import { agentOf, deriveSource, encodeEventBatch, fromProjectionState, machineName, type Derived } from "./model";
+import { machineName } from "./model";
 import { DEFAULT_AGENT } from "./agents";
-import { isSkeleton } from "./skeleton";
 import { SharedFileManager, type SharedFileChunkResult } from "./shared-files";
 import { sharedFileStore } from "./shared-file-store";
 import {
@@ -114,7 +110,6 @@ import {
 } from "./gen/remoteagent/v1/relay_pb";
 import {
   create,
-  equals,
   fromBinary,
   toBinary,
   type MessageInitShape,
@@ -149,9 +144,7 @@ import {
   Agent,
   EventSchema,
   ImageFormat,
-  SendMode,
   SessionStatus,
-  type Event,
 } from "./gen/remoteagent/v1/event_pb";
 import { matchesFormat, mimeOf } from "./imageview";
 import {
@@ -181,7 +174,7 @@ import {
 } from "./gen/remoteagent/v1/remote_pb";
 import { describeBrowser, type DeviceInfo } from "./devices";
 import { fileUploadUpdateRequired, type Prepare, type Tray } from "./attach";
-import { modelLabel, type Outgoing } from "./model";
+import { modelLabel } from "./model";
 import { CACHE_PAGE_SIZE, eventCache, type CachedEvent, type EventCache } from "./eventcache";
 import { PROTOCOL_VERSION } from "./protocol";
 import {
@@ -198,7 +191,6 @@ export type CommandKind = MessageInitShape<typeof CommandSchema>["kind"];
 
 export interface MachineView { id: string; online: boolean; lastSeenMs: bigint; meta?: MachineMeta; metaRev: bigint; keptOnline?: boolean; }
 export interface SessionView { id: string; machineId: string; historyError?: string; info?: Session; checkpoint?: LiveSnapshot; checkpointStatus?: "ready" | "waiting" | "invalid"; metaRev: bigint; lastSeq: bigint; updatedMs: bigint; endedMs: bigint; }
-export interface History { backfilling?: boolean; unavailable?: number; loaded: boolean; ready: boolean; error: string; broken: boolean; }
 export class ScheduleRevisionError extends Error {}
 
 // --- Transitional Step 3/4 command helper (remove when Session & Schedules migrate to Core) ---
@@ -289,9 +281,6 @@ export class Attempt<P> {
   abandon() { this.pending = undefined; }
 }
 
-export interface AnswerState { index: number; ticked: number[]; last?: { key: string; slot: RequestSlot }; busy: string; error: string; unknown: boolean; }
-const noAnswer: AnswerState = { index: 0, ticked: [], busy: "", error: "", unknown: false };
-
 export function apiBase(server: string): string {
   const origin = checkServer(server);
   return import.meta.env.VITE_SAME_ORIGIN_API ? location.origin : origin;
@@ -362,15 +351,6 @@ export async function joinWithApproval(
   return stored;
 }
 
-export function livePlanText(live: LiveSnapshot | undefined, events: readonly Event[], readable: (seq: bigint) => boolean): string {
-  if (!live?.session?.planOpen || live.planEventSeq === 0n) return live?.planScreen ?? "";
-  const seq = live.planEventSeq;
-  let e = seq > 0n && seq <= BigInt(events.length) ? events[Number(seq) - 1] : undefined;
-  if (e?.seq !== seq) for (let i = events.length - 1; i >= 0 && e?.seq !== seq; i--) e = events[i];
-  if (e?.seq === seq && e.kind.case === "planProposed" && readable(seq) && e.kind.value.text.trim() && !isSkeleton(e.kind.value)) return e.kind.value.text;
-  return live.planScreen;
-}
-
 type CacheRefItem = { kind: "machine"; raw: RemoteMachine } | { kind: "session"; raw: RemoteSession } | { kind: "events"; sessionId: string; raw: CachedEvent[] } | { kind: "event"; sessionId: string; raw: CachedEvent } | { kind: "prefs"; raw: AccountPrefsObject };
 type CacheWritePayload = { kind: "machine"; raw: RemoteMachine } | { kind: "session"; raw: RemoteSession } | { kind: "events"; sessionId: string; raw: CachedEvent[] } | { kind: "prefs"; raw: AccountPrefsObject } | { kind: "sessionOpen"; sessionId: string; open: boolean };
 
@@ -411,16 +391,6 @@ function syncSessionToView(sv: SyncSessionView): SessionView {
 export class Remote implements CoreExecutor {
   private hostBridge?: HostBridge;
   private syncStateView?: SyncStateView;
-  private watchedSession?: { sessionId: string; view: SessionDataView };
-  private readonly liveSnapshots = new Map<string, LiveSnapshot>();
-  private readonly liveErrors = new Map<string, string>();
-  private readonly liveJobs = new Map<string, Promise<void>>();
-  private currentDerivations = new WeakMap<
-    Derived,
-    { sid: string; live?: LiveSnapshot; checkpoint?: LiveSnapshot; agent: Agent; events?: Event[]; value: Derived }
-  >();
-  private projectionDerivations = new WeakMap<ProjectionState, Derived>();
-  private emptyDerivations = new Map<Agent, Derived>();
 
   // Cache references assigned while unpacking server/cache payloads; unconsumed refs are released after Core dispatch.
   private cacheRefSeq = 0;
@@ -476,9 +446,8 @@ export class Remote implements CoreExecutor {
   private legs = new Map<bigint, { ws: FrameStream; stopped: boolean }>();
   private listeners = new Set<() => void>();
   private version = 0;
-  private readonly openingSessionMap = new Map<string, SessionView>();
 
-  // Legacy views/features kept on Remote until Steps 3-6
+  // Legacy views/features kept on Remote until Step 4/5
   private sharedFilesState?: SharedFileManager;
   private scheduleSeenState?: ScheduleSeen;
   private scheduleRequests = new Map<string, string>();
@@ -496,33 +465,18 @@ export class Remote implements CoreExecutor {
   removalVerified = false;
   devicesStatus: "loading" | "ready" | "error" = "loading";
   focusProject = "";
-  readonly created = new Set<string>();
-  readonly missing = new Set<string>();
-  readonly sessionErrors = new Set<string>();
   readonly draftMachines = new Map<string, string>();
   readonly termFirst = new Set<string>();
-  readonly dockClosed = new Set<string>();
-  readonly dockSeen = new Set<string>();
-  readonly cancels = new Map<string, { state: "canceling" | "failed"; error: string }>();
-  readonly resumes = new Map<string, { state: "sending" | "failed"; error: string }>();
   readonly scroll = new Map<string, { top: number; stick: boolean }>();
-  readonly replaced = new Map<string, string>();
   drafts = new DraftTexts((key) => this.persistDraft(key));
   readonly approvalReasons = new Map<string, string>();
   readonly trays = new Map<string, Tray>();
-  readonly outboxes = new Map<string, Outgoing[]>();
-  private readonly forwardingOutbox = new Set<string>();
   private localDrafts?: ComposerDraftStore;
   private readonly forgottenSessions = new Set<string>();
   private readonly draftLoaded = new Set<string>();
   private readonly draftLoads = new Map<string, Promise<void>>();
   private readonly draftRevisions = new Map<string, number>();
-  private readonly outboxLoads = new Map<string, Promise<void>>();
-  private readonly outboxSaves = new Map<string, Promise<void>>();
-  private readonly outboxWriteFailed = new Set<string>();
-  private readonly localNotices = new Map<string, { message: string; kind: "draft" | "outbox_save" }>();
-  private readonly answers = new Map<string, AnswerState>();
-  readonly prompts = new Map<string, string>();
+  private readonly localNotices = new Map<string, string>();
   readonly notices = new Map<string, string>();
 
   private cachedMachineMap = new Map<string, MachineView>();
@@ -846,7 +800,6 @@ export class Remote implements CoreExecutor {
   }
 
   retrySession(id: string) {
-    this.sessionErrors.delete(id);
     this.ensureHost().retrySession(id);
   }
 
@@ -869,7 +822,7 @@ export class Remote implements CoreExecutor {
     });
   }
 
-  // --- Transitional SyncStateView / SessionDataView projections ---
+  // --- SyncStateView projection ---
 
   applySyncStateView(view: SyncStateView) {
     const wasOnline = this.conn === "online";
@@ -886,7 +839,6 @@ export class Remote implements CoreExecutor {
 
     const nextSessions = new Map<string, SessionView>();
     for (const sv of view.sessions) {
-      this.openingSessionMap.delete(sv.sessionId);
       if (sv.info?.machineReplacements.length) this.sessionReplacements.set(sv.sessionId, [...sv.info.machineReplacements]);
       nextSessions.set(sv.sessionId, syncSessionToView(sv));
     }
@@ -905,13 +857,6 @@ export class Remote implements CoreExecutor {
     if (this.hostBridge) this.syncSchedules();
     this.changed();
     if (!wasOnline && (this.conn as ConnState) === "online" && !this.closed) void restorePushPrefs(this);
-  }
-
-  applySessionDataView(sid: string, view: SessionDataView) {
-    this.watchedSession = { sessionId: sid, view };
-    if (view.liveSnapshot) { this.liveSnapshots.set(sid, view.liveSnapshot); this.liveErrors.delete(sid); }
-    this.reconcileOutbox(sid, view.events);
-    this.changed();
   }
 
   get conn(): ConnState {
@@ -953,11 +898,6 @@ export class Remote implements CoreExecutor {
   }
   get sessions(): ReadonlyMap<string, SessionView> { return this.cachedSessionMap; }
   get devices(): ReadonlyMap<string, DeviceInfo> { return this.cachedDeviceMap; }
-  protected trackOpeningSession(machineId: string, info?: Session) {
-    if (!info?.id || this.cachedSessionMap.has(info.id)) return;
-    this.openingSessionMap.set(info.id, { id: info.id, machineId, info, metaRev: 0n, lastSeq: 0n, updatedMs: BigInt(Date.now()), endedMs: 0n });
-  }
-  get openingSessions(): ReadonlyMap<string, SessionView> { return this.openingSessionMap; }
   get prefs(): PrefsState {
     const v = this.syncStateView;
     return { status: (v?.prefsLoadFailed || v?.prefsBroken) && !v.prefs ? "error" : v?.prefsLoaded ? "ready" : "loading", error: "", snap: v?.prefs ? { revision: v.prefsRevision, prefs: v.prefs } : undefined, pending: this.cachedPrefPending };
@@ -973,88 +913,6 @@ export class Remote implements CoreExecutor {
   pastPages(s: SessionView): boolean {
     const cursor = this.syncStateView?.nextCursor;
     return !!(this.moreSessions && cursor && (s.endedMs < cursor.endedMs || (s.endedMs === cursor.endedMs && s.id > cursor.sessionId)));
-  }
-  events(sid: string): Event[] { return this.watchedSession?.sessionId === sid ? this.watchedSession.view.events : []; }
-  loaded(sid: string): boolean { return this.watchedSession?.sessionId === sid && this.watchedSession.view.loaded; }
-  history(sid: string): History {
-    const sd = this.watchedSession?.sessionId === sid ? this.watchedSession.view : undefined;
-    if (!sd) return { loaded: false, ready: false, error: "", broken: false };
-    return { backfilling: sd.backfilling, unavailable: sd.unavailableCount, loaded: sd.loaded, ready: !sd.awaitingCache && (sd.loaded || sd.tailRequested || sd.events.length > 0), error: renderText(sd.error) || renderText(sd.fetchError), broken: sd.retired || sd.retryingCorruptCache };
-  }
-
-  private lastProjectionCache?: { state: ProjectionState; derived: Derived };
-  private memoProjection(state: ProjectionState): Derived {
-    let cached = this.projectionDerivations.get(state);
-    if (!cached) {
-      if (this.lastProjectionCache && equals(ProjectionStateSchema, this.lastProjectionCache.state, state)) cached = this.lastProjectionCache.derived;
-      else { cached = fromProjectionState(state); this.lastProjectionCache = { state, derived: cached }; }
-      this.projectionDerivations.set(state, cached);
-    }
-    return cached;
-  }
-
-  historicalDerived(sid: string): Derived {
-    const sd = this.watchedSession?.sessionId === sid ? this.watchedSession.view : undefined;
-    if (sd?.projection) return this.memoProjection(sd.projection);
-    const agent = agentOf(this.sessions.get(sid));
-    let cached = this.emptyDerivations.get(agent);
-    if (!cached) {
-      const empty = getCore().newProjection(agent);
-      try { cached = fromProjectionState(fromBinary(ProjectionStateSchema, empty.snapshot())); } finally { empty.free(); }
-      this.emptyDerivations.set(agent, cached);
-    }
-    return cached;
-  }
-
-  currentDerived(sid: string, d: Derived): Derived {
-    const sd = this.watchedSession?.sessionId === sid ? this.watchedSession.view : undefined;
-    if (sd?.projection && (!this.liveSnapshots.has(sid) || this.liveSnapshots.get(sid) === sd.liveSnapshot)) return this.memoProjection(sd.projection);
-    const checkpoint = this.sessions.get(sid)?.checkpoint;
-    const live = this.liveSnapshots.get(sid) ?? sd?.liveSnapshot ?? checkpoint;
-    const source = deriveSource(d);
-    const events = source?.events ?? sd?.events;
-    const agent = source?.agent ?? agentOf(this.sessions.get(sid));
-    const cached = this.currentDerivations.get(d);
-    if (cached && cached.sid === sid && cached.live === live && cached.checkpoint === checkpoint && cached.agent === agent && cached.events === events) return cached.value;
-    const temp = getCore().newProjection(agent);
-    let out: Derived;
-    try {
-      if (events?.length) temp.append(encodeEventBatch(events));
-      out = fromProjectionState(fromBinary(ProjectionStateSchema, temp.currentActions(live ? toBinary(LiveSnapshotSchema, live) : undefined)));
-    } finally { temp.free(); }
-    if (live?.planEventSeq && live.planScreenHash.length === 32 && live.session?.planOpen && events) {
-      const resolved = livePlanText(live, events, () => true);
-      if (resolved !== live.planScreen || !out.plan?.text) out.plan = create(PlanProposedSchema, { text: resolved });
-    }
-    this.currentDerivations.set(d, { sid, live, checkpoint, agent, events, value: out });
-    return out;
-  }
-
-  liveSnapshotError(sid: string): string | undefined {
-    const s = this.sessions.get(sid);
-    return this.liveErrors.get(sid) ?? (s?.checkpointStatus === "waiting" ? l10n.t("errors.waiting_for_the_owning_computer_to_update_the_current") : undefined);
-  }
-
-  async refreshLiveSnapshot(sid: string): Promise<void> {
-    if (this.liveJobs.has(sid)) return this.liveJobs.get(sid);
-    const job = (async () => {
-      try {
-        const s = this.sessions.get(sid);
-        if (!s) throw new Error(l10n.t("session.android_unknown"));
-        const reply = await this.forward(s.machineId, sid, { case: "getLiveSnapshot", value: { sessionId: sid } });
-        if (reply.kind.case !== "liveSnapshot" || reply.kind.value.session?.id !== sid) throw new Error(l10n.t("errors.invalid_current_request_snapshot"));
-        this.liveSnapshots.set(sid, reply.kind.value);
-        this.liveErrors.delete(sid);
-      } catch {
-        this.liveSnapshots.delete(sid);
-        this.liveErrors.set(sid, l10n.t("errors.pending_requests_on_the_computer_could_not_be_verified"));
-      } finally {
-        this.liveJobs.delete(sid);
-        this.changed();
-      }
-    })();
-    this.liveJobs.set(sid, job);
-    return job;
   }
 
   // --- CoreExecutor: Stream / Auth / Security / Cache / RPC ---
@@ -1424,11 +1282,9 @@ export class Remote implements CoreExecutor {
           const res = await this.api.listRemoteSessions({ sessionIds: [sid], limit: 1 });
           const found = res.sessions.find((s) => s.sessionId === sid);
           const session = found ? await this.unpackSession(found, true, refs) : undefined;
-          this.sessionErrors.delete(sid);
           return this.rpcEv({ case: "sessionByIdFetched", value: create(SessionByIdFetchedEventSchema, { opId, session }) }, refs);
         } catch (e) {
           this.releaseCacheObjects(refs);
-          this.sessionErrors.add(sid);
           return this.rpcEv({ case: "sessionByIdFetched", value: create(SessionByIdFetchedEventSchema, { opId, error: errorText(e) }) });
         }
       }
@@ -1499,14 +1355,11 @@ export class Remote implements CoreExecutor {
     let hint: RouteHint | undefined;
     if (eff.routeHint === CommandRouteHint.READ) hint = { kind: "read" };
     else if (eff.routeHint === CommandRouteHint.BULK) hint = { kind: "bulk", file: eff.bulkFileKey, upload: eff.bulkUpload ? "file" : undefined, bytes: Number(eff.bulkBytes) };
-    const { outcome, msg } = await this.executeSealedAttempt({
+    const { outcome } = await this.executeSealedAttempt({
       requestId: eff.requestId, attemptId: eff.attemptId, machineId: eff.machineId, sessionId: eff.sessionId,
       deadlineMs: Number(eff.deadlineMs), commandBytes: new Uint8Array(eff.commandBytes),
       routeHint: hint, forceRelay: eff.forceRelay, priorUnknown: eff.retryOfUnknown, signal,
     });
-    if ((msg?.kind.case === "createSession" || msg?.kind.case === "forkSession") && msg.kind.value.session) {
-      this.trackOpeningSession(eff.machineId, msg.kind.value.session);
-    }
     return outcome;
   }
 
@@ -1997,29 +1850,6 @@ export class Remote implements CoreExecutor {
     if (authorized) return this.forwardCall(authorized.machineId, authorized.sid, authorized.cmd, slot);
     const s = this.sessions.get(sid);
     if (!s) throw new Error(l10n.t("session.android_unknown"));
-    if (cmd?.case === "resolveApproval" || cmd?.case === "answerQuestion" || cmd?.case === "answerPlan") {
-      const action = cmd;
-      const shown = this.liveSnapshots.get(sid);
-      if (!shown) throw new Error(l10n.t("errors.this_request_has_not_been_verified_by_the_computer"));
-      const key = action.case === "resolveApproval" ? action.value.approvalId : action.case === "answerQuestion" ? action.value.questionId : "";
-      const findAction = (snap: LiveSnapshot) => snap.actions.find((e) => action.case === "resolveApproval" ? e.kind.case === "approvalRequested" && e.kind.value.approvalId === key : e.kind.case === "questionAsked" && e.kind.value.questionId === key);
-      const displayed = findAction(shown);
-      const observed = action.case === "answerPlan" ? shown.planEventSeq : (displayed?.seq ?? 0n);
-      if (observed === 0n) throw new Error(l10n.t("errors.this_request_can_no_longer_be_acted_on"));
-      await this.refreshLiveSnapshot(sid);
-      const fresh = this.liveSnapshots.get(sid);
-      if (!fresh) throw new Error(l10n.t("errors.the_current_request_could_not_be_verified_again"));
-      if (action.case === "answerPlan") {
-        if (fresh.planEventSeq !== observed || !equalBytes(fresh.planScreenHash, shown.planScreenHash)) throw new Error(l10n.t("errors.the_plan_display_changed_review_it_again"));
-        cmd = { case: "answerPlan", value: { ...action.value, observedEventSeq: fresh.planEventSeq, observedScreenHash: fresh.planScreenHash } };
-      } else {
-        const current = findAction(fresh);
-        if (current?.seq !== observed || !displayed || !equalBytes(toBinary(EventSchema, current), toBinary(EventSchema, displayed))) {
-          throw new Error(l10n.t("errors.the_request_on_the_computer_changed_review_it_again"));
-        }
-        cmd = action.case === "resolveApproval" ? { case: "resolveApproval", value: { ...action.value, observedEventSeq: observed } } : { case: "answerQuestion", value: { ...action.value, observedEventSeq: observed } };
-      }
-    }
     return this.forwardCall(s.machineId, sid, cmd, slot);
   }
 
@@ -2068,7 +1898,6 @@ export class Remote implements CoreExecutor {
         }
         if ((category === "executed" && !msg.resultAvailable) || (category === "conflict" && msg.conflictKind === "identity")) {
           this.retryList();
-          if (sid) void this.refreshLiveSnapshot(sid);
           throw new CommandError(msg.errorCode, l10n.t(category === "executed" ? "errors.executed_result_unavailable" : "errors.request_identity_conflict"), true, false, category, msg.conflictKind, msg.resultAvailable);
         }
         if (category !== "executed" || msg.errorCode) throw new CommandError(msg.errorCode, msg.errorMessage, true, readOnlyCommand(cmd), category, msg.conflictKind, msg.resultAvailable);
@@ -2381,7 +2210,7 @@ export class Remote implements CoreExecutor {
   private clearLocalNotice(key: string) {
     const tray = this.trays.get(key);
     const notice = this.localNotices.get(key);
-    if (tray && notice && tray.note === notice.message) {
+    if (tray && notice && tray.note === notice) {
       tray.note = "";
       this.touch();
     }
@@ -2397,12 +2226,9 @@ export class Remote implements CoreExecutor {
       if (!this.draftLoads.has(key)) void this.restoreDraft(key, tray).catch(() => undefined);
       return;
     }
-    if (this.outboxWriteFailed.has(key)) void this.keepOutbox(key).catch(() => undefined);
     const text = this.drafts.get(key) ?? "";
     const snapshot = { items: [...tray.items], original: tray.original };
-    const save = (this.outboxSaves.get(key) ?? Promise.resolve()).then(() => {
-      if (this.draftRevisions.get(key) === revision) return this.localDrafts!.save(key, text, snapshot);
-    });
+    const save = this.localDrafts.save(key, text, snapshot);
     void save.then(
       () => {
         if (this.draftRevisions.get(key) === revision) this.clearLocalNotice(key);
@@ -2442,35 +2268,6 @@ export class Remote implements CoreExecutor {
         if (!this.closed) this.touch();
       });
     this.draftLoads.set(key, job);
-    if (!key.startsWith("new:")) {
-      void this.restoreOutbox(key).catch(() =>
-        this.localNotice(key, l10n.t("errors.queued_records_could_not_be_restored_you_can_still")),
-      );
-    }
-    return job;
-  }
-
-  private restoreOutbox(sid: string): Promise<void> {
-    if (!this.localDrafts) return Promise.resolve();
-    const old = this.outboxLoads.get(sid);
-    if (old) return old;
-    const job = this.localDrafts
-      .readOutbox(sid)
-      .then((saved) => {
-        if (this.closed || this.forgottenSessions.has(sid)) return;
-        const current = this.outbox(sid);
-        const ids = new Set(current.map((o) => o.sendId));
-        this.outboxes.set(sid, [...saved.filter((o) => !ids.has(o.sendId)), ...current]);
-        const evs = this.events(sid);
-        if (evs.length) this.reconcileOutbox(sid, evs);
-        this.syncOutboxPin(sid);
-        this.touch();
-      })
-      .catch((error) => {
-        this.outboxLoads.delete(sid);
-        throw error;
-      });
-    this.outboxLoads.set(sid, job);
     return job;
   }
 
@@ -2480,54 +2277,16 @@ export class Remote implements CoreExecutor {
     this.draftLoaded.delete(sid);
     this.draftLoads.delete(sid);
     this.draftRevisions.delete(sid);
-    for (const o of this.outbox(sid)) this.forwardingOutbox.delete(o.sendId);
-    this.outboxes.delete(sid);
-    this.outboxLoads.delete(sid);
-    this.outboxSaves.delete(sid);
-    this.outboxWriteFailed.delete(sid);
     this.localNotices.delete(sid);
     this.trays.delete(sid);
     this.scroll.delete(sid);
     void this.localDrafts?.removeSession(sid).catch(() => undefined);
   }
 
-  private keepOutbox(sid: string): Promise<void> {
-    if (!this.localDrafts || this.closed || this.forgottenSessions.has(sid)) return Promise.resolve();
-    const saved = this.restoreOutbox(sid).then(() => {
-      if (!this.forgottenSessions.has(sid)) return this.localDrafts!.saveOutbox(sid, this.outbox(sid));
-    });
-    this.outboxSaves.set(sid, saved);
-    void saved.then(
-      () => {
-        if (this.outboxSaves.get(sid) === saved) {
-          this.outboxWriteFailed.delete(sid);
-          if (this.localNotices.get(sid)?.kind === "outbox_save") this.clearLocalNotice(sid);
-        }
-      },
-      () => {
-        if (this.outboxSaves.get(sid) === saved) this.outboxWriteFailed.add(sid);
-        const forwarding = this.outbox(sid).some((o) => this.forwardingOutbox.has(o.sendId));
-        this.localNotice(
-          sid,
-          forwarding
-            ? l10n.t("errors.queued_records_could_not_be_saved_locally_messages_will")
-            : l10n.t("errors.the_draft_could_not_be_saved_locally_keep_the"),
-          "outbox_save",
-        );
-      },
-    );
-    return saved;
-  }
-
-  private syncOutboxPin(sid: string) {
-    const pinned = this.outbox(sid).some((o) => o.status !== "sent");
-    this.hostBridge?.pushSessionPin(sid, pinned);
-  }
-
-  private localNotice(key: string, message: string, kind: "draft" | "outbox_save" = "draft") {
+  private localNotice(key: string, message: string) {
     const tray = this.trays.get(key);
     if (!this.closed && tray) {
-      this.localNotices.set(key, { message, kind });
+      this.localNotices.set(key, message);
       tray.note = message;
       this.touch();
     }
@@ -2537,219 +2296,8 @@ export class Remote implements CoreExecutor {
   clearNotice(sid: string) {
     if (this.notices.delete(sid)) this.changed();
   }
-  approvalReason(approvalId: string): string { return this.approvalReasons.get(approvalId) ?? ""; }
-  setApprovalReason(approvalId: string, text: string) {
-    text ? this.approvalReasons.set(approvalId, text) : this.approvalReasons.delete(approvalId);
-  }
-  clearApprovalReason(approvalId: string) { this.approvalReasons.delete(approvalId); }
-  answerState(id: string): AnswerState { return this.answers.get(id) ?? noAnswer; }
-  patchAnswer(id: string, p: Partial<AnswerState>) {
-    this.answers.set(id, { ...this.answerState(id), ...p });
-    this.changed();
-  }
   tray(key: string): Tray | undefined { return this.trays.get(key); }
   setTray(key: string, tray: Tray) { this.trays.set(key, tray); }
-  outbox(sid: string): Outgoing[] { return this.outboxes.get(sid) ?? []; }
-
-  private patchOut(sid: string, sendId: string, p: Partial<Outgoing>) {
-    const list = this.outbox(sid);
-    const i = list.findIndex((o) => o.sendId === sendId);
-    if (i < 0) return;
-    const next = list.slice();
-    next[i] = { ...next[i], ...p };
-    this.outboxes.set(sid, next);
-    this.syncOutboxPin(sid);
-    this.changed();
-  }
-
-  private reconcileOutbox(sid: string, events: Event[]) {
-    const box = this.outbox(sid);
-    if (!box.length) return;
-    const seen = new Set<string>();
-    for (const e of events) {
-      if (e.kind.case === "userMessage" && e.kind.value.requestId) seen.add(e.kind.value.requestId);
-    }
-    const left = box.filter((o) => !seen.has(o.sendId));
-    if (left.length !== box.length) {
-      if (left.length) this.outboxes.set(sid, left);
-      else this.outboxes.delete(sid);
-      this.syncOutboxPin(sid);
-      void this.keepOutbox(sid).catch(() => undefined);
-    }
-  }
-
-  canRestoreAttachments(sid: string, requestId: string): boolean {
-    const out = this.outbox(sid).find((o) => o.sendId === requestId);
-    return (
-      !!out &&
-      !!(out.text || out.imageIds?.length || out.files?.length) &&
-      (!out.imageIds?.length || (out.attachments?.files.length === out.imageIds.length && out.attachments.files.every((f) => f.size > 0))) &&
-      (!out.files?.length || out.files.every((f) => !!f.file))
-    );
-  }
-
-  send(
-    sid: string,
-    text: string,
-    imageIds: string[] = [],
-    thumbs: Blob[] = [],
-    mode = SendMode.STEER,
-    attachments?: Outgoing["attachments"],
-    files?: Outgoing["files"],
-    imageSizes?: Outgoing["imageSizes"],
-  ): string {
-    const o: Outgoing = {
-      sendId: newRequestID(),
-      ...newSlot(),
-      text,
-      imageIds,
-      thumbs,
-      imageSizes,
-      mode,
-      attachments,
-      files,
-      status: "sending",
-    };
-    this.outboxes.set(sid, [...this.outbox(sid), o]);
-    this.syncOutboxPin(sid);
-    this.changed();
-    void this.keepOutbox(sid).catch(() => undefined);
-    void this.deliver(sid, o);
-    return o.sendId;
-  }
-
-  resend(
-    sid: string,
-    failedId: string,
-    text: string,
-    imageIds: string[] = [],
-    thumbs: Blob[] = [],
-    files?: Outgoing["files"],
-  ) {
-    if (this.replaced.has(failedId)) return;
-    const previous = this.outbox(sid).find((o) => o.sendId === failedId);
-    this.replaced.set(
-      failedId,
-      this.send(
-        sid,
-        text,
-        imageIds,
-        thumbs.length ? thumbs : previous?.thumbs,
-        SendMode.STEER,
-        previous?.attachments,
-        files,
-        previous?.imageSizes,
-      ),
-    );
-  }
-
-  recorded(sid: string, requestIds: string[]) {
-    if (!requestIds.length) return;
-    const ids = new Set(requestIds);
-    const box = this.outbox(sid);
-    if (!box.some((o) => ids.has(o.sendId))) return;
-    const left = box.filter((o) => !ids.has(o.sendId));
-    if (left.length) this.outboxes.set(sid, left);
-    else this.outboxes.delete(sid);
-    this.syncOutboxPin(sid);
-    this.changed();
-    void this.keepOutbox(sid).catch(() => undefined);
-  }
-
-  clearSent(sid: string, ids: Set<string>) {
-    const box = this.outbox(sid);
-    const left = box.filter((o) => !ids.has(o.sendId));
-    if (left.length) this.outboxes.set(sid, left);
-    else this.outboxes.delete(sid);
-    this.syncOutboxPin(sid);
-    this.changed();
-    void this.keepOutbox(sid).catch(() => undefined);
-  }
-
-  retrySend(sid: string, sendId: string) {
-    const o = this.outbox(sid).find((x) => x.sendId === sendId);
-    if (o && o.status === "failed") {
-      void this.keepOutbox(sid).catch(() => undefined);
-      void this.deliver(sid, o);
-    }
-  }
-
-  dismissSend(sid: string, sendId: string, restored = false) {
-    const drop = () => {
-      this.outboxes.set(sid, this.outbox(sid).filter((o) => o.sendId !== sendId));
-      this.syncOutboxPin(sid);
-      void this.keepOutbox(sid).catch(() => undefined);
-      this.changed();
-    };
-    if (!restored || !this.localDrafts) { drop(); return; }
-    const saved = this.persistDraft(sid);
-    if (saved) void saved.then(drop).catch(() => this.localNotice(sid, l10n.t("errors.the_draft_could_not_be_saved_the_original_message")));
-  }
-
-  private async deliver(sid: string, o: Outgoing) {
-    this.patchOut(sid, o.sendId, { status: "sending", error: undefined, outcomeNotice: false, missingImages: false });
-    const sending = restoreSlot({ requestId: o.requestId, deadline: o.deadline, prepared: o.prepared }, o.unknown ?? false);
-    try {
-      sending.beforeDispatch = async (slot) => {
-        this.patchOut(sid, o.sendId, { requestId: slot.requestId, deadline: slot.deadline, prepared: slot.prepared });
-        await this.keepOutbox(sid);
-        this.forwardingOutbox.add(o.sendId);
-      };
-      const slot = await this.sendMessage(sid, o.text, o.sendId, sending, o.unknown, o.imageIds, o.mode, o.files?.map((f) => f.fileId));
-      this.patchOut(sid, o.sendId, { status: "sent", requestId: slot.requestId, deadline: slot.deadline, prepared: slot.prepared });
-    } catch (e) {
-      const final = e instanceof CommandError && e.fromDaemon && e.outcome !== "not_sent" && !uncertain(e);
-      const still = stillUnknown(e, o.unknown ?? false) || (!!sending.evidence.unresolved && !final);
-      const missingImages =
-        !still &&
-        e instanceof CommandError &&
-        e.code === "not_found" &&
-        (!!o.imageIds?.length || !!o.files?.length) &&
-        e.message.includes("is not on this machine; upload it again");
-      this.patchOut(sid, o.sendId, {
-        status: "failed",
-        error: missingImages ? (o.files?.length ? l10n.t("attachment.ios_missing") : l10n.t("attachment.ios_image_missing")) : errorText(e),
-        missingImages,
-        unknown: still,
-        outcomeNotice: e instanceof CommandError && e.needsResultRefresh,
-        ...(still ? {} : { ...newSlot(), prepared: undefined }),
-      });
-    } finally {
-      this.forwardingOutbox.delete(o.sendId);
-    }
-  }
-
-  async sendMessage(
-    sid: string,
-    text: string,
-    sendId: string,
-    slot: RequestSlot,
-    wasUnknown = false,
-    imageIds: string[] = [],
-    mode = SendMode.STEER,
-    fileIds: string[] = [],
-  ): Promise<RequestSlot> {
-    if (wasUnknown) slot.evidence.includePrior(true);
-    const cmd: CommandKind = {
-      case: "send",
-      value: { sessionId: sid, text, requestId: sendId, imageIds, fileIds, mode },
-    };
-    try {
-      await this.command(sid, cmd, slot);
-      return slot;
-    } catch (e) {
-      if (wasUnknown && e instanceof CommandError && e.outcome === "not_sent") {
-        throw new CommandError(e.code, e.message, e.fromDaemon, e.readOnly, "unknown", e.conflictKind, e.resultAvailable);
-      }
-      if (wasUnknown || (e instanceof CommandError && e.outcome !== "not_sent") || uncertain(e)) throw e;
-      if (e instanceof CommandError && e.code === "expired") {
-        const fresh = newSlot();
-        await this.command(sid, cmd, fresh);
-        return fresh;
-      }
-      throw e;
-    }
-  }
 
   async openTerminal(
     sid: string,

@@ -4,11 +4,8 @@ import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, expect, it, vi } from "vitest";
 import { create } from "@bufbuild/protobuf";
-import { Agent, EventSchema, InputStatus, OriginKind, SendMode, SentFileSchema } from "../gen/remoteagent/v1/event_pb";
-import { derive } from "../model";
-import { LiveSnapshotSchema } from "../gen/remoteagent/v1/remote_pb";
-import { DemoRemote } from "../dev/demo";
-import { Remote } from "../remote";
+import { InputStatus, SendMode, SentFileSchema } from "../gen/remoteagent/v1/event_pb";
+import { SessionPendingInputViewSchema } from "../gen/remoteagent/core/v1/session_view_pb";
 import { PendingBubbles } from "./Queue";
 import { Tray } from "../attach";
 import { AttachButton, TrayView, useDropPaste } from "./Attach";
@@ -81,14 +78,6 @@ it("hides exact file lines and their separator only, preserving surrounding text
   const raw = "mention " + files[0].path + "\n" + files[0].path + " extra\n\nkeep";
   expect(withoutFileLines(raw, files)).toBe(raw);
 });
-it("preserves files-only shared queue metadata through later stage updates", () => {
-  const file = create(SentFileSchema, { fileId: "f", name: "a.csv", path: "/uploads/s/files/f/a.csv", sizeBytes: 9n });
-  const d = derive([
-    create(EventSchema, { seq: 1n, origin: { kind: OriginKind.CLIENT, deviceId: "other" }, kind: { case: "inputState", value: { requestId: "r", status: InputStatus.QUEUED, files: [file] } } }),
-    create(EventSchema, { seq: 2n, kind: { case: "inputState", value: { requestId: "r", status: InputStatus.QUEUED, stage: 4 } } }),
-  ], Agent.CODEX);
-  expect(d.accepted.get("r")?.files).toEqual([file]); expect(d.accepted.get("r")?.text).toBe("");
-});
 
 it("hides labeled file lines without hiding ordinary File: sentences", () => {
   const files = [{ path: "/uploads/s/files/id/x.png" }];
@@ -144,35 +133,29 @@ it("hides the exact quoted Claude reference and preserves surrounding text", () 
  expect(withoutFileLines(`File: @"${path}" (file) extra`,[{path}])).toContain("extra");
 });
 
-// No QUEUED event is available in recent history. The authoritative live
-// observation must supply all metadata for the shared held-input bubble.
-it.each([Agent.CODEX, Agent.CLAUDE].flatMap((agent) => [false, true].map((text) => ({ agent, text }))))("renders file chips from a held-only live snapshot: %j", ({ agent, text }) => {
-  const remote = DemoRemote.create(new URLSearchParams());
-  const session = remote.sessions.get("s-run")!;
-  session.info = { ...session.info!, agent };
+it.each([false, true])("renders file chips from a held pending input view (text=%s)", (text) => {
   const file = create(SentFileSchema, { fileId: "held-file", name: "held.csv", sizeBytes: 9n, path: "/uploads/s/files/held-file/held.csv" });
-  const held = create(EventSchema, { origin: { kind: OriginKind.CLIENT, deviceId: "other" }, kind: { case: "inputState", value: { requestId: "held", status: InputStatus.HELD_BY_CLI, text: text ? "inspect this" : "", imageIds: text ? ["image"] : [], files: [file], mode: SendMode.QUEUE } } });
-  (remote as any).liveSnapshots.set(session.id, create(LiveSnapshotSchema, { actions: [held, create(EventSchema, { kind: { case: "inputState", value: { requestId: "held", status: InputStatus.HELD_BY_CLI, stage: 4 } } })] }));
-  const d = Remote.prototype.currentDerived.call(remote, session.id, derive([], agent));
-  mount(<PendingBubbles remote={remote} session={session} d={d} />);
+  const item = create(SessionPendingInputViewSchema, {
+    requestId: "held",
+    text: text ? "inspect this" : "",
+    mode: SendMode.QUEUE,
+    status: InputStatus.HELD_BY_CLI,
+    imageCount: text ? 1 : 0,
+    fileCount: 1,
+  });
+  mount(
+    <PendingBubbles
+      sessionId="s-run"
+      pendingInputs={[item]}
+      localAttachments={new Map([["held", { files: [file] }]])}
+      onSubmitCommand={vi.fn()}
+    />,
+  );
   expect(host.querySelectorAll(".file-chip")).toHaveLength(1);
   expect(host.querySelector(".file-name")?.getAttribute("aria-label")).toBe("held.csv");
   expect(host.textContent).toContain("9 B");
   expect(host.querySelector(".pending-text")?.textContent).toBe(text ? "inspect this" : "");
   expect(host.textContent).not.toContain(message("queue.other_message"));
-  expect(d.accepted.get("held")).toMatchObject({ text: text ? "inspect this" : "", imageIds: text ? ["image"] : [], files: [file], mode: SendMode.QUEUE, origin: { deviceId: "other" } });
-});
-
-it("keeps original queued content when a held live snapshot carries truncated text", () => {
-  const remote = DemoRemote.create(new URLSearchParams());
-  const session = remote.sessions.get("s-run")!;
-  const file = create(SentFileSchema, { fileId: "f", name: "original.csv", sizeBytes: 9n });
-  const original = create(EventSchema, { origin: { kind: OriginKind.CLIENT, deviceId: "other" }, kind: { case: "inputState", value: { requestId: "r", status: InputStatus.QUEUED, text: "complete original message", files: [file], mode: SendMode.QUEUE } } });
-  const historical = derive([original]);
-  (remote as any).liveSnapshots.set(session.id, create(LiveSnapshotSchema, { actions: [create(EventSchema, { kind: { case: "inputState", value: { requestId: "r", status: InputStatus.HELD_BY_CLI, text: "complete… [内容已截断]", files: [file], mode: SendMode.STEER } } })] }));
-  const d = Remote.prototype.currentDerived.call(remote, session.id, historical);
-  expect(d.accepted.get("r")).toMatchObject({ text: "complete original message", files: [file], origin: { deviceId: "other" }, mode: SendMode.STEER });
-  expect(historical.accepted.get("r")?.mode).toBe(SendMode.QUEUE);
 });
 
 /** A file of the given size without holding its bytes. */

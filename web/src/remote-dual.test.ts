@@ -5,9 +5,24 @@ import { expect, test, vi } from "vitest";
 import { parseHeader, requestIdentity } from "./device-security";
 import { unpackSecurity } from "./device-security-client";
 import { EnvelopeSchema, type Envelope } from "./gen/remoteagent/v1/envelope_pb";
+import { DispatchCommandEffectSchema, OutcomeSource } from "./gen/remoteagent/core/v1/app_pb";
 import { NotForwardedSchema } from "./gen/remoteagent/v1/relay_pb";
-import { CommandResultSchema } from "./gen/remoteagent/v1/remote_pb";
+import { CommandResultSchema, CommandSchema } from "./gen/remoteagent/v1/remote_pb";
 import { SyntheticRemote } from "./test/remote-fixture";
+
+function sendAttemptEffect(machineId: string, requestId: string, text: string) {
+  return create(DispatchCommandEffectSchema, {
+    requestId,
+    attemptId: "att-" + requestId,
+    machineId,
+    sessionId: "s",
+    deadlineMs: BigInt(Date.now() + 60_000),
+    commandBytes: toBinary(
+      CommandSchema,
+      create(CommandSchema, { kind: { case: "send", value: { sessionId: "s", text, requestId } } }),
+    ),
+  });
+}
 
 function installDirectReadPath(
   r: SyntheticRemote,
@@ -107,8 +122,9 @@ test("Remote dual-sends interactive command with single seal, identical bytes, a
   });
 
   try {
-    r.send("s", "dual-direct-wins");
-    await vi.waitFor(() => expect(r.outbox("s")[0]?.status).toBe("sent"));
+    const out = await r.executeCommandAttempt(sendAttemptEffect(r.machine, "req-dual-000000001", "dual-direct-wins"));
+    expect(out.source).toBe(OutcomeSource.DAEMON);
+    expect(out.outerOutcome).toBe("executed");
     expect(sealSpy).toHaveBeenCalledTimes(1);
     expect(directBytes).toBeDefined();
     expect(relayBytes).toBeDefined();
@@ -139,8 +155,9 @@ test("Remote dual-send falls back to Relay EXECUTED cleanly when Direct drops po
   };
 
   try {
-    r.send("s", "relay-fallback-after-drop");
-    await vi.waitFor(() => expect(r.outbox("s")[0]?.status).toBe("sent"));
+    const out = await r.executeCommandAttempt(sendAttemptEffect(r.machine, "req-dual-000000002", "relay-fallback-after-drop"));
+    expect(out.source).toBe(OutcomeSource.DAEMON);
+    expect(out.outerOutcome).toBe("executed");
     expect(relayCalls).toBe(1);
   } finally {
     await r.dispose();
@@ -163,13 +180,9 @@ test("Remote dual-send never marks not_sent when Direct handed off and Relay ret
   };
 
   try {
-    const sendId = r.send("s", "handoff-then-not-forwarded");
-    await vi.waitFor(() => expect(r.outbox("s")[0]?.status).toBe("failed"));
-    expect(r.outbox("s")[0]).toMatchObject({
-      sendId,
-      unknown: true,
-      text: "handoff-then-not-forwarded",
-    });
+    const out = await r.executeCommandAttempt(sendAttemptEffect(r.machine, "req-dual-000000003", "handoff-then-not-forwarded"));
+    expect(out.notForwarded).toBe(false);
+    expect(out.source).toBe(OutcomeSource.TRANSPORT);
   } finally {
     await r.dispose();
   }
@@ -195,8 +208,9 @@ test("Remote dual-send ignores late Relay settlement after Direct already won", 
   };
 
   try {
-    r.send("s", "ignore-late-relay");
-    await vi.waitFor(() => expect(r.outbox("s")[0]?.status).toBe("sent"));
+    const out = await r.executeCommandAttempt(sendAttemptEffect(r.machine, "req-dual-000000004", "ignore-late-relay"));
+    expect(out.source).toBe(OutcomeSource.DAEMON);
+    expect(out.outerOutcome).toBe("executed");
     resolveLateRelay({
       result: await r.seal(
         { kind: 6, sessionId: "s", requestId: capturedReqId },
@@ -205,7 +219,7 @@ test("Remote dual-send ignores late Relay settlement after Direct already won", 
       ),
     });
     await new Promise(resolve => setTimeout(resolve, 20));
-    expect(r.outbox("s")[0]?.status).toBe("sent");
+    expect(out.outerOutcome).toBe("executed");
   } finally {
     await r.dispose();
   }
@@ -227,13 +241,9 @@ test("Remote dual-send preserves not_sent (unknown=false) when Direct fails BEFO
   };
 
   try {
-    const sendId = r.send("s", "pre-handoff-not-forwarded");
-    await vi.waitFor(() => expect(r.outbox("s")[0]?.status).toBe("failed"));
-    expect(r.outbox("s")[0]).toMatchObject({
-      sendId,
-      unknown: false,
-      text: "pre-handoff-not-forwarded",
-    });
+    const out = await r.executeCommandAttempt(sendAttemptEffect(r.machine, "req-dual-000000005", "pre-handoff-not-forwarded"));
+    expect(out.notForwarded).toBe(true);
+    expect(out.source).toBe(OutcomeSource.SERVER);
   } finally {
     await r.dispose();
   }

@@ -6,6 +6,7 @@ import * as i18n from "./i18n";
 
 import type { Event, ImageRef } from "./gen/remoteagent/v1/event_pb";
 import { ImageFormat, ImageSource } from "./gen/remoteagent/v1/event_pb";
+import type { SessionTimelineItem } from "./gen/remoteagent/core/v1/session_view_pb";
 
 export function mimeOf(f: ImageFormat): string {
   switch (f) {
@@ -97,6 +98,45 @@ export function sessionImages(events: Event[]): SessionImage[] {
         prompt: k.case === "imageGenerated" ? k.value.revisedPrompt : undefined,
       });
   }
+  return out;
+}
+
+export function timelineImages(items: readonly SessionTimelineItem[]): SessionImage[] {
+  const out: SessionImage[] = [];
+  const visit = (list: readonly SessionTimelineItem[]) => {
+    for (const item of list) {
+      const time = Number(item.timestampMs);
+      const seq = item.seq;
+      switch (item.kind.case) {
+        case "userMessage":
+          for (const ref of item.kind.value.images) {
+            out.push({ ref, seq, time, kind: ref.source === ImageSource.GENERATED ? "generated" : ref.source === ImageSource.TOOL ? "tool" : "user" });
+          }
+          break;
+        case "toolCall":
+          for (const ref of item.kind.value.images) {
+            out.push({ ref, seq, time, kind: "tool" });
+          }
+          break;
+        case "toolGroup":
+          for (const call of item.kind.value.calls) {
+            for (const ref of call.images) {
+              out.push({ ref, seq, time, kind: "tool" });
+            }
+          }
+          break;
+        case "generatedImages":
+          for (const ref of item.kind.value.images) {
+            out.push({ ref, seq, time, kind: "generated", prompt: item.kind.value.revisedPrompt });
+          }
+          break;
+        case "quietScheduledGroup":
+          if (item.kind.value.expanded) visit(item.kind.value.items);
+          break;
+      }
+    }
+  };
+  visit(items);
   return out;
 }
 

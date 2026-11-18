@@ -3,36 +3,52 @@ import * as i18n from "../i18n";
 // per call, with finished runs folded; the command running now is its own
 // gray block at the end of the chat, with how long it has run.
 import { useRef, type ReactNode } from "react";
+import { renderText } from "../core/text";
+import { SessionToolStatus, type SessionToolCallItem, type SessionToolGroupItem } from "../gen/remoteagent/core/v1/session_view_pb";
+import { ToolKind } from "../gen/remoteagent/v1/event_pb";
+import { Check, LoaderCircle, X } from "../icons";
 import { CopyButton } from "../markdown";
-import { useRowExpanded } from "./RowState";
-import type { ApprovalRequested, ToolCall } from "../gen/remoteagent/v1/event_pb";
-import { ToolKind, type ApprovalDecision } from "../gen/remoteagent/v1/event_pb";
-import { clock, decisionText, toolClock, toolsSummary, type Derived, type RunningTool } from "../model";
-import type { Remote } from "../remote";
 import { Exp, StateMark, useNow } from "../ui";
 import { ImageStrip } from "./Images";
-import { Check, LoaderCircle, X } from "../icons";
+import { useRowExpanded } from "./RowState";
 
-export type Short = { text: (title: string) => string; path: (path: string) => string };
-export function toolTitle(t: Pick<ToolCall, "kind" | "title">, short: Short): string {
-  return t.kind === ToolKind.FILE_CHANGE ? i18n.t("tools.edit_file", { path: short.path(t.title || i18n.t("attachment.file")) }) : short.text(t.title || (t.kind === ToolKind.COMMAND ? i18n.t("tools.command") : i18n.t("tools.tool")));
+function formatClock(ms: number): string {
+  const s = Math.max(0, Math.floor(ms / 1000));
+  const m = Math.floor(s / 60);
+  const h = Math.floor(m / 60);
+  return h > 0 ? `${h}:${String(m % 60).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}` : `${m}:${String(s % 60).padStart(2, "0")}`;
 }
+
 /** The fullest original text available; display-only path shortening never enters here. */
-export function commandOf(t: Pick<RunningTool, "input" | "title" | "kind">): string {
-  if (t.kind === ToolKind.FILE_CHANGE || t.input === t.title) return t.title;
-  if (t.input) {
+export function commandOf(t: { rawInput: string; title: string; toolKind: ToolKind }): string {
+  if (t.toolKind === ToolKind.FILE_CHANGE || t.rawInput === t.title) return t.title;
+  if (t.rawInput) {
     try {
-      const v = JSON.parse(t.input);
+      const v = JSON.parse(t.rawInput);
       // Only an object is a structured tool payload; a shell command can
       // itself be valid JSON (true, a quoted executable, etc.).
-      if (!v || typeof v !== "object" || Array.isArray(v)) return t.input;
+      if (!v || typeof v !== "object" || Array.isArray(v)) return t.rawInput;
       for (const key of ["command", "CommandLine", "cmd"]) {
         if (v && typeof v[key] === "string") return v[key];
       }
-    } catch { return t.input; }
+    } catch {
+      return t.rawInput;
+    }
     return t.title;
   }
   return t.title;
+}
+
+function runningPreview(t: SessionToolCallItem): string {
+  if (t.rawInput) {
+    try {
+      const v = JSON.parse(t.rawInput);
+      if (v && typeof v.command === "string") return v.command;
+    } catch {
+      return t.rawInput;
+    }
+  }
+  return t.title || (t.toolKind === ToolKind.COMMAND ? i18n.t("tools.command") : i18n.t("tools.tool"));
 }
 
 // Change geometry once so the virtual list measures only the final size.
@@ -41,51 +57,153 @@ function CommandRow({ name, title, text, className = "single", mark, meta }: { n
   const [open, setOpen] = useRowExpanded(`command/${name}`);
   // A pointer-down may clear the selection before click gets to read it.
   const hadSelection = useRef(false);
-  const toggle = () => { if (!window.getSelection()?.toString()) setOpen(!open); };
-  return <div className="tool-entry"><div className={`tool ${className} command-row${open ? " expanded" : ""}`} role="button" tabIndex={0} aria-expanded={open}
-    onPointerDown={() => { hadSelection.current = !!window.getSelection()?.toString(); }}
-    onClick={(e) => {
-      const selecting = hadSelection.current;
-      hadSelection.current = false;
-      if (!selecting && !(e.target as Element).closest("button")) toggle();
-    }}
-    onKeyDown={(e) => { if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); toggle(); } }}>
-    {mark}{open ? <div className="tool-command"><code>{text}</code><CopyButton text={text} /></div> : <code>{title}</code>}{meta}
-  </div></div>;
+  const toggle = () => {
+    if (!window.getSelection()?.toString()) setOpen(!open);
+  };
+  return (
+    <div className="tool-entry">
+      <div
+        className={`tool ${className} command-row${open ? " expanded" : ""}`}
+        role="button"
+        tabIndex={0}
+        aria-expanded={open}
+        onPointerDown={() => {
+          hadSelection.current = !!window.getSelection()?.toString();
+        }}
+        onClick={(e) => {
+          const selecting = hadSelection.current;
+          hadSelection.current = false;
+          if (!selecting && !(e.target as Element).closest("button")) toggle();
+        }}
+        onKeyDown={(e) => {
+          if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) {
+            e.preventDefault();
+            toggle();
+          }
+        }}
+      >
+        {mark}
+        {open ? (
+          <div className="tool-command">
+            <code>{text}</code>
+            <CopyButton text={text} />
+          </div>
+        ) : (
+          <code>{title}</code>
+        )}
+        {meta}
+      </div>
+    </div>
+  );
 }
-function runningPreview(t: RunningTool): string {
-  if (t.input) {
-    try { const v = JSON.parse(t.input); if (v && typeof v.command === "string") return v.command; } catch { return t.input; }
+
+export function ToolCallView({
+  item,
+  online = true,
+  lostAt,
+  awaitingApproval = false,
+}: {
+  item: SessionToolCallItem;
+  online?: boolean;
+  lostAt?: number;
+  awaitingApproval?: boolean;
+}) {
+  const since = Number(item.sinceMs);
+  const frozenAt = Number(item.frozenAtMs);
+  const isRunning = item.status === SessionToolStatus.RUNNING;
+  const now = useNow(1000, isRunning && online && !frozenAt && since > 0);
+  const decision = renderText(item.decisionLabel);
+
+  if (isRunning || (item.status === SessionToolStatus.UNCONFIRMED && since > 0)) {
+    const unsettled = item.status === SessionToolStatus.UNCONFIRMED;
+    const end = frozenAt > 0 ? frozenAt : online ? now : (lostAt ?? now);
+    const ran = since > 0 ? i18n.t("tools.elapsed", { duration: formatClock(Math.max(0, end - since)) }) : "";
+    const status = !online
+      ? i18n.t("tools.elapsed_sync", { elapsed: ran ? ran + " · " : "" })
+      : unsettled
+        ? i18n.t("tools.background")
+        : awaitingApproval
+          ? i18n.t("list_state.approval")
+          : ran;
+    if (unsettled) {
+      return (
+        <CommandRow
+          name={item.callId}
+          title={runningPreview(item)}
+          text={commandOf(item)}
+          mark={<span className="sp faint" role="img" aria-label={i18n.t("tools.background")}><LoaderCircle /></span>}
+          meta={<span className="muted">{status}</span>}
+        />
+      );
+    }
+    return (
+      <CommandRow
+        name={item.callId}
+        className="now"
+        title={runningPreview(item)}
+        text={commandOf(item)}
+        mark={<span className={online ? "sp" : "sp faint"} role="img" aria-label={online ? i18n.t("list_state.running") : i18n.t("tools.waiting_sync")}>{online ? <StateMark kind="run" /> : <LoaderCircle />}</span>}
+        meta={<span className="muted">{status}</span>}
+      />
+    );
   }
-  return t.title || (t.kind === ToolKind.COMMAND ? i18n.t("tools.command") : i18n.t("tools.tool"));
-}
-function awaitingApproval(t: RunningTool, approvals: Iterable<ApprovalRequested>): boolean {
-  for (const a of approvals) {
-    if (t.inputDigest ? a.inputDigest === t.inputDigest : !!a.command && (a.command === t.input || a.command === t.title)) return true;
+
+  if (item.status === SessionToolStatus.BACKGROUND || item.isBackground) {
+    const label = renderText(item.backgroundLabel) || i18n.t("tools.background");
+    return (
+      <>
+        <CommandRow
+          name={item.callId}
+          title={item.title}
+          text={commandOf(item)}
+          mark={<span className="sp faint" role="img" aria-label={i18n.t("tools.background")}><LoaderCircle /></span>}
+          meta={<span className="muted">{label}</span>}
+        />
+        <ImageStrip refs={item.images} className="under-tool" />
+      </>
+    );
   }
-  return false;
+
+  const ok = item.status !== SessionToolStatus.ERROR && item.status !== SessionToolStatus.DENIED && (!item.hasExitCode || item.exitCode === 0);
+  return (
+    <>
+      <CommandRow
+        name={item.callId}
+        title={item.title}
+        text={commandOf(item)}
+        mark={<span className={ok ? "ok" : "x"}>{ok ? <Check /> : <X />}</span>}
+        meta={
+          <>
+            {!ok && item.hasExitCode && item.exitCode !== 0 && <span className="muted">{i18n.t("tools.exit_code", { code: String(item.exitCode) })}</span>}
+            {decision && <span className="muted">{decision}</span>}
+          </>
+        }
+      />
+      <ImageStrip refs={item.images} className="under-tool" />
+    </>
+  );
 }
-export function ActiveTool({ tool, d, unsettled, remote }: { tool: RunningTool; d: Derived; unsettled?: boolean; aborted?: boolean; remote: Remote }) {
-  const online = remote.conn === "online";
-  const now = useNow(1000, online && !unsettled && tool.since > 0);
-  const c = toolClock(tool.since, now, online ? undefined : remote.lostAt ?? now);
-  // Says what the time is: how long it has been running.
-  const ran = c ? i18n.t("tools.elapsed", { duration: clock(c.ms) }) : "";
-  const status = !online ? i18n.t("tools.elapsed_sync", { elapsed: ran ? ran + " · " : "" }) : unsettled ? i18n.t("tools.background") : awaitingApproval(tool, d.approvals.values()) ? i18n.t("list_state.approval") : ran;
-  // Gone to the background, it is a tool line like the others.
-  if (unsettled) return <CommandRow name={tool.callId} title={runningPreview(tool)} text={commandOf(tool)} mark={<span className="sp faint" role="img" aria-label={i18n.t("tools.background")}><LoaderCircle /></span>} meta={<span className="muted">{status}</span>} />;
-  // Running: the ink ring; with the clock stopped while offline, the still loader.
-  return <CommandRow name={tool.callId} className="now" title={runningPreview(tool)} text={commandOf(tool)} mark={<span className={online ? "sp" : "sp faint"} role="img" aria-label={online ? i18n.t("list_state.running") : i18n.t("tools.waiting_sync")}>{online ? <StateMark kind="run" /> : <LoaderCircle />}</span>} meta={<span className="muted">{status}</span>} />;
-}
-export function ToolRow({ t, short, decision, by, resultText }: { t: ToolCall; short: Short; decision?: ApprovalDecision; by?: string; resultText?: string }) {
-  const ok = t.status !== "failed" && (t.exitCode === undefined || t.exitCode === 0);
-  return <><CommandRow name={t.callId} title={toolTitle(t, short)} text={commandOf(t)} mark={<span className={ok ? "ok" : "x"}>{ok ? <Check /> : <X />}</span>} meta={<>{!ok && t.exitCode !== undefined && <span className="muted">{i18n.t("tools.exit_code", { code: String(t.exitCode) })}</span>}{decision !== undefined && <span className="muted">{resultText || decisionText(decision)}{by && ` · ${by}`}</span>}</>} /><ImageStrip refs={t.images} className="under-tool" /></>;
-}
-export function ToolGroup({ calls, short }: { calls: ToolCall[]; short: Short }) {
+
+export function ToolGroupView({ group }: { group: SessionToolGroupItem }) {
   const [open, setOpen] = useRowExpanded("tools");
-  const images = calls.flatMap((c) => c.images);
-  return <><div><button className="tool single tgrp" onClick={() => setOpen(!open)} aria-expanded={open}><span className="ok"><Check /></span><span>{toolsSummary(calls)}</span><span className="muted"><Exp up={open} /></span></button>{open && <div className="grpbody">{calls.map((t, i) => <CommandRow key={t.callId || i} name={t.callId || String(i)} title={toolTitle(t, short)} text={commandOf(t)} />)}</div>}</div><ImageStrip refs={images} className="under-tool" /></>;
-}
-export function BackgroundTool({ call, short }: { call: ToolCall; short: Short; remote: Remote; onTerminal?: () => void }) {
-  return <CommandRow name={call.callId} title={toolTitle(call, short)} text={commandOf(call)} mark={<span className="sp faint" role="img" aria-label={i18n.t("tools.background")}><LoaderCircle /></span>} meta={<span className="muted">{i18n.t("tools.background")}</span>} />;
+  const images = group.calls.flatMap((c) => c.images);
+  return (
+    <>
+      <div>
+        <button className="tool single tgrp" onClick={() => setOpen(!open)} aria-expanded={open}>
+          <span className="ok"><Check /></span>
+          <span>{renderText(group.summary)}</span>
+          <span className="muted"><Exp up={open} /></span>
+        </button>
+        {open && (
+          <div className="grpbody">
+            {group.calls.map((c, i) => (
+              <CommandRow key={c.callId || i} name={c.callId || String(i)} title={c.title} text={commandOf(c)} />
+            ))}
+          </div>
+        )}
+      </div>
+      <ImageStrip refs={images} className="under-tool" />
+    </>
+  );
 }

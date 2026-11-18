@@ -33,7 +33,6 @@ import {
   Remote,
   uncertain,
   type CommandKind,
-  type RequestSlot,
 } from "./remote";
 
 it("reuses a request slot only when the outcome is unknown", () => {
@@ -98,33 +97,6 @@ it("reports a command unknown when a retry finds the machine gone", async () => 
     vi.useRealTimers();
   }
 }, 10_000);
-
-it("keeps a message of unknown outcome on its request when the machine is then offline", async () => {
-  const { DemoRemote } = await import("./dev/demo");
-  const r = trackDemo(DemoRemote.create(new URLSearchParams()));
-  const replies = [
-    new CommandError("unknown_outcome", "连接超时", false, false, "unknown"),
-    new CommandError("unavailable", "电脑不在线，指令没有发出"),
-  ];
-  const seen: string[] = [];
-  r.command = async (_s: string, _c: unknown, slot?: RequestSlot) => {
-    seen.push(slot!.requestId);
-    throw (
-      replies.shift() ??
-      new CommandError("unavailable", "电脑不在线，指令没有发出")
-    );
-  };
-  r.send("s-idle", "hi");
-  await vi.waitFor(() => expect(r.outbox("s-idle")[0].status).toBe("failed"));
-  const o = r.outbox("s-idle")[0];
-  r.retrySend("s-idle", o.sendId);
-  await vi.waitFor(() => expect(seen).toHaveLength(2));
-  await vi.waitFor(() => expect(r.outbox("s-idle")[0].status).toBe("failed"));
-  r.retrySend("s-idle", o.sendId);
-  await vi.waitFor(() => expect(seen).toHaveLength(3));
-  expect(new Set(seen).size).toBe(1);
-  expect(r.outbox("s-idle")[0].unknown).toBe(true);
-});
 
 it("signs every command it forwards with the device key, naming itself the sender", async () => {
   const r = await probe();
@@ -432,26 +404,6 @@ it("uploads an image in chunks and resumes from what the machine has after a los
   expect(progress.at(-1)).toBe(2_000_000);
 });
 
-it("lets go of a sent message's local image copies once the CLI records it", async () => {
-  const { DemoRemote } = await import("./dev/demo");
-  const r = trackDemo(DemoRemote.create(new URLSearchParams()));
-  r.start();
-  const blob = new Blob([new Uint8Array(10)]);
-  const id = r.send("s-idle", "看图", ["img-1"], [blob]);
-  const failedId = r.send("s-idle", "另一条", ["img-2"], [blob]);
-  expect(r.outbox("s-idle").find((o) => o.sendId === id)?.thumbs?.length).toBe(
-    1,
-  );
-  r.recorded("s-idle", [id]);
-  expect(
-    r.outbox("s-idle").find((o) => o.sendId === id)?.thumbs,
-  ).toBeUndefined();
-  // Not yet recorded: kept for putting it back into the input.
-  expect(
-    r.outbox("s-idle").find((o) => o.sendId === failedId)?.thumbs?.length,
-  ).toBe(1);
-});
-
 it("gives up on a stream that never opens, and retains backoff when the network returns", async () => {
   const sockets: {
     closed: boolean;
@@ -705,25 +657,6 @@ it("reports an unreadable prefs object and allows a fresh read retry", async () 
   await vi.waitFor(() => expect(r.prefs.status).toBe("ready"));
 });
 
-it("removes recorded text and image outbox entries even before the RPC settles", async () => {
-  const { DemoRemote } = await import("./dev/demo");
-  const r = trackDemo(DemoRemote.create(new URLSearchParams()));
-  let finish!: () => void;
-  r.command = () =>
-    new Promise((resolve) => {
-      finish = () => resolve({ kind: { case: undefined } } as any);
-    });
-  const id = r.send("s-idle", "text");
-  r.recorded("s-idle", [id]);
-  expect(r.outbox("s-idle")).toEqual([]);
-  finish();
-  await new Promise((resolve) => setTimeout(resolve, 0));
-  expect(r.outbox("s-idle")).toEqual([]);
-  expect(
-    (r as unknown as { outboxes: Map<string, unknown> }).outboxes.has("s-idle"),
-  ).toBe(false);
-});
-
 it.each([Code.Unavailable, Code.PermissionDenied, Code.FailedPrecondition])(
   "keeps an executed command unknown after an outer relay error %s",
   async (code) => {
@@ -844,9 +777,6 @@ it("bootstraps current owner state from a checkpoint without loading a history p
   expect(r.sessions.get("s")?.checkpoint?.running).toBe(true);
   expect(r.sessions.get("s")?.checkpoint?.session?.lastSeq).toBe(900n);
   expect(r.sessions.get("s")?.checkpointStatus).toBe("ready");
-  expect(
-    (r as unknown as { loaded(id: string): boolean }).loaded("s"),
-  ).toBe(false);
 });
 
 it("installs the lease forwarded by the Remote state-page adapter after a head change", async () => {
@@ -876,142 +806,6 @@ it("installs the lease forwarded by the Remote state-page adapter after a head c
     ),
   ).resolves.toBeDefined();
 });
-
-it("retries authorized actions with their original observation after completion", async () => {
-  const r = await probe();
-  const { LiveSnapshotSchema } = await import("./gen/remoteagent/v1/remote_pb");
-  const { EventSchema, ApprovalRequestedSchema, QuestionAskedSchema } =
-    await import("./gen/remoteagent/v1/event_pb");
-  const internal = r as unknown as {
-    liveSnapshots: Map<
-      string,
-      ReturnType<typeof create<typeof LiveSnapshotSchema>>
-    >;
-    refreshLiveSnapshot(sid: string): Promise<void>;
-    security: { sync(): Promise<unknown> };
-    api: object;
-  };
-  const sent: Envelope[] = [];
-  internal.api = {
-    forward: async (req: { command: Envelope }) => {
-      sent.push(req.command);
-      throw new ConnectError("unsigned refusal", Code.Unavailable);
-    },
-  };
-  internal.refreshLiveSnapshot = async () => {};
-  // A normal session row is enough; the live observation below comes from its daemon.
-
-  for (const kind of [
-    "resolveApproval",
-    "answerQuestion",
-    "answerPlan",
-  ] as const) {
-    internal.liveSnapshots.set(
-      "s",
-      create(LiveSnapshotSchema, {
-        actions: [
-          create(EventSchema, {
-            seq: 7n,
-            kind: {
-              case: "approvalRequested",
-              value: create(ApprovalRequestedSchema, { approvalId: "a" }),
-            },
-          }),
-          create(EventSchema, {
-            seq: 8n,
-            kind: {
-              case: "questionAsked",
-              value: create(QuestionAskedSchema, { questionId: "q" }),
-            },
-          }),
-        ],
-        planEventSeq: 9n,
-        planScreenHash: new Uint8Array(32).fill(3),
-      }),
-    );
-    const cmd =
-      kind === "resolveApproval"
-        ? {
-            case: kind,
-            value: { sessionId: "s", approvalId: "a", allow: true },
-          }
-        : kind === "answerQuestion"
-          ? {
-              case: kind,
-              value: { sessionId: "s", questionId: "q", answers: [] },
-            }
-          : { case: kind, value: { sessionId: "s", accept: true } };
-    const { CommandSchema } = await import("./gen/remoteagent/v1/remote_pb");
-    const slot = newSlot();
-    await expect(r.command("s", cmd, slot)).rejects.toMatchObject({
-      code: "unknown_outcome",
-    });
-    const first = await r.world.fixture.open(r.machine, sent.at(-1)!);
-    const decoded = fromBinary(CommandSchema, first.plaintext);
-    if (decoded.kind.case === "resolveApproval") {
-      expect(decoded.kind.value.observedEventSeq).toBe(7n);
-    } else if (decoded.kind.case === "answerQuestion") {
-      expect(decoded.kind.value.observedEventSeq).toBe(8n);
-    } else if (decoded.kind.case === "answerPlan") {
-      expect(decoded.kind.value.observedEventSeq).toBe(9n);
-    }
-    internal.liveSnapshots.set("s", create(LiveSnapshotSchema));
-    const joined = await r.addClient();
-    liveFixtures.push(joined);
-    await internal.security.sync();
-    // Resealing uses the current security state and the original command, not this empty observation.
-    await expect(r.command("s", cmd, slot)).rejects.toMatchObject({
-      code: "unknown_outcome",
-    });
-    const retry = await r.world.fixture.open(r.machine, sent.at(-1)!);
-    expect(retry.header.requestId).toBe(first.header.requestId);
-    expect(retry.header.deadlineMs).toBe(first.header.deadlineMs);
-    expect(retry.plaintext).toEqual(first.plaintext);
-    expect(sent.at(-1)!.securityHeader).not.toEqual(
-      sent.at(-2)!.securityHeader,
-    );
-    // An initial authorization still refuses a completed observation.
-    await expect(r.command("s", cmd, newSlot())).rejects.toThrow(
-      "当前请求已不可操作",
-    );
-  }
-
-  // Rejects an interactive answer when the refreshed event payload differs at the same seq.
-  internal.liveSnapshots.set(
-    "s",
-    create(LiveSnapshotSchema, {
-      actions: [
-        create(EventSchema, {
-          seq: 7n,
-          kind: {
-            case: "approvalRequested",
-            value: create(ApprovalRequestedSchema, { approvalId: "a", command: "ls" }),
-          },
-        }),
-      ],
-    }),
-  );
-  internal.refreshLiveSnapshot = async () => {
-    internal.liveSnapshots.set(
-      "s",
-      create(LiveSnapshotSchema, {
-        actions: [
-          create(EventSchema, {
-            seq: 7n,
-            kind: {
-              case: "approvalRequested",
-              value: create(ApprovalRequestedSchema, { approvalId: "a", command: "rm -rf /" }),
-            },
-          }),
-        ],
-      }),
-    );
-  };
-  await expect(
-    r.command("s", { case: "resolveApproval", value: { sessionId: "s", approvalId: "a", allow: true } }, newSlot()),
-  ).rejects.toThrow(message("errors.the_request_on_the_computer_changed_review_it_again"));
-});
-
 
 it("uploads files through shared RPCs with UNSPECIFIED format and separate IDs", async () => {
   const { CommandResultSchema } = await import("./gen/remoteagent/v1/remote_pb");
@@ -1069,39 +863,6 @@ it.each(["send", "createSession"] as const)("rejects file-bearing %s when refres
   expect(error.code).toBe("failed_precondition");
   expect(error.message).toContain(message("session.update_computer"));
   expect(forward).not.toHaveBeenCalled();
-});
-
-it.each([false, true])("blocks file resend/retry after downgrade and keeps unknown identity: %s", async (unknown) => {
-  const r = await probe();
-  const { MachineMetaSchema } = await import("./gen/remoteagent/v1/remote_pb");
-  const { PROTOCOL_VERSION } = await import("./protocol");
-  patchSyncState(r, {
-    conn: "online",
-    listed: true,
-    machines: new Map([[r.machine, { id: r.machine, online: true, lastSeenMs: 0n, metaRev: 0n, meta: create(MachineMetaSchema, { protocolVersion: PROTOCOL_VERSION, capabilities: { fileUpload: true } }) }]]),
-  });
-  const { NotForwardedSchema } = await import("./gen/remoteagent/v1/relay_pb");
-  const forward = vi.fn(async (req: {attemptId: string; relayEpoch: string}) => {
-    if (unknown) throw new ConnectError("no authenticated result", Code.InvalidArgument);
-    throw new ConnectError("offline", Code.Unavailable, undefined, [{desc: NotForwardedSchema, value: {attemptId: req.attemptId, relayEpoch: req.relayEpoch, reason: "machine_offline"}}]);
-  });
-  (r as unknown as { api: object }).api = { forward };
-  const file = { fileId: "file", name: "file.csv", sizeBytes: 4n, path: "/uploads/s/files/file/file.csv" };
-  const id = r.send("s", "text with file", [], [], undefined, undefined, [file]);
-  await vi.waitFor(() => expect(r.outbox("s")[0]?.status).toBe("failed"));
-  const original = { ...r.outbox("s")[0], unknown };
-  (r as any).outboxes.set("s", [original]);
-  r.machines.get(r.machine)!.meta!.capabilities!.fileUpload = false;
-  const attempts = forward.mock.calls.length;
-  r.retrySend("s", id);
-  await vi.waitFor(() => expect(r.outbox("s")[0]?.error).toContain(message("session.update_computer")));
-  expect(forward).toHaveBeenCalledTimes(attempts);
-  expect(r.outbox("s")[0]?.files).toEqual([file]);
-  expect(r.outbox("s")[0]?.unknown).toBe(unknown);
-  if (unknown) expect(r.outbox("s")[0]).toMatchObject({ requestId: original.requestId, deadline: original.deadline });
-  r.resend("s", "daemon-rejected", "text with file", [], [], [file]);
-  await vi.waitFor(() => expect(r.outbox("s").at(-1)?.error).toContain(message("session.update_computer")));
-  expect(forward).toHaveBeenCalledTimes(attempts);
 });
 
 it("checks the canonical file-bearing payload again on an authorized create retry", async () => {
@@ -1238,15 +999,6 @@ it.each(["complete", "missing", "final", "transient", "close"])(
   },
 );
 
-it("does not renew an interrupted send at its deadline", async () => {
-  const r = await probe();
-  const error = new CommandError("deadline_exceeded", "interrupted", true);
-  const command = vi.spyOn(r, "command").mockRejectedValue(error);
-  const slot = restoreSlot({requestId: "original-request", deadline: Date.now() - 1, prepared: undefined}, true);
-  await expect(r.sendMessage("s1", "hello", "stable-send", slot)).rejects.toBe(error);
-  expect(command).toHaveBeenCalledTimes(1);
-});
-
 it("retries an unsigned in-flight abort with the same request slot", async () => {
   const r = await probe();
   const ids: string[] = [];
@@ -1300,22 +1052,6 @@ it.each(["createSession", "forkSession"] as const)("expires a frozen %s through 
   expect(forward).toHaveBeenCalledTimes(3);
   a.abandon();
   expect(a.next(first.payload).slot.requestId).not.toBe(first.slot.requestId);
-});
-
-it("renews a locally expired unsent message slot but preserves an unknown send", async () => {
-  const r = await probe();
-  const { CommandResultSchema } = await import("./gen/remoteagent/v1/remote_pb");
-  const forward = vi.fn(async ({command}:{command:Envelope}) => {
-    const h=fromBinary(HeaderSchema,command.header);
-    return {result:await r.seal({kind:6,sessionId:h.sessionId,requestId:h.requestId},CommandResultSchema,create(CommandResultSchema))};
-  });
-  (r as unknown as { api: object }).api = { forward };
-  const old = newSlot(Date.now() - COMMAND_TTL_MS - COMMAND_EXPIRY_SKEW_MS);
-  const fresh = await r.sendMessage("s", "hello", "same-send-id", old);
-  expect(fresh.requestId).not.toBe(old.requestId);
-  expect(forward).toHaveBeenCalledTimes(1);
-  expect(await r.sendMessage("s", "hello", "same-send-id", old, true)).toBe(old);
-  expect(forward).toHaveBeenCalledTimes(2);
 });
 
 it.each([999, 1000, 1001])("bounds abort retry against remaining deadline %i ms", async remaining => {

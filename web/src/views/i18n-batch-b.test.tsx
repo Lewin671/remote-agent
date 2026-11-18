@@ -1,14 +1,14 @@
 // @vitest-environment happy-dom
+import { create, type MessageInitShape } from "@bufbuild/protobuf";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, expect, it, vi } from "vitest";
-import { create } from "@bufbuild/protobuf";
+import { getCoreHost } from "../core/host";
 import { localeStore, t, useLocale } from "../i18n";
 import * as i18n from "../i18n";
 import { ANDROID, DemoRemote } from "../dev/demo";
-import { Remote } from "../remote";
-import { ApprovalMode, EventSchema, OriginKind, ToolKind } from "../gen/remoteagent/v1/event_pb";
-import { derive, duration, modeOf, toolsSummary } from "../model";
+import { ApprovalMode, OriginKind, OriginSchema, type EventSchema } from "../gen/remoteagent/v1/event_pb";
+import { modeOf } from "../model";
 import { imageFailureLine, imageProblemKind } from "../image-problem";
 import { skeletonNote } from "../skeleton";
 import { SessionPage } from "./Session";
@@ -21,14 +21,17 @@ afterEach(() => {
   act(() => root?.unmount()); root = undefined; host?.remove(); remote?.dispose();
   localeStore.overrideForTesting(); localStorage.clear(); vi.restoreAllMocks(); vi.unstubAllGlobals();
 });
-function mount(sid: string) {
+async function mount(sid: string) {
   vi.stubGlobal("ResizeObserver", class { observe() {} unobserve() {} disconnect() {} });
   function Page() {
     useLocale(); useRemote(remote);
-    return <SessionPage remote={remote} session={remote.sessions.get(sid)!} wide onBack={() => {}} />;
+    return <SessionPage remote={remote} sessionId={sid} wide onBack={() => {}} />;
   }
   host = document.createElement("div"); document.body.append(host); root = createRoot(host);
-  act(() => root!.render(<Page />));
+  await act(async () => root!.render(<Page />));
+}
+function demoPush(sid: string, kind: MessageInitShape<typeof EventSchema>["kind"]) {
+  (remote as unknown as { push(sid: string, kind: MessageInitShape<typeof EventSchema>["kind"]): void }).push(sid, kind);
 }
 
 it.each(["zh-CN", "en"] as const)("keeps Full access red and sends the original approval in %s", async locale => {
@@ -37,27 +40,26 @@ it.each(["zh-CN", "en"] as const)("keeps Full access red and sends the original 
   const session = remote.sessions.get("s-appr")!;
   (remote as unknown as { demoSessions: Map<string, { info?: { mode: number } }>; syncDemoToCore(): void }).demoSessions.get("s-appr")!.info!.mode = ApprovalMode.FULL_ACCESS;
   (remote as unknown as { syncDemoToCore(): void }).syncDemoToCore();
-  const command = vi.spyOn(remote, "command").mockResolvedValue({} as never);
-  mount(session.id);
+  const submit = vi.spyOn(getCoreHost(remote), "sessionSubmitCommand");
+  await mount(session.id);
   expect(host.querySelector(".red")?.textContent).toBe(t("modes.full_access"));
   const allow = [...host.querySelectorAll<HTMLButtonElement>("button")].find(b => b.textContent === t("approval.allow"))!;
   expect(allow.disabled).toBe(false);
   await act(async () => allow.click());
-  expect(command).toHaveBeenCalledWith(session.id, expect.objectContaining({ case: "resolveApproval", value: expect.objectContaining({ approvalId: "a1", allow: true }) }), expect.objectContaining({ requestId: expect.any(String), deadline: expect.any(Number) }));
+  expect(submit).toHaveBeenCalledWith(expect.any(String), session.machineId, session.id, expect.objectContaining({
+    kind: expect.objectContaining({ case: "resolveApproval", value: expect.objectContaining({ approvalId: "a1", allow: true }) }),
+  }));
 });
 
-it("updates existing history and preserves the draft and structured changes on locale override", () => {
+it("updates existing history and preserves the draft and structured changes on locale override", async () => {
   remote = DemoRemote.create(new URLSearchParams(), async () => {}); remote.start();
-  const events = remote.events("s-idle");
-  events.push(create(EventSchema, { seq: 100n, kind: { case: "turnContext", value: { permissionMode: "default", model: "old-model" } } }));
-  events.push(create(EventSchema, { seq: 101n, kind: { case: "turnContext", value: { permissionMode: "auto", model: "new-model" } } }));
-  const d = derive(events);
+  demoPush("s-idle", { case: "turnContext", value: { permissionMode: "default", model: "old-model" } });
+  demoPush("s-idle", { case: "turnContext", value: { permissionMode: "auto", model: "new-model" } });
   (remote as unknown as { demoSessions: Map<string, { info?: { mode: number } }>; syncDemoToCore(): void }).demoSessions.get("s-idle")!.info!.mode = ApprovalMode.AUTO;
   (remote as unknown as { syncDemoToCore(): void }).syncDemoToCore();
   remote.drafts.set("s-idle", "User draft 原文");
-  mount("s-idle");
+  await mount("s-idle");
   const input = host.querySelector<HTMLTextAreaElement>("textarea")!;
-  const changes = d.terminalChanges.get(101n);
   expect(host.textContent).toContain(t("session.terminal_mode_change", { value: t("modes.auto") }));
   act(() => localeStore.overrideForTesting("en"));
   expect(host.querySelector("textarea")).toBe(input);
@@ -65,7 +67,6 @@ it("updates existing history and preserves the draft and structured changes on l
   expect(input.getAttribute("aria-label")).toBe("Message");
   expect(host.textContent).toContain("switched approval mode to Auto");
   expect(host.textContent).toContain("new-model");
-  expect(d.terminalChanges.get(101n)).toBe(changes);
   expect(modeOf(remote.sessions.get("s-idle")!)?.mode).toBe(ApprovalMode.AUTO);
 });
 
@@ -74,36 +75,42 @@ it.each(["zh-CN", "en"] as const)("uses origin IDs even if another device is nam
   remote = DemoRemote.create(new URLSearchParams(), async () => {}); remote.start();
   (remote as unknown as { metas: Map<string, { meta: { name: string } }> }).metas.get(ANDROID)!.meta.name = t("session.origin_self");
   await remote.loadDevices();
-  remote.events("s-idle").push(create(EventSchema, { seq: 100n, origin: { kind: OriginKind.CLIENT, deviceId: ANDROID }, kind: { case: "settingsChanged", value: { mode: ApprovalMode.FULL_ACCESS } } }));
-  mount("s-idle");
+  demoPush("s-idle", { case: "settingsChanged", value: { mode: ApprovalMode.FULL_ACCESS } });
+  const list = (remote as unknown as { evs: Map<string, { origin?: ReturnType<typeof create<typeof OriginSchema>> }[]> }).evs.get("s-idle")!;
+  list.at(-1)!.origin = create(OriginSchema, { kind: OriginKind.CLIENT, deviceId: ANDROID });
+  (remote as unknown as { syncDemoToCore(force?: boolean): void }).syncDemoToCore(true);
+  await mount("s-idle");
   expect(host.textContent).toContain(t("session.mode_changed_by", { origin: t("session.origin_self"), value: t("modes.full_access") }));
 });
 
-it.each(["zh-CN", "en"] as const)("never enables approval of a skeleton in %s", locale => {
+it.each(["zh-CN", "en"] as const)("never enables approval of a skeleton in %s", async locale => {
   localeStore.overrideForTesting(locale);
   remote = DemoRemote.create(new URLSearchParams(), async () => {}); remote.start();
-  const command = vi.spyOn(remote, "command");
-  const events = remote.events("s-appr");
-  const approval = events.find(e => e.kind.case === "approvalRequested")!;
-  if (approval.kind.case === "approvalRequested") approval.kind.value.command += skeletonNote;
-  // Invalidate the demo's presentation-only derived cache just as a new event would.
-  vi.spyOn(remote, "currentDerived").mockImplementation((sid, d) => Remote.prototype.currentDerived.call(remote, sid, d));
-  mount("s-appr");
+  const submit = vi.spyOn(getCoreHost(remote), "sessionSubmitCommand");
+  demoPush("s-idle", { case: "approvalRequested", value: { approvalId: "a-skel", description: "run cmd" + skeletonNote, command: "rm -rf" + skeletonNote } });
+  await mount("s-idle");
   expect(host.textContent).toContain(t("session.skeleton"));
   expect([...host.querySelectorAll("button")].some(b => b.textContent === t("approval.allow"))).toBe(false);
-  expect(command).not.toHaveBeenCalled();
+  expect(submit).not.toHaveBeenCalled();
 });
 
 it.each(["zh-CN", "en"] as const)("resumes the same paused queue item in %s", async locale => {
   localeStore.overrideForTesting(locale);
   remote = DemoRemote.create(new URLSearchParams("queue-all=1"), async () => {}); remote.start();
-  const command = vi.spyOn(remote, "command").mockResolvedValue({} as never);
-  mount("s-multi");
+  const submit = vi.spyOn(getCoreHost(remote), "sessionSubmitCommand");
+  await mount("s-multi");
+  const more = host.querySelector<HTMLButtonElement>(".more-row");
+  if (more) await act(async () => more.click());
   const paused = [...host.querySelectorAll<HTMLElement>(".pending-bubble")].find(el => el.textContent?.includes(t("queue.paused")))!;
   const send = [...paused.querySelectorAll<HTMLButtonElement>("button")].find(b => b.textContent === t("composer.send"))!;
   expect(send.disabled).toBe(false);
   await act(async () => send.click());
-  expect(command.mock.calls[0]?.slice(0, 2)).toEqual(["s-multi", { case: "resumeInput", value: { sessionId: "s-multi", requestId: "q-paused" } }]);
+  expect(submit).toHaveBeenCalledTimes(1);
+  expect(submit.mock.calls[0].slice(1, 3)).toEqual(["vps", "s-multi"]);
+  expect(submit.mock.calls[0][3].kind).toMatchObject({
+    case: "resumeInput",
+    value: { sessionId: "s-multi", requestId: "q-paused" },
+  });
 });
 
 it("aggregates image failures by stable category and localizes the matching single cause", () => {
@@ -116,13 +123,7 @@ it("aggregates image failures by stable category and localizes the matching sing
   expect(imageProblemKind("decode error")).not.toBe(imageProblemKind("offline"));
 });
 
-it.each([0, 1, 2, 1000])("formats tool counts and durations without changing Chinese (%i)", count => {
-  const tools = Array.from({ length: count }, () => ({ kind: ToolKind.COMMAND })) as Parameters<typeof toolsSummary>[0];
-  expect(toolsSummary(tools)).toBe(`运行了 ${count} 条命令`);
+it.each([0, 1, 2, 1000])("formats image count plurals in en (%i)", count => {
   localeStore.overrideForTesting("en");
-  expect(toolsSummary(tools)).toBe(`Ran ${count} ${count === 1 ? "command" : "commands"}`);
   expect(t("image.count", { count })).toBe(`${count} ${count === 1 ? "image" : "images"}`);
-  expect(duration(59_000)).toBe("59 sec");
-  expect(duration(60_000)).toBe("1 min 0 sec");
-  expect(duration(3_600_000)).toBe("1 hr 0 min");
 });

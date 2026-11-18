@@ -1,16 +1,69 @@
 import * as i18n from "../i18n";
-import { rich } from "../i18n/rich";
 import { t } from "../i18n";
 import { AgentMark } from "../agent-mark";
-import { Sheet } from "../ui";
-import { canAnimate, Swap, useExit, useFresh, useHeightFlip, useKnob, useSettle } from "../motion";
-import { agentInfo } from "../agents";
+import { useCoreHost, useSessionView, type Go, type SessionWindowOptions } from "../core/host";
+import { renderText } from "../core/text";
+import { newRequestID } from "../crypto";
+import {
+  SessionCommandStatus,
+  SessionDockKind,
+  SessionInputNoticeKind,
+  SessionNoteKind,
+  SessionNoteTone,
+  type SessionActionsView,
+  type SessionCommandState,
+  type SessionHeaderView,
+  type SessionRestoreComposerEffect,
+  type SessionTimelineItem,
+  type SessionViewModel,
+} from "../gen/remoteagent/core/v1/session_view_pb";
+import { SessionDisplayStatus, SessionTone } from "../gen/remoteagent/core/v1/home_view_pb";
+import { Agent, ApprovalMode, SendMode, SharedFileSchema, type ImageRef, type SharedFile } from "../gen/remoteagent/v1/event_pb";
+import {
+  CommandSchema,
+  type Command,
+} from "../gen/remoteagent/v1/remote_pb";
+import {
+  ArrowDown,
+  Check,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  Ellipsis,
+  Minus,
+  X,
+} from "../icons";
+import { splitPlaceholders, timelineImages } from "../imageview";
+import { Markdown } from "../markdown";
+import { canAnimate, useExit, useKnob } from "../motion";
+import { shortPath, shortenPath } from "../model";
+import { type Remote, type SessionView } from "../remote";
+import { taskRoute } from "../schedules";
+import { previewBlobForFile, saveBlobAsDownload } from "../shared-files";
+import { ModeSheet, RenameDialog, SessionSheet } from "../sheets";
+import { skeletonMessage } from "../skeleton";
+import { ActionSheet, Alert, Banner, ConnBar, Exp, NavBar, PathText, Sheet, StateMark, useRemote, type Mark } from "../ui";
+import { getView, setView, type View } from "../view";
+import { AttachButton, attachBlocked, maxImages, TrayView, useDropPaste, useTray } from "./Attach";
+import { Composer } from "./Composer";
+import { ApprovalPage, Dock, PlanPage, QuestionPage, type QuestionDraftState } from "./Dock";
 import { FileChips, withoutFileLines } from "./Files";
-import { ChevronDown, ChevronLeft } from "../icons";
-import { ScheduleText } from "./ScheduleText";
+import { HistoryOpening } from "./HistoryOpening";
+import { HistoryRows } from "./HistoryRows";
+import { GenCard, ImageStrip, ImageViewer, LocalThumbs, OpenImage } from "./Images";
+import { OutgoingBubbles, PendingBubbles, type LocalSendAttachments } from "./Queue";
+import { RememberDetails, RowState } from "./RowState";
 import { ScheduleCreate, ScheduleStrip } from "./pages";
-import { clockTime, foldScheduled, type ScheduledItem } from "../schedules";
-import { isSkeleton, skeletonMessage } from "../skeleton";
+import { ScheduleText } from "./ScheduleText";
+import { followsEnd, NEAR_END, type Scrolled } from "./scroll-follow";
+import {
+  SharedFileCards,
+  SharedFilePreviewOverlay,
+  SharedFileViewContext,
+  type SharedFilePreviewTarget,
+} from "./SharedFiles";
+import { ToolCallView, ToolGroupView } from "./Tools";
+import { create } from "@bufbuild/protobuf";
 import {
   lazy,
   Suspense,
@@ -23,139 +76,74 @@ import {
   type ReactNode,
   type RefObject,
 } from "react";
-import type { Event, ImageRef, SharedFile } from "../gen/remoteagent/v1/event_pb";
-import { sessionImages, splitPlaceholders } from "../imageview";
-import {
-  previewBlobForFile,
-  saveBlobAsDownload,
-} from "../shared-files";
-import {
-  SharedFileCards,
-  SharedFilePreviewOverlay,
-  SharedFileViewContext,
-  type SharedFilePreviewTarget,
-} from "./SharedFiles";
-import {
-  GenCard,
-  ImageStrip,
-  ImageViewer,
-  LocalThumbs,
-  OpenImage,
-} from "./Images";
-import {
-  AttachButton,
-  attachBlocked,
-  maxImages,
-  TrayView,
-  useDropPaste,
-  useTray,
-} from "./Attach";
-import {
-  ApprovalDecision,
-  ApprovalMode,
-  OriginKind,
-  InputStatus,
-  SessionStatus,
-  type Agent,
-} from "../gen/remoteagent/v1/event_pb";
-import { Markdown } from "../markdown";
-import { getView, setView, type View } from "../view";
-import {
-  agentName,
-  agentOf,
-  alwaysText,
-  ago,
-  decisionText,
-  dockItems,
-  duration,
-  eventTime,
-  exitReason,
-  forkBlocked,
-  dayTime,
-  hhmm,
-  inputFailure,
-  machineName,
-  modeName,
-  permissionModeName,
-  modeOf,
-  contextPercent,
-  CONTEXT_WARN,
-  phaseOf,
-  plain,
-  projectKey,
-  projectName,
-  queuedIds,
-  shortPath,
-  shortenPath,
-  shortenPaths,
-  shownStateOf,
-  timeline,
-  titleOf,
-  type Derived,
-  type Item,
-  type Outgoing,
-} from "../model";
-import { errorText, type Remote, type SessionView } from "../remote";
-import { ModeSheet, RenameDialog, SessionSheet } from "../sheets";
-import {
-  ActionSheet,
-  Alert,
-  Banner,
-  ConnBar,
-  StateMark,
-  Exp,
-  fromHere,
-  NavBar,
-  PathText,
-  useRemote,
-} from "../ui";
-import { useDerived } from "./actions";
-import { Attempt } from "../remote";
-import {
-  elsewhereLabel,
-  originLabel,
-  terminalLabel,
-  type OriginContext,
-} from "../devices";
-import { PlanChoice } from "../gen/remoteagent/v1/local_pb";
-import { Composer, promptIdOf } from "./Composer";
-import { ApprovalPage, Dock, PlanPage, QuestionPage } from "./Dock";
-import { PendingBubbles, queueLine } from "./Queue";
 
-// The terminal brings xterm, a third of the page's script: fetched when a
-// terminal is first shown, or ahead of that once the page has settled.
 const TerminalView = lazy(() =>
   import("./Terminal").then((m) => ({ default: m.TerminalView })),
 );
-import {
-  ActiveTool,
-  BackgroundTool,
-  ToolGroup,
-  ToolRow,
-  toolTitle,
-  type Short,
-} from "./Tools";
 
-import { RowState, RememberDetails } from "./RowState";
-import { HistoryOpening } from "./HistoryOpening";
-import { HistoryRows } from "./HistoryRows";
-import { followsEnd, NEAR_END, type Scrolled } from "./scroll-follow";
-import {
-  ArrowDown,
-  Check,
-  ChevronRight,
-  Ellipsis,
-  LoaderCircle,
-  Minus,
-  X,
-} from "../icons";
+const DEFAULT_WINDOW_LIMIT = 80;
+const CONTEXT_WARN = 70;
+const LOCAL_SCROLL = new WeakMap<object, Map<string, { top: number; stick: boolean }>>();
+const SEND_ATTACHMENTS = new WeakMap<Remote, Map<string, LocalSendAttachments>>();
+const LOCAL_DOCK_STATE = new WeakMap<object, { seen: Set<string>; closed: Set<string> }>();
+function getDockState(remote?: Remote) {
+  const key = remote ?? LOCAL_DOCK_STATE;
+  let state = LOCAL_DOCK_STATE.get(key);
+  if (!state) {
+    state = { seen: new Set(), closed: new Set() };
+    LOCAL_DOCK_STATE.set(key, state);
+  }
+  return state;
+}
 
 type Tab = View;
 
-/** Tracks an element's width, for choices that depend on the space the
- * main area has rather than the window. Through a callback ref: the element
- * is gone while a plan, question or approval page stands in its place, and
- * the one that comes back must be watched again. */
+function getSendAttachments(remote?: Remote): Map<string, LocalSendAttachments> | undefined {
+  if (!remote) return undefined;
+  let m = SEND_ATTACHMENTS.get(remote);
+  if (!m) {
+    m = new Map();
+    SEND_ATTACHMENTS.set(remote, m);
+  }
+  return m;
+}
+
+function sessionMark(header?: SessionHeaderView): Mark {
+  if (!header) return "off";
+  switch (header.status) {
+    case SessionDisplayStatus.STARTING:
+    case SessionDisplayStatus.RUNNING:
+      return "run";
+    case SessionDisplayStatus.APPROVAL:
+    case SessionDisplayStatus.QUESTION:
+    case SessionDisplayStatus.PLAN:
+    case SessionDisplayStatus.POPUP:
+      return "wait";
+    case SessionDisplayStatus.ENDED:
+    case SessionDisplayStatus.OFFLINE:
+    case SessionDisplayStatus.UNLINKED:
+      return "off";
+    case SessionDisplayStatus.IDLE:
+      return "idle";
+  }
+  switch (header.tone) {
+    case SessionTone.LIVE:
+      return "run";
+    case SessionTone.WARN:
+      return "wait";
+    case SessionTone.BAD:
+      return "off";
+    default:
+      return "idle";
+  }
+}
+
+function commandErrorText(cmd?: SessionCommandState): string {
+  if (!cmd) return "";
+  if (cmd.status !== SessionCommandStatus.FAILED && cmd.status !== SessionCommandStatus.UNKNOWN) return "";
+  return renderText(cmd.errorText) || renderText(cmd.statusText);
+}
+
 function useWidth<T extends HTMLElement>(): [(el: T | null) => void, number] {
   const [w, setW] = useState(0);
   const ro = useRef<ResizeObserver>(undefined);
@@ -170,8 +158,6 @@ function useWidth<T extends HTMLElement>(): [(el: T | null) => void, number] {
   return [ref, w];
 }
 
-/** Tracks an element's height through a callback ref, for an element that
- * comes and goes (the chat column when switching to the terminal). */
 function useHeight(): [(el: HTMLElement | null) => void, number] {
   const [h, setH] = useState(0);
   const ro = useRef<ResizeObserver>(undefined);
@@ -186,8 +172,21 @@ function useHeight(): [(el: HTMLElement | null) => void, number] {
   return [ref, h];
 }
 
-/** The chat / terminal switch: a tablist whose knob slides to the picked view. */
-function ViewSwitch({ className, tabs, tab, inactive, popup, onPick }: { className: string; tabs: [Tab, string][]; tab: Tab; inactive: boolean; popup: boolean; onPick: (t: Tab) => void }) {
+function ViewSwitch({
+  className,
+  tabs,
+  tab,
+  inactive,
+  popup,
+  onPick,
+}: {
+  className: string;
+  tabs: [Tab, string][];
+  tab: Tab;
+  inactive: boolean;
+  popup: boolean;
+  onPick: (t: Tab) => void;
+}) {
   const ref = useRef<HTMLDivElement>(null);
   useKnob(ref, tab);
   return (
@@ -210,142 +209,195 @@ function ViewSwitch({ className, tabs, tab, inactive, popup, onPick }: { classNa
   );
 }
 
-export function SessionPage({
-  remote,
-  session,
-  onBack,
-  wide,
-  pending = false,
-}: {
-  remote: Remote;
-  session: SessionView;
-  pending?: boolean;
-  onBack: () => void;
+interface TimelineRowEntry {
+  key: string;
+  item: SessionTimelineItem;
+}
+
+function flattenTimelineItems(items: readonly SessionTimelineItem[]): TimelineRowEntry[] {
+  const out: TimelineRowEntry[] = [];
+  for (const item of items) {
+    if (item.kind.case === "quietScheduledGroup" && item.kind.value.expanded) {
+      for (const child of item.kind.value.items) {
+        out.push({ key: child.id || `${child.seq}`, item: child });
+      }
+      continue;
+    }
+    out.push({ key: item.id || `${item.seq}`, item });
+  }
+  return out;
+}
+
+export interface SessionScreenViewProps {
+  vm: SessionViewModel;
   wide: boolean;
-}) {
-  useRemote(remote);
-  useEffect(() => {
-    remote.setScheduleSession(session.id);
-    return () => remote.setScheduleSession();
-  }, [remote, session.id]);
-  const sid = session.id;
-  const events = remote.events(sid);
-  const d = useDerived(remote, sid);
-  const machine = remote.machines.get(session.machineId);
-  // A computer's presence is what this connection has heard of it; until the
-  // lists are in, the copy kept in this browser (which says offline) is not it,
-  // and the input must not be replaced by 电脑不在线 for the moment it takes.
-  // Nor is a word for the connection due then: the last state heard shows,
-  // rather than 未连接 and 电脑离线 and then the state.
-  const st = shownStateOf(session, remote.presence.get(session.machineId), remote.peer(session.machineId).unlinked && !remote.awaiting);
-  const agent = agentOf(session);
-  const title = pending ? t("session.title") : titleOf(session);
-  const project = projectName(projectKey(session));
-  const mname = machineName(machine);
-  const ended = st.kind === "ended";
-  const inactive = ended || st.kind === "offline";
+  onBack: () => void;
+  remote?: Remote;
+  scheduleSession?: SessionView;
+  scheduleTaskCount?: number;
+  draft: string;
+  onDraft: (v: string) => void;
+  tray?: ReturnType<typeof useTray>;
+  trayView?: ReactNode;
+  attach?: ReactNode;
+  dropping?: boolean;
+  cardProps?: React.HTMLAttributes<HTMLDivElement>;
+  composerRef?: RefObject<HTMLTextAreaElement | null>;
+  composerKey?: number;
+  approvalReason?: string;
+  onApprovalReasonChange?: (approvalId: string, v: string) => void;
+  localAttachments?: Map<string, LocalSendAttachments>;
+  toast?: string;
+  onClearToast?: () => void;
+  sentCount?: number;
+  defaultTab?: Tab;
+  defaultPage?: "" | "plan" | "question" | { approval: string };
+  defaultMenu?: boolean;
+  defaultSendMenu?: boolean;
+  defaultDenying?: boolean;
+  defaultExpandedQueueAll?: boolean;
+  onSend: (text: string, mode: SendMode) => void;
+  onSubmitCommand: (slotKey: string, cmd: Command) => void;
+  onAbandonCommand: (slotKey: string) => void;
+  onDismissOutgoing: (requestId: string) => void;
+  onRestoreOutgoing: (requestId: string) => void;
+  onRestoreText?: (text: string, requestId?: string) => void;
+  onLoadEarlier: () => void;
+  onRetryEvents?: () => void;
+  onRefreshModels?: () => void;
+  onExpandGroup: (groupId: string) => void;
+  onScheduleRevealed?: () => void;
+}
+
+export function SessionScreenView({
+  vm,
+  wide,
+  onBack,
+  remote,
+  scheduleSession,
+  scheduleTaskCount = 0,
+  draft,
+  onDraft,
+  tray,
+  trayView,
+  attach,
+  dropping = false,
+  cardProps,
+  composerRef: externalComposerRef,
+  composerKey = 0,
+  approvalReason,
+  onApprovalReasonChange,
+  localAttachments,
+  toast = "",
+  onClearToast,
+  sentCount = 0,
+  defaultTab,
+  defaultPage = "",
+  defaultMenu = false,
+  defaultSendMenu = false,
+  defaultDenying = false,
+  defaultExpandedQueueAll = false,
+  onSend,
+  onSubmitCommand,
+  onAbandonCommand,
+  onDismissOutgoing,
+  onRestoreOutgoing,
+  onRestoreText,
+  onLoadEarlier,
+  onRetryEvents,
+  onRefreshModels,
+  onExpandGroup,
+  onScheduleRevealed,
+}: SessionScreenViewProps) {
+  const sid = vm.sessionId;
+  const header = vm.header;
+  const actions = vm.actions;
+  const dock = vm.dock;
+  const composer = vm.composer;
+  const timeline = vm.timeline;
 
   const [rootRef, width] = useWidth<HTMLDivElement>();
   const [colRef, colHeight] = useHeight();
-  // The open dock may take what the input and about 120 px of chat leave.
   const room = colHeight > 0 ? colHeight - 230 : Infinity;
   const canSplit = wide && width >= 840;
-  // A new session opens on its terminal once; otherwise the view is the one
-  // last picked on this device. An unresolved link starts in chat so that
-  // its input stays mounted when metadata arrives, without changing the pick.
-  // A view that cannot show falls back to chat without changing the pick.
-  const [tabPick, setTab] = useState<Tab>(() =>
-    remote.termFirst.delete(session.id) ? (wide ? "split" : "term") : pending ? "chat" : getView(),
-  );
+
+  const hasContent =
+    (vm.timeline?.items.length ?? 0) > 0 ||
+    (vm.composer?.pendingInputs.length ?? 0) > 0 ||
+    (vm.composer?.outgoing.length ?? 0) > 0;
+  const pending = (!header || (!header.found && !header.missing)) && !hasContent;
+  const exited = !!header?.exited;
+  const inactive = exited || (!!header?.found && !header.computerOnline) || !!header?.computerUnlinked;
+  const [questionDraft, setQuestionDraft] = useState<QuestionDraftState | undefined>(undefined);
+  const seenApprovals = useRef(new Set<string>());
+  const resolvedByUs = useRef(new Set<string>());
+  const currentApprovalId = dock?.hasItem && dock.kind === SessionDockKind.APPROVAL && dock.detail.case === "approval" ? dock.detail.value.approvalId : "";
+  if (currentApprovalId) {
+    seenApprovals.current.add(currentApprovalId);
+    if (dock?.command?.busy) resolvedByUs.current.add(currentApprovalId);
+  }
+  const retainedReasons: Array<{ id: string; reason: string }> = [];
+  if (remote && timeline?.loaded) {
+    for (const [id, reason] of remote.approvalReasons) {
+      if (reason && id !== currentApprovalId && seenApprovals.current.has(id) && !resolvedByUs.current.has(id)) {
+        retainedReasons.push({ id, reason });
+      }
+    }
+  }
+
+  const [tabPick, setTab] = useState<Tab>(() => {
+    if (defaultTab) return defaultTab;
+    if (remote?.termFirst.delete(sid)) return wide ? "split" : "term";
+    return !header?.found ? "chat" : getView();
+  });
   const pickTab = (t: Tab) => {
     setTab(t);
-    setView(t);
+    if (remote) setView(t);
   };
   let tab: Tab = tabPick === "split" && !canSplit ? "chat" : tabPick;
-  if ((inactive || pending) && tab !== "chat") tab = "chat";
+  if ((exited || pending) && tab !== "chat") tab = "chat";
+
   const [sheet, setSheet] = useState<"" | "mode" | "model">("");
-  const [menu, setMenu] = useState(false);
+  const [menu, setMenu] = useState(defaultMenu);
   const [scheduling, setScheduling] = useState(false);
   const [confirmEnd, setConfirmEnd] = useState(false);
   const [renaming, setRenaming] = useState(false);
-  const [forking, setForking] = useState(false);
-  const [forkError, setForkError] = useState("");
-  // A fork whose outcome is unknown is sent again as the same request,
-  // also after the menu was closed and opened again, so the computer
-  // answers with the session it already made instead of forking a second
-  // time. The page is one session's (it is keyed by the session).
-  const forkTry = useRef(new Attempt<null>()).current;
-  const [forkUnknown, setForkUnknown] = useState<"" | "unknown" | "expired">(
-    "",
+  const [page, setPage] = useState<"" | "plan" | "question" | { approval: string }>(defaultPage);
+  useEffect(() => {
+    setMenu(false);
+    setPage(defaultPage);
+  }, [sid, defaultPage]);
+  const forkCmd = actions?.fork;
+  const forkErr = commandErrorText(forkCmd);
+  const wasForkBusy = useRef(false);
+  useEffect(() => {
+    if (forkCmd?.busy) {
+      wasForkBusy.current = true;
+      return;
+    }
+    if (wasForkBusy.current) {
+      wasForkBusy.current = false;
+      if (!forkErr && forkCmd?.status !== SessionCommandStatus.UNKNOWN && !forkCmd?.expired) {
+        setMenu(false);
+      }
+    }
+  }, [forkCmd?.busy, forkCmd?.status, forkCmd?.expired, forkErr]);
+  const internalComposerRef = useRef<HTMLTextAreaElement>(null);
+  const composerElRef = externalComposerRef ?? internalComposerRef;
+  const { seen: dockSeen, closed: dockClosed } = getDockState(remote);
+
+  const [viewing, setViewing] = useState<number | undefined>(undefined);
+  const [viewingShared, setViewingShared] = useState<SharedFilePreviewTarget | undefined>(undefined);
+  const items = timeline?.items ?? [];
+  const pictures = useMemo(() => timelineImages(items), [items]);
+  const openImage = useCallback(
+    (ref: ImageRef) => {
+      const i = pictures.findIndex((p) => p.ref === ref);
+      if (i >= 0) setViewing(i);
+    },
+    [pictures],
   );
-  const menuOpen = useRef(false);
-  menuOpen.current = menu;
-  const [page, setPage] = useState<
-    "" | "plan" | "question" | { approval: string }
-  >("");
-  const [toast, setToast] = useState("");
-  const [sent, setSent] = useState(0);
-  const setToastRef = useRef(setToast);
-  const composer = useRef<HTMLTextAreaElement>(null);
-  // Remounting the input shows a draft put back from the chat.
-  const [composerKey, setComposerKey] = useState(0);
-  const items = dockItems(session, d, machine);
-  const tray = useTray(remote, sid, session.machineId, maxImages(remote, machine));
-  /** Puts a message back into the input: its text, and its images, still
-   * on the computer, with this device's copies of them when it has them. */
-  const restore = async (text: string, from?: string) => {
-    try { await remote.restoreDraft(sid, tray); } catch { return; }
-    const o = from
-      ? remote.outbox(sid).find((x) => x.sendId === from)
-      : undefined;
-    const acc = from ? d.accepted.get(from) : undefined;
-    // An uploaded image can be sent only by the device that uploaded it:
-    // another client's images are not put into this input.
-    const ours = !!o || acc?.origin?.deviceId === remote.account.deviceId;
-    const ids = ours ? (o?.imageIds ?? acc?.imageIds ?? []) : [];
-    const sourceFiles = o?.files ?? acc?.files ?? [];
-    const fileIssue = sourceFiles.length ? remote.fileUploadIssue(session.machineId) : "";
-    if (fileIssue) return setToast(fileIssue);
-    const files = ours ? sourceFiles : [];
-    const foreign = !ours && ((acc?.imageIds.length ?? 0) > 0 || (acc?.files?.length ?? 0) > 0);
-    if (tray.files().length + files.length > tray.maxFiles) return setToast(i18n.t("composer.restore_files_full", { count: files.length }));
-    // All of the message or none of it: never a message short of images.
-    if (
-      ids.length &&
-      !tray.restore(
-        ids.map((imageId, i) => ({
-          imageId,
-          thumb: o?.thumbs?.[i],
-          file: o?.attachments?.files[i],
-        })),
-        o?.attachments?.original,
-      )
-    )
-      return setToast(
-        i18n.t("composer.restore_images_full", { existing: tray.images().length, count: ids.length }),
-      );
-    tray.restoreFiles(files.map((f, i) => ({ fileId: f.fileId, name: f.name, size: Number(f.sizeBytes), file: o?.files?.[i]?.file })));
-    const draft = remote.drafts.get(sid) ?? "";
-    remote.drafts.set(
-      sid,
-      draft.trim() ? draft.trimEnd() + "\n\n" + text : text,
-    );
-    if (o) remote.dismissSend(sid, o.sendId, true);
-    if (foreign)
-      setToast(
-        acc?.files?.length ? i18n.t("session.restore_other_files") : i18n.t("session.restore_other_images"),
-      );
-    setComposerKey((k) => k + 1);
-    setTimeout(() => composer.current?.focus());
-  };
-  const attachWhy = attachBlocked(remote, machine);
-  const drop = useDropPaste(tray, attachWhy, setToastRef.current);
-  const pictures = useMemo(
-    () => sessionImages(events),
-    [events, events.length],
-  ); // eslint-disable-line react-hooks/exhaustive-deps
-  const [viewing, setViewing] = useState(undefined as number | undefined);
-  const [viewingShared, setViewingShared] = useState(undefined as SharedFilePreviewTarget | undefined);
+
   const openSharedFile = useCallback((file: SharedFile, blob: Blob) => {
     const preview = previewBlobForFile(blob, file.name);
     if (!preview) {
@@ -360,7 +412,9 @@ export function SessionPage({
       path: file.path,
     });
   }, []);
+
   useEffect(() => {
+    if (!remote) return;
     remote.sharedFiles.setCurrentSession(sid);
     remote.sharedFiles.setAutoOpenHandler((targetSid, file, blob) => {
       if (targetSid === sid) openSharedFile(file, blob);
@@ -370,195 +424,154 @@ export function SessionPage({
       remote.sharedFiles.setAutoOpenHandler(undefined);
     };
   }, [remote, sid, openSharedFile]);
+
   const sharedFileCtx = useMemo(
     () => ({
       openFile: openSharedFile,
-      onToast: (msg: string) => setToastRef.current(msg),
+      onToast: (_msg: string) => undefined,
     }),
     [openSharedFile],
   );
-  const openImage = useCallback(
-    (ref: ImageRef) => {
-      const i = pictures.findIndex((p) => p.ref === ref);
-      if (i >= 0) setViewing(i);
-    },
-    [pictures],
-  );
-  // Display names for the model chip; the list is cached per machine.
-  useEffect(() => {
-    if (remote.peer(machine?.id).reachable && !inactive)
-      remote.listModels(session.machineId, agent).catch(() => undefined);
-  }, [remote, session.machineId, agent, remote.peer(machine?.id).reachable, inactive]);
 
-  const run = async (label: string, fn: () => Promise<unknown>) => {
-    try {
-      await fn();
-      return true;
-    } catch (e) {
-      setToast(i18n.t("session.action_failed", { action: label, reason: errorText(e) }));
-      return false;
-    }
-  };
-  const interrupt = () =>
-    void run(i18n.t("session.interrupt"), () =>
-      remote.command(sid, { case: "interrupt", value: { sessionId: sid } }),
+  const missing = !!header?.missing;
+  if (missing) {
+    return (
+      <div className="page">
+        <NavBar onBack={onBack} />
+        <div className="center">
+          <div>
+            <div className="et">{i18n.t("session.ios_missing")}</div>
+            <div className="muted small">
+              {renderText(header?.missingText) || i18n.t("errors.it_may_have_been_deleted_or_belong_to_a")}
+            </div>
+            <div className="big">
+              <button className="btn pri" onClick={onBack}>
+                {i18n.t("common.back")}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
     );
-  const toTerminal = () => setTab(canSplit ? "split" : "term");
-  const agentLabel = agentName(agent);
+  }
 
-  // Detail pages replace the whole session view.
-  if (page === "plan" && d.plan && session.info?.planOpen)
+  const title = renderText(header?.title) || i18n.t("common.loading");
+  const agent = header?.agent ?? Agent.UNSPECIFIED;
+  const agentLabel = header?.agentName || "";
+  const mname = renderText(header?.computerName);
+  const project = renderText(header?.projectName);
+  const toTerminal = () => setTab(canSplit ? "split" : "term");
+
+  if (page === "plan" && dock?.kind === SessionDockKind.PLAN && dock.detail.case === "plan") {
     return (
       <PlanPage
-        remote={remote}
-        sid={sid}
-        plan={d.plan}
+        sessionId={sid}
+        dock={dock}
+        plan={dock.detail.value}
+        canSend={header?.capabilities?.canSend ?? true}
         title={title}
         onBack={() => setPage("")}
+        onSubmitCommand={onSubmitCommand}
+        onAbandonCommand={onAbandonCommand}
       />
     );
-  const question = [...d.questions.values()][0];
-  if (page === "question" && question)
+  }
+  if (page === "question" && dock?.kind === SessionDockKind.QUESTION && dock.detail.case === "question") {
     return (
       <QuestionPage
-        remote={remote}
-        sid={sid}
-        q={question}
-        agent={agent}
+        sessionId={sid}
+        dock={dock}
+        q={dock.detail.value}
+        canSend={header?.capabilities?.canSend ?? true}
+        agentName={agentLabel}
         title={title}
+        questionDraft={questionDraft}
+        onQuestionDraftChange={setQuestionDraft}
         onBack={() => setPage("")}
         onTerminal={() => {
           setPage("");
           toTerminal();
         }}
+        onSubmitCommand={onSubmitCommand}
+        onAbandonCommand={onAbandonCommand}
       />
     );
-  if (typeof page === "object" && "approval" in page) {
-    const a = d.approvals.get(page.approval);
-    if (a)
+  }
+  if (typeof page === "object" && "approval" in page && dock?.kind === SessionDockKind.APPROVAL && dock.detail.case === "approval") {
+    const ap = dock.detail.value;
+    if (ap.approvalId === page.approval) {
       return (
         <ApprovalPage
-          remote={remote}
-          sid={sid}
-          a={a}
-          agent={agent}
+          sessionId={sid}
+          dock={dock}
+          approval={ap}
+          canSend={header?.capabilities?.canSend ?? true}
           title={title}
+          reason={approvalReason}
+          onReasonChange={onApprovalReasonChange ? (v) => onApprovalReasonChange(ap.approvalId, v) : undefined}
           onBack={() => setPage("")}
+          onSubmitCommand={onSubmitCommand}
+          onAbandonCommand={onAbandonCommand}
         />
       );
+    }
   }
 
-  const tabs: [Tab, string][] = [
-    ["chat", i18n.t("session.chat")],
-    ["term", i18n.t("session.terminal")],
-    ...(canSplit ? ([["split", i18n.t("session.split")]] as [Tab, string][]) : []),
-  ];
-  // Chat / terminal: a glass segmented control under the title on a phone
-  // (dark glass over the terminal), the toolbar's own on a wide window.
-  const seg = (
-    <ViewSwitch
-      className={wide ? "seg" : "vseg glass" + (tab === "term" ? " dark" : "")}
-      tabs={tabs}
-      tab={tab}
-      inactive={inactive || pending}
-      popup={st.kind === "popup"}
-      onPick={pickTab}
-    />
-  );
-  // The mode follows the status only once it is known: a starting CLI has
-  // not reported it, and one nobody could read is left unsaid.
-  const known = modeOf(session);
-  const modeTail = !ended && known && (
-    <>
-      {" "}
-      · <span className={known.mode === ApprovalMode.FULL_ACCESS ? "red" : ""}>{known.text}</span>
-    </>
-  );
+  const modeLabel = renderText(header?.approvalModeLabel);
+  const modeTail =
+    !exited && modeLabel ? (
+      <>
+        {" "}
+        · <span className={header?.approvalMode === ApprovalMode.FULL_ACCESS ? "red" : ""}>{modeLabel}</span>
+      </>
+    ) : null;
+  const statusText = pending ? t("common.loading") : renderText(header?.statusText);
   const sub = (
     <>
-      {pending ? t("common.loading") : st.text}
+      {statusText}
       {modeTail}
     </>
   );
-  // The session's settings live in the ⋯ menu; a high context shows as
-  // an orange dot on it.
-  const mode = modeOf(session);
-  const pct = contextPercent(session);
-  const high = pct !== undefined && pct > CONTEXT_WARN;
-  const model = session.info?.model
+
+  const pct = header?.hasContext ? header.contextPercent : undefined;
+  const high = !!header?.highContextWarning || (pct !== undefined && pct > CONTEXT_WARN);
+  const modelText = [header?.modelLabel, header?.effort].filter(Boolean).join(" · ");
+  const moreLabel = high && pct !== undefined ? i18n.t("session.more_context", { percent: pct }) : i18n.t("common.android_more");
+  const tabs: [Tab, string][] = canSplit
     ? [
-        remote.modelName(session.machineId, agent, session.info.model),
-        session.info.effort,
+        ["chat", i18n.t("session.chat")],
+        ["split", i18n.t("session.split")],
+        ["term", i18n.t("session.terminal")],
       ]
-        .filter(Boolean)
-        .join(" · ")
-    : "";
-  const moreLabel = high ? i18n.t("session.more_context", { percent: pct! }) : i18n.t("common.android_more");
-  const openMenu = () => {
-    setForkError("");
-    setMenu(true);
-  };
-  /** Forks the session on its computer and opens the new one. The menu
-   * stays open meanwhile and says how it went. */
-  const fork = async () => {
-    setForking(true);
-    setForkError("");
-    const { slot } = forkTry.next(null);
-    const open = fromHere((id: string) => {
-      location.hash = "/s/" + encodeURIComponent(id);
-    });
-    try {
-      const res = await remote.command(
-        sid,
-        { case: "forkSession", value: { sessionId: sid } },
-        slot,
-      );
-      forkTry.settle();
-      setForkUnknown("");
-      if (res.kind.case !== "forkSession" || !res.kind.value.session)
-        throw new Error(i18n.t("new_session.unexpected_reply"));
-      const id = res.kind.value.session.id;
-      remote.created.add(id);
-      setMenu(false);
-      open(id);
-    } catch (e) {
-      forkTry.settle(e);
-      setForkUnknown(
-        forkTry.expired ? "expired" : forkTry.frozen ? "unknown" : "",
-      );
-      if (menuOpen.current) setForkError(errorText(e));
-      else setToast(i18n.t("session.fork_failed", { reason: errorText(e) }));
-    } finally {
-      setForking(false);
-    }
-  };
-  /** Gives up a fork with its outcome unknown: the next one
-   * is a new request. */
-  const abandonFork = () => {
-    forkTry.abandon();
-    setForkUnknown("");
-    setForkError("");
-  };
-  const forkWhy = forkBlocked(session, machine, d.running);
-  const more = (
-    <button
-      className={"more" + (high ? " context-high" : "")}
-      onClick={openMenu}
-      disabled={pending}
-      aria-label={moreLabel}
-    >
-      <Ellipsis />
-    </button>
+    : [
+        ["chat", i18n.t("session.chat")],
+        ["term", i18n.t("session.terminal")],
+      ];
+  const popup = dock?.hasItem && dock.kind === SessionDockKind.TERMINAL_POPUP;
+
+  const seg = (
+    <ViewSwitch
+      className={"seg" + (tab === "term" && !wide ? " ondark" : "")}
+      tabs={tabs}
+      tab={tab}
+      inactive={exited}
+      popup={!!popup}
+      onPick={pickTab}
+    />
   );
 
-  const header = wide ? (
+  const headerBar = wide ? (
     <header className="dh">
-      {session.info?.taskOwned && <button className="schedule-run-back" aria-label={t("common.back")} title={i18n.t("session.back_task")} onClick={onBack}><ChevronLeft /></button>}
+      {header?.isScheduled && (
+        <button className="schedule-run-back" aria-label={t("common.back")} title={i18n.t("session.back_task")} onClick={onBack}>
+          <ChevronLeft />
+        </button>
+      )}
       <b>{title}</b>
       <span className="st">
-        <StateMark kind={st.tone} />
+        <StateMark kind={sessionMark(header)} />
         <span>
-          {pending ? t("common.loading") : st.text}
+          {statusText}
           {modeTail}
         </span>
       </span>
@@ -566,7 +579,7 @@ export function SessionPage({
       {seg}
       <button
         className={"ib mr" + (high ? " context-high" : "")}
-        onClick={openMenu}
+        onClick={() => setMenu(true)}
         disabled={pending}
         aria-label={moreLabel}
       >
@@ -578,444 +591,795 @@ export function SessionPage({
       onBack={onBack}
       title={title}
       sub={sub}
-      right={more}
+      right={
+        <button
+          className={"more" + (high ? " context-high" : "")}
+          onClick={() => setMenu(true)}
+          disabled={pending}
+          aria-label={moreLabel}
+        >
+          <Ellipsis />
+        </button>
+      }
       className={tab === "term" ? "dark" : ""}
     />
   );
 
-  const chat = (
+  const interruptCmd = actions?.interrupt;
+  const endCmd = actions?.end;
+  const forkBlockedReason = renderText(actions?.forkBlockedReason);
+
+  const chatCol = (
     <div className="ccol" ref={colRef}>
       <ChatBody
+        vm={vm}
         remote={remote}
-        session={session}
-        events={events}
-        d={d}
-        agent={agent}
-        machine={mname}
-        sent={sent}
-        onRestore={restore}
-        onTerminal={inactive ? undefined : toTerminal}
+        sent={sentCount}
+        localAttachments={localAttachments}
+        retainedReasons={retainedReasons}
+        defaultExpandedQueueAll={defaultExpandedQueueAll}
+        onRestoreText={onRestoreText}
+        onTerminal={exited ? undefined : toTerminal}
+        onSubmitCommand={onSubmitCommand}
+        onRetryOutgoing={onSubmitCommand}
+        onDismissOutgoing={onDismissOutgoing}
+        onRestoreOutgoing={onRestoreOutgoing}
+        onLoadEarlier={onLoadEarlier}
+        onRetryEvents={onRetryEvents}
+        onExpandGroup={onExpandGroup}
+        onScheduleRevealed={onScheduleRevealed}
       />
       {toast && (
-        <div className="toast" onClick={() => setToast("")}>
+        <div className="toast" onClick={onClearToast}>
           {toast}
         </div>
       )}
       {!inactive && (
         <Dock
-          remote={remote}
-          sid={sid}
-          items={items}
-          agent={agent}
-          drafting={!!(remote.drafts.get(sid) ?? "").trim() || tray.items.length > 0}
+          sessionId={sid}
+          dock={dock}
+          header={header}
+          drafting={!!draft.trim() || (tray?.items.length ?? 0) > 0}
           room={room}
           height={colHeight}
-          onExpand={() => composer.current?.blur()}
+          seenKeys={dockSeen}
+          closedKeys={dockClosed}
+          defaultDenying={defaultDenying}
+          reason={approvalReason}
+          onReasonChange={onApprovalReasonChange}
+          questionDraft={questionDraft}
+          onQuestionDraftChange={setQuestionDraft}
+          onExpand={() => composerElRef.current?.blur()}
           onDetail={(id) => setPage({ approval: id })}
           onPlan={() => setPage("plan")}
           onQuestion={() => setPage("question")}
           onTerminal={toTerminal}
+          onSubmitCommand={onSubmitCommand}
+          onAbandonCommand={onAbandonCommand}
         />
       )}
-      {session.info?.taskOwned && <div className="schedule-reply-hint">{i18n.t("session.reply_moves")}</div>}
+      {header?.isScheduled && <div className="schedule-reply-hint">{i18n.t("session.reply_moves")}</div>}
       {inactive ? (
         <EndCard
-          remote={remote}
-          session={session}
-          ended={ended}
-          scheduledClosed={d.scheduledClosed}
-          idleClosed={d.idleClosed}
-          machineOnline={remote.peer(machine?.id).reachable ?? false}
-          agent={agent}
-          mname={mname}
-          lastSeen={machine?.lastSeenMs ?? 0n}
+          sessionId={sid}
+          header={header}
+          actions={actions}
+          composer={composer}
+          onSubmitCommand={onSubmitCommand}
         />
       ) : (
-        <>
-          <Composer
-            key={composerKey}
-            ref={composer}
-            remote={remote}
-            session={session}
-            d={d}
-            ready={!pending}
-            onSend={(text, mode) => {
-              setSent((n) => n + 1);
-              remote.send(
-                sid,
-                text,
-                tray.imageIds(),
-                tray.images().map((i) => i.thumb!).filter(Boolean),
-                mode,
-                {
-                  original: tray.original,
-                  files: tray.images().map((i) => i.file),
-                },
-                tray.files().map((i) => ({ fileId: i.fileId!, name: i.name!, sizeBytes: BigInt(i.bytes ?? 0), path: "", file: i.file })),
-                tray.images().map(i => ({ width: i.prepared!.width, height: i.prepared!.height })),
-              );
-              tray.clear();
-            }}
-            onInterrupt={interrupt}
-            tray={tray}
-            trayView={<TrayView tray={tray} remote={remote} />}
-            attach={
-              <AttachButton
-                tray={tray}
-                blocked={attachWhy}
-                onBlocked={setToast}
-              />
-            }
-            cardProps={wide ? drop.props : { onPaste: drop.props.onPaste }}
-            dropping={drop.over}
-            draft={remote.drafts.get(sid) ?? ""}
-            onDraft={(text) => remote.drafts.set(sid, text)}
-          />
-        </>
+        <Composer
+          key={composerKey}
+          ref={composerElRef}
+          composer={composer}
+          onSend={onSend}
+          onInterrupt={() =>
+            onSubmitCommand(
+              interruptCmd?.slotKey ?? "",
+              create(CommandSchema, {
+                kind: { case: "interrupt", value: { sessionId: sid } },
+              }),
+            )
+          }
+          draft={draft}
+          onDraft={onDraft}
+          tray={tray}
+          trayView={trayView}
+          attach={attach}
+          cardProps={cardProps}
+          dropping={dropping}
+          interruptDisabled={!!interruptCmd?.busy}
+          defaultSendMenu={defaultSendMenu}
+        />
       )}
     </div>
   );
 
+  const forkAction = () =>
+    onSubmitCommand(
+      forkCmd?.slotKey ?? "",
+      create(CommandSchema, {
+        kind: { case: "forkSession", value: { sessionId: sid } },
+      }),
+    );
+
+  const menuActions = [
+    ...(!exited && modeLabel
+      ? [
+          {
+            label: i18n.t("modes.title"),
+            value: modeLabel,
+            red: header?.approvalMode === ApprovalMode.FULL_ACCESS,
+            onClick: () => setSheet("mode"),
+          },
+        ]
+      : []),
+    ...(!exited
+      ? [
+          {
+            label: modelText ? i18n.t("models.title") : i18n.t("session.settings"),
+            value: modelText,
+            onClick: () => setSheet("model"),
+          },
+        ]
+      : []),
+    ...(!exited && pct !== undefined
+      ? [
+          {
+            label: i18n.t("session.context"),
+            value: i18n.t("session.context_used", { percent: pct }),
+            warn: high,
+            onClick: () => setSheet("model"),
+          },
+        ]
+      : []),
+    ...(actions?.canRename
+      ? [{ label: i18n.t("session.rename"), group: 1, onClick: () => setRenaming(true) }]
+      : []),
+    ...(header?.capabilities?.supportsFork && header?.computerOnline && !header?.computerUnlinked
+      ? [
+          ...(forkCmd?.busy
+            ? [
+                {
+                  label: i18n.t("session.forking"),
+                  busy: true,
+                  keep: true,
+                  group: 1,
+                  onClick: () => undefined,
+                },
+              ]
+            : !actions?.canFork && forkBlockedReason
+              ? [
+                  {
+                    label: i18n.t("session.fork"),
+                    disabled: true,
+                    note: forkBlockedReason,
+                    group: 1,
+                    onClick: () => undefined,
+                  },
+                ]
+              : forkCmd?.expired
+                ? [
+                    {
+                      label: i18n.t("session.abandon_fork"),
+                      keep: true,
+                      note: i18n.t("session.fork_expired"),
+                      noteRed: true,
+                      group: 1,
+                      onClick: () => onAbandonCommand(forkCmd.slotKey),
+                    },
+                  ]
+                : [
+                    {
+                      label: i18n.t("session.fork"),
+                      keep: true,
+                      note:
+                        forkCmd?.status === SessionCommandStatus.UNKNOWN
+                          ? i18n.t("session.fork_unknown")
+                          : forkErr
+                            ? i18n.t("session.fork_failed", { reason: forkErr })
+                            : undefined,
+                      noteRed: true,
+                      group: 1,
+                      onClick: forkAction,
+                    },
+                    ...(forkCmd?.canAbandon
+                      ? [
+                          {
+                            label: i18n.t("session.abandon_fork"),
+                            keep: true,
+                            group: 1,
+                            onClick: () => onAbandonCommand(forkCmd.slotKey),
+                          },
+                        ]
+                      : []),
+                  ]),
+        ]
+      : []),
+    ...(remote && scheduleSession
+      ? [
+          {
+            label: i18n.t("session.schedule_send"),
+            group: 1,
+            disabled: !header?.capabilities?.supportsSchedule || !remote.peer(header?.machineId).reachable || !remote.peer(header?.machineId).ready || !remote.supportsSchedules(header?.machineId ?? ""),
+            note: !remote.supportsSchedules(header?.machineId ?? "") ? i18n.t("session.update_computer") : undefined,
+            onClick: () => setScheduling(true),
+          },
+        ]
+      : []),
+    ...(!inactive
+      ? [
+          actions?.canInterrupt
+            ? {
+                label: i18n.t("session.interrupt_turn"),
+                red: true,
+                group: 1,
+                onClick: () =>
+                  onSubmitCommand(
+                    interruptCmd?.slotKey ?? "",
+                    create(CommandSchema, {
+                      kind: { case: "interrupt", value: { sessionId: sid } },
+                    }),
+                  ),
+              }
+            : {
+                label: i18n.t("session.interrupt_turn"),
+                disabled: true,
+                note: i18n.t("session.not_running"),
+                group: 1,
+                onClick: () => undefined,
+              },
+        ]
+      : []),
+    ...(actions?.canEnd
+      ? [
+          {
+            label: i18n.t("session.end_action"),
+            red: true,
+            group: 2,
+            onClick: () => setConfirmEnd(true),
+          },
+        ]
+      : []),
+  ].map((a) => ("busy" in a || !forkCmd?.busy ? a : { ...a, disabled: true }));
+
   return (
     <SharedFileViewContext.Provider value={sharedFileCtx}>
-    <OpenImage.Provider value={openImage}>
-      <div
-        className={"session" + (tab === "term" && !wide ? " termmode" : "")}
-        ref={rootRef}
-      >
-        {header}
-        <ConnBar remote={remote} />
-        {/* The strip is only drawn for a session that has tasks; the room it takes is kept while it is fetched. */}
-        {remote.sessionTasks(session.id).length > 0 && (
-          <Suspense fallback={<div className="schedule-strip" aria-hidden />}>
-            <ScheduleStrip remote={remote} session={session} go={route => { location.hash = "/" + route; }} />
-          </Suspense>
-        )}
-        {!wide && <div className="segrow">{seg}</div>}
-        <div className={"panes p-" + tab}>
-          {tab !== "term" && chat}
-          {tab !== "chat" && (
-            <div className="tcol">
-              <Suspense fallback={null}>
-                <TerminalView
-                  remote={remote}
-                  session={session}
-                  compact={tab === "split"}
-                  wide={wide}
-                  running={!ended}
-                />
-              </Suspense>
-            </div>
+      <OpenImage.Provider value={openImage}>
+        <div className={"session" + (tab === "term" && !wide ? " termmode" : "")} ref={rootRef}>
+          {headerBar}
+          {remote && <ConnBar remote={remote} />}
+          {remote && scheduleSession && scheduleTaskCount > 0 && (
+            <Suspense fallback={<div className="schedule-strip" aria-hidden />}>
+              <ScheduleStrip
+                remote={remote}
+                session={scheduleSession}
+                go={(route) => {
+                  location.hash = "/" + route;
+                }}
+              />
+            </Suspense>
+          )}
+          {!wide && <div className="segrow">{seg}</div>}
+          <div className={"panes p-" + tab}>
+            {tab !== "term" && chatCol}
+            {tab !== "chat" && remote && (
+              <div className="tcol">
+                <Suspense fallback={null}>
+                  <TerminalView
+                    remote={remote}
+                    session={{ id: sid, machineId: header?.machineId ?? "" }}
+                    compact={tab === "split"}
+                    wide={wide}
+                    running={!exited}
+                  />
+                </Suspense>
+              </div>
+            )}
+          </div>
+          {menu && (
+            <ActionSheet
+              info={
+                <>
+                  <b>
+                    <AgentMark agent={agent} named />
+                    {[agentLabel, project, mname].filter(Boolean).join(" · ")}
+                  </b>
+                  <span className="mono">
+                    <PathText path={shortPath(header?.cwd ?? "")} />
+                  </span>
+                </>
+              }
+              actions={menuActions}
+              pop={wide}
+              onClose={() => setMenu(false)}
+            />
+          )}
+          {scheduling && remote && scheduleSession && (
+            <Sheet className="schedule-session-sheet" onClose={() => setScheduling(false)}>
+              <div className="schedule-session-overlay">
+                <Suspense fallback={null}>
+                  <ScheduleCreate
+                    remote={remote}
+                    session={scheduleSession}
+                    go={(route) => {
+                      setScheduling(false);
+                      location.hash = "/" + route;
+                    }}
+                    onBack={() => setScheduling(false)}
+                  />
+                </Suspense>
+              </div>
+            </Sheet>
+          )}
+          {confirmEnd && (
+            <Alert
+              title={i18n.t("session.end_title")}
+              text={renderText(actions?.endConfirmNote) || i18n.t("session.end_note", { name: mname, agent: agentLabel })}
+              ok={i18n.t("session.end")}
+              danger
+              onCancel={() => setConfirmEnd(false)}
+              onOk={() => {
+                setConfirmEnd(false);
+                onSubmitCommand(
+                  endCmd?.slotKey ?? "",
+                  create(CommandSchema, {
+                    kind: { case: "stopSession", value: { sessionId: sid } },
+                  }),
+                );
+              }}
+            />
+          )}
+          {renaming && (
+            <RenameDialog
+              sessionId={sid}
+              header={header}
+              actions={actions}
+              onClose={() => setRenaming(false)}
+              onSubmitCommand={onSubmitCommand}
+            />
+          )}
+          {sheet === "mode" && (
+            <ModeSheet
+              sessionId={sid}
+              header={header}
+              actions={actions}
+              onClose={() => setSheet("")}
+              onSubmitCommand={onSubmitCommand}
+            />
+          )}
+          {sheet === "model" && (
+            <SessionSheet
+              sessionId={sid}
+              header={header}
+              actions={actions}
+              onClose={() => setSheet("")}
+              onRefreshModels={() => onRefreshModels?.()}
+              onSubmitCommand={onSubmitCommand}
+              onAbandonCommand={onAbandonCommand}
+            />
+          )}
+          {viewing !== undefined && remote && (
+            <ImageViewer
+              remote={remote}
+              sid={sid}
+              images={pictures}
+              start={viewing}
+              agent={agentLabel}
+              title={title}
+              wide={wide}
+              onClose={() => setViewing(undefined)}
+              showPath={(p) => shortenPath(p, header?.cwd ?? "", "")}
+            />
+          )}
+          {viewingShared && remote && (
+            <SharedFilePreviewOverlay
+              remote={remote}
+              sessionId={sid}
+              agentName={agentLabel}
+              wide={wide}
+              target={viewingShared}
+              onClose={() => setViewingShared(undefined)}
+            />
           )}
         </div>
-        {menu && (
-          <ActionSheet
-            info={
-              <>
-                <b>
-                  <AgentMark agent={agent} named />
-                  {[agentLabel, project, remote.machines.size > 1 ? mname : ""].filter(Boolean).join(" · ")}
-                </b>
-                <span className="mono">
-                  <PathText path={shortPath(session.info?.cwd ?? "")} />
-                </span>
-              </>
-            }
-            // Three groups (design-system §6 弹层与对话框): the session's
-            // settings, what can be done to it, and ending it.
-            actions={[
-              ...(!inactive && mode
-                ? [
-                    {
-                      label: i18n.t("modes.title"),
-                      value: mode.text,
-                      red: mode.mode === ApprovalMode.FULL_ACCESS,
-                      onClick: () => setSheet("mode"),
-                    },
-                  ]
-                : []),
-              ...(!inactive
-                ? [
-                    {
-                      label: model ? i18n.t("models.title") : i18n.t("session.settings"),
-                      value: model,
-                      onClick: () => setSheet("model"),
-                    },
-                  ]
-                : []),
-              ...(!inactive && pct !== undefined
-                ? [
-                    {
-                      label: i18n.t("session.context"),
-                      value: i18n.t("session.context_used", { percent: pct! }),
-                      warn: high,
-                      onClick: () => setSheet("model"),
-                    },
-                  ]
-                : []),
-              ...(remote.peer(machine?.id).reachable && remote.peer(session.machineId).ready
-                ? [{ label: i18n.t("session.rename"), group: 1, onClick: () => setRenaming(true) }]
-                : []),
-              ...(agentInfo(agent).forks && remote.peer(machine?.id).reachable && remote.peer(session.machineId).ready
-                ? [
-                    ...(forking
-                      ? [{
-                          label: i18n.t("session.forking"),
-                          busy: true,
-                          keep: true,
-                          group: 1,
-                          onClick: () => undefined,
-                        }]
-                      : forkWhy
-                        ? [{
-                            label: i18n.t("session.fork"),
-                            disabled: true,
-                            note: forkWhy,
-                            group: 1,
-                            onClick: () => undefined,
-                          }]
-                        : forkUnknown === "expired"
-                          ? [{
-                              label: i18n.t("session.abandon_fork"),
-                              keep: true,
-                              note: i18n.t("session.fork_expired"),
-                              noteRed: true,
-                              group: 1,
-                              onClick: abandonFork,
-                            }]
-                          : [
-                              {
-                                label: i18n.t("session.fork"),
-                                keep: true,
-                                // It may have happened: only the same request is sent again.
-                                note: forkUnknown
-                                  ? i18n.t("session.fork_unknown")
-                                  : forkError && i18n.t("session.fork_failed", { reason: forkError }),
-                                noteRed: true,
-                                group: 1,
-                                onClick: () => void fork(),
-                              },
-                              // Frozen but not expired: retrying stays possible, and so does giving up.
-                              ...(forkUnknown
-                                ? [{ label: i18n.t("session.abandon_fork"), keep: true, group: 1, onClick: abandonFork }]
-                                : []),
-                            ]),
-                  ]
-                : []),
-              { label: i18n.t("session.schedule_send"), group: 1, disabled: !remote.peer(machine?.id).reachable || !remote.peer(session.machineId).ready || !remote.supportsSchedules(session.machineId), note: !remote.supportsSchedules(session.machineId) ? i18n.t("session.update_computer") : undefined, onClick: () => setScheduling(true) },
-              // Stopping the turn stays in its place while there is none,
-              // grayed, saying why.
-              ...(!inactive
-                ? [
-                    d.running
-                      ? { label: i18n.t("session.interrupt_turn"), red: true, group: 1, onClick: interrupt }
-                      : { label: i18n.t("session.interrupt_turn"), disabled: true, note: i18n.t("session.not_running"), group: 1, onClick: () => undefined },
-                  ]
-                : []),
-              ...(!ended && remote.peer(machine?.id).reachable
-                ? [
-                    {
-                      label: i18n.t("session.end_action"),
-                      red: true,
-                      group: 2,
-                      onClick: () => setConfirmEnd(true),
-                    },
-                  ]
-                : []),
-            ].map((a) =>
-              "busy" in a || !forking ? a : { ...a, disabled: true },
-            )}
-            pop={wide}
-            onClose={() => setMenu(false)}
-          />
-        )}
-        {scheduling && <Sheet className="schedule-session-sheet" onClose={() => setScheduling(false)}><div className="schedule-session-overlay"><Suspense fallback={null}><ScheduleCreate remote={remote} session={session} go={route => { setScheduling(false); location.hash = "/" + route; }} onBack={() => setScheduling(false)} /></Suspense></div></Sheet>}
-        {confirmEnd && (
-          <Alert
-            title={i18n.t("session.end_title")}
-            text={i18n.t("session.end_note", { name: mname, agent: agentLabel })}
-            ok={i18n.t("session.end")}
-            danger
-            onCancel={() => setConfirmEnd(false)}
-            onOk={() => {
-              setConfirmEnd(false);
-              void run(i18n.t("session.end_session"), () =>
-                remote.command(sid, {
-                  case: "stopSession",
-                  value: { sessionId: sid },
-                }),
-              );
-            }}
-          />
-        )}
-        {renaming && (
-          <RenameDialog
-            remote={remote}
-            s={session}
-            onClose={() => setRenaming(false)}
-          />
-        )}
-        {sheet === "mode" && (
-          <ModeSheet remote={remote} s={session} onClose={() => setSheet("")} />
-        )}
-        {sheet === "model" && (
-          <SessionSheet
-            remote={remote}
-            s={session}
-            running={d.running}
-            onClose={() => setSheet("")}
-          />
-        )}
-        {viewing !== undefined && (
-          <ImageViewer
-            remote={remote}
-            sid={sid}
-            images={pictures}
-            start={viewing}
-            agent={agentLabel}
-            title={title}
-            wide={wide}
-            onClose={() => setViewing(undefined)}
-            showPath={(p) =>
-              shortenPath(p, session.info?.cwd ?? "", machine?.meta?.home ?? "")
-            }
-          />
-        )}
-        {viewingShared && (
-          <SharedFilePreviewOverlay
-            remote={remote}
-            sessionId={sid}
-            agentName={agentLabel}
-            machineHome={machine?.meta?.home}
-            wide={wide}
-            target={viewingShared}
-            onClose={() => setViewingShared(undefined)}
-          />
-        )}
-      </div>
-    </OpenImage.Provider>
+      </OpenImage.Provider>
     </SharedFileViewContext.Provider>
   );
 }
 
-/** The chat: history, what runs now, and messages on their way. Follows
- * the bottom unless scrolled up, then offers a way back. */
-function ChatBody({
+export function SessionPage({
   remote,
-  session,
-  events,
-  d,
-  agent,
-  machine,
-  sent,
-  onRestore,
-  onTerminal,
+  sessionId,
+  onBack,
+  wide,
+  go,
 }: {
   remote: Remote;
-  session: SessionView;
-  events: Event[];
-  d: Derived;
-  agent: Agent;
-  machine: string;
-  /** Counts the messages sent from this view. */
-  sent: number;
-  onRestore: (text: string, from?: string) => void;
-  onTerminal?: () => void;
+  sessionId: string;
+  onBack: () => void;
+  wide: boolean;
+  go?: Go;
 }) {
-  const sid = session.id;
+  useRemote(remote);
+  const host = useCoreHost(remote, go);
+  const [windowLimit, setWindowLimit] = useState(DEFAULT_WINDOW_LIMIT);
+  const [expandedGroups, setExpandedGroups] = useState<string[]>([]);
+
+  useEffect(() => {
+    setWindowLimit(DEFAULT_WINDOW_LIMIT);
+    setExpandedGroups([]);
+  }, [sessionId]);
+
+  useEffect(() => {
+    remote.setScheduleSession(sessionId);
+    return () => remote.setScheduleSession();
+  }, [remote, sessionId]);
+
+  const scheduleFocus = remote.scheduleFocus.get(sessionId);
+  const windowOpts = useMemo<SessionWindowOptions>(
+    () => ({
+      limit: windowLimit,
+      revealSeq: scheduleFocus?.seq ?? 0n,
+      revealRunId: scheduleFocus?.runId ?? "",
+      expandedGroupIds: expandedGroups,
+    }),
+    [windowLimit, scheduleFocus?.seq, scheduleFocus?.runId, expandedGroups],
+  );
+
+  const vm = useSessionView(host, sessionId, windowOpts, { refreshModels: true, refreshSettings: true });
+  const header = vm.header;
+  const machineId = header?.machineId ?? "";
+  const machine = remote.machines.get(machineId);
+
+  const [toast, setToast] = useState("");
+  const toastRef = useRef(setToast);
+  toastRef.current = setToast;
+  const [sent, setSent] = useState(0);
+  const [, setDraftVer] = useState(0);
+  const [composerKey, setComposerKey] = useState(0);
+  const composerRef = useRef<HTMLTextAreaElement>(null);
+
+  const tray = useTray(remote, sessionId, machineId, maxImages(remote, machine));
+  const attachWhy = attachBlocked(remote, machine);
+  const drop = useDropPaste(tray, attachWhy, toastRef.current);
+  const stash = getSendAttachments(remote);
+  const pendingRestoreFiles = useRef(new Map<string, LocalSendAttachments["files"]>());
+  const mountedSession = useRef(true);
+  useEffect(() => {
+    mountedSession.current = true;
+    return () => {
+      mountedSession.current = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    return host.onRestoreComposer(sessionId, (eff: SessionRestoreComposerEffect) => {
+      const saved = stash?.get(eff.requestId);
+      const files: NonNullable<LocalSendAttachments["files"]> =
+        saved?.files ??
+        pendingRestoreFiles.current.get(eff.requestId) ??
+        eff.fileIds.map((fileId) => ({ fileId, name: "", sizeBytes: 0n }));
+      pendingRestoreFiles.current.delete(eff.requestId);
+      if (files.length) {
+        const fileIssue = remote.fileUploadIssue(machineId);
+        if (fileIssue) {
+          toastRef.current(fileIssue);
+          return;
+        }
+      }
+      if (tray.files().length + files.length > tray.maxFiles) {
+        toastRef.current(i18n.t("composer.restore_files_full", { count: files.length }));
+        return;
+      }
+      if (
+        eff.imageIds.length &&
+        !tray.restore(
+          eff.imageIds.map((imageId, i) => ({
+            imageId,
+            thumb: saved?.thumbs?.[i],
+            file: saved?.items?.filter((it) => it.kind !== "file")[i]?.file,
+          })),
+          !!saved?.original,
+        )
+      ) {
+        toastRef.current(
+          i18n.t("composer.restore_images_full", { existing: tray.images().length, count: eff.imageIds.length }),
+        );
+        return;
+      }
+      if (files.length) {
+        tray.restoreFiles(files.map((f) => ({ fileId: f.fileId, name: f.name, size: Number(f.sizeBytes), file: f.file })));
+      }
+      const existingDraft = remote.drafts.get(sessionId) ?? "";
+      remote.drafts.set(sessionId, existingDraft.trim() ? existingDraft.trimEnd() + "\n\n" + eff.text : eff.text);
+      stash?.delete(eff.requestId);
+      setComposerKey((k) => k + 1);
+      setTimeout(() => composerRef.current?.focus());
+    });
+  }, [host, remote, sessionId, machineId, tray, stash]);
+
+  // Mirror slotKey -> Core requestId so local attachment previews follow across outgoing -> pendingInputs -> inputState notices.
+  useEffect(() => {
+    if (!stash || stash.size === 0) return;
+    for (const o of vm.composer?.outgoing ?? []) {
+      if (o.slotKey && o.requestId && !stash.has(o.requestId)) {
+        const bySlot = stash.get(o.slotKey);
+        if (bySlot) stash.set(o.requestId, bySlot);
+      }
+    }
+  }, [stash, vm.composer?.outgoing]);
+
+  const handleSend = (text: string, mode: SendMode) => {
+    const reqId = newRequestID();
+    const slotKey = `send:${sessionId}:${reqId}`;
+    const imgIds = tray.imageIds();
+    const files = tray.files().map((f) => ({
+      fileId: f.fileId!,
+      name: f.name!,
+      sizeBytes: BigInt(f.bytes ?? 0),
+      file: f.file instanceof File ? f.file : undefined,
+    }));
+    const fileIds = files.map((f) => f.fileId);
+    if (stash) {
+      const saved = {
+        thumbs: tray.images().map((i) => i.thumb!).filter(Boolean),
+        imageSizes: tray.images().map((i) => ({ width: i.prepared!.width, height: i.prepared!.height })),
+        files,
+        items: [...tray.items],
+        original: tray.original,
+      };
+      stash.set(reqId, saved);
+      stash.set(slotKey, saved);
+    }
+    host.sessionSubmitCommand(
+      slotKey,
+      machineId,
+      sessionId,
+      create(CommandSchema, {
+        kind: {
+          case: "send",
+          value: {
+            sessionId,
+            requestId: reqId,
+            text,
+            mode,
+            imageIds: imgIds,
+            fileIds,
+          },
+        },
+      }),
+    );
+    tray.clear();
+    remote.drafts.delete(sessionId);
+    setSent((n) => n + 1);
+  };
+
+  const handleRestoreOutgoing = async (reqId: string) => {
+    const og = (vm.composer?.outgoing ?? []).find((o) => o.requestId === reqId);
+    const saved = stash?.get(reqId) ?? (og?.slotKey ? stash?.get(og.slotKey) : undefined);
+    if (saved && !stash?.has(reqId)) stash?.set(reqId, saved);
+    const files =
+      saved?.files ?? (og?.fileIds ?? []).map((fileId) => ({ fileId, name: "", sizeBytes: 0n }));
+    try {
+      await remote.restoreDraft(sessionId, tray);
+    } catch {
+      return;
+    }
+    if (!mountedSession.current) return;
+    if (files.length) {
+      const fileIssue = remote.fileUploadIssue(machineId);
+      if (fileIssue) {
+        toastRef.current(fileIssue);
+        return;
+      }
+      if (tray.files().length + files.length > tray.maxFiles) {
+        toastRef.current(i18n.t("composer.restore_files_full", { count: files.length }));
+        return;
+      }
+      pendingRestoreFiles.current.set(reqId, files);
+    }
+    if ((og?.imageIds.length ?? 0) > 0 && tray.images().length + og!.imageIds.length > tray.max) {
+      toastRef.current(
+        i18n.t("composer.restore_images_full", { existing: tray.images().length, count: og!.imageIds.length }),
+      );
+      return;
+    }
+    host.sessionRestoreOutgoing(sessionId, reqId);
+  };
+
+  const handleBack = () => {
+    if (go && header?.isScheduled && header.scheduledTaskId && header.machineId) {
+      go(taskRoute(header.machineId, header.scheduledTaskId));
+      return;
+    }
+    onBack();
+  };
+
+  const scheduleSession = remote.sessions.get(sessionId);
+  const approvalId = vm.dock?.detail.case === "approval" ? vm.dock.detail.value.approvalId : "";
+  const approvalReason = approvalId ? (remote.approvalReasons.get(approvalId) ?? "") : "";
+
+  return (
+    <SessionScreenView
+      vm={vm}
+      wide={wide}
+      onBack={handleBack}
+      remote={remote}
+      scheduleSession={scheduleSession}
+      scheduleTaskCount={remote.sessionTasks(sessionId).length}
+      draft={remote.drafts.get(sessionId) ?? ""}
+      onDraft={(text) => {
+        remote.drafts.set(sessionId, text);
+        setDraftVer((n) => n + 1);
+      }}
+      tray={tray}
+      trayView={<TrayView tray={tray} remote={remote} />}
+      attach={<AttachButton tray={tray} blocked={attachWhy} onBlocked={setToast} />}
+      cardProps={wide ? drop.props : { onPaste: drop.props.onPaste }}
+      dropping={drop.over}
+      composerRef={composerRef}
+      composerKey={composerKey}
+      approvalReason={approvalReason}
+      onApprovalReasonChange={(id, v) => {
+        if (v) remote.approvalReasons.set(id, v);
+        else remote.approvalReasons.delete(id);
+        remote.touch();
+      }}
+      localAttachments={stash}
+      toast={toast}
+      onClearToast={() => setToast("")}
+      sentCount={sent}
+      onSend={handleSend}
+      onSubmitCommand={(slotKey, cmd) => host.sessionSubmitCommand(slotKey, machineId, sessionId, cmd)}
+      onAbandonCommand={(slotKey) => host.sessionAbandonCommand(slotKey, sessionId)}
+      onDismissOutgoing={(reqId) => host.sessionDismissOutgoing(sessionId, reqId)}
+      onRestoreOutgoing={(reqId) => void handleRestoreOutgoing(reqId)}
+      onRestoreText={async (text, reqId) => {
+        try {
+          await remote.restoreDraft(sessionId, tray);
+        } catch {
+          return;
+        }
+        if (!mountedSession.current) return;
+        const saved = reqId ? stash?.get(reqId) : undefined;
+        if (saved?.items?.length) {
+          const images = saved.items.filter((it) => it.kind !== "file" && it.imageId);
+          if (
+            images.length &&
+            !tray.restore(
+              images.map((it, i) => ({ imageId: it.imageId!, thumb: saved.thumbs?.[i], file: it.file })),
+              !!saved.original,
+            )
+          ) {
+            toastRef.current(
+              i18n.t("composer.restore_images_full", { existing: tray.images().length, count: images.length }),
+            );
+            return;
+          }
+        }
+        const cur = remote.drafts.get(sessionId) ?? "";
+        remote.drafts.set(sessionId, cur.trim() ? cur.trimEnd() + "\n\n" + text : text);
+        if (reqId) stash?.delete(reqId);
+        setComposerKey((k) => k + 1);
+        setTimeout(() => composerRef.current?.focus());
+      }}
+      onLoadEarlier={() => {
+        if (vm.timeline?.hasGap || vm.timeline?.canLoadEarlier) host.sessionLoadEarlier(sessionId);
+        if (vm.timeline?.hasEarlier) setWindowLimit((n) => Math.max(n, vm.timeline?.items.length ?? n) + DEFAULT_WINDOW_LIMIT);
+      }}
+      onRetryEvents={() => host.retryEvents(sessionId)}
+      onRefreshModels={() => host.sessionOpen(sessionId, true, false)}
+      onExpandGroup={(groupId) =>
+        setExpandedGroups((old) => (old.includes(groupId) ? old : [...old, groupId]))
+      }
+      onScheduleRevealed={() => remote.scheduleFocus.delete(sessionId)}
+    />
+  );
+}
+
+function ChatBody({
+  vm,
+  remote,
+  sent,
+  localAttachments,
+  retainedReasons = [],
+  defaultExpandedQueueAll,
+  onRestoreText,
+  onTerminal,
+  onSubmitCommand,
+  onRetryOutgoing,
+  onDismissOutgoing,
+  onRestoreOutgoing,
+  onLoadEarlier,
+  onRetryEvents,
+  onExpandGroup,
+  onScheduleRevealed,
+}: {
+  vm: SessionViewModel;
+  remote?: Remote;
+  sent: number;
+  localAttachments?: Map<string, LocalSendAttachments>;
+  retainedReasons?: Array<{ id: string; reason: string }>;
+  defaultExpandedQueueAll?: boolean;
+  onRestoreText?: (text: string, requestId?: string) => void;
+  onTerminal?: () => void;
+  onSubmitCommand: (slotKey: string, cmd: Command) => void;
+  onRetryOutgoing: (slotKey: string, cmd: Command) => void;
+  onDismissOutgoing: (requestId: string) => void;
+  onRestoreOutgoing: (requestId: string) => void;
+  onLoadEarlier: () => void;
+  onRetryEvents?: () => void;
+  onExpandGroup: (groupId: string) => void;
+  onScheduleRevealed?: () => void;
+}) {
+  const sid = vm.sessionId;
+  const header = vm.header;
+  const timeline = vm.timeline;
+  const composer = vm.composer;
+  const dock = vm.dock;
+
   const scroller = useRef<HTMLDivElement>(null);
-  const rowStates = useRef(new Map<string, boolean>());
-  // Back from another view, the chat is where it was left.
-  const [saved] = useState(() => remote.scroll.get(sid));
-  const [focus] = useState(() => { const value = remote.scheduleFocus.get(sid); remote.scheduleFocus.delete(sid); return value; });
-  const stick = useRef(focus ? false : saved?.stick ?? true);
+  const getScrollStore = () => {
+    if (remote?.scroll) return remote.scroll;
+    const key = remote ?? LOCAL_SCROLL;
+    let m = LOCAL_SCROLL.get(key);
+    if (!m) {
+      m = new Map();
+      LOCAL_SCROLL.set(key, m);
+    }
+    return m;
+  };
+  const saved = getScrollStore().get(sid);
+  const stick = useRef(saved ? saved.stick : true);
+  const lastScroll = useRef<Scrolled>(undefined);
   const userScrollAt = useRef(0);
-  const lastScroll = useRef<Scrolled | undefined>(undefined);
-  const [unseen, setUnseen] = useState(0);
   const [away, setAway] = useState(false);
-  const seen = useRef<number | undefined>(undefined);
-  const hist = remote.history(sid);
-  const restoringHistory = useRef(!hist.loaded);
-  const [expandedQuiet, setExpandedQuiet] = useState(new Set<string>());
-  const hasSharedFiles = remote.hasSharedFilesCapability(sid);
-  const rawItems = useMemo(
-    () => timeline(events, d, { sharedFiles: hasSharedFiles }),
-    [events, events.length, d, hasSharedFiles],
-  );
-  const focusSeq = focus && (events.find(e => e.kind.case === "userMessage" && e.origin?.scheduledRunId === focus.runId)?.seq ?? focus.seq);
-  const items = useMemo(() => foldScheduled(rawItems, events, expandedQuiet, focusSeq), [rawItems, events, events.length, expandedQuiet, focusSeq]);
-  const focusKey = focus && (rawItems.find(it => it.kind === "event" && it.event.kind.case === "userMessage" && it.event.origin?.scheduledRunId === focus.runId) ?? rawItems.find(it => it.kind === "event" && it.event.seq >= focus.seq))?.key;
-  const outbox = remote.outbox(sid);
-  const prompt = remote.prompts.get(sid);
-  const cwd = session.info?.cwd ?? "";
-  // Models by the names the chips use: Sonnet, not sonnet or its full ID.
-  const nameModel = (id: string) =>
-    remote.modelName(session.machineId, agent, id);
-  const home = remote.machines.get(session.machineId)?.meta?.home ?? "";
-  const short: Short = {
-    text: (title) => shortenPaths(title, cwd, home),
-    path: (path) => shortenPath(path, cwd, home),
-  };
+  const [unseen, setUnseen] = useState(0);
+  const rowStates = useRef(new Map<string, boolean>());
+  const loadedTopAt = useRef(-1);
 
-  // Text of a message this page knows, by request ID; the daemon says
-  // what it accepted from any client.
-  const textOf = new Map([
-    ...[...d.accepted].map(([id, a]) => [id, a.text] as const),
-    ...outbox.map((o) => [o.sendId, o.text] as const),
-  ]);
-  const who: Who = {
-    ctx: { me: remote.account.deviceId, devices: remote.devices, machine },
-  };
-  const promptId = promptIdOf(remote, sid, d);
-  if (promptId && prompt) textOf.set(promptId, prompt);
+  const rawItems = timeline?.items ?? [];
+  const rows = useMemo(() => flattenTimelineItems(rawItems), [rawItems]);
+  const count = rows.length;
+  const seen = useRef<number | undefined>(timeline?.loaded ? count : undefined);
+  const focusKey = timeline?.anchorItemId || undefined;
 
-  const count = items.length + outbox.length;
-  // What has only now arrived plays its entrance; what was there, or loads
-  // in above or behind a long open, plays nothing.
-  const byKey = new Map(items.map((it) => [it.key, it] as const));
-  const freshRow = useFresh(
-    items.map((it) => it.key),
-    hist.loaded,
-    {
-      replaces: (key, gone) => {
-        const it = byKey.get(key);
-        const tool = it?.kind === "tools" || it?.kind === "unsettled" || it?.kind === "background" || (it?.kind === "event" && it.event.kind.case === "toolCall");
-        return tool && gone.some((g) => g[0] === "r" || g[0] === "u");
-      },
-    },
-  );
-  const freshOut = useFresh(
-    outbox.map((o) => o.sendId),
-    hist.loaded,
-    { bulk: 3 },
-  );
-  // Messages this page sent: their line in the chat takes over from the
-  // bubble that was waiting, in the same place.
-  const sentHere = useRef(new Map<string, Sent>());
-  useLayoutEffect(() => {
-    for (const o of outbox) if (!sentHere.current.has(o.sendId)) sentHere.current.set(o.sendId, { text: i18n.t("session.delivered"), queued: false });
-  });
-  const rowClass = (it: ScheduledItem) => {
+  useEffect(() => {
+    if (focusKey && onScheduleRevealed) onScheduleRevealed();
+  }, [focusKey, onScheduleRevealed]);
+
+  const knownRowKeys = useRef<Set<string> | undefined>(undefined);
+  const newRowKeys = useRef(new Set<string>());
+  if (timeline?.loaded) {
+    if (knownRowKeys.current === undefined) {
+      knownRowKeys.current = new Set(rows.map((r) => r.key));
+    } else {
+      newRowKeys.current.clear();
+      const added: string[] = [];
+      for (const r of rows) {
+        if (!knownRowKeys.current.has(r.key)) added.push(r.key);
+        knownRowKeys.current.add(r.key);
+      }
+      if (added.length <= 2) {
+        for (const k of added) newRowKeys.current.add(k);
+      }
+    }
+  }
+  const freshRow = (k: string) => !!canAnimate() && newRowKeys.current.has(k);
+  const rowClass = (it: TimelineRowEntry) => {
     if (!freshRow(it.key)) return undefined;
-    if (it.kind !== "event") return it.kind === "quiet" ? undefined : "mo-fade";
-    const k = it.event.kind;
-    if (k.case === "userMessage") return k.value.requestId && sentHere.current.has(k.value.requestId) ? undefined : "mo-rise";
-    return k.case === "toolCall" || k.case === "approvalRequested" ? "mo-fade" : undefined;
+    const k = it.item.kind.case;
+    if (k === "userMessage") return "mo-rise";
+    if (k === "toolCall" || k === "toolGroup") return "mo-fade";
+    return undefined;
   };
-  // Following the bottom means what the chat holds may change height as it
-  // likes (a queue line comes in, a running tool becomes a row, a picture
-  // loads) and the column may give way as the dock or the input grows: the
-  // bottom stays in view in the same frame. Not for what the person has just
-  // opened (a tap or a key inside the chat), which grows where it was
-  // touched, and never once they have scrolled up.
+
   const pressedAt = useRef(0);
   useEffect(() => {
     const el = scroller.current;
     if (!el || typeof ResizeObserver === "undefined") return;
     let h = -1;
-    // The observer reports once a frame, after the page has been laid out:
-    // the sizes it hands over and the page's own height are read without
-    // asking for another layout, and the one write is the scroll.
     const ro = new ResizeObserver((entries) => {
       let shrank = false;
       for (const e of entries) {
@@ -1024,14 +1388,12 @@ function ChatBody({
         if (h >= 0 && now < h) shrank = true;
         h = now;
       }
-      // What the next scroll event is compared with: where the chat stands.
       lastScroll.current = { top: el.scrollTop, height: el.scrollHeight, client: el.clientHeight };
       setAway(!stick.current && el.scrollHeight - el.scrollTop - el.clientHeight >= NEAR_END);
       if (!stick.current) return;
       if (shrank || Date.now() - pressedAt.current > 800) el.scrollTop = el.scrollHeight;
     });
     ro.observe(el);
-    // The rows (or the virtual list that holds them) are the scroller's children.
     const watched = new Set<Element>();
     const sync = () => {
       for (const c of el.children) if (!watched.has(c)) (watched.add(c), ro.observe(c));
@@ -1045,12 +1407,14 @@ function ChatBody({
       ro.disconnect();
     };
   }, []);
+
   useLayoutEffect(() => {
     const el = scroller.current;
-    if (hist.loaded && items.length <= 100 && el && saved && !saved.stick)
+    if (timeline?.loaded && rows.length <= 100 && el && saved && !saved.stick) {
       el.scrollTop = saved.top;
+    }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
-  // Sending is asking to see the answer: back to the end, even from far up.
+
   useLayoutEffect(() => {
     const el = scroller.current;
     if (!sent || !el) return;
@@ -1058,159 +1422,108 @@ function ChatBody({
     stick.current = true;
     el.scrollTop = el.scrollHeight;
   }, [sent]);
+
   useLayoutEffect(() => {
     const el = scroller.current;
     if (!el) return;
-    if (restoringHistory.current) {
-      seen.current = count;
-      if (hist.loaded || hist.error || hist.broken)
-        restoringHistory.current = false;
-    }
     seen.current ??= count;
     if (stick.current) {
-      if (items.length <= 100) el.scrollTop = el.scrollHeight;
+      if (rows.length <= 100) el.scrollTop = el.scrollHeight;
       seen.current = count;
       setUnseen(0);
-    } else if (count > seen.current) setUnseen(count - seen.current);
-  }, [count, hist.loaded]);
+    } else if (count > seen.current) {
+      setUnseen(count - seen.current);
+    }
+  }, [count, timeline?.loaded]);
 
-  // The daemon names the request a recorded message came from; until
-  // then, a message it marked submitted (Codex takes one mid-turn and
-  // records it later) stays in view as written to the terminal.
-  const recorded = useMemo(() => new Set(
-    events.flatMap((e) =>
-      e.kind.case === "userMessage" && e.kind.value.requestId
-        ? [e.kind.value.requestId]
-        : [],
-    ),
-  ), [events, events.length]);
-  const awaiting = (o: Outgoing) =>
-    phaseOf(o, d.inputs.get(o.sendId)) === "done" &&
-    d.accepted.has(o.sendId) &&
-    !recorded.has(o.sendId);
-  const queued = queuedIds(d);
-  const pending = outbox.filter(
-    (o) =>
-      ["sending", "delivered", "queued", "failed"].includes(
-        phaseOf(o, d.inputs.get(o.sendId)),
-      ) || awaiting(o),
-  );
-  // Whether a bubble that unmounts goes without a sound: the chat now holds
-  // its message, or it is still waiting and only drawn again (the long chat
-  // swaps to its virtual list).
-  const quiet = useRef<(id: string) => boolean>(() => false);
-  quiet.current = (id) => recorded.has(id) || pending.some((o) => o.sendId === id);
-  const started = session.info?.createdAt
-    ? Number(session.info.createdAt.seconds) * 1000
-    : events[0]
-      ? eventTime(events[0])
-      : 0;
-  // The first message of a session started here, until the CLI takes it.
-  const promptState = promptId ? d.inputs.get(promptId) : undefined;
-  const showPrompt =
-    prompt &&
-    !events.some((e) => e.kind.case === "userMessage") &&
-    (promptState === undefined || promptState === InputStatus.SUBMITTED);
+  const protocolNotice = header?.protocolMismatch ? renderText(header.protocolMismatchText) : "";
+  const historyNotice = renderText(timeline?.historyNotice);
+  const fetchError = renderText(timeline?.fetchError);
+  const historyError = renderText(timeline?.error);
+  const ready = !!timeline?.loaded || !!historyError || !!timeline?.retired;
+  const awaitingApprovalTool = !!(dock?.hasItem && dock.kind === SessionDockKind.APPROVAL);
 
-  const header = (
+  const listHeader = (
     <>
-      <div className="sysline">
-        {started ? dayTime(started) + " · " : ""}
-        <PathText path={shortPath(cwd)} />
-      </div>
-      {hist.backfilling && !hist.error && !hist.broken && (
-        <div className="sysline">{i18n.t("session.loading_earlier")}</div>
-      )}
-    </>
-  );
-  const footer = (
-    <>
-      {remote.liveSnapshotError(sid) && (
-        <Banner
-          kind="warn"
-          action={t("common.retry")}
-          onAction={() => void remote.refreshLiveSnapshot(sid)}
-        >
-          {remote.liveSnapshotError(sid)}
-        </Banner>
-      )}
-      {(hist.unavailable ?? 0) > 0 && (
-        <Banner>
-          {i18n.t("session.history_unavailable", { count: hist.unavailable! })}
-        </Banner>
-      )}
-      {hist.broken && hist.ready && (
-        <Banner>
-          {hist.error || i18n.t("session.history_unreadable")}
-        </Banner>
-      )}
-      {/* Offline, the connection banner says the content may be stale and the
-            next connection fetches again: a failed fetch adds nothing. */}
-      {hist.error && hist.ready && !hist.broken && remote.conn === "online" && (
-        <Banner
-          kind="err"
-          action={t("common.retry")}
-          onAction={() => remote.retryEvents(sid)}
-        >
-          {i18n.t("session.history_tail_missing")}</Banner>
-      )}
-      {showPrompt && (
-        <div className="me">
-          <div>{prompt}</div>
-          <small>{i18n.t("session.delivered")}</small>
+      {(timeline?.hasEarlier || timeline?.canLoadEarlier || timeline?.backfilling) && (
+        <div className="load-earlier">
+          {timeline.backfilling ? (
+            <div className="muted small">{i18n.t("session.loading_earlier")}</div>
+          ) : (
+            <button className="more-row" onClick={onLoadEarlier}>
+              {i18n.t("schedule.earlier")}
+            </button>
+          )}
         </div>
       )}
-      {session.info?.status === SessionStatus.STARTING && (
+      {historyNotice && <div className="sysline">{historyNotice}</div>}
+      {protocolNotice && <Banner kind="warn">{protocolNotice}</Banner>}
+    </>
+  );
+
+  const listFooter = (
+    <>
+      {(timeline?.hasGap || fetchError) && (
+        <Banner kind="err" action={onRetryEvents ? t("common.retry") : undefined} onAction={onRetryEvents}>
+          {fetchError || i18n.t("session.history_tail_missing")}
+        </Banner>
+      )}
+      {header?.status === SessionDisplayStatus.STARTING && (
         <div className="sysline">
-          {i18n.t("session.starting_agent", { name: machine, agent: agentName(agent) })}
+          {i18n.t("session.starting_agent", { name: renderText(header.computerName), agent: header.agentName })}
         </div>
       )}
-      {events.flatMap((e) => {
-        if (
-          e.kind.case !== "approvalRequested" ||
-          !d.resolved.has(e.kind.value.approvalId)
-        )
-          return [];
-        const reason = remote.approvalReasons.get(e.kind.value.approvalId);
-        return reason
-          ? [
-              <div className="record" key={"reason:" + e.kind.value.approvalId}>
-                <span className="muted">{i18n.t("session.approval_resolved")}</span>
-                <pre>{reason}</pre>
-                <button
-                  className="link"
-                  onClick={() =>
-                    void navigator.clipboard
-                      .writeText(reason)
-                      .catch(() => undefined)
-                  }
-                >
-                  {t("common.copy")}
-                </button>
-              </div>,
-            ]
-          : [];
-      })}
-      {pending.map((o) => (
-        <Pending
-          key={o.sendId}
-          remote={remote}
-          session={session}
-          d={d}
-          rank={queued.indexOf(o.sendId) + 1}
-          count={queued.length}
-          sentHere={sentHere.current}
-          quiet={quiet}
-          reached={items.length > 100 && stick.current ? () => { const e = scroller.current; return !e || e.scrollHeight - e.scrollTop - e.clientHeight < 4; } : undefined}
-          o={o}
-          phase={awaiting(o) ? "written" : phaseOf(o, d.inputs.get(o.sendId))}
-          enter={freshOut(o.sendId)}
-          agent={agent}
-          onRestore={onRestore}
-        />
+      {retainedReasons.map(({ id, reason }) => (
+        <div className="record" key={"reason:" + id}>
+          <span className="muted">{i18n.t("session.approval_resolved")}</span>
+          <pre>{reason}</pre>
+          <button
+            className="link"
+            onClick={() => void navigator.clipboard.writeText(reason).catch(() => undefined)}
+          >
+            {i18n.t("common.copy")}
+          </button>
+        </div>
       ))}
-      <PendingBubbles remote={remote} session={session} d={d} sentHere={sentHere.current} own={new Set(pending.map((o) => o.sendId))} />
+      <OutgoingBubbles
+        sessionId={sid}
+        outgoing={composer?.outgoing ?? []}
+        localAttachments={localAttachments}
+        onRetry={onRetryOutgoing}
+        onRestore={onRestoreOutgoing}
+        onDismiss={onDismissOutgoing}
+      />
+      <PendingBubbles
+        sessionId={sid}
+        pendingInputs={composer?.pendingInputs ?? []}
+        localAttachments={localAttachments}
+        defaultExpandedAll={defaultExpandedQueueAll}
+        onSubmitCommand={onSubmitCommand}
+      />
     </>
+  );
+
+  const online = header?.computerOnline ?? true;
+  const mname = renderText(header?.computerName);
+  const hasSharedFiles = header?.capabilities?.supportsSharedFiles ?? false;
+
+  const renderEntry = (entry: TimelineRowEntry) => (
+    <RowState id={entry.key} states={rowStates.current}>
+      <TimelineRow
+        item={entry.item}
+        sessionId={sid}
+        online={online}
+        lostAt={remote?.lostAt}
+        awaitingApproval={awaitingApprovalTool}
+        remote={remote}
+        machineName={mname}
+        hasSharedFiles={hasSharedFiles}
+        onTerminal={onTerminal}
+        localAttachments={localAttachments}
+        onRestoreText={onRestoreText}
+        onExpandGroup={onExpandGroup}
+      />
+    </RowState>
   );
 
   return (
@@ -1241,72 +1554,63 @@ function ChatBody({
         }}
         onScroll={(e) => {
           const el = e.currentTarget;
-          // Initial virtual measurements can temporarily put an empty list at
-          // its end. They must not replace the reading position being restored.
           if (el.classList.contains("mo-hold")) return;
           const gap = el.scrollHeight - el.scrollTop - el.clientHeight;
-          // Virtual measurement and pagination also produce scroll events;
-          // only a scroll away from the end turns following off.
           const now = { top: el.scrollTop, height: el.scrollHeight, client: el.clientHeight };
           stick.current = followsEnd(stick.current, lastScroll.current, now, userScrollAt.current, Date.now());
           lastScroll.current = now;
           setAway(!stick.current && gap >= NEAR_END);
-          // The virtual list follows its last row, which stops short of the
-          // chat's own bottom padding: where nobody scrolled it, the last step
-          // is taken, so that older records that join above, or a row measured,
-          // do not leave the end a few pixels away.
-          if (stick.current && gap > 0 && gap < 40 && Date.now() - userScrollAt.current >= 1000) el.scrollTop = el.scrollHeight;
-          remote.scroll.set(sid, { top: el.scrollTop, stick: stick.current });
+          if (stick.current && gap > 0 && gap < 40 && Date.now() - userScrollAt.current >= 1000) {
+            el.scrollTop = el.scrollHeight;
+          }
+          getScrollStore().set(sid, { top: el.scrollTop, stick: stick.current });
           if (stick.current) {
             seen.current = count;
             setUnseen(0);
           }
+          if (el.scrollTop <= 40 && (timeline?.hasEarlier || timeline?.canLoadEarlier) && loadedTopAt.current !== rows.length) {
+            loadedTopAt.current = rows.length;
+            onLoadEarlier();
+          }
         }}
       >
-        <HistoryRows
-          items={items}
-          focusKey={focusKey}
-          scroller={scroller}
-          remote={remote}
-          sid={sid}
-          follow={() => stick.current}
-          rowClass={rowClass}
-          long={Number(session.lastSeq ?? 0) > LONG_HISTORY}
-          loaded={hist.loaded || !!hist.error || hist.broken}
-          ready={hist.ready || !!hist.error || hist.broken}
-          header={header}
-          footer={footer}
-          render={(it) => it.kind === "quiet" ? <button className="schedule-quiet" onClick={() => setExpandedQuiet(old => new Set(old).add(it.key))}>{i18n.t("session.quiet_checks", { times: it.times.join(i18n.t("common.list_separator")) })} <ChevronDown /></button> : (
-            <RowState id={it.key} states={rowStates.current}>
-              <Row
-                it={it}
-                d={d}
-                short={short}
-                machine={machine}
-                agent={agent}
-                textOf={textOf}
-                onRestore={onRestore}
-                nameModel={nameModel}
-                remote={remote}
-                onTerminal={onTerminal}
-                who={who}
-                sid={sid}
-                settle={freshRow(it.key)}
-                sentHere={sentHere.current}
-                hasSharedFiles={hasSharedFiles}
-                machineHome={home}
-              />
-            </RowState>
-          )}
-        />
+        {remote ? (
+          <HistoryRows
+            items={rows}
+            focusKey={focusKey}
+            scroller={scroller}
+            remote={remote}
+            sid={sid}
+            follow={() => stick.current}
+            rowClass={rowClass}
+            long={!!timeline?.hasEarlier || rows.length > 100}
+            loaded={ready}
+            ready={ready}
+            header={listHeader}
+            footer={listFooter}
+            render={renderEntry}
+          />
+        ) : (
+          <>
+            {listHeader}
+            {rows.map((entry, index) => (
+              <div key={entry.key} className={"history-row" + (rowClass(entry) ? " " + rowClass(entry) : "")} data-history-index={index + 1}>
+                {renderEntry(entry)}
+              </div>
+            ))}
+            {listFooter}
+          </>
+        )}
       </div>
-      <HistoryOpening
-        waiting={!hist.ready}
-        connected={remote.conn === "online"}
-        scroller={scroller}
-        error={hist.broken ? hist.error : remote.conn === "online" ? (remote.sessionErrors.has(sid) ? t("session.history_failed") : !hist.ready ? hist.error : undefined) : undefined}
-        onRetry={hist.broken ? undefined : () => remote.retrySession(sid)}
-      />
+      {remote && (
+        <HistoryOpening
+          waiting={!ready}
+          connected={remote.conn === "online"}
+          scroller={scroller}
+          error={historyError || undefined}
+          onRetry={onRetryEvents}
+        />
+      )}
       {(away || unseen > 0) && (
         <NewMessages
           n={unseen}
@@ -1325,7 +1629,6 @@ function ChatBody({
   );
 }
 
-/** 「回到最新」: rises in, fades out. */
 function NewMessages({ n, onClick }: { n: number; onClick: () => void }) {
   const ref = useRef<HTMLButtonElement>(null);
   useExit(ref);
@@ -1336,682 +1639,369 @@ function NewMessages({ n, onClick }: { n: number; onClick: () => void }) {
   );
 }
 
-/** Sessions with more events than this are drawn with the virtual list from the
- * start: past it the chat is, or soon will be, over 100 rows (a row is about
- * half an event). */
-const LONG_HISTORY = 170;
-
-/** How long a queued message with no reason to wait may be on its way before
- * its bubble says it is queued: an idle session takes it in about half a
- * second (measured on a real Claude Code session), which must not flash. */
-const QUEUE_SHOWN_AFTER = 1000;
-
-/** A message this page sent, from the moment it is sent until the chat holds
- * it: one bubble throughout. Sending, delivered, written to the terminal, and
- * waiting in the queue are the same element under the same key; only the line
- * under it changes, and only a message that really waits (a turn runs, it is
- * paused, or it has waited a moment) takes the queue's outline, with its
- * 取消 line coming in by height and its fill and frame by a fade. It goes by
- * collapsing when it is canceled or dismissed, and without a sound when the
- * chat has the recorded message to put in its place. */
-function Pending({
+function TimelineRow({
+  item,
+  sessionId,
+  online,
+  lostAt,
+  awaitingApproval,
   remote,
-  session,
-  d,
-  o,
-  phase,
-  enter,
-  agent,
-  onRestore,
-  rank,
-  count,
-  sentHere,
-  quiet,
-  reached,
-}: {
-  remote: Remote;
-  session: SessionView;
-  d: Derived;
-  o: Outgoing;
-  phase: string;
-  enter: boolean;
-  // In a long (virtual) chat, the bottom is reached a frame or two after the
-  // bubble is drawn: its entrance waits for that, hidden until then.
-  reached?: () => boolean;
-  agent: Agent;
-  onRestore: (text: string, from?: string) => void;
-  rank: number;
-  count: number;
-  sentHere: Map<string, Sent>;
-  quiet: RefObject<(id: string) => boolean>;
-}) {
-  const sid = session.id;
-  const root = useRef<HTMLDivElement>(null);
-  const tail = useRef<HTMLElement>(null);
-  const [waiting, setWaiting] = useState(() => !!reached);
-  useEffect(() => {
-    if (!waiting) return;
-    let frames = 0;
-    let id = requestAnimationFrame(function poll() {
-      if (reached?.() || ++frames > 12) return setWaiting(false);
-      id = requestAnimationFrame(poll);
-    });
-    return () => cancelAnimationFrame(id);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-  useExit(root, { collapse: true, skip: () => quiet.current(o.sendId) });
-  useHeightFlip(tail, { fade: false });
-  // A queued message that is only on its way to the terminal shows nothing of
-  // the queue; one that has waited a moment does.
-  const queued = phase === "queued";
-  const [late, setLate] = useState(false);
-  useEffect(() => {
-    setLate(false);
-    if (!queued) return;
-    const t = setTimeout(() => setLate(true), QUEUE_SHOWN_AFTER);
-    return () => clearTimeout(t);
-  }, [queued]);
-  const failed = phase === "failed";
-  const line = queued ? queueLine(remote, session, d, o.sendId, rank, count) : undefined;
-  const asQueue = !!line && (line.needed || late);
-  const lineKey = asQueue ? "queue" : phase === "queued" ? "delivered" : phase;
-  const said = phase === "sending" ? i18n.t("composer.sending") : phase === "written" ? i18n.t("composer.await_record", { agent: agentName(agent) }) : i18n.t("session.delivered");
-  // What the chat's own line for it will start from.
-  sentHere.set(o.sendId, { text: asQueue ? line.text : said, queued: asQueue });
-  // Either it surely did not go, or it may have: the computer may have
-  // taken it before the answer was lost.
-  const cls = failed ? (o.unknown ? " warn" : " fail") : asQueue ? " pending-bubble mo-queued" : phase === "sending" ? " pending" : "";
-  return (
-    <div ref={root} className={"me" + cls + (enter ? (waiting ? " mo-wait" : " mo-rise") : "")}>
-      <LocalThumbs blobs={o.thumbs} sizes={o.imageSizes} />
-      <FileChips files={o.files} />
-      {o.text && <div className="mo-text">{o.text}</div>}
-      <small ref={tail}>
-        {failed ? (
-          <>
-            {o.outcomeNotice ? o.error : o.unknown ? i18n.t("composer.maybe_failure", { reason: o.error ?? "" }) : i18n.t("composer.send_failure", { reason: o.error ?? "" })}
-            {remote.canRestoreAttachments(sid, o.sendId) && <button onClick={() => onRestore(o.text, o.sendId)}>{i18n.t("composer.restore")}</button>}
-            {!o.missingImages && <button onClick={() => remote.retrySend(sid, o.sendId)}>{t("common.retry")}</button>}
-            <button onClick={() => remote.dismissSend(sid, o.sendId)}>{i18n.t("session.dismiss_notice")}</button>
-          </>
-        ) : (
-          /* Where it has got to: each word fades into the next. */
-          <Swap k={lineKey}>
-            {asQueue ? (
-              <span className="pending-meta">
-                <span>{line.text}</span>
-                {line.buttons}
-              </span>
-            ) : (
-              <span className="mo-small">
-                {phase === "sending" && <LoaderCircle />} {said}
-              </span>
-            )}
-          </Swap>
-        )}
-      </small>
-    </div>
-  );
-}
-
-/** What a sent bubble last said under it, for the line that closes up in its place. */
-type Sent = { text: string; queued: boolean };
-
-/** A message of the chat. One that takes over from a bubble that was waiting
- * in the queue (`from`) starts in the queue's frame and fill, which fade to
- * the message's own. */
-function MessageRow({ from, children }: { from?: boolean; children: ReactNode }) {
-  const [queued, setQueued] = useState(!!from);
-  useEffect(() => {
-    if (!queued) return;
-    const id = requestAnimationFrame(() => requestAnimationFrame(() => setQueued(false)));
-    return () => cancelAnimationFrame(id);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-  return <div className={"me" + (queued ? " mo-queued" : "")}>{children}</div>;
-}
-
-/** The line the sent bubble had, closing up. */
-function Settled({ text, tall }: { text: string; tall: boolean }) {
-  const ref = useRef<HTMLElement>(null);
-  useSettle(ref, true);
-  // Where nothing can play it, it is not there.
-  return canAnimate() ? <small ref={ref} className={tall ? "mo-tall" : undefined}>{text}</small> : null;
-}
-
-function Row({
-  it,
-  d,
-  short,
-  machine,
-  agent,
-  textOf,
-  onRestore,
-  nameModel,
-  remote,
-  onTerminal,
-  who,
-  sid,
-  settle,
-  sentHere,
+  machineName,
   hasSharedFiles,
-  machineHome,
+  localAttachments,
+  onTerminal,
+  onRestoreText,
+  onExpandGroup,
 }: {
-  it: Item;
-  d: Derived;
-  short: Short;
-  machine: string;
-  agent: Agent;
-  textOf: Map<string, string>;
-  onRestore: (text: string, from?: string) => void;
-  nameModel: (id: string) => string;
-  remote: Remote;
-  onTerminal?: () => void;
-  who: Who;
-  sid: string;
-  // The row has only now arrived; the ids of messages this page sent.
-  settle: boolean;
-  sentHere: Map<string, Sent>;
+  item: SessionTimelineItem;
+  sessionId: string;
+  online: boolean;
+  lostAt?: number;
+  awaitingApproval: boolean;
+  remote?: Remote;
+  machineName: string;
   hasSharedFiles: boolean;
-  machineHome: string;
+  localAttachments?: Map<string, LocalSendAttachments>;
+  onTerminal?: () => void;
+  onRestoreText?: (text: string, requestId?: string) => void;
+  onExpandGroup: (groupId: string) => void;
 }) {
-  if (it.kind === "tools") return <ToolGroup calls={it.calls} short={short} />;
-  if (it.kind === "background")
-    return (
-      <BackgroundTool
-        call={it.call}
-        short={short}
-        remote={remote}
-        onTerminal={onTerminal}
-      />
-    );
-  if (it.kind === "running" || it.kind === "unsettled")
-    return (
-      <ActiveTool
-        tool={{ ...it.tool, title: toolTitle(it.tool, short) }}
-        d={d}
-        unsettled={it.kind === "unsettled"}
-        aborted={it.kind === "unsettled" && it.aborted}
-        remote={remote}
-      />
-    );
-  if (it.kind === "turn")
-    return <div className="sep">{i18n.t("session.turn_duration", { duration: duration(it.ms) })}</div>;
-  const e = it.event;
-  if (isSkeleton(e))
-    return <div className="record muted">{skeletonMessage()}</div>;
-  const k = e.kind;
-  switch (k.case) {
+  switch (item.kind.case) {
     case "userMessage": {
-      // This client's own messages carry no name.
-      const label = originLabel(e.origin, who.ctx);
-      const from =
-        label === undefined
-          ? d.typedLocally.has(e.seq)
-            ? terminalLabel(machine)
-            : ""
-          : e.origin?.kind === OriginKind.CLIENT && e.origin.deviceId === who.ctx.me
-            ? ""
-            : label;
-      const images = k.value.images;
-      const segs = splitPlaceholders(withoutFileLines(k.value.text, k.value.files), images);
-      const sent = k.value.requestId ? sentHere.get(k.value.requestId) : undefined;
+      const m = item.kind.value;
+      const files = m.files.map((f, i) => ({
+        fileId: f.path || f.name || String(i),
+        name: f.name,
+        sizeBytes: f.sizeBytes,
+        path: f.path,
+      }));
+      const segs = splitPlaceholders(withoutFileLines(m.text, files), m.images);
+      const caption = renderText(m.originCaption);
       return (
-        <MessageRow from={settle && sent?.queued}>
-          <ImageStrip refs={images} numbered />
-          <FileChips files={k.value.files} />
-          {e.origin?.scheduledTaskId ? <ScheduleText key={e.seq.toString()} text={k.value.text} meta={i18n.t("session.scheduled_at", { time: clockTime(Number(e.time?.seconds ?? 0n) * 1000) })} /> : segs.length > 0 && (
-            <div className="mo-text">
-              {segs.map((x, i) =>
-                "text" in x ? (
-                  <span key={i}>{x.text}</span>
-                ) : (
-                  <span key={i} className="ichip">
-                    {i18n.t("image.placeholder", { index: x.image })}
-                  </span>
-                ),
-              )}
-            </div>
+        <div className="me">
+          <ImageStrip refs={m.images} numbered />
+          <FileChips files={files} />
+          {m.isScheduled ? (
+            <ScheduleText key={item.id} text={m.text} meta={caption} />
+          ) : (
+            segs.length > 0 && (
+              <div className="mo-text">
+                {segs.map((x, i) =>
+                  "text" in x ? (
+                    <span key={i}>{x.text}</span>
+                  ) : (
+                    <span key={i} className="ichip">
+                      {i18n.t("image.placeholder", { index: x.image })}
+                    </span>
+                  ),
+                )}
+              </div>
+            )
           )}
-          {!e.origin?.scheduledTaskId && from && <small>{from}</small>}
-          {/* Taking over from the bubble that waited for it: that had its
-              status line under it, which now closes up instead of going. */}
-          {!from && settle && !!sent && <Settled text={sent.text} tall={sent.queued} />}
-        </MessageRow>
-      );
-    }
-    case "scheduledNotification":
-      return <div className="sysline schedule-notification">{i18n.t("session.notification", { text: k.value.text })}</div>;
-    case "imageGenerated":
-      return <GenCard refs={k.value.images} prompt={k.value.revisedPrompt} />;
-    case "agentMessage":
-      return (
-        <div
-          className={
-            "ai" + (k.value.phase === "commentary" ? " commentary" : "")
-          }
-        >
-          <Markdown text={k.value.text} />
+          {!m.isScheduled && caption && <small>{caption}</small>}
         </div>
       );
-    case "reasoning":
+    }
+    case "agentMessage": {
+      const a = item.kind.value;
+      return (
+        <div className={"ai" + (a.intermediate ? " commentary" : "")}>
+          <Markdown text={a.markdown} />
+        </div>
+      );
+    }
+    case "reasoning": {
+      const r = item.kind.value;
       return (
         <RememberDetails name="details" className="think">
           <summary>
-            {i18n.t("session.thinking")}<Exp />
+            {i18n.t("session.thinking")}
+            <Exp />
           </summary>
-          <div className="thinktext">{k.value.text}</div>
+          <div className="thinktext">{r.markdown}</div>
         </RememberDetails>
       );
-    case "toolCall": {
-      const ok = k.value.status !== "failed" && (k.value.exitCode === undefined || k.value.exitCode === 0);
-      if (hasSharedFiles && ok && k.value.sharedFiles.length > 0) {
+    }
+    case "toolCall":
+      return (
+        <ToolCallView
+          item={item.kind.value}
+          online={online}
+          lostAt={lostAt}
+          awaitingApproval={awaitingApproval}
+        />
+      );
+    case "toolGroup":
+      return <ToolGroupView group={item.kind.value} />;
+    case "sharedFiles": {
+      const sf = item.kind.value;
+      if (hasSharedFiles && remote) {
+        const files = sf.files.map((f) =>
+          create(SharedFileSchema, {
+            path: f.path,
+            name: f.name,
+            sizeBytes: f.sizeBytes,
+            fileId: f.fileId,
+          }),
+        );
         return (
           <SharedFileCards
             remote={remote}
-            sessionId={sid}
-            files={k.value.sharedFiles}
-            machineName={machine}
-            machineHome={machineHome}
+            sessionId={sessionId}
+            files={files}
+            machineName={machineName}
           />
         );
       }
       return (
-        <ToolRow
-          t={k.value}
-          short={short}
-          decision={it.decision}
-          resultText={
-            it.decision === ApprovalDecision.ALLOW_ALWAYS && it.approvalId
-              ? alwaysText(d.resolved.get(it.approvalId)?.message ?? "")
-              : undefined
-          }
-          by={
-            it.approvalId && otherThanMe(d.by.get(it.approvalId), who)
-              ? elsewhereLabel(d.by.get(it.approvalId), who.ctx)
-              : undefined
-          }
+        <FileChips
+          files={sf.files.map((f, i) => ({
+            fileId: f.fileId || f.path || f.name || String(i),
+            name: f.name,
+            sizeBytes: f.sizeBytes,
+          }))}
         />
       );
     }
-    case "turnEnded":
+    case "generatedImages":
+      return <GenCard refs={item.kind.value.images} prompt={item.kind.value.revisedPrompt} />;
+    case "asyncQuestion": {
+      const aq = item.kind.value;
       return (
-        <div className="sysline">
-          {i18n.t("session.interrupted")}{otherThanMe(e.origin, who)
-            ? ` · ${originLabel(e.origin, who.ctx)}`
-            : ""}
-        </div>
-      );
-    case "planAnswered": {
-      const choices: Record<number, string> = {
-        [PlanChoice.IMPLEMENT]: i18n.t("dock.plan_implement_record"),
-        [PlanChoice.KEEP_PLANNING]: i18n.t("dock.plan_keep"),
-        [PlanChoice.CLEAR_AND_IMPLEMENT]: i18n.t("dock.plan_clear_record"),
-      };
-      const choice = choices[k.value.choice] ?? i18n.t("dock.plan_answered");
-      return (
-        <div className="sysline">
-          {choice}
-          {otherThanMe(e.origin, who) &&
-            ` · ${elsewhereLabel(e.origin, who.ctx)}`}
-        </div>
-      );
-    }
-    case "approvalRequested": {
-      const r = d.resolved.get(k.value.approvalId);
-      if (!r) return null;
-      const ok =
-        r.decision === ApprovalDecision.ALLOW ||
-        r.decision === ApprovalDecision.ALLOW_ALWAYS;
-      // Canceled, or answered in the CLI's own prompt: what happened shows
-      // in the tool call that follows.
-      const canceled =
-        r.decision === ApprovalDecision.CANCELED ||
-        r.decision === ApprovalDecision.TERMINAL;
-      return (
-        <div className="record">
-          <span className={canceled ? "muted" : ok ? "ok" : "x"}>
-            {canceled ? <Minus /> : ok ? <Check /> : <X />}
-          </span>
-          <code>{k.value.command || k.value.toolName}</code>
-          <span className="muted">
-            {r.decision === ApprovalDecision.ALLOW_ALWAYS
-              ? alwaysText(r.message)
-              : decisionText(r.decision)}
-            {otherThanMe(d.by.get(k.value.approvalId), who) &&
-              r.decision !== ApprovalDecision.TERMINAL &&
-              ` · ${elsewhereLabel(d.by.get(k.value.approvalId), who.ctx)}`}
-          </span>
-        </div>
-      );
-    }
-    case "questionAsked": {
-      // Async questions use the ordinary composer; there is no terminal
-      // answer card or answer command for them.
-      if (k.value.async)
-        return (
-          <div className="ai">
-            {k.value.questions.map((q, i) => (
-              <div key={i}>
-                {q.header && <b>{q.header}</b>}
-                <Markdown text={q.text} />
-                {q.options.length > 0 && (
-                  <ul>
-                    {q.options.map((o, j) => (
-                      <li key={j}>
-                        <b>{o.label}</b>
-                        {o.description && ` · ${o.description}`}
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-            ))}
-          </div>
-        );
-      const a = d.answered.get(k.value.questionId);
-      const by = d.by.get(k.value.questionId);
-      return a ? (
-        <div className="sysline">
-          {rich(i18n.t("dock.answered", { answers: "{answers}" }), { answers: <b>{a.join(i18n.t("common.list_separator"))}</b> })}
-          {otherThanMe(by, who) && ` · ${elsewhereLabel(by, who.ctx)}`}
-        </div>
-      ) : null;
-    }
-    case "inputState": {
-      if (d.unsent.has(k.value.requestId)) {
-        // The session ended before writing it. Not sent again by itself:
-        // the text can go back into the input, to send after resuming.
-        const text = textOf.get(k.value.requestId);
-        const images = d.accepted.get(k.value.requestId)?.imageIds.length ?? 0;
-        const files = d.accepted.get(k.value.requestId)?.files;
-        return text !== undefined && (text || images || files?.length) ? (
-          <div className="me fail unsent">
-            <FileChips files={files} />
-            <div>{text || (images ? i18n.t("image.count", { count: images }) : "")}</div>
-            <small>
-              {i18n.t("session.ended_send_failed")}<button onClick={() => onRestore(text, k.value.requestId)}>
-                {i18n.t("composer.restore")}</button>
-            </small>
-          </div>
-        ) : (
-          <div className="sysline fail">{i18n.t("session.ended_message_failed")}</div>
-        );
-      }
-      if (k.value.status === InputStatus.CANCELED)
-        return <div className="sysline">{i18n.t("queue.canceled_record")}</div>;
-      if (
-        k.value.status === InputStatus.FAILED ||
-        k.value.status === InputStatus.NEEDS_TERMINAL
-      ) {
-        const text = textOf.get(k.value.requestId) ?? "";
-        const why = inputFailure(k.value.reason, agent);
-        const images = d.accepted.get(k.value.requestId)?.imageIds ?? [];
-        const files = d.accepted.get(k.value.requestId)?.files;
-        const mine = remote
-          .outbox(sid)
-          .some((o) => o.sendId === k.value.requestId);
-        if (k.value.status === InputStatus.NEEDS_TERMINAL)
-          return (
-            <div className="me warn">
-              <LocalThumbs blobs={remote.outbox(sid).find(o => o.sendId === k.value.requestId)?.thumbs} sizes={remote.outbox(sid).find(o => o.sendId === k.value.requestId)?.imageSizes} />
-              <FileChips files={files} />
-              <div>{text || (files?.length ? "" : i18n.t("composer.message_fallback"))}</div>
-              <small>
-                {i18n.t("composer.maybe_failure", { reason: why })}
-                {onTerminal && <button onClick={onTerminal}>{i18n.t("session.go_terminal")}</button>}
-                {remote.canRestoreAttachments(sid, k.value.requestId) && <button onClick={() => onRestore(text, k.value.requestId)}>{i18n.t("composer.restore")}</button>}
-              </small>
+        <div className="ai">
+          {aq.questions.map((q, i) => (
+            <div key={i}>
+              {q.header && <b>{q.header}</b>}
+              <Markdown text={q.questionText} />
+              {q.options.length > 0 && (
+                <ul>
+                  {q.options.map((o, j) => (
+                    <li key={j}>
+                      <b>{o.label}</b>
+                      {o.description && ` · ${o.description}`}
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
-          );
-        return (
-          <div className="me fail">
-            <FileChips files={files} />
-            {!text && images.length > 0 ? (
-              <div>{i18n.t("image.count", { count: images.length })}</div>
-            ) : (
-              <div>{text || (files?.length ? "" : i18n.t("composer.message_fallback"))}</div>
-            )}
-            <small>
-              {i18n.t("composer.send_failure", { reason: why })}
-              {mine && (text || images.length > 0 || !!files?.length) && (
-                <button
-                  disabled={remote.replaced.has(k.value.requestId)}
-                  onClick={() =>
-                    remote.resend(sid, k.value.requestId, text, images, [], remote.outbox(sid).find((o) => o.sendId === k.value.requestId)?.files ?? files)
-                  }
-                >
-                  {remote.replaced.has(k.value.requestId)
-                    ? i18n.t("composer.resent")
-                    : t("common.retry")}
-                </button>
-              )}
-              {(text || images.length > 0 || !!files?.length) && (
-                <button onClick={() => onRestore(text, k.value.requestId)}>
-                  {i18n.t("composer.restore")}</button>
-              )}
-            </small>
-          </div>
-        );
-      }
-      const text = textOf.get(k.value.requestId);
-      const note = i18n.t("composer.unconfirmed");
-      return text ? (
-        <div className="me warn">
-          <div>{text}</div>
-          <small>{note}</small>
-        </div>
-      ) : (
-        <div className="sysline warn">{i18n.t("composer.message_unconfirmed")}</div>
-      );
-    }
-    case "settingsChanged": {
-      const c = k.value;
-      if (c.compacted) {
-        const x = d.compactions.get(e.seq);
-        return (
-          <div className="sysline">
-            {i18n.t("session.compacted")}{x?.before !== undefined && x.after !== undefined
-              ? ` · ${x.before}% → ${x.after}%`
-              : ""}
-          </div>
-        );
-      }
-      if (c.model)
-        return (
-          <div className="sysline">
-            {rich(otherThanMe(e.origin, who) ? i18n.t("session.model_changed_by", { origin: originLabel(e.origin, who.ctx) ?? "", value: "{value}" }) : i18n.t("session.model_changed", { value: "{value}" }), { value: <b>{nameModel(c.model)}</b> })}
-            {c.effort && ` · ${c.effort}`}
-          </div>
-        );
-      return (
-        <div className="sysline">
-          {rich(otherThanMe(e.origin, who) ? i18n.t("session.mode_changed_by", { origin: originLabel(e.origin, who.ctx) ?? "", value: "{value}" }) : i18n.t("session.mode_changed", { value: "{value}" }), { value: <b>{modeName(c.mode)}</b> })}
+          ))}
         </div>
       );
     }
-    case "turnContext":
-      return (
-        <div className="sysline">
-          {rich(i18n.t("session.terminal_changes", { name: machine, changes: "{changes}" }), { changes: (d.terminalChanges.get(e.seq) ?? []).map((c, i) => (
-            <span key={i}>
-              {i > 0 && i18n.t("common.ios_spoken_separator")}
-              {rich(c.kind === "mode" ? i18n.t("session.terminal_mode_change", { value: "{value}" }) : i18n.t("session.terminal_model_change", { value: "{value}" }), {
-                value: <b>{c.kind === "mode" ? permissionModeName(c.permission) : nameModel(c.model) + (c.effort ? " · " + c.effort : "")}</b>,
-              })}
-            </span>
-          )) })}
-        </div>
-      );
-    case "planProposed":
+    case "plan":
       return (
         <RememberDetails name="details" className="think">
           <summary>
-            {i18n.t("modes.plan")}<Exp />
+            {i18n.t("modes.plan")}
+            <Exp />
           </summary>
           <div className="ai">
-            <Markdown text={k.value.text} />
+            <Markdown text={item.kind.value.markdown} />
           </div>
         </RememberDetails>
       );
-    case "sessionState": {
-      const t = eventTime(e);
-      return (
-        <div className="sep">
-          {i18n.t("session.ended_at", { time: t ? i18n.t("time.ios_date_time", { month: new Date(t).getMonth() + 1, day: new Date(t).getDate(), time: hhmm(t) }) + " " : "" })}</div>
-      );
+    case "note": {
+      const n = item.kind.value;
+      if (n.kind === SessionNoteKind.APPROVAL && n.meta) {
+        const ok = n.tone === SessionNoteTone.POSITIVE;
+        const bad = n.tone === SessionNoteTone.NEGATIVE;
+        const canceled = !ok && !bad;
+        return (
+          <div className="record">
+            <span className={canceled ? "muted" : ok ? "ok" : "x"}>
+              {canceled ? <Minus /> : ok ? <Check /> : <X />}
+            </span>
+            <code>{renderText(n.meta)}</code>
+            <span className="muted">{renderText(n.text)}</span>
+          </div>
+        );
+      }
+      const cls = n.tone === SessionNoteTone.NEGATIVE ? " fail" : n.tone === SessionNoteTone.WARNING ? " warn" : "";
+      return <div className={"sysline" + cls}>{renderText(n.text)}</div>;
     }
-    case "sessionForked": {
-      const t = eventTime(e);
-      // The source as it is titled now, or, while it is not among the
-      // pages of the listing held here, as it was titled at the fork. The
-      // link asks for it by its ID.
-      const src = remote.sessions.get(k.value.sourceSessionId);
+    case "turnEnd": {
+      const te = item.kind.value;
+      if (te.interrupted) return <div className="sysline">{renderText(te.label)}</div>;
+      return <div className="sep">{renderText(te.label)}</div>;
+    }
+    case "errorLine":
+      return <div className="sysline fail">{renderText(item.kind.value.text) || item.kind.value.rawReason}</div>;
+    case "forkMarker": {
+      const f = item.kind.value;
+      const text = renderText(f.text);
       return (
         <div className="sep fork">
           <span>
-            {rich(i18n.t("session.forked_from", { time: t ? i18n.t("time.ios_date_time", { month: new Date(t).getMonth() + 1, day: new Date(t).getDate(), time: hhmm(t) }) + " " : "", source: "{source}" }), { source: k.value.sourceSessionId ? (
-              <a
-                className="src"
-                href={"#/s/" + encodeURIComponent(k.value.sourceSessionId)}
-              >
-                {src
-                  ? titleOf(src)
-                  : plain(k.value.sourceTitle) || i18n.t("session.other_session")}
+            {f.sourceSessionId ? (
+              <a className="src" href={"#/s/" + encodeURIComponent(f.sourceSessionId)}>
+                {text}
                 <ChevronRight />
               </a>
             ) : (
-              <span className="src">
-                {plain(k.value.sourceTitle) || i18n.t("session.other_session")}
-              </span>
-            ) })}
+              text
+            )}
           </span>
         </div>
       );
     }
+    case "inputState": {
+      const s = item.kind.value;
+      const status = renderText(s.statusText);
+      const reason = renderText(s.reasonText);
+      const att = s.requestId ? localAttachments?.get(s.requestId) : undefined;
+      if (s.kind === SessionInputNoticeKind.CANCELED) {
+        return <div className="sysline">{i18n.t("queue.canceled_record")}</div>;
+      }
+      if (s.kind === SessionInputNoticeKind.UNSENT_ON_EXIT) {
+        return s.preview ? (
+          <div className="me fail unsent">
+            <div>{s.preview}</div>
+            <small>
+              {status || i18n.t("session.ended_send_failed")}
+              {onRestoreText && <button onClick={() => onRestoreText(s.preview, s.requestId)}>{i18n.t("composer.restore")}</button>}
+            </small>
+          </div>
+        ) : (
+          <div className="sysline fail">{status || i18n.t("session.ended_message_failed")}</div>
+        );
+      }
+      if (s.kind === SessionInputNoticeKind.NEEDS_TERMINAL) {
+        return (
+          <div className="me warn">
+            <LocalThumbs blobs={att?.thumbs} sizes={att?.imageSizes} />
+            <div>{s.preview || i18n.t("composer.message_fallback")}</div>
+            <small>
+              {reason || status}
+              {onTerminal && <button onClick={onTerminal}>{i18n.t("session.go_terminal")}</button>}
+              {s.preview && onRestoreText && <button onClick={() => onRestoreText(s.preview, s.requestId)}>{i18n.t("composer.restore")}</button>}
+            </small>
+          </div>
+        );
+      }
+      if (s.kind === SessionInputNoticeKind.FAILED) {
+        return (
+          <div className="me fail">
+            <LocalThumbs blobs={att?.thumbs} sizes={att?.imageSizes} />
+            <div>{s.preview || i18n.t("composer.message_fallback")}</div>
+            <small>
+              {reason || status}
+              {s.preview && onRestoreText && <button onClick={() => onRestoreText(s.preview, s.requestId)}>{i18n.t("composer.restore")}</button>}
+            </small>
+          </div>
+        );
+      }
+      return s.preview ? (
+        <div className="me warn">
+          <div>{s.preview}</div>
+          <small>{status || i18n.t("composer.unconfirmed")}</small>
+        </div>
+      ) : (
+        <div className="sysline warn">{status || i18n.t("composer.message_unconfirmed")}</div>
+      );
+    }
+    case "quietScheduledGroup": {
+      const g = item.kind.value;
+      return (
+        <button className="schedule-quiet" onClick={() => onExpandGroup(g.groupId)}>
+          {renderText(g.title)} <ChevronDown />
+        </button>
+      );
+    }
+    case "skeleton":
+      return <div className="record muted">{renderText(item.kind.value.text) || skeletonMessage()}</div>;
+    default:
+      return null;
   }
-  return null;
 }
 
-/** How the chat names who did what (devices.ts). */
-interface Who {
-  ctx: OriginContext;
-}
-
-/** Whether an origin is someone other than this client. */
-function otherThanMe(o: Event["origin"], who: Who): boolean {
-  return o?.kind === OriginKind.LOCAL || (o?.kind === OriginKind.CLIENT && o.deviceId !== who.ctx.me);
-}
-
-/** The input's place when the session cannot take messages: ended, or the
- * computer is offline. */
 function EndCard({
-  remote,
-  session,
-  ended,
-  machineOnline,
-  agent,
-  mname,
-  lastSeen,
-  scheduledClosed,
-  idleClosed,
+  sessionId,
+  header,
+  actions,
+  composer,
+  onSubmitCommand,
 }: {
-  remote: Remote;
-  session: SessionView;
-  ended: boolean;
-  machineOnline: boolean;
-  agent: Agent;
-  mname: string;
-  lastSeen: bigint;
-  scheduledClosed: boolean;
-  idleClosed: boolean;
+  sessionId: string;
+  header?: SessionHeaderView;
+  actions?: SessionActionsView;
+  composer?: SessionViewModel["composer"];
+  onSubmitCommand: (slotKey: string, cmd: Command) => void;
 }) {
-  const [resuming, setResuming] = useState(false);
-  const [error, setError] = useState("");
-  const status = session.info?.status;
-  const exited = status === SessionStatus.EXITED;
-  useEffect(() => {
-    if (status !== SessionStatus.EXITED) setResuming(false);
-  }, [status]);
-  if (!ended)
+  const ended = !!header?.exited;
+  const mname = renderText(header?.computerName);
+  const resumeCmd = actions?.resume;
+  const resumeError = commandErrorText(resumeCmd);
+
+  if (!ended) {
     return (
       <div className="endcard">
         <div className="h">
           <StateMark kind="off" />
-          {i18n.t("new_session.machine_offline", { name: mname })}
+          {renderText(composer?.disabledReason) || i18n.t("new_session.machine_offline", { name: mname })}
         </div>
-        <div className="d">
-          {i18n.t("session.offline_note", { lastSeen: lastSeen ? i18n.t("session.disconnected_ago", { time: ago(lastSeen) }) : "" })}
-        </div>
+        {header?.offlineText && <div className="d">{renderText(header.offlineText)}</div>}
       </div>
     );
-  const resume = async () => {
-    setResuming(true);
-    setError("");
-    try {
-      await remote.command(session.id, {
-        case: "resumeSession",
-        value: { sessionId: session.id },
-      });
-    } catch (e) {
-      setError(errorText(e));
-      setResuming(false);
-    }
-  };
-  if (resuming)
+  }
+
+  const doResume = () =>
+    onSubmitCommand(
+      resumeCmd?.slotKey ?? "",
+      create(CommandSchema, {
+        kind: { case: "resumeSession", value: { sessionId } },
+      }),
+    );
+
+  if (resumeCmd?.busy) {
     return (
       <div className="endcard">
         <div className="h">
           <StateMark kind="run" />
-          {i18n.t("session.resuming")}</div>
-        <div className="d">
-          {i18n.t("session.reopen_agent", { name: mname, agent: agentName(agent) })}
+          {i18n.t("session.resuming")}
         </div>
+        <div className="d">{i18n.t("session.reopen_agent", { name: mname, agent: header?.agentName ?? "" })}</div>
       </div>
     );
-  if (error)
+  }
+
+  if (resumeError) {
     return (
       <div className="endcard">
         <div className="h">
           <StateMark kind="off" />
-          {i18n.t("session.resume_failed")}</div>
-        <div className="d">{error}</div>
+          {i18n.t("session.resume_failed")}
+        </div>
+        <div className="d">{resumeError}</div>
         <div className="btns">
-          <button
-            className="btn"
-            onClick={() => void resume()}
-            disabled={!machineOnline || !remote.peer(session.machineId).ready}
-          >
-            {i18n.t("session.try_again")}</button>
+          <button className="btn" onClick={doResume} disabled={!actions?.canResume}>
+            {i18n.t("session.try_again")}
+          </button>
         </div>
       </div>
     );
+  }
+
   return (
     <div className="endcard">
       <div className="h">
         <StateMark kind="off" />
-        {i18n.t("session.ended")}</div>
-      {remote.peer(session.machineId).unlinked ? (
+        {i18n.t("session.ended")}
+      </div>
+      {header?.computerUnlinked ? (
         <div className="d">{i18n.t("session.connect_resume")}</div>
-      ) : machineOnline ? (
+      ) : header?.computerOnline ? (
         <>
           <div className="d">
-            {exitReason(
-              session.info?.statusDetail ?? "",
-              exited && scheduledClosed,
-              exited && idleClosed,
-            )}
-            {i18n.t("session.resume_note", { name: mname })}
+            {renderText(header.endedText) || renderText(actions?.resumeNote) || i18n.t("session.resume_note", { name: mname })}
           </div>
           <div className="btns">
-            <button
-              className="btn pri"
-              onClick={() => void resume()}
-              disabled={!remote.peer(session.machineId).ready}
-            >
-              {i18n.t("session.resume")}</button>
+            <button className="btn pri" onClick={doResume} disabled={!actions?.canResume}>
+              {i18n.t("session.resume")}
+            </button>
           </div>
         </>
       ) : (
-        <div className="d">{i18n.t("session.offline_resume", { name: mname })}</div>
+        <div className="d">{renderText(actions?.resumeNote) || i18n.t("session.offline_resume", { name: mname })}</div>
       )}
     </div>
   );

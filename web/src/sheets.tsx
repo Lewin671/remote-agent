@@ -2,33 +2,34 @@ import * as i18n from "./i18n";
 // Sheets opened from a session's chips: the approval mode, and the
 // model, reasoning effort and context use.
 
+import { create } from "@bufbuild/protobuf";
 import { useEffect, useRef, useState } from "react";
-import { ApprovalMode, type Agent } from "./gen/remoteagent/v1/event_pb";
-import type { ListModelsResponse, ModelInfo } from "./gen/remoteagent/v1/local_pb";
 import { agentInfo } from "./agents";
-import { agentName, agentOf, allAutoUnavailable, autoUnavailable, CONTEXT_WARN, findModel, contextPercent, modelLabel, modeOf, titleOf } from "./model";
-import { errorText, type Remote, type SessionView } from "./remote";
-import { Alert, Banner, Segmented, Sheet, useDialogFocus, useEscape, useOverlayExit } from "./ui";
+import { renderText } from "./core/text";
+import {
+  SessionCommandStatus,
+  type SessionActionsView,
+  type SessionCommandState,
+  type SessionHeaderView,
+} from "./gen/remoteagent/core/v1/session_view_pb";
+import { Agent, ApprovalMode } from "./gen/remoteagent/v1/event_pb";
+import {
+  CommandSchema,
+  type Command,
+} from "./gen/remoteagent/v1/remote_pb";
 import { Check, ChevronRight, LoaderCircle } from "./icons";
+import { Alert, Banner, Segmented, Sheet, useDialogFocus, useEscape, useOverlayExit } from "./ui";
+
+const CONTEXT_WARN = 70;
 
 /** A session sheet's head: what it sets in bold, and whose session. */
-function SheetHead({ name, s }: { name: string; s: SessionView }) {
+function SheetHead({ name, header }: { name: string; header?: SessionHeaderView }) {
   return (
     <div className="menu-info">
       <b>{name}</b>
-      {agentName(agentOf(s))} · {titleOf(s)}
+      {header?.agentName ?? ""} · {renderText(header?.title)}
     </div>
   );
-}
-
-export function modeList(agent: Agent): { mode: ApprovalMode; name: string; desc: string; danger?: boolean }[] {
-  const info = agentInfo(agent);
-  return [
-    { mode: ApprovalMode.ASK, name: i18n.t("modes.ask"), desc: info.askModeDesc },
-    { mode: ApprovalMode.AUTO, name: i18n.t("modes.auto"), desc: i18n.t("modes.auto_desc", { agent: agentName(agent) }) },
-    { mode: ApprovalMode.PLAN, name: i18n.t("modes.plan"), desc: info.planModeDesc },
-    { mode: ApprovalMode.FULL_ACCESS, name: i18n.t("modes.full_access"), desc: i18n.t("modes.skip_all"), danger: true },
-  ];
 }
 
 /** Asks before switching to full access; used wherever it can be chosen. */
@@ -53,13 +54,29 @@ function clipTitle(t: string): string {
   return [...t.replace(/\s*\n\s*/g, " ")].slice(0, TITLE_MAX).join("");
 }
 
+function isCommandError(cmd?: SessionCommandState): boolean {
+  return !!cmd && (cmd.status === SessionCommandStatus.FAILED || cmd.status === SessionCommandStatus.UNKNOWN);
+}
+
 /** Renames a session. The title the user gives wins over the automatic
  * one; an empty one goes back to it. */
-export function RenameDialog({ remote, s, onClose }: { remote: Remote; s: SessionView; onClose: () => void }) {
-  const current = (s.info?.title ?? "").trim();
+export function RenameDialog({
+  sessionId,
+  header,
+  actions,
+  onClose,
+  onSubmitCommand,
+}: {
+  sessionId: string;
+  header?: SessionHeaderView;
+  actions?: SessionActionsView;
+  onClose: () => void;
+  onSubmitCommand: (slotKey: string, cmd: Command) => void;
+}) {
+  const current = renderText(header?.title).trim();
   const [title, setTitle] = useState(() => clipTitle(current));
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
+  const [submitted, setSubmitted] = useState(false);
+  const sawBusy = useRef(false);
   const input = useRef<HTMLInputElement>(null);
   useEscape(onClose);
   const root = useRef<HTMLDivElement>(null);
@@ -69,19 +86,42 @@ export function RenameDialog({ remote, s, onClose }: { remote: Remote; s: Sessio
     input.current?.focus();
     input.current?.select();
   }, []);
-  const save = async () => {
-    const next = title.trim();
-    if (next === current) return onClose();
-    setBusy(true);
-    setError("");
-    try {
-      await remote.command(s.id, { case: "renameSession", value: { sessionId: s.id, title: next } });
-      onClose();
-    } catch (e) {
-      setError(errorText(e));
-      setBusy(false);
+
+  const cmd = actions?.rename;
+  const busy = !!cmd?.busy;
+  const hasError = isCommandError(cmd);
+  const error = hasError ? renderText(cmd?.errorText) || renderText(cmd?.statusText) : "";
+
+  useEffect(() => {
+    if (!submitted) return;
+    if (busy) {
+      sawBusy.current = true;
+      return;
     }
+    if (cmd?.status === SessionCommandStatus.IDLE && (sawBusy.current || renderText(header?.title).trim() === title.trim())) {
+      onClose();
+    }
+  }, [submitted, busy, cmd?.status, header?.title, title, onClose]);
+
+  const save = () => {
+    const next = title.trim();
+    if (next === current) {
+      onClose();
+      return;
+    }
+    sawBusy.current = false;
+    setSubmitted(true);
+    onSubmitCommand(
+      cmd?.slotKey ?? "",
+      create(CommandSchema, {
+        kind: {
+          case: "renameSession",
+          value: { sessionId, title: next },
+        },
+      }),
+    );
   };
+
   return (
     <div className="overlay" ref={root}>
       <div className="dim" onClick={onClose} />
@@ -92,216 +132,319 @@ export function RenameDialog({ remote, s, onClose }: { remote: Remote; s: Sessio
         aria-label={i18n.t("session.rename_title")}
         onSubmit={(e) => {
           e.preventDefault();
-          if (!busy) void save();
+          if (!busy) save();
         }}
       >
         <h5>{i18n.t("session.rename_title")}</h5>
-        <input ref={input} className="field" aria-label={i18n.t("session.title_label")} value={title} enterKeyHint="done" onChange={(e) => setTitle(clipTitle(e.target.value))} />
+        <input
+          ref={input}
+          className="field"
+          aria-label={i18n.t("session.title_label")}
+          value={title}
+          enterKeyHint="done"
+          onChange={(e) => setTitle(clipTitle(e.target.value))}
+        />
         {error ? <p className="red">{i18n.t("common.ios_save_failed", { reason: error })}</p> : <p>{i18n.t("session.auto_title_hint")}</p>}
         <div className="btns">
           <button type="button" className="btn" disabled={busy} onClick={onClose}>
-            {i18n.t("common.cancel")}</button>
+            {i18n.t("common.cancel")}
+          </button>
           <button type="submit" className="btn pri" disabled={busy}>
-            {i18n.t("common.save")}</button>
+            {i18n.t("common.save")}
+          </button>
         </div>
       </form>
     </div>
   );
 }
 
-/** Why a session cannot switch to mode, or "" if it can. */
-export function unavailable(s: SessionView, mode: ApprovalMode, models?: ModelInfo[]): string {
-  if (s.info?.modeLocked) return i18n.t("modes.locked");
-  if (mode === ApprovalMode.FULL_ACCESS && s.info?.fullAccessUnavailable) return i18n.t("modes.full_unavailable");
-  if (mode === ApprovalMode.AUTO) {
-    if (allAutoUnavailable(models)) return i18n.t("modes.account_unsupported");
-    if (autoUnavailable(models, s.info?.model ?? "")) return i18n.t("modes.model_unsupported");
-  }
-  return "";
-}
-
-export function ModeSheet({ remote, s, onClose }: { remote: Remote; s: SessionView; onClose: () => void }) {
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
+export function ModeSheet({
+  sessionId,
+  header,
+  actions,
+  onClose,
+  onSubmitCommand,
+}: {
+  sessionId: string;
+  header?: SessionHeaderView;
+  actions?: SessionActionsView;
+  onClose: () => void;
+  onSubmitCommand: (slotKey: string, cmd: Command) => void;
+}) {
   const [confirmFull, setConfirmFull] = useState(false);
-  // The mode on offer depends on the model, which the CLI's own list says.
-  const [models, setModels] = useState<ListModelsResponse>();
+  const [pickedMode, setPickedMode] = useState<ApprovalMode | undefined>(undefined);
+  const sawBusy = useRef(false);
+
+  const cmd = actions?.setMode;
+  const busy = !!cmd?.busy;
+  const hasError = isCommandError(cmd);
+  const error = hasError ? renderText(cmd?.errorText) || renderText(cmd?.statusText) : "";
+  const cur = header?.approvalMode || undefined;
+
   useEffect(() => {
-    remote.listModels(s.machineId, agentOf(s)).then(setModels, () => {});
-  }, [remote, s.machineId]);
-  const mode = modeOf(s);
-  const cur = mode?.mode || undefined;
-  const online = remote.peer(s.machineId).ready;
-  const pick = async (mode: ApprovalMode) => {
-    setBusy(true);
-    setError("");
-    try {
-      await remote.command(s.id, { case: "setApprovalMode", value: { sessionId: s.id, mode } });
-      onClose();
-    } catch (e) {
-      setError(errorText(e));
-      setBusy(false);
+    if (pickedMode === undefined) return;
+    if (busy) {
+      sawBusy.current = true;
+      return;
     }
+    if (cmd?.status === SessionCommandStatus.IDLE && (sawBusy.current || header?.approvalMode === pickedMode)) {
+      onClose();
+    }
+  }, [pickedMode, busy, cmd?.status, header?.approvalMode, onClose]);
+
+  const pick = (mode: ApprovalMode) => {
+    sawBusy.current = false;
+    setPickedMode(mode);
+    onSubmitCommand(
+      cmd?.slotKey ?? "",
+      create(CommandSchema, {
+        kind: {
+          case: "setApprovalMode",
+          value: { sessionId, mode },
+        },
+      }),
+    );
   };
-  if (confirmFull)
+
+  if (confirmFull) {
     return (
       <FullAccessAlert
         onCancel={() => setConfirmFull(false)}
         onOk={() => {
           setConfirmFull(false);
-          void pick(ApprovalMode.FULL_ACCESS);
+          pick(ApprovalMode.FULL_ACCESS);
         }}
       />
     );
+  }
+
+  const choices = actions?.modeChoices ?? [];
+  const anyLocked = choices.some((c) => renderText(c.unavailableReason) === i18n.t("modes.locked"));
+  const agent = header?.agent ?? Agent.UNSPECIFIED;
+
   return (
     <Sheet onClose={onClose}>
-      <SheetHead name={i18n.t("modes.title")} s={s} />
-      {!cur && mode && <div className="hint top">{i18n.t("modes.current_terminal", { mode: mode.text })}</div>}
+      <SheetHead name={i18n.t("modes.title")} header={header} />
+      {!cur && header?.approvalModeLabel && (
+        <div className="hint top">{i18n.t("modes.current_terminal", { mode: renderText(header.approvalModeLabel) })}</div>
+      )}
       <div className="list">
-        {modeList(agentOf(s)).map((m) => {
-          const why = unavailable(s, m.mode, models?.models);
+        {choices.map((m) => {
+          const why = renderText(m.unavailableReason);
+          const disabled = busy || !m.available || !!why;
           return (
             <button
               key={m.mode}
-              className={"mi" + (m.danger ? " danger" : "") + (why ? " dis" : "")}
-              disabled={busy || !online || !!why}
-              onClick={() => (m.mode === cur ? onClose() : m.danger ? setConfirmFull(true) : void pick(m.mode))}
+              className={"mi" + (m.mode === ApprovalMode.FULL_ACCESS ? " danger" : "") + (why ? " dis" : "")}
+              disabled={disabled}
+              onClick={() => (m.selected ? onClose() : m.mode === ApprovalMode.FULL_ACCESS ? setConfirmFull(true) : pick(m.mode))}
             >
               <div className="mt">
-                <b>{m.name}</b>
-                <div className="md">{why || m.desc}</div>
+                <b>{renderText(m.label)}</b>
+                <div className="md">{why || renderText(m.note)}</div>
               </div>
-              {m.mode === cur && <span className="ck"><Check /></span>}
+              {m.selected && (
+                <span className="ck">
+                  <Check />
+                </span>
+              )}
             </button>
           );
         })}
       </div>
-      {agentInfo(agentOf(s)).permissionModeNotice && <div className="hint">{agentInfo(agentOf(s)).permissionModeNotice}</div>}
+      {agentInfo(agent).permissionModeNotice && <div className="hint">{agentInfo(agent).permissionModeNotice}</div>}
       {error && (
         <Banner kind="err" action={i18n.t("session.go_terminal")} onAction={onClose}>
           {i18n.t("modes.switch_failed", { reason: error })}
         </Banner>
       )}
       <div className="hint">
-        {busy
-          ? i18n.t("modes.switching")
-          : s.info?.modeLocked
-            ? i18n.t("modes.locked_note")
-            : i18n.t("session.only_current")}
+        {busy ? i18n.t("modes.switching") : anyLocked ? i18n.t("modes.locked_note") : i18n.t("session.only_current")}
       </div>
     </Sheet>
   );
 }
 
-const efforts = ["low", "medium", "high", "xhigh", "max", "ultra"];
-
 export function tokens(n: bigint): string {
   return n >= 1000n ? `${Math.round(Number(n) / 1000)}k` : String(n);
 }
 
-export function SessionSheet({ remote, s, running, onClose }: { remote: Remote; s: SessionView; running: boolean; onClose: () => void }) {
-  const [models, setModels] = useState<ListModelsResponse>();
-  const [error, setError] = useState("");
-  const [attempt, setAttempt] = useState(0);
+export function SessionSheet({
+  sessionId,
+  header,
+  actions,
+  onClose,
+  onRefreshModels,
+  onSubmitCommand,
+  onAbandonCommand,
+}: {
+  sessionId: string;
+  header?: SessionHeaderView;
+  actions?: SessionActionsView;
+  onClose: () => void;
+  onRefreshModels: () => void;
+  onSubmitCommand: (slotKey: string, cmd: Command) => void;
+  onAbandonCommand?: (slotKey: string) => void;
+}) {
   const [all, setAll] = useState(false);
-  const [switching, setSwitching] = useState("");
-  const [failed, setFailed] = useState("");
-  const [compacting, setCompacting] = useState(false);
-  const agent = agentOf(s);
+  const [switchingName, setSwitchingName] = useState("");
+  const [compactSubmitted, setCompactSubmitted] = useState(false);
+  const sawCompactBusy = useRef(false);
+
+  const modelCmd = actions?.setModel;
+  const modelBusy = !!modelCmd?.busy;
+  const modelErr = isCommandError(modelCmd) ? renderText(modelCmd?.errorText) || renderText(modelCmd?.statusText) : "";
+
+  const compactCmd = actions?.compact;
+  const compactBusy = !!compactCmd?.busy;
+  const compactErr = isCommandError(compactCmd) ? renderText(compactCmd?.errorText) || renderText(compactCmd?.statusText) : "";
+
   useEffect(() => {
-    setError("");
-    remote.listModels(s.machineId, agent, true).then(setModels, (e) => setError(errorText(e)));
-  }, [remote, s.machineId, agent, attempt]);
-  const pct = contextPercent(s);
-  const model = s.info?.model ?? "";
-  const effort = s.info?.effort ?? "";
-  const cur = findModel(models?.models, model);
-  const list = models?.models ?? [];
-  // A short list shows whole, so no model is out of reach behind 全部模型
-  // (Claude Code offers four); a long one shows three, and the current
-  // model even when it is not among them.
-  const few = list.length <= 5;
-  const shown = all || few ? list : [...list.slice(0, 3), ...(cur && !list.slice(0, 3).includes(cur) ? [cur] : [])];
-  const offline = !remote.peer(s.machineId).ready;
-  const locked = !!switching || running || offline;
-  const set = async (m: ModelInfo, e: string) => {
-    setSwitching(m.displayName || m.slug);
-    setFailed("");
-    try {
-      await remote.command(s.id, { case: "setModel", value: { sessionId: s.id, model: m.slug, effort: e } });
-    } catch (err) {
-      setFailed(i18n.t("session.model_switch_failed", { model: m.displayName || m.slug, reason: errorText(err) }));
-    } finally {
-      setSwitching("");
+    if (!compactSubmitted) return;
+    if (compactBusy) {
+      sawCompactBusy.current = true;
+      return;
     }
-  };
-  const compact = async () => {
-    setCompacting(true);
-    try {
-      await remote.command(s.id, { case: "compact", value: { sessionId: s.id } });
+    if (compactCmd?.status === SessionCommandStatus.IDLE && sawCompactBusy.current) {
       onClose();
-    } catch (err) {
-      setFailed(i18n.t("session.compact_failed", { reason: errorText(err) }));
-      setCompacting(false);
     }
+  }, [compactSubmitted, compactBusy, compactCmd?.status, onClose]);
+
+  const choices = actions?.modelChoices ?? [];
+  const effortChoices = actions?.effortChoices ?? [];
+  const cur = choices.find((c) => c.selected);
+  const few = choices.length <= 5;
+  const shown = all || few ? choices : [...choices.slice(0, 3), ...(cur && !choices.slice(0, 3).includes(cur) ? [cur] : [])];
+  const canSwitch = header?.capabilities?.supportsModelSwitch ?? false;
+  const locked = modelBusy || !actions?.canSwitchModel;
+  const modelsError = renderText(actions?.modelsError);
+  const pct = header?.hasContext ? header.contextPercent : undefined;
+  const activeEffort = effortChoices.find((e) => e.selected)?.id ?? header?.effort ?? "";
+  const agent = header?.agent ?? Agent.UNSPECIFIED;
+
+  const setModel = (slug: string, label: string, effort: string) => {
+    setSwitchingName(label);
+    onSubmitCommand(
+      modelCmd?.slotKey ?? "",
+      create(CommandSchema, {
+        kind: {
+          case: "setModel",
+          value: { sessionId, model: slug, effort },
+        },
+      }),
+    );
   };
-  // Some models have no effort levels at all (Claude Code's haiku).
+
+  const compact = () => {
+    sawCompactBusy.current = false;
+    setCompactSubmitted(true);
+    onSubmitCommand(
+      compactCmd?.slotKey ?? "",
+      create(CommandSchema, {
+        kind: {
+          case: "compact",
+          value: { sessionId },
+        },
+      }),
+    );
+  };
+
   const noEffort = !!cur && cur.efforts.length === 0;
-  const offered = cur?.efforts.length ? cur.efforts : efforts;
-  const canSwitch = agentInfo(agent).switchesModelInSession;
+  const bannerError =
+    modelErr
+      ? i18n.t("session.model_switch_failed", { model: switchingName || header?.modelLabel || "", reason: modelErr })
+      : compactErr
+        ? i18n.t("session.compact_failed", { reason: compactErr })
+        : "";
+  const errorSlot = modelErr ? modelCmd?.slotKey : compactErr ? compactCmd?.slotKey : undefined;
+
   return (
     <Sheet onClose={onClose}>
-      <SheetHead name={i18n.t("session.settings")} s={s} />
-      {pct !== undefined && (
+      <SheetHead name={i18n.t("session.settings")} header={header} />
+      {pct !== undefined && header && (
         <div className="ctxbox">
           <div className="ctxn">
-            <div className={"num" + (pct > CONTEXT_WARN ? " warn-text" : "")}>{i18n.t("session.context_used", { percent: pct! })}</div>
+            <div className={"num" + (pct > CONTEXT_WARN ? " warn-text" : "")}>{i18n.t("session.context_used", { percent: pct })}</div>
             <div className="muted small">
-              {compacting ? <><LoaderCircle />  {i18n.t("session.compacting")}</> : i18n.t("session.context_tokens", { used: tokens(s.info!.contextTokens), total: tokens(s.info!.contextWindow) })}
+              {compactBusy ? (
+                <>
+                  <LoaderCircle /> {i18n.t("session.compacting")}
+                </>
+              ) : (
+                renderText(header.contextText) || i18n.t("session.context_tokens", { used: tokens(header.contextTokens), total: tokens(header.contextWindow) })
+              )}
             </div>
-            <div className={"bar" + (pct > CONTEXT_WARN ? " warn" : "")}><i style={{ width: `${Math.min(100, pct)}%` }} /></div>
+            <div className={"bar" + (pct > CONTEXT_WARN ? " warn" : "")}>
+              <i style={{ width: `${Math.min(100, pct)}%` }} />
+            </div>
           </div>
-          <button className="btn sm" disabled={compacting || running || offline} onClick={() => void compact()}>
-            {i18n.t("session.compact")}</button>
+          <button className="btn sm" disabled={compactBusy || !actions?.canCompact} onClick={compact}>
+            {i18n.t("session.compact")}
+          </button>
         </div>
       )}
       {canSwitch ? (
         <>
           <div className="fl">{i18n.t("models.title")}</div>
-          {error && (
-            <Banner kind="err" action={i18n.t("common.retry")} onAction={() => setAttempt((a) => a + 1)}>
-              {i18n.t("session.models_failed")}</Banner>
+          {modelsError && (
+            <Banner kind="err" action={i18n.t("common.retry")} onAction={onRefreshModels}>
+              {i18n.t("session.models_failed")}
+            </Banner>
           )}
-          {!models && !error && <div className="hint">{i18n.t("session.reading_models")}</div>}
+          {actions?.modelsLoading && !choices.length && !modelsError && <div className="hint">{i18n.t("session.reading_models")}</div>}
           <div className="list">
             {shown.map((m) => (
-              <button key={m.slug} className={"mi" + (locked ? " dis" : "")} disabled={locked} onClick={() => m !== cur && void set(m, m.efforts.includes(effort) ? effort : m.defaultEffort)}>
+              <button
+                key={m.slug}
+                className={"mi" + (locked ? " dis" : "")}
+                disabled={locked}
+                onClick={() => !m.selected && setModel(m.slug, m.displayName || m.slug, m.efforts.includes(activeEffort) ? activeEffort : m.defaultEffort)}
+              >
                 <div className="mt">
                   {m.displayName || m.slug}
-                  {m.efforts.length === 0 ? <small>{i18n.t("session.no_effort")}</small> : agentInfo(agent).showMaxEffort && m.efforts[m.efforts.length - 1] !== efforts[efforts.length - 1] && <small>{i18n.t("session.max_effort", { effort: m.efforts[m.efforts.length - 1] })}</small>}
+                  {m.efforts.length === 0 ? (
+                    <small>{i18n.t("session.no_effort")}</small>
+                  ) : (
+                    agentInfo(agent).showMaxEffort &&
+                    m.efforts[m.efforts.length - 1] !== "max" &&
+                    m.efforts[m.efforts.length - 1] !== "ultra" && (
+                      <small>{i18n.t("session.max_effort", { effort: m.efforts[m.efforts.length - 1] })}</small>
+                    )
+                  )}
                 </div>
-                {m === cur && <span className="ck"><Check /></span>}
+                {m.selected && (
+                  <span className="ck">
+                    <Check />
+                  </span>
+                )}
               </button>
             ))}
-            {models && !all && !few && (
+            {actions?.modelsLoaded && !all && !few && (
               <button className="mi link-row" onClick={() => setAll(true)}>
-                {i18n.t("models.all")}<ChevronRight />
+                {i18n.t("models.all")}
+                <ChevronRight />
               </button>
             )}
           </div>
           <div className="fl">{i18n.t("models.effort")}</div>
           {noEffort ? (
-            <div className="hint">{i18n.t("session.no_effort_adjustment", { model: cur?.displayName || cur?.slug || "" })}</div>
+            <div className="hint">
+              {renderText(cur?.fixedEffortNote) || i18n.t("session.no_effort_adjustment", { model: cur?.displayName || cur?.slug || "" })}
+            </div>
           ) : (
             <Segmented
               className="full wrap efforts"
               label={i18n.t("models.effort")}
-              value={effort}
-              onChange={(e) => cur && void set(cur, e)}
-              options={offered.map((e) => ({ value: e, label: e, disabled: locked || !cur }))}
+              value={activeEffort}
+              onChange={(e) => cur && setModel(cur.slug, cur.displayName || cur.slug, e)}
+              options={effortChoices.map((e) => ({
+                value: e.id,
+                label: renderText(e.label) || e.id,
+                disabled: locked || !cur,
+              }))}
             />
           )}
-          {switching && <Banner>{i18n.t("session.switching_model", { model: switching })}</Banner>}
+          {modelBusy && <Banner>{i18n.t("session.switching_model", { model: switchingName || header?.modelLabel || "" })}</Banner>}
         </>
       ) : (
         <>
@@ -309,7 +452,7 @@ export function SessionSheet({ remote, s, running, onClose }: { remote: Remote; 
           <div className="list">
             <div className="mi dis" aria-disabled="true">
               <div className="mt">
-                <b>{cur?.displayName || modelLabel(models?.models, model, agent) || i18n.t("new_session.default_model")}</b>
+                <b>{cur?.displayName || header?.modelLabel || i18n.t("new_session.default_model")}</b>
                 <div className="md">{i18n.t("session.model_locked")}</div>
               </div>
             </div>
@@ -318,20 +461,20 @@ export function SessionSheet({ remote, s, running, onClose }: { remote: Remote; 
           <div className="list">
             <div className="mi dis" aria-disabled="true">
               <div className="mt">
-                <b>{effort || cur?.defaultEffort || i18n.t("models.default")}</b>
+                <b>{activeEffort || cur?.defaultEffort || i18n.t("models.default")}</b>
                 <div className="md">{i18n.t("session.effort_locked")}</div>
               </div>
             </div>
           </div>
         </>
       )}
-      {failed && (
-        <Banner kind="err" action={i18n.t("common.got_it")} onAction={() => setFailed("")}>
-          {failed}
+      {bannerError && (
+        <Banner kind="err" action={errorSlot && onAbandonCommand ? i18n.t("common.got_it") : undefined} onAction={errorSlot && onAbandonCommand ? () => onAbandonCommand(errorSlot) : undefined}>
+          {bannerError}
         </Banner>
       )}
       {canSwitch && (
-        <div className="hint">{running ? i18n.t("session.switch_after_turn") : offline ? i18n.t("session.switch_connected") : i18n.t("session.switch_idle")}</div>
+        <div className="hint">{renderText(actions?.modelSwitchBlockedReason) || i18n.t("session.switch_idle")}</div>
       )}
     </Sheet>
   );

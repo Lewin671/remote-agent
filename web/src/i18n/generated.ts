@@ -54,7 +54,6 @@ export interface MessageArgs {
   "approval.denied": { [name: string]: never };
   "approval.deny": { [name: string]: never };
   "approval.details": { [name: string]: never };
-  "approval.expired": { [name: string]: never };
   "approval.full_command": { [name: string]: never };
   "approval.in_terminal": { [name: string]: never };
   "approval.reason_placeholder": { [name: string]: never };
@@ -144,7 +143,6 @@ export interface MessageArgs {
   "composer.queue_after_answer": { [name: string]: never };
   "composer.queue_hint": { [name: string]: never };
   "composer.ready_timeout": { [name: string]: never };
-  "composer.resent": { [name: string]: never };
   "composer.restore": { [name: string]: never };
   "composer.restore_files_full": { count: number };
   "composer.restore_images_full": { count: number; existing: number };
@@ -195,7 +193,6 @@ export interface MessageArgs {
   "dock.android_plan_expired": { choice: string };
   "dock.android_plan_unknown": { choice: string };
   "dock.answer_title": { [name: string]: never };
-  "dock.answer_unknown": { [name: string]: never };
   "dock.answered": { answers: string };
   "dock.claude_plan_note": { [name: string]: never };
   "dock.handle": { [name: string]: never };
@@ -204,7 +201,6 @@ export interface MessageArgs {
   "dock.multiselect": { [name: string]: never };
   "dock.none_fit": { [name: string]: never };
   "dock.other_terminal": { [name: string]: never };
-  "dock.plan_answered": { [name: string]: never };
   "dock.plan_clear": { [name: string]: never };
   "dock.plan_clear_record": { [name: string]: never };
   "dock.plan_full": { [name: string]: never };
@@ -218,7 +214,6 @@ export interface MessageArgs {
   "dock.select_then_submit": { [name: string]: never };
   "dock.selected": { count: number };
   "dock.submit_failed": { reason: string };
-  "dock.submit_failed_edit": { reason: string };
   "dock.submit_selected": { count: number };
   "dock.submitting": { [name: string]: never };
   "dock.trust_folder": { [name: string]: never };
@@ -241,7 +236,6 @@ export interface MessageArgs {
   "errors.history_has_a_gap_retry": { [name: string]: never };
   "errors.history_keys_unavailable_records_from_before_recovery_cannot_be": { [name: string]: never };
   "errors.invalid_ciphertext_signature_key_or_content_verification_failed": { [name: string]: never };
-  "errors.invalid_current_request_snapshot": { [name: string]: never };
   "errors.invalid_pairing_approval_signature": { [name: string]: never };
   "errors.invalid_session_seed": { [name: string]: never };
   "errors.it_may_have_been_deleted_or_belong_to_a": { [name: string]: never };
@@ -249,11 +243,8 @@ export interface MessageArgs {
   "errors.names_can_only_be_changed_on_that_device": { [name: string]: never };
   "errors.not_connected": { [name: string]: never };
   "errors.other_clients_kept_changing_the_project_list_changes_could": { [name: string]: never };
-  "errors.pending_requests_on_the_computer_could_not_be_verified": { [name: string]: never };
   "errors.project_preferences_format_is_not_supported": { [name: string]: never };
   "errors.push_backlog_reconnecting": { [name: string]: never };
-  "errors.queued_records_could_not_be_restored_you_can_still": { [name: string]: never };
-  "errors.queued_records_could_not_be_saved_locally_messages_will": { [name: string]: never };
   "errors.reading_local_state": { [name: string]: never };
   "errors.remote_agent_on_is_out_of_date_update_it": { value: string };
   "errors.remote_control_expired_control_and_new_uploads_are_paused": { [name: string]: never };
@@ -277,10 +268,8 @@ export interface MessageArgs {
   "errors.the_computer_is_offline_the_command_was_not_sent": { [name: string]: never };
   "errors.the_computer_is_still_verifying_attachments_retry_shortly": { [name: string]: never };
   "errors.the_computer_s_reply_could_not_be_verified_command": { [name: string]: never };
-  "errors.the_current_request_could_not_be_verified_again": { [name: string]: never };
   "errors.the_draft_could_not_be_restored_you_can_still": { [name: string]: never };
   "errors.the_draft_could_not_be_saved_locally_keep_the": { [name: string]: never };
-  "errors.the_draft_could_not_be_saved_the_original_message": { [name: string]: never };
   "errors.the_event_s_position_was_changed": { [name: string]: never };
   "errors.the_plan_display_changed_review_it_again": { [name: string]: never };
   "errors.the_previous_operation_s_outcome_is_still_unknown_reload": { [name: string]: never };
@@ -300,11 +289,9 @@ export interface MessageArgs {
   "errors.this_history_uses_an_old_encryption_format_and_can": { [name: string]: never };
   "errors.this_is_not_a_remote_agent_account_key": { [name: string]: never };
   "errors.this_page_is_out_of_date_refresh_or_update": { [name: string]: never };
-  "errors.this_request_can_no_longer_be_acted_on": { [name: string]: never };
   "errors.this_request_has_not_been_verified_by_the_computer": { [name: string]: never };
   "errors.update_remote_agent_on_this_computer_to_use_scheduled": { [name: string]: never };
   "errors.upload_made_no_progress": { [name: string]: never };
-  "errors.waiting_for_the_owning_computer_to_update_the_current": { [name: string]: never };
   "errors.waiting_for_the_owning_computer_to_update_the_current_remote": { [name: string]: never };
   "home.add_device": { [name: string]: never };
   "home.add_via_manager": { name: string };
@@ -658,30 +645,23 @@ export interface MessageArgs {
   "projects.use_directory": { name: string };
   "projects.view_sessions": { name: string };
   "queue.after_current_turn": { [name: string]: never };
-  "queue.after_start": { [name: string]: never };
   "queue.after_turn": { [name: string]: never };
   "queue.agent_ready": { agent: string };
-  "queue.already_submitted": { [name: string]: never };
   "queue.android_agent_note": { agent: string };
   "queue.android_scheduled": { [name: string]: never };
   "queue.android_sending_soon": { [name: string]: never };
   "queue.android_unconfirmed": { [name: string]: never };
   "queue.cancel_failed": { [name: string]: never };
   "queue.canceled": { [name: string]: never };
-  "queue.canceled_elsewhere": { [name: string]: never };
   "queue.canceled_record": { [name: string]: never };
   "queue.canceling": { [name: string]: never };
-  "queue.images_recognized": { [name: string]: never };
   "queue.insert": { [name: string]: never };
   "queue.more": { count: number };
   "queue.other_message": { [name: string]: never };
-  "queue.pasting_images": { [name: string]: never };
   "queue.paused": { [name: string]: never };
   "queue.rank": { rank: number };
   "queue.resume_failed": { [name: string]: never };
   "queue.resuming": { [name: string]: never };
-  "queue.scheduled": { time: string };
-  "queue.submitting": { [name: string]: never };
   "queue.terminal_draft": { [name: string]: never };
   "queue.unrecognized": { [name: string]: never };
   "queue.when_ready": { [name: string]: never };
@@ -1183,7 +1163,6 @@ export interface MessageArgs {
   "security.waiting_for_the_new_device_to_enter_the_pairing": { [name: string]: never };
   "security.waiting_for_the_successor_device_to_generate_and_save": { [name: string]: never };
   "session.abandon_fork": { [name: string]: never };
-  "session.action_failed": { action: string; reason: string };
   "session.android_compacted_usage": { after: string; before: string };
   "session.android_fork_connected": { [name: string]: never };
   "session.android_interrupted_by": { origin: string };
@@ -1207,7 +1186,6 @@ export interface MessageArgs {
   "session.end": { [name: string]: never };
   "session.end_action": { [name: string]: never };
   "session.end_note": { agent: string; name: string };
-  "session.end_session": { [name: string]: never };
   "session.end_title": { [name: string]: never };
   "session.ended": { [name: string]: never };
   "session.ended_at": { time: string };
@@ -1224,7 +1202,6 @@ export interface MessageArgs {
   "session.forked_from": { source: string; time: string };
   "session.forking": { [name: string]: never };
   "session.go_terminal": { [name: string]: never };
-  "session.history_failed": { [name: string]: never };
   "session.history_tail_missing": { [name: string]: never };
   "session.history_unavailable": { count: number };
   "session.history_unreadable": { [name: string]: never };
@@ -1268,8 +1245,6 @@ export interface MessageArgs {
   "session.rename_title": { [name: string]: never };
   "session.reopen_agent": { agent: string; name: string };
   "session.reply_moves": { [name: string]: never };
-  "session.restore_other_files": { [name: string]: never };
-  "session.restore_other_images": { [name: string]: never };
   "session.resume": { [name: string]: never };
   "session.resume_failed": { [name: string]: never };
   "session.resume_note": { name: string };
@@ -1691,7 +1666,6 @@ export const messages = {
     "approval.denied": "Denied",
     "approval.deny": "Deny",
     "approval.details": "Approval details",
-    "approval.expired": "Timed out",
     "approval.full_command": "View full command",
     "approval.in_terminal": "Handled in terminal",
     "approval.reason_placeholder": "Suggest what to do instead (optional)",
@@ -1805,7 +1779,6 @@ export const messages = {
     "composer.queue_after_answer": "Queue message; continue after answering",
     "composer.queue_hint": "Queue first, then send in order after this turn",
     "composer.ready_timeout": "Timed out waiting for the terminal",
-    "composer.resent": "Resent",
     "composer.restore": "Restore to input",
     "composer.restore_files_full": {
       "forms": {
@@ -1874,7 +1847,6 @@ export const messages = {
     "dock.android_plan_expired": "It is unclear whether “{choice}” arrived. It has expired and will not be resent. Check the terminal first; abandon it to choose again",
     "dock.android_plan_unknown": "The result of “{choice}” is unknown. Retry resends the same request; the computer will not execute it twice",
     "dock.answer_title": "Answer question",
-    "dock.answer_unknown": "Submission is unconfirmed. Retry sends the same answer.",
     "dock.answered": "Answered {answers}",
     "dock.claude_plan_note": "Use Ask mode after approval",
     "dock.handle": "Handle",
@@ -1889,7 +1861,6 @@ export const messages = {
     "dock.multiselect": "Select multiple",
     "dock.none_fit": "None of these?",
     "dock.other_terminal": "Other answer: go to terminal",
-    "dock.plan_answered": "Answered the plan",
     "dock.plan_clear": "Clear context and execute",
     "dock.plan_clear_record": "Execute plan with cleared context",
     "dock.plan_full": "Full plan",
@@ -1915,7 +1886,6 @@ export const messages = {
       "plural": "count"
     },
     "dock.submit_failed": "Could not submit: {reason}",
-    "dock.submit_failed_edit": "Could not submit: {reason}. You can change your selection and submit again.",
     "dock.submit_selected": {
       "forms": {
         "one": "Submit {count} selection",
@@ -1944,7 +1914,6 @@ export const messages = {
     "errors.history_has_a_gap_retry": "History has a gap. Retry.",
     "errors.history_keys_unavailable_records_from_before_recovery_cannot_be": "History keys unavailable: records from before recovery cannot be decrypted",
     "errors.invalid_ciphertext_signature_key_or_content_verification_failed": "Invalid ciphertext: signature, key, or content verification failed",
-    "errors.invalid_current_request_snapshot": "Invalid current request snapshot",
     "errors.invalid_pairing_approval_signature": "Invalid pairing approval signature",
     "errors.invalid_session_seed": "Invalid session seed",
     "errors.it_may_have_been_deleted_or_belong_to_a": "It may have been deleted, or belong to a computer that was removed.",
@@ -1952,11 +1921,8 @@ export const messages = {
     "errors.names_can_only_be_changed_on_that_device": "Names can only be changed on that device",
     "errors.not_connected": "Not connected to the server",
     "errors.other_clients_kept_changing_the_project_list_changes_could": "Other clients kept changing the project list. Changes could not be saved.",
-    "errors.pending_requests_on_the_computer_could_not_be_verified": "Pending requests on the computer could not be verified. Retry or handle them in the computer’s terminal.",
     "errors.project_preferences_format_is_not_supported": "Project preferences format is not supported",
     "errors.push_backlog_reconnecting": "Push backlog. Reconnecting.",
-    "errors.queued_records_could_not_be_restored_you_can_still": "Queued records could not be restored. You can still type and send; retry next time.",
-    "errors.queued_records_could_not_be_saved_locally_messages_will": "Queued records could not be saved locally. Messages will still send; verify delivery before closing the page.",
     "errors.reading_local_state": "Reading local state",
     "errors.remote_agent_on_is_out_of_date_update_it": "remote-agent on {value} is out of date. Update it on the computer and retry.",
     "errors.remote_control_expired_control_and_new_uploads_are_paused": "Remote control expired. Control and new uploads are paused; renew on the current managing client.",
@@ -1980,10 +1946,8 @@ export const messages = {
     "errors.the_computer_is_offline_the_command_was_not_sent": "The computer is offline. The command was not sent.",
     "errors.the_computer_is_still_verifying_attachments_retry_shortly": "The computer is still verifying attachments. Retry shortly.",
     "errors.the_computer_s_reply_could_not_be_verified_command": "The computer’s reply could not be verified. Command execution is uncertain.",
-    "errors.the_current_request_could_not_be_verified_again": "The current request could not be verified again",
     "errors.the_draft_could_not_be_restored_you_can_still": "The draft could not be restored. You can still type and send; retry when opening or editing next time.",
     "errors.the_draft_could_not_be_saved_locally_keep_the": "The draft could not be saved locally. Keep the original images and text before closing the page.",
-    "errors.the_draft_could_not_be_saved_the_original_message": "The draft could not be saved. The original message’s local copy is preserved.",
     "errors.the_event_s_position_was_changed": "The event’s position was changed",
     "errors.the_plan_display_changed_review_it_again": "The plan display changed. Review it again.",
     "errors.the_previous_operation_s_outcome_is_still_unknown_reload": "The previous operation’s outcome is still unknown. Reload and verify the task before continuing.",
@@ -2003,11 +1967,9 @@ export const messages = {
     "errors.this_history_uses_an_old_encryption_format_and_can": "This history uses an old encryption format and can no longer be viewed",
     "errors.this_is_not_a_remote_agent_account_key": "This is not a remote-agent account key",
     "errors.this_page_is_out_of_date_refresh_or_update": "This page is out of date. Refresh or update it and retry.",
-    "errors.this_request_can_no_longer_be_acted_on": "This request can no longer be acted on",
     "errors.this_request_has_not_been_verified_by_the_computer": "This request has not been verified by the computer yet. Wait for sync.",
     "errors.update_remote_agent_on_this_computer_to_use_scheduled": "Update remote-agent on this computer to use scheduled tasks",
     "errors.upload_made_no_progress": "Upload made no progress",
-    "errors.waiting_for_the_owning_computer_to_update_the_current": "Waiting for the owning computer to update the current state",
     "errors.waiting_for_the_owning_computer_to_update_the_current_remote": "Waiting for the owning computer to update the current state: this device lacks the content key from that time",
     "home.add_device": "Add device",
     "home.add_via_manager": "No computers yet. Open “Settings › Add device” on the managing client ({name}) to add one.",
@@ -2553,20 +2515,16 @@ export const messages = {
     "projects.use_directory": "Use folder {name}",
     "projects.view_sessions": "View sessions in {name}",
     "queue.after_current_turn": "Send after this turn",
-    "queue.after_start": "Send after startup",
     "queue.after_turn": "Send after this turn",
     "queue.agent_ready": "Send when {agent} is ready",
-    "queue.already_submitted": "The previous message is already in the terminal and cannot be canceled",
     "queue.android_agent_note": "Waiting for {agent} to be ready",
     "queue.android_scheduled": "Scheduled task",
     "queue.android_sending_soon": "Sending soon",
     "queue.android_unconfirmed": "Written to the terminal but unconfirmed",
     "queue.cancel_failed": "Could not cancel; still queued",
     "queue.canceled": "Canceled",
-    "queue.canceled_elsewhere": "The previous message was canceled on another client",
     "queue.canceled_record": "Canceled a queued message",
     "queue.canceling": "Canceling…",
-    "queue.images_recognized": "Images recognized, sending…",
     "queue.insert": "Insert into this turn",
     "queue.more": {
       "forms": {
@@ -2576,13 +2534,10 @@ export const messages = {
       "plural": "count"
     },
     "queue.other_message": "A message from another client",
-    "queue.pasting_images": "Pasting images…",
     "queue.paused": "Paused",
     "queue.rank": " · #{rank}",
     "queue.resume_failed": "Could not send; still paused",
     "queue.resuming": "Sending…",
-    "queue.scheduled": "Scheduled task{time} · ",
-    "queue.submitting": "Written to terminal, waiting for confirmation",
     "queue.terminal_draft": "There is an unsent draft in the terminal. Send or clear it first.",
     "queue.unrecognized": "Input field not recognized; paused",
     "queue.when_ready": "Send when ready",
@@ -3288,7 +3243,6 @@ export const messages = {
     "security.waiting_for_the_new_device_to_enter_the_pairing": "Waiting for the new device to enter the pairing code…",
     "security.waiting_for_the_successor_device_to_generate_and_save": "Waiting for the successor device to generate and save a recovery code",
     "session.abandon_fork": "Abandon previous fork",
-    "session.action_failed": "{action} failed: {reason}",
     "session.android_compacted_usage": "Context compacted · {before}% → {after}%",
     "session.android_fork_connected": "Available after connecting to the server",
     "session.android_interrupted_by": "Interrupted ({origin})",
@@ -3312,7 +3266,6 @@ export const messages = {
     "session.end": "End",
     "session.end_action": "End session…",
     "session.end_note": "{agent} on {name} will close. History is kept, and you can resume later.",
-    "session.end_session": "End session",
     "session.end_title": "End this session?",
     "session.ended": "Session ended",
     "session.ended_at": "{time}Ended",
@@ -3329,7 +3282,6 @@ export const messages = {
     "session.forked_from": "{time}Forked from {source}",
     "session.forking": "Forking…",
     "session.go_terminal": "Go to terminal",
-    "session.history_failed": "Could not load history. Retry to continue; your draft will stay here.",
     "session.history_tail_missing": "Later history has not loaded",
     "session.history_unavailable": {
       "forms": {
@@ -3397,8 +3349,6 @@ export const messages = {
     "session.rename_title": "Rename session",
     "session.reopen_agent": "Reopen {agent} on {name}",
     "session.reply_moves": "After you reply, this conversation will move to the session list",
-    "session.restore_other_files": "Another client uploaded this message’s attachments. Only the text was restored; select attachments here if needed.",
-    "session.restore_other_images": "Another client uploaded this message’s images. Only the text was restored; select images here if needed.",
     "session.resume": "Resume session",
     "session.resume_failed": "Could not resume",
     "session.resume_note": "Resume reopens it on {name} with the same settings. All history is kept.",
@@ -3889,7 +3839,6 @@ export const messages = {
     "approval.denied": "已拒绝",
     "approval.deny": "拒绝",
     "approval.details": "审批详情",
-    "approval.expired": "已超时",
     "approval.full_command": "看完整命令",
     "approval.in_terminal": "已在终端处理",
     "approval.reason_placeholder": "说说该怎么做，可以不填",
@@ -3999,7 +3948,6 @@ export const messages = {
     "composer.queue_after_answer": "排队发送，回答后继续",
     "composer.queue_hint": "先排队，结束后按顺序发出",
     "composer.ready_timeout": "等终端就绪超时",
-    "composer.resent": "已重新发送",
     "composer.restore": "放回输入框",
     "composer.restore_files_full": {
       "forms": {
@@ -4065,7 +4013,6 @@ export const messages = {
     "dock.android_plan_expired": "不确定「{choice}」有没有送到，它已过期，不会再重发。请先去终端确认，放弃后可以重新选择",
     "dock.android_plan_unknown": "「{choice}」的结果不确定。重试会重发同一个请求，电脑收到过就不会再执行一次",
     "dock.answer_title": "回答提问",
-    "dock.answer_unknown": "不确定提交了没有，重试会发送同一个回答",
     "dock.answered": "已回答：{answers}",
     "dock.claude_plan_note": "批准后使用询问模式",
     "dock.handle": "处理",
@@ -4079,7 +4026,6 @@ export const messages = {
     "dock.multiselect": "可多选",
     "dock.none_fit": "都不合适？",
     "dock.other_terminal": "其他回答：去终端",
-    "dock.plan_answered": "回答了计划",
     "dock.plan_clear": "清空上下文后执行",
     "dock.plan_clear_record": "清空上下文后执行计划",
     "dock.plan_full": "计划全文",
@@ -4103,7 +4049,6 @@ export const messages = {
       "plural": "count"
     },
     "dock.submit_failed": "没能提交：{reason}",
-    "dock.submit_failed_edit": "没能提交：{reason}。可以改选后再提交",
     "dock.submit_selected": {
       "forms": {
         "other": "提交 {count} 项"
@@ -4131,7 +4076,6 @@ export const messages = {
     "errors.history_has_a_gap_retry": "历史记录不连续，请重试读取",
     "errors.history_keys_unavailable_records_from_before_recovery_cannot_be": "历史密钥不可用：恢复前的记录无法解密",
     "errors.invalid_ciphertext_signature_key_or_content_verification_failed": "密文无效：签名、密钥或内容校验失败",
-    "errors.invalid_current_request_snapshot": "当前请求快照无效",
     "errors.invalid_pairing_approval_signature": "配对批准签名无效",
     "errors.invalid_session_seed": "无效的会话种子",
     "errors.it_may_have_been_deleted_or_belong_to_a": "它可能已经被删除，或者属于一台被移除的电脑。",
@@ -4139,11 +4083,8 @@ export const messages = {
     "errors.names_can_only_be_changed_on_that_device": "名称只能在那台设备上修改",
     "errors.not_connected": "连不上服务器",
     "errors.other_clients_kept_changing_the_project_list_changes_could": "项目列表一直在被别的客户端修改，没能保存",
-    "errors.pending_requests_on_the_computer_could_not_be_verified": "无法核实电脑上的待处理请求，请重试或在电脑终端处理",
     "errors.project_preferences_format_is_not_supported": "项目偏好格式不受支持",
     "errors.push_backlog_reconnecting": "推送积压，正在重连",
-    "errors.queued_records_could_not_be_restored_you_can_still": "待发记录没能恢复，仍可输入和发送，下次重试",
-    "errors.queued_records_could_not_be_saved_locally_messages_will": "待发记录没能保存到本机，消息仍会发送；关闭页面前请核对发送结果",
     "errors.reading_local_state": "读取本机状态",
     "errors.remote_agent_on_is_out_of_date_update_it": "{value} 上的 remote-agent 版本较旧，请在电脑上更新后再试",
     "errors.remote_control_expired_control_and_new_uploads_are_paused": "远程控制有效期已过，控制和新内容上传已暂停；请在当前管理端续期",
@@ -4167,10 +4108,8 @@ export const messages = {
     "errors.the_computer_is_offline_the_command_was_not_sent": "电脑不在线，指令没有发出",
     "errors.the_computer_is_still_verifying_attachments_retry_shortly": "电脑仍在校验附件，请稍后重试",
     "errors.the_computer_s_reply_could_not_be_verified_command": "电脑的回复未通过验证，不确定指令是否执行",
-    "errors.the_current_request_could_not_be_verified_again": "无法重新核实当前请求",
     "errors.the_draft_could_not_be_restored_you_can_still": "草稿没能恢复，仍可输入和发送，下次打开或编辑时重试",
     "errors.the_draft_could_not_be_saved_locally_keep_the": "草稿没能保存到本机，关闭页面前请保留原图和文字",
-    "errors.the_draft_could_not_be_saved_the_original_message": "草稿没能保存，原消息的本机副本仍保留",
     "errors.the_event_s_position_was_changed": "事件的位置被改动",
     "errors.the_plan_display_changed_review_it_again": "计划画面已变化，请重新核对",
     "errors.the_previous_operation_s_outcome_is_still_unknown_reload": "上次操作的结果仍未知，请重新读取任务核实后再操作",
@@ -4190,11 +4129,9 @@ export const messages = {
     "errors.this_history_uses_an_old_encryption_format_and_can": "这条历史是旧版加密格式，已不再支持查看",
     "errors.this_is_not_a_remote_agent_account_key": "这不是 remote-agent 的账户密钥",
     "errors.this_page_is_out_of_date_refresh_or_update": "这个网页版本较旧，请刷新或更新后再试",
-    "errors.this_request_can_no_longer_be_acted_on": "当前请求已不可操作",
     "errors.this_request_has_not_been_verified_by_the_computer": "当前请求尚未由电脑核实，请等待同步",
     "errors.update_remote_agent_on_this_computer_to_use_scheduled": "需要更新这台电脑上的 remote-agent 才能使用定时任务。",
     "errors.upload_made_no_progress": "上传没有进展",
-    "errors.waiting_for_the_owning_computer_to_update_the_current": "等待所属电脑更新当前状态",
     "errors.waiting_for_the_owning_computer_to_update_the_current_remote": "等待所属电脑更新当前状态：这台设备没有当时的内容密钥",
     "home.add_device": "添加设备",
     "home.add_via_manager": "还没有电脑。在管理端（{name}）上打开「设置 › 添加设备」，把电脑加进来。",
@@ -4708,20 +4645,16 @@ export const messages = {
     "projects.use_directory": "用 {name} 这个目录",
     "projects.view_sessions": "看 {name} 的会话",
     "queue.after_current_turn": "本轮结束后发送",
-    "queue.after_start": "启动后发送",
     "queue.after_turn": "这一轮结束后发",
     "queue.agent_ready": "等 {agent} 就绪后发出",
-    "queue.already_submitted": "上一条已送入终端，不能取消",
     "queue.android_agent_note": "等 {agent} 就绪",
     "queue.android_scheduled": "定时任务",
     "queue.android_sending_soon": "即将发送",
     "queue.android_unconfirmed": "已送到终端但没确认",
     "queue.cancel_failed": "取消没成功，仍在排队",
     "queue.canceled": "已取消",
-    "queue.canceled_elsewhere": "上一条已在另一客户端取消",
     "queue.canceled_record": "取消了一条排队的消息",
     "queue.canceling": "正在取消…",
-    "queue.images_recognized": "图片已识别，正在发送…",
     "queue.insert": "插入这一轮",
     "queue.more": {
       "forms": {
@@ -4730,13 +4663,10 @@ export const messages = {
       "plural": "count"
     },
     "queue.other_message": "另一客户端的消息",
-    "queue.pasting_images": "正在粘贴图片…",
     "queue.paused": "已暂停",
     "queue.rank": " · 第 {rank} 条",
     "queue.resume_failed": "发送没成功，仍已暂停",
     "queue.resuming": "正在发送…",
-    "queue.scheduled": "定时任务{time} · ",
-    "queue.submitting": "已送入终端，等待确认",
     "queue.terminal_draft": "终端里有没发出的草稿，发完或清掉后再发",
     "queue.unrecognized": "认不出输入框，已暂停",
     "queue.when_ready": "就绪后发送",
@@ -5408,7 +5338,6 @@ export const messages = {
     "security.waiting_for_the_new_device_to_enter_the_pairing": "等待新设备输入配对码…",
     "security.waiting_for_the_successor_device_to_generate_and_save": "等待接任设备生成并保存恢复码",
     "session.abandon_fork": "放弃上次的分叉",
-    "session.action_failed": "{action}失败：{reason}",
     "session.android_compacted_usage": "上下文已压缩 · {before}% → {after}%",
     "session.android_fork_connected": "连上服务器后可用",
     "session.android_interrupted_by": "已中断（{origin}）",
@@ -5432,7 +5361,6 @@ export const messages = {
     "session.end": "结束",
     "session.end_action": "结束会话…",
     "session.end_note": "{name} 上的 {agent} 会被关掉，聊天记录保留，之后可以恢复。",
-    "session.end_session": "结束会话",
     "session.end_title": "结束这个会话？",
     "session.ended": "会话已结束",
     "session.ended_at": "{time} 结束",
@@ -5449,7 +5377,6 @@ export const messages = {
     "session.forked_from": "{time} 分叉自{source}",
     "session.forking": "正在分叉…",
     "session.go_terminal": "去终端",
-    "session.history_failed": "没能读取记录，请重试。已输入的内容会保留。",
     "session.history_tail_missing": "后面的记录没读到",
     "session.history_unavailable": {
       "forms": {
@@ -5513,8 +5440,6 @@ export const messages = {
     "session.rename_title": "重命名会话",
     "session.reopen_agent": "在 {name} 上重新打开 {agent}",
     "session.reply_moves": "回复后，这个对话会移到会话列表",
-    "session.restore_other_files": "这条消息的附件是另一客户端上传的，只放回了文字；需要的话在这里重新选择附件",
-    "session.restore_other_images": "这条消息的图片是另一客户端上传的，只放回了文字；需要的话在这里重新选择图片",
     "session.resume": "恢复会话",
     "session.resume_failed": "恢复失败",
     "session.resume_note": "恢复会在 {name} 上用同样的设置重新打开它，聊天记录都在。",

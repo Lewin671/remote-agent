@@ -1,8 +1,8 @@
 import * as l10n from "./i18n";
-import { lazy, startTransition, Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
-import type { Remote, SessionView } from "./remote";
+import { lazy, startTransition, Suspense, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
+import type { Remote } from "./remote";
 import { Startup } from "./Startup";
-import { NavBar, useRemote } from "./ui";
+import { useRemote } from "./ui";
 import { BottomBar, Home, Sidebar, WideHome, type Go } from "./views/Home";
 import { ProjectPage } from "./views/Project";
 import { ManagePage } from "./views/Projects";
@@ -82,48 +82,23 @@ export default function Workspace({ remote }: { remote: Remote }) {
   const scheduling = [...remote.machines.keys()].some((id) => remote.supportsSchedules(id) && !remote.peer(id).unlinked);
   const [kind, ...rest] = route.split("/");
   const arg = decodeURIComponent(rest.join("/"));
-  const session = kind === "s" ? (remote.sessions.get(arg) ?? remote.openingSessions.get(arg)) : undefined;
+  const session = kind === "s" ? remote.sessions.get(arg) : undefined;
   const scheduleSession = session?.info?.taskOwned && session.info.scheduledTaskId ? taskRoute(session.machineId, session.info.scheduledTaskId) : undefined;
   const back = () => (history.length > 1 ? history.back() : go(""));
   const main = useMainScrolled(route, wide);
-  // A session opened from a link may not be among the pages of the
-  // listing held here: it is asked for by its ID.
-  const absent =
-    kind === "s" && !session && remote.listed && !remote.created.has(arg);
-  useEffect(() => {
-    if (absent) void remote.ensureSession(arg);
-  });
-  const opening = useMemo<SessionView>(() => ({ id: arg, machineId: "", metaRev: 0n, lastSeq: 0n, updatedMs: 0n, endedMs: 0n }), [arg]);
   if (remote.removed) return <Suspense fallback={loading}><RemovedScreen remote={remote} /></Suspense>;
 
   let page;
-  if (kind === "s" && (session || !remote.missing.has(arg)))
+  if (kind === "s")
     page = (
       <SessionPage
         key={arg}
         remote={remote}
-        session={session ?? opening}
-        pending={!session}
-        onBack={session?.info?.taskOwned && session.info.scheduledTaskId ? () => go(taskRoute(session.machineId, session.info!.scheduledTaskId)) : back}
+        sessionId={arg}
+        onBack={back}
         wide={wide}
+        go={go}
       />
-    );
-  else if (kind === "s")
-    page = (
-      <div className="page">
-        <NavBar onBack={() => go("")} />
-        <div className="center">
-          <div>
-            <div className="et">{l10n.t("session.ios_missing")}</div>
-            <div className="muted small">
-              {l10n.t("errors.it_may_have_been_deleted_or_belong_to_a")}</div>
-            <div className="big">
-              <button className="btn pri" onClick={() => go("")}>
-                {l10n.t("common.back")}</button>
-            </div>
-          </div>
-        </div>
-      </div>
     );
   else if (kind === "tasks") {
     const [machineId, taskId] = rest.map(decodeURIComponent);

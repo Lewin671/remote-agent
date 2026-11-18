@@ -105,7 +105,6 @@ function makeExecutor(overrides: Partial<CoreExecutor> = {}): CoreExecutor & {
     },
     async deleteCache() {},
     applySyncStateView() {},
-    applySessionDataView() {},
     async executeRpc(eff: RpcEffect) {
       if (eff.kind.case === "fetchLists") {
         return create(EventSchema, {

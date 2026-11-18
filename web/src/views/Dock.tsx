@@ -1,32 +1,39 @@
 import * as i18n from "../i18n";
-import { isSkeleton, skeletonMessage } from "../skeleton";
 // What a session waits for, docked above the input (design-system §6 停靠区):
 // approvals, questions, plans and terminal popups, each in the dark card's
 // shell. Only the first item is docked, open or folded to one dark line;
 // what has no room opens as a page, and the buttons stay in view.
 
-import { useRef, useState, type CSSProperties, type ReactNode } from "react";
-import { useGrow, useHeightFlip } from "../motion";
-import type { Agent, ApprovalRequested, PlanProposed, QuestionAsked } from "../gen/remoteagent/v1/event_pb";
-import { PlanChoice } from "../gen/remoteagent/v1/local_pb";
-import { approvalDisplay } from "../approval-display";
-import { Markdown } from "../markdown";
+import { create } from "@bufbuild/protobuf";
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { agentInfo } from "../agents";
-import { agentName, agentOf, askTitle, popupTitle, minutesLeft, optionLabel, type DockItem } from "../model";
-import type { Remote } from "../remote";
-import { Banner, Exp, NavBar, useNow } from "../ui";
-import { deadlineOf, useAnswer, usePlan } from "./actions";
+import { approvalDisplay } from "../approval-display";
+import { renderText } from "../core/text";
+import {
+  SessionCommandStatus,
+  SessionDockKind,
+  type SessionApprovalDockView,
+  type SessionDockView,
+  type SessionHeaderView,
+  type SessionPlanDockView,
+  type SessionQuestionDockView,
+  type SessionTerminalPopupDockView,
+} from "../gen/remoteagent/core/v1/session_view_pb";
+import { Agent } from "../gen/remoteagent/v1/event_pb";
+import { PlanChoice } from "../gen/remoteagent/v1/local_pb";
+import {
+  CommandSchema,
+  type Command,
+} from "../gen/remoteagent/v1/remote_pb";
 import { Check, ChevronRight } from "../icons";
-import { ApprovalCard, approvalText, approvalTitle } from "./ApprovalCard";
+import { Markdown } from "../markdown";
+import { useGrow, useHeightFlip } from "../motion";
+import { skeletonMessage } from "../skeleton";
+import { Banner, Exp, NavBar } from "../ui";
+import { ApprovalCard } from "./ApprovalCard";
 
-export { approvalText, approvalTitle };
-
-/** How a docked item draws itself: its one line, whether it is open, and
- * how many more items wait behind it. */
 type Frame = { open: boolean; onToggle: () => void; more: number };
 
-/** The head of an open item: 「● 类型　元信息　收起」, with `extra` (the
- * plan's 展开全文) before 收起. */
 function OpenHead({ frame, label, meta, extra, busy }: { frame: Frame; label: string; meta?: ReactNode; extra?: ReactNode; busy?: boolean }) {
   const keep = (e: { preventDefault(): void }) => e.preventDefault();
   return (
@@ -45,7 +52,6 @@ function OpenHead({ frame, label, meta, extra, busy }: { frame: Frame; label: st
   );
 }
 
-/** A folded item: one dark line 「● 类型 · 摘要 · 处理 ⌄」 that opens it. */
 function FoldedLine({ frame, label, brief, busy }: { frame: Frame; label: string; brief: string; busy?: boolean }) {
   const info = [brief, frame.more > 0 ? i18n.t("dock.more", { count: frame.more }) : ""].filter(Boolean).join(" · ");
   return (
@@ -62,9 +68,6 @@ function FoldedLine({ frame, label, brief, busy }: { frame: Frame; label: string
   );
 }
 
-/** A waiting item in the dark card's shell (design-system §6 停靠区): one
- * line that opens in place into its content, which scrolls, over its
- * actions, which stay in view. */
 function Pending({
   frame,
   label,
@@ -98,7 +101,6 @@ function Pending({
   );
 }
 
-/** Parts of a head's meta, joined by 「 · 」. */
 function metaOf(...parts: ReactNode[]): ReactNode {
   const shown = parts.filter((p) => p !== "" && p !== false && p != null);
   return shown.map((p, i) => (
@@ -109,142 +111,285 @@ function metaOf(...parts: ReactNode[]): ReactNode {
   ));
 }
 
+function makeApprovalCommand(sessionId: string, dock: SessionDockView, a: SessionApprovalDockView, allow: boolean, reason: string, always: boolean): Command {
+  return create(CommandSchema, {
+    kind: {
+      case: "resolveApproval",
+      value: {
+        sessionId,
+        approvalId: a.approvalId,
+        allow,
+        message: reason,
+        always,
+        observedEventSeq: dock.observedSeq,
+      },
+    },
+  });
+}
+
 function ApprovalDock({
-  remote,
-  sid,
-  a,
+  sessionId,
+  dock,
+  approval,
+  canSend,
   frame,
+  defaultDenying,
+  reason,
+  onReasonChange,
   onReasonOpen,
   reasoning,
+  onSubmitCommand,
+  onAbandonCommand,
 }: {
-  remote: Remote;
-  sid: string;
-  a: ApprovalRequested;
+  sessionId: string;
+  dock: SessionDockView;
+  approval: SessionApprovalDockView;
+  canSend: boolean;
   frame: Frame;
+  defaultDenying?: boolean;
+  reason?: string;
+  onReasonChange?: (v: string) => void;
   onReasonOpen: (open: boolean) => void;
   reasoning: boolean;
+  onSubmitCommand: (slotKey: string, cmd: Command) => void;
+  onAbandonCommand: (slotKey: string) => void;
 }) {
-  const now = useNow(1000);
-  const deadline = deadlineOf(a);
-  const left = deadline ? minutesLeft(deadline, now) : "";
-  const title = approvalTitle(a);
-  if (isSkeleton(a)) return <div className="dock pending"><div className="tc line"><div className="k">{skeletonMessage()}</div></div></div>;
-  // A permission request's arguments are no summary: its title says it.
-  if (!frame.open) return <FoldedLine frame={frame} label={title} brief={a.command ? approvalDisplay(a.command).replace(/\s+/g, " ") : ""} />;
-  // Answered, the card itself shrinks to its one line of where it stands.
+  const lastCmd = useRef<Command | undefined>(undefined);
+  const title = renderText(dock.title) || i18n.t("approval.title");
+  if (approval.isSkeleton) {
+    return (
+      <div className="dock pending">
+        <div className="tc line">
+          <div className="k">{skeletonMessage()}</div>
+        </div>
+      </div>
+    );
+  }
+  const timeText = renderText(dock.timeLeft).replace(/^\s*·\s*/, "");
+  const cmd = dock.command;
+  const slotKey = cmd?.slotKey ?? "";
+  if (!frame.open) {
+    return <FoldedLine frame={frame} label={title} brief={approvalDisplay(approval.commandPreview).replace(/\s+/g, " ")} busy={!!cmd?.busy} />;
+  }
+  const submit = (allow: boolean, why: string, always: boolean) => {
+    const built = makeApprovalCommand(sessionId, dock, approval, allow, why, always);
+    lastCmd.current = built;
+    onSubmitCommand(slotKey, built);
+  };
+  const retry = () => {
+    const built = lastCmd.current ?? makeApprovalCommand(sessionId, dock, approval, true, "", false);
+    onSubmitCommand(slotKey, built);
+  };
+  const body = approval.body || approval.commandPreview || approval.toolName;
   return (
-    <div className={"dock pending open" + (reasoning ? " reasoning" : "")}>
+    <div className={"dock pending open" + (reasoning ? " reasoning" : "") + (cmd?.busy ? " submitting" : "")}>
       <ApprovalCard
-        remote={remote}
-        sid={sid}
-        a={a}
+        kind={title}
+        body={body}
+        description={approval.description}
+        truncated={approval.bodyTruncated}
+        isSkeleton={approval.isSkeleton}
+        canAlwaysAllow={approval.canAlwaysAllow}
+        alwaysLabel={renderText(approval.alwaysLabel)}
+        denyReasonPlaceholder={renderText(approval.denyReasonPlaceholder)}
+        timeText={timeText}
+        locked={!canSend}
+        command={cmd}
+        reason={reason}
+        onReasonChange={onReasonChange}
+        defaultDenying={defaultDenying}
         docked
         onDenying={onReasonOpen}
-        // The head says the time; what happens at its end is the home card's to say.
-        head={<OpenHead frame={frame} label={title} meta={metaOf(frame.more > 0 && i18n.t("dock.more", { count: frame.more }), left)} />}
+        onResolve={submit}
+        onRetry={retry}
+        onAbandon={slotKey ? () => onAbandonCommand(slotKey) : undefined}
+        head={<OpenHead frame={frame} label={title} meta={metaOf(frame.more > 0 && i18n.t("dock.more", { count: frame.more }), timeText)} busy={!!cmd?.busy} />}
       />
     </div>
   );
 }
 
-/** A question's parts, for the dock and the question page alike. Its
- * answering state, ticks included, lives in the Remote, so both share it. */
-function useQuestion(remote: Remote, sid: string, q: QuestionAsked, agent: Agent, onTerminal: () => void) {
-  // Which question to answer. The daemon only enters the option while the
-  // terminal shows this very question, so a stale choice is refused rather
-  // than answering another question.
-  const ans = useAnswer(remote, sid, q.questionId, isSkeleton(q));
-  const ticked = ans.ticked;
-  const setTicked = (f: number[] | ((t: number[]) => number[])) => ans.setTicked(typeof f === "function" ? f : () => f);
-  if (isSkeleton(q)) return { label: askTitle(agent), text: skeletonMessage(), busy: false, progress: "", answers: null, actions: (_page: boolean) => null };
-  const n = q.questions.length;
-  const index = Math.min(ans.index, n - 1);
-  const item = q.questions[index];
-  if (!item) return undefined;
-  const multi = item.multiSelect;
-  const sent = ans.chosen.index === index ? ans.chosen.options : [];
-  const pick = async (options: number[]) => {
-    const ok = await ans.answer(index, options, multi);
-    if (ok && index < n - 1) {
-      ans.done();
-      setTicked([]);
-      ans.setIndex(index + 1);
-    }
+export interface QuestionDraftState {
+  key: string;
+  ticked: number[];
+  chosen: { index: number; options: number[] };
+  dirty: boolean;
+}
+
+function useQuestionState(
+  sessionId: string,
+  dock: SessionDockView,
+  q: SessionQuestionDockView,
+  canSend: boolean,
+  onTerminal: () => void,
+  onSubmitCommand: (slotKey: string, cmd: Command) => void,
+  onAbandonCommand: (slotKey: string) => void,
+  questionDraft?: QuestionDraftState,
+  onQuestionDraftChange?: (next: QuestionDraftState) => void,
+) {
+  const draftKey = `${q.questionId}:${q.activeIndex}`;
+  const matched = questionDraft?.key === draftKey ? questionDraft : undefined;
+  const [localDraft, setLocalDraft] = useState<QuestionDraftState>(() => ({
+    key: draftKey,
+    ticked: [],
+    chosen: { index: -1, options: [] },
+    dirty: false,
+  }));
+  const current = matched ?? (localDraft.key === draftKey ? localDraft : { key: draftKey, ticked: [], chosen: { index: -1, options: [] }, dirty: false });
+  const update = (next: Partial<QuestionDraftState>) => {
+    const merged: QuestionDraftState = { ...current, ...next, key: draftKey };
+    if (onQuestionDraftChange) onQuestionDraftChange(merged);
+    else setLocalDraft(merged);
   };
-  // A retry is the same pick: on success it moves on like the first try.
+  const { ticked, chosen, dirty } = current;
+  const lastCmd = useRef<Command | undefined>(undefined);
+
+  useEffect(() => {
+    lastCmd.current = undefined;
+  }, [q.questionId, q.activeIndex]);
+
+  const label = renderText(dock.title) || i18n.t("dock.answer_title");
+  const cmd = dock.command;
+  const slotKey = cmd?.slotKey ?? "";
+  const busy = !!cmd?.busy;
+  const hasError = !!cmd && (cmd.status === SessionCommandStatus.FAILED || cmd.status === SessionCommandStatus.UNKNOWN);
+  const frozen = busy || !!cmd?.frozen || !canSend;
+
+  const step = q.question;
+  if (!step) {
+    return {
+      label,
+      text: skeletonMessage(),
+      busy: false,
+      progress: "",
+      answers: null,
+      actions: (_page: boolean) => null,
+    };
+  }
+
+  const multi = step.multiSelect;
+  const sent = chosen.index === q.activeIndex ? chosen.options : [];
+  const errMsg = renderText(cmd?.errorText) || renderText(cmd?.statusText);
+
+  const pick = (options: number[]) => {
+    update({ chosen: { index: q.activeIndex, options }, dirty: false });
+    const built = create(CommandSchema, {
+      kind: {
+        case: "answerQuestion",
+        value: {
+          sessionId,
+          questionId: q.questionId,
+          option: multi ? 0 : (options[0] ?? 0),
+          questionIndex: q.activeIndex,
+          options: multi ? options : [],
+          observedEventSeq: dock.observedSeq,
+        },
+      },
+    });
+    lastCmd.current = built;
+    onSubmitCommand(slotKey, built);
+  };
+
   const retry = () => {
-    if (sent.length) void pick(sent);
+    const built = lastCmd.current ?? create(CommandSchema, {
+      kind: {
+        case: "answerQuestion",
+        value: {
+          sessionId,
+          questionId: q.questionId,
+          option: multi ? 0 : (sent[0] ?? 1),
+          questionIndex: q.activeIndex,
+          options: multi ? (sent.length ? sent : [1]) : [],
+          observedEventSeq: dock.observedSeq,
+        },
+      },
+    });
+    update({ dirty: false });
+    onSubmitCommand(slotKey, built);
   };
-  // After a definite failure the ticks can change and be submitted again;
-  // while the outcome is unknown they stay as sent, and only a retry of
-  // that answer may follow.
-  const frozen = !!ans.busy || (!!ans.error && ans.unknown);
-  const tick = (o: number) => {
-    if (ans.error) ans.clearError();
-    setTicked((t) => (t.includes(o) ? t.filter((x) => x !== o) : [...t, o].sort((a, b) => a - b)));
+
+  const tick = (optNum: number) => {
+    const base = hasError && !dirty && sent.length > 0 ? sent : ticked;
+    const nextTicked = base.includes(optNum) ? base.filter((x) => x !== optNum) : [...base, optNum].sort((a, b) => a - b);
+    update({ ticked: nextTicked, dirty: true });
   };
-  const where = n > 1 ? i18n.t("dock.question_progress", { index: index + 1, count: n }) : item.header;
-  const progress = [where, multi ? i18n.t("dock.multiselect") : ""].filter(Boolean).join(" · ");
+
+  const showError = hasError && !dirty;
+  const shownTicks = frozen || showError ? sent : ticked;
+  const progress = [renderText(q.progressText) || step.header, multi ? i18n.t("dock.multiselect") : ""].filter(Boolean).join(" · ");
   const answers = (
     <div className="answers">
-      {item.options.map((o, i) => {
-        const { text, recommended } = optionLabel(o.label);
-        const on = multi ? (frozen ? sent : ticked).includes(i + 1) : sent.includes(i + 1);
-        const status = on && sent.includes(i + 1) && (ans.busy ? "sending" : ans.error ? "err" : "");
+      {step.options.map((o, idx) => {
+        const num = o.optionNum || idx + 1;
+        const on = multi ? shownTicks.includes(num) : sent.includes(num);
+        const status = on && sent.includes(num) && (busy ? "sending" : showError ? "err" : "");
         return (
           <button
-            key={i}
+            key={num}
             className={"opt" + (on ? " on" : "") + (multi ? " multi" : "")}
             role={multi ? "checkbox" : undefined}
             aria-checked={multi ? on : undefined}
-            disabled={multi ? frozen : !!ans.busy}
-            onClick={() => (multi ? tick(i + 1) : void pick([i + 1]))}
+            disabled={multi ? frozen : busy || !canSend || (hasError && !cmd?.canRetry && !!cmd?.frozen)}
+            onClick={() => (multi ? tick(num) : pick([num]))}
           >
             {multi && <span className={"box" + (on ? " on" : "")}>{on && <Check />}</span>}
             <div>
-              {text}
+              {o.label}
               {status === "err" && !multi ? (
-                <small className="err">{i18n.t("dock.question_changed")}</small>
-              ) : status && status !== "err" && !multi ? (
-                <small>{status === "sending" ? i18n.t("dock.submitting") : ""}</small>
+                <small className="err">{errMsg || i18n.t("dock.question_changed")}</small>
+              ) : status === "sending" && !multi ? (
+                <small>{i18n.t("dock.submitting")}</small>
               ) : (
                 o.description && <small>{o.description}</small>
               )}
             </div>
-            {recommended && <span className="tag">{i18n.t("dock.recommended")}</span>}
+            {o.recommended && <span className="tag">{i18n.t("dock.recommended")}</span>}
             {!multi && on && <Check className="ck" />}
           </button>
         );
       })}
     </div>
   );
-  const submit = multi && !(ans.error && ans.unknown) && (
+
+  const submit = multi && !(showError && cmd?.frozen) && (
     <div className="btns">
-      <button className="btn pri" disabled={!!ans.busy || ticked.length === 0} onClick={() => void pick(ticked)}>
-        {ans.busy ? i18n.t("dock.submitting") : ticked.length ? i18n.t("dock.submit_selected", { count: ticked.length }) : i18n.t("dock.select_then_submit")}
+      <button className="btn pri" disabled={busy || !canSend || ticked.length === 0} onClick={() => pick(ticked)}>
+        {busy ? i18n.t("dock.submitting") : ticked.length ? i18n.t("dock.submit_selected", { count: ticked.length }) : i18n.t("dock.select_then_submit")}
       </button>
     </div>
   );
-  const failed = multi && ans.error && <div className="ml red">{ans.unknown ? i18n.t("dock.answer_unknown") : i18n.t("dock.submit_failed_edit", { reason: ans.error })}</div>;
+
+  const failed = showError && (multi || sent.length === 0) && <div className="ml red">{errMsg}</div>;
+
   const foot = (page: boolean) => (
     <div className="st">
-      {ans.error && (!multi || ans.unknown) ? (
-        <button className="lk" onClick={retry}>
-          {i18n.t("common.retry")}</button>
+      {showError && cmd?.canRetry ? (
+        <>
+          <button className="lk" onClick={retry}>
+            {i18n.t("common.retry")}
+          </button>
+          {cmd.canAbandon && slotKey && (
+            <button className="lk" onClick={() => onAbandonCommand(slotKey)}>
+              {i18n.t("common.cancel")}
+            </button>
+          )}
+        </>
       ) : (
         <>
           <span>{page && multi ? (ticked.length ? i18n.t("dock.selected", { count: ticked.length }) : "") : i18n.t("dock.none_fit")}</span>
           <button className="lk" onClick={onTerminal}>
-            {i18n.t("dock.other_terminal")}<ChevronRight />
+            {i18n.t("dock.other_terminal")}
+            <ChevronRight />
           </button>
         </>
       )}
     </div>
   );
+
   return {
-    label: askTitle(agent),
-    text: item.text,
-    busy: !!ans.busy,
+    label,
+    text: step.questionText,
+    busy,
     progress,
     answers,
     actions: (page: boolean) => (
@@ -257,9 +402,30 @@ function useQuestion(remote: Remote, sid: string, q: QuestionAsked, agent: Agent
   };
 }
 
-function QuestionDock({ remote, sid, q, agent, frame, onTerminal }: { remote: Remote; sid: string; q: QuestionAsked; agent: Agent; frame: Frame; onTerminal: () => void }) {
-  const p = useQuestion(remote, sid, q, agent, onTerminal);
-  if (!p) return null;
+function QuestionDock({
+  sessionId,
+  dock,
+  q,
+  canSend,
+  frame,
+  questionDraft,
+  onQuestionDraftChange,
+  onTerminal,
+  onSubmitCommand,
+  onAbandonCommand,
+}: {
+  sessionId: string;
+  dock: SessionDockView;
+  q: SessionQuestionDockView;
+  canSend: boolean;
+  frame: Frame;
+  questionDraft?: QuestionDraftState;
+  onQuestionDraftChange?: (next: QuestionDraftState) => void;
+  onTerminal: () => void;
+  onSubmitCommand: (slotKey: string, cmd: Command) => void;
+  onAbandonCommand: (slotKey: string) => void;
+}) {
+  const p = useQuestionState(sessionId, dock, q, canSend, onTerminal, onSubmitCommand, onAbandonCommand, questionDraft, onQuestionDraftChange);
   return (
     <Pending
       frame={frame}
@@ -278,64 +444,151 @@ function QuestionDock({ remote, sid, q, agent, frame, onTerminal }: { remote: Re
   );
 }
 
-function PlanButtons({ remote, sid, full, shared, terminalOnly = false }: { remote: Remote; sid: string; full?: boolean; shared?: ReturnType<typeof usePlan>; terminalOnly?: boolean }) {
-  // Claude Code has no "clear the context, then implement".
-  const own = usePlan(remote, sid, terminalOnly);
-  const plan = shared ?? own;
-  const b = plan.busy;
-  const entry = agentInfo(agentOf(remote.sessions.get(sid)));
-  if (terminalOnly) return <div className="muted">{skeletonMessage()}</div>;
+function makePlanCommand(sessionId: string, dock: SessionDockView, plan: SessionPlanDockView, choice: PlanChoice): Command {
+  return create(CommandSchema, {
+    kind: {
+      case: "answerPlan",
+      value: {
+        sessionId,
+        choice,
+        observedEventSeq: dock.observedSeq,
+        observedScreenHash: plan.screenHash,
+      },
+    },
+  });
+}
+
+function PlanButtons({
+  sessionId,
+  dock,
+  plan,
+  canSend,
+  full,
+  onSubmitCommand,
+  onAbandonCommand,
+}: {
+  sessionId: string;
+  dock: SessionDockView;
+  plan: SessionPlanDockView;
+  canSend: boolean;
+  full?: boolean;
+  onSubmitCommand: (slotKey: string, cmd: Command) => void;
+  onAbandonCommand: (slotKey: string) => void;
+}) {
+  const [pickedChoice, setPickedChoice] = useState<PlanChoice | undefined>(undefined);
+  const lastCmd = useRef<Command | undefined>(undefined);
+  const cmd = dock.command;
+  const slotKey = cmd?.slotKey ?? "";
+  const busy = !!cmd?.busy;
+  const hasError = !!cmd && (cmd.status === SessionCommandStatus.FAILED || cmd.status === SessionCommandStatus.UNKNOWN);
+  const errMsg = renderText(cmd?.errorText) || renderText(cmd?.statusText);
+
+  if (plan.choices.length === 0) return <div className="muted">{skeletonMessage()}</div>;
+
+  const locked = busy || !canSend || !!cmd?.frozen;
+  const answer = (choice: PlanChoice) => {
+    setPickedChoice(choice);
+    const built = makePlanCommand(sessionId, dock, plan, choice);
+    lastCmd.current = built;
+    onSubmitCommand(slotKey, built);
+  };
+  const retry = () => {
+    const built = lastCmd.current ?? makePlanCommand(sessionId, dock, plan, pickedChoice ?? PlanChoice.IMPLEMENT);
+    onSubmitCommand(slotKey, built);
+  };
+
+  const clearChoice = full ? plan.choices.find((c) => c.choice === PlanChoice.CLEAR_AND_IMPLEMENT) : undefined;
+  const mainChoices = plan.choices.filter((c) => c.choice !== PlanChoice.CLEAR_AND_IMPLEMENT);
+  // Display keep planning before implement to match Web layout order.
+  const sortedMain = [...mainChoices].sort((a, b) => {
+    if (a.choice === b.choice) return 0;
+    return a.choice === PlanChoice.KEEP_PLANNING ? -1 : 1;
+  });
+
   return (
     <>
-      {/* The full page offers Codex's third choice above the other two. */}
-      {full && entry.planClearContext && (
+      {clearChoice && (
         <div className="btns decide">
-          <button className="btn" disabled={!!b} onClick={() => void plan.answer(PlanChoice.CLEAR_AND_IMPLEMENT)}>
-            {b === String(PlanChoice.CLEAR_AND_IMPLEMENT) ? i18n.t("dock.submitting") : i18n.t("dock.plan_clear")}
+          <button className="btn" disabled={locked} onClick={() => answer(clearChoice.choice)}>
+            {busy && pickedChoice === clearChoice.choice ? i18n.t("dock.submitting") : renderText(clearChoice.label)}
           </button>
         </div>
       )}
       <div className="btns decide">
-        <button className="btn" disabled={!!b} onClick={() => void plan.answer(PlanChoice.KEEP_PLANNING)}>
-          {b === String(PlanChoice.KEEP_PLANNING) ? i18n.t("dock.submitting") : entry.planKeepLabel}
-        </button>
-        <button className="btn pri" disabled={!!b} onClick={() => void plan.answer(PlanChoice.IMPLEMENT)}>
-          {b === String(PlanChoice.IMPLEMENT) ? i18n.t("dock.submitting") : entry.planApproveLabel}
-        </button>
+        {sortedMain.map((c) => (
+          <button
+            key={c.choice}
+            className={"btn" + (c.recommended ? " pri" : "")}
+            disabled={locked}
+            onClick={() => answer(c.choice)}
+          >
+            {busy && pickedChoice === c.choice ? i18n.t("dock.submitting") : renderText(c.label)}
+          </button>
+        ))}
       </div>
-      {plan.error && (
-        <Banner kind="err" action={i18n.t("common.retry")} onAction={plan.retry}>
-          {i18n.t("dock.submit_failed", { reason: plan.error })}
+      {hasError && (
+        <Banner
+          kind="err"
+          action={cmd?.canRetry ? i18n.t("common.retry") : cmd?.canAbandon && slotKey ? i18n.t("common.cancel") : undefined}
+          onAction={cmd?.canRetry ? retry : cmd?.canAbandon && slotKey ? () => onAbandonCommand(slotKey) : undefined}
+        >
+          {errMsg}
         </Banner>
       )}
     </>
   );
 }
 
-function PlanDock({ remote, sid, agent, plan, frame, onFull }: { remote: Remote; sid: string; agent: Agent; plan?: PlanProposed; frame: Frame; onFull: () => void }) {
-  const state = usePlan(remote, sid, isSkeleton(plan));
-  if (isSkeleton(plan)) return <div className="dock muted">{skeletonMessage()}</div>;
+function PlanDock({
+  sessionId,
+  dock,
+  plan,
+  canSend,
+  frame,
+  onFull,
+  onSubmitCommand,
+  onAbandonCommand,
+}: {
+  sessionId: string;
+  dock: SessionDockView;
+  plan: SessionPlanDockView;
+  canSend: boolean;
+  frame: Frame;
+  onFull: () => void;
+  onSubmitCommand: (slotKey: string, cmd: Command) => void;
+  onAbandonCommand: (slotKey: string) => void;
+}) {
+  const hasContent = !!plan.markdown || plan.choices.length > 0;
+  if (!hasContent) return <div className="dock muted">{skeletonMessage()}</div>;
+  const note = renderText(plan.note);
+  const title = renderText(dock.title) || i18n.t("list_state.plan");
   return (
     <Pending
       frame={frame}
       label={i18n.t("list_state.plan")}
-      brief=""
-      busy={!!state.busy}
+      brief={title !== i18n.t("list_state.plan") ? title : ""}
+      busy={!!dock.command?.busy}
       meta={metaOf(frame.more > 0 && i18n.t("dock.more", { count: frame.more }))}
       extra={
-        plan && (
+        plan.markdown ? (
           <button className="lk pending-full" onClick={onFull}>
-            {i18n.t("markdown.expand")}<ChevronRight />
+            {i18n.t("markdown.expand")}
+            <ChevronRight />
           </button>
-        )
+        ) : undefined
       }
-      body={<div className="plan">{plan ? <Markdown text={plan.text} /> : i18n.t("dock.plan_unread")}</div>}
+      body={<div className="plan">{plan.markdown ? <Markdown text={plan.markdown} /> : renderText(dock.summary) || i18n.t("dock.plan_unread")}</div>}
       actions={
         <>
-          <PlanButtons remote={remote} sid={sid} shared={state} terminalOnly={isSkeleton(plan)} />
-          {!isSkeleton(plan) && agentInfo(agent || agentOf(remote.sessions.get(sid))).planNote && (
-            <div className="ml">{agentInfo(agent || agentOf(remote.sessions.get(sid))).planNote}</div>
-          )}
+          <PlanButtons
+            sessionId={sessionId}
+            dock={dock}
+            plan={plan}
+            canSend={canSend}
+            onSubmitCommand={onSubmitCommand}
+            onAbandonCommand={onAbandonCommand}
+          />
+          {note && <div className="ml">{note}</div>}
         </>
       }
     />
@@ -344,37 +597,47 @@ function PlanDock({ remote, sid, agent, plan, frame, onFull }: { remote: Remote;
 
 function formatTrustHint(text: string) {
   const parts = text.split(/(No, exit|Yes, I trust this folder)/g);
-  return parts.map((part, i) =>
-    part === "No, exit" || part === "Yes, I trust this folder" ? <b key={i}>{part}</b> : part,
-  );
+  return parts.map((part, i) => (part === "No, exit" || part === "Yes, I trust this folder" ? <b key={i}>{part}</b> : part));
 }
 
-function PopupDock({ title, agent, frame, onTerminal }: { title: string; agent: Agent; frame: Frame; onTerminal: () => void }) {
+function PopupDock({
+  dock,
+  popup,
+  agent,
+  agentName,
+  frame,
+  onTerminal,
+}: {
+  dock: SessionDockView;
+  popup: SessionTerminalPopupDockView;
+  agent: Agent;
+  agentName: string;
+  frame: Frame;
+  onTerminal: () => void;
+}) {
+  const title = renderText(popup.popupTitle) || renderText(dock.title);
+  const hint = renderText(popup.hint);
+  const isTrust = dock.itemId === "trust folder" || title === i18n.t("dock.trust_folder");
+  const trustHint = agentInfo(agent).trustFolderHint;
   return (
     <Pending
       frame={frame}
       label={i18n.t("list_state.popup")}
-      brief={popupTitle(title)}
-      meta={metaOf(frame.more > 0 && i18n.t("dock.more", { count: frame.more }), i18n.t("dock.agent_waiting", { agent: agentName(agent) }))}
+      brief={title}
+      meta={metaOf(frame.more > 0 && i18n.t("dock.more", { count: frame.more }), i18n.t("dock.agent_waiting", { agent: agentName }))}
       body={
-        title && (
+        title ? (
           <>
-            <div className="q mono">{popupTitle(title)}</div>
-            {/* Claude Code's trust prompt starts on "No, exit": Enter alone
-                ends the session (claude-code-notes §1). Trusting stays the
-                user's choice, made in the terminal. */}
-            {agentInfo(agent).trustFolderHint && title === "trust folder" && (
-              <div className="y">
-                {formatTrustHint(agentInfo(agent).trustFolderHint!)}
-              </div>
-            )}
+            <div className="q mono">{title}</div>
+            {hint ? <div className="y">{hint}</div> : trustHint && isTrust && <div className="y">{formatTrustHint(trustHint)}</div>}
           </>
-        )
+        ) : undefined
       }
       actions={
         <div className="btns">
-          <button className="btn pri" onClick={onTerminal}>
-            {i18n.t("dock.handle_terminal")}</button>
+          <button className="btn pri" disabled={!popup.canGoTerminal} onClick={onTerminal}>
+            {i18n.t("dock.handle_terminal")}
+          </button>
         </div>
       }
     />
@@ -392,109 +655,174 @@ export function dockContentMax(room: number, height: number): number | undefined
   return Math.max(0, Math.min(room - 44, Math.max(240, Math.round(height * 0.6))));
 }
 
-/** Which docked item a 收起 was for: the item, and for those whose ID a
- * session reuses (its plan, its popup) what they say, so that a new one
- * opens again. */
-function dockKey(sid: string, item: DockItem): string {
-  const what = item.kind === "plan" ? (item.plan?.text ?? "") : item.kind === "popup" ? item.title : "";
-  return `${sid}|${item.id}|${what}`;
+function dockKey(sid: string, dock: SessionDockView): string {
+  const what =
+    dock.detail.case === "plan"
+      ? dock.detail.value.markdown
+      : dock.detail.case === "terminalPopup"
+        ? renderText(dock.detail.value.popupTitle)
+        : "";
+  return `${sid}|${dock.itemId}|${what}`;
 }
 
-/** The first waiting item, docked above the input (client-v7 停靠区). It
- * comes open: what waits for the user is what they came to see. 收起
- * keeps that item to one line (remembered by its ID while the page is
- * loaded); the next item comes open again. It opens up to room pixels (what
- * the input and a little chat leave); with no room for that it stays one
- * line that opens as a page. An item that comes while the input holds a
- * draft (drafting: text or images not sent) starts as one line, so as not
- * to push the message aside; the input merely having focus does not count,
- * as on a computer it keeps it after every message. */
+export interface DockProps {
+  sessionId: string;
+  dock?: SessionDockView;
+  header?: SessionHeaderView;
+  drafting?: boolean;
+  room?: number;
+  height?: number;
+  seenKeys?: Set<string>;
+  closedKeys?: Set<string>;
+  defaultDenying?: boolean;
+  reason?: string;
+  onReasonChange?: (approvalId: string, v: string) => void;
+  questionDraft?: QuestionDraftState;
+  onQuestionDraftChange?: (next: QuestionDraftState) => void;
+  onExpand?: () => void;
+  onDetail?: (approvalId: string) => void;
+  onPlan?: () => void;
+  onQuestion?: () => void;
+  onTerminal: () => void;
+  onSubmitCommand: (slotKey: string, cmd: Command) => void;
+  onAbandonCommand: (slotKey: string) => void;
+}
+
 export function Dock({
-  remote,
-  sid,
-  items,
-  agent,
-  drafting,
+  sessionId,
+  dock,
+  header,
+  drafting = false,
   room = Infinity,
   height = 0,
+  seenKeys,
+  closedKeys,
+  defaultDenying,
+  reason,
+  onReasonChange,
+  questionDraft,
+  onQuestionDraftChange,
   onExpand,
   onDetail,
   onPlan,
   onQuestion,
   onTerminal,
-}: {
-  remote: Remote;
-  sid: string;
-  items: DockItem[];
-  agent: Agent;
-  drafting: boolean;
-  room?: number;
-  // The chat column's height, which the open content takes a share of.
-  height?: number;
-  onExpand: () => void;
-  onDetail: (approvalId: string) => void;
-  onPlan: () => void;
-  onQuestion?: () => void;
-  onTerminal: () => void;
-}) {
+  onSubmitCommand,
+  onAbandonCommand,
+}: DockProps) {
   const [, redraw] = useState(0);
+  const localSeen = useRef<Set<string>>(new Set());
+  const localClosed = useRef<Set<string>>(new Set());
   const [reasoning, setReasoning] = useState(false);
-  const item = items[0];
-  if (!item) return null;
-  const key = dockKey(sid, item);
-  if (!remote.dockSeen.has(key)) {
-    remote.dockSeen.add(key);
-    if (drafting) remote.dockClosed.add(key);
+
+  if (!dock?.hasItem) return null;
+
+  const seen = seenKeys ?? localSeen.current;
+  const closed = closedKeys ?? localClosed.current;
+  const key = dockKey(sessionId, dock);
+  if (!seen.has(key)) {
+    seen.add(key);
+    if (drafting) closed.add(key);
   }
-  const open = !remote.dockClosed.has(key);
-  // Typing a reason keeps it open whatever the room or the keyboard.
+  const open = !closed.has(key);
   const shown = open && (reasoning || room >= DOCK_MIN_ROOM);
-  const page = () => {
-    if (item.kind === "approval") onDetail(item.approval.approvalId);
-    else if (item.kind === "plan") onPlan();
-    else if (item.kind === "question") onQuestion?.();
+
+  const openAsPage = () => {
+    if (dock.kind === SessionDockKind.APPROVAL && dock.detail.case === "approval") onDetail?.(dock.detail.value.approvalId);
+    else if (dock.kind === SessionDockKind.PLAN) onPlan?.();
+    else if (dock.kind === SessionDockKind.QUESTION) onQuestion?.();
     else onTerminal();
   };
+
   const frame: Frame = {
     open: shown,
-    more: items.length - 1,
+    more: dock.moreCount,
     onToggle: () => {
-      if (shown) remote.dockClosed.add(key);
-      else if (room < DOCK_MIN_ROOM) return page();
+      if (shown) closed.add(key);
+      else if (room < DOCK_MIN_ROOM) return openAsPage();
       else {
-        remote.dockClosed.delete(key);
-        onExpand();
+        closed.delete(key);
+        onExpand?.();
       }
       redraw((n) => n + 1);
     },
   };
+
   const max = dockContentMax(room, height);
   const style = (max === undefined ? {} : { "--content-max": `${max}px` }) as CSSProperties;
-  let card;
-  switch (item.kind) {
-    case "approval":
+  const canSend = header?.capabilities?.canSend ?? true;
+
+  let card: ReactNode = null;
+  switch (dock.detail.case) {
+    case "approval": {
+      const a = dock.detail.value;
       card = (
         <ApprovalDock
-          key={item.id}
-          remote={remote}
-          sid={sid}
-          a={item.approval}
+          key={dock.itemId}
+          sessionId={sessionId}
+          dock={dock}
+          approval={a}
+          canSend={canSend}
           frame={frame}
+          defaultDenying={defaultDenying}
+          reason={reason}
+          onReasonChange={onReasonChange ? (v) => onReasonChange(a.approvalId, v) : undefined}
           reasoning={reasoning}
           onReasonOpen={setReasoning}
+          onSubmitCommand={onSubmitCommand}
+          onAbandonCommand={onAbandonCommand}
         />
       );
       break;
+    }
     case "question":
-      card = <QuestionDock key={item.id} remote={remote} sid={sid} q={item.question} agent={agent} frame={frame} onTerminal={onTerminal} />;
+      card = (
+        <QuestionDock
+          key={dock.itemId}
+          sessionId={sessionId}
+          dock={dock}
+          q={dock.detail.value}
+          canSend={canSend}
+          frame={frame}
+          questionDraft={questionDraft}
+          onQuestionDraftChange={onQuestionDraftChange}
+          onTerminal={onTerminal}
+          onSubmitCommand={onSubmitCommand}
+          onAbandonCommand={onAbandonCommand}
+        />
+      );
       break;
     case "plan":
-      card = <PlanDock key={item.id} remote={remote} sid={sid} agent={agent} plan={item.plan} frame={frame} onFull={onPlan} />;
+      card = (
+        <PlanDock
+          key={dock.itemId}
+          sessionId={sessionId}
+          dock={dock}
+          plan={dock.detail.value}
+          canSend={canSend}
+          frame={frame}
+          onFull={() => onPlan?.()}
+          onSubmitCommand={onSubmitCommand}
+          onAbandonCommand={onAbandonCommand}
+        />
+      );
       break;
-    case "popup":
-      card = <PopupDock key={item.id} title={item.title} agent={agent} frame={frame} onTerminal={onTerminal} />;
+    case "terminalPopup":
+      card = (
+        <PopupDock
+          key={dock.itemId}
+          dock={dock}
+          popup={dock.detail.value}
+          agent={header?.agent ?? Agent.UNSPECIFIED}
+          agentName={header?.agentName ?? ""}
+          frame={frame}
+          onTerminal={onTerminal}
+        />
+      );
       break;
   }
+
+  if (!card) return null;
   return (
     <DockBox style={style}>
       {card}
@@ -502,10 +830,6 @@ export function Dock({
   );
 }
 
-/** What holds the dock: it opens to the card's height as it comes (rising
- * 12px, fading in) and closes up as it goes, so the chat above gives way
- * and takes the room back frame by frame; opening, folding and the next
- * item taking over ease its height. */
 function DockBox({ style, children }: { style: CSSProperties; children: ReactNode }) {
   const ref = useRef<HTMLDivElement>(null);
   useHeightFlip(ref);
@@ -517,62 +841,168 @@ function DockBox({ style, children }: { style: CSSProperties; children: ReactNod
   );
 }
 
-/** A question on its own page, for when the dock has no room for it: the
- * dark card fills the page, its question and options scroll, the buttons
- * stay at the bottom. */
-export function QuestionPage({ remote, sid, q, agent, title, onBack, onTerminal }: { remote: Remote; sid: string; q: QuestionAsked; agent: Agent; title: string; onBack: () => void; onTerminal: () => void }) {
-  const p = useQuestion(remote, sid, q, agent, onTerminal);
+export function QuestionPage({
+  sessionId,
+  dock,
+  q,
+  canSend = true,
+  agentName,
+  title,
+  questionDraft,
+  onQuestionDraftChange,
+  onBack,
+  onTerminal,
+  onSubmitCommand,
+  onAbandonCommand,
+}: {
+  sessionId: string;
+  dock: SessionDockView;
+  q: SessionQuestionDockView;
+  canSend?: boolean;
+  agentName: string;
+  title: string;
+  questionDraft?: QuestionDraftState;
+  onQuestionDraftChange?: (next: QuestionDraftState) => void;
+  onBack: () => void;
+  onTerminal: () => void;
+  onSubmitCommand: (slotKey: string, cmd: Command) => void;
+  onAbandonCommand: (slotKey: string) => void;
+}) {
+  const p = useQuestionState(sessionId, dock, q, canSend, onTerminal, onSubmitCommand, onAbandonCommand, questionDraft, onQuestionDraftChange);
   return (
     <div className="page dpage">
-      <NavBar onBack={onBack} title={i18n.t("dock.answer_title")} sub={`${title} · ${agentName(agent)}`} />
-      {p && (
-        <div className="tc">
-          <div className="k">
-            <i />
-            {p.label}
-            {p.progress && <span>{p.progress}</span>}
-          </div>
-          <div className="pending-content">
-            <div className="pending-scroll">
-              <div className="q">{p.text}</div>
-              {p.answers}
-            </div>
-            <div className="pending-actions">{p.actions(true)}</div>
-          </div>
+      <NavBar onBack={onBack} title={i18n.t("dock.answer_title")} sub={`${title} · ${agentName}`} />
+      <div className="tc">
+        <div className="k">
+          <i />
+          {p.label}
+          {p.progress && <span>{p.progress}</span>}
         </div>
-      )}
+        <div className="pending-content">
+          <div className="pending-scroll">
+            <div className="q">{p.text}</div>
+            {p.answers}
+          </div>
+          <div className="pending-actions">{p.actions(true)}</div>
+        </div>
+      </div>
     </div>
   );
 }
 
-/** An approval on its own page, for when the dock has no room: the dark
- * card at the bottom of a paper page, its command scrolling over the
- * buttons, which stay above the keyboard while a reason is written. */
-export function ApprovalPage({ remote, sid, a, title, onBack }: { remote: Remote; sid: string; a: ApprovalRequested; agent: Agent; title: string; onBack: () => void }) {
-  const now = useNow(1000);
-  const deadline = deadlineOf(a);
-  if (isSkeleton(a)) return <div className="page dpage"><NavBar onBack={onBack} title={i18n.t("approval.title")} sub={title} /><div className="tc"><div className="y">{skeletonMessage()}</div></div></div>;
+export function ApprovalPage({
+  sessionId,
+  dock,
+  approval,
+  canSend = true,
+  title,
+  reason,
+  onReasonChange,
+  onBack,
+  onSubmitCommand,
+  onAbandonCommand,
+}: {
+  sessionId: string;
+  dock: SessionDockView;
+  approval: SessionApprovalDockView;
+  canSend?: boolean;
+  title: string;
+  reason?: string;
+  onReasonChange?: (v: string) => void;
+  onBack: () => void;
+  onSubmitCommand: (slotKey: string, cmd: Command) => void;
+  onAbandonCommand: (slotKey: string) => void;
+}) {
+  const lastCmd = useRef<Command | undefined>(undefined);
+  const timeText = renderText(dock.timeLeft).replace(/^\s*·\s*/, "");
+  if (approval.isSkeleton) {
+    return (
+      <div className="page dpage">
+        <NavBar onBack={onBack} title={i18n.t("approval.title")} sub={title} />
+        <div className="tc">
+          <div className="y">{skeletonMessage()}</div>
+        </div>
+      </div>
+    );
+  }
+  const slotKey = dock.command?.slotKey ?? "";
   return (
     <div className="page dpage">
-      <NavBar onBack={onBack} title={i18n.t("approval.details")} sub={`${title}${deadline ? " · " + minutesLeft(deadline, now) : ""}`} />
-      <ApprovalCard remote={remote} sid={sid} a={a} docked />
+      <NavBar onBack={onBack} title={i18n.t("approval.details")} sub={`${title}${timeText ? " · " + timeText : ""}`} />
+      <ApprovalCard
+        kind={renderText(dock.title) || i18n.t("approval.title")}
+        body={approval.body || approval.commandPreview || approval.toolName}
+        description={approval.description}
+        truncated={approval.bodyTruncated}
+        canAlwaysAllow={approval.canAlwaysAllow}
+        alwaysLabel={renderText(approval.alwaysLabel)}
+        denyReasonPlaceholder={renderText(approval.denyReasonPlaceholder)}
+        timeText={timeText}
+        locked={!canSend}
+        command={dock.command}
+        reason={reason}
+        onReasonChange={onReasonChange}
+        docked
+        onResolve={(allow, why, always) => {
+          const built = makeApprovalCommand(sessionId, dock, approval, allow, why, always);
+          lastCmd.current = built;
+          onSubmitCommand(slotKey, built);
+        }}
+        onRetry={() => {
+          const built = lastCmd.current ?? makeApprovalCommand(sessionId, dock, approval, true, "", false);
+          onSubmitCommand(slotKey, built);
+        }}
+        onAbandon={slotKey ? () => onAbandonCommand(slotKey) : undefined}
+      />
     </div>
   );
 }
 
-/** The whole plan on a paper page, its choices fixed at the bottom. */
-export function PlanPage({ remote, sid, plan, title, onBack }: { remote: Remote; sid: string; plan: PlanProposed; title: string; onBack: () => void }) {
-  if (isSkeleton(plan)) return <div className="page"><NavBar onBack={onBack} title={i18n.t("dock.plan_full")} sub={title} /><div className="body chat muted">{skeletonMessage()}</div></div>;
+export function PlanPage({
+  sessionId,
+  dock,
+  plan,
+  canSend = true,
+  title,
+  onBack,
+  onSubmitCommand,
+  onAbandonCommand,
+}: {
+  sessionId: string;
+  dock: SessionDockView;
+  plan: SessionPlanDockView;
+  canSend?: boolean;
+  title: string;
+  onBack: () => void;
+  onSubmitCommand: (slotKey: string, cmd: Command) => void;
+  onAbandonCommand: (slotKey: string) => void;
+}) {
+  if (!plan.markdown && plan.choices.length === 0) {
+    return (
+      <div className="page">
+        <NavBar onBack={onBack} title={i18n.t("dock.plan_full")} sub={title} />
+        <div className="body chat muted">{skeletonMessage()}</div>
+      </div>
+    );
+  }
   return (
     <div className="page">
       <NavBar onBack={onBack} title={i18n.t("dock.plan_full")} sub={i18n.t("dock.plan_title", { title })} />
       <div className="body chat">
         <div className="ai">
-          <Markdown text={plan.text} />
+          <Markdown text={plan.markdown} />
         </div>
       </div>
       <div className="pfoot">
-        <PlanButtons remote={remote} sid={sid} full terminalOnly={isSkeleton(plan)} />
+        <PlanButtons
+          sessionId={sessionId}
+          dock={dock}
+          plan={plan}
+          canSend={canSend}
+          full
+          onSubmitCommand={onSubmitCommand}
+          onAbandonCommand={onAbandonCommand}
+        />
       </div>
     </div>
   );

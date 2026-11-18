@@ -31,7 +31,6 @@
 //   ?demo&conncheck=1#/settings            opens the connection check sheet at once
 
 import { localeStore, t, type Locale } from "../i18n";
-import { agentOf, derive, type Derived } from "../model";
 import { seedDirect } from "./direct-demo";
 import { create, fromBinary, type MessageInitShape } from "@bufbuild/protobuf";
 import { timestampFromMs } from "@bufbuild/protobuf/wkt";
@@ -75,7 +74,6 @@ import {
   Remote,
   RequestSlot,
   type CommandKind,
-  type History,
   type MachineView,
   type SessionView,
   type StreamLegCallbacks,
@@ -1515,18 +1513,6 @@ const longCommand = [
 
 export class DemoRemote extends Remote {
   // Locally authored samples, with no relay or account data.
-  private demoDerived = new Map<string, { events: Event[]; length: number; agent: Agent; value: Derived }>();
-  override historicalDerived(sid: string): Derived {
-    const evs = this.events(sid);
-    const agent = agentOf(this.sessions.get(sid));
-    const hit = this.demoDerived.get(sid);
-    if (hit && hit.events === evs && hit.length === evs.length && hit.agent === agent) return hit.value;
-    const value = derive(evs, agent);
-    this.demoDerived.set(sid, { events: evs, length: evs.length, agent, value });
-    return value;
-  }
-  override currentDerived(_sid: string, d: Derived) { return d; }
-  override async refreshLiveSnapshot(_sid: string): Promise<void> {}
   override demoFlag(name: string): boolean { return this.opts.has(name); }
   private demoMachines = new Map<string, MachineView>();
   private demoSessions = new Map<string, SessionView>();
@@ -1548,8 +1534,39 @@ export class DemoRemote extends Remote {
 
   private plainMachine = (m: MachineView) =>
     create(PlainMachineSchema, { machineId: m.id, online: m.online, lastSeenMs: m.lastSeenMs, meta: m.meta, metaRev: m.metaRev });
-  private plainSession = (s: SessionView) =>
-    create(PlainSessionSchema, { sessionId: s.id, machineId: s.machineId, lastSeq: s.lastSeq, updatedMs: s.updatedMs, listedEndedMs: s.endedMs, meta: s.info, metaRev: s.metaRev, checkpoint: s.checkpoint });
+  private demoCheckpoint(s: SessionView) {
+    if (s.checkpoint) return s.checkpoint;
+    const evs = this.evs.get(s.id);
+    if (!evs?.length) return undefined;
+    const resolved = new Set<string>();
+    const answered = new Set<string>();
+    let planEv: Event | undefined;
+    for (const e of evs) {
+      if (e.kind.case === "approvalResolved") resolved.add(e.kind.value.approvalId);
+      else if (e.kind.case === "questionAnswered") answered.add(e.kind.value.questionId);
+      else if (e.kind.case === "planProposed") planEv = e;
+      else if (e.kind.case === "planAnswered") planEv = undefined;
+    }
+    const actions = evs.filter(
+      (e) =>
+        (e.kind.case === "approvalRequested" && !resolved.has(e.kind.value.approvalId)) ||
+        (e.kind.case === "questionAsked" && !e.kind.value.async && !answered.has(e.kind.value.questionId)),
+    );
+    const planText = planEv?.kind.case === "planProposed" ? planEv.kind.value.text : "";
+    if (!actions.length && !s.info?.planOpen) return undefined;
+    return create(LiveSnapshotSchema, {
+      session: s.info,
+      running: s.info?.status === SessionStatus.RUNNING || s.info?.status === SessionStatus.STARTING,
+      actions,
+      planEventSeq: planEv?.seq ?? 0n,
+      planScreen: s.info?.planOpen ? planText : "",
+      planScreenHash: s.info?.planOpen ? new Uint8Array(32).fill(1) : new Uint8Array(0),
+    });
+  }
+  private plainSession = (s: SessionView) => {
+    const checkpoint = this.demoCheckpoint(s);
+    return create(PlainSessionSchema, { sessionId: s.id, machineId: s.machineId, lastSeq: s.lastSeq, updatedMs: s.updatedMs, listedEndedMs: s.endedMs, meta: s.info, metaRev: s.metaRev, checkpoint, checkpointInvalid: !checkpoint });
+  };
   private plainDevice = (d: import("../devices").DeviceInfo) =>
     create(PlainDeviceSchema, { deviceId: d.id, kind: d.kind, createdMs: d.createdMs, lastSeenMs: d.lastSeenMs, meta: d.meta, metaRev: d.metaRev });
   private demoPrefs = () => create(PlainAccountPrefsSchema, { revision: this.stored.revision, prefs: this.stored.prefs });
@@ -1738,9 +1755,6 @@ export class DemoRemote extends Remote {
           : eff.sessionId && cmd.case === "getLiveSnapshot"
             ? this.liveSnapshotResult(eff.sessionId)
             : eff.sessionId ? await this.command(eff.sessionId, cmd, slot) : await this.machineCommand(eff.machineId, cmd, slot);
-      if ((result.kind.case === "createSession" || result.kind.case === "forkSession") && result.kind.value.session) {
-        this.trackOpeningSession(eff.machineId, result.kind.value.session);
-      }
       const outcome = result.outcome || "executed";
       const reason = result.reason || "completed";
       const norm = create(CommandResultSchema, {
@@ -1752,9 +1766,10 @@ export class DemoRemote extends Remote {
       if (e instanceof CommandError) {
         if (e.code === "path_changed") return create(CommandOutcomeEventSchema, { requestId: eff.requestId, attemptId: eff.attemptId, source: OutcomeSource.TRANSPORT, notForwarded: false, attemptBound: true, transportCode: "path_changed", transportDetail: e.message });
         if (e.fromDaemon) {
+          const resultAvailable = e.conflictKind === "identity" ? false : e.resultAvailable;
           return create(CommandOutcomeEventSchema, {
             requestId: eff.requestId, attemptId: eff.attemptId, source: OutcomeSource.DAEMON, signed: true, hashesMatch: true, attemptBound: true, outerMatchesInner: true, outerOutcome: e.outcome, outerReason: e.code,
-            result: create(CommandResultSchema, { outcome: e.outcome, reason: e.code || "error", conflictKind: e.conflictKind, resultAvailable: e.resultAvailable, errorCode: e.code, errorMessage: e.message }),
+            result: create(CommandResultSchema, { outcome: e.outcome, reason: e.code || "error", conflictKind: e.conflictKind, resultAvailable, errorCode: e.code, errorMessage: e.message }),
           });
         }
         return create(CommandOutcomeEventSchema, { requestId: eff.requestId, attemptId: eff.attemptId, source: OutcomeSource.SERVER, notForwarded: e.outcome === "not_sent", attemptBound: true, transportCode: e.code, transportDetail: e.message });
@@ -2412,39 +2427,11 @@ export class DemoRemote extends Remote {
       for (const m of this.demoMachines.values())
         if (m.meta) m.meta.hostname += "-with-a-very-long-machine-name";
     void this.drawPreviews();
-    const out = (
-      sid: string,
-      sendId: string,
-      text: string,
-      status: "sending" | "sent" | "failed",
-      error?: string,
-      // Whether the computer may have taken it before the answer was lost.
-      unknown?: boolean,
-    ) => {
-      this.outboxes.set(sid, [
-        ...this.outbox(sid),
-        {
-          sendId,
-          requestId: "r-" + sendId,
-          deadline: now + 60_000,
-          text,
-          status,
-          error,
-          unknown,
-        },
-      ]);
-    };
-    out("s-run", "q-run", "顺便补一个测试", "sent");
     if (this.opts.has("draft"))
       this.drafts.set(
         "s-run",
         "请检查这段很长的路径 /Users/me/Code/foo/internal/generated/remoteagent/v1/client/session/messages/pending.ts，并补充测试",
       );
-    if (this.opts.get("cancel") === "failed")
-      this.cancels.set("q-multi", {
-        state: "failed",
-        error: "failed_precondition",
-      });
     this.stored.prefs = create(ProjectPrefsSchema, {
       schema: 1,
       pinned: [...this.stored.prefs.pinned],
@@ -2467,15 +2454,6 @@ export class DemoRemote extends Remote {
         }),
       ],
     });
-    out("s-ask", "q-ask", "跑一下测试", "sent");
-    out("s-popup", "q-popup", "看下这些脚本是做什么的", "sent");
-    out("s-msg", "o-unconf", "把 lint 也跑一下", "sent");
-    out("s-msg", "o-sent", "再看下 README 要不要改", "sent");
-    // A send whose answer never came: it may have reached the computer.
-    out("s-msg", "o-fail", "顺便补一个测试", "failed", "连接超时", true);
-    out("s-msg", "o-sending", "最后提交", "sending");
-    out("s-msg", "o-failed", "这两个页面底部的按钮都点不到", "sent");
-    out("s-multi", "q-multi", "补充库存回滚测试。", "sent");
   }
 
   /** Fills in the demo pictures' previews, where there is a canvas. */
@@ -2589,7 +2567,7 @@ export class DemoRemote extends Remote {
 
   // ?backfill: the newest events show first, the older ones join above later.
   private backfill = new Map<string, { shown: Event[]; all: Event[]; ready: boolean; start?: () => void }>();
-  override events(sid: string): Event[] {
+  private demoEvents(sid: string): Event[] {
     const b = this.backfill.get(sid);
     if (b) {
       const start = b.start; b.start = undefined; start?.();
@@ -2600,25 +2578,8 @@ export class DemoRemote extends Remote {
     return e;
   }
 
-  override loaded(sid: string): boolean {
-    return !this.backfill.get(sid);
-  }
-
-  override history(sid: string): History {
-    return {
-      backfilling: !!this.backfill.get(sid),
-      // As with the real history: the latest page is enough to draw the chat.
-      loaded: !this.backfill.get(sid),
-      ready: this.backfill.get(sid)?.ready ?? true,
-      error: sid === "s-hist" ? "连接超时" : "",
-      broken: sid === "s-ended",
-    };
-  }
-
-  override retryEvents() {}
-
   private push(sid: string, kind: EventKind) {
-    const list = this.events(sid);
+    const list = this.demoEvents(sid);
     const ev = create(EventSchema, {
       seq: BigInt(list.length + 1),
       sessionId: sid,
@@ -2626,8 +2587,6 @@ export class DemoRemote extends Remote {
       kind,
     });
     list.push(ev);
-    if (kind?.case === "userMessage" && kind.value?.requestId)
-      this.recorded(sid, [kind.value.requestId]);
     const s = this.demoSessions.get(sid);
     if (s) {
       s.lastSeq = BigInt(list.length);
@@ -2644,16 +2603,7 @@ export class DemoRemote extends Remote {
       if (s) {
         this.demoStream.callbacks.onFrame(this.demoStream.legId, {
           case: "sessionUpdated",
-          value: create(PlainSessionSchema, {
-            sessionId: s.id,
-            machineId: s.machineId,
-            lastSeq: s.lastSeq,
-            updatedMs: s.updatedMs,
-            listedEndedMs: s.endedMs,
-            meta: s.info,
-            metaRev: s.metaRev,
-            checkpoint: s.checkpoint,
-          }),
+          value: this.plainSession(s),
         });
       }
     }
@@ -2668,16 +2618,7 @@ export class DemoRemote extends Remote {
       if (this.demoStream) {
         this.demoStream.callbacks.onFrame(this.demoStream.legId, {
           case: "sessionUpdated",
-          value: create(PlainSessionSchema, {
-            sessionId: s.id,
-            machineId: s.machineId,
-            lastSeq: s.lastSeq,
-            updatedMs: s.updatedMs,
-            listedEndedMs: s.endedMs,
-            meta: s.info,
-            metaRev: s.metaRev,
-            checkpoint: s.checkpoint,
-          }),
+          value: this.plainSession(s),
         });
       }
     }
@@ -2686,14 +2627,22 @@ export class DemoRemote extends Remote {
 
   private liveSnapshotResult(sid: string): CommandResult {
     const s = this.sessions.get(sid);
-    const evs = this.events(sid);
-    const d = derive(evs, agentOf(s));
+    const evs = this.demoEvents(sid);
+    const resolved = new Set<string>();
+    const answered = new Set<string>();
+    let planEv: Event | undefined;
+    for (const e of evs) {
+      if (e.kind.case === "approvalResolved") resolved.add(e.kind.value.approvalId);
+      else if (e.kind.case === "questionAnswered") answered.add(e.kind.value.questionId);
+      else if (e.kind.case === "planProposed") planEv = e;
+      else if (e.kind.case === "planAnswered") planEv = undefined;
+    }
     const actions = evs.filter(
       (e) =>
-        (e.kind.case === "approvalRequested" && d.approvals.has(e.kind.value.approvalId)) ||
-        (e.kind.case === "questionAsked" && d.questions.has(e.kind.value.questionId)),
+        (e.kind.case === "approvalRequested" && !resolved.has(e.kind.value.approvalId)) ||
+        (e.kind.case === "questionAsked" && !e.kind.value.async && !answered.has(e.kind.value.questionId)),
     );
-    const planEv = d.plan ? [...evs].reverse().find((e) => e.kind.case === "planProposed") : undefined;
+    const planText = planEv?.kind.case === "planProposed" ? planEv.kind.value.text : "";
     return create(CommandResultSchema, {
       kind: {
         case: "liveSnapshot",
@@ -2702,7 +2651,8 @@ export class DemoRemote extends Remote {
           running: s?.info?.status === SessionStatus.RUNNING || s?.info?.status === SessionStatus.STARTING,
           actions,
           planEventSeq: planEv?.seq ?? 0n,
-          planScreen: d.plan?.text ?? "",
+          planScreen: s?.info?.planOpen ? planText : "",
+          planScreenHash: s?.info?.planOpen ? new Uint8Array(32).fill(1) : new Uint8Array(0),
         }),
       },
     });
@@ -2790,7 +2740,7 @@ export class DemoRemote extends Remote {
         return ok();
       }
       case "answerQuestion": {
-        const q = this.events(sid).find(
+        const q = this.demoEvents(sid).find(
           (e) =>
             e.kind.case === "questionAsked" &&
             e.kind.value.questionId === cmd.value.questionId,
@@ -2870,7 +2820,7 @@ export class DemoRemote extends Remote {
             "目录 ~/Code/foo 不存在了",
           );
         const id = "s-fork-" + Math.random().toString(16).slice(2, 8);
-        const history = this.events(sid).filter(
+        const history = this.demoEvents(sid).filter(
           (e) => e.kind.case !== "sessionState" && e.kind.case !== "inputState",
         );
         const info: Session = {
@@ -2893,7 +2843,7 @@ export class DemoRemote extends Remote {
         };
         setTimeout(() => {
           this.demoSessions.set(id, view);
-          const list = this.events(id);
+          const list = this.demoEvents(id);
           for (const e of history)
             list.push(
               create(EventSchema, {

@@ -71,7 +71,7 @@ it("leaves the shortcut out of the message box on touch", async () => {
     host = document.createElement("div");
     document.body.append(host);
     root = createRoot(host);
-    act(() => root!.render(<SessionPage remote={r} session={r.sessions.get("s-idle")!} onBack={() => undefined} wide={false} />));
+    act(() => root!.render(<SessionPage remote={r} sessionId="s-idle" onBack={() => undefined} wide={false} />));
     if (typeof want === "string") expect(box()).toBe(want);
     else expect(box()).toMatch(want);
     act(() => root!.unmount());

@@ -1,8 +1,16 @@
 import { t as message } from "./i18n";
 import { create } from "@bufbuild/protobuf";
 import { expect, it } from "vitest";
-import { EventSchema, OriginKind, SessionStatus, type Event } from "./gen/remoteagent/v1/event_pb";
-import { ScheduleSeen, runTitle, runSummary, finalRunText, groupTasks, notificationTime, scheduleTime, stoppedTime, timingText } from "./schedules";
+import {
+  SessionAgentMessageItemSchema,
+  SessionSkeletonItemSchema,
+  SessionTimelineItemSchema,
+  SessionTimelineViewSchema,
+  SessionTurnEndItemSchema,
+  SessionUserMessageItemSchema,
+  type SessionTimelineItem,
+} from "./gen/remoteagent/core/v1/session_view_pb";
+import { ScheduleSeen, runTitle, runSummary, finalRunTextFromTimeline, groupTasks, notificationTime, scheduleTime, stoppedTime, timingText } from "./schedules";
 import { run, task } from "./test/schedule-fixture";
 
 function store() {
@@ -62,28 +70,36 @@ it("formats schedule dates by local calendar days through DST, week and year bou
   expect(timingText({ type: "calendar", time: "08:00", timezone: "Asia/Shanghai" }, "America/Los_Angeles")).toBe("每天 08:00（北京时间）");
   expect(timingText({ type: "calendar", time: "08:00", timezone: "Europe/Oslo" }, "UTC")).toBe("每天 08:00（Oslo）");
 });
-function user(runId?: string, kind = OriginKind.SYSTEM): Event {
-  return create(EventSchema, { origin: { kind, scheduledRunId: runId }, kind: { case: "userMessage", value: { text: "check" } } });
+function tlUser(scheduledRunId = ""): SessionTimelineItem {
+  return create(SessionTimelineItemSchema, {
+    kind: { case: "userMessage", value: create(SessionUserMessageItemSchema, { text: "check", scheduledRunId }) },
+  });
 }
-function answer(text: string, phase = "final_answer"): Event {
-  return create(EventSchema, { kind: { case: "agentMessage", value: { text, phase } } });
+function tlAnswer(markdown: string, intermediate = false): SessionTimelineItem {
+  return create(SessionTimelineItemSchema, {
+    kind: { case: "agentMessage", value: create(SessionAgentMessageItemSchema, { markdown, intermediate }) },
+  });
+}
+function tlView(items: SessionTimelineItem[]) {
+  return create(SessionTimelineViewSchema, { loaded: true, items });
 }
 it("extracts the last final reply including autonomous followups and preserves full Markdown", () => {
   const full = "# Report\n\n| Item | Result |\n| --- | --- |\n| Test | OK |\n\n- complete\n\n```sh\necho ok\n```";
-  expect(finalRunText([answer("unrelated"), user("target"), answer("first"), answer("comment", "commentary"), answer(full)], "target")).toBe(full);
-  expect(finalRunText([user("another"), answer("wrong")], "target")).toBe("");
-  expect(finalRunText([user("target"), answer("comment", "commentary")], "target")).toBe("");
+  expect(finalRunTextFromTimeline(tlView([tlAnswer("unrelated"), tlUser("target"), tlAnswer("first"), tlAnswer("comment", true), tlAnswer(full)]), "target")).toBe(full);
+  expect(finalRunTextFromTimeline(tlView([tlUser("another"), tlAnswer("wrong")]), "target")).toBe("");
+  expect(finalRunTextFromTimeline(tlView([tlUser("target"), tlAnswer("comment", true)]), "target")).toBe("");
 });
 it.each([
-  user(undefined, OriginKind.CLIENT), user(undefined, OriginKind.LOCAL), user("another"),
-  create(EventSchema, { origin: { kind: OriginKind.LOCAL }, kind: { case: "sessionState", value: { detail: "resumed" } } }),
-  create(EventSchema, { kind: { case: "sessionState", value: { status: SessionStatus.EXITED } } }),
-])("does not take replies beyond an ownership boundary %#", boundary => {
-  expect(finalRunText([user("target"), answer("correct"), boundary, answer("wrong")], "target")).toBe("correct");
+  tlUser(),
+  tlUser("another"),
+  create(SessionTimelineItemSchema, { kind: { case: "turnEnd", value: create(SessionTurnEndItemSchema, { isSessionEnded: true }) } }),
+])("does not take replies beyond an ownership boundary %#", (boundary) => {
+  expect(finalRunTextFromTimeline(tlView([tlUser("target"), tlAnswer("correct"), boundary, tlAnswer("wrong")]), "target")).toBe("correct");
 });
 
-it("falls back rather than crossing an unavailable history event", () => {
-  expect(finalRunText([user("target"), answer("first"), create(EventSchema), answer("uncertain ownership")], "target")).toBe("");
+it("falls back rather than crossing an unavailable history item", () => {
+  const skel = create(SessionTimelineItemSchema, { kind: { case: "skeleton", value: create(SessionSkeletonItemSchema, {}) } });
+  expect(finalRunTextFromTimeline(tlView([tlUser("target"), tlAnswer("first"), skel, tlAnswer("uncertain ownership")]), "target")).toBe("");
 });
 
 it("only releases the detail tracker when marking that same task unread", () => {

@@ -239,11 +239,12 @@ it("opens a session from the cached history and downloads only what is new", asy
   await vi.waitFor(() => expect(r.sessions.get("s")?.lastSeq).toBe(3n));
   const host = getCoreHost(r);
   host.watchSession("s");
+  host.sessionOpen("s");
   try {
-    await vi.waitFor(() => expect(r.loaded("s")).toBe(true));
+    await vi.waitFor(() => expect(host.viewSession("s").timeline?.loaded).toBe(true));
     expect(getEvents).toHaveBeenCalledTimes(1);
     expect(getEvents.mock.calls[0][0].afterSeq).toBe(2n);
-    expect(r.events("s").map((e) => e.seq)).toEqual([1n, 2n, 3n]);
+    expect(host.viewSession("s").timeline?.items.map((e) => e.seq)).toEqual([1n, 2n, 3n]);
     // Only the downloaded event is written back.
     expect(cache.append).toHaveBeenCalledTimes(1);
     expect(
@@ -289,7 +290,8 @@ it("drops a cached history that is not this session's", async () => {
   await vi.waitFor(() => expect(r.sessions.get("s")?.lastSeq).toBe(2n));
   const host1 = getCoreHost(r);
   host1.watchSession("s");
-  await vi.waitFor(() => expect(r.loaded("s")).toBe(true));
+  host1.sessionOpen("s");
+  await vi.waitFor(() => expect(host1.viewSession("s").timeline?.loaded).toBe(true));
   await vi.waitFor(() => expect(long.drop).toHaveBeenCalledWith("s"));
   expect(getEvents.mock.calls[0][0].afterSeq).toBe(0n);
   host1.unwatchSession("s");
@@ -324,10 +326,11 @@ it("drops a cached history that is not this session's", async () => {
   await vi.waitFor(() => expect(r2.sessions.get("s")?.lastSeq).toBe(3n));
   const host2 = getCoreHost(r2);
   host2.watchSession("s");
-  await vi.waitFor(() => expect(r2.loaded("s")).toBe(true));
+  host2.sessionOpen("s");
+  await vi.waitFor(() => expect(host2.viewSession("s").timeline?.loaded).toBe(true));
   await vi.waitFor(() => expect(moved.drop).toHaveBeenCalledWith("s"));
-  expect(r2.history("s").broken).toBe(false);
-  expect(r2.events("s").map((e) => e.seq)).toEqual([1n, 2n, 3n]);
+  expect(host2.viewSession("s").timeline?.retired).toBe(false);
+  expect(host2.viewSession("s").timeline?.items.map((e) => e.seq)).toEqual([1n, 2n, 3n]);
   host2.unwatchSession("s");
   r2.stop();
 });

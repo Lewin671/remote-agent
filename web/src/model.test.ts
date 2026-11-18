@@ -1,127 +1,36 @@
 import { sendModeFor } from "./agents";
 import { t as message, localeStore } from "./i18n";
-import { t } from "./i18n";
 import { create } from "@bufbuild/protobuf";
 import { timestampFromMs } from "@bufbuild/protobuf/wkt";
 import { describe, expect, it } from "vitest";
-import { Agent, ApprovalDecision, ApprovalMode, EventSchema, InputStage, ToolBackground, InputStatus, SendMode, SessionStatus, ToolKind, TurnOutcome, type Event } from "./gen/remoteagent/v1/event_pb";
+import { Agent, ApprovalMode, SendMode, SessionStatus } from "./gen/remoteagent/v1/event_pb";
 import { ModelInfoSchema, SessionSchema, type Session } from "./gen/remoteagent/v1/local_pb";
-import { AgentInfoSchema, DefaultModeSource, MachineMetaSchema } from "./gen/remoteagent/v1/remote_pb";
+import { AgentInfoSchema, MachineMetaSchema } from "./gen/remoteagent/v1/remote_pb";
 import {
   agentName,
   agentOf,
   ago,
-  askTitle,
-  decisionText,
-  derive,
-  dockItems,
-  exitReason,
-  forkBlocked,
-  findModel,
-  modelLabel,
-  popupTitle,
-  defaultModeOf,
-  modeLabel,
-  inputFailure,
-  inputTimingLabel,
-  machineAgents,
-  minutesLeft,
-  modeOf,
   autoUnavailable,
-  optionLabel,
-  phaseOf,
+  findModel,
+  futureTime,
+  machineAgents,
+  modeLabel,
+  modeOf,
+  modelLabel,
   plain,
   projects,
-  queueReason,
-  queuedIds,
   shortenPath,
-  shortenPaths,
-  shownStateOf,
-  stateOf,
-  timeline,
   titleOf,
-  toolsSummary,
-  toolClock,
   type MachineLike,
   type SessionLike,
-  dayTime,
-  futureTime,
 } from "./model";
-
-function events(...kinds: object[]): Event[] {
-  return kinds.map((kind, i) => create(EventSchema, { seq: BigInt(i + 1), kind: kind as never }));
-}
+import previewVectors from "../../testdata/preview-plain.json";
 
 function sess(info: Partial<Omit<Session, "$typeName">> = {}, extra: Partial<SessionLike> = {}): SessionLike {
   return { id: "s1", machineId: "m1", updatedMs: 1000n, info: create(SessionSchema, { status: SessionStatus.IDLE, cwd: "/Users/me/Code/foo", ...info }), ...extra };
 }
 
 const online: MachineLike = { id: "m1", online: true, lastSeenMs: 0n };
-const offline: MachineLike = { id: "m1", online: false, lastSeenMs: 0n };
-
-describe("state priority", () => {
-  it("shows only the highest state", () => {
-    // Everything at once: ended wins, then an offline machine, then the
-    // table's order.
-    const all = { status: SessionStatus.BLOCKED, pendingApprovals: 1, pendingQuestions: 1, planOpen: true };
-    expect(stateOf(sess({ ...all, status: SessionStatus.EXITED }), offline).kind).toBe("ended");
-    expect(stateOf(sess(all), offline).kind).toBe("offline");
-    expect(stateOf(sess(all), online).kind).toBe("approval");
-    expect(stateOf(sess({ ...all, pendingApprovals: 0 }), online).kind).toBe("question");
-    expect(stateOf(sess({ ...all, pendingApprovals: 0, pendingQuestions: 0 }), online).kind).toBe("plan");
-    expect(stateOf(sess({ status: SessionStatus.BLOCKED }), online).kind).toBe("popup");
-    expect(stateOf(sess({ status: SessionStatus.STARTING }), online).kind).toBe("starting");
-    expect(stateOf(sess({ status: SessionStatus.RUNNING }), online).kind).toBe("running");
-    expect(stateOf(sess(), online).kind).toBe("idle");
-    // A machine not listed yet is not known to be off.
-    expect(stateOf(sess({ status: SessionStatus.RUNNING })).kind).toBe("running");
-  });
-
-  it("writes a state word next to the colour", () => {
-    expect(stateOf(sess({ pendingQuestions: 1 }), online)).toEqual({ kind: "question", tone: "wait", text: t("list_state.question", {}, "zh-CN") });
-    expect(stateOf(sess({ status: SessionStatus.EXITED })).text).toBe(t("list_state.ended", {}, "zh-CN"));
-    expect(stateOf(sess(), offline)).toEqual({ kind: "offline", tone: "off", text: t("list_state.offline", {}, "zh-CN") });
-  });
-
-  it("does not show the last state heard as if it held while the server is out of reach", () => {
-    expect(shownStateOf(sess({ status: SessionStatus.RUNNING }), online, true)).toEqual({ kind: "unlinked", tone: "off", text: t("list_state.unlinked", {}, "zh-CN") });
-    // Not the computer's fault either: that was heard before the connection went.
-    expect(shownStateOf(sess(), offline, true).text).toBe(t("list_state.unlinked", {}, "zh-CN"));
-    expect(shownStateOf(sess({ status: SessionStatus.EXITED }), online, true).kind).toBe("ended");
-    expect(shownStateOf(sess({ status: SessionStatus.RUNNING }), online, false).kind).toBe("running");
-  });
-});
-
-describe("forking a session", () => {
-  it("is offered between turns, once a message was sent", () => {
-    expect(forkBlocked(sess({ title: "修复登录超时" }), online)).toBe("");
-    expect(forkBlocked(sess({ title: "修复登录超时", status: SessionStatus.EXITED }), online)).toBe("");
-    expect(forkBlocked(sess({ title: "x", status: SessionStatus.RUNNING }), online)).toBe(message("session.fork_after_turn"));
-    expect(forkBlocked(sess({ title: "x", pendingApprovals: 1 }), online)).toBe(message("session.fork_after_turn"));
-    expect(forkBlocked(sess({ title: "x", pendingQuestions: 1 }), online)).toBe(message("session.fork_after_turn"));
-    // The events may say a turn runs before the summary does.
-    expect(forkBlocked(sess({ title: "x" }), online, true)).toBe(message("session.fork_after_turn"));
-    expect(forkBlocked(sess({ title: "x", planOpen: true }), online)).toBe(message("session.fork_after_pending"));
-    expect(forkBlocked(sess({ title: "x", status: SessionStatus.BLOCKED }), online)).toBe(message("session.fork_after_pending"));
-    expect(forkBlocked(sess({ title: "x", status: SessionStatus.STARTING }), online)).toBe(message("session.fork_after_start"));
-    expect(forkBlocked(sess(), online)).toBe(message("session.fork_after_message"));
-  });
-
-  it("draws the line where the fork leaves its source, and nothing of the source's still runs", () => {
-    const evs = events(
-      { case: "turnStarted", value: {} },
-      { case: "userMessage", value: { text: "查一下超时" } },
-      { case: "toolStarted", value: { callId: "c1", title: "go test ./..." } },
-      { case: "sessionForked", value: { sourceSessionId: "s0", sourceTitle: "查一下超时" } },
-      { case: "userMessage", value: { text: "换一种做法" } },
-    );
-    const d = derive(evs);
-    expect(d.running).toBe(false);
-    expect(d.tools).toEqual([]);
-    const kinds = timeline(evs, d).map((it) => (it.kind === "event" ? it.event.kind.case : it.kind));
-    expect(kinds).toEqual(["userMessage", "unsettled", "sessionForked", "userMessage"]);
-  });
-});
 
 describe("session titles", () => {
   it("uses the title, else the folder and start time", () => {
@@ -131,204 +40,11 @@ describe("session titles", () => {
   });
 });
 
-describe("dock", () => {
-  it("docks in the state table's order", () => {
-    const d = derive(
-      events(
-        { case: "questionAsked", value: { questionId: "q", questions: [{ text: "升级吗？" }] } },
-        { case: "approvalRequested", value: { approvalId: "a1", command: "make migrate" } },
-        { case: "approvalRequested", value: { approvalId: "a2", command: "rm -rf build" } },
-        { case: "planProposed", value: { text: "1. do it" } },
-      ),
-    );
-    const s = sess({ status: SessionStatus.BLOCKED, statusDetail: "Trust this folder?", planOpen: true, pendingApprovals: 2, pendingQuestions: 1 });
-    expect(dockItems(s, d, online).map((x) => x.id)).toEqual(["a:a1", "a:a2", "q:q", "plan", "popup"]);
-    // Handled items leave; the next one moves up.
-    const after = derive(
-      events(
-        { case: "approvalRequested", value: { approvalId: "a1", command: "make migrate" } },
-        { case: "approvalResolved", value: { approvalId: "a1", decision: 1 } },
-        { case: "approvalRequested", value: { approvalId: "a2", command: "rm -rf build" } },
-      ),
-    );
-    expect(dockItems(sess({ pendingApprovals: 1 }), after, online).map((x) => x.id)).toEqual(["a:a2"]);
-  });
-
-  it("gives way to the status card", () => {
-    const d = derive(events({ case: "approvalRequested", value: { approvalId: "a" } }));
-    expect(dockItems(sess({ pendingApprovals: 1 }), d, offline)).toEqual([]);
-    expect(dockItems(sess({ pendingApprovals: 1, status: SessionStatus.EXITED }), d, online)).toEqual([]);
-  });
-});
-
-describe("message phases", () => {
-  it("follows a message from sending to the CLI", () => {
-    expect(phaseOf({ status: "sending" })).toBe("sending");
-    expect(phaseOf({ status: "sent" })).toBe("delivered");
-    expect(phaseOf({ status: "sent" }, InputStatus.QUEUED)).toBe("queued");
-    expect(phaseOf({ status: "sent" }, InputStatus.SUBMITTED)).toBe("done");
-    expect(phaseOf({ status: "failed" })).toBe("failed");
-    // The daemon's word beats a failed call: it arrived after all.
-    expect(phaseOf({ status: "failed" }, InputStatus.QUEUED)).toBe("queued");
-    // Typed into the terminal but not confirmed: never offered for retry.
-    expect(phaseOf({ status: "sent" }, InputStatus.UNCONFIRMED)).toBe("unconfirmed");
-    expect(phaseOf({ status: "sent" }, InputStatus.CANCELED)).toBe("canceled");
-  });
-
-  it("says why queued messages wait", () => {
-    const none = derive([]);
-    const running = derive(events({ case: "turnStarted", value: {} }));
-    const asking = derive(events({ case: "turnStarted", value: {} }, { case: "questionAsked", value: { questionId: "q" } }));
-    expect(queueReason(sess({ status: SessionStatus.RUNNING }), running)).toBe(message("queue.after_current_turn"));
-    expect(queueReason(sess(), asking)).toBe(message("queue.when_ready"));
-    expect(queueReason(sess({ status: SessionStatus.BLOCKED }), none)).toBe(message("queue.when_ready"));
-    expect(queueReason(sess({ inputWait: "draft" }), none)).toBe(message("queue.terminal_draft"));
-    expect(queueReason(sess({ inputWait: "unrecognized" }), running)).toBe(message("queue.unrecognized"));
-  });
-});
-
-describe("messages the session ended before sending", () => {
-  it("are neither queued nor canceled by the user", () => {
-    const list = events(
-      { case: "inputState", value: { requestId: "a", status: InputStatus.QUEUED } },
-      { case: "inputState", value: { requestId: "b", status: InputStatus.QUEUED } },
-      { case: "inputState", value: { requestId: "c", status: InputStatus.QUEUED } },
-      { case: "inputState", value: { requestId: "b", status: InputStatus.CANCELED } }, // the user's own cancel
-      { case: "inputState", value: { requestId: "a", status: InputStatus.CANCELED, reason: "exited" } },
-      { case: "inputState", value: { requestId: "c", status: InputStatus.CANCELED, reason: "exited" } },
-      { case: "sessionState", value: { status: SessionStatus.EXITED } },
-    );
-    const d = derive(list);
-    expect([...d.unsent].sort()).toEqual(["a", "c"]);
-    const rows = timeline(list, d).map((it) => (it.kind === "event" && it.event.kind.case === "inputState" ? `${it.event.kind.value.requestId}:${it.event.kind.value.status}` : it.kind));
-    // Each unsent message shows once, where it was queued; b's cancel as before.
-    expect(rows).toEqual([`a:${InputStatus.QUEUED}`, `c:${InputStatus.QUEUED}`, `b:${InputStatus.CANCELED}`, "event"]);
-  });
-});
-
-describe("a message the CLI recorded after the daemon stopped waiting", () => {
-  const rows = (list: Event[]) => timeline(list, derive(list)).map((it) => (it.kind === "event" ? it.event.kind.case : it.kind));
-  const queued = { case: "inputState", value: { requestId: "a", status: InputStatus.QUEUED, text: "x" } };
-  const unconfirmed = { case: "inputState", value: { requestId: "a", status: InputStatus.UNCONFIRMED } };
-
-  it("keeps its warning while nothing more is heard", () => {
-    expect(rows(events(queued, unconfirmed))).toEqual(["inputState"]);
-  });
-
-  it("loses the warning once it is confirmed", () => {
-    // The daemon logs the state just before the record that proves it.
-    const list = events(queued, unconfirmed, { case: "inputState", value: { requestId: "a", status: InputStatus.SUBMITTED } }, { case: "userMessage", value: { text: "x", requestId: "a" } });
-    expect(rows(list)).toEqual(["userMessage"]);
-    expect(phaseOf({ status: "sent" }, derive(list).inputs.get("a"))).toBe("done");
-  });
-});
-
-describe("why a session ended", () => {
-  it("says so in the daemon's own words when its login shell never started the CLI", () => {
-    expect(exitReason("the login shell could not find codex in PATH")).toBe(
-      message("session.shell_failed", {"detail":"the login shell could not find codex in PATH"}),
-    );
-    expect(exitReason("the login shell did not start the CLI")).toBe(message("session.shell_failed", {"detail":"the login shell did not start the CLI"}));
-  });
-
-  it("points out that a login shell that timed out may be waiting for input", () => {
-    expect(exitReason("the login shell did not start the CLI within 1m0s")).toBe(
-      message("session.shell_timeout", {"detail":"the login shell did not start the CLI within 1m0s"}),
-    );
-  });
-
-  it("keeps the plain wording for every other detail", () => {
-    expect(exitReason("stopped")).toBe(message("session.manually_closed"));
-    expect(exitReason("")).toBe(message("session.tmux_missing"));
-    expect(exitReason("tmux session gone")).toBe(message("session.tmux_missing"));
-  });
-});
-
-describe("tools", () => {
-  it("folds runs of completed calls", () => {
-    const ok = (title: string, kind = ToolKind.COMMAND) => ({ case: "toolCall", value: { title, kind, status: "completed" } });
-    const list = events(
-      { case: "userMessage", value: { text: "hi" } },
-      ok("ls"),
-      { case: "tokenUsage", value: {} }, // draws nothing: does not break the run
-      ok("cat a"),
-      ok("go vet"),
-      { case: "agentMessage", value: { text: "done" } },
-      ok("edit a.go", ToolKind.FILE_CHANGE),
-      { case: "toolCall", value: { title: "go build", kind: ToolKind.COMMAND, status: "failed", exitCode: 1 } },
-      { case: "turnEnded", value: { outcome: TurnOutcome.COMPLETED, durationMs: 252_000n } },
-    );
-    const items = timeline(list, derive(list));
-    expect(items.map((i) => i.kind + (i.kind === "tools" ? i.calls.length : ""))).toEqual(["event", "tools3", "event", "event", "event", "turn"]);
-    const tools = items[1];
-    expect(tools.kind === "tools" && toolsSummary(tools.calls)).toBe(message("tools.completed_commands", {"count":3}));
-  });
-});
-
-describe("tools while they run (v2)", () => {
-  const started = (callId: string, title: string, itemType = "Bash") => ({ case: "toolStarted", value: { title, callId, itemType, kind: ToolKind.COMMAND } });
-  const done = (callId: string, title: string, ok = true) => ({ case: "toolCall", value: { title, callId, kind: ToolKind.COMMAND, status: ok ? "completed" : "failed", exitCode: ok ? 0 : 1 } });
-  const shape = (list: Event[]) =>
-    timeline(list, derive(list, Agent.CLAUDE)).map((i) =>
-      i.kind === "event" ? (i.event.kind.case === "toolCall" ? "call:" + i.event.kind.value.title : i.event.kind.case) : i.kind === "tools" ? "tools" + i.calls.length : i.kind + ":" + ("tool" in i ? i.tool.title : ""),
-    );
-
-  it("shows a tool as soon as it starts, where it started", () => {
-    const list = events({ case: "userMessage", value: { text: "run" } }, { case: "turnStarted", value: {} }, started("t1", "go test ./..."), { case: "agentMessage", value: { text: "waiting" } });
-    expect(shape(list)).toEqual(["userMessage", "running:go test ./...", "agentMessage"]);
-  });
-
-  it("puts a parallel call's result where it started and keeps each state apart", () => {
-    const list = events(
-      { case: "turnStarted", value: {} },
-      started("t1", "go test ./..."),
-      started("t2", "go build ./..."),
-      started("t3", "pnpm lint"),
-      done("t2", "go build ./..."),
-      done("t3", "pnpm lint", false),
-    );
-    expect(shape(list)).toEqual(["running:go test ./...", "call:go build ./...", "call:pnpm lint"]);
-  });
-
-  it("never folds a running tool into a run of finished ones", () => {
-    const list = events(
-      { case: "turnStarted", value: {} },
-      started("a", "ls"),
-      done("a", "ls"),
-      started("b", "cat x"),
-      done("b", "cat x"),
-      started("c", "go test"),
-      started("d", "go vet"),
-      done("d", "go vet"),
-    );
-    expect(shape(list)).toEqual(["tools2", "running:go test", "call:go vet"]);
-  });
-
-  it("shows a tool that got no result when the turn ended as unsettled in the timeline", () => {
-    const list = events({ case: "turnStarted", value: {} }, started("t1", "sleep 600 &"), { case: "turnEnded", value: { outcome: TurnOutcome.ABORTED } });
-    expect(shape(list)).toEqual(["unsettled:sleep 600 &", "turnEnded"]);
-  });
-
-  it("counts from the daemon's start time and freezes while disconnected", () => {
-    const t0 = 1_000_000;
-    expect(toolClock(t0, t0 + 132_000, undefined)).toEqual({ ms: 132_000, frozen: false });
-    // Lost the server at +60s: the clock stops there rather than running on.
-    expect(toolClock(t0, t0 + 132_000, t0 + 60_000)).toEqual({ ms: 60_000, frozen: true });
-    // An unknown start is not guessed.
-    expect(toolClock(0, t0, undefined)).toBeUndefined();
-  });
-});
-
 describe("agents", () => {
   it("treats sessions without an agent as Codex", () => {
     expect(agentOf(sess())).toBe(Agent.CODEX);
     expect(agentOf(sess({ agent: Agent.CLAUDE }))).toBe(Agent.CLAUDE);
     expect(agentName(agentOf(sess({ agent: Agent.UNSPECIFIED })))).toBe("Codex");
-  });
-
-  it("names the CLI in the wording", () => {
-    expect(askTitle(Agent.CODEX)).toBe(t("list_state.agent_asking", {"agent":"Codex"}, "zh-CN"));
-    expect(askTitle(Agent.CLAUDE)).toBe(t("list_state.agent_asking", {"agent":"Claude Code"}, "zh-CN"));
   });
 
   it("offers only the CLIs a machine has", () => {
@@ -354,13 +70,14 @@ describe("approval modes", () => {
     const models = [create(ModelInfoSchema, { slug: "claude-haiku-4-5-20251001", autoUnavailable: true }), create(ModelInfoSchema, { slug: "claude-sonnet-5-5" })];
     expect(autoUnavailable(models, "claude-haiku-4-5-20251001")).toBe(true);
     expect(autoUnavailable(models, "claude-sonnet-5-5")).toBe(false);
-    // A model the list does not know, and a list not read, give no answer.
     expect(autoUnavailable(models, "haiku")).toBe(false);
     expect(autoUnavailable(undefined, "claude-haiku-4-5-20251001")).toBe(false);
   });
 
-  it("records approvals answered in the terminal", () => {
-    expect(decisionText(ApprovalDecision.TERMINAL)).toBe(message("approval.in_terminal"));
+  it("formats modeLabel", () => {
+    const none = { known: false, mode: ApprovalMode.UNSPECIFIED, varies: false };
+    expect(modeLabel(ApprovalMode.ASK, none, Agent.CODEX)).toBe(message("modes.ask"));
+    expect(modeLabel(ApprovalMode.FULL_ACCESS, none, Agent.CODEX)).toBe(message("modes.full_access"));
   });
 });
 
@@ -371,11 +88,9 @@ describe("model labels", () => {
   ];
   it("names a model by its display name, the list's or Codex's", () => {
     expect(modelLabel(list, "gpt-6-sol")).toBe("GPT-6-Sol");
-    // The machine's default, hidden from /model and so from the list.
     expect(modelLabel(list, "gpt-6.1-sol")).toBe("GPT-6.1-Sol");
     expect(modelLabel(list, "claude-sonnet-5-5", Agent.CLAUDE)).toBe("Sonnet");
     expect(modelLabel(list, "claude-opus-9", Agent.CLAUDE)).toBe("claude-opus-9");
-    // The list has not come yet: the ID as is.
     expect(modelLabel(undefined, "gpt-6.1-sol")).toBe("gpt-6.1-sol");
   });
 });
@@ -394,45 +109,7 @@ describe("models", () => {
   });
 });
 
-describe("paths in tool titles", () => {
-  // [title, cwd, home, shown]. The same cases are the reference for the
-  // Android client.
-  const cases: [string, string, string, string][] = [
-    ["/Users/me/Code/foo/auth/login.go", "/Users/me/Code/foo", "/Users/me", "auth/login.go"],
-    ["/private/tmp/ra/proj/a.txt", "/tmp/ra/proj", "/Users/me", "a.txt"],
-    ["/tmp/ra/proj/a.txt", "/private/tmp/ra/proj", "/Users/me", "a.txt"],
-    ["cd /Users/me/Code/foo && ls", "/Users/me/Code/foo", "/Users/me", "cd . && ls"],
-    ["cat /Users/me/.zshrc", "/Users/me/Code/foo", "/Users/me", "cat ~/.zshrc"],
-    ["ls /Users/me/Code/foo-bar/x", "/Users/me/Code/foo", "/Users/me", "ls ~/Code/foo-bar/x"],
-    ["go build -o=/Users/me/Code/foo/bin/app ./cmd", "/Users/me/Code/foo/", "/Users/me", "go build -o=bin/app ./cmd"],
-    ["diff /Users/me/Code/foo/a.go /Users/me/Code/bar/a.go", "/Users/me/Code/foo", "/Users/me", "diff a.go ~/Code/bar/a.go"],
-    ['sed -n 1,5p "/Users/me/Code/foo/main.go"', "/Users/me/Code/foo", "/Users/me", 'sed -n 1,5p "main.go"'],
-    ["Read /Users/me/Code/foo/auth/login.go:58", "/Users/me/Code/foo", "/Users/me", "Read auth/login.go:58"],
-    ["cat /etc/hosts /private/etc/hosts", "/Users/me/Code/foo", "/Users/me", "cat /etc/hosts /private/etc/hosts"],
-    ["curl https://example.com/Users/me/x", "/Users/me/Code/foo", "/Users/me", "curl https://example.com/Users/me/x"],
-    ["grep -rn 'a/b' src/Users/me", "/Users/me/Code/foo", "/Users/me", "grep -rn 'a/b' src/Users/me"],
-    ["tail /home/me/app/log.txt", "/srv/app", "/home/me", "tail ~/app/log.txt"],
-    ["tail /home/me/app/log.txt", "/srv/app", "", "tail ~/app/log.txt"],
-    ["cat /Users/me/notes.md", "", "/Users/me", "cat ~/notes.md"],
-    ["/Users/me", "/Users/me/Code/foo", "/Users/me", "~"],
-    // A folder matches only when a /, the token's end or :line follows it.
-    ["Read /Users/me/Code/foo[archive]/a", "/Users/me/Code/foo", "/Users/me", "Read ~/Code/foo[archive]/a"],
-    ['cat "/Users/me/Code/foo bar/a"', "/Users/me/Code/foo", "/Users/me", 'cat "~/Code/foo bar/a"'],
-    ['cat "/Users/me/Code/foo/a b.go"', "/Users/me/Code/foo", "/Users/me", 'cat "a b.go"'],
-    ["ls /Users/me/Code/foo.bak/x", "/Users/me/Code/foo", "/Users/me", "ls ~/Code/foo.bak/x"],
-    ["(cd /Users/me/Code/foo/sub)", "/Users/me/Code/foo", "/Users/me", "(cd sub)"],
-    ["cat /Users/me/Code/foo", "/Users/me/Code/foo", "/Users/me", "cat ."],
-    ["echo /Users/meow/x", "/Users/me/Code/foo", "/Users/me", "echo /Users/meow/x"],
-    ["Read /Users/me/Code/foo[x]", "/Users/me/Code/foo", "", "Read ~/Code/foo[x]"],
-    ["tail /home/me/app:12", "/srv/app", "/home/me", "tail ~/app:12"],
-  ];
-  it.each(cases)("shows %s in %s as expected", (title, cwd, home, shown) => {
-    expect(shortenPaths(title, cwd, home)).toBe(shown);
-  });
-});
-
 describe("whole paths (file edit titles)", () => {
-  // [path, cwd, home, shown]: the whole title is one path, spaces and all.
   const cases: [string, string, string, string][] = [
     ["/Users/me/Code/foo bar/a.go", "/Users/me/Code/foo", "/Users/me", "~/Code/foo bar/a.go"],
     ["/Users/me/Code/foo/sub dir/b.go", "/Users/me/Code/foo", "/Users/me", "sub dir/b.go"],
@@ -445,131 +122,11 @@ describe("whole paths (file edit titles)", () => {
 });
 
 describe("text", () => {
-  it("makes one-line previews", () => {
+  it("makes one-line previews and relative times", () => {
     expect(plain("改了 `a.go`，见 [文档](x)")).toBe("改了 a.go，见 文档");
     expect(plain("## 结论\n- 第一点\n1. 第二点")).toBe("结论 第一点 第二点");
-    expect(optionLabel("Go (Recommended)")).toEqual({ text: "Go", recommended: true });
-    expect(optionLabel("Python")).toEqual({ text: "Python", recommended: false });
-  });
-
-  it("formats times like the mockup", () => {
     const now = new Date(2026, 8, 29, 9, 41).getTime();
-    expect(ago(new Date(2026, 8, 29, 7, 30).getTime(), now)).toBe(t("time.hours_ago", {"count":2}, "zh-CN"));
-    expect(minutesLeft(now + 7.5 * 60_000, now)).toBe(message("home.ios_approval_remaining", {"count":8}));
-    expect(minutesLeft(now - 1, now)).toBe(message("approval.expired"));
-  });
-});
-
-describe("approval records", () => {
-  const approval = (approvalId: string, command: string, inputDigest: string) => ({
-    case: "approvalRequested",
-    value: { approvalId, toolName: "Bash", command, toolInputJson: JSON.stringify({ command }), inputDigest },
-  });
-  const call = (title: string, callId: string, inputDigest: string, status = "completed") => ({
-    case: "toolCall",
-    value: { title, callId, itemType: "Bash", inputDigest, kind: ToolKind.COMMAND, status },
-  });
-  const rows = (list: Event[]) => {
-    const d = derive(list, Agent.CLAUDE);
-    return timeline(list, d).map((it) => {
-      if (it.kind !== "event") return it.kind;
-      const k = it.event.kind;
-      if (k.case === "approvalRequested") return `record ${k.value.command} ${decisionText(d.resolved.get(k.value.approvalId)!.decision)}`;
-      if (k.case === "toolCall") return `tool ${k.value.title}${it.decision ? " " + decisionText(it.decision) : ""}`;
-      return k.case;
-    });
-  };
-
-  it("show on the tool call they were for, only when it is surely that call", () => {
-    // Claude Code runs tools in parallel: approvals wait, an unrelated call
-    // finishes first, then the approved ones, out of order.
-    const list = events(
-      { case: "turnStarted", value: {} },
-      approval("A", "mkdir x", "dA"),
-      approval("B", "rm y", "dB"),
-      approval("C", "npm test", "dC"),
-      approval("D", "npm test", "dC"),
-      { case: "approvalResolved", value: { approvalId: "B", decision: ApprovalDecision.DENY } },
-      { case: "approvalResolved", value: { approvalId: "A", decision: ApprovalDecision.ALLOW } },
-      { case: "approvalResolved", value: { approvalId: "C", decision: ApprovalDecision.ALLOW } },
-      { case: "approvalResolved", value: { approvalId: "D", decision: ApprovalDecision.ALLOW } },
-      { case: "toolCall", value: { title: "Read a.go", callId: "r", itemType: "Read", inputDigest: "dR", kind: ToolKind.OTHER, status: "completed" } },
-      call("rm y", "d", "", "failed"), // no digest
-      call("mkdir x", "m", "dA"),
-      call("npm test", "t1", "dC"),
-      call("npm test", "t2", "dC"),
-    );
-    expect(rows(list)).toEqual([
-      // B has no call it can surely be tied to, and C and D two each.
-      "record rm y 已拒绝",
-      "record npm test 已允许",
-      "record npm test 已允许",
-      "tool Read a.go",
-      "tool rm y",
-      // A's call carries A's result, and A's own row goes.
-      "tool mkdir x 已允许",
-      "tools",
-    ]);
-  });
-});
-
-describe("messages the computer accepted (v2)", () => {
-  it("shows a message that failed before Enter once, and says why", () => {
-    const list = events(
-      { case: "inputState", value: { requestId: "a", status: InputStatus.QUEUED, text: "看图" } },
-      { case: "inputState", value: { requestId: "a", status: InputStatus.QUEUED, stage: InputStage.PASTING_IMAGES } },
-      { case: "inputState", value: { requestId: "a", status: InputStatus.FAILED, reason: "image_not_recognized" } },
-      { case: "inputState", value: { requestId: "b", status: InputStatus.QUEUED, text: "再看" } },
-      { case: "inputState", value: { requestId: "b", status: InputStatus.NEEDS_TERMINAL, reason: "input_changed" } },
-    );
-    const d = derive(list);
-    expect(phaseOf({ status: "sent" }, d.inputs.get("a"))).toBe("notSent");
-    expect(phaseOf({ status: "sent" }, d.inputs.get("b"))).toBe("needsTerminal");
-    expect(queuedIds(d)).toEqual([]);
-    const rows = timeline(list, d).map((i) => (i.kind === "event" && i.event.kind.case === "inputState" ? `${i.event.kind.value.requestId}:${i.event.kind.value.status}` : i.kind));
-    expect(rows).toEqual([`a:${InputStatus.FAILED}`, `b:${InputStatus.NEEDS_TERMINAL}`]);
-    expect(inputFailure("image_not_recognized", Agent.CLAUDE)).toBe(message("composer.images_unrecognized", {"agent":"Claude Code"}));
-    expect(inputFailure("input_changed", Agent.CODEX)).toBe(message("composer.input_unconfirmed"));
-    expect(inputFailure("", Agent.CODEX)).toBe(message("composer.not_written"));
-  });
-});
-
-it("leaves the CLI's image placeholders out of titles and previews", () => {
-  expect(titleOf(sess({ title: "[Image #1] 图里是什么图案？" }))).toBe("图里是什么图案？");
-  expect(plain("[Image #1][Image #2] 看这两张")).toBe("看这两张");
-  expect(plain("比较 [Image #1] 和 [Image #2]")).toBe("比较 图 1 和 图 2");
-});
-
-describe("a CLI's effective default mode (Go 0f6ad8d)", () => {
-  const machine = (info: object) => ({ id: "m1", online: true, lastSeenMs: 0n, meta: create(MachineMetaSchema, { agents: [create(AgentInfoSchema, info as never)] }) });
-  const claudeFull = machine({ agent: Agent.CLAUDE, defaultMode: ApprovalMode.FULL_ACCESS, defaultModeSource: DefaultModeSource.CLI_CONFIG, defaultModeVaries: true });
-  const codexAuto = machine({ agent: Agent.CODEX, defaultMode: ApprovalMode.AUTO, defaultModeSource: DefaultModeSource.DAEMON_SETTINGS });
-  const unread = machine({ agent: Agent.CODEX }); // the CLI's config could not be read
-  const acceptEdits = machine({ agent: Agent.CLAUDE, defaultMode: ApprovalMode.UNSPECIFIED, defaultModeSource: DefaultModeSource.CLI_CONFIG });
-
-  it("names the mode a start will really use", () => {
-    expect(modeLabel(ApprovalMode.UNSPECIFIED, defaultModeOf(claudeFull, Agent.CLAUDE), Agent.CLAUDE)).toBe(message("modes.default_varies", { mode: message("modes.default_named", { mode: message("modes.full_access") }) }));
-    expect(modeLabel(ApprovalMode.UNSPECIFIED, defaultModeOf(codexAuto, Agent.CODEX), Agent.CODEX)).toBe(message("modes.default_named", { mode: message("modes.auto") }));
-    expect(modeLabel(ApprovalMode.UNSPECIFIED, defaultModeOf(unread, Agent.CODEX), Agent.CODEX)).toBe(t("new_session.follow_cli", {}, "zh-CN"));
-    expect(modeLabel(ApprovalMode.UNSPECIFIED, defaultModeOf(acceptEdits, Agent.CLAUDE), Agent.CLAUDE)).toBe(message("modes.default_agent", {"agent":"Claude Code"}));
-    expect(modeLabel(ApprovalMode.ASK, defaultModeOf(claudeFull, Agent.CLAUDE), Agent.CLAUDE)).toBe(message("modes.ask"));
-  });
-});
-
-describe("background calls", () => {
-  const started = (callId: string, title: string) => ({ case: "toolStarted", value: { title, callId, kind: ToolKind.COMMAND } });
-  const call = (callId: string, title: string, extra: object = {}) => ({ case: "toolCall", value: { title, callId, kind: ToolKind.COMMAND, status: "completed", exitCode: 0, ...extra } });
-  const shape = (list: Event[]) =>
-    timeline(list, derive(list, Agent.CODEX)).map((i) => (i.kind === "event" ? (i.event.kind.case === "toolCall" ? "call:" + i.event.kind.value.callId : i.event.kind.case) : i.kind === "tools" ? "tools" + i.calls.length : i.kind + ":" + ("tool" in i ? i.tool.callId : "call" in i ? i.call.callId : "")));
-
-  it("shows a call that went on in the background as started, status unknown, with why", () => {
-    const list = events(
-      { case: "turnStarted", value: {} },
-      started("c1", "npm run dev"),
-      call("c1", "npm run dev", { status: "running", exitCode: undefined, background: ToolBackground.STILL_RUNNING }),
-      { case: "turnEnded", value: { outcome: TurnOutcome.COMPLETED } },
-    );
-    expect(shape(list)[0]).toBe("background:c1");
+    expect(ago(new Date(2026, 8, 29, 7, 30).getTime(), now)).toBe(message("time.hours_ago", { count: 2 }));
   });
 });
 
@@ -578,15 +135,6 @@ it("finds the model of a session started under its 1M name", () => {
   expect(findModel(models, "opus[1m]")).toEqual({ slug: "opus" });
   expect(findModel(models, "claude-opus-5-5")).toEqual({ slug: "opus" });
 });
-
-describe("dayTime", () => {
-  it("writes the date only when it is not today", () => {
-    const now = new Date(2026, 9, 2, 18, 0).getTime();
-    expect(dayTime(new Date(2026, 9, 2, 5, 51).getTime(), now)).toBe("5:51");
-    expect(dayTime(new Date(2026, 8, 27, 14, 2).getTime(), now)).toBe(message("time.ios_date_time", {"month":9,"day":27,"time":"14:02"}));
-  });
-});
-
 
 describe("future times", () => {
   const now = new Date(2026, 9, 20, 23, 55).getTime();
@@ -618,21 +166,8 @@ it("keeps task-owned sessions out of projects while retaining by-ID session data
   expect(projects([hidden, ordinary], []).map((p) => p.key)).toEqual(["/ordinary"]);
 });
 
-// Shared with native clients: preview text is independent of rendering.
-import previewVectors from "../../testdata/preview-plain.json";
 it.each(previewVectors)("plain preview: $name", ({ input, expected }) => {
   expect(plain(input)).toBe(expected);
-});
-
-// Every diagnostic emitted by Codex/Claude/agy, plus native/unknown titles.
-it("localizes popup diagnostics without exposing native titles", () => {
-  try { for (const locale of ["zh-CN", "en"] as const) {
-  localeStore.overrideForTesting(locale);
-  for (const detail of ["trust folder", "hooks need review", "update available", "approval", "permission", "model menu", "model picker", "question", "plan", "permissions menu", "bypass warning", "menu", "artifacts", "unknown panel", "Native unrecognized panel"]) {
-    expect(popupTitle(detail)).toBe(t("list_state.popup"));
-  }
-  expect(popupTitle("")).toBe("");
-  } } finally { localeStore.overrideForTesting(); }
 });
 
 it("hides unconfirmed startup modes and preserves confirmed unknown modes", () => {
@@ -641,20 +176,16 @@ it("hides unconfirmed startup modes and preserves confirmed unknown modes", () =
   }
   expect(modeOf(sess({ agent: Agent.ANTIGRAVITY, status: SessionStatus.IDLE, permissionMode: "未知审批模式" }))?.text).toBe("未知审批模式");
   expect(modeOf(sess({ agent: Agent.ANTIGRAVITY, status: SessionStatus.IDLE, mode: ApprovalMode.ASK }))?.mode).toBe(ApprovalMode.ASK);
+  localeStore.overrideForTesting();
 });
 
-it("uses native send capabilities for operations and pending captions", () => {
+it("picks native send modes per agent", () => {
   for (const agent of [Agent.CODEX, Agent.CLAUDE]) {
     expect(sendModeFor(agent, SendMode.STEER, true)).toBe(SendMode.STEER);
     expect(sendModeFor(agent, SendMode.QUEUE, true)).toBe(SendMode.QUEUE);
-    expect(inputTimingLabel(agent, SendMode.STEER, false)).toBe(t("queue.insert"));
   }
   for (const mode of [SendMode.UNSPECIFIED, SendMode.STEER, SendMode.QUEUE]) {
     expect(sendModeFor(Agent.ANTIGRAVITY, mode, true)).toBe(SendMode.QUEUE);
-    for (const held of [false, true]) {
-      expect(inputTimingLabel(Agent.ANTIGRAVITY, mode, held)).toBe(t("queue.after_turn"));
-    }
   }
   expect(sendModeFor(Agent.ANTIGRAVITY, SendMode.STEER, false)).toBe(SendMode.STEER);
-  expect(inputTimingLabel(Agent.ANTIGRAVITY, SendMode.STEER, false, "Antigravity")).toBe(t("queue.agent_ready", {agent: "Antigravity"}));
 });

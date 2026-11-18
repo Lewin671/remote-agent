@@ -72,20 +72,22 @@ describe("the chat of a session that is still talking", () => {
   /** A chat of `turns` turns, scrolled to the end, with the layout the browser would give it. */
   async function open(turns: number) {
     const r = DemoRemote.create(new URLSearchParams(), async () => undefined);
-    r.start();
     const sid = "s-idle";
-    const list = r.events(sid);
+    const list = (r as unknown as { demoEvents(id: string): ReturnType<typeof create<typeof EventSchema>>[] }).demoEvents(sid);
     const add = (kind: object) => list.push(create(EventSchema, { seq: BigInt(list.length + 1), kind: kind as never }));
     for (let i = 0; i < turns; i++) {
       add({ case: "userMessage", value: { text: `question ${i}` } });
       add({ case: "agentMessage", value: { text: `answer ${i}` } });
     }
+    const demoSess = (r as unknown as { demoSessions: Map<string, { lastSeq: bigint }> }).demoSessions.get(sid);
+    if (demoSess) demoSess.lastSeq = BigInt(list.length);
+    r.start();
     host = document.createElement("div");
     document.body.append(host);
     root = createRoot(host);
     await act(async () => root!.render(
       <VirtuosoMockContext.Provider value={{ viewportHeight: 400, itemHeight: 50 }}>
-        <SessionPage remote={r} session={r.sessions.get(sid)!} onBack={() => undefined} wide={false} />
+        <SessionPage remote={r} sessionId={sid} onBack={() => undefined} wide={false} />
       </VirtuosoMockContext.Provider>));
     const el = host.querySelector<HTMLElement>(".body.chat")!;
     // The mock has no row layout to measure; expose the positioned list.
@@ -107,8 +109,9 @@ describe("the chat of a session that is still talking", () => {
       });
     };
     const theyWrite = async (text: string) => {
-      add({ case: "agentMessage", value: { text } });
-      await act(async () => { (r as unknown as { changed(): void }).changed(); });
+      await act(async () => {
+        (r as unknown as { push(id: string, kind: object): void }).push(sid, { case: "agentMessage", value: { text } });
+      });
     };
     await scrollTo(height() - 400); // at the end: following
     /** The browser reports a resize of the content, with no scroll event. */
@@ -213,14 +216,16 @@ describe("sending from far up", () => {
 
   it("returns to the end", async () => {
     const r = DemoRemote.create(new URLSearchParams(), async () => undefined);
-    r.start();
     const sid = "s-idle";
-    const list = r.events(sid);
+    const list = (r as unknown as { demoEvents(id: string): ReturnType<typeof create<typeof EventSchema>>[] }).demoEvents(sid);
     for (let i = 0; i < 40; i++) list.push(create(EventSchema, { seq: BigInt(list.length + 1), kind: { case: "agentMessage", value: { text: `answer ${i}` } } as never }));
+    const demoSess = (r as unknown as { demoSessions: Map<string, { lastSeq: bigint }> }).demoSessions.get(sid);
+    if (demoSess) demoSess.lastSeq = BigInt(list.length);
+    r.start();
     host = document.createElement("div");
     document.body.append(host);
     root = createRoot(host);
-    await act(async () => root!.render(<SessionPage remote={r} session={r.sessions.get(sid)!} onBack={() => undefined} wide={false} />));
+    await act(async () => root!.render(<SessionPage remote={r} sessionId={sid} onBack={() => undefined} wide={false} />));
     const el = host.querySelector<HTMLElement>(".body.chat")!;
     // The mock has no row layout to measure; expose the positioned list.
     el.classList.remove("mo-hold");
