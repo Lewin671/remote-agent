@@ -67,6 +67,10 @@ type sessionPC struct {
 	localUfrag, localMid        []byte
 	confirmed, announced, ended bool
 }
+type cachedBytes struct {
+	bytes []byte
+	until uint64
+}
 type Session struct {
 	retired     atomic.Bool
 	established atomic.Bool
@@ -90,8 +94,8 @@ type Session struct {
 	pcs           [2]sessionPC
 	controlSeq    uint64
 	challenge     []byte
-	receipts      map[string][]byte
-	controlSeen   map[string][]byte
+	receipts      map[string]cachedBytes
+	controlSeen   map[string]cachedBytes
 	peerScopes    map[uint64]*peerScopeWindow
 }
 type deliveryResult struct {
@@ -125,7 +129,7 @@ func NewSession(parent context.Context, cfg SessionConfig, initiate bool) (*Sess
 		return nil, ErrClosed
 	}
 	ctx, cancel := context.WithCancel(parent)
-	s := &Session{born: nowFn(), finished: make(chan struct{}), cfg: cfg, ctx: ctx, cancel: cancel, input: make(chan []byte, 8), events: make(chan sessionEvent, 160), delivery: make(chan deliveryResult, 64), boot: peerwire.NewSender(cfg.Deadline), receipts: map[string][]byte{}, controlSeen: map[string][]byte{}}
+	s := &Session{born: nowFn(), finished: make(chan struct{}), cfg: cfg, ctx: ctx, cancel: cancel, input: make(chan []byte, 8), events: make(chan sessionEvent, 160), delivery: make(chan deliveryResult, 64), boot: peerwire.NewSender(cfg.Deadline), receipts: map[string]cachedBytes{}, controlSeen: map[string]cachedBytes{}}
 	s.retainUntil.Store(cfg.Deadline + 300000)
 	for i := range s.pcs {
 		g := peerwire.NewSignal(cfg.Codec, cfg.Self, cfg.Peer, cfg.Connection, uint64(i+1), now)
@@ -264,7 +268,20 @@ func (s *Session) run() {
 		}
 	}
 }
+func (s *Session) pruneControl(now uint64) {
+	for key, item := range s.controlSeen {
+		if now > item.until {
+			delete(s.controlSeen, key)
+		}
+	}
+	for key, item := range s.receipts {
+		if now > item.until {
+			delete(s.receipts, key)
+		}
+	}
+}
 func (s *Session) flush(now uint64) {
+	s.pruneControl(now)
 	for _, window := range s.peerScopes {
 		if window.gap != 0 && now >= window.gap {
 			s.Retire()
@@ -353,19 +370,23 @@ func (s *Session) acknowledge(o peerwire.Opened, now uint64) {
 		return
 	}
 	key := string(o.Hash)
-	raw := s.receipts[key]
-	if raw == nil {
+	entry, ok := s.receipts[key]
+	if !ok {
+		if len(s.receipts) >= 2048 {
+			s.pruneControl(now)
+		}
 		if len(s.receipts) >= 2048 {
 			return
 		}
-		raw = s.controlUntil(4, peerwire.PB(peerwire.U(4, o.Context.Class), peerwire.U(5, o.Context.Seq), peerwire.B(6, o.Hash), peerwire.U(7, o.Context.Generation), peerwire.U(8, o.Context.Use)), now, o.Context.Deadline)
+		raw := s.controlUntil(4, peerwire.PB(peerwire.U(4, o.Context.Class), peerwire.U(5, o.Context.Seq), peerwire.B(6, o.Hash), peerwire.U(7, o.Context.Generation), peerwire.U(8, o.Context.Use)), now, o.Context.Deadline)
 		if raw == nil {
 			return
 		}
-		s.receipts[key] = raw
+		entry = cachedBytes{bytes: raw, until: o.Context.Deadline + 300000}
+		s.receipts[key] = entry
 	}
-	if s.cfg.Allow() {
-		s.transmit(raw)
+	if s.cfg.Allow() && now < o.Context.Deadline {
+		s.transmit(entry.bytes)
 	}
 }
 func (s *Session) receive(raw []byte, now uint64) {
@@ -379,8 +400,11 @@ func (s *Session) receive(raw []byte, now uint64) {
 	}
 	s.traceAdd("rx", o.Type, o.Context.Use, true)
 	if len(s.pcs[0].signal.Seen)+len(s.pcs[1].signal.Seen)+len(s.controlSeen) >= 2047 {
+		s.pruneControl(now)
+	}
+	if len(s.pcs[0].signal.Seen)+len(s.pcs[1].signal.Seen)+len(s.controlSeen) >= 2047 {
 		key := peerwire.Key(o.Context)
-		known := bytes.Equal(s.controlSeen[key], o.Hash)
+		known := bytes.Equal(s.controlSeen[key].bytes, o.Hash)
 		for i := range s.pcs {
 			known = known || bytes.Equal(s.pcs[i].signal.Seen[key], o.Hash)
 		}
@@ -391,9 +415,9 @@ func (s *Session) receive(raw []byte, now uint64) {
 	c := o.Context
 	if s.retired.Load() {
 		key := peerwire.Key(c)
-		if bytes.Equal(s.controlSeen[key], o.Hash) {
-			if reply := s.receipts[string(o.Hash)]; reply != nil {
-				s.transmit(reply)
+		if bytes.Equal(s.controlSeen[key].bytes, o.Hash) {
+			if reply, ok := s.receipts[string(o.Hash)]; ok && now < c.Deadline {
+				s.transmit(reply.bytes)
 			}
 			return
 		}
@@ -503,15 +527,15 @@ func (s *Session) receive(raw []byte, now uint64) {
 		}
 		key := peerwire.Key(c)
 		if old, ok := s.controlSeen[key]; ok {
-			if !bytes.Equal(old, o.Hash) {
+			if !bytes.Equal(old.bytes, o.Hash) {
 				return
 			}
-			if reply := s.receipts[string(o.Hash)]; reply != nil && s.cfg.Allow() {
-				s.transmit(reply)
+			if reply, hasReply := s.receipts[string(o.Hash)]; hasReply && now < c.Deadline && s.cfg.Allow() {
+				s.transmit(reply.bytes)
 			}
 			return
 		}
-		s.controlSeen[key] = append([]byte(nil), o.Hash...)
+		s.controlSeen[key] = cachedBytes{bytes: append([]byte(nil), o.Hash...), until: c.Deadline + 300000}
 		s.retainUntil.Store(max(s.retainUntil.Load(), c.Deadline+300000))
 		if o.Type == 10 {
 			return
@@ -529,7 +553,7 @@ func (s *Session) receive(raw []byte, now uint64) {
 			return
 		}
 		if reply := s.controlUntil(typ, body, now, c.Deadline); reply != nil {
-			s.receipts[string(o.Hash)] = reply
+			s.receipts[string(o.Hash)] = cachedBytes{bytes: reply, until: c.Deadline + 300000}
 			s.transmit(reply)
 		}
 		return
@@ -557,7 +581,7 @@ func (s *Session) receive(raw []byte, now uint64) {
 			original, err := s.cfg.Codec.Open(a.Original, p.signal.Peer, s.cfg.Self, now)
 			if err == nil {
 				if reply := s.controlUntil(10, a.Payload, now, original.Context.Deadline); reply != nil {
-					s.receipts[string(original.Hash)] = reply
+					s.receipts[string(original.Hash)] = cachedBytes{bytes: reply, until: original.Context.Deadline + 300000}
 					s.transmit(reply)
 				}
 			}

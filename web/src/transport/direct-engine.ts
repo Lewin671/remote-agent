@@ -15,7 +15,7 @@ import { DirectRouting, type RouteHint, type RouteName } from "./direct-routing"
 import { PathChanged, abortable } from "./recovery";
 import * as w from "./peer/wire";
 
-type Peer = { id: string; head: string; session: DirectSession; paths: Map<number, DirectChannel>; live: boolean; capabilities?: MachineCapabilities; snapshotUntil: number; downloadUntil: number; snapshotSeq: bigint; downloadSeq: bigint; supportsEventPush?: boolean; lastSubAt?: number; redialAt?: number; selected?: boolean; readyAt?: number; retryDelay?: number };
+type Peer = { id: string; head: string; session: DirectSession; paths: Map<number, DirectChannel>; live: boolean; capabilities?: MachineCapabilities; snapshotUntil: number; downloadUntil: number; snapshotSeq: bigint; downloadSeq: bigint; supportsEventPush?: boolean; redialAt?: number; selected?: boolean; readyAt?: number; retryDelay?: number };
 type Pending = { peer: Peer; use: number; resolve: (env: Envelope) => void };
 
 export type DirectState = "unsupported" | "connected" | "connecting" | "none";
@@ -108,10 +108,9 @@ export class DirectEngine {
     for (const p of this.peers.values()) this.sendSubscription(p);
   }
 
-  private sendSubscription(p: Peer, now = Date.now()) {
+  private sendSubscription(p: Peer) {
     if (!this.valid(p) || !p.session.active || !p.supportsEventPush || !p.paths.get(1)?.ready) return;
     const sessionIds = this.watchedByMachine.get(p.id) ?? [];
-    p.lastSubAt = now;
     const payload = toBinary(DirectEventSubscriptionSchema, create(DirectEventSubscriptionSchema, { sessionIds }));
     void p.session.sendControl(15, payload);
   }
@@ -192,11 +191,6 @@ export class DirectEngine {
         if (this.peers.size) this.invalidate();
       } else {
         void this.discover();
-        for (const p of this.peers.values()) {
-          if (p.lastSubAt === undefined || now < p.lastSubAt || now - p.lastSubAt >= 15_000) {
-            this.sendSubscription(p, now);
-          }
-        }
       }
       if (this.foreground && this.leg?.ready && (this.freshUntil - now <= 7_000 || now - this.lastAuthorizeAt >= 12_000)) {
         this.triggerAuthorize();

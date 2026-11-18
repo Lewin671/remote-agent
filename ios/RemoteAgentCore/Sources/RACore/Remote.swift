@@ -230,15 +230,17 @@ public final actor Remote {
     private var activeLegId: UInt64?
 
     // Security Gate & opaque cipher cache refs
-    private let directGate = DirectEventQueueGate()
-    var sessionKeys: [String: Data] = [:] {
-        didSet { directGate.updateKeys(sessionKeys) }
-    }
+    let directGate = DirectEventQueueGate()
+    var sessionKeys: [String: Data] = [:]
     var sessionMachines: [String: String] = [:] {
-        didSet { directGate.updateMachines(sessionMachines) }
+        didSet {
+            if sessionMachines != oldValue { directGate.updateMachines(sessionMachines) }
+        }
     }
     private var watchedSessionIds: [String] = [] {
-        didSet { directGate.updateWatched(watchedSessionIds) }
+        didSet {
+            if watchedSessionIds != oldValue { directGate.updateWatched(watchedSessionIds) }
+        }
     }
     var machineReplacements: [String: [PBMachineReplacementProof]] = [:]
     var trustedMembers: [String: DeviceSecurity.Member] = [:]
@@ -389,8 +391,12 @@ public final actor Remote {
             return projected
         }
         // Keep sessionMachines in sync so decodeEvents / image() know owner machine IDs.
-        for (sid, s) in updated.sessions {
-            sessionMachines[sid] = s.machineId
+        if updated.sessions.contains(where: { sessionMachines[$0.key] != $0.value.machineId }) {
+            var nextMachines = sessionMachines
+            for (sid, s) in updated.sessions {
+                nextMachines[sid] = s.machineId
+            }
+            sessionMachines = nextMachines
         }
         syncDirectSubscriptions()
         if updated != state.value { state.set(updated) }
@@ -938,9 +944,16 @@ public final actor Remote {
         modelLists: [(machineId: String, agent: PBAgent, models: PBListModelsResponse)] = []
     ) {
         state.set(shown)
+        var nextMachines = sessionMachines
+        var nextKeys = sessionKeys
         for (sid, s) in shown.sessions {
-            sessionMachines[sid] = s.machineId
-            sessionKeys[sid] = Data(repeating: 1, count: keySize)
+            nextMachines[sid] = s.machineId
+            nextKeys[sid] = Data(repeating: 1, count: keySize)
+        }
+        if nextMachines != sessionMachines { sessionMachines = nextMachines }
+        if nextKeys != sessionKeys {
+            sessionKeys = nextKeys
+            directGate.updateKeys(nextKeys)
         }
         for m in modelLists {
             let response = m.models
@@ -954,7 +967,7 @@ public final actor Remote {
     }
 }
 
-private final class DirectEventQueueGate: @unchecked Sendable {
+final class DirectEventQueueGate: @unchecked Sendable {
     private let maxPerSession = 16
     private let maxTotalBytes = 512 * 1024
     private let lock = NSLock()
@@ -980,9 +993,20 @@ private final class DirectEventQueueGate: @unchecked Sendable {
     }
 
     func updateKeys(_ sessionKeys: [String: Data]) {
+        let next = Set(sessionKeys.compactMap { $0.value.isEmpty ? nil : $0.key })
         lock.lock()
         defer { lock.unlock() }
-        keyedSessions = Set(sessionKeys.compactMap { $0.value.isEmpty ? nil : $0.key })
+        keyedSessions = next
+    }
+
+    func setKey(_ sessionId: String, present: Bool) {
+        lock.lock()
+        defer { lock.unlock() }
+        if present {
+            keyedSessions.insert(sessionId)
+        } else {
+            keyedSessions.remove(sessionId)
+        }
     }
 
     func markClosed() {

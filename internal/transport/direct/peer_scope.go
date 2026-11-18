@@ -23,9 +23,9 @@ func (s *Session) receivePeerScope(o peerwire.Opened, now uint64) {
 	}
 	key := peerwire.Key(o.Context)
 	if old, ok := s.controlSeen[key]; ok {
-		if bytes.Equal(old, o.Hash) {
-			if reply := s.receipts[string(o.Hash)]; reply != nil {
-				s.transmit(reply)
+		if bytes.Equal(old.bytes, o.Hash) {
+			if reply, hasReply := s.receipts[string(o.Hash)]; hasReply && now < o.Context.Deadline {
+				s.transmit(reply.bytes)
 			}
 		}
 		return
@@ -47,7 +47,7 @@ func (s *Session) receivePeerScope(o peerwire.Opened, now uint64) {
 	if o.Context.Seq < window.next || len(window.pending) >= 32 {
 		return
 	}
-	s.controlSeen[key] = append([]byte(nil), o.Hash...)
+	s.controlSeen[key] = cachedBytes{bytes: append([]byte(nil), o.Hash...), until: o.Context.Deadline + 300000}
 	if o.Context.Seq > window.next {
 		window.pending[o.Context.Seq] = o
 		window.at[o.Context.Seq] = now

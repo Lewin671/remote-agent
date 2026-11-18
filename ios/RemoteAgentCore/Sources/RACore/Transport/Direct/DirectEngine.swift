@@ -54,7 +54,6 @@ final class DirectEngine: @unchecked Sendable {
         var capabilities: PBMachineCapabilities?
         var snapshotUntil: UInt64 = 0, downloadUntil: UInt64 = 0, snapshotSeq: UInt64 = 0, downloadSeq: UInt64 = 0
         var supportsEventPush = false
-        var lastSubAt: UInt64 = 0
         var redialAt: UInt64?, readyAt: UInt64?, retryDelay: UInt64?
         init(id: String, head: String) { self.id = id; self.head = head }
     }
@@ -134,21 +133,19 @@ final class DirectEngine: @unchecked Sendable {
             let capped = Array(ids.filter { !$0.isEmpty }.prefix(4))
             if !capped.isEmpty { next[machineId] = capped }
         }
-        let now = clock.now()
         let toSend: [(Peer, W.Bytes)] = lock.withLock {
             guard watchedByMachine != next else { return [] }
             watchedByMachine = next
-            return peers.values.compactMap { sendSubscriptionLocked($0, now: now) }
+            return peers.values.compactMap { sendSubscriptionLocked($0) }
         }
         for (p, body) in toSend { p.session.sendControl(15, body) }
     }
 
-    private func sendSubscriptionLocked(_ p: Peer, now: UInt64) -> (Peer, W.Bytes)? {
+    private func sendSubscriptionLocked(_ p: Peer) -> (Peer, W.Bytes)? {
         guard validLocked(p), p.session.live, p.supportsEventPush, p.paths[1]?.usable == true else { return nil }
         let ids = watchedByMachine[p.id] ?? []
         let sub = PBDirectEventSubscription.with { $0.sessionIds = ids }
         guard let data = try? sub.serializedData() else { return nil }
-        p.lastSubAt = now
         return (p, Array(data))
     }
 
@@ -266,9 +263,8 @@ final class DirectEngine: @unchecked Sendable {
             all = sessions.values.map(\.session)
         }
         all.forEach { $0.discovered() }
-        let now = clock.now()
         let toResync: [(Peer, W.Bytes)] = lock.withLock {
-            peers.values.compactMap { sendSubscriptionLocked($0, now: now) }
+            peers.values.compactMap { sendSubscriptionLocked($0) }
         }
         for (p, body) in toResync { p.session.sendControl(15, body) }
         Task { await self.discover() }
@@ -277,7 +273,7 @@ final class DirectEngine: @unchecked Sendable {
     /// One second of upkeep (the timer's body; tests call it with a fake clock).
     func timerStep() async {
         let now = clock.now()
-        let (current, any, shouldAuth, toResub) = lock.withLock { () -> (Bool, Bool, Bool, [(Peer, W.Bytes)]) in
+        let (current, any, shouldAuth) = lock.withLock { () -> (Bool, Bool, Bool) in
             let c = currentLocked()
             let remaining = freshUntil > now ? freshUntil - now : 0
             let dueByCadence = lastAuthorizeStartMs == 0 || now >= lastAuthorizeStartMs + 12_000
@@ -287,15 +283,9 @@ final class DirectEngine: @unchecked Sendable {
                 authorizeInFlight = true
                 lastAuthorizeStartMs = now
             }
-            let resub: [(Peer, W.Bytes)] = c ? peers.values.compactMap { p in
-                (p.lastSubAt == 0 || now < p.lastSubAt || now - p.lastSubAt >= 15_000)
-                    ? sendSubscriptionLocked(p, now: now)
-                    : nil
-            } : []
-            return (c, !peers.isEmpty, auth, resub)
+            return (c, !peers.isEmpty, auth)
         }
         if !current { if any { invalidate() } } else { await discover() }
-        for (p, body) in toResub { p.session.sendControl(15, body) }
         if shouldAuth {
             Task.detached { [weak self] in
                 guard let self else { return }
@@ -428,7 +418,6 @@ final class DirectEngine: @unchecked Sendable {
     private func pathReady(_ p: Peer?, _ id: String, _ use: Int, _ path: DirectChannel) {
         guard let p else { path.close(); return }
         var syncCall: (Peer, W.Bytes)?
-        let now = clock.now()
         let accepted = lock.withLock { () -> Bool in
             guard validLocked(p), p.session.live, peers[id] === p else { return false }
             p.paths[use] = path
@@ -437,7 +426,7 @@ final class DirectEngine: @unchecked Sendable {
             failures.removeValue(forKey: id)
             if use == 1 {
                 routingLocked(id).arm(fresh: true)
-                syncCall = sendSubscriptionLocked(p, now: now)
+                syncCall = sendSubscriptionLocked(p)
             }
             return true
         }
@@ -526,7 +515,6 @@ final class DirectEngine: @unchecked Sendable {
     // MARK: capabilities and frames
     private func capability(_ p: Peer, _ opened: W.Opened) {
         var syncCall: (Peer, W.Bytes)?
-        let now = clock.now()
         let ok: Bool = lock.withLock {
             guard validLocked(p) else { return false }
             if opened.type == 14 {
@@ -540,7 +528,7 @@ final class DirectEngine: @unchecked Sendable {
                 p.downloadUntil = f?[5]?.value == 1 ? (f?[4]?.value ?? 0) : 0
                 let caps = try? PBCapabilities(serializedBytes: Data(opened.payload))
                 p.supportsEventPush = caps?.controlTypes.contains(15) == true
-                if p.supportsEventPush { syncCall = sendSubscriptionLocked(p, now: now) }
+                if p.supportsEventPush { syncCall = sendSubscriptionLocked(p) }
             }
             return true
         }

@@ -171,7 +171,10 @@ extension Remote {
             if raw.count != keySize {
                 throw OpenError(L10nMessage.errorsIosCryptoBadSessionKey())
             }
-            sessionKeys[rs.sessionID] = raw
+            if sessionKeys[rs.sessionID] != raw {
+                sessionKeys[rs.sessionID] = raw
+                directGate.setKey(rs.sessionID, present: !raw.isEmpty)
+            }
             if rs.hasMeta {
                 let (mh, info) = try await openSecureMessage(
                     envelope: rs.meta,
@@ -484,6 +487,7 @@ extension Remote {
             await cache?.dropEvents(sessionId: sid)
         case .removeSessionID(let sid):
             sessionKeys.removeValue(forKey: sid)
+            directGate.setKey(sid, present: false)
             machineReplacements.removeValue(forKey: sid)
             await cache?.removeSession(id: sid)
             await onSessionRemoved?(sid)

@@ -410,11 +410,8 @@ test("proactive keepalive renews security before 20s window expires without inte
 });
 
 test("Control 15 subscription respects capabilities/readiness and routes PayloadKind.EVENT only when peer matches", async () => {
-  vi.useFakeTimers();
   const { engine, peer } = readyEngine();
-  try {
   vi.spyOn(engine as unknown as { refreshAndDiscover(): void }, "refreshAndDiscover").mockImplementation(() => {});
-  vi.spyOn(engine as unknown as { discover(): Promise<void> }, "discover").mockResolvedValue();
   const sendControl = vi.fn<(_type: number, _payload: w.Bytes) => Promise<void>>(async () => {});
   Object.assign(peer.session, { sendControl });
   Object.assign(peer, { snapshotSeq: 0n, downloadSeq: 0n });
@@ -449,7 +446,7 @@ test("Control 15 subscription respects capabilities/readiness and routes Payload
   expect(fromBinary(DirectEventSubscriptionSchema, sendControl.mock.calls[2][1]).sessionIds).toEqual(["s1", "s2", "s3", "s4"]);
   expect(fromBinary(DirectEventSubscriptionSchema, sendControl.mock.calls[3][1]).sessionIds).toEqual([]);
 
-  // Same watched set does not send; attach(), Capabilities refresh, and 15s timer tick each resend current set.
+  // Same watched set does not send; attach() and Capabilities refresh each resend current set.
   engine.setWatchedSessions(new Map([["machine", ["s1"]]]));
   expect(sendControl).toHaveBeenCalledTimes(5);
   engine.setWatchedSessions(new Map([["machine", ["s1"]]]));
@@ -468,10 +465,7 @@ test("Control 15 subscription respects capabilities/readiness and routes Payload
     context: { seq: 2n },
   });
   expect(sendControl).toHaveBeenCalledTimes(7);
-
-  vi.advanceTimersByTime(15_000);
-  expect(sendControl).toHaveBeenCalledTimes(8);
-  expect(fromBinary(DirectEventSubscriptionSchema, sendControl.mock.calls[7][1]).sessionIds).toEqual(["s1"]);
+  expect(fromBinary(DirectEventSubscriptionSchema, sendControl.mock.calls[6][1]).sessionIds).toEqual(["s1"]);
 
   // Routing: only use=1, PayloadKind.EVENT, header.machineId === peer.id && header.sender === peer.id passes.
   const received: Array<{ machineId: string; sessionId: string; seq: bigint }> = [];
@@ -490,8 +484,4 @@ test("Control 15 subscription respects capabilities/readiness and routes Payload
   frameFn(peer, mkEnv(PayloadKind.EVENT, "machine", "machine", 5n), 1);
 
   expect(received).toEqual([{ machineId: "machine", sessionId: "s1", seq: 5n }]);
-  } finally {
-    engine.close();
-    vi.useRealTimers();
-  }
 });
