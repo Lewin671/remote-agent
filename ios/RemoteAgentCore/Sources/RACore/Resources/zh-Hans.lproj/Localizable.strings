@@ -533,7 +533,6 @@
 "machine_status_launch_failed_body" = "会话没能启动。腾出一些空间后再试。";
 "machine_status_live" = "实时";
 "machine_status_load" = "%1$@ 负载";
-"machine_status_load_line" = "负载 %1$@";
 "machine_status_loading" = "正在读取";
 "machine_status_memory" = "内存";
 "machine_status_no_running_sessions" = "没有正在运行的会话";
@@ -753,7 +752,6 @@
 "queue_rank" = " · 第 %1$lld 条";
 "queue_resume_failed" = "发送没成功，仍已暂停";
 "queue_resuming" = "正在发送…";
-"quota_account" = " · 账户 %1$@";
 "quota_agy_waiting" = "尚未收到 Antigravity 的额度。Antigravity 在这台电脑上运行后会自动查询额度。";
 "quota_awaiting_update" = "等待更新";
 "quota_exhausted" = "%1$@ · %2$@额度已用尽，不会自动切换 CLI 或模型";
@@ -774,11 +772,8 @@
 "quota_received_success" = "最近成功收到 %1$@";
 "quota_received_success_date" = "最近成功收到 %2$lld月%1$lld日 %3$@";
 "quota_resetting_soon" = "即将重置";
-"quota_session" = " · 会话 %1$@";
 "quota_third_party_models" = "第三方模型";
 "quota_third_party_models_claude_gpt_oss" = "第三方模型（Claude、GPT-OSS）";
-"quota_unavailable" = "未获取";
-"quota_unavailable_previous" = "暂未获取额度（上次记录）";
 "quota_unknown_time" = "数据时间未知，显示上次记录";
 "quota_waiting" = "尚未收到 %1$@ 的额度。仅从这台电脑上由 remote-agent 管理的 CLI 会话读取；安装 CLI 或在其他会话中使用不会触发这里更新。";
 "quota_warning" = "%1$@ · %2$@额度即将用尽，不会自动切换 CLI 或模型";
@@ -989,7 +984,6 @@
 "security_account_public_key_restored" = "账户公钥已补齐";
 "security_account_security" = "账户安全";
 "security_add_on_authority" = "要添加电脑或客户端，在管理端（%1$@）上打开「设置 › 添加设备」。";
-"security_added" = "%1$@添加";
 "security_after_removing_this_unfinished_pairing_generate_a_new_code" = "移除这个未完成的配对后，可在「添加设备」生成新配对码，让新设备重新加入。";
 "security_after_submission_wait_48_hours_the_current_managing_client" = "提交后需等待 48 小时。当前管理端可以否决申请；恢复后无法读取恢复边界之前的历史。";
 "security_allow_to_join" = "允许加入";
@@ -1325,9 +1319,7 @@
 "security_transfer_result_unverified_continue_the_original_operation" = "交接结果尚未核实，请继续原操作。";
 "security_transfer_to" = "交接给";
 "security_unfinished_security_operation" = "未完成的安全操作";
-"security_unknown_type" = "种类未知";
 "security_use_when_the_managing_client_is_lost" = "管理端丢失时使用";
-"security_used" = "%2$@%1$@使用";
 "security_verify_and_continue" = "核实并继续";
 "security_verifying_management_identity_and_unfinished_security_operations" = "正在核实管理身份和未完成的安全操作…";
 "security_waiting_for_comparison" = "等待核对…";
@@ -1484,6 +1476,7 @@
 "settings_current" = "当前";
 "settings_dark" = "暗色";
 "settings_default" = "（默认）";
+"settings_default_approval_mode" = "默认审批模式";
 "settings_details" = "说明";
 "settings_device_id" = "设备 ID";
 "settings_device_not_found" = "没有这台设备";
@@ -1565,7 +1558,6 @@
 "settings_now" = "现在";
 "settings_offline" = "离线";
 "settings_on_iphone_add_to_home_screen_and_open_from" = "iPhone 要先「添加到主屏幕」，从主屏幕打开才能收推送";
-"settings_online" = "%1$@在线";
 "settings_paired_client" = "已配对的客户端";
 "settings_preview_cache" = "预览缓存";
 "settings_read_error" = "没能读取设置：%1$@";

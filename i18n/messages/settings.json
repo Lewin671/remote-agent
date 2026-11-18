@@ -1268,6 +1268,20 @@
     }
   },
   {
+    "key": "settings.default_approval_mode",
+    "zh-CN": "默认审批模式",
+    "en": "Default approval mode",
+    "notes": "Settings 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
     "key": "settings.ios_approvals_questions_and_plans_waiting_for_you_appear_at",
     "zh-CN": "等你处理的审批、提问和计划排在「会话」页最上面",
     "en": "Approvals, questions, and plans waiting for you appear at the top of Sessions",
@@ -2095,27 +2109,6 @@
     "en": "Exit and delete local keys…",
     "notes": "Settings 页面或对应功能的界面正文/短标签。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
     "params": {},
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "settings.online",
-    "zh-CN": "{value}在线",
-    "en": "{value} online",
-    "notes": "Settings 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。变量来源：value = ago(m.lastSeenMs)；名称、日期和诊断原文不翻译。",
-    "params": {
-      "value": {
-        "type": "string",
-        "example": "Example"
-      }
-    },
     "platforms": [
       "web",
       "android",

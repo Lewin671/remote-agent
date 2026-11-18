@@ -447,7 +447,6 @@ export interface MessageArgs {
   "machine_status.launch_failed_body": { [name: string]: never };
   "machine_status.live": { [name: string]: never };
   "machine_status.load": { load: string };
-  "machine_status.load_line": { load: string };
   "machine_status.loading": { [name: string]: never };
   "machine_status.memory": { [name: string]: never };
   "machine_status.no_running_sessions": { [name: string]: never };
@@ -647,7 +646,6 @@ export interface MessageArgs {
   "queue.rank": { rank: number };
   "queue.resume_failed": { [name: string]: never };
   "queue.resuming": { [name: string]: never };
-  "quota.account": { value: string };
   "quota.agy_waiting": { [name: string]: never };
   "quota.awaiting_update": { [name: string]: never };
   "quota.days": { count: number };
@@ -677,11 +675,8 @@ export interface MessageArgs {
   "quota.resets_in_hr_min": { count: number; detail: string };
   "quota.resets_in_min": { count: number };
   "quota.resetting_soon": { [name: string]: never };
-  "quota.session": { value: string };
   "quota.third_party_models": { [name: string]: never };
   "quota.third_party_models_claude_gpt_oss": { [name: string]: never };
-  "quota.unavailable": { [name: string]: never };
-  "quota.unavailable_previous": { [name: string]: never };
   "quota.unknown_time": { [name: string]: never };
   "quota.waiting": { name: string };
   "quota.warning": { name: string; window: string };
@@ -924,7 +919,6 @@ export interface MessageArgs {
   "security.account_public_key_restored": { [name: string]: never };
   "security.account_security": { [name: string]: never };
   "security.add_on_authority": { name: string };
-  "security.added": { value: string };
   "security.after_removing_this_unfinished_pairing_generate_a_new_code": { [name: string]: never };
   "security.after_submission_wait_48_hours_the_current_managing_client": { [name: string]: never };
   "security.allow_to_join": { [name: string]: never };
@@ -1125,9 +1119,7 @@ export interface MessageArgs {
   "security.transfer_result_unverified_continue_the_original_operation": { [name: string]: never };
   "security.transfer_to": { [name: string]: never };
   "security.unfinished_security_operation": { [name: string]: never };
-  "security.unknown_type": { [name: string]: never };
   "security.use_when_the_managing_client_is_lost": { [name: string]: never };
-  "security.used": { detail: string; value: string };
   "security.verify_and_continue": { [name: string]: never };
   "security.verifying_management_identity_and_unfinished_security_operations": { [name: string]: never };
   "security.waiting_for_comparison": { [name: string]: never };
@@ -1297,7 +1289,6 @@ export interface MessageArgs {
   "settings.now": { [name: string]: never };
   "settings.offline": { [name: string]: never };
   "settings.on_iphone_add_to_home_screen_and_open_from": { [name: string]: never };
-  "settings.online": { value: string };
   "settings.paired_client": { [name: string]: never };
   "settings.preview_cache": { [name: string]: never };
   "settings.read_error": { reason: string };
@@ -2208,7 +2199,6 @@ export const messages = {
     "machine_status.launch_failed_body": "The session could not start. Free up some space and try again.",
     "machine_status.live": "Live",
     "machine_status.load": "{load} load",
-    "machine_status.load_line": "Load {load}",
     "machine_status.loading": "Loading",
     "machine_status.memory": "Memory",
     "machine_status.no_running_sessions": "No running sessions",
@@ -2468,7 +2458,6 @@ export const messages = {
     "queue.rank": " · #{rank}",
     "queue.resume_failed": "Could not send; still paused",
     "queue.resuming": "Sending…",
-    "quota.account": " · Account {value}",
     "quota.agy_waiting": "No quota received from Antigravity. Quota is checked automatically after Antigravity runs on this computer.",
     "quota.awaiting_update": "Awaiting update",
     "quota.days": {
@@ -2558,11 +2547,8 @@ export const messages = {
       "plural": "count"
     },
     "quota.resetting_soon": "Resetting soon",
-    "quota.session": " · Session {value}",
     "quota.third_party_models": "Third-party models",
     "quota.third_party_models_claude_gpt_oss": "Third-party models (Claude, GPT-OSS)",
-    "quota.unavailable": "Unavailable",
-    "quota.unavailable_previous": "Quota not available yet (last reading)",
     "quota.unknown_time": "Observation time unknown; showing the last record",
     "quota.waiting": "No quota received from {name}. Data is read only from CLI sessions managed by remote-agent on this computer; installing the CLI or using another session does not update this page.",
     "quota.warning": "{name} · {window} quota is nearly exhausted. CLI and model will not switch automatically.",
@@ -2949,7 +2935,6 @@ export const messages = {
     "security.account_public_key_restored": "Account public key restored",
     "security.account_security": "Account security",
     "security.add_on_authority": "To add a computer or client, open Settings › Add device on the managing client ({name}).",
-    "security.added": "Added {value}",
     "security.after_removing_this_unfinished_pairing_generate_a_new_code": "After removing this unfinished pairing, generate a new code in Add device so the new device can join again.",
     "security.after_submission_wait_48_hours_the_current_managing_client": "After submission, wait 48 hours. The current managing client can reject the request; history from before the recovery boundary will be unreadable.",
     "security.allow_to_join": "Allow to join",
@@ -3150,9 +3135,7 @@ export const messages = {
     "security.transfer_result_unverified_continue_the_original_operation": "Transfer result unverified. Continue the original operation.",
     "security.transfer_to": "Transfer to",
     "security.unfinished_security_operation": "Unfinished security operation",
-    "security.unknown_type": "Unknown type",
     "security.use_when_the_managing_client_is_lost": "Use when the managing client is lost",
-    "security.used": "Used {value}{detail}",
     "security.verify_and_continue": "Verify and continue",
     "security.verifying_management_identity_and_unfinished_security_operations": "Verifying management identity and unfinished security operations…",
     "security.waiting_for_comparison": "Waiting for comparison…",
@@ -3346,7 +3329,6 @@ export const messages = {
     "settings.now": "Now",
     "settings.offline": "Offline",
     "settings.on_iphone_add_to_home_screen_and_open_from": "On iPhone, add to Home Screen and open from there to receive push notifications",
-    "settings.online": "{value} online",
     "settings.paired_client": "Paired client",
     "settings.preview_cache": "Preview cache",
     "settings.read_error": "Could not read settings: {reason}",
@@ -4293,7 +4275,6 @@ export const messages = {
     "machine_status.launch_failed_body": "会话没能启动。腾出一些空间后再试。",
     "machine_status.live": "实时",
     "machine_status.load": "{load} 负载",
-    "machine_status.load_line": "负载 {load}",
     "machine_status.loading": "正在读取",
     "machine_status.memory": "内存",
     "machine_status.no_running_sessions": "没有正在运行的会话",
@@ -4543,7 +4524,6 @@ export const messages = {
     "queue.rank": " · 第 {rank} 条",
     "queue.resume_failed": "发送没成功，仍已暂停",
     "queue.resuming": "正在发送…",
-    "quota.account": " · 账户 {value}",
     "quota.agy_waiting": "尚未收到 Antigravity 的额度。Antigravity 在这台电脑上运行后会自动查询额度。",
     "quota.awaiting_update": "等待更新",
     "quota.days": {
@@ -4623,11 +4603,8 @@ export const messages = {
       "plural": "count"
     },
     "quota.resetting_soon": "即将重置",
-    "quota.session": " · 会话 {value}",
     "quota.third_party_models": "第三方模型",
     "quota.third_party_models_claude_gpt_oss": "第三方模型（Claude、GPT-OSS）",
-    "quota.unavailable": "未获取",
-    "quota.unavailable_previous": "暂未获取额度（上次记录）",
     "quota.unknown_time": "数据时间未知，显示上次记录",
     "quota.waiting": "尚未收到 {name} 的额度。仅从这台电脑上由 remote-agent 管理的 CLI 会话读取；安装 CLI 或在其他会话中使用不会触发这里更新。",
     "quota.warning": "{name} · {window}额度即将用尽，不会自动切换 CLI 或模型",
@@ -4990,7 +4967,6 @@ export const messages = {
     "security.account_public_key_restored": "账户公钥已补齐",
     "security.account_security": "账户安全",
     "security.add_on_authority": "要添加电脑或客户端，在管理端（{name}）上打开「设置 › 添加设备」。",
-    "security.added": "{value}添加",
     "security.after_removing_this_unfinished_pairing_generate_a_new_code": "移除这个未完成的配对后，可在「添加设备」生成新配对码，让新设备重新加入。",
     "security.after_submission_wait_48_hours_the_current_managing_client": "提交后需等待 48 小时。当前管理端可以否决申请；恢复后无法读取恢复边界之前的历史。",
     "security.allow_to_join": "允许加入",
@@ -5191,9 +5167,7 @@ export const messages = {
     "security.transfer_result_unverified_continue_the_original_operation": "交接结果尚未核实，请继续原操作。",
     "security.transfer_to": "交接给",
     "security.unfinished_security_operation": "未完成的安全操作",
-    "security.unknown_type": "种类未知",
     "security.use_when_the_managing_client_is_lost": "管理端丢失时使用",
-    "security.used": "{value}{detail}使用",
     "security.verify_and_continue": "核实并继续",
     "security.verifying_management_identity_and_unfinished_security_operations": "正在核实管理身份和未完成的安全操作…",
     "security.waiting_for_comparison": "等待核对…",
@@ -5383,7 +5357,6 @@ export const messages = {
     "settings.now": "现在",
     "settings.offline": "离线",
     "settings.on_iphone_add_to_home_screen_and_open_from": "iPhone 要先「添加到主屏幕」，从主屏幕打开才能收推送",
-    "settings.online": "{value}在线",
     "settings.paired_client": "已配对的客户端",
     "settings.preview_cache": "预览缓存",
     "settings.read_error": "没能读取设置：{reason}",

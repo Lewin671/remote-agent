@@ -3181,68 +3181,6 @@
     }
   },
   {
-    "key": "security.unknown_type",
-    "zh-CN": "种类未知",
-    "en": "Unknown type",
-    "notes": "devices 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "security.used",
-    "zh-CN": "{value}{detail}使用",
-    "en": "Used {value}{detail}",
-    "notes": "devices 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。变量来源：value = used；detail = /\\d$/.test(used) ? \" \" : \"\"；名称、日期和诊断原文不翻译。",
-    "params": {
-      "value": {
-        "type": "string",
-        "example": "Example"
-      },
-      "detail": {
-        "type": "string",
-        "example": "Example"
-      }
-    },
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "security.added",
-    "zh-CN": "{value}添加",
-    "en": "Added {value}",
-    "notes": "devices 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。变量来源：value = dayText(d!.createdMs!, now)；名称、日期和诊断原文不翻译。",
-    "params": {
-      "value": {
-        "type": "string",
-        "example": "Example"
-      }
-    },
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
     "key": "security.paired",
     "zh-CN": "已配对",
     "en": "Paired",

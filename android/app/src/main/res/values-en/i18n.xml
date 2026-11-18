@@ -646,7 +646,6 @@
     <string name="machine_status_launch_failed_body" formatted="false">"The session could not start. Free up some space and try again."</string>
     <string name="machine_status_live" formatted="false">"Live"</string>
     <string name="machine_status_load">"%1$s load"</string>
-    <string name="machine_status_load_line">"Load %1$s"</string>
     <string name="machine_status_loading" formatted="false">"Loading"</string>
     <string name="machine_status_memory" formatted="false">"Memory"</string>
     <string name="machine_status_no_running_sessions" formatted="false">"No running sessions"</string>
@@ -925,7 +924,6 @@
     <string name="queue_rank">" · #%1$d"</string>
     <string name="queue_resume_failed" formatted="false">"Could not send; still paused"</string>
     <string name="queue_resuming" formatted="false">"Sending…"</string>
-    <string name="quota_account">" · Account %1$s"</string>
     <string name="quota_agy_waiting" formatted="false">"No quota received from Antigravity. Quota is checked automatically after Antigravity runs on this computer."</string>
     <string name="quota_android_you_can_view_usage_in_claude_code_on_this_computer" formatted="false">" You can view /usage in Claude Code on this computer."</string>
     <string name="quota_awaiting_update" formatted="false">"Awaiting update"</string>
@@ -985,11 +983,8 @@
         <item quantity="other">"Resets in %1$d min"</item>
     </plurals>
     <string name="quota_resetting_soon" formatted="false">"Resetting soon"</string>
-    <string name="quota_session">" · Session %1$s"</string>
     <string name="quota_third_party_models" formatted="false">"Third-party models"</string>
     <string name="quota_third_party_models_claude_gpt_oss" formatted="false">"Third-party models (Claude, GPT-OSS)"</string>
-    <string name="quota_unavailable" formatted="false">"Unavailable"</string>
-    <string name="quota_unavailable_previous" formatted="false">"Quota not available yet (last reading)"</string>
     <string name="quota_unknown_time" formatted="false">"Observation time unknown; showing the last record"</string>
     <string name="quota_waiting">"No quota received from %1$s. Data is read only from CLI sessions managed by remote-agent on this computer; installing the CLI or using another session does not update this page."</string>
     <string name="quota_warning">"%1$s · %2$s quota is nearly exhausted. CLI and model will not switch automatically."</string>
@@ -1324,7 +1319,6 @@
     <string name="security_account_public_key_restored" formatted="false">"Account public key restored"</string>
     <string name="security_account_security" formatted="false">"Account security"</string>
     <string name="security_add_on_authority">"To add a computer or client, open Settings › Add device on the managing client (%1$s)."</string>
-    <string name="security_added">"Added %1$s"</string>
     <string name="security_after_removing_this_unfinished_pairing_generate_a_new_code" formatted="false">"After removing this unfinished pairing, generate a new code in Add device so the new device can join again."</string>
     <string name="security_after_submission_wait_48_hours_the_current_managing_client" formatted="false">"After submission, wait 48 hours. The current managing client can reject the request; history from before the recovery boundary will be unreadable."</string>
     <string name="security_allow_to_join" formatted="false">"Allow to join"</string>
@@ -1672,9 +1666,7 @@
     <string name="security_transfer_result_unverified_continue_the_original_operation" formatted="false">"Transfer result unverified. Continue the original operation."</string>
     <string name="security_transfer_to" formatted="false">"Transfer to"</string>
     <string name="security_unfinished_security_operation" formatted="false">"Unfinished security operation"</string>
-    <string name="security_unknown_type" formatted="false">"Unknown type"</string>
     <string name="security_use_when_the_managing_client_is_lost" formatted="false">"Use when the managing client is lost"</string>
-    <string name="security_used">"Used %2$s%1$s"</string>
     <string name="security_verify_and_continue" formatted="false">"Verify and continue"</string>
     <string name="security_verifying_management_identity_and_unfinished_security_operations" formatted="false">"Verifying management identity and unfinished security operations…"</string>
     <string name="security_waiting_for_comparison" formatted="false">"Waiting for comparison…"</string>
@@ -1947,7 +1939,6 @@
     <string name="settings_now" formatted="false">"Now"</string>
     <string name="settings_offline" formatted="false">"Offline"</string>
     <string name="settings_on_iphone_add_to_home_screen_and_open_from" formatted="false">"On iPhone, add to Home Screen and open from there to receive push notifications"</string>
-    <string name="settings_online">"%1$s online"</string>
     <string name="settings_paired_client" formatted="false">"Paired client"</string>
     <string name="settings_preview_cache" formatted="false">"Preview cache"</string>
     <string name="settings_read_error">"Could not read settings: %1$s"</string>

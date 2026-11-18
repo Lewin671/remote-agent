@@ -406,27 +406,6 @@
     }
   },
   {
-    "key": "machine_status.load_line",
-    "zh-CN": "负载 {load}",
-    "en": "Load {load}",
-    "notes": "电脑状态规范 A7/B 原文；英文初稿待审。参数为已经本地化的数字、大小、时长或电脑名；整句翻译，不拼接。 空间：卡片内固定文案允许换行，不截断。",
-    "params": {
-      "load": {
-        "type": "string",
-        "example": "3.2"
-      }
-    },
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
     "key": "machine_status.cores",
     "zh-CN": {
       "plural": "count",

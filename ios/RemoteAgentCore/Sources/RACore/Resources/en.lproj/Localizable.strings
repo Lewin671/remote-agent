@@ -533,7 +533,6 @@
 "machine_status_launch_failed_body" = "The session could not start. Free up some space and try again.";
 "machine_status_live" = "Live";
 "machine_status_load" = "%1$@ load";
-"machine_status_load_line" = "Load %1$@";
 "machine_status_loading" = "Loading";
 "machine_status_memory" = "Memory";
 "machine_status_no_running_sessions" = "No running sessions";
@@ -753,7 +752,6 @@
 "queue_rank" = " · #%1$lld";
 "queue_resume_failed" = "Could not send; still paused";
 "queue_resuming" = "Sending…";
-"quota_account" = " · Account %1$@";
 "quota_agy_waiting" = "No quota received from Antigravity. Quota is checked automatically after Antigravity runs on this computer.";
 "quota_awaiting_update" = "Awaiting update";
 "quota_exhausted" = "%1$@ · %2$@ quota is exhausted. CLI and model will not switch automatically.";
@@ -774,11 +772,8 @@
 "quota_received_success" = "Last successfully received %1$@";
 "quota_received_success_date" = "Last successfully received %2$lld/%1$lld %3$@";
 "quota_resetting_soon" = "Resetting soon";
-"quota_session" = " · Session %1$@";
 "quota_third_party_models" = "Third-party models";
 "quota_third_party_models_claude_gpt_oss" = "Third-party models (Claude, GPT-OSS)";
-"quota_unavailable" = "Unavailable";
-"quota_unavailable_previous" = "Quota not available yet (last reading)";
 "quota_unknown_time" = "Observation time unknown; showing the last record";
 "quota_waiting" = "No quota received from %1$@. Data is read only from CLI sessions managed by remote-agent on this computer; installing the CLI or using another session does not update this page.";
 "quota_warning" = "%1$@ · %2$@ quota is nearly exhausted. CLI and model will not switch automatically.";
@@ -989,7 +984,6 @@
 "security_account_public_key_restored" = "Account public key restored";
 "security_account_security" = "Account security";
 "security_add_on_authority" = "To add a computer or client, open Settings › Add device on the managing client (%1$@).";
-"security_added" = "Added %1$@";
 "security_after_removing_this_unfinished_pairing_generate_a_new_code" = "After removing this unfinished pairing, generate a new code in Add device so the new device can join again.";
 "security_after_submission_wait_48_hours_the_current_managing_client" = "After submission, wait 48 hours. The current managing client can reject the request; history from before the recovery boundary will be unreadable.";
 "security_allow_to_join" = "Allow to join";
@@ -1325,9 +1319,7 @@
 "security_transfer_result_unverified_continue_the_original_operation" = "Transfer result unverified. Continue the original operation.";
 "security_transfer_to" = "Transfer to";
 "security_unfinished_security_operation" = "Unfinished security operation";
-"security_unknown_type" = "Unknown type";
 "security_use_when_the_managing_client_is_lost" = "Use when the managing client is lost";
-"security_used" = "Used %2$@%1$@";
 "security_verify_and_continue" = "Verify and continue";
 "security_verifying_management_identity_and_unfinished_security_operations" = "Verifying management identity and unfinished security operations…";
 "security_waiting_for_comparison" = "Waiting for comparison…";
@@ -1484,6 +1476,7 @@
 "settings_current" = "Current";
 "settings_dark" = "Dark";
 "settings_default" = " (default)";
+"settings_default_approval_mode" = "Default approval mode";
 "settings_details" = "Details";
 "settings_device_id" = "Device ID";
 "settings_device_not_found" = "Device not found";
@@ -1565,7 +1558,6 @@
 "settings_now" = "Now";
 "settings_offline" = "Offline";
 "settings_on_iphone_add_to_home_screen_and_open_from" = "On iPhone, add to Home Screen and open from there to receive push notifications";
-"settings_online" = "%1$@ online";
 "settings_paired_client" = "Paired client";
 "settings_preview_cache" = "Preview cache";
 "settings_read_error" = "Could not read settings: %1$@";

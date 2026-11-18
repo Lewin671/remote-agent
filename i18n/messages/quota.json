@@ -623,22 +623,6 @@
     }
   },
   {
-    "key": "quota.unavailable",
-    "zh-CN": "未获取",
-    "en": "Unavailable",
-    "notes": "quota 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
     "key": "quota.no_data_received_for_this_quota",
     "zh-CN": "没有收到这项额度数据",
     "en": "No data received for this quota",
@@ -718,48 +702,6 @@
     "en": "Quota lookup is not supported yet",
     "notes": "quota 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
     "params": {},
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "quota.account",
-    "zh-CN": " · 账户 {value}",
-    "en": " · Account {value}",
-    "notes": "quota 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。变量来源：value = q.account；名称、日期和诊断原文不翻译。",
-    "params": {
-      "value": {
-        "type": "string",
-        "example": "Example"
-      }
-    },
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "quota.session",
-    "zh-CN": " · 会话 {value}",
-    "en": " · Session {value}",
-    "notes": "quota 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。变量来源：value = q.sourceSessionId.slice(-4)；名称、日期和诊断原文不翻译。",
-    "params": {
-      "value": {
-        "type": "string",
-        "example": "Example"
-      }
-    },
     "platforms": [
       "web",
       "android",
@@ -880,22 +822,6 @@
     "en": "Third-party models",
     "params": {},
     "notes": "Antigravity 额度池短名称；不是模型标识。短标签，无变量。",
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "quota.unavailable_previous",
-    "zh-CN": "暂未获取额度（上次记录）",
-    "en": "Quota not available yet (last reading)",
-    "params": {},
-    "notes": "电脑额度摘要的旧数据缺失状态；完整句，无变量。",
     "platforms": [
       "web",
       "android",
