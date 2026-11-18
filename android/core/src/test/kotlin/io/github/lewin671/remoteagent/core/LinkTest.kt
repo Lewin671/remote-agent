@@ -22,54 +22,66 @@ class LinkTest {
     )
 
     @Test fun linkProjectionControlsForwardAndScheduleGates() = runBlocking {
-        val server = TestServer()
-        val http = Api.defaultHttp()
-        val daemon = FakeDaemon.create(randomBytes(32), server.url, http, server.setupToken)
-        val remote = fixtureRemote(approvedClient(daemon.phone, http), http)
-        try {
-            daemon.answer = { _, _ -> CommandResult.getDefaultInstance() }
-            daemon.connect(); daemon.waitReady()
-            val state = projected(daemon.id)
-            remote.showForTest(state)
-            assertTrue(state.peer(daemon.id).canProbe(false))
-            assertTrue(filesSupported(state.machines[daemon.id]))
-            assertNull(protocolMismatch(state.machines[daemon.id]))
-            val command = Command.newBuilder().setCreateSession(CreateSessionRequest.newBuilder().setCwd("/work/example").addFileIds("original-file")).build()
-            remote.machineCommand(daemon.id, command)
-            val received = daemon.commands.poll(5, TimeUnit.SECONDS) ?: error("command blocked by relay discovery")
-            assertEquals(listOf("original-file"), received.second.createSession.fileIdsList)
-        } finally { remote.close(); daemon.close(); server.close() }
+        TestServer().use { server ->
+            val http = Api.defaultHttp()
+            var daemon: FakeDaemon? = null
+            var remote: Remote? = null
+            try {
+                daemon = FakeDaemon.create(randomBytes(32), server.url, http, server.setupToken)
+                remote = fixtureRemote(approvedClient(daemon.phone, http), http)
+                daemon.answer = { _, _ -> CommandResult.getDefaultInstance() }
+                daemon.connect(); daemon.waitReady()
+                val state = projected(daemon.id)
+                remote.showForTest(state)
+                assertTrue(state.peer(daemon.id).canProbe(false))
+                assertTrue(filesSupported(state.machines[daemon.id]))
+                assertNull(protocolMismatch(state.machines[daemon.id]))
+                val command = Command.newBuilder().setCreateSession(CreateSessionRequest.newBuilder().setCwd("/work/example").addFileIds("original-file")).build()
+                remote.machineCommand(daemon.id, command)
+                val received = daemon.commands.poll(5, TimeUnit.SECONDS) ?: error("command blocked by relay discovery")
+                assertEquals(listOf("original-file"), received.second.createSession.fileIdsList)
+            } finally {
+                runCatching { remote?.close() }
+                runCatching { daemon?.close() }
+            }
+        }
     }
 
     @Test fun reachabilityCannotReplaceAuthorizationOrClearPrior() = runBlocking {
-        val server = TestServer()
-        val http = Api.defaultHttp()
-        val daemon = FakeDaemon.create(randomBytes(32), server.url, http, server.setupToken)
-        val account = approvedClient(daemon.phone, http)
-        val store = TestSecurity.get(server.url).stores.getValue(account.deviceId)
-        val blocked = AtomicBoolean(false)
-        val forwards = AtomicInteger()
-        val measured = http.newBuilder().addInterceptor { chain ->
-            if (chain.request().url.encodedPath.endsWith("/Forward")) forwards.incrementAndGet()
-            chain.proceed(chain.request())
-        }.build()
-        val guarded = object : DeviceSecurity.Storage by store {
-            override fun readSecurity(): DeviceSecurity.Record {
-                if (blocked.get()) throw DeviceSecurity.Failure("lease")
-                return store.readSecurity()
+        TestServer().use { server ->
+            val http = Api.defaultHttp()
+            var daemon: FakeDaemon? = null
+            var remote: Remote? = null
+            try {
+                daemon = FakeDaemon.create(randomBytes(32), server.url, http, server.setupToken)
+                val account = approvedClient(daemon.phone, http)
+                val store = TestSecurity.get(server.url).stores.getValue(account.deviceId)
+                val blocked = AtomicBoolean(false)
+                val forwards = AtomicInteger()
+                val measured = http.newBuilder().addInterceptor { chain ->
+                    if (chain.request().url.encodedPath.endsWith("/Forward")) forwards.incrementAndGet()
+                    chain.proceed(chain.request())
+                }.build()
+                val guarded = object : DeviceSecurity.Storage by store {
+                    override fun readSecurity(): DeviceSecurity.Record {
+                        if (blocked.get()) throw DeviceSecurity.Failure("lease")
+                        return store.readSecurity()
+                    }
+                }
+                remote = Remote(account, measured, securityStorage = guarded)
+                remote.currentToken()
+                remote.showForTest(projected(daemon.id))
+                blocked.set(true)
+                val fresh = runCatching {
+                    remote.machineCommand(daemon.id, Command.newBuilder().setGetSettings(GetSettingsRequest.getDefaultInstance()).build())
+                }.exceptionOrNull()
+                assertEquals(0, forwards.get())
+                assertTrue("authorization must still run: $fresh", fresh is CommandException && fresh.code == "authorization_unavailable" && fresh.outcome == Outcome.NOT_SENT)
+            } finally {
+                runCatching { remote?.close() }
+                runCatching { daemon?.close() }
             }
         }
-        val remote = Remote(account, measured, securityStorage = guarded)
-        try {
-            remote.currentToken()
-            remote.showForTest(projected(daemon.id))
-            blocked.set(true)
-            val fresh = runCatching {
-                remote.machineCommand(daemon.id, Command.newBuilder().setGetSettings(GetSettingsRequest.getDefaultInstance()).build())
-            }.exceptionOrNull()
-            assertEquals(0, forwards.get())
-            assertTrue("authorization must still run: $fresh", fresh is CommandException && fresh.code == "authorization_unavailable" && fresh.outcome == Outcome.NOT_SENT)
-        } finally { remote.close(); daemon.close(); server.close() }
     }
 
     @Test fun pathEndIsSeparateFromLogicalStreamClosePolicy() {

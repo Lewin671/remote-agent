@@ -63,9 +63,12 @@ class RemoteTest {
 
     @After
     fun tearDown() {
-        closers.forEach { it.close() }
-        if (this::daemon.isInitialized) daemon.close()
-        server.close()
+        try {
+            closers.forEach { runCatching { it.close() } }
+            if (this::daemon.isInitialized) runCatching { daemon.close() }
+        } finally {
+            if (this::server.isInitialized) server.close()
+        }
     }
 
     private fun session(cwd: String, title: String) =

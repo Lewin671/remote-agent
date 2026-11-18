@@ -7,6 +7,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
 	"os"
@@ -22,6 +23,7 @@ func main() {
 	db := flag.String("db", "", "isolated test database")
 	signup := flag.String("signup", "token", "test signup mode")
 	bits := flag.Uint("signup-bits", 0, "test proof difficulty")
+	watchStdin := flag.Bool("watch-stdin", false, "")
 	flag.Parse()
 	if *db == "" {
 		panic("test database is required")
@@ -39,6 +41,12 @@ func main() {
 	hs := &http.Server{Handler: s.Handler(), ReadHeaderTimeout: 10 * time.Second}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
+	if *watchStdin {
+		go func() {
+			_, _ = io.Copy(io.Discard, os.Stdin)
+			stop()
+		}()
+	}
 	go func() {
 		<-ctx.Done()
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)

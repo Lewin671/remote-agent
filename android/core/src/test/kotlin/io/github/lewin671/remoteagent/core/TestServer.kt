@@ -55,6 +55,7 @@ class TestServer(
 
     val setupToken = "setup-token-for-tests"
     private var proc: Process? = null
+    private var shutdownHook: Thread? = null
 
     init {
         start()
@@ -75,11 +76,17 @@ class TestServer(
                 signupMode,
                 "-signup-bits",
                 signupBits.toString(),
+                "-watch-stdin",
             )
         pb.environment()["RA_SETUP_TOKEN"] = setupToken
         pb.redirectError(log)
         val started = pb.start()
-        proc = started
+        val hook = Thread { stop() }
+        synchronized(this) {
+            proc = started
+            shutdownHook = hook
+        }
+        runCatching { Runtime.getRuntime().addShutdownHook(hook) }
         // Read this child's post-bind notification, not a polled log file or
         // a guessed port. stderr remains in the per-test diagnostic log.
         val reader = java.util.concurrent.Executors.newSingleThreadExecutor { work ->
@@ -101,13 +108,22 @@ class TestServer(
     }
 
     fun stop() {
-        val child = proc ?: return
+        val (child, hook) = synchronized(this) {
+            val c = proc ?: return
+            val h = shutdownHook
+            proc = null
+            shutdownHook = null
+            c to h
+        }
+        if (hook != null) {
+            runCatching { Runtime.getRuntime().removeShutdownHook(hook) }
+        }
+        runCatching { child.outputStream.close() }
         child.destroy()
         if (!child.waitFor(5, TimeUnit.SECONDS)) {
             child.destroyForcibly()
             check(child.waitFor(5, TimeUnit.SECONDS)) { "test relay did not stop" }
         }
-        proc = null
     }
 
     override fun close() {

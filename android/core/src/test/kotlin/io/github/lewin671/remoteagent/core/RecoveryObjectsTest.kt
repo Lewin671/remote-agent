@@ -106,7 +106,7 @@ class RecoveryObjectsTest {
                 )
                 assertTrue(recovered.state.value.devices.containsKey(offline.deviceId))
             } finally {
-                remotes.forEach { it.close() }
+                remotes.forEach { runCatching { it.close() } }
                 server.close()
             }
         }
