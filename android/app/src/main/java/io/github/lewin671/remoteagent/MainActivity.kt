@@ -84,16 +84,30 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         io.github.lewin671.remoteagent.ui.Motion.observe(applicationContext)
+        val app = application as RaApp
+        val initialTheme = app.prefs.cachedTheme()
+        val sysNight = (resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) ==
+            android.content.res.Configuration.UI_MODE_NIGHT_YES
+        val initialDark = when (initialTheme) {
+            io.github.lewin671.remoteagent.data.ThemeMode.SYSTEM -> sysNight
+            io.github.lewin671.remoteagent.data.ThemeMode.LIGHT -> false
+            io.github.lewin671.remoteagent.data.ThemeMode.DARK -> true
+        }
+        window.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(if (initialDark) 0xFF0C0C0E.toInt() else 0xFFFFFFFF.toInt()))
+        androidx.core.view.WindowCompat.getInsetsController(window, window.decorView).apply {
+            isAppearanceLightStatusBars = !initialDark
+            isAppearanceLightNavigationBars = !initialDark
+        }
         enableEdgeToEdge()
         openSession.value = target(intent)
         openMachineStatus.value = intent?.getStringExtra(Notifier.EXTRA_MACHINE_STATUS)
         openDevices.value = intent?.getBooleanExtra(Notifier.EXTRA_SECURITY, false) == true
-        val app = application as RaApp
         setContent {
-            val settings by app.prefs.settings.collectAsState(Settings())
+            val settings by app.prefs.settings.collectAsState(Settings(theme = initialTheme))
             RaTheme(settings.theme) {
                 val dark = pal.dark
                 androidx.compose.runtime.SideEffect {
+                    window.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(if (dark) 0xFF0C0C0E.toInt() else 0xFFFFFFFF.toInt()))
                     androidx.core.view.WindowCompat.getInsetsController(window, window.decorView).apply {
                         isAppearanceLightStatusBars = !dark
                         isAppearanceLightNavigationBars = !dark
@@ -104,6 +118,7 @@ class MainActivity : ComponentActivity() {
                     val remote by app.remote.collectAsState()
                     val accountError by app.accountError.collectAsState()
                     val r = remote
+                    val cacheReady = if (r != null) r.bootstrapped.collectAsState().value else false
                     when {
                         !loaded && accountError.isNotEmpty() -> io.github.lewin671.remoteagent.ui.AppSafeArea {
                             io.github.lewin671.remoteagent.ui.AccountLoadFailure(
@@ -112,7 +127,7 @@ class MainActivity : ComponentActivity() {
                                 { app.discardAccount() },
                             )
                         }
-                        !loaded ->
+                        !loaded || (r != null && !cacheReady) ->
                             io.github.lewin671.remoteagent.ui.StartupShell(null)
                         r == null -> io.github.lewin671.remoteagent.ui.AppSafeArea { JoinScreen(app) }
                         r.state.collectAsState().value.removed -> io.github.lewin671.remoteagent.ui.AppSafeArea { RemovedScreen(app, r) }

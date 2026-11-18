@@ -198,13 +198,20 @@ fun SessionScreen(sid: String) {
                 PillButton(uiText(UiMessages.commonRetry()), { remote.openSession(sid) }, Modifier.padding(top = 16.dp), ButtonKind.INK)
                 TextLink(uiText(UiMessages.commonBack()), nav.back)
             } else {
-                Spinner(p.ink2, size = 24.dp)
-                Text(
-                    if (header.hasStatusText()) uiText(header.statusText) else copy(UiMessages.projectsReadingDirectory()),
-                    style = T.s15,
-                    color = p.ink2,
-                    modifier = Modifier.padding(top = 12.dp),
-                )
+                var showSpinner by remember(sid) { mutableStateOf(false) }
+                LaunchedEffect(sid) {
+                    delay(300)
+                    showSpinner = true
+                }
+                if (showSpinner) {
+                    Spinner(p.ink2, size = 24.dp)
+                    Text(
+                        if (header.hasStatusText()) uiText(header.statusText) else copy(UiMessages.projectsReadingDirectory()),
+                        style = T.s15,
+                        color = p.ink2,
+                        modifier = Modifier.padding(top = 12.dp),
+                    )
+                }
             }
         }
         return
@@ -666,12 +673,21 @@ internal fun ChatPane(
                     sessionExited = header.exited,
                 )
                 CompositionLocalProvider(LocalChat provides chatCtx) {
+                    var showSkeleton by remember(sid) { mutableStateOf(false) }
+                    LaunchedEffect(sid, tl.loading, items.isEmpty()) {
+                        if (tl.loading && items.isEmpty()) {
+                            delay(300)
+                            showSkeleton = true
+                        } else {
+                            showSkeleton = false
+                        }
+                    }
                     LazyColumn(
                         state = list,
                         modifier = Modifier.fillMaxSize(),
                         contentPadding = PaddingValues(top = 12.dp),
                     ) {
-                        if (tl.hasEarlier || tl.canLoadEarlier || tl.backfilling) {
+                        if ((tl.hasEarlier || tl.canLoadEarlier || tl.backfilling) && (items.isNotEmpty() || !tl.loading)) {
                             item(key = "load-earlier") {
                                 Box(Modifier.fillMaxWidth().padding(vertical = 8.dp), contentAlignment = Alignment.Center) {
                                     if (tl.backfilling) {
@@ -687,7 +703,7 @@ internal fun ChatPane(
                                 }
                             }
                         }
-                        if (tl.loading && items.isEmpty()) item(key = "skeleton") { Skeleton() }
+                        if (showSkeleton && tl.loading && items.isEmpty()) item(key = "skeleton") { Skeleton() }
                         items(items, key = { it.id }) { item ->
                             val kind = remember(item.id) { entrances.take(item.id) }
                             Box(Modifier.entrance(kind)) {

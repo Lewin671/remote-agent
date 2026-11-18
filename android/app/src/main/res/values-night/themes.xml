@@ -1,0 +1,5 @@
+<resources>
+    <style name="Theme.RemoteAgent" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">#FF0C0C0E</item>
+    </style>
+</resources>

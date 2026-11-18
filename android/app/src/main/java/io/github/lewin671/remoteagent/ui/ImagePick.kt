@@ -136,8 +136,19 @@ fun ImageStrip(draft: ImageDraft, remote: Remote, machineId: String?, max: Int) 
             ImageNotices.text.remove(draft.key)
         }
     }
+    var showRestoring by remember(draft.key) { mutableStateOf(false) }
+    LaunchedEffect(draft.key, draft.restoring) {
+        if (draft.restoring) {
+            kotlinx.coroutines.delay(250)
+            showRestoring = true
+        } else {
+            showRestoring = false
+        }
+    }
     if (draft.restoring) {
-        Text(copy(UiMessages.imageAndroidRestoring()), Modifier.padding(horizontal = 12.dp, vertical = 4.dp), style = T.s13, color = p.ink2)
+        if (showRestoring) {
+            Text(copy(UiMessages.imageAndroidRestoring()), Modifier.padding(horizontal = 12.dp, vertical = 4.dp), style = T.s13, color = p.ink2)
+        }
         return
     }
     FileStrip(draft, remote, machineId)

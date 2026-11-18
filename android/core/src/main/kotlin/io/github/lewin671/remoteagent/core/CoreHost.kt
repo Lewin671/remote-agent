@@ -672,10 +672,125 @@ class CoreHost(
     }
 
     fun currentSessionView(sessionId: String): SessionViewModel? =
-        synchronized(sessionWatchers) { sessionWatchers[sessionId]?.flow?.value ?: testSessionViews[sessionId] }
+        currentSessionView(sessionId, initialWindow = null)
+
+    fun currentSessionView(sessionId: String, initialWindow: SessionWindowRequest?): SessionViewModel? {
+        synchronized(sessionWatchers) {
+            sessionWatchers[sessionId]?.flow?.value?.let { return it }
+            testSessionViews[sessionId]?.let { return it }
+        }
+        return computeSessionView(sessionId, initialWindow)
+    }
+
+    private fun computeSessionView(sessionId: String, initialWindow: SessionWindowRequest?): SessionViewModel? {
+        if (testOverrideViews || closed.get()) return null
+        val screen = Screen.newBuilder()
+            .setSession(
+                SessionScreenRequest.newBuilder()
+                    .setSessionId(sessionId)
+                    .setWindow(initialWindow ?: DEFAULT_SESSION_WINDOW),
+            )
+            .build()
+        val vm = viewOnWorker(screen) ?: return null
+        return if (vm.viewCase == ViewModel.ViewCase.SESSION) vm.session else null
+    }
+
+    private fun <V> snapshotSlot(
+        target: ScreenTarget,
+        slot: ScreenSlot<V>,
+        matches: (V) -> Boolean = { false },
+        screen: () -> Screen,
+        extract: (ViewModel) -> V?,
+    ): V {
+        val current = slot.flow.value
+        if (testOverrideViews || target in testOverriddenTargets || matches(current)) return current
+        val vm = viewOnWorker(screen()) ?: return current
+        return extract(vm) ?: current
+    }
+
+    fun snapshotNewSessionView(projectKey: String): NewSessionViewModel = snapshotSlot(
+        ScreenTarget.SCREEN_TARGET_NEW_SESSION,
+        newSessionSlot,
+        matches = { projectKey.isNotEmpty() && it.projectKey == projectKey },
+        screen = { Screen.newBuilder().setNewSession(NewSessionScreenRequest.newBuilder().setProjectKey(projectKey)).build() },
+        extract = { if (it.viewCase == ViewModel.ViewCase.NEW_SESSION) it.newSession else null },
+    )
+
+    fun snapshotSettingsView(): SettingsViewModel = snapshotSlot(
+        ScreenTarget.SCREEN_TARGET_SETTINGS,
+        settingsSlot,
+        screen = { Screen.newBuilder().setSettings(SettingsScreenRequest.getDefaultInstance()).build() },
+        extract = { if (it.viewCase == ViewModel.ViewCase.SETTINGS) it.settings else null },
+    )
+
+    fun snapshotMachineStatusView(machineId: String): MachineStatusViewModel = snapshotSlot(
+        ScreenTarget.SCREEN_TARGET_MACHINE_STATUS,
+        machineStatusSlot,
+        matches = { machineId.isNotEmpty() && it.machineId == machineId },
+        screen = { Screen.newBuilder().setMachineStatus(MachineStatusScreenRequest.newBuilder().setMachineId(machineId)).build() },
+        extract = { if (it.viewCase == ViewModel.ViewCase.MACHINE_STATUS) it.machineStatus else null },
+    )
+
+    fun snapshotMachineSettingsView(machineId: String): MachineSettingsViewModel = snapshotSlot(
+        ScreenTarget.SCREEN_TARGET_MACHINE_SETTINGS,
+        machineSettingsSlot,
+        matches = { machineId.isNotEmpty() && it.machineId == machineId },
+        screen = { Screen.newBuilder().setMachineSettings(MachineSettingsScreenRequest.newBuilder().setMachineId(machineId)).build() },
+        extract = { if (it.viewCase == ViewModel.ViewCase.MACHINE_SETTINGS) it.machineSettings else null },
+    )
+
+    fun snapshotQuotaView(machineId: String, filterAgent: Agent = Agent.AGENT_UNSPECIFIED): QuotaViewModel = snapshotSlot(
+        ScreenTarget.SCREEN_TARGET_QUOTA,
+        quotaSlot,
+        matches = { machineId.isNotEmpty() && it.machineId == machineId && quotaFilterAgent == filterAgent },
+        screen = { Screen.newBuilder().setQuota(QuotaScreenRequest.newBuilder().setMachineId(machineId).setFilterAgent(filterAgent)).build() },
+        extract = { if (it.viewCase == ViewModel.ViewCase.QUOTA) it.quota else null },
+    )
+
+    fun snapshotDevicesView(): DevicesViewModel = snapshotSlot(
+        ScreenTarget.SCREEN_TARGET_DEVICES,
+        devicesSlot,
+        screen = { Screen.newBuilder().setDevices(DevicesScreenRequest.getDefaultInstance()).build() },
+        extract = { if (it.viewCase == ViewModel.ViewCase.DEVICES) it.devices else null },
+    )
+
+    fun snapshotClientDetailView(deviceId: String): ClientDetailViewModel = snapshotSlot(
+        ScreenTarget.SCREEN_TARGET_CLIENT_DETAIL,
+        clientDetailSlot,
+        matches = { deviceId.isNotEmpty() && it.deviceId == deviceId },
+        screen = { Screen.newBuilder().setClientDetail(ClientDetailScreenRequest.newBuilder().setDeviceId(deviceId)).build() },
+        extract = { if (it.viewCase == ViewModel.ViewCase.CLIENT_DETAIL) it.clientDetail else null },
+    )
+
+    fun snapshotScheduleDetailView(machineId: String, taskId: String): ScheduleDetailViewModel = snapshotSlot(
+        ScreenTarget.SCREEN_TARGET_SCHEDULE_DETAIL,
+        scheduleDetailSlot,
+        matches = { machineId.isNotEmpty() && taskId.isNotEmpty() && it.machineId == machineId && it.taskId == taskId },
+        screen = {
+            Screen.newBuilder().setScheduleDetail(
+                ScheduleDetailScreenRequest.newBuilder().setMachineId(machineId).setTaskId(taskId),
+            ).build()
+        },
+        extract = { if (it.viewCase == ViewModel.ViewCase.SCHEDULE_DETAIL) it.scheduleDetail else null },
+    )
+
+    fun snapshotProjectView(manage: Boolean = true): ProjectViewModel = snapshotSlot(
+        ScreenTarget.SCREEN_TARGET_PROJECT,
+        projectSlot,
+        screen = {
+            Screen.newBuilder().setProject(
+                ProjectScreenRequest.newBuilder().setProjectKey("").setManage(manage).setEndedLimit(projectEndedLimit),
+            ).build()
+        },
+        extract = { if (it.viewCase == ViewModel.ViewCase.PROJECT) it.project else null },
+    )
 
     private fun acquireSessionWatcher(sessionId: String, initialWindow: SessionWindowRequest?): KeyedWatcher<SessionViewModel, SessionWindowRequest> {
         var needsWindowRefresh = false
+        val needsSeed = synchronized(sessionWatchers) {
+            sessionWatchers[sessionId] == null && testSessionViews[sessionId] == null
+        }
+        val initialView = if (needsSeed) computeSessionView(sessionId, initialWindow) else null
         val (watcher, becameActive) = synchronized(sessionWatchers) {
             val existing = sessionWatchers[sessionId]
             if (existing != null) {
@@ -687,7 +802,7 @@ class CoreHost(
                 existing to false
             } else {
                 val created = KeyedWatcher(
-                    MutableStateFlow(testSessionViews[sessionId] ?: SessionViewModel.getDefaultInstance()),
+                    MutableStateFlow(testSessionViews[sessionId] ?: initialView ?: SessionViewModel.getDefaultInstance()),
                     initialWindow ?: DEFAULT_SESSION_WINDOW,
                     refCount = 1,
                 )

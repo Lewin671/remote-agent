@@ -357,6 +357,10 @@ class Remote(
     @Volatile var homeScopeStore: HomeScopeStore? = null
     @Volatile var uiMessageResolver: MessageResolver = { it.key }
 
+    private val _bootstrapped = MutableStateFlow(cache == null)
+    /** True once the initial encrypted cache bootstrap has been loaded and rendered into Core views. */
+    val bootstrapped: StateFlow<Boolean> = _bootstrapped.asStateFlow()
+
     val coreHost = CoreHost(
         workerDispatcher = if (dispatcher != null) this.dispatcher else null,
         clock = clock,
@@ -1173,7 +1177,11 @@ class Remote(
                     report(e)
                     b.setError(e.message ?: e.javaClass.simpleName)
                 }
-                sendEvent { setCacheBootstrapLoaded(b) }
+                try {
+                    coreHost.dispatchAndWait(CoreEvent.newBuilder().setCacheBootstrapLoaded(b).build())
+                } finally {
+                    _bootstrapped.value = true
+                }
             }
             CacheReadEffect.KindCase.EVENTS -> {
                 val req = eff.events
@@ -1805,6 +1813,7 @@ class Remote(
         sessions: Map<String, SessionViewModel> = emptyMap(),
     ) {
         check(!running) { "showForTest on a started Remote" }
+        _bootstrapped.value = true
         relayObservation = state
         testStateOverride = state
         _testStateFlow.value = state

@@ -131,7 +131,9 @@ fun RemoveProjectConfirm(key: String, onDismiss: () -> Unit, projectName: String
 fun ManageProjectsScreen() {
     val remote = LocalRemote.current
     val nav = LocalNav.current
-    val projectView by remote.projectView.collectAsState()
+    val initialView = remember(remote) { remote.coreHost.snapshotProjectView(manage = true) }
+    val rawView by remote.projectView.collectAsState()
+    val projectView = if (rawView.hasManage()) rawView else initialView
     LaunchedEffect(Unit) { remote.coreHost.openManageProjects() }
     val manage = projectView.manage
     val p = pal

@@ -213,10 +213,49 @@ fun Card(
  * online. It names the nearest stretch that is down (client-v30 「断线」): this device's network, or
  * the server, whose details open from the bar.
  */
+/** True while backgrounded or during brief reconnect/resume transitions after returning to foreground. */
+@Composable
+internal fun rememberConnSuppressed(state: RemoteState, graceMs: Long = 1500L): Boolean {
+    val owner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    val lifecycleState by owner.lifecycle.currentStateFlow.collectAsState()
+    val isStarted = lifecycleState.isAtLeast(androidx.lifecycle.Lifecycle.State.STARTED)
+    val waiting = state.link == Link.WAITING && state.synced
+    val settledOnline = state.conn == ConnState.ONLINE && state.synced
+    var wasBackgrounded by remember { mutableStateOf(false) }
+    var suppressed by remember { mutableStateOf(false) }
+    LaunchedEffect(isStarted, waiting, settledOnline) {
+        if (!isStarted) {
+            wasBackgrounded = true
+            suppressed = true
+        } else if (settledOnline) {
+            wasBackgrounded = false
+            suppressed = false
+        } else if (waiting || wasBackgrounded) {
+            suppressed = true
+            delay(graceMs)
+            wasBackgrounded = false
+            suppressed = false
+        } else {
+            suppressed = false
+        }
+    }
+    return !isStarted || suppressed
+}
+
+@Composable
+private fun rememberGraceLine(
+    state: RemoteState,
+    copy: io.github.lewin671.remoteagent.core.MessageResolver,
+): ConnLine? {
+    val suppressed = rememberConnSuppressed(state)
+    val line = connLine(state, copy = copy) ?: return null
+    return if (suppressed && state.synced) null else line
+}
+
 @Composable
 fun ConnBanner(state: RemoteState) {
     val p = pal
-    val line = connLine(state, copy = uiText()) ?: return
+    val line = rememberGraceLine(state, copy = uiText()) ?: return
     var details by remember { mutableStateOf(false) }
     val color = if (line.failed) p.red else p.ink2
     Row(
@@ -237,7 +276,7 @@ fun ConnBanner(state: RemoteState) {
 /** The same sentence in a session, as the glass strip under its segmented control (design-system §6 连接状态). */
 @Composable
 fun ConnStrip(state: RemoteState, modifier: Modifier = Modifier) {
-    val line = connLine(state, copy = uiText()) ?: return
+    val line = rememberGraceLine(state, copy = uiText()) ?: return
     var details by remember { mutableStateOf(false) }
     Strip(
         line.icon, uiText(line.text), modifier,

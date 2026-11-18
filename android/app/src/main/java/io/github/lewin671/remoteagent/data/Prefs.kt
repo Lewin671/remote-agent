@@ -37,9 +37,18 @@ class Prefs(private val context: Context) {
     private val web = stringPreferencesKey("web_origin")
     private val skipped = androidx.datastore.preferences.core.longPreferencesKey("skipped_update")
 
+    private val syncPrefs by lazy { context.getSharedPreferences("prefs_sync", Context.MODE_PRIVATE) }
+
+    /** Reads the last saved theme synchronously so the first frame uses the right palette. */
+    fun cachedTheme(): ThemeMode =
+        syncPrefs.getString("theme", null)?.let { runCatching { ThemeMode.valueOf(it) }.getOrNull() }
+            ?: ThemeMode.SYSTEM
+
     val settings: Flow<Settings> = context.store.data.map { p ->
+        val mode = p[theme]?.let { runCatching { ThemeMode.valueOf(it) }.getOrNull() } ?: ThemeMode.SYSTEM
+        syncPrefs.edit().putString("theme", mode.name).apply()
         Settings(
-            theme = p[theme]?.let { runCatching { ThemeMode.valueOf(it) }.getOrNull() } ?: ThemeMode.SYSTEM,
+            theme = mode,
             notifyAttention = p[attention] ?: true,
             notifyTurnEnded = p[turnEnded] ?: false,
             notifyScheduled = p[scheduled] ?: true,
@@ -61,6 +70,7 @@ class Prefs(private val context: Context) {
             skippedUpdate = p[skipped] ?: 0,
             )
             val n = f(cur)
+            syncPrefs.edit().putString("theme", n.theme.name).apply()
             p[theme] = n.theme.name
             p[attention] = n.notifyAttention
             p[turnEnded] = n.notifyTurnEnded
@@ -72,6 +82,7 @@ class Prefs(private val context: Context) {
     }
 
     suspend fun clear() {
+        syncPrefs.edit().clear().apply()
         context.store.edit { it.clear() }
     }
 }

@@ -150,7 +150,9 @@ fun SettingsScreen() {
     val remote = LocalRemote.current
     val nav = LocalNav.current
     val state by remote.state.collectAsState()
-    val vm by remote.settingsView.collectAsState()
+    val initialVm = remember(remote) { remote.coreHost.snapshotSettingsView() }
+    val rawVm by remote.settingsView.collectAsState()
+    val vm = if (rawVm != SettingsViewModel.getDefaultInstance()) rawVm else initialVm
     val push by Push.status.collectAsState()
     var checking by remember { mutableStateOf(false) }
     var updating by remember { mutableStateOf(false) }
@@ -564,7 +566,9 @@ fun DeviceScreen(
     val remote = LocalRemote.current
     val nav = LocalNav.current
     val state by remote.state.collectAsState()
-    val vm by remote.machineSettingsView.collectAsState()
+    val initialVm = remember(remote, id) { remote.coreHost.snapshotMachineSettingsView(id) }
+    val rawVm by remote.machineSettingsView.collectAsState()
+    val vm = if (rawVm.machineId == id) rawVm else initialVm
     val remove = rememberAction(authority = true)
     var showDirectDiag by remember { mutableStateOf(false) }
     LaunchedEffect(id) { remote.coreHost.openMachineSettings(id) }
@@ -1117,7 +1121,9 @@ private fun QuotaRowItem(r: io.github.lewin671.remoteagent.core.proto.QuotaRowVi
 @Composable
 fun QuotaScreen(id: String) {
     val remote = LocalRemote.current
-    val view by remote.quotaView.collectAsState()
+    val initialView = remember(remote, id) { remote.coreHost.snapshotQuotaView(id) }
+    val rawView by remote.quotaView.collectAsState()
+    val view = if (rawView.machineId == id) rawView else initialView
     LaunchedEffect(id) { remote.coreHost.openQuota(id) }
     QuotaScreenContent(view)
 }

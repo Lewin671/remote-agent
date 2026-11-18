@@ -49,7 +49,9 @@ fun DevicesScreen() {
     val remote = LocalRemote.current
     val nav = LocalNav.current
     val state by remote.state.collectAsState()
-    val vm by remote.devicesView.collectAsState()
+    val initialVm = remember(remote) { remote.coreHost.snapshotDevicesView() }
+    val rawVm by remote.devicesView.collectAsState()
+    val vm = if (rawVm != DevicesViewModel.getDefaultInstance()) rawVm else initialVm
     val t = now()
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -246,7 +248,9 @@ fun ClientScreen(id: String) {
     val remote = LocalRemote.current
     val nav = LocalNav.current
     val state by remote.state.collectAsState()
-    val vm by remote.clientDetailView.collectAsState()
+    val initialVm = remember(remote, id) { remote.coreHost.snapshotClientDetailView(id) }
+    val rawVm by remote.clientDetailView.collectAsState()
+    val vm = if (rawVm.deviceId == id) rawVm else initialVm
     val rename by SettingsExecutor.renameState.collectAsState()
     val remove = rememberAction(authority = true)
     LaunchedEffect(id) {

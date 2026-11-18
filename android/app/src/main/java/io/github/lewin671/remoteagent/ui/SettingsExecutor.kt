@@ -59,7 +59,8 @@ object SettingsExecutor {
         core.onPersistClientPrefs = { eff ->
             scope.launch {
                 val before = app.prefs.settings.first()
-                val nextTheme = eff.theme.toThemeMode()
+                // Core emits UNSPECIFIED before setAppearancePref arrives; never clobber the user's saved theme.
+                val nextTheme = if (eff.theme == ThemePreference.THEME_PREFERENCE_UNSPECIFIED) before.theme else eff.theme.toThemeMode()
                 val next = before.copy(
                     notifyAttention = eff.notifyAttention,
                     notifyTurnEnded = eff.notifyTurnEnded,
@@ -99,6 +100,9 @@ object SettingsExecutor {
                     .collect { (settings, push) ->
                         val prev = lastFromPrefs
                         lastFromPrefs = settings
+                        if (prev == null || prev.theme != settings.theme) {
+                            core.setAppearancePref(settings.theme.toThemePreference())
+                        }
                         val supported = Push.available(app)
                         val permission = notificationPermissionState(app, supported)
                         val pushState = pushRegistrationState(app, settings, push, supported, permission)
@@ -112,9 +116,6 @@ object SettingsExecutor {
                             showContent = settings.showContent,
                             errorDetail = push.problem,
                         )
-                        if (prev == null || prev.theme != settings.theme) {
-                            core.setAppearancePref(settings.theme.toThemePreference())
-                        }
                     }
             }
 

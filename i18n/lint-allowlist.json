@@ -3625,6 +3625,7 @@
     "reason": "Lexical JSX scanner false positive: TypeScript expression between angle brackets."
   },
   {
+<<<<<<< HEAD
     "path": "web/src/core/host.ts",
     "literal": "updateDirectPreference",
     "reason": "Internal developer log or state key; never displayed as product text."
@@ -3993,5 +3994,15 @@
     "path": "ios/RemoteAgent/UI/Settings/SettingsShared.swift",
     "literal": "浏览器",
     "reason": "Non-displayed client description keyword match used solely to pick the globe SF Symbol."
+  },
+  {
+    "path": "android/app/src/main/res/values/themes.xml",
+    "literal": "@android:color/white",
+    "reason": "Android XML style attribute value for light windowBackground splash color, not user-facing text."
+  },
+  {
+    "path": "android/app/src/main/res/values-night/themes.xml",
+    "literal": "#FF0C0C0E",
+    "reason": "Android XML style attribute value for dark windowBackground splash color, not user-facing text."
   }
 ]

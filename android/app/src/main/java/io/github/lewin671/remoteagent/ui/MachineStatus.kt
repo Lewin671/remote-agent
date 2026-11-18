@@ -795,7 +795,9 @@ fun MachineStatusScreen(id: String) {
     val remote = LocalRemote.current
     val nav = LocalNav.current
     val owner = androidx.lifecycle.compose.LocalLifecycleOwner.current
-    val view by remote.machineStatusView.collectAsState()
+    val initialView = remember(remote, id) { remote.coreHost.snapshotMachineStatusView(id) }
+    val rawView by remote.machineStatusView.collectAsState()
+    val view = if (rawView.machineId == id) rawView else initialView
     var main by remember { mutableStateOf(StatusMetric.CPU) }
 
     DisposableEffect(id, owner) {

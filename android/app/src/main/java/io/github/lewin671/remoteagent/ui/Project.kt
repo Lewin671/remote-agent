@@ -45,8 +45,10 @@ import kotlinx.coroutines.launch
 @Composable
 fun ProjectScreen(key: String, focus: Boolean) {
     val remote = LocalRemote.current
+    val initialView = remember(remote, key) { remote.coreHost.snapshotNewSessionView(key) }
     LaunchedEffect(key) { remote.coreHost.openNewSession(key) }
-    val view by remote.newSessionView.collectAsState()
+    val rawView by remote.newSessionView.collectAsState()
+    val view = if (key.isEmpty() || rawView.projectKey == key) rawView else initialView
     val state by remote.state.collectAsState()
     val home by remote.homeView.collectAsState()
     var picking by remember { mutableStateOf(false) }

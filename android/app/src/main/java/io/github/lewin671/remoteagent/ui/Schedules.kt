@@ -337,7 +337,9 @@ fun ScheduleDetailScreen(machine: String, id: String) {
     val remote = LocalRemote.current
     val nav = LocalNav.current
     val state by remote.state.collectAsState()
-    val vm by remote.scheduleDetailView.collectAsState()
+    val initialVm = remember(remote, machine, id) { remote.coreHost.snapshotScheduleDetailView(machine, id) }
+    val rawVm by remote.scheduleDetailView.collectAsState()
+    val vm = if (rawVm.machineId == machine && rawVm.taskId == id) rawVm else initialVm
     val formVm by remote.scheduleFormView.collectAsState()
 
     LifecycleStartEffect(remote, machine, id) {
@@ -403,7 +405,15 @@ internal fun ScheduleDetailScreenContent(
             return@Column
         }
         Column(Modifier.weight(1f).fillMaxWidth().readableColumn().verticalScrollFaded()) {
-            if (vm.resultCard.hasResult && vm.resultCard.resultLoading) { Skeleton(); return@Column }
+            if (vm.resultCard.hasResult && vm.resultCard.resultLoading) {
+                var showSkeleton by remember(vm.machineId, vm.taskId) { mutableStateOf(false) }
+                LaunchedEffect(vm.machineId, vm.taskId) {
+                    kotlinx.coroutines.delay(300)
+                    showSkeleton = true
+                }
+                if (showSkeleton) Skeleton()
+                return@Column
+            }
             if (vm.machineError.isCoreTextNotEmpty()) {
                 Notice(
                     uiText(vm.machineError),

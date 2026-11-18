@@ -63,8 +63,18 @@ object HomeScopes {
 fun HomeScreen() {
     val remote = LocalRemote.current
     val nav = LocalNav.current
-    val vm by remote.homeView.collectAsState()
+    val rawVm by remote.homeView.collectAsState()
     val state by remote.state.collectAsState()
+    // Hold the settled home view across backgrounding and brief resume reconnects
+    // so returning from background does not flash "连接不到服务器", "正在重连...", or "未连接".
+    val suppressConn = rememberConnSuppressed(state)
+    val isErrorHeadline = rawVm.hasHeadline() && rawVm.headline.kind == HeadlineKind.HEADLINE_KIND_ERROR
+    var settledVm by remember(rawVm.scopeKey, rawVm.filterQuery) { mutableStateOf<HomeViewModel?>(null) }
+    if (!isErrorHeadline && rawVm.hasHeadline() && rawVm.headline.kind != HeadlineKind.HEADLINE_KIND_UNSPECIFIED) {
+        settledVm = rawVm
+    }
+    val vm = if (suppressConn && isErrorHeadline && settledVm != null) settledVm!! else rawVm
+
     var filterText by remember(vm.scopeKey) { mutableStateOf(vm.filterQuery) }
     LaunchedEffect(vm.filterQuery) {
         if (vm.filterQuery.isEmpty() && filterText.isNotEmpty()) filterText = ""
@@ -151,7 +161,14 @@ fun HomeScreen() {
             }
             val emptyKind = if (vm.hasEmpty()) vm.empty.kind else HomeEmptyKind.HOME_EMPTY_KIND_UNSPECIFIED
             if (!hasHeadline && emptyKind == HomeEmptyKind.HOME_EMPTY_KIND_NONE && !hasRows) {
-                item(key = "loading") { Skeleton() }
+                item(key = "loading") {
+                    var showLoading by remember { mutableStateOf(false) }
+                    LaunchedEffect(Unit) {
+                        delay(300)
+                        showLoading = true
+                    }
+                    if (showLoading) Skeleton()
+                }
             } else if (emptyKind != HomeEmptyKind.HOME_EMPTY_KIND_UNSPECIFIED && emptyKind != HomeEmptyKind.HOME_EMPTY_KIND_NONE) {
                 item(key = "empty") { EmptyHomeView(vm.empty, onPair = nav.pair, onRetry = { remote.coreHost.retryHomeLoad() }) }
             }

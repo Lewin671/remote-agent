@@ -429,6 +429,15 @@ class CoreHostSmokeTest {
             )
             assertTrue(settled.any { it.projectKey == "/work/app" && it.consumed })
             assertTrue(navigated.any { it.route == NavigateRoute.NAVIGATE_ROUTE_SESSION && it.sessionId == "s-created" })
+
+            // Synchronous snapshot getters populate first-frame ViewModels before async open/watch events run.
+            val snapMachine = h.snapshotMachineSettingsView("m1")
+            assertTrue("snapshotMachineSettingsView should find m1", snapMachine.found)
+            assertEquals("m1", snapMachine.machineId)
+            val snapNew = h.snapshotNewSessionView("/work/app")
+            assertEquals("/work/app", snapNew.projectKey)
+            val snapSession = h.currentSessionView("s1")
+            assertTrue("currentSessionView should return populated header synchronously", snapSession?.header?.found == true)
         } finally {
             h.close()
         }
