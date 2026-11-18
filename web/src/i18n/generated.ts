@@ -331,7 +331,6 @@ export interface MessageArgs {
   "home.running_and_idle": { count: number; idle: number };
   "home.running_count": { count: number };
   "home.scheduled_frequency": { frequency: string };
-  "home.scheduled_tasks": { count: number };
   "home.schedules_tab": { [name: string]: never };
   "home.scope_label": { name: string };
   "home.sessions_or_schedules": { [name: string]: never };
@@ -785,7 +784,6 @@ export interface MessageArgs {
   "schedule.interval_minutes": { [name: string]: never };
   "schedule.ios_attention_once": { reason: string };
   "schedule.ios_choose_a_valid_iana_time_zone": { [name: string]: never };
-  "schedule.ios_confirm_the_previous_change_s_result_first": { [name: string]: never };
   "schedule.ios_enter_a_valid_interval": { [name: string]: never };
   "schedule.ios_takeover_notice": { notice: string };
   "schedule.ios_task_details": { [name: string]: never };
@@ -2054,13 +2052,6 @@ export const messages = {
       "plural": "count"
     },
     "home.scheduled_frequency": "Scheduled {frequency}",
-    "home.scheduled_tasks": {
-      "forms": {
-        "one": "{count} scheduled task",
-        "other": "{count} scheduled tasks"
-      },
-      "plural": "count"
-    },
     "home.schedules_tab": "Schedules",
     "home.scope_label": "Scope: {name}",
     "home.sessions_or_schedules": "Sessions or schedules",
@@ -2784,7 +2775,6 @@ export const messages = {
     "schedule.interval_minutes": "Interval (minutes)",
     "schedule.ios_attention_once": "{reason}. Run an extra time now, or change the time to reschedule.",
     "schedule.ios_choose_a_valid_iana_time_zone": "Choose a valid IANA time zone",
-    "schedule.ios_confirm_the_previous_change_s_result_first": "Confirm the previous change’s result first",
     "schedule.ios_enter_a_valid_interval": "Enter a valid interval",
     "schedule.ios_takeover_notice": "{notice} Continuing takes over the task and runs it with the permissions shown.",
     "schedule.ios_task_details": "Task details",
@@ -4184,12 +4174,6 @@ export const messages = {
       "plural": "count"
     },
     "home.scheduled_frequency": "定时 {frequency}",
-    "home.scheduled_tasks": {
-      "forms": {
-        "other": "定时 {count} 个任务"
-      },
-      "plural": "count"
-    },
     "home.schedules_tab": "定时",
     "home.scope_label": "范围：{name}",
     "home.sessions_or_schedules": "会话或定时",
@@ -4868,7 +4852,6 @@ export const messages = {
     "schedule.interval_minutes": "间隔（分钟）",
     "schedule.ios_attention_once": "{reason}。可立即额外执行一次，或改时间重排。",
     "schedule.ios_choose_a_valid_iana_time_zone": "请选择有效的 IANA 时区",
-    "schedule.ios_confirm_the_previous_change_s_result_first": "请先确认上一条修改的结果",
     "schedule.ios_enter_a_valid_interval": "请输入有效的间隔",
     "schedule.ios_takeover_notice": "{notice}继续会由你接管任务，按任务中显示的权限运行。",
     "schedule.ios_task_details": "任务详情",

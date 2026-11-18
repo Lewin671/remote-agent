@@ -1609,10 +1609,6 @@ public enum L10n {
         let key = "home_scheduled_frequency"
         return format(key, locale: locale, args: [frequency])
     }
-    public static func homeScheduledTasks(count: Int, locale: String = MessageLocale.current) -> String {
-        let key = "home_scheduled_tasks"
-        return format(key, locale: locale, args: [Int64(count)])
-    }
     public static func homeSchedulesTab(locale: String = MessageLocale.current) -> String {
         let key = "home_schedules_tab"
         return format(key, locale: locale, args: [])
@@ -3477,14 +3473,6 @@ public enum L10n {
         let key = "schedule_after_each_turn"
         return format(key, locale: locale, args: [Int64(count)])
     }
-    public static func scheduleAfterTurnEnds(locale: String = MessageLocale.current) -> String {
-        let key = "schedule_after_turn_ends"
-        return format(key, locale: locale, args: [])
-    }
-    public static func scheduleAfterTurnReplace(frequency: String, locale: String = MessageLocale.current) -> String {
-        let key = "schedule_after_turn_replace"
-        return format(key, locale: locale, args: [frequency])
-    }
     public static func scheduleAndroidAgentNotification(locale: String = MessageLocale.current) -> String {
         let key = "schedule_android_agent_notification"
         return format(key, locale: locale, args: [])
@@ -3549,10 +3537,6 @@ public enum L10n {
         let key = "schedule_android_large_runs_total"
         return format(key, locale: locale, args: [Int64(count), total])
     }
-    public static func scheduleAndroidNewResult(locale: String = MessageLocale.current) -> String {
-        let key = "schedule_android_new_result"
-        return format(key, locale: locale, args: [])
-    }
     public static func scheduleAndroidRunOnceNowDoesNotCountTowardAutomaticRunsOr(locale: String = MessageLocale.current) -> String {
         let key = "schedule_android_run_once_now_does_not_count_toward_automatic_runs_or"
         return format(key, locale: locale, args: [])
@@ -3577,10 +3561,6 @@ public enum L10n {
         let key = "schedule_android_update_remote_agent_on_this_computer_to_manage_scheduled_tasks"
         return format(key, locale: locale, args: [])
     }
-    public static func scheduleAttentionOnce(reason: String, locale: String = MessageLocale.current) -> String {
-        let key = "schedule_attention_once"
-        return format(key, locale: locale, args: [reason])
-    }
     public static func scheduleAttentionResume(reason: String, locale: String = MessageLocale.current) -> String {
         let key = "schedule_attention_resume"
         return format(key, locale: locale, args: [reason])
@@ -3597,20 +3577,8 @@ public enum L10n {
         let key = "schedule_choose_a_valid_date_and_time"
         return format(key, locale: locale, args: [])
     }
-    public static func scheduleChooseAskAutoOrFullAccessScheduledTasksCannot(locale: String = MessageLocale.current) -> String {
-        let key = "schedule_choose_ask_auto_or_full_access_scheduled_tasks_cannot"
-        return format(key, locale: locale, args: [])
-    }
     public static func scheduleComputerAndModel(locale: String = MessageLocale.current) -> String {
         let key = "schedule_computer_and_model"
-        return format(key, locale: locale, args: [])
-    }
-    public static func scheduleConnectToEditRunOrDelete(locale: String = MessageLocale.current) -> String {
-        let key = "schedule_connect_to_edit_run_or_delete"
-        return format(key, locale: locale, args: [])
-    }
-    public static func scheduleContinuingTakesOverTheTaskAndRunsItWith(locale: String = MessageLocale.current) -> String {
-        let key = "schedule_continuing_takes_over_the_task_and_runs_it_with"
         return format(key, locale: locale, args: [])
     }
     public static func scheduleConversation(locale: String = MessageLocale.current) -> String {
@@ -3619,10 +3587,6 @@ public enum L10n {
     }
     public static func scheduleCouldNotRun(locale: String = MessageLocale.current) -> String {
         let key = "schedule_could_not_run"
-        return format(key, locale: locale, args: [])
-    }
-    public static func scheduleCount(locale: String = MessageLocale.current) -> String {
-        let key = "schedule_count"
         return format(key, locale: locale, args: [])
     }
     public static func scheduleCreate(locale: String = MessageLocale.current) -> String {
@@ -3657,10 +3621,6 @@ public enum L10n {
         let key = "schedule_daily_at"
         return format(key, locale: locale, args: [time])
     }
-    public static func scheduleDateAndTime(locale: String = MessageLocale.current) -> String {
-        let key = "schedule_date_and_time"
-        return format(key, locale: locale, args: [])
-    }
     public static func scheduleDaylightSavingTimeSkipsThisTimeInTheSelected(locale: String = MessageLocale.current) -> String {
         let key = "schedule_daylight_saving_time_skips_this_time_in_the_selected"
         return format(key, locale: locale, args: [])
@@ -3673,10 +3633,6 @@ public enum L10n {
         let key = "schedule_delete_task"
         return format(key, locale: locale, args: [])
     }
-    public static func scheduleDeleteTaskSchedules(locale: String = MessageLocale.current) -> String {
-        let key = "schedule_delete_task_schedules"
-        return format(key, locale: locale, args: [])
-    }
     public static func scheduleDeleted(locale: String = MessageLocale.current) -> String {
         let key = "schedule_deleted"
         return format(key, locale: locale, args: [])
@@ -3685,16 +3641,8 @@ public enum L10n {
         let key = "schedule_delivery_before_the_computer_restarted_could_not_be_confirmed"
         return format(key, locale: locale, args: [])
     }
-    public static func scheduleDescribeTheScheduledWorkAndAskTheAgentTo(locale: String = MessageLocale.current) -> String {
-        let key = "schedule_describe_the_scheduled_work_and_ask_the_agent_to"
-        return format(key, locale: locale, args: [])
-    }
     public static func scheduleDiscardChanges(locale: String = MessageLocale.current) -> String {
         let key = "schedule_discard_changes"
-        return format(key, locale: locale, args: [])
-    }
-    public static func scheduleDiscardChangesScheduleText(locale: String = MessageLocale.current) -> String {
-        let key = "schedule_discard_changes_schedule_text"
         return format(key, locale: locale, args: [])
     }
     public static func scheduleEachRunOpensANewConversationGroupedUnderThis(locale: String = MessageLocale.current) -> String {
@@ -3711,10 +3659,6 @@ public enum L10n {
     }
     public static func scheduleEndDate(locale: String = MessageLocale.current) -> String {
         let key = "schedule_end_date"
-        return format(key, locale: locale, args: [])
-    }
-    public static func scheduleEndTime(locale: String = MessageLocale.current) -> String {
-        let key = "schedule_end_time"
         return format(key, locale: locale, args: [])
     }
     public static func scheduleEnded(locale: String = MessageLocale.current) -> String {
@@ -3805,61 +3749,13 @@ public enum L10n {
         let key = "schedule_in_conversation"
         return format(key, locale: locale, args: [])
     }
-    public static func scheduleIntervalMinutes(locale: String = MessageLocale.current) -> String {
-        let key = "schedule_interval_minutes"
-        return format(key, locale: locale, args: [])
-    }
-    public static func scheduleIosAbandonOriginalRequest(locale: String = MessageLocale.current) -> String {
-        let key = "schedule_ios_abandon_original_request"
-        return format(key, locale: locale, args: [])
-    }
-    public static func scheduleIosAgentNotification(locale: String = MessageLocale.current) -> String {
-        let key = "schedule_ios_agent_notification"
-        return format(key, locale: locale, args: [])
-    }
-    public static func scheduleIosAgentNotificationCompletionNotification(locale: String = MessageLocale.current) -> String {
-        let key = "schedule_ios_agent_notification_completion_notification"
-        return format(key, locale: locale, args: [])
-    }
     public static func scheduleIosAttentionOnce(reason: String, locale: String = MessageLocale.current) -> String {
         let key = "schedule_ios_attention_once"
         return format(key, locale: locale, args: [reason])
     }
-    public static func scheduleIosBeijing(locale: String = MessageLocale.current) -> String {
-        let key = "schedule_ios_beijing"
-        return format(key, locale: locale, args: [])
-    }
-    public static func scheduleIosBerlin(locale: String = MessageLocale.current) -> String {
-        let key = "schedule_ios_berlin"
-        return format(key, locale: locale, args: [])
-    }
-    public static func scheduleIosCannotRequestNotification(locale: String = MessageLocale.current) -> String {
-        let key = "schedule_ios_cannot_request_notification"
-        return format(key, locale: locale, args: [])
-    }
-    public static func scheduleIosChooseAProject(locale: String = MessageLocale.current) -> String {
-        let key = "schedule_ios_choose_a_project"
-        return format(key, locale: locale, args: [])
-    }
-    public static func scheduleIosChooseAProjectFirst(locale: String = MessageLocale.current) -> String {
-        let key = "schedule_ios_choose_a_project_first"
-        return format(key, locale: locale, args: [])
-    }
     public static func scheduleIosChooseAValidIanaTimeZone(locale: String = MessageLocale.current) -> String {
         let key = "schedule_ios_choose_a_valid_iana_time_zone"
         return format(key, locale: locale, args: [])
-    }
-    public static func scheduleIosChooseOnceDailyWeeklyOrEvery(locale: String = MessageLocale.current) -> String {
-        let key = "schedule_ios_choose_once_daily_weekly_or_every"
-        return format(key, locale: locale, args: [])
-    }
-    public static func scheduleIosConfirmThePreviousChangeSResultFirst(locale: String = MessageLocale.current) -> String {
-        let key = "schedule_ios_confirm_the_previous_change_s_result_first"
-        return format(key, locale: locale, args: [])
-    }
-    public static func scheduleIosConnectToEditRunOrDelete(value: String, locale: String = MessageLocale.current) -> String {
-        let key = "schedule_ios_connect_to_edit_run_or_delete"
-        return format(key, locale: locale, args: [value])
     }
     public static func scheduleIosDays(locale: String = MessageLocale.current) -> String {
         let key = "schedule_ios_days"
@@ -3869,48 +3765,16 @@ public enum L10n {
         let key = "schedule_ios_delete_this_task"
         return format(key, locale: locale, args: [])
     }
-    public static func scheduleIosEachRunOpensANewConversationGroupedUnderThis(locale: String = MessageLocale.current) -> String {
-        let key = "schedule_ios_each_run_opens_a_new_conversation_grouped_under_this"
-        return format(key, locale: locale, args: [])
-    }
-    public static func scheduleIosEndTimeMustBeInTheFuture(locale: String = MessageLocale.current) -> String {
-        let key = "schedule_ios_end_time_must_be_in_the_future"
-        return format(key, locale: locale, args: [])
-    }
     public static func scheduleIosEnterAValidInterval(locale: String = MessageLocale.current) -> String {
         let key = "schedule_ios_enter_a_valid_interval"
-        return format(key, locale: locale, args: [])
-    }
-    public static func scheduleIosFriday(locale: String = MessageLocale.current) -> String {
-        let key = "schedule_ios_friday"
-        return format(key, locale: locale, args: [])
-    }
-    public static func scheduleIosHongKong(locale: String = MessageLocale.current) -> String {
-        let key = "schedule_ios_hong_kong"
         return format(key, locale: locale, args: [])
     }
     public static func scheduleIosHours(locale: String = MessageLocale.current) -> String {
         let key = "schedule_ios_hours"
         return format(key, locale: locale, args: [])
     }
-    public static func scheduleIosInterval(locale: String = MessageLocale.current) -> String {
-        let key = "schedule_ios_interval"
-        return format(key, locale: locale, args: [])
-    }
-    public static func scheduleIosLoadingModels(locale: String = MessageLocale.current) -> String {
-        let key = "schedule_ios_loading_models"
-        return format(key, locale: locale, args: [])
-    }
     public static func scheduleIosLoadingTasks(locale: String = MessageLocale.current) -> String {
         let key = "schedule_ios_loading_tasks"
-        return format(key, locale: locale, args: [])
-    }
-    public static func scheduleIosLondon(locale: String = MessageLocale.current) -> String {
-        let key = "schedule_ios_london"
-        return format(key, locale: locale, args: [])
-    }
-    public static func scheduleIosLosAngeles(locale: String = MessageLocale.current) -> String {
-        let key = "schedule_ios_los_angeles"
         return format(key, locale: locale, args: [])
     }
     public static func scheduleIosManageScheduledTask(locale: String = MessageLocale.current) -> String {
@@ -3921,36 +3785,8 @@ public enum L10n {
         let key = "schedule_ios_minutes"
         return format(key, locale: locale, args: [])
     }
-    public static func scheduleIosMmmD(locale: String = MessageLocale.current) -> String {
-        let key = "schedule_ios_mmm_d"
-        return format(key, locale: locale, args: [])
-    }
-    public static func scheduleIosMmmDYyyy(locale: String = MessageLocale.current) -> String {
-        let key = "schedule_ios_mmm_d_yyyy"
-        return format(key, locale: locale, args: [])
-    }
-    public static func scheduleIosMonday(locale: String = MessageLocale.current) -> String {
-        let key = "schedule_ios_monday"
-        return format(key, locale: locale, args: [])
-    }
     public static func scheduleIosNeedsAttention(locale: String = MessageLocale.current) -> String {
         let key = "schedule_ios_needs_attention"
-        return format(key, locale: locale, args: [])
-    }
-    public static func scheduleIosNeedsYourAttention(locale: String = MessageLocale.current) -> String {
-        let key = "schedule_ios_needs_your_attention"
-        return format(key, locale: locale, args: [])
-    }
-    public static func scheduleIosNewYork(locale: String = MessageLocale.current) -> String {
-        let key = "schedule_ios_new_york"
-        return format(key, locale: locale, args: [])
-    }
-    public static func scheduleIosNext(value: String, locale: String = MessageLocale.current) -> String {
-        let key = "schedule_ios_next"
-        return format(key, locale: locale, args: [value])
-    }
-    public static func scheduleIosOpenTheTaskEditorFirst(locale: String = MessageLocale.current) -> String {
-        let key = "schedule_ios_open_the_task_editor_first"
         return format(key, locale: locale, args: [])
     }
     public static func scheduleIosRead(locale: String = MessageLocale.current) -> String {
@@ -3961,44 +3797,12 @@ public enum L10n {
         let key = "schedule_ios_read_full_text"
         return format(key, locale: locale, args: [])
     }
-    public static func scheduleIosRecent(locale: String = MessageLocale.current) -> String {
-        let key = "schedule_ios_recent"
-        return format(key, locale: locale, args: [])
-    }
-    public static func scheduleIosRunCountMustBeGreaterThan0(locale: String = MessageLocale.current) -> String {
-        let key = "schedule_ios_run_count_must_be_greater_than_0"
-        return format(key, locale: locale, args: [])
-    }
-    public static func scheduleIosRunOnceNowDoesNotCountTowardAutomaticRuns(locale: String = MessageLocale.current) -> String {
-        let key = "schedule_ios_run_once_now_does_not_count_toward_automatic_runs"
-        return format(key, locale: locale, args: [])
-    }
-    public static func scheduleIosSaturday(locale: String = MessageLocale.current) -> String {
-        let key = "schedule_ios_saturday"
-        return format(key, locale: locale, args: [])
-    }
-    public static func scheduleIosSearchIanaTimeZones(locale: String = MessageLocale.current) -> String {
-        let key = "schedule_ios_search_iana_time_zones"
-        return format(key, locale: locale, args: [])
-    }
     public static func scheduleIosSeconds(locale: String = MessageLocale.current) -> String {
         let key = "schedule_ios_seconds"
         return format(key, locale: locale, args: [])
     }
-    public static func scheduleIosSingapore(locale: String = MessageLocale.current) -> String {
-        let key = "schedule_ios_singapore"
-        return format(key, locale: locale, args: [])
-    }
     public static func scheduleIosStopsFutureAutomaticRunsMessagesAlreadySentAndConversations(locale: String = MessageLocale.current) -> String {
         let key = "schedule_ios_stops_future_automatic_runs_messages_already_sent_and_conversations"
-        return format(key, locale: locale, args: [])
-    }
-    public static func scheduleIosSunday(locale: String = MessageLocale.current) -> String {
-        let key = "schedule_ios_sunday"
-        return format(key, locale: locale, args: [])
-    }
-    public static func scheduleIosSydney(locale: String = MessageLocale.current) -> String {
-        let key = "schedule_ios_sydney"
         return format(key, locale: locale, args: [])
     }
     public static func scheduleIosTakeAction(locale: String = MessageLocale.current) -> String {
@@ -4017,64 +3821,12 @@ public enum L10n {
         let key = "schedule_ios_task_not_found"
         return format(key, locale: locale, args: [])
     }
-    public static func scheduleIosTheComputerDidNotReturnATaskList(locale: String = MessageLocale.current) -> String {
-        let key = "schedule_ios_the_computer_did_not_return_a_task_list"
-        return format(key, locale: locale, args: [])
-    }
-    public static func scheduleIosTheComputerIsOfflineConnectToMakeChanges(locale: String = MessageLocale.current) -> String {
-        let key = "schedule_ios_the_computer_is_offline_connect_to_make_changes"
-        return format(key, locale: locale, args: [])
-    }
-    public static func scheduleIosTheComputerMayHaveAlreadyExecutedItCheckThe(locale: String = MessageLocale.current) -> String {
-        let key = "schedule_ios_the_computer_may_have_already_executed_it_check_the"
-        return format(key, locale: locale, args: [])
-    }
-    public static func scheduleIosTheTaskIsStoredOnThisComputerChangesOnly(locale: String = MessageLocale.current) -> String {
-        let key = "schedule_ios_the_task_is_stored_on_this_computer_changes_only"
-        return format(key, locale: locale, args: [])
-    }
-    public static func scheduleIosThursday(locale: String = MessageLocale.current) -> String {
-        let key = "schedule_ios_thursday"
-        return format(key, locale: locale, args: [])
-    }
-    public static func scheduleIosTime(detail: String, value: String, locale: String = MessageLocale.current) -> String {
-        let key = "schedule_ios_time"
-        return format(key, locale: locale, args: [detail, value])
-    }
-    public static func scheduleIosTokyo(locale: String = MessageLocale.current) -> String {
-        let key = "schedule_ios_tokyo"
-        return format(key, locale: locale, args: [])
-    }
-    public static func scheduleIosTuesday(locale: String = MessageLocale.current) -> String {
-        let key = "schedule_ios_tuesday"
-        return format(key, locale: locale, args: [])
-    }
-    public static func scheduleIosUnit(locale: String = MessageLocale.current) -> String {
-        let key = "schedule_ios_unit"
-        return format(key, locale: locale, args: [])
-    }
     public static func scheduleIosUnread(locale: String = MessageLocale.current) -> String {
         let key = "schedule_ios_unread"
         return format(key, locale: locale, args: [])
     }
     public static func scheduleIosUnsavedChangesWillBeLost(locale: String = MessageLocale.current) -> String {
         let key = "schedule_ios_unsaved_changes_will_be_lost"
-        return format(key, locale: locale, args: [])
-    }
-    public static func scheduleIosUpdateRemoteAgentOnThisComputerToUseScheduled(locale: String = MessageLocale.current) -> String {
-        let key = "schedule_ios_update_remote_agent_on_this_computer_to_use_scheduled"
-        return format(key, locale: locale, args: [])
-    }
-    public static func scheduleIosUpdateRemoteAgentToUseScheduledTasks(locale: String = MessageLocale.current) -> String {
-        let key = "schedule_ios_update_remote_agent_to_use_scheduled_tasks"
-        return format(key, locale: locale, args: [])
-    }
-    public static func scheduleIosWednesday(locale: String = MessageLocale.current) -> String {
-        let key = "schedule_ios_wednesday"
-        return format(key, locale: locale, args: [])
-    }
-    public static func scheduleIosWhatToCheckNotifyMeWhenThereAreResults(locale: String = MessageLocale.current) -> String {
-        let key = "schedule_ios_what_to_check_notify_me_when_there_are_results"
         return format(key, locale: locale, args: [])
     }
     public static func scheduleLastResult(result: String, time: String, locale: String = MessageLocale.current) -> String {
@@ -4145,10 +3897,6 @@ public enum L10n {
         let key = "schedule_missing_target_run"
         return format(key, locale: locale, args: [reason, time])
     }
-    public static func scheduleModelAndPermissions(locale: String = MessageLocale.current) -> String {
-        let key = "schedule_model_and_permissions"
-        return format(key, locale: locale, args: [])
-    }
     public static func scheduleMon(locale: String = MessageLocale.current) -> String {
         let key = "schedule_mon"
         return format(key, locale: locale, args: [])
@@ -4156,10 +3904,6 @@ public enum L10n {
     public static func scheduleMoreNewResults(count: Int, locale: String = MessageLocale.current) -> String {
         let key = "schedule_more_new_results"
         return format(key, locale: locale, args: [Int64(count)])
-    }
-    public static func scheduleNeedsYourAttention(locale: String = MessageLocale.current) -> String {
-        let key = "schedule_needs_your_attention"
-        return format(key, locale: locale, args: [])
     }
     public static func scheduleNever(locale: String = MessageLocale.current) -> String {
         let key = "schedule_never"
@@ -4187,10 +3931,6 @@ public enum L10n {
     }
     public static func scheduleNoApprovalIsRequiredForAnyOperationWheneverThis(locale: String = MessageLocale.current) -> String {
         let key = "schedule_no_approval_is_required_for_any_operation_whenever_this"
-        return format(key, locale: locale, args: [])
-    }
-    public static func scheduleNoApprovalWillBeRequiredForFutureRunsExisting(locale: String = MessageLocale.current) -> String {
-        let key = "schedule_no_approval_will_be_required_for_future_runs_existing"
         return format(key, locale: locale, args: [])
     }
     public static func scheduleNoNewResults(locale: String = MessageLocale.current) -> String {
@@ -4225,10 +3965,6 @@ public enum L10n {
         let key = "schedule_notify_on_completion"
         return format(key, locale: locale, args: [])
     }
-    public static func scheduleNotifyOnCompletionByDefaultWhenOffOnlyThe(locale: String = MessageLocale.current) -> String {
-        let key = "schedule_notify_on_completion_by_default_when_off_only_the"
-        return format(key, locale: locale, args: [])
-    }
     public static func scheduleOfflineMachinesNotice(machines: String, locale: String = MessageLocale.current) -> String {
         let key = "schedule_offline_machines_notice"
         return format(key, locale: locale, args: [machines])
@@ -4239,10 +3975,6 @@ public enum L10n {
     }
     public static func scheduleOnceSchedules(locale: String = MessageLocale.current) -> String {
         let key = "schedule_once_schedules"
-        return format(key, locale: locale, args: [])
-    }
-    public static func scheduleOnlyChangesThisTaskItStillRunsOnThe(locale: String = MessageLocale.current) -> String {
-        let key = "schedule_only_changes_this_task_it_still_runs_on_the"
         return format(key, locale: locale, args: [])
     }
     public static func scheduleOtherTasks(locale: String = MessageLocale.current) -> String {
@@ -4272,10 +4004,6 @@ public enum L10n {
     public static func scheduleQuietRuns(count: Int, day: String, locale: String = MessageLocale.current) -> String {
         let key = "schedule_quiet_runs"
         return format(key, locale: locale, args: [Int64(count), day])
-    }
-    public static func scheduleReadFullText(locale: String = MessageLocale.current) -> String {
-        let key = "schedule_read_full_text"
-        return format(key, locale: locale, args: [])
     }
     public static func scheduleReadOnlyActiveRun(locale: String = MessageLocale.current) -> String {
         let key = "schedule_read_only_active_run"
@@ -4337,10 +4065,6 @@ public enum L10n {
         let key = "schedule_running"
         return format(key, locale: locale, args: [])
     }
-    public static func scheduleRunningSchedules(locale: String = MessageLocale.current) -> String {
-        let key = "schedule_running_schedules"
-        return format(key, locale: locale, args: [])
-    }
     public static func scheduleRunningSince(time: String, locale: String = MessageLocale.current) -> String {
         let key = "schedule_running_since"
         return format(key, locale: locale, args: [time])
@@ -4363,10 +4087,6 @@ public enum L10n {
     }
     public static func scheduleSavingBlankUsesTheMessageSFirstSentence(locale: String = MessageLocale.current) -> String {
         let key = "schedule_saving_blank_uses_the_message_s_first_sentence"
-        return format(key, locale: locale, args: [])
-    }
-    public static func scheduleScheduleMessagesToThisConversation(locale: String = MessageLocale.current) -> String {
-        let key = "schedule_schedule_messages_to_this_conversation"
         return format(key, locale: locale, args: [])
     }
     public static func scheduleSelectAFutureTime(locale: String = MessageLocale.current) -> String {
@@ -4421,10 +4141,6 @@ public enum L10n {
         let key = "schedule_stopped_count"
         return format(key, locale: locale, args: [Int64(count), total])
     }
-    public static func scheduleStopsAutomaticRunsExistingConversationsRemain(locale: String = MessageLocale.current) -> String {
-        let key = "schedule_stops_automatic_runs_existing_conversations_remain"
-        return format(key, locale: locale, args: [])
-    }
     public static func scheduleStripCount(count: Int, state: String, locale: String = MessageLocale.current) -> String {
         let key = "schedule_strip_count"
         return format(key, locale: locale, args: [Int64(count), state])
@@ -4435,10 +4151,6 @@ public enum L10n {
     }
     public static func scheduleSun(locale: String = MessageLocale.current) -> String {
         let key = "schedule_sun"
-        return format(key, locale: locale, args: [])
-    }
-    public static func scheduleTakeAction(locale: String = MessageLocale.current) -> String {
-        let key = "schedule_take_action"
         return format(key, locale: locale, args: [])
     }
     public static func scheduleTakeoverViaClient(locale: String = MessageLocale.current) -> String {
@@ -4459,10 +4171,6 @@ public enum L10n {
     }
     public static func scheduleTaskName(locale: String = MessageLocale.current) -> String {
         let key = "schedule_task_name"
-        return format(key, locale: locale, args: [])
-    }
-    public static func scheduleTasksDoNotRunWhileTheComputerSleepsOr(locale: String = MessageLocale.current) -> String {
-        let key = "schedule_tasks_do_not_run_while_the_computer_sleeps_or"
         return format(key, locale: locale, args: [])
     }
     public static func scheduleTellTheAgentInAConversationCheckForMe(locale: String = MessageLocale.current) -> String {
@@ -4537,14 +4245,6 @@ public enum L10n {
         let key = "schedule_the_scheduled_message_was_canceled_before_delivery_the_task"
         return format(key, locale: locale, args: [])
     }
-    public static func scheduleTheseChangesWillNotBeSaved(locale: String = MessageLocale.current) -> String {
-        let key = "schedule_these_changes_will_not_be_saved"
-        return format(key, locale: locale, args: [])
-    }
-    public static func scheduleThisConversationSScheduledTasks(locale: String = MessageLocale.current) -> String {
-        let key = "schedule_this_conversation_s_scheduled_tasks"
-        return format(key, locale: locale, args: [])
-    }
     public static func scheduleThisTaskCouldNotBeFoundIfTheComputer(locale: String = MessageLocale.current) -> String {
         let key = "schedule_this_task_could_not_be_found_if_the_computer"
         return format(key, locale: locale, args: [])
@@ -4591,14 +4291,6 @@ public enum L10n {
     }
     public static func scheduleUpdateRemoteAgentOnThisComputerToUseScheduled(locale: String = MessageLocale.current) -> String {
         let key = "schedule_update_remote_agent_on_this_computer_to_use_scheduled"
-        return format(key, locale: locale, args: [])
-    }
-    public static func scheduleVerifiedAbandonRequest(locale: String = MessageLocale.current) -> String {
-        let key = "schedule_verified_abandon_request"
-        return format(key, locale: locale, args: [])
-    }
-    public static func scheduleVerifyCurrentPermissionsInTheConversation(locale: String = MessageLocale.current) -> String {
-        let key = "schedule_verify_current_permissions_in_the_conversation"
         return format(key, locale: locale, args: [])
     }
     public static func scheduleViewAllRuns(count: Int, locale: String = MessageLocale.current) -> String {
@@ -9541,10 +9233,6 @@ public enum L10nMessage {
         let key = "home_scheduled_frequency"
         return LocalizedMessage(key: key, arguments: [.string(frequency)])
     }
-    public static func homeScheduledTasks(count: Int) -> LocalizedMessage {
-        let key = "home_scheduled_tasks"
-        return LocalizedMessage(key: key, arguments: [.integer(Int64(count))])
-    }
     public static func homeSchedulesTab() -> LocalizedMessage {
         let key = "home_schedules_tab"
         return LocalizedMessage(key: key, arguments: [])
@@ -11409,14 +11097,6 @@ public enum L10nMessage {
         let key = "schedule_after_each_turn"
         return LocalizedMessage(key: key, arguments: [.integer(Int64(count))])
     }
-    public static func scheduleAfterTurnEnds() -> LocalizedMessage {
-        let key = "schedule_after_turn_ends"
-        return LocalizedMessage(key: key, arguments: [])
-    }
-    public static func scheduleAfterTurnReplace(frequency: String) -> LocalizedMessage {
-        let key = "schedule_after_turn_replace"
-        return LocalizedMessage(key: key, arguments: [.string(frequency)])
-    }
     public static func scheduleAndroidAgentNotification() -> LocalizedMessage {
         let key = "schedule_android_agent_notification"
         return LocalizedMessage(key: key, arguments: [])
@@ -11481,10 +11161,6 @@ public enum L10nMessage {
         let key = "schedule_android_large_runs_total"
         return LocalizedMessage(key: key, arguments: [.integer(Int64(count)), .string(total)])
     }
-    public static func scheduleAndroidNewResult() -> LocalizedMessage {
-        let key = "schedule_android_new_result"
-        return LocalizedMessage(key: key, arguments: [])
-    }
     public static func scheduleAndroidRunOnceNowDoesNotCountTowardAutomaticRunsOr() -> LocalizedMessage {
         let key = "schedule_android_run_once_now_does_not_count_toward_automatic_runs_or"
         return LocalizedMessage(key: key, arguments: [])
@@ -11509,10 +11185,6 @@ public enum L10nMessage {
         let key = "schedule_android_update_remote_agent_on_this_computer_to_manage_scheduled_tasks"
         return LocalizedMessage(key: key, arguments: [])
     }
-    public static func scheduleAttentionOnce(reason: String) -> LocalizedMessage {
-        let key = "schedule_attention_once"
-        return LocalizedMessage(key: key, arguments: [.string(reason)])
-    }
     public static func scheduleAttentionResume(reason: String) -> LocalizedMessage {
         let key = "schedule_attention_resume"
         return LocalizedMessage(key: key, arguments: [.string(reason)])
@@ -11529,20 +11201,8 @@ public enum L10nMessage {
         let key = "schedule_choose_a_valid_date_and_time"
         return LocalizedMessage(key: key, arguments: [])
     }
-    public static func scheduleChooseAskAutoOrFullAccessScheduledTasksCannot() -> LocalizedMessage {
-        let key = "schedule_choose_ask_auto_or_full_access_scheduled_tasks_cannot"
-        return LocalizedMessage(key: key, arguments: [])
-    }
     public static func scheduleComputerAndModel() -> LocalizedMessage {
         let key = "schedule_computer_and_model"
-        return LocalizedMessage(key: key, arguments: [])
-    }
-    public static func scheduleConnectToEditRunOrDelete() -> LocalizedMessage {
-        let key = "schedule_connect_to_edit_run_or_delete"
-        return LocalizedMessage(key: key, arguments: [])
-    }
-    public static func scheduleContinuingTakesOverTheTaskAndRunsItWith() -> LocalizedMessage {
-        let key = "schedule_continuing_takes_over_the_task_and_runs_it_with"
         return LocalizedMessage(key: key, arguments: [])
     }
     public static func scheduleConversation() -> LocalizedMessage {
@@ -11551,10 +11211,6 @@ public enum L10nMessage {
     }
     public static func scheduleCouldNotRun() -> LocalizedMessage {
         let key = "schedule_could_not_run"
-        return LocalizedMessage(key: key, arguments: [])
-    }
-    public static func scheduleCount() -> LocalizedMessage {
-        let key = "schedule_count"
         return LocalizedMessage(key: key, arguments: [])
     }
     public static func scheduleCreate() -> LocalizedMessage {
@@ -11589,10 +11245,6 @@ public enum L10nMessage {
         let key = "schedule_daily_at"
         return LocalizedMessage(key: key, arguments: [.string(time)])
     }
-    public static func scheduleDateAndTime() -> LocalizedMessage {
-        let key = "schedule_date_and_time"
-        return LocalizedMessage(key: key, arguments: [])
-    }
     public static func scheduleDaylightSavingTimeSkipsThisTimeInTheSelected() -> LocalizedMessage {
         let key = "schedule_daylight_saving_time_skips_this_time_in_the_selected"
         return LocalizedMessage(key: key, arguments: [])
@@ -11605,10 +11257,6 @@ public enum L10nMessage {
         let key = "schedule_delete_task"
         return LocalizedMessage(key: key, arguments: [])
     }
-    public static func scheduleDeleteTaskSchedules() -> LocalizedMessage {
-        let key = "schedule_delete_task_schedules"
-        return LocalizedMessage(key: key, arguments: [])
-    }
     public static func scheduleDeleted() -> LocalizedMessage {
         let key = "schedule_deleted"
         return LocalizedMessage(key: key, arguments: [])
@@ -11617,16 +11265,8 @@ public enum L10nMessage {
         let key = "schedule_delivery_before_the_computer_restarted_could_not_be_confirmed"
         return LocalizedMessage(key: key, arguments: [])
     }
-    public static func scheduleDescribeTheScheduledWorkAndAskTheAgentTo() -> LocalizedMessage {
-        let key = "schedule_describe_the_scheduled_work_and_ask_the_agent_to"
-        return LocalizedMessage(key: key, arguments: [])
-    }
     public static func scheduleDiscardChanges() -> LocalizedMessage {
         let key = "schedule_discard_changes"
-        return LocalizedMessage(key: key, arguments: [])
-    }
-    public static func scheduleDiscardChangesScheduleText() -> LocalizedMessage {
-        let key = "schedule_discard_changes_schedule_text"
         return LocalizedMessage(key: key, arguments: [])
     }
     public static func scheduleEachRunOpensANewConversationGroupedUnderThis() -> LocalizedMessage {
@@ -11643,10 +11283,6 @@ public enum L10nMessage {
     }
     public static func scheduleEndDate() -> LocalizedMessage {
         let key = "schedule_end_date"
-        return LocalizedMessage(key: key, arguments: [])
-    }
-    public static func scheduleEndTime() -> LocalizedMessage {
-        let key = "schedule_end_time"
         return LocalizedMessage(key: key, arguments: [])
     }
     public static func scheduleEnded() -> LocalizedMessage {
@@ -11737,61 +11373,13 @@ public enum L10nMessage {
         let key = "schedule_in_conversation"
         return LocalizedMessage(key: key, arguments: [])
     }
-    public static func scheduleIntervalMinutes() -> LocalizedMessage {
-        let key = "schedule_interval_minutes"
-        return LocalizedMessage(key: key, arguments: [])
-    }
-    public static func scheduleIosAbandonOriginalRequest() -> LocalizedMessage {
-        let key = "schedule_ios_abandon_original_request"
-        return LocalizedMessage(key: key, arguments: [])
-    }
-    public static func scheduleIosAgentNotification() -> LocalizedMessage {
-        let key = "schedule_ios_agent_notification"
-        return LocalizedMessage(key: key, arguments: [])
-    }
-    public static func scheduleIosAgentNotificationCompletionNotification() -> LocalizedMessage {
-        let key = "schedule_ios_agent_notification_completion_notification"
-        return LocalizedMessage(key: key, arguments: [])
-    }
     public static func scheduleIosAttentionOnce(reason: String) -> LocalizedMessage {
         let key = "schedule_ios_attention_once"
         return LocalizedMessage(key: key, arguments: [.string(reason)])
     }
-    public static func scheduleIosBeijing() -> LocalizedMessage {
-        let key = "schedule_ios_beijing"
-        return LocalizedMessage(key: key, arguments: [])
-    }
-    public static func scheduleIosBerlin() -> LocalizedMessage {
-        let key = "schedule_ios_berlin"
-        return LocalizedMessage(key: key, arguments: [])
-    }
-    public static func scheduleIosCannotRequestNotification() -> LocalizedMessage {
-        let key = "schedule_ios_cannot_request_notification"
-        return LocalizedMessage(key: key, arguments: [])
-    }
-    public static func scheduleIosChooseAProject() -> LocalizedMessage {
-        let key = "schedule_ios_choose_a_project"
-        return LocalizedMessage(key: key, arguments: [])
-    }
-    public static func scheduleIosChooseAProjectFirst() -> LocalizedMessage {
-        let key = "schedule_ios_choose_a_project_first"
-        return LocalizedMessage(key: key, arguments: [])
-    }
     public static func scheduleIosChooseAValidIanaTimeZone() -> LocalizedMessage {
         let key = "schedule_ios_choose_a_valid_iana_time_zone"
         return LocalizedMessage(key: key, arguments: [])
-    }
-    public static func scheduleIosChooseOnceDailyWeeklyOrEvery() -> LocalizedMessage {
-        let key = "schedule_ios_choose_once_daily_weekly_or_every"
-        return LocalizedMessage(key: key, arguments: [])
-    }
-    public static func scheduleIosConfirmThePreviousChangeSResultFirst() -> LocalizedMessage {
-        let key = "schedule_ios_confirm_the_previous_change_s_result_first"
-        return LocalizedMessage(key: key, arguments: [])
-    }
-    public static func scheduleIosConnectToEditRunOrDelete(value: String) -> LocalizedMessage {
-        let key = "schedule_ios_connect_to_edit_run_or_delete"
-        return LocalizedMessage(key: key, arguments: [.string(value)])
     }
     public static func scheduleIosDays() -> LocalizedMessage {
         let key = "schedule_ios_days"
@@ -11801,48 +11389,16 @@ public enum L10nMessage {
         let key = "schedule_ios_delete_this_task"
         return LocalizedMessage(key: key, arguments: [])
     }
-    public static func scheduleIosEachRunOpensANewConversationGroupedUnderThis() -> LocalizedMessage {
-        let key = "schedule_ios_each_run_opens_a_new_conversation_grouped_under_this"
-        return LocalizedMessage(key: key, arguments: [])
-    }
-    public static func scheduleIosEndTimeMustBeInTheFuture() -> LocalizedMessage {
-        let key = "schedule_ios_end_time_must_be_in_the_future"
-        return LocalizedMessage(key: key, arguments: [])
-    }
     public static func scheduleIosEnterAValidInterval() -> LocalizedMessage {
         let key = "schedule_ios_enter_a_valid_interval"
-        return LocalizedMessage(key: key, arguments: [])
-    }
-    public static func scheduleIosFriday() -> LocalizedMessage {
-        let key = "schedule_ios_friday"
-        return LocalizedMessage(key: key, arguments: [])
-    }
-    public static func scheduleIosHongKong() -> LocalizedMessage {
-        let key = "schedule_ios_hong_kong"
         return LocalizedMessage(key: key, arguments: [])
     }
     public static func scheduleIosHours() -> LocalizedMessage {
         let key = "schedule_ios_hours"
         return LocalizedMessage(key: key, arguments: [])
     }
-    public static func scheduleIosInterval() -> LocalizedMessage {
-        let key = "schedule_ios_interval"
-        return LocalizedMessage(key: key, arguments: [])
-    }
-    public static func scheduleIosLoadingModels() -> LocalizedMessage {
-        let key = "schedule_ios_loading_models"
-        return LocalizedMessage(key: key, arguments: [])
-    }
     public static func scheduleIosLoadingTasks() -> LocalizedMessage {
         let key = "schedule_ios_loading_tasks"
-        return LocalizedMessage(key: key, arguments: [])
-    }
-    public static func scheduleIosLondon() -> LocalizedMessage {
-        let key = "schedule_ios_london"
-        return LocalizedMessage(key: key, arguments: [])
-    }
-    public static func scheduleIosLosAngeles() -> LocalizedMessage {
-        let key = "schedule_ios_los_angeles"
         return LocalizedMessage(key: key, arguments: [])
     }
     public static func scheduleIosManageScheduledTask() -> LocalizedMessage {
@@ -11853,36 +11409,8 @@ public enum L10nMessage {
         let key = "schedule_ios_minutes"
         return LocalizedMessage(key: key, arguments: [])
     }
-    public static func scheduleIosMmmD() -> LocalizedMessage {
-        let key = "schedule_ios_mmm_d"
-        return LocalizedMessage(key: key, arguments: [])
-    }
-    public static func scheduleIosMmmDYyyy() -> LocalizedMessage {
-        let key = "schedule_ios_mmm_d_yyyy"
-        return LocalizedMessage(key: key, arguments: [])
-    }
-    public static func scheduleIosMonday() -> LocalizedMessage {
-        let key = "schedule_ios_monday"
-        return LocalizedMessage(key: key, arguments: [])
-    }
     public static func scheduleIosNeedsAttention() -> LocalizedMessage {
         let key = "schedule_ios_needs_attention"
-        return LocalizedMessage(key: key, arguments: [])
-    }
-    public static func scheduleIosNeedsYourAttention() -> LocalizedMessage {
-        let key = "schedule_ios_needs_your_attention"
-        return LocalizedMessage(key: key, arguments: [])
-    }
-    public static func scheduleIosNewYork() -> LocalizedMessage {
-        let key = "schedule_ios_new_york"
-        return LocalizedMessage(key: key, arguments: [])
-    }
-    public static func scheduleIosNext(value: String) -> LocalizedMessage {
-        let key = "schedule_ios_next"
-        return LocalizedMessage(key: key, arguments: [.string(value)])
-    }
-    public static func scheduleIosOpenTheTaskEditorFirst() -> LocalizedMessage {
-        let key = "schedule_ios_open_the_task_editor_first"
         return LocalizedMessage(key: key, arguments: [])
     }
     public static func scheduleIosRead() -> LocalizedMessage {
@@ -11893,44 +11421,12 @@ public enum L10nMessage {
         let key = "schedule_ios_read_full_text"
         return LocalizedMessage(key: key, arguments: [])
     }
-    public static func scheduleIosRecent() -> LocalizedMessage {
-        let key = "schedule_ios_recent"
-        return LocalizedMessage(key: key, arguments: [])
-    }
-    public static func scheduleIosRunCountMustBeGreaterThan0() -> LocalizedMessage {
-        let key = "schedule_ios_run_count_must_be_greater_than_0"
-        return LocalizedMessage(key: key, arguments: [])
-    }
-    public static func scheduleIosRunOnceNowDoesNotCountTowardAutomaticRuns() -> LocalizedMessage {
-        let key = "schedule_ios_run_once_now_does_not_count_toward_automatic_runs"
-        return LocalizedMessage(key: key, arguments: [])
-    }
-    public static func scheduleIosSaturday() -> LocalizedMessage {
-        let key = "schedule_ios_saturday"
-        return LocalizedMessage(key: key, arguments: [])
-    }
-    public static func scheduleIosSearchIanaTimeZones() -> LocalizedMessage {
-        let key = "schedule_ios_search_iana_time_zones"
-        return LocalizedMessage(key: key, arguments: [])
-    }
     public static func scheduleIosSeconds() -> LocalizedMessage {
         let key = "schedule_ios_seconds"
         return LocalizedMessage(key: key, arguments: [])
     }
-    public static func scheduleIosSingapore() -> LocalizedMessage {
-        let key = "schedule_ios_singapore"
-        return LocalizedMessage(key: key, arguments: [])
-    }
     public static func scheduleIosStopsFutureAutomaticRunsMessagesAlreadySentAndConversations() -> LocalizedMessage {
         let key = "schedule_ios_stops_future_automatic_runs_messages_already_sent_and_conversations"
-        return LocalizedMessage(key: key, arguments: [])
-    }
-    public static func scheduleIosSunday() -> LocalizedMessage {
-        let key = "schedule_ios_sunday"
-        return LocalizedMessage(key: key, arguments: [])
-    }
-    public static func scheduleIosSydney() -> LocalizedMessage {
-        let key = "schedule_ios_sydney"
         return LocalizedMessage(key: key, arguments: [])
     }
     public static func scheduleIosTakeAction() -> LocalizedMessage {
@@ -11949,64 +11445,12 @@ public enum L10nMessage {
         let key = "schedule_ios_task_not_found"
         return LocalizedMessage(key: key, arguments: [])
     }
-    public static func scheduleIosTheComputerDidNotReturnATaskList() -> LocalizedMessage {
-        let key = "schedule_ios_the_computer_did_not_return_a_task_list"
-        return LocalizedMessage(key: key, arguments: [])
-    }
-    public static func scheduleIosTheComputerIsOfflineConnectToMakeChanges() -> LocalizedMessage {
-        let key = "schedule_ios_the_computer_is_offline_connect_to_make_changes"
-        return LocalizedMessage(key: key, arguments: [])
-    }
-    public static func scheduleIosTheComputerMayHaveAlreadyExecutedItCheckThe() -> LocalizedMessage {
-        let key = "schedule_ios_the_computer_may_have_already_executed_it_check_the"
-        return LocalizedMessage(key: key, arguments: [])
-    }
-    public static func scheduleIosTheTaskIsStoredOnThisComputerChangesOnly() -> LocalizedMessage {
-        let key = "schedule_ios_the_task_is_stored_on_this_computer_changes_only"
-        return LocalizedMessage(key: key, arguments: [])
-    }
-    public static func scheduleIosThursday() -> LocalizedMessage {
-        let key = "schedule_ios_thursday"
-        return LocalizedMessage(key: key, arguments: [])
-    }
-    public static func scheduleIosTime(detail: String, value: String) -> LocalizedMessage {
-        let key = "schedule_ios_time"
-        return LocalizedMessage(key: key, arguments: [.string(detail), .string(value)])
-    }
-    public static func scheduleIosTokyo() -> LocalizedMessage {
-        let key = "schedule_ios_tokyo"
-        return LocalizedMessage(key: key, arguments: [])
-    }
-    public static func scheduleIosTuesday() -> LocalizedMessage {
-        let key = "schedule_ios_tuesday"
-        return LocalizedMessage(key: key, arguments: [])
-    }
-    public static func scheduleIosUnit() -> LocalizedMessage {
-        let key = "schedule_ios_unit"
-        return LocalizedMessage(key: key, arguments: [])
-    }
     public static func scheduleIosUnread() -> LocalizedMessage {
         let key = "schedule_ios_unread"
         return LocalizedMessage(key: key, arguments: [])
     }
     public static func scheduleIosUnsavedChangesWillBeLost() -> LocalizedMessage {
         let key = "schedule_ios_unsaved_changes_will_be_lost"
-        return LocalizedMessage(key: key, arguments: [])
-    }
-    public static func scheduleIosUpdateRemoteAgentOnThisComputerToUseScheduled() -> LocalizedMessage {
-        let key = "schedule_ios_update_remote_agent_on_this_computer_to_use_scheduled"
-        return LocalizedMessage(key: key, arguments: [])
-    }
-    public static func scheduleIosUpdateRemoteAgentToUseScheduledTasks() -> LocalizedMessage {
-        let key = "schedule_ios_update_remote_agent_to_use_scheduled_tasks"
-        return LocalizedMessage(key: key, arguments: [])
-    }
-    public static func scheduleIosWednesday() -> LocalizedMessage {
-        let key = "schedule_ios_wednesday"
-        return LocalizedMessage(key: key, arguments: [])
-    }
-    public static func scheduleIosWhatToCheckNotifyMeWhenThereAreResults() -> LocalizedMessage {
-        let key = "schedule_ios_what_to_check_notify_me_when_there_are_results"
         return LocalizedMessage(key: key, arguments: [])
     }
     public static func scheduleLastResult(result: String, time: String) -> LocalizedMessage {
@@ -12077,10 +11521,6 @@ public enum L10nMessage {
         let key = "schedule_missing_target_run"
         return LocalizedMessage(key: key, arguments: [.string(reason), .string(time)])
     }
-    public static func scheduleModelAndPermissions() -> LocalizedMessage {
-        let key = "schedule_model_and_permissions"
-        return LocalizedMessage(key: key, arguments: [])
-    }
     public static func scheduleMon() -> LocalizedMessage {
         let key = "schedule_mon"
         return LocalizedMessage(key: key, arguments: [])
@@ -12088,10 +11528,6 @@ public enum L10nMessage {
     public static func scheduleMoreNewResults(count: Int) -> LocalizedMessage {
         let key = "schedule_more_new_results"
         return LocalizedMessage(key: key, arguments: [.integer(Int64(count))])
-    }
-    public static func scheduleNeedsYourAttention() -> LocalizedMessage {
-        let key = "schedule_needs_your_attention"
-        return LocalizedMessage(key: key, arguments: [])
     }
     public static func scheduleNever() -> LocalizedMessage {
         let key = "schedule_never"
@@ -12119,10 +11555,6 @@ public enum L10nMessage {
     }
     public static func scheduleNoApprovalIsRequiredForAnyOperationWheneverThis() -> LocalizedMessage {
         let key = "schedule_no_approval_is_required_for_any_operation_whenever_this"
-        return LocalizedMessage(key: key, arguments: [])
-    }
-    public static func scheduleNoApprovalWillBeRequiredForFutureRunsExisting() -> LocalizedMessage {
-        let key = "schedule_no_approval_will_be_required_for_future_runs_existing"
         return LocalizedMessage(key: key, arguments: [])
     }
     public static func scheduleNoNewResults() -> LocalizedMessage {
@@ -12157,10 +11589,6 @@ public enum L10nMessage {
         let key = "schedule_notify_on_completion"
         return LocalizedMessage(key: key, arguments: [])
     }
-    public static func scheduleNotifyOnCompletionByDefaultWhenOffOnlyThe() -> LocalizedMessage {
-        let key = "schedule_notify_on_completion_by_default_when_off_only_the"
-        return LocalizedMessage(key: key, arguments: [])
-    }
     public static func scheduleOfflineMachinesNotice(machines: String) -> LocalizedMessage {
         let key = "schedule_offline_machines_notice"
         return LocalizedMessage(key: key, arguments: [.string(machines)])
@@ -12171,10 +11599,6 @@ public enum L10nMessage {
     }
     public static func scheduleOnceSchedules() -> LocalizedMessage {
         let key = "schedule_once_schedules"
-        return LocalizedMessage(key: key, arguments: [])
-    }
-    public static func scheduleOnlyChangesThisTaskItStillRunsOnThe() -> LocalizedMessage {
-        let key = "schedule_only_changes_this_task_it_still_runs_on_the"
         return LocalizedMessage(key: key, arguments: [])
     }
     public static func scheduleOtherTasks() -> LocalizedMessage {
@@ -12204,10 +11628,6 @@ public enum L10nMessage {
     public static func scheduleQuietRuns(count: Int, day: String) -> LocalizedMessage {
         let key = "schedule_quiet_runs"
         return LocalizedMessage(key: key, arguments: [.integer(Int64(count)), .string(day)])
-    }
-    public static func scheduleReadFullText() -> LocalizedMessage {
-        let key = "schedule_read_full_text"
-        return LocalizedMessage(key: key, arguments: [])
     }
     public static func scheduleReadOnlyActiveRun() -> LocalizedMessage {
         let key = "schedule_read_only_active_run"
@@ -12269,10 +11689,6 @@ public enum L10nMessage {
         let key = "schedule_running"
         return LocalizedMessage(key: key, arguments: [])
     }
-    public static func scheduleRunningSchedules() -> LocalizedMessage {
-        let key = "schedule_running_schedules"
-        return LocalizedMessage(key: key, arguments: [])
-    }
     public static func scheduleRunningSince(time: String) -> LocalizedMessage {
         let key = "schedule_running_since"
         return LocalizedMessage(key: key, arguments: [.string(time)])
@@ -12295,10 +11711,6 @@ public enum L10nMessage {
     }
     public static func scheduleSavingBlankUsesTheMessageSFirstSentence() -> LocalizedMessage {
         let key = "schedule_saving_blank_uses_the_message_s_first_sentence"
-        return LocalizedMessage(key: key, arguments: [])
-    }
-    public static func scheduleScheduleMessagesToThisConversation() -> LocalizedMessage {
-        let key = "schedule_schedule_messages_to_this_conversation"
         return LocalizedMessage(key: key, arguments: [])
     }
     public static func scheduleSelectAFutureTime() -> LocalizedMessage {
@@ -12353,10 +11765,6 @@ public enum L10nMessage {
         let key = "schedule_stopped_count"
         return LocalizedMessage(key: key, arguments: [.integer(Int64(count)), .string(total)])
     }
-    public static func scheduleStopsAutomaticRunsExistingConversationsRemain() -> LocalizedMessage {
-        let key = "schedule_stops_automatic_runs_existing_conversations_remain"
-        return LocalizedMessage(key: key, arguments: [])
-    }
     public static func scheduleStripCount(count: Int, state: String) -> LocalizedMessage {
         let key = "schedule_strip_count"
         return LocalizedMessage(key: key, arguments: [.integer(Int64(count)), .string(state)])
@@ -12367,10 +11775,6 @@ public enum L10nMessage {
     }
     public static func scheduleSun() -> LocalizedMessage {
         let key = "schedule_sun"
-        return LocalizedMessage(key: key, arguments: [])
-    }
-    public static func scheduleTakeAction() -> LocalizedMessage {
-        let key = "schedule_take_action"
         return LocalizedMessage(key: key, arguments: [])
     }
     public static func scheduleTakeoverViaClient() -> LocalizedMessage {
@@ -12391,10 +11795,6 @@ public enum L10nMessage {
     }
     public static func scheduleTaskName() -> LocalizedMessage {
         let key = "schedule_task_name"
-        return LocalizedMessage(key: key, arguments: [])
-    }
-    public static func scheduleTasksDoNotRunWhileTheComputerSleepsOr() -> LocalizedMessage {
-        let key = "schedule_tasks_do_not_run_while_the_computer_sleeps_or"
         return LocalizedMessage(key: key, arguments: [])
     }
     public static func scheduleTellTheAgentInAConversationCheckForMe() -> LocalizedMessage {
@@ -12469,14 +11869,6 @@ public enum L10nMessage {
         let key = "schedule_the_scheduled_message_was_canceled_before_delivery_the_task"
         return LocalizedMessage(key: key, arguments: [])
     }
-    public static func scheduleTheseChangesWillNotBeSaved() -> LocalizedMessage {
-        let key = "schedule_these_changes_will_not_be_saved"
-        return LocalizedMessage(key: key, arguments: [])
-    }
-    public static func scheduleThisConversationSScheduledTasks() -> LocalizedMessage {
-        let key = "schedule_this_conversation_s_scheduled_tasks"
-        return LocalizedMessage(key: key, arguments: [])
-    }
     public static func scheduleThisTaskCouldNotBeFoundIfTheComputer() -> LocalizedMessage {
         let key = "schedule_this_task_could_not_be_found_if_the_computer"
         return LocalizedMessage(key: key, arguments: [])
@@ -12523,14 +11915,6 @@ public enum L10nMessage {
     }
     public static func scheduleUpdateRemoteAgentOnThisComputerToUseScheduled() -> LocalizedMessage {
         let key = "schedule_update_remote_agent_on_this_computer_to_use_scheduled"
-        return LocalizedMessage(key: key, arguments: [])
-    }
-    public static func scheduleVerifiedAbandonRequest() -> LocalizedMessage {
-        let key = "schedule_verified_abandon_request"
-        return LocalizedMessage(key: key, arguments: [])
-    }
-    public static func scheduleVerifyCurrentPermissionsInTheConversation() -> LocalizedMessage {
-        let key = "schedule_verify_current_permissions_in_the_conversation"
         return LocalizedMessage(key: key, arguments: [])
     }
     public static func scheduleViewAllRuns(count: Int) -> LocalizedMessage {
@@ -15945,7 +15329,6 @@ public enum L10nText {
         if let hit = resolve10(key, args: args, locale: locale) { return hit }
         if let hit = resolve11(key, args: args, locale: locale) { return hit }
         if let hit = resolve12(key, args: args, locale: locale) { return hit }
-        if let hit = resolve13(key, args: args, locale: locale) { return hit }
         preconditionFailure("Unknown UI message key: \(key)")
     }
     private static func resolve0(_ key: String, args: [String: L10nTextValue], locale: String) -> String? {
@@ -16359,7 +15742,6 @@ public enum L10nText {
         case "home.running_and_idle": return L10n.format("home_running_and_idle", locale: locale, args: [intArg(args["count"]), intArg(args["idle"])])
         case "home.running_count": return L10n.format("home_running_count", locale: locale, args: [intArg(args["count"])])
         case "home.scheduled_frequency": return L10n.format("home_scheduled_frequency", locale: locale, args: [strArg(args["frequency"])])
-        case "home.scheduled_tasks": return L10n.format("home_scheduled_tasks", locale: locale, args: [intArg(args["count"])])
         case "home.schedules_tab": return L10n.format("home_schedules_tab", locale: locale, args: [])
         case "home.scope_label": return L10n.format("home_scope_label", locale: locale, args: [strArg(args["name"])])
         case "home.sessions_or_schedules": return L10n.format("home_sessions_or_schedules", locale: locale, args: [])
@@ -16410,12 +15792,12 @@ public enum L10nText {
         case "image.ios_generated_size": return L10n.format("image_ios_generated_size", locale: locale, args: [strArg(args["size"])])
         case "image.ios_gif_contains_an_unrecognized_block": return L10n.format("image_ios_gif_contains_an_unrecognized_block", locale: locale, args: [])
         case "image.ios_gif_is_truncated": return L10n.format("image_ios_gif_is_truncated", locale: locale, args: [])
+        case "image.ios_image_exceeds_mb": return L10n.format("image_ios_image_exceeds_mb", locale: locale, args: [intArg(args["count"])])
         default: return nil
         }
     }
     private static func resolve3(_ key: String, args: [String: L10nTextValue], locale: String) -> String? {
         switch key {
-        case "image.ios_image_exceeds_mb": return L10n.format("image_ios_image_exceeds_mb", locale: locale, args: [intArg(args["count"])])
         case "image.ios_image_has_no_dimensions": return L10n.format("image_ios_image_has_no_dimensions", locale: locale, args: [])
         case "image.ios_more_images": return L10n.format("image_ios_more_images", locale: locale, args: [intArg(args["count"])])
         case "image.ios_name_only": return L10n.format("image_ios_name_only", locale: locale, args: [])
@@ -16565,12 +15947,12 @@ public enum L10nText {
         case "machine_status.size_gb": return L10n.format("machine_status_size_gb", locale: locale, args: [strArg(args["size"])])
         case "machine_status.size_mb": return L10n.format("machine_status_size_mb", locale: locale, args: [strArg(args["size"])])
         case "machine_status.stale_minutes": return L10n.format("machine_status_stale_minutes", locale: locale, args: [intArg(args["count"])])
+        case "machine_status.stale_seconds": return L10n.format("machine_status_stale_seconds", locale: locale, args: [intArg(args["count"])])
         default: return nil
         }
     }
     private static func resolve4(_ key: String, args: [String: L10nTextValue], locale: String) -> String? {
         switch key {
-        case "machine_status.stale_seconds": return L10n.format("machine_status_stale_seconds", locale: locale, args: [intArg(args["count"])])
         case "machine_status.storage_exhausted": return L10n.format("machine_status_storage_exhausted", locale: locale, args: [])
         case "machine_status.swap": return L10n.format("machine_status_swap", locale: locale, args: [strArg(args["size"])])
         case "machine_status.title": return L10n.format("machine_status_title", locale: locale, args: [])
@@ -16720,12 +16102,12 @@ public enum L10nText {
         case "projects.changed_elsewhere": return L10n.format("projects_changed_elsewhere", locale: locale, args: [])
         case "projects.choose": return L10n.format("projects_choose", locale: locale, args: [])
         case "projects.choose_directory": return L10n.format("projects_choose_directory", locale: locale, args: [])
+        case "projects.computer_offline": return L10n.format("projects_computer_offline", locale: locale, args: [])
         default: return nil
         }
     }
     private static func resolve5(_ key: String, args: [String: L10nTextValue], locale: String) -> String? {
         switch key {
-        case "projects.computer_offline": return L10n.format("projects_computer_offline", locale: locale, args: [])
         case "projects.connect_to_edit": return L10n.format("projects_connect_to_edit", locale: locale, args: [])
         case "projects.count": return L10n.format("projects_count", locale: locale, args: [intArg(args["count"])])
         case "projects.directory_failed": return L10n.format("projects_directory_failed", locale: locale, args: [strArg(args["reason"])])
@@ -16841,8 +16223,6 @@ public enum L10nText {
         case "schedule.after_a_run_count": return L10n.format("schedule_after_a_run_count", locale: locale, args: [])
         case "schedule.after_current_turn": return L10n.format("schedule_after_current_turn", locale: locale, args: [intArg(args["count"])])
         case "schedule.after_each_turn": return L10n.format("schedule_after_each_turn", locale: locale, args: [intArg(args["count"])])
-        case "schedule.after_turn_ends": return L10n.format("schedule_after_turn_ends", locale: locale, args: [])
-        case "schedule.after_turn_replace": return L10n.format("schedule_after_turn_replace", locale: locale, args: [strArg(args["frequency"])])
         case "schedule.android_agent_notification": return L10n.format("schedule_android_agent_notification", locale: locale, args: [])
         case "schedule.android_agent_notification_completion_notification": return L10n.format("schedule_android_agent_notification_completion_notification", locale: locale, args: [])
         case "schedule.android_cannot_request_notification": return L10n.format("schedule_android_cannot_request_notification", locale: locale, args: [])
@@ -16859,53 +16239,42 @@ public enum L10nText {
         case "schedule.android_large_every_minutes": return L10n.format("schedule_android_large_every_minutes", locale: locale, args: [intArg(args["count"]), strArg(args["total"])])
         case "schedule.android_large_every_seconds": return L10n.format("schedule_android_large_every_seconds", locale: locale, args: [intArg(args["count"]), strArg(args["total"])])
         case "schedule.android_large_runs_total": return L10n.format("schedule_android_large_runs_total", locale: locale, args: [intArg(args["count"]), strArg(args["total"])])
-        case "schedule.android_new_result": return L10n.format("schedule_android_new_result", locale: locale, args: [])
         case "schedule.android_run_once_now_does_not_count_toward_automatic_runs_or": return L10n.format("schedule_android_run_once_now_does_not_count_toward_automatic_runs_or", locale: locale, args: [])
         case "schedule.android_saving": return L10n.format("schedule_android_saving", locale: locale, args: [])
         case "schedule.android_task": return L10n.format("schedule_android_task", locale: locale, args: [])
         case "schedule.android_the_end_date_is_in_the_past": return L10n.format("schedule_android_the_end_date_is_in_the_past", locale: locale, args: [])
         case "schedule.android_unknown_time": return L10n.format("schedule_android_unknown_time", locale: locale, args: [])
         case "schedule.android_update_remote_agent_on_this_computer_to_manage_scheduled_tasks": return L10n.format("schedule_android_update_remote_agent_on_this_computer_to_manage_scheduled_tasks", locale: locale, args: [])
-        case "schedule.attention_once": return L10n.format("schedule_attention_once", locale: locale, args: [strArg(args["reason"])])
         case "schedule.attention_resume": return L10n.format("schedule_attention_resume", locale: locale, args: [strArg(args["reason"])])
         case "schedule.attention_uncertain": return L10n.format("schedule_attention_uncertain", locale: locale, args: [strArg(args["reason"])])
         case "schedule.beijing_time": return L10n.format("schedule_beijing_time", locale: locale, args: [])
         case "schedule.choose_a_valid_date_and_time": return L10n.format("schedule_choose_a_valid_date_and_time", locale: locale, args: [])
-        case "schedule.choose_ask_auto_or_full_access_scheduled_tasks_cannot": return L10n.format("schedule_choose_ask_auto_or_full_access_scheduled_tasks_cannot", locale: locale, args: [])
         case "schedule.computer_and_model": return L10n.format("schedule_computer_and_model", locale: locale, args: [])
-        case "schedule.connect_to_edit_run_or_delete": return L10n.format("schedule_connect_to_edit_run_or_delete", locale: locale, args: [])
-        case "schedule.continuing_takes_over_the_task_and_runs_it_with": return L10n.format("schedule_continuing_takes_over_the_task_and_runs_it_with", locale: locale, args: [])
-        default: return nil
-        }
-    }
-    private static func resolve6(_ key: String, args: [String: L10nTextValue], locale: String) -> String? {
-        switch key {
         case "schedule.conversation": return L10n.format("schedule_conversation", locale: locale, args: [])
         case "schedule.could_not_run": return L10n.format("schedule_could_not_run", locale: locale, args: [])
-        case "schedule.count": return L10n.format("schedule_count", locale: locale, args: [])
         case "schedule.create": return L10n.format("schedule_create", locale: locale, args: [])
         case "schedule.created_by_the_agent_in_a_conversation": return L10n.format("schedule_created_by_the_agent_in_a_conversation", locale: locale, args: [])
         case "schedule.created_by_you": return L10n.format("schedule_created_by_you", locale: locale, args: [])
         case "schedule.creating": return L10n.format("schedule_creating", locale: locale, args: [])
         case "schedule.creation_summary": return L10n.format("schedule_creation_summary", locale: locale, args: [strArg(args["kind"]), strArg(args["owner"])])
         case "schedule.creation_summary_at": return L10n.format("schedule_creation_summary_at", locale: locale, args: [strArg(args["kind"]), strArg(args["owner"]), strArg(args["time"])])
+        default: return nil
+        }
+    }
+    private static func resolve6(_ key: String, args: [String: L10nTextValue], locale: String) -> String? {
+        switch key {
         case "schedule.daily": return L10n.format("schedule_daily", locale: locale, args: [])
         case "schedule.daily_at": return L10n.format("schedule_daily_at", locale: locale, args: [strArg(args["time"])])
-        case "schedule.date_and_time": return L10n.format("schedule_date_and_time", locale: locale, args: [])
         case "schedule.daylight_saving_time_skips_this_time_in_the_selected": return L10n.format("schedule_daylight_saving_time_skips_this_time_in_the_selected", locale: locale, args: [])
         case "schedule.delete": return L10n.format("schedule_delete", locale: locale, args: [])
         case "schedule.delete_task": return L10n.format("schedule_delete_task", locale: locale, args: [])
-        case "schedule.delete_task_schedules": return L10n.format("schedule_delete_task_schedules", locale: locale, args: [])
         case "schedule.deleted": return L10n.format("schedule_deleted", locale: locale, args: [])
         case "schedule.delivery_before_the_computer_restarted_could_not_be_confirmed": return L10n.format("schedule_delivery_before_the_computer_restarted_could_not_be_confirmed", locale: locale, args: [])
-        case "schedule.describe_the_scheduled_work_and_ask_the_agent_to": return L10n.format("schedule_describe_the_scheduled_work_and_ask_the_agent_to", locale: locale, args: [])
         case "schedule.discard_changes": return L10n.format("schedule_discard_changes", locale: locale, args: [])
-        case "schedule.discard_changes_schedule_text": return L10n.format("schedule_discard_changes_schedule_text", locale: locale, args: [])
         case "schedule.each_run_opens_a_new_conversation_grouped_under_this": return L10n.format("schedule_each_run_opens_a_new_conversation_grouped_under_this", locale: locale, args: [])
         case "schedule.each_run_opens_a_new_conversation_grouped_under_this_schedules": return L10n.format("schedule_each_run_opens_a_new_conversation_grouped_under_this_schedules", locale: locale, args: [])
         case "schedule.earlier": return L10n.format("schedule_earlier", locale: locale, args: [])
         case "schedule.end_date": return L10n.format("schedule_end_date", locale: locale, args: [])
-        case "schedule.end_time": return L10n.format("schedule_end_time", locale: locale, args: [])
         case "schedule.ended": return L10n.format("schedule_ended", locale: locale, args: [])
         case "schedule.ended_cannot_run": return L10n.format("schedule_ended_cannot_run", locale: locale, args: [])
         case "schedule.ended_count": return L10n.format("schedule_ended_count", locale: locale, args: [intArg(args["count"])])
@@ -16928,74 +16297,26 @@ public enum L10nText {
         case "schedule.if_blank_uses": return L10n.format("schedule_if_blank_uses", locale: locale, args: [strArg(args["value"])])
         case "schedule.in": return L10n.format("schedule_in", locale: locale, args: [strArg(args["value"])])
         case "schedule.in_conversation": return L10n.format("schedule_in_conversation", locale: locale, args: [])
-        case "schedule.interval_minutes": return L10n.format("schedule_interval_minutes", locale: locale, args: [])
-        case "schedule.ios_abandon_original_request": return L10n.format("schedule_ios_abandon_original_request", locale: locale, args: [])
-        case "schedule.ios_agent_notification": return L10n.format("schedule_ios_agent_notification", locale: locale, args: [])
-        case "schedule.ios_agent_notification_completion_notification": return L10n.format("schedule_ios_agent_notification_completion_notification", locale: locale, args: [])
         case "schedule.ios_attention_once": return L10n.format("schedule_ios_attention_once", locale: locale, args: [strArg(args["reason"])])
-        case "schedule.ios_beijing": return L10n.format("schedule_ios_beijing", locale: locale, args: [])
-        case "schedule.ios_berlin": return L10n.format("schedule_ios_berlin", locale: locale, args: [])
-        case "schedule.ios_cannot_request_notification": return L10n.format("schedule_ios_cannot_request_notification", locale: locale, args: [])
-        case "schedule.ios_choose_a_project": return L10n.format("schedule_ios_choose_a_project", locale: locale, args: [])
-        case "schedule.ios_choose_a_project_first": return L10n.format("schedule_ios_choose_a_project_first", locale: locale, args: [])
         case "schedule.ios_choose_a_valid_iana_time_zone": return L10n.format("schedule_ios_choose_a_valid_iana_time_zone", locale: locale, args: [])
-        case "schedule.ios_choose_once_daily_weekly_or_every": return L10n.format("schedule_ios_choose_once_daily_weekly_or_every", locale: locale, args: [])
-        case "schedule.ios_confirm_the_previous_change_s_result_first": return L10n.format("schedule_ios_confirm_the_previous_change_s_result_first", locale: locale, args: [])
-        case "schedule.ios_connect_to_edit_run_or_delete": return L10n.format("schedule_ios_connect_to_edit_run_or_delete", locale: locale, args: [strArg(args["value"])])
         case "schedule.ios_days": return L10n.format("schedule_ios_days", locale: locale, args: [])
         case "schedule.ios_delete_this_task": return L10n.format("schedule_ios_delete_this_task", locale: locale, args: [])
-        case "schedule.ios_each_run_opens_a_new_conversation_grouped_under_this": return L10n.format("schedule_ios_each_run_opens_a_new_conversation_grouped_under_this", locale: locale, args: [])
-        case "schedule.ios_end_time_must_be_in_the_future": return L10n.format("schedule_ios_end_time_must_be_in_the_future", locale: locale, args: [])
         case "schedule.ios_enter_a_valid_interval": return L10n.format("schedule_ios_enter_a_valid_interval", locale: locale, args: [])
-        case "schedule.ios_friday": return L10n.format("schedule_ios_friday", locale: locale, args: [])
-        case "schedule.ios_hong_kong": return L10n.format("schedule_ios_hong_kong", locale: locale, args: [])
         case "schedule.ios_hours": return L10n.format("schedule_ios_hours", locale: locale, args: [])
-        case "schedule.ios_interval": return L10n.format("schedule_ios_interval", locale: locale, args: [])
-        case "schedule.ios_loading_models": return L10n.format("schedule_ios_loading_models", locale: locale, args: [])
         case "schedule.ios_loading_tasks": return L10n.format("schedule_ios_loading_tasks", locale: locale, args: [])
-        case "schedule.ios_london": return L10n.format("schedule_ios_london", locale: locale, args: [])
-        case "schedule.ios_los_angeles": return L10n.format("schedule_ios_los_angeles", locale: locale, args: [])
         case "schedule.ios_manage_scheduled_task": return L10n.format("schedule_ios_manage_scheduled_task", locale: locale, args: [])
         case "schedule.ios_minutes": return L10n.format("schedule_ios_minutes", locale: locale, args: [])
-        case "schedule.ios_mmm_d": return L10n.format("schedule_ios_mmm_d", locale: locale, args: [])
-        case "schedule.ios_mmm_d_yyyy": return L10n.format("schedule_ios_mmm_d_yyyy", locale: locale, args: [])
-        case "schedule.ios_monday": return L10n.format("schedule_ios_monday", locale: locale, args: [])
         case "schedule.ios_needs_attention": return L10n.format("schedule_ios_needs_attention", locale: locale, args: [])
-        case "schedule.ios_needs_your_attention": return L10n.format("schedule_ios_needs_your_attention", locale: locale, args: [])
-        case "schedule.ios_new_york": return L10n.format("schedule_ios_new_york", locale: locale, args: [])
-        case "schedule.ios_next": return L10n.format("schedule_ios_next", locale: locale, args: [strArg(args["value"])])
-        case "schedule.ios_open_the_task_editor_first": return L10n.format("schedule_ios_open_the_task_editor_first", locale: locale, args: [])
         case "schedule.ios_read": return L10n.format("schedule_ios_read", locale: locale, args: [])
         case "schedule.ios_read_full_text": return L10n.format("schedule_ios_read_full_text", locale: locale, args: [])
-        case "schedule.ios_recent": return L10n.format("schedule_ios_recent", locale: locale, args: [])
-        case "schedule.ios_run_count_must_be_greater_than_0": return L10n.format("schedule_ios_run_count_must_be_greater_than_0", locale: locale, args: [])
-        case "schedule.ios_run_once_now_does_not_count_toward_automatic_runs": return L10n.format("schedule_ios_run_once_now_does_not_count_toward_automatic_runs", locale: locale, args: [])
-        case "schedule.ios_saturday": return L10n.format("schedule_ios_saturday", locale: locale, args: [])
-        case "schedule.ios_search_iana_time_zones": return L10n.format("schedule_ios_search_iana_time_zones", locale: locale, args: [])
         case "schedule.ios_seconds": return L10n.format("schedule_ios_seconds", locale: locale, args: [])
-        case "schedule.ios_singapore": return L10n.format("schedule_ios_singapore", locale: locale, args: [])
         case "schedule.ios_stops_future_automatic_runs_messages_already_sent_and_conversations": return L10n.format("schedule_ios_stops_future_automatic_runs_messages_already_sent_and_conversations", locale: locale, args: [])
-        case "schedule.ios_sunday": return L10n.format("schedule_ios_sunday", locale: locale, args: [])
-        case "schedule.ios_sydney": return L10n.format("schedule_ios_sydney", locale: locale, args: [])
         case "schedule.ios_take_action": return L10n.format("schedule_ios_take_action", locale: locale, args: [])
         case "schedule.ios_takeover_notice": return L10n.format("schedule_ios_takeover_notice", locale: locale, args: [strArg(args["notice"])])
         case "schedule.ios_task_details": return L10n.format("schedule_ios_task_details", locale: locale, args: [])
         case "schedule.ios_task_not_found": return L10n.format("schedule_ios_task_not_found", locale: locale, args: [])
-        case "schedule.ios_the_computer_did_not_return_a_task_list": return L10n.format("schedule_ios_the_computer_did_not_return_a_task_list", locale: locale, args: [])
-        case "schedule.ios_the_computer_is_offline_connect_to_make_changes": return L10n.format("schedule_ios_the_computer_is_offline_connect_to_make_changes", locale: locale, args: [])
-        case "schedule.ios_the_computer_may_have_already_executed_it_check_the": return L10n.format("schedule_ios_the_computer_may_have_already_executed_it_check_the", locale: locale, args: [])
-        case "schedule.ios_the_task_is_stored_on_this_computer_changes_only": return L10n.format("schedule_ios_the_task_is_stored_on_this_computer_changes_only", locale: locale, args: [])
-        case "schedule.ios_thursday": return L10n.format("schedule_ios_thursday", locale: locale, args: [])
-        case "schedule.ios_time": return L10n.format("schedule_ios_time", locale: locale, args: [strArg(args["detail"]), strArg(args["value"])])
-        case "schedule.ios_tokyo": return L10n.format("schedule_ios_tokyo", locale: locale, args: [])
-        case "schedule.ios_tuesday": return L10n.format("schedule_ios_tuesday", locale: locale, args: [])
-        case "schedule.ios_unit": return L10n.format("schedule_ios_unit", locale: locale, args: [])
         case "schedule.ios_unread": return L10n.format("schedule_ios_unread", locale: locale, args: [])
         case "schedule.ios_unsaved_changes_will_be_lost": return L10n.format("schedule_ios_unsaved_changes_will_be_lost", locale: locale, args: [])
-        case "schedule.ios_update_remote_agent_on_this_computer_to_use_scheduled": return L10n.format("schedule_ios_update_remote_agent_on_this_computer_to_use_scheduled", locale: locale, args: [])
-        case "schedule.ios_update_remote_agent_to_use_scheduled_tasks": return L10n.format("schedule_ios_update_remote_agent_to_use_scheduled_tasks", locale: locale, args: [])
-        case "schedule.ios_wednesday": return L10n.format("schedule_ios_wednesday", locale: locale, args: [])
-        case "schedule.ios_what_to_check_notify_me_when_there_are_results": return L10n.format("schedule_ios_what_to_check_notify_me_when_there_are_results", locale: locale, args: [])
         case "schedule.last_result": return L10n.format("schedule_last_result", locale: locale, args: [strArg(args["result"]), strArg(args["time"])])
         case "schedule.last_result_detail": return L10n.format("schedule_last_result_detail", locale: locale, args: [strArg(args["detail"]), strArg(args["result"]), strArg(args["time"])])
         case "schedule.latest_summary": return L10n.format("schedule_latest_summary", locale: locale, args: [strArg(args["summary"]), strArg(args["time"])])
@@ -17013,10 +16334,8 @@ public enum L10nText {
         case "schedule.messages_will_go_to_the_current_conversation_and_wait": return L10n.format("schedule_messages_will_go_to_the_current_conversation_and_wait", locale: locale, args: [])
         case "schedule.missing_target": return L10n.format("schedule_missing_target", locale: locale, args: [strArg(args["reason"])])
         case "schedule.missing_target_run": return L10n.format("schedule_missing_target_run", locale: locale, args: [strArg(args["reason"]), strArg(args["time"])])
-        case "schedule.model_and_permissions": return L10n.format("schedule_model_and_permissions", locale: locale, args: [])
         case "schedule.mon": return L10n.format("schedule_mon", locale: locale, args: [])
         case "schedule.more_new_results": return L10n.format("schedule_more_new_results", locale: locale, args: [intArg(args["count"])])
-        case "schedule.needs_your_attention": return L10n.format("schedule_needs_your_attention", locale: locale, args: [])
         case "schedule.never": return L10n.format("schedule_never", locale: locale, args: [])
         case "schedule.new_results": return L10n.format("schedule_new_results", locale: locale, args: [intArg(args["count"])])
         case "schedule.new_results_schedules": return L10n.format("schedule_new_results_schedules", locale: locale, args: [])
@@ -17024,25 +16343,17 @@ public enum L10nText {
         case "schedule.next": return L10n.format("schedule_next", locale: locale, args: [strArg(args["value"])])
         case "schedule.next_run_pending": return L10n.format("schedule_next_run_pending", locale: locale, args: [])
         case "schedule.no_approval_is_required_for_any_operation_whenever_this": return L10n.format("schedule_no_approval_is_required_for_any_operation_whenever_this", locale: locale, args: [])
-        case "schedule.no_approval_will_be_required_for_future_runs_existing": return L10n.format("schedule_no_approval_will_be_required_for_future_runs_existing", locale: locale, args: [])
         case "schedule.no_new_results": return L10n.format("schedule_no_new_results", locale: locale, args: [])
         case "schedule.no_notification": return L10n.format("schedule_no_notification", locale: locale, args: [])
         case "schedule.no_results_yet": return L10n.format("schedule_no_results_yet", locale: locale, args: [])
         case "schedule.no_runs_next": return L10n.format("schedule_no_runs_next", locale: locale, args: [strArg(args["time"])])
         case "schedule.no_scheduled_tasks_yet": return L10n.format("schedule_no_scheduled_tasks_yet", locale: locale, args: [])
-        default: return nil
-        }
-    }
-    private static func resolve7(_ key: String, args: [String: L10nTextValue], locale: String) -> String? {
-        switch key {
         case "schedule.not_connected_showing_the_previous_state": return L10n.format("schedule_not_connected_showing_the_previous_state", locale: locale, args: [])
         case "schedule.notified_you": return L10n.format("schedule_notified_you", locale: locale, args: [])
         case "schedule.notify_on_completion": return L10n.format("schedule_notify_on_completion", locale: locale, args: [])
-        case "schedule.notify_on_completion_by_default_when_off_only_the": return L10n.format("schedule_notify_on_completion_by_default_when_off_only_the", locale: locale, args: [])
         case "schedule.offline_machines_notice": return L10n.format("schedule_offline_machines_notice", locale: locale, args: [strArg(args["machines"])])
         case "schedule.once_at": return L10n.format("schedule_once_at", locale: locale, args: [strArg(args["time"])])
         case "schedule.once_schedules": return L10n.format("schedule_once_schedules", locale: locale, args: [])
-        case "schedule.only_changes_this_task_it_still_runs_on_the": return L10n.format("schedule_only_changes_this_task_it_still_runs_on_the", locale: locale, args: [])
         case "schedule.other_tasks": return L10n.format("schedule_other_tasks", locale: locale, args: [])
         case "schedule.pause": return L10n.format("schedule_pause", locale: locale, args: [])
         case "schedule.paused_the_schedule_expired_in_the_meantime": return L10n.format("schedule_paused_the_schedule_expired_in_the_meantime", locale: locale, args: [])
@@ -17050,7 +16361,6 @@ public enum L10nText {
         case "schedule.project": return L10n.format("schedule_project", locale: locale, args: [])
         case "schedule.project_required": return L10n.format("schedule_project_required", locale: locale, args: [])
         case "schedule.quiet_runs": return L10n.format("schedule_quiet_runs", locale: locale, args: [intArg(args["count"]), strArg(args["day"])])
-        case "schedule.read_full_text": return L10n.format("schedule_read_full_text", locale: locale, args: [])
         case "schedule.read_only_active_run": return L10n.format("schedule_read_only_active_run", locale: locale, args: [])
         case "schedule.read_only_busy": return L10n.format("schedule_read_only_busy", locale: locale, args: [])
         case "schedule.read_only_unconfirmed": return L10n.format("schedule_read_only_unconfirmed", locale: locale, args: [])
@@ -17066,14 +16376,12 @@ public enum L10nText {
         case "schedule.run_once_now": return L10n.format("schedule_run_once_now", locale: locale, args: [])
         case "schedule.run_with_full_access": return L10n.format("schedule_run_with_full_access", locale: locale, args: [])
         case "schedule.running": return L10n.format("schedule_running", locale: locale, args: [])
-        case "schedule.running_schedules": return L10n.format("schedule_running_schedules", locale: locale, args: [])
         case "schedule.running_since": return L10n.format("schedule_running_since", locale: locale, args: [strArg(args["time"])])
         case "schedule.runs_count": return L10n.format("schedule_runs_count", locale: locale, args: [intArg(args["count"])])
         case "schedule.runs_today_none_notified_you": return L10n.format("schedule_runs_today_none_notified_you", locale: locale, args: [intArg(args["count"])])
         case "schedule.runs_total": return L10n.format("schedule_runs_total", locale: locale, args: [intArg(args["count"])])
         case "schedule.sat": return L10n.format("schedule_sat", locale: locale, args: [])
         case "schedule.saving_blank_uses_the_message_s_first_sentence": return L10n.format("schedule_saving_blank_uses_the_message_s_first_sentence", locale: locale, args: [])
-        case "schedule.schedule_messages_to_this_conversation": return L10n.format("schedule_schedule_messages_to_this_conversation", locale: locale, args: [])
         case "schedule.select_a_future_time": return L10n.format("schedule_select_a_future_time", locale: locale, args: [])
         case "schedule.select_a_time": return L10n.format("schedule_select_a_time", locale: locale, args: [])
         case "schedule.select_at_least_one_day": return L10n.format("schedule_select_at_least_one_day", locale: locale, args: [])
@@ -17087,17 +16395,14 @@ public enum L10nText {
         case "schedule.stopped": return L10n.format("schedule_stopped", locale: locale, args: [])
         case "schedule.stopped_cannot_run": return L10n.format("schedule_stopped_cannot_run", locale: locale, args: [])
         case "schedule.stopped_count": return L10n.format("schedule_stopped_count", locale: locale, args: [intArg(args["count"]), strArg(args["total"])])
-        case "schedule.stops_automatic_runs_existing_conversations_remain": return L10n.format("schedule_stops_automatic_runs_existing_conversations_remain", locale: locale, args: [])
         case "schedule.strip_count": return L10n.format("schedule_strip_count", locale: locale, args: [intArg(args["count"]), strArg(args["state"])])
         case "schedule.strip_single": return L10n.format("schedule_strip_single", locale: locale, args: [strArg(args["frequency"]), strArg(args["state"])])
         case "schedule.sun": return L10n.format("schedule_sun", locale: locale, args: [])
-        case "schedule.take_action": return L10n.format("schedule_take_action", locale: locale, args: [])
         case "schedule.takeover_via_client": return L10n.format("schedule_takeover_via_client", locale: locale, args: [])
         case "schedule.takeover_via_local": return L10n.format("schedule_takeover_via_local", locale: locale, args: [])
         case "schedule.task_creation_permissions_changed": return L10n.format("schedule_task_creation_permissions_changed", locale: locale, args: [])
         case "schedule.task_creation_permissions_changed_the_task_stopped": return L10n.format("schedule_task_creation_permissions_changed_the_task_stopped", locale: locale, args: [])
         case "schedule.task_name": return L10n.format("schedule_task_name", locale: locale, args: [])
-        case "schedule.tasks_do_not_run_while_the_computer_sleeps_or": return L10n.format("schedule_tasks_do_not_run_while_the_computer_sleeps_or", locale: locale, args: [])
         case "schedule.tell_the_agent_in_a_conversation_check_for_me": return L10n.format("schedule_tell_the_agent_in_a_conversation_check_for_me", locale: locale, args: [])
         case "schedule.the_agent_created_task_interval_is_too_short": return L10n.format("schedule_the_agent_created_task_interval_is_too_short", locale: locale, args: [])
         case "schedule.the_agent_created_task_interval_is_too_short_the": return L10n.format("schedule_the_agent_created_task_interval_is_too_short_the", locale: locale, args: [])
@@ -17108,6 +16413,11 @@ public enum L10nText {
         case "schedule.the_message_could_not_be_queued": return L10n.format("schedule_the_message_could_not_be_queued", locale: locale, args: [])
         case "schedule.the_message_was_not_delivered_to_the_cli": return L10n.format("schedule_the_message_was_not_delivered_to_the_cli", locale: locale, args: [])
         case "schedule.the_previous_creation_result_is_unconfirmed_retrying_uses_the": return L10n.format("schedule_the_previous_creation_result_is_unconfirmed_retrying_uses_the", locale: locale, args: [])
+        default: return nil
+        }
+    }
+    private static func resolve7(_ key: String, args: [String: L10nTextValue], locale: String) -> String? {
+        switch key {
         case "schedule.the_previous_operation_s_result_is_unconfirmed_verify_the": return L10n.format("schedule_the_previous_operation_s_result_is_unconfirmed_verify_the", locale: locale, args: [])
         case "schedule.the_relay_s_session_limit_has_been_reached": return L10n.format("schedule_the_relay_s_session_limit_has_been_reached", locale: locale, args: [])
         case "schedule.the_run_count_must_be_a_positive_integer": return L10n.format("schedule_the_run_count_must_be_a_positive_integer", locale: locale, args: [])
@@ -17116,8 +16426,6 @@ public enum L10nText {
         case "schedule.the_scheduled_message_is_paused_resume_or_cancel_it": return L10n.format("schedule_the_scheduled_message_is_paused_resume_or_cancel_it", locale: locale, args: [])
         case "schedule.the_scheduled_message_was_canceled_before_delivery": return L10n.format("schedule_the_scheduled_message_was_canceled_before_delivery", locale: locale, args: [])
         case "schedule.the_scheduled_message_was_canceled_before_delivery_the_task": return L10n.format("schedule_the_scheduled_message_was_canceled_before_delivery_the_task", locale: locale, args: [])
-        case "schedule.these_changes_will_not_be_saved": return L10n.format("schedule_these_changes_will_not_be_saved", locale: locale, args: [])
-        case "schedule.this_conversation_s_scheduled_tasks": return L10n.format("schedule_this_conversation_s_scheduled_tasks", locale: locale, args: [])
         case "schedule.this_task_could_not_be_found_if_the_computer": return L10n.format("schedule_this_task_could_not_be_found_if_the_computer", locale: locale, args: [])
         case "schedule.thu": return L10n.format("schedule_thu", locale: locale, args: [])
         case "schedule.time": return L10n.format("schedule_time", locale: locale, args: [])
@@ -17130,8 +16438,6 @@ public enum L10nText {
         case "schedule.until": return L10n.format("schedule_until", locale: locale, args: [strArg(args["value"])])
         case "schedule.update_remote_agent_on_the_computer_to_use_scheduled": return L10n.format("schedule_update_remote_agent_on_the_computer_to_use_scheduled", locale: locale, args: [])
         case "schedule.update_remote_agent_on_this_computer_to_use_scheduled": return L10n.format("schedule_update_remote_agent_on_this_computer_to_use_scheduled", locale: locale, args: [])
-        case "schedule.verified_abandon_request": return L10n.format("schedule_verified_abandon_request", locale: locale, args: [])
-        case "schedule.verify_current_permissions_in_the_conversation": return L10n.format("schedule_verify_current_permissions_in_the_conversation", locale: locale, args: [])
         case "schedule.view_all_runs": return L10n.format("schedule_view_all_runs", locale: locale, args: [intArg(args["count"])])
         case "schedule.waiting_for_results": return L10n.format("schedule_waiting_for_results", locale: locale, args: [])
         case "schedule.waiting_for_the_current_turn_to_end": return L10n.format("schedule_waiting_for_the_current_turn_to_end", locale: locale, args: [])
@@ -17185,11 +16491,6 @@ public enum L10nText {
         case "security.confirmed_here_waiting_for_managing_client_approval_and_binding": return L10n.format("security_confirmed_here_waiting_for_managing_client_approval_and_binding", locale: locale, args: [])
         case "security.continue_creation": return L10n.format("security_continue_creation", locale: locale, args: [])
         case "security.continue_original_draft": return L10n.format("security_continue_original_draft", locale: locale, args: [])
-        default: return nil
-        }
-    }
-    private static func resolve8(_ key: String, args: [String: L10nTextValue], locale: String) -> String? {
-        switch key {
         case "security.continue_the_original_recovery_or_explicitly_abandon_the_rejected": return L10n.format("security_continue_the_original_recovery_or_explicitly_abandon_the_rejected", locale: locale, args: [])
         case "security.control_ai_coding_clis_on_your_computer_from_any": return L10n.format("security_control_ai_coding_clis_on_your_computer_from_any", locale: locale, args: [])
         case "security.create_account": return L10n.format("security_create_account", locale: locale, args: [])
@@ -17267,6 +16568,11 @@ public enum L10nText {
         case "security.ios_invalid_pairing_approval": return L10n.format("security_ios_invalid_pairing_approval", locale: locale, args: [])
         case "security.ios_joined_but_could_not_save_account_keys": return L10n.format("security_ios_joined_but_could_not_save_account_keys", locale: locale, args: [strArg(args["value"])])
         case "security.ios_joining_an_existing_account_requires_managing_client_approval_use": return L10n.format("security_ios_joining_an_existing_account_requires_managing_client_approval_use", locale: locale, args: [])
+        default: return nil
+        }
+    }
+    private static func resolve8(_ key: String, args: [String: L10nTextValue], locale: String) -> String? {
+        switch key {
         case "security.ios_joining_canceled": return L10n.format("security_ios_joining_canceled", locale: locale, args: [])
         case "security.ios_management_transferred": return L10n.format("security_ios_management_transferred", locale: locale, args: [])
         case "security.ios_management_transferred_this_device_was_removed": return L10n.format("security_ios_management_transferred_this_device_was_removed", locale: locale, args: [])
@@ -17340,11 +16646,6 @@ public enum L10nText {
         case "security.ios_this_deletes_the_entire_account_on_the_current_relay": return L10n.format("security_ios_this_deletes_the_entire_account_on_the_current_relay", locale: locale, args: [])
         case "security.ios_this_device_has_no_available_camera_go_back_to": return L10n.format("security_ios_this_device_has_no_available_camera_go_back_to", locale: locale, args: [])
         case "security.ios_this_device_is_over_5_minutes_behind_the_security": return L10n.format("security_ios_this_device_is_over_5_minutes_behind_the_security", locale: locale, args: [])
-        default: return nil
-        }
-    }
-    private static func resolve9(_ key: String, args: [String: L10nTextValue], locale: String) -> String? {
-        switch key {
         case "security.ios_this_device_is_the_sole_managing_client_transfer_management": return L10n.format("security_ios_this_device_is_the_sole_managing_client_transfer_management", locale: locale, args: [])
         case "security.ios_this_device_s_account_keys_and_cache_will_be": return L10n.format("security_ios_this_device_s_account_keys_and_cache_will_be", locale: locale, args: [])
         case "security.ios_this_device_was_removed_the_successor_is_now_the": return L10n.format("security_ios_this_device_was_removed_the_successor_is_now_the", locale: locale, args: [])
@@ -17422,6 +16723,11 @@ public enum L10nText {
         case "security.rejoin_and_resume_sessions": return L10n.format("security_rejoin_and_resume_sessions", locale: locale, args: [])
         case "security.rejoin_with_a_pairing_code": return L10n.format("security_rejoin_with_a_pairing_code", locale: locale, args: [])
         case "security.remote_control_expiry": return L10n.format("security_remote_control_expiry", locale: locale, args: [])
+        default: return nil
+        }
+    }
+    private static func resolve9(_ key: String, args: [String: L10nTextValue], locale: String) -> String? {
+        switch key {
         case "security.remote_control_expiry_not_received_yet": return L10n.format("security_remote_control_expiry_not_received_yet", locale: locale, args: [])
         case "security.remote_control_renewed": return L10n.format("security_remote_control_renewed", locale: locale, args: [])
         case "security.removal_immediately_stops_remote_access_from_this_device_the": return L10n.format("security_removal_immediately_stops_remote_access_from_this_device_the", locale: locale, args: [])
@@ -17495,11 +16801,6 @@ public enum L10nText {
         case "security.this_page_and_the_server_or_pairing_device_use": return L10n.format("security_this_page_and_the_server_or_pairing_device_use", locale: locale, args: [])
         case "security.this_pairing_expired_generate_a_new_code_on_the": return L10n.format("security_this_pairing_expired_generate_a_new_code_on_the", locale: locale, args: [])
         case "security.this_permanently_deletes_sessions_events_and_images_on_the": return L10n.format("security_this_permanently_deletes_sessions_events_and_images_on_the", locale: locale, args: [])
-        default: return nil
-        }
-    }
-    private static func resolve10(_ key: String, args: [String: L10nTextValue], locale: String) -> String? {
-        switch key {
         case "security.too_many_attempts_wait_a_minute_and_retry": return L10n.format("security_too_many_attempts_wait_a_minute_and_retry", locale: locale, args: [])
         case "security.transfer_management": return L10n.format("security_transfer_management", locale: locale, args: [])
         case "security.transfer_result_unverified_continue_the_original_operation": return L10n.format("security_transfer_result_unverified_continue_the_original_operation", locale: locale, args: [])
@@ -17577,6 +16878,11 @@ public enum L10nText {
         case "session.ios_select_text_hint": return L10n.format("session_ios_select_text_hint", locale: locale, args: [])
         case "session.ios_title_field": return L10n.format("session_ios_title_field", locale: locale, args: [])
         case "session.ios_turn_k_tokens": return L10n.format("session_ios_turn_k_tokens", locale: locale, args: [intArg(args["count"])])
+        default: return nil
+        }
+    }
+    private static func resolve10(_ key: String, args: [String: L10nTextValue], locale: String) -> String? {
+        switch key {
         case "session.ios_turn_tokens": return L10n.format("session_ios_turn_tokens", locale: locale, args: [intArg(args["count"])])
         case "session.ios_update_required": return L10n.format("session_ios_update_required", locale: locale, args: [])
         case "session.ios_your_message": return L10n.format("session_ios_your_message", locale: locale, args: [])
@@ -17650,11 +16956,6 @@ public enum L10nText {
         case "settings.automatically_end_idle_sessions": return L10n.format("settings_automatically_end_idle_sessions", locale: locale, args: [])
         case "settings.can_clear": return L10n.format("settings_can_clear", locale: locale, args: [strArg(args["value"])])
         case "settings.can_free": return L10n.format("settings_can_free", locale: locale, args: [strArg(args["value"])])
-        default: return nil
-        }
-    }
-    private static func resolve11(_ key: String, args: [String: L10nTextValue], locale: String) -> String? {
-        switch key {
         case "settings.cannot_receive": return L10n.format("settings_cannot_receive", locale: locale, args: [])
         case "settings.cannot_sign_in_to_the_relay_right_now": return L10n.format("settings_cannot_sign_in_to_the_relay_right_now", locale: locale, args: [])
         case "settings.check_for_updates": return L10n.format("settings_check_for_updates", locale: locale, args: [])
@@ -17732,6 +17033,11 @@ public enum L10nText {
         case "settings.ios_the_android_app_and_home_screen_web_app_can": return L10n.format("settings_ios_the_android_app_and_home_screen_web_app_can", locale: locale, args: [])
         case "settings.ios_the_computer_may_be_asleep_offline_or_not_running": return L10n.format("settings_ios_the_computer_may_be_asleep_offline_or_not_running", locale: locale, args: [])
         case "settings.ios_the_number_on_the_sessions_tab": return L10n.format("settings_ios_the_number_on_the_sessions_tab", locale: locale, args: [])
+        default: return nil
+        }
+    }
+    private static func resolve11(_ key: String, args: [String: L10nTextValue], locale: String) -> String? {
+        switch key {
         case "settings.ios_the_time_on_the_right_is_the_last_use": return L10n.format("settings_ios_the_time_on_the_right_is_the_last_use", locale: locale, args: [])
         case "settings.ios_these_libraries_are_used_by_optional_parts_of_connect": return L10n.format("settings_ios_these_libraries_are_used_by_optional_parts_of_connect", locale: locale, args: [])
         case "settings.ios_this_change_was_not_saved_the_computer_still_has": return L10n.format("settings_ios_this_change_was_not_saved_the_computer_still_has", locale: locale, args: [])
@@ -17805,11 +17111,6 @@ public enum L10nText {
         case "settings.uploaded_images_and_files": return L10n.format("settings_uploaded_images_and_files", locale: locale, args: [])
         case "settings.uploading": return L10n.format("settings_uploading", locale: locale, args: [strArg(args["value"])])
         case "settings.use_cli_defaults_for_new_projects": return L10n.format("settings_use_cli_defaults_for_new_projects", locale: locale, args: [])
-        default: return nil
-        }
-    }
-    private static func resolve12(_ key: String, args: [String: L10nTextValue], locale: String) -> String? {
-        switch key {
         case "settings.verify_and_continue_security_operation": return L10n.format("settings_verify_and_continue_security_operation", locale: locale, args: [])
         case "settings.version_unverified_run_remote_agent_doctor_on_this_computer": return L10n.format("settings_version_unverified_run_remote_agent_doctor_on_this_computer", locale: locale, args: [])
         case "settings.view_usage_in_the_local_cli": return L10n.format("settings_view_usage_in_the_local_cli", locale: locale, args: [])
@@ -17887,6 +17188,11 @@ public enum L10nText {
         case "terminal.ios_font": return L10n.format("terminal_ios_font", locale: locale, args: [])
         case "terminal.ios_font_larger": return L10n.format("terminal_ios_font_larger", locale: locale, args: [])
         case "terminal.ios_font_smaller": return L10n.format("terminal_ios_font_smaller", locale: locale, args: [])
+        default: return nil
+        }
+    }
+    private static func resolve12(_ key: String, args: [String: L10nTextValue], locale: String) -> String? {
+        switch key {
         case "terminal.ios_font_value": return L10n.format("terminal_ios_font_value", locale: locale, args: [intArg(args["size"])])
         case "terminal.ios_hide_details": return L10n.format("terminal_ios_hide_details", locale: locale, args: [])
         case "terminal.ios_keyboard_hint": return L10n.format("terminal_ios_keyboard_hint", locale: locale, args: [])
@@ -17972,11 +17278,6 @@ public enum L10nText {
         case "transport.diag_verdict_none": return L10n.format("transport_diag_verdict_none", locale: locale, args: [])
         case "transport.direct": return L10n.format("transport_direct", locale: locale, args: [])
         case "transport.direct_slow": return L10n.format("transport_direct_slow", locale: locale, args: [])
-        default: return nil
-        }
-    }
-    private static func resolve13(_ key: String, args: [String: L10nTextValue], locale: String) -> String? {
-        switch key {
         case "transport.file_fallback": return L10n.format("transport_file_fallback", locale: locale, args: [])
         case "transport.file_speed_both": return L10n.format("transport_file_speed_both", locale: locale, args: [strArg(args["direct"]), strArg(args["relay"])])
         case "transport.file_speed_direct": return L10n.format("transport_file_speed_direct", locale: locale, args: [strArg(args["direct"])])

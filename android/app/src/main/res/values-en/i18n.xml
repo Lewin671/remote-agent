@@ -443,10 +443,6 @@
         <item quantity="other">"%1$d sessions running"</item>
     </plurals>
     <string name="home_scheduled_frequency">"Scheduled %1$s"</string>
-    <plurals name="home_scheduled_tasks">
-        <item quantity="one">"%1$d scheduled task"</item>
-        <item quantity="other">"%1$d scheduled tasks"</item>
-    </plurals>
     <string name="home_schedules_tab" formatted="false">"Schedules"</string>
     <string name="home_scope_label">"Scope: %1$s"</string>
     <string name="home_sessions_or_schedules" formatted="false">"Sessions or schedules"</string>
@@ -1161,7 +1157,6 @@
     <string name="schedule_interval_minutes" formatted="false">"Interval (minutes)"</string>
     <string name="schedule_ios_attention_once">"%1$s. Run an extra time now, or change the time to reschedule."</string>
     <string name="schedule_ios_choose_a_valid_iana_time_zone" formatted="false">"Choose a valid IANA time zone"</string>
-    <string name="schedule_ios_confirm_the_previous_change_s_result_first" formatted="false">"Confirm the previous change’s result first"</string>
     <string name="schedule_ios_enter_a_valid_interval" formatted="false">"Enter a valid interval"</string>
     <string name="schedule_ios_takeover_notice">"%1$s Continuing takes over the task and runs it with the permissions shown."</string>
     <string name="schedule_ios_task_details" formatted="false">"Task details"</string>

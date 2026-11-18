@@ -394,20 +394,6 @@
 			<string>%1$lld 个会话在运行</string>
 		</dict>
 	</dict>
-	<key>home_scheduled_tasks</key>
-	<dict>
-		<key>NSStringLocalizedFormatKey</key>
-		<string>%1$#@count@</string>
-		<key>count</key>
-		<dict>
-			<key>NSStringFormatSpecTypeKey</key>
-			<string>NSStringPluralRuleType</string>
-			<key>NSStringFormatValueTypeKey</key>
-			<string>lld</string>
-			<key>other</key>
-			<string>定时 %1$lld 个任务</string>
-		</dict>
-	</dict>
 	<key>home_total</key>
 	<dict>
 		<key>NSStringLocalizedFormatKey</key>

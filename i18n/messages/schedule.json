@@ -595,8 +595,7 @@
     "params": {},
     "platforms": [
       "web",
-      "android",
-      "ios"
+      "android"
     ],
     "status": {
       "zh-CN": "source",
@@ -2046,8 +2045,7 @@
     "params": {},
     "platforms": [
       "web",
-      "android",
-      "ios"
+      "android"
     ],
     "status": {
       "zh-CN": "source",
@@ -2062,8 +2060,7 @@
     "params": {},
     "platforms": [
       "web",
-      "android",
-      "ios"
+      "android"
     ],
     "status": {
       "zh-CN": "source",
@@ -2078,8 +2075,7 @@
     "params": {},
     "platforms": [
       "web",
-      "android",
-      "ios"
+      "android"
     ],
     "status": {
       "zh-CN": "source",
@@ -2110,8 +2106,7 @@
     "params": {},
     "platforms": [
       "web",
-      "android",
-      "ios"
+      "android"
     ],
     "status": {
       "zh-CN": "source",
@@ -2163,8 +2158,7 @@
     "params": {},
     "platforms": [
       "web",
-      "android",
-      "ios"
+      "android"
     ],
     "status": {
       "zh-CN": "source",
@@ -2179,8 +2173,7 @@
     "params": {},
     "platforms": [
       "web",
-      "android",
-      "ios"
+      "android"
     ],
     "status": {
       "zh-CN": "source",
@@ -2323,8 +2316,7 @@
     "params": {},
     "platforms": [
       "web",
-      "android",
-      "ios"
+      "android"
     ],
     "status": {
       "zh-CN": "source",
@@ -2339,8 +2331,7 @@
     "params": {},
     "platforms": [
       "web",
-      "android",
-      "ios"
+      "android"
     ],
     "status": {
       "zh-CN": "source",
@@ -2691,8 +2682,7 @@
     "params": {},
     "platforms": [
       "web",
-      "android",
-      "ios"
+      "android"
     ],
     "status": {
       "zh-CN": "source",
@@ -2707,8 +2697,7 @@
     "params": {},
     "platforms": [
       "web",
-      "android",
-      "ios"
+      "android"
     ],
     "status": {
       "zh-CN": "source",
@@ -2755,8 +2744,7 @@
     "params": {},
     "platforms": [
       "web",
-      "android",
-      "ios"
+      "android"
     ],
     "status": {
       "zh-CN": "source",
@@ -2819,8 +2807,7 @@
     "params": {},
     "platforms": [
       "web",
-      "android",
-      "ios"
+      "android"
     ],
     "status": {
       "zh-CN": "source",
@@ -2835,8 +2822,7 @@
     "params": {},
     "platforms": [
       "web",
-      "android",
-      "ios"
+      "android"
     ],
     "status": {
       "zh-CN": "source",
@@ -2867,8 +2853,7 @@
     "params": {},
     "platforms": [
       "web",
-      "android",
-      "ios"
+      "android"
     ],
     "status": {
       "zh-CN": "source",
@@ -2947,8 +2932,7 @@
     "params": {},
     "platforms": [
       "web",
-      "android",
-      "ios"
+      "android"
     ],
     "status": {
       "zh-CN": "source",
@@ -2988,8 +2972,7 @@
     "params": {},
     "platforms": [
       "web",
-      "android",
-      "ios"
+      "android"
     ],
     "status": {
       "zh-CN": "source",
@@ -3004,8 +2987,7 @@
     "params": {},
     "platforms": [
       "web",
-      "android",
-      "ios"
+      "android"
     ],
     "status": {
       "zh-CN": "source",
@@ -3164,8 +3146,7 @@
     "params": {},
     "platforms": [
       "web",
-      "android",
-      "ios"
+      "android"
     ],
     "status": {
       "zh-CN": "source",
@@ -3244,8 +3225,7 @@
     "params": {},
     "platforms": [
       "web",
-      "android",
-      "ios"
+      "android"
     ],
     "status": {
       "zh-CN": "source",
@@ -3276,8 +3256,7 @@
     "params": {},
     "platforms": [
       "web",
-      "android",
-      "ios"
+      "android"
     ],
     "status": {
       "zh-CN": "source",
@@ -3308,8 +3287,7 @@
     "params": {},
     "platforms": [
       "web",
-      "android",
-      "ios"
+      "android"
     ],
     "status": {
       "zh-CN": "source",
@@ -3324,8 +3302,7 @@
     "params": {},
     "platforms": [
       "web",
-      "android",
-      "ios"
+      "android"
     ],
     "status": {
       "zh-CN": "source",
@@ -3361,8 +3338,7 @@
     "params": {},
     "platforms": [
       "web",
-      "android",
-      "ios"
+      "android"
     ],
     "status": {
       "zh-CN": "source",
@@ -3377,8 +3353,7 @@
     "params": {},
     "platforms": [
       "web",
-      "android",
-      "ios"
+      "android"
     ],
     "status": {
       "zh-CN": "source",
@@ -3521,8 +3496,7 @@
     "params": {},
     "platforms": [
       "web",
-      "android",
-      "ios"
+      "android"
     ],
     "status": {
       "zh-CN": "source",
@@ -3617,8 +3591,7 @@
     "params": {},
     "platforms": [
       "web",
-      "android",
-      "ios"
+      "android"
     ],
     "status": {
       "zh-CN": "source",
@@ -4054,8 +4027,7 @@
     "notes": "定时/设置/账户页面完整句或短标签。参数为当前页面数据，用户/CLI 原文不翻译；短标签空间紧凑，说明可换行。",
     "platforms": [
       "web",
-      "android",
-      "ios"
+      "android"
     ],
     "status": {
       "zh-CN": "source",
@@ -4203,8 +4175,7 @@
     "notes": "定时/设置/账户页面完整句或短标签。参数为当前页面数据，用户/CLI 原文不翻译；短标签空间紧凑，说明可换行。",
     "platforms": [
       "web",
-      "android",
-      "ios"
+      "android"
     ],
     "status": {
       "zh-CN": "source",
@@ -4287,48 +4258,6 @@
     }
   },
   {
-    "key": "schedule.ios_abandon_original_request",
-    "zh-CN": "放弃原请求",
-    "en": "Abandon original request",
-    "notes": "iOS NewScheduleScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "schedule.ios_agent_notification",
-    "zh-CN": "agent 通知",
-    "en": "Agent notification",
-    "notes": "iOS Schedules.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "schedule.ios_agent_notification_completion_notification",
-    "zh-CN": "agent 通知、完成后通知",
-    "en": "Agent notification, completion notification",
-    "notes": "iOS Schedules.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
     "key": "schedule.ios_attention_once",
     "zh-CN": "{reason}。可立即额外执行一次，或改时间重排。",
     "en": "{reason}. Run an extra time now, or change the time to reschedule.",
@@ -4350,76 +4279,6 @@
     }
   },
   {
-    "key": "schedule.ios_beijing",
-    "zh-CN": "北京",
-    "en": "Beijing",
-    "notes": "iOS Schedules.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "schedule.ios_berlin",
-    "zh-CN": "柏林",
-    "en": "Berlin",
-    "notes": "iOS Schedules.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "schedule.ios_cannot_request_notification",
-    "zh-CN": "无法请求通知",
-    "en": "Cannot request notification",
-    "notes": "iOS Schedules.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "schedule.ios_choose_a_project",
-    "zh-CN": "选项目",
-    "en": "Choose a project",
-    "notes": "iOS NewScheduleScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "schedule.ios_choose_a_project_first",
-    "zh-CN": "请先选择项目。",
-    "en": "Choose a project first.",
-    "notes": "iOS ScheduleConfigSheet.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
     "key": "schedule.ios_choose_a_valid_iana_time_zone",
     "zh-CN": "请选择有效的 IANA 时区",
     "en": "Choose a valid IANA time zone",
@@ -4428,55 +4287,6 @@
     "platforms": [
       "web",
       "android",
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "schedule.ios_choose_once_daily_weekly_or_every",
-    "zh-CN": "请选择一次、每天、每周或每隔",
-    "en": "Choose Once, Daily, Weekly, or Every",
-    "notes": "iOS ScheduleTiming.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "schedule.ios_confirm_the_previous_change_s_result_first",
-    "zh-CN": "请先确认上一条修改的结果",
-    "en": "Confirm the previous change’s result first",
-    "notes": "iOS ScheduleStore.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "schedule.ios_connect_to_edit_run_or_delete",
-    "zh-CN": "{value} 连上后才能修改、运行或删除。",
-    "en": "Connect {value} to edit, run, or delete.",
-    "notes": "iOS ScheduleDetailScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。变量来源：value = Swift 插值 machineLabel(model.state, id: machine)；用户内容和系统/CLI 原文不翻译。",
-    "params": {
-      "value": {
-        "type": "string",
-        "example": "Example"
-      }
-    },
-    "platforms": [
       "ios"
     ],
     "status": {
@@ -4513,34 +4323,6 @@
     }
   },
   {
-    "key": "schedule.ios_each_run_opens_a_new_conversation_grouped_under_this",
-    "zh-CN": "每次运行新开一个对话，归在这个任务下面，不进会话列表。完成后默认通知；关闭后仅由 agent 主动通知。",
-    "en": "Each run opens a new conversation grouped under this task, outside the session list. Notifies on completion by default; when disabled, only the agent can notify you.",
-    "notes": "iOS NewScheduleScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "schedule.ios_end_time_must_be_in_the_future",
-    "zh-CN": "结束时间必须在未来",
-    "en": "End time must be in the future",
-    "notes": "iOS ScheduleTiming.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
     "key": "schedule.ios_enter_a_valid_interval",
     "zh-CN": "请输入有效的间隔",
     "en": "Enter a valid interval",
@@ -4549,34 +4331,6 @@
     "platforms": [
       "web",
       "android",
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "schedule.ios_friday",
-    "zh-CN": "星期五",
-    "en": "Friday",
-    "notes": "iOS ScheduleTimingSheet.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "schedule.ios_hong_kong",
-    "zh-CN": "香港",
-    "en": "Hong Kong",
-    "notes": "iOS Schedules.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
-    "params": {},
-    "platforms": [
       "ios"
     ],
     "status": {
@@ -4599,66 +4353,10 @@
     }
   },
   {
-    "key": "schedule.ios_interval",
-    "zh-CN": "间隔",
-    "en": "Interval",
-    "notes": "iOS ScheduleTimingSheet.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "schedule.ios_loading_models",
-    "zh-CN": "读取模型列表…",
-    "en": "Loading models…",
-    "notes": "iOS ScheduleConfigSheet.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
     "key": "schedule.ios_loading_tasks",
     "zh-CN": "正在读取任务…",
     "en": "Loading tasks…",
     "notes": "iOS ScheduleDetailScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "schedule.ios_london",
-    "zh-CN": "伦敦",
-    "en": "London",
-    "notes": "iOS Schedules.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "schedule.ios_los_angeles",
-    "zh-CN": "洛杉矶",
-    "en": "Los Angeles",
-    "notes": "iOS Schedules.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
     "params": {},
     "platforms": [
       "ios"
@@ -4697,113 +4395,10 @@
     }
   },
   {
-    "key": "schedule.ios_mmm_d",
-    "zh-CN": "M月d日",
-    "en": "MMM d",
-    "notes": "iOS Schedules.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。 日期格式模板供 Foundation DateFormatter 使用，不直接当正文显示。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "schedule.ios_mmm_d_yyyy",
-    "zh-CN": "yyyy年M月d日",
-    "en": "MMM d, yyyy",
-    "notes": "iOS Schedules.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。 日期格式模板供 Foundation DateFormatter 使用，不直接当正文显示。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "schedule.ios_monday",
-    "zh-CN": "星期一",
-    "en": "Monday",
-    "notes": "iOS ScheduleTimingSheet.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
     "key": "schedule.ios_needs_attention",
     "zh-CN": "需要你处理",
     "en": "Needs attention",
     "notes": "iOS SchedulesScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "schedule.ios_needs_your_attention",
-    "zh-CN": "需要你处理",
-    "en": "Needs your attention",
-    "notes": "iOS Schedules.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "schedule.ios_new_york",
-    "zh-CN": "纽约",
-    "en": "New York",
-    "notes": "iOS Schedules.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "schedule.ios_next",
-    "zh-CN": " · 下次 {value}",
-    "en": " · Next {value}",
-    "notes": "iOS ScheduleDetailScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。变量来源：value = Swift 插值 scheduleMoment($0)；用户内容和系统/CLI 原文不翻译。",
-    "params": {
-      "value": {
-        "type": "string",
-        "example": "Example"
-      }
-    },
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "schedule.ios_open_the_task_editor_first",
-    "zh-CN": "请先打开任务编辑器",
-    "en": "Open the task editor first",
-    "notes": "iOS ScheduleDetailScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
     "params": {},
     "platforms": [
       "ios"
@@ -4842,76 +4437,6 @@
     }
   },
   {
-    "key": "schedule.ios_recent",
-    "zh-CN": "最近",
-    "en": "Recent",
-    "notes": "iOS Schedules.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "schedule.ios_run_count_must_be_greater_than_0",
-    "zh-CN": "运行次数必须是正整数",
-    "en": "Run count must be greater than 0",
-    "notes": "iOS ScheduleTiming.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "schedule.ios_run_once_now_does_not_count_toward_automatic_runs",
-    "zh-CN": "立即运行一次不占自动次数及日历当天名额。",
-    "en": "Run once now does not count toward automatic runs or that calendar day’s limit.",
-    "notes": "iOS ScheduleTimingSheet.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "schedule.ios_saturday",
-    "zh-CN": "星期六",
-    "en": "Saturday",
-    "notes": "iOS ScheduleTimingSheet.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "schedule.ios_search_iana_time_zones",
-    "zh-CN": "搜索 IANA 时区",
-    "en": "Search IANA time zones",
-    "notes": "iOS ScheduleTimingSheet.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
     "key": "schedule.ios_seconds",
     "zh-CN": "秒",
     "en": "Seconds",
@@ -4926,52 +4451,10 @@
     }
   },
   {
-    "key": "schedule.ios_singapore",
-    "zh-CN": "新加坡",
-    "en": "Singapore",
-    "notes": "iOS Schedules.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
     "key": "schedule.ios_stops_future_automatic_runs_messages_already_sent_and_conversations",
     "zh-CN": "停止之后的自动运行。已发出的消息和已开的对话会保留。",
     "en": "Stops future automatic runs. Messages already sent and conversations already opened are retained.",
     "notes": "iOS ScheduleDetailScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "schedule.ios_sunday",
-    "zh-CN": "星期日",
-    "en": "Sunday",
-    "notes": "iOS ScheduleTimingSheet.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "schedule.ios_sydney",
-    "zh-CN": "悉尼",
-    "en": "Sydney",
-    "notes": "iOS Schedules.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
     "params": {},
     "platforms": [
       "ios"
@@ -5047,141 +4530,6 @@
     }
   },
   {
-    "key": "schedule.ios_the_computer_did_not_return_a_task_list",
-    "zh-CN": "电脑返回的不是任务列表",
-    "en": "The computer did not return a task list",
-    "notes": "iOS RemoteSchedules.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "schedule.ios_the_computer_is_offline_connect_to_make_changes",
-    "zh-CN": "电脑不在线，连上后才能修改任务",
-    "en": "The computer is offline. Connect to make changes.",
-    "notes": "iOS ScheduleDetailScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "schedule.ios_the_computer_may_have_already_executed_it_check_the",
-    "zh-CN": "电脑上可能已经执行，请先查看最新任务状态。",
-    "en": "The computer may have already executed it. Check the latest task state first.",
-    "notes": "iOS ScheduleDetailScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "schedule.ios_the_task_is_stored_on_this_computer_changes_only",
-    "zh-CN": "任务保存在这台电脑上；更改只影响之后的运行。",
-    "en": "The task is stored on this computer. Changes only affect future runs.",
-    "notes": "iOS ScheduleTargetSheet.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "schedule.ios_thursday",
-    "zh-CN": "星期四",
-    "en": "Thursday",
-    "notes": "iOS ScheduleTimingSheet.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "schedule.ios_time",
-    "zh-CN": "{value}（{detail}时间）",
-    "en": "{value} ({detail} time)",
-    "notes": "iOS Schedules.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。变量来源：value = Swift 插值 frequency；detail = Swift 插值 city；用户内容和系统/CLI 原文不翻译。",
-    "params": {
-      "value": {
-        "type": "string",
-        "example": "Example"
-      },
-      "detail": {
-        "type": "string",
-        "example": "Example"
-      }
-    },
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "schedule.ios_tokyo",
-    "zh-CN": "东京",
-    "en": "Tokyo",
-    "notes": "iOS Schedules.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "schedule.ios_tuesday",
-    "zh-CN": "星期二",
-    "en": "Tuesday",
-    "notes": "iOS ScheduleTimingSheet.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "schedule.ios_unit",
-    "zh-CN": "单位",
-    "en": "Unit",
-    "notes": "iOS ScheduleTimingSheet.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
     "key": "schedule.ios_unread",
     "zh-CN": "未读",
     "en": "Unread",
@@ -5200,62 +4548,6 @@
     "zh-CN": "这次修改不会保存。",
     "en": "Unsaved changes will be lost.",
     "notes": "iOS ScheduleMessageEditor.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "schedule.ios_update_remote_agent_on_this_computer_to_use_scheduled",
-    "zh-CN": "需要更新电脑上的 remote-agent 才能使用定时任务。",
-    "en": "Update remote-agent on this computer to use scheduled tasks.",
-    "notes": "iOS NewScheduleScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "schedule.ios_update_remote_agent_to_use_scheduled_tasks",
-    "zh-CN": "需要更新电脑上的 remote-agent 才能使用定时任务。",
-    "en": "Update remote-agent to use scheduled tasks",
-    "notes": "iOS ScheduleConfigSheet.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "schedule.ios_wednesday",
-    "zh-CN": "星期三",
-    "en": "Wednesday",
-    "notes": "iOS ScheduleTimingSheet.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "schedule.ios_what_to_check_notify_me_when_there_are_results",
-    "zh-CN": "检查什么，有结果时通知我…",
-    "en": "What to check? Notify me when there are results…",
-    "notes": "iOS NewScheduleScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
     "params": {},
     "platforms": [
       "ios"

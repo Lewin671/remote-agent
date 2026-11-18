@@ -1021,38 +1021,6 @@
     }
   },
   {
-    "key": "home.scheduled_tasks",
-    "zh-CN": {
-      "plural": "count",
-      "forms": {
-        "other": "定时 {count} 个任务"
-      }
-    },
-    "en": {
-      "plural": "count",
-      "forms": {
-        "one": "{count} scheduled task",
-        "other": "{count} scheduled tasks"
-      }
-    },
-    "notes": "会话列表第三行定时任务数量 空间：短标签/列表行保持紧凑，正文可多行。 变量：count，来自当前界面数据；示例只供翻译。",
-    "params": {
-      "count": {
-        "type": "integer",
-        "example": 2
-      }
-    },
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
     "key": "home.schedules_tab",
     "zh-CN": "定时",
     "en": "Schedules",
