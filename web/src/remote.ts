@@ -988,6 +988,9 @@ export class Remote implements CoreExecutor {
   }
   get sessions(): ReadonlyMap<string, SessionView> { return this.cachedSessionMap; }
   get devices(): ReadonlyMap<string, DeviceInfo> { return this.cachedDeviceMap; }
+  deviceKind(id: string): DeviceKind | undefined {
+    return this.cachedDeviceMap.get(id)?.kind ?? this.syncStateView?.devices.find((d) => d.deviceId === id)?.kind;
+  }
   get prefs(): PrefsState {
     const v = this.syncStateView;
     return { status: (v?.prefsLoadFailed || v?.prefsBroken) && !v.prefs ? "error" : v?.prefsLoaded ? "ready" : "loading", error: "", snap: v?.prefs ? { revision: v.prefsRevision, prefs: v.prefs } : undefined, pending: this.cachedPrefPending };

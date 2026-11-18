@@ -2146,12 +2146,31 @@ class DirectTransportTest {
                 directPrefs = InMemoryDirectPreferenceStore(),
                 stunUrls = emptyList(),
             )
+            var watchJob: kotlinx.coroutines.Job? = null
             try {
                 remote.start()
                 remote.foregroundChanged(true)
                 remote.state.first { it.conn == ConnState.ONLINE && daemonAccount.deviceId in it.machines }
+                remote.coreHost.syncStateView.first { it.machinesListed && it.sessionsListed }
                 remote.syncSecurity()
-                remote.direct.setWatchedSessions(mapOf(daemonAccount.deviceId to listOf("sess-delayed")))
+                remote.coreHost.dispatchAndWait(
+                    io.github.lewin671.remoteagent.core.proto.Event.newBuilder()
+                        .setStreamFrame(
+                            io.github.lewin671.remoteagent.core.proto.StreamFrameEvent.newBuilder()
+                                .setLegId(1L)
+                                .setSessionUpdated(
+                                    io.github.lewin671.remoteagent.core.proto.PlainSession.newBuilder()
+                                        .setSessionId("sess-delayed")
+                                        .setMachineId(daemonAccount.deviceId),
+                                ),
+                        )
+                        .build(),
+                )
+                remote.state.first { "sess-delayed" in it.sessions }
+                watchJob = launch { remote.watchSession("sess-delayed").collect {} }
+                awaitCondition("CoreHost registers watched session", 3_000) {
+                    "sess-delayed" in remote.coreHost.watchedSessionIds()
+                }
                 // Wait until both uses are DTLS-connected & Capabilities is sent while dc0 is still connecting.
                 awaitCondition("capabilities sent before dc0 opens", 5_000) {
                     daemon.paths.containsKey(1) && daemon.paths.containsKey(2) &&
@@ -2168,6 +2187,7 @@ class DirectTransportTest {
                 }
                 assertEquals(listOf(listOf("sess-delayed")), daemon.receivedControl15.toList())
             } finally {
+                watchJob?.cancel()
                 remote.close()
                 daemon.close()
             }

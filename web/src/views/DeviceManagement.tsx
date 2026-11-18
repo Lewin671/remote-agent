@@ -61,7 +61,7 @@ export function DeviceActions({
   return (
     <>
       <div className="grp">
-        {active ? (
+        {active || incomplete ? (
           <button
             className="row danger"
             disabled={busy}

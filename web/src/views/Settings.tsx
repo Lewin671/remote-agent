@@ -685,7 +685,7 @@ export function DevicesPage({
       <div className="label">{l10n.t("settings.unfinished_pairing")}</div>
       <p className="gf">{l10n.t("settings.the_new_device_has_not_finished_joining_if_it")}</p>
       {vm.unfinishedPairings.map((d) => {
-        const kind = remote.devices.get(d.deviceId)?.kind;
+        const kind = remote.deviceKind(d.deviceId);
         return (
           <div key={d.deviceId}>
             <p className="gf">
