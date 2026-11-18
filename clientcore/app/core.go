@@ -375,6 +375,10 @@ func (c *Core) processSyncStep(res sync.StepResult) ([]*corev1.Effect, sync.Dirt
 		effects = append(effects, extraRes.Effects...)
 	}
 
+	if res.Dirty.Home || res.Dirty.SyncState {
+		c.reconcileWatchedMachinePolls(&effects)
+	}
+
 	c.processSchedulesSyncStep(res, &effects)
 
 	return effects, dirty

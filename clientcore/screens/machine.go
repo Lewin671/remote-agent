@@ -14,6 +14,7 @@ type MachinePollFeed struct {
 	State        corev1.MachinePollState
 	Mode         corev1.MachinePollMode
 	Visible      bool
+	Polling      bool
 	Busy         bool
 	Generation   uint64
 	ActiveReqID  string

@@ -1,6 +1,7 @@
 package app
 
 import (
+	"sort"
 	"strings"
 
 	"github.com/Lewin671/remote-agent/clientcore/domain/lists"
@@ -293,6 +294,9 @@ func (c *Core) isPollActive(machineID string, feed *screens.MachinePollFeed) boo
 		feed.Mode == corev1.MachinePollMode_MACHINE_POLL_MODE_UNSPECIFIED {
 		return false
 	}
+	if c.m.sync.Connection() != lists.ConnConnected {
+		return false
+	}
 	mac := c.m.findMachine(machineID)
 	if mac == nil || !lists.MachineReachable(mac) || mac.Meta == nil || mac.Meta.Capabilities == nil {
 		return false
@@ -337,6 +341,7 @@ func (c *Core) startMachineStatusPoll(ctx *sync.StepContext, machineID string, f
 		},
 	})
 	if !ok {
+		feed.Polling = false
 		if feed.Failures < machine.MaxFailures {
 			feed.Failures++
 		}
@@ -404,6 +409,75 @@ func (c *Core) submitGetSettings(ctx *sync.StepContext, machineID string) {
 	}
 }
 
+func (c *Core) reconcilePollFeed(ctx *sync.StepContext, machineID string, feed *screens.MachinePollFeed, modeChanged bool) []*corev1.Effect {
+	if feed == nil {
+		return nil
+	}
+	wasActive := feed.Polling
+	nowActive := c.isPollActive(machineID, feed)
+
+	if feed.Visible && !nowActive {
+		mac := c.m.findMachine(machineID)
+		if mac != nil && mac.Meta != nil && mac.Meta.Capabilities != nil && mac.Meta.Capabilities.MachineStatus {
+			if feed.Last != nil {
+				feed.State = corev1.MachinePollState_MACHINE_POLL_STATE_STALE
+			} else {
+				feed.State = corev1.MachinePollState_MACHINE_POLL_STATE_UNAVAILABLE
+			}
+		}
+		c.m.settingsDirty.MachineStatus = true
+		c.m.settingsDirty.MachineSettings = true
+	}
+
+	if nowActive != wasActive || (nowActive && modeChanged) {
+		feed.Polling = nowActive
+		feed.Generation++
+		feed.Busy = false
+		feed.ActiveReqID = ""
+		effects := []*corev1.Effect{
+			{
+				Effect: &corev1.Effect_ScheduleMachinePoll{
+					ScheduleMachinePoll: &corev1.ScheduleMachinePollEffect{
+						MachineId:  machineID,
+						Generation: feed.Generation - 1,
+						Cancel:     true,
+					},
+				},
+			},
+		}
+		if nowActive {
+			effects = append(effects, c.startMachineStatusPoll(ctx, machineID, feed)...)
+		} else {
+			c.m.settingsDirty.MachineStatus = true
+			c.m.settingsDirty.MachineSettings = true
+		}
+		return effects
+	}
+	return nil
+}
+
+func (c *Core) reconcileWatchedMachinePolls(effects *[]*corev1.Effect) {
+	if c.m.settings == nil || len(c.m.settings.PollFeeds) == 0 {
+		return
+	}
+	ids := make([]string, 0, len(c.m.settings.PollFeeds))
+	for id, feed := range c.m.settings.PollFeeds {
+		if feed != nil && (feed.Visible || feed.Polling) {
+			ids = append(ids, id)
+		}
+	}
+	if len(ids) == 0 {
+		return
+	}
+	sort.Strings(ids)
+	res := c.m.sync.Run(func(ctx *sync.StepContext) {
+		for _, id := range ids {
+			*effects = append(*effects, c.reconcilePollFeed(ctx, id, c.m.settings.PollFeeds[id], false)...)
+		}
+	})
+	*effects = append(*effects, res.Effects...)
+}
+
 func (c *Core) dispatchSettingsUI(ctx *sync.StepContext, ev *corev1.Event) []*corev1.Effect {
 	extra := c.m.ensureSettings()
 	var effects []*corev1.Effect
@@ -416,45 +490,10 @@ func (c *Core) dispatchSettingsUI(ctx *sync.StepContext, ev *corev1.Event) []*co
 		}
 		w := a.MachineStatusWatch
 		feed := extra.EnsureFeed(w.MachineId)
-		wasActive := c.isPollActive(w.MachineId, feed)
 		prevMode := feed.Mode
 		feed.Visible = w.Visible
 		feed.Mode = w.Mode
-		nowActive := c.isPollActive(w.MachineId, feed)
-
-		if w.Visible && !nowActive {
-			mac := c.m.findMachine(w.MachineId)
-			if mac != nil && mac.Meta != nil && mac.Meta.Capabilities != nil && mac.Meta.Capabilities.MachineStatus {
-				if feed.Last != nil {
-					feed.State = corev1.MachinePollState_MACHINE_POLL_STATE_STALE
-				} else {
-					feed.State = corev1.MachinePollState_MACHINE_POLL_STATE_UNAVAILABLE
-				}
-			}
-			c.m.settingsDirty.MachineStatus = true
-			c.m.settingsDirty.MachineSettings = true
-		}
-
-		if nowActive != wasActive || (nowActive && prevMode != w.Mode) {
-			feed.Generation++
-			feed.Busy = false
-			feed.ActiveReqID = ""
-			effects = append(effects, &corev1.Effect{
-				Effect: &corev1.Effect_ScheduleMachinePoll{
-					ScheduleMachinePoll: &corev1.ScheduleMachinePollEffect{
-						MachineId:  w.MachineId,
-						Generation: feed.Generation - 1,
-						Cancel:     true,
-					},
-				},
-			})
-			if nowActive {
-				effects = append(effects, c.startMachineStatusPoll(ctx, w.MachineId, feed)...)
-			} else {
-				c.m.settingsDirty.MachineStatus = true
-				c.m.settingsDirty.MachineSettings = true
-			}
-		}
+		effects = append(effects, c.reconcilePollFeed(ctx, w.MachineId, feed, prevMode != w.Mode)...)
 
 	case *corev1.Event_MachineStatusRetry:
 		if a.MachineStatusRetry == nil {
