@@ -16,7 +16,9 @@ struct HomePendingRow: View {
     var body: some View {
         let title = row.title.rendered()
         let kind = row.kindText.rendered()
-        let summary = row.summary.rendered()
+        // The summary repeats the kind for most rows; it is only the line when neither is given.
+        let detail = row.detail.rendered()
+        let summary = kind.isEmpty && detail.isEmpty ? row.summary.rendered() : detail
         let spoken = [title, kind, summary].filter { !$0.isEmpty }.joined(separator: L10n.commonIosSpokenSeparator())
         Button {
             nav.open(.session(id: row.sessionID))
