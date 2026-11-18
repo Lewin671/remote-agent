@@ -40,7 +40,6 @@ import Testing
                     #expect(imageFailureLine([item.0].map(rawImageProblem), locale: locale) == problem.message)
                 }
                 #expect(imageFailureLine(["opaque"].map(rawImageProblem), locale: "en") == L10n.imageThisImageCouldNotBeProcessed(locale: "en"))
-                #expect(quotaSummaryRow(QuotaGroup(agent: .codex, title: "raw", status: .ok, rows: [], received: "", detail: "raw", lastRecord: false)) == nil)
             }
         }
     }

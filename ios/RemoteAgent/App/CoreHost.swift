@@ -15,6 +15,11 @@ final class CoreScreens {
         let effect: PBSessionRestoreComposerEffect
     }
 
+    struct PendingCleanup: Identifiable, Equatable, Sendable {
+        let id = UUID()
+        let effect: PBPrepareCleanupSessionEffect
+    }
+
     var home = PBCoreHomeViewModel()
     var projectDetail = PBCoreProjectDetailView()
     var manageProjects = PBCoreManageProjectsView()
@@ -25,11 +30,24 @@ final class CoreScreens {
     var scheduleDetail = PBScheduleDetailViewModel()
     var scheduleForm = PBScheduleFormViewModel()
     var scheduleStrips: [String: PBScheduleSessionStripViewModel] = [:]
+    var settings = PBSettingsViewModel()
+    var machineStatus = PBMachineStatusViewModel()
+    var machineSettings = PBMachineSettingsViewModel()
+    var quota = PBQuotaViewModel()
+    var devices = PBDevicesViewModel()
+    var clientDetail = PBClientDetailViewModel()
     var pendingComposerRestores: [RestoredComposer] = []
+    var pendingCleanup: PendingCleanup?
 
     func consumeComposerRestores(_ ids: Set<UUID>) {
         guard !ids.isEmpty else { return }
         pendingComposerRestores.removeAll { ids.contains($0.id) }
+    }
+
+    func consumeCleanup(_ id: UUID) {
+        if pendingCleanup?.id == id {
+            pendingCleanup = nil
+        }
     }
 }
 
@@ -82,6 +100,9 @@ protocol CoreHostExecutor: AnyObject, Sendable {
     func describeSelf(platform: String, description: String) async throws
     func cachedScheduleResultJson(_ machineId: String) async -> Data?
     func deleteScheduleCache(_ machineId: String) async
+    func renameDevice(_ id: String, name: String) async throws
+    func directRouteReport(_ machineId: String) async -> PBDirectRouteReport
+    func applyDirectPreference(_ machineId: String, enabled: Bool) async -> PBDirectRouteReport
     func close() async
 }
 
@@ -189,26 +210,43 @@ actor CoreHost: SyncEngine {
         var window: PBSessionWindowRequest
     }
 
+    private struct MachineStatusWatchEntry {
+        let token: UUID
+        let machineID: String
+        let mode: PBMachinePollMode
+    }
+
     private var activeProjectKey = ""
     private var activeNewSessionProjectKey = ""
     private var manageSubscribers = 0
+    private var activeMachineStatusID = ""
+    private var activeMachineSettingsID = ""
+    private var activeQuotaMachineID = ""
+    private var activeQuotaFilterAgent: PBAgent = .unspecified
+    private var activeClientDetailID = ""
     private var sessionWatches: [UUID: SessionWatchEntry] = [:]
     private var sessionWatchOrder: [UUID] = []
     private var activeScheduleDetail: (machineID: String, taskID: String)?
     private var activeScheduleFormKey = ""
     private var scheduleStripWatches: [UUID: String] = [:]
+    private var machineStatusWatches: [UUID: MachineStatusWatchEntry] = [:]
+    private var lastDirectReports: [String: PBDirectRouteReport] = [:]
     private var syncStateRenderNeeded = false
+    private var onPersistClientPrefs: (@MainActor @Sendable (PBPersistClientPrefsEffect) -> Void)?
     #if DEBUG
     enum DemoCommandAction: Sendable {
         case hold
         case respond(PBCoreCommandOutcomeEvent)
     }
     private var demoCommandResponder: (@Sendable (PBCoreDispatchCommandEffect, PBCommand) -> DemoCommandAction?)?
+    private var demoDaemonSettings: PBDaemonSettings?
+    private var demoMachineStatusCalls = 0
     #endif
 
     private var randomIdPool: [String] = []
     private var unitFloatPool: [Double] = []
     private var timers: [TimerKey: ScheduledTimer] = [:]
+    private var machinePollTimers: [String: ScheduledTimer] = [:]
     private var ioTasks: [UUID: Task<Void, Never>] = [:]
     private var cacheChain: Task<Void, Never>?
     private var clockTask: Task<Void, Never>?
@@ -301,13 +339,8 @@ actor CoreHost: SyncEngine {
                 guard let self else { return }
                 try await self.executor.applyTransitionalPrefsOp(op)
             },
-            onDirectStatus: { [weak self] machineId, ready in
-                await self?.dispatch {
-                    $0.machineRouteStatus = .with {
-                        $0.machineID = machineId
-                        $0.directReady = ready
-                    }
-                }
+            onDirectStatus: { [weak self] machineId, ready, report in
+                await self?.handleDirectStatus(machineId: machineId, ready: ready, report: report)
             },
             onLoadMoreSessions: { [weak self] in
                 await self?.dispatch {
@@ -380,6 +413,7 @@ actor CoreHost: SyncEngine {
         clockTask?.cancel()
         clockTask = nil
         cancelAllTimers()
+        cancelAllMachinePollTimers()
         cancelIOTasks()
         await dispatch {
             $0.syncLifecycle.kind = .stop
@@ -448,11 +482,30 @@ actor CoreHost: SyncEngine {
         clockTask?.cancel()
         clockTask = nil
         cancelAllTimers()
+        cancelAllMachinePollTimers()
         cancelIOTasks()
         cacheChain?.cancel()
         cacheChain = nil
         await executor.close()
         client.close()
+    }
+
+    private func handleDirectStatus(machineId: String, ready: Bool, report: PBDirectRouteReport) async {
+        await dispatch {
+            $0.machineRouteStatus = .with {
+                $0.machineID = machineId
+                $0.directReady = ready
+            }
+        }
+        if lastDirectReports[machineId] != report {
+            lastDirectReports[machineId] = report
+            await dispatch {
+                $0.machineDirectStatus = .with {
+                    $0.machineID = machineId
+                    $0.report = report
+                }
+            }
+        }
     }
 
     // MARK: - Screen & Subscription Events
@@ -488,6 +541,129 @@ actor CoreHost: SyncEngine {
             $0.newSessionOpen.projectKey = projectKey
         }
         await renderTargets([.newSession])
+    }
+
+    func setPersistClientPrefsHandler(_ handler: @escaping @MainActor @Sendable (PBPersistClientPrefsEffect) -> Void) {
+        onPersistClientPrefs = handler
+    }
+
+    func reportAppearancePref(_ theme: PBThemePreference) async {
+        guard !closed else { return }
+        await dispatch {
+            $0.setAppearancePref.theme = theme
+        }
+    }
+
+    func openSettings() async {
+        guard !closed else { return }
+        await renderTargets([.settings])
+    }
+
+    func openDevices() async {
+        guard !closed else { return }
+        await renderTargets([.devices])
+    }
+
+    func openClientDetail(deviceID: String) async {
+        guard !closed, !deviceID.isEmpty else { return }
+        activeClientDetailID = deviceID
+        await renderTargets([.clientDetail])
+    }
+
+    func openQuota(machineID: String, filterAgent: PBAgent = .unspecified) async {
+        guard !closed, !machineID.isEmpty else { return }
+        activeQuotaMachineID = machineID
+        activeQuotaFilterAgent = filterAgent
+        await renderTargets([.quota])
+    }
+
+    func openMachineSettings(machineID: String) async {
+        guard !closed, !machineID.isEmpty else { return }
+        activeMachineSettingsID = machineID
+        if !demoMode {
+            let report = await executor.directRouteReport(machineID)
+            if lastDirectReports[machineID] != report {
+                lastDirectReports[machineID] = report
+                await dispatch {
+                    $0.machineDirectStatus = .with {
+                        $0.machineID = machineID
+                        $0.report = report
+                    }
+                }
+            }
+        }
+        await dispatch {
+            $0.machineSettingsOpen.machineID = machineID
+        }
+        await renderTargets([.machineSettings])
+    }
+
+    func acquireMachineStatusWatch(_ machineID: String, mode: PBMachinePollMode) async -> UUID? {
+        guard !closed, !machineID.isEmpty else { return nil }
+        let token = UUID()
+        machineStatusWatches[token] = MachineStatusWatchEntry(token: token, machineID: machineID, mode: mode)
+        if mode == .live {
+            activeMachineStatusID = machineID
+        }
+        await syncMachineStatusWatch(machineID: machineID)
+        if mode == .live {
+            await renderTargets([.machineStatus])
+        }
+        return token
+    }
+
+    func releaseMachineStatusWatch(_ token: UUID?) async {
+        guard let token, let entry = machineStatusWatches.removeValue(forKey: token) else { return }
+        guard !closed else { return }
+        await syncMachineStatusWatch(machineID: entry.machineID)
+    }
+
+    private func syncMachineStatusWatch(machineID: String) async {
+        let active = machineStatusWatches.values.filter { $0.machineID == machineID }
+        let visible = !active.isEmpty
+        let mode: PBMachinePollMode = active.contains(where: { $0.mode == .live }) ? .live : .overview
+        await dispatch {
+            $0.machineStatusWatch = .with {
+                $0.machineID = machineID
+                $0.visible = visible
+                $0.mode = mode
+            }
+        }
+    }
+
+    func renameClient(deviceID: String, name: String, restoreDefault: Bool = false) async throws {
+        guard !closed else { throw CoreClientError.unavailable }
+        var envelope = PBCoreEvent()
+        envelope.updateClientName = .with {
+            $0.deviceID = deviceID
+            $0.name = name
+            $0.restoreDefault = restoreDefault
+        }
+        envelope.nowMs = clock()
+        envelope.monoMs = monoClock()
+        if envelope.randomIds.isEmpty && !randomIdPool.isEmpty {
+            envelope.randomIds = randomIdPool
+            randomIdPool.removeAll(keepingCapacity: true)
+        }
+        if envelope.unitFloats.isEmpty && !unitFloatPool.isEmpty {
+            envelope.unitFloats = unitFloatPool
+            unitFloatPool.removeAll(keepingCapacity: true)
+        }
+        replenishEntropy(minIds: 8, minFloats: 8)
+        let batch = try client.dispatch(envelope)
+        var renameEffect: PBRenameClientEffect?
+        var remaining: [PBCoreEffect] = []
+        for eff in batch.effects {
+            if case .renameClient(let r) = eff.effect {
+                renameEffect = r
+            } else {
+                remaining.append(eff)
+            }
+        }
+        await handleEffects(remaining)
+        if let r = renameEffect {
+            try await executor.renameDevice(r.deviceID, name: r.name)
+        }
     }
 
     func setManageActive(_ active: Bool) async {
@@ -974,11 +1150,36 @@ actor CoreHost: SyncEngine {
             case .scheduleDismissNotifications:
                 break
 
-            // Settings and machine still render in Swift on iOS
-            // and never send the events behind these effects.
-            case .scheduleMachinePoll, .directPreference, .renameClient,
-                 .checkUpdates, .persistClientPrefs, .prepareCleanupSession:
+            case .scheduleMachinePoll(let eff):
+                scheduleMachinePoll(eff)
+
+            case .directPreference(let eff):
+                spawnIO { host in
+                    let report = await host.executor.applyDirectPreference(eff.machineID, enabled: eff.enabled)
+                    await host.handleDirectStatus(
+                        machineId: eff.machineID,
+                        ready: report.state == .connected,
+                        report: report
+                    )
+                }
+
+            case .renameClient(let eff):
+                spawnIO { host in
+                    try? await host.executor.renameDevice(eff.deviceID, name: eff.name)
+                }
+
+            case .checkUpdates:
                 break
+
+            case .persistClientPrefs(let eff):
+                if let handler = onPersistClientPrefs {
+                    await MainActor.run { handler(eff) }
+                }
+
+            case .prepareCleanupSession(let eff):
+                await MainActor.run { [screens, eff] in
+                    screens.pendingCleanup = CoreScreens.PendingCleanup(effect: eff)
+                }
 
             case nil:
                 break
@@ -1056,6 +1257,87 @@ actor CoreHost: SyncEngine {
                 await dispatch { $0.commandOutcome = outcome }
                 return
             }
+            #if DEBUG
+            if demoMode, case .getMachineStatus? = cmd.kind {
+                let mode = await MachineStatusDemo.mode
+                if mode == "loading" { return }
+                demoMachineStatusCalls += 1
+                if mode == "failed" || (mode == "stale" && demoMachineStatusCalls > 2) {
+                    await dispatch {
+                        $0.commandOutcome = .with {
+                            $0.requestID = c.requestID; $0.attemptID = c.attemptID
+                            $0.source = .local; $0.notForwarded = true
+                            $0.transportCode = CommandError.unavailable
+                            $0.transportDetail = L10n.machineStatusUnavailable()
+                        }
+                    }
+                    return
+                }
+                let status = MachineStatusDemo.status(mode: mode, now: self.clock())
+                let outcome = Self.demoExecutedOutcome(for: c) { $0.machineStatus = status }
+                await dispatch { $0.commandOutcome = outcome }
+                return
+            }
+            if demoMode, case .getSettings? = cmd.kind {
+                let demoState = SettingsDemo.state
+                if demoState == "loading" { return }
+                if demoState == "failed" {
+                    await dispatch {
+                        $0.commandOutcome = .with {
+                            $0.requestID = c.requestID; $0.attemptID = c.attemptID
+                            $0.source = .local; $0.notForwarded = true
+                            $0.transportCode = CommandError.unavailable
+                            $0.transportDetail = L10n.errorsTheComputerIsOfflineTheCommandWasNotSent()
+                        }
+                    }
+                    return
+                }
+                let settings = self.demoDaemonSettings ?? SettingsDemo.daemonSettings
+                let storage = SettingsDemo.imageStorage
+                let outcome = Self.demoExecutedOutcome(for: c) {
+                    $0.getSettings = .with {
+                        $0.settings = settings
+                        $0.imageStorage = storage
+                    }
+                }
+                await dispatch { $0.commandOutcome = outcome }
+                return
+            }
+            if demoMode, case .updateSettings(let req)? = cmd.kind {
+                let demoState = SettingsDemo.state
+                if demoState == "saveFailed" {
+                    await dispatch {
+                        $0.commandOutcome = .with {
+                            $0.requestID = c.requestID; $0.attemptID = c.attemptID
+                            $0.source = .local; $0.notForwarded = true
+                            $0.transportCode = CommandError.unavailable
+                            $0.transportDetail = L10n.errorsTheComputerIsOfflineTheCommandWasNotSent()
+                        }
+                    }
+                    return
+                }
+                if demoState == "saveUnknown" {
+                    await dispatch {
+                        $0.commandOutcome = .with {
+                            $0.requestID = c.requestID; $0.attemptID = c.attemptID
+                            $0.source = .daemon; $0.attemptBound = true
+                            $0.outerOutcome = "unknown"; $0.outerReason = "timeout"
+                        }
+                    }
+                    return
+                }
+                self.demoDaemonSettings = req.settings
+                let storage = SettingsDemo.imageStorage
+                let outcome = Self.demoExecutedOutcome(for: c) {
+                    $0.updateSettings = .with {
+                        $0.settings = req.settings
+                        $0.imageStorage = storage
+                    }
+                }
+                await dispatch { $0.commandOutcome = outcome }
+                return
+            }
+            #endif
             if demoMode {
                 await dispatch { $0.commandOutcome = Self.demoExecutedOutcome(for: c) }
                 return
@@ -1093,6 +1375,12 @@ actor CoreHost: SyncEngine {
         var schedulesVM: PBSchedulesViewModel?
         var scheduleDetailVM: PBScheduleDetailViewModel?
         var scheduleFormVM: PBScheduleFormViewModel?
+        var settingsVM: PBSettingsViewModel?
+        var machineStatusVM: PBMachineStatusViewModel?
+        var machineSettingsVM: PBMachineSettingsViewModel?
+        var quotaVM: PBQuotaViewModel?
+        var devicesVM: PBDevicesViewModel?
+        var clientDetailVM: PBClientDetailViewModel?
         var sessionVMs: [String: PBSessionViewModel] = [:]
         var scheduleStripVMs: [String: PBScheduleSessionStripViewModel] = [:]
 
@@ -1151,6 +1439,39 @@ actor CoreHost: SyncEngine {
                 $0.syncState = PBCoreSyncStateScreenRequest()
             }).syncState
         }
+        if targets.contains(.settings) || targets.contains(.home) || targets.contains(.syncState) {
+            settingsVM = try? client.view(PBCoreScreen.with {
+                $0.settings = PBSettingsScreenRequest()
+            }).settings
+        }
+        if targets.contains(.devices) {
+            devicesVM = try? client.view(PBCoreScreen.with {
+                $0.devices = PBDevicesScreenRequest()
+            }).devices
+        }
+        if targets.contains(.machineStatus), !activeMachineStatusID.isEmpty {
+            machineStatusVM = try? client.view(PBCoreScreen.with {
+                $0.machineStatus = .with { $0.machineID = activeMachineStatusID }
+            }).machineStatus
+        }
+        if targets.contains(.machineSettings), !activeMachineSettingsID.isEmpty {
+            machineSettingsVM = try? client.view(PBCoreScreen.with {
+                $0.machineSettings = .with { $0.machineID = activeMachineSettingsID }
+            }).machineSettings
+        }
+        if targets.contains(.quota), !activeQuotaMachineID.isEmpty {
+            quotaVM = try? client.view(PBCoreScreen.with {
+                $0.quota = .with {
+                    $0.machineID = activeQuotaMachineID
+                    $0.filterAgent = activeQuotaFilterAgent
+                }
+            }).quota
+        }
+        if targets.contains(.clientDetail), !activeClientDetailID.isEmpty {
+            clientDetailVM = try? client.view(PBCoreScreen.with {
+                $0.clientDetail = .with { $0.deviceID = activeClientDetailID }
+            }).clientDetail
+        }
         let refreshSessions = targets.contains(.session)
             || targets.contains(.sessionData)
             || (targets.contains(.home) && !sessionWatches.isEmpty)
@@ -1172,11 +1493,24 @@ actor CoreHost: SyncEngine {
         if let syncStateVM {
             let adapted = SyncStateAdapter.toRemoteState(syncStateVM)
             await executor.publishSyncState(adapted)
+            if !demoMode {
+                for m in syncStateVM.machines where lastDirectReports[m.machineID] == nil {
+                    let report = await executor.directRouteReport(m.machineID)
+                    lastDirectReports[m.machineID] = report
+                    await dispatch {
+                        $0.machineDirectStatus = .with {
+                            $0.machineID = m.machineID
+                            $0.report = report
+                        }
+                    }
+                }
+            }
         }
 
         await MainActor.run { [
             screens, homeVM, projectVM, newSessionVM,
             schedulesVM, scheduleDetailVM, scheduleFormVM,
+            settingsVM, machineStatusVM, machineSettingsVM, quotaVM, devicesVM, clientDetailVM,
             sessionVMs, scheduleStripVMs
         ] in
             if let homeVM { screens.home = homeVM }
@@ -1189,6 +1523,12 @@ actor CoreHost: SyncEngine {
             if let schedulesVM { screens.schedules = schedulesVM }
             if let scheduleDetailVM { screens.scheduleDetail = scheduleDetailVM }
             if let scheduleFormVM { screens.scheduleForm = scheduleFormVM }
+            if let settingsVM { screens.settings = settingsVM }
+            if let machineStatusVM { screens.machineStatus = machineStatusVM }
+            if let machineSettingsVM { screens.machineSettings = machineSettingsVM }
+            if let quotaVM { screens.quota = quotaVM }
+            if let devicesVM { screens.devices = devicesVM }
+            if let clientDetailVM { screens.clientDetail = clientDetailVM }
             for (sid, vm) in sessionVMs {
                 screens.sessions[sid] = vm
             }
@@ -1370,6 +1710,45 @@ actor CoreHost: SyncEngine {
             entry.task.cancel()
         }
         timers.removeAll()
+    }
+
+    private func scheduleMachinePoll(_ eff: PBScheduleMachinePollEffect) {
+        let id = eff.machineID
+        if eff.cancel || id.isEmpty {
+            machinePollTimers.removeValue(forKey: id)?.task.cancel()
+            return
+        }
+        machinePollTimers.removeValue(forKey: id)?.task.cancel()
+        let gen = eff.generation
+        let delayMs = max(0, eff.delayMs)
+        let sleep = self.sleep
+        let task = Task { [weak self] in
+            if delayMs > 0 {
+                try? await sleep(delayMs)
+            }
+            guard let self, !Task.isCancelled else { return }
+            await self.handleMachinePollFired(machineID: id, generation: gen)
+        }
+        machinePollTimers[id] = ScheduledTimer(id: gen, task: task)
+    }
+
+    private func handleMachinePollFired(machineID: String, generation: UInt64) async {
+        guard let existing = machinePollTimers[machineID], existing.id == generation else { return }
+        machinePollTimers.removeValue(forKey: machineID)
+        guard !closed else { return }
+        await dispatch {
+            $0.machineStatusPollTick = .with {
+                $0.machineID = machineID
+                $0.generation = generation
+            }
+        }
+    }
+
+    private func cancelAllMachinePollTimers() {
+        for entry in machinePollTimers.values {
+            entry.task.cancel()
+        }
+        machinePollTimers.removeAll()
     }
 
     private func spawnIO(_ work: @escaping @Sendable (CoreHost) async -> Void) {
@@ -1637,7 +2016,10 @@ actor CoreHost: SyncEngine {
         case .online:
             break
         }
-        await renderTargets([.home, .project, .newSession, .session, .schedules])
+        await renderTargets([.home, .project, .newSession, .session, .schedules, .settings, .devices, .machineSettings, .quota, .clientDetail])
+        if !activeMachineSettingsID.isEmpty {
+            await openMachineSettings(machineID: activeMachineSettingsID)
+        }
     }
 
     func setDemoCommandResponder(
@@ -1703,7 +2085,10 @@ actor CoreHost: SyncEngine {
                 }
             }
         }
-        await renderTargets([.home, .project, .newSession, .session, .schedules])
+        await renderTargets([.home, .project, .newSession, .session, .schedules, .settings, .devices, .machineSettings, .quota, .clientDetail])
+        if !activeMachineSettingsID.isEmpty {
+            await openMachineSettings(machineID: activeMachineSettingsID)
+        }
     }
     #endif
 }

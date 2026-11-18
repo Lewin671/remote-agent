@@ -180,7 +180,6 @@ import Testing
     }
 
     @Test func idsAndNamesAreCutByUtf16Units() {
-        #expect(shortId("0123456789abcdef") == "cdef")
         #expect(machineName(MachineView(id: "0123456789abcdef", online: true, lastSeenMs: 0)) == "01234567")
         #expect(machineName(nil, id: "") == L10n.commonUnknownComputer())
         #expect(machineName(MachineView(id: "x", online: true, lastSeenMs: 0, meta: .with { $0.hostname = "mac.local" })) == "mac")

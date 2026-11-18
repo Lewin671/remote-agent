@@ -22,6 +22,7 @@ struct RecoveryPendingEntry: View {
 }
 
 struct AccountSecurityGroup: View {
+    var summary: String? = nil
     @Environment(AppModel.self) private var app
     @Environment(AccountContext.self) private var context
     @Environment(Navigator.self) private var nav
@@ -29,7 +30,7 @@ struct AccountSecurityGroup: View {
         let access = AuthorityAccess(state: app.state, me: context.me)
         GroupLabel(L10n.securityAccountSecurity())
         RecoveryPendingEntry()
-        GroupCard { GRow(L10n.securityAccountSecurity(), value: access.isAuthority ? L10n.securityThisDeviceManagesTheAccount() : access.name, chevron: true) { nav.open(.accountSecurity) } }
+        GroupCard { GRow(L10n.securityAccountSecurity(), value: summary ?? (access.isAuthority ? L10n.securityThisDeviceManagesTheAccount() : access.name), chevron: true) { nav.open(.accountSecurity) } }
     }
 }
 

@@ -128,5 +128,47 @@ enum ScreenGoldens {
             return s
         }
     }
+
+    static func settingsAll(_ name: String) -> [PBSettingsViewModel] {
+        viewModels(named: name).compactMap { vm -> PBSettingsViewModel? in
+            guard case .settings(let s)? = vm.view else { return nil }
+            return s
+        }
+    }
+
+    static func devicesAll(_ name: String) -> [PBDevicesViewModel] {
+        viewModels(named: name).compactMap { vm -> PBDevicesViewModel? in
+            guard case .devices(let d)? = vm.view else { return nil }
+            return d
+        }
+    }
+
+    static func clientDetails(_ name: String) -> [PBClientDetailViewModel] {
+        viewModels(named: name).compactMap { vm -> PBClientDetailViewModel? in
+            guard case .clientDetail(let c)? = vm.view else { return nil }
+            return c
+        }
+    }
+
+    static func machineSettingsAll(_ name: String) -> [PBMachineSettingsViewModel] {
+        viewModels(named: name).compactMap { vm -> PBMachineSettingsViewModel? in
+            guard case .machineSettings(let ms)? = vm.view else { return nil }
+            return ms
+        }
+    }
+
+    static func machineStatuses(_ name: String) -> [PBMachineStatusViewModel] {
+        viewModels(named: name).compactMap { vm -> PBMachineStatusViewModel? in
+            guard case .machineStatus(let ms)? = vm.view else { return nil }
+            return ms
+        }
+    }
+
+    static func quotas(_ name: String) -> [PBQuotaViewModel] {
+        viewModels(named: name).compactMap { vm -> PBQuotaViewModel? in
+            guard case .quota(let q)? = vm.view else { return nil }
+            return q
+        }
+    }
 }
 #endif

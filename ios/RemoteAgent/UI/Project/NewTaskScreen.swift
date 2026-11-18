@@ -6,6 +6,7 @@ import SwiftUI
 struct NewTaskScreen: View {
     @State var key: String
     @State var machine: String?
+    var cleanupPrompt: String? = nil
     let onClose: () -> Void
     let onStarted: (String) -> Void
     @Environment(Navigator.self) private var nav
@@ -36,12 +37,22 @@ struct NewTaskScreen: View {
             )
         )
         .navigationBarTitleDisplayMode(.inline)
-        .task(id: "\(key):\(machine ?? "")") {
+        .task(id: "\(key):\(machine ?? ""):\(cleanupPrompt ?? "")") {
             await context.coreHost.showNewSession(projectKey: key)
             if let machine, !machine.isEmpty {
                 await context.coreHost.dispatch(PBCoreEvent.with {
                     $0.newSessionSelectMachine.machineID = machine
                 })
+            }
+            if let cleanupPrompt, !cleanupPrompt.isEmpty {
+                let existing = context.core.newSession.prompt
+                if !existing.contains(cleanupPrompt) {
+                    let trimmed = existing.trimmingCharacters(in: .whitespacesAndNewlines)
+                    let combined = trimmed.isEmpty ? cleanupPrompt : trimmed + "\n\n" + cleanupPrompt
+                    await context.coreHost.dispatch(PBCoreEvent.with {
+                        $0.newSessionSetPrompt.prompt = combined
+                    })
+                }
             }
         }
         .kitSheet(item: $settings) { request in

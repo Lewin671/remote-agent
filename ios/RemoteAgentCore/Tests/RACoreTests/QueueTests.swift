@@ -21,26 +21,12 @@ import Testing
         let browser = device(created: at(2026, 9, 27, 0, 0), chrome)
         #expect(clientName(browser, id: browser.id, among: [:]) == "Chrome · macOS")
         #expect(clientName(device(created: browser.createdMs, meta("", "web", "")), id: browser.id, among: [:]) == L10n.securityBrowser())
-        #expect(clientDetail(browser) == "浏览器 · Chrome on macOS")
         let pixel = device(created: at(2025, 12, 1, 0, 0), meta("我的手机", "android", "Android 16 · Pixel 9"))
         #expect(clientName(pixel, id: pixel.id, among: [:]) == "我的手机")
         #expect(defaultClientName(pixel, id: pixel.id, among: [:]) == "Android · Pixel 9")
-        #expect(clientDetail(pixel) == "App · Android 16 · Pixel 9")
         let iphone = device(created: pixel.createdMs, meta("", "ios", "iOS 27.0 · iPhone"))
         #expect(defaultClientName(iphone, id: iphone.id, among: [:]) == "iPhone")
-        #expect(clientDetail(iphone) == "App · iOS 27.0 · iPhone")
         #expect(clientName(device(created: pixel.createdMs, meta("", "ios", "")), id: iphone.id, among: [:]) == "iOS")
-        #expect(clientDetail(nil) == L10n.securityUnknownType())
-        func used(_ seen: Int64) -> String { clientUsed(device(created: browser.createdMs, seen: seen, chrome), now: now, zone: zone) }
-        #expect(used(now - 30_000) == "刚刚使用")
-        #expect(used(now - 5 * 60_000) == "5 分钟前使用")
-        #expect(used(at(2026, 10, 3, 9, 5)) == "今天 9:05 使用")
-        #expect(used(at(2026, 10, 2, 23, 0)) == "昨天使用")
-        #expect(used(at(2026, 8, 3, 0, 0)) == "8月3日使用")
-        #expect(clientUsed(pixel, now: now, zone: zone) == "2025年12月1日添加")
-        #expect(clientUsed(nil, now: now, zone: zone) == L10n.securityPaired())
-        func c(_ id: String, _ created: Int64, _ seen: Int64) -> DeviceView { device(id, created: created, seen: seen, chrome) }
-        #expect(sortClients([c("old", 1, 0), c("me", 2, 5), c("new", 3, 0), c("recent", 1, 9), c("stale", 1, 4)], me: "me").map(\.id) == ["me", "recent", "stale", "new", "old"])
     }
 
     // --- not in Android's tests ---
@@ -77,11 +63,5 @@ import Testing
         #expect(plainClientName(meta("", "web", "")) == L10n.securityBrowser())
         #expect(plainClientName(meta("", "ios", "")) == "iOS")
         #expect(plainClientName(nil) == L10n.securityClient())
-    }
-
-    @Test func clientsEqualInEverythingGoByIdWhateverOrderTheyComeIn() {
-        func c(_ id: String) -> DeviceView { DeviceView(id: id, kind: .client, createdMs: 7, lastSeenMs: 0) }
-        #expect(sortClients([c("b"), c("c"), c("a")], me: "x").map(\.id) == ["a", "b", "c"])
-        #expect(sortClients([c("c"), c("a"), c("b")], me: "x").map(\.id) == ["a", "b", "c"])
     }
 }

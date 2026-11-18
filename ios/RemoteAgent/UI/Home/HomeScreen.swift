@@ -25,6 +25,7 @@ struct HomeScreen: View {
         let authority = AuthorityAccess(state: state, me: context.me).isAuthority
         HomeContent(
             home: home,
+            diskReminders: context.core.settings.diskReminders,
             state: state,
             isAuthority: authority,
             authorityHint: AuthorityAccess(state: state, me: context.me).emptyHint,
@@ -71,6 +72,7 @@ struct HomeScreen: View {
 /// Pure presentation body for `HomeScreen`, driven solely by `PBCoreHomeViewModel`.
 struct HomeContent: View {
     let home: PBCoreHomeViewModel
+    var diskReminders: [PBDiskReminderView] = []
     let state: RemoteState
     var isAuthority: Bool = true
     var authorityHint: String = ""
@@ -98,7 +100,7 @@ struct HomeContent: View {
                 )
                 .padding(.horizontal, DS.Space.card)
                 .padding(.top, 12)
-                HomeDiskReminders(state: state)
+                HomeDiskReminders(reminders: diskReminders)
                 if home.canFilter {
                     FilterField(text: $filterText)
                         .padding(.horizontal, DS.Space.card)

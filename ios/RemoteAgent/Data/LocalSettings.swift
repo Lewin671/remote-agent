@@ -4,6 +4,7 @@
 // updates itself because it is side-loaded, this one does not.
 import Foundation
 import Observation
+import RAProto
 import SwiftUI
 
 /// The appearance the user chose in settings; `system` follows the device.
@@ -16,6 +17,22 @@ enum ThemeMode: String, Sendable, CaseIterable {
         case .system: nil
         case .light: .light
         case .dark: .dark
+        }
+    }
+
+    var proto: PBThemePreference {
+        switch self {
+        case .system: .auto
+        case .light: .light
+        case .dark: .dark
+        }
+    }
+
+    static func from(_ proto: PBThemePreference) -> ThemeMode {
+        switch proto {
+        case .light: .light
+        case .dark: .dark
+        default: .system
         }
     }
 }

@@ -112,80 +112,29 @@ func wholeBytes(_ n: Int64) -> String {
     n >= 1 << 30 && n % (1 << 30) == 0 ? "\(n >> 30) GiB" : "\(n >> 20) MiB"
 }
 
-/// What a computer's row says of it at the right: 在线, or when it was last
-/// seen. Nothing while this client is not connected to the server: what the
-/// cache says of the computers is not known to still hold (architecture §9
-/// 「断线时显示什么」), and the connection bar already says why.
-func machineStatus(_ m: MachineView, state: RemoteState, now: Int64) -> (
-    text: String, online: Bool, hasLastSeen: Bool
-)? {
-    if state.peer(m.id).unlinked { return nil }
-    if m.pathState.reachable { return (L10n.commonIosOnline(), true, false) }
-    let lastSeen = ago(m.lastSeenMs, now: now)
-    return (lastSeen.or(L10n.settingsOffline()), false, !lastSeen.isEmpty)
-}
-
-/// The computer as far as it is known from here: while this client is not
-/// connected its last word of being online is not repeated, so what is
-/// derived from it (quota numbers above all) reads as a last record
-/// (architecture §9 「为什么不沿用旧状态」).
-func asKnown(_ m: MachineView, state: RemoteState) -> MachineView {
-    guard state.peer(m.id).unlinked, m.pathState.reachable else { return m }
-    var known = m
-    known.online = false
-    known.linkState = state.peer(m.id)
-    known.linkState?.reachable = false
-    return known
-}
-
-/// A computer's quota in one short line under its name: the first CLI's
-/// tightest window that has a number (Android's SettingsScreen, web's quotaLine).
-func machineQuotaSummary(_ m: MachineView, now: Int64) -> String? {
-    guard let g = quotaGroups(m, now: now).first(where: { $0.rows.contains(where: { $0.percent != nil }) }) else { return nil }
-    let s = quotaLine(g)
-    return s.isEmpty ? nil : "\(agentName(g.agent)) · \(s)"
-}
-
-/// The operating system as people call it.
-func osName(_ os: String) -> String {
-    switch os.lowercased() {
-    case "darwin": "macOS"
-    case "linux": "Linux"
-    case "windows": "Windows"
-    case "": L10n.settingsIosUnknown()
-    default: os
-    }
-}
-
-/// Computers in the order every list of them uses: by name.
-func sortedMachines(_ state: RemoteState) -> [MachineView] {
-    state.machines.values.sorted {
-        let (a, b) = (machineLabel(state, id: $0.id), machineLabel(state, id: $1.id))
-        return a == b ? $0.id < $1.id : a.localizedStandardCompare(b) == .orderedAscending
-    }
-}
-
 /// A computer's row, the same wherever computers are listed (设置 and
 /// 设备): its badge, its name, its quota in short under it, and at the
 /// right whether it is online or when it last was. A long press offers its
 /// quota and the connection check.
 struct MachineRow: View {
-    let machine: MachineView
-    let state: RemoteState
-    let now: Int64
+    let machine: PBMachineListCardView
     @Environment(Navigator.self) private var nav
 
     var body: some View {
-        let id = machine.id
-        let status = machineStatus(machine, state: state, now: now)
+        let id = machine.machineID
+        let quotaSub = machine.quotaSummaries.first.flatMap { sec -> String? in
+            let line = sec.summaryLine.rendered()
+            return line.isEmpty ? nil : "\(sec.agentName) · \(line)"
+        }
+        let statusText = machine.member ? machine.statusText.rendered() : nil
         GRow(
-            machineLabel(state, id: id),
-            sub: machineQuotaSummary(asKnown(machine, state: state), now: now),
-            value: status?.text,
+            machine.name,
+            sub: quotaSub,
+            value: statusText,
             chevron: true
         ) { nav.open(.machine(id: id)) }
         .lead { DeviceIcon("laptopcomputer") }
-        .valueLead { if let status { Dot(status.online ? DS.green : DS.ink3) } }
+        .valueLead { if machine.member { Dot(machine.online ? DS.green : DS.ink3) } }
         .contextMenu {
             Button(L10n.settingsAccountQuota()) { nav.open(.quota(machine: id)) }
             Button(L10n.homeConnectionCheck()) { nav.open(.connectionCheck) }
@@ -194,9 +143,17 @@ struct MachineRow: View {
 }
 
 /// What a client is, drawn as a computer's row draws its laptop: a browser, a tablet or a phone.
-func clientIcon(_ d: DeviceView?) -> String {
-    if d?.meta?.platform == "web" { return "globe" }
-    return (d?.meta?.description_p ?? "").contains("iPad") ? "ipad" : "iphone"
+func clientIcon(description: String) -> String {
+    if description.localizedCaseInsensitiveContains("iPad") { return "ipad" }
+    let lower = description.lowercased()
+    if lower.contains("web") || lower.contains("chrome") || lower.contains("firefox")
+        || lower.contains("safari") || lower.contains("edge") || lower.contains("browser")
+        || lower.contains("浏览器") || description.contains(" · macOS")
+        || description.contains(" · Windows") || description.contains(" · Linux")
+    {
+        return "globe"
+    }
+    return "iphone"
 }
 
 /// A client's row, the same wherever clients are listed (设置 and 设备): its
@@ -204,28 +161,25 @@ func clientIcon(_ d: DeviceView?) -> String {
 /// when it was last used. A long press copies its ID, and renames or removes it
 /// where the list offers that.
 struct ClientRow: View {
-    let client: DeviceView?
-    let id: String
-    /// The account's devices, which a default name is told apart in.
-    let devices: [String: DeviceView]
-    let me: String
-    let now: Int64
-    var authority: String = ""
+    let client: PBClientRowView
     var onRename: (() -> Void)?
     @Environment(Navigator.self) private var nav
 
     var body: some View {
-        let mine = id == me
-        let role = id == authority ? L10n.settingsManagingClient() : mine ? L10n.settingsIosCurrentClient() : clientUsed(client, now: now)
+        let roleOrUsed = client.isSelf || client.isAuthority
+            ? client.roleLabel.rendered()
+            : client.lastUsedText.rendered()
+        let sub = [client.description_p, client.shortID].filter { !$0.isEmpty }.joined(separator: " · ")
         GRow(
-            clientName(client, id: id, among: devices), sub: client.map { clientDetail($0) },
-            value: role,
+            client.displayName,
+            sub: sub.isEmpty ? nil : sub,
+            value: roleOrUsed.isEmpty ? nil : roleOrUsed,
             chevron: true
-        ) { nav.open(.client(id: id)) }
-        .lead { DeviceIcon(clientIcon(client)) }
+        ) { nav.open(.client(id: client.deviceID)) }
+        .lead { DeviceIcon(clientIcon(description: client.description_p)) }
         .contextMenu {
             if let onRename { Button(L10n.sessionRename(), action: onRename) }
-            Button(L10n.settingsIosCopyDeviceId()) { UIPasteboard.general.string = id }
+            Button(L10n.settingsIosCopyDeviceId()) { UIPasteboard.general.string = client.deviceID }
         }
     }
 }

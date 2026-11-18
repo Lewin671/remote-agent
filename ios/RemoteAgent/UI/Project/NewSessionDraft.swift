@@ -118,7 +118,7 @@ final class NewSessionDraft {
             }
         } catch {
             let settled = attempt.settle(error) ?? error
-            finish(errorText(settled), diskFull: isDiskFull(settled))
+            finish(errorText(settled), diskFull: (settled as? CommandError)?.code == CommandError.diskFull)
             return
         }
         Task {
@@ -142,7 +142,7 @@ final class NewSessionDraft {
                 if !attempt.frozen {
                     for img in taken { img.releaseUploadProtection(requestId: prepared.requestId) }
                 }
-                finish(errorText(settled), diskFull: isDiskFull(settled))
+                finish(errorText(settled), diskFull: (settled as? CommandError)?.code == CommandError.diskFull)
             }
         }
     }
@@ -197,15 +197,4 @@ final class NewSessionDrafts {
 
 extension AccountContext {
     var newSessionDrafts: NewSessionDrafts { memory.value { NewSessionDrafts(store: sessionStore) } }
-}
-
-extension NewSessionDrafts {
-    /// 让 Agent 帮我清理 (ui-spec B4): the draft of project `key`, on `machine`, with `prompt` after what is already written
-    /// (not again when it is there); the user changes it and sends it themselves.
-    func prepareCleanup(_ state: RemoteState, key: String, machine: String, prompt: String) {
-        let start = projectStart(state, key: key, machine: machine)
-        let draft = of(key, initial: start?.config, settled: start?.settled != false)
-        if let config = start?.config { draft.config.choose(config) }
-        draft.text = cleanupDraft(existing: draft.text, prompt: prompt)
-    }
 }

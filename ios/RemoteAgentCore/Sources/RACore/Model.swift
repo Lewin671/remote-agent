@@ -382,59 +382,8 @@ private func clientDefaultIdentity(_ meta: PBDeviceMeta?) -> ClientDefaultIdenti
     }
 }
 
-/// What a client is, under its name in the list: an app or a browser, and what it says it runs on.
-public func clientDetail(_ d: DeviceView?) -> String {
-    let kind: String
-    switch d?.meta?.platform {
-    case "android", "ios": kind = "App"
-    case "web": kind = L10n.securityBrowser()
-    default: kind = ""
-    }
-    return [kind, (d?.meta?.description_p ?? "").jvmTrim()].filter { !$0.isEmpty }.joined(separator: " · ").ifEmpty(L10n.securityUnknownType())
-}
-
-/// A day as lists write it: 9月27日, with the year when it is not this one.
-public func dayText(_ ms: Int64, now: Int64 = nowMs(), zone: TimeZone = .current) -> String {
-    let day = LocalDay(ms: ms, zone: zone)
-    return day.year == LocalDay(ms: now, zone: zone).year ? L10n.timeMonthDay(day: Int(day.day), month: Int(day.month)) : L10n.timeCalendarDateYear(day: Int(day.day), month: Int(day.month), year: Int(day.year))
-}
-
-/// When a client was last used: 刚刚, 3 分钟前, 今天 9:12, 昨天, 9月27日; "" when the server has no record of it.
-public func lastUsed(_ d: DeviceView?, now: Int64 = nowMs(), zone: TimeZone = .current) -> String {
-    let t = d?.lastSeenMs ?? 0
-    if t <= 0 { return "" }
-    let ago = now - t
-    if ago < 60_000 { return L10n.timeJustNow() }
-    if ago < 3_600_000 { return L10n.timeMinutesAgo(count: Int(ago / 60_000)) }
-    let then = LocalDay(ms: t, zone: zone)
-    let today = LocalDay(ms: now, zone: zone)
-    if then.sameDay(today) { return L10n.errorsIosToday(value: String(describing: then.hhmm)) }
-    if then.epochDay == today.epochDay - 1 { return L10n.timeYesterday() }
-    return dayText(t, now: now, zone: zone)
-}
-
-/// What the list says beside a client: when it was last used, else the day it was added.
-public func clientUsed(_ d: DeviceView?, now: Int64 = nowMs(), zone: TimeZone = .current) -> String {
-    let used = lastUsed(d, now: now, zone: zone)
-    if !used.isEmpty { return L10n.securityUsed(detail: String(describing: used.utf16.last.map(isJvmDigit) == true ? " " : ""), value: String(describing: used)) }
-    if let d, d.createdMs > 0 { return L10n.securityAdded(value: String(describing: dayText(d.createdMs, now: now, zone: zone))) }
-    return L10n.securityPaired()
-}
-
-/// Clients as the list orders them: this one, then the most recently used
-/// first, then those with no record, the newest first. Clients equal in all
-/// of that go by ID: they come out of a dictionary, whose order means nothing.
-public func sortClients(_ clients: some Sequence<DeviceView>, me: String) -> [DeviceView] {
-    clients.stableSorted { a, b in
-        if (a.id != me) != (b.id != me) { return a.id == me }
-        if a.lastSeenMs != b.lastSeenMs { return a.lastSeenMs > b.lastSeenMs }
-        if a.createdMs != b.createdMs { return a.createdMs > b.createdMs }
-        return jvmLess(a.id, b.id)
-    }
-}
-
 /// The last four hex digits of a device ID, as shown next to a name.
-public func shortId(_ id: String) -> String { id.jvmTakeLast(4) }
+private func shortId(_ id: String) -> String { id.jvmTakeLast(4) }
 
 /// What the machine says it offers; nil until its metadata is read.
 public func capabilities(_ m: MachineView?) -> PBMachineCapabilities? {

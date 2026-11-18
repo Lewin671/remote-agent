@@ -8,30 +8,28 @@ import RAProto
 import SwiftUI
 
 struct MachineCard: View {
-    let machine: MachineView
-    let state: RemoteState
-    let now: Int64
+    let machine: PBMachineListCardView
     @Environment(Navigator.self) private var nav
     @Environment(\.dynamicTypeSize) private var typeSize
 
     var body: some View {
-        let id = machine.id
-        let known = asKnown(machine, state: state)
-        let status = machineStatus(machine, state: state, now: now)
-        let online = status?.online == true
+        let id = machine.machineID
+        let online = machine.online && machine.member
         let shape = RoundedRectangle(cornerRadius: DS.Radius.card, style: .continuous)
         VStack(alignment: .leading, spacing: 0) {
             Button { nav.open(.machine(id: id)) } label: {
                 VStack(alignment: .leading, spacing: 4) {
                     HStack(spacing: 6) {
-                        Text(machineLabel(state, id: id)).font(.title3.bold()).foregroundStyle(DS.ink).lineLimit(2)
+                        Text(machine.name).font(.title3.bold()).foregroundStyle(DS.ink).lineLimit(2)
                         Image(systemName: "chevron.right").font(.footnote.weight(.semibold)).foregroundStyle(DS.ink3)
                     }
-                    if let status {
-                        HStack(spacing: 6) {
-                            StatusMark(online ? .online : .off)
-                            Text(online ? status.text : status.hasLastSeen ? L10n.settingsOnline(value: String(describing: status.text)) : L10n.settingsOffline())
-                                .font(.subheadline).foregroundStyle(DS.ink2)
+                    if machine.member {
+                        let status = machine.statusText.rendered()
+                        if !status.isEmpty {
+                            HStack(spacing: 6) {
+                                StatusMark(online ? .online : .off)
+                                Text(status).font(.subheadline).foregroundStyle(DS.ink2)
+                            }
                         }
                     }
                 }
@@ -42,9 +40,10 @@ struct MachineCard: View {
             .buttonStyle(PressStyle())
             .accessibilityElement(children: .combine)
             if online {
-                let groups = quotaGroups(known, now: now)
-                ForEach(machineAgents(known), id: \.self) { agent in
-                    quota(agent, quotaCardLine(groups.filter { $0.agent == agent }), id: id)
+                ForEach(machine.quotaSummaries, id: \.agent.rawValue) { sec in
+                    if sec.hasSummaryRow {
+                        quota(sec, row: sec.summaryRow, id: id)
+                    }
                 }
             }
         }
@@ -58,44 +57,49 @@ struct MachineCard: View {
         }
     }
 
-    private func quota(_ agent: PBAgent, _ line: QuotaCardLine, id: String) -> some View {
-        let ink = line.low ? DS.orangeInk : DS.ink2
+    private func quota(_ sec: PBQuotaCliSection, row: PBQuotaRowView, id: String) -> some View {
+        let low = row.tone == .warn || row.tone == .full
+        let stale = row.tone == .stale
+        let ink = low ? DS.orangeInk : DS.ink2
+        let text = row.remainingText.rendered()
+        let reset = [row.resetText.rendered(), row.resetClockText.rendered()].filter { !$0.isEmpty }.joined(separator: " · ")
+        let left = row.hasPercent_p ? min(max(Double(row.remainingPercent) / 100.0, 0), 1) : nil
         return Button { nav.open(.quota(machine: id)) } label: {
             VStack(alignment: .leading, spacing: 6) {
                 if typeSize.isAccessibilitySize {
                     // At accessibility sizes the name, what is left and when it resets do not fit in a line: one under the other.
                     VStack(alignment: .leading, spacing: 2) {
                         HStack(alignment: .firstTextBaseline, spacing: 0) {
-                            AgentMark(agent, style: .subheadline, named: true)
-                            Text(agentName(agent)).fixedSize(horizontal: false, vertical: true)
+                            AgentMark(sec.agent, style: .subheadline, named: true)
+                            Text(sec.agentName).fixedSize(horizontal: false, vertical: true)
                         }
                         .font(.subheadline.weight(.semibold)).foregroundStyle(DS.ink)
-                        Text(line.text).font(.subheadline).foregroundStyle(ink).fixedSize(horizontal: false, vertical: true)
-                        if !line.reset.isEmpty {
-                            Text(line.reset).font(.subheadline).foregroundStyle(DS.ink2).fixedSize(horizontal: false, vertical: true)
+                        Text(text).font(.subheadline).foregroundStyle(ink).fixedSize(horizontal: false, vertical: true)
+                        if !reset.isEmpty {
+                            Text(reset).font(.subheadline).foregroundStyle(DS.ink2).fixedSize(horizontal: false, vertical: true)
                         }
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                 } else {
                     HStack(alignment: .firstTextBaseline, spacing: 8) {
                         HStack(alignment: .firstTextBaseline, spacing: 0) {
-                            AgentMark(agent, style: .subheadline, named: true)
-                            Text(agentName(agent))
+                            AgentMark(sec.agent, style: .subheadline, named: true)
+                            Text(sec.agentName)
                         }
                         .font(.subheadline.weight(.semibold)).foregroundStyle(DS.ink)
-                        Text(line.text).font(.subheadline).foregroundStyle(ink)
-                        if !line.reset.isEmpty {
-                            Text(line.reset).font(.subheadline).foregroundStyle(DS.ink2)
+                        Text(text).font(.subheadline).foregroundStyle(ink)
+                        if !reset.isEmpty {
+                            Text(reset).font(.subheadline).foregroundStyle(DS.ink2)
                                 .fixedSize(horizontal: false, vertical: true).layoutPriority(-1)
                         }
                         Spacer(minLength: 0)
                     }
                 }
-                if let left = line.left {
+                if let left {
                     GeometryReader { box in
                         Capsule().fill(DS.fill)
                             .overlay(alignment: .leading) {
-                                Capsule().fill(line.stale ? DS.ink3 : line.low ? DS.orange : DS.barFg)
+                                Capsule().fill(stale ? DS.ink3 : low ? DS.orange : DS.barFg)
                                     .frame(width: box.size.width * left)
                             }
                     }

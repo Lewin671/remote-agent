@@ -1,4 +1,5 @@
 import RACore
+import RAProto
 import SwiftUI
 import UIKit
 
@@ -9,8 +10,9 @@ import UIKit
 struct DevicesScreen: View {
     @Environment(AppModel.self) private var model
     @Environment(AccountContext.self) private var context
+    @Environment(Navigator.self) private var nav
     /// The client a held row's menu is renaming.
-    @State private var renaming: DeviceView?
+    @State private var renaming: PBClientRowView?
 
     /// Pulling down reads the device list again, while there is a server to ask.
     private func refresh(_ online: Bool) -> (@MainActor @Sendable () async -> Void)? {
@@ -20,63 +22,63 @@ struct DevicesScreen: View {
     }
 
     var body: some View {
-        let state = model.state
+        let vm = context.core.devices
         let remote = context.remote
-        let online = state.conn == .online
-        SettingsPage(refresh: refresh(online)) {
-            Ticking { now in list(state, online: online, now: now) }
+        SettingsPage(refresh: refresh(vm.online)) {
+            list(vm)
         }
         .navBar(L10n.settingsDevices())
-        // The times on this page are as of opening it.
-        .task(id: online) { if online && !model.isDemo { await remote.refreshDevices() } }
+        .task(id: vm.online) {
+            await context.coreHost.openDevices()
+            if vm.online && !model.isDemo { await remote.refreshDevices() }
+        }
         .inputAlert(
             isPresented: Binding(get: { renaming != nil }, set: { if !$0 { renaming = nil } }),
-            title: L10n.settingsClientName(), initial: renaming?.meta?.name ?? "",
-            placeholder: renaming.map { defaultClientName($0, id: $0.id, among: state.devices) } ?? "", text: L10n.settingsIosLeaveBlankForTheDefaultName()
+            title: L10n.settingsClientName(), initial: renaming?.displayName ?? "",
+            placeholder: renaming?.description_p ?? "", text: L10n.settingsIosLeaveBlankForTheDefaultName()
         ) { [renaming] name in
             // The dialog stays until the name is stored, and says so when it is not.
-            guard let id = renaming?.id else { return }
-            try await remote.renameDevice(id, name: name.jvmTrim())
+            guard let id = renaming?.deviceID else { return }
+            try await context.coreHost.renameClient(deviceID: id, name: name)
         }
         .onAppear {
             #if DEBUG
-                let other = sortClients(
-                    state.devices.values.filter { $0.kind == .client }, me: context.me
-                ).first { $0.id != context.me }
-                if model.isDemo, SettingsDemo.state == "renaming" { renaming = other }
+                if model.isDemo, SettingsDemo.state == "renaming" {
+                    renaming = vm.clients.first { !$0.isSelf }
+                }
             #endif
         }
     }
 
-    @ViewBuilder private func list(_ state: RemoteState, online: Bool, now: Int64) -> some View {
-        let me = context.me
-        let machines = sortedMachines(state)
-        let clients = sortClients(state.devices.values.filter { $0.kind == .client }, me: me)
+    @ViewBuilder private func list(_ vm: PBDevicesViewModel) -> some View {
+        let err = vm.errorText.rendered()
+        if !err.isEmpty { GroupBanner(err, tone: .error) }
 
         GroupLabel(L10n.settingsComputersRunClis())
-        if machines.isEmpty {
-            GroupNote(state.loaded ? L10n.settingsIosNoComputersYet() : L10n.projectsReadingDirectory())
+        if vm.computers.isEmpty {
+            GroupNote(L10n.settingsIosNoComputersYet())
         } else {
             GroupCard {
-                for m in machines { MachineRow(machine: m, state: state, now: now) }
+                for m in vm.computers { MachineRow(machine: m) }
             }
         }
         GroupLabel(L10n.settingsClientsControlSessions())
+        let allClients = vm.clients + vm.unfinishedPairings
         GroupCard {
-            // Before the list is read this client is still here.
-            if clients.isEmpty {
+            for c in allClients {
                 ClientRow(
-                    client: nil, id: me, devices: state.devices, me: me, now: now,
-                    authority: state.authorityDeviceId)
-            }
-            for c in clients {
-                ClientRow(
-                    client: c, id: c.id, devices: state.devices, me: me, now: now,
-                    authority: state.authorityDeviceId,
-                    onRename: online && c.id == me ? { renaming = c } : nil)
+                    client: c,
+                    onRename: vm.online && c.isSelf ? { renaming = c } : nil)
             }
         }
         GroupNote(L10n.settingsIosTheTimeOnTheRightIsTheLastUse())
-        AddDeviceEntry()
+        if vm.canAddDevice {
+            GroupCard {
+                GRow(L10n.homeAddDevice(), action: true, icon: "plus") { nav.open(.addDevice()) }
+            }
+        } else {
+            let hint = vm.addDeviceHint.rendered()
+            if !hint.isEmpty { GroupNote(hint) }
+        }
     }
 }

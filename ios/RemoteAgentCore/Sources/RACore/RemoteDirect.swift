@@ -81,6 +81,13 @@ extension Remote {
     public nonisolated func setDirectEnabled(_ machineId: String, _ enabled: Bool) throws { try direct?.setEnabled(machineId, enabled) }
     /// A screen that shows the numbers opened: one warm-up when the window is thin, so they are fresh.
     public nonisolated func refreshDirect(_ machineId: String) { direct?.refresh(machineId) }
+    public nonisolated func directRouteReport(_ machineId: String) -> PBDirectRouteReport {
+        directStatus(machineId).toCoreRouteReport()
+    }
+    public nonisolated func applyDirectPreference(_ machineId: String, enabled: Bool) -> PBDirectRouteReport {
+        try? setDirectEnabled(machineId, enabled)
+        return directStatus(machineId).toCoreRouteReport()
+    }
 
     /// One warm-up sample of the read path: an authorized read-only status request of its own.
     func probeRead(_ machineId: String, _ path: RouteName) async {
@@ -123,6 +130,48 @@ extension Remote {
         } catch {
             log("read sample on the \(isDirect ? "direct" : "relay") path failed: \(errorText(error))")
             if isDirect { tracking.failed() }
+        }
+    }
+}
+
+extension DirectStatus {
+    public func toCoreRouteReport() -> PBDirectRouteReport {
+        let enabled = reason != .disabled
+        let activeRtt = readDirect ? readMs[DirectPath.direct] : (state == .connected ? readMs[DirectPath.relay] : nil)
+        let readSlow = state == .connected && compared && !readDirect
+        let fileSlow = state == .connected && compared && !fileDirect
+        return PBDirectRouteReport.with {
+            $0.enabled = enabled
+            $0.capable = state != .unsupported
+            $0.state = switch state {
+            case .unsupported: .unsupported
+            case .connected: .connected
+            case .connecting: .connecting
+            case .none: .none
+            }
+            $0.reason = switch reason {
+            case .disabled: .disabled
+            case .peerUnsupported: .peerUnsupported
+            case .noResponse: .noResponse
+            case .noTraversal: .noTraversal
+            case .failed: .failed
+            case .atCap: .atCap
+            case .securityPending: .securityPending
+            case .starting: .starting
+            case nil: .unspecified
+            }
+            $0.fileRoute = fileDirect ? .direct : .relay
+            $0.readRoute = readDirect ? .direct : .relay
+            $0.warming = warming
+            $0.compared = compared
+            $0.readSlow = readSlow
+            $0.fileSlow = fileSlow
+            $0.hasDiagnostics_p = reason == .noResponse || reason == .noTraversal || reason == .failed
+            if let fd = fileMiBps[DirectPath.direct] { $0.hasDirectFileMibps_p = true; $0.directFileMibps = fd }
+            if let fr = fileMiBps[DirectPath.relay] { $0.hasRelayFileMibps_p = true; $0.relayFileMibps = fr }
+            if let rd = readMs[DirectPath.direct] { $0.hasDirectReadMs_p = true; $0.directReadMs = Int32(rd.rounded()) }
+            if let rr = readMs[DirectPath.relay] { $0.hasRelayReadMs_p = true; $0.relayReadMs = Int32(rr.rounded()) }
+            if let rtt = activeRtt { $0.hasActiveRttMs_p = true; $0.activeRttMs = Int32(rtt.rounded()) }
         }
     }
 }

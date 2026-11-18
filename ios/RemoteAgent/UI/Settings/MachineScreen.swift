@@ -5,10 +5,7 @@ import SwiftUI
 /// Where a link into this page scrolls to.
 enum MachineAnchor: Hashable { case storage }
 
-/// A computer's details and daemon settings (Android's DeviceScreen): what
-/// it is, why it may be out of reach, its CLIs and their account quotas,
-/// the defaults new projects start from, where it keeps uploaded images,
-/// its projects, and removing it from the account.
+/// A computer's details and daemon settings: renders Core's `PBMachineSettingsViewModel` directly.
 struct MachineScreen: View {
     let id: String
     /// Opened from the disk card or 「remote-agent 的占用」 of 电脑状态: scrolled to 附件存储.
@@ -16,24 +13,120 @@ struct MachineScreen: View {
     @Environment(AppModel.self) private var model
     @Environment(AccountContext.self) private var context
     @Environment(Navigator.self) private var nav
-    @Environment(\.page) private var page
-    @Environment(\.dynamicTypeSize) private var typeSize
-    @State private var settings: MachineSettingsModel?
-    @State private var cleaning = false
-    @State private var picking: Pick?
-    @State private var selectedAgent: PBAgent?
-    /// The three rings at the top, read every 10 seconds while this page is showing (ui-spec A2).
-    @State private var ringsFeed = MachineStatusFeed(interval: .seconds(10))
 
-    /// What a sheet of this page chooses.
+    var body: some View {
+        let host = context.coreHost
+        let watchKey = "\(id):\(model.foreground)"
+        let current = context.core.machineSettings
+        let online = current.machineID == id ? current.online : (model.state.machines[id]?.pathState.reachable ?? false)
+        let settingsKey = "\(id):\(online):\(model.state.conn == .online)"
+        contentView
+            .task(id: settingsKey) { await host.openMachineSettings(machineID: id) }
+            .task(id: watchKey) {
+                guard model.foreground else { return }
+                let token = await host.acquireMachineStatusWatch(id, mode: .overview)
+                while !Task.isCancelled {
+                    try? await Task.sleep(for: .seconds(3600))
+                }
+                await host.releaseMachineStatusWatch(token)
+            }
+    }
+
+    private var contentView: some View {
+        let current = context.core.machineSettings
+        let vm = current.machineID == id ? current : PBMachineSettingsViewModel()
+        let host = context.coreHost
+        let refreshAction: (@MainActor @Sendable () async -> Void)? = if vm.editable {
+            { @Sendable in await host.openMachineSettings(machineID: id) }
+        } else {
+            nil
+        }
+        let toggleDirect: (Bool) -> Void = { enabled in
+            context.dispatch {
+                $0.updateDirectPreference = .with {
+                    $0.machineID = id
+                    $0.enabled = enabled
+                }
+            }
+        }
+        let selectAgent: (PBAgent) -> Void = { agent in
+            context.dispatch {
+                $0.machineSettingsSelectAgent = .with {
+                    $0.machineID = id
+                    $0.agent = agent
+                }
+            }
+        }
+        let updateDefaults: (PBAgent, String?, String?, PBApprovalMode?) -> Void = { agent, modelID, effort, mode in
+            context.dispatch {
+                $0.updateMachineAgentDefaults = .with {
+                    $0.machineID = id
+                    $0.agent = agent
+                    if let modelID { $0.model = modelID }
+                    if let effort { $0.effort = effort }
+                    if let mode { $0.mode = mode }
+                }
+            }
+        }
+        let updateDaemon: (Int32?, Int32?, Int64?, Bool) -> Void = { timeoutSeconds, idleCloseMinutes, imageQuotaBytes, cleanImages in
+            context.dispatch {
+                $0.updateMachineDaemonSettings = .with {
+                    $0.machineID = id
+                    if let timeoutSeconds { $0.approvalTimeoutSeconds = timeoutSeconds }
+                    if let idleCloseMinutes { $0.idleCloseMinutes = idleCloseMinutes }
+                    if let imageQuotaBytes { $0.imageUploadQuotaBytes = imageQuotaBytes }
+                    $0.cleanImages = cleanImages
+                }
+            }
+        }
+        return MachineScreenContent<DeviceManagementActions>(
+            vm: vm,
+            scrollToStorage: scrollToStorage,
+            onOpenStatus: { nav.open(.machineStatus(id: id)) },
+            onOpenQuota: { nav.open(.quota(machine: id)) },
+            onToggleDirect: toggleDirect,
+            onRetryDirect: { context.remote.refreshDirect(id) },
+            onRetrySettings: { Task { await host.openMachineSettings(machineID: id) } },
+            onRefresh: refreshAction,
+            onSelectAgent: selectAgent,
+            onUpdateAgentDefaults: updateDefaults,
+            onUpdateDaemonSettings: updateDaemon,
+            onOpenProject: { key in nav.open(.project(key: key)) },
+            managementSection: { DeviceManagementActions(id: id, machine: true) }
+        )
+    }
+}
+
+/// Pure presentation body for `PBMachineSettingsViewModel`, usable directly by golden snapshot tests.
+struct MachineScreenContent<Management: View>: View {
+    let vm: PBMachineSettingsViewModel
+    var scrollToStorage = false
+    let onOpenStatus: () -> Void
+    let onOpenQuota: () -> Void
+    let onToggleDirect: (Bool) -> Void
+    let onRetryDirect: () -> Void
+    let onRetrySettings: () -> Void
+    let onRefresh: (@MainActor @Sendable () async -> Void)?
+    let onSelectAgent: (PBAgent) -> Void
+    let onUpdateAgentDefaults: (PBAgent, _ model: String?, _ effort: String?, _ mode: PBApprovalMode?) -> Void
+    let onUpdateDaemonSettings: (_ timeoutSeconds: Int32?, _ idleCloseMinutes: Int32?, _ imageQuotaBytes: Int64?, _ cleanImages: Bool) -> Void
+    let onOpenProject: (String) -> Void
+    @ViewBuilder let managementSection: () -> Management
+
+    @Environment(\.dynamicTypeSize) private var typeSize
+    @State private var picking: Pick?
+    @State private var cleaning = false
+
     private enum Pick: Identifiable, Hashable {
         case model(PBAgent)
+        case effort(PBAgent)
         case mode(PBAgent)
         case timeout, idleClose, imageQuota
 
         var id: String {
             switch self {
             case .model(let agent): "model-\(agent.rawValue)"
+            case .effort(let agent): "effort-\(agent.rawValue)"
             case .mode(let agent): "mode-\(agent.rawValue)"
             case .timeout: "timeout"
             case .idleClose: "idle-close"
@@ -42,452 +135,365 @@ struct MachineScreen: View {
         }
     }
 
-    /// Commands reach the computer: this client is connected, the computer is, and both speak the same protocol.
-    private func reachable(_ state: RemoteState) -> Bool {
-        guard let m = state.machines[id] else { return false }
-        return !state.peer(id).unlinked && m.pathState.reachable && protocolMismatch(m) == nil
-    }
-
-    /// Pulling down reads the settings again, while commands reach the computer.
-    private func refresh(_ live: Bool) -> (@MainActor @Sendable () async -> Void)? {
-        guard live, let settings else { return nil }
-        return { await settings.read() }
-    }
-
     var body: some View {
-        let state = model.state
-        let m = state.machines[id]
-        let live = reachable(state)
-        SettingsPage(refresh: refresh(live), scrollTo: scrollToStorage ? (id: MachineAnchor.storage, ready: settings?.settings != nil) : nil) {
-            if let m {
-                Ticking { now in details(m, state: state, now: now) }
+        let title = vm.found ? vm.name.or(vm.machineID) : L10n.settingsComputer()
+        let scrollReady = vm.hasAttachmentStorage && vm.attachmentStorage.loaded
+        SettingsPage(
+            refresh: onRefresh,
+            scrollTo: scrollToStorage ? (id: MachineAnchor.storage, ready: scrollReady) : nil
+        ) {
+            if vm.found {
+                details(vm)
             } else {
                 PageNote(L10n.settingsIosThisComputerIsNotInTheCurrentTrustedDirectory())
             }
         }
-        .machineStatusPolling(
-            ringsFeed, fetch: context.machineStatusFetch(id, demo: model.isDemo), online: m?.pathState.reachable == true && !state.peer(id).unlinked,
-            supported: m?.pathState.capabilities?.machineStatus == true)
         .navBar(
-            m == nil ? L10n.settingsComputer() : machineLabel(state, id: id),
-            subtitle: m.flatMap { machineStatus($0, state: state, now: nowMs()) }.map {
-                $0.online ? L10n.commonIosOnline() : L10n.commonIosOffline()
-            },
-            dot: m.flatMap { machineStatus($0, state: state, now: nowMs()) }.map {
-                $0.online ? DS.green : DS.ink3
-            }
+            title,
+            subtitle: vm.found ? (vm.online ? L10n.commonIosOnline() : L10n.commonIosOffline()) : nil,
+            dot: vm.found ? (vm.online ? DS.green : DS.ink3) : nil
         )
-        // Read when the page opens and again whenever the computer comes back within reach.
-        .task(id: live) {
-            let s = settings ?? MachineSettingsModel(calls: .remote(context.remote, machine: id))
-            settings = s
-            #if DEBUG
-                if model.isDemo {
-                    if live { showDemo(s) }
-                    return
-                }
-            #endif
-            if live { await s.read() }
-        }
-        .kitSheet(item: $picking) { pick in sheet(pick, state: state) }
-        // What a tap on a timeout, and on 移除 in the confirmation, does (debug builds).
+        .kitSheet(item: $picking) { pick in sheet(pick) }
         .debugSignal("machine.timeout") {
-            guard let settings, let current = settings.settings else { return }
-            let now =
-                approvalTimeoutMinutes.firstIndex(of: Int(current.approvalTimeoutSeconds) / 60)
-                ?? -1
-            let next = approvalTimeoutMinutes[(now + 1) % approvalTimeoutMinutes.count]
-            Task { await settings.save(current.with(timeoutMinutes: next)) }
+            let choices = vm.approvalTimeoutChoices
+            guard !choices.isEmpty else { return }
+            let idx = choices.firstIndex(where: \.selected) ?? -1
+            let next = choices[(idx + 1) % choices.count]
+            onUpdateDaemonSettings(next.seconds, nil, nil, false)
         }
-
         .confirm(
-            isPresented: $cleaning, title: L10n.settingsIosClearReclaimableImages(),
-            text: L10n.settingsIosClearsReclaimableOriginalsAndCacheUnsyncedFullSizeImages(), confirm: L10n.settingsClearSettings()
+            isPresented: $cleaning,
+            title: L10n.settingsIosClearReclaimableImages(),
+            text: L10n.settingsIosClearsReclaimableOriginalsAndCacheUnsyncedFullSizeImages(),
+            confirm: L10n.settingsClearSettings()
         ) {
-            guard let settings, let current = settings.settings else { return }
-            Task { await settings.save(current, clean: true) }
+            onUpdateDaemonSettings(nil, nil, nil, true)
         }
     }
 
-    // MARK: The page
+    @ViewBuilder private func details(_ vm: PBMachineSettingsViewModel) -> some View {
+        let name = vm.name.or(vm.machineID)
+        let removed = vm.removedBanner.rendered()
+        let banner = vm.offlineOrMismatchBanner.rendered()
+        if !removed.isEmpty {
+            GroupBanner(removed, tone: .error)
+        } else if !banner.isEmpty {
+            GroupBanner(banner, tone: vm.protocolMismatch != 0 ? .warn : .plain)
+        }
 
-    @ViewBuilder private func details(_ m: MachineView, state: RemoteState, now: Int64) -> some View
-    {
-        let name = machineLabel(state, id: id)
-        let mismatch = protocolMismatch(m)
-        let status = machineStatus(m, state: state, now: now)
-        if let mismatch { GroupBanner(mismatch, tone: .warn) }
-        if let status, !status.online { GroupBanner(offlineText(m, now: now)) }
-
-        // CPU, memory and disk at a glance; a daemon that cannot say has none (ui-spec A2).
-        if m.pathState.capabilities?.machineStatus == true {
+        if vm.showStatusEntry {
             MachineRingsCard(
-                rings: machineRings(status: ringsFeed.last, online: m.pathState.reachable && !state.peer(id).unlinked, text: StatusText()),
-                online: m.pathState.reachable && !state.peer(id).unlinked && protocolMismatch(m) == nil
-            ) { nav.open(.machineStatus(id: id)) }
+                rings: vm.statusRings,
+                online: vm.online && vm.member && vm.protocolMismatch == 0,
+                onOpen: onOpenStatus
+            )
         }
 
         GroupLabel(L10n.settingsComputer())
         GroupCard {
             GRow(L10n.settingsName(), value: name)
-            GRow(L10n.settingsIosSystem(), value: osName(m.meta?.os ?? ""))
-            GRow(L10n.settingsDeviceId(), value: "…" + shortId(id))
+            GRow(L10n.settingsDeviceId(), value: "…" + String(vm.machineID.suffix(8)))
         }
 
-        let groups = quotaGroups(asKnown(m, state: state), now: now)
-        // A computer that has not said what it runs has no CLI to list a quota for.
-        if !groups.isEmpty, m.meta != nil {
-            // A line for each CLI's quota, leading to all of it.
+        if !vm.quotaRows.isEmpty {
             GroupLabel(L10n.settingsAccountQuota())
             GroupCard {
-                for (i, g) in groups.enumerated() {
-                    let title = quotaRowTitle(g, among: groups, at: i)
-                    let line = quotaLine(g)
-                    let sep = " · "
-                    if let idx = line.range(of: sep) {
-                        let usedPart = String(line[..<idx.lowerBound])
-                        let winPart = "· " + String(line[idx.upperBound...])
-                        GRow(title, value: winPart, chevron: true, valueLines: 1) {
-                            nav.open(.quota(machine: id))
+                ForEach(Array(vm.quotaRows.enumerated()), id: \.offset) { _, sec in
+                    let summary = sec.hasSummaryRow ? sec.summaryRow : nil
+                    let rem = summary?.remainingText.rendered() ?? ""
+                    let win = summary?.label.rendered() ?? ""
+                    let fallback = sec.emptyOrErrorText.rendered()
+                    if !rem.isEmpty && !win.isEmpty {
+                        let warn = summary?.tone == .warn || summary?.tone == .full
+                        GRow(sec.agentName, value: "· " + win, chevron: true, valueLines: 1) {
+                            onOpenQuota()
                         }
                         .valueLead {
-                            Text(usedPart).font(.subheadline).ink(quotaSummaryRow(g).map { $0.tone == .warn || $0.tone == .full } == true ? DS.orangeInk : DS.ink2).lineLimit(typeSize.isAccessibilitySize ? nil : 1)
+                            Text(rem)
+                                .font(.subheadline)
+                                .ink(warn ? DS.orangeInk : DS.ink2)
+                                .lineLimit(typeSize.isAccessibilitySize ? nil : 1)
                         }
                     } else {
-                        GRow(title, value: line, chevron: true) {
-                            nav.open(.quota(machine: id))
+                        GRow(sec.agentName, value: rem.isEmpty ? fallback : rem, chevron: true) {
+                            onOpenQuota()
                         }
                     }
                 }
             }
         }
 
-        // The direct path: its switch, state and measured numbers are said here and nowhere else.
-        ConnectionGroup(remote: context.remote, machine: id, online: m.pathState.reachable && !state.peer(id).unlinked)
+        if vm.member && vm.hasConnection && vm.connection.toggleVisible {
+            ConnectionGroup(view: vm.connection, onToggle: onToggleDirect, onRetryDirect: onRetryDirect)
+        }
 
-        if let meta = m.meta {
-            let agents = shownAgents(meta)
+        if !vm.cliVersions.isEmpty {
             GroupLabel(L10n.settingsIosCliVersions())
             GroupCard {
-                for a in agents {
-                    GRow(agentName(a.agent), value: a.version.or(L10n.settingsIosUnknown()))
+                ForEach(Array(vm.cliVersions.enumerated()), id: \.offset) { _, a in
+                    GRow(a.name, value: a.version.or(L10n.settingsIosUnknown()))
                         .valueLead {
-                            Text(a.verified ? L10n.settingsIosVerified() : L10n.settingsIosUnverified()).font(.subheadline).ink(a.verified ? DS.ink2 : DS.orangeInk)
+                            Text(a.verified ? L10n.settingsIosVerified() : L10n.settingsIosUnverified())
+                                .font(.subheadline)
+                                .ink(a.verified ? DS.ink2 : DS.orangeInk)
                         }
                 }
             }
-            if agents.contains(where: { !$0.verified }) {
+            if vm.hasUnverifiedCli_p {
                 GroupNote(L10n.settingsIosForUnverifiedVersionsRunRemoteAgentDoctorOnThe())
             }
         }
 
-        daemonSettings(m, state: state, name: name, mismatch: mismatch != nil)
+        daemonSettings(vm, name: name)
 
-        let projects = machineProjects(state, machineId: id)
-        if !projects.isEmpty {
+        if !vm.projects.isEmpty {
             GroupLabel(L10n.scheduleProject())
             GroupCard {
-                for cwd in projects {
-                    GRow(projectName(cwd), value: shortPath(cwd), chevron: true) {
-                        nav.open(.project(key: cwd))
+                ForEach(Array(vm.projects.enumerated()), id: \.offset) { _, p in
+                    GRow(p.name, value: shortPath(p.path), chevron: true) {
+                        onOpenProject(p.projectKey)
                     }
                 }
             }
         }
 
-        DeviceManagementActions(id: id, machine: true)
+        managementSection()
     }
 
-    /// Why a computer is not there. The server only knows the daemon's
-    /// connection is gone, so all three possibilities are said (architecture
-    /// §9 「电脑为什么不在线」), in the words of the session's offline card.
-    private func offlineText(_ m: MachineView, now: Int64) -> String {
-        let since = whenText(m.lastSeenMs, now: now)
-        return (since.isEmpty ? "" : L10n.sessionDisconnectedAgo(time: String(describing: since)))
-            + L10n.settingsIosTheComputerMayBeAsleepOfflineOrNotRunning()
-    }
+    @ViewBuilder private func daemonSettings(_ vm: PBMachineSettingsViewModel, name: String) -> some View {
+        let readError = vm.settingsError.rendered()
+        let saveErr = vm.saveError.rendered()
 
-    /// The CLIs the computer reports; one that reports none is an older Codex-only daemon's.
-    private func shownAgents(_ meta: PBMachineMeta) -> [PBAgentInfo] {
-        machineVersions(meta)
-    }
-
-    /// The CLI's name; with several accounts of one CLI, which one, so two rows are not named alike.
-    private func quotaRowTitle(_ g: QuotaGroup, among groups: [QuotaGroup], at index: Int) -> String
-    {
-        let name = agentName(g.agent)
-        guard groups.filter({ $0.agent == g.agent }).count > 1 else { return name }
-        let parts = g.title.components(separatedBy: " · ")
-        return parts.count > 1 ? name + " · " + (parts.last ?? "") : name
-    }
-
-    // MARK: Daemon settings
-
-    @ViewBuilder private func daemonSettings(
-        _ m: MachineView, state: RemoteState, name: String, mismatch: Bool
-    ) -> some View {
-        let s = settings?.settings
-        let shown = reachable(state)
-        if state.peer(id).unlinked {
-            GroupNote(L10n.settingsIosConnectToTheServerToReadAndEditNew())
-        } else if !m.pathState.reachable {
-            GroupNote(L10n.settingsIosIsOfflineConnectToReadAndEditNewSession(value: String(describing: name)))
-        } else if mismatch {
-            // The notice at the top says which side to update; nothing is sent meanwhile.
-            EmptyView()
-        } else if let settings, let s {
-            let busy = settings.saving || !shown
-            let agents = machineAgents(m)
-            if !agents.isEmpty {
-                let activeAgent = (selectedAgent != nil && agents.contains(selectedAgent!)) ? selectedAgent! : agents[0]
-                if agents.count > 1 {
-                    GroupLabel(L10n.settingsNewProjectDefaults())
-                    SegPick(
-                        agents.map(agentName),
-                        selected: Binding(
-                            get: { agents.firstIndex(of: activeAgent) ?? 0 },
-                            set: { selectedAgent = agents[$0] }
-                        )
-                    )
-                    .padding(.horizontal, DS.Space.l)
-                } else {
-                    GroupLabel(L10n.settingsNewProjectDefaultsSettings(value: String(describing: agentName(activeAgent))))
-                }
-
-                let d = s.defaults(for: activeAgent)
-                let effective = defaultModeOf(m, agent: activeAgent)
-                let chosen = modeOf(d.mode)
-                GroupCard {
-                    GRow(L10n.modelsTitle(), value: d.model.or(L10n.modelsDefault()), chevron: true, enabled: !busy) {
-                        picking = .model(activeAgent)
-                    }
-                    GRow(L10n.modelsEffort(), value: d.effort.or(L10n.modelsDefault()), chevron: true, enabled: !busy) {
-                        picking = .model(activeAgent)
-                    }
-                    // One line: that project settings may differ is said in the picker.
-                    GRow(
-                        L10n.modesTitle(),
-                        value: chosen?.text
-                            ?? modeLabel(
-                                chosen: nil,
-                                default: DefaultMode(
-                                    mode: effective.mode, known: effective.known, varies: false),
-                                agent: activeAgent),
-                        chevron: true, enabled: !busy,
-                        valueColor: chosen == nil && (effective.mode == .full || !effective.known)
-                            ? DS.red : nil
-                    ) { picking = .mode(activeAgent) }
-                }
-
-                GroupCard {
-                    GRow(
-                        L10n.settingsApprovalTimeout(), value: timeoutText(seconds: s.approvalTimeoutSeconds),
-                        chevron: true, enabled: !busy
-                    ) { picking = .timeout }
-                    GRow(
-                        L10n.settingsAutomaticallyEndIdleSessions(), value: idleCloseText(minutes: s.idleCloseMinutes),
-                        chevron: true, enabled: !busy
-                    ) { picking = .idleClose }
-                }
+        if !vm.editable {
+            if vm.protocolMismatch == 0 && !vm.online {
+                GroupNote(L10n.settingsIosIsOfflineConnectToReadAndEditNewSession(value: name))
+            } else if vm.protocolMismatch == 0 && vm.unlinked {
+                GroupNote(L10n.settingsIosConnectToTheServerToReadAndEditNew())
             }
-            if settings.saving { LoadingRow(L10n.settingsIosSaving(), inset: 30).padding(.bottom, 4) }
-            if !settings.saveError.isEmpty {
-                if settings.saveUnknown {
-                    GroupBanner(settings.saveError, tone: .warn, action: L10n.settingsIosReload()) {
-                        Task { await settings.read() }
-                    }
-                } else {
-                    GroupBanner(L10n.settingsSaveError(reason: String(describing: settings.saveError)), tone: .error)
-                }
-            }
-            if !settings.readError.isEmpty {
-                GroupBanner(L10n.settingsReadError(reason: String(describing: settings.readError)), tone: .error, action: L10n.commonRetry()) {
-                    Task { await settings.read() }
-                }
-            }
-            imageStorage(s, usage: settings.imageStorage, enabled: !busy)
-        } else if let settings, !settings.readError.isEmpty {
-            GroupLabel(L10n.settingsNewProjectDefaults())
-            GroupBanner(L10n.settingsReadError(reason: String(describing: settings.readError)), tone: .error, action: L10n.commonRetry()) {
-                Task { await settings.read() }
-            }
-        } else {
+        } else if vm.settingsLoading {
             GroupLabel(L10n.settingsNewProjectDefaults())
             LoadingRow(inset: 30).padding(.bottom, 4)
+        } else if !readError.isEmpty && !vm.hasAgentDefaults {
+            GroupLabel(L10n.settingsNewProjectDefaults())
+            GroupBanner(readError, tone: .error, action: L10n.commonRetry(), onAction: onRetrySettings)
+        } else if vm.hasAgentDefaults {
+            let busy = vm.savePending || !vm.editable
+            let agents = vm.availableAgents
+            let d = vm.agentDefaults
+            let activeAgent = agents.contains(vm.selectedAgent) ? vm.selectedAgent : (agents.first ?? d.agent)
+
+            if agents.count > 1 {
+                GroupLabel(L10n.settingsNewProjectDefaults())
+                SegPick(
+                    agents.map(agentName),
+                    selected: Binding(
+                        get: { agents.firstIndex(of: activeAgent) ?? 0 },
+                        set: { onSelectAgent(agents[$0]) }
+                    )
+                )
+                .padding(.horizontal, DS.Space.l)
+            } else {
+                GroupLabel(L10n.settingsNewProjectDefaultsSettings(value: d.agentName.or(agentName(activeAgent))))
+            }
+
+            let modelValue = d.selectedModelLabel.rendered().or(d.selectedModel).or(L10n.modelsDefault())
+            let selectedEffort = d.effortChoices.first(where: \.selected)
+            let effortValue = selectedEffort?.label.rendered().or(d.selectedEffort) ?? d.selectedEffort.or(L10n.modelsDefault())
+            let selectedMode = d.modeChoices.first(where: \.selected)
+            let modeValue = selectedMode?.label.rendered() ?? ""
+            let timeoutValue = vm.approvalTimeoutChoices.first(where: \.selected)?.label.rendered()
+                ?? L10n.quotaMin(count: Int(vm.selectedApprovalTimeoutSeconds / 60))
+            let idleValue = vm.idleCloseChoices.first(where: \.selected)?.label.rendered() ?? ""
+
+            GroupCard {
+                GRow(L10n.modelsTitle(), value: modelValue, chevron: true, enabled: !busy) {
+                    picking = .model(activeAgent)
+                }
+                GRow(L10n.modelsEffort(), value: effortValue, chevron: true, enabled: !busy) {
+                    picking = d.effortChoices.count > 1 ? .effort(activeAgent) : .model(activeAgent)
+                }
+                GRow(
+                    L10n.modesTitle(),
+                    value: modeValue,
+                    chevron: true,
+                    enabled: !busy,
+                    valueColor: d.selectedMode == .fullAccess ? DS.red : nil
+                ) {
+                    picking = .mode(activeAgent)
+                }
+            }
+
+            GroupCard {
+                GRow(L10n.settingsApprovalTimeout(), value: timeoutValue, chevron: true, enabled: !busy) {
+                    picking = .timeout
+                }
+                GRow(L10n.settingsAutomaticallyEndIdleSessions(), value: idleValue, chevron: true, enabled: !busy) {
+                    picking = .idleClose
+                }
+            }
+
+            if vm.savePending {
+                LoadingRow(L10n.settingsIosSaving(), inset: 30).padding(.bottom, 4)
+            }
+            if vm.saveUnknown {
+                GroupBanner(
+                    saveErr.or(L10n.settingsIosUnsureWhetherTheComputerSavedThisChangeReloadTo()),
+                    tone: .warn,
+                    action: L10n.settingsIosReload(),
+                    onAction: onRetrySettings
+                )
+            } else if !saveErr.isEmpty {
+                GroupBanner(saveErr, tone: .error)
+            }
+            if !readError.isEmpty {
+                GroupBanner(readError, tone: .error, action: L10n.commonRetry(), onAction: onRetrySettings)
+            }
+
+            if vm.hasAttachmentStorage && vm.attachmentStorage.loaded {
+                attachmentStorage(vm.attachmentStorage, enabled: !busy)
+            }
         }
     }
 
-    /// Where the computer keeps the images sent to its sessions (Android's MachineImageStorage).
-    @ViewBuilder private func imageStorage(
-        _ s: PBDaemonSettings, usage: PBImageStorageUsage?, enabled: Bool
-    ) -> some View {
-        let free = usage.map { $0.reclaimableBytes + $0.cacheBytes } ?? 0
+    @ViewBuilder private func attachmentStorage(_ s: PBAttachmentStorageView, enabled: Bool) -> some View {
+        let quotaLabel = s.quotaChoices.first(where: \.selected)?.label.rendered()
+            ?? wholeBytes(s.selectedQuotaBytes)
+        let uploaded = s.uploadedText.rendered()
+        let previewCache = s.previewCacheText.rendered()
+        let clearLabel = s.clearButtonLabel_p.rendered().or(L10n.settingsNothingToClear())
+        let footer = s.footerText.rendered().or(L10n.settingsIosImagesAreStoredOnThisComputerImagesBeingSent())
+
         GroupLabel(L10n.settingsAttachmentStorage()).id(MachineAnchor.storage)
         GroupCard {
-            GRow(L10n.settingsUploadedImagesAndFiles(), value: usage.map(uploadsText) ?? L10n.projectsReadingDirectory(), valueLines: nil)
-            GRow(
-                L10n.settingsStorageLimit(), value: wholeBytes(s.imageUploadQuotaBytes), chevron: true, enabled: enabled
-            ) { picking = .imageQuota }
-            GRow(L10n.settingsPreviewCache(), value: usage.map { imageBytes($0.cacheBytes) } ?? "—")
-            // The space the daemon keeps back so that a session can still start on a full disk (ui-spec B2): not clearable; none while it is not kept.
-            if let reserve = usage?.emergencyReserveBytes, reserve > 0 {
-                EmergencyReserveRow(bytes: reserve)
+            GRow(L10n.settingsUploadedImagesAndFiles(), value: uploaded, valueLines: nil)
+            GRow(L10n.settingsStorageLimit(), value: quotaLabel, chevron: true, enabled: enabled) {
+                picking = .imageQuota
+            }
+            GRow(L10n.settingsPreviewCache(), value: previewCache.or("—"))
+            if s.showEmergencyReserve {
+                EmergencyReserveRow(text: s.emergencyReserveText.rendered())
             }
             GRow(
-                L10n.settingsClear(), value: usage.map { _ in free > 0 ? L10n.settingsCanFree(value: String(describing: imageBytes(free))) : L10n.settingsNothingToClear() },
+                L10n.settingsClear(),
+                value: clearLabel,
                 action: true,
-                enabled: enabled && free > 0
-            ) { cleaning = true }
+                enabled: enabled && s.canClear && !s.cleaning
+            ) {
+                cleaning = true
+            }
         }
-        GroupNote(L10n.settingsIosImagesAreStoredOnThisComputerImagesBeingSent())
+        GroupNote(footer)
     }
 
-    // MARK: Sheets
-
-    @ViewBuilder private func sheet(_ pick: Pick, state: RemoteState) -> some View {
-        if let settings, let s = settings.settings {
-            let save: (PBDaemonSettings) -> Void = { next in
-                picking = nil
-                Task { await settings.save(next) }
-            }
-            switch pick {
-            case .model(let agent):
-                DefaultModelSheet(machine: id, agent: agent, current: s.defaults(for: agent)) {
-                    model, effort in
-                    save(s.with(model: model, effort: effort, for: agent))
-                }
-            case .mode(let agent):
-                DefaultModeSheet(machine: id, agent: agent, settings: s, effective: defaultModeOf(state.machines[id], agent: agent)) {
-                    save(s.with(mode: $0, for: agent))
-                }
-            case .timeout:
-                SheetHead(L10n.settingsApprovalTimeout())
-                ForEach(approvalTimeoutMinutes, id: \.self) { minutes in
-                    ListItem(
-                        L10n.quotaMin(count: Int(minutes)), checked: Int(s.approvalTimeoutSeconds) == minutes * 60,
-                        last: minutes == approvalTimeoutMinutes.last
-                    ) { save(s.with(timeoutMinutes: minutes)) }
-                }
-                Hint(L10n.settingsIosUnansweredApprovalsAreDeniedAfterThisTime())
-            case .idleClose:
-                SheetHead(L10n.settingsAutomaticallyEndIdleSessions())
-                let choices = idleCloseChoices(current: s.idleCloseMinutes)
-                ForEach(choices, id: \.self) { minutes in
-                    ListItem(
-                        idleCloseText(minutes: Int32(minutes)), checked: idleCloseIs(minutes, s.idleCloseMinutes),
-                        small: minutes == idleCloseDefaultMinutes ? L10n.modelsDefault() : nil,
-                        last: minutes == choices.last
-                    ) { save(s.with(idleCloseMinutes: minutes)) }
-                }
-                Hint(L10n.settingsIosSessionsEndAutomaticallyAfterThisMuchInactivityNotRunning())
-            case .imageQuota:
-                SheetHead(L10n.settingsStorageLimit())
-                ForEach(imageQuotaChoices, id: \.self) { bytes in
-                    ListItem(
-                        wholeBytes(bytes), checked: s.imageUploadQuotaBytes == bytes,
-                        last: bytes == imageQuotaChoices.last
-                    ) {
-                        save(s.with(imageQuota: bytes))
-                    }
+    @ViewBuilder private func sheet(_ pick: Pick) -> some View {
+        let d = vm.agentDefaults
+        switch pick {
+        case .model(let agent):
+            SheetHead(L10n.settingsIosDefaultModelForNewSessions(value: d.agentName.or(agentName(agent))))
+            ForEach(Array(d.modelChoices.enumerated()), id: \.offset) { idx, c in
+                ListItem(
+                    c.label.rendered().or(c.id),
+                    checked: c.selected,
+                    small: c.desc.isEmpty ? nil : c.desc,
+                    last: idx == d.modelChoices.count - 1
+                ) {
+                    picking = nil
+                    onUpdateAgentDefaults(agent, c.id, nil, nil)
                 }
             }
-        }
-    }
+            let defaultFooter = d.footerText.rendered()
+            if !defaultFooter.isEmpty { Hint(defaultFooter) }
 
-    #if DEBUG
-        private func showDemo(_ s: MachineSettingsModel) {
-            switch SettingsDemo.state {
-            case "loading": s.show(settings: nil, reading: true)
-            case "failed": s.show(settings: nil, readError: L10n.errorsTheComputerIsOfflineTheCommandWasNotSent())
-            case "saveFailed":
-                s.show(
-                    settings: SettingsDemo.daemonSettings, storage: SettingsDemo.imageStorage,
-                    saveError: L10n.errorsTheComputerIsOfflineTheCommandWasNotSent())
-            case "saveUnknown":
-                s.show(
-                    settings: SettingsDemo.daemonSettings, storage: SettingsDemo.imageStorage,
-                    saveError: L10n.settingsIosUnsureWhetherTheComputerSavedThisChangeReloadTo(), saveUnknown: true)
-            default:
-                s.show(settings: SettingsDemo.daemonSettings, storage: SettingsDemo.imageStorage)
+        case .effort(let agent):
+            SheetHead(L10n.modelsEffort())
+            ForEach(Array(d.effortChoices.enumerated()), id: \.offset) { idx, c in
+                ListItem(
+                    c.label.rendered().or(c.id),
+                    checked: c.selected,
+                    last: idx == d.effortChoices.count - 1
+                ) {
+                    picking = nil
+                    onUpdateAgentDefaults(agent, nil, c.id, nil)
+                }
             }
-        }
-    #endif
-}
 
-/// A CLI's default model and effort for new sessions on a computer, from the models it offers.
-private struct DefaultModelSheet: View {
-    let machine: String
-    let agent: PBAgent
-    let current: PBAgentDefaults
-    let onPick: (_ model: String, _ effort: String) -> Void
-    @Environment(AccountContext.self) private var context
-    @State private var models: PBListModelsResponse?
-    @State private var error = ""
-    @State private var attempt = 0
-    /// The model whose efforts are being offered; the one in use to begin with.
-    @State private var model: String?
-    @State private var all = false
-
-    var body: some View {
-        let chosen = model ?? current.model
-        SheetHead(L10n.settingsIosDefaultModelForNewSessions(value: String(describing: agentName(agent))))
-        Group {
-            if !error.isEmpty {
-                Banner(L10n.sessionIosModelsFailed(reason: String(describing: error)), tone: .error, action: L10n.commonRetry()) {
-                    error = ""
-                    attempt += 1
+        case .mode(let agent):
+            SheetHead(L10n.settingsDefaultApprovalMode())
+            ForEach(Array(d.modeChoices.enumerated()), id: \.offset) { idx, c in
+                let disabledReason = c.disabledReason.rendered()
+                ListItem(
+                    c.label.rendered(),
+                    checked: c.selected,
+                    enabled: !c.disabled,
+                    small: disabledReason.isEmpty ? nil : disabledReason,
+                    last: idx == d.modeChoices.count - 1
+                ) {
+                    picking = nil
+                    onUpdateAgentDefaults(agent, nil, nil, c.mode)
                 }
-            } else if let models {
-                ListItem(L10n.settingsIosDefaultSOwnConfiguration(value: String(describing: agentName(agent))), checked: chosen.isEmpty) {
-                    onPick("", "")
-                }
-                let shown = shownModels(models.models, picked: models.models.first { $0.slug == chosen }, all: all)
-                let few = shown.count == models.models.count
-                ForEach(Array(shown.enumerated()), id: \.offset) { i, m in
-                    let note = [
-                        contextText(tokens: m.contextWindow), m.efforts.isEmpty ? L10n.sessionNoEffort() : nil,
-                    ].compactMap { $0 }.joined(separator: " · ")
-                    ListItem(
-                        m.displayName.or(m.slug), checked: m.slug == chosen,
-                        small: note.isEmpty ? nil : note,
-                        last: few && i == shown.count - 1
-                    ) {
-                        // A model without efforts is chosen at once; one with them waits for the effort.
-                        if m.efforts.isEmpty { onPick(m.slug, "") } else { model = m.slug }
-                    }
-                }
-                if !few { TextAction(L10n.modelsAll(), style: .body, arrow: true) { all = true } }
-                if let m = models.models.first(where: { $0.slug == chosen }), !m.efforts.isEmpty {
-                    FieldLabel(L10n.modelsEffort())
-                    ChoiceGrid(m.efforts, selected: current.model == m.slug ? current.effort : nil)
-                    { onPick(m.slug, $0) }
-                }
-            } else {
-                LoadingRow(inset: 0)
             }
-        }
-        .task(id: attempt) {
-            do {
-                models = try await context.remote.listModels(machine, agent: agent, fresh: true)
-            } catch is CancellationError {
-                // The sheet closed.
-            } catch {
-                self.error = errorText(error)
+            let notice = d.autoUnavailableNotice.rendered()
+            if !notice.isEmpty {
+                Hint(notice)
+            }
+
+        case .timeout:
+            SheetHead(L10n.settingsApprovalTimeout())
+            ForEach(Array(vm.approvalTimeoutChoices.enumerated()), id: \.offset) { idx, c in
+                ListItem(
+                    c.label.rendered(),
+                    checked: c.selected,
+                    last: idx == vm.approvalTimeoutChoices.count - 1
+                ) {
+                    picking = nil
+                    onUpdateDaemonSettings(c.seconds, nil, nil, false)
+                }
+            }
+            Hint(L10n.settingsIosUnansweredApprovalsAreDeniedAfterThisTime())
+
+        case .idleClose:
+            SheetHead(L10n.settingsAutomaticallyEndIdleSessions())
+            ForEach(Array(vm.idleCloseChoices.enumerated()), id: \.offset) { idx, c in
+                ListItem(
+                    c.label.rendered(),
+                    checked: c.selected,
+                    last: idx == vm.idleCloseChoices.count - 1
+                ) {
+                    picking = nil
+                    onUpdateDaemonSettings(nil, c.minutes, nil, false)
+                }
+            }
+            Hint(L10n.settingsIosSessionsEndAutomaticallyAfterThisMuchInactivityNotRunning())
+
+        case .imageQuota:
+            let choices = vm.attachmentStorage.quotaChoices
+            SheetHead(L10n.settingsStorageLimit())
+            ForEach(Array(choices.enumerated()), id: \.offset) { idx, c in
+                ListItem(
+                    c.label.rendered().or(wholeBytes(c.bytes)),
+                    checked: c.selected,
+                    last: idx == choices.count - 1
+                ) {
+                    picking = nil
+                    onUpdateDaemonSettings(nil, nil, c.bytes, false)
+                }
             }
         }
     }
 }
 
-/// 应急预留 in 附件存储: its size as the group writes sizes (MiB), and under it why it is there; no action.
+/// 应急预留 in 附件存储: its size and why it is there; no action.
 private struct EmergencyReserveRow: View {
-    let bytes: Int64
+    let text: String
 
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
             HStack(alignment: .firstTextBaseline, spacing: 10) {
                 Text(L10n.machineStatusEmergencyReserve()).font(.body).foregroundStyle(DS.ink)
                 Spacer(minLength: 0)
-                Text(bytes % (1 << 20) == 0 ? wholeBytes(bytes) : imageBytes(bytes)).font(.subheadline).foregroundStyle(DS.ink2)
+                if !text.isEmpty {
+                    Text(text).font(.subheadline).foregroundStyle(DS.ink2)
+                }
             }
             Text(L10n.machineStatusEmergencyReserveNote()).font(.footnote).foregroundStyle(DS.ink2)
         }

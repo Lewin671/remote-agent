@@ -1,4 +1,5 @@
 import RACore
+import RAProto
 import SwiftUI
 
 /// 设置, the second first-level page (Android's SettingsScreen): the
@@ -20,17 +21,26 @@ struct SettingsScreen: View {
     @Environment(\.openURL) private var openURL
 
     var body: some View {
-        let state = model.state
+        let vm = context.core.settings
         Page(gray: true) {
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
                     LargeTitle(L10n.commonSettings())
                     ConnectionBar()
-                    Ticking { now in
-                        computers(state, now: now)
-                        clients(state, now: now)
+                    if vm.clockSkewed {
+                        GroupBanner(vm.clockSkewBannerText.rendered(), tone: .warn)
                     }
-                    AccountSecurityGroup()
+                    if vm.isManager && vm.recoveryPending {
+                        let recMsg = vm.recoveryBannerText.rendered()
+                        if !recMsg.isEmpty {
+                            GroupBanner(recMsg, tone: .warn, action: L10n.dockHandle()) {
+                                nav.open(.accountSecurity)
+                            }
+                        }
+                    }
+                    computers(vm)
+                    clients(vm)
+                    AccountSecurityGroup(summary: vm.security.summaryText.rendered())
                     GroupLabel(L10n.settingsIosNotifications())
                     NotificationsNote()
                     GroupLabel(L10n.settingsIosLocalStorage())
@@ -38,14 +48,14 @@ struct SettingsScreen: View {
                         GRow(L10n.settingsAttachmentStorage(), value: imagesUsed, chevron: true) { nav.open(.imageStorage) }
                     }
                     GroupLabel(L10n.settingsAppearance())
-                    GroupCard { themeRow }
+                    GroupCard { themeRow(vm) }
                     GroupLabel(L10n.connectionConnectingConnCheckLabel())
                     GroupCard {
                         GRow(L10n.securityServer(), value: hostOf(context.account.server))
-                        GRow(L10n.homeConnectionCheck(), value: connWord(state), chevron: true) {
+                        GRow(L10n.homeConnectionCheck(), value: vm.connCheck.statusWord.rendered().or(connWord(model.state)), chevron: true) {
                             nav.open(.connectionCheck)
                         }
-                        .valueLead { StatusMark(state.conn == .online ? .online : .off) }
+                        .valueLead { StatusMark(vm.online ? .online : .off) }
                     }
                     GroupLabel(L10n.settingsAbout())
                     GroupCard {
@@ -84,6 +94,7 @@ struct SettingsScreen: View {
         }
         // Read each time the page comes back: an image may have been viewed or sent meanwhile.
         .task {
+            await context.coreHost.openSettings()
             let made =
                 images
                 ?? ImageStorageModel(
@@ -97,38 +108,33 @@ struct SettingsScreen: View {
 
     // MARK: Groups
 
-    @ViewBuilder private func computers(_ state: RemoteState, now: Int64) -> some View {
-        let machines = sortedMachines(state)
+    @ViewBuilder private func computers(_ vm: PBSettingsViewModel) -> some View {
         GroupLabel(L10n.settingsComputer(), action: L10n.settingsAllDevices()) { nav.open(.devices) }
-        ForEach(machines, id: \.id) { MachineCard(machine: $0, state: state, now: now) }
+        ForEach(vm.machines, id: \.machineID) { MachineCard(machine: $0) }
         // A blue line after the cards, or where it is to be done when this client cannot.
-        AddDeviceEntry(grouped: false)
+        if vm.canAddDevice {
+            GRow(L10n.homeAddDevice(), action: true, icon: "plus") { nav.open(.addDevice()) }
+                .padding(.horizontal, DS.Space.l).padding(.bottom, 8)
+        } else {
+            let hint = vm.addDeviceHint.rendered()
+            if !hint.isEmpty { GroupNote(hint) }
+        }
     }
 
     /// This client and the first few others, drawn and ordered as 设备 lists them.
-    @ViewBuilder private func clients(_ state: RemoteState, now: Int64) -> some View {
-        let me = context.me
-        let others = sortClients(state.devices.values.filter { $0.kind == .client }, me: me).filter
-        { $0.id != me }.prefix(3)
+    @ViewBuilder private func clients(_ vm: PBSettingsViewModel) -> some View {
         GroupLabel(L10n.securityClient())
         GroupCard {
-            ClientRow(
-                client: state.devices[me], id: me, devices: state.devices, me: me, now: now,
-                authority: state.authorityDeviceId)
-            for c in others {
-                ClientRow(
-                    client: c, id: c.id, devices: state.devices, me: me, now: now,
-                    authority: state.authorityDeviceId)
-            }
+            ForEach(vm.recentClients, id: \.deviceID) { ClientRow(client: $0) }
             GRow(L10n.settingsAllClients(), chevron: true, action: true) { nav.open(.devices) }
         }
     }
 
-    @ViewBuilder private var themeRow: some View {
-        let modes: [(ThemeMode, String)] = [(.system, L10n.modesAuto()), (.light, L10n.settingsLight()), (.dark, L10n.settingsDark())]
+    @ViewBuilder private func themeRow(_ vm: PBSettingsViewModel) -> some View {
+        let modes: [(PBThemePreference, String)] = [(.auto, L10n.modesAuto()), (.light, L10n.settingsLight()), (.dark, L10n.settingsDark())]
         let selected = Binding<Int>(
-            get: { modes.firstIndex { $0.0 == model.settings.settings.theme } ?? 0 },
-            set: { i in model.settings.update { $0.theme = modes[i].0 } })
+            get: { modes.firstIndex { $0.0 == vm.appearance.theme } ?? 0 },
+            set: { i in context.dispatch { $0.setAppearancePref.theme = modes[i].0 } })
         let pick = SegPick(modes.map(\.1), selected: selected).accessibilityLabel(L10n.settingsTheme())
         ViewThatFits(in: .horizontal) {
             HStack(spacing: 10) {

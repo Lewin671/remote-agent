@@ -2,77 +2,134 @@ import RACore
 import RAProto
 import SwiftUI
 
-/// 账户额度: each CLI's account usage on a computer, apart, as the daemon
-/// reads it (architecture 「账户额度」, Android's QuotaScreen). What is not
-/// known is said, never shown as 0%; an offline computer's or a failed
-/// read's numbers are the last record, and a reset time that passed only
-/// waits for an update. Nothing here switches CLI or model.
+/// 账户额度: renders Core's `PBQuotaViewModel` directly.
 struct QuotaScreen: View {
     let machine: String
-    @Environment(AppModel.self) private var model
+    @Environment(AccountContext.self) private var context
 
     var body: some View {
-        let state = model.state
-        let m = state.machines[machine]
-        let status = m.flatMap { machineStatus($0, state: state, now: nowMs()) }
+        let vm = context.core.quota
+        QuotaScreenContent(vm: vm.machineID == machine ? vm : PBQuotaViewModel())
+            .task(id: machine) { await context.coreHost.openQuota(machineID: machine) }
+    }
+}
+
+/// Pure presentation body for `PBQuotaViewModel`, usable directly by golden snapshot tests.
+struct QuotaScreenContent: View {
+    let vm: PBQuotaViewModel
+
+    var body: some View {
         SettingsPage {
-            if let m {
-                Ticking { now in groups(m, state: state, now: now) }
-            } else {
+            if !vm.found {
                 PageNote(L10n.quotaIosThisComputerWasRemoved())
+            } else {
+                content(vm)
             }
         }
         .navBar(
             L10n.settingsAccountQuota(),
-            subtitle: m.map { _ in machineLabel(state, id: machine) + (status.map { " · " + ($0.online ? L10n.commonIosOnline() : L10n.commonIosOffline()) } ?? "") })
+            subtitle: vm.found
+                ? vm.machineName + " · " + (vm.reachable ? L10n.commonIosOnline() : L10n.commonIosOffline())
+                : nil
+        )
     }
 
-    @ViewBuilder private func groups(_ m: MachineView, state: RemoteState, now: Int64) -> some View {
-        let groups = quotaGroups(asKnown(m, state: state), now: now)
-        // Not connected, the connection bar says so and the numbers are what was last heard.
-        if !state.peer(machine).unlinked && !m.pathState.reachable { GroupNote(L10n.quotaIosComputerOfflineShowingTheLastReading(), color: DS.orangeInk) }
-        ForEach(Array(groups.enumerated()), id: \.offset) { _, g in
-            if !g.subgroups.isEmpty {
-                ForEach(Array(g.subgroups.enumerated()), id: \.offset) { index, sub in
-                    GroupLabel(sub.title + (g.lastRecord && index == 0 ? L10n.quotaLastReading() : ""))
-                    if index == 0 && g.status == .failed {
-                        GroupNote(g.detail.isEmpty ? L10n.quotaFailureNoReason(name: agentName(g.agent)) : L10n.quotaFailure(detail: g.detail, name: agentName(g.agent)), color: DS.red)
-                    }
-                    GroupCard {
-                        for row in sub.rows { QuotaWindow(row: row) }
-                    }
-                }
-            } else {
-                GroupLabel(g.title + (g.lastRecord ? L10n.quotaLastReading() : ""))
-                // Under the label it belongs to: with no last record there is no card, and the failure stands in its place.
-                if g.status == .failed {
-                    GroupNote(g.detail.isEmpty ? L10n.quotaFailureNoReason(name: agentName(g.agent)) : L10n.quotaFailure(detail: g.detail, name: agentName(g.agent)), color: DS.red)
-                }
-                if g.status == .unsupported || g.status == .waiting || !g.rows.isEmpty {
-                    GroupCard {
-                        if g.status == .unsupported {
-                            QuotaState(
-                                L10n.quotaQuotaLookupIsNotSupportedYet(),
-                                g.detail.or(L10n.quotaIosRemoteAgentOnThisComputerCannotReadSQuota(value: String(describing: agentName(g.agent))))
-                                    + (agentInfo(g.agent).usageHint ?? ""))
-                        } else if g.status == .waiting {
-                            QuotaState(L10n.quotaQuotaNotAvailableYet(), quotaWaitingDetail(g))
-                        }
-                        for row in g.rows { QuotaWindow(row: row) }
-                    }
-                }
-            }
-            // The warning belongs to this card, before observation metadata.
-            let banner = quotaBanner(g)
-            if !banner.isEmpty { GroupNote(banner, color: DS.orangeInk) }
-            if !g.rows.isEmpty {
-                if !g.freshness.isEmpty { GroupNote(g.freshness) }
-                if !g.received.isEmpty { GroupNote(g.received) }
-            }
-
+    @ViewBuilder private func content(_ vm: PBQuotaViewModel) -> some View {
+        let offlineNotice = vm.offlineNotice.rendered()
+        if !offlineNotice.isEmpty {
+            GroupNote(offlineNotice, color: DS.orangeInk)
         }
-        if groups.isEmpty { GroupNote(L10n.quotaIosThisComputerHasNotReportedWhichClisAreInstalled()) }
-        GroupNote(L10n.settingsTimesAreShownInBeijingTimeQuotasBelongTo())
+        if vm.hasBanner {
+            let msg = vm.banner.message.rendered()
+            if !msg.isEmpty {
+                GroupNote(msg, color: vm.banner.severity == .full ? DS.red : DS.orangeInk)
+            }
+        }
+        ForEach(Array(vm.sections.enumerated()), id: \.offset) { _, section in
+            sectionView(section)
+        }
+        let emptyText = vm.emptyText.rendered()
+        if !emptyText.isEmpty {
+            GroupNote(emptyText)
+        }
+        let footer = vm.footerNote.rendered()
+        if !footer.isEmpty {
+            GroupNote(footer)
+        }
+    }
+
+    @ViewBuilder private func sectionView(_ section: PBQuotaCliSection) -> some View {
+        if !section.accounts.isEmpty {
+            ForEach(Array(section.accounts.enumerated()), id: \.offset) { _, acct in
+                accountView(section, acct)
+            }
+        } else {
+            GroupLabel(section.agentName)
+            let errText = section.emptyOrErrorText.rendered()
+            if section.state == .failed && !errText.isEmpty {
+                GroupNote(errText, color: DS.red)
+            } else if section.state == .waiting || section.state == .unsupported {
+                GroupCard {
+                    QuotaState(
+                        section.state == .unsupported
+                            ? L10n.quotaQuotaLookupIsNotSupportedYet()
+                            : L10n.quotaQuotaNotAvailableYet(),
+                        errText.or(section.usageHint.rendered())
+                    )
+                }
+            } else if !errText.isEmpty {
+                GroupNote(errText)
+            }
+        }
+    }
+
+    @ViewBuilder private func accountView(_ section: PBQuotaCliSection, _ acct: PBQuotaAccountGroupView) -> some View {
+        let headerBase = acct.account.isEmpty ? section.agentName : section.agentName + " · " + acct.account
+        let titleSuffix = acct.lastRecord ? L10n.quotaLastReading() : ""
+        let status = acct.statusText.rendered()
+        let error = acct.errorText.rendered()
+        let hint = acct.usageHint.rendered()
+        let freshness = acct.freshnessText.rendered()
+
+        if !acct.groups.isEmpty {
+            ForEach(Array(acct.groups.enumerated()), id: \.offset) { idx, group in
+                let label = group.groupLabel.rendered()
+                let base = label.isEmpty ? headerBase : (acct.account.isEmpty ? label : label + " · " + acct.account)
+                GroupLabel(base + (idx == 0 ? titleSuffix : ""))
+                if idx == 0 && acct.state == .failed && !error.isEmpty {
+                    GroupNote(error, color: DS.red)
+                }
+                GroupCard {
+                    for row in group.rows {
+                        QuotaWindow(row: row)
+                    }
+                }
+            }
+        } else {
+            GroupLabel(headerBase + titleSuffix)
+            if acct.state == .failed && !error.isEmpty {
+                GroupNote(error, color: DS.red)
+            }
+            if acct.state == .unsupported || acct.state == .waiting {
+                GroupCard {
+                    QuotaState(
+                        acct.state == .unsupported
+                            ? L10n.quotaQuotaLookupIsNotSupportedYet()
+                            : L10n.quotaQuotaNotAvailableYet(),
+                        [status, hint].filter { !$0.isEmpty }.joined(separator: " ")
+                    )
+                }
+            } else if !status.isEmpty && acct.state != .failed {
+                GroupNote(status, color: acct.state == .ok ? DS.ink2 : DS.orangeInk)
+            }
+        }
+
+        if !status.isEmpty && !acct.groups.isEmpty {
+            GroupNote(status, color: DS.orangeInk)
+        }
+        if !freshness.isEmpty && !acct.groups.isEmpty {
+            GroupNote(freshness)
+        }
     }
 }
 
@@ -99,7 +156,7 @@ private struct QuotaState: View {
 
 /// One usage window: its name, what is left, a bar of it, and when it resets.
 private struct QuotaWindow: View {
-    let row: QuotaRow
+    let row: PBQuotaRowView
     @Environment(\.dynamicTypeSize) private var typeSize
 
     var body: some View {
@@ -109,19 +166,21 @@ private struct QuotaWindow: View {
         case .normal: DS.ink
         default: DS.orange
         }
-        let sub = [row.reset, row.note].filter { !$0.isEmpty }.joined(separator: " · ")
-        // Side by side, or the amount under the name when large text leaves no room for both.
-        let head = typeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: 2)) : AnyLayout(HStackLayout(spacing: 8))
+        let sub = [row.resetText.rendered(), row.footnote.rendered()].filter { !$0.isEmpty }.joined(separator: " · ")
+        let head = typeSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: 2))
+            : AnyLayout(HStackLayout(spacing: 8))
         VStack(alignment: .leading, spacing: 0) {
             head {
-                Text(row.label).font(.body).ink(DS.ink).frame(maxWidth: .infinity, alignment: .leading)
-                Text(row.left).font(.subheadline).ink(ink)
+                Text(row.label.rendered()).font(.body).ink(DS.ink).frame(maxWidth: .infinity, alignment: .leading)
+                Text(row.remainingText.rendered()).font(.subheadline).ink(ink)
             }
-            if let percent = row.percent {
+            if row.hasPercent_p {
+                let frac = min(1, max(0, Double(row.remainingPercent) / 100.0))
                 GeometryReader { geo in
                     Capsule().fill(DS.fill2)
                         .overlay(alignment: .leading) {
-                            Capsule().fill(fill).frame(width: geo.size.width * min(1, max(0, (100 - percent) / 100)))
+                            Capsule().fill(fill).frame(width: geo.size.width * frac)
                         }
                 }
                 .frame(height: 6)

@@ -542,6 +542,10 @@ final class AppModel {
         }
         await made.remote.onSessionRemoved(cleanup)
         await ctx.coreHost.setSessionRemovedHandler(cleanup)
+        await ctx.coreHost.setPersistClientPrefsHandler { [weak self] eff in
+            self?.settings.update { $0.theme = ThemeMode.from(eff.theme) }
+        }
+        await ctx.coreHost.reportAppearancePref(settings.settings.theme.proto)
         installAuthorityProtection(made.remote.authorityGate)
         updateAuthorityAvailability()
         // The account's own view of the store: what is still writing when the account is erased writes nothing.
@@ -807,15 +811,21 @@ final class AppModel {
             ImageCenter.install(remote: remote, files: VolatileFiles(), live: false)
             stage = .ready
             let host = context?.coreHost
-            Task {
+            let initialTheme = settings.settings.theme.proto
+            Task { [weak self] in
+                await host?.setPersistClientPrefsHandler { eff in
+                    self?.settings.update { $0.theme = ThemeMode.from(eff.theme) }
+                }
+                guard let self else { return }
                 await load()
-                if gen == generation { follow(remote.state, gen: gen) }
+                if gen == self.generation { self.follow(remote.state, gen: gen) }
                 await host?.seedDemo(
                     state: remote.current,
                     events: events,
                     schedules: schedules,
                     scheduleSeen: scheduleSeen
                 )
+                await host?.reportAppearancePref(initialTheme)
             }
         }
 

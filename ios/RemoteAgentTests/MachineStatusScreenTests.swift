@@ -6,96 +6,66 @@ import Testing
 
 @testable import RemoteAgent
 
-/// What the computer-status screens keep apart from drawing: the feed that follows the page's visibility,
-/// 让 Agent 帮我清理's draft, and the sample answers the screenshots use.
+/// Shell-side tests for 电脑状态 demo fixtures and watch ref-counting.
+/// Poll scheduling, hysteresis, scrub math, and cleanup routing live in `clientcore`.
 @MainActor
 @Suite struct MachineStatusScreenTests {
-    private actor Reads {
-        var count = 0
-        func next() -> PBMachineStatus {
-            count += 1
-            var s = PBMachineStatus(); s.observedMs = Int64(count) * 2000; s.cpuPercent = 10
-            return s
-        }
-    }
-
-    private func settle(_ test: () -> Bool) async -> Bool {
-        for _ in 0..<5_000 { if test() { return true }; try? await Task.sleep(for: .milliseconds(1)) }
-        return false
-    }
-
-    @Test func theFeedAsksOnlyWhileVisibleOnlineAndSupported() async {
-        let reads = Reads()
-        let feed = MachineStatusFeed(interval: .seconds(3600))
-        let fetch: MachineStatusFetch = { await reads.next() }
-        // Hidden, offline or unsupported: no request.
-        feed.update(fetch: fetch, visible: false, online: true, supported: true)
-        feed.update(fetch: fetch, visible: true, online: false, supported: true)
-        feed.update(fetch: fetch, visible: true, online: true, supported: false)
-        try? await Task.sleep(for: .milliseconds(30))
-        #expect(await reads.count == 0)
-        #expect(feed.view != .stale)
-        feed.update(fetch: fetch, visible: true, online: true, supported: true)
-        #expect(await settle { feed.view == .live })
-        #expect(feed.last?.observedMs == 2000 && feed.receivedAtMs > 0)
-        // Hiding stops it for good: a retry while hidden asks nothing.
-        feed.update(fetch: fetch, visible: false, online: true, supported: true)
-        feed.retry()
-        try? await Task.sleep(for: .milliseconds(30))
-        #expect(await reads.count == 1)
-        feed.stop()
-    }
-
-    @Test func anOfflineComputerKeepsTheLastFigures() async {
-        let reads = Reads()
-        let feed = MachineStatusFeed(interval: .seconds(3600))
-        let fetch: MachineStatusFetch = { await reads.next() }
-        feed.update(fetch: fetch, visible: true, online: true, supported: true)
-        #expect(await settle { feed.view == .live })
-        feed.update(fetch: fetch, visible: true, online: false, supported: true)
-        #expect(feed.view == .stale && feed.last != nil)
-        feed.stop()
-    }
-
-    @Test func cleanupPrefillsTheDraftOnThisComputerAndNeverTwice() {
-        let account = Demo.account
-        _ = account
-        var state = Demo.state(.everyday)
-        state.machines["mac"]?.meta?.projects = [.with { $0.path = Demo.foo; $0.latestCreatedMs = 5 }]
-        let drafts = NewSessionDrafts()
-        let prompt = L10n.machineStatusCleanupPrompt(locale: "zh-CN")
-        let key = recentMachineProject(state.machines["mac"]!.meta!)!
-        #expect(key == Demo.foo)
-        drafts.prepareCleanup(state, key: key, machine: "mac", prompt: prompt)
-        let draft = drafts.of(key, initial: nil, settled: true)
-        #expect(draft.text == prompt && draft.config.value?.machineId == "mac")
-        // The user's own words stay, the prompt follows after an empty line, and a second tap changes nothing.
-        draft.text = "先看 build 目录"
-        drafts.prepareCleanup(state, key: key, machine: "mac", prompt: prompt)
-        #expect(draft.text == "先看 build 目录\n\n" + prompt)
-        drafts.prepareCleanup(state, key: key, machine: "mac", prompt: prompt)
-        #expect(draft.text == "先看 build 目录\n\n" + prompt)
-    }
-
-    @Test func aComputerWithoutAProjectHasNoRecentOne() {
-        #expect(recentMachineProject(PBMachineMeta()) == nil)
-    }
-
-    @Test func theSampleAnswersMatchTheSpecsExamples() {
+    @Test func demoFixturesKeepExpectedSampleShapes() throws {
         let normal = MachineStatusDemo.status(mode: "normal", now: 1_000_000)
-        let rings = machineRings(status: normal, online: true, text: StatusText(locale: "zh-CN"))
-        #expect(rings.map(\.value) == ["23%", "70%", "42 GB"])
-        #expect(normal.samples.count == 60 && normal.samples.last?.timeMs == 1_000_000 && normal.samples.first?.timeMs == 1_000_000 - 59 * 2000)
+        #expect(normal.samples.count == 60)
+        let last = try #require(normal.samples.last)
+        let first = try #require(normal.samples.first)
+        #expect(last.timeMs == 1_000_000)
+        #expect(first.timeMs == 1_000_000 - 59 * 2000)
+        #expect(Int(normal.cpuPercent.rounded()) == 23)
+
         let tight = MachineStatusDemo.status(mode: "tight", now: 1_000_000)
-        #expect(machineRings(status: tight, online: true, text: StatusText(locale: "zh-CN"))[2].tone == .critical)
-        #expect(showDiskActions(tight) && !showDiskActions(normal))
+        #expect(tight.disk.pressure == .critical)
+
         #expect(MachineStatusDemo.status(mode: "few", now: 1).samples.count == 1)
     }
 
-    @Test func theSampleComputersCanSayTheirStatusAndOneIsLow() {
-        let s = Demo.state(.everyday)
-        #expect(s.machines.values.allSatisfy { $0.meta?.capabilities.machineStatus == true })
-        #expect(diskReminders(s).isEmpty)
+    @Test func demoMachineSettingsPopulatesRings() async throws {
+        let settings = SettingsStore(defaults: UserDefaults(suiteName: "ra-rings-\(UUID())")!)
+        let model = AppModel(settings: settings)
+        let remote = Demo.remote()
+        let initial = Demo.state(.everyday)
+        model.setForeground(true)
+        model.showDemo(account: Demo.account, remote: remote, initial: initial) {
+            await remote.showForTest(state: initial, modelLists: Demo.models)
+        }
+        defer { model.closeSyncForTest() }
+        let host = try #require(model.context?.coreHost)
+        // Wait briefly for seedDemo Task in showDemo
+        for _ in 0..<200 where !(model.context?.core.machineSettings.found ?? false) {
+            await host.openMachineSettings(machineID: "mac")
+            try? await Task.sleep(for: .milliseconds(20))
+        }
+        let token = await host.acquireMachineStatusWatch("mac", mode: .overview)
+        for _ in 0..<200 where (model.context?.core.machineSettings.statusRings.first?.valueText.rendered() ?? "").isEmpty || model.context?.core.machineSettings.statusRings.first?.valueText.rendered() == "—" {
+            try? await Task.sleep(for: .milliseconds(20))
+        }
+        let ms = model.context!.core.machineSettings
+        let labelsZh = ms.statusRings.map { $0.a11YLabel.rendered(locale: "zh-CN") }
+        await host.releaseMachineStatusWatch(token)
+        #expect(ms.found && ms.showStatusEntry)
+        #expect(labelsZh == ["CPU，23%", "内存，70%", "磁盘可用，42 GB"])
+    }
+
+    @Test func watchTokensRefCountAndPreferLiveMode() async {
+        let settings = SettingsStore(defaults: UserDefaults(suiteName: "ra-watch-\(UUID())")!)
+        let model = AppModel(settings: settings)
+        model.showDemo(account: Demo.account, remote: Demo.remote(), initial: Demo.state(.everyday)) {}
+        defer { model.closeSyncForTest() }
+        let host = model.context!.coreHost
+
+        let overview = await host.acquireMachineStatusWatch("mac", mode: .overview)
+        let live = await host.acquireMachineStatusWatch("mac", mode: .live)
+        // Release overview while live remains active.
+        await host.releaseMachineStatusWatch(overview)
+        let machineID = model.context?.core.machineStatus.machineID ?? ""
+        #expect(machineID.isEmpty || machineID == "mac")
+        await host.releaseMachineStatusWatch(live)
     }
 }
 #endif

@@ -1,4 +1,5 @@
 import RACore
+import RAProto
 import SwiftUI
 
 /// A client's details (Android's ClientScreen): its name for the whole
@@ -20,71 +21,86 @@ struct ClientScreen: View {
     }
 
     var body: some View {
-        let state = model.state
-        let me = context.me
-        let d = state.devices[id]
-        let online = state.conn == .online
-        let remote = context.remote
+        let vm = context.core.clientDetail
+        let online = model.state.conn == .online
         SettingsPage(refresh: refresh(online)) {
-            if d == nil && state.conn == .online && !state.devices.isEmpty {
+            if !vm.found && online && !model.state.devices.isEmpty {
                 // The list is read and it is not in it.
                 PageNote(L10n.settingsIosThisClientIsNotInTheCurrentTrustedDirectory())
             } else {
-                Ticking { now in details(d, state: state, me: me, online: online, now: now) }
+                details(vm)
             }
         }
-        .navBar(clientName(d, id: id, among: state.devices), subtitle: id == me ? L10n.settingsIosCurrentClient() : L10n.settingsPairedClient())
+        .navBar(
+            vm.displayName,
+            subtitle: !vm.found ? nil : (vm.isSelf ? L10n.settingsIosCurrentClient() : L10n.settingsPairedClient())
+        )
+        .task(id: id) {
+            await context.coreHost.openClientDetail(deviceID: id)
+            if online && !model.isDemo { await context.remote.refreshDevices() }
+        }
         .inputAlert(
-            isPresented: $editing, title: L10n.settingsClientName(), initial: d?.meta?.name ?? "",
-            placeholder: defaultClientName(d, id: id, among: state.devices), text: L10n.settingsIosLeaveBlankForTheDefaultName()
+            isPresented: $editing, title: L10n.settingsClientName(), initial: vm.customName,
+            placeholder: vm.defaultName, text: L10n.settingsIosLeaveBlankForTheDefaultName()
         ) { name in
             // The dialog stays until the name is stored, and says so when it is not.
-            try await remote.renameDevice(id, name: name.jvmTrim())
+            try await context.coreHost.renameClient(deviceID: id, name: name)
         }
 
         // What 保存 in the name dialog, 恢复默认名称 and 移除 in the confirmation do (debug builds).
         .debugSignal("client.rename") {
-            save.run { try await remote.renameDevice(id, name: L10n.settingsIosNameSetInSettings()) }
+            save.run { try await context.coreHost.renameClient(deviceID: id, name: L10n.settingsIosNameSetInSettings()) }
         }
-        .debugSignal("client.reset") { save.run { try await remote.renameDevice(id, name: "") } }
+        .debugSignal("client.reset") {
+            save.run { try await context.coreHost.renameClient(deviceID: id, name: "", restoreDefault: true) }
+        }
         .onAppear {
             #if DEBUG
                 if model.isDemo, SettingsDemo.state == "renaming" { editing = true }
-
             #endif
         }
     }
 
-    @ViewBuilder private func details(
-        _ d: DeviceView?, state: RemoteState, me: String, online: Bool, now: Int64
-    ) -> some View {
-        let named = !(d?.meta?.name ?? "").isEmpty
-        let remote = context.remote
+    @ViewBuilder private func details(_ vm: PBClientDetailViewModel) -> some View {
+        let busy = save.running || vm.renameSaving
         GroupLabel(L10n.securityClient())
         GroupCard {
             GRow(
-                L10n.settingsName(), value: save.running ? L10n.commonIosSaving() : (d?.meta?.name ?? "").or(L10n.settingsUnnamed()),
-                chevron: id == me, enabled: online && id == me && d != nil && !save.running
-            ) { if id == me { editing = true } }
-            if named && id == me {
+                L10n.settingsName(),
+                value: busy ? L10n.commonIosSaving() : vm.customName.or(L10n.settingsUnnamed()),
+                chevron: vm.isSelf,
+                enabled: vm.canRename && !busy
+            ) { if vm.canRename { editing = true } }
+            if vm.canRestoreDefault {
                 GRow(
-                    L10n.settingsRestoreDefaultName(), value: defaultClientName(d, id: id, among: state.devices), action: true,
-                    enabled: online && !save.running
+                    L10n.settingsRestoreDefaultName(), value: vm.defaultName, action: true,
+                    enabled: vm.canRename && !busy
                 ) {
-                    save.run { try await remote.renameDevice(id, name: "") }
+                    save.run { try await context.coreHost.renameClient(deviceID: id, name: "", restoreDefault: true) }
                 }
             }
-            GRow(L10n.settingsIosType(), value: clientDetail(d))
-            GRow(L10n.settingsLastUsed(), value: id == me ? L10n.settingsNow() : lastUsed(d, now: now).or(L10n.settingsNoRecord()))
-            if let created = d?.createdMs, created > 0 {
-                GRow(L10n.settingsAdded(), value: dayText(created, now: now))
+            if !vm.description_p.isEmpty {
+                GRow(L10n.settingsIosType(), value: vm.description_p)
             }
-            GRow(L10n.settingsDeviceId(), value: "…" + shortId(id))
+            GRow(L10n.settingsLastUsed(), value: vm.lastUsedText.rendered().or(L10n.settingsNoRecord()))
+            let added = vm.addedText.rendered()
+            if !added.isEmpty && added != L10n.settingsNoRecord() {
+                GRow(L10n.settingsAdded(), value: added)
+            }
+            GRow(L10n.settingsDeviceId(), value: vm.shortID)
         }
-        if !save.error.isEmpty { GroupBanner(L10n.settingsNameSaveError(reason: String(describing: save.error)), tone: .error) }
-        GroupNote(L10n.settingsIosNamesSyncEncryptedToOtherClientsTheServerCannot())
+        let renameErr = vm.renameError.rendered()
+        if !renameErr.isEmpty {
+            GroupBanner(renameErr, tone: .error)
+        } else if !save.error.isEmpty {
+            GroupBanner(L10n.settingsNameSaveError(reason: String(describing: save.error)), tone: .error)
+        }
+        let hint = vm.managementHint.rendered()
+        if !hint.isEmpty {
+            GroupNote(hint)
+        }
 
-        if id == me {
+        if vm.showExitAction {
             GroupCard {
                 GRow(L10n.settingsIosExitAndDeleteLocalKeysFromSettings(), chevron: true) { nav.open(.settings) }
             }

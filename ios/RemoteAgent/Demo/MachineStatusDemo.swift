@@ -10,28 +10,6 @@ import RAProto
 @MainActor enum MachineStatusDemo {
     static var mode: String { HomeLaunch.value("-machineStatus") ?? "normal" }
 
-    private final class Calls: @unchecked Sendable {
-        private let lock = NSLock()
-        private var n = 0
-        func next() -> Int { lock.lock(); defer { lock.unlock() }; n += 1; return n }
-    }
-
-    private struct Gone: Error {}
-
-    static func fetch(machine: String) -> MachineStatusFetch {
-        let mode = mode
-        let calls = Calls()
-        return {
-            let n = calls.next()
-            switch mode {
-            case "failed": throw Gone()
-            case "loading": try await Task.sleep(for: .seconds(3600)); throw Gone()
-            case "stale" where n > 2: throw Gone()
-            default: return status(mode: mode, now: nowMs())
-            }
-        }
-    }
-
     /// A curve that wanders, the same for the same moment.
     nonisolated private static func wave(_ k: Int, base: Double, swing: Double) -> Double {
         base + swing * (0.55 * sin(Double(k) / 5.5) + 0.3 * sin(Double(k) / 2.3 + 1) + 0.15 * sin(Double(k) / 1.1))

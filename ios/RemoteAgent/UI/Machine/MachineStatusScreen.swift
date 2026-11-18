@@ -1,7 +1,4 @@
-// 电脑状态 (ui-spec A3; 界面稿 v2 第 ② 部分): a computer's CPU, memory and disk, and what uses them. One big figure
-// with its curve, two small cards, the disk's lines when it is short, the ranking, and a line at the foot. The polling is
-// RACore's `MachineStatusController` (UI/Machine/MachineStatusFeed.swift); every number and word is from its model.
-// The curve, the card swap and the rolling digits are in StatusParts.swift and below.
+// 电脑状态 (ui-spec A3; 界面稿 v2 第 ② 部分): renders Core's `PBMachineStatusViewModel` directly.
 import RACore
 import RAProto
 import SwiftUI
@@ -13,6 +10,21 @@ enum StatusID: String {
     case cpuCard = "status-cpu-card"
     case memoryCard = "status-memory-card"
     case loading = "status-loading"
+}
+
+private let swapMs = 350.0
+
+private struct StatusWatchTaskKey: Equatable {
+    let id: String
+    let foreground: Bool
+}
+
+private func swapOldAlpha(_ tMs: Double) -> Double {
+    tMs <= 100 ? max(0, 1 - tMs / 100) : 0
+}
+
+private func swapNewAlpha(_ tMs: Double) -> Double {
+    tMs >= 230 ? min(1, max(0, (tMs - 230) / 120)) : 0
 }
 
 // MARK: The swap of the main chart and a small card
@@ -27,15 +39,17 @@ private struct SwapRoleKey: LayoutValueKey {
 
 private func lerp(_ a: CGRect, _ b: CGRect, _ t: Double) -> CGRect {
     let f = CGFloat(t)
-    return CGRect(x: a.minX + (b.minX - a.minX) * f, y: a.minY + (b.minY - a.minY) * f, width: a.width + (b.width - a.width) * f, height: a.height + (b.height - a.height) * f)
+    return CGRect(
+        x: a.minX + (b.minX - a.minX) * f,
+        y: a.minY + (b.minY - a.minY) * f,
+        width: a.width + (b.width - a.width) * f,
+        height: a.height + (b.height - a.height) * f
+    )
 }
 
-/// The main chart and the two small cards. Each metric has a surface (`bg`) and two contents: its main chart and its small card.
-/// The surfaces move to each other's place, `t` 0 (CPU is the main chart) to 1 (memory is), the contents stay at their own
-/// size inside; `SwapFade` shows one set of figures at a time. All three frames are interpolated here, so rows below follow.
+/// The main chart and the two small cards: interpolates all three frames during the CPU/memory swap.
 private struct SwapLayout: Layout {
     var t: Double
-    /// At accessibility text sizes the two small cards do not fit side by side: each takes a row of its own.
     var stacked = false
     var animatableData: Double {
         get { t }
@@ -47,7 +61,6 @@ private struct SwapLayout: Layout {
         var cpu: CGRect, memory: CGRect, disk: CGRect, height: CGFloat
     }
 
-    /// The main chart's frame, the small card's and the disk card's, for a main chart `hero` high, a small card `small` and a disk card `disk`.
     private func frames(hero: CGFloat, small: CGFloat, disk: CGFloat, width: CGFloat) -> (hero: CGRect, small: CGRect, disk: CGRect, height: CGFloat) {
         let heroR = CGRect(x: 0, y: 0, width: width, height: hero)
         if stacked {
@@ -64,15 +77,19 @@ private struct SwapLayout: Layout {
         var map = [SwapRole: LayoutSubview]()
         for s in subviews { map[s[SwapRoleKey.self]] = s }
         let small = stacked ? width : (width - gap) / 2
-        func height(_ role: SwapRole, _ w: CGFloat) -> CGFloat { map[role]?.sizeThatFits(ProposedViewSize(width: w, height: nil)).height ?? 0 }
+        func height(_ role: SwapRole, _ w: CGFloat) -> CGFloat {
+            map[role]?.sizeThatFits(ProposedViewSize(width: w, height: nil)).height ?? 0
+        }
         let heroCPU = height(.hero(.cpu), width), heroMem = height(.hero(.memory), width)
         let smallCPU = height(.small(.cpu), small), smallMem = height(.small(.memory), small), disk = height(.disk, small)
-        // CPU is the main chart, then memory is.
         let a = frames(hero: heroCPU, small: smallMem, disk: disk, width: width)
         let b = frames(hero: heroMem, small: smallCPU, disk: disk, width: width)
         return Solved(
-            cpu: lerp(a.hero, b.small, t), memory: lerp(a.small, b.hero, t), disk: lerp(a.disk, b.disk, t),
-            height: a.height + (b.height - a.height) * CGFloat(t))
+            cpu: lerp(a.hero, b.small, t),
+            memory: lerp(a.small, b.hero, t),
+            disk: lerp(a.disk, b.disk, t),
+            height: a.height + (b.height - a.height) * CGFloat(t)
+        )
     }
 
     func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
@@ -93,8 +110,6 @@ private struct SwapLayout: Layout {
     }
 }
 
-/// How visible a content of a swapping card is, from the swap's linear time `t` (0...1 of 350 ms): the old figures fade out in the
-/// first 100, nothing shows, the new ones fade in over the last 120 (`swapOldAlpha`, `swapNewAlpha`).
 private struct SwapFade: ViewModifier, @preconcurrency Animatable {
     var t: Double
     let isNew: Bool
@@ -108,32 +123,19 @@ private struct SwapFade: ViewModifier, @preconcurrency Animatable {
     }
 }
 
-// MARK: The page
+// MARK: Connected wrapper
 
 struct MachineStatusScreen: View {
     let id: String
     @Environment(AppModel.self) private var model
     @Environment(AccountContext.self) private var context
     @Environment(Navigator.self) private var nav
-    @Environment(\.page) private var page
-    @Environment(\.accessibilityReduceMotion) private var reduce
-    @Environment(\.dynamicTypeSize) private var typeSize
-    @State private var feed = MachineStatusFeed()
-    @State private var main = StatusMetric.cpu
-    /// 0 while CPU is the main chart, 1 while memory is; animated by the swap.
-    @State private var position = 0.0
-    /// The swap's linear time, 0...1; 1 at rest.
-    @State private var linear = 1.0
-    @State private var swapping = false
-    @State private var showSessions = HomeLaunch.value("-machineList") != "processes"
-    @State private var scrub: ChartPoint?
-    @State private var stepIndex: Int?
-    @State private var order = UsageOrder()
     @State private var cleanup: CleanupStep?
+    @State private var main = StatusMetric.cpu
 
     private enum CleanupStep: Identifiable {
         case pickFolder
-        case task(key: String, machine: String)
+        case task(key: String, machine: String, prompt: String)
         var id: Int {
             switch self {
             case .pickFolder: 0
@@ -142,32 +144,97 @@ struct MachineStatusScreen: View {
         }
     }
 
-    var body: some View {
-        let state = model.state
-        let machine = state.machines[id]
-        let supported = machine?.pathState.capabilities?.machineStatus == true
-        let online = machine?.pathState.reachable == true && !state.peer(id).unlinked
-        let name = machineLabel(state, id: id)
-        let text = StatusText()
-        ZStack {
-            DS.liftPage.ignoresSafeArea()
-            content(state: state, name: name, text: text)
+    private var displayedViewModel: PBMachineStatusViewModel {
+        let current = context.core.machineStatus
+        if current.machineID == id { return current }
+        let m = model.state.machines[id]
+        return PBMachineStatusViewModel.with {
+            $0.machineID = id
+            $0.machineName = machineLabel(model.state, id: id)
+            $0.found = m != nil
+            $0.supported = m?.pathState.capabilities?.machineStatus ?? true
+            $0.online = m?.pathState.reachable ?? false
+            $0.pollState = .loading
         }
-        .machineStatusPolling(feed, fetch: context.machineStatusFetch(id, demo: model.isDemo), online: online, supported: supported)
-        .navigationBarTitleDisplayMode(.inline)
-        .navigationTitle(name)
-        .toolbar { ToolbarItem(placement: .principal) { Color.clear.frame(width: 1, height: 1).accessibilityHidden(true) } }
-        .task { applyLaunch() }
+    }
+
+    var body: some View {
+        let vm = displayedViewModel
+        MachineStatusScreenContent(
+            vm: vm,
+            main: $main,
+            onRetry: {
+                context.dispatch { $0.machineStatusRetry.machineID = id }
+            },
+            onScrub: { kind, index, clear in
+                context.dispatch {
+                    $0.machineStatusScrub = .with {
+                        $0.machineID = id
+                        $0.kind = kind
+                        $0.pointIndex = index
+                        $0.clear = clear
+                    }
+                }
+            },
+            onSelectTab: { tab in
+                context.dispatch {
+                    $0.machineStatusTab = .with {
+                        $0.machineID = id
+                        $0.tab = tab
+                    }
+                }
+            },
+            onOpenStorage: { nav.open(.machineStorage(id: id)) },
+            onCleanup: {
+                context.dispatch { $0.machineStatusCleanup.machineID = id }
+            },
+            onOpenSession: { sid in nav.open(.session(id: sid)) }
+        )
+        .task(id: id) {
+            if HomeLaunch.value("-machineList") == "processes" {
+                await context.coreHost.dispatch(PBCoreEvent.with {
+                    $0.machineStatusTab = .with {
+                        $0.machineID = id
+                        $0.tab = .processes
+                    }
+                })
+            }
+            if let f = HomeLaunch.value("-machineScrub").flatMap(Double.init) {
+                await applyLaunchScrub(fraction: f)
+            }
+        }
+        .task(id: StatusWatchTaskKey(id: id, foreground: model.foreground)) {
+            guard model.foreground else { return }
+            let host = context.coreHost
+            let token = await host.acquireMachineStatusWatch(id, mode: .live)
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(3600))
+            }
+            await host.releaseMachineStatusWatch(token)
+        }
+        .onChange(of: context.core.pendingCleanup?.id) { _, _ in
+            guard let pending = context.core.pendingCleanup, pending.effect.machineID == id else { return }
+            context.core.consumeCleanup(pending.id)
+            let eff = pending.effect
+            let prompt = eff.prompt.or(L10n.machineStatusCleanupPrompt())
+            if eff.needsDirectoryPicker {
+                cleanup = .pickFolder
+            } else {
+                cleanup = .task(key: eff.projectKey, machine: eff.machineID, prompt: prompt)
+            }
+        }
         .sheet(item: $cleanup) { step in
             NavigationStack {
                 switch step {
                 case .pickFolder:
                     VStack(spacing: 0) {
                         SheetHead(L10n.projectsNewChooseDirectory(), action: L10n.commonCancel()) { cleanup = nil }
-                        ProjectDirPicker(state, machine: id) { machine, path in startCleanup(path, machine: machine) }
+                        CoreDirPicker(machine: id, forNewTask: true) { pickedMachine, path in
+                            cleanup = .task(key: path, machine: pickedMachine, prompt: L10n.machineStatusCleanupPrompt())
+                        }
                     }
-                case .task(let key, let machine):
-                    NewTaskScreen(key: key, machine: machine, onClose: { cleanup = nil }) { sid in
+                case .task(let key, let machine, let prompt):
+                    NewTaskScreen(key: key, machine: machine, cleanupPrompt: prompt, onClose: { cleanup = nil }) { sid in
                         cleanup = nil
                         nav.open(.session(id: sid))
                     }
@@ -178,56 +245,127 @@ struct MachineStatusScreen: View {
         }
     }
 
-    // MARK: Faces
+    private func applyLaunchScrub(fraction: Double) async {
+        #if DEBUG
+        for _ in 0..<200 {
+            let chart = main == .cpu ? context.core.machineStatus.cpu.chart : context.core.machineStatus.memory.chart
+            if context.core.machineStatus.machineID == id, !chart.points.isEmpty {
+                let i = min(max(Int((Double(chart.points.count - 1) * fraction).rounded()), 0), chart.points.count - 1)
+                await context.coreHost.dispatch(PBCoreEvent.with {
+                    $0.machineStatusScrub = .with {
+                        $0.machineID = id
+                        $0.kind = main == .cpu ? .cpu : .memory
+                        $0.pointIndex = Int32(i)
+                        $0.clear = false
+                    }
+                })
+                return
+            }
+            try? await Task.sleep(for: .milliseconds(20))
+        }
+        #endif
+    }
+}
 
-    @ViewBuilder private func content(state: RemoteState, name: String, text: StatusText) -> some View {
-        switch feed.view {
-        case .unavailable:
+// MARK: Pure presentation view
+
+struct MachineStatusScreenContent: View {
+    let vm: PBMachineStatusViewModel
+    @Binding var main: StatusMetric
+    let onRetry: () -> Void
+    let onScrub: (PBMachineChartKind, Int32, Bool) -> Void
+    let onSelectTab: (PBMachineUsageTab) -> Void
+    let onOpenStorage: () -> Void
+    let onCleanup: () -> Void
+    let onOpenSession: (String) -> Void
+
+    @Environment(\.accessibilityReduceMotion) private var reduce
+    @Environment(\.dynamicTypeSize) private var typeSize
+    @State private var position = 0.0
+    @State private var linear = 1.0
+    @State private var swapping = false
+
+    private var activeChart: PBMachineChartView {
+        main == .cpu ? vm.cpu.chart : vm.memory.chart
+    }
+
+    var body: some View {
+        let name = vm.machineName.or(vm.machineID)
+        ZStack {
+            DS.liftPage.ignoresSafeArea()
+            content(name: name)
+        }
+        .navigationBarTitleDisplayMode(.inline)
+        .navigationTitle(name)
+        .toolbar { ToolbarItem(placement: .principal) { Color.clear.frame(width: 1, height: 1).accessibilityHidden(true) } }
+        .onAppear { applyDebugSwapLaunch() }
+    }
+
+    @ViewBuilder private func content(name: String) -> some View {
+        let hasData = vm.cpu.hasValue_p || vm.memory.hasValue_p
+        let loading = vm.pollState == .loading && !hasData
+        let unavailable = (!vm.found || !vm.supported || vm.pollState == .unavailable) && !hasData
+
+        if loading {
+            ScrollView {
+                skeleton(name: name)
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 30)
+                    .frame(maxWidth: DS.column)
+            }
+        } else if unavailable {
             VStack(alignment: .leading, spacing: 0) {
-                header(name: name, line: nil)
+                header(name: name, badge: vm.statusBadge.rendered(), dot: vm.statusDot)
                 Spacer()
                 VStack(spacing: 2) {
-                    Text(L10n.machineStatusUnavailable()).font(.body).foregroundStyle(DS.ink2).multilineTextAlignment(.center)
-                    LinkButton(L10n.commonRetry()) { feed.retry() }.font(.body)
+                    Text(vm.unavailableTitle.rendered().or(L10n.machineStatusUnavailable()))
+                        .font(.body)
+                        .foregroundStyle(DS.ink2)
+                        .multilineTextAlignment(.center)
+                    if vm.showRetry {
+                        LinkButton(L10n.commonRetry(), action: onRetry).font(.body)
+                    }
                 }
                 .frame(maxWidth: .infinity)
                 Spacer()
             }
             .padding(.horizontal, 16)
             .frame(maxWidth: DS.column)
-        case .loading:
-            ScrollView { skeleton(name: name, text: text).padding(.horizontal, 16).padding(.bottom, 30).frame(maxWidth: DS.column) }
-        case .live, .stale:
-            if let s = feed.last {
-                ScrollView {
-                    page(s, state: state, name: name, text: text, stale: feed.view == .stale)
-                        .padding(.horizontal, 16).padding(.bottom, 30).frame(maxWidth: DS.column)
-                }
-                .frame(maxWidth: .infinity)
-                .startAtEndForScreenshots()
+        } else {
+            ScrollView {
+                page(vm, name: name)
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 30)
+                    .frame(maxWidth: DS.column)
             }
+            .frame(maxWidth: .infinity)
+            .startAtEndForScreenshots()
         }
     }
 
-    /// The title and, under it, the state of the figures: a dot and a line.
-    private func header(name: String, line: LiveLine?) -> some View {
+    private func header(name: String, badge: String, dot: PBMachineStatusDot) -> some View {
         VStack(alignment: .leading, spacing: 2) {
-            Text(name).font(.largeTitle.bold()).foregroundStyle(DS.ink).lineLimit(2).fixedSize(horizontal: false, vertical: true)
+            Text(name)
+                .font(.largeTitle.bold())
+                .foregroundStyle(DS.ink)
+                .lineLimit(2)
+                .fixedSize(horizontal: false, vertical: true)
                 .accessibilityAddTraits(.isHeader)
-            if let line { line }
+            if !badge.isEmpty {
+                LiveLine(dot: dot, text: badge)
+            }
         }
         .padding(.horizontal, 4).padding(.top, 6)
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    /// Nothing read yet (ui-rulings 6): the page's frame, dashes for the figures, no curve and no ranking.
-    private func skeleton(name: String, text: StatusText) -> some View {
+    private func skeleton(name: String) -> some View {
         let other: StatusMetric = main == .cpu ? .memory : .cpu
         return VStack(alignment: .leading, spacing: 0) {
-            header(name: name, line: LiveLine(kind: .loading, text: L10n.machineStatusLoading()))
+            header(name: name, badge: L10n.machineStatusLoading(), dot: .grayStatic)
             VStack(alignment: .leading, spacing: 0) {
                 Kick(symbol: main == .cpu ? .cpu : .memory, label: main == .cpu ? L10n.machineStatusCpu() : L10n.machineStatusMemory(), color: DS.ink2)
-                Text(noValue).figure(52, style: .largeTitle, limit: 1.6).foregroundStyle(DS.ink3).padding(.top, 4)
+                Text("—").figure(52, style: .largeTitle, limit: 1.6).foregroundStyle(DS.ink3).padding(.top, 4)
                 axis.padding(.top, 8 + 104)
             }
             .padding(.top, 16).padding(.horizontal, 18).frame(maxWidth: .infinity, alignment: .leading)
@@ -245,7 +383,7 @@ struct MachineStatusScreen: View {
     private func tileSkeleton(symbol: StatusSymbol, label: String) -> some View {
         VStack(alignment: .leading, spacing: 0) {
             Kick(symbol: symbol, label: label, color: DS.ink2)
-            Text(noValue).figure(34, style: .title, limit: 1.6).foregroundStyle(DS.ink3).padding(.top, 6)
+            Text("—").figure(34, style: .title, limit: 1.6).foregroundStyle(DS.ink3).padding(.top, 6)
             Spacer(minLength: 0)
         }
         .padding(.init(top: 14, leading: 16, bottom: 15, trailing: 16))
@@ -266,78 +404,81 @@ struct MachineStatusScreen: View {
         .padding(.top, 6).padding(.bottom, 13)
     }
 
-    // MARK: The page of figures
-
-    private func page(_ s: PBMachineStatus, state: RemoteState, name: String, text: StatusText, stale: Bool) -> some View {
-        let points = chartPoints(s, metric: main, sinceMs: feed.curveSinceMs)
-        let latest = points.last?.timeMs ?? 0
-        let lineKind: LiveLine.Kind = stale ? .stale : .live
-        let lineText: String = {
-            if stale { return "" }
-            if let scrub { return text.lookback(ageMs: latest - scrub.timeMs) }
-            return L10n.machineStatusLive()
-        }()
+    private func page(_ vm: PBMachineStatusViewModel, name: String) -> some View {
+        let badge = activeChart.hasScrub_p ? activeChart.scrubAge.rendered() : vm.statusBadge.rendered()
+        let footParts = [vm.uptimeText.rendered(), vm.batteryText.rendered()].filter { !$0.isEmpty }
         return VStack(alignment: .leading, spacing: 0) {
-            header(name: name, line: LiveLine(kind: lineKind, text: lineText, receivedAtMs: feed.receivedAtMs, status: text))
-            swapGrid(s, text: text, stale: stale, points: points).padding(.top, 18)
-            if showDiskActions(s) { diskActions(s, state: state, text: text).padding(.top, 12) }
-            usageHeader.padding(.top, 26)
-            usageList(s, state: state, text: text, stale: stale)
-            let foot = footerParts(s, text: text)
-            if !foot.isEmpty {
-                Text(foot.joined(separator: " · ")).font(.footnote).foregroundStyle(DS.ink3).multilineTextAlignment(.center)
-                    .frame(maxWidth: .infinity).padding(.top, 22)
+            header(name: name, badge: badge, dot: vm.statusDot)
+            swapGrid(vm).padding(.top, 18)
+            if vm.disk.showActions {
+                diskActions(vm.disk).padding(.top, 12)
+            }
+            usageHeader(vm.topUsage).padding(.top, 26)
+            usageList(vm.topUsage, dim: vm.dim)
+            if !footParts.isEmpty {
+                Text(footParts.joined(separator: " · "))
+                    .font(.footnote)
+                    .foregroundStyle(DS.ink3)
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: .infinity)
+                    .padding(.top, 22)
             }
         }
     }
 
-    private func swapGrid(_ s: PBMachineStatus, text: StatusText, stale: Bool, points: [ChartPoint]) -> some View {
-        let cpu = cpuFigures(s, text: text), mem = memoryCard(s, text: text), disk = diskCard(s, text: text)
+    private func swapGrid(_ vm: PBMachineStatusViewModel) -> some View {
+        let moving = vm.pollState == .live && !vm.dim && !reduce && !HomeLaunch.flag("-machineFrozen")
         return SwapLayout(t: position, stacked: typeSize.isAccessibilitySize) {
             ForEach([StatusMetric.cpu, .memory], id: \.self) { m in
                 StatusCardBackground().layoutValue(key: SwapRoleKey.self, value: .bg(m))
-                tileContent(m, hero: true, s, cpu, mem, text, stale, points)
+                tileContent(m, hero: true, vm: vm, moving: moving)
                     .modifier(SwapFade(t: linear, isNew: main == m))
                     .allowsHitTesting(main == m)
                     .accessibilityHidden(main != m)
                     .layoutValue(key: SwapRoleKey.self, value: .hero(m))
-                tileContent(m, hero: false, s, cpu, mem, text, stale, points)
+                tileContent(m, hero: false, vm: vm, moving: moving)
                     .modifier(SwapFade(t: linear, isNew: main != m))
                     .allowsHitTesting(main != m)
                     .accessibilityHidden(main == m)
                     .layoutValue(key: SwapRoleKey.self, value: .small(m))
             }
-            DiskTile(s: s, card: disk, text: text, stale: stale) { nav.open(.machineStorage(id: id)) }
+            DiskTile(disk: vm.disk, dim: vm.dim, onTap: onOpenStorage)
                 .layoutValue(key: SwapRoleKey.self, value: .disk)
         }
     }
 
-    @ViewBuilder private func tileContent(
-        _ m: StatusMetric, hero: Bool, _ s: PBMachineStatus, _ cpu: CpuFigures, _ mem: MemoryCard, _ text: StatusText, _ stale: Bool, _ points: [ChartPoint]
-    ) -> some View {
+    @ViewBuilder private func tileContent(_ m: StatusMetric, hero: Bool, vm: PBMachineStatusViewModel, moving: Bool) -> some View {
         if hero {
+            let chartKind: PBMachineChartKind = m == .cpu ? .cpu : .memory
+            let chart = m == .cpu ? vm.cpu.chart : vm.memory.chart
             HeroContent(
-                metric: m, s: s, cpu: cpu, mem: mem, text: text, stale: stale, points: m == main ? points : chartPoints(s, metric: m, sinceMs: feed.curveSinceMs),
-                chartOn: m == main || swapping, scrub: m == main ? $scrub : .constant(nil), moving: !stale && !reduce && !HomeLaunch.flag("-machineFrozen"),
-                onStep: { step($0, points) })
+                metric: m,
+                cpu: vm.cpu,
+                mem: vm.memory,
+                dim: vm.dim,
+                chartOn: m == main || swapping,
+                moving: moving,
+                onScrub: { idx, clear in onScrub(chartKind, idx, clear) },
+                onStep: { delta in step(chart: chart, kind: chartKind, delta: delta) }
+            )
         } else {
-            SmallTile(metric: m, s: s, cpu: cpu, mem: mem, text: text, stale: stale) { pick(m) }
+            SmallTile(metric: m, cpu: vm.cpu, mem: vm.memory, dim: vm.dim) { pick(m) }
         }
     }
 
-    private func step(_ delta: Int, _ points: [ChartPoint]) {
-        guard !points.isEmpty else { return }
-        let from = stepIndex.flatMap { points.indices.contains($0) ? $0 : nil } ?? points.count - 1
-        let next = min(max(from + delta, 0), points.count - 1)
-        stepIndex = next
-        scrub = points[next]
+    private func step(chart: PBMachineChartView, kind: PBMachineChartKind, delta: Int) {
+        guard !chart.points.isEmpty else { return }
+        let base = chart.hasScrub_p ? Int(chart.scrubIndex) : chart.points.count - 1
+        let next = min(max(base + delta, 0), chart.points.count - 1)
+        onScrub(kind, Int32(next), false)
     }
 
-    /// Makes `next` the main chart: the surfaces swap places in 350 ms, the ranking follows (A3). With 减弱动态效果 at once.
     private func pick(_ next: StatusMetric) {
         guard next != main else { return }
-        scrub = nil
-        stepIndex = nil
+        let prevKind: PBMachineChartKind = main == .cpu ? .cpu : .memory
+        if activeChart.hasScrub_p {
+            onScrub(prevKind, 0, true)
+        }
         let target = next == .cpu ? 0.0 : 1.0
         if reduce {
             main = next
@@ -354,13 +495,13 @@ struct MachineStatusScreen: View {
         DispatchQueue.main.asyncAfter(deadline: .now() + swapMs / 1000 + 0.05) { swapping = false }
     }
 
-    // MARK: Disk lines (A3 ③)
-
-    private func diskActions(_ s: PBMachineStatus, state: RemoteState, text: StatusText) -> some View {
+    private func diskActions(_ disk: PBMachineDiskSection) -> some View {
         VStack(spacing: 0) {
-            Button { cleanUp(state) } label: {
+            Button(action: onCleanup) {
                 HStack {
-                    Text(L10n.machineStatusCleanupAction()).font(.body).foregroundStyle(DS.blue)
+                    Text(disk.cleanupActionLabel.rendered().or(L10n.machineStatusCleanupAction()))
+                        .font(.body)
+                        .foregroundStyle(DS.blue)
                     Spacer(minLength: 0)
                 }
                 .padding(.horizontal, 16).padding(.vertical, 11).frame(minHeight: 48)
@@ -368,11 +509,16 @@ struct MachineStatusScreen: View {
             }
             .buttonStyle(RowPressStyle())
             Rectangle().fill(DS.sep).frame(height: 0.5).padding(.leading, 16)
-            Button { nav.open(.machineStorage(id: id)) } label: {
+            Button(action: onOpenStorage) {
                 HStack(spacing: 8) {
-                    Text(L10n.machineStatusAgentUsage()).font(.body).foregroundStyle(DS.ink)
+                    Text(disk.agentUsageLabel.rendered().or(L10n.machineStatusAgentUsage()))
+                        .font(.body)
+                        .foregroundStyle(DS.ink)
                     Spacer(minLength: 8)
-                    if s.hasAgentBytes { Text(text.size(Int64(s.agentBytes))).figure(17, .regular, style: .body, limit: 1.6).foregroundStyle(DS.ink2) }
+                    let val = disk.agentUsageValue.rendered()
+                    if !val.isEmpty {
+                        Text(val).figure(17, .regular, style: .body, limit: 1.6).foregroundStyle(DS.ink2)
+                    }
                     Arrow(DS.ink3)
                 }
                 .padding(.horizontal, 16).padding(.vertical, 11).frame(minHeight: 48)
@@ -383,38 +529,24 @@ struct MachineStatusScreen: View {
         .statusCard()
     }
 
-    /// 让 Agent 帮我清理: the new-session page with this computer, its most recent project and the prompt written (ui-spec B4).
-    private func cleanUp(_ state: RemoteState) {
-        guard let meta = state.machines[id]?.meta, let key = recentMachineProject(meta) else {
-            // No project on this computer: choose a folder first (ui-rulings 8).
-            cleanup = .pickFolder
-            return
-        }
-        startCleanup(key, machine: id)
-    }
-
-    private func startCleanup(_ key: String, machine: String) {
-        let prompt = L10n.machineStatusCleanupPrompt()
-        context.newSessionDrafts.prepareCleanup(model.state, key: key, machine: machine, prompt: prompt)
-        Task {
-            await context.coreHost.showNewSession(projectKey: key)
-            await context.coreHost.dispatch(PBCoreEvent.with { $0.newSessionSelectMachine.machineID = machine })
-            await context.coreHost.dispatch(PBCoreEvent.with { $0.newSessionSetPrompt.prompt = prompt })
-        }
-        cleanup = .task(key: key, machine: machine)
-    }
-
-    // MARK: The ranking (A3 ④)
-
-    private var usageHeader: some View {
-        let title = Text(L10n.machineStatusTopUsage()).font(.title3.bold()).foregroundStyle(DS.ink).accessibilityAddTraits(.isHeader)
-        let toggle = Button { showSessions.toggle() } label: {
-            Text(showSessions ? L10n.machineStatusShowProcesses() : L10n.machineStatusShowSessions()).font(.subheadline).foregroundStyle(DS.blue)
+    private func usageHeader(_ top: PBMachineTopUsageSection) -> some View {
+        let isProcesses = top.selectedTab == .processes
+        let title = Text(L10n.machineStatusTopUsage())
+            .font(.title3.bold())
+            .foregroundStyle(DS.ink)
+            .accessibilityAddTraits(.isHeader)
+        let toggle = Button {
+            onSelectTab(isProcesses ? .sessions : .processes)
+        } label: {
+            Text(isProcesses ? L10n.machineStatusShowSessions() : L10n.machineStatusShowProcesses())
+                .font(.subheadline)
+                .foregroundStyle(DS.blue)
                 .multilineTextAlignment(.leading)
-                .frame(minHeight: DS.minHit).contentShape(Rectangle())
+                .frame(minHeight: DS.minHit)
+                .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        // The title and its link share a line while both fit; otherwise the link goes under the title.
+
         return ViewThatFits(in: .horizontal) {
             HStack(alignment: .firstTextBaseline) {
                 title
@@ -430,18 +562,38 @@ struct MachineStatusScreen: View {
         .padding(.horizontal, 4).padding(.bottom, -2)
     }
 
-    private func usageList(_ s: PBMachineStatus, state: RemoteState, text: StatusText, stale: Bool) -> some View {
-        let rows = usageRows(
-            s, showSessions: showSessions, metric: main, order: order, text: text,
-            titleOf: { state.sessions[$0].map { RACore.titleOf($0) } }, agentOf: { state.sessions[$0]?.agent })
+    private func usageList(_ top: PBMachineTopUsageSection, dim: Bool) -> some View {
+        let rows = top.rows
+        let maxVal: Double = if main == .cpu {
+            rows.map(\.cpuPercent).max().flatMap { $0 > 0 ? $0 : nil } ?? 100
+        } else {
+            rows.map { Double($0.memoryBytes) }.max().flatMap { $0 > 0 ? $0 : nil } ?? 1
+        }
         return VStack(spacing: 0) {
             if rows.isEmpty {
-                Text(L10n.machineStatusNoRunningSessions()).font(.footnote).foregroundStyle(DS.ink2).multilineTextAlignment(.center)
-                    .frame(maxWidth: .infinity).padding(16)
+                Text(top.emptyText.rendered().or(L10n.machineStatusNoRunningSessions()))
+                    .font(.footnote)
+                    .foregroundStyle(DS.ink2)
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: .infinity)
+                    .padding(16)
             }
             ForEach(Array(rows.enumerated()), id: \.element.id) { i, row in
-                UsageRowView(row: row, last: i == rows.count - 1, dim: stale) {
-                    if row.known, row.isSession { nav.open(.session(id: row.sessionId)) }
+                let bar = main == .cpu
+                    ? min(max(row.cpuPercent / maxVal, 0), 1)
+                    : min(max(Double(row.memoryBytes) / maxVal, 0), 1)
+                let primary = main == .cpu
+                    ? "\(Int(row.cpuPercent.rounded()))%"
+                    : imageBytes(Int64(row.memoryBytes))
+                UsageRowView(
+                    row: row,
+                    primary: primary,
+                    bar: bar,
+                    top: i == 0,
+                    last: i == rows.count - 1,
+                    dim: dim
+                ) {
+                    if !row.sessionID.isEmpty { onOpenSession(row.sessionID) }
                 }
             }
         }
@@ -451,32 +603,21 @@ struct MachineStatusScreen: View {
         .statusCard()
     }
 
-    // MARK: Launch arguments (debug builds)
-
-    private func applyLaunch() {
+    private func applyDebugSwapLaunch() {
         #if DEBUG
         if HomeLaunch.value("-machineMain") == "memory" {
             main = .memory
             position = 1
         }
         if let ms = HomeLaunch.value("-machineSwap").flatMap(Double.init) {
-            // A frame of the swap to look at: memory is becoming the main chart, `ms` into its 350.
             main = .memory
             swapping = true
             let t = min(max(ms / swapMs, 0), 1)
             linear = t
-            position = UnitCurve.bezier(startControlPoint: UnitPoint(x: 0.2, y: 0.8), endControlPoint: UnitPoint(x: 0.2, y: 1)).value(at: t)
-        }
-        if let f = HomeLaunch.value("-machineScrub").flatMap(Double.init) {
-            Task {
-                for _ in 0..<200 where feed.last == nil { try? await Task.sleep(for: .milliseconds(20)) }
-                guard let s = feed.last else { return }
-                let pts = chartPoints(s, metric: main, sinceMs: feed.curveSinceMs)
-                guard !pts.isEmpty else { return }
-                let i = min(max(Int((Double(pts.count - 1) * f).rounded()), 0), pts.count - 1)
-                stepIndex = i
-                scrub = pts[i]
-            }
+            position = UnitCurve.bezier(
+                startControlPoint: UnitPoint(x: 0.2, y: 0.8),
+                endControlPoint: UnitPoint(x: 0.2, y: 1)
+            ).value(at: t)
         }
         #endif
     }
@@ -484,46 +625,59 @@ struct MachineStatusScreen: View {
 
 // MARK: Pieces
 
-/// The line under the title: a dot and what the figures are (ui-spec A3, A6).
+private func parseFigure(_ raw: String, fallbackCaption: String) -> (value: String, number: Double, unit: String) {
+    let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+    if trimmed.isEmpty || trimmed == "—" {
+        return ("—", 0, fallbackCaption)
+    }
+    if trimmed.hasSuffix("%") {
+        let num = trimmed.dropLast().trimmingCharacters(in: .whitespaces)
+        return (num, Double(num) ?? 0, "%")
+    }
+    if trimmed.hasSuffix(" GB") {
+        let num = String(trimmed.dropLast(3)).trimmingCharacters(in: .whitespaces)
+        return (num, Double(num) ?? 0, fallbackCaption.or("GB"))
+    }
+    for suffix in [" TB", " MB", " KB", " B"] where trimmed.hasSuffix(suffix) {
+        let num = String(trimmed.dropLast(suffix.count)).trimmingCharacters(in: .whitespaces)
+        let unit = suffix.trimmingCharacters(in: .whitespaces)
+        return (num, Double(num) ?? 0, fallbackCaption.isEmpty ? unit : unit)
+    }
+    return (trimmed, Double(trimmed) ?? 0, fallbackCaption)
+}
+
 private struct LiveLine: View {
-    enum Kind { case loading, live, stale }
-    let kind: Kind
+    let dot: PBMachineStatusDot
     let text: String
-    var receivedAtMs: Int64 = 0
-    var status = StatusText()
     @Environment(\.accessibilityReduceMotion) private var reduce
     @State private var breathe = false
 
     var body: some View {
         HStack(spacing: 6) {
-            dot
-            switch kind {
-            case .stale:
-                TimelineView(.periodic(from: .now, by: 5)) { _ in
-                    Text(status.stale(ageMs: nowMs() - receivedAtMs)).font(.subheadline).foregroundStyle(DS.ink2)
-                }
-            default:
-                Text(text).font(.subheadline).foregroundStyle(DS.ink2).lineLimit(1)
-            }
+            dotView
+            Text(text).font(.subheadline).foregroundStyle(DS.ink2).lineLimit(1)
         }
         .accessibilityElement(children: .combine)
     }
 
-    @ViewBuilder private var dot: some View {
-        let color: Color = switch kind {
-        case .loading: DS.ink3
-        case .live: DS.green
-        case .stale: DS.orange
+    @ViewBuilder private var dotView: some View {
+        let color: Color = switch dot {
+        case .greenLive: DS.green
+        case .orangeStatic: DS.orange
+        case .redStatic: DS.red
+        default: DS.ink3
         }
         ZStack {
-            if kind == .live {
-                Circle().stroke(DS.green.opacity(breathe ? 0 : 0.22), lineWidth: breathe ? 5 : 3).frame(width: 7 + (breathe ? 5 : 3), height: 7 + (breathe ? 5 : 3))
+            if dot == .greenLive {
+                Circle()
+                    .stroke(DS.green.opacity(breathe ? 0 : 0.22), lineWidth: breathe ? 5 : 3)
+                    .frame(width: 7 + (breathe ? 5 : 3), height: 7 + (breathe ? 5 : 3))
             }
             Circle().fill(color).frame(width: 7, height: 7)
         }
         .frame(width: 17, height: 17)
         .onAppear {
-            guard kind == .live, !reduce else { return }
+            guard dot == .greenLive, !reduce else { return }
             withAnimation(.easeInOut(duration: 1.2).repeatForever(autoreverses: true)) { breathe = true }
         }
         .accessibilityHidden(true)
@@ -546,94 +700,117 @@ private struct Kick: View {
     }
 }
 
-/// The text of a load line with its number in `ink`, 15 rounded, the rest `ink2` 13: 「3.2 负载」.
-private func loadText(_ full: String, number: String, bold: Color, rest: Color) -> Text {
+/// Highlights digits inside `3.2 负载` / `Load 3.2`.
+private func highlightDigits(_ full: String, bold: Color, rest: Color) -> Text {
     var out = AttributedString(full)
     out.foregroundColor = rest
     out.font = .footnote
-    if let r = out.range(of: number) {
-        out[r].foregroundColor = bold
-        out[r].font = Font.system(.subheadline, design: .rounded).weight(.semibold)
+    if let r = full.range(of: #"\d+(?:\.\d+)?"#, options: .regularExpression),
+       let attrRange = Range(r, in: out)
+    {
+        out[attrRange].foregroundColor = bold
+        out[attrRange].font = Font.system(.subheadline, design: .rounded).weight(.semibold)
     }
     return Text(out)
 }
 
-/// The main chart of a metric: figure, side lines, curve, axis (the card's content; its surface is `StatusCardBackground`).
 private struct HeroContent: View {
     let metric: StatusMetric
-    let s: PBMachineStatus
-    let cpu: CpuFigures
-    let mem: MemoryCard
-    let text: StatusText
-    let stale: Bool
-    let points: [ChartPoint]
+    let cpu: PBMachineCpuSection
+    let mem: PBMachineMemorySection
+    let dim: Bool
     let chartOn: Bool
-    @Binding var scrub: ChartPoint?
     let moving: Bool
+    let onScrub: (Int32, Bool) -> Void
     let onStep: (Int) -> Void
 
-    /// The big figure and its number: the moment looked back to, or now.
-    private var figure: (String, Double) {
-        if metric == .cpu {
-            let v = scrub.map { Int(min(max($0.value, 0), 100).rounded()) } ?? cpu.percent
-            return (String(v), Double(v))
-        }
-        let bytes = scrub.map { Int64($0.value) } ?? Int64(s.memoryUsedBytes)
-        return (text.gbNumber(bytes, oneDecimal: true, binary: true), Double(bytes) / gibibyte)
+    private var chart: PBMachineChartView {
+        metric == .cpu ? cpu.chart : mem.chart
     }
 
-    /// The lines to the side of the figure: CPU's load and cores, memory's total and swap.
+    private var figure: (value: String, number: Double, unit: String) {
+        if chart.hasScrub_p {
+            let raw = chart.scrubValue.rendered()
+            let caption = metric == .memory ? mem.caption.rendered() : "%"
+            return parseFigure(raw, fallbackCaption: caption)
+        }
+        if metric == .cpu {
+            return parseFigure(cpu.headline, fallbackCaption: "%")
+        }
+        return parseFigure(mem.headline.rendered(), fallbackCaption: mem.caption.rendered())
+    }
+
     private func sideLines(_ alignment: HorizontalAlignment, ink: Color, ink2: Color) -> some View {
         VStack(alignment: alignment, spacing: 0) {
             if metric == .cpu {
-                if let load = cpu.load { loadText(L10n.machineStatusLoad(load: load), number: load, bold: ink, rest: ink2).monospacedDigit() }
-                if let cores = cpu.cores { Text(cores).font(.footnote).foregroundStyle(ink2) }
+                let d2 = cpu.detail2.rendered()
+                let d1 = cpu.detail.rendered()
+                if !d2.isEmpty { highlightDigits(d2, bold: ink, rest: ink2).monospacedDigit() }
+                if !d1.isEmpty { Text(d1).font(.footnote).foregroundStyle(ink2) }
             } else {
-                Text(L10n.machineStatusTotal(size: mem.total)).font(.footnote).foregroundStyle(ink2)
-                if let swap = mem.swap { Text(L10n.machineStatusSwap(size: swap)).font(.footnote).foregroundStyle(ink2) }
+                let total = mem.totalText.rendered()
+                let swap = mem.swapText.rendered()
+                if !total.isEmpty { Text(total).font(.footnote).foregroundStyle(ink2) }
+                if !swap.isEmpty { Text(swap).font(.footnote).foregroundStyle(ink2) }
             }
         }
     }
 
     var body: some View {
-        let ink = stale ? DS.ink3 : DS.ink
-        let ink2 = stale ? DS.ink3 : DS.ink2
-        let (value, number) = figure
+        let ink = dim ? DS.ink3 : DS.ink
+        let ink2 = dim ? DS.ink3 : DS.ink2
+        let fig = figure
         let label = metric == .cpu ? L10n.machineStatusCpu() : L10n.machineStatusMemory()
+
         VStack(alignment: .leading, spacing: 0) {
-            // The side lines stand to the right of the figure while both fit; otherwise under it, whole, never cut.
             let figureBlock = VStack(alignment: .leading, spacing: 4) {
                 Kick(symbol: metric == .cpu ? .cpu : .memory, label: label, color: ink2)
                 HStack(alignment: metric == .cpu ? .top : .lastTextBaseline, spacing: 4) {
-                    RollingText(text: value, number: number).figure(52, style: .largeTitle, limit: 1.7).foregroundStyle(ink).minimumScaleFactor(0.5)
+                    RollingText(text: fig.value, number: fig.number)
+                        .figure(52, style: .largeTitle, limit: 1.7)
+                        .foregroundStyle(ink)
+                        .minimumScaleFactor(0.5)
                     if metric == .cpu {
-                        Text(text.percentSymbol).figure(24, style: .title2, limit: 1.7).foregroundStyle(ink).padding(.top, 7)
-                    } else {
-                        Text(L10n.machineStatusGbUsed()).figure(24, style: .title2, limit: 1.4).foregroundStyle(ink2).lineLimit(1).minimumScaleFactor(0.6)
+                        Text(fig.unit.or("%"))
+                            .figure(24, style: .title2, limit: 1.7)
+                            .foregroundStyle(ink)
+                            .padding(.top, 7)
+                    } else if !fig.unit.isEmpty {
+                        Text(fig.unit)
+                            .figure(24, style: .title2, limit: 1.4)
+                            .foregroundStyle(ink2)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.6)
                     }
                 }
             }
+
             ViewThatFits(in: .horizontal) {
                 HStack(alignment: .bottom, spacing: 12) {
                     figureBlock
                     Spacer(minLength: 0)
-                    sideLines(.trailing, ink: ink, ink2: ink2).multilineTextAlignment(.trailing).padding(.bottom, 8)
+                    sideLines(.trailing, ink: ink, ink2: ink2)
+                        .multilineTextAlignment(.trailing)
+                        .padding(.bottom, 8)
                 }
                 VStack(alignment: .leading, spacing: 6) {
                     figureBlock
-                    sideLines(.leading, ink: ink, ink2: ink2).multilineTextAlignment(.leading).frame(maxWidth: .infinity, alignment: .leading)
+                    sideLines(.leading, ink: ink, ink2: ink2)
+                        .multilineTextAlignment(.leading)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                 }
             }
             .padding(.horizontal, 18)
-            if stale || points.isEmpty {
+
+            if dim || !chart.visible || chart.points.isEmpty {
                 Color.clear.frame(height: 16)
             } else {
                 if chartOn {
-                    StatusChart(points: points, ceiling: chartCeiling(s, metric: metric), color: ink, moving: moving, scrub: $scrub)
+                    StatusChart(chart: chart, color: ink, moving: moving, onScrub: onScrub)
                         .padding(.top, 6)
                         .accessibilityElement(children: .ignore)
-                        .accessibilityLabel(chartSummary(points, metric: metric, text: text))
-                        .accessibilityValue(scrub.map { text.lookback(ageMs: (points.last?.timeMs ?? 0) - $0.timeMs) } ?? "")
+                        .accessibilityLabel(chart.a11YSummary.rendered())
+                        .accessibilityValue(chart.hasScrub_p ? chart.scrubAge.rendered() : "")
                         .accessibilityAdjustableAction { dir in onStep(dir == .increment ? 1 : -1) }
                         .accessibilityAction(named: Text(L10n.machineStatusA11YPrevSample())) { onStep(-1) }
                         .accessibilityAction(named: Text(L10n.machineStatusA11YNextSample())) { onStep(1) }
@@ -641,9 +818,16 @@ private struct HeroContent: View {
                 } else {
                     Color.clear.frame(height: 104).padding(.top, 6)
                 }
-                if metric == .memory, let word = mem.pressureWord {
-                    Text(word).font(.footnote.weight(.semibold)).foregroundStyle(mem.tone.ink(DS.ink2))
-                        .frame(maxWidth: .infinity, alignment: .trailing).padding(.trailing, 18).padding(.top, 2)
+                if metric == .memory {
+                    let word = mem.pressureText.rendered()
+                    if !word.isEmpty {
+                        Text(word)
+                            .font(.footnote.weight(.semibold))
+                            .foregroundStyle(mem.pressure.ink(DS.ink2))
+                            .frame(maxWidth: .infinity, alignment: .trailing)
+                            .padding(.trailing, 18)
+                            .padding(.top, 2)
+                    }
                 }
                 HStack {
                     Text(L10n.machineStatusAxis2Min())
@@ -653,7 +837,6 @@ private struct HeroContent: View {
                     Text(L10n.machineStatusAxisNow())
                 }
                 .font(.caption2).foregroundStyle(DS.ink3).lineLimit(1).minimumScaleFactor(0.8)
-                // Marks of the curve's width, not words to be read: they keep to the largest ordinary size.
                 .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
                 .padding(.horizontal, 18).padding(.top, 6).padding(.bottom, 13)
                 .accessibilityHidden(true)
@@ -664,7 +847,6 @@ private struct HeroContent: View {
     }
 }
 
-/// A figure and its unit side by side; under it, whole, when the two do not fit the card.
 private struct LargeFigure: View {
     let value: String
     let number: Double
@@ -687,22 +869,20 @@ private struct LargeFigure: View {
     }
 }
 
-/// The two lines under a card's figure, pinned to its foot.
 private struct SayLines: View {
     let first: String
     let firstColor: Color
     var second: String?
     var secondColor: Color = DS.ink2
     var third: String?
-    /// The second line may break at its comma, never inside a figure.
     var breakAtComma = false
     @Environment(\.dynamicTypeSize) private var typeSize
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             Text(first).font(.footnote.weight(.semibold)).foregroundStyle(firstColor)
-            if let second { line(second) }
-            if let third { line(third) }
+            if let second, !second.isEmpty { line(second) }
+            if let third, !third.isEmpty { line(third) }
         }
         .padding(.top, 10)
     }
@@ -713,46 +893,69 @@ private struct SayLines: View {
                 Text(line).font(.footnote).foregroundStyle(secondColor).lineLimit(1)
                 VStack(alignment: .leading, spacing: 0) {
                     Text(String(line[...i])).font(.footnote).foregroundStyle(secondColor)
-                    Text(String(line[line.index(after: i)...]).trimmingCharacters(in: .whitespaces)).font(.footnote).foregroundStyle(secondColor)
+                    Text(String(line[line.index(after: i)...]).trimmingCharacters(in: .whitespaces))
+                        .font(.footnote)
+                        .foregroundStyle(secondColor)
                 }
             }
         } else if typeSize.isAccessibilitySize || typeSize >= .xxxLarge {
             Text(line).font(.footnote).foregroundStyle(secondColor)
         } else {
-            // One line, as the mockup's two lines are: the type steps down a little before it wraps.
             Text(line).font(.footnote).foregroundStyle(secondColor).lineLimit(1).minimumScaleFactor(0.75)
         }
     }
 }
 
-/// A small card: CPU or memory as the card a tap makes the main chart.
 private struct SmallTile: View {
     let metric: StatusMetric
-    let s: PBMachineStatus
-    let cpu: CpuFigures
-    let mem: MemoryCard
-    let text: StatusText
-    let stale: Bool
+    let cpu: PBMachineCpuSection
+    let mem: PBMachineMemorySection
+    let dim: Bool
     let onTap: () -> Void
 
     var body: some View {
-        let ink = stale ? DS.ink3 : DS.ink
-        let ink2 = stale ? DS.ink3 : DS.ink2
+        let ink = dim ? DS.ink3 : DS.ink
+        let ink2 = dim ? DS.ink3 : DS.ink2
+        let fig: (value: String, number: Double, unit: String) = if metric == .memory {
+            parseFigure(mem.headline.rendered(), fallbackCaption: mem.caption.rendered())
+        } else {
+            parseFigure(cpu.headline, fallbackCaption: "%")
+        }
+
         Button(action: onTap) {
             VStack(alignment: .leading, spacing: 0) {
                 if metric == .memory {
+                    let pressureWord = mem.pressureText.rendered()
+                    let totalLine = [mem.totalText.rendered(), mem.swapText.rendered()]
+                        .filter { !$0.isEmpty }
+                        .joined(separator: "，")
                     Kick(symbol: .memory, label: L10n.machineStatusMemory(), color: ink2)
-                    LargeFigure(value: mem.used, number: mem.usedNumber, unit: L10n.machineStatusGbUsed(), color: ink, unitColor: ink2)
-                    if let position = mem.position { PressureScale(position: position).padding(.top, 14).opacity(stale ? 0.5 : 1) }
+                    LargeFigure(value: fig.value, number: fig.number, unit: fig.unit, color: ink, unitColor: ink2)
+                    if mem.hasPressurePosition_p {
+                        PressureScale(position: mem.pressurePosition)
+                            .padding(.top, 14)
+                            .opacity(dim ? 0.5 : 1)
+                    }
                     Spacer(minLength: 0)
-                    SayLines(first: mem.pressureWord ?? mem.detail, firstColor: stale ? DS.ink3 : mem.tone.ink(DS.ink),
-                             second: mem.pressureWord == nil ? nil : mem.detail, secondColor: ink2, breakAtComma: true)
+                    SayLines(
+                        first: pressureWord.or(totalLine),
+                        firstColor: dim ? DS.ink3 : mem.pressure.ink(DS.ink),
+                        second: pressureWord.isEmpty ? nil : totalLine,
+                        secondColor: ink2,
+                        breakAtComma: true
+                    )
                 } else {
+                    let load = cpu.detail2.rendered()
+                    let cores = cpu.detail.rendered()
                     Kick(symbol: .cpu, label: L10n.machineStatusCpu(), color: ink2)
-                    LargeFigure(value: String(cpu.percent), number: Double(cpu.percent), unit: text.percentSymbol, color: ink, unitColor: ink2)
+                    LargeFigure(value: fig.value, number: fig.number, unit: fig.unit, color: ink, unitColor: ink2)
                     Spacer(minLength: 0)
-                    SayLines(first: cpu.load.map { L10n.machineStatusLoadLine(load: $0) } ?? cpu.cores ?? "", firstColor: ink,
-                             second: cpu.load == nil ? nil : cpu.cores, secondColor: ink2)
+                    SayLines(
+                        first: load.or(cores),
+                        firstColor: ink,
+                        second: load.isEmpty ? nil : cores,
+                        secondColor: ink2
+                    )
                 }
             }
             .padding(.init(top: 14, leading: 16, bottom: 15, trailing: 16))
@@ -761,38 +964,40 @@ private struct SmallTile: View {
         }
         .buttonStyle(.plain)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(spoken)
+        .accessibilityLabel(metric == .cpu ? cpu.a11YLabel.rendered() : mem.a11YLabel.rendered())
         .accessibilityAddTraits(.isButton)
         .accessibilityIdentifier(metric == .cpu ? StatusID.cpuCard.rawValue : StatusID.memoryCard.rawValue)
     }
-
-    private var spoken: String {
-        if metric == .cpu { return L10n.machineStatusA11YCpuCard(value: "\(cpu.percent)%") }
-        let used = L10n.machineStatusSizeGb(size: mem.used)
-        if let word = mem.pressureWord { return L10n.machineStatusA11YMemoryCard(pressure: word, used: used) }
-        return L10n.machineStatusA11YMemoryCardPlain(used: used)
-    }
 }
 
-/// The disk card: its own surface, a tap goes to 附件存储 on the computer's page.
 private struct DiskTile: View {
-    let s: PBMachineStatus
-    let card: DiskCard
-    let text: StatusText
-    let stale: Bool
+    let disk: PBMachineDiskSection
+    let dim: Bool
     let onTap: () -> Void
 
     var body: some View {
-        let bad = card.tone == .critical
-        let ink = stale ? DS.ink3 : card.tone.ink(DS.ink)
-        let ink2 = stale ? DS.ink3 : (bad ? DS.red : DS.ink2)
+        let bad = disk.state == .critical
+        let ink = dim ? DS.ink3 : disk.state.ink(DS.ink)
+        let ink2 = dim ? DS.ink3 : (bad ? DS.red : DS.ink2)
+        let fig = parseFigure(disk.headline.rendered(), fallbackCaption: disk.caption.rendered())
+
         Button(action: onTap) {
             VStack(alignment: .leading, spacing: 0) {
-                Kick(symbol: .disk, label: L10n.machineStatusDisk(), color: stale ? DS.ink3 : DS.ink2)
-                LargeFigure(value: card.free, number: Double(s.disk.availableBytes) / 1e9, unit: L10n.machineStatusGbAvailable(), color: ink, unitColor: ink2)
-                DiskBar(agentShare: card.agentShare, otherShare: card.otherShare, tone: card.tone).padding(.top, 12).opacity(stale ? 0.5 : 1)
+                Kick(symbol: .disk, label: L10n.machineStatusDisk(), color: dim ? DS.ink3 : DS.ink2)
+                LargeFigure(value: fig.value, number: fig.number, unit: fig.unit, color: ink, unitColor: ink2)
+                if disk.hasUsedFraction_p {
+                    DiskBar(usedFraction: disk.usedFraction, state: disk.state)
+                        .padding(.top, 12)
+                        .opacity(dim ? 0.5 : 1)
+                }
                 Spacer(minLength: 0)
-                SayLines(first: card.word, firstColor: ink, second: card.detail, secondColor: ink2, third: card.detail2)
+                SayLines(
+                    first: disk.stateBadge.rendered(),
+                    firstColor: ink,
+                    second: disk.detail.rendered(),
+                    secondColor: ink2,
+                    third: disk.detail2.rendered()
+                )
             }
             .padding(.init(top: 14, leading: 16, bottom: 15, trailing: 16))
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -801,58 +1006,64 @@ private struct DiskTile: View {
         }
         .buttonStyle(.plain)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(L10n.machineStatusA11YDiskCard(size: text.size(Int64(s.disk.availableBytes)), state: card.word))
+        .accessibilityLabel(disk.a11YLabel.rendered())
         .accessibilityAddTraits(.isButton)
         .accessibilityHint(L10n.machineStatusAgentUsage())
         .accessibilityIdentifier(StatusID.diskCard.rawValue)
     }
 }
 
-/// A ranking row: the icon, the title and main figure, a bar and the other figure.
 private struct UsageRowView: View {
-    let row: UsageRow
+    let row: PBMachineUsageRow
+    let primary: String
+    let bar: Double
+    let top: Bool
     let last: Bool
     let dim: Bool
     let onTap: () -> Void
     @Environment(\.accessibilityReduceMotion) private var reduce
 
     var body: some View {
-        let tappable = row.isSession && row.known
+        let tappable = !row.sessionID.isEmpty
+        let title = row.title.rendered().or(row.id)
+        let secondary = row.secondary.rendered()
+        let spoken = [title, primary, secondary].filter { !$0.isEmpty }.joined(separator: L10n.commonIosSpokenSeparator())
+
         let inner = HStack(alignment: .top, spacing: 12) {
             icon.padding(.top, 1)
             VStack(alignment: .leading, spacing: 6) {
                 HStack(alignment: .firstTextBaseline, spacing: 10) {
-                    Text(row.title).font(.system(.callout)).foregroundStyle(dim ? DS.ink3 : DS.ink).lineLimit(1).truncationMode(.tail)
+                    Text(title).font(.system(.callout)).foregroundStyle(dim ? DS.ink3 : DS.ink).lineLimit(1).truncationMode(.tail)
                     Spacer(minLength: 0)
-                    Text(row.primary).figure(16, .medium, style: .callout, limit: 1.6).monospacedDigit().foregroundStyle(dim ? DS.ink3 : DS.ink).lineLimit(1).fixedSize()
+                    Text(primary).figure(16, .medium, style: .callout, limit: 1.6).monospacedDigit().foregroundStyle(dim ? DS.ink3 : DS.ink).lineLimit(1).fixedSize()
                 }
-                UsageMeter(fraction: row.bar) {
-                    Capsule().fill(dim || !row.top ? DS.ink3 : DS.ink).frame(height: 5)
-                    Text(row.secondary).font(.system(size: 12.5)).monospacedDigit().foregroundStyle(dim ? DS.ink3 : DS.ink2).lineLimit(1)
+                UsageMeter(fraction: bar) {
+                    Capsule().fill(dim || !top ? DS.ink3 : DS.ink).frame(height: 5)
+                    Text(secondary).font(.system(size: 12.5)).monospacedDigit().foregroundStyle(dim ? DS.ink3 : DS.ink2).lineLimit(1)
                 }
-                .animation(reduce ? nil : .timingCurve(0.2, 0.8, 0.2, 1, duration: 0.3), value: row.bar)
+                .animation(reduce ? nil : .timingCurve(0.2, 0.8, 0.2, 1, duration: 0.3), value: bar)
             }
             .padding(.bottom, 12)
             .overlay(alignment: .bottom) { if !last { Rectangle().fill(DS.sep).frame(height: 0.5) } }
         }
         .padding(.leading, 16).padding(.trailing, 16).padding(.top, 11)
         .contentShape(Rectangle())
+
         if tappable {
-            Button(action: onTap) { inner }.buttonStyle(RowPressStyle())
+            Button(action: onTap) { inner }
+                .buttonStyle(RowPressStyle())
                 .accessibilityElement(children: .ignore)
                 .accessibilityLabel(spoken)
                 .accessibilityAddTraits(.isButton)
         } else {
-            inner.accessibilityElement(children: .ignore).accessibilityLabel(spoken)
+            inner
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(spoken)
         }
     }
 
-    private var spoken: String { [row.title, row.primary, row.secondary].joined(separator: L10n.commonIosSpokenSeparator()) }
-
-    /// The icon block of a row (ui-rulings 9): `fill2`, radius 8, 30 square. A session shows its CLI's mark and a process the
-    /// terminal, both in `ink2`: no brand colour or gradient on this page.
     @ViewBuilder private var icon: some View {
-        let glyph = row.isSession && row.known ? row.agent.flatMap { AgentGlyph($0) } : nil
+        let glyph = !row.sessionID.isEmpty && row.agent != .unspecified ? AgentGlyph(row.agent) : nil
         ZStack {
             RoundedRectangle(cornerRadius: 8, style: .continuous).fill(DS.fill2)
             if let glyph {

@@ -1,5 +1,6 @@
 import Observation
 import RACore
+import RAProto
 import SwiftUI
 
 /// 连接检测 (mockup 「连接检测」, Android's ConnCheckSheet): how long a round
@@ -13,29 +14,32 @@ struct ConnectionCheckScreen: View {
     @State private var check: ConnectionCheckModel?
     /// Bumped by 再测一次.
     @State private var run = 0
-    /// Bumped when a computer's direct path changes, so its summary line is drawn again.
-    @State private var directTick = 0
 
     var body: some View {
         let state = model.state
+        let settingsVM = context.core.settings
         // Online first: those are the ones measured.
-        let byName = sortedMachines(state)
-        let machines = byName.filter { $0.pathState.reachable } + byName.filter { !$0.pathState.reachable }
+        let byName = settingsVM.machines
+        let machines = byName.filter(\.online) + byName.filter { !$0.online }
         SettingsPage {
             GroupCard {
                 let network = state.link != .noNetwork
                 GRow(L10n.connectionLocalNetwork(), value: network ? L10n.connectionWorking() : L10n.connectionUnavailable()).valueLead { Dot(network ? DS.green : DS.ink3) }
                 result(L10n.securityServer(), sub: hostOf(context.account.server), check?.server ?? .wait, slow: slowServerMs)
                 for m in machines {
-                    let name = machineLabel(state, id: m.id)
-                    if m.pathState.reachable, !state.peer(m.id).unlinked || model.isDemo {
-                        result(name, check?.machines[m.id] ?? .wait, slow: slowMachineMs)
-                        if let row = directRow(m.id) {
-                            let trailing = [row.status, row.metric].compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " · ")
-                            GRow(row.label, sub: row.detail, value: trailing.isEmpty ? nil : trailing)
+                    let name = m.name
+                    if m.online, m.member || model.isDemo {
+                        result(name, check?.machines[m.machineID] ?? .wait, slow: slowMachineMs)
+                        if m.hasDirectRow, m.directRow.visible {
+                            let row = m.directRow
+                            let status = row.statusText.rendered()
+                            let detail = row.detailText.rendered()
+                            let metric = row.metricText.rendered()
+                            let trailing = [status, metric].filter { !$0.isEmpty }.joined(separator: " · ")
+                            GRow(row.labelText.rendered().or(L10n.transportDirect()), sub: detail.isEmpty ? nil : detail, value: trailing.isEmpty ? nil : trailing)
                                 .valueLead { directMark(row) }
                         }
-                    } else if state.peer(m.id).unlinked {
+                    } else if !m.member {
                         // Whether it is there is not known from here; the server's row says why.
                         GRow(name, value: L10n.connectionNotChecked())
                     } else {
@@ -50,34 +54,43 @@ struct ConnectionCheckScreen: View {
         }
         .navBar(L10n.homeConnectionCheck())
         .debugSignal("check.again") { run += 1 }
-        .task {
-            guard context.remote.directSupported else { return }
-            for await _ in context.remote.directChanges.updates() { directTick &+= 1 }
-        }
         .task(id: run) {
+            await context.coreHost.openSettings()
             let made = check ?? ConnectionCheckModel(probes: probes)
             check = made
             // The computers the server lists as online now, not as of the last drawing.
             let online = context.remote.current.machines.values.filter { $0.pathState.reachable }.map(\.id)
-            await made.measure(online: model.isDemo ? machines.filter { $0.pathState.reachable }.map(\.id) : online)
+            context.dispatch {
+                $0.connCheckStatus.serverState = .checking
+            }
+            await made.measure(online: model.isDemo ? machines.filter(\.online).map(\.machineID) : online)
+            reportProbeStatus(made.server)
         }
     }
 
-    /// Direct-path row computed by `clientcore`, or nil when this build/device cannot run direct.
-    private func directRow(_ id: String) -> DirectView.ConnCheckRow? {
-        _ = directTick
-        let remote = context.remote
-        guard remote.directSupported else { return nil }
-        let row = DirectView.connCheckRow(remote.directStatus(id), online: true)
-        return row.visible ? row : nil
+    private func reportProbeStatus(_ ping: Ping) {
+        context.dispatch { ev in
+            switch ping {
+            case .wait:
+                ev.connCheckStatus.serverState = .checking
+            case .skip:
+                ev.connCheckStatus.serverState = .notChecked
+            case .ok(let ms):
+                ev.connCheckStatus.serverState = ms >= slowServerMs ? .slow : .working
+                ev.connCheckStatus.latencyMs = Int32(ms)
+            case .fail(let err):
+                ev.connCheckStatus.serverState = .unavailable
+                ev.connCheckStatus.lastFailure = err
+            }
+        }
     }
 
     @ViewBuilder
-    private func directMark(_ row: DirectView.ConnCheckRow) -> some View {
-        switch row.mark {
-        case .online: Dot(DS.green)
-        case .run: Mark(Mark.progress, color: DS.ink2, size: 13, relativeTo: .footnote)
-        case .off: Dot(row.tone == .warn ? DS.orange : DS.faint)
+    private func directMark(_ row: PBConnCheckDirectRowView) -> some View {
+        switch row.stage {
+        case .direct: Dot(DS.green)
+        case .connecting, .measuring: Mark(Mark.progress, color: DS.ink2, size: 13, relativeTo: .footnote)
+        default: Dot(row.tone == .warn ? DS.orange : DS.faint)
         }
     }
 

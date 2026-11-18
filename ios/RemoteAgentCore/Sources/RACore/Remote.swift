@@ -262,14 +262,14 @@ public final actor Remote {
         public var onRefresh: @Sendable () async -> Void
         public var onRefreshDevices: @Sendable () async -> Void
         public var onSavePrefs: @Sendable (PrefsOp) async throws -> Void
-        public var onDirectStatus: @Sendable (String, Bool) async -> Void
+        public var onDirectStatus: @Sendable (String, Bool, PBDirectRouteReport) async -> Void
         public var onLoadMoreSessions: @Sendable () async -> Void
         public init(
             onFetchSession: @escaping @Sendable (String) async -> Void,
             onRefresh: @escaping @Sendable () async -> Void,
             onRefreshDevices: @escaping @Sendable () async -> Void,
             onSavePrefs: @escaping @Sendable (PrefsOp) async throws -> Void,
-            onDirectStatus: @escaping @Sendable (String, Bool) async -> Void,
+            onDirectStatus: @escaping @Sendable (String, Bool, PBDirectRouteReport) async -> Void,
             onLoadMoreSessions: @escaping @Sendable () async -> Void = {}
         ) {
             self.onFetchSession = onFetchSession
@@ -376,8 +376,9 @@ public final actor Remote {
     func notifyDirectStatusChanged() async {
         guard let direct, let hooks = hostHooks else { return }
         for machineId in state.value.machines.keys {
-            let ready = direct.status(machineId).state == .connected
-            await hooks.onDirectStatus(machineId, ready)
+            let status = direct.status(machineId)
+            let ready = status.state == .connected
+            await hooks.onDirectStatus(machineId, ready, status.toCoreRouteReport())
         }
     }
 

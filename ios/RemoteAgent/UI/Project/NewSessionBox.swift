@@ -105,8 +105,8 @@ struct NewSessionBox: View {
             onMachineStatus: onMachineStatus,
             sheet: sheet
         )
-        .onChange(of: vm.prompt, initial: true) { _, serverPrompt in
-            if text != serverPrompt && (serverPrompt.isEmpty || text.isEmpty) {
+        .onChange(of: vm.prompt, initial: true) { oldServerPrompt, serverPrompt in
+            if text != serverPrompt && (serverPrompt.isEmpty || text.isEmpty || (!oldServerPrompt.isEmpty && serverPrompt != oldServerPrompt && text == oldServerPrompt)) {
                 text = serverPrompt
             }
         }
