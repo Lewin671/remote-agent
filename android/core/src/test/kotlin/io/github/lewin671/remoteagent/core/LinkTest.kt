@@ -31,7 +31,6 @@ class LinkTest {
             daemon.connect(); daemon.waitReady()
             val state = projected(daemon.id)
             remote.showForTest(state)
-            assertTrue(scheduleWritable(state, daemon.id))
             assertTrue(state.peer(daemon.id).canProbe(false))
             assertTrue(filesSupported(state.machines[daemon.id]))
             assertNull(protocolMismatch(state.machines[daemon.id]))

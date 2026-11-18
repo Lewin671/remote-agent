@@ -1179,11 +1179,13 @@ class RemoteTest {
         assertFalse(stored.decodeToString().contains("Private scheduled content"))
         assertArrayEquals(json,r.cachedSchedules(daemon.account.deviceId))
         val snapshot=kotlinx.serialization.json.Json.parseToJsonElement(stored.decodeToString()).jsonObject
-        val env=io.github.lewin671.remoteagent.proto.Envelope.parseFrom(java.util.Base64.getDecoder().decode(snapshot.text("envelope")))
+        val envText=(snapshot["envelope"] as kotlinx.serialization.json.JsonPrimitive).content
+        val reqText=(snapshot["request"] as kotlinx.serialization.json.JsonPrimitive).content
+        val env=io.github.lewin671.remoteagent.proto.Envelope.parseFrom(java.util.Base64.getDecoder().decode(envText))
         assertFalse(env.signature.isEmpty);assertFalse(env.securityHeader.isEmpty)
         memory.putBlob(key,scheduleSnapshot("wrong-request",env))
         assertTrue(runCatching { r.cachedSchedules(daemon.account.deviceId) }.isFailure)
-        memory.putBlob(key,scheduleSnapshot(snapshot.text("request"),env.toBuilder().setSignature(com.google.protobuf.ByteString.copyFrom(ByteArray(64))).build()))
+        memory.putBlob(key,scheduleSnapshot(reqText,env.toBuilder().setSignature(com.google.protobuf.ByteString.copyFrom(ByteArray(64))).build()))
         assertTrue(runCatching { r.cachedSchedules(daemon.account.deviceId) }.isFailure)
         memory.putBlob(key,stored)
         val cold=fixtureRemote(r.account,http,memory);closers+=AutoCloseable { cold.close() }

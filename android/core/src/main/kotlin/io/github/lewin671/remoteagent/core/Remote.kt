@@ -15,7 +15,11 @@ import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.put
 import okhttp3.OkHttpClient
 import okhttp3.WebSocket
 import java.io.IOException
@@ -89,7 +93,8 @@ class Remote(
     @Suppress("unused") private val linkGraceMs: Long = 10_000,
     private val securityStorage: DeviceSecurity.Storage? = null,
     private val tokenStorage: LoginTokenStore? = null,
-    private val scheduleSeen: ScheduleSeen = ScheduleSeen(),
+    private val scheduleSeenStore: ScheduleSeenStore? = null,
+    private val onDismissScheduleNotifications: (List<ScheduleNotificationRef>) -> Unit = {},
     dispatcher: kotlinx.coroutines.CoroutineDispatcher? = null,
     private val socketFactory: WebSocket.Factory? = null,
     rpcTransport: com.connectrpc.http.HTTPClientInterface? = null,
@@ -366,7 +371,11 @@ class Remote(
     val quotaView: StateFlow<QuotaViewModel> get() = coreHost.quotaView
     val devicesView: StateFlow<DevicesViewModel> get() = coreHost.devicesView
     val clientDetailView: StateFlow<ClientDetailViewModel> get() = coreHost.clientDetailView
+    val schedulesView: StateFlow<SchedulesViewModel> get() = coreHost.schedulesView
+    val scheduleDetailView: StateFlow<ScheduleDetailViewModel> get() = coreHost.scheduleDetailView
+    val scheduleFormView: StateFlow<ScheduleFormViewModel> get() = coreHost.scheduleFormView
     val coreNavigation: SharedFlow<NavigateEffect> get() = coreHost.navigationEvents
+    val scheduleNavigationEvents: SharedFlow<ScheduleNavigateEffect> get() = coreHost.scheduleNavigationEvents
     val restoreComposerEvents: SharedFlow<SessionRestoreComposerEffect> get() = coreHost.restoreComposerEvents
 
     fun watchSession(sid: String, initialWindow: SessionWindowRequest? = null): Flow<SessionViewModel> =
@@ -439,58 +448,6 @@ class Remote(
         }
     }
 
-    private val scheduleRepository = lazy {
-        ScheduleRepository(
-            scope,
-            state,
-            send = { machine, request ->
-                machineCommand(machine, Command.newBuilder().setSchedule(request).build()).schedule.resultJson.toByteArray()
-            },
-            read = { cachedSchedules(it) },
-            clear = { cache?.removeBlob("schedule:$it"); Unit },
-            seen = scheduleSeen,
-        ).also { repo ->
-            scope.launch {
-                combine(repo.state, repo.unread, state) { st, unread, rs ->
-                    buildScheduleHints(st, unread, rs)
-                }.collect { hints ->
-                    coreHost.updateScheduleHints(hints)
-                }
-            }
-        }
-    }
-
-    val schedules get() = scheduleRepository.value
-
-    private fun buildScheduleHints(
-        scheduleState: Map<String, ScheduleSnapshot>,
-        unreadMap: Map<ScheduleTaskKey, Boolean>,
-        rs: RemoteState,
-    ): List<SessionScheduleHint> {
-        val bySession = HashMap<String, MutableList<ScheduledTask>>()
-        for (ms in scheduleState.values) {
-            for (t in ms.tasks) {
-                if (!scheduleSupported(rs.machines[t.machine])) continue
-                if (t.target.text("type") != "resume_session") continue
-                val sid = t.target.text("session")
-                if (sid.isNotEmpty()) bySession.getOrPut(sid) { ArrayList() }.add(t)
-            }
-        }
-        val hints = ArrayList<SessionScheduleHint>(bySession.size)
-        for ((sid, list) in bySession) {
-            val freq = if (list.size == 1) scheduleFrequency(list[0].trigger, copy = uiMessageResolver) else ""
-            val unread = list.any { unreadMap[ScheduleTaskKey(it.machine, it.id)] == true }
-            hints.add(
-                SessionScheduleHint.newBuilder()
-                    .setSessionId(sid)
-                    .setScheduleName(freq)
-                    .setUnread(unread)
-                    .build(),
-            )
-        }
-        return hints
-    }
-
     private fun currentScheduleMember(machine: String): Boolean =
         security.record().head.core.members.any { it.id == machine && it.kind == 1u }
 
@@ -501,9 +458,11 @@ class Remote(
         }
         val raw = cache?.blob("schedule:$machine") ?: return@withContext null
         val snapshot = Json.parseToJsonElement(raw.decodeToString()).jsonObject
+        val envText = (snapshot["envelope"] as? JsonPrimitive)?.contentOrNull.orEmpty()
+        val reqText = (snapshot["request"] as? JsonPrimitive)?.contentOrNull.orEmpty()
         val (_, reply) = openSecureMessage(
-            Envelope.parseFrom(java.util.Base64.getDecoder().decode(snapshot.text("envelope"))),
-            Place(PayloadKind.PAYLOAD_KIND_COMMAND_RESULT, machineId = machine, requestId = snapshot.text("request")),
+            Envelope.parseFrom(java.util.Base64.getDecoder().decode(envText)),
+            Place(PayloadKind.PAYLOAD_KIND_COMMAND_RESULT, machineId = machine, requestId = reqText),
             CommandResult::parseFrom,
             live = false,
         )
@@ -544,6 +503,46 @@ class Remote(
         }
         coreHost.onRpc = { eff -> scope.launch { executeRpc(eff) } }
         coreHost.onDispatchCommand = { eff -> scope.launch { executeDispatchCommand(eff) } }
+        coreHost.onScheduleReadCache = { eff ->
+            enqueueCacheOp {
+                try {
+                    val bytes = cachedSchedules(eff.machineId)
+                    coreHost.deliverScheduleCacheLoaded(eff.opId, eff.machineId, bytes ?: ByteArray(0))
+                } catch (e: Exception) {
+                    if (e is CancellationException) throw e
+                    coreHost.deliverScheduleCacheLoaded(
+                        eff.opId,
+                        eff.machineId,
+                        error = e.message ?: e.javaClass.simpleName,
+                    )
+                }
+            }
+        }
+        coreHost.onScheduleDeleteCache = { eff ->
+            if (cache != null) enqueueCacheOp { cache.removeBlob("schedule:${eff.machineId}") }
+        }
+        coreHost.onScheduleLoadSeen = { eff ->
+            scope.launch {
+                val (tokens, err) = try {
+                    scheduleSeenStore?.load(eff.machineId) to ""
+                } catch (e: Exception) {
+                    if (e is CancellationException) throw e
+                    null to (e.message ?: e.javaClass.simpleName)
+                }
+                coreHost.deliverScheduleSeenLoaded(
+                    eff.machineId,
+                    tokens ?: emptyList(),
+                    found = tokens != null && err.isEmpty(),
+                    error = err,
+                )
+            }
+        }
+        coreHost.onScheduleSaveSeen = { eff ->
+            scope.launch { scheduleSeenStore?.save(eff.machineId, eff.tokensList) }
+        }
+        coreHost.onScheduleDismissNotifications = { eff ->
+            onDismissScheduleNotifications(eff.runsList)
+        }
     }
 
     // --- Token Gate ---
@@ -710,10 +709,7 @@ class Remote(
         val arch = record.chain.flatMap { it.core.members }.filter { it.kind == 1u }.map { it.id }.toSet()
         archiveMachines.clear()
         archiveMachines.addAll(arch)
-        if (scheduleRepository.isInitialized()) {
-            members.keys.forEach { schedules.allow(it) }
-            arch.filter { it !in members }.forEach { schedules.forget(it) }
-        }
+        arch.filter { it !in members }.forEach { scheduleSeenStore?.delete(it) }
     }
 
     // --- Stream Driver ---
@@ -1583,6 +1579,16 @@ class Remote(
                     .build()
                 val category = verifiedOutcome(res.msg, binding.first, binding.second, res.outerOutcome, res.outerReason)
                 val trusted = res.hashesMatch && res.attemptBound && res.outerMatchesInner && category != Outcome.UNKNOWN
+                if (trusted &&
+                    parsedCmd?.hasSchedule() == true &&
+                    parsedCmd.schedule.operation == "list" &&
+                    res.msg.hasSchedule() &&
+                    res.msg.errorCode.isEmpty() &&
+                    currentScheduleMember(eff.machineId)
+                ) {
+                    cache?.putBlob("schedule:${eff.machineId}", scheduleSnapshot(eff.requestId, res.envelope))
+                    if (!currentScheduleMember(eff.machineId)) cache?.removeBlob("schedule:${eff.machineId}")
+                }
                 trusted to ev
             } catch (e: UnverifiedReplyException) {
                 false to baseOutcome(OutcomeSource.OUTCOME_SOURCE_DAEMON).setAttemptBound(e.attemptBound).setSigned(false).setHashesMatch(false).build()
@@ -2972,3 +2978,9 @@ internal fun Command.isReadOnlyCommand(): Boolean =
     hasGetMachineStatus() || hasGetSettings() || hasListModels() || hasListDirectories() ||
         hasGetLiveSnapshot() || hasGetImageUploadStatus() || hasGetSharedFileChunk() ||
         (hasSchedule() && schedule.operation in setOf("list", "get"))
+
+/** The exact signed response plus its original request binding, never locally re-encrypted JSON. */
+internal fun scheduleSnapshot(request: String, envelope: Envelope): ByteArray = buildJsonObject {
+    put("request", request)
+    put("envelope", java.util.Base64.getEncoder().encodeToString(envelope.toByteArray()))
+}.toString().toByteArray()

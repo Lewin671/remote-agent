@@ -37,6 +37,23 @@ interface HomeScopeStore {
     fun clear()
 }
 
+interface ScheduleSeenStore {
+    fun load(machineId: String): List<ScheduleSeenToken>?
+    fun save(machineId: String, tokens: List<ScheduleSeenToken>)
+    fun delete(machineId: String)
+}
+
+fun buildScheduleLocalContext(nowMs: Long, zone: ZoneId = ZoneId.systemDefault()): ScheduleLocalContextEvent {
+    val today = Instant.ofEpochMilli(nowMs).atZone(zone).toLocalDate()
+    val tomorrowStartMs = today.plusDays(1).atStartOfDay(zone).toInstant().toEpochMilli()
+    val dayAfterTomorrowStartMs = today.plusDays(2).atStartOfDay(zone).toInstant().toEpochMilli()
+    return ScheduleLocalContextEvent.newBuilder()
+        .setLocalTimezone(zone.id)
+        .setTomorrowStartMs(tomorrowStartMs)
+        .setDayAfterTomorrowStartMs(dayAfterTomorrowStartMs)
+        .build()
+}
+
 fun encodeHomeScopeToken(root: ByteArray, scopeKey: String): String =
     if (scopeKey.isEmpty()) "all"
     else "project:" + hmacSha256(Keys.deriveKey(root, "home-scope"), scopeKey.toByteArray()).hex()
@@ -105,6 +122,15 @@ class CoreHost(
     private val sessionWatchers = HashMap<String, SessionWatcher>()
     private val testSessionViews = HashMap<String, SessionViewModel>()
 
+    private class ScheduleStripWatcher(
+        val flow: MutableStateFlow<ScheduleSessionStripViewModel> =
+            MutableStateFlow(ScheduleSessionStripViewModel.getDefaultInstance()),
+        var refCount: Int = 0,
+    )
+
+    private val scheduleStripWatchers = HashMap<String, ScheduleStripWatcher>()
+    private val testScheduleStripViews = HashMap<String, ScheduleSessionStripViewModel>()
+
     var onOpenStream: (OpenStreamEffect) -> Unit = {}
     var onCloseStream: (CloseStreamEffect) -> Unit = {}
     var onEnsureToken: (EnsureTokenEffect) -> Unit = {}
@@ -123,6 +149,12 @@ class CoreHost(
     var onCheckUpdates: (CheckUpdatesEffect) -> Unit = {}
     var onPersistClientPrefs: (PersistClientPrefsEffect) -> Unit = {}
     var onPrepareCleanupSession: (PrepareCleanupSessionEffect) -> Unit = {}
+    var onScheduleReadCache: (ScheduleReadCacheEffect) -> Unit = {}
+    var onScheduleDeleteCache: (ScheduleDeleteCacheEffect) -> Unit = {}
+    var onScheduleLoadSeen: (ScheduleLoadSeenEffect) -> Unit = {}
+    var onScheduleSaveSeen: (ScheduleSaveSeenEffect) -> Unit = {}
+    var onScheduleDismissNotifications: (ScheduleDismissNotificationsEffect) -> Unit = {}
+    var onScheduleNavigate: (ScheduleNavigateEffect) -> Unit = {}
     var onRender: (List<ScreenTarget>) -> Unit = {}
 
     private var homeEndedLimit: Int = CORE_ENDED_PAGE
@@ -135,7 +167,11 @@ class CoreHost(
     private var quotaMachineId: String = ""
     private var quotaFilterAgent: Agent = Agent.AGENT_UNSPECIFIED
     private var clientDetailId: String = ""
+    private var scheduleDetailMachineId: String = ""
+    private var scheduleDetailTaskId: String = ""
+    private var scheduleFormKey: String = ""
     private var testOverrideViews = false
+    private val testOverriddenTargets = java.util.Collections.synchronizedSet(HashSet<ScreenTarget>())
 
     private val _homeView = MutableStateFlow(HomeViewModel.getDefaultInstance())
     val homeView: StateFlow<HomeViewModel> = _homeView.asStateFlow()
@@ -167,8 +203,20 @@ class CoreHost(
     private val _clientDetailView = MutableStateFlow(ClientDetailViewModel.getDefaultInstance())
     val clientDetailView: StateFlow<ClientDetailViewModel> = _clientDetailView.asStateFlow()
 
+    private val _schedulesView = MutableStateFlow(SchedulesViewModel.getDefaultInstance())
+    val schedulesView: StateFlow<SchedulesViewModel> = _schedulesView.asStateFlow()
+
+    private val _scheduleDetailView = MutableStateFlow(ScheduleDetailViewModel.getDefaultInstance())
+    val scheduleDetailView: StateFlow<ScheduleDetailViewModel> = _scheduleDetailView.asStateFlow()
+
+    private val _scheduleFormView = MutableStateFlow(ScheduleFormViewModel.getDefaultInstance())
+    val scheduleFormView: StateFlow<ScheduleFormViewModel> = _scheduleFormView.asStateFlow()
+
     private val _navigationEvents = MutableSharedFlow<NavigateEffect>(extraBufferCapacity = 16)
     val navigationEvents: SharedFlow<NavigateEffect> = _navigationEvents.asSharedFlow()
+
+    private val _scheduleNavigationEvents = MutableSharedFlow<ScheduleNavigateEffect>(extraBufferCapacity = 16)
+    val scheduleNavigationEvents: SharedFlow<ScheduleNavigateEffect> = _scheduleNavigationEvents.asSharedFlow()
 
     private val _attachmentsSettledEvents = MutableSharedFlow<AttachmentsSettledEffect>(extraBufferCapacity = 16)
     val attachmentsSettledEvents: SharedFlow<AttachmentsSettledEffect> = _attachmentsSettledEvents.asSharedFlow()
@@ -193,15 +241,23 @@ class CoreHost(
                             .setEntropyProvided(buildEntropyProvided(INITIAL_ENTROPY_IDS, INITIAL_ENTROPY_FLOATS))
                             .build(),
                     )
+                    val nowMs = clock()
+                    val tz = zone()
                     dispatchOnWorker(
                         CoreEvent.newBuilder()
-                            .setClockUpdated(buildLocalCalendar(clock(), zone()))
+                            .setClockUpdated(buildLocalCalendar(nowMs, tz))
+                            .build(),
+                    )
+                    dispatchOnWorker(
+                        CoreEvent.newBuilder()
+                            .setScheduleLocalContext(buildScheduleLocalContext(nowMs, tz))
                             .build(),
                     )
                     refreshScreenOnWorker(ScreenTarget.SCREEN_TARGET_HOME)
                     refreshScreenOnWorker(ScreenTarget.SCREEN_TARGET_PROJECT)
                     refreshScreenOnWorker(ScreenTarget.SCREEN_TARGET_NEW_SESSION)
                     refreshScreenOnWorker(ScreenTarget.SCREEN_TARGET_SYNC_STATE)
+                    refreshScreenOnWorker(ScreenTarget.SCREEN_TARGET_SCHEDULES)
                 }
             }
             scope.launch(dispatcher) {
@@ -346,6 +402,23 @@ class CoreHost(
             Effect.EffectCase.SESSION_RESTORE_COMPOSER -> {
                 _restoreComposerEvents.tryEmit(effect.sessionRestoreComposer)
             }
+            Effect.EffectCase.SCHEDULE_READ_CACHE -> onScheduleReadCache(effect.scheduleReadCache)
+            Effect.EffectCase.SCHEDULE_DELETE_CACHE -> onScheduleDeleteCache(effect.scheduleDeleteCache)
+            Effect.EffectCase.SCHEDULE_LOAD_SEEN -> onScheduleLoadSeen(effect.scheduleLoadSeen)
+            Effect.EffectCase.SCHEDULE_SAVE_SEEN -> onScheduleSaveSeen(effect.scheduleSaveSeen)
+            Effect.EffectCase.SCHEDULE_DISMISS_NOTIFICATIONS ->
+                onScheduleDismissNotifications(effect.scheduleDismissNotifications)
+            Effect.EffectCase.SCHEDULE_NAVIGATE -> {
+                val nav = effect.scheduleNavigate
+                if (nav.route == ScheduleNavigateRoute.SCHEDULE_NAVIGATE_ROUTE_DETAIL &&
+                    nav.machineId.isNotEmpty() && nav.taskId.isNotEmpty()
+                ) {
+                    scheduleDetailMachineId = nav.machineId
+                    scheduleDetailTaskId = nav.taskId
+                }
+                _scheduleNavigationEvents.tryEmit(nav)
+                onScheduleNavigate(nav)
+            }
             Effect.EffectCase.REQUEST_ENTROPY -> {
                 val req = effect.requestEntropy
                 val ids = maxOf(req.minIds, INITIAL_ENTROPY_IDS / 2)
@@ -435,11 +508,18 @@ class CoreHost(
     }
 
     fun refreshScreenOnWorker(target: ScreenTarget) {
-        if (closed.get() || testOverrideViews) return
+        if (closed.get() || testOverrideViews || target in testOverriddenTargets) return
         if (target == ScreenTarget.SCREEN_TARGET_SESSION) {
             val activeIds = synchronized(sessionWatchers) { sessionWatchers.keys.toList() }
             for (sid in activeIds) {
                 refreshSessionOnWorker(sid)
+            }
+            return
+        }
+        if (target == ScreenTarget.SCREEN_TARGET_SCHEDULE_SESSION_STRIP) {
+            val activeIds = synchronized(scheduleStripWatchers) { scheduleStripWatchers.keys.toList() }
+            for (sid in activeIds) {
+                refreshScheduleStripOnWorker(sid)
             }
             return
         }
@@ -487,6 +567,20 @@ class CoreHost(
                     ClientDetailScreenRequest.newBuilder().setDeviceId(clientDetailId),
                 ).build()
             }
+            ScreenTarget.SCREEN_TARGET_SCHEDULES ->
+                Screen.newBuilder().setSchedules(SchedulesScreenRequest.getDefaultInstance()).build()
+            ScreenTarget.SCREEN_TARGET_SCHEDULE_DETAIL -> {
+                if (scheduleDetailMachineId.isEmpty() || scheduleDetailTaskId.isEmpty()) return
+                Screen.newBuilder().setScheduleDetail(
+                    ScheduleDetailScreenRequest.newBuilder()
+                        .setMachineId(scheduleDetailMachineId)
+                        .setTaskId(scheduleDetailTaskId),
+                ).build()
+            }
+            ScreenTarget.SCREEN_TARGET_SCHEDULE_FORM ->
+                Screen.newBuilder().setScheduleForm(
+                    ScheduleFormScreenRequest.newBuilder().setFormKey(scheduleFormKey),
+                ).build()
             else -> return
         }
         val vm = viewOnWorker(screen) ?: return
@@ -501,7 +595,23 @@ class CoreHost(
             ViewModel.ViewCase.QUOTA -> _quotaView.value = vm.quota
             ViewModel.ViewCase.DEVICES -> _devicesView.value = vm.devices
             ViewModel.ViewCase.CLIENT_DETAIL -> _clientDetailView.value = vm.clientDetail
+            ViewModel.ViewCase.SCHEDULES -> _schedulesView.value = vm.schedules
+            ViewModel.ViewCase.SCHEDULE_DETAIL -> _scheduleDetailView.value = vm.scheduleDetail
+            ViewModel.ViewCase.SCHEDULE_FORM -> _scheduleFormView.value = vm.scheduleForm
             else -> {}
+        }
+    }
+
+    private fun refreshScheduleStripOnWorker(sessionId: String) {
+        if (sessionId.isEmpty() || closed.get() || testOverrideViews) return
+        if (synchronized(scheduleStripWatchers) { sessionId in testScheduleStripViews }) return
+        val watcher = synchronized(scheduleStripWatchers) { scheduleStripWatchers[sessionId] ?: return }
+        val screen = Screen.newBuilder()
+            .setScheduleSessionStrip(ScheduleSessionStripScreenRequest.newBuilder().setSessionId(sessionId))
+            .build()
+        val vm = viewOnWorker(screen) ?: return
+        if (vm.viewCase == ViewModel.ViewCase.SCHEDULE_SESSION_STRIP) {
+            watcher.flow.value = vm.scheduleSessionStrip
         }
     }
 
@@ -618,6 +728,57 @@ class CoreHost(
         if (becameIdle) send { setSessionWatch(SessionWatchEvent.newBuilder().setSessionId(sessionId).setWatched(false)) }
     }
 
+    private class ScheduleStripWatchFlow(
+        private val host: CoreHost,
+        private val sessionId: String,
+    ) : Flow<ScheduleSessionStripViewModel> {
+        override suspend fun collect(collector: FlowCollector<ScheduleSessionStripViewModel>) {
+            val watcher = host.acquireScheduleStripWatcher(sessionId)
+            try {
+                watcher.flow.collect { collector.emit(it) }
+            } finally {
+                host.releaseScheduleStripWatcher(sessionId)
+            }
+        }
+
+        override fun equals(other: Any?): Boolean =
+            other is ScheduleStripWatchFlow && host === other.host && sessionId == other.sessionId
+
+        override fun hashCode(): Int = 31 * System.identityHashCode(host) + sessionId.hashCode()
+    }
+
+    fun watchScheduleSessionStrip(sessionId: String): Flow<ScheduleSessionStripViewModel> =
+        ScheduleStripWatchFlow(this, sessionId)
+
+    private fun acquireScheduleStripWatcher(sessionId: String): ScheduleStripWatcher {
+        val (watcher, becameActive) = synchronized(scheduleStripWatchers) {
+            val existing = scheduleStripWatchers[sessionId]
+            if (existing != null) {
+                existing.refCount++
+                existing to false
+            } else {
+                val created = ScheduleStripWatcher(
+                    flow = MutableStateFlow(
+                        testScheduleStripViews[sessionId] ?: ScheduleSessionStripViewModel.getDefaultInstance(),
+                    ),
+                    refCount = 1,
+                )
+                scheduleStripWatchers[sessionId] = created
+                created to true
+            }
+        }
+        if (becameActive) dispatchAction { refreshScheduleStripOnWorker(sessionId) }
+        return watcher
+    }
+
+    private fun releaseScheduleStripWatcher(sessionId: String) {
+        synchronized(scheduleStripWatchers) {
+            val existing = scheduleStripWatchers[sessionId] ?: return
+            existing.refCount--
+            if (existing.refCount <= 0) scheduleStripWatchers.remove(sessionId)
+        }
+    }
+
     private inline fun send(block: CoreEvent.Builder.() -> Unit) = dispatch(CoreEvent.newBuilder().apply(block).build())
 
     private inline fun sendOnWorker(block: CoreEvent.Builder.() -> Unit) {
@@ -644,9 +805,6 @@ class CoreHost(
 
     fun notifyMachineRouteStatus(machineId: String, directReady: Boolean) =
         send { setMachineRouteStatus(MachineRouteStatusEvent.newBuilder().setMachineId(machineId).setDirectReady(directReady)) }
-
-    fun updateScheduleHints(hints: List<SessionScheduleHint>) =
-        send { setSessionScheduleHints(SessionScheduleHintsEvent.newBuilder().addAllHints(hints)) }
 
     fun pinSession(sessionId: String, pinned: Boolean) =
         send { setSessionPin(SessionPinEvent.newBuilder().setSessionId(sessionId).setPinned(pinned)) }
@@ -970,8 +1128,276 @@ class CoreHost(
         setSessionLoadEarlier(SessionRefreshHistoryAction.newBuilder().setSessionId(sessionId))
     }
 
-    fun tickClock(nowMs: Long = clock()) =
-        send { setClockUpdated(buildLocalCalendar(nowMs, zone())) }
+    // --- Schedule actions (300..349) ---
+
+    fun deliverScheduleCacheLoaded(
+        opId: Long,
+        machineId: String,
+        resultJson: ByteArray = ByteArray(0),
+        error: String = "",
+    ) = send {
+        setScheduleCacheLoaded(
+            ScheduleCacheLoadedEvent.newBuilder()
+                .setOpId(opId)
+                .setMachineId(machineId)
+                .setResultJson(ByteString.copyFrom(resultJson))
+                .setError(error),
+        )
+    }
+
+    fun deliverScheduleSeenLoaded(
+        machineId: String,
+        tokens: List<ScheduleSeenToken> = emptyList(),
+        found: Boolean = false,
+        error: String = "",
+    ) = send {
+        setScheduleSeenLoaded(
+            ScheduleSeenLoadedEvent.newBuilder()
+                .setMachineId(machineId)
+                .addAllTokens(tokens)
+                .setFound(found)
+                .setError(error),
+        )
+    }
+
+    fun updateScheduleLocalContext(nowMs: Long = clock(), zoneId: ZoneId = zone()) = send {
+        setScheduleLocalContext(buildScheduleLocalContext(nowMs, zoneId))
+    }
+
+    fun refreshSchedules(machineId: String = "") = send {
+        setScheduleRefresh(ScheduleStringAction.newBuilder().setValue(machineId))
+    }
+
+    fun setScheduleVisibleSession(sessionId: String) = send {
+        setScheduleSetVisibleSession(ScheduleStringAction.newBuilder().setValue(sessionId))
+    }
+
+    fun openScheduleList(open: Boolean? = null) = send {
+        val b = ScheduleBoolAction.newBuilder()
+        open?.let { b.setValue(it) }
+        setScheduleListOpen(b)
+    }
+
+    fun selectScheduleTask(machineId: String, taskId: String) = dispatchAction {
+        scheduleDetailMachineId = machineId
+        scheduleDetailTaskId = taskId
+        sendOnWorker {
+            setScheduleSelectTask(ScheduleTaskRef.newBuilder().setMachineId(machineId).setTaskId(taskId))
+        }
+    }
+
+    fun toggleScheduleEnded(endedOpen: Boolean? = null) = send {
+        val b = ScheduleBoolAction.newBuilder()
+        endedOpen?.let { b.setValue(it) }
+        setScheduleToggleEnded(b)
+    }
+
+    fun markScheduleRead(tasks: List<ScheduleTaskRef> = emptyList(), allFresh: Boolean = false) = send {
+        setScheduleMarkRead(
+            ScheduleMarkReadAction.newBuilder()
+                .addAllTasks(tasks)
+                .setAllFresh(allFresh),
+        )
+    }
+
+    fun markScheduleUnread(machineId: String, taskId: String, unread: Boolean = true) = send {
+        setScheduleMarkUnread(
+            ScheduleTaskBoolAction.newBuilder()
+                .setMachineId(machineId)
+                .setTaskId(taskId)
+                .setValue(unread),
+        )
+    }
+
+    fun openScheduleDetail(machineId: String, taskId: String) = dispatchAction {
+        scheduleDetailMachineId = machineId
+        scheduleDetailTaskId = taskId
+        sendOnWorker {
+            setScheduleDetailOpen(ScheduleTaskRef.newBuilder().setMachineId(machineId).setTaskId(taskId))
+        }
+        refreshScreenOnWorker(ScreenTarget.SCREEN_TARGET_SCHEDULE_DETAIL)
+    }
+
+    fun hideScheduleDetail(machineId: String, taskId: String) = send {
+        setScheduleDetailHide(ScheduleTaskRef.newBuilder().setMachineId(machineId).setTaskId(taskId))
+    }
+
+    fun closeScheduleDetail(machineId: String, taskId: String) = send {
+        setScheduleDetailClose(ScheduleTaskRef.newBuilder().setMachineId(machineId).setTaskId(taskId))
+    }
+
+    fun showLatestScheduleResult(machineId: String, taskId: String) = send {
+        setScheduleDetailShowLatestResult(ScheduleTaskRef.newBuilder().setMachineId(machineId).setTaskId(taskId))
+    }
+
+    fun toggleScheduleQuietGroup(machineId: String, taskId: String, groupKey: String) = send {
+        setScheduleDetailToggleQuietGroup(
+            ScheduleTaskStringAction.newBuilder()
+                .setMachineId(machineId)
+                .setTaskId(taskId)
+                .setValue(groupKey),
+        )
+    }
+
+    fun showAllScheduleRuns(machineId: String, taskId: String, show: Boolean = true) = send {
+        setScheduleDetailShowAllRuns(
+            ScheduleTaskBoolAction.newBuilder()
+                .setMachineId(machineId)
+                .setTaskId(taskId)
+                .setValue(show),
+        )
+    }
+
+    fun openScheduleRun(machineId: String, taskId: String, runId: String) = send {
+        setScheduleDetailOpenRun(
+            ScheduleTaskStringAction.newBuilder()
+                .setMachineId(machineId)
+                .setTaskId(taskId)
+                .setValue(runId),
+        )
+    }
+
+    fun operateSchedule(machineId: String, taskId: String, operation: ScheduleOperationKind) = send {
+        setScheduleOperate(
+            ScheduleOperateAction.newBuilder()
+                .setMachineId(machineId)
+                .setTaskId(taskId)
+                .setOperation(operation),
+        )
+    }
+
+    fun renameSchedule(machineId: String, taskId: String, title: String) = send {
+        setScheduleRename(
+            ScheduleTaskStringAction.newBuilder()
+                .setMachineId(machineId)
+                .setTaskId(taskId)
+                .setValue(title),
+        )
+    }
+
+    fun setScheduleNotify(machineId: String, taskId: String, notify: Boolean) = send {
+        setScheduleSetNotify(
+            ScheduleTaskBoolAction.newBuilder()
+                .setMachineId(machineId)
+                .setTaskId(taskId)
+                .setValue(notify),
+        )
+    }
+
+    fun updateScheduleMessage(machineId: String, taskId: String, message: String) = send {
+        setScheduleUpdateMessage(
+            ScheduleTaskStringAction.newBuilder()
+                .setMachineId(machineId)
+                .setTaskId(taskId)
+                .setValue(message),
+        )
+    }
+
+    fun abandonScheduleMutation(machineId: String = "", taskId: String = "", formKey: String = "") = send {
+        setScheduleAbandonMutation(
+            ScheduleMutationRef.newBuilder()
+                .setMachineId(machineId)
+                .setTaskId(taskId)
+                .setFormKey(formKey),
+        )
+    }
+
+    fun retryScheduleMutation(machineId: String = "", taskId: String = "", formKey: String = "") = send {
+        setScheduleRetryMutation(
+            ScheduleMutationRef.newBuilder()
+                .setMachineId(machineId)
+                .setTaskId(taskId)
+                .setFormKey(formKey),
+        )
+    }
+
+    fun openScheduleForm(
+        mode: ScheduleFormMode,
+        machineId: String = "",
+        taskId: String = "",
+        sessionId: String = "",
+        projectKey: String = "",
+        localTimezone: String = zone().id,
+    ) = dispatchAction {
+        scheduleFormKey = ""
+        sendOnWorker {
+            setScheduleFormOpen(
+                ScheduleFormOpenAction.newBuilder()
+                    .setMode(mode)
+                    .setMachineId(machineId)
+                    .setTaskId(taskId)
+                    .setSessionId(sessionId)
+                    .setProjectKey(projectKey)
+                    .setLocalTimezone(localTimezone),
+            )
+        }
+        refreshScreenOnWorker(ScreenTarget.SCREEN_TARGET_SCHEDULE_FORM)
+    }
+
+    fun closeScheduleForm(formKey: String = "", force: Boolean = false) = send {
+        setScheduleFormClose(ScheduleFormBoolAction.newBuilder().setFormKey(formKey).setValue(force))
+    }
+
+    fun setScheduleFormMessage(formKey: String, message: String) = send {
+        setScheduleFormSetMessage(ScheduleFormStringAction.newBuilder().setFormKey(formKey).setValue(message))
+    }
+
+    fun setScheduleFormTitle(formKey: String, title: String) = send {
+        setScheduleFormSetTitle(ScheduleFormStringAction.newBuilder().setFormKey(formKey).setValue(title))
+    }
+
+    fun setScheduleFormNotify(formKey: String, notify: Boolean) = send {
+        setScheduleFormSetNotify(ScheduleFormBoolAction.newBuilder().setFormKey(formKey).setValue(notify))
+    }
+
+    fun selectScheduleFormProject(formKey: String, projectKey: String, machineId: String = "") = send {
+        setScheduleFormSelectProject(
+            ScheduleFormSelectProjectAction.newBuilder()
+                .setFormKey(formKey)
+                .setProjectKey(projectKey)
+                .setMachineId(machineId),
+        )
+    }
+
+    fun selectScheduleFormMachine(formKey: String, machineId: String) = send {
+        setScheduleFormSelectMachine(ScheduleFormStringAction.newBuilder().setFormKey(formKey).setValue(machineId))
+    }
+
+    fun selectScheduleFormAgent(formKey: String, agent: Agent) = send {
+        setScheduleFormSelectAgent(ScheduleFormSelectAgentAction.newBuilder().setFormKey(formKey).setAgent(agent))
+    }
+
+    fun selectScheduleFormModel(
+        formKey: String,
+        model: String,
+        effort: String = "",
+        mode: ApprovalMode? = null,
+    ) = send {
+        val b = ScheduleFormSelectModelAction.newBuilder()
+            .setFormKey(formKey)
+            .setModel(model)
+            .setEffort(effort)
+        mode?.let { b.setMode(it) }
+        setScheduleFormSelectModel(b)
+    }
+
+    fun updateScheduleFormTiming(action: ScheduleFormUpdateTimingAction) = send {
+        setScheduleFormUpdateTiming(action)
+    }
+
+    fun submitScheduleForm(formKey: String, fullAccessConfirmed: Boolean = false) = send {
+        setScheduleFormSubmit(ScheduleFormBoolAction.newBuilder().setFormKey(formKey).setValue(fullAccessConfirmed))
+    }
+
+    fun retryScheduleFormModels(formKey: String) = send {
+        setScheduleFormRetryModels(ScheduleFormStringAction.newBuilder().setFormKey(formKey))
+    }
+
+    fun tickClock(nowMs: Long = clock()) {
+        val tz = zone()
+        send { setClockUpdated(buildLocalCalendar(nowMs, tz)) }
+        send { setScheduleLocalContext(buildScheduleLocalContext(nowMs, tz)) }
+    }
 
     fun showViewsForTest(
         home: HomeViewModel? = null,
@@ -984,10 +1410,26 @@ class CoreHost(
         quota: QuotaViewModel? = null,
         devices: DevicesViewModel? = null,
         clientDetail: ClientDetailViewModel? = null,
+        schedules: SchedulesViewModel? = null,
+        scheduleDetail: ScheduleDetailViewModel? = null,
+        scheduleForm: ScheduleFormViewModel? = null,
+        scheduleStrips: Map<String, ScheduleSessionStripViewModel> = emptyMap(),
         sessions: Map<String, SessionViewModel> = emptyMap(),
     ) {
         if (home != null || project != null || newSession != null || syncState != null) {
             testOverrideViews = true
+        }
+        schedules?.let {
+            testOverriddenTargets.add(ScreenTarget.SCREEN_TARGET_SCHEDULES)
+            _schedulesView.value = it
+        }
+        scheduleDetail?.let {
+            testOverriddenTargets.add(ScreenTarget.SCREEN_TARGET_SCHEDULE_DETAIL)
+            _scheduleDetailView.value = it
+        }
+        scheduleForm?.let {
+            testOverriddenTargets.add(ScreenTarget.SCREEN_TARGET_SCHEDULE_FORM)
+            _scheduleFormView.value = it
         }
         home?.let { _homeView.value = it }
         project?.let { _projectView.value = it }
@@ -999,6 +1441,14 @@ class CoreHost(
         quota?.let { _quotaView.value = it }
         devices?.let { _devicesView.value = it }
         clientDetail?.let { _clientDetailView.value = it }
+        if (scheduleStrips.isNotEmpty()) {
+            synchronized(scheduleStripWatchers) {
+                testScheduleStripViews.putAll(scheduleStrips)
+                for ((sid, vm) in scheduleStrips) {
+                    scheduleStripWatchers[sid]?.flow?.value = vm
+                }
+            }
+        }
         if (sessions.isNotEmpty()) {
             synchronized(sessionWatchers) {
                 testSessionViews.putAll(sessions)
