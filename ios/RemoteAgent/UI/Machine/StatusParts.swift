@@ -54,9 +54,9 @@ private struct StatusCardSurface: ViewModifier {
     func body(content: Content) -> some View {
         content
             .background(
-                RoundedRectangle(cornerRadius: 22, style: .continuous).fill(DS.lift)
+                RoundedRectangle(cornerRadius: DS.Radius.group, style: .continuous).fill(DS.lift)
                     .shadow(color: .black.opacity(scheme == .dark ? 0 : 0.07), radius: 10, y: 6))
-            .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+            .clipShape(RoundedRectangle(cornerRadius: DS.Radius.group, style: .continuous))
     }
 }
 
@@ -65,7 +65,7 @@ struct StatusCardBackground: View {
     @Environment(\.colorScheme) private var scheme
 
     var body: some View {
-        RoundedRectangle(cornerRadius: 22, style: .continuous).fill(DS.lift)
+        RoundedRectangle(cornerRadius: DS.Radius.group, style: .continuous).fill(DS.lift)
             .shadow(color: .black.opacity(scheme == .dark ? 0 : 0.07), radius: 10, y: 6)
     }
 }
@@ -176,9 +176,9 @@ struct MachineRingsCard: View {
             }
         }
         .frame(maxWidth: .infinity)
-        .background(DS.gbg, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .background(DS.gbg, in: RoundedRectangle(cornerRadius: DS.Radius.group, style: .continuous))
         .opacity(online ? 1 : 0.55)
-        .contentShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .contentShape(RoundedRectangle(cornerRadius: DS.Radius.group, style: .continuous))
         .onTapGesture { if online { onOpen() } }
         .padding(.init(top: 0, leading: 16, bottom: 12, trailing: 16))
         .accessibilityIdentifier("machine-rings")

@@ -1641,7 +1641,7 @@
   },
   {
     "path": "web/src/views/ApprovalCard.tsx",
-    "literal": "0 && !full; const clamp = docked ? 0 : denying ? REASON_LINES : cut ? CARD_LINES : 0; const always = remote.peer(remote.sessions.get(sid)?.machineId ?? \"\").capabilities?.approvalAlways; const command = (",
+    "literal": "0 && !full; const clamp = docked ? 0 : cut ? CARD_LINES : 0; const always = remote.peer(remote.sessions.get(sid)?.machineId ?? \"\").capabilities?.approvalAlways; const command = (",
     "reason": "Lexical JSX scanner false positive after routing the existing state expression through Link; all rendered labels use the unchanged i18n keys."
   },
   {
@@ -3128,5 +3128,20 @@
     "path": "clientcore/corebind/crypto.go",
     "literal": "corebind: invalid key size",
     "reason": "Developer error from the native crypto bridge; callers map it to their own failure, never rendered."
+  },
+  {
+    "path": "android/app/src/main/java/io/github/lewin671/remoteagent/ui/Join.kt",
+    "literal": "remote-agent",
+    "reason": "Product brand name displayed on the unauthenticated entry hero; identical across all locales."
+  },
+  {
+    "path": "ios/RemoteAgent/UI/Join/JoinScreen.swift",
+    "literal": "remote-agent",
+    "reason": "Product brand name displayed on the unauthenticated entry hero; identical across all locales."
+  },
+  {
+    "path": "android/app/src/main/java/io/github/lewin671/remoteagent/ui/Marks.kt",
+    "literal": "startupStatus",
+    "reason": "Internal Compose animation tooling label passed to animateFloatAsState; never rendered to UI."
   }
 ]

@@ -7,9 +7,13 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
@@ -261,7 +265,7 @@ private fun JoinContent(app: RaApp) {
     }
 
     if (checkingIdentity) {
-        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text(copy(UiMessages.securityAndroidConnecting()), color = p.ink2) }
+        StartupShell(copy(UiMessages.securityAndroidConnecting()))
         return
     }
     if (existingRemoved) {
@@ -276,13 +280,38 @@ private fun JoinContent(app: RaApp) {
     }
 
     if (mode == "entry") {
-        Column(Modifier.fillMaxSize().background(p.gbg).verticalScrollFaded(p.gbg)) {
-            LargeTitle(copy(UiMessages.securityJoinAccount()))
-            Group(rows = listOf(
-                { GRow(copy(UiMessages.securityCreateAccount()), onClick = { mode = "create" }, chevron = true) },
-                { GRow(copy(UiMessages.securityJoinAnExistingAccount()), onClick = { mode = "join" }, chevron = true) },
-                { GRow(copy(UiMessages.securityRecoverManagementWithARecoveryCode()), onClick = { mode = "recover" }, chevron = true) },
-            ))
+        BoxWithConstraints(Modifier.fillMaxSize().background(p.paper)) {
+            val minH = maxHeight
+            Column(
+                Modifier
+                    .fillMaxSize()
+                    .verticalScrollFaded(p.paper)
+                    .heightIn(min = minH)
+                    .padding(vertical = 24.dp),
+                verticalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Column(Modifier.fillMaxWidth().padding(start = 24.dp, end = 24.dp, top = 28.dp)) {
+                    AppMarkBadge(size = 56.dp, corner = 14.dp)
+                    Spacer(Modifier.height(18.dp))
+                    Text("remote-agent", style = T.title, color = p.ink)
+                    Spacer(Modifier.height(8.dp))
+                    Text(copy(UiMessages.securityControlAiCodingClisOnYourComputerFromAny()), style = T.s17, color = p.ink2)
+                }
+                Column(Modifier.fillMaxWidth().padding(top = 28.dp)) {
+                    Group(rows = listOf(
+                        { EntryRow(copy(UiMessages.securityCreateAccount()), copy(UiMessages.securityThisDeviceBecomesTheManagingClient())) { mode = "create" } },
+                        { EntryRow(copy(UiMessages.securityJoinAnExistingAccount()), copy(UiMessages.securityJoinWithACodeFromTheManagingClient())) { mode = "join" } },
+                        { EntryRow(copy(UiMessages.securityRecoverManagementWithARecoveryCode()), copy(UiMessages.securityUseWhenTheManagingClientIsLost())) { mode = "recover" } },
+                    ))
+                    Text(
+                        copy(UiMessages.securityEntryE2EeNote()),
+                        style = T.s13,
+                        color = p.ink2,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 4.dp),
+                    )
+                }
+            }
         }
         return
     }
@@ -583,5 +612,22 @@ private fun RejoinButton(app: RaApp, title: String) {
     advice?.let { risk ->
         Confirm(copy(UiMessages.securityDeleteLocalKeysAndRejoin()), authorityExitAdvice(risk, copy) + copy(UiMessages.securityAndroidThisDeletesTheAccountKeysAndCacheOnThisPhone()), copy(UiMessages.securityRejoin()), danger = true,
             onDismiss = { advice = null }) { leave(true) }
+    }
+}
+
+@Composable
+private fun EntryRow(title: String, subtitle: String, onClick: () -> Unit) {
+    val p = pal
+    Row(
+        Modifier.fillMaxWidth().heightIn(min = 50.dp).clickable(onClick = onClick)
+            .padding(start = 18.dp, end = 16.dp, top = 12.dp, bottom = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text(title, style = T.s17, color = p.ink)
+            Text(subtitle, style = T.s13, color = p.ink2, modifier = Modifier.padding(top = 2.dp))
+        }
+        Arrow(p.ink3, T.s15)
     }
 }

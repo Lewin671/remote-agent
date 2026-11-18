@@ -742,7 +742,7 @@ function usePush(remote: Remote) {
   else if (st === "denied")
     warn = (
       <div className="set-banners">
-        <Banner kind="warn" action={help ? undefined : l10n.t("settings.how_to_enable")} onAction={() => setHelp(true)}>
+        <Banner action={help ? undefined : l10n.t("settings.how_to_enable")} onAction={() => setHelp(true)}>
           {help ? l10n.t("settings.notification_permission_help") : l10n.t("settings.the_browser_denied_notification_permission")}
         </Banner>
       </div>
@@ -750,7 +750,7 @@ function usePush(remote: Remote) {
   else if (!prefs.attention && !prefs.turns)
     warn = (
       <div className="set-banners">
-        <Banner kind="warn" action={l10n.t("settings.enable")} onAction={busy ? undefined : () => void change({ ...prefs, attention: true })}>
+        <Banner action={l10n.t("settings.enable")} onAction={busy ? undefined : () => void change({ ...prefs, attention: true })}>
           {l10n.t("settings.session_alerts_are_off_you_will_not_be_notified")}</Banner>
       </div>
     );

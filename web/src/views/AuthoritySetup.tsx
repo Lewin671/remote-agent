@@ -91,21 +91,32 @@ export function AccountEntry({
   if (!mode)
     return (
       <div className="setup authority-setup account-entry">
-        <h3 className="hl">remote-agent</h3>
-        <div className="hl-sub">{l10n.t("security.control_ai_coding_clis_on_your_computer_from_any")}</div>
-        <div className="grp">
-          <button className="row entry-row" aria-label={l10n.t("security.create_account")} onClick={() => setMode("create")}>
-            <span className="row-name">{l10n.t("security.create_account")}<small>{l10n.t("security.this_device_becomes_the_managing_client")}</small></span>
-            <span className="v"><ChevronRight /></span>
-          </button>
-          <button className="row entry-row" aria-label={l10n.t("security.join_an_existing_account")} onClick={() => setMode("join")}>
-            <span className="row-name">{l10n.t("security.join_an_existing_account")}<small>{l10n.t("security.join_with_a_code_from_the_managing_client")}</small></span>
-            <span className="v"><ChevronRight /></span>
-          </button>
-          <button className="row entry-row" aria-label={l10n.t("security.recover_management_with_a_recovery_code")} onClick={() => setMode("recovery")}>
-            <span className="row-name">{l10n.t("security.recover_management_with_a_recovery_code")}<small>{l10n.t("security.use_when_the_managing_client_is_lost")}</small></span>
-            <span className="v"><ChevronRight /></span>
-          </button>
+        <div className="entry-hero">
+          <div className="appmark" aria-hidden="true">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round">
+              <path d="m6.2 7.2 5.4 4.8-5.4 4.8" />
+              <path d="M13.2 16.8h4.8" />
+            </svg>
+          </div>
+          <h3 className="hl">remote-agent</h3>
+          <p className="hl-sub">{l10n.t("security.control_ai_coding_clis_on_your_computer_from_any")}</p>
+        </div>
+        <div className="entry-actions">
+          <div className="grp">
+            <button className="row entry-row" aria-label={l10n.t("security.create_account")} onClick={() => setMode("create")}>
+              <span className="row-name">{l10n.t("security.create_account")}<small>{l10n.t("security.this_device_becomes_the_managing_client")}</small></span>
+              <span className="v"><ChevronRight /></span>
+            </button>
+            <button className="row entry-row" aria-label={l10n.t("security.join_an_existing_account")} onClick={() => setMode("join")}>
+              <span className="row-name">{l10n.t("security.join_an_existing_account")}<small>{l10n.t("security.join_with_a_code_from_the_managing_client")}</small></span>
+              <span className="v"><ChevronRight /></span>
+            </button>
+            <button className="row entry-row" aria-label={l10n.t("security.recover_management_with_a_recovery_code")} onClick={() => setMode("recovery")}>
+              <span className="row-name">{l10n.t("security.recover_management_with_a_recovery_code")}<small>{l10n.t("security.use_when_the_managing_client_is_lost")}</small></span>
+              <span className="v"><ChevronRight /></span>
+            </button>
+          </div>
+          <p className="gf entry-note">{l10n.t("security.entry_e2ee_note")}</p>
         </div>
         {error && <div className="set-banners"><Banner kind="err">{error}</Banner></div>}
       </div>

@@ -85,14 +85,14 @@ val LightPalette = Palette(
 )
 
 val DarkPalette = Palette(
-    paper = Color(0xFF000000), gbg = Color(0xFF1C1C1E), ink = Color(0xFFF5F5F7), ink2 = Color(0xFFA1A1A6), ink3 = Color(0xFF6E6E73),
-    faint = Color(0xFF48484A), sep = Color(0x1FFFFFFF), fill = Color(0x17FFFFFF), fill2 = Color(0x26FFFFFF),
-    btn = Color(0xFFF5F5F7), btnFg = Color(0xFF000000), bubble = Color(0xFF2C2C2E),
+    paper = Color(0xFF0C0C0E), gbg = Color(0xFF1C1C20), ink = Color(0xFFF5F5F7), ink2 = Color(0xFFA1A1A8), ink3 = Color(0xFF6E6E73),
+    faint = Color(0xFF48484A), sep = Color(0x1AFFFFFF), fill = Color(0x12FFFFFF), fill2 = Color(0x21FFFFFF),
+    btn = Color(0xFFF5F5F7), btnFg = Color(0xFF0C0C0E), bubble = Color(0xFF26262B),
     blue = Color(0xFF4DA3FF), orange = Color(0xFFFF9F2E), orangeInk = Color(0xFFFFB25C), orangeSoft = Color(0x24FF9F2E),
     green = Color(0xFF32D15D), yellow = Color(0xFFFFD60A), red = Color(0xFFFF5A50),
-    tc = Color(0xFF242426), tcLine = Color(0x24FFFFFF), term = Color(0xFF0D0D0F),
-    glass = Color(0xA8323236), glassLine = Color(0x21FFFFFF), glassShadow = Color(0x80000000), float = Color(0x99000000),
-    raised = Color(0xFF2C2C2E), dark = true,
+    tc = Color(0xFF141417), tcLine = Color(0x1FFFFFFF), term = Color(0xFF0D0D0F),
+    glass = Color(0xAD222226), glassLine = Color(0x1FFFFFFF), glassShadow = Color(0x85000000), float = Color(0xA6000000),
+    raised = Color(0xFF28282D), dark = true,
 )
 
 val LocalPalette = staticCompositionLocalOf { LightPalette }
@@ -122,19 +122,20 @@ object CardColors {
     val field = Color(0x1AFFFFFF)
 }
 
-/** Corner radii (design-system §4): only these values. */
+/** Corner radii (design-system §4): 5-tier phone ladder 6 / 12 / 18 / 24 / 28. */
 object Radii {
     val R6 = RoundedCornerShape(6.dp)
-    val R14 = RoundedCornerShape(14.dp)
-    val R16 = RoundedCornerShape(16.dp)
+    val R12 = RoundedCornerShape(12.dp)
+    val R14 = R12
+    val R16 = R12
     val R18 = RoundedCornerShape(18.dp)
-    val R22 = RoundedCornerShape(22.dp)
-    val R20 = RoundedCornerShape(20.dp)
+    val R20 = R18
+    val R22 = R18
     val R24 = RoundedCornerShape(24.dp)
     val R28 = RoundedCornerShape(28.dp)
-    val R30 = RoundedCornerShape(30.dp)
+    val R30 = R24
     /** The top corners of a bottom sheet. */
-    val sheet = RoundedCornerShape(topStart = 38.dp, topEnd = 38.dp)
+    val sheet = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)
     /** Half the height: buttons, glass, segmented controls, tabs, bubbles. */
     val Pill = RoundedCornerShape(50)
 }

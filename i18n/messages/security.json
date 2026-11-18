@@ -3836,9 +3836,25 @@
   },
   {
     "key": "security.control_ai_coding_clis_on_your_computer_from_any",
-    "zh-CN": "在任何设备上操作电脑里的 AI 编程 CLI",
-    "en": "Control AI coding CLIs on your computer from any device",
-    "notes": "AuthoritySetup 页面或对应功能的界面正文/短标签。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "zh-CN": "在手机或任何浏览器里，接着用电脑 tmux 里的编程 CLI。",
+    "en": "Continue using coding CLIs inside tmux on your computer from your phone or any browser.",
+    "notes": "AuthoritySetup / JoinScreen 入口页的一句话副标题，无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.entry_e2ee_note",
+    "zh-CN": "中继服务器只转发密文，密钥留在你的设备里。",
+    "en": "The relay server forwards ciphertext only; keys stay on your device.",
+    "notes": "AuthoritySetup / JoinScreen 入口页底部的端到端加密说明，无变量。",
     "params": {},
     "platforms": [
       "web",

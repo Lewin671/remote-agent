@@ -35,44 +35,46 @@ enum DS {
 
     // Surfaces.
 
-    /// The page: white, pure black in the dark.
-    static let paper = Color(uiColor: .systemBackground)
+    /// The page: white, #0C0C0E in the dark.
+    static let paper = dynamic(0xFFFFFF, 0x0C0C0E)
     /// The grey surface on the page: cards, grouped lists, the list of what waits, notices.
-    static let gbg = Color(uiColor: .secondarySystemBackground)
+    static let gbg = dynamic(0xF5F5F7, 0x1C1C20)
     /// The rounded lists on a sheet's `gbg`: white, one grey up from `gbg` in the dark.
-    static let raised = dynamic(0xFFFFFF, 0x2C2C2E)
+    static let raised = dynamic(0xFFFFFF, 0x28282D)
     /// Level-3 anchored panels and their half-point rim.
     static let popover = dynamic(0xFFFFFF, 0x2B2B30)
     static let rim = dynamic(0x000000, 0xFFFFFF, alpha: (0.08, 0.10))
-    /// Fields, the ＋ circle, inline code.
-    static let fill = dynamic(0x000000, 0xFFFFFF, alpha: (0.05, 0.09))
+    /// Fields, the ＋ circle, inline code, bar track.
+    static let fill = dynamic(0x000000, 0xFFFFFF, alpha: (0.05, 0.07))
     /// Secondary buttons, a segmented control's groove, the chosen tab's ground, project avatars.
-    static let fill2 = dynamic(0x000000, 0xFFFFFF, alpha: (0.09, 0.15))
+    static let fill2 = dynamic(0x000000, 0xFFFFFF, alpha: (0.09, 0.13))
     /// Your message's bubble.
-    static let bubble = dynamic(0xF0F0F3, 0x2C2C2E)
-    /// The cards of 电脑状态 (`lift`): white, one grey up from the black page in the dark.
-    static let lift = dynamic(0xFFFFFF, 0x1C1C1E)
-    /// The page 电脑状态 is drawn on, behind its `lift` cards: the mockup's `gbg` there (F2F2F7, pure black in the dark).
-    static let liftPage = dynamic(0xF2F2F7, 0x000000)
+    static let bubble = dynamic(0xF0F0F3, 0x26262B)
+    /// The cards of 电脑状态 (`lift`): white, one grey up from the page in the dark.
+    static let lift = dynamic(0xFFFFFF, 0x1C1C20)
+    /// The page 电脑状态 is drawn on, behind its `lift` cards: F2F2F7, #0C0C0E in the dark.
+    static let liftPage = dynamic(0xF2F2F7, 0x0C0C0E)
 
     // Text and graphics.
 
     /// Text, titles, main lines.
     static let ink = Color(uiColor: .label)
     /// Second lines, metadata, status words, times. The only other colour for text to be read.
-    static let ink2 = dynamic(0x6E6E73, 0xA1A1A6)
+    static let ink2 = dynamic(0x6E6E73, 0xA1A1A8)
     /// Arrows, placeholders, the idle ring: graphics, never text to be read.
     static let ink3 = dynamic(0xA1A1A6, 0x6E6E73)
     /// The not-connected dot, thin outlines of waiting bubbles, a quote's bar.
     static let faint = dynamic(0xD2D2D7, 0x48484A)
     /// 1 pt separators.
-    static let sep = dynamic(0x000000, 0xFFFFFF, alpha: (0.09, 0.12))
+    static let sep = dynamic(0x000000, 0xFFFFFF, alpha: (0.09, 0.10))
+    /// Quota progress fill for normal (above 20%) bars.
+    static let barFg = dynamic(0x1D1D1F, 0xF5F5F7, alpha: (0.30, 0.32))
 
     // The one solid button of a screen.
 
     /// 墨色: near black, near white in the dark.
     static let btn = dynamic(0x1D1D1F, 0xF5F5F7)
-    static let btnFg = dynamic(0xFFFFFF, 0x000000)
+    static let btnFg = dynamic(0xFFFFFF, 0x0C0C0E)
 
     // Colours that each mean one thing.
 
@@ -94,9 +96,9 @@ enum DS {
     // The dark card and the terminal, dark in both themes.
 
     /// The dark card's ground.
-    static let tc = dynamic(0x1D1D1F, 0x242426)
+    static let tc = dynamic(0x1D1D1F, 0x141417)
     /// The dark card's outline, only in the dark, where its ground is near the page's.
-    static let tcLine = dynamic(0x000000, 0xFFFFFF, alpha: (0, 0.14))
+    static let tcLine = dynamic(0x000000, 0xFFFFFF, alpha: (0, 0.12))
     /// The terminal's ground.
     static let term = dynamic(0x131315, 0x0D0D0F)
 
@@ -114,23 +116,23 @@ enum DS {
         static let card: CGFloat = 16
     }
 
-    /// Corner radii (design-system §4). A pill is a `Capsule`.
+    /// Corner radii (design-system §4): 5-tier phone ladder 6 / 12 / 18 / 24 / 28. A pill is a `Capsule`.
     enum Radius {
         /// Inline code, an image's badge.
         static let inline: CGFloat = 6
         /// Choices on a list, small buttons.
-        static let small: CGFloat = 10
-        static let code: CGFloat = 14
-        static let command: CGFloat = 16
-        static let notice: CGFloat = 18
-        static let group: CGFloat = 20
+        static let small: CGFloat = 12
+        static let code: CGFloat = 12
+        static let command: CGFloat = 12
+        static let notice: CGFloat = 12
+        static let group: CGFloat = 18
         /// The list of what waits.
-        static let pending: CGFloat = 24
-        static let card: CGFloat = 28
+        static let pending: CGFloat = 18
+        static let card: CGFloat = 24
         /// The dark card and dialogs.
-        static let darkCard: CGFloat = 30
+        static let darkCard: CGFloat = 24
         /// A bottom sheet's top corners.
-        static let sheet: CGFloat = 38
+        static let sheet: CGFloat = 28
     }
 
     /// The smallest side of anything that can be tapped.

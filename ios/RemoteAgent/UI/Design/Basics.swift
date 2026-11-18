@@ -304,6 +304,52 @@ struct AppMark: Shape {
             .frame(width: size * 261 / 202, height: size)
             .accessibilityHidden(true)
     }
+
+    /// Monochrome `>_` badge on `gbg` with a hairline rim (client-v63 #appmark).
+    static func badge(size: CGFloat = 56, radius: CGFloat = 14) -> some View {
+        let shape = RoundedRectangle(cornerRadius: radius, style: .continuous)
+        return ZStack {
+            shape.fill(DS.gbg)
+            shape.strokeBorder(DS.sep, lineWidth: 0.5)
+            view(size: size <= 48 ? 10 : 12, color: DS.ink)
+        }
+        .frame(width: size, height: size)
+        .accessibilityHidden(true)
+    }
+}
+
+/// Centred AppMark startup placeholder; [status] fades in after 300ms so fast cold starts stay quiet.
+struct StartupShell: View {
+    var status: String? = nil
+    @State private var showStatus = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    var body: some View {
+        ZStack {
+            DS.paper.ignoresSafeArea()
+            VStack(spacing: 14) {
+                AppMark.badge(size: 48, radius: 12)
+                if let status, !status.isEmpty {
+                    Text(status)
+                        .font(.footnote)
+                        .foregroundStyle(DS.ink2)
+                        .opacity(showStatus ? 1 : 0)
+                }
+            }
+            .padding(24)
+        }
+        .task(id: status) {
+            showStatus = false
+            guard let status, !status.isEmpty else { return }
+            try? await Task.sleep(for: .milliseconds(300))
+            guard !Task.isCancelled else { return }
+            if reduceMotion {
+                showStatus = true
+            } else {
+                withAnimation(.easeOut(duration: 0.12)) { showStatus = true }
+            }
+        }
+    }
 }
 
 // MARK: - Scroll edge fades

@@ -1643,6 +1643,7 @@ const KeySecurityDeviceInformationChangedTheOriginalTransferRequestWasNot = "sec
 const KeySecurityDeviceJoined = "security.device_joined"
 const KeySecurityDuration48Hours = "security.duration_48_hours"
 const KeySecurityEligibleAt = "security.eligible_at"
+const KeySecurityEntryE2EeNote = "security.entry_e2ee_note"
 const KeySecurityExit = "security.exit"
 const KeySecurityExitAndDeleteLocalKeys = "security.exit_and_delete_local_keys"
 const KeySecurityExitAndStartOver = "security.exit_and_start_over"

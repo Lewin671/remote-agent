@@ -435,13 +435,13 @@ internal fun MachinesGroup(
     Spacer(Modifier.height(12.dp))
 }
 
-/** One computer's card: gbg, radius 28, outlined only when it is away. */
+/** One computer's card: gbg, radius 24, outlined only when it is away. */
 @Composable
 private fun MachineCard(m: MachineListCardView, onClick: () -> Unit) {
     val p = pal
     Column(
-        Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, bottom = 10.dp).clip(Radii.R28)
-            .then(if (m.online) Modifier.background(p.gbg) else Modifier.border(0.5.dp, p.sep, Radii.R28))
+        Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, bottom = 10.dp).clip(Radii.R24)
+            .then(if (m.online) Modifier.background(p.gbg) else Modifier.border(0.5.dp, p.sep, Radii.R24))
             .clickable(onClick = onClick).padding(18.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -467,8 +467,8 @@ private fun MachineCard(m: MachineListCardView, onClick: () -> Unit) {
                     }
                     Text(uiText(row.remainingText), style = if (low) T.s13b else T.s13, color = if (low) p.orangeInk else p.ink2)
                 }
-                Box(Modifier.padding(top = 6.dp).fillMaxWidth().height(5.dp).clip(Radii.Pill).background(p.fill2)) {
-                    Box(Modifier.fillMaxWidth((left / 100f).coerceIn(0f, 1f)).height(5.dp).clip(Radii.Pill).background(if (low) p.orange else p.ink))
+                Box(Modifier.padding(top = 6.dp).fillMaxWidth().height(4.dp).clip(Radii.Pill).background(p.fill)) {
+                    Box(Modifier.fillMaxWidth((left / 100f).coerceIn(0f, 1f)).height(4.dp).clip(Radii.Pill).background(if (low) p.orange else p.ink.copy(alpha = if (p.dark) 0.32f else 0.30f)))
                 }
                 val reset = uiText(row.resetText)
                 if (reset.isNotEmpty()) Text(reset, style = T.s13, color = p.ink2, modifier = Modifier.padding(top = 4.dp))

@@ -34,7 +34,7 @@ struct RootView: View {
     @ViewBuilder private var main: some View {
         switch model.stage {
         case .loading:
-            Page { Color.clear }
+            StartupShell()
         case .failed(let why):
             Page {
                 VStack(spacing: 0) {

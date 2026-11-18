@@ -197,11 +197,11 @@ fun TextAction(text: String, onClick: () -> Unit, modifier: Modifier = Modifier,
     }
 }
 
-/** A grouped list (design-system §6 分组圆角列表): rows on one card, radius 20, 16 in from the sides, thin lines between them; paper on a grey page, gbg on paper. */
+/** A grouped list (design-system §6 分组圆角列表): rows on one card, radius 18, 16 in from the sides, thin lines between them; paper on a grey page, gbg on paper. */
 @Composable
 fun Group(modifier: Modifier = Modifier, rows: List<@Composable () -> Unit>) {
     val p = pal
-    Column(modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, bottom = 12.dp).clip(Radii.R20).background(if (LocalOnSoft.current) p.raised else p.gbg)) {
+    Column(modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, bottom = 12.dp).clip(Radii.R18).background(if (LocalOnSoft.current) p.raised else p.gbg)) {
         rows.forEachIndexed { i, r ->
             Box(if (i > 0) Modifier.topLine(p.sep, 18.dp) else Modifier) { r() }
         }
@@ -378,14 +378,14 @@ fun ListItem(title: String, desc: String? = null, checked: Boolean = false, onCl
     }
 }
 
-/** The rounded list [ListItem]s sit in (design-system §6): raised in a sheet or on gbg, gbg on paper; radius 20. */
+/** The rounded list [ListItem]s sit in (design-system §6): raised in a sheet or on gbg, gbg on paper; radius 18. */
 @Composable
 fun SheetList(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
     val p = pal
-    Column(modifier.fillMaxWidth().clip(Radii.R20).background(if (LocalOnSoft.current) p.raised else p.gbg), content = content)
+    Column(modifier.fillMaxWidth().clip(Radii.R18).background(if (LocalOnSoft.current) p.raised else p.gbg), content = content)
 }
 
-/** A dialog (design-system §6 对话框): gbg, radius 30, floating; 取消 at the left, the confirmation at the right, ink or red. */
+/** A dialog (design-system §6 对话框): gbg, radius 24, floating; 取消 at the left, the confirmation at the right, ink or red. */
 @Composable
 fun Alert(title: String, text: String, confirm: String, danger: Boolean = false, onDismiss: () -> Unit, onConfirm: () -> Unit) {
     DialogCard(onDismiss) {
@@ -398,13 +398,13 @@ fun Alert(title: String, text: String, confirm: String, danger: Boolean = false,
     }
 }
 
-/** The shell of a dialog: centred, at most 340 wide, gbg, radius 30, the float shadow. */
+/** The shell of a dialog: centred, at most 340 wide, gbg, radius 24, the float shadow. */
 @Composable
 fun DialogCard(onDismiss: () -> Unit, content: @Composable ColumnScope.() -> Unit) {
     val p = pal
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         Box(Modifier.fillMaxWidth().padding(horizontal = 28.dp).imePadding(), contentAlignment = Alignment.Center) {
-            Column(Modifier.widthIn(max = 340.dp).fillMaxWidth().floating(p, Radii.R30).clip(Radii.R30).background(p.gbg).padding(22.dp), content = content)
+            Column(Modifier.widthIn(max = 340.dp).fillMaxWidth().floating(p, Radii.R24).clip(Radii.R24).background(p.gbg).padding(22.dp), content = content)
         }
     }
 }
@@ -441,7 +441,7 @@ fun ActionSheet(info: (@Composable () -> Unit)?, groups: List<List<SheetAction>>
     Sheet(onClose = { if (!busy) onDismiss() }, canDismiss = !busy) {
         if (info != null) Box(Modifier.fillMaxWidth().padding(start = 8.dp, end = 8.dp, bottom = 16.dp), contentAlignment = Alignment.CenterStart) { info() }
         groups.filter { it.isNotEmpty() }.forEachIndexed { gi, g ->
-            Column(Modifier.fillMaxWidth().padding(top = if (gi > 0) 12.dp else 0.dp).clip(Radii.R20).background(p.raised)) {
+            Column(Modifier.fillMaxWidth().padding(top = if (gi > 0) 12.dp else 0.dp).clip(Radii.R18).background(p.raised)) {
                 g.forEachIndexed { i, a -> ActionSheetRow(a, first = i == 0) { if (!a.keepOpen) onDismiss(); a.onClick() } }
             }
         }
@@ -485,19 +485,19 @@ internal fun ActionSheetRow(a: SheetAction, first: Boolean = true, onClick: () -
     }
 }
 
-/** A code or command block outside the chat: gbg, radius 14, mono 13 ink2 (design-system §6 代码块). */
+/** A code or command block outside the chat: gbg, radius 12, mono 13 ink2 (design-system §6 代码块). */
 @Composable
 fun Code(text: String, modifier: Modifier = Modifier, maxLines: Int = Int.MAX_VALUE, bg: Color? = null) {
     val p = pal
-    Box(modifier.fillMaxWidth().clip(Radii.R14).background(bg ?: if (LocalOnSoft.current) p.raised else p.gbg).padding(horizontal = 14.dp, vertical = 10.dp)) {
+    Box(modifier.fillMaxWidth().clip(Radii.R12).background(bg ?: if (LocalOnSoft.current) p.raised else p.gbg).padding(horizontal = 14.dp, vertical = 10.dp)) {
         Text(text, style = T.mono13, color = p.ink2, maxLines = maxLines, overflow = TextOverflow.Ellipsis)
     }
 }
 
-/** A field's box: fill, radius 14, at least 48 tall (design-system §2 fill). */
+/** A field's box: fill, radius 12, at least 48 tall (design-system §2 fill). */
 @Composable
 fun FieldBox(modifier: Modifier = Modifier, content: @Composable BoxScope.() -> Unit) {
-    Box(modifier.fillMaxWidth().heightIn(min = 48.dp).clip(Radii.R14).background(pal.fill).padding(horizontal = 14.dp, vertical = 12.dp), contentAlignment = Alignment.CenterStart, content = content)
+    Box(modifier.fillMaxWidth().heightIn(min = 48.dp).clip(Radii.R12).background(pal.fill).padding(horizontal = 14.dp, vertical = 12.dp), contentAlignment = Alignment.CenterStart, content = content)
 }
 
 internal val WIDE_WINDOW_MIN_WIDTH = 840.dp

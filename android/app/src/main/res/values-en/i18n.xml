@@ -1580,7 +1580,7 @@
     <string name="security_continue_creation" formatted="false">"Continue creation"</string>
     <string name="security_continue_original_draft" formatted="false">"Continue original draft"</string>
     <string name="security_continue_the_original_recovery_or_explicitly_abandon_the_rejected" formatted="false">"Continue the original recovery or explicitly abandon the rejected recovery first"</string>
-    <string name="security_control_ai_coding_clis_on_your_computer_from_any" formatted="false">"Control AI coding CLIs on your computer from any device"</string>
+    <string name="security_control_ai_coding_clis_on_your_computer_from_any" formatted="false">"Continue using coding CLIs inside tmux on your computer from your phone or any browser."</string>
     <string name="security_create_account" formatted="false">"Create account"</string>
     <string name="security_current_managing_client" formatted="false">"Current managing client"</string>
     <string name="security_delete_local_keys_and_rejoin" formatted="false">"Delete local keys and rejoin?"</string>
@@ -1591,6 +1591,7 @@
     <string name="security_device_joined" formatted="false">"Device joined"</string>
     <string name="security_duration_48_hours" formatted="false">"48 hours"</string>
     <string name="security_eligible_at">" · Eligible at: %1$s"</string>
+    <string name="security_entry_e2ee_note" formatted="false">"The relay server forwards ciphertext only; keys stay on your device."</string>
     <string name="security_exit" formatted="false">"Exit"</string>
     <string name="security_exit_and_delete_local_keys" formatted="false">"Exit and delete local keys?"</string>
     <string name="security_exit_and_start_over" formatted="false">"Exit and start over"</string>

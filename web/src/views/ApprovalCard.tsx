@@ -27,8 +27,6 @@ export function approvalText(a: ApprovalRequested): string {
 
 /** Whole lines a card's command shows before 看完整命令. */
 export const CARD_LINES = 5;
-/** Lines it keeps while a reason is being written under it. */
-const REASON_LINES = 2;
 
 /** How many lines el's text takes as laid out, or, with no layout to
  * measure, how many lines the text has. */
@@ -145,7 +143,7 @@ export function ApprovalCard({
   const time = unlinked ? i18n.t("list_state.unlinked") : deadline ? timeoutNote && left > 0 ? i18n.t("approval.timeout_note", { remaining: minutesLeft(deadline, now) }) : minutesLeft(deadline, now) : "";
   const more = docked ? 0 : lines - CARD_LINES;
   const cut = more > 0 && !full;
-  const clamp = docked ? 0 : denying ? REASON_LINES : cut ? CARD_LINES : 0;
+  const clamp = docked ? 0 : cut ? CARD_LINES : 0;
   const always = remote.peer(remote.sessions.get(sid)?.machineId ?? "").capabilities?.approvalAlways;
   const command = (
     <>
@@ -153,14 +151,14 @@ export function ApprovalCard({
         <b>❯ </b>
         {text}
       </pre>
-      {!denying && (cut ? (
+      {cut ? (
         <div className="ml">{i18n.t("markdown.ios_hidden_lines", { count: more })}</div>
       ) : full && more > 0 ? (
         <div className="ml">
           {i18n.t("markdown.line_count", { count: lines })}
           <button aria-expanded onClick={() => setFull(false)}>{i18n.t("markdown.collapse")}</button>
         </div>
-      ) : null)}
+      ) : null}
       {truncated && <div className="ml red">{approvalTruncatedMessage()}</div>}
       {!denying && a.description && <div className="y">{approvalDisplay(a.description)}</div>}
     </>

@@ -1160,7 +1160,7 @@
 "security_continue_creation" = "Continue creation";
 "security_continue_original_draft" = "Continue original draft";
 "security_continue_the_original_recovery_or_explicitly_abandon_the_rejected" = "Continue the original recovery or explicitly abandon the rejected recovery first";
-"security_control_ai_coding_clis_on_your_computer_from_any" = "Control AI coding CLIs on your computer from any device";
+"security_control_ai_coding_clis_on_your_computer_from_any" = "Continue using coding CLIs inside tmux on your computer from your phone or any browser.";
 "security_create_account" = "Create account";
 "security_current_managing_client" = "Current managing client";
 "security_delete_local_keys_and_rejoin" = "Delete local keys and rejoin?";
@@ -1171,6 +1171,7 @@
 "security_device_joined" = "Device joined";
 "security_duration_48_hours" = "48 hours";
 "security_eligible_at" = " · Eligible at: %1$@";
+"security_entry_e2ee_note" = "The relay server forwards ciphertext only; keys stay on your device.";
 "security_exit" = "Exit";
 "security_exit_and_delete_local_keys" = "Exit and delete local keys?";
 "security_exit_and_start_over" = "Exit and start over";

@@ -5057,6 +5057,10 @@ public enum L10n {
         let key = "security_eligible_at"
         return format(key, locale: locale, args: [value])
     }
+    public static func securityEntryE2EeNote(locale: String = MessageLocale.current) -> String {
+        let key = "security_entry_e2ee_note"
+        return format(key, locale: locale, args: [])
+    }
     public static func securityExit(locale: String = MessageLocale.current) -> String {
         let key = "security_exit"
         return format(key, locale: locale, args: [])
@@ -13305,6 +13309,10 @@ public enum L10nMessage {
         let key = "security_eligible_at"
         return LocalizedMessage(key: key, arguments: [.string(value)])
     }
+    public static func securityEntryE2EeNote() -> LocalizedMessage {
+        let key = "security_entry_e2ee_note"
+        return LocalizedMessage(key: key, arguments: [])
+    }
     public static func securityExit() -> LocalizedMessage {
         let key = "security_exit"
         return LocalizedMessage(key: key, arguments: [])
@@ -17883,6 +17891,7 @@ public enum L10nText {
         case "security.device_joined": return L10n.format("security_device_joined", locale: locale, args: [])
         case "security.duration_48_hours": return L10n.format("security_duration_48_hours", locale: locale, args: [])
         case "security.eligible_at": return L10n.format("security_eligible_at", locale: locale, args: [strArg(args["value"])])
+        case "security.entry_e2ee_note": return L10n.format("security_entry_e2ee_note", locale: locale, args: [])
         case "security.exit": return L10n.format("security_exit", locale: locale, args: [])
         case "security.exit_and_delete_local_keys": return L10n.format("security_exit_and_delete_local_keys", locale: locale, args: [])
         case "security.exit_and_start_over": return L10n.format("security_exit_and_start_over", locale: locale, args: [])
@@ -17971,12 +17980,12 @@ public enum L10nText {
         case "security.ios_place_the_managing_client_s_pairing_qr_code_in": return L10n.format("security_ios_place_the_managing_client_s_pairing_qr_code_in", locale: locale, args: [])
         case "security.ios_prepare_account": return L10n.format("security_ios_prepare_account", locale: locale, args: [])
         case "security.ios_privacy_shield": return L10n.format("security_ios_privacy_shield", locale: locale, args: [])
-        case "security.ios_publication_result_unverified_continue_the_original_operation": return L10n.format("security_ios_publication_result_unverified_continue_the_original_operation", locale: locale, args: [])
         default: return nil
         }
     }
     private static func resolve9(_ key: String, args: [String: L10nTextValue], locale: String) -> String? {
         switch key {
+        case "security.ios_publication_result_unverified_continue_the_original_operation": return L10n.format("security_ios_publication_result_unverified_continue_the_original_operation", locale: locale, args: [])
         case "security.ios_publish": return L10n.format("security_ios_publish", locale: locale, args: [])
         case "security.ios_publish_new_recovery_code": return L10n.format("security_ios_publish_new_recovery_code", locale: locale, args: [])
         case "security.ios_read": return L10n.format("security_ios_read", locale: locale, args: [])
@@ -18126,12 +18135,12 @@ public enum L10nText {
         case "security.someone_is_requesting_management_takeover_with_a_recovery_code": return L10n.format("security_someone_is_requesting_management_takeover_with_a_recovery_code", locale: locale, args: [strArg(args["value"])])
         case "security.start_over": return L10n.format("security_start_over", locale: locale, args: [])
         case "security.stopped_waiting_reject_the_old_request_on_the_managing": return L10n.format("security_stopped_waiting_reject_the_old_request_on_the_managing", locale: locale, args: [])
-        case "security.submit_or_check_original_recovery": return L10n.format("security_submit_or_check_original_recovery", locale: locale, args: [])
         default: return nil
         }
     }
     private static func resolve10(_ key: String, args: [String: L10nTextValue], locale: String) -> String? {
         switch key {
+        case "security.submit_or_check_original_recovery": return L10n.format("security_submit_or_check_original_recovery", locale: locale, args: [])
         case "security.success_is_uncertain_connection_lost": return L10n.format("security_success_is_uncertain_connection_lost", locale: locale, args: [])
         case "security.take_over_management": return L10n.format("security_take_over_management", locale: locale, args: [])
         case "security.the_48_hour_wait_has_not_ended": return L10n.format("security_the_48_hour_wait_has_not_ended", locale: locale, args: [])
@@ -18281,12 +18290,12 @@ public enum L10nText {
         case "session.latest": return L10n.format("session_latest", locale: locale, args: [])
         case "session.loading_earlier": return L10n.format("session_loading_earlier", locale: locale, args: [])
         case "session.manually_closed": return L10n.format("session_manually_closed", locale: locale, args: [])
-        case "session.max_effort": return L10n.format("session_max_effort", locale: locale, args: [strArg(args["effort"])])
         default: return nil
         }
     }
     private static func resolve11(_ key: String, args: [String: L10nTextValue], locale: String) -> String? {
         switch key {
+        case "session.max_effort": return L10n.format("session_max_effort", locale: locale, args: [strArg(args["effort"])])
         case "session.mode_changed": return L10n.format("session_mode_changed", locale: locale, args: [strArg(args["value"])])
         case "session.mode_changed_by": return L10n.format("session_mode_changed_by", locale: locale, args: [strArg(args["origin"]), strArg(args["value"])])
         case "session.model_changed": return L10n.format("session_model_changed", locale: locale, args: [strArg(args["value"])])
@@ -18436,12 +18445,12 @@ public enum L10nText {
         case "settings.ios_system": return L10n.format("settings_ios_system", locale: locale, args: [])
         case "settings.ios_the_android_app_and_home_screen_web_app_can": return L10n.format("settings_ios_the_android_app_and_home_screen_web_app_can", locale: locale, args: [])
         case "settings.ios_the_computer_may_be_asleep_offline_or_not_running": return L10n.format("settings_ios_the_computer_may_be_asleep_offline_or_not_running", locale: locale, args: [])
-        case "settings.ios_the_number_on_the_sessions_tab": return L10n.format("settings_ios_the_number_on_the_sessions_tab", locale: locale, args: [])
         default: return nil
         }
     }
     private static func resolve12(_ key: String, args: [String: L10nTextValue], locale: String) -> String? {
         switch key {
+        case "settings.ios_the_number_on_the_sessions_tab": return L10n.format("settings_ios_the_number_on_the_sessions_tab", locale: locale, args: [])
         case "settings.ios_the_time_on_the_right_is_the_last_use": return L10n.format("settings_ios_the_time_on_the_right_is_the_last_use", locale: locale, args: [])
         case "settings.ios_these_libraries_are_used_by_optional_parts_of_connect": return L10n.format("settings_ios_these_libraries_are_used_by_optional_parts_of_connect", locale: locale, args: [])
         case "settings.ios_this_change_was_not_saved_the_computer_still_has": return L10n.format("settings_ios_this_change_was_not_saved_the_computer_still_has", locale: locale, args: [])
@@ -18591,12 +18600,12 @@ public enum L10nText {
         case "terminal.ios_fit_hint": return L10n.format("terminal_ios_fit_hint", locale: locale, args: [])
         case "terminal.ios_font": return L10n.format("terminal_ios_font", locale: locale, args: [])
         case "terminal.ios_font_larger": return L10n.format("terminal_ios_font_larger", locale: locale, args: [])
-        case "terminal.ios_font_smaller": return L10n.format("terminal_ios_font_smaller", locale: locale, args: [])
         default: return nil
         }
     }
     private static func resolve13(_ key: String, args: [String: L10nTextValue], locale: String) -> String? {
         switch key {
+        case "terminal.ios_font_smaller": return L10n.format("terminal_ios_font_smaller", locale: locale, args: [])
         case "terminal.ios_font_value": return L10n.format("terminal_ios_font_value", locale: locale, args: [intArg(args["size"])])
         case "terminal.ios_hide_details": return L10n.format("terminal_ios_hide_details", locale: locale, args: [])
         case "terminal.ios_keyboard_hint": return L10n.format("terminal_ios_keyboard_hint", locale: locale, args: [])

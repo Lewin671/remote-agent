@@ -24,14 +24,54 @@ struct JoinScreen: View {
             } else if selection == nil && app.securitySetup == nil {
                 Page {
                     ScrollView {
-                        VStack(alignment: .leading, spacing: 16) {
-                            LargeTitle(L10n.securityJoinAccount())
-                            Btn(L10n.securityCreateAccount(), kind: .primary) { begin(.create) }
-                            Btn(L10n.securityJoinAnExistingAccount()) { selection = "join" }
-                            Btn(L10n.securityRecoverManagementWithARecoveryCode()) { begin(.recover) }
-                            PrivacyPolicyLink().frame(maxWidth: .infinity)
-                        }.padding(16).frame(maxWidth: 480).frame(maxWidth: .infinity)
+                        VStack(alignment: .leading, spacing: 28) {
+                            VStack(alignment: .leading, spacing: 0) {
+                                AppMark.badge(size: 56, radius: 14)
+                                Text("remote-agent")
+                                    .font(.largeTitle.bold())
+                                    .foregroundStyle(DS.ink)
+                                    .padding(.top, 18)
+                                Text(L10n.securityControlAiCodingClisOnYourComputerFromAny())
+                                    .font(.body)
+                                    .foregroundStyle(DS.ink2)
+                                    .fixedSize(horizontal: false, vertical: true)
+                                    .padding(.top, 8)
+                            }
+                            .padding(.init(top: 28, leading: 24, bottom: 0, trailing: 24))
+                            Spacer(minLength: 0)
+                            VStack(spacing: 12) {
+                                VStack(spacing: 0) {
+                                    EntryRow(
+                                        title: L10n.securityCreateAccount(),
+                                        subtitle: L10n.securityThisDeviceBecomesTheManagingClient()
+                                    ) { begin(.create) }
+                                    Rectangle().fill(DS.sep).frame(height: 0.5).padding(.leading, 18)
+                                    EntryRow(
+                                        title: L10n.securityJoinAnExistingAccount(),
+                                        subtitle: L10n.securityJoinWithACodeFromTheManagingClient()
+                                    ) { selection = "join" }
+                                    Rectangle().fill(DS.sep).frame(height: 0.5).padding(.leading, 18)
+                                    EntryRow(
+                                        title: L10n.securityRecoverManagementWithARecoveryCode(),
+                                        subtitle: L10n.securityUseWhenTheManagingClientIsLost()
+                                    ) { begin(.recover) }
+                                }
+                                .background(DS.gbg, in: RoundedRectangle(cornerRadius: DS.Radius.group, style: .continuous))
+                                .padding(.horizontal, 16)
+                                Text(L10n.securityEntryE2EeNote())
+                                    .font(.footnote)
+                                    .foregroundStyle(DS.ink2)
+                                    .multilineTextAlignment(.center)
+                                    .padding(.horizontal, 24)
+                                PrivacyPolicyLink().frame(maxWidth: .infinity)
+                            }
+                        }
+                        .padding(.vertical, 24)
+                        .frame(maxWidth: 480)
+                        .containerRelativeFrame(.vertical)
+                        .frame(maxWidth: .infinity)
                     }
+                    .scrollBounceBehavior(.basedOnSize)
                 }
             } else if let model {
                 JoinFlow(model: model, discard: { await app.logout() })
@@ -41,7 +81,7 @@ struct JoinScreen: View {
                         }
                     }
             } else {
-                Page { Color.clear }
+                StartupShell(status: L10n.securityIosConnecting())
             }
         }
         .task {
@@ -247,6 +287,35 @@ private struct Compare: View {
             Hint(L10n.securityReturningStopsThisWaitRejectTheOldRequestOn())
         }
         .padding(.init(top: 24, leading: 16, bottom: 16, trailing: 16))
+    }
+}
+
+private struct EntryRow: View {
+    let title: String
+    let subtitle: String
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 12) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title)
+                        .font(.body)
+                        .foregroundStyle(DS.ink)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Text(subtitle)
+                        .font(.footnote)
+                        .foregroundStyle(DS.ink2)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                Arrow(DS.ink3)
+            }
+            .padding(.init(top: 12, leading: 18, bottom: 12, trailing: 16))
+            .frame(minHeight: 50)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(RowPressStyle())
     }
 }
 

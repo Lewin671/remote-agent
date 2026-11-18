@@ -1345,6 +1345,7 @@ object UiMessages {
     fun securityDeviceJoined(): UiMessage = UiMessage("security.device_joined", emptyMap())
     fun securityDuration48Hours(): UiMessage = UiMessage("security.duration_48_hours", emptyMap())
     fun securityEligibleAt(value: String): UiMessage = UiMessage("security.eligible_at", mapOf("value" to value))
+    fun securityEntryE2EeNote(): UiMessage = UiMessage("security.entry_e2ee_note", emptyMap())
     fun securityExit(): UiMessage = UiMessage("security.exit", emptyMap())
     fun securityExitAndDeleteLocalKeys(): UiMessage = UiMessage("security.exit_and_delete_local_keys", emptyMap())
     fun securityExitAndStartOver(): UiMessage = UiMessage("security.exit_and_start_over", emptyMap())

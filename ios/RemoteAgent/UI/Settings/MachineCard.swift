@@ -93,9 +93,9 @@ struct MachineCard: View {
                 }
                 if let left = line.left {
                     GeometryReader { box in
-                        Capsule().fill(DS.fill2)
+                        Capsule().fill(DS.fill)
                             .overlay(alignment: .leading) {
-                                Capsule().fill(line.stale ? DS.ink3 : line.low ? DS.orange : DS.ink)
+                                Capsule().fill(line.stale ? DS.ink3 : line.low ? DS.orange : DS.barFg)
                                     .frame(width: box.size.width * left)
                             }
                     }

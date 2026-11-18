@@ -490,7 +490,7 @@ private struct LaunchFailedCard: View {
             }
             .fixedSize(horizontal: false, vertical: true)
         }
-        .background(DS.gbg, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .background(DS.gbg, in: RoundedRectangle(cornerRadius: DS.Radius.group, style: .continuous))
         .accessibilityIdentifier("launch-failed-disk-full")
     }
 

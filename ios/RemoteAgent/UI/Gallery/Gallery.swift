@@ -177,8 +177,8 @@
             HStack(spacing: 10) {
                 ForEach(
                     [
-                        ("6", DS.Radius.inline), ("14", DS.Radius.code), ("18", DS.Radius.notice),
-                        ("20", DS.Radius.group), ("28", DS.Radius.card),
+                        ("6", DS.Radius.inline), ("12", DS.Radius.code), ("18", DS.Radius.group),
+                        ("24", DS.Radius.card), ("28", DS.Radius.sheet),
                     ], id: \.0
                 ) { name, r in
                     Text(name).font(.footnote).ink(DS.ink2).frame(width: 52, height: 44)

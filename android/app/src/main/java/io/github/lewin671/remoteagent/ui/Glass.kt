@@ -61,7 +61,7 @@ val FloatElevation = 16.dp
 fun Modifier.glass(p: Palette, shape: Shape, dark: Boolean = false, onGrey: Boolean = false): Modifier =
     shadow(GlassElevation, shape, clip = false, ambientColor = p.glassShadow, spotColor = p.glassShadow)
         .clip(shape)
-        .background(if (dark) Color(0xFF3C3C40) else if (onGrey) p.raised else p.gbg)
+        .background(if (dark) Color(0xFF2C2C30) else if (onGrey) p.raised else p.gbg)
         .border(0.5.dp, if (dark) Color(0x21FFFFFF) else p.glassLine, shape)
 
 /** The shadow of something floating over the page. */
@@ -110,9 +110,21 @@ fun BoxScope.EdgeFade(top: Boolean, extra: Dp, color: Color = pal.paper) {
     val bar = (if (top) WindowInsets.statusBars else WindowInsets.navigationBars).asPaddingValues()
     val inset = if (top) bar.calculateTopPadding() else bar.calculateBottomPadding()
     val height = inset + extra
-    val solid = if (height.value <= 0f) 0f else ((inset.value + extra.value * .55f) / height.value).coerceIn(0f, 1f)
-    val stops = if (top) arrayOf(0f to color, solid to color, 1f to color.copy(alpha = 0f))
-    else arrayOf(0f to color.copy(alpha = 0f), 1f - solid to color, 1f to color)
+    val isDark = pal.dark
+    val midTop = if (isDark) 0.72f else 0.68f
+    val midHigh = if (isDark) 0.95f else 0.94f
+    val stops = if (top) {
+        arrayOf(0f to color.copy(alpha = 0.76f), 0.52f to color.copy(alpha = 0.36f), 1f to color.copy(alpha = 0f))
+    } else {
+        arrayOf(
+            0f to color.copy(alpha = 0f),
+            0.30f to color.copy(alpha = midTop),
+            0.46f to color.copy(alpha = midHigh),
+            0.58f to color.copy(alpha = 0.99f),
+            0.68f to color,
+            1f to color,
+        )
+    }
     Spacer(
         Modifier.align(if (top) Alignment.TopCenter else Alignment.BottomCenter).fillMaxWidth().height(height)
             .background(Brush.verticalGradient(*stops)),

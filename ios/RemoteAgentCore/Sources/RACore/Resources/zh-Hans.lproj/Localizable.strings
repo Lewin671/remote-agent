@@ -1160,7 +1160,7 @@
 "security_continue_creation" = "继续创建账户";
 "security_continue_original_draft" = "继续原草稿";
 "security_continue_the_original_recovery_or_explicitly_abandon_the_rejected" = "请先继续原恢复或明确放弃已否决的恢复";
-"security_control_ai_coding_clis_on_your_computer_from_any" = "在任何设备上操作电脑里的 AI 编程 CLI";
+"security_control_ai_coding_clis_on_your_computer_from_any" = "在手机或任何浏览器里，接着用电脑 tmux 里的编程 CLI。";
 "security_create_account" = "创建账户";
 "security_current_managing_client" = "当前管理端";
 "security_delete_local_keys_and_rejoin" = "删除本机密钥并重新加入？";
@@ -1171,6 +1171,7 @@
 "security_device_joined" = "设备已加入";
 "security_duration_48_hours" = "48 小时";
 "security_eligible_at" = " · 可生效时间：%1$@";
+"security_entry_e2ee_note" = "中继服务器只转发密文，密钥留在你的设备里。";
 "security_exit" = "退出";
 "security_exit_and_delete_local_keys" = "退出并删除本机密钥？";
 "security_exit_and_start_over" = "退出并重新开始";

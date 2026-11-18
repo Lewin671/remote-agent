@@ -166,7 +166,7 @@ private fun TitleAndTime(title: String, time: String, style: androidx.compose.ui
 }
 
 /** The shape of a row of a grey list that is drawn a row at a time: its corners only where the list's are. */
-fun groupShape(first: Boolean, last: Boolean, radius: Int = 24): RoundedCornerShape {
+fun groupShape(first: Boolean, last: Boolean, radius: Int = 18): RoundedCornerShape {
     val top = if (first) radius.dp else 0.dp
     val bottom = if (last) radius.dp else 0.dp
     return RoundedCornerShape(top, top, bottom, bottom)

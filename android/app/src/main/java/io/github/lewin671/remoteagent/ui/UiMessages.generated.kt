@@ -4483,6 +4483,9 @@ private fun resolveUiMessage8(resources: android.content.res.Resources, message:
             val value = message.args.getValue("value") as String
             resources.getString(R.string.security_eligible_at, value)
         }
+        "security.entry_e2ee_note" -> {
+            resources.getString(R.string.security_entry_e2ee_note)
+        }
         "security.exit" -> {
             resources.getString(R.string.security_exit)
         }
@@ -4507,15 +4510,15 @@ private fun resolveUiMessage8(resources: android.content.res.Resources, message:
         "security.finish_the_current_security_operation_before_renewing" -> {
             resources.getString(R.string.security_finish_the_current_security_operation_before_renewing)
         }
-        "security.finish_the_current_security_operation_first" -> {
-            resources.getString(R.string.security_finish_the_current_security_operation_first)
-        }
         else -> null
     }
 }
 
 private fun resolveUiMessage9(resources: android.content.res.Resources, message: UiMessage): String? {
     return when (message.key) {
+        "security.finish_the_current_security_operation_first" -> {
+            resources.getString(R.string.security_finish_the_current_security_operation_first)
+        }
         "security.finish_the_original_security_operation_first" -> {
             resources.getString(R.string.security_finish_the_original_security_operation_first)
         }
@@ -4968,15 +4971,15 @@ private fun resolveUiMessage9(resources: android.content.res.Resources, message:
         "security.unknown_type" -> {
             resources.getString(R.string.security_unknown_type)
         }
-        "security.use_when_the_managing_client_is_lost" -> {
-            resources.getString(R.string.security_use_when_the_managing_client_is_lost)
-        }
         else -> null
     }
 }
 
 private fun resolveUiMessage10(resources: android.content.res.Resources, message: UiMessage): String? {
     return when (message.key) {
+        "security.use_when_the_managing_client_is_lost" -> {
+            resources.getString(R.string.security_use_when_the_managing_client_is_lost)
+        }
         "security.used" -> {
             val detail = message.args.getValue("detail") as String
             val value = message.args.getValue("value") as String
@@ -5483,15 +5486,15 @@ private fun resolveUiMessage10(resources: android.content.res.Resources, message
         "settings.android_clear_viewing_cache" -> {
             resources.getString(R.string.settings_android_clear_viewing_cache)
         }
-        "settings.android_code_paths_commands_and_terminal" -> {
-            resources.getString(R.string.settings_android_code_paths_commands_and_terminal)
-        }
         else -> null
     }
 }
 
 private fun resolveUiMessage11(resources: android.content.res.Resources, message: UiMessage): String? {
     return when (message.key) {
+        "settings.android_code_paths_commands_and_terminal" -> {
+            resources.getString(R.string.settings_android_code_paths_commands_and_terminal)
+        }
         "settings.android_compare_these_4_patterns_on_the_new_device_and_confirm" -> {
             resources.getString(R.string.settings_android_compare_these_4_patterns_on_the_new_device_and_confirm)
         }
@@ -5964,15 +5967,15 @@ private fun resolveUiMessage11(resources: android.content.res.Resources, message
         "settings.the_account_keys_in_this_browser_will_be_deleted" -> {
             resources.getString(R.string.settings_the_account_keys_in_this_browser_will_be_deleted)
         }
-        "settings.the_browser_denied_notification_permission" -> {
-            resources.getString(R.string.settings_the_browser_denied_notification_permission)
-        }
         else -> null
     }
 }
 
 private fun resolveUiMessage12(resources: android.content.res.Resources, message: UiMessage): String? {
     return when (message.key) {
+        "settings.the_browser_denied_notification_permission" -> {
+            resources.getString(R.string.settings_the_browser_denied_notification_permission)
+        }
         "settings.the_device_may_have_been_removed_the_service_reset" -> {
             resources.getString(R.string.settings_the_device_may_have_been_removed_the_service_reset)
         }
@@ -6487,15 +6490,15 @@ private fun resolveUiMessage12(resources: android.content.res.Resources, message
         "tools.background" -> {
             resources.getString(R.string.tools_background)
         }
-        "tools.background_agent" -> {
-            resources.getString(R.string.tools_background_agent)
-        }
         else -> null
     }
 }
 
 private fun resolveUiMessage13(resources: android.content.res.Resources, message: UiMessage): String? {
     return when (message.key) {
+        "tools.background_agent" -> {
+            resources.getString(R.string.tools_background_agent)
+        }
         "tools.background_returned" -> {
             resources.getString(R.string.tools_background_returned)
         }

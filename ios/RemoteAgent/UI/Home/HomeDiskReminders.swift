@@ -55,7 +55,7 @@ private struct DiskReminderCard: View {
         }
         .padding(.init(top: 13, leading: 13, bottom: 13, trailing: 14))
         .frame(maxWidth: .infinity, minHeight: DS.minHit)
-        .background(DS.gbg, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .background(DS.gbg, in: RoundedRectangle(cornerRadius: DS.Radius.group, style: .continuous))
         .contentShape(Rectangle())
     }
 }

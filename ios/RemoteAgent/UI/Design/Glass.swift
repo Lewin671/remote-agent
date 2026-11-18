@@ -75,17 +75,32 @@ private struct FloatingBar<Bar: View>: ViewModifier {
 /// The page's colour, solid at the screen's edge and gone a little past what floats there.
 struct EdgeFade: View {
     let edge: VerticalEdge
+    @Environment(\.colorScheme) private var scheme
 
     var body: some View {
         let top = edge == .top
-        LinearGradient(
-            stops: [.init(color: DS.paper, location: 0), .init(color: DS.paper.opacity(0.85), location: 0.55), .init(color: DS.paper.opacity(0), location: 1)],
-            startPoint: top ? .top : .bottom, endPoint: top ? .bottom : .top
-        )
-        .padding(top ? .bottom : .top, -20)
-        .ignoresSafeArea(edges: top ? .top : .bottom)
-        .allowsHitTesting(false)
-        .accessibilityHidden(true)
+        let dark = scheme == .dark
+        let stops: [Gradient.Stop] = if top {
+            [
+                .init(color: DS.paper.opacity(0.76), location: 0),
+                .init(color: DS.paper.opacity(0.36), location: 0.52),
+                .init(color: DS.paper.opacity(0), location: 1),
+            ]
+        } else {
+            [
+                .init(color: DS.paper, location: 0),
+                .init(color: DS.paper, location: 0.32),
+                .init(color: DS.paper.opacity(0.99), location: 0.42),
+                .init(color: DS.paper.opacity(dark ? 0.95 : 0.94), location: 0.54),
+                .init(color: DS.paper.opacity(dark ? 0.72 : 0.68), location: 0.70),
+                .init(color: DS.paper.opacity(0), location: 1),
+            ]
+        }
+        LinearGradient(stops: stops, startPoint: top ? .top : .bottom, endPoint: top ? .bottom : .top)
+            .padding(top ? .bottom : .top, -20)
+            .ignoresSafeArea(edges: top ? .top : .bottom)
+            .allowsHitTesting(false)
+            .accessibilityHidden(true)
     }
 }
 

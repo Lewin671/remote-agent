@@ -34,7 +34,7 @@ it.each([
   expect(bg(".dm .me > div")).toBe(s2);
   expect(bg(".sheet")).toBe(s3);
   // A phone keeps its own page: black in the dark theme, white in the light.
-  expect(bg(".page")).toBe(theme === "dark" ? "#000000" : "#ffffff");
+  expect(bg(".page")).toBe(theme === "dark" ? "#0c0c0e" : "#ffffff");
 });
 
 it("cuts a path in the middle: its start and its last piece stay", () => {

@@ -90,7 +90,7 @@ fun ShellPage(
     val p = pal
     Box(modifier.background(p.paper).windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal))) {
         content()
-        EdgeFade(top = true, extra = if (top != null) 66.dp else 12.dp)
+        EdgeFade(top = true, extra = if (top != null) 72.dp else 24.dp)
         EdgeFade(top = false, extra = 100.dp)
         if (top != null) Row(
             Modifier.align(Alignment.TopCenter).fillMaxWidth().windowInsetsPadding(WindowInsets.statusBars)

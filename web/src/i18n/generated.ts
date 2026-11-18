@@ -1016,6 +1016,7 @@ export interface MessageArgs {
   "security.device_joined": { [name: string]: never };
   "security.duration_48_hours": { [name: string]: never };
   "security.eligible_at": { value: string };
+  "security.entry_e2ee_note": { [name: string]: never };
   "security.exit": { [name: string]: never };
   "security.exit_and_delete_local_keys": { [name: string]: never };
   "security.exit_and_start_over": { [name: string]: never };
@@ -3109,7 +3110,7 @@ export const messages = {
     "security.continue_creation": "Continue creation",
     "security.continue_original_draft": "Continue original draft",
     "security.continue_the_original_recovery_or_explicitly_abandon_the_rejected": "Continue the original recovery or explicitly abandon the rejected recovery first",
-    "security.control_ai_coding_clis_on_your_computer_from_any": "Control AI coding CLIs on your computer from any device",
+    "security.control_ai_coding_clis_on_your_computer_from_any": "Continue using coding CLIs inside tmux on your computer from your phone or any browser.",
     "security.create_account": "Create account",
     "security.current_managing_client": "Current managing client",
     "security.delete_local_keys_and_rejoin": "Delete local keys and rejoin?",
@@ -3120,6 +3121,7 @@ export const messages = {
     "security.device_joined": "Device joined",
     "security.duration_48_hours": "48 hours",
     "security.eligible_at": " · Eligible at: {value}",
+    "security.entry_e2ee_note": "The relay server forwards ciphertext only; keys stay on your device.",
     "security.exit": "Exit",
     "security.exit_and_delete_local_keys": "Exit and delete local keys?",
     "security.exit_and_start_over": "Exit and start over",
@@ -5228,7 +5230,7 @@ export const messages = {
     "security.continue_creation": "继续创建账户",
     "security.continue_original_draft": "继续原草稿",
     "security.continue_the_original_recovery_or_explicitly_abandon_the_rejected": "请先继续原恢复或明确放弃已否决的恢复",
-    "security.control_ai_coding_clis_on_your_computer_from_any": "在任何设备上操作电脑里的 AI 编程 CLI",
+    "security.control_ai_coding_clis_on_your_computer_from_any": "在手机或任何浏览器里，接着用电脑 tmux 里的编程 CLI。",
     "security.create_account": "创建账户",
     "security.current_managing_client": "当前管理端",
     "security.delete_local_keys_and_rejoin": "删除本机密钥并重新加入？",
@@ -5239,6 +5241,7 @@ export const messages = {
     "security.device_joined": "设备已加入",
     "security.duration_48_hours": "48 小时",
     "security.eligible_at": " · 可生效时间：{value}",
+    "security.entry_e2ee_note": "中继服务器只转发密文，密钥留在你的设备里。",
     "security.exit": "退出",
     "security.exit_and_delete_local_keys": "退出并删除本机密钥？",
     "security.exit_and_start_over": "退出并重新开始",

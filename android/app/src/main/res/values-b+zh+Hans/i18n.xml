@@ -1497,7 +1497,7 @@
     <string name="security_continue_creation" formatted="false">"继续创建账户"</string>
     <string name="security_continue_original_draft" formatted="false">"继续原草稿"</string>
     <string name="security_continue_the_original_recovery_or_explicitly_abandon_the_rejected" formatted="false">"请先继续原恢复或明确放弃已否决的恢复"</string>
-    <string name="security_control_ai_coding_clis_on_your_computer_from_any" formatted="false">"在任何设备上操作电脑里的 AI 编程 CLI"</string>
+    <string name="security_control_ai_coding_clis_on_your_computer_from_any" formatted="false">"在手机或任何浏览器里，接着用电脑 tmux 里的编程 CLI。"</string>
     <string name="security_create_account" formatted="false">"创建账户"</string>
     <string name="security_current_managing_client" formatted="false">"当前管理端"</string>
     <string name="security_delete_local_keys_and_rejoin" formatted="false">"删除本机密钥并重新加入？"</string>
@@ -1508,6 +1508,7 @@
     <string name="security_device_joined" formatted="false">"设备已加入"</string>
     <string name="security_duration_48_hours" formatted="false">"48 小时"</string>
     <string name="security_eligible_at">" · 可生效时间：%1$s"</string>
+    <string name="security_entry_e2ee_note" formatted="false">"中继服务器只转发密文，密钥留在你的设备里。"</string>
     <string name="security_exit" formatted="false">"退出"</string>
     <string name="security_exit_and_delete_local_keys" formatted="false">"退出并删除本机密钥？"</string>
     <string name="security_exit_and_start_over" formatted="false">"退出并重新开始"</string>

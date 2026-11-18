@@ -47,15 +47,12 @@ import io.github.lewin671.remoteagent.proto.ResolveApprovalRequest
 /** Whole lines of a command the home's card shows before 看完整命令. */
 const val CARD_LINES = 5
 
-/** The lines it keeps while a reason for 不允许 is written under it. */
-private const val REASON_LINES = 2
-
-/** The shell: tc, radius 30, the thin edge in the dark theme; [float] when it floats over the page (docked). */
+/** The shell: tc, radius 24, the thin edge in the dark theme; [float] when it floats over the page (docked). */
 @Composable
 fun DarkCard(modifier: Modifier = Modifier, float: Boolean = false, content: @Composable ColumnScope.() -> Unit) {
     val p = pal
     Column(
-        modifier.fillMaxWidth().floating(p, Radii.R30, float).clip(Radii.R30).background(p.tc).border(0.5.dp, p.tcLine, Radii.R30).padding(18.dp),
+        modifier.fillMaxWidth().floating(p, Radii.R24, float).clip(Radii.R24).background(p.tc).border(0.5.dp, p.tcLine, Radii.R24).padding(18.dp),
         content = content,
     )
 }
@@ -122,7 +119,7 @@ fun CommandBlock(text: String, modifier: Modifier = Modifier, maxLines: Int = In
         onLines(lines)
     }
     Box(
-        modifier.fillMaxWidth().clip(Radii.R16).background(CardColors.cmd).padding(horizontal = 14.dp, vertical = 12.dp),
+        modifier.fillMaxWidth().clip(Radii.R12).background(CardColors.cmd).padding(horizontal = 14.dp, vertical = 12.dp),
     ) {
         Text(
             shown, style = T.mono13, color = CardColors.cmdText, maxLines = maxLines, overflow = TextOverflow.Ellipsis,
@@ -143,7 +140,7 @@ fun CardButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier,
     }
 }
 
-/** A field on the dark card, radius 16, 17 text; the caret is orange. */
+/** A field on the dark card, radius 12, 17 text; the caret is orange. */
 @Composable
 fun CardField(value: String, onValue: (String) -> Unit, placeholder: String, modifier: Modifier = Modifier, label: String = placeholder) {
     BasicTextField(
@@ -153,7 +150,7 @@ fun CardField(value: String, onValue: (String) -> Unit, placeholder: String, mod
         cursorBrush = SolidColor(CardColors.orange),
         maxLines = 4,
         decorationBox = { inner ->
-            Box(Modifier.fillMaxWidth().heightIn(min = 48.dp).clip(Radii.R16).background(CardColors.field).padding(horizontal = 14.dp, vertical = 13.dp)) {
+            Box(Modifier.fillMaxWidth().heightIn(min = 48.dp).clip(Radii.R12).background(CardColors.field).padding(horizontal = 14.dp, vertical = 13.dp)) {
                 if (value.isEmpty()) Text(placeholder, style = T.s17, color = CardColors.text2.copy(alpha = .5f))
                 inner()
             }
@@ -357,16 +354,14 @@ fun ApprovalCard(
         Text(uiText(card.where), style = T.s13, color = CardColors.text2, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 2.dp))
         if (command.isNotEmpty()) CommandBlock(
             command, Modifier.padding(top = 14.dp),
-            maxLines = if (denying) REASON_LINES else if (cut) CARD_LINES else Int.MAX_VALUE,
+            maxLines = if (cut) CARD_LINES else Int.MAX_VALUE,
             onLines = { lines = it },
         )
-        if (!denying) {
-            if (cut) Text(copy(UiMessages.markdownIosHiddenLines(count = more)), style = T.s13, color = CardColors.text2, modifier = Modifier.padding(top = 8.dp))
-            else if (full && more > 0) Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(copy(UiMessages.markdownLineCount(count = lines)), style = T.s13, color = CardColors.text2)
-                Box(Modifier.heightIn(min = 36.dp).clickable(role = Role.Button) { full = false }.padding(horizontal = 6.dp), contentAlignment = Alignment.Center) {
-                    Text(copy(UiMessages.markdownCollapse()), style = T.s13, color = CardColors.link)
-                }
+        if (cut) Text(copy(UiMessages.markdownIosHiddenLines(count = more)), style = T.s13, color = CardColors.text2, modifier = Modifier.padding(top = 8.dp))
+        else if (full && more > 0) Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(copy(UiMessages.markdownLineCount(count = lines)), style = T.s13, color = CardColors.text2)
+            Box(Modifier.heightIn(min = 36.dp).clickable(role = Role.Button) { full = false }.padding(horizontal = 6.dp), contentAlignment = Alignment.Center) {
+                Text(copy(UiMessages.markdownCollapse()), style = T.s13, color = CardColors.link)
             }
         }
         if (card.truncated) Text(copy(UiMessages.approvalTruncated()), style = T.s13, color = CardColors.red, modifier = Modifier.padding(top = 8.dp))

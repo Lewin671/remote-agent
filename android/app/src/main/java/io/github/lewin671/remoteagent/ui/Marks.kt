@@ -2,26 +2,46 @@ package io.github.lewin671.remoteagent.ui
 
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import io.github.lewin671.remoteagent.core.Status
 import io.github.lewin671.remoteagent.core.Tone
+import kotlinx.coroutines.delay
 
 /**
  * The status graphics (design-system §2 状态图形): one in the first column
@@ -89,5 +109,69 @@ fun Spinner(color: Color, modifier: Modifier = Modifier, size: Dp = 14.dp, strok
         val w = stroke.toPx()
         drawArc(color, -90f, 270f, useCenter = false, topLeft = androidx.compose.ui.geometry.Offset(w / 2, w / 2),
             size = androidx.compose.ui.geometry.Size(this.size.width - w, this.size.height - w), style = Stroke(w))
+    }
+}
+
+/** Monochrome `>_` badge drawn on gbg with a 0.5dp sep rim (client-v63 #appmark). */
+@Composable
+fun AppMarkBadge(size: Dp = 56.dp, corner: Dp = 14.dp, modifier: Modifier = Modifier) {
+    val p = pal
+    val iconSize = if (size <= 48.dp) 24.dp else 26.dp
+    val shape = RoundedCornerShape(corner)
+    Box(
+        modifier
+            .size(size)
+            .clip(shape)
+            .background(p.gbg)
+            .border(0.5.dp, p.sep, shape)
+            .clearAndSetSemantics {},
+        contentAlignment = Alignment.Center,
+    ) {
+        Canvas(Modifier.size(iconSize)) {
+            val s = this.size.minDimension / 24f
+            val stroke = Stroke(width = 2.3f * s, cap = StrokeCap.Round, join = StrokeJoin.Round)
+            val chevron = Path().apply {
+                moveTo(6.2f * s, 7.2f * s)
+                lineTo(11.6f * s, 12f * s)
+                lineTo(6.2f * s, 16.8f * s)
+            }
+            drawPath(chevron, color = p.ink, style = stroke)
+            val cursor = Path().apply {
+                moveTo(13.2f * s, 16.8f * s)
+                lineTo(18.0f * s, 16.8f * s)
+            }
+            drawPath(cursor, color = p.ink, style = stroke)
+        }
+    }
+}
+
+/** Centred AppMark startup placeholder; [status] fades in after 300ms so fast cold starts stay quiet. */
+@Composable
+fun StartupShell(status: String?, modifier: Modifier = Modifier) {
+    val p = pal
+    var showStatus by remember { mutableStateOf(false) }
+    LaunchedEffect(status) {
+        if (status.isNullOrEmpty()) {
+            showStatus = false
+        } else {
+            delay(300)
+            showStatus = true
+        }
+    }
+    val statusAlpha by animateFloatAsState(
+        targetValue = if (showStatus) 1f else 0f,
+        animationSpec = tween(durationMillis = if (Motion.reduced) 0 else 120),
+        label = "startupStatus",
+    )
+    Column(
+        modifier.fillMaxSize().background(p.paper).padding(24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+    ) {
+        AppMarkBadge(size = 48.dp, corner = 12.dp)
+        if (!status.isNullOrEmpty()) {
+            Spacer(Modifier.height(14.dp))
+            Text(status, style = T.s13, color = p.ink2, modifier = Modifier.alpha(statusAlpha))
+        }
     }
 }

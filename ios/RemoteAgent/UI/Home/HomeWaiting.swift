@@ -100,19 +100,17 @@ struct HomeApprovalCard: View {
 
     @ViewBuilder private var command: some View {
         let cut = more > 0 && !full
-        CommandBlock(card.body, lines: denying ? 2 : full ? nil : Self.lines, more: $more, total: $total)
+        CommandBlock(card.body, lines: full ? nil : Self.lines, more: $more, total: $total)
             .padding(.top, 14)
             .accessibilityLabel(L10n.listStateIosCommandLabel(command: card.body))
-        if !denying {
-            if cut {
-                Text(L10n.markdownIosHiddenLines(count: more)).font(.footnote).foregroundStyle(DS.ink2).padding(.top, 8)
-            } else if full && total > Self.lines {
-                HStack(spacing: 4) {
-                    Text(L10n.markdownLineCount(count: total)).font(.footnote).foregroundStyle(DS.ink2)
-                    LinkButton(L10n.markdownCollapse()) { withAnimation(Motion.enter()) { full = false } }.font(.footnote)
-                }
-                .padding(.vertical, -8).padding(.top, 8)
+        if cut {
+            Text(L10n.markdownIosHiddenLines(count: more)).font(.footnote).foregroundStyle(DS.ink2).padding(.top, 8)
+        } else if full && total > Self.lines {
+            HStack(spacing: 4) {
+                Text(L10n.markdownLineCount(count: total)).font(.footnote).foregroundStyle(DS.ink2)
+                LinkButton(L10n.markdownCollapse()) { withAnimation(Motion.enter()) { full = false } }.font(.footnote)
             }
+            .padding(.vertical, -8).padding(.top, 8)
         }
         if card.truncated {
             Text(approvalTruncatedMessage).font(.footnote).foregroundStyle(DS.red).padding(.top, 8)

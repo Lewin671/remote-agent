@@ -200,7 +200,7 @@ fun Card(
     Box(
         modifier
             .fillMaxWidth()
-            .clip(Radii.R28)
+            .clip(Radii.R24)
             .background(if (LocalOnSoft.current) p.raised else p.gbg)
             .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier),
     ) {
