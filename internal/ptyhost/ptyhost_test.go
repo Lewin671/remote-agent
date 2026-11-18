@@ -436,6 +436,36 @@ func (h *runHelper) wait(d time.Duration) error {
 	}
 }
 
+func (h *runHelper) waitDone(t *testing.T) error {
+	t.Helper()
+	select {
+	case <-h.done:
+		return h.waitErr
+	case <-t.Context().Done():
+		t.Fatalf("pty-host helper did not exit: %v", t.Context().Err())
+		return nil
+	}
+}
+
+func (h *runHelper) waitForFile(t *testing.T, path string) {
+	t.Helper()
+	for {
+		if st, err := os.Stat(path); err == nil && st.Size() > 0 {
+			return
+		}
+		select {
+		case <-h.done:
+			if st, err := os.Stat(path); err == nil && st.Size() > 0 {
+				return
+			}
+			t.Fatalf("pty-host helper exited before writing %s: %v", path, h.waitErr)
+		case <-t.Context().Done():
+			t.Fatalf("timed out waiting for %s: %v", path, t.Context().Err())
+		case <-time.After(10 * time.Millisecond):
+		}
+	}
+}
+
 func (h *runHelper) exitCode(t *testing.T) int {
 	t.Helper()
 	b, err := os.ReadFile(h.result)
@@ -477,11 +507,14 @@ func TestPtyhostRunHelper(t *testing.T) {
 	switch mode {
 	case "failed-stdout", "failed-stdout-hup":
 		stdout = failingWriter{marker: marker}
-		script = "dd if=/dev/zero bs=65536 count=128 2>/dev/null; printf complete > " + shellQuote(complete) + "; sleep 1"
+		script = "dd if=/dev/zero bs=65536 count=128 2>/dev/null; printf complete > " + shellQuote(complete)
 		if mode == "failed-stdout-hup" {
 			// Signal the child directly in this case: bulk PTY throughput
 			// must not race the host's deliberately short shutdown grace.
-			script = "trap " + shellQuote(script+"; exit 0") + ` HUP; printf ready > "$PTYHOST_TEST_GRANDCHILD"; while :; do sleep 0.01; done`
+			// Use a background sleep with wait so SIGHUP triggers the trap
+			// immediately without fork churn under heavy load.
+			trapCmd := "kill $pid 2>/dev/null; wait $pid 2>/dev/null; " + script + "; exit 0"
+			script = "trap " + shellQuote(trapCmd) + ` HUP; sleep 60 & pid=$!; printf ready > "$PTYHOST_TEST_GRANDCHILD"; wait`
 		}
 	case "blocked-input":
 		// Acknowledge the first byte before blocking further reads, so the
@@ -522,17 +555,13 @@ func TestRunDrainsOutputAfterStdoutFails(t *testing.T) {
 		t.Run(mode, func(t *testing.T) {
 			h := startRunHelper(t, mode)
 			if mode == "failed-stdout-hup" {
-				if err := waitForFile(h.grandchild, 5*time.Second); err != nil {
-					t.Fatal(err)
-				}
+				h.waitForFile(t, h.grandchild)
 				if err := syscall.Kill(h.childPID, syscall.SIGHUP); err != nil {
 					t.Fatal(err)
 				}
 			}
-			if err := waitForFile(h.marker, 5*time.Second); err != nil {
-				t.Fatal(err)
-			}
-			if err := h.wait(8 * time.Second); err != nil {
+			h.waitForFile(t, h.marker)
+			if err := h.waitDone(t); err != nil {
 				t.Fatal(err)
 			}
 			if code := h.exitCode(t); code != 0 {
