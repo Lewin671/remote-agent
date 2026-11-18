@@ -2,6 +2,7 @@ package antigravity
 
 import (
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
+	"github.com/Lewin671/remote-agent/internal/agent"
 	"os"
 	"path/filepath"
 	"strings"
@@ -26,6 +27,9 @@ func TestHookContract(t *testing.T) {
 				t.Fatal("cancel stop")
 			}
 		}
+	}
+	if e := a.HookEvents(&agent.Hook{HookEventName: "Stop", TerminationReason: "NO_TOOL_CALL"}); len(e) != 1 || e[0].GetTurnEnded().Reason != "" {
+		t.Fatal("a normal end must not carry a reason: clients show it as the turn's error")
 	}
 	if _, err := a.DecodeHook([]byte(`{"conversationId":"x"}`)); err == nil {
 		t.Fatal("guessed lifecycle event")

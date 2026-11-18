@@ -908,15 +908,16 @@ func (a *Adapter) HookEvents(h *agent.Hook) []*pb.Event {
 		}
 
 	case "Stop":
-		outcome := pb.TurnOutcome_TURN_OUTCOME_COMPLETED
+		// A turn's reason is shown as its error, so a normal end carries none.
+		ended := &pb.TurnEnded{Outcome: pb.TurnOutcome_TURN_OUTCOME_COMPLETED}
 		switch h.TerminationReason {
 		case "USER_CANCELED", "ERROR", "MAX_INVOCATIONS", "MAX_FORCED_INVOCATIONS", "MAX_TOKEN_BUDGET_EXCEEDED":
-			outcome = pb.TurnOutcome_TURN_OUTCOME_ABORTED
+			ended = &pb.TurnEnded{Outcome: pb.TurnOutcome_TURN_OUTCOME_ABORTED, Reason: h.TerminationReason}
 		case "NO_TOOL_CALL", "TERMINAL_STEP_TYPE", "TERMINAL_CUSTOM_HOOK", "INJECTED_RESPONSE":
 		default:
 			return nil
 		}
-		return []*pb.Event{{Kind: &pb.Event_TurnEnded{TurnEnded: &pb.TurnEnded{Outcome: outcome, Reason: h.TerminationReason}}}}
+		return []*pb.Event{{Kind: &pb.Event_TurnEnded{TurnEnded: ended}}}
 	}
 	return nil
 }
