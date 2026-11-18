@@ -109,6 +109,14 @@ extension Remote {
                 tracking?.observe(false, bytes, elapsedMs)
             }
 
+            if bound && hashesMatch && outerMatchesInner && signed && msg.outcome == "executed",
+               msg.errorCode.isEmpty, msg.resultAvailable,
+               let cmd, case .schedule(let req)? = cmd.kind, req.operation == "list",
+               case .schedule? = msg.kind,
+               let envBytes = try? res.result.serializedData() {
+                await keepScheduleSnapshot(effect.machineID, data: envBytes)
+            }
+
             ev.source = .daemon
             ev.notForwarded = false
             ev.attemptBound = bound

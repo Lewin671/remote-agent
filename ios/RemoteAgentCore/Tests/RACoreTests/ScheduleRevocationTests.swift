@@ -8,8 +8,7 @@ extension ServerTests {
         func snapshot(_ w: World) throws -> Data {
             var h=PBHeader();h.kind = .commandResult;h.machineID=w.daemon.id;h.sender=w.daemon.id;h.requestID="00112233445566778899aabbccddeeff"
             var result=PBCommandResult()
-            let task=ScheduleTask(id:"task",spec:ScheduleSpec(title:"private scheduled task",message:"check",trigger:ScheduleTrigger(type:"interval"),target:ScheduleTarget(type:"new_session")))
-            result.schedule.resultJson=try JSONSerialization.data(withJSONObject:["tasks":JSONSerialization.jsonObject(with:JSONEncoder().encode([task]))])
+            result.schedule.resultJson=Data(#"{"tasks":[{"id":"task","spec":{"title":"private scheduled task","message":"check","trigger":{"type":"interval"},"target":{"type":"new_session"}}}]}"#.utf8)
             return try w.phone.fixture.seal(w.daemon.account,h,result).serializedData()
         }
         @Test func revokedArchiveNeverRestoresAndLiveAndColdCachesArePruned() async throws {
@@ -17,7 +16,7 @@ extension ServerTests {
                 let cache=MemoryCache(), r=try await w.client(cache:cache), id=w.daemon.id
                 _ = await r.syncSecuritySnapshot(opId: 1, networkGeneration: 0, touch: false)
                 let bytes=try snapshot(w);await cache.putBlob(name:"schedules/"+id,data:bytes)
-                #expect(await r.cachedSchedules(id)?.count == 1)
+                #expect(await r.cachedScheduleResultJson(id) != nil)
                 try await w.phone.remove([id])
                 let snap = await r.syncSecuritySnapshot(opId: 2, networkGeneration: 0, touch: false)
                 #expect(!snap.trustedMachineIds.contains(id) && snap.archiveMachineIds.contains(id))
@@ -25,7 +24,7 @@ extension ServerTests {
                 // A stale cache copied from an older run must also be rejected cold.
                 await cache.putBlob(name:"schedules/"+id,data:bytes)
                 let cold=try await w.remote(r.account,cache:cache)
-                #expect(await cold.cachedSchedules(id) == nil)
+                #expect(await cold.cachedScheduleResultJson(id) == nil)
                 #expect(await cache.blob(name:"schedules/"+id) == nil)
                 // Cold bootstrap read prunes it even when no task screen is opened.
                 await cache.putBlob(name:"schedules/"+id,data:bytes)
@@ -46,7 +45,7 @@ extension ServerTests {
                 await cache.putBlob(name:"schedules/"+id,data:try snapshot(w))
                 let entered=Signal(), release=Signal();w.onClose { release.set() }
                 cache.hookBlob { name,value in if name=="schedules/"+id { entered.set();await release.wait() };return value }
-                let read=Task { await r.cachedSchedules(id) }
+                let read=Task { await r.cachedScheduleResultJson(id) }
                 #expect(await entered.wait())
                 try await w.phone.remove([id])
                 _ = await r.syncSecuritySnapshot(opId: 2, networkGeneration: 0, touch: false)
