@@ -973,7 +973,6 @@
     <string name="schedule_android_date" formatted="false">"日期"</string>
     <string name="schedule_android_days" formatted="false">"天"</string>
     <string name="schedule_android_delete_this_task" formatted="false">"删除这个任务？"</string>
-    <string name="schedule_android_each_run_opens_a_new_conversation_under_this_task_outside" formatted="false">"每次运行新开一个对话，归在这个任务下面，不进会话列表。完成后默认通知；关闭后仅由 agent 主动通知。"</string>
     <string name="schedule_android_end_date" formatted="false">"截止日期"</string>
     <string name="schedule_android_follow_conversation" formatted="false">"跟随对话"</string>
     <string name="schedule_android_for_example_asia_shanghai" formatted="false">"例如 Asia/Shanghai"</string>
@@ -1015,7 +1014,6 @@
     <string name="schedule_android_task" formatted="false">"任务"</string>
     <string name="schedule_android_task_not_found_it_may_have_been_deleted_on_another" formatted="false">"任务未找到，可能已在另一端删除"</string>
     <string name="schedule_android_the_end_date_is_in_the_past" formatted="false">"结束日期已经过去"</string>
-    <string name="schedule_android_the_message_is_sent_after_the_current_turn_ends_without" formatted="false">"消息等当前这一轮结束后再发，不会打断正在做的事。"</string>
     <string name="schedule_android_unit" formatted="false">"单位"</string>
     <string name="schedule_android_unknown_time" formatted="false">"时间未知"</string>
     <string name="schedule_android_unread" formatted="false">"未读"</string>

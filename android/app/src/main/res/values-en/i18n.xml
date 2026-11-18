@@ -1034,7 +1034,6 @@
     <string name="schedule_android_date" formatted="false">"Date"</string>
     <string name="schedule_android_days" formatted="false">"Days"</string>
     <string name="schedule_android_delete_this_task" formatted="false">"Delete this task?"</string>
-    <string name="schedule_android_each_run_opens_a_new_conversation_under_this_task_outside" formatted="false">"Each run opens a new conversation under this task, outside the session list. Completion notifications are on by default. When disabled, only the agent can notify you."</string>
     <string name="schedule_android_end_date" formatted="false">"End date"</string>
     <string name="schedule_android_follow_conversation" formatted="false">"Follow conversation"</string>
     <string name="schedule_android_for_example_asia_shanghai" formatted="false">"For example, Asia/Shanghai"</string>
@@ -1083,7 +1082,6 @@
     <string name="schedule_android_task" formatted="false">"Task"</string>
     <string name="schedule_android_task_not_found_it_may_have_been_deleted_on_another" formatted="false">"Task not found. It may have been deleted on another device"</string>
     <string name="schedule_android_the_end_date_is_in_the_past" formatted="false">"The end date is in the past"</string>
-    <string name="schedule_android_the_message_is_sent_after_the_current_turn_ends_without" formatted="false">"The message is sent after the current turn ends, without interrupting ongoing work."</string>
     <string name="schedule_android_unit" formatted="false">"Unit"</string>
     <string name="schedule_android_unknown_time" formatted="false">"Unknown time"</string>
     <string name="schedule_android_unread" formatted="false">"Unread"</string>

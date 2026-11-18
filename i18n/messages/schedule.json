@@ -236,20 +236,6 @@
     }
   },
   {
-    "key": "schedule.android_each_run_opens_a_new_conversation_under_this_task_outside",
-    "zh-CN": "每次运行新开一个对话，归在这个任务下面，不进会话列表。完成后默认通知；关闭后仅由 agent 主动通知。",
-    "en": "Each run opens a new conversation under this task, outside the session list. Completion notifications are on by default. When disabled, only the agent can notify you.",
-    "notes": "Android Schedules 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
-    "params": {},
-    "platforms": [
-      "android"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
     "key": "schedule.android_end_date",
     "zh-CN": "截止日期",
     "en": "End date",
@@ -787,20 +773,6 @@
       "web",
       "android",
       "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "schedule.android_the_message_is_sent_after_the_current_turn_ends_without",
-    "zh-CN": "消息等当前这一轮结束后再发，不会打断正在做的事。",
-    "en": "The message is sent after the current turn ends, without interrupting ongoing work.",
-    "notes": "Android Schedules 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
-    "params": {},
-    "platforms": [
-      "android"
     ],
     "status": {
       "zh-CN": "source",
