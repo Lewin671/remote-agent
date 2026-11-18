@@ -32,6 +32,9 @@ type Client struct {
 	// Tests use it so that command latency never depends on how quickly the
 	// machine can start a process.
 	Exec func(ctx context.Context, args []string) (string, error)
+
+	// Timeout bounds each subprocess; CommandTimeout when zero.
+	Timeout time.Duration
 }
 
 func (c *Client) bin() string {
@@ -58,7 +61,11 @@ func (c *Client) RunContext(ctx context.Context, args ...string) (string, error)
 	if c.Exec != nil {
 		return c.Exec(ctx, args)
 	}
-	ctx, cancel := context.WithTimeout(ctx, CommandTimeout)
+	bound := c.Timeout
+	if bound <= 0 {
+		bound = CommandTimeout
+	}
+	ctx, cancel := context.WithTimeout(ctx, bound)
 	defer cancel()
 	argv := c.Command(args...)
 	cmd := exec.CommandContext(ctx, argv[0], argv[1:]...)
