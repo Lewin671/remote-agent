@@ -1640,11 +1640,6 @@
     "reason": "Lexical JSX scanner false positive after routing the existing state expression through Link; all rendered labels use the unchanged i18n keys."
   },
   {
-    "path": "web/src/views/ApprovalCard.tsx",
-    "literal": "0 && !full; const clamp = docked ? 0 : cut ? CARD_LINES : 0; const always = remote.peer(remote.sessions.get(sid)?.machineId ?? \"\").capabilities?.approvalAlways; const command = (",
-    "reason": "Lexical JSX scanner false positive after routing the existing state expression through Link; all rendered labels use the unchanged i18n keys."
-  },
-  {
     "path": "web/src/views/NewSession.tsx",
     "literal": "remote.peer(m.id).reachable)?.id ?? \"\"); const m = remote.machines.get(machineId); return (",
     "reason": "Lexical JSX scanner false positive after routing the existing state expression through Link; all rendered labels use the unchanged i18n keys."
@@ -3196,7 +3191,7 @@
   },
   {
     "path": "web/src/views/ApprovalCard.tsx",
-    "literal": "0 && !full; const clamp = docked ? 0 : denying ? REASON_LINES : cut ? CARD_LINES : 0; const desc = approvalDisplay(description); const commandBody = (",
+    "literal": "0 && !full; const clamp = docked ? 0 : cut ? CARD_LINES : 0; const desc = approvalDisplay(description); const commandBody = (",
     "reason": "Lexical JSX scanner false positive: TypeScript type arguments or code between angle brackets, not rendered text."
   },
   {
