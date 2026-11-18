@@ -510,6 +510,10 @@ jobs:
           fi
           xcodebuild -quiet -test-timeouts-enabled YES -default-test-execution-time-allowance 180 -maximum-test-execution-time-allowance 180 -collect-test-diagnostics never -parallel-testing-enabled NO -jobs 4 -project ios/RemoteAgent.xcodeproj -scheme RemoteAgent -destination "$destination" -derivedDataPath "$RUNNER_TEMP/DerivedData" -clonedSourcePackagesDirPath "$RUNNER_TEMP/SourcePackages" -only-testing:RemoteAgentTests test
           rm -rf "$RUNNER_TEMP/DerivedData/Logs"
+      # The App Store archive builds Release, where DEBUG-only code is compiled out;
+      # catch a missing Release counterpart here rather than at upload time.
+      - name: App Release configuration compiles
+        run: xcodebuild -quiet -jobs 4 -project ios/RemoteAgent.xcodeproj -scheme RemoteAgent -configuration Release -destination 'generic/platform=iOS Simulator' -derivedDataPath "$RUNNER_TEMP/DerivedDataRelease" -clonedSourcePackagesDirPath "$RUNNER_TEMP/SourcePackages" ARCHS=arm64 CODE_SIGNING_ALLOWED=NO build
 
   publish:
     needs: [source, go-checks, web-checks, android-checks, android-build, dist, ios-checks]

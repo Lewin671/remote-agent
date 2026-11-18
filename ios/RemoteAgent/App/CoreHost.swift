@@ -908,7 +908,6 @@ actor CoreHost: SyncEngine {
         }
     }
 
-    #if DEBUG
     private nonisolated static func demoExecutedOutcome(
         for c: PBCoreDispatchCommandEffect,
         fill: (inout PBCommandResult) -> Void
@@ -925,6 +924,7 @@ actor CoreHost: SyncEngine {
         }
     }
 
+    #if DEBUG
     private func stepDemo(_ build: (inout PBCoreEvent) -> Void) async -> [PBCoreEffect] {
         guard !closed else { return [] }
         var envelope = PBCoreEvent()

@@ -114,6 +114,7 @@ enum HomeLaunch {
     static func value(_ name: String) -> String? { nil }
     static func flag(_ name: String) -> Bool { false }
     static func apply(_ model: AppModel, _ context: AccountContext) async {}
+    static func settled(_ model: AppModel) async {}
     #endif
 }
 
