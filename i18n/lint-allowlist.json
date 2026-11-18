@@ -3123,5 +3123,10 @@
     "path": "internal/antigravity/usage.go",
     "literal": "applyAuthResult:",
     "reason": "Log line prefix matched inside agy CLI log when extracting email fingerprint; never rendered to UI."
+  },
+  {
+    "path": "clientcore/corebind/crypto.go",
+    "literal": "corebind: invalid key size",
+    "reason": "Developer error from the native crypto bridge; callers map it to their own failure, never rendered."
   }
 ]
