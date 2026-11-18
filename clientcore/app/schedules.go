@@ -1953,9 +1953,13 @@ func (c *Core) handleScheduleFormUpdateTiming(ctx *sync.StepContext, act *corev1
 		nowMs = bounds.Cal.NowMs
 	}
 	if act.ResetDraft {
-		form.Timing = schedule.NewTimingDraft(nowMs, ss.LocalTimezone, bounds)
+		if form.Trigger.Type != "" {
+			form.Timing = schedule.TimingDraftFromTrigger(form.Trigger, nowMs, ss.LocalTimezone, bounds)
+		} else {
+			form.Timing = schedule.NewTimingDraft(nowMs, ss.LocalTimezone, bounds)
+			form.TimingApplied = false
+		}
 		form.TimingError = nil
-		form.TimingApplied = false
 		c.m.markScheduleDirty(corev1.ScreenTarget_SCREEN_TARGET_SCHEDULE_FORM)
 		return
 	}

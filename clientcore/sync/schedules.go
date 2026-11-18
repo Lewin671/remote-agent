@@ -28,13 +28,14 @@ func (e *Engine) EnsureSessionEventsLoaded(ctx *StepContext, sid string) {
 	}
 }
 
-// SessionEventsSettled reports whether sid's event history has reached a settled state (loaded cleanly or terminal error/retired).
+// SessionEventsSettled reports whether sid's event history has reached a settled state (loaded cleanly, terminal error/retired, or offline cache read finished).
 func (e *Engine) SessionEventsSettled(sid string) bool {
 	if sid == "" {
 		return true
 	}
+	offline := !e.running || e.conn != lists.ConnConnected
 	if e.sessions[sid] == nil {
-		return false
+		return offline
 	}
 	b := e.buffers[sid]
 	if b == nil {
@@ -45,5 +46,11 @@ func (e *Engine) SessionEventsSettled(sid string) bool {
 	}
 	s := e.sessions[sid]
 	hasGap := len(b.pending) > 0 || (s != nil && uint64(len(b.prefix)) < s.LastSeq)
-	return b.loaded && !hasGap
+	if b.loaded && !hasGap {
+		return true
+	}
+	if offline {
+		return !b.awaitingCache && !b.backfilling && !b.fetching
+	}
+	return false
 }

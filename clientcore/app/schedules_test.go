@@ -598,3 +598,102 @@ func TestScheduleBusinessConflictAndOperate(t *testing.T) {
 		t.Fatalf("expected LIST navigate on cancel")
 	}
 }
+
+func TestScheduleOfflineDetailResultNotStuckLoading(t *testing.T) {
+	c, batch := bootConnectedScheduleHost(t, true, 1, v1.ApprovalMode_APPROVAL_MODE_ASK)
+	defer c.Close()
+
+	listDC := findScheduleDispatches(batch, "list")[0]
+	listJSON := []byte(`{"tasks":[{"id":"t1","revision":1,"status":"active","source":"client","created_at":"2026-10-09T08:00:00Z","updated_at":"2026-10-10T08:00:00Z","spec":{"title":"Daily","message":"msg","trigger":{"type":"calendar","time":"08:00","timezone":"UTC"},"target":{"type":"new_session","cwd":"/Users/me/app","agent":"codex","mode":"ask"}},"runs":[{"id":"r1","session_id":"s-run-1","status":"completed","notified":true,"final_summary":"offline summary","ended_at":"2026-10-10T08:01:00Z"}]}]}`)
+	settleScheduleCommand(t, c, listDC, 1791633600050, listJSON, "", "")
+
+	// Go offline before opening detail.
+	c.Dispatch(&corev1.Event{
+		NowMs: 1791633600060,
+		Event: &corev1.Event_SyncLifecycle{
+			SyncLifecycle: &corev1.SyncLifecycleAction{Kind: corev1.SyncLifecycleKind_SYNC_LIFECYCLE_KIND_STOP},
+		},
+	})
+	openBatch := c.Dispatch(&corev1.Event{
+		NowMs: 1791633600070,
+		Event: &corev1.Event_ScheduleDetailOpen{
+			ScheduleDetailOpen: &corev1.ScheduleTaskRef{MachineId: "m-1", TaskId: "t1"},
+		},
+	})
+	var cacheOp uint64
+	for _, eff := range openBatch.Effects {
+		if cr := eff.GetCacheRead(); cr != nil && cr.GetEvents() != nil && cr.GetEvents().SessionId == "s-run-1" {
+			cacheOp = cr.GetEvents().OpId
+		}
+	}
+	if cacheOp != 0 {
+		c.Dispatch(&corev1.Event{
+			NowMs: 1791633600075,
+			Event: &corev1.Event_CacheEventsLoaded{
+				CacheEventsLoaded: &corev1.CacheEventsLoadedEvent{OpId: cacheOp, SessionId: "s-run-1"},
+			},
+		})
+	}
+	dvm := viewDetailVM(t, c, "m-1", "t1")
+	if dvm.ResultCard == nil || dvm.ResultCard.ResultLoading {
+		t.Fatalf("expected offline detail not stuck loading, got %+v", dvm.ResultCard)
+	}
+	if dvm.ResultCard.MarkdownBody != "offline summary" {
+		t.Fatalf("expected fallback final_summary offline, got %q", dvm.ResultCard.MarkdownBody)
+	}
+}
+
+func TestScheduleFormResetDraftPreservesCommittedTrigger(t *testing.T) {
+	c, _ := bootConnectedScheduleHost(t, true, 1, v1.ApprovalMode_APPROVAL_MODE_ASK)
+	defer c.Close()
+
+	c.Dispatch(&corev1.Event{
+		NowMs: 1791633600020,
+		Event: &corev1.Event_ScheduleFormOpen{
+			ScheduleFormOpen: &corev1.ScheduleFormOpenAction{
+				Mode:      corev1.ScheduleFormMode_SCHEDULE_FORM_MODE_CREATE_NEW,
+				MachineId: "m-1",
+			},
+		},
+	})
+	fvm := viewFormVM(t, c, "")
+	everyKind := corev1.ScheduleTimingKind_SCHEDULE_TIMING_KIND_INTERVAL
+	everyUnit := corev1.ScheduleIntervalUnit_SCHEDULE_INTERVAL_UNIT_HOURS
+	everyVal := "3"
+	c.Dispatch(&corev1.Event{
+		NowMs: 1791633600030,
+		Event: &corev1.Event_ScheduleFormUpdateTiming{
+			ScheduleFormUpdateTiming: &corev1.ScheduleFormUpdateTimingAction{
+				FormKey:  fvm.FormKey,
+				Kind:     &everyKind,
+				Interval: &everyVal,
+				Unit:     &everyUnit,
+				Apply:    true,
+			},
+		},
+	})
+	// Now start editing another value, then ResetDraft -> must revert back to every 3 hours and keep TimingApplied=true.
+	badVal := "99"
+	c.Dispatch(&corev1.Event{
+		NowMs: 1791633600040,
+		Event: &corev1.Event_ScheduleFormUpdateTiming{
+			ScheduleFormUpdateTiming: &corev1.ScheduleFormUpdateTimingAction{
+				FormKey:  fvm.FormKey,
+				Interval: &badVal,
+			},
+		},
+	})
+	c.Dispatch(&corev1.Event{
+		NowMs: 1791633600050,
+		Event: &corev1.Event_ScheduleFormUpdateTiming{
+			ScheduleFormUpdateTiming: &corev1.ScheduleFormUpdateTimingAction{
+				FormKey:    fvm.FormKey,
+				ResetDraft: true,
+			},
+		},
+	})
+	after := viewFormVM(t, c, fvm.FormKey)
+	if after.Timing.Kind != everyKind || after.Timing.Interval != "3" {
+		t.Fatalf("expected ResetDraft to restore committed every 3h timing, got kind=%v val=%q", after.Timing.Kind, after.Timing.Interval)
+	}
+}
