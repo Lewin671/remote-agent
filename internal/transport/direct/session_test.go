@@ -199,3 +199,91 @@ func TestEightPeersBothPCsLoseTwoCriticalFramesWithinRound(t *testing.T) {
 	}
 	t.Logf("8 peers, 32 real SDK PCs, 2 lost critical frames per pair: %s", elapsed)
 }
+
+func TestPartialReadyRoundDoneAndSessionDoneWhenPathsClose(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 12*time.Second)
+	defer cancel()
+	a, b := identity(t, 1), identity(t, 2)
+	domain, head := sha256.Sum256([]byte("domain")), sha256.Sum256([]byte("head"))
+	codec, err := peerwire.NewCodec("00000000000000000000000000000001", domain, head, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	connection := make([]byte, 16)
+	_, _ = rand.Read(connection)
+	var offsetMs atomic.Int64
+	base := time.Now()
+	fakeNow := func() time.Time { return base.Add(time.Duration(offsetMs.Load()) * time.Millisecond) }
+	deadline := uint64(base.Add(9 * time.Second).UnixMilli())
+
+	var ar, br atomic.Pointer[Session]
+	type readyEvent struct {
+		which int
+		use   uint64
+		path  *Path
+	}
+	paths := make(chan readyEvent, 4)
+	makeCfg := func(self peerwire.Identity, other peerwire.Public, which int) SessionConfig {
+		return SessionConfig{
+			Self: self, Peer: other.Member(), Codec: codec, Connection: connection,
+			Deadline: deadline, Pool: NewPool(4), Allow: func() bool { return true },
+			LoopbackOnly: true, Now: fakeNow,
+			Ready: func(use uint64, p *Path) { paths <- readyEvent{which, use, p} },
+			Send: func(out Outbound) bool {
+				if packet, e := codec.OpenSent(out.Raw, self, other, uint64(fakeNow().UnixMilli())); e == nil && packet.Context.Use == 2 {
+					return true
+				}
+				target := ar.Load()
+				if which == 0 {
+					target = br.Load()
+				}
+				return target != nil && target.Receive(out.Raw)
+			},
+		}
+	}
+	sa, err := NewSession(ctx, makeCfg(a, b.Public(), 0), true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ar.Store(sa)
+	defer func() { sa.Close(); sa.Wait() }()
+	sb, err := NewSession(ctx, makeCfg(b, a.Public(), 1), false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	br.Store(sb)
+	defer func() { sb.Close(); sb.Wait() }()
+
+	var use1 [2]*Path
+	for use1[0] == nil || use1[1] == nil {
+		select {
+		case ev := <-paths:
+			if ev.use != 1 {
+				t.Fatalf("unexpected ready use %d", ev.use)
+			}
+			use1[ev.which] = ev.path
+		case <-ctx.Done():
+			t.Fatal("use 1 did not become ready")
+		}
+	}
+
+	offsetMs.Store(9500)
+	select {
+	case <-sa.RoundDone():
+	case <-ctx.Done():
+		t.Fatal("RoundDone did not close after partial round passed deadline")
+	}
+	select {
+	case <-sa.Done():
+		t.Fatal("Session.Done closed while use 1 path was still alive")
+	default:
+	}
+
+	use1[0].Close()
+	use1[1].Close()
+	select {
+	case <-sa.Done():
+	case <-ctx.Done():
+		t.Fatal("Session.Done did not close after deadline and all paths closed")
+	}
+}

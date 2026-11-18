@@ -84,6 +84,8 @@ type directedTokens struct {
 type directManager struct {
 	authReservations map[string]peerReservation
 	authCounts       map[string]int
+	inMu             sync.Mutex
+	inClosed         bool
 	inboundPeers     map[string]*peerRates
 	inboundAccount   [2]directedTokens
 
@@ -158,7 +160,7 @@ func newDirectManager(d *dispatcher) (*directManager, error) {
 	if port := directPort(os.Getenv("REMOTE_AGENT_DIRECT_PORT")); port > 0 && !m.loopback {
 		m.port = direct.NewPortMux(port, false)
 	}
-	m.incoming = transport.FairQueue[*peerInput]{Entries: 64, Bytes: 4 << 20, PeerEntries: 8, PeerBytes: 1 << 20}
+	m.incoming = transport.FairQueue[*peerInput]{Entries: 256, Bytes: 4 << 20, PeerEntries: 64, PeerBytes: 1 << 20}
 	for i := range m.outgoing {
 		m.outgoing[i] = transport.FairQueue[*peerOutput]{Entries: 4096, Bytes: 32 << 20, PeerEntries: 512, PeerBytes: 4 << 20}
 	}
@@ -192,6 +194,9 @@ func directPort(value string) int {
 }
 func (m *directManager) close() {
 	m.closeOnce.Do(func() {
+		m.inMu.Lock()
+		m.inClosed = true
+		m.inMu.Unlock()
 		m.mu.Lock()
 		m.closed = true
 		m.cancel()
@@ -235,26 +240,22 @@ func (m *directManager) receive(raw []byte) {
 		return
 	}
 	peer := string(f[1].B)
-	if !m.mu.TryLock() {
-		return
-	}
-	if !m.closed && !f[3].Bytes && m.allowIncoming(peer, int(f[3].U)-1, len(raw), m.nowTime()) {
+	m.inMu.Lock()
+	if !m.inClosed && !f[3].Bytes && m.allowIncoming(peer, int(f[3].U)-1, len(raw), m.nowTime()) {
 		frame := &peerInput{peer, append([]byte(nil), raw...)}
 		if m.incoming.Push(frame.peer, frame.peer, len(raw), frame) {
 			notify(m.readWake)
 		}
 	}
-	m.mu.Unlock()
+	m.inMu.Unlock()
 }
 func (m *directManager) delivery(result *pb.PeerFrameResult, generation uint64) {
 	if len(result.FrameId) != 16 {
 		return
 	}
-	if !m.mu.TryLock() {
-		return
-	}
+	m.mu.Lock()
 	defer m.mu.Unlock()
-	if generation != m.pathGeneration.Load() {
+	if m.closed || generation != m.pathGeneration.Load() {
 		return
 	}
 	for _, p := range m.sessions {
@@ -282,12 +283,12 @@ func (m *directManager) scope(id string) (deviceauth.PeerBinding, *peerwire.Code
 }
 func (m *directManager) readLoop() {
 	for {
-		m.mu.Lock()
+		m.inMu.Lock()
 		input, ok := m.incoming.Pop(func(*peerInput) bool { return true })
 		if m.incoming.Len() > 0 {
 			notify(m.readWake)
 		}
-		m.mu.Unlock()
+		m.inMu.Unlock()
 		if !ok {
 			select {
 			case <-m.ctx.Done():

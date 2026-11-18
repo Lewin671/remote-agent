@@ -1608,3 +1608,52 @@ func TestClaimInflightJoinsCancelledPreAdmissionOwner(t *testing.T) {
 		t.Fatalf("expected 1 execution when prior owner cancelled pre-finishInflight, got %d", got)
 	}
 }
+
+func TestDirectReceiveDoesNotDropFramesUnderManagerLockContention(t *testing.T) {
+	_, selfEd, _ := ed25519.GenerateKey(rand.Reader)
+	_, peerEd, _ := ed25519.GenerateKey(rand.Reader)
+	selfPub := selfEd.Public().(ed25519.PublicKey)
+	peerPub := peerEd.Public().(ed25519.PublicKey)
+	selfID := hex.EncodeToString(peerwire.Hash(selfPub)[:16])
+	peerID := hex.EncodeToString(peerwire.Hash(peerPub)[:16])
+	selfBox, _ := ecdh.X25519().GenerateKey(rand.Reader)
+	peerBox, _ := ecdh.X25519().GenerateKey(rand.Reader)
+	self := peerwire.Identity{ID: []byte(selfID), Role: 2, Sign: selfEd, Box: selfBox, Instance: make([]byte, 16), Boot: make([]byte, 32)}
+	peer := peerwire.Identity{ID: []byte(peerID), Role: 1, Sign: peerEd, Box: peerBox, Instance: make([]byte, 16), Boot: make([]byte, 32)}
+	_, _ = rand.Read(self.Instance)
+	_, _ = rand.Read(self.Boot)
+	_, _ = rand.Read(peer.Instance)
+	_, _ = rand.Read(peer.Boot)
+
+	codec, err := peerwire.NewCodec("00000000000000000000000000000001", [32]byte{1}, [32]byte{2}, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	m := &directManager{
+		self:     self,
+		incoming: transport.FairQueue[*peerInput]{Entries: 256, Bytes: 4 << 20, PeerEntries: 64, PeerBytes: 1 << 20},
+		readWake: make(chan struct{}, 2),
+	}
+	conn := make([]byte, 16)
+	_, _ = rand.Read(conn)
+	now := uint64(time.Now().UnixMilli())
+
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	for seq := uint64(1); seq <= 20; seq++ {
+		c := peerwire.NewContext(peer, self.Public(), conn, 1, 1, seq, now, 1, false)
+		c.Deadline = now + 10000
+		raw, err := codec.Seal(peer, self.Public(), c, 3, peerwire.PB(peerwire.B(1, []byte("v=0\r\n"))), nil, nil, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		m.receive(raw)
+	}
+
+	m.inMu.Lock()
+	got := m.incoming.Len()
+	m.inMu.Unlock()
+	if got != 20 {
+		t.Fatalf("incoming queue len = %d, want 20", got)
+	}
+}

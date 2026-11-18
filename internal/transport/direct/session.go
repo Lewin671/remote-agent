@@ -76,6 +76,8 @@ type Session struct {
 	established atomic.Bool
 	retainUntil atomic.Uint64
 	finished    chan struct{}
+	roundDone   chan struct{}
+	roundOnce   sync.Once
 	closedPaths []*Path
 	born        time.Time
 	endReason   atomic.Value // first reason the round ended, a fixed word
@@ -129,7 +131,7 @@ func NewSession(parent context.Context, cfg SessionConfig, initiate bool) (*Sess
 		return nil, ErrClosed
 	}
 	ctx, cancel := context.WithCancel(parent)
-	s := &Session{born: nowFn(), finished: make(chan struct{}), cfg: cfg, ctx: ctx, cancel: cancel, input: make(chan []byte, 8), events: make(chan sessionEvent, 160), delivery: make(chan deliveryResult, 64), boot: peerwire.NewSender(cfg.Deadline), receipts: map[string]cachedBytes{}, controlSeen: map[string]cachedBytes{}}
+	s := &Session{born: nowFn(), finished: make(chan struct{}), roundDone: make(chan struct{}), cfg: cfg, ctx: ctx, cancel: cancel, input: make(chan []byte, 128), events: make(chan sessionEvent, 160), delivery: make(chan deliveryResult, 64), boot: peerwire.NewSender(cfg.Deadline), receipts: map[string]cachedBytes{}, controlSeen: map[string]cachedBytes{}}
 	s.retainUntil.Store(cfg.Deadline + 300000)
 	for i := range s.pcs {
 		g := peerwire.NewSignal(cfg.Codec, cfg.Self, cfg.Peer, cfg.Connection, uint64(i+1), now)
@@ -166,12 +168,31 @@ func NewSession(parent context.Context, cfg SessionConfig, initiate bool) (*Sess
 	go s.run()
 	return s, nil
 }
-func (s *Session) Close()                { s.endFor("closed_by_owner"); s.cancel() }
-func (s *Session) Done() <-chan struct{} { return s.finished }
-func (s *Session) Wait()                 { <-s.finished }
-func (s *Session) Active() bool          { return s.ctx.Err() == nil && !s.retired.Load() }
-func (s *Session) RetainUntil() uint64   { return s.retainUntil.Load() }
-func (s *Session) Established() bool     { return s.established.Load() }
+func (s *Session) Close()                     { s.endFor("closed_by_owner"); s.cancel() }
+func (s *Session) Done() <-chan struct{}      { return s.finished }
+func (s *Session) RoundDone() <-chan struct{} { return s.roundDone }
+func (s *Session) Wait()                      { <-s.finished }
+
+func (s *Session) finishRound() {
+	if s.roundDone != nil {
+		s.roundOnce.Do(func() { close(s.roundDone) })
+	}
+}
+
+func pathAlive(p *Path) bool {
+	if p == nil {
+		return false
+	}
+	select {
+	case <-p.Done():
+		return false
+	default:
+		return true
+	}
+}
+func (s *Session) Active() bool        { return s.ctx.Err() == nil && !s.retired.Load() }
+func (s *Session) RetainUntil() uint64 { return s.retainUntil.Load() }
+func (s *Session) Established() bool   { return s.established.Load() }
 func (s *Session) Retire() {
 	s.retired.Store(true)
 	select {
@@ -209,6 +230,7 @@ func (s *Session) run() {
 		s.endFor("ctx_done")
 		s.logEnd()
 		s.cancel()
+		s.finishRound()
 		defer close(s.finished)
 		for i := range s.pcs {
 			if p := s.pcs[i].path; p != nil {
@@ -248,19 +270,32 @@ func (s *Session) run() {
 		case r := <-s.delivery:
 			s.result(r, s.nowMs())
 		case <-ticker.C:
+			now = s.nowMs()
 			if now >= s.cfg.Deadline {
 				complete := false
+				live := false
 				for i := range s.pcs {
 					if s.pcs[i].announced {
 						complete = true
+						if pathAlive(s.pcs[i].path) {
+							live = true
+						} else if s.pcs[i].path != nil {
+							s.closedPaths = append(s.closedPaths, s.pcs[i].path)
+							s.pcs[i].path = nil
+						}
 					} else if s.pcs[i].path != nil {
 						s.pcs[i].path.closeWhy("round_deadline")
 						s.closedPaths = append(s.closedPaths, s.pcs[i].path)
 						s.pcs[i].path = nil
 					}
 				}
+				s.finishRound()
 				if !complete {
 					s.endFor("round_deadline")
+					return
+				}
+				if !live && !s.retired.Load() {
+					s.endFor("paths_closed")
 					return
 				}
 			}
@@ -825,6 +860,9 @@ func (s *Session) maybeReady(i int, now uint64) {
 		p.path.Confirm()
 		if s.cfg.Ready != nil {
 			s.cfg.Ready(uint64(i+1), p.path)
+		}
+		if s.pcs[0].announced && s.pcs[1].announced {
+			s.finishRound()
 		}
 	}
 }

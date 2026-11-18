@@ -142,8 +142,12 @@ func TestDirectCommandAndLargeReadThroughLocalServer(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	wsClosed := make(chan struct{})
+	var wsCloseOnce sync.Once
+	markWSClosed := func() { wsCloseOnce.Do(func() { close(wsClosed) }) }
 	defer func() { cancel(); ws.CloseNow(); link.Close(); link.Wait(); workers.Wait() }()
 	workers.Go(func() {
+		defer markWSClosed()
 		for {
 			select {
 			case <-ctx.Done():
@@ -164,6 +168,7 @@ func TestDirectCommandAndLargeReadThroughLocalServer(t *testing.T) {
 		}
 	})
 	workers.Go(func() {
+		defer markWSClosed()
 		for {
 			_, raw, err := ws.Read(ctx)
 			if err != nil {
@@ -185,14 +190,42 @@ func TestDirectCommandAndLargeReadThroughLocalServer(t *testing.T) {
 		}
 	})
 	var paths [2]*direct.Path
+	var pathDone [2]<-chan struct{}
 	readyCount := 0
+	roundDone := link.RoundDone()
+	recordReady := func(p struct {
+		use  uint64
+		path *direct.Path
+	}) {
+		if paths[p.use-1] == nil {
+			readyCount++
+		}
+		paths[p.use-1] = p.path
+		pathDone[p.use-1] = p.path.Done()
+	}
 	for readyCount < 2 {
 		select {
 		case p := <-ready:
-			if paths[p.use-1] == nil {
-				readyCount++
+			recordReady(p)
+		case <-pathDone[0]:
+			t.Fatal("direct path 1 closed before both paths were ready")
+		case <-pathDone[1]:
+			t.Fatal("direct path 2 closed before both paths were ready")
+		case <-roundDone:
+		drain:
+			for {
+				select {
+				case p := <-ready:
+					recordReady(p)
+				default:
+					break drain
+				}
 			}
-			paths[p.use-1] = p.path
+			if readyCount < 2 {
+				t.Fatalf("direct negotiation round ended before both paths were ready (ready=%d)", readyCount)
+			}
+		case <-wsClosed:
+			t.Fatal("relay stream closed before both direct paths were ready")
 		case <-link.Done():
 			t.Fatal("direct session ended before both paths were ready")
 		case <-ctx.Done():
