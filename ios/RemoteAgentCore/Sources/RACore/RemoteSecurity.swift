@@ -18,7 +18,7 @@ extension Remote {
             store: securityStorage, memberID: account.deviceId, signingKey: device,
             clock: { [clock] in UInt64(bitPattern: clock()) },
             pullTimeoutMs: 3000,
-            observer: directObserver(),
+            observer: securityObserver(),
             fetchStates: { [weak self] after in
                 guard let self else { throw DeviceSecurity.Failure.storage }
                 return try await self.fetchSecurityPage(after)

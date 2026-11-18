@@ -1223,6 +1223,109 @@ class RemoteTest {
         assertTrue(r.state.value.devices.containsKey(r.account.deviceId))
     }
 
+    @Test fun securityInstallAndFinishPairingPushSnapshotToCore() = runBlocking<Unit> {
+        val r = fixtureRemote(daemon.phone, http)
+        closers += AutoCloseable { r.close() }
+        r.start()
+        r.awaitState("connected") { it.conn == ConnState.ONLINE && r.coreHost.syncStateView.value.securityLoaded }
+
+        val phoneStore = TestSecurity.get(server.url)!!.stores.getValue(daemon.phone.deviceId)
+        val seed1 = randomBytes(32)
+        val cp1 = SigningKey(seed1).publicKey
+        val m1Id = deviceId(cp1)
+        val xp1 = PairKey().public
+        r.coreHost.dispatchAndWait(
+            io.github.lewin671.remoteagent.core.proto.Event.newBuilder()
+                .setStreamFrame(
+                    io.github.lewin671.remoteagent.core.proto.StreamFrameEvent.newBuilder()
+                        .setLegId(1L)
+                        .setSessionUpdated(io.github.lewin671.remoteagent.core.proto.PlainSession.newBuilder().setSessionId("s-pair-1").setMachineId(m1Id)),
+                )
+                .build(),
+        )
+        r.awaitState("s-pair-1 listed") { it.sessions.containsKey("s-pair-1") }
+        val head1 = r.security.head()
+        val key1 = r.security.contentKey(head1.core.contentEpoch)!!
+        val state1 = Authority.pair(
+            head1,
+            DeviceSecurity.Member(m1Id, cp1, xp1, DeviceKind.DEVICE_KIND_MACHINE.number.toUInt()),
+            key1,
+            Authority.newSecret(),
+            SigningKey(daemon.phone.deviceSeed),
+            r.security.signingTime(System.currentTimeMillis()),
+        )
+        r.security.install(listOf(state1))
+        val flow1 = r.watchSession("s-pair-1")
+        flow1.first { it.timeline.loaded }
+        r.coreHost.dispatchAndWait(
+            io.github.lewin671.remoteagent.core.proto.Event.newBuilder()
+                .setDirectEventsReceived(
+                    io.github.lewin671.remoteagent.core.proto.DirectEventsReceivedEvent.newBuilder()
+                        .setMachineId(m1Id)
+                        .setSessionId("s-pair-1")
+                        .addEvents(
+                            io.github.lewin671.remoteagent.core.proto.PlainEvent.newBuilder()
+                                .setSeq(1L)
+                                .setVerified(true)
+                                .setEvent(agent("direct-after-install").setSessionId("s-pair-1").setSeq(1).build()),
+                        ),
+                )
+                .build(),
+        )
+        val vm1 = flow1.first { it.timeline.itemsCount >= 1 }
+        org.junit.Assert.assertEquals(1, vm1.timeline.itemsCount)
+
+        // finishPairingOperation must also push the updated security snapshot even when
+        // storage already has the new state (e.g. synced/stored before pairing op cleared).
+        val seed2 = randomBytes(32)
+        val cp2 = SigningKey(seed2).publicKey
+        val m2Id = deviceId(cp2)
+        val xp2 = PairKey().public
+        r.coreHost.dispatchAndWait(
+            io.github.lewin671.remoteagent.core.proto.Event.newBuilder()
+                .setStreamFrame(
+                    io.github.lewin671.remoteagent.core.proto.StreamFrameEvent.newBuilder()
+                        .setLegId(1L)
+                        .setSessionUpdated(io.github.lewin671.remoteagent.core.proto.PlainSession.newBuilder().setSessionId("s-pair-2").setMachineId(m2Id)),
+                )
+                .build(),
+        )
+        r.awaitState("s-pair-2 listed") { it.sessions.containsKey("s-pair-2") }
+        val head2 = r.security.head()
+        val key2 = r.security.contentKey(head2.core.contentEpoch)!!
+        val s2 = Authority.pair(
+            head2,
+            DeviceSecurity.Member(m2Id, cp2, xp2, DeviceKind.DEVICE_KIND_MACHINE.number.toUInt()),
+            key2,
+            Authority.newSecret(),
+            SigningKey(daemon.phone.deviceSeed),
+            r.security.signingTime(System.currentTimeMillis()),
+        )
+        phoneStore.installSecurity(DeviceSecurity.stateHash(head2), listOf(s2), listOf(null))
+        val approveReq = ApprovePairingRequest.newBuilder().setPairingId("pair-finish").build().toByteArray()
+        phoneStore.writeSecurityOperation(SecurityOperation("state", s2.core.parent, byteArrayOf(), delivery = approveReq))
+        r.finishPairingOperation("pair-finish")
+        val flow2 = r.watchSession("s-pair-2")
+        flow2.first { it.timeline.loaded }
+        r.coreHost.dispatchAndWait(
+            io.github.lewin671.remoteagent.core.proto.Event.newBuilder()
+                .setDirectEventsReceived(
+                    io.github.lewin671.remoteagent.core.proto.DirectEventsReceivedEvent.newBuilder()
+                        .setMachineId(m2Id)
+                        .setSessionId("s-pair-2")
+                        .addEvents(
+                            io.github.lewin671.remoteagent.core.proto.PlainEvent.newBuilder()
+                                .setSeq(1L)
+                                .setVerified(true)
+                                .setEvent(agent("direct-after-finish").setSessionId("s-pair-2").setSeq(1).build()),
+                        ),
+                )
+                .build(),
+        )
+        val vm2 = flow2.first { it.timeline.itemsCount >= 1 }
+        org.junit.Assert.assertEquals(1, vm2.timeline.itemsCount)
+    }
+
 }
 
 /** A CipherCache in memory, as the Room one behaves. */

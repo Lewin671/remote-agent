@@ -23,12 +23,18 @@ extension Remote {
         }
     }
 
-    nonisolated func directObserver() -> SyncObserver {
-        guard let direct else { return SyncObserver() }
+    func securityObserver() -> SyncObserver {
+        let direct = self.direct
         return SyncObserver(
-            synced: { record, started in await direct.synced(record, started: started) },
-            failed: { direct.invalidate() },
-            installed: { direct.install($0) }
+            synced: { [weak self] record, started in
+                if let direct { await direct.synced(record, started: started) }
+                await self?.pushObservedSecuritySnapshot(record)
+            },
+            failed: { direct?.invalidate() },
+            installed: { [weak self] record in
+                direct?.install(record)
+                Task { await self?.pushObservedSecuritySnapshot(record) }
+            }
         )
     }
 

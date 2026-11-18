@@ -356,6 +356,9 @@ actor CoreHost: SyncEngine {
                         $0.events = events
                     }
                 }
+            },
+            onSecuritySnapshot: { [weak self] snapshot in
+                await self?.dispatchSecuritySnapshot(snapshot)
             }
         ))
         await syncWatchedSessionsToExecutor()
@@ -460,13 +463,19 @@ actor CoreHost: SyncEngine {
     // starts, so the core drops one that finishes after a newer one.
     private var securityPushSeq: UInt64 = 1
 
-    private func syncSecurityNow() async {
+    private func dispatchSecuritySnapshot(_ snapshot: PBCoreSecuritySnapshotEvent) async {
         guard !closed else { return }
         let seq = securityPushSeq
         securityPushSeq += 1
-        var snap = await executor.syncSecuritySnapshot(opId: 0, networkGeneration: networkGen, touch: false)
+        var snap = snapshot
         snap.pushSeq = seq
         await dispatch { $0.securitySnapshot = snap }
+    }
+
+    private func syncSecurityNow() async {
+        guard !closed else { return }
+        let snap = await executor.syncSecuritySnapshot(opId: 0, networkGeneration: networkGen, touch: false)
+        await dispatchSecuritySnapshot(snap)
     }
 
     private func handleNetworkChange(signature: String, available: Bool) async {

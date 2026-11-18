@@ -2216,3 +2216,218 @@ func TestDirectStrictNextAndServerGapErrorClear(t *testing.T) {
 		}
 	}
 }
+
+func TestStreamFrameDeviceAndMachineSecuritySync(t *testing.T) {
+	now := int64(1700000000000)
+
+	setup := func() (*Engine, uint64) {
+		e := NewEngine()
+		e.running = true
+		e.legID = 7
+		e.HandleEvent(&corev1.Event{
+			NowMs: now,
+			Event: &corev1.Event_SecuritySnapshot{
+				SecuritySnapshot: &corev1.SecuritySnapshotEvent{
+					PushSeq:           1,
+					IsMember:          true,
+					SelfDeviceId:      "c-self",
+					TrustedMachineIds: []string{"m-known"},
+					TrustedClientIds:  []string{"c-self", "c-known"},
+					ArchiveMachineIds: []string{"m-archive"},
+				},
+			},
+		})
+		return e, 7
+	}
+
+	cases := []struct {
+		name     string
+		frame    *corev1.StreamFrameEvent
+		wantSync bool
+	}{
+		{
+			name: "new_machine_device_updated",
+			frame: &corev1.StreamFrameEvent{
+				Frame: &corev1.StreamFrameEvent_DeviceUpdated{
+					DeviceUpdated: &corev1.PlainDevice{DeviceId: "m-new", Kind: v1.DeviceKind_DEVICE_KIND_MACHINE},
+				},
+			},
+			wantSync: true,
+		},
+		{
+			name: "trusted_machine_device_updated",
+			frame: &corev1.StreamFrameEvent{
+				Frame: &corev1.StreamFrameEvent_DeviceUpdated{
+					DeviceUpdated: &corev1.PlainDevice{DeviceId: "m-known", Kind: v1.DeviceKind_DEVICE_KIND_MACHINE},
+				},
+			},
+			wantSync: false,
+		},
+		{
+			name: "new_client_device_updated",
+			frame: &corev1.StreamFrameEvent{
+				Frame: &corev1.StreamFrameEvent_DeviceUpdated{
+					DeviceUpdated: &corev1.PlainDevice{DeviceId: "c-new", Kind: v1.DeviceKind_DEVICE_KIND_CLIENT},
+				},
+			},
+			wantSync: true,
+		},
+		{
+			name: "trusted_client_device_updated",
+			frame: &corev1.StreamFrameEvent{
+				Frame: &corev1.StreamFrameEvent_DeviceUpdated{
+					DeviceUpdated: &corev1.PlainDevice{DeviceId: "c-known", Kind: v1.DeviceKind_DEVICE_KIND_CLIENT},
+				},
+			},
+			wantSync: false,
+		},
+		{
+			name: "untrusted_online_machine_updated",
+			frame: &corev1.StreamFrameEvent{
+				Frame: &corev1.StreamFrameEvent_MachineUpdated{
+					MachineUpdated: &corev1.PlainMachine{MachineId: "m-new", Online: true},
+				},
+			},
+			wantSync: true,
+		},
+		{
+			name: "untrusted_offline_machine_updated",
+			frame: &corev1.StreamFrameEvent{
+				Frame: &corev1.StreamFrameEvent_MachineUpdated{
+					MachineUpdated: &corev1.PlainMachine{MachineId: "m-off", Online: false},
+				},
+			},
+			wantSync: false,
+		},
+		{
+			name: "trusted_online_machine_updated",
+			frame: &corev1.StreamFrameEvent{
+				Frame: &corev1.StreamFrameEvent_MachineUpdated{
+					MachineUpdated: &corev1.PlainMachine{MachineId: "m-known", Online: true},
+				},
+			},
+			wantSync: false,
+		},
+		{
+			name: "archive_online_machine_updated",
+			frame: &corev1.StreamFrameEvent{
+				Frame: &corev1.StreamFrameEvent_MachineUpdated{
+					MachineUpdated: &corev1.PlainMachine{MachineId: "m-archive", Online: true},
+				},
+			},
+			wantSync: false,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			e, legID := setup()
+			frame := tc.frame
+			frame.LegId = legID
+			_, res := e.HandleEvent(&corev1.Event{
+				NowMs: now + 10,
+				Event: &corev1.Event_StreamFrame{StreamFrame: frame},
+			})
+			var syncOp uint64
+			for _, eff := range res.Effects {
+				if ss := eff.GetSyncSecurity(); ss != nil {
+					syncOp = ss.OpId
+				}
+			}
+			if tc.wantSync && syncOp == 0 {
+				t.Fatalf("expected SyncSecurityEffect for %s", tc.name)
+			}
+			if !tc.wantSync && syncOp != 0 {
+				t.Fatalf("unexpected SyncSecurityEffect op=%d for %s", syncOp, tc.name)
+			}
+		})
+	}
+
+	// Verify end-to-end core flow: untrusted direct events are dropped before sync refresh,
+	// and accepted after SecuritySnapshot adds the newly paired machine.
+	e, legID := setup()
+	e.HandleEvent(&corev1.Event{
+		NowMs: now + 5,
+		Event: &corev1.Event_StreamFrame{
+			StreamFrame: &corev1.StreamFrameEvent{
+				LegId: legID,
+				Frame: &corev1.StreamFrameEvent_SessionUpdated{
+					SessionUpdated: &corev1.PlainSession{SessionId: "s-new", MachineId: "m-new", UpdatedMs: now},
+				},
+			},
+		},
+	})
+	_, watchRes := e.HandleEvent(&corev1.Event{
+		NowMs: now + 6,
+		Event: &corev1.Event_SessionWatch{SessionWatch: &corev1.SessionWatchEvent{SessionId: "s-new", Watched: true}},
+	})
+	var cacheOp uint64
+	for _, eff := range watchRes.Effects {
+		if cr := eff.GetCacheRead().GetEvents(); cr != nil {
+			cacheOp = cr.OpId
+		}
+	}
+	e.HandleEvent(&corev1.Event{
+		NowMs: now + 7,
+		Event: &corev1.Event_CacheEventsLoaded{CacheEventsLoaded: &corev1.CacheEventsLoadedEvent{OpId: cacheOp, SessionId: "s-new"}},
+	})
+	e.HandleEvent(&corev1.Event{
+		NowMs: now + 8,
+		Event: &corev1.Event_DirectEventsReceived{
+			DirectEventsReceived: &corev1.DirectEventsReceivedEvent{
+				MachineId: "m-new",
+				SessionId: "s-new",
+				Events:    []*corev1.PlainEvent{{Seq: 1, Verified: true, ApproxBytes: 32, Event: &v1.Event{Seq: 1, SessionId: "s-new"}}},
+			},
+		},
+	})
+	buf := e.Buffer("s-new")
+	if buf.PrefixLen() != 0 {
+		t.Fatalf("expected untrusted m-new direct event to be dropped before security refresh, got prefix=%d", buf.PrefixLen())
+	}
+	_, devRes := e.HandleEvent(&corev1.Event{
+		NowMs: now + 8,
+		Event: &corev1.Event_StreamFrame{
+			StreamFrame: &corev1.StreamFrameEvent{
+				LegId: legID,
+				Frame: &corev1.StreamFrameEvent_DeviceUpdated{
+					DeviceUpdated: &corev1.PlainDevice{DeviceId: "m-new", Kind: v1.DeviceKind_DEVICE_KIND_MACHINE},
+				},
+			},
+		},
+	})
+	var secOp uint64
+	for _, eff := range devRes.Effects {
+		if ss := eff.GetSyncSecurity(); ss != nil {
+			secOp = ss.OpId
+		}
+	}
+	if secOp == 0 {
+		t.Fatalf("expected SyncSecurityEffect on DeviceUpdated")
+	}
+	e.HandleEvent(&corev1.Event{
+		NowMs: now + 9,
+		Event: &corev1.Event_SecuritySnapshot{
+			SecuritySnapshot: &corev1.SecuritySnapshotEvent{
+				OpId:              secOp,
+				IsMember:          true,
+				SelfDeviceId:      "c-self",
+				TrustedMachineIds: []string{"m-known", "m-new"},
+				TrustedClientIds:  []string{"c-self", "c-known"},
+			},
+		},
+	})
+	e.HandleEvent(&corev1.Event{
+		NowMs: now + 10,
+		Event: &corev1.Event_DirectEventsReceived{
+			DirectEventsReceived: &corev1.DirectEventsReceivedEvent{
+				MachineId: "m-new",
+				SessionId: "s-new",
+				Events:    []*corev1.PlainEvent{{Seq: 1, Verified: true, ApproxBytes: 32, Event: &v1.Event{Seq: 1, SessionId: "s-new"}}},
+			},
+		},
+	})
+	if buf.PrefixLen() != 1 {
+		t.Fatalf("expected direct event from m-new to be ingested after SecuritySnapshot refresh, got prefix=%d", buf.PrefixLen())
+	}
+}

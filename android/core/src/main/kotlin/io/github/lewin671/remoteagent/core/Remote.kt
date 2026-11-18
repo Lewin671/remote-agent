@@ -131,6 +131,7 @@ class Remote(
     @Volatile private var networkGeneration = 0L
     private val securityPushSeq = AtomicLong(1L)
     private val devicesPushSeq = AtomicLong(1L)
+    private val coreSyncDepth = java.util.concurrent.atomic.AtomicInteger(0)
     @Volatile private var running = false
     @Volatile private var closed = false
     @Volatile private var serverAhead = false
@@ -330,9 +331,15 @@ class Remote(
         device,
         expectedAccount = account.accountId.ifEmpty { null },
         clock = clock,
-        onSync = { record, started -> direct.synced(record, started) },
+        onSync = { record, started ->
+            direct.synced(record, started)
+            pushSecuritySnapshotFromRecord(record)
+        },
         onSyncFailed = { direct.invalidate("sync_failed") },
-        onInstall = { record -> direct.install(record) },
+        onInstall = { record ->
+            direct.install(record)
+            pushSecuritySnapshotFromRecord(record)
+        },
     ) { after ->
         api.client.getSecurityStates(
             GetSecurityStatesRequest.newBuilder().setAfterEpoch(after.toLong()).build(),
@@ -678,47 +685,80 @@ class Remote(
             sendEvent { setSecuritySnapshot(buildSecuritySnapshotEvent(opId, networkGeneration, sync = true)) }
         }
 
+    private fun snapshotEventFromRecord(
+        opId: Long,
+        networkGeneration: Long,
+        record: DeviceSecurity.Record,
+        pushSeq: Long = 0L,
+    ): SecuritySnapshotEvent {
+        refreshSecuritySets(record)
+        val head = record.head
+        val b = SecuritySnapshotEvent.newBuilder()
+            .setOpId(opId)
+            .setNetworkGeneration(networkGeneration)
+            .setSelfDeviceId(account.deviceId)
+            .setIsMember(record.member)
+            .setAuthorityDeviceId(head.core.authorityID)
+            .setHeadEpoch(head.core.epoch.toLong())
+            .setLeaseEndMs(record.leaseExpiration())
+            .setClockSkewed(serverAhead || security.clockSkew)
+            .setRecoveryPending(security.recoveryPending)
+            .setRecoveryReadyMs(security.recoveryReadyMs)
+            .setRecoveryObjectsPending(recoveryObjectsPending)
+        if (pushSeq != 0L) b.setPushSeq(pushSeq)
+        for (m in head.core.members) when (m.kind) {
+            1u -> b.addTrustedMachineIds(m.id)
+            2u -> b.addTrustedClientIds(m.id)
+        }
+        archiveMachines.filter { trustedMembers[it]?.kind != 1u }.forEach { b.addArchiveMachineIds(it) }
+        return b.build()
+    }
+
+    private fun pushSecuritySnapshotFromRecord(record: DeviceSecurity.Record) {
+        if (coreSyncDepth.get() > 0 || closed) return
+        val pushSeq = securityPushSeq.getAndIncrement()
+        val ev = snapshotEventFromRecord(0L, networkGeneration, record, pushSeq)
+        coreHost.dispatch(CoreEvent.newBuilder().setSecuritySnapshot(ev).build())
+    }
+
     private suspend fun buildSecuritySnapshotEvent(
         opId: Long,
         networkGeneration: Long,
         sync: Boolean,
         pushSeq: Long = 0L,
     ): SecuritySnapshotEvent {
-        val b = SecuritySnapshotEvent.newBuilder()
-            .setOpId(opId)
-            .setNetworkGeneration(networkGeneration)
-            .setSelfDeviceId(account.deviceId)
-        if (pushSeq != 0L) b.setPushSeq(pushSeq)
         try {
             val record = if (sync) {
-                security.sync().also { r ->
-                    runCatching { resumeSecurityOperation(dispatchSnapshot = false) }.onFailure { if (it !is DeviceSecurity.Failure) throw it }
-                    try {
-                        recoveryObjectsPending = true
-                        republishRecoveryObjects(r)
-                        recoveryObjectsPending = false
-                    } catch (e: DeviceSecurity.Failure) {
-                        if (e.code != "lease") throw e
+                coreSyncDepth.incrementAndGet()
+                try {
+                    security.sync().also { r ->
+                        runCatching { resumeSecurityOperation(dispatchSnapshot = false) }.onFailure { if (it !is DeviceSecurity.Failure) throw it }
+                        try {
+                            recoveryObjectsPending = true
+                            republishRecoveryObjects(r)
+                            recoveryObjectsPending = false
+                        } catch (e: DeviceSecurity.Failure) {
+                            if (e.code != "lease") throw e
+                        }
                     }
+                } finally {
+                    coreSyncDepth.decrementAndGet()
                 }
             } else security.record()
-            refreshSecuritySets(record)
-            val head = record.head
-            b.setIsMember(record.member).setAuthorityDeviceId(head.core.authorityID).setHeadEpoch(head.core.epoch.toLong())
-                .setLeaseEndMs(record.leaseExpiration()).setClockSkewed(serverAhead || security.clockSkew)
-                .setRecoveryPending(security.recoveryPending).setRecoveryReadyMs(security.recoveryReadyMs)
-                .setRecoveryObjectsPending(recoveryObjectsPending)
-            for (m in head.core.members) when (m.kind) {
-                1u -> b.addTrustedMachineIds(m.id)
-                2u -> b.addTrustedClientIds(m.id)
-            }
-            archiveMachines.filter { trustedMembers[it]?.kind != 1u }.forEach { b.addArchiveMachineIds(it) }
+            return snapshotEventFromRecord(opId, networkGeneration, record, pushSeq)
         } catch (e: Exception) {
             if (e is CancellationException) throw e
             report(e)
-            b.setUnresolvedHost(unresolvedHost(e)).setError(e.message ?: e.javaClass.simpleName).setClockSkewed(serverAhead || security.clockSkew)
+            return SecuritySnapshotEvent.newBuilder()
+                .setOpId(opId)
+                .setNetworkGeneration(networkGeneration)
+                .setSelfDeviceId(account.deviceId)
+                .apply { if (pushSeq != 0L) setPushSeq(pushSeq) }
+                .setUnresolvedHost(unresolvedHost(e))
+                .setError(e.message ?: e.javaClass.simpleName)
+                .setClockSkewed(serverAhead || security.clockSkew)
+                .build()
         }
-        return b.build()
     }
 
     private fun refreshSecuritySets(record: DeviceSecurity.Record) {
@@ -1931,15 +1971,20 @@ class Remote(
         val pushSeq = securityPushSeq.getAndIncrement()
         try {
             val r = withContext(dispatcher) {
-                security.sync(budgetMs).also { synced ->
-                    resumeSecurityOperation(dispatchSnapshot = false)
-                    try {
-                        recoveryObjectsPending = true
-                        republishRecoveryObjects(synced)
-                        recoveryObjectsPending = false
-                    } catch (e: DeviceSecurity.Failure) {
-                        if (e.code != "lease") throw e
+                coreSyncDepth.incrementAndGet()
+                try {
+                    security.sync(budgetMs).also { synced ->
+                        resumeSecurityOperation(dispatchSnapshot = false)
+                        try {
+                            recoveryObjectsPending = true
+                            republishRecoveryObjects(synced)
+                            recoveryObjectsPending = false
+                        } catch (e: DeviceSecurity.Failure) {
+                            if (e.code != "lease") throw e
+                        }
                     }
+                } finally {
+                    coreSyncDepth.decrementAndGet()
                 }
             }
             refreshSecuritySets(r)
@@ -2161,13 +2206,17 @@ class Remote(
         return ApprovePairingRequest.parseFrom(op.delivery).takeIf { it.pairingId == pairingId }
     }
 
-    suspend fun finishPairingOperation(pairingId: String) = securityOperationLock.withLock {
-        val storage = securityStorage ?: throw DeviceSecurity.Failure("storage")
-        val op = storage.readSecurityOperation() ?: return@withLock
-        if (op.kind == "state" && op.delivery.isNotEmpty() && ApprovePairingRequest.parseFrom(op.delivery).pairingId == pairingId) {
-            storage.writeSecurityOperation(op.advanced(SecurityOperation.Phase.DELIVERED))
-            storage.clearSecurityOperation()
+    suspend fun finishPairingOperation(pairingId: String) {
+        val cleared = securityOperationLock.withLock {
+            val storage = securityStorage ?: throw DeviceSecurity.Failure("storage")
+            val op = storage.readSecurityOperation() ?: return@withLock null
+            if (op.kind == "state" && op.delivery.isNotEmpty() && ApprovePairingRequest.parseFrom(op.delivery).pairingId == pairingId) {
+                storage.writeSecurityOperation(op.advanced(SecurityOperation.Phase.DELIVERED))
+                storage.clearSecurityOperation()
+                security.record()
+            } else null
         }
+        if (cleared != null) pushSecuritySnapshotFromRecord(cleared)
     }
 
     private suspend fun cancelPairDeliveryForRemoval(deviceId: String): Boolean = securityOperationLock.withLock {

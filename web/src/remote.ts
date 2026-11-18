@@ -591,16 +591,13 @@ export class Remote implements CoreExecutor {
     this.security.onSync = (record, started) => {
       this.lastSecuritySyncAt = started;
       void this.direct.synced(record, started);
-      this.applySecurityRecordSets(record);
-      if (this.coreSyncDepth === 0 && !this.closed) {
-        const pushSeq = this.securityPushSeq++;
-        const snap = this.snapshotFromRecord(0n, BigInt(this.networkGeneration), record, pushSeq);
-        this.hostBridge?.dispatchEvent(
-          create(CoreEventSchema, { event: { case: "securitySnapshot", value: snap } }),
-        );
-      }
+      this.pushSecuritySnapshot(record);
     };
     this.security.onSyncFailed = () => this.direct.invalidate();
+    this.security.onInstall = (record) => {
+      void this.direct.install(record);
+      this.pushSecuritySnapshot(record);
+    };
     const pairing = createClient(
       PairingService,
       createConnectTransport({
@@ -677,7 +674,10 @@ export class Remote implements CoreExecutor {
     this.started = true;
     this.closed = false;
     this.unwatchDirectInstall?.();
-    this.unwatchDirectInstall = watchSecurityInstall((record) => this.direct.install(record));
+    this.unwatchDirectInstall = watchSecurityInstall((record) => {
+      this.direct.install(record);
+      this.pushSecuritySnapshot(record);
+    });
     this.unwatchSecurityPush?.();
     this.unwatchSecurityPush = watchSecurityPush(() => {
       if (!this.closed) void this.security.sync(undefined, 5000, true).catch(() => undefined);
@@ -1129,6 +1129,17 @@ export class Remote implements CoreExecutor {
     this.authorityDeviceId = head.core.authorityID;
     this.trustedMembers = new Map(head.core.members.map((m) => [m.id, m]));
     this.archiveMachines = new Set(record.states.flatMap((s) => s.core.members.filter((m) => m.kind === 1).map((m) => m.id)));
+  }
+
+  private pushSecuritySnapshot(record: SecurityRecord): void {
+    this.applySecurityRecordSets(record);
+    if (this.coreSyncDepth === 0 && !this.closed) {
+      const pushSeq = this.securityPushSeq++;
+      const snap = this.snapshotFromRecord(0n, BigInt(this.networkGeneration), record, pushSeq);
+      this.hostBridge?.dispatchEvent(
+        create(CoreEventSchema, { event: { case: "securitySnapshot", value: snap } }),
+      );
+    }
   }
 
   private snapshotFromRecord(opId: bigint, networkGeneration: bigint, record: SecurityRecord, pushSeq = 0n): SecuritySnapshotEvent {

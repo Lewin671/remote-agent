@@ -407,9 +407,9 @@ type Engine struct {
 	prefsSettingsSaving   map[string]bool
 	prefsSettingsErr      map[string]*corev1.Text
 
-	security       SecurityState
-	homeScopeToken string
-	scopeHMACKey   []byte
+	security          SecurityState
+	homeScopeToken    string
+	scopeHMACKey      []byte
 
 	inFlightCmds    map[string]*PreparedCommand
 	reqIDByAttempt  map[string]string

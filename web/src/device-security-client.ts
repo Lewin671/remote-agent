@@ -27,6 +27,7 @@ import {
   verifyPin,
   verifyWire,
   type Purpose,
+  type LeaseCertificate,
   type RecoveryStatement,
   type SecureWire,
   type SecurityHeader,
@@ -91,6 +92,7 @@ const MAX_PAGE = 8;
 export class DeviceSecurityClient {
   onSync?: (record: SecurityRecord, started: number) => void;
   onSyncFailed?: () => void;
+  onInstall?: (record: SecurityRecord) => void;
 
   recoveryPending = false;
   recoveryReadyMs = 0n;
@@ -151,6 +153,17 @@ export class DeviceSecurityClient {
   }
   async verifiedRecord(): Promise<SecurityRecord> {
     return this.currentRecord();
+  }
+  async install(
+    expected: SecurityRecord,
+    states: SecurityState[],
+    proofs: (RecoveryStatement | undefined)[],
+    lease?: LeaseCertificate,
+  ): Promise<SecurityRecord> {
+    await this.store.installSecurity(expected, states, proofs, lease);
+    const updated = await this.load();
+    this.onInstall?.(updated);
+    return updated;
   }
   async localIdentity(): Promise<{
     pin: SecurityRecord["pin"];

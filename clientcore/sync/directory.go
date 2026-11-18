@@ -442,6 +442,9 @@ func (e *Engine) handleStreamFrame(ctx *StepContext, ev *corev1.StreamFrameEvent
 			e.nextPushSeq++
 			e.machinePushes[f.MachineUpdated.MachineId] = e.nextPushSeq
 			e.putMachine(ctx, f.MachineUpdated, false, true)
+			if f.MachineUpdated.Online && e.security.Loaded && !e.isTrustedMachine(f.MachineUpdated.MachineId) {
+				e.requestSyncSecurity(ctx, true)
+			}
 			e.updateLivePollers(ctx)
 			ctx.Dirty.MarkAll()
 		}
@@ -490,6 +493,9 @@ func (e *Engine) handleStreamFrame(ctx *StepContext, ev *corev1.StreamFrameEvent
 			e.nextPushSeq++
 			e.devicePushes[f.DeviceUpdated.DeviceId] = e.nextPushSeq
 			e.devices[f.DeviceUpdated.DeviceId] = plainToDeviceEntry(f.DeviceUpdated)
+			if e.deviceNeedsSecuritySync(f.DeviceUpdated) {
+				e.requestSyncSecurity(ctx, true)
+			}
 			ctx.Dirty.Add(true, false, false)
 		}
 	case *corev1.StreamFrameEvent_DeviceRemovedId:
@@ -795,4 +801,18 @@ func (e *Engine) isTrustedMachine(machineID string) bool {
 		return true
 	}
 	return e.security.TrustedMachines[machineID] || e.security.ArchiveMachines[machineID]
+}
+
+func (e *Engine) deviceNeedsSecuritySync(d *corev1.PlainDevice) bool {
+	if !e.security.Loaded || d == nil || d.DeviceId == "" {
+		return false
+	}
+	switch d.Kind {
+	case v1.DeviceKind_DEVICE_KIND_MACHINE:
+		return !e.security.TrustedMachines[d.DeviceId]
+	case v1.DeviceKind_DEVICE_KIND_CLIENT:
+		return !e.security.TrustedClients[d.DeviceId]
+	default:
+		return !e.security.TrustedMachines[d.DeviceId] && !e.security.TrustedClients[d.DeviceId]
+	}
 }

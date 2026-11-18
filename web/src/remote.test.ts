@@ -1347,3 +1347,21 @@ it("caches verified schedule list responses on executeCommandAttempt and decrypt
   const cleared = await r.readScheduleCache(3n, r.machine);
   expect(cleared.resultJson).toEqual(new Uint8Array());
 });
+
+it("pushes updated SecuritySnapshot to hostBridge when security.install adds a machine", async () => {
+  const r = await probe();
+  await (r as unknown as { ensureHost: () => unknown }).ensureHost();
+  const host = (r as unknown as { hostBridge: { dispatchEvent: (ev: { event?: { case?: string; value?: { trustedMachineIds?: string[] } } }) => void } }).hostBridge;
+  const spy = vi.spyOn(host, "dispatchEvent");
+
+  const enrolled = await r.world.fixture.enroll(r.world.fixture.phone.json.member, 1);
+  const { recordFromJSON } = await import("./test/security-fixture");
+  const { states } = await recordFromJSON(enrolled.json);
+  const addedState = states[states.length - 1];
+  const current = await r.security.verifiedRecord();
+
+  await r.security.install(current, [addedState], [undefined]);
+
+  const snapCall = spy.mock.calls.find(([ev]) => ev.event?.case === "securitySnapshot");
+  expect(snapCall?.[0].event?.value?.trustedMachineIds).toContain(enrolled.json.member);
+});

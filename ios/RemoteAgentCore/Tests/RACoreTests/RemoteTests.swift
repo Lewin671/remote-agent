@@ -377,5 +377,42 @@ extension SyncServerTests {
                 await #expect(throws: (any Error).self) { try await r.pingServer(timeoutMs: 2_000) }
             }
         }
+
+        @Test func installPublicationAndSyncEmitSecuritySnapshotHook() async throws {
+            try await world { w in
+                let r = try await w.client()
+                try await r.hydrateExecutorState()
+                let snapshots = Mailbox<PBCoreSecuritySnapshotEvent>()
+                await r.installCoreHooks(Remote.CoreHooks(
+                    onFetchSession: { _ in },
+                    onRefresh: {},
+                    onRefreshDevices: {},
+                    onSavePrefs: { _ in },
+                    onDirectStatus: { _, _, _ in },
+                    onSecuritySnapshot: { snapshots.put($0) }
+                ))
+                let client = try await r.securitySession()
+                let newSeed = randomBytes(32)
+                let (enrolledAcct, enrolledRec) = try await w.phone.enroll(seed: newSeed, kind: .machine)
+                let rawState = try DeviceSecurity.stateBytes(enrolledRec.state)
+                var stateMsg = PBSecurityState()
+                stateMsg.state = rawState
+                var req = PBPutSecurityStateRequest()
+                req.states = [stateMsg]
+                if let lease = enrolledRec.lease {
+                    req.lease = try lease.bytes()
+                }
+                try await client.installPublication(req)
+                let snap = try #require(await snapshots.poll(5_000))
+                #expect(snap.trustedMachineIds.contains(enrolledAcct.deviceId))
+
+                // Sync outside syncSecuritySnapshot also notifies onSecuritySnapshot.
+                let seed2 = randomBytes(32)
+                let (acct2, _) = try await w.phone.enroll(seed: seed2, kind: .machine)
+                _ = try await client.sync()
+                let snap2 = try #require(await snapshots.poll(5_000))
+                #expect(snap2.trustedMachineIds.contains(acct2.deviceId))
+            }
+        }
     }
 }

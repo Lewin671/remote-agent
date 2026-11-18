@@ -4,7 +4,7 @@ import { Code, ConnectError, type Client } from "@connectrpc/connect";
 import { Authority, authoritySigningTime } from "./authority";
 import { deviceID, importSessionKey, sealMessage } from "./crypto";
 import { DeviceSecurityClient } from "./device-security-client";
-import { installSecurity, type SecurityRecord } from "./device-security-store";
+import { type SecurityRecord } from "./device-security-store";
 import { equal, leaseBytes, parseLease, parseState, recoveryBytes, SecurityError, signLease, stateBytes, stateHash, verifyLease, type Member } from "./device-security";
 import { makePairApproval } from "./pair-approval";
 import { RecoveryCode } from "./recovery";
@@ -169,7 +169,7 @@ export class AuthorityClient {
       check();
       await this.api.putSecurityState(request);
       check();
-      await installSecurity(r, [], [], parseLease(new Uint8Array(request.lease)));
+      await this.security.install(r, [], [], parseLease(new Uint8Array(request.lease)));
       check();
       await clearSecurityOperation(op);
       return;
@@ -207,14 +207,14 @@ export class AuthorityClient {
       const response = await this.api.putSecurityState(request);
       if (response.headEpoch !== target.core.epoch || !equal(await stateHash(await parseState(new Uint8Array(response.head))), targetHash)) throw new SecurityError("conflict");
       check();
-      await installSecurity(r, [target], [undefined], lease);
+      await this.security.install(r, [target], [undefined], lease);
       check();
       r = await this.security.verifiedRecord();
     } else if (equal(r.stateHash, targetHash) && lease && (!r.lease || r.lease.issuedAt < lease.issuedAt)) {
       check();
       await this.api.putSecurityState(request);
       check();
-      await installSecurity(r, [], [], lease);
+      await this.security.install(r, [], [], lease);
       check();
     }
     op = await saveSecurityOperation(op, { ...op, phase: "PUBLISHED" });
@@ -330,7 +330,7 @@ export class AuthorityClient {
         check();
         await this.api.putSecurityState(request);
         check();
-        await installSecurity(r, [], [], cert);
+        await this.security.install(r, [], [], cert);
         check();
         await saveSecurityOperation(pending, { ...pending, retry: undefined });
         return;

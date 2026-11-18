@@ -54,6 +54,69 @@ extension Remote {
 
     // MARK: - Security Snapshot
 
+    private func applyAndBuildSnapshot(
+        opId: UInt64,
+        networkGeneration netGen: UInt64,
+        record: DeviceSecurity.Record,
+        expiration: UInt64,
+        archive: Set<String>,
+        recoveryPending: Bool,
+        recoveryReadyMs: UInt64,
+        maintenancePending: Bool,
+        recoveryStatusStale: Bool
+    ) async -> PBCoreSecuritySnapshotEvent {
+        let head = record.state
+        let members = Dictionary(uniqueKeysWithValues: head.core.members.map { ($0.id, $0) })
+
+        self.trustedMembers = members
+        self.archiveMachines = archive
+        self.authorityDeviceId = head.core.authorityID
+        self.leaseEndMs = expiration
+        self.recoveryPending = recoveryPending
+        self.recoveryReadyMs = recoveryReadyMs
+        self.recoveryObjectsPending = maintenancePending
+        self.recoveryStatusStale = recoveryStatusStale
+        self.clockSkewed = false
+        for id in archive where members[id]?.kind != 1 {
+            await cache?.removeBlob(name: "schedules/" + id)
+        }
+
+        var event = PBCoreSecuritySnapshotEvent()
+        event.opID = opId
+        event.networkGeneration = netGen
+        event.selfDeviceID = account.deviceId
+        event.isMember = record.member
+        event.authorityDeviceID = head.core.authorityID
+        event.trustedMachineIds = head.core.members.filter { $0.kind == 1 }.map(\.id)
+        event.trustedClientIds = head.core.members.filter { $0.kind == 2 }.map(\.id)
+        event.archiveMachineIds = Array(archive)
+        event.headEpoch = head.core.epoch
+        event.leaseEndMs = Int64(expiration)
+        event.clockSkewed = false
+        event.recoveryPending = recoveryPending
+        event.recoveryReadyMs = Int64(recoveryReadyMs)
+        event.recoveryObjectsPending = maintenancePending
+        return event
+    }
+
+    func pushObservedSecuritySnapshot(_ record: DeviceSecurity.Record) async {
+        guard coreSyncDepth == 0, !closed, let client = deviceSecurity else { return }
+        let expiration = record.lease?.notAfter ?? 0
+        let archive = Set(record.states.values.flatMap(\.core.members).filter { $0.kind == 1 }.map(\.id))
+        let event = await applyAndBuildSnapshot(
+            opId: 0,
+            networkGeneration: networkGeneration,
+            record: record,
+            expiration: expiration,
+            archive: archive,
+            recoveryPending: await client.recoveryPending,
+            recoveryReadyMs: await client.recoveryReadyMs,
+            maintenancePending: recoveryObjectsPending,
+            recoveryStatusStale: await client.recoveryStatusStale
+        )
+        await hostHooks?.onSecuritySnapshot(event)
+    }
+
     public func syncSecuritySnapshot(
         opId: UInt64,
         networkGeneration netGen: UInt64,
@@ -63,6 +126,8 @@ extension Remote {
         event.opID = opId
         event.networkGeneration = netGen
         event.selfDeviceID = account.deviceId
+        coreSyncDepth += 1
+        defer { coreSyncDepth -= 1 }
         do {
             if netGen != verifiedNetworkGeneration {
                 try await refreshNetworkSecurity()
@@ -82,39 +147,22 @@ extension Remote {
                     throw error
                 }
             }
-            let head = record.state
             let expiration = try await client.leaseExpiration()
             let archive = try await client.historicalMachines()
-            let members = Dictionary(uniqueKeysWithValues: head.core.members.map { ($0.id, $0) })
-
-            self.trustedMembers = members
-            self.archiveMachines = archive
-            self.authorityDeviceId = head.core.authorityID
-            self.leaseEndMs = expiration
-            self.recoveryPending = await client.recoveryPending
-            self.recoveryReadyMs = await client.recoveryReadyMs
-            self.recoveryObjectsPending = maintenancePending
-            self.recoveryStatusStale = await client.recoveryStatusStale
-            self.clockSkewed = false
             if netGen == self.networkGeneration {
                 self.verifiedNetworkGeneration = netGen
             }
-            for id in archive where members[id]?.kind != 1 {
-                await cache?.removeBlob(name: "schedules/" + id)
-            }
-
-            event.isMember = record.member
-            event.authorityDeviceID = head.core.authorityID
-            event.trustedMachineIds = head.core.members.filter { $0.kind == 1 }.map(\.id)
-            event.trustedClientIds = head.core.members.filter { $0.kind == 2 }.map(\.id)
-            event.archiveMachineIds = Array(archive)
-            event.headEpoch = head.core.epoch
-            event.leaseEndMs = Int64(expiration)
-            event.clockSkewed = false
-            event.recoveryPending = recoveryPending
-            event.recoveryReadyMs = Int64(recoveryReadyMs)
-            event.recoveryObjectsPending = maintenancePending
-            return event
+            return await applyAndBuildSnapshot(
+                opId: opId,
+                networkGeneration: netGen,
+                record: record,
+                expiration: expiration,
+                archive: archive,
+                recoveryPending: await client.recoveryPending,
+                recoveryReadyMs: await client.recoveryReadyMs,
+                maintenancePending: maintenancePending,
+                recoveryStatusStale: await client.recoveryStatusStale
+            )
         } catch {
             if let secErr = error as? DeviceSecurity.Failure, secErr == .clock {
                 self.clockSkewed = true

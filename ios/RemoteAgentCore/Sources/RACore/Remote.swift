@@ -258,6 +258,7 @@ public final actor Remote {
     var clockSkewed = false
     var networkGeneration: UInt64 = 0
     var verifiedNetworkGeneration: UInt64 = 0
+    var coreSyncDepth = 0
     private var securityNetworkReset: (UInt64, Task<Void, Never>)?
     var models: [String: ModelList] = [:]
 
@@ -266,7 +267,7 @@ public final actor Remote {
     var sessionRemovalHandler: @Sendable (String) async -> Void = { _ in }
 
     // Hooks installed by CoreHost so unmigrated Step 4 actions still route into Core
-    private var hostHooks: CoreHooks?
+    var hostHooks: CoreHooks?
     public struct CoreHooks: Sendable {
         public var onFetchSession: @Sendable (String) async -> Void
         public var onRefresh: @Sendable () async -> Void
@@ -275,6 +276,7 @@ public final actor Remote {
         public var onDirectStatus: @Sendable (String, Bool, PBDirectRouteReport) async -> Void
         public var onLoadMoreSessions: @Sendable () async -> Void
         public var onDirectEvents: @Sendable (String, String, [PBCorePlainEvent]) async -> Void
+        public var onSecuritySnapshot: @Sendable (PBCoreSecuritySnapshotEvent) async -> Void
         public init(
             onFetchSession: @escaping @Sendable (String) async -> Void,
             onRefresh: @escaping @Sendable () async -> Void,
@@ -282,7 +284,8 @@ public final actor Remote {
             onSavePrefs: @escaping @Sendable (PrefsOp) async throws -> Void,
             onDirectStatus: @escaping @Sendable (String, Bool, PBDirectRouteReport) async -> Void,
             onLoadMoreSessions: @escaping @Sendable () async -> Void = {},
-            onDirectEvents: @escaping @Sendable (String, String, [PBCorePlainEvent]) async -> Void = { _, _, _ in }
+            onDirectEvents: @escaping @Sendable (String, String, [PBCorePlainEvent]) async -> Void = { _, _, _ in },
+            onSecuritySnapshot: @escaping @Sendable (PBCoreSecuritySnapshotEvent) async -> Void = { _ in }
         ) {
             self.onFetchSession = onFetchSession
             self.onRefresh = onRefresh
@@ -291,6 +294,7 @@ public final actor Remote {
             self.onDirectStatus = onDirectStatus
             self.onLoadMoreSessions = onLoadMoreSessions
             self.onDirectEvents = onDirectEvents
+            self.onSecuritySnapshot = onSecuritySnapshot
         }
     }
 

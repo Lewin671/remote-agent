@@ -232,7 +232,8 @@ public actor DeviceSecurityClient {
     }
     /// Appends a contiguous chain segment and persists it before use.
     func install(
-        _ states: [DeviceSecurity.State], _ proofs: [DeviceSecurity.RecoveryStatement?]
+        _ states: [DeviceSecurity.State], _ proofs: [DeviceSecurity.RecoveryStatement?],
+        notifyObserver: Bool = true
     ) throws -> DeviceSecurity.Record {
         try DeviceSecurity.check(!states.isEmpty && states.count == proofs.count)
         var next = try read()
@@ -286,7 +287,7 @@ public actor DeviceSecurityClient {
         let expected = try DeviceSecurity.stateHash(try read().state)
         next = try store.writeSecurity(expectedHead: expected, next)
         keep(next)
-        observer.installed(next)
+        if notifyObserver { observer.installed(next) }
         return next
     }
     private func touch(now: UInt64, persist: Bool = false) throws -> DeviceSecurity.Record {
@@ -305,9 +306,11 @@ public actor DeviceSecurityClient {
     public func installPublication(_ request: PBPutSecurityStateRequest) throws {
         if !request.states.isEmpty {
             _ = try install(request.states.map { try DeviceSecurity.parseState($0.state) },
-                request.states.map { $0.recovery.isEmpty ? nil : try DeviceSecurity.RecoveryStatement.parse($0.recovery) })
+                request.states.map { $0.recovery.isEmpty ? nil : try DeviceSecurity.RecoveryStatement.parse($0.recovery) },
+                notifyObserver: false)
         }
         try acceptLease(request.lease)
+        observer.installed(try read())
     }
     /// Seals locally with the current content key and a random nonce.
     public func seal(
