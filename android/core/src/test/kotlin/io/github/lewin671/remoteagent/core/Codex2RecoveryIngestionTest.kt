@@ -11,6 +11,7 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class Codex2RecoveryIngestionTest {
+    @get:org.junit.Rule val hangGuard = hangGuard()
     @Test
     fun unavailablePrefixDoesNotBlockReadableSuffixOrLiveEvents() =
         runBlocking<Unit> { scenario(null) }

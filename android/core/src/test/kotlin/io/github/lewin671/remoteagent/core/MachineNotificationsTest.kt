@@ -22,6 +22,7 @@ class MachineNotificationsTest {
 }
 
 class MachineNotificationReceiverTest {
+    @get:org.junit.Rule val hangGuard = hangGuard()
  @Test fun opensGoEnvelopeBeforeLocalizing()=kotlinx.coroutines.runBlocking {
   val server=TestServer();val http=Api.defaultHttp()
   try {

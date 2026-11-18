@@ -5,6 +5,7 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class PublicationRetryTest {
+    @get:org.junit.Rule val hangGuard = hangGuard()
     @Test
     fun exhaustedCASRemainsPendingAndCanFinishOnTheNextPoll() =
         runBlocking<Unit> {

@@ -12,6 +12,7 @@ import org.junit.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class RecoveryOwnershipTest {
+    @get:org.junit.Rule val hangGuard = hangGuard()
     @Test fun closingSecurityRetiresItsOwnedHTTPRound() = runTest {
         val fixture = ColdOpenFixture(2)
         val started = CompletableDeferred<Unit>()

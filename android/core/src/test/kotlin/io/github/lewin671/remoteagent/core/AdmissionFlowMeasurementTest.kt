@@ -21,6 +21,7 @@ import org.junit.Assume.assumeTrue
 import org.junit.Test
 
 class AdmissionFlowMeasurementTest {
+    @get:org.junit.Rule val hangGuard = hangGuard()
  @Test fun fullSnapshotApprovalUnderDaemonSaturation()=runBlocking<Unit>{
   val path=System.getenv("RA_1B_FLOW_ROOT");assumeTrue(path!=null)
   val root=File(path!!);check(root.canonicalPath.startsWith("/private/tmp/")||root.canonicalPath.startsWith("/tmp/"))

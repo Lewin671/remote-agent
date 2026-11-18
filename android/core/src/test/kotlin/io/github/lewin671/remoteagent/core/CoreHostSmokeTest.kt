@@ -60,6 +60,7 @@ import org.junit.Test
 import java.time.ZoneId
 
 class CoreHostSmokeTest {
+    @get:org.junit.Rule val hangGuard = hangGuard()
     private val nowMs = 1_760_000_000_000L
 
     private fun host(clock: () -> Long = { nowMs }, mono: () -> Long = { 1_000L }): CoreHost =

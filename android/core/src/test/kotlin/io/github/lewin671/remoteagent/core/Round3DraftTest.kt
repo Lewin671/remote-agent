@@ -5,6 +5,7 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class Round3DraftTest {
+    @get:org.junit.Rule val hangGuard = hangGuard()
     @Test
     fun creationPersistsBeforeNetworkAndResumesLostPinResponse() =
         runBlocking<Unit> {

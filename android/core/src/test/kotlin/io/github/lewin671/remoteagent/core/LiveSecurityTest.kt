@@ -18,6 +18,7 @@ import org.junit.Test
 
 /** Live frames from a removed sender, removal records, future chains and join approvals. */
 class LiveSecurityTest {
+    @get:org.junit.Rule val hangGuard = hangGuard()
     @Test
     fun aRemovedSenderCannotWriteAndItsRetainedHistoryStillOpens() = runBlocking<Unit> {
         val server = TestServer()

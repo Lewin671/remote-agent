@@ -7,6 +7,7 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class AdoptionReconciliationTest {
+    @get:org.junit.Rule val hangGuard = hangGuard()
     private data class Adopted(
         val account: Account,
         val record: DeviceSecurity.Record,

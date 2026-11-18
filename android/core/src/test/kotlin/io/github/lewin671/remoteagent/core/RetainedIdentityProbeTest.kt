@@ -11,6 +11,7 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class RetainedIdentityProbeTest {
+    @get:org.junit.Rule val hangGuard = hangGuard()
     @Test fun retriesOneDenialWithAFreshLogin() = runTest {
         for (deniedAgain in listOf(false, true)) {
             var attempts = 0

@@ -11,6 +11,7 @@ import org.junit.Test
 /** Asserts the cold-open dependency count with 50 ms virtual I/O, without a wall-clock benchmark. */
 @OptIn(ExperimentalCoroutinesApi::class)
 class OpenLatencyBenchmarkTest {
+    @get:org.junit.Rule val hangGuard = hangGuard()
     companion object {
         private lateinit var fixture: ColdOpenFixture
         @JvmStatic @BeforeClass fun signOnce() { fixture = ColdOpenFixture() }

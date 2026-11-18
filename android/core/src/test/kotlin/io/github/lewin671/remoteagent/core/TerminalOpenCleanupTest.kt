@@ -12,6 +12,7 @@ import org.junit.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class TerminalOpenCleanupTest {
+    @get:org.junit.Rule val hangGuard = hangGuard()
     private class Socket(private val req: Request, private val failCancel: Boolean = false) : WebSocket {
         var cancelled = false
         override fun request() = req

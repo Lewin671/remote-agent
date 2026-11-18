@@ -19,6 +19,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class UpdateTest {
+    @get:org.junit.Rule val hangGuard = hangGuard()
     private val apk = ByteArray(5000) { (it % 251).toByte() }
     private val sum = MessageDigest.getInstance("SHA-256").digest(apk).joinToString("") { "%02x".format(it) }
 

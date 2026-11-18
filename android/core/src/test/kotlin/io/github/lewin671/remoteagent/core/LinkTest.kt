@@ -11,6 +11,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
 
 class LinkTest {
+    @get:org.junit.Rule val hangGuard = hangGuard()
     private fun projected(id: String) = RemoteState(
         conn = ConnState.OFFLINE,
         machines = mapOf(id to MachineView(id, false, 0,

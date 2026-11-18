@@ -7,6 +7,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class RebuildDomainTest {
+    @get:org.junit.Rule val hangGuard = hangGuard()
     @Test
     fun rebuildPersistsBeforeNetworkAndResumesTheExactExportableGenesis() =
         runBlocking<Unit> {

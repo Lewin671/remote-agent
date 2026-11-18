@@ -85,6 +85,15 @@ val buildTestFixtures by tasks.registering(Exec::class) {
 }
 tasks.test {
     timeout.set(Duration.ofMinutes(5))
+    testLogging {
+        events(
+            org.gradle.api.tasks.testing.logging.TestLogEvent.STARTED,
+            org.gradle.api.tasks.testing.logging.TestLogEvent.PASSED,
+            org.gradle.api.tasks.testing.logging.TestLogEvent.FAILED,
+            org.gradle.api.tasks.testing.logging.TestLogEvent.SKIPPED,
+        )
+        exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
+    }
     inputs.dir(rootProject.file("../testdata/transport")).withPathSensitivity(PathSensitivity.NONE)
     systemProperty("outcomeVectors", rootProject.file("../testdata/transport/outcomes.json").absolutePath)
     inputs.dir(rootProject.file("../i18n/messages")).withPathSensitivity(PathSensitivity.RELATIVE)

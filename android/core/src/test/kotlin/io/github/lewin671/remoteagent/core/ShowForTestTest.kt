@@ -12,6 +12,7 @@ import org.junit.Test
 
 /** The fixed state that layout tests and screenshots render, without a server. */
 class ShowForTestTest {
+    @get:org.junit.Rule val hangGuard = hangGuard()
     @Test
     fun showsStateAndHistoryWithoutFetching() = runBlocking {
         val remote =

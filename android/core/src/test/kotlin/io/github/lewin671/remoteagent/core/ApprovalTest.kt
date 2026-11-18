@@ -8,6 +8,7 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class ApprovalTest {
+    @get:org.junit.Rule val hangGuard = hangGuard()
     @Test
     fun accountScopedApprovalCannotSignWhileAuthorityIsBackgrounded() = runBlocking {
         TestServer().use { server ->
@@ -61,7 +62,13 @@ class ApprovalTest {
                 assertEquals(pairing.joined().first, shown.await())
                 val approving = async { runCatching { pairing.approve() } }
                 val storage = TestSecurity.get(server.url).stores.getValue(owner.phone.deviceId)
-                while (storage.readSecurityOperation()?.delivery?.isNotEmpty() != true) delay(10)
+                while (storage.readSecurityOperation()?.delivery?.isNotEmpty() != true) {
+                    if (approving.isCompleted) {
+                        approving.await().exceptionOrNull()?.let { throw it }
+                        error("pairing.approve finished without persisting delivery")
+                    }
+                    delay(10)
+                }
                 pairing.cancelOnServer()
                 val failure = approving.await().exceptionOrNull()
                 assertTrue(failure is PairException)
@@ -293,7 +300,7 @@ class ApprovalTest {
                             persist = { _, _ -> persisted = true },
                             pollIntervalMs = 10,
                         )
-                    }
+                    }.also { res -> res.exceptionOrNull()?.let { displayed.completeExceptionally(it) } }
                 }
                 assertEquals(pairing.joined().first, displayed.await())
                 val failure = joining.await().exceptionOrNull()

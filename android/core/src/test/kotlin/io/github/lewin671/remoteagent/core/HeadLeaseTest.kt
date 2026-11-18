@@ -7,6 +7,7 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class HeadLeaseTest {
+    @get:org.junit.Rule val hangGuard = hangGuard()
     @Test
     fun staleOperationCannotRewindCommittedProgressWithTheSameSignature() {
         val old =

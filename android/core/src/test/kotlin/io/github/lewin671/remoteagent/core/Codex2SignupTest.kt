@@ -6,6 +6,7 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class Codex2SignupTest {
+    @get:org.junit.Rule val hangGuard = hangGuard()
     @Test
     fun openRelaySignupSolvesTheExistingChallengeAndKeepsTheDraftIdentity() =
         runBlocking<Unit> {

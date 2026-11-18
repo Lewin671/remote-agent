@@ -9,6 +9,7 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class RecoveryObjectsTest {
+    @get:org.junit.Rule val hangGuard = hangGuard()
     @Test
     fun retainedClientRepublishesAndUnreadableOfflineMetadataKeepsSignedMembers() =
         runBlocking<Unit> {

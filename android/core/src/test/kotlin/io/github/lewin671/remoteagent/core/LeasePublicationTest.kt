@@ -11,6 +11,7 @@ import org.junit.runners.Parameterized
 
 @RunWith(Parameterized::class)
 class LeasePublicationTest(private val purpose: DeviceSecurity.Purpose) {
+    @get:org.junit.Rule val hangGuard = hangGuard()
     companion object {
         @JvmStatic
         @Parameterized.Parameters(name = "{0}")

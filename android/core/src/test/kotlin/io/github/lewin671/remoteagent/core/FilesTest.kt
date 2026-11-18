@@ -9,6 +9,7 @@ import java.io.InputStream
 import java.security.MessageDigest
 
 class FilesTest {
+    @get:org.junit.Rule val hangGuard = hangGuard()
     private fun machine(supported: Boolean, count: Int = 6, bytes: Long = MAX_FILE_BYTES) = MachineView("m", true, 0,
         MachineMeta.newBuilder().setProtocolVersion(PROTOCOL_VERSION).setCapabilities(MachineCapabilities.newBuilder()
             .setFileUpload(supported).setMaxFilesPerMessage(count).setMaxFileUploadBytes(bytes)).build())

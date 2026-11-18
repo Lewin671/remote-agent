@@ -45,6 +45,7 @@ import org.junit.Test
 
 /** The sync engine against the real Go server and a fake daemon. */
 class RemoteTest {
+    @get:org.junit.Rule val hangGuard = hangGuard()
     private lateinit var server: TestServer
     private val http = Api.defaultHttp()
     private val root = randomBytes(32)
@@ -91,12 +92,13 @@ class RemoteTest {
         historyIdleMs: Long = 60_000,
         historyIdleCount: Int = 8,
         linkGraceMs: Long = 10_000,
+        httpClient: okhttp3.OkHttpClient = http,
     ): Remote {
         val acct = approvedClient(daemon.phone, http)
         val r =
             fixtureRemote(
                 acct,
-                http,
+                httpClient,
                 cache,
                 frameQueue = frameQueue,
                 historyIdleMs = historyIdleMs,
@@ -566,29 +568,53 @@ class RemoteTest {
     @Test
     fun aRemovedClientLearnsItAndStopsConnecting() =
         runBlocking<Unit> {
-            val r = client()
+            val holdRetryLogin = java.util.concurrent.atomic.AtomicBoolean(false)
+            val retryEntered = CompletableDeferred<Unit>()
+            val retryRelease = java.util.concurrent.CountDownLatch(1)
+            val gatedHttp =
+                http
+                    .newBuilder()
+                    .addInterceptor { chain ->
+                        if (chain.request().url.encodedPath.endsWith("/GetChallenge") &&
+                            holdRetryLogin.compareAndSet(true, false)
+                        ) {
+                            retryEntered.complete(Unit)
+                            retryRelease.await()
+                        }
+                        chain.proceed(chain.request())
+                    }
+                    .build()
+            val r = client(httpClient = gatedHttp)
             val other = client()
-            r.start()
-            other.start()
-            r.awaitState("online") {
-                it.conn == ConnState.ONLINE && it.devices.containsKey(r.account.deviceId)
+            try {
+                r.start()
+                other.start()
+                r.awaitState("online") {
+                    it.conn == ConnState.ONLINE && it.devices.containsKey(r.account.deviceId)
+                }
+                other.awaitState("online") {
+                    it.conn == ConnState.ONLINE && it.devices.containsKey(r.account.deviceId)
+                }
+                other.refreshDevices()
+                removeAsAuthority(daemon.phone, r.account.deviceId, http)
+                val st = r.awaitState("removed") { it.removed }
+                assertEquals(ConnState.OFFLINE, st.conn)
+                // It stays put rather than reconnecting, also when asked to start.
+                r.start()
+                delay(1500)
+                assertTrue(r.state.value.removed)
+                assertEquals(ConnState.OFFLINE, r.state.value.conn)
+                // Asked to try again, hold the retry login RPC so trying=!removed is observed
+                // before the conflated StateFlow returns to removed=true on rejection.
+                holdRetryLogin.set(true)
+                r.retryLogin()
+                retryEntered.await()
+                r.awaitState("trying") { !it.removed }
+                retryRelease.countDown()
+                r.awaitState("removed again") { it.removed }
+            } finally {
+                retryRelease.countDown()
             }
-            other.awaitState("online") {
-                it.conn == ConnState.ONLINE && it.devices.containsKey(r.account.deviceId)
-            }
-            other.refreshDevices()
-            removeAsAuthority(daemon.phone, r.account.deviceId, http)
-            val st = r.awaitState("removed") { it.removed }
-            assertEquals(ConnState.OFFLINE, st.conn)
-            // It stays put rather than reconnecting, also when asked to start.
-            r.start()
-            delay(1500)
-            assertTrue(r.state.value.removed)
-            assertEquals(ConnState.OFFLINE, r.state.value.conn)
-            // Asked to try again, it is turned away again.
-            r.retryLogin()
-            r.awaitState("trying") { !it.removed }
-            r.awaitState("removed again") { it.removed }
         }
 
     @Test
@@ -1324,6 +1350,110 @@ class RemoteTest {
         )
         val vm2 = flow2.first { it.timeline.itemsCount >= 1 }
         org.junit.Assert.assertEquals(1, vm2.timeline.itemsCount)
+    }
+
+    @Test fun securityInstallDuringInFlightSyncIsNotDroppedOrOverwritten() = runBlocking<Unit> {
+        val holdSync = java.util.concurrent.atomic.AtomicBoolean(false)
+        val syncEntered = CompletableDeferred<Unit>()
+        val syncRelease = java.util.concurrent.CountDownLatch(1)
+        val gatedHttp =
+            http
+                .newBuilder()
+                .addInterceptor { chain ->
+                    val response = chain.proceed(chain.request())
+                    if (chain.request().url.encodedPath.endsWith("/GetSecurityStates") &&
+                        holdSync.compareAndSet(true, false)
+                    ) {
+                        syncEntered.complete(Unit)
+                        syncRelease.await()
+                    }
+                    response
+                }
+                .build()
+        val r = fixtureRemote(daemon.phone, gatedHttp)
+        closers += AutoCloseable { r.close() }
+        try {
+            r.start()
+            r.awaitState("connected") { it.conn == ConnState.ONLINE && r.coreHost.syncStateView.value.securityLoaded }
+
+            val seed1 = randomBytes(32)
+            val cp1 = SigningKey(seed1).publicKey
+            val m1Id = deviceId(cp1)
+            val xp1 = PairKey().public
+            r.coreHost.dispatchAndWait(
+                io.github.lewin671.remoteagent.core.proto.Event.newBuilder()
+                    .setStreamFrame(
+                        io.github.lewin671.remoteagent.core.proto.StreamFrameEvent.newBuilder()
+                            .setLegId(1L)
+                            .setSessionUpdated(
+                                io.github.lewin671.remoteagent.core.proto.PlainSession.newBuilder()
+                                    .setSessionId("s-pair-sync-race")
+                                    .setMachineId(m1Id),
+                            ),
+                    )
+                    .build(),
+            )
+            r.awaitState("s-pair-sync-race listed") { it.sessions.containsKey("s-pair-sync-race") }
+
+            holdSync.set(true)
+            val syncJob = launch(kotlinx.coroutines.Dispatchers.Default) { runCatching { r.syncSecurity() } }
+            syncEntered.await()
+
+            val head1 = r.security.head()
+            val key1 = r.security.contentKey(head1.core.contentEpoch)!!
+            val state1 = Authority.pair(
+                head1,
+                DeviceSecurity.Member(m1Id, cp1, xp1, DeviceKind.DEVICE_KIND_MACHINE.number.toUInt()),
+                key1,
+                Authority.newSecret(),
+                SigningKey(daemon.phone.deviceSeed),
+                r.security.signingTime(System.currentTimeMillis()),
+            )
+            r.security.install(listOf(state1))
+
+            val flow1 = r.watchSession("s-pair-sync-race")
+            flow1.first { it.timeline.loaded }
+            r.coreHost.dispatchAndWait(
+                io.github.lewin671.remoteagent.core.proto.Event.newBuilder()
+                    .setDirectEventsReceived(
+                        io.github.lewin671.remoteagent.core.proto.DirectEventsReceivedEvent.newBuilder()
+                            .setMachineId(m1Id)
+                            .setSessionId("s-pair-sync-race")
+                            .addEvents(
+                                io.github.lewin671.remoteagent.core.proto.PlainEvent.newBuilder()
+                                    .setSeq(1L)
+                                    .setVerified(true)
+                                    .setEvent(agent("direct-during-sync").setSessionId("s-pair-sync-race").setSeq(1).build()),
+                            ),
+                    )
+                    .build(),
+            )
+            val vm1 = flow1.first { it.timeline.itemsCount >= 1 }
+            org.junit.Assert.assertEquals(1, vm1.timeline.itemsCount)
+
+            syncRelease.countDown()
+            syncJob.join()
+
+            r.coreHost.dispatchAndWait(
+                io.github.lewin671.remoteagent.core.proto.Event.newBuilder()
+                    .setDirectEventsReceived(
+                        io.github.lewin671.remoteagent.core.proto.DirectEventsReceivedEvent.newBuilder()
+                            .setMachineId(m1Id)
+                            .setSessionId("s-pair-sync-race")
+                            .addEvents(
+                                io.github.lewin671.remoteagent.core.proto.PlainEvent.newBuilder()
+                                    .setSeq(2L)
+                                    .setVerified(true)
+                                    .setEvent(agent("direct-after-sync").setSessionId("s-pair-sync-race").setSeq(2).build()),
+                            ),
+                    )
+                    .build(),
+            )
+            val vm2 = flow1.first { it.timeline.itemsCount >= 2 }
+            org.junit.Assert.assertEquals(2, vm2.timeline.itemsCount)
+        } finally {
+            syncRelease.countDown()
+        }
     }
 
 }

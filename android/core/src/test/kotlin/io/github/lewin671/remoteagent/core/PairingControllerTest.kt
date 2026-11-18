@@ -16,6 +16,7 @@ import org.junit.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class PairingControllerTest {
+    @get:org.junit.Rule val hangGuard = hangGuard()
     private class Pairing : PairingInitiation {
         override val expiresMs = 1_800_000_000_000L
         override val code = "12345678"

@@ -10,6 +10,7 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class SyncTimeFloorTest {
+    @get:org.junit.Rule val hangGuard = hangGuard()
     @Test
     fun unchangedHeadSyncPersistsExpiryAcrossRestartAndClockRollback() =
         runBlocking<Unit> {

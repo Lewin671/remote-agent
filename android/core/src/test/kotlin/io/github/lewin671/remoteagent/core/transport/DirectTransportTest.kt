@@ -130,7 +130,7 @@ private class FakeRtcConnection(
     private val autoOpenChannels: Boolean = true,
 ) : RtcPeerConnection {
     val ufrag = "ufrag$roleTag$id"
-    val localChannels = HashMap<Int, FakeDataChannel>()
+    val localChannels = java.util.concurrent.ConcurrentHashMap<Int, FakeDataChannel>()
     @Volatile private var remotePeer: FakeRtcConnection? = null
     @Volatile var closed = false
     @Volatile var connState: RtcPeerState = RtcPeerState.NEW
@@ -598,6 +598,7 @@ private class DirectBridgeDaemon(
 }
 
 class DirectTransportTest {
+    @get:org.junit.Rule val hangGuard = io.github.lewin671.remoteagent.core.hangGuard()
     private suspend fun awaitCondition(@Suppress("UNUSED_PARAMETER") what: String, @Suppress("UNUSED_PARAMETER") timeoutMs: Long, condition: () -> Boolean) {
         while (!condition()) {
             delay(25)
@@ -792,7 +793,8 @@ class DirectTransportTest {
         val peerForDaemon = Wire.Identity(Wire.utf8("p1"), 1L, ByteArray(16) { 1 }, ByteArray(32) { 2 }, SigningKey(selfSeed).publicKey, X25519PrivateKeyParameters(selfBox, 0).generatePublicKey().encoded, null, null)
         val bridge = FakeRtcBridge().also { it.srflx = false }
         val conn = ByteArray(16) { 9 }
-        val deadline = System.currentTimeMillis() + 5_000L
+        val nowMs = 1_700_000_000_000L
+        val deadline = nowMs + 5_000L
         val events = CopyOnWriteArrayList<String>()
         val want = listOf("client:open:1", "client:open:2", "daemon:open:1", "daemon:open:2")
         val allReady = CompletableDeferred<Unit>()
@@ -804,7 +806,7 @@ class DirectTransportTest {
             ready = { use, _ ->
                 events += "$tag:open:$use"
                 if (events.containsAll(want)) allReady.complete(Unit)
-            }, closed = {}, frame = { _, _ -> }, capability = {},
+            }, closed = {}, frame = { _, _ -> }, capability = {}, clock = { nowMs },
         )
         daemonSession = DirectSession(options(selfDaemon, peerForDaemon, bridge.daemonFactory, { clientSession.receive(it) }, "daemon"))
         clientSession = DirectSession(options(self, peerForClient, bridge.phoneFactory, { daemonSession.receive(it) }, "client"))
@@ -887,7 +889,8 @@ class DirectTransportTest {
 
         val bridge = FakeRtcBridge()
         val conn = ByteArray(16) { 9 }
-        val deadline = System.currentTimeMillis() + 5_000L
+        val nowMs = 1_700_000_000_000L
+        val deadline = nowMs + 5_000L
         val pathEvents = CopyOnWriteArrayList<String>()
         lateinit var clientSession: DirectSession
         lateinit var daemonSession: DirectSession
@@ -910,6 +913,7 @@ class DirectTransportTest {
                 closed = {},
                 frame = { _, _ -> },
                 capability = {},
+                clock = { nowMs },
             )
         )
         clientSession = DirectSession(
@@ -931,6 +935,7 @@ class DirectTransportTest {
                 closed = { use -> pathEvents += "close:$use" },
                 frame = { _, _ -> },
                 capability = {},
+                clock = { nowMs },
             )
         )
         clientSession.start()
@@ -1909,7 +1914,8 @@ class DirectTransportTest {
     fun pairingNewMachineAndSetEnabledAfterFreshWindowRecoverDirectWithoutManualSync(): Unit = runBlocking {
         val server = TestServer()
         val http = Api.defaultHttp()
-        val nowMs = java.util.concurrent.atomic.AtomicLong(System.currentTimeMillis())
+        val clockOffsetMs = java.util.concurrent.atomic.AtomicLong(0L)
+        val testClock: () -> Long = { System.currentTimeMillis() + clockOffsetMs.get() }
         try {
             val phone = newAuthorityAccount(ByteArray(32) { 17 }, server.url, http, server.setupToken)
             val bridge = FakeRtcBridge()
@@ -1920,8 +1926,8 @@ class DirectTransportTest {
                 rtcFactory = bridge.phoneFactory,
                 directPrefs = InMemoryDirectPreferenceStore(),
                 stunUrls = emptyList(),
-                clock = { nowMs.get() },
-                monotonic = { nowMs.get() },
+                clock = testClock,
+                monotonic = testClock,
             )
             var daemon: DirectBridgeDaemon? = null
             try {
@@ -1931,10 +1937,10 @@ class DirectTransportTest {
 
                 // Pair a new machine while the authority client stays open in foreground, matching Remote's
                 // PutSecurityState pairing flow (security.install fires onInstall -> direct.install).
-                // Start the daemon's stream before install() triggers Probe so TestServer does not bounce
-                // the initial Probe with OFFLINE while the virtual clock is stationary.
+                // Use a real-time offset clock so any early Probe sent while daemon.start() is still
+                // connecting times out and recovers cleanly instead of deadlocking on a frozen clock.
                 val daemonAccount = approvedClient(phone, http, DeviceKind.DEVICE_KIND_MACHINE)
-                daemon = DirectBridgeDaemon(daemonAccount, server.url, http, { nowMs.get() }, bridge.daemonFactory)
+                daemon = DirectBridgeDaemon(daemonAccount, server.url, http, testClock, bridge.daemonFactory)
                 daemon.start()
                 val updated = TestSecurity.find(server.url)!!.stores.getValue(phone.deviceId).readSecurity()
                 remote.direct.install(updated)
@@ -1948,7 +1954,7 @@ class DirectTransportTest {
                 // Advance clock past the 20s freshUntil window and toggle Direct off/on (as E2E tests do).
                 remote.setDirectEnabled(id, false)
                 awaitCondition("direct turns off", 3_000) { !remote.direct.ready(id, RouteHint.Read) }
-                nowMs.addAndGet(25_000L)
+                clockOffsetMs.addAndGet(25_000L)
                 remote.setDirectEnabled(id, true)
                 awaitCondition("setDirectEnabled(true) after 20s window re-authorizes and recovers Direct", 10_000) {
                     remote.direct.ready(id, RouteHint.Read) &&
@@ -1990,6 +1996,7 @@ class DirectTransportTest {
                 rtcFactory = bridge.phoneFactory,
                 directPrefs = InMemoryDirectPreferenceStore(),
                 stunUrls = emptyList(),
+                directJitter = { 1.0 },
                 clock = { nowMs.get() },
                 monotonic = testMonotonic,
             )

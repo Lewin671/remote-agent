@@ -196,6 +196,7 @@ class ImagesTest {
 }
 
 class UploadTest {
+    @get:org.junit.Rule val hangGuard = hangGuard()
     /** The daemon's side, as internal/daemon keeps it: bytes on disk, overlap must match. */
     private class FakeDaemon(val maxChunk: Int = 10) : UploadChannel {
         var stored = ByteArray(0)

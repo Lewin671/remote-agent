@@ -132,6 +132,7 @@ class Remote(
     private val securityPushSeq = AtomicLong(1L)
     private val devicesPushSeq = AtomicLong(1L)
     private val coreSyncDepth = java.util.concurrent.atomic.AtomicInteger(0)
+    private val securitySnapshotLock = Any()
     @Volatile private var running = false
     @Volatile private var closed = false
     @Volatile private var serverAhead = false
@@ -333,12 +334,12 @@ class Remote(
         clock = clock,
         onSync = { record, started ->
             direct.synced(record, started)
-            pushSecuritySnapshotFromRecord(record)
+            pushSecuritySnapshotFromRecord(record, skipIfCoreSync = true)
         },
         onSyncFailed = { direct.invalidate("sync_failed") },
         onInstall = { record ->
             direct.install(record)
-            pushSecuritySnapshotFromRecord(record)
+            pushSecuritySnapshotFromRecord(record, skipIfCoreSync = false)
         },
     ) { after ->
         api.client.getSecurityStates(
@@ -682,7 +683,7 @@ class Remote(
 
     private suspend fun syncSecurityForCore(opId: Long, networkGeneration: Long) =
         withContext(authorityJob) {
-            sendEvent { setSecuritySnapshot(buildSecuritySnapshotEvent(opId, networkGeneration, sync = true)) }
+            dispatchSyncedSecuritySnapshot(opId, networkGeneration)
         }
 
     private fun snapshotEventFromRecord(
@@ -714,51 +715,88 @@ class Remote(
         return b.build()
     }
 
-    private fun pushSecuritySnapshotFromRecord(record: DeviceSecurity.Record) {
-        if (coreSyncDepth.get() > 0 || closed) return
-        val pushSeq = securityPushSeq.getAndIncrement()
-        val ev = snapshotEventFromRecord(0L, networkGeneration, record, pushSeq)
-        coreHost.dispatch(CoreEvent.newBuilder().setSecuritySnapshot(ev).build())
+    private fun dispatchLatestSecuritySnapshot(
+        fallback: DeviceSecurity.Record? = null,
+        onProcessed: (() -> Unit)? = null,
+    ) {
+        if (closed) {
+            onProcessed?.invoke()
+            return
+        }
+        synchronized(securitySnapshotLock) {
+            if (closed) {
+                onProcessed?.invoke()
+                return
+            }
+            val ev = try {
+                val latest = runCatching { security.record() }.getOrElse { fallback ?: throw it }
+                val pushSeq = securityPushSeq.getAndIncrement()
+                snapshotEventFromRecord(0L, networkGeneration, latest, pushSeq)
+            } catch (e: Exception) {
+                if (e is CancellationException) throw e
+                report(e)
+                val pushSeq = securityPushSeq.getAndIncrement()
+                SecuritySnapshotEvent.newBuilder()
+                    .setOpId(0L)
+                    .setNetworkGeneration(networkGeneration)
+                    .setSelfDeviceId(account.deviceId)
+                    .setPushSeq(pushSeq)
+                    .setUnresolvedHost(unresolvedHost(e))
+                    .setError(e.message ?: e.javaClass.simpleName)
+                    .setClockSkewed(serverAhead || security.clockSkew)
+                    .build()
+            }
+            coreHost.dispatch(CoreEvent.newBuilder().setSecuritySnapshot(ev).build(), onProcessed)
+        }
     }
 
-    private suspend fun buildSecuritySnapshotEvent(
+    private fun pushSecuritySnapshotFromRecord(record: DeviceSecurity.Record, skipIfCoreSync: Boolean = true) {
+        if (closed || (skipIfCoreSync && coreSyncDepth.get() > 0)) return
+        dispatchLatestSecuritySnapshot(fallback = record)
+    }
+
+    private suspend fun dispatchSyncedSecuritySnapshot(
         opId: Long,
         networkGeneration: Long,
-        sync: Boolean,
-        pushSeq: Long = 0L,
-    ): SecuritySnapshotEvent {
-        try {
-            val record = if (sync) {
+    ) {
+        val ev =
+            try {
                 coreSyncDepth.incrementAndGet()
-                try {
-                    security.sync().also { r ->
-                        runCatching { resumeSecurityOperation(dispatchSnapshot = false) }.onFailure { if (it !is DeviceSecurity.Failure) throw it }
-                        try {
-                            recoveryObjectsPending = true
-                            republishRecoveryObjects(r)
-                            recoveryObjectsPending = false
-                        } catch (e: DeviceSecurity.Failure) {
-                            if (e.code != "lease") throw e
+                val record =
+                    try {
+                        security.sync().also { r ->
+                            runCatching { resumeSecurityOperation(dispatchSnapshot = false) }.onFailure { if (it !is DeviceSecurity.Failure) throw it }
+                            try {
+                                recoveryObjectsPending = true
+                                republishRecoveryObjects(r)
+                                recoveryObjectsPending = false
+                            } catch (e: DeviceSecurity.Failure) {
+                                if (e.code != "lease") throw e
+                            }
                         }
+                    } finally {
+                        coreSyncDepth.decrementAndGet()
                     }
-                } finally {
-                    coreSyncDepth.decrementAndGet()
+                synchronized(securitySnapshotLock) {
+                    if (closed) return
+                    val latest = runCatching { security.record() }.getOrNull() ?: record
+                    val built = snapshotEventFromRecord(opId, networkGeneration, latest)
+                    sendEvent { setSecuritySnapshot(built) }
                 }
-            } else security.record()
-            return snapshotEventFromRecord(opId, networkGeneration, record, pushSeq)
-        } catch (e: Exception) {
-            if (e is CancellationException) throw e
-            report(e)
-            return SecuritySnapshotEvent.newBuilder()
-                .setOpId(opId)
-                .setNetworkGeneration(networkGeneration)
-                .setSelfDeviceId(account.deviceId)
-                .apply { if (pushSeq != 0L) setPushSeq(pushSeq) }
-                .setUnresolvedHost(unresolvedHost(e))
-                .setError(e.message ?: e.javaClass.simpleName)
-                .setClockSkewed(serverAhead || security.clockSkew)
-                .build()
-        }
+                return
+            } catch (e: Exception) {
+                if (e is CancellationException) throw e
+                report(e)
+                SecuritySnapshotEvent.newBuilder()
+                    .setOpId(opId)
+                    .setNetworkGeneration(networkGeneration)
+                    .setSelfDeviceId(account.deviceId)
+                    .setUnresolvedHost(unresolvedHost(e))
+                    .setError(e.message ?: e.javaClass.simpleName)
+                    .setClockSkewed(serverAhead || security.clockSkew)
+                    .build()
+            }
+        sendEvent { setSecuritySnapshot(ev) }
     }
 
     private fun refreshSecuritySets(record: DeviceSecurity.Record) {
@@ -1005,9 +1043,16 @@ class Remote(
         if (env.securityHeader.isEmpty) return
         val epoch = runCatching { DeviceSecurity.parseHeader(env.securityHeader.toByteArray()).epoch }.getOrNull() ?: return
         if (security.stateAt(epoch) != null) return
-        val pushSeq = securityPushSeq.getAndIncrement()
-        val ev = buildSecuritySnapshotEvent(0L, networkGeneration, sync = true, pushSeq = pushSeq)
-        coreHost.dispatch(CoreEvent.newBuilder().setSecuritySnapshot(ev).build())
+        coreSyncDepth.incrementAndGet()
+        try {
+            security.sync()
+        } catch (e: Exception) {
+            if (e is CancellationException) throw e
+            report(e)
+        } finally {
+            coreSyncDepth.decrementAndGet()
+        }
+        dispatchLatestSecuritySnapshot()
     }
 
     private suspend fun openPlainMachine(
@@ -1968,7 +2013,6 @@ class Remote(
     // --- Security Management & Recovery (preserved for Security screens & DeviceSecurity tests) ---
 
     suspend fun syncSecurity(budgetMs: Long = Long.MAX_VALUE) {
-        val pushSeq = securityPushSeq.getAndIncrement()
         try {
             val r = withContext(dispatcher) {
                 coreSyncDepth.incrementAndGet()
@@ -1987,13 +2031,19 @@ class Remote(
                     coreSyncDepth.decrementAndGet()
                 }
             }
-            refreshSecuritySets(r)
-            archiveMachines.filter { trustedMembers[it]?.kind != 1u }.forEach { cache?.removeBlob("schedule:$it") }
+            val prunedArchive =
+                synchronized(securitySnapshotLock) {
+                    val latest = runCatching { security.record() }.getOrNull() ?: r
+                    refreshSecuritySets(latest)
+                    archiveMachines.filter { trustedMembers[it]?.kind != 1u }
+                }
+            prunedArchive.forEach { cache?.removeBlob("schedule:$it") }
         } catch (e: DeviceSecurity.Failure) {
             if (e.code != "clock") throw e
         }
-        val ev = buildSecuritySnapshotEvent(0L, networkGeneration, sync = false, pushSeq = pushSeq)
-        coreHost.dispatchAndWait(CoreEvent.newBuilder().setSecuritySnapshot(ev).build())
+        val done = CompletableDeferred<Unit>()
+        dispatchLatestSecuritySnapshot { done.complete(Unit) }
+        done.await()
     }
 
     suspend fun refreshDevices() {
@@ -2085,11 +2135,7 @@ class Remote(
             api.client.putSecurityState(req, Api.headers(currentToken())).value()
             security.install(emptyList(), lease = cert)
             storage.clearSecurityOperation()
-            if (dispatchSnapshot) {
-                val pushSeq = securityPushSeq.getAndIncrement()
-                val ev = buildSecuritySnapshotEvent(0L, networkGeneration, sync = false, pushSeq = pushSeq)
-                coreHost.dispatch(CoreEvent.newBuilder().setSecuritySnapshot(ev).build())
-            }
+            if (dispatchSnapshot) dispatchLatestSecuritySnapshot()
             return
         }
         if (op.kind != "state") {
@@ -2172,11 +2218,7 @@ class Remote(
         }
         storage.writeSecurityOperation(op.advanced(SecurityOperation.Phase.DELIVERED))
         storage.clearSecurityOperation()
-        if (dispatchSnapshot) {
-            val pushSeq = securityPushSeq.getAndIncrement()
-            val ev = buildSecuritySnapshotEvent(0L, networkGeneration, sync = false, pushSeq = pushSeq)
-            coreHost.dispatch(CoreEvent.newBuilder().setSecuritySnapshot(ev).build())
-        }
+        if (dispatchSnapshot) dispatchLatestSecuritySnapshot()
     }
 
     private suspend fun retryCertificate(
@@ -2216,7 +2258,7 @@ class Remote(
                 security.record()
             } else null
         }
-        if (cleared != null) pushSecuritySnapshotFromRecord(cleared)
+        if (cleared != null) pushSecuritySnapshotFromRecord(cleared, skipIfCoreSync = false)
     }
 
     private suspend fun cancelPairDeliveryForRemoval(deviceId: String): Boolean = securityOperationLock.withLock {

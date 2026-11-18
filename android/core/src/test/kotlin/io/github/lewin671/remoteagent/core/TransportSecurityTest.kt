@@ -11,6 +11,7 @@ import java.util.concurrent.CompletableFuture
 import java.util.concurrent.TimeUnit
 
 class TransportSecurityTest {
+    @get:org.junit.Rule val hangGuard = hangGuard()
     @Test fun rpcDoesNotFollowRedirectsEvenWithAnInjectedPermissiveClient() = runBlocking {
         ServerSocket(0, 4, InetAddress.getLoopbackAddress()).use { server ->
             server.soTimeout = 1500

@@ -26,6 +26,7 @@ import org.junit.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class SharedFilesTest {
+    @get:org.junit.Rule val hangGuard = hangGuard()
 
 
     @Test fun outcomeVectorsPreserveSingleDownloadRetry() = runTest {
