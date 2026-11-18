@@ -1,40 +1,23 @@
 [
   {
+    "en": "Send after this turn",
     "key": "queue.after_current_turn",
-    "zh-CN": "本轮结束后发送",
+    "notes": "排队消息气泡的状态/操作文字。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "本轮结束后发送"
+  },
+  {
     "en": "Send after this turn",
-    "notes": "排队消息气泡的状态/操作文字。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
-    "params": {},
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "queue.after_start",
-    "zh-CN": "启动后发送",
-    "en": "Send after startup",
-    "notes": "排队消息气泡的状态/操作文字。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
-    "params": {},
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
     "key": "queue.after_turn",
-    "zh-CN": "这一轮结束后发",
-    "en": "Send after this turn",
     "notes": "排队消息气泡的状态/操作文字。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
     "params": {},
     "platforms": [
@@ -43,19 +26,19 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "这一轮结束后发"
   },
   {
-    "key": "queue.agent_ready",
-    "zh-CN": "等 {agent} 就绪后发出",
     "en": "Send when {agent} is ready",
+    "key": "queue.agent_ready",
     "notes": "会话排队消息气泡。完整句，保持变量位置和原有标点。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：agent 为CLI 品牌名，保持原文。",
     "params": {
       "agent": {
-        "type": "string",
-        "example": "Example"
+        "example": "Example",
+        "type": "string"
       }
     },
     "platforms": [
@@ -64,35 +47,19 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "等 {agent} 就绪后发出"
   },
   {
-    "key": "queue.already_submitted",
-    "zh-CN": "上一条已送入终端，不能取消",
-    "en": "The previous message is already in the terminal and cannot be canceled",
-    "notes": "排队消息气泡的状态/操作文字。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
-    "params": {},
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "queue.android_agent_note",
-    "zh-CN": "等 {agent} 就绪",
     "en": "Waiting for {agent} to be ready",
+    "key": "queue.android_agent_note",
     "notes": "Android 会话排队/工具状态 helper 的现有显示原句，返回延迟消息，不以文字判断状态。参数为 CLI/工具原名，不翻译。英文初稿待审。",
     "params": {
       "agent": {
-        "type": "string",
-        "example": "Example"
+        "example": "Example",
+        "type": "string"
       }
     },
     "platforms": [
@@ -101,14 +68,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "等 {agent} 就绪"
   },
   {
-    "key": "queue.android_scheduled",
-    "zh-CN": "定时任务",
     "en": "Scheduled task",
+    "key": "queue.android_scheduled",
     "notes": "Android 批次 B：Delivery.kt 的现有显示文案，保留原中文措辞与标点。无变量。短标签保持紧凑；说明正文可多行。英文初稿待审。",
     "params": {},
     "platforms": [
@@ -116,14 +83,14 @@
       "web"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "定时任务"
   },
   {
-    "key": "queue.android_sending_soon",
-    "zh-CN": "即将发送",
     "en": "Sending soon",
+    "key": "queue.android_sending_soon",
     "notes": "Android 会话排队/工具状态 helper 的现有显示原句，返回延迟消息，不以文字判断状态。无变量。英文初稿待审。",
     "params": {},
     "platforms": [
@@ -132,14 +99,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "即将发送"
   },
   {
-    "key": "queue.android_unconfirmed",
-    "zh-CN": "已送到终端但没确认",
     "en": "Written to the terminal but unconfirmed",
+    "key": "queue.android_unconfirmed",
     "notes": "Android 会话与聊天显示边界使用；保留当前中文标点。无变量。英文初稿待审。",
     "params": {},
     "platforms": [
@@ -148,14 +115,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "已送到终端但没确认"
   },
   {
-    "key": "queue.cancel_failed",
-    "zh-CN": "取消没成功，仍在排队",
     "en": "Could not cancel; still queued",
+    "key": "queue.cancel_failed",
     "notes": "排队消息气泡的状态/操作文字。说明/反馈正文，允许多行。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
     "params": {},
     "platforms": [
@@ -164,14 +131,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "取消没成功，仍在排队"
   },
   {
-    "key": "queue.canceled",
-    "zh-CN": "已取消",
     "en": "Canceled",
+    "key": "queue.canceled",
     "notes": "排队消息气泡的状态/操作文字。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
     "params": {},
     "platforms": [
@@ -180,30 +147,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "已取消"
   },
   {
-    "key": "queue.canceled_elsewhere",
-    "zh-CN": "上一条已在另一客户端取消",
-    "en": "The previous message was canceled on another client",
-    "notes": "排队消息气泡的状态/操作文字。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
-    "params": {},
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "queue.canceled_record",
-    "zh-CN": "取消了一条排队的消息",
     "en": "Canceled a queued message",
+    "key": "queue.canceled_record",
     "notes": "排队消息气泡的状态/操作文字。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
     "params": {},
     "platforms": [
@@ -212,14 +163,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "取消了一条排队的消息"
   },
   {
-    "key": "queue.canceling",
-    "zh-CN": "正在取消…",
     "en": "Canceling…",
+    "key": "queue.canceling",
     "notes": "排队消息气泡的状态/操作文字。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
     "params": {},
     "platforms": [
@@ -228,30 +179,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "正在取消…"
   },
   {
-    "key": "queue.images_recognized",
-    "zh-CN": "图片已识别，正在发送…",
-    "en": "Images recognized, sending…",
-    "notes": "排队消息气泡的状态/操作文字。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
-    "params": {},
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "queue.insert",
-    "zh-CN": "插入这一轮",
     "en": "Insert into this turn",
+    "key": "queue.insert",
     "notes": "排队消息气泡的状态/操作文字。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
     "params": {},
     "platforms": [
@@ -260,240 +195,235 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "插入这一轮"
   },
   {
-    "key": "queue.ios_after_answer",
-    "zh-CN": "回答后继续",
     "en": "Continue after answering",
+    "key": "queue.ios_after_answer",
     "notes": "ChatState.swift。 iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 无变量。",
     "params": {},
     "platforms": [
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "回答后继续"
   },
   {
-    "key": "queue.ios_after_approval",
-    "zh-CN": "审批后继续",
     "en": "Continue after approval",
+    "key": "queue.ios_after_approval",
     "notes": "ChatState.swift。 iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 无变量。",
     "params": {},
     "platforms": [
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "审批后继续"
   },
   {
-    "key": "queue.ios_after_plan",
-    "zh-CN": "处理计划后继续",
     "en": "Continue after handling the plan",
+    "key": "queue.ios_after_plan",
     "notes": "ChatState.swift。 iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 无变量。",
     "params": {},
     "platforms": [
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "处理计划后继续"
   },
   {
-    "key": "queue.ios_agent_wait",
-    "zh-CN": "等 {agent} 就绪",
     "en": "Waiting for {agent} to be ready",
+    "key": "queue.ios_agent_wait",
     "notes": "ChatState.swift。 iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 参数：agent 为调用处的显示值；用户、CLI 内容和错误详情保持原文。",
     "params": {
       "agent": {
-        "type": "string",
-        "example": "Example"
+        "example": "Example",
+        "type": "string"
       }
     },
     "platforms": [
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "等 {agent} 就绪"
   },
   {
-    "key": "queue.ios_approval_wait",
-    "zh-CN": "等审批处理完",
     "en": "Waiting for approval",
+    "key": "queue.ios_approval_wait",
     "notes": "ChatState.swift。 iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 无变量。",
     "params": {},
     "platforms": [
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "等审批处理完"
   },
   {
-    "key": "queue.ios_input_wait",
-    "zh-CN": "等待输入框就绪",
     "en": "Waiting for the input field to be ready",
+    "key": "queue.ios_input_wait",
     "notes": "ChatState.swift。 iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 无变量。",
     "params": {},
     "platforms": [
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "等待输入框就绪"
   },
   {
-    "key": "queue.ios_message",
-    "zh-CN": "一条排队的消息",
     "en": "A queued message",
+    "key": "queue.ios_message",
     "notes": "ChatRowViews.swift。 iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 无变量。",
     "params": {},
     "platforms": [
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "一条排队的消息"
   },
   {
-    "key": "queue.ios_plan_wait",
-    "zh-CN": "等计划处理完",
     "en": "Waiting for the plan to be handled",
+    "key": "queue.ios_plan_wait",
     "notes": "ChatState.swift。 iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 无变量。",
     "params": {},
     "platforms": [
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "等计划处理完"
   },
   {
-    "key": "queue.ios_popup_wait",
-    "zh-CN": "等终端里的弹窗处理完",
     "en": "Waiting for the terminal popup to be handled",
+    "key": "queue.ios_popup_wait",
     "notes": "ChatState.swift。 iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 无变量。",
     "params": {},
     "platforms": [
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "等终端里的弹窗处理完"
   },
   {
-    "key": "queue.ios_question_wait",
-    "zh-CN": "等提问回答完",
     "en": "Waiting for the question to be answered",
+    "key": "queue.ios_question_wait",
     "notes": "ChatState.swift。 iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 无变量。",
     "params": {},
     "platforms": [
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "等提问回答完"
   },
   {
-    "key": "queue.ios_scheduled_label",
-    "zh-CN": "定时任务{time} · {label}",
     "en": "Scheduled task{time} · {label}",
+    "key": "queue.ios_scheduled_label",
     "notes": "排队消息的定时来源、可选时间与状态；time 为空或带原来的分隔符，label 是当前队列状态。 iOS 会话附件提示，保留中文；正文允许多行，按钮保持紧凑。 参数：time 为调用处的显示值，用户/CLI 原文不翻译；label 为调用处的显示值，用户/CLI 原文不翻译。",
     "params": {
-      "time": {
-        "type": "string",
-        "example": "Example"
-      },
       "label": {
-        "type": "string",
-        "example": "Example"
+        "example": "Example",
+        "type": "string"
+      },
+      "time": {
+        "example": "Example",
+        "type": "string"
       }
     },
     "platforms": [
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "定时任务{time} · {label}"
   },
   {
-    "key": "queue.ios_sending_soon",
-    "zh-CN": "即将发送",
     "en": "Sending soon",
+    "key": "queue.ios_sending_soon",
     "notes": "ChatState.swift。 iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 无变量。",
     "params": {},
     "platforms": [
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "queue.ios_terminal_draft_short",
-    "zh-CN": "终端里有草稿",
-    "en": "Draft in terminal",
-    "notes": "ChatState.swift。 iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 无变量。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "queue.ios_turn_wait",
-    "zh-CN": "等待本轮结束",
-    "en": "Waiting for this turn to end",
-    "notes": "ChatState.swift。 iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 无变量。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "queue.more",
-    "zh-CN": {
-      "plural": "count",
-      "forms": {
-        "other": "还有 {count} 条排队 展开"
-      }
+      "en": "draft",
+      "zh-CN": "source"
     },
+    "zh-CN": "即将发送"
+  },
+  {
+    "en": "Draft in terminal",
+    "key": "queue.ios_terminal_draft_short",
+    "notes": "ChatState.swift。 iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "终端里有草稿"
+  },
+  {
+    "en": "Waiting for this turn to end",
+    "key": "queue.ios_turn_wait",
+    "notes": "ChatState.swift。 iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "等待本轮结束"
+  },
+  {
     "en": {
-      "plural": "count",
       "forms": {
         "one": "{count} more queued message · Expand",
         "other": "{count} more queued messages · Expand"
-      }
+      },
+      "plural": "count"
     },
+    "key": "queue.more",
     "notes": "会话排队消息气泡。完整提示/历史行；参数可重排，不翻译用户内容。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：count 为非负数量（控制复数规则）。",
     "params": {
       "count": {
-        "type": "integer",
-        "example": 2
+        "example": 2,
+        "type": "integer"
       }
     },
     "platforms": [
@@ -502,14 +432,19 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": {
+      "forms": {
+        "other": "还有 {count} 条排队 展开"
+      },
+      "plural": "count"
     }
   },
   {
-    "key": "queue.other_message",
-    "zh-CN": "另一客户端的消息",
     "en": "A message from another client",
+    "key": "queue.other_message",
     "notes": "排队消息气泡的状态/操作文字。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
     "params": {},
     "platforms": [
@@ -518,30 +453,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "另一客户端的消息"
   },
   {
-    "key": "queue.pasting_images",
-    "zh-CN": "正在粘贴图片…",
-    "en": "Pasting images…",
-    "notes": "排队消息气泡的状态/操作文字。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
-    "params": {},
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "queue.paused",
-    "zh-CN": "已暂停",
     "en": "Paused",
+    "key": "queue.paused",
     "notes": "排队消息气泡的状态/操作文字。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
     "params": {},
     "platforms": [
@@ -550,19 +469,19 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "已暂停"
   },
   {
-    "key": "queue.rank",
-    "zh-CN": " · 第 {rank} 条",
     "en": " · #{rank}",
+    "key": "queue.rank",
     "notes": "会话排队消息气泡。排队气泡顺序元信息；rank 为从 1 开始的队列序号。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：rank 为从 1 开始的队列序号。",
     "params": {
       "rank": {
-        "type": "integer",
-        "example": 2
+        "example": 2,
+        "type": "integer"
       }
     },
     "platforms": [
@@ -571,14 +490,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": " · 第 {rank} 条"
   },
   {
-    "key": "queue.resume_failed",
-    "zh-CN": "发送没成功，仍已暂停",
     "en": "Could not send; still paused",
+    "key": "queue.resume_failed",
     "notes": "排队消息气泡的状态/操作文字。说明/反馈正文，允许多行。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
     "params": {},
     "platforms": [
@@ -587,51 +506,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "queue.resuming",
-    "zh-CN": "正在发送…",
-    "en": "Sending…",
-    "notes": "排队消息气泡的状态/操作文字。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
-    "params": {},
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "queue.scheduled",
-    "zh-CN": "定时任务{time} · ",
-    "en": "Scheduled task{time} · ",
-    "notes": "会话排队消息气泡。排队气泡来源元信息，time 为可选的分隔符和时间。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：time 为已按当前界面语言格式化的本地时间。",
-    "params": {
-      "time": {
-        "type": "string",
-        "example": "Example"
-      }
+      "en": "draft",
+      "zh-CN": "source"
     },
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+    "zh-CN": "发送没成功，仍已暂停"
   },
   {
-    "key": "queue.submitting",
-    "zh-CN": "已送入终端，等待确认",
-    "en": "Written to terminal, waiting for confirmation",
+    "en": "Sending…",
+    "key": "queue.resuming",
     "notes": "排队消息气泡的状态/操作文字。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
     "params": {},
     "platforms": [
@@ -640,14 +522,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "正在发送…"
   },
   {
-    "key": "queue.terminal_draft",
-    "zh-CN": "终端里有没发出的草稿，发完或清掉后再发",
     "en": "There is an unsent draft in the terminal. Send or clear it first.",
+    "key": "queue.terminal_draft",
     "notes": "排队消息气泡的状态/操作文字。说明/反馈正文，允许多行。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
     "params": {},
     "platforms": [
@@ -656,14 +538,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "终端里有没发出的草稿，发完或清掉后再发"
   },
   {
-    "key": "queue.unrecognized",
-    "zh-CN": "认不出输入框，已暂停",
     "en": "Input field not recognized; paused",
+    "key": "queue.unrecognized",
     "notes": "排队消息气泡的状态/操作文字。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
     "params": {},
     "platforms": [
@@ -672,14 +554,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "认不出输入框，已暂停"
   },
   {
-    "key": "queue.when_ready",
-    "zh-CN": "就绪后发送",
     "en": "Send when ready",
+    "key": "queue.when_ready",
     "notes": "排队消息气泡的状态/操作文字。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
     "params": {},
     "platforms": [
@@ -688,8 +570,9 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "就绪后发送"
   }
 ]

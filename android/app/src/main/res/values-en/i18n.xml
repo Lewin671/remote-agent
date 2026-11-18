@@ -22,7 +22,6 @@
     <string name="approval_denied" formatted="false">"Denied"</string>
     <string name="approval_deny" formatted="false">"Deny"</string>
     <string name="approval_details" formatted="false">"Approval details"</string>
-    <string name="approval_expired" formatted="false">"Timed out"</string>
     <string name="approval_full_command" formatted="false">"View full command"</string>
     <string name="approval_in_terminal" formatted="false">"Handled in terminal"</string>
     <string name="approval_reason_placeholder" formatted="false">"Suggest what to do instead (optional)"</string>
@@ -149,7 +148,6 @@
     <string name="composer_queue_after_answer" formatted="false">"Queue message; continue after answering"</string>
     <string name="composer_queue_hint" formatted="false">"Queue first, then send in order after this turn"</string>
     <string name="composer_ready_timeout" formatted="false">"Timed out waiting for the terminal"</string>
-    <string name="composer_resent" formatted="false">"Resent"</string>
     <string name="composer_restore" formatted="false">"Restore to input"</string>
     <plurals name="composer_restore_files_full">
         <item quantity="one">"The input cannot fit this message’s %1$d file. Remove some attachments first."</item>
@@ -218,7 +216,6 @@
     <string name="dock_android_question_answered" formatted="false">"This question has already been answered."</string>
     <string name="dock_android_question_changed">"Could not submit; the terminal question may have changed: %1$s"</string>
     <string name="dock_answer_title" formatted="false">"Answer question"</string>
-    <string name="dock_answer_unknown" formatted="false">"Submission is unconfirmed. Retry sends the same answer."</string>
     <string name="dock_answered">"Answered %1$s"</string>
     <string name="dock_claude_plan_note" formatted="false">"Use Ask mode after approval"</string>
     <string name="dock_handle" formatted="false">"Handle"</string>
@@ -230,7 +227,6 @@
     <string name="dock_multiselect" formatted="false">"Select multiple"</string>
     <string name="dock_none_fit" formatted="false">"None of these?"</string>
     <string name="dock_other_terminal" formatted="false">"Other answer: go to terminal"</string>
-    <string name="dock_plan_answered" formatted="false">"Answered the plan"</string>
     <string name="dock_plan_clear" formatted="false">"Clear context and execute"</string>
     <string name="dock_plan_clear_record" formatted="false">"Execute plan with cleared context"</string>
     <string name="dock_plan_full" formatted="false">"Full plan"</string>
@@ -250,7 +246,6 @@
         <item quantity="other">"%1$d selected"</item>
     </plurals>
     <string name="dock_submit_failed">"Could not submit: %1$s"</string>
-    <string name="dock_submit_failed_edit">"Could not submit: %1$s. You can change your selection and submit again."</string>
     <plurals name="dock_submit_selected">
         <item quantity="one">"Submit %1$d selection"</item>
         <item quantity="other">"Submit %1$d selections"</item>
@@ -310,7 +305,6 @@
     <string name="errors_history_has_a_gap_retry" formatted="false">"History has a gap. Retry."</string>
     <string name="errors_history_keys_unavailable_records_from_before_recovery_cannot_be" formatted="false">"History keys unavailable: records from before recovery cannot be decrypted"</string>
     <string name="errors_invalid_ciphertext_signature_key_or_content_verification_failed" formatted="false">"Invalid ciphertext: signature, key, or content verification failed"</string>
-    <string name="errors_invalid_current_request_snapshot" formatted="false">"Invalid current request snapshot"</string>
     <string name="errors_invalid_pairing_approval_signature" formatted="false">"Invalid pairing approval signature"</string>
     <string name="errors_invalid_session_seed" formatted="false">"Invalid session seed"</string>
     <string name="errors_it_may_have_been_deleted_or_belong_to_a" formatted="false">"It may have been deleted, or belong to a computer that was removed."</string>
@@ -318,11 +312,8 @@
     <string name="errors_names_can_only_be_changed_on_that_device" formatted="false">"Names can only be changed on that device"</string>
     <string name="errors_not_connected" formatted="false">"Not connected to the server"</string>
     <string name="errors_other_clients_kept_changing_the_project_list_changes_could" formatted="false">"Other clients kept changing the project list. Changes could not be saved."</string>
-    <string name="errors_pending_requests_on_the_computer_could_not_be_verified" formatted="false">"Pending requests on the computer could not be verified. Retry or handle them in the computer’s terminal."</string>
     <string name="errors_project_preferences_format_is_not_supported" formatted="false">"Project preferences format is not supported"</string>
     <string name="errors_push_backlog_reconnecting" formatted="false">"Push backlog. Reconnecting."</string>
-    <string name="errors_queued_records_could_not_be_restored_you_can_still" formatted="false">"Queued records could not be restored. You can still type and send; retry next time."</string>
-    <string name="errors_queued_records_could_not_be_saved_locally_messages_will" formatted="false">"Queued records could not be saved locally. Messages will still send; verify delivery before closing the page."</string>
     <string name="errors_reading_local_state" formatted="false">"Reading local state"</string>
     <string name="errors_remote_agent_on_is_out_of_date_update_it">"remote-agent on %1$s is out of date. Update it on the computer and retry."</string>
     <string name="errors_remote_control_expired_control_and_new_uploads_are_paused" formatted="false">"Remote control expired. Control and new uploads are paused; renew on the current managing client."</string>
@@ -346,10 +337,8 @@
     <string name="errors_the_computer_is_offline_the_command_was_not_sent" formatted="false">"The computer is offline. The command was not sent."</string>
     <string name="errors_the_computer_is_still_verifying_attachments_retry_shortly" formatted="false">"The computer is still verifying attachments. Retry shortly."</string>
     <string name="errors_the_computer_s_reply_could_not_be_verified_command" formatted="false">"The computer’s reply could not be verified. Command execution is uncertain."</string>
-    <string name="errors_the_current_request_could_not_be_verified_again" formatted="false">"The current request could not be verified again"</string>
     <string name="errors_the_draft_could_not_be_restored_you_can_still" formatted="false">"The draft could not be restored. You can still type and send; retry when opening or editing next time."</string>
     <string name="errors_the_draft_could_not_be_saved_locally_keep_the" formatted="false">"The draft could not be saved locally. Keep the original images and text before closing the page."</string>
-    <string name="errors_the_draft_could_not_be_saved_the_original_message" formatted="false">"The draft could not be saved. The original message’s local copy is preserved."</string>
     <string name="errors_the_event_s_position_was_changed" formatted="false">"The event’s position was changed"</string>
     <string name="errors_the_plan_display_changed_review_it_again" formatted="false">"The plan display changed. Review it again."</string>
     <string name="errors_the_previous_operation_s_outcome_is_still_unknown_reload" formatted="false">"The previous operation’s outcome is still unknown. Reload and verify the task before continuing."</string>
@@ -369,11 +358,9 @@
     <string name="errors_this_history_uses_an_old_encryption_format_and_can" formatted="false">"This history uses an old encryption format and can no longer be viewed"</string>
     <string name="errors_this_is_not_a_remote_agent_account_key" formatted="false">"This is not a remote-agent account key"</string>
     <string name="errors_this_page_is_out_of_date_refresh_or_update" formatted="false">"This page is out of date. Refresh or update it and retry."</string>
-    <string name="errors_this_request_can_no_longer_be_acted_on" formatted="false">"This request can no longer be acted on"</string>
     <string name="errors_this_request_has_not_been_verified_by_the_computer" formatted="false">"This request has not been verified by the computer yet. Wait for sync."</string>
     <string name="errors_update_remote_agent_on_this_computer_to_use_scheduled" formatted="false">"Update remote-agent on this computer to use scheduled tasks"</string>
     <string name="errors_upload_made_no_progress" formatted="false">"Upload made no progress"</string>
-    <string name="errors_waiting_for_the_owning_computer_to_update_the_current" formatted="false">"Waiting for the owning computer to update the current state"</string>
     <string name="errors_waiting_for_the_owning_computer_to_update_the_current_remote" formatted="false">"Waiting for the owning computer to update the current state: this device lacks the content key from that time"</string>
     <string name="home_add_device" formatted="false">"Add device"</string>
     <string name="home_add_via_manager">"No computers yet. Open “Settings › Add device” on the managing client (%1$s) to add one."</string>
@@ -936,33 +923,26 @@
     <string name="projects_use_directory">"Use folder %1$s"</string>
     <string name="projects_view_sessions">"View sessions in %1$s"</string>
     <string name="queue_after_current_turn" formatted="false">"Send after this turn"</string>
-    <string name="queue_after_start" formatted="false">"Send after startup"</string>
     <string name="queue_after_turn" formatted="false">"Send after this turn"</string>
     <string name="queue_agent_ready">"Send when %1$s is ready"</string>
-    <string name="queue_already_submitted" formatted="false">"The previous message is already in the terminal and cannot be canceled"</string>
     <string name="queue_android_agent_note">"Waiting for %1$s to be ready"</string>
     <string name="queue_android_scheduled" formatted="false">"Scheduled task"</string>
     <string name="queue_android_sending_soon" formatted="false">"Sending soon"</string>
     <string name="queue_android_unconfirmed" formatted="false">"Written to the terminal but unconfirmed"</string>
     <string name="queue_cancel_failed" formatted="false">"Could not cancel; still queued"</string>
     <string name="queue_canceled" formatted="false">"Canceled"</string>
-    <string name="queue_canceled_elsewhere" formatted="false">"The previous message was canceled on another client"</string>
     <string name="queue_canceled_record" formatted="false">"Canceled a queued message"</string>
     <string name="queue_canceling" formatted="false">"Canceling…"</string>
-    <string name="queue_images_recognized" formatted="false">"Images recognized, sending…"</string>
     <string name="queue_insert" formatted="false">"Insert into this turn"</string>
     <plurals name="queue_more">
         <item quantity="one">"%1$d more queued message · Expand"</item>
         <item quantity="other">"%1$d more queued messages · Expand"</item>
     </plurals>
     <string name="queue_other_message" formatted="false">"A message from another client"</string>
-    <string name="queue_pasting_images" formatted="false">"Pasting images…"</string>
     <string name="queue_paused" formatted="false">"Paused"</string>
     <string name="queue_rank">" · #%1$d"</string>
     <string name="queue_resume_failed" formatted="false">"Could not send; still paused"</string>
     <string name="queue_resuming" formatted="false">"Sending…"</string>
-    <string name="queue_scheduled">"Scheduled task%1$s · "</string>
-    <string name="queue_submitting" formatted="false">"Written to terminal, waiting for confirmation"</string>
     <string name="queue_terminal_draft" formatted="false">"There is an unsent draft in the terminal. Send or clear it first."</string>
     <string name="queue_unrecognized" formatted="false">"Input field not recognized; paused"</string>
     <string name="queue_when_ready" formatted="false">"Send when ready"</string>
@@ -1758,7 +1738,6 @@
     <string name="security_waiting_for_the_new_device_to_enter_the_pairing" formatted="false">"Waiting for the new device to enter the pairing code…"</string>
     <string name="security_waiting_for_the_successor_device_to_generate_and_save" formatted="false">"Waiting for the successor device to generate and save a recovery code"</string>
     <string name="session_abandon_fork" formatted="false">"Abandon previous fork"</string>
-    <string name="session_action_failed">"%1$s failed: %2$s"</string>
     <string name="session_android_collapse_title">"Collapse %1$s"</string>
     <string name="session_android_compacted_usage">"Context compacted · %2$s%% → %1$s%%"</string>
     <string name="session_android_context_usage" formatted="false">"Context usage"</string>
@@ -1792,7 +1771,6 @@
     <string name="session_end" formatted="false">"End"</string>
     <string name="session_end_action" formatted="false">"End session…"</string>
     <string name="session_end_note">"%1$s on %2$s will close. History is kept, and you can resume later."</string>
-    <string name="session_end_session" formatted="false">"End session"</string>
     <string name="session_end_title" formatted="false">"End this session?"</string>
     <string name="session_ended" formatted="false">"Session ended"</string>
     <string name="session_ended_at">"%1$sEnded"</string>
@@ -1862,8 +1840,6 @@
     <string name="session_rename_title" formatted="false">"Rename session"</string>
     <string name="session_reopen_agent">"Reopen %1$s on %2$s"</string>
     <string name="session_reply_moves" formatted="false">"After you reply, this conversation will move to the session list"</string>
-    <string name="session_restore_other_files" formatted="false">"Another client uploaded this message’s attachments. Only the text was restored; select attachments here if needed."</string>
-    <string name="session_restore_other_images" formatted="false">"Another client uploaded this message’s images. Only the text was restored; select images here if needed."</string>
     <string name="session_resume" formatted="false">"Resume session"</string>
     <string name="session_resume_failed" formatted="false">"Could not resume"</string>
     <string name="session_resume_note">"Resume reopens it on %1$s with the same settings. All history is kept."</string>

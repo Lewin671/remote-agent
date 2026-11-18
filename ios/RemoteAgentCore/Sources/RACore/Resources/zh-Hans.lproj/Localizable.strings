@@ -15,7 +15,6 @@
 "approval_denied" = "已拒绝";
 "approval_deny" = "拒绝";
 "approval_details" = "审批详情";
-"approval_expired" = "已超时";
 "approval_full_command" = "看完整命令";
 "approval_in_terminal" = "已在终端处理";
 "approval_ios_always_prefix" = "「%1$@」开头的命令以后不再问";
@@ -149,7 +148,6 @@
 "composer_queue_after_answer" = "排队发送，回答后继续";
 "composer_queue_hint" = "先排队，结束后按顺序发出";
 "composer_ready_timeout" = "等终端就绪超时";
-"composer_resent" = "已重新发送";
 "composer_restore" = "放回输入框";
 "composer_send" = "发送";
 "composer_send_failure" = "没发出去：%1$@";
@@ -203,7 +201,6 @@
 "dock_android_plan_expired" = "不确定「%1$@」有没有送到，它已过期，不会再重发。请先去终端确认，放弃后可以重新选择";
 "dock_android_plan_unknown" = "「%1$@」的结果不确定。重试会重发同一个请求，电脑收到过就不会再执行一次";
 "dock_answer_title" = "回答提问";
-"dock_answer_unknown" = "不确定提交了没有，重试会发送同一个回答";
 "dock_answered" = "已回答：%1$@";
 "dock_claude_plan_note" = "批准后使用询问模式";
 "dock_handle" = "处理";
@@ -216,7 +213,6 @@
 "dock_multiselect" = "可多选";
 "dock_none_fit" = "都不合适？";
 "dock_other_terminal" = "其他回答：去终端";
-"dock_plan_answered" = "回答了计划";
 "dock_plan_clear" = "清空上下文后执行";
 "dock_plan_clear_record" = "清空上下文后执行计划";
 "dock_plan_full" = "计划全文";
@@ -228,7 +224,6 @@
 "dock_recommended" = "推荐";
 "dock_select_then_submit" = "选好后提交";
 "dock_submit_failed" = "没能提交：%1$@";
-"dock_submit_failed_edit" = "没能提交：%1$@。可以改选后再提交";
 "dock_submitting" = "提交中…";
 "dock_trust_folder" = "默认选中的是 No, exit。按 ↓ 选中 Yes, I trust this folder 再按 ⏎";
 "dock_waiting_confirmation" = "等待确认";
@@ -249,7 +244,6 @@
 "errors_history_has_a_gap_retry" = "历史记录不连续，请重试读取";
 "errors_history_keys_unavailable_records_from_before_recovery_cannot_be" = "历史密钥不可用：恢复前的记录无法解密";
 "errors_invalid_ciphertext_signature_key_or_content_verification_failed" = "密文无效：签名、密钥或内容校验失败";
-"errors_invalid_current_request_snapshot" = "当前请求快照无效";
 "errors_invalid_pairing_approval_signature" = "配对批准签名无效";
 "errors_invalid_session_seed" = "无效的会话种子";
 "errors_ios_already_registering_wait_for_the_result" = "已经在登记%1$@，稍等结果";
@@ -299,11 +293,8 @@
 "errors_names_can_only_be_changed_on_that_device" = "名称只能在那台设备上修改";
 "errors_not_connected" = "连不上服务器";
 "errors_other_clients_kept_changing_the_project_list_changes_could" = "项目列表一直在被别的客户端修改，没能保存";
-"errors_pending_requests_on_the_computer_could_not_be_verified" = "无法核实电脑上的待处理请求，请重试或在电脑终端处理";
 "errors_project_preferences_format_is_not_supported" = "项目偏好格式不受支持";
 "errors_push_backlog_reconnecting" = "推送积压，正在重连";
-"errors_queued_records_could_not_be_restored_you_can_still" = "待发记录没能恢复，仍可输入和发送，下次重试";
-"errors_queued_records_could_not_be_saved_locally_messages_will" = "待发记录没能保存到本机，消息仍会发送；关闭页面前请核对发送结果";
 "errors_reading_local_state" = "读取本机状态";
 "errors_remote_agent_on_is_out_of_date_update_it" = "%1$@ 上的 remote-agent 版本较旧，请在电脑上更新后再试";
 "errors_remote_control_expired_control_and_new_uploads_are_paused" = "远程控制有效期已过，控制和新内容上传已暂停；请在当前管理端续期";
@@ -327,10 +318,8 @@
 "errors_the_computer_is_offline_the_command_was_not_sent" = "电脑不在线，指令没有发出";
 "errors_the_computer_is_still_verifying_attachments_retry_shortly" = "电脑仍在校验附件，请稍后重试";
 "errors_the_computer_s_reply_could_not_be_verified_command" = "电脑的回复未通过验证，不确定指令是否执行";
-"errors_the_current_request_could_not_be_verified_again" = "无法重新核实当前请求";
 "errors_the_draft_could_not_be_restored_you_can_still" = "草稿没能恢复，仍可输入和发送，下次打开或编辑时重试";
 "errors_the_draft_could_not_be_saved_locally_keep_the" = "草稿没能保存到本机，关闭页面前请保留原图和文字";
-"errors_the_draft_could_not_be_saved_the_original_message" = "草稿没能保存，原消息的本机副本仍保留";
 "errors_the_event_s_position_was_changed" = "事件的位置被改动";
 "errors_the_plan_display_changed_review_it_again" = "计划画面已变化，请重新核对";
 "errors_the_previous_operation_s_outcome_is_still_unknown_reload" = "上次操作的结果仍未知，请重新读取任务核实后再操作";
@@ -350,11 +339,9 @@
 "errors_this_history_uses_an_old_encryption_format_and_can" = "这条历史是旧版加密格式，已不再支持查看";
 "errors_this_is_not_a_remote_agent_account_key" = "这不是 remote-agent 的账户密钥";
 "errors_this_page_is_out_of_date_refresh_or_update" = "这个网页版本较旧，请刷新或更新后再试";
-"errors_this_request_can_no_longer_be_acted_on" = "当前请求已不可操作";
 "errors_this_request_has_not_been_verified_by_the_computer" = "当前请求尚未由电脑核实，请等待同步";
 "errors_update_remote_agent_on_this_computer_to_use_scheduled" = "需要更新这台电脑上的 remote-agent 才能使用定时任务。";
 "errors_upload_made_no_progress" = "上传没有进展";
-"errors_waiting_for_the_owning_computer_to_update_the_current" = "等待所属电脑更新当前状态";
 "errors_waiting_for_the_owning_computer_to_update_the_current_remote" = "等待所属电脑更新当前状态：这台设备没有当时的内容密钥";
 "home_add_device" = "添加设备";
 "home_add_via_manager" = "还没有电脑。在管理端（%1$@）上打开「设置 › 添加设备」，把电脑加进来。";
@@ -770,19 +757,15 @@
 "projects_use_directory" = "用 %1$@ 这个目录";
 "projects_view_sessions" = "看 %1$@ 的会话";
 "queue_after_current_turn" = "本轮结束后发送";
-"queue_after_start" = "启动后发送";
 "queue_after_turn" = "这一轮结束后发";
 "queue_agent_ready" = "等 %1$@ 就绪后发出";
-"queue_already_submitted" = "上一条已送入终端，不能取消";
 "queue_android_agent_note" = "等 %1$@ 就绪";
 "queue_android_sending_soon" = "即将发送";
 "queue_android_unconfirmed" = "已送到终端但没确认";
 "queue_cancel_failed" = "取消没成功，仍在排队";
 "queue_canceled" = "已取消";
-"queue_canceled_elsewhere" = "上一条已在另一客户端取消";
 "queue_canceled_record" = "取消了一条排队的消息";
 "queue_canceling" = "正在取消…";
-"queue_images_recognized" = "图片已识别，正在发送…";
 "queue_insert" = "插入这一轮";
 "queue_ios_after_answer" = "回答后继续";
 "queue_ios_after_approval" = "审批后继续";
@@ -799,13 +782,10 @@
 "queue_ios_terminal_draft_short" = "终端里有草稿";
 "queue_ios_turn_wait" = "等待本轮结束";
 "queue_other_message" = "另一客户端的消息";
-"queue_pasting_images" = "正在粘贴图片…";
 "queue_paused" = "已暂停";
 "queue_rank" = " · 第 %1$lld 条";
 "queue_resume_failed" = "发送没成功，仍已暂停";
 "queue_resuming" = "正在发送…";
-"queue_scheduled" = "定时任务%1$@ · ";
-"queue_submitting" = "已送入终端，等待确认";
 "queue_terminal_draft" = "终端里有没发出的草稿，发完或清掉后再发";
 "queue_unrecognized" = "认不出输入框，已暂停";
 "queue_when_ready" = "就绪后发送";
@@ -1474,7 +1454,6 @@
 "security_waiting_for_the_new_device_to_enter_the_pairing" = "等待新设备输入配对码…";
 "security_waiting_for_the_successor_device_to_generate_and_save" = "等待接任设备生成并保存恢复码";
 "session_abandon_fork" = "放弃上次的分叉";
-"session_action_failed" = "%1$@失败：%2$@";
 "session_android_compacted_usage" = "上下文已压缩 · %2$@%% → %1$@%%";
 "session_android_fork_connected" = "连上服务器后可用";
 "session_android_interrupted_by" = "已中断（%1$@）";
@@ -1497,7 +1476,6 @@
 "session_end" = "结束";
 "session_end_action" = "结束会话…";
 "session_end_note" = "%2$@ 上的 %1$@ 会被关掉，聊天记录保留，之后可以恢复。";
-"session_end_session" = "结束会话";
 "session_end_title" = "结束这个会话？";
 "session_ended" = "会话已结束";
 "session_ended_at" = "%1$@ 结束";
@@ -1585,8 +1563,6 @@
 "session_rename_title" = "重命名会话";
 "session_reopen_agent" = "在 %2$@ 上重新打开 %1$@";
 "session_reply_moves" = "回复后，这个对话会移到会话列表";
-"session_restore_other_files" = "这条消息的附件是另一客户端上传的，只放回了文字；需要的话在这里重新选择附件";
-"session_restore_other_images" = "这条消息的图片是另一客户端上传的，只放回了文字；需要的话在这里重新选择图片";
 "session_resume" = "恢复会话";
 "session_resume_failed" = "恢复失败";
 "session_resume_note" = "恢复会在 %1$@ 上用同样的设置重新打开它，聊天记录都在。";

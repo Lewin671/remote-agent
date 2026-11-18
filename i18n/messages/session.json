@@ -1,8 +1,7 @@
 [
   {
-    "key": "session.abandon_fork",
-    "zh-CN": "放弃上次的分叉",
     "en": "Abandon previous fork",
+    "key": "session.abandon_fork",
     "notes": "会话页的可视状态、历史提示或操作标签。按钮/菜单项，描述该操作。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
     "params": {},
     "platforms": [
@@ -11,67 +10,42 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "session.action_failed",
-    "zh-CN": "{action}失败：{reason}",
-    "en": "{action} failed: {reason}",
-    "notes": "会话页顶栏、菜单、历史行或恢复卡。完整句，保持变量位置和原有标点。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：action 为已本地化的操作名；reason 为当前操作的失败详情，保持原文。",
-    "params": {
-      "action": {
-        "type": "string",
-        "example": "Example"
-      },
-      "reason": {
-        "type": "string",
-        "example": "Example"
-      }
+      "en": "draft",
+      "zh-CN": "source"
     },
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+    "zh-CN": "放弃上次的分叉"
   },
   {
-    "key": "session.android_collapse_title",
-    "zh-CN": "收起{title}",
     "en": "Collapse {title}",
+    "key": "session.android_collapse_title",
     "notes": "Android 批次 B：Chat.kt 的现有显示文案，保留原中文措辞与标点。参数：title 为显示值/原始内容，不翻译用户或 CLI 内容。短标签保持紧凑；说明正文可多行。英文初稿待审。",
     "params": {
       "title": {
-        "type": "string",
-        "example": "Example"
+        "example": "Example",
+        "type": "string"
       }
     },
     "platforms": [
       "android"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "收起{title}"
   },
   {
-    "key": "session.android_compacted_usage",
-    "zh-CN": "上下文已压缩 · {before}% → {after}%",
     "en": "Context compacted · {before}% → {after}%",
+    "key": "session.android_compacted_usage",
     "notes": "Android 批次 B：Chat.kt 的现有显示文案，保留原中文措辞与标点。参数：before 为显示值/原始内容，不翻译用户或 CLI 内容；after 为显示值/原始内容，不翻译用户或 CLI 内容。短标签保持紧凑；说明正文可多行。英文初稿待审。",
     "params": {
-      "before": {
-        "type": "string",
-        "example": "Example"
-      },
       "after": {
-        "type": "string",
-        "example": "Example"
+        "example": "Example",
+        "type": "string"
+      },
+      "before": {
+        "example": "Example",
+        "type": "string"
       }
     },
     "platforms": [
@@ -80,28 +54,28 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "上下文已压缩 · {before}% → {after}%"
   },
   {
-    "key": "session.android_context_usage",
-    "zh-CN": "上下文占用",
     "en": "Context usage",
+    "key": "session.android_context_usage",
     "notes": "Android 批次 B：Sheets.kt 的现有显示文案，保留原中文措辞与标点。无变量。短标签保持紧凑；说明正文可多行。英文初稿待审。",
     "params": {},
     "platforms": [
       "android"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "上下文占用"
   },
   {
-    "key": "session.android_fork_connected",
-    "zh-CN": "连上服务器后可用",
     "en": "Available after connecting to the server",
+    "key": "session.android_fork_connected",
     "notes": "Android 会话与聊天显示边界使用；保留当前中文标点。无变量。英文初稿待审。",
     "params": {},
     "platforms": [
@@ -110,71 +84,71 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "连上服务器后可用"
   },
   {
-    "key": "session.android_history_partial",
-    "zh-CN": "历史记录尚未读全。",
     "en": "History has not loaded completely.",
+    "key": "session.android_history_partial",
     "notes": "Android 批次 B：Session.kt 的现有显示文案，保留原中文措辞与标点。无变量。短标签保持紧凑；说明正文可多行。英文初稿待审。",
     "params": {},
     "platforms": [
       "android"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "历史记录尚未读全。"
   },
   {
-    "key": "session.android_history_tail_failed",
-    "zh-CN": "后面的记录没读到：{reason}",
     "en": "Could not load later records: {reason}",
+    "key": "session.android_history_tail_failed",
     "notes": "Android 批次 B：Session.kt 的现有显示文案，保留原中文措辞与标点。参数：reason 为显示值/原始内容，不翻译用户或 CLI 内容。短标签保持紧凑；说明正文可多行。英文初稿待审。",
     "params": {
       "reason": {
-        "type": "string",
-        "example": "Example"
+        "example": "Example",
+        "type": "string"
       }
     },
     "platforms": [
       "android"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "后面的记录没读到：{reason}"
   },
   {
-    "key": "session.android_interrupt_failed",
-    "zh-CN": "没能中断：{reason}",
     "en": "Could not interrupt: {reason}",
+    "key": "session.android_interrupt_failed",
     "notes": "Android 批次 B：Session.kt 的现有显示文案，保留原中文措辞与标点。参数：reason 为显示值/原始内容，不翻译用户或 CLI 内容。短标签保持紧凑；说明正文可多行。英文初稿待审。",
     "params": {
       "reason": {
-        "type": "string",
-        "example": "Example"
+        "example": "Example",
+        "type": "string"
       }
     },
     "platforms": [
       "android"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "没能中断：{reason}"
   },
   {
-    "key": "session.android_interrupted_by",
-    "zh-CN": "已中断（{origin}）",
     "en": "Interrupted ({origin})",
+    "key": "session.android_interrupted_by",
     "notes": "Android 会话与聊天显示边界使用；保留当前中文标点。参数为原始内容或无分组显示数字，不翻译 CLI/用户内容。英文初稿待审。",
     "params": {
       "origin": {
-        "type": "string",
-        "example": "Example"
+        "example": "Example",
+        "type": "string"
       }
     },
     "platforms": [
@@ -183,94 +157,94 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "已中断（{origin}）"
   },
   {
-    "key": "session.android_models_failed",
-    "zh-CN": "没能读取模型列表：{reason}",
     "en": "Could not load the model list: {reason}",
+    "key": "session.android_models_failed",
     "notes": "Android 批次 B：Sheets.kt 的现有显示文案，保留原中文措辞与标点。参数：reason 为显示值/原始内容，不翻译用户或 CLI 内容。短标签保持紧凑；说明正文可多行。英文初稿待审。",
     "params": {
       "reason": {
-        "type": "string",
-        "example": "Example"
+        "example": "Example",
+        "type": "string"
       }
     },
     "platforms": [
       "android"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "没能读取模型列表：{reason}"
   },
   {
-    "key": "session.android_resume_failed",
-    "zh-CN": "恢复失败：{reason}",
     "en": "Could not resume: {reason}",
+    "key": "session.android_resume_failed",
     "notes": "Android 批次 B：Session.kt 的现有显示文案，保留原中文措辞与标点。参数：reason 为显示值/原始内容，不翻译用户或 CLI 内容。短标签保持紧凑；说明正文可多行。英文初稿待审。",
     "params": {
       "reason": {
-        "type": "string",
-        "example": "Example"
+        "example": "Example",
+        "type": "string"
       }
     },
     "platforms": [
       "android"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "恢复失败：{reason}"
   },
   {
-    "key": "session.android_switch_after_turn",
-    "zh-CN": "只在空闲时能切换；这一轮结束后再选",
     "en": "Can only switch when idle; choose after this turn ends",
+    "key": "session.android_switch_after_turn",
     "notes": "Android 批次 B：Sheets.kt 的现有显示文案，保留原中文措辞与标点。无变量。短标签保持紧凑；说明正文可多行。英文初稿待审。",
     "params": {},
     "platforms": [
       "android"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "只在空闲时能切换；这一轮结束后再选"
   },
   {
-    "key": "session.android_switch_note",
-    "zh-CN": "仅显示当前模型支持的档位；空闲时点选提交，等电脑确认后更新实际值。",
     "en": "Only levels supported by the current model are shown. Choose while idle to submit; the value updates after the computer confirms.",
+    "key": "session.android_switch_note",
     "notes": "Android 批次 B：Sheets.kt 的现有显示文案，保留原中文措辞与标点。无变量。短标签保持紧凑；说明正文可多行。英文初稿待审。",
     "params": {},
     "platforms": [
       "android"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "仅显示当前模型支持的档位；空闲时点选提交，等电脑确认后更新实际值。"
   },
   {
-    "key": "session.android_thinking",
-    "zh-CN": "思考过程",
     "en": "Thought process",
+    "key": "session.android_thinking",
     "notes": "Android 批次 B：Chat.kt 的现有显示文案，保留原中文措辞与标点。无变量。短标签保持紧凑；说明正文可多行。英文初稿待审。",
     "params": {},
     "platforms": [
       "android"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "思考过程"
   },
   {
-    "key": "session.android_unknown",
-    "zh-CN": "未知会话",
     "en": "Unknown session",
+    "key": "session.android_unknown",
     "notes": "Android 批次 B：Actions.kt 的现有显示文案，保留原中文措辞与标点。无变量。短标签保持紧凑；说明正文可多行。英文初稿待审。",
     "params": {},
     "platforms": [
@@ -278,14 +252,14 @@
       "web"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "未知会话"
   },
   {
-    "key": "session.approval_resolved",
-    "zh-CN": "这条审批已经处理了。",
     "en": "This approval has already been handled.",
+    "key": "session.approval_resolved",
     "notes": "会话页的可视状态、历史提示或操作标签。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
     "params": {},
     "platforms": [
@@ -294,14 +268,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "这条审批已经处理了。"
   },
   {
-    "key": "session.auto_title_hint",
-    "zh-CN": "留空保存会恢复自动标题",
     "en": "Save an empty title to restore the automatic title",
+    "key": "session.auto_title_hint",
     "notes": "会话页的可视状态、历史提示或操作标签。说明/反馈正文，允许多行。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
     "params": {},
     "platforms": [
@@ -310,14 +284,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "留空保存会恢复自动标题"
   },
   {
-    "key": "session.back_task",
-    "zh-CN": "返回任务",
     "en": "Back to task",
+    "key": "session.back_task",
     "notes": "会话页的可视状态、历史提示或操作标签。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
     "params": {},
     "platforms": [
@@ -326,14 +300,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "返回任务"
   },
   {
-    "key": "session.chat",
-    "zh-CN": "聊天",
     "en": "Chat",
+    "key": "session.chat",
     "notes": "会话页的可视状态、历史提示或操作标签。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
     "params": {},
     "platforms": [
@@ -342,14 +316,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "聊天"
   },
   {
-    "key": "session.compact",
-    "zh-CN": "压缩",
     "en": "Compact",
+    "key": "session.compact",
     "notes": "会话页的可视状态、历史提示或操作标签。按钮/菜单项，描述该操作。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
     "params": {},
     "platforms": [
@@ -358,19 +332,19 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "压缩"
   },
   {
-    "key": "session.compact_failed",
-    "zh-CN": "没能压缩：{reason}",
     "en": "Could not compact: {reason}",
+    "key": "session.compact_failed",
     "notes": "会话页顶栏、菜单、历史行或恢复卡。完整句，保持变量位置和原有标点。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：reason 为当前操作的失败详情，保持原文。",
     "params": {
       "reason": {
-        "type": "string",
-        "example": "Example"
+        "example": "Example",
+        "type": "string"
       }
     },
     "platforms": [
@@ -379,14 +353,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "没能压缩：{reason}"
   },
   {
-    "key": "session.compacted",
-    "zh-CN": "上下文已压缩",
     "en": "Context compacted",
+    "key": "session.compacted",
     "notes": "会话页的可视状态、历史提示或操作标签。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
     "params": {},
     "platforms": [
@@ -395,14 +369,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "上下文已压缩"
   },
   {
-    "key": "session.compacting",
-    "zh-CN": "正在压缩…",
     "en": "Compacting…",
+    "key": "session.compacting",
     "notes": "会话页的可视状态、历史提示或操作标签。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
     "params": {},
     "platforms": [
@@ -411,14 +385,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "正在压缩…"
   },
   {
-    "key": "session.connect_resume",
-    "zh-CN": "连上服务器后才能恢复。",
     "en": "Connect to the server to resume.",
+    "key": "session.connect_resume",
     "notes": "会话页的可视状态、历史提示或操作标签。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
     "params": {},
     "platforms": [
@@ -427,14 +401,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "连上服务器后才能恢复。"
   },
   {
-    "key": "session.context",
-    "zh-CN": "上下文占用",
     "en": "Context",
+    "key": "session.context",
     "notes": "会话页的可视状态、历史提示或操作标签。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
     "params": {},
     "platforms": [
@@ -443,23 +417,23 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "上下文占用"
   },
   {
-    "key": "session.context_tokens",
-    "zh-CN": "上下文占用 {used} / {total}",
     "en": "Context {used} / {total}",
+    "key": "session.context_tokens",
     "notes": "会话页顶栏、菜单、历史行或恢复卡。完整句，保持变量位置和原有标点。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：total 为总 token 数（原有 k/M 格式）；used 为已用 token 数（原有 k/M 格式）。",
     "params": {
       "total": {
-        "type": "string",
-        "example": "Example"
+        "example": "Example",
+        "type": "string"
       },
       "used": {
-        "type": "string",
-        "example": "Example"
+        "example": "Example",
+        "type": "string"
       }
     },
     "platforms": [
@@ -468,19 +442,19 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "上下文占用 {used} / {total}"
   },
   {
-    "key": "session.context_used",
-    "zh-CN": "已用 {percent}%",
     "en": "{percent}% used",
+    "key": "session.context_used",
     "notes": "会话页顶栏、菜单、历史行或恢复卡。完整句，保持变量位置和原有标点。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：percent 为整数百分比。",
     "params": {
       "percent": {
-        "type": "integer",
-        "example": 2
+        "example": 2,
+        "type": "integer"
       }
     },
     "platforms": [
@@ -489,14 +463,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "已用 {percent}%"
   },
   {
-    "key": "session.delivered",
-    "zh-CN": "已送达电脑",
     "en": "Delivered to computer",
+    "key": "session.delivered",
     "notes": "会话页的可视状态、历史提示或操作标签。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
     "params": {},
     "platforms": [
@@ -505,19 +479,19 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "已送达电脑"
   },
   {
-    "key": "session.disconnected_ago",
-    "zh-CN": "{time}断开，",
     "en": "Disconnected {time}. ",
+    "key": "session.disconnected_ago",
     "notes": "会话页顶栏、菜单、历史行或恢复卡。断线时间的完整前置句；time 为已格式化相对时间。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：time 为已按当前界面语言格式化的本地时间。",
     "params": {
       "time": {
-        "type": "string",
-        "example": "Example"
+        "example": "Example",
+        "type": "string"
       }
     },
     "platforms": [
@@ -526,14 +500,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "{time}断开，"
   },
   {
-    "key": "session.dismiss_notice",
-    "zh-CN": "移除此提示",
     "en": "Dismiss this notice",
+    "key": "session.dismiss_notice",
     "notes": "会话页的可视状态、历史提示或操作标签。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
     "params": {},
     "platforms": [
@@ -542,14 +516,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "移除此提示"
   },
   {
-    "key": "session.effort_locked",
-    "zh-CN": "运行中不能换推理强度",
     "en": "Reasoning effort cannot be changed while running",
+    "key": "session.effort_locked",
     "notes": "会话页的可视状态、历史提示或操作标签。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
     "params": {},
     "platforms": [
@@ -558,14 +532,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "运行中不能换推理强度"
   },
   {
-    "key": "session.end",
-    "zh-CN": "结束",
     "en": "End",
+    "key": "session.end",
     "notes": "会话页的可视状态、历史提示或操作标签。按钮/菜单项，描述该操作。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
     "params": {},
     "platforms": [
@@ -574,14 +548,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "结束"
   },
   {
-    "key": "session.end_action",
-    "zh-CN": "结束会话…",
     "en": "End session…",
+    "key": "session.end_action",
     "notes": "会话页的可视状态、历史提示或操作标签。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
     "params": {},
     "platforms": [
@@ -590,23 +564,23 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "结束会话…"
   },
   {
-    "key": "session.end_note",
-    "zh-CN": "{name} 上的 {agent} 会被关掉，聊天记录保留，之后可以恢复。",
     "en": "{agent} on {name} will close. History is kept, and you can resume later.",
+    "key": "session.end_note",
     "notes": "会话页顶栏、菜单、历史行或恢复卡。完整句，保持变量位置和原有标点。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：agent 为CLI 品牌名，保持原文；name 为电脑/文件/图片的显示名（按调用提供）。",
     "params": {
       "agent": {
-        "type": "string",
-        "example": "Example"
+        "example": "Example",
+        "type": "string"
       },
       "name": {
-        "type": "string",
-        "example": "Example"
+        "example": "Example",
+        "type": "string"
       }
     },
     "platforms": [
@@ -615,30 +589,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "{name} 上的 {agent} 会被关掉，聊天记录保留，之后可以恢复。"
   },
   {
-    "key": "session.end_session",
-    "zh-CN": "结束会话",
-    "en": "End session",
-    "notes": "会话页的可视状态、历史提示或操作标签。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
-    "params": {},
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "session.end_title",
-    "zh-CN": "结束这个会话？",
     "en": "End this session?",
+    "key": "session.end_title",
     "notes": "会话页的可视状态、历史提示或操作标签。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
     "params": {},
     "platforms": [
@@ -647,14 +605,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "结束这个会话？"
   },
   {
-    "key": "session.ended",
-    "zh-CN": "会话已结束",
     "en": "Session ended",
+    "key": "session.ended",
     "notes": "会话页的可视状态、历史提示或操作标签。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
     "params": {},
     "platforms": [
@@ -663,19 +621,19 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "会话已结束"
   },
   {
-    "key": "session.ended_at",
-    "zh-CN": "{time} 结束",
     "en": "{time}Ended",
+    "key": "session.ended_at",
     "notes": "会话页顶栏、菜单、历史行或恢复卡。完整提示/历史行；参数可重排，不翻译用户内容。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：time 为已按当前界面语言格式化的本地时间。",
     "params": {
       "time": {
-        "type": "string",
-        "example": "Example"
+        "example": "Example",
+        "type": "string"
       }
     },
     "platforms": [
@@ -684,14 +642,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "{time} 结束"
   },
   {
-    "key": "session.ended_message_failed",
-    "zh-CN": "有一条消息没发出去：会话已结束",
     "en": "A message was not sent: session ended",
+    "key": "session.ended_message_failed",
     "notes": "会话页的可视状态、历史提示或操作标签。说明/反馈正文，允许多行。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
     "params": {},
     "platforms": [
@@ -700,14 +658,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "有一条消息没发出去：会话已结束"
   },
   {
-    "key": "session.ended_send_failed",
-    "zh-CN": "没发出去：会话已结束",
     "en": "Not sent: session ended",
+    "key": "session.ended_send_failed",
     "notes": "会话页的可视状态、历史提示或操作标签。说明/反馈正文，允许多行。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
     "params": {},
     "platforms": [
@@ -716,14 +674,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "没发出去：会话已结束"
   },
   {
-    "key": "session.fork",
-    "zh-CN": "分叉会话",
     "en": "Fork session",
+    "key": "session.fork",
     "notes": "会话页的可视状态、历史提示或操作标签。按钮/菜单项，描述该操作。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
     "params": {},
     "platforms": [
@@ -732,14 +690,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "分叉会话"
   },
   {
-    "key": "session.fork_after_message",
-    "zh-CN": "发过消息后可用",
     "en": "Available after a message is sent",
+    "key": "session.fork_after_message",
     "notes": "会话页的可视状态、历史提示或操作标签。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
     "params": {},
     "platforms": [
@@ -748,14 +706,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "发过消息后可用"
   },
   {
-    "key": "session.fork_after_pending",
-    "zh-CN": "处理完等待事项后可用",
     "en": "Available after pending items are handled",
+    "key": "session.fork_after_pending",
     "notes": "会话页的可视状态、历史提示或操作标签。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
     "params": {},
     "platforms": [
@@ -764,14 +722,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "处理完等待事项后可用"
   },
   {
-    "key": "session.fork_after_start",
-    "zh-CN": "启动完成后可用",
     "en": "Available after startup",
+    "key": "session.fork_after_start",
     "notes": "会话页的可视状态、历史提示或操作标签。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
     "params": {},
     "platforms": [
@@ -780,14 +738,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "启动完成后可用"
   },
   {
-    "key": "session.fork_after_turn",
-    "zh-CN": "这一轮结束后可用",
     "en": "Available after this turn",
+    "key": "session.fork_after_turn",
     "notes": "会话页的可视状态、历史提示或操作标签。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
     "params": {},
     "platforms": [
@@ -796,14 +754,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "这一轮结束后可用"
   },
   {
-    "key": "session.fork_expired",
-    "zh-CN": "不确定上次有没有分叉出新会话，它已过期，不会再重发。请先看看会话列表",
     "en": "The previous fork is unconfirmed and has expired. It will not be retried. Check the session list first.",
+    "key": "session.fork_expired",
     "notes": "会话页的可视状态、历史提示或操作标签。说明/反馈正文，允许多行。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
     "params": {},
     "platforms": [
@@ -812,19 +770,19 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "不确定上次有没有分叉出新会话，它已过期，不会再重发。请先看看会话列表"
   },
   {
-    "key": "session.fork_failed",
-    "zh-CN": "没能分叉：{reason}",
     "en": "Could not fork: {reason}",
+    "key": "session.fork_failed",
     "notes": "会话页顶栏、菜单、历史行或恢复卡。完整句，保持变量位置和原有标点。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：reason 为当前操作的失败详情，保持原文。",
     "params": {
       "reason": {
-        "type": "string",
-        "example": "Example"
+        "example": "Example",
+        "type": "string"
       }
     },
     "platforms": [
@@ -833,14 +791,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "没能分叉：{reason}"
   },
   {
-    "key": "session.fork_unknown",
-    "zh-CN": "上次的分叉结果不确定。再点会重发同一个请求，电脑收到过就不会再分叉一次",
     "en": "The previous fork is unconfirmed. Tap again to resend the same request; the computer will not fork twice.",
+    "key": "session.fork_unknown",
     "notes": "会话页的可视状态、历史提示或操作标签。说明/反馈正文，允许多行。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
     "params": {},
     "platforms": [
@@ -849,23 +807,23 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "上次的分叉结果不确定。再点会重发同一个请求，电脑收到过就不会再分叉一次"
   },
   {
-    "key": "session.forked_from",
-    "zh-CN": "{time} 分叉自{source}",
     "en": "{time}Forked from {source}",
+    "key": "session.forked_from",
     "notes": "会话页顶栏、菜单、历史行或恢复卡。分叉历史行；time 为日期时间（无时间为空），source 为会话链接槽位。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：source 为源会话链接的富文本槽位；time 为已按当前界面语言格式化的本地时间。",
     "params": {
-      "time": {
-        "type": "string",
-        "example": "Example"
-      },
       "source": {
-        "type": "string",
-        "example": "Example"
+        "example": "Example",
+        "type": "string"
+      },
+      "time": {
+        "example": "Example",
+        "type": "string"
       }
     },
     "platforms": [
@@ -874,14 +832,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "{time} 分叉自{source}"
   },
   {
-    "key": "session.forking",
-    "zh-CN": "正在分叉…",
     "en": "Forking…",
+    "key": "session.forking",
     "notes": "会话页的可视状态、历史提示或操作标签。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
     "params": {},
     "platforms": [
@@ -890,14 +848,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "正在分叉…"
   },
   {
-    "key": "session.go_terminal",
-    "zh-CN": "去终端",
     "en": "Go to terminal",
+    "key": "session.go_terminal",
     "notes": "会话页的可视状态、历史提示或操作标签。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
     "params": {},
     "platforms": [
@@ -906,28 +864,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "去终端"
   },
   {
-    "key": "session.history_failed",
-    "zh-CN": "没能读取记录，请重试。已输入的内容会保留。",
-    "en": "Could not load history. Retry to continue; your draft will stay here.",
-    "notes": "正文尚未就绪时读取历史或会话失败；不用技术错误详情。 无变量。",
-    "params": {},
-    "platforms": [
-      "web"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "session.history_tail_missing",
-    "zh-CN": "后面的记录没读到",
     "en": "Later history has not loaded",
+    "key": "session.history_tail_missing",
     "notes": "会话页的可视状态、历史提示或操作标签。说明/反馈正文，允许多行。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
     "params": {},
     "platforms": [
@@ -936,30 +880,25 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "后面的记录没读到"
   },
   {
-    "key": "session.history_unavailable",
-    "zh-CN": {
-      "plural": "count",
-      "forms": {
-        "other": "恢复前有 {count} 条记录不可读；后续可读记录照常显示。"
-      }
-    },
     "en": {
-      "plural": "count",
       "forms": {
         "one": "{count} record before resume could not be read; later readable history is shown normally.",
         "other": "{count} records before resume could not be read; later readable history is shown normally."
-      }
+      },
+      "plural": "count"
     },
+    "key": "session.history_unavailable",
     "notes": "会话页顶栏、菜单、历史行或恢复卡。完整提示/历史行；参数可重排，不翻译用户内容。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：count 为非负数量（控制复数规则）。",
     "params": {
       "count": {
-        "type": "integer",
-        "example": 2
+        "example": 2,
+        "type": "integer"
       }
     },
     "platforms": [
@@ -968,14 +907,19 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": {
+      "forms": {
+        "other": "恢复前有 {count} 条记录不可读；后续可读记录照常显示。"
+      },
+      "plural": "count"
     }
   },
   {
-    "key": "session.history_unreadable",
-    "zh-CN": "有一条记录读不出来，历史停在这里，后面的内容和状态可能不全",
     "en": "A record could not be read. History stops here; later content and status may be incomplete.",
+    "key": "session.history_unreadable",
     "notes": "会话页的可视状态、历史提示或操作标签。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
     "params": {},
     "platforms": [
@@ -984,14 +928,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "有一条记录读不出来，历史停在这里，后面的内容和状态可能不全"
   },
   {
-    "key": "session.idle_closed",
-    "zh-CN": "会话长时间没有活动，已自动结束。",
     "en": "The session ended automatically after a long period of inactivity.",
+    "key": "session.idle_closed",
     "notes": "会话页的可视状态、历史提示或操作标签。说明/反馈正文，允许多行。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
     "params": {},
     "platforms": [
@@ -1000,14 +944,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "会话长时间没有活动，已自动结束。"
   },
   {
-    "key": "session.interrupt",
-    "zh-CN": "中断",
     "en": "Interrupt",
+    "key": "session.interrupt",
     "notes": "会话页的可视状态、历史提示或操作标签。按钮/菜单项，描述该操作。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
     "params": {},
     "platforms": [
@@ -1016,14 +960,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "中断"
   },
   {
-    "key": "session.interrupt_turn",
-    "zh-CN": "中断本轮",
     "en": "Interrupt turn",
+    "key": "session.interrupt_turn",
     "notes": "会话页的可视状态、历史提示或操作标签。按钮/菜单项，描述该操作。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
     "params": {},
     "platforms": [
@@ -1032,14 +976,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "中断本轮"
   },
   {
-    "key": "session.interrupted",
-    "zh-CN": "已中断",
     "en": "Interrupted",
+    "key": "session.interrupted",
     "notes": "会话页的可视状态、历史提示或操作标签。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
     "params": {},
     "platforms": [
@@ -1048,408 +992,408 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "已中断"
   },
   {
-    "key": "session.ios_agent_reply",
-    "zh-CN": "{agent} 的回复",
     "en": "Reply from {agent}",
+    "key": "session.ios_agent_reply",
     "notes": "ChatRowViews.swift。 iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 参数：agent 为调用处的显示值；用户、CLI 内容和错误详情保持原文。",
     "params": {
       "agent": {
-        "type": "string",
-        "example": "Example"
+        "example": "Example",
+        "type": "string"
       }
     },
     "platforms": [
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "{agent} 的回复"
   },
   {
-    "key": "session.ios_answer_values",
-    "zh-CN": "已回答：{answers}",
     "en": "Answered: {answers}",
+    "key": "session.ios_answer_values",
     "notes": " iOS 会话/附件显示边界；中文原句不变。提示正文允许多行，按钮与读屏标签保持现有空间。 参数：answers 为调用处的显示内容，用户/CLI 原文不翻译。",
     "params": {
       "answers": {
-        "type": "string",
-        "example": "Example"
+        "example": "Example",
+        "type": "string"
       }
     },
     "platforms": [
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "已回答：{answers}"
   },
   {
-    "key": "session.ios_answered",
-    "zh-CN": "已回答提问",
     "en": "Question answered",
+    "key": "session.ios_answered",
     "notes": "ChatRows.swift。 iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 无变量。",
     "params": {},
     "platforms": [
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "已回答提问"
   },
   {
-    "key": "session.ios_change_idle",
-    "zh-CN": "只在空闲时能切换；这一轮结束后再选",
     "en": "Can only switch while idle; choose after this turn ends",
+    "key": "session.ios_change_idle",
     "notes": "SessionSheets.swift。 iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 无变量。",
     "params": {},
     "platforms": [
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "只在空闲时能切换；这一轮结束后再选"
   },
   {
-    "key": "session.ios_collapse_title",
-    "zh-CN": "收起{title}",
     "en": "Collapse {title}",
+    "key": "session.ios_collapse_title",
     "notes": "ChatRowViews.swift。 iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 参数：title 为调用处的显示值；用户、CLI 内容和错误详情保持原文。",
     "params": {
       "title": {
-        "type": "string",
-        "example": "Example"
+        "example": "Example",
+        "type": "string"
       }
     },
     "platforms": [
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "收起{title}"
   },
   {
-    "key": "session.ios_collapsed",
-    "zh-CN": "已收起",
     "en": "Collapsed",
+    "key": "session.ios_collapsed",
     "notes": "ChatRowViews.swift。 iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 无变量。",
     "params": {},
     "platforms": [
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "已收起"
   },
   {
-    "key": "session.ios_compacted_usage",
-    "zh-CN": "上下文已压缩 · {before}% → {after}%",
     "en": "Context compacted · {before}% → {after}%",
+    "key": "session.ios_compacted_usage",
     "notes": "ChatRows.swift。 iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 参数：before 为当前 UI 的整数数量/序号/进度（不改变取整规则）；after 为当前 UI 的整数数量/序号/进度（不改变取整规则）。",
     "params": {
-      "before": {
-        "type": "integer",
-        "example": 2
-      },
       "after": {
-        "type": "integer",
-        "example": 2
+        "example": 2,
+        "type": "integer"
+      },
+      "before": {
+        "example": 2,
+        "type": "integer"
       }
     },
     "platforms": [
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "上下文已压缩 · {before}% → {after}%"
   },
   {
-    "key": "session.ios_connect_read",
-    "zh-CN": "连上服务器后读取这个会话",
     "en": "Connect to the server to read this session",
+    "key": "session.ios_connect_read",
     "notes": "SessionScreen.swift。 iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 无变量。",
     "params": {},
     "platforms": [
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "连上服务器后读取这个会话"
   },
   {
-    "key": "session.ios_context_occupancy",
-    "zh-CN": "上下文占用",
     "en": "Context usage",
+    "key": "session.ios_context_occupancy",
     "notes": "SessionSheets.swift。 iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 无变量。",
     "params": {},
     "platforms": [
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "上下文占用"
   },
   {
-    "key": "session.ios_context_usage",
-    "zh-CN": "上下文占用 {used}k / {total}k",
     "en": "Context {used}k / {total}k",
+    "key": "session.ios_context_usage",
     "notes": "SessionSheets.swift。 iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 参数：used 为当前 UI 的整数数量/序号/进度（不改变取整规则）；total 为当前 UI 的整数数量/序号/进度（不改变取整规则）。",
     "params": {
-      "used": {
-        "type": "integer",
-        "example": 2
-      },
       "total": {
-        "type": "integer",
-        "example": 2
+        "example": 2,
+        "type": "integer"
+      },
+      "used": {
+        "example": 2,
+        "type": "integer"
       }
     },
     "platforms": [
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "上下文占用 {used}k / {total}k"
   },
   {
-    "key": "session.ios_effort_note",
-    "zh-CN": "仅显示当前模型支持的档位；空闲时点选提交，等电脑确认后更新实际值。",
     "en": "Only levels supported by the current model are shown. Select while idle to submit; the actual value updates when the computer confirms.",
+    "key": "session.ios_effort_note",
     "notes": "SessionSheets.swift。 iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 无变量。",
     "params": {},
     "platforms": [
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "仅显示当前模型支持的档位；空闲时点选提交，等电脑确认后更新实际值。"
   },
   {
-    "key": "session.ios_ended_at",
-    "zh-CN": "{time} 结束",
     "en": "{time} ended",
+    "key": "session.ios_ended_at",
     "notes": " iOS 会话/附件显示边界；中文原句不变。提示正文允许多行，按钮与读屏标签保持现有空间。 参数：time 为调用处的显示内容，用户/CLI 原文不翻译。",
     "params": {
       "time": {
-        "type": "string",
-        "example": "Example"
+        "example": "Example",
+        "type": "string"
       }
     },
     "platforms": [
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "{time} 结束"
   },
   {
-    "key": "session.ios_ended_recovery",
-    "zh-CN": "{reason}{recovery}",
     "en": "{reason} {recovery}",
+    "key": "session.ios_ended_recovery",
     "notes": "会话结束原因与后续恢复说明的完整组合；中文原本两句直接相接，英文句间保留空格。 iOS 会话附件提示，保留中文；正文允许多行，按钮保持紧凑。 参数：reason 为调用处的显示值，用户/CLI 原文不翻译；recovery 为调用处的显示值，用户/CLI 原文不翻译。",
     "params": {
       "reason": {
-        "type": "string",
-        "example": "Example"
+        "example": "Example",
+        "type": "string"
       },
       "recovery": {
-        "type": "string",
-        "example": "Example"
+        "example": "Example",
+        "type": "string"
       }
     },
     "platforms": [
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "{reason}{recovery}"
   },
   {
-    "key": "session.ios_expand",
-    "zh-CN": "展开",
     "en": "Expand",
+    "key": "session.ios_expand",
     "notes": "ChatRowViews.swift。 iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 无变量。",
     "params": {},
     "platforms": [
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "展开"
   },
   {
-    "key": "session.ios_fork_connect",
-    "zh-CN": "连上服务器后可用",
     "en": "Available after connecting to the server",
+    "key": "session.ios_fork_connect",
     "notes": "Model.swift。 iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 无变量。",
     "params": {},
     "platforms": [
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "连上服务器后可用"
   },
   {
-    "key": "session.ios_fork_prefix",
-    "zh-CN": "{time} 分叉自",
     "en": "{time} forked from",
+    "key": "session.ios_fork_prefix",
     "notes": "ChatRowViews.swift。 iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 参数：time 为调用处的显示值；用户、CLI 内容和错误详情保持原文。",
     "params": {
       "time": {
-        "type": "string",
-        "example": "Example"
+        "example": "Example",
+        "type": "string"
       }
     },
     "platforms": [
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "{time} 分叉自"
   },
   {
-    "key": "session.ios_history_failed",
-    "zh-CN": "后面的记录没读到：{reason}",
     "en": "Could not read later records: {reason}",
+    "key": "session.ios_history_failed",
     "notes": "ChatPane.swift。 iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 参数：reason 为调用处的显示值；用户、CLI 内容和错误详情保持原文。",
     "params": {
       "reason": {
-        "type": "string",
-        "example": "Example"
+        "example": "Example",
+        "type": "string"
       }
     },
     "platforms": [
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "后面的记录没读到：{reason}"
   },
   {
-    "key": "session.ios_history_partial",
-    "zh-CN": "历史记录尚未读全。",
     "en": "History has not been fully read.",
+    "key": "session.ios_history_partial",
     "notes": "ChatPane.swift。 iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 无变量。",
     "params": {},
     "platforms": [
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "历史记录尚未读全。"
   },
   {
-    "key": "session.ios_interrupt_failed",
-    "zh-CN": "没能中断：{reason}",
     "en": "Could not interrupt: {reason}",
+    "key": "session.ios_interrupt_failed",
     "notes": "SessionComposer.swift。 iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 参数：reason 为调用处的显示值；用户、CLI 内容和错误详情保持原文。",
     "params": {
       "reason": {
-        "type": "string",
-        "example": "Example"
+        "example": "Example",
+        "type": "string"
       }
     },
     "platforms": [
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "没能中断：{reason}"
   },
   {
-    "key": "session.ios_interrupted_by",
-    "zh-CN": "已中断（{origin}）",
     "en": "Interrupted ({origin})",
+    "key": "session.ios_interrupted_by",
     "notes": " iOS 会话/附件显示边界；中文原句不变。提示正文允许多行，按钮与读屏标签保持现有空间。 参数：origin 为调用处的显示内容，用户/CLI 原文不翻译。",
     "params": {
       "origin": {
-        "type": "string",
-        "example": "Example"
+        "example": "Example",
+        "type": "string"
       }
     },
     "platforms": [
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "已中断（{origin}）"
   },
   {
-    "key": "session.ios_latest",
-    "zh-CN": "回到最新消息",
     "en": "Go to latest message",
+    "key": "session.ios_latest",
     "notes": "ChatPane.swift。 iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 无变量。",
     "params": {},
     "platforms": [
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "回到最新消息"
   },
   {
-    "key": "session.ios_lookup_failed",
-    "zh-CN": "没能读取这个会话：{reason}",
     "en": "Could not read this session: {reason}",
+    "key": "session.ios_lookup_failed",
     "notes": "会话查找失败页；reason 是原始错误详情，保持原文，不改变重试或错误映射。 iOS 会话附件提示，保留中文；正文允许多行，按钮保持紧凑。 参数：reason 为调用处的显示值，用户/CLI 原文不翻译。",
     "params": {
       "reason": {
-        "type": "string",
-        "example": "Example"
+        "example": "Example",
+        "type": "string"
       }
     },
     "platforms": [
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "没能读取这个会话：{reason}"
   },
   {
-    "key": "session.ios_message_text",
-    "zh-CN": "消息文字",
     "en": "Message text",
+    "key": "session.ios_message_text",
     "notes": "MessageTextSelection.swift。 iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 无变量。",
     "params": {},
     "platforms": [
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "消息文字"
   },
   {
-    "key": "session.ios_missing",
-    "zh-CN": "找不到这个会话",
     "en": "Session not found",
+    "key": "session.ios_missing",
     "notes": "会话、审批、提问、计划与图片路由查找失败的空页标题；不存在由状态 .missing 决定，不按文案判断。 iOS 会话附件提示，保留中文；正文允许多行，按钮保持紧凑。 无变量。",
     "params": {},
     "platforms": [
@@ -1457,166 +1401,161 @@
       "web"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "找不到这个会话"
   },
   {
-    "key": "session.ios_models_failed",
-    "zh-CN": "没能读取模型列表：{reason}",
     "en": "Could not read the model list: {reason}",
+    "key": "session.ios_models_failed",
     "notes": "SessionSheets.swift。 iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 参数：reason 为调用处的显示值；用户、CLI 内容和错误详情保持原文。",
     "params": {
       "reason": {
-        "type": "string",
-        "example": "Example"
+        "example": "Example",
+        "type": "string"
       }
     },
     "platforms": [
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "没能读取模型列表：{reason}"
   },
   {
-    "key": "session.ios_reasoning",
-    "zh-CN": "思考过程",
     "en": "Reasoning",
+    "key": "session.ios_reasoning",
     "notes": "ChatRowViews.swift。 iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 无变量。",
     "params": {},
     "platforms": [
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "思考过程"
   },
   {
-    "key": "session.ios_reply_arrived",
-    "zh-CN": "{agent} 回复了",
     "en": "{agent} replied",
+    "key": "session.ios_reply_arrived",
     "notes": "SessionRules.swift。 iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 参数：agent 为调用处的显示值；用户、CLI 内容和错误详情保持原文。",
     "params": {
       "agent": {
-        "type": "string",
-        "example": "Example"
+        "example": "Example",
+        "type": "string"
       }
     },
     "platforms": [
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "{agent} 回复了"
   },
   {
-    "key": "session.ios_resume_failed",
-    "zh-CN": "恢复失败：{reason}",
     "en": "Could not resume: {reason}",
+    "key": "session.ios_resume_failed",
     "notes": "ChatPane.swift。 iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 参数：reason 为调用处的显示值；用户、CLI 内容和错误详情保持原文。",
     "params": {
       "reason": {
-        "type": "string",
-        "example": "Example"
+        "example": "Example",
+        "type": "string"
       }
     },
     "platforms": [
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "恢复失败：{reason}"
   },
   {
-    "key": "session.ios_select_text",
-    "zh-CN": "选择文字",
     "en": "Select text",
+    "key": "session.ios_select_text",
     "notes": "MessageTextSelection.swift。 iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 无变量。",
     "params": {},
     "platforms": [
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "选择文字"
   },
   {
-    "key": "session.ios_select_text_hint",
-    "zh-CN": "长按文字，再拖动两端选择要复制的内容",
     "en": "Touch and hold, then drag both ends to select text to copy",
+    "key": "session.ios_select_text_hint",
     "notes": "MessageTextSelection.swift。 iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 无变量。",
     "params": {},
     "platforms": [
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "长按文字，再拖动两端选择要复制的内容"
   },
   {
-    "key": "session.ios_terminal_changes",
-    "zh-CN": "{machine} 终端里{changes}",
     "en": "In {machine}’s terminal, {changes}",
+    "key": "session.ios_terminal_changes",
     "notes": "ChatRows.swift。 iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 参数：machine 为调用处的显示值；用户、CLI 内容和错误详情保持原文；changes 为调用处的显示值；用户、CLI 内容和错误详情保持原文。",
     "params": {
-      "machine": {
-        "type": "string",
-        "example": "Example"
-      },
       "changes": {
-        "type": "string",
-        "example": "Example"
+        "example": "Example",
+        "type": "string"
+      },
+      "machine": {
+        "example": "Example",
+        "type": "string"
       }
     },
     "platforms": [
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "{machine} 终端里{changes}"
   },
   {
-    "key": "session.ios_title_field",
-    "zh-CN": "会话标题",
     "en": "Title",
+    "key": "session.ios_title_field",
     "notes": "SessionSheets.swift。 iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 无变量。",
     "params": {},
     "platforms": [
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "会话标题"
   },
   {
-    "key": "session.ios_turn_k_tokens",
-    "zh-CN": {
-      "plural": "count",
-      "forms": {
-        "other": "{count}k tokens"
-      }
-    },
     "en": {
-      "plural": "count",
       "forms": {
         "one": "{count}k tokens",
         "other": "{count}k tokens"
-      }
+      },
+      "plural": "count"
     },
+    "key": "session.ios_turn_k_tokens",
     "notes": "聊天轮次结束的 token 数，count 是按原规则四舍五入后的千数。 iOS 会话附件提示，保留中文；正文允许多行，按钮保持紧凑。 参数：count 为当前整数数量，保留原阈值。",
     "params": {
       "count": {
-        "type": "integer",
-        "example": 2
+        "example": 2,
+        "type": "integer"
       }
     },
     "platforms": [
@@ -1625,30 +1564,30 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": {
+      "forms": {
+        "other": "{count}k tokens"
+      },
+      "plural": "count"
     }
   },
   {
-    "key": "session.ios_turn_tokens",
-    "zh-CN": {
-      "plural": "count",
-      "forms": {
-        "other": "{count} tokens"
-      }
-    },
     "en": {
-      "plural": "count",
       "forms": {
         "one": "{count} token",
         "other": "{count} tokens"
-      }
+      },
+      "plural": "count"
     },
+    "key": "session.ios_turn_tokens",
     "notes": "聊天轮次结束的 token 数；中文原来使用英文单位，保持不变。 iOS 会话附件提示，保留中文；正文允许多行，按钮保持紧凑。 参数：count 为当前整数数量，保留原阈值。",
     "params": {
       "count": {
-        "type": "integer",
-        "example": 2
+        "example": 2,
+        "type": "integer"
       }
     },
     "platforms": [
@@ -1657,42 +1596,47 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": {
+      "forms": {
+        "other": "{count} tokens"
+      },
+      "plural": "count"
     }
   },
   {
-    "key": "session.ios_update_required",
-    "zh-CN": "请更新电脑上的 remote-agent",
     "en": "Update remote-agent",
+    "key": "session.ios_update_required",
     "notes": "SessionScreen.swift。 iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 无变量。",
     "params": {},
     "platforms": [
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "请更新电脑上的 remote-agent"
   },
   {
-    "key": "session.ios_your_message",
-    "zh-CN": "你发的消息",
     "en": "Your message",
+    "key": "session.ios_your_message",
     "notes": "ChatRowViews.swift。 iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 无变量。",
     "params": {},
     "platforms": [
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "你发的消息"
   },
   {
-    "key": "session.latest",
-    "zh-CN": "回到最新消息",
     "en": "Back to latest",
+    "key": "session.latest",
     "notes": "会话页的可视状态、历史提示或操作标签。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
     "params": {},
     "platforms": [
@@ -1701,14 +1645,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "回到最新消息"
   },
   {
-    "key": "session.loading_earlier",
-    "zh-CN": "正在读取更早的记录…",
     "en": "Loading earlier history…",
+    "key": "session.loading_earlier",
     "notes": "会话页的可视状态、历史提示或操作标签。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
     "params": {},
     "platforms": [
@@ -1717,14 +1661,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "正在读取更早的记录…"
   },
   {
-    "key": "session.manually_closed",
-    "zh-CN": "会话是被手动结束的。",
     "en": "The session was ended manually.",
+    "key": "session.manually_closed",
     "notes": "会话页的可视状态、历史提示或操作标签。说明/反馈正文，允许多行。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
     "params": {},
     "platforms": [
@@ -1733,19 +1677,19 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "会话是被手动结束的。"
   },
   {
-    "key": "session.max_effort",
-    "zh-CN": "最高 {effort}",
     "en": "Up to {effort}",
+    "key": "session.max_effort",
     "notes": "会话页顶栏、菜单、历史行或恢复卡。完整提示/历史行；参数可重排，不翻译用户内容。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：effort 为CLI 推理级别，保持原文。",
     "params": {
       "effort": {
-        "type": "string",
-        "example": "Example"
+        "example": "Example",
+        "type": "string"
       }
     },
     "platforms": [
@@ -1754,19 +1698,19 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "最高 {effort}"
   },
   {
-    "key": "session.mode_changed",
-    "zh-CN": "模式切换到 {value}",
     "en": "Approval mode switched to {value}",
+    "key": "session.mode_changed",
     "notes": "会话页顶栏、菜单、历史行或恢复卡。历史设置变更，value 用加粗槽位显示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：value 为已有加粗节点的富文本槽位，不显示花括号。",
     "params": {
       "value": {
-        "type": "string",
-        "example": "Example"
+        "example": "Example",
+        "type": "string"
       }
     },
     "platforms": [
@@ -1775,23 +1719,23 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "模式切换到 {value}"
   },
   {
-    "key": "session.mode_changed_by",
-    "zh-CN": "{origin} 将模式切到 {value}",
     "en": "{origin} switched approval mode to {value}",
+    "key": "session.mode_changed_by",
     "notes": "会话页顶栏、菜单、历史行或恢复卡。历史设置变更；origin 为可信来源显示名，value 为加粗槽位。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：origin 为经过身份验证的来源显示名；value 为已有加粗节点的富文本槽位，不显示花括号。",
     "params": {
-      "value": {
-        "type": "string",
-        "example": "Example"
-      },
       "origin": {
-        "type": "string",
-        "example": "Example"
+        "example": "Example",
+        "type": "string"
+      },
+      "value": {
+        "example": "Example",
+        "type": "string"
       }
     },
     "platforms": [
@@ -1800,19 +1744,19 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "{origin} 将模式切到 {value}"
   },
   {
-    "key": "session.model_changed",
-    "zh-CN": "切换到 {value}",
     "en": "Switched to {value}",
+    "key": "session.model_changed",
     "notes": "会话页顶栏、菜单、历史行或恢复卡。历史设置变更，value 用加粗槽位显示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：value 为已有加粗节点的富文本槽位，不显示花括号。",
     "params": {
       "value": {
-        "type": "string",
-        "example": "Example"
+        "example": "Example",
+        "type": "string"
       }
     },
     "platforms": [
@@ -1821,23 +1765,23 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "切换到 {value}"
   },
   {
-    "key": "session.model_changed_by",
-    "zh-CN": "{origin} 将模型切到 {value}",
     "en": "{origin} switched model to {value}",
+    "key": "session.model_changed_by",
     "notes": "会话页顶栏、菜单、历史行或恢复卡。历史设置变更；origin 为可信来源显示名，value 为加粗槽位。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：origin 为经过身份验证的来源显示名；value 为已有加粗节点的富文本槽位，不显示花括号。",
     "params": {
-      "value": {
-        "type": "string",
-        "example": "Example"
-      },
       "origin": {
-        "type": "string",
-        "example": "Example"
+        "example": "Example",
+        "type": "string"
+      },
+      "value": {
+        "example": "Example",
+        "type": "string"
       }
     },
     "platforms": [
@@ -1846,14 +1790,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "{origin} 将模型切到 {value}"
   },
   {
-    "key": "session.model_locked",
-    "zh-CN": "运行中不能换模型，新建会话时可选",
     "en": "Model cannot be changed while running. Choose it when starting a new session.",
+    "key": "session.model_locked",
     "notes": "会话页的可视状态、历史提示或操作标签。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
     "params": {},
     "platforms": [
@@ -1862,23 +1806,23 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "运行中不能换模型，新建会话时可选"
   },
   {
-    "key": "session.model_switch_failed",
-    "zh-CN": "没能切到 {model}：{reason}",
     "en": "Could not switch to {model}: {reason}",
+    "key": "session.model_switch_failed",
     "notes": "会话页顶栏、菜单、历史行或恢复卡。完整句，保持变量位置和原有标点。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：model 为CLI 模型显示名，保持原文；reason 为当前操作的失败详情，保持原文。",
     "params": {
       "model": {
-        "type": "string",
-        "example": "Example"
+        "example": "Example",
+        "type": "string"
       },
       "reason": {
-        "type": "string",
-        "example": "Example"
+        "example": "Example",
+        "type": "string"
       }
     },
     "platforms": [
@@ -1887,14 +1831,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "没能切到 {model}：{reason}"
   },
   {
-    "key": "session.models_failed",
-    "zh-CN": "没能读取模型列表",
     "en": "Could not load model list",
+    "key": "session.models_failed",
     "notes": "会话页的可视状态、历史提示或操作标签。说明/反馈正文，允许多行。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
     "params": {},
     "platforms": [
@@ -1903,19 +1847,19 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "没能读取模型列表"
   },
   {
-    "key": "session.more_context",
-    "zh-CN": "更多，上下文占用 {percent}%",
     "en": "More, context {percent}%",
+    "key": "session.more_context",
     "notes": "会话页顶栏、菜单、历史行或恢复卡。完整句，保持变量位置和原有标点。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：percent 为整数百分比。",
     "params": {
       "percent": {
-        "type": "integer",
-        "example": 2
+        "example": 2,
+        "type": "integer"
       }
     },
     "platforms": [
@@ -1924,30 +1868,25 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "更多，上下文占用 {percent}%"
   },
   {
-    "key": "session.new_messages",
-    "zh-CN": {
-      "plural": "count",
-      "forms": {
-        "other": "{count} 条新消息"
-      }
-    },
     "en": {
-      "plural": "count",
       "forms": {
         "one": "{count} new message",
         "other": "{count} new messages"
-      }
+      },
+      "plural": "count"
     },
+    "key": "session.new_messages",
     "notes": "会话页顶栏、菜单、历史行或恢复卡。完整句，保持变量位置和原有标点。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：count 为非负数量（控制复数规则）。",
     "params": {
       "count": {
-        "type": "integer",
-        "example": 2
+        "example": 2,
+        "type": "integer"
       }
     },
     "platforms": [
@@ -1956,14 +1895,19 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": {
+      "forms": {
+        "other": "{count} 条新消息"
+      },
+      "plural": "count"
     }
   },
   {
-    "key": "session.no_effort",
-    "zh-CN": "无推理强度",
     "en": "No reasoning effort",
+    "key": "session.no_effort",
     "notes": "会话页的可视状态、历史提示或操作标签。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
     "params": {},
     "platforms": [
@@ -1972,19 +1916,19 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "无推理强度"
   },
   {
-    "key": "session.no_effort_adjustment",
-    "zh-CN": "{model} 没有推理强度可调",
     "en": "{model} has no adjustable reasoning effort",
+    "key": "session.no_effort_adjustment",
     "notes": "会话页顶栏、菜单、历史行或恢复卡。完整提示/历史行；参数可重排，不翻译用户内容。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：model 为CLI 模型显示名，保持原文。",
     "params": {
       "model": {
-        "type": "string",
-        "example": "Example"
+        "example": "Example",
+        "type": "string"
       }
     },
     "platforms": [
@@ -1993,14 +1937,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "{model} 没有推理强度可调"
   },
   {
-    "key": "session.not_running",
-    "zh-CN": "会话不在运行。",
     "en": "Nothing is running",
+    "key": "session.not_running",
     "notes": "会话页的可视状态、历史提示或操作标签。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
     "params": {},
     "platforms": [
@@ -2009,19 +1953,19 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "会话不在运行。"
   },
   {
-    "key": "session.notification",
-    "zh-CN": "通知你：{text}",
     "en": "Notification: {text}",
+    "key": "session.notification",
     "notes": "会话页顶栏、菜单、历史行或恢复卡。完整提示/历史行；参数可重排，不翻译用户内容。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：text 为原始通知/用户文本，不翻译。",
     "params": {
       "text": {
-        "type": "string",
-        "example": "Example"
+        "example": "Example",
+        "type": "string"
       }
     },
     "platforms": [
@@ -2030,19 +1974,19 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "通知你：{text}"
   },
   {
-    "key": "session.offline_note",
-    "zh-CN": "{lastSeen}可能是合盖睡眠、断网，或 remote-agent 没在运行。电脑上的会话可能还在跑，重新连上后这里会自动更新，现在只能看历史。",
     "en": "{lastSeen}The computer may be asleep, offline, or remote-agent may not be running. Sessions may still be running there. This page updates automatically after reconnecting; only history is available now.",
+    "key": "session.offline_note",
     "notes": "会话页顶栏、菜单、历史行或恢复卡。完整提示/历史行；参数可重排，不翻译用户内容。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：lastSeen 为已格式化的完整断线时间前置句（可空）。",
     "params": {
       "lastSeen": {
-        "type": "string",
-        "example": "Example"
+        "example": "Example",
+        "type": "string"
       }
     },
     "platforms": [
@@ -2051,19 +1995,19 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "{lastSeen}可能是合盖睡眠、断网，或 remote-agent 没在运行。电脑上的会话可能还在跑，重新连上后这里会自动更新，现在只能看历史。"
   },
   {
-    "key": "session.offline_resume",
-    "zh-CN": "{name} 不在线，连上后才能恢复。",
     "en": "{name} is offline. Reconnect to resume.",
+    "key": "session.offline_resume",
     "notes": "会话页顶栏、菜单、历史行或恢复卡。完整提示/历史行；参数可重排，不翻译用户内容。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：name 为电脑/文件/图片的显示名（按调用提供）。",
     "params": {
       "name": {
-        "type": "string",
-        "example": "Example"
+        "example": "Example",
+        "type": "string"
       }
     },
     "platforms": [
@@ -2072,14 +2016,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "{name} 不在线，连上后才能恢复。"
   },
   {
-    "key": "session.only_current",
-    "zh-CN": "只改当前会话",
     "en": "Applies only to this session",
+    "key": "session.only_current",
     "notes": "会话页的可视状态、历史提示或操作标签。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
     "params": {},
     "platforms": [
@@ -2088,28 +2032,28 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "只改当前会话"
   },
   {
-    "key": "session.opening_slow",
-    "zh-CN": "记录还没读到，可以重试。已输入的内容会保留。",
     "en": "History is taking longer to load. You can retry; your draft will stay here.",
+    "key": "session.opening_slow",
     "notes": "会话正文等待超过五秒时的页内状态；同一行有重试按钮。 无变量。",
     "params": {},
     "platforms": [
       "web"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "记录还没读到，可以重试。已输入的内容会保留。"
   },
   {
-    "key": "session.origin_elsewhere",
-    "zh-CN": "另一端",
     "en": "Elsewhere",
+    "key": "session.origin_elsewhere",
     "notes": "会话页的可视状态、历史提示或操作标签。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
     "params": {},
     "platforms": [
@@ -2118,14 +2062,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "另一端"
   },
   {
-    "key": "session.origin_other",
-    "zh-CN": "另一客户端",
     "en": "Another client",
+    "key": "session.origin_other",
     "notes": "会话页的可视状态、历史提示或操作标签。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
     "params": {},
     "platforms": [
@@ -2134,14 +2078,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "另一客户端"
   },
   {
-    "key": "session.origin_removed",
-    "zh-CN": "已移除的设备",
     "en": "Removed device",
+    "key": "session.origin_removed",
     "notes": "会话页的可视状态、历史提示或操作标签。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
     "params": {},
     "platforms": [
@@ -2150,14 +2094,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "已移除的设备"
   },
   {
-    "key": "session.origin_self",
-    "zh-CN": "本客户端",
     "en": "This client",
+    "key": "session.origin_self",
     "notes": "会话页的可视状态、历史提示或操作标签。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
     "params": {},
     "platforms": [
@@ -2166,19 +2110,19 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "本客户端"
   },
   {
-    "key": "session.origin_terminal",
-    "zh-CN": "{name} 终端",
     "en": "{name} terminal",
+    "key": "session.origin_terminal",
     "notes": "会话页顶栏、菜单、历史行或恢复卡。历史行来源元信息；name 为电脑显示名。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：name 为电脑/文件/图片的显示名（按调用提供）。",
     "params": {
       "name": {
-        "type": "string",
-        "example": "Example"
+        "example": "Example",
+        "type": "string"
       }
     },
     "platforms": [
@@ -2187,14 +2131,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "{name} 终端"
   },
   {
-    "key": "session.other_session",
-    "zh-CN": "另一个会话",
     "en": "Another session",
+    "key": "session.other_session",
     "notes": "会话页的可视状态、历史提示或操作标签。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
     "params": {},
     "platforms": [
@@ -2203,19 +2147,19 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "另一个会话"
   },
   {
-    "key": "session.quiet_checks",
-    "zh-CN": "{times} 定时检查 · 没有新回复",
     "en": "{times} Scheduled check · No new reply",
+    "key": "session.quiet_checks",
     "notes": "会话页顶栏、菜单、历史行或恢复卡。完整提示/历史行；参数可重排，不翻译用户内容。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：times 为按当前语言分隔的检查时间列表。",
     "params": {
       "times": {
-        "type": "string",
-        "example": "Example"
+        "example": "Example",
+        "type": "string"
       }
     },
     "platforms": [
@@ -2224,14 +2168,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "{times} 定时检查 · 没有新回复"
   },
   {
-    "key": "session.reading_models",
-    "zh-CN": "读取模型列表…",
     "en": "Loading model list…",
+    "key": "session.reading_models",
     "notes": "会话页的可视状态、历史提示或操作标签。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
     "params": {},
     "platforms": [
@@ -2240,14 +2184,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "读取模型列表…"
   },
   {
-    "key": "session.rename",
-    "zh-CN": "重命名",
     "en": "Rename",
+    "key": "session.rename",
     "notes": "会话页的可视状态、历史提示或操作标签。按钮/菜单项，描述该操作。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
     "params": {},
     "platforms": [
@@ -2256,14 +2200,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "重命名"
   },
   {
-    "key": "session.rename_title",
-    "zh-CN": "重命名会话",
     "en": "Rename session",
+    "key": "session.rename_title",
     "notes": "会话页的可视状态、历史提示或操作标签。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
     "params": {},
     "platforms": [
@@ -2272,23 +2216,23 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "重命名会话"
   },
   {
-    "key": "session.reopen_agent",
-    "zh-CN": "在 {name} 上重新打开 {agent}",
     "en": "Reopen {agent} on {name}",
+    "key": "session.reopen_agent",
     "notes": "会话页顶栏、菜单、历史行或恢复卡。完整提示/历史行；参数可重排，不翻译用户内容。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：agent 为CLI 品牌名，保持原文；name 为电脑/文件/图片的显示名（按调用提供）。",
     "params": {
       "agent": {
-        "type": "string",
-        "example": "Example"
+        "example": "Example",
+        "type": "string"
       },
       "name": {
-        "type": "string",
-        "example": "Example"
+        "example": "Example",
+        "type": "string"
       }
     },
     "platforms": [
@@ -2297,14 +2241,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "在 {name} 上重新打开 {agent}"
   },
   {
-    "key": "session.reply_moves",
-    "zh-CN": "回复后，这个对话会移到会话列表",
     "en": "After you reply, this conversation will move to the session list",
+    "key": "session.reply_moves",
     "notes": "会话页的可视状态、历史提示或操作标签。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
     "params": {},
     "platforms": [
@@ -2313,46 +2257,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "回复后，这个对话会移到会话列表"
   },
   {
-    "key": "session.restore_other_files",
-    "zh-CN": "这条消息的附件是另一客户端上传的，只放回了文字；需要的话在这里重新选择附件",
-    "en": "Another client uploaded this message’s attachments. Only the text was restored; select attachments here if needed.",
-    "notes": "会话页的可视状态、历史提示或操作标签。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
-    "params": {},
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "session.restore_other_images",
-    "zh-CN": "这条消息的图片是另一客户端上传的，只放回了文字；需要的话在这里重新选择图片",
-    "en": "Another client uploaded this message’s images. Only the text was restored; select images here if needed.",
-    "notes": "会话页的可视状态、历史提示或操作标签。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
-    "params": {},
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "session.resume",
-    "zh-CN": "恢复会话",
     "en": "Resume session",
+    "key": "session.resume",
     "notes": "会话页的可视状态、历史提示或操作标签。按钮/菜单项，描述该操作。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
     "params": {},
     "platforms": [
@@ -2361,14 +2273,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "恢复会话"
   },
   {
-    "key": "session.resume_failed",
-    "zh-CN": "恢复失败",
     "en": "Could not resume",
+    "key": "session.resume_failed",
     "notes": "会话页的可视状态、历史提示或操作标签。说明/反馈正文，允许多行。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
     "params": {},
     "platforms": [
@@ -2377,19 +2289,19 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "恢复失败"
   },
   {
-    "key": "session.resume_note",
-    "zh-CN": "恢复会在 {name} 上用同样的设置重新打开它，聊天记录都在。",
     "en": "Resume reopens it on {name} with the same settings. All history is kept.",
+    "key": "session.resume_note",
     "notes": "会话页顶栏、菜单、历史行或恢复卡。完整提示/历史行；参数可重排，不翻译用户内容。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：name 为电脑/文件/图片的显示名（按调用提供）。",
     "params": {
       "name": {
-        "type": "string",
-        "example": "Example"
+        "example": "Example",
+        "type": "string"
       }
     },
     "platforms": [
@@ -2398,14 +2310,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "恢复会在 {name} 上用同样的设置重新打开它，聊天记录都在。"
   },
   {
-    "key": "session.resuming",
-    "zh-CN": "正在恢复…",
     "en": "Resuming…",
+    "key": "session.resuming",
     "notes": "会话页的可视状态、历史提示或操作标签。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
     "params": {},
     "platforms": [
@@ -2414,14 +2326,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "正在恢复…"
   },
   {
-    "key": "session.schedule_send",
-    "zh-CN": "定时发送…",
     "en": "Schedule message…",
+    "key": "session.schedule_send",
     "notes": "会话页的可视状态、历史提示或操作标签。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
     "params": {},
     "platforms": [
@@ -2430,19 +2342,19 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "定时发送…"
   },
   {
-    "key": "session.scheduled_at",
-    "zh-CN": "定时任务 · {time}",
     "en": "Scheduled task · {time}",
+    "key": "session.scheduled_at",
     "notes": "会话页顶栏、菜单、历史行或恢复卡。完整句，保持变量位置和原有标点。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：time 为已按当前界面语言格式化的本地时间。",
     "params": {
       "time": {
-        "type": "string",
-        "example": "Example"
+        "example": "Example",
+        "type": "string"
       }
     },
     "platforms": [
@@ -2451,14 +2363,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "定时任务 · {time}"
   },
   {
-    "key": "session.scheduled_closed",
-    "zh-CN": "定时任务运行已结束，会话自动关闭了。",
     "en": "The scheduled run ended and the session closed automatically.",
+    "key": "session.scheduled_closed",
     "notes": "会话页的可视状态、历史提示或操作标签。说明/反馈正文，允许多行。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
     "params": {},
     "platforms": [
@@ -2467,14 +2379,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "定时任务运行已结束，会话自动关闭了。"
   },
   {
-    "key": "session.settings",
-    "zh-CN": "会话设置",
     "en": "Session settings",
+    "key": "session.settings",
     "notes": "会话页的可视状态、历史提示或操作标签。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
     "params": {},
     "platforms": [
@@ -2483,19 +2395,19 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "会话设置"
   },
   {
-    "key": "session.shell_failed",
-    "zh-CN": "电脑上的登录 shell 没能启动 CLI（{detail}）。请检查电脑上的 shell 配置，比如 ~/.zshrc。",
     "en": "The computer’s login shell could not start the CLI ({detail}). Check its shell configuration, such as ~/.zshrc.",
+    "key": "session.shell_failed",
     "notes": "会话页顶栏、菜单、历史行或恢复卡。会话恢复卡退出原因；detail 为原始 CLI 诊断。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：detail 为CLI 原始诊断，保持原文。",
     "params": {
       "detail": {
-        "type": "string",
-        "example": "Example"
+        "example": "Example",
+        "type": "string"
       }
     },
     "platforms": [
@@ -2504,19 +2416,19 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "电脑上的登录 shell 没能启动 CLI（{detail}）。请检查电脑上的 shell 配置，比如 ~/.zshrc。"
   },
   {
-    "key": "session.shell_timeout",
-    "zh-CN": "电脑上的登录 shell 没能启动 CLI（{detail}），可能卡在等待输入。请检查电脑上的 shell 配置，比如 ~/.zshrc。",
     "en": "The computer’s login shell could not start the CLI ({detail}) and may be waiting for input. Check its shell configuration, such as ~/.zshrc.",
+    "key": "session.shell_timeout",
     "notes": "会话页顶栏、菜单、历史行或恢复卡。会话恢复卡退出原因；detail 为原始 CLI 诊断，不改变现有原因识别。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：detail 为CLI 原始诊断，保持原文。",
     "params": {
       "detail": {
-        "type": "string",
-        "example": "Example"
+        "example": "Example",
+        "type": "string"
       }
     },
     "platforms": [
@@ -2525,14 +2437,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "电脑上的登录 shell 没能启动 CLI（{detail}），可能卡在等待输入。请检查电脑上的 shell 配置，比如 ~/.zshrc。"
   },
   {
-    "key": "session.skeleton",
-    "zh-CN": "内容过大，请在终端查看/回答",
     "en": "Content too large; view or answer in the terminal",
+    "key": "session.skeleton",
     "notes": "会话页的可视状态、历史提示或操作标签。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
     "params": {},
     "platforms": [
@@ -2541,14 +2453,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "内容过大，请在终端查看/回答"
   },
   {
-    "key": "session.split",
-    "zh-CN": "并排",
     "en": "Side by side",
+    "key": "session.split",
     "notes": "会话页的可视状态、历史提示或操作标签。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
     "params": {},
     "platforms": [
@@ -2557,23 +2469,23 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "并排"
   },
   {
-    "key": "session.starting_agent",
-    "zh-CN": "正在 {name} 上启动 {agent}…",
     "en": "Starting {agent} on {name}…",
+    "key": "session.starting_agent",
     "notes": "会话页顶栏、菜单、历史行或恢复卡。完整提示/历史行；参数可重排，不翻译用户内容。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：agent 为CLI 品牌名，保持原文；name 为电脑/文件/图片的显示名（按调用提供）。",
     "params": {
       "agent": {
-        "type": "string",
-        "example": "Example"
+        "example": "Example",
+        "type": "string"
       },
       "name": {
-        "type": "string",
-        "example": "Example"
+        "example": "Example",
+        "type": "string"
       }
     },
     "platforms": [
@@ -2582,14 +2494,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "正在 {name} 上启动 {agent}…"
   },
   {
-    "key": "session.switch_after_turn",
-    "zh-CN": "这一轮在运行，结束后才能切换模型和推理强度",
     "en": "This turn is running. Change model and reasoning effort after it ends.",
+    "key": "session.switch_after_turn",
     "notes": "会话页的可视状态、历史提示或操作标签。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
     "params": {},
     "platforms": [
@@ -2598,14 +2510,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "这一轮在运行，结束后才能切换模型和推理强度"
   },
   {
-    "key": "session.switch_connected",
-    "zh-CN": "和服务器断线了，连上后才能切换",
     "en": "Disconnected from server. Reconnect to switch.",
+    "key": "session.switch_connected",
     "notes": "会话页的可视状态、历史提示或操作标签。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
     "params": {},
     "platforms": [
@@ -2614,14 +2526,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "和服务器断线了，连上后才能切换"
   },
   {
-    "key": "session.switch_idle",
-    "zh-CN": "只在空闲时能切换，只改当前会话",
     "en": "Can only switch while idle; applies only to this session",
+    "key": "session.switch_idle",
     "notes": "会话页的可视状态、历史提示或操作标签。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
     "params": {},
     "platforms": [
@@ -2630,19 +2542,19 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "只在空闲时能切换，只改当前会话"
   },
   {
-    "key": "session.switching_model",
-    "zh-CN": "正在切换到 {model}…",
     "en": "Switching to {model}…",
+    "key": "session.switching_model",
     "notes": "会话页顶栏、菜单、历史行或恢复卡。完整提示/历史行；参数可重排，不翻译用户内容。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：model 为CLI 模型显示名，保持原文。",
     "params": {
       "model": {
-        "type": "string",
-        "example": "Example"
+        "example": "Example",
+        "type": "string"
       }
     },
     "platforms": [
@@ -2651,14 +2563,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "正在切换到 {model}…"
   },
   {
-    "key": "session.terminal",
-    "zh-CN": "终端",
     "en": "Terminal",
+    "key": "session.terminal",
     "notes": "会话页的可视状态、历史提示或操作标签。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
     "params": {},
     "platforms": [
@@ -2667,23 +2579,23 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "终端"
   },
   {
-    "key": "session.terminal_changes",
-    "zh-CN": "{name} 终端里{changes}",
     "en": "{name} terminal {changes}",
+    "key": "session.terminal_changes",
     "notes": "会话页顶栏、菜单、历史行或恢复卡。历史终端变更行；changes 是结构化变更列表的富文本槽位。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：changes 为结构化终端变更列表的富文本槽位；name 为电脑/文件/图片的显示名（按调用提供）。",
     "params": {
       "changes": {
-        "type": "string",
-        "example": "Example"
+        "example": "Example",
+        "type": "string"
       },
       "name": {
-        "type": "string",
-        "example": "Example"
+        "example": "Example",
+        "type": "string"
       }
     },
     "platforms": [
@@ -2692,19 +2604,19 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "{name} 终端里{changes}"
   },
   {
-    "key": "session.terminal_mode_change",
-    "zh-CN": "模式切到了 {value}",
     "en": "switched approval mode to {value}",
+    "key": "session.terminal_mode_change",
     "notes": "会话页顶栏、菜单、历史行或恢复卡。终端变更列表一项；value 为模式名加粗槽位。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：value 为已有加粗节点的富文本槽位，不显示花括号。",
     "params": {
       "value": {
-        "type": "string",
-        "example": "Example"
+        "example": "Example",
+        "type": "string"
       }
     },
     "platforms": [
@@ -2713,19 +2625,19 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "模式切到了 {value}"
   },
   {
-    "key": "session.terminal_model_change",
-    "zh-CN": "模型切到了 {value}",
     "en": "switched model to {value}",
+    "key": "session.terminal_model_change",
     "notes": "会话页顶栏、菜单、历史行或恢复卡。终端变更列表一项；value 为原始模型名/推理级别加粗槽位。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：value 为已有加粗节点的富文本槽位，不显示花括号。",
     "params": {
       "value": {
-        "type": "string",
-        "example": "Example"
+        "example": "Example",
+        "type": "string"
       }
     },
     "platforms": [
@@ -2734,14 +2646,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "模型切到了 {value}"
   },
   {
-    "key": "session.thinking",
-    "zh-CN": "思考过程",
     "en": "Thinking",
+    "key": "session.thinking",
     "notes": "会话页的可视状态、历史提示或操作标签。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
     "params": {},
     "platforms": [
@@ -2750,14 +2662,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "思考过程"
   },
   {
-    "key": "session.title",
-    "zh-CN": "会话",
     "en": "Conversation",
+    "key": "session.title",
     "notes": "会话尚未读到标题时的顶栏标题。 无变量。",
     "params": {},
     "platforms": [
@@ -2766,14 +2678,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "会话"
   },
   {
-    "key": "session.title_label",
-    "zh-CN": "会话标题",
     "en": "Session title",
+    "key": "session.title_label",
     "notes": "会话页的可视状态、历史提示或操作标签。读屏标签；在对应控件或图片上使用。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
     "params": {},
     "platforms": [
@@ -2782,14 +2694,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "会话标题"
   },
   {
-    "key": "session.tmux_missing",
-    "zh-CN": "tmux 会话已经不在了。",
     "en": "The tmux session no longer exists.",
+    "key": "session.tmux_missing",
     "notes": "会话页的可视状态、历史提示或操作标签。说明/反馈正文，允许多行。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
     "params": {},
     "platforms": [
@@ -2798,14 +2710,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "tmux 会话已经不在了。"
   },
   {
-    "key": "session.try_again",
-    "zh-CN": "再试一次",
     "en": "Try again",
+    "key": "session.try_again",
     "notes": "会话页的可视状态、历史提示或操作标签。按钮/菜单项，描述该操作。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
     "params": {},
     "platforms": [
@@ -2814,19 +2726,19 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "再试一次"
   },
   {
-    "key": "session.turn_duration",
-    "zh-CN": "本轮用时 {duration}",
     "en": "Turn took {duration}",
+    "key": "session.turn_duration",
     "notes": "会话页顶栏、菜单、历史行或恢复卡。完整提示/历史行；参数可重排，不翻译用户内容。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：duration 为已本地化的时长或 m:ss 计时钟。",
     "params": {
       "duration": {
-        "type": "string",
-        "example": "Example"
+        "example": "Example",
+        "type": "string"
       }
     },
     "platforms": [
@@ -2835,19 +2747,19 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "本轮用时 {duration}"
   },
   {
-    "key": "session.turn_error",
-    "zh-CN": "本轮出错：{reason}",
     "en": "Turn failed: {reason}",
+    "key": "session.turn_error",
     "notes": "会话历史里 CLI 报错结束一轮时的错误行；保留原文错误原因。",
     "params": {
       "reason": {
-        "type": "string",
-        "example": "Usage limit reached"
+        "example": "Usage limit reached",
+        "type": "string"
       }
     },
     "platforms": [
@@ -2856,14 +2768,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "本轮出错：{reason}"
   },
   {
-    "key": "session.update_computer",
-    "zh-CN": "请更新电脑上的 remote-agent",
     "en": "Update remote-agent on the computer",
+    "key": "session.update_computer",
     "notes": "会话页的可视状态、历史提示或操作标签。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
     "params": {},
     "platforms": [
@@ -2872,14 +2784,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "请更新电脑上的 remote-agent"
   },
   {
-    "key": "session.view",
-    "zh-CN": "视图",
     "en": "View",
+    "key": "session.view",
     "notes": "会话页的可视状态、历史提示或操作标签。读屏标签；在对应控件或图片上使用。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
     "params": {},
     "platforms": [
@@ -2888,8 +2800,9 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "视图"
   }
 ]

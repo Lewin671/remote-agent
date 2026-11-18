@@ -3143,5 +3143,370 @@
     "path": "android/app/src/main/java/io/github/lewin671/remoteagent/ui/Marks.kt",
     "literal": "startupStatus",
     "reason": "Internal Compose animation tooling label passed to animateFloatAsState; never rendered to UI."
+  },
+  {
+    "path": "web/src/Workspace.tsx",
+    "literal": "1 ? history.back() : go(\"\")); const main = useMainScrolled(route, wide); if (remote.removed) return",
+    "reason": "Lexical JSX scanner false positive: TypeScript type arguments or code between angle brackets, not rendered text."
+  },
+  {
+    "path": "web/src/Workspace.tsx",
+    "literal": "; let page; if (kind === \"s\") page = (",
+    "reason": "Lexical JSX scanner false positive: TypeScript type arguments or code between angle brackets, not rendered text."
+  },
+  {
+    "path": "web/src/schedules.ts",
+    "literal": "skeleton",
+    "reason": "Protobuf oneof case discriminant string, never displayed."
+  },
+  {
+    "path": "web/src/sheets.tsx",
+    "literal": "list",
+    "reason": "CSS class name, never rendered as user-visible text."
+  },
+  {
+    "path": "web/src/sheets.tsx",
+    "literal": "md",
+    "reason": "CSS class name, never rendered as user-visible text."
+  },
+  {
+    "path": "web/src/sheets.tsx",
+    "literal": "ck",
+    "reason": "CSS class name, never rendered as user-visible text."
+  },
+  {
+    "path": "web/src/sheets.tsx",
+    "literal": "clipTitle(current)); const [submitted, setSubmitted] = useState(false); const sawBusy = useRef(false); const input = useRef",
+    "reason": "Lexical JSX scanner false positive: TypeScript type arguments or code between angle brackets, not rendered text."
+  },
+  {
+    "path": "web/src/sheets.tsx",
+    "literal": "renderText(c.unavailableReason) === i18n.t(\"modes.locked\")); const agent = header?.agent ?? Agent.UNSPECIFIED; return (",
+    "reason": "Lexical JSX scanner false positive: TypeScript type arguments or code between angle brackets, not rendered text."
+  },
+  {
+    "path": "web/src/sheets.tsx",
+    "literal": "c.selected); const few = choices.length",
+    "reason": "Lexical JSX scanner false positive: TypeScript type arguments or code between angle brackets, not rendered text."
+  },
+  {
+    "path": "web/src/sheets.tsx",
+    "literal": ") : ( agentInfo(agent).showMaxEffort && m.efforts[m.efforts.length - 1] !== \"max\" && m.efforts[m.efforts.length - 1] !== \"ultra\" && (",
+    "reason": "Lexical JSX scanner false positive: TypeScript type arguments or code between angle brackets, not rendered text."
+  },
+  {
+    "path": "web/src/views/ApprovalCard.tsx",
+    "literal": "0 && !full; const clamp = docked ? 0 : denying ? REASON_LINES : cut ? CARD_LINES : 0; const desc = approvalDisplay(description); const commandBody = (",
+    "reason": "Lexical JSX scanner false positive: TypeScript type arguments or code between angle brackets, not rendered text."
+  },
+  {
+    "path": "web/src/views/Composer.tsx",
+    "literal": "composer.message",
+    "reason": "Translation key name compared against Text.key, never displayed directly."
+  },
+  {
+    "path": "web/src/views/Composer.tsx",
+    "literal": "Enter",
+    "reason": "KeyboardEvent.key identifier, never displayed."
+  },
+  {
+    "path": "web/src/views/Composer.tsx",
+    "literal": "(); const [sendMenu, setSendMenu] = useState(defaultSendMenu); const hold = useRef",
+    "reason": "Lexical JSX scanner false positive: TypeScript type arguments or code between angle brackets, not rendered text."
+  },
+  {
+    "path": "web/src/views/Dock.tsx",
+    "literal": "muted",
+    "reason": "CSS class name, never rendered as user-visible text."
+  },
+  {
+    "path": "web/src/views/Dock.tsx",
+    "literal": "btns decide",
+    "reason": "CSS class name, never rendered as user-visible text."
+  },
+  {
+    "path": "web/src/views/Dock.tsx",
+    "literal": "${sid}|${dock.itemId}|${what}",
+    "reason": "Interpolated composite label built solely from pre-localized i18n segments or dock keys."
+  },
+  {
+    "path": "web/src/views/Dock.tsx",
+    "literal": "${title} · ${agentName}",
+    "reason": "Interpolated composite label built solely from pre-localized i18n segments or dock keys."
+  },
+  {
+    "path": "web/src/views/Dock.tsx",
+    "literal": "${title}${timeText ? \" · \" + timeText : \"\"}",
+    "reason": "Interpolated composite label built solely from pre-localized i18n segments or dock keys."
+  },
+  {
+    "path": "web/src/views/Dock.tsx",
+    "literal": ") : status === \"sending\" && !multi ? (",
+    "reason": "Lexical JSX scanner false positive: TypeScript type arguments or code between angle brackets, not rendered text."
+  },
+  {
+    "path": "web/src/views/Dock.tsx",
+    "literal": "); const submit = multi && !(showError && cmd?.frozen) && (",
+    "reason": "Lexical JSX scanner false positive: TypeScript type arguments or code between angle brackets, not rendered text."
+  },
+  {
+    "path": "web/src/views/Dock.tsx",
+    "literal": "); const failed = showError && (multi || sent.length === 0) &&",
+    "reason": "Lexical JSX scanner false positive: TypeScript type arguments or code between angle brackets, not rendered text."
+  },
+  {
+    "path": "web/src/views/Dock.tsx",
+    "literal": "(undefined); const lastCmd = useRef",
+    "reason": "Lexical JSX scanner false positive: TypeScript type arguments or code between angle brackets, not rendered text."
+  },
+  {
+    "path": "web/src/views/Dock.tsx",
+    "literal": "(undefined); const cmd = dock.command; const slotKey = cmd?.slotKey ?? \"\"; const busy = !!cmd?.busy; const hasError = !!cmd && (cmd.status === SessionCommandStatus.FAILED || cmd.status === SessionCommandStatus.UNKNOWN); const errMsg = renderText(cmd?.errorText) || renderText(cmd?.statusText); if (plan.choices.length === 0) return",
+    "reason": "Lexical JSX scanner false positive: TypeScript type arguments or code between angle brackets, not rendered text."
+  },
+  {
+    "path": "web/src/views/Dock.tsx",
+    "literal": "0; if (!hasContent) return",
+    "reason": "Lexical JSX scanner false positive: TypeScript type arguments or code between angle brackets, not rendered text."
+  },
+  {
+    "path": "web/src/views/Dock.tsx",
+    "literal": "; const note = renderText(plan.note); const title = renderText(dock.title) || i18n.t(\"list_state.plan\"); return (",
+    "reason": "Lexical JSX scanner false positive: TypeScript type arguments or code between angle brackets, not rendered text."
+  },
+  {
+    "path": "web/src/views/Dock.tsx",
+    "literal": "(part === \"No, exit\" || part === \"Yes, I trust this folder\" ?",
+    "reason": "Lexical JSX scanner false positive: TypeScript type arguments or code between angle brackets, not rendered text."
+  },
+  {
+    "path": "web/src/views/Dock.tsx",
+    "literal": ": trustHint && isTrust &&",
+    "reason": "Lexical JSX scanner false positive: TypeScript type arguments or code between angle brackets, not rendered text."
+  },
+  {
+    "path": "web/src/views/Dock.tsx",
+    "literal": "; closedKeys?: Set",
+    "reason": "Lexical JSX scanner false positive: TypeScript type arguments or code between angle brackets, not rendered text."
+  },
+  {
+    "path": "web/src/views/Dock.tsx",
+    "literal": "(new Set()); const localClosed = useRef",
+    "reason": "Lexical JSX scanner false positive: TypeScript type arguments or code between angle brackets, not rendered text."
+  },
+  {
+    "path": "web/src/views/Dock.tsx",
+    "literal": "); break; case \"plan\": card = (",
+    "reason": "Lexical JSX scanner false positive: TypeScript type arguments or code between angle brackets, not rendered text."
+  },
+  {
+    "path": "web/src/views/Dock.tsx",
+    "literal": "); break; case \"terminalPopup\": card = (",
+    "reason": "Lexical JSX scanner false positive: TypeScript type arguments or code between angle brackets, not rendered text."
+  },
+  {
+    "path": "web/src/views/Queue.tsx",
+    "literal": "${caption} · ${feedback}",
+    "reason": "Interpolated composite label built solely from pre-localized i18n segments or dock keys."
+  },
+  {
+    "path": "web/src/views/Queue.tsx",
+    "literal": "new Set()); const shown = all || pendingInputs.length",
+    "reason": "Lexical JSX scanner false positive: TypeScript type arguments or code between angle brackets, not rendered text."
+  },
+  {
+    "path": "web/src/views/Queue.tsx",
+    "literal": "0) && /not on this machine|upload it again/i.test(feedback); const canRetry = og.canRetry && !missingUploadedAttachment; return (",
+    "reason": "Lexical JSX scanner false positive: TypeScript type arguments or code between angle brackets, not rendered text."
+  },
+  {
+    "path": "web/src/views/Session.tsx",
+    "literal": "split",
+    "reason": "Internal view tab identifier, never displayed."
+  },
+  {
+    "path": "web/src/views/Session.tsx",
+    "literal": "term",
+    "reason": "Internal view tab identifier, never displayed."
+  },
+  {
+    "path": "web/src/views/Session.tsx",
+    "literal": "ccol",
+    "reason": "CSS class name, never rendered as user-visible text."
+  },
+  {
+    "path": "web/src/views/Session.tsx",
+    "literal": "me",
+    "reason": "CSS class name, never rendered as user-visible text."
+  },
+  {
+    "path": "web/src/views/Session.tsx",
+    "literal": "muted",
+    "reason": "CSS class name, never rendered as user-visible text."
+  },
+  {
+    "path": "web/src/views/Session.tsx",
+    "literal": "turnEnd",
+    "reason": "Protobuf oneof case discriminant string, never displayed."
+  },
+  {
+    "path": "web/src/views/Session.tsx",
+    "literal": "sep",
+    "reason": "CSS class name, never rendered as user-visible text."
+  },
+  {
+    "path": "web/src/views/Session.tsx",
+    "literal": "errorLine",
+    "reason": "Protobuf oneof case discriminant string, never displayed."
+  },
+  {
+    "path": "web/src/views/Session.tsx",
+    "literal": "sysline fail",
+    "reason": "CSS class name, never rendered as user-visible text."
+  },
+  {
+    "path": "web/src/views/Session.tsx",
+    "literal": "forkMarker",
+    "reason": "Protobuf oneof case discriminant string, never displayed."
+  },
+  {
+    "path": "web/src/views/Session.tsx",
+    "literal": "sep fork",
+    "reason": "CSS class name, never rendered as user-visible text."
+  },
+  {
+    "path": "web/src/views/Session.tsx",
+    "literal": "skeleton",
+    "reason": "Protobuf oneof case discriminant string, never displayed."
+  },
+  {
+    "path": "web/src/views/Session.tsx",
+    "literal": "(); const SEND_ATTACHMENTS = new WeakMap",
+    "reason": "Lexical JSX scanner false positive: TypeScript type arguments or code between angle brackets, not rendered text."
+  },
+  {
+    "path": "web/src/views/Session.tsx",
+    "literal": "(); const LOCAL_DOCK_STATE = new WeakMap",
+    "reason": "Lexical JSX scanner false positive: TypeScript type arguments or code between angle brackets, not rendered text."
+  },
+  {
+    "path": "web/src/views/Session.tsx",
+    "literal": "; closed: Set",
+    "reason": "Lexical JSX scanner false positive: TypeScript type arguments or code between angle brackets, not rendered text."
+  },
+  {
+    "path": "web/src/views/Session.tsx",
+    "literal": "void; tray?: ReturnType",
+    "reason": "Lexical JSX scanner false positive: TypeScript type arguments or code between angle brackets, not rendered text."
+  },
+  {
+    "path": "web/src/views/Session.tsx",
+    "literal": "; trayView?: ReactNode; attach?: ReactNode; dropping?: boolean; cardProps?: React.HTMLAttributes",
+    "reason": "Lexical JSX scanner false positive: TypeScript type arguments or code between angle brackets, not rendered text."
+  },
+  {
+    "path": "web/src/views/Session.tsx",
+    "literal": "; composerRef?: RefObject",
+    "reason": "Lexical JSX scanner false positive: TypeScript type arguments or code between angle brackets, not rendered text."
+  },
+  {
+    "path": "web/src/views/Session.tsx",
+    "literal": "void; localAttachments?: Map",
+    "reason": "Lexical JSX scanner false positive: TypeScript type arguments or code between angle brackets, not rendered text."
+  },
+  {
+    "path": "web/src/views/Session.tsx",
+    "literal": "0; const pending = (!header || (!header.found && !header.missing)) && !hasContent; const exited = !!header?.exited; const inactive = exited || (!!header?.found && !header.computerOnline) || !!header?.computerUnlinked; const [questionDraft, setQuestionDraft] = useState",
+    "reason": "Lexical JSX scanner false positive: TypeScript type arguments or code between angle brackets, not rendered text."
+  },
+  {
+    "path": "web/src/views/Session.tsx",
+    "literal": "(undefined); const seenApprovals = useRef(new Set",
+    "reason": "Lexical JSX scanner false positive: TypeScript type arguments or code between angle brackets, not rendered text."
+  },
+  {
+    "path": "web/src/views/Session.tsx",
+    "literal": "()); const resolvedByUs = useRef(new Set",
+    "reason": "Lexical JSX scanner false positive: TypeScript type arguments or code between angle brackets, not rendered text."
+  },
+  {
+    "path": "web/src/views/Session.tsx",
+    "literal": "(\"\"); const [menu, setMenu] = useState(defaultMenu); const [scheduling, setScheduling] = useState(false); const [confirmEnd, setConfirmEnd] = useState(false); const [renaming, setRenaming] = useState(false); const [page, setPage] = useState",
+    "reason": "Lexical JSX scanner false positive: TypeScript type arguments or code between angle brackets, not rendered text."
+  },
+  {
+    "path": "web/src/views/Session.tsx",
+    "literal": "(undefined); const [viewingShared, setViewingShared] = useState",
+    "reason": "Lexical JSX scanner false positive: TypeScript type arguments or code between angle brackets, not rendered text."
+  },
+  {
+    "path": "web/src/views/Session.tsx",
+    "literal": ") : null; const statusText = pending ? t(\"common.loading\") : renderText(header?.statusText); const sub = (",
+    "reason": "Lexical JSX scanner false positive: TypeScript type arguments or code between angle brackets, not rendered text."
+  },
+  {
+    "path": "web/src/views/Session.tsx",
+    "literal": "); const headerBar = wide ? (",
+    "reason": "Lexical JSX scanner false positive: TypeScript type arguments or code between angle brackets, not rendered text."
+  },
+  {
+    "path": "web/src/views/Session.tsx",
+    "literal": "); const interruptCmd = actions?.interrupt; const endCmd = actions?.end; const forkBlockedReason = renderText(actions?.forkBlockedReason); const chatCol = (",
+    "reason": "Lexical JSX scanner false positive: TypeScript type arguments or code between angle brackets, not rendered text."
+  },
+  {
+    "path": "web/src/views/Session.tsx",
+    "literal": "(null); const tray = useTray(remote, sessionId, machineId, maxImages(remote, machine)); const attachWhy = attachBlocked(remote, machine); const drop = useDropPaste(tray, attachWhy, toastRef.current); const stash = getSendAttachments(remote); const pendingRestoreFiles = useRef(new Map",
+    "reason": "Lexical JSX scanner false positive: TypeScript type arguments or code between angle brackets, not rendered text."
+  },
+  {
+    "path": "web/src/views/Session.tsx",
+    "literal": "; retainedReasons?: Array",
+    "reason": "Lexical JSX scanner false positive: TypeScript type arguments or code between angle brackets, not rendered text."
+  },
+  {
+    "path": "web/src/views/Session.tsx",
+    "literal": "(undefined); const userScrollAt = useRef(0); const [away, setAway] = useState(false); const [unseen, setUnseen] = useState(0); const rowStates = useRef(new Map",
+    "reason": "Lexical JSX scanner false positive: TypeScript type arguments or code between angle brackets, not rendered text."
+  },
+  {
+    "path": "web/src/views/Session.tsx",
+    "literal": "flattenTimelineItems(rawItems), [rawItems]); const count = rows.length; const seen = useRef",
+    "reason": "Lexical JSX scanner false positive: TypeScript type arguments or code between angle brackets, not rendered text."
+  },
+  {
+    "path": "web/src/views/Session.tsx",
+    "literal": "(undefined); const newRowKeys = useRef(new Set",
+    "reason": "Lexical JSX scanner false positive: TypeScript type arguments or code between angle brackets, not rendered text."
+  },
+  {
+    "path": "web/src/views/Session.tsx",
+    "literal": "); const listFooter = (",
+    "reason": "Lexical JSX scanner false positive: TypeScript type arguments or code between angle brackets, not rendered text."
+  },
+  {
+    "path": "web/src/views/Session.tsx",
+    "literal": "); case \"toolGroup\": return",
+    "reason": "Lexical JSX scanner false positive: TypeScript type arguments or code between angle brackets, not rendered text."
+  },
+  {
+    "path": "web/src/views/Session.tsx",
+    "literal": "; return",
+    "reason": "Lexical JSX scanner false positive: TypeScript type arguments or code between angle brackets, not rendered text."
+  },
+  {
+    "path": "web/src/views/Session.tsx",
+    "literal": ") : header?.computerOnline ? (",
+    "reason": "Lexical JSX scanner false positive: TypeScript type arguments or code between angle brackets, not rendered text."
+  },
+  {
+    "path": "web/src/views/Tools.tsx",
+    "literal": "muted",
+    "reason": "CSS class name, never rendered as user-visible text."
+  },
+  {
+    "path": "web/src/views/Tools.tsx",
+    "literal": "c.images); return (",
+    "reason": "Lexical JSX scanner false positive: TypeScript type arguments or code between angle brackets, not rendered text."
   }
 ]

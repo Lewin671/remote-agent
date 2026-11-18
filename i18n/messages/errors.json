@@ -1,543 +1,542 @@
 [
   {
-    "key": "errors.android_attachment_transfer_content_changed_retry",
-    "zh-CN": "附件传输内容已改变，请重试",
     "en": "Attachment transfer content changed. Retry",
+    "key": "errors.android_attachment_transfer_content_changed_retry",
     "notes": "Android Files 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
     "params": {},
     "platforms": [
       "android"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "附件传输内容已改变，请重试"
   },
   {
-    "key": "errors.android_attachment_transfer_stopped_or_changed_retry",
-    "zh-CN": "附件传输已中止或发生变化，请重试",
     "en": "Attachment transfer stopped or changed. Retry",
+    "key": "errors.android_attachment_transfer_stopped_or_changed_retry",
     "notes": "Android Files 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
     "params": {},
     "platforms": [
       "android"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "附件传输已中止或发生变化，请重试"
   },
   {
-    "key": "errors.android_cannot_find_the_server_check_your_network",
-    "zh-CN": "找不到服务器，检查一下网络",
     "en": "Cannot find the server. Check your network",
+    "key": "errors.android_cannot_find_the_server_check_your_network",
     "notes": "Android Api 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
     "params": {},
     "platforms": [
       "android"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "找不到服务器，检查一下网络"
   },
   {
-    "key": "errors.android_cannot_open_the_computer_s_reply_command_outcome_unknown",
-    "zh-CN": "电脑的回复打不开，不确定指令有没有执行",
     "en": "Cannot open the computer's reply. Command outcome unknown",
+    "key": "errors.android_cannot_open_the_computer_s_reply_command_outcome_unknown",
     "notes": "Android Remote 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
     "params": {},
     "platforms": [
       "android"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "电脑的回复打不开，不确定指令有没有执行"
   },
   {
-    "key": "errors.android_cannot_read_file_size_select_the_file_again",
-    "zh-CN": "无法读取文件大小，请重新选择文件",
     "en": "Cannot read file size. Select the file again",
+    "key": "errors.android_cannot_read_file_size_select_the_file_again",
     "notes": "Android Files 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
     "params": {},
     "platforms": [
       "android"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "无法读取文件大小，请重新选择文件"
   },
   {
-    "key": "errors.android_cannot_read_the_source_file_remove_it_and_select_the",
-    "zh-CN": "读不到源文件，请移除后重新选择",
     "en": "Cannot read the source file. Remove it and select the file again",
+    "key": "errors.android_cannot_read_the_source_file_remove_it_and_select_the",
     "notes": "Android Files 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
     "params": {},
     "platforms": [
       "android"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "读不到源文件，请移除后重新选择"
   },
   {
-    "key": "errors.android_file_name_is_too_long_or_empty_rename_the_file",
-    "zh-CN": "文件名过长或为空，请重命名后重新选择",
     "en": "File name is too long or empty. Rename the file and select it again",
+    "key": "errors.android_file_name_is_too_long_or_empty_rename_the_file",
     "notes": "Android Files 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
     "params": {},
     "platforms": [
       "android"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "文件名过长或为空，请重命名后重新选择"
   },
   {
-    "key": "errors.android_file_too_large_maximum_size_per_file_value1",
-    "zh-CN": "文件太大，单个文件最多 {value1}",
     "en": "File too large. Maximum size per file: {value1}",
+    "key": "errors.android_file_too_large_maximum_size_per_file_value1",
     "notes": "Android Files 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。value1：已格式化的文件大小（MiB/GiB 等）。英文为待审初稿；不要替换成浏览器专属安全说明。",
     "params": {
       "value1": {
-        "type": "string",
-        "example": "Example"
+        "example": "Example",
+        "type": "string"
       }
     },
     "platforms": [
       "android"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "文件太大，单个文件最多 {value1}"
   },
   {
-    "key": "errors.android_file_verification_failed_retry_or_select_the_file_again",
-    "zh-CN": "文件校验失败，请重试或重新选择文件",
     "en": "File verification failed. Retry or select the file again",
+    "key": "errors.android_file_verification_failed_retry_or_select_the_file_again",
     "notes": "Android Files 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
     "params": {},
     "platforms": [
       "android"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "文件校验失败，请重试或重新选择文件"
   },
   {
-    "key": "errors.android_image_content_does_not_match_its_format",
-    "zh-CN": "图片内容和格式对不上",
     "en": "Image content does not match its format",
+    "key": "errors.android_image_content_does_not_match_its_format",
     "notes": "Android Remote 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
     "params": {},
     "platforms": [
       "android"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "图片内容和格式对不上"
   },
   {
-    "key": "errors.android_invalid_server_address",
-    "zh-CN": "server 地址无效",
     "en": "Invalid server address",
+    "key": "errors.android_invalid_server_address",
     "notes": "Android E2e 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
     "params": {},
     "platforms": [
       "android"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "server 地址无效"
   },
   {
-    "key": "errors.android_login_expired",
-    "zh-CN": "登录失效：{reason}",
     "en": "Login expired: {reason}",
+    "key": "errors.android_login_expired",
     "notes": "Android 原有完整句；参数保留原始详情或已经本地化的字段，英文初稿待审。",
     "params": {
       "reason": {
-        "type": "string",
-        "example": "Example"
+        "example": "Example",
+        "type": "string"
       }
     },
     "platforms": [
       "android"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "登录失效：{reason}"
   },
   {
-    "key": "errors.android_only_the_managing_client_can_veto_recovery",
-    "zh-CN": "只有管理端能否决恢复",
     "en": "Only the managing client can veto recovery",
+    "key": "errors.android_only_the_managing_client_can_veto_recovery",
     "notes": "Android Remote 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
     "params": {},
     "platforms": [
       "android"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "只有管理端能否决恢复"
   },
   {
-    "key": "errors.android_open_value1_to_renew",
-    "zh-CN": "请打开{value1}续期",
     "en": "Open {value1} to renew",
+    "key": "errors.android_open_value1_to_renew",
     "notes": "Android Remote 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。value1：管理端的设备名称，用户内容原样保留。英文为待审初稿；不要替换成浏览器专属安全说明。",
     "params": {
       "value1": {
-        "type": "string",
-        "example": "Example"
+        "example": "Example",
+        "type": "string"
       }
     },
     "platforms": [
       "android"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "请打开{value1}续期"
   },
   {
-    "key": "errors.android_pairing_approval_does_not_match_this_device_has_expired_or",
-    "zh-CN": "配对批准与这台设备不匹配、已过期或签名无效",
     "en": "Pairing approval does not match this device, has expired, or has an invalid signature",
+    "key": "errors.android_pairing_approval_does_not_match_this_device_has_expired_or",
     "notes": "Android Approval 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
     "params": {},
     "platforms": [
       "android"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "配对批准与这台设备不匹配、已过期或签名无效"
   },
   {
-    "key": "errors.android_records_from_before_recovery_are_unreadable",
-    "zh-CN": "恢复前的记录不可读",
     "en": "Records from before recovery are unreadable",
+    "key": "errors.android_records_from_before_recovery_are_unreadable",
     "notes": "Android DeviceSecurityClient 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
     "params": {},
     "platforms": [
       "android"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "恢复前的记录不可读"
   },
   {
-    "key": "errors.android_remote_control_authorization_expired_cannot_save_changes_control_sessions_or",
-    "zh-CN": "远程控制有效期已过，无法保存更改、控制会话或上传新内容；{value1}后重试。历史仍可查看",
     "en": "Remote control authorization expired. Cannot save changes, control sessions, or upload new content. {value1} and retry. History remains viewable",
+    "key": "errors.android_remote_control_authorization_expired_cannot_save_changes_control_sessions_or",
     "notes": "Android Api 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。value1：界面字段或用户/CLI 原文，保留变量内容，仅翻译完整句外壳。英文为待审初稿；不要替换成浏览器专属安全说明。",
     "params": {
       "value1": {
-        "type": "string",
-        "example": "Example"
+        "example": "Example",
+        "type": "string"
       }
     },
     "platforms": [
       "android"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "远程控制有效期已过，无法保存更改、控制会话或上传新内容；{value1}后重试。历史仍可查看"
   },
   {
-    "key": "errors.android_remote_control_paused_value1_and_retry",
-    "zh-CN": "远程控制已暂停：{value1}后再试",
     "en": "Remote control paused: {value1} and retry",
+    "key": "errors.android_remote_control_paused_value1_and_retry",
     "notes": "Android Remote 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。value1：界面字段或用户/CLI 原文，保留变量内容，仅翻译完整句外壳。英文为待审初稿；不要替换成浏览器专属安全说明。",
     "params": {
       "value1": {
-        "type": "string",
-        "example": "Example"
+        "example": "Example",
+        "type": "string"
       }
     },
     "platforms": [
       "android"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "远程控制已暂停：{value1}后再试"
   },
   {
-    "key": "errors.android_remove_devices_on_the_managing_client",
-    "zh-CN": "请在管理端上删除设备",
     "en": "Remove devices on the managing client",
+    "key": "errors.android_remove_devices_on_the_managing_client",
     "notes": "Android Remote 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
     "params": {},
     "platforms": [
       "android"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "请在管理端上删除设备"
   },
   {
-    "key": "errors.android_secure_connection_failed",
-    "zh-CN": "安全连接失败：{reason}",
     "en": "Secure connection failed: {reason}",
+    "key": "errors.android_secure_connection_failed",
     "notes": "Android 原有完整句；参数保留原始详情或已经本地化的字段，英文初稿待审。",
     "params": {
       "reason": {
-        "type": "string",
-        "example": "Example"
+        "example": "Example",
+        "type": "string"
       }
     },
     "platforms": [
       "android"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "安全连接失败：{reason}"
   },
   {
-    "key": "errors.android_security_authorization_or_the_current_request_is_unverified_nothing_was",
-    "zh-CN": "安全授权或当前请求尚未核实，操作没有发出；请重试",
     "en": "Security authorization or the current request is unverified. Nothing was sent. Retry",
+    "key": "errors.android_security_authorization_or_the_current_request_is_unverified_nothing_was",
     "notes": "Android Remote 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
     "params": {},
     "platforms": [
       "android"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "安全授权或当前请求尚未核实，操作没有发出；请重试"
   },
   {
-    "key": "errors.android_security_state_unavailable",
-    "zh-CN": "安全状态不可用",
     "en": "Security state unavailable",
+    "key": "errors.android_security_state_unavailable",
     "notes": "Android Api 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
     "params": {},
     "platforms": [
       "android"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "安全状态不可用"
   },
   {
-    "key": "errors.android_server_unavailable_reason",
-    "zh-CN": "连不上服务器：{reason}",
     "en": "Cannot connect to the server: {reason}",
+    "key": "errors.android_server_unavailable_reason",
     "notes": "Android 原有完整句；参数保留原始详情或已经本地化的字段，英文初稿待审。",
     "params": {
       "reason": {
-        "type": "string",
-        "example": "Example"
+        "example": "Example",
+        "type": "string"
       }
     },
     "platforms": [
       "android"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "连不上服务器：{reason}"
   },
   {
-    "key": "errors.android_terminal_connection_dropped_reason",
-    "zh-CN": "终端连接断开：{reason}",
     "en": "Terminal connection dropped: {reason}",
+    "key": "errors.android_terminal_connection_dropped_reason",
     "notes": "Android 终端断开提示；reason 是原始错误或已本地化的完整错误。",
     "params": {
       "reason": {
-        "type": "string",
-        "example": "Example"
+        "example": "Example",
+        "type": "string"
       }
     },
     "platforms": [
       "android"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "终端连接断开：{reason}"
   },
   {
-    "key": "errors.android_terminal_input_paused_while_waiting_for_authorization",
-    "zh-CN": "终端输入等待授权，已暂停",
     "en": "Terminal input paused while waiting for authorization",
+    "key": "errors.android_terminal_input_paused_while_waiting_for_authorization",
     "notes": "Android Remote 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
     "params": {},
     "platforms": [
       "android"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "终端输入等待授权，已暂停"
   },
   {
-    "key": "errors.android_terminal_output_backlog_reception_stopped",
-    "zh-CN": "终端输出积压，已停止接收",
     "en": "Terminal output backlog. Reception stopped",
+    "key": "errors.android_terminal_output_backlog_reception_stopped",
     "notes": "Android Remote 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
     "params": {},
     "platforms": [
       "android"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "终端输出积压，已停止接收"
   },
   {
-    "key": "errors.android_the_computer_did_not_return_a_file_id",
-    "zh-CN": "电脑没有返回文件 ID",
     "en": "The computer did not return a file ID",
+    "key": "errors.android_the_computer_did_not_return_a_file_id",
     "notes": "Android Files 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
     "params": {},
     "platforms": [
       "android"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "电脑没有返回文件 ID"
   },
   {
-    "key": "errors.android_the_computer_returned_invalid_file_progress",
-    "zh-CN": "电脑返回的文件上传进度无效",
     "en": "The computer returned invalid file progress",
+    "key": "errors.android_the_computer_returned_invalid_file_progress",
     "notes": "Android Files 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
     "params": {},
     "platforms": [
       "android"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "电脑返回的文件上传进度无效"
   },
   {
-    "key": "errors.android_the_file_changed_during_upload_retry_or_select_the_file",
-    "zh-CN": "文件在上传时发生变化，请重试或重新选择文件",
     "en": "The file changed during upload. Retry or select the file again",
+    "key": "errors.android_the_file_changed_during_upload_retry_or_select_the_file",
     "notes": "Android Files 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
     "params": {},
     "platforms": [
       "android"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "文件在上传时发生变化，请重试或重新选择文件"
   },
   {
-    "key": "errors.android_the_managing_client_cannot_be_removed_normally",
-    "zh-CN": "管理端不能被普通删除",
     "en": "The managing client cannot be removed normally",
+    "key": "errors.android_the_managing_client_cannot_be_removed_normally",
     "notes": "Android Remote 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
     "params": {},
     "platforms": [
       "android"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "管理端不能被普通删除"
   },
   {
-    "key": "errors.android_the_phone_clock_is_ahead_of_the_server_membership_state",
-    "zh-CN": "手机时钟比服务器快，成员状态暂不可用；请校准系统时间",
     "en": "The phone clock is ahead of the server. Membership state is temporarily unavailable. Correct the system time",
+    "key": "errors.android_the_phone_clock_is_ahead_of_the_server_membership_state",
     "notes": "Android Api 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
     "params": {},
     "platforms": [
       "android"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "手机时钟比服务器快，成员状态暂不可用；请校准系统时间"
   },
   {
-    "key": "errors.android_the_phone_clock_is_ahead_of_the_server_remote_control",
-    "zh-CN": "手机时钟比服务器快，远程控制暂停；请校准系统时间",
     "en": "The phone clock is ahead of the server. Remote control is paused. Correct the system time",
+    "key": "errors.android_the_phone_clock_is_ahead_of_the_server_remote_control",
     "notes": "Android Remote 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
     "params": {},
     "platforms": [
       "android"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "手机时钟比服务器快，远程控制暂停；请校准系统时间"
   },
   {
-    "key": "errors.android_this_command_expired_and_was_not_sent",
-    "zh-CN": "这条指令已过期，没有发出",
     "en": "This command expired and was not sent",
+    "key": "errors.android_this_command_expired_and_was_not_sent",
     "notes": "Android Remote 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
     "params": {},
     "platforms": [
       "android"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "这条指令已过期，没有发出"
   },
   {
-    "key": "errors.android_upload_connection_interrupted_retry",
-    "zh-CN": "上传连接中断，请重试",
     "en": "Upload connection interrupted. Retry",
+    "key": "errors.android_upload_connection_interrupted_retry",
     "notes": "Android Files 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
     "params": {},
     "platforms": [
       "android"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "上传连接中断，请重试"
   },
   {
-    "key": "errors.android_value1_the_previous_outcome_is_still_unknown_retry_the_same",
-    "zh-CN": "{value1}；上一次的结果仍不确定，能力恢复后可重试同一请求",
     "en": "{value1}; the previous outcome is still unknown. Retry the same request once support is restored",
+    "key": "errors.android_value1_the_previous_outcome_is_still_unknown_retry_the_same",
     "notes": "Android Remote 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。value1：界面字段或用户/CLI 原文，保留变量内容，仅翻译完整句外壳。英文为待审初稿；不要替换成浏览器专属安全说明。",
     "params": {
       "value1": {
-        "type": "string",
-        "example": "Example"
+        "example": "Example",
+        "type": "string"
       }
     },
     "platforms": [
       "android"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "{value1}；上一次的结果仍不确定，能力恢复后可重试同一请求"
   },
   {
-    "key": "errors.this_device_s_clock_is_behind_the_account_state",
-    "zh-CN": "本机时间比账户状态慢。请校准系统时间和时区，否则远程操作会被拒绝。",
     "en": "This device’s clock is behind the account state. Correct the system time and time zone, or remote operations will be refused.",
+    "key": "errors.this_device_s_clock_is_behind_the_account_state",
     "notes": "App 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
     "params": {},
     "platforms": [
@@ -546,14 +545,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "本机时间比账户状态慢。请校准系统时间和时区，否则远程操作会被拒绝。"
   },
   {
-    "key": "errors.this_device_s_security_state_could_not_be_verified",
-    "zh-CN": "本机安全状态无法校验，远程操作已暂停。原密钥和历史已保留，请检查本机存储。",
     "en": "This device’s security state could not be verified. Remote operations are paused. Your original keys and history are preserved; check local storage.",
+    "key": "errors.this_device_s_security_state_could_not_be_verified",
     "notes": "App 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
     "params": {},
     "platforms": [
@@ -562,14 +561,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "本机安全状态无法校验，远程操作已暂停。原密钥和历史已保留，请检查本机存储。"
   },
   {
-    "key": "errors.it_may_have_been_deleted_or_belong_to_a",
-    "zh-CN": "它可能已经被删除，或者属于一台被移除的电脑。",
     "en": "It may have been deleted, or belong to a computer that was removed.",
+    "key": "errors.it_may_have_been_deleted_or_belong_to_a",
     "notes": "Workspace 页面或对应功能的界面正文/短标签。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
     "params": {},
     "platforms": [
@@ -578,14 +577,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "它可能已经被删除，或者属于一台被移除的电脑。"
   },
   {
-    "key": "errors.this_browser_has_already_joined_an_account_open_this",
-    "zh-CN": "这个浏览器已经加入了账户。要让新设备加入，在新设备上打开这个链接。",
     "en": "This browser has already joined an account. Open this link on the new device to join.",
+    "key": "errors.this_browser_has_already_joined_an_account_open_this",
     "notes": "Workspace 页面或对应功能的界面正文/短标签。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
     "params": {},
     "platforms": [
@@ -594,14 +593,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "这个浏览器已经加入了账户。要让新设备加入，在新设备上打开这个链接。"
   },
   {
-    "key": "errors.connection_dropped_midway",
-    "zh-CN": "连接中途断了",
     "en": "Connection dropped midway",
+    "key": "errors.connection_dropped_midway",
     "notes": "composer-drafts 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
     "params": {},
     "platforms": [
@@ -610,14 +609,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "连接中途断了"
   },
   {
-    "key": "errors.this_is_not_a_remote_agent_account_key",
-    "zh-CN": "这不是 remote-agent 的账户密钥",
     "en": "This is not a remote-agent account key",
+    "key": "errors.this_is_not_a_remote_agent_account_key",
     "notes": "crypto 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
     "params": {},
     "platforms": [
@@ -626,14 +625,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "这不是 remote-agent 的账户密钥"
   },
   {
-    "key": "errors.the_server_must_use_https",
-    "zh-CN": "server 必须使用 https",
     "en": "The server must use HTTPS",
+    "key": "errors.the_server_must_use_https",
     "notes": "crypto 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
     "params": {},
     "platforms": [
@@ -642,14 +641,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "server 必须使用 https"
   },
   {
-    "key": "errors.the_server_address_cannot_include_a_username_or_password",
-    "zh-CN": "server 地址不能包含用户名或密码",
     "en": "The server address cannot include a username or password",
+    "key": "errors.the_server_address_cannot_include_a_username_or_password",
     "notes": "crypto 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
     "params": {},
     "platforms": [
@@ -658,14 +657,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "server 地址不能包含用户名或密码"
   },
   {
-    "key": "errors.this_history_uses_an_old_encryption_format_and_can",
-    "zh-CN": "这条历史是旧版加密格式，已不再支持查看",
     "en": "This history uses an old encryption format and can no longer be viewed",
+    "key": "errors.this_history_uses_an_old_encryption_format_and_can",
     "notes": "crypto 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
     "params": {},
     "platforms": [
@@ -674,14 +673,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "这条历史是旧版加密格式，已不再支持查看"
   },
   {
-    "key": "errors.other_clients_kept_changing_the_project_list_changes_could",
-    "zh-CN": "项目列表一直在被别的客户端修改，没能保存",
     "en": "Other clients kept changing the project list. Changes could not be saved.",
+    "key": "errors.other_clients_kept_changing_the_project_list_changes_could",
     "notes": "prefs 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
     "params": {},
     "platforms": [
@@ -690,14 +689,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "项目列表一直在被别的客户端修改，没能保存"
   },
   {
-    "key": "errors.invalid_pairing_approval_signature",
-    "zh-CN": "配对批准签名无效",
     "en": "Invalid pairing approval signature",
+    "key": "errors.invalid_pairing_approval_signature",
     "notes": "remote 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
     "params": {},
     "platforms": [
@@ -706,14 +705,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "配对批准签名无效"
   },
   {
-    "key": "errors.the_computer_did_not_return_a_task_list",
-    "zh-CN": "电脑没有返回任务列表",
     "en": "The computer did not return a task list",
+    "key": "errors.the_computer_did_not_return_a_task_list",
     "notes": "remote 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
     "params": {},
     "platforms": [
@@ -722,14 +721,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "电脑没有返回任务列表"
   },
   {
-    "key": "errors.the_task_list_returned_by_the_computer_could_not",
-    "zh-CN": "电脑返回的任务列表无法读取",
     "en": "The task list returned by the computer could not be read",
+    "key": "errors.the_task_list_returned_by_the_computer_could_not",
     "notes": "remote 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
     "params": {},
     "platforms": [
@@ -738,14 +737,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "电脑返回的任务列表无法读取"
   },
   {
-    "key": "errors.the_computer_is_offline_connect_to_edit_tasks",
-    "zh-CN": "电脑不在线，连上后才能修改任务",
     "en": "The computer is offline. Connect to edit tasks.",
+    "key": "errors.the_computer_is_offline_connect_to_edit_tasks",
     "notes": "remote 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
     "params": {},
     "platforms": [
@@ -754,14 +753,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "电脑不在线，连上后才能修改任务"
   },
   {
-    "key": "errors.update_remote_agent_on_this_computer_to_use_scheduled",
-    "zh-CN": "需要更新这台电脑上的 remote-agent 才能使用定时任务。",
     "en": "Update remote-agent on this computer to use scheduled tasks",
+    "key": "errors.update_remote_agent_on_this_computer_to_use_scheduled",
     "notes": "remote 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
     "params": {},
     "platforms": [
@@ -770,14 +769,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "需要更新这台电脑上的 remote-agent 才能使用定时任务。"
   },
   {
-    "key": "errors.the_previous_operation_s_outcome_is_still_unknown_reload",
-    "zh-CN": "上次操作的结果仍未知，请重新读取任务核实后再操作",
     "en": "The previous operation’s outcome is still unknown. Reload and verify the task before continuing.",
+    "key": "errors.the_previous_operation_s_outcome_is_still_unknown_reload",
     "notes": "remote 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
     "params": {},
     "platforms": [
@@ -786,14 +785,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "上次操作的结果仍未知，请重新读取任务核实后再操作"
   },
   {
-    "key": "errors.the_computer_did_not_return_a_task",
-    "zh-CN": "电脑没有返回任务",
     "en": "The computer did not return a task",
+    "key": "errors.the_computer_did_not_return_a_task",
     "notes": "remote 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
     "params": {},
     "platforms": [
@@ -802,14 +801,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "电脑没有返回任务"
   },
   {
-    "key": "errors.the_task_was_just_changed_updated_to_the_latest",
-    "zh-CN": "任务刚被修改，已更新为最新内容",
     "en": "The task was just changed. Updated to the latest content.",
+    "key": "errors.the_task_was_just_changed_updated_to_the_latest",
     "notes": "remote 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
     "params": {},
     "platforms": [
@@ -818,14 +817,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "任务刚被修改，已更新为最新内容"
   },
   {
-    "key": "errors.the_draft_could_not_be_saved_locally_keep_the",
-    "zh-CN": "草稿没能保存到本机，关闭页面前请保留原图和文字",
     "en": "The draft could not be saved locally. Keep the original images and text before closing the page.",
+    "key": "errors.the_draft_could_not_be_saved_locally_keep_the",
     "notes": "remote 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
     "params": {},
     "platforms": [
@@ -834,14 +833,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "草稿没能保存到本机，关闭页面前请保留原图和文字"
   },
   {
-    "key": "errors.the_draft_could_not_be_restored_you_can_still",
-    "zh-CN": "草稿没能恢复，仍可输入和发送，下次打开或编辑时重试",
     "en": "The draft could not be restored. You can still type and send; retry when opening or editing next time.",
+    "key": "errors.the_draft_could_not_be_restored_you_can_still",
     "notes": "remote 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
     "params": {},
     "platforms": [
@@ -850,46 +849,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "草稿没能恢复，仍可输入和发送，下次打开或编辑时重试"
   },
   {
-    "key": "errors.queued_records_could_not_be_restored_you_can_still",
-    "zh-CN": "待发记录没能恢复，仍可输入和发送，下次重试",
-    "en": "Queued records could not be restored. You can still type and send; retry next time.",
-    "notes": "remote 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "errors.queued_records_could_not_be_saved_locally_messages_will",
-    "zh-CN": "待发记录没能保存到本机，消息仍会发送；关闭页面前请核对发送结果",
-    "en": "Queued records could not be saved locally. Messages will still send; verify delivery before closing the page.",
-    "notes": "remote 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "errors.security_envelope_missing",
-    "zh-CN": "缺少安全信封",
     "en": "Security envelope missing",
+    "key": "errors.security_envelope_missing",
     "notes": "remote 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
     "params": {},
     "platforms": [
@@ -898,14 +865,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "缺少安全信封"
   },
   {
-    "key": "errors.security_body_type_or_direction_mismatch",
-    "zh-CN": "安全正文类型或方向不匹配",
     "en": "Security body type or direction mismatch",
+    "key": "errors.security_body_type_or_direction_mismatch",
     "notes": "remote 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
     "params": {},
     "platforms": [
@@ -914,14 +881,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "安全正文类型或方向不匹配"
   },
   {
-    "key": "errors.terminal_connection_closed",
-    "zh-CN": "终端连接已关闭",
     "en": "Terminal connection closed",
+    "key": "errors.terminal_connection_closed",
     "notes": "remote 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
     "params": {},
     "platforms": [
@@ -930,19 +897,19 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "终端连接已关闭"
   },
   {
-    "key": "errors.server_returned",
-    "zh-CN": "服务器返回 {value}",
     "en": "Server returned {value}",
+    "key": "errors.server_returned",
     "notes": "remote 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。变量来源：value = res.status；名称、日期和诊断原文不翻译。",
     "params": {
       "value": {
-        "type": "string",
-        "example": "Example"
+        "example": "Example",
+        "type": "string"
       }
     },
     "platforms": [
@@ -951,14 +918,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "服务器返回 {value}"
   },
   {
-    "key": "errors.reading_local_state",
-    "zh-CN": "读取本机状态",
     "en": "Reading local state",
+    "key": "errors.reading_local_state",
     "notes": "remote 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
     "params": {},
     "platforms": [
@@ -967,14 +934,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "读取本机状态"
   },
   {
-    "key": "errors.establishing_push_connection",
-    "zh-CN": "建立推送连接",
     "en": "Establishing push connection",
+    "key": "errors.establishing_push_connection",
     "notes": "remote 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
     "params": {},
     "platforms": [
@@ -983,14 +950,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "建立推送连接"
   },
   {
-    "key": "errors.signing_in",
-    "zh-CN": "登录",
     "en": "Signing in",
+    "key": "errors.signing_in",
     "notes": "remote 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
     "params": {},
     "platforms": [
@@ -999,14 +966,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "登录"
   },
   {
-    "key": "errors.disconnected_from_server",
-    "zh-CN": "与 server 的连接断开",
     "en": "Disconnected from server",
+    "key": "errors.disconnected_from_server",
     "notes": "remote 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
     "params": {},
     "platforms": [
@@ -1015,14 +982,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "与 server 的连接断开"
   },
   {
-    "key": "errors.connection_timed_out_reconnecting",
-    "zh-CN": "连接超时，正在重连",
     "en": "Connection timed out. Reconnecting.",
+    "key": "errors.connection_timed_out_reconnecting",
     "notes": "remote 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
     "params": {},
     "platforms": [
@@ -1031,14 +998,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "连接超时，正在重连"
   },
   {
-    "key": "errors.push_backlog_reconnecting",
-    "zh-CN": "推送积压，正在重连",
     "en": "Push backlog. Reconnecting.",
+    "key": "errors.push_backlog_reconnecting",
     "notes": "remote 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
     "params": {},
     "platforms": [
@@ -1047,14 +1014,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "推送积压，正在重连"
   },
   {
-    "key": "errors.invalid_session_seed",
-    "zh-CN": "无效的会话种子",
     "en": "Invalid session seed",
+    "key": "errors.invalid_session_seed",
     "notes": "remote 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
     "params": {},
     "platforms": [
@@ -1063,14 +1030,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "无效的会话种子"
   },
   {
-    "key": "errors.history_has_a_gap_retry",
-    "zh-CN": "历史记录不连续，请重试读取",
     "en": "History has a gap. Retry.",
+    "key": "errors.history_has_a_gap_retry",
     "notes": "remote 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
     "params": {},
     "platforms": [
@@ -1079,14 +1046,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "历史记录不连续，请重试读取"
   },
   {
-    "key": "errors.history_could_not_continue_loading_retry",
-    "zh-CN": "历史记录未能继续加载，请重试",
     "en": "History could not continue loading. Retry.",
+    "key": "errors.history_could_not_continue_loading_retry",
     "notes": "remote 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
     "params": {},
     "platforms": [
@@ -1095,14 +1062,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "历史记录未能继续加载，请重试"
   },
   {
-    "key": "errors.the_event_s_position_was_changed",
-    "zh-CN": "事件的位置被改动",
     "en": "The event’s position was changed",
+    "key": "errors.the_event_s_position_was_changed",
     "notes": "remote 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
     "params": {},
     "platforms": [
@@ -1111,62 +1078,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "事件的位置被改动"
   },
   {
-    "key": "errors.invalid_current_request_snapshot",
-    "zh-CN": "当前请求快照无效",
-    "en": "Invalid current request snapshot",
-    "notes": "remote 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "errors.pending_requests_on_the_computer_could_not_be_verified",
-    "zh-CN": "无法核实电脑上的待处理请求，请重试或在电脑终端处理",
-    "en": "Pending requests on the computer could not be verified. Retry or handle them in the computer’s terminal.",
-    "notes": "remote 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "errors.waiting_for_the_owning_computer_to_update_the_current",
-    "zh-CN": "等待所属电脑更新当前状态",
-    "en": "Waiting for the owning computer to update the current state",
-    "notes": "remote 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "errors.this_request_has_not_been_verified_by_the_computer",
-    "zh-CN": "当前请求尚未由电脑核实，请等待同步",
     "en": "This request has not been verified by the computer yet. Wait for sync.",
+    "key": "errors.this_request_has_not_been_verified_by_the_computer",
     "notes": "remote 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
     "params": {},
     "platforms": [
@@ -1175,46 +1094,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "当前请求尚未由电脑核实，请等待同步"
   },
   {
-    "key": "errors.this_request_can_no_longer_be_acted_on",
-    "zh-CN": "当前请求已不可操作",
-    "en": "This request can no longer be acted on",
-    "notes": "remote 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "errors.the_current_request_could_not_be_verified_again",
-    "zh-CN": "无法重新核实当前请求",
-    "en": "The current request could not be verified again",
-    "notes": "remote 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "errors.the_plan_display_changed_review_it_again",
-    "zh-CN": "计划画面已变化，请重新核对",
     "en": "The plan display changed. Review it again.",
+    "key": "errors.the_plan_display_changed_review_it_again",
     "notes": "remote 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
     "params": {},
     "platforms": [
@@ -1223,14 +1110,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "计划画面已变化，请重新核对"
   },
   {
-    "key": "errors.the_request_on_the_computer_changed_review_it_again",
-    "zh-CN": "电脑上的请求已变化，请重新核对",
     "en": "The request on the computer changed. Review it again.",
+    "key": "errors.the_request_on_the_computer_changed_review_it_again",
     "notes": "remote 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
     "params": {},
     "platforms": [
@@ -1239,19 +1126,19 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "电脑上的请求已变化，请重新核对"
   },
   {
-    "key": "errors.remote_agent_on_is_out_of_date_update_it",
-    "zh-CN": "{value} 上的 remote-agent 版本较旧，请在电脑上更新后再试",
     "en": "remote-agent on {value} is out of date. Update it on the computer and retry.",
+    "key": "errors.remote_agent_on_is_out_of_date_update_it",
     "notes": "remote 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。变量来源：value = machineName(m)；名称、日期和诊断原文不翻译。",
     "params": {
       "value": {
-        "type": "string",
-        "example": "Example"
+        "example": "Example",
+        "type": "string"
       }
     },
     "platforms": [
@@ -1260,14 +1147,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "{value} 上的 remote-agent 版本较旧，请在电脑上更新后再试"
   },
   {
-    "key": "errors.this_page_is_out_of_date_refresh_or_update",
-    "zh-CN": "这个网页版本较旧，请刷新或更新后再试",
     "en": "This page is out of date. Refresh or update it and retry.",
+    "key": "errors.this_page_is_out_of_date_refresh_or_update",
     "notes": "remote 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
     "params": {},
     "platforms": [
@@ -1276,14 +1163,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "这个网页版本较旧，请刷新或更新后再试"
   },
   {
-    "key": "errors.this_device_s_clock_is_behind_the_account_state_remote",
-    "zh-CN": "本机时间比账户状态慢，请校准时间和时区后再操作；操作尚未发出",
     "en": "This device’s clock is behind the account state. Correct the time and time zone before continuing; the operation has not been sent.",
+    "key": "errors.this_device_s_clock_is_behind_the_account_state_remote",
     "notes": "remote 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
     "params": {},
     "platforms": [
@@ -1292,14 +1179,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "本机时间比账户状态慢，请校准时间和时区后再操作；操作尚未发出"
   },
   {
-    "key": "errors.remote_control_expired_control_and_new_uploads_are_paused",
-    "zh-CN": "远程控制有效期已过，控制和新内容上传已暂停；请在当前管理端续期",
     "en": "Remote control expired. Control and new uploads are paused; renew on the current managing client.",
+    "key": "errors.remote_control_expired_control_and_new_uploads_are_paused",
     "notes": "remote 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
     "params": {},
     "platforms": [
@@ -1308,14 +1195,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "远程控制有效期已过，控制和新内容上传已暂停；请在当前管理端续期"
   },
   {
-    "key": "errors.the_computer_s_reply_could_not_be_verified_command",
-    "zh-CN": "电脑的回复未通过验证，不确定指令是否执行",
     "en": "The computer’s reply could not be verified. Command execution is uncertain.",
+    "key": "errors.the_computer_s_reply_could_not_be_verified_command",
     "notes": "remote 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
     "params": {},
     "platforms": [
@@ -1324,14 +1211,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "电脑的回复未通过验证，不确定指令是否执行"
   },
   {
-    "key": "errors.the_computer_is_offline_the_command_was_not_sent",
-    "zh-CN": "电脑不在线，指令没有发出",
     "en": "The computer is offline. The command was not sent.",
+    "key": "errors.the_computer_is_offline_the_command_was_not_sent",
     "notes": "remote 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
     "params": {},
     "platforms": [
@@ -1340,14 +1227,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "电脑不在线，指令没有发出"
   },
   {
-    "key": "errors.connection_timed_out",
-    "zh-CN": "连接超时",
     "en": "Connection timed out",
+    "key": "errors.connection_timed_out",
     "notes": "remote 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
     "params": {},
     "platforms": [
@@ -1356,14 +1243,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "连接超时"
   },
   {
-    "key": "errors.the_relay_did_not_provide_a_verifiable_execution_result",
-    "zh-CN": "未收到可验证的执行结果，请重试同一请求",
     "en": "The relay did not provide a verifiable execution result. Retry the same request.",
+    "key": "errors.the_relay_did_not_provide_a_verifiable_execution_result",
     "notes": "remote 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
     "params": {},
     "platforms": [
@@ -1372,30 +1259,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "未收到可验证的执行结果，请重试同一请求"
   },
   {
-    "key": "errors.the_draft_could_not_be_saved_the_original_message",
-    "zh-CN": "草稿没能保存，原消息的本机副本仍保留",
-    "en": "The draft could not be saved. The original message’s local copy is preserved.",
-    "notes": "remote 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "errors.terminal_connection_canceled",
-    "zh-CN": "终端连接已取消",
     "en": "Terminal connection canceled",
+    "key": "errors.terminal_connection_canceled",
     "notes": "remote 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
     "params": {},
     "platforms": [
@@ -1404,14 +1275,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "终端连接已取消"
   },
   {
-    "key": "errors.terminal_connection_timed_out_reconnect",
-    "zh-CN": "连接终端超时，请重新连接",
     "en": "Terminal connection timed out. Reconnect.",
+    "key": "errors.terminal_connection_timed_out_reconnect",
     "notes": "remote 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
     "params": {},
     "platforms": [
@@ -1420,14 +1291,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "连接终端超时，请重新连接"
   },
   {
-    "key": "errors.cannot_connect_to_terminal",
-    "zh-CN": "连不上终端",
     "en": "Cannot connect to terminal",
+    "key": "errors.cannot_connect_to_terminal",
     "notes": "remote 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
     "params": {},
     "platforms": [
@@ -1436,14 +1307,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "连不上终端"
   },
   {
-    "key": "errors.terminal_output_backlog_reconnect_for_the_latest_display",
-    "zh-CN": "终端输出积压，请重新连接以获取最新画面",
     "en": "Terminal output backlog. Reconnect for the latest display.",
+    "key": "errors.terminal_output_backlog_reconnect_for_the_latest_display",
     "notes": "remote 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
     "params": {},
     "platforms": [
@@ -1452,14 +1323,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "终端输出积压，请重新连接以获取最新画面"
   },
   {
-    "key": "errors.terminal_frames_are_out_of_order",
-    "zh-CN": "终端帧顺序不对",
     "en": "Terminal frames are out of order",
+    "key": "errors.terminal_frames_are_out_of_order",
     "notes": "remote 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
     "params": {},
     "platforms": [
@@ -1468,14 +1339,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "终端帧顺序不对"
   },
   {
-    "key": "errors.terminal_connection_dropped",
-    "zh-CN": "终端连接断开",
     "en": "Terminal connection dropped",
+    "key": "errors.terminal_connection_dropped",
     "notes": "remote 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
     "params": {},
     "platforms": [
@@ -1484,14 +1355,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "终端连接断开"
   },
   {
-    "key": "errors.the_recovery_object_was_updated_concurrently_retrying_on_the",
-    "zh-CN": "恢复对象同时更新，将在下次同步重试",
     "en": "The recovery object was updated concurrently. Retrying on the next sync.",
+    "key": "errors.the_recovery_object_was_updated_concurrently_retrying_on_the",
     "notes": "remote 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
     "params": {},
     "platforms": [
@@ -1500,14 +1371,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "恢复对象同时更新，将在下次同步重试"
   },
   {
-    "key": "errors.names_can_only_be_changed_on_that_device",
-    "zh-CN": "名称只能在那台设备上修改",
     "en": "Names can only be changed on that device",
+    "key": "errors.names_can_only_be_changed_on_that_device",
     "notes": "remote 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
     "params": {},
     "platforms": [
@@ -1516,14 +1387,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "名称只能在那台设备上修改"
   },
   {
-    "key": "errors.device_information_could_not_be_verified",
-    "zh-CN": "无法核实设备信息",
     "en": "Device information could not be verified",
+    "key": "errors.device_information_could_not_be_verified",
     "notes": "remote 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
     "params": {},
     "platforms": [
@@ -1532,14 +1403,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "无法核实设备信息"
   },
   {
-    "key": "errors.device_information_is_changing_retry",
-    "zh-CN": "设备信息正在变化，请重试",
     "en": "Device information is changing. Retry.",
+    "key": "errors.device_information_is_changing_retry",
     "notes": "remote 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
     "params": {},
     "platforms": [
@@ -1548,14 +1419,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "设备信息正在变化，请重试"
   },
   {
-    "key": "errors.project_preferences_format_is_not_supported",
-    "zh-CN": "项目偏好格式不受支持",
     "en": "Project preferences format is not supported",
+    "key": "errors.project_preferences_format_is_not_supported",
     "notes": "remote 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
     "params": {},
     "platforms": [
@@ -1564,14 +1435,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "项目偏好格式不受支持"
   },
   {
-    "key": "errors.the_computer_is_still_verifying_attachments_retry_shortly",
-    "zh-CN": "电脑仍在校验附件，请稍后重试",
     "en": "The computer is still verifying attachments. Retry shortly.",
+    "key": "errors.the_computer_is_still_verifying_attachments_retry_shortly",
     "notes": "remote 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
     "params": {},
     "platforms": [
@@ -1580,14 +1451,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "电脑仍在校验附件，请稍后重试"
   },
   {
-    "key": "errors.upload_made_no_progress",
-    "zh-CN": "上传没有进展",
     "en": "Upload made no progress",
+    "key": "errors.upload_made_no_progress",
     "notes": "remote 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
     "params": {},
     "platforms": [
@@ -1596,14 +1467,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "上传没有进展"
   },
   {
-    "key": "errors.the_computer_did_not_return_an_attachment_id",
-    "zh-CN": "电脑没有返回附件 ID",
     "en": "The computer did not return an attachment ID",
+    "key": "errors.the_computer_did_not_return_an_attachment_id",
     "notes": "remote 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
     "params": {},
     "platforms": [
@@ -1612,14 +1483,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "电脑没有返回附件 ID"
   },
   {
-    "key": "errors.history_keys_unavailable_records_from_before_recovery_cannot_be",
-    "zh-CN": "历史密钥不可用：恢复前的记录无法解密",
     "en": "History keys unavailable: records from before recovery cannot be decrypted",
+    "key": "errors.history_keys_unavailable_records_from_before_recovery_cannot_be",
     "notes": "remote 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
     "params": {},
     "platforms": [
@@ -1628,14 +1499,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "历史密钥不可用：恢复前的记录无法解密"
   },
   {
-    "key": "errors.remote_control_expired_saving_changes_session_control_and_new",
-    "zh-CN": "远程控制有效期已过，无法保存更改、控制会话或上传新内容；请在当前管理端续期后重试。历史仍可查看",
     "en": "Remote control expired. Saving changes, session control, and new uploads are paused; renew on the current managing client and retry. History remains available.",
+    "key": "errors.remote_control_expired_saving_changes_session_control_and_new",
     "notes": "remote 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
     "params": {},
     "platforms": [
@@ -1644,14 +1515,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "远程控制有效期已过，无法保存更改、控制会话或上传新内容；请在当前管理端续期后重试。历史仍可查看"
   },
   {
-    "key": "errors.waiting_for_the_owning_computer_to_update_the_current_remote",
-    "zh-CN": "等待所属电脑更新当前状态：这台设备没有当时的内容密钥",
     "en": "Waiting for the owning computer to update the current state: this device lacks the content key from that time",
+    "key": "errors.waiting_for_the_owning_computer_to_update_the_current_remote",
     "notes": "remote 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
     "params": {},
     "platforms": [
@@ -1660,14 +1531,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "等待所属电脑更新当前状态：这台设备没有当时的内容密钥"
   },
   {
-    "key": "errors.invalid_ciphertext_signature_key_or_content_verification_failed",
-    "zh-CN": "密文无效：签名、密钥或内容校验失败",
     "en": "Invalid ciphertext: signature, key, or content verification failed",
+    "key": "errors.invalid_ciphertext_signature_key_or_content_verification_failed",
     "notes": "remote 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
     "params": {},
     "platforms": [
@@ -1676,14 +1547,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "密文无效：签名、密钥或内容校验失败"
   },
   {
-    "key": "errors.membership_chain_conflict_security_operations_stopped_verify_devices_and",
-    "zh-CN": "成员链冲突，安全操作已停止；请核对设备后明确重新加入",
     "en": "Membership chain conflict. Security operations stopped; verify devices and explicitly rejoin.",
+    "key": "errors.membership_chain_conflict_security_operations_stopped_verify_devices_and",
     "notes": "remote 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
     "params": {},
     "platforms": [
@@ -1692,14 +1563,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "成员链冲突，安全操作已停止；请核对设备后明确重新加入"
   },
   {
-    "key": "errors.the_server_does_not_recognize_this_device_it_may",
-    "zh-CN": "服务器不认识这台设备（可能已被移除，或服务已重建）",
     "en": "The server does not recognize this device (it may have been removed or the service rebuilt)",
+    "key": "errors.the_server_does_not_recognize_this_device_it_may",
     "notes": "remote 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
     "params": {},
     "platforms": [
@@ -1708,14 +1579,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "服务器不认识这台设备（可能已被移除，或服务已重建）"
   },
   {
-    "key": "errors.account_creation_draft_preserved_continue_the_original_creation_flow",
-    "zh-CN": "账户创建草稿已保留，请继续原创建流程和恢复码确认",
     "en": "Account creation draft preserved. Continue the original creation flow and recovery code confirmation.",
+    "key": "errors.account_creation_draft_preserved_continue_the_original_creation_flow",
     "notes": "remote 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
     "params": {},
     "platforms": [
@@ -1724,14 +1595,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "账户创建草稿已保留，请继续原创建流程和恢复码确认"
   },
   {
-    "key": "errors.emergency_recovery_draft_preserved_continue_checking_waiting_or_completing",
-    "zh-CN": "紧急恢复草稿已保留，请继续查询、等待或完成原恢复",
     "en": "Emergency recovery draft preserved. Continue checking, waiting, or completing the original recovery.",
+    "key": "errors.emergency_recovery_draft_preserved_continue_checking_waiting_or_completing",
     "notes": "remote 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
     "params": {},
     "platforms": [
@@ -1740,14 +1611,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "紧急恢复草稿已保留，请继续查询、等待或完成原恢复"
   },
   {
-    "key": "errors.the_server_returned_an_unexpected_device_id",
-    "zh-CN": "服务器返回了意外的设备 ID",
     "en": "The server returned an unexpected device ID",
+    "key": "errors.the_server_returned_an_unexpected_device_id",
     "notes": "remote 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
     "params": {},
     "platforms": [
@@ -1756,14 +1627,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "服务器返回了意外的设备 ID"
   },
   {
-    "key": "errors.device_registration_is_unfinished_retry_it_first",
-    "zh-CN": "还有未完成的设备注册，请先重试",
     "en": "Device registration is unfinished. Retry it first.",
+    "key": "errors.device_registration_is_unfinished_retry_it_first",
     "notes": "storage 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
     "params": {},
     "platforms": [
@@ -1772,688 +1643,688 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "还有未完成的设备注册，请先重试"
   },
   {
-    "key": "errors.setup_request_preserved",
-    "zh-CN": "{reason}。原请求和密钥已保留，可重试；若批准已过期或被拒绝，可退出并重新配对或创建。",
     "en": "{reason}. The original request and keys are preserved. Retry; if approval expired or was refused, exit and pair again or create an account.",
+    "key": "errors.setup_request_preserved",
+    "notes": "启动失败完整错误说明；reason 为原始错误，保留原文。多行安全提示，必须完整可读。",
     "params": {
       "reason": {
-        "type": "string",
-        "example": "Example"
+        "example": "Example",
+        "type": "string"
       }
     },
-    "notes": "启动失败完整错误说明；reason 为原始错误，保留原文。多行安全提示，必须完整可读。",
     "platforms": [
       "web",
       "android",
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "{reason}。原请求和密钥已保留，可重试；若批准已过期或被拒绝，可退出并重新配对或创建。"
   },
   {
-    "key": "errors.ios_already_registering_wait_for_the_result",
-    "zh-CN": "已经在登记{value}，稍等结果",
     "en": "Already registering {value}. Wait for the result.",
+    "key": "errors.ios_already_registering_wait_for_the_result",
     "notes": "iOS Launch.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。变量来源：value = Swift 插值 thisDeviceWord；用户内容和系统/CLI 原文不翻译。",
     "params": {
       "value": {
-        "type": "string",
-        "example": "Example"
+        "example": "Example",
+        "type": "string"
       }
     },
     "platforms": [
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "已经在登记{value}，稍等结果"
   },
   {
-    "key": "errors.ios_cannot_find_the_server_check_your_network",
-    "zh-CN": "找不到服务器，检查一下网络",
     "en": "Cannot find the server. Check your network.",
+    "key": "errors.ios_cannot_find_the_server_check_your_network",
     "notes": "iOS Api.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
     "params": {},
     "platforms": [
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "找不到服务器，检查一下网络"
   },
   {
-    "key": "errors.ios_cannot_open_the_computer_s_reply_command_execution_is",
-    "zh-CN": "电脑的回复打不开，不确定指令有没有执行",
     "en": "Cannot open the computer’s reply. Command execution is unconfirmed.",
+    "key": "errors.ios_cannot_open_the_computer_s_reply_command_execution_is",
     "notes": "iOS RemoteCommands.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
     "params": {},
     "platforms": [
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "电脑的回复打不开，不确定指令有没有执行"
   },
   {
-    "key": "errors.ios_cli_s_own_mode",
-    "zh-CN": "CLI 自己的模式",
     "en": "CLI’s own mode",
+    "key": "errors.ios_cli_s_own_mode",
     "notes": "iOS ProjectPage.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
     "params": {},
     "platforms": [
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "CLI 自己的模式"
   },
   {
-    "key": "errors.ios_could_not_read_this_phone_s_account_state_management",
-    "zh-CN": "没能读取这台手机的账户状态，可能还有管理密钥或未完成的安全操作。继续会删除本机账户密钥和缓存，无法继续原操作；电脑上的会话不受影响。",
     "en": "Could not read this phone’s account state. Management keys or unfinished security operations may remain. Continuing deletes local account keys and cache, so the original operation cannot continue. Computer sessions are unaffected.",
+    "key": "errors.ios_could_not_read_this_phone_s_account_state_management",
     "notes": "iOS AppModel.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
     "params": {},
     "platforms": [
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "没能读取这台手机的账户状态，可能还有管理密钥或未完成的安全操作。继续会删除本机账户密钥和缓存，无法继续原操作；电脑上的会话不受影响。"
   },
   {
-    "key": "errors.ios_crypto_bad_key_nonce_size",
-    "zh-CN": "bad key or nonce size",
     "en": "bad key or nonce size",
+    "key": "errors.ios_crypto_bad_key_nonce_size",
     "notes": "iOS 原生界面。保留中文原句；短标签和按钮空间紧凑，正文可换行。本端加密/校验错误的原始技术详情，可经通用错误映射展示；原来简中界面也显示该英文，逐字保留，不翻译协议字段。无变量。",
     "params": {},
     "platforms": [
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "bad key or nonce size"
   },
   {
-    "key": "errors.ios_crypto_bad_session_key",
-    "zh-CN": "bad session key",
     "en": "bad session key",
+    "key": "errors.ios_crypto_bad_session_key",
     "notes": "iOS 原生界面。保留中文原句；短标签和按钮空间紧凑，正文可换行。本端加密/校验错误的原始技术详情，可经通用错误映射展示；原来简中界面也显示该英文，逐字保留，不翻译协议字段。无变量。",
     "params": {},
     "platforms": [
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "bad session key"
   },
   {
-    "key": "errors.ios_crypto_envelope_does_not_open",
-    "zh-CN": "envelope does not open",
     "en": "envelope does not open",
+    "key": "errors.ios_crypto_envelope_does_not_open",
     "notes": "iOS 原生界面。保留中文原句；短标签和按钮空间紧凑，正文可换行。本端加密/校验错误的原始技术详情，可经通用错误映射展示；原来简中界面也显示该英文，逐字保留，不翻译协议字段。无变量。",
     "params": {},
     "platforms": [
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "envelope does not open"
   },
   {
-    "key": "errors.ios_crypto_envelope_location",
-    "zh-CN": "envelope is not where it belongs",
     "en": "envelope is not where it belongs",
+    "key": "errors.ios_crypto_envelope_location",
     "notes": "iOS 原生界面。保留中文原句；短标签和按钮空间紧凑，正文可换行。本端加密/校验错误的原始技术详情，可经通用错误映射展示；原来简中界面也显示该英文，逐字保留，不翻译协议字段。无变量。",
     "params": {},
     "platforms": [
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "envelope is not where it belongs"
   },
   {
-    "key": "errors.ios_crypto_malformed_content",
-    "zh-CN": "malformed content",
     "en": "malformed content",
+    "key": "errors.ios_crypto_malformed_content",
     "notes": "iOS 原生界面。保留中文原句；短标签和按钮空间紧凑，正文可换行。本端加密/校验错误的原始技术详情，可经通用错误映射展示；原来简中界面也显示该英文，逐字保留，不翻译协议字段。无变量。",
     "params": {},
     "platforms": [
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "malformed content"
   },
   {
-    "key": "errors.ios_crypto_malformed_header",
-    "zh-CN": "malformed header",
     "en": "malformed header",
+    "key": "errors.ios_crypto_malformed_header",
     "notes": "iOS 原生界面。保留中文原句；短标签和按钮空间紧凑，正文可换行。本端加密/校验错误的原始技术详情，可经通用错误映射展示；原来简中界面也显示该英文，逐字保留，不翻译协议字段。无变量。",
     "params": {},
     "platforms": [
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "malformed header"
   },
   {
-    "key": "errors.ios_crypto_root_key_bytes",
-    "zh-CN": "root key must be {count} bytes",
     "en": "root key must be {count} bytes",
+    "key": "errors.ios_crypto_root_key_bytes",
     "notes": "iOS 原生界面。保留中文原句；短标签和按钮空间紧凑，正文可换行。本端加密/校验错误的原始技术详情，可经通用错误映射展示；原来简中界面也显示该英文，逐字保留，不翻译协议字段。count 为固定密钥字节数。",
     "params": {
       "count": {
-        "type": "integer",
-        "example": 2
+        "example": 2,
+        "type": "integer"
       }
     },
     "platforms": [
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "root key must be {count} bytes"
   },
   {
-    "key": "errors.ios_crypto_signing_seed_bytes",
-    "zh-CN": "signing seed must be {count} bytes",
     "en": "signing seed must be {count} bytes",
+    "key": "errors.ios_crypto_signing_seed_bytes",
     "notes": "iOS 原生界面。保留中文原句；短标签和按钮空间紧凑，正文可换行。本端加密/校验错误的原始技术详情，可经通用错误映射展示；原来简中界面也显示该英文，逐字保留，不翻译协议字段。count 为固定密钥字节数。",
     "params": {
       "count": {
-        "type": "integer",
-        "example": 2
+        "example": 2,
+        "type": "integer"
       }
     },
     "platforms": [
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "signing seed must be {count} bytes"
   },
   {
-    "key": "errors.ios_crypto_unsupported_envelope_version",
-    "zh-CN": "unsupported envelope version",
     "en": "unsupported envelope version",
+    "key": "errors.ios_crypto_unsupported_envelope_version",
     "notes": "iOS 原生界面。保留中文原句；短标签和按钮空间紧凑，正文可换行。本端加密/校验错误的原始技术详情，可经通用错误映射展示；原来简中界面也显示该英文，逐字保留，不翻译协议字段。无变量。",
     "params": {},
     "platforms": [
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "unsupported envelope version"
   },
   {
-    "key": "errors.ios_expired_control_renewal",
-    "zh-CN": "远程控制有效期已过，控制和新内容上传已暂停；{renewal}",
     "en": "Remote control expired. Control and new uploads are paused; {renewal}",
+    "key": "errors.ios_expired_control_renewal",
     "notes": "iOS 原生界面。保留中文原句；短标签和按钮空间紧凑，正文可换行。renewal 为本端生成的续期指引（当前管理端名称可来自账户），安全提示正文。",
     "params": {
       "renewal": {
-        "type": "string",
-        "example": "Example"
+        "example": "Example",
+        "type": "string"
       }
     },
     "platforms": [
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "远程控制有效期已过，控制和新内容上传已暂停；{renewal}"
   },
   {
-    "key": "errors.ios_image_content_does_not_match_its_format",
-    "zh-CN": "图片内容和格式对不上",
     "en": "Image content does not match its format",
+    "key": "errors.ios_image_content_does_not_match_its_format",
     "notes": "iOS RemoteCommands.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
     "params": {},
     "platforms": [
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "图片内容和格式对不上"
   },
   {
-    "key": "errors.ios_image_content_or_origin_could_not_be_verified",
-    "zh-CN": "图片的内容或来源无法核实",
     "en": "Image content or origin could not be verified",
+    "key": "errors.ios_image_content_or_origin_could_not_be_verified",
     "notes": "iOS RemoteCommands.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
     "params": {},
     "platforms": [
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "图片的内容或来源无法核实"
   },
   {
-    "key": "errors.ios_invalid_server_address",
-    "zh-CN": "server 地址无效",
     "en": "Invalid server address",
+    "key": "errors.ios_invalid_server_address",
     "notes": "iOS E2e.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
     "params": {},
     "platforms": [
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "server 地址无效"
   },
   {
-    "key": "errors.ios_joining_canceled_the_old_request_may_still_occupy_the",
-    "zh-CN": "已取消本次加入。旧请求可能还占着配对码：请在管理端拒绝它，再生成新的配对码",
     "en": "Joining canceled. The old request may still occupy the code: reject it on the managing client, then generate a new pairing code.",
+    "key": "errors.ios_joining_canceled_the_old_request_may_still_occupy_the",
     "notes": "iOS Launch.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
     "params": {},
     "platforms": [
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "已取消本次加入。旧请求可能还占着配对码：请在管理端拒绝它，再生成新的配对码"
   },
   {
-    "key": "errors.ios_k_context",
-    "zh-CN": "{value}k 上下文",
     "en": "{value}k context",
+    "key": "errors.ios_k_context",
     "notes": "iOS Model.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。变量来源：value = Swift 插值 (tokens + 500) / 1000；用户内容和系统/CLI 原文不翻译。",
     "params": {
       "value": {
-        "type": "string",
-        "example": "Example"
+        "example": "Example",
+        "type": "string"
       }
     },
     "platforms": [
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "{value}k 上下文"
   },
   {
-    "key": "errors.ios_login_expired",
-    "zh-CN": "登录失效：{value}",
     "en": "Login expired: {value}",
+    "key": "errors.ios_login_expired",
     "notes": "iOS Api.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。变量来源：value = Swift 插值 ce.message ?? \"\"；用户内容和系统/CLI 原文不翻译。",
     "params": {
       "value": {
-        "type": "string",
-        "example": "Example"
+        "example": "Example",
+        "type": "string"
       }
     },
     "platforms": [
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "登录失效：{value}"
   },
   {
-    "key": "errors.ios_m_context",
-    "zh-CN": "{value}M 上下文",
     "en": "{value}M context",
+    "key": "errors.ios_m_context",
     "notes": "iOS Model.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。变量来源：value = Swift 插值 \"\\(Double(tokens / 100_000) / 10.0)\".removingSuffix(\".0\")；用户内容和系统/CLI 原文不翻译。",
     "params": {
       "value": {
-        "type": "string",
-        "example": "Example"
+        "example": "Example",
+        "type": "string"
       }
     },
     "platforms": [
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "{value}M 上下文"
   },
   {
-    "key": "errors.ios_only_the_device_itself_can_change_its_name",
-    "zh-CN": "名称只能在那台设备上修改",
     "en": "Only the device itself can change its name",
+    "key": "errors.ios_only_the_device_itself_can_change_its_name",
     "notes": "iOS RemoteLists.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
     "params": {},
     "platforms": [
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "名称只能在那台设备上修改"
   },
   {
-    "key": "errors.ios_other_clients_kept_changing_project_preferences_changes_could_not",
-    "zh-CN": "项目偏好一直在被其他客户端修改，没能保存",
     "en": "Other clients kept changing project preferences. Changes could not be saved.",
+    "key": "errors.ios_other_clients_kept_changing_project_preferences_changes_could_not",
     "notes": "iOS Prefs.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
     "params": {},
     "platforms": [
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "项目偏好一直在被其他客户端修改，没能保存"
   },
   {
-    "key": "errors.ios_project_settings_may_differ",
-    "zh-CN": "（项目设置可能不同）",
     "en": " (project settings may differ)",
+    "key": "errors.ios_project_settings_may_differ",
     "notes": "iOS ProjectPage.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
     "params": {},
     "platforms": [
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "（项目设置可能不同）"
   },
   {
-    "key": "errors.ios_recovery_request_state_may_be_out_of_date_connect",
-    "zh-CN": "恢复申请状态可能过期，请连接服务器后重新核实。",
     "en": "Recovery request state may be out of date. Connect to the server and verify again.",
+    "key": "errors.ios_recovery_request_state_may_be_out_of_date_connect",
     "notes": "iOS HomeScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
     "params": {},
     "platforms": [
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "恢复申请状态可能过期，请连接服务器后重新核实。"
   },
   {
-    "key": "errors.ios_remote_control_expired_saving_changes_session_control_and_new",
-    "zh-CN": "远程控制有效期已过，无法保存更改、控制会话或上传新内容；在「设置 › 账户安全」查看管理端并续期后重试。历史仍可查看",
     "en": "Remote control expired. Saving changes, session control, and new uploads are paused. Open Settings › Account security to find the managing client and renew, then retry. History remains available.",
+    "key": "errors.ios_remote_control_expired_saving_changes_session_control_and_new",
     "notes": "iOS Api.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
     "params": {},
     "platforms": [
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "远程控制有效期已过，无法保存更改、控制会话或上传新内容；在「设置 › 账户安全」查看管理端并续期后重试。历史仍可查看"
   },
   {
-    "key": "errors.ios_secure_connection_failed",
-    "zh-CN": "安全连接失败：{value}",
     "en": "Secure connection failed: {value}",
+    "key": "errors.ios_secure_connection_failed",
     "notes": "iOS Api.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。变量来源：value = Swift 插值 why；用户内容和系统/CLI 原文不翻译。",
     "params": {
       "value": {
-        "type": "string",
-        "example": "Example"
+        "example": "Example",
+        "type": "string"
       }
     },
     "platforms": [
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "安全连接失败：{value}"
   },
   {
-    "key": "errors.ios_terminal_closed",
-    "zh-CN": "终端连接已关闭",
     "en": "Terminal closed",
+    "key": "errors.ios_terminal_closed",
     "notes": "iOS TerminalFrames.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
     "params": {},
     "platforms": [
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "终端连接已关闭"
   },
   {
-    "key": "errors.ios_terminal_connection_dropped",
-    "zh-CN": "终端连接断开：{value}",
     "en": "Terminal connection dropped: {value}",
+    "key": "errors.ios_terminal_connection_dropped",
     "notes": "iOS RemoteTerminal.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。变量来源：value = Swift 插值 errorText($0)；用户内容和系统/CLI 原文不翻译。",
     "params": {
       "value": {
-        "type": "string",
-        "example": "Example"
+        "example": "Example",
+        "type": "string"
       }
     },
     "platforms": [
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "终端连接断开：{value}"
   },
   {
-    "key": "errors.ios_terminal_input_failed_to_send_stopped",
-    "zh-CN": "终端输入发送失败，已停止",
     "en": "Terminal input failed to send. Stopped.",
+    "key": "errors.ios_terminal_input_failed_to_send_stopped",
     "notes": "iOS RemoteTerminal.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
     "params": {},
     "platforms": [
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "终端输入发送失败，已停止"
   },
   {
-    "key": "errors.ios_terminal_input_waiting_to_send_stopped",
-    "zh-CN": "终端输入等待发送，已停止",
     "en": "Terminal input waiting to send. Stopped.",
+    "key": "errors.ios_terminal_input_waiting_to_send_stopped",
     "notes": "iOS RemoteTerminal.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
     "params": {},
     "platforms": [
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "终端输入等待发送，已停止"
   },
   {
-    "key": "errors.ios_the_current_request_has_not_been_verified_by_the",
-    "zh-CN": "当前请求尚未由电脑核实",
     "en": "The current request has not been verified by the computer",
+    "key": "errors.ios_the_current_request_has_not_been_verified_by_the",
     "notes": "iOS RemoteLive.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
     "params": {},
     "platforms": [
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "当前请求尚未由电脑核实"
   },
   {
-    "key": "errors.ios_the_original_request_and_keys_are_retained_retry_if",
-    "zh-CN": "{value}。原请求和密钥已保留，可重试；若批准已过期或被拒绝，可退出并重新配对。",
     "en": "{value}. The original request and keys are retained. Retry; if approval has expired or was denied, exit and pair again.",
+    "key": "errors.ios_the_original_request_and_keys_are_retained_retry_if",
     "notes": "iOS AppModel.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。变量来源：value = Swift 插值 error.localizedDescription；用户内容和系统/CLI 原文不翻译。",
     "params": {
       "value": {
-        "type": "string",
-        "example": "Example"
+        "example": "Example",
+        "type": "string"
       }
     },
     "platforms": [
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "{value}。原请求和密钥已保留，可重试；若批准已过期或被拒绝，可退出并重新配对。"
   },
   {
-    "key": "errors.ios_the_request_may_have_arrived_but_login_then_failed",
-    "zh-CN": "请求可能已经送到，之后登录失败（{value}）",
     "en": "The request may have arrived, but login then failed ({value})",
+    "key": "errors.ios_the_request_may_have_arrived_but_login_then_failed",
     "notes": "iOS RemoteCommands.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。变量来源：value = Swift 插值 errorText(error)；用户内容和系统/CLI 原文不翻译。",
     "params": {
       "value": {
-        "type": "string",
-        "example": "Example"
+        "example": "Example",
+        "type": "string"
       }
     },
     "platforms": [
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "请求可能已经送到，之后登录失败（{value}）"
   },
   {
-    "key": "errors.ios_this_app_version_is_out_of_date_update_and",
-    "zh-CN": "这个 App 版本较旧，请更新后再试",
     "en": "This app version is out of date. Update and retry.",
+    "key": "errors.ios_this_app_version_is_out_of_date_update_and",
     "notes": "iOS Model.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
     "params": {},
     "platforms": [
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "这个 App 版本较旧，请更新后再试"
   },
   {
-    "key": "errors.ios_this_command_expired_and_was_not_sent",
-    "zh-CN": "这条指令已过期，没有发出",
     "en": "This command expired and was not sent",
+    "key": "errors.ios_this_command_expired_and_was_not_sent",
     "notes": "iOS RemoteCommands.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
     "params": {},
     "platforms": [
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "这条指令已过期，没有发出"
   },
   {
-    "key": "errors.ios_this_deletes_the_account_keys_and_cache_on_this",
-    "zh-CN": "这会删除这台手机上的账户密钥和缓存，电脑上的会话不受影响。",
     "en": "This deletes the account keys and cache on this phone. Sessions on your computers are unaffected.",
+    "key": "errors.ios_this_deletes_the_account_keys_and_cache_on_this",
     "notes": "iOS AppModel.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
     "params": {},
     "platforms": [
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "这会删除这台手机上的账户密钥和缓存，电脑上的会话不受影响。"
   },
   {
-    "key": "errors.ios_this_device_is_over_5_minutes_behind_the_security",
-    "zh-CN": "本机时间比安全状态慢 5 分钟以上，控制已暂停；校准系统时间后重试",
     "en": "This device is over 5 minutes behind the security state. Control paused. Correct the system clock and retry.",
+    "key": "errors.ios_this_device_is_over_5_minutes_behind_the_security",
     "notes": "iOS Remote.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
     "params": {},
     "platforms": [
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "本机时间比安全状态慢 5 分钟以上，控制已暂停；校准系统时间后重试"
   },
   {
-    "key": "errors.ios_today",
-    "zh-CN": "今天 {value}",
     "en": "Today {value}",
+    "key": "errors.ios_today",
     "notes": "iOS Model.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。变量来源：value = Swift 插值 then.hhmm；用户内容和系统/CLI 原文不翻译。",
     "params": {
       "value": {
-        "type": "string",
-        "example": "Example"
+        "example": "Example",
+        "type": "string"
       }
     },
     "platforms": [
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "今天 {value}"
   },
   {
-    "key": "errors.ios_unknown_session",
-    "zh-CN": "未知会话",
     "en": "Unknown session",
+    "key": "errors.ios_unknown_session",
     "notes": "iOS RemoteCommands.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
     "params": {},
     "platforms": [
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "未知会话"
   },
   {
-    "key": "errors.ios_unsure_whether_the_computer_executed_this",
-    "zh-CN": "不确定电脑有没有执行：{value}",
     "en": "Unsure whether the computer executed this: {value}",
+    "key": "errors.ios_unsure_whether_the_computer_executed_this",
     "notes": "iOS RemoteCommands.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。变量来源：value = Swift 插值 reason；用户内容和系统/CLI 原文不翻译。",
     "params": {
       "value": {
-        "type": "string",
-        "example": "Example"
+        "example": "Example",
+        "type": "string"
       }
     },
     "platforms": [
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "不确定电脑有没有执行：{value}"
   },
   {
-    "key": "errors.executed_result_unavailable",
-    "zh-CN": "电脑已执行，但结果没能取回，请刷新查看最新状态",
     "en": "Done on the computer, but the result couldn't be retrieved. Refresh to see the latest state.",
+    "key": "errors.executed_result_unavailable",
     "notes": "负责人确定的传输结果文案 A：可信 executed 且结果正文不可恢复；刷新最新状态，不自动重新执行。",
     "params": {},
     "platforms": [
@@ -2462,14 +2333,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "电脑已执行，但结果没能取回，请刷新查看最新状态"
   },
   {
-    "key": "errors.request_identity_conflict",
-    "zh-CN": "这次提交和之前的一次不一致，电脑没有执行，请刷新后再操作",
     "en": "This didn't match an earlier submission, so the computer didn't run it. Refresh and try again.",
+    "key": "errors.request_identity_conflict",
     "notes": "负责人确定的传输结果文案 B：同一请求 ID 的载荷身份冲突，只说明当前不同的提交没有执行，不推断原提交结果；刷新，不自动重发。",
     "params": {},
     "platforms": [
@@ -2478,33 +2349,33 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "这次提交和之前的一次不一致，电脑没有执行，请刷新后再操作"
   },
   {
-    "key": "errors.core_load_failed",
-    "zh-CN": "核心模块加载失败：{reason}",
     "en": "Failed to load core module: {reason}",
+    "key": "errors.core_load_failed",
     "notes": "网页端启动加载 Go WASM 核心失败时展示给用户的错误提示，下方附带重试按钮。变量 reason 为加载失败原因。",
     "params": {
       "reason": {
-        "type": "string",
-        "example": "Network error"
+        "example": "Network error",
+        "type": "string"
       }
     },
     "platforms": [
       "web"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "核心模块加载失败：{reason}"
   },
   {
-    "key": "errors.client_out_of_date",
-    "zh-CN": "这个客户端版本较旧，请更新后再试",
     "en": "This client version is out of date. Update and retry.",
+    "key": "errors.client_out_of_date",
     "notes": "客户端协议版本低于 daemon 时横幅提示。无变量。",
     "params": {},
     "platforms": [
@@ -2513,14 +2384,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "这个客户端版本较旧，请更新后再试"
   },
   {
-    "key": "errors.not_connected",
-    "zh-CN": "连不上服务器",
     "en": "Not connected to the server",
+    "key": "errors.not_connected",
     "notes": "未连接服务器时的错误原因短文本。无变量。",
     "params": {},
     "platforms": [
@@ -2529,8 +2400,9 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "连不上服务器"
   }
 ]

@@ -21,7 +21,6 @@
     <string name="approval_denied" formatted="false">"已拒绝"</string>
     <string name="approval_deny" formatted="false">"拒绝"</string>
     <string name="approval_details" formatted="false">"审批详情"</string>
-    <string name="approval_expired" formatted="false">"已超时"</string>
     <string name="approval_full_command" formatted="false">"看完整命令"</string>
     <string name="approval_in_terminal" formatted="false">"已在终端处理"</string>
     <string name="approval_reason_placeholder" formatted="false">"说说该怎么做，可以不填"</string>
@@ -142,7 +141,6 @@
     <string name="composer_queue_after_answer" formatted="false">"排队发送，回答后继续"</string>
     <string name="composer_queue_hint" formatted="false">"先排队，结束后按顺序发出"</string>
     <string name="composer_ready_timeout" formatted="false">"等终端就绪超时"</string>
-    <string name="composer_resent" formatted="false">"已重新发送"</string>
     <string name="composer_restore" formatted="false">"放回输入框"</string>
     <plurals name="composer_restore_files_full">
         <item quantity="other">"输入框放不下这条消息的 %1$d 个文件；先移除一些再放回"</item>
@@ -208,7 +206,6 @@
     <string name="dock_android_question_answered" formatted="false">"这个问题已经回答了。"</string>
     <string name="dock_android_question_changed">"没能提交，终端里的问题可能已经变了：%1$s"</string>
     <string name="dock_answer_title" formatted="false">"回答提问"</string>
-    <string name="dock_answer_unknown" formatted="false">"不确定提交了没有，重试会发送同一个回答"</string>
     <string name="dock_answered">"已回答：%1$s"</string>
     <string name="dock_claude_plan_note" formatted="false">"批准后使用询问模式"</string>
     <string name="dock_handle" formatted="false">"处理"</string>
@@ -219,7 +216,6 @@
     <string name="dock_multiselect" formatted="false">"可多选"</string>
     <string name="dock_none_fit" formatted="false">"都不合适？"</string>
     <string name="dock_other_terminal" formatted="false">"其他回答：去终端"</string>
-    <string name="dock_plan_answered" formatted="false">"回答了计划"</string>
     <string name="dock_plan_clear" formatted="false">"清空上下文后执行"</string>
     <string name="dock_plan_clear_record" formatted="false">"清空上下文后执行计划"</string>
     <string name="dock_plan_full" formatted="false">"计划全文"</string>
@@ -237,7 +233,6 @@
         <item quantity="other">"已选 %1$d 项"</item>
     </plurals>
     <string name="dock_submit_failed">"没能提交：%1$s"</string>
-    <string name="dock_submit_failed_edit">"没能提交：%1$s。可以改选后再提交"</string>
     <plurals name="dock_submit_selected">
         <item quantity="other">"提交 %1$d 项"</item>
     </plurals>
@@ -296,7 +291,6 @@
     <string name="errors_history_has_a_gap_retry" formatted="false">"历史记录不连续，请重试读取"</string>
     <string name="errors_history_keys_unavailable_records_from_before_recovery_cannot_be" formatted="false">"历史密钥不可用：恢复前的记录无法解密"</string>
     <string name="errors_invalid_ciphertext_signature_key_or_content_verification_failed" formatted="false">"密文无效：签名、密钥或内容校验失败"</string>
-    <string name="errors_invalid_current_request_snapshot" formatted="false">"当前请求快照无效"</string>
     <string name="errors_invalid_pairing_approval_signature" formatted="false">"配对批准签名无效"</string>
     <string name="errors_invalid_session_seed" formatted="false">"无效的会话种子"</string>
     <string name="errors_it_may_have_been_deleted_or_belong_to_a" formatted="false">"它可能已经被删除，或者属于一台被移除的电脑。"</string>
@@ -304,11 +298,8 @@
     <string name="errors_names_can_only_be_changed_on_that_device" formatted="false">"名称只能在那台设备上修改"</string>
     <string name="errors_not_connected" formatted="false">"连不上服务器"</string>
     <string name="errors_other_clients_kept_changing_the_project_list_changes_could" formatted="false">"项目列表一直在被别的客户端修改，没能保存"</string>
-    <string name="errors_pending_requests_on_the_computer_could_not_be_verified" formatted="false">"无法核实电脑上的待处理请求，请重试或在电脑终端处理"</string>
     <string name="errors_project_preferences_format_is_not_supported" formatted="false">"项目偏好格式不受支持"</string>
     <string name="errors_push_backlog_reconnecting" formatted="false">"推送积压，正在重连"</string>
-    <string name="errors_queued_records_could_not_be_restored_you_can_still" formatted="false">"待发记录没能恢复，仍可输入和发送，下次重试"</string>
-    <string name="errors_queued_records_could_not_be_saved_locally_messages_will" formatted="false">"待发记录没能保存到本机，消息仍会发送；关闭页面前请核对发送结果"</string>
     <string name="errors_reading_local_state" formatted="false">"读取本机状态"</string>
     <string name="errors_remote_agent_on_is_out_of_date_update_it">"%1$s 上的 remote-agent 版本较旧，请在电脑上更新后再试"</string>
     <string name="errors_remote_control_expired_control_and_new_uploads_are_paused" formatted="false">"远程控制有效期已过，控制和新内容上传已暂停；请在当前管理端续期"</string>
@@ -332,10 +323,8 @@
     <string name="errors_the_computer_is_offline_the_command_was_not_sent" formatted="false">"电脑不在线，指令没有发出"</string>
     <string name="errors_the_computer_is_still_verifying_attachments_retry_shortly" formatted="false">"电脑仍在校验附件，请稍后重试"</string>
     <string name="errors_the_computer_s_reply_could_not_be_verified_command" formatted="false">"电脑的回复未通过验证，不确定指令是否执行"</string>
-    <string name="errors_the_current_request_could_not_be_verified_again" formatted="false">"无法重新核实当前请求"</string>
     <string name="errors_the_draft_could_not_be_restored_you_can_still" formatted="false">"草稿没能恢复，仍可输入和发送，下次打开或编辑时重试"</string>
     <string name="errors_the_draft_could_not_be_saved_locally_keep_the" formatted="false">"草稿没能保存到本机，关闭页面前请保留原图和文字"</string>
-    <string name="errors_the_draft_could_not_be_saved_the_original_message" formatted="false">"草稿没能保存，原消息的本机副本仍保留"</string>
     <string name="errors_the_event_s_position_was_changed" formatted="false">"事件的位置被改动"</string>
     <string name="errors_the_plan_display_changed_review_it_again" formatted="false">"计划画面已变化，请重新核对"</string>
     <string name="errors_the_previous_operation_s_outcome_is_still_unknown_reload" formatted="false">"上次操作的结果仍未知，请重新读取任务核实后再操作"</string>
@@ -355,11 +344,9 @@
     <string name="errors_this_history_uses_an_old_encryption_format_and_can" formatted="false">"这条历史是旧版加密格式，已不再支持查看"</string>
     <string name="errors_this_is_not_a_remote_agent_account_key" formatted="false">"这不是 remote-agent 的账户密钥"</string>
     <string name="errors_this_page_is_out_of_date_refresh_or_update" formatted="false">"这个网页版本较旧，请刷新或更新后再试"</string>
-    <string name="errors_this_request_can_no_longer_be_acted_on" formatted="false">"当前请求已不可操作"</string>
     <string name="errors_this_request_has_not_been_verified_by_the_computer" formatted="false">"当前请求尚未由电脑核实，请等待同步"</string>
     <string name="errors_update_remote_agent_on_this_computer_to_use_scheduled" formatted="false">"需要更新这台电脑上的 remote-agent 才能使用定时任务。"</string>
     <string name="errors_upload_made_no_progress" formatted="false">"上传没有进展"</string>
-    <string name="errors_waiting_for_the_owning_computer_to_update_the_current" formatted="false">"等待所属电脑更新当前状态"</string>
     <string name="errors_waiting_for_the_owning_computer_to_update_the_current_remote" formatted="false">"等待所属电脑更新当前状态：这台设备没有当时的内容密钥"</string>
     <string name="home_add_device" formatted="false">"添加设备"</string>
     <string name="home_add_via_manager">"还没有电脑。在管理端（%1$s）上打开「设置 › 添加设备」，把电脑加进来。"</string>
@@ -888,32 +875,25 @@
     <string name="projects_use_directory">"用 %1$s 这个目录"</string>
     <string name="projects_view_sessions">"看 %1$s 的会话"</string>
     <string name="queue_after_current_turn" formatted="false">"本轮结束后发送"</string>
-    <string name="queue_after_start" formatted="false">"启动后发送"</string>
     <string name="queue_after_turn" formatted="false">"这一轮结束后发"</string>
     <string name="queue_agent_ready">"等 %1$s 就绪后发出"</string>
-    <string name="queue_already_submitted" formatted="false">"上一条已送入终端，不能取消"</string>
     <string name="queue_android_agent_note">"等 %1$s 就绪"</string>
     <string name="queue_android_scheduled" formatted="false">"定时任务"</string>
     <string name="queue_android_sending_soon" formatted="false">"即将发送"</string>
     <string name="queue_android_unconfirmed" formatted="false">"已送到终端但没确认"</string>
     <string name="queue_cancel_failed" formatted="false">"取消没成功，仍在排队"</string>
     <string name="queue_canceled" formatted="false">"已取消"</string>
-    <string name="queue_canceled_elsewhere" formatted="false">"上一条已在另一客户端取消"</string>
     <string name="queue_canceled_record" formatted="false">"取消了一条排队的消息"</string>
     <string name="queue_canceling" formatted="false">"正在取消…"</string>
-    <string name="queue_images_recognized" formatted="false">"图片已识别，正在发送…"</string>
     <string name="queue_insert" formatted="false">"插入这一轮"</string>
     <plurals name="queue_more">
         <item quantity="other">"还有 %1$d 条排队 展开"</item>
     </plurals>
     <string name="queue_other_message" formatted="false">"另一客户端的消息"</string>
-    <string name="queue_pasting_images" formatted="false">"正在粘贴图片…"</string>
     <string name="queue_paused" formatted="false">"已暂停"</string>
     <string name="queue_rank">" · 第 %1$d 条"</string>
     <string name="queue_resume_failed" formatted="false">"发送没成功，仍已暂停"</string>
     <string name="queue_resuming" formatted="false">"正在发送…"</string>
-    <string name="queue_scheduled">"定时任务%1$s · "</string>
-    <string name="queue_submitting" formatted="false">"已送入终端，等待确认"</string>
     <string name="queue_terminal_draft" formatted="false">"终端里有没发出的草稿，发完或清掉后再发"</string>
     <string name="queue_unrecognized" formatted="false">"认不出输入框，已暂停"</string>
     <string name="queue_when_ready" formatted="false">"就绪后发送"</string>
@@ -1675,7 +1655,6 @@
     <string name="security_waiting_for_the_new_device_to_enter_the_pairing" formatted="false">"等待新设备输入配对码…"</string>
     <string name="security_waiting_for_the_successor_device_to_generate_and_save" formatted="false">"等待接任设备生成并保存恢复码"</string>
     <string name="session_abandon_fork" formatted="false">"放弃上次的分叉"</string>
-    <string name="session_action_failed">"%1$s失败：%2$s"</string>
     <string name="session_android_collapse_title">"收起%1$s"</string>
     <string name="session_android_compacted_usage">"上下文已压缩 · %2$s%% → %1$s%%"</string>
     <string name="session_android_context_usage" formatted="false">"上下文占用"</string>
@@ -1709,7 +1688,6 @@
     <string name="session_end" formatted="false">"结束"</string>
     <string name="session_end_action" formatted="false">"结束会话…"</string>
     <string name="session_end_note">"%2$s 上的 %1$s 会被关掉，聊天记录保留，之后可以恢复。"</string>
-    <string name="session_end_session" formatted="false">"结束会话"</string>
     <string name="session_end_title" formatted="false">"结束这个会话？"</string>
     <string name="session_ended" formatted="false">"会话已结束"</string>
     <string name="session_ended_at">"%1$s 结束"</string>
@@ -1775,8 +1753,6 @@
     <string name="session_rename_title" formatted="false">"重命名会话"</string>
     <string name="session_reopen_agent">"在 %2$s 上重新打开 %1$s"</string>
     <string name="session_reply_moves" formatted="false">"回复后，这个对话会移到会话列表"</string>
-    <string name="session_restore_other_files" formatted="false">"这条消息的附件是另一客户端上传的，只放回了文字；需要的话在这里重新选择附件"</string>
-    <string name="session_restore_other_images" formatted="false">"这条消息的图片是另一客户端上传的，只放回了文字；需要的话在这里重新选择图片"</string>
     <string name="session_resume" formatted="false">"恢复会话"</string>
     <string name="session_resume_failed" formatted="false">"恢复失败"</string>
     <string name="session_resume_note">"恢复会在 %1$s 上用同样的设置重新打开它，聊天记录都在。"</string>

@@ -15,7 +15,6 @@
 "approval_denied" = "Denied";
 "approval_deny" = "Deny";
 "approval_details" = "Approval details";
-"approval_expired" = "Timed out";
 "approval_full_command" = "View full command";
 "approval_in_terminal" = "Handled in terminal";
 "approval_ios_always_prefix" = "Never ask again for commands starting with `%1$@`";
@@ -149,7 +148,6 @@
 "composer_queue_after_answer" = "Queue message; continue after answering";
 "composer_queue_hint" = "Queue first, then send in order after this turn";
 "composer_ready_timeout" = "Timed out waiting for the terminal";
-"composer_resent" = "Resent";
 "composer_restore" = "Restore to input";
 "composer_send" = "Send";
 "composer_send_failure" = "Not sent: %1$@";
@@ -203,7 +201,6 @@
 "dock_android_plan_expired" = "It is unclear whether “%1$@” arrived. It has expired and will not be resent. Check the terminal first; abandon it to choose again";
 "dock_android_plan_unknown" = "The result of “%1$@” is unknown. Retry resends the same request; the computer will not execute it twice";
 "dock_answer_title" = "Answer question";
-"dock_answer_unknown" = "Submission is unconfirmed. Retry sends the same answer.";
 "dock_answered" = "Answered %1$@";
 "dock_claude_plan_note" = "Use Ask mode after approval";
 "dock_handle" = "Handle";
@@ -216,7 +213,6 @@
 "dock_multiselect" = "Select multiple";
 "dock_none_fit" = "None of these?";
 "dock_other_terminal" = "Other answer: go to terminal";
-"dock_plan_answered" = "Answered the plan";
 "dock_plan_clear" = "Clear context and execute";
 "dock_plan_clear_record" = "Execute plan with cleared context";
 "dock_plan_full" = "Full plan";
@@ -228,7 +224,6 @@
 "dock_recommended" = "Recommended";
 "dock_select_then_submit" = "Select, then submit";
 "dock_submit_failed" = "Could not submit: %1$@";
-"dock_submit_failed_edit" = "Could not submit: %1$@. You can change your selection and submit again.";
 "dock_submitting" = "Submitting…";
 "dock_trust_folder" = "No, exit is selected by default. Press ↓ to select Yes, I trust this folder, then press ⏎";
 "dock_waiting_confirmation" = "Waiting for confirmation";
@@ -249,7 +244,6 @@
 "errors_history_has_a_gap_retry" = "History has a gap. Retry.";
 "errors_history_keys_unavailable_records_from_before_recovery_cannot_be" = "History keys unavailable: records from before recovery cannot be decrypted";
 "errors_invalid_ciphertext_signature_key_or_content_verification_failed" = "Invalid ciphertext: signature, key, or content verification failed";
-"errors_invalid_current_request_snapshot" = "Invalid current request snapshot";
 "errors_invalid_pairing_approval_signature" = "Invalid pairing approval signature";
 "errors_invalid_session_seed" = "Invalid session seed";
 "errors_ios_already_registering_wait_for_the_result" = "Already registering %1$@. Wait for the result.";
@@ -299,11 +293,8 @@
 "errors_names_can_only_be_changed_on_that_device" = "Names can only be changed on that device";
 "errors_not_connected" = "Not connected to the server";
 "errors_other_clients_kept_changing_the_project_list_changes_could" = "Other clients kept changing the project list. Changes could not be saved.";
-"errors_pending_requests_on_the_computer_could_not_be_verified" = "Pending requests on the computer could not be verified. Retry or handle them in the computer’s terminal.";
 "errors_project_preferences_format_is_not_supported" = "Project preferences format is not supported";
 "errors_push_backlog_reconnecting" = "Push backlog. Reconnecting.";
-"errors_queued_records_could_not_be_restored_you_can_still" = "Queued records could not be restored. You can still type and send; retry next time.";
-"errors_queued_records_could_not_be_saved_locally_messages_will" = "Queued records could not be saved locally. Messages will still send; verify delivery before closing the page.";
 "errors_reading_local_state" = "Reading local state";
 "errors_remote_agent_on_is_out_of_date_update_it" = "remote-agent on %1$@ is out of date. Update it on the computer and retry.";
 "errors_remote_control_expired_control_and_new_uploads_are_paused" = "Remote control expired. Control and new uploads are paused; renew on the current managing client.";
@@ -327,10 +318,8 @@
 "errors_the_computer_is_offline_the_command_was_not_sent" = "The computer is offline. The command was not sent.";
 "errors_the_computer_is_still_verifying_attachments_retry_shortly" = "The computer is still verifying attachments. Retry shortly.";
 "errors_the_computer_s_reply_could_not_be_verified_command" = "The computer’s reply could not be verified. Command execution is uncertain.";
-"errors_the_current_request_could_not_be_verified_again" = "The current request could not be verified again";
 "errors_the_draft_could_not_be_restored_you_can_still" = "The draft could not be restored. You can still type and send; retry when opening or editing next time.";
 "errors_the_draft_could_not_be_saved_locally_keep_the" = "The draft could not be saved locally. Keep the original images and text before closing the page.";
-"errors_the_draft_could_not_be_saved_the_original_message" = "The draft could not be saved. The original message’s local copy is preserved.";
 "errors_the_event_s_position_was_changed" = "The event’s position was changed";
 "errors_the_plan_display_changed_review_it_again" = "The plan display changed. Review it again.";
 "errors_the_previous_operation_s_outcome_is_still_unknown_reload" = "The previous operation’s outcome is still unknown. Reload and verify the task before continuing.";
@@ -350,11 +339,9 @@
 "errors_this_history_uses_an_old_encryption_format_and_can" = "This history uses an old encryption format and can no longer be viewed";
 "errors_this_is_not_a_remote_agent_account_key" = "This is not a remote-agent account key";
 "errors_this_page_is_out_of_date_refresh_or_update" = "This page is out of date. Refresh or update it and retry.";
-"errors_this_request_can_no_longer_be_acted_on" = "This request can no longer be acted on";
 "errors_this_request_has_not_been_verified_by_the_computer" = "This request has not been verified by the computer yet. Wait for sync.";
 "errors_update_remote_agent_on_this_computer_to_use_scheduled" = "Update remote-agent on this computer to use scheduled tasks";
 "errors_upload_made_no_progress" = "Upload made no progress";
-"errors_waiting_for_the_owning_computer_to_update_the_current" = "Waiting for the owning computer to update the current state";
 "errors_waiting_for_the_owning_computer_to_update_the_current_remote" = "Waiting for the owning computer to update the current state: this device lacks the content key from that time";
 "home_add_device" = "Add device";
 "home_add_via_manager" = "No computers yet. Open “Settings › Add device” on the managing client (%1$@) to add one.";
@@ -770,19 +757,15 @@
 "projects_use_directory" = "Use folder %1$@";
 "projects_view_sessions" = "View sessions in %1$@";
 "queue_after_current_turn" = "Send after this turn";
-"queue_after_start" = "Send after startup";
 "queue_after_turn" = "Send after this turn";
 "queue_agent_ready" = "Send when %1$@ is ready";
-"queue_already_submitted" = "The previous message is already in the terminal and cannot be canceled";
 "queue_android_agent_note" = "Waiting for %1$@ to be ready";
 "queue_android_sending_soon" = "Sending soon";
 "queue_android_unconfirmed" = "Written to the terminal but unconfirmed";
 "queue_cancel_failed" = "Could not cancel; still queued";
 "queue_canceled" = "Canceled";
-"queue_canceled_elsewhere" = "The previous message was canceled on another client";
 "queue_canceled_record" = "Canceled a queued message";
 "queue_canceling" = "Canceling…";
-"queue_images_recognized" = "Images recognized, sending…";
 "queue_insert" = "Insert into this turn";
 "queue_ios_after_answer" = "Continue after answering";
 "queue_ios_after_approval" = "Continue after approval";
@@ -799,13 +782,10 @@
 "queue_ios_terminal_draft_short" = "Draft in terminal";
 "queue_ios_turn_wait" = "Waiting for this turn to end";
 "queue_other_message" = "A message from another client";
-"queue_pasting_images" = "Pasting images…";
 "queue_paused" = "Paused";
 "queue_rank" = " · #%1$lld";
 "queue_resume_failed" = "Could not send; still paused";
 "queue_resuming" = "Sending…";
-"queue_scheduled" = "Scheduled task%1$@ · ";
-"queue_submitting" = "Written to terminal, waiting for confirmation";
 "queue_terminal_draft" = "There is an unsent draft in the terminal. Send or clear it first.";
 "queue_unrecognized" = "Input field not recognized; paused";
 "queue_when_ready" = "Send when ready";
@@ -1474,7 +1454,6 @@
 "security_waiting_for_the_new_device_to_enter_the_pairing" = "Waiting for the new device to enter the pairing code…";
 "security_waiting_for_the_successor_device_to_generate_and_save" = "Waiting for the successor device to generate and save a recovery code";
 "session_abandon_fork" = "Abandon previous fork";
-"session_action_failed" = "%1$@ failed: %2$@";
 "session_android_compacted_usage" = "Context compacted · %2$@%% → %1$@%%";
 "session_android_fork_connected" = "Available after connecting to the server";
 "session_android_interrupted_by" = "Interrupted (%1$@)";
@@ -1497,7 +1476,6 @@
 "session_end" = "End";
 "session_end_action" = "End session…";
 "session_end_note" = "%1$@ on %2$@ will close. History is kept, and you can resume later.";
-"session_end_session" = "End session";
 "session_end_title" = "End this session?";
 "session_ended" = "Session ended";
 "session_ended_at" = "%1$@Ended";
@@ -1585,8 +1563,6 @@
 "session_rename_title" = "Rename session";
 "session_reopen_agent" = "Reopen %1$@ on %2$@";
 "session_reply_moves" = "After you reply, this conversation will move to the session list";
-"session_restore_other_files" = "Another client uploaded this message’s attachments. Only the text was restored; select attachments here if needed.";
-"session_restore_other_images" = "Another client uploaded this message’s images. Only the text was restored; select images here if needed.";
 "session_resume" = "Resume session";
 "session_resume_failed" = "Could not resume";
 "session_resume_note" = "Resume reopens it on %1$@ with the same settings. All history is kept.";
