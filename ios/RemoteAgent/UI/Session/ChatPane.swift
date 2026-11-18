@@ -1,19 +1,8 @@
-// The chat of a session: its rows, what is still on its way under them, and
-// at the bottom what waits for the user and the message box. Android's
-// `ChatPane` and `Bottom` in ui/Session.kt.
-//
-// Scrolling. UIKit caches self-sizing SwiftUI cells and owns the position.
-// The tracker publishes only the new-row count and jump-to-end pill; the
-// collection controller handles follow, history anchors and user gestures.
-//
-// The keyboard. The bottom bar is the scroll view's safe-area inset, so
-// the system moves it with the keyboard and the rows end above it. A drag
-// on the chat takes the keyboard down with the finger
-// (`UIScrollView.keyboardDismissMode = .interactive`); SwiftUI only learns of the
-// keyboard's place when that drag ends, so meanwhile the bar is kept on
-// the keyboard by `KeyboardTrack`, which reads UIKit's keyboard layout
-// guide.
+// The chat of a session: renders Core's `PBSessionViewModel.{timeline, dock, composer, actions}`
+// into UIKit `ChatCollection` with scroll tracking, incremental Markdown parsing cache,
+// queued/outgoing overlays, and `SessionComposer` / `SessionEndCard`.
 import RACore
+import RAMarkdown
 import RAMarkdownUI
 import RAProto
 import SwiftUI
@@ -21,8 +10,6 @@ import UIKit
 
 // MARK: Where the end of the list is
 
-/// Coalesce UIKit layout/scroll observations outside layout. A gesture cancels
-/// pending follow work before it can issue a programmatic move.
 @MainActor
 final class ChatScrollWork {
     private let diagnosticEntity = ChatDiagnosticRing.shared.identity()
@@ -53,16 +40,11 @@ final class ChatScrollWork {
     }
 }
 
-/// The list's measurements and the decision they lead to. Not observed as a
-/// whole: it changes on every frame of a scroll, and only what the screen
-/// draws from it (`fresh`, `away`) is published.
 @MainActor
 @Observable
 final class ChatScrollTracker {
     @ObservationIgnored let diagnosticEntity = ChatDiagnosticRing.shared.identity()
-    /// Rows that came in while reading back.
     private(set) var fresh = 0
-    /// The end is more than a little out of sight.
     private(set) var away = false
 
     @ObservationIgnored private(set) var scroll = ChatScroll()
@@ -84,14 +66,11 @@ final class ChatScrollTracker {
     @ObservationIgnored private var measured = false
     @ObservationIgnored private let followWork = ChatScrollWork()
 
-    /// The end counts as in sight within this of the bar: a list at rest is rarely there to the point.
     static let slack: CGFloat = 28
 
     private var atBottom: Bool { !measured || endY <= floorY + Self.slack }
-    // Follow slack decides intent, not whether another layout is needed.
     private var needsScroll: Bool { measured && endY > floorY + 0.5 }
 
-    /// An initial scheduled jump can arrive before the representable mounts.
     func toRow(_ id: String) {
         if let controller { controller.toRow(id) }
         else { requestedRow = id }
@@ -115,26 +94,20 @@ final class ChatScrollTracker {
         if a != away { ChatDiagnosticRing.shared.record(.away, entity: diagnosticEntity, a ? 1 : 0); away = a }
     }
 
-    /// Rows joined in front, and the list is being put back where the reader was (UIKit snapshot update).
     @ObservationIgnored private(set) var keeping = false
 
-    /// The list is put back where the reader was: it is neither judged nor sent to the end meanwhile.
     func keep() {
         cancelFollow()
         ChatDiagnosticRing.shared.record(.keep, entity: diagnosticEntity)
         keeping = true
     }
 
-    /// The list is back, or the reader took it over: judged again from the next change.
     func kept() {
         guard keeping else { return }
         ChatDiagnosticRing.shared.record(.kept, entity: diagnosticEntity)
         keeping = false
-        // The collection publishes its coherent post-update viewport later.
     }
 
-    /// A new gesture owns the position, including any correction still pending
-    /// from an earlier history join. Follow again after release if still at the end.
     func interaction(_ active: Bool) -> Bool {
         let ended = dragging && !active
         ChatDiagnosticRing.shared.record(.dragging, entity: diagnosticEntity, active ? 1 : 0)
@@ -147,9 +120,6 @@ final class ChatScrollTracker {
         return ended && !keeping && scroll.following && needsScroll
     }
 
-    /// UIKit delivers one coherent viewport sample. Update all coordinates
-    /// before judging intent; mixing an old end with a new floor could revive
-    /// following just before a requested jump to an earlier row.
     func viewport(height: CGFloat, offset: CGFloat, floor: CGFloat, count: Int) -> Bool {
         ChatDiagnosticRing.shared.record(.content, entity: diagnosticEntity, Double(height), Double(height - offset))
         ChatDiagnosticRing.shared.record(.floor, entity: diagnosticEntity, Double(floor))
@@ -164,21 +134,15 @@ final class ChatScrollTracker {
     }
 
     private func settle(changed: Bool) -> Bool {
-        // The list is being put back where the reader was: neither judged nor sent to the end meanwhile.
         if keeping { return false }
-        // A change of size alone is not the user leaving the end: the list is asked whether it follows
-        // before the new place is judged. Under a finger the place is the user's doing, and is judged first.
         if dragging || !changed {
             scroll.observe(userDragging: dragging, atBottom: atBottom, rows: rows)
         }
         let go = changed && scroll.contentChanged(rows: rows)
         publish()
-        // Even at the end, a programmatic scroll competes with the finger
-        // (or its glide). Keep observing it, and follow after release instead.
         return go && !dragging && needsScroll
     }
 
-    /// Reads back as a finger would: away from the end, and no longer following. For driving the page from a script.
     func leave() {
         cancelFollow()
         ChatDiagnosticRing.shared.record(.leave, entity: diagnosticEntity)
@@ -187,15 +151,11 @@ final class ChatScrollTracker {
         publish()
     }
 
-    /// Rows came in front of those there were.
     func prepended(_ n: Int) {
         ChatDiagnosticRing.shared.record(.prepend, entity: diagnosticEntity, Double(n))
         scroll.prepended(n)
-        // Do not publish against the old row count while a snapshot is being
-        // applied: the next viewport includes the prepend and its new count.
     }
 
-    /// The user asked for the end.
     func jump() {
         cancelFollow()
         ChatDiagnosticRing.shared.record(.jump, entity: diagnosticEntity)
@@ -207,22 +167,13 @@ final class ChatScrollTracker {
 
 // MARK: The keyboard under the bar
 
-/// How much of the window the keyboard covers now, read from UIKit's
-/// keyboard layout guide, which follows the keyboard while a drag takes it
-/// down; SwiftUI's safe area only changes when the drag ends.
 @MainActor
 @Observable
 final class KeyboardTrack {
-    /// The keyboard's height over the window's bottom edge; 0 without one.
     fileprivate(set) var overlap: CGFloat = 0
-    /// The window's own bottom inset (the home indicator).
     fileprivate(set) var base: CGFloat = 0
-    /// The bottom inset SwiftUI lays the page out with.
     var inset: CGFloat = 0
 
-    /// How far the bar must be moved down to sit on the keyboard: nothing
-    /// while SwiftUI and the keyboard agree, the difference while a drag is
-    /// taking the keyboard away.
     var lag: CGFloat {
         guard inset > base + 1 else {
             ChatDiagnosticRing.shared.record(.keyboardLag, 0)
@@ -266,7 +217,6 @@ private struct KeyboardProbe: UIViewRepresentable {
         }
     }
 
-    /// Covers the window, unseen and untouched, with a line tied to the top of the keyboard.
     final class Canvas: UIView {
         private let track: KeyboardTrack
         private let line = UIView()
@@ -279,7 +229,6 @@ private struct KeyboardProbe: UIViewRepresentable {
             translatesAutoresizingMaskIntoConstraints = false
             line.translatesAutoresizingMaskIntoConstraints = false
             addSubview(line)
-            // The keyboard alone, not the home indicator under it.
             keyboardLayoutGuide.usesBottomSafeArea = false
             NSLayoutConstraint.activate([
                 line.topAnchor.constraint(equalTo: keyboardLayoutGuide.topAnchor),
@@ -309,7 +258,6 @@ private struct KeyboardProbe: UIViewRepresentable {
             let base = window?.safeAreaInsets.bottom ?? 0
             guard abs(overlap - track.overlap) > 0.5 || abs(base - track.base) > 0.5 else { return }
             ChatDiagnosticRing.shared.record(.keyboardGuide, Double(overlap), Double(base))
-            // Inside the system's own keyboard animation the bar follows with one of its own; under a finger it follows at once.
             let animated = UIView.inheritedAnimationDuration > 0
             let track = track
             if animated {
@@ -325,19 +273,48 @@ private struct KeyboardProbe: UIViewRepresentable {
     }
 }
 
+// MARK: Markdown Cache
+
+@MainActor
+private final class MarkdownBlockCache {
+    private var entries: [String: (markdown: String, blocks: [MarkdownBlock])] = [:]
+
+    func syncBuild(items: [PBSessionTimelineItem]) -> [ChatTimelineRow] {
+        var nextEntries: [String: (String, [MarkdownBlock])] = [:]
+        var rows: [ChatTimelineRow] = []
+        rows.reserveCapacity(items.count)
+        for item in items {
+            if case .agentMessage(let a)? = item.kind {
+                let blocks: [MarkdownBlock]
+                if let cached = entries[item.id], cached.markdown == a.markdown {
+                    blocks = cached.blocks
+                } else {
+                    blocks = Markdown.parse(a.markdown)
+                }
+                nextEntries[item.id] = (a.markdown, blocks)
+                rows.append(ChatTimelineRow(item: item, blocks: blocks))
+            } else {
+                rows.append(ChatTimelineRow(item: item, blocks: []))
+            }
+        }
+        entries = nextEntries
+        return rows
+    }
+}
+
 // MARK: The pane
 
-/// A message's text on a page of its own, where part of it can be selected.
 private struct SelectedText: Identifiable {
     let text: String
     var id: String { text }
 }
 
 struct ChatPane: View {
-    let session: SessionView
-    let status: Status
-    let chat: SessionModel
+    let sessionID: String
+    let vm: PBSessionViewModel?
     let onTerminal: () -> Void
+    let onLoadEarlier: () -> Void
+    let onToggleGroup: @MainActor @Sendable (String) -> Void
 
     @Environment(AppModel.self) private var model
     @Environment(AccountContext.self) private var context
@@ -345,12 +322,17 @@ struct ChatPane: View {
     @State private var open = ChatOpen()
     @State private var tracker = ChatScrollTracker()
     @State private var keyboard = KeyboardTrack()
+    @State private var cache = MarkdownBlockCache()
     @State private var allPending = false
     @State private var selecting: SelectedText?
     @State private var announcer = LiveAnnouncer()
     @State private var appliedScheduledJump: String?
     @State private var announced = false
     @State private var paneHeight: CGFloat = 0
+    @State private var lastWindowFirstSeq: UInt64 = 0
+    @State private var lastRowIDs: [String] = []
+    @State private var joins = 0
+    @State private var prepended = 0
     @FocusState private var typing: Bool
 
     private func selectMessage(_ text: String) {
@@ -360,89 +342,141 @@ struct ChatPane: View {
 
     private func toEnd() { tracker.controller?.toEnd() }
 
-    /// Back to the end of the chat and following again, from wherever the reader was: the user asked for it
-    /// (the 回到最新 pill) or sent a message and wants to see the answer. What others send does not do this.
+    private func applyScheduledJump(rows: [ChatTimelineRow], tl: PBSessionTimelineView, jump: SessionStore.ScheduledJump?) {
+        guard let jump, appliedScheduledJump != jump.runID, tl.loaded, !rows.isEmpty else { return }
+        tracker.leave()
+        let anchor: ChatTimelineRow? = tl.anchorItemID.isEmpty ? nil : rows.first { $0.id == tl.anchorItemID }
+        let exact: ChatTimelineRow? = rows.first {
+            if case .userMessage(let u)? = $0.item.kind { return u.scheduledRunID == jump.runID }
+            return false
+        }
+        let fallback: ChatTimelineRow? = rows.first { $0.item.seq >= jump.seq }
+        let target: ChatTimelineRow? = anchor ?? exact ?? fallback
+        if let target {
+            ChatDiagnosticRing.shared.record(.proxyScheduled, entity: tracker.diagnosticEntity)
+            tracker.toRow(target.id)
+            appliedScheduledJump = jump.runID
+        }
+    }
+
+    @ViewBuilder
+    private func bottomInset(
+        header: PBSessionHeaderView,
+        dock: PBSessionDockView?,
+        composer: PBSessionComposerView,
+        actions: PBSessionActionsView
+    ) -> some View {
+        bottom(header: header, dock: dock, composer: composer, actions: actions)
+            .frame(maxWidth: 760)
+            .frame(maxWidth: .infinity)
+            .background { EdgeFade(edge: .bottom) }
+            .overlay(alignment: .top) {
+                pill { followEnd() }
+                    .alignmentGuide(.top) { $0[.bottom] + 8 }
+                    .animation(Motion.enter(), value: tracker.fresh > 0)
+                    .animation(Motion.enter(), value: tracker.away)
+            }
+            .offset(y: keyboard.lag)
+    }
+
     private func followEnd() {
         tracker.jump()
         toEnd()
     }
 
-    private func dockItems(_ d: PBProjectionState) -> [DockItem] {
-        var items =
-            d.approvals.map { DockItem.approval($0.request) } + d.questions.map { DockItem.question($0.request) }
-        if session.info?.planOpen == true, d.hasPlan {
-            items.append(.plan(text: d.plan.text))
+    private func settleAttachmentsAndTracking(_ vm: PBSessionViewModel) {
+        let outgoingIDs = Set(vm.composer.outgoing.map(\.requestID))
+        let pendingIDs = Set(vm.composer.pendingInputs.map(\.requestID))
+        var unsentIDs = Set<String>()
+        var settledIDs = Set<String>()
+        for item in vm.timeline.items {
+            if case .inputState(let st)? = item.kind {
+                if st.kind == .unsentOnExit { unsentIDs.insert(st.requestID) }
+                else if !st.requestID.isEmpty { settledIDs.insert(st.requestID) }
+            }
         }
-        if status == .popup { items.append(.popup(title: session.info?.statusDetail ?? "")) }
-        return items
+        let activeIDs = outgoingIDs.union(pendingIDs).union(unsentIDs)
+        ImageCenter.of(context.remote).pruneSettled(
+            sessionID,
+            activeRequestIDs: activeIDs,
+            timelineSettledRequestIDs: settledIDs
+        )
     }
 
     var body: some View {
-        let diagnosticEntity = tracker.diagnosticEntity
-        let _ = ChatDiagnosticRing.shared.record(.chatBody, entity: diagnosticEntity, Double(chat.diagnosticEntity))
         let state = model.state
-        let store = context.sessionStore
-        let d = chat.derived
-        let jump = context.sessionStore.scheduledJump(session.id)
-        // The rows as shown: a group holding the scheduled run jumped to is unfolded.
-        let shown = { (row: ChatRow) -> [ChatRow] in
-            if let jump, row.folded.contains(where: { if case .user(let u) = $0.item { return u.scheduledRunID == jump.runID }; return false }) { return row.folded }
-            return [row]
+        let header = vm?.header ?? PBSessionHeaderView()
+        let tl = vm?.timeline ?? PBSessionTimelineView()
+        let composer = vm?.composer ?? PBSessionComposerView()
+        let actions = vm?.actions ?? PBSessionActionsView()
+        let dock = vm?.dock
+        let rows = cache.syncBuild(items: tl.items)
+        let restored = ImageCenter.of(context.remote).restoredOutgoing[sessionID] ?? []
+        let filteredRestored = restored.filter { r in
+            !composer.outgoing.contains(where: { $0.requestID == r.requestId })
+                && !composer.pendingInputs.contains(where: { $0.requestID == r.requestId })
         }
-        let rows = chat.rows.flatMap(shown)
-        let sid = session.id
-        let online = state.peer(session.machineId).ready
+        let online = header.computerOnline && !header.computerUnlinked
         let env = ChatEnv(
-            agent: session.agent, cwd: session.info?.cwd ?? "",
-            home: state.machines[session.machineId]?.meta?.home ?? "",
-            frozenAt: online ? 0 : state.offlineSinceMs,
-            noResult: Set(d.noResultSeqs), session: sid, machine: machineLabel(state, id: session.machineId),
-            machineOnline: online && state.peer(session.machineId).reachable == true, sessionExited: status == .exited)
-        let pending = pendingInputs(d)
-        let outgoing = store.outgoing(sid).filter { outgoingShown(input: d.inputStatus($0.requestId)) }
-        let dock = dockItems(d)
+            agent: header.agent != .unspecified ? header.agent : (state.sessions[sessionID]?.agent ?? defaultAgent),
+            frozenAt: online ? 0 : (header.offlineSinceMs > 0 ? header.offlineSinceMs : state.offlineSinceMs),
+            session: sessionID,
+            machine: header.hasComputerName ? header.computerName.rendered() : machineLabel(state, id: header.machineID),
+            machineOnline: online,
+            sessionExited: header.exited
+        )
+        let jump = context.sessionStore.scheduledJump(sessionID)
+        let ready = vm != nil && (!tl.loading || tl.loaded || !rows.isEmpty)
+        let pending = composer.pendingInputs
+        let outgoing = composer.outgoing
         ChatCollection(
-            items: listItems(rows: rows, env: env, pending: pending, outgoing: outgoing, derived: d, online: online),
-            env: env, tracker: tracker, ready: chat.ready, joins: chat.joins,
-            prepended: chat.rows.prefix(chat.joined).reduce(0) { $0 + shown($1).count },
-            count: rows.count + pending.count + outgoing.count,
-            interaction: { chat.interaction($0) })
-        .safeAreaInset(edge: .bottom, spacing: 0) {
-            bottom(d, dock: dock)
-                .frame(maxWidth: 760)
-                .frame(maxWidth: .infinity)
-                // The message box floats on glass: the chat fades out under it, it is not cut by a bar.
-                .background { EdgeFade(edge: .bottom) }
-                .overlay(alignment: .top) {
-                    pill { followEnd() }
-                    .alignmentGuide(.top) { $0[.bottom] + 8 }
-                    // It rises in and fades out (§4 动效).
-                    .animation(Motion.enter(), value: tracker.fresh > 0)
-                    .animation(Motion.enter(), value: tracker.away)
-                }
-                .offset(y: keyboard.lag)
-        }
-        .modifier(ScheduledJumpObserver(rowIDs: rows.map(\.id), loaded: chat.loaded, jump: jump) {
-            if let jump, appliedScheduledJump != jump.runID, chat.loaded, !rows.isEmpty {
-                tracker.leave()
-                let exact = rows.first { if case .user(let u) = $0.item { return u.scheduledRunID == jump.runID }; return false }
-                let fallback = rows.first { $0.id.hasPrefix("e") && (UInt64($0.id.dropFirst()) ?? 0) >= jump.seq }
-                if let target = exact ?? fallback {
-                    ChatDiagnosticRing.shared.record(.proxyScheduled, entity: tracker.diagnosticEntity)
-                    tracker.toRow(target.id)
-                    appliedScheduledJump = jump.runID
+            items: listItems(tl: tl, rows: rows, env: env, pending: pending, outgoing: outgoing, restored: filteredRestored, header: header, online: online),
+            env: env,
+            tracker: tracker,
+            ready: ready,
+            joins: joins,
+            prepended: prepended,
+            count: rows.count + pending.count + outgoing.count + filteredRestored.count,
+            interaction: { _ in },
+            onNearTop: {
+                if !tl.backfilling && !tl.fetching && (tl.hasEarlier_p || tl.canLoadEarlier) {
+                    onLoadEarlier()
                 }
             }
+        )
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            bottomInset(header: header, dock: dock, composer: composer, actions: actions)
+        }
+        .onChange(of: rows.map(\.id), initial: true) { oldIDs, newIDs in
+            let newFirstSeq = tl.windowFirstSeq
+            if lastWindowFirstSeq > 0, newFirstSeq > 0, newFirstSeq < lastWindowFirstSeq, let oldFirst = oldIDs.first ?? lastRowIDs.first {
+                let idx = newIDs.firstIndex(of: oldFirst) ?? 0
+                if idx > 0 {
+                    prepended = idx
+                    joins += 1
+                }
+            }
+            if newFirstSeq > 0 { lastWindowFirstSeq = newFirstSeq }
+            lastRowIDs = newIDs
+            if let vm { settleAttachmentsAndTracking(vm) }
+        }
+        .onChange(of: composer.outgoing) { _, _ in
+            if let vm { settleAttachmentsAndTracking(vm) }
+        }
+        .onChange(of: composer.pendingInputs) { _, _ in
+            if let vm { settleAttachmentsAndTracking(vm) }
+        }
+        .modifier(ScheduledJumpObserver(rowIDs: rows.map(\.id), loaded: tl.loaded, jump: jump, anchorID: tl.anchorItemID) {
+            applyScheduledJump(rows: rows, tl: tl, jump: jump)
         })
         .debugSignal("session.end") { followEnd() }
         .debugSignal("session.top") {
-            // The rows as they are when the signal comes, not as they were when it was set up.
             tracker.leave()
-            if let first = chat.rows.first { ChatDiagnosticRing.shared.record(.proxyTop, entity: tracker.diagnosticEntity); tracker.toRow(first.id) }
+            if let first = rows.first { ChatDiagnosticRing.shared.record(.proxyTop, entity: tracker.diagnosticEntity); tracker.toRow(first.id) }
         }
         .debugSignal("session.back") {
             tracker.leave()
-            if let row = chat.rows.dropFirst(chat.rows.count * 3 / 4).first {
+            if let row = rows.dropFirst(rows.count * 3 / 4).first {
                 ChatDiagnosticRing.shared.record(.proxyBack, entity: tracker.diagnosticEntity)
                 tracker.toRow(row.id)
             }
@@ -451,8 +485,7 @@ struct ChatPane: View {
         .onDisappear {
             ChatDiagnosticRing.shared.record(.chatLeave)
             tracker.cancelFollow()
-            chat.interaction(false)
-            context.sessionStore.clearScheduledJump(sid)
+            context.sessionStore.clearScheduledJump(sessionID)
         }
         .background { KeyboardProbe(track: keyboard).frame(width: 0, height: 0) }
         .onGeometryChange(for: CGFloat.self) { g in
@@ -461,7 +494,6 @@ struct ChatPane: View {
             ChatDiagnosticRing.shared.record(.keyboardInset, Double($0))
             keyboard.inset = $0
         }
-        // What the chat shows of itself, above the keyboard: an open dock item takes up to about 60% of it.
         .onGeometryChange(for: CGFloat.self) { g in ChatDiagnosticRing.shared.measure(.paneHeight) { g.size.height } } action: {
             ChatDiagnosticRing.shared.record(.paneHeight, Double($0)); paneHeight = $0
         }
@@ -470,95 +502,100 @@ struct ChatPane: View {
         .environment(
             \.chatActions,
             ChatActions(
-                image: { seq, index in nav.open(.image(session: sid, seq: seq, index: index)) },
+                image: { seq, index in nav.open(.image(session: sessionID, seq: seq, index: index)) },
                 session: { nav.open(.session(id: $0)) },
                 putBack: { requestId, text, files in
-                    // A message the session ended before writing: its text goes back into the box.
-                    if let o = store.find(sid, requestId: requestId) {
-                        SessionImages.putBack(
-                            o, session: sid, state: model.state, remote: context.remote,
-                            store: store)
+                    if let o = ImageCenter.of(context.remote).heldOutgoing(sessionID, requestId: requestId) {
+                        SessionImages.putBack(o, session: sessionID, state: model.state, remote: context.remote, store: context.sessionStore)
                     } else {
-                        let center = ImageCenter.of(context.remote)
-                        center.putBack(sid: sid, text: text, files: files, store: store)
+                        let pbFiles = files.map { ref in
+                            PBSentFile.with { $0.name = ref.name; $0.path = ref.path; $0.sizeBytes = ref.sizeBytes }
+                        }
+                        ImageCenter.of(context.remote).putBack(sid: sessionID, text: text, files: pbFiles, store: context.sessionStore)
                     }
                 },
-                select: selectMessage)
+                toggleGroup: onToggleGroup,
+                select: selectMessage
+            )
         )
         .sheet(item: $selecting) { picked in
             MessageTextSelection(text: picked.text) { selecting = nil }
         }
-        // Also when the pane comes back from the terminal with the events it already had.
-        .onChange(of: d.inputs, initial: true) { _, inputs in
-            store.settle(sid, inputs: inputs)
-            store.settleCancels(inputs: inputs)
-        }
-        .onChange(of: rows.last?.id, initial: true) { _, _ in announce(rows.last?.item, dock) }
-        .onChange(of: dock.map(\.id)) { _, _ in announce(rows.last?.item, dock) }
+        .onChange(of: rows.last?.id, initial: true) { _, _ in announce(rows.last?.item, dock, header: header, ready: ready) }
+        .onChange(of: dock?.itemID ?? "") { _, _ in announce(rows.last?.item, dock, header: header, ready: ready) }
         .debugSignal("session.focus") { typing = true }
         .debugSignal("session.blur") { typing = false }
         .debugSignal("session.select") {
-            for row in chat.rows.reversed() {
-                if case .agent(let reply) = row.item {
-                    selectMessage(reply.text)
+            for row in rows.reversed() {
+                if case .agentMessage(let reply)? = row.item.kind {
+                    selectMessage(reply.markdown)
                     break
                 }
             }
         }
     }
 
-    /// Each auxiliary row participates in the same diffable snapshot as messages.
-    private func listItems(rows: [ChatRow], env: ChatEnv, pending: [PendingInput], outgoing: [Outgoing],
-                           derived d: PBProjectionState, online: Bool) -> [ChatCollectionItem] {
+    private func listItems(
+        tl: PBSessionTimelineView,
+        rows: [ChatTimelineRow],
+        env: ChatEnv,
+        pending: [PBSessionPendingInputView],
+        outgoing: [PBSessionOutgoingView],
+        restored: [Outgoing],
+        header: PBSessionHeaderView,
+        online: Bool
+    ) -> [ChatCollectionItem] {
         var items = [ChatCollectionItem("chat-top") { Color.clear.frame(height: 6) }]
-        let sid = session.id
-        if !chat.ready || (!chat.loaded && rows.isEmpty && chat.startPrompt == nil) {
+        if tl.backfilling {
+            items.append(ChatCollectionItem("chat-earlier-loading") {
+                Text(L10n.sessionLoadingEarlier()).font(.footnote).ink(DS.ink2)
+                    .frame(maxWidth: .infinity).padding(.horizontal, chatMargin)
+            })
+        } else if tl.hasEarlier_p || tl.canLoadEarlier {
+            items.append(ChatCollectionItem("chat-earlier") {
+                TextAction(L10n.scheduleEarlier(), style: .footnote.weight(.semibold), alignment: .center) {
+                    onLoadEarlier()
+                }
+                .frame(maxWidth: .infinity).padding(.horizontal, chatMargin)
+            })
+        }
+        if tl.loading && rows.isEmpty {
             items.append(ChatCollectionItem("chat-loading") { Skeleton(inset: chatMargin) })
         }
-        if chat.historyPartial && chat.error == nil && chat.fetchError == nil {
+        if tl.historyPartial && !tl.hasError && !tl.hasFetchError {
             items.append(ChatCollectionItem("chat-history") {
                 Text(L10n.sessionIosHistoryPartial()).font(.subheadline).ink(DS.ink2).padding(.horizontal, chatMargin)
             })
         }
-        if chat.unavailableCount > 0 {
+        if tl.unavailableCount > 0 {
             items.append(ChatCollectionItem("chat-unavailable") {
-                Text(L10n.sessionHistoryUnavailable(count: Int(chat.unavailableCount)))
+                Text(L10n.sessionHistoryUnavailable(count: Int(tl.unavailableCount)))
                     .font(.subheadline).ink(DS.ink2).padding(.horizontal, 16)
             })
         }
-        if let message = ImageCenter.of(context.remote).outgoingRestoreErrors[sid] {
+        if let message = ImageCenter.of(context.remote).outgoingRestoreErrors[sessionID] {
             items.append(ChatCollectionItem("chat-outgoing-restore-error") {
                 Banner(message, tone: .error, action: L10n.commonRetry()) {
-                    ImageCenter.of(context.remote).restoreOutgoing(sid, store: context.sessionStore)
+                    ImageCenter.of(context.remote).restoreOutgoing(sessionID)
                 }.padding(.horizontal, chatMargin)
             })
         }
-        if let message = chat.liveError {
-            items.append(ChatCollectionItem("chat-live-error") {
-                Banner(message, tone: .error, action: L10n.commonRetry()) { context.remote.retryEvents(sid) }
-                    .padding(.horizontal, chatMargin)
-            })
-        }
-        if let start = chat.startPrompt {
-            items.append(ChatCollectionItem("chat-start") {
-                ChatBubble(start.text, caption: start.caption,
-                           captionColor: start.failed ? DS.red : start.warning ? DS.orangeInk : DS.ink2)
-            })
-        }
         items += rows.map { row in
-            ChatCollectionItem(row.id, row: row) { ScheduledChatRow(row: row, env: env) }
+            ChatCollectionItem(row.id, row: row) { ChatRowView(row: row, env: env).equatable() }
         }
-        if let failure = chat.error ?? (online ? chat.fetchError : nil) {
+        if tl.hasError || (online && tl.hasFetchError) {
+            let failure = tl.hasError ? tl.error.rendered() : tl.fetchError.rendered()
             items.append(ChatCollectionItem("chat-fetch-error") {
-                Banner(L10n.sessionIosHistoryFailed(reason: failure), tone: .error, action: L10n.commonRetry()) { context.remote.retryEvents(sid) }
-                    .padding(.horizontal, chatMargin).padding(.vertical, 8)
+                Banner(L10n.sessionIosHistoryFailed(reason: failure), tone: .error, action: L10n.commonRetry()) {
+                    Task { await context.coreHost.loadEarlierSessionHistory(sessionID) }
+                }
+                .padding(.horizontal, chatMargin).padding(.vertical, 8)
             })
         }
         let visible = shownPending(pending, expanded: allPending)
-        for (i, p) in visible.enumerated() {
-            items.append(ChatCollectionItem("pending-" + p.id) {
-                PendingBubble(session: session, pending: p, index: i + 1, count: pending.count,
-                              starting: status == .starting ? agentName(session.agent) : nil)
+        for p in visible {
+            items.append(ChatCollectionItem("pending-" + p.requestID) {
+                PendingBubble(sessionID: sessionID, header: header, pending: p, online: online)
             })
         }
         if visible.count < pending.count {
@@ -568,27 +605,31 @@ struct ChatPane: View {
             })
         }
         for o in outgoing {
-            items.append(ChatCollectionItem("out-" + o.requestId) {
-                OutgoingBubble(session: session, message: o, input: d.inputStatus(o.requestId),
-                               failure: d.failureReason(o.requestId), onTerminal: onTerminal)
+            items.append(ChatCollectionItem("out-" + o.requestID) {
+                CoreOutgoingBubble(sessionID: sessionID, machineID: header.machineID, outgoing: o)
+            })
+        }
+        for r in restored {
+            items.append(ChatCollectionItem("out-" + r.requestId) {
+                RestoredOutgoingBubble(sessionID: sessionID, machineID: header.machineID, message: r)
             })
         }
         items.append(ChatCollectionItem("chat-end") { Color.clear.frame(height: 8) })
         return items
     }
 
-    private func announce(_ last: ChatItem?, _ dock: [DockItem]) {
-        // What was there when the page opened is read, not announced.
-        let initial = !announced || !chat.ready
-        if chat.ready { announced = true }
+    private func announce(_ last: PBSessionTimelineItem?, _ dock: PBSessionDockView?, header: PBSessionHeaderView, ready: Bool) {
+        let initial = !announced || !ready
+        if ready { announced = true }
         let word = announcer.announce(
-            last: last, dock: dock, agent: agentName(session.agent), now: nowMs(), initial: initial)
+            last: last, dock: dock, agent: header.agentName.isEmpty ? agentName(header.agent) : header.agentName,
+            now: nowMs(), initial: initial
+        )
         if let word, UIAccessibility.isVoiceOverRunning {
             AccessibilityNotification.Announcement(word).post()
         }
     }
 
-    /// What came in while reading back, or only the way to the end.
     @ViewBuilder private func pill(_ action: @escaping () -> Void) -> some View {
         if tracker.fresh > 0 {
             Button(action: action) {
@@ -618,222 +659,326 @@ struct ChatPane: View {
         }
     }
 
-    /// The dock and the message box, or a card when nothing can be sent.
-    @ViewBuilder private func bottom(_ d: PBProjectionState, dock: [DockItem]) -> some View {
-        let state = model.state
-        let machine = state.machines[session.machineId]
-        let name = machineLabel(state, id: session.machineId)
-        if status == .exited {
+    @ViewBuilder private func bottom(
+        header: PBSessionHeaderView,
+        dock: PBSessionDockView?,
+        composer: PBSessionComposerView,
+        actions: PBSessionActionsView
+    ) -> some View {
+        let taskOwned = model.state.sessions[sessionID]?.info?.taskOwned == true
+        if header.exited {
             VStack(spacing: 0) {
-                if session.info?.taskOwned == true { Text(L10n.sessionReplyMoves()).font(.footnote).foregroundStyle(DS.ink2).padding(8) }
-                EndedCard(scheduledClosed: d.scheduledClosed, idleClosed: d.idleClosed, session: session, machine: machine, name: name)
+                if taskOwned { Text(L10n.sessionReplyMoves()).font(.footnote).foregroundStyle(DS.ink2).padding(8) }
+                EndedCard(sessionID: sessionID, header: header, actions: actions)
             }
-        } else if status == .offline {
-            Ticking { now in
-                let seen = machine?.lastSeenMs ?? 0
-                SessionEndCard(
-                    L10n.newSessionMachineOffline(name: name),
-                    text: offlineText(lastSeen: seen > 0 ? whenText(seen, now: now) : "")
-                ) { EmptyView() }
-            }
+        } else if !header.computerOnline || header.computerUnlinked {
+            let name = header.hasComputerName ? header.computerName.rendered() : machineLabel(model.state, id: header.machineID)
+            let offlineDesc = header.hasOfflineText ? header.offlineText.rendered() : L10n.projectsComputerOffline()
+            SessionEndCard(
+                L10n.newSessionMachineOffline(name: name),
+                text: offlineDesc
+            ) { EmptyView() }
         } else {
             VStack(spacing: 0) {
-                if let first = dock.first {
-                    let more = dock.count - 1
+                if let dock, dock.hasItem_p {
                     let hide = { typing = false }
                     let store = context.sessionStore
-                    let key = dockFoldKey(session: session.id, first)
-                    // Open until the user folds it, or folded when it came with a draft in the box (`SessionStore.dockOpen`).
-                    let sid = session.id
+                    let key = dockFoldKey(sessionID: sessionID, dock)
+                    let sid = sessionID
                     let remote = context.remote
-                    let open = Binding(
+                    let openBinding = Binding(
                         get: {
                             store.dockOpen(key) {
                                 !store.draft(sid).jvmTrim().isEmpty
                                     || !ImageCenter.of(remote).draft(ImageCenter.sessionKey(sid)).images.isEmpty
                             } && !SessionDebug.shows("fold")
                         },
-                        set: { store.setDockOpen(key, $0) })
+                        set: { store.setDockOpen(key, $0) }
+                    )
                     Group {
-                        switch first {
-                        case .approval(let a):
+                        switch dock.kind {
+                        case .approval:
                             ApprovalDock(
-                                session: session, approval: a, more: more, open: open,
-                                startReason: SessionDebug.shows("reason"), onOpen: hide)
-                        case .question(let q):
+                                sessionID: sessionID,
+                                machineID: header.machineID,
+                                dock: dock,
+                                open: openBinding,
+                                startReason: SessionDebug.shows("reason"),
+                                onOpen: hide
+                            )
+                        case .question:
                             QuestionDock(
-                                session: session, question: q, more: more, open: open, onOpen: hide,
+                                sessionID: sessionID,
+                                machineID: header.machineID,
+                                dock: dock,
+                                open: openBinding,
+                                onOpen: hide,
                                 onTerminal: onTerminal
-                            ) { nav.open(.question(session: session.id, question: q.questionID)) }
-                        case .plan(let text):
-                            PlanDock(session: session, text: text, more: more, open: open, onOpen: hide) {
-                                nav.open(.plan(session: session.id))
-                            }
-                        case .popup(let title):
+                            ) { nav.open(.question(session: sessionID, question: dock.question.questionID)) }
+                        case .plan:
+                            PlanDock(
+                                sessionID: sessionID,
+                                machineID: header.machineID,
+                                dock: dock,
+                                open: openBinding,
+                                onOpen: hide
+                            ) { nav.open(.plan(session: sessionID)) }
+                        case .terminalPopup:
                             PopupDock(
-                                session: session, title: title, more: more, open: open, onOpen: hide,
-                                onTerminal: onTerminal)
+                                dock: dock,
+                                open: openBinding,
+                                onOpen: hide,
+                                onTerminal: onTerminal
+                            )
+                        case .unspecified, .UNRECOGNIZED:
+                            EmptyView()
                         }
                     }
-                    // Another item is another card: what was opened or typed in the one before does not carry over.
-                    .id(first.id)
-                    // It comes up from the message box, 12 points and fading, while the chat gives up its room;
-                    // answered, it fades and closes (§4 动效, 停靠卡).
+                    .id(dockFoldKey(sessionID: sessionID, dock))
                     .transition(Motion.roomy(rise: Motion.dockRise))
                 }
-                if session.info?.taskOwned == true { Text(L10n.sessionReplyMoves()).font(.footnote).foregroundStyle(DS.ink2).padding(8) }
-                SessionComposer(session: session, status: status, derived: d, focus: $typing, onSent: followEnd)
+                if taskOwned { Text(L10n.sessionReplyMoves()).font(.footnote).foregroundStyle(DS.ink2).padding(8) }
+                SessionComposer(
+                    sessionID: sessionID,
+                    header: header,
+                    composer: composer,
+                    actions: actions,
+                    focus: $typing,
+                    onSent: followEnd
+                )
             }
-            .animation(dock.first == nil ? Motion.exit() : Motion.enter(), value: dock.first?.id)
+            .animation(dock?.hasItem_p != true ? Motion.exit() : Motion.enter(), value: dock?.itemID ?? "")
         }
     }
 }
 
 // MARK: Under the rows
 
-/// A message the model has not received yet, at the end of the chat: what
-/// it waits for, and a way to take it back (architecture §6).
 private struct PendingBubble: View {
-    let session: SessionView
-    let pending: PendingInput
-    let index: Int
-    /// How many messages wait, this one among them.
-    let count: Int
-    let starting: String?
-    @Environment(AppModel.self) private var model
+    let sessionID: String
+    let header: PBSessionHeaderView
+    let pending: PBSessionPendingInputView
+    let online: Bool
     @Environment(AccountContext.self) private var context
     @State private var expanded = false
-    @State private var resume = ActionRunner()
+
+    private func sendResume() {
+        Task {
+            await context.coreHost.submitSessionCommand(
+                sessionID: sessionID,
+                command: .with {
+                    $0.resumeInput = .with {
+                        $0.sessionID = sessionID
+                        $0.requestID = pending.requestID
+                    }
+                },
+                machineID: header.machineID,
+                slotKey: pending.resume.slotKey
+            )
+        }
+    }
+
+    private func sendCancel() {
+        Task {
+            await context.coreHost.submitSessionCommand(
+                sessionID: sessionID,
+                command: .with {
+                    $0.cancelInput = .with {
+                        $0.sessionID = sessionID
+                        $0.requestID = pending.requestID
+                    }
+                },
+                machineID: header.machineID,
+                slotKey: pending.cancel.slotKey
+            )
+        }
+    }
 
     var body: some View {
-        let store = context.sessionStore
-        let (remote, sid, id) = (context.remote, session.id, pending.id)
-        let cancel = store.cancels[id]
-        let online = model.state.peer(session.machineId).ready
-        let canceling = cancel == .canceling
-        let cancelFailed = cancel != nil && !canceling
-        let label = pendingLabel(
-            pending, cancel: cancel, resuming: resume.running, resumeFailed: !resume.error.isEmpty,
-            starting: starting, agent: session.agent)
-        let origin = originLabel(pending.origin, state: model.state, me: context.me, machine: "")
-        if isSkeleton(pending.id) || isSkeleton(pending.text) {
-            Text(skeletonMessage).font(.subheadline).ink(DS.ink2)
-        } else {
-            VStack(alignment: .trailing, spacing: 0) {
-                Button {
-                    expanded.toggle()
-                } label: {
-                    ChatBubble(
-                        pending.text.isEmpty ? (pending.files.isEmpty ? L10n.imageIosPlaceholder() : nil) : pending.text, pending: true,
-                        lines: expanded ? nil : 4, padded: false
+        let cancelBusy = pending.cancel.status == .pending || pending.cancel.busy
+        let resumeBusy = pending.resume.status == .pending || pending.resume.busy
+        let cancelFailed = !cancelBusy && (pending.cancel.status == .failed || pending.cancel.status == .unknown)
+        let resumeFailed = !resumeBusy && (pending.resume.status == .failed || pending.resume.status == .unknown)
+        let labelText = pending.hasLabel ? pending.label.rendered() : ""
+        let captionText = pending.hasCaption ? pending.caption.rendered() : labelText
+        let bodyText = pending.text.isEmpty ? L10n.imageIosPlaceholder() : pending.text
+        VStack(alignment: .trailing, spacing: 0) {
+            Button {
+                expanded.toggle()
+            } label: {
+                ChatBubble(
+                    bodyText,
+                    pending: true,
+                    lines: expanded ? nil : 4,
+                    padded: false
+                ) {
+                    SessionImages.PendingThumbs(session: sessionID, requestId: pending.requestID)
+                }
+                .padding(.vertical, -8)
+                .opacity(cancelBusy ? 0.5 : 1)
+            }
+            .buttonStyle(PressStyle())
+            .accessibilityHint(expanded ? L10n.markdownCollapse() : L10n.markdownExpand())
+            HStack(spacing: 6) {
+                Text(captionText)
+                    .font(.footnote).ink(cancelFailed || pending.feedbackUncertain ? DS.red : DS.ink2).lineLimit(1)
+                    .frame(maxWidth: .infinity, alignment: .trailing)
+                if pending.canResume && !cancelBusy {
+                    TextAction(
+                        resumeFailed ? L10n.commonRetry() : L10n.composerSend(),
+                        style: .footnote.weight(.semibold),
+                        enabled: online && !resumeBusy,
+                        alignment: .center
                     ) {
-                        SessionImages.PendingThumbs(session: sid, requestId: id)
-                        FileChips(files: pending.files)
-                    }
-                    .padding(.vertical, -8)
-                    .opacity(canceling ? 0.5 : 1)
-                }
-                .buttonStyle(PressStyle())
-                .accessibilityHint(expanded ? L10n.markdownCollapse() : L10n.markdownExpand())
-                HStack(spacing: 6) {
-                    // The note gives way; what can be done stays.
-                    Text(scheduledPendingLabel(pending, label: label) ?? (label + pendingSuffix(pending, origin: origin, index: index, of: count, cancel: cancel)))
-                        .font(.footnote).ink(cancelFailed ? DS.red : DS.ink2).lineLimit(1)
-                        .frame(maxWidth: .infinity, alignment: .trailing)
-                    if pending.paused && !canceling {
-                        TextAction(
-                            resume.error.isEmpty ? L10n.composerSend() : L10n.commonRetry(), style: .footnote.weight(.semibold),
-                            enabled: online && !resume.running, alignment: .center
-                        ) {
-                            resume.run {
-                                var cmd = PBCommand()
-                                cmd.resumeInput = .with {
-                                    $0.sessionID = sid
-                                    $0.requestID = id
-                                }
-                                try await remote.command(sid, cmd)
-                            }
-                        }
-                    }
-                    if !canceling {
-                        TextAction(
-                            cancelFailed ? L10n.commonRetry() : L10n.commonCancel(), style: .footnote.weight(.semibold), enabled: online,
-                            alignment: .trailing
-                        ) {
-                            store.cancel(remote, sid: sid, requestId: id)
-                        }
+                        sendResume()
                     }
                 }
-                .frame(minHeight: 36)
-            }
-            .frame(maxWidth: .infinity, alignment: .trailing)
-            .padding(.horizontal, chatMargin).padding(.vertical, 6)
-            .debugSignal("session.cancel") { store.cancel(remote, sid: sid, requestId: id) }
-            .debugSignal("session.resume") {
-                resume.run {
-                    var cmd = PBCommand()
-                    cmd.resumeInput = .with {
-                        $0.sessionID = sid
-                        $0.requestID = id
+                if pending.canCancel && !cancelBusy {
+                    TextAction(
+                        cancelFailed ? L10n.commonRetry() : L10n.commonCancel(),
+                        style: .footnote.weight(.semibold),
+                        enabled: online,
+                        alignment: .trailing
+                    ) {
+                        sendCancel()
                     }
-                    try await remote.command(sid, cmd)
                 }
             }
+            .frame(minHeight: 36)
         }
+        .frame(maxWidth: .infinity, alignment: .trailing)
+        .padding(.horizontal, chatMargin).padding(.vertical, 6)
+        .debugSignal("session.cancel") { sendCancel() }
+        .debugSignal("session.resume") { sendResume() }
     }
 }
 
-/// A message sent from this client, until the daemon's events show it: how sending stands, and what to do when it did not go.
-private struct OutgoingBubble: View {
-    let session: SessionView
-    let message: Outgoing
-    let input: PBInputStatus?
-    let failure: String?
-    let onTerminal: () -> Void
+private struct CoreOutgoingBubble: View {
+    let sessionID: String
+    let machineID: String
+    let outgoing: PBSessionOutgoingView
     @Environment(AppModel.self) private var model
     @Environment(AccountContext.self) private var context
 
-    private func act(_ action: OutgoingAction) {
-        let store = context.sessionStore
-        switch action {
-        case .retry: store.deliver(context.remote, sid: session.id, message)
-        case .remove:
-            store.remove(session.id, message)
-            message.images.forEach { $0.release() }
-        case .putBack:
-            SessionImages.putBack(
-                message, session: session.id, state: model.state, remote: context.remote,
-                store: store)
-        case .terminal: onTerminal()
+    private func retrySend() {
+        Task {
+            await context.coreHost.submitSessionCommand(
+                sessionID: sessionID,
+                command: .with {
+                    $0.send = .with {
+                        $0.sessionID = sessionID
+                        $0.requestID = outgoing.requestID
+                        $0.text = outgoing.text
+                        $0.imageIds = outgoing.imageIds
+                        $0.fileIds = outgoing.fileIds
+                        $0.mode = outgoing.mode
+                    }
+                },
+                machineID: machineID,
+                slotKey: outgoing.slotKey
+            )
         }
     }
 
     var body: some View {
-        let note = outgoingNote(
-            state: message.state, error: message.error, input: input, failure: failure,
-            agent: session.agent, hasImages: message.canPutBack,
-            missingImages: message.missingImages, outcomeNotice: message.outcomeNotice)
-        let ink: Color =
-            switch note.tone {
-            case .plain: DS.ink2
-            case .warn: DS.orangeInk
-            case .error: DS.red
+        let isSending = outgoing.state == .sending
+        let isFailed = outgoing.state == .failed
+        let isUnknown = outgoing.state == .unknown
+        let toneColor: Color = isFailed ? DS.red : (isUnknown || outgoing.feedbackUncertain ? DS.orangeInk : DS.ink2)
+        let captionText: String = {
+            if outgoing.hasFeedback {
+                let fb = outgoing.feedback.rendered()
+                if !fb.isEmpty { return fb }
             }
-        ChatBubble(
-            message.text.isEmpty ? nil : message.text, caption: note.caption, captionColor: ink,
-            captionIcon: note.sending ? Mark.progress : nil, failed: note.failed,
-            links: note.actions.filter { $0 != .putBack || (message.imageIds.isEmpty && message.fileIds.isEmpty) || message.hasLocalAttachments }
-                .map { action in ChatLink(action.label) { act(action) } }
+            return outgoing.caption.rendered()
+        }()
+        let canRestoreAttachments = (outgoing.imageIds.isEmpty && outgoing.fileIds.isEmpty)
+            || ImageCenter.of(context.remote).heldOutgoing(sessionID, requestId: outgoing.requestID)?.hasLocalAttachments == true
+        var links: [ChatLink] = []
+        if outgoing.canRestore && canRestoreAttachments {
+            links.append(ChatLink(L10n.composerRestore()) {
+                guard SessionImages.canPutBack(
+                    requestId: outgoing.requestID, session: sessionID, state: model.state, remote: context.remote
+                ) else { return }
+                Task { await context.coreHost.restoreOutgoing(sessionID: sessionID, requestID: outgoing.requestID) }
+            })
+        }
+        if outgoing.canRetry {
+            links.append(ChatLink(L10n.commonRetry()) { retrySend() })
+        }
+        if outgoing.canDismiss {
+            links.append(ChatLink(L10n.sessionDismissNotice()) {
+                ImageCenter.of(context.remote).release(sid: sessionID, requestId: outgoing.requestID)
+                Task { await context.coreHost.dismissOutgoing(sessionID: sessionID, requestID: outgoing.requestID) }
+            })
+        }
+        return ChatBubble(
+            outgoing.text.isEmpty ? nil : outgoing.text,
+            caption: captionText.isEmpty ? nil : captionText,
+            captionColor: toneColor,
+            captionIcon: isSending ? Mark.progress : nil,
+            failed: isFailed || isUnknown,
+            links: links
         ) {
-            SessionImages.OutgoingThumbs(message: message)
+            SessionImages.OutgoingThumbs(session: sessionID, requestId: outgoing.requestID)
         }
         .accessibilityElement(children: .contain)
     }
 }
 
-/// In place of the message box when nothing can be sent: the session
-/// ended, or its computer is away. A card of glass where the capsule
-/// would float, its state's mark, one line of why and what can be done.
+private struct RestoredOutgoingBubble: View {
+    let sessionID: String
+    let machineID: String
+    let message: Outgoing
+    @Environment(AppModel.self) private var model
+    @Environment(AccountContext.self) private var context
+
+    var body: some View {
+        let links: [ChatLink] = [
+            ChatLink(L10n.composerRestore()) {
+                if SessionImages.putBack(
+                    message, session: sessionID, state: model.state, remote: context.remote,
+                    store: context.sessionStore, releaseFailure: true
+                ) {
+                    ImageCenter.of(context.remote).adoptRestored(sessionID, requestId: message.requestId)
+                }
+            },
+            ChatLink(L10n.commonRetry()) {
+                ImageCenter.of(context.remote).adoptRestored(sessionID, requestId: message.requestId)
+                Task {
+                    await context.coreHost.submitSessionCommand(
+                        sessionID: sessionID,
+                        command: .with {
+                            $0.send = .with {
+                                $0.sessionID = sessionID
+                                $0.requestID = message.requestId
+                                $0.text = message.text
+                                $0.imageIds = message.imageIds
+                                $0.fileIds = message.fileIds
+                                $0.mode = message.mode
+                            }
+                        },
+                        machineID: machineID
+                    )
+                }
+            },
+            ChatLink(L10n.sessionDismissNotice()) {
+                ImageCenter.of(context.remote).dismissRestored(sessionID, requestId: message.requestId)
+            },
+        ]
+        ChatBubble(
+            message.text.isEmpty ? nil : message.text,
+            caption: message.error.isEmpty ? L10n.attachmentIosTheAppRestartedDeliveryOfThisMessageIsUnconfirmed() : message.error,
+            captionColor: message.state == .failed ? DS.red : DS.orangeInk,
+            failed: true,
+            links: links
+        ) {
+            SessionImages.OutgoingThumbs(session: sessionID, requestId: message.requestId)
+        }
+        .accessibilityElement(children: .contain)
+    }
+}
+
 struct SessionEndCard<Actions: View>: View {
     private let title: String
     private let text: String
@@ -857,7 +1002,6 @@ struct SessionEndCard<Actions: View>: View {
             .accessibilityAddTraits(.isHeader)
             Text(text).font(.subheadline).foregroundStyle(DS.ink2).padding(.top, 4)
                 .frame(maxWidth: .infinity, alignment: .leading)
-            // Whatever can be done stands under the text; with nothing to do the card ends with it.
             if Actions.self != EmptyView.self {
                 VStack(alignment: .leading, spacing: 0) { actions }.padding(.top, 12)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -869,60 +1013,59 @@ struct SessionEndCard<Actions: View>: View {
     }
 }
 
-/// 会话已结束, with 恢复会话 while its computer can be reached.
 private struct EndedCard: View {
-    let scheduledClosed: Bool
-    let idleClosed: Bool
-    let session: SessionView
-    let machine: MachineView?
-    let name: String
-    @Environment(AppModel.self) private var model
+    let sessionID: String
+    let header: PBSessionHeaderView
+    let actions: PBSessionActionsView
     @Environment(AccountContext.self) private var context
-    @State private var act = ActionRunner()
 
     var body: some View {
-        let state = model.state
-        let reachable = machine?.pathState.reachable == true && !state.peer(session.machineId).unlinked
+        let resume = actions.resume
+        let running = resume.status == .pending || resume.busy
+        let err = (!running && resume.hasErrorText) ? resume.errorText.rendered() : (running ? "" : resume.errorCode)
+        let endedDesc = header.hasEndedText ? header.endedText.rendered() : L10n.sessionEnded()
         SessionEndCard(
-            act.running ? L10n.sessionResuming() : L10n.sessionEnded(),
-            text: endedText(
-                detail: session.info?.statusDetail ?? "", scheduledClosed: scheduledClosed, idleClosed: idleClosed, unlinked: state.peer(session.machineId).unlinked,
-                machineOnline: machine?.pathState.reachable == true, machine: name),
-            mark: act.running ? .running : .idle
+            running ? L10n.sessionResuming() : L10n.sessionEnded(),
+            text: endedDesc,
+            mark: running ? .running : .idle
         ) {
-            if reachable && !act.running {
-                InkButton(act.error.isEmpty ? L10n.sessionResume() : L10n.sessionTryAgain()) {
+            if actions.canResume && !running {
+                InkButton(err.isEmpty ? L10n.sessionResume() : L10n.sessionTryAgain()) {
                     restore()
                 }
-                .disabled(!state.peer(session.machineId).ready)
             }
-            if !act.error.isEmpty {
-                Text(L10n.sessionIosResumeFailed(reason: act.error)).font(.footnote).foregroundStyle(DS.red).padding(.top, 8)
+            if !err.isEmpty {
+                Text(L10n.sessionIosResumeFailed(reason: err)).font(.footnote).foregroundStyle(DS.red).padding(.top, 8)
             }
         }
-        .debugSignal("session.restore") { if reachable { restore() } }
+        .debugSignal("session.restore") { if actions.canResume { restore() } }
     }
+
     private func restore() {
-        guard model.state.peer(session.machineId).ready && machine?.pathState.reachable == true else { return }
-        act.run {
-            var cmd = PBCommand(); cmd.resumeSession.sessionID = session.id
-            try await context.remote.command(session.id, cmd)
+        Task {
+            await context.coreHost.submitSessionCommand(
+                sessionID: sessionID,
+                command: .with { $0.resumeSession.sessionID = sessionID },
+                machineID: header.machineID,
+                slotKey: actions.resume.slotKey
+            )
         }
     }
 }
 
-/// Loading can finish without changing row IDs; that transition must retry a pending jump.
 struct ScheduledJumpObserver: ViewModifier {
     let rowIDs: [String]
     let loaded: Bool
     let jump: SessionStore.ScheduledJump?
+    let anchorID: String
     let apply: () -> Void
     private struct Input: Equatable {
         let rowIDs: [String]
         let loaded: Bool
         let jump: SessionStore.ScheduledJump?
+        let anchorID: String
     }
     func body(content: Content) -> some View {
-        content.onChange(of: Input(rowIDs: rowIDs, loaded: loaded, jump: jump), initial: true) { _, _ in apply() }
+        content.onChange(of: Input(rowIDs: rowIDs, loaded: loaded, jump: jump, anchorID: anchorID), initial: true) { _, _ in apply() }
     }
 }

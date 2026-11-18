@@ -47,28 +47,42 @@ struct HomeApprovalCard: View {
     static let lines = 5
 
     var body: some View {
-        let target = ApprovalTarget(card: card)
-        if context.sessionStore.resolve(card.approvalID).submitted {
-            ApprovalSubmitted(target: target, chosen: chosen, floating: false)
+        let dock = context.core.sessions[card.sessionID]?.dock
+        let cmdState: PBSessionCommandState? = (dock?.hasItem_p == true && dock?.kind == .approval && dock?.approval.approvalID == card.approvalID) ? dock?.command : nil
+        let target = ApprovalTarget(card: card, commandState: cmdState)
+        let choice = context.sessionStore.approvalChoice(card.approvalID)
+        Group {
+            if target.isSubmitted(choice: choice) {
+                ApprovalSubmitted(target: target, chosen: chosen, floating: false)
+                    .padding(.horizontal, DS.Space.card)
+            } else {
+                DarkCard {
+                    DarkCardHead(kind: card.kindText.rendered(), right: card.time.rendered(), hot: card.hot)
+                    title
+                    command
+                    ApprovalDecision(
+                        target: target,
+                        cut: more > 0 && !full,
+                        onFull: { withAnimation(Motion.enter()) { full = true } },
+                        // Until the command is laid out it is not known to be whole: nothing is allowed before.
+                        measured: total > 0,
+                        denying: $denying,
+                        chosen: $chosen,
+                        signals: ("home.allow", "home.deny")
+                    )
+                    .padding(.top, 16)
+                }
                 .padding(.horizontal, DS.Space.card)
-        } else {
-            DarkCard {
-                DarkCardHead(kind: card.kindText.rendered(), right: card.time.rendered(), hot: card.hot)
-                title
-                command
-                ApprovalDecision(
-                    target: target,
-                    cut: more > 0 && !full,
-                    onFull: { withAnimation(Motion.enter()) { full = true } },
-                    // Until the command is laid out it is not known to be whole: nothing is allowed before.
-                    measured: total > 0,
-                    denying: $denying,
-                    chosen: $chosen,
-                    signals: ("home.allow", "home.deny")
-                )
-                .padding(.top, 16)
             }
-            .padding(.horizontal, DS.Space.card)
+        }
+        .task(id: card.sessionID) {
+            let sid = card.sessionID
+            guard !sid.isEmpty else { return }
+            let token = await context.coreHost.acquireSessionWatch(sid)
+            defer { Task { await context.coreHost.releaseSessionWatch(token) } }
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(3600))
+            }
         }
     }
 
@@ -115,7 +129,7 @@ struct HomeApprovalCard: View {
             .padding(.vertical, -8).padding(.top, 8)
         }
         if card.truncated {
-            Text(approvalTruncatedMessage).font(.footnote).foregroundStyle(DS.red).padding(.top, 8)
+            Text(L10n.approvalTruncated()).font(.footnote).foregroundStyle(DS.red).padding(.top, 8)
         }
     }
 }

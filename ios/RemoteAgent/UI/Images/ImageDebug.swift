@@ -115,7 +115,7 @@ enum ImageDebug {
     }
 
     /// A message with images on its way, for `-imageOutgoing`.
-    static func outgoing(_ center: ImageCenter, sid: String, store: SessionStore) {
+    static func outgoing(_ center: ImageCenter, sid: String) {
         guard !center.live, args.contains("-imageOutgoing") else { return }
         func message(_ id: String, _ text: String, _ state: Outgoing.State, images: [Int], error: String = "") -> Outgoing {
             let o = Outgoing(requestId: id, text: text, imageIds: images.map { "sample-image-\($0)" }, images: images.map { sample($0 + 10, .ready) })
@@ -123,8 +123,8 @@ enum ImageDebug {
             o.error = error
             return o
         }
-        center.debugShow(sid, message("img-out-1", "这两个页面底部的按钮都点不到", .sending, images: [1, 2]), store: store)
-        center.debugShow(sid, message("img-out-2", "", .failed, images: [3, 4, 5, 6, 7], error: "电脑不在线，指令没有发出"), store: store)
+        center.debugShow(sid, message("img-out-1", "这两个页面底部的按钮都点不到", .sending, images: [1, 2]))
+        center.debugShow(sid, message("img-out-2", "", .failed, images: [3, 4, 5, 6, 7], error: "电脑不在线，指令没有发出"))
     }
 
     /// With sample data there is no server to fetch a display copy from: the state asked for, or what the event's sync says.
@@ -179,7 +179,7 @@ private struct ImageDraftDebug: ViewModifier {
         content
             .task(id: key) {
                 ImageDebug.seed(center, key: key, machine: machine)
-                if let session { ImageDebug.outgoing(center, sid: session.id, store: session.store) }
+                if let session { ImageDebug.outgoing(center, sid: session.id) }
                 let documents = ImageDebug.documentURLs()
                 if !documents.isEmpty { center.addFiles(key, documents, machine: fileMachine, online: blocked == nil) }
                 let files = ImageDebug.launchFiles()

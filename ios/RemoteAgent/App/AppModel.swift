@@ -783,6 +783,7 @@ final class AppModel {
         /// started; `initial` is what it is about to show, for the first frame.
         func showDemo(
             account: Account, remote: Remote, initial: RemoteState,
+            events: [String: [PBEvent]] = [:],
             load: @escaping @Sendable () async -> Void
         ) {
             isDemo = true
@@ -806,7 +807,7 @@ final class AppModel {
             Task {
                 await load()
                 if gen == generation { follow(remote.state, gen: gen) }
-                await host?.seedDemo(state: remote.current)
+                await host?.seedDemo(state: remote.current, events: events)
             }
         }
 

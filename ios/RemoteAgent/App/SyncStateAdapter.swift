@@ -1,10 +1,9 @@
-// Transitional Step 3-4 adapters from Core's SyncStateView / SessionDataView
-// into the legacy shell models (`RemoteState`, `SessionEvents`) and the
-// per-slot unknown-command tracker (`Attempt`) used by unmigrated Step 3-4 views
-// (`SessionScreen`, `SessionStore`, `SchedulesScreen`, `ScheduleStore`, `Settings`,
-// `MachineStatusScreen`, `NewSessionDraft`).
+// Transitional Step 4 adapters from Core's SyncStateView
+// into the legacy shell model (`RemoteState`) and the
+// per-slot unknown-command tracker (`Attempt`) used by unmigrated Step 4 views
+// (`SchedulesScreen`, `ScheduleStore`, `Settings`, `MachineStatusScreen`).
 //
-// Delete this file once Steps 3 and 4 migrate those screens into Go Core.
+// Delete this file once Step 4 migrates those screens into Go Core.
 import Foundation
 import RACore
 import RAProto
@@ -120,31 +119,10 @@ enum SyncStateAdapter {
         s.devices = devices
         return s
     }
-
-    static func toSessionEvents(_ v: PBCoreSessionDataView) -> SessionEvents {
-        let unavailable = Set(v.unavailableSeqs)
-        let verified = v.events.filter { !unavailable.contains($0.seq) }
-        let errText = v.hasError ? renderCoreText(v.error) : ""
-        let fetchErrText = v.hasFetchError ? renderCoreText(v.fetchError) : ""
-        var out = SessionEvents(
-            events: PagedList(v.events),
-            loaded: v.loaded,
-            error: errText.isEmpty ? nil : errText,
-            fetchError: fetchErrText.isEmpty ? nil : fetchErrText,
-            historyPartial: v.tailRequested
-        )
-        out.unavailableCount = Int(v.unavailableCount)
-        out.verifiedEvents = PagedList(verified)
-        if v.hasLiveSnapshot {
-            out.live = v.liveSnapshot
-        }
-        return out
-    }
 }
 
-/// Step 3-4 transitional per-slot command holder for unmigrated UI views
-/// (`SessionStore`, `ScheduleMutation`, `NewSessionDraft`). Delete when Step 3-4
-/// migrate Session and Schedules commands into Core.
+/// Step 4 transitional per-slot command holder for unmigrated UI views
+/// (`ScheduleMutation`). Delete when Step 4 migrates Schedules commands into Core.
 final class Attempt {
     static var expiredUnknown: LocalizedMessage {
         L10nMessage.errorsTheRelayDidNotProvideAVerifiableExecutionResult()

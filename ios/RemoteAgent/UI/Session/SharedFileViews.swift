@@ -18,13 +18,19 @@ private enum CardInk {
 
 /// The files of one `send_file` call: a card each, 8 apart, at the left with the agent's words.
 struct SharedFilesRow: View {
-    let item: ChatItem.SharedFiles
+    let item: PBSessionSharedFilesItem
     let env: ChatEnv
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             ForEach(item.files, id: \.fileID) { file in
-                SharedFileCardView(file: file, env: env)
+                let pbFile = PBSharedFile.with {
+                    $0.fileID = file.fileID
+                    $0.name = file.name
+                    $0.path = file.path
+                    $0.sizeBytes = file.sizeBytes
+                }
+                SharedFileCardView(file: pbFile, env: env)
             }
         }
         // 8 from the next card, as the cards of one row are (the rows themselves are 4 + 4).

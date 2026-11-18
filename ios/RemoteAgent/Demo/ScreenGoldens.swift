@@ -69,5 +69,18 @@ enum ScreenGoldens {
         if let index, all.indices.contains(index) { return all[index] }
         return all.last ?? PBCoreNewSessionViewModel()
     }
+
+    static func sessions(_ name: String) -> [PBSessionViewModel] {
+        viewModels(named: name).compactMap { vm -> PBSessionViewModel? in
+            guard case .session(let s)? = vm.view else { return nil }
+            return s
+        }
+    }
+
+    static func session(_ name: String, index: Int? = nil) -> PBSessionViewModel {
+        let all = sessions(name)
+        if let index, all.indices.contains(index) { return all[index] }
+        return all.last ?? PBSessionViewModel()
+    }
 }
 #endif

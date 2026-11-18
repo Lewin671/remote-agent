@@ -2,75 +2,80 @@ import RACore
 import RAProto
 import SwiftUI
 
-/// The image viewer at an event's image (Android's ImageViewer; design mock
-/// 「会话里的图片 · 查看大图」): every image of the session, paged, from the
-/// one tapped. Pinch or double-tap to zoom, swipe down or ✕ to close; 保存
-/// and 分享 hand the picture to the system. It is black in both
-/// appearances. The parts are in UI/Images/ImageViewer.swift.
+/// The image viewer at an event's image: every image of the session's Core
+/// timeline, paged, starting from `seq` / `index`.
 struct ImageViewerScreen: View {
     let session: String
     let seq: UInt64
     let index: Int
 
     @Environment(AppModel.self) private var model
-    @Environment(Navigator.self) private var nav
     @Environment(AccountContext.self) private var context
+    @Environment(Navigator.self) private var nav
     @Environment(\.dynamicTypeSize) private var typeSize
     @State private var all: [SessionImage] = []
     /// The page shown; nil until the session's images are known.
     @State private var page: Int?
-    @State private var finder = SessionFinder()
     @State private var message = ""
     @State private var saving = false
     @State private var sharing: LeavingImage?
     @State private var pokes = ViewerPokes()
 
+    private var window: PBSessionWindowRequest {
+        .with {
+            $0.limit = 200
+            if seq > 0 { $0.aroundSeq = seq }
+        }
+    }
+
     var body: some View {
         let state = model.state
-        let s = state.sessions[session]
+        let vm = context.core.sessions[session]
+        let header = vm?.header
+        let tl = vm?.timeline
         let loader = ViewerLoader(center: ImageCenter.of(context.remote), session: session)
         let shown = page.flatMap { all.indices.contains($0) ? all[$0] : nil }
-        PagedImageViewer(count: page == nil ? 0 : all.count,
+        let emptyNote: String = {
+            if header?.missing == true { return header?.missingText.rendered() ?? L10n.sessionIosMissing() }
+            return L10n.projectsReadingDirectory()
+        }()
+        PagedImageViewer(
+            count: page == nil ? 0 : all.count,
             selection: Binding(get: { page ?? 0 }, set: { page = $0 }),
-            empty: s == nil ? lookupNote(finder.lookup) ?? L10n.projectsReadingDirectory() : L10n.projectsReadingDirectory(), onClose: { nav.back() },
+            empty: emptyNote,
+            onClose: { nav.back() },
             picture: { i, drag in
-                ViewerPage(loader: loader, image: all[i], online: state.conn == .online, current: i == page, pokes: pokes,
-                    onDrag: { drag.wrappedValue = $0 }, onClose: { nav.back() })
-            }, info: { i in info(all[i], session: s, loader: loader) })
+                ViewerPage(
+                    loader: loader, image: all[i], online: state.conn == .online, current: i == page, pokes: pokes,
+                    onDrag: { drag.wrappedValue = $0 }, onClose: { nav.back() }
+                )
+            },
+            info: { i in info(all[i], header: header, loader: loader) }
+        )
         .sheet(item: $sharing) { picture in
             ShareSheet(picture: picture).presentationDetents([.medium, .large])
         }
         .onChange(of: page) { message = "" }
-        .task(id: session) {
-            // Every image of the session, as its events come; the page asked for once they are known.
-            for await events in context.remote.events(session).updates() {
-                let list = await Task.detached { sessionImages(events.events) }.value
-                if Task.isCancelled { return }
-                if list != all {
-                    // Older history joining in front moves every index: stay on the image shown.
-                    if let page, all.indices.contains(page) {
-                        let shown = all[page]
-                        let first = all.firstIndex { $0.seq == shown.seq } ?? page
-                        self.page = viewerStart(list, seq: shown.seq, index: page - first)
-                    }
-                    all = list
+        .onChange(of: tl?.items ?? [], initial: true) { _, items in
+            let list = sessionImages(from: items)
+            if list != all {
+                if let page, all.indices.contains(page) {
+                    let current = all[page]
+                    let first = all.firstIndex { $0.seq == current.seq } ?? page
+                    self.page = viewerStart(list, seq: current.seq, index: page - first)
                 }
-                // A partial history may not hold the tapped event yet.
-                if page == nil, !list.isEmpty,
-                    !events.historyPartial || events.error != nil || events.fetchError != nil
-                        || list.contains(where: { $0.seq == seq })
-                {
-                    page = viewerStart(list, seq: seq, index: index)
-                }
+                all = list
+            }
+            if page == nil, !list.isEmpty,
+               tl?.historyPartial == false || tl?.hasError == true || tl?.hasFetchError == true
+                   || list.contains(where: { $0.seq == seq })
+            {
+                page = viewerStart(list, seq: seq, index: index)
             }
         }
-        // Opened from a link to a session that is not held here: it is fetched by its ID.
-        .task(id: s == nil) {
-            if s == nil { await finder.run(context.remote, session, sample: model.isDemo) }
-        }
+        .followCoreSession(session, window: window)
         .sessionSamples(session)
         .debugSignal("viewer.close") { nav.back() }
-        // A signal's handler is the one of the first frame: it only counts, and the frame of now acts.
         .debugSignal("viewer.next") { pokes.next += 1 }
         .debugSignal("viewer.zoom") { pokes.zoom += 1 }
         .debugSignal("viewer.retry") { pokes.retry += 1 }
@@ -81,12 +86,13 @@ struct ImageViewerScreen: View {
         .onChange(of: pokes.share) { if let shown { sharing = ImageLeaving.picture(shown.ref, loader: loader) } }
     }
 
-    private func info(_ image: SessionImage, session s: SessionView?, loader: ViewerLoader) -> some View {
+    private func info(_ image: SessionImage, header: PBSessionHeaderView?, loader: ViewerLoader) -> some View {
         let ref = image.ref
-        let details = [viewerSize(ref), s.map { titleOf($0) }].compactMap { $0 }.joined(separator: " · ")
+        let sessionTitle = header?.found == true ? header?.title.rendered() : nil
+        let details = [viewerSize(ref), sessionTitle].compactMap { $0 }.joined(separator: " · ")
         let large = typeSize.isAccessibilitySize
         return VStack(alignment: .leading, spacing: 2) {
-            Text(viewerSource(ref, agent: s?.agent ?? defaultAgent)).font(.subheadline.weight(.semibold)).ink(ViewerInk.text)
+            Text(viewerSource(ref, agent: header?.agent ?? defaultAgent)).font(.subheadline.weight(.semibold)).ink(ViewerInk.text)
             if !ref.path.isEmpty {
                 Text(ref.path).font(.footnote.monospaced()).ink(ViewerInk.path).lineLimit(large ? 4 : 2).truncationMode(.middle)
             }
@@ -98,7 +104,6 @@ struct ImageViewerScreen: View {
                 }
                 if !message.isEmpty { Text(message).font(.footnote).ink(ViewerInk.text).padding(.vertical, 4) }
             }
-            // Side by side while they fit; one under the other at the largest sizes.
             ViewThatFits(in: .horizontal) {
                 HStack(spacing: 20) { actions }
                 VStack(alignment: .leading, spacing: 0) { actions }
@@ -138,4 +143,28 @@ struct ImageViewerScreen: View {
             saving = false
         }
     }
+}
+
+func sessionImages(from items: [PBSessionTimelineItem]) -> [SessionImage] {
+    var out: [SessionImage] = []
+    func collect(_ item: PBSessionTimelineItem) {
+        switch item.kind {
+        case .userMessage(let m)?:
+            for r in m.images { out.append(SessionImage(ref: r, seq: item.seq, kind: .userMessage)) }
+        case .toolCall(let t)?:
+            for r in t.images { out.append(SessionImage(ref: r, seq: item.seq, kind: .toolCall, toolTitle: t.title)) }
+        case .toolGroup(let g)?:
+            for c in g.calls {
+                for r in c.images { out.append(SessionImage(ref: r, seq: item.seq, kind: .toolCall, toolTitle: c.title)) }
+            }
+        case .generatedImages(let g)?:
+            for r in g.images { out.append(SessionImage(ref: r, seq: item.seq, kind: .imageGenerated)) }
+        case .quietScheduledGroup(let g)?:
+            for child in g.items { collect(child) }
+        default:
+            break
+        }
+    }
+    for item in items { collect(item) }
+    return out
 }

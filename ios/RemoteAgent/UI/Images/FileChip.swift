@@ -53,6 +53,20 @@ struct FileChip: View {
 
 struct FileChips: View {
     let files: [PBSentFile]
+
+    init(files: [PBSentFile]) {
+        self.files = files
+    }
+
+    init(refs: [PBSessionFileRefView]) {
+        self.files = refs.map { ref in
+            .with {
+                $0.name = ref.name
+                $0.sizeBytes = ref.sizeBytes
+            }
+        }
+    }
+
     var body: some View {
         if !files.isEmpty {
             VStack(alignment: .leading, spacing: 6) {

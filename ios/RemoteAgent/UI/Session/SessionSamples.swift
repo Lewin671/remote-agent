@@ -74,12 +74,12 @@ enum SessionSamples {
     static let other = "c0ffee00c0ffee00"
     static let cwd = "/Users/me/Code/foo"
     private static var installed = false
+    private static var demoEvents: [String: [PBEvent]] = [:]
 
-    /// Adds the sample sessions to what the sample `Remote` shows, once.
-    static func install(_ remote: Remote, store: SessionStore) async {
+    /// Adds the sample sessions to what the sample `Remote` + `CoreHost` show, once.
+    static func install(_ remote: Remote, coreHost: CoreHost) async {
         guard !installed else { return }
         installed = true
-        // After the app's own sample data: this adds to it.
         _ = await remote.state.first { $0.loaded }
         let now = nowMs()
         var state = remote.current
@@ -91,8 +91,37 @@ enum SessionSamples {
                 $0.name = "我的 iPad"
                 $0.platform = "ios"
             }, metaRev: 1, lastSeenMs: now - 60_000)
-        await remote.showForTest(state: state, events: events(now), modelLists: modelLists, live: true)
-        local(store)
+        var eventsMap = events(now)
+        eventsMap["sample-start"] = Demo.events(now, [user("给这个仓库加一个 Makefile，包含 build、test 和 lint 三个目标")])
+        demoEvents = eventsMap
+        await coreHost.setDemoCommandResponder { eff, cmd in
+            guard case .send(let s)? = cmd.kind else { return nil }
+            switch s.requestID {
+            case "s1":
+                return .hold
+            case "s2":
+                return .respond(.with {
+                    $0.requestID = eff.requestID; $0.attemptID = eff.attemptID
+                    $0.source = .transport; $0.notForwarded = true
+                    $0.transportCode = "unavailable"
+                    $0.transportDetail = "电脑不在线，指令没有发出"
+                })
+            case "s3":
+                return .respond(.with {
+                    $0.requestID = eff.requestID; $0.attemptID = eff.attemptID
+                    $0.source = .transport; $0.notForwarded = false
+                    $0.transportCode = "network"
+                    $0.transportDetail = "不确定电脑有没有执行：连接中途断了"
+                })
+            case "f1", "f2", "f3", "u1":
+                return .respond(CoreHost.demoExecutedOutcome(for: eff))
+            default:
+                return nil
+            }
+        }
+        await remote.showForTest(state: state, modelLists: modelLists)
+        await coreHost.appendDemoSessionData(state: state, events: eventsMap, modelLists: modelLists)
+        await local(coreHost)
     }
 
     // MARK: Builders
@@ -573,22 +602,31 @@ enum SessionSamples {
         return out
     }
 
-    /// What this client itself holds for the samples: messages on their way, and a first message.
-    private static func local(_ store: SessionStore) {
-        func out(_ id: String, _ text: String, _ state: Outgoing.State, error: String = "") -> Outgoing {
-            let o = Outgoing(requestId: id, text: text)
-            o.state = state
-            o.error = error
-            return o
+    /// What this client itself holds for the samples: messages on their way, sent via Core.
+    private static func local(_ coreHost: CoreHost) async {
+        let items: [(sid: String, id: String, body: String)] = [
+            ("sample-send", "f1", "修掉它"),
+            ("sample-send", "f2", "然后重新跑 CI"),
+            ("sample-send", "f3", "跑完告诉我"),
+            ("sample-send", "s1", "这条还在路上"),
+            ("sample-send", "s2", "这条没送到电脑"),
+            ("sample-send", "s3", "这条不确定送没送到"),
+            ("sample-ended", "u1", "再把采样率调到 100%"),
+        ]
+        for item in items {
+            await coreHost.submitSessionCommand(
+                sessionID: item.sid,
+                command: .with {
+                    $0.send = .with {
+                        $0.sessionID = item.sid
+                        $0.requestID = item.id
+                        $0.text = item.body
+                        $0.mode = .steer
+                    }
+                },
+                machineID: machine
+            )
         }
-        store.debugShow("sample-send", [
-            out("f1", "修掉它", .sent), out("f2", "然后重新跑 CI", .sent), out("f3", "跑完告诉我", .sent),
-            out("s1", "这条还在路上", .sending),
-            out("s2", "这条没送到电脑", .failed, error: "电脑不在线，指令没有发出"),
-            out("s3", "这条不确定送没送到", .unknown, error: "不确定电脑有没有执行：连接中途断了"),
-        ])
-        store.debugShow("sample-ended", [out("u1", "再把采样率调到 100%", .sent)])
-        store.rememberPrompt("sample-start", "给这个仓库加一个 Makefile，包含 build、test 和 lint 三个目标")
     }
 
     // MARK: Playing a turn
@@ -626,21 +664,22 @@ enum SessionSamples {
     }
 
     /// Appends to a session's history as a daemon would: a message, tools starting and ending, a reply in several parts.
-    static func stream(_ remote: Remote, _ sid: String) {
+    static func stream(_ remote: Remote, _ coreHost: CoreHost, _ sid: String) {
         streams[sid]?.cancel()
         streams[sid] = Task {
             let frames = Frames()
             if SessionDebug.perf { frames.start() }
             defer { if SessionDebug.perf { print(frames.stop()) } }
-            var list = Array(remote.events(sid).value.events)
-            func add(_ kind: Kind) async {
+            var list = demoEvents[sid] ?? []
+            @MainActor func add(_ kind: Kind) async {
                 list.append(.with {
                     $0.seq = UInt64(list.count + 1)
                     $0.time = ts(nowMs())
                     $0.kind = kind.0
                     if let origin = kind.1 { $0.origin = origin }
                 })
-                await remote.showForTest(state: remote.current, events: [sid: list])
+                demoEvents[sid] = list
+                await coreHost.appendDemoSessionData(state: remote.current, events: [sid: list])
             }
             await add(turn)
             await add(user("再检查一遍并发的情况"))
@@ -660,12 +699,20 @@ enum SessionSamples {
     }
 
     /// Answers the session's first pending approval from another client.
-    static func resolve(_ remote: Remote, _ sid: String) {
+    static func resolve(_ remote: Remote, _ coreHost: CoreHost, _ sid: String) {
         Task {
-            var list = Array(remote.events(sid).value.events)
-            guard let id = derive(list).approvals.first?.approvalID else { return }
-            list.append(.with {
-                $0.seq = UInt64(list.count + 1)
+            let list = demoEvents[sid] ?? []
+            var resolved = Set<String>()
+            for ev in list {
+                if case .approvalResolved(let r)? = ev.kind { resolved.insert(r.approvalID) }
+            }
+            guard let id = list.compactMap({ ev -> String? in
+                if case .approvalRequested(let a)? = ev.kind, !resolved.contains(a.approvalID) { return a.approvalID }
+                return nil
+            }).first else { return }
+            var next = list
+            next.append(.with {
+                $0.seq = UInt64(next.count + 1)
                 $0.time = ts(nowMs())
                 $0.kind = .approvalResolved(.with {
                     $0.approvalID = id
@@ -673,21 +720,16 @@ enum SessionSamples {
                 })
                 $0.origin = theirs
             })
+            demoEvents[sid] = next
             var state = remote.current
             if var s = state.sessions[sid], var info = s.info {
                 info.pendingApprovals = 0
                 s.info = info
                 state.sessions[sid] = s
             }
-            await remote.showForTest(state: state, events: [sid: list])
+            await remote.showForTest(state: state)
+            await coreHost.appendDemoSessionData(state: state, events: [sid: next])
         }
-    }
-}
-
-extension SessionStore {
-    /// Puts messages in a session's outbox as they would stand after sending, for looking at them.
-    func debugShow(_ sid: String, _ list: [Outgoing]) {
-        for o in list where find(sid, requestId: o.requestId) == nil { debugAppend(sid, o) }
     }
 }
 
@@ -699,10 +741,12 @@ private struct SessionSampleTask: ViewModifier {
     func body(content: Content) -> some View {
         content
             .task {
-                if model.isDemo && sid.hasPrefix("sample-") { await SessionSamples.install(context.remote, store: context.sessionStore) }
+                if model.isDemo && sid.hasPrefix("sample-") {
+                    await SessionSamples.install(context.remote, coreHost: context.coreHost)
+                }
             }
-            .debugSignal("session.stream") { if model.isDemo { SessionSamples.stream(context.remote, sid) } }
-            .debugSignal("session.resolve") { if model.isDemo { SessionSamples.resolve(context.remote, sid) } }
+            .debugSignal("session.stream") { if model.isDemo { SessionSamples.stream(context.remote, context.coreHost, sid) } }
+            .debugSignal("session.resolve") { if model.isDemo { SessionSamples.resolve(context.remote, context.coreHost, sid) } }
     }
 }
 

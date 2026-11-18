@@ -1,191 +1,307 @@
 // The sheets and the dialog of a session's ⋯ menu: 审批模式, 会话设置 (context,
-// model and reasoning effort) and 重命名会话. Android's ui/Sheets.kt.
-//
-// What they show is what the computer reports (architecture §7 「以 CLI
-// 为准」): a choice is a command, and the sheet closes when the computer has
-// taken it, never before. A failure keeps the sheet open and says why.
+// model and reasoning effort) and 重命名会话. Rendered from Core's
+// `PBSessionViewModel.{header, actions}` and dispatched via `CoreHost`.
 import RACore
 import RAProto
 import SwiftUI
 
-/// 审批模式: the four modes; full access is confirmed first; only this session changes.
-struct SessionModeSheet: View {
-    let session: SessionView
-    var startConfirm = false
-    let onClose: () -> Void
-    @Environment(AccountContext.self) private var context
-    @State private var act = ActionRunner()
-    @State private var confirmFull = false
-    /// The auto mode goes with the model, which the CLI's own list says.
-    @State private var modelList: [PBModelInfo]?
+private func commandPending(_ st: PBSessionCommandState?) -> Bool {
+    st?.status == .pending || st?.busy == true
+}
 
-    private func unavailableReason(_ m: Mode) -> String? {
-        sessionModeUnavailableReason(m, session: session, models: modelList)
+private func commandError(_ st: PBSessionCommandState?) -> String {
+    guard let st else { return "" }
+    if st.hasErrorText {
+        let rendered = st.errorText.rendered()
+        if !rendered.isEmpty { return rendered }
     }
+    return st.errorCode
+}
 
-    private func set(_ m: Mode) {
-        guard unavailableReason(m) == nil else { return }
-        let (remote, sid) = (context.remote, session.id)
-        act.run({
-            var cmd = PBCommand()
-            cmd.setApprovalMode = .with {
-                $0.sessionID = sid
-                $0.mode = m.proto
+/// Awaits Core command settlement (when `status` leaves `.pending`/busy) on the MainActor without polling.
+@MainActor
+private func awaitSessionCommand(
+    context: AccountContext,
+    sessionID: String,
+    extract: @MainActor @escaping (PBSessionViewModel) -> PBSessionCommandState,
+    send: @escaping () -> Void
+) async throws {
+    let initial = context.core.sessions[sessionID].map(extract)
+    let wasFrozen = initial?.frozen == true
+    send()
+    for _ in 0..<256 {
+        guard let vm = context.core.sessions[sessionID] else { return }
+        let st = extract(vm)
+        if !commandPending(st) {
+            if st.frozen && !wasFrozen {
+                let msg = commandError(st)
+                throw CommandError(CommandError.unknownOutcome, msg.isEmpty ? L10nMessage.errorsTheRelayDidNotProvideAVerifiableExecutionResult() : LocalizedMessage(raw: msg), outcome: .unknown)
             }
-            try await remote.command(sid, cmd)
-        }, onDone: { onClose() })
-    }
-
-    var body: some View {
-        let current = modeOf(session)
-        // A mode set in the terminal outside the four is shown as it is.
-        let pm = session.info?.permissionMode ?? ""
-        let outside = !pm.isEmpty && permissionMode(pm) == nil ? (pm == "acceptEdits" ? "accept edits" : pm) : nil
-        Group {
-            SheetHead(L10n.modesTitle())
-            if let outside { Text(L10n.modesCurrentTerminal(mode: outside)).font(.footnote).ink(DS.ink2).padding(.bottom, 4) }
-            ForEach(Array(Mode.allCases.enumerated()), id: \.offset) { i, m in
-                let reason = unavailableReason(m)
-                let off = reason != nil
-                let help = reason ?? modeHelp(m, agent: agentName(session.agent))
-                ListItem(
-                    m.text, desc: help, checked: m == current, enabled: !off, danger: m == .full && !off,
-                    last: i == Mode.allCases.count - 1,
-                    onTap: act.running || off
-                        ? nil
-                        : {
-                            // Full access mid-session is a second, explicit yes (architecture §7).
-                            if m == .full && current != .full { confirmFull = true } else { set(m) }
-                        })
+            let msg = commandError(st)
+            if !msg.isEmpty || st.status == .failed || st.status == .unknown {
+                throw UserError(msg.isEmpty ? L10nMessage.errorsTheRelayDidNotProvideAVerifiableExecutionResult() : LocalizedMessage(raw: msg))
             }
-            Hint(outside.map { L10n.modesIosOutsideNote(mode: $0) } ?? L10n.sessionOnlyCurrent())
-            if act.running { Hint(L10n.modesSwitching()) }
-            if !act.error.isEmpty { Hint(L10n.modesSwitchFailed(reason: act.error), color: DS.red) }
+            return
         }
-        .confirm(
-            isPresented: $confirmFull, title: L10n.modesFullTitle(), text: L10n.modesFullCurrentNote(),
-            confirm: L10n.modesSwitch(), danger: true
-        ) { set(.full) }
-        .task { if startConfirm && unavailableReason(.full) == nil { confirmFull = true } }
-        .task {
-            let (remote, machine) = (context.remote, session.machineId)
-            modelList = try? await remote.listModels(machine, agent: session.agent).models
-        }
-        .debugSignal("session.mode.pick") {
-            let named: [String: Mode] = ["ask": .ask, "auto": .auto, "plan": .plan, "full": .full]
-            if let m = named[SessionDebug.text] { set(m) }
+        await withCheckedContinuation { (cont: CheckedContinuation<Void, Never>) in
+            withObservationTracking {
+                _ = context.core.sessions[sessionID].map(extract)
+            } onChange: {
+                cont.resume()
+            }
         }
     }
 }
 
-/// 会话设置: context and 压缩, the model and its reasoning effort. A choice
-/// is sent at once while idle; the sheet shows the computer's value after.
-struct SessionModelSheet: View {
-    let session: SessionView
-    /// A turn is running: nothing can be switched until it ends.
-    let running: Bool
+/// 审批模式: the four modes; full access is confirmed first; only this session changes.
+struct SessionModeSheet: View {
+    let sessionID: String
+    var startConfirm = false
     let onClose: () -> Void
-    @Environment(AppModel.self) private var model
     @Environment(AccountContext.self) private var context
-    @State private var models: PBListModelsResponse?
-    @State private var loadError = ""
-    @State private var attempt = 0
-    @State private var all = false
-    @State private var act = ActionRunner()
-    @State private var compact = ActionRunner()
-    @State private var picked = ""
+    @State private var confirmFull = false
+    @State private var waitingClose = false
 
-    private func setModel(_ slug: String, _ effort: String) {
-        guard agentInfo(session.agent).switchesModelInSession, !running else { return }
-        let (remote, sid) = (context.remote, session.id)
-        act.run({
-            var cmd = PBCommand()
-            cmd.setModel = .with {
-                $0.sessionID = sid
-                $0.model = slug
-                if !effort.isEmpty { $0.effort = effort }
-            }
-            try await remote.command(sid, cmd)
-        }, onDone: { onClose() })
+    private var vm: PBSessionViewModel? { context.core.sessions[sessionID] }
+    private var header: PBSessionHeaderView { vm?.header ?? PBSessionHeaderView() }
+    private var actions: PBSessionActionsView { vm?.actions ?? PBSessionActionsView() }
+
+    private func set(_ mode: PBApprovalMode, choice: PBSessionModeChoiceView?) {
+        if let choice, !choice.available { return }
+        waitingClose = true
+        let machineID = header.machineID
+        Task {
+            await context.coreHost.submitSessionCommand(
+                sessionID: sessionID,
+                command: .with {
+                    $0.setApprovalMode = .with {
+                        $0.sessionID = sessionID
+                        $0.mode = mode
+                    }
+                },
+                machineID: machineID,
+                slotKey: actions.setMode.slotKey
+            )
+        }
     }
 
     var body: some View {
-        let (remote, sid) = (context.remote, session.id)
-        SheetHead(L10n.sessionSettings())
-        if let percent = contextPercent(session), let info = session.info {
-            ContextBox(
-                percent: percent,
-                detail: info.contextWindow > 0 ? L10n.sessionIosContextUsage(total: Int(info.contextWindow / 1000), used: Int(info.contextTokens / 1000)) : L10n.sessionIosContextOccupancy(),
-                action: compact.running ? L10n.sessionCompacting() : L10n.sessionCompact(), enabled: !running && !compact.running
-            ) {
-                compact.run({
-                    var cmd = PBCommand()
-                    cmd.compact = .with { $0.sessionID = sid }
-                    try await remote.command(sid, cmd)
-                }, onDone: { onClose() })
+        let choices = actions.modeChoices
+        let current = header.approvalMode
+        let cmd = actions.setMode
+        let running = commandPending(cmd)
+        let errorText = commandError(cmd)
+        let outside: String? = header.terminalModeOverride ? header.approvalModeLabel.rendered() : nil
+        Group {
+            SheetHead(L10n.modesTitle())
+            if let outside, !outside.isEmpty {
+                Text(L10n.modesCurrentTerminal(mode: outside)).font(.footnote).ink(DS.ink2).padding(.bottom, 4)
             }
-            if !compact.error.isEmpty { Hint(L10n.sessionCompactFailed(reason: compact.error), color: DS.red) }
-        }
-        if !agentInfo(session.agent).switchesModelInSession {
-            let cur = findModel(models?.models ?? [], id: session.info?.model ?? "") { $0.slug }
-            let modelTitle = (cur?.displayName).flatMap { $0.isEmpty ? nil : $0 }
-                ?? (session.info?.model).flatMap { $0.isEmpty ? nil : $0 }
-                ?? L10n.newSessionDefaultModel()
-            let effortTitle = (session.info?.effort).flatMap { $0.isEmpty ? nil : $0 }
-                ?? (cur?.defaultEffort).flatMap { $0.isEmpty ? nil : $0 }
-                ?? L10n.modelsDefault()
-            FieldLabel(L10n.modelsTitle())
-            ListItem(modelTitle, desc: L10n.sessionModelLocked(), enabled: false, last: true)
-            FieldLabel(L10n.modelsEffort())
-            ListItem(effortTitle, desc: L10n.sessionEffortLocked(), enabled: false, last: true)
-        } else {
-            FieldLabel(L10n.modelsTitle())
-            if !loadError.isEmpty {
-                Banner(L10n.sessionIosModelsFailed(reason: loadError), tone: .error, action: L10n.commonRetry()) { attempt += 1 }
-            } else if let models {
-                list(models.models)
-            } else {
-                LoadingRow(inset: 0)
+            ForEach(Array(choices.enumerated()), id: \.offset) { i, choice in
+                let off = !choice.available
+                let reason = choice.hasUnavailableReason ? choice.unavailableReason.rendered() : ""
+                let note = choice.hasNote ? choice.note.rendered() : ""
+                let help = off && !reason.isEmpty ? reason : note
+                ListItem(
+                    choice.label.rendered(),
+                    desc: help,
+                    checked: choice.selected,
+                    enabled: !off,
+                    danger: choice.mode == .fullAccess && !off,
+                    last: i == choices.count - 1,
+                    onTap: running || off
+                        ? nil
+                        : {
+                            if choice.mode == .fullAccess && current != .fullAccess {
+                                confirmFull = true
+                            } else {
+                                set(choice.mode, choice: choice)
+                            }
+                        }
+                )
             }
-            Hint(running ? L10n.sessionIosChangeIdle() : L10n.sessionIosEffortNote())
-            if act.running { Hint(L10n.modesSwitching()) }
-            if !act.error.isEmpty { Hint(L10n.modesSwitchFailed(reason: act.error), color: DS.red) }
+            Hint(outside.map { L10n.modesIosOutsideNote(mode: $0) } ?? L10n.sessionOnlyCurrent())
+            if running { Hint(L10n.modesSwitching()) }
+            if !running && !errorText.isEmpty { Hint(L10n.modesSwitchFailed(reason: errorText), color: DS.red) }
         }
-        // Read again each time the sheet opens: the computer's list changes with the CLI.
-        Color.clear.frame(height: 0).task(id: attempt) {
-            do {
-                // Sample data has no computer to ask again.
-                let list = try await remote.listModels(session.machineId, agent: session.agent, fresh: !model.isDemo)
-                models = list
-                loadError = ""
-                if picked.isEmpty { picked = findModel(list.models, id: session.info?.model ?? "") { $0.slug }?.slug ?? "" }
-            } catch {
-                loadError = errorText(error)
+        .confirm(
+            isPresented: $confirmFull, title: L10n.modesFullTitle(), text: L10n.modesFullCurrentNote(),
+            confirm: L10n.modesSwitch(), danger: true
+        ) {
+            let fullChoice = choices.first { $0.mode == .fullAccess }
+            set(.fullAccess, choice: fullChoice)
+        }
+        .onChange(of: cmd.status) { old, new in
+            if waitingClose && old == .pending && new == .idle && !cmd.frozen && commandError(cmd).isEmpty {
+                waitingClose = false
+                onClose()
+            } else if new == .failed || new == .unknown {
+                waitingClose = false
+            }
+        }
+        .task {
+            let fullChoice = choices.first { $0.mode == .fullAccess }
+            if startConfirm && fullChoice?.available == true { confirmFull = true }
+        }
+        .debugSignal("session.mode.pick") {
+            let named: [String: PBApprovalMode] = [
+                "ask": .ask, "auto": .auto, "plan": .plan, "full": .fullAccess,
+            ]
+            if let m = named[SessionDebug.text] {
+                set(m, choice: choices.first { $0.mode == m })
             }
         }
     }
+}
 
-    @ViewBuilder private func list(_ offered: [PBModelInfo]) -> some View {
-        let current = findModel(offered, id: session.info?.model ?? "") { $0.slug }
-        let shown = shownModels(offered, picked: offered.first { $0.slug == picked }, all: all)
+/// 会话设置: context and 压缩, the model and its reasoning effort.
+struct SessionModelSheet: View {
+    let sessionID: String
+    let onClose: () -> Void
+    @Environment(AccountContext.self) private var context
+    @State private var all = false
+    @State private var picked = ""
+    @State private var waitingModel = false
+    @State private var waitingCompact = false
+
+    private var vm: PBSessionViewModel? { context.core.sessions[sessionID] }
+    private var header: PBSessionHeaderView { vm?.header ?? PBSessionHeaderView() }
+    private var actions: PBSessionActionsView { vm?.actions ?? PBSessionActionsView() }
+
+    private func setModel(_ slug: String, _ effort: String) {
+        guard actions.canSwitchModel else { return }
+        waitingModel = true
+        let machineID = header.machineID
+        Task {
+            await context.coreHost.submitSessionCommand(
+                sessionID: sessionID,
+                command: .with {
+                    $0.setModel = .with {
+                        $0.sessionID = sessionID
+                        $0.model = slug
+                        if !effort.isEmpty { $0.effort = effort }
+                    }
+                },
+                machineID: machineID,
+                slotKey: actions.setModel.slotKey
+            )
+        }
+    }
+
+    var body: some View {
+        let modelCmd = actions.setModel
+        let modelRunning = commandPending(modelCmd)
+        let modelError = commandError(modelCmd)
+        let compactCmd = actions.compact
+        let compactRunning = commandPending(compactCmd)
+        let compactError = commandError(compactCmd)
+        let running = header.status == .running || header.status == .starting
+        Group {
+            SheetHead(L10n.sessionSettings())
+            if header.hasContext_p {
+                let ctxDetail = header.hasContextText ? header.contextText.rendered() : L10n.sessionIosContextOccupancy()
+                ContextBox(
+                    percent: Int(header.contextPercent),
+                    detail: ctxDetail,
+                    action: compactRunning ? L10n.sessionCompacting() : L10n.sessionCompact(),
+                    enabled: actions.canCompact && !compactRunning
+                ) {
+                    waitingCompact = true
+                    let machineID = header.machineID
+                    Task {
+                        await context.coreHost.submitSessionCommand(
+                            sessionID: sessionID,
+                            command: .with { $0.compact = .with { $0.sessionID = sessionID } },
+                            machineID: machineID,
+                            slotKey: compactCmd.slotKey
+                        )
+                    }
+                }
+                if !compactRunning && !compactError.isEmpty {
+                    Hint(L10n.sessionCompactFailed(reason: compactError), color: DS.red)
+                }
+            }
+            if !header.capabilities.supportsModelSwitch {
+                let modelTitle = header.modelLabel.isEmpty
+                    ? (header.model.isEmpty ? L10n.newSessionDefaultModel() : header.model)
+                    : header.modelLabel
+                let effortTitle = header.hasEffortLabel
+                    ? header.effortLabel.rendered()
+                    : (header.effort.isEmpty ? L10n.modelsDefault() : header.effort)
+                FieldLabel(L10n.modelsTitle())
+                ListItem(modelTitle, desc: L10n.sessionModelLocked(), enabled: false, last: true)
+                FieldLabel(L10n.modelsEffort())
+                ListItem(effortTitle, desc: L10n.sessionEffortLocked(), enabled: false, last: true)
+            } else {
+                FieldLabel(L10n.modelsTitle())
+                if actions.hasModelsError && actions.modelChoices.isEmpty {
+                    Banner(L10n.sessionIosModelsFailed(reason: actions.modelsError.rendered()), tone: .error, action: L10n.commonRetry()) {
+                        Task { await context.coreHost.openSession(sessionID, refreshModels: true) }
+                    }
+                } else if !actions.modelsLoaded && actions.modelsLoading {
+                    LoadingRow(inset: 0)
+                } else {
+                    list(actions.modelChoices, running: running, modelRunning: modelRunning)
+                }
+                let blockedNote = actions.hasModelSwitchBlockedReason ? actions.modelSwitchBlockedReason.rendered() : ""
+                Hint(!blockedNote.isEmpty ? blockedNote : (running ? L10n.sessionIosChangeIdle() : L10n.sessionIosEffortNote()))
+                if modelRunning { Hint(L10n.modesSwitching()) }
+                if !modelRunning && !modelError.isEmpty { Hint(L10n.modesSwitchFailed(reason: modelError), color: DS.red) }
+            }
+        }
+        .onChange(of: actions.modelChoices, initial: true) { _, choices in
+            if picked.isEmpty {
+                picked = choices.first(where: \.selected)?.slug ?? ""
+            }
+        }
+        .onChange(of: modelCmd.status) { old, new in
+            if waitingModel && old == .pending && new == .idle && !modelCmd.frozen && commandError(modelCmd).isEmpty {
+                waitingModel = false
+                onClose()
+            } else if new == .failed || new == .unknown {
+                waitingModel = false
+            }
+        }
+        .onChange(of: compactCmd.status) { old, new in
+            if waitingCompact && old == .pending && new == .idle && !compactCmd.frozen && commandError(compactCmd).isEmpty {
+                waitingCompact = false
+                onClose()
+            } else if new == .failed || new == .unknown {
+                waitingCompact = false
+            }
+        }
+        .task {
+            await context.coreHost.openSession(sessionID, refreshModels: true)
+        }
+    }
+
+    @ViewBuilder private func list(_ offered: [PBSessionModelChoiceView], running: Bool, modelRunning: Bool) -> some View {
+        let disabled = !actions.canSwitchModel || running || modelRunning
+        let selectedChoice = offered.first { $0.slug == picked } ?? offered.first(where: \.selected)
+        let shown = shownModels(offered, picked: selectedChoice, all: all)
         let few = shown.count == offered.count
         ForEach(Array(shown.enumerated()), id: \.element.slug) { i, m in
             let top = m.efforts.last
             ListItem(
-                m.displayName.isEmpty ? m.slug : m.displayName, checked: m.slug == picked, enabled: !running && !act.running,
+                m.displayName.isEmpty ? m.slug : m.displayName,
+                checked: m.slug == (selectedChoice?.slug ?? picked),
+                enabled: !disabled,
                 small: m.efforts.isEmpty ? L10n.sessionNoEffort() : top.flatMap { $0 == "high" ? nil : L10n.sessionMaxEffort(effort: $0) },
                 last: i == shown.count - 1 && few
             ) {
                 picked = m.slug
-                // A model without efforts has nothing more to choose.
-                if m.efforts.isEmpty && m.slug != current?.slug { setModel(m.slug, "") }
+                if m.efforts.isEmpty && !m.selected {
+                    setModel(m.slug, "")
+                }
             }
         }
         if !few { TextAction(L10n.modelsAll(), style: .body, arrow: true) { all = true } }
-        if let chosen = offered.first(where: { $0.slug == picked }), !chosen.efforts.isEmpty {
+        if let chosen = offered.first(where: { $0.slug == (picked.isEmpty ? (selectedChoice?.slug ?? "") : picked) }), !chosen.efforts.isEmpty {
             FieldLabel(L10n.modelsEffort())
             ChoiceGrid(
-                chosen.efforts, selected: chosen.slug == current?.slug ? session.info?.effort : nil, enabled: !running && !act.running
+                chosen.efforts,
+                selected: chosen.selected ? (header.effort.isEmpty ? nil : header.effort) : nil,
+                enabled: !disabled
             ) { setModel(chosen.slug, $0) }
         }
     }
@@ -193,37 +309,49 @@ struct SessionModelSheet: View {
 
 // MARK: Renaming
 
-/// 重命名会话: the title on one line with the keyboard up, in the kit's
-/// input dialog. Saving it empty goes back to the automatic title. The new
-/// title comes back in the session's metadata; a failure keeps the dialog
-/// and what was typed.
 private struct SessionRename: ViewModifier {
     @Binding var isPresented: Bool
-    let session: SessionView
+    let sessionID: String
     @Environment(AccountContext.self) private var context
 
     func body(content: Content) -> some View {
-        let initial = renameInitial(session)
-        let (remote, sid) = (context.remote, session.id)
+        let vm = context.core.sessions[sessionID]
+        let rawTitle = vm?.header.found == true ? vm!.header.title.rendered() : ""
+        let initial = titleInput(rawTitle.jvmTrim())
+        let machineID = vm?.header.machineID ?? ""
+        let slotKey = vm?.actions.rename.slotKey ?? ""
         content.inputAlert(
             isPresented: $isPresented, title: L10n.sessionRenameTitle(), initial: initial, placeholder: L10n.sessionIosTitleField(), text: L10n.sessionAutoTitleHint(),
             limit: .max, lines: 1...1, filter: titleInput, debugSignal: "session.rename.save", debugText: { SessionDebug.text }
         ) { typed in
-            // The same title again is a cancel.
-            guard let title = renameTitle(typed: typed, initial: initial) else { return }
-            var cmd = PBCommand()
-            cmd.renameSession = .with {
-                $0.sessionID = sid
-                $0.title = title
+            let clean = titleInput(typed).jvmTrim()
+            guard clean != initial else { return }
+            try await awaitSessionCommand(
+                context: context,
+                sessionID: sessionID,
+                extract: { $0.actions.rename }
+            ) {
+                Task {
+                    await context.coreHost.submitSessionCommand(
+                        sessionID: sessionID,
+                        command: .with {
+                            $0.renameSession = .with {
+                                $0.sessionID = sessionID
+                                $0.title = clean
+                            }
+                        },
+                        machineID: machineID,
+                        slotKey: slotKey
+                    )
+                }
             }
-            try await remote.command(sid, cmd)
         }
     }
 }
 
 extension View {
     /// 重命名会话 over this view.
-    func sessionRename(isPresented: Binding<Bool>, session: SessionView) -> some View {
-        modifier(SessionRename(isPresented: isPresented, session: session))
+    func sessionRename(isPresented: Binding<Bool>, sessionID: String) -> some View {
+        modifier(SessionRename(isPresented: isPresented, sessionID: sessionID))
     }
 }

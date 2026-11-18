@@ -1,86 +1,66 @@
 // A session: its navigation bar, the 聊天 / 终端 tabs, and under them the
-// chat or the terminal. Android's `SessionScreen` and `SessionTopBar` in
-// ui/Session.kt; docs/design-system.md §6 「会话导航栏」「视图切换」.
-//
-// The bar's first line is the title alone; the second is the session's
-// state and its approval mode, red only for full access. Everything else
-// about the session (CLI, project, computer, folder) heads the ⋯ menu, a
-// list whose rows are the mode, the model and the context (「名称 …… 值 ›」),
-// then 项目设置, 重命名, 分叉会话, and in red 中断 and 结束会话…, in three groups of a system sheet. A
-// choice that cannot be made now is not hidden: it is greyed, with when it
-// can be under it.
+// chat or the terminal, driven directly by Core's `PBSessionViewModel` and
+// `CoreHost`.
 import RACore
 import RAMarkdownUI
 import RAProto
 import SwiftUI
 
-/// A session: its chat and its terminal. `terminal` opens it on the terminal.
-struct SessionScreen: View {
-    let id: String
-    let terminal: Bool
+private struct CoreSessionModifier: ViewModifier {
+    let sessionID: String
+    let refreshModels: Bool
+    let window: PBSessionWindowRequest
+    @Environment(AccountContext.self) private var context
+    @State private var watchToken: UUID?
 
-    @Environment(AppModel.self) private var model
-    @State private var finder = SessionFinder()
-    @State private var attempt = 0
-
-    var body: some View {
-        Group {
-            if let session = model.state.sessions[id] {
-                SessionPage(session: session, terminal: terminal)
-            } else {
-                // Not held here: asked for by its ID, and only the server saying it has none makes it missing.
-                SessionAbsent(lookup: finder.lookup) { attempt += 1 }
-                    .navBar(L10n.homeSessionsTab())
+    func body(content: Content) -> some View {
+        content
+            .task(id: sessionID) {
+                guard !sessionID.isEmpty else { return }
+                await context.coreHost.openSession(sessionID, refreshModels: refreshModels)
+                let token = await context.coreHost.acquireSessionWatch(sessionID, initialWindow: window)
+                watchToken = token
+                defer {
+                    Task {
+                        if watchToken == token { watchToken = nil }
+                        await context.coreHost.releaseSessionWatch(token)
+                    }
+                }
+                while !Task.isCancelled {
+                    try? await Task.sleep(for: .seconds(3600))
+                }
             }
-        }
-        .sessionLookup(id, attempt: attempt, into: finder)
-        .sessionSamples(id)
+            .onChange(of: refreshModels) { _, want in
+                guard want, !sessionID.isEmpty else { return }
+                Task { await context.coreHost.openSession(sessionID, refreshModels: true) }
+            }
+            .onChange(of: window) { _, next in
+                guard let token = watchToken else { return }
+                Task { await context.coreHost.updateSessionWindow(token: token, window: next) }
+            }
     }
 }
 
-/// What a page about a session shows while the session is not held here.
-struct SessionAbsent: View {
-    let lookup: SessionLookup
-    let onRetry: () -> Void
-    @Environment(AppModel.self) private var model
-    @Environment(Navigator.self) private var nav
-
-    var body: some View {
-        let online = model.state.conn == .online
-        // Offline nothing was asked: only a server that answered "none" is believed.
-        let note = online || lookup == .missing ? lookupNote(lookup) : nil
-        Page {
-            VStack(spacing: 0) {
-                ConnectionBar()
-                Spacer(minLength: 24)
-                if let note {
-                    Text(note).font(.headline).ink(DS.ink).multilineTextAlignment(.center).accessibilityAddTraits(.isHeader)
-                    // The server could not be asked: it is asked again by itself, and at once on a tap.
-                    if case .failed = lookup { TextAction(L10n.commonRetry(), alignment: .center, action: onRetry) }
-                    TextAction(L10n.commonBack(), alignment: .center) { nav.back() }
-                } else {
-                    Mark(Mark.progress, color: DS.ink2, size: 22, relativeTo: .body)
-                    Text(online ? L10n.projectsReadingDirectory() : L10n.sessionIosConnectRead()).font(.subheadline).ink(DS.ink2).padding(.top, 12)
-                        .multilineTextAlignment(.center)
-                }
-                Spacer(minLength: 24)
-            }
-            .padding(.horizontal, 24)
-        }
+extension View {
+    func followCoreSession(
+        _ sessionID: String,
+        refreshModels: Bool = false,
+        window: PBSessionWindowRequest = .with { $0.limit = 80 }
+    ) -> some View {
+        modifier(CoreSessionModifier(sessionID: sessionID, refreshModels: refreshModels, window: window))
     }
 }
 
 private enum SessionSheet: String, Identifiable {
     case mode, model
-
     var id: String { rawValue }
 }
 
-/// The view last picked on this device; every session opens in it.
 private let sessionTabKey = "session-view.tab"
 
-private struct SessionPage: View {
-    let session: SessionView
+/// A session: its chat and its terminal. `terminal` opens it on the terminal.
+struct SessionScreen: View {
+    let id: String
     let terminal: Bool
 
     @Environment(AppModel.self) private var model
@@ -89,7 +69,7 @@ private struct SessionPage: View {
     @Environment(\.page) private var page
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.horizontalSizeClass) private var width
-    @State private var chat = SessionModel()
+    @Environment(\.scenePhase) private var scenePhase
     @State private var tab: Int
     @State private var menu = false
     @State private var sheet: SessionSheet?
@@ -97,105 +77,133 @@ private struct SessionPage: View {
     @State private var rename = false
     @State private var projectSettings: ProjectSettingsRequest?
     @State private var confirmStop = false
-    @State private var act = ActionRunner()
-    @Environment(\.scenePhase) private var scenePhase
-    /// Claude Code records full model IDs; the list gives the alias to show.
-    @State private var models: PBListModelsResponse?
+    @State private var windowLimit: Int32 = 80
+    @State private var expandedGroups: [String] = []
 
-    init(session: SessionView, terminal: Bool) {
-        self.session = session
+    init(id: String, terminal: Bool) {
+        self.id = id
         self.terminal = terminal
-        // Opening on the terminal, as after starting a session, is not picking it.
-        _tab = State(initialValue: terminal ? 1 : UserDefaults.standard.integer(forKey: sessionTabKey))
+        let saved = UserDefaults.standard.integer(forKey: sessionTabKey)
+        _tab = State(initialValue: terminal ? 1 : (1...2).contains(saved) ? saved : 0)
     }
 
-    private func pick(_ view: Int) {
-        tab = view
-        UserDefaults.standard.set(view, forKey: sessionTabKey)
+    private func pick(_ newTab: Int) {
+        tab = newTab
+        UserDefaults.standard.set(newTab, forKey: sessionTabKey)
     }
 
-    /// A choice of the menu that opens something: only once the menu is out of the way.
-    private func afterMenu(_ open: @escaping @MainActor () -> Void) {
-        Task {
-            try? await Task.sleep(nanoseconds: 220_000_000)
-            open()
+    private func afterMenu(_ action: @escaping @MainActor () -> Void) {
+        menu = false
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(350))
+            action()
         }
     }
 
-    private func command(_ runner: ActionRunner, _ build: @escaping @Sendable (inout PBCommand) -> Void) {
-        let (remote, sid) = (context.remote, session.id)
-        runner.run {
-            var cmd = PBCommand()
-            build(&cmd)
-            try await remote.command(sid, cmd)
+    private var windowRequest: PBSessionWindowRequest {
+        let jump = context.sessionStore.scheduledJump(id)
+        return PBSessionWindowRequest.with {
+            $0.limit = windowLimit
+            if let jump {
+                if !jump.runID.isEmpty { $0.revealRunID = jump.runID }
+                if jump.seq > 0 { $0.revealSeq = jump.seq }
+            }
+            $0.expandedGroupIds = expandedGroups
         }
-    }
-
-    private var params: ChatParams {
-        let state = model.state
-        let store = context.sessionStore
-        return ChatParams(
-            agent: session.agent, machine: machineLabel(state, id: session.machineId), cwd: session.info?.cwd ?? "",
-            home: state.machines[session.machineId]?.meta?.home ?? "", me: context.me, devices: state.devices,
-            texts: store.texts(session.id), prompt: store.prompt(session.id),
-            sharedFiles: sharedFilesSupported(state.machines[session.machineId]))
     }
 
     var body: some View {
+        let vm = context.core.sessions[id]
+        let header = vm?.header ?? PBSessionHeaderView()
         let state = model.state
-        let s = session
-        let sid = s.id
-        let status = shownStatus(state, s)
-        let running = chat.derived.running || status == .running
-        let hasTerminal = terminalAvailable(status)
-        // A wide window shows both side by side as a third choice (design-system §6 「宽屏」).
+        Group {
+            if let vm, header.found {
+                sessionBody(vm: vm, header: header)
+            } else {
+                SessionAbsent(header: header, online: state.conn == .online) {
+                    Task { await context.coreHost.openSession(id, refreshModels: false) }
+                }
+                .navBar(L10n.homeSessionsTab())
+            }
+        }
+        .followCoreSession(id, refreshModels: menu || sheet == .model, window: windowRequest)
+        .sessionSamples(id)
+        .onChange(of: context.core.pendingComposerRestores, initial: true) { _, restores in
+            let matching = restores.filter { $0.effect.sessionID == id }
+            guard !matching.isEmpty else { return }
+            for item in matching {
+                SessionImages.applyRestore(
+                    item.effect, session: id, state: model.state, remote: context.remote, store: context.sessionStore
+                )
+            }
+            context.core.consumeComposerRestores(Set(matching.map(\.id)))
+        }
+    }
+
+    @ViewBuilder private func sessionBody(vm: PBSessionViewModel, header: PBSessionHeaderView) -> some View {
+        let state = model.state
+        let actions = vm.actions
+        let hasTerminal = header.capabilities.terminalAvailable
         let wide = width == .regular
         let both = wide && tab == 2 && hasTerminal
         let term = tab == 1 && hasTerminal
         let views = wide ? [L10n.sessionChat(), L10n.sessionTerminal(), L10n.sessionSplit()] : [L10n.sessionChat(), L10n.sessionTerminal()]
         let view = Binding(get: { both ? 2 : term ? 1 : 0 }, set: { pick($0) })
-        let live = status != .exited && status != .offline
-        let mode = status == .exited ? nil : modeLabel(s)
-        // Unknown context is left out, never shown as 0%.
-        let percent = live ? contextPercent(s) : nil
-        let high = (percent ?? 0) > 80
-        let refusal = protocolMismatch(state.machines[s.machineId])
-        let subtitle = sessionSubtitle(status: status, mode: mode)
+        let titleText = header.title.rendered()
+        let statusText = header.statusText.rendered()
+        let modeText = header.hasApprovalModeLabel ? header.approvalModeLabel.rendered() : ""
+        let modeDanger = header.approvalMode == .fullAccess
+        let high = header.highContextWarning
+        let live = !header.exited && header.computerOnline && !header.computerUnlinked
+        let popup = header.status == .popup
+        let machineID = header.machineID
+        let actionError: String = {
+            for cmd in [actions.interrupt, actions.end] {
+                if cmd.status != .pending && !cmd.busy {
+                    if cmd.hasErrorText {
+                        let s = cmd.errorText.rendered()
+                        if !s.isEmpty { return s }
+                    }
+                    if !cmd.errorCode.isEmpty { return cmd.errorCode }
+                }
+            }
+            return ""
+        }()
+
         Group {
             if both {
-                // The terminal is a dark panel set into the page beside the chat.
                 HStack(spacing: 0) {
-                    ChatPane(session: s, status: status, chat: chat) { pick(1) }
-                    TerminalPane(sessionId: sid, running: true)
+                    chatPane(vm: vm)
+                    TerminalPane(sessionId: id, running: true)
                         .background(TermColors.bg)
                         .clipShape(RoundedRectangle(cornerRadius: DS.Radius.command, style: .continuous))
                         .padding(12)
                 }
             } else if term {
-                TerminalPane(sessionId: sid, running: true)
+                TerminalPane(sessionId: id, running: true)
             } else {
-                ChatPane(session: s, status: status, chat: chat) { pick(1) }
+                chatPane(vm: vm)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .background((term ? TermColors.bg : DS.paper).ignoresSafeArea())
         .markdownTheme(DS.markdown)
-        // Under the title: 聊天 / 终端 on glass, then the strips of what stands in the way, the content sliding under them.
         .floatingBar(.top) {
             VStack(spacing: 8) {
-                // Wide, the choice is in the bar beside ⋯ and the top is one line.
                 if !wide {
-                    GlassSegmented(items: views, selected: view, enabled: { $0 == 0 || hasTerminal }, dot: status == .popup ? 1 : nil)
+                    GlassSegmented(items: views, selected: view, enabled: { $0 == 0 || hasTerminal }, dot: popup ? 1 : nil)
                         .accessibilityIdentifier("session-view")
                 }
                 ConnectionStrip()
-                if let refusal { GlassStrip(text: refusal, symbol: "exclamationmark.triangle", tone: .attention) }
-                if !act.error.isEmpty { GlassStrip(text: act.error, symbol: "xmark", tone: .error) }
+                if header.protocolMismatch {
+                    GlassStrip(text: header.protocolMismatchText.rendered(), symbol: "exclamationmark.triangle", tone: .attention)
+                }
+                if !actionError.isEmpty { GlassStrip(text: actionError, symbol: "xmark", tone: .error) }
                 if let notice = SharedFileCenter.of(context.remote).notice {
                     GlassStrip(text: notice.text, symbol: notice.symbol, tone: notice.failed ? .error : .plain)
                         .transition(Motion.appear(rise: -Motion.bubbleRise))
                 }
-                SessionScheduleBar(session: s)
+                SessionScheduleBar(sessionID: id, machineID: machineID)
             }
             .padding(.horizontal, DS.Space.m)
             .padding(.top, 4).padding(.bottom, 8)
@@ -203,29 +211,29 @@ private struct SessionPage: View {
             .environment(\.colorScheme, term ? .dark : colorScheme)
         }
         .tint(DS.blue)
-        .task(id: s.info?.scheduledTaskID) {
-            guard s.info?.taskOwned == true, let task = s.info?.scheduledTaskID, !task.isEmpty,
-                  nav.path.last == page, !nav.path.dropLast().contains(.schedule(machine: s.machineId, id: task)) else { return }
-            nav.path.insert(.schedule(machine: s.machineId, id: task), at: max(0, nav.path.count - 1))
+        .task(id: header.scheduledTaskID) {
+            let taskOwned = model.state.sessions[id]?.info?.taskOwned == true
+            guard taskOwned, !header.scheduledTaskID.isEmpty,
+                  nav.path.last == page, !nav.path.dropLast().contains(.schedule(machine: machineID, id: header.scheduledTaskID)) else { return }
+            nav.path.insert(.schedule(machine: machineID, id: header.scheduledTaskID), at: max(0, nav.path.count - 1))
         }
-        .task(id: sid) { SessionImages.restore(session: sid, remote: context.remote, store: context.sessionStore) }
-        // A file finished after the user has been away is theirs to open: nothing opens by itself then.
-        .onDisappear { SharedFileCenter.of(context.remote).leftPage(sid) }
+        .task(id: id) {
+            SessionImages.restore(session: id, remote: context.remote)
+        }
+        .onDisappear { SharedFileCenter.of(context.remote).leftPage(id) }
         .onChange(of: scenePhase) { _, phase in if phase != .active { SharedFileCenter.of(context.remote).leftPage() } }
         .animation(Motion.enter(), value: SharedFileCenter.of(context.remote).notice)
-        // The system's bar, with nothing drawn under it: the back button, the title with its line of state,
-        // and ⋯; from iOS 26 they are on glass, and the content runs under them.
         .navigationBarTitleDisplayMode(.inline)
-        .navigationTitle(titleOf(s))
+        .navigationTitle(titleText)
         .toolbarRole(.editor)
         .toolbar {
             ToolbarItem(placement: .principal) {
                 SessionTitle(
-                    title: titleOf(s), mark: StatusKind(status), status: subtitle.status, mode: subtitle.mode, danger: subtitle.danger)
+                    title: titleText, mark: StatusKind(header), status: statusText, mode: modeText, danger: modeDanger)
             }
             if wide {
                 ToolbarItem(placement: .topBarTrailing) {
-                    GlassSegmented(items: views, selected: view, enabled: { $0 == 0 || hasTerminal }, dot: status == .popup ? 1 : nil)
+                    GlassSegmented(items: views, selected: view, enabled: { $0 == 0 || hasTerminal }, dot: popup ? 1 : nil)
                         .accessibilityIdentifier("session-view")
                 }
             }
@@ -234,7 +242,6 @@ private struct SessionPage: View {
                     Image(systemName: "ellipsis")
                         .foregroundStyle(DS.ink)
                         .overlay(alignment: .topTrailing) {
-                            // Something in the menu wants a look: a context that is nearly full.
                             if high { Circle().fill(DS.orange).frame(width: 7, height: 7).offset(x: 5, y: -5) }
                         }
                 }
@@ -244,59 +251,68 @@ private struct SessionPage: View {
         }
         .toolbarBackground(.hidden, for: .navigationBar)
         .toolbarColorScheme(term ? .dark : nil, for: .navigationBar)
-        .menuSheet(isPresented: $menu, groups: groups(status: status, running: running, live: live, mode: mode, percent: percent)) {
-            // What the menu is about: the CLI, the project, the computer, then the folder (design-system §6 「弹层与对话框」).
+        .menuSheet(isPresented: $menu, groups: groups(header: header, actions: actions, live: live)) {
+            let computerText = header.hasComputerName ? header.computerName.rendered() : machineLabel(state, id: machineID)
+            let projectText = header.hasProjectName ? header.projectName.rendered() : projectName(header.projectKey)
+            let parts = [header.agentName.isEmpty ? agentName(header.agent) : header.agentName, projectText]
+                + (state.machines.count > 1 ? [computerText] : [])
             VStack(alignment: .leading, spacing: 2) {
-                // The computer is named only where the account has more than one.
                 HStack(alignment: .firstTextBaseline, spacing: 0) {
-                    AgentMark(s.agent, style: .headline, named: true)
-                    Text(([agentName(s.agent), projectName(projectKey(s))] + (state.machines.count > 1 ? [machineLabel(state, id: s.machineId)] : [])).joined(separator: " · "))
+                    AgentMark(header.agent, style: .headline, named: true)
+                    Text(parts.filter { !$0.isEmpty }.joined(separator: " · "))
                 }
                 .font(.headline).foregroundStyle(DS.ink)
-                Text(shortPath(s.info?.cwd ?? "")).font(.footnote.monospaced()).foregroundStyle(DS.ink2)
+                Text(shortPath(header.cwd)).font(.footnote.monospaced()).foregroundStyle(DS.ink2)
             }
         }
-        .onChange(of: menu) { _, shown in if !shown { context.sessionStore.dismissForkError(sid) } }
+        .onChange(of: actions.fork.status) { old, new in
+            if old == .pending && new == .idle && !actions.fork.frozen && commandErrorText(actions.fork).isEmpty {
+                menu = false
+            }
+        }
         .kitSheet(item: $sheet) { which in
             switch which {
-            case .mode: SessionModeSheet(session: s, startConfirm: SessionDebug.shows("confirmFull")) { sheet = nil }
-            case .model: SessionModelSheet(session: s, running: running) { sheet = nil }
+            case .mode: SessionModeSheet(sessionID: id, startConfirm: SessionDebug.shows("confirmFull")) { sheet = nil }
+            case .model: SessionModelSheet(sessionID: id) { sheet = nil }
             }
         }
-        // 项目设置 opens here, over the session, as on Android: on the session's own CLI, whose set this page is about.
         .kitSheet(item: $projectSettings) { _ in
-            let key = projectKey(s)
+            let key = header.projectKey
             if let initial = projectConfig(state, key: key) {
                 ProjectSettingsSheet(
-                    cwd: key, machine: initial.machineId, agent: s.agent,
+                    cwd: key, machine: initial.machineId, agent: header.agent,
                     onDone: { op in
                         if let op { context.prefsChanges.run(context.remote, .setSettings(op)) }
                         projectSettings = nil
                     },
-                    onClose: { projectSettings = nil })
+                    onClose: { projectSettings = nil }
+                )
             }
         }
         .sheet(isPresented: $scheduleSending) {
             NavigationStack {
-                NewScheduleScreen(sessionID: sid, onCreated: { route in
+                NewScheduleScreen(sessionID: id, onCreated: { route in
                     guard scheduleSending else { return }
                     scheduleSending = false; nav.open(route, from: page)
                 }, onClose: { scheduleSending = false })
             }.sheetSurface().presentationDetents([.large])
         }
-        .sessionRename(isPresented: $rename, session: s)
+        .sessionRename(isPresented: $rename, sessionID: id)
         .confirm(
-            isPresented: $confirmStop, title: L10n.sessionEndTitle(),
-            text: L10n.sessionEndNote(agent: agentName(s.agent), name: machineLabel(state, id: s.machineId)),
-            confirm: L10n.sessionEnd(), danger: true
+            isPresented: $confirmStop,
+            title: L10n.sessionEndTitle(),
+            text: actions.hasEndConfirmNote ? actions.endConfirmNote.rendered() : L10n.sessionEndNote(agent: header.agentName, name: header.computerName.rendered()),
+            confirm: L10n.sessionEnd(),
+            danger: true
         ) {
-            command(act) { $0.stopSession = .with { $0.sessionID = sid } }
-        }
-        .task(id: sid) { await chat.follow(context.remote, sid) }
-        .onChange(of: params, initial: true) { _, p in chat.use(p) }
-        // The menu's model row says the model's name, so it reads the list when it opens too.
-        .task(id: [s.machineId, menu ? "menu" : ""]) {
-            if agentInfo(s.agent).sessionNeedsModelList || menu { models = try? await context.remote.listModels(s.machineId, agent: s.agent) }
+            Task {
+                await context.coreHost.submitSessionCommand(
+                    sessionID: id,
+                    command: .with { $0.stopSession = .with { $0.sessionID = id } },
+                    machineID: machineID,
+                    slotKey: actions.end.slotKey
+                )
+            }
         }
         .task {
             #if DEBUG
@@ -304,7 +320,7 @@ private struct SessionPage: View {
             #endif
         }
         .debugSignal("session.schedule") {
-            if context.schedules.online(s.machineId) { scheduleSending = true }
+            if context.schedules.online(machineID) { scheduleSending = true }
         }
         .debugSignal("session.menu") { menu = true }
         .debugSignal("session.mode") { sheet = .mode }
@@ -330,75 +346,181 @@ private struct SessionPage: View {
         }
     }
 
-    /// The menu's three groups: the settings (审批模式, 模型, 上下文), what can be done, and 结束会话….
-    private func groups(status: Status, running: Bool, live: Bool, mode: ModeLabel?, percent: Int?) -> [[SheetAction]] {
-        let state = model.state
-        let s = session
-        let sid = s.id
-        let store = context.sessionStore
-        // Kept for the account: a fork whose outcome is unknown is still that fork after the menu or the page was left.
-        let fork = store.fork(sid)
-        let forking = fork.running
-        // The title is kept on the computer: an ended session can be renamed too, but only while the computer is reachable.
-        let reachable = state.peer(s.machineId).available
-        let sent = sentMessage(s, events: [PBEvent]()) || chat.spoke
-        let forkBlock = forkBlocked(status: status, running: running, sent: sent)
-        let raw = s.info?.model ?? ""
-        // The model's name, as the new-session summary says it; until the list is there, the name the CLI's slugs have.
-        let name = models.flatMap { findModel($0.models, id: raw) { $0.slug }?.displayName }.flatMap { $0.isEmpty ? nil : $0 } ?? agentInfo(s.agent).modelLabel(raw)
-        let effort = s.info?.effort ?? ""
+    @ViewBuilder private func chatPane(vm: PBSessionViewModel) -> some View {
+        ChatPane(
+            sessionID: id,
+            vm: vm,
+            onTerminal: { pick(1) },
+            onLoadEarlier: {
+                windowLimit += 80
+                if vm.timeline.hasGap_p && !vm.timeline.backfilling && !vm.timeline.fetching {
+                    Task { await context.coreHost.loadEarlierSessionHistory(id) }
+                }
+            },
+            onToggleGroup: { groupID in
+                if let idx = expandedGroups.firstIndex(of: groupID) {
+                    expandedGroups.remove(at: idx)
+                } else {
+                    expandedGroups.append(groupID)
+                }
+            }
+        )
+    }
+
+    private func commandErrorText(_ st: PBSessionCommandState) -> String {
+        if st.hasErrorText {
+            let rendered = st.errorText.rendered()
+            if !rendered.isEmpty { return rendered }
+        }
+        return st.errorCode
+    }
+
+    private func groups(header: PBSessionHeaderView, actions: PBSessionActionsView, live: Bool) -> [[SheetAction]] {
+        let forkCmd = actions.fork
+        let forking = forkCmd.status == .pending || forkCmd.busy
+        let running = header.status == .running || header.status == .starting
         var settings: [SheetAction] = []
         var list: [SheetAction] = []
         var end: [SheetAction] = []
         if live {
-            // A mode that could not be read has no row: there is nothing to say of it.
-            for row in menuSettings(mode: mode, model: name, effort: effort, percent: percent) {
-                settings.append(SheetAction(row.text, value: row.value, danger: row.danger, warn: row.warn, enabled: !forking) {
-                    afterMenu { sheet = row.opens == .mode ? .mode : .model }
+            if header.hasApprovalModeLabel {
+                let modeLabel = header.approvalModeLabel.rendered()
+                if !modeLabel.isEmpty {
+                    settings.append(SheetAction(L10n.modesTitle(), value: modeLabel, danger: header.approvalMode == .fullAccess, enabled: !forking) {
+                        afterMenu { sheet = .mode }
+                    })
+                }
+            }
+            let modelVal: String = {
+                if header.modelLabel.isEmpty && header.model.isEmpty { return "" }
+                let m = header.modelLabel.isEmpty ? header.model : header.modelLabel
+                let eff = header.hasEffortLabel ? header.effortLabel.rendered() : ""
+                return eff.isEmpty ? m : "\(m) · \(eff)"
+            }()
+            settings.append(SheetAction(
+                modelVal.isEmpty ? L10n.sessionSettings() : L10n.modelsTitle(),
+                value: modelVal,
+                enabled: !forking
+            ) {
+                afterMenu { sheet = .model }
+            })
+            if header.hasContext_p {
+                settings.append(SheetAction(
+                    L10n.sessionContext(),
+                    value: "\(header.contextPercent)%",
+                    warn: header.highContextWarning,
+                    enabled: !forking
+                ) {
+                    afterMenu { sheet = .model }
                 })
             }
         }
-        list.append(SheetAction(L10n.projectsIosSettings(), enabled: !forking && projectConfig(state, key: projectKey(s)) != nil) {
+        list.append(SheetAction(L10n.projectsIosSettings(), enabled: !forking && projectConfig(model.state, key: header.projectKey) != nil) {
             afterMenu { projectSettings = ProjectSettingsRequest() }
         })
-        list.append(SheetAction(L10n.sessionScheduleSend(), enabled: reachable && state.peer(s.machineId).capabilities?.scheduledTasks == true, note: state.peer(s.machineId).capabilities?.scheduledTasks == true ? "" : L10n.sessionIosUpdateRequired()) {
+        let supportsSchedule = header.computerOnline && !header.computerUnlinked && header.capabilities.supportsSchedule
+        list.append(SheetAction(
+            L10n.sessionScheduleSend(),
+            enabled: supportsSchedule,
+            note: header.capabilities.supportsSchedule ? "" : L10n.sessionIosUpdateRequired()
+        ) {
             afterMenu { scheduleSending = true }
         })
-        if reachable {
+        if actions.canRename {
             list.append(SheetAction(L10n.sessionRename(), enabled: !forking) { afterMenu { rename = true } })
-            if agentInfo(s.agent).forks {
-                // A fork starts at once, in the menu: its row shows the progress, and a failure under it.
-                let row = forkAction(blocked: forkBlock, running: forking, error: fork.error, frozen: fork.frozen, expired: fork.expired)
+        }
+        if header.capabilities.supportsFork {
+            let forkErr = commandErrorText(forkCmd)
+            if forking {
+                list.append(SheetAction(L10n.sessionForking(), enabled: true, busy: true, keepOpen: true) {})
+            } else if !actions.canFork {
                 list.append(SheetAction(
-                    row.text, enabled: row.enabled, note: row.note, noteError: row.noteError, busy: row.busy, keepOpen: true
+                    L10n.sessionFork(),
+                    enabled: false,
+                    note: actions.forkBlockedReason.rendered(),
+                    noteError: false,
+                    keepOpen: true
+                ) {})
+            } else if forkCmd.expired && forkCmd.canAbandon {
+                list.append(SheetAction(
+                    L10n.sessionAbandonFork(),
+                    enabled: true,
+                    note: L10n.sessionForkExpired(),
+                    noteError: true,
+                    keepOpen: true
                 ) {
-                    if row.tap == .abandon { return store.abandonFork(sid) }
-                    let made = store.forkSession(context.remote, machineId: s.machineId, sid: sid)
+                    Task { await context.coreHost.abandonSessionCommand(sessionID: id, slotKey: forkCmd.slotKey) }
+                })
+            } else {
+                let note = forkCmd.frozen ? L10n.sessionForkUnknown() : (forkErr.isEmpty ? "" : L10n.sessionForkFailed(reason: forkErr))
+                list.append(SheetAction(
+                    L10n.sessionFork(),
+                    enabled: true,
+                    note: note,
+                    noteError: !note.isEmpty,
+                    keepOpen: true
+                ) {
                     Task {
-                        guard let forked = await made.value else { return }
-                        // The new session may not be in the list yet: its page waits for it, as after starting one.
-                        menu = false
-                        afterMenu { nav.open(.session(id: forked), from: page) }
+                        await context.coreHost.submitSessionCommand(
+                            sessionID: id,
+                            command: .with { $0.forkSession = .with { $0.sessionID = id } },
+                            machineID: header.machineID,
+                            slotKey: forkCmd.slotKey
+                        )
                     }
                 })
             }
         }
-        if running {
+        if running && actions.canInterrupt {
             list.append(SheetAction(L10n.sessionInterrupt(), danger: true, enabled: !forking) {
-                command(act) { $0.interrupt = .with { $0.sessionID = sid } }
+                Task {
+                    await context.coreHost.submitSessionCommand(
+                        sessionID: id,
+                        command: .with { $0.interrupt = .with { $0.sessionID = id } },
+                        machineID: header.machineID,
+                        slotKey: actions.interrupt.slotKey
+                    )
+                }
             })
         }
-        if status != .exited {
+        if actions.canEnd {
             end.append(SheetAction(L10n.sessionEndAction(), danger: true, enabled: !forking) { afterMenu { confirmStop = true } })
         }
         return [settings, list, end]
     }
 }
 
-/// The middle of the bar: the title on one line, and under it the state and
-/// the approval mode (12, `ink2`), the mode red only when it is full access.
-/// The title, and under it the status's mark before its word, then the
-/// mode: both lines start at the same left edge, next to the back button.
+/// Shown while a session is loading or missing from Core.
+private struct SessionAbsent: View {
+    let header: PBSessionHeaderView
+    let online: Bool
+    let onRetry: () -> Void
+    @Environment(Navigator.self) private var nav
+
+    var body: some View {
+        Page {
+            VStack(spacing: 0) {
+                ConnectionBar()
+                Spacer(minLength: 24)
+                if header.missing {
+                    Text(header.missingText.rendered()).font(.headline).ink(DS.ink).multilineTextAlignment(.center).accessibilityAddTraits(.isHeader)
+                    TextAction(L10n.commonBack(), alignment: .center) { nav.back() }
+                } else if header.hasMissingText && !header.missingText.rendered().isEmpty {
+                    Text(header.missingText.rendered()).font(.headline).ink(DS.ink).multilineTextAlignment(.center).accessibilityAddTraits(.isHeader)
+                    TextAction(L10n.commonRetry(), alignment: .center, action: onRetry)
+                    TextAction(L10n.commonBack(), alignment: .center) { nav.back() }
+                } else {
+                    Mark(Mark.progress, color: DS.ink2, size: 22, relativeTo: .body)
+                    Text(online ? L10n.projectsReadingDirectory() : L10n.sessionIosConnectRead()).font(.subheadline).ink(DS.ink2).padding(.top, 12)
+                        .multilineTextAlignment(.center)
+                }
+                Spacer(minLength: 24)
+            }
+            .padding(.horizontal, 24)
+        }
+    }
+}
+
 private struct SessionTitle: View {
     let title: String
     let mark: StatusKind?
@@ -416,10 +538,8 @@ private struct SessionTitle: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        // The bar has one line's room at the largest sizes; a long press shows it large.
         .dynamicTypeSize(...DynamicTypeSize.accessibility1)
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(.isHeader)
     }
 }
-

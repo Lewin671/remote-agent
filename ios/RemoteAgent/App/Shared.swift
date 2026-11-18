@@ -177,25 +177,3 @@ final class ActionRunner {
         }
     }
 }
-
-/// A session's events, kept whole for as long as a screen follows them
-/// (`Remote.events`). A screen keeps one in `@State` and follows it from a
-/// task, which ends when the screen goes away, letting the history go:
-///
-///     .task(id: sid) { await history.follow(ctx.remote, sid) }
-@MainActor
-@Observable
-final class SessionHistory {
-    private(set) var events = SessionEvents()
-
-    /// Follows the session until the task is cancelled. The feed keeps only
-    /// the latest snapshot for a reader that is behind, and a frame passes
-    /// between two of them.
-    func follow(_ remote: Remote, _ sid: String) async {
-        events = SessionEvents()
-        for await snapshot in remote.events(sid).updates() {
-            events = snapshot
-            if (try? await Task.sleep(nanoseconds: 16_000_000)) == nil { return }
-        }
-    }
-}

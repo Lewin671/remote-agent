@@ -7,6 +7,13 @@ import Observation
 import RACore
 import RAProto
 
+protocol NewSessionCommands: Sendable {
+    func prepare(machineId: String, sessionId: String, _ cmd: PBCommand) throws -> PreparedCommand
+    func forward(_ p: PreparedCommand, retryOfUnknown: Bool) async throws -> PBCommandResult
+}
+
+extension Remote: NewSessionCommands {}
+
 /// A first message with the configuration it will start with, kept and
 /// restored together so that a draft reopened later still goes where it
 /// was going; and the start of it.
@@ -68,7 +75,7 @@ final class NewSessionDraft {
     /// they are. While an earlier start's outcome is unknown, the same
     /// start is that request again and anything else gives it up.
     func start(
-        _ remote: any SessionCommands, _ cfg: NewConfig, images: ImageDraft? = nil,
+        _ remote: any NewSessionCommands, _ cfg: NewConfig, images: ImageDraft? = nil,
         onImagesUsed: @escaping @MainActor ([PendingImage]) -> Void = { _ in },
         onStarted: @escaping @MainActor (_ sid: String, _ used: NewConfig, _ prompt: String) -> Void
     ) {

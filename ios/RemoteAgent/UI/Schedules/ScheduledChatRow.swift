@@ -1,39 +1,20 @@
 import RACore
+import RAProto
 import SwiftUI
 import RAMarkdown
 import RAMarkdownUI
 
-struct ScheduledChatRow: View {
-    let row: ChatRow
-    let env: ChatEnv
-    @State private var expanded = false
-    var body: some View {
-        if row.folded.isEmpty { ChatRowView(row: row, env: env).equatable() }
-        else {
-            VStack(spacing: 0) {
-                if case .note(let note) = row.item {
-                    Button { expanded.toggle() } label: {
-                        HStack(spacing: 6) {
-                            Text(note.text).font(.footnote).ink(DS.ink2).multilineTextAlignment(.leading)
-                            Arrow(DS.ink2, direction: expanded ? .up : .down)
-                        }.frame(maxWidth: .infinity, minHeight: 44, alignment: .leading).padding(.horizontal, 16)
-                    }.buttonStyle(PressStyle()).accessibilityValue(expanded ? L10n.projectsIosExpanded() : L10n.sessionIosCollapsed())
-                }
-                if expanded { ForEach(row.folded) { child in ChatRowView(row: child, env: env).equatable().id(child.id) } }
-            }
-        }
-    }
-}
 struct SessionScheduleBar: View {
-    let session: SessionView
+    let sessionID: String
+    let machineID: String
     @Environment(AccountContext.self) private var context
     @Environment(Navigator.self) private var nav
     @State private var picking = false
     var body: some View {
-        let tasks = sessionSchedules(context.schedules.tasks, session: session)
+        let tasks = sessionSchedules(context.schedules.tasks, sessionID: sessionID, machineID: machineID)
         if !tasks.isEmpty {
             // A strip of glass under the session's title (design-system §6 「提示条」).
-            GlassStrip(text: scheduleBarText(tasks, online: context.schedules.online(session.machineId)), symbol: "clock", action: L10n.scheduleManage()) {
+            GlassStrip(text: scheduleBarText(tasks, online: context.schedules.online(machineID)), symbol: "clock", action: L10n.scheduleManage()) {
                 if let task = tasks.first, tasks.count == 1 { open(task) } else { picking = true }
             }
                 .kitSheet(isPresented: $picking) {
@@ -63,8 +44,8 @@ struct ScheduleResultCard: View {
     let open: () -> Void
     @Environment(AccountContext.self) private var context
     @Environment(\.horizontalSizeClass) private var sizeClass
-    @State private var history = SessionHistory()
     var body: some View {
+        let vm = (run.sessionID ?? "").isEmpty ? nil : context.core.sessions[run.sessionID!]
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 6) {
                 if unread { Circle().fill(DS.blue).frame(width: 8, height: 8).accessibilityLabel(L10n.scheduleUnreadOnEntry()) }
@@ -75,18 +56,61 @@ struct ScheduleResultCard: View {
             if let title = run.resultTitle {
                 Text(title).font(.body.weight(.semibold)).ink(DS.ink).frame(maxWidth: .infinity, alignment: .leading)
             }
-            let full = scheduleFinalAnswer(history.events.events, runID: run.id)
+            let full = scheduleFinalAnswer(from: vm, runID: run.id)
             let fallback = (run.finalSummary?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false ? run.finalSummary : nil) ?? scheduleReason(run.reason)
             ScheduleResultBody(text: full ?? fallback, folds: sizeClass != .regular)
         }
         .padding(16).background(DS.gbg, in: RoundedRectangle(cornerRadius: DS.Radius.group))
         .padding(.horizontal, 16).padding(.top, 16)
-        .task(id: run.sessionID) {
+        .task(id: "\(run.sessionID ?? "")#\(run.id)") {
             guard let sid = run.sessionID, !sid.isEmpty else { return }
             if context.remote.state.value.sessions[sid] == nil { _ = try? await context.remote.fetchSession(sid) }
-            await history.follow(context.remote, sid)
+            await context.coreHost.openSession(sid)
+            let token = await context.coreHost.acquireSessionWatch(
+                sid,
+                initialWindow: .with {
+                    $0.limit = 80
+                    $0.revealRunID = run.id
+                }
+            )
+            defer { Task { await context.coreHost.releaseSessionWatch(token) } }
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(3600))
+            }
         }
     }
+}
+
+private func scheduleFinalAnswer(from vm: PBSessionViewModel?, runID: String) -> String? {
+    guard let vm, !runID.isEmpty else { return nil }
+    let tl = vm.timeline
+    guard tl.loaded, !tl.hasError, !tl.hasFetchError, !tl.historyPartial, !tl.retired else { return nil }
+    let flat = tl.items.flatMap { item -> [PBSessionTimelineItem] in
+        if case .quietScheduledGroup(let g)? = item.kind { return g.items }
+        return [item]
+    }
+    guard let start = flat.firstIndex(where: {
+        if case .userMessage(let u)? = $0.kind { return u.scheduledRunID == runID }
+        return false
+    }) else { return nil }
+    var answer: String?
+    for item in flat.dropFirst(start + 1) {
+        switch item.kind {
+        case .userMessage(let u)?:
+            if !u.isScheduled || (!u.scheduledRunID.isEmpty && u.scheduledRunID != runID) { return answer }
+        case .forkMarker?:
+            return answer
+        case .turnEnd(let end)? where end.isSessionEnded:
+            return answer
+        case .agentMessage(let a)? where !a.intermediate:
+            if !a.markdown.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                answer = a.markdown
+            }
+        default:
+            break
+        }
+    }
+    return answer
 }
 struct ScheduleResultBody: View {
     let text: String

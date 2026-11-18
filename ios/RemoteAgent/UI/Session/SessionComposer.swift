@@ -1,14 +1,6 @@
-// The message box of a session (docs/design-system.md §6 「输入框」; Android's
-// ui/ComposeBox.kt and `Composer` in ui/Session.kt): a plus that adds
-// images, the text from one line up to six, and one button at the right.
-//
-// That button is send. In a running session with nothing typed it is the
-// square that interrupts the turn; with something typed, a tap inserts the
-// message into the running turn (steer, what the CLIs' own Enter does) and
-// a long press offers to queue it for when the turn ends (architecture §6).
-// The draft is the user's: it is kept per session for the account
-// (`SessionStore`), stays while the server is out of reach, and is cleared
-// only by a send.
+// The message box of a session (docs/design-system.md §6 「输入框」): a plus that
+// adds images, the text from one line up to six, and one button at the right
+// rendered from Core's `PBSessionComposerView` and submitted via `CoreHost`.
 import RACore
 import RAProto
 import SwiftUI
@@ -21,18 +13,14 @@ struct SessionComposeBox<Top: View>: View {
     let canSend: Bool
     let onSend: () -> Void
     let attach: AttachMenu
-    /// Queues instead of inserting; nil when there is no running turn to wait for.
     var onQueue: (() -> Void)?
-    /// Interrupts the turn; nil when none is running.
     var onInterrupt: (() -> Void)?
     var canInterrupt = false
     var hasDraft: Bool
     var focus: FocusState<Bool>.Binding
-    /// Why sending is not possible now, for VoiceOver, which cannot see the notice that says so.
     var sendHint = ""
     @ViewBuilder var top: Top
 
-    /// Which of the three buttons it is: they cross-fade when it changes (§4 动效, 快).
     private enum Kind { case interrupt, menu, send }
     private var kind: Kind {
         if !hasDraft, onInterrupt != nil { .interrupt } else if onQueue != nil, canSend { .menu } else { .send }
@@ -50,7 +38,6 @@ struct SessionComposeBox<Top: View>: View {
                 .disabled(!canInterrupt)
                 .accessibilityLabel(L10n.sessionInterrupt())
         } else if let onQueue, canSend {
-            // A tap sends; a long press opens the choice, as the system's own send buttons do.
             Menu {
                 Button(action: onSend) {
                     Text(L10n.composerInsertNow())
@@ -76,7 +63,7 @@ struct SessionComposeBox<Top: View>: View {
                 .buttonStyle(PressScale())
                 .disabled(!canSend)
                 .accessibilityLabel(L10n.composerSend())
-            .accessibilityIdentifier("session-send")
+                .accessibilityIdentifier("session-send")
                 .accessibilityHint(sendHint)
         }
     }
@@ -89,7 +76,6 @@ struct SessionComposeBox<Top: View>: View {
         } trailing: {
             button
         }
-        // A keyboard attached to an iPad or a Mac sends with ⌘↩; Return alone is a new line, as on the screen keyboard.
         .background {
             Button(L10n.composerSend(), action: onSend).keyboardShortcut(.return, modifiers: .command).disabled(!canSend)
                 .opacity(0).accessibilityHidden(true)
@@ -97,12 +83,7 @@ struct SessionComposeBox<Top: View>: View {
     }
 }
 
-/// ＋ at the left of a message box (design-system §6 「输入框」). It does
-/// one thing: open the library. A computer that takes files offers 照片和视频
-/// and 文件 in the system's menu instead, the library then holding videos
-/// too, which go as files (session-files.md 「从相册选视频」). With an image
-/// on the clipboard the menu also offers to paste it, as the system's text
-/// field cannot take a pasted image.
+/// ＋ at the left of a message box.
 struct AttachMenu: View {
     let images: ComposerAttachments
 
@@ -132,103 +113,119 @@ struct AttachMenu: View {
     }
 }
 
-/// The message box of a session, wired to what it sends.
+/// The message box of a session, wired to `PBSessionViewModel` and `CoreHost`.
 struct SessionComposer: View {
-    let session: SessionView
-    let status: Status
-    let derived: PBProjectionState
+    let sessionID: String
+    let header: PBSessionHeaderView
+    let composer: PBSessionComposerView
+    let actions: PBSessionActionsView
     var focus: FocusState<Bool>.Binding
-    /// A message is being sent from this box, with or without images. Sending is asking to see the answer.
+    /// A message is being sent from this box, with or without images.
     var onSent: () -> Void = {}
     @Environment(AppModel.self) private var model
     @Environment(AccountContext.self) private var context
-    @State private var interrupt = ActionRunner()
     @State private var notice = ""
 
+    private var machineID: String { header.machineID }
+
     private var images: ComposerAttachments {
-        ComposerAttachments(state: model.state, key: ImageCenter.sessionKey(session.id), machineId: session.machineId, remote: context.remote)
+        ComposerAttachments(state: model.state, key: ImageCenter.sessionKey(sessionID), machineId: machineID, remote: context.remote)
     }
 
-    private func send(_ mode: PBSendMode) {
-        let mode = sendModeFor(agent: session.agent, requested: mode, running: status == .running || derived.running)
+    private func send(_ requested: PBSendMode) {
+        guard composer.enabled else { return }
+        let mode: PBSendMode = (composer.hasActiveTurn_p && composer.supportsQueueMode && requested == .queue) ? .queue : .steer
         let store = context.sessionStore
-        let sid = session.id
-        let message = store.draft(sid).jvmTrim()
+        let message = store.draft(sessionID).jvmTrim()
         let images = images
         let attached = images.hasImages
         if message.isEmpty && !attached { return }
         images.refresh()
-        // Every image must be on the computer first: never a message with some of them.
         if attached && !images.ready { return }
         SessionHaptics.tap()
         onSent()
-        let taken = SessionImages.send(context.remote, session: sid, store: store, machineId: session.machineId, text: message, mode: mode) { kept in
+        let taken = SessionImages.send(context, session: sessionID, machineId: machineID, text: message, mode: mode) { kept in
             switch kept {
             case .success:
-                if store.draft(sid).jvmTrim() == message { store.setDraft(sid, "") }
+                if store.draft(sessionID).jvmTrim() == message { store.setDraft(sessionID, "") }
             case .failure(let error):
                 notice = L10n.composerIosNotSent(reason: errorText(error))
             }
         }
-        // The message's images are being kept before it is sent (`SessionStore.isKeeping`).
         if taken { return }
         notice = ""
-        store.setDraft(sid, "")
-        store.send(context.remote, sid: sid, text: message, mode: mode)
+        store.setDraft(sessionID, "")
+        let reqID = newRequestId()
+        Task {
+            await context.coreHost.submitSessionCommand(
+                sessionID: sessionID,
+                command: .with {
+                    $0.send = .with {
+                        $0.sessionID = sessionID
+                        $0.text = message
+                        $0.requestID = reqID
+                        $0.mode = mode
+                    }
+                },
+                machineID: machineID
+            )
+        }
+    }
+
+    private func sendInterrupt() {
+        let interruptState = actions.interrupt
+        Task {
+            await context.coreHost.submitSessionCommand(
+                sessionID: sessionID,
+                command: .with { $0.interrupt = .with { $0.sessionID = sessionID } },
+                machineID: machineID,
+                slotKey: interruptState.slotKey
+            )
+        }
     }
 
     var body: some View {
-        let state = model.state
         let store = context.sessionStore
-        let sid = session.id
-        let online = state.peer(session.machineId).ready
-        let running = status == .running || derived.running
         let images = images
         let attached = images.hasImages
-        let text = store.draft(sid)
-        // A computer on another protocol version would refuse it: its notice says which side to update.
-        let refused = protocolMismatch(state.machines[session.machineId]) != nil
-        let remote = context.remote
+        let text = store.draft(sessionID)
+        let canSend = composerCanSend(
+            text: text, online: composer.enabled, keeping: store.isKeeping(sessionID),
+            hasImages: attached, imagesReady: images.ready, refused: header.protocolMismatch
+        )
+        let placeholder = composer.hasPlaceholder ? composer.placeholder.rendered() : L10n.composerMessage()
+        let interruptBusy = actions.interrupt.status == .pending || actions.interrupt.busy
+        let interruptError: String = {
+            let s = actions.interrupt
+            if commandRunning(s) { return "" }
+            if s.hasErrorText { return s.errorText.rendered() }
+            return s.errorCode
+        }()
         VStack(spacing: 0) {
             SessionComposeBox(
-                text: Binding(get: { store.draft(sid) }, set: { store.setDraft(sid, $0) }),
-                placeholder: composerPlaceholder(questionPending: !derived.questions.isEmpty, planOpen: session.info?.planOpen == true),
-                canSend: composerCanSend(
-                    text: text, online: online, keeping: store.isKeeping(sid), hasImages: attached, imagesReady: images.ready,
-                    refused: refused),
+                text: Binding(get: { store.draft(sessionID) }, set: { store.setDraft(sessionID, $0) }),
+                placeholder: placeholder,
+                canSend: canSend,
                 onSend: { send(.steer) },
                 attach: AttachMenu(images: images),
-                onQueue: running && agentInfo(session.agent).steersDuringTurn ? { send(.queue) } : nil,
-                onInterrupt: running
-                    ? {
-                        interrupt.run {
-                            var cmd = PBCommand()
-                            cmd.interrupt = .with { $0.sessionID = sid }
-                            try await remote.command(sid, cmd)
-                        }
-                    } : nil,
-                canInterrupt: online && !interrupt.running,
+                onQueue: composer.hasActiveTurn_p && composer.supportsQueueMode ? { send(.queue) } : nil,
+                onInterrupt: composer.interruptVisible ? { sendInterrupt() } : nil,
+                canInterrupt: actions.canInterrupt && !interruptBusy,
                 hasDraft: !text.jvmIsBlank || attached,
                 focus: focus,
-                sendHint: online ? "" : L10n.composerIosConnectSend()
+                sendHint: composer.enabled ? "" : (composer.hasDisabledReason ? composer.disabledReason.rendered() : L10n.composerIosConnectSend())
             ) {
-                images.strip(focus: focus, session: (sid, store))
+                images.strip(focus: focus, session: (sessionID, store))
             }
             Color.clear.frame(height: 0)
-                .debugSignal("session.draft") { store.setDraft(sid, SessionDebug.text) }
+                .debugSignal("session.draft") { store.setDraft(sessionID, SessionDebug.text) }
                 .debugSignal("session.send") { send(.steer) }
                 .debugSignal("session.queue") { send(.queue) }
-                .debugSignal("session.interrupt") {
-                    interrupt.run {
-                        var cmd = PBCommand()
-                        cmd.interrupt = .with { $0.sessionID = sid }
-                        try await remote.command(sid, cmd)
-                    }
-                }
+                .debugSignal("session.interrupt") { sendInterrupt() }
             if !notice.isEmpty { Notice(notice, tone: .error).padding(.horizontal, DS.Space.m).padding(.bottom, 6) }
-            if let error = store.draftErrors[sid] { Notice(error, tone: .error).padding(.horizontal, DS.Space.m).padding(.bottom, 6) }
-            if !interrupt.error.isEmpty {
-                Notice(L10n.sessionIosInterruptFailed(reason: interrupt.error), tone: .error).padding(.horizontal, DS.Space.m).padding(.bottom, 6)
+            if let error = store.draftErrors[sessionID] { Notice(error, tone: .error).padding(.horizontal, DS.Space.m).padding(.bottom, 6) }
+            if !interruptError.isEmpty {
+                Notice(L10n.sessionIosInterruptFailed(reason: interruptError), tone: .error).padding(.horizontal, DS.Space.m).padding(.bottom, 6)
             }
             if slashWarning(text) {
                 Text(slashWarningText).font(.footnote).foregroundStyle(DS.orangeInk)
@@ -236,5 +233,9 @@ struct SessionComposer: View {
                     .padding(.horizontal, DS.Space.xl).padding(.bottom, 6)
             }
         }
+    }
+
+    private func commandRunning(_ st: PBSessionCommandState) -> Bool {
+        st.status == .pending || st.busy
     }
 }

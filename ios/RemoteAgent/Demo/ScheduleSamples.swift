@@ -57,8 +57,8 @@ import SwiftProtobuf
         state.sessions[f.session]?.lastSeq = events.last?.seq ?? 0
         if HomeLaunch.value("-scheduleOffline") == "yes" { state.machines[f.machine]?.online = false }
         let remote = Demo.remote(), shown = state, sampleEvents = events
-        model.showDemo(account:Demo.account,remote:remote,initial:shown) {
-            await remote.showForTest(state:shown,events:[f.session:sampleEvents],live:true)
+        model.showDemo(account: Demo.account, remote: remote, initial: shown, events: [f.session: sampleEvents]) {
+            await remote.showForTest(state: shown)
         }
         guard let context = model.context else { return false }
         context.schedules.configure(.init(cached:{ _ in f.tasks },list:{ _ in f.tasks }))

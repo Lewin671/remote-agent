@@ -1,47 +1,64 @@
 import RACore
 import RAMarkdownUI
+import RAProto
 import SwiftUI
 
 /// 计划: a proposed plan on a page of its own, whole, with the choices under
-/// it while it still waits for one (Android's PlanPage).
+/// it while Core reports `dock.kind == .plan` (Android's PlanPage).
 struct PlanScreen: View {
     let session: String
 
-    @Environment(AppModel.self) private var model
+    @Environment(AccountContext.self) private var context
     @Environment(Navigator.self) private var nav
     @Environment(\.page) private var page
-    @State private var chat = SessionModel()
-    @State private var finder = SessionFinder()
 
     var body: some View {
-        let s = model.state.sessions[session]
+        let vm = context.core.sessions[session]
+        let header = vm?.header
+        let dock = vm?.dock
+        let openPlan = dock.flatMap { $0.hasItem_p && $0.kind == .plan ? $0 : nil }
+        let timelinePlan: String? = vm?.timeline.items.reversed().compactMap {
+            if case .plan(let p)? = $0.kind, !p.markdown.isEmpty { return p.markdown }
+            return nil
+        }.first
+        let markdown = openPlan?.plan.markdown.nilIfEmpty ?? timelinePlan
         Page {
             VStack(spacing: 0) {
                 ConnectionBar()
-                if chat.derived.hasPlan, isSkeleton(chat.derived.plan.text) {
-                    PageNote(skeletonMessage)
-                } else if let s, chat.derived.hasPlan {
-                    let plan = chat.derived.plan
+                if let md = markdown, !md.isEmpty {
                     ScrollView {
-                        MarkdownView(plan.text, bleed: 16)
+                        MarkdownView(md, bleed: 16)
                             .padding(.horizontal, 16).padding(.top, 8).padding(.bottom, 16)
                             .readableColumn()
                     }
-                    // Answered already, here or elsewhere: the plan stays to be read, without its choices.
-                    if s.info?.planOpen == true {
+                    if let dock = openPlan {
                         VStack(alignment: .leading, spacing: 0) {
-                            PlanButtons(session: s, full: true, terminalOnly: isSkeleton(plan.text)) { nav.back(from: page) }
+                            PlanButtons(
+                                sessionID: session,
+                                machineID: header?.machineID ?? "",
+                                dock: dock,
+                                full: true
+                            ) {
+                                nav.back(from: page)
+                            }
                         }
                         .padding(.horizontal, 14).padding(.top, 8).padding(.bottom, 8)
                         .readableColumn()
                         .topLine()
                     }
+                } else if header?.missing == true {
+                    PageNote(header?.missingText.rendered() ?? L10n.sessionIosMissing())
                 } else {
-                    PageNote(s == nil ? lookupNote(finder.lookup) ?? L10n.projectsReadingDirectory() : L10n.projectsReadingDirectory())
+                    PageNote(L10n.projectsReadingDirectory())
                 }
             }
         }
-        .navBar(L10n.modesPlan(), subtitle: s.map { titleOf($0) })
-        .followSession(session, chat: chat, finder: finder)
+        .navBar(L10n.modesPlan(), subtitle: header?.found == true ? header?.title.rendered() : nil)
+        .followCoreSession(session)
+        .sessionSamples(session)
     }
+}
+
+private extension String {
+    var nilIfEmpty: String? { isEmpty ? nil : self }
 }

@@ -158,7 +158,7 @@ private struct SharedFileMenuView: View {
     private func menu(items: [SharedFileMenuItem], width: CGFloat, height: CGFloat?) -> some View {
         let state = context.remote.state.value
         let machineId = state.sessions[request.env.session]?.machineId ?? ""
-        let path = displaySharedPath(request.file.path, home: state.machines[machineId]?.meta?.home ?? request.env.home, fallbackName: request.file.name)
+        let path = displaySharedPath(request.file.path, home: state.machines[machineId]?.meta?.home ?? "", fallbackName: request.file.name)
         return ScrollView {
             VStack(spacing: 0) {
                 VStack(alignment: .leading, spacing: 3) {

@@ -1,53 +1,76 @@
 // The decision on an approval, on the dark card (design-system §6 「终端卡」),
 // wherever an approval is drawn: the home page's card, the session's dock
 // and the approval's own page. 不允许 asks for a reason in place; once
-// decided the card is one line of where that stands (`ApprovalSubmitted`).
-//
-// What was decided, and how far it got, is the account's
-// (`SessionStore.Resolve`), not a view's: a decision made on one screen is
-// locked on the others. A tap locks both buttons until the computer
-// confirms; an unknown outcome only offers to send the same decision again.
+// decided the card shrinks to one status line of Core's `PBSessionCommandState`.
 import RACore
 import RAProto
 import SwiftUI
 
-extension SessionStore.Resolve {
-    /// A decision was made, is on its way, or did not arrive: the card is one line.
-    var submitted: Bool { decided || running || frozen || !error.isEmpty }
-}
-
-/// Approval metadata needed to decide or render a submitted decision line.
+/// Approval metadata + Core command state needed to decide or render a submitted decision line.
 struct ApprovalTarget {
     let sessionId: String
     let machineId: String
     let approvalId: String
+    let observedSeq: UInt64
     let head: String
     let truncated: Bool
     let isSkeleton: Bool
     let expired: Bool
+    let commandState: PBSessionCommandState?
+    let canAlwaysAllow: Bool
+    let alwaysLabel: String
+    let denyPlaceholder: String
 
-    init(session: SessionView, approval: PBApprovalRequested, now: Int64) {
-        self.sessionId = session.id
-        self.machineId = session.machineId
-        self.approvalId = approval.approvalID
-        self.head = approvalHead(approval)
-        self.truncated = approvalTruncated(approval)
-        self.isSkeleton = RACore.isSkeleton(approval)
-        self.expired = approval.hasDeadline && approval.deadline.seconds * 1000 <= now
+    init(
+        sessionId: String,
+        machineId: String,
+        dock: PBSessionDockView
+    ) {
+        let a = dock.approval
+        self.sessionId = sessionId
+        self.machineId = machineId
+        self.approvalId = a.approvalID
+        self.observedSeq = dock.observedSeq
+        self.head = a.commandPreview.isEmpty ? a.toolName : a.commandPreview
+        self.truncated = a.bodyTruncated
+        self.isSkeleton = a.isSkeleton
+        self.expired = false
+        self.commandState = dock.hasCommand ? dock.command : nil
+        self.canAlwaysAllow = a.canAlwaysAllow
+        self.alwaysLabel = a.hasAlwaysLabel ? a.alwaysLabel.rendered() : L10n.approvalAlwaysAllow()
+        self.denyPlaceholder = a.hasDenyReasonPlaceholder ? a.denyReasonPlaceholder.rendered() : L10n.approvalReasonPlaceholder()
     }
 
-    init(card: PBCoreAttentionCardView) {
+    init(card: PBCoreAttentionCardView, commandState: PBSessionCommandState?) {
         self.sessionId = card.sessionID
         self.machineId = card.machineID
         self.approvalId = card.approvalID
+        self.observedSeq = 0
         self.head = card.toolName
         self.truncated = card.truncated
         self.isSkeleton = false
         self.expired = false
+        self.commandState = commandState
+        self.canAlwaysAllow = card.alwaysKind != .unspecified
+        self.alwaysLabel = L10n.approvalAlwaysAllow()
+        self.denyPlaceholder = L10n.approvalReasonPlaceholder()
+    }
+
+    var isRunning: Bool {
+        commandState?.status == .pending || commandState?.busy == true
+    }
+
+    var isFailed: Bool {
+        guard let st = commandState, !isRunning else { return false }
+        return st.status == .failed || st.status == .unknown || st.frozen
+    }
+
+    func isSubmitted(choice: SessionStore.ApprovalChoice?) -> Bool {
+        isRunning || commandState?.frozen == true || isFailed || choice != nil
     }
 }
 
-/// The reason field while refusing, the two buttons, and under them 允许，这类请求以后不再问 where the computer offers it.
+/// The reason field while refusing, the two buttons, and under them the "always allow" action when offered.
 struct ApprovalDecision: View {
     let target: ApprovalTarget
     /// The command is not shown whole: 看完整命令 stands where 允许 would.
@@ -63,55 +86,14 @@ struct ApprovalDecision: View {
     @Environment(AccountContext.self) private var context
     @FocusState private var reasonFocus: Bool
 
-    init(
-        target: ApprovalTarget,
-        cut: Bool = false,
-        onFull: @escaping () -> Void = {},
-        measured: Bool = true,
-        denying: Binding<Bool>,
-        chosen: Binding<Bool?>,
-        signals: (String, String) = ("session.allow", "session.deny")
-    ) {
-        self.target = target
-        self.cut = cut
-        self.onFull = onFull
-        self.measured = measured
-        self._denying = denying
-        self._chosen = chosen
-        self.signals = signals
-    }
-
-    init(
-        session: SessionView,
-        approval: PBApprovalRequested,
-        now: Int64,
-        cut: Bool = false,
-        onFull: @escaping () -> Void = {},
-        measured: Bool = true,
-        denying: Binding<Bool>,
-        chosen: Binding<Bool?>,
-        signals: (String, String) = ("session.allow", "session.deny")
-    ) {
-        self.init(
-            target: ApprovalTarget(session: session, approval: approval, now: now),
-            cut: cut,
-            onFull: onFull,
-            measured: measured,
-            denying: denying,
-            chosen: chosen,
-            signals: signals
-        )
-    }
-
     var body: some View {
         let state = model.state
         let truncated = target.truncated
-        // Out of reach of the server nothing can be decided, nor once the time is up.
-        let locked = state.peer(target.machineId).unlinked || target.expired
-        let always = capabilities(state.machines[target.machineId])?.approvalAlways == true
+        let locked = state.peer(target.machineId).unlinked || target.expired || target.isSkeleton
+        let always = target.canAlwaysAllow || capabilities(state.machines[target.machineId])?.approvalAlways == true
         VStack(alignment: .leading, spacing: 0) {
             if denying {
-                TextField(L10n.approvalReasonPlaceholder(), text: reason, axis: .vertical)
+                TextField(target.denyPlaceholder, text: reason, axis: .vertical)
                     .lineLimit(1...4)
                     .font(.body)
                     .foregroundStyle(DS.ink)
@@ -126,9 +108,8 @@ struct ApprovalDecision: View {
                 HStack(spacing: 8) { row(locked: locked, blocked: truncated || !measured) }
                 VStack(spacing: 8) { row(locked: locked, blocked: truncated || !measured) }
             }
-            // Nothing can be decided now: the line that would allow is not offered, as the buttons are greyed.
             if always && !denying && !cut && !truncated && !locked {
-                LinkButton(L10n.approvalAlwaysAllow()) { decide(true, always: true) }
+                LinkButton(target.alwaysLabel) { decide(true, always: true) }
                     .font(.subheadline)
                     .frame(maxWidth: .infinity)
                     .padding(.bottom, -8)
@@ -165,19 +146,34 @@ struct ApprovalDecision: View {
     private func decide(_ allow: Bool, message: String = "", always: Bool = false) {
         guard !target.isSkeleton, !allow || !target.truncated else { return }
         SessionHaptics.tap()
-        // The card shrinks to the line of what was answered as it is answered (§4 动效).
+        let store = context.sessionStore
         withAnimation(Motion.enter()) {
             chosen = allow
-            _ = context.sessionStore.decide(
-                context.remote, machineId: target.machineId, sid: target.sessionId, approvalId: target.approvalId, allow: allow,
-                message: message, always: always)
+            store.setApprovalChoice(target.approvalId, .init(allow: allow, message: message, always: always))
+        }
+        Task {
+            await context.coreHost.submitSessionCommand(
+                sessionID: target.sessionId,
+                command: .with {
+                    $0.resolveApproval = .with {
+                        $0.sessionID = target.sessionId
+                        $0.approvalID = target.approvalId
+                        $0.allow = allow
+                        $0.message = message
+                        $0.always = always
+                        if target.observedSeq > 0 {
+                            $0.observedEventSeq = target.observedSeq
+                        }
+                    }
+                },
+                machineID: target.machineId
+            )
         }
     }
 }
 
 /// Submitted: one line of where the decision stands (「已允许」「已拒绝」), or
-/// why it did not arrive and 重试, which sends the same choice again. The
-/// next thing that waits comes up once this one is gone from the session.
+/// why it did not arrive and 重试, which sends the same choice again.
 struct ApprovalSubmitted: View {
     let target: ApprovalTarget
     let chosen: Bool?
@@ -185,27 +181,22 @@ struct ApprovalSubmitted: View {
     var floating = true
     @Environment(AccountContext.self) private var context
 
-    init(target: ApprovalTarget, chosen: Bool?, floating: Bool = true) {
-        self.target = target
-        self.chosen = chosen
-        self.floating = floating
-    }
-
-    init(session: SessionView, approval: PBApprovalRequested, chosen: Bool?, floating: Bool = true) {
-        self.init(
-            target: ApprovalTarget(session: session, approval: approval, now: 0),
-            chosen: chosen,
-            floating: floating
-        )
-    }
-
     var body: some View {
-        let r = context.sessionStore.resolve(target.approvalId)
-        let allow = (r.running ? chosen : nil) ?? r.allow
-        let failed = !r.running && (r.frozen || !r.error.isEmpty)
-        let why: String = r.expired
+        let saved = context.sessionStore.approvalChoice(target.approvalId)
+        let allow = (target.isRunning ? chosen : nil) ?? saved?.allow ?? chosen ?? true
+        let st = target.commandState
+        let failed = target.isFailed
+        let expired = st?.expired == true
+        let errText = st.flatMap { s -> String? in
+            if s.hasErrorText {
+                let text = s.errorText.rendered()
+                if !text.isEmpty { return text }
+            }
+            return s.errorCode.isEmpty ? nil : s.errorCode
+        } ?? ""
+        let why: String = expired
             ? L10n.approvalIosExpired(decision: allow ? L10n.approvalAllow() : L10n.approvalIosDecisionDeny())
-            : L10n.approvalDeliveryFailed(reason: r.error.isEmpty ? L10n.approvalIosUnknownResult() : r.error)
+            : L10n.approvalDeliveryFailed(reason: errText.isEmpty ? L10n.approvalIosUnknownResult() : errText)
         DarkCard(floating: floating) {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
                 StatusMark(.waiting)
@@ -214,10 +205,26 @@ struct ApprovalSubmitted: View {
                     .foregroundStyle(failed ? DS.red : DS.ink2)
                     .frame(maxWidth: .infinity, alignment: .trailing)
                     .multilineTextAlignment(.trailing)
-                if failed && !r.expired {
+                if failed && !expired && (st == nil || st!.canRetry) {
                     LinkButton(L10n.commonRetry()) {
-                        context.sessionStore.retryDecision(
-                            context.remote, machineId: target.machineId, sid: target.sessionId, approvalId: target.approvalId)
+                        Task {
+                            await context.coreHost.submitSessionCommand(
+                                sessionID: target.sessionId,
+                                command: .with {
+                                    $0.resolveApproval = .with {
+                                        $0.sessionID = target.sessionId
+                                        $0.approvalID = target.approvalId
+                                        $0.allow = allow
+                                        $0.message = saved?.message ?? ""
+                                        $0.always = saved?.always ?? false
+                                        if target.observedSeq > 0 {
+                                            $0.observedEventSeq = target.observedSeq
+                                        }
+                                    }
+                                },
+                                machineID: target.machineId
+                            )
+                        }
                     }
                     .fontWeight(.semibold)
                 }
@@ -228,22 +235,22 @@ struct ApprovalSubmitted: View {
     }
 }
 
-/// What an approval would run, whole, and why: the dock's and the page's content, which scrolls above the buttons.
+/// What an approval would run, whole, and why: the dock's and the page's content, rendered from Core's `PBSessionApprovalDockView`.
 struct ApprovalContent: View {
-    let approval: PBApprovalRequested
+    let approval: PBSessionApprovalDockView
     var denying = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            if isSkeleton(approval) {
-                Text(skeletonMessage).font(.subheadline).foregroundStyle(DS.ink2)
+            if approval.isSkeleton {
+                Text(L10n.sessionSkeleton()).font(.subheadline).foregroundStyle(DS.ink2)
             } else {
-                CommandBlock(approvalBody(approval)).accessibilityLabel(L10n.listStateIosCommandLabel(command: approvalBody(approval)))
-                if approvalTruncated(approval) {
-                    Text(approvalTruncatedMessage).font(.footnote).foregroundStyle(DS.red).padding(.top, 8)
+                CommandBlock(approval.body).accessibilityLabel(L10n.listStateIosCommandLabel(command: approval.body))
+                if approval.bodyTruncated {
+                    Text(L10n.approvalTruncated()).font(.footnote).foregroundStyle(DS.red).padding(.top, 8)
                 }
                 if !denying && !approval.description_p.isEmpty {
-                    Text(approvalDisplay(approval.description_p)).font(.subheadline).foregroundStyle(DS.ink2).padding(.top, 12)
+                    Text(approval.description_p).font(.subheadline).foregroundStyle(DS.ink2).padding(.top, 12)
                 }
             }
         }

@@ -7,10 +7,10 @@ import UIKit
 struct ChatCollectionItem: Identifiable {
     let id: String
     /// Message values let unchanged offscreen cells retain their measured size.
-    let row: ChatRow?
+    let row: ChatTimelineRow?
     let content: AnyView
 
-    init<V: View>(_ id: String, row: ChatRow? = nil, @ViewBuilder content: () -> V) {
+    init<V: View>(_ id: String, row: ChatTimelineRow? = nil, @ViewBuilder content: () -> V) {
         self.id = id
         self.row = row
         self.content = AnyView(content())
@@ -26,6 +26,7 @@ struct ChatCollection: UIViewControllerRepresentable {
     let prepended: Int
     let count: Int
     let interaction: (Bool) -> Void
+    var onNearTop: () -> Void = {}
 
     func makeUIViewController(context: Context) -> ChatCollectionController {
         let controller = ChatCollectionController(tracker: tracker)
@@ -75,6 +76,7 @@ final class ChatCollectionController: UIViewController, UICollectionViewDelegate
     private var opened = false
     private var updating = false
     private var interaction: (Bool) -> Void = { _ in }
+    private var onNearTop: () -> Void = {}
     private let work = ChatScrollWork()
     private var destination: Destination?
     /// The rows of the last update, in order, and the entrances of the rows new in this one. An entrance is
@@ -143,6 +145,7 @@ final class ChatCollectionController: UIViewController, UICollectionViewDelegate
         updating = true
         defer { updating = false; schedule() }
         interaction = input.interaction
+        onNearTop = input.onNearTop
         self.environment = environment
         let changedEnvironment = env != input.env
         env = input.env
@@ -206,10 +209,10 @@ final class ChatCollectionController: UIViewController, UICollectionViewDelegate
             let kind: Entrance?
             if id.hasPrefix("out-") || id.hasPrefix("pending-") {
                 kind = .rise
-            } else if let item = new[id]?.row?.item {
+            } else if let item = new[id]?.row?.item.kind {
                 switch item {
-                case .user(let user): kind = user.from != nil ? .rise : nil
-                case .tool, .running, .tools, .note, .turnEnd, .generated: kind = .fade
+                case .userMessage(let user): kind = !user.typedLocally ? .rise : nil
+                case .toolCall, .toolGroup, .note, .turnEnd, .generatedImages: kind = .fade
                 default: kind = nil
                 }
             } else {
@@ -365,7 +368,12 @@ final class ChatCollectionController: UIViewController, UICollectionViewDelegate
         }
     }
 
-    func scrollViewDidScroll(_ scrollView: UIScrollView) { schedule() }
+    func scrollViewDidScroll(_ scrollView: UIScrollView) {
+        schedule()
+        if !updating && opened && scrollView.contentOffset.y <= 120 && (scrollView.isDragging || scrollView.isDecelerating || tracker.dragging) {
+            onNearTop()
+        }
+    }
     func scrollViewWillBeginDragging(_ scrollView: UIScrollView) {
         destination = nil
         work.cancel()

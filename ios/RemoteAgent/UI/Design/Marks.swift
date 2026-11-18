@@ -36,14 +36,22 @@ enum StatusKind: Sendable, Equatable {
     }
 
     init?(_ row: PBCoreSessionRowView) {
-        switch row.status {
+        self.init(status: row.status, tone: row.tone)
+    }
+
+    init?(_ header: PBSessionHeaderView) {
+        self.init(status: header.status, tone: header.tone)
+    }
+
+    init?(status: PBCoreSessionDisplayStatus, tone: PBCoreSessionTone) {
+        switch status {
         case .ended: return nil
         case .starting, .running: self = .running
         case .idle: self = .idle
         case .approval, .question, .plan, .popup: self = .waiting
         case .offline, .unlinked: self = .off
         case .unspecified, .UNRECOGNIZED:
-            switch row.tone {
+            switch tone {
             case .live: self = .running
             case .warn: self = .waiting
             case .bad: self = .off

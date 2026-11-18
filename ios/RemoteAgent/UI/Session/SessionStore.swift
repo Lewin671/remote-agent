@@ -1,41 +1,12 @@
-// What the session screens keep in memory for the account in use: drafts,
-// messages sent from here, and the commands whose outcome may be unknown.
-// The counterpart of Android's `Outbox`, `Drafts`, `Cancels`, `Resolves`,
-// `Answers` and `QuestionPicks` (ui/Actions.kt, ui/Queue.kt, ui/Dock.kt).
-//
-// It lives in `AccountMemory`, so all of it is plaintext in memory only and
-// goes with the account. Nothing here is the truth about a session: the
-// daemon's events are (architecture §9 「多客户端的界面状态」). This only holds
-// what is in flight from this client and what the user was typing.
-//
-// The rules, each of which the tests hold it to:
-//
-//   - a message is sent under one request ID for as long as it exists here,
-//     so a retry is never submitted twice (the daemon dedupes by it);
-//   - a failure that may have reached the computer is "unknown", never
-//     "failed" (architecture §10 「指令」);
-//   - an approval or an answer whose outcome is unknown is sent again as it
-//     was, the same sealed command (`Attempt`), and the opposite decision is
-//     never offered in its place;
-//   - a fork whose outcome is unknown is sent again as it was too, so that
-//     the computer never forks the session twice for one tap;
-//   - a draft is the user's: it survives leaving the page, a failed send and
-//     a card another client answered first.
+// What the session screens keep in memory as pure shell UI state: drafts
+// being typed, denial reasons, temporary approval choices before Core confirms,
+// dock fold toggles, multi-select question picks, and schedule scroll jumps.
+// Command delivery, retries, unknowns, outbox, and question progression are
+// owned by Core (`SessionViewModel` + `CoreHost`).
 import Foundation
 import Observation
 import RACore
 import RAProto
-
-/// The part of the sync engine the session screens send through. `Remote` is
-/// the only real one; tests answer in its place.
-protocol SessionCommands: Sendable {
-    @discardableResult func command(_ sid: String, _ cmd: PBCommand) async throws -> PBCommandResult
-    func prepare(machineId: String, sessionId: String, _ cmd: PBCommand) throws -> PreparedCommand
-    func prepare(_ sid: String, _ cmd: PBCommand) async throws -> PreparedCommand
-    @discardableResult func forward(_ p: PreparedCommand, retryOfUnknown: Bool) async throws -> PBCommandResult
-}
-
-extension Remote: SessionCommands {}
 
 @MainActor
 @Observable
@@ -61,71 +32,17 @@ final class SessionStore {
         self.draftFiles = draftFiles
         self.draftQueue = draftQueue
     }
+
     struct ScheduledJump: Equatable { var runID: String; var seq: UInt64 }
     private var scheduledJumps: [String: ScheduledJump] = [:]
     func jumpToScheduledRun(_ sid: String, runID: String, seq: UInt64) { scheduledJumps[sid] = ScheduledJump(runID: runID, seq: seq) }
     func scheduledJump(_ sid: String) -> ScheduledJump? { scheduledJumps[sid] }
     func clearScheduledJump(_ sid: String) { scheduledJumps[sid] = nil }
 
-    /// A cancel asked from here that the daemon has not answered, or why it failed.
-    enum CancelState: Equatable, Sendable {
-        case canceling
-        case failed(String)
-    }
-
-    /// A decision on an approval made from this client, wherever the approval
-    /// is drawn: a card of the home page, the session's dock, the approval's
-    /// own page. They all read this one, so a decision made in one place is
-    /// locked, in flight or left unknown in the others too.
-    @MainActor
-    @Observable
-    final class Resolve {
-        @ObservationIgnored let attempt = Attempt()
-        fileprivate(set) var allow = false
-        fileprivate(set) var message = ""
-        fileprivate(set) var always = false
-        /// A decision was made from here in this run: the two buttons stay away from then on.
-        fileprivate(set) var decided = false
-        /// It is on its way to the computer.
-        fileprivate(set) var running = false
-        /// Why the last try did not arrive; empty while one is running and once one did.
-        fileprivate(set) var error = ""
-        /// The outcome is unknown: only the same sealed command is sent again (`Attempt`).
-        fileprivate(set) var frozen = false
-        /// The unknown decision expired and is not sent again.
-        fileprivate(set) var expired = false
-    }
-
-    /// A fork of a session asked from this client. It outlives the menu and
-    /// the page: while its outcome is unknown the next try is the same
-    /// sealed command, which the daemon answers from its log with the
-    /// session it already made (architecture §10).
-    @MainActor
-    @Observable
-    final class Fork {
-        @ObservationIgnored let attempt = Attempt()
-        /// It is on its way to the computer.
-        fileprivate(set) var running = false
-        /// Why the last try did not make a session; empty while one is running and once one did.
-        fileprivate(set) var error = ""
-        /// The outcome is unknown: only the same sealed command is sent again (`Attempt`).
-        fileprivate(set) var frozen = false
-        /// The unknown fork expired and is not sent again.
-        fileprivate(set) var expired = false
-    }
-
-    /// An answer to one question of several, kept while its outcome is unknown.
-    final class Answer {
-        let attempt = Attempt()
-        /// The options of the answer being sent, 0-based.
-        var options: [Int] = []
-    }
-
     // MARK: Drafts
 
     private var drafts: [String: String] = [:]
     private var reasons: [String: String] = [:]
-    private var prompts: [String: String] = [:]
 
     private func draftName(_ key: String) -> String { sha256(Data(key.utf8)).hex }
 
@@ -155,6 +72,12 @@ final class SessionStore {
         persistDraftText(sid, text)
     }
 
+    func appendToDraft(_ sid: String, _ text: String) {
+        let current = draft(sid)
+        let kept = current.jvmTrimEnd()
+        setDraft(sid, current.jvmIsBlank ? text : kept + "\n" + text)
+    }
+
     private func persistDraftText(_ sid: String, _ text: String) {
         guard let draftFiles else { return }
         let name = draftName(sid)
@@ -179,348 +102,52 @@ final class SessionStore {
         guard forgottenDrafts.insert(sid).inserted else { return }
         drafts[sid] = nil
         draftErrorStates[sid] = nil
-        outbox[sid] = nil
-        prompts[sid] = nil
         guard let draftFiles else { return }
         let name = draftName(sid)
         let remove: @Sendable () -> Void = { try? draftFiles.remove(folder: "composer-text", name: name) }
         if let draftQueue { draftQueue.async(execute: remove) } else { remove() }
     }
 
-    /// The reason being typed for refusing an approval. It stays when another
-    /// client answers the approval first, and is never carried to the next one.
+    /// The reason being typed for refusing an approval.
     func reason(_ approvalId: String) -> String { reasons[approvalId] ?? "" }
 
     func setReason(_ approvalId: String, _ text: String) {
         if reasons[approvalId] ?? "" != text { reasons[approvalId] = text.isEmpty ? nil : text }
     }
 
-    /// The first message of a session started from this client, which the
-    /// daemon sends once the CLI is ready. Whoever starts a session calls
-    /// this with the new session's ID, so that its page shows the message
-    /// before the history has it.
-    func rememberPrompt(_ sid: String, _ text: String) {
-        if !text.isEmpty { prompts[sid] = text }
-    }
-
-    func prompt(_ sid: String) -> String? { prompts[sid] }
-
-    // MARK: Messages sent from here
-
-    private var outbox: [String: [Outgoing]] = [:]
-    @ObservationIgnored private var delivering = Set<String>()
-
-    /// The messages sent from this client in a session, oldest first, until the chat shows them.
-    func outgoing(_ sid: String) -> [Outgoing] { outbox[sid] ?? [] }
-
-    func find(_ sid: String, requestId: String) -> Outgoing? { outbox[sid]?.first { $0.requestId == requestId } }
-
-    /// The texts of the messages sent from here, by request ID: the daemon's queue events do not always carry them.
-    func texts(_ sid: String) -> [String: String] {
-        Dictionary((outbox[sid] ?? []).map { ($0.requestId, $0.text) }, uniquingKeysWith: { a, _ in a })
-    }
-
-    /// Sends a message. The returned task ends when the computer has answered or the try is given up.
-    @discardableResult
-    func send(_ commands: any SessionCommands, sid: String, text: String, mode: PBSendMode = .steer) -> Task<Void, Never> {
-        let o = Outgoing(requestId: newRequestId(), text: text, mode: mode)
-        outbox[sid, default: []].append(o)
-        return deliver(commands, sid: sid, o)
-    }
-
-    /// Takes in a message made elsewhere, as one with images is: kept on disk first, or left by an earlier run
-    /// (`ImageCenter`). It is not sent by this; `deliver` does that.
-    func add(_ sid: String, _ o: Outgoing) {
-        outbox[sid, default: []].append(o)
-    }
+    // MARK: Local image keep lock
 
     private var keeping = Set<String>()
 
-    /// A message's images are being kept on disk before it is sent
-    /// (`SessionImages.send`). Until that ends they are still in the
-    /// session's draft, so nothing else is sent from its box. The lock is
-    /// the session's, not the box's: the box goes away and comes back with
-    /// the 聊天 / 终端 tabs while the images are still being kept.
     func isKeeping(_ sid: String) -> Bool { keeping.contains(sid) }
 
     func setKeeping(_ sid: String, _ on: Bool) {
         if on { keeping.insert(sid) } else { keeping.remove(sid) }
     }
 
-    /// Sends, or sends again, a message under its own request ID.
-    @discardableResult
-    func deliver(_ commands: any SessionCommands, sid: String, _ o: Outgoing) -> Task<Void, Never> {
-        // One try at a time: a second tap while the first is on its way adds nothing.
-        guard delivering.insert(o.requestId).inserted else { return Task {} }
-        let wasUnknown = o.state == .unknown
-        if o.state == .failed { o.prepared = nil }
-        o.state = .sending
-        o.error = ""
-        o.outcomeNotice = false
-        o.missingImages = false
-        var cmd = PBCommand()
-        cmd.send = .with {
-            $0.sessionID = sid
-            $0.text = o.text
-            $0.requestID = o.requestId
-            $0.imageIds = o.imageIds
-            $0.fileIds = o.fileIds
-            $0.mode = o.mode
-        }
-        // Not tied to the page: a message keeps going when its page is left.
-        return Task { [cmd] in
-            do {
-                if o.prepared == nil {o.prepared = try await commands.prepare(sid,cmd)}
-                guard let prepared=o.prepared else {throw CommandError("internal",L10nMessage.newSessionUnexpectedReply())}
-                if let draftFiles, !o.images.isEmpty {
-                    let bytes=try prepared.recordBytes(),requestId=o.requestId
-                    try await Task.detached {try OutgoingRecords(files:draftFiles).savePrepared(sid:sid,requestId:requestId,bytes:bytes)}.value
-                }
-                try await commands.forward(prepared,retryOfUnknown:wasUnknown)
-                o.state = .sent
-            } catch {
-                let ce = error as? CommandError
-                // A failure that came from the computer settles it; one from here leaves an already
-                // unknown message unknown, keeping the same request (Android's Outgoing.deliver).
-                let final = ce?.fromDaemon == true && ce?.unknown != true && ce?.outcome != .notSent
-                let unknown = uncertain(error) || (wasUnknown && !final) || (o.prepared?.mayHaveRun == true && !final)
-                o.state = unknown ? .unknown : .failed
-                o.missingImages = !unknown && ce?.fromDaemon == true && ce?.code == "not_found" && (!o.imageIds.isEmpty || !o.fileIds.isEmpty) &&
-                    ce?.message.contains("is not on this machine; upload it again") == true
-                // Put back, the text and the images stay and the images go up again.
-                o.outcomeNotice = ce?.needsResultRefresh == true
-                o.error = ce?.outcomeDetail ?? errorText(error)
-            }
-            delivering.remove(o.requestId)
-        }
-    }
-
-    /// Drops a message from here for good.
-    func remove(_ sid: String, _ o: Outgoing) {
-        outbox[sid]?.removeAll { $0.requestId == o.requestId }
-    }
-
-    /// A message that was not submitted goes back into the box, for the user
-    /// to send again as a new message. What is already typed stays in front of it.
-    func putBack(_ sid: String, _ o: Outgoing) {
-        appendToDraft(sid, o.text)
-        remove(sid, o)
-    }
-
-    func appendToDraft(_ sid: String, _ text: String) {
-        let current = draft(sid)
-        let kept = current.jvmTrimEnd()
-        setDraft(sid, current.jvmIsBlank ? text : kept + "\n" + text)
-    }
-
-    /// Lets go of messages submitted or canceled by the user: the session's events have their outcome.
-    /// One the session ended on stays, for the chat's 放回输入框 (`letsGo`).
-    func settle(_ sid: String, inputs: [PBInputProjection]) {
-        guard let list = outbox[sid] else { return }
-        let byID = Dictionary(inputs.map { ($0.requestID, $0) }, uniquingKeysWith: { _, b in b })
-        let waiting = list.filter { o in
-            guard let item = byID[o.requestId] else { return true }
-            var st = item.hasDetail ? item.detail : PBInputState()
-            if st.status == .unspecified { st.status = item.status }
-            return !letsGo(st)
-        }
-        if waiting.count != list.count { outbox[sid] = waiting }
-    }
-
-    // MARK: Cancels
-
-    private(set) var cancels: [String: CancelState] = [:]
-
-    /// Asks the daemon to take a queued message back. Its InputState says how
-    /// that ended; a failure stays here so that the bubble can offer another try.
-    @discardableResult
-    func cancel(_ commands: any SessionCommands, sid: String, requestId: String) -> Task<Void, Never> {
-        if cancels[requestId] == .canceling { return Task {} }
-        cancels[requestId] = .canceling
-        var cmd = PBCommand()
-        cmd.cancelInput = .with {
-            $0.sessionID = sid
-            $0.requestID = requestId
-        }
-        return Task { [cmd] in
-            do {
-                try await commands.command(sid, cmd)
-                cancels[requestId] = nil
-            } catch {
-                // A failed_precondition can race with delivery; while the
-                // input stays pending the bubble keeps a retry.
-                cancels[requestId] = .failed(errorText(error))
-            }
-        }
-    }
-
-    /// Forgets the cancels of messages that have left the queue.
-    func settleCancels(inputs: [PBInputProjection]) {
-        let statuses = Dictionary(inputs.map { ($0.requestID, $0.status) }, uniquingKeysWith: { _, b in b })
-        for id in cancels.keys {
-            if let status = statuses[id], status != .queued, status != .heldByCli { cancels[id] = nil }
-        }
-    }
-
     // MARK: Approvals
 
-    @ObservationIgnored private var resolves: [String: Resolve] = [:]
-    /// Bumped when an answer's attempt changes, for the views that read one.
-    private var attempts = 0
-
-    /// The decision on an approval as this client knows it; one object per approval for as long as the account is in use.
-    func resolve(_ approvalId: String) -> Resolve {
-        if let r = resolves[approvalId] { return r }
-        let r = Resolve()
-        resolves[approvalId] = r
-        return r
+    struct ApprovalChoice: Equatable, Sendable {
+        var allow: Bool
+        var message: String
+        var always: Bool
     }
 
-    /// Sends a decision, or the earlier one while its outcome is unknown;
-    /// returns the decision that went. Throws what to show, which `resolve`
-    /// keeps too for the places that draw the approval.
-    @discardableResult
-    func resolveApproval(
-        _ commands: any SessionCommands, machineId: String, sid: String, approvalId: String, allow: Bool, message: String,
-        always: Bool = false
-    ) async throws -> Bool {
-        let r = resolve(approvalId)
-        r.decided = true
-        r.running = true
-        r.error = ""
-        defer {
-            r.frozen = r.attempt.frozen
-            r.expired = r.attempt.expired
-            r.running = false
-        }
-        do {
-            let retry = r.attempt.frozen
-            let prepared = try r.attempt.next {
-                r.allow = allow
-                r.message = message
-                r.always = always
-                var cmd = PBCommand()
-                cmd.resolveApproval = .with {
-                    $0.sessionID = sid
-                    $0.approvalID = approvalId
-                    $0.allow = allow
-                    $0.message = message
-                    $0.always = always
-                }
-                return try commands.prepare(machineId: machineId, sessionId: sid, cmd)
-            }
-            try await commands.forward(prepared, retryOfUnknown: retry)
-            r.attempt.settle()
-            return r.allow
-        } catch {
-            let shown = r.attempt.settle(error) ?? error
-            r.error = errorText(shown)
-            throw shown
-        }
+    private var approvalChoices: [String: ApprovalChoice] = [:]
+
+    func approvalChoice(_ approvalId: String) -> ApprovalChoice? {
+        approvalChoices[approvalId]
     }
 
-    /// A tap on 允许 or 不允许, from any place that draws the approval. One
-    /// try at a time: while a decision is on its way a second tap, here or
-    /// on another screen, adds nothing. The task's value is the decision the
-    /// computer took, or nil when it did not arrive.
-    @discardableResult
-    func decide(
-        _ commands: any SessionCommands, machineId: String, sid: String, approvalId: String, allow: Bool, message: String = "",
-        always: Bool = false
-    ) -> Task<Bool?, Never> {
-        let r = resolve(approvalId)
-        guard !r.running else { return Task { nil } }
-        // Locked from the tap, not from when the task gets to run.
-        r.decided = true
-        r.running = true
-        return Task {
-            try? await resolveApproval(
-                commands, machineId: machineId, sid: sid, approvalId: approvalId, allow: allow, message: message, always: always)
-        }
-    }
-
-    /// The decision that did not arrive, again as it was made.
-    @discardableResult
-    func retryDecision(_ commands: any SessionCommands, machineId: String, sid: String, approvalId: String) -> Task<Bool?, Never> {
-        let r = resolve(approvalId)
-        return decide(
-            commands, machineId: machineId, sid: sid, approvalId: approvalId, allow: r.allow, message: r.message, always: r.always)
-    }
-
-    // MARK: Forks
-
-    @ObservationIgnored private var forks: [String: Fork] = [:]
-
-    /// The fork of a session as this client knows it; one object per session for as long as the account is in use.
-    func fork(_ sid: String) -> Fork {
-        if let f = forks[sid] { return f }
-        let f = Fork()
-        forks[sid] = f
-        return f
-    }
-
-    /// Forks a session, or sends the earlier fork again while its outcome
-    /// is unknown. One try at a time. The task's value is the new session's
-    /// ID, or nil when none is known to have been made; `fork` says why.
-    @discardableResult
-    func forkSession(_ commands: any SessionCommands, machineId: String, sid: String) -> Task<String?, Never> {
-        let f = fork(sid)
-        guard !f.running else { return Task { nil } }
-        f.running = true
-        f.error = ""
-        return Task {
-            defer {
-                f.frozen = f.attempt.frozen
-                f.expired = f.attempt.expired
-                f.running = false
-            }
-            do {
-                let retry = f.attempt.frozen
-                let prepared = try f.attempt.next {
-                    var cmd = PBCommand()
-                    cmd.forkSession = .with { $0.sessionID = sid }
-                    return try commands.prepare(machineId: machineId, sessionId: sid, cmd)
-                }
-                let result = try await commands.forward(prepared, retryOfUnknown: retry)
-                f.attempt.settle()
-                guard let made = forkedSession(result) else { throw CommandError("internal", L10nMessage.newSessionUnexpectedReply()) }
-                return made
-            } catch {
-                f.error = errorText(f.attempt.settle(error) ?? error)
-                return nil
-            }
-        }
-    }
-
-    /// Gives up on a fork that expired with its outcome unknown: the next one is a new request.
-    func abandonFork(_ sid: String) {
-        let f = fork(sid)
-        guard !f.running else { return }
-        f.attempt.abandon()
-        f.error = ""
-        f.frozen = false
-        f.expired = false
-    }
-
-    /// The menu was closed: a fork that surely did not happen is not said again. One that may have is kept.
-    func dismissForkError(_ sid: String) {
-        guard let f = forks[sid], !f.frozen else { return }
-        f.error = ""
+    func setApprovalChoice(_ approvalId: String, _ choice: ApprovalChoice?) {
+        approvalChoices[approvalId] = choice
     }
 
     // MARK: The dock
 
-    /// The docked items the user folded (false) or opened (true), by `dockFoldKey`: one stays so
-    /// wherever its session is opened again (docs/design-system.md §6 「等待事项（停靠区）」).
     private var dockChosen: [String: Bool] = [:]
-    /// Whether an item came while the message box held a draft, decided when it was first shown.
-    /// Not observed: it is written while the dock is drawn, and never changes after.
     @ObservationIgnored private var dockCameWhileDrafting: [String: Bool] = [:]
 
-    /// Whether a docked item is open: as the user left it, or else open, unless it came while the
-    /// message box held a draft (text or images not sent), so as not to push the message aside.
-    /// The box merely having focus does not count. `drafting` is asked once, when the item is first
-    /// shown.
     func dockOpen(_ key: String, drafting: () -> Bool) -> Bool {
         if let chosen = dockChosen[key] { return chosen }
         if let came = dockCameWhileDrafting[key] { return !came }
@@ -535,58 +162,9 @@ final class SessionStore {
 
     // MARK: Questions
 
-    @ObservationIgnored private var answers: [String: Answer] = [:]
-    /// Where the user is in a question, shared by the dock and the full
-    /// page: which of several questions, and what is ticked.
-    var questionIndex: [String: Int] = [:]
     var singlePick: [String: Int] = [:]
     var multiPick: [String: Set<Int>] = [:]
-
-    func answer(_ questionId: String, _ index: Int) -> Answer {
-        _ = attempts
-        let key = "\(questionId)#\(index)"
-        if let a = answers[key] { return a }
-        let a = Answer()
-        answers[key] = a
-        return a
-    }
-
-    /// Sends `options`, or the earlier answer while its outcome is unknown,
-    /// and returns the options that were answered. A new request would be
-    /// refused once the CLI had moved on to the next question.
-    func sendAnswer(
-        _ commands: any SessionCommands, _ a: Answer, options: [Int], prepare: ([Int]) throws -> PreparedCommand
-    ) async throws -> [Int] {
-        defer { attempts += 1 }
-        do {
-            let retry = a.attempt.frozen
-            let prepared = try a.attempt.next {
-                a.options = options
-                return try prepare(options)
-            }
-            try await commands.forward(prepared, retryOfUnknown: retry)
-            a.attempt.settle()
-            return a.options
-        } catch {
-            throw a.attempt.settle(error) ?? error
-        }
-    }
-
-    /// Gives up on an answer that expired with its outcome unknown.
-    func abandon(_ a: Answer) {
-        a.attempt.abandon()
-        attempts += 1
-    }
 }
-
-#if DEBUG
-extension SessionStore {
-    /// Puts a message in a session's outbox as it stands, without sending it: for sample data.
-    func debugAppend(_ sid: String, _ o: Outgoing) {
-        outbox[sid, default: []].append(o)
-    }
-}
-#endif
 
 extension AccountContext {
     /// The session screens' memory for this account.

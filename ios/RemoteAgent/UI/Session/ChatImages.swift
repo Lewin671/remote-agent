@@ -141,12 +141,13 @@ private struct ChatThumb: View {
 
 /// A generated image: its own card across the chat, with the prompt the CLI rewrote behind 提示词.
 struct GeneratedCard: View {
-    let item: ChatItem.Generated
+    let key: String
+    let item: PBSessionGeneratedImagesItem
     let onOpen: (Int) -> Void
     @Environment(ChatOpen.self) private var open
 
     var body: some View {
-        let isOpen = open.isOpen(item.key)
+        let isOpen = open.isOpen(key)
         VStack(alignment: .leading, spacing: 8) {
             ForEach(Array(item.images.enumerated()), id: \.offset) { i, ref in
                 let preview = ChatPreviews.image(ref)
@@ -174,9 +175,9 @@ struct GeneratedCard: View {
                 let first = item.images.first
                 let size = first.map { $0.width > 0 ? " · \($0.width) × \($0.height)" : "" } ?? ""
                 Text(L10n.imageIosGeneratedSize(size: size)).font(.footnote).ink(DS.ink2).frame(maxWidth: .infinity, alignment: .leading)
-                if !item.prompt.isEmpty {
+                if !item.revisedPrompt.isEmpty {
                     Button {
-                        open.toggle(item.key)
+                        open.toggle(key)
                     } label: {
                         ArrowText(L10n.imagePrompt(), style: .footnote, direction: isOpen ? .up : .down)
                             .padding(.vertical, 14).contentShape(Rectangle()).padding(.vertical, -14)
@@ -184,7 +185,7 @@ struct GeneratedCard: View {
                     .buttonStyle(PressStyle())
                 }
             }
-            if isOpen { Text(item.prompt).font(.subheadline).ink(DS.ink2) }
+            if isOpen { Text(item.revisedPrompt).font(.subheadline).ink(DS.ink2) }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, chatMargin).padding(.vertical, 8)

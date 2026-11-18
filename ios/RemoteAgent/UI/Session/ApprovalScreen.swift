@@ -2,80 +2,84 @@ import RACore
 import RAProto
 import SwiftUI
 
-/// 审批详情: an approval on a page of its own, as opened from a link, with
-/// the whole of what it asks for, before what it is for, and a
-/// reason box that stays above the keyboard (Android's ApprovalPage).
-///
-/// The page shows what the daemon's events say: once anyone has answered
-/// the approval, from whichever client or in the terminal, the request is
-/// gone from here and the page says so, with how it was decided when the
-/// events tell. A reason typed here and not sent stays, to be copied; it is
-/// never carried over to another approval (architecture §9).
+/// 审批详情: an approval on a page of its own, as opened from a link, rendered
+/// from Core's `PBSessionViewModel.dock` and decided via `CoreHost.submitSessionCommand`.
 struct ApprovalScreen: View {
     let session: String
     let approval: String
 
     @Environment(AppModel.self) private var model
     @Environment(AccountContext.self) private var context
-    @State private var chat = SessionModel()
-    @State private var finder = SessionFinder()
     @State private var denying = false
     @State private var chosen: Bool?
 
     var body: some View {
-        let state = model.state
-        let s = state.sessions[session]
-        let d = chat.derived
-        let a = d.pendingApproval(approval)
+        let vm = context.core.sessions[session]
+        let header = vm?.header
+        let dock = vm?.dock
+        let matchingDock = dock.flatMap { $0.hasItem_p && $0.kind == .approval && $0.approval.approvalID == approval ? $0 : nil }
+        let titleText = header.flatMap { $0.found ? $0.title.rendered() : nil } ?? L10n.approvalDetails()
         Ticking { now in
+            let urgent = (matchingDock?.deadlineMs ?? 0) > 0 && (matchingDock?.deadlineMs ?? 0) - now < 60_000
+            let leftText = matchingDock.flatMap { $0.hasTimeLeft ? $0.timeLeft.rendered() : nil } ?? ""
+            let subtitle = header?.found == true
+                ? titleText + (leftText.isEmpty ? "" : " · \(leftText)")
+                : nil
             Page {
                 VStack(spacing: 0) {
                     ConnectionBar()
-                    if let a, isSkeleton(a) {
-                        PageNote(skeletonMessage)
-                    } else if let s, let a {
-                        // The same dark card as the dock's: what it would run, whole, then the decision.
-                        ScrollView {
-                            Group {
-                                if context.sessionStore.resolve(a.approvalID).submitted {
-                                    ApprovalSubmitted(session: s, approval: a, chosen: chosen, floating: false)
-                                } else {
-                                    DarkCard {
-                                        DarkCardHead(kind: approvalHead(a))
-                                        ApprovalContent(approval: a, denying: denying).textSelection(.enabled).padding(.top, 14)
-                                        ApprovalDecision(session: s, approval: a, now: now, denying: $denying, chosen: $chosen)
-                                            .padding(.top, 16)
+                    if let dock = matchingDock {
+                        if dock.approval.isSkeleton {
+                            PageNote(L10n.sessionSkeleton())
+                        } else {
+                            let target = ApprovalTarget(
+                                sessionId: session,
+                                machineId: header?.machineID ?? model.state.sessions[session]?.machineId ?? "",
+                                dock: dock
+                            )
+                            let choice = context.sessionStore.approvalChoice(approval)
+                            ScrollView {
+                                Group {
+                                    if target.isSubmitted(choice: choice) {
+                                        ApprovalSubmitted(target: target, chosen: chosen, floating: false)
+                                    } else {
+                                        DarkCard {
+                                            DarkCardHead(kind: dock.approval.commandPreview.isEmpty ? dock.approval.toolName : dock.approval.commandPreview)
+                                            ApprovalContent(approval: dock.approval, denying: denying).textSelection(.enabled).padding(.top, 14)
+                                            ApprovalDecision(target: target, denying: $denying, chosen: $chosen)
+                                                .padding(.top, 16)
+                                        }
                                     }
                                 }
+                                .padding(.horizontal, DS.Space.card).padding(.vertical, 12)
+                                .readableColumn()
                             }
-                            .padding(.horizontal, DS.Space.card).padding(.vertical, 12)
-                            .readableColumn()
+                            .scrollDismissesKeyboard(.interactively)
+                            .onAppear { if SessionDebug.shows("reason") { denying = true } }
                         }
-                        .scrollDismissesKeyboard(.interactively)
-                        .onAppear { if SessionDebug.shows("reason") { denying = true } }
-                    } else if let outcome = d.resolved[approval] {
-                        handled(outcome, by: outcome.hasOrigin ? outcome.origin : nil, machine: s.map { machineLabel(state, id: $0.machineId) } ?? "")
+                    } else if header?.missing == true {
+                        PageNote(header?.missingText.rendered() ?? L10n.sessionIosMissing())
+                    } else if vm?.timeline.loaded == true || (dock != nil && vm?.timeline.loading == false) {
+                        handled
                     } else {
-                        PageNote(s == nil ? lookupNote(finder.lookup) ?? L10n.projectsReadingDirectory() : L10n.projectsReadingDirectory())
+                        PageNote(L10n.projectsReadingDirectory())
                     }
                 }
             }
             .navBar(
-                L10n.approvalDetails(), subtitle: s.map { titleOf($0) + (a.flatMap { ApprovalDeadline($0, now: now) }.map { " · \($0.text)" } ?? "") },
-                // Orange in its last minute, as on the dock and the home page's card.
-                subtitleColor: a.flatMap { ApprovalDeadline($0, now: now) }?.last == true ? DS.orangeInk : nil)
+                L10n.approvalDetails(),
+                subtitle: subtitle,
+                subtitleColor: urgent ? DS.orangeInk : nil
+            )
         }
-        .followSession(session, chat: chat, finder: finder)
+        .followCoreSession(session)
+        .sessionSamples(session)
     }
 
-    /// The approval was answered, here or elsewhere: how, and by whom when the events say.
-    @ViewBuilder private func handled(_ outcome: PBResolvedApproval, by origin: PBOrigin?, machine: String) -> some View {
-        let who = originLabel(origin, state: model.state, me: context.me, machine: machine)
-        let how = [decisionText(outcome.decision), who ?? ""].filter { !$0.isEmpty }.joined(separator: " · ")
+    @ViewBuilder private var handled: some View {
         let kept = context.sessionStore.reason(approval)
         VStack(spacing: 0) {
             Text(L10n.sessionApprovalResolved()).font(.subheadline).ink(DS.ink2).multilineTextAlignment(.center)
-            if !how.isEmpty { Text(how).font(.footnote).ink(DS.ink2).multilineTextAlignment(.center).padding(.top, 4) }
             if !kept.isEmpty {
                 // What was being typed is the user's: kept to be copied, not sent anywhere.
                 Code(kept).textSelection(.enabled).padding(.top, 16)

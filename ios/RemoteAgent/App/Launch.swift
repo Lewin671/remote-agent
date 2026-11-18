@@ -212,8 +212,8 @@ enum LaunchDriver {
             let shown = state
             let events = Demo.events(demo)
             // The first frame has the data; the feed is followed once the Remote shows it too.
-            model.showDemo(account: Demo.account, remote: remote, initial: shown) {
-                await remote.showForTest(state: shown, events: events, modelLists: Demo.models, live: true)
+            model.showDemo(account: Demo.account, remote: remote, initial: shown, events: events) {
+                await remote.showForTest(state: shown, modelLists: Demo.models)
             }
             // The 定时 page's sample tasks, answered from here: nothing is asked of a computer.
             if let schedules = model.context?.schedules {

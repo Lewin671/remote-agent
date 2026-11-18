@@ -1,12 +1,6 @@
-// The chat's rows, drawn: what Android's ui/Chat.kt and ui/Tools.kt draw
-// from the same `ChatItem`s (docs/design-system.md §6 「工具调用」, §7). What a
-// row says is the package's (`buildChat`, `toolTitle`, `toolState`); this
-// file only lays it out.
-//
-// A row is a value and its view is `Equatable`: when the list changes, the
-// rows that stayed the same are not drawn again. What a row can open in
-// place (a folded group, a plan, 思考过程) is remembered outside the row,
-// because a lazy list lets go of rows that scroll away.
+// The chat's rows, rendered directly from Core's `PBSessionTimelineItem`s.
+// Markdown parsing is cached per item ID + Markdown source; UIKit
+// `ChatCollection` owns virtualization and scroll preservation.
 import Observation
 import RACore
 import RAMarkdown
@@ -15,32 +9,35 @@ import RAProto
 import SwiftUI
 import UIKit
 
-/// What every row needs besides itself. Small and `Equatable`, so that a
-/// row is drawn again only when something it shows changed.
+/// Timeline item paired with cached parsed Markdown blocks so unchanged rows remain `Equatable`.
+struct ChatTimelineRow: Identifiable, Equatable, Sendable {
+    var id: String { item.id }
+    let item: PBSessionTimelineItem
+    let blocks: [MarkdownBlock]
+
+    static func == (lhs: ChatTimelineRow, rhs: ChatTimelineRow) -> Bool {
+        lhs.item == rhs.item && lhs.blocks.count == rhs.blocks.count
+    }
+}
+
+/// Shell environment needed by timeline rows.
 struct ChatEnv: Equatable, Sendable {
     var agent = defaultAgent
-    var cwd = ""
-    var home = ""
     /// When the connection dropped, 0 while online: timers stop there.
     var frozenAt: Int64 = 0
-    /// Tools whose turn completed without their result.
-    var noResult = Set<UInt64>()
-    /// What the cards of shared files need to know: which session, which computer (and its name) and whether either is still there.
+    /// Shared files transfer context.
     var session = ""
     var machine = ""
     var machineOnline = true
     var sessionExited = false
 }
 
-/// What a row can do. Handed down in the environment: closures are not part of what a row shows.
+/// Row actions routed through `ChatPane` into `Navigator` or `CoreHost`.
 struct ChatActions: Sendable {
-    /// Opens the viewer at an event's image.
     var image: @MainActor (_ seq: UInt64, _ index: Int) -> Void = { _, _ in }
-    /// Opens another session, as from the line where a fork left it.
     var session: @MainActor (String) -> Void = { _ in }
-    /// Puts a message the session ended before writing back into the box.
-    var putBack: @MainActor (_ requestId: String, _ text: String, _ files: [PBSentFile]) -> Void = { _, _, _ in }
-    /// Shows a message's text for selecting parts of it.
+    var putBack: @MainActor (_ requestId: String, _ text: String, _ files: [PBSessionFileRefView]) -> Void = { _, _, _ in }
+    var toggleGroup: @MainActor (String) -> Void = { _ in }
     var select: @MainActor (String) -> Void = { _ in }
 }
 
@@ -62,13 +59,12 @@ final class ChatOpen {
     }
 }
 
-/// The side margin of the chat (design-system §4).
 let chatMargin: CGFloat = 14
 
 // MARK: The row
 
 struct ChatRowView: View, Equatable {
-    let row: ChatRow
+    let row: ChatTimelineRow
     let env: ChatEnv
 
     @Environment(\.chatActions) private var actions
@@ -77,40 +73,46 @@ struct ChatRowView: View, Equatable {
     nonisolated static func == (a: ChatRowView, b: ChatRowView) -> Bool { a.row == b.row && a.env == b.env }
 
     var body: some View {
-        switch row.item {
-        case .user(let m):
+        rowBody(row.item, blocks: row.blocks)
+    }
+
+    @ViewBuilder private func rowBody(_ tlItem: PBSessionTimelineItem, blocks: [MarkdownBlock]) -> some View {
+        switch tlItem.kind {
+        case .userMessage(let m):
+            let caption: String? = m.hasOriginCaption ? m.originCaption.rendered().nilIfEmpty : nil
             if !m.scheduledRunID.isEmpty {
-                ScheduledUserMessage(message: m)
+                ScheduledUserMessage(text: m.text, caption: caption)
             } else {
                 ChatBubble(
                     m.text.jvmIsBlank && (!m.images.isEmpty || !m.files.isEmpty) ? nil : m.text,
-                    caption: m.from
+                    caption: caption
                 ) {
-                    FileChips(files: m.files)
+                    FileChips(refs: m.files)
                     if !m.images.isEmpty {
-                        ChatImageRow(m.images) { actions.image(m.seq, $0) }.padding(.bottom, 4)
+                        ChatImageRow(m.images) { actions.image(tlItem.seq, $0) }.padding(.bottom, 4)
                     }
                 }
                 .messageMenu(m.text, actions: actions)
                 .accessibilityElement(children: .combine)
                 .accessibilityLabel(m.text.isEmpty ? (m.files.isEmpty ? L10n.imageTitle() : L10n.attachmentFile()) : m.text)
-                .accessibilityValue(m.from ?? L10n.sessionIosYourMessage())
+                .accessibilityValue(caption ?? L10n.sessionIosYourMessage())
             }
-        case .agent(let m):
-            // The row's own menu answers the long press (复制, and 选择文字 for a part of it), not the text's.
-            MarkdownView(blocks: row.blocks, bleed: chatMargin, selectable: false)
+
+        case .agentMessage(let m):
+            MarkdownView(blocks: blocks, bleed: chatMargin, selectable: false)
                 .padding(.horizontal, chatMargin).padding(.vertical, 8)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .messageMenu(m.text, actions: actions)
+                .messageMenu(m.markdown, actions: actions)
                 .accessibilityElement(children: .contain)
                 .accessibilityLabel(L10n.sessionIosAgentReply(agent: agentName(env.agent)))
+
         case .asyncQuestion(let m):
             VStack(alignment: .leading, spacing: 8) {
                 ForEach(Array(m.questions.enumerated()), id: \.offset) { _, q in
                     if !q.header.isEmpty {
                         Text(verbatim: q.header).font(.body.weight(.semibold)).ink(DS.ink)
                     }
-                    MarkdownView(q.text, bleed: chatMargin)
+                    MarkdownView(q.questionText, bleed: chatMargin)
                     ForEach(Array(q.options.enumerated()), id: \.offset) { _, o in
                         HStack(alignment: .top, spacing: 8) {
                             Text("•").font(.body).ink(DS.ink2)
@@ -124,67 +126,118 @@ struct ChatRowView: View, Equatable {
             .frame(maxWidth: .infinity, alignment: .leading)
             .accessibilityElement(children: .contain)
             .accessibilityLabel(L10n.sessionIosAgentReply(agent: agentName(env.agent)))
-        case .thought(let t):
-            ChatExpandable(L10n.sessionIosReasoning(), key: t.key) {
-                Text(t.text).font(.subheadline).ink(DS.ink2).padding(.bottom, 6)
+
+        case .reasoning(let r):
+            ChatExpandable(L10n.sessionIosReasoning(), key: tlItem.id) {
+                Text(r.markdown).font(.subheadline).ink(DS.ink2).padding(.bottom, 6)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
             .padding(.horizontal, chatMargin)
-        case .tool(let t):
+
+        case .toolCall(let t):
+            let callKey = t.callID.isEmpty ? tlItem.id : t.callID
             VStack(alignment: .leading, spacing: 0) {
-                ExpandableToolRow(key: t.key, text: commandOf(kind: t.call.kind, title: t.call.title, input: t.call.input)) {
-                    if t.background {
-                        BackgroundToolRow(call: t.call, env: env)
-                    } else {
-                        DoneToolRow(call: t.call, decision: t.decision, decisionOk: t.decisionOk, env: env)
-                    }
+                ExpandableToolRow(key: callKey, text: commandOf(kind: t.toolKind, title: t.title, input: t.rawInput)) {
+                    TimelineToolRow(call: t, env: env)
                 }
-                // A tool's images sit right under it, e.g. the file Claude Code read.
-                if !t.call.images.isEmpty {
-                    ChatImageRow(t.call.images) { actions.image(t.seq, $0) }.padding(.leading, 21).padding(.bottom, 6)
+                if !t.images.isEmpty {
+                    ChatImageRow(t.images) { actions.image(tlItem.seq, $0) }.padding(.leading, 21).padding(.bottom, 6)
                 }
             }
             .padding(.horizontal, chatMargin)
+
         case .sharedFiles(let s):
             SharedFilesRow(item: s, env: env)
-        case .running(let r):
-            ExpandableToolRow(key: r.key, text: commandOf(kind: r.tool.kind, title: r.tool.title, input: r.tool.input)) {
-                RunningToolRow(item: r, env: env)
-            }.padding(.horizontal, chatMargin)
-        case .tools(let g):
-            ToolGroupRow(group: g, env: env).padding(.horizontal, chatMargin)
-        case .generated(let g):
-            GeneratedCard(item: g) { actions.image(g.seq, $0) }
+
+        case .toolGroup(let g):
+            ToolGroupRow(key: tlItem.id, seq: tlItem.seq, group: g).padding(.horizontal, chatMargin)
+
+        case .generatedImages(let g):
+            GeneratedCard(key: tlItem.id, item: g) { actions.image(tlItem.seq, $0) }
+
         case .note(let n):
-            if let icon = n.icon {
+            let text = n.text.rendered()
+            let meta = n.hasMeta ? n.meta.rendered() : ""
+            if n.kind == .approval || n.kind == .question || n.kind == .interrupted {
+                let isFail = n.tone == .negative || n.tone == .warning
                 ChatToolLine(
-                    icon == .check ? "checkmark" : "xmark", color: DS.ink3, title: n.text, meta: n.meta,
-                    metaColor: n.tone == 2 ? DS.red : DS.ink2
+                    isFail ? "xmark" : "checkmark", color: DS.ink3, title: text, meta: meta,
+                    metaColor: isFail ? DS.red : DS.ink2
                 )
                 .padding(.horizontal, chatMargin)
             } else {
-                Text(n.text).font(.footnote).ink(DS.ink2).multilineTextAlignment(.center).lineLimit(2)
+                Text(text).font(.footnote).ink(DS.ink2).multilineTextAlignment(.center).lineLimit(2)
                     .frame(maxWidth: .infinity)
                     .padding(.horizontal, chatMargin).padding(.vertical, 10)
             }
+
         case .plan(let p):
-            PlanCard(key: p.key, text: p.text)
-        case .unsent(let u):
+            PlanCard(key: tlItem.id, text: p.markdown)
+
+        case .inputState(let u):
+            let caption = u.statusText.rendered()
+            let bodyText = u.preview.isEmpty ? L10n.queueIosMessage() : u.preview
+            let links: [ChatLink] = u.kind == .unsentOnExit && !u.preview.isEmpty
+                ? [ChatLink(L10n.composerRestore()) { actions.putBack(u.requestID, u.preview, []) }]
+                : []
             ChatBubble(
-                u.text?.isEmpty == false ? u.text : (u.files.isEmpty ? L10n.queueIosMessage() : nil), caption: notSentText(L10n.sessionEnded()), captionColor: DS.red,
-                links: u.text.map { text in [ChatLink(L10n.composerRestore()) { actions.putBack(u.requestId, text, u.files) }] } ?? []) { FileChips(files: u.files) }
+                bodyText,
+                caption: caption.isEmpty ? (u.hasReasonText ? u.reasonText.rendered() : nil) : caption,
+                captionColor: u.kind == .failed || u.kind == .unsentOnExit ? DS.red : DS.orangeInk,
+                links: links
+            )
+
         case .turnEnd(let t):
-            ChatSepLine(t.text)
-        case .fork(let f):
+            ChatSepLine(t.label.rendered())
+
+        case .errorLine(let e):
+            Text(e.text.rendered()).font(.footnote).ink(DS.red).multilineTextAlignment(.center)
+                .frame(maxWidth: .infinity)
+                .padding(.horizontal, chatMargin).padding(.vertical, 10)
+
+        case .forkMarker(let f):
             ForkRow(item: f)
+
+        case .quietScheduledGroup(let g):
+            VStack(spacing: 0) {
+                Button { actions.toggleGroup(g.groupID) } label: {
+                    HStack(spacing: 6) {
+                        Text(g.title.rendered()).font(.footnote).ink(DS.ink2).multilineTextAlignment(.leading)
+                        Arrow(DS.ink2, direction: g.expanded ? .up : .down)
+                    }
+                    .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading).padding(.horizontal, 16)
+                }
+                .buttonStyle(PressStyle())
+                .accessibilityValue(g.expanded ? L10n.projectsIosExpanded() : L10n.sessionIosCollapsed())
+                if g.expanded {
+                    ForEach(g.items, id: \.id) { child in
+                        AnyView(erasedBody(child))
+                    }
+                }
+            }
+
+        case .skeleton(let s):
+            Text(s.text.rendered()).font(.subheadline).ink(DS.ink2)
+                .padding(.horizontal, chatMargin).padding(.vertical, 6)
+
+        case nil:
+            EmptyView()
         }
+    }
+
+    private func erasedBody(_ item: PBSessionTimelineItem) -> AnyView {
+        if case .agentMessage(let a)? = item.kind {
+            return AnyView(rowBody(item, blocks: Markdown.parse(a.markdown)))
+        }
+        return AnyView(rowBody(item, blocks: []))
     }
 }
 
+private extension String {
+    var nilIfEmpty: String? { isEmpty ? nil : self }
+}
+
 extension View {
-    /// What a long press on a message offers: its text as it was written
-    /// (a reply's is its Markdown), or a page to select part of it from.
-    /// VoiceOver gets the same as actions of the message.
     @ViewBuilder fileprivate func messageMenu(_ text: String, actions: ChatActions) -> some View {
         if text.isEmpty {
             self
@@ -193,8 +246,6 @@ extension View {
                 Button(L10n.commonCopy()) { UIPasteboard.general.string = text }
                 Button(L10n.sessionIosSelectText()) { actions.select(text) }
             } preview: {
-                // A full reply's snapshot can fill the screen and looks like
-                // selectable text, but is only the menu's inert preview.
                 MessageMenuPreview(text: text)
             }
             .accessibilityAction(named: L10n.commonCopy()) { UIPasteboard.general.string = text }
@@ -205,7 +256,6 @@ extension View {
 
 // MARK: Messages
 
-/// A text action after a bubble's caption.
 struct ChatLink: Identifiable {
     let label: String
     let action: @MainActor () -> Void
@@ -218,10 +268,8 @@ struct ChatLink: Identifiable {
     }
 }
 
-/// Lays its one child out at most `fraction` of the width offered, at the trailing edge.
 private struct TrailingFraction: Layout {
     let fraction: CGFloat
-    /// Text set very large would be a column of single characters at 80%: it then takes the whole width.
     let whole: Bool
 
     private func width(_ proposal: ProposedViewSize) -> CGFloat? {
@@ -240,10 +288,6 @@ private struct TrailingFraction: Layout {
     }
 }
 
-/// A message of the user's, at the right: soft, 18 pt corners with a small
-/// one at the bottom right, at most 80% wide. `caption` under it says where
-/// it came from or how sending went, `captionIcon` before it and `links`
-/// after it; `top` is what stands over the bubble, its images.
 struct ChatBubble<Top: View>: View {
     private let text: String?
     private let caption: String?
@@ -257,7 +301,6 @@ struct ChatBubble<Top: View>: View {
     private let top: Top
     @Environment(\.dynamicTypeSize) private var typeSize
 
-    /// `pending`: not written yet, drawn as an outline; `lines` cuts a long one short.
     init(
         _ text: String?, caption: String? = nil, captionColor: Color = DS.ink2, captionIcon: String? = nil,
         failed: Bool = false, pending: Bool = false, lines: Int? = nil, links: [ChatLink] = [], padded: Bool = true,
@@ -276,13 +319,11 @@ struct ChatBubble<Top: View>: View {
     }
 
     var body: some View {
-        // A capsule's corners, as every bubble of the design (design-system §4).
         let shape = RoundedRectangle(cornerRadius: 20, style: .continuous)
         VStack(alignment: .trailing, spacing: 0) {
             top
             if let text {
                 TrailingFraction(fraction: 0.8, whole: typeSize.isAccessibilitySize) {
-                    // Yours is the one text with a ground (`bubble`); one waiting to be sent is an outline (`faint`) with `ink2` text.
                     Text(text).font(.body).foregroundStyle(pending ? DS.ink2 : DS.ink)
                         .lineLimit(lines)
                         .padding(.horizontal, 14).padding(.vertical, 9)
@@ -297,8 +338,6 @@ struct ChatBubble<Top: View>: View {
                 }
             }
             if caption != nil || !links.isEmpty {
-                // The note and its actions on one line when they fit, else the actions under it:
-                // a long note at a large text size is not squeezed into a column beside them.
                 ViewThatFits(in: .horizontal) {
                     HStack(alignment: .firstTextBaseline, spacing: 0) {
                         note
@@ -326,7 +365,6 @@ extension ChatBubble {
                     .contentTransition(.opacity)
             }
         }
-        // The words of the status line change by cross-fading (§4 动效, 快).
         .animation(Motion.enter(Motion.fast), value: caption)
     }
 
@@ -334,7 +372,6 @@ extension ChatBubble {
         ForEach(links) { link in
             Button(action: link.action) {
                 Text(link.label).font(.footnote.weight(.semibold)).foregroundStyle(DS.blue).lineLimit(1).fixedSize()
-                    // 44 pt to the finger without pushing the rows apart.
                     .padding(.leading, 6).padding(.vertical, 14)
                     .contentShape(Rectangle())
             }
@@ -364,7 +401,6 @@ private struct Rule: View {
     }
 }
 
-/// A thin line with a note in the middle: a turn's time and tokens, where a session ended.
 struct ChatSepLine: View {
     private let text: String
 
@@ -373,7 +409,6 @@ struct ChatSepLine: View {
     var body: some View {
         HStack(spacing: 8) {
             Rule().frame(minWidth: 16)
-            // The note keeps its line; the rules take what is left, down to a stub at each side.
             Text(text).font(.footnote).foregroundStyle(DS.ink2).multilineTextAlignment(.center)
                 .fixedSize(horizontal: false, vertical: true).layoutPriority(1)
             Rule().frame(minWidth: 16)
@@ -383,36 +418,33 @@ struct ChatSepLine: View {
     }
 }
 
-/// The line where a forked session leaves its source: the time, 分叉自, and
-/// the source's title on one line, cut short when long. The title opens the
-/// source; one not held here is fetched by its ID when opened.
 private struct ForkRow: View {
-    let item: ChatItem.Fork
-    @Environment(AppModel.self) private var model
+    let item: PBSessionForkItem
     @Environment(\.chatActions) private var actions
 
     var body: some View {
-        let title = forkSource(item, sessions: model.state.sessions)
+        let title = item.hasSourceTitle ? item.sourceTitle.rendered() : ""
         HStack(spacing: 8) {
             Rule().frame(minWidth: 16)
             HStack(spacing: 4) {
-                Text(L10n.sessionIosForkPrefix(time: item.time)).font(.footnote).foregroundStyle(DS.ink2).lineLimit(1).fixedSize()
-                if item.sourceId.isEmpty {
-                    Text(title).font(.footnote).foregroundStyle(DS.ink2).lineLimit(1)
-                } else {
-                    Button {
-                        actions.session(item.sourceId)
-                    } label: {
-                        HStack(spacing: 4) {
-                            Text(title).font(.footnote).foregroundStyle(DS.blue).lineLimit(1)
-                            Image(systemName: "chevron.right").font(.caption2.weight(.semibold)).foregroundStyle(DS.blue)
+                Text(item.text.rendered()).font(.footnote).foregroundStyle(DS.ink2).lineLimit(1).fixedSize()
+                if !title.isEmpty {
+                    if item.sourceSessionID.isEmpty {
+                        Text(title).font(.footnote).foregroundStyle(DS.ink2).lineLimit(1)
+                    } else {
+                        Button {
+                            actions.session(item.sourceSessionID)
+                        } label: {
+                            HStack(spacing: 4) {
+                                Text(title).font(.footnote).foregroundStyle(DS.blue).lineLimit(1)
+                                Image(systemName: "chevron.right").font(.caption2.weight(.semibold)).foregroundStyle(DS.blue)
+                            }
+                            .padding(.vertical, 12).frame(minHeight: DS.minHit).contentShape(Rectangle())
                         }
-                        .padding(.vertical, 12).frame(minHeight: DS.minHit).contentShape(Rectangle())
+                        .buttonStyle(PressStyle())
                     }
-                    .buttonStyle(PressStyle())
                 }
             }
-            // The rules give way to a long title, down to a stub at each side.
             .layoutPriority(1)
             Rule().frame(minWidth: 16)
         }
@@ -422,8 +454,6 @@ private struct ForkRow: View {
 
 // MARK: Tools
 
-/// A tool's line: a quiet mark, what it did in mono, and a note at the right
-/// (design-system §6 「工具调用」). `bold` is the folded group's summary.
 struct ChatToolLine<Trailing: View>: View {
     private let mark: String
     private let color: Color
@@ -455,7 +485,6 @@ struct ChatToolLine<Trailing: View>: View {
 
     var body: some View {
         Group {
-            // A large text size leaves no room for the note beside the command: it goes underneath, at the right.
             if typeSize.isAccessibilitySize && !meta.isEmpty {
                 VStack(alignment: .trailing, spacing: 0) {
                     HStack(spacing: 8) {
@@ -481,7 +510,6 @@ struct ChatToolLine<Trailing: View>: View {
         .accessibilityValue(meta)
     }
 
-    /// The mark in a word, for VoiceOver: a row is not told apart by colour or shape alone.
     private var markedTitle: String {
         if mark == "checkmark" { return L10n.toolsIosCompletedLabel(title: title) }
         if mark == "xmark" { return L10n.toolsIosFailedLabel(title: title) }
@@ -602,99 +630,75 @@ private struct ToolSelectableCommand: UIViewRepresentable {
     }
 }
 
-private struct DoneToolRow: View {
-    let call: PBToolCall
-    let decision: String
-    let decisionOk: Bool
+private struct TimelineToolRow: View {
+    let call: PBSessionToolCallItem
     let env: ChatEnv
 
     var body: some View {
-        let ok = toolOk(call)
-        // A failed call shows its exit code and, when it needed one, its approval: 退出码 7 · 已允许.
-        let parts = [!ok && call.hasExitCode ? L10n.toolsExitCode(code: String(call.exitCode)) : "", decision].filter { !$0.isEmpty }
-        let meta = parts.isEmpty ? (call.durationMs >= 1000 ? "\(call.durationMs / 1000)s" : "") : parts.joined(separator: " · ")
-        ChatToolLine(
-            ok ? "checkmark" : "xmark", color: ok ? DS.ink3 : DS.red,
-            title: firstLine(toolTitle(call, cwd: env.cwd, home: env.home)), meta: meta,
-            metaColor: !ok || !decisionOk ? DS.red : DS.ink2)
-    }
-}
-
-/// A call that went on in the background: its event is its start, and
-/// nothing reliable says when it ends, so it is never shown as done.
-private struct BackgroundToolRow: View {
-    let call: PBToolCall
-    let env: ChatEnv
-
-    private func raw(_ s: String) -> Bool { s == "ToolCall" || s == "CommandExecution" }
-
-    var body: some View {
-        let generic = (call.title.isEmpty || raw(call.title)) && raw(call.itemType)
-        ChatToolLine(
-            Mark.progress, color: DS.ink,
-            title: generic ? L10n.toolsBackground() : firstLine(toolTitle(call, cwd: env.cwd, home: env.home)),
-            meta: generic ? "" : L10n.toolsBackground())
-    }
-}
-
-/// A tool that started and has no result yet, where it started. Its timer
-/// counts from the daemon's event time, the same on every client, and stops
-/// where the connection dropped (architecture §13 「工具执行反馈」).
-private struct RunningToolRow: View {
-    let item: ChatItem.Running
-    let env: ChatEnv
-
-    var body: some View {
-        let tool = item.tool
-        let title = firstLine(toolTitle(tool, cwd: env.cwd, home: env.home))
-        if item.unfinished && env.noResult.contains(tool.seq) {
-            // The turn completed without this tool's result: say only that.
-            ChatToolLine(Mark.progress, color: DS.faint, title: title, meta: L10n.toolsWaitingSync())
-        } else {
-            let state = state
-            if state == .running {
-                // The command that runs now stands apart: `gbg`, radius 18 (design-system §6 「工具调用」).
-                Ticking(every: 1) { now in
-                    ChatToolLine(
-                        Mark.progress, color: DS.ink, title: title,
-                        meta: toolTimer(tool, state: state, now: now, frozenAt: env.frozenAt))
-                }
-                .padding(.horizontal, 12).padding(.vertical, 6)
-                .background(DS.gbg, in: RoundedRectangle(cornerRadius: DS.Radius.notice, style: .continuous))
+        let title = firstLine(call.title)
+        switch call.status {
+        case .running:
+            if call.noResult {
+                ChatToolLine(Mark.progress, color: DS.faint, title: title, meta: L10n.toolsWaitingSync())
+            } else if call.unconfirmed {
+                ChatToolLine(Mark.progress, color: DS.ink, title: title, meta: L10n.toolsWaitingSync())
             } else {
-                ChatToolLine(
-                    Mark.progress, color: DS.ink, title: title,
-                    meta: state == .sync ? L10n.toolsWaitingSync() : item.unfinished ? L10n.toolsBackground() : state.text)
+                let freeze = call.frozenAtMs > 0 ? call.frozenAtMs : env.frozenAt
+                if freeze > 0 {
+                    ChatToolLine(Mark.progress, color: DS.ink, title: title, meta: runningTimer(sinceMs: call.sinceMs, now: freeze, frozenAt: freeze))
+                } else {
+                    Ticking(every: 1) { now in
+                        ChatToolLine(Mark.progress, color: DS.ink, title: title, meta: runningTimer(sinceMs: call.sinceMs, now: now, frozenAt: 0))
+                    }
+                    .padding(.horizontal, 12).padding(.vertical, 6)
+                    .background(DS.gbg, in: RoundedRectangle(cornerRadius: DS.Radius.notice, style: .continuous))
+                }
             }
+        case .background:
+            let label = call.hasBackgroundLabel ? call.backgroundLabel.rendered() : ""
+            ChatToolLine(Mark.progress, color: DS.ink, title: title, meta: label.isEmpty ? L10n.toolsBackground() : label)
+        case .unconfirmed:
+            ChatToolLine(Mark.progress, color: DS.ink, title: title, meta: L10n.toolsWaitingSync())
+        default:
+            let ok = call.status == .ok
+            let exitPart = !ok && call.hasExitCode_p ? L10n.toolsExitCode(code: String(call.exitCode)) : ""
+            let decisionPart = call.hasDecisionLabel ? call.decisionLabel.rendered() : ""
+            let parts = [exitPart, decisionPart].filter { !$0.isEmpty }
+            let meta = parts.isEmpty ? (call.elapsedMs >= 1000 ? "\(call.elapsedMs / 1000)s" : "") : parts.joined(separator: " · ")
+            ChatToolLine(
+                ok ? "checkmark" : "xmark", color: ok ? DS.ink3 : DS.red,
+                title: title, meta: meta,
+                metaColor: !ok || (call.hasDecisionLabel && !call.decisionAllowed) ? DS.red : DS.ink2
+            )
         }
     }
 
-    /// How the tool reads now, by the package's rule.
-    private var state: ToolState {
-        toolState(item.tool, unfinished: item.unfinished, frozenAt: env.frozenAt)
+    private func runningTimer(sinceMs: Int64, now: Int64, frozenAt: Int64) -> String {
+        guard sinceMs > 0 else { return "" }
+        let end = frozenAt > 0 ? min(frozenAt, now) : now
+        let ms = max(0, end - sinceMs)
+        if ms < 3_000 { return "" }
+        return clock(ms)
     }
 }
 
-/// Two or more completed calls in a row, folded into one line; open, it lists the commands only.
 private struct ToolGroupRow: View {
-    let group: ChatItem.Tools
-    let env: ChatEnv
+    let key: String
+    let seq: UInt64
+    let group: PBSessionToolGroupItem
     @Environment(ChatOpen.self) private var open
     @Environment(\.chatActions) private var actions
 
-    private func seq(_ call: Int) -> UInt64 { call < group.callSeqs.count ? group.callSeqs[call] : 0 }
-
     var body: some View {
-        let isOpen = open.isOpen(group.key)
+        let isOpen = open.isOpen(key)
         VStack(alignment: .leading, spacing: 0) {
             Button {
-                open.toggle(group.key)
+                open.toggle(key)
             } label: {
-                ChatToolLine("checkmark", color: DS.ink3, title: toolsSummary(group.calls), bold: true) {
+                ChatToolLine("checkmark", color: DS.ink3, title: group.summary.rendered(), bold: true) {
                     Arrow(DS.ink2, style: .subheadline, direction: isOpen ? .up : .down)
                 }
                 .frame(minHeight: 28)
-                // The line is 28 pt; to the finger it is 44.
                 .padding(.vertical, 8).contentShape(Rectangle()).padding(.vertical, -8)
             }
             .buttonStyle(PressStyle())
@@ -702,26 +706,23 @@ private struct ToolGroupRow: View {
             if isOpen {
                 VStack(alignment: .leading, spacing: 0) {
                     ForEach(Array(group.calls.enumerated()), id: \.offset) { i, call in
-                        ExpandableToolRow(key: "\(group.key)/\(call.callID.isEmpty ? String(i) : call.callID)", text: commandOf(kind: call.kind, title: call.title, input: call.input)) {
-                            Text(firstLine(toolTitle(call, cwd: env.cwd, home: env.home)))
+                        let callKey = call.callID.isEmpty ? "\(key)/\(i)" : "\(key)/\(call.callID)"
+                        ExpandableToolRow(key: callKey, text: commandOf(kind: call.toolKind, title: call.title, input: call.rawInput)) {
+                            Text(firstLine(call.title))
                                 .font(.footnote.monospaced()).ink(DS.ink2).lineLimit(1)
                                 .frame(maxWidth: .infinity, minHeight: 28, alignment: .leading)
                         }
-                        // Each call's images stay under it when the group is open.
                         if !call.images.isEmpty {
-                            ChatImageRow(call.images) { actions.image(seq(i), $0) }.padding(.leading, 21).padding(.bottom, 6)
+                            ChatImageRow(call.images) { actions.image(seq, $0) }.padding(.leading, 21).padding(.bottom, 6)
                         }
                     }
                 }
                 .padding(.leading, 12)
             } else {
-                // Screenshots stay in sight with the group closed.
-                let all = group.calls.enumerated().flatMap { i, call in call.images.indices.map { (call: i, index: $0) } }
+                let all = group.calls.flatMap(\.images)
                 if !all.isEmpty {
-                    ChatImageRow(group.calls.flatMap(\.images)) { n in
-                        if n < all.count { actions.image(seq(all[n].call), all[n].index) }
-                    }
-                    .padding(.leading, 21).padding(.bottom, 6)
+                    ChatImageRow(all) { actions.image(seq, $0) }
+                        .padding(.leading, 21).padding(.bottom, 6)
                 }
             }
         }
@@ -730,7 +731,6 @@ private struct ToolGroupRow: View {
 
 // MARK: Things that open in place
 
-/// A line that opens what is under it in place: 思考过程 and an arrow down.
 struct ChatExpandable<Content: View>: View {
     private let title: String
     private let key: String
@@ -761,12 +761,10 @@ struct ChatExpandable<Content: View>: View {
     }
 }
 
-/// A proposed plan where it was proposed: its first lines, and the whole of it in place.
 private struct PlanCard: View {
     let key: String
     let text: String
     @Environment(ChatOpen.self) private var open
-    /// The preview does not show all of its six lines: they wrap past the six it is drawn in.
     @State private var cut = false
 
     var body: some View {
@@ -782,7 +780,6 @@ private struct PlanCard: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.top, 4)
-            // Whatever the preview leaves out can be opened, and what was opened can be closed again.
             if isOpen || cut || planFolds(text, lines: 6) {
                 Button {
                     open.toggle(key)
@@ -800,30 +797,27 @@ private struct PlanCard: View {
     }
 }
 
-/// The first line of a tool's title: a command of several lines is a row of one.
 private func firstLine(_ s: String) -> String { s.jvmLines()[0] }
 
-/// Whether a plan has more lines than its preview takes. A plan of fewer
-/// lines may still be cut where they wrap, which only its layout knows.
 func planFolds(_ text: String, lines: Int) -> Bool {
     text.jvmLines().count > lines
 }
 
-/// A plan's first lines as plain text, for where it is shown cut short.
 func planPreview(_ text: String, lines: Int) -> String {
     text.jvmLines().map { plain($0) }.filter { !$0.jvmIsBlank }.prefix(lines).joined(separator: "\n")
 }
 
 struct ScheduledUserMessage: View {
-    let message: ChatItem.User
+    let text: String
+    var caption: String? = nil
     @Environment(\.chatActions) private var actions
     @Environment(\.dynamicTypeSize) private var typeSize
     var body: some View {
         VStack(alignment: .trailing, spacing: 0) {
             TrailingFraction(fraction: 0.8, whole: typeSize.isAccessibilitySize) {
-                ScheduleMessageText(text: message.text, caption: message.from, bubble: true)
+                ScheduleMessageText(text: text, caption: caption, bubble: true)
             }
         }.frame(maxWidth: .infinity, alignment: .trailing).padding(.horizontal, chatMargin).padding(.vertical, 8)
-            .messageMenu(message.text, actions: actions)
+            .messageMenu(text, actions: actions)
     }
 }

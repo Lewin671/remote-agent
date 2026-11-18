@@ -123,11 +123,12 @@ final class ImageCenter {
     @ObservationIgnored private var fileMachines: [String: MachineView] = [:]
     @ObservationIgnored private var blockedKeys = Set<String>()
     @ObservationIgnored private var aimedKeys = Set<String>()
-    /// Messages with images sent from here, by session, until the CLI has them.
+    /// Messages with images held for thumbnails and clean disk release while Core owns delivery.
     @ObservationIgnored private var kept: [String: [Outgoing]] = [:]
+    /// Crash-restored records from an earlier run not yet handed to Core or dismissed.
+    var restoredOutgoing: [String: [Outgoing]] = [:]
     @ObservationIgnored private var restored = Set<String>()
     @ObservationIgnored private var restorations: [String: Task<Void, Never>] = [:]
-    @ObservationIgnored private var watchers: [String: Task<Void, Never>] = [:]
     /// The account was left: what was on its way when that happened must not go on for it.
     @ObservationIgnored private var forgottenSessions = Set<String>()
     @ObservationIgnored private var closed = false
@@ -191,13 +192,12 @@ final class ImageCenter {
     private func close() {
         closed = true
         for draft in drafts.values { for img in draft.images { img.release() } }
-        for task in watchers.values { task.cancel() }
         for task in restorations.values { task.cancel() }
         restorations.removeAll()
-        watchers.removeAll()
         drafts.removeAll()
         sources.removeAll()
         kept.removeAll()
+        restoredOutgoing.removeAll()
         thumbs.removeAll()
         viewed.clear()
         previews.removeAllObjects()
@@ -208,7 +208,7 @@ final class ImageCenter {
         let key = Self.sessionKey(sid)
         restorations.removeValue(forKey: key)?.cancel()
         restorations.removeValue(forKey: "out:" + sid)?.cancel()
-        watchers.removeValue(forKey: sid)?.cancel()
+        restoredOutgoing[sid] = nil
         let draft = drafts.removeValue(forKey: key)
         let images = (draft?.images ?? []) + (kept.removeValue(forKey: sid) ?? []).flatMap(\.images)
         draft?.clear()
@@ -572,9 +572,9 @@ final class ImageCenter {
     /// out of the draft. If keeping them failed nothing is sent, the draft
     /// stays as it is and `done` gets the reason.
     func send(
-        sid: String, machineId: String, store: SessionStore, text: String, mode: PBSendMode,
-        commands: (any SessionCommands)? = nil,
+        sid: String, machineId: String, text: String, mode: PBSendMode,
         keep: (@Sendable (String, OutgoingRecord, Bool) throws -> Void)? = nil,
+        submit: @escaping @MainActor @Sendable (Outgoing) -> Void,
         done: @escaping @MainActor (Result<Void, Error>) -> Void
     ) -> Bool {
         let draft = draft(Self.sessionKey(sid))
@@ -596,7 +596,6 @@ final class ImageCenter {
             images: picked, original: original, mode: mode)
         let record = o.record
         let records = records
-        let commands: any SessionCommands = commands ?? remote
         Task {
             let kept: Result<Void, Error> = await Task.detached {
                 Result {
@@ -638,16 +637,15 @@ final class ImageCenter {
             // has been made. Sending must not depend on the draft having drawn it.
             for img in picked where thumb(img) == nil { makeThumb(img) }
             draft.detach(picked)
-            store.add(sid, o)
-            hold(sid, o, store)
+            hold(sid, o)
             done(kept)
-            store.deliver(commands, sid: sid, o)
+            submit(o)
         }
         return true
     }
 
     /// Brings back the messages with images a run that ended left behind, once per session and run.
-    func restoreOutgoing(_ sid: String, store: SessionStore) {
+    func restoreOutgoing(_ sid: String) {
         guard restored.insert(sid).inserted else { return }
         let records = records
         restorations["out:" + sid] = Task { [weak self] in
@@ -655,11 +653,15 @@ final class ImageCenter {
                 let list = try await Task.detached { try records.loadRecords(sid: sid) }.value
                 guard let self, !closed, !Task.isCancelled else { return }
                 outgoingRestoreErrors[sid] = nil
-                for record in list where store.find(sid, requestId: record.requestId) == nil {
+                for record in list where self.heldOutgoing(sid, requestId: record.requestId) == nil {
                     let o = OutgoingRecords.revive(record)
-                    store.add(sid, o)
                     for img in o.images { makeThumb(img) }
-                    hold(sid, o, store)
+                    hold(sid, o)
+                    var restoredList = self.restoredOutgoing[sid] ?? []
+                    if !restoredList.contains(where: { $0.requestId == o.requestId }) {
+                        restoredList.append(o)
+                        self.restoredOutgoing[sid] = restoredList
+                    }
                 }
             } catch {
                 guard let self, !closed, !Task.isCancelled else { return }
@@ -669,12 +671,43 @@ final class ImageCenter {
         }
     }
 
-    /// Puts a message's images back into its session's draft; false when they do not fit, and then nothing moved.
-    func putBack(sid: String, max: Int, maxFiles: Int = 6, _ o: Outgoing) -> Bool {
+    func heldOutgoing(_ sid: String, requestId: String) -> Outgoing? {
+        kept[sid]?.first { $0.requestId == requestId }
+    }
+
+    func adoptRestored(_ sid: String, requestId: String) {
+        restoredOutgoing[sid]?.removeAll { $0.requestId == requestId }
+        if restoredOutgoing[sid]?.isEmpty == true { restoredOutgoing[sid] = nil }
+    }
+
+    func dismissRestored(_ sid: String, requestId: String) {
+        adoptRestored(sid, requestId: requestId)
+        if let o = heldOutgoing(sid, requestId: requestId) {
+            release(sid, o)
+        } else {
+            dropRecord(sid, requestId)
+        }
+    }
+
+    func canPutBack(sid: String, max: Int, maxFiles: Int = 6, _ o: Outgoing) -> Bool {
         guard canRestoreFiles(sid, hasFiles: !o.fileIds.isEmpty || o.images.contains(where: \.isFile)) else { return false }
         if o.images.isEmpty { return true }
         let draft = draft(Self.sessionKey(sid))
-        if o.state == .failed { for img in o.images { img.releaseUploadProtection(requestId: o.requestId) } }
+        return draft.canFit(o.images, max: max, maxFiles: maxFiles)
+    }
+
+    /// Puts a message's images back into its session's draft; false when they do not fit, and then nothing moved.
+    func putBack(sid: String, max: Int, maxFiles: Int = 6, _ o: Outgoing, releaseFailure: Bool = false) -> Bool {
+        guard canRestoreFiles(sid, hasFiles: !o.fileIds.isEmpty || o.images.contains(where: \.isFile)) else { return false }
+        adoptRestored(sid, requestId: o.requestId)
+        if o.images.isEmpty {
+            release(sid, o)
+            return true
+        }
+        let draft = draft(Self.sessionKey(sid))
+        if o.state == .failed || releaseFailure {
+            for img in o.images { img.releaseUploadProtection(requestId: o.requestId) }
+        }
         guard draft.attach(o.images, max: max, maxFiles: maxFiles, wereOriginal: o.original) else { return false }
         letGo(sid, o)
         // Its images live on in the draft. Its record goes once they are on disk there: until then it is the
@@ -706,66 +739,55 @@ final class ImageCenter {
         return true
     }
 
-    /// Follows a message until it is let go of (`settle`) or removed, whether or not the chat is on screen.
-    private func hold(_ sid: String, _ o: Outgoing, _ store: SessionStore) {
-        kept[sid, default: []].append(o)
-        observe(sid, store)
-        guard watchers[sid] == nil else { return }
-        let feed = remote.events(sid)
-        watchers[sid] = Task { [weak self] in
-            for await events in feed.updates() {
-                guard let self, !Task.isCancelled else { return }
-                let inputs = await Task.detached { inputStates(events.events) }.value
-                if Task.isCancelled { return }
-                self.settle(sid, inputs, store)
-            }
+    /// Follows a message until Core settles it (`pruneSettled`) or the user dismisses it.
+    private func hold(_ sid: String, _ o: Outgoing) {
+        if !(kept[sid] ?? []).contains(where: { $0.requestId == o.requestId }) {
+            kept[sid, default: []].append(o)
         }
     }
 
-    /// A message is no longer followed. With the session's last one its events are let go of too: waiting
-    /// for the next batch to notice would keep the whole history of a session that sends none, one that
-    /// ended or whose computer is offline.
     private func letGo(_ sid: String, _ o: Outgoing) {
-        kept[sid]?.removeAll { $0 === o }
+        kept[sid]?.removeAll { $0 === o || $0.requestId == o.requestId }
         if kept[sid]?.isEmpty == true {
             kept[sid] = nil
-            watchers.removeValue(forKey: sid)?.cancel()
         }
     }
 
-    /// Lets go of messages submitted or canceled by the user (`letsGo`): their images' bytes, thumbnails
-    /// and the copies on disk.
-    private func settle(_ sid: String, _ inputs: [String: PBInputState], _ store: SessionStore) {
-        for o in recorded(kept[sid] ?? [], inputs: inputs) {
-            store.remove(sid, o)
-            release(sid, o, accepted: true)
-        }
-    }
-
-    /// Notices a message the user removed from the chat: its record must not come back with the next launch.
-    private func observe(_ sid: String, _ store: SessionStore) {
-        withObservationTracking {
-            _ = store.outgoing(sid)
-        } onChange: { [weak self] in
-            Task { @MainActor in
-                guard let self else { return }
-                for o in self.kept[sid] ?? [] where store.find(sid, requestId: o.requestId) == nil {
-                    self.release(sid, o)
-                }
-                if self.kept[sid]?.isEmpty == false { self.observe(sid, store) }
+    /// Releases local image bytes/thumbnails and disk records once Core no longer lists `requestId`
+    /// as in-flight (`outgoing` / `pendingInputs` / `unsentOnExit`), keeping crash-restored records
+    /// until dismissed, put back, retried, or observed in Core's settled timeline.
+    func pruneSettled(_ sid: String, activeRequestIDs: Set<String>, timelineSettledRequestIDs: Set<String> = []) {
+        let restoredIDs = Set((restoredOutgoing[sid] ?? []).map(\.requestId))
+        for o in kept[sid] ?? [] {
+            if timelineSettledRequestIDs.contains(o.requestId) {
+                adoptRestored(sid, requestId: o.requestId)
+                release(sid, o, accepted: true)
+            } else if !restoredIDs.contains(o.requestId), !activeRequestIDs.contains(o.requestId) {
+                release(sid, o, accepted: true)
             }
         }
     }
 
-    private func release(_ sid: String, _ o: Outgoing, accepted: Bool = false) {
+    /// Releases a message whose upload failed or was dismissed directly.
+    func release(_ sid: String, _ o: Outgoing, accepted: Bool = false) {
+        adoptRestored(sid, requestId: o.requestId)
         letGo(sid, o)
         dropRecord(sid, o.requestId)
         for img in o.images {
-            if o.state == .failed { img.releaseUploadProtection(requestId: o.requestId) }
+            if o.state == .failed || !accepted { img.releaseUploadProtection(requestId: o.requestId) }
             uploads.discard(img, keeping: accepted ? img.historyMachineId : nil)
             img.release()
         }
         forget(o.images)
+    }
+
+    func release(sid: String, requestId: String, accepted: Bool = false) {
+        if let o = heldOutgoing(sid, requestId: requestId) {
+            release(sid, o, accepted: accepted)
+        } else {
+            adoptRestored(sid, requestId: requestId)
+            dropRecord(sid, requestId)
+        }
     }
 
     private func dropRecord(_ sid: String, _ requestId: String) {
@@ -780,8 +802,12 @@ final class ImageCenter {
         }
 
         /// Shows a message with images as it would stand after sending, for sample data.
-        func debugShow(_ sid: String, _ o: Outgoing, store: SessionStore) {
-            if store.find(sid, requestId: o.requestId) == nil { store.add(sid, o) }
+        func debugShow(_ sid: String, _ o: Outgoing) {
+            guard heldOutgoing(sid, requestId: o.requestId) == nil else { return }
+            hold(sid, o)
+            var list = restoredOutgoing[sid] ?? []
+            list.append(o)
+            restoredOutgoing[sid] = list
             for img in o.images { makeThumb(img) }
         }
 

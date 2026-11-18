@@ -1,13 +1,7 @@
 // What waits for the user, docked above the message box: an approval, a
-// question, a plan, a popup in the terminal. Android's ui/Dock.kt; which
-// item is docked and what its one line says are the package's (`DockItem`,
-// `dockSummary`). docs/design-system.md §6 「等待事项（停靠区）」「审批」.
-//
-// Nothing here says a decision went through before the computer says so:
-// a tap locks the card on a line of progress, the card goes away when the
-// daemon's event withdraws it (whoever answered it, from whichever client),
-// and a decision whose outcome is unknown is only ever sent again as it
-// was (architecture §10 「指令」).
+// question, a plan, or a terminal popup, rendered directly from Core's
+// `PBSessionDockView`. Commands submit via `CoreHost.submitSessionCommand`
+// and command status comes from `PBSessionDockView.command`.
 import RACore
 import RAProto
 import SwiftUI
@@ -17,13 +11,10 @@ import UIKit
 /// ticks when it is made; the success tick waits for the computer's answer.
 @MainActor
 enum SessionHaptics {
-    /// The one light tap of a message going out and of an approval allowed or denied (§4 触感); nothing else in a
-    /// session gives one.
     static func tap() { UIImpactFeedbackGenerator(style: .light).impactOccurred() }
 }
 
-/// What an open dock item says after its type, in place of the summary: how long it still waits, how
-/// far through several questions. `urgent` turns it orange (an approval's last minute, design-system §1).
+/// What an open dock item says after its type, in place of the summary.
 struct DockNote: Equatable {
     var text = ""
     var urgent = false
@@ -34,18 +25,30 @@ extension EnvironmentValues {
     @Entry var chatHeight: CGFloat = 0
 }
 
+func dockFoldKey(sessionID: String, _ dock: PBSessionDockView) -> String {
+    "\(sessionID):\(dock.kind.rawValue):\(dock.itemID)"
+}
+
+private func commandRunning(_ st: PBSessionCommandState?) -> Bool {
+    st?.status == .pending || st?.busy == true
+}
+
+private func commandErrorText(_ st: PBSessionCommandState?) -> String {
+    guard let st else { return "" }
+    if st.hasErrorText {
+        let rendered = st.errorText.rendered()
+        if !rendered.isEmpty { return rendered }
+    }
+    return st.errorCode
+}
+
 /// Open from the start, until the user folds it: one line then, 「● 类型 ·
-/// 摘要 · 处理」. Open, the line keeps only the type and what is said of it
-/// (`note`, and how many more wait), and the body under it scrolls within
-/// about 60% of the chat pane, at least 240, while the actions stay put.
-/// Whether it is open is the caller's, kept by the item's ID
-/// (`SessionStore.dockOpen`), so a folded item stays folded and the next
-/// one opens, unless it comes while the message box holds a draft.
+/// 摘要 · 处理」.
 struct PendingDock<Content: View, Actions: View>: View {
-    private let item: DockItem
-    private let agent: String
+    private let summaryLabel: String
+    private let summaryBrief: String
+    private let openTitle: String?
     private let more: Int
-    private let title: String?
     private let note: DockNote
     @Binding private var open: Bool
     private let onOpen: () -> Void
@@ -53,23 +56,21 @@ struct PendingDock<Content: View, Actions: View>: View {
     private let content: Content
     private let actions: Actions
     @State private var bodyHeight: CGFloat = 0
-    /// The least room for an open item's body; it grows with the text size.
     @ScaledMetric(relativeTo: .footnote) private var least: CGFloat = 240
     @Environment(\.chatHeight) private var chatHeight
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.verticalSizeClass) private var vertical
     @Environment(\.dynamicTypeSize) private var typeSize
 
-    /// `extra`, a link of the open item's own (the plan's 展开全文), goes in its line before 收起.
     init(
-        _ item: DockItem, agent: String, more: Int, title: String? = nil, note: DockNote = DockNote(), open: Binding<Bool>,
-        onOpen: @escaping () -> Void, extra: AnyView? = nil, @ViewBuilder content: () -> Content,
-        @ViewBuilder actions: () -> Actions
+        label: String, brief: String, openTitle: String? = nil, more: Int, note: DockNote = DockNote(),
+        open: Binding<Bool>, onOpen: @escaping () -> Void, extra: AnyView? = nil,
+        @ViewBuilder content: () -> Content, @ViewBuilder actions: () -> Actions
     ) {
-        self.item = item
-        self.agent = agent
+        self.summaryLabel = label
+        self.summaryBrief = brief
+        self.openTitle = openTitle
         self.more = more
-        self.title = title
         self.note = note
         _open = open
         self.onOpen = onOpen
@@ -78,10 +79,7 @@ struct PendingDock<Content: View, Actions: View>: View {
         self.actions = actions()
     }
 
-    /// What follows the type: folded, the summary and how many more wait; open, how many more wait and
-    /// the note. A folded CLI summary gives way; fixed progress and status text can wrap.
-    /// That more wait behind it is always said.
-    @ViewBuilder private func rest(_ brief: String) -> some View {
+    @ViewBuilder private var rest: some View {
         Group {
             if open {
                 let count = more > 0 ? L10n.dockMore(count: Int(more)) : ""
@@ -90,9 +88,9 @@ struct PendingDock<Content: View, Actions: View>: View {
                     .font(.footnote).fixedSize(horizontal: false, vertical: true)
             } else {
                 HStack(spacing: 0) {
-                    Text(brief).font(.footnote).foregroundStyle(DS.ink2).lineLimit(1).frame(idealWidth: 0)
+                    Text(summaryBrief).font(.footnote).foregroundStyle(DS.ink2).lineLimit(1).frame(idealWidth: 0)
                     if more > 0 {
-                        Text((brief.isEmpty ? "" : " · ") + L10n.dockMore(count: Int(more))).font(.footnote).foregroundStyle(DS.ink2).lineLimit(1).fixedSize()
+                        Text((summaryBrief.isEmpty ? "" : " · ") + L10n.dockMore(count: Int(more))).font(.footnote).foregroundStyle(DS.ink2).lineLimit(1).fixedSize()
                     }
                 }
             }
@@ -100,16 +98,9 @@ struct PendingDock<Content: View, Actions: View>: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    /// One line: 「● 类型 · 摘要 · 处理」 folded, 「● 类型　还有 N 项 · 剩 X 分钟　收起」 open. Where the
-    /// type, what follows it and the toggle do not fit side by side, as with large text on a narrow
-    /// screen, the type takes a line of its own (two if it must) and the rest goes under it, the
-    /// toggle at the right (design-system §6 「长内容、大量内容与大字号」).
-    private func head(_ summary: (label: String, brief: String), withToggle: Bool = true) -> some View {
+    private func head(withToggle: Bool = true) -> some View {
         let dot = StatusMark(.waiting)
-        // Open, the summary is not there to say what the type leaves out: `title` says it whole.
-        // Only the dot and the type word are orange (design-system §6 「等待事项」).
-        let label = Text(open ? title ?? summary.label : summary.label).font(.footnote.weight(.semibold)).foregroundStyle(DS.orange)
-        let rest = rest(summary.brief)
+        let label = Text(open ? (openTitle ?? summaryLabel) : summaryLabel).font(.footnote.weight(.semibold)).foregroundStyle(DS.orange)
         let toggle = Group { if withToggle { toggleText } }
         return ViewThatFits(in: .horizontal) {
             HStack(spacing: 6) {
@@ -139,10 +130,6 @@ struct PendingDock<Content: View, Actions: View>: View {
         }
     }
 
-    /// The most an open item's body takes. On a phone on its side there is little height: the body
-    /// keeps a few lines and scrolls, so that the actions and the message box under them stay on the
-    /// screen. At the accessibility text sizes the actions stack and grow, and the line above the body
-    /// is several: the body keeps about a third, or the line and the actions would leave the screen.
     private var room: CGFloat {
         if vertical == .compact { return 96 }
         if typeSize.isAccessibilitySize { return max(160, chatHeight * 0.35) }
@@ -165,7 +152,6 @@ struct PendingDock<Content: View, Actions: View>: View {
     }
 
     var body: some View {
-        // The dark card's shell, docked over the chat: open, the whole card; folded, one dark capsule.
         Group {
             if open {
                 DarkCard(floating: true) { card }
@@ -185,13 +171,11 @@ struct PendingDock<Content: View, Actions: View>: View {
     }
 
     private var card: some View {
-        let summary = dockSummary(item, agent: agent)
-        return VStack(spacing: 0) {
+        VStack(spacing: 0) {
             if open, let extra {
-                // A link of its own sits between the line and 收起, so the line is two buttons around it.
                 HStack(spacing: 12) {
                     Button(action: toggle) {
-                        head(summary, withToggle: false)
+                        head(withToggle: false)
                             .frame(minHeight: DS.minHit)
                             .contentShape(Rectangle())
                     }
@@ -207,7 +191,7 @@ struct PendingDock<Content: View, Actions: View>: View {
                 }
             } else {
                 Button(action: toggle) {
-                    head(summary)
+                    head()
                         .frame(minHeight: DS.minHit)
                         .contentShape(Rectangle())
                 }
@@ -226,7 +210,6 @@ struct PendingDock<Content: View, Actions: View>: View {
                             }
                     }
                     .scrollBounceBehavior(.basedOnSize)
-                    // As tall as what it holds, up to the room: past it the body scrolls and the actions stay.
                     .frame(height: min(max(bodyHeight, 1), room))
                     VStack(alignment: .leading, spacing: 0) { actions }
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -238,7 +221,7 @@ struct PendingDock<Content: View, Actions: View>: View {
     }
 }
 
-/// The grey line under a dock's buttons: a question at the left, one link at the right, with an arrow when it goes somewhere else.
+/// The grey line under a dock's buttons.
 struct DockFoot: View {
     private let left: String
     private let link: String
@@ -257,7 +240,6 @@ struct DockFoot: View {
         ViewThatFits(in: .horizontal) {
             if !typeSize.isAccessibilitySize {
                 HStack(spacing: 8) {
-                    // Prefer the original row only when both labels fit in full.
                     if !left.isEmpty {
                         Text(left).font(.footnote).ink(DS.ink2).fixedSize()
                         Spacer(minLength: 0)
@@ -284,28 +266,13 @@ struct DockFoot: View {
 
 // MARK: Approvals
 
-/// The widest an approval's or a plan's actions get: on a tablet they keep to the left, not the whole width.
 let actionsWidth: CGFloat = 480
 
-/// How long an approval still waits: muted, and orange only in its last minute (design-system §1).
-struct ApprovalDeadline: Equatable {
-    var text: String
-    var last: Bool
-
-    init?(_ a: PBApprovalRequested, now: Int64) {
-        guard a.hasDeadline else { return nil }
-        let deadline = a.deadline.seconds * 1000
-        text = L10n.homeIosApprovalRemaining(count: Int(minutesLeft(deadlineMs: deadline, now: now)))
-        last = deadline - now < 60_000
-    }
-}
-
-/// An approval, docked: the whole command scrolls above the decision,
-/// which stays put; decided, the card is one line of where that stands.
+/// An approval, docked: rendered from Core's `PBSessionDockView`.
 struct ApprovalDock: View {
-    let session: SessionView
-    let approval: PBApprovalRequested
-    let more: Int
+    let sessionID: String
+    let machineID: String
+    let dock: PBSessionDockView
     @Binding var open: Bool
     var startReason = false
     let onOpen: () -> Void
@@ -314,25 +281,33 @@ struct ApprovalDock: View {
     @State private var chosen: Bool?
 
     var body: some View {
-        let submitted = context.sessionStore.resolve(approval.approvalID).submitted
-        // Answered, the card shrinks to the one line saying what was answered, its room closing with it (§4 动效, 常).
-        // The choice is made outside the clock below: a view that is built again every tick does not animate its swap.
+        let approval = dock.approval
+        let target = ApprovalTarget(sessionId: sessionID, machineId: machineID, dock: dock)
+        let choice = context.sessionStore.approvalChoice(approval.approvalID)
+        let submitted = target.isSubmitted(choice: choice)
         Group {
             if submitted {
-                ApprovalSubmitted(session: session, approval: approval, chosen: chosen)
+                ApprovalSubmitted(target: target, chosen: chosen)
                     .padding(.horizontal, DS.Space.m).padding(.bottom, 8)
                     .transition(Motion.roomy())
             } else {
                 Ticking(every: 15) { now in
-                    let left = ApprovalDeadline(approval, now: now)
+                    let urgent = dock.deadlineMs > 0 && dock.deadlineMs - now < 60_000
+                    let timeText = dock.hasTimeLeft ? dock.timeLeft.rendered() : ""
+                    let openTitle = approval.commandPreview.isEmpty ? approval.toolName : approval.commandPreview
                     PendingDock(
-                        .approval(approval), agent: agentName(session.agent), more: more, title: approvalHead(approval),
-                        note: DockNote(text: left?.text ?? "", urgent: left?.last == true), open: $open, onOpen: onOpen
+                        label: dock.title.rendered(),
+                        brief: dock.summary.rendered(),
+                        openTitle: openTitle.isEmpty ? nil : openTitle,
+                        more: Int(dock.moreCount),
+                        note: DockNote(text: timeText, urgent: urgent),
+                        open: $open,
+                        onOpen: onOpen
                     ) {
                         ApprovalContent(approval: approval, denying: denying)
                     } actions: {
-                        if !isSkeleton(approval) {
-                            ApprovalDecision(session: session, approval: approval, now: now, denying: $denying, chosen: $chosen)
+                        if !approval.isSkeleton {
+                            ApprovalDecision(target: target, denying: $denying, chosen: $chosen)
                         }
                     }
                 }
@@ -346,7 +321,6 @@ struct ApprovalDock: View {
 
 // MARK: Questions
 
-/// 第 1 题 of several, as short bars.
 private struct QuestionSteps: View {
     let count: Int
     let at: Int
@@ -361,82 +335,89 @@ private struct QuestionSteps: View {
     }
 }
 
-/// Answers the current question by option; several questions go one by
-/// one. One choice answers at a tap; a multiple choice ticks, then 提交 N 项.
-/// The dock shows its two halves apart, the scrolling body and the fixed
-/// actions; the page (`full`) lays them out the same way, larger.
 struct QuestionBody: View {
     enum Part { case content, actions }
 
-    let session: SessionView
-    let question: PBQuestionAsked
+    let sessionID: String
+    let machineID: String
+    let dock: PBSessionDockView
     let part: Part
     let full: Bool
-    /// One submission for both halves.
-    let act: ActionRunner
     var onTerminal: () -> Void = {}
     var onLong: () -> Void = {}
     var onAnswered: () -> Void = {}
     @Environment(AccountContext.self) private var context
+    @State private var lastSentPicks: [Int] = []
+    @State private var submittedLastStep = false
 
     private var store: SessionStore { context.sessionStore }
-    private var qid: String { question.questionID }
-    private var index: Int { store.questionIndex[qid] ?? 0 }
-    private var current: PBQuestion? {
-        let qs = question.questions
-        return index < qs.count ? qs[index] : qs.last
-    }
+    private var qDock: PBSessionQuestionDockView { dock.question }
+    private var qid: String { qDock.questionID }
+    private var index: Int { Int(qDock.activeIndex) }
+    private var cur: PBSessionQuestionStepView { qDock.question }
+    private var cmd: PBSessionCommandState { dock.command }
+    private var isRunning: Bool { commandRunning(cmd) }
 
-    private func submit(_ options: [Int], _ cur: PBQuestion) {
-        guard !isSkeleton(question) else { return }
-        let (qi, multi, count) = (index, cur.multiSelect, question.questions.count)
-        let (store, remote, s, qid) = (store, context.remote, session, qid)
-        let answer = store.answer(qid, qi)
-        let done = onAnswered
-        act.run({
-            let sent = try await store.sendAnswer(remote, answer, options: options) { picked in
-                var cmd = PBCommand()
-                cmd.answerQuestion = .with {
-                    $0.sessionID = s.id
-                    $0.questionID = qid
-                    if multi { $0.options = picked.map { Int32($0 + 1) } } else { $0.option = Int32((picked.first ?? 0) + 1) }
-                    if count > 1 { $0.questionIndex = Int32(qi) }
-                }
-                return try remote.prepare(machineId: s.machineId, sessionId: s.id, cmd)
+    private func submit(_ options: [Int]) {
+        guard !cur.questionText.isEmpty || !cur.options.isEmpty else { return }
+        let qi = index
+        let count = Int(qDock.totalQuestions)
+        let multi = cur.multiSelect
+        let isLast = qi + 1 >= max(count, 1)
+        lastSentPicks = options
+        if multi { store.multiPick["\(qid)#\(qi)"] = Set(options) }
+        else { store.singlePick["\(qid)#\(qi)"] = options.first }
+        submittedLastStep = isLast
+        let cmdPayload = PBCommand.with {
+            $0.answerQuestion = .with {
+                $0.sessionID = sessionID
+                $0.questionID = qid
+                if multi { $0.options = options.map { Int32($0 + 1) } }
+                else { $0.option = Int32((options.first ?? 0) + 1) }
+                if count > 1 { $0.questionIndex = Int32(qi) }
+                if dock.observedSeq > 0 { $0.observedEventSeq = dock.observedSeq }
             }
-            // Show what was answered, which after an unknown outcome is the earlier answer.
-            if multi { store.multiPick["\(qid)#\(qi)"] = Set(sent) } else { store.singlePick["\(qid)#\(qi)"] = sent.first }
-        }, onDone: {
-            if qi + 1 < count { store.questionIndex[qid] = qi + 1 } else { done() }
-        })
+        }
+        Task {
+            await context.coreHost.submitSessionCommand(
+                sessionID: sessionID, command: cmdPayload, machineID: machineID, slotKey: cmd.slotKey
+            )
+        }
     }
 
     var body: some View {
-        if isSkeleton(question) {
-            if part == .content { Text(skeletonMessage).font(.subheadline).ink(DS.ink2) }
-        } else if let cur = current {
-            switch part {
-            case .content: content(cur)
-            case .actions: actions(cur)
+        let isSkeletonQuestion = qDock.totalQuestions == 0 && cur.questionText.isEmpty && cur.options.isEmpty
+        if isSkeletonQuestion {
+            if part == .content { Text(L10n.sessionSkeleton()).font(.subheadline).ink(DS.ink2) }
+        } else {
+            Group {
+                switch part {
+                case .content: content
+                case .actions: actions
+                }
+            }
+            .onChange(of: cmd.status) { old, new in
+                if old == .pending && new == .idle && !cmd.frozen && commandErrorText(cmd).isEmpty && submittedLastStep {
+                    submittedLastStep = false
+                    onAnswered()
+                }
             }
         }
     }
 
-    @ViewBuilder private func content(_ cur: PBQuestion) -> some View {
-        let count = question.questions.count
+    @ViewBuilder private var content: some View {
+        let count = Int(qDock.totalQuestions)
         let key = "\(qid)#\(index)"
-        let answer = store.answer(qid, index)
-        let progress = questionProgress(count: count, at: index, multi: cur.multiSelect)
+        let progress = qDock.hasProgressText ? qDock.progressText.rendered() : ""
         if full {
             if !progress.isEmpty { Text(progress).font(.footnote).ink(DS.ink2).padding(.top, 12) }
         } else if count > 1 {
-            // The dock's line says which of them it is; the steps show it.
             QuestionSteps(count: count, at: index).padding(.top, 4)
         }
-        Text(cur.text).font(full ? .headline : .body.weight(.semibold)).ink(DS.ink).lineLimit(full ? nil : 4)
+        Text(cur.questionText).font(full ? .headline : .body.weight(.semibold)).ink(DS.ink).lineLimit(full ? nil : 4)
             .padding(.top, full ? 8 : 4).padding(.bottom, full ? 12 : 6)
             .accessibilityAddTraits(.isHeader)
-        if !full && longQuestion(cur) {
+        if !full && isLongStep(cur) {
             Button(action: onLong) {
                 ArrowText(L10n.markdownExpand(), style: .subheadline.weight(.semibold)).padding(.bottom, 4)
                     .padding(.vertical, 12).contentShape(Rectangle()).padding(.vertical, -12)
@@ -446,7 +427,7 @@ struct QuestionBody: View {
         ForEach(Array(cur.options.enumerated()), id: \.offset) { i, option in
             let selected = cur.multiSelect ? store.multiPick[key]?.contains(i) == true : store.singlePick[key] == i
             QuestionOptionRow(
-                option: option, multi: cur.multiSelect, selected: selected, submitting: selected && act.running && !cur.multiSelect,
+                option: option, multi: cur.multiSelect, selected: selected, submitting: selected && isRunning && !cur.multiSelect,
                 dark: !full
             ) {
                 if cur.multiSelect {
@@ -455,43 +436,43 @@ struct QuestionBody: View {
                     store.multiPick[key] = set
                     Haptics.selection()
                 } else {
-                    store.singlePick[key] = i
-                    submit([i], cur)
+                    submit([i])
                 }
             }
-            .disabled(act.running)
+            .disabled(isRunning)
         }
-        if !act.running && answer.attempt.frozen {
-            let shown = answer.options.map { i in i < cur.options.count ? optionLabel(cur.options[i].label).label : "\(i + 1)" }
+        if !isRunning && cmd.frozen {
+            let shown = lastSentPicks.map { i in i < cur.options.count ? cur.options[i].label : "\(i + 1)" }
                 .joined(separator: L10n.commonIosListSeparator())
             Banner(
-                answer.attempt.expired
+                cmd.expired
                     ? L10n.dockIosQuestionExpired(answer: shown)
                     : L10n.dockIosQuestionUnknown(answer: shown),
-                tone: .error, action: answer.attempt.expired ? L10n.newSessionIosAbandon() : nil,
+                tone: .error,
+                action: cmd.canAbandon ? L10n.newSessionIosAbandon() : nil,
                 onAction: {
-                    store.abandon(answer)
-                    act.error = ""
+                    Task { await context.coreHost.abandonSessionCommand(sessionID: sessionID, slotKey: cmd.slotKey) }
                 }
             )
             .padding(.top, 6)
-        } else if !act.error.isEmpty {
-            Banner(L10n.dockIosQuestionFailed(reason: act.error), tone: .error).padding(.top, 6)
+        } else if !isRunning && cmd.status == .failed {
+            let reason = commandErrorText(cmd)
+            Banner(L10n.dockIosQuestionFailed(reason: reason), tone: .error).padding(.top, 6)
         }
     }
 
-    @ViewBuilder private func actions(_ cur: PBQuestion) -> some View {
+    @ViewBuilder private var actions: some View {
+        let key = "\(qid)#\(index)"
         if cur.multiSelect {
-            let picked = store.multiPick["\(qid)#\(index)"] ?? []
-            let label = act.running ? L10n.dockSubmitting() : picked.isEmpty ? L10n.dockSelectThenSubmit() : L10n.dockSubmitSelected(count: Int(picked.count))
+            let picked = store.multiPick[key] ?? []
+            let label = isRunning ? L10n.dockSubmitting() : picked.isEmpty ? L10n.dockSelectThenSubmit() : L10n.dockSubmitSelected(count: Int(picked.count))
             Group {
                 if full {
-                    Btn(label, kind: .primary, enabled: !act.running && !picked.isEmpty) { submit(picked.sorted(), cur) }
+                    Btn(label, kind: .primary, enabled: !isRunning && !picked.isEmpty) { submit(picked.sorted()) }
                 } else {
-                    // On the dark card the main button is white (design-system §6 「深色卡里的按钮」).
-                    Button(label) { submit(picked.sorted(), cur) }
+                    Button(label) { submit(picked.sorted()) }
                         .buttonStyle(.darkCard(primary: true))
-                        .disabled(act.running || picked.isEmpty)
+                        .disabled(isRunning || picked.isEmpty)
                 }
             }
             .padding(.top, 6)
@@ -500,20 +481,22 @@ struct QuestionBody: View {
             DockFoot(L10n.dockNoneFit(), link: L10n.dockOtherTerminal(), arrow: true, onLink: onTerminal)
         }
     }
+
+    private func isLongStep(_ step: PBSessionQuestionStepView) -> Bool {
+        step.options.count > 4 || step.questionText.count > 120
+    }
 }
 
 private struct QuestionOptionRow: View {
-    let option: PBQuestionOption
+    let option: PBSessionQuestionOptionView
     let multi: Bool
     let selected: Bool
     let submitting: Bool
-    /// On the dark card: translucent rows, the chosen one white with black text (design-system §6 「等待事项」).
     var dark = false
     let onTap: () -> Void
     @ScaledMetric(relativeTo: .footnote) private var box: CGFloat = 18
 
     var body: some View {
-        let label = optionLabel(option.label)
         let shape = RoundedRectangle(cornerRadius: dark ? 14 : DS.Radius.small, style: .continuous)
         let ink: Color = dark ? (selected ? .black : .white) : DS.ink
         let second: Color = dark ? (selected ? Color.black.opacity(0.6) : DS.ink2) : DS.ink2
@@ -527,12 +510,12 @@ private struct QuestionOptionRow: View {
                     Image(systemName: "checkmark").font(.footnote.weight(.semibold)).foregroundStyle(dark ? ink : DS.blue).padding(.top, 3)
                 }
                 VStack(alignment: .leading, spacing: 1) {
-                    Text(label.label).font(dark ? .body : .footnote).foregroundStyle(ink)
+                    Text(option.label).font(dark ? .body : .footnote).foregroundStyle(ink)
                     if !option.description_p.isEmpty { Text(option.description_p).font(dark ? .footnote : .caption).foregroundStyle(second) }
                     if submitting { Text(L10n.dockSubmitting()).font(.caption).foregroundStyle(second) }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
-                if label.recommended { Text(L10n.dockRecommended()).font(.caption.weight(.semibold)).foregroundStyle(dark ? (selected ? Color.black : DS.blue) : DS.blue) }
+                if option.recommended { Text(L10n.dockRecommended()).font(.caption.weight(.semibold)).foregroundStyle(dark ? (selected ? Color.black : DS.blue) : DS.blue) }
             }
             .multilineTextAlignment(.leading)
             .padding(.horizontal, dark ? 14 : 11).padding(.vertical, dark ? 11 : 8)
@@ -549,148 +532,197 @@ private struct QuestionOptionRow: View {
 }
 
 struct QuestionDock: View {
-    let session: SessionView
-    let question: PBQuestionAsked
-    let more: Int
+    let sessionID: String
+    let machineID: String
+    let dock: PBSessionDockView
     @Binding var open: Bool
     let onOpen: () -> Void
     let onTerminal: () -> Void
     let onLong: () -> Void
-    @Environment(AccountContext.self) private var context
-    @State private var act = ActionRunner()
 
     var body: some View {
-        let qs = question.questions
-        let index = min(context.sessionStore.questionIndex[question.questionID] ?? 0, max(qs.count - 1, 0))
-        let progress = questionProgress(count: qs.count, at: index, multi: qs.isEmpty ? false : qs[index].multiSelect)
+        let progress = dock.question.hasProgressText ? dock.question.progressText.rendered() : ""
         PendingDock(
-            .question(question), agent: agentName(session.agent), more: more, note: DockNote(text: progress), open: $open,
+            label: dock.title.rendered(),
+            brief: dock.summary.rendered(),
+            more: Int(dock.moreCount),
+            note: DockNote(text: progress),
+            open: $open,
             onOpen: onOpen
         ) {
-            QuestionBody(session: session, question: question, part: .content, full: false, act: act, onLong: onLong)
+            QuestionBody(sessionID: sessionID, machineID: machineID, dock: dock, part: .content, full: false, onLong: onLong)
         } actions: {
-            QuestionBody(session: session, question: question, part: .actions, full: false, act: act, onTerminal: onTerminal)
+            QuestionBody(sessionID: sessionID, machineID: machineID, dock: dock, part: .actions, full: false, onTerminal: onTerminal)
         }
     }
-}
-
-/// 第 1 题，共 3 题 · 可多选: where the user is among several questions, and whether this one takes several answers.
-func questionProgress(count: Int, at index: Int, multi: Bool) -> String {
-    [count > 1 ? L10n.dockQuestionProgress(count: Int(count), index: Int(index + 1)) : "", multi ? L10n.dockMultiselect() : ""].filter { !$0.isEmpty }.joined(separator: " · ")
 }
 
 // MARK: Plans
 
 struct PlanDock: View {
-    let session: SessionView
-    let text: String
-    let more: Int
+    let sessionID: String
+    let machineID: String
+    let dock: PBSessionDockView
     @Binding var open: Bool
     let onOpen: () -> Void
     let onFull: () -> Void
 
     var body: some View {
-        if isSkeleton(text) { Text(skeletonMessage).font(.subheadline).ink(DS.ink2) } else { dock }
-    }
-
-    private var dock: some View {
-        PendingDock(
-            .plan(text: text), agent: agentName(session.agent), more: more, open: $open, onOpen: onOpen,
-            // In the open line before 收起, as on the web (design-system §6).
-            extra: AnyView(TextAction(L10n.markdownExpand(), style: .subheadline, alignment: .trailing, arrow: true, action: onFull))
-        ) {
-            // The whole plan, scrolling with the dock's body; 展开全文 is the page that draws it as written.
-            Text(planPreview(text, lines: .max)).font(.subheadline).lineSpacing(3).foregroundStyle(DS.ink)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.top, 4).padding(.bottom, 4)
-        } actions: {
-            PlanButtons(session: session, full: false, terminalOnly: isSkeleton(text))
+        let plan = dock.plan
+        if plan.markdown.isEmpty {
+            Text(L10n.sessionSkeleton()).font(.subheadline).ink(DS.ink2)
+        } else {
+            PendingDock(
+                label: dock.title.rendered(),
+                brief: dock.summary.rendered(),
+                more: Int(dock.moreCount),
+                open: $open,
+                onOpen: onOpen,
+                extra: AnyView(TextAction(L10n.markdownExpand(), style: .subheadline, alignment: .trailing, arrow: true, action: onFull))
+            ) {
+                Text(planPreview(plan.markdown, lines: .max)).font(.subheadline).lineSpacing(3).foregroundStyle(DS.ink)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.top, 4).padding(.bottom, 4)
+            } actions: {
+                PlanButtons(sessionID: sessionID, machineID: machineID, dock: dock, full: false)
+            }
         }
     }
 }
 
-/// 继续规划… / 批准执行; the page (`full`) also offers Codex's 清空上下文后执行.
 struct PlanButtons: View {
-    let session: SessionView
+    let sessionID: String
+    let machineID: String
+    let dock: PBSessionDockView
     let full: Bool
-    var terminalOnly = false
     var onDone: () -> Void = {}
     @Environment(AccountContext.self) private var context
-    @State private var act = ActionRunner()
+    @State private var awaitingDone = false
+
+    private var plan: PBSessionPlanDockView { dock.plan }
+    private var cmd: PBSessionCommandState { dock.command }
+    private var isRunning: Bool { commandRunning(cmd) }
+
+    private func labelFor(_ choice: PBPlanChoice) -> String {
+        if let hit = plan.choices.first(where: { $0.choice == choice && $0.hasLabel }) {
+            let s = hit.label.rendered()
+            if !s.isEmpty { return s }
+        }
+        switch choice {
+        case .keepPlanning: return L10n.dockPlanKeep()
+        case .implement: return L10n.approvalApprove()
+        case .clearAndImplement: return L10n.dockPlanClear()
+        default: return ""
+        }
+    }
 
     private func answer(_ choice: PBPlanChoice) {
-        guard !terminalOnly else { return }
-        let (remote, sid) = (context.remote, session.id)
-        act.run({
-            var cmd = PBCommand()
-            cmd.answerPlan = .with {
-                $0.sessionID = sid
+        guard !plan.markdown.isEmpty else { return }
+        awaitingDone = true
+        let cmdPayload = PBCommand.with {
+            $0.answerPlan = .with {
+                $0.sessionID = sessionID
                 $0.choice = choice
+                if dock.observedSeq > 0 { $0.observedEventSeq = dock.observedSeq }
+                if !plan.screenHash.isEmpty { $0.observedScreenHash = plan.screenHash }
             }
-            try await remote.command(sid, cmd)
-        }, onDone: { onDone() })
+        }
+        Task {
+            await context.coreHost.submitSessionCommand(
+                sessionID: sessionID, command: cmdPayload, machineID: machineID, slotKey: cmd.slotKey
+            )
+        }
     }
 
     var body: some View {
-        if terminalOnly {
-            Text(skeletonMessage).font(.subheadline).ink(DS.ink2)
-        } else {
-            VStack(alignment: .leading, spacing: 0) { choices }
-                .frame(maxWidth: actionsWidth, alignment: .leading)
-                .frame(maxWidth: .infinity, alignment: .leading)
+        VStack(alignment: .leading, spacing: 0) {
+            choices
+        }
+        .frame(maxWidth: actionsWidth, alignment: .leading)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .onChange(of: cmd.status) { old, new in
+            if awaitingDone && old == .pending && new == .idle && !cmd.frozen && commandErrorText(cmd).isEmpty {
+                awaitingDone = false
+                onDone()
+            } else if new == .failed || new == .unknown {
+                awaitingDone = false
+            }
         }
     }
 
     @ViewBuilder private var choices: some View {
+        let keepLabel = labelFor(.keepPlanning)
+        let approveLabel = isRunning ? L10n.dockSubmitting() : labelFor(.implement)
         if full {
             Btns {
-                Btn(agentInfo(session.agent).planKeepLabel, enabled: !act.running) { answer(.keepPlanning) }
-                Btn(act.running ? L10n.dockSubmitting() : agentInfo(session.agent).planApproveLabel, kind: .primary, enabled: !act.running) { answer(.implement) }
+                Btn(keepLabel, enabled: !isRunning) { answer(.keepPlanning) }
+                Btn(approveLabel, kind: .primary, enabled: !isRunning) { answer(.implement) }
             }
         } else {
             ViewThatFits(in: .horizontal) {
-                HStack(spacing: 8) { darkChoices }
-                VStack(spacing: 8) { darkChoices }
+                HStack(spacing: 8) { darkChoices(keepLabel: keepLabel, approveLabel: approveLabel) }
+                VStack(spacing: 8) { darkChoices(keepLabel: keepLabel, approveLabel: approveLabel) }
             }
         }
-        if let note = agentInfo(session.agent).planNote {
-            Text(note).font(.footnote).ink(DS.ink2).padding(.top, 7)
+        if plan.hasNote {
+            let note = plan.note.rendered()
+            if !note.isEmpty { Text(note).font(.footnote).ink(DS.ink2).padding(.top, 7) }
         }
-        if full && agentInfo(session.agent).planClearContext {
-            DockFoot("", link: L10n.dockPlanClear()) { answer(.clearAndImplement) }
-                .disabled(act.running)
+        if full && plan.clearContextAvailable_p {
+            DockFoot("", link: labelFor(.clearAndImplement)) { answer(.clearAndImplement) }
+                .disabled(isRunning)
         }
-        if !act.error.isEmpty { Banner(L10n.dockSubmitFailed(reason: act.error), tone: .error).padding(.top, 8) }
+        let err = commandErrorText(cmd)
+        if !isRunning && !err.isEmpty {
+            Banner(
+                L10n.dockSubmitFailed(reason: err),
+                tone: .error,
+                action: cmd.canAbandon ? L10n.newSessionIosAbandon() : nil,
+                onAction: {
+                    Task { await context.coreHost.abandonSessionCommand(sessionID: sessionID, slotKey: cmd.slotKey) }
+                }
+            )
+            .padding(.top, 8)
+        }
     }
 
-    /// On the dark card: 批准 is the white one.
-    @ViewBuilder private var darkChoices: some View {
-        Button(agentInfo(session.agent).planKeepLabel) { answer(.keepPlanning) }.buttonStyle(.darkCard()).disabled(act.running)
-        Button(act.running ? L10n.dockSubmitting() : agentInfo(session.agent).planApproveLabel) { answer(.implement) }
-            .buttonStyle(.darkCard(primary: true)).disabled(act.running)
+    @ViewBuilder private func darkChoices(keepLabel: String, approveLabel: String) -> some View {
+        Button(keepLabel) { answer(.keepPlanning) }.buttonStyle(.darkCard()).disabled(isRunning)
+        Button(approveLabel) { answer(.implement) }
+            .buttonStyle(.darkCard(primary: true)).disabled(isRunning)
     }
 }
 
 // MARK: Popups in the terminal
 
 struct PopupDock: View {
-    let session: SessionView
-    let title: String
-    let more: Int
+    let dock: PBSessionDockView
     @Binding var open: Bool
     let onOpen: () -> Void
     let onTerminal: () -> Void
 
     var body: some View {
-        let agent = agentName(session.agent)
+        let popup = dock.terminalPopup
         PendingDock(
-            .popup(title: title), agent: agent, more: more, note: DockNote(text: L10n.dockAgentWaiting(agent: agent)), open: $open, onOpen: onOpen
+            label: dock.title.rendered(),
+            brief: dock.summary.rendered(),
+            more: Int(dock.moreCount),
+            note: DockNote(text: dock.hasMeta ? dock.meta.rendered() : ""),
+            open: $open,
+            onOpen: onOpen
         ) {
-            if !title.isEmpty { Text(popupTitle(title)).font(.body.weight(.medium)).foregroundStyle(DS.ink).padding(.bottom, 6) }
-            let hint = popupHint(agent: session.agent, detail: title)
-            if !hint.isEmpty { Text(hint).font(.footnote).foregroundStyle(DS.orangeInk) }
+            if popup.hasPopupTitle {
+                let pt = popup.popupTitle.rendered()
+                if !pt.isEmpty { Text(pt).font(.body.weight(.medium)).foregroundStyle(DS.ink).padding(.bottom, 6) }
+            }
+            if popup.hasHint {
+                let ht = popup.hint.rendered()
+                if !ht.isEmpty { Text(ht).font(.footnote).foregroundStyle(DS.orangeInk) }
+            }
         } actions: {
-            Button(L10n.dockHandleTerminal(), action: onTerminal).buttonStyle(.darkCard(primary: true))
+            Button(L10n.dockHandleTerminal(), action: onTerminal)
+                .buttonStyle(.darkCard(primary: true))
+                .disabled(!popup.canGoTerminal)
         }
     }
 }

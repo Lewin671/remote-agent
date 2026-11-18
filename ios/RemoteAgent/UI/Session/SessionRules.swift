@@ -1,339 +1,82 @@
-// What the session screens say and decide, apart from how they draw it: the
-// wording under a message that is on its way or waiting, whether the chat
-// follows new content, what the navigation bar's second line says. On
-// Android these sit inside the composables of ui/Session.kt; here they are
-// functions of plain values so that the tests can hold them to the same
-// words and the same decisions.
+// Shell-level session rules that stay outside Go Core: scroll-to-bottom
+// tracking (`ChatScroll`), composer send enablement (`composerCanSend`),
+// slash-command warning, queue folding (`shownPending`), and VoiceOver
+// arrival announcements (`LiveAnnouncer`).
 import Foundation
 import RACore
 import RAProto
 
 // MARK: Following the end of the chat
 
-/// Whether the chat stays at its end as content arrives, and what arrived
-/// while the user was reading back. The rule is the package's `Follow`:
-/// only a drag away from the bottom stops following, and reaching the bottom
-/// starts it again; a scroll the app makes never turns it off.
 struct ChatScroll: Equatable, Sendable {
     private var follow = Follow()
     private(set) var atBottom = true
-    /// How many rows there were when the user last saw the end.
     private(set) var seen = 0
 
     var following: Bool { follow.on }
 
-    /// The list moved, or was measured again.
     mutating func observe(userDragging: Bool, atBottom: Bool, rows: Int) {
         self.atBottom = atBottom
         follow.observe(userDragging: userDragging, atBottom: atBottom)
         if atBottom { seen = rows }
     }
 
-    /// The content or the room for it changed. True when the list should go
-    /// to its end: a growing reply, a new row, the keyboard or the dock
-    /// coming up all keep the end in sight for someone who is at it, and
-    /// move nothing for someone who is reading back.
     mutating func contentChanged(rows: Int) -> Bool {
         if follow.on { seen = rows }
         return follow.on
     }
 
-    /// Rows came in front of those there were: they are not new. Following,
-    /// the end is in sight and the rows are taken as seen when they change.
     mutating func prepended(_ n: Int) {
         if !follow.on { seen += n }
     }
 
-    /// The user asked for the end.
     mutating func jumpToEnd(rows: Int) {
         follow = Follow()
         seen = rows
     }
 
-    /// Rows that came in while reading back; the list keeps following otherwise.
     func fresh(rows: Int) -> Int { atBottom ? 0 : max(0, rows - seen) }
 }
 
-// MARK: Messages waiting in the daemon's queue
-
-/// What stands under a message the model has not received yet: what it
-/// waits for, in a few words, or how taking it back stands.
-func pendingLabel(
-    _ p: PendingInput, cancel: SessionStore.CancelState?, resuming: Bool, resumeFailed: Bool, starting: String?, agent: PBAgent = .unspecified
-) -> String {
-    if cancel == .canceling { return L10n.queueCanceling() }
-    if case .failed = cancel { return L10n.queueCancelFailed() }
-    if resuming { return L10n.queueResuming() }
-    if resumeFailed { return L10n.queueResumeFailed() }
-    if p.paused { return L10n.queuePaused() }
-    return inputTimingLabel(agent: agent, mode: p.mode, held: p.held, starting: starting)
-}
-
-func scheduledPendingLabel(_ pending: PendingInput, label: String) -> String? {
-    guard let origin = pending.origin, !origin.scheduledRunID.isEmpty else { return nil }
-    let time = pending.time > 0 ? " · " + scheduleTime(Date(timeIntervalSince1970: Double(pending.time) / 1000)) : ""
-    return L10n.queueIosScheduledLabel(label: label, time: time)
-}
-
-/// Its place while more than one waits, followed by the sender when it was
-/// another client. Paused, held and canceling messages do not show a place.
-func pendingSuffix(_ p: PendingInput, origin: String?, index: Int, of count: Int, cancel: SessionStore.CancelState? = nil) -> String {
-    let position = count > 1 && index > 0 && !p.paused && !p.held && cancel == nil ? L10n.queueRank(rank: Int(index)) : ""
-    return position + (origin.map { " · " + $0 } ?? "")
-}
-
-/// The queued messages to show: more than three fold to the first two until opened.
-func shownPending(_ all: [PendingInput], expanded: Bool) -> [PendingInput] {
+func shownPending<T>(_ all: [T], expanded: Bool) -> [T] {
     all.count > 3 && !expanded ? Array(all.prefix(2)) : all
-}
-
-// MARK: Messages sent from here
-
-enum OutgoingAction: Equatable, Sendable {
-    case retry, remove, putBack, terminal
-
-    var label: String {
-        switch self {
-        case .retry: L10n.commonRetry()
-        case .remove: L10n.sessionDismissNotice()
-        case .putBack: L10n.composerRestore()
-        case .terminal: L10n.sessionGoTerminal()
-        }
-    }
-}
-
-enum NoteTone: Equatable, Sendable { case plain, warn, error }
-
-/// How a message sent from here stands, in words, and what can be done about it.
-struct OutgoingNote: Equatable, Sendable {
-    var caption: String
-    var tone = NoteTone.plain
-    var sending = false
-    /// Drawn as a message that did not go: outlined in red.
-    var failed = false
-    var actions: [OutgoingAction] = []
-}
-
-/// `input`: what the daemon's events say of the message, nil while they say
-/// nothing yet. A message that did not go says so in red, one that may not
-/// have gone in orange, each with a short reason.
-func outgoingNote(
-    state: Outgoing.State, error: String, input: PBInputStatus?, failure: String?, agent: PBAgent, hasImages: Bool = false, missingImages: Bool = false, outcomeNotice: Bool = false
-) -> OutgoingNote {
-    let failed = input == .failed || input == .needsTerminal || (input == nil && state != .sending && state != .sent)
-    switch input {
-    case .failed:
-        // Nothing was submitted and the terminal is as it was.
-        return OutgoingNote(
-            caption: notSentText(failureText(reason: failure ?? "", agent: agent)), tone: .error,
-            failed: failed, actions: [.putBack])
-    case .needsTerminal:
-        // Not submitted, but part of it may still be in the terminal's input box.
-        return OutgoingNote(
-            caption: maybeNotSentText(failureText(reason: failure ?? "", agent: agent)),
-            tone: .warn, failed: failed, actions: [.terminal, .putBack])
-    case .unconfirmed:
-        return OutgoingNote(caption: maybeNotSentText(unconfirmedText), tone: .warn, failed: failed, actions: [.remove])
-    default:
-        break
-    }
-    switch state {
-    case .sending: return OutgoingNote(caption: L10n.composerSending(), sending: true, failed: failed)
-    case .sent: return OutgoingNote(caption: L10n.sessionDelivered(), failed: failed)
-    // The same request again: the daemon runs a request ID at most once.
-    // 「可能没发出去」 already says that it is not known whether the computer ran it.
-    case .unknown:
-        return OutgoingNote(
-            caption: outcomeNotice ? error : maybeNotSentText(error), tone: .warn, failed: failed,
-            actions: (hasImages ? [.putBack] : []) + [.retry, .remove])
-    case .failed: return OutgoingNote(caption: notSentText(error), tone: .error, failed: failed, actions: (hasImages ? [.putBack] : []) + (missingImages ? [] : [.retry]) + [.remove])
-    }
-}
-
-/// Whether a message sent from here is still shown under the chat: until
-/// the daemon's events have it, and for as long as they say it did not go.
-/// The events are the truth: once they have the message queued, submitted
-/// or canceled, a try from here that failed or was left unknown did arrive.
-func outgoingShown(input: PBInputStatus?) -> Bool {
-    input == nil || input == .unconfirmed || input == .failed || input == .needsTerminal
 }
 
 // MARK: The message box
 
-/// The placeholder of the message box: it follows what the message will do (wait for the answer, go to
-/// the plan), never what is running, so it does not change while a turn's tools start and stop.
-func composerPlaceholder(questionPending: Bool, planOpen: Bool) -> String {
-    if questionPending { return L10n.composerQueueAfterAnswer() }
-    return planOpen ? L10n.composerPlanPlaceholder() : L10n.composerMessage()
-}
-
-/// Whether what is in the box can be sent now.
 func composerCanSend(text: String, online: Bool, keeping: Bool, hasImages: Bool, imagesReady: Bool, refused: Bool) -> Bool {
     !keeping && online && !refused && (!text.jvmIsBlank || hasImages) && (!hasImages || imagesReady)
 }
 
-/// Text starting with a slash is sent to the model as it is: the CLIs' slash commands are not run from here.
 func slashWarning(_ text: String) -> Bool {
     text.drop { $0.isWhitespace }.hasPrefix("/")
 }
 
 var slashWarningText: String { L10n.composerSlashNote() }
 
-// MARK: The navigation bar
-
-/// The second line of a session's navigation bar: its state, then its
-/// approval mode, which alone is red when it is full access. A session
-/// that ended only says so, and a mode that is not known (a CLI still
-/// starting, or one whose mode could not be read) is left out.
-struct SessionSubtitle: Equatable, Sendable {
-    var status: String
-    /// "" when no mode is written.
-    var mode: String
-    var danger: Bool
-
-    var text: String { mode.isEmpty ? status : "\(status) · \(mode)" }
-}
-
-func sessionSubtitle(status: Status, mode: ModeLabel?) -> SessionSubtitle {
-    guard status != .exited, let mode else {
-        return SessionSubtitle(status: status.text, mode: "", danger: false)
-    }
-    return SessionSubtitle(status: status.text, mode: mode.text, danger: mode.mode == .full)
-}
-
-// MARK: The view
-
-/// Whether the session's terminal can be shown now. An ended session and
-/// one whose computer is away have none: the page shows the chat meanwhile
-/// and leaves the view picked on this device as it was (design-system §6
-/// 「视图切换」).
-func terminalAvailable(_ status: Status) -> Bool {
-    status != .exited && status != .offline
-}
-
-// MARK: The menu
-
-/// A setting at the top of a session's ⋯ menu, read 「名称 …… 值 ›」: a tap
-/// opens where it is changed.
-struct MenuSetting: Equatable, Sendable {
-    enum Opens: Equatable, Sendable { case mode, model }
-
-    var text: String
-    var value: String
-    /// The value in red: full access.
-    var danger = false
-    /// The value in orange: a context nearly full.
-    var warn = false
-    var opens: Opens
-}
-
-/// The settings a live session's menu starts with: its mode when it is
-/// known, its model (会话设置 while the CLI has not said which), and how full
-/// its context is when that is known.
-func menuSettings(mode: ModeLabel?, model: String, effort: String, percent: Int?) -> [MenuSetting] {
-    var out = [MenuSetting]()
-    if let mode { out.append(MenuSetting(text: L10n.modesTitle(), value: mode.text, danger: mode.mode == .full, opens: .mode)) }
-    out.append(
-        model.isEmpty
-            ? MenuSetting(text: L10n.sessionSettings(), value: "", opens: .model)
-            : MenuSetting(text: L10n.modelsTitle(), value: model + (effort.isEmpty ? "" : " · \(effort)"), opens: .model))
-    if let percent { out.append(MenuSetting(text: L10n.sessionContext(), value: "\(percent)%", warn: percent > 80, opens: .model)) }
-    return out
-}
-
-/// 分叉会话 in a session's menu: what the row says, and what a tap does.
-struct ForkAction: Equatable, Sendable {
-    enum Tap: Equatable, Sendable { case fork, abandon }
-
-    var text = L10n.sessionFork()
-    var note = ""
-    /// The note is something that went wrong, not when the row can be used.
-    var noteError = false
-    var enabled = true
-    var busy = false
-    var tap = Tap.fork
-}
-
-/// `blocked`: why the session cannot be forked now (`forkBlocked`). The
-/// rest is how a fork asked from here stands (`SessionStore.Fork`). A fork
-/// that may have happened is only ever sent again as it was; once that
-/// request has expired the row gives it up, and only the tap after that
-/// asks for a new fork.
-func forkAction(blocked: String?, running: Bool, error: String, frozen: Bool, expired: Bool) -> ForkAction {
-    if running { return ForkAction(text: L10n.sessionForking(), busy: true) }
-    if let blocked { return ForkAction(note: blocked, enabled: false) }
-    if expired {
-        return ForkAction(
-            text: L10n.sessionAbandonFork(), note: L10n.sessionForkExpired(), noteError: true, tap: .abandon)
-    }
-    if frozen { return ForkAction(note: L10n.sessionForkUnknown(), noteError: true) }
-    return ForkAction(note: error.isEmpty ? "" : L10n.sessionForkFailed(reason: error), noteError: true)
-}
-
-// MARK: In place of the message box
-
-// The daemon's status detail when a client-created session's login shell
-// could not start the CLI (internal/daemon/shell.go); the timeout one adds
-// the second phrase.
-private let loginShellDetail = "the login shell"
-private let loginShellTimeoutDetail = "did not start the CLI within"
-
-/// What the card says when a session ended, and whether it can be resumed from here now.
-func endedText(detail: String, scheduledClosed: Bool = false, idleClosed: Bool = false, unlinked: Bool, machineOnline: Bool, machine: String) -> String {
-    let how = exitReason(detail, scheduledClosed: scheduledClosed, idleClosed: idleClosed)
-    if unlinked { return L10n.sessionIosEndedRecovery(reason: how, recovery: L10n.sessionConnectResume()) }
-    if machineOnline { return L10n.sessionIosEndedRecovery(reason: how, recovery: L10n.sessionResumeNote(name: machine)) }
-    return L10n.sessionIosEndedRecovery(reason: how, recovery: L10n.sessionOfflineResume(name: machine))
-}
-
-/// Why the session ended, in plain words. A login shell that could not start
-/// the CLI says so in the daemon's own words (they name the command or the
-/// timeout), with what the user can do about it.
-func exitReason(_ detail: String, scheduledClosed: Bool = false, idleClosed: Bool = false) -> String {
-    if detail == "stopped" && scheduledClosed { return L10n.sessionScheduledClosed() }
-    if detail == "stopped" && idleClosed { return L10n.sessionIdleClosed() }
-    if detail == "stopped" { return L10n.sessionManuallyClosed() }
-    if detail.hasPrefix(loginShellDetail) {
-        return detail.contains(loginShellTimeoutDetail)
-            ? L10n.sessionShellTimeout(detail: detail)
-            : L10n.sessionShellFailed(detail: detail)
-    }
-    return L10n.sessionTmuxMissing()
-}
-
-/// What the card says when the session's computer is away. `lastSeen` is when it went, in words, or "".
-func offlineText(lastSeen: String) -> String {
-    L10n.sessionOfflineNote(lastSeen: lastSeen.isEmpty ? "" : L10n.sessionDisconnectedAgo(time: lastSeen))
-}
-
 // MARK: Telling VoiceOver what arrived
 
-/// Decides which arrivals VoiceOver is told about. A reply or something
-/// that needs the user is said; tool lines, notes and the user's own
-/// messages are not, and nothing is said more often than once in a while,
-/// so a busy turn does not talk over itself.
 struct LiveAnnouncer: Equatable, Sendable {
     private var lastKey: String?
     private var lastAt: Int64 = 0
-    private var waiting = Set<String>()
-    /// The least time between two announcements, in ms.
+    private var lastDockKey = ""
     static let gapMs: Int64 = 4_000
 
-    /// What to say now, if anything. `rows` is the chat as it is now, `dock` what waits for the user.
-    mutating func announce(last: ChatItem?, dock: [DockItem], agent: String, now: Int64, initial: Bool) -> String? {
-        let ids = Set(dock.map(\.id))
-        let arrived = ids.subtracting(waiting)
-        waiting = ids
-        let key = last?.key
+    mutating func announce(last: PBSessionTimelineItem?, dock: PBSessionDockView?, agent: String, now: Int64, initial: Bool) -> String? {
+        let dockKey = (dock?.hasItem_p == true) ? "\(dock!.kind.rawValue):\(dock!.itemID)" : ""
+        let dockArrived = !dockKey.isEmpty && dockKey != lastDockKey
+        lastDockKey = dockKey
+
+        let key = last?.id
         let newReply = key != lastKey
         lastKey = key
-        // What was already there when the page opened is read, not announced.
+
         if initial { return nil }
-        if let first = dock.first(where: { arrived.contains($0.id) }) {
+        if dockArrived, let dock {
             lastAt = now
-            return dockSummary(first, agent: agent).label
+            return dock.title.rendered()
         }
-        guard newReply, case .agent = last, now - lastAt >= Self.gapMs else { return nil }
+        guard newReply, let last, case .agentMessage = last.kind, now - lastAt >= Self.gapMs else { return nil }
         lastAt = now
         return L10n.sessionIosReplyArrived(agent: agent)
     }
