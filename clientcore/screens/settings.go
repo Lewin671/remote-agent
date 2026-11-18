@@ -234,7 +234,7 @@ func buildClientRows(st *State, syncView *corev1.SyncStateView, onlyComplete boo
 		}
 		if incomplete && onlyComplete {
 			unfinished = append(unfinished, row)
-		} else {
+		} else if d.Kind != v1.DeviceKind_DEVICE_KIND_MACHINE {
 			rows = append(rows, row)
 		}
 	}

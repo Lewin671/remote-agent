@@ -258,7 +258,7 @@ func BuildWindow(agent v1.Agent, w *v1.QuotaWindow, nowMs int64, stale bool) *co
 	} else if exhausted {
 		row.RemainingText = text.Msg(text.KeyQuotaExhaustedQuota)
 	} else {
-		row.RemainingText = text.Msg(text.KeyQuotaLeft, text.Str("value", strconv.FormatInt(int64(rem), 10)+"%"))
+		row.RemainingText = text.Msg(text.KeyQuotaLeft, text.Str("value", strconv.FormatInt(int64(rem), 10)))
 	}
 	if !pastReset && w.ResetsAtMs > nowMs {
 		row.ResetText = ResetRelative(w.ResetsAtMs, nowMs)

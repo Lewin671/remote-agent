@@ -230,7 +230,7 @@
                               "args": [
                                 {
                                   "name": "value",
-                                  "strValue": "15%"
+                                  "strValue": "15"
                                 }
                               ]
                             },
@@ -308,7 +308,7 @@
                     "args": [
                       {
                         "name": "value",
-                        "strValue": "15%"
+                        "strValue": "15"
                       }
                     ]
                   },
@@ -341,7 +341,7 @@
                       "args": [
                         {
                           "name": "value",
-                          "strValue": "15%"
+                          "strValue": "15"
                         }
                       ]
                     }
@@ -510,7 +510,7 @@
                               "args": [
                                 {
                                   "name": "value",
-                                  "strValue": "65%"
+                                  "strValue": "65"
                                 }
                               ]
                             },
@@ -668,7 +668,7 @@
                               "args": [
                                 {
                                   "name": "value",
-                                  "strValue": "15%"
+                                  "strValue": "15"
                                 }
                               ]
                             },
@@ -746,7 +746,7 @@
                     "args": [
                       {
                         "name": "value",
-                        "strValue": "15%"
+                        "strValue": "15"
                       }
                     ]
                   },
@@ -779,7 +779,7 @@
                       "args": [
                         {
                           "name": "value",
-                          "strValue": "15%"
+                          "strValue": "15"
                         }
                       ]
                     }

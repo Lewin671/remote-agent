@@ -621,7 +621,7 @@
                                   "args": [
                                     {
                                       "name": "value",
-                                      "strValue": "10%"
+                                      "strValue": "10"
                                     }
                                   ]
                                 },
@@ -663,7 +663,7 @@
                         "args": [
                           {
                             "name": "value",
-                            "strValue": "10%"
+                            "strValue": "10"
                           }
                         ]
                       },
@@ -696,7 +696,7 @@
                           "args": [
                             {
                               "name": "value",
-                              "strValue": "10%"
+                              "strValue": "10"
                             }
                           ]
                         }
@@ -1097,7 +1097,7 @@
                                   "args": [
                                     {
                                       "name": "value",
-                                      "strValue": "10%"
+                                      "strValue": "10"
                                     }
                                   ]
                                 },
@@ -1139,7 +1139,7 @@
                         "args": [
                           {
                             "name": "value",
-                            "strValue": "10%"
+                            "strValue": "10"
                           }
                         ]
                       },
@@ -1172,7 +1172,7 @@
                           "args": [
                             {
                               "name": "value",
-                              "strValue": "10%"
+                              "strValue": "10"
                             }
                           ]
                         }
