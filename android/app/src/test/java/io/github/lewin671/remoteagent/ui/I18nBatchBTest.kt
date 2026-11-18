@@ -87,7 +87,7 @@ class I18nBatchBTest(private val locale: String) {
                     if (exited) {
                         setExited(true)
                         setEndedAtMs(stamp)
-                        setEndedText(Text.newBuilder().setKey(UiMessages.sessionManuallyClosed().key))
+                        setEndedText(Text.newBuilder().setKey(UiMessages.sessionEnded().key))
                     }
                 }
                 .setCapabilities(
