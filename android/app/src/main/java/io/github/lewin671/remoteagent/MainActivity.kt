@@ -168,7 +168,13 @@ class MainActivity : ComponentActivity() {
                 val scheduled = openScheduled.value
                 if (scheduled) {
                     val destination = io.github.lewin671.remoteagent.ui.resolveScheduleNotificationRoute(
-                        cached = { io.github.lewin671.remoteagent.ui.cachedScheduleNotificationRoute(sid, remote.schedules.tasks(), remote.state.value.sessions[sid]) },
+                        cached = {
+                            io.github.lewin671.remoteagent.ui.cachedScheduleNotificationRoute(
+                                sid,
+                                remote.state.value.sessions[sid],
+                                remote.schedulesView.value,
+                            )
+                        },
                         load = {
                             remote.state.first { it.loaded || it.removed }
                             remote.fetchSession(sid)
@@ -177,7 +183,7 @@ class MainActivity : ComponentActivity() {
                     when (destination) {
                         is io.github.lewin671.remoteagent.ui.ScheduleNotificationRoute.Task -> {
                             io.github.lewin671.remoteagent.ui.ScheduleJump.requested.remove(sid)
-                            actions.task(destination.key.machine, destination.key.task)
+                            actions.task(destination.machineId, destination.taskId)
                         }
                         io.github.lewin671.remoteagent.ui.ScheduleNotificationRoute.Conversation -> actions.session(sid)
                         io.github.lewin671.remoteagent.ui.ScheduleNotificationRoute.Inbox -> {
@@ -188,9 +194,9 @@ class MainActivity : ComponentActivity() {
                     // Navigation is already complete; a slow/offline computer never blocks the tap.
                     notificationScope.launch {
                         kotlinx.coroutines.withTimeoutOrNull(3_000) {
-                            val machine = (destination as? io.github.lewin671.remoteagent.ui.ScheduleNotificationRoute.Task)?.key?.machine
+                            val machine = (destination as? io.github.lewin671.remoteagent.ui.ScheduleNotificationRoute.Task)?.machineId
                                 ?: remote.state.value.sessions[sid]?.machineId
-                            if (machine != null && io.github.lewin671.remoteagent.core.scheduleWritable(remote.state.value, machine)) remote.schedules.refresh(machine)
+                            if (!machine.isNullOrEmpty()) remote.coreHost.refreshSchedules(machine)
                         }
                     }
                 } else actions.session(sid)
@@ -245,6 +251,30 @@ class MainActivity : ComponentActivity() {
                         }
                     }
                 }
+                launch {
+                    remote.scheduleNavigationEvents.collect { eff ->
+                        when (eff.route) {
+                            io.github.lewin671.remoteagent.core.proto.ScheduleNavigateRoute.SCHEDULE_NAVIGATE_ROUTE_LIST ->
+                                actions.schedules()
+                            io.github.lewin671.remoteagent.core.proto.ScheduleNavigateRoute.SCHEDULE_NAVIGATE_ROUTE_DETAIL -> {
+                                if (nav.currentBackStackEntry?.destination?.route?.startsWith("newtask") == true) {
+                                    nav.popBackStack()
+                                }
+                                actions.task(eff.machineId, eff.taskId)
+                            }
+                            io.github.lewin671.remoteagent.core.proto.ScheduleNavigateRoute.SCHEDULE_NAVIGATE_ROUTE_SESSION -> {
+                                if (eff.firstSeq > 0L) actions.scheduledSession(eff.sessionId, eff.firstSeq.toLong())
+                                else actions.session(eff.sessionId)
+                            }
+                            io.github.lewin671.remoteagent.core.proto.ScheduleNavigateRoute.SCHEDULE_NAVIGATE_ROUTE_CLOSE_FORM -> {
+                                if (nav.currentBackStackEntry?.destination?.route?.startsWith("newtask") == true) {
+                                    nav.popBackStack()
+                                }
+                            }
+                            else -> {}
+                        }
+                    }
+                }
                 remote.coreNavigation.collect { eff ->
                     when (eff.route) {
                         io.github.lewin671.remoteagent.core.proto.NavigateRoute.NAVIGATE_ROUTE_SESSION -> {
@@ -261,7 +291,9 @@ class MainActivity : ComponentActivity() {
                 }
             }
             LaunchedEffect(route) {
-                if (route != null && route != "session/{id}" && route != "task/{machine}/{id}") remote.schedules.showList()
+                if (route != null && route != "session/{id}" && route != "task/{machine}/{id}") {
+                    remote.coreHost.openScheduleList(true)
+                }
             }
             VisiblePushSession(
                 RaApp.instance,

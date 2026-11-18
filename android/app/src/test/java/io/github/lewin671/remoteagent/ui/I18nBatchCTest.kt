@@ -58,19 +58,65 @@ class I18nBatchCTest(private val locale: String) {
     private val state get() = RemoteState(conn = ConnState.ONLINE, loaded = true, synced = true, link = Link.ONLINE, isAuthority = true,
         authorityDeviceId = client.id, leaseEndMs = stamp + 86_400_000, prefs = PrefsObject.EMPTY, machines = mapOf("m" to machine),
         devices = mapOf(client.id to client, "m" to DeviceView("m", DeviceKind.DEVICE_KIND_MACHINE, stamp, DeviceMeta.newBuilder().setName("Example computer").build())), sessions = mapOf("s" to session))
-    private val task get() = ScheduledTask("m", buildJsonObject {
-        put("id", "t"); put("status", "scheduled"); put("next_run_at", now.plusSeconds(3600).toString())
-        put("spec", buildJsonObject { put("title", "Example scheduled task"); put("message", "Keep the original user message unchanged.")
-            put("trigger", buildJsonObject { put("type", "interval"); put("interval_seconds", 3600) })
-            put("target", buildJsonObject { put("type", "new_session"); put("cwd", "/example/demo"); put("agent", "claude"); put("mode", "ask") }) })
-        put("runs", JsonArray(listOf(buildJsonObject { put("id", "r"); put("session_id", "s"); put("status", "completed"); put("notified", true)
-            put("started_at", now.minusSeconds(600).toString()); put("ended_at", now.minusSeconds(300).toString()); put("notification_text", "Original agent notification"); put("final_summary", "Original CLI summary") })))
-    })
+    private val sampleSchedulesVm: io.github.lewin671.remoteagent.core.proto.SchedulesViewModel
+        get() = io.github.lewin671.remoteagent.core.proto.SchedulesViewModel.newBuilder()
+            .addOthers(
+                io.github.lewin671.remoteagent.core.proto.ScheduleTaskItemView.newBuilder()
+                    .setMachineId("m")
+                    .setTaskId("t")
+                    .setTitle("Example scheduled task")
+                    .setPreview(io.github.lewin671.remoteagent.core.proto.Text.newBuilder().setLiteral("Original agent notification"))
+                    .setMetadata(io.github.lewin671.remoteagent.core.proto.Text.newBuilder().setLiteral("Every 1 hour · Example computer")),
+            )
+            .build()
+    private val sampleDetailVm: io.github.lewin671.remoteagent.core.proto.ScheduleDetailViewModel
+        get() = io.github.lewin671.remoteagent.core.proto.ScheduleDetailViewModel.newBuilder()
+            .setFound(true)
+            .setMachineId("m")
+            .setTaskId("t")
+            .setTitle("Example scheduled task")
+            .setTaskName("Example scheduled task")
+            .setMessage("Keep the original user message unchanged.")
+            .setNotifyOnFinish(true)
+            .setTimingText(io.github.lewin671.remoteagent.core.proto.Text.newBuilder().setLiteral("Every 1 hour"))
+            .setTargetLabel(io.github.lewin671.remoteagent.core.proto.Text.newBuilder().setKey("schedule.run_in"))
+            .setTargetValue(io.github.lewin671.remoteagent.core.proto.Text.newBuilder().setLiteral("demo · Claude Code"))
+            .setPermissionsText(io.github.lewin671.remoteagent.core.proto.Text.newBuilder().setKey("modes.ask"))
+            .setResultCard(
+                io.github.lewin671.remoteagent.core.proto.ScheduleResultCardView.newBuilder()
+                    .setHasResult(true)
+                    .setRunId("r")
+                    .setSessionId("s")
+                    .setResultTitle("Original agent notification")
+                    .setMarkdownBody("Original CLI summary")
+                    .setShowConversationAction(true),
+            )
+            .build()
+    private val sampleFormVm: io.github.lewin671.remoteagent.core.proto.ScheduleFormViewModel
+        get() = io.github.lewin671.remoteagent.core.proto.ScheduleFormViewModel.newBuilder()
+            .setFormKey("create:session:s")
+            .setMode(io.github.lewin671.remoteagent.core.proto.ScheduleFormMode.SCHEDULE_FORM_MODE_CREATE_FOR_SESSION)
+            .setOpen(true)
+            .setMachineId("m")
+            .setSessionId("s")
+            .setEditable(true)
+            .setNotifyOnFinish(true)
+            .setSubmitLabel(io.github.lewin671.remoteagent.core.proto.Text.newBuilder().setKey("schedule.create"))
+            .setTiming(
+                io.github.lewin671.remoteagent.core.proto.ScheduleTimingDraftView.newBuilder()
+                    .setKind(io.github.lewin671.remoteagent.core.proto.ScheduleTimingKind.SCHEDULE_TIMING_KIND_INTERVAL)
+                    .setInterval("1")
+                    .setUnit(io.github.lewin671.remoteagent.core.proto.ScheduleIntervalUnit.SCHEDULE_INTERVAL_UNIT_HOURS)
+                    .setTimingDoneEnabled(true),
+            )
+            .build()
     @Before fun prepare() {
         remote.showForTest(state)
-        @Suppress("UNCHECKED_CAST")
-        val snapshots = ScheduleRepository::class.java.getDeclaredField("_state").apply { isAccessible = true }.get(remote.schedules) as MutableStateFlow<Map<String, ScheduleSnapshot>>
-        snapshots.value = mapOf("m" to ScheduleSnapshot(revision = 0, tasks = listOf(task), cached = false))
+        remote.coreHost.showViewsForTest(
+            schedules = sampleSchedulesVm,
+            scheduleDetail = sampleDetailVm,
+            scheduleForm = sampleFormVm,
+        )
     }
     @After fun close() { remote.close(); Outbox.clear(); ImageDrafts.clear(); Drafts.clear() }
     private fun text(message: UiMessage) = messageTextForTest(message, language)
@@ -211,11 +257,53 @@ class I18nBatchCTest(private val locale: String) {
     @Test fun connection() { show { ConnCheckSheet(state.copy(conn = ConnState.OFFLINE), {}, "https://example.com", { listOf("m") }, { 750 }, { 1800 }, {}) }; shot("connection") }
     @Test fun schedules() { show { SchedulesScreen() }; shot("schedules") }
     @Test fun scheduleDetail() { show { ScheduleDetailScreen("m", "t") }; shot("schedule-detail") }
-    @Test fun scheduleEditor() { show { ScheduleEditor("s", {}) }; shot("schedule-editor") }
-    @Test fun scheduleMessage() { show { ScheduleMessageEditor("Original user message", false, "", {}, {}) }; shot("schedule-message") }
-    @Test fun scheduleTime() { show { ScheduleTimeSheet(task.trigger, {}, {}) }; shot("schedule-time") }
-    @Test fun scheduleRuns() { show { Column { ScheduleRunGroup(RunGroup("r", task.allRuns, false), now, setOf("r")) {} } }; shot("schedule-results") }
-    @Test fun scheduleStopped() { show { Column(Modifier.padding(20.dp)) { ScheduleAttentionBanner(scheduleAttentionText(task.copy(json = JsonObject(task.json + mapOf("status" to JsonPrimitive("uncertain"), "reason" to JsonPrimitive("restart_dispatching")))), copy = uiText())) } }; shot("schedule-stopped") }
+    @Test fun scheduleEditor() { show { ScheduleEditorContent(sampleFormVm) }; shot("schedule-editor") }
+    @Test fun scheduleMessage() {
+        show {
+            ScheduleMessageEditor(
+                formKey = "f",
+                initial = "Original user message",
+                mutation = io.github.lewin671.remoteagent.core.proto.ScheduleMutationView.getDefaultInstance(),
+                writable = true,
+                onSetMessage = {},
+                close = {},
+                save = {},
+            )
+        }
+        shot("schedule-message")
+    }
+    @Test fun scheduleTime() {
+        show {
+            ScheduleTimeSheet(
+                draft = sampleFormVm.timing,
+                mutation = io.github.lewin671.remoteagent.core.proto.ScheduleMutationView.getDefaultInstance(),
+                enabled = true,
+                submitOnApply = false,
+                onUpdate = {},
+                onAppliedSubmit = {},
+                close = {},
+            )
+        }
+        shot("schedule-time")
+    }
+    @Test fun scheduleRuns() {
+        val group = io.github.lewin671.remoteagent.core.proto.ScheduleHistoryGroupView.newBuilder()
+            .setGroupKey("r")
+            .addRuns(
+                io.github.lewin671.remoteagent.core.proto.ScheduleRunRowView.newBuilder()
+                    .setRunId("r")
+                    .setUnreadOnEntry(true)
+                    .setTimeText(io.github.lewin671.remoteagent.core.proto.Text.newBuilder().setLiteral("09:00"))
+                    .setSummaryText(io.github.lewin671.remoteagent.core.proto.Text.newBuilder().setLiteral("Original agent notification")),
+            )
+            .build()
+        show { Column { ScheduleRunGroup(group, onToggleQuiet = {}, openRun = {}) } }
+        shot("schedule-results")
+    }
+    @Test fun scheduleStopped() {
+        show { Column(Modifier.padding(20.dp)) { ScheduleAttentionBanner(text(UiMessages.scheduleAttentionUncertain("restart"))) } }
+        shot("schedule-stopped")
+    }
     @Test fun update() {
         @Suppress("UNCHECKED_CAST")
         val updates = Updater::class.java.getDeclaredField("_state").apply { isAccessible = true }.get(Updater) as MutableStateFlow<UpdateState>
@@ -270,7 +358,17 @@ class I18nBatchCTest(private val locale: String) {
         manager.cancelAll()
     }
     @Test fun languageChangeKeepsEditor() {
-        show { ScheduleMessageEditor("Original draft stays unchanged", false, "", {}, {}) }
+        show {
+            ScheduleMessageEditor(
+                formKey = "f",
+                initial = "Original draft stays unchanged",
+                mutation = io.github.lewin671.remoteagent.core.proto.ScheduleMutationView.getDefaultInstance(),
+                writable = true,
+                onSetMessage = {},
+                close = {},
+                save = {},
+            )
+        }
         ui.runOnIdle { language = if (locale == "en") "zh-CN" else "en" }
         ui.onAllNodes(hasSetTextAction()).onLast().assertTextEquals("Original draft stays unchanged")
     }
@@ -282,8 +380,7 @@ class I18nBatchCTest(private val locale: String) {
             Assert.assertTrue(text(UiMessages.scheduleEveryDays(count)).contains(count.toString()))
         }
         val large = Int.MAX_VALUE.toLong() + 1
-        val frequency = scheduleFrequency(buildJsonObject { put("type", "interval"); put("interval_seconds", large) }, copy = ::text)
-        Assert.assertTrue(frequency.contains(large.toString()))
+        Assert.assertTrue(text(UiMessages.scheduleAndroidLargeEverySeconds(2, large.toString())).contains(large.toString()))
         Assert.assertEquals("原始 CLI / original CLI", displayError(Exception("原始 CLI / original CLI"), copy = ::text))
         val grouped = imageFailureLine(listOf("decode", "unsupported").map(::rawAttachmentFailure), copy = ::text) { error("Same category must not use count summary") }
         Assert.assertEquals(imageProblem(rawAttachmentFailure("decode"), copy = ::text).message, grouped)

@@ -1,22 +1,40 @@
 package io.github.lewin671.remoteagent.ui
 
-import io.github.lewin671.remoteagent.core.ScheduleTaskKey
-import io.github.lewin671.remoteagent.core.ScheduledTask
 import io.github.lewin671.remoteagent.core.SessionView
-import io.github.lewin671.remoteagent.core.text
+import io.github.lewin671.remoteagent.core.proto.ScheduleSessionStripViewModel
+import io.github.lewin671.remoteagent.core.proto.SchedulesViewModel
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.withTimeoutOrNull
 
 internal sealed interface ScheduleNotificationRoute {
-    data class Task(val key: ScheduleTaskKey) : ScheduleNotificationRoute
+    data class Task(val machineId: String, val taskId: String) : ScheduleNotificationRoute
     data object Conversation : ScheduleNotificationRoute
     data object Inbox : ScheduleNotificationRoute
 }
 
-internal fun cachedScheduleNotificationRoute(session: String, tasks: List<ScheduledTask>, view: SessionView?): ScheduleNotificationRoute? {
-    scheduleNotificationTask(session, tasks, view)?.let { return ScheduleNotificationRoute.Task(it) }
-    if (view?.info != null || tasks.any { it.target.text("type") == "resume_session" && it.target.text("session") == session })
+internal fun cachedScheduleNotificationRoute(
+    session: String,
+    view: SessionView?,
+    schedules: SchedulesViewModel? = null,
+    strip: ScheduleSessionStripViewModel? = null,
+): ScheduleNotificationRoute? {
+    val info = view?.info
+    if (info != null) {
+        if (info.taskOwned && info.scheduledTaskId.isNotEmpty() && view.machineId.isNotEmpty()) {
+            return ScheduleNotificationRoute.Task(view.machineId, info.scheduledTaskId)
+        }
         return ScheduleNotificationRoute.Conversation
+    }
+    if (strip != null && strip.visible && strip.sessionId == session) {
+        return ScheduleNotificationRoute.Conversation
+    }
+    if (schedules != null) {
+        val activeTakeover = (schedules.attention14List + schedules.freshList + schedules.othersList + schedules.endedList)
+            .firstOrNull { it.takeover.hasTakeover && it.takeover.sessionId == session }
+        if (activeTakeover != null) {
+            return ScheduleNotificationRoute.Task(activeTakeover.machineId, activeTakeover.taskId)
+        }
+    }
     return null
 }
 

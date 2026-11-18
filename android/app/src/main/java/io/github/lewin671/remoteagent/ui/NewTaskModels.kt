@@ -181,7 +181,7 @@ private fun RowScope.AgentToolLabel(agent: Agent, title: String, compact: Boolea
 internal fun shouldPinModelControls(bodyHeight: Int, controlsHeight: Int, rowHeight: Int, padding: Int): Boolean =
     rowHeight > 0 && bodyHeight - controlsHeight >= rowHeight * 2 + padding
 
-private fun panelVisibleModels(models: List<ModelOptionView>, all: Boolean): List<ModelOptionView> {
+internal fun panelVisibleModels(models: List<ModelOptionView>, all: Boolean): List<ModelOptionView> {
     if (all || models.size <= PANEL_COLLAPSED_MODELS) return models
     val selected = models.firstOrNull { it.checked }
     val head = models.take(PANEL_COLLAPSED_MODELS)
@@ -315,7 +315,7 @@ internal fun ColumnScope.NewTaskModelPanel(
 }
 
 @Composable
-private fun ModelPanelRow(name: String, checked: Boolean, enabled: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
+internal fun ModelPanelRow(name: String, checked: Boolean, enabled: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
     Row(
         modifier.fillMaxWidth().heightIn(min = 44.dp).clip(Radii.R14)
             .selectable(selected = checked, enabled = enabled, role = Role.RadioButton, onClick = onClick),
@@ -329,7 +329,7 @@ private fun ModelPanelRow(name: String, checked: Boolean, enabled: Boolean, modi
 
 /** All efforts in one equal-width row, including six-choice models on narrow phones. */
 @Composable
-private fun ModelSegments(items: List<String>, selected: String, enabled: Boolean, label: @Composable (String) -> String = { it }, onPick: (String) -> Unit) {
+internal fun ModelSegments(items: List<String>, selected: String, enabled: Boolean, label: @Composable (String) -> String = { it }, onPick: (String) -> Unit) {
     Row(Modifier.fillMaxWidth().clip(Radii.R14).background(pal.fill).selectableGroup()) {
         items.forEach { item ->
             Box(

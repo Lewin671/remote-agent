@@ -44,7 +44,6 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import io.github.lewin671.remoteagent.core.scheduleBadgeText
 
 /*
  * The app's shell on client-v58 (design-system §4 材质, §6 底部): no top bar
@@ -177,7 +176,7 @@ fun TabBadge(count: Int) {
         contentAlignment = Alignment.Center,
     ) {
         Text(
-            scheduleBadgeText(count),
+            if (count > 99) "99+" else count.toString(),
             style = ts(12.sp, FontWeight.Bold, 1.5f),
             color = if (p.dark) Color(0xFF1D1D1F) else Color.White,
             maxLines = 1,
@@ -204,10 +203,9 @@ fun ShellBottom(active: ShellTab, action: String, icon: ImageVector, enabled: Bo
     val remote = LocalRemote.current
     val nav = LocalNav.current
     val home by remote.homeView.collectAsState()
-    val scheduled by remote.schedules.badge.collectAsState()
-    val newResults by remote.schedules.hasNewResults.collectAsState()
+    val schedules by remote.schedulesView.collectAsState()
     BottomBar(
-        active, home.waitingTotal, scheduled, newResults,
+        active, home.waitingTotal, schedules.attentionCount1, schedules.hasNewResults,
         onSelect = { if (it == ShellTab.SESSIONS) nav.home() else nav.schedules() },
         action = action, actionIcon = icon, onAction = onAction, actionEnabled = enabled,
     )

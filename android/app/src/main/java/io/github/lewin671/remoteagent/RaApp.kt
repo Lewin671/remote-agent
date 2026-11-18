@@ -114,7 +114,7 @@ class RaApp : Application() {
     @Volatile internal var visibleSession: String? = null
         set(value) {
             field = value
-            _remote.value?.schedules?.setVisibleSession(value)
+            _remote.value?.coreHost?.setScheduleVisibleSession(value.orEmpty())
         }
     @Volatile private var foreground = false
     private var loading = false
@@ -394,12 +394,57 @@ class RaApp : Application() {
                 },
                 monotonic = android.os.SystemClock::elapsedRealtime,
                 securityStorage = vault,
-                scheduleSeen = io.github.lewin671.remoteagent.core.ScheduleSeen(
-                    listOf(acct.server, acct.deviceId),
-                    read = { getSharedPreferences("schedule-seen", MODE_PRIVATE).getString(it, null) },
-                    write = { key, value -> getSharedPreferences("schedule-seen", MODE_PRIVATE).edit().putString(key, value).apply() },
-                    onRead = { runs -> io.github.lewin671.remoteagent.push.Notifier.dismissScheduled(this@RaApp, runs) },
-                ),
+                scheduleSeenStore = object : io.github.lewin671.remoteagent.core.ScheduleSeenStore {
+                    private fun keyFor(machineId: String): String =
+                        "ra-schedule-seen:" + kotlinx.serialization.json.JsonArray(
+                            listOf(acct.server, acct.deviceId, machineId).map { kotlinx.serialization.json.JsonPrimitive(it) },
+                        ).toString()
+
+                    override fun load(machineId: String): List<io.github.lewin671.remoteagent.core.proto.ScheduleSeenToken>? {
+                        val raw = getSharedPreferences("schedule-seen", MODE_PRIVATE)
+                            .getString(keyFor(machineId), null) ?: return null
+                        return try {
+                            val arr = kotlinx.serialization.json.Json.parseToJsonElement(raw) as? kotlinx.serialization.json.JsonArray
+                                ?: return emptyList()
+                            arr.mapNotNull { el ->
+                                val pair = el as? kotlinx.serialization.json.JsonArray ?: return@mapNotNull null
+                                if (pair.size < 2) return@mapNotNull null
+                                val task = (pair[0] as? kotlinx.serialization.json.JsonPrimitive)?.content ?: return@mapNotNull null
+                                val run = (pair[1] as? kotlinx.serialization.json.JsonPrimitive)?.content ?: return@mapNotNull null
+                                io.github.lewin671.remoteagent.core.proto.ScheduleSeenToken.newBuilder()
+                                    .setTaskId(task)
+                                    .setRunId(run)
+                                    .build()
+                            }
+                        } catch (_: Exception) {
+                            emptyList()
+                        }
+                    }
+
+                    override fun save(
+                        machineId: String,
+                        tokens: List<io.github.lewin671.remoteagent.core.proto.ScheduleSeenToken>,
+                    ) {
+                        val json = kotlinx.serialization.json.JsonArray(
+                            tokens.map { tok ->
+                                kotlinx.serialization.json.JsonArray(
+                                    listOf(
+                                        kotlinx.serialization.json.JsonPrimitive(tok.taskId),
+                                        kotlinx.serialization.json.JsonPrimitive(tok.runId),
+                                    ),
+                                )
+                            },
+                        ).toString()
+                        getSharedPreferences("schedule-seen", MODE_PRIVATE).edit().putString(keyFor(machineId), json).apply()
+                    }
+
+                    override fun delete(machineId: String) {
+                        getSharedPreferences("schedule-seen", MODE_PRIVATE).edit().remove(keyFor(machineId)).apply()
+                    }
+                },
+                onDismissScheduleNotifications = { runs ->
+                    io.github.lewin671.remoteagent.push.Notifier.dismissScheduled(this@RaApp, runs)
+                },
                 tokenStorage = object : io.github.lewin671.remoteagent.core.LoginTokenStore by vault {
                     override fun loadLoginToken(account: Account) =
                         if (foreground) vault.loadLoginToken(account) else null

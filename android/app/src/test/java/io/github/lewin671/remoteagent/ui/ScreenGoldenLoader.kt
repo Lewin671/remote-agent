@@ -99,6 +99,26 @@ object ScreenGoldenLoader {
         return parseSession(v["session"]!!.jsonObject)
     }
 
+    fun schedulesView(scenario: String, viewName: String): SchedulesViewModel {
+        val v = namedViews(scenario).getValue(viewName)
+        return parseSchedules(v["schedules"]!!.jsonObject)
+    }
+
+    fun scheduleDetailView(scenario: String, viewName: String): ScheduleDetailViewModel {
+        val v = namedViews(scenario).getValue(viewName)
+        return parseScheduleDetail(v["scheduleDetail"]!!.jsonObject)
+    }
+
+    fun scheduleFormView(scenario: String, viewName: String): ScheduleFormViewModel {
+        val v = namedViews(scenario).getValue(viewName)
+        return parseScheduleForm(v["scheduleForm"]!!.jsonObject)
+    }
+
+    fun scheduleSessionStripView(scenario: String, viewName: String): ScheduleSessionStripViewModel {
+        val v = namedViews(scenario).getValue(viewName)
+        return parseScheduleSessionStrip(v["scheduleSessionStrip"]!!.jsonObject)
+    }
+
     private fun JsonObject.str(k: String): String = (this[k]?.jsonPrimitive)?.contentOrNull.orEmpty()
     private fun JsonObject.bool(k: String): Boolean = (this[k]?.jsonPrimitive)?.booleanOrNull == true
     private fun JsonObject.i32(k: String): Int = (this[k]?.jsonPrimitive)?.intOrNull ?: 0
@@ -1533,5 +1553,424 @@ object ScreenGoldenLoader {
         setWidth(o.i32("width"))
         setHeight(o.i32("height"))
         setPath(o.str("path"))
+    }.build()
+
+    private fun parseConnectionStatus(o: JsonObject): ConnectionStatusView = ConnectionStatusView.newBuilder()
+        .setState(o.enum("state", ConnState.CONN_STATE_UNSPECIFIED))
+        .setBadgeText(parseText(o.obj("badgeText")))
+        .setDetailText(parseText(o.obj("detailText")))
+        .setLivePushConnected(o.bool("livePushConnected"))
+        .setReason(o.str("reason"))
+        .setDisconnectedAtMs(o.i64("disconnectedAtMs"))
+        .build()
+
+    private fun parseScheduleTaskActions(o: JsonObject): ScheduleTaskActionsView = ScheduleTaskActionsView.newBuilder().apply {
+        setCanRunNow(o.bool("canRunNow"))
+        o.obj("runNowDisabledReason")?.let { setRunNowDisabledReason(parseText(it)) }
+        setShowToggleAction(o.bool("showToggleAction"))
+        setIsResumeAction(o.bool("isResumeAction"))
+        o.obj("toggleLabel")?.let { setToggleLabel(parseText(it)) }
+        setCanToggle(o.bool("canToggle"))
+        o.obj("toggleDisabledReason")?.let { setToggleDisabledReason(parseText(it)) }
+        setCanDelete(o.bool("canDelete"))
+        o.obj("deleteDisabledReason")?.let { setDeleteDisabledReason(parseText(it)) }
+        setCanMarkRead(o.bool("canMarkRead"))
+        setCanMarkUnread(o.bool("canMarkUnread"))
+        setCanRename(o.bool("canRename"))
+        o.obj("renameDisabledReason")?.let { setRenameDisabledReason(parseText(it)) }
+        setCanEditDefinition(o.bool("canEditDefinition"))
+        o.obj("editDefinitionDisabledReason")?.let { setEditDefinitionDisabledReason(parseText(it)) }
+        setCanToggleNotify(o.bool("canToggleNotify"))
+        o.obj("notifyDisabledReason")?.let { setNotifyDisabledReason(parseText(it)) }
+    }.build()
+
+    private fun parseScheduleTakeover(o: JsonObject): ScheduleTakeoverView = ScheduleTakeoverView.newBuilder().apply {
+        setHasTakeover(o.bool("hasTakeover"))
+        setSessionId(o.str("sessionId"))
+        setVia(o.enum("via", ScheduleTakeoverVia.SCHEDULE_TAKEOVER_VIA_UNSPECIFIED))
+        o.obj("label")?.let { setLabel(parseText(it)) }
+    }.build()
+
+    private fun parseScheduleMutation(o: JsonObject): ScheduleMutationView = ScheduleMutationView.newBuilder().apply {
+        setBusy(o.bool("busy"))
+        setFrozen(o.bool("frozen"))
+        setExpired(o.bool("expired"))
+        o.obj("error")?.let { setError(parseText(it)) }
+        o.obj("notice")?.let { setNotice(parseText(it)) }
+        setCanRetry(o.bool("canRetry"))
+        setCanAbandon(o.bool("canAbandon"))
+        o.obj("frozenHint")?.let { setFrozenHint(parseText(it)) }
+    }.build()
+
+    private fun parseScheduleItem(o: JsonObject): ScheduleTaskItemView = ScheduleTaskItemView.newBuilder().apply {
+        setMachineId(o.str("machineId"))
+        setTaskId(o.str("taskId"))
+        setTitle(o.str("title"))
+        setGroup(o.enum("group", ScheduleDisplayGroup.SCHEDULE_DISPLAY_GROUP_UNSPECIFIED))
+        setStatus(o.enum("status", ScheduleTaskStatus.SCHEDULE_TASK_STATUS_UNSPECIFIED))
+        setTone(o.enum("tone", ScheduleTone.SCHEDULE_TONE_UNSPECIFIED))
+        setHasUnread(o.bool("hasUnread"))
+        setInProgress(o.bool("inProgress"))
+        setPaused(o.bool("paused"))
+        setMachineOffline(o.bool("machineOffline"))
+        setSelected(o.bool("selected"))
+        o.obj("timeText")?.let { setTimeText(parseText(it)) }
+        o.obj("attentionLead")?.let { setAttentionLead(parseText(it)) }
+        o.obj("attentionReason")?.let { setAttentionReason(parseText(it)) }
+        o.obj("preview")?.let { setPreview(parseText(it)) }
+        setPreviewIsPlaceholder(o.bool("previewIsPlaceholder"))
+        o.obj("metadata")?.let { setMetadata(parseText(it)) }
+        o.obj("timingText")?.let { setTimingText(parseText(it)) }
+        o.obj("nextRunText")?.let { setNextRunText(parseText(it)) }
+        setNextRunMs(o.i64("nextRunMs"))
+        setHasNotification(o.bool("hasNotification"))
+        setIsAgentCreated(o.bool("isAgentCreated"))
+        o.obj("takeover")?.let { setTakeover(parseScheduleTakeover(it)) }
+        setReadOnly(o.bool("readOnly"))
+        o.obj("readOnlyReason")?.let { setReadOnlyReason(parseText(it)) }
+        o.obj("actions")?.let { setActions(parseScheduleTaskActions(it)) }
+        o.obj("menuSubtitle")?.let { setMenuSubtitle(parseText(it)) }
+    }.build()
+
+    private fun parseSchedules(o: JsonObject): SchedulesViewModel = SchedulesViewModel.newBuilder().apply {
+        setAttentionCount1(o.i32("attentionCount"))
+        setHasNewResults(o.bool("hasNewResults"))
+        setAttentionBadgeText(o.str("attentionBadgeText"))
+        setCanCreate(o.bool("canCreate"))
+        o.obj("connection")?.let { setConnection(parseConnectionStatus(it)) }
+        o.obj("headline")?.let { h ->
+            setHeadline(
+                ScheduleHeadlineView.newBuilder()
+                    .setKind(h.enum("kind", ScheduleHeadlineKind.SCHEDULE_HEADLINE_KIND_UNSPECIFIED))
+                    .setHighlightCount(h.i32("highlightCount"))
+                    .apply {
+                        h.obj("title")?.let { setTitle(parseText(it)) }
+                        h.obj("sub")?.let { setSub(parseText(it)) }
+                    },
+            )
+        }
+        setAnyMachineSupported(o.bool("anyMachineSupported"))
+        o.obj("unsupportedNotice")?.let { setUnsupportedNotice(parseText(it)) }
+        o.obj("offlineNotice")?.let { setOfflineNotice(parseText(it)) }
+        o.arr("machineErrors").forEach { me ->
+            val obj = me.jsonObject
+            addMachineErrors(
+                ScheduleMachineErrorView.newBuilder()
+                    .setMachineId(obj.str("machineId"))
+                    .setMachineName(obj.str("machineName"))
+                    .setCanRetry(obj.bool("canRetry"))
+                    .apply { obj.obj("error")?.let { setError(parseText(it)) } },
+            )
+        }
+        setLoading(o.bool("loading"))
+        setShowEmptyHint(o.bool("showEmptyHint"))
+        o.obj("emptyHint")?.let { setEmptyHint(parseText(it)) }
+        o.arr("attention").forEach { addAttention14(parseScheduleItem(it.jsonObject)) }
+        o.arr("fresh").forEach { addFresh(parseScheduleItem(it.jsonObject)) }
+        o.arr("others").forEach { addOthers(parseScheduleItem(it.jsonObject)) }
+        o.arr("ended").forEach { addEnded(parseScheduleItem(it.jsonObject)) }
+        setTotalEnded(o.i32("totalEnded"))
+        setHasMoreEnded(o.bool("hasMoreEnded"))
+        setEndedExpanded(o.bool("endedExpanded"))
+        o.obj("endedLabel")?.let { setEndedLabel(parseText(it)) }
+        o.obj("othersSectionTitle")?.let { setOthersSectionTitle(parseText(it)) }
+        setCanMarkAllRead(o.bool("canMarkAllRead"))
+        setSelectedMachineId(o.str("selectedMachineId"))
+        setSelectedTaskId(o.str("selectedTaskId"))
+    }.build()
+
+    private fun parseScheduleDetail(o: JsonObject): ScheduleDetailViewModel = ScheduleDetailViewModel.newBuilder().apply {
+        setFound(o.bool("found"))
+        setLoading(o.bool("loading"))
+        o.obj("notFoundText")?.let { setNotFoundText(parseText(it)) }
+        setMachineId(o.str("machineId"))
+        setTaskId(o.str("taskId"))
+        setRevision(o.i64("revision"))
+        setTitle(o.str("title"))
+        o.obj("subtitle")?.let { setSubtitle(parseText(it)) }
+        o.obj("connection")?.let { setConnection(parseConnectionStatus(it)) }
+        setMachineOnline(o.bool("machineOnline"))
+        setMachineSupported(o.bool("machineSupported"))
+        setReadOnly(o.bool("readOnly"))
+        o.obj("readOnlyNotice")?.let { setReadOnlyNotice(parseText(it)) }
+        o.obj("machineError")?.let { setMachineError(parseText(it)) }
+        setCanRetryMachineList(o.bool("canRetryMachineList"))
+        o.obj("mutation")?.let { setMutation(parseScheduleMutation(it)) }
+        o.obj("attention")?.let { a ->
+            setAttention(
+                ScheduleAttentionView.newBuilder()
+                    .setShow(a.bool("show"))
+                    .setShowPrimaryAction(a.bool("showPrimaryAction"))
+                    .setPrimaryActionKind(a.enum("primaryActionKind", ScheduleRecoveryActionKind.SCHEDULE_RECOVERY_ACTION_KIND_UNSPECIFIED))
+                    .setPrimaryActionEnabled(a.bool("primaryActionEnabled"))
+                    .apply {
+                        a.obj("message")?.let { setMessage(parseText(it)) }
+                        a.obj("primaryActionLabel")?.let { setPrimaryActionLabel(parseText(it)) }
+                        a.obj("primaryActionDisabledReason")?.let { setPrimaryActionDisabledReason(parseText(it)) }
+                    },
+            )
+        }
+        o.obj("activeRun")?.let { ar ->
+            setActiveRun(
+                ScheduleActiveRunView.newBuilder()
+                    .setHasActive(ar.bool("hasActive"))
+                    .setRunId(ar.str("runId"))
+                    .setSessionId(ar.str("sessionId"))
+                    .setFirstSeq(ar.i64("firstSeq"))
+                    .setStatus(ar.enum("status", ScheduleRunStatus.SCHEDULE_RUN_STATUS_UNSPECIFIED))
+                    .setCanOpenSession(ar.bool("canOpenSession"))
+                    .apply { ar.obj("statusText")?.let { setStatusText(parseText(it)) } },
+            )
+        }
+        o.obj("resultCard")?.let { rc ->
+            setResultCard(
+                ScheduleResultCardView.newBuilder()
+                    .setHasResult(rc.bool("hasResult"))
+                    .setRunId(rc.str("runId"))
+                    .setSessionId(rc.str("sessionId"))
+                    .setFirstSeq(rc.i64("firstSeq"))
+                    .setUnreadOnEntry(rc.bool("unreadOnEntry"))
+                    .setHasNewerResult(rc.bool("hasNewerResult"))
+                    .setResultTitle(rc.str("resultTitle"))
+                    .setMarkdownBody(rc.str("markdownBody"))
+                    .setResultLoading(rc.bool("resultLoading"))
+                    .setShowConversationAction(rc.bool("showConversationAction"))
+                    .apply {
+                        rc.obj("timeText")?.let { setTimeText(parseText(it)) }
+                        rc.obj("fallbackReasonText")?.let { setFallbackReasonText(parseText(it)) }
+                    },
+            )
+        }
+        o.arr("earlierGroups").forEach { ge ->
+            val g = ge.jsonObject
+            addEarlierGroups(
+                ScheduleHistoryGroupView.newBuilder()
+                    .setGroupKey(g.str("groupKey"))
+                    .setFoldedQuiet(g.bool("foldedQuiet"))
+                    .setExpanded(g.bool("expanded"))
+                    .apply {
+                        g.obj("foldedTitle")?.let { setFoldedTitle(parseText(it)) }
+                        g.obj("foldedSummary")?.let { setFoldedSummary(parseText(it)) }
+                        g.arr("runs").forEach { re ->
+                            val r = re.jsonObject
+                            addRuns(
+                                ScheduleRunRowView.newBuilder()
+                                    .setRunId(r.str("runId"))
+                                    .setSessionId(r.str("sessionId"))
+                                    .setFirstSeq(r.i64("firstSeq"))
+                                    .setStatus(r.enum("status", ScheduleRunStatus.SCHEDULE_RUN_STATUS_UNSPECIFIED))
+                                    .setUnreadOnEntry(r.bool("unreadOnEntry"))
+                                    .setManual(r.bool("manual"))
+                                    .setNotified(r.bool("notified"))
+                                    .setCanOpenSession(r.bool("canOpenSession"))
+                                    .apply {
+                                        r.obj("notificationSourceText")?.let { setNotificationSourceText(parseText(it)) }
+                                        r.obj("timeText")?.let { setTimeText(parseText(it)) }
+                                        r.obj("summaryText")?.let { setSummaryText(parseText(it)) }
+                                    },
+                            )
+                        }
+                    },
+            )
+        }
+        setTotalEarlierRuns(o.i32("totalEarlierRuns"))
+        setHasMoreEarlierRuns(o.bool("hasMoreEarlierRuns"))
+        setShowAllRuns(o.bool("showAllRuns"))
+        o.obj("earlierCountText")?.let { setEarlierCountText(parseText(it)) }
+        o.obj("viewAllText")?.let { setViewAllText(parseText(it)) }
+        setEmptyHistory(o.bool("emptyHistory"))
+        o.obj("emptyHistoryText")?.let { setEmptyHistoryText(parseText(it)) }
+        setMessage(o.str("message"))
+        o.obj("timingText")?.let { setTimingText(parseText(it)) }
+        setNotifyOnFinish(o.bool("notifyOnFinish"))
+        setHasLimits(o.bool("hasLimits"))
+        o.obj("limitsText")?.let { setLimitsText(parseText(it)) }
+        setTargetType(o.enum("targetType", ScheduleTargetType.SCHEDULE_TARGET_TYPE_UNSPECIFIED))
+        setTargetSessionId(o.str("targetSessionId"))
+        o.obj("targetLabel")?.let { setTargetLabel(parseText(it)) }
+        o.obj("targetValue")?.let { setTargetValue(parseText(it)) }
+        setCanOpenTargetSession(o.bool("canOpenTargetSession"))
+        o.obj("permissionsText")?.let { setPermissionsText(parseText(it)) }
+        setPermissionsIsDanger(o.bool("permissionsIsDanger"))
+        setCanEditPermissions(o.bool("canEditPermissions"))
+        setTaskName(o.str("taskName"))
+        o.obj("creationFooter")?.let { setCreationFooter(parseText(it)) }
+        o.obj("runOnceFooter")?.let { setRunOnceFooter(parseText(it)) }
+        setSource(o.enum("source", ScheduleSource.SCHEDULE_SOURCE_UNSPECIFIED))
+        o.obj("takeover")?.let { setTakeover(parseScheduleTakeover(it)) }
+        setScopedSessionId(o.str("scopedSessionId"))
+        setScopedMode(o.str("scopedMode"))
+        o.obj("actions")?.let { setActions(parseScheduleTaskActions(it)) }
+        o.obj("menuSubtitle")?.let { setMenuSubtitle(parseText(it)) }
+    }.build()
+
+    private fun parseScheduleForm(o: JsonObject): ScheduleFormViewModel = ScheduleFormViewModel.newBuilder().apply {
+        setFormKey(o.str("formKey"))
+        setMode(o.enum("mode", ScheduleFormMode.SCHEDULE_FORM_MODE_UNSPECIFIED))
+        setOpen(o.bool("open"))
+        setMachineId(o.str("machineId"))
+        setTaskId(o.str("taskId"))
+        setSessionId(o.str("sessionId"))
+        setProjectKey(o.str("projectKey"))
+        setLockMachine(o.bool("lockMachine"))
+        setMessage(o.str("message"))
+        setMessageValid(o.bool("messageValid"))
+        setMessageTooLong(o.bool("messageTooLong"))
+        o.obj("messageError")?.let { setMessageError(parseText(it)) }
+        setTitle(o.str("title"))
+        o.obj("titlePlaceholder")?.let { setTitlePlaceholder(parseText(it)) }
+        setAutoTitle(o.str("autoTitle"))
+        setNotifyOnFinish(o.bool("notifyOnFinish"))
+        o.obj("timingSummary")?.let { setTimingSummary(parseText(it)) }
+        o.obj("timing")?.let { t ->
+            setTiming(
+                ScheduleTimingDraftView.newBuilder()
+                    .setKind(t.enum("kind", ScheduleTimingKind.SCHEDULE_TIMING_KIND_UNSPECIFIED))
+                    .setAfterTurnUnselected(t.bool("afterTurnUnselected"))
+                    .setDate(t.str("date"))
+                    .setTime(t.str("time"))
+                    .setZone(t.str("zone"))
+                    .setWorkdays(t.bool("workdays"))
+                    .setInterval(t.str("interval"))
+                    .setUnit(t.enum("unit", ScheduleIntervalUnit.SCHEDULE_INTERVAL_UNIT_UNSPECIFIED))
+                    .setEnd(t.enum("end", ScheduleTimingEnd.SCHEDULE_TIMING_END_UNSPECIFIED))
+                    .setCount(t.str("count"))
+                    .setUntilDate(t.str("untilDate"))
+                    .setUntilMs(t.i64("untilMs"))
+                    .setShowIntervalHint(t.bool("showIntervalHint"))
+                    .setTimingDoneEnabled(t.bool("timingDoneEnabled"))
+                    .setTimingApplied(t.bool("timingApplied"))
+                    .apply {
+                        t.obj("afterTurnHint")?.let { setAfterTurnHint(parseText(it)) }
+                        t.arr("weekdays").forEach { addWeekdays(it.jsonPrimitive.intOrNull ?: 0) }
+                        t.obj("intervalHint")?.let { setIntervalHint(parseText(it)) }
+                        t.obj("timingError")?.let { setTimingError(parseText(it)) }
+                    },
+            )
+        }
+        o.obj("projectName")?.let { setProjectName(parseText(it)) }
+        setProjectShortPath(o.str("projectShortPath"))
+        setHasProject(o.bool("hasProject"))
+        o.arr("projectChoices").forEach { pe ->
+            val p = pe.jsonObject
+            addProjectChoices(
+                ScheduleProjectOptionView.newBuilder()
+                    .setProjectKey(p.str("projectKey"))
+                    .setShortPath(p.str("shortPath"))
+                    .setSelected(p.bool("selected"))
+                    .apply { p.obj("name")?.let { setName(parseText(it)) } },
+            )
+        }
+        setMachineName(o.str("machineName"))
+        setMachineSelectable(o.bool("machineSelectable"))
+        o.arr("machineChoices").forEach { me ->
+            val m = me.jsonObject
+            addMachineChoices(
+                ScheduleMachineOptionView.newBuilder()
+                    .setMachineId(m.str("machineId"))
+                    .setName(m.str("name"))
+                    .setOnline(m.bool("online"))
+                    .setSupported(m.bool("supported"))
+                    .setSelected(m.bool("selected"))
+                    .apply { m.obj("note")?.let { setNote(parseText(it)) } },
+            )
+        }
+        setAgent(o.enum("agent", Agent.AGENT_UNSPECIFIED))
+        setAgentName(o.str("agentName"))
+        o.arr("availableAgents").forEach { ae ->
+            val a = ae.jsonObject
+            addAvailableAgents(
+                AgentOptionView.newBuilder()
+                    .setAgent(a.enum("agent", Agent.AGENT_UNSPECIFIED))
+                    .setDisplayName(a.str("displayName"))
+                    .setInstalled(a.bool("installed"))
+                    .setSelected(a.bool("selected")),
+            )
+        }
+        setModel(o.str("model"))
+        setEffort(o.str("effort"))
+        o.obj("modelLabel")?.let { setModelLabel(parseText(it)) }
+        setEffortLabel(o.str("effortLabel"))
+        o.obj("modelPanel")?.let { mp ->
+            setModelPanel(
+                ScheduleModelPanelView.newBuilder()
+                    .setModelsLoading(mp.bool("modelsLoading"))
+                    .setDefaultModelChecked(mp.bool("defaultModelChecked"))
+                    .setSelectedEffort(mp.str("selectedEffort"))
+                    .setPanelEnabled(mp.bool("panelEnabled"))
+                    .apply {
+                        mp.obj("modelsError")?.let { setModelsError(parseText(it)) }
+                        mp.obj("defaultModelLabel")?.let { setDefaultModelLabel(parseText(it)) }
+                        mp.arr("effortChoices").forEach { addEffortChoices(it.jsonPrimitive.content) }
+                        mp.arr("models").forEach { me ->
+                            val mo = me.jsonObject
+                            addModels(
+                                ModelOptionView.newBuilder()
+                                    .setSlug(mo.str("slug"))
+                                    .setDisplayName(mo.str("displayName"))
+                                    .setChecked(mo.bool("checked"))
+                                    .apply { mo.obj("fixedEffortNote")?.let { setFixedEffortNote(parseText(it)) } },
+                            )
+                        }
+                    },
+            )
+        }
+        setApprovalMode(o.enum("approvalMode", ApprovalMode.APPROVAL_MODE_UNSPECIFIED))
+        o.obj("approvalModeLabel")?.let { setApprovalModeLabel(parseText(it)) }
+        setApprovalModeIsDanger(o.bool("approvalModeIsDanger"))
+        o.arr("modeChoices").forEach { mce ->
+            val mc = mce.jsonObject
+            addModeChoices(
+                ScheduleModeOptionView.newBuilder()
+                    .setMode(mc.enum("mode", ApprovalMode.APPROVAL_MODE_UNSPECIFIED))
+                    .setIsDanger(mc.bool("isDanger"))
+                    .setSelected(mc.bool("selected"))
+                    .setEnabled(mc.bool("enabled"))
+                    .apply {
+                        mc.obj("label")?.let { setLabel(parseText(it)) }
+                        mc.obj("disabledReason")?.let { setDisabledReason(parseText(it)) }
+                    },
+            )
+        }
+        setRequiresFullAccessConfirm(o.bool("requiresFullAccessConfirm"))
+        o.obj("locationText")?.let { setLocationText(parseText(it)) }
+        setEditable(o.bool("editable"))
+        setCanSubmit(o.bool("canSubmit"))
+        o.obj("submitLabel")?.let { setSubmitLabel(parseText(it)) }
+        o.obj("submitDisabledReason")?.let { setSubmitDisabledReason(parseText(it)) }
+        setHasUnsavedChanges(o.bool("hasUnsavedChanges"))
+        o.arr("notices").forEach { ne ->
+            val n = ne.jsonObject
+            addNotices(
+                ScheduleFormNoticeView.newBuilder()
+                    .setKind(n.enum("kind", ScheduleFormNoticeKind.SCHEDULE_FORM_NOTICE_KIND_UNSPECIFIED))
+                    .setSeverity(n.enum("severity", ScheduleFormNoticeSeverity.SCHEDULE_FORM_NOTICE_SEVERITY_UNSPECIFIED))
+                    .apply { n.obj("text")?.let { setText(parseText(it)) } },
+            )
+        }
+        o.obj("mutation")?.let { setMutation(parseScheduleMutation(it)) }
+    }.build()
+
+    private fun parseScheduleSessionStrip(o: JsonObject): ScheduleSessionStripViewModel = ScheduleSessionStripViewModel.newBuilder().apply {
+        setSessionId(o.str("sessionId"))
+        setVisible(o.bool("visible"))
+        setCount(o.i32("count"))
+        o.obj("summaryText")?.let { setSummaryText(parseText(it)) }
+        setMachineOffline(o.bool("machineOffline"))
+        o.arr("tasks").forEach { te ->
+            val t = te.jsonObject
+            addTasks(
+                ScheduleSessionStripTaskView.newBuilder()
+                    .setMachineId(t.str("machineId"))
+                    .setTaskId(t.str("taskId"))
+                    .setTitle(t.str("title"))
+                    .setHasUnread(t.bool("hasUnread"))
+                    .setStatus(t.enum("status", ScheduleTaskStatus.SCHEDULE_TASK_STATUS_UNSPECIFIED))
+                    .apply {
+                        t.obj("timingText")?.let { setTimingText(parseText(it)) }
+                        t.obj("nextRunText")?.let { setNextRunText(parseText(it)) }
+                    },
+            )
+        }
     }.build()
 }

@@ -16,6 +16,7 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
+import io.github.lewin671.remoteagent.core.proto.AgentOptionView
 import io.github.lewin671.remoteagent.data.ThemeMode
 import io.github.lewin671.remoteagent.proto.Agent
 import org.junit.Assert.*
@@ -62,8 +63,11 @@ class ScheduleSettingsLayoutTest {
         }
     }
 
+    private fun agentOpt(agent: Agent, name: String) =
+        AgentOptionView.newBuilder().setAgent(agent).setDisplayName(name).build()
+
     @Test fun cliIsACompactSettingThatSwitchesAndDisappearsForOneAgent() {
-        var agents by mutableStateOf(listOf(Agent.AGENT_CODEX, Agent.AGENT_CLAUDE))
+        var agents by mutableStateOf(listOf(agentOpt(Agent.AGENT_CODEX, "Codex"), agentOpt(Agent.AGENT_CLAUDE, "Claude Code")))
         var selected by mutableStateOf(Agent.AGENT_CLAUDE)
         ui.setContent { RaTheme(ThemeMode.LIGHT) {
             Column(Modifier.width(360.dp)) { ScheduleAgentSetting(agents, selected, true) { selected = it } }
@@ -75,7 +79,7 @@ class ScheduleSettingsLayoutTest {
         val label = ui.onNodeWithText("CLI").fetchSemanticsNode().boundsInRoot
         val codex = ui.onNodeWithText("Codex").fetchSemanticsNode().boundsInRoot
         assertTrue(codex.left > label.right)
-        ui.runOnIdle { agents = listOf(Agent.AGENT_CLAUDE) }
+        ui.runOnIdle { agents = listOf(agentOpt(Agent.AGENT_CLAUDE, "Claude Code")) }
         ui.onNodeWithText("CLI").assertDoesNotExist()
         ui.onNodeWithText("Claude Code").assertDoesNotExist()
     }
@@ -83,7 +87,7 @@ class ScheduleSettingsLayoutTest {
     @Test fun frozenCliSettingCannotChangeTheAgent() {
         var selected = Agent.AGENT_CLAUDE
         ui.setContent { RaTheme(ThemeMode.LIGHT) {
-            ScheduleAgentSetting(listOf(Agent.AGENT_CODEX, Agent.AGENT_CLAUDE), selected, false) { selected = it }
+            ScheduleAgentSetting(listOf(agentOpt(Agent.AGENT_CODEX, "Codex"), agentOpt(Agent.AGENT_CLAUDE, "Claude Code")), selected, false) { selected = it }
         } }
         ui.onNodeWithText("Codex").assertIsNotEnabled().performClick()
         assertEquals(Agent.AGENT_CLAUDE, selected)

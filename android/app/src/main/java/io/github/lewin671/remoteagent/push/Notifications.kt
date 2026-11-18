@@ -36,7 +36,6 @@ import io.github.lewin671.remoteagent.RaApp
 import io.github.lewin671.remoteagent.core.ConnState
 import io.github.lewin671.remoteagent.core.Remote
 import io.github.lewin671.remoteagent.core.coreTextToMessageText
-import io.github.lewin671.remoteagent.core.long
 import io.github.lewin671.remoteagent.core.proto.SessionCommandStatus
 import io.github.lewin671.remoteagent.core.proto.SessionDockKind
 import io.github.lewin671.remoteagent.data.Settings
@@ -176,14 +175,17 @@ object Notifier {
     fun id(session: String, approval: String?): Int = (approval ?: session).hashCode()
 
     /** Run records identify the latest event exactly; never infer sequences for earlier notices. */
-    fun dismissScheduled(context: Context, runs: List<io.github.lewin671.remoteagent.core.ScheduledRun>) {
+    fun dismissScheduled(
+        context: Context,
+        runs: List<io.github.lewin671.remoteagent.core.proto.ScheduleNotificationRef>,
+    ) {
         val nm = context.getSystemService(NotificationManager::class.java)
         runs.forEach { run ->
-            val seq = run.json.long("notification_seq")
+            val seq = run.notificationSeq
             // notification_seq belongs to the execution log, not notification_session_id.
-            if (run.notified && run.session.isNotEmpty() && seq > 0) {
+            if (run.sessionId.isNotEmpty() && seq > 0) {
                 val event = "scheduled:$seq"
-                nm.cancel("scheduled/${run.session}/$event", id(run.session, event))
+                nm.cancel("scheduled/${run.sessionId}/$event", id(run.sessionId, event))
             }
         }
     }
