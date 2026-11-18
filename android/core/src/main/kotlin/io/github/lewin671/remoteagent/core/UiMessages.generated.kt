@@ -1476,7 +1476,6 @@ object UiMessages {
     fun sessionForkedFrom(source: String, time: String): UiMessage = UiMessage("session.forked_from", mapOf("source" to source, "time" to time))
     fun sessionForking(): UiMessage = UiMessage("session.forking", emptyMap())
     fun sessionGoTerminal(): UiMessage = UiMessage("session.go_terminal", emptyMap())
-    fun sessionHistoryTailMissing(): UiMessage = UiMessage("session.history_tail_missing", emptyMap())
     fun sessionHistoryUnavailable(count: Int): UiMessage = UiMessage("session.history_unavailable", mapOf("count" to count))
     fun sessionHistoryUnreadable(): UiMessage = UiMessage("session.history_unreadable", emptyMap())
     fun sessionInterrupt(): UiMessage = UiMessage("session.interrupt", emptyMap())

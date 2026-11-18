@@ -1459,9 +1459,9 @@ function ChatBody({
 
   const listFooter = (
     <>
-      {(timeline?.hasGap || fetchError) && (
+      {fetchError && (
         <Banner kind="err" action={onRetryEvents ? t("common.retry") : undefined} onAction={onRetryEvents}>
-          {fetchError || i18n.t("session.history_tail_missing")}
+          {fetchError}
         </Banner>
       )}
       {header?.status === SessionDisplayStatus.STARTING && (

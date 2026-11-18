@@ -1162,7 +1162,6 @@ export interface MessageArgs {
   "session.forked_from": { source: string; time: string };
   "session.forking": { [name: string]: never };
   "session.go_terminal": { [name: string]: never };
-  "session.history_tail_missing": { [name: string]: never };
   "session.history_unavailable": { count: number };
   "session.history_unreadable": { [name: string]: never };
   "session.interrupt": { [name: string]: never };
@@ -3178,7 +3177,6 @@ export const messages = {
     "session.forked_from": "{time}Forked from {source}",
     "session.forking": "Forking…",
     "session.go_terminal": "Go to terminal",
-    "session.history_tail_missing": "Later history has not loaded",
     "session.history_unavailable": {
       "forms": {
         "one": "{count} record before resume could not be read; later readable history is shown normally.",
@@ -5210,7 +5208,6 @@ export const messages = {
     "session.forked_from": "{time} 分叉自{source}",
     "session.forking": "正在分叉…",
     "session.go_terminal": "去终端",
-    "session.history_tail_missing": "后面的记录没读到",
     "session.history_unavailable": {
       "forms": {
         "other": "恢复前有 {count} 条记录不可读；后续可读记录照常显示。"

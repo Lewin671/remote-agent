@@ -1719,7 +1719,6 @@
     <string name="session_forked_from">"%2$sForked from %1$s"</string>
     <string name="session_forking" formatted="false">"Forking…"</string>
     <string name="session_go_terminal" formatted="false">"Go to terminal"</string>
-    <string name="session_history_tail_missing" formatted="false">"Later history has not loaded"</string>
     <plurals name="session_history_unavailable">
         <item quantity="one">"%1$d record before resume could not be read; later readable history is shown normally."</item>
         <item quantity="other">"%1$d records before resume could not be read; later readable history is shown normally."</item>

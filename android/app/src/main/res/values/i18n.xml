@@ -1637,7 +1637,6 @@
     <string name="session_forked_from">"%2$s 分叉自%1$s"</string>
     <string name="session_forking" formatted="false">"正在分叉…"</string>
     <string name="session_go_terminal" formatted="false">"去终端"</string>
-    <string name="session_history_tail_missing" formatted="false">"后面的记录没读到"</string>
     <plurals name="session_history_unavailable">
         <item quantity="other">"恢复前有 %1$d 条记录不可读；后续可读记录照常显示。"</item>
     </plurals>

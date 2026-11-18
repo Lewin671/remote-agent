@@ -1361,7 +1361,6 @@
 "session_forked_from" = "%2$@ 分叉自%1$@";
 "session_forking" = "正在分叉…";
 "session_go_terminal" = "去终端";
-"session_history_tail_missing" = "后面的记录没读到";
 "session_history_unreadable" = "有一条记录读不出来，历史停在这里，后面的内容和状态可能不全";
 "session_interrupt" = "中断";
 "session_interrupt_turn" = "中断本轮";

@@ -4883,9 +4883,6 @@ private fun resolveUiMessage9(resources: android.content.res.Resources, message:
         "session.go_terminal" -> {
             resources.getString(R.string.session_go_terminal)
         }
-        "session.history_tail_missing" -> {
-            resources.getString(R.string.session_history_tail_missing)
-        }
         "session.history_unavailable" -> {
             val count = message.args.getValue("count") as Int
             resources.getQuantityString(R.plurals.session_history_unavailable, count, count)
@@ -4985,15 +4982,15 @@ private fun resolveUiMessage9(resources: android.content.res.Resources, message:
         "session.origin_elsewhere" -> {
             resources.getString(R.string.session_origin_elsewhere)
         }
+        "session.origin_other" -> {
+            resources.getString(R.string.session_origin_other)
+        }
         else -> null
     }
 }
 
 private fun resolveUiMessage10(resources: android.content.res.Resources, message: UiMessage): String? {
     return when (message.key) {
-        "session.origin_other" -> {
-            resources.getString(R.string.session_origin_other)
-        }
         "session.origin_terminal" -> {
             val name = message.args.getValue("name") as String
             resources.getString(R.string.session_origin_terminal, name)
@@ -5475,15 +5472,15 @@ private fun resolveUiMessage10(resources: android.content.res.Resources, message
         "settings.dark" -> {
             resources.getString(R.string.settings_dark)
         }
+        "settings.default" -> {
+            resources.getString(R.string.settings_default)
+        }
         else -> null
     }
 }
 
 private fun resolveUiMessage11(resources: android.content.res.Resources, message: UiMessage): String? {
     return when (message.key) {
-        "settings.default" -> {
-            resources.getString(R.string.settings_default)
-        }
         "settings.details" -> {
             resources.getString(R.string.settings_details)
         }
@@ -5968,15 +5965,15 @@ private fun resolveUiMessage11(resources: android.content.res.Resources, message
             val rows = message.args.getValue("rows") as Int
             resources.getString(R.string.terminal_fitted_size, cols, rows)
         }
+        "terminal.fresh" -> {
+            resources.getString(R.string.terminal_fresh)
+        }
         else -> null
     }
 }
 
 private fun resolveUiMessage12(resources: android.content.res.Resources, message: UiMessage): String? {
     return when (message.key) {
-        "terminal.fresh" -> {
-            resources.getString(R.string.terminal_fresh)
-        }
         "terminal.fresh_live" -> {
             resources.getString(R.string.terminal_fresh_live)
         }

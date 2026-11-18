@@ -822,22 +822,6 @@
     "zh-CN": "去终端"
   },
   {
-    "en": "Later history has not loaded",
-    "key": "session.history_tail_missing",
-    "notes": "会话页的可视状态、历史提示或操作标签。说明/反馈正文，允许多行。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
-    "params": {},
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "en": "draft",
-      "zh-CN": "source"
-    },
-    "zh-CN": "后面的记录没读到"
-  },
-  {
     "en": {
       "forms": {
         "one": "{count} record before resume could not be read; later readable history is shown normally.",

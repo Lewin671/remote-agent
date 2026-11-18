@@ -1361,7 +1361,6 @@
 "session_forked_from" = "%2$@Forked from %1$@";
 "session_forking" = "Forking…";
 "session_go_terminal" = "Go to terminal";
-"session_history_tail_missing" = "Later history has not loaded";
 "session_history_unreadable" = "A record could not be read. History stops here; later content and status may be incomplete.";
 "session_interrupt" = "Interrupt";
 "session_interrupt_turn" = "Interrupt turn";

@@ -5813,10 +5813,6 @@ public enum L10n {
         let key = "session_go_terminal"
         return format(key, locale: locale, args: [])
     }
-    public static func sessionHistoryTailMissing(locale: String = MessageLocale.current) -> String {
-        let key = "session_history_tail_missing"
-        return format(key, locale: locale, args: [])
-    }
     public static func sessionHistoryUnavailable(count: Int, locale: String = MessageLocale.current) -> String {
         let key = "session_history_unavailable"
         return format(key, locale: locale, args: [Int64(count)])
@@ -13281,10 +13277,6 @@ public enum L10nMessage {
         let key = "session_go_terminal"
         return LocalizedMessage(key: key, arguments: [])
     }
-    public static func sessionHistoryTailMissing() -> LocalizedMessage {
-        let key = "session_history_tail_missing"
-        return LocalizedMessage(key: key, arguments: [])
-    }
     public static func sessionHistoryUnavailable(count: Int) -> LocalizedMessage {
         let key = "session_history_unavailable"
         return LocalizedMessage(key: key, arguments: [.integer(Int64(count))])
@@ -16516,7 +16508,6 @@ public enum L10nText {
         case "session.forked_from": return L10n.format("session_forked_from", locale: locale, args: [strArg(args["source"]), strArg(args["time"])])
         case "session.forking": return L10n.format("session_forking", locale: locale, args: [])
         case "session.go_terminal": return L10n.format("session_go_terminal", locale: locale, args: [])
-        case "session.history_tail_missing": return L10n.format("session_history_tail_missing", locale: locale, args: [])
         case "session.history_unavailable": return L10n.format("session_history_unavailable", locale: locale, args: [intArg(args["count"])])
         case "session.history_unreadable": return L10n.format("session_history_unreadable", locale: locale, args: [])
         case "session.interrupt": return L10n.format("session_interrupt", locale: locale, args: [])
@@ -16566,12 +16557,12 @@ public enum L10nText {
         case "session.offline_note": return L10n.format("session_offline_note", locale: locale, args: [strArg(args["lastSeen"])])
         case "session.offline_resume": return L10n.format("session_offline_resume", locale: locale, args: [strArg(args["name"])])
         case "session.only_current": return L10n.format("session_only_current", locale: locale, args: [])
+        case "session.origin_elsewhere": return L10n.format("session_origin_elsewhere", locale: locale, args: [])
         default: return nil
         }
     }
     private static func resolve10(_ key: String, args: [String: L10nTextValue], locale: String) -> String? {
         switch key {
-        case "session.origin_elsewhere": return L10n.format("session_origin_elsewhere", locale: locale, args: [])
         case "session.origin_other": return L10n.format("session_origin_other", locale: locale, args: [])
         case "session.origin_terminal": return L10n.format("session_origin_terminal", locale: locale, args: [strArg(args["name"])])
         case "session.other_session": return L10n.format("session_other_session", locale: locale, args: [])
@@ -16721,12 +16712,12 @@ public enum L10nText {
         case "settings.notifications_on_this_client": return L10n.format("settings_notifications_on_this_client", locale: locale, args: [])
         case "settings.now": return L10n.format("settings_now", locale: locale, args: [])
         case "settings.offline": return L10n.format("settings_offline", locale: locale, args: [])
+        case "settings.on_iphone_add_to_home_screen_and_open_from": return L10n.format("settings_on_iphone_add_to_home_screen_and_open_from", locale: locale, args: [])
         default: return nil
         }
     }
     private static func resolve11(_ key: String, args: [String: L10nTextValue], locale: String) -> String? {
         switch key {
-        case "settings.on_iphone_add_to_home_screen_and_open_from": return L10n.format("settings_on_iphone_add_to_home_screen_and_open_from", locale: locale, args: [])
         case "settings.paired_client": return L10n.format("settings_paired_client", locale: locale, args: [])
         case "settings.preview_cache": return L10n.format("settings_preview_cache", locale: locale, args: [])
         case "settings.read_error": return L10n.format("settings_read_error", locale: locale, args: [strArg(args["reason"])])
@@ -16876,12 +16867,12 @@ public enum L10nText {
         case "time.just_now": return L10n.format("time_just_now", locale: locale, args: [])
         case "time.minutes_ago": return L10n.format("time_minutes_ago", locale: locale, args: [intArg(args["count"])])
         case "time.month_day": return L10n.format("time_month_day", locale: locale, args: [intArg(args["day"]), intArg(args["month"])])
+        case "time.month_group": return L10n.format("time_month_group", locale: locale, args: [intArg(args["month"])])
         default: return nil
         }
     }
     private static func resolve12(_ key: String, args: [String: L10nTextValue], locale: String) -> String? {
         switch key {
-        case "time.month_group": return L10n.format("time_month_group", locale: locale, args: [intArg(args["month"])])
         case "time.today": return L10n.format("time_today", locale: locale, args: [])
         case "time.tomorrow": return L10n.format("time_tomorrow", locale: locale, args: [])
         case "time.used_time": return L10n.format("time_used_time", locale: locale, args: [strArg(args["time"])])
