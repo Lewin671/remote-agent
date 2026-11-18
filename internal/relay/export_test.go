@@ -81,3 +81,7 @@ func SetSchedulerClockForTest(r *Relay, now func() time.Time, after func(time.Du
 	r.schedulerNow = now
 	r.schedulerAfter = after
 }
+func DirectFreshForTest(r *Relay) bool {
+	s := r.security.Load()
+	return s != nil && s.directFresh.Load() != nil
+}

@@ -48,6 +48,7 @@ func (r *Relay) newDispatcher(ctx context.Context, acct *Account, recovering boo
 	}
 	security.lifetime = maintenance
 	security.credentials = securityCredentials
+	r.security.Store(security)
 	d := &dispatcher{ctx: ctx, cancel: cancel, security: security, acct: acct, maintenance: maintenance, stopMaintenance: stopMaintenance}
 	d.link = transport.NewLink(ctx)
 	if recovering {

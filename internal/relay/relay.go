@@ -68,6 +68,7 @@ type Relay struct {
 
 	observeApproval func(acquired bool, wait time.Duration)
 	scheduling      atomic.Pointer[transport.Scheduler]
+	security        atomic.Pointer[securitySession]
 	observeRecovery func(recoveryEvent)
 	recoveryBudget  *transport.Budget
 	readyCount      atomic.Uint64

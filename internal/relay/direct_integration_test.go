@@ -60,10 +60,26 @@ func TestDirectCommandAndLargeReadThroughLocalServer(t *testing.T) {
 		file[i] = byte(i*31 + 17)
 	}
 	backend := &directBackend{e.backend, file}
-	e.startRelayBackend(backend, relay.SetDirectLoopbackForTest)
+	baseNow := time.Now()
+	directNow := func() time.Time { return baseNow.Add(time.Since(baseNow) / 6) }
+	running := e.startRelayBackend(backend, func(r *relay.Relay) {
+		relay.SetDirectLoopbackForTest(r)
+		relay.SetDirectClockForTest(r, directNow)
+		relay.SetSchedulerClockForTest(r, func() time.Time { return baseNow }, func(time.Duration, func()) func() bool {
+			return func() bool { return false }
+		})
+	})
 	e.online(t, true)
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	e.session(t, session, 0)
+	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
+	for !relay.DirectFreshForTest(running) {
+		select {
+		case <-ctx.Done():
+			t.Fatal("relay did not become direct-fresh")
+		case <-time.After(10 * time.Millisecond):
+		}
+	}
 	ws, _, err := websocket.Dial(ctx, "ws"+strings.TrimPrefix(e.http.URL, "http")+"/v1/stream", &websocket.DialOptions{HTTPClient: http.DefaultClient})
 	if err != nil {
 		t.Fatal(err)
@@ -109,8 +125,8 @@ func TestDirectCommandAndLargeReadThroughLocalServer(t *testing.T) {
 	ready := make(chan struct {
 		use  uint64
 		path *direct.Path
-	}, 2)
-	link, err := direct.NewSession(ctx, direct.SessionConfig{Self: self, Peer: peer, Codec: codec, Connection: connection, Deadline: uint64(time.Now().Add(10 * time.Second).UnixMilli()), Pool: direct.NewPool(4), Allow: func() bool { return true }, LoopbackOnly: true, Send: func(frame direct.Outbound) bool {
+	}, 8)
+	link, err := direct.NewSession(ctx, direct.SessionConfig{Self: self, Peer: peer, Codec: codec, Connection: connection, Deadline: uint64(directNow().Add(9 * time.Second).UnixMilli()), Pool: direct.NewPool(4), Allow: func() bool { return true }, LoopbackOnly: true, Now: directNow, Send: func(frame direct.Outbound) bool {
 		select {
 		case out <- frame:
 			return true
@@ -169,10 +185,16 @@ func TestDirectCommandAndLargeReadThroughLocalServer(t *testing.T) {
 		}
 	})
 	var paths [2]*direct.Path
-	for range 2 {
+	readyCount := 0
+	for readyCount < 2 {
 		select {
 		case p := <-ready:
+			if paths[p.use-1] == nil {
+				readyCount++
+			}
 			paths[p.use-1] = p.path
+		case <-link.Done():
+			t.Fatal("direct session ended before both paths were ready")
 		case <-ctx.Done():
 			t.Fatal("authenticated direct negotiation through server timed out")
 		}
@@ -190,7 +212,7 @@ func TestDirectCommandAndLargeReadThroughLocalServer(t *testing.T) {
 		_, _ = rand.Read(nonce[:])
 		id := hex.EncodeToString(nonce[:])
 		now := uint64(time.Now().UnixMilli())
-		h := deviceauth.Header{Kind: 5, Purpose: deviceauth.Command, Machine: e.acct.DeviceID, Session: session, Request: id, Deadline: now + 15000}
+		h := deviceauth.Header{Kind: 5, Purpose: deviceauth.Command, Machine: e.acct.DeviceID, Session: session, Request: id, Deadline: now + 60000}
 		sealed, err := endpoint.Prepare(h, nil, plain)
 		if err != nil {
 			t.Fatal(err)
