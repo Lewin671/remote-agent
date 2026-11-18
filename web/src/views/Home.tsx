@@ -498,7 +498,9 @@ export function SidebarView(p: {
               ))}
             </>
           )}
-          {!vm.filterQuery && vm.attention.length === 0 && vm.running.length === 0 && vm.endedGroups.length === 0 && vm.empty?.message && <div className="home-note">{renderText(vm.empty.message)}</div>}
+          {!vm.filterQuery && vm.attention.length === 0 && vm.running.length === 0 && vm.endedGroups.length === 0 && vm.empty?.message && (
+            <div className={vm.empty.kind === HomeEmptyKind.NONE ? "home-note late" : "home-note"}>{renderText(vm.empty.message)}</div>
+          )}
           <EndedGroups groups={vm.endedGroups} onOpenSession={p.onSelectSession} />
           <TailRow tail={vm.endedTail} onLoadMore={p.onLoadMoreEnded} onRetry={p.onRetryLoad} />
         </div>
@@ -577,8 +579,8 @@ export function WideHome({ remote, go, project }: { remote: Remote; go: Go; proj
     if (draftKey && (scopedProject || (!newVm.drafting && !hiddenNotice?.active))) setDraftKey("");
   }, [draftKey, scopedProject, newVm.drafting, hiddenNotice?.active]);
 
-  if (!remote.listed) {
-    return <div className="page wnew"><div className="wstart">{remote.listError ? <ListError remote={remote} /> : <Skeleton />}</div></div>;
+  if (!remote.listed && !homeVm.canStart && remote.machines.size === 0) {
+    return <div className="page wnew"><div className="wstart">{remote.listError ? <ListError remote={remote} /> : <div className="late"><Skeleton /></div>}</div></div>;
   }
   if (!homeVm.canStart) {
     return (

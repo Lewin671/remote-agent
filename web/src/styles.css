@@ -133,7 +133,7 @@ h1, h2, h3 { font-weight: var(--w7); }
 .warn-text { color: var(--orange-ink); }
 .center { display: flex; align-items: center; justify-content: center; flex: 1; height: 100%; padding: 24px; text-align: center; }
 /* Shown only when it has lasted: a quick load does not flash its words. */
-.center.late { animation: late-in 0s .4s both; }
+.center.late, .late, .home-note[data-late], [data-late] { animation: late-in 0s .35s both; }
 @keyframes late-in { from { visibility: hidden; } to { visibility: visible; } }
 .gone { display: flex; flex-direction: column; max-width: 340px; }
 .gone p { margin: 8px 0 20px; color: var(--ink2); }
@@ -1662,6 +1662,13 @@ html .mo-leave > .sheet { animation: mo-sheet-out var(--m-slow-out) var(--ease-i
 html .mo-leave:has(> .dialog) > .dim { animation-duration: var(--m-base-out); }
 html .mo-leave > .dialog { animation: mo-pop-out var(--m-base-out) var(--ease-in) forwards; }
 html .mo-leave.mo-ghost.pop { animation: mo-fade-out var(--m-base-out) var(--ease-in) forwards; }
+.composer-picker.mo-in { transform-origin: bottom center; animation: mo-pop-in var(--m-fast) var(--ease-out) backwards; }
+html .mo-leave.mo-ghost.composer-picker { transform-origin: bottom center; animation: mo-pop-out var(--m-fast-out) var(--ease-in) forwards; }
+@keyframes mo-page-fwd { from { opacity: 0; translate: var(--m-dy-lg) 0; } }
+@keyframes mo-page-back { from { opacity: 0; translate: calc(-1 * var(--m-dy-lg)) 0; } }
+.phone-stage { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.phone-stage.mo-page-fwd { animation: mo-page-fwd var(--m-base) var(--ease-out) backwards; }
+.phone-stage.mo-page-back { animation: mo-page-back var(--m-base) var(--ease-out) backwards; }
 @media (min-width: 900px) { html .mo-leave > .sheet { animation: mo-fade-out var(--m-base-out) var(--ease-in) forwards; } }
 
 /* Content that changes in place: the new on top of the old in one cell. */

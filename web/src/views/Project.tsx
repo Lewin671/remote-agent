@@ -68,7 +68,7 @@ export function ProjectPage({
           go={go}
           onClose={() => setPicking(false)}
           onPicked={(key) => {
-            if (key === pkey) return;
+            if (key === pkey) { setPicking(false); return; }
             // Another project's sheet takes this one's place: closing it still goes back.
             remote.focusProject = key;
             location.replace("#/p/" + encodeURIComponent(key));

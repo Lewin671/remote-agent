@@ -305,3 +305,27 @@ test("CoreHost honors fake timers for clock ticks and cleans up on dispose witho
   // Advancing further after dispose must not throw or run stray work.
   await vi.advanceTimersByTimeAsync(120_000);
 });
+
+test("warmLocalCache hydrates bootstrap cache before start without re-reading IndexedDB on start", async () => {
+  const exec = makeExecutor();
+  let bootReads = 0;
+  exec.readBootstrapCache = async (opId) => {
+    bootReads++;
+    return create(CacheBootstrapLoadedEventSchema, {
+      opId,
+      homeScopeToken: "all",
+      scopeHmacKey: new Uint8Array(32).fill(7),
+      machines: [{ machineId: "m-cached", online: true }],
+    });
+  };
+  const host = new CoreHost(undefined, { executor: exec });
+  hosts.push(host);
+
+  await host.warmLocalCache("settings");
+  expect(host.viewSyncState().machines.map((m) => m.machineId)).toEqual(["m-cached"]);
+  expect(bootReads).toBe(1);
+
+  host.start();
+  await Promise.resolve();
+  expect(bootReads).toBe(1);
+});

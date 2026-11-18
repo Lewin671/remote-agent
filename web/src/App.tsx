@@ -18,7 +18,7 @@ import { bindNetworkChanges, stableNetworkSignature, type NetworkConnection } fr
 import { loadAccount, type StoredAccount, watchAccountLogout } from "./storage";
 import { securitySetupStatus } from "./device-security-store";
 import { guardUpdateInput } from "./update";
-import { page } from "./views/pages";
+import { page, preloadRoute } from "./views/pages";
 
 // Authenticated views are fetched only after a local identity has loaded.
 const loadWorkspace = () => import("./Workspace");
@@ -106,14 +106,20 @@ export function App() {
           return;
         }
       }
-      // Read the sealed snapshot while the workspace downloads. Rendering the
-      // resolved component avoids a second, minimum-duration Suspense fallback.
+      // Read the sealed snapshot while the workspace and current route chunk download.
+      const initialRoute = location.hash.replace(/^#\/?/, "");
+      const hasWorkspace = Boolean(account || demo);
       const [, loaded, workspace] = await Promise.all([
         corePromise,
         loadRemote(),
-        account || demo ? loadWorkspace().catch(() => undefined) : undefined,
+        hasWorkspace ? loadWorkspace().catch(() => undefined) : undefined,
+        hasWorkspace ? preloadRoute(initialRoute).catch(() => undefined) : undefined,
       ]);
       if (!active()) return;
+      if (loaded) {
+        await getCoreHost(loaded).warmLocalCache(initialRoute);
+        if (!active()) return;
+      }
       setRetained(undefined);
       setWorkspace(workspace);
       setRemote(loaded ?? null);

@@ -1,7 +1,7 @@
 import { t } from "../i18n";
 // Starting sessions backed by clientcore's NewSessionViewModel.
 
-import { Fragment, useEffect, useRef, useState, type ComponentProps, type ReactNode } from "react";
+import { Fragment, useEffect, useLayoutEffect, useRef, useState, type ComponentProps, type ReactNode } from "react";
 import { AgentMark } from "../agent-mark";
 import { useCoreHost, useNewSessionView, useProjectView, type Go, type StartTraySnapshot } from "../core/host";
 import { renderText } from "../core/text";
@@ -374,7 +374,7 @@ export function NewBox({ remote, projectKey, go, autoFocus, variant = "sheet", f
   const vm = useNewSessionView(host, projectKey);
   const activeKey = vm.projectKey || projectKey;
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     host.newSessionOpen(projectKey);
     const draftMachine = projectKey ? remote.draftMachines.get(projectKey) : undefined;
     if (draftMachine) host.newSessionSelectMachine(draftMachine);
@@ -452,7 +452,6 @@ export function NewFlow({ remote, go, onClose, onPicked, start }: { remote: Remo
   }, [host, step]);
 
   const open = (key: string) => {
-    onClose();
     if (onPicked) { onPicked(key); return; }
     remote.focusProject = key;
     go("p/" + encodeURIComponent(key));

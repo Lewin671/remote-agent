@@ -1,5 +1,5 @@
 import * as l10n from "../i18n";
-import { lazy, type ComponentType } from "react";
+import { createElement, lazy, type ComponentProps, type ComponentType } from "react";
 import { chunkMissing } from "../chunks";
 
 // The pages that are not the home or a chat, each fetched when first opened
@@ -25,15 +25,29 @@ function Gone() {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function page<C extends ComponentType<any>>(load: () => Promise<{ default: C }>) {
-  return lazy(async () => {
-    try {
-      return await load();
-    } catch {
-      // Starting over replaces everything: until then, nothing to show.
-      if (await chunkMissing(true)) return new Promise<{ default: C }>(() => undefined);
-      return { default: Gone as unknown as C };
-    }
-  });
+  let cached: C | undefined;
+  let pending: Promise<{ default: C }> | undefined;
+  const resolve = () =>
+    (pending ??= Promise.resolve()
+      .then(load)
+      .then(
+        (m) => {
+          cached = m.default;
+          return m;
+        },
+        async () => {
+          // Starting over replaces everything: until then, nothing to show.
+          if (await chunkMissing(true)) return new Promise<{ default: C }>(() => undefined);
+          const gone = Gone as unknown as C;
+          cached = gone;
+          return { default: gone };
+        },
+      ));
+  const Lazy = lazy(resolve);
+  function Wrapper(props: ComponentProps<C>) {
+    return cached ? createElement(cached, props) : createElement(Lazy, props);
+  }
+  return Object.assign(Wrapper, { preload: resolve });
 }
 
 const settings = () => import("./Settings");
@@ -67,3 +81,22 @@ export const ScheduleStrip = page(() => schedules().then((m) => ({ default: m.Sc
 
 /** What to fetch ahead: the pages people go to most. */
 export const pagesAhead = [settings, schedules, security];
+
+/** Resolves the lazy chunk matching the current hash route before Workspace mounts
+ * so a refresh on a sub-route renders the real page on frame 1 without flashing fallback. */
+export function preloadRoute(route: string): Promise<void> {
+  const [kind, sub] = route.split("/");
+  const tasks: Array<Promise<unknown>> = [];
+  if (kind === "tasks") {
+    tasks.push(SchedulesPage.preload(), ScheduleDetail.preload(), ScheduleCreate.preload(), ScheduleStrip.preload());
+  } else if (kind === "settings" && sub === "rejoin") {
+    tasks.push(import("./Pairing"));
+  } else if (kind === "settings" && (sub === "security" || sub === "add-device")) {
+    tasks.push(SecurityPage.preload(), PairCodePage.preload());
+  } else if (kind === "settings" || kind === "devices" || kind === "q" || kind === "c" || kind === "m") {
+    tasks.push(SettingsPage.preload(), DevicesPage.preload(), QuotaPage.preload(), ClientPage.preload(), MachinePage.preload());
+  } else if (kind === "machine-status") {
+    tasks.push(MachineStatusPage.preload());
+  }
+  return tasks.length > 0 ? Promise.all(tasks).then(() => undefined) : Promise.resolve();
+}

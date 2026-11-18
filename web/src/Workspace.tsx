@@ -1,7 +1,6 @@
 import * as l10n from "./i18n";
-import { lazy, startTransition, Suspense, useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { startTransition, Suspense, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import type { Remote } from "./remote";
-import { Startup } from "./Startup";
 import { useRemote } from "./ui";
 import { BottomBar, Home, Sidebar, WideHome, type Go } from "./views/Home";
 import { ProjectPage } from "./views/Project";
@@ -9,13 +8,28 @@ import { ManagePage } from "./views/Projects";
 import { SessionPage } from "./views/Session";
 import {
   ClientPage, DevicesPage, MachinePage, MachineStatusPage, PairCodePage, QuotaPage, RemovedScreen,
-  ScheduleCreate, ScheduleDetail, SchedulesPage, SecurityPage, SettingsPage, inOwnFile,
+  ScheduleCreate, ScheduleDetail, SchedulesPage, SecurityPage, SettingsPage, inOwnFile, page,
 } from "./views/pages";
 import { routeForTask, useCoreHost, useSchedulesView } from "./core/host";
 import { Plus } from "./icons";
 
-const Setup = lazy(() => import("./views/Pairing").then(m => ({ default: m.Setup })));
-const loading = <Startup />;
+const Setup = page(() => import("./views/Pairing").then(m => ({ default: m.Setup })));
+const loading = <div className="page" aria-hidden="true" />;
+
+function routeDepth(r: string): number {
+  const [k, sub, sub2] = r.split("/");
+  if (!k || (k === "tasks" && !sub)) return 0;
+  if (k === "settings" && !sub) return 1;
+  if (k === "projects" || k === "s" || k === "p") return 1;
+  if (k === "tasks") return sub2 || sub === "new" ? 1 : 0;
+  if (k === "devices" || k === "settings") return 2;
+  return 3;
+}
+
+function isTabOrSheet(r: string): boolean {
+  const [k, sub] = r.split("/");
+  return !k || k === "p" || (k === "tasks" && (!sub || sub === "new"));
+}
 
 /** Routes live in the hash: #/, #/p/<project>, #/s/<session>, #/settings,
  * #/m/<machine>. */
@@ -89,6 +103,21 @@ export default function Workspace({ remote }: { remote: Remote }) {
   }, [host, kind, wide, rest[0], rest[1]]);
   const back = () => (history.length > 1 ? history.back() : go(""));
   const main = useMainScrolled(route, wide);
+  const prevRouteRef = useRef(route);
+  const navDirRef = useRef("" as "" | "fwd" | "back");
+  if (prevRouteRef.current !== route) {
+    const prev = prevRouteRef.current;
+    prevRouteRef.current = route;
+    if (isTabOrSheet(prev) && isTabOrSheet(route) && routeDepth(route) === 0 && routeDepth(prev) === 0) {
+      navDirRef.current = "";
+    } else if (route.startsWith("p/") || route.startsWith("tasks/new")) {
+      navDirRef.current = "";
+    } else if (prev.startsWith("p/") || prev.startsWith("tasks/new")) {
+      navDirRef.current = "back";
+    } else {
+      navDirRef.current = routeDepth(route) >= routeDepth(prev) ? "fwd" : "back";
+    }
+  }
   if (remote.removed) return <Suspense fallback={loading}><RemovedScreen remote={remote} /></Suspense>;
 
   let page;
@@ -167,9 +196,14 @@ export default function Workspace({ remote }: { remote: Remote }) {
     );
   // The home draws its own bottom row; the task list gets the same one,
   // with 新定时 on the right.
+  const navDir = navDirRef.current;
+  const stageClass = navDir ? `phone-stage mo-page-${navDir}` : "phone-stage";
+  const stageKey = kind === "" || (kind === "tasks" && !arg) ? `tab-${kind}` : route;
   return (
     <div className="phone">
-      <Suspense fallback={loading}>{page}</Suspense>
+      <div key={stageKey} className={stageClass}>
+        <Suspense fallback={loading}>{page}</Suspense>
+      </div>
       {kind === "tasks" && !arg && (
         <BottomBar remote={remote} go={go} active="tasks" action={{ label: l10n.t("home.new_schedule"), icon: <Plus />, onClick: () => go("tasks/new"), disabled: !scheduling }} />
       )}

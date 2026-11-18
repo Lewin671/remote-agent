@@ -513,6 +513,9 @@ export class CoreHost {
     taken: TrayItem[];
   };
   private lastProjectPrefEvent?: Event;
+  private bootstrapped = false;
+  private preloadedBootstrap?: CacheBootstrapLoadedEvent;
+  private readonly scheduleCacheReads = new Map<bigint, Promise<void>>();
 
   constructor(remote?: Remote, opts: CoreHostOptions = {}) {
     this.core = getCore().newAppCore();
@@ -582,6 +585,47 @@ export class CoreHost {
   }
 
   // --- Lifecycle & Sync triggers ---
+
+  /** Reads IndexedDB bootstrap (and schedule cache on task routes) before first render
+   * so sub-route refreshes never flash empty or missing-device states. */
+  async warmLocalCache(route: string): Promise<void> {
+    if (this.closed || !this.executor) return;
+    if (!this.bootstrapped) {
+      try {
+        const boot = await Promise.race([
+          this.executor.readBootstrapCache(0n),
+          new Promise<undefined>((r) => setTimeout(() => r(undefined), 150)),
+        ]);
+        if (this.closed) return;
+        if (boot && !this.bootstrapped) {
+          this.preloadedBootstrap = boot;
+          this.emit({ case: "cacheBootstrapLoaded", value: boot });
+        }
+      } catch {
+        // Live sync will hydrate when connectivity starts.
+      }
+    }
+    const [kind, ...rest] = route.split("/");
+    if (kind === "tasks") {
+      this.scheduleListOpen(true);
+      const [mid, tid] = rest.map((part) => {
+        try {
+          return decodeURIComponent(part);
+        } catch {
+          return part;
+        }
+      });
+      if (mid && tid && mid !== "new") {
+        this.scheduleDetailOpen(mid, tid);
+      }
+      if (this.scheduleCacheReads.size > 0) {
+        await Promise.race([
+          Promise.all([...this.scheduleCacheReads.values()]),
+          new Promise<void>((r) => setTimeout(r, 120)),
+        ]);
+      }
+    }
+  }
 
   start() {
     if (this.closed || this.started) return;
@@ -1366,6 +1410,9 @@ export class CoreHost {
     if (ev.nowMs === 0n) ev.nowMs = BigInt(Date.now());
     if (ev.monoMs === 0n) ev.monoMs = BigInt(Math.max(0, Math.floor(performance.now())));
 
+    if (ev.event.case === "cacheBootstrapLoaded") {
+      this.bootstrapped = true;
+    }
     if (ev.event.case === "newSessionSubmit") {
       ev = this.enrichNewSessionSubmit(ev);
     }
@@ -1510,12 +1557,15 @@ export class CoreHost {
         const kind = val.value.kind;
         if (kind.case === "bootstrap") {
           const opId = kind.value.opId;
-          void this.cacheWriteQueue
-            .then(() => this.executor?.readBootstrapCache(opId))
-            .then(
-              (value) => !this.closed && value && this.emit({ case: "cacheBootstrapLoaded", value }),
-              (err) => !this.closed && this.emit({ case: "cacheBootstrapLoaded", value: create(CacheBootstrapLoadedEventSchema, { opId, error: errorMessage(err) }) }),
-            );
+          const boot = this.preloadedBootstrap;
+          this.preloadedBootstrap = undefined;
+          const read = boot
+            ? Promise.resolve(create(CacheBootstrapLoadedEventSchema, { ...boot, opId }))
+            : this.cacheWriteQueue.then(() => this.executor?.readBootstrapCache(opId));
+          void read.then(
+            (value) => !this.closed && value && this.emit({ case: "cacheBootstrapLoaded", value }),
+            (err) => !this.closed && this.emit({ case: "cacheBootstrapLoaded", value: create(CacheBootstrapLoadedEventSchema, { opId, error: errorMessage(err) }) }),
+          );
         } else if (kind.case === "events") {
           const { opId, sessionId, newest, afterSeq, limit } = kind.value;
           void this.cacheWriteQueue
@@ -1631,15 +1681,25 @@ export class CoreHost {
       case "scheduleReadCache": {
         const { opId, machineId } = val.value;
         if (this.executor?.readScheduleCache) {
-          void this.executor.readScheduleCache(opId, machineId).then(
-            (value) => !this.closed && this.emit({ case: "scheduleCacheLoaded", value }),
-            (err) =>
-              !this.closed &&
-              this.emit({
-                case: "scheduleCacheLoaded",
-                value: create(ScheduleCacheLoadedEventSchema, { opId, machineId, error: errorMessage(err) }),
-              }),
-          );
+          const p = this.executor
+            .readScheduleCache(opId, machineId)
+            .then(
+              (value) => {
+                if (!this.closed) this.emit({ case: "scheduleCacheLoaded", value });
+              },
+              (err) => {
+                if (!this.closed) {
+                  this.emit({
+                    case: "scheduleCacheLoaded",
+                    value: create(ScheduleCacheLoadedEventSchema, { opId, machineId, error: errorMessage(err) }),
+                  });
+                }
+              },
+            )
+            .finally(() => {
+              this.scheduleCacheReads.delete(opId);
+            });
+          this.scheduleCacheReads.set(opId, p);
         } else {
           this.pendingEvents.push({
             ev: create(EventSchema, {

@@ -721,6 +721,9 @@ func BuildSchedules(st *State, endedLimit int) *corev1.SchedulesViewModel {
 	}
 
 	var loading bool
+	if !st.World.MachinesListed && len(st.World.Machines) == 0 && st.World.Connection != lists.ConnOffline && st.World.Connection != lists.ConnNoNetwork {
+		loading = true
+	}
 	var machineErrors []*corev1.ScheduleMachineErrorView
 	var anySupported bool
 	var canCreate bool
@@ -736,10 +739,11 @@ func BuildSchedules(st *State, endedLimit int) *corev1.SchedulesViewModel {
 			continue
 		}
 		anySupported = true
-		if snap := ss.Machines[m.ID]; snap != nil {
-			if snap.Loading {
-				loading = true
-			}
+		snap := ss.Machines[m.ID]
+		if snap == nil || snap.Loading || (snap.CacheReading && !snap.HasFetchedOnce && !snap.Live && len(snap.Tasks) == 0) {
+			loading = true
+		}
+		if snap != nil {
 			if !text.IsEmpty(snap.ErrorText) || snap.Error != "" {
 				machineErrors = append(machineErrors, &corev1.ScheduleMachineErrorView{
 					MachineId:   m.ID,
@@ -906,6 +910,9 @@ func BuildScheduleDetail(st *State, machineID, taskID string, earlierLimit int) 
 	}
 
 	if task == nil {
+		stillLoading := (!st.World.MachinesListed && mac == nil && st.World.Connection != lists.ConnOffline && st.World.Connection != lists.ConnNoNetwork) ||
+			(mac != nil && supported && snap == nil) ||
+			(snap != nil && (snap.Loading || (snap.CacheReading && !snap.HasFetchedOnce && !snap.Live)))
 		var notFound *corev1.Text
 		switch {
 		case snap != nil && (!text.IsEmpty(snap.ErrorText) || snap.Error != ""):
@@ -914,14 +921,14 @@ func BuildScheduleDetail(st *State, machineID, taskID string, earlierLimit int) 
 			} else {
 				notFound = text.Plain(snap.Error)
 			}
-		case snap != nil && snap.Loading:
+		case stillLoading:
 			notFound = text.Msg(text.KeyScheduleReadingTasks)
 		default:
 			notFound = text.Msg(text.KeyScheduleThisTaskCouldNotBeFoundIfTheComputer)
 		}
 		return &corev1.ScheduleDetailViewModel{
 			Found:            false,
-			Loading:          snap != nil && snap.Loading,
+			Loading:          stillLoading && (snap == nil || (text.IsEmpty(snap.ErrorText) && snap.Error == "")),
 			NotFoundText:     notFound,
 			MachineId:        machineID,
 			TaskId:           taskID,

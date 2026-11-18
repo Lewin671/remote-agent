@@ -525,7 +525,7 @@ export function SessionScreenView({
   const statusText = pending ? t("common.loading") : renderText(header?.statusText);
   const sub = (
     <>
-      {statusText}
+      {pending ? <span data-late="1">{statusText}</span> : statusText}
       {modeTail}
     </>
   );

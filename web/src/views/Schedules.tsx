@@ -258,7 +258,7 @@ export function SchedulesListView({ vm, sidebar = false, selected, actions }: {
       ))}
       {!vm.anyMachineSupported && vm.unsupportedNotice && <Banner kind="warn">{renderText(vm.unsupportedNotice)}</Banner>}
       {vm.offlineNotice && <Banner kind="warn">{renderText(vm.offlineNotice)}</Banner>}
-      {vm.loading && <p className="home-note"><LoaderCircle className="spin" />{t("schedule.reading_tasks")}</p>}
+      {vm.loading && <p className="home-note" data-late="1"><LoaderCircle className="spin" />{t("schedule.reading_tasks")}</p>}
       {vm.showEmptyHint && vm.emptyHint && <p className="home-note">{renderText(vm.emptyHint)}</p>}
       {vm.attention.length > 0 && <section className="schedule-group attention-group">{renderRows(vm.attention, "card")}</section>}
       {vm.fresh.length > 0 && (
@@ -289,7 +289,10 @@ export function SchedulesListView({ vm, sidebar = false, selected, actions }: {
   );
 
   const connected = vm.connection?.state === ConnState.CONNECTED;
-  const title = (connected && renderText(vm.headline?.title)) || t("home.schedules_tab");
+  const title = (() => {
+    const emptyLoading = vm.loading && vm.attention.length === 0 && vm.fresh.length === 0 && vm.others.length === 0 && vm.ended.length === 0;
+    return (!emptyLoading && connected && renderText(vm.headline?.title)) || t("home.schedules_tab");
+  })();
   const subTitle = connected ? renderText(vm.headline?.sub) : "";
   if (sidebar) return <><h1 className="whl">{title}</h1>{subTitle && <div className="wsub">{subTitle}</div>}<div className="scroll schedule-sidebar">{list}</div></>;
   return (
@@ -769,7 +772,7 @@ export function ScheduleDetailView({ vm, actions }: { vm: ScheduleDetailViewMode
     return (
       <div className="page schedules-page schedule-detail">
         <NavBar title={t("queue.android_scheduled")} onBack={actions.onBack} />
-        <div className="body schedule-body"><p className="home-note"><LoaderCircle className="spin" />{t("schedule.reading_tasks")}</p></div>
+        <div className="body schedule-body"><p className="home-note" data-late="1"><LoaderCircle className="spin" />{t("schedule.reading_tasks")}</p></div>
       </div>
     );
   }

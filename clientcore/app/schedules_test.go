@@ -801,3 +801,49 @@ func TestScheduleEditTargetSelectProjectKeepsLockedMachine(t *testing.T) {
 		t.Fatalf("expected locked machine m-1 and project /Users/me/other, got machine=%q project=%q", updated.MachineId, updated.ProjectKey)
 	}
 }
+
+func TestScheduleInitialLoadingBeforeListsAndCache(t *testing.T) {
+	c := New()
+	defer c.Close()
+
+	// Before MachinesListed arrives, Schedules and ScheduleDetail must report loading rather than empty/not-found.
+	svm := viewSchedulesVM(t, c)
+	if !svm.Loading || svm.ShowEmptyHint {
+		t.Fatalf("expected initial schedules Loading=true ShowEmptyHint=false before MachinesListed, got loading=%v showEmptyHint=%v", svm.Loading, svm.ShowEmptyHint)
+	}
+	if svm.Headline == nil || svm.Headline.Title == nil || svm.Headline.Title.Key != text.KeyScheduleReadingTasks {
+		t.Fatalf("expected reading_tasks headline before MachinesListed, got %+v", svm.Headline)
+	}
+	dvm := viewDetailVM(t, c, "m-1", "t1")
+	if !dvm.Loading || dvm.Found || dvm.NotFoundText == nil || dvm.NotFoundText.Key != text.KeyScheduleReadingTasks {
+		t.Fatalf("expected initial detail Loading=true with reading_tasks before MachinesListed, got %+v", dvm)
+	}
+
+	// Even after ListsFetched adds a supported machine, before ScheduleListOpen creates a snapshot it must stay Loading=true.
+	c.Dispatch(&corev1.Event{
+		NowMs: 1791633600000,
+		Event: &corev1.Event_ListsFetched{
+			ListsFetched: &corev1.ListsFetchedEvent{
+				Machines: []*corev1.PlainMachine{
+					{
+						MachineId: "m-1",
+						Online:    false,
+						Meta: &v1.MachineMeta{
+							Hostname:        "Mac-1",
+							ProtocolVersion: 16,
+							Capabilities:    &v1.MachineCapabilities{ScheduledTasks: true},
+						},
+					},
+				},
+			},
+		},
+	})
+	svm = viewSchedulesVM(t, c)
+	if !svm.Loading || svm.ShowEmptyHint {
+		t.Fatalf("expected Loading=true ShowEmptyHint=false before ScheduleListOpen initializes machine snapshot, got loading=%v showEmptyHint=%v", svm.Loading, svm.ShowEmptyHint)
+	}
+	dvm = viewDetailVM(t, c, "m-1", "t1")
+	if !dvm.Loading || dvm.NotFoundText == nil || dvm.NotFoundText.Key != text.KeyScheduleReadingTasks {
+		t.Fatalf("expected detail Loading=true before ScheduleDetailOpen/snapshot init, got %+v", dvm)
+	}
+}
