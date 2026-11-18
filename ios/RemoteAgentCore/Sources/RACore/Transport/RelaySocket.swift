@@ -15,6 +15,12 @@ let policyViolation = 1008
 private let maxMessageBytes = 4 << 20
 
 final class Socket: FrameStream {
+    private enum PrimedReceive {
+        case pending
+        case ready(Result<URLSessionWebSocketTask.Message, Error>)
+        case consumed
+    }
+
     private struct State {
         var opened = false
         var closeCode: Int?
@@ -25,6 +31,8 @@ final class Socket: FrameStream {
         var end: PathEnd?
         var waiters: [CheckedContinuation<PathEnd, Never>] = []
         var openWaiters: [CheckedContinuation<Bool, Never>] = []
+        var primed: PrimedReceive = .pending
+        var primedWaiter: CheckedContinuation<URLSessionWebSocketTask.Message, Error>?
         var awaitingPong = false
         var pinger: Task<Void, Never>?
     }
@@ -50,6 +58,7 @@ final class Socket: FrameStream {
         task.maximumMessageSize = maxMessageBytes
         // The handlers keep the socket until its task is done with, and no longer.
         box.withLock { $0 = self }
+        primeReceive()
         task.resume()
     }
 
@@ -142,23 +151,102 @@ final class Socket: FrameStream {
         }
     }
 
+    /// Arms an initial receive before `resume()` so an immediate server close frame
+    /// is drained even if the peer closes before `receive()` starts or `hello` finishes sending.
+    private func primeReceive() {
+        task.receive { [weak self] result in
+            guard let self else { return }
+            let code = self.task.closeCode.rawValue
+            let waiter = self.state.withLockUnchecked { s -> CheckedContinuation<URLSessionWebSocketTask.Message, Error>? in
+                if case .failure(let error) = result {
+                    if s.closeCode == nil, code != 0 { s.closeCode = code }
+                    if s.failure == nil, s.closeCode == nil, !s.dropped { s.failure = error }
+                }
+                let waiter = s.primedWaiter
+                if waiter != nil {
+                    s.primedWaiter = nil
+                    s.primed = .consumed
+                } else {
+                    s.primed = .ready(result)
+                }
+                return waiter
+            }
+            if case .failure = result {
+                // Nothing more can come; this makes the task report that it is over.
+                self.task.cancel()
+            }
+            waiter?.resume(with: result)
+        }
+    }
+
+    private static func decode(_ message: URLSessionWebSocketTask.Message) -> Data {
+        switch message {
+        case .data(let d): return d
+        case .string(let s): return Data(s.utf8)
+        @unknown default: return Data()
+        }
+    }
+
     /// The next binary frame. Throws when the connection is over; `ended` says how.
     func receive() async throws -> Data {
-        do {
-            switch try await task.receive() {
-            case .data(let d): return d
-            case .string(let s): return Data(s.utf8)
-            @unknown default: return Data()
+        enum Step {
+            case ready(Result<URLSessionWebSocketTask.Message, Error>)
+            case wait
+            case next
+        }
+        let step = state.withLockUnchecked { s -> Step in
+            switch s.primed {
+            case .ready(let result):
+                s.primed = .consumed
+                return .ready(result)
+            case .pending:
+                return .wait
+            case .consumed:
+                return .next
             }
-        } catch {
-            let code = task.closeCode.rawValue
-            state.withLockUnchecked { s in
-                if s.closeCode == nil, code != 0 { s.closeCode = code }
-                if s.failure == nil, s.closeCode == nil, !s.dropped { s.failure = error }
+        }
+        switch step {
+        case .ready(let result):
+            return Self.decode(try result.get())
+        case .wait:
+            let message = try await withCheckedThrowingContinuation { c in
+                enum ResumeNow {
+                    case ready(Result<URLSessionWebSocketTask.Message, Error>)
+                    case parked
+                    case fallback
+                }
+                let action = state.withLockUnchecked { s -> ResumeNow in
+                    switch s.primed {
+                    case .ready(let result):
+                        s.primed = .consumed
+                        return .ready(result)
+                    case .pending:
+                        s.primedWaiter = c
+                        return .parked
+                    case .consumed:
+                        return .fallback
+                    }
+                }
+                switch action {
+                case .ready(let result): c.resume(with: result)
+                case .parked: break
+                case .fallback: c.resume(throwing: CancellationError())
+                }
             }
-            // Nothing more can come; this makes the task report that it is over.
-            task.cancel()
-            throw error
+            return Self.decode(message)
+        case .next:
+            do {
+                return Self.decode(try await task.receive())
+            } catch {
+                let code = task.closeCode.rawValue
+                state.withLockUnchecked { s in
+                    if s.closeCode == nil, code != 0 { s.closeCode = code }
+                    if s.failure == nil, s.closeCode == nil, !s.dropped { s.failure = error }
+                }
+                // Nothing more can come; this makes the task report that it is over.
+                task.cancel()
+                throw error
+            }
         }
     }
 
