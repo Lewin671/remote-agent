@@ -63,6 +63,7 @@ final class Flag: @unchecked Sendable { private let l = NSLock(); private var v 
         await waitConnected(rig)
         try rig.engine.setEnabled(rig.machineId, false)
         #expect(rig.engine.status(rig.machineId).reason == .disabled)
+        await rig.waitForBudgetEmpty()
         let probes = rig.probes
         await rig.advance(20_000)
         #expect(rig.probes == probes, "an off switch makes no new attempt")
@@ -116,6 +117,7 @@ final class Flag: @unchecked Sendable { private let l = NSLock(); private var v 
         rig.net.cutAll()
         await rig.waitForState { rig.engine.status(rig.machineId).retryScheduled }
         #expect(rig.engine.status(rig.machineId).retryScheduled, "the drop is noticed and backoff is scheduled")
+        await rig.waitForBudgetEmpty()
         await rig.advance(1_001)                                            // the first backoff step at its maximum
         await rig.waitForState { rig.probes == 2 && rig.engine.status(rig.machineId).state == .connected }
         #expect(rig.probes == 2 && rig.engine.status(rig.machineId).state == .connected, "a new bounded round comes up on its own")
@@ -132,6 +134,7 @@ final class Flag: @unchecked Sendable { private let l = NSLock(); private var v 
         rig.net.cutAll()
         await rig.waitForState { rig.engine.status(rig.machineId).retryScheduled }
         #expect(rig.engine.status(rig.machineId).retryScheduled)
+        await rig.waitForBudgetEmpty()
         await rig.advance(1_001)                                            // not 2 s: the failure count started over
         await rig.waitForState { rig.probes == 2 }
         #expect(rig.probes == 2)

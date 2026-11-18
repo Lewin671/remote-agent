@@ -709,6 +709,7 @@ final class DirectEngine: @unchecked Sendable {
         let activeSessions: [DirectSession] = lock.withLock { sessions.values.compactMap(\.session) }
         for s in activeSessions { await s.tickForTest() }
     }
+    func waitBudgetEmptyForTest() async { await budget.waitUntilEmptyForTest() }
     func capabilities(_ id: String) -> PBMachineCapabilities? {
         lock.withLock { capabilitiesLocked(id) }
     }

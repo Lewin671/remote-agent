@@ -59,7 +59,7 @@ final class DirectBudget: @unchecked Sendable {
     private let lock = NSLock()
     private var peers: [String: Usage] = [:]
     private var total = [0, 0]
-    private var emptyWaiters: [CheckedContinuation<Void, Never>] = []
+    private var emptyWaiters: [(id: UUID, cont: CheckedContinuation<Void, Never>)] = []
     let maxPeers: Int
     init(maxPeers: Int = 4) { self.maxPeers = maxPeers }
     func acquire(_ peer: String, _ owner: String, _ use: Int) -> Bool {
@@ -84,7 +84,7 @@ final class DirectBudget: @unchecked Sendable {
             current.uses.remove(use); peers[peer] = current; prune(peer)
         }
         if peers.isEmpty && total == [0, 0] {
-            waiters = emptyWaiters; emptyWaiters.removeAll()
+            waiters = emptyWaiters.map(\.cont); emptyWaiters.removeAll()
         } else {
             waiters = []
         }
@@ -107,7 +107,7 @@ final class DirectBudget: @unchecked Sendable {
             peers[peer] = current; prune(peer)
         }
         if peers.isEmpty && total == [0, 0] {
-            waiters = emptyWaiters; emptyWaiters.removeAll()
+            waiters = emptyWaiters.map(\.cont); emptyWaiters.removeAll()
         } else {
             waiters = []
         }
@@ -121,15 +121,23 @@ final class DirectBudget: @unchecked Sendable {
     /// For the tests: nothing may stay reserved once everything is closed.
     var isEmpty: Bool { lock.lock(); defer { lock.unlock() }; return peers.isEmpty && total == [0, 0] }
     func waitUntilEmptyForTest() async {
-        await withCheckedContinuation { c in
-            lock.lock()
-            if peers.isEmpty && total == [0, 0] {
+        let waiterID = UUID()
+        await withTaskCancellationHandler {
+            await withCheckedContinuation { c in
+                lock.lock()
+                if (peers.isEmpty && total == [0, 0]) || Task.isCancelled {
+                    lock.unlock()
+                    c.resume()
+                    return
+                }
+                emptyWaiters.append((waiterID, c))
                 lock.unlock()
-                c.resume()
-                return
             }
-            emptyWaiters.append(c)
+        } onCancel: {
+            lock.lock()
+            let cont = emptyWaiters.firstIndex(where: { $0.id == waiterID }).map { emptyWaiters.remove(at: $0).cont }
             lock.unlock()
+            cont?.resume()
         }
     }
 }

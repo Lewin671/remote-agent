@@ -156,6 +156,10 @@ final class EngineRig: @unchecked Sendable {
         for s in active { await s.drainForTest() }
         await engine.drainForTest()
     }
+    func waitForBudgetEmpty() async {
+        await engine.waitBudgetEmptyForTest()
+        await machineBudget.waitUntilEmptyForTest()
+    }
     func start() async { engine.attach(leg); await engine.synced(record, started: time.now); await tickAll() }
     /// Re-proves the head, as the 15 second security sync does; the lifetime lasts 20 seconds.
     func resync() async { await engine.synced(record, started: time.now) }
