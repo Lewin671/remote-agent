@@ -139,10 +139,16 @@ func (c *conn) imageUploaded(sessionID, imageID string, ok bool, expiresMs int64
 // withImageStates returns e, or a copy whose image refs say which display
 // copies the server does not have after all.
 func (c *conn) withImageStates(sessionID string, e *pb.Event) *pb.Event {
+	return withImageStatesWith(e, func(imageID string) ImageUpload {
+		return c.imageState(sessionID, imageID)
+	})
+}
+
+func withImageStatesWith(e *pb.Event, lookup func(imageID string) ImageUpload) *pb.Event {
 	refs := agent.EventImages(e)
 	var failed []int
 	for i, ref := range refs {
-		if ref.Sync == pb.ImageSync_IMAGE_SYNC_SYNCED && c.imageState(sessionID, ref.ImageId).Failed {
+		if ref.Sync == pb.ImageSync_IMAGE_SYNC_SYNCED && lookup(ref.ImageId).Failed {
 			failed = append(failed, i)
 		}
 	}

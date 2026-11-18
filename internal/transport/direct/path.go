@@ -22,6 +22,9 @@ import (
 const maxFrame = 16 << 10
 const fragmentPayload = maxFrame - 128
 
+// MaxSingleFragmentBytes is the maximum payload size that fits in a single direct Fragment.
+const MaxSingleFragmentBytes = fragmentPayload
+
 var ErrClosed = errors.New("direct_closed")
 var ErrLimit = errors.New("direct_limit")
 
@@ -334,6 +337,56 @@ func (p *Path) Write(ctx context.Context, raw []byte) error {
 	}
 	defer release()
 	return p.write(ctx, frozen)
+}
+
+// Done returns a channel closed when the path is canceled or closed.
+func (p *Path) Done() <-chan struct{} { return p.ctx.Done() }
+
+// TryWriteLow sends a single-fragment low-priority payload without blocking or
+// waiting on channel backpressure. Any busy writer, buffered backlog above
+// maxBuffered, pool limit, or oversize payload is dropped immediately.
+func (p *Path) TryWriteLow(raw []byte, maxBuffered uint64) bool {
+	if len(raw) == 0 || len(raw) > fragmentPayload || !p.businessReady() {
+		return false
+	}
+	if p.data == nil || p.data.ReadyState() != webrtc.DataChannelStateOpen || p.data.BufferedAmount() > maxBuffered {
+		return false
+	}
+	select {
+	case p.sendMu <- struct{}{}:
+	default:
+		return false
+	}
+	defer func() { <-p.sendMu }()
+	if !p.businessReady() || p.data.ReadyState() != webrtc.DataChannelStateOpen || p.data.BufferedAmount() > maxBuffered {
+		return false
+	}
+	frozen, release, err := p.reserveWrite(raw)
+	if err != nil {
+		return false
+	}
+	defer release()
+	var id [16]byte
+	_, _ = rand.Read(id[:])
+	hash := sha256.Sum256(frozen)
+	frame, err := proto.Marshal(&pb.Fragment{
+		MessageId:        id[:],
+		Index:            0,
+		Count:            1,
+		CiphertextLength: uint32(len(frozen)),
+		CiphertextSha256: hash[:],
+		PathGeneration:   p.cfg.Generation,
+		Fragment:         frozen,
+	})
+	if err != nil || len(frame) > maxFrame {
+		return false
+	}
+	if sctp := p.pc.SCTP(); sctp != nil {
+		if caps := sctp.GetCapabilities(); caps.MaxMessageSize > 0 && uint32(len(frame)) > caps.MaxMessageSize {
+			return false
+		}
+	}
+	return p.data.Send(frame) == nil
 }
 
 // TryWrite is nonblocking result-path admission. The original deadline and

@@ -16,13 +16,33 @@ import (
 	"time"
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
+	"github.com/Lewin671/remote-agent/internal/agent"
 	"github.com/Lewin671/remote-agent/internal/deviceauth"
+	"github.com/Lewin671/remote-agent/internal/e2e"
+	"github.com/Lewin671/remote-agent/internal/eventview"
 	"github.com/Lewin671/remote-agent/internal/paths"
 	"github.com/Lewin671/remote-agent/internal/transport"
 	"github.com/Lewin671/remote-agent/internal/transport/direct"
 	"github.com/Lewin671/remote-agent/internal/transport/peerwire"
 	"google.golang.org/protobuf/proto"
 )
+
+const (
+	directEventMaxBatch       = 16
+	directEventQueueMaxItems  = 32
+	directEventQueueMaxBytes  = 256 << 10
+	directResultQueueMaxItems = 128
+	directLowMaxBuffered      = 16 << 10
+)
+
+type peerWriteItem struct {
+	raw      []byte
+	deadline time.Time
+}
+
+type directTailer struct {
+	cancel context.CancelFunc
+}
 
 type directPeer struct {
 	paths            [2]*direct.Path
@@ -36,6 +56,14 @@ type directPeer struct {
 	codec            *peerwire.Codec
 	connection       []byte
 	expires          uint64
+	subSeq           atomic.Uint64
+	subscribed       map[string]struct{} // guarded by directManager.mu
+
+	writeMu   sync.Mutex
+	writeWake chan struct{}
+	highQueue []peerWriteItem
+	lowQueue  []peerWriteItem
+	lowBytes  int
 }
 type peerInput struct {
 	peer string
@@ -72,6 +100,7 @@ type directManager struct {
 	closed              bool
 	sessions            map[string]*directPeer
 	active              map[string]*directPeer
+	tailers             map[string]*directTailer
 	incoming            transport.FairQueue[*peerInput]
 	outgoing            [3]transport.FairQueue[*peerOutput]
 	queued              map[string]*directedUsage
@@ -110,7 +139,7 @@ func newDirectManager(d *dispatcher) (*directManager, error) {
 	_, _ = rand.Read(instance)
 	_, _ = rand.Read(boot)
 	ctx, cancel := context.WithCancel(d.ctx)
-	m := &directManager{d: d, self: peerwire.Identity{ID: []byte(id), Role: 2, Sign: sign, Box: box, Instance: instance, Boot: boot}, policy: policy, pool: direct.NewPool(8), ctx: ctx, cancel: cancel, sessions: map[string]*directPeer{}, active: map[string]*directPeer{}, queued: map[string]*directedUsage{}, readWake: make(chan struct{}, 2), writeWake: make(chan struct{}, 1)}
+	m := &directManager{d: d, self: peerwire.Identity{ID: []byte(id), Role: 2, Sign: sign, Box: box, Instance: instance, Boot: boot}, policy: policy, pool: direct.NewPool(8), ctx: ctx, cancel: cancel, sessions: map[string]*directPeer{}, active: map[string]*directPeer{}, tailers: map[string]*directTailer{}, queued: map[string]*directedUsage{}, readWake: make(chan struct{}, 2), writeWake: make(chan struct{}, 1)}
 	// The configured relay's own UDP service is the default. Deployments may
 	// explicitly select their own STUN host; no third-party service is used.
 	if address := os.Getenv("REMOTE_AGENT_STUN_URL"); address != "" {
@@ -165,8 +194,13 @@ func (m *directManager) close() {
 		m.mu.Lock()
 		m.closed = true
 		m.cancel()
+		for sid, tr := range m.tailers {
+			tr.cancel()
+			delete(m.tailers, sid)
+		}
 		var sessions []*direct.Session
 		for _, p := range m.sessions {
+			p.subscribed = nil
 			p.session.Close()
 			sessions = append(sessions, p.session)
 		}
@@ -340,7 +374,7 @@ func (m *directManager) createLocked(binding deviceauth.PeerBinding, codec *peer
 			}
 		}
 	}
-	p := &directPeer{policyVersion: m.policy.version(id), binding: binding, codec: codec, peer: peer, connection: append([]byte(nil), connection...), expires: now + 10000 + deviceauth.MaxClockSkew}
+	p := &directPeer{policyVersion: m.policy.version(id), binding: binding, codec: codec, peer: peer, connection: append([]byte(nil), connection...), expires: now + 10000 + deviceauth.MaxClockSkew, writeWake: make(chan struct{}, 1)}
 	p.processValid.Store(true)
 	allow := func() bool {
 		return p.processValid.Load() && m.ctx.Err() == nil && m.d.security.directCurrent(binding.Self, binding.Peer, binding.Head)
@@ -364,6 +398,37 @@ func (m *directManager) createLocked(binding deviceauth.PeerBinding, codec *peer
 				}
 				return 4, peerwire.PB(peerwire.U(4, o.Context.Class), peerwire.U(5, o.Context.Seq), peerwire.B(6, o.Hash), peerwire.U(7, o.Context.Generation), peerwire.U(8, o.Context.Use))
 			}
+			if o.Type == 15 {
+				var sub pb.DirectEventSubscription
+				if proto.Unmarshal(o.Payload, &sub) != nil || len(sub.SessionIds) > 4 {
+					return 0, nil
+				}
+				seen := make(map[string]struct{}, len(sub.SessionIds))
+				for _, sid := range sub.SessionIds {
+					if len(sid) == 0 || len(sid) > 128 {
+						return 0, nil
+					}
+					seen[sid] = struct{}{}
+				}
+				if o.Context.Seq > p.subSeq.Load() {
+					initialAfter := map[string]uint64{}
+					if m.d.endpoint != nil && m.d.endpoint.r != nil && m.d.endpoint.r.backend != nil {
+						for sid := range seen {
+							if info, err := m.d.endpoint.r.backend.SessionInfo(sid); err == nil && info != nil {
+								initialAfter[sid] = info.LastSeq
+							}
+						}
+					}
+					m.mu.Lock()
+					if !m.closed && p.processValid.Load() && o.Context.Seq > p.subSeq.Load() {
+						p.subSeq.Store(o.Context.Seq)
+						p.subscribed = seen
+						m.reconcileTailersLocked(initialAfter)
+					}
+					m.mu.Unlock()
+				}
+				return 4, peerwire.PB(peerwire.U(4, o.Context.Class), peerwire.U(5, o.Context.Seq), peerwire.B(6, o.Hash), peerwire.U(7, o.Context.Generation), peerwire.U(8, o.Context.Use))
+			}
 			return 0, nil
 		},
 		Ready: func(use uint64, path *direct.Path) {
@@ -376,6 +441,10 @@ func (m *directManager) createLocked(binding deviceauth.PeerBinding, codec *peer
 			p.paths[use-1] = path
 			p.nextCapabilities = 0
 			m.workers.Go(func() { m.readPath(p, use, path) })
+			if use == 1 {
+				m.workers.Go(func() { m.writePath(p, path) })
+				m.reconcileTailersLocked(nil)
+			}
 			m.mu.Unlock()
 		},
 	}, initiate)
@@ -389,14 +458,113 @@ func (m *directManager) createLocked(binding deviceauth.PeerBinding, codec *peer
 	}
 	return p
 }
+func (m *directManager) peerAllowed(peer *directPeer) bool {
+	if peer == nil || peer.session == nil {
+		return false
+	}
+	fresh := m.d.security.directFresh.Load()
+	return peer.processValid.Load() &&
+		peer.session.Active() &&
+		m.ctx.Err() == nil &&
+		fresh != nil &&
+		fresh.head == peer.binding.Head &&
+		m.d.security.now() < min(fresh.until, fresh.leaseUntil) &&
+		!m.d.security.blocked.Load() &&
+		m.policy.matches(peer.binding.Peer.ID, peer.policyVersion)
+}
+
+func (m *directManager) peerAuthorized(peer *directPeer) bool {
+	return m.peerAllowed(peer) && m.d.security.endpoint.CheckPeer(peer.binding.Self, peer.binding.Peer, peer.binding.Head, m.d.security.now()) == nil
+}
+
+func (p *directPeer) enqueueHigh(raw []byte, deadline time.Time) bool {
+	p.writeMu.Lock()
+	defer p.writeMu.Unlock()
+	if len(p.highQueue) >= directResultQueueMaxItems {
+		return false
+	}
+	p.highQueue = append(p.highQueue, peerWriteItem{raw: raw, deadline: deadline})
+	notify(p.writeWake)
+	return true
+}
+
+func (p *directPeer) enqueueLow(raw []byte) bool {
+	if len(raw) == 0 || len(raw) > direct.MaxSingleFragmentBytes {
+		return false
+	}
+	p.writeMu.Lock()
+	defer p.writeMu.Unlock()
+	if len(p.lowQueue) >= directEventQueueMaxItems || p.lowBytes+len(raw) > directEventQueueMaxBytes {
+		return false
+	}
+	p.lowQueue = append(p.lowQueue, peerWriteItem{raw: raw})
+	p.lowBytes += len(raw)
+	notify(p.writeWake)
+	return true
+}
+
+func (m *directManager) writePath(peer *directPeer, path *direct.Path) {
+	for {
+		peer.writeMu.Lock()
+		var item peerWriteItem
+		var isHigh, empty bool
+		if len(peer.highQueue) > 0 {
+			item = peer.highQueue[0]
+			peer.highQueue = peer.highQueue[1:]
+			isHigh = true
+		} else if len(peer.lowQueue) > 0 {
+			item = peer.lowQueue[0]
+			peer.lowQueue = peer.lowQueue[1:]
+			peer.lowBytes -= len(item.raw)
+		} else {
+			empty = true
+		}
+		peer.writeMu.Unlock()
+		if empty {
+			select {
+			case <-m.ctx.Done():
+				return
+			case <-path.Done():
+				return
+			case <-peer.writeWake:
+				continue
+			}
+		}
+		if !m.peerAuthorized(peer) {
+			continue
+		}
+		if isHigh {
+			now := m.d.security.now()
+			dl := item.deadline.UnixMilli()
+			if dl <= 0 || uint64(dl) <= now {
+				continue
+			}
+			remMs := uint64(dl) - now
+			ctx, cancel := context.WithTimeout(m.ctx, time.Duration(remMs)*time.Millisecond)
+			_ = path.Write(ctx, item.raw)
+			cancel()
+			continue
+		}
+		path.TryWriteLow(item.raw, directLowMaxBuffered)
+	}
+}
+
 func (m *directManager) readPath(peer *directPeer, use uint64, path *direct.Path) {
-	defer func() { path.Close(); path.Wait() }()
+	defer func() {
+		path.Close()
+		path.Wait()
+		if use == 1 {
+			m.mu.Lock()
+			if peer.paths[0] == path {
+				peer.subscribed = nil
+				m.reconcileTailersLocked(nil)
+			}
+			m.mu.Unlock()
+		}
+	}()
 	// This local gate has no endpoint lock: AcceptOptions invokes it while the
 	// endpoint atomically checks the full peer binding under its admission lock.
-	allow := func() bool {
-		fresh := m.d.security.directFresh.Load()
-		return peer.processValid.Load() && peer.session.Active() && m.ctx.Err() == nil && fresh != nil && fresh.head == peer.binding.Head && m.d.security.now() < min(fresh.until, fresh.leaseUntil) && !m.d.security.blocked.Load() && m.policy.matches(peer.binding.Peer.ID, peer.policyVersion)
-	}
+	allow := func() bool { return m.peerAllowed(peer) }
 	for {
 		raw, err := path.Read(m.ctx)
 		if err != nil {
@@ -416,13 +584,18 @@ func (m *directManager) readPath(peer *directPeer, use uint64, path *direct.Path
 		}
 		deadline := time.UnixMilli(int64(header.Deadline))
 		m.d.endpoint.dispatchDirect(m.ctx, peer.binding, use, allow, env, func(reply *pb.ForwardReply) {
-			if reply.Result == nil || !allow() || m.d.security.endpoint.CheckPeer(peer.binding.Self, peer.binding.Peer, peer.binding.Head, m.d.security.now()) != nil {
+			if reply.Result == nil || !m.peerAuthorized(peer) {
 				return
 			}
 			raw, err := proto.Marshal(reply.Result)
-			if err == nil {
-				path.TryWrite(raw, deadline)
+			if err != nil {
+				return
 			}
+			if use == 1 {
+				peer.enqueueHigh(raw, deadline)
+				return
+			}
+			path.TryWrite(raw, deadline)
 		})
 	}
 }
@@ -590,6 +763,7 @@ func (m *directManager) maintenance() {
 		for key, p := range m.sessions {
 			select {
 			case <-p.session.Done():
+				p.subscribed = nil
 				if m.active[p.binding.Peer.ID] == p {
 					delete(m.active, p.binding.Peer.ID)
 				}
@@ -598,6 +772,7 @@ func (m *directManager) maintenance() {
 			if now > p.session.RetainUntil() {
 				select {
 				case <-p.session.Done():
+					p.subscribed = nil
 					delete(m.sessions, key)
 					if m.active[p.binding.Peer.ID] == p {
 						delete(m.active, p.binding.Peer.ID)
@@ -606,6 +781,7 @@ func (m *directManager) maintenance() {
 				}
 			}
 		}
+		m.reconcileTailersLocked(nil)
 		for i := range m.outgoing {
 			for {
 				q, ok := m.outgoing[i].Pop(func(q *peerOutput) bool { return !nowTime.Before(q.until) })
@@ -619,7 +795,7 @@ func (m *directManager) maintenance() {
 			if p.session.Established() && p.session.Active() && (now >= p.nextCapabilities || !proto.Equal(p.lastCapabilities, capabilities)) {
 				var id [16]byte
 				_, _ = rand.Read(id[:])
-				body := peerwire.PB(peerwire.B(1, id[:]), peerwire.U(2, 1), peerwire.U(2, 4), peerwire.U(2, 9), peerwire.U(2, 10), peerwire.U(2, 13), peerwire.U(2, 14), peerwire.U(3, 1), peerwire.U(3, 2), peerwire.U(3, 3), peerwire.U(3, 4), peerwire.U(3, 5), peerwire.U(3, 6), peerwire.U(3, 7), peerwire.U(3, 8), peerwire.U(3, 9), peerwire.U(4, now+60000), peerwire.U(5, 1), peerwire.U(6, 1<<20))
+				body := peerwire.PB(peerwire.B(1, id[:]), peerwire.U(2, 1), peerwire.U(2, 4), peerwire.U(2, 9), peerwire.U(2, 10), peerwire.U(2, 13), peerwire.U(2, 14), peerwire.U(2, 15), peerwire.U(3, 1), peerwire.U(3, 2), peerwire.U(3, 3), peerwire.U(3, 4), peerwire.U(3, 5), peerwire.U(3, 6), peerwire.U(3, 7), peerwire.U(3, 8), peerwire.U(3, 9), peerwire.U(4, now+60000), peerwire.U(5, 1), peerwire.U(6, 1<<20))
 				snapshot, err := proto.Marshal(&pb.CapabilitySnapshot{CapabilityId: id[:], Capabilities: capabilities, ExpiresAtMs: int64(now + 60000)})
 				if p.session.SendControl(1, body) && err == nil && capabilities != nil && p.session.SendControl(14, snapshot) {
 					p.nextCapabilities = now + 55000
@@ -677,10 +853,182 @@ func (m *directManager) choose(chosen *directPeer) {
 	}
 	for _, p := range m.sessions {
 		if p != chosen && p.binding.Peer.ID == chosen.binding.Peer.ID {
+			p.subscribed = nil
 			p.session.Retire()
 		}
 	}
 	m.active[chosen.binding.Peer.ID] = chosen
+	m.reconcileTailersLocked(nil)
+}
+
+func (m *directManager) reconcileTailersLocked(initialAfter map[string]uint64) {
+	if m.closed {
+		return
+	}
+	wanted := map[string]struct{}{}
+	for _, p := range m.active {
+		if p == nil || p.session == nil || !p.session.Active() || !p.processValid.Load() || p.paths[0] == nil {
+			continue
+		}
+		for sid := range p.subscribed {
+			wanted[sid] = struct{}{}
+		}
+	}
+	for sid, tr := range m.tailers {
+		if _, ok := wanted[sid]; !ok {
+			tr.cancel()
+			delete(m.tailers, sid)
+		}
+	}
+	for sid := range wanted {
+		if _, ok := m.tailers[sid]; !ok {
+			subCtx, subCancel := context.WithCancel(m.ctx)
+			m.tailers[sid] = &directTailer{cancel: subCancel}
+			startAfter := initialAfter[sid]
+			hasInitial := initialAfter != nil
+			m.workers.Go(func() { m.tailSession(subCtx, sid, startAfter, hasInitial) })
+		}
+	}
+}
+
+func (m *directManager) readSessionKey(id string) ([]byte, bool) {
+	if m.d.endpoint == nil || m.d.endpoint.r == nil || m.d.endpoint.r.backend == nil {
+		return nil, false
+	}
+	dir := m.d.endpoint.r.backend.SessionDir(id)
+	if dir == "" {
+		return nil, false
+	}
+	path := filepath.Join(dir, "relay.key")
+	m.d.endpoint.r.keyMu.Lock()
+	defer m.d.endpoint.r.keyMu.Unlock()
+	b, err := os.ReadFile(path)
+	if err != nil || len(b) != e2e.KeySize {
+		return nil, false
+	}
+	return b, true
+}
+
+func (m *directManager) tailSession(ctx context.Context, sid string, after uint64, hasInitial bool) {
+	if m.d.endpoint == nil || m.d.endpoint.r == nil || m.d.endpoint.r.backend == nil {
+		return
+	}
+	backend := m.d.endpoint.r.backend
+	if !hasInitial {
+		for {
+			info, err := backend.SessionInfo(sid)
+			if err == nil {
+				if info != nil {
+					after = info.LastSeq
+				}
+				break
+			}
+			select {
+			case <-ctx.Done():
+				return
+			case <-time.After(100 * time.Millisecond):
+			}
+		}
+	}
+	for {
+		if ctx.Err() != nil {
+			return
+		}
+		key, hasKey := m.readSessionKey(sid)
+		if !hasKey {
+			select {
+			case <-ctx.Done():
+				return
+			case <-time.After(100 * time.Millisecond):
+				continue
+			}
+		}
+		var batch []*pb.Event
+		nextAfter := after
+		changed, err := backend.EachEvents(sid, after, func(e *pb.Event) error {
+			if e.Seq > nextAfter {
+				nextAfter = e.Seq
+			}
+			if len(batch) <= directEventMaxBatch {
+				batch = append(batch, e)
+			}
+			return nil
+		})
+		if err != nil {
+			select {
+			case <-ctx.Done():
+				return
+			case <-time.After(100 * time.Millisecond):
+				continue
+			}
+		}
+		after = nextAfter
+		if len(batch) > 0 && len(batch) <= directEventMaxBatch {
+			for _, e := range batch {
+				m.pushDirectEvent(ctx, key, sid, e, backend)
+			}
+		}
+		if changed == nil {
+			select {
+			case <-ctx.Done():
+				return
+			case <-time.After(100 * time.Millisecond):
+			}
+		} else {
+			select {
+			case <-ctx.Done():
+				return
+			case <-changed:
+			}
+		}
+	}
+}
+
+func (m *directManager) pushDirectEvent(ctx context.Context, key []byte, sid string, e *pb.Event, backend Backend) {
+	if ctx.Err() != nil || e == nil {
+		return
+	}
+	for _, ref := range agent.EventImages(e) {
+		if ref.Sync == pb.ImageSync_IMAGE_SYNC_SYNCED {
+			st := backend.Image(sid, ref.ImageId)
+			if !st.Done && !st.Failed {
+				return
+			}
+		}
+	}
+	fitted := eventview.Fit(withImageStatesWith(e, func(imageID string) ImageUpload {
+		return backend.Image(sid, imageID)
+	}))
+	env, err := m.d.security.sealMessage(&pb.Header{
+		Kind:      pb.PayloadKind_PAYLOAD_KIND_EVENT,
+		MachineId: m.d.acct.DeviceID,
+		SessionId: sid,
+		Seq:       fitted.Seq,
+		Sender:    m.d.acct.DeviceID,
+	}, deviceauth.Event, key, fitted)
+	if err != nil {
+		return
+	}
+	raw, err := proto.Marshal(env)
+	if err != nil || len(raw) > direct.MaxSingleFragmentBytes {
+		return
+	}
+	m.mu.Lock()
+	var targets []*directPeer
+	for _, p := range m.active {
+		if p == nil || p.paths[0] == nil {
+			continue
+		}
+		if _, ok := p.subscribed[sid]; ok {
+			targets = append(targets, p)
+		}
+	}
+	m.mu.Unlock()
+	for _, p := range targets {
+		if m.peerAuthorized(p) {
+			p.enqueueLow(raw)
+		}
+	}
 }
 
 // Metadata reads are isolated from receipt expiry and membership refresh. A
@@ -689,9 +1037,11 @@ func (m *directManager) capabilityLoop() {
 	timer := time.NewTicker(time.Second)
 	defer timer.Stop()
 	for {
-		meta := m.d.endpoint.r.backend.MachineMeta()
-		if caps := meta.GetCapabilities(); caps != nil {
-			m.capabilities.Store(proto.Clone(caps).(*pb.MachineCapabilities))
+		if m.d.endpoint != nil && m.d.endpoint.r != nil && m.d.endpoint.r.backend != nil {
+			meta := m.d.endpoint.r.backend.MachineMeta()
+			if caps := meta.GetCapabilities(); caps != nil {
+				m.capabilities.Store(proto.Clone(caps).(*pb.MachineCapabilities))
+			}
 		}
 		select {
 		case <-m.ctx.Done():

@@ -227,3 +227,41 @@ func TestReadCloseConcurrentDrain(t *testing.T) {
 		}
 	}
 }
+
+func TestTryWriteLowSingleFragmentAndRejectsOversizeOrBusy(t *testing.T) {
+	a, b, ctx := localPair(t)
+	// Wait for DataChannel open via one round-trip Write/Read.
+	if err := a.Write(ctx, []byte("warm")); err != nil {
+		t.Fatal(err)
+	}
+	if got, err := b.Read(ctx); err != nil || string(got) != "warm" {
+		t.Fatalf("warmup read got %q err=%v", got, err)
+	}
+
+	if a.TryWriteLow(make([]byte, MaxSingleFragmentBytes+1), 16<<10) {
+		t.Fatal("expected TryWriteLow to reject oversize payload")
+	}
+	if a.TryWriteLow(nil, 16<<10) {
+		t.Fatal("expected TryWriteLow to reject empty payload")
+	}
+
+	// Simulate busy sendMu: TryWriteLow must return false immediately without blocking.
+	a.sendMu <- struct{}{}
+	if a.TryWriteLow([]byte("blocked"), 16<<10) {
+		<-a.sendMu
+		t.Fatal("expected TryWriteLow to drop when sendMu is held")
+	}
+	<-a.sendMu
+
+	payload := bytes.Repeat([]byte{0x5a}, 512)
+	if !a.TryWriteLow(payload, 16<<10) {
+		t.Fatal("expected TryWriteLow to send single-fragment payload")
+	}
+	got, err := b.Read(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(got, payload) {
+		t.Fatalf("payload mismatch: got %d bytes, want %d", len(got), len(payload))
+	}
+}
