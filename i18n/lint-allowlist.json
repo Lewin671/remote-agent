@@ -3625,7 +3625,6 @@
     "reason": "Lexical JSX scanner false positive: TypeScript expression between angle brackets."
   },
   {
-<<<<<<< HEAD
     "path": "web/src/core/host.ts",
     "literal": "updateDirectPreference",
     "reason": "Internal developer log or state key; never displayed as product text."

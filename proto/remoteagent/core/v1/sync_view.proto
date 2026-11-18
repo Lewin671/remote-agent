@@ -122,6 +122,7 @@ message SyncStateView {
   remoteagent.v1.ProjectPrefs prefs = 36;
 
   repeated SyncDeviceView devices = 37;
+  bool display_grace = 38;
 }
 
 // Transitional view exposing per-session buffer status, Core-derived ProjectionState, latest LiveSnapshot,

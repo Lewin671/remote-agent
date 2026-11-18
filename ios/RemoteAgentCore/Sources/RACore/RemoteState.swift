@@ -127,6 +127,7 @@ public struct RemoteState: Equatable, Sendable {
     /// The local clock is more than five minutes behind a signed state; new
     /// control stays unsent until it is corrected.
     public var clockWarning = ""
+    public var displayGrace = false
 
     public init() {}
 

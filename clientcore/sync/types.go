@@ -21,6 +21,8 @@ const (
 	CommandTTLMs               int64  = 60_000
 	ResultRetentionMs          int64  = 300_000
 	LinkGraceMs                int64  = 10_000
+	DisplayGraceMs             int64  = 1_500
+	displayGraceTimerKey              = "display"
 	StreamOpenTimeoutMs        int64  = 15_000
 	TokenFastTimeoutMs         int64  = 3_000
 	SecuritySyncBudgetMs       int64  = 5_000
@@ -332,9 +334,10 @@ type Engine struct {
 	recovery   *Recovery
 	liveness   *LegLiveness
 	timers     map[timerKey]timerEntry
-	conn       lists.ConnectionKind
-	everReady  bool
-	connecting bool
+	conn                lists.ConnectionKind
+	everReady           bool
+	displayGraceUntilMs int64
+	connecting          bool
 	streamOpen bool
 	wantedConn bool
 
@@ -524,6 +527,7 @@ func (e *Engine) HandleEvent(ev *corev1.Event) (consumed bool, res StepResult) {
 		cal = c
 	}
 	e.advanceClocks(ev.NowMs, ev.MonoMs, cal)
+	e.expireDisplayGraceOnClock(ctx)
 	e.entropy.push(ev.RandomIds, ev.UnitFloats)
 	if ep := ev.GetEntropyProvided(); ep != nil {
 		e.entropy.push(ep.RandomIds, ep.UnitFloats)

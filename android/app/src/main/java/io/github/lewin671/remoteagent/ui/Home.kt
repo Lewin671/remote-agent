@@ -63,17 +63,8 @@ object HomeScopes {
 fun HomeScreen() {
     val remote = LocalRemote.current
     val nav = LocalNav.current
-    val rawVm by remote.homeView.collectAsState()
+    val vm by remote.homeView.collectAsState()
     val state by remote.state.collectAsState()
-    // Hold the settled home view across backgrounding and brief resume reconnects
-    // so returning from background does not flash "连接不到服务器", "正在重连...", or "未连接".
-    val suppressConn = rememberConnSuppressed(state)
-    val isErrorHeadline = rawVm.hasHeadline() && rawVm.headline.kind == HeadlineKind.HEADLINE_KIND_ERROR
-    var settledVm by remember(rawVm.scopeKey, rawVm.filterQuery) { mutableStateOf<HomeViewModel?>(null) }
-    if (!isErrorHeadline && rawVm.hasHeadline() && rawVm.headline.kind != HeadlineKind.HEADLINE_KIND_UNSPECIFIED) {
-        settledVm = rawVm
-    }
-    val vm = if (suppressConn && isErrorHeadline && settledVm != null) settledVm!! else rawVm
 
     var filterText by remember(vm.scopeKey) { mutableStateOf(vm.filterQuery) }
     LaunchedEffect(vm.filterQuery) {

@@ -592,6 +592,7 @@ type SyncStateView struct {
 	PrefsSyncing           bool                   `protobuf:"varint,35,opt,name=prefs_syncing,json=prefsSyncing,proto3" json:"prefs_syncing,omitempty"`
 	Prefs                  *v1.ProjectPrefs       `protobuf:"bytes,36,opt,name=prefs,proto3" json:"prefs,omitempty"`
 	Devices                []*SyncDeviceView      `protobuf:"bytes,37,rep,name=devices,proto3" json:"devices,omitempty"`
+	DisplayGrace           bool                   `protobuf:"varint,38,opt,name=display_grace,json=displayGrace,proto3" json:"display_grace,omitempty"`
 	unknownFields          protoimpl.UnknownFields
 	sizeCache              protoimpl.SizeCache
 }
@@ -883,6 +884,13 @@ func (x *SyncStateView) GetDevices() []*SyncDeviceView {
 		return x.Devices
 	}
 	return nil
+}
+
+func (x *SyncStateView) GetDisplayGrace() bool {
+	if x != nil {
+		return x.DisplayGrace
+	}
+	return false
 }
 
 // Transitional view exposing per-session buffer status, Core-derived ProjectionState, latest LiveSnapshot,
@@ -1183,7 +1191,7 @@ const file_remoteagent_core_v1_sync_view_proto_rawDesc = "" +
 	"\bmeta_rev\x18\x06 \x01(\x04R\ametaRev\x12\x1f\n" +
 	"\vmeta_broken\x18\a \x01(\bR\n" +
 	"metaBroken\x12\x18\n" +
-	"\atrusted\x18\b \x01(\bR\atrusted\"\xf8\r\n" +
+	"\atrusted\x18\b \x01(\bR\atrusted\"\x9d\x0e\n" +
 	"\rSyncStateView\x12>\n" +
 	"\n" +
 	"connection\x18\x01 \x01(\x0e2\x1e.remoteagent.core.v1.ConnStateR\n" +
@@ -1228,7 +1236,8 @@ const file_remoteagent_core_v1_sync_view_proto_rawDesc = "" +
 	"\x0eprefs_revision\x18\" \x01(\x04R\rprefsRevision\x12#\n" +
 	"\rprefs_syncing\x18# \x01(\bR\fprefsSyncing\x122\n" +
 	"\x05prefs\x18$ \x01(\v2\x1c.remoteagent.v1.ProjectPrefsR\x05prefs\x12=\n" +
-	"\adevices\x18% \x03(\v2#.remoteagent.core.v1.SyncDeviceViewR\adevices\"\xcb\a\n" +
+	"\adevices\x18% \x03(\v2#.remoteagent.core.v1.SyncDeviceViewR\adevices\x12#\n" +
+	"\rdisplay_grace\x18& \x01(\bR\fdisplayGrace\"\xcb\a\n" +
 	"\x0fSessionDataView\x12\x1d\n" +
 	"\n" +
 	"session_id\x18\x01 \x01(\tR\tsessionId\x12\x14\n" +

@@ -12,7 +12,7 @@ struct ConnectionBar: View {
     @Environment(AppModel.self) private var model
 
     var body: some View {
-        if model.state.link != .online || !model.state.clockWarning.isEmpty {
+        if (!model.state.displayGrace && model.state.link != .online) || !model.state.clockWarning.isEmpty {
             ConnectionStrip().padding(.horizontal, DS.Space.l).padding(.vertical, 6)
         }
     }
@@ -29,19 +29,23 @@ struct ConnectionStrip: View {
     var body: some View {
         let state = model.state
         Group {
-            switch state.link {
-            case .online:
+            if state.link == .online || state.displayGrace {
                 if !state.clockWarning.isEmpty { GlassStrip(text: state.clockWarning, symbol: "clock", tone: .attention) }
-            case .noNetwork:
-                GlassStrip(text: state.loaded ? L10n.connectionNoNetworkPrevious() : L10n.connectionNoNetworkEmpty(), symbol: "wifi.slash")
-            case .waiting:
-                GlassStrip(text: state.synced ? L10n.connectionReconnecting() : L10n.connectionConnecting(), spinning: true)
-            case .noServer:
-                // Nothing kept to show: the reason is the whole of what can be said, in red.
-                if !state.loaded && !state.error.isEmpty {
-                    GlassStrip(text: L10n.connectionIosServerError(reason: state.error), symbol: "xmark", tone: .error, action: L10n.commonDetails()) { details = true }
-                } else {
-                    GlassStrip(text: L10n.connectionServerRetrying(), symbol: "icloud.slash", action: L10n.commonDetails()) { details = true }
+            } else {
+                switch state.link {
+                case .online:
+                    EmptyView()
+                case .noNetwork:
+                    GlassStrip(text: state.loaded ? L10n.connectionNoNetworkPrevious() : L10n.connectionNoNetworkEmpty(), symbol: "wifi.slash")
+                case .waiting:
+                    GlassStrip(text: state.synced ? L10n.connectionReconnecting() : L10n.connectionConnecting(), spinning: true)
+                case .noServer:
+                    // Nothing kept to show: the reason is the whole of what can be said, in red.
+                    if !state.loaded && !state.error.isEmpty {
+                        GlassStrip(text: L10n.connectionIosServerError(reason: state.error), symbol: "xmark", tone: .error, action: L10n.commonDetails()) { details = true }
+                    } else {
+                        GlassStrip(text: L10n.connectionServerRetrying(), symbol: "icloud.slash", action: L10n.commonDetails()) { details = true }
+                    }
                 }
             }
         }

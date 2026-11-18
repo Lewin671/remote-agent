@@ -88,3 +88,169 @@ func TestBuildHomeStructuredAttentionAndHighlight(t *testing.T) {
 		t.Fatalf("expected TOOL_CATEGORY AlwaysKind with AlwaysArg=Write, got %+v", vmTool.TopAttentionCard)
 	}
 }
+
+func TestBuildHomeDisplayGraceHoldsConnectedHeadlineAndHidesUnlinked(t *testing.T) {
+	unlinkedFalse := false
+	unlinkedTrue := true
+	cases := []struct {
+		name           string
+		conn           lists.ConnectionKind
+		worldUnlinked  bool
+		displayGrace   bool
+		wantConnState  corev1.ConnState
+		wantHeadline   corev1.HeadlineKind
+		wantRowStatus  corev1.SessionDisplayStatus
+	}{
+		{
+			name:          "offline_during_display_grace_keeps_connected_headline_and_row_status",
+			conn:          lists.ConnOffline,
+			worldUnlinked: true,
+			displayGrace:  true,
+			wantConnState: corev1.ConnState_CONN_STATE_OFFLINE,
+			wantHeadline:  corev1.HeadlineKind_HEADLINE_KIND_RUNNING,
+			wantRowStatus: corev1.SessionDisplayStatus_SESSION_DISPLAY_STATUS_RUNNING,
+		},
+		{
+			name:          "reconnecting_during_display_grace_keeps_connected_headline",
+			conn:          lists.ConnReconnecting,
+			worldUnlinked: false,
+			displayGrace:  true,
+			wantConnState: corev1.ConnState_CONN_STATE_RECONNECTING,
+			wantHeadline:  corev1.HeadlineKind_HEADLINE_KIND_RUNNING,
+			wantRowStatus: corev1.SessionDisplayStatus_SESSION_DISPLAY_STATUS_RUNNING,
+		},
+		{
+			name:          "offline_after_grace_expires_shows_error_headline_and_unlinked_row",
+			conn:          lists.ConnOffline,
+			worldUnlinked: true,
+			displayGrace:  false,
+			wantConnState: corev1.ConnState_CONN_STATE_OFFLINE,
+			wantHeadline:  corev1.HeadlineKind_HEADLINE_KIND_ERROR,
+			wantRowStatus: corev1.SessionDisplayStatus_SESSION_DISPLAY_STATUS_UNLINKED,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			st := NewState()
+			st.Cal = lists.Calendar{NowMs: 1_700_000_000_000}
+			st.DisplayGrace = tc.displayGrace
+			unlinkedPtr := &unlinkedFalse
+			if tc.worldUnlinked {
+				unlinkedPtr = &unlinkedTrue
+			}
+			mUnlinked := tc.worldUnlinked
+			mReachable := !tc.worldUnlinked && tc.conn == lists.ConnConnected
+			st.World = lists.World{
+				Connection:     tc.conn,
+				Unlinked:       unlinkedPtr,
+				LiveLoaded:     true,
+				MachinesListed: true,
+				SessionsListed: true,
+				Machines: []*lists.Machine{
+					{
+						ID:        "m1",
+						Online:    true,
+						Reachable: &mReachable,
+						Unlinked:  &mUnlinked,
+						Meta:      &v1.MachineMeta{Hostname: "dev-box"},
+					},
+				},
+				Sessions: []*lists.Session{
+					{
+						ID:        "s1",
+						MachineID: "m1",
+						UpdatedMs: 1_700_000_000_000,
+						Info: &v1.Session{
+							Id:     "s1",
+							Cwd:    "/work/app",
+							Title:  "Active run",
+							Status: v1.SessionStatus_SESSION_STATUS_RUNNING,
+						},
+					},
+				},
+			}
+
+			vm := BuildHome(st, 0)
+			if vm.Connection == nil || vm.Connection.State != tc.wantConnState {
+				t.Fatalf("expected Connection.State=%v, got %+v", tc.wantConnState, vm.Connection)
+			}
+			if vm.Headline == nil || vm.Headline.Kind != tc.wantHeadline {
+				t.Fatalf("expected Headline.Kind=%v, got %+v", tc.wantHeadline, vm.Headline)
+			}
+			if len(vm.Running) != 1 || vm.Running[0].Status != tc.wantRowStatus {
+				t.Fatalf("expected Running[0].Status=%v, got %+v", tc.wantRowStatus, vm.Running)
+			}
+		})
+	}
+}
+
+func TestBuildSessionDisplayGraceHoldsEnabledComposerAndStatus(t *testing.T) {
+	unlinkedTrue := true
+	cases := []struct {
+		name            string
+		displayGrace    bool
+		wantStatus      corev1.SessionDisplayStatus
+		wantEnabled     bool
+		wantDisabledKey string
+	}{
+		{
+			name:            "reconnecting_during_display_grace_keeps_enabled_composer_and_status",
+			displayGrace:    true,
+			wantStatus:      corev1.SessionDisplayStatus_SESSION_DISPLAY_STATUS_RUNNING,
+			wantEnabled:     true,
+			wantDisabledKey: "",
+		},
+		{
+			name:            "reconnecting_after_grace_expires_shows_unlinked_and_connect_hint",
+			displayGrace:    false,
+			wantStatus:      corev1.SessionDisplayStatus_SESSION_DISPLAY_STATUS_UNLINKED,
+			wantEnabled:     false,
+			wantDisabledKey: "composer.ios_connect_send",
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			st := NewState()
+			st.DisplayGrace = tc.displayGrace
+			st.World = lists.World{Connection: lists.ConnReconnecting, Unlinked: &unlinkedTrue}
+			reachableFalse := false
+			in := SessionViewInput{
+				Found:          true,
+				SessionsListed: true,
+				LiveLoaded:     true,
+				Conn:           lists.ConnReconnecting,
+				Unlinked:       true,
+				Session: &lists.Session{
+					ID:        "s1",
+					MachineID: "m1",
+					Info: &v1.Session{
+						Id:     "s1",
+						Title:  "Run",
+						Status: v1.SessionStatus_SESSION_STATUS_RUNNING,
+					},
+				},
+				Machine: &lists.Machine{
+					ID:        "m1",
+					Online:    true,
+					Reachable: &reachableFalse,
+				},
+			}
+			vm := BuildSessionView(in, st, nil, nil)
+			if vm.Header == nil || vm.Header.Status != tc.wantStatus {
+				t.Fatalf("expected Header.Status=%v, got %+v", tc.wantStatus, vm.Header)
+			}
+			if vm.Composer == nil || vm.Composer.Enabled != tc.wantEnabled {
+				t.Fatalf("expected Composer.Enabled=%v, got %+v", tc.wantEnabled, vm.Composer)
+			}
+			gotKey := ""
+			if vm.Composer.DisabledReason != nil {
+				gotKey = vm.Composer.DisabledReason.Key
+			}
+			if gotKey != tc.wantDisabledKey {
+				t.Fatalf("expected DisabledReason.Key=%q, got %q", tc.wantDisabledKey, gotKey)
+			}
+		})
+	}
+}

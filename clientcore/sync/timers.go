@@ -110,6 +110,13 @@ func (e *Engine) handleTimerFired(ctx *StepContext, ev *corev1.TimerFiredEvent) 
 		}
 		e.scheduleTimer(ctx, corev1.TimerKind_TIMER_KIND_LIVENESS, "", LivenessTickMs)
 	case corev1.TimerKind_TIMER_KIND_LINK_GRACE:
+		if ev.Key == displayGraceTimerKey {
+			if e.displayGraceUntilMs != 0 {
+				e.displayGraceUntilMs = 0
+				ctx.Dirty.MarkAll()
+			}
+			return
+		}
 		if e.running && !e.streamOpen && e.networkAvailable {
 			e.conn = lists.ConnOffline
 			if e.offlineSinceMs == 0 && e.nowMs > 0 {

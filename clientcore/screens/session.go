@@ -292,8 +292,15 @@ func buildSessionHeader(
 		out.ProjectName = text.Msg(text.KeyProjectsUnknown)
 	}
 
-	unlinked := in.Unlinked || lists.MachineUnlinked(lm, &st.World)
-	displayStatus := lists.ShownStatus(ls, lm, unlinked)
+	displayLm := lm
+	if st.DisplayGrace && lm != nil && lm.Online && !lists.MachineReachable(lm) {
+		mc := *lm
+		reachable := true
+		mc.Reachable = &reachable
+		displayLm = &mc
+	}
+	unlinked := !st.DisplayGrace && (in.Unlinked || lists.MachineUnlinked(displayLm, &st.World))
+	displayStatus := lists.ShownStatus(ls, displayLm, unlinked)
 	out.Status = mapStatus(displayStatus)
 	out.Tone = mapTone(lists.ToneOf(displayStatus))
 	out.StatusText = statusText(displayStatus)
@@ -359,7 +366,7 @@ func buildSessionHeader(
 	out.MachineId = machineID
 	if lm != nil {
 		out.ComputerName = text.Plain(lists.MachineName(lm, machineID))
-		out.ComputerOnline = lists.MachineReachable(lm)
+		out.ComputerOnline = lists.MachineReachable(lm) || (st.DisplayGrace && lm.Online)
 		if !out.ComputerOnline {
 			out.OfflineSinceMs = lm.LastSeenMs
 		}
@@ -421,7 +428,7 @@ func buildSessionHeader(
 	if lm != nil && lm.Meta != nil {
 		mc = lm.Meta.Capabilities
 	}
-	onlineReady := in.Conn == lists.ConnConnected && out.ComputerOnline && !unlinked && !out.ProtocolMismatch && !in.AccountControlLost && !in.Removed
+	onlineReady := (in.Conn == lists.ConnConnected || st.DisplayGrace) && out.ComputerOnline && !unlinked && !out.ProtocolMismatch && !in.AccountControlLost && !in.Removed
 	out.Capabilities = &corev1.SessionCapabilitiesView{
 		CanSend:             onlineReady && !out.Exited,
 		SupportsImages:      mc != nil && mc.ImageUpload,
@@ -556,7 +563,7 @@ func buildSessionActions(
 		out.ModelsError = text.Msg(text.KeyModelsReadingMachine, text.Str("name", lists.MachineName(lm, lm.ID)))
 	}
 
-	onlineReady := in.Conn == lists.ConnConnected && header.ComputerOnline && !header.ComputerUnlinked && !header.ProtocolMismatch && !in.AccountControlLost && !in.Removed
+	onlineReady := (in.Conn == lists.ConnConnected || st.DisplayGrace) && header.ComputerOnline && !header.ComputerUnlinked && !header.ProtocolMismatch && !in.AccountControlLost && !in.Removed
 	runningTurn := in.Projection != nil && in.Projection.Running
 	hasPendingInputs := in.Projection != nil && len(in.Projection.PendingInputs) > 0
 	exited := header.Exited
@@ -1120,12 +1127,12 @@ func buildSessionComposer(
 	out.SupportsQueueMode = caps.SteersDuringTurn
 	out.CanAttachImages = onlineReady && header.Capabilities.SupportsImages
 	out.CanAttachFiles = onlineReady && header.Capabilities.SupportsFiles
-	out.InterruptVisible = runningTurn && header.ComputerOnline && !header.ComputerUnlinked && in.Conn == lists.ConnConnected
+	out.InterruptVisible = runningTurn && header.ComputerOnline && !header.ComputerUnlinked && (in.Conn == lists.ConnConnected || st.DisplayGrace)
 
 	switch {
 	case header.Exited:
 		out.DisabledReason = text.Msg(text.KeySessionEnded)
-	case in.Conn != lists.ConnConnected:
+	case in.Conn != lists.ConnConnected && !st.DisplayGrace:
 		out.DisabledReason = text.Msg(text.KeyComposerIosConnectSend)
 	case header.ProtocolMismatch:
 		out.DisabledReason = header.ProtocolMismatchText

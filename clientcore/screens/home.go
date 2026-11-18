@@ -12,7 +12,8 @@ func BuildHome(st *State, endedLimit int) *corev1.HomeViewModel {
 	if st == nil {
 		st = NewState()
 	}
-	projRes, homeData := lists.BuildProjectsAndHome(&st.World, st.RememberedScope, st.RememberedScopeToken, nil, st.Scope, st.ProjectSearch, st.HomeFilterQuery, st.Cal, lists.HomeShown{
+	dw := displayWorld(st)
+	projRes, homeData := lists.BuildProjectsAndHome(&dw, st.RememberedScope, st.RememberedScopeToken, nil, st.Scope, st.ProjectSearch, st.HomeFilterQuery, st.Cal, lists.HomeShown{
 		AllAttention:      true,
 		AllRunning:        true,
 		Ended:             endedLimit,
@@ -30,7 +31,7 @@ func BuildHome(st *State, endedLimit int) *corev1.HomeViewModel {
 	}
 
 	canStart := false
-	for _, m := range st.World.Machines {
+	for _, m := range dw.Machines {
 		if lists.MachineReachable(m) {
 			canStart = true
 			break
@@ -141,6 +142,32 @@ func BuildHome(st *State, endedLimit int) *corev1.HomeViewModel {
 
 	vm.SidebarProjects = buildProjectListing(projRes, st, true)
 	return vm
+}
+
+func displayWorld(st *State) lists.World {
+	if st == nil || !st.DisplayGrace {
+		return st.World
+	}
+	w := st.World
+	w.Connection = lists.ConnConnected
+	unlinked := false
+	w.Unlinked = &unlinked
+	if len(st.World.Machines) > 0 {
+		machines := make([]*lists.Machine, len(st.World.Machines))
+		for i, m := range st.World.Machines {
+			if m == nil {
+				continue
+			}
+			mc := *m
+			reachable := mc.Online || (m.Reachable != nil && *m.Reachable)
+			mUnlinked := false
+			mc.Reachable = &reachable
+			mc.Unlinked = &mUnlinked
+			machines[i] = &mc
+		}
+		w.Machines = machines
+	}
+	return w
 }
 
 func buildHomeHeadlineView(h *lists.HomeHeadlineInfo, liveLoaded bool, errText *corev1.Text) *corev1.HomeHeadlineView {

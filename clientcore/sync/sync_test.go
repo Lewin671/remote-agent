@@ -156,7 +156,7 @@ func TestConnectionLifecycleRecoveryAndLiveness(t *testing.T) {
 		if cs := eff.GetCloseStream(); cs != nil {
 			closedLeg = cs.LegId
 		}
-		if st := eff.GetScheduleTimer(); st != nil && st.Kind == corev1.TimerKind_TIMER_KIND_LINK_GRACE {
+		if st := eff.GetScheduleTimer(); st != nil && st.Kind == corev1.TimerKind_TIMER_KIND_LINK_GRACE && st.Key == "" {
 			graceTimerID = st.TimerId
 		}
 	}
@@ -1475,5 +1475,148 @@ func TestResumeAfterStopAndBackgroundEmitsTouchSyncSecurity(t *testing.T) {
 	}
 	if fgSec == nil || !fgSec.Touch || fgSec.NetworkGeneration <= prevGen {
 		t.Fatalf("expected FOREGROUND after BACKGROUND to emit SyncSecurityEffect(Touch=true, NetworkGeneration>%d), got %+v", prevGen, fgSec)
+	}
+}
+
+func TestDisplayGraceHoldsConnectedViewDuringBackgroundResumeAndDisconnect(t *testing.T) {
+	findDisplayTimer := func(res StepResult) uint64 {
+		for _, eff := range res.Effects {
+			if st := eff.GetScheduleTimer(); st != nil &&
+				st.Kind == corev1.TimerKind_TIMER_KIND_LINK_GRACE &&
+				st.Key == displayGraceTimerKey &&
+				st.DelayMs == DisplayGraceMs {
+				return st.TimerId
+			}
+		}
+		return 0
+	}
+
+	cases := []struct {
+		name string
+		run  func(t *testing.T)
+	}{
+		{
+			name: "cold_start_before_ever_ready_never_enables_display_grace",
+			run: func(t *testing.T) {
+				e := NewEngine()
+				ids, fs := seedEntropy(8)
+				e.HandleEvent(&corev1.Event{
+					NowMs:      1_000,
+					MonoMs:     1_000,
+					RandomIds:  ids,
+					UnitFloats: fs,
+					Event: &corev1.Event_SyncLifecycle{
+						SyncLifecycle: &corev1.SyncLifecycleAction{Kind: corev1.SyncLifecycleKind_SYNC_LIFECYCLE_KIND_START},
+					},
+				})
+				v := e.BuildSyncStateView()
+				if v.Connection != corev1.ConnState_CONN_STATE_CONNECTING || v.DisplayGrace {
+					t.Fatalf("expected connecting without display grace before ready, got conn=%v grace=%v", v.Connection, v.DisplayGrace)
+				}
+			},
+		},
+		{
+			name: "stop_and_start_preserve_real_conn_while_holding_display_grace_until_clock_expires",
+			run: func(t *testing.T) {
+				e := NewEngine()
+				startAndConnect(t, e, 1_000)
+
+				// STOP keeps real connection OFFLINE, holds DisplayGrace without unlinked.
+				e.HandleEvent(&corev1.Event{
+					NowMs:  2_000,
+					MonoMs: 2_000,
+					Event: &corev1.Event_SyncLifecycle{
+						SyncLifecycle: &corev1.SyncLifecycleAction{Kind: corev1.SyncLifecycleKind_SYNC_LIFECYCLE_KIND_STOP},
+					},
+				})
+				stopped := e.BuildSyncStateView()
+				if e.Connection() != lists.ConnOffline || stopped.Connection != corev1.ConnState_CONN_STATE_OFFLINE {
+					t.Fatalf("expected real OFFLINE on STOP, got engine=%v proto=%v", e.Connection(), stopped.Connection)
+				}
+				if !stopped.DisplayGrace || !stopped.Unlinked {
+					t.Fatalf("expected STOP after ready to hold DisplayGrace while keeping real Unlinked, got grace=%v unlinked=%v", stopped.DisplayGrace, stopped.Unlinked)
+				}
+
+				// START schedules 1500ms display timer and holds grace before deadline.
+				_, startRes := e.HandleEvent(&corev1.Event{
+					NowMs:  5_000,
+					MonoMs: 5_000,
+					Event: &corev1.Event_SyncLifecycle{
+						SyncLifecycle: &corev1.SyncLifecycleAction{Kind: corev1.SyncLifecycleKind_SYNC_LIFECYCLE_KIND_START},
+					},
+				})
+				if findDisplayTimer(startRes) == 0 {
+					t.Fatalf("expected START after STOP to schedule display grace timer")
+				}
+				e.HandleEvent(&corev1.Event{
+					NowMs:  6_400,
+					MonoMs: 6_400,
+					Event: &corev1.Event_ClockUpdated{
+						ClockUpdated: &corev1.LocalCalendar{NowMs: 6_400},
+					},
+				})
+				inside := e.BuildSyncStateView()
+				if inside.Connection != corev1.ConnState_CONN_STATE_RECONNECTING || !inside.DisplayGrace || !inside.Unlinked {
+					t.Fatalf("expected RECONNECTING + grace active + real unlinked at +1400ms, got conn=%v grace=%v unlinked=%v", inside.Connection, inside.DisplayGrace, inside.Unlinked)
+				}
+
+				// Injected clock advancing to +1500ms ends grace and exposes unlinked state.
+				e.HandleEvent(&corev1.Event{
+					NowMs:  6_500,
+					MonoMs: 6_500,
+					Event: &corev1.Event_ClockUpdated{
+						ClockUpdated: &corev1.LocalCalendar{NowMs: 6_500},
+					},
+				})
+				expired := e.BuildSyncStateView()
+				if expired.DisplayGrace || !expired.Unlinked {
+					t.Fatalf("expected grace expired at +1500ms, got grace=%v unlinked=%v", expired.DisplayGrace, expired.Unlinked)
+				}
+			},
+		},
+		{
+			name: "stream_drop_starts_display_grace_and_timer_fired_ends_it",
+			run: func(t *testing.T) {
+				e := NewEngine()
+				startAndConnect(t, e, 1_000)
+
+				_, dropRes := e.HandleEvent(&corev1.Event{
+					NowMs:  3_000,
+					MonoMs: 3_000,
+					Event: &corev1.Event_StreamClosed{
+						StreamClosed: &corev1.StreamClosedEvent{LegId: e.legID, Error: "drop"},
+					},
+				})
+				timerID := findDisplayTimer(dropRes)
+				if timerID == 0 {
+					t.Fatalf("expected StreamClosed from connected state to schedule display grace timer")
+				}
+				inside := e.BuildSyncStateView()
+				if inside.Connection != corev1.ConnState_CONN_STATE_RECONNECTING || !inside.DisplayGrace {
+					t.Fatalf("expected RECONNECTING + DisplayGrace inside window, got conn=%v grace=%v", inside.Connection, inside.DisplayGrace)
+				}
+
+				// Timer firing ends grace without needing another connection change.
+				e.HandleEvent(&corev1.Event{
+					NowMs:  4_500,
+					MonoMs: 4_500,
+					Event: &corev1.Event_TimerFired{
+						TimerFired: &corev1.TimerFiredEvent{
+							TimerId: timerID,
+							Kind:    corev1.TimerKind_TIMER_KIND_LINK_GRACE,
+							Key:     displayGraceTimerKey,
+						},
+					},
+				})
+				after := e.BuildSyncStateView()
+				if after.DisplayGrace {
+					t.Fatalf("expected DisplayGrace=false after TimerFired")
+				}
+			},
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, tc.run)
 	}
 }

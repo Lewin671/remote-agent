@@ -380,7 +380,7 @@ export function Banner({ kind = "", children, action, onAction }: { kind?: "" | 
 export function ConnBar({ remote, className = "connbar" }: { remote: Remote; className?: string }) {
   const [details, setDetails] = useState(false);
   const link = remote.link;
-  if (link === "online") return null;
+  if (link === "online" || remote.displayGrace) return null;
   // Nothing kept from before to show: the bar says what the connection is for.
   const kept = remote.listed || remote.sessions.size > 0;
   if (link === "waiting" && !remote.showWaiting) return null;

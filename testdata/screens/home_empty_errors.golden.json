@@ -318,6 +318,14 @@
             }
           },
           {
+            "scheduleTimer": {
+              "timerId": "5",
+              "kind": "TIMER_KIND_LINK_GRACE",
+              "key": "display",
+              "delayMs": "1500"
+            }
+          },
+          {
             "render": {
               "screens": [
                 "SCREEN_TARGET_HOME",
@@ -346,14 +354,10 @@
               }
             },
             "headline": {
-              "kind": "HEADLINE_KIND_ERROR",
+              "kind": "HEADLINE_KIND_EMPTY",
               "title": {
-                "key": "connection.reconnecting"
-              },
-              "sub": {
-                "key": "connection.previous_below"
-              },
-              "unlinked": true
+                "key": "home.no_sessions"
+              }
             },
             "empty": {
               "kind": "HOME_EMPTY_KIND_NO_ONLINE",

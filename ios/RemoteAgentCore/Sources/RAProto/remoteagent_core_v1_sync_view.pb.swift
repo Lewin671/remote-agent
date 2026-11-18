@@ -459,6 +459,11 @@ public struct PBCoreSyncStateView: @unchecked Sendable {
     set {_uniqueStorage()._devices = newValue}
   }
 
+  public var displayGrace: Bool {
+    get {return _storage._displayGrace}
+    set {_uniqueStorage()._displayGrace = newValue}
+  }
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -1042,7 +1047,7 @@ extension PBCoreSyncDeviceView: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
 
 extension PBCoreSyncStateView: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".SyncStateView"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}connection\0\u{3}connection_reason\0\u{3}connection_step\0\u{3}disconnected_at_ms\0\u{3}live_push_connected\0\u{1}unlinked\0\u{3}is_manager\0\u{3}self_device_id\0\u{3}authority_device_id\0\u{3}manager_name\0\u{3}account_control_lost\0\u{3}account_clock_skewed\0\u{1}removed\0\u{3}security_loaded\0\u{3}is_member\0\u{3}lease_end_ms\0\u{3}recovery_pending\0\u{3}recovery_ready_ms\0\u{3}recovery_objects_pending\0\u{3}client_protocol_version\0\u{1}machines\0\u{3}machines_listed\0\u{1}sessions\0\u{3}sessions_listed\0\u{3}live_loaded\0\u{3}has_more_sessions\0\u{3}next_cursor\0\u{3}loading_more_sessions\0\u{3}session_list_failed\0\u{3}session_list_error\0\u{3}prefs_loaded\0\u{3}prefs_load_failed\0\u{3}prefs_broken\0\u{3}prefs_revision\0\u{3}prefs_syncing\0\u{1}prefs\0\u{1}devices\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}connection\0\u{3}connection_reason\0\u{3}connection_step\0\u{3}disconnected_at_ms\0\u{3}live_push_connected\0\u{1}unlinked\0\u{3}is_manager\0\u{3}self_device_id\0\u{3}authority_device_id\0\u{3}manager_name\0\u{3}account_control_lost\0\u{3}account_clock_skewed\0\u{1}removed\0\u{3}security_loaded\0\u{3}is_member\0\u{3}lease_end_ms\0\u{3}recovery_pending\0\u{3}recovery_ready_ms\0\u{3}recovery_objects_pending\0\u{3}client_protocol_version\0\u{1}machines\0\u{3}machines_listed\0\u{1}sessions\0\u{3}sessions_listed\0\u{3}live_loaded\0\u{3}has_more_sessions\0\u{3}next_cursor\0\u{3}loading_more_sessions\0\u{3}session_list_failed\0\u{3}session_list_error\0\u{3}prefs_loaded\0\u{3}prefs_load_failed\0\u{3}prefs_broken\0\u{3}prefs_revision\0\u{3}prefs_syncing\0\u{1}prefs\0\u{1}devices\0\u{3}display_grace\0")
 
   fileprivate class _StorageClass {
     var _connection: PBCoreConnState = .unspecified
@@ -1082,6 +1087,7 @@ extension PBCoreSyncStateView: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
     var _prefsSyncing: Bool = false
     var _prefs: PBProjectPrefs? = nil
     var _devices: [PBCoreSyncDeviceView] = []
+    var _displayGrace: Bool = false
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -1129,6 +1135,7 @@ extension PBCoreSyncStateView: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
       _prefsSyncing = source._prefsSyncing
       _prefs = source._prefs
       _devices = source._devices
+      _displayGrace = source._displayGrace
     }
   }
 
@@ -1184,6 +1191,7 @@ extension PBCoreSyncStateView: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
         case 35: try { try decoder.decodeSingularBoolField(value: &_storage._prefsSyncing) }()
         case 36: try { try decoder.decodeSingularMessageField(value: &_storage._prefs) }()
         case 37: try { try decoder.decodeRepeatedMessageField(value: &_storage._devices) }()
+        case 38: try { try decoder.decodeSingularBoolField(value: &_storage._displayGrace) }()
         default: break
         }
       }
@@ -1307,6 +1315,9 @@ extension PBCoreSyncStateView: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
       if !_storage._devices.isEmpty {
         try visitor.visitRepeatedMessageField(value: _storage._devices, fieldNumber: 37)
       }
+      if _storage._displayGrace != false {
+        try visitor.visitSingularBoolField(value: _storage._displayGrace, fieldNumber: 38)
+      }
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -1353,6 +1364,7 @@ extension PBCoreSyncStateView: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
         if _storage._prefsSyncing != rhs_storage._prefsSyncing {return false}
         if _storage._prefs != rhs_storage._prefs {return false}
         if _storage._devices != rhs_storage._devices {return false}
+        if _storage._displayGrace != rhs_storage._displayGrace {return false}
         return true
       }
       if !storagesAreEqual {return false}

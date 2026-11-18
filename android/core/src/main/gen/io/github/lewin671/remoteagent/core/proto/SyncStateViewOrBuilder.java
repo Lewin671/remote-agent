@@ -302,4 +302,10 @@ public interface SyncStateViewOrBuilder extends
    * <code>repeated .remoteagent.core.v1.SyncDeviceView devices = 37 [json_name = "devices"];</code>
    */
   int getDevicesCount();
+
+  /**
+   * <code>bool display_grace = 38 [json_name = "displayGrace"];</code>
+   * @return The displayGrace.
+   */
+  boolean getDisplayGrace();
 }

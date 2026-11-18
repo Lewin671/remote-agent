@@ -609,6 +609,7 @@ type SyncStateView struct {
 	PrefsSyncing           bool
 	Prefs                  *v1.ProjectPrefs
 	Devices                []*SyncDeviceView
+	DisplayGrace           bool
 }
 
 func (m *SyncStateView) GetConnection() ConnState {
@@ -833,6 +834,12 @@ func (m *SyncStateView) GetDevices() []*SyncDeviceView {
 	}
 	return nil
 }
+func (m *SyncStateView) GetDisplayGrace() bool {
+	if m != nil {
+		return m.DisplayGrace
+	}
+	return false
+}
 
 func (m *SyncStateView) Size() int {
 	if m == nil {
@@ -900,6 +907,7 @@ func (m *SyncStateView) Size() int {
 			n += litewire.SizeMessage(37, v.Size())
 		}
 	}
+	n += litewire.SizeBool(38, m.DisplayGrace)
 	return n
 }
 
@@ -979,6 +987,7 @@ func (m *SyncStateView) AppendMarshal(b []byte) []byte {
 			b = litewire.AppendMessage(b, 37, v)
 		}
 	}
+	b = litewire.AppendBool(b, 38, m.DisplayGrace)
 	return b
 }
 

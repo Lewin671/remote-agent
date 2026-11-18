@@ -124,6 +124,7 @@ func (e *Engine) buildSyncDeviceView(d *DeviceEntry) *corev1.SyncDeviceView {
 
 // BuildSyncStateView constructs the transitional SyncStateView snapshot for unmigrated Step 3-4 screens.
 func (e *Engine) BuildSyncStateView() *corev1.SyncStateView {
+	displayGrace := e.displayGraceActive()
 	unlinked := e.worldUnlinked()
 
 	machines := make([]*corev1.SyncMachineView, 0, len(e.machines))
@@ -225,6 +226,7 @@ func (e *Engine) BuildSyncStateView() *corev1.SyncStateView {
 		PrefsSyncing:           len(e.prefsQueue) > 0,
 		Prefs:                  prefsCopy,
 		Devices:                devices,
+		DisplayGrace:           displayGrace,
 	}
 }
 

@@ -1395,6 +1395,32 @@ public  final class SyncStateView extends
     devices_.remove(index);
   }
 
+  public static final int DISPLAY_GRACE_FIELD_NUMBER = 38;
+  private boolean displayGrace_;
+  /**
+   * <code>bool display_grace = 38 [json_name = "displayGrace"];</code>
+   * @return The displayGrace.
+   */
+  @java.lang.Override
+  public boolean getDisplayGrace() {
+    return displayGrace_;
+  }
+  /**
+   * <code>bool display_grace = 38 [json_name = "displayGrace"];</code>
+   * @param value The displayGrace to set.
+   */
+  private void setDisplayGrace(boolean value) {
+    
+    displayGrace_ = value;
+  }
+  /**
+   * <code>bool display_grace = 38 [json_name = "displayGrace"];</code>
+   */
+  private void clearDisplayGrace() {
+
+    displayGrace_ = false;
+  }
+
   public static io.github.lewin671.remoteagent.core.proto.SyncStateView parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -2930,6 +2956,34 @@ public  final class SyncStateView extends
       return this;
     }
 
+    /**
+     * <code>bool display_grace = 38 [json_name = "displayGrace"];</code>
+     * @return The displayGrace.
+     */
+    @java.lang.Override
+    public boolean getDisplayGrace() {
+      return instance.getDisplayGrace();
+    }
+    /**
+     * <code>bool display_grace = 38 [json_name = "displayGrace"];</code>
+     * @param value The displayGrace to set.
+     * @return This builder for chaining.
+     */
+    public Builder setDisplayGrace(boolean value) {
+      copyOnWrite();
+      instance.setDisplayGrace(value);
+      return this;
+    }
+    /**
+     * <code>bool display_grace = 38 [json_name = "displayGrace"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearDisplayGrace() {
+      copyOnWrite();
+      instance.clearDisplayGrace();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.SyncStateView)
   }
   @java.lang.Override
@@ -2987,14 +3041,15 @@ public  final class SyncStateView extends
             "prefs_",
             "devices_",
             io.github.lewin671.remoteagent.core.proto.SyncDeviceView.class,
+            "displayGrace_",
           };
           java.lang.String info =
-              "\u0000%\u0000\u0001\u0001%%\u0000\u0003\u0000\u0001\f\u0002\u1009\u0000\u0003\u1009" +
+              "\u0000&\u0000\u0001\u0001&&\u0000\u0003\u0000\u0001\f\u0002\u1009\u0000\u0003\u1009" +
               "\u0001\u0004\u0002\u0005\u0007\u0006\u0007\u0007\u0007\b\u0208\t\u0208\n\u1009\u0002" +
               "\u000b\u0007\f\u0007\r\u0007\u000e\u0007\u000f\u0007\u0010\u0002\u0011\u0007\u0012" +
               "\u0002\u0013\u0007\u0014\u000b\u0015\u001b\u0016\u0007\u0017\u001b\u0018\u0007\u0019" +
               "\u0007\u001a\u0007\u001b\u1009\u0003\u001c\u0007\u001d\u0007\u001e\u1009\u0004\u001f" +
-              "\u0007 \u0007!\u0007\"\u0003#\u0007$\u1009\u0005%\u001b";
+              "\u0007 \u0007!\u0007\"\u0003#\u0007$\u1009\u0005%\u001b&\u0007";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

@@ -57,9 +57,11 @@ func (e *Engine) SessionSnapshot(sessionID string) screens.SessionViewInput {
 			agent = s.Meta.Agent
 		}
 		if m := e.machines[s.MachineID]; m != nil {
+			reachable := e.machineReachable(m)
 			out.Machine = &lists.Machine{
 				ID:         m.ID,
-				Online:     e.machineReachable(m),
+				Online:     m.Online,
+				Reachable:  &reachable,
 				LastSeenMs: m.LastSeenMs,
 				Meta:       m.Meta,
 			}

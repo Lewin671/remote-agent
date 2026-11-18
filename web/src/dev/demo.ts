@@ -1640,6 +1640,7 @@ export class DemoRemote extends Remote {
         drainRpc();
         if (conn === "noserver" && this.demoStream) {
           this.demoStream.callbacks.onClosed(this.demoStream.legId, { policyViolation: false, errorCode: "unavailable", error: "连接超时", unresolvedHost: false });
+          host.fireActiveTimer(TimerKind.LINK_GRACE, "display");
           host.fireActiveTimer(TimerKind.LINK_GRACE);
         }
       } finally { this.demoSyncing = false; this.syncRpcQueue = []; }

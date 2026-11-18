@@ -92,6 +92,7 @@ func (e *Engine) SyncToState(st *screens.State) {
 	if st == nil {
 		return
 	}
+	displayGrace := e.displayGraceActive()
 	unlinked := e.worldUnlinked()
 
 	machines := make([]*lists.Machine, 0, len(e.machines))
@@ -159,6 +160,7 @@ func (e *Engine) SyncToState(st *screens.State) {
 	})
 
 	st.Cal = e.cal
+	st.DisplayGrace = displayGrace
 	st.ConnectionReason = ""
 	st.ConnectionReasonText = e.connReasonText
 	st.SessionListErrorText = e.sessionListErr
