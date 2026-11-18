@@ -2207,6 +2207,16 @@ public struct PBSessionTimelineView: @unchecked Sendable {
     set {_uniqueStorage()._canLoadEarlier = newValue}
   }
 
+  public var tailRequested: Bool {
+    get {return _storage._tailRequested}
+    set {_uniqueStorage()._tailRequested = newValue}
+  }
+
+  public var offline: Bool {
+    get {return _storage._offline}
+    set {_uniqueStorage()._offline = newValue}
+  }
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -5823,7 +5833,7 @@ extension PBSessionComposerView: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
 
 extension PBSessionTimelineView: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".SessionTimelineView"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}items\0\u{3}has_earlier\0\u{3}next_before_seq\0\u{3}window_first_seq\0\u{3}window_last_seq\0\u{3}total_items\0\u{3}anchor_seq\0\u{3}anchor_item_id\0\u{1}loading\0\u{1}loaded\0\u{3}awaiting_cache\0\u{1}backfilling\0\u{1}fetching\0\u{3}has_gap\0\u{1}retired\0\u{3}retrying_corrupt_cache\0\u{3}history_partial\0\u{3}unavailable_count\0\u{3}history_notice\0\u{1}error\0\u{3}fetch_error\0\u{3}can_load_earlier\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}items\0\u{3}has_earlier\0\u{3}next_before_seq\0\u{3}window_first_seq\0\u{3}window_last_seq\0\u{3}total_items\0\u{3}anchor_seq\0\u{3}anchor_item_id\0\u{1}loading\0\u{1}loaded\0\u{3}awaiting_cache\0\u{1}backfilling\0\u{1}fetching\0\u{3}has_gap\0\u{1}retired\0\u{3}retrying_corrupt_cache\0\u{3}history_partial\0\u{3}unavailable_count\0\u{3}history_notice\0\u{1}error\0\u{3}fetch_error\0\u{3}can_load_earlier\0\u{3}tail_requested\0\u{1}offline\0")
 
   fileprivate class _StorageClass {
     var _items: [PBSessionTimelineItem] = []
@@ -5848,6 +5858,8 @@ extension PBSessionTimelineView: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
     var _error: PBCoreText? = nil
     var _fetchError: PBCoreText? = nil
     var _canLoadEarlier: Bool = false
+    var _tailRequested: Bool = false
+    var _offline: Bool = false
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -5880,6 +5892,8 @@ extension PBSessionTimelineView: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
       _error = source._error
       _fetchError = source._fetchError
       _canLoadEarlier = source._canLoadEarlier
+      _tailRequested = source._tailRequested
+      _offline = source._offline
     }
   }
 
@@ -5920,6 +5934,8 @@ extension PBSessionTimelineView: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
         case 20: try { try decoder.decodeSingularMessageField(value: &_storage._error) }()
         case 21: try { try decoder.decodeSingularMessageField(value: &_storage._fetchError) }()
         case 22: try { try decoder.decodeSingularBoolField(value: &_storage._canLoadEarlier) }()
+        case 23: try { try decoder.decodeSingularBoolField(value: &_storage._tailRequested) }()
+        case 24: try { try decoder.decodeSingularBoolField(value: &_storage._offline) }()
         default: break
         }
       }
@@ -5998,6 +6014,12 @@ extension PBSessionTimelineView: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
       if _storage._canLoadEarlier != false {
         try visitor.visitSingularBoolField(value: _storage._canLoadEarlier, fieldNumber: 22)
       }
+      if _storage._tailRequested != false {
+        try visitor.visitSingularBoolField(value: _storage._tailRequested, fieldNumber: 23)
+      }
+      if _storage._offline != false {
+        try visitor.visitSingularBoolField(value: _storage._offline, fieldNumber: 24)
+      }
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -6029,6 +6051,8 @@ extension PBSessionTimelineView: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
         if _storage._error != rhs_storage._error {return false}
         if _storage._fetchError != rhs_storage._fetchError {return false}
         if _storage._canLoadEarlier != rhs_storage._canLoadEarlier {return false}
+        if _storage._tailRequested != rhs_storage._tailRequested {return false}
+        if _storage._offline != rhs_storage._offline {return false}
         return true
       }
       if !storagesAreEqual {return false}

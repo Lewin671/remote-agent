@@ -1461,7 +1461,7 @@ const ChatBody = memo(function ChatBody({
     (!needFullCache ||
       (!timeline?.backfilling &&
         !timeline?.fetching &&
-        (!timeline?.hasGap || !!fetchError || !remote || remote.conn === "offline")));
+        (!timeline?.hasGap || !!fetchError || !!timeline?.offline)));
   if (!!timeline?.loaded || !!historyError || !!timeline?.retired || canRevealTail) {
     readyRef.current.ready = true;
   }
@@ -1555,14 +1555,15 @@ const ChatBody = memo(function ChatBody({
     }
   }, [sent]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  const loadingEarlier = !!(timeline?.backfilling || (timeline?.tailRequested && timeline?.fetching));
   useEffect(() => {
     const el = scroller.current;
     if (!el || el.classList.contains("mo-hold") || stick.current) return;
-    if (el.scrollTop <= 40 && !timeline?.backfilling && (timeline?.hasEarlier || timeline?.canLoadEarlier) && loadedTopAt.current !== count) {
+    if (el.scrollTop <= 40 && !loadingEarlier && (timeline?.hasEarlier || timeline?.canLoadEarlier) && loadedTopAt.current !== count) {
       loadedTopAt.current = count;
       onLoadEarlier();
     }
-  }, [timeline?.backfilling, timeline?.hasEarlier, timeline?.canLoadEarlier, count, onLoadEarlier]);
+  }, [loadingEarlier, timeline?.hasEarlier, timeline?.canLoadEarlier, count, onLoadEarlier]);
 
   useLayoutEffect(() => {
     const el = scroller.current;
@@ -1583,9 +1584,9 @@ const ChatBody = memo(function ChatBody({
 
   const listHeader = (
     <>
-      {(timeline?.hasEarlier || timeline?.canLoadEarlier || timeline?.backfilling) && (
+      {(timeline?.hasEarlier || timeline?.canLoadEarlier || timeline?.backfilling || timeline?.tailRequested) && (
         <div className="load-earlier">
-          {timeline.backfilling ? (
+          {loadingEarlier ? (
             <div className="muted small">{i18n.t("session.loading_earlier")}</div>
           ) : (
             <button className="more-row" onClick={onLoadEarlier}>
@@ -1710,7 +1711,7 @@ const ChatBody = memo(function ChatBody({
             markTailSeen();
             setUnseen(0);
           }
-          if (el.scrollTop <= 40 && !timeline?.backfilling && (timeline?.hasEarlier || timeline?.canLoadEarlier) && loadedTopAt.current !== rows.length) {
+          if (el.scrollTop <= 40 && !loadingEarlier && (timeline?.hasEarlier || timeline?.canLoadEarlier) && loadedTopAt.current !== rows.length) {
             loadedTopAt.current = rows.length;
             onLoadEarlier();
           }
@@ -1725,7 +1726,7 @@ const ChatBody = memo(function ChatBody({
             sid={sid}
             follow={() => stick.current}
             rowClass={rowClass}
-            long={!!timeline?.hasEarlier || !!timeline?.backfilling || rows.length > 100}
+            long={!!timeline?.hasEarlier || !!timeline?.backfilling || !!timeline?.tailRequested || rows.length > 100}
             loaded={ready}
             ready={ready}
             header={listHeader}

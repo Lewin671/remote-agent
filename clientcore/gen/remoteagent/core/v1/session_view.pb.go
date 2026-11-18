@@ -3371,6 +3371,8 @@ type SessionTimelineView struct {
 	Error                *Text
 	FetchError           *Text
 	CanLoadEarlier       bool
+	TailRequested        bool
+	Offline              bool
 }
 
 func (m *SessionTimelineView) GetItems() []*SessionTimelineItem {
@@ -3505,6 +3507,18 @@ func (m *SessionTimelineView) GetCanLoadEarlier() bool {
 	}
 	return false
 }
+func (m *SessionTimelineView) GetTailRequested() bool {
+	if m != nil {
+		return m.TailRequested
+	}
+	return false
+}
+func (m *SessionTimelineView) GetOffline() bool {
+	if m != nil {
+		return m.Offline
+	}
+	return false
+}
 
 func (m *SessionTimelineView) Size() int {
 	if m == nil {
@@ -3543,6 +3557,8 @@ func (m *SessionTimelineView) Size() int {
 		n += litewire.SizeMessage(21, m.FetchError.Size())
 	}
 	n += litewire.SizeBool(22, m.CanLoadEarlier)
+	n += litewire.SizeBool(23, m.TailRequested)
+	n += litewire.SizeBool(24, m.Offline)
 	return n
 }
 
@@ -3593,6 +3609,8 @@ func (m *SessionTimelineView) AppendMarshal(b []byte) []byte {
 		b = litewire.AppendMessage(b, 21, m.FetchError)
 	}
 	b = litewire.AppendBool(b, 22, m.CanLoadEarlier)
+	b = litewire.AppendBool(b, 23, m.TailRequested)
+	b = litewire.AppendBool(b, 24, m.Offline)
 	return b
 }
 

@@ -755,10 +755,13 @@ func (e *Engine) refreshSessionPending(s *SessionEntry) {
 		if buf.reducer == nil {
 			buf.rebuildReducer(agent)
 		}
+		if buf.cachedSnap == nil {
+			buf.cachedSnap = buf.reducer.Snapshot()
+		}
 		if s.Checkpoint != nil {
-			ps = buf.reducer.CurrentActions(s.Checkpoint)
+			ps = projection.CurrentActions(buf.cachedSnap, s.Checkpoint, buf.prefix)
 		} else {
-			ps = buf.reducer.Snapshot()
+			ps = buf.cachedSnap
 		}
 	} else if s.Checkpoint != nil {
 		ps = projection.CurrentActions(nil, s.Checkpoint, nil)

@@ -750,6 +750,58 @@ public  final class SessionTimelineView extends
     canLoadEarlier_ = false;
   }
 
+  public static final int TAIL_REQUESTED_FIELD_NUMBER = 23;
+  private boolean tailRequested_;
+  /**
+   * <code>bool tail_requested = 23 [json_name = "tailRequested"];</code>
+   * @return The tailRequested.
+   */
+  @java.lang.Override
+  public boolean getTailRequested() {
+    return tailRequested_;
+  }
+  /**
+   * <code>bool tail_requested = 23 [json_name = "tailRequested"];</code>
+   * @param value The tailRequested to set.
+   */
+  private void setTailRequested(boolean value) {
+    
+    tailRequested_ = value;
+  }
+  /**
+   * <code>bool tail_requested = 23 [json_name = "tailRequested"];</code>
+   */
+  private void clearTailRequested() {
+
+    tailRequested_ = false;
+  }
+
+  public static final int OFFLINE_FIELD_NUMBER = 24;
+  private boolean offline_;
+  /**
+   * <code>bool offline = 24 [json_name = "offline"];</code>
+   * @return The offline.
+   */
+  @java.lang.Override
+  public boolean getOffline() {
+    return offline_;
+  }
+  /**
+   * <code>bool offline = 24 [json_name = "offline"];</code>
+   * @param value The offline to set.
+   */
+  private void setOffline(boolean value) {
+    
+    offline_ = value;
+  }
+  /**
+   * <code>bool offline = 24 [json_name = "offline"];</code>
+   */
+  private void clearOffline() {
+
+    offline_ = false;
+  }
+
   public static io.github.lewin671.remoteagent.core.proto.SessionTimelineView parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -1615,6 +1667,62 @@ public  final class SessionTimelineView extends
       return this;
     }
 
+    /**
+     * <code>bool tail_requested = 23 [json_name = "tailRequested"];</code>
+     * @return The tailRequested.
+     */
+    @java.lang.Override
+    public boolean getTailRequested() {
+      return instance.getTailRequested();
+    }
+    /**
+     * <code>bool tail_requested = 23 [json_name = "tailRequested"];</code>
+     * @param value The tailRequested to set.
+     * @return This builder for chaining.
+     */
+    public Builder setTailRequested(boolean value) {
+      copyOnWrite();
+      instance.setTailRequested(value);
+      return this;
+    }
+    /**
+     * <code>bool tail_requested = 23 [json_name = "tailRequested"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearTailRequested() {
+      copyOnWrite();
+      instance.clearTailRequested();
+      return this;
+    }
+
+    /**
+     * <code>bool offline = 24 [json_name = "offline"];</code>
+     * @return The offline.
+     */
+    @java.lang.Override
+    public boolean getOffline() {
+      return instance.getOffline();
+    }
+    /**
+     * <code>bool offline = 24 [json_name = "offline"];</code>
+     * @param value The offline to set.
+     * @return This builder for chaining.
+     */
+    public Builder setOffline(boolean value) {
+      copyOnWrite();
+      instance.setOffline(value);
+      return this;
+    }
+    /**
+     * <code>bool offline = 24 [json_name = "offline"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearOffline() {
+      copyOnWrite();
+      instance.clearOffline();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.SessionTimelineView)
   }
   @java.lang.Override
@@ -1655,12 +1763,15 @@ public  final class SessionTimelineView extends
             "error_",
             "fetchError_",
             "canLoadEarlier_",
+            "tailRequested_",
+            "offline_",
           };
           java.lang.String info =
-              "\u0000\u0016\u0000\u0001\u0001\u0016\u0016\u0000\u0001\u0000\u0001\u001b\u0002\u0007" +
+              "\u0000\u0018\u0000\u0001\u0001\u0018\u0018\u0000\u0001\u0000\u0001\u001b\u0002\u0007" +
               "\u0003\u0003\u0004\u0003\u0005\u0003\u0006\u0004\u0007\u0003\b\u0208\t\u0007\n\u0007" +
               "\u000b\u0007\f\u0007\r\u0007\u000e\u0007\u000f\u0007\u0010\u0007\u0011\u0007\u0012" +
-              "\u000b\u0013\u1009\u0000\u0014\u1009\u0001\u0015\u1009\u0002\u0016\u0007";
+              "\u000b\u0013\u1009\u0000\u0014\u1009\u0001\u0015\u1009\u0002\u0016\u0007\u0017\u0007" +
+              "\u0018\u0007";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

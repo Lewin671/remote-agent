@@ -3252,6 +3252,8 @@ type SessionTimelineView struct {
 	Error                *Text                  `protobuf:"bytes,20,opt,name=error,proto3" json:"error,omitempty"`
 	FetchError           *Text                  `protobuf:"bytes,21,opt,name=fetch_error,json=fetchError,proto3" json:"fetch_error,omitempty"`
 	CanLoadEarlier       bool                   `protobuf:"varint,22,opt,name=can_load_earlier,json=canLoadEarlier,proto3" json:"can_load_earlier,omitempty"`
+	TailRequested        bool                   `protobuf:"varint,23,opt,name=tail_requested,json=tailRequested,proto3" json:"tail_requested,omitempty"`
+	Offline              bool                   `protobuf:"varint,24,opt,name=offline,proto3" json:"offline,omitempty"`
 	unknownFields        protoimpl.UnknownFields
 	sizeCache            protoimpl.SizeCache
 }
@@ -3436,6 +3438,20 @@ func (x *SessionTimelineView) GetFetchError() *Text {
 func (x *SessionTimelineView) GetCanLoadEarlier() bool {
 	if x != nil {
 		return x.CanLoadEarlier
+	}
+	return false
+}
+
+func (x *SessionTimelineView) GetTailRequested() bool {
+	if x != nil {
+		return x.TailRequested
+	}
+	return false
+}
+
+func (x *SessionTimelineView) GetOffline() bool {
+	if x != nil {
+		return x.Offline
 	}
 	return false
 }
@@ -5869,7 +5885,7 @@ const file_remoteagent_core_v1_session_view_proto_rawDesc = "" +
 	"\x11interrupt_visible\x18\t \x01(\bR\x10interruptVisible\x12S\n" +
 	"\x0epending_inputs\x18\n" +
 	" \x03(\v2,.remoteagent.core.v1.SessionPendingInputViewR\rpendingInputs\x12D\n" +
-	"\boutgoing\x18\v \x03(\v2(.remoteagent.core.v1.SessionOutgoingViewR\boutgoing\"\x85\a\n" +
+	"\boutgoing\x18\v \x03(\v2(.remoteagent.core.v1.SessionOutgoingViewR\boutgoing\"\xc6\a\n" +
 	"\x13SessionTimelineView\x12>\n" +
 	"\x05items\x18\x01 \x03(\v2(.remoteagent.core.v1.SessionTimelineItemR\x05items\x12\x1f\n" +
 	"\vhas_earlier\x18\x02 \x01(\bR\n" +
@@ -5897,7 +5913,9 @@ const file_remoteagent_core_v1_session_view_proto_rawDesc = "" +
 	"\x05error\x18\x14 \x01(\v2\x19.remoteagent.core.v1.TextR\x05error\x12:\n" +
 	"\vfetch_error\x18\x15 \x01(\v2\x19.remoteagent.core.v1.TextR\n" +
 	"fetchError\x12(\n" +
-	"\x10can_load_earlier\x18\x16 \x01(\bR\x0ecanLoadEarlier\"\xf8\n" +
+	"\x10can_load_earlier\x18\x16 \x01(\bR\x0ecanLoadEarlier\x12%\n" +
+	"\x0etail_requested\x18\x17 \x01(\bR\rtailRequested\x12\x18\n" +
+	"\aoffline\x18\x18 \x01(\bR\aoffline\"\xf8\n" +
 	"\n" +
 	"\x13SessionTimelineItem\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x10\n" +

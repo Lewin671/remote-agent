@@ -170,4 +170,16 @@ public interface SessionTimelineViewOrBuilder extends
    * @return The canLoadEarlier.
    */
   boolean getCanLoadEarlier();
+
+  /**
+   * <code>bool tail_requested = 23 [json_name = "tailRequested"];</code>
+   * @return The tailRequested.
+   */
+  boolean getTailRequested();
+
+  /**
+   * <code>bool offline = 24 [json_name = "offline"];</code>
+   * @return The offline.
+   */
+  boolean getOffline();
 }

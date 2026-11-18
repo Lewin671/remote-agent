@@ -161,6 +161,13 @@ func (c *Core) Dispatch(ev *corev1.Event) *corev1.EffectBatch {
 func (c *Core) processSyncStep(res sync.StepResult) ([]*corev1.Effect, sync.DirtyFlags) {
 	c.m.sync.SyncToState(c.m.state)
 	c.m.decodeScopeIfReady()
+	if c.m.sessions != nil {
+		for sid, ui := range c.m.sessions.uiBySession {
+			if c.m.sync.Buffer(sid) == nil {
+				ui.ClearTimelineCache()
+			}
+		}
+	}
 
 	var effects []*corev1.Effect
 	var dirty sync.DirtyFlags

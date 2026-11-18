@@ -403,6 +403,8 @@ message SessionTimelineView {
   Text error = 20;
   Text fetch_error = 21;
   bool can_load_earlier = 22;
+  bool tail_requested = 23;
+  bool offline = 24;
 }
 
 message SessionTimelineItem {

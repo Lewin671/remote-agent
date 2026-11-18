@@ -94,3 +94,52 @@ func TestBuildTimelineResolvesCompletedToolOnTailSlice(t *testing.T) {
 		t.Fatalf("expected completed tool c1 placed at start index, got %+v", items[0])
 	}
 }
+
+func TestTimelineReportsOfflineForOfflineAndNoNetworkAndClearsCacheOnZeroRev(t *testing.T) {
+	st := NewState()
+	st.Cal = lists.Calendar{NowMs: 1_700_000_000_000}
+	ls := &lists.Session{
+		ID:        "s1",
+		MachineID: "m1",
+		Info:      &v1.Session{Id: "s1", Agent: v1.Agent_AGENT_CODEX, Status: v1.SessionStatus_SESSION_STATUS_RUNNING},
+	}
+	events := []*v1.Event{
+		{Seq: 1, SessionId: "s1", Kind: &v1.Event_UserMessage{UserMessage: &v1.UserMessage{Text: "hi"}}},
+	}
+	req := &corev1.SessionScreenRequest{SessionId: "s1"}
+	ui := NewSessionUIState()
+
+	for _, tc := range []struct {
+		conn lists.ConnectionKind
+		want bool
+	}{
+		{lists.ConnOffline, true},
+		{lists.ConnNoNetwork, true},
+		{lists.ConnConnecting, false},
+		{lists.ConnConnected, false},
+	} {
+		vm := BuildSessionView(SessionViewInput{
+			Found:         true,
+			Session:       ls,
+			Conn:          tc.conn,
+			TailRequested: true,
+			EventRev:      1,
+			Events:        events,
+		}, st, req, ui)
+		if got := vm.GetTimeline().GetOffline(); got != tc.want {
+			t.Fatalf("conn=%v: Offline=%v, want %v", tc.conn, got, tc.want)
+		}
+		if !vm.GetTimeline().GetTailRequested() {
+			t.Fatalf("conn=%v: expected TailRequested=true", tc.conn)
+		}
+	}
+	if !ui.HasTimelineCache() {
+		t.Fatalf("expected timeline cache populated for EventRev=1")
+	}
+
+	// EventRev == 0 (no active EventBuffer) must clear any stale retained timeline cache.
+	BuildSessionView(SessionViewInput{Found: true, Session: ls, EventRev: 0}, st, req, ui)
+	if ui.HasTimelineCache() {
+		t.Fatalf("expected EventRev=0 to release timeline cache")
+	}
+}

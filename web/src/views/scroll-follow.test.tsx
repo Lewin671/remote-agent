@@ -280,6 +280,8 @@ describe("long-session cold load, memo reactivity, and key-based unseen badge", 
       fetching: boolean;
       hasGap: boolean;
       hasEarlier: boolean;
+      tailRequested: boolean;
+      offline: boolean;
       anchorItemId: string;
       windowLastSeq: bigint;
     }> = {},
@@ -301,6 +303,8 @@ describe("long-session cold load, memo reactivity, and key-based unseen badge", 
         fetching: tl.fetching ?? false,
         hasGap: tl.hasGap ?? false,
         hasEarlier: tl.hasEarlier ?? false,
+        tailRequested: tl.tailRequested ?? false,
+        offline: tl.offline ?? false,
         anchorItemId: tl.anchorItemId ?? "",
         windowLastSeq: tl.windowLastSeq ?? 0n,
       }),
@@ -370,13 +374,13 @@ describe("long-session cold load, memo reactivity, and key-based unseen badge", 
     await renderView(r2, makeVm("s-up", tail, { backfilling: true, fetching: false }));
     expect(host!.querySelector(".body.chat")!.classList.contains("mo-hold")).toBe(true);
 
-    // Offline with backfilling finished and cached rows -> reveals instead of blanking.
-    await renderView(r2, makeVm("s-up", tail, { backfilling: false, fetching: false, hasGap: true }));
+    // Offline / no-network (timeline.offline=true) with backfilling finished and cached rows -> reveals instead of blanking.
+    await renderView(r2, makeVm("s-up", tail, { backfilling: false, fetching: false, hasGap: true, offline: true }));
     expect(host!.querySelector(".virtual-history")).toBeTruthy();
 
-    // Reconnecting (fetching=true) must never flip ready back to false / HistoryPlaceholder.
+    // Reconnecting (fetching=true, offline=false) must never flip ready back to false / HistoryPlaceholder.
     await act(async () => { patchSyncState(r2, { conn: "online", listed: true }); });
-    await renderView(r2, makeVm("s-up", tail, { backfilling: false, fetching: true, hasGap: true }));
+    await renderView(r2, makeVm("s-up", tail, { backfilling: false, fetching: true, hasGap: true, offline: false }));
     expect(host!.querySelector(".virtual-history")).toBeTruthy();
 
     // Short cached session with hasGap=true on reconnect stays plain list (does not tear down to Virtuoso).
@@ -385,6 +389,35 @@ describe("long-session cold load, memo reactivity, and key-based unseen badge", 
     await renderView(r2, makeVm("s-up-short", tail, { loaded: false, hasGap: true, fetching: true }));
     expect(host!.querySelector("[data-history-index]")).toBeTruthy();
     expect(host!.querySelector(".virtual-history")).toBeNull();
+
+    // Uncached >500-event session with <=80 tail items during network prefix fetch (tailRequested=true, backfilling=false)
+    // mounts Virtuoso immediately and shows "Loading earlier..." without tearing down plain DOM when prefix completes.
+    await renderView(r2, makeVm("s-net-tail", [], { awaitingCache: false, fetching: true }));
+    const netChat = host!.querySelector<HTMLElement>(".body.chat")!;
+    Object.defineProperties(netChat, {
+      clientHeight: { configurable: true, get: () => 400 },
+      offsetHeight: { configurable: true, get: () => 400 },
+    });
+    await renderView(r2, makeVm("s-net-tail", tail, { tailRequested: true, backfilling: false, fetching: true, hasGap: true }));
+    expect(host!.querySelector(".virtual-history")).toBeTruthy();
+    expect(host!.querySelector("[data-history-index]")).toBeNull();
+    await vi.waitFor(async () => {
+      await act(async () => { await new Promise((resolve) => setTimeout(resolve, 20)); });
+      expect(host!.querySelector(".load-earlier .muted")?.textContent).toContain(message("session.loading_earlier"));
+    });
+    await renderView(r2, makeVm("s-net-tail", tail, { loaded: true, hasEarlier: true, tailRequested: false, fetching: false }));
+    expect(host!.querySelector(".virtual-history")).toBeTruthy();
+    expect(host!.querySelector("[data-history-index]")).toBeNull();
+
+    // Scrolled-up cached session when Core reports offline=true (covering both CONN_STATE_OFFLINE and CONN_STATE_NO_NETWORK)
+    // even while Remote.conn stays "connecting" must reveal cached history instead of sticking on .mo-hold.
+    const rNoNet = DemoRemote.create(new URLSearchParams(), async () => undefined);
+    remotes.push(rNoNet);
+    rNoNet.start();
+    rNoNet.scroll.set("s-nonet", { top: 200, stick: false });
+    patchSyncState(rNoNet, { conn: "connecting", listed: true });
+    await renderView(rNoNet, makeVm("s-nonet", tail, { backfilling: false, fetching: false, hasGap: true, offline: true }));
+    expect(host!.querySelector("[data-history-index]")).toBeTruthy();
   });
 
   it("re-renders memoized ChatBody and TimelineRow when remote.conn or remote.lostAt changes in place", async () => {

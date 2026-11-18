@@ -32,19 +32,7 @@ type timelineCacheKey struct {
 	pendingStartCreated int64
 	pendingStartTextSig uint64
 	outgoingSig         uint64
-	resolvedCount       int
-	answeredCount       int
 	inputsSig           uint64
-	unsentCount         int
-	unfinishedCount     int
-	noResultCount       int
-	typedLocallyCount   int
-	approvalCallCount   int
-	toolsSig            uint64
-	bgSig               uint64
-	completedCount      int
-	termChangesCount    int
-	compactionsCount    int
 	unavailableCount    uint32
 }
 
@@ -111,28 +99,6 @@ func computeTimelineCacheKey(
 		}
 	}
 
-	toolsSig := mixUint64(fnvOffset64, uint64(len(p.Tools)))
-	for _, t := range p.Tools {
-		if t != nil {
-			toolsSig = mixUint64(mixUint64(toolsSig, t.Seq), uint64(t.Kind))
-			toolsSig = mixString(mixString(toolsSig, t.Title), t.Input)
-			if t.AwaitingApproval {
-				toolsSig = mixUint64(toolsSig, 1)
-			}
-		}
-	}
-
-	bgSig := mixUint64(fnvOffset64, uint64(len(p.Background)))
-	for _, bg := range p.Background {
-		if bg != nil && bg.Tool != nil {
-			bgSig = mixUint64(mixUint64(bgSig, bg.Tool.Seq), uint64(bg.Tool.Kind))
-			bgSig = mixString(bgSig, bg.BackgroundId)
-			if bg.Returned {
-				bgSig = mixUint64(bgSig, 1)
-			}
-		}
-	}
-
 	var hasPendingStart bool
 	var pendingCreated int64
 	var pendingTextSig uint64
@@ -169,51 +135,21 @@ func computeTimelineCacheKey(
 		pendingStartCreated: pendingCreated,
 		pendingStartTextSig: pendingTextSig,
 		outgoingSig:         outgoingSig,
-		resolvedCount:       len(p.Resolved),
-		answeredCount:       len(p.Answered),
 		inputsSig:           inputsSig,
-		unsentCount:         len(p.Unsent),
-		unfinishedCount:     len(p.UnfinishedSeqs),
-		noResultCount:       len(p.NoResultSeqs),
-		typedLocallyCount:   len(p.TypedLocallySeqs),
-		approvalCallCount:   len(p.ApprovalCallIds),
-		toolsSig:            toolsSig,
-		bgSig:               bgSig,
-		completedCount:      len(p.CompletedAt),
-		termChangesCount:    len(p.TerminalChanges),
-		compactionsCount:    len(p.Compactions),
 		unavailableCount:    in.UnavailableCount,
 	}
 }
 
 func findEventBySeq(events []*v1.Event, seq uint64) *v1.Event {
-	if seq == 0 || len(events) == 0 {
+	if seq == 0 || len(events) == 0 || events[0] == nil || seq < events[0].Seq {
 		return nil
 	}
-	if idx := int(seq - 1); idx < len(events) {
-		if e := events[idx]; e != nil && e.Seq == seq {
-			return e
-		}
+	idx := int(seq - events[0].Seq)
+	if idx >= len(events) {
+		return nil
 	}
-	lo, hi := 0, len(events)
-	for lo < hi {
-		mid := int(uint(lo+hi) >> 1)
-		e := events[mid]
-		if e == nil || e.Seq < seq {
-			lo = mid + 1
-		} else {
-			hi = mid
-		}
-	}
-	if lo < len(events) && events[lo] != nil && events[lo].Seq == seq {
-		return events[lo]
-	}
-	if len(events) <= 32 {
-		for _, e := range events {
-			if e != nil && e.Seq == seq {
-				return e
-			}
-		}
+	if e := events[idx]; e != nil && e.Seq == seq {
+		return e
 	}
 	return nil
 }
@@ -261,6 +197,8 @@ func buildSessionTimeline(
 		Error:                in.Error,
 		FetchError:           in.FetchError,
 		CanLoadEarlier:       in.HasGap && !in.Backfilling && !in.Fetching,
+		TailRequested:        in.TailRequested,
+		Offline:              in.Conn == lists.ConnOffline || in.Conn == lists.ConnNoNetwork,
 	}
 
 	if in.Retired {
@@ -270,9 +208,7 @@ func buildSessionTimeline(
 	}
 
 	if !in.Found {
-		if ui != nil {
-			ui.timeline = nil
-		}
+		ui.ClearTimelineCache()
 		return out
 	}
 
@@ -302,8 +238,10 @@ func buildSessionTimeline(
 	}
 
 	var cacheKey timelineCacheKey
-	canUseCache := ui != nil && (in.EventRev > 0 || len(events) == 0)
-	if canUseCache {
+	canUseCache := ui != nil && in.EventRev > 0
+	if !canUseCache {
+		ui.ClearTimelineCache()
+	} else {
 		cacheKey = computeTimelineCacheKey(
 			in, events, p, caps, cwd, home, machineName,
 			supportsSharedFiles, sessionExited, endedAtMs, ui,

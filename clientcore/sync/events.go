@@ -287,7 +287,6 @@ func (e *Engine) startLoadEvents(ctx *StepContext, sid string) {
 	if s.RetiredHistory {
 		b.retired = true
 		b.errorText = text.Msg(text.KeyErrorsHistoryKeysUnavailableRecordsFromBeforeRecoveryCannotBe)
-		e.bumpRev(b)
 		e.buffers[sid] = b
 		ctx.Dirty.MarkSessionData()
 		return

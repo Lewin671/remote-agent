@@ -110,6 +110,18 @@ type SessionUIState struct {
 	timeline           *timelineCache
 }
 
+// ClearTimelineCache releases cached timeline items when the underlying event buffer is evicted.
+func (ui *SessionUIState) ClearTimelineCache() {
+	if ui != nil {
+		ui.timeline = nil
+	}
+}
+
+// HasTimelineCache reports whether ui currently retains cached timeline items.
+func (ui *SessionUIState) HasTimelineCache() bool {
+	return ui != nil && ui.timeline != nil
+}
+
 // NewSessionUIState allocates an initialized SessionUIState.
 func NewSessionUIState() *SessionUIState {
 	return &SessionUIState{

@@ -880,3 +880,81 @@ func TestAnswerPlanPreflightMatchesAndFrozenRetry(t *testing.T) {
 		t.Fatalf("expected IDLE command status after executed AnswerPlan, got %+v", vmDone.GetSession().GetDock().GetCommand())
 	}
 }
+
+func TestCoreClearsTimelineCacheOnTrimHistoryEviction(t *testing.T) {
+	c := bootstrapReadyApp(t, []*corev1.PlainMachine{
+		{
+			MachineId: "m-on",
+			Online:    true,
+			Meta: &v1.MachineMeta{
+				Hostname: "MacBook",
+				Agents:   []*v1.AgentInfo{{Agent: v1.Agent_AGENT_CODEX}},
+			},
+		},
+	}, []*corev1.PlainSession{
+		{
+			SessionId: "s-trim",
+			MachineId: "m-on",
+			LastSeq:   1,
+			Meta: &v1.Session{
+				Id:     "s-trim",
+				Agent:  v1.Agent_AGENT_CODEX,
+				Status: v1.SessionStatus_SESSION_STATUS_RUNNING,
+				Title:  "Trim cache",
+			},
+		},
+	})
+
+	watchBatch := c.Dispatch(&corev1.Event{
+		NowMs: 1_791_078_060_100,
+		Event: &corev1.Event_SessionWatch{SessionWatch: &corev1.SessionWatchEvent{SessionId: "s-trim", Watched: true}},
+	})
+	var sweepTimerID uint64
+	for _, eff := range watchBatch.Effects {
+		if st := eff.GetScheduleTimer(); st != nil && st.Kind == corev1.TimerKind_TIMER_KIND_HISTORY_SWEEP {
+			sweepTimerID = st.TimerId
+		}
+	}
+	c.Dispatch(&corev1.Event{
+		NowMs: 1_791_078_060_120,
+		Event: &corev1.Event_CacheEventsLoaded{
+			CacheEventsLoaded: &corev1.CacheEventsLoadedEvent{
+				OpId:      watchCacheReadOpID(watchBatch),
+				SessionId: "s-trim",
+				Events: []*corev1.PlainEvent{{
+					Seq:      1,
+					Verified: true,
+					Event:    &v1.Event{Seq: 1, SessionId: "s-trim", Kind: &v1.Event_UserMessage{UserMessage: &v1.UserMessage{Text: "hello"}}},
+				}},
+			},
+		},
+	})
+
+	vm, err := c.View(&corev1.Screen{Screen: &corev1.Screen_Session{Session: &corev1.SessionScreenRequest{SessionId: "s-trim"}}})
+	if err != nil || len(vm.GetSession().GetTimeline().GetItems()) != 1 {
+		t.Fatalf("expected 1 timeline item, err=%v vm=%+v", err, vm)
+	}
+	ui := c.m.ensureSessionStore().uiBySession["s-trim"]
+	if !ui.HasTimelineCache() {
+		t.Fatalf("expected SessionUIState to populate timeline cache")
+	}
+
+	c.Dispatch(&corev1.Event{
+		NowMs: 1_791_078_060_200,
+		Event: &corev1.Event_SessionWatch{SessionWatch: &corev1.SessionWatchEvent{SessionId: "s-trim", Watched: false}},
+	})
+	c.Dispatch(&corev1.Event{
+		NowMs:  1_791_078_060_200 + sync.HistoryIdleMs + 1000,
+		MonoMs: c.m.sync.MonoMs() + sync.HistoryIdleMs + 1000,
+		Event: &corev1.Event_TimerFired{TimerFired: &corev1.TimerFiredEvent{
+			TimerId: sweepTimerID,
+			Kind:    corev1.TimerKind_TIMER_KIND_HISTORY_SWEEP,
+		}},
+	})
+	if c.m.sync.Buffer("s-trim") != nil {
+		t.Fatalf("expected trimHistory to evict EventBuffer")
+	}
+	if ui.HasTimelineCache() {
+		t.Fatalf("expected timeline cache to be released when trimHistory evicts EventBuffer")
+	}
+}
