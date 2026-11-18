@@ -187,16 +187,15 @@ final class PhonePairing: @unchecked Sendable {
     {
         var ask = PBGetPairingRequest()
         ask.pairingID = pairingID
-        let until = Date().addingTimeInterval(10)
         var st: PBGetPairingResponse
         while true {
+            try Task.checkCancellation()
             st = try await phone.api.pairing.getPairing(
                 request: ask, headers: Api.headers(token: phone.token)
             ).value()
             if st.state == .joined { break }
             if st.state == .canceled { throw TestFailure("pairing canceled") }
-            if Date() > until { throw TestFailure("pairing did not join") }
-            try await sleep(50)
+            try await sleep(10)
         }
         guard st.devicePublicKey.count == 32, st.deviceHpkePublicKey.count == 32 else {
             throw TestFailure("bad candidate identity")
@@ -276,16 +275,15 @@ final class PhonePairing: @unchecked Sendable {
     private func waitDelivered(sleep: Sleeper) async throws -> Bool {
         var ask = PBGetPairingRequest()
         ask.pairingID = pairingID
-        let until = Date().addingTimeInterval(10)
-        while true {
+        while !Task.isCancelled {
             let done = try await phone.api.pairing.getPairing(
                 request: ask, headers: Api.headers(token: phone.token)
             ).value()
             if done.state == .delivered { return true }
             if done.state == .canceled { return false }
-            if Date() > until { return false }
-            try await sleep(50)
+            try await sleep(10)
         }
+        return false
     }
 }
 

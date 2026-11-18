@@ -49,9 +49,11 @@ enum GoServer {
             let log = Pipe()
             p.standardOutput = log
             p.standardError = log
+            let exited = DispatchSemaphore(value: 0)
+            p.terminationHandler = { _ in exited.signal() }
             try p.run()
             let output = log.fileHandleForReading.readDataToEndOfFile()
-            while p.isRunning { usleep(10_000) }
+            exited.wait()
             guard p.terminationStatus == 0 else {
                 return .failure(
                     TestFailure(
@@ -100,6 +102,7 @@ final class TestServer: @unchecked Sendable {
     private let signup: String
     private let lock = NSLock()
     private var proc: Process?
+    private var exited: DispatchSemaphore?
 
     init(signup: String = "token") async throws {
         self.signup = signup
@@ -122,42 +125,76 @@ final class TestServer: @unchecked Sendable {
         env["RA_SETUP_TOKEN"] = setupToken
         p.environment = env
         let logURL = directory.appendingPathComponent("server.log")
-        // Truncate on restart: an earlier process's readiness is not this one's.
         FileManager.default.createFile(atPath: logURL.path, contents: nil)
         let log = try FileHandle(forWritingTo: logURL)
-        defer { try? log.close() }
-        p.standardOutput = log
-        p.standardError = log
-        try p.run()
-        lock.withLock { proc = p }
-        // The child reports its bound listener, so there is no free-port race
-        // and no failed HTTP connection before the server is ready.
-        let until = Date().addingTimeInterval(10)
-        while Date() < until {
-            let text = (try? String(contentsOf: logURL, encoding: .utf8)) ?? ""
-            guard p.isRunning else { throw TestFailure("server exited: " + String(text.prefix(500))) }
-            if let ready = text.components(separatedBy: "\n").first(where: { $0.hasPrefix("TEST_SERVER_URL=") }),
-                let bound = URL(string: String(ready.dropFirst("TEST_SERVER_URL=".count)))?.port, bound > 0 {
-                port = bound
-                return
-            }
-            try await Task.sleep(for: .milliseconds(10))
+        let pipe = Pipe()
+        p.standardOutput = pipe
+        p.standardError = pipe
+        let exited = DispatchSemaphore(value: 0)
+        p.terminationHandler = { _ in exited.signal() }
+        lock.withLock {
+            self.proc = p
+            self.exited = exited
         }
-        throw TestFailure("server did not start")
+        let boundPort: Int = try await withTaskCancellationHandler {
+            try await withCheckedThrowingContinuation { (cont: CheckedContinuation<Int, Error>) in
+                let settled = OSAllocatedUnfairLock(initialState: false)
+                let finish: @Sendable (Result<Int, Error>) -> Void = { result in
+                    let first = settled.withLock { done -> Bool in
+                        if done { return false }
+                        done = true
+                        return true
+                    }
+                    if first { cont.resume(with: result) }
+                }
+                do {
+                    try p.run()
+                    try? pipe.fileHandleForWriting.close()
+                } catch {
+                    try? log.close()
+                    finish(.failure(error))
+                    return
+                }
+                Thread.detachNewThread {
+                    let reader = pipe.fileHandleForReading
+                    var buffer = Data()
+                    var captured = ""
+                    while true {
+                        let chunk = reader.availableData
+                        if chunk.isEmpty { break }
+                        try? log.write(contentsOf: chunk)
+                        buffer.append(chunk)
+                        if !settled.withLock({ $0 }) {
+                            captured = String(decoding: buffer, as: UTF8.self)
+                            if let ready = captured.components(separatedBy: "\n").first(where: { $0.hasPrefix("TEST_SERVER_URL=") }),
+                               let url = URL(string: String(ready.dropFirst("TEST_SERVER_URL=".count)).trimmingCharacters(in: .whitespacesAndNewlines)),
+                               let bound = url.port, bound > 0 {
+                                finish(.success(bound))
+                            }
+                        }
+                    }
+                    try? log.close()
+                    finish(.failure(TestFailure("server exited: " + String(captured.prefix(500)))))
+                }
+            }
+        } onCancel: {
+            p.terminate()
+        }
+        port = boundPort
     }
 
     func stop() {
-        let p = lock.withLock { () -> Process? in
-            defer { proc = nil }
-            return proc
+        let (p, exited) = lock.withLock { () -> (Process?, DispatchSemaphore?) in
+            defer { proc = nil; exited = nil }
+            return (proc, exited)
         }
         guard let p else { return }
         p.terminate()
-        // Not waitUntilExit: it waits on a run loop, which a test's thread does not turn.
-        let until = Date().addingTimeInterval(5)
-        while p.isRunning {
-            if Date() >= until { kill(p.processIdentifier, SIGKILL) }
-            usleep(10_000)
+        if let exited {
+            if exited.wait(timeout: .now() + 5) == .timedOut, p.isRunning {
+                kill(p.processIdentifier, SIGKILL)
+                exited.wait()
+            }
         }
     }
 
@@ -168,22 +205,44 @@ final class TestServer: @unchecked Sendable {
     }
 }
 
-/// A thread-safe list a test polls, as a LinkedBlockingQueue is on Android.
+/// A thread-safe queue a test awaits deterministically via continuations.
 final class Mailbox<T: Sendable>: @unchecked Sendable {
     private let lock = NSLock()
     private var items: [T] = []
+    private var waiters: [(id: UUID, cont: CheckedContinuation<T, Error>)] = []
 
-    func put(_ item: T) { lock.withLock { items.append(item) } }
+    func put(_ item: T) {
+        let waiter: CheckedContinuation<T, Error>? = lock.withLock {
+            if !waiters.isEmpty { return waiters.removeFirst().cont }
+            items.append(item)
+            return nil
+        }
+        waiter?.resume(returning: item)
+    }
+
     var all: [T] { lock.withLock { items } }
 
-    /// The next item, waiting up to `ms` for one.
-    func poll(_ ms: Int) async -> T? {
-        let until = Date().addingTimeInterval(Double(ms) / 1000)
-        while true {
-            let item = lock.withLock { items.isEmpty ? nil : items.removeFirst() }
-            if let item { return item }
-            if Date() >= until { return nil }
-            try? await Task.sleep(nanoseconds: 5_000_000)
+    func take() async throws -> T {
+        try Task.checkCancellation()
+        let id = UUID()
+        return try await withTaskCancellationHandler {
+            try await withCheckedThrowingContinuation { (c: CheckedContinuation<T, Error>) in
+                var item: T?
+                var cancelNow = false
+                lock.withLock {
+                    if !items.isEmpty { item = items.removeFirst() }
+                    else if Task.isCancelled { cancelNow = true }
+                    else { waiters.append((id, c)) }
+                }
+                if let item { c.resume(returning: item) }
+                else if cancelNow { c.resume(throwing: CancellationError()) }
+            }
+        } onCancel: {
+            let waiter: CheckedContinuation<T, Error>? = lock.withLock {
+                guard let i = waiters.firstIndex(where: { $0.id == id }) else { return nil }
+                return waiters.remove(at: i).cont
+            }
+            waiter?.resume(throwing: CancellationError())
         }
     }
 }
@@ -199,6 +258,8 @@ actor FakeDaemon {
     private let rpc: Api
     private var token = ""
     private var ready = false
+    private var readyFailure: Error?
+    private var readyWaiters: [CheckedContinuation<Void, Error>] = []
     private var ws: Socket?
     private var metaRev: UInt64 = 0
     private(set) var sessionKeys: [String: Data] = [:]
@@ -334,30 +395,44 @@ actor FakeDaemon {
 
     /// Connects the stream and answers forwarded commands.
     func waitReady() async throws {
-        let deadline = Date().addingTimeInterval(5)
-        while !ready {
-            if Date() > deadline { throw TestFailure("synthetic authority stream not ready") }
-            try await Task.sleep(for: .milliseconds(10))
-        }
+        if ready { return }
+        if let err = readyFailure { throw err }
+        try await withCheckedThrowingContinuation { readyWaiters.append($0) }
+    }
+    private func signalReady() {
+        ready = true
+        let waiters = readyWaiters
+        readyWaiters.removeAll()
+        for w in waiters { w.resume() }
+    }
+    private func failReady(_ error: Error) {
+        guard !ready else { return }
+        readyFailure = error
+        let waiters = readyWaiters
+        readyWaiters.removeAll()
+        for w in waiters { w.resume(throwing: error) }
     }
     func connect() throws {
         ready = false
+        readyFailure = nil
         var hello = PBPeerFrame()
         hello.hello.token = token
         let socket = Socket(
             http: http, url: rpc.socketURL("/v1/stream"), hello: try hello.serializedData(),
-            sleep: realSleep)
+            sleep: { _ in try await Task.sleep(for: .seconds(3600)) })
         ws = socket
         Task {
             while let bytes = try? await socket.receive() {
                 guard let f = try? PBServerFrame(serializedBytes: bytes) else { continue }
                 if case .ready? = f.kind {
-                    self.ready = true
+                    self.signalReady()
                     continue
                 }
                 guard case .forwardCall(let call)? = f.kind else { continue }
                 await self.handle(call, on: socket)
             }
+            let end = await socket.ended()
+            self.failReady(TestFailure("synthetic authority stream ended before ready (code=\(String(describing: end.closeCode)), error=\(String(describing: end.error)))"))
         }
     }
 
@@ -398,6 +473,7 @@ actor FakeDaemon {
     }
 
     func disconnect() {
+        failReady(TestFailure("synthetic authority stream disconnected"))
         ready = false
         ws?.close()
         ws = nil
@@ -412,7 +488,7 @@ actor FakeDaemon {
         hello.streamID = stream
         guard let helloBytes: Data = try? hello.serializedData() else { return }
         let socket = Socket(
-            http: http, url: rpc.socketURL("/v1/term"), hello: helloBytes, sleep: realSleep)
+            http: http, url: rpc.socketURL("/v1/term"), hello: helloBytes, sleep: { _ in try await Task.sleep(for: .seconds(3600)) })
         let out = header(.terminalOutput)
         let input = termInput
         let replay = replayTerminal
@@ -627,10 +703,10 @@ final class Signal: Sendable {
     func set() { state.set(true) }
     var isSet: Bool { state.value }
 
-    /// Waits for the notification, with the same bounded wait as the other feeds.
+    /// Waits for the notification without a wall-clock deadline; the per-test hang guard catches stalls.
     @discardableResult
-    func wait(_ ms: Int = 10_000) async -> Bool {
-        (try? await state.await("signal", ms: ms) { $0 }) ?? false
+    func wait() async -> Bool {
+        await state.first(where: { $0 }) ?? false
     }
 }
 
@@ -647,46 +723,25 @@ final class Counter: @unchecked Sendable {
     var value: Int { lock.withLock { n } }
 }
 
-func sleepMs(_ ms: Int) async {
-    try? await Task.sleep(nanoseconds: UInt64(ms) * 1_000_000)
-}
-
-/// Waits for `ok`, failing the test when it does not come in `ms`.
-func eventually(_ what: String, ms: Int = 10_000, _ ok: @Sendable () async -> Bool) async throws {
-    let until = Date().addingTimeInterval(Double(ms) / 1000)
-    while !(await ok()) {
-        if Date() >= until { throw TestFailure("timed out waiting for \(what)") }
-        try? await Task.sleep(nanoseconds: 10_000_000)
-    }
-}
-
 extension Feed {
-    /// The first value that satisfies `ok`; throws when none comes in `ms`.
-    func await(_ what: String, ms: Int = 10_000, _ ok: @escaping @Sendable (Value) -> Bool)
-        async throws -> Value
-    {
-        let found = Task { await self.first(where: ok) }
-        let limit = Task {
-            try? await Task.sleep(nanoseconds: UInt64(ms) * 1_000_000)
-            found.cancel()
-        }
-        defer { limit.cancel() }
-        if let v = await found.value { return v }
-        throw TestFailure("timed out waiting for \(what)")
+    /// The first value that satisfies `ok`; throws if cancelled before matching.
+    func await(_ what: String, _ ok: @escaping @Sendable (Value) -> Bool) async throws -> Value {
+        if let v = await self.first(where: ok) { return v }
+        throw TestFailure("cancelled waiting for \(what)")
     }
 }
 
 extension Remote {
     func awaitState(
-        _ what: String, ms: Int = 10_000, _ ok: @escaping @Sendable (RemoteState) -> Bool
+        _ what: String, _ ok: @escaping @Sendable (RemoteState) -> Bool
     ) async throws -> RemoteState {
         do {
-            return try await state.await(what, ms: ms, ok)
+            return try await state.await(what, ok)
         } catch {
             // Lengths and IDs only: a state holds titles.
             let st = current
             throw TestFailure(
-                "timed out waiting for \(what): \(st.sessions.count) sessions, next \(String(describing: st.sessionsNext)), \(st.conn), link \(st.link), removed \(st.removed), error \(st.error), sessionsError \(st.sessionsError)"
+                "cancelled waiting for \(what): \(st.sessions.count) sessions, next \(String(describing: st.sessionsNext)), \(st.conn), link \(st.link), removed \(st.removed), error \(st.error), sessionsError \(st.sessionsError)"
             )
         }
     }

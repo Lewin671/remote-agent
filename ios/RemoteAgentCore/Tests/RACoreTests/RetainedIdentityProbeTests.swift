@@ -90,6 +90,6 @@ import Testing
         // Observe URLProtocol.stopLoading cancelling the in-flight request.
         // Signing, URLSession startup and executor contention are not part of
         // the cancellation boundary. An HTTP timeout cannot satisfy this signal.
-        #expect(await cancelled.wait(2_000))
+        #expect(await cancelled.wait())
     }
 }

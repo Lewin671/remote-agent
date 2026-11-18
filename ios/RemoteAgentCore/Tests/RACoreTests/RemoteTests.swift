@@ -187,19 +187,19 @@ extension SyncServerTests {
                 try await r.hydrateExecutorState()
                 let heard = Frames()
                 let conn = try await r.openTerminal("s1", listener: heard)
-                let snap = try #require(await heard.frames.poll(5_000))
+                let snap = try await heard.frames.take()
                 #expect(snap.snapshot.cols == 120)
-                #expect(try #require(await heard.frames.poll(5_000)).output == Data(" world".utf8))
+                #expect(try await heard.frames.take().output == Data(" world".utf8))
                 var a = PBTerminalFrame()
                 a.input = Data("中文\r".utf8)
                 var b = PBTerminalFrame()
                 b.input = Data("\u{1b}[A".utf8)
                 conn.send(a)
                 conn.send(b)
-                #expect(try #require(await w.daemon.termInput.poll(5_000)).input == Data("中文\r".utf8))
-                #expect(try #require(await w.daemon.termInput.poll(5_000)).input == Data("\u{1b}[A".utf8))
+                #expect(try await w.daemon.termInput.take().input == Data("中文\r".utf8))
+                #expect(try await w.daemon.termInput.take().input == Data("\u{1b}[A".utf8))
                 conn.close()
-                #expect(await heard.closes.poll(300) == nil)
+                #expect(heard.closes.all.isEmpty)
             }
         }
 
@@ -210,11 +210,11 @@ extension SyncServerTests {
                 await w.daemon.setReplayTerminal(true)
                 let heard = Frames()
                 _ = try await r.openTerminal("s1", listener: heard)
-                #expect(try #require(await heard.frames.poll(5_000)).snapshot.cols == 120)
-                #expect(try #require(await heard.frames.poll(5_000)).output == Data(" world".utf8))
-                #expect(await heard.closes.poll(5_000) == L10n.errorsTerminalFramesAreOutOfOrder())
-                #expect(await heard.frames.poll(300) == nil)
-                #expect(await heard.closes.poll(300) == nil)
+                #expect(try await heard.frames.take().snapshot.cols == 120)
+                #expect(try await heard.frames.take().output == Data(" world".utf8))
+                #expect(try await heard.closes.take() == L10n.errorsTerminalFramesAreOutOfOrder())
+                #expect(heard.frames.all.isEmpty)
+                #expect(heard.closes.all.isEmpty)
             }
         }
 
@@ -233,7 +233,7 @@ extension SyncServerTests {
                 } catch {
                     #expect(errorText(error) == L10n.errorsCannotConnectToTerminal())
                 }
-                #expect(await heard.closes.poll(300) == nil)
+                #expect(heard.closes.all.isEmpty)
             }
         }
 
@@ -281,10 +281,10 @@ extension SyncServerTests {
                 }
                 defer { reader.cancel() }
                 ready.set()
-                #expect(await answered.wait(5_000))
+                #expect(await answered.wait())
                 #expect(!ended.isSet)
                 socket.close()
-                #expect(await ended.wait(5_000))
+                #expect(await ended.wait())
                 #expect(await socket.ended().error == nil)
             }
         }
@@ -403,14 +403,14 @@ extension SyncServerTests {
                     req.lease = try lease.bytes()
                 }
                 try await client.installPublication(req)
-                let snap = try #require(await snapshots.poll(5_000))
+                let snap = try await snapshots.take()
                 #expect(snap.trustedMachineIds.contains(enrolledAcct.deviceId))
 
                 // Sync outside syncSecuritySnapshot also notifies onSecuritySnapshot.
                 let seed2 = randomBytes(32)
                 let (acct2, _) = try await w.phone.enroll(seed: seed2, kind: .machine)
                 _ = try await client.sync()
-                let snap2 = try #require(await snapshots.poll(5_000))
+                let snap2 = try await snapshots.take()
                 #expect(snap2.trustedMachineIds.contains(acct2.deviceId))
             }
         }

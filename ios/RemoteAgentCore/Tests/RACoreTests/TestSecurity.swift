@@ -16,6 +16,7 @@ final class TestSecurity: @unchecked Sendable {
     }
     private let lock = NSLock()
     private let process: Process
+    private let exited = DispatchSemaphore(value: 0)
     private let input: FileHandle
     private let output: FileHandle
     private var buffer = Data()
@@ -29,6 +30,8 @@ final class TestSecurity: @unchecked Sendable {
         process.standardInput = input
         process.standardOutput = output
         process.standardError = FileHandle.standardError
+        let exited = self.exited
+        process.terminationHandler = { _ in exited.signal() }
         try process.run()
         self.process = process
         self.input = input.fileHandleForWriting
@@ -167,10 +170,9 @@ final class TestSecurity: @unchecked Sendable {
         lock.lock()
         defer { lock.unlock() }
         try? input.close()
-        let deadline = Date().addingTimeInterval(5)
-        while process.isRunning {
-            if Date() > deadline { kill(process.processIdentifier, SIGKILL) }
-            usleep(10000)
+        if exited.wait(timeout: .now() + 5) == .timedOut, process.isRunning {
+            kill(process.processIdentifier, SIGKILL)
+            exited.wait()
         }
         try? output.close()
     }

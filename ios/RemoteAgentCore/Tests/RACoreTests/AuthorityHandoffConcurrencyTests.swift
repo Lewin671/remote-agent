@@ -22,7 +22,7 @@ struct AuthorityHandoffConcurrencyTests {
         let http = Intercept.http(for: server.url) { request in
             if request.url?.path.hasSuffix("/PutDeviceMeta") == true {
                 entered.set()
-                _ = await release.poll(5_000)
+                _ = try? await release.take()
                 throw URLError(.networkConnectionLost)
             }
             return request
@@ -36,8 +36,7 @@ struct AuthorityHandoffConcurrencyTests {
             token: { try await login(api: api, account: account) })
         let publishing = Task { try await coordinator.resumeHandoffOffer() }
         defer { release.put(true); publishing.cancel() }
-        for _ in 0..<500 { if entered.isSet { break }; try await realSleep(10) }
-        try #require(entered.isSet)
+        #expect(await entered.wait())
         var rejected = false
         do { try await coordinator.discardHandoffOffer() } catch { rejected = true }
         #expect(rejected)

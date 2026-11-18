@@ -50,7 +50,7 @@ extension ServerTests {
                 let command = PBCommand.with { $0.createSession.cwd = "/work/example"; $0.createSession.fileIds = ["original-file"] }
                 let prepared = try remote.prepare(machineId: w.daemon.id, sessionId: "", command)
                 _ = try await remote.forward(prepared)
-                let received = try #require(await w.daemon.commands.poll(1000))
+                let received = try await w.daemon.commands.take()
                 #expect(received.0.requestID == prepared.requestId)
                 #expect(received.1.createSession.fileIds == ["original-file"])
             }

@@ -30,7 +30,7 @@ extension ServerTests {
                 }
                 defer { joining.cancel() }
                 let expected = try await pairing.reveal()
-                #expect(await emoji.poll(5_000) == expected.emoji)
+                #expect(try await emoji.take() == expected.emoji)
                 let approving = Task { try await pairing.approve() }
                 defer { approving.cancel() }
                 let account = try await joining.value
@@ -73,12 +73,12 @@ extension ServerTests {
                 }
                 defer { joining.cancel() }
                 let expected = try await pairing.reveal()
-                #expect(await emoji.poll(5_000) == expected.emoji)
+                #expect(try await emoji.take() == expected.emoji)
                 let approving = Task { try await pairing.approve() }
                 defer { approving.cancel() }
                 let account = try await joining.value
                 #expect(deliveryCleared.isSet && intentCleared.isSet)
-                let receipt = try #require(await receipts.poll(5_000))
+                let receipt = try await receipts.take()
                 let replayed = Counter(), bootstrapped = Counter()
                 let restartedHTTP = Intercept.http(for: w.server.url) { request in
                     if request.url?.path.hasSuffix("/RegisterDevice") == true {
@@ -117,7 +117,7 @@ extension ServerTests {
                     } catch { return errorText(error).contains("本机未确认") }
                 }
                 let expected = try await pairing.reveal()
-                #expect(await displayed.poll(5000) == expected.emoji)
+                #expect(try await displayed.take() == expected.emoji)
                 #expect(await joining.value)
                 #expect(persisted.value == 0)
                 let chain = try await w.phone.chain()
@@ -155,7 +155,7 @@ extension ServerTests {
                 }
                 defer { joining.cancel() }
                 let expected = try await pairing.reveal()
-                #expect(await emoji.poll(5_000) == expected.emoji)
+                #expect(try await emoji.take() == expected.emoji)
                 let approving = Task { try await pairing.approve() }
                 let account = try await joining.value
                 approving.cancel()

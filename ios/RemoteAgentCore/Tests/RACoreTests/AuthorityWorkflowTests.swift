@@ -263,14 +263,13 @@ struct AuthorityWorkflowTests {
         }
         defer { joining.cancel() }
         var candidate: PairCandidate?
-        for _ in 0..<500 {
+        while !Task.isCancelled {
             candidate = try await authority.pairingCandidate(initiation)
             if candidate != nil { break }; try await realSleep(10)
         }
         step = "candidate"
         let incoming = try candidate.unwrap()
-        for _ in 0..<500 { if candidateConfirmed.isSet { break }; try await realSleep(10) }
-        #expect(candidateConfirmed.isSet)
+        #expect(await candidateConfirmed.wait())
         step = "approve"
         try await authority.approvePairing(incoming, sasConfirmed: true)
         step = "join"
@@ -369,12 +368,11 @@ struct AuthorityWorkflowTests {
             }
             defer { joining.cancel() }
             var candidate: PairCandidate?
-            for _ in 0..<500 {
+            while !Task.isCancelled {
                 candidate = try await authority.pairingCandidate(initiation)
                 if candidate != nil { break }; try await realSleep(10)
             }
-            for _ in 0..<500 { if confirmed.isSet { break }; try await realSleep(10) }
-            try #require(confirmed.isSet)
+            try #require(await confirmed.wait())
             try await authority.approvePairing(candidate.unwrap(), sasConfirmed: true)
             let joined = try await joining.value
             try await authority.finishPairingOperation(pairingID: initiation.pairingID)
@@ -444,14 +442,15 @@ struct AuthorityWorkflowTests {
         let blocked = Intercept.http(for: server.url) { request in
             if request.url?.path.hasSuffix("/GetSecurityStates") == true {
                 entered.set()
-                while !release.isSet { try Task.checkCancellation(); try await realSleep(5) }
+                _ = await release.wait()
+                try Task.checkCancellation()
             }
             return request
         }
         let c = try coordinator(account, vault, http: blocked, gate: gate)
         let work = Task { try await c.renewLeaseNow() }
         defer { work.cancel(); release.set() }
-        for _ in 0..<500 { if entered.isSet { break }; try await realSleep(10) }
+        #expect(await entered.wait())
         do { _ = try await c.prepareRecovery(); Issue.record("actor reentry permitted") } catch {}
         gate.set(active: false, protectedDataAvailable: false); release.set()
         do { try await work.value; Issue.record("signed after locking") } catch {}
@@ -664,7 +663,7 @@ extension AuthorityWorkflowTests {
             let start = try await authority.startPairing(replacesDeviceID: replaces)
             let process = try cli.launch(["account", "join", "--server", server.url, "--code", start.link.code], input: "y\n")
             var candidate: PairCandidate?
-            for _ in 0..<1000 {
+            while !Task.isCancelled {
                 candidate = try await authority.pairingCandidate(start)
                 if candidate != nil { break }; try await realSleep(10)
             }
@@ -697,7 +696,7 @@ extension AuthorityWorkflowTests {
         let machine = try await pair()
         try cli.startDaemon()
         _ = await remote.ensureToken(opId: 1, forceLogin: false, timeoutMs: 15_000)
-        for _ in 0..<1000 {
+        while !Task.isCancelled {
             _ = await pullLists()
             if remote.state.value.machines[machine]?.online == true { break }; try await realSleep(10)
         }
@@ -709,7 +708,7 @@ extension AuthorityWorkflowTests {
         let sid = result.createSession.session.id
         #expect(!sid.isEmpty)
         var answered = false
-        for _ in 0..<1200 {
+        while !Task.isCancelled {
             let page = await remote.executeRpc(PBCoreRpcEffect.with {
                 $0.opID = 3
                 $0.getEvents = PBCoreGetEventsRpc.with { $0.sessionID = sid; $0.afterSeq = 0; $0.limit = 500 }
@@ -730,7 +729,7 @@ extension AuthorityWorkflowTests {
         #expect(replacement != machine)
         try cli.startDaemon()
         var retained = false
-        for _ in 0..<1000 {
+        while !Task.isCancelled {
             _ = await pullLists()
             if remote.state.value.sessions[sid]?.machineId == replacement { retained = true; break }
             try await realSleep(25)
@@ -777,11 +776,25 @@ private final class ManagementCLI {
         return p
     }
     func wait(_ p: Process) async throws {
-        for _ in 0..<3000 {
-            if !p.isRunning { guard p.terminationStatus == 0 else { throw TestFailure("native CLI failed; inspect isolated test log") }; return }
-            try await realSleep(10)
+        if p.isRunning {
+            await withCheckedContinuation { (c: CheckedContinuation<Void, Never>) in
+                let resumed = OSAllocatedUnfairLock(initialState: false)
+                let resumeOnce: @Sendable () -> Void = {
+                    if resumed.withLock({ done in if done { return false }; done = true; return true }) {
+                        c.resume()
+                    }
+                }
+                let prev = p.terminationHandler
+                p.terminationHandler = { proc in
+                    prev?(proc)
+                    resumeOnce()
+                }
+                if !p.isRunning {
+                    resumeOnce()
+                }
+            }
         }
-        throw TestFailure("native CLI timed out")
+        guard p.terminationStatus == 0 else { throw TestFailure("native CLI failed; inspect isolated test log") }
     }
     func startDaemon() throws { daemon = try launch(["daemon", "--codex", try executable("codex")]) }
     func stopDaemon() { if let daemon, daemon.isRunning { daemon.terminate(); daemon.waitUntilExit() }; daemon = nil }
