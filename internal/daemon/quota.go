@@ -135,7 +135,7 @@ func (d *Daemon) statusLineContext(ctx context.Context, sessionID string, raw js
 		return
 	}
 	session.observeEmptyIdentity(ctx, report, now)
-	if session.observeConversation(ctx, report.ConversationID, report.TranscriptPath, now) {
+	if session.observeConversationWithMissing(ctx, report.ConversationID, report.TranscriptPath, now, true) {
 		session.recordStatusLine(report, now)
 	}
 	if report.Quota != nil && ctx.Err() == nil {

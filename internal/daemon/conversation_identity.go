@@ -12,6 +12,10 @@ import (
 // observeConversation distinguishes proving a newly launched/resumed process
 // from an already verified process switching conversations locally.
 func (s *session) observeConversation(ctx context.Context, id, path string, observed time.Time) bool {
+	return s.observeConversationWithMissing(ctx, id, path, observed, false)
+}
+
+func (s *session) observeConversationWithMissing(ctx context.Context, id, path string, observed time.Time, allowMissing bool) bool {
 	if ctx.Err() != nil {
 		return false
 	}
@@ -25,7 +29,7 @@ func (s *session) observeConversation(ctx context.Context, id, path string, obse
 	}
 	expectedPath, expectedID := s.meta.RolloutPath, s.meta.CodexSessionID
 	s.mu.Unlock()
-	if id != "" && path != "" && path != expectedPath && !s.ag.ValidTranscriptPath(path, false) {
+	if id != "" && path != "" && path != expectedPath && !s.ag.ValidTranscriptPath(path, allowMissing) {
 		slog.Warn("ignoring conversation change with untrusted transcript path", "session", s.meta.ID, "path", path)
 		if id != expectedID {
 			return false

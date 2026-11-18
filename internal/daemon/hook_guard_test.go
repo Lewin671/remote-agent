@@ -194,6 +194,53 @@ func TestSessionStartHookGuardsUntrustedSources(t *testing.T) {
 		if h.s.meta.RolloutPath != validPath {
 			t.Fatalf("inside pane hook was not accepted: path=%q", h.s.meta.RolloutPath)
 		}
+
+		// A hook trying to change transcript_path from outside pane is also rejected.
+		otherValidPath := filepath.Join(claudeHome, "projects", "-tmp-work", "cc-other.jsonl")
+		if err := os.WriteFile(otherValidPath, nil, 0o600); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := h.s.hook(withHookPeerPID(context.Background(), 9000), &agent.Hook{
+			HookEventName:  "PreToolUse",
+			SessionID:      "cc-pane",
+			TranscriptPath: otherValidPath,
+			ToolName:       "AskUserQuestion",
+			ToolUseID:      "q-other",
+			ToolInput:      json.RawMessage(`{"questions":[{"question":"Pick?","options":[{"label":"A"}]}]}`),
+		}); err != nil {
+			t.Fatal(err)
+		}
+		if h.s.meta.RolloutPath != validPath {
+			t.Fatalf("outside pane PreToolUse changed transcript path: %q", h.s.meta.RolloutPath)
+		}
+
+		// Non-mutating hooks (StatusLine, PreToolUse, PermissionRequest) are NOT
+		// gated on pane PID, so background CLI helpers keep working.
+		if _, err := h.s.hook(withHookPeerPID(context.Background(), 9000), &agent.Hook{
+			HookEventName:  "PreToolUse",
+			SessionID:      "cc-pane",
+			TranscriptPath: validPath,
+			ToolName:       "AskUserQuestion",
+			ToolUseID:      "q-ok",
+			ToolInput:      json.RawMessage(`{"questions":[{"question":"Pick?","options":[{"label":"A"}]}]}`),
+		}); err != nil {
+			t.Fatal(err)
+		}
+		foundQuestion := false
+		for _, e := range h.events() {
+			if q := e.GetQuestionAsked(); q != nil && q.QuestionId == "q-ok" {
+				foundQuestion = true
+			}
+		}
+		if !foundQuestion {
+			t.Fatal("non-mutating PreToolUse question was blocked by pane PID check")
+		}
+		if _, err := h.s.hook(withHookPeerPID(context.Background(), 9000), &agent.Hook{
+			HookEventName: "StatusLine",
+			Status:        json.RawMessage(`{"session_id":"cc-pane"}`),
+		}); err != nil {
+			t.Fatal(err)
+		}
 	})
 
 	t.Run("unix socket peer pid enforced end-to-end", func(t *testing.T) {

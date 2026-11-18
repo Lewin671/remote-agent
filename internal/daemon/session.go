@@ -1844,7 +1844,7 @@ func (s *session) trustedHookSource(ctx context.Context, p *agent.Hook) bool {
 	changesID := p.SessionID != "" && p.SessionID != curID
 	changesPath := p.TranscriptPath != "" && p.TranscriptPath != curPath
 	if !changesPath && !(p.HookEventName == "SessionStart" && changesID) {
-		return s.trustedHookProcess(ctx, p.HookEventName)
+		return true
 	}
 	if !s.trustedHookProcess(ctx, p.HookEventName) {
 		return false
@@ -1867,9 +1867,6 @@ func (s *session) trustedHookSource(ctx context.Context, p *agent.Hook) bool {
 // hook handles one hook call and returns what the hook prints.
 func (s *session) hook(ctx context.Context, p *agent.Hook) ([]byte, error) {
 	if p.HookEventName == "StatusLine" {
-		if !s.trustedHookProcess(ctx, p.HookEventName) {
-			return nil, nil
-		}
 		s.d.statusLineContext(ctx, s.meta.ID, p.Status, time.Now())
 		return nil, nil
 	}
