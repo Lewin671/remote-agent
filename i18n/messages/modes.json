@@ -332,22 +332,6 @@
     }
   },
   {
-    "key": "modes.full_unavailable",
-    "zh-CN": "本会话启动时未启用；需要时新建会话选择",
-    "en": "Not enabled when this session started. Choose it when starting a new session.",
-    "notes": "审批模式选择器的标签或说明。说明/反馈正文，允许多行。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
-    "params": {},
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
     "key": "modes.ios_outside_note",
     "zh-CN": "照实显示终端中的模式；不提供切到 {mode} 的按钮。",
     "en": "Shows the terminal’s actual mode; no button is offered to switch to {mode}.",

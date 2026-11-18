@@ -221,22 +221,6 @@
     "zh-CN": "批准执行"
   },
   {
-    "en": "Automatically accept edits in this session",
-    "key": "approval.auto_edits",
-    "notes": "审批卡及详情页的操作/状态文字。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
-    "params": {},
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "en": "draft",
-      "zh-CN": "source"
-    },
-    "zh-CN": "本会话自动接受编辑"
-  },
-  {
     "en": "Did not reach the computer: {reason}",
     "key": "approval.delivery_failed",
     "notes": "会话/首页的审批卡与审批详情。完整提示/历史行；参数可重排，不翻译用户内容。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：reason 为当前操作的失败详情，保持原文。",
@@ -336,22 +320,6 @@
       "zh-CN": "source"
     },
     "zh-CN": "看完整命令"
-  },
-  {
-    "en": "Handled in terminal",
-    "key": "approval.in_terminal",
-    "notes": "审批卡及详情页的操作/状态文字。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
-    "params": {},
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "en": "draft",
-      "zh-CN": "source"
-    },
-    "zh-CN": "已在终端处理"
   },
   {
     "en": "Deny",

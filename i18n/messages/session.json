@@ -469,22 +469,6 @@
     "zh-CN": "已用 {percent}%"
   },
   {
-    "en": "Delivered to computer",
-    "key": "session.delivered",
-    "notes": "会话页的可视状态、历史提示或操作标签。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
-    "params": {},
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "en": "draft",
-      "zh-CN": "source"
-    },
-    "zh-CN": "已送达电脑"
-  },
-  {
     "en": "Disconnected {time}. ",
     "key": "session.disconnected_ago",
     "notes": "会话页顶栏、菜单、历史行或恢复卡。断线时间的完整前置句；time 为已格式化相对时间。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：time 为已按当前界面语言格式化的本地时间。",
@@ -696,22 +680,6 @@
     "zh-CN": "分叉会话"
   },
   {
-    "en": "Available after a message is sent",
-    "key": "session.fork_after_message",
-    "notes": "会话页的可视状态、历史提示或操作标签。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
-    "params": {},
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "en": "draft",
-      "zh-CN": "source"
-    },
-    "zh-CN": "发过消息后可用"
-  },
-  {
     "en": "Available after pending items are handled",
     "key": "session.fork_after_pending",
     "notes": "会话页的可视状态、历史提示或操作标签。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
@@ -726,22 +694,6 @@
       "zh-CN": "source"
     },
     "zh-CN": "处理完等待事项后可用"
-  },
-  {
-    "en": "Available after startup",
-    "key": "session.fork_after_start",
-    "notes": "会话页的可视状态、历史提示或操作标签。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
-    "params": {},
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "en": "draft",
-      "zh-CN": "source"
-    },
-    "zh-CN": "启动完成后可用"
   },
   {
     "en": "Available after this turn",
@@ -932,22 +884,6 @@
       "zh-CN": "source"
     },
     "zh-CN": "有一条记录读不出来，历史停在这里，后面的内容和状态可能不全"
-  },
-  {
-    "en": "The session ended automatically after a long period of inactivity.",
-    "key": "session.idle_closed",
-    "notes": "会话页的可视状态、历史提示或操作标签。说明/反馈正文，允许多行。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
-    "params": {},
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "en": "draft",
-      "zh-CN": "source"
-    },
-    "zh-CN": "会话长时间没有活动，已自动结束。"
   },
   {
     "en": "Interrupt",
@@ -1450,22 +1386,6 @@
       "zh-CN": "source"
     },
     "zh-CN": "正在读取更早的记录…"
-  },
-  {
-    "en": "The session was ended manually.",
-    "key": "session.manually_closed",
-    "notes": "会话页的可视状态、历史提示或操作标签。说明/反馈正文，允许多行。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
-    "params": {},
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "en": "draft",
-      "zh-CN": "source"
-    },
-    "zh-CN": "会话是被手动结束的。"
   },
   {
     "en": "Up to {effort}",
@@ -2154,22 +2074,6 @@
     "zh-CN": "定时任务 · {time}"
   },
   {
-    "en": "The scheduled run ended and the session closed automatically.",
-    "key": "session.scheduled_closed",
-    "notes": "会话页的可视状态、历史提示或操作标签。说明/反馈正文，允许多行。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
-    "params": {},
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "en": "draft",
-      "zh-CN": "source"
-    },
-    "zh-CN": "定时任务运行已结束，会话自动关闭了。"
-  },
-  {
     "en": "Session settings",
     "key": "session.settings",
     "notes": "会话页的可视状态、历史提示或操作标签。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
@@ -2184,48 +2088,6 @@
       "zh-CN": "source"
     },
     "zh-CN": "会话设置"
-  },
-  {
-    "en": "The computer’s login shell could not start the CLI ({detail}). Check its shell configuration, such as ~/.zshrc.",
-    "key": "session.shell_failed",
-    "notes": "会话页顶栏、菜单、历史行或恢复卡。会话恢复卡退出原因；detail 为原始 CLI 诊断。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：detail 为CLI 原始诊断，保持原文。",
-    "params": {
-      "detail": {
-        "example": "Example",
-        "type": "string"
-      }
-    },
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "en": "draft",
-      "zh-CN": "source"
-    },
-    "zh-CN": "电脑上的登录 shell 没能启动 CLI（{detail}）。请检查电脑上的 shell 配置，比如 ~/.zshrc。"
-  },
-  {
-    "en": "The computer’s login shell could not start the CLI ({detail}) and may be waiting for input. Check its shell configuration, such as ~/.zshrc.",
-    "key": "session.shell_timeout",
-    "notes": "会话页顶栏、菜单、历史行或恢复卡。会话恢复卡退出原因；detail 为原始 CLI 诊断，不改变现有原因识别。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：detail 为CLI 原始诊断，保持原文。",
-    "params": {
-      "detail": {
-        "example": "Example",
-        "type": "string"
-      }
-    },
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "en": "draft",
-      "zh-CN": "source"
-    },
-    "zh-CN": "电脑上的登录 shell 没能启动 CLI（{detail}），可能卡在等待输入。请检查电脑上的 shell 配置，比如 ~/.zshrc。"
   },
   {
     "en": "Content too large; view or answer in the terminal",
@@ -2483,22 +2345,6 @@
       "zh-CN": "source"
     },
     "zh-CN": "会话标题"
-  },
-  {
-    "en": "The tmux session no longer exists.",
-    "key": "session.tmux_missing",
-    "notes": "会话页的可视状态、历史提示或操作标签。说明/反馈正文，允许多行。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
-    "params": {},
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "en": "draft",
-      "zh-CN": "source"
-    },
-    "zh-CN": "tmux 会话已经不在了。"
   },
   {
     "en": "Try again",

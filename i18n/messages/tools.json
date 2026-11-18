@@ -300,27 +300,6 @@
     }
   },
   {
-    "en": "Edit {path}",
-    "key": "tools.edit_file",
-    "notes": "会话历史工具调用行。工具行短标题；path 为按当前目录缩短的原始路径。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：path 为原始目录/文件路径，保持原文。",
-    "params": {
-      "path": {
-        "example": "Example",
-        "type": "string"
-      }
-    },
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "en": "draft",
-      "zh-CN": "source"
-    },
-    "zh-CN": "编辑 {path}"
-  },
-  {
     "en": "Running for {duration}",
     "key": "tools.elapsed",
     "notes": "会话历史工具调用行。完整句，保持变量位置和原有标点。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：duration 为已本地化的时长或 m:ss 计时钟。",

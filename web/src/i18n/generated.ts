@@ -48,14 +48,12 @@ export interface MessageArgs {
   "approval.android_unknown_result": { [name: string]: never };
   "approval.approve": { [name: string]: never };
   "approval.approve_execute": { [name: string]: never };
-  "approval.auto_edits": { [name: string]: never };
   "approval.delivery_failed": { reason: string };
   "approval.denial_reason": { [name: string]: never };
   "approval.denied": { [name: string]: never };
   "approval.deny": { [name: string]: never };
   "approval.details": { [name: string]: never };
   "approval.full_command": { [name: string]: never };
-  "approval.in_terminal": { [name: string]: never };
   "approval.reason_placeholder": { [name: string]: never };
   "approval.seconds_left": { count: number };
   "approval.timed_out": { [name: string]: never };
@@ -526,7 +524,6 @@ export interface MessageArgs {
   "modes.full_current_note": { [name: string]: never };
   "modes.full_new_note": { [name: string]: never };
   "modes.full_title": { [name: string]: never };
-  "modes.full_unavailable": { [name: string]: never };
   "modes.locked": { [name: string]: never };
   "modes.locked_note": { [name: string]: never };
   "modes.model_no_auto": { [name: string]: never };
@@ -644,9 +641,7 @@ export interface MessageArgs {
   "projects.unpin": { [name: string]: never };
   "projects.use_directory": { name: string };
   "projects.view_sessions": { name: string };
-  "queue.after_current_turn": { [name: string]: never };
   "queue.after_turn": { [name: string]: never };
-  "queue.agent_ready": { agent: string };
   "queue.android_agent_note": { agent: string };
   "queue.android_scheduled": { [name: string]: never };
   "queue.android_sending_soon": { [name: string]: never };
@@ -662,9 +657,6 @@ export interface MessageArgs {
   "queue.rank": { rank: number };
   "queue.resume_failed": { [name: string]: never };
   "queue.resuming": { [name: string]: never };
-  "queue.terminal_draft": { [name: string]: never };
-  "queue.unrecognized": { [name: string]: never };
-  "queue.when_ready": { [name: string]: never };
   "quota.account": { value: string };
   "quota.agy_waiting": { [name: string]: never };
   "quota.awaiting_update": { [name: string]: never };
@@ -1179,7 +1171,6 @@ export interface MessageArgs {
   "session.context": { [name: string]: never };
   "session.context_tokens": { total: string; used: string };
   "session.context_used": { percent: number };
-  "session.delivered": { [name: string]: never };
   "session.disconnected_ago": { time: string };
   "session.dismiss_notice": { [name: string]: never };
   "session.effort_locked": { [name: string]: never };
@@ -1192,9 +1183,7 @@ export interface MessageArgs {
   "session.ended_message_failed": { [name: string]: never };
   "session.ended_send_failed": { [name: string]: never };
   "session.fork": { [name: string]: never };
-  "session.fork_after_message": { [name: string]: never };
   "session.fork_after_pending": { [name: string]: never };
-  "session.fork_after_start": { [name: string]: never };
   "session.fork_after_turn": { [name: string]: never };
   "session.fork_expired": { [name: string]: never };
   "session.fork_failed": { reason: string };
@@ -1205,7 +1194,6 @@ export interface MessageArgs {
   "session.history_tail_missing": { [name: string]: never };
   "session.history_unavailable": { count: number };
   "session.history_unreadable": { [name: string]: never };
-  "session.idle_closed": { [name: string]: never };
   "session.interrupt": { [name: string]: never };
   "session.interrupt_turn": { [name: string]: never };
   "session.interrupted": { [name: string]: never };
@@ -1214,7 +1202,6 @@ export interface MessageArgs {
   "session.ios_turn_tokens": { count: number };
   "session.latest": { [name: string]: never };
   "session.loading_earlier": { [name: string]: never };
-  "session.manually_closed": { [name: string]: never };
   "session.max_effort": { effort: string };
   "session.mode_changed": { value: string };
   "session.mode_changed_by": { origin: string; value: string };
@@ -1251,10 +1238,7 @@ export interface MessageArgs {
   "session.resuming": { [name: string]: never };
   "session.schedule_send": { [name: string]: never };
   "session.scheduled_at": { time: string };
-  "session.scheduled_closed": { [name: string]: never };
   "session.settings": { [name: string]: never };
-  "session.shell_failed": { detail: string };
-  "session.shell_timeout": { detail: string };
   "session.skeleton": { [name: string]: never };
   "session.split": { [name: string]: never };
   "session.starting_agent": { agent: string; name: string };
@@ -1269,7 +1253,6 @@ export interface MessageArgs {
   "session.thinking": { [name: string]: never };
   "session.title": { [name: string]: never };
   "session.title_label": { [name: string]: never };
-  "session.tmux_missing": { [name: string]: never };
   "session.try_again": { [name: string]: never };
   "session.turn_duration": { duration: string };
   "session.turn_error": { reason: string };
@@ -1495,7 +1478,6 @@ export interface MessageArgs {
   "tools.completed_calls": { count: number };
   "tools.completed_commands": { count: number };
   "tools.completed_files": { count: number };
-  "tools.edit_file": { path: string };
   "tools.elapsed": { duration: string };
   "tools.elapsed_sync": { elapsed: string };
   "tools.exit_code": { code: string };
@@ -1660,14 +1642,12 @@ export const messages = {
     "approval.android_unknown_result": "Result unknown",
     "approval.approve": "Approve",
     "approval.approve_execute": "Approve execution",
-    "approval.auto_edits": "Automatically accept edits in this session",
     "approval.delivery_failed": "Did not reach the computer: {reason}",
     "approval.denial_reason": "Reason for denial",
     "approval.denied": "Denied",
     "approval.deny": "Deny",
     "approval.details": "Approval details",
     "approval.full_command": "View full command",
-    "approval.in_terminal": "Handled in terminal",
     "approval.reason_placeholder": "Suggest what to do instead (optional)",
     "approval.seconds_left": {
       "forms": {
@@ -2372,7 +2352,6 @@ export const messages = {
     "modes.full_current_note": "Operations will no longer ask for confirmation, and no approvals will appear on your phone. Applies only to this session.",
     "modes.full_new_note": "Operations will no longer ask for confirmation, and no approvals will appear on your phone. Applies only to the new session.",
     "modes.full_title": "Switch to Full access?",
-    "modes.full_unavailable": "Not enabled when this session started. Choose it when starting a new session.",
     "modes.locked": "This session started with Full access; its approval mode cannot be changed",
     "modes.locked_note": "A session started with Full access cannot return to a mode requiring approval. Start a new session to restore approvals.",
     "modes.model_no_auto": "This model does not support Auto mode. Choose another approval mode before starting.",
@@ -2514,9 +2493,7 @@ export const messages = {
     "projects.unpin": "Unpin",
     "projects.use_directory": "Use folder {name}",
     "projects.view_sessions": "View sessions in {name}",
-    "queue.after_current_turn": "Send after this turn",
     "queue.after_turn": "Send after this turn",
-    "queue.agent_ready": "Send when {agent} is ready",
     "queue.android_agent_note": "Waiting for {agent} to be ready",
     "queue.android_scheduled": "Scheduled task",
     "queue.android_sending_soon": "Sending soon",
@@ -2538,9 +2515,6 @@ export const messages = {
     "queue.rank": " · #{rank}",
     "queue.resume_failed": "Could not send; still paused",
     "queue.resuming": "Sending…",
-    "queue.terminal_draft": "There is an unsent draft in the terminal. Send or clear it first.",
-    "queue.unrecognized": "Input field not recognized; paused",
-    "queue.when_ready": "Send when ready",
     "quota.account": " · Account {value}",
     "quota.agy_waiting": "No quota received from Antigravity. Quota is checked automatically after Antigravity runs on this computer.",
     "quota.awaiting_update": "Awaiting update",
@@ -3259,7 +3233,6 @@ export const messages = {
     "session.context": "Context",
     "session.context_tokens": "Context {used} / {total}",
     "session.context_used": "{percent}% used",
-    "session.delivered": "Delivered to computer",
     "session.disconnected_ago": "Disconnected {time}. ",
     "session.dismiss_notice": "Dismiss this notice",
     "session.effort_locked": "Reasoning effort cannot be changed while running",
@@ -3272,9 +3245,7 @@ export const messages = {
     "session.ended_message_failed": "A message was not sent: session ended",
     "session.ended_send_failed": "Not sent: session ended",
     "session.fork": "Fork session",
-    "session.fork_after_message": "Available after a message is sent",
     "session.fork_after_pending": "Available after pending items are handled",
-    "session.fork_after_start": "Available after startup",
     "session.fork_after_turn": "Available after this turn",
     "session.fork_expired": "The previous fork is unconfirmed and has expired. It will not be retried. Check the session list first.",
     "session.fork_failed": "Could not fork: {reason}",
@@ -3291,7 +3262,6 @@ export const messages = {
       "plural": "count"
     },
     "session.history_unreadable": "A record could not be read. History stops here; later content and status may be incomplete.",
-    "session.idle_closed": "The session ended automatically after a long period of inactivity.",
     "session.interrupt": "Interrupt",
     "session.interrupt_turn": "Interrupt turn",
     "session.interrupted": "Interrupted",
@@ -3312,7 +3282,6 @@ export const messages = {
     },
     "session.latest": "Back to latest",
     "session.loading_earlier": "Loading earlier history…",
-    "session.manually_closed": "The session was ended manually.",
     "session.max_effort": "Up to {effort}",
     "session.mode_changed": "Approval mode switched to {value}",
     "session.mode_changed_by": "{origin} switched approval mode to {value}",
@@ -3355,10 +3324,7 @@ export const messages = {
     "session.resuming": "Resuming…",
     "session.schedule_send": "Schedule message…",
     "session.scheduled_at": "Scheduled task · {time}",
-    "session.scheduled_closed": "The scheduled run ended and the session closed automatically.",
     "session.settings": "Session settings",
-    "session.shell_failed": "The computer’s login shell could not start the CLI ({detail}). Check its shell configuration, such as ~/.zshrc.",
-    "session.shell_timeout": "The computer’s login shell could not start the CLI ({detail}) and may be waiting for input. Check its shell configuration, such as ~/.zshrc.",
     "session.skeleton": "Content too large; view or answer in the terminal",
     "session.split": "Side by side",
     "session.starting_agent": "Starting {agent} on {name}…",
@@ -3373,7 +3339,6 @@ export const messages = {
     "session.thinking": "Thinking",
     "session.title": "Conversation",
     "session.title_label": "Session title",
-    "session.tmux_missing": "The tmux session no longer exists.",
     "session.try_again": "Try again",
     "session.turn_duration": "Turn took {duration}",
     "session.turn_error": "Turn failed: {reason}",
@@ -3671,7 +3636,6 @@ export const messages = {
       },
       "plural": "count"
     },
-    "tools.edit_file": "Edit {path}",
     "tools.elapsed": "Running for {duration}",
     "tools.elapsed_sync": "{elapsed}Waiting to sync",
     "tools.exit_code": "Exit code {code}",
@@ -3833,14 +3797,12 @@ export const messages = {
     "approval.android_unknown_result": "结果未知",
     "approval.approve": "批准",
     "approval.approve_execute": "批准执行",
-    "approval.auto_edits": "本会话自动接受编辑",
     "approval.delivery_failed": "没送到电脑：{reason}",
     "approval.denial_reason": "拒绝的理由",
     "approval.denied": "已拒绝",
     "approval.deny": "拒绝",
     "approval.details": "审批详情",
     "approval.full_command": "看完整命令",
-    "approval.in_terminal": "已在终端处理",
     "approval.reason_placeholder": "说说该怎么做，可以不填",
     "approval.seconds_left": {
       "forms": {
@@ -4506,7 +4468,6 @@ export const messages = {
     "modes.full_current_note": "之后所有操作都不会再问你，手机上也收不到审批。只对这个会话生效。",
     "modes.full_new_note": "之后所有操作都不会再问你，手机上也收不到审批。只对这次新建的会话生效。",
     "modes.full_title": "切到完全放行？",
-    "modes.full_unavailable": "本会话启动时未启用；需要时新建会话选择",
     "modes.locked": "本会话以完全放行启动，不能切换审批模式",
     "modes.locked_note": "以完全放行启动后本次会话内无法退回需审批的模式；要恢复审批请新建会话。",
     "modes.model_no_auto": "这个模型没有自动模式，换一种审批模式再开始",
@@ -4644,9 +4605,7 @@ export const messages = {
     "projects.unpin": "取消常用",
     "projects.use_directory": "用 {name} 这个目录",
     "projects.view_sessions": "看 {name} 的会话",
-    "queue.after_current_turn": "本轮结束后发送",
     "queue.after_turn": "这一轮结束后发",
-    "queue.agent_ready": "等 {agent} 就绪后发出",
     "queue.android_agent_note": "等 {agent} 就绪",
     "queue.android_scheduled": "定时任务",
     "queue.android_sending_soon": "即将发送",
@@ -4667,9 +4626,6 @@ export const messages = {
     "queue.rank": " · 第 {rank} 条",
     "queue.resume_failed": "发送没成功，仍已暂停",
     "queue.resuming": "正在发送…",
-    "queue.terminal_draft": "终端里有没发出的草稿，发完或清掉后再发",
-    "queue.unrecognized": "认不出输入框，已暂停",
-    "queue.when_ready": "就绪后发送",
     "quota.account": " · 账户 {value}",
     "quota.agy_waiting": "尚未收到 Antigravity 的额度。Antigravity 在这台电脑上运行后会自动查询额度。",
     "quota.awaiting_update": "等待更新",
@@ -5354,7 +5310,6 @@ export const messages = {
     "session.context": "上下文占用",
     "session.context_tokens": "上下文占用 {used} / {total}",
     "session.context_used": "已用 {percent}%",
-    "session.delivered": "已送达电脑",
     "session.disconnected_ago": "{time}断开，",
     "session.dismiss_notice": "移除此提示",
     "session.effort_locked": "运行中不能换推理强度",
@@ -5367,9 +5322,7 @@ export const messages = {
     "session.ended_message_failed": "有一条消息没发出去：会话已结束",
     "session.ended_send_failed": "没发出去：会话已结束",
     "session.fork": "分叉会话",
-    "session.fork_after_message": "发过消息后可用",
     "session.fork_after_pending": "处理完等待事项后可用",
-    "session.fork_after_start": "启动完成后可用",
     "session.fork_after_turn": "这一轮结束后可用",
     "session.fork_expired": "不确定上次有没有分叉出新会话，它已过期，不会再重发。请先看看会话列表",
     "session.fork_failed": "没能分叉：{reason}",
@@ -5385,7 +5338,6 @@ export const messages = {
       "plural": "count"
     },
     "session.history_unreadable": "有一条记录读不出来，历史停在这里，后面的内容和状态可能不全",
-    "session.idle_closed": "会话长时间没有活动，已自动结束。",
     "session.interrupt": "中断",
     "session.interrupt_turn": "中断本轮",
     "session.interrupted": "已中断",
@@ -5404,7 +5356,6 @@ export const messages = {
     },
     "session.latest": "回到最新消息",
     "session.loading_earlier": "正在读取更早的记录…",
-    "session.manually_closed": "会话是被手动结束的。",
     "session.max_effort": "最高 {effort}",
     "session.mode_changed": "模式切换到 {value}",
     "session.mode_changed_by": "{origin} 将模式切到 {value}",
@@ -5446,10 +5397,7 @@ export const messages = {
     "session.resuming": "正在恢复…",
     "session.schedule_send": "定时发送…",
     "session.scheduled_at": "定时任务 · {time}",
-    "session.scheduled_closed": "定时任务运行已结束，会话自动关闭了。",
     "session.settings": "会话设置",
-    "session.shell_failed": "电脑上的登录 shell 没能启动 CLI（{detail}）。请检查电脑上的 shell 配置，比如 ~/.zshrc。",
-    "session.shell_timeout": "电脑上的登录 shell 没能启动 CLI（{detail}），可能卡在等待输入。请检查电脑上的 shell 配置，比如 ~/.zshrc。",
     "session.skeleton": "内容过大，请在终端查看/回答",
     "session.split": "并排",
     "session.starting_agent": "正在 {name} 上启动 {agent}…",
@@ -5464,7 +5412,6 @@ export const messages = {
     "session.thinking": "思考过程",
     "session.title": "会话",
     "session.title_label": "会话标题",
-    "session.tmux_missing": "tmux 会话已经不在了。",
     "session.try_again": "再试一次",
     "session.turn_duration": "本轮用时 {duration}",
     "session.turn_error": "本轮出错：{reason}",
@@ -5752,7 +5699,6 @@ export const messages = {
       },
       "plural": "count"
     },
-    "tools.edit_file": "编辑 {path}",
     "tools.elapsed": "已运行 {duration}",
     "tools.elapsed_sync": "{elapsed}等待同步",
     "tools.exit_code": "退出码 {code}",

@@ -1,22 +1,6 @@
 [
   {
     "en": "Send after this turn",
-    "key": "queue.after_current_turn",
-    "notes": "排队消息气泡的状态/操作文字。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
-    "params": {},
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "en": "draft",
-      "zh-CN": "source"
-    },
-    "zh-CN": "本轮结束后发送"
-  },
-  {
-    "en": "Send after this turn",
     "key": "queue.after_turn",
     "notes": "排队消息气泡的状态/操作文字。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
     "params": {},
@@ -30,27 +14,6 @@
       "zh-CN": "source"
     },
     "zh-CN": "这一轮结束后发"
-  },
-  {
-    "en": "Send when {agent} is ready",
-    "key": "queue.agent_ready",
-    "notes": "会话排队消息气泡。完整句，保持变量位置和原有标点。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：agent 为CLI 品牌名，保持原文。",
-    "params": {
-      "agent": {
-        "example": "Example",
-        "type": "string"
-      }
-    },
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "en": "draft",
-      "zh-CN": "source"
-    },
-    "zh-CN": "等 {agent} 就绪后发出"
   },
   {
     "en": "Waiting for {agent} to be ready",
@@ -330,53 +293,5 @@
       "zh-CN": "source"
     },
     "zh-CN": "正在发送…"
-  },
-  {
-    "en": "There is an unsent draft in the terminal. Send or clear it first.",
-    "key": "queue.terminal_draft",
-    "notes": "排队消息气泡的状态/操作文字。说明/反馈正文，允许多行。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
-    "params": {},
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "en": "draft",
-      "zh-CN": "source"
-    },
-    "zh-CN": "终端里有没发出的草稿，发完或清掉后再发"
-  },
-  {
-    "en": "Input field not recognized; paused",
-    "key": "queue.unrecognized",
-    "notes": "排队消息气泡的状态/操作文字。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
-    "params": {},
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "en": "draft",
-      "zh-CN": "source"
-    },
-    "zh-CN": "认不出输入框，已暂停"
-  },
-  {
-    "en": "Send when ready",
-    "key": "queue.when_ready",
-    "notes": "排队消息气泡的状态/操作文字。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
-    "params": {},
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "en": "draft",
-      "zh-CN": "source"
-    },
-    "zh-CN": "就绪后发送"
   }
 ]

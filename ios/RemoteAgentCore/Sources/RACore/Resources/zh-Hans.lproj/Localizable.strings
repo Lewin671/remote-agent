@@ -9,14 +9,12 @@
 "approval_android_unknown_result" = "结果未知";
 "approval_approve" = "批准";
 "approval_approve_execute" = "批准执行";
-"approval_auto_edits" = "本会话自动接受编辑";
 "approval_delivery_failed" = "没送到电脑：%1$@";
 "approval_denial_reason" = "拒绝的理由";
 "approval_denied" = "已拒绝";
 "approval_deny" = "拒绝";
 "approval_details" = "审批详情";
 "approval_full_command" = "看完整命令";
-"approval_in_terminal" = "已在终端处理";
 "approval_ios_decision_deny" = "拒绝";
 "approval_ios_expired" = "不确定「%1$@」有没有送到，它已过期，不会再重发。审批超时后会自动拒绝";
 "approval_ios_unknown_result" = "结果未知";
@@ -612,7 +610,6 @@
 "modes_full_current_note" = "之后所有操作都不会再问你，手机上也收不到审批。只对这个会话生效。";
 "modes_full_new_note" = "之后所有操作都不会再问你，手机上也收不到审批。只对这次新建的会话生效。";
 "modes_full_title" = "切到完全放行？";
-"modes_full_unavailable" = "本会话启动时未启用；需要时新建会话选择";
 "modes_ios_outside_note" = "照实显示终端中的模式；不提供切到 %1$@ 的按钮。";
 "modes_locked" = "本会话以完全放行启动，不能切换审批模式";
 "modes_locked_note" = "以完全放行启动后本次会话内无法退回需审批的模式；要恢复审批请新建会话。";
@@ -751,9 +748,7 @@
 "projects_unpin" = "取消常用";
 "projects_use_directory" = "用 %1$@ 这个目录";
 "projects_view_sessions" = "看 %1$@ 的会话";
-"queue_after_current_turn" = "本轮结束后发送";
 "queue_after_turn" = "这一轮结束后发";
-"queue_agent_ready" = "等 %1$@ 就绪后发出";
 "queue_android_agent_note" = "等 %1$@ 就绪";
 "queue_android_sending_soon" = "即将发送";
 "queue_android_unconfirmed" = "已送到终端但没确认";
@@ -768,9 +763,6 @@
 "queue_rank" = " · 第 %1$lld 条";
 "queue_resume_failed" = "发送没成功，仍已暂停";
 "queue_resuming" = "正在发送…";
-"queue_terminal_draft" = "终端里有没发出的草稿，发完或清掉后再发";
-"queue_unrecognized" = "认不出输入框，已暂停";
-"queue_when_ready" = "就绪后发送";
 "quota_account" = " · 账户 %1$@";
 "quota_agy_waiting" = "尚未收到 Antigravity 的额度。Antigravity 在这台电脑上运行后会自动查询额度。";
 "quota_awaiting_update" = "等待更新";
@@ -1450,7 +1442,6 @@
 "session_context" = "上下文占用";
 "session_context_tokens" = "上下文占用 %2$@ / %1$@";
 "session_context_used" = "已用 %1$lld%%";
-"session_delivered" = "已送达电脑";
 "session_disconnected_ago" = "%1$@断开，";
 "session_dismiss_notice" = "移除此提示";
 "session_effort_locked" = "运行中不能换推理强度";
@@ -1463,9 +1454,7 @@
 "session_ended_message_failed" = "有一条消息没发出去：会话已结束";
 "session_ended_send_failed" = "没发出去：会话已结束";
 "session_fork" = "分叉会话";
-"session_fork_after_message" = "发过消息后可用";
 "session_fork_after_pending" = "处理完等待事项后可用";
-"session_fork_after_start" = "启动完成后可用";
 "session_fork_after_turn" = "这一轮结束后可用";
 "session_fork_expired" = "不确定上次有没有分叉出新会话，它已过期，不会再重发。请先看看会话列表";
 "session_fork_failed" = "没能分叉：%1$@";
@@ -1475,7 +1464,6 @@
 "session_go_terminal" = "去终端";
 "session_history_tail_missing" = "后面的记录没读到";
 "session_history_unreadable" = "有一条记录读不出来，历史停在这里，后面的内容和状态可能不全";
-"session_idle_closed" = "会话长时间没有活动，已自动结束。";
 "session_interrupt" = "中断";
 "session_interrupt_turn" = "中断本轮";
 "session_interrupted" = "已中断";
@@ -1504,7 +1492,6 @@
 "session_ios_your_message" = "你发的消息";
 "session_latest" = "回到最新消息";
 "session_loading_earlier" = "正在读取更早的记录…";
-"session_manually_closed" = "会话是被手动结束的。";
 "session_max_effort" = "最高 %1$@";
 "session_mode_changed" = "模式切换到 %1$@";
 "session_mode_changed_by" = "%1$@ 将模式切到 %2$@";
@@ -1539,10 +1526,7 @@
 "session_resuming" = "正在恢复…";
 "session_schedule_send" = "定时发送…";
 "session_scheduled_at" = "定时任务 · %1$@";
-"session_scheduled_closed" = "定时任务运行已结束，会话自动关闭了。";
 "session_settings" = "会话设置";
-"session_shell_failed" = "电脑上的登录 shell 没能启动 CLI（%1$@）。请检查电脑上的 shell 配置，比如 ~/.zshrc。";
-"session_shell_timeout" = "电脑上的登录 shell 没能启动 CLI（%1$@），可能卡在等待输入。请检查电脑上的 shell 配置，比如 ~/.zshrc。";
 "session_skeleton" = "内容过大，请在终端查看/回答";
 "session_split" = "并排";
 "session_starting_agent" = "正在 %2$@ 上启动 %1$@…";
@@ -1557,7 +1541,6 @@
 "session_thinking" = "思考过程";
 "session_title" = "会话";
 "session_title_label" = "会话标题";
-"session_tmux_missing" = "tmux 会话已经不在了。";
 "session_try_again" = "再试一次";
 "session_turn_duration" = "本轮用时 %1$@";
 "session_turn_error" = "本轮出错：%1$@";
@@ -1857,7 +1840,6 @@
 "tools_background_timeout" = "运行超时后被移到后台继续运行；它什么时候结束这里不知道，请到终端确认。";
 "tools_background_turn" = "这一轮结束时它仍在运行；它什么时候结束这里不知道，请到终端确认。";
 "tools_command" = "命令";
-"tools_edit_file" = "编辑 %1$@";
 "tools_elapsed" = "已运行 %1$@";
 "tools_elapsed_sync" = "%1$@等待同步";
 "tools_exit_code" = "退出码 %1$@";

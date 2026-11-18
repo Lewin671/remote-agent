@@ -15,14 +15,12 @@
     <string name="approval_android_unknown_result" formatted="false">"结果未知"</string>
     <string name="approval_approve" formatted="false">"批准"</string>
     <string name="approval_approve_execute" formatted="false">"批准执行"</string>
-    <string name="approval_auto_edits" formatted="false">"本会话自动接受编辑"</string>
     <string name="approval_delivery_failed">"没送到电脑：%1$s"</string>
     <string name="approval_denial_reason" formatted="false">"拒绝的理由"</string>
     <string name="approval_denied" formatted="false">"已拒绝"</string>
     <string name="approval_deny" formatted="false">"拒绝"</string>
     <string name="approval_details" formatted="false">"审批详情"</string>
     <string name="approval_full_command" formatted="false">"看完整命令"</string>
-    <string name="approval_in_terminal" formatted="false">"已在终端处理"</string>
     <string name="approval_reason_placeholder" formatted="false">"说说该怎么做，可以不填"</string>
     <plurals name="approval_seconds_left">
         <item quantity="other">"剩 %1$d 秒"</item>
@@ -701,7 +699,6 @@
     <string name="modes_full_current_note" formatted="false">"之后所有操作都不会再问你，手机上也收不到审批。只对这个会话生效。"</string>
     <string name="modes_full_new_note" formatted="false">"之后所有操作都不会再问你，手机上也收不到审批。只对这次新建的会话生效。"</string>
     <string name="modes_full_title" formatted="false">"切到完全放行？"</string>
-    <string name="modes_full_unavailable" formatted="false">"本会话启动时未启用；需要时新建会话选择"</string>
     <string name="modes_locked" formatted="false">"本会话以完全放行启动，不能切换审批模式"</string>
     <string name="modes_locked_note" formatted="false">"以完全放行启动后本次会话内无法退回需审批的模式；要恢复审批请新建会话。"</string>
     <string name="modes_model_no_auto" formatted="false">"这个模型没有自动模式，换一种审批模式再开始"</string>
@@ -874,9 +871,7 @@
     <string name="projects_unpin" formatted="false">"取消常用"</string>
     <string name="projects_use_directory">"用 %1$s 这个目录"</string>
     <string name="projects_view_sessions">"看 %1$s 的会话"</string>
-    <string name="queue_after_current_turn" formatted="false">"本轮结束后发送"</string>
     <string name="queue_after_turn" formatted="false">"这一轮结束后发"</string>
-    <string name="queue_agent_ready">"等 %1$s 就绪后发出"</string>
     <string name="queue_android_agent_note">"等 %1$s 就绪"</string>
     <string name="queue_android_scheduled" formatted="false">"定时任务"</string>
     <string name="queue_android_sending_soon" formatted="false">"即将发送"</string>
@@ -894,9 +889,6 @@
     <string name="queue_rank">" · 第 %1$d 条"</string>
     <string name="queue_resume_failed" formatted="false">"发送没成功，仍已暂停"</string>
     <string name="queue_resuming" formatted="false">"正在发送…"</string>
-    <string name="queue_terminal_draft" formatted="false">"终端里有没发出的草稿，发完或清掉后再发"</string>
-    <string name="queue_unrecognized" formatted="false">"认不出输入框，已暂停"</string>
-    <string name="queue_when_ready" formatted="false">"就绪后发送"</string>
     <string name="quota_account">" · 账户 %1$s"</string>
     <string name="quota_agy_waiting" formatted="false">"尚未收到 Antigravity 的额度。Antigravity 在这台电脑上运行后会自动查询额度。"</string>
     <string name="quota_android_you_can_view_usage_in_claude_code_on_this_computer" formatted="false">" 可在本机 Claude Code 中查看 /usage。"</string>
@@ -1681,7 +1673,6 @@
     <string name="session_context" formatted="false">"上下文占用"</string>
     <string name="session_context_tokens">"上下文占用 %2$s / %1$s"</string>
     <string name="session_context_used">"已用 %1$d%%"</string>
-    <string name="session_delivered" formatted="false">"已送达电脑"</string>
     <string name="session_disconnected_ago">"%1$s断开，"</string>
     <string name="session_dismiss_notice" formatted="false">"移除此提示"</string>
     <string name="session_effort_locked" formatted="false">"运行中不能换推理强度"</string>
@@ -1694,9 +1685,7 @@
     <string name="session_ended_message_failed" formatted="false">"有一条消息没发出去：会话已结束"</string>
     <string name="session_ended_send_failed" formatted="false">"没发出去：会话已结束"</string>
     <string name="session_fork" formatted="false">"分叉会话"</string>
-    <string name="session_fork_after_message" formatted="false">"发过消息后可用"</string>
     <string name="session_fork_after_pending" formatted="false">"处理完等待事项后可用"</string>
-    <string name="session_fork_after_start" formatted="false">"启动完成后可用"</string>
     <string name="session_fork_after_turn" formatted="false">"这一轮结束后可用"</string>
     <string name="session_fork_expired" formatted="false">"不确定上次有没有分叉出新会话，它已过期，不会再重发。请先看看会话列表"</string>
     <string name="session_fork_failed">"没能分叉：%1$s"</string>
@@ -1709,7 +1698,6 @@
         <item quantity="other">"恢复前有 %1$d 条记录不可读；后续可读记录照常显示。"</item>
     </plurals>
     <string name="session_history_unreadable" formatted="false">"有一条记录读不出来，历史停在这里，后面的内容和状态可能不全"</string>
-    <string name="session_idle_closed" formatted="false">"会话长时间没有活动，已自动结束。"</string>
     <string name="session_interrupt" formatted="false">"中断"</string>
     <string name="session_interrupt_turn" formatted="false">"中断本轮"</string>
     <string name="session_interrupted" formatted="false">"已中断"</string>
@@ -1721,7 +1709,6 @@
     </plurals>
     <string name="session_latest" formatted="false">"回到最新消息"</string>
     <string name="session_loading_earlier" formatted="false">"正在读取更早的记录…"</string>
-    <string name="session_manually_closed" formatted="false">"会话是被手动结束的。"</string>
     <string name="session_max_effort">"最高 %1$s"</string>
     <string name="session_mode_changed">"模式切换到 %1$s"</string>
     <string name="session_mode_changed_by">"%1$s 将模式切到 %2$s"</string>
@@ -1759,10 +1746,7 @@
     <string name="session_resuming" formatted="false">"正在恢复…"</string>
     <string name="session_schedule_send" formatted="false">"定时发送…"</string>
     <string name="session_scheduled_at">"定时任务 · %1$s"</string>
-    <string name="session_scheduled_closed" formatted="false">"定时任务运行已结束，会话自动关闭了。"</string>
     <string name="session_settings" formatted="false">"会话设置"</string>
-    <string name="session_shell_failed">"电脑上的登录 shell 没能启动 CLI（%1$s）。请检查电脑上的 shell 配置，比如 ~/.zshrc。"</string>
-    <string name="session_shell_timeout">"电脑上的登录 shell 没能启动 CLI（%1$s），可能卡在等待输入。请检查电脑上的 shell 配置，比如 ~/.zshrc。"</string>
     <string name="session_skeleton" formatted="false">"内容过大，请在终端查看/回答"</string>
     <string name="session_split" formatted="false">"并排"</string>
     <string name="session_starting_agent">"正在 %2$s 上启动 %1$s…"</string>
@@ -1777,7 +1761,6 @@
     <string name="session_thinking" formatted="false">"思考过程"</string>
     <string name="session_title" formatted="false">"会话"</string>
     <string name="session_title_label" formatted="false">"会话标题"</string>
-    <string name="session_tmux_missing" formatted="false">"tmux 会话已经不在了。"</string>
     <string name="session_try_again" formatted="false">"再试一次"</string>
     <string name="session_turn_duration">"本轮用时 %1$s"</string>
     <string name="session_turn_error">"本轮出错：%1$s"</string>
@@ -2135,7 +2118,6 @@
     <plurals name="tools_completed_files">
         <item quantity="other">"编辑了 %1$d 个文件"</item>
     </plurals>
-    <string name="tools_edit_file">"编辑 %1$s"</string>
     <string name="tools_elapsed">"已运行 %1$s"</string>
     <string name="tools_elapsed_sync">"%1$s等待同步"</string>
     <string name="tools_exit_code">"退出码 %1$s"</string>
