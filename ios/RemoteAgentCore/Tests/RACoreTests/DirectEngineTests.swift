@@ -6,7 +6,9 @@ import Testing
 
 /// Purely virtual clock controlled by the test: waiting never drifts with wall-clock load.
 final class FakeClock: @unchecked Sendable {
-    private let lock = NSRecursiveLock(); private var offset: UInt64 = 0
+    private let lock = NSRecursiveLock()
+    private let deliveryChain = SerialChain()
+    private let machineDeliveryChain = SerialChain(); private var offset: UInt64 = 0
     private var waiters: [(until: UInt64, id: UUID, cont: CheckedContinuation<Void, any Error>)] = []
     private let base: UInt64
     init(_ ms: UInt64) { base = ms }
@@ -64,6 +66,8 @@ final class EngineRig: @unchecked Sendable {
     var engine: DirectEngine!
     var leg: FakeLeg!
     private let lock = NSRecursiveLock()
+    private let deliveryChain = SerialChain()
+    private let machineDeliveryChain = SerialChain()
     private var sessions: [String: DirectSession] = [:], _connections: [W.Bytes] = [], _frames: [(Int, W.Bytes)] = [], _control15Subs: [[String]] = [], controlSeq: UInt64 = 0
     private var stateWaiters: [(id: UUID, predicate: @Sendable () -> Bool, cont: CheckedContinuation<Void, Never>)] = []
     private var pendingDeliveries = 0, deliveryCounter = 0
@@ -129,9 +133,11 @@ final class EngineRig: @unchecked Sendable {
     }
     func drainClient() async {
         while true {
+            await machineDeliveryChain.drain()
             await waitForState { self.lock.withLock { self.pendingDeliveries == 0 } }
             let before = lock.withLock { deliveryCounter }
             await engine.drainForTest()
+            await machineDeliveryChain.drain()
             let after = lock.withLock { (deliveryCounter, pendingDeliveries) }
             if after.0 == before && after.1 == 0 { break }
         }
@@ -150,10 +156,13 @@ final class EngineRig: @unchecked Sendable {
     }
     private func tickAll() async {
         await engine.drainForTest()
+        await machineDeliveryChain.drain()
         await engine.tickSessionsForTest()
+        await machineDeliveryChain.drain()
         let active = lock.withLock { Array(sessions.values) }
         for s in active { await s.tickForTest() }
         for s in active { await s.drainForTest() }
+        await machineDeliveryChain.drain()
         await engine.drainForTest()
     }
     func waitForBudgetEmpty() async {
@@ -219,10 +228,19 @@ final class EngineRig: @unchecked Sendable {
                 let session = makeSession(peer, o.ctx.connection, o.ctx.deadline)
                 lock.withLock { sessions[key] = session; _connections.append(o.ctx.connection) }
                 signalStateChange()
-                session.receive(delivery); return
+                machineDeliveryChain.run { [weak session] in
+                    guard let session else { return }
+                    session.receive(delivery)
+                    await session.drainForTest()
+                }
+                return
             }
         }
-        for s in lock.withLock({ Array(sessions.values) }) { s.receive(delivery) }
+        let targets = lock.withLock { Array(sessions.values) }
+        machineDeliveryChain.run {
+            for s in targets { s.receive(delivery) }
+            for s in targets { await s.drainForTest() }
+        }
     }
     private func makeSession(_ peer: W.Public, _ connection: W.Bytes, _ deadline: UInt64) -> DirectSession {
         let key = W.hex(connection)
@@ -250,9 +268,10 @@ final class EngineRig: @unchecked Sendable {
                     return true
                 }
                 self.lock.withLock { self.pendingDeliveries += 1; self.deliveryCounter += 1 }
-                Task.detached { [weak self] in
+                self.deliveryChain.run { [weak self] in
                     guard let self else { return }
                     self.engine.receive(bytes, from: self.leg)
+                    await self.engine.drainForTest()
                     self.lock.withLock { self.pendingDeliveries -= 1 }
                     self.signalStateChange()
                 }
@@ -331,7 +350,9 @@ final class EngineRig: @unchecked Sendable {
 }
 
 final class MemoryDirectPreferences: DirectPreferenceStore, @unchecked Sendable {
-    private let lock = NSRecursiveLock(); private var values: [String: Bool] = [:]
+    private let lock = NSRecursiveLock()
+    private let deliveryChain = SerialChain()
+    private let machineDeliveryChain = SerialChain(); private var values: [String: Bool] = [:]
     var failWrites = false
     func isEnabled(server: String, deviceId: String, machineId: String) -> Bool { lock.withLock { values[machineId] ?? true } }
     func setEnabled(server: String, deviceId: String, machineId: String, enabled: Bool) throws {
