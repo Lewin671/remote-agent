@@ -213,30 +213,36 @@ func writeSummary(tx *sql.Tx, key string, a accepted) error {
 	}
 	return nil
 }
-func (e *Endpoint) persistAccepted(key string, a accepted, pruned []string, cutoff uint64) error {
+func (e *Endpoint) persistAccepted(key string, a accepted, pruned []string, cutoff uint64, saveFloor bool) (uint64, uint64, error) {
 	tx, err := e.db.Begin()
 	if err != nil {
-		return ErrStorage
+		return 0, 0, ErrStorage
 	}
 	defer tx.Rollback()
 	for _, k := range pruned {
 		if _, err = tx.Exec(`DELETE FROM accepted WHERE key=?`, []byte(k)); err != nil {
-			return ErrStorage
+			return 0, 0, ErrStorage
 		}
 		if _, err = tx.Exec(`DELETE FROM accepted_bodies WHERE key=?`, []byte(k)); err != nil {
-			return ErrStorage
+			return 0, 0, ErrStorage
 		}
 	}
 	if err = writeSummary(tx, key, a); err != nil {
-		return err
+		return 0, 0, err
 	}
 	if _, err = tx.Exec(`UPDATE accepted_meta SET cutoff=? WHERE id=1`, cutoff); err != nil {
-		return ErrStorage
+		return 0, 0, ErrStorage
+	}
+	var floorMs, floorSavedMs uint64
+	if saveFloor {
+		if err = tx.QueryRow(`UPDATE security SET floor_ms=MAX(floor_ms,?), floor_saved_ms=MAX(floor_saved_ms,?) WHERE id=1 RETURNING floor_ms, floor_saved_ms`, cutoff, cutoff).Scan(&floorMs, &floorSavedMs); err != nil {
+			return 0, 0, ErrStorage
+		}
 	}
 	if err = tx.Commit(); err != nil {
-		return ErrStorage
+		return 0, 0, ErrStorage
 	}
-	return nil
+	return floorMs, floorSavedMs, nil
 }
 func loadAccepted(db *sql.DB, r *record) error {
 	rows, err := db.Query(`SELECT key,payload_hash,deadline,retain_until,state,category,body_hash,available,checksum FROM accepted`)
@@ -350,8 +356,14 @@ func (e *Endpoint) startAccepted(key string, payload Hash, deadline, now uint64,
 	}
 	a := accepted{Deadline: deadline, RetainUntil: retain, PayloadHash: payload, Persisted: persist}
 	if persist {
-		if err := e.persistAccepted(key, a, pruned, now); err != nil {
+		saveFloor := now > e.data.FloorSaved && now-e.data.FloorSaved >= floorWriteInterval
+		floorMs, floorSavedMs, err := e.persistAccepted(key, a, pruned, now, saveFloor)
+		if err != nil {
 			return err
+		}
+		if saveFloor {
+			e.data.Floor = maxU64(e.data.Floor, floorMs)
+			e.data.FloorSaved = maxU64(e.data.FloorSaved, floorSavedMs)
 		}
 	}
 	e.pruneAccepted(h, now)
@@ -633,21 +645,21 @@ func (e *Endpoint) AcceptAuthenticated(ctx context.Context, a *Authenticated, no
 		acquired = true
 	}
 	e.data.Floor = clock
-	if clock-e.data.FloorSaved >= floorWriteInterval {
-		if err = e.saveFloorLocked(&e.data); err != nil {
-			e.mu.Unlock()
-			return nil, err
-		}
-	}
 	readOnly := h.Purpose == Command && ReadOnlyCommand(h, plain)
 	if !readOnly {
 		if err = e.startAccepted(key, payload, h.Deadline, clock, h.Purpose == Command); err != nil {
+			if e.data.Floor > e.data.FloorSaved {
+				e.ensureFloorFlusherLocked()
+			}
 			e.mu.Unlock()
 			if errors.Is(err, ErrCapacity) {
 				return nil, notAdmitted("busy", err)
 			}
 			return nil, err
 		}
+	}
+	if e.data.Floor > e.data.FloorSaved {
+		e.ensureFloorFlusherLocked()
 	}
 	if e.running == nil {
 		e.running = map[string]*runningCall{}

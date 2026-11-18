@@ -68,10 +68,13 @@ CREATE TABLE IF NOT EXISTS accepted_meta (
 );
 `
 
-// floorWriteInterval is how often the receive time floor is persisted. Any
-// control envelope advanced it in memory meanwhile; a restart loses at most
-// this much, which only ever lowers the floor (never resurrects an expired
-// lease once the older, lower value is loaded).
+// floorWriteInterval is how often the receive time floor is persisted in the
+// background. Control envelopes advance Floor in memory on every admission;
+// persistent write commands coalesce the security table update into their
+// acceptance transaction when at least this interval has elapsed, while read-only
+// and volatile requests never wait on SQLite on the hot path. A crash loses at
+// most one flush interval plus one in-flight background flush, which only ever
+// lowers the floor (never resurrects an expired lease once loaded).
 const floorWriteInterval = uint64(time.Second / time.Millisecond)
 
 type record struct {
@@ -95,6 +98,7 @@ type record struct {
 
 type Endpoint struct {
 	execution            sync.Mutex
+	floorWriteMu         sync.Mutex
 	mu                   sync.Mutex
 	path                 string
 	db                   *sql.DB
@@ -111,6 +115,8 @@ type Endpoint struct {
 	externalWaitersTotal int
 	// Tests can shorten the production wait bound without sleeping.
 	waitTimeout time.Duration
+	floorStop   chan struct{}
+	floorDone   chan struct{}
 }
 
 func chainHead(r record) State { return r.States[r.HeadEpoch] }
@@ -648,6 +654,8 @@ func (e *Endpoint) validate() error {
 func (e *Endpoint) Save(path string) error {
 	e.execution.Lock()
 	defer e.execution.Unlock()
+	e.floorWriteMu.Lock()
+	defer e.floorWriteMu.Unlock()
 	e.mu.Lock()
 	defer e.mu.Unlock()
 	if e.closed {
@@ -684,17 +692,35 @@ func (e *Endpoint) Close() error {
 	e.execution.Lock()
 	defer e.execution.Unlock()
 	e.mu.Lock()
-	defer e.mu.Unlock()
 	if e.closed {
+		e.mu.Unlock()
 		return nil
 	}
-	err := e.db.Close()
+	stop, done := e.floorStop, e.floorDone
+	e.floorStop, e.floorDone = nil, nil
 	// Retain the closed handle so concurrent storage users receive SQL errors.
 	e.closed = true
 	for _, run := range e.running {
 		run.notify.Do(func() { close(run.done) })
 	}
-	return err
+	e.mu.Unlock()
+
+	if stop != nil {
+		close(stop)
+		<-done
+	}
+
+	e.floorWriteMu.Lock()
+	defer e.floorWriteMu.Unlock()
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	if e.db != nil && e.data.Floor > e.data.FloorSaved {
+		d := e.data
+		if err := e.saveFloorLocked(&d); err == nil {
+			e.data = d
+		}
+	}
+	return e.db.Close()
 }
 func (e *Endpoint) Snapshot() (Pin, State, string) {
 	e.mu.Lock()
@@ -1049,16 +1075,19 @@ func (e *Endpoint) Touch(now uint64) error {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 	d := e.data
-	if now <= d.Floor {
-		return nil
+	changed := now > d.Floor
+	if changed {
+		d.Floor = now
 	}
-	d.Floor = now
-	if now-d.FloorSaved >= floorWriteInterval {
+	if d.Floor > d.FloorSaved && d.Floor-d.FloorSaved >= floorWriteInterval {
 		if err := e.saveFloorLocked(&d); err != nil {
 			return err
 		}
+		changed = true
 	}
-	e.data = d
+	if changed {
+		e.data = d
+	}
 	return nil
 }
 
@@ -1070,6 +1099,60 @@ func (e *Endpoint) saveFloorLocked(d *record) error {
 	if err := e.db.QueryRow(`UPDATE security SET floor_ms=MAX(floor_ms,?), floor_saved_ms=MAX(floor_saved_ms,?) WHERE id=1 RETURNING floor_ms, floor_saved_ms`, d.Floor, d.Floor).Scan(&d.Floor, &d.FloorSaved); err != nil {
 		return ErrStorage
 	}
+	return nil
+}
+
+func (e *Endpoint) ensureFloorFlusherLocked() {
+	if e.db == nil || e.closed || e.floorStop != nil {
+		return
+	}
+	stop := make(chan struct{})
+	done := make(chan struct{})
+	e.floorStop = stop
+	e.floorDone = done
+	go func() {
+		defer close(done)
+		ticker := time.NewTicker(time.Duration(floorWriteInterval) * time.Millisecond)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-stop:
+				return
+			case <-ticker.C:
+				_ = e.flushFloor()
+			}
+		}
+	}()
+}
+
+// flushFloor persists any in-memory floor advance without holding e.mu across fsync.
+func (e *Endpoint) flushFloor() error {
+	e.floorWriteMu.Lock()
+	defer e.floorWriteMu.Unlock()
+
+	e.mu.Lock()
+	if e.closed || e.db == nil || e.data.Floor <= e.data.FloorSaved {
+		e.mu.Unlock()
+		return nil
+	}
+	db := e.db
+	floor := e.data.Floor
+	e.mu.Unlock()
+
+	var persistedFloor, persistedSaved uint64
+	if err := db.QueryRow(
+		`UPDATE security SET floor_ms=MAX(floor_ms,?), floor_saved_ms=MAX(floor_saved_ms,?) WHERE id=1 RETURNING floor_ms, floor_saved_ms`,
+		floor, floor,
+	).Scan(&persistedFloor, &persistedSaved); err != nil {
+		return ErrStorage
+	}
+
+	e.mu.Lock()
+	if !e.closed && e.db == db {
+		e.data.Floor = maxU64(e.data.Floor, persistedFloor)
+		e.data.FloorSaved = maxU64(e.data.FloorSaved, persistedSaved)
+	}
+	e.mu.Unlock()
 	return nil
 }
 
