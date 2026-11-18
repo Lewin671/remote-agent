@@ -2,6 +2,10 @@ import { create, fromBinary, toBinary } from "@bufbuild/protobuf";
 import { useCallback, useEffect, useMemo, useSyncExternalStore } from "react";
 import type { Tray, TrayItem } from "../attach";
 import { newRequestID } from "../crypto";
+import * as l10n from "../i18n";
+import { pushPrefs, pushState, pushSupported, setPushPrefs, type PushPrefs } from "../push";
+import { getTheme, setTheme, type Theme } from "../theme";
+import { checkUpdate } from "../update";
 import {
   CacheBootstrapLoadedEventSchema,
   CacheEventsLoadedEventSchema,
@@ -41,7 +45,6 @@ import {
   ScreenSchema,
   ScreenTarget,
   type Screen,
-  type ViewModel,
   SecuritySnapshotEventSchema,
   SessionPinEventSchema,
   SessionScheduleHintSchema,
@@ -72,10 +75,27 @@ import {
   type StreamClosedEvent,
   type StreamFrameEvent,
   type TokenResultEvent,
+  type ViewModel,
 } from "../gen/remoteagent/core/v1/app_pb";
-import type { Agent, ApprovalMode } from "../gen/remoteagent/v1/event_pb";
+import { ApprovalMode, type Agent } from "../gen/remoteagent/v1/event_pb";
 import { ConnState, type HomeViewModel } from "../gen/remoteagent/core/v1/home_view_pb";
 import { CommandResultSchema, type Command } from "../gen/remoteagent/v1/remote_pb";
+import {
+  MachineChartKind,
+  MachinePollMode,
+  MachineStatusCleanupEventSchema,
+  MachineStatusPollTickEventSchema,
+  MachineStatusRetryEventSchema,
+  MachineStatusScreenRequestSchema,
+  MachineStatusScrubEventSchema,
+  MachineStatusTabEventSchema,
+  MachineStatusWatchEventSchema,
+  MachineUsageTab,
+  QuotaScreenRequestSchema,
+  type MachineStatusViewModel,
+  type PrepareCleanupSessionEffect,
+  type QuotaViewModel,
+} from "../gen/remoteagent/core/v1/machine_view_pb";
 import type { NewSessionViewModel } from "../gen/remoteagent/core/v1/new_session_view_pb";
 import type { ProjectViewModel } from "../gen/remoteagent/core/v1/project_view_pb";
 import {
@@ -125,6 +145,33 @@ import {
   type SessionRestoreComposerEffect,
   type SessionViewModel,
 } from "../gen/remoteagent/core/v1/session_view_pb";
+import {
+  CheckForUpdatesEventSchema,
+  ClientDetailScreenRequestSchema,
+  ClientUpdateStateEventSchema,
+  ConnCheckStatusEventSchema,
+  ConnProbeState,
+  MachineDirectStatusEventSchema,
+  MachineSettingsOpenEventSchema,
+  MachineSettingsScreenRequestSchema,
+  MachineSettingsSelectAgentEventSchema,
+  NotificationPermissionState,
+  PushRegistrationState,
+  SetAppearancePrefEventSchema,
+  SetNotificationPrefEventSchema,
+  ThemePreference,
+  UpdateClientNameEventSchema,
+  UpdateDirectPreferenceEventSchema,
+  UpdateMachineAgentDefaultsEventSchema,
+  UpdateMachineDaemonSettingsEventSchema,
+  type ClientDetailViewModel,
+  type ClientUpdateStateEvent,
+  type DevicesViewModel,
+  type DirectRouteReport,
+  type MachineSettingsViewModel,
+  type SetNotificationPrefEvent,
+  type SettingsViewModel,
+} from "../gen/remoteagent/core/v1/settings_view_pb";
 import type { SyncStateView } from "../gen/remoteagent/core/v1/sync_view_pb";
 import type { Remote } from "../remote";
 import type { WasmAppCore } from "./projection";
@@ -165,6 +212,7 @@ export interface HostBridge {
   retrySession(sessionId: string): void;
   retryEvents(sessionId: string): void;
   pushRouteStatus(machineId: string, directReady: boolean): void;
+  pushDirectReport(machineId: string, report: DirectRouteReport): void;
   pushScheduleHints(hints: Array<{ sessionId: string; scheduleName: string; unread: boolean }>): void;
   pushSessionPin(sessionId: string, pinned: boolean): void;
   changeProjectPref(kind: "pin" | "unpin" | "hide" | "unhide", path: string): void;
@@ -317,6 +365,15 @@ export function routeForTask(machineId: string, taskId: string): string {
   return "tasks/" + encodeURIComponent(machineId) + "/" + encodeURIComponent(taskId);
 }
 
+const SETTINGS_TARGETS = [
+  ScreenTarget.SETTINGS,
+  ScreenTarget.MACHINE_STATUS,
+  ScreenTarget.MACHINE_SETTINGS,
+  ScreenTarget.QUOTA,
+  ScreenTarget.DEVICES,
+  ScreenTarget.CLIENT_DETAIL,
+];
+
 const ALL_TARGETS = [
   ScreenTarget.HOME,
   ScreenTarget.PROJECT,
@@ -327,7 +384,61 @@ const ALL_TARGETS = [
   ScreenTarget.SCHEDULE_DETAIL,
   ScreenTarget.SCHEDULE_FORM,
   ScreenTarget.SCHEDULE_SESSION_STRIP,
+  ...SETTINGS_TARGETS,
 ];
+
+export function toCoreTheme(t: Theme): ThemePreference {
+  switch (t) {
+    case "light": return ThemePreference.LIGHT;
+    case "dark": return ThemePreference.DARK;
+    default: return ThemePreference.AUTO;
+  }
+}
+
+export function fromCoreTheme(t: ThemePreference): Theme {
+  switch (t) {
+    case ThemePreference.LIGHT: return "light";
+    case ThemePreference.DARK: return "dark";
+    default: return "auto";
+  }
+}
+
+function readNotificationState(): {
+  supported: boolean;
+  permission: NotificationPermissionState;
+  pushState: PushRegistrationState;
+  prefs: PushPrefs;
+} {
+  const prefs = pushPrefs();
+  let state: ReturnType<typeof pushState> = "unsupported";
+  let supported = false;
+  try {
+    supported = pushSupported();
+    state = typeof matchMedia === "function" ? pushState() : (supported && Notification.permission === "granted" ? "ok" : "unsupported");
+  } catch {
+    state = "unsupported";
+  }
+  const permission = state === "ios-browser"
+    ? NotificationPermissionState.NEEDS_HOME_SCREEN
+    : state === "unsupported"
+      ? NotificationPermissionState.UNSUPPORTED
+      : state === "denied"
+        ? NotificationPermissionState.DENIED
+        : state === "ok"
+          ? NotificationPermissionState.GRANTED
+          : NotificationPermissionState.UNSPECIFIED;
+  const anyEnabled = prefs.attention || prefs.turns || prefs.scheduled !== false;
+  const regState = permission === NotificationPermissionState.GRANTED && anyEnabled
+    ? PushRegistrationState.ACTIVE
+    : PushRegistrationState.DISABLED;
+  return { supported, permission, pushState: regState, prefs };
+}
+
+function writeStoredPushPrefs(prefs: PushPrefs) {
+  try {
+    localStorage.setItem("ra-push", JSON.stringify(prefs));
+  } catch { /* ignore storage failure */ }
+}
 
 function timerKey(kind: TimerKind, key: string): string {
   return `${kind}:${key}`;
@@ -359,6 +470,12 @@ export class CoreHost {
   private scheduleDetailCache?: { version: number; key: string; vm: ScheduleDetailViewModel };
   private scheduleFormCache = new Map<string, { version: number; vm: ScheduleFormViewModel }>();
   private scheduleStripCache = new Map<string, { version: number; vm: ScheduleSessionStripViewModel }>();
+  private settingsCache?: { version: number; vm: SettingsViewModel };
+  private machineStatusCache = new Map<string, { version: number; vm: MachineStatusViewModel }>();
+  private machineSettingsCache = new Map<string, { version: number; vm: MachineSettingsViewModel }>();
+  private quotaCache = new Map<string, { version: number; vm: QuotaViewModel }>();
+  private devicesCache?: { version: number; vm: DevicesViewModel };
+  private clientDetailCache = new Map<string, { version: number; vm: ClientDetailViewModel }>();
 
   private started = false;
   private closed = false;
@@ -369,6 +486,19 @@ export class CoreHost {
   private scheduleFocus = new Map<string, { runId: string; seq: bigint }>();
   private openFormKeys = new Set<string>();
   private timers = new Map<string, { id: bigint; handle: ReturnType<typeof setTimeout> }>();
+  private machinePollTimers = new Map<string, { generation: bigint; handle: ReturnType<typeof setTimeout> }>();
+  private machineWatchCounts = new Map<string, { live: number; overview: number }>();
+  private machineWatchActive = new Map<string, { visible: boolean; mode: MachinePollMode }>();
+  private revertingDirect = new Set<string>();
+  private syncingPrefs = false;
+  private revertingPushPrefs = false;
+  private lastPushPrefSig?: string;
+  private lastPersistedPrefs?: PushPrefs;
+  private directToggleErrors = new Map<string, string>();
+  private clientRenameStates = new Map<string, { saving: boolean; error: string }>();
+  private cleanupPickerListeners = new Set<(eff: PrepareCleanupSessionEffect) => void>();
+  private extraListeners = new Set<() => void>();
+  private extraVersion = 0;
   private clockTimer?: ReturnType<typeof setInterval>;
   private cacheWriteQueue: Promise<void> = Promise.resolve();
 
@@ -409,6 +539,7 @@ export class CoreHost {
         retryEvents: (sid) => this.retryEvents(sid),
         pushRouteStatus: (machineId, directReady) =>
           this.emit({ case: "machineRouteStatus", value: create(MachineRouteStatusEventSchema, { machineId, directReady }) }),
+        pushDirectReport: (machineId, report) => this.reportMachineDirectStatus(machineId, report),
         pushScheduleHints: (hints) =>
           this.emit({ case: "sessionScheduleHints", value: create(SessionScheduleHintsEventSchema, { hints: hints.map((h) => create(SessionScheduleHintSchema, h)) }) }),
         pushSessionPin: (sessionId, pinned) =>
@@ -802,6 +933,212 @@ export class CoreHost {
     return false;
   }
 
+  // --- Settings, Machine & Devices Intents ---
+
+  subscribeExtra(fn: () => void): () => void {
+    this.extraListeners.add(fn);
+    return () => { this.extraListeners.delete(fn); };
+  }
+
+  getExtraVersion(): number {
+    return this.extraVersion;
+  }
+
+  private bumpExtra() {
+    this.extraVersion++;
+    for (const fn of [...this.extraListeners]) fn();
+  }
+
+  directError(machineId: string): string {
+    return this.directToggleErrors.get(machineId) ?? "";
+  }
+
+  private setDirectError(machineId: string, error: string) {
+    if ((this.directToggleErrors.get(machineId) ?? "") === error) return;
+    if (error) this.directToggleErrors.set(machineId, error);
+    else this.directToggleErrors.delete(machineId);
+    this.bumpExtra();
+  }
+
+  clientRenameState(deviceId: string): { saving: boolean; error: string } {
+    return this.clientRenameStates.get(deviceId) ?? { saving: false, error: "" };
+  }
+
+  private setClientRenameState(deviceId: string, next: { saving: boolean; error: string }) {
+    const prev = this.clientRenameState(deviceId);
+    if (prev.saving === next.saving && prev.error === next.error) return;
+    if (!next.saving && !next.error) this.clientRenameStates.delete(deviceId);
+    else this.clientRenameStates.set(deviceId, next);
+    this.bumpExtra();
+  }
+
+  onCleanupPicker(fn: (eff: PrepareCleanupSessionEffect) => void): () => void {
+    this.cleanupPickerListeners.add(fn);
+    return () => { this.cleanupPickerListeners.delete(fn); };
+  }
+
+  private emitNotificationSync(patch: Omit<Partial<SetNotificationPrefEvent>, "$typeName">, revert = false) {
+    if (revert) this.revertingPushPrefs = true;
+    else this.syncingPrefs = true;
+    try {
+      this.emit({ case: "setNotificationPref", value: create(SetNotificationPrefEventSchema, patch) });
+    } finally {
+      if (revert) this.revertingPushPrefs = false;
+      else this.syncingPrefs = false;
+    }
+  }
+
+  syncBrowserPrefs() {
+    if (this.closed) return;
+    const ns = readNotificationState();
+    this.syncingPrefs = true;
+    try {
+      this.lastPersistedPrefs = ns.prefs;
+      this.lastPushPrefSig = `${ns.prefs.attention}:${ns.prefs.turns}:${ns.prefs.scheduled !== false}`;
+      this.emit({ case: "setAppearancePref", value: create(SetAppearancePrefEventSchema, { theme: toCoreTheme(getTheme()) }) });
+      this.emitNotificationSync({
+        supported: ns.supported,
+        permission: ns.permission,
+        pushState: ns.pushState,
+        notifyAttention: ns.prefs.attention,
+        notifyTurnEnded: ns.prefs.turns,
+        notifyScheduled: ns.prefs.scheduled !== false,
+        errorDetail: "",
+      });
+    } finally {
+      this.syncingPrefs = false;
+    }
+  }
+
+  private syncMachineWatch(machineId: string) {
+    if (!machineId || this.closed) return;
+    const c = this.machineWatchCounts.get(machineId);
+    const mode = c && c.live > 0 ? MachinePollMode.LIVE : c && c.overview > 0 ? MachinePollMode.OVERVIEW : MachinePollMode.OFF;
+    const visible = mode !== MachinePollMode.OFF;
+    const prev = this.machineWatchActive.get(machineId);
+    if ((prev && prev.visible === visible && prev.mode === mode) || (!visible && !prev)) return;
+    if (visible) this.machineWatchActive.set(machineId, { visible, mode });
+    else this.machineWatchActive.delete(machineId);
+    this.emit({ case: "machineStatusWatch", value: create(MachineStatusWatchEventSchema, { machineId, visible, mode }) });
+  }
+
+  watchMachineStatus(machineId: string, mode: MachinePollMode): () => void {
+    if (!machineId || mode === MachinePollMode.OFF) return () => {};
+    let entry = this.machineWatchCounts.get(machineId);
+    if (!entry) {
+      entry = { live: 0, overview: 0 };
+      this.machineWatchCounts.set(machineId, entry);
+    }
+    if (mode === MachinePollMode.LIVE) entry.live++;
+    else entry.overview++;
+    this.syncMachineWatch(machineId);
+    let released = false;
+    return () => {
+      if (released) return;
+      released = true;
+      const cur = this.machineWatchCounts.get(machineId);
+      if (!cur) return;
+      if (mode === MachinePollMode.LIVE) cur.live = Math.max(0, cur.live - 1);
+      else cur.overview = Math.max(0, cur.overview - 1);
+      if (cur.live === 0 && cur.overview === 0) this.machineWatchCounts.delete(machineId);
+      this.syncMachineWatch(machineId);
+    };
+  }
+
+  retryMachineStatus(machineId: string) {
+    if (machineId && !this.closed) this.emit({ case: "machineStatusRetry", value: create(MachineStatusRetryEventSchema, { machineId }) });
+  }
+
+  selectMachineStatusTab(machineId: string, tab: MachineUsageTab) {
+    if (machineId && !this.closed) this.emit({ case: "machineStatusTab", value: create(MachineStatusTabEventSchema, { machineId, tab }) });
+  }
+
+  scrubMachineStatus(machineId: string, kind: MachineChartKind, pointIndex: number, clear = false) {
+    if (machineId && !this.closed) this.emit({ case: "machineStatusScrub", value: create(MachineStatusScrubEventSchema, { machineId, kind, pointIndex, clear }) });
+  }
+
+  cleanupMachineStatus(machineId: string) {
+    if (machineId && !this.closed) this.emit({ case: "machineStatusCleanup", value: create(MachineStatusCleanupEventSchema, { machineId }) });
+  }
+
+  machineSettingsOpen(machineId: string) {
+    if (machineId && !this.closed) this.emit({ case: "machineSettingsOpen", value: create(MachineSettingsOpenEventSchema, { machineId }) });
+  }
+
+  machineSettingsSelectAgent(machineId: string, agent: Agent) {
+    if (machineId && !this.closed) this.emit({ case: "machineSettingsSelectAgent", value: create(MachineSettingsSelectAgentEventSchema, { machineId, agent }) });
+  }
+
+  updateMachineAgentDefaults(machineId: string, agent: Agent, patch: { model?: string; effort?: string; mode?: ApprovalMode }) {
+    if (machineId && !this.closed) this.emit({ case: "updateMachineAgentDefaults", value: create(UpdateMachineAgentDefaultsEventSchema, { machineId, agent, ...patch }) });
+  }
+
+  updateMachineDaemonSettings(
+    machineId: string,
+    patch: { approvalTimeoutSeconds?: number; idleCloseMinutes?: number; imageUploadQuotaBytes?: bigint; cleanImages?: boolean },
+  ) {
+    if (machineId && !this.closed) this.emit({ case: "updateMachineDaemonSettings", value: create(UpdateMachineDaemonSettingsEventSchema, { machineId, ...patch, cleanImages: !!patch.cleanImages }) });
+  }
+
+  updateDirectPreference(machineId: string, enabled: boolean) {
+    if (!machineId || this.closed) return;
+    this.setDirectError(machineId, "");
+    this.emit({ case: "updateDirectPreference", value: create(UpdateDirectPreferenceEventSchema, { machineId, enabled }) });
+  }
+
+  reportMachineDirectStatus(machineId: string, report: DirectRouteReport) {
+    if (machineId && !this.closed) this.emit({ case: "machineDirectStatus", value: create(MachineDirectStatusEventSchema, { machineId, report }) });
+  }
+
+  updateClientName(deviceId: string, name: string, restoreDefault = false) {
+    if (!deviceId || this.closed) return;
+    this.setClientRenameState(deviceId, { saving: false, error: "" });
+    this.emit({ case: "updateClientName", value: create(UpdateClientNameEventSchema, { deviceId, name, restoreDefault }) });
+  }
+
+  setNotificationPref(patch: Omit<Partial<SetNotificationPrefEvent>, "$typeName">) {
+    if (!this.closed) this.emit({ case: "setNotificationPref", value: create(SetNotificationPrefEventSchema, patch) });
+  }
+
+  enablePushNotifications() {
+    if (this.closed || !this.remote) return;
+    const remote = this.remote;
+    const prefs = this.lastPersistedPrefs ?? pushPrefs();
+    this.setNotificationPref({ pushState: PushRegistrationState.REGISTERING, errorDetail: "" });
+    void setPushPrefs(remote, prefs).then(
+      () => {
+        if (this.closed) return;
+        const ns = readNotificationState();
+        this.emitNotificationSync({ supported: ns.supported, permission: ns.permission, pushState: ns.pushState, errorDetail: "" });
+      },
+      (err) => {
+        if (this.closed) return;
+        const ns = readNotificationState();
+        this.emitNotificationSync({ supported: ns.supported, permission: ns.permission, pushState: PushRegistrationState.FAILED, errorDetail: errorMessage(err) });
+      },
+    );
+  }
+
+  setAppearancePref(theme: ThemePreference) {
+    if (!this.closed) this.emit({ case: "setAppearancePref", value: create(SetAppearancePrefEventSchema, { theme }) });
+  }
+
+  tickClock() {
+    if (!this.closed) this.emit({ case: "clockUpdated", value: localCalendar() });
+  }
+
+  reportConnCheckStatus(serverState: ConnProbeState, latencyMs = 0, lastFailure = "") {
+    if (!this.closed) this.emit({ case: "connCheckStatus", value: create(ConnCheckStatusEventSchema, { serverState, latencyMs, lastFailure }) });
+  }
+
+  reportClientUpdateState(ev: Omit<Partial<ClientUpdateStateEvent>, "$typeName">) {
+    if (!this.closed) this.emit({ case: "clientUpdateState", value: create(ClientUpdateStateEventSchema, ev) });
+  }
+
+  checkForUpdates() {
+    if (!this.closed) this.emit({ case: "checkForUpdates", value: create(CheckForUpdatesEventSchema) });
+  }
+
   // --- Subscriptions & ViewModel lookups ---
 
   subscribe(target: ScreenTarget, fn: () => void): () => void {
@@ -956,6 +1293,68 @@ export class CoreHost {
     return value;
   }
 
+  private readView<T>(
+    caseName: NonNullable<ViewModel["view"]["case"]>,
+    screen: NonNullable<Parameters<typeof create<typeof ScreenSchema>>[1]>["screen"],
+  ): T {
+    const req = create(ScreenSchema, { screen });
+    const vm = fromBinary(ViewModelSchema, this.core.view(toBinary(ScreenSchema, req)));
+    if (vm.view.case !== caseName) throw new Error("unexpected view model case: " + vm.view.case);
+    return vm.view.value as unknown as T;
+  }
+
+  viewSettings(): SettingsViewModel {
+    const ver = this.version(ScreenTarget.SETTINGS);
+    if (this.settingsCache?.version === ver) return this.settingsCache.vm;
+    const vm = this.readView<SettingsViewModel>("settings", { case: "settings", value: {} });
+    this.settingsCache = { version: ver, vm };
+    return vm;
+  }
+
+  viewMachineStatus(machineId: string): MachineStatusViewModel {
+    const ver = this.version(ScreenTarget.MACHINE_STATUS);
+    const cached = this.machineStatusCache.get(machineId);
+    if (cached?.version === ver) return cached.vm;
+    const vm = this.readView<MachineStatusViewModel>("machineStatus", { case: "machineStatus", value: create(MachineStatusScreenRequestSchema, { machineId }) });
+    this.machineStatusCache.set(machineId, { version: ver, vm });
+    return vm;
+  }
+
+  viewMachineSettings(machineId: string): MachineSettingsViewModel {
+    const ver = this.version(ScreenTarget.MACHINE_SETTINGS);
+    const cached = this.machineSettingsCache.get(machineId);
+    if (cached?.version === ver) return cached.vm;
+    const vm = this.readView<MachineSettingsViewModel>("machineSettings", { case: "machineSettings", value: create(MachineSettingsScreenRequestSchema, { machineId }) });
+    this.machineSettingsCache.set(machineId, { version: ver, vm });
+    return vm;
+  }
+
+  viewQuota(machineId: string): QuotaViewModel {
+    const ver = this.version(ScreenTarget.QUOTA);
+    const cached = this.quotaCache.get(machineId);
+    if (cached?.version === ver) return cached.vm;
+    const vm = this.readView<QuotaViewModel>("quota", { case: "quota", value: create(QuotaScreenRequestSchema, { machineId }) });
+    this.quotaCache.set(machineId, { version: ver, vm });
+    return vm;
+  }
+
+  viewDevices(): DevicesViewModel {
+    const ver = this.version(ScreenTarget.DEVICES);
+    if (this.devicesCache?.version === ver) return this.devicesCache.vm;
+    const vm = this.readView<DevicesViewModel>("devices", { case: "devices", value: {} });
+    this.devicesCache = { version: ver, vm };
+    return vm;
+  }
+
+  viewClientDetail(deviceId: string): ClientDetailViewModel {
+    const ver = this.version(ScreenTarget.CLIENT_DETAIL);
+    const cached = this.clientDetailCache.get(deviceId);
+    if (cached?.version === ver) return cached.vm;
+    const vm = this.readView<ClientDetailViewModel>("clientDetail", { case: "clientDetail", value: create(ClientDetailScreenRequestSchema, { deviceId }) });
+    this.clientDetailCache.set(deviceId, { version: ver, vm });
+    return vm;
+  }
+
   // --- Dispatch & Effect Execution ---
 
   dispatch(ev: Event, onProcessed?: () => void) {
@@ -983,21 +1382,23 @@ export class CoreHost {
 
     this.draining = true;
     try {
-      while (this.pendingEvents.length > 0 && !this.closed) {
-        const next = this.pendingEvents.shift()!;
-        try {
-          const batchBytes = this.core.dispatch(toBinary(EventSchema, next.ev));
-          const batch = fromBinary(EffectBatchSchema, batchBytes);
-          for (const eff of batch.effects) {
-            if (this.closed) break;
-            this.handleEffect(eff);
+      while ((this.pendingEvents.length > 0 || this.dirtyTargets.size > 0) && !this.closed) {
+        while (this.pendingEvents.length > 0 && !this.closed) {
+          const next = this.pendingEvents.shift()!;
+          try {
+            const batchBytes = this.core.dispatch(toBinary(EventSchema, next.ev));
+            const batch = fromBinary(EffectBatchSchema, batchBytes);
+            for (const eff of batch.effects) {
+              if (this.closed) break;
+              this.handleEffect(eff);
+            }
+          } finally {
+            next.onProcessed?.();
+            this.executor?.releaseEventRefs?.(next.ev);
           }
-        } finally {
-          next.onProcessed?.();
-          this.executor?.releaseEventRefs?.(next.ev);
         }
+        this.flushRenders();
       }
-      this.flushRenders();
     } finally {
       this.draining = false;
     }
@@ -1327,14 +1728,142 @@ export class CoreHost {
         break;
       }
 
-      // Settings and machine screens still render in React on Web
-      // and never send the events behind these effects.
-      case "scheduleMachinePoll":
-      case "directPreference":
-      case "renameClient":
+      case "scheduleMachinePoll": {
+        const { machineId, delayMs, generation, cancel } = val.value;
+        const prev = this.machinePollTimers.get(machineId);
+        if (prev) {
+          clearTimeout(prev.handle);
+          this.machinePollTimers.delete(machineId);
+        }
+        if (!cancel && !this.closed) {
+          const handle = setTimeout(() => {
+            const cur = this.machinePollTimers.get(machineId);
+            if (!cur || cur.generation !== generation) return;
+            this.machinePollTimers.delete(machineId);
+            if (!this.closed) {
+              this.emit({
+                case: "machineStatusPollTick",
+                value: create(MachineStatusPollTickEventSchema, { machineId, generation }),
+              });
+            }
+          }, Math.max(0, Number(delayMs)));
+          this.machinePollTimers.set(machineId, { generation, handle });
+        }
+        break;
+      }
+
+      case "directPreference": {
+        const { machineId, enabled } = val.value;
+        if (this.revertingDirect.delete(machineId)) break;
+        if (!this.remote) break;
+        const remote = this.remote;
+        const onFail = (err: unknown) => {
+          if (this.closed) return;
+          this.setDirectError(machineId, errorMessage(err));
+          this.revertingDirect.add(machineId);
+          this.emit({
+            case: "updateDirectPreference",
+            value: create(UpdateDirectPreferenceEventSchema, { machineId, enabled: !enabled }),
+          });
+        };
+        try {
+          const res: unknown = remote.direct.setEnabled(machineId, enabled);
+          if (res && typeof (res as Promise<unknown>).catch === "function") {
+            void (res as Promise<unknown>).catch(onFail);
+          }
+        } catch (err) {
+          onFail(err);
+        }
+        break;
+      }
+
+      case "renameClient": {
+        const { deviceId, name } = val.value;
+        if (!this.remote) break;
+        const remote = this.remote;
+        this.setClientRenameState(deviceId, { saving: true, error: "" });
+        void Promise.resolve()
+          .then(() => remote.renameDevice(deviceId, name))
+          .then(() => {
+            if (!this.closed) this.setClientRenameState(deviceId, { saving: false, error: "" });
+          })
+          .catch((err) => {
+            if (!this.closed) this.setClientRenameState(deviceId, { saving: false, error: errorMessage(err) });
+          });
+        break;
+      }
+
       case "checkUpdates":
-      case "persistClientPrefs":
-      case "prepareCleanupSession":
+        void checkUpdate(true);
+        break;
+
+      case "persistClientPrefs": {
+        const eff = val.value;
+        if (eff.theme !== ThemePreference.UNSPECIFIED) {
+          const nextTheme = fromCoreTheme(eff.theme);
+          if (getTheme() !== nextTheme) setTheme(nextTheme);
+        }
+        const sig = `${eff.notifyAttention}:${eff.notifyTurnEnded}:${eff.notifyScheduled}`;
+        if (!this.syncingPrefs && !this.revertingPushPrefs && this.lastPushPrefSig !== sig) {
+          const prevPrefs = this.lastPersistedPrefs ?? pushPrefs();
+          const nextPrefs: PushPrefs = {
+            attention: eff.notifyAttention,
+            turns: eff.notifyTurnEnded,
+            scheduled: eff.notifyScheduled,
+          };
+          this.lastPushPrefSig = sig;
+          this.lastPersistedPrefs = nextPrefs;
+          writeStoredPushPrefs(nextPrefs);
+          if (this.remote) {
+            const remote = this.remote;
+            void setPushPrefs(remote, nextPrefs)
+              .then(() => {
+                if (this.closed) return;
+                const ns = readNotificationState();
+                this.emitNotificationSync({ supported: ns.supported, permission: ns.permission, pushState: ns.pushState, errorDetail: "" });
+              })
+              .catch((err) => {
+                if (this.closed) return;
+                const ns = readNotificationState();
+                this.lastPersistedPrefs = prevPrefs;
+                this.lastPushPrefSig = `${prevPrefs.attention}:${prevPrefs.turns}:${prevPrefs.scheduled !== false}`;
+                writeStoredPushPrefs(prevPrefs);
+                this.emitNotificationSync({
+                  supported: ns.supported,
+                  permission: ns.permission,
+                  pushState: PushRegistrationState.FAILED,
+                  notifyAttention: prevPrefs.attention,
+                  notifyTurnEnded: prevPrefs.turns,
+                  notifyScheduled: prevPrefs.scheduled !== false,
+                  errorDetail: errorMessage(err),
+                }, true);
+              });
+          }
+        }
+        break;
+      }
+
+      case "prepareCleanupSession": {
+        const eff = val.value;
+        if (eff.needsDirectoryPicker) {
+          for (const fn of [...this.cleanupPickerListeners]) fn(eff);
+          break;
+        }
+        if (eff.projectKey && this.remote) {
+          const prompt = l10n.t("machine_status.cleanup_prompt");
+          const draft = this.remote.drafts.get("new:" + eff.projectKey);
+          this.remote.drafts.set(
+            "new:" + eff.projectKey,
+            !draft ? prompt : draft.includes(prompt) ? draft : `${draft}\n\n${prompt}`,
+          );
+          if (eff.machineId) this.remote.draftMachines.set(eff.projectKey, eff.machineId);
+          this.remote.focusProject = eff.projectKey;
+          this.remote.touch();
+          this.go?.(routeForProject(eff.projectKey));
+        }
+        break;
+      }
+
       case undefined:
         break;
 
@@ -1411,6 +1940,12 @@ export class CoreHost {
     else if (target === ScreenTarget.SCHEDULE_DETAIL) this.scheduleDetailCache = undefined;
     else if (target === ScreenTarget.SCHEDULE_FORM) this.scheduleFormCache.clear();
     else if (target === ScreenTarget.SCHEDULE_SESSION_STRIP) this.scheduleStripCache.clear();
+    else if (target === ScreenTarget.SETTINGS) this.settingsCache = undefined;
+    else if (target === ScreenTarget.MACHINE_STATUS) this.machineStatusCache.clear();
+    else if (target === ScreenTarget.MACHINE_SETTINGS) this.machineSettingsCache.clear();
+    else if (target === ScreenTarget.QUOTA) this.quotaCache.clear();
+    else if (target === ScreenTarget.DEVICES) this.devicesCache = undefined;
+    else if (target === ScreenTarget.CLIENT_DETAIL) this.clientDetailCache.clear();
   }
 
   private flushRenders() {
@@ -1420,6 +1955,12 @@ export class CoreHost {
 
     if (targets.includes(ScreenTarget.SYNC_STATE) || targets.includes(ScreenTarget.HOME) || targets.includes(ScreenTarget.PROJECT)) {
       this.executor?.applySyncStateView(this.viewSyncState());
+      for (const st of SETTINGS_TARGETS) {
+        if (!targets.includes(st) && (this.listeners.get(st)?.size ?? 0) > 0) {
+          this.invalidateTarget(st);
+          targets.push(st);
+        }
+      }
     }
     for (const target of targets) {
       const listeners = this.listeners.get(target);
@@ -1449,6 +1990,8 @@ export class CoreHost {
   private clearTimers() {
     for (const entry of this.timers.values()) clearTimeout(entry.handle);
     this.timers.clear();
+    for (const entry of this.machinePollTimers.values()) clearTimeout(entry.handle);
+    this.machinePollTimers.clear();
   }
 
   dispose() {
@@ -1464,6 +2007,10 @@ export class CoreHost {
     this.scheduleFormTimingListeners.clear();
     this.scheduleFocus.clear();
     this.openFormKeys.clear();
+    this.cleanupPickerListeners.clear();
+    this.extraListeners.clear();
+    this.machineWatchCounts.clear();
+    this.machineWatchActive.clear();
     this.core.close();
   }
 }
@@ -1496,32 +2043,35 @@ export function useCoreHost(remote: Remote, go?: Go): CoreHost {
   return host;
 }
 
+function useScreenVersion(host: CoreHost, target: ScreenTarget): number {
+  const subscribe = useCallback((fn: () => void) => host.subscribe(target, fn), [host, target]);
+  const getSnapshot = useCallback(() => host.version(target), [host, target]);
+  return useSyncExternalStore(subscribe, getSnapshot);
+}
+
+function useExtraVersion(host: CoreHost): number {
+  const subscribe = useCallback((fn: () => void) => host.subscribeExtra(fn), [host]);
+  const getSnapshot = useCallback(() => host.getExtraVersion(), [host]);
+  return useSyncExternalStore(subscribe, getSnapshot);
+}
+
 export function useHomeView(host: CoreHost, endedLimit = 30): HomeViewModel {
-  const subscribe = useCallback((fn: () => void) => host.subscribe(ScreenTarget.HOME, fn), [host]);
-  const getSnapshot = useCallback(() => host.version(ScreenTarget.HOME), [host]);
-  const version = useSyncExternalStore(subscribe, getSnapshot);
+  const version = useScreenVersion(host, ScreenTarget.HOME);
   return useMemo(() => host.viewHome(endedLimit), [host, version, endedLimit]);
 }
 
 export function useProjectView(host: CoreHost, projectKey: string, manage: boolean, endedLimit = 30): ProjectViewModel {
-  const subscribe = useCallback((fn: () => void) => host.subscribe(ScreenTarget.PROJECT, fn), [host]);
-  const getSnapshot = useCallback(() => host.version(ScreenTarget.PROJECT), [host]);
-  const version = useSyncExternalStore(subscribe, getSnapshot);
+  const version = useScreenVersion(host, ScreenTarget.PROJECT);
   return useMemo(() => host.viewProject(projectKey, manage, endedLimit), [host, version, projectKey, manage, endedLimit]);
 }
 
 export function useNewSessionView(host: CoreHost, projectKey = ""): NewSessionViewModel {
-  const subscribe = useCallback((fn: () => void) => host.subscribe(ScreenTarget.NEW_SESSION, fn), [host]);
-  const getSnapshot = useCallback(() => host.version(ScreenTarget.NEW_SESSION), [host]);
-  const version = useSyncExternalStore(subscribe, getSnapshot);
+  const version = useScreenVersion(host, ScreenTarget.NEW_SESSION);
   return useMemo(() => host.viewNewSession(projectKey), [host, version, projectKey]);
 }
 
-/** Transitional Step 3/4 hook reading Core's SyncStateView. Delete once Settings/Schedules/Devices migrate into Core. */
 export function useSyncState(host: CoreHost): SyncStateView {
-  const subscribe = useCallback((fn: () => void) => host.subscribe(ScreenTarget.SYNC_STATE, fn), [host]);
-  const getSnapshot = useCallback(() => host.version(ScreenTarget.SYNC_STATE), [host]);
-  const version = useSyncExternalStore(subscribe, getSnapshot);
+  const version = useScreenVersion(host, ScreenTarget.SYNC_STATE);
   return useMemo(() => host.viewSyncState(), [host, version]);
 }
 
@@ -1539,9 +2089,7 @@ export function useSessionView(
     host.sessionOpen(sessionId, refreshModels, refreshSettings);
     return () => host.unwatchSession(sessionId);
   }, [host, sessionId, refreshModels, refreshSettings]);
-  const subscribe = useCallback((fn: () => void) => host.subscribe(ScreenTarget.SESSION, fn), [host]);
-  const getSnapshot = useCallback(() => host.version(ScreenTarget.SESSION), [host]);
-  const version = useSyncExternalStore(subscribe, getSnapshot);
+  const version = useScreenVersion(host, ScreenTarget.SESSION);
   const limit = window?.limit;
   const beforeSeq = window?.beforeSeq;
   const aroundSeq = window?.aroundSeq;
@@ -1560,12 +2108,6 @@ export function useSessionView(
       }),
     [host, version, sessionId, limit, beforeSeq, aroundSeq, revealSeq, revealRunId, expandedKey],
   );
-}
-
-function useScreenVersion(host: CoreHost, target: ScreenTarget): number {
-  const subscribe = useCallback((fn: () => void) => host.subscribe(target, fn), [host, target]);
-  const getSnapshot = useCallback(() => host.version(target), [host, target]);
-  return useSyncExternalStore(subscribe, getSnapshot);
 }
 
 export function useSchedulesView(host: CoreHost, endedLimit = 30): SchedulesViewModel {
@@ -1588,4 +2130,61 @@ export function useScheduleSessionStripView(host: CoreHost, sessionId: string): 
   return useMemo(() => host.viewScheduleSessionStrip(sessionId), [host, version, sessionId]);
 }
 
-export { ConnState };
+export function useSettingsView(host: CoreHost): SettingsViewModel {
+  const version = useScreenVersion(host, ScreenTarget.SETTINGS);
+  return useMemo(() => host.viewSettings(), [host, version]);
+}
+
+export function useMachineStatusView(
+  host: CoreHost,
+  machineId: string,
+  mode: MachinePollMode = MachinePollMode.LIVE,
+): MachineStatusViewModel {
+  useEffect(() => host.watchMachineStatus(machineId, mode), [host, machineId, mode]);
+  const version = useScreenVersion(host, ScreenTarget.MACHINE_STATUS);
+  return useMemo(() => host.viewMachineStatus(machineId), [host, version, machineId]);
+}
+
+export function useMachineSettingsView(host: CoreHost, machineId: string): MachineSettingsViewModel {
+  useEffect(() => {
+    if (machineId) host.machineSettingsOpen(machineId);
+  }, [host, machineId]);
+  const version = useScreenVersion(host, ScreenTarget.MACHINE_SETTINGS);
+  return useMemo(() => host.viewMachineSettings(machineId), [host, version, machineId]);
+}
+
+export function useQuotaView(host: CoreHost, machineId: string): QuotaViewModel {
+  const version = useScreenVersion(host, ScreenTarget.QUOTA);
+  return useMemo(() => host.viewQuota(machineId), [host, version, machineId]);
+}
+
+export function useDevicesView(host: CoreHost): DevicesViewModel {
+  const version = useScreenVersion(host, ScreenTarget.DEVICES);
+  return useMemo(() => host.viewDevices(), [host, version]);
+}
+
+export function useClientDetailView(host: CoreHost, deviceId: string): ClientDetailViewModel {
+  const version = useScreenVersion(host, ScreenTarget.CLIENT_DETAIL);
+  return useMemo(() => host.viewClientDetail(deviceId), [host, version, deviceId]);
+}
+
+export function useDirectError(host: CoreHost, machineId: string): string {
+  useExtraVersion(host);
+  return host.directError(machineId);
+}
+
+export function useClientRenameState(host: CoreHost, deviceId: string): { saving: boolean; error: string } {
+  const ver = useExtraVersion(host);
+  return useMemo(() => host.clientRenameState(deviceId), [host, ver, deviceId]);
+}
+
+export {
+  ConnProbeState,
+  ConnState,
+  MachineChartKind,
+  MachinePollMode,
+  MachineUsageTab,
+  NotificationPermissionState,
+  PushRegistrationState,
+  ThemePreference,
+};

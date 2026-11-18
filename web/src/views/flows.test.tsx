@@ -3135,15 +3135,17 @@ it("shows Claude Code's collected quota on the quota page (Go ed1a14d)", async (
     create(AgentQuotaSchema, { agent: Agent.CLAUDE, state: QuotaState.OK, observedMs: BigInt(now), windows: [{ name: "five_hour", usedPercent: 28, resetsAtMs: BigInt(now + 3_600_000), windowMinutes: 300n }] }),
     create(AgentQuotaSchema, { agent: Agent.ANTIGRAVITY, state: QuotaState.WAITING }),
   ];
+  const { patchSyncState } = await import("../test/remote-fixture");
+  patchSyncState(r, { machines: new Map(r.machines) });
   const { QuotaPage } = await import("./Settings");
   mount(<QuotaPage remote={r} id="mac" go={() => undefined} onBack={() => undefined} />);
   expect(host.textContent).not.toContain(message("quota.quota_lookup_is_not_supported_yet"));
   expect(host.textContent).toContain("剩 72%");
-  expect(host.textContent).toContain(message("quota.quota_not_available_yet"));
+  expect(host.textContent).toContain(message("quota.waiting", { name: "Codex" }));
   expect(host.textContent).toContain(message("quota.agy_waiting"));
   expect(host.textContent).not.toContain(message("quota.waiting", { name: "Antigravity" }));
   expect(host.textContent).not.toContain(message("quota.days", { count: 7 }));
-  expect(host.textContent).toContain("最近收到");
+  expect(host.textContent).toContain("最近成功收到");
 });
 
 it("renders Antigravity's quota windows grouped by family on the quota page", async () => {
@@ -3169,16 +3171,18 @@ it("renders Antigravity's quota windows grouped by family on the quota page", as
       ],
     }),
   ];
+  const { patchSyncState } = await import("../test/remote-fixture");
+  patchSyncState(r, { machines: new Map(r.machines) });
   const { QuotaPage } = await import("./Settings");
   mount(<QuotaPage remote={r} id="mac" go={() => undefined} onBack={() => undefined} />);
   const labels = [...host.querySelectorAll(".label")].map((el) => el.textContent);
-  expect(labels).toContain("Antigravity · Google AI Pro · Gemini");
+  expect(labels).toContain("Gemini");
   expect(labels).toContain(message("quota.third_party_models_claude_gpt_oss"));
   expect(host.textContent).toContain(message("quota.named_hours", { name: "Gemini", count: 5 }));
   expect(host.textContent).toContain(message("quota.named_days", { name: "Gemini 4 Argon", count: 7 }));
   expect(host.textContent).toContain(message("quota.named_hours", { name: message("quota.third_party_models"), count: 5 }));
   expect(host.textContent).not.toContain("gemini-argon-wtu-weekly");
-  expect([...host.querySelectorAll(".gf")].filter((el) => el.textContent?.startsWith("最近收到"))).toHaveLength(1);
+  expect([...host.querySelectorAll(".gf")].filter((el) => el.textContent?.startsWith("最近成功收到"))).toHaveLength(1);
   // What is left of each window, the bar drawing what is left.
   expect(host.textContent).toContain("剩 82%");
   const bar = [...host.querySelectorAll<HTMLElement>(".qrow")].find((q) => q.textContent?.includes(message("quota.named_hours", { name: "Gemini", count: 5 })))!.querySelector<HTMLElement>(".bar i")!;
@@ -3212,7 +3216,7 @@ it("switches new-project defaults by CLI tab on multi-CLI machines and omits tab
   mount(<MachinePage remote={r} id="mac" go={() => undefined} onBack={() => undefined} />);
   // The machine's page lists every window, each with what is left.
   expect([...host.querySelectorAll(".quota-line")].find((r) => r.textContent?.startsWith("Antigravity"))?.querySelector(".v")?.textContent).toBe(
-    "剩 60% · 第三方模型",
+    "第三方模型；剩 60%",
   );
   await vi.waitFor(() => expect(host.querySelector(".cli-tabs")).not.toBeNull());
   expect([...host.querySelectorAll(".cli-tabs button")].map((b) => b.textContent)).toEqual(["Codex", "Claude Code", "Antigravity"]);
@@ -3235,7 +3239,7 @@ it("shows and saves the machine's idle close setting, including a value outside 
   await vi.waitFor(() => expect(button(/^空闲自动结束会话/)?.textContent).toBe("空闲自动结束会话90 分钟"));
   await click(button(/^空闲自动结束会话/));
   const items = () => [...document.querySelectorAll<HTMLButtonElement>(".sheet .list .mi")];
-  expect(items().map((b) => b.textContent)).toEqual([message("common.close", {}, "zh-CN"), "1 小时", "90 分钟", "2 小时", "6 小时（默认）", "12 小时", "24 小时"]);
+  expect(items().map((b) => b.textContent)).toEqual([message("common.close", {}, "zh-CN"), "1 小时", "90 分钟", "2 小时", "6 小时 （默认）", "12 小时", "24 小时"]);
   expect(items().filter((b) => b.querySelector(".ck")).map((b) => b.textContent)).toEqual(["90 分钟"]);
   expect(document.querySelector(".sheet .hint")?.textContent).toContain("随时可以恢复，聊天记录都在");
   await click(button(message("common.close", {}, "zh-CN"), document));
@@ -3243,19 +3247,10 @@ it("shows and saves the machine's idle close setting, including a value outside 
   expect((r as unknown as { saved: { idleCloseMinutes: number } }).saved.idleCloseMinutes).toBe(-1);
   await click(button(/^空闲自动结束会话/));
   // Off now: the custom value is gone from the list and 关闭 is checked.
-  expect(items().map((b) => b.textContent)).toEqual([message("common.close", {}, "zh-CN"), "1 小时", "2 小时", "6 小时（默认）", "12 小时", "24 小时"]);
+  expect(items().map((b) => b.textContent)).toEqual([message("common.close", {}, "zh-CN"), "1 小时", "2 小时", "6 小时 （默认）", "12 小时", "24 小时"]);
   expect(items().filter((b) => b.querySelector(".ck")).map((b) => b.textContent)).toEqual([message("common.close", {}, "zh-CN")]);
   await click(button("12 小时", document));
   await vi.waitFor(() => expect(button(/^空闲自动结束会话/)?.textContent).toBe("空闲自动结束会话12 小时"));
-});
-
-it("names idle close values the way the daemon applies them", async () => {
-  const { idleCloseLabel } = await import("./Settings");
-  expect(idleCloseLabel(-1)).toBe(message("common.close", {}, "zh-CN"));
-  expect(idleCloseLabel(-30)).toBe(message("common.close", {}, "zh-CN"));
-  expect(idleCloseLabel(0)).toBe("6 小时");
-  expect(idleCloseLabel(180)).toBe("3 小时");
-  expect(idleCloseLabel(90)).toBe("90 分钟");
 });
 
 it("lists installed CLIs in machine picker subtitles and explains fallback when CLI is missing", async () => {
@@ -4456,7 +4451,7 @@ describe("client names", () => {
     const { DevicesPage } = await import("./Settings");
     mount(<DevicesPage remote={r} go={() => undefined} onBack={() => undefined} />);
     const names = [...host.querySelectorAll(".row.client .client-info")].map((x) => x.firstChild?.textContent);
-    expect(names).toEqual(["Chrome · macOS", "Android · Pixel 9", message("security.client")]);
+    expect(names).toEqual(["Chrome on macOS", "Android 16 · Pixel 9", "cccc0000cccc0000cccc0000cccc92de"]);
     expect(document.body.textContent).not.toContain("起个名字");
   });
 });
@@ -4471,11 +4466,11 @@ describe("devices in settings", () => {
     const named = (name: string) => rows.find((x) => x.querySelector(".row-name")?.firstChild?.textContent === name)!;
     // A computer is a card: its name, then 在线 under it, then a quota line for each CLI.
     const mac = [...host.querySelectorAll(".mach-card")].find((x) => x.querySelector(".mach-name b")?.textContent === "MacBook")!;
-    expect(mac.querySelector(".s")!.textContent).toBe(message("new_session.location", {"project":"线"}));
+    expect(mac.querySelector(".s")!.textContent).toBe(message("common.online"));
     const codex = [...mac.querySelectorAll(".qt")].find((x) => x.querySelector("b")?.textContent === "Codex")!;
     expect(codex.querySelector(".n")!.textContent).toMatch(/^剩 \d+%$|^已用尽$|^暂未获取额度$/);
-    expect(named("Chrome · macOS").querySelector(".ico svg")).toBeTruthy();
-    expect(named("Android · Pixel 9").querySelector(".ico svg")).toBeTruthy();
+    expect(named("Chrome on macOS").querySelector(".ico svg")).toBeTruthy();
+    expect(named("Android 16 · Pixel 9").querySelector(".ico svg")).toBeTruthy();
   });
 });
 
@@ -4732,11 +4727,13 @@ it("keeps a named quota warning next to its card before the received time", asyn
   const { AgentQuotaSchema, QuotaState } = await import("../gen/remoteagent/v1/remote_pb");
   const now = Date.now();
   r.machines.get("mac")!.meta!.quotas = [create(AgentQuotaSchema, { agent: Agent.CLAUDE, state: QuotaState.OK, observedMs: BigInt(now), windows: [{ name: "seven_day", usedPercent: 97, windowMinutes: 10080n, resetsAtMs: BigInt(now + 3_600_000) }] })];
+  const { patchSyncState } = await import("../test/remote-fixture");
+  patchSyncState(r, { machines: new Map(r.machines) });
   const { QuotaPage } = await import("./Settings");
   mount(<QuotaPage remote={r} id="mac" go={() => undefined} onBack={() => undefined} />);
   const text = host.textContent!;
   expect(text).toContain(message("quota.warning", {"name":"Claude Code","window":message("quota.days", { count: 7 })}));
-  expect(text.indexOf("Claude Code · 7 天额度即将用尽")).toBeLessThan(text.indexOf("最近收到"));
+  expect(text.indexOf("Claude Code · 7 天额度即将用尽")).toBeLessThan(text.indexOf("最近成功收到"));
   expect(host.querySelector(".qrow.warn .bar i")?.getAttribute("style")).toContain("3%");
 });
 

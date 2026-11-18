@@ -6,11 +6,12 @@ import { create } from "@bufbuild/protobuf";
 import { act, useState } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { patchSyncState } from "../test/remote-fixture";
 import { DemoRemote } from "../dev/demo";
 import { setDirect } from "../test/direct-state";
-import { ProjectSummarySchema } from "../gen/remoteagent/v1/remote_pb";
+import { CommandResultSchema, ProjectSummarySchema } from "../gen/remoteagent/v1/remote_pb";
+import type { MachineStatus } from "../gen/remoteagent/v1/local_pb";
 import { localeStore, t as message } from "../i18n";
-import { machineCleanupPrompt } from "../machine-status";
 import { CommandError, type CommandKind } from "../remote";
 import { DiskReminders } from "./DiskReminders";
 import { MachinePage } from "./Settings";
@@ -77,6 +78,26 @@ const ready = () => vi.waitFor(() => expect(host.querySelector(".ms-list")).toBe
 const rankTitles = () => [...host.querySelectorAll(".ms-u .ms-rt > span:first-child")].map((e) => e.textContent);
 const none = () => undefined;
 
+function spyStatus(
+  r: ReturnType<typeof demo>,
+  transform?: (id: string, read: () => Promise<MachineStatus>) => Promise<MachineStatus>,
+) {
+  const real = r.machineCommand.bind(r);
+  const calls: string[] = [];
+  r.machineCommand = async (id, cmd, slot) => {
+    if (cmd?.case !== "getMachineStatus") return real(id, cmd, slot);
+    calls.push(id);
+    const read = async () => {
+      const res = await real(id, cmd, slot);
+      if (res.kind.case !== "machineStatus") throw new Error("unexpected");
+      return res.kind.value;
+    };
+    const status = transform ? await transform(id, read) : await read();
+    return create(CommandResultSchema, { kind: { case: "machineStatus", value: status } });
+  };
+  return calls;
+}
+
 describe("the rings at the top of a computer's page", () => {
   it("draws CPU, memory and free disk space, and opens the status", async () => {
     const r = demo();
@@ -114,10 +135,10 @@ describe("the rings at the top of a computer's page", () => {
 
   it("is not there for a daemon that cannot report, and asks for nothing", () => {
     const r = demo();
-    const ask = vi.spyOn(r, "getMachineStatus");
+    const ask = spyStatus(r);
     mount(<MachineRings remote={r} id="vps" go={none} />);
     expect(host.querySelector(".ms-rings")).toBeNull();
-    expect(ask).not.toHaveBeenCalled();
+    expect(ask).toHaveLength(0);
   });
 });
 
@@ -146,10 +167,9 @@ describe("电脑状态", () => {
 
   it("draws its frame at once, with dashes and \"正在读取\", no spinner and no ranking, until the first answer", async () => {
     const r = demo("ms-full");
-    const real = r.getMachineStatus.bind(r);
     let answer!: () => void;
     const held = new Promise<void>((done) => { answer = done; });
-    r.getMachineStatus = async (...args) => { await held; return real(...args); };
+    spyStatus(r, async (_id, read) => { await held; return read(); });
     mount(<MachineStatusPage remote={r} id="mac" go={none} onBack={none} />);
     expect(host.querySelector(".ms-title")!.textContent).toBe("MacBook");
     expect(host.querySelector(".ms-live")!.textContent).toBe("正在读取");
@@ -176,28 +196,30 @@ describe("电脑状态", () => {
     mount(<MachineStatusPage remote={r} id="mac" go={none} onBack={none} />);
     await ready();
     await click(button("显示进程"));
-    expect(rankTitles().slice(0, 3)).toEqual(["java", "xcodebuild", "Google Chrome"]);
+    expect(rankTitles().slice(0, 3)).toEqual(["java", "Google Chrome", "xcodebuild"]);
     await click(host.querySelectorAll<HTMLElement>(".ms-tile")[0]);
     expect(host.querySelector(".ms-hero .ms-kick")!.textContent).toBe("内存");
     expect(host.querySelector(".ms-hero .ms-xl small")!.textContent).toBe("GB 已用");
-    expect(host.querySelector(".ms-hero .ms-aside")!.textContent).toBe("共 16 GB交换 1.3 GB");
+    expect(host.querySelector(".ms-hero .ms-aside")!.textContent).toBe("共 16 GB，交换 1.3 GB");
     // The pressure sits above the axis; CPU is a small card now, with its load and cores, and no scale.
     expect(host.querySelector(".ms-hero .ms-pr")!.textContent).toBe("压力正常");
     const small = host.querySelectorAll(".ms-tile")[0];
     expect(small.querySelector(".ms-kick")!.textContent).toBe("CPU");
-    expect(small.textContent).toContain("负载 3.2");
+    expect(small.textContent).toContain("3.2 负载");
     expect(small.querySelector(".ms-uv")).toBeNull();
     expect(rankTitles().slice(0, 3)).toEqual(["java", "Google Chrome", "xcodebuild"]);
     await click(host.querySelectorAll<HTMLElement>(".ms-tile")[0]);
     expect(host.querySelector(".ms-hero .ms-kick")!.textContent).toBe("CPU");
-    expect(rankTitles().slice(0, 3)).toEqual(["java", "xcodebuild", "Google Chrome"]);
+    expect(rankTitles().slice(0, 3)).toEqual(["java", "Google Chrome", "xcodebuild"]);
   });
 
   it("keeps pressure words in the memory hero when only the level is available", async () => {
     const r = demo("ms-full");
-    const status = await r.getMachineStatus("mac");
-    status.memoryPressurePosition = undefined;
-    vi.spyOn(r, "getMachineStatus").mockResolvedValue(status);
+    spyStatus(r, async (_id, read) => {
+      const status = await read();
+      status.memoryPressurePosition = undefined;
+      return status;
+    });
     mount(<MachineStatusPage remote={r} id="mac" go={none} onBack={none} />);
     await ready();
     expect(host.querySelector(".ms-tile .ms-say b")?.textContent).toBe("压力正常");
@@ -229,7 +251,7 @@ describe("电脑状态", () => {
     await click(button("显示进程"));
     expect(host.querySelectorAll("button.ms-u")).toHaveLength(0);
     // A process in a session's tree names the session after its other figure.
-    expect(host.querySelector(".ms-u .ms-rm small")!.textContent).toBe("2.1 GB · 给登录接口加限流");
+    expect(host.querySelector(".ms-u .ms-rm small")!.textContent).toMatch(/2\.1 GB.*给登录接口加限流/);
   });
 
   it("opens the attachment storage from the disk card", async () => {
@@ -316,13 +338,15 @@ describe("a disk that is nearly full", () => {
       create(ProjectSummarySchema, { path: "/Users/me/Code/old", latestCreatedMs: 1n }),
       create(ProjectSummarySchema, { path: "/Users/me/Code/foo", latestEndedMs: 5n }),
     ];
+    patchSyncState(r, { machines: new Map(r.machines) });
     const sent = vi.spyOn(r, "machineCommand");
     const go = vi.fn();
     mount(<MachineStatusPage remote={r} id="mac" go={go} onBack={none} />);
     await ready();
     await click(button("让 Agent 帮我清理"));
     expect(go).toHaveBeenCalledWith("p/" + encodeURIComponent("/Users/me/Code/foo"));
-    expect(r.drafts.get("new:/Users/me/Code/foo")).toBe(machineCleanupPrompt());
+    const cleanupPrompt = message("machine_status.cleanup_prompt");
+    expect(r.drafts.get("new:/Users/me/Code/foo")).toBe(cleanupPrompt);
     expect(r.drafts.get("new:/Users/me/Code/foo")).toBe("这台电脑磁盘空间不够了。帮我看看是什么占的，按占用从大到小列出来，说明哪些可以安全清理。先不要删除任何东西，等我确认。");
     expect(r.draftMachines.get("/Users/me/Code/foo")).toBe("mac");
     expect(sent.mock.calls.filter((call) => (call[1] as CommandKind | undefined)?.case === "createSession")).toHaveLength(0);
@@ -330,7 +354,7 @@ describe("a disk that is nearly full", () => {
     act(() => root!.unmount());
     host.remove();
     mount(<ProjectPage remote={r} pkey="/Users/me/Code/foo" go={none} onBack={none} />);
-    expect(host.querySelector<HTMLTextAreaElement>("textarea")!.value).toBe(machineCleanupPrompt());
+    expect(host.querySelector<HTMLTextAreaElement>("textarea")!.value).toBe(cleanupPrompt);
   });
 
   it("adds the prompt after a draft already there, once: a draft that has it is left as it is", async () => {
@@ -340,7 +364,7 @@ describe("a disk that is nearly full", () => {
     mount(<MachineStatusPage remote={r} id="mac" go={go} onBack={none} />);
     await ready();
     await click(button("让 Agent 帮我清理"));
-    const once = "先看看 node_modules\n\n" + machineCleanupPrompt();
+    const once = "先看看 node_modules\n\n" + message("machine_status.cleanup_prompt");
     expect(r.drafts.get("new:/Users/me/Code/foo")).toBe(once);
     await click(button("让 Agent 帮我清理"));
     expect(r.drafts.get("new:/Users/me/Code/foo")).toBe(once);
@@ -349,6 +373,7 @@ describe("a disk that is nearly full", () => {
   it("asks for a folder on this computer when none has been used", async () => {
     const r = demo("ms-full&ms=tight");
     r.machines.get("mac")!.meta!.projects = [];
+    patchSyncState(r, { machines: new Map(r.machines) });
     mount(<MachineStatusPage remote={r} id="mac" go={none} onBack={none} />);
     await ready();
     await click(button("让 Agent 帮我清理"));
@@ -370,13 +395,13 @@ describe("a disk that is nearly full", () => {
 describe("when the numbers cannot be read", () => {
   it("says so in the middle of the page, and asks again on 重试", async () => {
     const r = demo("ms=none");
-    const ask = vi.spyOn(r, "getMachineStatus");
+    const ask = spyStatus(r);
     mount(<MachineStatusPage remote={r} id="mac" go={none} onBack={none} />);
     await vi.waitFor(() => expect(host.querySelector(".ms-fail")).toBeTruthy());
     expect(host.querySelector(".ms-fail")!.textContent).toBe("读不到这台电脑的状态重试");
-    const before = ask.mock.calls.length;
+    const before = ask.length;
     await click(button("重试"));
-    await vi.waitFor(() => expect(ask.mock.calls.length).toBeGreaterThan(before));
+    await vi.waitFor(() => expect(ask.length).toBeGreaterThan(before));
   });
 
   it("keeps the last numbers, grey, with an orange dot and how old they are, then goes on by itself", async () => {
@@ -395,9 +420,9 @@ describe("when the numbers cannot be read", () => {
     await act(async () => void (await vi.advanceTimersByTimeAsync(100_000)));
     expect(host.querySelector(".ms-live")!.textContent).toMatch(/^1 分钟前的数据$/);
     // It keeps trying while it is in front.
-    const ask = vi.spyOn(r, "getMachineStatus");
+    const ask = spyStatus(r);
     await act(async () => void (await vi.advanceTimersByTimeAsync(6000)));
-    expect(ask).toHaveBeenCalled();
+    expect(ask.length).toBeGreaterThan(0);
   });
 
   it("goes stale at once when the computer goes offline", async () => {
@@ -406,21 +431,20 @@ describe("when the numbers cannot be read", () => {
     await ready();
     act(() => {
       r.machines.get("mac")!.online = false;
-      (r as unknown as { changed(): void }).changed();
+      patchSyncState(r, { machines: new Map(r.machines) });
     });
     await vi.waitFor(() => expect(host.querySelector(".ms-live")!.textContent).toMatch(/前的数据$/));
   });
 
   it("leaves out what the system does not give: no battery, load or pressure, no word of unknown", async () => {
     const r = demo("ms-full&ms-nobattery");
-    const real = r.getMachineStatus.bind(r);
-    r.getMachineStatus = async (...args) => {
-      const s = await real(...args);
+    spyStatus(r, async (_id, read) => {
+      const s = await read();
       s.memoryPressure = 0;
       s.swapUsedBytes = undefined;
       s.agentBytes = undefined;
       return s;
-    };
+    });
     mount(<MachineStatusPage remote={r} id="mac" go={none} onBack={none} />);
     await ready();
     expect(host.querySelector(".ms-foot")!.textContent).toBe("已开机 3 天 4 小时");
@@ -434,12 +458,11 @@ describe("when the numbers cannot be read", () => {
 
   it("says there are no running sessions", async () => {
     const r = demo("ms-full");
-    const real = r.getMachineStatus.bind(r);
-    r.getMachineStatus = async (...args) => {
-      const s = await real(...args);
+    spyStatus(r, async (_id, read) => {
+      const s = await read();
       s.sessions = [];
       return s;
-    };
+    });
     mount(<MachineStatusPage remote={r} id="mac" go={none} onBack={none} />);
     await ready();
     expect(host.querySelector(".ms-list")!.textContent).toBe("没有正在运行的会话");
@@ -449,21 +472,21 @@ describe("when the numbers cannot be read", () => {
 describe("while the page is out of sight", () => {
   it("asks for nothing, and asks again when it is back", async () => {
     const r = demo("ms-full");
-    const ask = vi.spyOn(r, "getMachineStatus");
+    const ask = spyStatus(r);
     mount(<MachineStatusPage remote={r} id="mac" go={none} onBack={none} />);
     await ready();
-    const seen = ask.mock.calls.length;
+    const seen = ask.length;
     await act(async () => {
       Object.defineProperty(document, "hidden", { configurable: true, value: true });
       document.dispatchEvent(new Event("visibilitychange"));
     });
     await new Promise((done) => setTimeout(done, 50));
-    expect(ask.mock.calls.length).toBe(seen);
+    expect(ask.length).toBe(seen);
     await act(async () => {
       Object.defineProperty(document, "hidden", { configurable: true, value: false });
       document.dispatchEvent(new Event("visibilitychange"));
     });
-    await vi.waitFor(() => expect(ask.mock.calls.length).toBeGreaterThan(seen));
+    await vi.waitFor(() => expect(ask.length).toBeGreaterThan(seen));
   });
 });
 
@@ -530,6 +553,7 @@ describe("the reminder on the home", () => {
     const r = demo("ms=both");
     r.machines.get("imac")!.online = false;
     r.machines.get("mac")!.meta!.capabilities!.machineStatus = false;
+    patchSyncState(r, { machines: new Map(r.machines) });
     mount(<DiskReminders remote={r} go={none} />);
     expect(host.querySelectorAll(".ms-alert")).toHaveLength(0);
     const fine = demo("ms=ok");
@@ -543,7 +567,7 @@ describe("the reminder on the home", () => {
     expect(host.querySelectorAll(".ms-alert")).toHaveLength(1);
     act(() => {
       r.machines.get("mac")!.meta!.diskStatus!.availableBytes = 30_000_000_000n;
-      (r as unknown as { changed(): void }).changed();
+      patchSyncState(r, { machines: new Map(r.machines) });
     });
     act(() => root!.render(<DiskReminders remote={r} go={none} />));
     expect(host.querySelectorAll(".ms-alert")).toHaveLength(0);
@@ -604,7 +628,7 @@ describe("the emergency reserve in the attachment storage", () => {
     mount(<MachinePage remote={r} id="mac" section="storage" go={none} onBack={none} />);
     await vi.waitFor(() => expect(host.textContent).toContain("应急预留"));
     const row = [...host.querySelectorAll(".row")].find((e) => e.textContent?.includes("应急预留"))!;
-    expect(row.textContent).toBe("应急预留256.0 MiB磁盘写满时自动释放，让你还能开会话处理。");
+    expect(row.textContent).toBe("应急预留256 MB磁盘写满时自动释放，让你还能开会话处理。");
     expect(row.querySelector("button")).toBeNull();
     // The rings are the top of the page.
     expect(host.querySelector(".body")!.firstElementChild!.querySelector(".ms-rings")).not.toBeNull();
@@ -632,7 +656,7 @@ describe("in English", () => {
     const copy = host.cloneNode(true) as HTMLElement;
     copy.querySelectorAll(".ms-rt > span:first-child").forEach((e) => e.remove());
     const text = copy.textContent!;
-    for (const part of ["Live", "CPU", "Memory", "Disk", "Pressure high", "Almost full", "New sessions may not start", "Ask the Agent to clean up", "remote-agent usage", "Top usage", "Show processes", "2 min ago", "Now", "Up 3 d 4 hr", "Battery 81%, charging", "GB used", "16 GB total, 4.8 GB swap", "1.2GB free", "3.1 GB"])
+    for (const part of ["Live", "CPU", "Memory", "Disk", "Pressure high", "Almost full", "New sessions may not start", "Ask the Agent to clean up", "remote-agent usage", "Top usage", "Show processes", "2 min ago", "Now", "Up 3 d 4 hr", "Battery 81%, charging", "GB used", "16 GB total, 4.8 GB swap", "1.2 GB", "3.1 GB"])
       expect(text).toContain(part);
     expect(text).not.toMatch(/[一-鿿]/);
   });

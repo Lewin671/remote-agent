@@ -2220,13 +2220,6 @@ export class DemoRemote extends Remote {
     }
   }
 
-  override async getMachineStatus(machineId: string, signal?: AbortSignal) {
-    // ms-slow=<ms>: the answer takes that long, to look at the page before its first one.
-    await this.pause(Number(this.opts.get("ms-slow")) || 120);
-    signal?.throwIfAborted();
-    return this.status.read(machineId, ["s-claude", "s-run", "s-agy"]);
-  }
-
   private seed() {
     const empty = this.opts.get("empty");
     const machine = (
@@ -3035,6 +3028,7 @@ export class DemoRemote extends Remote {
                 protectedBytes: 80n << 20n,
                 reclaimableBytes: 120n << 20n,
                 cacheBytes: 32n << 20n,
+                emergencyReserveBytes: m.meta?.diskStatus?.emergencyReserveBytes ?? 0n,
                 sessions: [],
               },
             },
@@ -3055,10 +3049,17 @@ export class DemoRemote extends Remote {
                 protectedBytes: 80n << 20n,
                 reclaimableBytes: cmd.value.cleanImages ? 0n : 120n << 20n,
                 cacheBytes: cmd.value.cleanImages ? 0n : 32n << 20n,
+                emergencyReserveBytes: m.meta?.diskStatus?.emergencyReserveBytes ?? 0n,
                 sessions: [],
               },
             },
           },
+        });
+      case "getMachineStatus":
+        // ms-slow=<ms>: the answer takes that long, to look at the page before its first one.
+        await this.pause(Number(this.opts.get("ms-slow")) || 120);
+        return create(CommandResultSchema, {
+          kind: { case: "machineStatus", value: this.status.read(machineId, ["s-claude", "s-run", "s-agy"]) },
         });
       case "listDirectories": {
         const path = cmd.value.path || "/Users/me";

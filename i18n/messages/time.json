@@ -39,31 +39,6 @@
     }
   },
   {
-    "key": "time.today_clock",
-    "zh-CN": "今天 {value}:{detail}",
-    "en": "Today {value}:{detail}",
-    "notes": "devices 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。变量来源：value = then.getHours()；detail = String(then.getMinutes()).padStart(2, \"0\")；名称、日期和诊断原文不翻译。",
-    "params": {
-      "value": {
-        "type": "string",
-        "example": "Example"
-      },
-      "detail": {
-        "type": "string",
-        "example": "Example"
-      }
-    },
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
     "key": "time.duration_hours_minutes",
     "zh-CN": "{hours} 小时 {minutes} 分",
     "en": "{hours} hr {minutes} min",

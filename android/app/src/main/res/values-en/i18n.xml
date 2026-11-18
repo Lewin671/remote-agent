@@ -806,7 +806,6 @@
     <string name="new_session_start_unknown">"Start unconfirmed: %1$s. Retrying sends the same request and will not start another session."</string>
     <string name="new_session_starting_on">"Starting on %1$s…"</string>
     <string name="new_session_task_settings" formatted="false">"Task settings"</string>
-    <string name="new_session_this_model_has_no_auto_mode" formatted="false">"This model has no Auto mode"</string>
     <string name="new_session_unexpected_reply" formatted="false">"Unexpected response"</string>
     <string name="new_session_unknown_start_retry" formatted="false">"The last start has an unknown result. Send again to retry the same request; the computer will not start it twice."</string>
     <string name="new_session_use_machine">"Use %1$s"</string>
@@ -943,8 +942,6 @@
         <item quantity="other">"%1$d hr"</item>
     </plurals>
     <string name="quota_last_reading" formatted="false">" · Last reading"</string>
-    <string name="quota_last_reading_computer_offline_may_have_changed" formatted="false">"Last reading: computer offline, may have changed"</string>
-    <string name="quota_last_reading_reset_time_passed_but_quota_recovery_is">"Last reading: %1$s; reset time passed, but quota recovery is unconfirmed"</string>
     <string name="quota_left">"%1$s%% left"</string>
     <plurals name="quota_min">
         <item quantity="one">"%1$d min"</item>
@@ -1771,8 +1768,6 @@
     <string name="session_only_current" formatted="false">"Applies only to this session"</string>
     <string name="session_origin_elsewhere" formatted="false">"Elsewhere"</string>
     <string name="session_origin_other" formatted="false">"Another client"</string>
-    <string name="session_origin_removed" formatted="false">"Removed device"</string>
-    <string name="session_origin_self" formatted="false">"This client"</string>
     <string name="session_origin_terminal">"%1$s terminal"</string>
     <string name="session_other_session" formatted="false">"Another session"</string>
     <string name="session_quiet_checks">"%1$s Scheduled check · No new reply"</string>
@@ -1923,8 +1918,6 @@
     <string name="settings_current" formatted="false">"Current"</string>
     <string name="settings_dark" formatted="false">"Dark"</string>
     <string name="settings_default" formatted="false">" (default)"</string>
-    <string name="settings_default_approval_mode" formatted="false">"Default approval mode"</string>
-    <string name="settings_default_reasoning_effort" formatted="false">"Default reasoning effort"</string>
     <string name="settings_details" formatted="false">"Details"</string>
     <string name="settings_device_id" formatted="false">"Device ID"</string>
     <string name="settings_device_not_found" formatted="false">"Device not found"</string>
@@ -1934,7 +1927,6 @@
     <string name="settings_enabled" formatted="false">"Enabled"</string>
     <string name="settings_exit_and_delete_local_keys" formatted="false">"Exit and delete local keys…"</string>
     <string name="settings_follow_configuration">"Follow %1$s configuration"</string>
-    <string name="settings_follow_configuration_settings" formatted="false">"Follow configuration"</string>
     <string name="settings_how_to_enable" formatted="false">"How to enable"</string>
     <string name="settings_idle_close_off" formatted="false">"Off"</string>
     <string name="settings_iphone_push_help" formatted="false">"On iPhone, add to Home Screen and open from there to receive push notifications: in Safari, tap Share, choose Add to Home Screen, then open its icon."</string>
@@ -1942,9 +1934,7 @@
     <string name="settings_less_than_0_1_mib" formatted="false">"Less than 0.1 MiB"</string>
     <string name="settings_light" formatted="false">"Light"</string>
     <string name="settings_managing_client" formatted="false">"Managing client"</string>
-    <string name="settings_min" formatted="false">" min"</string>
     <string name="settings_name" formatted="false">"Name"</string>
-    <string name="settings_name_changes_sync_to_other_clients" formatted="false">"Name changes sync to other clients."</string>
     <string name="settings_name_save_error">"Could not save name: %1$s"</string>
     <string name="settings_names_sync_encrypted_the_server_cannot_read_them_leave" formatted="false">"Names sync encrypted; the server cannot read them. Leave blank for the default name."</string>
     <string name="settings_new_project_defaults" formatted="false">"New project defaults"</string>
@@ -1994,13 +1984,11 @@
     <string name="settings_up_to_date" formatted="false">"Up to date"</string>
     <string name="settings_uploaded_images_and_files" formatted="false">"Uploaded images and files"</string>
     <string name="settings_uploading">"Uploading %1$s"</string>
-    <string name="settings_use_cli_defaults_for_new_projects" formatted="false">"Use CLI defaults for new projects"</string>
     <string name="settings_verify_and_continue_security_operation" formatted="false">"Verify and continue security operation"</string>
     <string name="settings_version_unverified_run_remote_agent_doctor_on_this_computer" formatted="false">"Version unverified: run remote-agent doctor on this computer to check features in a temporary session."</string>
     <string name="settings_view_usage_in_the_local_cli" formatted="false">"View usage in the local CLI"</string>
     <string name="settings_when_a_turn_ends" formatted="false">"When a turn ends"</string>
     <string name="settings_when_i_need_to_act" formatted="false">"When I need to act"</string>
-    <string name="settings_when_unspecified_uses" formatted="false">"When unspecified, uses:"</string>
     <string name="shared_file_a11y_card">"%2$s, %1$s, %3$s, %4$s"</string>
     <string name="shared_file_a11y_downloaded_announce">"%1$s downloaded"</string>
     <string name="shared_file_a11y_state_available" formatted="false">"Ready to download"</string>
@@ -2130,7 +2118,6 @@
     <string name="time_month_day">"%2$d/%1$d"</string>
     <string name="time_month_group">"Month %1$d"</string>
     <string name="time_today" formatted="false">"Today"</string>
-    <string name="time_today_clock">"Today %2$s:%1$s"</string>
     <string name="time_tomorrow" formatted="false">"Tomorrow"</string>
     <string name="time_used_time">"Used %1$s"</string>
     <string name="time_weekday_fri">"Fri"</string>

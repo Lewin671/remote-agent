@@ -73,14 +73,15 @@ it("updates existing history and preserves the draft and structured changes on l
 it.each(["zh-CN", "en"] as const)("uses origin IDs even if another device is named like the self label in %s", async locale => {
   localeStore.overrideForTesting(locale);
   remote = DemoRemote.create(new URLSearchParams(), async () => {}); remote.start();
-  (remote as unknown as { metas: Map<string, { meta: { name: string } }> }).metas.get(ANDROID)!.meta.name = t("session.origin_self");
+  const selfLabel = locale === "en" ? "This client" : "本客户端";
+  (remote as unknown as { metas: Map<string, { meta: { name: string } }> }).metas.get(ANDROID)!.meta.name = selfLabel;
   await remote.loadDevices();
   demoPush("s-idle", { case: "settingsChanged", value: { mode: ApprovalMode.FULL_ACCESS } });
   const list = (remote as unknown as { evs: Map<string, { origin?: ReturnType<typeof create<typeof OriginSchema>> }[]> }).evs.get("s-idle")!;
   list.at(-1)!.origin = create(OriginSchema, { kind: OriginKind.CLIENT, deviceId: ANDROID });
   (remote as unknown as { syncDemoToCore(force?: boolean): void }).syncDemoToCore(true);
   await mount("s-idle");
-  expect(host.textContent).toContain(t("session.mode_changed_by", { origin: t("session.origin_self"), value: t("modes.full_access") }));
+  expect(host.textContent).toContain(t("session.mode_changed_by", { origin: selfLabel, value: t("modes.full_access") }));
 });
 
 it.each(["zh-CN", "en"] as const)("never enables approval of a skeleton in %s", async locale => {

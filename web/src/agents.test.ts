@@ -3,7 +3,6 @@ import { describe, expect, it } from "vitest";
 import { create } from "@bufbuild/protobuf";
 import { Agent, ApprovalMode } from "./gen/remoteagent/v1/event_pb";
 import { DaemonSettingsSchema } from "./gen/remoteagent/v1/local_pb";
-import { AgentInfoSchema, MachineMetaSchema } from "./gen/remoteagent/v1/remote_pb";
 import {
   AGENTS,
   DEFAULT_AGENT,
@@ -12,8 +11,6 @@ import {
   agentName,
   defaultsFor,
   isKnownAgent,
-  machineVersions,
-  withDefaults,
 } from "./agents";
 
 describe("agents registry", () => {
@@ -27,9 +24,6 @@ describe("agents registry", () => {
     const codex = agentInfo(Agent.CODEX);
     expect(codex.id).toBe("codex");
     expect(codex.name).toBe("Codex");
-    expect(codex.quotaWindows).toEqual(["primary", "secondary"]);
-    expect(codex.quotaWindow("primary")).toEqual({ label: message("quota.hr", { count: 5 }), group: null });
-    expect(codex.quotaWindow("secondary")).toEqual({ label: message("quota.days", { count: 7 }), group: null });
     expect(codex.toolLabelFromItemType).toBe(false);
     expect(codex.planClearContext).toBe(true);
     expect(codex.planKeepLabel).toBe(message("dock.plan_keep"));
@@ -41,15 +35,10 @@ describe("agents registry", () => {
     expect(codex.switchesModelInSession).toBe(true);
     expect(codex.forks).toBe(true);
     expect(codex.modelLabel("gpt-6-sol")).toBe("GPT-6-Sol");
-    expect(codex.planName("claude_max")).toBe("Max");
-    expect(codex.planName("prolite")).toBe("Pro Lite");
 
     const claude = agentInfo(Agent.CLAUDE);
     expect(claude.id).toBe("claude");
     expect(claude.name).toBe("Claude Code");
-    expect(claude.quotaWindows).toEqual(["five_hour", "seven_day"]);
-    expect(claude.quotaWindow("five_hour")).toEqual({ label: message("quota.hr", { count: 5 }), group: null });
-    expect(claude.quotaWindow("seven_day")).toEqual({ label: message("quota.days", { count: 7 }), group: null });
     expect(claude.toolLabelFromItemType).toBe(true);
     expect(claude.planClearContext).toBe(false);
     expect(claude.planKeepLabel).toBe(message("modes.plan_edit"));
@@ -61,19 +50,10 @@ describe("agents registry", () => {
     expect(claude.switchesModelInSession).toBe(true);
     expect(claude.forks).toBe(true);
     expect(claude.modelLabel("claude-sonnet-5-5")).toBe("claude-sonnet-5-5");
-    expect(claude.planName("claude_max")).toBe("Max");
-    expect(claude.planName("prolite")).toBe("Pro Lite");
 
     const agy = agentInfo(Agent.ANTIGRAVITY);
     expect(agy.id).toBe("agy");
     expect(agy.name).toBe("Antigravity");
-    expect(agy.quotaWindows).toEqual([]);
-    expect(agy.quotaWindow("gemini-5h")).toEqual({ label: message("quota.named_hours", { name: "Gemini", count: 5 }), group: "Gemini", pool: "Gemini" });
-    expect(agy.quotaWindow("gemini-weekly")).toEqual({ label: message("quota.named_days", { name: "Gemini", count: 7 }), group: "Gemini", pool: "Gemini" });
-    expect(agy.quotaWindow("gemini-argon-wtu-weekly")).toEqual({ label: message("quota.named_days", { name: "Gemini 4 Argon", count: 7 }), group: "Gemini", pool: "Gemini 4 Argon" });
-    expect(agy.quotaWindow("3p-5h")).toEqual({ label: message("quota.named_hours", { name: message("quota.third_party_models"), count: 5 }), group: message("quota.third_party_models_claude_gpt_oss"), pool: message("quota.third_party_models") });
-    expect(agy.quotaWindow("3p-weekly")).toEqual({ label: message("quota.named_days", { name: message("quota.third_party_models"), count: 7 }), group: message("quota.third_party_models_claude_gpt_oss"), pool: message("quota.third_party_models") });
-    expect(agy.quotaWindow("custom-window")).toEqual({ label: "custom-window", group: "custom-window" });
     expect(agy.toolLabelFromItemType).toBe(false);
     expect(agy.planClearContext).toBe(false);
     expect(agy.planKeepLabel).toBe(message("modes.plan_edit"));
@@ -89,7 +69,6 @@ describe("agents registry", () => {
     expect(agy.forks).toBe(false);
     expect(agy.showMaxEffort).toBe(false);
     expect(agy.modelLabel("gemini-3.1-pro-high")).toBe("gemini-3.1-pro-high");
-    expect(agy.planName("Google AI Pro")).toBe("Google AI Pro");
   });
 
   it("maps UNSPECIFIED, null, and undefined to Codex", () => {
@@ -105,7 +84,6 @@ describe("agents registry", () => {
     expect(unknown.agent).toBe(999);
     expect(unknown.id).toBe("");
     expect(unknown.name).toBe(message("models.unknown_cli"));
-    expect(unknown.quotaWindows).toEqual([]);
     expect(unknown.toolLabelFromItemType).toBe(false);
     expect(unknown.planClearContext).toBe(false);
     expect(unknown.planNote).toBeNull();
@@ -120,7 +98,6 @@ describe("agents registry", () => {
     expect(unknown.showMaxEffort).toBe(false);
     expect(unknown.permissionModeNotice).toBeNull();
     expect(unknown.modelLabel("any-slug")).toBe("any-slug");
-    expect(unknown.planName("any-plan")).toBe("any-plan");
     expect(agentName(999 as Agent)).toBe(message("models.unknown_cli"));
     // Passing unknown.agent back into agentInfo must still be the unknown entry, never Codex.
     const roundtripped = agentInfo(unknown.agent);
@@ -149,118 +126,34 @@ describe("agents registry", () => {
     expect(isKnownAgent("codex")).toBe(false);
   });
 
-  it("round-trips defaults and withDefaults for Codex", () => {
-    const base = create(DaemonSettingsSchema, {
+  it("reads defaultsFor Codex, Claude, Antigravity, and unknown", () => {
+    expect(defaultsFor(create(DaemonSettingsSchema, {
       defaultModel: "gpt-6-sol",
       defaultEffort: "medium",
       defaultMode: ApprovalMode.AUTO,
-    });
-    expect(defaultsFor(base, Agent.CODEX)).toEqual({
+    }), Agent.CODEX)).toEqual({
       model: "gpt-6-sol",
       effort: "medium",
       mode: ApprovalMode.AUTO,
     });
-
-    const updated = withDefaults(base, Agent.CODEX, {
-      model: "gpt-6.1",
-      effort: "high",
-    });
-    expect(updated.defaultModel).toBe("gpt-6.1");
-    expect(updated.defaultEffort).toBe("high");
-    expect(updated.defaultMode).toBe(ApprovalMode.AUTO);
-
-    expect(defaultsFor(updated, Agent.CODEX)).toEqual({
-      model: "gpt-6.1",
-      effort: "high",
-      mode: ApprovalMode.AUTO,
-    });
-  });
-
-  it("round-trips defaults and withDefaults for Claude", () => {
-    const base = create(DaemonSettingsSchema, {
-      claude: {
-        model: "claude-sonnet-5-5",
-        effort: "low",
-        mode: ApprovalMode.ASK,
-      },
-    });
-    expect(defaultsFor(base, Agent.CLAUDE)).toEqual({
+    expect(defaultsFor(create(DaemonSettingsSchema, {
+      claude: { model: "claude-sonnet-5-5", effort: "low", mode: ApprovalMode.ASK },
+    }), Agent.CLAUDE)).toEqual({
       model: "claude-sonnet-5-5",
       effort: "low",
       mode: ApprovalMode.ASK,
     });
-
-    const updated = withDefaults(base, Agent.CLAUDE, {
-      model: "claude-opus-9",
-    });
-    expect(updated.claude?.model).toBe("claude-opus-9");
-    expect(updated.claude?.effort).toBe("low");
-    expect(updated.claude?.mode).toBe(ApprovalMode.ASK);
-
-    expect(defaultsFor(updated, Agent.CLAUDE)).toEqual({
-      model: "claude-opus-9",
-      effort: "low",
-      mode: ApprovalMode.ASK,
-    });
-  });
-
-  it("round-trips defaults and withDefaults for Antigravity", () => {
-    const base = create(DaemonSettingsSchema, {
-      antigravity: {
-        model: "gemini-3.1-pro-high",
-        effort: "high",
-        mode: ApprovalMode.ASK,
-      },
-    });
-    expect(defaultsFor(base, Agent.ANTIGRAVITY)).toEqual({
+    expect(defaultsFor(create(DaemonSettingsSchema, {
+      antigravity: { model: "gemini-3.1-pro-high", effort: "high", mode: ApprovalMode.ASK },
+    }), Agent.ANTIGRAVITY)).toEqual({
       model: "gemini-3.1-pro-high",
       effort: "high",
       mode: ApprovalMode.ASK,
     });
-
-    const updated = withDefaults(base, Agent.ANTIGRAVITY, {
-      model: "gemini-3-flash",
-      mode: ApprovalMode.PLAN,
-    });
-    expect(updated.antigravity?.model).toBe("gemini-3-flash");
-    expect(updated.antigravity?.effort).toBe("high");
-    expect(updated.antigravity?.mode).toBe(ApprovalMode.PLAN);
-
-    expect(defaultsFor(updated, Agent.ANTIGRAVITY)).toEqual({
-      model: "gemini-3-flash",
-      effort: "high",
-      mode: ApprovalMode.PLAN,
-    });
-  });
-
-  it("preserves settings when updating unknown agent defaults", () => {
-    const base = create(DaemonSettingsSchema, { defaultModel: "m" });
-    expect(withDefaults(base, 999 as Agent, { model: "x" })).toBe(base);
-    expect(defaultsFor(base, 999 as Agent)).toEqual({
+    expect(defaultsFor(create(DaemonSettingsSchema, { defaultModel: "m" }), 999 as Agent)).toEqual({
       model: "",
       effort: "",
       mode: ApprovalMode.UNSPECIFIED,
     });
-  });
-
-  it("synthesizes machine versions from legacy codexVersion and modern agents list", () => {
-    const legacy = create(MachineMetaSchema, {
-      codexVersion: "1.2.3",
-      codexVerified: true,
-    });
-    expect(machineVersions(legacy)).toEqual([
-      { agent: Agent.CODEX, version: "1.2.3", verified: true },
-    ]);
-
-    const modern = create(MachineMetaSchema, {
-      agents: [
-        create(AgentInfoSchema, { agent: Agent.CODEX, version: "2.0.0" }),
-        create(AgentInfoSchema, { agent: Agent.CLAUDE, version: "3.0.0" }),
-      ],
-    });
-    expect(machineVersions(modern)).toMatchObject([
-      { agent: Agent.CODEX, version: "2.0.0" },
-      { agent: Agent.CLAUDE, version: "3.0.0" },
-    ]);
   });
 });

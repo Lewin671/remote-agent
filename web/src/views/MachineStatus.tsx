@@ -1,538 +1,435 @@
-// 电脑状态 (ui-spec A3): one computer's CPU, memory and disk, live, and who
-// is using them. A big number for the main chart, two small cards, the disk's
-// actions when it is tight, the ranking. Black, white and gray; colour only
-// where something needs a look.
+// One computer, watched in two-second ticks while the page is in front
+// (client-v28): CPU %, memory, swap and pressure, disk and what remote-agent
+// uses of it, and what runs inside remote-agent and across the computer.
+// Core (clientcore) owns polling, scrub selection, formatting, and rankings;
+// this file renders the MachineStatusViewModel and SVG curve geometry.
 
-import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent, type PointerEvent } from "react";
+import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent, type PointerEvent, type ReactNode } from "react";
 import { t } from "../i18n";
-import { rich } from "../i18n/rich";
 import { AgentMark } from "../agent-mark";
-import { ResourcePressure, type MachineStatus, type ResourceUsage } from "../gen/remoteagent/v1/local_pb";
+import {
+  MachineChartKind,
+  MachinePollMode,
+  MachinePollState,
+  MachinePressureTone,
+  DiskPressureState,
+  MachineStatusDot,
+  MachineUsageTab,
+  type MachineChartPoint,
+  type MachineChartView,
+  type MachineStatusViewModel,
+} from "../gen/remoteagent/core/v1/machine_view_pb";
 import { Agent } from "../gen/remoteagent/v1/event_pb";
 import { CpuIcon, DiskIcon, MemoryIcon, TerminalIcon, ChevronRight } from "../icons";
-import { agentOf, machineName, titleOf } from "../model";
-import { machineCleanupPrompt, recentMachineProject, stableUsage } from "../machine-status";
 import {
-  RANK_ROWS, barPercent, curvePaths, curvePoints, diskBar, diskTight, diskWord, ChartTimeline, footerText, gbFixed, gbNumber, memText, percentText,
-  pressurePosition, pressureWord, sampleAt, secondsBefore, sizeText, staleText, toneOf, xOf, yOf, type Point, type RankKind,
-} from "../machine-status-view";
+  routeForProject,
+  useCoreHost,
+  useMachineStatusView,
+} from "../core/host";
+import { renderText } from "../core/text";
 import type { Remote } from "../remote";
-import { NavBar, useRemote } from "../ui";
+import { NavBar } from "../ui";
 import { addProject, MachineDirSheet as NewProjectSheet } from "./ScheduleConfig";
-import { Roll, flipBox, useFlipList, useMachineStatus, usePageVisible, useReducedMotion } from "./machine-status-hooks";
+import { Roll, flipBox, useFlipList, usePageVisible, useReducedMotion } from "./machine-status-hooks";
 
 type Go = (route: string) => void;
 type Main = "cpu" | "mem";
 
-const HEIGHT = 104;
+const HEIGHT = 104, DOT_INSET = 4, PAD = 4, DEFAULT_WINDOW_MS = 120_000, DEFAULT_GAP_MS = 10_000;
+type Pt = { x: number; y: number };
+const PRESSURE_TONE: Record<number, "" | "warn" | "crit"> = { [MachinePressureTone.HIGH]: "warn", [MachinePressureTone.CRITICAL]: "crit" };
+const DISK_TONE: Record<number, "" | "warn" | "crit"> = { [DiskPressureState.LOW]: "warn", [DiskPressureState.CRITICAL]: "crit" };
+const DOT_CLS: Record<number, string> = { [MachineStatusDot.GREEN_LIVE]: "ms-dot", [MachineStatusDot.ORANGE_STATIC]: "ms-dot off", [MachineStatusDot.RED_STATIC]: "ms-dot off" };
 
-/** The main chart (A3 ①, A4): the last two minutes, drawn from the points'
- * own times, gliding left at a constant pace; held with the mouse or a
- * finger, or stepped through with the arrow keys, it names the moment under
- * it. It draws nothing while the page is hidden. */
-function Curve({ points, max, glide, describe, label, prevLabel, nextLabel, onLook }: {
-  points: Point[];
-  max: number;
-  glide: boolean;
-  describe: (p: Point) => string;
-  label: string;
-  prevLabel: string;
-  nextLabel: string;
-  onLook: (p: Point | undefined) => void;
+class ChartTimeline {
+  private end?: number; private latest = 0; private lastNow = 0;
+  private catchup?: { from: number; target: number; start: number; deadline: number };
+  advance(nowMs: number, firstMs: number, latestMs: number, moving = true): number {
+    if (latestMs <= 0) return 0;
+    if (this.end === undefined || !moving) {
+      this.end = moving ? Math.max(firstMs, latestMs - 2000) : latestMs;
+      this.latest = latestMs; this.lastNow = nowMs; this.catchup = undefined;
+      return this.end;
+    }
+    const now = Math.max(this.lastNow, nowMs), c = this.catchup;
+    if (c) {
+      const p = Math.min(1, (now - c.start) / (c.deadline - c.start));
+      this.end = c.from + (c.target - c.from) * (1 - (1 - p) ** 3);
+      if (p === 1) this.catchup = undefined;
+    } else this.end = Math.min(this.latest, this.end + now - this.lastNow);
+    this.lastNow = now;
+    if (latestMs > this.latest) {
+      this.latest = latestMs;
+      if (this.catchup || latestMs - this.end > 2000) this.catchup = { from: this.end, target: latestMs, start: now, deadline: this.catchup?.deadline ?? now + 500 };
+    }
+    return this.end;
+  }
+}
+
+const xOf = (t: number, at: number, width: number, windowMs: number) => (width - DOT_INSET) * (1 - (at - t) / windowMs);
+const yOf = (v: number, max: number, height: number) => PAD + (1 - Math.min(1, Math.max(0, max > 0 ? v / max : 0))) * (height - 2 * PAD);
+
+function smooth(pts: readonly Pt[]): string {
+  const n = pts.length;
+  if (n === 1) return `M${pts[0].x.toFixed(2)},${pts[0].y.toFixed(2)}`;
+  const dx = pts.slice(0, -1).map((p, i) => pts[i + 1].x - p.x);
+  const slope = dx.map((w, i) => (w === 0 ? 0 : (pts[i + 1].y - pts[i].y) / w));
+  const tan = [slope[0], ...slope.slice(1).map((s, i) => (slope[i] * s <= 0 ? 0 : (slope[i] + s) / 2)), slope[n - 2]];
+  for (let i = 0; i < n - 1; i++) {
+    if (slope[i] === 0) { tan[i] = tan[i + 1] = 0; continue; }
+    const a = tan[i] / slope[i], b = tan[i + 1] / slope[i], h = Math.hypot(a, b);
+    if (h > 3) { tan[i] = (3 * a * slope[i]) / h; tan[i + 1] = (3 * b * slope[i]) / h; }
+  }
+  return `M${pts[0].x.toFixed(2)},${pts[0].y.toFixed(2)}` + dx.map((w, i) => {
+    const k = w / 3;
+    return ` C${(pts[i].x + k).toFixed(2)},${(pts[i].y + k * tan[i]).toFixed(2)} ${(pts[i + 1].x - k).toFixed(2)},${(pts[i + 1].y - k * tan[i + 1]).toFixed(2)} ${pts[i + 1].x.toFixed(2)},${pts[i + 1].y.toFixed(2)}`;
+  }).join("");
+}
+
+function curvePaths(points: readonly { t: number; v: number }[], at: number, max: number, width: number, height: number, windowMs: number, gapMs: number) {
+  const shown: { t: number; v: number }[] = [];
+  for (let i = 0; i < points.length; i++) {
+    const p = points[i], prev = points[i - 1];
+    if (p.t <= at) shown.push(p);
+    else { if (prev && p.t - prev.t <= gapMs && at > prev.t) shown.push({ t: at, v: prev.v + ((p.v - prev.v) * (at - prev.t)) / (p.t - prev.t) }); break; }
+  }
+  const clipped = shown.filter((p) => p.t >= at - windowMs - gapMs);
+  const runs: Pt[][] = [];
+  clipped.forEach((p, idx) => {
+    const pt = { x: xOf(p.t, at, width, windowMs), y: yOf(p.v, max, height) };
+    if (idx === 0 || p.t - clipped[idx - 1].t > gapMs) runs.push([pt]); else runs.at(-1)!.push(pt);
+  });
+  let line = "", area = "";
+  for (const run of runs) {
+    if (run.length < 2) continue;
+    const d = smooth(run);
+    line += (line ? " " : "") + d;
+    area += (area ? " " : "") + `${d} L${run.at(-1)!.x.toFixed(2)},${height} L${run[0].x.toFixed(2)},${height} Z`;
+  }
+  const last = clipped.at(-1);
+  return { line, area, head: last ? { x: xOf(last.t, at, width, windowMs), y: yOf(last.v, max, height) } : undefined };
+}
+
+function sampleIndexAt(points: readonly MachineChartPoint[], x: number, at: number, width: number, windowMs: number, gapMs: number): number {
+  const target = at - (1 - x / (width - DOT_INSET)) * windowMs;
+  let best = -1, bestDist = Infinity;
+  points.forEach((pt, i) => {
+    const ms = Number(pt.timeMs);
+    const dist = ms <= at + 1 ? Math.abs(ms - target) : Infinity;
+    if (dist < bestDist) { bestDist = dist; best = i; }
+  });
+  return best >= 0 && bestDist <= gapMs / 2 ? best : -1;
+}
+
+function Curve({ chart, tone, stale, reduced, moving, onScrub, onClearScrub }: {
+  chart: MachineChartView; tone: "" | "warn" | "crit"; stale: boolean; reduced: boolean; moving: boolean;
+  onScrub: (index: number) => void; onClearScrub: () => void;
 }) {
-  const gid = useId();
-  const box = useRef(null as HTMLDivElement | null);
-  const area = useRef(null as SVGPathElement | null);
-  const line = useRef(null as SVGPathElement | null);
-  const dot = useRef(null as SVGCircleElement | null);
-  const rule = useRef(null as SVGLineElement | null);
-  const spot = useRef(null as SVGCircleElement | null);
+  const plot = useRef<HTMLDivElement>(null), areaRef = useRef<SVGPathElement>(null), lineRef = useRef<SVGPathElement>(null);
+  const dotRef = useRef<SVGCircleElement>(null), ruleRef = useRef<SVGLineElement>(null), spotRef = useRef<SVGCircleElement>(null);
   const [width, setWidth] = useState(358);
-  const [looking, setLooking] = useState(undefined as Point | undefined);
-  // What the drawing reads each frame; React only re-renders for the width and the point looked at.
-  const live = useRef({ points, max, glide, width, x: undefined as number | undefined, keyT: undefined as number | undefined, hit: undefined as Point | undefined, clock: new ChartTimeline(), onLook });
-  live.current.points = points;
-  live.current.max = max;
-  live.current.glide = glide;
-  live.current.width = width;
-  live.current.onLook = onLook;
-  const draw = useCallback(() => {
-    const s = live.current;
-    const at = s.clock.advance(performance.now(), s.points[0]?.t ?? 0, s.points.at(-1)?.t ?? 0, s.glide);
-    const { line: l, area: a, head } = curvePaths(s.points, at, s.max, s.width, HEIGHT);
-    line.current?.setAttribute("d", l);
-    area.current?.setAttribute("d", a);
-    if (dot.current) {
-      dot.current.setAttribute("visibility", head ? "visible" : "hidden");
-      if (head) {
-        dot.current.setAttribute("cx", String(head.x));
-        dot.current.setAttribute("cy", String(head.y));
-      }
-    }
-    let hit: Point | undefined;
-    if (s.x !== undefined) hit = sampleAt(s.points, s.x, at, s.width);
-    else if (s.keyT !== undefined) hit = s.points.find((p) => p.t === s.keyT);
-    if (hit && xOf(hit.t, at, s.width) < 0) hit = undefined;
-    if (hit) {
-      const x = xOf(hit.t, at, s.width);
-      rule.current?.setAttribute("x1", String(x));
-      rule.current?.setAttribute("x2", String(x));
-      spot.current?.setAttribute("cx", String(x));
-      spot.current?.setAttribute("cy", String(yOf(hit.v, s.max, HEIGHT)));
-    }
-    for (const el of [rule.current, spot.current]) el?.setAttribute("visibility", hit ? "visible" : "hidden");
-    if (hit?.t !== s.hit?.t || (hit && s.hit && hit.v !== s.hit.v)) {
-      s.hit = hit;
-      setLooking(hit);
-      s.onLook(hit);
-    }
-  }, []);
+  const gid = useId();
   useLayoutEffect(() => {
-    if (typeof ResizeObserver === "undefined" || !box.current) return;
-    const observer = new ResizeObserver(() => {
-      const w = box.current?.clientWidth;
-      if (w) setWidth(Math.round(w));
-    });
-    observer.observe(box.current);
-    return () => observer.disconnect();
+    const el = plot.current; if (!el) return;
+    const measure = () => { if (el.clientWidth > 0) setWidth(Math.round(el.clientWidth)); };
+    measure();
+    if (typeof ResizeObserver === "undefined") return;
+    const obs = new ResizeObserver(measure); obs.observe(el); return () => obs.disconnect();
   }, []);
-  // Every change of what is drawn draws once; while gliding, every frame, and nothing while hidden.
-  useLayoutEffect(draw, [draw, points, max, width, glide]);
-  useEffect(() => {
-    let frame = 0;
-    const tick = () => {
-      draw();
-      frame = requestAnimationFrame(tick);
-    };
-    const follow = () => {
-      cancelAnimationFrame(frame);
-      if (document.hidden || !glide) return;
-      frame = requestAnimationFrame(tick);
-    };
-    document.addEventListener("visibilitychange", follow);
-    follow();
-    return () => {
-      document.removeEventListener("visibilitychange", follow);
-      cancelAnimationFrame(frame);
-    };
-  }, [draw, glide]);
-  const look = (e: PointerEvent<HTMLDivElement>) => {
-    live.current.keyT = undefined;
-    live.current.x = e.clientX - e.currentTarget.getBoundingClientRect().left;
+
+  const timeline = useRef(new ChartTimeline());
+  const rawPoints = chart.points;
+  const pts = useMemo(() => rawPoints.map((p) => ({ t: Number(p.timeMs), v: p.value })), [rawPoints]);
+  const windowMs = Math.max(1000, Number(chart.windowEndMs - chart.windowStartMs) || DEFAULT_WINDOW_MS);
+  const gapMs = Math.max(1000, Number(chart.gapThresholdMs) || DEFAULT_GAP_MS);
+  const max = Math.max(1, chart.ceiling || 100);
+  const firstMs = pts[0]?.t ?? Number(chart.windowStartMs), latestMs = pts.at(-1)?.t ?? Number(chart.windowEndMs);
+  const live = useRef({ pts, rawPoints, firstMs, latestMs, max, width, windowMs, gapMs, moving: false, hasScrub: false, scrubIndex: 0, at: latestMs });
+  Object.assign(live.current, { pts, rawPoints, firstMs, latestMs, max, width, windowMs, gapMs, moving: moving && !reduced && !chart.hasScrub, hasScrub: chart.hasScrub, scrubIndex: chart.scrubIndex });
+
+  const draw = useCallback(() => {
+    const s = live.current, at = timeline.current.advance(performance.now(), s.firstMs, s.latestMs, s.moving);
+    s.at = at;
+    const { line, area, head } = curvePaths(s.pts, at, s.max, s.width, HEIGHT, s.windowMs, s.gapMs);
+    lineRef.current?.setAttribute("d", line); areaRef.current?.setAttribute("d", area);
+    dotRef.current?.setAttribute("visibility", head && !s.hasScrub ? "visible" : "hidden");
+    if (head && dotRef.current) { dotRef.current.setAttribute("cx", String(head.x)); dotRef.current.setAttribute("cy", String(head.y)); }
+    const scrubPt = s.hasScrub ? s.rawPoints[s.scrubIndex] : undefined;
+    ruleRef.current?.setAttribute("visibility", scrubPt ? "visible" : "hidden");
+    spotRef.current?.setAttribute("visibility", scrubPt ? "visible" : "hidden");
+    if (scrubPt) {
+      const sx = xOf(Number(scrubPt.timeMs), at, s.width, s.windowMs), sy = yOf(scrubPt.value, s.max, HEIGHT);
+      ruleRef.current?.setAttribute("x1", String(sx)); ruleRef.current?.setAttribute("x2", String(sx));
+      spotRef.current?.setAttribute("cx", String(sx)); spotRef.current?.setAttribute("cy", String(sy));
+    }
+  }, []);
+
+  useLayoutEffect(() => {
     draw();
+    if (!moving || reduced || chart.hasScrub || typeof requestAnimationFrame !== "function") return;
+    let raf = 0; const loop = () => { draw(); raf = requestAnimationFrame(loop); };
+    raf = requestAnimationFrame(loop); return () => cancelAnimationFrame(raf);
+  }, [draw, pts, width, max, windowMs, gapMs, moving, reduced, chart.hasScrub, chart.scrubIndex]);
+
+  const fill = tone === "crit" ? "var(--red)" : tone === "warn" ? "var(--orange)" : "var(--ink)";
+  const lineColour = stale ? "var(--ink3)" : fill;
+  const stepSample = (dir: -1 | 1) => {
+    if (!rawPoints.length) return;
+    if (dir < 0) { const next = chart.hasScrub ? chart.scrubIndex - 1 : Math.max(0, rawPoints.length - 2); if (next >= 0) onScrub(next); }
+    else if (chart.hasScrub) { if (chart.scrubIndex >= rawPoints.length - 2) onClearScrub(); else onScrub(chart.scrubIndex + 1); }
   };
-  const stop = () => {
-    live.current.x = undefined;
-    live.current.keyT = undefined;
-    draw();
+  const onPointer = (e: PointerEvent<HTMLDivElement>) => {
+    if (e.pointerType === "mouse" && e.type === "pointerdown") return;
+    if (e.type === "pointerdown") e.currentTarget.setPointerCapture?.(e.pointerId);
+    const r = plot.current?.getBoundingClientRect(); if (!r) return;
+    const idx = sampleIndexAt(rawPoints, (Math.max(0, Math.min(r.width, e.clientX - r.left)) / (r.width || 1)) * width, live.current.at, width, windowMs, gapMs);
+    if (idx >= 0) onScrub(idx); else onClearScrub();
   };
-  const step = (by: number) => {
-    const list = live.current.points;
-    if (!list.length) return;
-    const at = live.current.keyT === undefined ? list.length - 1 : Math.max(0, list.findIndex((p) => p.t === live.current.keyT));
-    live.current.x = undefined;
-    live.current.keyT = list[Math.min(list.length - 1, Math.max(0, at + by))].t;
-    draw();
+  const onKey = (e: KeyboardEvent<HTMLDivElement>) => {
+    if (e.key === "ArrowLeft") { stepSample(-1); e.preventDefault(); }
+    else if (e.key === "ArrowRight" && chart.hasScrub) { stepSample(1); e.preventDefault(); }
+    else if (e.key === "Escape" && chart.hasScrub) { onClearScrub(); e.preventDefault(); }
   };
-  const key = (e: KeyboardEvent<HTMLDivElement>) => {
-    if (e.key === "ArrowLeft" || e.key === "ArrowDown") step(-1);
-    else if (e.key === "ArrowRight" || e.key === "ArrowUp") step(1);
-    else if (e.key === "Home") step(-points.length);
-    else if (e.key === "End") step(points.length);
-    else if (e.key === "Escape") stop();
-    else return;
-    e.preventDefault();
-  };
-  const index = looking ? points.findIndex((p) => p.t === looking.t) : points.length - 1;
   return (
-    <div
-      ref={box}
-      className="ms-plot"
-      role="slider"
-      tabIndex={0}
-      aria-label={label}
-      aria-orientation="horizontal"
-      aria-valuemin={0}
-      aria-valuemax={Math.max(0, points.length - 1)}
-      aria-valuenow={Math.max(0, index)}
-      aria-valuetext={looking ? describe(looking) : undefined}
-      onPointerDown={(e) => { if (e.pointerType !== "mouse") look(e); }}
-      onPointerMove={(e) => { if (e.pointerType === "mouse" || e.buttons) look(e); }}
-      onPointerUp={stop}
-      onPointerCancel={stop}
-      onPointerLeave={stop}
-      onKeyDown={key}
-      onBlur={stop}
-    >
-      <svg width={width} height={HEIGHT} viewBox={`0 0 ${width} ${HEIGHT}`} aria-hidden>
-        <defs>
-          <linearGradient id={gid} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0" stopColor="currentColor" stopOpacity=".16" />
-            <stop offset="1" stopColor="currentColor" stopOpacity="0" />
-          </linearGradient>
-        </defs>
-        <path ref={area} fill={`url(#${gid})`} />
-        <path ref={line} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-        <line ref={rule} y1="0" y2={HEIGHT} stroke="var(--ink3)" strokeWidth="1" visibility="hidden" />
-        <circle ref={spot} r="3.5" fill="currentColor" visibility="hidden" />
-        <circle ref={dot} r="3.5" fill="currentColor" visibility="hidden" />
+    <div className="ms-plot" ref={plot} role="slider" tabIndex={0} aria-valuemin={0} aria-valuemax={Math.max(0, rawPoints.length - 1)}
+      aria-valuenow={chart.hasScrub ? chart.scrubIndex : Math.max(0, rawPoints.length - 1)}
+      aria-valuetext={chart.hasScrub ? `${renderText(chart.scrubValue)} (${renderText(chart.scrubAge)})` : undefined}
+      aria-label={renderText(chart.a11ySummary)} onPointerDown={onPointer} onPointerMove={onPointer}
+      onPointerUp={onClearScrub} onPointerCancel={onClearScrub} onPointerLeave={onClearScrub} onKeyDown={onKey}>
+      <svg viewBox={`0 0 ${width} ${HEIGHT}`} preserveAspectRatio="none" aria-hidden="true">
+        <defs><linearGradient id={gid} x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={lineColour} stopOpacity={stale ? 0.1 : 0.2} /><stop offset="100%" stopColor={lineColour} stopOpacity={0} /></linearGradient></defs>
+        <line className="ms-g" x1="0" y1={HEIGHT / 2} x2={width} y2={HEIGHT / 2} />
+        <line className="ms-g" x1="0" y1={HEIGHT - 1} x2={width} y2={HEIGHT - 1} />
+        <path ref={areaRef} fill={`url(#${gid})`} />
+        <path ref={lineRef} fill="none" stroke={lineColour} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+        <line ref={ruleRef} className="ms-ch" y1="0" y2={HEIGHT} visibility="hidden" />
+        <circle ref={dotRef} r="4" fill={lineColour} stroke="var(--gbg)" strokeWidth="2.5" visibility="hidden" />
+        <circle ref={spotRef} r="5" fill={lineColour} stroke="var(--gbg)" strokeWidth="2.5" visibility="hidden" />
       </svg>
-      <button type="button" className="ms-sr" tabIndex={-1} onClick={() => step(-1)}>{prevLabel}</button>
-      <button type="button" className="ms-sr" tabIndex={-1} onClick={() => step(1)}>{nextLabel}</button>
+      <button type="button" className="ms-sr" disabled={!rawPoints.length || (chart.hasScrub && chart.scrubIndex <= 0)} onClick={() => stepSample(-1)}>{t("machine_status.a11y_prev_sample")}</button>
+      <button type="button" className="ms-sr" disabled={!chart.hasScrub} onClick={() => stepSample(1)}>{t("machine_status.a11y_next_sample")}</button>
     </div>
   );
 }
 
-const loadText = (load: number) => new Intl.NumberFormat(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(load);
+const usageIcon = (agent: Agent) => (
+  <span className={agent !== Agent.UNSPECIFIED ? "ms-ic" : "ms-ic pr"} aria-hidden="true">
+    {agent !== Agent.UNSPECIFIED ? <AgentMark agent={agent} /> : <TerminalIcon />}
+  </span>
+);
 
-/** The big chart's card (A3 ①): CPU by default, memory once its small card is tapped. */
-function Hero({ s, main, points, stale, glide, onLook, looked, heroRef }: {
-  s: MachineStatus;
-  main: Main;
-  points: Point[];
-  stale: boolean;
-  glide: boolean;
-  onLook: (p: Point | undefined) => void;
-  looked: Point | undefined;
-  heroRef: (el: HTMLElement | null) => void;
+function Hero({ vm, main, moving, reduced, onScrub, onClearScrub }: {
+  vm: MachineStatusViewModel; main: Main; moving: boolean; reduced: boolean;
+  onScrub: (kind: MachineChartKind, index: number) => void; onClearScrub: (kind: MachineChartKind) => void;
 }) {
-  const mem = main === "mem";
-  const live = mem ? Number(s.memoryUsedBytes) : s.cpuPercent;
-  const value = looked ? looked.v : live;
-  const big = mem ? gbFixed(value) : String(Math.round(value));
-  const pressure = s.memoryPressure;
-  const name = mem ? t("machine_status.memory") : t("machine_status.cpu");
-  const readable = mem ? `${gbFixed(live)} ${t("machine_status.gb_used")}` : percentText(live);
-  const total = Number(s.memoryTotalBytes);
-  const describe = (p: Point) => t("machine_status.a11y_ring", { name: mem ? gbFixed(p.v) : percentText(p.v), value: t("machine_status.seconds_ago", { count: secondsBefore(p, points.at(-1) ?? p) }) });
-  const max = Math.max(...points.map((p) => p.v), 0);
+  const cpu = vm.cpu, mem = vm.memory, isCpu = main === "cpu", chart = isCpu ? cpu?.chart : mem?.chart;
+  const chartKind = isCpu ? MachineChartKind.CPU : MachineChartKind.MEMORY;
+  const tone = isCpu ? "" : (PRESSURE_TONE[mem?.pressure ?? 0] ?? "");
+  let headMain = "—", headUnit = "";
+  const rawHead = chart?.hasScrub ? renderText(chart.scrubValue) : isCpu ? (cpu?.hasValue ? cpu.headline : "") : (mem?.hasValue ? renderText(mem.headline) : "");
+  if (isCpu && rawHead.endsWith("%")) { headMain = rawHead.slice(0, -1); headUnit = "%"; }
+  else { headMain = rawHead || "—"; if (!chart?.hasScrub && !isCpu && mem?.hasValue) headUnit = renderText(mem.caption); }
+  const aside1 = isCpu ? renderText(cpu?.detail2) : renderText(mem?.totalText), aside2 = isCpu ? renderText(cpu?.detail) : "";
   return (
-    <section ref={heroRef} className="ms-card ms-hero" role="group" aria-label={t("machine_status.a11y_ring", { name, value: readable })}>
+    <section className="ms-card ms-hero">
       <div className="ms-top">
         <div>
-          <div className="ms-kick">{mem ? <MemoryIcon /> : <CpuIcon />}{name}</div>
-          <div className="ms-xl">
-            <Roll text={big} />
-            {mem ? <small>{t("machine_status.gb_used")}</small> : <sup>%</sup>}
+          <div className="ms-kick">{isCpu ? <CpuIcon /> : <MemoryIcon />}{isCpu ? t("machine_status.cpu") : t("machine_status.memory")}</div>
+          <div className="ms-xl" aria-label={renderText(isCpu ? cpu?.a11yLabel : mem?.a11yLabel)}>
+            <Roll text={headMain} />
+            {isCpu ? (headUnit && <sup>{headUnit}</sup>) : (headUnit && <small>{headUnit}</small>)}
           </div>
         </div>
-        <div className="ms-aside">
-          {mem ? (
-            <>
-              <div>{t("machine_status.total", { size: memText(total) })}</div>
-              {s.swapUsedBytes !== undefined && <div>{t("machine_status.swap", { size: memText(s.swapUsedBytes) })}</div>}
-            </>
-          ) : (
-            <>
-              {s.loadOne !== undefined && <div>{rich(t("machine_status.load", { load: "{load}" }), { load: <b>{loadText(s.loadOne)}</b> })}</div>}
-              {s.cores > 0 && <div>{t("machine_status.cores", { count: s.cores })}</div>}
-            </>
-          )}
-        </div>
+        {(aside1 || aside2) && <div className="ms-aside">{aside1 && <div><b>{aside1}</b></div>}{aside2 && <div>{aside2}</div>}</div>}
       </div>
-      {!stale && (
+      {!isCpu && renderText(mem?.pressureText) && <div className="ms-pr"><b className={tone}>{renderText(mem?.pressureText)}</b></div>}
+      {chart?.visible && (
         <>
-          <Curve
-            points={points}
-            max={mem ? Math.max(total, max) : 100}
-            glide={glide}
-            describe={describe}
-            label={t("machine_status.a11y_chart", { max: mem ? gbFixed(max) : percentText(max), now: mem ? gbFixed(live) : percentText(live) })}
-            prevLabel={t("machine_status.a11y_prev_sample")}
-            nextLabel={t("machine_status.a11y_next_sample")}
-            onLook={onLook}
-          />
-          {mem && pressure !== ResourcePressure.UNSPECIFIED && (
-            <div className="ms-pr"><b className={toneOf(pressure)}>{pressureWord(pressure)}</b></div>
-          )}
-          <div className="ms-axis">
-            <span>{t("machine_status.axis_2min")}</span>
-            <span>{t("machine_status.axis_1min")}</span>
-            <span>{t("machine_status.axis_now")}</span>
-          </div>
+          <Curve chart={chart} tone={tone} stale={vm.pollState === MachinePollState.STALE} reduced={reduced} moving={moving}
+            onScrub={(idx) => onScrub(chartKind, idx)} onClearScrub={() => onClearScrub(chartKind)} />
+          <div className="ms-axis"><span>{t("machine_status.axis_2min")}</span><span>{t("machine_status.axis_1min")}</span><span>{t("machine_status.axis_now")}</span></div>
         </>
       )}
     </section>
   );
 }
 
-/** A line that may break where it has a comma and nowhere else. */
-function Clauses({ text }: { text: string }) {
-  return <>{(text.match(/[^，,]+[，,]?\s*/g) ?? [text]).map((part, i) => <span key={i} className="ms-clause">{part}</span>)}</>;
-}
-
-/** The other of CPU and memory as a small card: tapping it makes it the main chart. */
-function Tile({ s, kind, onPick, tileRef }: { s: MachineStatus; kind: Main; onPick: () => void; tileRef: (el: HTMLElement | null) => void }) {
-  if (kind === "cpu")
-    return (
-      <button ref={tileRef} className="ms-card ms-tile" onClick={onPick} aria-label={t("machine_status.a11y_cpu_card", { value: percentText(s.cpuPercent) })}>
-        <span className="ms-kick"><CpuIcon />{t("machine_status.cpu")}</span>
-        <span className="ms-lg"><Roll text={percentText(s.cpuPercent)} /></span>
-        <span className="ms-say">
-          {s.loadOne !== undefined && <>{t("machine_status.load_line", { load: loadText(s.loadOne) })}<br /></>}
-          {s.cores > 0 && t("machine_status.cores", { count: s.cores })}
-        </span>
-      </button>
-    );
-  const position = pressurePosition(s);
-  const shown = s.memoryPressure !== ResourcePressure.UNSPECIFIED;
-  const used = gbFixed(s.memoryUsedBytes);
-  const second = s.swapUsedBytes !== undefined
-    ? t("machine_status.total_swap", { size: memText(s.memoryTotalBytes), swap: memText(s.swapUsedBytes) })
-    : t("machine_status.total", { size: memText(s.memoryTotalBytes) });
+function MemTile({ vm, onOpen }: { vm: MachineStatusViewModel; onOpen: () => void }) {
+  const mem = vm.memory, tone = PRESSURE_TONE[mem?.pressure ?? 0] ?? "";
   return (
-    <button
-      ref={tileRef}
-      className="ms-card ms-tile"
-      onClick={onPick}
-      aria-label={shown
-        ? t("machine_status.a11y_memory_card", { used: `${used} GB`, pressure: pressureWord(s.memoryPressure) })
-        : t("machine_status.a11y_memory_card_plain", { used: `${used} GB` })}
-    >
+    <button type="button" className="ms-card ms-tile" aria-label={renderText(mem?.a11yLabel) || t("machine_status.memory")} onClick={onOpen}>
       <span className="ms-kick"><MemoryIcon />{t("machine_status.memory")}</span>
-      <span className="ms-lg"><Roll text={used} /><small>{t("machine_status.gb_used")}</small></span>
-      {shown && position !== undefined && <span className="ms-uv"><i style={{ left: `${position * 100}%` }} /></span>}
-      <span className="ms-say">
-        {shown && <><b className={toneOf(s.memoryPressure)}>{pressureWord(s.memoryPressure)}</b><br /></>}
-        <Clauses text={second} />
-      </span>
+      <span className="ms-lg"><Roll text={mem?.hasValue ? (renderText(mem.headline) || "—") : "—"} />{mem?.hasValue && <small>{renderText(mem.caption)}</small>}</span>
+      <span className="ms-say"><b className={tone}>{renderText(mem?.pressureText)}</b>{renderText(mem?.totalText)}</span>
+      {mem?.hasPressurePosition && <span className="ms-uv" aria-hidden="true"><i style={{ left: `${Math.min(100, Math.max(0, mem.pressurePosition * 100)).toFixed(1)}%` }} /></span>}
     </button>
   );
 }
 
-/** The disk's small card: free space, and what takes the volume. It has no curve, so it is
- * never the main chart: tapping it opens where remote-agent's own use is listed. */
-function DiskTile({ s, onOpen }: { s: MachineStatus; onOpen: () => void }) {
-  const disk = s.disk;
-  if (!disk) return null;
-  const tone = toneOf(disk.pressure);
-  const tight = diskTight(disk.pressure);
-  const critical = disk.pressure === ResourcePressure.CRITICAL;
-  const bar = diskBar(disk, s.agentBytes);
-  // Two lines, never folded into three: the volume, then remote-agent's share.
-  const second = critical
-    ? t("machine_status.disk_critical_hint")
-    : <>{t("machine_status.disk_total", { size: sizeText(disk.totalBytes) })}{s.agentBytes !== undefined && <><br />{t("machine_status.disk_agent_share", { size: sizeText(s.agentBytes) })}</>}</>;
+function CpuTile({ vm, onOpen }: { vm: MachineStatusViewModel; onOpen: () => void }) {
+  const cpu = vm.cpu, d2 = renderText(cpu?.detail2), d = renderText(cpu?.detail);
   return (
-    <button className="ms-card ms-tile" onClick={onOpen} aria-label={t("machine_status.a11y_disk_card", { size: sizeText(disk.availableBytes), state: diskWord(disk.pressure) })}>
+    <button type="button" className="ms-card ms-tile" aria-label={renderText(cpu?.a11yLabel) || t("machine_status.cpu")} onClick={onOpen}>
+      <span className="ms-kick"><CpuIcon />{t("machine_status.cpu")}</span>
+      <span className="ms-lg"><Roll text={cpu?.hasValue ? cpu.headline : "—"} /></span>
+      <span className="ms-say">{d2 && <b>{d2}</b>}{d}</span>
+    </button>
+  );
+}
+
+function DiskTile({ vm, onOpen }: { vm: MachineStatusViewModel; onOpen: () => void }) {
+  const disk = vm.disk; if (!disk) return null;
+  const tone = DISK_TONE[disk.state] ?? "", usedPct = disk.hasUsedFraction ? Math.min(100, Math.max(0, Math.round(disk.usedFraction * 100))) : 0, d2 = renderText(disk.detail2);
+  return (
+    <button type="button" className="ms-card ms-tile" aria-label={renderText(disk.a11yLabel) || t("machine_status.disk")} onClick={onOpen}>
       <span className="ms-kick"><DiskIcon />{t("machine_status.disk")}</span>
-      <span className={"ms-lg" + (tight ? " " + tone : "")}><Roll text={gbNumber(disk.availableBytes)} /><small>{t("machine_status.gb_available")}</small></span>
-      <span className={"ms-stor" + (tight ? " " + tone : "")}><i className="a" style={{ width: `${bar.agent}%` }} /><i className="b" style={{ width: `${bar.other}%` }} /></span>
-      <span className="ms-say"><b className={tone}>{diskWord(disk.pressure)}</b><br />{second}</span>
+      <span className={`ms-lg${tone ? ` ${tone}` : ""}`}><Roll text={disk.hasValue ? (renderText(disk.headline) || "—") : "—"} />{disk.hasValue && <small>{renderText(disk.caption)}</small>}</span>
+      <span className="ms-say"><b className={tone}>{renderText(disk.stateBadge)}</b>{renderText(disk.detail)}{d2 && <><br />{d2}</>}</span>
+      {disk.hasUsedFraction && <span className={`ms-stor${tone ? ` ${tone}` : ""}`} aria-hidden="true">{usedPct > 0 && <i className="a" style={{ width: `${usedPct}%` }} />}</span>}
     </button>
   );
 }
 
-/** One session's CLI as a ranking row's block: the same grey block as a process, with the CLI's mark in one colour. */
-function SessionBlock({ agent }: { agent: Agent }) {
-  return <span className="ms-ic pr"><AgentMark agent={agent} named /></span>;
-}
-
-/** 占用最多 (A3 ④): up to eight rows, by the main chart's figure, each with a bar
- * against the first. The order holds still unless a row passes its neighbour by a clear margin. */
-function Ranking({ remote, s, memory, kind, stale, go }: { remote: Remote; s: MachineStatus; memory: boolean; kind: RankKind; stale: boolean; go: Go }) {
-  const order = useRef<Partial<Record<RankKind, { memory: boolean; ids: string[] }>>>({});
-  const list = useRef(null as HTMLDivElement | null);
-  const held = order.current[kind];
-  const rows = stableUsage(held && held.memory === memory ? held.ids : [], kind === "sessions" ? s.sessions : s.processes, memory).slice(0, RANK_ROWS);
-  order.current[kind] = { memory, ids: rows.map((r) => r.id) };
-  useFlipList(list);
-  const session = (row: ResourceUsage) => remote.sessions.get(kind === "sessions" ? row.id : row.sessionId);
-  const other = (row: ResourceUsage) => {
-    const text = memory ? percentText(row.cpuPercent) : memText(row.memoryBytes);
-    const owner = kind === "processes" ? session(row) : undefined;
-    return owner ? `${text} · ${titleOf(owner)}` : text;
-  };
+function Ranking({ vm, stale, main, go }: { vm: MachineStatusViewModel; stale: boolean; main: Main; go: Go }) {
+  const list = useRef<HTMLUListElement>(null);
+  useFlipList(list, useReducedMotion() ? 0 : 300);
+  const top = vm.topUsage;
+  if (!top || !top.rows.length) return <div className="ms-card ms-list ms-none">{renderText(top?.emptyText) || t("machine_status.no_running_sessions")}</div>;
+  const byMem = main === "mem" && Number(top.rows[0].memoryBytes) > 0;
+  const maxVal = byMem ? Number(top.rows[0].memoryBytes) : top.rows[0].cpuPercent;
   return (
-    <div className="ms-card ms-list" ref={list}>
-      {rows.length === 0 && <div className="ms-none">{t("machine_status.no_running_sessions")}</div>}
-      {rows.map((row, i) => {
-        const owner = kind === "sessions" ? session(row) : undefined;
-        const title = kind === "sessions" ? (owner ? titleOf(owner) : row.executable) : row.executable;
+    <ul className="ms-card ms-list" ref={list}>
+      {top.rows.map((row, i) => {
+        const pct = maxVal > 0 ? Math.max(0, Math.min(100, Math.round(((byMem ? Number(row.memoryBytes) : row.cpuPercent) / maxVal) * 100))) : 0;
+        const sec = renderText(row.secondary);
         const body = (
           <>
-            {kind === "sessions" && owner ? <SessionBlock agent={agentOf(owner)} /> : <span className="ms-ic pr"><TerminalIcon /></span>}
+            {usageIcon(row.agent)}
             <span className="ms-rb">
-              <span className="ms-rt">
-                <span>{title}</span>
-                <span>{memory ? memText(row.memoryBytes) : percentText(row.cpuPercent)}</span>
-              </span>
-              <span className="ms-rm">
-                <i className="ms-bar" style={{ width: `${barPercent(row, rows[0], memory)}%` }} />
-                <small>{other(row)}</small>
-              </span>
+              <span className="ms-rt"><span>{renderText(row.title)}</span><span>{pct}%</span></span>
+              <span className="ms-rm"><span className="ms-bar" style={{ width: `${pct}%` }} />{sec && <small>{sec}</small>}</span>
             </span>
           </>
         );
-        const cls = "ms-u" + (i === 0 ? " top" : "") + (stale ? " off" : "");
-        return kind === "sessions" && owner ? (
-          <button key={row.id} className={cls} data-flip={row.id} onClick={() => go("s/" + owner.id)}>{body}</button>
-        ) : (
-          <div key={row.id} className={cls} data-flip={row.id}>{body}</div>
+        return (
+          <li key={row.id} className={`ms-u${i === 0 && !stale ? " top" : ""}`}>
+            {top.selectedTab === MachineUsageTab.SESSIONS && row.sessionId ? <button type="button" className="ms-u" onClick={() => go("s/" + encodeURIComponent(row.sessionId))}>{body}</button> : body}
+          </li>
         );
       })}
-    </div>
+    </ul>
   );
 }
 
-/** What 让 Agent 帮我清理 does (B4): opens a new session on this computer, in its
- * most recent project, with the prompt filled in. It sends nothing. */
-export function startCleanup(remote: Remote, machineId: string, go: Go, path: string) {
-  remote.draftMachines.set(path, machineId);
-  // What is already typed stays, with the prompt after it unless it is there already (rulings 8, 14).
-  const prompt = machineCleanupPrompt();
-  const draft = remote.drafts.get("new:" + path)?.trim();
-  remote.drafts.set("new:" + path, !draft ? prompt : draft.includes(prompt) ? draft : `${draft}\n\n${prompt}`);
-  remote.focusProject = path;
-  remote.touch();
-  go("p/" + encodeURIComponent(path));
-}
-
-/** The page before its first answer (ruling 6): its frame at once, dashes for numbers,
- * no curve yet and no ranking, and no spinner. */
 function Skeleton({ name }: { name: string }) {
   return (
     <div className="body ms-body" role="region" aria-label={t("machine_status.title")}>
       <h1 className="ms-title">{name}</h1>
       <div className="ms-live"><span className="ms-dot idle" />{t("machine_status.loading")}</div>
       <div className="ms-cards">
-        <section className="ms-card ms-hero">
-          <div className="ms-top">
-            <div>
-              <div className="ms-kick"><CpuIcon />{t("machine_status.cpu")}</div>
-              <div className="ms-xl">—</div>
-            </div>
-          </div>
-          <div className="ms-plot" />
-          <div className="ms-axis">
-            <span>{t("machine_status.axis_2min")}</span>
-            <span>{t("machine_status.axis_1min")}</span>
-            <span>{t("machine_status.axis_now")}</span>
-          </div>
-        </section>
-        <div className="ms-grid">
-          <div className="ms-card ms-tile"><span className="ms-kick"><MemoryIcon />{t("machine_status.memory")}</span><span className="ms-lg">—</span></div>
-          <div className="ms-card ms-tile"><span className="ms-kick"><DiskIcon />{t("machine_status.disk")}</span><span className="ms-lg">—</span></div>
-        </div>
+        <section className="ms-card ms-hero"><div className="ms-top"><div><div className="ms-kick"><CpuIcon />{t("machine_status.cpu")}</div><div className="ms-xl">—</div></div></div><div className="ms-plot" /><div className="ms-axis"><span>{t("machine_status.axis_2min")}</span><span>{t("machine_status.axis_1min")}</span><span>{t("machine_status.axis_now")}</span></div></section>
+        <div className="ms-grid"><div className="ms-card ms-tile"><span className="ms-kick"><MemoryIcon />{t("machine_status.memory")}</span><span className="ms-lg">—</span></div><div className="ms-card ms-tile"><span className="ms-kick"><DiskIcon />{t("machine_status.disk")}</span><span className="ms-lg">—</span></div></div>
       </div>
     </div>
   );
 }
 
-export function MachineStatusPage({ remote, id, go, onBack }: { remote: Remote; id: string; go: Go; onBack: () => void }) {
-  useRemote(remote);
-  const m = remote.machines.get(id);
-  const status = useMachineStatus(remote, id, 2000);
-  const reduced = useReducedMotion();
-  const visible = usePageVisible();
-  // The main chart is remembered for this visit only.
-  const [main, setMain] = useState("cpu" as Main);
-  const [rank, setRank] = useState("sessions" as RankKind);
-  const [looked, setLooked] = useState(undefined as Point | undefined);
-  const [picking, setPicking] = useState(false);
-  const [now, setNow] = useState(Date.now());
-  const heroEl = useRef(null as HTMLElement | null | null);
-  const tileEl = useRef(null as HTMLElement | null | null);
-  const boxes = useRef<{ hero: DOMRect; tile: DOMRect } | undefined>(undefined);
-  const { last } = status;
-  const stale = status.state === "stale";
-  // Stale: the line says how old the numbers are, so it counts.
-  useEffect(() => {
-    if (!stale || !visible) return;
-    setNow(Date.now());
-    const timer = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(timer);
-  }, [stale, visible]);
-  const points = useMemo(() => (last ? curvePoints(last, main === "mem", status.curveSinceMs) : []), [last, main, status.curveSinceMs]);
-  // A point being looked at belongs to one chart.
-  useEffect(() => setLooked(undefined), [main]);
-  useLayoutEffect(() => {
-    const before = boxes.current;
-    boxes.current = undefined;
-    if (!before || reduced) return;
-    if (heroEl.current) flipBox(heroEl.current, before.tile);
-    if (tileEl.current) flipBox(tileEl.current, before.hero);
-  }, [main, reduced]);
-  const swap = (next: Main) => {
-    if (heroEl.current && tileEl.current) boxes.current = { hero: heroEl.current.getBoundingClientRect(), tile: tileEl.current.getBoundingClientRect() };
+export function MachineStatusScreenView({ id, vm, visible = true, reduced = false, go, onBack, onRetry, onSelectTab, onScrub, onCleanup, overlaySlot }: {
+  id: string; vm: MachineStatusViewModel; visible?: boolean; reduced?: boolean; go: Go; onBack: () => void;
+  onRetry: () => void; onSelectTab: (tab: MachineUsageTab) => void; onScrub: (kind: MachineChartKind, sampleIndex: number, clear: boolean) => void;
+  onCleanup: () => void; overlaySlot?: ReactNode;
+}) {
+  const [main, setMain] = useState<Main>("cpu");
+  const cards = useRef<HTMLDivElement>(null);
+  const stale = vm.pollState === MachinePollState.STALE;
+  const swap = useCallback((next: Main) => {
+    const beforeHero = !reduced ? cards.current?.querySelector<HTMLElement>(".ms-hero")?.getBoundingClientRect() : undefined;
+    const beforeTile = !reduced ? cards.current?.querySelector<HTMLElement>(".ms-grid .ms-tile")?.getBoundingClientRect() : undefined;
     setMain(next);
-  };
-  if (!m)
-    return (
-      <div className="page set">
-        <NavBar onBack={onBack} />
-        <div className="center muted">{t("settings.device_not_found")}</div>
-      </div>
-    );
-  if (!last)
+    if (!beforeHero || !beforeTile) return;
+    requestAnimationFrame(() => {
+      const h = cards.current?.querySelector<HTMLElement>(".ms-hero"), tl = cards.current?.querySelector<HTMLElement>(".ms-grid .ms-tile");
+      if (h) flipBox(h, beforeTile); if (tl) flipBox(tl, beforeHero);
+    });
+  }, [reduced]);
+
+  const name = vm.machineName || id, disk = vm.disk, hasData = Boolean(vm.cpu?.hasValue || vm.memory?.hasValue || vm.disk?.hasValue);
+  if (!vm.found || !vm.supported || (vm.pollState === MachinePollState.UNAVAILABLE && !hasData)) {
     return (
       <div className="page set ms-page">
         <NavBar onBack={onBack} />
-        {status.state === "unavailable" || !remote.peer(m.id).capabilities?.machineStatus ? (
-          <div className="center ms-fail">
-            <div>
-              <div className="et">{t("machine_status.unavailable")}</div>
-              <div className="big"><button className="link" onClick={status.retry}>{t("common.retry")}</button></div>
-            </div>
-          </div>
-        ) : (
-          <Skeleton name={machineName(m)} />
-        )}
+        <div className="center ms-fail"><div><div className="et">{renderText(vm.unavailableTitle) || t("machine_status.unavailable")}</div>{vm.showRetry && <div className="big"><button className="link" onClick={onRetry}>{t("common.retry")}</button></div>}</div></div>
       </div>
     );
-  const cleanup = () => {
-    const path = m.meta && recentMachineProject(m.meta);
-    if (path) startCleanup(remote, id, go, path);
-    else setPicking(true);
-  };
-  const disk = last.disk;
-  const looking = looked && points.length ? secondsBefore(looked, points.at(-1)!) : undefined;
-  const words = looking !== undefined ? t("machine_status.seconds_ago", { count: looking }) : stale ? staleText(now - status.receivedAt) : t("machine_status.live");
-  const tight = diskTight(disk?.pressure);
+  }
+  if (!hasData) return <div className="page set ms-page"><NavBar onBack={onBack} /><Skeleton name={name} /></div>;
+
+  const moving = vm.pollState === MachinePollState.LIVE && visible, tab = vm.topUsage?.selectedTab ?? MachineUsageTab.SESSIONS;
+  const agentVal = renderText(disk?.agentUsageValue), foot = [renderText(vm.uptimeText), renderText(vm.batteryText)].filter(Boolean).join(" · ");
+  const activeChart = main === "cpu" ? vm.cpu?.chart : vm.memory?.chart, liveLabel = activeChart?.hasScrub ? renderText(activeChart.scrubAge) : renderText(vm.statusBadge);
+
   return (
-    <div className={"page set ms-page" + (stale ? " is-stale" : "")}>
+    <div className={`page set ms-page${stale ? " is-stale" : ""}`}>
       <NavBar onBack={onBack} />
       <div className="body ms-body" role="region" aria-label={t("machine_status.title")}>
-        <h1 className="ms-title">{machineName(m)}</h1>
-        <div className="ms-live"><span className={"ms-dot" + (stale ? " off" : "")} />{words}</div>
-        <div className="ms-cards">
-          <Hero s={last} main={main} points={points} stale={stale} glide={!reduced && visible} onLook={setLooked} looked={looked} heroRef={(el) => { heroEl.current = el; }} />
+        <h1 className="ms-title">{name}</h1>
+        <div className="ms-live">
+          <span className={DOT_CLS[vm.statusDot] ?? "ms-dot idle"} /><span>{liveLabel}</span>
+          {vm.showRetry && !activeChart?.hasScrub && <button type="button" className="link" onClick={onRetry}>{t("common.retry")}</button>}
+        </div>
+        <div className="ms-cards" ref={cards}>
+          <Hero vm={vm} main={main} moving={moving} reduced={reduced} onScrub={(kind, idx) => onScrub(kind, idx, false)} onClearScrub={(kind) => onScrub(kind, 0, true)} />
           <div className="ms-grid">
-            <Tile s={last} kind={main === "cpu" ? "mem" : "cpu"} onPick={() => swap(main === "cpu" ? "mem" : "cpu")} tileRef={(el) => { tileEl.current = el; }} />
-            {disk && <DiskTile s={last} onOpen={() => go("m/" + id + "/storage")} />}
+            {main === "cpu" ? <MemTile vm={vm} onOpen={() => swap("mem")} /> : <CpuTile vm={vm} onOpen={() => swap("cpu")} />}
+            <DiskTile vm={vm} onOpen={() => go("m/" + encodeURIComponent(id) + "/storage")} />
           </div>
-          {tight && (
+          {disk?.showActions && (
             <div className="ms-card ms-rows">
-              <button className="row act" onClick={cleanup}>{t("machine_status.cleanup_action")}</button>
-              <button className="row" onClick={() => go("m/" + id + "/storage")}>
-                {t("machine_status.agent_usage")}
-                {last.agentBytes !== undefined && <span className="v">{sizeText(last.agentBytes)}</span>}
-                <ChevronRight className="chev" />
+              <button type="button" className="row act" onClick={onCleanup}>{renderText(disk.cleanupActionLabel) || t("machine_status.cleanup_action")}</button>
+              <button type="button" className="row" onClick={() => go("m/" + encodeURIComponent(id) + "/storage")}>
+                {renderText(disk.agentUsageLabel) || t("machine_status.agent_usage")}{agentVal && <span className="v">{agentVal}</span>}<ChevronRight className="chev" />
               </button>
             </div>
           )}
           <div className="ms-sec">
             <h2>{t("machine_status.top_usage")}</h2>
-            <button className="link" onClick={() => setRank(rank === "sessions" ? "processes" : "sessions")}>
-              {rank === "sessions" ? t("machine_status.show_processes") : t("machine_status.show_sessions")}
+            <button type="button" className="link" onClick={() => onSelectTab(tab === MachineUsageTab.SESSIONS ? MachineUsageTab.PROCESSES : MachineUsageTab.SESSIONS)}>
+              {tab === MachineUsageTab.SESSIONS ? t("machine_status.show_processes") : t("machine_status.show_sessions")}
             </button>
           </div>
-          <Ranking remote={remote} s={last} memory={main === "mem"} kind={rank} stale={stale} go={go} />
-          <div className="ms-foot">{footerText(last)}</div>
+          <Ranking vm={vm} stale={stale} main={main} go={go} />
+          {foot && <div className="ms-foot">{foot}</div>}
         </div>
       </div>
-      {picking && (
-        <NewProjectSheet
-          remote={remote}
-          fixedMachine={id}
-          onClose={() => setPicking(false)}
-          onDone={(machineId, path) => {
-            addProject(remote, machineId, path);
-            setPicking(false);
-            startCleanup(remote, machineId, go, path);
-          }}
-        />
-      )}
+      {overlaySlot}
     </div>
+  );
+}
+
+export function MachineStatusPage({ remote, id, go, onBack }: { remote: Remote; id: string; go: Go; onBack: () => void }) {
+  const host = useCoreHost(remote, go), visible = usePageVisible(), reduced = useReducedMotion();
+  const vm = useMachineStatusView(host, id, visible ? MachinePollMode.LIVE : MachinePollMode.OFF);
+  const [cleanupPrompt, setCleanupPrompt] = useState<string | null>(null);
+  const stale = vm.pollState === MachinePollState.STALE;
+  useEffect(() => {
+    if (!stale || !visible) return;
+    const timer = setInterval(() => host.tickClock(), 1000);
+    return () => clearInterval(timer);
+  }, [stale, visible, host]);
+  useEffect(() => host.onCleanupPicker((eff) => { if (eff.machineId === id) setCleanupPrompt(t("machine_status.cleanup_prompt")); }), [host, id]);
+
+  return (
+    <MachineStatusScreenView id={id} vm={vm} visible={visible} reduced={reduced} go={go} onBack={onBack}
+      onRetry={() => host.retryMachineStatus(id)} onSelectTab={(tab) => host.selectMachineStatusTab(id, tab)}
+      onScrub={(kind, idx, clear) => host.scrubMachineStatus(id, kind, idx, clear)} onCleanup={() => host.cleanupMachineStatus(id)}
+      overlaySlot={cleanupPrompt !== null && (
+        <NewProjectSheet remote={remote} fixedMachine={id} onClose={() => setCleanupPrompt(null)} onDone={(machineId, path) => {
+          addProject(remote, machineId, path); setCleanupPrompt(null);
+          const draft = remote.drafts.get("new:" + path);
+          remote.drafts.set("new:" + path, !draft ? cleanupPrompt : draft.includes(cleanupPrompt) ? draft : `${draft}\n\n${cleanupPrompt}`);
+          remote.draftMachines.set(path, machineId); remote.focusProject = path; remote.touch(); go(routeForProject(path));
+        }} />
+      )}
+    />
   );
 }

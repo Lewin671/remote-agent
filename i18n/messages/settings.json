@@ -2829,22 +2829,6 @@
     }
   },
   {
-    "key": "settings.name_changes_sync_to_other_clients",
-    "zh-CN": "修改名称同步到其他客户端。",
-    "en": "Name changes sync to other clients.",
-    "notes": "Settings 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
     "key": "settings.set_the_name_and_notification_preferences_on_that_device",
     "zh-CN": "名称和通知开关要在那台设备上设置。",
     "en": "Set the name and notification preferences on that device.",
@@ -3165,22 +3149,6 @@
     }
   },
   {
-    "key": "settings.min",
-    "zh-CN": " 分钟",
-    "en": " min",
-    "notes": "Settings 页面或对应功能的界面正文/短标签。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
     "key": "settings.unanswered_approvals_are_denied_after_this_time",
     "zh-CN": "没人处理的审批过了这个时间就拒绝。",
     "en": "Unanswered approvals are denied after this time",
@@ -3266,38 +3234,6 @@
     }
   },
   {
-    "key": "settings.default_reasoning_effort",
-    "zh-CN": "默认推理强度",
-    "en": "Default reasoning effort",
-    "notes": "Settings 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "settings.default_approval_mode",
-    "zh-CN": "默认审批模式",
-    "en": "Default approval mode",
-    "notes": "Settings 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
     "key": "settings.unverified",
     "zh-CN": "未验证 · ",
     "en": "Unverified · ",
@@ -3318,22 +3254,6 @@
     "zh-CN": "版本未验证：在这台电脑上运行 remote-agent doctor，它会用一个临时会话检查各项功能。",
     "en": "Version unverified: run remote-agent doctor on this computer to check features in a temporary session.",
     "notes": "Settings 页面或对应功能的界面正文/短标签。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "settings.follow_configuration_settings",
-    "zh-CN": "跟随配置",
-    "en": "Follow configuration",
-    "notes": "Settings 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
     "params": {},
     "platforms": [
       "web",
@@ -3372,38 +3292,6 @@
         "example": "Example"
       }
     },
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "settings.use_cli_defaults_for_new_projects",
-    "zh-CN": "按 CLI 的新项目默认设置",
-    "en": "Use CLI defaults for new projects",
-    "notes": "Settings 页面或对应功能的无障碍/标题/字段提示。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "settings.when_unspecified_uses",
-    "zh-CN": "不指定时实际用：",
-    "en": "When unspecified, uses:",
-    "notes": "Settings 页面或对应功能的界面正文/短标签。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
-    "params": {},
     "platforms": [
       "web",
       "android",

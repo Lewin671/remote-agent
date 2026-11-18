@@ -18,10 +18,17 @@ import sessionQueueRetryGolden from "../../../testdata/screens/session_queue_ret
 import sessionScheduledFoldGolden from "../../../testdata/screens/session_scheduled_fold.golden.json";
 import schedulesInboxDetailGolden from "../../../testdata/screens/schedules_inbox_detail.golden.json";
 import schedulesFormLifecycleGolden from "../../../testdata/screens/schedules_form_lifecycle.golden.json";
+import settingsOverviewGolden from "../../../testdata/screens/settings_overview.golden.json";
+import machineSettingsEditGolden from "../../../testdata/screens/machine_settings_edit.golden.json";
+import machineStatusLifecycleGolden from "../../../testdata/screens/machine_status_lifecycle.golden.json";
+import machineQuotaGolden from "../../../testdata/screens/machine_quota.golden.json";
 import { ViewModelSchema } from "../gen/remoteagent/core/v1/app_pb";
 import { ScheduleFormMode, ScheduleOperationKind } from "../gen/remoteagent/core/v1/schedules_view_pb";
 import type { SessionViewModel } from "../gen/remoteagent/core/v1/session_view_pb";
+import { MachinePollState, MachineUsageTab } from "../gen/remoteagent/core/v1/machine_view_pb";
+import { Agent } from "../gen/remoteagent/v1/event_pb";
 import { localeStore, t } from "../i18n";
+import { ThemePreference } from "../core/host";
 import { HomeView, SidebarView } from "./Home";
 import { NewBoxView } from "./NewSession";
 import { ManageProjectsScreen, RemovedNotice } from "./Projects";
@@ -33,6 +40,14 @@ import {
   TimingSheetView,
 } from "./Schedules";
 import { SessionScreenView, type SessionScreenViewProps } from "./Session";
+import {
+  ClientDetailScreenView,
+  DevicesScreenView,
+  MachineSettingsScreenView,
+  QuotaScreenView,
+  SettingsScreenView,
+} from "./Settings";
+import { MachineStatusScreenView } from "./MachineStatus";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -633,5 +648,272 @@ describe("golden SessionScreenView layout and interaction", () => {
       />,
     );
     expect(host.querySelector(".navbar .title b")?.textContent).toBe("Weekly audit");
+  });
+
+  it("renders settings_overview.golden.json screens (Settings, Devices, ClientDetail) and dispatches actions", () => {
+    const settingsVm = goldenView(settingsOverviewGolden as GoldenDoc, "settings");
+    expect(settingsVm.view.case).toBe("settings");
+    if (settingsVm.view.case !== "settings") return;
+
+    const onCheck = vi.fn();
+    const onApply = vi.fn();
+    const onTheme = vi.fn();
+    const onGo = vi.fn();
+    mount(
+      <SettingsScreenView
+        vm={settingsVm.view.value}
+        go={onGo}
+        serverHost="relay.example.com"
+        connTone="online"
+        connText="在线"
+        onCheckForUpdates={onCheck}
+        onApplyUpdate={onApply}
+        onSetTheme={onTheme}
+        onSetNotificationPref={vi.fn()}
+        onEnablePushNotifications={vi.fn()}
+      />,
+    );
+    expect(host.textContent).toContain("BuildBox");
+    const applyBtn = [...host.querySelectorAll<HTMLButtonElement>("button")].find((b) =>
+      b.textContent?.includes(t("home.update_ready")),
+    )!;
+    expect(applyBtn).toBeTruthy();
+    act(() => applyBtn.click());
+    expect(onApply).toHaveBeenCalledTimes(1);
+
+    const darkRadio = [...host.querySelectorAll<HTMLButtonElement>("[role='radio']")].find((b) =>
+      b.textContent === t("settings.dark"),
+    )!;
+    act(() => darkRadio.click());
+    expect(onTheme).toHaveBeenCalledWith(ThemePreference.DARK);
+
+    const checkingVm = goldenView(settingsOverviewGolden as GoldenDoc, "checkingUpdate");
+    expect(checkingVm.view.case).toBe("settings");
+    if (checkingVm.view.case !== "settings") return;
+    const baseCheck = {
+      ...checkingVm.view.value,
+      update: checkingVm.view.value.update ? { ...checkingVm.view.value.update, hasUpdate: false, checking: false } : undefined,
+    };
+    act(() =>
+      root!.render(
+        <SettingsScreenView
+          vm={baseCheck}
+          go={onGo}
+          serverHost="relay.example.com"
+          connTone="online"
+          connText="在线"
+          onCheckForUpdates={onCheck}
+          onApplyUpdate={onApply}
+          onSetTheme={onTheme}
+          onSetNotificationPref={vi.fn()}
+          onEnablePushNotifications={vi.fn()}
+        />,
+      ),
+    );
+    const checkBtn = [...host.querySelectorAll<HTMLButtonElement>("button")].find((b) =>
+      b.textContent?.includes(t("settings.check_for_updates")),
+    )!;
+    act(() => checkBtn.click());
+    expect(onCheck).toHaveBeenCalledTimes(1);
+
+    act(() =>
+      root!.render(
+        <SettingsScreenView
+          vm={{
+            ...baseCheck,
+            update: baseCheck.update ? { ...baseCheck.update, checking: true } : undefined,
+          }}
+          go={onGo}
+          serverHost="relay.example.com"
+          connTone="online"
+          connText="在线"
+          onCheckForUpdates={onCheck}
+          onApplyUpdate={onApply}
+          onSetTheme={onTheme}
+          onSetNotificationPref={vi.fn()}
+          onEnablePushNotifications={vi.fn()}
+        />,
+      ),
+    );
+    const disabledCheck = [...host.querySelectorAll<HTMLButtonElement>("button")].find((b) =>
+      b.textContent?.includes(t("settings.check_for_updates")),
+    )!;
+    expect(disabledCheck.disabled).toBe(true);
+
+    const devicesVm = goldenView(settingsOverviewGolden as GoldenDoc, "devices");
+    expect(devicesVm.view.case).toBe("devices");
+    if (devicesVm.view.case !== "devices") return;
+    const devView = devicesVm.view.value;
+    act(() => root!.render(<DevicesScreenView vm={devView} go={onGo} onBack={vi.fn()} onRetry={vi.fn()} />));
+    expect(host.textContent).toContain("BuildBox");
+    expect(host.querySelectorAll(".row.client").length).toBeGreaterThan(0);
+
+    const authVm = goldenView(settingsOverviewGolden as GoldenDoc, "authClient");
+    expect(authVm.view.case).toBe("clientDetail");
+    if (authVm.view.case !== "clientDetail") return;
+    const authView = authVm.view.value;
+    act(() => root!.render(<ClientDetailScreenView vm={authView} rename={{ saving: false, error: "" }} onBack={vi.fn()} onUpdateName={vi.fn()} />));
+    const renameBtn = [...host.querySelectorAll<HTMLButtonElement>("button.row")].find((b) =>
+      b.textContent?.includes(t("settings.name")),
+    )!;
+    expect(renameBtn.disabled).toBe(true);
+
+    const selfVm = goldenView(settingsOverviewGolden as GoldenDoc, "selfClient");
+    expect(selfVm.view.case).toBe("clientDetail");
+    if (selfVm.view.case !== "clientDetail") return;
+    const selfView = selfVm.view.value;
+    const onRename = vi.fn();
+    act(() => root!.render(<ClientDetailScreenView vm={selfView} rename={{ saving: false, error: "" }} onBack={vi.fn()} onUpdateName={onRename} />));
+    const selfRenameBtn = [...host.querySelectorAll<HTMLButtonElement>("button.row")].find((b) =>
+      b.textContent?.includes(t("settings.name")),
+    )!;
+    expect(selfRenameBtn.disabled).toBe(false);
+    act(() => selfRenameBtn.click());
+    const input = document.querySelector<HTMLInputElement>("input.field")!;
+    expect(input).toBeTruthy();
+    const saveBtn = [...document.querySelectorAll<HTMLButtonElement>(".sheet button.pri")].find((b) =>
+      b.textContent === t("common.save"),
+    )!;
+    act(() => saveBtn.click());
+    expect(onRename).toHaveBeenCalledTimes(1);
+  });
+
+  it("renders machine_settings_edit.golden.json lifecycle and dispatches agent/daemon updates", () => {
+    const initVm = goldenView(machineSettingsEditGolden as GoldenDoc, "initialLoaded");
+    expect(initVm.view.case).toBe("machineSettings");
+    if (initVm.view.case !== "machineSettings") return;
+
+    const onSelectAgent = vi.fn();
+    const onUpdateDefaults = vi.fn();
+    const onUpdateDaemon = vi.fn();
+    const onRetry = vi.fn();
+    const renderMS = (v: typeof initVm.view.value) => (
+      <MachineSettingsScreenView id={v.machineId} vm={v} go={vi.fn()} onBack={vi.fn()}
+        onRetrySettings={onRetry} onSelectAgent={onSelectAgent} onUpdateAgentDefaults={onUpdateDefaults} onUpdateDaemonSettings={onUpdateDaemon} />
+    );
+
+    mount(renderMS(initVm.view.value));
+    expect(host.textContent).toContain(initVm.view.value.name);
+    const claudeTab = [...host.querySelectorAll<HTMLButtonElement>(".cli-tabs button")].find((b) =>
+      b.textContent === "Claude Code",
+    )!;
+    expect(claudeTab).toBeTruthy();
+    act(() => claudeTab.click());
+    expect(onSelectAgent).toHaveBeenCalledWith(Agent.CLAUDE);
+
+    const timeoutBtn = [...host.querySelectorAll<HTMLButtonElement>("button.row")].find((b) =>
+      b.textContent?.includes(t("settings.approval_timeout")),
+    )!;
+    act(() => timeoutBtn.click());
+    const opt = document.querySelector<HTMLButtonElement>(".sheet .list .mi");
+    expect(opt).toBeTruthy();
+    act(() => opt!.click());
+    expect(onUpdateDaemon).toHaveBeenCalledTimes(1);
+
+    const savingVm = goldenView(machineSettingsEditGolden as GoldenDoc, "savingClaudeAndClean");
+    expect(savingVm.view.case).toBe("machineSettings");
+    if (savingVm.view.case !== "machineSettings") return;
+    const savingView = savingVm.view.value;
+    act(() => root!.render(renderMS(savingView)));
+    expect(host.querySelector(".cli-tabs")).toBeTruthy();
+
+    const unknownVm = goldenView(machineSettingsEditGolden as GoldenDoc, "unknownTriggersReread");
+    expect(unknownVm.view.case).toBe("machineSettings");
+    if (unknownVm.view.case !== "machineSettings") return;
+    const unknownView = unknownVm.view.value;
+    expect(unknownView.saveUnknown).toBe(true);
+    expect(unknownView.settingsLoading).toBe(true);
+    act(() => root!.render(renderMS(unknownView)));
+    expect(host.textContent).toContain(unknownView.name);
+
+    const failedVm = goldenView(machineSettingsEditGolden as GoldenDoc, "relayFailedDiag");
+    expect(failedVm.view.case).toBe("machineSettings");
+    if (failedVm.view.case !== "machineSettings") return;
+    const failedView = failedVm.view.value;
+    act(() => root!.render(renderMS(failedView)));
+    expect(failedView.connection).toBeDefined();
+    expect(host.textContent).toContain(failedView.name);
+  });
+
+  it("renders machine_status_lifecycle.golden.json states and dispatches tab/cleanup/retry", () => {
+    const loadVm = goldenView(machineStatusLifecycleGolden as GoldenDoc, "loading");
+    expect(loadVm.view.case).toBe("machineStatus");
+    if (loadVm.view.case !== "machineStatus") return;
+
+    const onRetry = vi.fn();
+    const onSelectTab = vi.fn();
+    const onScrub = vi.fn();
+    const onCleanup = vi.fn();
+    const renderStatus = (v: typeof loadVm.view.value) => (
+      <MachineStatusScreenView id={v.machineId} vm={v} reduced go={vi.fn()} onBack={vi.fn()}
+        onRetry={onRetry} onSelectTab={onSelectTab} onScrub={onScrub} onCleanup={onCleanup} />
+    );
+
+    mount(renderStatus(loadVm.view.value));
+    expect(host.querySelector(".ms-title")?.textContent).toBe(loadVm.view.value.machineName);
+    expect(host.querySelector(".ms-live .ms-dot.idle")).toBeTruthy();
+    expect(host.querySelector(".ms-live")?.textContent).toContain(t("machine_status.loading"));
+
+    const critVm = goldenView(machineStatusLifecycleGolden as GoldenDoc, "liveCriticalDisk");
+    expect(critVm.view.case).toBe("machineStatus");
+    if (critVm.view.case !== "machineStatus") return;
+    const critView = critVm.view.value;
+    act(() => root!.render(renderStatus(critView)));
+    expect(host.querySelector(".ms-hero")).toBeTruthy();
+    const cleanupBtn = [...host.querySelectorAll<HTMLButtonElement>(".ms-rows button")].find((b) =>
+      b.textContent?.includes(t("machine_status.cleanup_action")),
+    )!;
+    expect(cleanupBtn).toBeTruthy();
+    act(() => cleanupBtn.click());
+    expect(onCleanup).toHaveBeenCalledTimes(1);
+
+    const procVm = goldenView(machineStatusLifecycleGolden as GoldenDoc, "processesAndScrub");
+    expect(procVm.view.case).toBe("machineStatus");
+    if (procVm.view.case !== "machineStatus") return;
+    const procView = procVm.view.value;
+    act(() => root!.render(renderStatus(procView)));
+    const tabBtn = [...host.querySelectorAll<HTMLButtonElement>(".ms-sec button.link")][0];
+    expect(tabBtn.textContent).toBe(t("machine_status.show_sessions"));
+    act(() => tabBtn.click());
+    expect(onSelectTab).toHaveBeenCalledWith(MachineUsageTab.SESSIONS);
+
+    const staleVm = goldenView(machineStatusLifecycleGolden as GoldenDoc, "staleAfter3Timeouts");
+    expect(staleVm.view.case).toBe("machineStatus");
+    if (staleVm.view.case !== "machineStatus") return;
+    const staleView = staleVm.view.value;
+    expect(staleView.pollState).toBe(MachinePollState.STALE);
+    act(() => root!.render(renderStatus(staleView)));
+    expect(host.querySelector(".ms-page.is-stale")).toBeTruthy();
+    expect(host.querySelector(".ms-live")?.textContent).toContain("46");
+    act(() => root!.render(renderStatus({ ...staleView, showRetry: true })));
+    const retryBtn = host.querySelector<HTMLButtonElement>(".ms-live button.link")!;
+    expect(retryBtn).toBeTruthy();
+    act(() => retryBtn.click());
+    expect(onRetry).toHaveBeenCalledTimes(1);
+
+    const recVm = goldenView(machineStatusLifecycleGolden as GoldenDoc, "recoveredFreshCurve");
+    expect(recVm.view.case).toBe("machineStatus");
+    if (recVm.view.case !== "machineStatus") return;
+    const recView = recVm.view.value;
+    act(() => root!.render(renderStatus(recView)));
+    expect(host.querySelector(".ms-page.is-stale")).toBeNull();
+  });
+
+  it("renders machine_quota.golden.json sections cleanly", () => {
+    const allVm = goldenView(machineQuotaGolden as GoldenDoc, "allQuotas");
+    expect(allVm.view.case).toBe("quota");
+    if (allVm.view.case !== "quota") return;
+    mount(<QuotaScreenView vm={allVm.view.value} onBack={vi.fn()} />);
+    expect(host.textContent).toContain("Codex");
+    expect(host.textContent).toContain("15%");
+    expect(host.textContent).not.toContain("%%");
+    expect(host.querySelectorAll(".bar i").length).toBeGreaterThan(0);
+
+    const codexVm = goldenView(machineQuotaGolden as GoldenDoc, "codexOnly");
+    expect(codexVm.view.case).toBe("quota");
+    if (codexVm.view.case !== "quota") return;
+    const codexView = codexVm.view.value;
+    act(() => root!.render(<QuotaScreenView vm={codexView} onBack={vi.fn()} />));
+    expect([...host.querySelectorAll(".label")].map((e) => e.textContent)).not.toContain("Claude Code");
   });
 });

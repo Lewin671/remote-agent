@@ -252,34 +252,6 @@ function oneLine(s: string): string {
   return s.replace(/\s+/g, " ").trim();
 }
 
-/** Short time, like the mockup: 刚刚, 3 分钟前, 9:12, 昨天, 9月27日. */
-function when(ms: number | bigint, now = Date.now()): string {
-  const time = Number(ms);
-  if (!time) return "";
-  const d = now - time;
-  if (d < 60_000) return t("time.just_now");
-  if (d < 3_600_000) return t("time.minutes_ago", { count: Math.floor(d / 60_000) });
-  const then = new Date(time);
-  if (then.toDateString() === new Date(now).toDateString()) return hhmm(time);
-  if (then.toDateString() === new Date(now - 86_400_000).toDateString())
-    return t("time.yesterday");
-  return t("time.month_day", { month: then.getMonth() + 1, day: then.getDate() });
-}
-
-/** How long ago, for projects and machines: 2 小时前 rather than 9:12. */
-export function ago(ms: number | bigint, now = Date.now()): string {
-  const time = Number(ms);
-  if (!time) return "";
-  const d = now - time;
-  if (
-    d >= 3_600_000 &&
-    d < 86_400_000 &&
-    new Date(time).toDateString() === new Date(now).toDateString()
-  )
-    return t("time.hours_ago", { count: Math.floor(d / 3_600_000) });
-  return when(time, now);
-}
-
 export function hhmm(ms: number): string {
   const d = new Date(ms);
   return `${d.getHours()}:${String(d.getMinutes()).padStart(2, "0")}`;

@@ -9,7 +9,6 @@ import { AgentInfoSchema, MachineMetaSchema } from "./gen/remoteagent/v1/remote_
 import {
   agentName,
   agentOf,
-  ago,
   autoUnavailable,
   findModel,
   futureTime,
@@ -122,11 +121,9 @@ describe("whole paths (file edit titles)", () => {
 });
 
 describe("text", () => {
-  it("makes one-line previews and relative times", () => {
+  it("makes one-line previews", () => {
     expect(plain("改了 `a.go`，见 [文档](x)")).toBe("改了 a.go，见 文档");
     expect(plain("## 结论\n- 第一点\n1. 第二点")).toBe("结论 第一点 第二点");
-    const now = new Date(2026, 8, 29, 9, 41).getTime();
-    expect(ago(new Date(2026, 8, 29, 7, 30).getTime(), now)).toBe(message("time.hours_ago", { count: 2 }));
   });
 });
 

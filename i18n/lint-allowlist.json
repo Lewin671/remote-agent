@@ -150,11 +150,6 @@
     "reason": "Lexical JSX scanner false positive: conditional render control flow between angle brackets, not rendered text."
   },
   {
-    "path": "web/src/model.ts",
-    "literal": "./gen/remoteagent/v1/event_pb",
-    "reason": "TypeScript generated protocol module import path, never rendered; lexical sink scanner false positive."
-  },
-  {
     "path": "web/src/image-problem.ts",
     "literal": "source_missing",
     "reason": "Stable local image failure category, used by switch/aggregation; displayed wording is resolved separately from image.* messages."
@@ -360,11 +355,6 @@
     "reason": "语言无关的内部状态/错误类别/星期选择值；用于业务判别或字典分支，不向用户直接显示。"
   },
   {
-    "path": "web/src/views/Settings.tsx",
-    "literal": "${machineName(m)} · ${m.online ? l10n.t(\"common.ios_online\") : l10n.t(\"settings.offline\")}",
-    "reason": "纯标点模板，只组合设备原名与已本地化在线状态，没有待翻译的固定文字。"
-  },
-  {
     "path": "web/src/views/Schedules.tsx",
     "literal": "ended",
     "reason": "语言无关的内部状态/错误类别/星期选择值；用于业务判别或字典分支，不向用户直接显示。"
@@ -403,16 +393,6 @@
     "path": "web/src/views/Pairing.tsx",
     "literal": "refill",
     "reason": "语言无关的内部状态/错误类别/星期选择值；用于业务判别或字典分支，不向用户直接显示。"
-  },
-  {
-    "path": "web/src/agents.ts",
-    "literal": "Gemini 4 Argon",
-    "reason": "外部模型系列名称，按原名显示，不翻译。"
-  },
-  {
-    "path": "web/src/views/Settings.tsx",
-    "literal": "(getTheme); const opts: [Theme, string][] = [ [\"auto\", l10n.t(\"settings.theme_auto\")], [\"light\", l10n.t(\"settings.light\")], [\"dark\", l10n.t(\"settings.dark\")], ]; return (",
-    "reason": "JSX 词法扫描误把 TypeScript 泛型后的主题枚举/已本地化选项与 return 当成标签内文字；没有硬编码显示文案。"
   },
   {
     "path": "web/src/views/Security.tsx",
@@ -1210,16 +1190,6 @@
     "reason": "图片缓存派生副本失败的既有本机诊断，空间不足错误交给限频日志，不是用户可见文案。"
   },
   {
-    "path": "web/src/machine-status-view.ts",
-    "literal": "memory",
-    "reason": "Not product text: a CSS class name, a route name or an enum value written near a label prop."
-  },
-  {
-    "path": "web/src/machine-status-view.ts",
-    "literal": "disk",
-    "reason": "Not product text: a CSS class name, a route name or an enum value written near a label prop."
-  },
-  {
     "path": "web/src/Workspace.tsx",
     "literal": "; else if (kind === \"machine-status\") page =",
     "reason": "Not product text: the lint reads the stretch of code between a closing tag and the next opening tag as text."
@@ -1260,16 +1230,6 @@
     "reason": "Not product text: a CSS class name, a route name or an enum value written near a label prop."
   },
   {
-    "path": "web/src/views/Settings.tsx",
-    "literal": "0n && (",
-    "reason": "Not product text: the lint reads the stretch of code between a closing tag and the next opening tag as text."
-  },
-  {
-    "path": "web/src/views/MachineStatus.tsx",
-    "literal": "horizontal",
-    "reason": "Not product text: a CSS class name, a route name or an enum value written near a label prop."
-  },
-  {
     "path": "web/src/views/MachineStatus.tsx",
     "literal": "ms-kick",
     "reason": "Not product text: a CSS class name, a route name or an enum value written near a label prop."
@@ -1286,58 +1246,8 @@
   },
   {
     "path": "web/src/views/MachineStatus.tsx",
-    "literal": "sessions",
-    "reason": "Not product text: a CSS class name, a route name or an enum value written near a label prop."
-  },
-  {
-    "path": "web/src/views/MachineStatus.tsx",
-    "literal": "processes",
-    "reason": "Not product text: a CSS class name, a route name or an enum value written near a label prop."
-  },
-  {
-    "path": "web/src/views/MachineStatus.tsx",
-    "literal": "ms-rm",
-    "reason": "Not product text: a CSS class name, a route name or an enum value written near a label prop."
-  },
-  {
-    "path": "web/src/views/MachineStatus.tsx",
     "literal": "ms-title",
     "reason": "Not product text: a CSS class name, a route name or an enum value written near a label prop."
-  },
-  {
-    "path": "web/src/views/MachineStatus.tsx",
-    "literal": "chev",
-    "reason": "Not product text: a CSS class name, a route name or an enum value written near a label prop."
-  },
-  {
-    "path": "web/src/views/MachineStatus.tsx",
-    "literal": "p.t === s.keyT); if (hit && xOf(hit.t, at, s.width)",
-    "reason": "Not product text: the lint reads the stretch of code between a closing tag and the next opening tag as text."
-  },
-  {
-    "path": "web/src/views/MachineStatus.tsx",
-    "literal": "p.t === looking.t) : points.length - 1; return (",
-    "reason": "Not product text: the lint reads the stretch of code between a closing tag and the next opening tag as text."
-  },
-  {
-    "path": "web/src/views/MachineStatus.tsx",
-    "literal": "p.v), 0); return (",
-    "reason": "Not product text: the lint reads the stretch of code between a closing tag and the next opening tag as text."
-  },
-  {
-    "path": "web/src/views/MachineStatus.tsx",
-    "literal": "; return (",
-    "reason": "Not product text: the lint reads the stretch of code between a closing tag and the next opening tag as text."
-  },
-  {
-    "path": "web/src/views/MachineStatus.tsx",
-    "literal": "); const cls = \"ms-u\" + (i === 0 ? \" top\" : \"\") + (stale ? \" off\" : \"\"); return kind === \"sessions\" && owner ? (",
-    "reason": "Not product text: the lint reads the stretch of code between a closing tag and the next opening tag as text."
-  },
-  {
-    "path": "web/src/views/MachineStatus.tsx",
-    "literal": "); if (!last) return (",
-    "reason": "Not product text: the lint reads the stretch of code between a closing tag and the next opening tag as text."
   },
   {
     "path": "web/src/views/machine-status-hooks.tsx",
@@ -1358,16 +1268,6 @@
     "path": "web/src/views/NewSession.tsx",
     "literal": ") : ns.diskFull ? (",
     "reason": "Not product text: the lint reads the stretch of code between a closing tag and the next opening tag as text."
-  },
-  {
-    "path": "web/src/views/DiskReminders.tsx",
-    "literal": "ms-alert",
-    "reason": "Not product text: a CSS class name, a route name or an enum value written near a label prop."
-  },
-  {
-    "path": "web/src/views/MachineRings.tsx",
-    "literal": "ms-ring",
-    "reason": "Not product text: a CSS class name, a route name or an enum value written near a label prop."
   },
   {
     "path": "internal/deviceauth/accepted.go",
@@ -1618,16 +1518,6 @@
     "path": "web/src/transport/link.ts",
     "literal": "security_unavailable",
     "reason": "Existing internal dispatch/outcome diagnostic moved into Link; the displayed message still comes from i18n."
-  },
-  {
-    "path": "web/src/views/Settings.tsx",
-    "literal": "${machineName(m)} · ${remote.peer(m.id).reachable ? l10n.t(\"common.ios_online\") : l10n.t(\"settings.offline\")}",
-    "reason": "Lexical JSX scanner false positive after routing the existing state expression through Link; all rendered labels use the unchanged i18n keys."
-  },
-  {
-    "path": "web/src/views/Settings.tsx",
-    "literal": "); const views = machineQuotaViews(m.meta, machineAgents(m), clock, remote.peer(m.id).reachable); return (",
-    "reason": "Lexical JSX scanner false positive after routing the existing state expression through Link; all rendered labels use the unchanged i18n keys."
   },
   {
     "path": "web/src/views/Projects.tsx",
@@ -2443,21 +2333,6 @@
     "path": "web/src/remote.ts",
     "literal": "unknown",
     "reason": "Authenticated outcome enum, never displayed without its localized message."
-  },
-  {
-    "path": "web/src/views/Settings.tsx",
-    "literal": "auto",
-    "reason": "Local preference value; the visible option uses transport.automatic."
-  },
-  {
-    "path": "web/src/views/Settings.tsx",
-    "literal": "(); const [attempt, setAttempt] = useState(0); const [directError, setDirectError] = useState(\"\"); const agents = machineAgents(m); const [defaultAgent, setDefaultAgent] = useState",
-    "reason": "TypeScript generic syntax and local React state declarations falsely matched as JSX text; not rendered."
-  },
-  {
-    "path": "web/src/views/ConnectionGroup.tsx",
-    "literal": "err",
-    "reason": "Banner kind enum value, never displayed; the banner text comes from the error's own message."
   },
   {
     "path": "web/src/transport/direct-diag.ts",
@@ -3748,5 +3623,360 @@
     "path": "web/src/views/Schedules.tsx",
     "literal": ") : !vm.activeRun?.hasActive && vm.earlierGroups.length === 0 ? (",
     "reason": "Lexical JSX scanner false positive: TypeScript expression between angle brackets."
+  },
+  {
+    "path": "web/src/core/host.ts",
+    "literal": "updateDirectPreference",
+    "reason": "Internal developer log or state key; never displayed as product text."
+  },
+  {
+    "path": "web/src/views/ConnCheck.tsx",
+    "literal": "x.machineId === m.id)?.directRow : undefined; const detail = directRow ? renderText(directRow.detailText) : \"\"; const trailing = directRow ? directRowTrailing(directRow) : \"\"; return (",
+    "reason": "Lexical JSX scanner false positive: TypeScript type arguments or code between angle brackets, not rendered text."
+  },
+  {
+    "path": "web/src/views/ConnCheck.tsx",
+    "literal": "fail",
+    "reason": "Not product text: CSS class name, ARIA role/boolean attribute, or internal option identifier."
+  },
+  {
+    "path": "web/src/views/ConnCheck.tsx",
+    "literal": "direct-line",
+    "reason": "Not product text: CSS class name, ARIA role/boolean attribute, or internal option identifier."
+  },
+  {
+    "path": "web/src/views/ConnectionGroup.tsx",
+    "literal": "diagsheet",
+    "reason": "Not product text: CSS class name, ARIA role/boolean attribute, or internal option identifier."
+  },
+  {
+    "path": "web/src/views/ConnectionGroup.tsx",
+    "literal": "connected",
+    "reason": "Not product text: CSS class name, ARIA role/boolean attribute, or internal option identifier."
+  },
+  {
+    "path": "web/src/views/ConnectionGroup.tsx",
+    "literal": "remote.demoFlag(\"diagsheet\")); const [turnedOn, setTurnedOn] = useState",
+    "reason": "Lexical JSX scanner false positive: TypeScript type arguments or code between angle brackets, not rendered text."
+  },
+  {
+    "path": "web/src/views/ConnectionGroup.tsx",
+    "literal": "0; const showDiag = on && (cg.showDiagnosticsEntry || hasRounds); return (",
+    "reason": "Lexical JSX scanner false positive: TypeScript type arguments or code between angle brackets, not rendered text."
+  },
+  {
+    "path": "web/src/views/MachineRings.tsx",
+    "literal": "; case MachineRingKind.MEMORY: return",
+    "reason": "Lexical JSX scanner false positive: TypeScript type arguments or code between angle brackets, not rendered text."
+  },
+  {
+    "path": "web/src/views/MachineRings.tsx",
+    "literal": "true",
+    "reason": "Not product text: CSS class name, ARIA role/boolean attribute, or internal option identifier."
+  },
+  {
+    "path": "web/src/views/MachineRings.tsx",
+    "literal": "; case MachineRingKind.DISK: return",
+    "reason": "Lexical JSX scanner false positive: TypeScript type arguments or code between angle brackets, not rendered text."
+  },
+  {
+    "path": "web/src/views/MachineStatus.tsx",
+    "literal": "${renderText(chart.scrubValue)} (${renderText(chart.scrubAge)})",
+    "reason": "Punctuation template joining already-localized text and device/model names; no untranslated copy."
+  },
+  {
+    "path": "web/src/views/MachineStatus.tsx",
+    "literal": "0; const maxVal = byMem ? Number(top.rows[0].memoryBytes) : top.rows[0].cpuPercent; return (",
+    "reason": "Lexical JSX scanner false positive: TypeScript type arguments or code between angle brackets, not rendered text."
+  },
+  {
+    "path": "web/src/views/MachineStatus.tsx",
+    "literal": "cpu",
+    "reason": "Not product text: CSS class name, ARIA role/boolean attribute, or internal option identifier."
+  },
+  {
+    "path": "web/src/views/MachineStatus.tsx",
+    "literal": "mem",
+    "reason": "Not product text: CSS class name, ARIA role/boolean attribute, or internal option identifier."
+  },
+  {
+    "path": "web/src/views/MachineStatus.tsx",
+    "literal": "ms-pr",
+    "reason": "Not product text: CSS class name, ARIA role/boolean attribute, or internal option identifier."
+  },
+  {
+    "path": "web/src/views/MachineStatus.tsx",
+    "literal": "page set ms-page${stale ? \" is-stale\" : \"\"}",
+    "reason": "Punctuation template joining already-localized text and device/model names; no untranslated copy."
+  },
+  {
+    "path": "web/src/views/MachineStatus.tsx",
+    "literal": "ms-uv",
+    "reason": "Not product text: CSS class name, ARIA role/boolean attribute, or internal option identifier."
+  },
+  {
+    "path": "web/src/views/MachineStatus.tsx",
+    "literal": "ms-top",
+    "reason": "Not product text: CSS class name, ARIA role/boolean attribute, or internal option identifier."
+  },
+  {
+    "path": "web/src/views/MachineStatus.tsx",
+    "literal": "(null); const dotRef = useRef",
+    "reason": "Lexical JSX scanner false positive: TypeScript type arguments or code between angle brackets, not rendered text."
+  },
+  {
+    "path": "web/src/views/MachineStatus.tsx",
+    "literal": "= 0 && bestDist",
+    "reason": "Lexical JSX scanner false positive: TypeScript type arguments or code between angle brackets, not rendered text."
+  },
+  {
+    "path": "web/src/views/MachineStatus.tsx",
+    "literal": ") : (headUnit &&",
+    "reason": "Lexical JSX scanner false positive: TypeScript type arguments or code between angle brackets, not rendered text."
+  },
+  {
+    "path": "web/src/views/MachineStatus.tsx",
+    "literal": "button",
+    "reason": "Not product text: CSS class name, ARIA role/boolean attribute, or internal option identifier."
+  },
+  {
+    "path": "web/src/views/MachineStatus.tsx",
+    "literal": "); return (",
+    "reason": "Lexical JSX scanner false positive: TypeScript type arguments or code between angle brackets, not rendered text."
+  },
+  {
+    "path": "web/src/views/MachineStatus.tsx",
+    "literal": "ms-card ms-hero",
+    "reason": "Not product text: CSS class name, ARIA role/boolean attribute, or internal option identifier."
+  },
+  {
+    "path": "web/src/views/Settings.tsx",
+    "literal": "gf",
+    "reason": "Not product text: CSS class name, ARIA role/boolean attribute, or internal option identifier."
+  },
+  {
+    "path": "web/src/views/Settings.tsx",
+    "literal": "row help",
+    "reason": "Not product text: CSS class name, ARIA role/boolean attribute, or internal option identifier."
+  },
+  {
+    "path": "web/src/views/Settings.tsx",
+    "literal": "label",
+    "reason": "Not product text: CSS class name, ARIA role/boolean attribute, or internal option identifier."
+  },
+  {
+    "path": "web/src/views/Settings.tsx",
+    "literal": "body",
+    "reason": "Not product text: CSS class name, ARIA role/boolean attribute, or internal option identifier."
+  },
+  {
+    "path": "web/src/views/Settings.tsx",
+    "literal": ": /iphone|ios|android|pixel|phone|mobile/.test(s) ?",
+    "reason": "Lexical JSX scanner false positive: TypeScript type arguments or code between angle brackets, not rendered text."
+  },
+  {
+    "path": "web/src/views/Settings.tsx",
+    "literal": "mach-card",
+    "reason": "Not product text: CSS class name, ARIA role/boolean attribute, or internal option identifier."
+  },
+  {
+    "path": "web/src/views/Settings.tsx",
+    "literal": "rs",
+    "reason": "Not product text: CSS class name, ARIA role/boolean attribute, or internal option identifier."
+  },
+  {
+    "path": "web/src/views/Settings.tsx",
+    "literal": "0 && renderText(acc.statusText) &&",
+    "reason": "Lexical JSX scanner false positive: TypeScript type arguments or code between angle brackets, not rendered text."
+  },
+  {
+    "path": "web/src/views/Settings.tsx",
+    "literal": "latest",
+    "reason": "Not product text: CSS class name, ARIA role/boolean attribute, or internal option identifier."
+  },
+  {
+    "path": "web/src/views/Settings.tsx",
+    "literal": "row",
+    "reason": "Not product text: CSS class name, ARIA role/boolean attribute, or internal option identifier."
+  },
+  {
+    "path": "web/src/views/Settings.tsx",
+    "literal": "dev.",
+    "reason": "Not product text: CSS class name, ARIA role/boolean attribute, or internal option identifier."
+  },
+  {
+    "path": "web/src/views/Settings.tsx",
+    "literal": "= [ [ThemePreference.AUTO, l10n.t(\"settings.theme_auto\")], [ThemePreference.LIGHT, l10n.t(\"settings.light\")], [ThemePreference.DARK, l10n.t(\"settings.dark\")], ]; return (",
+    "reason": "Lexical JSX scanner false positive: TypeScript type arguments or code between angle brackets, not rendered text."
+  },
+  {
+    "path": "web/src/views/Settings.tsx",
+    "literal": "${sec.agentName} · ${acc.plan}",
+    "reason": "Punctuation template joining already-localized text and device/model names; no untranslated copy."
+  },
+  {
+    "path": "web/src/views/Settings.tsx",
+    "literal": "0 && renderText(acc.freshnessText) &&",
+    "reason": "Lexical JSX scanner false positive: TypeScript type arguments or code between angle brackets, not rendered text."
+  },
+  {
+    "path": "web/src/views/Settings.tsx",
+    "literal": "list",
+    "reason": "Not product text: CSS class name, ARIA role/boolean attribute, or internal option identifier."
+  },
+  {
+    "path": "web/src/views/Settings.tsx",
+    "literal": "warn",
+    "reason": "Not product text: CSS class name, ARIA role/boolean attribute, or internal option identifier."
+  },
+  {
+    "path": "web/src/views/Settings.tsx",
+    "literal": "link",
+    "reason": "Not product text: CSS class name, ARIA role/boolean attribute, or internal option identifier."
+  },
+  {
+    "path": "web/src/views/Settings.tsx",
+    "literal": "chev",
+    "reason": "Not product text: CSS class name, ARIA role/boolean attribute, or internal option identifier."
+  },
+  {
+    "path": "web/src/views/Settings.tsx",
+    "literal": "set-banners",
+    "reason": "Not product text: CSS class name, ARIA role/boolean attribute, or internal option identifier."
+  },
+  {
+    "path": "web/src/views/Settings.tsx",
+    "literal": "client-info",
+    "reason": "Not product text: CSS class name, ARIA role/boolean attribute, or internal option identifier."
+  },
+  {
+    "path": "web/src/views/Settings.tsx",
+    "literal": "row-name",
+    "reason": "Not product text: CSS class name, ARIA role/boolean attribute, or internal option identifier."
+  },
+  {
+    "path": "web/src/views/Settings.tsx",
+    "literal": "err",
+    "reason": "Not product text: CSS class name, ARIA role/boolean attribute, or internal option identifier."
+  },
+  {
+    "path": "web/src/views/Settings.tsx",
+    "literal": " offl",
+    "reason": "Not product text: CSS class name, ARIA role/boolean attribute, or internal option identifier."
+  },
+  {
+    "path": "web/src/views/Settings.tsx",
+    "literal": ": /macos|mac os|windows|linux|desktop/.test(s) ?",
+    "reason": "Lexical JSX scanner false positive: TypeScript type arguments or code between angle brackets, not rendered text."
+  },
+  {
+    "path": "web/src/views/Settings.tsx",
+    "literal": "${vm.machineName} · ${vm.reachable ? l10n.t(\"common.ios_online\") : l10n.t(\"settings.offline\")}",
+    "reason": "Punctuation template joining already-localized text and device/model names; no untranslated copy."
+  },
+  {
+    "path": "web/src/views/MachineStatus.tsx",
+    "literal": "(\"cpu\"); const cards = useRef",
+    "reason": "Lexical JSX scanner false positive: TypeScript type arguments or code between angle brackets, not rendered text."
+  },
+  {
+    "path": "web/src/core/host.ts",
+    "literal": "view",
+    "reason": "Not product text: CSS class name, ARIA role/boolean attribute, internal key, or option identifier."
+  },
+  {
+    "path": "web/src/views/MachineStatus.tsx",
+    "literal": "(null), areaRef = useRef",
+    "reason": "Lexical JSX scanner false positive: TypeScript type arguments or code between angle brackets, not rendered text."
+  },
+  {
+    "path": "web/src/views/MachineStatus.tsx",
+    "literal": "0 ? Math.max(0, Math.min(100, Math.round(((byMem ? Number(row.memoryBytes) : row.cpuPercent) / maxVal) * 100))) : 0; const sec = renderText(row.secondary); const body = (",
+    "reason": "Lexical JSX scanner false positive: TypeScript type arguments or code between angle brackets, not rendered text."
+  },
+  {
+    "path": "web/src/views/MachineStatus.tsx",
+    "literal": "big",
+    "reason": "Not product text: CSS class name, ARIA role/boolean attribute, internal key, or option identifier."
+  },
+  {
+    "path": "web/src/views/MachineStatus.tsx",
+    "literal": "(null); useFlipList(list, useReducedMotion() ? 0 : 300); const top = vm.topUsage; if (!top || !top.rows.length) return",
+    "reason": "Lexical JSX scanner false positive: TypeScript type arguments or code between angle brackets, not rendered text."
+  },
+  {
+    "path": "web/src/views/MachineStatus.tsx",
+    "literal": "ms-stor${tone ? ",
+    "reason": "Punctuation template joining already-localized text and device/model names; no untranslated copy."
+  },
+  {
+    "path": "web/src/views/MachineStatus.tsx",
+    "literal": "; const moving = vm.pollState === MachinePollState.LIVE && visible, tab = vm.topUsage?.selectedTab ?? MachineUsageTab.SESSIONS; const agentVal = renderText(disk?.agentUsageValue), foot = [renderText(vm.uptimeText), renderText(vm.batteryText)].filter(Boolean).join(\" · \"); const activeChart = main === \"cpu\" ? vm.cpu?.chart : vm.memory?.chart, liveLabel = activeChart?.hasScrub ? renderText(activeChart.scrubAge) : renderText(vm.statusBadge); return (",
+    "reason": "Lexical JSX scanner false positive: TypeScript type arguments or code between angle brackets, not rendered text."
+  },
+  {
+    "path": "web/src/views/MachineStatus.tsx",
+    "literal": "(null), lineRef = useRef",
+    "reason": "Lexical JSX scanner false positive: TypeScript type arguments or code between angle brackets, not rendered text."
+  },
+  {
+    "path": "web/src/views/MachineStatus.tsx",
+    "literal": "(null), ruleRef = useRef",
+    "reason": "Lexical JSX scanner false positive: TypeScript type arguments or code between angle brackets, not rendered text."
+  },
+  {
+    "path": "web/src/views/MachineStatus.tsx",
+    "literal": "true",
+    "reason": "Not product text: CSS class name, ARIA role/boolean attribute, internal key, or option identifier."
+  },
+  {
+    "path": "web/src/views/MachineStatus.tsx",
+    "literal": "ms-rm",
+    "reason": "Not product text: CSS class name, ARIA role/boolean attribute, internal key, or option identifier."
+  },
+  {
+    "path": "web/src/views/MachineStatus.tsx",
+    "literal": "(\".ms-hero\")?.getBoundingClientRect() : undefined; const beforeTile = !reduced ? cards.current?.querySelector",
+    "reason": "Lexical JSX scanner false positive: TypeScript type arguments or code between angle brackets, not rendered text."
+  },
+  {
+    "path": "web/src/views/MachineStatus.tsx",
+    "literal": "ms-bar",
+    "reason": "Not product text: CSS class name, ARIA role/boolean attribute, internal key, or option identifier."
+  },
+  {
+    "path": "web/src/views/MachineStatus.tsx",
+    "literal": "(\".ms-hero\"), tl = cards.current?.querySelector",
+    "reason": "Lexical JSX scanner false positive: TypeScript type arguments or code between angle brackets, not rendered text."
+  },
+  {
+    "path": "web/src/views/MachineStatus.tsx",
+    "literal": "(slope[i] * s",
+    "reason": "Lexical JSX scanner false positive: TypeScript type arguments or code between angle brackets, not rendered text."
+  },
+  {
+    "path": "web/src/views/MachineStatus.tsx",
+    "literal": "(null), spotRef = useRef",
+    "reason": "Lexical JSX scanner false positive: TypeScript type arguments or code between angle brackets, not rendered text."
+  },
+  {
+    "path": "web/src/views/Settings.tsx",
+    "literal": "grp",
+    "reason": "Not product text: CSS class name, ARIA role/boolean attribute, internal key, or option identifier."
+  },
+  {
+    "path": "web/src/views/Settings.tsx",
+    "literal": "; if (!vm.member && removedSlot) return",
+    "reason": "Lexical JSX scanner false positive: TypeScript type arguments or code between angle brackets, not rendered text."
+  },
+  {
+    "path": "web/src/views/Settings.tsx",
+    "literal": "mode",
+    "reason": "Not product text: CSS class name, ARIA role/boolean attribute, internal key, or option identifier."
+  },
+  {
+    "path": "web/src/views/Settings.tsx",
+    "literal": "c.minutes === vm.selectedIdleCloseMinutes); const storage = vm.attachmentStorage, name = vm.name || id; return (",
+    "reason": "Lexical JSX scanner false positive: TypeScript type arguments or code between angle brackets, not rendered text."
   }
 ]

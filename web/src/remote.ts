@@ -20,6 +20,7 @@ import { machineReplacementOrigins } from "./machine-replacement";
 import { disposeCoreHost, getCoreHost, type CoreExecutor, type HostBridge, type StreamLegCallbacks } from "./core/host";
 export type { StreamLegCallbacks } from "./core/host";
 import { renderText } from "./core/text";
+import { buildDirectRouteReport } from "./views/direct-status";
 import {
   AccountPrefsFetchedEventSchema,
   AccountPrefsPutResultEventSchema,
@@ -160,7 +161,6 @@ import {
   DaemonSettingsSchema,
   ListModelsResponseSchema,
   SessionSchema,
-  type ImageStorageUsage,
   type DaemonSettings,
   type ListModelsResponse,
   type MachineReplacementProof,
@@ -437,6 +437,7 @@ export class Remote implements CoreExecutor {
   private lastSecuritySyncAt = 0;
   private directTransfers = new Map<string, "image" | "file">();
   private directReadyCache = new Map<string, boolean>();
+  private directReportCache = new Map<string, string>();
   private token = "";
   private tokenExpires = 0;
   private tokenWarmed = false;
@@ -484,7 +485,6 @@ export class Remote implements CoreExecutor {
   private models = new Map<string, Promise<ListModelsResponse>>();
   private modelReads = new Set<string>();
   private modelLists = new Map<string, ListModelsResponse>();
-  imageStorage = new Map<string, ImageStorageUsage>();
   private settingsCache = new Map<string, Promise<DaemonSettings | undefined>>();
   private settingsRead = new Map<string, DaemonSettings | undefined>();
 
@@ -626,6 +626,9 @@ export class Remote implements CoreExecutor {
 
   attachHost(bridge: HostBridge) {
     this.hostBridge = bridge;
+    this.directReadyCache.clear();
+    this.directReportCache.clear();
+    this.syncDirectStatuses();
   }
 
   private ensureHost(): HostBridge {
@@ -850,6 +853,9 @@ export class Remote implements CoreExecutor {
 
     this.cachedPrefPending.clear();
     if (view.prefsSyncing) this.cachedPrefPending.set("", "syncing");
+    if (this.hostBridge) {
+      this.syncDirectStatuses();
+    }
     this.changed();
     if (!wasOnline && (this.conn as ConnState) === "online" && !this.closed) void restorePushPrefs(this);
   }
@@ -1767,10 +1773,27 @@ export class Remote implements CoreExecutor {
     }
   }
 
+  refreshDirectStatuses() {
+    this.syncDirectStatuses();
+  }
+
   private syncDirectStatuses() {
+    if (!this.hostBridge) return;
     for (const id of this.machines.keys()) {
       const ready = this.direct.ready(id, { kind: "read" });
-      if (this.directReadyCache.get(id) !== ready) { this.directReadyCache.set(id, ready); this.hostBridge?.pushRouteStatus(id, ready); }
+      if (this.directReadyCache.get(id) !== ready) {
+        this.directReadyCache.set(id, ready);
+        this.hostBridge.pushRouteStatus(id, ready);
+      }
+      const s = this.direct.status(id);
+      const enabled = this.direct.enabled(id);
+      const hasDiagnostics = this.direct.diagnostics(id).rounds.length > 0;
+      const report = buildDirectRouteReport(s, enabled, hasDiagnostics);
+      const sig = `${report.enabled}:${report.capable}:${report.state}:${report.reason}:${report.fileRoute}:${report.readRoute}:${report.compared}:${report.readSlow}:${report.fileSlow}:${report.hasDiagnostics}:${report.directFileMibps}:${report.relayFileMibps}:${report.directReadMs}:${report.relayReadMs}:${report.activeRttMs}`;
+      if (this.directReportCache.get(id) !== sig) {
+        this.directReportCache.set(id, sig);
+        this.hostBridge.pushDirectReport(id, report);
+      }
     }
   }
 
@@ -2339,12 +2362,6 @@ export class Remote implements CoreExecutor {
     await this.api.setPushSubscription({ subscriptionJson, kinds: selected });
   }
 
-  async getMachineStatus(machineId: string, signal?: AbortSignal) {
-    const r = await this.forward(machineId, "", { case: "getMachineStatus", value: {} }, undefined, signal);
-    if (r.kind.case !== "machineStatus") throw new Error(l10n.t("machine_status.unavailable"));
-    return r.kind.value;
-  }
-
   modelName(machineId: string, agent: Agent, slug: string): string {
     return modelLabel(this.modelLists.get(machineId + "/" + agent)?.models, slug, agent);
   }
@@ -2379,7 +2396,6 @@ export class Remote implements CoreExecutor {
       p = this.machineCommand(machineId, { case: "getSettings", value: {} }).then((r) => {
         if (r.kind.case !== "getSettings") throw new Error(l10n.t("new_session.unexpected_reply"));
         if (this.settingsCache.get(machineId) === p) {
-          if (r.kind.value.imageStorage) this.imageStorage.set(machineId, r.kind.value.imageStorage);
           this.settingsRead.set(machineId, r.kind.value.settings);
           this.keepInfo();
           this.changed();
@@ -2390,17 +2406,6 @@ export class Remote implements CoreExecutor {
       this.settingsCache.set(machineId, p);
     }
     return p;
-  }
-
-  async saveSettings(machineId: string, next: DaemonSettings, cleanImages = false): Promise<DaemonSettings | undefined> {
-    const r = await this.machineCommand(machineId, { case: "updateSettings", value: { settings: next, cleanImages } });
-    if (r.kind.case !== "updateSettings") throw new Error(l10n.t("new_session.unexpected_reply"));
-    if (r.kind.value.imageStorage) this.imageStorage.set(machineId, r.kind.value.imageStorage);
-    this.settingsCache.set(machineId, Promise.resolve(r.kind.value.settings));
-    this.settingsRead.set(machineId, r.kind.value.settings);
-    this.keepInfo();
-    this.changed();
-    return r.kind.value.settings;
   }
 
   async pingServer(timeoutMs = 8000): Promise<number> {

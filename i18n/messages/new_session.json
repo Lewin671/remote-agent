@@ -1127,22 +1127,6 @@
     }
   },
   {
-    "key": "new_session.this_model_has_no_auto_mode",
-    "zh-CN": "当前模型没有自动模式",
-    "en": "This model has no Auto mode",
-    "notes": "NewSession 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
     "key": "new_session.task_settings",
     "zh-CN": "任务设置",
     "en": "Task settings",

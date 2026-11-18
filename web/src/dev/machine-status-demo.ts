@@ -86,9 +86,9 @@ export class DemoStatus {
       disk: demoDisk(scenario),
       agentBytes: BigInt(3.1 * GB),
       sessions: [
-        { id: sessions[0] ?? "s-claude", executable: "claude", cpuPercent: 141 * jitter(1, 0.04), memoryBytes: BigInt(Math.round(2.4 * GIB * jitter(2, 0.01))) },
-        { id: sessions[1] ?? "s-run", executable: "codex", cpuPercent: 62 * jitter(3, 0.06), memoryBytes: BigInt(Math.round(1.1 * GIB * jitter(4, 0.01))) },
-        { id: sessions[2] ?? "s-agy", executable: "agy", cpuPercent: 3 * jitter(5, 0.2), memoryBytes: BigInt(380 * 2 ** 20) },
+        { id: sessions[0] ?? "s-claude", sessionId: sessions[0] ?? "s-claude", executable: "claude", cpuPercent: 141 * jitter(1, 0.04), memoryBytes: BigInt(Math.round(2.4 * GIB * jitter(2, 0.01))) },
+        { id: sessions[1] ?? "s-run", sessionId: sessions[1] ?? "s-run", executable: "codex", cpuPercent: 62 * jitter(3, 0.06), memoryBytes: BigInt(Math.round(1.1 * GIB * jitter(4, 0.01))) },
+        { id: sessions[2] ?? "s-agy", sessionId: sessions[2] ?? "s-agy", executable: "agy", cpuPercent: 3 * jitter(5, 0.2), memoryBytes: BigInt(380 * 2 ** 20) },
       ],
       processes: [
         { id: "p1", executable: "java", sessionId: sessions[0] ?? "s-claude", cpuPercent: 312 * jitter(6, 0.03), memoryBytes: BigInt(Math.round(2.1 * GIB)) },

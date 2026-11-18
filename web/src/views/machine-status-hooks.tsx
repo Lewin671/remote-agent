@@ -1,13 +1,8 @@
 // The parts of the computer-status screens that are not a screen of their
-// own: the polling hook, the digits that roll, and the transitions that move
-// a card or a row to where it goes now (FLIP).
+// own: motion/visibility preferences, rolling digits, and FLIP list/box helpers.
 
 import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from "react";
-import { MachineStatusController, type MachinePollState } from "../machine-status";
-import type { MachineStatus } from "../gen/remoteagent/v1/local_pb";
 import { canAnimate } from "../motion";
-import type { Remote } from "../remote";
-import { useRemote } from "../ui";
 
 /** Whether the system asks for less motion: every transition here is then a plain change. */
 export function useReducedMotion(): boolean {
@@ -34,52 +29,6 @@ export function usePageVisible(): boolean {
     return () => document.removeEventListener("visibilitychange", on);
   }, []);
   return visible;
-}
-
-export interface StatusView {
-  state: MachinePollState;
-  last?: MachineStatus;
-  failures: number;
-  curveSinceMs: bigint;
-  /** When (this device's clock) the last answer came. */
-  receivedAt: number;
-  retry: () => void;
-}
-
-/** One computer's status, asked every `intervalMs` while this page is in front,
- * the computer is online and its daemon has the capability. */
-export function useMachineStatus(remote: Remote, id: string, intervalMs: number): StatusView {
-  useRemote(remote);
-  const m = remote.machines.get(id);
-  const online = !!m && remote.onlineOf(m);
-  const supported = !!remote.peer(m?.id).capabilities?.machineStatus;
-  const visible = usePageVisible();
-  const control = useRef(undefined as MachineStatusController | undefined);
-  const [view, setView] = useState<Omit<StatusView, "retry">>({ state: "idle", failures: 0, curveSinceMs: 0n, receivedAt: 0 });
-  useEffect(() => {
-    let seen: MachineStatus | undefined;
-    let received = 0;
-    const c: MachineStatusController = new MachineStatusController(
-      (signal) => remote.getMachineStatus(id, signal),
-      () => {
-        if (c.last !== seen) {
-          seen = c.last;
-          received = Date.now();
-        }
-        setView({ state: c.state, last: c.last, failures: c.failures, curveSinceMs: c.curveSinceMs, receivedAt: received });
-      },
-      intervalMs,
-    );
-    control.current = c;
-    return () => {
-      c.dispose();
-      control.current = undefined;
-    };
-  }, [remote, id, intervalMs]);
-  useEffect(() => {
-    control.current?.setActive(visible, online, supported);
-  }, [visible, online, supported, remote, id, intervalMs]);
-  return { ...view, retry: () => control.current?.retry() };
 }
 
 /** A number whose changed digits roll: up when it grows, down when it

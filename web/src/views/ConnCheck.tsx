@@ -5,11 +5,14 @@ import * as l10n from "../i18n";
 // or stuck; nothing is measured in the background.
 
 import { Fragment, useCallback, useEffect, useRef, useState } from "react";
+import { ConnProbeState, useCoreHost, useSettingsView } from "../core/host";
+import { renderText } from "../core/text";
+import { ConnectionGroupStage } from "../gen/remoteagent/core/v1/settings_view_pb";
 import { machineName } from "../model";
 import { errorText, type Remote } from "../remote";
 import { Banner, StateMark, Sheet, useRemote, type Mark } from "../ui";
 import { LoaderCircle } from "../icons";
-import { connCheckDirectView, connFooter } from "./direct-status";
+import { connFooter, directRowTrailing, stageToMark } from "./direct-status";
 
 type Ping = { state: "wait" } | { state: "ok"; ms: number } | { state: "fail"; error: string } | { state: "skip" };
 
@@ -47,12 +50,17 @@ function Result({ p, slow }: { p?: Ping; slow: number }) {
 
 export function ConnCheck({ remote, onClose }: { remote: Remote; onClose: () => void }) {
   useRemote(remote);
+  const host = useCoreHost(remote);
+  const settingsVm = useSettingsView(host);
   const [server, setServer] = useState<Ping>();
   const [machines, setMachines] = useState(new Map<string, Ping>());
   const [busy, setBusy] = useState(false);
   const [now, setNow] = useState(Date.now);
   const startedAt = remote.connStartedAt;
   const connecting = remote.conn !== "online" && !!remote.connStep && startedAt !== undefined;
+  useEffect(() => {
+    remote.refreshDirectStatuses();
+  }, [remote]);
   useEffect(() => {
     if (!connecting) return;
     setNow(Date.now());
@@ -68,16 +76,21 @@ export function ConnCheck({ remote, onClose }: { remote: Remote; onClose: () => 
     setBusy(true);
     setServer({ state: "wait" });
     setMachines(new Map(online.map((id) => [id, { state: "wait" }])));
+    host.reportConnCheckStatus(ConnProbeState.CHECKING);
     let reached = true;
     try {
       const samples: number[] = [];
       for (let i = 0; i < 3; i++) samples.push(await remote.pingServer());
       if (mine !== run.current) return;
-      setServer({ state: "ok", ms: median(samples) });
+      const ms = median(samples);
+      setServer({ state: "ok", ms });
+      host.reportConnCheckStatus(ms >= SLOW_SERVER_MS ? ConnProbeState.SLOW : ConnProbeState.WORKING, ms);
     } catch (e) {
       if (mine !== run.current) return;
       reached = false;
-      setServer({ state: "fail", error: errorText(e) || l10n.t("connection.no_response") });
+      const msg = errorText(e) || l10n.t("connection.no_response");
+      setServer({ state: "fail", error: msg });
+      host.reportConnCheckStatus(ConnProbeState.UNAVAILABLE, 0, msg);
       setMachines(new Map(online.map((id) => [id, { state: remote.peer(id).canProbe(false) ? "wait" : "skip" }])));
     }
     await Promise.all(
@@ -90,7 +103,7 @@ export function ConnCheck({ remote, onClose }: { remote: Remote; onClose: () => 
         }),
       );
     if (mine === run.current) setBusy(false);
-  }, [remote]);
+  }, [remote, host]);
   useEffect(() => {
     void check();
     return () => void run.current++;
@@ -130,8 +143,9 @@ export function ConnCheck({ remote, onClose }: { remote: Remote; onClose: () => 
         </div>
         {list.map((m) => {
           const reachable = remote.peer(m.id).reachable;
-          const directRow = reachable ? connCheckDirectView(remote.direct.status(m.id), true, remote.direct.enabled(m.id)) : undefined;
-          const trailing = directRow ? [directRow.status, directRow.metric].filter(Boolean).join(" · ") : "";
+          const directRow = reachable ? settingsVm.machines.find((x) => x.machineId === m.id)?.directRow : undefined;
+          const detail = directRow ? renderText(directRow.detailText) : "";
+          const trailing = directRow ? directRowTrailing(directRow) : "";
           return (
             <Fragment key={m.id}>
               <div className="mi">
@@ -141,11 +155,11 @@ export function ConnCheck({ remote, onClose }: { remote: Remote; onClose: () => 
               {directRow?.visible && (
                 <div className="mi conn-direct" data-machine-id={m.id}>
                   <span className="mt">
-                    {directRow.label}
-                    {directRow.detail && <small className="direct-line">{directRow.detail}</small>}
+                    {renderText(directRow.labelText) || l10n.t("transport.direct")}
+                    {detail && <small className="direct-line">{detail}</small>}
                   </span>
                   {trailing && (
-                    <span className="mv"><StateMark kind={directRow.mark} /><em>{trailing}</em></span>
+                    <span className="mv"><StateMark kind={stageToMark(directRow.stage)} /><em>{trailing}</em></span>
                   )}
                 </div>
               )}
@@ -153,7 +167,7 @@ export function ConnCheck({ remote, onClose }: { remote: Remote; onClose: () => 
           );
         })}
       </div>
-      <p className="gf">{connFooter(remote.direct, list.map((m) => m.id))}</p>
+      <p className="gf">{connFooter(settingsVm.machines.some((x) => x.directRow?.stage === ConnectionGroupStage.UNSUPPORTED))}</p>
       <div className="btns conn-again">
         {down && <button className="btn pri" onClick={() => remote.reconnectNow(true)}>{l10n.t("connection.reconnect_now")}</button>}
         <button className={down ? "btn" : "btn pri"} disabled={busy} onClick={() => void check()}>

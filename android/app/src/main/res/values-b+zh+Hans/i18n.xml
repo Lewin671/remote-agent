@@ -763,7 +763,6 @@
     <string name="new_session_start_unknown">"不确定是否已经启动：%1$s。重试会发送同一个请求，不会重复启动"</string>
     <string name="new_session_starting_on">"正在 %1$s 上启动…"</string>
     <string name="new_session_task_settings" formatted="false">"任务设置"</string>
-    <string name="new_session_this_model_has_no_auto_mode" formatted="false">"当前模型没有自动模式"</string>
     <string name="new_session_unexpected_reply" formatted="false">"意外的回复"</string>
     <string name="new_session_unknown_start_retry" formatted="false">"上次的启动结果不确定。再点 ↑ 会重发同一个请求，电脑收到过就不会再启动一次"</string>
     <string name="new_session_use_machine">"改用 %1$s"</string>
@@ -893,8 +892,6 @@
         <item quantity="other">"%1$d 小时"</item>
     </plurals>
     <string name="quota_last_reading" formatted="false">" · 上次记录"</string>
-    <string name="quota_last_reading_computer_offline_may_have_changed" formatted="false">"上次记录：电脑离线，可能已变化"</string>
-    <string name="quota_last_reading_reset_time_passed_but_quota_recovery_is">"上次记录 %1$s；重置时间已过，不能据此确认额度已经恢复"</string>
     <string name="quota_left">"剩 %1$s%%"</string>
     <plurals name="quota_min">
         <item quantity="other">"%1$d 分钟"</item>
@@ -1685,8 +1682,6 @@
     <string name="session_only_current" formatted="false">"只改当前会话"</string>
     <string name="session_origin_elsewhere" formatted="false">"另一端"</string>
     <string name="session_origin_other" formatted="false">"另一客户端"</string>
-    <string name="session_origin_removed" formatted="false">"已移除的设备"</string>
-    <string name="session_origin_self" formatted="false">"本客户端"</string>
     <string name="session_origin_terminal">"%1$s 终端"</string>
     <string name="session_other_session" formatted="false">"另一个会话"</string>
     <string name="session_quiet_checks">"%1$s 定时检查 · 没有新回复"</string>
@@ -1837,8 +1832,6 @@
     <string name="settings_current" formatted="false">"当前"</string>
     <string name="settings_dark" formatted="false">"暗色"</string>
     <string name="settings_default" formatted="false">"（默认）"</string>
-    <string name="settings_default_approval_mode" formatted="false">"默认审批模式"</string>
-    <string name="settings_default_reasoning_effort" formatted="false">"默认推理强度"</string>
     <string name="settings_details" formatted="false">"说明"</string>
     <string name="settings_device_id" formatted="false">"设备 ID"</string>
     <string name="settings_device_not_found" formatted="false">"没有这台设备"</string>
@@ -1848,7 +1841,6 @@
     <string name="settings_enabled" formatted="false">"已开启"</string>
     <string name="settings_exit_and_delete_local_keys" formatted="false">"退出并删除本机密钥…"</string>
     <string name="settings_follow_configuration">"跟随 %1$s 配置"</string>
-    <string name="settings_follow_configuration_settings" formatted="false">"跟随配置"</string>
     <string name="settings_how_to_enable" formatted="false">"怎么打开"</string>
     <string name="settings_idle_close_off" formatted="false">"关闭"</string>
     <string name="settings_iphone_push_help" formatted="false">"iPhone 要先「添加到主屏幕」，从主屏幕打开才能收推送：在 Safari 里点分享按钮，选「添加到主屏幕」，再从主屏幕上的图标打开。"</string>
@@ -1856,9 +1848,7 @@
     <string name="settings_less_than_0_1_mib" formatted="false">"不到 0.1 MiB"</string>
     <string name="settings_light" formatted="false">"亮色"</string>
     <string name="settings_managing_client" formatted="false">"管理端"</string>
-    <string name="settings_min" formatted="false">" 分钟"</string>
     <string name="settings_name" formatted="false">"名称"</string>
-    <string name="settings_name_changes_sync_to_other_clients" formatted="false">"修改名称同步到其他客户端。"</string>
     <string name="settings_name_save_error">"没能保存名称：%1$s"</string>
     <string name="settings_names_sync_encrypted_the_server_cannot_read_them_leave" formatted="false">"名称加密后同步，服务器看不到。留空就用默认名称。"</string>
     <string name="settings_new_project_defaults" formatted="false">"新项目默认设置"</string>
@@ -1908,13 +1898,11 @@
     <string name="settings_up_to_date" formatted="false">"已是最新版本"</string>
     <string name="settings_uploaded_images_and_files" formatted="false">"上传的图片和文件"</string>
     <string name="settings_uploading">"正在上传 %1$s"</string>
-    <string name="settings_use_cli_defaults_for_new_projects" formatted="false">"按 CLI 的新项目默认设置"</string>
     <string name="settings_verify_and_continue_security_operation" formatted="false">"核实并继续安全操作"</string>
     <string name="settings_version_unverified_run_remote_agent_doctor_on_this_computer" formatted="false">"版本未验证：在这台电脑上运行 remote-agent doctor，它会用一个临时会话检查各项功能。"</string>
     <string name="settings_view_usage_in_the_local_cli" formatted="false">"可在本机 CLI 中查看用量"</string>
     <string name="settings_when_a_turn_ends" formatted="false">"一轮结束时"</string>
     <string name="settings_when_i_need_to_act" formatted="false">"等我处理时"</string>
-    <string name="settings_when_unspecified_uses" formatted="false">"不指定时实际用："</string>
     <string name="shared_file_a11y_card">"%2$s，%1$s，%3$s，%4$s"</string>
     <string name="shared_file_a11y_downloaded_announce">"%1$s 下载完成"</string>
     <string name="shared_file_a11y_state_available" formatted="false">"可下载"</string>
@@ -2038,7 +2026,6 @@
     <string name="time_month_day">"%2$d月%1$d日"</string>
     <string name="time_month_group">"%1$d 月"</string>
     <string name="time_today" formatted="false">"今天"</string>
-    <string name="time_today_clock">"今天 %2$s:%1$s"</string>
     <string name="time_tomorrow" formatted="false">"明天"</string>
     <string name="time_used_time">"%1$s 使用"</string>
     <string name="time_weekday_fri">"周五"</string>

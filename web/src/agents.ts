@@ -1,22 +1,12 @@
 import * as l10n from "./i18n";
 import * as i18n from "./i18n";
 import { Agent, ApprovalMode, SendMode } from "./gen/remoteagent/v1/event_pb";
-import type { AgentDefaults, DaemonSettings } from "./gen/remoteagent/v1/local_pb";
-import type { MachineMeta } from "./gen/remoteagent/v1/remote_pb";
-
-export interface QuotaWindowDescriptor {
-  readonly label: string;
-  readonly group: string | null;
-  readonly pool?: string;
-}
+import type { DaemonSettings } from "./gen/remoteagent/v1/local_pb";
 
 export interface AgentEntry {
   readonly agent: Agent;
   readonly id: string;
   readonly name: string;
-  readonly quotaWindows: readonly string[];
-  quotaWindow(name: string): QuotaWindowDescriptor;
-  planName(raw: string): string;
   modelLabel(id: string): string;
   readonly toolLabelFromItemType: boolean;
   readonly planClearContext: boolean;
@@ -33,34 +23,11 @@ export interface AgentEntry {
   readonly forks: boolean;
   readonly steersDuringTurn: boolean;
   defaults(settings?: DaemonSettings): { model: string; effort: string; mode: ApprovalMode };
-  withDefaults(
-    settings: DaemonSettings,
-    patch: Partial<Omit<AgentDefaults, "$typeName">>,
-  ): DaemonSettings;
 
   readonly askModeDesc: string;
   readonly planModeDesc: string;
   readonly permissionModeNotice: string | null;
   readonly showMaxEffort: boolean;
-}
-
-export function normalizePlanName(plan: string): string {
-  const known: Record<string, string> = {
-    prolite: "Pro Lite",
-    claude_max: "Max",
-    claude_pro: "Pro",
-    claude_team: "Team",
-    claude_enterprise: "Enterprise",
-  };
-  return (
-    known[plan.toLowerCase()] ??
-    plan
-      .replace(/^claude_/i, "")
-      .split(/[_\s]+/)
-      .filter(Boolean)
-      .map((w) => w[0].toUpperCase() + w.slice(1))
-      .join(" ")
-  );
 }
 
 function gptSlugLabel(id: string): string {
@@ -70,31 +37,10 @@ function gptSlugLabel(id: string): string {
     .join("-");
 }
 
-function fixedWindowLabel(name: string): QuotaWindowDescriptor {
-  if (name === "primary" || name === "five_hour") return { label: l10n.t("quota.hr", { count: 5 }), group: null };
-  if (name === "secondary" || name === "seven_day") return { label: l10n.t("quota.days", { count: 7 }), group: null };
-  return { label: name, group: null };
-}
-
-const ANTIGRAVITY_QUOTA_WINDOWS: Record<string, () => QuotaWindowDescriptor> = {
-  "gemini-5h": () => ({ label: l10n.t("quota.named_hours", { name: "Gemini", count: 5 }), group: "Gemini", pool: "Gemini" }),
-  "gemini-weekly": () => ({ label: l10n.t("quota.named_days", { name: "Gemini", count: 7 }), group: "Gemini", pool: "Gemini" }),
-  "gemini-argon-wtu-weekly": () => ({ label: l10n.t("quota.named_days", { name: "Gemini 4 Argon", count: 7 }), group: "Gemini", pool: "Gemini 4 Argon" }),
-  "3p-5h": () => ({ label: l10n.t("quota.named_hours", { name: l10n.t("quota.third_party_models"), count: 5 }), group: l10n.t("quota.third_party_models_claude_gpt_oss"), pool: l10n.t("quota.third_party_models") }),
-  "3p-weekly": () => ({ label: l10n.t("quota.named_days", { name: l10n.t("quota.third_party_models"), count: 7 }), group: l10n.t("quota.third_party_models_claude_gpt_oss"), pool: l10n.t("quota.third_party_models") }),
-};
-
 const CODEX_ENTRY: AgentEntry = {
   agent: Agent.CODEX,
   id: "codex",
   name: "Codex",
-  quotaWindows: ["primary", "secondary"],
-  quotaWindow(name: string): QuotaWindowDescriptor {
-    return fixedWindowLabel(name);
-  },
-  planName(raw: string): string {
-    return normalizePlanName(raw);
-  },
   modelLabel(id: string): string {
     return gptSlugLabel(id);
   },
@@ -119,14 +65,6 @@ const CODEX_ENTRY: AgentEntry = {
       mode: settings?.defaultMode ?? ApprovalMode.UNSPECIFIED,
     };
   },
-  withDefaults(settings: DaemonSettings, patch: Partial<Omit<AgentDefaults, "$typeName">>): DaemonSettings {
-    return {
-      ...settings,
-      ...(patch.model !== undefined && { defaultModel: patch.model }),
-      ...(patch.effort !== undefined && { defaultEffort: patch.effort }),
-      ...(patch.mode !== undefined && { defaultMode: patch.mode }),
-    };
-  },
   get askModeDesc() { return i18n.t("modes.ask_desc"); },
   get planModeDesc() { return i18n.t("modes.plan_desc"); },
   permissionModeNotice: null,
@@ -137,13 +75,6 @@ const CLAUDE_ENTRY: AgentEntry = {
   agent: Agent.CLAUDE,
   id: "claude",
   name: "Claude Code",
-  quotaWindows: ["five_hour", "seven_day"],
-  quotaWindow(name: string): QuotaWindowDescriptor {
-    return fixedWindowLabel(name);
-  },
-  planName(raw: string): string {
-    return normalizePlanName(raw);
-  },
   modelLabel(id: string): string {
     return id;
   },
@@ -168,13 +99,6 @@ const CLAUDE_ENTRY: AgentEntry = {
       mode: settings?.claude?.mode ?? ApprovalMode.UNSPECIFIED,
     };
   },
-  withDefaults(settings: DaemonSettings, patch: Partial<Omit<AgentDefaults, "$typeName">>): DaemonSettings {
-    const cur = this.defaults(settings);
-    return {
-      ...settings,
-      claude: { $typeName: "remoteagent.v1.AgentDefaults", ...cur, ...patch },
-    };
-  },
   get askModeDesc() { return i18n.t("modes.ask_permission_desc"); },
   get planModeDesc() { return i18n.t("modes.plan_propose_desc"); },
   get permissionModeNotice() { return i18n.t("modes.permission_notice"); },
@@ -185,13 +109,6 @@ const ANTIGRAVITY_ENTRY: AgentEntry = {
   agent: Agent.ANTIGRAVITY,
   id: "agy",
   name: "Antigravity",
-  quotaWindows: [],
-  quotaWindow(name: string): QuotaWindowDescriptor {
-    return ANTIGRAVITY_QUOTA_WINDOWS[name]?.() ?? { label: name, group: name };
-  },
-  planName(raw: string): string {
-    return raw;
-  },
   modelLabel(id: string): string {
     return id;
   },
@@ -216,13 +133,6 @@ const ANTIGRAVITY_ENTRY: AgentEntry = {
       mode: settings?.antigravity?.mode ?? ApprovalMode.UNSPECIFIED,
     };
   },
-  withDefaults(settings: DaemonSettings, patch: Partial<Omit<AgentDefaults, "$typeName">>): DaemonSettings {
-    const cur = this.defaults(settings);
-    return {
-      ...settings,
-      antigravity: { $typeName: "remoteagent.v1.AgentDefaults", ...cur, ...patch },
-    };
-  },
   get askModeDesc() { return i18n.t("modes.agy_ask_desc"); },
   get planModeDesc() { return i18n.t("modes.agy_plan_desc"); },
   permissionModeNotice: null,
@@ -233,13 +143,6 @@ const UNKNOWN_ENTRY: AgentEntry = {
   agent: -1 as Agent,
   id: "",
   get name() { return l10n.t("models.unknown_cli"); },
-  quotaWindows: [],
-  quotaWindow(name: string): QuotaWindowDescriptor {
-    return { label: name, group: null };
-  },
-  planName(raw: string): string {
-    return raw;
-  },
   modelLabel(id: string): string {
     return id;
   },
@@ -263,9 +166,6 @@ const UNKNOWN_ENTRY: AgentEntry = {
       effort: "",
       mode: ApprovalMode.UNSPECIFIED,
     };
-  },
-  withDefaults(settings: DaemonSettings): DaemonSettings {
-    return settings;
   },
   get askModeDesc() { return i18n.t("modes.ask_generic_desc"); },
   get planModeDesc() { return i18n.t("modes.plan_propose_desc"); },
@@ -304,34 +204,6 @@ export function defaultsFor(
   agent: Agent,
 ): { model: string; effort: string; mode: ApprovalMode } {
   return agentInfo(agent).defaults(settings);
-}
-
-export function withDefaults(
-  settings: DaemonSettings,
-  agent: Agent,
-  patch: Partial<Omit<AgentDefaults, "$typeName">>,
-): DaemonSettings {
-  return agentInfo(agent).withDefaults(settings, patch);
-}
-
-export function machineVersions(meta?: MachineMeta): {
-  agent: Agent;
-  version: string;
-  verified?: boolean;
-}[] {
-  const primary =
-    meta?.agents.find((a) => a.agent === CODEX_ENTRY.agent) ??
-    (meta?.codexVersion
-      ? {
-          agent: CODEX_ENTRY.agent,
-          version: meta.codexVersion,
-          verified: meta.codexVerified,
-        }
-      : undefined);
-  return [
-    primary,
-    ...(meta?.agents.filter((a) => a.agent !== CODEX_ENTRY.agent) ?? []),
-  ].filter((v): v is NonNullable<typeof v> => !!v?.version);
 }
 
 /** Running next-turn-only CLIs use the existing queue operation. */

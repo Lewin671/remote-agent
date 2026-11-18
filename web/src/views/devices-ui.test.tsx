@@ -110,12 +110,12 @@ it("labels an unfinished candidate and offers explicit removal to pair again", a
   expect(remove).toHaveBeenCalledWith("candidate");
 });
 
-it("calls this device 本机 in its list and detail", async () => {
+it("calls this device 当前 in its list and detail", async () => {
   const { DevicesPage, ClientPage } = await import("./Settings");
   const r = demo("role=authority");
   await mount(<DevicesPage remote={r} go={() => {}} onBack={() => {}} />);
-  expect(host.querySelector(".row.client .v")?.textContent).toBe(message("security.this_device"));
+  expect(host.querySelector(".row.client .v")?.textContent).toBe(message("settings.current"));
   await act(async () => root.render(<ClientPage remote={r} id={r.account.deviceId} onBack={() => {}} />));
-  expect(host.querySelector(".navbar")?.textContent).toContain(message("security.this_device"));
-  expect(host.textContent).not.toContain("当前客户端");
+  expect(host.querySelector(".navbar")?.textContent).toContain(message("settings.current"));
+  expect(host.querySelector(".navbar")?.textContent).not.toContain("当前客户端");
 });

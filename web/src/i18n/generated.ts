@@ -582,7 +582,6 @@ export interface MessageArgs {
   "new_session.start_unknown": { reason: string };
   "new_session.starting_on": { name: string };
   "new_session.task_settings": { [name: string]: never };
-  "new_session.this_model_has_no_auto_mode": { [name: string]: never };
   "new_session.unexpected_reply": { [name: string]: never };
   "new_session.unknown_start_retry": { [name: string]: never };
   "new_session.use_machine": { name: string };
@@ -658,8 +657,6 @@ export interface MessageArgs {
   "quota.failure_no_reason": { name: string };
   "quota.hr": { count: number };
   "quota.last_reading": { [name: string]: never };
-  "quota.last_reading_computer_offline_may_have_changed": { [name: string]: never };
-  "quota.last_reading_reset_time_passed_but_quota_recovery_is": { value: string };
   "quota.left": { value: string };
   "quota.min": { count: number };
   "quota.named_days": { count: number; name: string };
@@ -1204,8 +1201,6 @@ export interface MessageArgs {
   "session.opening_slow": { [name: string]: never };
   "session.origin_elsewhere": { [name: string]: never };
   "session.origin_other": { [name: string]: never };
-  "session.origin_removed": { [name: string]: never };
-  "session.origin_self": { [name: string]: never };
   "session.origin_terminal": { name: string };
   "session.other_session": { [name: string]: never };
   "session.quiet_checks": { times: string };
@@ -1273,8 +1268,6 @@ export interface MessageArgs {
   "settings.current": { [name: string]: never };
   "settings.dark": { [name: string]: never };
   "settings.default": { [name: string]: never };
-  "settings.default_approval_mode": { [name: string]: never };
-  "settings.default_reasoning_effort": { [name: string]: never };
   "settings.details": { [name: string]: never };
   "settings.device_id": { [name: string]: never };
   "settings.device_not_found": { [name: string]: never };
@@ -1284,7 +1277,6 @@ export interface MessageArgs {
   "settings.enabled": { [name: string]: never };
   "settings.exit_and_delete_local_keys": { [name: string]: never };
   "settings.follow_configuration": { value: string };
-  "settings.follow_configuration_settings": { [name: string]: never };
   "settings.how_to_enable": { [name: string]: never };
   "settings.idle_close_off": { [name: string]: never };
   "settings.iphone_push_help": { [name: string]: never };
@@ -1292,9 +1284,7 @@ export interface MessageArgs {
   "settings.less_than_0_1_mib": { [name: string]: never };
   "settings.light": { [name: string]: never };
   "settings.managing_client": { [name: string]: never };
-  "settings.min": { [name: string]: never };
   "settings.name": { [name: string]: never };
-  "settings.name_changes_sync_to_other_clients": { [name: string]: never };
   "settings.name_save_error": { reason: string };
   "settings.names_sync_encrypted_the_server_cannot_read_them_leave": { [name: string]: never };
   "settings.new_project_defaults": { [name: string]: never };
@@ -1344,13 +1334,11 @@ export interface MessageArgs {
   "settings.up_to_date": { [name: string]: never };
   "settings.uploaded_images_and_files": { [name: string]: never };
   "settings.uploading": { value: string };
-  "settings.use_cli_defaults_for_new_projects": { [name: string]: never };
   "settings.verify_and_continue_security_operation": { [name: string]: never };
   "settings.version_unverified_run_remote_agent_doctor_on_this_computer": { [name: string]: never };
   "settings.view_usage_in_the_local_cli": { [name: string]: never };
   "settings.when_a_turn_ends": { [name: string]: never };
   "settings.when_i_need_to_act": { [name: string]: never };
-  "settings.when_unspecified_uses": { [name: string]: never };
   "shared_file.a11y_card": { kind: string; name: string; size: string; state: string };
   "shared_file.a11y_state_available": { [name: string]: never };
   "shared_file.a11y_state_downloaded": { [name: string]: never };
@@ -1442,7 +1430,6 @@ export interface MessageArgs {
   "time.month_day": { day: number; month: number };
   "time.month_group": { month: number };
   "time.today": { [name: string]: never };
-  "time.today_clock": { detail: string; value: string };
   "time.tomorrow": { [name: string]: never };
   "time.used_time": { time: string };
   "time.weekday": { day: string };
@@ -2386,7 +2373,6 @@ export const messages = {
     "new_session.start_unknown": "Start unconfirmed: {reason}. Retrying sends the same request and will not start another session.",
     "new_session.starting_on": "Starting on {name}…",
     "new_session.task_settings": "Task settings",
-    "new_session.this_model_has_no_auto_mode": "This model has no Auto mode",
     "new_session.unexpected_reply": "Unexpected response",
     "new_session.unknown_start_retry": "The last start has an unknown result. Send again to retry the same request; the computer will not start it twice.",
     "new_session.use_machine": "Use {name}",
@@ -2504,8 +2490,6 @@ export const messages = {
       "plural": "count"
     },
     "quota.last_reading": " · Last reading",
-    "quota.last_reading_computer_offline_may_have_changed": "Last reading: computer offline, may have changed",
-    "quota.last_reading_reset_time_passed_but_quota_recovery_is": "Last reading: {value}; reset time passed, but quota recovery is unconfirmed",
     "quota.left": "{value}% left",
     "quota.min": {
       "forms": {
@@ -3266,8 +3250,6 @@ export const messages = {
     "session.opening_slow": "History is taking longer to load. You can retry; your draft will stay here.",
     "session.origin_elsewhere": "Elsewhere",
     "session.origin_other": "Another client",
-    "session.origin_removed": "Removed device",
-    "session.origin_self": "This client",
     "session.origin_terminal": "{name} terminal",
     "session.other_session": "Another session",
     "session.quiet_checks": "{times} Scheduled check · No new reply",
@@ -3335,8 +3317,6 @@ export const messages = {
     "settings.current": "Current",
     "settings.dark": "Dark",
     "settings.default": " (default)",
-    "settings.default_approval_mode": "Default approval mode",
-    "settings.default_reasoning_effort": "Default reasoning effort",
     "settings.details": "Details",
     "settings.device_id": "Device ID",
     "settings.device_not_found": "Device not found",
@@ -3346,7 +3326,6 @@ export const messages = {
     "settings.enabled": "Enabled",
     "settings.exit_and_delete_local_keys": "Exit and delete local keys…",
     "settings.follow_configuration": "Follow {value} configuration",
-    "settings.follow_configuration_settings": "Follow configuration",
     "settings.how_to_enable": "How to enable",
     "settings.idle_close_off": "Off",
     "settings.iphone_push_help": "On iPhone, add to Home Screen and open from there to receive push notifications: in Safari, tap Share, choose Add to Home Screen, then open its icon.",
@@ -3354,9 +3333,7 @@ export const messages = {
     "settings.less_than_0_1_mib": "Less than 0.1 MiB",
     "settings.light": "Light",
     "settings.managing_client": "Managing client",
-    "settings.min": " min",
     "settings.name": "Name",
-    "settings.name_changes_sync_to_other_clients": "Name changes sync to other clients.",
     "settings.name_save_error": "Could not save name: {reason}",
     "settings.names_sync_encrypted_the_server_cannot_read_them_leave": "Names sync encrypted; the server cannot read them. Leave blank for the default name.",
     "settings.new_project_defaults": "New project defaults",
@@ -3406,13 +3383,11 @@ export const messages = {
     "settings.up_to_date": "Up to date",
     "settings.uploaded_images_and_files": "Uploaded images and files",
     "settings.uploading": "Uploading {value}",
-    "settings.use_cli_defaults_for_new_projects": "Use CLI defaults for new projects",
     "settings.verify_and_continue_security_operation": "Verify and continue security operation",
     "settings.version_unverified_run_remote_agent_doctor_on_this_computer": "Version unverified: run remote-agent doctor on this computer to check features in a temporary session.",
     "settings.view_usage_in_the_local_cli": "View usage in the local CLI",
     "settings.when_a_turn_ends": "When a turn ends",
     "settings.when_i_need_to_act": "When I need to act",
-    "settings.when_unspecified_uses": "When unspecified, uses:",
     "shared_file.a11y_card": "{name}, {kind}, {size}, {state}",
     "shared_file.a11y_state_available": "Ready to download",
     "shared_file.a11y_state_downloaded": "Downloaded",
@@ -3546,7 +3521,6 @@ export const messages = {
     "time.month_day": "{month}/{day}",
     "time.month_group": "Month {month}",
     "time.today": "Today",
-    "time.today_clock": "Today {value}:{detail}",
     "time.tomorrow": "Tomorrow",
     "time.used_time": "Used {time}",
     "time.weekday": {
@@ -4479,7 +4453,6 @@ export const messages = {
     "new_session.start_unknown": "不确定是否已经启动：{reason}。重试会发送同一个请求，不会重复启动",
     "new_session.starting_on": "正在 {name} 上启动…",
     "new_session.task_settings": "任务设置",
-    "new_session.this_model_has_no_auto_mode": "当前模型没有自动模式",
     "new_session.unexpected_reply": "意外的回复",
     "new_session.unknown_start_retry": "上次的启动结果不确定。再点 ↑ 会重发同一个请求，电脑收到过就不会再启动一次",
     "new_session.use_machine": "改用 {name}",
@@ -4590,8 +4563,6 @@ export const messages = {
       "plural": "count"
     },
     "quota.last_reading": " · 上次记录",
-    "quota.last_reading_computer_offline_may_have_changed": "上次记录：电脑离线，可能已变化",
-    "quota.last_reading_reset_time_passed_but_quota_recovery_is": "上次记录 {value}；重置时间已过，不能据此确认额度已经恢复",
     "quota.left": "剩 {value}%",
     "quota.min": {
       "forms": {
@@ -5316,8 +5287,6 @@ export const messages = {
     "session.opening_slow": "记录还没读到，可以重试。已输入的内容会保留。",
     "session.origin_elsewhere": "另一端",
     "session.origin_other": "另一客户端",
-    "session.origin_removed": "已移除的设备",
-    "session.origin_self": "本客户端",
     "session.origin_terminal": "{name} 终端",
     "session.other_session": "另一个会话",
     "session.quiet_checks": "{times} 定时检查 · 没有新回复",
@@ -5385,8 +5354,6 @@ export const messages = {
     "settings.current": "当前",
     "settings.dark": "暗色",
     "settings.default": "（默认）",
-    "settings.default_approval_mode": "默认审批模式",
-    "settings.default_reasoning_effort": "默认推理强度",
     "settings.details": "说明",
     "settings.device_id": "设备 ID",
     "settings.device_not_found": "没有这台设备",
@@ -5396,7 +5363,6 @@ export const messages = {
     "settings.enabled": "已开启",
     "settings.exit_and_delete_local_keys": "退出并删除本机密钥…",
     "settings.follow_configuration": "跟随 {value} 配置",
-    "settings.follow_configuration_settings": "跟随配置",
     "settings.how_to_enable": "怎么打开",
     "settings.idle_close_off": "关闭",
     "settings.iphone_push_help": "iPhone 要先「添加到主屏幕」，从主屏幕打开才能收推送：在 Safari 里点分享按钮，选「添加到主屏幕」，再从主屏幕上的图标打开。",
@@ -5404,9 +5370,7 @@ export const messages = {
     "settings.less_than_0_1_mib": "不到 0.1 MiB",
     "settings.light": "亮色",
     "settings.managing_client": "管理端",
-    "settings.min": " 分钟",
     "settings.name": "名称",
-    "settings.name_changes_sync_to_other_clients": "修改名称同步到其他客户端。",
     "settings.name_save_error": "没能保存名称：{reason}",
     "settings.names_sync_encrypted_the_server_cannot_read_them_leave": "名称加密后同步，服务器看不到。留空就用默认名称。",
     "settings.new_project_defaults": "新项目默认设置",
@@ -5456,13 +5420,11 @@ export const messages = {
     "settings.up_to_date": "已是最新版本",
     "settings.uploaded_images_and_files": "上传的图片和文件",
     "settings.uploading": "正在上传 {value}",
-    "settings.use_cli_defaults_for_new_projects": "按 CLI 的新项目默认设置",
     "settings.verify_and_continue_security_operation": "核实并继续安全操作",
     "settings.version_unverified_run_remote_agent_doctor_on_this_computer": "版本未验证：在这台电脑上运行 remote-agent doctor，它会用一个临时会话检查各项功能。",
     "settings.view_usage_in_the_local_cli": "可在本机 CLI 中查看用量",
     "settings.when_a_turn_ends": "一轮结束时",
     "settings.when_i_need_to_act": "等我处理时",
-    "settings.when_unspecified_uses": "不指定时实际用：",
     "shared_file.a11y_card": "{name}，{kind}，{size}，{state}",
     "shared_file.a11y_state_available": "可下载",
     "shared_file.a11y_state_downloaded": "已下载",
@@ -5589,7 +5551,6 @@ export const messages = {
     "time.month_day": "{month}月{day}日",
     "time.month_group": "{month} 月",
     "time.today": "今天",
-    "time.today_clock": "今天 {value}:{detail}",
     "time.tomorrow": "明天",
     "time.used_time": "{time} 使用",
     "time.weekday": {

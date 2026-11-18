@@ -1789,38 +1789,6 @@
     "zh-CN": "另一客户端"
   },
   {
-    "en": "Removed device",
-    "key": "session.origin_removed",
-    "notes": "会话页的可视状态、历史提示或操作标签。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
-    "params": {},
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "en": "draft",
-      "zh-CN": "source"
-    },
-    "zh-CN": "已移除的设备"
-  },
-  {
-    "en": "This client",
-    "key": "session.origin_self",
-    "notes": "会话页的可视状态、历史提示或操作标签。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
-    "params": {},
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "en": "draft",
-      "zh-CN": "source"
-    },
-    "zh-CN": "本客户端"
-  },
-  {
     "en": "{name} terminal",
     "key": "session.origin_terminal",
     "notes": "会话页顶栏、菜单、历史行或恢复卡。历史行来源元信息；name 为电脑显示名。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：name 为电脑/文件/图片的显示名（按调用提供）。",

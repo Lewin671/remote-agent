@@ -682,7 +682,6 @@
 "new_session_start_unknown" = "不确定是否已经启动：%1$@。重试会发送同一个请求，不会重复启动";
 "new_session_starting_on" = "正在 %1$@ 上启动…";
 "new_session_task_settings" = "任务设置";
-"new_session_this_model_has_no_auto_mode" = "当前模型没有自动模式";
 "new_session_unexpected_reply" = "意外的回复";
 "new_session_unknown_start_retry" = "上次的启动结果不确定。再点 ↑ 会重发同一个请求，电脑收到过就不会再启动一次";
 "new_session_use_machine" = "改用 %1$@";
@@ -768,8 +767,6 @@
 "quota_ios_this_computer_was_removed" = "这台电脑已经移除了";
 "quota_ios_view_usage_in_local_claude_code" = " 可在本机 Claude Code 中查看 /usage。";
 "quota_last_reading" = " · 上次记录";
-"quota_last_reading_computer_offline_may_have_changed" = "上次记录：电脑离线，可能已变化";
-"quota_last_reading_reset_time_passed_but_quota_recovery_is" = "上次记录 %1$@；重置时间已过，不能据此确认额度已经恢复";
 "quota_left" = "剩 %1$@%%";
 "quota_no_data_received_for_this_quota" = "没有收到这项额度数据";
 "quota_previously" = "上次%1$@";
@@ -1424,8 +1421,6 @@
 "session_only_current" = "只改当前会话";
 "session_origin_elsewhere" = "另一端";
 "session_origin_other" = "另一客户端";
-"session_origin_removed" = "已移除的设备";
-"session_origin_self" = "本客户端";
 "session_origin_terminal" = "%1$@ 终端";
 "session_other_session" = "另一个会话";
 "session_quiet_checks" = "%1$@ 定时检查 · 没有新回复";
@@ -1493,8 +1488,6 @@
 "settings_current" = "当前";
 "settings_dark" = "暗色";
 "settings_default" = "（默认）";
-"settings_default_approval_mode" = "默认审批模式";
-"settings_default_reasoning_effort" = "默认推理强度";
 "settings_details" = "说明";
 "settings_device_id" = "设备 ID";
 "settings_device_not_found" = "没有这台设备";
@@ -1504,7 +1497,6 @@
 "settings_enabled" = "已开启";
 "settings_exit_and_delete_local_keys" = "退出并删除本机密钥…";
 "settings_follow_configuration" = "跟随 %1$@ 配置";
-"settings_follow_configuration_settings" = "跟随配置";
 "settings_how_to_enable" = "怎么打开";
 "settings_idle_close_off" = "关闭";
 "settings_ios_approvals_questions_and_plans_waiting_for_you_appear_at" = "等你处理的审批、提问和计划排在「会话」页最上面";
@@ -1570,9 +1562,7 @@
 "settings_less_than_0_1_mib" = "不到 0.1 MiB";
 "settings_light" = "亮色";
 "settings_managing_client" = "管理端";
-"settings_min" = " 分钟";
 "settings_name" = "名称";
-"settings_name_changes_sync_to_other_clients" = "修改名称同步到其他客户端。";
 "settings_name_save_error" = "没能保存名称：%1$@";
 "settings_names_sync_encrypted_the_server_cannot_read_them_leave" = "名称加密后同步，服务器看不到。留空就用默认名称。";
 "settings_new_project_defaults" = "新项目默认设置";
@@ -1622,13 +1612,11 @@
 "settings_up_to_date" = "已是最新版本";
 "settings_uploaded_images_and_files" = "上传的图片和文件";
 "settings_uploading" = "正在上传 %1$@";
-"settings_use_cli_defaults_for_new_projects" = "按 CLI 的新项目默认设置";
 "settings_verify_and_continue_security_operation" = "核实并继续安全操作";
 "settings_version_unverified_run_remote_agent_doctor_on_this_computer" = "版本未验证：在这台电脑上运行 remote-agent doctor，它会用一个临时会话检查各项功能。";
 "settings_view_usage_in_the_local_cli" = "可在本机 CLI 中查看用量";
 "settings_when_a_turn_ends" = "一轮结束时";
 "settings_when_i_need_to_act" = "等我处理时";
-"settings_when_unspecified_uses" = "不指定时实际用：";
 "shared_file_a11y_card" = "%2$@，%1$@，%3$@，%4$@";
 "shared_file_a11y_downloaded_announce" = "%1$@ 下载完成";
 "shared_file_a11y_state_available" = "可下载";
@@ -1733,7 +1721,6 @@
 "time_month_day" = "%2$lld月%1$lld日";
 "time_month_group" = "%1$lld 月";
 "time_today" = "今天";
-"time_today_clock" = "今天 %2$@:%1$@";
 "time_tomorrow" = "明天";
 "time_used_time" = "%1$@ 使用";
 "time_weekday_fri" = "周五";

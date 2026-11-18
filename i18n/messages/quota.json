@@ -671,43 +671,6 @@
     }
   },
   {
-    "key": "quota.last_reading_reset_time_passed_but_quota_recovery_is",
-    "zh-CN": "上次记录 {value}；重置时间已过，不能据此确认额度已经恢复",
-    "en": "Last reading: {value}; reset time passed, but quota recovery is unconfirmed",
-    "notes": "quota 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。变量来源：value = left；名称、日期和诊断原文不翻译。",
-    "params": {
-      "value": {
-        "type": "string",
-        "example": "Example"
-      }
-    },
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "quota.last_reading_computer_offline_may_have_changed",
-    "zh-CN": "上次记录：电脑离线，可能已变化",
-    "en": "Last reading: computer offline, may have changed",
-    "notes": "quota 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
     "key": "quota.previously_reset_time_passed_but_quota_recovery_is_unconfirmed",
     "zh-CN": "上次{value}；重置时间已过，不能据此确认额度已经恢复",
     "en": "Previously {value}; reset time passed, but quota recovery is unconfirmed",

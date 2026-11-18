@@ -682,7 +682,6 @@
 "new_session_start_unknown" = "Start unconfirmed: %1$@. Retrying sends the same request and will not start another session.";
 "new_session_starting_on" = "Starting on %1$@…";
 "new_session_task_settings" = "Task settings";
-"new_session_this_model_has_no_auto_mode" = "This model has no Auto mode";
 "new_session_unexpected_reply" = "Unexpected response";
 "new_session_unknown_start_retry" = "The last start has an unknown result. Send again to retry the same request; the computer will not start it twice.";
 "new_session_use_machine" = "Use %1$@";
@@ -768,8 +767,6 @@
 "quota_ios_this_computer_was_removed" = "This computer was removed";
 "quota_ios_view_usage_in_local_claude_code" = " View /usage in local Claude Code.";
 "quota_last_reading" = " · Last reading";
-"quota_last_reading_computer_offline_may_have_changed" = "Last reading: computer offline, may have changed";
-"quota_last_reading_reset_time_passed_but_quota_recovery_is" = "Last reading: %1$@; reset time passed, but quota recovery is unconfirmed";
 "quota_left" = "%1$@%% left";
 "quota_no_data_received_for_this_quota" = "No data received for this quota";
 "quota_previously" = "Previously %1$@";
@@ -1424,8 +1421,6 @@
 "session_only_current" = "Applies only to this session";
 "session_origin_elsewhere" = "Elsewhere";
 "session_origin_other" = "Another client";
-"session_origin_removed" = "Removed device";
-"session_origin_self" = "This client";
 "session_origin_terminal" = "%1$@ terminal";
 "session_other_session" = "Another session";
 "session_quiet_checks" = "%1$@ Scheduled check · No new reply";
@@ -1493,8 +1488,6 @@
 "settings_current" = "Current";
 "settings_dark" = "Dark";
 "settings_default" = " (default)";
-"settings_default_approval_mode" = "Default approval mode";
-"settings_default_reasoning_effort" = "Default reasoning effort";
 "settings_details" = "Details";
 "settings_device_id" = "Device ID";
 "settings_device_not_found" = "Device not found";
@@ -1504,7 +1497,6 @@
 "settings_enabled" = "Enabled";
 "settings_exit_and_delete_local_keys" = "Exit and delete local keys…";
 "settings_follow_configuration" = "Follow %1$@ configuration";
-"settings_follow_configuration_settings" = "Follow configuration";
 "settings_how_to_enable" = "How to enable";
 "settings_idle_close_off" = "Off";
 "settings_ios_approvals_questions_and_plans_waiting_for_you_appear_at" = "Approvals, questions, and plans waiting for you appear at the top of Sessions";
@@ -1570,9 +1562,7 @@
 "settings_less_than_0_1_mib" = "Less than 0.1 MiB";
 "settings_light" = "Light";
 "settings_managing_client" = "Managing client";
-"settings_min" = " min";
 "settings_name" = "Name";
-"settings_name_changes_sync_to_other_clients" = "Name changes sync to other clients.";
 "settings_name_save_error" = "Could not save name: %1$@";
 "settings_names_sync_encrypted_the_server_cannot_read_them_leave" = "Names sync encrypted; the server cannot read them. Leave blank for the default name.";
 "settings_new_project_defaults" = "New project defaults";
@@ -1622,13 +1612,11 @@
 "settings_up_to_date" = "Up to date";
 "settings_uploaded_images_and_files" = "Uploaded images and files";
 "settings_uploading" = "Uploading %1$@";
-"settings_use_cli_defaults_for_new_projects" = "Use CLI defaults for new projects";
 "settings_verify_and_continue_security_operation" = "Verify and continue security operation";
 "settings_version_unverified_run_remote_agent_doctor_on_this_computer" = "Version unverified: run remote-agent doctor on this computer to check features in a temporary session.";
 "settings_view_usage_in_the_local_cli" = "View usage in the local CLI";
 "settings_when_a_turn_ends" = "When a turn ends";
 "settings_when_i_need_to_act" = "When I need to act";
-"settings_when_unspecified_uses" = "When unspecified, uses:";
 "shared_file_a11y_card" = "%2$@, %1$@, %3$@, %4$@";
 "shared_file_a11y_downloaded_announce" = "%1$@ downloaded";
 "shared_file_a11y_state_available" = "Ready to download";
@@ -1733,7 +1721,6 @@
 "time_month_day" = "%2$lld/%1$lld";
 "time_month_group" = "Month %1$lld";
 "time_today" = "Today";
-"time_today_clock" = "Today %2$@:%1$@";
 "time_tomorrow" = "Tomorrow";
 "time_used_time" = "Used %1$@";
 "time_weekday_fri" = "Fri";
