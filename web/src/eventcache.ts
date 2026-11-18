@@ -106,30 +106,19 @@ function forget(tx: IDBTransaction, sid: string) {
 const idbCache: EventCache = {
   async read(sid, afterSeq = 0n, limit = CACHE_PAGE_SIZE) {
     const cap = limit > 0 ? limit : CACHE_PAGE_SIZE;
-    const tx = (await db()).transaction([EVENTS, SESSIONS], "readwrite");
-    const finished = done(tx);
-    const rows = new Promise<Uint8Array[]>((resolve, reject) => {
-      const out: Uint8Array[] = [];
-      const req = tx.objectStore(EVENTS).openCursor(IDBKeyRange.bound([sid, Number(afterSeq) + 1], [sid, Infinity]));
-      req.onerror = () => reject(req.error);
-      req.onsuccess = () => {
-        const cursor = req.result;
-        if (!cursor || out.length === cap ||
-            (cursor.key as [string, number])[1] !== Number(afterSeq) + out.length + 1) {
-          resolve(out);
-          return;
-        }
-        out.push(cursor.value as Uint8Array);
-        cursor.continue();
-      };
-    });
-    const usage = (await result(tx.objectStore(SESSIONS).get(sid) as IDBRequest<Usage | undefined>)) ?? { bytes: 0, usedAt: 0 };
-    tx.objectStore(SESSIONS).put({ ...usage, usedAt: Date.now() }, sid);
-    const [values] = await Promise.all([rows, finished]);
+    const start = Number(afterSeq) + 1;
+    const range = IDBKeyRange.bound([sid, start], [sid, start + cap - 1]);
+    const tx = (await db()).transaction([EVENTS], "readonly");
+    const store = tx.objectStore(EVENTS);
+    const [keys, values] = await Promise.all([
+      result(store.getAllKeys(range, cap)),
+      result(store.getAll(range, cap) as IDBRequest<Uint8Array[]>),
+    ]);
     const out: CachedEvent[] = [];
-    for (const value of values) {
+    for (let i = 0; i < values.length && i < keys.length; i++) {
+      if ((keys[i] as [string, number])[1] !== start + i) break;
       try {
-        out.push({ seq: afterSeq + BigInt(out.length) + 1n, envelope: fromBinary(EnvelopeSchema, value) });
+        out.push({ seq: afterSeq + BigInt(i) + 1n, envelope: fromBinary(EnvelopeSchema, values[i]) });
       } catch { break; }
     }
     return out;

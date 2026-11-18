@@ -306,3 +306,30 @@ it("returns an error for every future-epoch item when sync cannot obtain its sta
   const future = { ...item, envelope: security.toEnvelope(wire) };
   expect((await sdk.openHistoryBatch([future, future])).map(r => r.status)).toEqual(["rejected", "rejected"]);
 });
+
+it("decrypts >32 historical envelopes at <= headEpoch in parallel chunks and caches stateHash per state", async () => {
+  const f = await storedSecurity();
+  const sdk = new DeviceSecurityClient(f.memberID, f.ed, async () => ({
+    states: [], headEpoch: f.states.at(-1)!.core.epoch,
+  }));
+  const item = await storedEvent(f);
+  const wire = security.fromEnvelope(item.envelope);
+  const header = security.parseHeader(wire.header);
+  const secret = (await store.loadSecurity()).secret;
+  const hashSpy = vi.spyOn(security, "stateHash");
+  const items = [];
+  for (let seq = 1n; seq <= 35n; seq++) {
+    items.push({
+      seed: item.seed,
+      envelope: security.toEnvelope(await security.formCipher(
+        secret, item.seed, { ...header, seq }, new Uint8Array([Number(seq)]), f.machineEd,
+      )),
+    });
+  }
+  hashSpy.mockClear();
+  const results = await sdk.openHistoryBatch(items);
+  expect(results).toHaveLength(35);
+  expect(results.every(r => r.status === "fulfilled")).toBe(true);
+  // stateHash is cached per SecurityState object across all 35 envelopes.
+  expect(hashSpy.mock.calls.length).toBeLessThanOrEqual(2);
+});

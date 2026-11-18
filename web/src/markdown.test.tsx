@@ -1,6 +1,6 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { Markdown, mdBlocks, numericColumn, Rich, safeHref, tableCells } from "./markdown";
+import { inlineSpans, Markdown, mdBlocks, numericColumn, Rich, safeHref, tableCells } from "./markdown";
 
 const html = (md: string) => renderToStaticMarkup(<Markdown text={md} />);
 
@@ -332,5 +332,17 @@ describe("math fallback", () => {
     expect(out).toContain('<code>$$x$$</code>');
     expect(out).toContain('$100 到 $200');
     expect(out).not.toMatch(/<img|<em>/);
+  });
+});
+
+describe("bounded LRU parser cache", () => {
+  it("reuses cached inlineSpans and mdBlocks results and evicts past capacity", () => {
+    const sample = "**hello** `world`";
+    expect(inlineSpans(sample)).toBe(inlineSpans(sample));
+    expect(mdBlocks(sample)).toBe(mdBlocks(sample));
+
+    const first = inlineSpans("cache-probe-0");
+    for (let i = 1; i <= 1050; i++) inlineSpans(`cache-probe-${i}`);
+    expect(inlineSpans("cache-probe-0")).not.toBe(first);
   });
 });

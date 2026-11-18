@@ -80,3 +80,22 @@ it("reads bounded cursor batches and stops at a corrupt record or sequence gap",
   expect((await cache.read("batch")).map(e => e.seq)).toEqual([1n, 2n, 3n]);
   expect(await cache.read("batch", 128n)).toEqual([]);
 });
+
+it("reads pages via readonly transactions without touching session usage", async () => {
+  const factory = new IDBFactory();
+  vi.stubGlobal("indexedDB", factory);
+  vi.stubGlobal("IDBKeyRange", IDBKeyRange);
+  const cache = eventCache()!;
+  await cache.append("ro", [event(1n), event(2n), event(3n)]);
+  const db = await new Promise<IDBDatabase>((resolve, reject) => {
+    const req = indexedDB.open("remote-agent-events", 2);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+  const txProto = Object.getPrototypeOf(db) as { transaction: IDBDatabase["transaction"] };
+  const txSpy = vi.spyOn(txProto, "transaction");
+  db.close();
+  const rows = await cache.read("ro", 0n, 2);
+  expect(rows.map(r => r.seq)).toEqual([1n, 2n]);
+  expect(txSpy).toHaveBeenCalledWith(["events"], "readonly");
+});

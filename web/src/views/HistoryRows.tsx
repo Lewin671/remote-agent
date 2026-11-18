@@ -187,31 +187,34 @@ function WindowedRows<T extends { key: string }>({ items, render, parent, remote
   });
   const firstNow = useRef(first);
   firstNow.current = first;
-  const saveNow = useCallback(() => list.current?.getState((state) => {
-    if (!state.ranges.length) return;
-    const map = positions.get(remote) ?? new Map<string, Position>();
-    positions.set(remote, map);
-    map.delete(sid);
-    const edge = parent.getBoundingClientRect().top;
-    const row = [...parent.querySelectorAll<HTMLElement>("[data-item-index]")].find((el) => el.getBoundingClientRect().bottom > edge);
-    const index = Number(row?.dataset.itemIndex) - firstNow.current;
-    const item = currentItems.current[index - 1];
-    map.set(sid, { state, count: count.current, width: parent.clientWidth, first: firstNow.current, anchor: row && item ? { key: item.key, index, offset: edge - row.getBoundingClientRect().top } : undefined });
-    while (map.size > 8) map.delete(map.keys().next().value!);
-  }), [remote, sid, parent]);
+  const saveNow = useCallback(() => {
+    if (!parent.isConnected) return;
+    list.current?.getState((state) => {
+      if (!state.ranges.length || !parent.isConnected) return;
+      const map = positions.get(remote) ?? new Map<string, Position>();
+      positions.set(remote, map);
+      map.delete(sid);
+      const edge = parent.getBoundingClientRect().top;
+      const row = [...parent.querySelectorAll<HTMLElement>("[data-item-index]")].find((el) => el.getBoundingClientRect().bottom > edge);
+      const index = Number(row?.dataset.itemIndex) - firstNow.current;
+      const item = currentItems.current[index - 1];
+      map.set(sid, { state, count: count.current, width: parent.clientWidth, first: firstNow.current, anchor: row && item ? { key: item.key, index, offset: edge - row.getBoundingClientRect().top } : undefined });
+      while (map.size > 8) map.delete(map.keys().next().value!);
+    });
+  }, [remote, sid, parent]);
   // Where the list stands is only kept for coming back to a place that was
   // left in the middle: nothing is kept for a list that follows its end, and
-  // for the rest it is read once a frame, when the layout the frame needs
-  // anyway is there, not once for each change of the list.
-  const pending = useRef(0);
+  // for the rest it is debounced so active scrolling does no layout queries.
+  const pending = useRef<ReturnType<typeof setTimeout> | 0>(0);
   const following = useRef(follow);
   following.current = follow;
   const save = useCallback(() => {
-    if (pending.current || following.current()) return;
-    pending.current = requestAnimationFrame(() => {
+    if (following.current()) return;
+    if (pending.current) clearTimeout(pending.current);
+    pending.current = setTimeout(() => {
       pending.current = 0;
       if (!following.current()) saveNow();
-    });
+    }, 50);
   }, [saveNow]);
   useLayoutEffect(() => {
     parent.addEventListener("scroll", save, { passive: true });
@@ -219,7 +222,7 @@ function WindowedRows<T extends { key: string }>({ items, render, parent, remote
       parent.removeEventListener("scroll", save);
       // Leaving: what was left to keep is kept now.
       if (pending.current) {
-        cancelAnimationFrame(pending.current);
+        clearTimeout(pending.current);
         pending.current = 0;
         saveNow();
       }

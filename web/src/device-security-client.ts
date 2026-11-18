@@ -102,6 +102,7 @@ export class DeviceSecurityClient {
   private followUp?: Promise<SecurityRecord>;
   private validated = new WeakMap<SecurityRecord, Promise<SecurityRecord>>();
   private contentKeys = new WeakMap<SecurityRecord, Map<bigint, Promise<B>>>();
+  private stateHashes = new WeakMap<SecurityState, Promise<B>>();
   constructor(
     readonly memberID: string,
     private readonly ed: CryptoKey,
@@ -327,6 +328,15 @@ export class DeviceSecurityClient {
     }
     throw new SecurityError("stale");
   }
+  private cachedStateHash(state: SecurityState): Promise<B> {
+    let p = this.stateHashes.get(state);
+    if (!p) {
+      p = stateHash(state);
+      this.stateHashes.set(state, p);
+      p.catch(() => this.stateHashes.delete(state));
+    }
+    return p;
+  }
   private async contentKey(
     r: SecurityRecord,
     state: SecurityState,
@@ -381,7 +391,7 @@ export class DeviceSecurityClient {
     // A live frame is authorized by the state it names, provided its sender
     // is still in the current head; it need not name the head itself.
     const state = stateAt(r.states, h.epoch);
-    if (!equal(await stateHash(state), h.state))
+    if (!equal(await this.cachedStateHash(state), h.state))
       throw new SecurityError("stale");
     if (control(h.purpose))
       await validLease(r.lease, head, maxBig(BigInt(Date.now()), r.floor));
@@ -417,21 +427,51 @@ export class DeviceSecurityClient {
     if (!items.length) return [];
     for (let attempt = 0; attempt < 3; attempt++) {
       const record = await this.load();
-      const results = [];
+      const headEpoch = record.states[record.states.length - 1].core.epoch;
+      let canParallel = true;
+      for (const { envelope } of items) {
+        try {
+          if (parseHeader(fromEnvelope(envelope).header).epoch > headEpoch) {
+            canParallel = false;
+            break;
+          }
+        } catch {
+          // Malformed headers reject locally without calling sync().
+        }
+      }
       let synced = false;
       const onSync = (updated: SecurityRecord) => { synced = updated !== record; };
-      for (const { envelope, seed } of items) {
-        try {
-          results.push({ status: "fulfilled" as const,
-            value: await this.openHistorical(envelope, seed, record, onSync) });
-        } catch (reason) {
-          results.push({ status: "rejected" as const, reason });
+      let results: HistoryResult[];
+      if (canParallel) {
+        results = [];
+        for (let i = 0; i < items.length; i += 32) {
+          const chunk = items.slice(i, i + 32);
+          const part = await Promise.all(
+            chunk.map(async ({ envelope, seed }) => {
+              try {
+                return { status: "fulfilled" as const, value: await this.openHistorical(envelope, seed, record, onSync) };
+              } catch (reason) {
+                return { status: "rejected" as const, reason };
+              }
+            }),
+          );
+          results.push(...part);
         }
-        // A future epoch replaces this snapshot. Restart once, rather than
-        // syncing again for every remaining envelope under that epoch.
-        if (synced) break;
+      } else {
+        results = [];
+        for (const { envelope, seed } of items) {
+          try {
+            results.push({ status: "fulfilled" as const,
+              value: await this.openHistorical(envelope, seed, record, onSync) });
+          } catch (reason) {
+            results.push({ status: "rejected" as const, reason });
+          }
+          // A future epoch replaces this snapshot. Restart once, rather than
+          // syncing again for every remaining envelope under that epoch.
+          if (synced) break;
+        }
       }
-      if (await this.load() === record) return results;
+      if (!synced && await this.load() === record) return results;
     }
     // Unmarked snapshots cannot be reused. Keep their per-envelope checks.
     const results = [];
@@ -473,7 +513,7 @@ export class DeviceSecurityClient {
       state = r.states[Number(h.epoch - 1n)];
       if (!state) throw new SecurityError("stale");
     }
-    if (!equal(await stateHash(state), h.state))
+    if (!equal(await this.cachedStateHash(state), h.state))
       throw new SecurityError("stale");
     const head = r.states[r.states.length - 1];
     const secret = await this.contentKey(r, state, w, h, false);

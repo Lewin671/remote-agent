@@ -66,6 +66,7 @@ import { ToolCallView, ToolGroupView } from "./Tools";
 import { create } from "@bufbuild/protobuf";
 import {
   lazy,
+  memo,
   Suspense,
   useCallback,
   useEffect,
@@ -83,6 +84,8 @@ const TerminalView = lazy(() =>
 
 const DEFAULT_WINDOW_LIMIT = 80;
 const CONTEXT_WARN = 70;
+const EMPTY_ITEMS: SessionTimelineItem[] = [];
+const EMPTY_REASONS: Array<{ id: string; reason: string }> = [];
 const LOCAL_SCROLL = new WeakMap<object, Map<string, { top: number; stick: boolean }>>();
 const SEND_ATTACHMENTS = new WeakMap<Remote, Map<string, LocalSendAttachments>>();
 const LOCAL_DOCK_STATE = new WeakMap<object, { seen: Set<string>; closed: Set<string> }>();
@@ -228,6 +231,45 @@ function flattenTimelineItems(items: readonly SessionTimelineItem[]): TimelineRo
   return out;
 }
 
+function itemEndSeq(item: SessionTimelineItem): bigint {
+  return item.endSeq > item.seq ? item.endSeq : item.seq;
+}
+
+function recordRowSeen(seenKeys: Set<string>, r: TimelineRowEntry) {
+  seenKeys.add(r.key);
+  if (r.item.kind.case === "toolCall" && r.item.kind.value.callId) {
+    seenKeys.add("tool:" + r.item.kind.value.callId);
+  } else if (r.item.kind.case === "toolGroup") {
+    for (const c of r.item.kind.value.calls) {
+      if (c.callId) seenKeys.add("tool:" + c.callId);
+    }
+  }
+}
+
+function isRowSeen(r: TimelineRowEntry, seenKeys: Set<string>): boolean {
+  if (seenKeys.has(r.key)) return true;
+  if (r.item.kind.case === "toolCall" && r.item.kind.value.callId) {
+    return seenKeys.has("tool:" + r.item.kind.value.callId);
+  }
+  if (r.item.kind.case === "toolGroup") {
+    const firstCall = r.item.kind.value.calls[0];
+    if (firstCall?.callId && seenKeys.has("tool:" + firstCall.callId)) return true;
+  }
+  return false;
+}
+
+function countUnseenRows(rows: readonly TimelineRowEntry[], seenWaterSeq: bigint, seenKeys: Set<string>): number {
+  let unseen = 0;
+  for (let i = rows.length - 1; i >= 0; i--) {
+    const r = rows[i];
+    const endSeq = itemEndSeq(r.item);
+    if (endSeq === 0n) continue;
+    if (endSeq <= seenWaterSeq) break;
+    if (!isRowSeen(r, seenKeys)) unseen++;
+  }
+  return unseen;
+}
+
 export interface SessionScreenViewProps {
   vm: SessionViewModel;
   wide: boolean;
@@ -337,14 +379,16 @@ export function SessionScreenView({
     seenApprovals.current.add(currentApprovalId);
     if (dock?.command?.busy) resolvedByUs.current.add(currentApprovalId);
   }
-  const retainedReasons: Array<{ id: string; reason: string }> = [];
-  if (remote && timeline?.loaded) {
+  const retainedReasons = useMemo(() => {
+    if (!remote || !timeline?.loaded || remote.approvalReasons.size === 0) return EMPTY_REASONS;
+    const out: Array<{ id: string; reason: string }> = [];
     for (const [id, reason] of remote.approvalReasons) {
       if (reason && id !== currentApprovalId && seenApprovals.current.has(id) && !resolvedByUs.current.has(id)) {
-        retainedReasons.push({ id, reason });
+        out.push({ id, reason });
       }
     }
-  }
+    return out.length > 0 ? out : EMPTY_REASONS;
+  }, [remote, timeline?.loaded, currentApprovalId, remote?.approvalReasons.size]);
 
   const [tabPick, setTab] = useState<Tab>(() => {
     if (defaultTab) return defaultTab;
@@ -357,6 +401,7 @@ export function SessionScreenView({
   };
   let tab: Tab = tabPick === "split" && !canSplit ? "chat" : tabPick;
   if ((exited || pending) && tab !== "chat") tab = "chat";
+  const toTerminal = useCallback(() => setTab(canSplit ? "split" : "term"), [canSplit]);
 
   const [sheet, setSheet] = useState<"" | "mode" | "model">("");
   const [menu, setMenu] = useState(defaultMenu);
@@ -389,7 +434,7 @@ export function SessionScreenView({
 
   const [viewing, setViewing] = useState<number | undefined>(undefined);
   const [viewingShared, setViewingShared] = useState<SharedFilePreviewTarget | undefined>(undefined);
-  const items = timeline?.items ?? [];
+  const items = timeline?.items ?? EMPTY_ITEMS;
   const pictures = useMemo(() => timelineImages(items), [items]);
   const openImage = useCallback(
     (ref: ImageRef) => {
@@ -461,7 +506,6 @@ export function SessionScreenView({
   const agentLabel = header?.agentName || "";
   const mname = renderText(header?.computerName);
   const project = renderText(header?.projectName);
-  const toTerminal = () => setTab(canSplit ? "split" : "term");
 
   if (page === "plan" && dock?.kind === SessionDockKind.PLAN && dock.detail.case === "plan") {
     return (
@@ -1201,6 +1245,75 @@ export function SessionPage({
   const approvalId = vm.dock?.detail.case === "approval" ? vm.dock.detail.value.approvalId : "";
   const approvalReason = approvalId ? (remote.approvalReasons.get(approvalId) ?? "") : "";
 
+  const timelineRef = useRef(vm.timeline);
+  timelineRef.current = vm.timeline;
+  const restoreOutgoingRef = useRef(handleRestoreOutgoing);
+  restoreOutgoingRef.current = handleRestoreOutgoing;
+
+  const onSubmitCommand = useCallback(
+    (slotKey: string, cmd: Command) => host.sessionSubmitCommand(slotKey, machineId, sessionId, cmd),
+    [host, machineId, sessionId],
+  );
+  const onAbandonCommand = useCallback(
+    (slotKey: string) => host.sessionAbandonCommand(slotKey, sessionId),
+    [host, sessionId],
+  );
+  const onDismissOutgoing = useCallback(
+    (reqId: string) => host.sessionDismissOutgoing(sessionId, reqId),
+    [host, sessionId],
+  );
+  const onRestoreOutgoing = useCallback(
+    (reqId: string) => void restoreOutgoingRef.current(reqId),
+    [],
+  );
+  const onRestoreText = useCallback(
+    async (text: string, reqId?: string) => {
+      try {
+        await remote.restoreDraft(sessionId, tray);
+      } catch {
+        return;
+      }
+      if (!mountedSession.current) return;
+      const saved = reqId ? stash?.get(reqId) : undefined;
+      if (saved?.items?.length) {
+        const images = saved.items.filter((it) => it.kind !== "file" && it.imageId);
+        if (
+          images.length &&
+          !tray.restore(
+            images.map((it, i) => ({ imageId: it.imageId!, thumb: saved.thumbs?.[i], file: it.file })),
+            !!saved.original,
+          )
+        ) {
+          toastRef.current(
+            i18n.t("composer.restore_images_full", { existing: tray.images().length, count: images.length }),
+          );
+          return;
+        }
+      }
+      const cur = remote.drafts.get(sessionId) ?? "";
+      remote.drafts.set(sessionId, cur.trim() ? cur.trimEnd() + "\n\n" + text : text);
+      if (reqId) stash?.delete(reqId);
+      setComposerKey((k) => k + 1);
+      setTimeout(() => composerRef.current?.focus());
+    },
+    [remote, sessionId, tray, stash],
+  );
+  const onLoadEarlier = useCallback(() => {
+    const tl = timelineRef.current;
+    if (!tl) return;
+    if (tl.hasGap || tl.canLoadEarlier) host.sessionLoadEarlier(sessionId);
+    if (tl.hasEarlier) {
+      setWindowLimit((n) => Math.max(n, tl.items.length) + DEFAULT_WINDOW_LIMIT);
+    }
+  }, [host, sessionId]);
+  const onRetryEvents = useCallback(() => host.retryEvents(sessionId), [host, sessionId]);
+  const onRefreshModels = useCallback(() => host.sessionOpen(sessionId, true, false), [host, sessionId]);
+  const onExpandGroup = useCallback(
+    (groupId: string) => setExpandedGroups((old) => (old.includes(groupId) ? old : [...old, groupId])),
+    [],
+  );
+  const onScheduleRevealed = useCallback(() => host.clearScheduleFocus(sessionId), [host, sessionId]);
+
   return (
     <SessionScreenView
       vm={vm}
@@ -1231,54 +1344,21 @@ export function SessionPage({
       onClearToast={() => setToast("")}
       sentCount={sent}
       onSend={handleSend}
-      onSubmitCommand={(slotKey, cmd) => host.sessionSubmitCommand(slotKey, machineId, sessionId, cmd)}
-      onAbandonCommand={(slotKey) => host.sessionAbandonCommand(slotKey, sessionId)}
-      onDismissOutgoing={(reqId) => host.sessionDismissOutgoing(sessionId, reqId)}
-      onRestoreOutgoing={(reqId) => void handleRestoreOutgoing(reqId)}
-      onRestoreText={async (text, reqId) => {
-        try {
-          await remote.restoreDraft(sessionId, tray);
-        } catch {
-          return;
-        }
-        if (!mountedSession.current) return;
-        const saved = reqId ? stash?.get(reqId) : undefined;
-        if (saved?.items?.length) {
-          const images = saved.items.filter((it) => it.kind !== "file" && it.imageId);
-          if (
-            images.length &&
-            !tray.restore(
-              images.map((it, i) => ({ imageId: it.imageId!, thumb: saved.thumbs?.[i], file: it.file })),
-              !!saved.original,
-            )
-          ) {
-            toastRef.current(
-              i18n.t("composer.restore_images_full", { existing: tray.images().length, count: images.length }),
-            );
-            return;
-          }
-        }
-        const cur = remote.drafts.get(sessionId) ?? "";
-        remote.drafts.set(sessionId, cur.trim() ? cur.trimEnd() + "\n\n" + text : text);
-        if (reqId) stash?.delete(reqId);
-        setComposerKey((k) => k + 1);
-        setTimeout(() => composerRef.current?.focus());
-      }}
-      onLoadEarlier={() => {
-        if (vm.timeline?.hasGap || vm.timeline?.canLoadEarlier) host.sessionLoadEarlier(sessionId);
-        if (vm.timeline?.hasEarlier) setWindowLimit((n) => Math.max(n, vm.timeline?.items.length ?? n) + DEFAULT_WINDOW_LIMIT);
-      }}
-      onRetryEvents={() => host.retryEvents(sessionId)}
-      onRefreshModels={() => host.sessionOpen(sessionId, true, false)}
-      onExpandGroup={(groupId) =>
-        setExpandedGroups((old) => (old.includes(groupId) ? old : [...old, groupId]))
-      }
-      onScheduleRevealed={() => host.clearScheduleFocus(sessionId)}
+      onSubmitCommand={onSubmitCommand}
+      onAbandonCommand={onAbandonCommand}
+      onDismissOutgoing={onDismissOutgoing}
+      onRestoreOutgoing={onRestoreOutgoing}
+      onRestoreText={onRestoreText}
+      onLoadEarlier={onLoadEarlier}
+      onRetryEvents={onRetryEvents}
+      onRefreshModels={onRefreshModels}
+      onExpandGroup={onExpandGroup}
+      onScheduleRevealed={onScheduleRevealed}
     />
   );
 }
 
-function ChatBody({
+const ChatBody = memo(function ChatBody({
   vm,
   remote,
   sent,
@@ -1318,6 +1398,8 @@ function ChatBody({
   const timeline = vm.timeline;
   const composer = vm.composer;
   const dock = vm.dock;
+  const locale = i18n.useLocale();
+  useRemote(remote);
 
   const scroller = useRef<HTMLDivElement>(null);
   const getScrollStore = () => {
@@ -1330,7 +1412,8 @@ function ChatBody({
     }
     return m;
   };
-  const saved = getScrollStore().get(sid);
+  const saved = useMemo(() => getScrollStore().get(sid), [sid]); // eslint-disable-line react-hooks/exhaustive-deps
+  const needFullCache = !!(saved && !saved.stick);
   const stick = useRef(saved ? saved.stick : true);
   const lastScroll = useRef<Scrolled>(undefined);
   const userScrollAt = useRef(0);
@@ -1339,11 +1422,56 @@ function ChatBody({
   const rowStates = useRef(new Map<string, boolean>());
   const loadedTopAt = useRef(-1);
 
-  const rawItems = timeline?.items ?? [];
+  const rawItems = timeline?.items ?? EMPTY_ITEMS;
   const rows = useMemo(() => flattenTimelineItems(rawItems), [rawItems]);
   const count = rows.length;
-  const seen = useRef<number | undefined>(timeline?.loaded ? count : undefined);
+  const tailSeq = timeline?.windowLastSeq
+    ? timeline.windowLastSeq
+    : count > 0
+      ? itemEndSeq(rows[count - 1].item)
+      : 0n;
   const focusKey = timeline?.anchorItemId || undefined;
+
+  const protocolNotice = header?.protocolMismatch ? renderText(header.protocolMismatchText) : "";
+  const historyNotice = renderText(timeline?.historyNotice);
+  const fetchError = renderText(timeline?.fetchError);
+  const historyError = renderText(timeline?.error);
+  const awaitingApprovalTool = !!(dock?.hasItem && dock.kind === SessionDockKind.APPROVAL);
+
+  const readyRef = useRef<{ sid: string; ready: boolean }>({ sid, ready: false });
+  const seenWaterSeq = useRef<bigint | undefined>(undefined);
+  const seenKeys = useRef<Set<string>>(new Set());
+  if (readyRef.current.sid !== sid) {
+    readyRef.current = { sid, ready: false };
+    seenWaterSeq.current = undefined;
+    seenKeys.current.clear();
+  }
+  if (
+    timeline?.retryingCorruptCache &&
+    count === 0 &&
+    !timeline?.loaded &&
+    !historyError &&
+    !timeline?.retired
+  ) {
+    readyRef.current.ready = false;
+  }
+  const canRevealTail =
+    !timeline?.awaitingCache &&
+    count > 0 &&
+    (!needFullCache ||
+      (!timeline?.backfilling &&
+        !timeline?.fetching &&
+        (!timeline?.hasGap || !!fetchError || !remote || remote.conn === "offline")));
+  if (!!timeline?.loaded || !!historyError || !!timeline?.retired || canRevealTail) {
+    readyRef.current.ready = true;
+  }
+  const ready = readyRef.current.ready;
+
+  const markTailSeen = () => {
+    seenWaterSeq.current = tailSeq;
+    seenKeys.current.clear();
+    for (const r of rows) recordRowSeen(seenKeys.current, r);
+  };
 
   useEffect(() => {
     if (focusKey && onScheduleRevealed) onScheduleRevealed();
@@ -1351,7 +1479,7 @@ function ChatBody({
 
   const knownRowKeys = useRef<Set<string> | undefined>(undefined);
   const newRowKeys = useRef(new Set<string>());
-  if (timeline?.loaded) {
+  if (ready) {
     if (knownRowKeys.current === undefined) {
       knownRowKeys.current = new Set(rows.map((r) => r.key));
     } else {
@@ -1410,7 +1538,7 @@ function ChatBody({
 
   useLayoutEffect(() => {
     const el = scroller.current;
-    if (timeline?.loaded && rows.length <= 100 && el && saved && !saved.stick) {
+    if (ready && rows.length <= 100 && el && saved && !saved.stick) {
       el.scrollTop = saved.top;
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -1421,27 +1549,37 @@ function ChatBody({
     setAway(false);
     stick.current = true;
     el.scrollTop = el.scrollHeight;
-  }, [sent]);
+    if (!focusKey) {
+      markTailSeen();
+      setUnseen(0);
+    }
+  }, [sent]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    const el = scroller.current;
+    if (!el || el.classList.contains("mo-hold") || stick.current) return;
+    if (el.scrollTop <= 40 && !timeline?.backfilling && (timeline?.hasEarlier || timeline?.canLoadEarlier) && loadedTopAt.current !== count) {
+      loadedTopAt.current = count;
+      onLoadEarlier();
+    }
+  }, [timeline?.backfilling, timeline?.hasEarlier, timeline?.canLoadEarlier, count, onLoadEarlier]);
 
   useLayoutEffect(() => {
     const el = scroller.current;
     if (!el) return;
-    seen.current ??= count;
+    if (focusKey) return;
+    if (seenWaterSeq.current === undefined) {
+      if (ready) markTailSeen();
+      return;
+    }
     if (stick.current) {
       if (rows.length <= 100) el.scrollTop = el.scrollHeight;
-      seen.current = count;
+      markTailSeen();
       setUnseen(0);
-    } else if (count > seen.current) {
-      setUnseen(count - seen.current);
+      return;
     }
-  }, [count, timeline?.loaded]);
-
-  const protocolNotice = header?.protocolMismatch ? renderText(header.protocolMismatchText) : "";
-  const historyNotice = renderText(timeline?.historyNotice);
-  const fetchError = renderText(timeline?.fetchError);
-  const historyError = renderText(timeline?.error);
-  const ready = !!timeline?.loaded || !!historyError || !!timeline?.retired;
-  const awaitingApprovalTool = !!(dock?.hasItem && dock.kind === SessionDockKind.APPROVAL);
+    setUnseen(countUnseenRows(rows, seenWaterSeq.current, seenKeys.current));
+  }, [count, tailSeq, ready, focusKey, rawItems]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const listHeader = (
     <>
@@ -1507,23 +1645,27 @@ function ChatBody({
   const mname = renderText(header?.computerName);
   const hasSharedFiles = header?.capabilities?.supportsSharedFiles ?? false;
 
-  const renderEntry = (entry: TimelineRowEntry) => (
-    <RowState id={entry.key} states={rowStates.current}>
-      <TimelineRow
-        item={entry.item}
-        sessionId={sid}
-        online={online}
-        lostAt={remote?.lostAt}
-        awaitingApproval={awaitingApprovalTool}
-        remote={remote}
-        machineName={mname}
-        hasSharedFiles={hasSharedFiles}
-        onTerminal={onTerminal}
-        localAttachments={localAttachments}
-        onRestoreText={onRestoreText}
-        onExpandGroup={onExpandGroup}
-      />
-    </RowState>
+  const renderEntry = useCallback(
+    (entry: TimelineRowEntry) => (
+      <RowState id={entry.key} states={rowStates.current}>
+        <TimelineRow
+          item={entry.item}
+          sessionId={sid}
+          online={online}
+          lostAt={remote?.lostAt}
+          awaitingApproval={awaitingApprovalTool}
+          remote={remote}
+          machineName={mname}
+          hasSharedFiles={hasSharedFiles}
+          locale={locale}
+          onTerminal={onTerminal}
+          localAttachments={localAttachments}
+          onRestoreText={onRestoreText}
+          onExpandGroup={onExpandGroup}
+        />
+      </RowState>
+    ),
+    [sid, online, remote, remote?.lostAt, awaitingApprovalTool, mname, hasSharedFiles, locale, onTerminal, localAttachments, onRestoreText, onExpandGroup],
   );
 
   return (
@@ -1564,11 +1706,11 @@ function ChatBody({
             el.scrollTop = el.scrollHeight;
           }
           getScrollStore().set(sid, { top: el.scrollTop, stick: stick.current });
-          if (stick.current) {
-            seen.current = count;
+          if (stick.current && !focusKey) {
+            markTailSeen();
             setUnseen(0);
           }
-          if (el.scrollTop <= 40 && (timeline?.hasEarlier || timeline?.canLoadEarlier) && loadedTopAt.current !== rows.length) {
+          if (el.scrollTop <= 40 && !timeline?.backfilling && (timeline?.hasEarlier || timeline?.canLoadEarlier) && loadedTopAt.current !== rows.length) {
             loadedTopAt.current = rows.length;
             onLoadEarlier();
           }
@@ -1583,7 +1725,7 @@ function ChatBody({
             sid={sid}
             follow={() => stick.current}
             rowClass={rowClass}
-            long={!!timeline?.hasEarlier || rows.length > 100}
+            long={!!timeline?.hasEarlier || !!timeline?.backfilling || rows.length > 100}
             loaded={ready}
             ready={ready}
             header={listHeader}
@@ -1620,14 +1762,14 @@ function ChatBody({
             setAway(false);
             if (el) el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
             stick.current = true;
-            seen.current = count;
+            markTailSeen();
             setUnseen(0);
           }}
         />
       )}
     </div>
   );
-}
+});
 
 function NewMessages({ n, onClick }: { n: number; onClick: () => void }) {
   const ref = useRef<HTMLButtonElement>(null);
@@ -1639,7 +1781,7 @@ function NewMessages({ n, onClick }: { n: number; onClick: () => void }) {
   );
 }
 
-function TimelineRow({
+const TimelineRow = memo(function TimelineRow({
   item,
   sessionId,
   online,
@@ -1648,6 +1790,7 @@ function TimelineRow({
   remote,
   machineName,
   hasSharedFiles,
+  locale: _locale,
   localAttachments,
   onTerminal,
   onRestoreText,
@@ -1661,6 +1804,7 @@ function TimelineRow({
   remote?: Remote;
   machineName: string;
   hasSharedFiles: boolean;
+  locale: string;
   localAttachments?: Map<string, LocalSendAttachments>;
   onTerminal?: () => void;
   onRestoreText?: (text: string, requestId?: string) => void;
@@ -1912,7 +2056,7 @@ function TimelineRow({
     default:
       return null;
   }
-}
+});
 
 function EndCard({
   sessionId,

@@ -286,3 +286,51 @@ it("restores the reading row after a prepended history is remounted with new hei
     expect(row!.getBoundingClientRect().top).toBe(-15);
   } finally { bounds.mockRestore(); }
 });
+
+it("debounces scroll anchor saves by 50ms and flushes pending save on unmount", async () => {
+  vi.useFakeTimers();
+  host = document.createElement("div"); document.body.append(host); root = createRoot(host);
+  const scroller = createRef<HTMLDivElement>();
+  const remote = { scroll: new Map() } as unknown as Remote;
+  const all = Array.from({ length: 120 }, (_, i) => ({ key: String(i), text: `row ${i + 1}` }));
+  const bounds = vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (this: HTMLElement) {
+    return this.dataset.itemIndex !== undefined
+      ? new DOMRect(0, (Number(this.dataset.itemIndex) - 1_000_000) * 60 - (scroller.current?.scrollTop ?? 0), 600, 60)
+      : new DOMRect(0, 0, 600, 600);
+  });
+  try {
+    await act(async () => root!.render(
+      <VirtuosoMockContext.Provider value={{ viewportHeight: 600, itemHeight: 60 }}>
+        <div ref={el => {
+          scroller.current = el; if (!el) return;
+          Object.defineProperties(el, {
+            clientWidth: { configurable: true, get: () => 600 },
+            clientHeight: { configurable: true, get: () => 600 },
+            offsetHeight: { configurable: true, get: () => 600 },
+            scrollHeight: { configurable: true, get: () => Number.parseFloat((el.querySelector(".virtual-history") as HTMLElement)?.style.height || "600") },
+          });
+        }}>
+          <HistoryRows items={all} render={it => <p>{it.text}</p>} scroller={scroller} remote={remote} sid="s-deb" follow={() => false} loaded ready long header={null} footer={null} />
+        </div>
+      </VirtuosoMockContext.Provider>,
+    ));
+    await act(async () => { await vi.advanceTimersByTimeAsync(20); });
+    const listEl = host.querySelector(".virtual-history");
+    expect(listEl).toBeTruthy();
+
+    // Scroll once and verify save hasn't run immediately before 50ms, then flushes on unmount.
+    const posSpy = vi.spyOn(Map.prototype, "set");
+    const savedCalls = () => posSpy.mock.calls.filter(([k]) => k === "s-deb").length;
+    const callsBefore = savedCalls();
+    await act(async () => {
+      scroller.current!.scrollTop = 300;
+      scroller.current!.dispatchEvent(new Event("scroll"));
+    });
+    expect(savedCalls()).toBe(callsBefore);
+    await act(async () => { root!.unmount(); });
+    expect(savedCalls()).toBeGreaterThan(callsBefore);
+  } finally {
+    bounds.mockRestore();
+    vi.useRealTimers();
+  }
+});

@@ -7,8 +7,11 @@ import type { Tone } from "./model";
 import type { Remote } from "./remote";
 import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, CloudOff, LoaderCircle, WifiOff, X } from "./icons";
 
-export function useRemote(remote: Remote) {
-  useSyncExternalStore(remote.subscribe, remote.snapshot);
+const NOOP_SUB = () => () => {};
+const NOOP_SNAP = () => 0;
+
+export function useRemote(remote?: Remote) {
+  useSyncExternalStore(remote?.subscribe ?? NOOP_SUB, remote?.snapshot ?? NOOP_SNAP);
 }
 
 /** Re-renders every ms, for countdowns and relative times. */

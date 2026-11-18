@@ -6,11 +6,20 @@ import { t as message } from "../i18n";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { VirtuosoMockContext } from "react-virtuoso";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { create } from "@bufbuild/protobuf";
 import { DemoRemote } from "../dev/demo";
+import {
+  SessionHeaderViewSchema,
+  SessionTimelineItemSchema,
+  SessionTimelineViewSchema,
+  SessionToolStatus,
+  SessionViewModelSchema,
+  type SessionTimelineItem,
+} from "../gen/remoteagent/core/v1/session_view_pb";
 import { EventSchema } from "../gen/remoteagent/v1/event_pb";
-import { SessionPage } from "./Session";
+import { patchSyncState } from "../test/remote-fixture";
+import { SessionPage, SessionScreenView } from "./Session";
 import { followsEnd, NEAR_END, type Scrolled } from "./scroll-follow";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -245,5 +254,254 @@ describe("sending from far up", () => {
     });
     await act(async () => { host.querySelector<HTMLButtonElement>(`button[aria-label="${message("composer.send")}"]`)!.click(); });
     expect(top).toBe(2200);
+  });
+});
+
+describe("long-session cold load, memo reactivity, and key-based unseen badge", () => {
+  let root: Root | undefined;
+  let host: HTMLElement | undefined;
+  const remotes: DemoRemote[] = [];
+  afterEach(() => {
+    act(() => root?.unmount());
+    host?.remove();
+    root = undefined;
+    host = undefined;
+    for (const r of remotes.splice(0)) r.dispose();
+    vi.useRealTimers();
+  });
+
+  function makeVm(
+    sid: string,
+    items: SessionTimelineItem[],
+    tl: Partial<{
+      loaded: boolean;
+      awaitingCache: boolean;
+      backfilling: boolean;
+      fetching: boolean;
+      hasGap: boolean;
+      hasEarlier: boolean;
+      anchorItemId: string;
+      windowLastSeq: bigint;
+    }> = {},
+    computerOnline = true,
+  ) {
+    return create(SessionViewModelSchema, {
+      sessionId: sid,
+      header: create(SessionHeaderViewSchema, {
+        found: true,
+        title: { literal: "Bench" },
+        computerName: { literal: "Mac" },
+        computerOnline,
+      }),
+      timeline: create(SessionTimelineViewSchema, {
+        items,
+        loaded: tl.loaded ?? false,
+        awaitingCache: tl.awaitingCache ?? false,
+        backfilling: tl.backfilling ?? false,
+        fetching: tl.fetching ?? false,
+        hasGap: tl.hasGap ?? false,
+        hasEarlier: tl.hasEarlier ?? false,
+        anchorItemId: tl.anchorItemId ?? "",
+        windowLastSeq: tl.windowLastSeq ?? 0n,
+      }),
+    });
+  }
+
+  async function renderView(r: DemoRemote, vm: ReturnType<typeof makeVm>, onScheduleRevealed = () => undefined) {
+    if (!root) {
+      host = document.createElement("div");
+      document.body.append(host);
+      root = createRoot(host);
+    }
+    await act(async () =>
+      root!.render(
+        <VirtuosoMockContext.Provider value={{ viewportHeight: 400, itemHeight: 50 }}>
+          <SessionScreenView
+            key={vm.sessionId}
+            vm={vm}
+            wide={false}
+            remote={r}
+            onBack={() => undefined}
+            draft=""
+            onDraft={() => undefined}
+            onSend={() => undefined}
+            onSubmitCommand={() => undefined}
+            onAbandonCommand={() => undefined}
+            onDismissOutgoing={() => undefined}
+            onRestoreOutgoing={() => undefined}
+            onLoadEarlier={() => undefined}
+            onExpandGroup={() => undefined}
+            onScheduleRevealed={onScheduleRevealed}
+          />
+        </VirtuosoMockContext.Provider>,
+      ),
+    );
+  }
+
+  const msgItem = (seq: bigint, text: string) =>
+    create(SessionTimelineItemSchema, {
+      id: `e${seq}`,
+      seq,
+      endSeq: seq,
+      kind: { case: "agentMessage", value: { markdown: text } },
+    });
+
+  it("uses virtual list immediately during backfilling without placeholder blanking, and protects needFullCache", async () => {
+    const r = DemoRemote.create(new URLSearchParams(), async () => undefined);
+    remotes.push(r);
+    r.start();
+
+    const tail = [msgItem(99n, "tail-1"), msgItem(100n, "tail-2")];
+    await renderView(r, makeVm("s-cold", tail, { backfilling: true, loaded: false }));
+    // Virtual list mounts immediately while backfilling is true (not plain list).
+    expect(host!.querySelector(".virtual-history")).toBeTruthy();
+    expect(host!.querySelector("[data-history-index]")).toBeNull();
+
+    // Returning to a scrolled-up session waits during backfilling and empty cache, shows offline cache, and stays ready on reconnect.
+    const r2 = DemoRemote.create(new URLSearchParams(), async () => undefined);
+    remotes.push(r2);
+    r2.start();
+    r2.scroll.set("s-up", { top: 400, stick: false });
+    patchSyncState(r2, { conn: "offline", listed: true });
+
+    await renderView(r2, makeVm("s-up", [], { awaitingCache: false, fetching: true }));
+    expect(host!.querySelector(".body.chat")!.classList.contains("mo-hold")).toBe(true);
+
+    await renderView(r2, makeVm("s-up", tail, { backfilling: true, fetching: false }));
+    expect(host!.querySelector(".body.chat")!.classList.contains("mo-hold")).toBe(true);
+
+    // Offline with backfilling finished and cached rows -> reveals instead of blanking.
+    await renderView(r2, makeVm("s-up", tail, { backfilling: false, fetching: false, hasGap: true }));
+    expect(host!.querySelector(".virtual-history")).toBeTruthy();
+
+    // Reconnecting (fetching=true) must never flip ready back to false / HistoryPlaceholder.
+    await act(async () => { patchSyncState(r2, { conn: "online", listed: true }); });
+    await renderView(r2, makeVm("s-up", tail, { backfilling: false, fetching: true, hasGap: true }));
+    expect(host!.querySelector(".virtual-history")).toBeTruthy();
+
+    // Short cached session with hasGap=true on reconnect stays plain list (does not tear down to Virtuoso).
+    await renderView(r2, makeVm("s-up-short", tail, { loaded: true, hasGap: false }));
+    expect(host!.querySelector("[data-history-index]")).toBeTruthy();
+    await renderView(r2, makeVm("s-up-short", tail, { loaded: false, hasGap: true, fetching: true }));
+    expect(host!.querySelector("[data-history-index]")).toBeTruthy();
+    expect(host!.querySelector(".virtual-history")).toBeNull();
+  });
+
+  it("re-renders memoized ChatBody and TimelineRow when remote.conn or remote.lostAt changes in place", async () => {
+    vi.useFakeTimers();
+    const r = DemoRemote.create(new URLSearchParams(), async () => undefined);
+    remotes.push(r);
+    r.start();
+    patchSyncState(r, { conn: "offline", listed: true });
+    const base = 1_700_000_000_000;
+    const setLostAt = (ms: number) => {
+      (r as unknown as { syncStateView: { disconnectedAtMs: bigint } }).syncStateView.disconnectedAtMs = BigInt(ms);
+    };
+    setLostAt(base + 5_000);
+
+    const runningTool = create(SessionTimelineItemSchema, {
+      id: "e1",
+      seq: 1n,
+      endSeq: 1n,
+      kind: {
+        case: "toolCall",
+        value: {
+          title: "rg foo",
+          callId: "c1",
+          status: SessionToolStatus.RUNNING,
+          sinceMs: BigInt(base),
+        },
+      },
+    });
+    const vm = makeVm("s-memo", [runningTool], { loaded: true }, false);
+    await renderView(r, vm);
+    expect(host!.textContent).toContain("0:05");
+
+    // In-place mutation of remote.lostAt + remote.touch() updates memoized TimelineRow without new vm reference.
+    setLostAt(base + 12_000);
+    await act(async () => { (r as unknown as { touch(): void }).touch(); });
+    expect(host!.textContent).toContain("0:12");
+
+    // In-place mutation of remote.conn updates HistoryOpening inside memoized ChatBody without new vm reference.
+    const emptyWait = makeVm("s-memo-wait", [], { awaitingCache: true, loaded: false });
+    await renderView(r, emptyWait);
+    await act(async () => { await vi.advanceTimersByTimeAsync(5100); });
+    expect(host!.textContent).not.toContain(message("session.opening_slow"));
+    await act(async () => { patchSyncState(r, { conn: "online", listed: true }); });
+    expect(host!.textContent).toContain(message("session.opening_slow"));
+  });
+
+  it("tracks unseen badge accurately across ToolGroup merges, scheduleFocus jumps, and batch arrivals", async () => {
+    const r = DemoRemote.create(new URLSearchParams(), async () => undefined);
+    remotes.push(r);
+    r.start();
+    // Saved non-stick scroll so ChatBody initializes with stick=false while rows are present.
+    r.scroll.set("s-badge", { top: 0, stick: false });
+
+    const c1Running = create(SessionTimelineItemSchema, {
+      id: "e1",
+      seq: 1n,
+      endSeq: 1n,
+      kind: { case: "toolCall", value: { title: "ls", callId: "c1", status: SessionToolStatus.RUNNING } },
+    });
+    await renderView(r, makeVm("s-badge", [c1Running], { loaded: true, windowLastSeq: 1n }));
+    expect(host!.querySelector("button.newmsg")).toBeNull();
+
+    // 1) Running tail tool c1 completes (id shifts e1 -> e2) and c2 folds into ToolGroup -> still 0 unseen!
+    const grp = create(SessionTimelineItemSchema, {
+      id: "e2",
+      seq: 2n,
+      endSeq: 4n,
+      kind: {
+        case: "toolGroup",
+        value: {
+          calls: [
+            { title: "ls", callId: "c1", status: SessionToolStatus.OK },
+            { title: "pwd", callId: "c2", status: SessionToolStatus.OK },
+          ],
+        },
+      },
+    });
+    await renderView(r, makeVm("s-badge", [grp], { loaded: true, windowLastSeq: 4n }));
+    expect(host!.querySelector("button.newmsg")).toBeNull();
+
+    // 2) Batch arrival of a new 3-tool ToolGroup + 1 AgentMessage counts 2 rows (1 group + 1 message), not 4.
+    const grp2 = create(SessionTimelineItemSchema, {
+      id: "e5",
+      seq: 5n,
+      endSeq: 10n,
+      kind: {
+        case: "toolGroup",
+        value: {
+          calls: [
+            { title: "a", callId: "c3", status: SessionToolStatus.OK },
+            { title: "b", callId: "c4", status: SessionToolStatus.OK },
+            { title: "c", callId: "c5", status: SessionToolStatus.OK },
+          ],
+        },
+      },
+    });
+    const m1 = msgItem(11n, "done");
+    await renderView(r, makeVm("s-badge", [grp, grp2, m1], { loaded: true, windowLastSeq: 11n }));
+    expect(host!.querySelector("button.newmsg")?.textContent).toContain(message("session.new_messages", { count: 2 }));
+
+    // 3) scheduleFocus jump on mount must not seed seenWaterSeq at the mid-history anchor (seq 10) and inflate badge on return to tail.
+    const r3 = DemoRemote.create(new URLSearchParams(), async () => undefined);
+    remotes.push(r3);
+    r3.start();
+    r3.scroll.set("s-sched", { top: 0, stick: false });
+    const anchored = Array.from({ length: 10 }, (_, i) => msgItem(BigInt(i + 1), `old ${i + 1}`));
+    let cleared = false;
+    await renderView(
+      r3,
+      makeVm("s-sched", anchored, { loaded: true, anchorItemId: "e5", windowLastSeq: 10n }),
+      () => { cleared = true; },
+    );
+    expect(cleared).toBe(true);
+    const tail = Array.from({ length: 10 }, (_, i) => msgItem(BigInt(41 + i), `tail ${41 + i}`));
+    await renderView(r3, makeVm("s-sched", tail, { loaded: true, windowLastSeq: 50n }));
+    expect(host!.querySelector("button.newmsg")).toBeNull();
+    await renderView(r3, makeVm("s-sched", [...tail, msgItem(51n, "new 51")], { loaded: true, windowLastSeq: 51n }));
+    expect(host!.querySelector("button.newmsg")?.textContent).toContain(message("session.new_messages", { count: 1 }));
   });
 });

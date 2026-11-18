@@ -4003,5 +4003,65 @@
     "path": "android/app/src/main/res/values-night/themes.xml",
     "literal": "#FF0C0C0E",
     "reason": "Android XML style attribute value for dark windowBackground splash color, not user-facing text."
+  },
+  {
+    "path": "web/src/markdown.tsx",
+    "literal": "‐-‧ -〿＀-￯]+)|(\\$\\$?|\\\\\\[|\\\\\\()/gu; const spanCache = new Map",
+    "reason": "Lexical JSX scanner false positive: TypeScript generic type arguments between angle brackets, not rendered text."
+  },
+  {
+    "path": "web/src/markdown.tsx",
+    "literal": "(); const blockCache = new Map",
+    "reason": "Lexical JSX scanner false positive: TypeScript generic type arguments between angle brackets, not rendered text."
+  },
+  {
+    "path": "web/src/markdown.tsx",
+    "literal": "(); const MAX_SPAN_CACHE = 1000; const MAX_BLOCK_CACHE = 400; function cacheGet",
+    "reason": "Lexical JSX scanner false positive: TypeScript generic type arguments between angle brackets, not rendered text."
+  },
+  {
+    "path": "web/src/markdown.tsx",
+    "literal": "(cache: Map",
+    "reason": "Lexical JSX scanner false positive: TypeScript generic type arguments between angle brackets, not rendered text."
+  },
+  {
+    "path": "web/src/views/Session.tsx",
+    "literal": "plan",
+    "reason": "Internal sheet/tab discriminant ('plan'), never rendered as product text."
+  },
+  {
+    "path": "web/src/views/Session.tsx",
+    "literal": "= []; const LOCAL_SCROLL = new WeakMap",
+    "reason": "Lexical JSX scanner false positive: TypeScript generic type arguments between angle brackets, not rendered text."
+  },
+  {
+    "path": "web/src/views/Session.tsx",
+    "literal": "setTab(canSplit ? \"split\" : \"term\"), [canSplit]); const [sheet, setSheet] = useState",
+    "reason": "Lexical JSX scanner false positive: TypeScript generic type arguments between angle brackets, not rendered text."
+  },
+  {
+    "path": "web/src/views/Session.tsx",
+    "literal": "host.clearScheduleFocus(sessionId), [host, sessionId]); return (",
+    "reason": "Lexical JSX scanner false positive: JavaScript arrow/comparison '>' and TypeScript/JSX '<', not rendered text."
+  },
+  {
+    "path": "web/src/views/Session.tsx",
+    "literal": "getScrollStore().get(sid), [sid]); const needFullCache = !!(saved && !saved.stick); const stick = useRef(saved ? saved.stick : true); const lastScroll = useRef",
+    "reason": "Lexical JSX scanner false positive: TypeScript generic type arguments between angle brackets, not rendered text."
+  },
+  {
+    "path": "web/src/views/Session.tsx",
+    "literal": "0 ? itemEndSeq(rows[count - 1].item) : 0n; const focusKey = timeline?.anchorItemId || undefined; const protocolNotice = header?.protocolMismatch ? renderText(header.protocolMismatchText) : \"\"; const historyNotice = renderText(timeline?.historyNotice); const fetchError = renderText(timeline?.fetchError); const historyError = renderText(timeline?.error); const awaitingApprovalTool = !!(dock?.hasItem && dock.kind === SessionDockKind.APPROVAL); const readyRef = useRef",
+    "reason": "Lexical JSX scanner false positive: JavaScript comparison '>' and TypeScript generic type arguments between angle brackets, not rendered text."
+  },
+  {
+    "path": "web/src/views/Session.tsx",
+    "literal": "(undefined); const seenKeys = useRef",
+    "reason": "Lexical JSX scanner false positive: TypeScript generic type arguments between angle brackets, not rendered text."
+  },
+  {
+    "path": "web/src/views/Session.tsx",
+    "literal": "), [sid, online, remote, remote?.lostAt, awaitingApprovalTool, mname, hasSharedFiles, locale, onTerminal, localAttachments, onRestoreText, onExpandGroup], ); return (",
+    "reason": "Lexical JSX scanner false positive: comparison operator '>' earlier on line/block and JSX opening tag '<', not rendered text."
   }
 ]

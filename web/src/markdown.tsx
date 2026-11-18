@@ -261,9 +261,39 @@ function bareUrl(raw: string): string {
 const inlineRe =
   /(`+)|\*\*((?=[^*\n]|\*[^*\n])[^*\n]*(?:\*[^*\n]+\*[^*\n]*)*)\*\*|(?<![\w*])\*([^*\s][^*\n]*?)\*(?![\w*])|(?<![\p{L}\p{N}_])_([^_\s][^_\n]*?)_(?![\p{L}\p{N}_])|~~([^~\n]+)~~|(\[)|(<https?:\/\/)|(?<![\w/])(https?:\/\/[^\s<>‐-‧　-〿＀-￯]+)|(\$\$?|\\\[|\\\()/gu;
 
+const spanCache = new Map<string, Span[]>();
+const blockCache = new Map<string, Block[]>();
+const MAX_SPAN_CACHE = 1000;
+const MAX_BLOCK_CACHE = 400;
+
+function cacheGet<V>(cache: Map<string, V>, key: string): V | undefined {
+  const hit = cache.get(key);
+  if (hit !== undefined) {
+    cache.delete(key);
+    cache.set(key, hit);
+  }
+  return hit;
+}
+
+function cacheSet<V>(cache: Map<string, V>, key: string, value: V, limit: number): void {
+  cache.delete(key);
+  cache.set(key, value);
+  if (cache.size > limit) cache.delete(cache.keys().next().value!);
+}
+
 /** Inline Markdown: `code`, **bold**, *italic*, _italic_, ~~struck~~,
  * [links](target), <https://autolinks> and bare https:// URLs. */
 export function inlineSpans(text: string): Span[] {
+  if (text.length <= 2048) {
+    const cached = cacheGet(spanCache, text);
+    if (cached) return cached;
+  }
+  const res = parseInlineSpans(text);
+  if (text.length <= 2048) cacheSet(spanCache, text, res, MAX_SPAN_CACHE);
+  return res;
+}
+
+function parseInlineSpans(text: string): Span[] {
   const out: Span[] = [];
   const push = (v: string) => {
     if (!v) return;
@@ -582,6 +612,16 @@ export function mdBlocks(md: string, depth = 0): Block[] {
   // CLI output can contain attacker-controlled file content. Deeply nested
   // quotes/lists must not overflow the parser or React render stack.
   if (depth >= 32) return [{ kind: "text", text: md }];
+  if (depth === 0 && md.length <= 8192) {
+    const cached = cacheGet(blockCache, md);
+    if (cached) return cached;
+  }
+  const blocks = parseMdBlocks(md, depth);
+  if (depth === 0 && md.length <= 8192) cacheSet(blockCache, md, blocks, MAX_BLOCK_CACHE);
+  return blocks;
+}
+
+function parseMdBlocks(md: string, depth: number): Block[] {
   const lines = md.replace(/\r\n?/g, "\n").split("\n");
   const nextNonBlank = new Array<number>(lines.length);
   let nextLine = lines.length;
