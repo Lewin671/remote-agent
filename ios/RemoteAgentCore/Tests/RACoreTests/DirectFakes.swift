@@ -11,6 +11,7 @@ final class FakeRtcNet: @unchecked Sendable {
     var stunWorks = true { didSet {} }
     var blackhole = false
     var failCreate = false
+    var autoOpenChannels = true
     /// Explicit close barrier so tests can pause SDK shutdown without sleeping on the cooperative pool.
     private var closeGate: DispatchSemaphore?
     private var _closeEntered = 0
@@ -117,7 +118,9 @@ final class FakePC: RtcPeerConnection, @unchecked Sendable {
         lock.withLock { connected = true }; other.lock.withLock { other.connected = true }
         for pc in [self, other] {
             pc.listener.onConnectionStateChange(.connected)
-            for c in pc.channels.values { c.set(.open) }
+            if net.autoOpenChannels {
+                for c in pc.channels.values { c.set(.open) }
+            }
         }
     }
     func fail() {

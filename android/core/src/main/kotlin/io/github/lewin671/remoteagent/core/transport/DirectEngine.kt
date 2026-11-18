@@ -659,6 +659,7 @@ internal class DirectEngine(
                 },
                 frame = { raw, use -> frame(p, raw, use) },
                 capability = { opened -> capability(p, opened) },
+                open = { use -> channelOpen(p, use) },
                 clock = clock,
                 monotonic = monotonic,
                 dispatcher = dispatcher,
@@ -722,6 +723,14 @@ internal class DirectEngine(
         val path = peer?.paths?.get(if (hint is RouteHint.Read) 1 else 2)
         val owner = routingOwners.getOrPut(id) { Any() }
         RouteTracker(id, hint, peer, path, lifetime, owner)
+    }
+
+    private fun channelOpen(p: PeerEntry, use: Int) {
+        if (use != 1) return
+        val syncCall = synchronized(stateLock) {
+            if (peers[p.id] === p) sendSubscriptionLocked(p) else null
+        }
+        syncCall?.let { (peerEntry, body) -> peerEntry.session.sendControl(15L, body) }
     }
 
     private fun capability(p: PeerEntry, opened: Wire.Opened) {

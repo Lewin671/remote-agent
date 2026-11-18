@@ -45,6 +45,7 @@ export interface ChannelOptions {
   candidate: (candidate: RTCIceCandidateInit | null) => void;
   state: (state: RTCPeerConnectionState) => void;
   frame: (raw: w.Bytes) => void; closed: () => void;
+  open?: () => void;
   probe?: (milliseconds: number) => void;
   factory?: (config: RTCConfiguration) => RTCPeerConnection;
   /** Display-only record of this peer connection (direct-diag.ts); never read by control flow. */
@@ -84,7 +85,7 @@ export class DirectChannel {
     const wake = () => { for (const listener of [...this.listeners]) listener(); };
     const diag = options.diag;
     this.data.onbufferedamountlow = wake;
-    this.data.onopen = () => { diag?.state("dc", "open"); wake(); };
+    this.data.onopen = () => { diag?.state("dc", "open"); wake(); options.open?.(); };
     this.data.onclose = () => { diag?.state("dc", "closed"); this.close(); };
     this.probe.onclose = () => this.close();
     this.data.onerror = this.probe.onerror = () => this.close();

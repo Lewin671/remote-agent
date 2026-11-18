@@ -15,6 +15,7 @@ export interface DirectSessionOptions {
   ready: (use: number, channel: DirectChannel) => void;
   closed: (use?: number) => void; frame: (raw: w.Bytes, use: number) => void;
   capability: (opened: w.Opened) => void;
+  open?: (use: number) => void;
   probe?: (use: number, milliseconds: number) => void;
   factory?: (config: RTCConfiguration) => RTCPeerConnection;
   /** Display-only record of this round (direct-diag.ts); never read by control flow. */
@@ -247,6 +248,7 @@ export class DirectSession {
         }); },
         frame: raw => { if (this.active && current()) this.options.frame(raw, index + 1); },
         closed: () => { if (current()) this.options.closed(index + 1); },
+        open: () => { if (this.active && current()) this.options.open?.(index + 1); },
         probe: elapsed => { if (this.active && current()) this.options.probe?.(index + 1, elapsed); },
       }); p.channel = channel; this.options.chosen(); return true;
     } catch { p.diag?.block(); return false; }

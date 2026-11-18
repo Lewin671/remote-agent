@@ -210,4 +210,31 @@ final class Flag: @unchecked Sendable { private let l = NSLock(); private var v 
         let without = try Remote(account: account, http: HTTP(), securityStorage: MemorySecurityStore(rig.record))
         #expect(without.direct == nil && !without.directSupported)
     }
+
+    @Test func sendsControl15OnceWhenDataChannelOpensAfterCapabilities() async throws {
+        let rig = try EngineRig(); defer { rig.close() }
+        rig.net.autoOpenChannels = false
+        rig.engine.setWatchedSessions([rig.machineId: ["sess-delayed"]])
+        await rig.start()
+
+        // Wait until use=1 PeerConnection is connected & Confirm-ready while dc0 is still connecting.
+        #expect(await eventually {
+            rig.net.all.count >= 2 && rig.paths[1] != nil && rig.engine.ready(rig.machineId, .read) == false
+        })
+        rig.announceEventCapabilities()
+        rig.announce()
+        // Wait deterministically until Control 14 queued behind Control 1 has been processed on receiveChain.
+        #expect(await eventually {
+            rig.engine.capabilities(rig.machineId) != nil
+        })
+        #expect(rig.control15Subs.isEmpty, "Control 15 must wait while dc0 is still connecting")
+
+        // Ensure client's Confirm has settled path 1 before opening dc0, or opening dc0 completes subscription
+        // regardless of Confirm/open order once both have happened.
+        for pc in rig.net.all {
+            for ch in pc.channels.values { ch.set(.open) }
+        }
+        #expect(await eventually { rig.control15Subs.count == 1 })
+        #expect(rig.control15Subs == [["sess-delayed"]])
+    }
 }

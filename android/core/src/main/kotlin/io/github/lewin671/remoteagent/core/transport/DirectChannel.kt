@@ -109,6 +109,7 @@ internal class DirectChannelOptions(
     val state: (RtcPeerState) -> Unit,
     val frame: (ByteArray) -> Unit,
     val closed: () -> Unit,
+    val open: (() -> Unit)? = null,
     val probe: ((Double) -> Unit)? = null,
     val clock: () -> Long = System::currentTimeMillis,
     val monotonic: () -> Long = ::monotonicMillis,
@@ -217,6 +218,7 @@ internal class DirectChannel(private val options: DirectChannelOptions) {
                     if (s == RtcChannelState.OPEN) {
                         if (channelAt == 0L) channelAt = options.clock()
                         wake.trySend(Unit)
+                        options.open?.invoke()
                     } else if (s == RtcChannelState.CLOSED) closeWhy("dc0_closed")
                 }
 

@@ -399,6 +399,7 @@ final class DirectEngine: @unchecked Sendable {
             closed: { [weak self, weak p] use in self?.pathClosed(p, id, use) },
             frame: { [weak self, weak p] raw, use in if let self, let p { self.frame(p, raw, use) } },
             capability: { [weak self, weak p] opened in if let self, let p { self.capability(p, opened) } },
+            open: { [weak self, weak p] use in if let self, let p { self.channelOpen(p, use) } },
             clock: clock)
         guard let session = try? DirectSession(options) else { return nil }
         p.session = session
@@ -513,6 +514,14 @@ final class DirectEngine: @unchecked Sendable {
     }
 
     // MARK: capabilities and frames
+    private func channelOpen(_ p: Peer, _ use: Int) {
+        guard use == 1 else { return }
+        let syncCall: (Peer, W.Bytes)? = lock.withLock {
+            guard peers[p.id] === p else { return nil }
+            return sendSubscriptionLocked(p)
+        }
+        if let (peer, body) = syncCall { peer.session.sendControl(15, body) }
+    }
     private func capability(_ p: Peer, _ opened: W.Opened) {
         var syncCall: (Peer, W.Bytes)?
         let ok: Bool = lock.withLock {

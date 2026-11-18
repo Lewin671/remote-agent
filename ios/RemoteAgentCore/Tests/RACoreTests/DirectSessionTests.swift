@@ -115,6 +115,7 @@ final class SessionPair: @unchecked Sendable {
 
     @Test func control10UnsupportedForControl15DoesNotClosePCsOrFailSession() async throws {
         let pair = try SessionPair(deadlineMs: 5_000)
+        defer { pair.close() }
         await pair.clientSession.start()
         #expect(await eventually { pair.clientPaths.count == 2 && pair.machinePaths.count == 2 })
 
@@ -132,6 +133,5 @@ final class SessionPair: @unchecked Sendable {
         #expect(pair.clientSession.active)
         #expect(pair.clientSession.failure == nil)
         #expect(pair.clientClosed.isEmpty)
-        pair.close()
     }
 }

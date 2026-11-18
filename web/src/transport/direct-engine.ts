@@ -431,6 +431,7 @@ export class DirectEngine {
       },
       frame: (raw, use) => this.frame(p, raw, use),
       capability: opened => this.capability(p, opened),
+      open: use => { if (use === 1 && this.peers.get(id) === p) this.sendSubscription(p); },
     });
     this.sessions.set(w.hex(connection), p);
     this.notify();

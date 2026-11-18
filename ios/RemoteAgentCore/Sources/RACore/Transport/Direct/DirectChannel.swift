@@ -18,6 +18,7 @@ struct DirectChannelOptions: Sendable {
     var state: @Sendable (RtcPeerState) -> Void
     var frame: @Sendable (PeerWire.Bytes) -> Void
     var closed: @Sendable () -> Void
+    var open: (@Sendable () -> Void)? = nil
     var probe: (@Sendable (Double) -> Void)?
     var clock = DirectClock()
 }
@@ -110,7 +111,7 @@ final class DirectChannel: @unchecked Sendable {
         if state == .failed || state == .closed || state == .disconnected { close() }
     }
     fileprivate func dataChanged() {
-        if data.state == .open { wake.signal() } else if data.state == .closed { close() }
+        if data.state == .open { wake.signal(); options.open?() } else if data.state == .closed { close() }
     }
     fileprivate func dataDrained() { if data.bufferedAmount <= 32 << 10 { wake.signal() } }
     fileprivate func dataMessage(_ raw: Data) {

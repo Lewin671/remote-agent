@@ -25,6 +25,7 @@ struct DirectSessionOptions: Sendable {
     var closed: @Sendable (Int?) -> Void
     var frame: @Sendable (PeerWire.Bytes, Int) -> Void
     var capability: @Sendable (PeerWire.Opened) -> Void
+    var open: (@Sendable (Int) -> Void)? = nil
     var probe: (@Sendable (Int, Double) -> Void)?
     var clock = DirectClock()
 }
@@ -361,6 +362,7 @@ final class DirectSession: @unchecked Sendable {
                 },
                 frame: { [weak self] raw in if let self, self.active, current() { self.options.frame(raw, index + 1) } },
                 closed: { [weak self] in if let self, current() { self.options.closed(index + 1) } },
+                open: { [weak self] in self?.queued { [weak self] in if let self, self.active, current() { self.options.open?(index + 1) } } },
                 probe: { [weak self] ms in if let self, self.active, current() { self.options.probe?(index + 1, ms) } },
                 clock: o.clock))
             box.value = channel

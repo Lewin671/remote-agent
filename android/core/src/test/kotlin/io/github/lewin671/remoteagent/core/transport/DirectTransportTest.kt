@@ -127,6 +127,7 @@ private class FakeRtcConnection(
     private val listener: RtcPeerListener,
     private val byUfrag: MutableMap<String, FakeRtcConnection>,
     private val srflx: Boolean = true,
+    private val autoOpenChannels: Boolean = true,
 ) : RtcPeerConnection {
     val ufrag = "ufrag$roleTag$id"
     val localChannels = HashMap<Int, FakeDataChannel>()
@@ -149,7 +150,7 @@ private class FakeRtcConnection(
         val ch = FakeDataChannel(id, listener, { remotePeer?.localChannels?.get(id) })
         localChannels[id] = ch
         val remote = remotePeer
-        if (connState == RtcPeerState.CONNECTED && remote?.localChannels?.get(id) != null) {
+        if (autoOpenChannels && connState == RtcPeerState.CONNECTED && remote?.localChannels?.get(id) != null) {
             ch.markOpen()
             remote.localChannels[id]?.markOpen()
         }
@@ -211,6 +212,7 @@ private class FakeRtcConnection(
         if (closed) return
         connState = RtcPeerState.CONNECTED
         listener.onConnectionStateChange(RtcPeerState.CONNECTED)
+        if (!autoOpenChannels) return
         val remote = remotePeer
         for ((cid, ch) in localChannels.entries.toList()) {
             val peerCh = remote?.localChannels?.get(cid)
@@ -251,13 +253,14 @@ private class FakeRtcBridge {
 
     /** False: the connections gather host candidates only, as a pair does whose STUN is unreachable. */
     @Volatile var srflx = true
+    @Volatile var autoOpenChannels = true
 
     val phoneFactory = RtcFactory { _, listener ->
-        FakeRtcConnection(idGen.getAndIncrement(), "p", listener, byUfrag, srflx).also { phonePcs += it }
+        FakeRtcConnection(idGen.getAndIncrement(), "p", listener, byUfrag, srflx, autoOpenChannels).also { phonePcs += it }
     }
 
     val daemonFactory = RtcFactory { _, listener ->
-        FakeRtcConnection(idGen.getAndIncrement(), "d", listener, byUfrag, srflx).also { daemonPcs += it }
+        FakeRtcConnection(idGen.getAndIncrement(), "d", listener, byUfrag, srflx, autoOpenChannels).also { daemonPcs += it }
     }
 }
 
@@ -314,13 +317,15 @@ private class DirectBridgeDaemon(
 
     val relayCommands = CopyOnWriteArrayList<Command>()
     val directCommands = CopyOnWriteArrayList<Command>()
+    val receivedControl15 = CopyOnWriteArrayList<List<String>>()
     var chunkSizeBytes = 512 shl 10
     var onCommand: (Command) -> Unit = {}
+    @Volatile var advertiseEventPush = false
     @Volatile var dropDirectOnNextPut = false
     var onDropDirect: () -> Unit = {}
 
     private var daemonSession: DirectSession? = null
-    private val paths = HashMap<Int, DirectChannel>()
+    val paths = java.util.concurrent.ConcurrentHashMap<Int, DirectChannel>()
     private val budget = DirectBudget()
     private val daemonInstance = ByteArray(16) { 0x11 }
     private val daemonBoot = ByteArray(32) { 0x22 }
@@ -409,7 +414,13 @@ private class DirectBridgeDaemon(
         val peerId = Wire.Identity(Wire.utf8(senderIdStr), 1L, ByteArray(0), ByteArray(0), phoneMem.ed, phoneMem.x, null, null)
         val codec = Wire(Wire.utf8(r.pin.account), r.pin.domain, DeviceSecurity.stateHash(r.head), r.head.core.epoch.toLong())
 
-        val opened = runCatching { codec.open(raw, peerId, selfId, clock()) }.getOrNull()
+        val openPeer = daemonSession?.peer ?: peerId
+        val opened = runCatching { codec.open(raw, openPeer, selfId, clock()) }.getOrNull()
+        if (opened != null && opened.ctx.cls == 2L && opened.type == 15L) {
+            runCatching { DirectEventSubscription.parseFrom(opened.payload) }.getOrNull()?.let { sub ->
+                receivedControl15 += sub.sessionIdsList.toList()
+            }
+        }
         if (opened != null && opened.ctx.cls == 1L && opened.type == 1L) {
             peerId.instance = opened.ctx.senderInstance.copyOf()
             peerId.boot = opened.ctx.senderBoot.copyOf()
@@ -497,6 +508,7 @@ private class DirectBridgeDaemon(
             Wire.b(1, ByteArray(16) { 4 }),
             Wire.u(2, 1L),
             Wire.u(2, 14L),
+            *(if (advertiseEventPush) arrayOf(Wire.u(2, 15L)) else emptyArray()),
             Wire.u(3, 1L),
             Wire.u(3, 9L),
             Wire.u(4, expires),
@@ -2108,6 +2120,59 @@ class DirectTransportTest {
         } finally {
             clientSession.close()
             daemonSession.close()
+        }
+    }
+
+    @Test
+    fun control15SentOnceWhenDataChannelOpensAfterCapabilities() = runBlocking {
+        val server = TestServer()
+        val http = Api.defaultHttp()
+        try {
+            val phone = newAuthorityAccount(ByteArray(32) { 1 }, server.url, http, server.setupToken)
+            val daemonAccount = approvedClient(phone, http, DeviceKind.DEVICE_KIND_MACHINE)
+            val clientAccount = approvedClient(phone, http, DeviceKind.DEVICE_KIND_CLIENT)
+            val nowMs = java.util.concurrent.atomic.AtomicLong(System.currentTimeMillis())
+            val bridge = FakeRtcBridge().also { it.autoOpenChannels = false }
+            val daemon = DirectBridgeDaemon(daemonAccount, server.url, http, { nowMs.get() }, bridge.daemonFactory).also {
+                it.advertiseEventPush = true
+            }
+            daemon.start()
+            val remote = Remote(
+                account = clientAccount,
+                http = http,
+                clock = { nowMs.get() },
+                securityStorage = TestSecurity.find(server.url)?.stores?.get(clientAccount.deviceId),
+                rtcFactory = bridge.phoneFactory,
+                directPrefs = InMemoryDirectPreferenceStore(),
+                stunUrls = emptyList(),
+            )
+            try {
+                remote.start()
+                remote.foregroundChanged(true)
+                remote.state.first { it.conn == ConnState.ONLINE && daemonAccount.deviceId in it.machines }
+                remote.syncSecurity()
+                remote.direct.setWatchedSessions(mapOf(daemonAccount.deviceId to listOf("sess-delayed")))
+                // Wait until both uses are DTLS-connected & Capabilities is sent while dc0 is still connecting.
+                awaitCondition("capabilities sent before dc0 opens", 5_000) {
+                    daemon.paths.containsKey(1) && daemon.paths.containsKey(2) &&
+                        remote.direct.capabilities(daemonAccount.deviceId) != null
+                }
+                assertTrue("Control 15 must not be sent while dc0 is still connecting", daemon.receivedControl15.isEmpty())
+
+                // Now complete SCTP handshake (open dc0 on client and daemon): triggers Control 15 immediately.
+                for (pc in bridge.phonePcs + bridge.daemonPcs) {
+                    pc.localChannels[0]?.markOpen()
+                }
+                awaitCondition("Control 15 arrives once after dc0 opens", 3_000) {
+                    daemon.receivedControl15.isNotEmpty()
+                }
+                assertEquals(listOf(listOf("sess-delayed")), daemon.receivedControl15.toList())
+            } finally {
+                remote.close()
+                daemon.close()
+            }
+        } finally {
+            server.close()
         }
     }
 }

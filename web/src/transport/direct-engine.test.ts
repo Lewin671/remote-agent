@@ -2,6 +2,7 @@
 import { afterEach, expect, test, vi } from "vitest";
 import { create, fromBinary, toBinary } from "@bufbuild/protobuf";
 import { EnvelopeSchema, HeaderSchema, PayloadKind } from "../gen/remoteagent/v1/envelope_pb";
+import { PeerFrameSchema } from "../gen/remoteagent/v1/relay_pb";
 import { CapabilitiesSchema, CapabilitySnapshotSchema, DirectEventSubscriptionSchema } from "../gen/remoteagent/v1/transport_pb";
 import { MachineCapabilitiesSchema } from "../gen/remoteagent/v1/capabilities_pb";
 import * as w from "./peer/wire";
@@ -9,6 +10,7 @@ import { DirectSession } from "./direct-session";
 import { DirectRouting } from "./direct-routing";
 import type { DirectChannel } from "./direct-channel";
 import { fixture, fixtureCodec } from "../test/peer/fixture";
+import { fakeRTC } from "../test/peer/fake-rtc";
 import { DirectEngine } from "./direct-engine";
 
 function readyEngine() {
@@ -410,8 +412,11 @@ test("proactive keepalive renews security before 20s window expires without inte
 });
 
 test("Control 15 subscription respects capabilities/readiness and routes PayloadKind.EVENT only when peer matches", async () => {
+  vi.useFakeTimers();
   const { engine, peer } = readyEngine();
+  try {
   vi.spyOn(engine as unknown as { refreshAndDiscover(): void }, "refreshAndDiscover").mockImplementation(() => {});
+  vi.spyOn(engine as unknown as { discover(): Promise<void> }, "discover").mockResolvedValue();
   const sendControl = vi.fn<(_type: number, _payload: w.Bytes) => Promise<void>>(async () => {});
   Object.assign(peer.session, { sendControl });
   Object.assign(peer, { snapshotSeq: 0n, downloadSeq: 0n });
@@ -484,4 +489,104 @@ test("Control 15 subscription respects capabilities/readiness and routes Payload
   frameFn(peer, mkEnv(PayloadKind.EVENT, "machine", "machine", 5n), 1);
 
   expect(received).toEqual([{ machineId: "machine", sessionId: "s1", seq: 5n }]);
+  } finally {
+    engine.close();
+    vi.useRealTimers();
+  }
+});
+
+test("sends Control 15 once when DataChannel opens after Capabilities", async () => {
+  vi.useFakeTimers();
+  const sdk = fakeRTC();
+  const self = await fixture("client", 1), peerPub = await fixture("machine", 2), codec = await fixtureCodec();
+  const machineId = w.text(peerPub.id);
+  vi.stubGlobal("RTCPeerConnection", function () {
+    const pc = sdk.factory();
+    return pc;
+  });
+  const engine = new DirectEngine({ server: "https://example.com", deviceId: "client", devicePrivate: {} as CryptoKey }, async () => {}, () => {});
+  try {
+    const control15Subs: string[][] = [];
+    const pendingOpens: Promise<void>[] = [];
+    const leg = {
+      ready: true,
+      send: vi.fn((raw: Uint8Array) => {
+        const frame = fromBinary(PeerFrameSchema, raw);
+        if (frame.kind.case !== "directedPeerFrame") return true;
+        const d = frame.kind.value;
+        const delivery = w.pb(
+          w.b(1, self.id),
+          w.b(2, new Uint8Array(d.toDevice)),
+          w.u(3, d.frameClass),
+          w.b(4, new Uint8Array(d.frameId)),
+          w.b(5, new Uint8Array(d.sealed)),
+        );
+        pendingOpens.push(
+          codec.openSent(delivery, self, peerPub, Date.now()).then((opened) => {
+            if (opened.context.cls === 2n && opened.type === 15) {
+              const sub = fromBinary(DirectEventSubscriptionSchema, opened.payload);
+              control15Subs.push(sub.sessionIds);
+            }
+          }),
+        );
+        return true;
+      }),
+    };
+    const peerRecord = { id: machineId, kind: 1, ed: new Uint8Array(32), x: new Uint8Array(32) };
+    Object.assign(engine, {
+      leg,
+      self,
+      codec,
+      head: "head",
+      freshUntil: Date.now() + 20_000,
+      record: { pin: { account: "acct", domain: new Uint8Array(32) }, member: peerRecord, states: [{ core: { epoch: 1n, members: [peerRecord] } }] },
+    });
+    vi.spyOn(engine as unknown as { discover(): Promise<void> }, "discover").mockResolvedValue();
+    engine.setWatchedSessions(new Map([[machineId, ["s-delayed"]]]));
+
+    const conn = new Uint8Array(16).fill(7);
+    const createdPeer = (engine as unknown as { create(p: w.Public, c: w.Bytes, d: number): unknown }).create(peerPub, conn, Date.now() + 10_000) as {
+      paths: Map<number, DirectChannel>;
+      session: DirectSession;
+      snapshotSeq: bigint;
+      downloadSeq: bigint;
+    };
+    // Build use=1 peer connection via DirectSession.makePC while dc0 stays "connecting".
+    const sessionPriv = createdPeer.session as unknown as { makePC(i: number): boolean; pcs: [{ channel: DirectChannel; gate: { peer: w.Public } }]; chain: Promise<void> };
+    sessionPriv.pcs[0].gate.peer = peerPub;
+    expect(sessionPriv.makePC(0)).toBe(true);
+    const channel = sessionPriv.pcs[0].channel;
+    Object.assign(channel, { confirmed: true });
+    createdPeer.paths.set(1, channel);
+    expect(channel.ready).toBe(false);
+
+    // Control 1 (Capabilities with type 15) arrives before dc0 opens.
+    const capsPayload = toBinary(CapabilitiesSchema, create(CapabilitiesSchema, {
+      controlTypes: [15],
+      expiresAtMs: BigInt(Date.now() + 30_000),
+      fileDownload: true,
+    }));
+    (engine as unknown as { capability(peer: unknown, opened: unknown): void }).capability(createdPeer, {
+      type: 1,
+      payload: capsPayload,
+      context: { seq: 1n },
+    });
+    await sessionPriv.chain;
+    await Promise.all(pendingOpens);
+    expect(leg.send).toHaveBeenCalledTimes(0);
+    expect(control15Subs).toEqual([]);
+
+    // Now SCTP finishes and dc0 opens -> triggers Control 15 once without waiting for 55s refresh.
+    const dc0 = sdk.pcs[0].channels[0];
+    dc0.readyState = "open";
+    dc0.onopen?.();
+    await sessionPriv.chain;
+    expect(leg.send).toHaveBeenCalledTimes(1);
+    await Promise.all(pendingOpens);
+    expect(control15Subs).toEqual([["s-delayed"]]);
+  } finally {
+    engine.close();
+    vi.unstubAllGlobals();
+    vi.useRealTimers();
+  }
 });

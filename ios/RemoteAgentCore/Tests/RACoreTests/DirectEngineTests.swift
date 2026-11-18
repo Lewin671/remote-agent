@@ -64,10 +64,11 @@ final class EngineRig: @unchecked Sendable {
     var engine: DirectEngine!
     var leg: FakeLeg!
     private let lock = NSLock()
-    private var sessions: [String: DirectSession] = [:], _connections: [W.Bytes] = [], _frames: [(Int, W.Bytes)] = [], controlSeq: UInt64 = 0
+    private var sessions: [String: DirectSession] = [:], _connections: [W.Bytes] = [], _frames: [(Int, W.Bytes)] = [], _control15Subs: [[String]] = [], controlSeq: UInt64 = 0
     var silent = false, replies = true
     var probes: Int { lock.withLock { _connections.count } }
     var machineFrames: [(Int, W.Bytes)] { lock.withLock { _frames } }
+    var control15Subs: [[String]] { lock.withLock { _control15Subs } }
     var changes = 0
     var prefs = MemoryDirectPreferences()
 
@@ -117,6 +118,11 @@ final class EngineRig: @unchecked Sendable {
         guard let outer = try? PBPeerFrame(serializedBytes: data), case .directedPeerFrame(let d)? = outer.kind else { return }
         let delivery = W.pb([W.b(1, W.utf8(clientId)), W.b(2, d.toDevice.map { $0 }), W.u(3, UInt64(d.frameClass.rawValue)), W.b(4, Array(d.frameID)), W.b(5, Array(d.sealed))])
         var peer = client()
+        if let activePeer = lock.withLock({ sessions.values.first?.peer }),
+           let o = try? codec.open(delivery, activePeer, machine, time.now), o.ctx.cls == 2, o.type == 15,
+           let sub = try? PBDirectEventSubscription(serializedBytes: Data(o.payload)) {
+            lock.withLock { _control15Subs.append(sub.sessionIds) }
+        }
         if let o = try? codec.open(delivery, peer, machine, time.now), o.ctx.cls == 1, o.type == 1 {
             let key = W.hex(o.ctx.connection)
             let existing = lock.withLock { sessions[key] }
@@ -175,6 +181,23 @@ final class EngineRig: @unchecked Sendable {
         var context = W.Context(machine.peer, peer, session.options.connection, 0, 1, controlSeq, time.now, 2)
         guard let raw = try? codec.seal(machine, peer, context, 14, Array((try? snapshot.serializedData()) ?? Data())) else { return }
         context.cls = 2
+        engine.receive(raw, from: leg)
+    }
+    /// A signed Control 1 Capabilities advertising Control 15 event push.
+    func announceEventCapabilities() {
+        guard let session = lock.withLock({ sessions.values.first }) else { return }
+        controlSeq += 1
+        let payload = W.pb([
+            W.b(1, W.random(16)),
+            W.u(2, 15),
+            W.u(3, 1),
+            W.u(4, time.now + 50_000),
+            W.u(5, 1),
+            W.u(6, 1_048_576),
+        ])
+        let peer = session.peer
+        let context = W.Context(machine.peer, peer, session.options.connection, 0, 1, controlSeq, time.now, 2)
+        guard let raw = try? codec.seal(machine, peer, context, 1, payload) else { return }
         engine.receive(raw, from: leg)
     }
     func envelope(_ request: String = newRequestId(), deadline: UInt64? = nil) -> PBEnvelope {
