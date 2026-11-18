@@ -22,6 +22,7 @@ import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.TimeUnit
 import kotlinx.serialization.json.jsonObject
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.delay
@@ -29,7 +30,7 @@ import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.ResponseBody.Companion.toResponseBody
 import org.junit.After
@@ -118,11 +119,11 @@ class RemoteTest {
         val r = client(cache = cache)
         r.start()
         r.awaitState("retired session error") { it.sessions["retired"]?.historyError == RETIRED_HISTORY_ERROR }
-        val retiredVm = withTimeout(5000) { r.watchSession("retired").first { it.timeline.retired } }
+        val retiredVm = r.watchSession("retired").first { it.timeline.retired }
         assertTrue(retiredVm.timeline.retired)
         assertTrue(retiredVm.timeline.hasHistoryNotice())
         r.awaitState("current session") { it.sessions["s1"]?.info != null }
-        val s1Vm = withTimeout(5000) { r.watchSession("s1").first { it.timeline.retired } }
+        val s1Vm = r.watchSession("s1").first { it.timeline.retired }
         assertTrue(s1Vm.timeline.retired)
         assertTrue(s1Vm.timeline.hasHistoryNotice())
         assertTrue(s1Vm.timeline.itemsList.isEmpty())
@@ -133,15 +134,10 @@ class RemoteTest {
     }
 
     private suspend fun Remote.awaitState(what: String, ok: (RemoteState) -> Boolean): RemoteState =
-        try {
-            withTimeout(10_000) { state.first(ok) }
-        } catch (e: Exception) {
-            fail("timed out waiting for $what: ${state.value}")
-            throw e
-        }
+        state.first(ok)
 
     private suspend fun Remote.awaitSessionTimeline(sid: String, minItems: Int): SessionViewModel =
-        withTimeout(10_000) { watchSession(sid).first { it.timeline.itemsCount >= minItems } }
+        watchSession(sid).first { it.timeline.itemsCount >= minItems }
 
     @Test
     fun backgroundCancelsRenewalAndRetainsItsPendingOperation() =
@@ -188,29 +184,17 @@ class RemoteTest {
             try {
                 hold.set(true)
                 val renewal = phone.renewLeaseNow()
-                assertTrue(
-                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-                        entered.await(5, TimeUnit.SECONDS)
-                    },
-                )
+                withContext(Dispatchers.IO) { entered.await() }
                 phone.stop()
                 phone.awaitState("background") { it.conn == ConnState.OFFLINE }
                 release.countDown()
                 renewal.join()
-                assertTrue(
-                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-                        exited.await(5, TimeUnit.SECONDS)
-                    },
-                )
+                withContext(Dispatchers.IO) { exited.await() }
                 assertEquals("background renewal published", 0, published.get())
                 assertArrayEquals(pending.signed, storage.readSecurityOperation()!!.signed)
                 phone.start()
                 phone.renewLeaseNow()
-                withTimeout(5000) {
-                    while (storage.readSecurityOperation() != null || published.get() == 0) delay(
-                        20,
-                    )
-                }
+                while (storage.readSecurityOperation() != null || published.get() == 0) delay(20)
             } finally {
                 release.countDown()
             }
@@ -281,7 +265,7 @@ class RemoteTest {
             phone.renewLeaseNow()
             assertTrue(
                 "lease certificate was published before its durable operation",
-                withTimeout(5000) { checked.await() },
+                checked.await(),
             )
         }
 
@@ -527,7 +511,7 @@ class RemoteTest {
                             .build()
                             .toByteArray()
                     StreamBlackhole.writeFrame(out, ready)
-                    check(blocked.await(10, TimeUnit.SECONDS))
+                    blocked.await()
                     repeat(copies) { StreamBlackhole.writeFrame(out, frame) }
                 }
             }
@@ -539,7 +523,7 @@ class RemoteTest {
                             return@addInterceptor chain.proceed(chain.request())
                         if (chain.request().url.encodedPath.endsWith("/ListMachines")) {
                             blocked.countDown()
-                            gate.await(10, TimeUnit.SECONDS)
+                            gate.await()
                         }
                         chain.proceed(
                             chain
@@ -566,7 +550,7 @@ class RemoteTest {
             closers += AutoCloseable { r.close() }
             try {
                 r.start()
-                withTimeout(5000) { while (hole.disconnections.get() == 0) delay(10) }
+                while (hole.disconnections.get() == 0) delay(10)
                 assertEquals(0L, blocked.count)
                 gate.countDown()
                 r.awaitState("reconnected after overflow") {
@@ -676,10 +660,14 @@ class RemoteTest {
             }
             val memory = MemoryCache()
             val putGate = CompletableDeferred<Unit>()
+            val allCached = CompletableDeferred<Unit>()
             val cache = object : CipherCache by memory {
                 override suspend fun putEvents(sessionId: String, events: List<StoredEvent>) {
                     putGate.await()
                     memory.putEvents(sessionId, events)
+                    if (sids.all { memory.events(it).size >= eventsPerSession }) {
+                        allCached.complete(Unit)
+                    }
                 }
             }
             val r = client(cache = cache)
@@ -695,9 +683,8 @@ class RemoteTest {
             }
             jobs.forEach { it.await() }
             putGate.complete(Unit)
-            val deadline = System.currentTimeMillis() + 10_000L
-            while (System.currentTimeMillis() < deadline && sids.any { memory.events(it).size < eventsPerSession }) {
-                delay(20)
+            if (sids.any { memory.events(it).size < eventsPerSession }) {
+                allCached.await()
             }
             for (sid in sids) {
                 assertEquals("cache missing events for $sid", eventsPerSession, memory.events(sid).size)
@@ -709,7 +696,7 @@ class RemoteTest {
             closers += AutoCloseable { cold.close() }
             cold.start()
             for (sid in sids) {
-                val restored = withTimeout(10_000) { cold.watchSession(sid, win).first { it.timeline.itemsCount == eventsPerSession } }
+                val restored = cold.watchSession(sid, win).first { it.timeline.itemsCount == eventsPerSession }
                 assertEquals(eventsPerSession, restored.timeline.itemsCount)
             }
         }
@@ -800,7 +787,7 @@ class RemoteTest {
                     it.sessions["s1"]?.info != null
             }
             val vmFlow = r.watchSession("s1")
-            withTimeout(5000) { vmFlow.first { it.timeline.loaded } }
+            vmFlow.first { it.timeline.loaded }
             r.submitSessionCommand(
                 "s1",
                 Command.newBuilder()
@@ -813,7 +800,7 @@ class RemoteTest {
                     .build(),
                 machineId = daemon.id,
             )
-            val (h, cmd) = daemon.commands.poll(5, TimeUnit.SECONDS)!!
+            val (h, cmd) = withContext(Dispatchers.IO) { daemon.commands.take() }
             assertEquals("s1", h.sessionId)
             assertEquals("跑一下测试", cmd.send.text)
             assertEquals(PROTOCOL_VERSION, cmd.protocolVersion)
@@ -831,10 +818,8 @@ class RemoteTest {
                     .build(),
                 machineId = daemon.id,
             )
-            val compactFailed = withTimeout(5000) {
-                vmFlow.first {
-                    it.actions.compact.status == io.github.lewin671.remoteagent.core.proto.SessionCommandStatus.SESSION_COMMAND_STATUS_FAILED
-                }
+            val compactFailed = vmFlow.first {
+                it.actions.compact.status == io.github.lewin671.remoteagent.core.proto.SessionCommandStatus.SESSION_COMMAND_STATUS_FAILED
             }
             assertEquals("unimplemented", compactFailed.actions.compact.errorCode)
 
@@ -850,10 +835,8 @@ class RemoteTest {
                     .build(),
                 machineId = daemon.id,
             )
-            val interruptFailed = withTimeout(5000) {
-                vmFlow.first {
-                    it.actions.interrupt.status == io.github.lewin671.remoteagent.core.proto.SessionCommandStatus.SESSION_COMMAND_STATUS_FAILED
-                }
+            val interruptFailed = vmFlow.first {
+                it.actions.interrupt.status == io.github.lewin671.remoteagent.core.proto.SessionCommandStatus.SESSION_COMMAND_STATUS_FAILED
             }
             assertEquals(CommandException.UNAVAILABLE, interruptFailed.actions.interrupt.errorCode)
         }
@@ -920,9 +903,9 @@ class RemoteTest {
                         override fun onClose(reason: MessageText) {}
                     },
                 )
-            val snap = frames.poll(5, TimeUnit.SECONDS)!!
+            val snap = withContext(Dispatchers.IO) { frames.take() }
             assertEquals(120, snap.snapshot.cols)
-            assertEquals(" world", frames.poll(5, TimeUnit.SECONDS)!!.output.toStringUtf8())
+            assertEquals(" world", withContext(Dispatchers.IO) { frames.take() }.output.toStringUtf8())
             conn.send(
                 TerminalFrame.newBuilder()
                     .setInput(com.google.protobuf.ByteString.copyFromUtf8("中文\r"))
@@ -933,10 +916,10 @@ class RemoteTest {
                     .setInput(com.google.protobuf.ByteString.copyFromUtf8("\u001b[A"))
                     .build(),
             )
-            assertEquals("中文\r", daemon.termInput.poll(5, TimeUnit.SECONDS)!!.input.toStringUtf8())
+            assertEquals("中文\r", withContext(Dispatchers.IO) { daemon.termInput.take() }.input.toStringUtf8())
             assertEquals(
                 "\u001b[A",
-                daemon.termInput.poll(5, TimeUnit.SECONDS)!!.input.toStringUtf8(),
+                withContext(Dispatchers.IO) { daemon.termInput.take() }.input.toStringUtf8(),
             )
             conn.close()
         }

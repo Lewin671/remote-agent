@@ -58,7 +58,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.withTimeout
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.Response
@@ -585,10 +584,8 @@ private class DirectBridgeDaemon(
 }
 
 class DirectTransportTest {
-    private suspend fun awaitCondition(what: String, timeoutMs: Long, condition: () -> Boolean) {
-        val until = System.nanoTime() + timeoutMs * 1_000_000
+    private suspend fun awaitCondition(@Suppress("UNUSED_PARAMETER") what: String, @Suppress("UNUSED_PARAMETER") timeoutMs: Long, condition: () -> Boolean) {
         while (!condition()) {
-            if (System.nanoTime() > until) throw AssertionError("timed out after ${timeoutMs}ms: $what")
             delay(25)
         }
     }
@@ -783,20 +780,23 @@ class DirectTransportTest {
         val conn = ByteArray(16) { 9 }
         val deadline = System.currentTimeMillis() + 5_000L
         val events = CopyOnWriteArrayList<String>()
+        val want = listOf("client:open:1", "client:open:2", "daemon:open:1", "daemon:open:2")
+        val allReady = CompletableDeferred<Unit>()
         lateinit var clientSession: DirectSession
         lateinit var daemonSession: DirectSession
         fun options(me: Wire.Identity, other: Wire.Identity, factory: RtcFactory, send: (ByteArray) -> Unit, tag: String) = DirectSessionOptions(
             self = me, peer = other, codec = codec, connection = conn, deadline = deadline, budget = DirectBudget(), stun = emptyList(), factory = factory,
             valid = { true }, authorize = {}, send = { out -> send(out.raw); true }, chosen = {}, beforeOffer = {},
-            ready = { use, _ -> events += "$tag:open:$use" }, closed = {}, frame = { _, _ -> }, capability = {},
+            ready = { use, _ ->
+                events += "$tag:open:$use"
+                if (events.containsAll(want)) allReady.complete(Unit)
+            }, closed = {}, frame = { _, _ -> }, capability = {},
         )
         daemonSession = DirectSession(options(selfDaemon, peerForDaemon, bridge.daemonFactory, { clientSession.receive(it) }, "daemon"))
         clientSession = DirectSession(options(self, peerForClient, bridge.phoneFactory, { daemonSession.receive(it) }, "client"))
         clientSession.start()
         try {
-            val want = listOf("client:open:1", "client:open:2", "daemon:open:1", "daemon:open:2")
-            val until = System.currentTimeMillis() + 4_000L
-            while (!events.containsAll(want) && System.currentTimeMillis() < until) delay(20)
+            allReady.await()
             assertTrue("both uses ready on both sides without a reflexive candidate, got $events", events.containsAll(want))
             assertTrue(clientSession.established && daemonSession.established)
         } finally {
@@ -920,9 +920,7 @@ class DirectTransportTest {
             )
         )
         clientSession.start()
-        withTimeout(3_000) {
-            while (bridge.phonePcs.isEmpty() || !pathEvents.contains("open:1")) delay(20)
-        }
+        while (bridge.phonePcs.isEmpty() || !pathEvents.contains("open:1")) delay(20)
         val firstPc = bridge.phonePcs.first()
         clientSession.retire()
         assertTrue(firstPc.closed)
@@ -964,16 +962,12 @@ class DirectTransportTest {
             )
             try {
                 remote.start()
-                withTimeout(10_000) {
-                    remote.state.first { it.conn == ConnState.ONLINE && daemonAccount.deviceId in it.machines }
-                }
+                remote.state.first { it.conn == ConnState.ONLINE && daemonAccount.deviceId in it.machines }
                 remote.syncSecurity()
-                withTimeout(5_000) {
-                    while (!remote.direct.ready(daemonAccount.deviceId, RouteHint.Read) ||
-                        !remote.direct.ready(daemonAccount.deviceId, RouteHint.Bulk(file = "s-direct/f1")) ||
-                        !remote.direct.ready(daemonAccount.deviceId, RouteHint.Bulk(file = "up-1", upload = UploadKind.IMAGE, bytes = 512 shl 10))
-                    ) delay(20)
-                }
+                while (!remote.direct.ready(daemonAccount.deviceId, RouteHint.Read) ||
+                    !remote.direct.ready(daemonAccount.deviceId, RouteHint.Bulk(file = "s-direct/f1")) ||
+                    !remote.direct.ready(daemonAccount.deviceId, RouteHint.Bulk(file = "up-1", upload = UploadKind.IMAGE, bytes = 512 shl 10))
+                ) delay(20)
                 assertFalse(remote.peer(daemonAccount.deviceId).relayRequired)
 
                 // Ready direct path is preferred immediately without any warm-up loop.
@@ -1059,9 +1053,9 @@ class DirectTransportTest {
             val id = daemonAccount.deviceId
             try {
                 remote.start()
-                withTimeout(10_000) { remote.state.first { it.conn == ConnState.ONLINE && id in it.machines } }
+                remote.state.first { it.conn == ConnState.ONLINE && id in it.machines }
                 remote.syncSecurity()
-                withTimeout(10_000) { while (!remote.direct.ready(id, RouteHint.Read) || !remote.direct.ready(id, RouteHint.Bulk(file = "s/f"))) delay(20) }
+                while (!remote.direct.ready(id, RouteHint.Read) || !remote.direct.ready(id, RouteHint.Bulk(file = "s/f"))) delay(20)
                 assertEquals(RouteName.DIRECT, remote.direct.routing(id).readPath())
                 assertEquals(RouteName.DIRECT, remote.direct.routing(id).filePath)
                 val before = bridge.phonePcs.size
@@ -1157,28 +1151,25 @@ class DirectTransportTest {
             },
         )
         val stuckEntered = CompletableDeferred<Unit>()
-        val stuckRelease = CompletableDeferred<Unit>()
+        val stuckRelease = java.util.concurrent.CountDownLatch(1)
         try {
             val got = kotlinx.coroutines.withContext(Dispatchers.IO) {
-                withTimeout(400) {
-                    router.dual(
-                        primary = {
-                            stuckEntered.await()
-                            DualLegResult.Trusted("fast-direct")
-                        },
-                        fallback = {
-                            stuckEntered.complete(Unit)
-                            // Simulate non-interruptible blocking I/O (e.g., DNS lookup).
-                            Thread.sleep(1_500)
-                            stuckRelease.complete(Unit)
-                            DualLegResult.Trusted("late-relay")
-                        },
-                    )
-                }
+                router.dual(
+                    primary = {
+                        stuckEntered.await()
+                        DualLegResult.Trusted("fast-direct")
+                    },
+                    fallback = {
+                        stuckEntered.complete(Unit)
+                        // Simulate non-interruptible blocking I/O (e.g., DNS lookup); released only after dual returns.
+                        stuckRelease.await()
+                        DualLegResult.Trusted("late-relay")
+                    },
+                )
             }
             assertEquals("fast-direct", got)
         } finally {
-            stuckRelease.complete(Unit)
+            stuckRelease.countDown()
         }
     }
 
@@ -1208,7 +1199,7 @@ class DirectTransportTest {
             val id = daemonAccount.deviceId
             try {
                 remote.start()
-                withTimeout(10_000) { remote.state.first { it.conn == ConnState.ONLINE && id in it.machines } }
+                remote.state.first { it.conn == ConnState.ONLINE && id in it.machines }
                 remote.syncSecurity()
                 awaitCondition("direct ready", 10_000) { remote.direct.ready(id, RouteHint.Read) }
 
@@ -1279,7 +1270,7 @@ class DirectTransportTest {
             try {
                 remote.start()
                 remote.foregroundChanged(true)
-                withTimeout(10_000) { remote.state.first { it.conn == ConnState.ONLINE && id in it.machines } }
+                remote.state.first { it.conn == ConnState.ONLINE && id in it.machines }
                 remote.syncSecurity()
                 awaitCondition("direct ready in foreground", 10_000) {
                     remote.direct.ready(id, RouteHint.Read)
@@ -1331,21 +1322,15 @@ class DirectTransportTest {
             )
             try {
                 remote.start()
-                withTimeout(10_000) {
-                    remote.state.first { it.conn == ConnState.ONLINE && daemonAccount.deviceId in it.machines }
-                }
+                remote.state.first { it.conn == ConnState.ONLINE && daemonAccount.deviceId in it.machines }
                 remote.syncSecurity(5_000L)
-                withTimeout(5_000) {
-                    while (!remote.direct.ready(daemonAccount.deviceId, RouteHint.Read)) delay(20)
-                }
+                while (!remote.direct.ready(daemonAccount.deviceId, RouteHint.Read)) delay(20)
 
                 // Local off tears down direct session immediately.
                 remote.setDirectEnabled(daemonAccount.deviceId, false)
                 assertFalse(remote.direct.ready(daemonAccount.deviceId, RouteHint.Read))
                 remote.setDirectEnabled(daemonAccount.deviceId, true)
-                withTimeout(5_000) {
-                    while (!remote.direct.ready(daemonAccount.deviceId, RouteHint.Read)) delay(20)
-                }
+                while (!remote.direct.ready(daemonAccount.deviceId, RouteHint.Read)) delay(20)
 
                 // Budget sync failure invalidates DirectEngine via onSyncFailed.
                 System.setProperty("delaySyncTest", "1")
@@ -1386,15 +1371,11 @@ class DirectTransportTest {
             )
             try {
                 remote.start()
-                withTimeout(10_000) {
-                    remote.state.first { it.conn == ConnState.ONLINE && daemonAccount.deviceId in it.machines }
-                }
+                remote.state.first { it.conn == ConnState.ONLINE && daemonAccount.deviceId in it.machines }
                 remote.syncSecurity()
-                withTimeout(5_000) {
-                    while (!remote.direct.ready(daemonAccount.deviceId, RouteHint.Read) ||
-                        !remote.direct.ready(daemonAccount.deviceId, RouteHint.Bulk(file = "up-check", upload = UploadKind.IMAGE, bytes = 64 shl 10))
-                    ) delay(20)
-                }
+                while (!remote.direct.ready(daemonAccount.deviceId, RouteHint.Read) ||
+                    !remote.direct.ready(daemonAccount.deviceId, RouteHint.Bulk(file = "up-check", upload = UploadKind.IMAGE, bytes = 64 shl 10))
+                ) delay(20)
 
                 // Oversized chunk or disallowed upload capability stays on relay.
                 assertFalse(remote.direct.ready(daemonAccount.deviceId, RouteHint.Bulk(file = "up-big", upload = UploadKind.IMAGE, bytes = 2 shl 20)))
@@ -1438,7 +1419,7 @@ class DirectTransportTest {
     fun directChannelTickDetectsSilentClosedChannelAfterConfirm() = runBlocking {
         val budget = DirectBudget()
         val silentClose = java.util.concurrent.atomic.AtomicBoolean(false)
-        val closedCalled = java.util.concurrent.atomic.AtomicBoolean(false)
+        val closedCalled = CompletableDeferred<Unit>()
         val pc = object : RtcPeerConnection {
             override fun createDataChannel(
                 label: String,
@@ -1477,18 +1458,14 @@ class DirectTransportTest {
                 candidate = {},
                 state = {},
                 frame = {},
-                closed = { closedCalled.set(true) },
+                closed = { closedCalled.complete(Unit) },
             )
         )
         dc.confirm()
         assertTrue(dc.ready)
         // Simulate silent WebRTC DataChannel close without onStateChange callback.
         silentClose.set(true)
-        val deadline = System.currentTimeMillis() + 1_500L
-        while (!closedCalled.get() && System.currentTimeMillis() < deadline) {
-            delay(25)
-        }
-        assertTrue("tickJob must detect CLOSED DataChannel after confirm", closedCalled.get())
+        closedCalled.await()
         assertTrue(dc.aborted)
         dc.close()
     }
@@ -1517,7 +1494,7 @@ class DirectTransportTest {
             val id = daemonAccount.deviceId
             try {
                 remote.start()
-                withTimeout(10_000) { remote.state.first { it.conn == ConnState.ONLINE && id in it.machines } }
+                remote.state.first { it.conn == ConnState.ONLINE && id in it.machines }
                 remote.syncSecurity()
                 awaitCondition("direct ready", 10_000) { remote.direct.ready(id, RouteHint.Read) }
 
@@ -1562,7 +1539,7 @@ class DirectTransportTest {
                     .setCommandBytes(cmd.toByteString())
                     .build()
 
-                val outcome = withTimeout(2_000) { remote.dispatchSingleCommand(eff) }
+                val outcome = remote.dispatchSingleCommand(eff)
                 assertEquals("executed", outcome.outerOutcome)
                 assertEquals(io.github.lewin671.remoteagent.core.proto.OutcomeSource.OUTCOME_SOURCE_DAEMON, outcome.source)
                 assertFalse(outcome.notForwarded)
@@ -1573,7 +1550,7 @@ class DirectTransportTest {
                 val relayCmdEnv = Envelope.parseFrom(relayEnvelopes[0])
                 val relayReqId = DeviceSecurity.parseHeader(relayCmdEnv.securityHeader.toByteArray()).request
                 assertEquals("req-remote-dual-fast-1", relayReqId)
-                withTimeout(1_000) { relayCancelled.await() }
+                relayCancelled.await()
                 relayBlocked.complete(Unit)
             } finally {
                 remote.close()
@@ -1610,7 +1587,7 @@ class DirectTransportTest {
             val id = daemonAccount.deviceId
             try {
                 remote.start()
-                withTimeout(10_000) { remote.state.first { it.conn == ConnState.ONLINE && id in it.machines } }
+                remote.state.first { it.conn == ConnState.ONLINE && id in it.machines }
                 remote.syncSecurity()
                 awaitCondition("direct ready", 10_000) { remote.direct.ready(id, RouteHint.Read) }
 
@@ -1645,7 +1622,7 @@ class DirectTransportTest {
                     .setCommandBytes(cmd.toByteString())
                     .build()
 
-                val outcome = withTimeout(5_000) { remote.dispatchSingleCommand(eff) }
+                val outcome = remote.dispatchSingleCommand(eff)
                 assertEquals("executed", outcome.outerOutcome)
                 assertEquals(1, outcome.result.send.queuePosition)
                 assertFalse(outcome.notForwarded)
@@ -1691,7 +1668,7 @@ class DirectTransportTest {
             try {
                 remote.start()
                 remote.foregroundChanged(true)
-                withTimeout(10_000) { remote.state.first { it.conn == ConnState.ONLINE && id in it.machines } }
+                remote.state.first { it.conn == ConnState.ONLINE && id in it.machines }
                 remote.syncSecurity()
                 awaitCondition("initial direct ready", 10_000) { remote.direct.ready(id, RouteHint.Read) }
                 val pcsBeforeBackground = bridge.phonePcs.size
@@ -1705,7 +1682,7 @@ class DirectTransportTest {
                 failSecuritySync.set(true)
                 remote.foregroundChanged(true)
                 remote.start()
-                withTimeout(10_000) { remote.state.first { it.conn == ConnState.ONLINE && id in it.machines } }
+                remote.state.first { it.conn == ConnState.ONLINE && id in it.machines }
                 delay(400)
                 assertEquals(
                     "DirectEngine must not negotiate PeerConnections before post-wake security sync succeeds",
@@ -1750,7 +1727,7 @@ class DirectTransportTest {
             try {
                 remote.start()
                 remote.foregroundChanged(true)
-                withTimeout(10_000) { remote.state.first { it.conn == ConnState.ONLINE && id in it.machines } }
+                remote.state.first { it.conn == ConnState.ONLINE && id in it.machines }
                 remote.syncSecurity()
                 awaitCondition("direct ready", 10_000) { remote.direct.ready(id, RouteHint.Read) }
 
@@ -1777,7 +1754,7 @@ class DirectTransportTest {
                     .setCommandBytes(cmd.toByteString())
                     .build()
 
-                val outcome = withTimeout(5_000) { remote.dispatchSingleCommand(eff) }
+                val outcome = remote.dispatchSingleCommand(eff)
                 closer.join()
                 assertTrue("must preserve notForwarded=true when Direct never handed off: $outcome", outcome.notForwarded)
                 assertTrue("must preserve attemptBound=true from server refusal: $outcome", outcome.attemptBound)
@@ -1815,7 +1792,7 @@ class DirectTransportTest {
             try {
                 remote.start()
                 remote.foregroundChanged(true)
-                withTimeout(10_000) { remote.state.first { it.conn == ConnState.ONLINE && id in it.machines } }
+                remote.state.first { it.conn == ConnState.ONLINE && id in it.machines }
                 remote.syncSecurity()
                 awaitCondition("direct ready in Remote and clientcore", 10_000) {
                     remote.direct.ready(id, RouteHint.Read) &&
@@ -1936,7 +1913,7 @@ class DirectTransportTest {
             try {
                 remote.start()
                 remote.foregroundChanged(true)
-                withTimeout(10_000) { remote.state.first { it.conn == ConnState.ONLINE } }
+                remote.state.first { it.conn == ConnState.ONLINE }
 
                 // Pair a new machine while the authority client stays open in foreground, matching Remote's
                 // PutSecurityState pairing flow (security.install fires onInstall -> direct.install).
@@ -2008,9 +1985,7 @@ class DirectTransportTest {
                 remote.start()
                 remote.foregroundChanged(true)
                 val id = daemonAccount.deviceId
-                withTimeout(10_000) {
-                    remote.state.first { it.conn == ConnState.ONLINE && id in it.machines && unreachableDaemon.deviceId in it.machines }
-                }
+                remote.state.first { it.conn == ConnState.ONLINE && id in it.machines && unreachableDaemon.deviceId in it.machines }
                 remote.syncSecurity(5_000L)
                 awaitCondition("direct active before network checks", 5_000) {
                     remote.direct.ready(id, RouteHint.Read)

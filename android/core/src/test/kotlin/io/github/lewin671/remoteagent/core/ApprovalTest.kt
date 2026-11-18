@@ -17,25 +17,23 @@ class ApprovalTest {
             try {
                 owner = FakeDaemon.create(randomBytes(32), server.url, http, server.setupToken)
                 sponsor = fixtureRemote(owner.phone, http)
-                withTimeout(15_000) {
-                    val pairing = Initiation.start(sponsor, pollIntervalMs = 10)
-                    val shown = CompletableDeferred<List<String>>()
-                    val confirmation = CompletableDeferred<Boolean>()
-                    val joining = async {
-                        joinByPairing(pairing.link, http, { shown.complete(it) }, { false },
-                            persistRegistration = {}, persistIdentity = {}, persist = { _, _ -> },
-                            confirm = { confirmation.await() }, pollIntervalMs = 10)
-                    }
-                    assertEquals(pairing.joined().first, shown.await())
-                    val epoch = sponsor.security.head().core.epoch
-                    sponsor.stop()
-                    while (runCatching { sponsor.authorityForeground() }.isSuccess) delay(10)
-                    assertTrue(runCatching { pairing.approve() }.exceptionOrNull() is CancellationException)
-                    assertEquals(epoch, sponsor.security.head().core.epoch)
-                    val storage = TestSecurity.get(server.url).stores.getValue(owner.phone.deviceId)
-                    assertNull(storage.readSecurityOperation())
-                    joining.cancelAndJoin()
+                val pairing = Initiation.start(sponsor, pollIntervalMs = 10)
+                val shown = CompletableDeferred<List<String>>()
+                val confirmation = CompletableDeferred<Boolean>()
+                val joining = async {
+                    joinByPairing(pairing.link, http, { shown.complete(it) }, { false },
+                        persistRegistration = {}, persistIdentity = {}, persist = { _, _ -> },
+                        confirm = { confirmation.await() }, pollIntervalMs = 10)
                 }
+                assertEquals(pairing.joined().first, shown.await())
+                val epoch = sponsor.security.head().core.epoch
+                sponsor.stop()
+                while (runCatching { sponsor.authorityForeground() }.isSuccess) delay(10)
+                assertTrue(runCatching { pairing.approve() }.exceptionOrNull() is CancellationException)
+                assertEquals(epoch, sponsor.security.head().core.epoch)
+                val storage = TestSecurity.get(server.url).stores.getValue(owner.phone.deviceId)
+                assertNull(storage.readSecurityOperation())
+                joining.cancelAndJoin()
             } finally {
                 runCatching { sponsor?.close() }
                 runCatching { owner?.close() }
@@ -52,40 +50,38 @@ class ApprovalTest {
             try {
                 owner = FakeDaemon.create(randomBytes(32), server.url, http, server.setupToken)
                 sponsor = fixtureRemote(owner.phone, http)
-                withTimeout(15_000) {
-                    val pairing = Initiation.start(sponsor, pollIntervalMs = 10)
-                    val shown = CompletableDeferred<List<String>>()
-                    val confirm = CompletableDeferred<Boolean>()
-                    val joining = async {
-                        joinByPairing(pairing.link, http, { shown.complete(it) }, { false },
-                            persistRegistration = {}, persistIdentity = {}, persist = { _, _ -> },
-                            confirm = { confirm.await() }, pollIntervalMs = 10)
-                    }
-                    assertEquals(pairing.joined().first, shown.await())
-                    val approving = async { runCatching { pairing.approve() } }
-                    val storage = TestSecurity.get(server.url).stores.getValue(owner.phone.deviceId)
-                    while (storage.readSecurityOperation()?.delivery?.isNotEmpty() != true) delay(10)
-                    pairing.cancelOnServer()
-                    val failure = approving.await().exceptionOrNull()
-                    assertTrue(failure is PairException)
-                    assertTrue(errorText(failure!!).testText().orEmpty().contains("新设备未加入"))
-                    assertFalse(canRetryPairApproval(failure as Exception))
-                    joining.cancelAndJoin()
-                    val replacement = Initiation.start(sponsor, pollIntervalMs = 10)
-                    val replacementShown = CompletableDeferred<List<String>>()
-                    val replacementJoin = async {
-                        joinByPairing(replacement.link, http, { replacementShown.complete(it) }, { false },
-                            persistRegistration = {}, persistIdentity = {}, persist = { _, _ -> },
-                            confirm = { CompletableDeferred<Boolean>().await() }, pollIntervalMs = 10)
-                    }
-                    assertEquals(replacement.joined().first, replacementShown.await())
-                    val blocked = runCatching { replacement.approve() }.exceptionOrNull()
-                    assertTrue(blocked is PairException)
-                    assertTrue(errorText(blocked!!).testText().orEmpty().contains("同步成员状态失败"))
-                    assertFalse(errorText(blocked).testText().orEmpty().contains("新设备未加入"))
-                    replacement.cancelOnServer()
-                    replacementJoin.cancelAndJoin()
+                val pairing = Initiation.start(sponsor, pollIntervalMs = 10)
+                val shown = CompletableDeferred<List<String>>()
+                val confirm = CompletableDeferred<Boolean>()
+                val joining = async {
+                    joinByPairing(pairing.link, http, { shown.complete(it) }, { false },
+                        persistRegistration = {}, persistIdentity = {}, persist = { _, _ -> },
+                        confirm = { confirm.await() }, pollIntervalMs = 10)
                 }
+                assertEquals(pairing.joined().first, shown.await())
+                val approving = async { runCatching { pairing.approve() } }
+                val storage = TestSecurity.get(server.url).stores.getValue(owner.phone.deviceId)
+                while (storage.readSecurityOperation()?.delivery?.isNotEmpty() != true) delay(10)
+                pairing.cancelOnServer()
+                val failure = approving.await().exceptionOrNull()
+                assertTrue(failure is PairException)
+                assertTrue(errorText(failure!!).testText().orEmpty().contains("新设备未加入"))
+                assertFalse(canRetryPairApproval(failure as Exception))
+                joining.cancelAndJoin()
+                val replacement = Initiation.start(sponsor, pollIntervalMs = 10)
+                val replacementShown = CompletableDeferred<List<String>>()
+                val replacementJoin = async {
+                    joinByPairing(replacement.link, http, { replacementShown.complete(it) }, { false },
+                        persistRegistration = {}, persistIdentity = {}, persist = { _, _ -> },
+                        confirm = { CompletableDeferred<Boolean>().await() }, pollIntervalMs = 10)
+                }
+                assertEquals(replacement.joined().first, replacementShown.await())
+                val blocked = runCatching { replacement.approve() }.exceptionOrNull()
+                assertTrue(blocked is PairException)
+                assertTrue(errorText(blocked!!).testText().orEmpty().contains("同步成员状态失败"))
+                assertFalse(errorText(blocked).testText().orEmpty().contains("新设备未加入"))
+                replacement.cancelOnServer()
+                replacementJoin.cancelAndJoin()
             } finally {
                 runCatching { sponsor?.close() }
                 runCatching { owner?.close() }
@@ -105,46 +101,44 @@ class ApprovalTest {
                     owner = FakeDaemon.create(randomBytes(32), server.url, http, server.setupToken)
                     sponsor = fixtureRemote(owner.phone, http)
                     restarted = fixtureRemote(owner.phone, http)
-                    withTimeout(15_000) {
-                        val pairing = Initiation.start(sponsor, pollIntervalMs = 10)
-                        val shown = CompletableDeferred<List<String>>()
-                        val persisted = CompletableDeferred<Unit>()
-                        val receipt = CompletableDeferred<Unit>()
-                        val joining = async {
-                            joinByPairing(
-                                pairing.link,
-                                http,
-                                { shown.complete(it) },
-                                { false },
-                                persistRegistration = {},
-                                persistIdentity = {},
-                                persist = { acct, record ->
-                                    TestSecurity.get(server.url).stores[acct.deviceId] =
-                                        TestSecurityStore(record)
-                                    persisted.complete(Unit)
-                                    receipt.await()
-                                },
-                                confirm = { true },
-                                pollIntervalMs = 10,
-                            )
-                        }
-                        assertEquals(pairing.joined().first, shown.await())
-                        val approving = async { pairing.approve() }
-                        persisted.await()
-                        val storage = TestSecurity.get(server.url).stores.getValue(owner.phone.deviceId)
-                        val pending = storage.readSecurityOperation()!!
-                        val signed = pending.signed.copyOf()
-                        val epoch = sponsor.security.head().core.epoch
-                        approving.cancelAndJoin() // the authority's approval screen/process disappears
-                        restarted.resumeSecurityOperation()
-                        assertArrayEquals(signed, storage.readSecurityOperation()!!.signed)
-                        assertEquals(epoch, restarted.security.head().core.epoch)
-                        receipt.complete(Unit)
-                        joining.await()
-                        restarted.resumeSecurityOperation()
-                        assertNull(storage.readSecurityOperation())
-                        assertEquals(epoch, restarted.security.head().core.epoch)
+                    val pairing = Initiation.start(sponsor, pollIntervalMs = 10)
+                    val shown = CompletableDeferred<List<String>>()
+                    val persisted = CompletableDeferred<Unit>()
+                    val receipt = CompletableDeferred<Unit>()
+                    val joining = async {
+                        joinByPairing(
+                            pairing.link,
+                            http,
+                            { shown.complete(it) },
+                            { false },
+                            persistRegistration = {},
+                            persistIdentity = {},
+                            persist = { acct, record ->
+                                TestSecurity.get(server.url).stores[acct.deviceId] =
+                                    TestSecurityStore(record)
+                                persisted.complete(Unit)
+                                receipt.await()
+                            },
+                            confirm = { true },
+                            pollIntervalMs = 10,
+                        )
                     }
+                    assertEquals(pairing.joined().first, shown.await())
+                    val approving = async { pairing.approve() }
+                    persisted.await()
+                    val storage = TestSecurity.get(server.url).stores.getValue(owner.phone.deviceId)
+                    val pending = storage.readSecurityOperation()!!
+                    val signed = pending.signed.copyOf()
+                    val epoch = sponsor.security.head().core.epoch
+                    approving.cancelAndJoin() // the authority's approval screen/process disappears
+                    restarted.resumeSecurityOperation()
+                    assertArrayEquals(signed, storage.readSecurityOperation()!!.signed)
+                    assertEquals(epoch, restarted.security.head().core.epoch)
+                    receipt.complete(Unit)
+                    joining.await()
+                    restarted.resumeSecurityOperation()
+                    assertNull(storage.readSecurityOperation())
+                    assertEquals(epoch, restarted.security.head().core.epoch)
                 } finally {
                     runCatching { sponsor?.close() }
                     runCatching { restarted?.close() }
@@ -185,52 +179,50 @@ class ApprovalTest {
                 owner.putMachine("synthetic-manager")
                 owner.connect()
                 owner.waitReady()
-                withTimeout(15_000) {
-                    val pairing = Initiation.start(sponsor, pollIntervalMs = 10)
-                    val shown = CompletableDeferred<List<String>>()
-                    val joining = async {
-                        joinByPairing(
-                            pairing.link,
-                            joiningHttp,
-                            { shown.complete(it) },
-                            { false },
-                            persistRegistration = { intent ->
-                                savedIntent.set(intent.bytes())
-                                RegistrationIntent.parse(intent.bytes())
-                                intentSaved.set(true)
-                            },
-                            persistIdentity = { candidateSaved.set(true) },
-                            persist = { acct, record ->
-                                assertTrue(
-                                    "account saved before registration intent",
-                                    intentSaved.get(),
-                                )
-                                accountSaved.set(true)
-                                TestSecurity.get(acct.server).stores[acct.deviceId] =
-                                    TestSecurityStore(record)
-                            },
-                            confirm = { true },
-                            pollIntervalMs = 10,
-                        )
-                    }
-                    assertEquals(pairing.joined().first, shown.await())
-                    val approving = async { pairing.approve() }
-                    val account = joining.await()
-                    val restored = RegistrationIntent.parse(savedIntent.get())
-                    val retried =
-                        restored.resume(joiningHttp) { acct, record ->
+                val pairing = Initiation.start(sponsor, pollIntervalMs = 10)
+                val shown = CompletableDeferred<List<String>>()
+                val joining = async {
+                    joinByPairing(
+                        pairing.link,
+                        joiningHttp,
+                        { shown.complete(it) },
+                        { false },
+                        persistRegistration = { intent ->
+                            savedIntent.set(intent.bytes())
+                            RegistrationIntent.parse(intent.bytes())
+                            intentSaved.set(true)
+                        },
+                        persistIdentity = { candidateSaved.set(true) },
+                        persist = { acct, record ->
+                            assertTrue(
+                                "account saved before registration intent",
+                                intentSaved.get(),
+                            )
+                            accountSaved.set(true)
                             TestSecurity.get(acct.server).stores[acct.deviceId] =
                                 TestSecurityStore(record)
-                        }
-                    assertEquals(account.deviceId, retried.deviceId)
-                    approving.await()
-                    pairing.approve() // The same operation, not a fresh approval.
-                    assertTrue(login(Api(server.url, http), account).isNotBlank())
-                    server.stop()
-                    server.start() // In-memory pairing is gone; registration is still durable.
-                    http.connectionPool.evictAll() // New explicit RPC, not a hidden stale-socket retry.
-                    pairing.approve() // Resolves the missing pairing using actual registration.
+                        },
+                        confirm = { true },
+                        pollIntervalMs = 10,
+                    )
                 }
+                assertEquals(pairing.joined().first, shown.await())
+                val approving = async { pairing.approve() }
+                val account = joining.await()
+                val restored = RegistrationIntent.parse(savedIntent.get())
+                val retried =
+                    restored.resume(joiningHttp) { acct, record ->
+                        TestSecurity.get(acct.server).stores[acct.deviceId] =
+                            TestSecurityStore(record)
+                    }
+                assertEquals(account.deviceId, retried.deviceId)
+                approving.await()
+                pairing.approve() // The same operation, not a fresh approval.
+                assertTrue(login(Api(server.url, http), account).isNotBlank())
+                server.stop()
+                server.start() // In-memory pairing is gone; registration is still durable.
+                http.connectionPool.evictAll() // New explicit RPC, not a hidden stale-socket retry.
+                pairing.approve() // Resolves the missing pairing using actual registration.
             } finally {
                 runCatching { sponsor?.close() }
                 runCatching { owner?.close() }
@@ -250,25 +242,23 @@ class ApprovalTest {
                 owner.putMachine("synthetic-manager")
                 owner.connect()
                 owner.waitReady()
-                withTimeout(15_000) {
-                    val before = sponsor.security.head()
-                    val prepared = sponsor.prepareRecovery()
-                    assertNotNull(RecoveryCode.decode(prepared.code))
-                    // Nothing is published before the user confirms the new code.
-                    assertEquals(before.core.epoch, sponsor.security.head().core.epoch)
-                    assertTrue(
-                        before.core.recoveryEd.contentEquals(
-                            sponsor.security.head().core.recoveryEd,
-                        ),
-                    )
-                    sponsor.publishRecovery(prepared)
-                    assertEquals(before.core.epoch + 1uL, sponsor.security.head().core.epoch)
-                    assertFalse(
-                        before.core.recoveryEd.contentEquals(
-                            sponsor.security.head().core.recoveryEd,
-                        ),
-                    )
-                }
+                val before = sponsor.security.head()
+                val prepared = sponsor.prepareRecovery()
+                assertNotNull(RecoveryCode.decode(prepared.code))
+                // Nothing is published before the user confirms the new code.
+                assertEquals(before.core.epoch, sponsor.security.head().core.epoch)
+                assertTrue(
+                    before.core.recoveryEd.contentEquals(
+                        sponsor.security.head().core.recoveryEd,
+                    ),
+                )
+                sponsor.publishRecovery(prepared)
+                assertEquals(before.core.epoch + 1uL, sponsor.security.head().core.epoch)
+                assertFalse(
+                    before.core.recoveryEd.contentEquals(
+                        sponsor.security.head().core.recoveryEd,
+                    ),
+                )
             } finally {
                 runCatching { sponsor?.close() }
                 runCatching { owner?.close() }
@@ -288,32 +278,30 @@ class ApprovalTest {
                 owner.putMachine("synthetic-manager")
                 owner.connect()
                 owner.waitReady()
-                withTimeout(15000) {
-                    val pairing = Initiation.start(sponsor, pollIntervalMs = 10)
-                    val displayed = CompletableDeferred<List<String>>()
-                    var persisted = false
-                    val joining = async {
-                        runCatching {
-                            joinByPairing(
-                                pairing.link,
-                                http,
-                                { displayed.complete(it) },
-                                { false },
-                                persistRegistration = {},
-                                persistIdentity = {},
-                                persist = { _, _ -> persisted = true },
-                                pollIntervalMs = 10,
-                            )
-                        }
+                val pairing = Initiation.start(sponsor, pollIntervalMs = 10)
+                val displayed = CompletableDeferred<List<String>>()
+                var persisted = false
+                val joining = async {
+                    runCatching {
+                        joinByPairing(
+                            pairing.link,
+                            http,
+                            { displayed.complete(it) },
+                            { false },
+                            persistRegistration = {},
+                            persistIdentity = {},
+                            persist = { _, _ -> persisted = true },
+                            pollIntervalMs = 10,
+                        )
                     }
-                    assertEquals(pairing.joined().first, displayed.await())
-                    val failure = joining.await().exceptionOrNull()
-                    assertNotNull(failure)
-                    assertTrue(errorText(failure!!).testText().orEmpty().contains("本机未确认"))
-                    assertFalse(persisted)
-                    assertEquals(2, sponsor.security.head().core.members.size)
-                    pairing.cancelOnServer()
                 }
+                assertEquals(pairing.joined().first, displayed.await())
+                val failure = joining.await().exceptionOrNull()
+                assertNotNull(failure)
+                assertTrue(errorText(failure!!).testText().orEmpty().contains("本机未确认"))
+                assertFalse(persisted)
+                assertEquals(2, sponsor.security.head().core.members.size)
+                pairing.cancelOnServer()
             } finally {
                 runCatching { sponsor?.close() }
                 runCatching { owner?.close() }

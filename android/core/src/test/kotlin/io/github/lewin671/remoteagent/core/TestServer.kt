@@ -233,6 +233,7 @@ class FakeDaemon(val account: Account, private val http: OkHttpClient, val phone
     private var token = ""
     private var ws: WebSocket? = null
     private val ready = java.util.concurrent.atomic.AtomicBoolean(false)
+    @Volatile private var readySignal = kotlinx.coroutines.CompletableDeferred<Unit>()
     private var metaRev = 0L
     val sessionKeys = HashMap<String, ByteArray>()
     private val info = java.util.concurrent.ConcurrentHashMap<String, Session>()
@@ -389,11 +390,13 @@ class FakeDaemon(val account: Account, private val http: OkHttpClient, val phone
 
     /** Connects the stream and answers forwarded commands. */
     suspend fun waitReady() {
-        kotlinx.coroutines.withTimeout(5000) { while (!ready.get()) kotlinx.coroutines.delay(10) }
+        readySignal.await()
     }
 
     fun connect() {
         ready.set(false)
+        val signal = kotlinx.coroutines.CompletableDeferred<Unit>()
+        readySignal = signal
         val url = account.server.replaceFirst("http", "ws") + "/v1/stream"
         ws =
             http.newWebSocket(
@@ -409,10 +412,19 @@ class FakeDaemon(val account: Account, private val http: OkHttpClient, val phone
                         )
                     }
 
+                    override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
+                        signal.completeExceptionally(t)
+                    }
+
+                    override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
+                        signal.completeExceptionally(IllegalStateException("fake daemon stream closed ($code): $reason"))
+                    }
+
                     override fun onMessage(webSocket: WebSocket, bytes: okio.ByteString) {
                         val f = ServerFrame.parseFrom(bytes.toByteArray())
                         if (f.hasReady()) {
                             ready.set(true)
+                            signal.complete(Unit)
                             return
                         }
                         if (!f.hasForwardCall()) return

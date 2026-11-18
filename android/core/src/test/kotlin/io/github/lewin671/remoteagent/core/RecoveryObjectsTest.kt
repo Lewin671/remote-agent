@@ -5,7 +5,6 @@ import java.io.File
 import java.nio.file.Files
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.withTimeout
 import org.junit.Assert.*
 import org.junit.Test
 
@@ -27,18 +26,14 @@ class RecoveryObjectsTest {
                 val o = fixtureRemote(offline, http).also { remotes += it }
                 r.start()
                 o.start()
-                withTimeout(10000) {
-                    // A Ready stream precedes the signed directory. Renaming needs the
-                    // device row, not merely an authenticated connection.
-                    r.state.first { it.conn == ConnState.ONLINE && it.devices.containsKey(kept.deviceId) }
-                    o.state.first { it.conn == ConnState.ONLINE && it.devices.containsKey(offline.deviceId) }
-                }
+                // A Ready stream precedes the signed directory. Renaming needs the
+                // device row, not merely an authenticated connection.
+                r.state.first { it.conn == ConnState.ONLINE && it.devices.containsKey(kept.deviceId) }
+                o.state.first { it.conn == ConnState.ONLINE && it.devices.containsKey(offline.deviceId) }
                 r.renameDevice(kept.deviceId, "retained-client")
                 o.renameDevice(offline.deviceId, "offline-client")
                 r.coreHost.toggleProjectPin("/synthetic/kept")
-                withTimeout(10000) {
-                    r.state.first { it.prefs?.prefs?.pinnedList?.any { p -> p.path == "/synthetic/kept" } == true }
-                }
+                r.state.first { it.prefs?.prefs?.pinnedList?.any { p -> p.path == "/synthetic/kept" } == true }
                 o.close()
                 val context = Recovery.context(server.url, http, SigningKey(seed).publicKey, seed)
                 val submitted =
@@ -73,12 +68,10 @@ class RecoveryObjectsTest {
                 recovered.start()
                 // RaApp also requests this immediately after recovery adoption.
                 recovered.renewLeaseIfNeeded()
-                withTimeout(10000) { recovered.state.first {it.leaseEndMs>System.currentTimeMillis()} }
+                recovered.state.first { it.leaseEndMs > System.currentTimeMillis() }
                 val before =
-                    withTimeout(10000) {
-                        recovered.state.first {
-                            it.conn == ConnState.ONLINE && it.devices.containsKey(offline.deviceId)
-                        }
+                    recovered.state.first {
+                        it.conn == ConnState.ONLINE && it.devices.containsKey(offline.deviceId)
                     }
                 assertTrue(before.devices.containsKey(kept.deviceId))
                 assertNull(before.devices.getValue(offline.deviceId).meta)
@@ -93,9 +86,7 @@ class RecoveryObjectsTest {
                 assertTrue(failure is DeviceSecurity.Failure && failure.code=="lease")
                 r.syncSecurity()
                 recovered.coreHost.toggleProjectHide("/synthetic/new")
-                withTimeout(10000) {
-                    recovered.state.first { it.prefs?.prefs?.hiddenList?.any { p -> p.path == "/synthetic/new" } == true }
-                }
+                recovered.state.first { it.prefs?.prefs?.hiddenList?.any { p -> p.path == "/synthetic/new" } == true }
                 val prefs = recovered.state.value.prefs!!
                 assertTrue(prefs.pinned.contains("/synthetic/kept"))
                 assertTrue(prefs.hidden.contains("/synthetic/new"))

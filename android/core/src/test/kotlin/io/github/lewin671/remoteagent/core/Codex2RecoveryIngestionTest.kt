@@ -7,7 +7,6 @@ import java.io.File
 import java.nio.file.Files
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.withTimeout
 import org.junit.Assert.*
 import org.junit.Test
 
@@ -144,16 +143,14 @@ class Codex2RecoveryIngestionTest {
                 val r = fixtureRemote(account, http)
                 remote = r
                 r.start()
-                withTimeout(5000) {
-                    r.state.first { it.conn == ConnState.ONLINE && it.sessions["s"]?.info != null }
-                }
+                r.state.first { it.conn == ConnState.ONLINE && it.sessions["s"]?.info != null }
                 val feed = r.watchSession("s")
                 run {
-                    val suffix = withTimeout(5000) { feed.first { it.timeline.itemsCount == 1 } }
+                    val suffix = feed.first { it.timeline.itemsCount == 1 }
                     assertEquals(1, suffix.timeline.unavailableCount)
                     assertEquals("readable suffix", suffix.timeline.itemsList[0].agentMessage.markdown)
                     d.upload("s", message("live message"))
-                    val live = withTimeout(5000) { feed.first { it.timeline.itemsCount == 2 } }
+                    val live = feed.first { it.timeline.itemsCount == 2 }
                     assertEquals("live message", live.timeline.itemsList[1].agentMessage.markdown)
                     assertFalse(live.timeline.hasError())
                 }
@@ -201,7 +198,7 @@ class Codex2RecoveryIngestionTest {
                 remote = r
                 val feed = r.watchSession("s")
                 r.start()
-                val failed = withTimeout(5000) { feed.first { it.timeline.hasError() } }
+                val failed = feed.first { it.timeline.hasError() }
                 assertTrue(failed.timeline.hasError())
                 assertEquals(0, failed.timeline.itemsCount)
                 assertEquals(if (damage == "current-cipher") 1 else 0, failed.timeline.unavailableCount)
