@@ -2090,18 +2090,19 @@ class DirectTransportTest {
             }
             val subBody = DirectEventSubscription.newBuilder().addSessionIds("sess-1").build().toByteArray()
             clientSession.sendControl(15L, subBody)
-            awaitCondition("Control 15 rejected with Control 10 Unsupported and controlWindow cleared", 3_000) {
-                unsupportedSentBack.isNotEmpty() && clientSession.controlPendingCount == 0
+            awaitCondition("Control 15 rejected with Control 10 Unsupported", 3_000) {
+                unsupportedSentBack.isNotEmpty()
             }
             val countBefore = clientFramesSent.count { it.ctx.cls == 2L && it.type == 15L }
+            val ticksBefore = clientSession.tickCountForTest
             nowMs.addAndGet(1_600L)
-            // Drive one deterministic tick pass after advancing injected clock past retry intervals.
-            awaitCondition("tick processes advanced clock without retrying cleared Control 15", 1_000) {
-                clientSession.controlPendingCount == 0
+            awaitCondition("DirectSession.tick runs after advancing injected clock", 2_000) {
+                clientSession.tickCountForTest > ticksBefore
             }
             val countAfter = clientFramesSent.count { it.ctx.cls == 2L && it.type == 15L }
-            assertEquals("Control 15 must stop retrying after Control 10 Unsupported", countBefore, countAfter)
-            assertTrue("DirectSession must remain active after Control 10 on controlWindow", clientSession.active)
+            assertEquals("One-shot Control 15 must only be sent once and ignored on Control 10 Unsupported", 1, countBefore)
+            assertEquals("One-shot Control 15 must not retry across tick passes", countBefore, countAfter)
+            assertTrue("DirectSession must remain active after Control 10 on one-shot Control 15", clientSession.active)
             assertTrue("PEER_UNSUPPORTED must not be reported", DirectFailReason.PEER_UNSUPPORTED !in failReasons)
             assertTrue("client PCs must remain open", events.none { it.startsWith("client:closed:") })
         } finally {

@@ -15,7 +15,7 @@ import { DirectRouting, type RouteHint, type RouteName } from "./direct-routing"
 import { PathChanged, abortable } from "./recovery";
 import * as w from "./peer/wire";
 
-type Peer = { id: string; head: string; session: DirectSession; paths: Map<number, DirectChannel>; live: boolean; capabilities?: MachineCapabilities; snapshotUntil: number; downloadUntil: number; snapshotSeq: bigint; downloadSeq: bigint; supportsEventPush?: boolean; subscribedKey?: string; pendingSubKey?: string; pendingSubSeq?: bigint; redialAt?: number; selected?: boolean; readyAt?: number; retryDelay?: number };
+type Peer = { id: string; head: string; session: DirectSession; paths: Map<number, DirectChannel>; live: boolean; capabilities?: MachineCapabilities; snapshotUntil: number; downloadUntil: number; snapshotSeq: bigint; downloadSeq: bigint; supportsEventPush?: boolean; lastSubAt?: number; redialAt?: number; selected?: boolean; readyAt?: number; retryDelay?: number };
 type Pending = { peer: Peer; use: number; resolve: (env: Envelope) => void };
 
 export type DirectState = "unsupported" | "connected" | "connecting" | "none";
@@ -103,40 +103,17 @@ export class DirectEngine {
       const capped = ids.filter(Boolean).slice(0, 4);
       if (capped.length > 0) next.set(machineId, capped);
     }
+    if (sameWatchedMaps(this.watchedByMachine, next)) return;
     this.watchedByMachine = next;
-    for (const p of this.peers.values()) this.syncPeerSubscription(p);
+    for (const p of this.peers.values()) this.sendSubscription(p);
   }
 
-  private syncPeerSubscription(p: Peer, force = false) {
+  private sendSubscription(p: Peer, now = Date.now()) {
     if (!this.valid(p) || !p.session.active || !p.supportsEventPush || !p.paths.get(1)?.ready) return;
     const sessionIds = this.watchedByMachine.get(p.id) ?? [];
-    const nextKey = sessionIds.join("\n");
-    if ((p.subscribedKey ?? "") === nextKey) return;
-    if (!force && p.pendingSubKey === nextKey && (p.pendingSubSeq === undefined || p.session.hasPendingControl())) return;
-    p.pendingSubKey = nextKey;
-    p.pendingSubSeq = undefined;
+    p.lastSubAt = now;
     const payload = toBinary(DirectEventSubscriptionSchema, create(DirectEventSubscriptionSchema, { sessionIds }));
-    void p.session.sendControl(15, payload).then((seq) => {
-      if (seq === undefined) {
-        if (p.pendingSubSeq === undefined && p.pendingSubKey === nextKey) p.pendingSubKey = undefined;
-        return;
-      }
-      if (p.pendingSubKey === nextKey) p.pendingSubSeq = seq;
-    });
-  }
-
-  private controlAck(p: Peer, type: number, seq: bigint, supported: boolean) {
-    if (type !== 15 || !this.valid(p)) return;
-    if (p.pendingSubSeq === seq) {
-      if (supported) {
-        p.subscribedKey = p.pendingSubKey ?? "";
-      } else {
-        p.supportsEventPush = false;
-      }
-      p.pendingSubKey = undefined;
-      p.pendingSubSeq = undefined;
-      if (supported) this.syncPeerSubscription(p);
-    }
+    void p.session.sendControl(15, payload);
   }
 
   constructor(
@@ -215,6 +192,11 @@ export class DirectEngine {
         if (this.peers.size) this.invalidate();
       } else {
         void this.discover();
+        for (const p of this.peers.values()) {
+          if (p.lastSubAt === undefined || now < p.lastSubAt || now - p.lastSubAt >= 15_000) {
+            this.sendSubscription(p, now);
+          }
+        }
       }
       if (this.foreground && this.leg?.ready && (this.freshUntil - now <= 7_000 || now - this.lastAuthorizeAt >= 12_000)) {
         this.triggerAuthorize();
@@ -329,7 +311,7 @@ export class DirectEngine {
     // The main connection is back: the computer can be reached again, so a retry waiting out its delay need not.
     this.retryAfter.clear();
     for (const p of this.sessions.values()) p.session.discovered();
-    for (const p of this.peers.values()) this.syncPeerSubscription(p, true);
+    for (const p of this.peers.values()) this.sendSubscription(p);
     this.refreshAndDiscover();
   }
 
@@ -436,7 +418,7 @@ export class DirectEngine {
         p.readyAt ??= Date.now();
         this.failures.delete(id);
         this.routing(id).reset(use === 1 ? "read" : use === 2 ? "bulk" : undefined);
-        if (use === 1) this.syncPeerSubscription(p);
+        if (use === 1) this.sendSubscription(p);
         this.notify();
       },
       closed: use => {
@@ -455,7 +437,6 @@ export class DirectEngine {
       },
       frame: (raw, use) => this.frame(p, raw, use),
       capability: opened => this.capability(p, opened),
-      controlAck: (type, seq, supported) => this.controlAck(p, type, seq, supported),
     });
     this.sessions.set(w.hex(connection), p);
     this.notify();
@@ -530,7 +511,7 @@ export class DirectEngine {
       } catch {
         p.supportsEventPush = false;
       }
-      if (p.supportsEventPush) this.syncPeerSubscription(p, true);
+      if (p.supportsEventPush) this.sendSubscription(p);
     }
     this.notify();
   }
@@ -817,4 +798,16 @@ export class DirectEngine {
     this.leg = undefined;
     this.invalidate();
   }
+}
+
+function sameWatchedMaps(a: Map<string, string[]>, b: Map<string, string[]>): boolean {
+  if (a.size !== b.size) return false;
+  for (const [k, listA] of a) {
+    const listB = b.get(k);
+    if (!listB || listA.length !== listB.length) return false;
+    for (let i = 0; i < listA.length; i++) {
+      if (listA[i] !== listB[i]) return false;
+    }
+  }
+  return true;
 }

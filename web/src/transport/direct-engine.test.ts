@@ -410,12 +410,13 @@ test("proactive keepalive renews security before 20s window expires without inte
 });
 
 test("Control 15 subscription respects capabilities/readiness and routes PayloadKind.EVENT only when peer matches", async () => {
+  vi.useFakeTimers();
   const { engine, peer } = readyEngine();
+  try {
   vi.spyOn(engine as unknown as { refreshAndDiscover(): void }, "refreshAndDiscover").mockImplementation(() => {});
-  let nextSeq = 0n;
-  const sendControl = vi.fn<(_type: number, _payload: w.Bytes) => Promise<bigint | undefined>>(async () => ++nextSeq);
-  const hasPendingControl = vi.fn(() => true);
-  Object.assign(peer.session, { sendControl, hasPendingControl });
+  vi.spyOn(engine as unknown as { discover(): Promise<void> }, "discover").mockResolvedValue();
+  const sendControl = vi.fn<(_type: number, _payload: w.Bytes) => Promise<void>>(async () => {});
+  Object.assign(peer.session, { sendControl });
   Object.assign(peer, { snapshotSeq: 0n, downloadSeq: 0n });
   peer.paths.set(1, { ready: true } as unknown as DirectChannel);
 
@@ -439,16 +440,38 @@ test("Control 15 subscription respects capabilities/readiness and routes Payload
   const decodedSub = fromBinary(DirectEventSubscriptionSchema, sendControl.mock.calls[0][1]);
   expect(decodedSub.sessionIds).toEqual(["s1", "s2", "s3", "s4"]);
 
-  // Simulate relay blip: attach() before Control 15 is ACKed must resend instead of latching prematurely.
-  engine.attach({ ready: true, send: vi.fn() } as never);
-  await Promise.resolve();
-  expect(sendControl).toHaveBeenCalledTimes(2);
+  // A -> B -> A and [] -> s1 -> [] switches send the full new set immediately without waiting for any Ack.
+  engine.setWatchedSessions(new Map([["machine", ["s2"]]]));
+  engine.setWatchedSessions(new Map([["machine", ["s1", "s2", "s3", "s4"]]]));
+  engine.setWatchedSessions(new Map());
+  expect(sendControl).toHaveBeenCalledTimes(4);
+  expect(fromBinary(DirectEventSubscriptionSchema, sendControl.mock.calls[1][1]).sessionIds).toEqual(["s2"]);
+  expect(fromBinary(DirectEventSubscriptionSchema, sendControl.mock.calls[2][1]).sessionIds).toEqual(["s1", "s2", "s3", "s4"]);
+  expect(fromBinary(DirectEventSubscriptionSchema, sendControl.mock.calls[3][1]).sessionIds).toEqual([]);
 
-  // Ack seq=2 confirms subscription; subsequent attach() must NOT resend duplicate Control 15.
-  (engine as unknown as { controlAck(peer: unknown, type: number, seq: bigint, supported: boolean): void }).controlAck(peer, 15, 2n, true);
+  // Same watched set does not send; attach(), Capabilities refresh, and 15s timer tick each resend current set.
+  engine.setWatchedSessions(new Map([["machine", ["s1"]]]));
+  expect(sendControl).toHaveBeenCalledTimes(5);
+  engine.setWatchedSessions(new Map([["machine", ["s1"]]]));
+  expect(sendControl).toHaveBeenCalledTimes(5);
+
   engine.attach({ ready: true, send: vi.fn() } as never);
-  await Promise.resolve();
-  expect(sendControl).toHaveBeenCalledTimes(2);
+  expect(sendControl).toHaveBeenCalledTimes(6);
+
+  (engine as unknown as { capability(peer: unknown, opened: unknown): void }).capability(peer, {
+    type: 1,
+    payload: toBinary(CapabilitiesSchema, create(CapabilitiesSchema, {
+      controlTypes: [15],
+      expiresAtMs: BigInt(Date.now() + 30_000),
+      fileDownload: true,
+    })),
+    context: { seq: 2n },
+  });
+  expect(sendControl).toHaveBeenCalledTimes(7);
+
+  vi.advanceTimersByTime(15_000);
+  expect(sendControl).toHaveBeenCalledTimes(8);
+  expect(fromBinary(DirectEventSubscriptionSchema, sendControl.mock.calls[7][1]).sessionIds).toEqual(["s1"]);
 
   // Routing: only use=1, PayloadKind.EVENT, header.machineId === peer.id && header.sender === peer.id passes.
   const received: Array<{ machineId: string; sessionId: string; seq: bigint }> = [];
@@ -467,4 +490,8 @@ test("Control 15 subscription respects capabilities/readiness and routes Payload
   frameFn(peer, mkEnv(PayloadKind.EVENT, "machine", "machine", 5n), 1);
 
   expect(received).toEqual([{ machineId: "machine", sessionId: "s1", seq: 5n }]);
+  } finally {
+    engine.close();
+    vi.useRealTimers();
+  }
 });

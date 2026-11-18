@@ -115,6 +115,7 @@ type directManager struct {
 	clock               func() time.Time
 	port                *direct.PortMux
 	capabilities        atomic.Pointer[pb.MachineCapabilities]
+	startTail           func(context.Context, string, uint64, bool)
 }
 
 func newDirectManager(d *dispatcher) (*directManager, error) {
@@ -888,7 +889,11 @@ func (m *directManager) reconcileTailersLocked(initialAfter map[string]uint64) {
 			subCtx, subCancel := context.WithCancel(m.ctx)
 			m.tailers[sid] = &directTailer{cancel: subCancel}
 			startAfter, hasInitial := initialAfter[sid]
-			m.workers.Go(func() { m.tailSession(subCtx, sid, startAfter, hasInitial) })
+			start := m.startTail
+			if start == nil {
+				start = m.tailSession
+			}
+			m.workers.Go(func() { start(subCtx, sid, startAfter, hasInitial) })
 		}
 	}
 }

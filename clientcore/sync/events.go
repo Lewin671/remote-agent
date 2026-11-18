@@ -17,9 +17,6 @@ const (
 	eventFetchNewer
 	eventFetchTail
 	eventFetchPrefix
-
-	maxDirectPendingEvents = 256
-	maxDirectPendingBytes  = 4 << 20
 )
 
 // EventBuffer holds the contiguous prefix + out-of-order pending events and reducer state for one session.
@@ -31,14 +28,12 @@ type EventBuffer struct {
 	unavailableSeqs  map[uint64]bool
 	approxBytesBySeq map[uint64]int64
 	approxBytes      int64
-	pendingBytes     int64
 	usedAtMs         int64
 
 	errorText            *corev1.Text
 	fetchErrorText       *corev1.Text
 	retired              bool
 	tailRequested        bool
-	tailTargetSeq        uint64
 	awaitingCache        bool
 	backfilling          bool
 	fetching             bool
@@ -77,9 +72,7 @@ func (b *EventBuffer) resetContent(agent v1.Agent) {
 	clear(b.unavailableSeqs)
 	clear(b.approxBytesBySeq)
 	b.approxBytes = 0
-	b.pendingBytes = 0
 	b.tailRequested = false
-	b.tailTargetSeq = 0
 	b.errorText = nil
 	b.fetchErrorText = nil
 	b.loaded = false
@@ -168,44 +161,24 @@ func (b *EventBuffer) ShownEvents() []*v1.Event {
 	if !b.tailRequested || len(b.pending) == 0 {
 		return b.prefix
 	}
-	if b.tailTargetSeq > 0 && b.pending[b.tailTargetSeq] != nil {
-		start := b.tailTargetSeq
-		for start > 1 && b.pending[start-1] != nil {
-			start--
-		}
-		end := b.tailTargetSeq
-		for b.pending[end+1] != nil {
-			end++
-		}
-		out := make([]*v1.Event, 0, int(end-start+1))
-		for seq := start; seq <= end; seq++ {
-			out = append(out, b.pending[seq])
-		}
-		return out
-	}
-	seqs := make([]uint64, 0, len(b.pending))
+	var maxSeq uint64
 	for seq := range b.pending {
-		seqs = append(seqs, seq)
-	}
-	slices.Sort(seqs)
-	var bestStart, bestEnd, curStart, curEnd uint64
-	for _, seq := range seqs {
-		if curStart == 0 {
-			curStart, curEnd = seq, seq
-		} else if seq == curEnd+1 {
-			curEnd = seq
-		} else {
-			curStart, curEnd = seq, seq
-		}
-		if bestStart == 0 || (curEnd-curStart) > (bestEnd-bestStart) {
-			bestStart, bestEnd = curStart, curEnd
+		if seq > maxSeq {
+			maxSeq = seq
 		}
 	}
-	if bestStart == 0 || (bestEnd == bestStart && b.tailTargetSeq > 0 && bestStart > b.tailTargetSeq && len(b.prefix) > 0) {
+	if maxSeq == 0 {
 		return b.prefix
 	}
-	out := make([]*v1.Event, 0, int(bestEnd-bestStart+1))
-	for seq := bestStart; seq <= bestEnd; seq++ {
+	start := maxSeq
+	for start > 1 {
+		if _, ok := b.pending[start-1]; !ok {
+			break
+		}
+		start--
+	}
+	out := make([]*v1.Event, 0, int(maxSeq-start+1))
+	for seq := start; seq <= maxSeq; seq++ {
 		if ev := b.pending[seq]; ev != nil {
 			out = append(out, ev)
 		}
@@ -374,9 +347,6 @@ func (e *Engine) handleCacheEventsLoaded(ctx *StepContext, ev *corev1.CacheEvent
 		b.awaitingCache = false
 		if len(ev.Events) >= int(CacheEventPageSize) && ev.Events[0] != nil && ev.Events[0].Seq > 1 {
 			b.tailRequested = true
-			if last := ev.Events[len(ev.Events)-1]; last != nil && last.Seq > b.tailTargetSeq {
-				b.tailTargetSeq = last.Seq
-			}
 			b.backfilling = true
 			b.cacheFirstSeq = ev.Events[0].Seq
 			b.cacheAfterSeq = 0
@@ -481,9 +451,6 @@ func (e *Engine) startFetchEvents(ctx *StepContext, sid string) {
 		if latest > held+uint64(EventsPageLimit) {
 			cursor = latest - uint64(EventsPageLimit)
 			b.tailRequested = true
-			if latest > b.tailTargetSeq {
-				b.tailTargetSeq = latest
-			}
 		}
 		b.fetchPhase = eventFetchNewer
 		b.fetchCursor = cursor
@@ -497,9 +464,6 @@ func (e *Engine) startFetchEvents(ctx *StepContext, sid string) {
 		after := latest - uint64(EventsPageLimit)
 		if !allTailHeld(b, after, uint64(EventsPageLimit)) {
 			b.tailRequested = true
-			if latest > b.tailTargetSeq {
-				b.tailTargetSeq = latest
-			}
 			b.fetchPhase = eventFetchTail
 			b.fetchCursor = after
 			e.emitGetEvents(ctx, sid, b, after)
@@ -662,15 +626,16 @@ func (e *Engine) handleDirectEvents(ctx *StepContext, ev *corev1.DirectEventsRec
 		return
 	}
 	b := e.buffers[ev.SessionId]
-	if b == nil {
+	if b == nil || b.tailRequested {
 		return
 	}
 	if e.security.Loaded && !e.security.TrustedMachines[ev.MachineId] {
 		return
 	}
+	expected := uint64(len(b.prefix)) + 1
 	var clean []*corev1.PlainEvent
 	for _, pe := range ev.Events {
-		if pe == nil || pe.Seq == 0 || pe.Broken || pe.Retired || pe.Unavailable {
+		if pe == nil || pe.Seq == 0 || pe.Broken || pe.Retired || pe.Unavailable || pe.Seq != expected {
 			continue
 		}
 		if pe.CacheRef != "" {
@@ -682,6 +647,7 @@ func (e *Engine) handleDirectEvents(ctx *StepContext, ev *corev1.DirectEventsRec
 			}
 		}
 		clean = append(clean, pe)
+		expected++
 	}
 	if len(clean) == 0 {
 		return
@@ -733,13 +699,6 @@ func (e *Engine) ingestEvents(
 		}
 
 		expected := uint64(len(b.prefix)) + 1
-		if !fromServer && pe.Seq > expected {
-			if _, exists := b.pending[pe.Seq]; !exists {
-				if len(b.pending) >= maxDirectPendingEvents || (pe.ApproxBytes > 0 && b.pendingBytes+pe.ApproxBytes > maxDirectPendingBytes) {
-					continue
-				}
-			}
-		}
 		if pe.Seq > maxSeq {
 			maxSeq = pe.Seq
 		}
@@ -775,26 +734,18 @@ func (e *Engine) ingestEvents(
 					break
 				}
 				delete(b.pending, next)
-				b.pendingBytes -= b.approxBytesBySeq[next]
-				if b.pendingBytes < 0 {
-					b.pendingBytes = 0
-				}
 				b.prefix = append(b.prefix, nxtEv)
 				if b.reducer != nil {
 					b.reducer.Append([]*v1.Event{nxtEv})
 				}
 			}
-			if len(b.pending) == 0 || (b.tailTargetSeq > 0 && uint64(len(b.prefix)) >= b.tailTargetSeq) {
+			if len(b.pending) == 0 {
 				// The prefix has caught up with the tail it was showing; a later
 				// out-of-order live event must not switch the display back to it.
 				b.tailRequested = false
-				b.tailTargetSeq = 0
 			}
 		case pe.Seq > expected:
-			if _, exists := b.pending[pe.Seq]; !exists {
-				b.pending[pe.Seq] = ev
-				b.pendingBytes += pe.ApproxBytes
-			}
+			b.pending[pe.Seq] = ev
 		default:
 			// seq <= len(b.prefix): keep existing verified event; replace skeleton/unavailable placeholder if incoming verified.
 			idx := int(pe.Seq - 1)
@@ -816,9 +767,6 @@ func (e *Engine) ingestEvents(
 
 	if fromServer && maxSeq > s.ServerLastSeq {
 		s.ServerLastSeq = maxSeq
-	}
-	if fromServer && b.tailRequested && maxSeq > b.tailTargetSeq {
-		b.tailTargetSeq = maxSeq
 	}
 	if maxSeq > s.LastSeq {
 		s.LastSeq = maxSeq

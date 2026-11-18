@@ -1824,6 +1824,8 @@ func TestDirectAheadGapDoesNotFalseErrorAndTriggersServerGapFill(t *testing.T) {
 	})
 
 	// Direct delivers seq=42 while seq=41 (>16KiB) is still uploading to server.
+	// Direct gap event must be dropped rather than entering EventBuffer.pending,
+	// without emitting a premature GetEvents RPC or marking a gap error.
 	_, directRes := e.HandleEvent(&corev1.Event{
 		NowMs: now + 80,
 		Event: &corev1.Event_DirectEventsReceived{
@@ -1834,16 +1836,18 @@ func TestDirectAheadGapDoesNotFalseErrorAndTriggersServerGapFill(t *testing.T) {
 			},
 		},
 	})
-	// Must NOT emit GetEvents prematurely.
 	for _, eff := range directRes.Effects {
 		if rpc := eff.GetRpc(); rpc != nil && rpc.GetGetEvents() != nil {
 			t.Fatalf("direct gap must not emit premature GetEvents")
 		}
 	}
-	if view := e.BuildSessionDataView("s1"); view.HasGap || !view.Loaded || view.FetchError != nil {
-		t.Fatalf("direct-ahead pending event must not report HasGap/FetchError: %+v", view)
+	if buf := e.Buffer("s1"); buf.PrefixLen() != 40 || buf.PendingCount() != 0 {
+		t.Fatalf("gapped direct seq=42 must be dropped (prefix=40 pending=0), got prefix=%d pending=%d", buf.PrefixLen(), buf.PendingCount())
 	}
-	// ApplyLiveSnapshot (over direct) also advances LastSeq to 42 without touching ServerLastSeq.
+	if view := e.BuildSessionDataView("s1"); view.HasGap || !view.Loaded || view.FetchError != nil {
+		t.Fatalf("dropped direct gap event must not report HasGap/FetchError: %+v", view)
+	}
+	// ApplyLiveSnapshot (over direct) still advances LastSeq to 42 without touching ServerLastSeq.
 	e.Run(func(ctx *StepContext) {
 		e.ApplyLiveSnapshot(ctx, "s1", &v1.LiveSnapshot{Session: &v1.Session{Id: "s1", LastSeq: 42}})
 	})
@@ -1851,7 +1855,7 @@ func TestDirectAheadGapDoesNotFalseErrorAndTriggersServerGapFill(t *testing.T) {
 		t.Fatalf("ApplyLiveSnapshot must not advance ServerLastSeq, got %d", e.sessions["s1"].ServerLastSeq)
 	}
 
-	// Even if a GetEvents cycle finishes while ServerLastSeq==40, it must not report false gap error.
+	// If a GetEvents cycle finishes while ServerLastSeq==40, it must not report false gap error.
 	var midOp uint64
 	_, reWatchRes := e.HandleEvent(&corev1.Event{
 		NowMs: now + 85,
@@ -1875,7 +1879,7 @@ func TestDirectAheadGapDoesNotFalseErrorAndTriggersServerGapFill(t *testing.T) {
 		},
 	})
 	if view := e.BuildSessionDataView("s1"); view.FetchError != nil || view.HasGap || !view.Loaded {
-		t.Fatalf("finishFetchCycle with only direct-ahead pending must not set FetchError/HasGap: %+v", view)
+		t.Fatalf("finishFetchCycle with empty server gap must not set FetchError/HasGap: %+v", view)
 	}
 
 	// Now server commits 41..42 and broadcasts SessionUpdated(LastSeq=42) (suppose EventsAppended was dropped).
@@ -2049,24 +2053,29 @@ func TestDirectAheadDuringTailFirstPreservesTailAndClearsTailRequested(t *testin
 		}
 	}
 
-	// Ahead-of-relay direct event 1202 (skipping 1201) arrives while tailRequested is active:
-	// ShownEvents must keep 701..1200 instead of collapsing to [1202].
+	// Two ahead-of-tail direct events [1202, 1203] arrive while tailRequested is active:
+	// must be dropped and never enter pending or blank ShownEvents [701..1200].
 	e.HandleEvent(&corev1.Event{
 		NowMs: now + 75,
 		Event: &corev1.Event_DirectEventsReceived{
 			DirectEventsReceived: &corev1.DirectEventsReceivedEvent{
 				MachineId: "m1",
 				SessionId: "s1",
-				Events:    []*corev1.PlainEvent{{Seq: 1202, Verified: true, ApproxBytes: 64, Event: &v1.Event{Seq: 1202, SessionId: "s1"}}},
+				Events: []*corev1.PlainEvent{
+					{Seq: 1202, Verified: true, ApproxBytes: 64, Event: &v1.Event{Seq: 1202, SessionId: "s1"}},
+					{Seq: 1203, Verified: true, ApproxBytes: 64, Event: &v1.Event{Seq: 1203, SessionId: "s1"}},
+				},
 			},
 		},
 	})
+	if buf := e.Buffer("s1"); buf.PendingCount() != 500 {
+		t.Fatalf("expected pending=500 (direct ahead-of-tail dropped), got %d", buf.PendingCount())
+	}
 	if shown := e.Buffer("s1").ShownEvents(); len(shown) != 500 || shown[0].Seq != 701 || shown[len(shown)-1].Seq != 1200 {
 		t.Fatalf("expected ShownEvents [701..1200], got len=%d", len(shown))
 	}
 
-	// Backfill 1..700: drains 701..1200 into prefix while 1202 stays in pending.
-	// tailRequested must clear so ShownEvents renders 1..1200 (not [1202]).
+	// Backfill 1..700: drains 701..1200 into prefix and clears tailRequested cleanly.
 	p1 := make([]*corev1.PlainEvent, 0, 500)
 	for seq := uint64(1); seq <= 500; seq++ {
 		p1 = append(p1, &corev1.PlainEvent{Seq: seq, Verified: true, ApproxBytes: 64, Event: &v1.Event{Seq: seq, SessionId: "s1"}})
@@ -2094,15 +2103,29 @@ func TestDirectAheadDuringTailFirstPreservesTailAndClearsTailRequested(t *testin
 		},
 	})
 	buf := e.Buffer("s1")
-	if buf.tailRequested {
-		t.Fatalf("expected tailRequested=false after prefix caught up to tailTargetSeq")
+	if buf.tailRequested || buf.PendingCount() != 0 {
+		t.Fatalf("expected tailRequested=false and pending=0, got tailRequested=%v pending=%d", buf.tailRequested, buf.PendingCount())
 	}
 	if shown := buf.ShownEvents(); len(shown) != 1200 {
 		t.Fatalf("expected ShownEvents [1..1200], got len=%d", len(shown))
 	}
+	// Now live contiguous direct event 1201 matches prefixLen+1 and is appended immediately.
+	e.HandleEvent(&corev1.Event{
+		NowMs: now + 95,
+		Event: &corev1.Event_DirectEventsReceived{
+			DirectEventsReceived: &corev1.DirectEventsReceivedEvent{
+				MachineId: "m1",
+				SessionId: "s1",
+				Events:    []*corev1.PlainEvent{{Seq: 1201, Verified: true, ApproxBytes: 64, Event: &v1.Event{Seq: 1201, SessionId: "s1"}}},
+			},
+		},
+	})
+	if shown := buf.ShownEvents(); len(shown) != 1201 {
+		t.Fatalf("expected ShownEvents [1..1201] after next contiguous direct event, got len=%d", len(shown))
+	}
 }
 
-func TestDirectPendingBoundsAndEventsAppendedServerGapAndErrorClear(t *testing.T) {
+func TestDirectStrictNextAndServerGapErrorClear(t *testing.T) {
 	e := NewEngine()
 	now := int64(1_700_000_000_000)
 	legID, listsOp := startAndConnect(t, e, now)
@@ -2147,21 +2170,29 @@ func TestDirectPendingBoundsAndEventsAppendedServerGapAndErrorClear(t *testing.T
 		},
 	})
 
-	// P3 checks: direct seq=3 (ahead of server seq=1), plus an existing fetchErrorText;
-	// relay EventsAppended([2]) updates ServerLastSeq=2 with !hasServerGap(2):
-	// must clear fetchErrorText AND must NOT emit a premature GetEvents RPC for 3.
-	buf := e.Buffer("s1")
-	buf.fetchErrorText = &corev1.Text{Literal: "fetch error"}
+	// Direct batch [2, 4] when prefix=1 accepts only contiguous 2 and drops gapped 4;
+	// direct [1] (already in prefix) is also ignored; direct [3] later succeeds.
 	e.HandleEvent(&corev1.Event{
 		NowMs: now + 80,
 		Event: &corev1.Event_DirectEventsReceived{
 			DirectEventsReceived: &corev1.DirectEventsReceivedEvent{
 				MachineId: "m1",
 				SessionId: "s1",
-				Events:    []*corev1.PlainEvent{{Seq: 3, Verified: true, ApproxBytes: 64, Event: &v1.Event{Seq: 3, SessionId: "s1"}}},
+				Events: []*corev1.PlainEvent{
+					{Seq: 1, Verified: true, ApproxBytes: 64, Event: &v1.Event{Seq: 1, SessionId: "s1"}},
+					{Seq: 2, Verified: true, ApproxBytes: 64, Event: &v1.Event{Seq: 2, SessionId: "s1"}},
+					{Seq: 4, Verified: true, ApproxBytes: 64, Event: &v1.Event{Seq: 4, SessionId: "s1"}},
+				},
 			},
 		},
 	})
+	buf := e.Buffer("s1")
+	if buf.PrefixLen() != 2 || buf.PendingCount() != 0 {
+		t.Fatalf("expected prefix=2 pending=0, got prefix=%d pending=%d", buf.PrefixLen(), buf.PendingCount())
+	}
+
+	// Relay EventsAppended([2]) clears fetchErrorText when ServerLastSeq=2 and !hasServerGap(2).
+	buf.fetchErrorText = &corev1.Text{Literal: "fetch error"}
 	_, appRes := e.HandleEvent(&corev1.Event{
 		NowMs: now + 90,
 		Event: &corev1.Event_StreamFrame{
@@ -2181,27 +2212,7 @@ func TestDirectPendingBoundsAndEventsAppendedServerGapAndErrorClear(t *testing.T
 	}
 	for _, eff := range appRes.Effects {
 		if eff.GetRpc().GetGetEvents() != nil {
-			t.Fatalf("must not fire premature GetEvents when ServerLastSeq=2 and prefix=3 (or <= ServerLastSeq)")
+			t.Fatalf("must not fire premature GetEvents when ServerLastSeq=2")
 		}
-	}
-
-	// P2 check: flooding > maxDirectPendingEvents gapped direct events is bounded at maxDirectPendingEvents.
-	flood := make([]*corev1.PlainEvent, 0, maxDirectPendingEvents+32)
-	for i := 0; i < maxDirectPendingEvents+32; i++ {
-		seq := uint64(100 + i*2)
-		flood = append(flood, &corev1.PlainEvent{Seq: seq, Verified: true, ApproxBytes: 64, Event: &v1.Event{Seq: seq, SessionId: "s1"}})
-	}
-	e.HandleEvent(&corev1.Event{
-		NowMs: now + 100,
-		Event: &corev1.Event_DirectEventsReceived{
-			DirectEventsReceived: &corev1.DirectEventsReceivedEvent{
-				MachineId: "m1",
-				SessionId: "s1",
-				Events:    flood,
-			},
-		},
-	})
-	if buf.PendingCount() > maxDirectPendingEvents {
-		t.Fatalf("expected direct pending bounded <= %d, got %d", maxDirectPendingEvents, buf.PendingCount())
 	}
 }

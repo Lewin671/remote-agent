@@ -78,9 +78,7 @@ internal class DirectEngine(
         var snapshotSeq = 0L
         var downloadSeq = 0L
         var supportsEventPush = false
-        var subscribedKey: String? = null
-        var pendingSubKey: String? = null
-        var pendingSubSeq = 0L
+        var lastSubAt = 0L
         var redialAt: Long? = null
         var readyAt: Long? = null
         var retryDelay: Long? = null
@@ -153,52 +151,20 @@ internal class DirectEngine(
             if (capped.isNotEmpty()) next[machineId] = capped
         }
         val toSend = synchronized(stateLock) {
+            if (watchedByMachine == next) return
             watchedByMachine = next
-            peers.values.mapNotNull { syncPeerSubscriptionLocked(it) }
+            val now = clock()
+            peers.values.mapNotNull { sendSubscriptionLocked(it, now) }
         }
-        dispatchSubscriptions(toSend)
+        for ((p, body) in toSend) p.session.sendControl(15L, body)
     }
 
-    private fun syncPeerSubscriptionLocked(p: PeerEntry, force: Boolean = false): Triple<PeerEntry, String, ByteArray>? {
+    private fun sendSubscriptionLocked(p: PeerEntry, now: Long = clock()): Pair<PeerEntry, ByteArray>? {
         if (!validLocked(p) || !p.session.active || !p.supportsEventPush || p.paths[1]?.ready != true) return null
         val ids = watchedByMachine[p.id].orEmpty()
-        val key = ids.joinToString("\n")
-        if ((p.subscribedKey ?: "") == key) return null
-        if (!force && p.pendingSubKey == key && (p.pendingSubSeq == 0L || p.session.hasPendingControl())) return null
-        p.pendingSubKey = key
-        p.pendingSubSeq = 0L
+        p.lastSubAt = now
         val body = DirectEventSubscription.newBuilder().addAllSessionIds(ids).build().toByteArray()
-        return Triple(p, key, body)
-    }
-
-    private fun dispatchSubscriptions(calls: List<Triple<PeerEntry, String, ByteArray>>) {
-        for ((p, key, body) in calls) {
-            p.session.sendControl(15L, body) { seq ->
-                synchronized(stateLock) {
-                    if (seq == 0L) {
-                        if (p.pendingSubSeq == 0L && p.pendingSubKey == key) p.pendingSubKey = null
-                    } else if (p.pendingSubKey == key) {
-                        p.pendingSubSeq = seq
-                    }
-                }
-            }
-        }
-    }
-
-    private fun controlAck(p: PeerEntry, type: Long, seq: Long, supported: Boolean) {
-        if (type != 15L) return
-        val resend = synchronized(stateLock) {
-            if (!validLocked(p) || p.pendingSubSeq != seq) return
-            if (supported) {
-                p.subscribedKey = p.pendingSubKey ?: ""
-            } else {
-                p.supportsEventPush = false
-            }
-            p.pendingSubKey = null
-            p.pendingSubSeq = 0L
-            if (supported) syncPeerSubscriptionLocked(p) else null
-        }
-        if (resend != null) dispatchSubscriptions(listOf(resend))
+        return p to body
     }
 
     private fun notifyChanged() {
@@ -378,29 +344,42 @@ internal class DirectEngine(
         job = scope.launch {
             while (isActive) {
                 delay(1000)
-                val (shouldInvalidate, shouldAuthorize) = synchronized(stateLock) {
-                    if (discoverTimer !== job) return@launch
-                    val fresh = currentLocked()
-                    val inv = !fresh && peers.isNotEmpty()
-                    val now = monotonic()
-                    val remainingMs = freshUntil - clock()
-                    val dueByCadence = lastAuthorizeAttemptMs == Long.MIN_VALUE || now - lastAuthorizeAttemptMs >= 12_000L
-                    val dueByExpiry = remainingMs <= 7_000L && (lastAuthorizeAttemptMs == Long.MIN_VALUE || now - lastAuthorizeAttemptMs >= 2_000L)
-                    val auth = foreground && leg != null && !authorizeInFlight && (dueByCadence || dueByExpiry)
-                    if (auth) {
-                        authorizeInFlight = true
-                        lastAuthorizeAttemptMs = now
-                    }
-                    inv to auth
-                }
-                if (shouldInvalidate) invalidate("stale")
-                if (shouldAuthorize) {
-                    scope.launch { runAuthorizeLoop() }
-                }
-                discover()
+                if (synchronized(stateLock) { discoverTimer !== job }) return@launch
+                timerStep()
             }
         }
         discoverTimer = job
+    }
+
+    internal suspend fun timerStep() {
+        val (shouldInvalidate, shouldAuthorize, toResub) = synchronized(stateLock) {
+            val fresh = currentLocked()
+            val inv = !fresh && peers.isNotEmpty()
+            val monoNow = monotonic()
+            val wallNow = clock()
+            val remainingMs = freshUntil - wallNow
+            val dueByCadence = lastAuthorizeAttemptMs == Long.MIN_VALUE || monoNow - lastAuthorizeAttemptMs >= 12_000L
+            val dueByExpiry = remainingMs <= 7_000L && (lastAuthorizeAttemptMs == Long.MIN_VALUE || monoNow - lastAuthorizeAttemptMs >= 2_000L)
+            val auth = foreground && leg != null && !authorizeInFlight && (dueByCadence || dueByExpiry)
+            if (auth) {
+                authorizeInFlight = true
+                lastAuthorizeAttemptMs = monoNow
+            }
+            val resub = if (fresh && !inv) {
+                peers.values.mapNotNull { p ->
+                    if (p.lastSubAt == 0L || wallNow < p.lastSubAt || wallNow - p.lastSubAt >= 15_000L) {
+                        sendSubscriptionLocked(p, wallNow)
+                    } else null
+                }
+            } else emptyList()
+            Triple(inv, auth, resub)
+        }
+        if (shouldInvalidate) invalidate("stale")
+        if (shouldAuthorize) {
+            scope.launch { runAuthorizeLoop() }
+        }
+        discover()
+        for ((p, body) in toResub) p.session.sendControl(15L, body)
     }
 
     fun install(r: DeviceSecurity.Record) {
@@ -482,7 +461,7 @@ internal class DirectEngine(
 
     fun attach(stream: FrameStream) {
         val toDiscover: List<DirectSession>
-        val toResync: List<Triple<PeerEntry, String, ByteArray>>
+        val toResync: List<Pair<PeerEntry, ByteArray>>
         synchronized(stateLock) {
             leg = stream
             if (!foreground) return
@@ -491,11 +470,12 @@ internal class DirectEngine(
             if (discoverTimer == null) {
                 startDiscoverTimerLocked()
             }
+            val now = clock()
             toDiscover = sessions.values.map { it.session }
-            toResync = peers.values.mapNotNull { syncPeerSubscriptionLocked(it, force = true) }
+            toResync = peers.values.mapNotNull { sendSubscriptionLocked(it, now) }
         }
         for (s in toDiscover) s.discovered()
-        dispatchSubscriptions(toResync)
+        for ((p, body) in toResync) p.session.sendControl(15L, body)
         refreshAndDiscover(forceAuthorize = true)
     }
 
@@ -638,7 +618,7 @@ internal class DirectEngine(
                 chosen = choose,
                 beforeOffer = choose,
                 ready = { use, path ->
-                    var syncCall: Triple<PeerEntry, String, ByteArray>? = null
+                    var syncCall: Pair<PeerEntry, ByteArray>? = null
                     val accepted = synchronized(stateLock) {
                         if (!validLocked(p) || !p.session.active || peers[id] !== p) {
                             false
@@ -647,14 +627,14 @@ internal class DirectEngine(
                             if (p.readyAt == null) p.readyAt = clock()
                             failReasons.remove(id)
                             routingLocked(id).reset(read = use == 1, bulk = use == 2)
-                            if (use == 1) syncCall = syncPeerSubscriptionLocked(p)
+                            if (use == 1) syncCall = sendSubscriptionLocked(p, clock())
                             true
                         }
                     }
                     if (!accepted) {
                         path.close()
                     } else {
-                        syncCall?.let { dispatchSubscriptions(listOf(it)) }
+                        syncCall?.let { (peerEntry, body) -> peerEntry.session.sendControl(15L, body) }
                         notifyChanged()
                     }
                 },
@@ -696,7 +676,6 @@ internal class DirectEngine(
                 },
                 frame = { raw, use -> frame(p, raw, use) },
                 capability = { opened -> capability(p, opened) },
-                controlAck = { type, seq, supported -> controlAck(p, type, seq, supported) },
                 clock = clock,
                 monotonic = monotonic,
                 dispatcher = dispatcher,
@@ -763,7 +742,7 @@ internal class DirectEngine(
     }
 
     private fun capability(p: PeerEntry, opened: Wire.Opened) {
-        var syncCall: Triple<PeerEntry, String, ByteArray>? = null
+        var syncCall: Pair<PeerEntry, ByteArray>? = null
         synchronized(stateLock) {
             if (!validLocked(p)) return
             if (opened.type == 14L) {
@@ -780,10 +759,10 @@ internal class DirectEngine(
                 p.downloadUntil = if (Wire.getUint(fields, 5) == 1L) Wire.getUint(fields, 4) else 0L
                 val caps = runCatching { Capabilities.parseFrom(opened.payload) }.getOrNull()
                 p.supportsEventPush = caps != null && 15 in caps.controlTypesList
-                if (p.supportsEventPush) syncCall = syncPeerSubscriptionLocked(p, force = true)
+                if (p.supportsEventPush) syncCall = sendSubscriptionLocked(p, clock())
             }
         }
-        syncCall?.let { dispatchSubscriptions(listOf(it)) }
+        syncCall?.let { (peerEntry, body) -> peerEntry.session.sendControl(15L, body) }
         notifyChanged()
     }
 

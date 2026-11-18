@@ -20,15 +20,15 @@ final class SessionPair: @unchecked Sendable {
     private let lock = NSLock()
     private var _clientPaths: [Int: DirectChannel] = [:], _machinePaths: [Int: DirectChannel] = [:]
     private var _machineFrames: [(Int, W.Bytes)] = [], _clientFrames: [(Int, W.Bytes)] = [], _clientClosed: [Int?] = []
-    private var _clientControlAcks: [(UInt64, UInt64, Bool)] = [], _clientOutIds: [W.Bytes] = []
+    private var _clientControl15Count = 0, _machineUnsupportedCount = 0
     var dropFrames = false
     var clientPaths: [Int: DirectChannel] { lock.withLock { _clientPaths } }
     var machinePaths: [Int: DirectChannel] { lock.withLock { _machinePaths } }
     var machineFrames: [(Int, W.Bytes)] { lock.withLock { _machineFrames } }
     var clientFrames: [(Int, W.Bytes)] { lock.withLock { _clientFrames } }
     var clientClosed: [Int?] { lock.withLock { _clientClosed } }
-    var clientControlAcks: [(UInt64, UInt64, Bool)] { lock.withLock { _clientControlAcks } }
-    var clientOutIds: [W.Bytes] { lock.withLock { _clientOutIds } }
+    var clientControl15Count: Int { lock.withLock { _clientControl15Count } }
+    var machineUnsupportedCount: Int { lock.withLock { _machineUnsupportedCount } }
 
     init(deadlineMs: UInt64 = 10_000) throws {
         client = try PeerSignalVectorsTests.identity("client", 1); machine = try PeerSignalVectorsTests.identity("machine", 2)
@@ -40,8 +40,13 @@ final class SessionPair: @unchecked Sendable {
                 selfID: me, peer: other, codec: codec, connection: connection, deadline: now + deadlineMs, budget: budget, stun: ["stun:127.0.0.1:3478"], factory: factory,
                 valid: { true }, authorize: {},
                 send: { [unowned self] out in
-                    if isClient, let f = try? PeerWire.parse(out.raw, 5), let id = f[4]?.data {
-                        self.lock.withLock { self._clientOutIds.append(id) }
+                    if let recipient = isClient ? self.clientSession?.peer : self.machineSession?.peer,
+                       let o = try? codec.openSent(out.raw, me, recipient, self.time.clock.now()), o.ctx.cls == 2 {
+                        if isClient && o.type == 15 {
+                            self.lock.withLock { self._clientControl15Count += 1 }
+                        } else if !isClient && o.type == 10 {
+                            self.lock.withLock { self._machineUnsupportedCount += 1 }
+                        }
                     }
                     if self.dropFrames { return true }
                     (isClient ? self.machineSession : self.clientSession)?.receive(out.raw); return true
@@ -51,9 +56,6 @@ final class SessionPair: @unchecked Sendable {
                 closed: { [unowned self] use in if isClient { self.lock.withLock { self._clientClosed.append(use) } } },
                 frame: { [unowned self] raw, use in self.lock.withLock { if isClient { self._clientFrames.append((use, raw)) } else { self._machineFrames.append((use, raw)) } } },
                 capability: { _ in },
-                controlAck: { [unowned self] type, seq, supported in
-                    if isClient { self.lock.withLock { self._clientControlAcks.append((type, seq, supported)) } }
-                },
                 clock: time.clock)
         }
         clientSession = try DirectSession(options(client, W.member(machine.peer), clientBudget, isClient: true))
@@ -119,45 +121,17 @@ final class SessionPair: @unchecked Sendable {
         let sub = try PBDirectEventSubscription.with { $0.sessionIds = ["sess-1"] }.serializedData()
         pair.clientSession.sendControl(15, Array(sub))
 
-        // Wait deterministically until Control 10 (Unsupported) is processed and pending clears.
-        #expect(await eventually {
-            pair.clientControlAcks.contains(where: { $0.0 == 15 && !$0.2 })
-                && pair.clientSession.controlWindowPendingCount == 0
-        })
+        // Wait deterministically until Control 10 (Unsupported) returns, then drive a tick pass
+        // after advancing the injected clock past retry intervals and verify one-shot sendControl(15).
+        #expect(await eventually { pair.machineUnsupportedCount >= 1 })
+        let ticksBefore = pair.clientSession.tickCount
         pair.time.advance(1_600)
+        #expect(await eventually { pair.clientSession.tickCount > ticksBefore })
 
-        #expect(!pair.clientSession.hasPendingControl())
+        #expect(pair.clientControl15Count == 1)
         #expect(pair.clientSession.active)
         #expect(pair.clientSession.failure == nil)
         #expect(pair.clientClosed.isEmpty)
-        pair.close()
-    }
-
-    @Test func controlWindowRecoversAfterRelayOfflineAndTimeout() async throws {
-        let pair = try SessionPair(deadlineMs: 5_000)
-        await pair.clientSession.start()
-        #expect(await eventually { pair.clientPaths.count == 2 && pair.machinePaths.count == 2 })
-
-        let sub = try PBDirectEventSubscription.with { $0.sessionIds = ["sess-1"] }.serializedData()
-        let beforeOut = pair.clientOutIds.count
-        pair.dropFrames = true
-        pair.clientSession.sendControl(15, Array(sub))
-        #expect(await eventually {
-            pair.clientSession.controlWindowPendingCount == 1 && pair.clientOutIds.count > beforeOut
-        })
-
-        let sentId = pair.clientOutIds.last!
-        pair.clientSession.delivery(sentId, status: 2, retry: 0) { true }
-        pair.time.advance(10_500)
-        pair.dropFrames = false
-
-        let sub2 = try PBDirectEventSubscription.with { $0.sessionIds = ["sess-2"] }.serializedData()
-        pair.clientSession.sendControl(15, Array(sub2))
-        #expect(await eventually {
-            pair.clientControlAcks.contains(where: { $0.0 == 15 && !$0.2 })
-                && pair.clientSession.controlWindowPendingCount == 0
-        })
-        #expect(pair.clientSession.active)
         pair.close()
     }
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/ecdh"
 	"crypto/ed25519"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -230,13 +231,46 @@ func TestDirectPeerQueueLimitsAndFreshnessRevocationGate(t *testing.T) {
 		t.Fatalf("expected byte cap to bound queued items, got accepted=%d", accepted)
 	}
 
-	// 5. Missing key in non-nil initialAfter map must NOT cause hasInitial=true (after=0) in reconcileTailersLocked.
-	initial := map[string]uint64{"present": 42}
-	if gotAfter, hasInitial := initial["present"]; !hasInitial || gotAfter != 42 {
-		t.Fatalf("expected present key initial=(42,true), got (%d,%v)", gotAfter, hasInitial)
+	// 5. Missing key in non-nil initialAfter map calls startTail with hasInitial=false (after=0) in reconcileTailersLocked.
+	type tailStartCall struct {
+		after      uint64
+		hasInitial bool
 	}
-	if gotAfter, hasInitial := initial["missing"]; hasInitial || gotAfter != 0 {
-		t.Fatalf("expected missing key initial=(0,false), got (%d,%v)", gotAfter, hasInitial)
+	var callsMu sync.Mutex
+	calls := map[string]tailStartCall{}
+	done := make(chan struct{}, 2)
+	m.mu.Lock()
+	m.startTail = func(_ context.Context, sid string, after uint64, hasInitial bool) {
+		callsMu.Lock()
+		calls[sid] = tailStartCall{after: after, hasInitial: hasInitial}
+		callsMu.Unlock()
+		done <- struct{}{}
+	}
+	dp.paths[0] = new(direct.Path)
+	dp.subscribed = map[string]struct{}{"present": {}, "missing": {}}
+	m.active[peerMem.ID] = dp
+	m.reconcileTailersLocked(map[string]uint64{"present": 42})
+	m.mu.Unlock()
+	for range 2 {
+		select {
+		case <-done:
+		case <-time.After(2 * time.Second):
+			t.Fatal("timed out waiting for reconcileTailersLocked starters")
+		}
+	}
+	m.mu.Lock()
+	delete(m.active, peerMem.ID)
+	dp.paths[0] = nil
+	dp.subscribed = nil
+	m.reconcileTailersLocked(nil)
+	m.mu.Unlock()
+	callsMu.Lock()
+	defer callsMu.Unlock()
+	if got := calls["present"]; !got.hasInitial || got.after != 42 {
+		t.Fatalf("expected present key call={42, true}, got %+v", got)
+	}
+	if got := calls["missing"]; got.hasInitial || got.after != 0 {
+		t.Fatalf("expected missing key call={0, false}, got %+v", got)
 	}
 }
 

@@ -230,9 +230,16 @@ public final actor Remote {
     private var activeLegId: UInt64?
 
     // Security Gate & opaque cipher cache refs
-    var sessionKeys: [String: Data] = [:]
-    var sessionMachines: [String: String] = [:]
-    private var watchedSessionIds: [String] = []
+    private let directGate = DirectEventQueueGate()
+    var sessionKeys: [String: Data] = [:] {
+        didSet { directGate.updateKeys(sessionKeys) }
+    }
+    var sessionMachines: [String: String] = [:] {
+        didSet { directGate.updateMachines(sessionMachines) }
+    }
+    private var watchedSessionIds: [String] = [] {
+        didSet { directGate.updateWatched(watchedSessionIds) }
+    }
     var machineReplacements: [String: [PBMachineReplacementProof]] = [:]
     var trustedMembers: [String: DeviceSecurity.Member] = [:]
     var archiveMachines: Set<String> = []
@@ -346,12 +353,17 @@ public final actor Remote {
         holder.remote = self
         direct?.probe = { [holder] id, path in await holder.remote?.probeRead(id, path) }
         direct?.trace = log
-        let directEvents = SerialChain()
-        let directGate = DirectEventQueueGate()
+        let directGate = self.directGate
         direct?.eventHandler = { [holder] machineId, env, header, size in
             let sid = header.session
-            guard directGate.admit(sid, bytes: size) else { return }
-            directEvents.run {
+            guard let chain = directGate.admit(
+                sid,
+                machineId: machineId,
+                sender: header.sender,
+                seq: header.seq,
+                bytes: size
+            ) else { return }
+            chain.run {
                 await holder.remote?.handleDirectEvent(machineId: machineId, envelope: env, header: header, size: size)
                 directGate.release(sid, bytes: size)
             }
@@ -854,6 +866,7 @@ public final actor Remote {
     }
 
     public nonisolated func close() {
+        directGate.markClosed()
         deviceLink.closeStreams()
         direct?.close()
         Task { await self.closeActor() }
@@ -945,20 +958,67 @@ private final class DirectEventQueueGate: @unchecked Sendable {
     private let maxPerSession = 16
     private let maxTotalBytes = 512 * 1024
     private let lock = NSLock()
+    private var closed = false
+    private var watched: Set<String> = []
+    private var machines: [String: String] = [:]
+    private var keyedSessions: Set<String> = []
+    private var chains: [String: SerialChain] = [:]
     private var counts: [String: Int] = [:]
     private var totalBytes = 0
 
-    func admit(_ sessionId: String, bytes: Int) -> Bool {
+    func updateWatched(_ ids: [String]) {
+        lock.lock()
+        defer { lock.unlock() }
+        watched = Set(ids)
+        chains = chains.filter { sid, _ in watched.contains(sid) || (counts[sid] ?? 0) > 0 }
+    }
+
+    func updateMachines(_ sessionMachines: [String: String]) {
+        lock.lock()
+        defer { lock.unlock() }
+        machines = sessionMachines
+    }
+
+    func updateKeys(_ sessionKeys: [String: Data]) {
+        lock.lock()
+        defer { lock.unlock() }
+        keyedSessions = Set(sessionKeys.compactMap { $0.value.isEmpty ? nil : $0.key })
+    }
+
+    func markClosed() {
+        lock.lock()
+        defer { lock.unlock() }
+        closed = true
+        watched.removeAll()
+        machines.removeAll()
+        keyedSessions.removeAll()
+        chains.removeAll()
+    }
+
+    func admit(_ sessionId: String, machineId: String, sender: String, seq: UInt64, bytes: Int) -> SerialChain? {
+        guard !sessionId.isEmpty, seq > 0 else { return nil }
         let cost = max(bytes, 64)
         lock.lock()
         defer { lock.unlock() }
+        guard !closed,
+              watched.contains(sessionId),
+              machines[sessionId] == machineId,
+              sender == machineId,
+              keyedSessions.contains(sessionId) else {
+            return nil
+        }
         let count = counts[sessionId, default: 0]
         if count >= maxPerSession || totalBytes + cost > maxTotalBytes {
-            return false
+            return nil
         }
         counts[sessionId] = count + 1
         totalBytes += cost
-        return true
+        if let existing = chains[sessionId] {
+            return existing
+        }
+        let chain = SerialChain()
+        chains[sessionId] = chain
+        return chain
     }
 
     func release(_ sessionId: String, bytes: Int) {
@@ -969,6 +1029,9 @@ private final class DirectEventQueueGate: @unchecked Sendable {
         if let count = counts[sessionId] {
             if count <= 1 {
                 counts.removeValue(forKey: sessionId)
+                if !watched.contains(sessionId) {
+                    chains.removeValue(forKey: sessionId)
+                }
             } else {
                 counts[sessionId] = count - 1
             }

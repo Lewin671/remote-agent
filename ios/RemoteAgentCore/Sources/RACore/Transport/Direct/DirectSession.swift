@@ -25,7 +25,6 @@ struct DirectSessionOptions: Sendable {
     var closed: @Sendable (Int?) -> Void
     var frame: @Sendable (PeerWire.Bytes, Int) -> Void
     var capability: @Sendable (PeerWire.Opened) -> Void
-    var controlAck: (@Sendable (UInt64, UInt64, Bool) -> Void)?
     var probe: (@Sendable (Int, Double) -> Void)?
     var clock = DirectClock()
 }
@@ -57,9 +56,9 @@ final class DirectSession: @unchecked Sendable {
     private let lock = NSLock()
     private var pcs: [PC] = []
     private let boot: PeerSender
-    private var controlWindow: PeerSender
     private var timer: Task<Void, Never>?
     private var tickQueued = false, ended = false, retired = false
+    private var _tickCount = 0
     private var incoming = 0, incomingBytes = 0
     private var controlSeq: UInt64 = 0
     private var challenge: W.Bytes?
@@ -72,6 +71,7 @@ final class DirectSession: @unchecked Sendable {
 
     var established: Bool { lock.withLock { _established } }
     var failure: DirectFailure? { lock.withLock { _failure } }
+    var tickCount: Int { lock.withLock { _tickCount } }
     /// The computer as learned so far: its instance and boot nonce are filled in by its Challenge.
     var peer: W.Public { pcs[0].gate.peerNow }
     /// Not ended and not retired: flags only, so the engine can ask while holding its own lock.
@@ -85,7 +85,6 @@ final class DirectSession: @unchecked Sendable {
         let now = options.clock.now()
         guard options.valid(), options.deadline > now, options.deadline <= now + 10_000 else { throw PathChanged() }
         boot = PeerSender(options.deadline)
-        controlWindow = PeerSender(options.deadline)
         retainUntil = options.deadline + 300_000
         for use in 1...2 {
             let gate = PeerSignal(options.codec, options.selfID, options.peer, options.connection, UInt64(use), now)
@@ -205,17 +204,12 @@ final class DirectSession: @unchecked Sendable {
 
     private func receiveAck(_ opened: W.Opened, _ raw: W.Bytes, _ peer: W.Public, _ now: UInt64) async throws {
         let o = options, f = try PeerSchema.fields(opened.payload, "Ack"), hash = f[6]!.data
-        let cw = lock.withLock { controlWindow }
-        for sender in [boot, cw] + pcs.map(\.sender) {
+        for sender in [boot] + pcs.map(\.sender) {
             guard let sent = sender.pending[W.hex(hash)] else { continue }
             let original = try o.codec.openSent(sent.raw, o.selfID, peer, now), q = original.ctx
             if q.cls != f[4]!.value || q.seq != f[5]!.value || q.generation != f[7]!.value || q.use != f[8]!.value { return }
             if original.type == 2 && q.cls == 1 && q.generation == 0 { for p in pcs { _ = try p.gate.receive(raw, now) } }
             _ = lock.withLock { sender.ack(hash) }
-            if sender === cw {
-                lock.withLock { cw.discovered() }
-                options.controlAck?(original.type, q.seq, true)
-            }
             for i in 0..<2 { try await maybeOffer(i) }
             return
         }
@@ -227,7 +221,6 @@ final class DirectSession: @unchecked Sendable {
         if opened.type == 1 || opened.type == 14 {
             let f = try PeerSchema.fields(opened.payload, opened.type == 1 ? "Capabilities" : "CapabilitySnapshot"), expires = f[opened.type == 1 ? 4 : 3]!.value
             if expires <= now || expires <= c.issued || expires - c.issued > 60_000 { return }
-            lock.withLock { controlWindow.discovered() }
             options.capability(opened)
         }
         controls[key] = (opened.hash, c.deadline + 300_000)
@@ -299,15 +292,6 @@ final class DirectSession: @unchecked Sendable {
     }
     private func unsupported(_ o: W.Opened, _ now: UInt64) async throws {
         let f = try PeerSchema.fields(o.payload, "Unsupported"), hash = f[4]!.data
-        let cw = lock.withLock { controlWindow }
-        if let cwPending = cw.pending[W.hex(hash)] {
-            let original = try options.codec.openSent(cwPending.raw, options.selfID, pcs[0].gate.peer, now)
-            if original.ctx.cls == f[1]!.value && original.type == f[2]!.value && original.ctx.seq == f[3]!.value {
-                lock.withLock { _ = cw.ack(hash); cw.discovered() }
-                options.controlAck?(original.type, original.ctx.seq, false)
-            }
-            return
-        }
         for (index, p) in pcs.enumerated() {
             guard let pending = p.sender.pending[W.hex(hash)] else { continue }
             let original = try options.codec.openSent(pending.raw, options.selfID, p.gate.peer, now)
@@ -318,37 +302,17 @@ final class DirectSession: @unchecked Sendable {
         }
     }
 
-    func sendControl(_ type: UInt64, _ body: W.Bytes, onQueued: (@Sendable (UInt64) -> Void)? = nil) {
+    func sendControl(_ type: UInt64, _ body: W.Bytes) {
         queued { [self] in
-            do {
-                try await options.authorize()
-                guard active else { onQueued?(0); return }
-                let now = options.clock.now()
-                controlSeq += 1
-                let seq = controlSeq
-                let context = W.Context(options.selfID.peer, pcs[0].gate.peer, options.connection, 0, 1, seq, now, 2)
-                let raw = try options.codec.seal(options.selfID, pcs[0].gate.peer, context, type, body)
-                let ok = lock.withLock { () -> Bool in
-                    if controlWindow.timedOut || now >= controlWindow.deadline || controlWindow.pending.isEmpty {
-                        controlWindow = PeerSender(now + 10_000)
-                    } else {
-                        controlWindow.discovered()
-                    }
-                    return controlWindow.enqueue(raw, now, context.deadline, 1)
-                }
-                onQueued?(ok ? seq : 0)
-            } catch {
-                onQueued?(0)
-            }
+            try await options.authorize()
+            guard active else { return }
+            let now = options.clock.now()
+            controlSeq += 1
+            let context = W.Context(options.selfID.peer, pcs[0].gate.peer, options.connection, 0, 1, controlSeq, now, 2)
+            let raw = try options.codec.seal(options.selfID, pcs[0].gate.peer, context, type, body)
+            await transmit(raw)
         }
     }
-
-    func hasPendingControl() -> Bool {
-        let now = options.clock.now()
-        return lock.withLock { !controlWindow.timedOut && now < controlWindow.deadline && !controlWindow.pending.isEmpty }
-    }
-
-    var controlWindowPendingCount: Int { lock.withLock { controlWindow.pending.count } }
 
     @discardableResult
     private func signal(_ index: Int, _ type: UInt64, _ body: W.Bytes) async throws -> Bool {
@@ -480,10 +444,6 @@ final class DirectSession: @unchecked Sendable {
         let o = options, now = o.clock.now()
         for p in pcs { if !p.announced { _ = p.gate.tick(now) } else { p.gate.clock = max(p.gate.clock, now) }; p.sender.clock = max(p.sender.clock, now) }
         boot.clock = max(boot.clock, now)
-        let cwFrames: [W.Bytes] = lock.withLock {
-            controlWindow.clock = max(controlWindow.clock, now)
-            return controlWindow.tick(now)
-        }
         if peerWindows.values.contains(where: { $0.gap != 0 && now >= $0.gap }) { retireNow(); return }
         controls = controls.filter { now <= $0.value.until }
         receipts = receipts.filter { now <= $0.value.until }
@@ -496,7 +456,6 @@ final class DirectSession: @unchecked Sendable {
             close(); return
         }
         for raw in boot.tick(now) { await transmit(raw) }
-        for raw in cwFrames { await transmit(raw) }
         for (index, p) in pcs.enumerated() {
             for (key, until) in p.gate.cacheUntil where now > until { p.gate.cacheUntil.removeValue(forKey: key); p.gate.seen.removeValue(forKey: key) }
             if !p.announced && (p.gate.closed || now >= o.deadline) { p.channel?.close(); p.channel = nil; publish(index) }
@@ -510,6 +469,7 @@ final class DirectSession: @unchecked Sendable {
             if p.ended && p.batch.pending.isEmpty && p.channel != nil { p.ended = false; _ = try? await signal(index, 6, PeerCandidates.endBody(p.ufrag, p.batch.count, p.batch.batches)) }
             for raw in p.sender.tick(now) { await transmit(raw) }
         }
+        lock.withLock { _tickCount += 1 }
     }
 
     private func resetPC(_ index: Int) {
@@ -544,8 +504,7 @@ final class DirectSession: @unchecked Sendable {
     func delivery(_ id: W.Bytes, status: UInt32, retry: UInt32, current: @escaping @Sendable () -> Bool) {
         queued { [self] in
             guard current() else { return }
-            let cw = lock.withLock { controlWindow }
-            for sender in [boot, cw] + pcs.map(\.sender) {
+            for sender in [boot] + pcs.map(\.sender) {
                 lock.withLock {
                     for pending in sender.pending.values {
                         guard let f = try? W.parse(pending.raw, 5), f[4]?.data == id else { continue }
@@ -556,7 +515,7 @@ final class DirectSession: @unchecked Sendable {
             }
         }
     }
-    func discovered() { queued { [self] in boot.discovered(); lock.withLock { controlWindow.discovered() }; for p in pcs { p.sender.discovered() } } }
+    func discovered() { queued { [self] in boot.discovered(); for p in pcs { p.sender.discovered() } } }
     func retire() {
         lock.withLock { retired = true }
         queued { [self] in retireNow() }
