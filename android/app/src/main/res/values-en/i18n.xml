@@ -1021,35 +1021,25 @@
     <string name="schedule_after_turn_replace">"%1$s. Choose another frequency above to replace it."</string>
     <string name="schedule_android_agent_notification" formatted="false">"agent notification"</string>
     <string name="schedule_android_agent_notification_completion_notification" formatted="false">"agent notification, completion notification"</string>
-    <string name="schedule_android_alternative_limit">"%1$s, or %2$s"</string>
-    <string name="schedule_android_attention_details">"%2$s. %1$s %3$s"</string>
     <string name="schedule_android_automatic_run_count" formatted="false">"Automatic run count"</string>
-    <string name="schedule_android_beijing" formatted="false">"Beijing"</string>
-    <string name="schedule_android_cannot_read_the_previous_task_list_connect_to_read_it" formatted="false">"Cannot read the previous task list. Connect to read it again"</string>
     <string name="schedule_android_cannot_request_notification" formatted="false">"Cannot request notification"</string>
     <string name="schedule_android_changes_have_not_been_saved" formatted="false">"Changes have not been saved."</string>
     <string name="schedule_android_check_project_updates_and_notify_me_of_noteworthy_changes" formatted="false">"Check project updates and notify me of noteworthy changes."</string>
-    <string name="schedule_android_check_the_time" formatted="false">"Check the time"</string>
     <string name="schedule_android_choose_a_project" formatted="false">"Choose a project"</string>
     <string name="schedule_android_choose_a_time_type" formatted="false">"Choose a time type"</string>
     <string name="schedule_android_choose_directory" formatted="false">"Choose directory"</string>
     <string name="schedule_android_computer_offline_tasks_cannot_be_edited" formatted="false">"Computer offline. Tasks cannot be edited"</string>
     <string name="schedule_android_connect_value1_to_edit_run_or_delete">"Connect %1$s to edit, run, or delete."</string>
-    <string name="schedule_android_continuing_may_send_the_previous_message_again_open_the_run" formatted="false">"Continuing may send the previous message again. Open the run history to verify first."</string>
-    <string name="schedule_android_creating" formatted="false">"Creating…"</string>
-    <string name="schedule_android_creation_is_unconfirmed_retrying_uses_the_same_request_you_can" formatted="false">"Creation is unconfirmed. Retrying uses the same request. You can go back and check the task list first."</string>
     <string name="schedule_android_currently_value1_finishing_directly_preserves_the_original_rule_choose_a">"Currently “%1$s”. Finishing directly preserves the original rule; choose a time type above before changing it."</string>
     <string name="schedule_android_date" formatted="false">"Date"</string>
     <string name="schedule_android_days" formatted="false">"Days"</string>
     <string name="schedule_android_delete_this_task" formatted="false">"Delete this task?"</string>
     <string name="schedule_android_each_run_opens_a_new_conversation_under_this_task_outside" formatted="false">"Each run opens a new conversation under this task, outside the session list. Completion notifications are on by default. When disabled, only the agent can notify you."</string>
     <string name="schedule_android_end_date" formatted="false">"End date"</string>
-    <string name="schedule_android_ended_value1">"Ended %1$s"</string>
     <string name="schedule_android_follow_conversation" formatted="false">"Follow conversation"</string>
     <string name="schedule_android_for_example_asia_shanghai" formatted="false">"For example, Asia/Shanghai"</string>
     <string name="schedule_android_hours" formatted="false">"Hours"</string>
     <string name="schedule_android_interval" formatted="false">"Interval"</string>
-    <string name="schedule_android_interval_must_be_greater_than_0" formatted="false">"Interval must be greater than 0"</string>
     <plurals name="schedule_android_large_after_current_turn">
         <item quantity="one">"%2$s sec after the current turn ends"</item>
         <item quantity="other">"%2$s sec after the current turn ends"</item>
@@ -1079,38 +1069,25 @@
         <item quantity="other">"%2$s runs total"</item>
     </plurals>
     <string name="schedule_android_minutes" formatted="false">"Minutes"</string>
-    <string name="schedule_android_missing_target" formatted="false">"The run failed and the task stopped: the destination conversation was not found. This task only sends to its original conversation; resuming will fail again."</string>
     <string name="schedule_android_monday_to_friday" formatted="false">"Monday to Friday"</string>
-    <string name="schedule_android_needs_your_attention" formatted="false">"Needs your attention"</string>
     <string name="schedule_android_new_result" formatted="false">"New result"</string>
     <string name="schedule_android_new_result_0653c4" formatted="false">"New result"</string>
-    <string name="schedule_android_next_run">"Next %1$s"</string>
-    <string name="schedule_android_next_value1">" · Next %1$s"</string>
     <string name="schedule_android_positive_integer" formatted="false">"Positive integer"</string>
     <string name="schedule_android_read" formatted="false">"Read"</string>
-    <string name="schedule_android_read_again" formatted="false">"Read again"</string>
-    <string name="schedule_android_recent" formatted="false">"Recent"</string>
-    <string name="schedule_android_resuming_or_rescheduling_starts_at_the_next_automatic_time_and" formatted="false">"Resuming or rescheduling starts at the next automatic time and does not resend the previous message."</string>
-    <string name="schedule_android_run_count_must_be_greater_than_0" formatted="false">"Run count must be greater than 0"</string>
     <string name="schedule_android_run_once_now_does_not_count_toward_automatic_runs_or" formatted="false">"Run once now does not count toward automatic runs or the calendar day\'s limit. Deleting stops future scheduling; sent messages and opened conversations are kept."</string>
     <string name="schedule_android_running_label" formatted="false">"Running ·"</string>
     <string name="schedule_android_saving" formatted="false">"Saving…"</string>
     <string name="schedule_android_saving_ff509c" formatted="false">"Saving…"</string>
     <string name="schedule_android_seconds" formatted="false">"Seconds"</string>
-    <string name="schedule_android_select_at_least_one_day" formatted="false">"Select at least one day"</string>
     <string name="schedule_android_stop_future_scheduling_sent_messages_and_opened_conversations_are_kept" formatted="false">"Stop future scheduling. Sent messages and opened conversations are kept."</string>
     <string name="schedule_android_task" formatted="false">"Task"</string>
     <string name="schedule_android_task_not_found_it_may_have_been_deleted_on_another" formatted="false">"Task not found. It may have been deleted on another device"</string>
     <string name="schedule_android_the_end_date_is_in_the_past" formatted="false">"The end date is in the past"</string>
     <string name="schedule_android_the_message_is_sent_after_the_current_turn_ends_without" formatted="false">"The message is sent after the current turn ends, without interrupting ongoing work."</string>
-    <string name="schedule_android_this_task_cannot_be_renamed_separately" formatted="false">"This task cannot be renamed separately"</string>
     <string name="schedule_android_unit" formatted="false">"Unit"</string>
     <string name="schedule_android_unknown_time" formatted="false">"Unknown time"</string>
     <string name="schedule_android_unread" formatted="false">"Unread"</string>
-    <string name="schedule_android_update_remote_agent_on_the_computer_to_create_scheduled_tasks" formatted="false">"Update remote-agent on the computer to create scheduled tasks."</string>
     <string name="schedule_android_update_remote_agent_on_this_computer_to_manage_scheduled_tasks" formatted="false">"Update remote-agent on this computer to manage scheduled tasks"</string>
-    <string name="schedule_android_value1_time">"(%1$s time)"</string>
-    <string name="schedule_android_you_can_run_an_extra_time_now_or_change_the" formatted="false">"You can run an extra time now, or change the schedule."</string>
     <string name="schedule_attention_once">"%1$s. Change the time to reschedule."</string>
     <string name="schedule_attention_resume">"%1$s. Resuming or rescheduling starts at the next automatic time and does not resend the last message."</string>
     <string name="schedule_attention_uncertain">"%1$s. Continuing may repeat the last message. Open the run records to verify first."</string>

@@ -704,7 +704,6 @@ export interface MessageArgs {
   "schedule.after_turn_replace": { frequency: string };
   "schedule.android_agent_notification": { [name: string]: never };
   "schedule.android_agent_notification_completion_notification": { [name: string]: never };
-  "schedule.android_cannot_read_the_previous_task_list_connect_to_read_it": { [name: string]: never };
   "schedule.android_cannot_request_notification": { [name: string]: never };
   "schedule.android_choose_a_project": { [name: string]: never };
   "schedule.android_choose_a_time_type": { [name: string]: never };
@@ -720,12 +719,10 @@ export interface MessageArgs {
   "schedule.android_large_every_seconds": { count: number; total: string };
   "schedule.android_large_runs_total": { count: number; total: string };
   "schedule.android_new_result": { [name: string]: never };
-  "schedule.android_run_count_must_be_greater_than_0": { [name: string]: never };
   "schedule.android_run_once_now_does_not_count_toward_automatic_runs_or": { [name: string]: never };
   "schedule.android_saving": { [name: string]: never };
   "schedule.android_task": { [name: string]: never };
   "schedule.android_the_end_date_is_in_the_past": { [name: string]: never };
-  "schedule.android_this_task_cannot_be_renamed_separately": { [name: string]: never };
   "schedule.android_unknown_time": { [name: string]: never };
   "schedule.android_update_remote_agent_on_this_computer_to_manage_scheduled_tasks": { [name: string]: never };
   "schedule.attention_once": { reason: string };
@@ -2634,7 +2631,6 @@ export const messages = {
     "schedule.after_turn_replace": "{frequency}. Choose another frequency above to replace it.",
     "schedule.android_agent_notification": "agent notification",
     "schedule.android_agent_notification_completion_notification": "agent notification, completion notification",
-    "schedule.android_cannot_read_the_previous_task_list_connect_to_read_it": "Cannot read the previous task list. Connect to read it again",
     "schedule.android_cannot_request_notification": "Cannot request notification",
     "schedule.android_choose_a_project": "Choose a project",
     "schedule.android_choose_a_time_type": "Choose a time type",
@@ -2692,12 +2688,10 @@ export const messages = {
       "plural": "count"
     },
     "schedule.android_new_result": "New result",
-    "schedule.android_run_count_must_be_greater_than_0": "Run count must be greater than 0",
     "schedule.android_run_once_now_does_not_count_toward_automatic_runs_or": "Run once now does not count toward automatic runs or the calendar day's limit. Deleting stops future scheduling; sent messages and opened conversations are kept.",
     "schedule.android_saving": "Saving…",
     "schedule.android_task": "Task",
     "schedule.android_the_end_date_is_in_the_past": "The end date is in the past",
-    "schedule.android_this_task_cannot_be_renamed_separately": "This task cannot be renamed separately",
     "schedule.android_unknown_time": "Unknown time",
     "schedule.android_update_remote_agent_on_this_computer_to_manage_scheduled_tasks": "Update remote-agent on this computer to manage scheduled tasks",
     "schedule.attention_once": "{reason}. Change the time to reschedule.",
@@ -4733,7 +4727,6 @@ export const messages = {
     "schedule.after_turn_replace": "{frequency}。选择上方其他频率可替换。",
     "schedule.android_agent_notification": "agent 通知",
     "schedule.android_agent_notification_completion_notification": "agent 通知、完成后通知",
-    "schedule.android_cannot_read_the_previous_task_list_connect_to_read_it": "上次的任务列表无法读取，联网后重新读取",
     "schedule.android_cannot_request_notification": "无法请求通知",
     "schedule.android_choose_a_project": "选项目",
     "schedule.android_choose_a_time_type": "请选择时间类型",
@@ -4784,12 +4777,10 @@ export const messages = {
       "plural": "count"
     },
     "schedule.android_new_result": "有新结果",
-    "schedule.android_run_count_must_be_greater_than_0": "运行次数必须是正整数",
     "schedule.android_run_once_now_does_not_count_toward_automatic_runs_or": "立即运行一次不占自动次数及日历当天名额。删除任务会停止后续调度，已发出的消息和已开的对话保留。",
     "schedule.android_saving": "保存中…",
     "schedule.android_task": "任务",
     "schedule.android_the_end_date_is_in_the_past": "结束日期已经过去",
-    "schedule.android_this_task_cannot_be_renamed_separately": "当前任务不能单独改名",
     "schedule.android_unknown_time": "时间未知",
     "schedule.android_update_remote_agent_on_this_computer_to_manage_scheduled_tasks": "需要更新这台电脑上的 remote-agent 才能使用定时任务。",
     "schedule.attention_once": "{reason}。可改时间重排。",

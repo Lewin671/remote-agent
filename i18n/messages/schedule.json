@@ -32,56 +32,6 @@
     }
   },
   {
-    "key": "schedule.android_alternative_limit",
-    "zh-CN": "{runs}，或{until}",
-    "en": "{runs}, or {until}",
-    "notes": "Android 原有完整句；参数保留原始详情或已经本地化的字段，英文初稿待审。",
-    "params": {
-      "runs": {
-        "type": "string",
-        "example": "Example"
-      },
-      "until": {
-        "type": "string",
-        "example": "Example"
-      }
-    },
-    "platforms": [
-      "android"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "schedule.android_attention_details",
-    "zh-CN": "{reason}。{next}{takeover}",
-    "en": "{reason}. {next} {takeover}",
-    "notes": "Android 原有完整句；参数保留原始详情或已经本地化的字段，英文初稿待审。",
-    "params": {
-      "reason": {
-        "type": "string",
-        "example": "Example"
-      },
-      "next": {
-        "type": "string",
-        "example": "Example"
-      },
-      "takeover": {
-        "type": "string",
-        "example": "Example"
-      }
-    },
-    "platforms": [
-      "android"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
     "key": "schedule.android_automatic_run_count",
     "zh-CN": "自动运行次数",
     "en": "Automatic run count",
@@ -89,36 +39,6 @@
     "params": {},
     "platforms": [
       "android"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "schedule.android_beijing",
-    "zh-CN": "北京",
-    "en": "Beijing",
-    "notes": "Android SchedulePresentation 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
-    "params": {},
-    "platforms": [
-      "android"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "schedule.android_cannot_read_the_previous_task_list_connect_to_read_it",
-    "zh-CN": "上次的任务列表无法读取，联网后重新读取",
-    "en": "Cannot read the previous task list. Connect to read it again",
-    "notes": "Android Schedules 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
-    "params": {},
-    "platforms": [
-      "web",
-      "android",
-      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -159,20 +79,6 @@
     "key": "schedule.android_check_project_updates_and_notify_me_of_noteworthy_changes",
     "zh-CN": "检查项目的更新，有值得注意的变化再通知我。",
     "en": "Check project updates and notify me of noteworthy changes.",
-    "notes": "Android Schedules 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
-    "params": {},
-    "platforms": [
-      "android"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "schedule.android_check_the_time",
-    "zh-CN": "请检查时间",
-    "en": "Check the time",
     "notes": "Android Schedules 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
     "params": {},
     "platforms": [
@@ -260,48 +166,6 @@
       "web",
       "android",
       "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "schedule.android_continuing_may_send_the_previous_message_again_open_the_run",
-    "zh-CN": "继续可能重复执行上次的消息，请先打开运行记录核实。",
-    "en": "Continuing may send the previous message again. Open the run history to verify first.",
-    "notes": "Android SchedulePresentation 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
-    "params": {},
-    "platforms": [
-      "android"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "schedule.android_creating",
-    "zh-CN": "正在创建…",
-    "en": "Creating…",
-    "notes": "Android Schedules 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
-    "params": {},
-    "platforms": [
-      "android"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "schedule.android_creation_is_unconfirmed_retrying_uses_the_same_request_you_can",
-    "zh-CN": "创建结果尚未确认，再试一次使用同一个请求。返回后可先查看任务列表。",
-    "en": "Creation is unconfirmed. Retrying uses the same request. You can go back and check the task list first.",
-    "notes": "Android Schedules 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
-    "params": {},
-    "platforms": [
-      "android"
     ],
     "status": {
       "zh-CN": "source",
@@ -400,25 +264,6 @@
     }
   },
   {
-    "key": "schedule.android_ended_value1",
-    "zh-CN": "已结束 {value1}",
-    "en": "Ended {value1}",
-    "notes": "Android Schedules 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。value1：原始数量或时长，数字不分组；复数由整数选择器决定。英文为待审初稿；不要替换成浏览器专属安全说明。",
-    "params": {
-      "value1": {
-        "type": "string",
-        "example": "Example"
-      }
-    },
-    "platforms": [
-      "android"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
     "key": "schedule.android_follow_conversation",
     "zh-CN": "跟随对话",
     "en": "Follow conversation",
@@ -467,20 +312,6 @@
     "zh-CN": "间隔",
     "en": "Interval",
     "notes": "Android Schedules 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
-    "params": {},
-    "platforms": [
-      "android"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "schedule.android_interval_must_be_greater_than_0",
-    "zh-CN": "间隔要大于 0",
-    "en": "Interval must be greater than 0",
-    "notes": "Android ScheduleTime 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
     "params": {},
     "platforms": [
       "android"
@@ -757,37 +588,9 @@
     }
   },
   {
-    "key": "schedule.android_missing_target",
-    "zh-CN": "运行失败，任务已停下：找不到运行的对话。这个任务只发到原来的对话，恢复后还会失败。",
-    "en": "The run failed and the task stopped: the destination conversation was not found. This task only sends to its original conversation; resuming will fail again.",
-    "notes": "Android 原有完整句；参数保留原始详情或已经本地化的字段，英文初稿待审。",
-    "params": {},
-    "platforms": [
-      "android"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
     "key": "schedule.android_monday_to_friday",
     "zh-CN": "周一到周五",
     "en": "Monday to Friday",
-    "notes": "Android Schedules 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
-    "params": {},
-    "platforms": [
-      "android"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "schedule.android_needs_your_attention",
-    "zh-CN": "需要你处理",
-    "en": "Needs your attention",
     "notes": "Android Schedules 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
     "params": {},
     "platforms": [
@@ -829,44 +632,6 @@
     }
   },
   {
-    "key": "schedule.android_next_run",
-    "zh-CN": "下次 {time}",
-    "en": "Next {time}",
-    "notes": "Android 原有完整句；参数保留原始详情或已经本地化的字段，英文初稿待审。",
-    "params": {
-      "time": {
-        "type": "string",
-        "example": "Example"
-      }
-    },
-    "platforms": [
-      "android"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "schedule.android_next_value1",
-    "zh-CN": " · 下次 {value1}",
-    "en": " · Next {value1}",
-    "notes": "Android SchedulePresentation 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。value1：按照本地日历显示的时间字段，不能改变原始时间戳或调度时区。英文为待审初稿；不要替换成浏览器专属安全说明。",
-    "params": {
-      "value1": {
-        "type": "string",
-        "example": "Example"
-      }
-    },
-    "platforms": [
-      "android"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
     "key": "schedule.android_positive_integer",
     "zh-CN": "正整数",
     "en": "Positive integer",
@@ -888,64 +653,6 @@
     "params": {},
     "platforms": [
       "android"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "schedule.android_read_again",
-    "zh-CN": "重新读取",
-    "en": "Read again",
-    "notes": "Android Schedules 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
-    "params": {},
-    "platforms": [
-      "android"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "schedule.android_recent",
-    "zh-CN": "最近",
-    "en": "Recent",
-    "notes": "Android Schedules 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
-    "params": {},
-    "platforms": [
-      "android"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "schedule.android_resuming_or_rescheduling_starts_at_the_next_automatic_time_and",
-    "zh-CN": "恢复或重新安排后从下一次自动时间开始，不重发上次消息。",
-    "en": "Resuming or rescheduling starts at the next automatic time and does not resend the previous message.",
-    "notes": "Android SchedulePresentation 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
-    "params": {},
-    "platforms": [
-      "android"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "schedule.android_run_count_must_be_greater_than_0",
-    "zh-CN": "运行次数必须是正整数",
-    "en": "Run count must be greater than 0",
-    "notes": "Android ScheduleTime 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
-    "params": {},
-    "platforms": [
-      "web",
-      "android",
-      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -1017,20 +724,6 @@
     "zh-CN": "秒",
     "en": "Seconds",
     "notes": "Android Schedules 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
-    "params": {},
-    "platforms": [
-      "android"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "schedule.android_select_at_least_one_day",
-    "zh-CN": "请至少选择一天",
-    "en": "Select at least one day",
-    "notes": "Android ScheduleTime 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
     "params": {},
     "platforms": [
       "android"
@@ -1115,22 +808,6 @@
     }
   },
   {
-    "key": "schedule.android_this_task_cannot_be_renamed_separately",
-    "zh-CN": "当前任务不能单独改名",
-    "en": "This task cannot be renamed separately",
-    "notes": "Android Schedules 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
-    "params": {},
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
     "key": "schedule.android_unit",
     "zh-CN": "单位",
     "en": "Unit",
@@ -1175,20 +852,6 @@
     }
   },
   {
-    "key": "schedule.android_update_remote_agent_on_the_computer_to_create_scheduled_tasks",
-    "zh-CN": "需要更新电脑上的 remote-agent 才能使用定时任务。",
-    "en": "Update remote-agent on the computer to create scheduled tasks.",
-    "notes": "Android Schedules 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
-    "params": {},
-    "platforms": [
-      "android"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
     "key": "schedule.android_update_remote_agent_on_this_computer_to_manage_scheduled_tasks",
     "zh-CN": "需要更新这台电脑上的 remote-agent 才能使用定时任务。",
     "en": "Update remote-agent on this computer to manage scheduled tasks",
@@ -1198,39 +861,6 @@
       "web",
       "android",
       "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "schedule.android_value1_time",
-    "zh-CN": "（{value1}时间）",
-    "en": "({value1} time)",
-    "notes": "Android SchedulePresentation 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。value1：界面字段或用户/CLI 原文，保留变量内容，仅翻译完整句外壳。英文为待审初稿；不要替换成浏览器专属安全说明。",
-    "params": {
-      "value1": {
-        "type": "string",
-        "example": "Example"
-      }
-    },
-    "platforms": [
-      "android"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "schedule.android_you_can_run_an_extra_time_now_or_change_the",
-    "zh-CN": "可立即额外执行一次，或改时间重排。",
-    "en": "You can run an extra time now, or change the schedule.",
-    "notes": "Android SchedulePresentation 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
-    "params": {},
-    "platforms": [
-      "android"
     ],
     "status": {
       "zh-CN": "source",

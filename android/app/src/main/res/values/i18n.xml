@@ -960,35 +960,25 @@
     <string name="schedule_after_turn_replace">"%1$s。选择上方其他频率可替换。"</string>
     <string name="schedule_android_agent_notification" formatted="false">"agent 通知"</string>
     <string name="schedule_android_agent_notification_completion_notification" formatted="false">"agent 通知、完成后通知"</string>
-    <string name="schedule_android_alternative_limit">"%1$s，或%2$s"</string>
-    <string name="schedule_android_attention_details">"%2$s。%1$s%3$s"</string>
     <string name="schedule_android_automatic_run_count" formatted="false">"自动运行次数"</string>
-    <string name="schedule_android_beijing" formatted="false">"北京"</string>
-    <string name="schedule_android_cannot_read_the_previous_task_list_connect_to_read_it" formatted="false">"上次的任务列表无法读取，联网后重新读取"</string>
     <string name="schedule_android_cannot_request_notification" formatted="false">"无法请求通知"</string>
     <string name="schedule_android_changes_have_not_been_saved" formatted="false">"这次修改不会保存。"</string>
     <string name="schedule_android_check_project_updates_and_notify_me_of_noteworthy_changes" formatted="false">"检查项目的更新，有值得注意的变化再通知我。"</string>
-    <string name="schedule_android_check_the_time" formatted="false">"请检查时间"</string>
     <string name="schedule_android_choose_a_project" formatted="false">"选项目"</string>
     <string name="schedule_android_choose_a_time_type" formatted="false">"请选择时间类型"</string>
     <string name="schedule_android_choose_directory" formatted="false">"选目录"</string>
     <string name="schedule_android_computer_offline_tasks_cannot_be_edited" formatted="false">"电脑不在线，连上后才能修改任务"</string>
     <string name="schedule_android_connect_value1_to_edit_run_or_delete">"%1$s 连上后才能修改、运行或删除。"</string>
-    <string name="schedule_android_continuing_may_send_the_previous_message_again_open_the_run" formatted="false">"继续可能重复执行上次的消息，请先打开运行记录核实。"</string>
-    <string name="schedule_android_creating" formatted="false">"正在创建…"</string>
-    <string name="schedule_android_creation_is_unconfirmed_retrying_uses_the_same_request_you_can" formatted="false">"创建结果尚未确认，再试一次使用同一个请求。返回后可先查看任务列表。"</string>
     <string name="schedule_android_currently_value1_finishing_directly_preserves_the_original_rule_choose_a">"当前是「%1$s」。直接完成会保留原规则；选择上面的时间类型后再更改。"</string>
     <string name="schedule_android_date" formatted="false">"日期"</string>
     <string name="schedule_android_days" formatted="false">"天"</string>
     <string name="schedule_android_delete_this_task" formatted="false">"删除这个任务？"</string>
     <string name="schedule_android_each_run_opens_a_new_conversation_under_this_task_outside" formatted="false">"每次运行新开一个对话，归在这个任务下面，不进会话列表。完成后默认通知；关闭后仅由 agent 主动通知。"</string>
     <string name="schedule_android_end_date" formatted="false">"截止日期"</string>
-    <string name="schedule_android_ended_value1">"已结束 %1$s"</string>
     <string name="schedule_android_follow_conversation" formatted="false">"跟随对话"</string>
     <string name="schedule_android_for_example_asia_shanghai" formatted="false">"例如 Asia/Shanghai"</string>
     <string name="schedule_android_hours" formatted="false">"小时"</string>
     <string name="schedule_android_interval" formatted="false">"间隔"</string>
-    <string name="schedule_android_interval_must_be_greater_than_0" formatted="false">"间隔要大于 0"</string>
     <plurals name="schedule_android_large_after_current_turn">
         <item quantity="other">"当前轮结束 %2$s 秒后"</item>
     </plurals>
@@ -1011,38 +1001,25 @@
         <item quantity="other">"共 %2$s 次"</item>
     </plurals>
     <string name="schedule_android_minutes" formatted="false">"分钟"</string>
-    <string name="schedule_android_missing_target" formatted="false">"运行失败，任务已停下：找不到运行的对话。这个任务只发到原来的对话，恢复后还会失败。"</string>
     <string name="schedule_android_monday_to_friday" formatted="false">"周一到周五"</string>
-    <string name="schedule_android_needs_your_attention" formatted="false">"需要你处理"</string>
     <string name="schedule_android_new_result" formatted="false">"有新结果"</string>
     <string name="schedule_android_new_result_0653c4" formatted="false">"有新结果"</string>
-    <string name="schedule_android_next_run">"下次 %1$s"</string>
-    <string name="schedule_android_next_value1">" · 下次 %1$s"</string>
     <string name="schedule_android_positive_integer" formatted="false">"正整数"</string>
     <string name="schedule_android_read" formatted="false">"已读"</string>
-    <string name="schedule_android_read_again" formatted="false">"重新读取"</string>
-    <string name="schedule_android_recent" formatted="false">"最近"</string>
-    <string name="schedule_android_resuming_or_rescheduling_starts_at_the_next_automatic_time_and" formatted="false">"恢复或重新安排后从下一次自动时间开始，不重发上次消息。"</string>
-    <string name="schedule_android_run_count_must_be_greater_than_0" formatted="false">"运行次数必须是正整数"</string>
     <string name="schedule_android_run_once_now_does_not_count_toward_automatic_runs_or" formatted="false">"立即运行一次不占自动次数及日历当天名额。删除任务会停止后续调度，已发出的消息和已开的对话保留。"</string>
     <string name="schedule_android_running_label" formatted="false">"正在运行 ·"</string>
     <string name="schedule_android_saving" formatted="false">"保存中…"</string>
     <string name="schedule_android_saving_ff509c" formatted="false">"保存中…"</string>
     <string name="schedule_android_seconds" formatted="false">"秒"</string>
-    <string name="schedule_android_select_at_least_one_day" formatted="false">"请至少选择一天"</string>
     <string name="schedule_android_stop_future_scheduling_sent_messages_and_opened_conversations_are_kept" formatted="false">"停止后续调度，已发出的消息和已开的对话保留。"</string>
     <string name="schedule_android_task" formatted="false">"任务"</string>
     <string name="schedule_android_task_not_found_it_may_have_been_deleted_on_another" formatted="false">"任务未找到，可能已在另一端删除"</string>
     <string name="schedule_android_the_end_date_is_in_the_past" formatted="false">"结束日期已经过去"</string>
     <string name="schedule_android_the_message_is_sent_after_the_current_turn_ends_without" formatted="false">"消息等当前这一轮结束后再发，不会打断正在做的事。"</string>
-    <string name="schedule_android_this_task_cannot_be_renamed_separately" formatted="false">"当前任务不能单独改名"</string>
     <string name="schedule_android_unit" formatted="false">"单位"</string>
     <string name="schedule_android_unknown_time" formatted="false">"时间未知"</string>
     <string name="schedule_android_unread" formatted="false">"未读"</string>
-    <string name="schedule_android_update_remote_agent_on_the_computer_to_create_scheduled_tasks" formatted="false">"需要更新电脑上的 remote-agent 才能使用定时任务。"</string>
     <string name="schedule_android_update_remote_agent_on_this_computer_to_manage_scheduled_tasks" formatted="false">"需要更新这台电脑上的 remote-agent 才能使用定时任务。"</string>
-    <string name="schedule_android_value1_time">"（%1$s时间）"</string>
-    <string name="schedule_android_you_can_run_an_extra_time_now_or_change_the" formatted="false">"可立即额外执行一次，或改时间重排。"</string>
     <string name="schedule_attention_once">"%1$s。可改时间重排。"</string>
     <string name="schedule_attention_resume">"%1$s。恢复或重新安排后从下一次自动时间开始，不重发上次消息。"</string>
     <string name="schedule_attention_uncertain">"%1$s。继续可能重复执行上次的消息，请先打开运行记录核实。"</string>
