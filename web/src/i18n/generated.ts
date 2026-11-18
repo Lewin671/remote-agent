@@ -259,10 +259,8 @@ export interface MessageArgs {
   "errors.terminal_connection_timed_out_reconnect": { [name: string]: never };
   "errors.terminal_frames_are_out_of_order": { [name: string]: never };
   "errors.terminal_output_backlog_reconnect_for_the_latest_display": { [name: string]: never };
-  "errors.the_computer_did_not_return_a_task": { [name: string]: never };
   "errors.the_computer_did_not_return_a_task_list": { [name: string]: never };
   "errors.the_computer_did_not_return_an_attachment_id": { [name: string]: never };
-  "errors.the_computer_is_offline_connect_to_edit_tasks": { [name: string]: never };
   "errors.the_computer_is_offline_the_command_was_not_sent": { [name: string]: never };
   "errors.the_computer_is_still_verifying_attachments_retry_shortly": { [name: string]: never };
   "errors.the_computer_s_reply_could_not_be_verified_command": { [name: string]: never };
@@ -278,7 +276,6 @@ export interface MessageArgs {
   "errors.the_server_does_not_recognize_this_device_it_may": { [name: string]: never };
   "errors.the_server_must_use_https": { [name: string]: never };
   "errors.the_server_returned_an_unexpected_device_id": { [name: string]: never };
-  "errors.the_task_list_returned_by_the_computer_could_not": { [name: string]: never };
   "errors.the_task_was_just_changed_updated_to_the_latest": { [name: string]: never };
   "errors.this_browser_has_already_joined_an_account_open_this": { [name: string]: never };
   "errors.this_device_s_clock_is_behind_the_account_state": { [name: string]: never };
@@ -288,7 +285,6 @@ export interface MessageArgs {
   "errors.this_is_not_a_remote_agent_account_key": { [name: string]: never };
   "errors.this_page_is_out_of_date_refresh_or_update": { [name: string]: never };
   "errors.this_request_has_not_been_verified_by_the_computer": { [name: string]: never };
-  "errors.update_remote_agent_on_this_computer_to_use_scheduled": { [name: string]: never };
   "errors.upload_made_no_progress": { [name: string]: never };
   "errors.waiting_for_the_owning_computer_to_update_the_current_remote": { [name: string]: never };
   "home.add_device": { [name: string]: never };
@@ -553,7 +549,6 @@ export interface MessageArgs {
   "new_session.expired_start": { [name: string]: never };
   "new_session.expired_start_prompt": { prompt: string };
   "new_session.first_message": { [name: string]: never };
-  "new_session.fixed_effort": { effort: string };
   "new_session.follow_cli": { [name: string]: never };
   "new_session.follow_s_configuration": { value: string };
   "new_session.installed": { agents: string };
@@ -565,8 +560,6 @@ export interface MessageArgs {
   "new_session.location_machine_cli": { cli: string; machine: string; project: string };
   "new_session.machine_label": { name: string };
   "new_session.machine_offline": { name: string };
-  "new_session.machine_project_defaults": { name: string };
-  "new_session.model_list_default": { name: string };
   "new_session.model_no_auto": { name: string };
   "new_session.offline_draft": { name: string };
   "new_session.offline_no_start_named": { name: string };
@@ -700,7 +693,6 @@ export interface MessageArgs {
   "schedule.after_current_turn": { count: number };
   "schedule.after_each_turn": { count: number };
   "schedule.after_turn_ends": { [name: string]: never };
-  "schedule.after_turn_replace": { frequency: string };
   "schedule.android_agent_notification": { [name: string]: never };
   "schedule.android_agent_notification_completion_notification": { [name: string]: never };
   "schedule.android_cannot_request_notification": { [name: string]: never };
@@ -709,7 +701,10 @@ export interface MessageArgs {
   "schedule.android_computer_offline_tasks_cannot_be_edited": { [name: string]: never };
   "schedule.android_connect_value1_to_edit_run_or_delete": { value1: string };
   "schedule.android_currently_value1_finishing_directly_preserves_the_original_rule_choose_a": { value1: string };
+  "schedule.android_days": { [name: string]: never };
   "schedule.android_follow_conversation": { [name: string]: never };
+  "schedule.android_hours": { [name: string]: never };
+  "schedule.android_interval": { [name: string]: never };
   "schedule.android_large_after_current_turn": { count: number; total: string };
   "schedule.android_large_after_each_turn": { count: number; total: string };
   "schedule.android_large_every_days": { count: number; total: string };
@@ -717,22 +712,20 @@ export interface MessageArgs {
   "schedule.android_large_every_minutes": { count: number; total: string };
   "schedule.android_large_every_seconds": { count: number; total: string };
   "schedule.android_large_runs_total": { count: number; total: string };
-  "schedule.android_new_result": { [name: string]: never };
+  "schedule.android_minutes": { [name: string]: never };
   "schedule.android_run_once_now_does_not_count_toward_automatic_runs_or": { [name: string]: never };
   "schedule.android_saving": { [name: string]: never };
+  "schedule.android_seconds": { [name: string]: never };
   "schedule.android_task": { [name: string]: never };
   "schedule.android_the_end_date_is_in_the_past": { [name: string]: never };
+  "schedule.android_unit": { [name: string]: never };
   "schedule.android_unknown_time": { [name: string]: never };
   "schedule.android_update_remote_agent_on_this_computer_to_manage_scheduled_tasks": { [name: string]: never };
-  "schedule.attention_once": { reason: string };
   "schedule.attention_resume": { reason: string };
   "schedule.attention_uncertain": { reason: string };
   "schedule.beijing_time": { [name: string]: never };
   "schedule.choose_a_valid_date_and_time": { [name: string]: never };
-  "schedule.choose_ask_auto_or_full_access_scheduled_tasks_cannot": { [name: string]: never };
   "schedule.computer_and_model": { [name: string]: never };
-  "schedule.connect_to_edit_run_or_delete": { [name: string]: never };
-  "schedule.continuing_takes_over_the_task_and_runs_it_with": { [name: string]: never };
   "schedule.conversation": { [name: string]: never };
   "schedule.could_not_run": { [name: string]: never };
   "schedule.count": { [name: string]: never };
@@ -781,12 +774,10 @@ export interface MessageArgs {
   "schedule.if_blank_uses": { value: string };
   "schedule.in": { value: string };
   "schedule.in_conversation": { [name: string]: never };
-  "schedule.interval_minutes": { [name: string]: never };
   "schedule.ios_attention_once": { reason: string };
   "schedule.ios_choose_a_valid_iana_time_zone": { [name: string]: never };
   "schedule.ios_enter_a_valid_interval": { [name: string]: never };
   "schedule.ios_takeover_notice": { notice: string };
-  "schedule.ios_task_details": { [name: string]: never };
   "schedule.last_result": { result: string; time: string };
   "schedule.last_result_detail": { detail: string; result: string; time: string };
   "schedule.latest_summary": { summary: string; time: string };
@@ -814,7 +805,6 @@ export interface MessageArgs {
   "schedule.new_york_time": { [name: string]: never };
   "schedule.next": { value: string };
   "schedule.next_run_pending": { [name: string]: never };
-  "schedule.no_approval_is_required_for_any_operation_whenever_this": { [name: string]: never };
   "schedule.no_approval_will_be_required_for_future_runs_existing": { [name: string]: never };
   "schedule.no_new_results": { [name: string]: never };
   "schedule.no_notification": { [name: string]: never };
@@ -916,8 +906,6 @@ export interface MessageArgs {
   "schedule.until": { value: string };
   "schedule.update_remote_agent_on_the_computer_to_use_scheduled": { [name: string]: never };
   "schedule.update_remote_agent_on_this_computer_to_use_scheduled": { [name: string]: never };
-  "schedule.verified_abandon_request": { [name: string]: never };
-  "schedule.verify_current_permissions_in_the_conversation": { [name: string]: never };
   "schedule.view_all_runs": { count: number };
   "schedule.waiting_for_results": { [name: string]: never };
   "schedule.waiting_for_the_current_turn_to_end": { [name: string]: never };
@@ -1914,10 +1902,8 @@ export const messages = {
     "errors.terminal_connection_timed_out_reconnect": "Terminal connection timed out. Reconnect.",
     "errors.terminal_frames_are_out_of_order": "Terminal frames are out of order",
     "errors.terminal_output_backlog_reconnect_for_the_latest_display": "Terminal output backlog. Reconnect for the latest display.",
-    "errors.the_computer_did_not_return_a_task": "The computer did not return a task",
     "errors.the_computer_did_not_return_a_task_list": "The computer did not return a task list",
     "errors.the_computer_did_not_return_an_attachment_id": "The computer did not return an attachment ID",
-    "errors.the_computer_is_offline_connect_to_edit_tasks": "The computer is offline. Connect to edit tasks.",
     "errors.the_computer_is_offline_the_command_was_not_sent": "The computer is offline. The command was not sent.",
     "errors.the_computer_is_still_verifying_attachments_retry_shortly": "The computer is still verifying attachments. Retry shortly.",
     "errors.the_computer_s_reply_could_not_be_verified_command": "The computer’s reply could not be verified. Command execution is uncertain.",
@@ -1933,7 +1919,6 @@ export const messages = {
     "errors.the_server_does_not_recognize_this_device_it_may": "The server does not recognize this device (it may have been removed or the service rebuilt)",
     "errors.the_server_must_use_https": "The server must use HTTPS",
     "errors.the_server_returned_an_unexpected_device_id": "The server returned an unexpected device ID",
-    "errors.the_task_list_returned_by_the_computer_could_not": "The task list returned by the computer could not be read",
     "errors.the_task_was_just_changed_updated_to_the_latest": "The task was just changed. Updated to the latest content.",
     "errors.this_browser_has_already_joined_an_account_open_this": "This browser has already joined an account. Open this link on the new device to join.",
     "errors.this_device_s_clock_is_behind_the_account_state": "This device’s clock is behind the account state. Correct the system time and time zone, or remote operations will be refused.",
@@ -1943,7 +1928,6 @@ export const messages = {
     "errors.this_is_not_a_remote_agent_account_key": "This is not a remote-agent account key",
     "errors.this_page_is_out_of_date_refresh_or_update": "This page is out of date. Refresh or update it and retry.",
     "errors.this_request_has_not_been_verified_by_the_computer": "This request has not been verified by the computer yet. Wait for sync.",
-    "errors.update_remote_agent_on_this_computer_to_use_scheduled": "Update remote-agent on this computer to use scheduled tasks",
     "errors.upload_made_no_progress": "Upload made no progress",
     "errors.waiting_for_the_owning_computer_to_update_the_current_remote": "Waiting for the owning computer to update the current state: this device lacks the content key from that time",
     "home.add_device": "Add device",
@@ -2370,7 +2354,6 @@ export const messages = {
     "new_session.expired_start": "The start is unconfirmed. Check the session list first. This request has expired and will not be retried or replaced.",
     "new_session.expired_start_prompt": "It is unclear whether “{prompt}” started. The request has expired and will not be resent. Check active sessions first.",
     "new_session.first_message": "First message of the new session",
-    "new_session.fixed_effort": "Reasoning effort fixed at {effort}",
     "new_session.follow_cli": "Follow CLI settings",
     "new_session.follow_s_configuration": "Follow {value}’s configuration",
     "new_session.installed": "Installed: {agents}",
@@ -2382,8 +2365,6 @@ export const messages = {
     "new_session.location_machine_cli": "On {machine} in {project} using {cli}",
     "new_session.machine_label": "Computer: {name}",
     "new_session.machine_offline": "{name} is offline",
-    "new_session.machine_project_defaults": "Use {name} defaults for new projects",
-    "new_session.model_list_default": "Could not read the model list. Using {name}’s default model.",
     "new_session.model_no_auto": "This model has no Auto mode, but {name} uses Auto by default for new projects. Choose another model or change the default in “Settings › This computer”.",
     "new_session.offline_draft": "{name} is offline. The task has not started.",
     "new_session.offline_no_start_named": "{name} is offline. Cannot start a session now.",
@@ -2619,7 +2600,6 @@ export const messages = {
       "plural": "count"
     },
     "schedule.after_turn_ends": "After turn ends",
-    "schedule.after_turn_replace": "{frequency}. Choose another frequency above to replace it.",
     "schedule.android_agent_notification": "agent notification",
     "schedule.android_agent_notification_completion_notification": "agent notification, completion notification",
     "schedule.android_cannot_request_notification": "Cannot request notification",
@@ -2628,7 +2608,10 @@ export const messages = {
     "schedule.android_computer_offline_tasks_cannot_be_edited": "Computer offline. Tasks cannot be edited",
     "schedule.android_connect_value1_to_edit_run_or_delete": "Connect {value1} to edit, run, or delete.",
     "schedule.android_currently_value1_finishing_directly_preserves_the_original_rule_choose_a": "Currently “{value1}”. Finishing directly preserves the original rule; choose a time type above before changing it.",
+    "schedule.android_days": "Days",
     "schedule.android_follow_conversation": "Follow conversation",
+    "schedule.android_hours": "Hours",
+    "schedule.android_interval": "Interval",
     "schedule.android_large_after_current_turn": {
       "forms": {
         "one": "{total} sec after the current turn ends",
@@ -2678,22 +2661,20 @@ export const messages = {
       },
       "plural": "count"
     },
-    "schedule.android_new_result": "New result",
+    "schedule.android_minutes": "Minutes",
     "schedule.android_run_once_now_does_not_count_toward_automatic_runs_or": "Run once now does not count toward automatic runs or the calendar day's limit. Deleting stops future scheduling; sent messages and opened conversations are kept.",
     "schedule.android_saving": "Saving…",
+    "schedule.android_seconds": "Seconds",
     "schedule.android_task": "Task",
     "schedule.android_the_end_date_is_in_the_past": "The end date is in the past",
+    "schedule.android_unit": "Unit",
     "schedule.android_unknown_time": "Unknown time",
     "schedule.android_update_remote_agent_on_this_computer_to_manage_scheduled_tasks": "Update remote-agent on this computer to manage scheduled tasks",
-    "schedule.attention_once": "{reason}. Change the time to reschedule.",
     "schedule.attention_resume": "{reason}. Resuming or rescheduling starts at the next automatic time and does not resend the last message.",
     "schedule.attention_uncertain": "{reason}. Continuing may repeat the last message. Open the run records to verify first.",
     "schedule.beijing_time": "Beijing time",
     "schedule.choose_a_valid_date_and_time": "Choose a valid date and time",
-    "schedule.choose_ask_auto_or_full_access_scheduled_tasks_cannot": "Choose Ask, Auto, or Full access. Scheduled tasks cannot open conversations in Plan mode.",
     "schedule.computer_and_model": "Computer and model",
-    "schedule.connect_to_edit_run_or_delete": " Connect to edit, run, or delete.",
-    "schedule.continuing_takes_over_the_task_and_runs_it_with": " Continuing takes over the task and runs it with the permissions shown.",
     "schedule.conversation": "Conversation",
     "schedule.could_not_run": "Could not run",
     "schedule.count": "Count",
@@ -2772,12 +2753,10 @@ export const messages = {
     "schedule.if_blank_uses": "If blank, uses: {value}",
     "schedule.in": "In “{value}”",
     "schedule.in_conversation": "In conversation",
-    "schedule.interval_minutes": "Interval (minutes)",
     "schedule.ios_attention_once": "{reason}. Run an extra time now, or change the time to reschedule.",
     "schedule.ios_choose_a_valid_iana_time_zone": "Choose a valid IANA time zone",
     "schedule.ios_enter_a_valid_interval": "Enter a valid interval",
     "schedule.ios_takeover_notice": "{notice} Continuing takes over the task and runs it with the permissions shown.",
-    "schedule.ios_task_details": "Task details",
     "schedule.last_result": "{time} {result}",
     "schedule.last_result_detail": "{time} {result}: {detail}",
     "schedule.latest_summary": "Latest {time}: {summary}",
@@ -2823,7 +2802,6 @@ export const messages = {
     "schedule.new_york_time": "New York time",
     "schedule.next": "Next {value}",
     "schedule.next_run_pending": "Next run pending",
-    "schedule.no_approval_is_required_for_any_operation_whenever_this": "No approval is required for any operation whenever this task runs.",
     "schedule.no_approval_will_be_required_for_future_runs_existing": "No approval will be required for future runs. Existing conversations stay unchanged.",
     "schedule.no_new_results": "No new results",
     "schedule.no_notification": "No notification",
@@ -2961,8 +2939,6 @@ export const messages = {
     "schedule.until": "Until {value}",
     "schedule.update_remote_agent_on_the_computer_to_use_scheduled": "Update remote-agent on the computer to use scheduled tasks.",
     "schedule.update_remote_agent_on_this_computer_to_use_scheduled": "Update remote-agent on this computer to use scheduled tasks.",
-    "schedule.verified_abandon_request": "Verified, abandon request",
-    "schedule.verify_current_permissions_in_the_conversation": "Verify current permissions in the conversation",
     "schedule.view_all_runs": {
       "forms": {
         "one": "View all {count} run",
@@ -4047,10 +4023,8 @@ export const messages = {
     "errors.terminal_connection_timed_out_reconnect": "连接终端超时，请重新连接",
     "errors.terminal_frames_are_out_of_order": "终端帧顺序不对",
     "errors.terminal_output_backlog_reconnect_for_the_latest_display": "终端输出积压，请重新连接以获取最新画面",
-    "errors.the_computer_did_not_return_a_task": "电脑没有返回任务",
     "errors.the_computer_did_not_return_a_task_list": "电脑没有返回任务列表",
     "errors.the_computer_did_not_return_an_attachment_id": "电脑没有返回附件 ID",
-    "errors.the_computer_is_offline_connect_to_edit_tasks": "电脑不在线，连上后才能修改任务",
     "errors.the_computer_is_offline_the_command_was_not_sent": "电脑不在线，指令没有发出",
     "errors.the_computer_is_still_verifying_attachments_retry_shortly": "电脑仍在校验附件，请稍后重试",
     "errors.the_computer_s_reply_could_not_be_verified_command": "电脑的回复未通过验证，不确定指令是否执行",
@@ -4066,7 +4040,6 @@ export const messages = {
     "errors.the_server_does_not_recognize_this_device_it_may": "服务器不认识这台设备（可能已被移除，或服务已重建）",
     "errors.the_server_must_use_https": "server 必须使用 https",
     "errors.the_server_returned_an_unexpected_device_id": "服务器返回了意外的设备 ID",
-    "errors.the_task_list_returned_by_the_computer_could_not": "电脑返回的任务列表无法读取",
     "errors.the_task_was_just_changed_updated_to_the_latest": "任务刚被修改，已更新为最新内容",
     "errors.this_browser_has_already_joined_an_account_open_this": "这个浏览器已经加入了账户。要让新设备加入，在新设备上打开这个链接。",
     "errors.this_device_s_clock_is_behind_the_account_state": "本机时间比账户状态慢。请校准系统时间和时区，否则远程操作会被拒绝。",
@@ -4076,7 +4049,6 @@ export const messages = {
     "errors.this_is_not_a_remote_agent_account_key": "这不是 remote-agent 的账户密钥",
     "errors.this_page_is_out_of_date_refresh_or_update": "这个网页版本较旧，请刷新或更新后再试",
     "errors.this_request_has_not_been_verified_by_the_computer": "当前请求尚未由电脑核实，请等待同步",
-    "errors.update_remote_agent_on_this_computer_to_use_scheduled": "需要更新这台电脑上的 remote-agent 才能使用定时任务。",
     "errors.upload_made_no_progress": "上传没有进展",
     "errors.waiting_for_the_owning_computer_to_update_the_current_remote": "等待所属电脑更新当前状态：这台设备没有当时的内容密钥",
     "home.add_device": "添加设备",
@@ -4476,7 +4448,6 @@ export const messages = {
     "new_session.expired_start": "不确定是否已经启动，请先看会话列表。这个请求已经过期，不会再发，也不会换成新的请求",
     "new_session.expired_start_prompt": "不确定「{prompt}」有没有启动，它已过期，不会再重发。请先看看进行中的会话",
     "new_session.first_message": "新会话的第一句话",
-    "new_session.fixed_effort": "推理强度固定为 {effort}",
     "new_session.follow_cli": "跟随 CLI 设置",
     "new_session.follow_s_configuration": "跟随 {value} 自己的配置",
     "new_session.installed": "已装 {agents}",
@@ -4488,8 +4459,6 @@ export const messages = {
     "new_session.location_machine_cli": "在{machine}的{project}用{cli}",
     "new_session.machine_label": "电脑：{name}",
     "new_session.machine_offline": "{name} 不在线",
-    "new_session.machine_project_defaults": "用 {name} 的新项目默认设置",
-    "new_session.model_list_default": "没能读取模型列表，会用 {name} 自己的默认模型",
     "new_session.model_no_auto": "这个模型没有自动模式，而 {name} 的新项目默认审批模式是自动。换一个模型，或到「设置 › 这台电脑」改默认",
     "new_session.offline_draft": "{name} 已离线，任务尚未开始",
     "new_session.offline_no_start_named": "{name} 不在线，现在不能新建",
@@ -4708,7 +4677,6 @@ export const messages = {
       "plural": "count"
     },
     "schedule.after_turn_ends": "轮结束后",
-    "schedule.after_turn_replace": "{frequency}。选择上方其他频率可替换。",
     "schedule.android_agent_notification": "agent 通知",
     "schedule.android_agent_notification_completion_notification": "agent 通知、完成后通知",
     "schedule.android_cannot_request_notification": "无法请求通知",
@@ -4717,7 +4685,10 @@ export const messages = {
     "schedule.android_computer_offline_tasks_cannot_be_edited": "电脑不在线，连上后才能修改任务",
     "schedule.android_connect_value1_to_edit_run_or_delete": "{value1} 连上后才能修改、运行或删除。",
     "schedule.android_currently_value1_finishing_directly_preserves_the_original_rule_choose_a": "当前是「{value1}」。直接完成会保留原规则；选择上面的时间类型后再更改。",
+    "schedule.android_days": "天",
     "schedule.android_follow_conversation": "跟随对话",
+    "schedule.android_hours": "小时",
+    "schedule.android_interval": "间隔",
     "schedule.android_large_after_current_turn": {
       "forms": {
         "other": "当前轮结束 {total} 秒后"
@@ -4760,22 +4731,20 @@ export const messages = {
       },
       "plural": "count"
     },
-    "schedule.android_new_result": "有新结果",
+    "schedule.android_minutes": "分钟",
     "schedule.android_run_once_now_does_not_count_toward_automatic_runs_or": "立即运行一次不占自动次数及日历当天名额。删除任务会停止后续调度，已发出的消息和已开的对话保留。",
     "schedule.android_saving": "保存中…",
+    "schedule.android_seconds": "秒",
     "schedule.android_task": "任务",
     "schedule.android_the_end_date_is_in_the_past": "结束日期已经过去",
+    "schedule.android_unit": "单位",
     "schedule.android_unknown_time": "时间未知",
     "schedule.android_update_remote_agent_on_this_computer_to_manage_scheduled_tasks": "需要更新这台电脑上的 remote-agent 才能使用定时任务。",
-    "schedule.attention_once": "{reason}。可改时间重排。",
     "schedule.attention_resume": "{reason}。恢复或重新安排后从下一次自动时间开始，不重发上次消息。",
     "schedule.attention_uncertain": "{reason}。继续可能重复执行上次的消息，请先打开运行记录核实。",
     "schedule.beijing_time": "北京时间",
     "schedule.choose_a_valid_date_and_time": "请选择有效的日期和时间",
-    "schedule.choose_ask_auto_or_full_access_scheduled_tasks_cannot": "请选择询问、自动或完全放行，定时任务不能以计划模式新开对话。",
     "schedule.computer_and_model": "电脑和模型",
-    "schedule.connect_to_edit_run_or_delete": " 连上后才能修改、运行或删除。",
-    "schedule.continuing_takes_over_the_task_and_runs_it_with": "继续会由你接管任务，按任务中显示的权限运行。",
     "schedule.conversation": "对话",
     "schedule.could_not_run": "没能运行",
     "schedule.count": "次数",
@@ -4849,12 +4818,10 @@ export const messages = {
     "schedule.if_blank_uses": "留空会用：{value}",
     "schedule.in": "在「{value}」里",
     "schedule.in_conversation": "在对话里",
-    "schedule.interval_minutes": "间隔（分钟）",
     "schedule.ios_attention_once": "{reason}。可立即额外执行一次，或改时间重排。",
     "schedule.ios_choose_a_valid_iana_time_zone": "请选择有效的 IANA 时区",
     "schedule.ios_enter_a_valid_interval": "请输入有效的间隔",
     "schedule.ios_takeover_notice": "{notice}继续会由你接管任务，按任务中显示的权限运行。",
-    "schedule.ios_task_details": "任务详情",
     "schedule.last_result": "{time} {result}",
     "schedule.last_result_detail": "{time} {result}：{detail}",
     "schedule.latest_summary": "最近一次 {time}：{summary}",
@@ -4897,7 +4864,6 @@ export const messages = {
     "schedule.new_york_time": "纽约时间",
     "schedule.next": "下次 {value}",
     "schedule.next_run_pending": "下次待定",
-    "schedule.no_approval_is_required_for_any_operation_whenever_this": "任务每次运行时，所有操作都不审批。",
     "schedule.no_approval_will_be_required_for_future_runs_existing": "以后每次运行都不审批。已开出的对话不变。",
     "schedule.no_new_results": "没有新结果",
     "schedule.no_notification": "没有通知",
@@ -5029,8 +4995,6 @@ export const messages = {
     "schedule.until": "到 {value}",
     "schedule.update_remote_agent_on_the_computer_to_use_scheduled": "需要更新电脑上的 remote-agent 才能使用定时任务。",
     "schedule.update_remote_agent_on_this_computer_to_use_scheduled": "需要更新这台电脑上的 remote-agent 才能使用定时任务。",
-    "schedule.verified_abandon_request": "已核实，放弃请求",
-    "schedule.verify_current_permissions_in_the_conversation": "请在对话里核实当前权限",
     "schedule.view_all_runs": {
       "forms": {
         "other": "查看全部 {count} 次"

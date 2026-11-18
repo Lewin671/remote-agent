@@ -3503,5 +3503,250 @@
     "path": "web/src/views/Tools.tsx",
     "literal": "c.images); return (",
     "reason": "Lexical JSX scanner false positive: TypeScript type arguments or code between angle brackets, not rendered text."
+  },
+  {
+    "path": "web/src/dev/demo.ts",
+    "literal": "not_found",
+    "reason": "Technical non-UI literal (CSS class, Banner variant, or RPC error/conflict code) matched by i18n scanner lookback."
+  },
+  {
+    "path": "web/src/dev/demo.ts",
+    "literal": "conflict",
+    "reason": "Technical non-UI literal (CSS class, Banner variant, or RPC error/conflict code) matched by i18n scanner lookback."
+  },
+  {
+    "path": "web/src/dev/demo.ts",
+    "literal": "business",
+    "reason": "Technical non-UI literal (CSS class, Banner variant, or RPC error/conflict code) matched by i18n scanner lookback."
+  },
+  {
+    "path": "web/src/views/ScheduleText.tsx",
+    "literal": "err",
+    "reason": "Technical non-UI literal (CSS class, Banner variant, or RPC error/conflict code) matched by i18n scanner lookback."
+  },
+  {
+    "path": "web/src/views/Schedules.tsx",
+    "literal": "mark unread schedule-unread-dot",
+    "reason": "Technical non-UI literal (CSS class, Banner variant, or RPC error/conflict code) matched by i18n scanner lookback."
+  },
+  {
+    "path": "web/src/views/Schedules.tsx",
+    "literal": "short",
+    "reason": "Technical non-UI literal (CSS class, Banner variant, or RPC error/conflict code) matched by i18n scanner lookback."
+  },
+  {
+    "path": "web/src/views/Schedules.tsx",
+    "literal": "row1",
+    "reason": "Technical non-UI literal (CSS class, Banner variant, or RPC error/conflict code) matched by i18n scanner lookback."
+  },
+  {
+    "path": "web/src/views/Schedules.tsx",
+    "literal": "pv",
+    "reason": "Technical non-UI literal (CSS class, Banner variant, or RPC error/conflict code) matched by i18n scanner lookback."
+  },
+  {
+    "path": "web/src/views/Schedules.tsx",
+    "literal": " unread",
+    "reason": "Technical non-UI literal (CSS class, Banner variant, or RPC error/conflict code) matched by i18n scanner lookback."
+  },
+  {
+    "path": "web/src/views/Schedules.tsx",
+    "literal": " attention",
+    "reason": "Technical non-UI literal (CSS class, Banner variant, or RPC error/conflict code) matched by i18n scanner lookback."
+  },
+  {
+    "path": "web/src/views/Schedules.tsx",
+    "literal": "warn",
+    "reason": "Technical non-UI literal (CSS class, Banner variant, or RPC error/conflict code) matched by i18n scanner lookback."
+  },
+  {
+    "path": "web/src/views/Schedules.tsx",
+    "literal": "home-note",
+    "reason": "Technical non-UI literal (CSS class, Banner variant, or RPC error/conflict code) matched by i18n scanner lookback."
+  },
+  {
+    "path": "web/src/views/Schedules.tsx",
+    "literal": "spin",
+    "reason": "Technical non-UI literal (CSS class, Banner variant, or RPC error/conflict code) matched by i18n scanner lookback."
+  },
+  {
+    "path": "web/src/views/Schedules.tsx",
+    "literal": "schedule-group attention-group",
+    "reason": "Technical non-UI literal (CSS class, Banner variant, or RPC error/conflict code) matched by i18n scanner lookback."
+  },
+  {
+    "path": "web/src/views/Schedules.tsx",
+    "literal": "row",
+    "reason": "Technical non-UI literal (CSS class, Banner variant, or RPC error/conflict code) matched by i18n scanner lookback."
+  },
+  {
+    "path": "web/src/views/Schedules.tsx",
+    "literal": "whl",
+    "reason": "Technical non-UI literal (CSS class, Banner variant, or RPC error/conflict code) matched by i18n scanner lookback."
+  },
+  {
+    "path": "web/src/views/Schedules.tsx",
+    "literal": "check",
+    "reason": "Technical non-UI literal (CSS class, Banner variant, or RPC error/conflict code) matched by i18n scanner lookback."
+  },
+  {
+    "path": "web/src/views/Schedules.tsx",
+    "literal": "chev",
+    "reason": "Technical non-UI literal (CSS class, Banner variant, or RPC error/conflict code) matched by i18n scanner lookback."
+  },
+  {
+    "path": "web/src/views/Schedules.tsx",
+    "literal": "dir",
+    "reason": "Technical non-UI literal (CSS class, Banner variant, or RPC error/conflict code) matched by i18n scanner lookback."
+  },
+  {
+    "path": "web/src/views/Schedules.tsx",
+    "literal": "link",
+    "reason": "Technical non-UI literal (CSS class, Banner variant, or RPC error/conflict code) matched by i18n scanner lookback."
+  },
+  {
+    "path": "web/src/views/Schedules.tsx",
+    "literal": "err",
+    "reason": "Technical non-UI literal (CSS class, Banner variant, or RPC error/conflict code) matched by i18n scanner lookback."
+  },
+  {
+    "path": "web/src/views/Schedules.tsx",
+    "literal": "grp",
+    "reason": "Technical non-UI literal (CSS class, Banner variant, or RPC error/conflict code) matched by i18n scanner lookback."
+  },
+  {
+    "path": "web/src/views/Schedules.tsx",
+    "literal": "quiet",
+    "reason": "Technical non-UI literal (CSS class, Banner variant, or RPC error/conflict code) matched by i18n scanner lookback."
+  },
+  {
+    "path": "web/src/views/Schedules.tsx",
+    "literal": "foot",
+    "reason": "Technical non-UI literal (CSS class, Banner variant, or RPC error/conflict code) matched by i18n scanner lookback."
+  },
+  {
+    "path": "web/src/views/Schedules.tsx",
+    "literal": "field schedule-name",
+    "reason": "Technical non-UI literal (CSS class, Banner variant, or RPC error/conflict code) matched by i18n scanner lookback."
+  },
+  {
+    "path": "web/src/views/Schedules.tsx",
+    "literal": ": selected &&",
+    "reason": "Lexical JSX scanner false positive: TypeScript/JSX expression between angle brackets, not a rendered text node."
+  },
+  {
+    "path": "web/src/views/Schedules.tsx",
+    "literal": "23 || minute",
+    "reason": "Lexical JSX scanner false positive: TypeScript/JSX expression between angle brackets, not a rendered text node."
+  },
+  {
+    "path": "web/src/views/Schedules.tsx",
+    "literal": "; if (status === ScheduleRunStatus.COMPLETED) return manual ?",
+    "reason": "Lexical JSX scanner false positive: TypeScript/JSX expression between angle brackets, not a rendered text node."
+  },
+  {
+    "path": "web/src/views/Schedules.tsx",
+    "literal": "; if (status === ScheduleRunStatus.FAILED || status === ScheduleRunStatus.CANCELLED || status === ScheduleRunStatus.INTERRUPTED) return",
+    "reason": "Lexical JSX scanner false positive: TypeScript/JSX expression between angle brackets, not a rendered text node."
+  },
+  {
+    "path": "web/src/views/Schedules.tsx",
+    "literal": ") : null; const toggleLabel = renderText(actions?.toggleLabel) || (actions?.isResumeAction ? t(\"schedule.resume\") : t(\"schedule.pause\")); return (",
+    "reason": "Lexical JSX scanner false positive: TypeScript/JSX expression between angle brackets, not a rendered text node."
+  },
+  {
+    "path": "web/src/views/Schedules.tsx",
+    "literal": "(null); const [menuOpen, setMenuOpen] = useState(false); const attention = item.group === ScheduleDisplayGroup.ATTENTION || item.tone === ScheduleTone.BAD || item.tone === ScheduleTone.WARN; const fresh = item.hasUnread, isSelected = item.selected || selectedProp, card = layout === \"card\" && (attention || fresh); const dot = (attention || fresh) &&",
+    "reason": "Lexical JSX scanner false positive: TypeScript/JSX expression between angle brackets, not a rendered text node."
+  },
+  {
+    "path": "web/src/views/Schedules.tsx",
+    "literal": "; const leadText = renderText(item.attentionLead), reasonText = renderText(item.attentionReason), previewText = renderText(item.preview); const row1 =",
+    "reason": "Lexical JSX scanner false positive: TypeScript/JSX expression between angle brackets, not a rendered text node."
+  },
+  {
+    "path": "web/src/views/Schedules.tsx",
+    "literal": ": item.previewIsPlaceholder ?",
+    "reason": "Lexical JSX scanner false positive: TypeScript/JSX expression between angle brackets, not a rendered text node."
+  },
+  {
+    "path": "web/src/views/Schedules.tsx",
+    "literal": "); const list = (",
+    "reason": "Lexical JSX scanner false positive: TypeScript/JSX expression between angle brackets, not a rendered text node."
+  },
+  {
+    "path": "web/src/views/Schedules.tsx",
+    "literal": "); const connected = vm.connection?.state === ConnState.CONNECTED; const title = (connected && renderText(vm.headline?.title)) || t(\"home.schedules_tab\"); const subTitle = connected ? renderText(vm.headline?.sub) : \"\"; if (sidebar) return",
+    "reason": "Lexical JSX scanner false positive: TypeScript/JSX expression between angle brackets, not a rendered text node."
+  },
+  {
+    "path": "web/src/views/Schedules.tsx",
+    "literal": "; return (",
+    "reason": "Lexical JSX scanner false positive: TypeScript/JSX expression between angle brackets, not a rendered text node."
+  },
+  {
+    "path": "web/src/views/Schedules.tsx",
+    "literal": "= [ [ScheduleIntervalUnit.SECONDS, t(\"schedule.android_seconds\")], [ScheduleIntervalUnit.MINUTES, t(\"schedule.android_minutes\")], [ScheduleIntervalUnit.HOURS, t(\"schedule.android_hours\")], [ScheduleIntervalUnit.DAYS, t(\"schedule.android_days\")], ]; return (",
+    "reason": "Lexical JSX scanner false positive: TypeScript/JSX expression between angle brackets, not a rendered text node."
+  },
+  {
+    "path": "web/src/views/Schedules.tsx",
+    "literal": "1 && onSelectMachine && (",
+    "reason": "Lexical JSX scanner false positive: TypeScript/JSX expression between angle brackets, not a rendered text node."
+  },
+  {
+    "path": "web/src/views/Schedules.tsx",
+    "literal": "1 && onSelectAgent ?",
+    "reason": "Lexical JSX scanner false positive: TypeScript/JSX expression between angle brackets, not a rendered text node."
+  },
+  {
+    "path": "web/src/views/Schedules.tsx",
+    "literal": "(vm.requiresFullAccessConfirm ? setConfirmFull(true) : host.scheduleFormSubmit(vm.formKey, false)); const confirmModal = confirmFull &&",
+    "reason": "Lexical JSX scanner false positive: TypeScript/JSX expression between angle brackets, not a rendered text node."
+  },
+  {
+    "path": "web/src/views/Schedules.tsx",
+    "literal": "; if (sub === \"project\") return",
+    "reason": "Lexical JSX scanner false positive: TypeScript/JSX expression between angle brackets, not a rendered text node."
+  },
+  {
+    "path": "web/src/views/Schedules.tsx",
+    "literal": "(null), root = useRef",
+    "reason": "Lexical JSX scanner false positive: TypeScript/JSX expression between angle brackets, not a rendered text node."
+  },
+  {
+    "path": "web/src/views/Schedules.tsx",
+    "literal": ") : vm.neverRunHint ?",
+    "reason": "Lexical JSX scanner false positive: TypeScript/JSX expression between angle brackets, not a rendered text node."
+  },
+  {
+    "path": "web/src/views/Schedules.tsx",
+    "literal": "g.foldedQuiet && !g.expanded ? (",
+    "reason": "Lexical JSX scanner false positive: TypeScript/JSX expression between angle brackets, not a rendered text node."
+  },
+  {
+    "path": "web/src/views/Schedules.tsx",
+    "literal": "(vm.requiresFullAccessConfirm ? setConfirmFull(true) : actions.onSubmit(false)); const rows = (",
+    "reason": "Lexical JSX scanner false positive: TypeScript/JSX expression between angle brackets, not a rendered text node."
+  },
+  {
+    "path": "web/src/views/Schedules.tsx",
+    "literal": "n.kind === ScheduleFormNoticeKind.TARGET_INFO_HINT ? (",
+    "reason": "Lexical JSX scanner false positive: TypeScript/JSX expression between angle brackets, not a rendered text node."
+  },
+  {
+    "path": "web/src/views/Schedules.tsx",
+    "literal": ") : n.kind === ScheduleFormNoticeKind.MODE_REQUIRED ? (",
+    "reason": "Lexical JSX scanner false positive: TypeScript/JSX expression between angle brackets, not a rendered text node."
+  },
+  {
+    "path": "web/src/views/Schedules.tsx",
+    "literal": "); return children ?",
+    "reason": "Lexical JSX scanner false positive: TypeScript/JSX expression between angle brackets, not a rendered text node."
+  },
+  {
+    "path": "web/src/views/Schedules.tsx",
+    "literal": ") : !vm.activeRun?.hasActive && vm.earlierGroups.length === 0 ? (",
+    "reason": "Lexical JSX scanner false positive: TypeScript expression between angle brackets."
   }
 ]

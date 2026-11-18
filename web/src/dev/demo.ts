@@ -127,7 +127,28 @@ import {
 import { PROTOCOL_VERSION } from "../protocol";
 import { DemoStatus, demoDisk, scenarioOf } from "./machine-status-demo";
 import scheduledFixture from "../../../testdata/schedules/clients.json";
-import type { ScheduleTask } from "../schedules";
+import { ScheduleCacheLoadedEventSchema } from "../gen/remoteagent/core/v1/schedules_view_pb";
+
+interface DemoScheduleTask {
+  id: string;
+  revision: number;
+  status: string;
+  reason?: string;
+  source?: string;
+  created_at: string;
+  updated_at?: string;
+  dispatches?: number;
+  next_run_at?: string;
+  runs?: Array<Record<string, any>>;
+  spec: {
+    title: string;
+    message: string;
+    notify?: string;
+    target: Record<string, any>;
+    trigger: Record<string, any>;
+  };
+  [key: string]: any;
+}
 
 type EventKind = MessageInitShape<typeof EventSchema>["kind"];
 type EventInit = MessageInitShape<typeof EventSchema>;
@@ -1678,6 +1699,11 @@ export class DemoRemote extends Remote {
   }
   override async writeCache(_eff: CacheWriteEffect) {}
   override async deleteCache(_eff: CacheDeleteEffect) {}
+  override readScheduleCache(opId: bigint, machineId: string) {
+    return Promise.resolve(create(ScheduleCacheLoadedEventSchema, { opId, machineId }));
+  }
+  override async deleteScheduleCache(_machineId: string) {}
+  private readonly demoSchedules = new Map<string, DemoScheduleTask[]>();
 
   private resolveSyncRpc(eff: RpcEffect): CoreEvent {
     const opId = eff.opId;
@@ -2106,7 +2132,7 @@ export class DemoRemote extends Remote {
     this.demoSessions.clear(); this.demoSessions.set(f.session, view);
     this.evs.clear();
     this.evs.set(f.session, [create(EventSchema, {seq:1n,sessionId:f.session,kind:{case:"userMessage",value:{text:"检查 PR 的回复。"}}}),create(EventSchema, {seq:2n,sessionId:f.session,kind:{case:"agentMessage",value:{text:"有变化时会通知你。"}}})]);
-    const tasks = f.tasks as ScheduleTask[];
+    const tasks = f.tasks as DemoScheduleTask[];
     const sample = this.opts.get("schedule-case");
     const longPrompt = "每天早上 8 点前帮我整理项目相关的信息：\n" + Array.from({length: 14}, (_, i) => `${i + 1}. 检查项目中的更新与讨论，保留重要变化的来源；有需要处理的内容就通知我。`).join("\n");
     const quiet = tasks.find(t => t.id === "quiet")!;
@@ -2124,9 +2150,7 @@ export class DemoRemote extends Remote {
     if (sample === "failed-once") { stopped.status = "failed"; stopped.reason = "execution_failed"; stopped.spec.trigger = {type:"at",at:new Date().toISOString()}; }
     if (sample === "failed") { stopped.status = "failed"; stopped.reason = "relay_session_limit"; }
     if (sample === "interval-stop") stopped.reason = "agent_schedule_interval_below_minimum";
-    this.drafts.set("schedule:" + f.session, sample === "long" ? longPrompt : "");
     if (sample === "uncertain") { stopped.status = "uncertain"; stopped.reason = "restart_dispatching"; }
-    this.drafts.set("schedule:new", sample === "long" ? longPrompt : "");
     if (sample === "chat" || sample === "queue") {
       const origin = { scheduledTaskId: "conversation", scheduledRunId: "demo-run" };
       this.evs.set(f.session, [create(EventSchema, {seq:1n,sessionId:f.session,time:timestampFromMs(Date.now() - min),origin,kind:{case:"userMessage",value:{text:longPrompt}}}), create(EventSchema, {seq:2n,sessionId:f.session,kind:{case:"agentMessage",value:{text:"我会逐项检查，有变化时通知你。"}}}), ...(sample === "queue" ? [create(EventSchema, {seq:3n,sessionId:f.session,time:timestampFromMs(Date.now()),origin,kind:{case:"inputState",value:{requestId:"scheduled-queue",text:"再检查一下讨论中的新回复，有需要处理的变化就通知我。",status:InputStatus.QUEUED,mode:SendMode.QUEUE}}})] : [])]);
@@ -2136,7 +2160,7 @@ export class DemoRemote extends Remote {
       create(EventSchema, {seq:BigInt(i*3+2),sessionId:f.session,kind:{case:"agentMessage",value:{text:"没有新回复。"}}}),
       create(EventSchema, {seq:BigInt(i*3+3),sessionId:f.session,kind:{case:"turnEnded",value:{durationMs:1000n,outcome:TurnOutcome.COMPLETED,scheduledTaskId:"conversation",scheduledRunId:`quiet-${i}`}}}),
     ]));
-    this.schedules.set("mac", {revision:1n,tasks:sample === "empty" ? [] : tasks,loading:false,error:""});
+    this.demoSchedules.set("mac", sample === "empty" ? [] : tasks);
     this.stored={revision:1n,prefs:create(ProjectPrefsSchema,{schema:1,settings:[{path:"/example/project",machineId:"mac",agent:Agent.CLAUDE,agents:[{agent:Agent.CLAUDE,model:"haiku",mode:ApprovalMode.AUTO}]}]})};
   }
 
@@ -2925,8 +2949,65 @@ export class DemoRemote extends Remote {
     const m = this.machines.get(machineId);
     if (!m?.online)
       throw new CommandError("unavailable", "电脑不在线，指令没有发出");
-    if (cmd.case === "schedule" && cmd.value.operation === "list")
-      return create(CommandResultSchema, {kind:{case:"schedule",value:{resultJson:new TextEncoder().encode(JSON.stringify({tasks:this.schedules.get(machineId)?.tasks ?? []}))}}});
+    if (cmd.case === "schedule") {
+      const req = cmd.value;
+      const tasks = this.demoSchedules.get(machineId) ?? [];
+      const encode = (payload: unknown) =>
+        create(CommandResultSchema, {
+          kind: { case: "schedule", value: { resultJson: new TextEncoder().encode(JSON.stringify(payload)) } },
+        });
+      if (req.operation === "list") return encode({ tasks });
+      const nowIso = new Date().toISOString();
+      if (req.operation === "create") {
+        const spec = JSON.parse(new TextDecoder().decode(req.specJson));
+        const created: DemoScheduleTask = {
+          id: "task-" + Math.random().toString(16).slice(2, 8),
+          revision: 1,
+          status: "scheduled",
+          source: "user",
+          created_at: nowIso,
+          updated_at: nowIso,
+          next_run_at: nowIso,
+          runs: [],
+          spec,
+        };
+        this.demoSchedules.set(machineId, [created, ...tasks]);
+        this.syncDemoToCore();
+        return encode(created);
+      }
+      const existing = tasks.find((t) => t.id === req.taskId);
+      if (!existing) throw new CommandError("not_found", "", true);
+      if (req.expectedRevision && Number(req.expectedRevision) !== existing.revision) {
+        throw new CommandError("conflict", t("errors.the_task_was_just_changed_updated_to_the_latest"), true, false, "conflict", "business");
+      }
+      const next: DemoScheduleTask = {
+        ...existing,
+        revision: existing.revision + 1,
+        updated_at: nowIso,
+      };
+      if (req.operation === "update") {
+        next.spec = JSON.parse(new TextDecoder().decode(req.specJson));
+        next.status = "scheduled";
+        next.reason = "";
+      } else if (req.operation === "pause") {
+        next.status = "paused";
+        next.reason = "user_paused";
+      } else if (req.operation === "resume") {
+        next.status = "scheduled";
+        next.reason = "";
+      } else if (req.operation === "cancel") {
+        next.status = "cancelled";
+        next.reason = "";
+      } else if (req.operation === "run") {
+        next.manual_request = { request_id: "manual-" + Date.now() };
+      }
+      this.demoSchedules.set(
+        machineId,
+        tasks.map((t) => (t.id === next.id ? next : t)),
+      );
+      this.syncDemoToCore();
+      return encode(next);
+    }
     switch (cmd.case) {
       case "listModels":
         if(this.opts.has("scheduled-final")) return create(CommandResultSchema,{kind:{case:"listModels",value:{defaultModel:"haiku",models:[{slug:"haiku",displayName:"haiku"}]}}});

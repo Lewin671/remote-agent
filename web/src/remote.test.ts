@@ -1245,3 +1245,105 @@ it("disposes its CoreHost on dispose() and drops an earlier-started snapshot tha
   expect(getCoreHost(r)).not.toBe(host);
   r.dispose();
 });
+
+it("persists schedule seen tuples under ra-schedule-seen and tolerates corrupt storage", async () => {
+  const mem = new Map<string, string>();
+  vi.stubGlobal("localStorage", {
+    getItem: (k: string) => mem.get(k) ?? null,
+    setItem: (k: string, v: string) => void mem.set(k, String(v)),
+    removeItem: (k: string) => void mem.delete(k),
+    clear: () => mem.clear(),
+  });
+  const r = await probe();
+  expect(await r.loadScheduleSeen("")).toMatchObject({ found: false });
+  expect(await r.loadScheduleSeen(r.machine)).toMatchObject({ found: false, tokens: [] });
+
+  const { ScheduleSeenTokenSchema } = await import("./gen/remoteagent/core/v1/schedules_view_pb");
+  await r.saveScheduleSeen(r.machine, [
+    create(ScheduleSeenTokenSchema, { taskId: "t-1", runId: "r-1" }),
+    create(ScheduleSeenTokenSchema, { taskId: "t-2", runId: "r-2" }),
+  ]);
+
+  const key = "ra-schedule-seen:" + JSON.stringify([r.account.server, r.account.deviceId, r.machine]);
+  expect(JSON.parse(mem.get(key)!)).toEqual([
+    JSON.stringify(["t-1", "r-1"]),
+    JSON.stringify(["t-2", "r-2"]),
+  ]);
+
+  const loaded = await r.loadScheduleSeen(r.machine);
+  expect(loaded.found).toBe(true);
+  expect(loaded.tokens.map((t) => [t.taskId, t.runId])).toEqual([
+    ["t-1", "r-1"],
+    ["t-2", "r-2"],
+  ]);
+
+  mem.set(key, "{not json");
+  expect(await r.loadScheduleSeen(r.machine)).toMatchObject({ found: false });
+});
+
+it("caches verified schedule list responses on executeCommandAttempt and decrypts via readScheduleCache", async () => {
+  const r = await probe();
+  const store = new Map<string, unknown>();
+  (r as unknown as { cache: { get(k: string): Promise<unknown>; set(k: string, v: unknown): Promise<void> } }).cache = {
+    get: async (k) => store.get(k),
+    set: async (k, v) => {
+      if (v === undefined) store.delete(k);
+      else store.set(k, v);
+    },
+  };
+  const { DispatchCommandEffectSchema, CommandRouteHint } = await import("./gen/remoteagent/core/v1/app_pb");
+  const { CommandSchema, CommandResultSchema } = await import("./gen/remoteagent/v1/remote_pb");
+  const { PayloadKind } = await import("./gen/remoteagent/v1/envelope_pb");
+  const { PROTOCOL_VERSION } = await import("./protocol");
+  const listJson = new TextEncoder().encode(JSON.stringify({ tasks: [{ id: "t-cached", revision: 2 }] }));
+
+  const cmdBytes = toBinary(
+    CommandSchema,
+    create(CommandSchema, {
+      protocolVersion: PROTOCOL_VERSION,
+      kind: { case: "schedule", value: { operation: "list" } },
+    }),
+  );
+
+  (r as unknown as { api: object }).api = {
+    forward: async (req: { command: Envelope }) => {
+      const opened = await r.world.fixture.open(r.machine, req.command);
+      const resEnv = await r.seal(
+        {
+          kind: PayloadKind.COMMAND_RESULT,
+          machineId: r.machine,
+          sessionId: "",
+          requestId: opened.header.requestId,
+          compression: 0,
+        },
+        CommandResultSchema,
+        create(CommandResultSchema, {
+          kind: { case: "schedule", value: { resultJson: listJson } },
+        }),
+      );
+      return { result: resEnv };
+    },
+  };
+
+  expect(await r.readScheduleCache(1n, r.machine)).toMatchObject({ opId: 1n, machineId: r.machine, resultJson: new Uint8Array() });
+
+  const outcome = await r.executeCommandAttempt(
+    create(DispatchCommandEffectSchema, {
+      requestId: newSlot().requestId,
+      attemptId: newSlot().requestId,
+      machineId: r.machine,
+      deadlineMs: BigInt(Date.now() + 30_000),
+      routeHint: CommandRouteHint.READ,
+      commandBytes: cmdBytes,
+    }),
+  );
+  expect(outcome.transportCode).toBe("");
+
+  const cached = await r.readScheduleCache(2n, r.machine);
+  expect(cached.error).toBe("");
+  expect(new TextDecoder().decode(cached.resultJson)).toBe(new TextDecoder().decode(listJson));
+
+  await r.deleteScheduleCache(r.machine);
+  const cleared = await r.readScheduleCache(3n, r.machine);
+  expect(cleared.resultJson).toEqual(new Uint8Array());
+});

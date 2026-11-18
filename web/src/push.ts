@@ -3,15 +3,15 @@ import * as l10n from "./i18n";
 
 import { NotifyKind } from "./gen/remoteagent/v1/relay_pb";
 import type { Remote } from "./remote";
-import type { ScheduleRun } from "./schedules";
 
 /** A run only identifies its last execution-log notification. Never match a
  * session prefix: other unread runs may share that session. */
-export async function closeScheduleNotification(run: ScheduleRun): Promise<void> {
+export async function closeScheduleNotification(run: { sessionId: string; notificationSeq: bigint | number }): Promise<void> {
   try {
-    if (!run.session_id || !Number.isSafeInteger(run.notification_seq) || run.notification_seq! <= 0 ||
+    const seq = Number(run.notificationSeq);
+    if (!run.sessionId || !Number.isSafeInteger(seq) || seq <= 0 ||
         typeof navigator === "undefined" || !("serviceWorker" in navigator)) return;
-    const tag = `${run.session_id}/scheduled:${run.notification_seq}/NOTIFY_KIND_SCHEDULED`;
+    const tag = `${run.sessionId}/scheduled:${seq}/NOTIFY_KIND_SCHEDULED`;
     const registration = await navigator.serviceWorker.ready;
     for (const notification of await registration.getNotifications({ tag })) {
       if (notification.tag === tag) {

@@ -11,7 +11,6 @@ import type { FrameStream } from "./transport/path";
 import { machineNotificationKinds } from "./machine-notifications";
 import * as l10n from "./i18n";
 import { rejectRetiredHistory, UnsupportedHistoryError } from "./crypto";
-import { frequency, ScheduleSeen, taskVisible, taskGroup, type ScheduleTask, type ScheduleSpec, type ScheduleDetailVisit, type TaskEntry } from "./schedules";
 import { ComposerDraftStore, DraftTexts } from "./composer-drafts";
 import { readSecurityOperation } from "./security-operation";
 import { AuthorityClient, PairingDeliveryError, handoffCandidates as verifiedHandoffCandidates, type HandoffOffer } from "./authority-client";
@@ -59,6 +58,15 @@ import {
   type SecuritySnapshotEvent,
   type TokenResultEvent,
 } from "./gen/remoteagent/core/v1/app_pb";
+import {
+  ScheduleCacheLoadedEventSchema,
+  ScheduleSeenLoadedEventSchema,
+  ScheduleSeenTokenSchema,
+  type ScheduleCacheLoadedEvent,
+  type ScheduleNotificationRef,
+  type ScheduleSeenLoadedEvent,
+  type ScheduleSeenToken,
+} from "./gen/remoteagent/core/v1/schedules_view_pb";
 import { ConnState as CoreConnState } from "./gen/remoteagent/core/v1/home_view_pb";
 import type { SyncSessionView, SyncStateView } from "./gen/remoteagent/core/v1/sync_view_pb";
 import {
@@ -191,9 +199,8 @@ export type CommandKind = MessageInitShape<typeof CommandSchema>["kind"];
 
 export interface MachineView { id: string; online: boolean; lastSeenMs: bigint; meta?: MachineMeta; metaRev: bigint; keptOnline?: boolean; }
 export interface SessionView { id: string; machineId: string; historyError?: string; info?: Session; checkpoint?: LiveSnapshot; checkpointStatus?: "ready" | "waiting" | "invalid"; metaRev: bigint; lastSeq: bigint; updatedMs: bigint; endedMs: bigint; }
-export class ScheduleRevisionError extends Error {}
 
-// --- Transitional Step 3/4 command helper (remove when Session & Schedules migrate to Core) ---
+// --- Transitional Step 3/4 command helper (remove when Session migrates to Core) ---
 
 export const COMMAND_TTL_MS = 60_000;
 export const COMMAND_EXPIRY_SKEW_MS = MAX_CLOCK_SKEW;
@@ -449,17 +456,6 @@ export class Remote implements CoreExecutor {
 
   // Legacy views/features kept on Remote until Step 4/5
   private sharedFilesState?: SharedFileManager;
-  private scheduleSeenState?: ScheduleSeen;
-  private scheduleRequests = new Map<string, string>();
-  private scheduleLoading = new Map<string, Promise<void>>();
-  private scheduleAgain = new Set<string>();
-  private scheduleLive = new Set<string>();
-  readonly schedules = new Map<string, { tasks: ScheduleTask[]; revision: bigint; loading: boolean; error: string }>();
-  readonly scheduleAttempts = new Map<
-    string,
-    Attempt<{ operation: string; taskId: string; revision: number; spec?: ScheduleSpec; requestId?: string; sessionId?: string }>
-  >();
-  readonly scheduleFocus = new Map<string, { seq: bigint; runId: string }>();
 
   network = typeof navigator === "undefined" || navigator.onLine !== false;
   removalVerified = false;
@@ -854,7 +850,6 @@ export class Remote implements CoreExecutor {
 
     this.cachedPrefPending.clear();
     if (view.prefsSyncing) this.cachedPrefPending.set("", "syncing");
-    if (this.hostBridge) this.syncSchedules();
     this.changed();
     if (!wasOnline && (this.conn as ConnState) === "online" && !this.closed) void restorePushPrefs(this);
   }
@@ -990,7 +985,7 @@ export class Remote implements CoreExecutor {
     switch (kind.case) {
       case "heartbeat": return { case: "heartbeat" as const, value: true };
       case "machineUpdated": return kind.value.machine ? { case: "machineUpdated" as const, value: await this.unpackMachine(kind.value.machine, refs) } : undefined;
-      case "machineRemoved": this.forgetSchedules(kind.value.machineId); return { case: "machineRemovedId" as const, value: kind.value.machineId };
+      case "machineRemoved": return { case: "machineRemovedId" as const, value: kind.value.machineId };
       case "sessionUpdated": return kind.value.session ? { case: "sessionUpdated" as const, value: await this.unpackSession(kind.value.session, true, refs) } : undefined;
       case "eventsAppended": return { case: "eventsAppended" as const, value: create(EventsAppendedFrameSchema, { sessionId: kind.value.sessionId, events: await this.unpackEvents(kind.value.sessionId, kind.value.events, false, refs) }) };
       case "accountPrefsUpdated": return { case: "accountPrefsUpdated" as const, value: await this.unpackAccountPrefs(kind.value.object, refs) };
@@ -1039,7 +1034,6 @@ export class Remote implements CoreExecutor {
     this.authorityDeviceId = head.core.authorityID;
     this.trustedMembers = new Map(head.core.members.map((m) => [m.id, m]));
     this.archiveMachines = new Set(record.states.flatMap((s) => s.core.members.filter((m) => m.kind === 1).map((m) => m.id)));
-    for (const id of this.archiveMachines) if (!this.trustedMembers.has(id)) this.forgetSchedules(id);
   }
 
   private snapshotFromRecord(opId: bigint, networkGeneration: bigint, record: SecurityRecord, pushSeq = 0n): SecuritySnapshotEvent {
@@ -1136,10 +1130,6 @@ export class Remote implements CoreExecutor {
           this.persistedMachines.set(m.id, m);
           const unpacked = await this.unpackMachine(m, undefined, true);
           machines.push(unpacked);
-          if (unpacked.meta?.capabilities?.scheduledTasks === true && !(this.archiveMachines.has(m.id) && !this.trustedMembers.has(m.id))) {
-            const keptSched = await this.cache.get("schedules:" + m.id);
-            if (valid(keptSched) && keptSched.bytes instanceof Uint8Array) void this.restoreScheduleSnapshot(m.id, keptSched, true).catch(() => undefined);
-          }
         }
       }
       if (valid(keptSessions) && keptSessions.bytes instanceof Uint8Array) {
@@ -1231,7 +1221,7 @@ export class Remote implements CoreExecutor {
         await this.keepValue("open-sessions", { ids: [...this.persistedOpen] });
         break;
       case "unlistSessionId": this.persistedSessions.delete(eff.kind.value); await this.persistSessionsList(); break;
-      case "removeMachineId": this.persistedMachines.delete(eff.kind.value); await this.persistMachinesList(); this.forgetSchedules(eff.kind.value); break;
+      case "removeMachineId": this.persistedMachines.delete(eff.kind.value); await this.persistMachinesList(); break;
     }
   }
 
@@ -1366,7 +1356,7 @@ export class Remote implements CoreExecutor {
   private async executeSealedAttempt(params: {
     requestId: string; attemptId: string; machineId: string; sessionId: string; deadlineMs: number;
     commandBytes: Uint8Array<ArrayBuffer>; routeHint?: RouteHint; forceRelay: boolean; priorUnknown: boolean;
-    isScheduleList?: boolean; hasFiles?: boolean; signal?: AbortSignal; onHandoff?: () => () => void;
+    hasFiles?: boolean; signal?: AbortSignal; onHandoff?: () => () => void;
   }): Promise<{ outcome: CommandOutcomeEvent; msg?: CommandResult; rawEnvelope?: Envelope; directLegFailed?: boolean }> {
     const base = { requestId: params.requestId, attemptId: params.attemptId };
     const mk = (fields: Omit<Partial<CommandOutcomeEvent>, "$typeName" | "requestId" | "attemptId">) =>
@@ -1436,8 +1426,18 @@ export class Remote implements CoreExecutor {
         } else if (parsedCmd?.kind.case === "completeImageUpload" || parsedCmd?.kind.case === "abortImageUpload") {
           this.directTransfers.delete(`${params.machineId}/${parsedCmd.kind.value.transferId}`);
         }
-        if (params.isScheduleList && res.result && this.machines.has(params.machineId) && this.supportsSchedules(params.machineId)) {
-          await this.keepScheduleSnapshot(params.machineId, { bytes: toBinary(EnvelopeSchema, res.result), requestId: params.requestId });
+        if (
+          parsedCmd?.kind.case === "schedule" &&
+          parsedCmd.kind.value.operation === "list" &&
+          hashesMatch &&
+          attemptBound &&
+          outerMatchesInner &&
+          !msg.errorCode &&
+          msg.outcome === "executed" &&
+          res.result &&
+          !(this.archiveMachines.has(params.machineId) && !this.trustedMembers.has(params.machineId))
+        ) {
+          await this.keepValue("schedules:" + params.machineId, { bytes: toBinary(EnvelopeSchema, res.result), requestId: params.requestId });
         }
         return {
           handedOff: leg.handedOff(), legAttempt: a, msg, rawEnvelope: res.result,
@@ -1884,7 +1884,6 @@ export class Remote implements CoreExecutor {
       const { outcome: ev, msg, directLegFailed } = await this.executeSealedAttempt({
         requestId, attemptId: newRequestID(), machineId, sessionId: sid, deadlineMs: deadline, commandBytes: plain,
         routeHint, forceRelay, priorUnknown,
-        isScheduleList: cmd?.case === "schedule" && cmd.value.operation === "list",
         hasFiles: (cmd?.case === "send" || cmd?.case === "createSession") && !!cmd.value.fileIds?.length,
         signal, onHandoff: () => slot.evidence.trackHandoff(),
       });
@@ -1964,240 +1963,72 @@ export class Remote implements CoreExecutor {
     return !!(s && this.peer(s.machineId).capabilities?.sharedFiles === true);
   }
 
-  private get scheduleSeen() {
-    return (this.scheduleSeenState ??= new ScheduleSeen(
-      [this.account.server, this.account.deviceId],
-      { getItem: (k) => localStorage.getItem(k), setItem: (k, v) => localStorage.setItem(k, v) },
-      (run) => { void closeScheduleNotification(run); },
-    ));
-  }
-
-  private emitScheduleHints() {
-    const hints = [...this.sessions.keys()].map((sid) => {
-      const tasks = this.sessionTasks(sid);
-      return {
-        sessionId: sid,
-        scheduleName: tasks.length > 0 ? frequency(tasks[0].task.spec.trigger) : "",
-        unread: tasks.some((e) => this.scheduleUnread(e.machineId, e.task)),
-      };
-    });
-    this.hostBridge?.pushScheduleHints(hints);
-  }
-
-  scheduleBadge() { return this.scheduleSeen.count(this.taskEntries()); }
-  scheduleUnread(machineId: string, task: ScheduleTask) { return this.scheduleSeen.unread(machineId, task); }
-  scheduleHasNew(machineId: string, task: ScheduleTask) { return this.scheduleSeen.hasNew(machineId, task); }
-  scheduleNewResults() { return this.taskEntries().some((e) => this.scheduleHasNew(e.machineId, e.task)); }
-  markScheduleRead(machineId: string, task: ScheduleTask) { this.scheduleSeen.markRead(machineId, task); this.emitScheduleHints(); this.changed(); }
-  markScheduleUnread(machineId: string, task: ScheduleTask, leaving = false) {
-    const latest = this.schedules.get(machineId)?.tasks.find((current) => current.id === task.id);
-    if (!latest) return;
-    this.scheduleSeen.markUnread(machineId, latest, leaving);
-    this.emitScheduleHints();
-    this.changed();
-  }
-  setScheduleDetail(machineId?: string, taskId?: string, visit?: ScheduleDetailVisit) {
-    const unread = this.scheduleSeen.setDetail(machineId, taskId, visit);
-    this.emitScheduleHints();
-    this.changed();
-    return unread;
-  }
-  setScheduleSession(sessionId?: string) { this.scheduleSeen.setSession(sessionId); this.emitScheduleHints(); this.changed(); }
-  setSchedulePage(page: string) { this.scheduleSeen.setPage(page); }
-  setScheduleVisible(visible: boolean) { this.scheduleSeen.setVisible(visible); this.emitScheduleHints(); this.changed(); }
-  hasLiveSchedules(machineId: string): boolean { return this.scheduleLive.has(machineId); }
-  supportsSchedules(id: string): boolean {
-    return this.peer(id).capabilities?.scheduledTasks === true && !(this.archiveMachines.has(id) && !this.trustedMembers.has(id));
-  }
-  taskEntries(): TaskEntry[] {
-    return [...this.schedules].flatMap(([machineId, state]) =>
-      this.supportsSchedules(machineId)
-        ? state.tasks.filter(taskVisible).map((task) => ({ machineId, task, group: taskGroup(task) }))
-        : [],
-    );
-  }
-  sessionTasks(sid: string): TaskEntry[] {
-    return this.taskEntries().filter((e) => e.task.spec.target.type === "resume_session" && e.task.spec.target.session === sid);
-  }
-
-  syncSchedules() {
-    const readyList = this.listed || !!this.syncStateView?.machinesListed || this.machines.size > 0;
-    for (const id of this.schedules.keys()) {
-      if ((readyList && !this.machines.has(id)) || (this.archiveMachines.has(id) && !this.trustedMembers.has(id))) this.forgetSchedules(id);
+  async readScheduleCache(opId: bigint, machineId: string): Promise<ScheduleCacheLoadedEvent> {
+    if (!machineId || this.closed || (this.archiveMachines.has(machineId) && !this.trustedMembers.has(machineId))) {
+      return create(ScheduleCacheLoadedEventSchema, { opId, machineId });
     }
-    for (const id of this.scheduleRequests.keys()) {
-      if (!this.peer(id).available || !this.supportsSchedules(id)) this.scheduleRequests.delete(id);
-    }
-    for (const [id, m] of this.machines) {
-      if (!this.peer(id).available || !this.supportsSchedules(id)) continue;
-      const key = String(m.meta!.scheduleRevision);
-      if (this.scheduleRequests.get(id) === key) continue;
-      this.scheduleRequests.set(id, key);
-      void this.refreshSchedules(id);
-    }
-  }
-
-  private forgetSchedules(id: string) {
-    this.scheduleSeen.forget(id);
-    this.scheduleLive.delete(id);
-    this.schedules.delete(id);
-    this.scheduleRequests.delete(id);
-    this.scheduleAgain.delete(id);
-    void this.keepValue("schedules:" + id, undefined);
-  }
-
-  private async restoreScheduleSnapshot(id: string, kept: Record<string, unknown>, supportedOverride?: boolean) {
-    const { msg } = await this.openSecureMessage(
-      fromBinary(EnvelopeSchema, kept.bytes as Uint8Array),
-      { kind: PayloadKind.COMMAND_RESULT, machineId: id, sessionId: "", requestId: kept.requestId as string },
-      CommandResultSchema,
-      true,
-    );
-    const supported = supportedOverride ?? this.supportsSchedules(id);
-    if (!supported || this.removed || this.scheduleLive.has(id)) return;
-    if (msg.kind.case === "schedule") {
-      const parsed = JSON.parse(new TextDecoder().decode(msg.kind.value.resultJson)) as { tasks: ScheduleTask[] };
-      if (Array.isArray(parsed.tasks)) {
-        this.scheduleSeen.observe(id, parsed.tasks, { prune: false, live: false });
-        this.schedules.set(id, { tasks: parsed.tasks, revision: 0n, loading: false, error: "" });
-        this.emitScheduleHints();
-      }
-    }
-  }
-
-  private async keepScheduleSnapshot(id: string, value: Record<string, unknown>) {
-    await this.keepValue("schedules:" + id, value);
-    if (!this.machines.has(id) || !this.supportsSchedules(id) || this.removed) {
-      await this.keepValue("schedules:" + id, undefined);
-    }
-  }
-
-  refreshSchedules(id: string): Promise<void> {
-    if (this.scheduleLoading.has(id)) {
-      this.scheduleAgain.add(id);
-      return this.scheduleLoading.get(id)!;
-    }
-    if (!this.peer(id).available || !this.supportsSchedules(id)) return Promise.resolve();
-    const work = (async () => {
-      do {
-        this.scheduleAgain.delete(id);
-        const revision = this.machines.get(id)?.meta?.scheduleRevision ?? 0n;
-        const prev = this.schedules.get(id);
-        this.schedules.set(id, { tasks: prev?.tasks ?? [], revision: prev?.revision ?? 0n, loading: true, error: "" });
-        this.changed();
-        try {
-          const r = await this.machineCommand(id, { case: "schedule", value: { operation: "list" } });
-          if (r.kind.case !== "schedule") throw new Error(l10n.t("errors.the_computer_did_not_return_a_task_list"));
-          const parsed = JSON.parse(new TextDecoder().decode(r.kind.value.resultJson)) as { tasks: ScheduleTask[] };
-          const tasks = parsed.tasks;
-          if (!Array.isArray(tasks)) {
-            throw new Error(l10n.t("errors.the_task_list_returned_by_the_computer_could_not"));
-          }
-          if (!this.machines.has(id) || !this.supportsSchedules(id) || this.removed) return;
-          this.scheduleLive.add(id);
-          this.scheduleSeen.observe(id, tasks, { live: true });
-          this.schedules.set(id, { tasks, revision, loading: false, error: "" });
-          this.emitScheduleHints();
-          this.changed();
-          void Promise.allSettled(
-            [
-              ...new Set(
-                tasks
-                  .filter((t) => t.spec.target.type === "resume_session")
-                  .map((t) => t.spec.target.session)
-                  .filter((sid): sid is string => !!sid && !this.sessions.get(sid)?.info),
-              ),
-            ].map((sid) => this.ensureSession(sid)),
-          );
-        } catch (e) {
-          const state = this.schedules.get(id);
-          if (!state || !this.supportsSchedules(id)) return;
-          this.schedules.set(id, { ...state, loading: false, error: errorText(e) });
-        }
-        this.changed();
-      } while (this.scheduleAgain.has(id) && this.peer(id).available);
-    })().finally(async () => {
-      this.scheduleLoading.delete(id);
-      if (this.scheduleAgain.delete(id)) await this.refreshSchedules(id);
-    });
-    this.scheduleLoading.set(id, work);
-    return work;
-  }
-
-  async changeSchedule(
-    machineId: string,
-    key: string,
-    payload: { operation: string; taskId?: string; revision?: number; spec?: ScheduleSpec; requestId?: string; sessionId?: string },
-  ): Promise<ScheduleTask> {
-    if (!this.peer(machineId).available) {
-      throw new Error(l10n.t("errors.the_computer_is_offline_connect_to_edit_tasks"));
-    }
-    if (!this.supportsSchedules(machineId)) {
-      throw new Error(l10n.t("errors.update_remote_agent_on_this_computer_to_use_scheduled"));
-    }
-    const attemptKey = machineId + "/" + key;
-    let attempt = this.scheduleAttempts.get(attemptKey);
-    if (!attempt) {
-      attempt = new Attempt();
-      this.scheduleAttempts.set(attemptKey, attempt);
-    }
-    if (attempt.expired) {
-      throw new Error(l10n.t("errors.the_previous_operation_s_outcome_is_still_unknown_reload"));
-    }
-    const req = attempt.next({
-      operation: payload.operation,
-      taskId: payload.taskId ?? "",
-      revision: payload.revision ?? 0,
-      spec: payload.spec,
-      requestId: payload.requestId,
-      sessionId: payload.sessionId,
-    });
     try {
-      const r = await this.machineCommand(
-        machineId,
-        {
-          case: "schedule",
-          value: {
-            operation: req.payload.operation,
-            taskId: req.payload.taskId,
-            expectedRevision: BigInt(req.payload.revision),
-            specJson: req.payload.spec ? new TextEncoder().encode(JSON.stringify(req.payload.spec)) : undefined,
-            requestId: req.payload.requestId,
-            sessionId: req.payload.sessionId,
-          },
-        },
-        req.slot,
-      );
-      if (r.kind.case !== "schedule") throw new Error(l10n.t("errors.the_computer_did_not_return_a_task"));
-      const task = JSON.parse(new TextDecoder().decode(r.kind.value.resultJson)) as ScheduleTask;
-      attempt.settle(undefined, req);
-      await this.refreshSchedules(machineId);
-      return task;
-    } catch (e) {
-      attempt.settle(e, req);
-      if (e instanceof CommandError && e.outcome === "conflict" && e.conflictKind === "business") {
-        attempt.abandon();
-        await this.refreshSchedules(machineId);
-        throw new ScheduleRevisionError(l10n.t("errors.the_task_was_just_changed_updated_to_the_latest"));
+      const kept = (await this.cache?.get("schedules:" + machineId)) as { requestId?: unknown; bytes?: unknown } | undefined;
+      if (!kept || typeof kept.requestId !== "string" || !(kept.bytes instanceof Uint8Array)) {
+        return create(ScheduleCacheLoadedEventSchema, { opId, machineId });
       }
-      throw e;
+      const { msg } = await this.openSecureMessage(
+        fromBinary(EnvelopeSchema, kept.bytes),
+        { kind: PayloadKind.COMMAND_RESULT, machineId, sessionId: "", requestId: kept.requestId },
+        CommandResultSchema,
+        true,
+      );
+      if (msg.kind.case !== "schedule" || !msg.kind.value.resultJson.length) {
+        return create(ScheduleCacheLoadedEventSchema, { opId, machineId });
+      }
+      return create(ScheduleCacheLoadedEventSchema, { opId, machineId, resultJson: msg.kind.value.resultJson });
+    } catch (e) {
+      return create(ScheduleCacheLoadedEventSchema, { opId, machineId, error: errorText(e) });
     }
   }
 
-  async openScheduleRun(machineId: string, run: import("./schedules").ScheduleRun) {
-    if (
-      !run.session_id ||
-      (this.sessions.get(run.session_id)?.machineId && this.sessions.get(run.session_id)?.machineId !== machineId)
-    ) {
-      return;
+  async deleteScheduleCache(machineId: string): Promise<void> {
+    if (!machineId) return;
+    await this.keepValue("schedules:" + machineId, undefined);
+  }
+
+  private scheduleSeenStorageKey(machineId: string): string {
+    return "ra-schedule-seen:" + JSON.stringify([this.account.server, this.account.deviceId, machineId]);
+  }
+
+  async loadScheduleSeen(machineId: string): Promise<ScheduleSeenLoadedEvent> {
+    if (!machineId) return create(ScheduleSeenLoadedEventSchema, { machineId, found: false });
+    try {
+      const raw = typeof localStorage !== "undefined" ? localStorage.getItem(this.scheduleSeenStorageKey(machineId)) : null;
+      if (raw === null) return create(ScheduleSeenLoadedEventSchema, { machineId, found: false });
+      const arr = JSON.parse(raw) as unknown;
+      if (!Array.isArray(arr)) return create(ScheduleSeenLoadedEventSchema, { machineId, found: false });
+      const tokens: ScheduleSeenToken[] = [];
+      for (const entry of arr) {
+        if (typeof entry !== "string") continue;
+        const pair = JSON.parse(entry) as unknown;
+        if (Array.isArray(pair) && typeof pair[0] === "string" && typeof pair[1] === "string") {
+          tokens.push(create(ScheduleSeenTokenSchema, { taskId: pair[0], runId: pair[1] }));
+        }
+      }
+      return create(ScheduleSeenLoadedEventSchema, { machineId, tokens, found: true });
+    } catch (e) {
+      return create(ScheduleSeenLoadedEventSchema, { machineId, found: false, error: errorText(e) });
     }
-    this.scheduleFocus.set(run.session_id, {
-      seq: BigInt(run.start_seq || run.after_seq) + 1n,
-      runId: run.id,
-    });
-    await this.ensureSession(run.session_id);
-    this.touch();
-    location.hash = "/s/" + encodeURIComponent(run.session_id);
+  }
+
+  async saveScheduleSeen(machineId: string, tokens: ScheduleSeenToken[]): Promise<void> {
+    if (!machineId || typeof localStorage === "undefined") return;
+    try {
+      const encoded = tokens.map((t) => JSON.stringify([t.taskId, t.runId]));
+      localStorage.setItem(this.scheduleSeenStorageKey(machineId), JSON.stringify(encoded));
+    } catch {
+      /* Keep working when storage is unavailable. */
+    }
+  }
+
+  dismissScheduleNotifications(runs: ScheduleNotificationRef[]) {
+    for (const run of runs) void closeScheduleNotification(run);
   }
 
   draft(key: string): string { return this.drafts.get(key) ?? ""; }
@@ -2221,7 +2052,7 @@ export class Remote implements CoreExecutor {
     const revision = (this.draftRevisions.get(key) ?? 0) + 1;
     this.draftRevisions.set(key, revision);
     const tray = this.trays.get(key);
-    if (this.closed || this.forgottenSessions.has(key) || key.startsWith("schedule:") || !this.localDrafts || !tray) return;
+    if (this.closed || this.forgottenSessions.has(key) || !this.localDrafts || !tray) return;
     if (!this.draftLoaded.has(key)) {
       if (!this.draftLoads.has(key)) void this.restoreDraft(key, tray).catch(() => undefined);
       return;
@@ -2239,7 +2070,7 @@ export class Remote implements CoreExecutor {
   }
 
   restoreDraft(key: string, tray: Tray): Promise<void> {
-    if (!this.localDrafts || this.forgottenSessions.has(key) || key.startsWith("schedule:") || this.draftLoaded.has(key)) {
+    if (!this.localDrafts || this.forgottenSessions.has(key) || this.draftLoaded.has(key)) {
       return Promise.resolve();
     }
     const existing = this.draftLoads.get(key);

@@ -17,7 +17,6 @@ import { Remote, resumeRegistration, errorText } from "./remote";
 import { bindNetworkChanges, stableNetworkSignature, type NetworkConnection } from "./transport/network";
 import { loadAccount, type StoredAccount, watchAccountLogout } from "./storage";
 import { securitySetupStatus } from "./device-security-store";
-import { hasScheduleDrafts } from "./schedule-drafts";
 import { guardUpdateInput } from "./update";
 import { page } from "./views/pages";
 
@@ -147,7 +146,7 @@ export function App() {
   useEffect(() => {
     if (!remote) return;
     return guardUpdateInput(() => [...remote.drafts.values(), ...remote.approvalReasons.values()].some(text => text.length > 0) ||
-      [...remote.trays.values()].some(tray => tray.items.length > 0) || hasScheduleDrafts(remote));
+      [...remote.trays.values()].some(tray => tray.items.length > 0) || getCoreHost(remote).hasUnsavedScheduleDrafts());
   }, [remote]);
   useEffect(() => {
     if (!remote) return;
@@ -181,7 +180,6 @@ export function App() {
     };
     const visibility = () => {
       remote.setForeground(!document.hidden);
-      remote.setScheduleVisible(!document.hidden);
       if (!document.hidden) resume();
       else if (running && hiddenTimer === undefined)
         hiddenTimer = setTimeout(pause, HIDDEN_GRACE_MS);
@@ -193,7 +191,6 @@ export function App() {
     document.addEventListener("resume", resume);
     addEventListener("pagehide", pause);
     addEventListener("pageshow", resume);
-    remote.setScheduleVisible(!document.hidden);
     resume();
     return () => {
       netBinding.dispose();

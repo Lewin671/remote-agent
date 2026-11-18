@@ -4,7 +4,7 @@
 import { create } from "@bufbuild/protobuf";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { AgentMark } from "../agent-mark";
-import { useCoreHost, useHomeView, useNewSessionView, useProjectView, useSessionView, type Go } from "../core/host";
+import { useCoreHost, useHomeView, useNewSessionView, useProjectView, useSchedulesView, useSessionView, type Go } from "../core/host";
 import { renderText } from "../core/text";
 import { SessionDockKind } from "../gen/remoteagent/core/v1/session_view_pb";
 import { CommandSchema, type Command } from "../gen/remoteagent/v1/remote_pb";
@@ -521,6 +521,7 @@ export function Sidebar({ remote, selected, project, active = "sessions", tasks,
   const host = useCoreHost(remote, go);
   const [endedLimit, setEndedLimit] = useState(30);
   const vm = useHomeView(host, endedLimit);
+  const schedVm = useSchedulesView(host, 1);
   const [connOpen, setConnOpen] = useState(false);
   const showTasks = tasks ?? active === "tasks";
 
@@ -539,14 +540,14 @@ export function Sidebar({ remote, selected, project, active = "sessions", tasks,
         selected={selected}
         tasks={showTasks}
         scheduleSidebar={showTasks ? <SchedulesPage remote={remote} go={go} sidebar selected={selectedTask} /> : undefined}
-        scheduleAttention={remote.scheduleBadge()}
-        scheduleNew={remote.scheduleNewResults()}
+        scheduleAttention={schedVm.attentionCount}
+        scheduleNew={schedVm.hasNewResults}
         settingsActive={settingsActive ?? active === "settings"}
         onSelectScope={(scopeKey) => { host.homeSetScope(scopeKey); if (project !== undefined) go(""); }}
         onSetFilter={host.homeSetFilter}
         onSelectSession={(sid) => go("s/" + encodeURIComponent(sid))}
         onNewTask={() => go(activeScope ? "p/" + encodeURIComponent(activeScope) : "")}
-        onNewSchedule={() => go("task-new")}
+        onNewSchedule={() => go("tasks/new")}
         onToggleTasks={(on) => go(on ? "tasks" : "")}
         onOpenSettings={() => go("settings")}
         onManageProjects={() => go("projects")}
@@ -609,7 +610,7 @@ export function WideHome({ remote, go, project }: { remote: Remote; go: Go; proj
 
 export interface BottomBarAction { label: string; icon: ReactNode; onClick: () => void; disabled?: boolean; }
 
-function BottomBarInner(p: { remote?: Remote; active: "sessions" | "tasks"; action?: BottomBarAction; waiting: number; canStart: boolean; onStart?: () => void; go: Go }) {
+function BottomBarInner(p: { remote?: Remote; active: "sessions" | "tasks"; action?: BottomBarAction; waiting: number; canStart: boolean; scheduleAttention?: number; scheduleNew?: boolean; onStart?: () => void; go: Go }) {
   const [picking, setPicking] = useState(false);
   return (
     <>
@@ -619,7 +620,7 @@ function BottomBarInner(p: { remote?: Remote; active: "sessions" | "tasks"; acti
             <MessageCircle />{t("home.sessions_tab")}{p.waiting > 0 && <span className="count">{p.waiting > 99 ? "99+" : p.waiting}</span>}
           </button>
           <button type="button" className={p.active === "tasks" ? "on" : undefined} onClick={() => p.go("tasks")}>
-            <Clock />{t("home.schedules_tab")}<ScheduleBadges attention={p.remote?.scheduleBadge() ?? 0} hasNew={p.remote?.scheduleNewResults() ?? false} />
+            <Clock />{t("home.schedules_tab")}<ScheduleBadges attention={p.scheduleAttention ?? 0} hasNew={p.scheduleNew ?? false} />
           </button>
         </div>
         <button type="button" className="fab" disabled={p.action ? p.action.disabled : !p.canStart} onClick={p.action ? p.action.onClick : () => p.onStart ? p.onStart() : p.remote && setPicking(true)}>
@@ -632,8 +633,18 @@ function BottomBarInner(p: { remote?: Remote; active: "sessions" | "tasks"; acti
 }
 
 function BottomBarConnected(p: { remote: Remote; active: "sessions" | "tasks"; action?: BottomBarAction; waiting?: number; canStart?: boolean; onStart?: () => void; go: Go }) {
-  const vm = useHomeView(useCoreHost(p.remote, p.go), 1);
-  return <BottomBarInner {...p} waiting={p.waiting ?? vm.waitingTotal} canStart={p.canStart ?? (vm.canStart && vm.connection?.state === ConnState.CONNECTED)} />;
+  const host = useCoreHost(p.remote, p.go);
+  const vm = useHomeView(host, 1);
+  const schedVm = useSchedulesView(host, 1);
+  return (
+    <BottomBarInner
+      {...p}
+      waiting={p.waiting ?? vm.waitingTotal}
+      canStart={p.canStart ?? (vm.canStart && vm.connection?.state === ConnState.CONNECTED)}
+      scheduleAttention={schedVm.attentionCount}
+      scheduleNew={schedVm.hasNewResults}
+    />
+  );
 }
 
 /** Floating bottom tabs + primary pill on phone. */

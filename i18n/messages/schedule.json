@@ -214,6 +214,7 @@
     "notes": "Android Schedules 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
     "params": {},
     "platforms": [
+      "web",
       "android"
     ],
     "status": {
@@ -286,6 +287,7 @@
     "notes": "Android Schedules 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
     "params": {},
     "platforms": [
+      "web",
       "android"
     ],
     "status": {
@@ -300,6 +302,7 @@
     "notes": "Android Schedules 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
     "params": {},
     "platforms": [
+      "web",
       "android"
     ],
     "status": {
@@ -566,6 +569,7 @@
     "notes": "Android Schedules 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
     "params": {},
     "platforms": [
+      "web",
       "android"
     ],
     "status": {
@@ -594,8 +598,8 @@
     "notes": "Android Schedules 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
     "params": {},
     "platforms": [
-      "web",
-      "android"
+      "android",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -711,6 +715,7 @@
     "notes": "Android Schedules 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
     "params": {},
     "platforms": [
+      "web",
       "android"
     ],
     "status": {
@@ -785,6 +790,7 @@
     "notes": "Android Schedules 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
     "params": {},
     "platforms": [
+      "web",
       "android"
     ],
     "status": {
@@ -2737,21 +2743,6 @@
     }
   },
   {
-    "key": "schedule.interval_minutes",
-    "zh-CN": "间隔（分钟）",
-    "en": "Interval (minutes)",
-    "notes": "Schedules 页面或对应功能的界面正文/短标签。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "web",
-      "android"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
     "key": "schedule.never",
     "zh-CN": "不结束",
     "en": "Never",
@@ -2931,8 +2922,8 @@
     "notes": "Schedules 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
     "params": {},
     "platforms": [
-      "web",
-      "android"
+      "android",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -2958,36 +2949,6 @@
       "web",
       "android",
       "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "schedule.continuing_takes_over_the_task_and_runs_it_with",
-    "zh-CN": "继续会由你接管任务，按任务中显示的权限运行。",
-    "en": " Continuing takes over the task and runs it with the permissions shown.",
-    "notes": "Schedules 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。 本句紧接同段前一句，英文保留句前空格；中文不加空格。",
-    "params": {},
-    "platforms": [
-      "web",
-      "android"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "schedule.verified_abandon_request",
-    "zh-CN": "已核实，放弃请求",
-    "en": "Verified, abandon request",
-    "notes": "Schedules 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "web",
-      "android"
     ],
     "status": {
       "zh-CN": "source",
@@ -3132,21 +3093,6 @@
       "web",
       "android",
       "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "schedule.connect_to_edit_run_or_delete",
-    "zh-CN": " 连上后才能修改、运行或删除。",
-    "en": " Connect to edit, run, or delete.",
-    "notes": "Schedules 页面或对应功能的界面正文/短标签。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "web",
-      "android"
     ],
     "status": {
       "zh-CN": "source",
@@ -3335,21 +3281,6 @@
     "zh-CN": "定时发到这个对话",
     "en": "Schedule messages to this conversation",
     "notes": "Schedules 页面或对应功能的界面正文/短标签。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "web",
-      "android"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "schedule.choose_ask_auto_or_full_access_scheduled_tasks_cannot",
-    "zh-CN": "请选择询问、自动或完全放行，定时任务不能以计划模式新开对话。",
-    "en": "Choose Ask, Auto, or Full access. Scheduled tasks cannot open conversations in Plan mode.",
-    "notes": "Schedules 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
     "params": {},
     "platforms": [
       "web",
@@ -3558,7 +3489,6 @@
     "notes": "Schedules 页面或对应功能的无障碍/标题/字段提示。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
     "params": {},
     "platforms": [
-      "web",
       "android",
       "ios"
     ],
@@ -4026,8 +3956,8 @@
     },
     "notes": "定时/设置/账户页面完整句或短标签。参数为当前页面数据，用户/CLI 原文不翻译；短标签空间紧凑，说明可换行。",
     "platforms": [
-      "web",
-      "android"
+      "android",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -4156,26 +4086,6 @@
       "web",
       "android",
       "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "schedule.attention_once",
-    "zh-CN": "{reason}。可改时间重排。",
-    "en": "{reason}. Change the time to reschedule.",
-    "params": {
-      "reason": {
-        "type": "string",
-        "example": "Example"
-      }
-    },
-    "notes": "定时/设置/账户页面完整句或短标签。参数为当前页面数据，用户/CLI 原文不翻译；短标签空间紧凑，说明可换行。",
-    "platforms": [
-      "web",
-      "android"
     ],
     "status": {
       "zh-CN": "source",
@@ -4506,7 +4416,6 @@
     "notes": "iOS ScheduleDetailScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
     "params": {},
     "platforms": [
-      "web",
       "android",
       "ios"
     ],

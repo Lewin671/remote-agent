@@ -328,10 +328,8 @@
     <string name="errors_terminal_connection_timed_out_reconnect" formatted="false">"Terminal connection timed out. Reconnect."</string>
     <string name="errors_terminal_frames_are_out_of_order" formatted="false">"Terminal frames are out of order"</string>
     <string name="errors_terminal_output_backlog_reconnect_for_the_latest_display" formatted="false">"Terminal output backlog. Reconnect for the latest display."</string>
-    <string name="errors_the_computer_did_not_return_a_task" formatted="false">"The computer did not return a task"</string>
     <string name="errors_the_computer_did_not_return_a_task_list" formatted="false">"The computer did not return a task list"</string>
     <string name="errors_the_computer_did_not_return_an_attachment_id" formatted="false">"The computer did not return an attachment ID"</string>
-    <string name="errors_the_computer_is_offline_connect_to_edit_tasks" formatted="false">"The computer is offline. Connect to edit tasks."</string>
     <string name="errors_the_computer_is_offline_the_command_was_not_sent" formatted="false">"The computer is offline. The command was not sent."</string>
     <string name="errors_the_computer_is_still_verifying_attachments_retry_shortly" formatted="false">"The computer is still verifying attachments. Retry shortly."</string>
     <string name="errors_the_computer_s_reply_could_not_be_verified_command" formatted="false">"The computer’s reply could not be verified. Command execution is uncertain."</string>
@@ -347,7 +345,6 @@
     <string name="errors_the_server_does_not_recognize_this_device_it_may" formatted="false">"The server does not recognize this device (it may have been removed or the service rebuilt)"</string>
     <string name="errors_the_server_must_use_https" formatted="false">"The server must use HTTPS"</string>
     <string name="errors_the_server_returned_an_unexpected_device_id" formatted="false">"The server returned an unexpected device ID"</string>
-    <string name="errors_the_task_list_returned_by_the_computer_could_not" formatted="false">"The task list returned by the computer could not be read"</string>
     <string name="errors_the_task_was_just_changed_updated_to_the_latest" formatted="false">"The task was just changed. Updated to the latest content."</string>
     <string name="errors_this_browser_has_already_joined_an_account_open_this" formatted="false">"This browser has already joined an account. Open this link on the new device to join."</string>
     <string name="errors_this_device_s_clock_is_behind_the_account_state" formatted="false">"This device’s clock is behind the account state. Correct the system time and time zone, or remote operations will be refused."</string>
@@ -357,7 +354,6 @@
     <string name="errors_this_is_not_a_remote_agent_account_key" formatted="false">"This is not a remote-agent account key"</string>
     <string name="errors_this_page_is_out_of_date_refresh_or_update" formatted="false">"This page is out of date. Refresh or update it and retry."</string>
     <string name="errors_this_request_has_not_been_verified_by_the_computer" formatted="false">"This request has not been verified by the computer yet. Wait for sync."</string>
-    <string name="errors_update_remote_agent_on_this_computer_to_use_scheduled" formatted="false">"Update remote-agent on this computer to use scheduled tasks"</string>
     <string name="errors_upload_made_no_progress" formatted="false">"Upload made no progress"</string>
     <string name="errors_waiting_for_the_owning_computer_to_update_the_current_remote" formatted="false">"Waiting for the owning computer to update the current state: this device lacks the content key from that time"</string>
     <string name="home_add_device" formatted="false">"Add device"</string>
@@ -777,7 +773,6 @@
     <string name="new_session_expired_start" formatted="false">"The start is unconfirmed. Check the session list first. This request has expired and will not be retried or replaced."</string>
     <string name="new_session_expired_start_prompt">"It is unclear whether “%1$s” started. The request has expired and will not be resent. Check active sessions first."</string>
     <string name="new_session_first_message" formatted="false">"First message of the new session"</string>
-    <string name="new_session_fixed_effort">"Reasoning effort fixed at %1$s"</string>
     <string name="new_session_follow_cli" formatted="false">"Follow CLI settings"</string>
     <string name="new_session_follow_s_configuration">"Follow %1$s’s configuration"</string>
     <string name="new_session_installed">"Installed: %1$s"</string>
@@ -789,8 +784,6 @@
     <string name="new_session_location_machine_cli">"On %2$s in %3$s using %1$s"</string>
     <string name="new_session_machine_label">"Computer: %1$s"</string>
     <string name="new_session_machine_offline">"%1$s is offline"</string>
-    <string name="new_session_machine_project_defaults">"Use %1$s defaults for new projects"</string>
-    <string name="new_session_model_list_default">"Could not read the model list. Using %1$s’s default model."</string>
     <string name="new_session_model_no_auto">"This model has no Auto mode, but %1$s uses Auto by default for new projects. Choose another model or change the default in “Settings › This computer”."</string>
     <string name="new_session_offline_draft">"%1$s is offline. The task has not started."</string>
     <string name="new_session_offline_no_start_named">"%1$s is offline. Cannot start a session now."</string>
@@ -1082,15 +1075,11 @@
     <string name="schedule_android_unknown_time" formatted="false">"Unknown time"</string>
     <string name="schedule_android_unread" formatted="false">"Unread"</string>
     <string name="schedule_android_update_remote_agent_on_this_computer_to_manage_scheduled_tasks" formatted="false">"Update remote-agent on this computer to manage scheduled tasks"</string>
-    <string name="schedule_attention_once">"%1$s. Change the time to reschedule."</string>
     <string name="schedule_attention_resume">"%1$s. Resuming or rescheduling starts at the next automatic time and does not resend the last message."</string>
     <string name="schedule_attention_uncertain">"%1$s. Continuing may repeat the last message. Open the run records to verify first."</string>
     <string name="schedule_beijing_time" formatted="false">"Beijing time"</string>
     <string name="schedule_choose_a_valid_date_and_time" formatted="false">"Choose a valid date and time"</string>
-    <string name="schedule_choose_ask_auto_or_full_access_scheduled_tasks_cannot" formatted="false">"Choose Ask, Auto, or Full access. Scheduled tasks cannot open conversations in Plan mode."</string>
     <string name="schedule_computer_and_model" formatted="false">"Computer and model"</string>
-    <string name="schedule_connect_to_edit_run_or_delete" formatted="false">" Connect to edit, run, or delete."</string>
-    <string name="schedule_continuing_takes_over_the_task_and_runs_it_with" formatted="false">" Continuing takes over the task and runs it with the permissions shown."</string>
     <string name="schedule_conversation" formatted="false">"Conversation"</string>
     <string name="schedule_could_not_run" formatted="false">"Could not run"</string>
     <string name="schedule_count" formatted="false">"Count"</string>
@@ -1154,7 +1143,6 @@
     <string name="schedule_if_blank_uses">"If blank, uses: %1$s"</string>
     <string name="schedule_in">"In “%1$s”"</string>
     <string name="schedule_in_conversation" formatted="false">"In conversation"</string>
-    <string name="schedule_interval_minutes" formatted="false">"Interval (minutes)"</string>
     <string name="schedule_ios_attention_once">"%1$s. Run an extra time now, or change the time to reschedule."</string>
     <string name="schedule_ios_choose_a_valid_iana_time_zone" formatted="false">"Choose a valid IANA time zone"</string>
     <string name="schedule_ios_enter_a_valid_interval" formatted="false">"Enter a valid interval"</string>
@@ -1316,7 +1304,6 @@
     <string name="schedule_until">"Until %1$s"</string>
     <string name="schedule_update_remote_agent_on_the_computer_to_use_scheduled" formatted="false">"Update remote-agent on the computer to use scheduled tasks."</string>
     <string name="schedule_update_remote_agent_on_this_computer_to_use_scheduled" formatted="false">"Update remote-agent on this computer to use scheduled tasks."</string>
-    <string name="schedule_verified_abandon_request" formatted="false">"Verified, abandon request"</string>
     <string name="schedule_verify_current_permissions_in_the_conversation" formatted="false">"Verify current permissions in the conversation"</string>
     <plurals name="schedule_view_all_runs">
         <item quantity="one">"View all %1$d run"</item>

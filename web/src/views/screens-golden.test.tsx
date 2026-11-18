@@ -16,12 +16,22 @@ import sessionLongWindowGolden from "../../../testdata/screens/session_long_wind
 import sessionQuestionPlanGolden from "../../../testdata/screens/session_question_plan.golden.json";
 import sessionQueueRetryGolden from "../../../testdata/screens/session_queue_retry.golden.json";
 import sessionScheduledFoldGolden from "../../../testdata/screens/session_scheduled_fold.golden.json";
+import schedulesInboxDetailGolden from "../../../testdata/screens/schedules_inbox_detail.golden.json";
+import schedulesFormLifecycleGolden from "../../../testdata/screens/schedules_form_lifecycle.golden.json";
 import { ViewModelSchema } from "../gen/remoteagent/core/v1/app_pb";
+import { ScheduleFormMode, ScheduleOperationKind } from "../gen/remoteagent/core/v1/schedules_view_pb";
 import type { SessionViewModel } from "../gen/remoteagent/core/v1/session_view_pb";
 import { localeStore, t } from "../i18n";
 import { HomeView, SidebarView } from "./Home";
 import { NewBoxView } from "./NewSession";
 import { ManageProjectsScreen, RemovedNotice } from "./Projects";
+import {
+  ScheduleDetailView,
+  ScheduleFormView,
+  ScheduleStripView,
+  SchedulesListView,
+  TimingSheetView,
+} from "./Schedules";
 import { SessionScreenView, type SessionScreenViewProps } from "./Session";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -455,5 +465,173 @@ describe("golden SessionScreenView layout and interaction", () => {
     renderSessionGolden(revealedVm, { onExpandGroup });
     expect(host.querySelector("button.schedule-quiet")).toBeNull();
     expect([...host.querySelectorAll(".me")].filter((m) => m.textContent?.includes("Check health"))).toHaveLength(4);
+  });
+
+  it("renders schedules list, detail, and session strip from schedules_inbox_detail.golden.json", () => {
+    const listVm = goldenView(schedulesInboxDetailGolden as GoldenDoc, "schedules_1");
+    expect(listVm.view.case).toBe("schedules");
+    if (listVm.view.case !== "schedules") return;
+
+    const onSelectTask = vi.fn();
+    const onMarkAllRead = vi.fn();
+    mount(
+      <SchedulesListView
+        vm={listVm.view.value}
+        actions={{
+          onSelectTask,
+          onCreateTask: vi.fn(),
+          onToggleEnded: vi.fn(),
+          onMarkAllRead,
+          onMarkRead: vi.fn(),
+          onMarkUnread: vi.fn(),
+          onOperate: vi.fn(),
+          onRetryMachine: vi.fn(),
+        }}
+      />,
+    );
+    expect(host.textContent).toContain("One-shot deploy check");
+    expect(host.querySelector(".rc.warn")).toBeTruthy();
+    expect(host.querySelector(".sec-act")).toBeNull();
+    mount(
+      <SchedulesListView
+        vm={{ ...listVm.view.value, canMarkAllRead: true }}
+        actions={{
+          onSelectTask,
+          onCreateTask: vi.fn(),
+          onToggleEnded: vi.fn(),
+          onMarkAllRead,
+          onMarkRead: vi.fn(),
+          onMarkUnread: vi.fn(),
+          onOperate: vi.fn(),
+          onRetryMachine: vi.fn(),
+        }}
+      />,
+    );
+    act(() => host.querySelector<HTMLButtonElement>(".sec-act")!.click());
+    expect(onMarkAllRead).toHaveBeenCalledTimes(1);
+    act(() => host.querySelector<HTMLButtonElement>(".schedule-line")!.click());
+    expect(onSelectTask).toHaveBeenCalledWith("m1", "t-att");
+
+    const detailVm = goldenView(schedulesInboxDetailGolden as GoldenDoc, "scheduleDetail_4");
+    expect(detailVm.view.case).toBe("scheduleDetail");
+    if (detailVm.view.case !== "scheduleDetail") return;
+    const onOperate = vi.fn();
+    const onOpenEdit = vi.fn();
+    mount(
+      <ScheduleDetailView
+        vm={detailVm.view.value}
+        actions={{
+          onBack: vi.fn(),
+          onOperate,
+          onMarkRead: vi.fn(),
+          onMarkUnread: vi.fn(),
+          onOpenSession: vi.fn(),
+          onShowLatestResult: vi.fn(),
+          onToggleQuietGroup: vi.fn(),
+          onShowAllRuns: vi.fn(),
+          onOpenRun: vi.fn(),
+          onSetNotify: vi.fn(),
+          onRetryMachine: vi.fn(),
+          onOpenEdit,
+          onRetryMutation: vi.fn(),
+          onAbandonMutation: vi.fn(),
+        }}
+      />,
+    );
+    expect(host.querySelector(".navbar .title b")?.textContent).toBe("Daily summary");
+    expect(host.querySelector(".schedule-result .schedule-unread-dot")).toBeTruthy();
+    const editMsgBtn = [...host.querySelectorAll<HTMLButtonElement>("button.link")].find((b) =>
+      b.textContent === t("tools.android_edit"),
+    )!;
+    act(() => editMsgBtn.click());
+    expect(onOpenEdit).toHaveBeenCalledWith(ScheduleFormMode.EDIT_MESSAGE);
+    act(() => host.querySelector<HTMLButtonElement>('[aria-label="更多"]')!.click());
+    const runBtn = [...host.querySelectorAll<HTMLButtonElement>(".schedule-menu button")].find(
+      (b) => b.textContent === t("schedule.run_once_now"),
+    )!;
+    act(() => runBtn.click());
+    expect(onOperate).toHaveBeenCalledWith(ScheduleOperationKind.RUN);
+
+    const stripVm = goldenView(schedulesInboxDetailGolden as GoldenDoc, "scheduleSessionStrip_2");
+    expect(stripVm.view.case).toBe("scheduleSessionStrip");
+    if (stripVm.view.case !== "scheduleSessionStrip") return;
+    const onStripSelect = vi.fn();
+    mount(<ScheduleStripView vm={stripVm.view.value} onSelectTask={onStripSelect} />);
+    const stripBtn = host.querySelector<HTMLButtonElement>(".schedule-strip")!;
+    expect(stripBtn.textContent).toContain("08:00");
+    act(() => stripBtn.click());
+    expect(onStripSelect).toHaveBeenCalledTimes(1);
+  });
+
+  it("renders schedule form, timing draft, and detail from schedules_form_lifecycle.golden.json", () => {
+    const form2 = goldenView(schedulesFormLifecycleGolden as GoldenDoc, "scheduleForm_2");
+    expect(form2.view.case).toBe("scheduleForm");
+    if (form2.view.case !== "scheduleForm") return;
+
+    const onSetMessage = vi.fn();
+    const onSubmit = vi.fn();
+    const onOpenTiming = vi.fn();
+    mount(
+      <ScheduleFormView
+        vm={form2.view.value}
+        actions={{
+          onSetMessage,
+          onSetTitle: vi.fn(),
+          onSetNotify: vi.fn(),
+          onOpenTiming,
+          onOpenProjectPicker: vi.fn(),
+          onSelectAgent: vi.fn(),
+          onOpenConfig: vi.fn(),
+          onSubmit,
+          onRetryMutation: vi.fn(),
+          onAbandonMutation: vi.fn(),
+        }}
+      />,
+    );
+    expect(host.querySelector("textarea")?.value).toBe("Weekly audit. Run linters.");
+    expect(host.querySelector(".schedule-name input")?.getAttribute("placeholder")).toContain("Weekly audit");
+    const submitBtn = host.querySelector<HTMLButtonElement>("button.pri")!;
+    act(() => submitBtn.click());
+    expect(onSubmit).toHaveBeenCalledWith(false);
+
+    const onUpdateTiming = vi.fn();
+    mount(
+      <TimingSheetView
+        draft={form2.view.value.timing!}
+        onUpdate={onUpdateTiming}
+        onClose={vi.fn()}
+      />,
+    );
+    const doneBtn = [...host.querySelectorAll<HTMLButtonElement>("button")].find(
+      (b) => b.textContent === t("common.done"),
+    )!;
+    act(() => doneBtn.click());
+    expect(onUpdateTiming).toHaveBeenCalledWith(expect.objectContaining({ apply: true, zoneValid: true }));
+
+    const detail5 = goldenView(schedulesFormLifecycleGolden as GoldenDoc, "scheduleDetail_5");
+    expect(detail5.view.case).toBe("scheduleDetail");
+    if (detail5.view.case !== "scheduleDetail") return;
+    mount(
+      <ScheduleDetailView
+        vm={detail5.view.value}
+        actions={{
+          onBack: vi.fn(),
+          onOperate: vi.fn(),
+          onMarkRead: vi.fn(),
+          onMarkUnread: vi.fn(),
+          onOpenSession: vi.fn(),
+          onShowLatestResult: vi.fn(),
+          onToggleQuietGroup: vi.fn(),
+          onShowAllRuns: vi.fn(),
+          onOpenRun: vi.fn(),
+          onSetNotify: vi.fn(),
+          onRetryMachine: vi.fn(),
+          onOpenEdit: vi.fn(),
+          onRetryMutation: vi.fn(),
+          onAbandonMutation: vi.fn(),
+        }}
+      />,
+    );
+    expect(host.querySelector(".navbar .title b")?.textContent).toBe("Weekly audit");
   });
 });

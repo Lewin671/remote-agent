@@ -1207,69 +1207,6 @@
     }
   },
   {
-    "key": "new_session.model_list_default",
-    "zh-CN": "没能读取模型列表，会用 {name} 自己的默认模型",
-    "en": "Could not read the model list. Using {name}’s default model.",
-    "params": {
-      "name": {
-        "type": "string",
-        "example": "Example"
-      }
-    },
-    "notes": "模型选择/设置的失败提示；name 是 CLI 品牌。多行横幅，完整句。",
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "new_session.machine_project_defaults",
-    "zh-CN": "用 {name} 的新项目默认设置",
-    "en": "Use {name} defaults for new projects",
-    "params": {
-      "name": {
-        "type": "string",
-        "example": "Example"
-      }
-    },
-    "notes": "定时/设置/账户页面完整句或短标签。参数为当前页面数据，用户/CLI 原文不翻译；短标签空间紧凑，说明可换行。",
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "new_session.fixed_effort",
-    "zh-CN": "推理强度固定为 {effort}",
-    "en": "Reasoning effort fixed at {effort}",
-    "params": {
-      "effort": {
-        "type": "string",
-        "example": "Example"
-      }
-    },
-    "notes": "定时/设置/账户页面完整句或短标签。参数为当前页面数据，用户/CLI 原文不翻译；短标签空间紧凑，说明可换行。",
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
     "key": "new_session.reading_cli",
     "zh-CN": "正在读取 {agent} 上次的设置…",
     "en": "Reading previous settings for {agent}…",

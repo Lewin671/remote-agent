@@ -1,9 +1,10 @@
-import { t as message } from "./i18n";
 // @vitest-environment happy-dom
 import { create } from "@bufbuild/protobuf";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, expect, it, vi } from "vitest";
+import { t as message } from "./i18n";
+import { getCoreHost } from "./core/host";
 import { DemoRemote } from "./dev/demo";
 import { patchSyncState } from "./test/remote-fixture";
 import { Remote } from "./remote";
@@ -11,8 +12,7 @@ import * as storage from "./storage";
 import * as authoritySetup from "./authority-setup";
 import * as remoteModule from "./remote";
 import { CommandResultSchema } from "./gen/remoteagent/v1/remote_pb";
-import { task, run } from "./test/schedule-fixture";
-import type { ScheduleTask } from "./schedules";
+import { run, task, type ScheduleTaskJson } from "./test/schedule-fixture";
 
 // A simulated media query for component tests, with no browser or GUI.
 let wide = false;
@@ -47,33 +47,57 @@ async function mount() {
   const remote = DemoRemote.create(new URLSearchParams());
   activeRemote = remote;
   vi.spyOn(Remote, "load").mockResolvedValue(remote);
-  vi.spyOn(remote, "syncSchedules").mockImplementation(() => {});
   const demoMachines = (remote as unknown as { demoMachines: Map<string, import("./remote").MachineView> }).demoMachines;
   const mac = demoMachines.get("mac")!;
   mac.meta!.capabilities!.scheduledTasks = true;
+  let tasks: ScheduleTaskJson[] = [];
+  let rev = 1n;
+  mac.meta!.scheduleRevision = rev;
+  const listCalls = vi.spyOn(remote, "machineCommand").mockImplementation(async (_mid, kind) => {
+    if (kind?.case === "schedule" && kind.value?.operation === "list") {
+      return create(CommandResultSchema, {
+        kind: { case: "schedule", value: { resultJson: new TextEncoder().encode(JSON.stringify({ tasks })) } },
+      });
+    }
+    return create(CommandResultSchema, {});
+  });
   remote.start();
   patchSyncState(remote, { conn: "online", listed: true, machines: new Map(demoMachines) });
-  let tasks: ScheduleTask[] = [];
-  vi.spyOn(remote, "machineCommand").mockImplementation(async () => create(CommandResultSchema, {
-    kind: { case: "schedule", value: { resultJson: new TextEncoder().encode(JSON.stringify({ tasks })) } },
-  }));
-  await remote.refreshSchedules("mac");
-  tasks = [task({ id: "first", runs: [run("first", { notified: true, ended_at: "2026-11-01T09:00:00Z" })] }), task({ id: "second", runs: [run("second", { notified: true, ended_at: "2026-11-01T08:00:00Z" })] })];
-  await remote.refreshSchedules("mac");
+  const coreHost = getCoreHost(remote);
+  const refresh = async () => {
+    const before = listCalls.mock.calls.filter(([, k]) => k?.case === "schedule" && k.value?.operation === "list").length;
+    rev += 1n;
+    coreHost.scheduleRefresh("mac");
+    await vi.waitFor(() => {
+      const after = listCalls.mock.calls.filter(([, k]) => k?.case === "schedule" && k.value?.operation === "list").length;
+      expect(after).toBeGreaterThan(before);
+    });
+    await act(async () => { await Promise.resolve(); });
+  };
+  await refresh();
+  tasks = [
+    task({ id: "first", runs: [run("first", { notified: true, ended_at: "2026-11-01T09:00:00Z" })] }),
+    task({ id: "second", runs: [run("second", { notified: true, ended_at: "2026-11-01T08:00:00Z" })] }),
+  ];
+  await refresh();
   host = document.createElement("div"); document.body.append(host);
   root = createRoot(host);
   history.replaceState(null, "", "/#/tasks");
   await act(async () => {
     root!.render(<App />);
-    // The authenticated workspace is now fetched after the saved identity.
     await import("./Workspace");
   });
-  return { remote, tasks, refresh: () => remote.refreshSchedules("mac") };
+  await vi.waitFor(() => expect(coreHost.viewSchedules().fresh.length).toBe(2));
+  const taskHasUnread = (id: string) => {
+    const vm = coreHost.viewSchedules();
+    const row = [...vm.attention, ...vm.fresh, ...vm.others, ...vm.ended].find((x) => x.taskId === id);
+    return !!row?.hasUnread;
+  };
+  return { remote, coreHost, tasks, refresh, taskHasUnread };
 }
 
 async function open(hash: string) {
   await act(async () => { location.hash = hash; window.dispatchEvent(new HashChangeEvent("hashchange")); });
-  // Each lazy route suspends once even when the shared module is cached.
   await act(async () => { await vi.dynamicImportSettled(); });
 }
 
@@ -87,8 +111,8 @@ it("makes a task from the phone's bottom row", async () => {
 });
 
 it("keeps tab unread, shares the badge across widths, and reads only the selected wide detail", async () => {
-  const { remote } = await mount();
-  expect(remote.scheduleNewResults()).toBe(true);
+  const { coreHost, taskHasUnread } = await mount();
+  expect(coreHost.viewSchedules().hasNewResults).toBe(true);
   expect(host.querySelector('.tabs [aria-label="有新结果"]')).not.toBeNull();
   await act(async () => { wide = true; mediaListeners.forEach(listener => listener()); });
   // A wide window does not open a task by itself, so its notifications stay unread.
@@ -96,12 +120,12 @@ it("keeps tab unread, shares the badge across widths, and reads only the selecte
   expect(host.querySelector(".side .schedule-selected")).toBeNull();
   expect(host.querySelector(".dm")?.textContent).toBe("选一个任务查看结果新定时");
   expect(host.querySelector(".dm textarea")).toBeNull();
-  expect(remote.scheduleNewResults()).toBe(true);
+  expect(coreHost.viewSchedules().hasNewResults).toBe(true);
   expect(host.querySelector('.sfoot [aria-label="有新结果"]')).not.toBeNull();
   await open("#/tasks/mac/first");
   expect(host.querySelector(".dm .schedules-page .navbar .title b")?.textContent).toBe(message("settings.check_for_updates"));
-  expect(remote.scheduleUnread("mac", remote.schedules.get("mac")!.tasks[0]).size).toBe(0);
-  expect(remote.scheduleUnread("mac", remote.schedules.get("mac")!.tasks[1]).size).toBe(1);
+  expect(taskHasUnread("first")).toBe(false);
+  expect(taskHasUnread("second")).toBe(true);
   expect(host.querySelector('.sfoot [aria-label="有新结果"]')).not.toBeNull();
   expect(host.querySelector(".dm .schedule-unread-dot")).not.toBeNull();
   await act(async () => { wide = false; mediaListeners.forEach(listener => listener()); });
@@ -111,39 +135,38 @@ it("keeps tab unread, shares the badge across widths, and reads only the selecte
 
 it("retains the selected wide detail when another task receives a newer notification", async () => {
   wide = true;
-  const { remote, tasks, refresh } = await mount();
+  const { tasks, refresh } = await mount();
   await open("#/tasks/mac/first");
   expect(host.querySelectorAll(".dm .schedule-unread-dot")).toHaveLength(1);
   tasks[1].runs!.push(run("newest", { notified: true, ended_at: "2026-11-01T10:00:00Z" }));
-  await act(async () => { await refresh(); });
-  expect(remote.scheduleNewResults()).toBe(true);
+  await refresh();
   expect(host.querySelector(".side .schedule-selected .schedule-unread")).toBeNull();
   expect(host.querySelector('.side .sess [aria-label="有新结果"]')).not.toBeNull();
   expect(host.querySelectorAll(".dm .schedule-unread-dot")).toHaveLength(1);
 });
 
 it("leaves notifications unread while the open detail page is hidden", async () => {
-  const { remote, tasks, refresh } = await mount();
+  const { taskHasUnread, tasks, refresh } = await mount();
   await open("#/tasks/mac/first");
   const hidden = vi.spyOn(document, "hidden", "get").mockReturnValue(true);
   await act(async () => { document.dispatchEvent(new Event("visibilitychange")); });
   tasks[0].runs!.push(run("while-hidden", { notified: true }));
-  await act(async () => { await refresh(); });
-  expect(remote.scheduleUnread("mac", remote.schedules.get("mac")!.tasks[0])).toEqual(new Set(["while-hidden"]));
+  await refresh();
+  expect(taskHasUnread("first")).toBe(true);
   hidden.mockReturnValue(false);
   await act(async () => { document.dispatchEvent(new Event("visibilitychange")); });
-  expect(remote.scheduleUnread("mac", remote.schedules.get("mac")!.tasks[0]).size).toBe(0);
+  expect(taskHasUnread("first")).toBe(false);
   expect(host.querySelectorAll(".schedule-unread-dot")).toHaveLength(2);
 });
 
 it("keeps the actual mobile badge accessible when its visible label is capped", async () => {
-  const { remote, tasks, refresh } = await mount();
+  const { coreHost, tasks, refresh } = await mount();
   tasks[0].runs = Array.from({ length: 105 }, (_, i) => run(`notice-${i}`, { notified: true }));
-  await act(async () => { await refresh(); });
-  expect(remote.scheduleBadge()).toBe(0);
+  await refresh();
+  expect(coreHost.viewSchedules().attentionCount).toBe(0);
   tasks.push(...Array.from({ length: 106 }, (_, i) => task({ id: `attention-${i}`, status: "failed" })));
-  await act(async () => { await refresh(); });
-  expect(remote.scheduleBadge()).toBe(106);
+  await refresh();
+  expect(coreHost.viewSchedules().attentionCount).toBe(106);
   const badge = host.querySelector(".tabs .schedule-attention-badge")!;
   expect(badge.textContent).toBe("99+");
   expect(badge.getAttribute("aria-label")).toBe("106 件需要处理");
@@ -151,22 +174,22 @@ it("keeps the actual mobile badge accessible when its visible label is capped", 
 
 it("clears the wide selection when marking the open detail unread", async () => {
   wide = true;
-  const { remote } = await mount();
+  const { taskHasUnread } = await mount();
   await open("#/tasks/mac/first");
   await act(async () => host.querySelector<HTMLButtonElement>('.dm [aria-label="更多"]')!.click());
   const unread = [...host.querySelectorAll<HTMLButtonElement>(".schedule-menu button")].find(b => b.textContent === message("schedule.mark_as_unread"))!;
   await act(async () => unread.click());
-  await open(location.hash);
+  await vi.waitFor(() => expect(location.hash).toBe("#/tasks"));
   expect(host.querySelector(".side .schedule-selected")).toBeNull();
   expect(host.querySelector(".dm")?.textContent).toBe("选一个任务查看结果新定时");
-  expect(remote.scheduleUnread("mac", remote.schedules.get("mac")!.tasks[0])).toEqual(new Set(["first"]));
+  expect(taskHasUnread("first")).toBe(true);
 });
 
 it.each(["context", "keyboard"])("marking another task unread via %s preserves the current selection and reading tracker", async action => {
   wide = true;
-  const { remote, tasks, refresh } = await mount();
+  const { coreHost, tasks, refresh, taskHasUnread } = await mount();
   await open("#/tasks/mac/first");
-  await act(async () => remote.markScheduleRead("mac", tasks[1]));
+  await act(async () => coreHost.scheduleMarkRead([{ machineId: "mac", taskId: "second" }], false));
   const other = host.querySelectorAll<HTMLElement>(".side .schedule-row-wrap")[1];
   if (action === "context") {
     await act(async () => other.querySelector(".schedule-line")!.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true })));
@@ -177,33 +200,32 @@ it.each(["context", "keyboard"])("marking another task unread via %s preserves t
   } else await act(async () => other.querySelector<HTMLButtonElement>('.schedule-read-action[aria-label="标为未读"]')!.click());
   expect(location.hash).toBe("#/tasks/mac/first");
   expect(host.querySelector(".side .schedule-selected")).not.toBeNull();
-  expect(remote.scheduleUnread("mac", tasks[1])).toEqual(new Set(["second"]));
+  expect(taskHasUnread("second")).toBe(true);
   tasks[0].runs!.push(run("new-while-reading", { notified: true, ended_at: "2026-11-01T11:00:00Z" }));
-  await act(async () => { await refresh(); });
-  expect(remote.scheduleUnread("mac", remote.schedules.get("mac")!.tasks[0]).size).toBe(0);
-  expect(remote.scheduleUnread("mac", remote.schedules.get("mac")!.tasks[1])).toEqual(new Set(["second"]));
+  await refresh();
+  expect(taskHasUnread("first")).toBe(false);
+  expect(taskHasUnread("second")).toBe(true);
 });
 
 it("keeps a source-session result unread through the sidebar action and route handoff, then reads it on the next visit", async () => {
   wide = true;
-  const { remote, tasks, refresh } = await mount();
-  const demoSessions = (remote as unknown as { demoSessions: Map<string, import("./remote").SessionView> }).demoSessions;
+  const { tasks, refresh, taskHasUnread } = await mount();
+  const demoSessions = (activeRemote as unknown as { demoSessions: Map<string, import("./remote").SessionView> }).demoSessions;
   const source = { ...demoSessions.get("s-idle")!, info: { ...demoSessions.get("s-idle")!.info!, taskOwned: true, scheduledTaskId: tasks[0].id } };
   demoSessions.set("s-idle", source);
-  patchSyncState(remote, { sessions: new Map(demoSessions) });
+  patchSyncState(activeRemote!, { sessions: new Map(demoSessions) });
   tasks[0].spec.target = { type: "resume_session", session: source.id };
   tasks[0].runs![0].session_id = source.id;
-  await act(async () => { await refresh(); });
+  await refresh();
   await open("#/s/" + source.id);
-  expect(remote.scheduleUnread("mac", remote.schedules.get("mac")!.tasks[0]).size).toBe(0);
+  expect(taskHasUnread("first")).toBe(false);
   const mark = host.querySelector<HTMLButtonElement>('.side .schedule-selected .schedule-read-action[aria-label="标为未读"]')!;
   expect(mark).toBeTruthy();
   await act(async () => mark.click());
-  await open(location.hash);
-  expect(location.hash).toBe("#/tasks");
-  // A late session binding or another list response must not reverse the action.
-  await act(async () => { remote.setScheduleSession(source.id); await refresh(); });
-  expect(remote.scheduleUnread("mac", remote.schedules.get("mac")!.tasks[0])).toEqual(new Set(["first"]));
+  await vi.waitFor(() => expect(location.hash).toBe("#/tasks"));
+  // Another list response while on #/tasks must not reverse the unread state.
+  await refresh();
+  expect(taskHasUnread("first")).toBe(true);
   await open("#/s/" + source.id);
-  expect(remote.scheduleUnread("mac", remote.schedules.get("mac")!.tasks[0]).size).toBe(0);
+  expect(taskHasUnread("first")).toBe(false);
 });

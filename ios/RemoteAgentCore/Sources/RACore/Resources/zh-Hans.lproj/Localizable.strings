@@ -306,10 +306,8 @@
 "errors_terminal_connection_timed_out_reconnect" = "连接终端超时，请重新连接";
 "errors_terminal_frames_are_out_of_order" = "终端帧顺序不对";
 "errors_terminal_output_backlog_reconnect_for_the_latest_display" = "终端输出积压，请重新连接以获取最新画面";
-"errors_the_computer_did_not_return_a_task" = "电脑没有返回任务";
 "errors_the_computer_did_not_return_a_task_list" = "电脑没有返回任务列表";
 "errors_the_computer_did_not_return_an_attachment_id" = "电脑没有返回附件 ID";
-"errors_the_computer_is_offline_connect_to_edit_tasks" = "电脑不在线，连上后才能修改任务";
 "errors_the_computer_is_offline_the_command_was_not_sent" = "电脑不在线，指令没有发出";
 "errors_the_computer_is_still_verifying_attachments_retry_shortly" = "电脑仍在校验附件，请稍后重试";
 "errors_the_computer_s_reply_could_not_be_verified_command" = "电脑的回复未通过验证，不确定指令是否执行";
@@ -325,7 +323,6 @@
 "errors_the_server_does_not_recognize_this_device_it_may" = "服务器不认识这台设备（可能已被移除，或服务已重建）";
 "errors_the_server_must_use_https" = "server 必须使用 https";
 "errors_the_server_returned_an_unexpected_device_id" = "服务器返回了意外的设备 ID";
-"errors_the_task_list_returned_by_the_computer_could_not" = "电脑返回的任务列表无法读取";
 "errors_the_task_was_just_changed_updated_to_the_latest" = "任务刚被修改，已更新为最新内容";
 "errors_this_browser_has_already_joined_an_account_open_this" = "这个浏览器已经加入了账户。要让新设备加入，在新设备上打开这个链接。";
 "errors_this_device_s_clock_is_behind_the_account_state" = "本机时间比账户状态慢。请校准系统时间和时区，否则远程操作会被拒绝。";
@@ -335,7 +332,6 @@
 "errors_this_is_not_a_remote_agent_account_key" = "这不是 remote-agent 的账户密钥";
 "errors_this_page_is_out_of_date_refresh_or_update" = "这个网页版本较旧，请刷新或更新后再试";
 "errors_this_request_has_not_been_verified_by_the_computer" = "当前请求尚未由电脑核实，请等待同步";
-"errors_update_remote_agent_on_this_computer_to_use_scheduled" = "需要更新这台电脑上的 remote-agent 才能使用定时任务。";
 "errors_upload_made_no_progress" = "上传没有进展";
 "errors_waiting_for_the_owning_computer_to_update_the_current_remote" = "等待所属电脑更新当前状态：这台设备没有当时的内容密钥";
 "home_add_device" = "添加设备";
@@ -640,7 +636,6 @@
 "new_session_expired_start" = "不确定是否已经启动，请先看会话列表。这个请求已经过期，不会再发，也不会换成新的请求";
 "new_session_expired_start_prompt" = "不确定「%1$@」有没有启动，它已过期，不会再重发。请先看看进行中的会话";
 "new_session_first_message" = "新会话的第一句话";
-"new_session_fixed_effort" = "推理强度固定为 %1$@";
 "new_session_follow_cli" = "跟随 CLI 设置";
 "new_session_follow_s_configuration" = "跟随 %1$@ 自己的配置";
 "new_session_installed" = "已装 %1$@";
@@ -665,8 +660,6 @@
 "new_session_location_machine_cli" = "在%2$@的%3$@用%1$@";
 "new_session_machine_label" = "电脑：%1$@";
 "new_session_machine_offline" = "%1$@ 不在线";
-"new_session_machine_project_defaults" = "用 %1$@ 的新项目默认设置";
-"new_session_model_list_default" = "没能读取模型列表，会用 %1$@ 自己的默认模型";
 "new_session_model_no_auto" = "这个模型没有自动模式，而 %1$@ 的新项目默认审批模式是自动。换一个模型，或到「设置 › 这台电脑」改默认";
 "new_session_offline_draft" = "%1$@ 已离线，任务尚未开始";
 "new_session_offline_no_start_named" = "%1$@ 不在线，现在不能新建";
@@ -798,6 +791,7 @@
 "quota_waiting" = "尚未收到 %1$@ 的额度。仅从这台电脑上由 remote-agent 管理的 CLI 会话读取；安装 CLI 或在其他会话中使用不会触发这里更新。";
 "quota_warning" = "%1$@ · %2$@额度即将用尽，不会自动切换 CLI 或模型";
 "schedule_after_a_run_count" = "运行指定次数";
+"schedule_after_turn_replace" = "%1$@。选择上方其他频率可替换。";
 "schedule_android_agent_notification" = "agent 通知";
 "schedule_android_agent_notification_completion_notification" = "agent 通知、完成后通知";
 "schedule_android_cannot_request_notification" = "无法请求通知";
@@ -807,6 +801,7 @@
 "schedule_android_connect_value1_to_edit_run_or_delete" = "%1$@ 连上后才能修改、运行或删除。";
 "schedule_android_currently_value1_finishing_directly_preserves_the_original_rule_choose_a" = "当前是「%1$@」。直接完成会保留原规则；选择上面的时间类型后再更改。";
 "schedule_android_follow_conversation" = "跟随对话";
+"schedule_android_new_result" = "有新结果";
 "schedule_android_run_once_now_does_not_count_toward_automatic_runs_or" = "立即运行一次不占自动次数及日历当天名额。删除任务会停止后续调度，已发出的消息和已开的对话保留。";
 "schedule_android_saving" = "保存中…";
 "schedule_android_task" = "任务";
@@ -982,6 +977,7 @@
 "schedule_until" = "到 %1$@";
 "schedule_update_remote_agent_on_the_computer_to_use_scheduled" = "需要更新电脑上的 remote-agent 才能使用定时任务。";
 "schedule_update_remote_agent_on_this_computer_to_use_scheduled" = "需要更新这台电脑上的 remote-agent 才能使用定时任务。";
+"schedule_verify_current_permissions_in_the_conversation" = "请在对话里核实当前权限";
 "schedule_waiting_for_results" = "等待结果";
 "schedule_waiting_for_the_current_turn_to_end" = "等待当前轮结束";
 "schedule_wed" = "三";

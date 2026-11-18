@@ -1,7 +1,7 @@
 import * as i18n from "../i18n";
 import { t } from "../i18n";
 import { AgentMark } from "../agent-mark";
-import { useCoreHost, useSessionView, type Go, type SessionWindowOptions } from "../core/host";
+import { routeForTask, useCoreHost, useScheduleSessionStripView, useSessionView, type Go, type SessionWindowOptions } from "../core/host";
 import { renderText } from "../core/text";
 import { newRequestID } from "../crypto";
 import {
@@ -37,8 +37,7 @@ import { splitPlaceholders, timelineImages } from "../imageview";
 import { Markdown } from "../markdown";
 import { canAnimate, useExit, useKnob } from "../motion";
 import { shortPath, shortenPath } from "../model";
-import { type Remote, type SessionView } from "../remote";
-import { taskRoute } from "../schedules";
+import { type Remote } from "../remote";
 import { previewBlobForFile, saveBlobAsDownload } from "../shared-files";
 import { ModeSheet, RenameDialog, SessionSheet } from "../sheets";
 import { skeletonMessage } from "../skeleton";
@@ -233,7 +232,6 @@ export interface SessionScreenViewProps {
   wide: boolean;
   onBack: () => void;
   remote?: Remote;
-  scheduleSession?: SessionView;
   scheduleTaskCount?: number;
   draft: string;
   onDraft: (v: string) => void;
@@ -274,7 +272,6 @@ export function SessionScreenView({
   wide,
   onBack,
   remote,
-  scheduleSession,
   scheduleTaskCount = 0,
   draft,
   onDraft,
@@ -796,13 +793,13 @@ export function SessionScreenView({
                   ]),
         ]
       : []),
-    ...(remote && scheduleSession
+    ...(remote && header
       ? [
           {
             label: i18n.t("session.schedule_send"),
             group: 1,
-            disabled: !header?.capabilities?.supportsSchedule || !remote.peer(header?.machineId).reachable || !remote.peer(header?.machineId).ready || !remote.supportsSchedules(header?.machineId ?? ""),
-            note: !remote.supportsSchedules(header?.machineId ?? "") ? i18n.t("session.update_computer") : undefined,
+            disabled: !header?.capabilities?.supportsSchedule || !remote.peer(header?.machineId).reachable || !remote.peer(header?.machineId).ready,
+            note: !header?.capabilities?.supportsSchedule ? i18n.t("session.update_computer") : undefined,
             onClick: () => setScheduling(true),
           },
         ]
@@ -849,11 +846,11 @@ export function SessionScreenView({
         <div className={"session" + (tab === "term" && !wide ? " termmode" : "")} ref={rootRef}>
           {headerBar}
           {remote && <ConnBar remote={remote} />}
-          {remote && scheduleSession && scheduleTaskCount > 0 && (
+          {remote && scheduleTaskCount > 0 && (
             <Suspense fallback={<div className="schedule-strip" aria-hidden />}>
               <ScheduleStrip
                 remote={remote}
-                session={scheduleSession}
+                sessionId={sid}
                 go={(route) => {
                   location.hash = "/" + route;
                 }}
@@ -895,13 +892,13 @@ export function SessionScreenView({
               onClose={() => setMenu(false)}
             />
           )}
-          {scheduling && remote && scheduleSession && (
+          {scheduling && remote && header && (
             <Sheet className="schedule-session-sheet" onClose={() => setScheduling(false)}>
               <div className="schedule-session-overlay">
                 <Suspense fallback={null}>
                   <ScheduleCreate
                     remote={remote}
-                    session={scheduleSession}
+                    sessionId={sid}
                     go={(route) => {
                       setScheduling(false);
                       location.hash = "/" + route;
@@ -1012,11 +1009,12 @@ export function SessionPage({
   }, [sessionId]);
 
   useEffect(() => {
-    remote.setScheduleSession(sessionId);
-    return () => remote.setScheduleSession();
-  }, [remote, sessionId]);
+    host.scheduleSetVisibleSession(sessionId);
+    return () => host.scheduleSetVisibleSession("");
+  }, [host, sessionId]);
 
-  const scheduleFocus = remote.scheduleFocus.get(sessionId);
+  const scheduleFocus = host.getScheduleFocus(sessionId);
+  const stripVm = useScheduleSessionStripView(host, sessionId);
   const windowOpts = useMemo<SessionWindowOptions>(
     () => ({
       limit: windowLimit,
@@ -1190,13 +1188,12 @@ export function SessionPage({
 
   const handleBack = () => {
     if (go && header?.isScheduled && header.scheduledTaskId && header.machineId) {
-      go(taskRoute(header.machineId, header.scheduledTaskId));
+      go(routeForTask(header.machineId, header.scheduledTaskId));
       return;
     }
     onBack();
   };
 
-  const scheduleSession = remote.sessions.get(sessionId);
   const approvalId = vm.dock?.detail.case === "approval" ? vm.dock.detail.value.approvalId : "";
   const approvalReason = approvalId ? (remote.approvalReasons.get(approvalId) ?? "") : "";
 
@@ -1206,8 +1203,7 @@ export function SessionPage({
       wide={wide}
       onBack={handleBack}
       remote={remote}
-      scheduleSession={scheduleSession}
-      scheduleTaskCount={remote.sessionTasks(sessionId).length}
+      scheduleTaskCount={stripVm.visible ? stripVm.tasks.length : 0}
       draft={remote.drafts.get(sessionId) ?? ""}
       onDraft={(text) => {
         remote.drafts.set(sessionId, text);
@@ -1273,7 +1269,7 @@ export function SessionPage({
       onExpandGroup={(groupId) =>
         setExpandedGroups((old) => (old.includes(groupId) ? old : [...old, groupId]))
       }
-      onScheduleRevealed={() => remote.scheduleFocus.delete(sessionId)}
+      onScheduleRevealed={() => host.clearScheduleFocus(sessionId)}
     />
   );
 }

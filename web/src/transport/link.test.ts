@@ -39,10 +39,8 @@ test("operation gates and capability checks use Link despite stale relay discove
     expect(r.fileUploadIssue(r.machine)).toBe("");
     await r.machineCommand(r.machine, { case: "createSession", value: { cwd: "/work/example", fileIds: ["file"] } });
     expect(forward).toHaveBeenCalledTimes(1);
-    const command = vi.spyOn(r, "machineCommand").mockResolvedValue(create(CommandResultSchema, { kind: { case: "schedule", value: { resultJson: new TextEncoder().encode("{\"id\":\"task\"}") } } }));
-    await expect(r.changeSchedule(r.machine, "pause", { operation: "pause", taskId: "task" })).resolves.toMatchObject({ id: "task" });
-    expect(command).toHaveBeenCalled();
-    command.mockRestore();
+    await r.machineCommand(r.machine, { case: "schedule", value: { operation: "pause", taskId: "task" } });
+    expect(forward).toHaveBeenCalledTimes(2);
   } finally { await r.dispose(); }
 });
 

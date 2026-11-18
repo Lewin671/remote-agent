@@ -40,6 +40,8 @@ import {
   RetrySessionEventsActionSchema,
   ScreenSchema,
   ScreenTarget,
+  type Screen,
+  type ViewModel,
   SecuritySnapshotEventSchema,
   SessionPinEventSchema,
   SessionScheduleHintSchema,
@@ -50,6 +52,7 @@ import {
   StreamReadyEventSchema,
   SyncLifecycleActionSchema,
   SyncLifecycleKind,
+  SyncStateScreenRequestSchema,
   TimerFiredEventSchema,
   TimerKind,
   TokenResultEventSchema,
@@ -70,11 +73,46 @@ import {
   type StreamFrameEvent,
   type TokenResultEvent,
 } from "../gen/remoteagent/core/v1/app_pb";
-import type { Agent } from "../gen/remoteagent/v1/event_pb";
+import type { Agent, ApprovalMode } from "../gen/remoteagent/v1/event_pb";
 import { ConnState, type HomeViewModel } from "../gen/remoteagent/core/v1/home_view_pb";
 import { CommandResultSchema, type Command } from "../gen/remoteagent/v1/remote_pb";
 import type { NewSessionViewModel } from "../gen/remoteagent/core/v1/new_session_view_pb";
 import type { ProjectViewModel } from "../gen/remoteagent/core/v1/project_view_pb";
+import {
+  ScheduleBoolActionSchema,
+  ScheduleCacheLoadedEventSchema,
+  ScheduleDetailScreenRequestSchema,
+  ScheduleFormBoolActionSchema,
+  ScheduleFormOpenActionSchema,
+  ScheduleFormScreenRequestSchema,
+  ScheduleFormSelectAgentActionSchema,
+  ScheduleFormSelectModelActionSchema,
+  ScheduleFormSelectProjectActionSchema,
+  ScheduleFormStringActionSchema,
+  ScheduleFormUpdateTimingActionSchema,
+  ScheduleLocalContextEventSchema,
+  ScheduleMarkReadActionSchema,
+  ScheduleMutationRefSchema,
+  ScheduleNavigateRoute,
+  ScheduleOperateActionSchema,
+  ScheduleSeenLoadedEventSchema,
+  ScheduleSessionStripScreenRequestSchema,
+  SchedulesScreenRequestSchema,
+  ScheduleStringActionSchema,
+  ScheduleTaskBoolActionSchema,
+  ScheduleTaskRefSchema,
+  ScheduleTaskStringActionSchema,
+  type ScheduleCacheLoadedEvent,
+  type ScheduleDetailViewModel,
+  type ScheduleFormMode,
+  type ScheduleFormViewModel,
+  type ScheduleNotificationRef,
+  type ScheduleOperationKind,
+  type ScheduleSeenLoadedEvent,
+  type ScheduleSeenToken,
+  type ScheduleSessionStripViewModel,
+  type SchedulesViewModel,
+} from "../gen/remoteagent/core/v1/schedules_view_pb";
 import {
   SessionOpenActionSchema,
   SessionOutgoingActionSchema,
@@ -154,6 +192,11 @@ export interface CoreExecutor {
   executeRpc(eff: RpcEffect): Promise<Event>;
   executeCommandAttempt(eff: DispatchCommandEffect): Promise<CommandOutcomeEvent>;
   applySyncStateView(view: SyncStateView): void;
+  readScheduleCache?(opId: bigint, machineId: string): Promise<ScheduleCacheLoadedEvent>;
+  deleteScheduleCache?(machineId: string): Promise<void>;
+  loadScheduleSeen?(machineId: string): Promise<ScheduleSeenLoadedEvent>;
+  saveScheduleSeen?(machineId: string, tokens: ScheduleSeenToken[]): Promise<void>;
+  dismissScheduleNotifications?(runs: ScheduleNotificationRef[]): void;
 }
 
 export interface SessionWindowOptions {
@@ -173,6 +216,27 @@ export interface CoreHostOptions {
   go?: Go;
   /** Optional explicit HMAC key for scope tokens (tests without IDB). */
   scopeHmacKey?: Uint8Array;
+}
+
+/** Current browser IANA timezone ID (falls back to UTC when unavailable). */
+export function localTimeZoneId(): string {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+  } catch {
+    return "UTC";
+  }
+}
+
+/** Computes local timezone and tomorrow/day-after-tomorrow day boundaries for Core's ScheduleLocalContextEvent. */
+export function scheduleLocalContext(nowMs = Date.now()) {
+  const d = new Date(nowMs);
+  const tomorrow = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1).getTime();
+  const dayAfter = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 2).getTime();
+  return create(ScheduleLocalContextEventSchema, {
+    localTimezone: localTimeZoneId(),
+    tomorrowStartMs: BigInt(tomorrow),
+    dayAfterTomorrowStartMs: BigInt(dayAfter),
+  });
 }
 
 /** Computes local-timezone calendar boundaries + 36 month starts for Core's ClockUpdated event. */
@@ -249,12 +313,20 @@ export function routeForMachineStatus(machineId: string): string {
   return "machine-status/" + encodeURIComponent(machineId);
 }
 
+export function routeForTask(machineId: string, taskId: string): string {
+  return "tasks/" + encodeURIComponent(machineId) + "/" + encodeURIComponent(taskId);
+}
+
 const ALL_TARGETS = [
   ScreenTarget.HOME,
   ScreenTarget.PROJECT,
   ScreenTarget.SESSION,
   ScreenTarget.NEW_SESSION,
   ScreenTarget.SYNC_STATE,
+  ScreenTarget.SCHEDULES,
+  ScreenTarget.SCHEDULE_DETAIL,
+  ScreenTarget.SCHEDULE_FORM,
+  ScreenTarget.SCHEDULE_SESSION_STRIP,
 ];
 
 function timerKey(kind: TimerKind, key: string): string {
@@ -283,11 +355,19 @@ export class CoreHost {
   private sessionCache = new Map<string, { version: number; windowKey: string; vm: SessionViewModel }>();
   private newSessionCache?: { version: number; key: string; vm: NewSessionViewModel };
   private syncStateCache?: { version: number; view: SyncStateView };
+  private schedulesCache?: { version: number; endedLimit: number; vm: SchedulesViewModel };
+  private scheduleDetailCache?: { version: number; key: string; vm: ScheduleDetailViewModel };
+  private scheduleFormCache = new Map<string, { version: number; vm: ScheduleFormViewModel }>();
+  private scheduleStripCache = new Map<string, { version: number; vm: ScheduleSessionStripViewModel }>();
 
   private started = false;
   private closed = false;
   private watchCounts = new Map<string, number>();
   private restoreComposerListeners = new Map<string, Set<(eff: SessionRestoreComposerEffect) => void>>();
+  private scheduleFormCloseListeners = new Map<string, Set<() => void>>();
+  private scheduleFormTimingListeners = new Map<string, Set<(formKey: string) => void>>();
+  private scheduleFocus = new Map<string, { runId: string; seq: bigint }>();
+  private openFormKeys = new Set<string>();
   private timers = new Map<string, { id: bigint; handle: ReturnType<typeof setTimeout> }>();
   private clockTimer?: ReturnType<typeof setInterval>;
   private cacheWriteQueue: Promise<void> = Promise.resolve();
@@ -346,10 +426,17 @@ export class CoreHost {
         unitFloats: randomFloats(INITIAL_ENTROPY_COUNT),
       }),
     );
+    this.emit({ case: "scheduleLocalContext", value: scheduleLocalContext() });
   }
 
   private emit(event: Event["event"], onProcessed?: () => void) {
     this.dispatch(create(EventSchema, { event }), onProcessed);
+  }
+
+  private emitClock() {
+    const now = Date.now();
+    this.emit({ case: "clockUpdated", value: localCalendar(now) });
+    this.emit({ case: "scheduleLocalContext", value: scheduleLocalContext(now) });
   }
 
   setNavigator(go?: Go) {
@@ -370,10 +457,10 @@ export class CoreHost {
     this.started = true;
     clearInterval(this.clockTimer);
     this.clockTimer = setInterval(() => {
-      if (!this.closed && this.started) this.emit({ case: "clockUpdated", value: localCalendar() });
+      if (!this.closed && this.started) this.emitClock();
     }, CLOCK_TICK_MS);
     const available = this.remote ? this.remote.network : typeof navigator === "undefined" || navigator.onLine !== false;
-    this.emit({ case: "clockUpdated", value: localCalendar() });
+    this.emitClock();
     this.emit({
       case: "syncLifecycle",
       value: create(SyncLifecycleActionSchema, {
@@ -386,6 +473,11 @@ export class CoreHost {
       case: "networkChanged",
       value: create(NetworkChangedEventSchema, { available, signature: String(available) }),
     });
+    try {
+      if (localStorage.getItem("schedule-ended-open") === "true") {
+        this.scheduleToggleEnded(true);
+      }
+    } catch {}
   }
 
   stop() {
@@ -399,7 +491,7 @@ export class CoreHost {
 
   setForeground(active: boolean) {
     if (this.closed) return;
-    if (active) this.emit({ case: "clockUpdated", value: localCalendar() });
+    if (active) this.emitClock();
     this.emit({
       case: "syncLifecycle",
       value: create(SyncLifecycleActionSchema, { kind: active ? SyncLifecycleKind.FOREGROUND : SyncLifecycleKind.BACKGROUND }),
@@ -573,6 +665,143 @@ export class CoreHost {
     };
   }
 
+  // --- Schedule Intents & Listeners ---
+
+  scheduleRefresh = (machineId = "") =>
+    this.emit({ case: "scheduleRefresh", value: create(ScheduleStringActionSchema, { value: machineId }) });
+  scheduleSetVisibleSession = (sessionId: string) =>
+    this.emit({ case: "scheduleSetVisibleSession", value: create(ScheduleStringActionSchema, { value: sessionId }) });
+  scheduleListOpen = (open: boolean) =>
+    this.emit({ case: "scheduleListOpen", value: create(ScheduleBoolActionSchema, { value: open }) });
+  scheduleSelectTask = (machineId: string, taskId: string) =>
+    this.emit({ case: "scheduleSelectTask", value: create(ScheduleTaskRefSchema, { machineId, taskId }) });
+  scheduleToggleEnded = (open?: boolean) => {
+    this.emit({ case: "scheduleToggleEnded", value: create(ScheduleBoolActionSchema, open === undefined ? {} : { value: open }) });
+    try {
+      localStorage.setItem("schedule-ended-open", String(this.viewSchedules().endedExpanded));
+    } catch {}
+  };
+  scheduleMarkRead = (tasks: Array<{ machineId: string; taskId: string }>, allFresh = false) =>
+    this.emit({
+      case: "scheduleMarkRead",
+      value: create(ScheduleMarkReadActionSchema, {
+        tasks: tasks.map((t) => create(ScheduleTaskRefSchema, t)),
+        allFresh,
+      }),
+    });
+  scheduleMarkUnread = (machineId: string, taskId: string, unread = true) =>
+    this.emit({ case: "scheduleMarkUnread", value: create(ScheduleTaskBoolActionSchema, { machineId, taskId, value: unread }) });
+  scheduleDetailOpen = (machineId: string, taskId: string) =>
+    this.emit({ case: "scheduleDetailOpen", value: create(ScheduleTaskRefSchema, { machineId, taskId }) });
+  scheduleDetailHide = (machineId: string, taskId: string) =>
+    this.emit({ case: "scheduleDetailHide", value: create(ScheduleTaskRefSchema, { machineId, taskId }) });
+  scheduleDetailClose = (machineId: string, taskId: string) =>
+    this.emit({ case: "scheduleDetailClose", value: create(ScheduleTaskRefSchema, { machineId, taskId }) });
+  scheduleDetailShowLatestResult = (machineId: string, taskId: string) =>
+    this.emit({ case: "scheduleDetailShowLatestResult", value: create(ScheduleTaskRefSchema, { machineId, taskId }) });
+  scheduleDetailToggleQuietGroup = (machineId: string, taskId: string, groupKey: string) =>
+    this.emit({ case: "scheduleDetailToggleQuietGroup", value: create(ScheduleTaskStringActionSchema, { machineId, taskId, value: groupKey }) });
+  scheduleDetailShowAllRuns = (machineId: string, taskId: string, open: boolean) =>
+    this.emit({ case: "scheduleDetailShowAllRuns", value: create(ScheduleTaskBoolActionSchema, { machineId, taskId, value: open }) });
+  scheduleDetailOpenRun = (machineId: string, taskId: string, runId: string) =>
+    this.emit({ case: "scheduleDetailOpenRun", value: create(ScheduleTaskStringActionSchema, { machineId, taskId, value: runId }) });
+  scheduleOperate = (machineId: string, taskId: string, operation: ScheduleOperationKind) =>
+    this.emit({ case: "scheduleOperate", value: create(ScheduleOperateActionSchema, { machineId, taskId, operation }) });
+  scheduleSetNotify = (machineId: string, taskId: string, notify: boolean) =>
+    this.emit({ case: "scheduleSetNotify", value: create(ScheduleTaskBoolActionSchema, { machineId, taskId, value: notify }) });
+  scheduleAbandonMutation = (machineId = "", taskId = "", formKey = "") =>
+    this.emit({ case: "scheduleAbandonMutation", value: create(ScheduleMutationRefSchema, { formKey, machineId, taskId }) });
+  scheduleRetryMutation = (machineId = "", taskId = "", formKey = "") =>
+    this.emit({ case: "scheduleRetryMutation", value: create(ScheduleMutationRefSchema, { formKey, machineId, taskId }) });
+
+  scheduleFormOpen(
+    mode: ScheduleFormMode,
+    opts: { machineId?: string; taskId?: string; sessionId?: string; projectKey?: string } = {},
+  ): string {
+    this.emit({
+      case: "scheduleFormOpen",
+      value: create(ScheduleFormOpenActionSchema, {
+        mode,
+        machineId: opts.machineId ?? "",
+        taskId: opts.taskId ?? "",
+        sessionId: opts.sessionId ?? "",
+        projectKey: opts.projectKey ?? "",
+        localTimezone: localTimeZoneId(),
+      }),
+    });
+    const vm = this.viewScheduleForm("");
+    if (vm.open && vm.formKey) this.openFormKeys.add(vm.formKey);
+    return vm.formKey;
+  }
+
+  scheduleFormClose = (formKey: string, discard = false) => {
+    if (discard) this.openFormKeys.delete(formKey);
+    this.emit({ case: "scheduleFormClose", value: create(ScheduleFormBoolActionSchema, { formKey, value: discard }) });
+  };
+
+  scheduleFormSetNotify = (formKey: string, value: boolean) =>
+    this.emit({ case: "scheduleFormSetNotify", value: create(ScheduleFormBoolActionSchema, { formKey, value }) });
+  scheduleFormSubmit = (formKey: string, allowDuplicate = false) =>
+    this.emit({ case: "scheduleFormSubmit", value: create(ScheduleFormBoolActionSchema, { formKey, value: allowDuplicate }) });
+  scheduleFormSetMessage = (formKey: string, value: string) =>
+    this.emit({ case: "scheduleFormSetMessage", value: create(ScheduleFormStringActionSchema, { formKey, value }) });
+  scheduleFormSetTitle = (formKey: string, value: string) =>
+    this.emit({ case: "scheduleFormSetTitle", value: create(ScheduleFormStringActionSchema, { formKey, value }) });
+  scheduleFormSelectMachine = (formKey: string, machineId: string) =>
+    this.emit({ case: "scheduleFormSelectMachine", value: create(ScheduleFormStringActionSchema, { formKey, value: machineId }) });
+  scheduleFormRetryModels = (formKey: string) =>
+    this.emit({ case: "scheduleFormRetryModels", value: create(ScheduleFormStringActionSchema, { formKey, value: "" }) });
+  scheduleFormSelectProject = (formKey: string, projectKey: string, machineId = "") =>
+    this.emit({ case: "scheduleFormSelectProject", value: create(ScheduleFormSelectProjectActionSchema, { formKey, projectKey, machineId }) });
+  scheduleFormSelectAgent = (formKey: string, agent: Agent) =>
+    this.emit({ case: "scheduleFormSelectAgent", value: create(ScheduleFormSelectAgentActionSchema, { formKey, agent }) });
+  scheduleFormSelectModel = (formKey: string, model: string, effort: string, mode?: ApprovalMode) =>
+    this.emit({
+      case: "scheduleFormSelectModel",
+      value: create(ScheduleFormSelectModelActionSchema, { formKey, model, effort, ...(mode !== undefined ? { mode } : {}) }),
+    });
+  scheduleFormUpdateTiming = (opts: Omit<Parameters<typeof create<typeof ScheduleFormUpdateTimingActionSchema>>[1], "$typeName">) =>
+    this.emit({ case: "scheduleFormUpdateTiming", value: create(ScheduleFormUpdateTimingActionSchema, opts) });
+
+  private addFormListener<T extends unknown[]>(map: Map<string, Set<(...args: T) => void>>, formKey: string, fn: (...args: T) => void): () => void {
+    let set = map.get(formKey);
+    if (!set) {
+      set = new Set();
+      map.set(formKey, set);
+    }
+    set.add(fn);
+    return () => {
+      set?.delete(fn);
+      if (set?.size === 0) map.delete(formKey);
+    };
+  }
+
+  onScheduleFormClose(formKey: string, fn: () => void): () => void {
+    return this.addFormListener(this.scheduleFormCloseListeners, formKey, fn);
+  }
+
+  onScheduleFormOpenTiming(formKey: string, fn: (formKey: string) => void): () => void {
+    return this.addFormListener(this.scheduleFormTimingListeners, formKey, fn);
+  }
+
+  getScheduleFocus(sessionId: string): { runId: string; seq: bigint } | undefined {
+    return this.scheduleFocus.get(sessionId);
+  }
+
+  clearScheduleFocus(sessionId: string) {
+    this.scheduleFocus.delete(sessionId);
+  }
+
+  hasUnsavedScheduleDrafts(): boolean {
+    if (this.viewScheduleForm("").hasUnsavedChanges) return true;
+    for (const key of this.openFormKeys) {
+      const vm = this.viewScheduleForm(key);
+      if (!vm.open) this.openFormKeys.delete(key);
+      else if (vm.hasUnsavedChanges) return true;
+    }
+    return false;
+  }
+
   // --- Subscriptions & ViewModel lookups ---
 
   subscribe(target: ScreenTarget, fn: () => void): () => void {
@@ -594,13 +823,9 @@ export class CoreHost {
     if (this.homeCache && this.homeCache.version === ver && this.homeCache.endedLimit === endedLimit) {
       return this.homeCache.vm;
     }
-    const req = create(ScreenSchema, {
-      screen: { case: "home", value: create(HomeScreenRequestSchema, { endedLimit }) },
-    });
-    const vm = fromBinary(ViewModelSchema, this.core.view(toBinary(ScreenSchema, req)));
-    if (vm.view.case !== "home") throw new Error("unexpected view model case: " + vm.view.case);
-    this.homeCache = { version: ver, endedLimit, vm: vm.view.value };
-    return vm.view.value;
+    const value = this.queryView<HomeViewModel>({ case: "home", value: create(HomeScreenRequestSchema, { endedLimit }) }, "home");
+    this.homeCache = { version: ver, endedLimit, vm: value };
+    return value;
   }
 
   viewProject(projectKey: string, manage: boolean, endedLimit = 30): ProjectViewModel {
@@ -614,13 +839,12 @@ export class CoreHost {
     ) {
       return this.projectCache.vm;
     }
-    const req = create(ScreenSchema, {
-      screen: { case: "project", value: create(ProjectScreenRequestSchema, { projectKey, manage, endedLimit }) },
-    });
-    const vm = fromBinary(ViewModelSchema, this.core.view(toBinary(ScreenSchema, req)));
-    if (vm.view.case !== "project") throw new Error("unexpected view model case: " + vm.view.case);
-    this.projectCache = { version: ver, key: projectKey, manage, endedLimit, vm: vm.view.value };
-    return vm.view.value;
+    const value = this.queryView<ProjectViewModel>(
+      { case: "project", value: create(ProjectScreenRequestSchema, { projectKey, manage, endedLimit }) },
+      "project",
+    );
+    this.projectCache = { version: ver, key: projectKey, manage, endedLimit, vm: value };
+    return value;
   }
 
   viewNewSession(projectKey = ""): NewSessionViewModel {
@@ -628,13 +852,9 @@ export class CoreHost {
     if (this.newSessionCache && this.newSessionCache.version === ver && this.newSessionCache.key === projectKey) {
       return this.newSessionCache.vm;
     }
-    const req = create(ScreenSchema, {
-      screen: { case: "newSession", value: create(NewSessionScreenRequestSchema, { projectKey }) },
-    });
-    const vm = fromBinary(ViewModelSchema, this.core.view(toBinary(ScreenSchema, req)));
-    if (vm.view.case !== "newSession") throw new Error("unexpected view model case: " + vm.view.case);
-    this.newSessionCache = { version: ver, key: projectKey, vm: vm.view.value };
-    return vm.view.value;
+    const value = this.queryView<NewSessionViewModel>({ case: "newSession", value: create(NewSessionScreenRequestSchema, { projectKey }) }, "newSession");
+    this.newSessionCache = { version: ver, key: projectKey, vm: value };
+    return value;
   }
 
   viewSyncState(): SyncStateView {
@@ -642,11 +862,9 @@ export class CoreHost {
     if (this.syncStateCache && this.syncStateCache.version === ver) {
       return this.syncStateCache.view;
     }
-    const req = create(ScreenSchema, { screen: { case: "syncState", value: {} } });
-    const vm = fromBinary(ViewModelSchema, this.core.view(toBinary(ScreenSchema, req)));
-    if (vm.view.case !== "syncState") throw new Error("unexpected view model case: " + vm.view.case);
-    this.syncStateCache = { version: ver, view: vm.view.value };
-    return vm.view.value;
+    const value = this.queryView<SyncStateView>({ case: "syncState", value: create(SyncStateScreenRequestSchema, {}) }, "syncState");
+    this.syncStateCache = { version: ver, view: value };
+    return value;
   }
 
   viewSession(sessionId: string, window?: SessionWindowOptions): SessionViewModel {
@@ -659,8 +877,8 @@ export class CoreHost {
     if (cached && cached.version === ver && cached.windowKey === windowKey) {
       return cached.vm;
     }
-    const req = create(ScreenSchema, {
-      screen: {
+    const value = this.queryView<SessionViewModel>(
+      {
         case: "session",
         value: create(SessionScreenRequestSchema, {
           sessionId,
@@ -676,11 +894,66 @@ export class CoreHost {
             : undefined,
         }),
       },
-    });
+      "session",
+    );
+    this.sessionCache.set(sessionId, { version: ver, windowKey, vm: value });
+    return value;
+  }
+
+  private queryView<T>(screen: Screen["screen"], expectedCase: NonNullable<ViewModel["view"]["case"]>): T {
+    const req = create(ScreenSchema, { screen } as Parameters<typeof create<typeof ScreenSchema>>[1]);
     const vm = fromBinary(ViewModelSchema, this.core.view(toBinary(ScreenSchema, req)));
-    if (vm.view.case !== "session") throw new Error("unexpected view model case: " + vm.view.case);
-    this.sessionCache.set(sessionId, { version: ver, windowKey, vm: vm.view.value });
-    return vm.view.value;
+    if (vm.view.case !== expectedCase) throw new Error("unexpected view model case: " + vm.view.case);
+    return vm.view.value as T;
+  }
+
+  viewSchedules(endedLimit = 30): SchedulesViewModel {
+    const ver = this.version(ScreenTarget.SCHEDULES);
+    if (this.schedulesCache && this.schedulesCache.version === ver && this.schedulesCache.endedLimit === endedLimit) {
+      return this.schedulesCache.vm;
+    }
+    const value = this.queryView<SchedulesViewModel>({ case: "schedules", value: create(SchedulesScreenRequestSchema, { endedLimit }) }, "schedules");
+    this.schedulesCache = { version: ver, endedLimit, vm: value };
+    return value;
+  }
+
+  viewScheduleDetail(machineId: string, taskId: string, earlierRunsLimit = 10): ScheduleDetailViewModel {
+    const ver = this.version(ScreenTarget.SCHEDULE_DETAIL);
+    const key = `${machineId}\0${taskId}\0${earlierRunsLimit}`;
+    if (this.scheduleDetailCache && this.scheduleDetailCache.version === ver && this.scheduleDetailCache.key === key) {
+      return this.scheduleDetailCache.vm;
+    }
+    const value = this.queryView<ScheduleDetailViewModel>(
+      { case: "scheduleDetail", value: create(ScheduleDetailScreenRequestSchema, { machineId, taskId, earlierRunsLimit }) },
+      "scheduleDetail",
+    );
+    this.scheduleDetailCache = { version: ver, key, vm: value };
+    return value;
+  }
+
+  viewScheduleForm(formKey = ""): ScheduleFormViewModel {
+    const ver = this.version(ScreenTarget.SCHEDULE_FORM);
+    const cached = this.scheduleFormCache.get(formKey);
+    if (cached && cached.version === ver) return cached.vm;
+    const value = this.queryView<ScheduleFormViewModel>(
+      { case: "scheduleForm", value: create(ScheduleFormScreenRequestSchema, { formKey }) },
+      "scheduleForm",
+    );
+    if (value.open && value.formKey) this.openFormKeys.add(value.formKey);
+    this.scheduleFormCache.set(formKey, { version: ver, vm: value });
+    return value;
+  }
+
+  viewScheduleSessionStrip(sessionId: string): ScheduleSessionStripViewModel {
+    const ver = this.version(ScreenTarget.SCHEDULE_SESSION_STRIP);
+    const cached = this.scheduleStripCache.get(sessionId);
+    if (cached && cached.version === ver) return cached.vm;
+    const value = this.queryView<ScheduleSessionStripViewModel>(
+      { case: "scheduleSessionStrip", value: create(ScheduleSessionStripScreenRequestSchema, { sessionId }) },
+      "scheduleSessionStrip",
+    );
+    this.scheduleStripCache.set(sessionId, { version: ver, vm: value });
+    return value;
   }
 
   // --- Dispatch & Effect Execution ---
@@ -954,20 +1227,114 @@ export class CoreHost {
         break;
       }
 
-      // Settings, machine, and schedules screens still render in React
-      // on Web and never send the events behind these effects.
+      case "scheduleReadCache": {
+        const { opId, machineId } = val.value;
+        if (this.executor?.readScheduleCache) {
+          void this.executor.readScheduleCache(opId, machineId).then(
+            (value) => !this.closed && this.emit({ case: "scheduleCacheLoaded", value }),
+            (err) =>
+              !this.closed &&
+              this.emit({
+                case: "scheduleCacheLoaded",
+                value: create(ScheduleCacheLoadedEventSchema, { opId, machineId, error: errorMessage(err) }),
+              }),
+          );
+        } else {
+          this.pendingEvents.push({
+            ev: create(EventSchema, {
+              nowMs: BigInt(Date.now()),
+              monoMs: BigInt(Math.max(0, Math.floor(performance.now()))),
+              event: {
+                case: "scheduleCacheLoaded",
+                value: create(ScheduleCacheLoadedEventSchema, { opId, machineId }),
+              },
+            }),
+          });
+        }
+        break;
+      }
+
+      case "scheduleDeleteCache":
+        void this.executor?.deleteScheduleCache?.(val.value.machineId)?.catch(() => undefined);
+        break;
+
+      case "scheduleLoadSeen": {
+        const { machineId } = val.value;
+        if (this.executor?.loadScheduleSeen) {
+          void this.executor.loadScheduleSeen(machineId).then(
+            (value) => !this.closed && this.emit({ case: "scheduleSeenLoaded", value }),
+            (err) =>
+              !this.closed &&
+              this.emit({
+                case: "scheduleSeenLoaded",
+                value: create(ScheduleSeenLoadedEventSchema, { machineId, error: errorMessage(err) }),
+              }),
+          );
+        } else {
+          this.pendingEvents.push({
+            ev: create(EventSchema, {
+              nowMs: BigInt(Date.now()),
+              monoMs: BigInt(Math.max(0, Math.floor(performance.now()))),
+              event: {
+                case: "scheduleSeenLoaded",
+                value: create(ScheduleSeenLoadedEventSchema, { machineId, found: false }),
+              },
+            }),
+          });
+        }
+        break;
+      }
+
+      case "scheduleSaveSeen":
+        void this.executor?.saveScheduleSeen?.(val.value.machineId, val.value.tokens)?.catch(() => undefined);
+        break;
+
+      case "scheduleDismissNotifications":
+        this.executor?.dismissScheduleNotifications?.(val.value.runs);
+        break;
+
+      case "scheduleNavigate": {
+        const nav = val.value;
+        switch (nav.route) {
+          case ScheduleNavigateRoute.LIST:
+            this.go?.("tasks");
+            break;
+          case ScheduleNavigateRoute.DETAIL:
+            if (nav.machineId && nav.taskId) this.go?.(routeForTask(nav.machineId, nav.taskId));
+            break;
+          case ScheduleNavigateRoute.SESSION:
+            if (nav.sessionId && (nav.runId || nav.firstSeq > 0n)) {
+              this.scheduleFocus.set(nav.sessionId, { runId: nav.runId, seq: nav.firstSeq });
+            }
+            if (nav.sessionId) this.go?.(routeForSession(nav.sessionId));
+            break;
+          case ScheduleNavigateRoute.FORM_TIMING:
+            for (const key of nav.formKey ? [nav.formKey, ""] : [""]) {
+              const set = this.scheduleFormTimingListeners.get(key);
+              if (set) for (const fn of [...set]) fn(nav.formKey);
+            }
+            break;
+          case ScheduleNavigateRoute.CLOSE_FORM:
+            if (nav.formKey) this.openFormKeys.delete(nav.formKey);
+            for (const key of nav.formKey ? [nav.formKey, ""] : [""]) {
+              const set = this.scheduleFormCloseListeners.get(key);
+              if (set) for (const fn of [...set]) fn();
+            }
+            break;
+          case ScheduleNavigateRoute.UNSPECIFIED:
+            break;
+        }
+        break;
+      }
+
+      // Settings and machine screens still render in React on Web
+      // and never send the events behind these effects.
       case "scheduleMachinePoll":
       case "directPreference":
       case "renameClient":
       case "checkUpdates":
       case "persistClientPrefs":
       case "prepareCleanupSession":
-      case "scheduleReadCache":
-      case "scheduleDeleteCache":
-      case "scheduleLoadSeen":
-      case "scheduleSaveSeen":
-      case "scheduleDismissNotifications":
-      case "scheduleNavigate":
       case undefined:
         break;
 
@@ -1040,6 +1407,10 @@ export class CoreHost {
     else if (target === ScreenTarget.SESSION) this.sessionCache.clear();
     else if (target === ScreenTarget.NEW_SESSION) this.newSessionCache = undefined;
     else if (target === ScreenTarget.SYNC_STATE) this.syncStateCache = undefined;
+    else if (target === ScreenTarget.SCHEDULES) this.schedulesCache = undefined;
+    else if (target === ScreenTarget.SCHEDULE_DETAIL) this.scheduleDetailCache = undefined;
+    else if (target === ScreenTarget.SCHEDULE_FORM) this.scheduleFormCache.clear();
+    else if (target === ScreenTarget.SCHEDULE_SESSION_STRIP) this.scheduleStripCache.clear();
   }
 
   private flushRenders() {
@@ -1089,6 +1460,10 @@ export class CoreHost {
     for (const set of this.listeners.values()) set.clear();
     this.totalListeners = 0;
     this.trays.clear();
+    this.scheduleFormCloseListeners.clear();
+    this.scheduleFormTimingListeners.clear();
+    this.scheduleFocus.clear();
+    this.openFormKeys.clear();
     this.core.close();
   }
 }
@@ -1185,6 +1560,32 @@ export function useSessionView(
       }),
     [host, version, sessionId, limit, beforeSeq, aroundSeq, revealSeq, revealRunId, expandedKey],
   );
+}
+
+function useScreenVersion(host: CoreHost, target: ScreenTarget): number {
+  const subscribe = useCallback((fn: () => void) => host.subscribe(target, fn), [host, target]);
+  const getSnapshot = useCallback(() => host.version(target), [host, target]);
+  return useSyncExternalStore(subscribe, getSnapshot);
+}
+
+export function useSchedulesView(host: CoreHost, endedLimit = 30): SchedulesViewModel {
+  const version = useScreenVersion(host, ScreenTarget.SCHEDULES);
+  return useMemo(() => host.viewSchedules(endedLimit), [host, version, endedLimit]);
+}
+
+export function useScheduleDetailView(host: CoreHost, machineId: string, taskId: string, earlierRunsLimit = 10): ScheduleDetailViewModel {
+  const version = useScreenVersion(host, ScreenTarget.SCHEDULE_DETAIL);
+  return useMemo(() => host.viewScheduleDetail(machineId, taskId, earlierRunsLimit), [host, version, machineId, taskId, earlierRunsLimit]);
+}
+
+export function useScheduleFormView(host: CoreHost, formKey = ""): ScheduleFormViewModel {
+  const version = useScreenVersion(host, ScreenTarget.SCHEDULE_FORM);
+  return useMemo(() => host.viewScheduleForm(formKey), [host, version, formKey]);
+}
+
+export function useScheduleSessionStripView(host: CoreHost, sessionId: string): ScheduleSessionStripViewModel {
+  const version = useScreenVersion(host, ScreenTarget.SCHEDULE_SESSION_STRIP);
+  return useMemo(() => host.viewScheduleSessionStrip(sessionId), [host, version, sessionId]);
 }
 
 export { ConnState };

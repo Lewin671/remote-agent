@@ -1,5 +1,5 @@
 import * as l10n from "./i18n";
-import { lazy, startTransition, Suspense, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
+import { lazy, startTransition, Suspense, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import type { Remote } from "./remote";
 import { Startup } from "./Startup";
 import { useRemote } from "./ui";
@@ -11,7 +11,7 @@ import {
   ClientPage, DevicesPage, MachinePage, MachineStatusPage, PairCodePage, QuotaPage, RemovedScreen,
   ScheduleCreate, ScheduleDetail, SchedulesPage, SecurityPage, SettingsPage, inOwnFile,
 } from "./views/pages";
-import { taskRoute } from "./schedules";
+import { routeForTask, useCoreHost, useSchedulesView } from "./core/host";
 import { Plus } from "./icons";
 
 const Setup = lazy(() => import("./views/Pairing").then(m => ({ default: m.Setup })));
@@ -76,14 +76,17 @@ function useMainScrolled(route: string, wide: boolean) {
 export default function Workspace({ remote }: { remote: Remote }) {
   useRemote(remote);
   const [route, go] = useRoute();
-  useLayoutEffect(() => { remote.setSchedulePage(route); }, [remote, route]);
-  useEffect(() => { remote.syncSchedules(); });
+  const host = useCoreHost(remote, go);
+  const schedulesVm = useSchedulesView(host, 1);
   const wide = useWide();
-  const scheduling = [...remote.machines.keys()].some((id) => remote.supportsSchedules(id) && !remote.peer(id).unlinked);
+  const scheduling = schedulesVm.canCreate;
   const [kind, ...rest] = route.split("/");
   const arg = decodeURIComponent(rest.join("/"));
   const session = kind === "s" ? remote.sessions.get(arg) : undefined;
-  const scheduleSession = session?.info?.taskOwned && session.info.scheduledTaskId ? taskRoute(session.machineId, session.info.scheduledTaskId) : undefined;
+  const scheduleSession = session?.info?.taskOwned && session.info.scheduledTaskId ? routeForTask(session.machineId, session.info.scheduledTaskId) : undefined;
+  useEffect(() => {
+    if (kind === "tasks" && wide && rest[0] !== "new" && !rest[1]) host.scheduleSelectTask("", "");
+  }, [host, kind, wide, rest[0], rest[1]]);
   const back = () => (history.length > 1 ? history.back() : go(""));
   const main = useMainScrolled(route, wide);
   if (remote.removed) return <Suspense fallback={loading}><RemovedScreen remote={remote} /></Suspense>;

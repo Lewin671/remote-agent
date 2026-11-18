@@ -68,15 +68,6 @@ it("does not cache failed draft reads", async () => {
   expect(t.r.drafts.get("s")).toBe("saved");
 });
 
-it("never persists schedule editor text", async () => {
-  const t = setup();
-  t.r.trays.set("schedule:job", t.tray);
-  t.r.drafts.set("schedule:job", "edit once");
-  await t.r.restoreDraft("schedule:job", t.tray);
-  expect(t.read).not.toHaveBeenCalled();
-  expect(t.save).not.toHaveBeenCalled();
-});
-
 it("forgets local drafts with a removed session", async () => {
   const t = setup();
   const remove = vi.spyOn(t.store, "removeSession").mockResolvedValue();

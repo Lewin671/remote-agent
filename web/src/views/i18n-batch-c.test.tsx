@@ -9,8 +9,8 @@ import { Agent, ApprovalMode } from "../gen/remoteagent/v1/event_pb";
 import { SecurityPage } from "./Security";
 import { Settings } from "./Settings";
 import { ScheduleDetail } from "./Schedules";
-import { groupTasks, taskGroup, frequency, reasonText, scheduleLimits } from "../schedules";
-import { ScheduleRevisionError, errorText } from "../remote";
+import { getCoreHost } from "../core/host";
+import { CommandError, errorText } from "../remote";
 import { SecurityError } from "../device-security";
 import { PairingStatusError } from "../pairing";
 import { joinBanner } from "./Pairing";
@@ -51,18 +51,25 @@ it("updates existing settings without changing the theme or device identity", as
 
 it.each(["zh-CN", "en"] as const)("uses schedule codes and closes a conflicted editor in %s", async locale => {
   localeStore.overrideForTesting(locale);
-  const r = demo(), task = r.taskEntries().find(e => e.task.id === "quiet")!.task;
-  expect(taskGroup(r.taskEntries().find(e => e.task.id === "attention")!.task)).toBe("attention");
-  expect(groupTasks(r.taskEntries()).get("attention")!.map(e => e.task.id)).toContain("attention");
-  vi.spyOn(r, "changeSchedule").mockRejectedValue(new ScheduleRevisionError(t("errors.the_task_was_just_changed_updated_to_the_latest")));
-  await mount(() => <ScheduleDetail remote={r} machineId="mac" id={task.id} go={() => {}} onBack={() => {}} />);
+  const r = demo();
+  const hostCore = getCoreHost(r);
+  await vi.waitFor(() => expect(hostCore.viewSchedules().attention.map(t => t.taskId)).toContain("attention"));
+  const orig = r.machineCommand.bind(r);
+  const spy = vi.spyOn(r, "machineCommand").mockImplementation(async (machineId, kind, slot) => {
+    if (kind?.case === "schedule" && kind.value?.operation === "update") {
+      throw new CommandError("conflict", t("errors.the_task_was_just_changed_updated_to_the_latest"), true, false, "conflict", "business");
+    }
+    return orig(machineId, kind, slot);
+  });
+  await mount(() => <ScheduleDetail remote={r} machineId="mac" id="quiet" go={() => {}} onBack={() => {}} />);
+  await vi.waitFor(() => expect(button(t("tools.android_edit"))).toBeTruthy());
   await act(async () => button(t("tools.android_edit")).click());
   const input = host.querySelector("textarea")!;
   await act(async () => { Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!.call(input, "Original user text"); input.dispatchEvent(new Event("input", { bubbles: true })); });
   await act(async () => button(t("common.save")).click());
-  expect(host.querySelector(".schedule-editor")).toBeNull();
+  await vi.waitFor(() => expect(host.querySelector(".schedule-editor")).toBeNull());
   expect(host.textContent).toContain(t("errors.the_task_was_just_changed_updated_to_the_latest"));
-  expect(r.changeSchedule).toHaveBeenCalledWith("mac", task.id, expect.objectContaining({ spec: expect.objectContaining({ message: "Original user text" }) }));
+  expect(spy).toHaveBeenCalledWith("mac", expect.objectContaining({ case: "schedule", value: expect.objectContaining({ operation: "update" }) }), expect.anything());
 });
 
 it("keeps local image categories after an English codec error, without exposing its detail", async () => {
@@ -80,22 +87,10 @@ it("localizes safe error and notification shells while preserving external conte
   localeStore.overrideForTesting("en");
   expect(errorText(new SecurityError("invalid"))).toBe(t("errors.invalid_ciphertext_signature_key_or_content_verification_failed"));
   expect(errorText(new Error("CLI 原始错误"))).toBe("CLI 原始错误");
-  expect(reasonText("opaque_reason")).toBe("Reason returned by the computer: opaque_reason");
   expect(joinBanner(new PairingStatusError("refused"))).toMatchObject({ action: "restart", text: "The other device refused this join request" });
   expect(await pushContent({ tag: "example/NOTIFY_KIND_SCHEDULED" })).toEqual({ title: "remote-agent", body: "Scheduled tasks have new results" });
   expect(await pushContent({ body: "Original push content" })).toEqual({ title: "remote-agent", body: "Original push content" });
   expect(launchText("startup.the_page_could_not_load_check_your_connection_and", "en")).toBe("The page could not load. Check your connection and retry.");
-});
-
-it("uses plural messages for schedule counts and delays without altering saved trigger values", () => {
-  localeStore.overrideForTesting("en");
-  for (const count of [0, 1, 2, 1000]) {
-    const trigger = { type: "interval" as const, interval_seconds: count * 86400, max_runs: count };
-    expect(frequency(trigger)).toBe(`Every ${count} ${count === 1 ? "day" : "days"}`);
-    if (count) expect(scheduleLimits(trigger)).toBe(`${count} ${count === 1 ? "run" : "runs"} total`);
-    expect(trigger.interval_seconds).toBe(count * 86400);
-  }
-  expect(frequency({ type: "after_turn", delay_seconds: 2, repeat: true })).toBe("2 sec after each turn ends");
 });
 
 it("formats the effective approval mode without trimming a translated prefix", () => {

@@ -306,10 +306,8 @@
 "errors_terminal_connection_timed_out_reconnect" = "Terminal connection timed out. Reconnect.";
 "errors_terminal_frames_are_out_of_order" = "Terminal frames are out of order";
 "errors_terminal_output_backlog_reconnect_for_the_latest_display" = "Terminal output backlog. Reconnect for the latest display.";
-"errors_the_computer_did_not_return_a_task" = "The computer did not return a task";
 "errors_the_computer_did_not_return_a_task_list" = "The computer did not return a task list";
 "errors_the_computer_did_not_return_an_attachment_id" = "The computer did not return an attachment ID";
-"errors_the_computer_is_offline_connect_to_edit_tasks" = "The computer is offline. Connect to edit tasks.";
 "errors_the_computer_is_offline_the_command_was_not_sent" = "The computer is offline. The command was not sent.";
 "errors_the_computer_is_still_verifying_attachments_retry_shortly" = "The computer is still verifying attachments. Retry shortly.";
 "errors_the_computer_s_reply_could_not_be_verified_command" = "The computer’s reply could not be verified. Command execution is uncertain.";
@@ -325,7 +323,6 @@
 "errors_the_server_does_not_recognize_this_device_it_may" = "The server does not recognize this device (it may have been removed or the service rebuilt)";
 "errors_the_server_must_use_https" = "The server must use HTTPS";
 "errors_the_server_returned_an_unexpected_device_id" = "The server returned an unexpected device ID";
-"errors_the_task_list_returned_by_the_computer_could_not" = "The task list returned by the computer could not be read";
 "errors_the_task_was_just_changed_updated_to_the_latest" = "The task was just changed. Updated to the latest content.";
 "errors_this_browser_has_already_joined_an_account_open_this" = "This browser has already joined an account. Open this link on the new device to join.";
 "errors_this_device_s_clock_is_behind_the_account_state" = "This device’s clock is behind the account state. Correct the system time and time zone, or remote operations will be refused.";
@@ -335,7 +332,6 @@
 "errors_this_is_not_a_remote_agent_account_key" = "This is not a remote-agent account key";
 "errors_this_page_is_out_of_date_refresh_or_update" = "This page is out of date. Refresh or update it and retry.";
 "errors_this_request_has_not_been_verified_by_the_computer" = "This request has not been verified by the computer yet. Wait for sync.";
-"errors_update_remote_agent_on_this_computer_to_use_scheduled" = "Update remote-agent on this computer to use scheduled tasks";
 "errors_upload_made_no_progress" = "Upload made no progress";
 "errors_waiting_for_the_owning_computer_to_update_the_current_remote" = "Waiting for the owning computer to update the current state: this device lacks the content key from that time";
 "home_add_device" = "Add device";
@@ -640,7 +636,6 @@
 "new_session_expired_start" = "The start is unconfirmed. Check the session list first. This request has expired and will not be retried or replaced.";
 "new_session_expired_start_prompt" = "It is unclear whether “%1$@” started. The request has expired and will not be resent. Check active sessions first.";
 "new_session_first_message" = "First message of the new session";
-"new_session_fixed_effort" = "Reasoning effort fixed at %1$@";
 "new_session_follow_cli" = "Follow CLI settings";
 "new_session_follow_s_configuration" = "Follow %1$@’s configuration";
 "new_session_installed" = "Installed: %1$@";
@@ -665,8 +660,6 @@
 "new_session_location_machine_cli" = "On %2$@ in %3$@ using %1$@";
 "new_session_machine_label" = "Computer: %1$@";
 "new_session_machine_offline" = "%1$@ is offline";
-"new_session_machine_project_defaults" = "Use %1$@ defaults for new projects";
-"new_session_model_list_default" = "Could not read the model list. Using %1$@’s default model.";
 "new_session_model_no_auto" = "This model has no Auto mode, but %1$@ uses Auto by default for new projects. Choose another model or change the default in “Settings › This computer”.";
 "new_session_offline_draft" = "%1$@ is offline. The task has not started.";
 "new_session_offline_no_start_named" = "%1$@ is offline. Cannot start a session now.";
@@ -798,6 +791,7 @@
 "quota_waiting" = "No quota received from %1$@. Data is read only from CLI sessions managed by remote-agent on this computer; installing the CLI or using another session does not update this page.";
 "quota_warning" = "%1$@ · %2$@ quota is nearly exhausted. CLI and model will not switch automatically.";
 "schedule_after_a_run_count" = "After a run count";
+"schedule_after_turn_replace" = "%1$@. Choose another frequency above to replace it.";
 "schedule_android_agent_notification" = "agent notification";
 "schedule_android_agent_notification_completion_notification" = "agent notification, completion notification";
 "schedule_android_cannot_request_notification" = "Cannot request notification";
@@ -807,6 +801,7 @@
 "schedule_android_connect_value1_to_edit_run_or_delete" = "Connect %1$@ to edit, run, or delete.";
 "schedule_android_currently_value1_finishing_directly_preserves_the_original_rule_choose_a" = "Currently “%1$@”. Finishing directly preserves the original rule; choose a time type above before changing it.";
 "schedule_android_follow_conversation" = "Follow conversation";
+"schedule_android_new_result" = "New result";
 "schedule_android_run_once_now_does_not_count_toward_automatic_runs_or" = "Run once now does not count toward automatic runs or the calendar day's limit. Deleting stops future scheduling; sent messages and opened conversations are kept.";
 "schedule_android_saving" = "Saving…";
 "schedule_android_task" = "Task";
@@ -982,6 +977,7 @@
 "schedule_until" = "Until %1$@";
 "schedule_update_remote_agent_on_the_computer_to_use_scheduled" = "Update remote-agent on the computer to use scheduled tasks.";
 "schedule_update_remote_agent_on_this_computer_to_use_scheduled" = "Update remote-agent on this computer to use scheduled tasks.";
+"schedule_verify_current_permissions_in_the_conversation" = "Verify current permissions in the conversation";
 "schedule_waiting_for_results" = "Waiting for results";
 "schedule_waiting_for_the_current_turn_to_end" = "Waiting for the current turn to end";
 "schedule_wed" = "Wed";

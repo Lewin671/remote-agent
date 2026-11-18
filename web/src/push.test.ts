@@ -4,7 +4,6 @@ import { closeScheduleNotification, pushPrefs, restorePushPrefs, setPushPrefs } 
 import { NotifyKind } from "./gen/remoteagent/v1/relay_pb";
 import { Remote } from "./remote";
 import { patchSyncState } from "./test/remote-fixture";
-import { run } from "./test/schedule-fixture";
 
 afterEach(() => { localStorage.clear(); vi.unstubAllGlobals(); vi.restoreAllMocks(); });
 
@@ -90,7 +89,7 @@ it("allows scheduled results to be disabled without disabling security or turn r
 
 it("waits for the worker and closes only exact scheduled-notification tags", async () => {
   const tag = "shared/ scheduled/4"; // Session IDs are opaque; never parse by prefix.
-  const notice = run("r", { session_id: tag, notification_seq: 17, notified: true });
+  const notice = { sessionId: tag, notificationSeq: 17 };
   const expected = `${tag}/scheduled:17/NOTIFY_KIND_SCHEDULED`;
   const exact = { tag: expected, close: vi.fn() };
   const other = { tag: `${tag}/scheduled:18/NOTIFY_KIND_SCHEDULED`, close: vi.fn() };
@@ -107,20 +106,19 @@ it("waits for the worker and closes only exact scheduled-notification tags", asy
 });
 
 it.each([
-  { session_id: undefined, notification_seq: 7 },
-  { session_id: "session", notification_seq: undefined },
-  { session_id: "session", notification_seq: 0 },
-  { session_id: "session", notification_seq: -1 },
-  { session_id: "session", notification_seq: Number.MAX_SAFE_INTEGER + 1 },
-])("skips runs that cannot identify one exact notification: %j", async patch => {
+  { sessionId: "", notificationSeq: 7 },
+  { sessionId: "session", notificationSeq: 0 },
+  { sessionId: "session", notificationSeq: -1 },
+  { sessionId: "session", notificationSeq: Number.MAX_SAFE_INTEGER + 1 },
+])("skips runs that cannot identify one exact notification: %j", async ref => {
   const getNotifications = vi.fn();
   vi.stubGlobal("navigator", { serviceWorker: { ready: Promise.resolve({ getNotifications }) } });
-  await closeScheduleNotification(run("missing", patch));
+  await closeScheduleNotification(ref);
   expect(getNotifications).not.toHaveBeenCalled();
 });
 
 it("silently tolerates unsupported workers and failures at every notification API step", async () => {
-  const notice = run("r", { notification_seq: 7 });
+  const notice = { sessionId: "session-r", notificationSeq: 7 };
   vi.stubGlobal("navigator", {});
   await expect(closeScheduleNotification(notice)).resolves.toBeUndefined();
   vi.stubGlobal("navigator", { serviceWorker: { get ready() { throw new Error("not available"); } } });

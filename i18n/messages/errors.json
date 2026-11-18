@@ -727,54 +727,6 @@
     "zh-CN": "电脑没有返回任务列表"
   },
   {
-    "en": "The task list returned by the computer could not be read",
-    "key": "errors.the_task_list_returned_by_the_computer_could_not",
-    "notes": "remote 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "en": "draft",
-      "zh-CN": "source"
-    },
-    "zh-CN": "电脑返回的任务列表无法读取"
-  },
-  {
-    "en": "The computer is offline. Connect to edit tasks.",
-    "key": "errors.the_computer_is_offline_connect_to_edit_tasks",
-    "notes": "remote 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "en": "draft",
-      "zh-CN": "source"
-    },
-    "zh-CN": "电脑不在线，连上后才能修改任务"
-  },
-  {
-    "en": "Update remote-agent on this computer to use scheduled tasks",
-    "key": "errors.update_remote_agent_on_this_computer_to_use_scheduled",
-    "notes": "remote 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "en": "draft",
-      "zh-CN": "source"
-    },
-    "zh-CN": "需要更新这台电脑上的 remote-agent 才能使用定时任务。"
-  },
-  {
     "en": "The previous operation’s outcome is still unknown. Reload and verify the task before continuing.",
     "key": "errors.the_previous_operation_s_outcome_is_still_unknown_reload",
     "notes": "remote 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
@@ -789,22 +741,6 @@
       "zh-CN": "source"
     },
     "zh-CN": "上次操作的结果仍未知，请重新读取任务核实后再操作"
-  },
-  {
-    "en": "The computer did not return a task",
-    "key": "errors.the_computer_did_not_return_a_task",
-    "notes": "remote 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "en": "draft",
-      "zh-CN": "source"
-    },
-    "zh-CN": "电脑没有返回任务"
   },
   {
     "en": "The task was just changed. Updated to the latest content.",
