@@ -9,7 +9,9 @@ import io.github.lewin671.remoteagent.core.X25519
 import io.github.lewin671.remoteagent.core.newRequestId
 import io.github.lewin671.remoteagent.core.peer.Schema
 import io.github.lewin671.remoteagent.core.peer.Wire
+import io.github.lewin671.remoteagent.proto.Capabilities
 import io.github.lewin671.remoteagent.proto.CapabilitySnapshot
+import io.github.lewin671.remoteagent.proto.DirectEventSubscription
 import io.github.lewin671.remoteagent.proto.DirectedPeerFrame
 import io.github.lewin671.remoteagent.proto.Envelope
 import io.github.lewin671.remoteagent.proto.ForwardResponse
@@ -75,6 +77,8 @@ internal class DirectEngine(
         var downloadUntil = 0L
         var snapshotSeq = 0L
         var downloadSeq = 0L
+        var supportsEventPush = false
+        var subscribedKey = ""
         var redialAt: Long? = null
         var readyAt: Long? = null
         var retryDelay: Long? = null
@@ -132,6 +136,41 @@ internal class DirectEngine(
     private var rateAtNs = System.nanoTime()
     private val retryAfter = HashMap<String, Long>()
     private val failReasons = HashMap<String, DirectFailReason>()
+    private var watchedByMachine: Map<String, List<String>> = emptyMap()
+    @Volatile private var eventHandler: ((String, Envelope, DeviceSecurity.Header, Int) -> Unit)? = null
+
+    fun setEventHandler(handler: ((String, Envelope, DeviceSecurity.Header, Int) -> Unit)?) {
+        eventHandler = handler
+    }
+
+    fun setWatchedSessions(subscriptions: Map<String, List<String>>) {
+        val next = LinkedHashMap<String, List<String>>()
+        for ((machineId, ids) in subscriptions) {
+            if (machineId.isEmpty()) continue
+            val capped = ids.filter { it.isNotEmpty() }.take(4)
+            if (capped.isNotEmpty()) next[machineId] = capped
+        }
+        val toSend = ArrayList<Pair<DirectSession, ByteArray>>()
+        synchronized(stateLock) {
+            watchedByMachine = next
+            for (p in peers.values) {
+                syncPeerSubscriptionLocked(p)?.let { toSend.add(it) }
+            }
+        }
+        for ((sess, body) in toSend) {
+            sess.sendControl(15L, body)
+        }
+    }
+
+    private fun syncPeerSubscriptionLocked(p: PeerEntry): Pair<DirectSession, ByteArray>? {
+        if (!validLocked(p) || !p.session.active || !p.supportsEventPush || p.paths[1]?.ready != true) return null
+        val ids = watchedByMachine[p.id].orEmpty()
+        val key = ids.joinToString("\n")
+        if (p.subscribedKey == key) return null
+        p.subscribedKey = key
+        val body = DirectEventSubscription.newBuilder().addAllSessionIds(ids).build().toByteArray()
+        return p.session to body
+    }
 
     private fun notifyChanged() {
         runCatching { changed() }
@@ -567,6 +606,7 @@ internal class DirectEngine(
                 chosen = choose,
                 beforeOffer = choose,
                 ready = { use, path ->
+                    var syncCall: Pair<DirectSession, ByteArray>? = null
                     val accepted = synchronized(stateLock) {
                         if (!validLocked(p) || !p.session.active || peers[id] !== p) {
                             false
@@ -575,10 +615,16 @@ internal class DirectEngine(
                             if (p.readyAt == null) p.readyAt = clock()
                             failReasons.remove(id)
                             routingLocked(id).reset(read = use == 1, bulk = use == 2)
+                            if (use == 1) syncCall = syncPeerSubscriptionLocked(p)
                             true
                         }
                     }
-                    if (!accepted) path.close() else notifyChanged()
+                    if (!accepted) {
+                        path.close()
+                    } else {
+                        syncCall?.let { (sess, body) -> sess.sendControl(15L, body) }
+                        notifyChanged()
+                    }
                 },
                 closeReason = { reason ->
                     synchronized(stateLock) {
@@ -684,6 +730,7 @@ internal class DirectEngine(
     }
 
     private fun capability(p: PeerEntry, opened: Wire.Opened) {
+        var syncCall: Pair<DirectSession, ByteArray>? = null
         synchronized(stateLock) {
             if (!validLocked(p)) return
             if (opened.type == 14L) {
@@ -698,8 +745,12 @@ internal class DirectEngine(
                 p.downloadSeq = opened.ctx.seq
                 val fields = Schema.fields(opened.payload, "Capabilities")
                 p.downloadUntil = if (Wire.getUint(fields, 5) == 1L) Wire.getUint(fields, 4) else 0L
+                val caps = runCatching { Capabilities.parseFrom(opened.payload) }.getOrNull()
+                p.supportsEventPush = caps != null && 15 in caps.controlTypesList
+                if (p.supportsEventPush) syncCall = syncPeerSubscriptionLocked(p)
             }
         }
+        syncCall?.let { (sess, body) -> sess.sendControl(15L, body) }
         notifyChanged()
     }
 
@@ -870,6 +921,12 @@ internal class DirectEngine(
         try {
             val env = Envelope.parseFrom(raw)
             val header = DeviceSecurity.parseHeader(env.securityHeader.toByteArray())
+            if (use == 1 && header.purpose == DeviceSecurity.Purpose.EVENT) {
+                val matched = header.machine == peer.id && header.sender == peer.id &&
+                    synchronized(stateLock) { validLocked(peer) && peers[peer.id] === peer }
+                if (matched) eventHandler?.invoke(peer.id, env, header, raw.size)
+                return
+            }
             val req = synchronized(stateLock) { pending[header.request] }
             if (req != null && req.peer === peer && req.use == use && header.machine == peer.id) {
                 req.response.complete(env)

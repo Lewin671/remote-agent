@@ -206,6 +206,7 @@ final class Flag: @unchecked Sendable { private let l = NSLock(); private var v 
         let account = Account(server: "http://127.0.0.1:1", root: Data(repeating: 1, count: 32), deviceSeed: Data(repeating: 0x11, count: 32), deviceId: rig.clientId, accountId: rig.record.pin.account)
         let with = try Remote(account: account, http: HTTP(), securityStorage: MemorySecurityStore(rig.record), rtc: FakeRtcFactory(net: FakeRtcNet()))
         #expect(with.direct?.probe != nil, "the warm-up has a way to take its samples")
+        #expect(with.direct?.eventHandler != nil, "the direct engine routes PayloadKind.event pushes to Remote")
         let without = try Remote(account: account, http: HTTP(), securityStorage: MemorySecurityStore(rig.record))
         #expect(without.direct == nil && !without.directSupported)
     }

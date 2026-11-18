@@ -1,7 +1,7 @@
 import { create, fromBinary, toBinary } from "@bufbuild/protobuf";
-import { EnvelopeSchema, HeaderSchema, type Envelope } from "../gen/remoteagent/v1/envelope_pb";
+import { EnvelopeSchema, HeaderSchema, PayloadKind, type Envelope, type Header } from "../gen/remoteagent/v1/envelope_pb";
 import { ForwardResponseSchema, PeerFrameSchema } from "../gen/remoteagent/v1/relay_pb";
-import { CapabilitySnapshotSchema, DirectedPeerFrameSchema, PeerFrameResultSchema } from "../gen/remoteagent/v1/transport_pb";
+import { CapabilitiesSchema, CapabilitySnapshotSchema, DirectEventSubscriptionSchema, DirectedPeerFrameSchema, PeerFrameResultSchema } from "../gen/remoteagent/v1/transport_pb";
 import type { MachineCapabilities } from "../gen/remoteagent/v1/capabilities_pb";
 import { validLease } from "../device-security";
 import type { SecurityRecord } from "../device-security-store";
@@ -15,7 +15,7 @@ import { DirectRouting, type RouteHint, type RouteName } from "./direct-routing"
 import { PathChanged, abortable } from "./recovery";
 import * as w from "./peer/wire";
 
-type Peer = { id: string; head: string; session: DirectSession; paths: Map<number, DirectChannel>; live: boolean; capabilities?: MachineCapabilities; snapshotUntil: number; downloadUntil: number; snapshotSeq: bigint; downloadSeq: bigint; redialAt?: number; selected?: boolean; readyAt?: number; retryDelay?: number };
+type Peer = { id: string; head: string; session: DirectSession; paths: Map<number, DirectChannel>; live: boolean; capabilities?: MachineCapabilities; snapshotUntil: number; downloadUntil: number; snapshotSeq: bigint; downloadSeq: bigint; supportsEventPush?: boolean; subscribedKey?: string; redialAt?: number; selected?: boolean; readyAt?: number; retryDelay?: number };
 type Pending = { peer: Peer; use: number; resolve: (env: Envelope) => void };
 
 export type DirectState = "unsupported" | "connected" | "connecting" | "none";
@@ -89,6 +89,33 @@ export class DirectEngine {
   private readonly stun: string[];
   private readonly diag = new DirectDiag();
   private manualAt = 0;
+  private watchedByMachine = new Map<string, string[]>();
+  private eventHandler?: (machineId: string, env: Envelope, header: Header, size: number) => void;
+
+  setEventHandler(handler?: (machineId: string, env: Envelope, header: Header, size: number) => void) {
+    this.eventHandler = handler;
+  }
+
+  setWatchedSessions(subscriptions: Map<string, string[]>) {
+    const next = new Map<string, string[]>();
+    for (const [machineId, ids] of subscriptions) {
+      if (!machineId) continue;
+      const capped = ids.filter(Boolean).slice(0, 4);
+      if (capped.length > 0) next.set(machineId, capped);
+    }
+    this.watchedByMachine = next;
+    for (const p of this.peers.values()) this.syncPeerSubscription(p);
+  }
+
+  private syncPeerSubscription(p: Peer) {
+    if (!this.valid(p) || !p.session.active || !p.supportsEventPush || !p.paths.get(1)?.ready) return;
+    const sessionIds = this.watchedByMachine.get(p.id) ?? [];
+    const nextKey = sessionIds.join("\n");
+    if ((p.subscribedKey ?? "") === nextKey) return;
+    p.subscribedKey = nextKey;
+    const payload = toBinary(DirectEventSubscriptionSchema, create(DirectEventSubscriptionSchema, { sessionIds }));
+    void p.session.sendControl(15, payload);
+  }
 
   constructor(
     private readonly account: StoredAccount,
@@ -386,6 +413,7 @@ export class DirectEngine {
         p.readyAt ??= Date.now();
         this.failures.delete(id);
         this.routing(id).reset(use === 1 ? "read" : use === 2 ? "bulk" : undefined);
+        if (use === 1) this.syncPeerSubscription(p);
         this.notify();
       },
       closed: use => {
@@ -472,6 +500,13 @@ export class DirectEngine {
       p.downloadSeq = opened.context.seq;
       const fields = w.fields(opened.payload, "Capabilities");
       p.downloadUntil = w.getUint(fields, 5) === 1n ? Number(w.getUint(fields, 4)) : 0;
+      try {
+        const caps = fromBinary(CapabilitiesSchema, opened.payload);
+        p.supportsEventPush = caps.controlTypes.includes(15);
+      } catch {
+        p.supportsEventPush = false;
+      }
+      if (p.supportsEventPush) this.syncPeerSubscription(p);
     }
     this.notify();
   }
@@ -603,7 +638,14 @@ export class DirectEngine {
   private frame(peer: Peer, raw: w.Bytes, use: number) {
     if (!this.valid(peer)) return;
     try {
-      const env = fromBinary(EnvelopeSchema, raw), header = fromBinary(HeaderSchema, env.header), pending = this.pending.get(header.requestId);
+      const env = fromBinary(EnvelopeSchema, raw), header = fromBinary(HeaderSchema, env.header);
+      if (use === 1 && header.kind === PayloadKind.EVENT) {
+        if (header.machineId === peer.id && header.sender === peer.id && this.peers.get(peer.id) === peer) {
+          this.eventHandler?.(peer.id, env, header, raw.byteLength);
+        }
+        return;
+      }
+      const pending = this.pending.get(header.requestId);
       if (pending?.peer === peer && pending.use === use && header.machineId === peer.id) pending.resolve(env);
     } catch {
       /* Remote authenticates every routed result. */

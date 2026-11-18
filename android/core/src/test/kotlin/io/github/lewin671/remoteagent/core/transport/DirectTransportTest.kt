@@ -22,11 +22,13 @@ import io.github.lewin671.remoteagent.core.newAuthorityAccount
 import io.github.lewin671.remoteagent.core.peer.Wire
 import io.github.lewin671.remoteagent.core.value
 import io.github.lewin671.remoteagent.proto.BeginImageUploadResponse
+import io.github.lewin671.remoteagent.proto.Capabilities
 import io.github.lewin671.remoteagent.proto.CapabilitySnapshot
 import io.github.lewin671.remoteagent.proto.Command
 import io.github.lewin671.remoteagent.proto.CommandResult
 import io.github.lewin671.remoteagent.proto.CompleteImageUploadResponse
 import io.github.lewin671.remoteagent.proto.DeviceKind
+import io.github.lewin671.remoteagent.proto.DirectEventSubscription
 import io.github.lewin671.remoteagent.proto.DirectedPeerFrame
 import io.github.lewin671.remoteagent.proto.Envelope
 import io.github.lewin671.remoteagent.proto.ForwardReply
@@ -2031,6 +2033,76 @@ class DirectTransportTest {
             }
         } finally {
             server.close()
+        }
+    }
+
+    @Test
+    fun control10UnsupportedForControl15DoesNotCloseSessionOrFail() = runBlocking {
+        val codec = Wire(Wire.utf8("acc-1"), Wire.utf8("domain"), sha256(Wire.utf8("head")), 1L)
+        val selfSeed = sha256(Wire.utf8("self-u10")); val selfBox = sha256(Wire.utf8("self-box-u10"))
+        val peerSeed = sha256(Wire.utf8("peer-u10")); val peerBox = sha256(Wire.utf8("peer-box-u10"))
+        val self = Wire.Identity(Wire.utf8("p1"), 1L, ByteArray(16) { 1 }, ByteArray(32) { 2 }, SigningKey(selfSeed).publicKey, X25519PrivateKeyParameters(selfBox, 0).generatePublicKey().encoded, selfSeed, selfBox)
+        val peerForClient = Wire.Identity(Wire.utf8("m1"), 2L, ByteArray(16) { 3 }, ByteArray(32) { 4 }, Ed25519PrivateKeyParameters(peerSeed, 0).generatePublicKey().encoded, X25519PrivateKeyParameters(peerBox, 0).generatePublicKey().encoded, null, null)
+        val selfDaemon = Wire.Identity(Wire.utf8("m1"), 2L, ByteArray(16) { 3 }, ByteArray(32) { 4 }, SigningKey(peerSeed).publicKey, X25519PrivateKeyParameters(peerBox, 0).generatePublicKey().encoded, peerSeed, peerBox)
+        val peerForDaemon = Wire.Identity(Wire.utf8("p1"), 1L, ByteArray(16) { 1 }, ByteArray(32) { 2 }, SigningKey(selfSeed).publicKey, X25519PrivateKeyParameters(selfBox, 0).generatePublicKey().encoded, null, null)
+        val bridge = FakeRtcBridge().also { it.srflx = false }
+        val conn = ByteArray(16) { 7 }
+        val deadline = System.currentTimeMillis() + 5_000L
+        val events = CopyOnWriteArrayList<String>()
+        val clientFramesSent = CopyOnWriteArrayList<Wire.Opened>()
+        val unsupportedSentBack = CopyOnWriteArrayList<Wire.Opened>()
+        val failReasons = CopyOnWriteArrayList<DirectFailReason>()
+        lateinit var clientSession: DirectSession
+        lateinit var daemonSession: DirectSession
+        clientSession = DirectSession(
+            DirectSessionOptions(
+                self = self, peer = peerForClient, codec = codec, connection = conn, deadline = deadline, budget = DirectBudget(), stun = emptyList(), factory = bridge.phoneFactory,
+                valid = { true }, authorize = {},
+                send = { out ->
+                    runCatching { clientFramesSent += codec.openSent(out.raw, self, peerForClient, System.currentTimeMillis()) }
+                    daemonSession.receive(out.raw)
+                    true
+                },
+                chosen = {}, beforeOffer = {}, ready = { use, _ -> events += "client:open:$use" }, closed = { events += "client:closed:$it" },
+                closeReason = { failReasons += it }, frame = { _, _ -> }, capability = {},
+            ),
+        )
+        daemonSession = DirectSession(
+            DirectSessionOptions(
+                self = selfDaemon, peer = peerForDaemon, codec = codec, connection = conn, deadline = deadline, budget = DirectBudget(), stun = emptyList(), factory = bridge.daemonFactory,
+                valid = { true }, authorize = {},
+                send = { out ->
+                    runCatching {
+                        val o = codec.openSent(out.raw, selfDaemon, peerForDaemon, System.currentTimeMillis())
+                        if (o.ctx.cls == 2L && o.type == 10L) unsupportedSentBack += o
+                    }
+                    clientSession.receive(out.raw)
+                    true
+                },
+                chosen = {}, beforeOffer = {}, ready = { use, _ -> events += "daemon:open:$use" }, closed = {}, frame = { _, _ -> }, capability = {},
+            ),
+        )
+        clientSession.start()
+        try {
+            awaitCondition("both sessions ready", 4_000) {
+                events.containsAll(listOf("client:open:1", "daemon:open:1"))
+            }
+            val subBody = DirectEventSubscription.newBuilder().addSessionIds("sess-1").build().toByteArray()
+            clientSession.sendControl(15L, subBody)
+            awaitCondition("Control 15 rejected with Control 10 Unsupported", 3_000) {
+                unsupportedSentBack.isNotEmpty()
+            }
+            // Wait long enough for any retry (500ms) if controlWindow didn't ack.
+            val countBefore = clientFramesSent.count { it.ctx.cls == 2L && it.type == 15L }
+            delay(700)
+            val countAfter = clientFramesSent.count { it.ctx.cls == 2L && it.type == 15L }
+            assertEquals("Control 15 must stop retrying after Control 10 Unsupported", countBefore, countAfter)
+            assertTrue("DirectSession must remain active after Control 10 on controlWindow", clientSession.active)
+            assertTrue("PEER_UNSUPPORTED must not be reported", DirectFailReason.PEER_UNSUPPORTED !in failReasons)
+            assertTrue("client PCs must remain open", events.none { it.startsWith("client:closed:") })
+        } finally {
+            clientSession.close()
+            daemonSession.close()
         }
     }
 }

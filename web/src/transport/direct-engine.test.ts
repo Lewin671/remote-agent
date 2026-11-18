@@ -1,7 +1,8 @@
 // @vitest-environment happy-dom
 import { afterEach, expect, test, vi } from "vitest";
-import { create, toBinary } from "@bufbuild/protobuf";
-import { CapabilitySnapshotSchema } from "../gen/remoteagent/v1/transport_pb";
+import { create, fromBinary, toBinary } from "@bufbuild/protobuf";
+import { EnvelopeSchema, HeaderSchema, PayloadKind } from "../gen/remoteagent/v1/envelope_pb";
+import { CapabilitiesSchema, CapabilitySnapshotSchema, DirectEventSubscriptionSchema } from "../gen/remoteagent/v1/transport_pb";
 import { MachineCapabilitiesSchema } from "../gen/remoteagent/v1/capabilities_pb";
 import * as w from "./peer/wire";
 import { DirectSession } from "./direct-session";
@@ -406,4 +407,49 @@ test("proactive keepalive renews security before 20s window expires without inte
     vi.unstubAllGlobals();
     vi.useRealTimers();
   }
+});
+
+test("Control 15 subscription respects capabilities/readiness and routes PayloadKind.EVENT only when peer matches", () => {
+  const { engine, peer } = readyEngine();
+  const sendControl = vi.fn<(_type: number, _payload: w.Bytes) => Promise<boolean>>(async () => true);
+  Object.assign(peer.session, { sendControl });
+  Object.assign(peer, { snapshotSeq: 0n, downloadSeq: 0n });
+  peer.paths.set(1, { ready: true } as unknown as DirectChannel);
+
+  engine.setWatchedSessions(new Map([["machine", ["s1", "s2", "s3", "s4", "s5"]]]));
+  // Before Control 1 advertises type 15, nothing is sent.
+  expect(sendControl).not.toHaveBeenCalled();
+
+  const capsPayload = toBinary(CapabilitiesSchema, create(CapabilitiesSchema, {
+    controlTypes: [15],
+    expiresAtMs: BigInt(Date.now() + 30_000),
+    fileDownload: true,
+  }));
+  (engine as unknown as { capability(peer: unknown, opened: unknown): void }).capability(peer, {
+    type: 1,
+    payload: capsPayload,
+    context: { seq: 1n },
+  });
+  expect(sendControl).toHaveBeenCalledTimes(1);
+  expect(sendControl.mock.calls[0][0]).toBe(15);
+  const decodedSub = fromBinary(DirectEventSubscriptionSchema, sendControl.mock.calls[0][1]);
+  expect(decodedSub.sessionIds).toEqual(["s1", "s2", "s3", "s4"]);
+
+  // Routing: only use=1, PayloadKind.EVENT, header.machineId === peer.id && header.sender === peer.id passes.
+  const received: Array<{ machineId: string; sessionId: string; seq: bigint }> = [];
+  engine.setEventHandler((machineId, _env, header) => {
+    received.push({ machineId, sessionId: header.sessionId, seq: header.seq });
+  });
+  const mkEnv = (kind: PayloadKind, machineId: string, sender: string, seq: bigint) => toBinary(EnvelopeSchema, create(EnvelopeSchema, {
+    header: toBinary(HeaderSchema, create(HeaderSchema, { kind, machineId, sender, sessionId: "s1", seq })),
+  }));
+  const frameFn = (engine as unknown as { frame(peer: unknown, raw: Uint8Array, use: number): void }).frame.bind(engine);
+
+  frameFn(peer, mkEnv(PayloadKind.EVENT, "wrong-machine", "machine", 1n), 1);
+  frameFn(peer, mkEnv(PayloadKind.EVENT, "machine", "wrong-sender", 2n), 1);
+  frameFn(peer, mkEnv(PayloadKind.EVENT, "machine", "machine", 3n), 2);
+  frameFn(peer, mkEnv(PayloadKind.COMMAND_RESULT, "machine", "machine", 4n), 1);
+  frameFn(peer, mkEnv(PayloadKind.EVENT, "machine", "machine", 5n), 1);
+
+  expect(received).toEqual([{ machineId: "machine", sessionId: "s1", seq: 5n }]);
 });

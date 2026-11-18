@@ -245,6 +245,7 @@ export interface CoreExecutor {
   loadScheduleSeen?(machineId: string): Promise<ScheduleSeenLoadedEvent>;
   saveScheduleSeen?(machineId: string, tokens: ScheduleSeenToken[]): Promise<void>;
   dismissScheduleNotifications?(runs: ScheduleNotificationRef[]): void;
+  setWatchedSessions?(sessionIds: string[]): void;
 }
 
 export interface SessionWindowOptions {
@@ -776,6 +777,7 @@ export class CoreHost {
     this.watchCounts.set(sessionId, prev + 1);
     if (prev === 0) {
       this.sessionCache.delete(sessionId);
+      this.executor?.setWatchedSessions?.([...this.watchCounts.keys()].reverse());
       this.emit({ case: "sessionWatch", value: create(SessionWatchEventSchema, { sessionId, watched: true }) });
     }
   }
@@ -787,6 +789,7 @@ export class CoreHost {
       this.watchCounts.delete(sessionId);
       this.sessionCache.delete(sessionId);
       if (prev === 1) {
+        this.executor?.setWatchedSessions?.([...this.watchCounts.keys()].reverse());
         this.emit({ case: "sessionWatch", value: create(SessionWatchEventSchema, { sessionId, watched: false }) });
       }
       return;

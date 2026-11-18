@@ -232,6 +232,7 @@ public final actor Remote {
     // Security Gate & opaque cipher cache refs
     var sessionKeys: [String: Data] = [:]
     var sessionMachines: [String: String] = [:]
+    private var watchedSessionIds: [String] = []
     var machineReplacements: [String: [PBMachineReplacementProof]] = [:]
     var trustedMembers: [String: DeviceSecurity.Member] = [:]
     var archiveMachines: Set<String> = []
@@ -264,13 +265,15 @@ public final actor Remote {
         public var onSavePrefs: @Sendable (PrefsOp) async throws -> Void
         public var onDirectStatus: @Sendable (String, Bool, PBDirectRouteReport) async -> Void
         public var onLoadMoreSessions: @Sendable () async -> Void
+        public var onDirectEvents: @Sendable (String, String, [PBCorePlainEvent]) async -> Void
         public init(
             onFetchSession: @escaping @Sendable (String) async -> Void,
             onRefresh: @escaping @Sendable () async -> Void,
             onRefreshDevices: @escaping @Sendable () async -> Void,
             onSavePrefs: @escaping @Sendable (PrefsOp) async throws -> Void,
             onDirectStatus: @escaping @Sendable (String, Bool, PBDirectRouteReport) async -> Void,
-            onLoadMoreSessions: @escaping @Sendable () async -> Void = {}
+            onLoadMoreSessions: @escaping @Sendable () async -> Void = {},
+            onDirectEvents: @escaping @Sendable (String, String, [PBCorePlainEvent]) async -> Void = { _, _, _ in }
         ) {
             self.onFetchSession = onFetchSession
             self.onRefresh = onRefresh
@@ -278,6 +281,7 @@ public final actor Remote {
             self.onSavePrefs = onSavePrefs
             self.onDirectStatus = onDirectStatus
             self.onLoadMoreSessions = onLoadMoreSessions
+            self.onDirectEvents = onDirectEvents
         }
     }
 
@@ -342,6 +346,12 @@ public final actor Remote {
         holder.remote = self
         direct?.probe = { [holder] id, path in await holder.remote?.probeRead(id, path) }
         direct?.trace = log
+        let directEvents = SerialChain()
+        direct?.eventHandler = { [holder] machineId, env, header, size in
+            directEvents.run {
+                await holder.remote?.handleDirectEvent(machineId: machineId, envelope: env, header: header, size: size)
+            }
+        }
     }
 
     public nonisolated var current: RemoteState { state.value }
@@ -366,7 +376,53 @@ public final actor Remote {
         for (sid, s) in updated.sessions {
             sessionMachines[sid] = s.machineId
         }
+        syncDirectSubscriptions()
         if updated != state.value { state.set(updated) }
+    }
+
+    public func setWatchedSessions(_ sessionIds: [String]) {
+        watchedSessionIds = sessionIds
+        syncDirectSubscriptions()
+    }
+
+    private func syncDirectSubscriptions() {
+        guard let direct else { return }
+        var byMachine: [String: [String]] = [:]
+        for sid in watchedSessionIds {
+            guard let machineId = sessionMachines[sid], !machineId.isEmpty else { continue }
+            var list = byMachine[machineId] ?? []
+            if list.count < 4 && !list.contains(sid) {
+                list.append(sid)
+                byMachine[machineId] = list
+            }
+        }
+        direct.setWatchedSessions(byMachine)
+    }
+
+    private func handleDirectEvent(machineId: String, envelope: PBEnvelope, header: DeviceSecurity.Header, size: Int) async {
+        guard !closed else { return }
+        let sid = header.session
+        guard !sid.isEmpty, header.seq > 0, watchedSessionIds.contains(sid) else { return }
+        guard sessionMachines[sid] == machineId, header.sender == machineId else { return }
+        guard let seed = sessionKeys[sid], !seed.isEmpty else { return }
+        do {
+            let (h, ev) = try await openSecureMessage(
+                envelope: envelope,
+                want: Place(.event, machineId: machineId, sessionId: sid, seq: header.seq),
+                as: PBEvent.self,
+                history: false
+            )
+            guard !closed, h.sender == machineId, ev.seq == header.seq, ev.sessionID == sid else { return }
+            let plain = PBCorePlainEvent.with {
+                $0.seq = header.seq
+                $0.event = ev
+                $0.verified = true
+                $0.approxBytes = Int64(max(size, 64))
+            }
+            await hostHooks?.onDirectEvents(sid, machineId, [plain])
+        } catch {
+            // Direct push is best-effort; drop errors silently without creating broken/retired events.
+        }
     }
 
     public func setNetworkGeneration(_ gen: UInt64) {

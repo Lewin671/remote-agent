@@ -29,6 +29,7 @@ import {
   CommandOutcomeEventSchema,
   CommandRouteHint,
   DevicesFetchedEventSchema,
+  DirectEventsReceivedEventSchema,
   EventSchema as CoreEventSchema,
   EventsAppendedFrameSchema,
   EventsPageFetchedEventSchema,
@@ -147,6 +148,7 @@ import {
   EnvelopeSchema,
   HeaderSchema,
   type Envelope,
+  type Header,
   PayloadKind,
 } from "./gen/remoteagent/v1/envelope_pb";
 import {
@@ -411,6 +413,8 @@ export class Remote implements CoreExecutor {
   private trustedMembers = new Map<string, Member>();
   private archiveMachines = new Set<string>();
   private sessionSeeds = new Map<string, Uint8Array<ArrayBuffer>>();
+  private watchedSessionIds: string[] = [];
+  private directEventChains = new Map<string, Promise<void>>();
   private recoveryObjectsPending = false;
   private descriptionPending = false;
   private needsDescribeSelf = false;
@@ -579,6 +583,9 @@ export class Remote implements CoreExecutor {
         }
       },
     );
+    this.direct.setEventHandler((machineId, env, header, size) => {
+      this.handleDirectEvent(machineId, env, header, size);
+    });
     this.security.onSync = (record, started) => {
       this.lastSecuritySyncAt = started;
       void this.direct.synced(record, started);
@@ -806,6 +813,72 @@ export class Remote implements CoreExecutor {
     this.ensureHost().retryEvents(id);
   }
 
+  setWatchedSessions(sessionIds: string[]) {
+    this.watchedSessionIds = [...sessionIds];
+    this.syncDirectSubscriptions();
+  }
+
+  private syncDirectSubscriptions() {
+    const byMachine = new Map<string, string[]>();
+    for (const sid of this.watchedSessionIds) {
+      const machineId = this.cachedSessionMap.get(sid)?.machineId;
+      if (!machineId) continue;
+      let list = byMachine.get(machineId);
+      if (!list) {
+        list = [];
+        byMachine.set(machineId, list);
+      }
+      if (list.length < 4 && !list.includes(sid)) list.push(sid);
+    }
+    this.direct.setWatchedSessions(byMachine);
+  }
+
+  private handleDirectEvent(machineId: string, env: Envelope, header: Header, size: number) {
+    if (this.closed) return;
+    const sid = header.sessionId;
+    if (!sid || header.seq <= 0n || !this.watchedSessionIds.includes(sid)) return;
+    if (this.cachedSessionMap.get(sid)?.machineId !== machineId) return;
+    if (header.sender !== machineId) return;
+    const seed = this.sessionSeeds.get(sid);
+    if (!seed || seed.byteLength === 0) return;
+
+    const prev = this.directEventChains.get(sid) ?? Promise.resolve();
+    const next = prev
+      .then(async () => {
+        if (this.closed) return;
+        if (!this.watchedSessionIds.includes(sid) || this.cachedSessionMap.get(sid)?.machineId !== machineId) return;
+        const opened = await this.openSecureMessage(
+          env,
+          { kind: PayloadKind.EVENT, machineId, sessionId: sid, seq: header.seq },
+          EventSchema,
+          false,
+        );
+        if (this.closed) return;
+        if (opened.header.sender !== machineId) return;
+        if (opened.msg.sessionId !== sid || opened.msg.seq !== header.seq) return;
+        const plainEvent = create(PlainEventSchema, {
+          seq: header.seq,
+          event: opened.msg,
+          verified: header.version === 3,
+          approxBytes: BigInt(Math.max(size, 64)),
+        });
+        this.hostBridge?.dispatchEvent(
+          create(CoreEventSchema, {
+            event: {
+              case: "directEventsReceived",
+              value: create(DirectEventsReceivedEventSchema, {
+                sessionId: sid,
+                machineId,
+                events: [plainEvent],
+              }),
+            },
+          }),
+        );
+      })
+      .catch(() => undefined);
+    this.directEventChains.set(sid, next);
+  }
+
   changePrefs(kind: "pin" | "unpin" | "hide" | "unhide", path: string) {
     this.ensureHost().changeProjectPref(kind, path);
     if (!this.syncStateView?.prefsSyncing && this.cachedPrefPending.size === 0) {
@@ -842,6 +915,7 @@ export class Remote implements CoreExecutor {
       nextSessions.set(sv.sessionId, syncSessionToView(sv));
     }
     this.cachedSessionMap = nextSessions;
+    this.syncDirectSubscriptions();
 
     const nextDevices = new Map<string, DeviceInfo>();
     for (const dv of view.devices) {

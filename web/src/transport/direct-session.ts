@@ -26,6 +26,7 @@ type PC = { generation: bigint; restartSent: boolean; gate: Signal; sender: Send
 export class DirectSession {
   private pcs: [PC, PC];
   private boot: Sender;
+  private controlWindow: Sender;
   private chain = Promise.resolve();
   private timer: ReturnType<typeof setInterval>;
   private tickQueued = false;
@@ -53,7 +54,7 @@ export class DirectSession {
       gate.roundDeadline = options.deadline; gate.current = options.valid; gate.leaseUntil = Number.MAX_SAFE_INTEGER;
       return { generation: 1n, restartSent: false, gate, sender: new Sender(options.deadline), seq: 0n, batch: new CandidateBatcher(1n, options.deadline, 1), ufrag: new Uint8Array(), mid: new Uint8Array(), ended: false, confirmed: false, announced: false, actions: [], diag: options.diag?.pc(use) };
     };
-    this.pcs = [pc(1), pc(2)]; this.boot = new Sender(options.deadline); this.retainUntil = options.deadline + 300_000;
+    this.pcs = [pc(1), pc(2)]; this.boot = new Sender(options.deadline); this.controlWindow = new Sender(Number.MAX_SAFE_INTEGER); this.retainUntil = options.deadline + 300_000;
     this.timer = setInterval(() => {
       if (this.ended) return;
       const now = Date.now();
@@ -62,6 +63,7 @@ export class DirectSession {
         p.sender.clock = Math.max(p.sender.clock, now);
       }
       this.boot.clock = Math.max(this.boot.clock, now);
+      this.controlWindow.clock = Math.max(this.controlWindow.clock, now);
       if (!options.valid() || this.retired && now >= this.retainUntil) { this.close(); return; }
       if (this.tickQueued) return; this.tickQueued = true;
       void this.queue(() => this.tick()).finally(() => { this.tickQueued = false; });
@@ -107,7 +109,7 @@ export class DirectSession {
     this.retainUntil = Math.max(this.retainUntil, Number(c.deadline) + 300_000);
     if (c.cls === 2n && o.type === 4) {
       const fields = w.fields(o.payload, "Ack"), hash = w.getBytes(fields, 6);
-      for (const sender of [this.boot, ...this.pcs.map(p => p.sender)]) {
+      for (const sender of [this.boot, this.controlWindow, ...this.pcs.map(p => p.sender)]) {
         const sent = sender.pending.get(w.hex(hash)); if (!sent) continue;
         const original = await this.options.codec.openSent(sent.raw, this.options.self, peer, now), q = original.context;
         if (q.cls !== w.getUint(fields, 4) || q.seq !== w.getUint(fields, 5) || q.generation !== w.getUint(fields, 7) || q.use !== w.getUint(fields, 8)) return;
@@ -205,12 +207,31 @@ export class DirectSession {
   }
   private async unsupported(o: w.Opened, now: number) {
     const fields = w.fields(o.payload, "Unsupported"), hash = w.getBytes(fields, 4);
+    const cwPending = this.controlWindow.pending.get(w.hex(hash));
+    if (cwPending) {
+      const original = await this.options.codec.openSent(cwPending.raw, this.options.self, this.pcs[0].gate.peer, now);
+      if (original.context.cls === w.getUint(fields, 1) && BigInt(original.type) === w.getUint(fields, 2) && original.context.seq === w.getUint(fields, 3)) {
+        this.controlWindow.ack(hash);
+      }
+      return;
+    }
     for (const [index, p] of this.pcs.entries()) {
       const pending = p.sender.pending.get(w.hex(hash)); if (!pending) continue;
       const original = await this.options.codec.openSent(pending.raw, this.options.self, p.gate.peer, now);
       if (original.context.cls !== w.getUint(fields, 1) || BigInt(original.type) !== w.getUint(fields, 2) || original.context.seq !== w.getUint(fields, 3)) return;
       p.sender.ack(hash); p.channel?.close(); p.channel = undefined; p.gate.closed = true; this.failure ??= "peer_unsupported"; this.options.diag?.note("unsupported"); this.peerScope.set(String(index), now); return;
     }
+  }
+  sendControl(type: number, payload: w.Bytes): Promise<boolean> {
+    return new Promise<boolean>((resolve) => {
+      void this.queue(async () => {
+        await this.options.authorize();
+        if (!this.active) { resolve(false); return; }
+        const now = Date.now(), context = w.context(this.options.self, this.pcs[0].gate.peer, this.options.connection, 0, 1, ++this.controlSeq, now, 2);
+        const raw = await this.options.codec.seal(this.options.self, this.pcs[0].gate.peer, context, type, payload);
+        resolve(await this.controlWindow.enqueue(raw, now, Number(context.deadline), 1));
+      }).catch(() => resolve(false));
+    });
   }
   private async signal(index: number, type: number, body: w.Bytes) {
     const p = this.pcs[index], now = Date.now(), generation = p.gate.generation, sender = p.sender;
@@ -303,6 +324,7 @@ export class DirectSession {
       this.close(); return;
     }
     for (const raw of await this.boot.tick(now)) await this.transmit(raw);
+    for (const raw of await this.controlWindow.tick(now)) await this.transmit(raw);
     for (const [index, p] of this.pcs.entries()) {
       for (const [key, until] of p.gate.cacheUntil) if (now > until) { p.gate.cacheUntil.delete(key); p.gate.seen.delete(key); }
       if (!p.announced && (p.gate.closed || now >= this.options.deadline)) { p.channel?.close(); p.channel = undefined; }
@@ -333,9 +355,9 @@ export class DirectSession {
     return this.options.send({ raw, deadline: Number(c.deadline), critical: c.cls === 2n || ![5, 6].includes(o.type), valid: () => !this.ended && this.options.valid() && Date.now() < Number(c.deadline) && !(c.cls === 1n && c.use > 0n && c.use <= 2n && c.generation !== this.pcs[Number(c.use) - 1].generation) && !(this.retired && c.cls === 1n && (o.type === 1 || o.type >= 3 && o.type <= 8)) && !(c.cls === 1n && o.type === 1 && !this.options.budget.ownerAvailable(w.text(this.options.peer.id), w.hex(this.options.connection))) });
   }
   delivery(id: w.Bytes, status: number, retry: number, current: () => boolean) {
-    void this.queue(async () => { if (!current()) return; for (const sender of [this.boot, ...this.pcs.map(p => p.sender)]) for (const pending of sender.pending.values()) { if (!w.equal(w.getBytes(w.parse(pending.raw, 5), 4), id)) continue; if (status === 3) { sender.limited(pending.hash, Date.now(), retry); this.options.diag?.note("limited"); } if (status === 2) { sender.offline(); this.options.diag?.note("offline"); } } });
+    void this.queue(async () => { if (!current()) return; for (const sender of [this.boot, this.controlWindow, ...this.pcs.map(p => p.sender)]) for (const pending of sender.pending.values()) { if (!w.equal(w.getBytes(w.parse(pending.raw, 5), 4), id)) continue; if (status === 3) { sender.limited(pending.hash, Date.now(), retry); this.options.diag?.note("limited"); } if (status === 2) { sender.offline(); this.options.diag?.note("offline"); } } });
   }
-  discovered() { this.boot.discovered(); for (const p of this.pcs) p.sender.discovered(); }
+  discovered() { this.boot.discovered(); this.controlWindow.discovered(); for (const p of this.pcs) p.sender.discovered(); }
   /** The diagnostics sheet is open: read the live connections' stats now. */
   sampleNow() { for (const p of this.pcs) p.channel?.sample(); }
   retire() { if (this.retired) return; this.retired = true; for (const p of this.pcs) { p.gate.retire(false); p.channel?.close(); p.channel = undefined; p.actions = []; } }

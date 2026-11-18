@@ -136,7 +136,7 @@ class CoreHost(
         extract: (ViewModel) -> V?,
     ): ScreenSlot<V> = ScreenSlot(initial, build, extract).also { screenSlots[target] = it }
 
-    private val sessionWatchers = HashMap<String, KeyedWatcher<SessionViewModel, SessionWindowRequest>>()
+    private val sessionWatchers = LinkedHashMap<String, KeyedWatcher<SessionViewModel, SessionWindowRequest>>()
     private val testSessionViews = HashMap<String, SessionViewModel>()
     private val scheduleStripWatchers = HashMap<String, KeyedWatcher<ScheduleSessionStripViewModel, Unit>>()
     private val testScheduleStripViews = HashMap<String, ScheduleSessionStripViewModel>()
@@ -158,6 +158,11 @@ class CoreHost(
     var onRenameClient: (RenameClientEffect) -> Unit = {}
     var onCheckUpdates: (CheckUpdatesEffect) -> Unit = {}
     var onPersistClientPrefs: (PersistClientPrefsEffect) -> Unit = {}
+    var onWatchedSessionsChanged: (List<String>) -> Unit = {}
+
+    fun watchedSessionIds(): List<String> = synchronized(sessionWatchers) {
+        sessionWatchers.keys.toList().reversed()
+    }
     var onPrepareCleanupSession: (PrepareCleanupSessionEffect) -> Unit = {}
     var onScheduleReadCache: (ScheduleReadCacheEffect) -> Unit = {}
     var onScheduleDeleteCache: (ScheduleDeleteCacheEffect) -> Unit = {}
@@ -791,6 +796,7 @@ class CoreHost(
             sessionWatchers[sessionId] == null && testSessionViews[sessionId] == null
         }
         val initialView = if (needsSeed) computeSessionView(sessionId, initialWindow) else null
+        var watchedSnapshot: List<String>? = null
         val (watcher, becameActive) = synchronized(sessionWatchers) {
             val existing = sessionWatchers[sessionId]
             if (existing != null) {
@@ -807,9 +813,11 @@ class CoreHost(
                     refCount = 1,
                 )
                 sessionWatchers[sessionId] = created
+                watchedSnapshot = sessionWatchers.keys.toList().reversed()
                 created to true
             }
         }
+        watchedSnapshot?.let(onWatchedSessionsChanged)
         if (becameActive) dispatchAction {
             sendOnWorker { setSessionWatch(SessionWatchEvent.newBuilder().setSessionId(sessionId).setWatched(true)) }
             refreshSessionOnWorker(sessionId)
@@ -820,14 +828,17 @@ class CoreHost(
     }
 
     private fun releaseSessionWatcher(sessionId: String) {
+        var watchedSnapshot: List<String>? = null
         val becameIdle = synchronized(sessionWatchers) {
             val existing = sessionWatchers[sessionId] ?: return
             existing.refCount--
             if (existing.refCount <= 0) {
                 sessionWatchers.remove(sessionId)
+                watchedSnapshot = sessionWatchers.keys.toList().reversed()
                 true
             } else false
         }
+        watchedSnapshot?.let(onWatchedSessionsChanged)
         if (becameIdle) send { setSessionWatch(SessionWatchEvent.newBuilder().setSessionId(sessionId).setWatched(false)) }
     }
 

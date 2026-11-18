@@ -97,6 +97,7 @@ protocol CoreHostExecutor: AnyObject, Sendable {
     func executeRpc(_ effect: PBCoreRpcEffect) async -> PBCoreEvent
     func dispatchCommandAttempt(_ effect: PBCoreDispatchCommandEffect) async -> PBCoreCommandOutcomeEvent
     func applyTransitionalPrefsOp(_ op: PrefsOp) async throws
+    func setWatchedSessions(_ sessionIds: [String]) async
     func describeSelf(platform: String, description: String) async throws
     func cachedScheduleResultJson(_ machineId: String) async -> Data?
     func deleteScheduleCache(_ machineId: String) async
@@ -346,8 +347,18 @@ actor CoreHost: SyncEngine {
                 await self?.dispatch {
                     $0.homeLoadMoreEnded = PBCoreHomeLoadMoreEndedAction()
                 }
+            },
+            onDirectEvents: { [weak self] sid, machineId, events in
+                await self?.dispatch {
+                    $0.directEventsReceived = .with {
+                        $0.sessionID = sid
+                        $0.machineID = machineId
+                        $0.events = events
+                    }
+                }
             }
         ))
+        await syncWatchedSessionsToExecutor()
     }
 
     // MARK: - SyncEngine Conformance
@@ -684,6 +695,7 @@ actor CoreHost: SyncEngine {
         sessionWatches[token] = SessionWatchEntry(token: token, sessionID: sid, window: initialWindow)
         sessionWatchOrder.append(token)
         if !wasWatched {
+            await syncWatchedSessionsToExecutor()
             await dispatch {
                 $0.sessionWatch = .with {
                     $0.sessionID = sid
@@ -693,6 +705,16 @@ actor CoreHost: SyncEngine {
         }
         await refreshSessionViews(for: [sid])
         return token
+    }
+
+    private func syncWatchedSessionsToExecutor() async {
+        var seen = Set<String>()
+        var ordered: [String] = []
+        for token in sessionWatchOrder.reversed() {
+            guard let sid = sessionWatches[token]?.sessionID, !sid.isEmpty, seen.insert(sid).inserted else { continue }
+            ordered.append(sid)
+        }
+        await executor.setWatchedSessions(ordered)
     }
 
     func updateSessionWindow(token: UUID?, window: PBSessionWindowRequest) async {
@@ -710,6 +732,7 @@ actor CoreHost: SyncEngine {
         guard !closed else { return }
         let stillWatched = sessionWatches.values.contains { $0.sessionID == entry.sessionID }
         if !stillWatched {
+            await syncWatchedSessionsToExecutor()
             await dispatch {
                 $0.sessionWatch = .with {
                     $0.sessionID = entry.sessionID

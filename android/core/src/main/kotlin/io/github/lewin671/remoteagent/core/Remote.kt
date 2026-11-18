@@ -349,6 +349,8 @@ class Remote(
 
     private val models = HashMap<String, Deferred<ListModelsResponse>>()
     private val sessionKeys = ConcurrentHashMap<String, ByteArray>()
+    @Volatile private var watchedSessionIds: List<String> = emptyList()
+    private val directEventLocks = ConcurrentHashMap<String, Mutex>()
     private val archiveMachines = ConcurrentHashMap.newKeySet<String>()
     private val trustedMembers = ConcurrentHashMap<String, DeviceSecurity.Member>()
     @Volatile private var recoveryObjectsPending = true
@@ -438,6 +440,7 @@ class Remote(
             if (io.github.lewin671.remoteagent.core.proto.ScreenTarget.SCREEN_TARGET_SYNC_STATE in targets) {
                 updateProjectedStateNow()
                 publishDirectReports(coreHost.syncStateView.value.machinesList.map { it.machineId })
+                syncDirectSubscriptions()
             }
         }
         scope.launch {
@@ -485,6 +488,15 @@ class Remote(
     // --- M2 Effect executors ---
 
     private fun wireCoreHost() {
+        direct.setEventHandler { machineId, env, header, size ->
+            handleDirectEvent(machineId, env, header, size)
+        }
+        coreHost.onWatchedSessionsChanged = { ids ->
+            watchedSessionIds = ids
+            syncDirectSubscriptions()
+        }
+        watchedSessionIds = coreHost.watchedSessionIds()
+        syncDirectSubscriptions()
         coreHost.onSaveHomeScope = { eff ->
             homeScopeStore?.writeToken(eff.scopeToken.ifEmpty { encodeHomeScopeToken(account.localKey, eff.scopeKey) })
         }
@@ -1048,6 +1060,66 @@ class Remote(
             }
         }
         return b.build()
+    }
+
+    private fun syncDirectSubscriptions() {
+        val byMachine = LinkedHashMap<String, MutableList<String>>()
+        for (sid in watchedSessionIds) {
+            val machineId = sessionMachineId(sid)
+            if (machineId.isEmpty()) continue
+            val list = byMachine.getOrPut(machineId) { ArrayList() }
+            if (list.size < 4 && sid !in list) list.add(sid)
+        }
+        direct.setWatchedSessions(byMachine)
+    }
+
+    private fun handleDirectEvent(machineId: String, env: Envelope, header: DeviceSecurity.Header, size: Int) {
+        if (closed) return
+        val sid = header.session
+        if (sid.isEmpty() || header.seq == 0uL || header.seq > 0x7FFF_FFFF_FFFF_FFFFuL) return
+        if (sid !in watchedSessionIds) return
+        if (sessionMachineId(sid) != machineId || header.sender != machineId) return
+        if (!sessionKeys.containsKey(sid)) return
+
+        val lock = directEventLocks.computeIfAbsent(sid) { Mutex() }
+        scope.launch {
+            lock.withLock {
+                openDirectEvent(machineId, sid, env, header, size)
+            }
+        }
+    }
+
+    private suspend fun openDirectEvent(machineId: String, sid: String, env: Envelope, header: DeviceSecurity.Header, size: Int) {
+        if (closed || sid !in watchedSessionIds || sessionMachineId(sid) != machineId || !sessionKeys.containsKey(sid)) return
+        val seq = header.seq.toLong()
+        try {
+            ensureEpochForEnvelope(env)
+            val (h, ev) = openSecureMessage(
+                env,
+                Place(PayloadKind.PAYLOAD_KIND_EVENT, machineId = machineId, sessionId = sid, seq = seq),
+                Event::parseFrom,
+                live = true,
+            )
+            if (closed || h.sender != machineId || ev.seq != seq || ev.sessionId != sid) return
+            val plain = PlainEvent.newBuilder()
+                .setSeq(seq)
+                .setEvent(ev)
+                .setVerified(true)
+                .setApproxBytes(maxOf(size, 64).toLong())
+                .build()
+            coreHost.dispatch(
+                CoreEvent.newBuilder()
+                    .setDirectEventsReceived(
+                        DirectEventsReceivedEvent.newBuilder()
+                            .setSessionId(sid)
+                            .setMachineId(machineId)
+                            .addEvents(plain),
+                    )
+                    .build(),
+            )
+        } catch (e: Exception) {
+            if (e is CancellationException) throw e
+        }
     }
 
     private suspend fun openPlainEvent(

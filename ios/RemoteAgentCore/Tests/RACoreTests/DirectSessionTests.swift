@@ -1,4 +1,5 @@
 import Foundation
+import RAProto
 import Testing
 @testable import RACore
 
@@ -98,5 +99,28 @@ final class SessionPair: @unchecked Sendable {
         #expect(pair.clientSession.failure == .noResponse)
         pair.close()
         #expect(pair.net.all.isEmpty, "no PeerConnection was ever made without the computer's proof")
+    }
+
+    @Test func control10UnsupportedForControl15DoesNotClosePCsOrFailSession() async throws {
+        let pair = try SessionPair(deadlineMs: 5_000)
+        await pair.clientSession.start()
+        #expect(await eventually { pair.clientPaths.count == 2 && pair.machinePaths.count == 2 })
+
+        let sub = try PBDirectEventSubscription.with { $0.sessionIds = ["sess-1"] }.serializedData()
+        pair.clientSession.sendControl(15, Array(sub))
+
+        // Wait until machine receives Control 15 and replies with Control 10 (Unsupported),
+        // then advance clock > 500ms retry window to ensure Control 15 stops retrying.
+        #expect(await eventually {
+            !pair.clientPaths.isEmpty && pair.clientClosed.isEmpty
+        })
+        try await Task.sleep(nanoseconds: 150_000_000)
+        pair.time.advance(700)
+        try await Task.sleep(nanoseconds: 100_000_000)
+
+        #expect(pair.clientSession.active)
+        #expect(pair.clientSession.failure == nil)
+        #expect(pair.clientClosed.isEmpty)
+        pair.close()
     }
 }

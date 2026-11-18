@@ -102,3 +102,38 @@ test("closing a round that never timed out records that it was cancelled, and a 
  session.close();expect(diag.data.end).toBe("cancelled");
  session.close();expect(diag.data.end).toBe("cancelled");
 });
+
+test("Control 10 (Unsupported) for Control 15 stops controlWindow retries without failing session or closing PCs", async () => {
+ vi.useFakeTimers();
+ const sdk = fakeRTC(), closed = vi.fn(), sent: w.Bytes[] = [];
+ const self = await fixture("client", 1), peer = await fixture("machine", 2), codec = await fixtureCodec();
+ const session = new DirectSession({
+  self, peer, codec, connection: new Uint8Array(16), deadline: Date.now() + 10_000,
+  budget: new DirectBudget(), stun: [], valid: () => true, authorize: async () => {},
+  send: (out) => { sent.push(out.raw); return true; },
+  chosen: () => {}, beforeOffer: () => {}, ready: () => {}, closed, frame: () => {}, capability: () => {}, factory: sdk.factory,
+ });
+ const owner = session as unknown as Owner & { controlWindow: Sender };
+ try {
+  expect(owner.makePC(0)).toBe(true);
+  owner.pcs[0].gate.peer = peer;
+  expect(await session.sendControl(15, w.pb(w.b(1, w.utf8("sess-1"))))).toBe(true);
+  await owner.tick();
+  expect(sent).toHaveLength(1);
+  expect(owner.controlWindow.pending.size).toBe(1);
+
+  const opened = await codec.open(sent[0], self, peer, Date.now());
+  const ctx = w.context(peer, self, new Uint8Array(16), 0, 1, 1n, Date.now(), 2);
+  const unsupBody = w.pb(w.u(1, 2), w.u(2, 15), w.u(3, opened.context.seq), w.b(4, opened.hash));
+  const unsupRaw = await codec.seal(peer, self, ctx, 10, unsupBody);
+  expect(session.receive(unsupRaw)).toBe(true);
+  await owner.chain;
+
+  expect(owner.controlWindow.pending.size).toBe(0);
+  expect(session.failure).toBeUndefined();
+  expect(owner.pcs[0].gate.closed).toBe(false);
+  expect(closed).not.toHaveBeenCalled();
+ } finally {
+  session.close();
+ }
+});

@@ -84,6 +84,7 @@ internal class DirectSession(val options: DirectSessionOptions) {
 
     private val pcs: Array<PC>
     private val boot: Sender
+    private val controlWindow = Sender(Long.MAX_VALUE)
     private val endedFlag = AtomicBoolean(false)
     private val retiredFlag = AtomicBoolean(false)
     private val tickQueued = AtomicBoolean(false)
@@ -148,6 +149,7 @@ internal class DirectSession(val options: DirectSessionOptions) {
                     p.sender.advanceClock(t)
                 }
                 boot.advanceClock(t)
+                controlWindow.advanceClock(t)
                 if (!options.valid() || (retiredFlag.get() && t >= retainUntil)) {
                     closeWhy(if (!options.valid()) "not_allowed" else "retired_replay_window_over")
                     return@launch
@@ -266,7 +268,7 @@ internal class DirectSession(val options: DirectSessionOptions) {
         if (c.cls == 2L && o.type == 4L) {
             val fields = Schema.fields(o.payload, "Ack")
             val hash = Wire.getBytes(fields, 6)
-            for (sender in listOf(boot, pcs[0].sender, pcs[1].sender)) {
+            for (sender in listOf(boot, controlWindow, pcs[0].sender, pcs[1].sender)) {
                 val sent = sender.pending[Wire.hex(hash)] ?: continue
                 val original = options.codec.openSent(sent.raw, options.self, peer, now)
                 val q = original.ctx
@@ -452,6 +454,17 @@ internal class DirectSession(val options: DirectSessionOptions) {
     private fun unsupported(o: Wire.Opened, now: Long) {
         val fields = Schema.fields(o.payload, "Unsupported")
         val hash = Wire.getBytes(fields, 4)
+        val cwPending = controlWindow.pending[Wire.hex(hash)]
+        if (cwPending != null) {
+            val original = options.codec.openSent(cwPending.raw, options.self, pcs[0].gate.peer, now)
+            if (original.ctx.cls == Wire.getUint(fields, 1) &&
+                original.type == Wire.getUint(fields, 2) &&
+                original.ctx.seq == Wire.getUint(fields, 3)
+            ) {
+                controlWindow.ack(hash)
+            }
+            return
+        }
         for ((index, p) in pcs.withIndex()) {
             val pending = p.sender.pending[Wire.hex(hash)] ?: continue
             val original = options.codec.openSent(pending.raw, options.self, p.gate.peer, now)
@@ -467,6 +480,17 @@ internal class DirectSession(val options: DirectSessionOptions) {
             unsupportedSeen = true
             options.closeReason?.invoke(DirectFailReason.PEER_UNSUPPORTED)
             return
+        }
+    }
+
+    fun sendControl(type: Long, body: ByteArray) {
+        queue {
+            authorizeTimed()
+            if (!active) return@queue
+            val now = options.clock()
+            val ctx = Wire.Context(options.self, pcs[0].gate.peer, options.connection, 0L, 1L, ++controlSeq, now, 2L, false)
+            val raw = options.codec.seal(options.self, pcs[0].gate.peer, ctx, type, body, null, null, null)
+            controlWindow.enqueue(raw, now, ctx.deadline, 1L)
         }
     }
 
@@ -641,6 +665,7 @@ internal class DirectSession(val options: DirectSessionOptions) {
             return
         }
         for (raw in boot.tick(now)) transmit(raw)
+        for (raw in controlWindow.tick(now)) transmit(raw)
         for ((index, p) in pcs.withIndex()) {
             for (k in p.gate.cacheUntil.keys.toList()) {
                 val until = p.gate.cacheUntil[k] ?: continue
@@ -732,7 +757,7 @@ internal class DirectSession(val options: DirectSessionOptions) {
     fun delivery(id: ByteArray, status: Int, retryMs: Int, current: () -> Boolean) {
         queue {
             if (!current()) return@queue
-            for (sender in listOf(boot, pcs[0].sender, pcs[1].sender)) {
+            for (sender in listOf(boot, controlWindow, pcs[0].sender, pcs[1].sender)) {
                 for (pending in sender.pending.values) {
                     val f = Wire.parse(pending.raw, 5)
                     if (!Wire.getBytes(f, 4).contentEquals(id)) continue
@@ -746,6 +771,7 @@ internal class DirectSession(val options: DirectSessionOptions) {
     fun discovered() {
         queue {
             boot.discovered()
+            controlWindow.discovered()
             for (p in pcs) p.sender.discovered()
         }
     }

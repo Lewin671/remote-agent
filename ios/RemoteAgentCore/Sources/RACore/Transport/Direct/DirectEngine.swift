@@ -53,6 +53,7 @@ final class DirectEngine: @unchecked Sendable {
         var live = true, selected = false
         var capabilities: PBMachineCapabilities?
         var snapshotUntil: UInt64 = 0, downloadUntil: UInt64 = 0, snapshotSeq: UInt64 = 0, downloadSeq: UInt64 = 0
+        var supportsEventPush = false, subscribedKey = ""
         var redialAt: UInt64?, readyAt: UInt64?, retryDelay: UInt64?
         init(id: String, head: String) { self.id = id; self.head = head }
     }
@@ -119,6 +120,36 @@ final class DirectEngine: @unchecked Sendable {
     var trace: (@Sendable (String) -> Void)?
     var probe: (@Sendable (String, RouteName) async -> Void)? { get { lock.withLock { _probe } } set { lock.withLock { _probe = newValue } } }
     private var _probe: (@Sendable (String, RouteName) async -> Void)?
+    var eventHandler: (@Sendable (String, PBEnvelope, DeviceSecurity.Header, Int) -> Void)? {
+        get { lock.withLock { _eventHandler } }
+        set { lock.withLock { _eventHandler = newValue } }
+    }
+    private var _eventHandler: (@Sendable (String, PBEnvelope, DeviceSecurity.Header, Int) -> Void)?
+    private var watchedByMachine: [String: [String]] = [:]
+
+    func setWatchedSessions(_ subscriptions: [String: [String]]) {
+        var next: [String: [String]] = [:]
+        for (machineId, ids) in subscriptions where !machineId.isEmpty {
+            let capped = Array(ids.filter { !$0.isEmpty }.prefix(4))
+            if !capped.isEmpty { next[machineId] = capped }
+        }
+        let toSend: [(DirectSession, W.Bytes)] = lock.withLock {
+            watchedByMachine = next
+            return peers.values.compactMap { syncPeerSubscriptionLocked($0) }
+        }
+        for (sess, body) in toSend { sess.sendControl(15, body) }
+    }
+
+    private func syncPeerSubscriptionLocked(_ p: Peer) -> (DirectSession, W.Bytes)? {
+        guard validLocked(p), p.session.live, p.supportsEventPush, p.paths[1]?.usable == true else { return nil }
+        let ids = watchedByMachine[p.id] ?? []
+        let key = ids.joined(separator: "\n")
+        guard p.subscribedKey != key else { return nil }
+        let sub = PBDirectEventSubscription.with { $0.sessionIds = ids }
+        guard let data = try? sub.serializedData() else { return nil }
+        p.subscribedKey = key
+        return (p.session, Array(data))
+    }
 
     init(server: String, deviceId: String, deviceSeed: Data, factory: (any RtcFactory)?, preferences: any DirectPreferenceStore, stun: [String]? = nil,
          clock: DirectClock = DirectClock(), random: @escaping @Sendable () -> Double = { Double.random(in: 0..<1) },
@@ -384,16 +415,25 @@ final class DirectEngine: @unchecked Sendable {
     }
     private func pathReady(_ p: Peer?, _ id: String, _ use: Int, _ path: DirectChannel) {
         guard let p else { path.close(); return }
+        var syncCall: (DirectSession, W.Bytes)?
         let accepted = lock.withLock { () -> Bool in
             guard validLocked(p), p.session.live, peers[id] === p else { return false }
             p.paths[use] = path
             if p.readyAt == nil { p.readyAt = clock.now() }
             if p.paths[1]?.usable == true && p.paths[2]?.usable == true { p.redialAt = nil }
             failures.removeValue(forKey: id)
-            if use == 1 { routingLocked(id).arm(fresh: true) }
+            if use == 1 {
+                routingLocked(id).arm(fresh: true)
+                syncCall = syncPeerSubscriptionLocked(p)
+            }
             return true
         }
-        if accepted { notify() } else { path.close() }
+        if accepted {
+            if let (sess, body) = syncCall { sess.sendControl(15, body) }
+            notify()
+        } else {
+            path.close()
+        }
     }
     private func pathClosed(_ p: Peer?, _ id: String, _ use: Int?) {
         guard let p else { return }
@@ -472,6 +512,7 @@ final class DirectEngine: @unchecked Sendable {
 
     // MARK: capabilities and frames
     private func capability(_ p: Peer, _ opened: W.Opened) {
+        var syncCall: (DirectSession, W.Bytes)?
         let ok: Bool = lock.withLock {
             guard validLocked(p) else { return false }
             if opened.type == 14 {
@@ -483,9 +524,13 @@ final class DirectEngine: @unchecked Sendable {
                 p.downloadSeq = opened.ctx.seq
                 let f = try? PeerSchema.fields(opened.payload, "Capabilities")
                 p.downloadUntil = f?[5]?.value == 1 ? (f?[4]?.value ?? 0) : 0
+                let caps = try? PBCapabilities(serializedBytes: Data(opened.payload))
+                p.supportsEventPush = caps?.controlTypes.contains(15) == true
+                if p.supportsEventPush { syncCall = syncPeerSubscriptionLocked(p) }
             }
             return true
         }
+        if let (sess, body) = syncCall { sess.sendControl(15, body) }
         if ok { notify() }
     }
     private func send(_ p: Peer, _ out: DirectedOutput) -> Bool {
@@ -577,6 +622,14 @@ final class DirectEngine: @unchecked Sendable {
     }
     private func frame(_ p: Peer, _ raw: W.Bytes, _ use: Int) {
         guard valid(p), let env = try? PBEnvelope(serializedBytes: raw), let header = try? DeviceSecurity.parseHeader(env.securityHeader) else { return }
+        if use == 1 && header.purpose == .event {
+            let handler: (@Sendable (String, PBEnvelope, DeviceSecurity.Header, Int) -> Void)? = lock.withLock {
+                guard validLocked(p), peers[p.id] === p, header.machine == p.id, header.sender == p.id else { return nil }
+                return _eventHandler
+            }
+            handler?(p.id, env, header, raw.count)
+            return
+        }
         let box = lock.withLock { pending[header.request] }
         if let box, box.peer === p, box.use == use, header.machine == p.id { box.settle(.success(env)) }
     }
