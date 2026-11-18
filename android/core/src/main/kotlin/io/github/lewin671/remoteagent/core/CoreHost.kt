@@ -113,22 +113,32 @@ class CoreHost(
     private val timers = HashMap<Long, Job>()
     private val machinePollTimers = HashMap<String, Job>()
 
-    private class SessionWatcher(
-        val flow: MutableStateFlow<SessionViewModel> = MutableStateFlow(SessionViewModel.getDefaultInstance()),
-        var window: SessionWindowRequest = DEFAULT_SESSION_WINDOW,
+    private class KeyedWatcher<V, K>(
+        val flow: MutableStateFlow<V>,
+        var meta: K,
         var refCount: Int = 0,
     )
 
-    private val sessionWatchers = HashMap<String, SessionWatcher>()
+    private class ScreenSlot<V>(
+        initial: V,
+        val build: () -> Screen?,
+        private val extract: (ViewModel) -> V?,
+    ) {
+        val flow = MutableStateFlow(initial)
+        fun update(vm: ViewModel) { extract(vm)?.let { flow.value = it } }
+    }
+
+    private val screenSlots = LinkedHashMap<ScreenTarget, ScreenSlot<*>>()
+    private fun <V> registerScreen(
+        target: ScreenTarget,
+        initial: V,
+        build: () -> Screen?,
+        extract: (ViewModel) -> V?,
+    ): ScreenSlot<V> = ScreenSlot(initial, build, extract).also { screenSlots[target] = it }
+
+    private val sessionWatchers = HashMap<String, KeyedWatcher<SessionViewModel, SessionWindowRequest>>()
     private val testSessionViews = HashMap<String, SessionViewModel>()
-
-    private class ScheduleStripWatcher(
-        val flow: MutableStateFlow<ScheduleSessionStripViewModel> =
-            MutableStateFlow(ScheduleSessionStripViewModel.getDefaultInstance()),
-        var refCount: Int = 0,
-    )
-
-    private val scheduleStripWatchers = HashMap<String, ScheduleStripWatcher>()
+    private val scheduleStripWatchers = HashMap<String, KeyedWatcher<ScheduleSessionStripViewModel, Unit>>()
     private val testScheduleStripViews = HashMap<String, ScheduleSessionStripViewModel>()
 
     var onOpenStream: (OpenStreamEffect) -> Unit = {}
@@ -173,44 +183,101 @@ class CoreHost(
     private var testOverrideViews = false
     private val testOverriddenTargets = java.util.Collections.synchronizedSet(HashSet<ScreenTarget>())
 
-    private val _homeView = MutableStateFlow(HomeViewModel.getDefaultInstance())
-    val homeView: StateFlow<HomeViewModel> = _homeView.asStateFlow()
+    private val homeSlot = registerScreen(
+        ScreenTarget.SCREEN_TARGET_HOME, HomeViewModel.getDefaultInstance(),
+        { Screen.newBuilder().setHome(HomeScreenRequest.newBuilder().setEndedLimit(homeEndedLimit)).build() },
+        { if (it.viewCase == ViewModel.ViewCase.HOME) it.home else null },
+    )
+    val homeView: StateFlow<HomeViewModel> = homeSlot.flow.asStateFlow()
 
-    private val _projectView = MutableStateFlow(ProjectViewModel.getDefaultInstance())
-    val projectView: StateFlow<ProjectViewModel> = _projectView.asStateFlow()
+    private val projectSlot = registerScreen(
+        ScreenTarget.SCREEN_TARGET_PROJECT, ProjectViewModel.getDefaultInstance(),
+        { Screen.newBuilder().setProject(ProjectScreenRequest.newBuilder().setProjectKey(projectKey).setManage(projectManage).setEndedLimit(projectEndedLimit)).build() },
+        { if (it.viewCase == ViewModel.ViewCase.PROJECT) it.project else null },
+    )
+    val projectView: StateFlow<ProjectViewModel> = projectSlot.flow.asStateFlow()
 
-    private val _newSessionView = MutableStateFlow(NewSessionViewModel.getDefaultInstance())
-    val newSessionView: StateFlow<NewSessionViewModel> = _newSessionView.asStateFlow()
+    private val newSessionSlot = registerScreen(
+        ScreenTarget.SCREEN_TARGET_NEW_SESSION, NewSessionViewModel.getDefaultInstance(),
+        { Screen.newBuilder().setNewSession(NewSessionScreenRequest.newBuilder().setProjectKey(newSessionProjectKey)).build() },
+        { if (it.viewCase == ViewModel.ViewCase.NEW_SESSION) it.newSession else null },
+    )
+    val newSessionView: StateFlow<NewSessionViewModel> = newSessionSlot.flow.asStateFlow()
 
-    private val _syncStateView = MutableStateFlow(SyncStateView.getDefaultInstance())
-    val syncStateView: StateFlow<SyncStateView> = _syncStateView.asStateFlow()
+    private val syncStateSlot = registerScreen(
+        ScreenTarget.SCREEN_TARGET_SYNC_STATE, SyncStateView.getDefaultInstance(),
+        { Screen.newBuilder().setSyncState(SyncStateScreenRequest.getDefaultInstance()).build() },
+        { if (it.viewCase == ViewModel.ViewCase.SYNC_STATE) it.syncState else null },
+    )
+    val syncStateView: StateFlow<SyncStateView> = syncStateSlot.flow.asStateFlow()
 
-    private val _settingsView = MutableStateFlow(SettingsViewModel.getDefaultInstance())
-    val settingsView: StateFlow<SettingsViewModel> = _settingsView.asStateFlow()
+    private val settingsSlot = registerScreen(
+        ScreenTarget.SCREEN_TARGET_SETTINGS, SettingsViewModel.getDefaultInstance(),
+        { Screen.newBuilder().setSettings(SettingsScreenRequest.getDefaultInstance()).build() },
+        { if (it.viewCase == ViewModel.ViewCase.SETTINGS) it.settings else null },
+    )
+    val settingsView: StateFlow<SettingsViewModel> = settingsSlot.flow.asStateFlow()
 
-    private val _machineStatusView = MutableStateFlow(MachineStatusViewModel.getDefaultInstance())
-    val machineStatusView: StateFlow<MachineStatusViewModel> = _machineStatusView.asStateFlow()
+    private val machineStatusSlot = registerScreen(
+        ScreenTarget.SCREEN_TARGET_MACHINE_STATUS, MachineStatusViewModel.getDefaultInstance(),
+        { machineStatusId.takeIf { it.isNotEmpty() }?.let { Screen.newBuilder().setMachineStatus(MachineStatusScreenRequest.newBuilder().setMachineId(it)).build() } },
+        { if (it.viewCase == ViewModel.ViewCase.MACHINE_STATUS) it.machineStatus else null },
+    )
+    val machineStatusView: StateFlow<MachineStatusViewModel> = machineStatusSlot.flow.asStateFlow()
 
-    private val _machineSettingsView = MutableStateFlow(MachineSettingsViewModel.getDefaultInstance())
-    val machineSettingsView: StateFlow<MachineSettingsViewModel> = _machineSettingsView.asStateFlow()
+    private val machineSettingsSlot = registerScreen(
+        ScreenTarget.SCREEN_TARGET_MACHINE_SETTINGS, MachineSettingsViewModel.getDefaultInstance(),
+        { machineSettingsId.takeIf { it.isNotEmpty() }?.let { Screen.newBuilder().setMachineSettings(MachineSettingsScreenRequest.newBuilder().setMachineId(it)).build() } },
+        { if (it.viewCase == ViewModel.ViewCase.MACHINE_SETTINGS) it.machineSettings else null },
+    )
+    val machineSettingsView: StateFlow<MachineSettingsViewModel> = machineSettingsSlot.flow.asStateFlow()
 
-    private val _quotaView = MutableStateFlow(QuotaViewModel.getDefaultInstance())
-    val quotaView: StateFlow<QuotaViewModel> = _quotaView.asStateFlow()
+    private val quotaSlot = registerScreen(
+        ScreenTarget.SCREEN_TARGET_QUOTA, QuotaViewModel.getDefaultInstance(),
+        { Screen.newBuilder().setQuota(QuotaScreenRequest.newBuilder().setMachineId(quotaMachineId).setFilterAgent(quotaFilterAgent)).build() },
+        { if (it.viewCase == ViewModel.ViewCase.QUOTA) it.quota else null },
+    )
+    val quotaView: StateFlow<QuotaViewModel> = quotaSlot.flow.asStateFlow()
 
-    private val _devicesView = MutableStateFlow(DevicesViewModel.getDefaultInstance())
-    val devicesView: StateFlow<DevicesViewModel> = _devicesView.asStateFlow()
+    private val devicesSlot = registerScreen(
+        ScreenTarget.SCREEN_TARGET_DEVICES, DevicesViewModel.getDefaultInstance(),
+        { Screen.newBuilder().setDevices(DevicesScreenRequest.getDefaultInstance()).build() },
+        { if (it.viewCase == ViewModel.ViewCase.DEVICES) it.devices else null },
+    )
+    val devicesView: StateFlow<DevicesViewModel> = devicesSlot.flow.asStateFlow()
 
-    private val _clientDetailView = MutableStateFlow(ClientDetailViewModel.getDefaultInstance())
-    val clientDetailView: StateFlow<ClientDetailViewModel> = _clientDetailView.asStateFlow()
+    private val clientDetailSlot = registerScreen(
+        ScreenTarget.SCREEN_TARGET_CLIENT_DETAIL, ClientDetailViewModel.getDefaultInstance(),
+        { clientDetailId.takeIf { it.isNotEmpty() }?.let { Screen.newBuilder().setClientDetail(ClientDetailScreenRequest.newBuilder().setDeviceId(it)).build() } },
+        { if (it.viewCase == ViewModel.ViewCase.CLIENT_DETAIL) it.clientDetail else null },
+    )
+    val clientDetailView: StateFlow<ClientDetailViewModel> = clientDetailSlot.flow.asStateFlow()
 
-    private val _schedulesView = MutableStateFlow(SchedulesViewModel.getDefaultInstance())
-    val schedulesView: StateFlow<SchedulesViewModel> = _schedulesView.asStateFlow()
+    private val schedulesSlot = registerScreen(
+        ScreenTarget.SCREEN_TARGET_SCHEDULES, SchedulesViewModel.getDefaultInstance(),
+        { Screen.newBuilder().setSchedules(SchedulesScreenRequest.getDefaultInstance()).build() },
+        { if (it.viewCase == ViewModel.ViewCase.SCHEDULES) it.schedules else null },
+    )
+    val schedulesView: StateFlow<SchedulesViewModel> = schedulesSlot.flow.asStateFlow()
 
-    private val _scheduleDetailView = MutableStateFlow(ScheduleDetailViewModel.getDefaultInstance())
-    val scheduleDetailView: StateFlow<ScheduleDetailViewModel> = _scheduleDetailView.asStateFlow()
+    private val scheduleDetailSlot = registerScreen(
+        ScreenTarget.SCREEN_TARGET_SCHEDULE_DETAIL, ScheduleDetailViewModel.getDefaultInstance(),
+        {
+            if (scheduleDetailMachineId.isEmpty() || scheduleDetailTaskId.isEmpty()) null
+            else Screen.newBuilder().setScheduleDetail(
+                ScheduleDetailScreenRequest.newBuilder().setMachineId(scheduleDetailMachineId).setTaskId(scheduleDetailTaskId),
+            ).build()
+        },
+        { if (it.viewCase == ViewModel.ViewCase.SCHEDULE_DETAIL) it.scheduleDetail else null },
+    )
+    val scheduleDetailView: StateFlow<ScheduleDetailViewModel> = scheduleDetailSlot.flow.asStateFlow()
 
-    private val _scheduleFormView = MutableStateFlow(ScheduleFormViewModel.getDefaultInstance())
-    val scheduleFormView: StateFlow<ScheduleFormViewModel> = _scheduleFormView.asStateFlow()
+    private val scheduleFormSlot = registerScreen(
+        ScreenTarget.SCREEN_TARGET_SCHEDULE_FORM, ScheduleFormViewModel.getDefaultInstance(),
+        { Screen.newBuilder().setScheduleForm(ScheduleFormScreenRequest.newBuilder().setFormKey(scheduleFormKey)).build() },
+        { if (it.viewCase == ViewModel.ViewCase.SCHEDULE_FORM) it.scheduleForm else null },
+    )
+    val scheduleFormView: StateFlow<ScheduleFormViewModel> = scheduleFormSlot.flow.asStateFlow()
 
     private val _navigationEvents = MutableSharedFlow<NavigateEffect>(extraBufferCapacity = 16)
     val navigationEvents: SharedFlow<NavigateEffect> = _navigationEvents.asSharedFlow()
@@ -509,110 +576,32 @@ class CoreHost(
 
     fun refreshScreenOnWorker(target: ScreenTarget) {
         if (closed.get() || testOverrideViews || target in testOverriddenTargets) return
-        if (target == ScreenTarget.SCREEN_TARGET_SESSION) {
-            val activeIds = synchronized(sessionWatchers) { sessionWatchers.keys.toList() }
-            for (sid in activeIds) {
-                refreshSessionOnWorker(sid)
+        when (target) {
+            ScreenTarget.SCREEN_TARGET_SESSION -> refreshAllKeyed(sessionWatchers, ::refreshSessionOnWorker)
+            ScreenTarget.SCREEN_TARGET_SCHEDULE_SESSION_STRIP -> refreshAllKeyed(scheduleStripWatchers, ::refreshScheduleStripOnWorker)
+            else -> {
+                val slot = screenSlots[target] ?: return
+                val screen = slot.build() ?: return
+                val vm = viewOnWorker(screen) ?: return
+                slot.update(vm)
             }
-            return
         }
-        if (target == ScreenTarget.SCREEN_TARGET_SCHEDULE_SESSION_STRIP) {
-            val activeIds = synchronized(scheduleStripWatchers) { scheduleStripWatchers.keys.toList() }
-            for (sid in activeIds) {
-                refreshScheduleStripOnWorker(sid)
-            }
-            return
-        }
-        val screen = when (target) {
-            ScreenTarget.SCREEN_TARGET_HOME ->
-                Screen.newBuilder().setHome(HomeScreenRequest.newBuilder().setEndedLimit(homeEndedLimit)).build()
-            ScreenTarget.SCREEN_TARGET_PROJECT ->
-                Screen.newBuilder().setProject(
-                    ProjectScreenRequest.newBuilder()
-                        .setProjectKey(projectKey)
-                        .setManage(projectManage)
-                        .setEndedLimit(projectEndedLimit),
-                ).build()
-            ScreenTarget.SCREEN_TARGET_NEW_SESSION ->
-                Screen.newBuilder().setNewSession(
-                    NewSessionScreenRequest.newBuilder().setProjectKey(newSessionProjectKey),
-                ).build()
-            ScreenTarget.SCREEN_TARGET_SYNC_STATE ->
-                Screen.newBuilder().setSyncState(SyncStateScreenRequest.getDefaultInstance()).build()
-            ScreenTarget.SCREEN_TARGET_SETTINGS ->
-                Screen.newBuilder().setSettings(SettingsScreenRequest.getDefaultInstance()).build()
-            ScreenTarget.SCREEN_TARGET_MACHINE_STATUS -> {
-                if (machineStatusId.isEmpty()) return
-                Screen.newBuilder().setMachineStatus(
-                    MachineStatusScreenRequest.newBuilder().setMachineId(machineStatusId),
-                ).build()
-            }
-            ScreenTarget.SCREEN_TARGET_MACHINE_SETTINGS -> {
-                if (machineSettingsId.isEmpty()) return
-                Screen.newBuilder().setMachineSettings(
-                    MachineSettingsScreenRequest.newBuilder().setMachineId(machineSettingsId),
-                ).build()
-            }
-            ScreenTarget.SCREEN_TARGET_QUOTA ->
-                Screen.newBuilder().setQuota(
-                    QuotaScreenRequest.newBuilder()
-                        .setMachineId(quotaMachineId)
-                        .setFilterAgent(quotaFilterAgent),
-                ).build()
-            ScreenTarget.SCREEN_TARGET_DEVICES ->
-                Screen.newBuilder().setDevices(DevicesScreenRequest.getDefaultInstance()).build()
-            ScreenTarget.SCREEN_TARGET_CLIENT_DETAIL -> {
-                if (clientDetailId.isEmpty()) return
-                Screen.newBuilder().setClientDetail(
-                    ClientDetailScreenRequest.newBuilder().setDeviceId(clientDetailId),
-                ).build()
-            }
-            ScreenTarget.SCREEN_TARGET_SCHEDULES ->
-                Screen.newBuilder().setSchedules(SchedulesScreenRequest.getDefaultInstance()).build()
-            ScreenTarget.SCREEN_TARGET_SCHEDULE_DETAIL -> {
-                if (scheduleDetailMachineId.isEmpty() || scheduleDetailTaskId.isEmpty()) return
-                Screen.newBuilder().setScheduleDetail(
-                    ScheduleDetailScreenRequest.newBuilder()
-                        .setMachineId(scheduleDetailMachineId)
-                        .setTaskId(scheduleDetailTaskId),
-                ).build()
-            }
-            ScreenTarget.SCREEN_TARGET_SCHEDULE_FORM ->
-                Screen.newBuilder().setScheduleForm(
-                    ScheduleFormScreenRequest.newBuilder().setFormKey(scheduleFormKey),
-                ).build()
-            else -> return
-        }
-        val vm = viewOnWorker(screen) ?: return
-        when (vm.viewCase) {
-            ViewModel.ViewCase.HOME -> _homeView.value = vm.home
-            ViewModel.ViewCase.PROJECT -> _projectView.value = vm.project
-            ViewModel.ViewCase.NEW_SESSION -> _newSessionView.value = vm.newSession
-            ViewModel.ViewCase.SYNC_STATE -> _syncStateView.value = vm.syncState
-            ViewModel.ViewCase.SETTINGS -> _settingsView.value = vm.settings
-            ViewModel.ViewCase.MACHINE_STATUS -> _machineStatusView.value = vm.machineStatus
-            ViewModel.ViewCase.MACHINE_SETTINGS -> _machineSettingsView.value = vm.machineSettings
-            ViewModel.ViewCase.QUOTA -> _quotaView.value = vm.quota
-            ViewModel.ViewCase.DEVICES -> _devicesView.value = vm.devices
-            ViewModel.ViewCase.CLIENT_DETAIL -> _clientDetailView.value = vm.clientDetail
-            ViewModel.ViewCase.SCHEDULES -> _schedulesView.value = vm.schedules
-            ViewModel.ViewCase.SCHEDULE_DETAIL -> _scheduleDetailView.value = vm.scheduleDetail
-            ViewModel.ViewCase.SCHEDULE_FORM -> _scheduleFormView.value = vm.scheduleForm
-            else -> {}
-        }
+    }
+
+    private fun <V, K> refreshAllKeyed(
+        watchers: HashMap<String, KeyedWatcher<V, K>>,
+        refresh: (String) -> Unit,
+    ) {
+        for (id in synchronized(watchers) { watchers.keys.toList() }) refresh(id)
     }
 
     private fun refreshScheduleStripOnWorker(sessionId: String) {
         if (sessionId.isEmpty() || closed.get() || testOverrideViews) return
         if (synchronized(scheduleStripWatchers) { sessionId in testScheduleStripViews }) return
         val watcher = synchronized(scheduleStripWatchers) { scheduleStripWatchers[sessionId] ?: return }
-        val screen = Screen.newBuilder()
-            .setScheduleSessionStrip(ScheduleSessionStripScreenRequest.newBuilder().setSessionId(sessionId))
-            .build()
+        val screen = Screen.newBuilder().setScheduleSessionStrip(ScheduleSessionStripScreenRequest.newBuilder().setSessionId(sessionId)).build()
         val vm = viewOnWorker(screen) ?: return
-        if (vm.viewCase == ViewModel.ViewCase.SCHEDULE_SESSION_STRIP) {
-            watcher.flow.value = vm.scheduleSessionStrip
-        }
+        if (vm.viewCase == ViewModel.ViewCase.SCHEDULE_SESSION_STRIP) watcher.flow.value = vm.scheduleSessionStrip
     }
 
     private fun refreshSessionOnWorker(sessionId: String) {
@@ -620,15 +609,13 @@ class CoreHost(
         if (synchronized(sessionWatchers) { sessionId in testSessionViews }) return
         val (watcher, window) = synchronized(sessionWatchers) {
             val w = sessionWatchers[sessionId] ?: return
-            w to w.window
+            w to w.meta
         }
         val screen = Screen.newBuilder()
             .setSession(SessionScreenRequest.newBuilder().setSessionId(sessionId).setWindow(window))
             .build()
         val vm = viewOnWorker(screen) ?: return
-        if (vm.viewCase == ViewModel.ViewCase.SESSION) {
-            watcher.flow.value = vm.session
-        }
+        if (vm.viewCase == ViewModel.ViewCase.SESSION) watcher.flow.value = vm.session
     }
 
     private fun viewOnWorker(screen: Screen): ViewModel? {
@@ -640,42 +627,45 @@ class CoreHost(
         return ViewModel.parseFrom(rawVm)
     }
 
-    private class SessionWatchFlow(
-        private val host: CoreHost,
-        private val sessionId: String,
-        private val initialWindow: SessionWindowRequest?,
-    ) : Flow<SessionViewModel> {
-        override suspend fun collect(collector: FlowCollector<SessionViewModel>) {
-            val watcher = host.acquireSessionWatcher(sessionId, initialWindow)
+    private class KeyedWatchFlow<V, K>(
+        private val lock: Any,
+        private val key: Any,
+        private val acquire: () -> KeyedWatcher<V, K>,
+        private val release: () -> Unit,
+    ) : Flow<V> {
+        override suspend fun collect(collector: FlowCollector<V>) {
+            val watcher = acquire()
             try {
                 watcher.flow.collect { collector.emit(it) }
             } finally {
-                host.releaseSessionWatcher(sessionId)
+                release()
             }
         }
 
         override fun equals(other: Any?): Boolean =
-            other is SessionWatchFlow &&
-                host === other.host &&
-                sessionId == other.sessionId &&
-                initialWindow == other.initialWindow
+            other is KeyedWatchFlow<*, *> && lock === other.lock && key == other.key
 
-        override fun hashCode(): Int {
-            var h = System.identityHashCode(host)
-            h = 31 * h + sessionId.hashCode()
-            h = 31 * h + (initialWindow?.hashCode() ?: 0)
-            return h
-        }
+        override fun hashCode(): Int = 31 * System.identityHashCode(lock) + key.hashCode()
     }
 
     fun watchSession(sessionId: String, initialWindow: SessionWindowRequest? = null): Flow<SessionViewModel> =
-        SessionWatchFlow(this, sessionId, initialWindow)
+        KeyedWatchFlow(sessionWatchers, sessionId to initialWindow, { acquireSessionWatcher(sessionId, initialWindow) }) {
+            releaseSessionWatcher(sessionId)
+        }
+
+    fun watchScheduleSessionStrip(sessionId: String): Flow<ScheduleSessionStripViewModel> =
+        KeyedWatchFlow(scheduleStripWatchers, sessionId, { acquireScheduleStripWatcher(sessionId) }) {
+            synchronized(scheduleStripWatchers) {
+                val existing = scheduleStripWatchers[sessionId] ?: return@synchronized
+                if (--existing.refCount <= 0) scheduleStripWatchers.remove(sessionId)
+            }
+        }
 
     fun updateSessionWindow(sessionId: String, window: SessionWindowRequest) {
         val updated = synchronized(sessionWatchers) {
             val w = sessionWatchers[sessionId] ?: return@synchronized false
-            if (w.window == window) return@synchronized false
-            w.window = window
+            if (w.meta == window) return@synchronized false
+            w.meta = window
             true
         }
         if (updated) dispatchAction { refreshSessionOnWorker(sessionId) }
@@ -684,21 +674,21 @@ class CoreHost(
     fun currentSessionView(sessionId: String): SessionViewModel? =
         synchronized(sessionWatchers) { sessionWatchers[sessionId]?.flow?.value ?: testSessionViews[sessionId] }
 
-    private fun acquireSessionWatcher(sessionId: String, initialWindow: SessionWindowRequest?): SessionWatcher {
+    private fun acquireSessionWatcher(sessionId: String, initialWindow: SessionWindowRequest?): KeyedWatcher<SessionViewModel, SessionWindowRequest> {
         var needsWindowRefresh = false
         val (watcher, becameActive) = synchronized(sessionWatchers) {
             val existing = sessionWatchers[sessionId]
             if (existing != null) {
                 existing.refCount++
-                if (initialWindow != null && existing.window != initialWindow) {
-                    existing.window = initialWindow
+                if (initialWindow != null && existing.meta != initialWindow) {
+                    existing.meta = initialWindow
                     needsWindowRefresh = true
                 }
                 existing to false
             } else {
-                val created = SessionWatcher(
-                    flow = MutableStateFlow(testSessionViews[sessionId] ?: SessionViewModel.getDefaultInstance()),
-                    window = initialWindow ?: DEFAULT_SESSION_WINDOW,
+                val created = KeyedWatcher(
+                    MutableStateFlow(testSessionViews[sessionId] ?: SessionViewModel.getDefaultInstance()),
+                    initialWindow ?: DEFAULT_SESSION_WINDOW,
                     refCount = 1,
                 )
                 sessionWatchers[sessionId] = created
@@ -721,46 +711,21 @@ class CoreHost(
             if (existing.refCount <= 0) {
                 sessionWatchers.remove(sessionId)
                 true
-            } else {
-                false
-            }
+            } else false
         }
         if (becameIdle) send { setSessionWatch(SessionWatchEvent.newBuilder().setSessionId(sessionId).setWatched(false)) }
     }
 
-    private class ScheduleStripWatchFlow(
-        private val host: CoreHost,
-        private val sessionId: String,
-    ) : Flow<ScheduleSessionStripViewModel> {
-        override suspend fun collect(collector: FlowCollector<ScheduleSessionStripViewModel>) {
-            val watcher = host.acquireScheduleStripWatcher(sessionId)
-            try {
-                watcher.flow.collect { collector.emit(it) }
-            } finally {
-                host.releaseScheduleStripWatcher(sessionId)
-            }
-        }
-
-        override fun equals(other: Any?): Boolean =
-            other is ScheduleStripWatchFlow && host === other.host && sessionId == other.sessionId
-
-        override fun hashCode(): Int = 31 * System.identityHashCode(host) + sessionId.hashCode()
-    }
-
-    fun watchScheduleSessionStrip(sessionId: String): Flow<ScheduleSessionStripViewModel> =
-        ScheduleStripWatchFlow(this, sessionId)
-
-    private fun acquireScheduleStripWatcher(sessionId: String): ScheduleStripWatcher {
+    private fun acquireScheduleStripWatcher(sessionId: String): KeyedWatcher<ScheduleSessionStripViewModel, Unit> {
         val (watcher, becameActive) = synchronized(scheduleStripWatchers) {
             val existing = scheduleStripWatchers[sessionId]
             if (existing != null) {
                 existing.refCount++
                 existing to false
             } else {
-                val created = ScheduleStripWatcher(
-                    flow = MutableStateFlow(
-                        testScheduleStripViews[sessionId] ?: ScheduleSessionStripViewModel.getDefaultInstance(),
-                    ),
+                val created = KeyedWatcher(
+                    MutableStateFlow(testScheduleStripViews[sessionId] ?: ScheduleSessionStripViewModel.getDefaultInstance()),
+                    Unit,
                     refCount = 1,
                 )
                 scheduleStripWatchers[sessionId] = created
@@ -769,14 +734,6 @@ class CoreHost(
         }
         if (becameActive) dispatchAction { refreshScheduleStripOnWorker(sessionId) }
         return watcher
-    }
-
-    private fun releaseScheduleStripWatcher(sessionId: String) {
-        synchronized(scheduleStripWatchers) {
-            val existing = scheduleStripWatchers[sessionId] ?: return
-            existing.refCount--
-            if (existing.refCount <= 0) scheduleStripWatchers.remove(sessionId)
-        }
     }
 
     private inline fun send(block: CoreEvent.Builder.() -> Unit) = dispatch(CoreEvent.newBuilder().apply(block).build())
@@ -1186,129 +1143,13 @@ class CoreHost(
         }
     }
 
-    fun toggleScheduleEnded(endedOpen: Boolean? = null) = send {
-        val b = ScheduleBoolAction.newBuilder()
-        endedOpen?.let { b.setValue(it) }
-        setScheduleToggleEnded(b)
-    }
-
-    fun markScheduleRead(tasks: List<ScheduleTaskRef> = emptyList(), allFresh: Boolean = false) = send {
-        setScheduleMarkRead(
-            ScheduleMarkReadAction.newBuilder()
-                .addAllTasks(tasks)
-                .setAllFresh(allFresh),
-        )
-    }
-
-    fun markScheduleUnread(machineId: String, taskId: String, unread: Boolean = true) = send {
-        setScheduleMarkUnread(
-            ScheduleTaskBoolAction.newBuilder()
-                .setMachineId(machineId)
-                .setTaskId(taskId)
-                .setValue(unread),
-        )
-    }
+    fun sendEvent(block: CoreEvent.Builder.() -> Unit) = send(block)
 
     fun openScheduleDetail(machineId: String, taskId: String) = dispatchAction {
         scheduleDetailMachineId = machineId
         scheduleDetailTaskId = taskId
-        sendOnWorker {
-            setScheduleDetailOpen(ScheduleTaskRef.newBuilder().setMachineId(machineId).setTaskId(taskId))
-        }
+        sendOnWorker { setScheduleDetailOpen(ScheduleTaskRef.newBuilder().setMachineId(machineId).setTaskId(taskId)) }
         refreshScreenOnWorker(ScreenTarget.SCREEN_TARGET_SCHEDULE_DETAIL)
-    }
-
-    fun hideScheduleDetail(machineId: String, taskId: String) = send {
-        setScheduleDetailHide(ScheduleTaskRef.newBuilder().setMachineId(machineId).setTaskId(taskId))
-    }
-
-    fun closeScheduleDetail(machineId: String, taskId: String) = send {
-        setScheduleDetailClose(ScheduleTaskRef.newBuilder().setMachineId(machineId).setTaskId(taskId))
-    }
-
-    fun showLatestScheduleResult(machineId: String, taskId: String) = send {
-        setScheduleDetailShowLatestResult(ScheduleTaskRef.newBuilder().setMachineId(machineId).setTaskId(taskId))
-    }
-
-    fun toggleScheduleQuietGroup(machineId: String, taskId: String, groupKey: String) = send {
-        setScheduleDetailToggleQuietGroup(
-            ScheduleTaskStringAction.newBuilder()
-                .setMachineId(machineId)
-                .setTaskId(taskId)
-                .setValue(groupKey),
-        )
-    }
-
-    fun showAllScheduleRuns(machineId: String, taskId: String, show: Boolean = true) = send {
-        setScheduleDetailShowAllRuns(
-            ScheduleTaskBoolAction.newBuilder()
-                .setMachineId(machineId)
-                .setTaskId(taskId)
-                .setValue(show),
-        )
-    }
-
-    fun openScheduleRun(machineId: String, taskId: String, runId: String) = send {
-        setScheduleDetailOpenRun(
-            ScheduleTaskStringAction.newBuilder()
-                .setMachineId(machineId)
-                .setTaskId(taskId)
-                .setValue(runId),
-        )
-    }
-
-    fun operateSchedule(machineId: String, taskId: String, operation: ScheduleOperationKind) = send {
-        setScheduleOperate(
-            ScheduleOperateAction.newBuilder()
-                .setMachineId(machineId)
-                .setTaskId(taskId)
-                .setOperation(operation),
-        )
-    }
-
-    fun renameSchedule(machineId: String, taskId: String, title: String) = send {
-        setScheduleRename(
-            ScheduleTaskStringAction.newBuilder()
-                .setMachineId(machineId)
-                .setTaskId(taskId)
-                .setValue(title),
-        )
-    }
-
-    fun setScheduleNotify(machineId: String, taskId: String, notify: Boolean) = send {
-        setScheduleSetNotify(
-            ScheduleTaskBoolAction.newBuilder()
-                .setMachineId(machineId)
-                .setTaskId(taskId)
-                .setValue(notify),
-        )
-    }
-
-    fun updateScheduleMessage(machineId: String, taskId: String, message: String) = send {
-        setScheduleUpdateMessage(
-            ScheduleTaskStringAction.newBuilder()
-                .setMachineId(machineId)
-                .setTaskId(taskId)
-                .setValue(message),
-        )
-    }
-
-    fun abandonScheduleMutation(machineId: String = "", taskId: String = "", formKey: String = "") = send {
-        setScheduleAbandonMutation(
-            ScheduleMutationRef.newBuilder()
-                .setMachineId(machineId)
-                .setTaskId(taskId)
-                .setFormKey(formKey),
-        )
-    }
-
-    fun retryScheduleMutation(machineId: String = "", taskId: String = "", formKey: String = "") = send {
-        setScheduleRetryMutation(
-            ScheduleMutationRef.newBuilder()
-                .setMachineId(machineId)
-                .setTaskId(taskId)
-                .setFormKey(formKey),
-        )
     }
 
     fun openScheduleForm(
@@ -1334,69 +1175,16 @@ class CoreHost(
         refreshScreenOnWorker(ScreenTarget.SCREEN_TARGET_SCHEDULE_FORM)
     }
 
-    fun closeScheduleForm(formKey: String = "", force: Boolean = false) = send {
-        setScheduleFormClose(ScheduleFormBoolAction.newBuilder().setFormKey(formKey).setValue(force))
-    }
-
-    fun setScheduleFormMessage(formKey: String, message: String) = send {
-        setScheduleFormSetMessage(ScheduleFormStringAction.newBuilder().setFormKey(formKey).setValue(message))
-    }
-
-    fun setScheduleFormTitle(formKey: String, title: String) = send {
-        setScheduleFormSetTitle(ScheduleFormStringAction.newBuilder().setFormKey(formKey).setValue(title))
-    }
-
-    fun setScheduleFormNotify(formKey: String, notify: Boolean) = send {
-        setScheduleFormSetNotify(ScheduleFormBoolAction.newBuilder().setFormKey(formKey).setValue(notify))
-    }
-
-    fun selectScheduleFormProject(formKey: String, projectKey: String, machineId: String = "") = send {
-        setScheduleFormSelectProject(
-            ScheduleFormSelectProjectAction.newBuilder()
-                .setFormKey(formKey)
-                .setProjectKey(projectKey)
-                .setMachineId(machineId),
-        )
-    }
-
-    fun selectScheduleFormMachine(formKey: String, machineId: String) = send {
-        setScheduleFormSelectMachine(ScheduleFormStringAction.newBuilder().setFormKey(formKey).setValue(machineId))
-    }
-
-    fun selectScheduleFormAgent(formKey: String, agent: Agent) = send {
-        setScheduleFormSelectAgent(ScheduleFormSelectAgentAction.newBuilder().setFormKey(formKey).setAgent(agent))
-    }
-
-    fun selectScheduleFormModel(
-        formKey: String,
-        model: String,
-        effort: String = "",
-        mode: ApprovalMode? = null,
-    ) = send {
-        val b = ScheduleFormSelectModelAction.newBuilder()
-            .setFormKey(formKey)
-            .setModel(model)
-            .setEffort(effort)
-        mode?.let { b.setMode(it) }
-        setScheduleFormSelectModel(b)
-    }
-
-    fun updateScheduleFormTiming(action: ScheduleFormUpdateTimingAction) = send {
-        setScheduleFormUpdateTiming(action)
-    }
-
-    fun submitScheduleForm(formKey: String, fullAccessConfirmed: Boolean = false) = send {
-        setScheduleFormSubmit(ScheduleFormBoolAction.newBuilder().setFormKey(formKey).setValue(fullAccessConfirmed))
-    }
-
-    fun retryScheduleFormModels(formKey: String) = send {
-        setScheduleFormRetryModels(ScheduleFormStringAction.newBuilder().setFormKey(formKey))
-    }
-
     fun tickClock(nowMs: Long = clock()) {
         val tz = zone()
         send { setClockUpdated(buildLocalCalendar(nowMs, tz)) }
         send { setScheduleLocalContext(buildScheduleLocalContext(nowMs, tz)) }
+    }
+
+    private fun <V> overrideSlot(target: ScreenTarget, slot: ScreenSlot<V>, v: V?) {
+        if (v == null) return
+        testOverriddenTargets.add(target)
+        slot.flow.value = v
     }
 
     fun showViewsForTest(
@@ -1419,42 +1207,29 @@ class CoreHost(
         if (home != null || project != null || newSession != null || syncState != null) {
             testOverrideViews = true
         }
-        schedules?.let {
-            testOverriddenTargets.add(ScreenTarget.SCREEN_TARGET_SCHEDULES)
-            _schedulesView.value = it
-        }
-        scheduleDetail?.let {
-            testOverriddenTargets.add(ScreenTarget.SCREEN_TARGET_SCHEDULE_DETAIL)
-            _scheduleDetailView.value = it
-        }
-        scheduleForm?.let {
-            testOverriddenTargets.add(ScreenTarget.SCREEN_TARGET_SCHEDULE_FORM)
-            _scheduleFormView.value = it
-        }
-        home?.let { _homeView.value = it }
-        project?.let { _projectView.value = it }
-        newSession?.let { _newSessionView.value = it }
-        syncState?.let { _syncStateView.value = it }
-        settings?.let { _settingsView.value = it }
-        machineStatus?.let { _machineStatusView.value = it }
-        machineSettings?.let { _machineSettingsView.value = it }
-        quota?.let { _quotaView.value = it }
-        devices?.let { _devicesView.value = it }
-        clientDetail?.let { _clientDetailView.value = it }
+        overrideSlot(ScreenTarget.SCREEN_TARGET_SCHEDULES, schedulesSlot, schedules)
+        overrideSlot(ScreenTarget.SCREEN_TARGET_SCHEDULE_DETAIL, scheduleDetailSlot, scheduleDetail)
+        overrideSlot(ScreenTarget.SCREEN_TARGET_SCHEDULE_FORM, scheduleFormSlot, scheduleForm)
+        home?.let { homeSlot.flow.value = it }
+        project?.let { projectSlot.flow.value = it }
+        newSession?.let { newSessionSlot.flow.value = it }
+        syncState?.let { syncStateSlot.flow.value = it }
+        settings?.let { settingsSlot.flow.value = it }
+        machineStatus?.let { machineStatusSlot.flow.value = it }
+        machineSettings?.let { machineSettingsSlot.flow.value = it }
+        quota?.let { quotaSlot.flow.value = it }
+        devices?.let { devicesSlot.flow.value = it }
+        clientDetail?.let { clientDetailSlot.flow.value = it }
         if (scheduleStrips.isNotEmpty()) {
             synchronized(scheduleStripWatchers) {
                 testScheduleStripViews.putAll(scheduleStrips)
-                for ((sid, vm) in scheduleStrips) {
-                    scheduleStripWatchers[sid]?.flow?.value = vm
-                }
+                for ((sid, vm) in scheduleStrips) scheduleStripWatchers[sid]?.flow?.value = vm
             }
         }
         if (sessions.isNotEmpty()) {
             synchronized(sessionWatchers) {
                 testSessionViews.putAll(sessions)
-                for ((sid, vm) in sessions) {
-                    sessionWatchers[sid]?.flow?.value = vm
-                }
+                for ((sid, vm) in sessions) sessionWatchers[sid]?.flow?.value = vm
             }
         }
     }
