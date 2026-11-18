@@ -259,7 +259,6 @@ export interface MessageArgs {
   "errors.terminal_connection_timed_out_reconnect": { [name: string]: never };
   "errors.terminal_frames_are_out_of_order": { [name: string]: never };
   "errors.terminal_output_backlog_reconnect_for_the_latest_display": { [name: string]: never };
-  "errors.the_computer_did_not_return_a_task_list": { [name: string]: never };
   "errors.the_computer_did_not_return_an_attachment_id": { [name: string]: never };
   "errors.the_computer_is_offline_the_command_was_not_sent": { [name: string]: never };
   "errors.the_computer_is_still_verifying_attachments_retry_shortly": { [name: string]: never };
@@ -1902,7 +1901,6 @@ export const messages = {
     "errors.terminal_connection_timed_out_reconnect": "Terminal connection timed out. Reconnect.",
     "errors.terminal_frames_are_out_of_order": "Terminal frames are out of order",
     "errors.terminal_output_backlog_reconnect_for_the_latest_display": "Terminal output backlog. Reconnect for the latest display.",
-    "errors.the_computer_did_not_return_a_task_list": "The computer did not return a task list",
     "errors.the_computer_did_not_return_an_attachment_id": "The computer did not return an attachment ID",
     "errors.the_computer_is_offline_the_command_was_not_sent": "The computer is offline. The command was not sent.",
     "errors.the_computer_is_still_verifying_attachments_retry_shortly": "The computer is still verifying attachments. Retry shortly.",
@@ -4023,7 +4021,6 @@ export const messages = {
     "errors.terminal_connection_timed_out_reconnect": "连接终端超时，请重新连接",
     "errors.terminal_frames_are_out_of_order": "终端帧顺序不对",
     "errors.terminal_output_backlog_reconnect_for_the_latest_display": "终端输出积压，请重新连接以获取最新画面",
-    "errors.the_computer_did_not_return_a_task_list": "电脑没有返回任务列表",
     "errors.the_computer_did_not_return_an_attachment_id": "电脑没有返回附件 ID",
     "errors.the_computer_is_offline_the_command_was_not_sent": "电脑不在线，指令没有发出",
     "errors.the_computer_is_still_verifying_attachments_retry_shortly": "电脑仍在校验附件，请稍后重试",

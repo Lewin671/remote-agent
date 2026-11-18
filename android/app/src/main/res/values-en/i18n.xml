@@ -328,7 +328,6 @@
     <string name="errors_terminal_connection_timed_out_reconnect" formatted="false">"Terminal connection timed out. Reconnect."</string>
     <string name="errors_terminal_frames_are_out_of_order" formatted="false">"Terminal frames are out of order"</string>
     <string name="errors_terminal_output_backlog_reconnect_for_the_latest_display" formatted="false">"Terminal output backlog. Reconnect for the latest display."</string>
-    <string name="errors_the_computer_did_not_return_a_task_list" formatted="false">"The computer did not return a task list"</string>
     <string name="errors_the_computer_did_not_return_an_attachment_id" formatted="false">"The computer did not return an attachment ID"</string>
     <string name="errors_the_computer_is_offline_the_command_was_not_sent" formatted="false">"The computer is offline. The command was not sent."</string>
     <string name="errors_the_computer_is_still_verifying_attachments_retry_shortly" formatted="false">"The computer is still verifying attachments. Retry shortly."</string>
@@ -1007,7 +1006,6 @@
         <item quantity="other">"%1$d sec after each turn ends"</item>
     </plurals>
     <string name="schedule_after_turn_ends" formatted="false">"After turn ends"</string>
-    <string name="schedule_after_turn_replace">"%1$s. Choose another frequency above to replace it."</string>
     <string name="schedule_android_agent_notification" formatted="false">"agent notification"</string>
     <string name="schedule_android_agent_notification_completion_notification" formatted="false">"agent notification, completion notification"</string>
     <string name="schedule_android_automatic_run_count" formatted="false">"Automatic run count"</string>
@@ -1304,7 +1302,6 @@
     <string name="schedule_until">"Until %1$s"</string>
     <string name="schedule_update_remote_agent_on_the_computer_to_use_scheduled" formatted="false">"Update remote-agent on the computer to use scheduled tasks."</string>
     <string name="schedule_update_remote_agent_on_this_computer_to_use_scheduled" formatted="false">"Update remote-agent on this computer to use scheduled tasks."</string>
-    <string name="schedule_verify_current_permissions_in_the_conversation" formatted="false">"Verify current permissions in the conversation"</string>
     <plurals name="schedule_view_all_runs">
         <item quantity="one">"View all %1$d run"</item>
         <item quantity="other">"View all %1$d runs"</item>

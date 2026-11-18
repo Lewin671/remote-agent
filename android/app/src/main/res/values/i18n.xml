@@ -314,7 +314,6 @@
     <string name="errors_terminal_connection_timed_out_reconnect" formatted="false">"连接终端超时，请重新连接"</string>
     <string name="errors_terminal_frames_are_out_of_order" formatted="false">"终端帧顺序不对"</string>
     <string name="errors_terminal_output_backlog_reconnect_for_the_latest_display" formatted="false">"终端输出积压，请重新连接以获取最新画面"</string>
-    <string name="errors_the_computer_did_not_return_a_task_list" formatted="false">"电脑没有返回任务列表"</string>
     <string name="errors_the_computer_did_not_return_an_attachment_id" formatted="false">"电脑没有返回附件 ID"</string>
     <string name="errors_the_computer_is_offline_the_command_was_not_sent" formatted="false">"电脑不在线，指令没有发出"</string>
     <string name="errors_the_computer_is_still_verifying_attachments_retry_shortly" formatted="false">"电脑仍在校验附件，请稍后重试"</string>
@@ -947,7 +946,6 @@
         <item quantity="other">"每轮结束 %1$d 秒后"</item>
     </plurals>
     <string name="schedule_after_turn_ends" formatted="false">"轮结束后"</string>
-    <string name="schedule_after_turn_replace">"%1$s。选择上方其他频率可替换。"</string>
     <string name="schedule_android_agent_notification" formatted="false">"agent 通知"</string>
     <string name="schedule_android_agent_notification_completion_notification" formatted="false">"agent 通知、完成后通知"</string>
     <string name="schedule_android_automatic_run_count" formatted="false">"自动运行次数"</string>
@@ -1223,7 +1221,6 @@
     <string name="schedule_until">"到 %1$s"</string>
     <string name="schedule_update_remote_agent_on_the_computer_to_use_scheduled" formatted="false">"需要更新电脑上的 remote-agent 才能使用定时任务。"</string>
     <string name="schedule_update_remote_agent_on_this_computer_to_use_scheduled" formatted="false">"需要更新这台电脑上的 remote-agent 才能使用定时任务。"</string>
-    <string name="schedule_verify_current_permissions_in_the_conversation" formatted="false">"请在对话里核实当前权限"</string>
     <plurals name="schedule_view_all_runs">
         <item quantity="other">"查看全部 %1$d 次"</item>
     </plurals>

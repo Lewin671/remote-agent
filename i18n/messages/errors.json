@@ -711,22 +711,6 @@
     "zh-CN": "配对批准签名无效"
   },
   {
-    "en": "The computer did not return a task list",
-    "key": "errors.the_computer_did_not_return_a_task_list",
-    "notes": "remote 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "en": "draft",
-      "zh-CN": "source"
-    },
-    "zh-CN": "电脑没有返回任务列表"
-  },
-  {
     "en": "The previous operation’s outcome is still unknown. Reload and verify the task before continuing.",
     "key": "errors.the_previous_operation_s_outcome_is_still_unknown_reload",
     "notes": "remote 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",

@@ -2916,21 +2916,6 @@
     }
   },
   {
-    "key": "schedule.verify_current_permissions_in_the_conversation",
-    "zh-CN": "请在对话里核实当前权限",
-    "en": "Verify current permissions in the conversation",
-    "notes": "Schedules 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "android",
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
     "key": "schedule.send_to",
     "zh-CN": "{value} · 发到「{detail}」",
     "en": "{value} · Send to “{detail}”",
@@ -3936,26 +3921,6 @@
     "notes": "定时结束条件；count 是最大运行次数、time 是按现有时区格式化的截止时间。完整一行可换行。",
     "platforms": [
       "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "schedule.after_turn_replace",
-    "zh-CN": "{frequency}。选择上方其他频率可替换。",
-    "en": "{frequency}. Choose another frequency above to replace it.",
-    "params": {
-      "frequency": {
-        "type": "string",
-        "example": "Example"
-      }
-    },
-    "notes": "定时/设置/账户页面完整句或短标签。参数为当前页面数据，用户/CLI 原文不翻译；短标签空间紧凑，说明可换行。",
-    "platforms": [
       "android",
       "ios"
     ],

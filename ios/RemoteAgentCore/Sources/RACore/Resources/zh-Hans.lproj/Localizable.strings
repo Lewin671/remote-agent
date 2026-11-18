@@ -306,7 +306,6 @@
 "errors_terminal_connection_timed_out_reconnect" = "连接终端超时，请重新连接";
 "errors_terminal_frames_are_out_of_order" = "终端帧顺序不对";
 "errors_terminal_output_backlog_reconnect_for_the_latest_display" = "终端输出积压，请重新连接以获取最新画面";
-"errors_the_computer_did_not_return_a_task_list" = "电脑没有返回任务列表";
 "errors_the_computer_did_not_return_an_attachment_id" = "电脑没有返回附件 ID";
 "errors_the_computer_is_offline_the_command_was_not_sent" = "电脑不在线，指令没有发出";
 "errors_the_computer_is_still_verifying_attachments_retry_shortly" = "电脑仍在校验附件，请稍后重试";
@@ -791,7 +790,6 @@
 "quota_waiting" = "尚未收到 %1$@ 的额度。仅从这台电脑上由 remote-agent 管理的 CLI 会话读取；安装 CLI 或在其他会话中使用不会触发这里更新。";
 "quota_warning" = "%1$@ · %2$@额度即将用尽，不会自动切换 CLI 或模型";
 "schedule_after_a_run_count" = "运行指定次数";
-"schedule_after_turn_replace" = "%1$@。选择上方其他频率可替换。";
 "schedule_android_agent_notification" = "agent 通知";
 "schedule_android_agent_notification_completion_notification" = "agent 通知、完成后通知";
 "schedule_android_cannot_request_notification" = "无法请求通知";
@@ -977,7 +975,6 @@
 "schedule_until" = "到 %1$@";
 "schedule_update_remote_agent_on_the_computer_to_use_scheduled" = "需要更新电脑上的 remote-agent 才能使用定时任务。";
 "schedule_update_remote_agent_on_this_computer_to_use_scheduled" = "需要更新这台电脑上的 remote-agent 才能使用定时任务。";
-"schedule_verify_current_permissions_in_the_conversation" = "请在对话里核实当前权限";
 "schedule_waiting_for_results" = "等待结果";
 "schedule_waiting_for_the_current_turn_to_end" = "等待当前轮结束";
 "schedule_wed" = "三";

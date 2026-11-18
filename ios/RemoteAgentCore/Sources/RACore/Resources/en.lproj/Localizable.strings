@@ -306,7 +306,6 @@
 "errors_terminal_connection_timed_out_reconnect" = "Terminal connection timed out. Reconnect.";
 "errors_terminal_frames_are_out_of_order" = "Terminal frames are out of order";
 "errors_terminal_output_backlog_reconnect_for_the_latest_display" = "Terminal output backlog. Reconnect for the latest display.";
-"errors_the_computer_did_not_return_a_task_list" = "The computer did not return a task list";
 "errors_the_computer_did_not_return_an_attachment_id" = "The computer did not return an attachment ID";
 "errors_the_computer_is_offline_the_command_was_not_sent" = "The computer is offline. The command was not sent.";
 "errors_the_computer_is_still_verifying_attachments_retry_shortly" = "The computer is still verifying attachments. Retry shortly.";
@@ -791,7 +790,6 @@
 "quota_waiting" = "No quota received from %1$@. Data is read only from CLI sessions managed by remote-agent on this computer; installing the CLI or using another session does not update this page.";
 "quota_warning" = "%1$@ · %2$@ quota is nearly exhausted. CLI and model will not switch automatically.";
 "schedule_after_a_run_count" = "After a run count";
-"schedule_after_turn_replace" = "%1$@. Choose another frequency above to replace it.";
 "schedule_android_agent_notification" = "agent notification";
 "schedule_android_agent_notification_completion_notification" = "agent notification, completion notification";
 "schedule_android_cannot_request_notification" = "Cannot request notification";
@@ -977,7 +975,6 @@
 "schedule_until" = "Until %1$@";
 "schedule_update_remote_agent_on_the_computer_to_use_scheduled" = "Update remote-agent on the computer to use scheduled tasks.";
 "schedule_update_remote_agent_on_this_computer_to_use_scheduled" = "Update remote-agent on this computer to use scheduled tasks.";
-"schedule_verify_current_permissions_in_the_conversation" = "Verify current permissions in the conversation";
 "schedule_waiting_for_results" = "Waiting for results";
 "schedule_waiting_for_the_current_turn_to_end" = "Waiting for the current turn to end";
 "schedule_wed" = "Wed";
