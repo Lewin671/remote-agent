@@ -101,3 +101,34 @@ func TestCapabilitiesRepeatedTypesRemainReadable(t *testing.T) {
 		t.Fatal("download flag unreadable", err)
 	}
 }
+
+func TestDirectEventSubscriptionSchemaBounds(t *testing.T) {
+	valid0, err := proto.Marshal(&pb.DirectEventSubscription{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := KnownPayload(2, 15, valid0); err != nil {
+		t.Fatalf("empty subscription rejected: %v", err)
+	}
+	valid4, err := proto.Marshal(&pb.DirectEventSubscription{SessionIds: []string{"s1", "s2", "s3", "s4"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := KnownPayload(2, 15, valid4); err != nil {
+		t.Fatalf("4-session subscription rejected: %v", err)
+	}
+	tooMany, err := proto.Marshal(&pb.DirectEventSubscription{SessionIds: []string{"s1", "s2", "s3", "s4", "s5"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := KnownPayload(2, 15, tooMany); err == nil {
+		t.Fatal("5-session subscription should be rejected")
+	}
+	emptyID, err := proto.Marshal(&pb.DirectEventSubscription{SessionIds: []string{""}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := KnownPayload(2, 15, emptyID); err == nil {
+		t.Fatal("empty session id should be rejected")
+	}
+}

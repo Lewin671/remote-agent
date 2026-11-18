@@ -4437,6 +4437,73 @@ func (m *MachineRouteStatusEvent) Unmarshal(b []byte) error {
 	return nil
 }
 
+type DirectEventsReceivedEvent struct {
+	MachineId string
+	SessionId string
+	Events    []*PlainEvent
+}
+
+func (m *DirectEventsReceivedEvent) GetMachineId() string {
+	if m != nil {
+		return m.MachineId
+	}
+	return ""
+}
+func (m *DirectEventsReceivedEvent) GetSessionId() string {
+	if m != nil {
+		return m.SessionId
+	}
+	return ""
+}
+func (m *DirectEventsReceivedEvent) GetEvents() []*PlainEvent {
+	if m != nil {
+		return m.Events
+	}
+	return nil
+}
+
+func (m *DirectEventsReceivedEvent) Unmarshal(b []byte) error {
+	for len(b) > 0 {
+		num, wtyp, err := litewire.ReadTag(&b)
+		if err != nil {
+			return err
+		}
+		switch num {
+		case 1:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadString(&b)
+				if err != nil {
+					return err
+				}
+				m.MachineId = v
+				continue
+			}
+		case 2:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadString(&b)
+				if err != nil {
+					return err
+				}
+				m.SessionId = v
+				continue
+			}
+		case 3:
+			if wtyp == litewire.BytesType {
+				elem := &PlainEvent{}
+				if err := litewire.ReadMessage(&b, elem); err != nil {
+					return err
+				}
+				m.Events = append(m.Events, elem)
+				continue
+			}
+		}
+		if err := litewire.Skip(&b, num, wtyp); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 type SessionScheduleHint struct {
 	SessionId    string
 	ScheduleName string
@@ -5457,6 +5524,10 @@ type Event_SessionScheduleHints struct{ SessionScheduleHints *SessionScheduleHin
 
 func (*Event_SessionScheduleHints) isEvent_Event() {}
 
+type Event_DirectEventsReceived struct{ DirectEventsReceived *DirectEventsReceivedEvent }
+
+func (*Event_DirectEventsReceived) isEvent_Event() {}
+
 type Event_HomeSetScope struct{ HomeSetScope *HomeSetScopeAction }
 
 func (*Event_HomeSetScope) isEvent_Event() {}
@@ -5966,6 +6037,12 @@ func (m *Event) GetMachineRouteStatus() *MachineRouteStatusEvent {
 func (m *Event) GetSessionScheduleHints() *SessionScheduleHintsEvent {
 	if x, ok := m.GetEvent().(*Event_SessionScheduleHints); ok && x != nil {
 		return x.SessionScheduleHints
+	}
+	return nil
+}
+func (m *Event) GetDirectEventsReceived() *DirectEventsReceivedEvent {
+	if x, ok := m.GetEvent().(*Event_DirectEventsReceived); ok && x != nil {
+		return x.DirectEventsReceived
 	}
 	return nil
 }
@@ -6887,6 +6964,21 @@ func (m *Event) Unmarshal(b []byte) error {
 					return err
 				}
 				m.Event = &Event_SessionScheduleHints{SessionScheduleHints: sub}
+				continue
+			}
+		case 27:
+			if wtyp == litewire.BytesType {
+				var sub *DirectEventsReceivedEvent
+				if cur, ok := m.Event.(*Event_DirectEventsReceived); ok && cur != nil {
+					sub = cur.DirectEventsReceived
+				}
+				if sub == nil {
+					sub = &DirectEventsReceivedEvent{}
+				}
+				if err := litewire.ReadMessage(&b, sub); err != nil {
+					return err
+				}
+				m.Event = &Event_DirectEventsReceived{DirectEventsReceived: sub}
 				continue
 			}
 		case 30:

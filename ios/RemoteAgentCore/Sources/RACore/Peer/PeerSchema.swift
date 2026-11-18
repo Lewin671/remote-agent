@@ -2,9 +2,9 @@ import Foundation
 enum PeerSchema {
  struct Rule{let n:Int,kind:String,repeated:Bool;init(_ n:Int,_ k:String,_ r:Bool){self.n=n;kind=k;repeated=r}}
  static let signal=["","Probe","Challenge","SDP","SDP","Candidates","EndCandidates","Confirm","Restart","Close"]
- static let control=["","Capabilities","AttachPath","InputStatus","Ack","Replay","Barrier","StreamFailed","ClosePath","DirectPolicy","Unsupported","InputStatusReply","BarrierReply","PolicyReply","CapabilitySnapshot"]
+ static let control=["","Capabilities","AttachPath","InputStatus","Ack","Replay","Barrier","StreamFailed","ClosePath","DirectPolicy","Unsupported","InputStatusReply","BarrierReply","PolicyReply","CapabilitySnapshot","DirectEventSubscription"]
  static func known(_ cls:UInt64,_ type:UInt64,_ raw:PeerWire.Bytes)throws->PeerWire.Bytes{let names=cls==2 ? control:signal;if type>0 && type<names.count{return try normalize(raw,names[Int(type)],0,true)};return raw}
- static func cap(_ name:String,_ n:Int)->Int{name=="Candidates" && n==1 ? 16:name=="Restart" && n==1 ? 2:name=="Capabilities" ? 64:128}
+ static func cap(_ name:String,_ n:Int)->Int{name=="Candidates" && n==1 ? 16:name=="Restart" && n==1 ? 2:name=="Capabilities" ? 64:name=="DirectEventSubscription" && n==1 ? 4:128}
  static func limit(_ k:String)->UInt64{if k=="bool"{return 1};if k=="u32"{return 0xffffffff};if k=="i32"{return 0x7fffffff};if k=="i64"{return 0x7fffffffffffffff};if k.hasPrefix("e"){return UInt64(k.dropFirst())!};return UInt64.max}
  static func integer(_ raw:PeerWire.Bytes,_ at:inout Int)throws->UInt64{let start=at;var value:UInt64=0;for i in 0..<10{try PeerWire.check(at<raw.count);let b=raw[at];at+=1;try PeerWire.check(i != 9 || b<=1);value |= UInt64(b&127) << (i*7);if b&128==0{try PeerWire.check(Array(raw[start..<at])==PeerWire.vint(value));return value}};throw PeerWire.Invalid.packet}
  static func normalize(_ raw:PeerWire.Bytes,_ name:String,_ depth:Int=0,_ shape:Bool=false)throws->PeerWire.Bytes{

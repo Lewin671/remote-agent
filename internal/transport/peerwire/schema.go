@@ -23,6 +23,9 @@ func schemaLimit(name string, n uint64) int {
 	if name == "Capabilities" {
 		return 64
 	}
+	if name == "DirectEventSubscription" && n == 1 {
+		return 4
+	}
 	return 128
 }
 func scalarLimit(kind string) uint64 {
@@ -190,7 +193,7 @@ func ParseMessage(raw []byte, name string) (map[uint64]Field, error) {
 }
 
 var signalSchemas = map[uint64]string{1: "Probe", 2: "Challenge", 3: "SDP", 4: "SDP", 5: "Candidates", 6: "EndCandidates", 7: "Confirm", 8: "Restart", 9: "Close"}
-var controlSchemas = map[uint64]string{1: "Capabilities", 2: "AttachPath", 3: "InputStatus", 4: "Ack", 5: "Replay", 6: "Barrier", 7: "StreamFailed", 8: "ClosePath", 9: "DirectPolicy", 10: "Unsupported", 11: "InputStatusReply", 12: "BarrierReply", 13: "PolicyReply", 14: "CapabilitySnapshot"}
+var controlSchemas = map[uint64]string{1: "Capabilities", 2: "AttachPath", 3: "InputStatus", 4: "Ack", 5: "Replay", 6: "Barrier", 7: "StreamFailed", 8: "ClosePath", 9: "DirectPolicy", 10: "Unsupported", 11: "InputStatusReply", 12: "BarrierReply", 13: "PolicyReply", 14: "CapabilitySnapshot", 15: "DirectEventSubscription"}
 
 func KnownPayload(class, typ uint64, raw []byte) ([]byte, error) {
 	names := signalSchemas

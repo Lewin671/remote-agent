@@ -1620,3 +1620,379 @@ func TestDisplayGraceHoldsConnectedViewDuringBackgroundResumeAndDisconnect(t *te
 		t.Run(tc.name, tc.run)
 	}
 }
+
+func TestDirectEventsDedupAndCacheWriteOnRelay(t *testing.T) {
+	e := NewEngine()
+	now := int64(1_700_000_000_000)
+	legID, listsOp := startAndConnect(t, e, now)
+
+	e.HandleEvent(&corev1.Event{
+		NowMs: now + 40,
+		Event: &corev1.Event_ListsFetched{
+			ListsFetched: &corev1.ListsFetchedEvent{
+				OpId: listsOp,
+				Machines: []*corev1.PlainMachine{
+					{MachineId: "m1", Online: true},
+					{MachineId: "m2", Online: true},
+				},
+				Sessions: []*corev1.PlainSession{
+					{SessionId: "s1", MachineId: "m1", LastSeq: 2, UpdatedMs: now},
+				},
+			},
+		},
+	})
+	_, watchRes := e.HandleEvent(&corev1.Event{
+		NowMs: now + 50,
+		Event: &corev1.Event_SessionWatch{
+			SessionWatch: &corev1.SessionWatchEvent{SessionId: "s1", Watched: true},
+		},
+	})
+	var cacheOp uint64
+	for _, eff := range watchRes.Effects {
+		if cr := eff.GetCacheRead().GetEvents(); cr != nil {
+			cacheOp = cr.OpId
+		}
+	}
+	if cacheOp == 0 {
+		t.Fatalf("expected CacheReadEvents on SessionWatch")
+	}
+	_, loadedRes := e.HandleEvent(&corev1.Event{
+		NowMs: now + 60,
+		Event: &corev1.Event_CacheEventsLoaded{
+			CacheEventsLoaded: &corev1.CacheEventsLoadedEvent{OpId: cacheOp, SessionId: "s1"},
+		},
+	})
+	var fetchOp uint64
+	for _, eff := range loadedRes.Effects {
+		if rpc := eff.GetRpc(); rpc != nil && rpc.GetGetEvents() != nil {
+			fetchOp = rpc.OpId
+		}
+	}
+	e.HandleEvent(&corev1.Event{
+		NowMs: now + 70,
+		Event: &corev1.Event_EventsPageFetched{
+			EventsPageFetched: &corev1.EventsPageFetchedEvent{
+				OpId:      fetchOp,
+				SessionId: "s1",
+				Events: []*corev1.PlainEvent{
+					{Seq: 1, Verified: true, Event: &v1.Event{Seq: 1, SessionId: "s1"}},
+					{Seq: 2, Verified: true, Event: &v1.Event{Seq: 2, SessionId: "s1"}},
+				},
+				More: false,
+			},
+		},
+	})
+
+	// 1. Direct event seq=3 arrives before relay: updates display prefix and LastSeq,
+	// does NOT advance ServerLastSeq, and emits NO CacheWriteEffect_WriteEvents.
+	_, directRes := e.HandleEvent(&corev1.Event{
+		NowMs: now + 80,
+		Event: &corev1.Event_DirectEventsReceived{
+			DirectEventsReceived: &corev1.DirectEventsReceivedEvent{
+				MachineId: "m1",
+				SessionId: "s1",
+				Events: []*corev1.PlainEvent{
+					{Seq: 3, Verified: true, CacheRef: "should-be-stripped", Event: &v1.Event{Seq: 3, SessionId: "s1"}},
+				},
+			},
+		},
+	})
+	if !directRes.Dirty.SessionData {
+		t.Fatalf("expected Dirty.SessionData on DirectEventsReceived")
+	}
+	for _, eff := range directRes.Effects {
+		if cw := eff.GetCacheWrite(); cw != nil && cw.GetWriteEvents() != nil {
+			t.Fatalf("direct event must not emit CacheWriteEffect_WriteEvents")
+		}
+	}
+	if buf := e.Buffer("s1"); buf.PrefixLen() != 3 {
+		t.Fatalf("expected prefix=3 after direct seq=3, got %d", buf.PrefixLen())
+	}
+	if s := e.sessions["s1"]; s.LastSeq != 3 || s.ServerLastSeq != 2 {
+		t.Fatalf("expected LastSeq=3 ServerLastSeq=2, got LastSeq=%d ServerLastSeq=%d", s.LastSeq, s.ServerLastSeq)
+	}
+
+	// 2. Relay EventsAppended arrives with seq=3 later: deduplicates and writes CacheRef.
+	_, relayRes := e.HandleEvent(&corev1.Event{
+		NowMs: now + 90,
+		Event: &corev1.Event_StreamFrame{
+			StreamFrame: &corev1.StreamFrameEvent{
+				LegId: legID,
+				Frame: &corev1.StreamFrameEvent_EventsAppended{
+					EventsAppended: &corev1.EventsAppendedFrame{
+						SessionId: "s1",
+						Events: []*corev1.PlainEvent{
+							{Seq: 3, Verified: true, CacheRef: "ref-3", Event: &v1.Event{Seq: 3, SessionId: "s1"}},
+						},
+					},
+				},
+			},
+		},
+	})
+	wroteCache := false
+	for _, eff := range relayRes.Effects {
+		if cw := eff.GetCacheWrite(); cw != nil && cw.GetWriteEvents() != nil {
+			if slices.Equal(cw.GetWriteEvents().GetCacheRefs(), []string{"ref-3"}) {
+				wroteCache = true
+			}
+		}
+	}
+	if !wroteCache {
+		t.Fatalf("expected relay EventsAppended to write ref-3 to EventCache")
+	}
+	if buf := e.Buffer("s1"); buf.PrefixLen() != 3 {
+		t.Fatalf("expected deduplicated prefix=3, got %d", buf.PrefixLen())
+	}
+	if s := e.sessions["s1"]; s.ServerLastSeq != 3 {
+		t.Fatalf("expected ServerLastSeq=3 after relay EventsAppended, got %d", s.ServerLastSeq)
+	}
+
+	// 3. Cross-machine spoofing, untrusted machine, and defensive Broken/Retired items are ignored.
+	_, spoofRes := e.HandleEvent(&corev1.Event{
+		NowMs: now + 95,
+		Event: &corev1.Event_DirectEventsReceived{
+			DirectEventsReceived: &corev1.DirectEventsReceivedEvent{
+				MachineId: "m2", // wrong owner for s1
+				SessionId: "s1",
+				Events:    []*corev1.PlainEvent{{Seq: 4, Verified: true, Event: &v1.Event{Seq: 4, SessionId: "s1"}}},
+			},
+		},
+	})
+	if e.Buffer("s1").PrefixLen() != 3 || spoofRes.Dirty.SessionData {
+		t.Fatalf("cross-machine direct event must be rejected")
+	}
+	e.HandleEvent(&corev1.Event{
+		NowMs: now + 96,
+		Event: &corev1.Event_DirectEventsReceived{
+			DirectEventsReceived: &corev1.DirectEventsReceivedEvent{
+				MachineId: "m1",
+				SessionId: "s1",
+				Events:    []*corev1.PlainEvent{{Seq: 4, Broken: true, Retired: true}},
+			},
+		},
+	})
+	if buf := e.Buffer("s1"); buf.PrefixLen() != 3 || buf.errorText != nil || buf.IsRetired() {
+		t.Fatalf("broken/retired direct items must be discarded without tainting buffer")
+	}
+}
+
+func TestDirectAheadGapDoesNotFalseErrorAndTriggersServerGapFill(t *testing.T) {
+	e := NewEngine()
+	now := int64(1_700_000_000_000)
+	legID, listsOp := startAndConnect(t, e, now)
+
+	e.HandleEvent(&corev1.Event{
+		NowMs: now + 40,
+		Event: &corev1.Event_ListsFetched{
+			ListsFetched: &corev1.ListsFetchedEvent{
+				OpId:     listsOp,
+				Machines: []*corev1.PlainMachine{{MachineId: "m1", Online: true}},
+				Sessions: []*corev1.PlainSession{{SessionId: "s1", MachineId: "m1", LastSeq: 40, UpdatedMs: now}},
+			},
+		},
+	})
+	_, watchRes := e.HandleEvent(&corev1.Event{
+		NowMs: now + 50,
+		Event: &corev1.Event_SessionWatch{SessionWatch: &corev1.SessionWatchEvent{SessionId: "s1", Watched: true}},
+	})
+	var cacheOp uint64
+	for _, eff := range watchRes.Effects {
+		if cr := eff.GetCacheRead().GetEvents(); cr != nil {
+			cacheOp = cr.OpId
+		}
+	}
+	_, loadedRes := e.HandleEvent(&corev1.Event{
+		NowMs: now + 60,
+		Event: &corev1.Event_CacheEventsLoaded{CacheEventsLoaded: &corev1.CacheEventsLoadedEvent{OpId: cacheOp, SessionId: "s1"}},
+	})
+	var fetchOp uint64
+	for _, eff := range loadedRes.Effects {
+		if rpc := eff.GetRpc(); rpc != nil && rpc.GetGetEvents() != nil {
+			fetchOp = rpc.OpId
+		}
+	}
+	initEvents := make([]*corev1.PlainEvent, 40)
+	for i := 0; i < 40; i++ {
+		seq := uint64(i + 1)
+		initEvents[i] = &corev1.PlainEvent{Seq: seq, Verified: true, Event: &v1.Event{Seq: seq, SessionId: "s1"}}
+	}
+	e.HandleEvent(&corev1.Event{
+		NowMs: now + 70,
+		Event: &corev1.Event_EventsPageFetched{
+			EventsPageFetched: &corev1.EventsPageFetchedEvent{OpId: fetchOp, SessionId: "s1", Events: initEvents, More: false},
+		},
+	})
+
+	// Direct delivers seq=42 while seq=41 (>16KiB) is still uploading to server.
+	_, directRes := e.HandleEvent(&corev1.Event{
+		NowMs: now + 80,
+		Event: &corev1.Event_DirectEventsReceived{
+			DirectEventsReceived: &corev1.DirectEventsReceivedEvent{
+				MachineId: "m1",
+				SessionId: "s1",
+				Events:    []*corev1.PlainEvent{{Seq: 42, Verified: true, Event: &v1.Event{Seq: 42, SessionId: "s1"}}},
+			},
+		},
+	})
+	// Must NOT emit GetEvents prematurely.
+	for _, eff := range directRes.Effects {
+		if rpc := eff.GetRpc(); rpc != nil && rpc.GetGetEvents() != nil {
+			t.Fatalf("direct gap must not emit premature GetEvents")
+		}
+	}
+	if view := e.BuildSessionDataView("s1"); view.HasGap || !view.Loaded || view.FetchError != nil {
+		t.Fatalf("direct-ahead pending event must not report HasGap/FetchError: %+v", view)
+	}
+	// ApplyLiveSnapshot (over direct) also advances LastSeq to 42 without touching ServerLastSeq.
+	e.Run(func(ctx *StepContext) {
+		e.ApplyLiveSnapshot(ctx, "s1", &v1.LiveSnapshot{Session: &v1.Session{Id: "s1", LastSeq: 42}})
+	})
+	if e.sessions["s1"].ServerLastSeq != 40 {
+		t.Fatalf("ApplyLiveSnapshot must not advance ServerLastSeq, got %d", e.sessions["s1"].ServerLastSeq)
+	}
+
+	// Even if a GetEvents cycle finishes while ServerLastSeq==40, it must not report false gap error.
+	var midOp uint64
+	_, reWatchRes := e.HandleEvent(&corev1.Event{
+		NowMs: now + 85,
+		Event: &corev1.Event_SessionWatch{SessionWatch: &corev1.SessionWatchEvent{SessionId: "s1", Watched: true}},
+	})
+	for _, eff := range reWatchRes.Effects {
+		if rpc := eff.GetRpc(); rpc != nil && rpc.GetGetEvents() != nil {
+			midOp = rpc.OpId
+			if rpc.GetGetEvents().GetAfterSeq() != 40 {
+				t.Fatalf("expected GetEvents cursor=40 (ServerLastSeq), got %d", rpc.GetGetEvents().GetAfterSeq())
+			}
+		}
+	}
+	if midOp == 0 {
+		t.Fatalf("expected SessionWatch to trigger GetEvents")
+	}
+	e.HandleEvent(&corev1.Event{
+		NowMs: now + 90,
+		Event: &corev1.Event_EventsPageFetched{
+			EventsPageFetched: &corev1.EventsPageFetchedEvent{OpId: midOp, SessionId: "s1", More: false},
+		},
+	})
+	if view := e.BuildSessionDataView("s1"); view.FetchError != nil || view.HasGap || !view.Loaded {
+		t.Fatalf("finishFetchCycle with only direct-ahead pending must not set FetchError/HasGap: %+v", view)
+	}
+
+	// Now server commits 41..42 and broadcasts SessionUpdated(LastSeq=42) (suppose EventsAppended was dropped).
+	_, updRes := e.HandleEvent(&corev1.Event{
+		NowMs: now + 100,
+		Event: &corev1.Event_StreamFrame{
+			StreamFrame: &corev1.StreamFrameEvent{
+				LegId: legID,
+				Frame: &corev1.StreamFrameEvent_SessionUpdated{
+					SessionUpdated: &corev1.PlainSession{SessionId: "s1", MachineId: "m1", LastSeq: 42, UpdatedMs: now + 100},
+				},
+			},
+		},
+	})
+	var gapOp uint64
+	for _, eff := range updRes.Effects {
+		if rpc := eff.GetRpc(); rpc != nil && rpc.GetGetEvents() != nil {
+			gapOp = rpc.OpId
+			if rpc.GetGetEvents().GetAfterSeq() != 40 {
+				t.Fatalf("expected gap-fill GetEvents after 40, got %d", rpc.GetGetEvents().GetAfterSeq())
+			}
+		}
+	}
+	if gapOp == 0 {
+		t.Fatalf("SessionUpdated(42) must trigger GetEvents to fill missing 41")
+	}
+	e.HandleEvent(&corev1.Event{
+		NowMs: now + 110,
+		Event: &corev1.Event_EventsPageFetched{
+			EventsPageFetched: &corev1.EventsPageFetchedEvent{
+				OpId:      gapOp,
+				SessionId: "s1",
+				Events: []*corev1.PlainEvent{
+					{Seq: 41, Verified: true, CacheRef: "ref-41", Event: &v1.Event{Seq: 41, SessionId: "s1"}},
+					{Seq: 42, Verified: true, CacheRef: "ref-42", Event: &v1.Event{Seq: 42, SessionId: "s1"}},
+				},
+				More: false,
+			},
+		},
+	})
+	if buf := e.Buffer("s1"); buf.PrefixLen() != 42 || buf.PendingCount() != 0 || !buf.IsLoaded() {
+		t.Fatalf("expected contiguous prefix=42 pending=0 loaded=true, got prefix=%d pending=%d loaded=%v", buf.PrefixLen(), buf.PendingCount(), buf.IsLoaded())
+	}
+}
+
+func TestDirectEventsWhileRelayDisconnectedDoNotMarkRelayConnected(t *testing.T) {
+	e := NewEngine()
+	now := int64(1_700_000_000_000)
+	legID, listsOp := startAndConnect(t, e, now)
+
+	e.HandleEvent(&corev1.Event{
+		NowMs: now + 40,
+		Event: &corev1.Event_ListsFetched{
+			ListsFetched: &corev1.ListsFetchedEvent{
+				OpId:     listsOp,
+				Machines: []*corev1.PlainMachine{{MachineId: "m1", Online: true}},
+				Sessions: []*corev1.PlainSession{{SessionId: "s1", MachineId: "m1", LastSeq: 1, UpdatedMs: now}},
+			},
+		},
+	})
+	_, watchRes := e.HandleEvent(&corev1.Event{
+		NowMs: now + 50,
+		Event: &corev1.Event_SessionWatch{SessionWatch: &corev1.SessionWatchEvent{SessionId: "s1", Watched: true}},
+	})
+	var cacheOp uint64
+	for _, eff := range watchRes.Effects {
+		if cr := eff.GetCacheRead().GetEvents(); cr != nil {
+			cacheOp = cr.OpId
+		}
+	}
+	_, loadedRes := e.HandleEvent(&corev1.Event{
+		NowMs: now + 60,
+		Event: &corev1.Event_CacheEventsLoaded{CacheEventsLoaded: &corev1.CacheEventsLoadedEvent{OpId: cacheOp, SessionId: "s1"}},
+	})
+	var fetchOp uint64
+	for _, eff := range loadedRes.Effects {
+		if rpc := eff.GetRpc(); rpc != nil && rpc.GetGetEvents() != nil {
+			fetchOp = rpc.OpId
+		}
+	}
+	e.HandleEvent(&corev1.Event{
+		NowMs: now + 70,
+		Event: &corev1.Event_EventsPageFetched{
+			EventsPageFetched: &corev1.EventsPageFetchedEvent{
+				OpId:      fetchOp,
+				SessionId: "s1",
+				Events:    []*corev1.PlainEvent{{Seq: 1, Verified: true, Event: &v1.Event{Seq: 1, SessionId: "s1"}}},
+			},
+		},
+	})
+
+	// Drop relay stream so e.conn leaves ConnConnected.
+	e.HandleEvent(&corev1.Event{
+		NowMs: now + 80,
+		Event: &corev1.Event_StreamClosed{
+			StreamClosed: &corev1.StreamClosedEvent{LegId: legID, Error: "dropped"},
+		},
+	})
+	if e.Connection() == lists.ConnConnected {
+		t.Fatalf("expected relay disconnected after StreamClosed")
+	}
+
+	// Direct events arrive while relay is disconnected: buffer updates, e.conn does NOT become ConnConnected.
+	e.HandleEvent(&corev1.Event{
+		NowMs: now + 90,
+		Event: &corev1.Event_DirectEventsReceived{
+			DirectEventsReceived: &corev1.DirectEventsReceivedEvent{
+				MachineId: "m1",
+				SessionId: "s1",
+				Events:    []*corev1.PlainEvent{{Seq: 2, Verified: true, Event: &v1.Event{Seq: 2, SessionId: "s1"}}},
+			},
+		},
+	})
+	if e.Buffer("s1").PrefixLen() != 2 {
+		t.Fatalf("expected direct seq=2 ingested while relay disconnected")
+	}
+	if e.Connection() == lists.ConnConnected {
+		t.Fatalf("direct events must not mark relay ConnConnected")
+	}
+}

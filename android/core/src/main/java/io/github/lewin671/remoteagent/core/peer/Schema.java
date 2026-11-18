@@ -5,9 +5,9 @@ import java.io.*;
 public final class Schema {
  static final class Rule{final int n;final String kind;final boolean repeated;Rule(int n,String k,boolean r){this.n=n;kind=k;repeated=r;}}
  static final String[] SIGNAL={"","Probe","Challenge","SDP","SDP","Candidates","EndCandidates","Confirm","Restart","Close"};
- static final String[] CONTROL={"","Capabilities","AttachPath","InputStatus","Ack","Replay","Barrier","StreamFailed","ClosePath","DirectPolicy","Unsupported","InputStatusReply","BarrierReply","PolicyReply","CapabilitySnapshot"};
+ static final String[] CONTROL={"","Capabilities","AttachPath","InputStatus","Ack","Replay","Barrier","StreamFailed","ClosePath","DirectPolicy","Unsupported","InputStatusReply","BarrierReply","PolicyReply","CapabilitySnapshot","DirectEventSubscription"};
  public static byte[] known(long cls,long type,byte[] raw){String[] names=cls==2?CONTROL:SIGNAL;return type>0&&type<names.length?normalize(raw,names[(int)type],0,true):raw;}
- static int cap(String name,int n){return name.equals("Candidates")&&n==1?16:name.equals("Restart")&&n==1?2:name.equals("Capabilities")?64:128;}
+ static int cap(String name,int n){return name.equals("Candidates")&&n==1?16:name.equals("Restart")&&n==1?2:name.equals("Capabilities")?64:name.equals("DirectEventSubscription")&&n==1?4:128;}
  static long max(String kind){if(kind.equals("bool"))return 1;if(kind.equals("u32"))return 0xffffffffL;if(kind.equals("i32"))return 0x7fffffffL;if(kind.equals("i64"))return Long.MAX_VALUE;if(kind.startsWith("e"))return Long.parseLong(kind.substring(1));return -1L;}
  public static byte[] normalize(byte[] raw,String name){return normalize(raw,name,0,false);}
  public static byte[] normalize(byte[] raw,String name,int depth,boolean shape){

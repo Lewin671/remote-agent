@@ -1242,6 +1242,19 @@ public struct PBCapabilitySnapshot: Sendable {
   fileprivate var _capabilities: PBMachineCapabilities? = nil
 }
 
+/// Second extension after the protocol 16 freeze: authenticated Control type 15.
+public struct PBDirectEventSubscription: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var sessionIds: [String] = []
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
 // MARK: - Code below here is support for the SwiftProtobuf runtime.
 
 fileprivate let _protobuf_package = "remoteagent.v1"
@@ -3194,6 +3207,36 @@ extension PBCapabilitySnapshot: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
     if lhs.capabilityID != rhs.capabilityID {return false}
     if lhs._capabilities != rhs._capabilities {return false}
     if lhs.expiresAtMs != rhs.expiresAtMs {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension PBDirectEventSubscription: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".DirectEventSubscription"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}session_ids\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeRepeatedStringField(value: &self.sessionIds) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.sessionIds.isEmpty {
+      try visitor.visitRepeatedStringField(value: self.sessionIds, fieldNumber: 1)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: PBDirectEventSubscription, rhs: PBDirectEventSubscription) -> Bool {
+    if lhs.sessionIds != rhs.sessionIds {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

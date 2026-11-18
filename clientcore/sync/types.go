@@ -129,6 +129,7 @@ type SessionEntry struct {
 	ID                string
 	MachineID         string
 	LastSeq           uint64
+	ServerLastSeq     uint64
 	UpdatedMs         int64
 	ListedEndedMs     int64
 	Meta              *v1.Session
@@ -593,6 +594,8 @@ func (e *Engine) HandleEvent(ev *corev1.Event) (consumed bool, res StepResult) {
 		e.handleMachineRouteStatus(ctx, k.MachineRouteStatus)
 	case *corev1.Event_SessionScheduleHints:
 		e.handleScheduleHints(ctx, k.SessionScheduleHints)
+	case *corev1.Event_DirectEventsReceived:
+		e.handleDirectEvents(ctx, k.DirectEventsReceived)
 	default:
 		consumed = false
 	}

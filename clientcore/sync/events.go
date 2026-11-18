@@ -107,6 +107,21 @@ func (b *EventBuffer) highestHeldSeq() uint64 {
 	return best
 }
 
+func (b *EventBuffer) hasServerGap(serverLastSeq uint64) bool {
+	if b == nil {
+		return false
+	}
+	if uint64(len(b.prefix)) < serverLastSeq {
+		return true
+	}
+	for seq := range b.pending {
+		if seq <= serverLastSeq {
+			return true
+		}
+	}
+	return false
+}
+
 // PrefixLen returns the contiguous verified/placeholder prefix length for session.
 func (b *EventBuffer) PrefixLen() uint64 {
 	if b == nil {
@@ -316,7 +331,7 @@ func (e *Engine) handleCacheEventsLoaded(ctx *StepContext, ev *corev1.CacheEvent
 		return
 	}
 
-	ok := e.ingestEvents(ctx, ev.SessionId, b, ev.Events, false, false)
+	ok := e.ingestEvents(ctx, ev.SessionId, b, ev.Events, false, false, true)
 	if b.retired {
 		b.awaitingCache = false
 		b.backfilling = false
@@ -426,7 +441,7 @@ func (e *Engine) startFetchEvents(ctx *StepContext, sid string) {
 	b.fetchErrorText = nil
 
 	if b.backfilling {
-		latest := s.LastSeq
+		latest := s.ServerLastSeq
 		held := b.highestHeldSeq()
 		if latest <= held {
 			b.fetching = false
@@ -443,7 +458,7 @@ func (e *Engine) startFetchEvents(ctx *StepContext, sid string) {
 		return
 	}
 
-	latest := s.LastSeq
+	latest := s.ServerLastSeq
 	prefix := uint64(len(b.prefix))
 	if latest > prefix+uint64(EventsPageLimit) && b.errorText == nil {
 		after := latest - uint64(EventsPageLimit)
@@ -519,7 +534,7 @@ func (e *Engine) handleEventsPageFetched(ctx *StepContext, ev *corev1.EventsPage
 	}
 
 	prevPrefix := len(b.prefix)
-	e.ingestEvents(ctx, ev.SessionId, b, ev.Events, false, true)
+	e.ingestEvents(ctx, ev.SessionId, b, ev.Events, false, true, true)
 	ctx.Dirty.MarkSessionData()
 	var lastSeq uint64
 	if len(ev.Events) > 0 && ev.Events[len(ev.Events)-1] != nil {
@@ -579,10 +594,12 @@ func (e *Engine) finishFetchCycle(ctx *StepContext, sid string, b *EventBuffer, 
 	b.fetching = false
 	b.fetchPhase = eventFetchNone
 	b.retryingCorruptCache = false
-	missing := len(b.pending) > 0 || uint64(len(b.prefix)) < s.LastSeq
+	missing := b.hasServerGap(s.ServerLastSeq)
 	b.loaded = !missing && b.errorText == nil
 	if missing && b.errorText == nil {
 		b.fetchErrorText = text.Msg(text.KeyErrorsHistoryHasAGapRetry)
+	} else if !missing {
+		b.fetchErrorText = nil
 	}
 	ctx.Dirty.MarkSessionData()
 	if b.refetch && e.running && e.conn == lists.ConnConnected {
@@ -596,7 +613,44 @@ func (e *Engine) handleEventsAppended(ctx *StepContext, frame *corev1.EventsAppe
 	if b == nil {
 		return
 	}
-	e.ingestEvents(ctx, sid, b, frame.Events, true, true)
+	e.ingestEvents(ctx, sid, b, frame.Events, true, true, true)
+	ctx.Dirty.MarkSessionData()
+}
+
+func (e *Engine) handleDirectEvents(ctx *StepContext, ev *corev1.DirectEventsReceivedEvent) {
+	if ev == nil || ev.SessionId == "" || ev.MachineId == "" || !e.running || !e.foreground {
+		return
+	}
+	s := e.sessions[ev.SessionId]
+	if s == nil || s.MachineID != ev.MachineId {
+		return
+	}
+	b := e.buffers[ev.SessionId]
+	if b == nil {
+		return
+	}
+	if e.security.Loaded && !e.security.TrustedMachines[ev.MachineId] {
+		return
+	}
+	var clean []*corev1.PlainEvent
+	for _, pe := range ev.Events {
+		if pe == nil || pe.Seq == 0 || pe.Broken || pe.Retired || pe.Unavailable {
+			continue
+		}
+		if pe.CacheRef != "" {
+			pe = &corev1.PlainEvent{
+				Seq:         pe.Seq,
+				Event:       pe.Event,
+				Verified:    pe.Verified,
+				ApproxBytes: pe.ApproxBytes,
+			}
+		}
+		clean = append(clean, pe)
+	}
+	if len(clean) == 0 {
+		return
+	}
+	e.ingestEvents(ctx, ev.SessionId, b, clean, false, false, false)
 	ctx.Dirty.MarkSessionData()
 }
 
@@ -607,6 +661,7 @@ func (e *Engine) ingestEvents(
 	items []*corev1.PlainEvent,
 	fillGaps bool,
 	save bool,
+	fromServer bool,
 ) bool {
 	s := e.sessions[sid]
 	if s == nil {
@@ -703,8 +758,17 @@ func (e *Engine) ingestEvents(
 		}
 	}
 
+	if fromServer && maxSeq > s.ServerLastSeq {
+		s.ServerLastSeq = maxSeq
+	}
 	if maxSeq > s.LastSeq {
 		s.LastSeq = maxSeq
+	}
+	if b.fetchErrorText != nil && !b.fetching && !b.awaitingCache && !b.backfilling && !b.hasServerGap(s.ServerLastSeq) && len(b.pending) == 0 {
+		b.fetchErrorText = nil
+		if b.errorText == nil {
+			b.loaded = true
+		}
 	}
 	if len(cacheRefs) > 0 {
 		ctx.emit(&corev1.Effect{

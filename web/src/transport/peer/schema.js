@@ -5,7 +5,7 @@ import rules from './schema-data.js';
 const vint=n=>{n=BigInt(n);const out=[];do{let v=Number(n&127n);n>>=7n;if(n)v|=128;out.push(v)}while(n);return Uint8Array.from(out)};
 const concat=(...parts)=>{const r=new Uint8Array(parts.reduce((n,p)=>n+p.length,0));let at=0;for(const p of parts){r.set(p,at);at+=p.length}return r};
 const equal=(a,b)=>a.length===b.length&&a.every((v,i)=>v===b[i]);
-const cap=(name,n)=>name==='Candidates'&&n===1?16:name==='Restart'&&n===1?2:name==='Capabilities'?64:128;
+const cap=(name,n)=>name==='Candidates'&&n===1?16:name==='Restart'&&n===1?2:name==='Capabilities'?64:name==='DirectEventSubscription'&&n===1?4:128;
 const max=k=>k==='bool'?1n:k==='u32'?0xffffffffn:k==='i32'?0x7fffffffn:k==='i64'?0x7fffffffffffffffn:k.startsWith('e')?BigInt(k.slice(1)):0xffffffffffffffffn;
 export function normalize(raw,name,depth=0,shape=false){
  const defs=rules[name],limit=name==='Candidate'?1024:name==='LogicalFrame'?1048576:65536;if(!defs||depth>8||raw.length>limit)throw Error('schema size');
@@ -22,6 +22,6 @@ export function normalize(raw,name,depth=0,shape=false){
  const out=[];for(const [n,kind,repeated]of defs){let list=values.get(n)??[];if(!list.length&&!repeated&&!kind.startsWith('m'))list=[{n,value:kind==='b'?new Uint8Array():0n,bytes:kind==='b'}];for(const f of list){if(shape&&bounds[name]?.[n]){const [lo,hi]=bounds[name][n].map(BigInt),v=f.bytes?BigInt(f.value.length):f.value;if(v<lo||v>hi)throw Error('body bounds')};out.push(concat(vint(BigInt(n)*8n+(f.bytes?2n:0n)),...(f.bytes?[vint(f.value.length),f.value]:[vint(f.value)])))} }return concat(...out);
 }
 export const signalSchemas={1:'Probe',2:'Challenge',3:'SDP',4:'SDP',5:'Candidates',6:'EndCandidates',7:'Confirm',8:'Restart',9:'Close'};
-export const controlSchemas={1:'Capabilities',2:'AttachPath',3:'InputStatus',4:'Ack',5:'Replay',6:'Barrier',7:'StreamFailed',8:'ClosePath',9:'DirectPolicy',10:'Unsupported',11:'InputStatusReply',12:'BarrierReply',13:'PolicyReply',14:'CapabilitySnapshot'};
+export const controlSchemas={1:'Capabilities',2:'AttachPath',3:'InputStatus',4:'Ack',5:'Replay',6:'Barrier',7:'StreamFailed',8:'ClosePath',9:'DirectPolicy',10:'Unsupported',11:'InputStatusReply',12:'BarrierReply',13:'PolicyReply',14:'CapabilitySnapshot',15:'DirectEventSubscription'};
 export const knownPayload=(cls,type,raw)=>{const name=(Number(cls)===2?controlSchemas:signalSchemas)[type];return name?normalize(raw,name,0,true):raw};
 export function restart(raw){raw=normalize(raw,'Restart');let at=0;const read=()=>{let v=0n,shift=0n;for(;;){const b=raw[at++];v|=BigInt(b&127)<<shift;if(!(b&128))return Number(v);shift+=7n}};const targets=new Map();while(raw[at]===10){at++;const size=read(),f=normalize(raw.slice(at,at+size),'RestartPC');at+=size;let i=0;const integer=()=>{let n=0n,s=0n;for(;;){const b=f[i++];n|=BigInt(b&127)<<s;if(!(b&128))return n;s+=7n}};integer();const use=integer();integer();const gen=integer();if(use<1n||use>2n||targets.has(use))throw Error('Restart targets');targets.set(use,gen)}if(!targets.size)throw Error('Restart empty');return targets}

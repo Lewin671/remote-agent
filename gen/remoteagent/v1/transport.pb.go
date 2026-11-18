@@ -3106,6 +3106,51 @@ func (x *CapabilitySnapshot) GetExpiresAtMs() int64 {
 	return 0
 }
 
+// Second extension after the protocol 16 freeze: authenticated Control type 15.
+type DirectEventSubscription struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	SessionIds    []string               `protobuf:"bytes,1,rep,name=session_ids,json=sessionIds,proto3" json:"session_ids,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DirectEventSubscription) Reset() {
+	*x = DirectEventSubscription{}
+	mi := &file_remoteagent_v1_transport_proto_msgTypes[37]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DirectEventSubscription) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DirectEventSubscription) ProtoMessage() {}
+
+func (x *DirectEventSubscription) ProtoReflect() protoreflect.Message {
+	mi := &file_remoteagent_v1_transport_proto_msgTypes[37]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DirectEventSubscription.ProtoReflect.Descriptor instead.
+func (*DirectEventSubscription) Descriptor() ([]byte, []int) {
+	return file_remoteagent_v1_transport_proto_rawDescGZIP(), []int{37}
+}
+
+func (x *DirectEventSubscription) GetSessionIds() []string {
+	if x != nil {
+		return x.SessionIds
+	}
+	return nil
+}
+
 var File_remoteagent_v1_transport_proto protoreflect.FileDescriptor
 
 const file_remoteagent_v1_transport_proto_rawDesc = "" +
@@ -3362,7 +3407,10 @@ const file_remoteagent_v1_transport_proto_rawDesc = "" +
 	"\x12CapabilitySnapshot\x12#\n" +
 	"\rcapability_id\x18\x01 \x01(\fR\fcapabilityId\x12G\n" +
 	"\fcapabilities\x18\x02 \x01(\v2#.remoteagent.v1.MachineCapabilitiesR\fcapabilities\x12\"\n" +
-	"\rexpires_at_ms\x18\x03 \x01(\x03R\vexpiresAtMs*B\n" +
+	"\rexpires_at_ms\x18\x03 \x01(\x03R\vexpiresAtMs\":\n" +
+	"\x17DirectEventSubscription\x12\x1f\n" +
+	"\vsession_ids\x18\x01 \x03(\tR\n" +
+	"sessionIds*B\n" +
 	"\n" +
 	"FrameClass\x12\x1b\n" +
 	"\x17FRAME_CLASS_UNSPECIFIED\x10\x00\x12\n" +
@@ -3410,53 +3458,54 @@ func file_remoteagent_v1_transport_proto_rawDescGZIP() []byte {
 }
 
 var file_remoteagent_v1_transport_proto_enumTypes = make([]protoimpl.EnumInfo, 7)
-var file_remoteagent_v1_transport_proto_msgTypes = make([]protoimpl.MessageInfo, 37)
+var file_remoteagent_v1_transport_proto_msgTypes = make([]protoimpl.MessageInfo, 38)
 var file_remoteagent_v1_transport_proto_goTypes = []any{
-	(FrameClass)(0),             // 0: remoteagent.v1.FrameClass
-	(Role)(0),                   // 1: remoteagent.v1.Role
-	(PCUse)(0),                  // 2: remoteagent.v1.PCUse
-	(Direction)(0),              // 3: remoteagent.v1.Direction
-	(FrameOutcome)(0),           // 4: remoteagent.v1.FrameOutcome
-	(PolicyScope)(0),            // 5: remoteagent.v1.PolicyScope
-	(PeerFrameResult_Status)(0), // 6: remoteagent.v1.PeerFrameResult.Status
-	(*DirectedPeerFrame)(nil),   // 7: remoteagent.v1.DirectedPeerFrame
-	(*PeerFrameDelivery)(nil),   // 8: remoteagent.v1.PeerFrameDelivery
-	(*PeerFrameResult)(nil),     // 9: remoteagent.v1.PeerFrameResult
-	(*TypedPayload)(nil),        // 10: remoteagent.v1.TypedPayload
-	(*PeerSignal)(nil),          // 11: remoteagent.v1.PeerSignal
-	(*TransportControl)(nil),    // 12: remoteagent.v1.TransportControl
-	(*Context)(nil),             // 13: remoteagent.v1.Context
-	(*SealedPeerPacket)(nil),    // 14: remoteagent.v1.SealedPeerPacket
-	(*Probe)(nil),               // 15: remoteagent.v1.Probe
-	(*Challenge)(nil),           // 16: remoteagent.v1.Challenge
-	(*SDP)(nil),                 // 17: remoteagent.v1.SDP
-	(*Candidate)(nil),           // 18: remoteagent.v1.Candidate
-	(*Candidates)(nil),          // 19: remoteagent.v1.Candidates
-	(*EndCandidates)(nil),       // 20: remoteagent.v1.EndCandidates
-	(*Confirm)(nil),             // 21: remoteagent.v1.Confirm
-	(*RestartPC)(nil),           // 22: remoteagent.v1.RestartPC
-	(*Restart)(nil),             // 23: remoteagent.v1.Restart
-	(*Close)(nil),               // 24: remoteagent.v1.Close
-	(*Fragment)(nil),            // 25: remoteagent.v1.Fragment
-	(*LogicalFrame)(nil),        // 26: remoteagent.v1.LogicalFrame
-	(*FrameStatus)(nil),         // 27: remoteagent.v1.FrameStatus
-	(*Watermark)(nil),           // 28: remoteagent.v1.Watermark
-	(*FlowState)(nil),           // 29: remoteagent.v1.FlowState
-	(*Capabilities)(nil),        // 30: remoteagent.v1.Capabilities
-	(*AttachPath)(nil),          // 31: remoteagent.v1.AttachPath
-	(*PeerInputStatus)(nil),     // 32: remoteagent.v1.PeerInputStatus
-	(*InputStatusReply)(nil),    // 33: remoteagent.v1.InputStatusReply
-	(*Ack)(nil),                 // 34: remoteagent.v1.Ack
-	(*Replay)(nil),              // 35: remoteagent.v1.Replay
-	(*Barrier)(nil),             // 36: remoteagent.v1.Barrier
-	(*BarrierReply)(nil),        // 37: remoteagent.v1.BarrierReply
-	(*StreamFailed)(nil),        // 38: remoteagent.v1.StreamFailed
-	(*ClosePath)(nil),           // 39: remoteagent.v1.ClosePath
-	(*DirectPolicy)(nil),        // 40: remoteagent.v1.DirectPolicy
-	(*PolicyReply)(nil),         // 41: remoteagent.v1.PolicyReply
-	(*Unsupported)(nil),         // 42: remoteagent.v1.Unsupported
-	(*CapabilitySnapshot)(nil),  // 43: remoteagent.v1.CapabilitySnapshot
-	(*MachineCapabilities)(nil), // 44: remoteagent.v1.MachineCapabilities
+	(FrameClass)(0),                 // 0: remoteagent.v1.FrameClass
+	(Role)(0),                       // 1: remoteagent.v1.Role
+	(PCUse)(0),                      // 2: remoteagent.v1.PCUse
+	(Direction)(0),                  // 3: remoteagent.v1.Direction
+	(FrameOutcome)(0),               // 4: remoteagent.v1.FrameOutcome
+	(PolicyScope)(0),                // 5: remoteagent.v1.PolicyScope
+	(PeerFrameResult_Status)(0),     // 6: remoteagent.v1.PeerFrameResult.Status
+	(*DirectedPeerFrame)(nil),       // 7: remoteagent.v1.DirectedPeerFrame
+	(*PeerFrameDelivery)(nil),       // 8: remoteagent.v1.PeerFrameDelivery
+	(*PeerFrameResult)(nil),         // 9: remoteagent.v1.PeerFrameResult
+	(*TypedPayload)(nil),            // 10: remoteagent.v1.TypedPayload
+	(*PeerSignal)(nil),              // 11: remoteagent.v1.PeerSignal
+	(*TransportControl)(nil),        // 12: remoteagent.v1.TransportControl
+	(*Context)(nil),                 // 13: remoteagent.v1.Context
+	(*SealedPeerPacket)(nil),        // 14: remoteagent.v1.SealedPeerPacket
+	(*Probe)(nil),                   // 15: remoteagent.v1.Probe
+	(*Challenge)(nil),               // 16: remoteagent.v1.Challenge
+	(*SDP)(nil),                     // 17: remoteagent.v1.SDP
+	(*Candidate)(nil),               // 18: remoteagent.v1.Candidate
+	(*Candidates)(nil),              // 19: remoteagent.v1.Candidates
+	(*EndCandidates)(nil),           // 20: remoteagent.v1.EndCandidates
+	(*Confirm)(nil),                 // 21: remoteagent.v1.Confirm
+	(*RestartPC)(nil),               // 22: remoteagent.v1.RestartPC
+	(*Restart)(nil),                 // 23: remoteagent.v1.Restart
+	(*Close)(nil),                   // 24: remoteagent.v1.Close
+	(*Fragment)(nil),                // 25: remoteagent.v1.Fragment
+	(*LogicalFrame)(nil),            // 26: remoteagent.v1.LogicalFrame
+	(*FrameStatus)(nil),             // 27: remoteagent.v1.FrameStatus
+	(*Watermark)(nil),               // 28: remoteagent.v1.Watermark
+	(*FlowState)(nil),               // 29: remoteagent.v1.FlowState
+	(*Capabilities)(nil),            // 30: remoteagent.v1.Capabilities
+	(*AttachPath)(nil),              // 31: remoteagent.v1.AttachPath
+	(*PeerInputStatus)(nil),         // 32: remoteagent.v1.PeerInputStatus
+	(*InputStatusReply)(nil),        // 33: remoteagent.v1.InputStatusReply
+	(*Ack)(nil),                     // 34: remoteagent.v1.Ack
+	(*Replay)(nil),                  // 35: remoteagent.v1.Replay
+	(*Barrier)(nil),                 // 36: remoteagent.v1.Barrier
+	(*BarrierReply)(nil),            // 37: remoteagent.v1.BarrierReply
+	(*StreamFailed)(nil),            // 38: remoteagent.v1.StreamFailed
+	(*ClosePath)(nil),               // 39: remoteagent.v1.ClosePath
+	(*DirectPolicy)(nil),            // 40: remoteagent.v1.DirectPolicy
+	(*PolicyReply)(nil),             // 41: remoteagent.v1.PolicyReply
+	(*Unsupported)(nil),             // 42: remoteagent.v1.Unsupported
+	(*CapabilitySnapshot)(nil),      // 43: remoteagent.v1.CapabilitySnapshot
+	(*DirectEventSubscription)(nil), // 44: remoteagent.v1.DirectEventSubscription
+	(*MachineCapabilities)(nil),     // 45: remoteagent.v1.MachineCapabilities
 }
 var file_remoteagent_v1_transport_proto_depIdxs = []int32{
 	0,  // 0: remoteagent.v1.DirectedPeerFrame.frame_class:type_name -> remoteagent.v1.FrameClass
@@ -3490,7 +3539,7 @@ var file_remoteagent_v1_transport_proto_depIdxs = []int32{
 	5,  // 28: remoteagent.v1.DirectPolicy.scope:type_name -> remoteagent.v1.PolicyScope
 	5,  // 29: remoteagent.v1.PolicyReply.scope:type_name -> remoteagent.v1.PolicyScope
 	0,  // 30: remoteagent.v1.Unsupported.original_purpose:type_name -> remoteagent.v1.FrameClass
-	44, // 31: remoteagent.v1.CapabilitySnapshot.capabilities:type_name -> remoteagent.v1.MachineCapabilities
+	45, // 31: remoteagent.v1.CapabilitySnapshot.capabilities:type_name -> remoteagent.v1.MachineCapabilities
 	32, // [32:32] is the sub-list for method output_type
 	32, // [32:32] is the sub-list for method input_type
 	32, // [32:32] is the sub-list for extension type_name
@@ -3513,7 +3562,7 @@ func file_remoteagent_v1_transport_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_remoteagent_v1_transport_proto_rawDesc), len(file_remoteagent_v1_transport_proto_rawDesc)),
 			NumEnums:      7,
-			NumMessages:   37,
+			NumMessages:   38,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

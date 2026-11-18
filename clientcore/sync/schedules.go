@@ -48,7 +48,7 @@ func (e *Engine) SessionEventsSettled(sid string) bool {
 		return true
 	}
 	s := e.sessions[sid]
-	hasGap := len(b.pending) > 0 || (s != nil && uint64(len(b.prefix)) < s.LastSeq)
+	hasGap := (s != nil && b.hasServerGap(s.ServerLastSeq)) || (s == nil && len(b.pending) > 0)
 	if b.loaded && !hasGap {
 		return true
 	}

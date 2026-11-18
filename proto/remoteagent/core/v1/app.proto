@@ -382,6 +382,12 @@ message MachineRouteStatusEvent {
   bool direct_ready = 2;
 }
 
+message DirectEventsReceivedEvent {
+  string machine_id = 1;
+  string session_id = 2;
+  repeated PlainEvent events = 3;
+}
+
 message SessionScheduleHint {
   string session_id = 1;
   string schedule_name = 2;
@@ -503,6 +509,7 @@ message Event {
     FetchSessionAction fetch_session = 24;
     MachineRouteStatusEvent machine_route_status = 25;
     SessionScheduleHintsEvent session_schedule_hints = 26;
+    DirectEventsReceivedEvent direct_events_received = 27;
     HomeSetScopeAction home_set_scope = 30;
     HomeSetFilterAction home_set_filter = 31;
     HomeLoadMoreEndedAction home_load_more_ended = 32;

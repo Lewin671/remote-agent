@@ -47,6 +47,7 @@ public  final class Event extends
     FETCH_SESSION(24),
     MACHINE_ROUTE_STATUS(25),
     SESSION_SCHEDULE_HINTS(26),
+    DIRECT_EVENTS_RECEIVED(27),
     HOME_SET_SCOPE(30),
     HOME_SET_FILTER(31),
     HOME_LOAD_MORE_ENDED(32),
@@ -171,6 +172,7 @@ public  final class Event extends
         case 24: return FETCH_SESSION;
         case 25: return MACHINE_ROUTE_STATUS;
         case 26: return SESSION_SCHEDULE_HINTS;
+        case 27: return DIRECT_EVENTS_RECEIVED;
         case 30: return HOME_SET_SCOPE;
         case 31: return HOME_SET_FILTER;
         case 32: return HOME_LOAD_MORE_ENDED;
@@ -1622,6 +1624,58 @@ public  final class Event extends
    */
   private void clearSessionScheduleHints() {
     if (eventCase_ == 26) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int DIRECT_EVENTS_RECEIVED_FIELD_NUMBER = 27;
+  /**
+   * <code>.remoteagent.core.v1.DirectEventsReceivedEvent direct_events_received = 27 [json_name = "directEventsReceived"];</code>
+   */
+  @java.lang.Override
+  public boolean hasDirectEventsReceived() {
+    return eventCase_ == 27;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectEventsReceivedEvent direct_events_received = 27 [json_name = "directEventsReceived"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.DirectEventsReceivedEvent getDirectEventsReceived() {
+    if (eventCase_ == 27) {
+       return (io.github.lewin671.remoteagent.core.proto.DirectEventsReceivedEvent) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.DirectEventsReceivedEvent.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectEventsReceivedEvent direct_events_received = 27 [json_name = "directEventsReceived"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setDirectEventsReceived(io.github.lewin671.remoteagent.core.proto.DirectEventsReceivedEvent value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 27;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectEventsReceivedEvent direct_events_received = 27 [json_name = "directEventsReceived"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeDirectEventsReceived(io.github.lewin671.remoteagent.core.proto.DirectEventsReceivedEvent value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 27 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.DirectEventsReceivedEvent.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.DirectEventsReceivedEvent.newBuilder((io.github.lewin671.remoteagent.core.proto.DirectEventsReceivedEvent) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 27;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectEventsReceivedEvent direct_events_received = 27 [json_name = "directEventsReceived"];</code>
+   */
+  private void clearDirectEventsReceived() {
+    if (eventCase_ == 27) {
       eventCase_ = 0;
       event_ = null;
     }
@@ -7519,6 +7573,54 @@ public  final class Event extends
     }
 
     /**
+     * <code>.remoteagent.core.v1.DirectEventsReceivedEvent direct_events_received = 27 [json_name = "directEventsReceived"];</code>
+     */
+    @java.lang.Override
+    public boolean hasDirectEventsReceived() {
+      return instance.hasDirectEventsReceived();
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectEventsReceivedEvent direct_events_received = 27 [json_name = "directEventsReceived"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.DirectEventsReceivedEvent getDirectEventsReceived() {
+      return instance.getDirectEventsReceived();
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectEventsReceivedEvent direct_events_received = 27 [json_name = "directEventsReceived"];</code>
+     */
+    public Builder setDirectEventsReceived(io.github.lewin671.remoteagent.core.proto.DirectEventsReceivedEvent value) {
+      copyOnWrite();
+      instance.setDirectEventsReceived(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectEventsReceivedEvent direct_events_received = 27 [json_name = "directEventsReceived"];</code>
+     */
+    public Builder setDirectEventsReceived(
+        io.github.lewin671.remoteagent.core.proto.DirectEventsReceivedEvent.Builder builderForValue) {
+      copyOnWrite();
+      instance.setDirectEventsReceived(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectEventsReceivedEvent direct_events_received = 27 [json_name = "directEventsReceived"];</code>
+     */
+    public Builder mergeDirectEventsReceived(io.github.lewin671.remoteagent.core.proto.DirectEventsReceivedEvent value) {
+      copyOnWrite();
+      instance.mergeDirectEventsReceived(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectEventsReceivedEvent direct_events_received = 27 [json_name = "directEventsReceived"];</code>
+     */
+    public Builder clearDirectEventsReceived() {
+      copyOnWrite();
+      instance.clearDirectEventsReceived();
+      return this;
+    }
+
+    /**
      * <code>.remoteagent.core.v1.HomeSetScopeAction home_set_scope = 30 [json_name = "homeSetScope"];</code>
      */
     @java.lang.Override
@@ -11763,6 +11865,7 @@ public  final class Event extends
             io.github.lewin671.remoteagent.core.proto.FetchSessionAction.class,
             io.github.lewin671.remoteagent.core.proto.MachineRouteStatusEvent.class,
             io.github.lewin671.remoteagent.core.proto.SessionScheduleHintsEvent.class,
+            io.github.lewin671.remoteagent.core.proto.DirectEventsReceivedEvent.class,
             io.github.lewin671.remoteagent.core.proto.HomeSetScopeAction.class,
             io.github.lewin671.remoteagent.core.proto.HomeSetFilterAction.class,
             io.github.lewin671.remoteagent.core.proto.HomeLoadMoreEndedAction.class,
@@ -11852,23 +11955,23 @@ public  final class Event extends
             io.github.lewin671.remoteagent.core.proto.CheckForUpdatesEvent.class,
           };
           java.lang.String info =
-              "\u0000q\u0001\u0000\u0001\u017bq\u0000\u0002\u0000\u0001<\u0000\u0002<\u0000\u0003" +
+              "\u0000r\u0001\u0000\u0001\u017br\u0000\u0002\u0000\u0001<\u0000\u0002<\u0000\u0003" +
               "<\u0000\u0004<\u0000\u0005<\u0000\u0006<\u0000\u0007<\u0000\b<\u0000\t<\u0000\n<" +
               "\u0000\u000b<\u0000\f<\u0000\r<\u0000\u000e<\u0000\u000f<\u0000\u0010<\u0000\u0011" +
               "<\u0000\u0012<\u0000\u0013<\u0000\u0014<\u0000\u0015<\u0000\u0016<\u0000\u0017<\u0000" +
-              "\u0018<\u0000\u0019<\u0000\u001a<\u0000\u001e<\u0000\u001f<\u0000 <\u0000!<\u0000" +
-              "\"<\u0000(<\u0000)<\u0000*<\u0000+<\u0000,<\u0000-<\u0000.<\u0000/<\u00002<\u0000" +
-              "3<\u00004<\u00005<\u00006<\u00007<\u00008<\u00009<\u0000:<\u0000;<\u0000b\u0002c" +
-              "\u0002d\u021ae#\u00c8<\u0000\u00c9<\u0000\u00ca<\u0000\u00cb<\u0000\u00cc<\u0000" +
-              "\u00cd<\u0000\u00ce<\u0000\u012c<\u0000\u012d<\u0000\u012e<\u0000\u012f<\u0000\u0130" +
-              "<\u0000\u0136<\u0000\u0137<\u0000\u0138<\u0000\u0139<\u0000\u013a<\u0000\u0140<\u0000" +
-              "\u0141<\u0000\u0142<\u0000\u0143<\u0000\u0144<\u0000\u0145<\u0000\u0146<\u0000\u014a" +
-              "<\u0000\u014b<\u0000\u014c<\u0000\u014d<\u0000\u014e<\u0000\u014f<\u0000\u0152<\u0000" +
-              "\u0153<\u0000\u0154<\u0000\u0155<\u0000\u0156<\u0000\u0157<\u0000\u0158<\u0000\u0159" +
-              "<\u0000\u015a<\u0000\u015b<\u0000\u015c<\u0000\u015d<\u0000\u015e<\u0000\u015f<\u0000" +
-              "\u0160<\u0000\u0161<\u0000\u0162<\u0000\u0163<\u0000\u0168<\u0000\u0169<\u0000\u016a" +
-              "<\u0000\u016b<\u0000\u016c<\u0000\u016d<\u0000\u0172<\u0000\u0177<\u0000\u0178<\u0000" +
-              "\u0179<\u0000\u017a<\u0000\u017b<\u0000";
+              "\u0018<\u0000\u0019<\u0000\u001a<\u0000\u001b<\u0000\u001e<\u0000\u001f<\u0000 <" +
+              "\u0000!<\u0000\"<\u0000(<\u0000)<\u0000*<\u0000+<\u0000,<\u0000-<\u0000.<\u0000/" +
+              "<\u00002<\u00003<\u00004<\u00005<\u00006<\u00007<\u00008<\u00009<\u0000:<\u0000;" +
+              "<\u0000b\u0002c\u0002d\u021ae#\u00c8<\u0000\u00c9<\u0000\u00ca<\u0000\u00cb<\u0000" +
+              "\u00cc<\u0000\u00cd<\u0000\u00ce<\u0000\u012c<\u0000\u012d<\u0000\u012e<\u0000\u012f" +
+              "<\u0000\u0130<\u0000\u0136<\u0000\u0137<\u0000\u0138<\u0000\u0139<\u0000\u013a<\u0000" +
+              "\u0140<\u0000\u0141<\u0000\u0142<\u0000\u0143<\u0000\u0144<\u0000\u0145<\u0000\u0146" +
+              "<\u0000\u014a<\u0000\u014b<\u0000\u014c<\u0000\u014d<\u0000\u014e<\u0000\u014f<\u0000" +
+              "\u0152<\u0000\u0153<\u0000\u0154<\u0000\u0155<\u0000\u0156<\u0000\u0157<\u0000\u0158" +
+              "<\u0000\u0159<\u0000\u015a<\u0000\u015b<\u0000\u015c<\u0000\u015d<\u0000\u015e<\u0000" +
+              "\u015f<\u0000\u0160<\u0000\u0161<\u0000\u0162<\u0000\u0163<\u0000\u0168<\u0000\u0169" +
+              "<\u0000\u016a<\u0000\u016b<\u0000\u016c<\u0000\u016d<\u0000\u0172<\u0000\u0177<\u0000" +
+              "\u0178<\u0000\u0179<\u0000\u017a<\u0000\u017b<\u0000";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

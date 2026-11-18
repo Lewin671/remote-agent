@@ -270,7 +270,7 @@ func (e *Engine) BuildSessionDataView(sessionID string) *corev1.SessionDataView 
 		out.AwaitingCache = buf.awaitingCache
 		out.Backfilling = buf.backfilling
 		out.Fetching = buf.fetching
-		out.HasGap = len(buf.pending) > 0 || (s != nil && uint64(len(buf.prefix)) < s.LastSeq)
+		out.HasGap = (s != nil && buf.hasServerGap(s.ServerLastSeq)) || (s == nil && len(buf.pending) > 0)
 		out.TailRequested = buf.tailRequested
 		out.Retired = out.Retired || buf.retired
 		out.RetryingCorruptCache = buf.retryingCorruptCache

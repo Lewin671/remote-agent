@@ -95,3 +95,8 @@ message CapabilitySnapshot {
   MachineCapabilities capabilities = 2;
   int64 expires_at_ms = 3;
 }
+
+// Second extension after the protocol 16 freeze: authenticated Control type 15.
+message DirectEventSubscription {
+  repeated string session_ids = 1;
+}

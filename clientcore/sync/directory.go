@@ -456,17 +456,21 @@ func (e *Engine) handleStreamFrame(ctx *StepContext, ev *corev1.StreamFrameEvent
 		}
 	case *corev1.StreamFrameEvent_SessionUpdated:
 		if f.SessionUpdated != nil && f.SessionUpdated.SessionId != "" {
+			sid := f.SessionUpdated.SessionId
 			e.nextPushSeq++
-			e.sessionPushes[f.SessionUpdated.SessionId] = e.nextPushSeq
-			prev := e.sessions[f.SessionUpdated.SessionId]
-			var prevSeq uint64
+			e.sessionPushes[sid] = e.nextPushSeq
+			prev := e.sessions[sid]
+			var prevServerSeq uint64
 			if prev != nil {
-				prevSeq = prev.LastSeq
+				prevServerSeq = prev.ServerLastSeq
 			}
 			e.putSession(ctx, f.SessionUpdated, true)
-			if f.SessionUpdated.LastSeq > prevSeq {
-				if e.watchedSessions[f.SessionUpdated.SessionId] || e.buffers[f.SessionUpdated.SessionId] != nil {
-					e.startFetchEvents(ctx, f.SessionUpdated.SessionId)
+			updated := e.sessions[sid]
+			b := e.buffers[sid]
+			needGapFill := b != nil && len(b.pending) > 0 && updated != nil && updated.ServerLastSeq > uint64(len(b.prefix))
+			if f.SessionUpdated.LastSeq > prevServerSeq || needGapFill {
+				if e.watchedSessions[sid] || b != nil {
+					e.startFetchEvents(ctx, sid)
 				}
 			}
 			e.updateLivePollers(ctx)
@@ -669,6 +673,7 @@ func plainToSessionEntry(ps *corev1.PlainSession, prev *SessionEntry) *SessionEn
 		ID:                ps.SessionId,
 		MachineID:         ps.MachineId,
 		LastSeq:           ps.LastSeq,
+		ServerLastSeq:     ps.LastSeq,
 		UpdatedMs:         ps.UpdatedMs,
 		ListedEndedMs:     ps.ListedEndedMs,
 		MetaRev:           ps.MetaRev,
@@ -687,8 +692,14 @@ func plainToSessionEntry(ps *corev1.PlainSession, prev *SessionEntry) *SessionEn
 		if entry.MachineID == "" {
 			entry.MachineID = prev.MachineID
 		}
+		if prev.ServerLastSeq > entry.ServerLastSeq {
+			entry.ServerLastSeq = prev.ServerLastSeq
+		}
 		if prev.LastSeq > entry.LastSeq {
 			entry.LastSeq = prev.LastSeq
+		}
+		if entry.ServerLastSeq > entry.LastSeq {
+			entry.LastSeq = entry.ServerLastSeq
 		}
 		if entry.Meta == nil && prev.Meta != nil && prev.MetaRev >= entry.MetaRev {
 			entry.Meta = prev.Meta

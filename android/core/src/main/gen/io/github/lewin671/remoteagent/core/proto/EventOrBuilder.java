@@ -297,6 +297,17 @@ public interface EventOrBuilder extends
   io.github.lewin671.remoteagent.core.proto.SessionScheduleHintsEvent getSessionScheduleHints();
 
   /**
+   * <code>.remoteagent.core.v1.DirectEventsReceivedEvent direct_events_received = 27 [json_name = "directEventsReceived"];</code>
+   * @return Whether the directEventsReceived field is set.
+   */
+  boolean hasDirectEventsReceived();
+  /**
+   * <code>.remoteagent.core.v1.DirectEventsReceivedEvent direct_events_received = 27 [json_name = "directEventsReceived"];</code>
+   * @return The directEventsReceived.
+   */
+  io.github.lewin671.remoteagent.core.proto.DirectEventsReceivedEvent getDirectEventsReceived();
+
+  /**
    * <code>.remoteagent.core.v1.HomeSetScopeAction home_set_scope = 30 [json_name = "homeSetScope"];</code>
    * @return Whether the homeSetScope field is set.
    */
