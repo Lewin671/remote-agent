@@ -195,6 +195,7 @@ func (s *Session) RetainUntil() uint64 { return s.retainUntil.Load() }
 func (s *Session) Established() bool   { return s.established.Load() }
 func (s *Session) Retire() {
 	s.retired.Store(true)
+	s.finishRound()
 	select {
 	case s.events <- sessionEvent{kind: 5}:
 	default:

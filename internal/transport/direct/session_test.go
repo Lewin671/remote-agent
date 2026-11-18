@@ -1,6 +1,7 @@
 package direct
 
 import (
+	"bytes"
 	"context"
 	"crypto/ecdh"
 	"crypto/ed25519"
@@ -213,10 +214,13 @@ func TestPartialReadyRoundDoneAndSessionDoneWhenPathsClose(t *testing.T) {
 	_, _ = rand.Read(connection)
 	var offsetMs atomic.Int64
 	base := time.Now()
-	fakeNow := func() time.Time { return base.Add(time.Duration(offsetMs.Load()) * time.Millisecond) }
+	fakeNow := func() time.Time {
+		return base.Add(time.Since(base)/6 + time.Duration(offsetMs.Load())*time.Millisecond)
+	}
 	deadline := uint64(base.Add(9 * time.Second).UnixMilli())
 
 	var ar, br atomic.Pointer[Session]
+	saStored := make(chan struct{})
 	type readyEvent struct {
 		which int
 		use   uint64
@@ -236,23 +240,34 @@ func TestPartialReadyRoundDoneAndSessionDoneWhenPathsClose(t *testing.T) {
 				target := ar.Load()
 				if which == 0 {
 					target = br.Load()
+				} else {
+					select {
+					case <-saStored:
+					case <-ctx.Done():
+						return false
+					}
+					target = ar.Load()
 				}
 				return target != nil && target.Receive(out.Raw)
 			},
 		}
 	}
-	sa, err := NewSession(ctx, makeCfg(a, b.Public(), 0), true)
-	if err != nil {
-		t.Fatal(err)
-	}
-	ar.Store(sa)
-	defer func() { sa.Close(); sa.Wait() }()
+	// Start and publish the responder before the initiator so the initiator's
+	// first Probe tick can never observe br == nil, and gate responder replies
+	// on saStored so Challenge can never observe ar == nil.
 	sb, err := NewSession(ctx, makeCfg(b, a.Public(), 1), false)
 	if err != nil {
 		t.Fatal(err)
 	}
 	br.Store(sb)
 	defer func() { sb.Close(); sb.Wait() }()
+	sa, err := NewSession(ctx, makeCfg(a, b.Public(), 0), true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ar.Store(sa)
+	close(saStored)
+	defer func() { sa.Close(); sa.Wait() }()
 
 	var use1 [2]*Path
 	for use1[0] == nil || use1[1] == nil {
@@ -267,11 +282,24 @@ func TestPartialReadyRoundDoneAndSessionDoneWhenPathsClose(t *testing.T) {
 		}
 	}
 
-	offsetMs.Store(9500)
+	offsetMs.Store(10000)
 	select {
 	case <-sa.RoundDone():
 	case <-ctx.Done():
 		t.Fatal("RoundDone did not close after partial round passed deadline")
+	}
+	if !sa.Active() {
+		t.Fatal("session became inactive while use 1 path was still alive")
+	}
+	msg := []byte("use1 still alive after round deadline")
+	writeErr := make(chan error, 1)
+	go func() { writeErr <- use1[0].Write(ctx, msg) }()
+	got, err := use1[1].Read(ctx)
+	if err != nil || !bytes.Equal(got, msg) {
+		t.Fatalf("use 1 path failed after RoundDone: got=%q err=%v", got, err)
+	}
+	if err := <-writeErr; err != nil {
+		t.Fatalf("use 1 write failed after RoundDone: %v", err)
 	}
 	select {
 	case <-sa.Done():
@@ -285,5 +313,41 @@ func TestPartialReadyRoundDoneAndSessionDoneWhenPathsClose(t *testing.T) {
 	case <-sa.Done():
 	case <-ctx.Done():
 		t.Fatal("Session.Done did not close after deadline and all paths closed")
+	}
+}
+
+func TestRetireClosesRoundDoneImmediately(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	a, b := identity(t, 1), identity(t, 2)
+	domain, head := sha256.Sum256([]byte("domain")), sha256.Sum256([]byte("head"))
+	codec, err := peerwire.NewCodec("00000000000000000000000000000001", domain, head, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	connection := make([]byte, 16)
+	_, _ = rand.Read(connection)
+	base := time.Now()
+	s, err := NewSession(ctx, SessionConfig{
+		Self: a, Peer: b.Public().Member(), Codec: codec, Connection: connection,
+		Deadline: uint64(base.Add(9 * time.Second).UnixMilli()),
+		Pool:     NewPool(1), Allow: func() bool { return true },
+		Now:  func() time.Time { return base },
+		Send: func(Outbound) bool { return true },
+	}, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { s.Close(); s.Wait() }()
+	s.Retire()
+	select {
+	case <-s.RoundDone():
+	case <-ctx.Done():
+		t.Fatal("Retire did not close RoundDone before Deadline")
+	}
+	select {
+	case <-s.Done():
+		t.Fatal("Retire closed Done before replay window ended")
+	default:
 	}
 }
