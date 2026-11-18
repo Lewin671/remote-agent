@@ -220,20 +220,6 @@
     "zh-CN": "没发出去：{reason}"
   },
   {
-    "en": "Delivered to terminal but unconfirmed",
-    "key": "composer.ios_unconfirmed",
-    "notes": "ChatRows.swift。 iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 无变量。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "en": "draft",
-      "zh-CN": "source"
-    },
-    "zh-CN": "已送到终端但没确认"
-  },
-  {
     "en": "Possibly not sent: {reason}",
     "key": "composer.maybe_failure",
     "notes": "会话输入框与发送菜单。完整提示/历史行；参数可重排，不翻译用户内容。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：reason 为当前操作的失败详情，保持原文。",

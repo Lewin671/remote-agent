@@ -7077,20 +7077,6 @@
     }
   },
   {
-    "key": "security.ios_the_current_request_changed_review_it_again",
-    "zh-CN": "电脑上的请求已变化，请重新核对",
-    "en": "The current request changed. Review it again.",
-    "notes": "iOS RemoteSecurity.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
     "key": "security.ios_the_ios_app_has_no_background_security_alerts_open",
     "zh-CN": "iOS 版没有后台安全提醒，建议每天打开一次，以免错过恢复申请。",
     "en": "The iOS app has no background security alerts. Open it daily to avoid missing recovery requests.",

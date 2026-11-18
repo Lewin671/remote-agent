@@ -354,25 +354,6 @@
     "zh-CN": "已在终端处理"
   },
   {
-    "en": "Never ask again for commands starting with `{command}`",
-    "key": "approval.ios_always_prefix",
-    "notes": "ChatState.swift。 iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 参数：command 为调用处的显示值；用户、CLI 内容和错误详情保持原文。",
-    "params": {
-      "command": {
-        "example": "Example",
-        "type": "string"
-      }
-    },
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "en": "draft",
-      "zh-CN": "source"
-    },
-    "zh-CN": "「{command}」开头的命令以后不再问"
-  },
-  {
     "en": "Deny",
     "key": "approval.ios_decision_deny",
     "notes": " iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 无变量。",

@@ -1017,39 +1017,6 @@
     "zh-CN": "{agent} 的回复"
   },
   {
-    "en": "Answered: {answers}",
-    "key": "session.ios_answer_values",
-    "notes": " iOS 会话/附件显示边界；中文原句不变。提示正文允许多行，按钮与读屏标签保持现有空间。 参数：answers 为调用处的显示内容，用户/CLI 原文不翻译。",
-    "params": {
-      "answers": {
-        "example": "Example",
-        "type": "string"
-      }
-    },
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "en": "draft",
-      "zh-CN": "source"
-    },
-    "zh-CN": "已回答：{answers}"
-  },
-  {
-    "en": "Question answered",
-    "key": "session.ios_answered",
-    "notes": "ChatRows.swift。 iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 无变量。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "en": "draft",
-      "zh-CN": "source"
-    },
-    "zh-CN": "已回答提问"
-  },
-  {
     "en": "Can only switch while idle; choose after this turn ends",
     "key": "session.ios_change_idle",
     "notes": "SessionSheets.swift。 iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 无变量。",
@@ -1097,29 +1064,6 @@
     "zh-CN": "已收起"
   },
   {
-    "en": "Context compacted · {before}% → {after}%",
-    "key": "session.ios_compacted_usage",
-    "notes": "ChatRows.swift。 iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 参数：before 为当前 UI 的整数数量/序号/进度（不改变取整规则）；after 为当前 UI 的整数数量/序号/进度（不改变取整规则）。",
-    "params": {
-      "after": {
-        "example": 2,
-        "type": "integer"
-      },
-      "before": {
-        "example": 2,
-        "type": "integer"
-      }
-    },
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "en": "draft",
-      "zh-CN": "source"
-    },
-    "zh-CN": "上下文已压缩 · {before}% → {after}%"
-  },
-  {
     "en": "Connect to the server to read this session",
     "key": "session.ios_connect_read",
     "notes": "SessionScreen.swift。 iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 无变量。",
@@ -1148,29 +1092,6 @@
     "zh-CN": "上下文占用"
   },
   {
-    "en": "Context {used}k / {total}k",
-    "key": "session.ios_context_usage",
-    "notes": "SessionSheets.swift。 iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 参数：used 为当前 UI 的整数数量/序号/进度（不改变取整规则）；total 为当前 UI 的整数数量/序号/进度（不改变取整规则）。",
-    "params": {
-      "total": {
-        "example": 2,
-        "type": "integer"
-      },
-      "used": {
-        "example": 2,
-        "type": "integer"
-      }
-    },
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "en": "draft",
-      "zh-CN": "source"
-    },
-    "zh-CN": "上下文占用 {used}k / {total}k"
-  },
-  {
     "en": "Only levels supported by the current model are shown. Select while idle to submit; the actual value updates when the computer confirms.",
     "key": "session.ios_effort_note",
     "notes": "SessionSheets.swift。 iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 无变量。",
@@ -1185,48 +1106,6 @@
     "zh-CN": "仅显示当前模型支持的档位；空闲时点选提交，等电脑确认后更新实际值。"
   },
   {
-    "en": "{time} ended",
-    "key": "session.ios_ended_at",
-    "notes": " iOS 会话/附件显示边界；中文原句不变。提示正文允许多行，按钮与读屏标签保持现有空间。 参数：time 为调用处的显示内容，用户/CLI 原文不翻译。",
-    "params": {
-      "time": {
-        "example": "Example",
-        "type": "string"
-      }
-    },
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "en": "draft",
-      "zh-CN": "source"
-    },
-    "zh-CN": "{time} 结束"
-  },
-  {
-    "en": "{reason} {recovery}",
-    "key": "session.ios_ended_recovery",
-    "notes": "会话结束原因与后续恢复说明的完整组合；中文原本两句直接相接，英文句间保留空格。 iOS 会话附件提示，保留中文；正文允许多行，按钮保持紧凑。 参数：reason 为调用处的显示值，用户/CLI 原文不翻译；recovery 为调用处的显示值，用户/CLI 原文不翻译。",
-    "params": {
-      "reason": {
-        "example": "Example",
-        "type": "string"
-      },
-      "recovery": {
-        "example": "Example",
-        "type": "string"
-      }
-    },
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "en": "draft",
-      "zh-CN": "source"
-    },
-    "zh-CN": "{reason}{recovery}"
-  },
-  {
     "en": "Expand",
     "key": "session.ios_expand",
     "notes": "ChatRowViews.swift。 iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 无变量。",
@@ -1239,39 +1118,6 @@
       "zh-CN": "source"
     },
     "zh-CN": "展开"
-  },
-  {
-    "en": "Available after connecting to the server",
-    "key": "session.ios_fork_connect",
-    "notes": "Model.swift。 iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 无变量。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "en": "draft",
-      "zh-CN": "source"
-    },
-    "zh-CN": "连上服务器后可用"
-  },
-  {
-    "en": "{time} forked from",
-    "key": "session.ios_fork_prefix",
-    "notes": "ChatRowViews.swift。 iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 参数：time 为调用处的显示值；用户、CLI 内容和错误详情保持原文。",
-    "params": {
-      "time": {
-        "example": "Example",
-        "type": "string"
-      }
-    },
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "en": "draft",
-      "zh-CN": "source"
-    },
-    "zh-CN": "{time} 分叉自"
   },
   {
     "en": "Could not read later records: {reason}",
@@ -1326,25 +1172,6 @@
     "zh-CN": "没能中断：{reason}"
   },
   {
-    "en": "Interrupted ({origin})",
-    "key": "session.ios_interrupted_by",
-    "notes": " iOS 会话/附件显示边界；中文原句不变。提示正文允许多行，按钮与读屏标签保持现有空间。 参数：origin 为调用处的显示内容，用户/CLI 原文不翻译。",
-    "params": {
-      "origin": {
-        "example": "Example",
-        "type": "string"
-      }
-    },
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "en": "draft",
-      "zh-CN": "source"
-    },
-    "zh-CN": "已中断（{origin}）"
-  },
-  {
     "en": "Go to latest message",
     "key": "session.ios_latest",
     "notes": "ChatPane.swift。 iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 无变量。",
@@ -1357,25 +1184,6 @@
       "zh-CN": "source"
     },
     "zh-CN": "回到最新消息"
-  },
-  {
-    "en": "Could not read this session: {reason}",
-    "key": "session.ios_lookup_failed",
-    "notes": "会话查找失败页；reason 是原始错误详情，保持原文，不改变重试或错误映射。 iOS 会话附件提示，保留中文；正文允许多行，按钮保持紧凑。 参数：reason 为调用处的显示值，用户/CLI 原文不翻译。",
-    "params": {
-      "reason": {
-        "example": "Example",
-        "type": "string"
-      }
-    },
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "en": "draft",
-      "zh-CN": "source"
-    },
-    "zh-CN": "没能读取这个会话：{reason}"
   },
   {
     "en": "Message text",
@@ -1504,29 +1312,6 @@
       "zh-CN": "source"
     },
     "zh-CN": "长按文字，再拖动两端选择要复制的内容"
-  },
-  {
-    "en": "In {machine}’s terminal, {changes}",
-    "key": "session.ios_terminal_changes",
-    "notes": "ChatRows.swift。 iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 参数：machine 为调用处的显示值；用户、CLI 内容和错误详情保持原文；changes 为调用处的显示值；用户、CLI 内容和错误详情保持原文。",
-    "params": {
-      "changes": {
-        "example": "Example",
-        "type": "string"
-      },
-      "machine": {
-        "example": "Example",
-        "type": "string"
-      }
-    },
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "en": "draft",
-      "zh-CN": "source"
-    },
-    "zh-CN": "{machine} 终端里{changes}"
   },
   {
     "en": "Title",

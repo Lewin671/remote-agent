@@ -1,13 +1,12 @@
 [
   {
-    "key": "list_state.agent_asking",
-    "zh-CN": "{agent} 在问你",
     "en": "{agent} is asking you",
+    "key": "list_state.agent_asking",
     "notes": "首页待处理问答行标题；agent 为 CLI 品牌名 空间：短标签/列表行保持紧凑，正文可多行。 变量：agent，来自当前界面数据；示例只供翻译。",
     "params": {
       "agent": {
-        "type": "string",
-        "example": "Codex"
+        "example": "Codex",
+        "type": "string"
       }
     },
     "platforms": [
@@ -16,28 +15,28 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "{agent} 在问你"
   },
   {
-    "key": "list_state.android_loading",
-    "zh-CN": "读取中",
     "en": "Loading",
+    "key": "list_state.android_loading",
     "notes": " Android 批次 A，保留当前中文原句。短标签保持紧凑，说明可换行；变量为当前界面的名称、数量或原始诊断，不翻译用户/CLI 原文。",
     "params": {},
     "platforms": [
       "android"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "读取中"
   },
   {
-    "key": "list_state.android_request_command",
-    "zh-CN": "请求执行",
     "en": "Command approval",
+    "key": "list_state.android_request_command",
     "notes": " Android 批次 A，保留当前中文原句。短标签保持紧凑，说明可换行；变量为当前界面的名称、数量或原始诊断，不翻译用户/CLI 原文。",
     "params": {},
     "platforms": [
@@ -45,28 +44,28 @@
       "web"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "请求执行"
   },
   {
-    "key": "list_state.android_request_permission",
-    "zh-CN": "请求权限",
     "en": "Permission approval",
+    "key": "list_state.android_request_permission",
     "notes": " Android 批次 A，保留当前中文原句。短标签保持紧凑，说明可换行；变量为当前界面的名称、数量或原始诊断，不翻译用户/CLI 原文。",
     "params": {},
     "platforms": [
       "android"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "请求权限"
   },
   {
-    "key": "list_state.approval",
-    "zh-CN": "等待审批",
     "en": "Awaiting approval",
+    "key": "list_state.approval",
     "notes": "会话列表状态词，紧凑一行。 无变量。",
     "params": {},
     "platforms": [
@@ -75,14 +74,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "等待审批"
   },
   {
-    "key": "list_state.ended",
-    "zh-CN": "已结束",
     "en": "Ended",
+    "key": "list_state.ended",
     "notes": "会话列表状态词，紧凑一行。 无变量。",
     "params": {},
     "platforms": [
@@ -91,14 +90,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "已结束"
   },
   {
-    "key": "list_state.idle",
-    "zh-CN": "空闲",
     "en": "Idle",
+    "key": "list_state.idle",
     "notes": "会话列表状态词，紧凑一行。 无变量。",
     "params": {},
     "platforms": [
@@ -107,33 +106,33 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "空闲"
   },
   {
-    "key": "list_state.ios_command_label",
-    "zh-CN": "命令：{command}",
     "en": "Command: {command}",
+    "key": "list_state.ios_command_label",
     "notes": "首页审批命令读屏标签，command 经过安全显示转义。 iOS 现有原句；保持标点与空格。参数为显示内容，CLI/用户原文不翻译。",
     "params": {
       "command": {
-        "type": "string",
-        "example": "Example"
+        "example": "Example",
+        "type": "string"
       }
     },
     "platforms": [
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "命令：{command}"
   },
   {
-    "key": "list_state.ios_new_session",
-    "zh-CN": "新会话",
     "en": "New session",
+    "key": "list_state.ios_new_session",
     "notes": "未拿到会话信息时的缺省标题。 iOS 现有原句；保持标点与空格。参数为显示内容，CLI/用户原文不翻译。",
     "params": {},
     "platforms": [
@@ -141,42 +140,14 @@
       "web"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "新会话"
   },
   {
-    "key": "list_state.ios_request_command",
-    "zh-CN": "请求执行",
-    "en": "Request to run",
-    "notes": "首页审批标题，不包含命令。 iOS 现有原句；保持标点与空格。参数为显示内容，CLI/用户原文不翻译。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "list_state.ios_request_permission",
-    "zh-CN": "请求权限",
-    "en": "Permission requested",
-    "notes": "首页审批没有工具名的标题。 iOS 现有原句；保持标点与空格。参数为显示内容，CLI/用户原文不翻译。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "list_state.no_message",
-    "zh-CN": "还没发消息",
     "en": "No messages yet",
+    "key": "list_state.no_message",
     "notes": "会话列表无首条消息时的预览。 无变量。",
     "params": {},
     "platforms": [
@@ -185,14 +156,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "还没发消息"
   },
   {
-    "key": "list_state.offline",
-    "zh-CN": "电脑离线",
     "en": "Computer offline",
+    "key": "list_state.offline",
     "notes": "会话列表状态词，紧凑一行。 无变量。",
     "params": {},
     "platforms": [
@@ -201,14 +172,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "电脑离线"
   },
   {
-    "key": "list_state.plan",
-    "zh-CN": "计划待批准",
     "en": "Plan awaiting approval",
+    "key": "list_state.plan",
     "notes": "会话列表状态词及计划预览，紧凑一行。 无变量。",
     "params": {},
     "platforms": [
@@ -217,14 +188,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "计划待批准"
   },
   {
-    "key": "list_state.popup",
-    "zh-CN": "终端里有弹窗",
     "en": "Terminal popup",
+    "key": "list_state.popup",
     "notes": "会话列表状态词，紧凑一行。 无变量。",
     "params": {},
     "platforms": [
@@ -233,14 +204,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "终端里有弹窗"
   },
   {
-    "key": "list_state.question",
-    "zh-CN": "等你回答",
     "en": "Awaiting your answer",
+    "key": "list_state.question",
     "notes": "会话列表状态词，紧凑一行。 无变量。",
     "params": {},
     "platforms": [
@@ -249,19 +220,19 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "等你回答"
   },
   {
-    "key": "list_state.request_command",
-    "zh-CN": "请求执行 {command}",
     "en": "Request to run {command}",
+    "key": "list_state.request_command",
     "notes": "首页会话列表审批预览；command 为 CLI 命令原文 空间：短标签/列表行保持紧凑，正文可多行。 变量：command，来自当前界面数据；示例只供翻译。",
     "params": {
       "command": {
-        "type": "string",
-        "example": "echo example"
+        "example": "echo example",
+        "type": "string"
       }
     },
     "platforms": [
@@ -270,19 +241,19 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "请求执行 {command}"
   },
   {
-    "key": "list_state.request_permission",
-    "zh-CN": "请求权限 · {tool}",
     "en": "Permission request · {tool}",
+    "key": "list_state.request_permission",
     "notes": "首页会话列表审批预览；tool 为 CLI 工具名 空间：短标签/列表行保持紧凑，正文可多行。 变量：tool，来自当前界面数据；示例只供翻译。",
     "params": {
       "tool": {
-        "type": "string",
-        "example": "Read"
+        "example": "Read",
+        "type": "string"
       }
     },
     "platforms": [
@@ -291,14 +262,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "请求权限 · {tool}"
   },
   {
-    "key": "list_state.running",
-    "zh-CN": "运行中",
     "en": "Running",
+    "key": "list_state.running",
     "notes": "会话列表状态词，紧凑一行。 无变量。",
     "params": {},
     "platforms": [
@@ -307,14 +278,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "运行中"
   },
   {
-    "key": "list_state.starting",
-    "zh-CN": "启动中",
     "en": "Starting",
+    "key": "list_state.starting",
     "notes": "会话列表状态词，紧凑一行。 无变量。",
     "params": {},
     "platforms": [
@@ -323,14 +294,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "启动中"
   },
   {
-    "key": "list_state.unlinked",
-    "zh-CN": "未连接",
     "en": "Disconnected",
+    "key": "list_state.unlinked",
     "notes": "会话列表状态词，紧凑一行。 无变量。",
     "params": {},
     "platforms": [
@@ -339,14 +310,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "未连接"
   },
   {
-    "key": "list_state.new_session",
-    "zh-CN": "新会话",
     "en": "New session",
+    "key": "list_state.new_session",
     "notes": "会话还没有具体标题或第一句消息时的默认显示标题。无变量。",
     "params": {},
     "platforms": [
@@ -355,14 +326,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "新会话"
   },
   {
-    "key": "list_state.request_command_plain",
-    "zh-CN": "请求执行",
     "en": "Request to run",
+    "key": "list_state.request_command_plain",
     "notes": "审批卡无具体命令预览时的标题。无变量。",
     "params": {},
     "platforms": [
@@ -371,14 +342,14 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "请求执行"
   },
   {
-    "key": "list_state.request_permission_plain",
-    "zh-CN": "请求权限",
     "en": "Permission requested",
+    "key": "list_state.request_permission_plain",
     "notes": "权限审批无具体工具名时的标题。无变量。",
     "params": {},
     "platforms": [
@@ -387,8 +358,9 @@
       "ios"
     ],
     "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "请求权限"
   }
 ]

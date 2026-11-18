@@ -2163,20 +2163,6 @@
     "zh-CN": "终端输入等待发送，已停止"
   },
   {
-    "en": "The current request has not been verified by the computer",
-    "key": "errors.ios_the_current_request_has_not_been_verified_by_the",
-    "notes": "iOS RemoteLive.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "en": "draft",
-      "zh-CN": "source"
-    },
-    "zh-CN": "当前请求尚未由电脑核实"
-  },
-  {
     "en": "{value}. The original request and keys are retained. Retry; if approval has expired or was denied, exit and pair again.",
     "key": "errors.ios_the_original_request_and_keys_are_retained_retry_if",
     "notes": "iOS AppModel.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。变量来源：value = Swift 插值 error.localizedDescription；用户内容和系统/CLI 原文不翻译。",
