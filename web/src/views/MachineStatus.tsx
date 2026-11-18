@@ -354,6 +354,9 @@ export function MachineStatusScreenView({ id, vm, visible = true, reduced = fals
   }, [reduced]);
 
   const name = vm.machineName || id, disk = vm.disk, hasData = Boolean(vm.cpu?.hasValue || vm.memory?.hasValue || vm.disk?.hasValue);
+  if (!vm.found && vm.pollState === MachinePollState.LOADING) {
+    return <div className="page set ms-page"><NavBar onBack={onBack} /><div data-late="1"><Skeleton name={name} /></div></div>;
+  }
   if (!vm.found || !vm.supported || (vm.pollState === MachinePollState.UNAVAILABLE && !hasData)) {
     return (
       <div className="page set ms-page">

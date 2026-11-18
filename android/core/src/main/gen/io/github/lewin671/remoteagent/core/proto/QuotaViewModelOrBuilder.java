@@ -121,4 +121,10 @@ public interface QuotaViewModelOrBuilder extends
    * @return The emptyText.
    */
   io.github.lewin671.remoteagent.core.proto.Text getEmptyText();
+
+  /**
+   * <code>bool loading = 13 [json_name = "loading"];</code>
+   * @return The loading.
+   */
+  boolean getLoading();
 }

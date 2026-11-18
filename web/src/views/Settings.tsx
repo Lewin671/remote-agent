@@ -135,7 +135,7 @@ export function SettingsScreenView({ vm, go, onBack, serverHost, connTone, connT
         <button className="link" onClick={() => go("devices")}>{l10n.t("settings.devices")}</button>
       </div>
       {vm.machines.map((m) => <MachineCard key={m.machineId} m={m} go={go} />)}
-      {vm.machines.length === 0 && <p className="gf">{renderText(vm.emptyMachinesText) || l10n.t("settings.no_computers_yet")}</p>}
+      {vm.machines.length === 0 && <p className="gf" data-late={vm.machinesLoading ? "1" : undefined}>{renderText(vm.emptyMachinesText) || l10n.t("settings.no_computers_yet")}</p>}
       {managementSlot}
       <div className="label">{l10n.t("security.client")}</div>
       <div className="grp">
@@ -419,7 +419,9 @@ export function QuotaScreenView({
     return (
       <div className="page">
         <NavBar onBack={onBack} />
-        <div className="center muted">{l10n.t("settings.device_not_found")}</div>
+        <div className="center muted" data-late={vm.loading ? "1" : undefined}>
+          {renderText(vm.emptyText) || l10n.t("settings.device_not_found")}
+        </div>
       </div>
     );
   }
@@ -627,7 +629,9 @@ export function DevicesScreenView({
             </button>
           ))}
           {vm.computers.length === 0 && (
-            <div className="row help">{l10n.t("settings.no_computers_yet")}</div>
+            <div className="row help" data-late={vm.machinesLoading ? "1" : undefined}>
+              {renderText(vm.emptyComputersText) || l10n.t("settings.no_computers_yet")}
+            </div>
           )}
           {vm.isManager && managementInGroupSlot}
         </div>
@@ -894,7 +898,16 @@ export function MachineSettingsScreenView({ id, vm, section, go, onBack, onRetry
     }
   }, [section, vm.attachmentStorage?.loaded]);
 
-  if (!vm.found) return <div className="page"><NavBar onBack={onBack} /><div className="center muted">{l10n.t("settings.device_not_found")}</div></div>;
+  if (!vm.found) {
+    return (
+      <div className="page">
+        <NavBar onBack={onBack} />
+        <div className="center muted" data-late={vm.loading ? "1" : undefined}>
+          {renderText(vm.offlineOrMismatchBanner) || l10n.t("settings.device_not_found")}
+        </div>
+      </div>
+    );
+  }
   if (!vm.member && removedSlot) return <>{removedSlot}</>;
 
   const ad = vm.agentDefaults;

@@ -1668,6 +1668,11 @@ public struct PBQuotaViewModel: @unchecked Sendable {
   /// Clears the value of `emptyText`. Subsequent reads from it will return its default value.
   public mutating func clearEmptyText() {_uniqueStorage()._emptyText = nil}
 
+  public var loading: Bool {
+    get {return _storage._loading}
+    set {_uniqueStorage()._loading = newValue}
+  }
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -3609,7 +3614,7 @@ extension PBQuotaCliSection: SwiftProtobuf.Message, SwiftProtobuf._MessageImplem
 
 extension PBQuotaViewModel: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".QuotaViewModel"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}machine_id\0\u{3}machine_name\0\u{1}found\0\u{1}reachable\0\u{1}unlinked\0\u{1}member\0\u{3}has_agents_reported\0\u{3}offline_notice\0\u{1}banner\0\u{1}sections\0\u{3}footer_note\0\u{3}empty_text\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}machine_id\0\u{3}machine_name\0\u{1}found\0\u{1}reachable\0\u{1}unlinked\0\u{1}member\0\u{3}has_agents_reported\0\u{3}offline_notice\0\u{1}banner\0\u{1}sections\0\u{3}footer_note\0\u{3}empty_text\0\u{1}loading\0")
 
   fileprivate class _StorageClass {
     var _machineID: String = String()
@@ -3624,6 +3629,7 @@ extension PBQuotaViewModel: SwiftProtobuf.Message, SwiftProtobuf._MessageImpleme
     var _sections: [PBQuotaCliSection] = []
     var _footerNote: PBCoreText? = nil
     var _emptyText: PBCoreText? = nil
+    var _loading: Bool = false
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -3646,6 +3652,7 @@ extension PBQuotaViewModel: SwiftProtobuf.Message, SwiftProtobuf._MessageImpleme
       _sections = source._sections
       _footerNote = source._footerNote
       _emptyText = source._emptyText
+      _loading = source._loading
     }
   }
 
@@ -3676,6 +3683,7 @@ extension PBQuotaViewModel: SwiftProtobuf.Message, SwiftProtobuf._MessageImpleme
         case 10: try { try decoder.decodeRepeatedMessageField(value: &_storage._sections) }()
         case 11: try { try decoder.decodeSingularMessageField(value: &_storage._footerNote) }()
         case 12: try { try decoder.decodeSingularMessageField(value: &_storage._emptyText) }()
+        case 13: try { try decoder.decodeSingularBoolField(value: &_storage._loading) }()
         default: break
         }
       }
@@ -3724,6 +3732,9 @@ extension PBQuotaViewModel: SwiftProtobuf.Message, SwiftProtobuf._MessageImpleme
       try { if let v = _storage._emptyText {
         try visitor.visitSingularMessageField(value: v, fieldNumber: 12)
       } }()
+      if _storage._loading != false {
+        try visitor.visitSingularBoolField(value: _storage._loading, fieldNumber: 13)
+      }
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -3745,6 +3756,7 @@ extension PBQuotaViewModel: SwiftProtobuf.Message, SwiftProtobuf._MessageImpleme
         if _storage._sections != rhs_storage._sections {return false}
         if _storage._footerNote != rhs_storage._footerNote {return false}
         if _storage._emptyText != rhs_storage._emptyText {return false}
+        if _storage._loading != rhs_storage._loading {return false}
         return true
       }
       if !storagesAreEqual {return false}

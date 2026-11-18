@@ -2342,6 +2342,7 @@ type QuotaViewModel struct {
 	Sections          []*QuotaCliSection     `protobuf:"bytes,10,rep,name=sections,proto3" json:"sections,omitempty"`
 	FooterNote        *Text                  `protobuf:"bytes,11,opt,name=footer_note,json=footerNote,proto3" json:"footer_note,omitempty"`
 	EmptyText         *Text                  `protobuf:"bytes,12,opt,name=empty_text,json=emptyText,proto3" json:"empty_text,omitempty"`
+	Loading           bool                   `protobuf:"varint,13,opt,name=loading,proto3" json:"loading,omitempty"`
 	unknownFields     protoimpl.UnknownFields
 	sizeCache         protoimpl.SizeCache
 }
@@ -2458,6 +2459,13 @@ func (x *QuotaViewModel) GetEmptyText() *Text {
 		return x.EmptyText
 	}
 	return nil
+}
+
+func (x *QuotaViewModel) GetLoading() bool {
+	if x != nil {
+		return x.Loading
+	}
+	return false
 }
 
 type MachineStatusWatchEvent struct {
@@ -3119,7 +3127,7 @@ const file_remoteagent_core_v1_machine_view_proto_rawDesc = "" +
 	"\fsummary_line\x18\t \x01(\v2\x19.remoteagent.core.v1.TextR\vsummaryLine\x12A\n" +
 	"\fsummary_tone\x18\n" +
 	" \x01(\x0e2\x1e.remoteagent.core.v1.QuotaToneR\vsummaryTone\x12<\n" +
-	"\fsummary_meta\x18\v \x01(\v2\x19.remoteagent.core.v1.TextR\vsummaryMeta\"\xa2\x04\n" +
+	"\fsummary_meta\x18\v \x01(\v2\x19.remoteagent.core.v1.TextR\vsummaryMeta\"\xbc\x04\n" +
 	"\x0eQuotaViewModel\x12\x1d\n" +
 	"\n" +
 	"machine_id\x18\x01 \x01(\tR\tmachineId\x12!\n" +
@@ -3136,7 +3144,8 @@ const file_remoteagent_core_v1_machine_view_proto_rawDesc = "" +
 	"\vfooter_note\x18\v \x01(\v2\x19.remoteagent.core.v1.TextR\n" +
 	"footerNote\x128\n" +
 	"\n" +
-	"empty_text\x18\f \x01(\v2\x19.remoteagent.core.v1.TextR\temptyText\"\x8c\x01\n" +
+	"empty_text\x18\f \x01(\v2\x19.remoteagent.core.v1.TextR\temptyText\x12\x18\n" +
+	"\aloading\x18\r \x01(\bR\aloading\"\x8c\x01\n" +
 	"\x17MachineStatusWatchEvent\x12\x1d\n" +
 	"\n" +
 	"machine_id\x18\x01 \x01(\tR\tmachineId\x12\x18\n" +

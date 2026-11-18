@@ -204,6 +204,7 @@ message SettingsViewModel {
   QuotaBannerView quota_banner = 25;
   bool can_exit_account = 26;
   bool exit_needs_transfer = 27;
+  bool machines_loading = 28;
 }
 
 // ---- Per-Machine Settings Screen ----
@@ -398,6 +399,7 @@ message MachineSettingsViewModel {
   AttachmentStorageView attachment_storage = 29;
   repeated MachineProjectView projects = 30;
   MachineManagementActionsView management = 31;
+  bool loading = 32;
 }
 
 // ---- Devices & Client Detail Screens ----
@@ -416,6 +418,8 @@ message DevicesViewModel {
   repeated ClientRowView clients = 9;
   repeated ClientRowView unfinished_pairings = 10;
   Text error_text = 11;
+  bool machines_loading = 12;
+  Text empty_computers_text = 13;
 }
 
 message ClientDetailScreenRequest {

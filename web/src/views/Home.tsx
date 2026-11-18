@@ -579,10 +579,10 @@ export function WideHome({ remote, go, project }: { remote: Remote; go: Go; proj
     if (draftKey && (scopedProject || (!newVm.drafting && !hiddenNotice?.active))) setDraftKey("");
   }, [draftKey, scopedProject, newVm.drafting, hiddenNotice?.active]);
 
-  if (!remote.listed && !homeVm.canStart && remote.machines.size === 0) {
-    return <div className="page wnew"><div className="wstart">{remote.listError ? <ListError remote={remote} /> : <div className="late"><Skeleton /></div>}</div></div>;
-  }
   if (!homeVm.canStart) {
+    if (homeVm.empty?.kind === HomeEmptyKind.NONE) {
+      return <div className="page wnew"><div className="wstart">{remote.listError ? <ListError remote={remote} /> : <div data-late="1"><Skeleton /></div>}</div></div>;
+    }
     return (
       <div className="page wnew">
         <div className="wstart">

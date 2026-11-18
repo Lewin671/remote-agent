@@ -2113,6 +2113,7 @@ type QuotaViewModel struct {
 	Sections          []*QuotaCliSection
 	FooterNote        *Text
 	EmptyText         *Text
+	Loading           bool
 }
 
 func (m *QuotaViewModel) GetMachineId() string {
@@ -2187,6 +2188,12 @@ func (m *QuotaViewModel) GetEmptyText() *Text {
 	}
 	return nil
 }
+func (m *QuotaViewModel) GetLoading() bool {
+	if m != nil {
+		return m.Loading
+	}
+	return false
+}
 
 func (m *QuotaViewModel) Size() int {
 	if m == nil {
@@ -2217,6 +2224,7 @@ func (m *QuotaViewModel) Size() int {
 	if m.EmptyText != nil {
 		n += litewire.SizeMessage(12, m.EmptyText.Size())
 	}
+	n += litewire.SizeBool(13, m.Loading)
 	return n
 }
 
@@ -2259,6 +2267,7 @@ func (m *QuotaViewModel) AppendMarshal(b []byte) []byte {
 	if m.EmptyText != nil {
 		b = litewire.AppendMessage(b, 12, m.EmptyText)
 	}
+	b = litewire.AppendBool(b, 13, m.Loading)
 	return b
 }
 

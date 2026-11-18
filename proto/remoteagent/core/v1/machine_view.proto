@@ -294,6 +294,7 @@ message QuotaViewModel {
   repeated QuotaCliSection sections = 10;
   Text footer_note = 11;
   Text empty_text = 12;
+  bool loading = 13;
 }
 
 // ---- Events & Effects (Machine Status) ----

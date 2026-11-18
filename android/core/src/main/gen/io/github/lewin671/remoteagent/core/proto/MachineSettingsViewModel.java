@@ -1601,6 +1601,32 @@ public  final class MachineSettingsViewModel extends
     bitField0_ = (bitField0_ & ~0x00000080);
   }
 
+  public static final int LOADING_FIELD_NUMBER = 32;
+  private boolean loading_;
+  /**
+   * <code>bool loading = 32 [json_name = "loading"];</code>
+   * @return The loading.
+   */
+  @java.lang.Override
+  public boolean getLoading() {
+    return loading_;
+  }
+  /**
+   * <code>bool loading = 32 [json_name = "loading"];</code>
+   * @param value The loading to set.
+   */
+  private void setLoading(boolean value) {
+    
+    loading_ = value;
+  }
+  /**
+   * <code>bool loading = 32 [json_name = "loading"];</code>
+   */
+  private void clearLoading() {
+
+    loading_ = false;
+  }
+
   public static io.github.lewin671.remoteagent.core.proto.MachineSettingsViewModel parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -3313,6 +3339,34 @@ public  final class MachineSettingsViewModel extends
       return this;
     }
 
+    /**
+     * <code>bool loading = 32 [json_name = "loading"];</code>
+     * @return The loading.
+     */
+    @java.lang.Override
+    public boolean getLoading() {
+      return instance.getLoading();
+    }
+    /**
+     * <code>bool loading = 32 [json_name = "loading"];</code>
+     * @param value The loading to set.
+     * @return This builder for chaining.
+     */
+    public Builder setLoading(boolean value) {
+      copyOnWrite();
+      instance.setLoading(value);
+      return this;
+    }
+    /**
+     * <code>bool loading = 32 [json_name = "loading"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearLoading() {
+      copyOnWrite();
+      instance.clearLoading();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.MachineSettingsViewModel)
   }
   @java.lang.Override
@@ -3367,14 +3421,15 @@ public  final class MachineSettingsViewModel extends
             "projects_",
             io.github.lewin671.remoteagent.core.proto.MachineProjectView.class,
             "management_",
+            "loading_",
           };
           java.lang.String info =
-              "\u0000\u001f\u0000\u0001\u0001\u001f\u001f\u0000\u0007\u0000\u0001\u0208\u0002\u0208" +
-              "\u0003\u0007\u0004\u0007\u0005\u0007\u0006\u0007\u0007\u0004\b\u0007\t\u1009\u0000" +
-              "\n\u1009\u0001\u000b\u0007\f\u001b\r\u001b\u000e\u1009\u0002\u000f\u001b\u0010\u0007" +
-              "\u0011\u0007\u0012\u1009\u0003\u0013\u0007\u0014\u0007\u0015\u1009\u0004\u0016,\u0017" +
-              "\f\u0018\u1009\u0005\u0019\u001b\u001a\u0004\u001b\u001b\u001c\u0004\u001d\u1009" +
-              "\u0006\u001e\u001b\u001f\u1009\u0007";
+              "\u0000 \u0000\u0001\u0001  \u0000\u0007\u0000\u0001\u0208\u0002\u0208\u0003\u0007" +
+              "\u0004\u0007\u0005\u0007\u0006\u0007\u0007\u0004\b\u0007\t\u1009\u0000\n\u1009\u0001" +
+              "\u000b\u0007\f\u001b\r\u001b\u000e\u1009\u0002\u000f\u001b\u0010\u0007\u0011\u0007" +
+              "\u0012\u1009\u0003\u0013\u0007\u0014\u0007\u0015\u1009\u0004\u0016,\u0017\f\u0018" +
+              "\u1009\u0005\u0019\u001b\u001a\u0004\u001b\u001b\u001c\u0004\u001d\u1009\u0006\u001e" +
+              "\u001b\u001f\u1009\u0007 \u0007";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

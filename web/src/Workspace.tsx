@@ -16,19 +16,14 @@ import { Plus } from "./icons";
 const Setup = page(() => import("./views/Pairing").then(m => ({ default: m.Setup })));
 const loading = <div className="page" aria-hidden="true" />;
 
-function routeDepth(r: string): number {
-  const [k, sub, sub2] = r.split("/");
-  if (!k || (k === "tasks" && !sub)) return 0;
-  if (k === "settings" && !sub) return 1;
-  if (k === "projects" || k === "s" || k === "p") return 1;
-  if (k === "tasks") return sub2 || sub === "new" ? 1 : 0;
-  if (k === "devices" || k === "settings") return 2;
-  return 3;
-}
-
-function isTabOrSheet(r: string): boolean {
-  const [k, sub] = r.split("/");
-  return !k || k === "p" || (k === "tasks" && (!sub || sub === "new"));
+function parseRoute(route: string) {
+  const [kind, ...rest] = route.split("/");
+  const arg = decodeURIComponent(rest.join("/"));
+  const sub = rest[0] ? decodeURIComponent(rest[0]) : "";
+  const isTab = !kind || (kind === "tasks" && !sub);
+  const isSheet = kind === "p" || (kind === "tasks" && sub === "new");
+  const depth = isTab ? 0 : kind === "settings" ? (sub ? 2 : 1) : kind === "devices" ? 2 : kind === "projects" || kind === "s" || kind === "p" || kind === "tasks" ? 1 : 3;
+  return { kind, rest, arg, isTab, isSheet, depth };
 }
 
 /** Routes live in the hash: #/, #/p/<project>, #/s/<session>, #/settings,
@@ -94,8 +89,8 @@ export default function Workspace({ remote }: { remote: Remote }) {
   const schedulesVm = useSchedulesView(host, 1);
   const wide = useWide();
   const scheduling = schedulesVm.canCreate;
-  const [kind, ...rest] = route.split("/");
-  const arg = decodeURIComponent(rest.join("/"));
+  const parsed = parseRoute(route);
+  const { kind, rest, arg } = parsed;
   const session = kind === "s" ? remote.sessions.get(arg) : undefined;
   const scheduleSession = session?.info?.taskOwned && session.info.scheduledTaskId ? routeForTask(session.machineId, session.info.scheduledTaskId) : undefined;
   useEffect(() => {
@@ -103,20 +98,15 @@ export default function Workspace({ remote }: { remote: Remote }) {
   }, [host, kind, wide, rest[0], rest[1]]);
   const back = () => (history.length > 1 ? history.back() : go(""));
   const main = useMainScrolled(route, wide);
-  const prevRouteRef = useRef(route);
+  const prevRouteRef = useRef(parsed);
   const navDirRef = useRef("" as "" | "fwd" | "back");
-  if (prevRouteRef.current !== route) {
+  if (prevRouteRef.current.kind !== kind || prevRouteRef.current.arg !== arg) {
     const prev = prevRouteRef.current;
-    prevRouteRef.current = route;
-    if (isTabOrSheet(prev) && isTabOrSheet(route) && routeDepth(route) === 0 && routeDepth(prev) === 0) {
-      navDirRef.current = "";
-    } else if (route.startsWith("p/") || route.startsWith("tasks/new")) {
-      navDirRef.current = "";
-    } else if (prev.startsWith("p/") || prev.startsWith("tasks/new")) {
-      navDirRef.current = "back";
-    } else {
-      navDirRef.current = routeDepth(route) >= routeDepth(prev) ? "fwd" : "back";
-    }
+    prevRouteRef.current = parsed;
+    navDirRef.current =
+      (prev.isTab && parsed.isTab) || parsed.isSheet ? ""
+      : prev.isSheet ? "back"
+      : parsed.depth >= prev.depth ? "fwd" : "back";
   }
   if (remote.removed) return <Suspense fallback={loading}><RemovedScreen remote={remote} /></Suspense>;
 
@@ -198,7 +188,7 @@ export default function Workspace({ remote }: { remote: Remote }) {
   // with 新定时 on the right.
   const navDir = navDirRef.current;
   const stageClass = navDir ? `phone-stage mo-page-${navDir}` : "phone-stage";
-  const stageKey = kind === "" || (kind === "tasks" && !arg) ? `tab-${kind}` : route;
+  const stageKey = parsed.isTab ? `tab-${kind}` : route;
   return (
     <div className="phone">
       <div key={stageKey} className={stageClass}>

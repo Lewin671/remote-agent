@@ -19,6 +19,14 @@ func hasReason(txt *corev1.Text, raw string) bool {
 	return !text.IsEmpty(txt) || raw != ""
 }
 
+// waitingForMachineList reports whether the machine directory has not yet listed
+// while connectivity is not definitively offline, without network, or unlinked.
+func waitingForMachineList(st *State) bool {
+	return !st.World.MachinesListed && len(st.World.Machines) == 0 &&
+		!(st.World.Unlinked != nil && *st.World.Unlinked) &&
+		st.World.Connection != lists.ConnOffline && st.World.Connection != lists.ConnNoNetwork
+}
+
 func mapTone(t lists.SessionTone) corev1.SessionTone {
 	switch t {
 	case lists.ToneWait:

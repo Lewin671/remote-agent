@@ -456,7 +456,12 @@ func BuildSettings(st *State, syncView *corev1.SyncStateView, extra *SettingsExt
 		vm.AddDeviceHint = text.Msg(text.KeySecurityAddOnAuthority, text.Str("name", authName))
 	}
 	if len(vm.Machines) == 0 {
-		vm.EmptyMachinesText = text.Msg(text.KeySettingsNoComputersYet)
+		if waitingForMachineList(st) {
+			vm.MachinesLoading = true
+			vm.EmptyMachinesText = text.Msg(text.KeyCommonLoading)
+		} else {
+			vm.EmptyMachinesText = text.Msg(text.KeySettingsNoComputersYet)
+		}
 	}
 
 	secSummary := text.Msg(text.KeySecurityManageOnAuthority, text.Str("name", authName))
@@ -493,7 +498,12 @@ func BuildMachineSettings(st *State, syncView *corev1.SyncStateView, extra *Sett
 	}
 	if m == nil {
 		vm.Name = machine.ShortID(machineID)
-		vm.OfflineOrMismatchBanner = text.Msg(text.KeySettingsDeviceNotFound)
+		if !unlinked && waitingForMachineList(st) {
+			vm.Loading = true
+			vm.OfflineOrMismatchBanner = text.Msg(text.KeyCommonLoading)
+		} else {
+			vm.OfflineOrMismatchBanner = text.Msg(text.KeySettingsDeviceNotFound)
+		}
 		return vm
 	}
 
@@ -813,6 +823,14 @@ func BuildDevices(st *State, syncView *corev1.SyncStateView, extra *SettingsExtr
 		Computers:          buildMachineListCards(st, st.World.Machines, extra, false),
 		Clients:            clients,
 		UnfinishedPairings: unfinished,
+	}
+	if len(vm.Computers) == 0 {
+		if waitingForMachineList(st) {
+			vm.MachinesLoading = true
+			vm.EmptyComputersText = text.Msg(text.KeyCommonLoading)
+		} else {
+			vm.EmptyComputersText = text.Msg(text.KeySettingsNoComputersYet)
+		}
 	}
 	if !isMgr && authName != "" {
 		vm.AddDeviceHint = text.Msg(text.KeySecurityAddOnAuthority, text.Str("name", authName))

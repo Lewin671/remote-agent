@@ -323,4 +323,10 @@ public interface MachineSettingsViewModelOrBuilder extends
    * @return The management.
    */
   io.github.lewin671.remoteagent.core.proto.MachineManagementActionsView getManagement();
+
+  /**
+   * <code>bool loading = 32 [json_name = "loading"];</code>
+   * @return The loading.
+   */
+  boolean getLoading();
 }

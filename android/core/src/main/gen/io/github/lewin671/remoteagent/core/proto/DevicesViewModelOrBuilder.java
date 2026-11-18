@@ -121,4 +121,21 @@ public interface DevicesViewModelOrBuilder extends
    * @return The errorText.
    */
   io.github.lewin671.remoteagent.core.proto.Text getErrorText();
+
+  /**
+   * <code>bool machines_loading = 12 [json_name = "machinesLoading"];</code>
+   * @return The machinesLoading.
+   */
+  boolean getMachinesLoading();
+
+  /**
+   * <code>.remoteagent.core.v1.Text empty_computers_text = 13 [json_name = "emptyComputersText"];</code>
+   * @return Whether the emptyComputersText field is set.
+   */
+  boolean hasEmptyComputersText();
+  /**
+   * <code>.remoteagent.core.v1.Text empty_computers_text = 13 [json_name = "emptyComputersText"];</code>
+   * @return The emptyComputersText.
+   */
+  io.github.lewin671.remoteagent.core.proto.Text getEmptyComputersText();
 }

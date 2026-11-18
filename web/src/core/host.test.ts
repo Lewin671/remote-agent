@@ -329,3 +329,18 @@ test("warmLocalCache hydrates bootstrap cache before start without re-reading In
   await Promise.resolve();
   expect(bootReads).toBe(1);
 });
+
+test("warmLocalCache uses timeout guard when cache read stalls without blocking mount", async () => {
+  const exec = makeExecutor();
+  exec.readBootstrapCache = () => new Promise(() => {});
+  const host = new CoreHost(undefined, { executor: exec });
+  hosts.push(host);
+
+  let seenTimeout = 0;
+  await host.warmLocalCache("settings", async (_work, ms) => {
+    seenTimeout = ms;
+    return undefined;
+  });
+  expect(seenTimeout).toBe(CoreHost.WARM_BOOTSTRAP_CACHE_TIMEOUT_MS);
+  expect(host.viewSyncState().machines).toEqual([]);
+});

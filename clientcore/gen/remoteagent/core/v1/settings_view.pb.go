@@ -1031,6 +1031,7 @@ type SettingsViewModel struct {
 	QuotaBanner         *QuotaBannerView
 	CanExitAccount      bool
 	ExitNeedsTransfer   bool
+	MachinesLoading     bool
 }
 
 func (m *SettingsViewModel) GetOnline() bool {
@@ -1195,6 +1196,12 @@ func (m *SettingsViewModel) GetExitNeedsTransfer() bool {
 	}
 	return false
 }
+func (m *SettingsViewModel) GetMachinesLoading() bool {
+	if m != nil {
+		return m.MachinesLoading
+	}
+	return false
+}
 
 func (m *SettingsViewModel) Size() int {
 	if m == nil {
@@ -1262,6 +1269,7 @@ func (m *SettingsViewModel) Size() int {
 	}
 	n += litewire.SizeBool(26, m.CanExitAccount)
 	n += litewire.SizeBool(27, m.ExitNeedsTransfer)
+	n += litewire.SizeBool(28, m.MachinesLoading)
 	return n
 }
 
@@ -1341,6 +1349,7 @@ func (m *SettingsViewModel) AppendMarshal(b []byte) []byte {
 	}
 	b = litewire.AppendBool(b, 26, m.CanExitAccount)
 	b = litewire.AppendBool(b, 27, m.ExitNeedsTransfer)
+	b = litewire.AppendBool(b, 28, m.MachinesLoading)
 	return b
 }
 
@@ -3163,6 +3172,7 @@ type MachineSettingsViewModel struct {
 	AttachmentStorage              *AttachmentStorageView
 	Projects                       []*MachineProjectView
 	Management                     *MachineManagementActionsView
+	Loading                        bool
 }
 
 func (m *MachineSettingsViewModel) GetMachineId() string {
@@ -3351,6 +3361,12 @@ func (m *MachineSettingsViewModel) GetManagement() *MachineManagementActionsView
 	}
 	return nil
 }
+func (m *MachineSettingsViewModel) GetLoading() bool {
+	if m != nil {
+		return m.Loading
+	}
+	return false
+}
 
 func (m *MachineSettingsViewModel) Size() int {
 	if m == nil {
@@ -3434,6 +3450,7 @@ func (m *MachineSettingsViewModel) Size() int {
 	if m.Management != nil {
 		n += litewire.SizeMessage(31, m.Management.Size())
 	}
+	n += litewire.SizeBool(32, m.Loading)
 	return n
 }
 
@@ -3532,6 +3549,7 @@ func (m *MachineSettingsViewModel) AppendMarshal(b []byte) []byte {
 	if m.Management != nil {
 		b = litewire.AppendMessage(b, 31, m.Management)
 	}
+	b = litewire.AppendBool(b, 32, m.Loading)
 	return b
 }
 
@@ -3563,6 +3581,8 @@ type DevicesViewModel struct {
 	Clients            []*ClientRowView
 	UnfinishedPairings []*ClientRowView
 	ErrorText          *Text
+	MachinesLoading    bool
+	EmptyComputersText *Text
 }
 
 func (m *DevicesViewModel) GetIsManager() bool {
@@ -3631,6 +3651,18 @@ func (m *DevicesViewModel) GetErrorText() *Text {
 	}
 	return nil
 }
+func (m *DevicesViewModel) GetMachinesLoading() bool {
+	if m != nil {
+		return m.MachinesLoading
+	}
+	return false
+}
+func (m *DevicesViewModel) GetEmptyComputersText() *Text {
+	if m != nil {
+		return m.EmptyComputersText
+	}
+	return nil
+}
 
 func (m *DevicesViewModel) Size() int {
 	if m == nil {
@@ -3663,6 +3695,10 @@ func (m *DevicesViewModel) Size() int {
 	}
 	if m.ErrorText != nil {
 		n += litewire.SizeMessage(11, m.ErrorText.Size())
+	}
+	n += litewire.SizeBool(12, m.MachinesLoading)
+	if m.EmptyComputersText != nil {
+		n += litewire.SizeMessage(13, m.EmptyComputersText.Size())
 	}
 	return n
 }
@@ -3708,6 +3744,10 @@ func (m *DevicesViewModel) AppendMarshal(b []byte) []byte {
 	}
 	if m.ErrorText != nil {
 		b = litewire.AppendMessage(b, 11, m.ErrorText)
+	}
+	b = litewire.AppendBool(b, 12, m.MachinesLoading)
+	if m.EmptyComputersText != nil {
+		b = litewire.AppendMessage(b, 13, m.EmptyComputersText)
 	}
 	return b
 }

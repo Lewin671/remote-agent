@@ -256,4 +256,10 @@ public interface SettingsViewModelOrBuilder extends
    * @return The exitNeedsTransfer.
    */
   boolean getExitNeedsTransfer();
+
+  /**
+   * <code>bool machines_loading = 28 [json_name = "machinesLoading"];</code>
+   * @return The machinesLoading.
+   */
+  boolean getMachinesLoading();
 }

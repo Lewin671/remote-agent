@@ -609,6 +609,80 @@ public  final class DevicesViewModel extends
     bitField0_ = (bitField0_ & ~0x00000002);
   }
 
+  public static final int MACHINES_LOADING_FIELD_NUMBER = 12;
+  private boolean machinesLoading_;
+  /**
+   * <code>bool machines_loading = 12 [json_name = "machinesLoading"];</code>
+   * @return The machinesLoading.
+   */
+  @java.lang.Override
+  public boolean getMachinesLoading() {
+    return machinesLoading_;
+  }
+  /**
+   * <code>bool machines_loading = 12 [json_name = "machinesLoading"];</code>
+   * @param value The machinesLoading to set.
+   */
+  private void setMachinesLoading(boolean value) {
+    
+    machinesLoading_ = value;
+  }
+  /**
+   * <code>bool machines_loading = 12 [json_name = "machinesLoading"];</code>
+   */
+  private void clearMachinesLoading() {
+
+    machinesLoading_ = false;
+  }
+
+  public static final int EMPTY_COMPUTERS_TEXT_FIELD_NUMBER = 13;
+  private io.github.lewin671.remoteagent.core.proto.Text emptyComputersText_;
+  /**
+   * <code>.remoteagent.core.v1.Text empty_computers_text = 13 [json_name = "emptyComputersText"];</code>
+   */
+  @java.lang.Override
+  public boolean hasEmptyComputersText() {
+    return ((bitField0_ & 0x00000004) != 0);
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text empty_computers_text = 13 [json_name = "emptyComputersText"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.Text getEmptyComputersText() {
+    return emptyComputersText_ == null ? io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance() : emptyComputersText_;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text empty_computers_text = 13 [json_name = "emptyComputersText"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setEmptyComputersText(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    emptyComputersText_ = value;
+    bitField0_ |= 0x00000004;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text empty_computers_text = 13 [json_name = "emptyComputersText"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeEmptyComputersText(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    if (emptyComputersText_ != null &&
+        emptyComputersText_ != io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance()) {
+      emptyComputersText_ =
+        io.github.lewin671.remoteagent.core.proto.Text.newBuilder(emptyComputersText_).mergeFrom(value).buildPartial();
+    } else {
+      emptyComputersText_ = value;
+    }
+    bitField0_ |= 0x00000004;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text empty_computers_text = 13 [json_name = "emptyComputersText"];</code>
+   */
+  private void clearEmptyComputersText() {
+    emptyComputersText_ = null;
+    bitField0_ = (bitField0_ & ~0x00000004);
+  }
+
   public static io.github.lewin671.remoteagent.core.proto.DevicesViewModel parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -1316,6 +1390,81 @@ public  final class DevicesViewModel extends
       return this;
     }
 
+    /**
+     * <code>bool machines_loading = 12 [json_name = "machinesLoading"];</code>
+     * @return The machinesLoading.
+     */
+    @java.lang.Override
+    public boolean getMachinesLoading() {
+      return instance.getMachinesLoading();
+    }
+    /**
+     * <code>bool machines_loading = 12 [json_name = "machinesLoading"];</code>
+     * @param value The machinesLoading to set.
+     * @return This builder for chaining.
+     */
+    public Builder setMachinesLoading(boolean value) {
+      copyOnWrite();
+      instance.setMachinesLoading(value);
+      return this;
+    }
+    /**
+     * <code>bool machines_loading = 12 [json_name = "machinesLoading"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearMachinesLoading() {
+      copyOnWrite();
+      instance.clearMachinesLoading();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.Text empty_computers_text = 13 [json_name = "emptyComputersText"];</code>
+     */
+    @java.lang.Override
+    public boolean hasEmptyComputersText() {
+      return instance.hasEmptyComputersText();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text empty_computers_text = 13 [json_name = "emptyComputersText"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.Text getEmptyComputersText() {
+      return instance.getEmptyComputersText();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text empty_computers_text = 13 [json_name = "emptyComputersText"];</code>
+     */
+    public Builder setEmptyComputersText(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.setEmptyComputersText(value);
+      return this;
+      }
+    /**
+     * <code>.remoteagent.core.v1.Text empty_computers_text = 13 [json_name = "emptyComputersText"];</code>
+     */
+    public Builder setEmptyComputersText(
+        io.github.lewin671.remoteagent.core.proto.Text.Builder builderForValue) {
+      copyOnWrite();
+      instance.setEmptyComputersText(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text empty_computers_text = 13 [json_name = "emptyComputersText"];</code>
+     */
+    public Builder mergeEmptyComputersText(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.mergeEmptyComputersText(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text empty_computers_text = 13 [json_name = "emptyComputersText"];</code>
+     */
+    public Builder clearEmptyComputersText() {  copyOnWrite();
+      instance.clearEmptyComputersText();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.DevicesViewModel)
   }
   @java.lang.Override
@@ -1347,11 +1496,13 @@ public  final class DevicesViewModel extends
             "unfinishedPairings_",
             io.github.lewin671.remoteagent.core.proto.ClientRowView.class,
             "errorText_",
+            "machinesLoading_",
+            "emptyComputersText_",
           };
           java.lang.String info =
-              "\u0000\u000b\u0000\u0001\u0001\u000b\u000b\u0000\u0003\u0000\u0001\u0007\u0002\u0007" +
-              "\u0003\u0007\u0004\u0208\u0005\u0208\u0006\u0007\u0007\u1009\u0000\b\u001b\t\u001b" +
-              "\n\u001b\u000b\u1009\u0001";
+              "\u0000\r\u0000\u0001\u0001\r\r\u0000\u0003\u0000\u0001\u0007\u0002\u0007\u0003\u0007" +
+              "\u0004\u0208\u0005\u0208\u0006\u0007\u0007\u1009\u0000\b\u001b\t\u001b\n\u001b\u000b" +
+              "\u1009\u0001\f\u0007\r\u1009\u0002";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

@@ -720,10 +720,7 @@ func BuildSchedules(st *State, endedLimit int) *corev1.SchedulesViewModel {
 		endedShown = endedAll[:endedLimit]
 	}
 
-	var loading bool
-	if !st.World.MachinesListed && len(st.World.Machines) == 0 && st.World.Connection != lists.ConnOffline && st.World.Connection != lists.ConnNoNetwork {
-		loading = true
-	}
+	loading := waitingForMachineList(st)
 	var machineErrors []*corev1.ScheduleMachineErrorView
 	var anySupported bool
 	var canCreate bool
@@ -910,7 +907,7 @@ func BuildScheduleDetail(st *State, machineID, taskID string, earlierLimit int) 
 	}
 
 	if task == nil {
-		stillLoading := (!st.World.MachinesListed && mac == nil && st.World.Connection != lists.ConnOffline && st.World.Connection != lists.ConnNoNetwork) ||
+		stillLoading := (mac == nil && waitingForMachineList(st)) ||
 			(mac != nil && supported && snap == nil) ||
 			(snap != nil && (snap.Loading || (snap.CacheReading && !snap.HasFetchedOnce && !snap.Live)))
 		var notFound *corev1.Text

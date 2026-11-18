@@ -1077,6 +1077,11 @@ public struct PBSettingsViewModel: @unchecked Sendable {
     set {_uniqueStorage()._exitNeedsTransfer = newValue}
   }
 
+  public var machinesLoading: Bool {
+    get {return _storage._machinesLoading}
+    set {_uniqueStorage()._machinesLoading = newValue}
+  }
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -2061,6 +2066,11 @@ public struct PBMachineSettingsViewModel: @unchecked Sendable {
   /// Clears the value of `management`. Subsequent reads from it will return its default value.
   public mutating func clearManagement() {_uniqueStorage()._management = nil}
 
+  public var loading: Bool {
+    get {return _storage._loading}
+    set {_uniqueStorage()._loading = newValue}
+  }
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -2145,6 +2155,20 @@ public struct PBDevicesViewModel: @unchecked Sendable {
   public var hasErrorText: Bool {return _storage._errorText != nil}
   /// Clears the value of `errorText`. Subsequent reads from it will return its default value.
   public mutating func clearErrorText() {_uniqueStorage()._errorText = nil}
+
+  public var machinesLoading: Bool {
+    get {return _storage._machinesLoading}
+    set {_uniqueStorage()._machinesLoading = newValue}
+  }
+
+  public var emptyComputersText: PBCoreText {
+    get {return _storage._emptyComputersText ?? PBCoreText()}
+    set {_uniqueStorage()._emptyComputersText = newValue}
+  }
+  /// Returns true if `emptyComputersText` has been explicitly set.
+  public var hasEmptyComputersText: Bool {return _storage._emptyComputersText != nil}
+  /// Clears the value of `emptyComputersText`. Subsequent reads from it will return its default value.
+  public mutating func clearEmptyComputersText() {_uniqueStorage()._emptyComputersText = nil}
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -3540,7 +3564,7 @@ extension PBConnCheckSummaryView: SwiftProtobuf.Message, SwiftProtobuf._MessageI
 
 extension PBSettingsViewModel: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".SettingsViewModel"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}online\0\u{3}clock_skewed\0\u{1}unlinked\0\u{3}has_account\0\u{3}is_manager\0\u{3}authority_name\0\u{3}recovery_pending\0\u{3}recovery_ready_ms\0\u{3}recovery_banner_text\0\u{3}unlinked_banner_text\0\u{3}clock_skew_banner_text\0\u{1}machines\0\u{3}can_add_device\0\u{3}add_device_hint\0\u{3}empty_machines_text\0\u{3}recent_clients\0\u{3}has_more_clients\0\u{3}total_devices_count\0\u{1}security\0\u{1}notifications\0\u{1}appearance\0\u{1}update\0\u{3}conn_check\0\u{3}disk_reminders\0\u{3}quota_banner\0\u{3}can_exit_account\0\u{3}exit_needs_transfer\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}online\0\u{3}clock_skewed\0\u{1}unlinked\0\u{3}has_account\0\u{3}is_manager\0\u{3}authority_name\0\u{3}recovery_pending\0\u{3}recovery_ready_ms\0\u{3}recovery_banner_text\0\u{3}unlinked_banner_text\0\u{3}clock_skew_banner_text\0\u{1}machines\0\u{3}can_add_device\0\u{3}add_device_hint\0\u{3}empty_machines_text\0\u{3}recent_clients\0\u{3}has_more_clients\0\u{3}total_devices_count\0\u{1}security\0\u{1}notifications\0\u{1}appearance\0\u{1}update\0\u{3}conn_check\0\u{3}disk_reminders\0\u{3}quota_banner\0\u{3}can_exit_account\0\u{3}exit_needs_transfer\0\u{3}machines_loading\0")
 
   fileprivate class _StorageClass {
     var _online: Bool = false
@@ -3570,6 +3594,7 @@ extension PBSettingsViewModel: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
     var _quotaBanner: PBQuotaBannerView? = nil
     var _canExitAccount: Bool = false
     var _exitNeedsTransfer: Bool = false
+    var _machinesLoading: Bool = false
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -3607,6 +3632,7 @@ extension PBSettingsViewModel: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
       _quotaBanner = source._quotaBanner
       _canExitAccount = source._canExitAccount
       _exitNeedsTransfer = source._exitNeedsTransfer
+      _machinesLoading = source._machinesLoading
     }
   }
 
@@ -3652,6 +3678,7 @@ extension PBSettingsViewModel: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
         case 25: try { try decoder.decodeSingularMessageField(value: &_storage._quotaBanner) }()
         case 26: try { try decoder.decodeSingularBoolField(value: &_storage._canExitAccount) }()
         case 27: try { try decoder.decodeSingularBoolField(value: &_storage._exitNeedsTransfer) }()
+        case 28: try { try decoder.decodeSingularBoolField(value: &_storage._machinesLoading) }()
         default: break
         }
       }
@@ -3745,6 +3772,9 @@ extension PBSettingsViewModel: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
       if _storage._exitNeedsTransfer != false {
         try visitor.visitSingularBoolField(value: _storage._exitNeedsTransfer, fieldNumber: 27)
       }
+      if _storage._machinesLoading != false {
+        try visitor.visitSingularBoolField(value: _storage._machinesLoading, fieldNumber: 28)
+      }
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -3781,6 +3811,7 @@ extension PBSettingsViewModel: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
         if _storage._quotaBanner != rhs_storage._quotaBanner {return false}
         if _storage._canExitAccount != rhs_storage._canExitAccount {return false}
         if _storage._exitNeedsTransfer != rhs_storage._exitNeedsTransfer {return false}
+        if _storage._machinesLoading != rhs_storage._machinesLoading {return false}
         return true
       }
       if !storagesAreEqual {return false}
@@ -5154,7 +5185,7 @@ extension PBMachineManagementActionsView: SwiftProtobuf.Message, SwiftProtobuf._
 
 extension PBMachineSettingsViewModel: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".MachineSettingsViewModel"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}machine_id\0\u{1}name\0\u{1}found\0\u{1}member\0\u{1}online\0\u{1}unlinked\0\u{3}protocol_mismatch\0\u{1}editable\0\u{3}offline_or_mismatch_banner\0\u{3}removed_banner\0\u{3}show_status_entry\0\u{3}status_rings\0\u{3}quota_rows\0\u{1}connection\0\u{3}cli_versions\0\u{3}has_unverified_cli\0\u{3}settings_loading\0\u{3}settings_error\0\u{3}save_pending\0\u{3}save_unknown\0\u{3}save_error\0\u{3}available_agents\0\u{3}selected_agent\0\u{3}agent_defaults\0\u{3}approval_timeout_choices\0\u{3}selected_approval_timeout_seconds\0\u{3}idle_close_choices\0\u{3}selected_idle_close_minutes\0\u{3}attachment_storage\0\u{1}projects\0\u{1}management\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}machine_id\0\u{1}name\0\u{1}found\0\u{1}member\0\u{1}online\0\u{1}unlinked\0\u{3}protocol_mismatch\0\u{1}editable\0\u{3}offline_or_mismatch_banner\0\u{3}removed_banner\0\u{3}show_status_entry\0\u{3}status_rings\0\u{3}quota_rows\0\u{1}connection\0\u{3}cli_versions\0\u{3}has_unverified_cli\0\u{3}settings_loading\0\u{3}settings_error\0\u{3}save_pending\0\u{3}save_unknown\0\u{3}save_error\0\u{3}available_agents\0\u{3}selected_agent\0\u{3}agent_defaults\0\u{3}approval_timeout_choices\0\u{3}selected_approval_timeout_seconds\0\u{3}idle_close_choices\0\u{3}selected_idle_close_minutes\0\u{3}attachment_storage\0\u{1}projects\0\u{1}management\0\u{1}loading\0")
 
   fileprivate class _StorageClass {
     var _machineID: String = String()
@@ -5188,6 +5219,7 @@ extension PBMachineSettingsViewModel: SwiftProtobuf.Message, SwiftProtobuf._Mess
     var _attachmentStorage: PBAttachmentStorageView? = nil
     var _projects: [PBMachineProjectView] = []
     var _management: PBMachineManagementActionsView? = nil
+    var _loading: Bool = false
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -5229,6 +5261,7 @@ extension PBMachineSettingsViewModel: SwiftProtobuf.Message, SwiftProtobuf._Mess
       _attachmentStorage = source._attachmentStorage
       _projects = source._projects
       _management = source._management
+      _loading = source._loading
     }
   }
 
@@ -5278,6 +5311,7 @@ extension PBMachineSettingsViewModel: SwiftProtobuf.Message, SwiftProtobuf._Mess
         case 29: try { try decoder.decodeSingularMessageField(value: &_storage._attachmentStorage) }()
         case 30: try { try decoder.decodeRepeatedMessageField(value: &_storage._projects) }()
         case 31: try { try decoder.decodeSingularMessageField(value: &_storage._management) }()
+        case 32: try { try decoder.decodeSingularBoolField(value: &_storage._loading) }()
         default: break
         }
       }
@@ -5383,6 +5417,9 @@ extension PBMachineSettingsViewModel: SwiftProtobuf.Message, SwiftProtobuf._Mess
       try { if let v = _storage._management {
         try visitor.visitSingularMessageField(value: v, fieldNumber: 31)
       } }()
+      if _storage._loading != false {
+        try visitor.visitSingularBoolField(value: _storage._loading, fieldNumber: 32)
+      }
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -5423,6 +5460,7 @@ extension PBMachineSettingsViewModel: SwiftProtobuf.Message, SwiftProtobuf._Mess
         if _storage._attachmentStorage != rhs_storage._attachmentStorage {return false}
         if _storage._projects != rhs_storage._projects {return false}
         if _storage._management != rhs_storage._management {return false}
+        if _storage._loading != rhs_storage._loading {return false}
         return true
       }
       if !storagesAreEqual {return false}
@@ -5453,7 +5491,7 @@ extension PBDevicesScreenRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageI
 
 extension PBDevicesViewModel: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".DevicesViewModel"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}is_manager\0\u{1}online\0\u{1}unlinked\0\u{3}authority_device_id\0\u{3}authority_name\0\u{3}can_add_device\0\u{3}add_device_hint\0\u{1}computers\0\u{1}clients\0\u{3}unfinished_pairings\0\u{3}error_text\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}is_manager\0\u{1}online\0\u{1}unlinked\0\u{3}authority_device_id\0\u{3}authority_name\0\u{3}can_add_device\0\u{3}add_device_hint\0\u{1}computers\0\u{1}clients\0\u{3}unfinished_pairings\0\u{3}error_text\0\u{3}machines_loading\0\u{3}empty_computers_text\0")
 
   fileprivate class _StorageClass {
     var _isManager: Bool = false
@@ -5467,6 +5505,8 @@ extension PBDevicesViewModel: SwiftProtobuf.Message, SwiftProtobuf._MessageImple
     var _clients: [PBClientRowView] = []
     var _unfinishedPairings: [PBClientRowView] = []
     var _errorText: PBCoreText? = nil
+    var _machinesLoading: Bool = false
+    var _emptyComputersText: PBCoreText? = nil
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -5488,6 +5528,8 @@ extension PBDevicesViewModel: SwiftProtobuf.Message, SwiftProtobuf._MessageImple
       _clients = source._clients
       _unfinishedPairings = source._unfinishedPairings
       _errorText = source._errorText
+      _machinesLoading = source._machinesLoading
+      _emptyComputersText = source._emptyComputersText
     }
   }
 
@@ -5517,6 +5559,8 @@ extension PBDevicesViewModel: SwiftProtobuf.Message, SwiftProtobuf._MessageImple
         case 9: try { try decoder.decodeRepeatedMessageField(value: &_storage._clients) }()
         case 10: try { try decoder.decodeRepeatedMessageField(value: &_storage._unfinishedPairings) }()
         case 11: try { try decoder.decodeSingularMessageField(value: &_storage._errorText) }()
+        case 12: try { try decoder.decodeSingularBoolField(value: &_storage._machinesLoading) }()
+        case 13: try { try decoder.decodeSingularMessageField(value: &_storage._emptyComputersText) }()
         default: break
         }
       }
@@ -5562,6 +5606,12 @@ extension PBDevicesViewModel: SwiftProtobuf.Message, SwiftProtobuf._MessageImple
       try { if let v = _storage._errorText {
         try visitor.visitSingularMessageField(value: v, fieldNumber: 11)
       } }()
+      if _storage._machinesLoading != false {
+        try visitor.visitSingularBoolField(value: _storage._machinesLoading, fieldNumber: 12)
+      }
+      try { if let v = _storage._emptyComputersText {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 13)
+      } }()
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -5582,6 +5632,8 @@ extension PBDevicesViewModel: SwiftProtobuf.Message, SwiftProtobuf._MessageImple
         if _storage._clients != rhs_storage._clients {return false}
         if _storage._unfinishedPairings != rhs_storage._unfinishedPairings {return false}
         if _storage._errorText != rhs_storage._errorText {return false}
+        if _storage._machinesLoading != rhs_storage._machinesLoading {return false}
+        if _storage._emptyComputersText != rhs_storage._emptyComputersText {return false}
         return true
       }
       if !storagesAreEqual {return false}

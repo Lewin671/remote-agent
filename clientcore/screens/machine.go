@@ -53,10 +53,17 @@ func BuildMachineStatus(st *State, feed *MachinePollFeed, machineID string) *cor
 	}
 	if m == nil {
 		vm.MachineName = machine.ShortID(machineID)
-		vm.PollState = corev1.MachinePollState_MACHINE_POLL_STATE_UNAVAILABLE
-		vm.StatusDot = corev1.MachineStatusDot_MACHINE_STATUS_DOT_RED_STATIC
-		vm.StatusBadge = text.Msg(text.KeyMachineStatusUnavailable)
-		vm.UnavailableTitle = text.Msg(text.KeyMachineStatusUnavailable)
+		if waitingForMachineList(st) {
+			vm.PollState = corev1.MachinePollState_MACHINE_POLL_STATE_LOADING
+			vm.StatusDot = corev1.MachineStatusDot_MACHINE_STATUS_DOT_GRAY_STATIC
+			vm.StatusBadge = text.Msg(text.KeyMachineStatusLoading)
+			vm.UnavailableTitle = text.Msg(text.KeyCommonLoading)
+		} else {
+			vm.PollState = corev1.MachinePollState_MACHINE_POLL_STATE_UNAVAILABLE
+			vm.StatusDot = corev1.MachineStatusDot_MACHINE_STATUS_DOT_RED_STATIC
+			vm.StatusBadge = text.Msg(text.KeyMachineStatusUnavailable)
+			vm.UnavailableTitle = text.Msg(text.KeyMachineStatusUnavailable)
+		}
 		vm.Rings = machine.BuildRings(false, nil)
 		vm.Cpu = machine.BuildCpuSection(nil, machine.BuildChart(nil, false, 0, false, 0, false))
 		vm.Memory = machine.BuildMemorySection(nil, machine.BuildChart(nil, false, 0, true, 0, false))
@@ -185,9 +192,13 @@ func BuildQuota(st *State, syncView *corev1.SyncStateView, machineID string, fil
 	}
 	if m == nil {
 		vm.MachineName = machine.ShortID(machineID)
-		if unlinked {
+		switch {
+		case unlinked:
 			vm.EmptyText = text.Msg(text.KeySettingsThisDeviceWasRemovedFromTheAccount)
-		} else {
+		case waitingForMachineList(st):
+			vm.Loading = true
+			vm.EmptyText = text.Msg(text.KeyCommonLoading)
+		default:
 			vm.EmptyText = text.Msg(text.KeySettingsDeviceNotFound)
 		}
 		return vm

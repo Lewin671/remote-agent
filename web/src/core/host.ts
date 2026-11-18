@@ -341,6 +341,16 @@ function randomIds(count: number): string[] {
   return Array.from({ length: count }, () => newRequestID());
 }
 
+function defaultRaceTimeout<T>(work: Promise<T>, ms: number): Promise<T | undefined> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  return Promise.race([
+    work.finally(() => clearTimeout(timer)),
+    new Promise<undefined>((resolve) => {
+      timer = setTimeout(() => resolve(undefined), ms);
+    }),
+  ]);
+}
+
 function errorMessage(err: unknown): string {
   return err instanceof Error ? err.message : String(err);
 }
@@ -586,16 +596,24 @@ export class CoreHost {
 
   // --- Lifecycle & Sync triggers ---
 
+  /** Bound startup cache reads so slow/blocked IndexedDB never stalls initial mount. */
+  static readonly WARM_BOOTSTRAP_CACHE_TIMEOUT_MS = 150;
+  /** Bound initial schedule cache hydration when opening on #/tasks. */
+  static readonly WARM_SCHEDULE_CACHE_TIMEOUT_MS = 120;
+
   /** Reads IndexedDB bootstrap (and schedule cache on task routes) before first render
    * so sub-route refreshes never flash empty or missing-device states. */
-  async warmLocalCache(route: string): Promise<void> {
+  async warmLocalCache(
+    route: string,
+    raceTimeout: <T>(work: Promise<T>, ms: number) => Promise<T | undefined> = defaultRaceTimeout,
+  ): Promise<void> {
     if (this.closed || !this.executor) return;
     if (!this.bootstrapped) {
       try {
-        const boot = await Promise.race([
+        const boot = await raceTimeout(
           this.executor.readBootstrapCache(0n),
-          new Promise<undefined>((r) => setTimeout(() => r(undefined), 150)),
-        ]);
+          CoreHost.WARM_BOOTSTRAP_CACHE_TIMEOUT_MS,
+        );
         if (this.closed) return;
         if (boot && !this.bootstrapped) {
           this.preloadedBootstrap = boot;
@@ -619,10 +637,10 @@ export class CoreHost {
         this.scheduleDetailOpen(mid, tid);
       }
       if (this.scheduleCacheReads.size > 0) {
-        await Promise.race([
+        await raceTimeout(
           Promise.all([...this.scheduleCacheReads.values()]),
-          new Promise<void>((r) => setTimeout(r, 120)),
-        ]);
+          CoreHost.WARM_SCHEDULE_CACHE_TIMEOUT_MS,
+        );
       }
     }
   }

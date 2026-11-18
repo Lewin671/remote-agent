@@ -1200,6 +1200,32 @@ public  final class SettingsViewModel extends
     exitNeedsTransfer_ = false;
   }
 
+  public static final int MACHINES_LOADING_FIELD_NUMBER = 28;
+  private boolean machinesLoading_;
+  /**
+   * <code>bool machines_loading = 28 [json_name = "machinesLoading"];</code>
+   * @return The machinesLoading.
+   */
+  @java.lang.Override
+  public boolean getMachinesLoading() {
+    return machinesLoading_;
+  }
+  /**
+   * <code>bool machines_loading = 28 [json_name = "machinesLoading"];</code>
+   * @param value The machinesLoading to set.
+   */
+  private void setMachinesLoading(boolean value) {
+    
+    machinesLoading_ = value;
+  }
+  /**
+   * <code>bool machines_loading = 28 [json_name = "machinesLoading"];</code>
+   */
+  private void clearMachinesLoading() {
+
+    machinesLoading_ = false;
+  }
+
   public static io.github.lewin671.remoteagent.core.proto.SettingsViewModel parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -2505,6 +2531,34 @@ public  final class SettingsViewModel extends
       return this;
     }
 
+    /**
+     * <code>bool machines_loading = 28 [json_name = "machinesLoading"];</code>
+     * @return The machinesLoading.
+     */
+    @java.lang.Override
+    public boolean getMachinesLoading() {
+      return instance.getMachinesLoading();
+    }
+    /**
+     * <code>bool machines_loading = 28 [json_name = "machinesLoading"];</code>
+     * @param value The machinesLoading to set.
+     * @return This builder for chaining.
+     */
+    public Builder setMachinesLoading(boolean value) {
+      copyOnWrite();
+      instance.setMachinesLoading(value);
+      return this;
+    }
+    /**
+     * <code>bool machines_loading = 28 [json_name = "machinesLoading"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearMachinesLoading() {
+      copyOnWrite();
+      instance.clearMachinesLoading();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.SettingsViewModel)
   }
   @java.lang.Override
@@ -2552,14 +2606,15 @@ public  final class SettingsViewModel extends
             "quotaBanner_",
             "canExitAccount_",
             "exitNeedsTransfer_",
+            "machinesLoading_",
           };
           java.lang.String info =
-              "\u0000\u001b\u0000\u0001\u0001\u001b\u001b\u0000\u0003\u0000\u0001\u0007\u0002\u0007" +
+              "\u0000\u001c\u0000\u0001\u0001\u001c\u001c\u0000\u0003\u0000\u0001\u0007\u0002\u0007" +
               "\u0003\u0007\u0004\u0007\u0005\u0007\u0006\u0208\u0007\u0007\b\u0002\t\u1009\u0000" +
               "\n\u1009\u0001\u000b\u1009\u0002\f\u001b\r\u0007\u000e\u1009\u0003\u000f\u1009\u0004" +
               "\u0010\u001b\u0011\u0007\u0012\u0004\u0013\u1009\u0005\u0014\u1009\u0006\u0015\u1009" +
               "\u0007\u0016\u1009\b\u0017\u1009\t\u0018\u001b\u0019\u1009\n\u001a\u0007\u001b\u0007" +
-              "";
+              "\u001c\u0007";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

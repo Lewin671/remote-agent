@@ -535,6 +535,32 @@ public  final class QuotaViewModel extends
     bitField0_ = (bitField0_ & ~0x00000008);
   }
 
+  public static final int LOADING_FIELD_NUMBER = 13;
+  private boolean loading_;
+  /**
+   * <code>bool loading = 13 [json_name = "loading"];</code>
+   * @return The loading.
+   */
+  @java.lang.Override
+  public boolean getLoading() {
+    return loading_;
+  }
+  /**
+   * <code>bool loading = 13 [json_name = "loading"];</code>
+   * @param value The loading to set.
+   */
+  private void setLoading(boolean value) {
+    
+    loading_ = value;
+  }
+  /**
+   * <code>bool loading = 13 [json_name = "loading"];</code>
+   */
+  private void clearLoading() {
+
+    loading_ = false;
+  }
+
   public static io.github.lewin671.remoteagent.core.proto.QuotaViewModel parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -1160,6 +1186,34 @@ public  final class QuotaViewModel extends
       return this;
     }
 
+    /**
+     * <code>bool loading = 13 [json_name = "loading"];</code>
+     * @return The loading.
+     */
+    @java.lang.Override
+    public boolean getLoading() {
+      return instance.getLoading();
+    }
+    /**
+     * <code>bool loading = 13 [json_name = "loading"];</code>
+     * @param value The loading to set.
+     * @return This builder for chaining.
+     */
+    public Builder setLoading(boolean value) {
+      copyOnWrite();
+      instance.setLoading(value);
+      return this;
+    }
+    /**
+     * <code>bool loading = 13 [json_name = "loading"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearLoading() {
+      copyOnWrite();
+      instance.clearLoading();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.QuotaViewModel)
   }
   @java.lang.Override
@@ -1190,11 +1244,12 @@ public  final class QuotaViewModel extends
             io.github.lewin671.remoteagent.core.proto.QuotaCliSection.class,
             "footerNote_",
             "emptyText_",
+            "loading_",
           };
           java.lang.String info =
-              "\u0000\f\u0000\u0001\u0001\f\f\u0000\u0001\u0000\u0001\u0208\u0002\u0208\u0003\u0007" +
+              "\u0000\r\u0000\u0001\u0001\r\r\u0000\u0001\u0000\u0001\u0208\u0002\u0208\u0003\u0007" +
               "\u0004\u0007\u0005\u0007\u0006\u0007\u0007\u0007\b\u1009\u0000\t\u1009\u0001\n\u001b" +
-              "\u000b\u1009\u0002\f\u1009\u0003";
+              "\u000b\u1009\u0002\f\u1009\u0003\r\u0007";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {
