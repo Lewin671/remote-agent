@@ -2404,7 +2404,7 @@ export class Remote implements CoreExecutor {
     };
   }
 
-  prepareImage: Prepare = () => Promise.resolve({ bytes: new Uint8Array(), format: "png", width: 0, height: 0, size: 0 });
+  prepareImage: Prepare = async (file, original) => (await import("./sendimages")).prepareForSending(file, original);
 
   async uploadImage(
     machineId: string,
