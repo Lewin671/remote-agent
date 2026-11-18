@@ -35,8 +35,10 @@ final class FakeRtcNet: @unchecked Sendable {
             _closeEntered += 1
             return closeGate
         }
-        _ = gate?.wait(timeout: .now() + 10)
+        onEvent?()
+        _ = gate?.wait(timeout: .now() + 120)
         lock.withLock { _closeFinished += 1 }
+        onEvent?()
     }
     func register(_ pc: FakePC) { lock.withLock { byUfrag[pc.ufrag] = pc; created.append(pc) }; onEvent?() }
     func find(_ ufrag: String) -> FakePC? { lock.withLock { byUfrag[ufrag] } }
@@ -61,7 +63,7 @@ final class FakeRtcChannel: RtcDataChannel, @unchecked Sendable {
     init(id: Int, listener: any RtcDataChannelListener) { self.id = id; self.listener = listener }
     var state: RtcChannelState { lock.withLock { _state } }
     var bufferedAmount: Int { 0 }
-    func set(_ s: RtcChannelState) { lock.withLock { _state = s }; listener.onStateChange() }
+    func set(_ s: RtcChannelState) { lock.withLock { _state = s }; listener.onStateChange(); owner?.net.onEvent?() }
     func send(_ data: Data) -> Bool {
         guard state == .open, let owner, let peer = owner.peer, !owner.net.blackhole else { return state == .open }
         let target = peer.channels[id]
@@ -100,17 +102,18 @@ final class FakePC: RtcPeerConnection, @unchecked Sendable {
         lock.withLock { local = true }
         let works = net.stunWorks
         Task.detached { [self] in
-            try? await Task.sleep(nanoseconds: 3_000_000)
             if works { listener.onIceCandidate(RtcIceCandidate(candidate: "candidate:1 1 udp 1686052607 203.0.113.9 50000 typ srflx raddr 0.0.0.0 rport 0", sdpMid: "0", sdpMLineIndex: 0, isSrflx: true)) }
             listener.onIceGatheringComplete()
         }
         try await tryConnect()
+        net.onEvent?()
     }
     func setRemoteDescription(offer: Bool, sdp: String) async throws {
         guard let line = sdp.components(separatedBy: "\r\n").first(where: { $0.hasPrefix("a=ice-ufrag:") }), let other = net.find(String(line.dropFirst(12))) else { throw PathChanged() }
         lock.withLock { remote = true; _peer = other }
         other.lock.withLock { other._peer = self }
         try await tryConnect()
+        net.onEvent?()
     }
     func addIceCandidate(_ candidate: String, sdpMid: String, sdpMLineIndex: Int, usernameFragment: String) async throws {}
     private func tryConnect() async throws {

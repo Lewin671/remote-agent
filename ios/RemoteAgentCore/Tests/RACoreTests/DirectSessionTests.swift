@@ -3,12 +3,6 @@ import RAProto
 import Testing
 @testable import RACore
 
-func eventually(_ seconds: Double = 5, _ condition: @Sendable () -> Bool) async -> Bool {
-    let end = Date().addingTimeInterval(seconds)
-    while Date() < end { if condition() { return true }; try? await Task.sleep(nanoseconds: 10_000_000) }
-    return condition()
-}
-
 /// A client and a computer session wired through memory: the directed frames cross as the relay
 /// would carry them, the PeerConnections are fakes.
 final class SessionPair: @unchecked Sendable {
@@ -18,9 +12,11 @@ final class SessionPair: @unchecked Sendable {
     let client: W.Identity, machine: W.Identity
     var clientSession: DirectSession!, machineSession: DirectSession!
     private let lock = NSLock()
+    private let waitersLock = NSLock()
     private var _clientPaths: [Int: DirectChannel] = [:], _machinePaths: [Int: DirectChannel] = [:]
     private var _machineFrames: [(Int, W.Bytes)] = [], _clientFrames: [(Int, W.Bytes)] = [], _clientClosed: [Int?] = []
     private var _clientControl15Count = 0, _machineUnsupportedCount = 0
+    private var stateWaiters: [(predicate: @Sendable () -> Bool, cont: CheckedContinuation<Void, Never>)] = []
     var dropFrames = false
     var clientPaths: [Int: DirectChannel] { lock.withLock { _clientPaths } }
     var machinePaths: [Int: DirectChannel] { lock.withLock { _machinePaths } }
@@ -44,69 +40,138 @@ final class SessionPair: @unchecked Sendable {
                        let o = try? codec.openSent(out.raw, me, recipient, self.time.clock.now()), o.ctx.cls == 2 {
                         if isClient && o.type == 15 {
                             self.lock.withLock { self._clientControl15Count += 1 }
+                            self.signalStateChange()
                         } else if !isClient && o.type == 10 {
                             self.lock.withLock { self._machineUnsupportedCount += 1 }
+                            self.signalStateChange()
                         }
                     }
                     if self.dropFrames { return true }
                     (isClient ? self.machineSession : self.clientSession)?.receive(out.raw); return true
                 },
                 chosen: {}, beforeOffer: {},
-                ready: { [unowned self] use, path in self.lock.withLock { if isClient { self._clientPaths[use] = path } else { self._machinePaths[use] = path } } },
-                closed: { [unowned self] use in if isClient { self.lock.withLock { self._clientClosed.append(use) } } },
-                frame: { [unowned self] raw, use in self.lock.withLock { if isClient { self._clientFrames.append((use, raw)) } else { self._machineFrames.append((use, raw)) } } },
+                ready: { [unowned self] use, path in
+                    self.lock.withLock { if isClient { self._clientPaths[use] = path } else { self._machinePaths[use] = path } }
+                    self.signalStateChange()
+                },
+                closed: { [unowned self] use in
+                    if isClient {
+                        self.lock.withLock { self._clientClosed.append(use) }
+                        self.signalStateChange()
+                    }
+                },
+                frame: { [unowned self] raw, use in
+                    self.lock.withLock { if isClient { self._clientFrames.append((use, raw)) } else { self._machineFrames.append((use, raw)) } }
+                    self.signalStateChange()
+                },
                 capability: { _ in },
                 clock: time.clock)
         }
         clientSession = try DirectSession(options(client, W.member(machine.peer), clientBudget, isClient: true))
         machineSession = try DirectSession(options(machine, W.member(client.peer), machineBudget, isClient: false))
+        net.onEvent = { [weak self] in self?.signalStateChange() }
     }
-    func close() { clientSession.close(); machineSession.close() }
+    private func signalStateChange() {
+        let ready = waitersLock.withLock { () -> [CheckedContinuation<Void, Never>] in
+            var fulfilled: [CheckedContinuation<Void, Never>] = []
+            var remaining: [(predicate: @Sendable () -> Bool, cont: CheckedContinuation<Void, Never>)] = []
+            for w in stateWaiters {
+                if w.predicate() { fulfilled.append(w.cont) } else { remaining.append(w) }
+            }
+            stateWaiters = remaining
+            return fulfilled
+        }
+        for c in ready { c.resume() }
+    }
+    func waitForState(_ predicate: @escaping @Sendable () -> Bool) async {
+        await withCheckedContinuation { (cont: CheckedContinuation<Void, Never>) in
+            let resumeNow = waitersLock.withLock { () -> Bool in
+                if predicate() { return true }
+                stateWaiters.append((predicate, cont))
+                return false
+            }
+            if resumeNow { cont.resume() }
+        }
+    }
+    func waitForBudgetEmpty() async {
+        await clientBudget.waitUntilEmptyForTest()
+        await machineBudget.waitUntilEmptyForTest()
+    }
+    func close() {
+        clientSession.close(); machineSession.close()
+        let leftover = waitersLock.withLock { () -> [CheckedContinuation<Void, Never>] in
+            let out = stateWaiters.map(\.cont)
+            stateWaiters.removeAll()
+            return out
+        }
+        for c in leftover { c.resume() }
+    }
 }
 
 @Suite struct DirectSessionTests {
     @Test func handshakeOpensBothUsesAndCarriesAFragmentedMessage() async throws {
         let pair = try SessionPair()
+        defer { pair.close() }
         await pair.clientSession.start()
-        #expect(await eventually { pair.clientPaths.count == 2 && pair.machinePaths.count == 2 }, "both PeerConnections ready on both sides")
+        await pair.clientSession.tickForTest()
+        await pair.waitForState { pair.clientPaths.count == 2 && pair.machinePaths.count == 2 }
+        #expect(pair.clientPaths.count == 2 && pair.machinePaths.count == 2, "both PeerConnections ready on both sides")
         #expect(pair.clientSession.established)
         var bigData = PeerWire.random(1 << 20); bigData[0] = 7; let big = bigData
         try await pair.clientPaths[2]!.write(big, handoff: {})
-        #expect(await eventually { pair.machineFrames.contains { $0.0 == 2 && $0.1 == big } }, "1 MiB reassembled and hash-checked")
+        await pair.waitForState { pair.machineFrames.contains { $0.0 == 2 && $0.1 == big } }
+        #expect(pair.machineFrames.contains { $0.0 == 2 && $0.1 == big }, "1 MiB reassembled and hash-checked")
         let small = PeerWire.random(300)
         try await pair.machinePaths[1]!.write(small, handoff: {})
-        #expect(await eventually { pair.clientFrames.contains { $0.0 == 1 && $0.1 == small } })
+        await pair.waitForState { pair.clientFrames.contains { $0.0 == 1 && $0.1 == small } }
+        #expect(pair.clientFrames.contains { $0.0 == 1 && $0.1 == small })
         pair.close()
-        #expect(await eventually { pair.clientBudget.isEmpty && pair.machineBudget.isEmpty }, "nothing stays reserved after close")
+        await pair.waitForBudgetEmpty()
+        #expect(pair.clientBudget.isEmpty && pair.machineBudget.isEmpty, "nothing stays reserved after close")
     }
 
     @Test func stunUnreachableStillEstablishesOverHostAndBlockedFailsNoTraversal() async throws {
         let lan = try SessionPair(deadlineMs: 3_000)
+        defer { lan.close() }
         lan.net.stunWorks = false
         await lan.clientSession.start()
-        #expect(await eventually { lan.clientPaths.count == 2 && lan.machinePaths.count == 2 && lan.clientSession.established }, "host/prflx establishes without srflx")
+        await lan.clientSession.tickForTest()
+        await lan.waitForState { lan.clientPaths.count == 2 && lan.machinePaths.count == 2 && lan.clientSession.established }
+        #expect(lan.clientPaths.count == 2 && lan.machinePaths.count == 2 && lan.clientSession.established, "host/prflx establishes without srflx")
         lan.close()
-        #expect(await eventually { lan.clientBudget.isEmpty })
+        await lan.waitForBudgetEmpty()
+        #expect(lan.clientBudget.isEmpty)
 
         let blocked = try SessionPair(deadlineMs: 3_000)
+        defer { blocked.close() }
         blocked.net.stunWorks = false
         blocked.net.blackhole = true
         await blocked.clientSession.start()
-        #expect(await eventually(5) { blocked.net.all.count == 4 && blocked.net.all.allSatisfy { $0.hasExchangedSDP } }, "both uses negotiated SDP before deadline")
+        await blocked.clientSession.tickForTest()
+        await blocked.waitForState { blocked.net.all.count == 4 && blocked.net.all.allSatisfy { $0.hasExchangedSDP } }
+        #expect(blocked.net.all.count == 4 && blocked.net.all.allSatisfy { $0.hasExchangedSDP }, "both uses negotiated SDP before deadline")
         blocked.time.advance(3_001)
-        #expect(await eventually(5) { blocked.clientClosed.contains(where: { $0 == nil }) }, "the round ends at its deadline")
+        await blocked.clientSession.tickForTest()
+        await blocked.machineSession.tickForTest()
+        await blocked.waitForState { blocked.clientClosed.contains(where: { $0 == nil }) }
+        #expect(blocked.clientClosed.contains(where: { $0 == nil }), "the round ends at its deadline")
         #expect(blocked.clientPaths.isEmpty && !blocked.clientSession.established)
         #expect(blocked.clientSession.failure == .noTraversal)
         blocked.close()
-        #expect(await eventually { blocked.clientBudget.isEmpty })
+        await blocked.waitForBudgetEmpty()
+        #expect(blocked.clientBudget.isEmpty)
     }
 
     @Test func lostSignallingNeverEstablishesAndLeavesNothingBehind() async throws {
         let pair = try SessionPair(deadlineMs: 2_500)
+        defer { pair.close() }
         pair.dropFrames = true
         await pair.clientSession.start()
+        await pair.clientSession.tickForTest()
         pair.time.advance(2_501)
-        #expect(await eventually(5) { pair.clientClosed.contains(where: { $0 == nil }) })
+        await pair.clientSession.tickForTest()
+        await pair.waitForState { pair.clientClosed.contains(where: { $0 == nil }) }
+        #expect(pair.clientClosed.contains(where: { $0 == nil }))
         #expect(pair.clientPaths.isEmpty)
         #expect(pair.clientSession.failure == .noResponse)
         pair.close()
@@ -117,17 +182,21 @@ final class SessionPair: @unchecked Sendable {
         let pair = try SessionPair(deadlineMs: 5_000)
         defer { pair.close() }
         await pair.clientSession.start()
-        #expect(await eventually { pair.clientPaths.count == 2 && pair.machinePaths.count == 2 })
+        await pair.clientSession.tickForTest()
+        await pair.waitForState { pair.clientPaths.count == 2 && pair.machinePaths.count == 2 }
+        #expect(pair.clientPaths.count == 2 && pair.machinePaths.count == 2)
 
         let sub = try PBDirectEventSubscription.with { $0.sessionIds = ["sess-1"] }.serializedData()
         pair.clientSession.sendControl(15, Array(sub))
 
         // Wait deterministically until Control 10 (Unsupported) returns, then drive a tick pass
         // after advancing the injected clock past retry intervals and verify one-shot sendControl(15).
-        #expect(await eventually { pair.machineUnsupportedCount >= 1 })
+        await pair.waitForState { pair.machineUnsupportedCount >= 1 }
+        #expect(pair.machineUnsupportedCount >= 1)
         let ticksBefore = pair.clientSession.tickCount
         pair.time.advance(1_600)
-        #expect(await eventually { pair.clientSession.tickCount > ticksBefore })
+        await pair.clientSession.tickForTest()
+        #expect(pair.clientSession.tickCount > ticksBefore)
 
         #expect(pair.clientControl15Count == 1)
         #expect(pair.clientSession.active)

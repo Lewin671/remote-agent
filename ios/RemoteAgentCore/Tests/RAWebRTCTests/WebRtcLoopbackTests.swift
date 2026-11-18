@@ -14,21 +14,53 @@ import Testing
         var messages: [Data] = []
         var unexpected = 0
         var stateChanges = 0
-        func onIceCandidate(_ c: RtcIceCandidate) { lock.withLock { candidates.append(c) } }
-        func onIceGatheringComplete() {}
-        func onConnectionStateChange(_ s: RtcPeerState) { lock.withLock { states.append(s) } }
-        func onUnexpectedDataChannel() { lock.withLock { unexpected += 1 } }
-        func onStateChange() { lock.withLock { stateChanges += 1 } }
+        private let onEvent: @Sendable () -> Void
+        init(onEvent: @escaping @Sendable () -> Void) { self.onEvent = onEvent }
+        func onIceCandidate(_ c: RtcIceCandidate) { lock.withLock { candidates.append(c) }; onEvent() }
+        func onIceGatheringComplete() { onEvent() }
+        func onConnectionStateChange(_ s: RtcPeerState) { lock.withLock { states.append(s) }; onEvent() }
+        func onUnexpectedDataChannel() { lock.withLock { unexpected += 1 }; onEvent() }
+        func onStateChange() { lock.withLock { stateChanges += 1 }; onEvent() }
         func onBufferedAmountChange() {}
-        func onMessage(_ d: Data) { lock.withLock { messages.append(d) } }
+        func onMessage(_ d: Data) { lock.withLock { messages.append(d) }; onEvent() }
         var drained: [RtcIceCandidate] { lock.withLock { let c = candidates; candidates = []; return c } }
         var connected: Bool { lock.withLock { states.contains(.connected) } }
         var received: [Data] { lock.withLock { messages } }
     }
 
+    private final class Waiter: @unchecked Sendable {
+        private let lock = NSLock()
+        private var waiters: [(predicate: @Sendable () -> Bool, cont: CheckedContinuation<Void, Never>)] = []
+
+        func signal() {
+            let ready = lock.withLock { () -> [CheckedContinuation<Void, Never>] in
+                var fulfilled: [CheckedContinuation<Void, Never>] = []
+                var remaining: [(predicate: @Sendable () -> Bool, cont: CheckedContinuation<Void, Never>)] = []
+                for w in waiters {
+                    if w.predicate() { fulfilled.append(w.cont) } else { remaining.append(w) }
+                }
+                waiters = remaining
+                return fulfilled
+            }
+            for c in ready { c.resume() }
+        }
+
+        func wait(_ predicate: @escaping @Sendable () -> Bool) async {
+            await withCheckedContinuation { (c: CheckedContinuation<Void, Never>) in
+                let now = lock.withLock { () -> Bool in
+                    if predicate() { return true }
+                    waiters.append((predicate, c))
+                    return false
+                }
+                if now { c.resume() }
+            }
+        }
+    }
+
     @Test func twoPeersConnectAndCarryBothChannelsWithoutAnyMedia() async throws {
         let factory = WebRtcFactory()
-        let a = Side(), b = Side()
+        let waiter = Waiter()
+        let a = Side(onEvent: { waiter.signal() }), b = Side(onEvent: { waiter.signal() })
         let pa = try factory.create(stun: [], listener: a), pb = try factory.create(stun: [], listener: b)
         let ra = try pa.createDataChannel(id: 0, ordered: true, maxRetransmits: nil, listener: a)
         let ua = try pa.createDataChannel(id: 1, ordered: false, maxRetransmits: 0, listener: a)
@@ -42,22 +74,22 @@ import Testing
         let answer = try await pb.createAnswer()
         try await pb.setLocalDescription(offer: false, sdp: answer)
         try await pa.setRemoteDescription(offer: false, sdp: answer)
-        let deadline = Date().addingTimeInterval(20)
-        while Date() < deadline, !(a.connected && b.connected && ra.state == .open && rb.state == .open) {
+        while !(a.connected && b.connected && ra.state == .open && rb.state == .open && ua.state == .open) {
             for c in a.drained { try? await pb.addIceCandidate(c.candidate, sdpMid: c.sdpMid, sdpMLineIndex: c.sdpMLineIndex, usernameFragment: "") }
             for c in b.drained { try? await pa.addIceCandidate(c.candidate, sdpMid: c.sdpMid, sdpMLineIndex: c.sdpMLineIndex, usernameFragment: "") }
-            try await Task.sleep(nanoseconds: 50_000_000)
+            await waiter.wait {
+                !a.lock.withLock({ a.candidates.isEmpty }) || !b.lock.withLock({ b.candidates.isEmpty }) ||
+                    (a.connected && b.connected && ra.state == .open && rb.state == .open && ua.state == .open)
+            }
         }
         #expect(a.connected && b.connected)
         #expect(ra.state == .open && rb.state == .open && ua.state == .open)
         let frame = Data((0..<16_384).map { UInt8($0 & 0xff) })
         #expect(ra.send(frame))
-        let until = Date().addingTimeInterval(5)
-        while Date() < until, b.received.isEmpty { try await Task.sleep(nanoseconds: 20_000_000) }
+        await waiter.wait { !b.received.isEmpty }
         #expect(b.received == [frame])
         #expect(a.unexpected == 0 && b.unexpected == 0)
         pa.close()
-        let closing = Date().addingTimeInterval(5)
-        while Date() < closing, !a.lock.withLock({ a.states.contains(.closed) }) { try await Task.sleep(nanoseconds: 20_000_000) }
+        #expect(ra.state == .closed)
     }
 }

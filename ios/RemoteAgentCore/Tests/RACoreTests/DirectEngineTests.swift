@@ -139,29 +139,48 @@ final class EngineRig: @unchecked Sendable {
         }
         signalStateChange()
     }
-    func start() async { engine.attach(leg); await engine.synced(record, started: time.now) }
+    private func tickAll() async {
+        await engine.drainForTest()
+        await engine.tickSessionsForTest()
+        let active = lock.withLock { Array(sessions.values) }
+        for s in active { await s.tickForTest() }
+        for s in active { await s.drainForTest() }
+        await engine.drainForTest()
+    }
+    func start() async { engine.attach(leg); await engine.synced(record, started: time.now); await tickAll() }
     /// Re-proves the head, as the 15 second security sync does; the lifetime lasts 20 seconds.
     func resync() async { await engine.synced(record, started: time.now) }
     /// Time passing under an established path: small steps, so its liveness probes are answered between them.
     func pass(_ ms: UInt64) async {
         var left = ms
-        while left > 0 { let step = min(left, 500); time.advance(step); left -= step; if left % 10_000 < 500 { await resync() }; await engine.timerStep(); try? await Task.sleep(nanoseconds: 40_000_000) }
-    }
-    /// Waits for a condition while giving the engine its upkeep, so a loaded machine delays the
-    /// wait instead of failing it: the clock is fake, but the engine's work is scheduled for real.
-    func settle(_ seconds: Double = 10, _ condition: @Sendable () -> Bool) async -> Bool {
-        let end = Date().addingTimeInterval(seconds)
-        while Date() < end {
-            if condition() { return true }
+        while left > 0 {
+            let step = min(left, 500)
+            time.advance(step)
+            left -= step
+            if left % 10_000 < 500 { await resync() }
             await engine.timerStep()
-            try? await Task.sleep(nanoseconds: 20_000_000)
+            await tickAll()
         }
+    }
+    /// Drives upkeep and waits deterministically for `condition` via state/network events.
+    func settle(_ condition: @escaping @Sendable () -> Bool) async -> Bool {
+        await engine.timerStep()
+        await tickAll()
+        if condition() { return true }
+        await waitForState(condition)
         return condition()
     }
     /// Moves the clock in steps the sync can follow, giving the engine its upkeep each time.
     func advance(_ ms: UInt64) async {
         var left = ms
-        while left > 0 { let step = min(left, 10_000); time.advance(step); left -= step; await resync(); await engine.timerStep(); try? await Task.sleep(nanoseconds: 60_000_000) }
+        while left > 0 {
+            let step = min(left, 10_000)
+            time.advance(step)
+            left -= step
+            await resync()
+            await engine.timerStep()
+            await tickAll()
+        }
     }
     private func client() -> W.Public { try! W.Public(id: W.utf8(clientId), instance: [], boot: [], role: 1, sign: .init(rawRepresentation: record.state.core.member(clientId)!.ed), box: .init(rawRepresentation: record.state.core.member(clientId)!.x)) }
     private func fromClient(_ data: Data) {
@@ -178,12 +197,15 @@ final class EngineRig: @unchecked Sendable {
             let key = W.hex(o.ctx.connection)
             let existing = lock.withLock { sessions[key] }
             if existing == nil && silent {
-                lock.withLock { if !_connections.contains(where: { $0 == o.ctx.connection }) { _connections.append(o.ctx.connection) } }; return
+                lock.withLock { if !_connections.contains(where: { $0 == o.ctx.connection }) { _connections.append(o.ctx.connection) } }
+                signalStateChange()
+                return
             }
             if existing == nil {
                 peer.instance = o.ctx.senderInstance; peer.boot = o.ctx.senderBoot
                 let session = makeSession(peer, o.ctx.connection, o.ctx.deadline)
                 lock.withLock { sessions[key] = session; _connections.append(o.ctx.connection) }
+                signalStateChange()
                 session.receive(delivery); return
             }
         }
@@ -232,9 +254,10 @@ final class EngineRig: @unchecked Sendable {
             capability: { _ in }, clock: time.clock)
         return try! DirectSession(o)
     }
-    var paths: [Int: DirectChannel] = [:]
-    private func machinePath(_ use: Int) -> DirectChannel? { lock.withLock { paths[use] } }
-    func register(_ use: Int, _ path: DirectChannel) { lock.withLock { paths[use] = path }; signalStateChange() }
+    private var _paths: [Int: DirectChannel] = [:]
+    var paths: [Int: DirectChannel] { lock.withLock { _paths } }
+    private func machinePath(_ use: Int) -> DirectChannel? { lock.withLock { _paths[use] } }
+    func register(_ use: Int, _ path: DirectChannel) { lock.withLock { _paths[use] = path }; signalStateChange() }
     private func reply(_ raw: W.Bytes, _ path: DirectChannel) {
         guard let env = try? PBEnvelope(serializedBytes: raw), var header = try? DeviceSecurity.parseHeader(env.securityHeader) else { return }
         header.purpose = .result; header.kind = DeviceSecurity.Purpose.result.kind; header.sender = machineId

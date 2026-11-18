@@ -519,6 +519,7 @@ final class DirectSession: @unchecked Sendable {
     }
     func discovered() { queued { [self] in boot.discovered(); for p in pcs { p.sender.discovered() } } }
     func drainForTest() async { await chain.drain() }
+    func tickForTest() async { await queued { await self.tick() }?.value }
     func retire() {
         lock.withLock { retired = true }
         queued { [self] in retireNow() }

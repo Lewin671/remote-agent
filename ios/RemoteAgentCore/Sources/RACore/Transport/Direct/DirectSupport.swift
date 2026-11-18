@@ -59,6 +59,7 @@ final class DirectBudget: @unchecked Sendable {
     private let lock = NSLock()
     private var peers: [String: Usage] = [:]
     private var total = [0, 0]
+    private var emptyWaiters: [CheckedContinuation<Void, Never>] = []
     let maxPeers: Int
     init(maxPeers: Int = 4) { self.maxPeers = maxPeers }
     func acquire(_ peer: String, _ owner: String, _ use: Int) -> Bool {
@@ -77,9 +78,18 @@ final class DirectBudget: @unchecked Sendable {
         return peers[peer] == nil || peers[peer]!.owner == owner
     }
     func release(_ peer: String, _ use: Int) {
-        lock.lock(); defer { lock.unlock() }
-        guard var current = peers[peer] else { return }
-        current.uses.remove(use); peers[peer] = current; prune(peer)
+        let waiters: [CheckedContinuation<Void, Never>]
+        lock.lock()
+        if var current = peers[peer] {
+            current.uses.remove(use); peers[peer] = current; prune(peer)
+        }
+        if peers.isEmpty && total == [0, 0] {
+            waiters = emptyWaiters; emptyWaiters.removeAll()
+        } else {
+            waiters = []
+        }
+        lock.unlock()
+        for w in waiters { w.resume() }
     }
     func reserve(_ peer: String, _ owner: String, _ use: Int, _ direction: Int, _ bytes: Int, _ frames: Int) -> Bool {
         lock.lock(); defer { lock.unlock() }
@@ -90,10 +100,19 @@ final class DirectBudget: @unchecked Sendable {
         return true
     }
     func free(_ peer: String, _ direction: Int, _ bytes: Int, _ frames: Int) {
-        lock.lock(); defer { lock.unlock() }
-        guard var current = peers[peer] else { return }
-        current.bytes[direction] -= bytes; current.frames[direction] -= frames; total[direction] -= bytes
-        peers[peer] = current; prune(peer)
+        let waiters: [CheckedContinuation<Void, Never>]
+        lock.lock()
+        if var current = peers[peer] {
+            current.bytes[direction] -= bytes; current.frames[direction] -= frames; total[direction] -= bytes
+            peers[peer] = current; prune(peer)
+        }
+        if peers.isEmpty && total == [0, 0] {
+            waiters = emptyWaiters; emptyWaiters.removeAll()
+        } else {
+            waiters = []
+        }
+        lock.unlock()
+        for w in waiters { w.resume() }
     }
     private func prune(_ peer: String) {
         guard let current = peers[peer] else { return }
@@ -101,6 +120,18 @@ final class DirectBudget: @unchecked Sendable {
     }
     /// For the tests: nothing may stay reserved once everything is closed.
     var isEmpty: Bool { lock.lock(); defer { lock.unlock() }; return peers.isEmpty && total == [0, 0] }
+    func waitUntilEmptyForTest() async {
+        await withCheckedContinuation { c in
+            lock.lock()
+            if peers.isEmpty && total == [0, 0] {
+                lock.unlock()
+                c.resume()
+                return
+            }
+            emptyWaiters.append(c)
+            lock.unlock()
+        }
+    }
 }
 
 /// Runs each step even when an earlier one throws; Swift has no finally for a list of closings.
