@@ -6,7 +6,7 @@ import Testing
 
 /// Purely virtual clock controlled by the test: waiting never drifts with wall-clock load.
 final class FakeClock: @unchecked Sendable {
-    private let lock = NSLock(); private var offset: UInt64 = 0
+    private let lock = NSRecursiveLock(); private var offset: UInt64 = 0
     private var waiters: [(until: UInt64, id: UUID, cont: CheckedContinuation<Void, any Error>)] = []
     private let base: UInt64
     init(_ ms: UInt64) { base = ms }
@@ -63,9 +63,15 @@ final class EngineRig: @unchecked Sendable {
     let record: DeviceSecurity.Record, machineId: String, machine: W.Identity, scope: W.Scope, codec: PeerCodec, clientId: String
     var engine: DirectEngine!
     var leg: FakeLeg!
-    private let lock = NSLock()
+    private let lock = NSRecursiveLock()
     private var sessions: [String: DirectSession] = [:], _connections: [W.Bytes] = [], _frames: [(Int, W.Bytes)] = [], _control15Subs: [[String]] = [], controlSeq: UInt64 = 0
+    private var stateWaiters: [(predicate: @Sendable () -> Bool, cont: CheckedContinuation<Void, Never>)] = []
+    private var pendingDeliveries = 0, deliveryCounter = 0
+    private var _holdUse1Confirm = false
+    private var heldUse1Confirm: [W.Bytes] = []
     var silent = false, replies = true
+    var holdUse1Confirm: Bool { get { lock.withLock { _holdUse1Confirm } } set { lock.withLock { _holdUse1Confirm = newValue } } }
+    var heldUse1ConfirmCount: Int { lock.withLock { heldUse1Confirm.count } }
     var probes: Int { lock.withLock { _connections.count } }
     var machineFrames: [(Int, W.Bytes)] { lock.withLock { _frames } }
     var control15Subs: [[String]] { lock.withLock { _control15Subs } }
@@ -86,8 +92,52 @@ final class EngineRig: @unchecked Sendable {
         codec = PeerCodec(scope: scope)
         let seed = try fixture.hex("phone_seed")
         engine = DirectEngine(server: "http://127.0.0.1:1", deviceId: genesis.core.authorityID, deviceSeed: seed, factory: FakeRtcFactory(net: net), preferences: prefs, stun: ["stun:127.0.0.1:3478"],
-                              clock: time.clock, random: random, authorize: {}, changed: { [weak self] in self?.lock.withLock { self?.changes += 1 } })
+                              clock: time.clock, random: random, authorize: {}, changed: { [weak self] in self?.lock.withLock { self?.changes += 1 }; self?.signalStateChange() })
         leg = FakeLeg { [weak self] data in self?.fromClient(data) }
+        net.onEvent = { [weak self] in self?.signalStateChange() }
+    }
+    private func signalStateChange() {
+        let ready: [CheckedContinuation<Void, Never>] = lock.withLock {
+            var fulfilled: [CheckedContinuation<Void, Never>] = []
+            var remaining: [(predicate: @Sendable () -> Bool, cont: CheckedContinuation<Void, Never>)] = []
+            for w in stateWaiters {
+                if w.predicate() { fulfilled.append(w.cont) } else { remaining.append(w) }
+            }
+            stateWaiters = remaining
+            return fulfilled
+        }
+        for c in ready { c.resume() }
+    }
+    func waitForState(_ predicate: @escaping @Sendable () -> Bool) async {
+        await withCheckedContinuation { (cont: CheckedContinuation<Void, Never>) in
+            let resumeNow = lock.withLock { () -> Bool in
+                if predicate() { return true }
+                stateWaiters.append((predicate, cont))
+                return false
+            }
+            if resumeNow { cont.resume() }
+        }
+    }
+    func drainClient() async {
+        while true {
+            await waitForState { self.lock.withLock { self.pendingDeliveries == 0 } }
+            let before = lock.withLock { deliveryCounter }
+            await engine.drainForTest()
+            let after = lock.withLock { (deliveryCounter, pendingDeliveries) }
+            if after.0 == before && after.1 == 0 { break }
+        }
+    }
+    func releaseUse1Confirm() {
+        let frames = lock.withLock { () -> [W.Bytes] in
+            _holdUse1Confirm = false
+            let out = heldUse1Confirm
+            heldUse1Confirm.removeAll()
+            return out
+        }
+        for raw in frames {
+            engine.receive(raw, from: leg)
+        }
+        signalStateChange()
     }
     func start() async { engine.attach(leg); await engine.synced(record, started: time.now) }
     /// Re-proves the head, as the 15 second security sync does; the lifetime lasts 20 seconds.
@@ -122,6 +172,7 @@ final class EngineRig: @unchecked Sendable {
            let o = try? codec.open(delivery, activePeer, machine, time.now), o.ctx.cls == 2, o.type == 15,
            let sub = try? PBDirectEventSubscription(serializedBytes: Data(o.payload)) {
             lock.withLock { _control15Subs.append(sub.sessionIds) }
+            signalStateChange()
         }
         if let o = try? codec.open(delivery, peer, machine, time.now), o.ctx.cls == 1, o.type == 1 {
             let key = W.hex(o.ctx.connection)
@@ -149,8 +200,28 @@ final class EngineRig: @unchecked Sendable {
             selfID: machine, peer: peer, codec: codec, connection: connection, deadline: min(deadline, time.now + 10_000), budget: machineBudget, stun: ["stun:127.0.0.1:3478"], factory: FakeRtcFactory(net: net),
             valid: { true }, authorize: {},
             send: { [weak self] out in
+                guard let self else { return false }
                 let bytes = out.raw
-                Task.detached { if let self { self.engine.receive(bytes, from: self.leg) } }; return true
+                let hold = self.lock.withLock { () -> Bool in
+                    guard self._holdUse1Confirm,
+                          let o = try? self.codec.openSent(bytes, self.machine, peer, self.time.now),
+                          o.ctx.cls == 1, o.ctx.use == 1, o.type == 7
+                    else { return false }
+                    self.heldUse1Confirm.append(bytes)
+                    return true
+                }
+                if hold {
+                    self.signalStateChange()
+                    return true
+                }
+                self.lock.withLock { self.pendingDeliveries += 1; self.deliveryCounter += 1 }
+                Task.detached { [weak self] in
+                    guard let self else { return }
+                    self.engine.receive(bytes, from: self.leg)
+                    self.lock.withLock { self.pendingDeliveries -= 1 }
+                    self.signalStateChange()
+                }
+                return true
             },
             chosen: retireOld, beforeOffer: retireOld, ready: { [weak self] use, path in self?.register(use, path) }, closed: { _ in },
             frame: { [weak self] raw, use in
@@ -163,7 +234,7 @@ final class EngineRig: @unchecked Sendable {
     }
     var paths: [Int: DirectChannel] = [:]
     private func machinePath(_ use: Int) -> DirectChannel? { lock.withLock { paths[use] } }
-    func register(_ use: Int, _ path: DirectChannel) { lock.withLock { paths[use] = path } }
+    func register(_ use: Int, _ path: DirectChannel) { lock.withLock { paths[use] = path }; signalStateChange() }
     private func reply(_ raw: W.Bytes, _ path: DirectChannel) {
         guard let env = try? PBEnvelope(serializedBytes: raw), var header = try? DeviceSecurity.parseHeader(env.securityHeader) else { return }
         header.purpose = .result; header.kind = DeviceSecurity.Purpose.result.kind; header.sender = machineId
@@ -212,11 +283,20 @@ final class EngineRig: @unchecked Sendable {
         guard let raw = try? codec.seal(machine, W.member(peer), context, 1, body) else { return }
         engine.receive(raw, from: leg)
     }
-    func close() { engine.close(); for s in lock.withLock({ Array(sessions.values) }) { s.close() } }
+    func close() {
+        engine.close()
+        for s in lock.withLock({ Array(sessions.values) }) { s.close() }
+        let leftover = lock.withLock { () -> [CheckedContinuation<Void, Never>] in
+            let out = stateWaiters.map(\.cont)
+            stateWaiters.removeAll()
+            return out
+        }
+        for c in leftover { c.resume() }
+    }
 }
 
 final class MemoryDirectPreferences: DirectPreferenceStore, @unchecked Sendable {
-    private let lock = NSLock(); private var values: [String: Bool] = [:]
+    private let lock = NSRecursiveLock(); private var values: [String: Bool] = [:]
     var failWrites = false
     func isEnabled(server: String, deviceId: String, machineId: String) -> Bool { lock.withLock { values[machineId] ?? true } }
     func setEnabled(server: String, deviceId: String, machineId: String, enabled: Bool) throws {

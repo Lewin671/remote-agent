@@ -21,6 +21,9 @@ final class SerialChain: @unchecked Sendable {
         tail = Task { _ = await job.value }
         return job
     }
+    func drain() async {
+        await run {}.value
+    }
 }
 
 /// Wakes writers waiting for the DataChannel buffer to drain. A signal that arrives before the

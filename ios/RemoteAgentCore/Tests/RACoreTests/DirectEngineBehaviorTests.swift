@@ -211,30 +211,101 @@ final class Flag: @unchecked Sendable { private let l = NSLock(); private var v 
         #expect(without.direct == nil && !without.directSupported)
     }
 
-    @Test func sendsControl15OnceWhenDataChannelOpensAfterCapabilities() async throws {
+    @Test func sendsControl15OnceWhenDataChannelOpensBeforeConfirm() async throws {
+        let rig = try EngineRig(); defer { rig.close() }
+        rig.net.autoOpenChannels = false
+        rig.holdUse1Confirm = true
+        rig.engine.setWatchedSessions([rig.machineId: ["sess-delayed"]])
+        await rig.start()
+
+        await rig.waitForState {
+            rig.heldUse1ConfirmCount >= 1 && rig.paths[1] != nil && rig.net.all.contains { $0.channels[0] != nil }
+        }
+        await rig.drainClient()
+        rig.announceEventCapabilities()
+        await rig.waitForState { rig.engine.supportsEventPushForTest(rig.machineId) }
+        await rig.drainClient()
+        #expect(!rig.engine.hasPathForTest(rig.machineId, use: 1))
+        #expect(rig.control15Subs.isEmpty)
+
+        for pc in rig.net.all {
+            for ch in pc.channels.values { ch.set(.open) }
+        }
+        await rig.drainClient()
+        #expect(rig.control15Subs.isEmpty, "Control 15 must wait until Confirm settles path 1")
+
+        rig.releaseUse1Confirm()
+        await rig.waitForState { rig.control15Subs.count >= 1 }
+        await rig.drainClient()
+        #expect(rig.engine.ready(rig.machineId, .read))
+        #expect(rig.control15Subs == [["sess-delayed"]])
+    }
+
+    @Test func sendsControl15OnceWhenDataChannelOpensAfterConfirm() async throws {
         let rig = try EngineRig(); defer { rig.close() }
         rig.net.autoOpenChannels = false
         rig.engine.setWatchedSessions([rig.machineId: ["sess-delayed"]])
         await rig.start()
 
-        // Wait until use=1 PeerConnection is connected & Confirm-ready while dc0 is still connecting.
-        #expect(await eventually {
-            rig.net.all.count >= 2 && rig.paths[1] != nil && rig.engine.ready(rig.machineId, .read) == false
-        })
+        await rig.waitForState {
+            rig.engine.hasPathForTest(rig.machineId, use: 1) && rig.paths[1] != nil
+        }
+        await rig.drainClient()
+        #expect(!rig.engine.ready(rig.machineId, .read))
+
         rig.announceEventCapabilities()
-        rig.announce()
-        // Wait deterministically until Control 14 queued behind Control 1 has been processed on receiveChain.
-        #expect(await eventually {
-            rig.engine.capabilities(rig.machineId) != nil
-        })
+        await rig.waitForState { rig.engine.supportsEventPushForTest(rig.machineId) }
+        await rig.drainClient()
         #expect(rig.control15Subs.isEmpty, "Control 15 must wait while dc0 is still connecting")
 
-        // Ensure client's Confirm has settled path 1 before opening dc0, or opening dc0 completes subscription
-        // regardless of Confirm/open order once both have happened.
         for pc in rig.net.all {
             for ch in pc.channels.values { ch.set(.open) }
         }
-        #expect(await eventually { rig.control15Subs.count == 1 })
+        await rig.waitForState { rig.control15Subs.count >= 1 }
+        await rig.drainClient()
+        #expect(rig.engine.ready(rig.machineId, .read))
+        #expect(rig.control15Subs == [["sess-delayed"]])
+    }
+
+    @Test func sendsControl15OnceWhenCapabilitiesArrivesAfterReadyAndOpen() async throws {
+        let rig = try EngineRig(); defer { rig.close() }
+        rig.engine.setWatchedSessions([rig.machineId: ["sess-delayed"]])
+        await rig.start()
+
+        await rig.waitForState {
+            rig.engine.ready(rig.machineId, .read) && rig.paths[1] != nil
+        }
+        await rig.drainClient()
+        #expect(rig.control15Subs.isEmpty, "Control 15 must wait until Capabilities arrives")
+
+        rig.announceEventCapabilities()
+        await rig.waitForState { rig.control15Subs.count >= 1 }
+        await rig.drainClient()
+        #expect(rig.control15Subs == [["sess-delayed"]])
+    }
+
+    @Test func sendsControl15OnceWhenDataChannelOpensDuringConfirmDelivery() async throws {
+        let rig = try EngineRig(); defer { rig.close() }
+        rig.net.autoOpenChannels = false
+        rig.holdUse1Confirm = true
+        rig.engine.setWatchedSessions([rig.machineId: ["sess-delayed"]])
+        await rig.start()
+
+        await rig.waitForState {
+            rig.heldUse1ConfirmCount >= 1 && rig.paths[1] != nil && rig.net.all.contains { $0.channels[0] != nil }
+        }
+        await rig.drainClient()
+        rig.announceEventCapabilities()
+        await rig.waitForState { rig.engine.supportsEventPushForTest(rig.machineId) }
+        await rig.drainClient()
+
+        rig.releaseUse1Confirm()
+        for pc in rig.net.all {
+            for ch in pc.channels.values { ch.set(.open) }
+        }
+        await rig.waitForState { rig.control15Subs.count >= 1 }
+        await rig.drainClient()
+        #expect(rig.engine.ready(rig.machineId, .read))
         #expect(rig.control15Subs == [["sess-delayed"]])
     }
 }

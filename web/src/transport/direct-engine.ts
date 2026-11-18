@@ -15,7 +15,7 @@ import { DirectRouting, type RouteHint, type RouteName } from "./direct-routing"
 import { PathChanged, abortable } from "./recovery";
 import * as w from "./peer/wire";
 
-type Peer = { id: string; head: string; session: DirectSession; paths: Map<number, DirectChannel>; live: boolean; capabilities?: MachineCapabilities; snapshotUntil: number; downloadUntil: number; snapshotSeq: bigint; downloadSeq: bigint; supportsEventPush?: boolean; redialAt?: number; selected?: boolean; readyAt?: number; retryDelay?: number };
+type Peer = { id: string; head: string; session: DirectSession; paths: Map<number, DirectChannel>; live: boolean; capabilities?: MachineCapabilities; snapshotUntil: number; downloadUntil: number; snapshotSeq: bigint; downloadSeq: bigint; supportsEventPush?: boolean; subscribedChannel?: DirectChannel; redialAt?: number; selected?: boolean; readyAt?: number; retryDelay?: number };
 type Pending = { peer: Peer; use: number; resolve: (env: Envelope) => void };
 
 export type DirectState = "unsupported" | "connected" | "connecting" | "none";
@@ -108,10 +108,13 @@ export class DirectEngine {
     for (const p of this.peers.values()) this.sendSubscription(p);
   }
 
-  private sendSubscription(p: Peer) {
-    if (!this.valid(p) || !p.session.active || !p.supportsEventPush || !p.paths.get(1)?.ready) return;
+  private sendSubscription(p: Peer, onlyIfChannelChanged = false) {
+    const path1 = p.paths.get(1);
+    if (!this.valid(p) || this.peers.get(p.id) !== p || !p.session.active || !p.supportsEventPush || !path1?.ready) return;
+    if (onlyIfChannelChanged && p.subscribedChannel === path1) return;
     const sessionIds = this.watchedByMachine.get(p.id) ?? [];
     const payload = toBinary(DirectEventSubscriptionSchema, create(DirectEventSubscriptionSchema, { sessionIds }));
+    p.subscribedChannel = path1;
     void p.session.sendControl(15, payload);
   }
 
@@ -412,7 +415,7 @@ export class DirectEngine {
         p.readyAt ??= Date.now();
         this.failures.delete(id);
         this.routing(id).reset(use === 1 ? "read" : use === 2 ? "bulk" : undefined);
-        if (use === 1) this.sendSubscription(p);
+        if (use === 1) this.sendSubscription(p, true);
         this.notify();
       },
       closed: use => {
@@ -431,7 +434,7 @@ export class DirectEngine {
       },
       frame: (raw, use) => this.frame(p, raw, use),
       capability: opened => this.capability(p, opened),
-      open: use => { if (use === 1 && this.peers.get(id) === p) this.sendSubscription(p); },
+      open: use => { if (use === 1) this.sendSubscription(p, true); },
     });
     this.sessions.set(w.hex(connection), p);
     this.notify();

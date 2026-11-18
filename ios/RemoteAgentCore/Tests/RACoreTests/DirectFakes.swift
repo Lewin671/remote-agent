@@ -12,6 +12,8 @@ final class FakeRtcNet: @unchecked Sendable {
     var blackhole = false
     var failCreate = false
     var autoOpenChannels = true
+    private var _onEvent: (@Sendable () -> Void)?
+    var onEvent: (@Sendable () -> Void)? { get { lock.withLock { _onEvent } } set { lock.withLock { _onEvent = newValue } } }
     /// Explicit close barrier so tests can pause SDK shutdown without sleeping on the cooperative pool.
     private var closeGate: DispatchSemaphore?
     private var _closeEntered = 0
@@ -36,7 +38,7 @@ final class FakeRtcNet: @unchecked Sendable {
         _ = gate?.wait(timeout: .now() + 10)
         lock.withLock { _closeFinished += 1 }
     }
-    func register(_ pc: FakePC) { lock.withLock { byUfrag[pc.ufrag] = pc; created.append(pc) } }
+    func register(_ pc: FakePC) { lock.withLock { byUfrag[pc.ufrag] = pc; created.append(pc) }; onEvent?() }
     func find(_ ufrag: String) -> FakePC? { lock.withLock { byUfrag[ufrag] } }
     var all: [FakePC] { lock.withLock { created } }
     /// Every live pair fails at once, as a dropped network does.
@@ -85,7 +87,7 @@ final class FakePC: RtcPeerConnection, @unchecked Sendable {
     var maxMessageSize: Int? { 262_144 }
     func createDataChannel(id: Int, ordered: Bool, maxRetransmits: Int?, listener: any RtcDataChannelListener) throws -> any RtcDataChannel {
         let c = FakeRtcChannel(id: id, listener: listener); c.owner = self
-        lock.withLock { _channels[id] = c }; return c
+        lock.withLock { _channels[id] = c }; net.onEvent?(); return c
     }
     private func sdp(setup: String) -> String {
         let fp = (0..<32).map { _ in String(format: "%02X", UInt8.random(in: 0...255)) }.joined(separator: ":")
@@ -122,6 +124,7 @@ final class FakePC: RtcPeerConnection, @unchecked Sendable {
                 for c in pc.channels.values { c.set(.open) }
             }
         }
+        net.onEvent?()
     }
     func fail() {
         let was = lock.withLock { () -> Bool in let c = connected; connected = false; return c }

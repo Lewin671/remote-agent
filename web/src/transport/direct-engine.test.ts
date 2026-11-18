@@ -584,6 +584,13 @@ test("sends Control 15 once when DataChannel opens after Capabilities", async ()
     expect(leg.send).toHaveBeenCalledTimes(1);
     await Promise.all(pendingOpens);
     expect(control15Subs).toEqual([["s-delayed"]]);
+
+    // Subsequent open/ready callback for the same channel does not duplicate Control 15.
+    (createdPeer.session as unknown as { options: { ready(u: number, ch: DirectChannel): void; open?(u: number): void } }).options.ready(1, channel);
+    (createdPeer.session as unknown as { options: { open?(u: number): void } }).options.open?.(1);
+    await sessionPriv.chain;
+    await Promise.all(pendingOpens);
+    expect(leg.send).toHaveBeenCalledTimes(1);
   } finally {
     engine.close();
     vi.unstubAllGlobals();

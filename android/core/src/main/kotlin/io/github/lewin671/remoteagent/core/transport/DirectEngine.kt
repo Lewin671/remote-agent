@@ -78,6 +78,7 @@ internal class DirectEngine(
         var snapshotSeq = 0L
         var downloadSeq = 0L
         var supportsEventPush = false
+        var subscribedChannel: DirectChannel? = null
         var redialAt: Long? = null
         var readyAt: Long? = null
         var retryDelay: Long? = null
@@ -157,10 +158,13 @@ internal class DirectEngine(
         for ((p, body) in toSend) p.session.sendControl(15L, body)
     }
 
-    private fun sendSubscriptionLocked(p: PeerEntry): Pair<PeerEntry, ByteArray>? {
-        if (!validLocked(p) || !p.session.active || !p.supportsEventPush || p.paths[1]?.ready != true) return null
+    private fun sendSubscriptionLocked(p: PeerEntry, onlyIfChannelChanged: Boolean = false): Pair<PeerEntry, ByteArray>? {
+        val path1 = p.paths[1] ?: return null
+        if (!validLocked(p) || peers[p.id] !== p || !p.session.active || !p.supportsEventPush || !path1.ready) return null
+        if (onlyIfChannelChanged && p.subscribedChannel === path1) return null
         val ids = watchedByMachine[p.id].orEmpty()
         val body = DirectEventSubscription.newBuilder().addAllSessionIds(ids).build().toByteArray()
+        p.subscribedChannel = path1
         return p to body
     }
 
@@ -610,7 +614,7 @@ internal class DirectEngine(
                             if (p.readyAt == null) p.readyAt = clock()
                             failReasons.remove(id)
                             routingLocked(id).reset(read = use == 1, bulk = use == 2)
-                            if (use == 1) syncCall = sendSubscriptionLocked(p)
+                            if (use == 1) syncCall = sendSubscriptionLocked(p, onlyIfChannelChanged = true)
                             true
                         }
                     }
@@ -728,7 +732,7 @@ internal class DirectEngine(
     private fun channelOpen(p: PeerEntry, use: Int) {
         if (use != 1) return
         val syncCall = synchronized(stateLock) {
-            if (peers[p.id] === p) sendSubscriptionLocked(p) else null
+            sendSubscriptionLocked(p, onlyIfChannelChanged = true)
         }
         syncCall?.let { (peerEntry, body) -> peerEntry.session.sendControl(15L, body) }
     }
