@@ -210,6 +210,71 @@ func TestApprovalSnapshotPrerequisiteSurvivesOrdinaryAndBulkSaturation(t *testin
 	t.Log("after release: exactly one fresh snapshot and one approval completed through signed encrypted RPCs")
 }
 
+type schedulerTestTimer struct {
+	at      time.Time
+	fn      func()
+	stopped bool
+}
+
+type schedulerTestClock struct {
+	mu     sync.Mutex
+	cur    time.Time
+	timers []*schedulerTestTimer
+}
+
+func newSchedulerTestClock(start time.Time) *schedulerTestClock {
+	return &schedulerTestClock{cur: start}
+}
+
+func (c *schedulerTestClock) now() time.Time {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.cur
+}
+
+func (c *schedulerTestClock) after(d time.Duration, fn func()) func() bool {
+	if d <= 0 {
+		go fn()
+		return func() bool { return false }
+	}
+	c.mu.Lock()
+	t := &schedulerTestTimer{at: c.cur.Add(d), fn: fn}
+	c.timers = append(c.timers, t)
+	c.mu.Unlock()
+	return func() bool {
+		c.mu.Lock()
+		defer c.mu.Unlock()
+		if t.stopped {
+			return false
+		}
+		t.stopped = true
+		return true
+	}
+}
+
+func (c *schedulerTestClock) advance(d time.Duration) {
+	c.mu.Lock()
+	c.cur = c.cur.Add(d)
+	var due []func()
+	remaining := c.timers[:0]
+	for _, t := range c.timers {
+		if t.stopped {
+			continue
+		}
+		if !t.at.After(c.cur) {
+			t.stopped = true
+			due = append(due, t.fn)
+		} else {
+			remaining = append(remaining, t)
+		}
+	}
+	c.timers = remaining
+	c.mu.Unlock()
+	for _, fn := range due {
+		go fn()
+	}
+}
+
 func TestApprovalPrerequisiteSurvivesRunningAndOverdueSend(t *testing.T) {
 	e := setup(t)
 	e.backend.add(t, "approval-flow-session")
@@ -225,30 +290,32 @@ func TestApprovalPrerequisiteSurvivesRunningAndOverdueSend(t *testing.T) {
 		<-release
 		return ctx.Err()
 	}
-	running := e.startRelayBackend(backend)
+	clk := newSchedulerTestClock(time.Now())
+	running := e.startRelayBackend(backend, func(r *relay.Relay) {
+		relay.SetSchedulerClockForTest(r, clk.now, clk.after)
+	})
 	e.online(t, true)
 	input := e.session(t, "stalled-input", 0)
 	approval := e.session(t, "approval-flow-session", 0)
-	env, err := e.client.Seal(input.MachineID, input.ID, "stalled-send-reservation", time.Now().Add(2*time.Second), &pb.Command{Kind: &pb.Command_Send{Send: &pb.SendRequest{SessionId: input.ID, Text: "load"}}})
+	env, err := e.client.Seal(input.MachineID, input.ID, "stalled-send-reservation", time.Now().Add(time.Minute), &pb.Command{Kind: &pb.Command_Send{Send: &pb.SendRequest{SessionId: input.ID, Text: "load"}}})
 	if err != nil {
 		t.Fatal(err)
 	}
 	sendDone := make(chan error, 1)
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
+	ctx := t.Context()
 	go func() {
 		_, err := e.client.Forward(ctx, input.MachineID, env, remoteclient.NeverDispatched)
 		sendDone <- err
 	}()
 	select {
 	case <-entered:
+	case err := <-sendDone:
+		t.Fatalf("Send finished before starting: %v", err)
 	case <-ctx.Done():
 		t.Fatal("Send did not start")
 	}
 	flow := func(label string) {
 		t.Helper()
-		ctx, cancel := context.WithTimeout(context.Background(), 300*time.Millisecond)
-		defer cancel()
 		view, err := e.client.Do(ctx, approval, &pb.Command{Kind: &pb.Command_GetLiveSnapshot{GetLiveSnapshot: &pb.GetLiveSnapshotRequest{SessionId: approval.ID}}})
 		if err != nil {
 			t.Fatalf("%s: prerequisite could not use reserved slot: %v", label, err)
@@ -269,8 +336,11 @@ func TestApprovalPrerequisiteSurvivesRunningAndOverdueSend(t *testing.T) {
 		t.Fatal("first approval was not completed before the Send deadline")
 	default:
 	}
+	clk.advance(6 * time.Second)
 	select {
 	case <-canceled:
+	case err := <-sendDone:
+		t.Fatalf("Send returned before deadline cancellation: %v", err)
 	case <-ctx.Done():
 		t.Fatal("Send deadline did not fire")
 	}

@@ -49,11 +49,13 @@ type Job struct {
 	Reject        func()
 	state         uint8
 	stopWait      func() bool
-	timer         *time.Timer
+	stopTimer     func() bool
 }
 
 type Scheduler struct {
 	link            *Link
+	now             func() time.Time
+	after           func(time.Duration, func()) func() bool
 	mu              sync.Mutex
 	queues          [4]FairQueue[*Job]
 	used            [3]int
@@ -65,11 +67,31 @@ type Scheduler struct {
 }
 
 func NewScheduler(link *Link) *Scheduler {
-	s := &Scheduler{link: link, activeSessions: map[string]bool{}, activeSnapshots: map[string]bool{}, quarantined: map[string]int{}}
+	return NewSchedulerWithClock(link, nil, nil)
+}
+
+// NewSchedulerWithClock constructs a Scheduler whose queue and execution
+// bounds use now and after when provided.
+func NewSchedulerWithClock(link *Link, now func() time.Time, after func(time.Duration, func()) func() bool) *Scheduler {
+	s := &Scheduler{link: link, now: now, after: after, activeSessions: map[string]bool{}, activeSnapshots: map[string]bool{}, quarantined: map[string]int{}}
 	for c, count := range []int{32, 16, 64, 16} {
 		s.queues[c] = FairQueue[*Job]{Entries: count, Bytes: ExecutionQueueBytes, PeerEntries: count / 4, PeerBytes: ExecutionQueueBytes / 4, EmptyPeerException: true}
 	}
 	return s
+}
+
+func (s *Scheduler) nowTime() time.Time {
+	if s.now != nil {
+		return s.now()
+	}
+	return time.Now()
+}
+
+func (s *Scheduler) afterFunc(d time.Duration, fn func()) func() bool {
+	if s.after != nil {
+		return s.after(d, fn)
+	}
+	return time.AfterFunc(d, fn).Stop
 }
 func (s *Scheduler) session(j *Job) string {
 	if j.Session != "" {
@@ -96,10 +118,10 @@ func (s *Scheduler) Submit(waiting context.Context, j *Job) bool {
 	if j.Class == Control {
 		wait = ControlQueueWait
 	}
-	if remain := time.Until(j.Deadline); remain < wait {
+	if remain := j.Deadline.Sub(s.nowTime()); remain < wait {
 		wait = remain
 	}
-	j.timer = time.AfterFunc(wait, func() { s.expire(j) })
+	j.stopTimer = s.afterFunc(wait, func() { s.expire(j) })
 	j.stopWait = context.AfterFunc(waiting, func() { s.expire(j) })
 	dropped := s.pumpLocked()
 	s.mu.Unlock()
@@ -116,7 +138,7 @@ func (s *Scheduler) expire(j *Job) {
 	}
 	s.queues[j.Class].Remove(j)
 	j.state = 3
-	j.timer.Stop()
+	j.stopTimer()
 	j.stopWait()
 	dropped := s.pumpLocked()
 	s.mu.Unlock()
@@ -161,7 +183,7 @@ func (s *Scheduler) pumpLocked() []*Job {
 				break
 			}
 			j.state = 2
-			j.timer.Stop()
+			j.stopTimer()
 			j.stopWait()
 			s.used[pool]++
 			if pool == 0 {
@@ -172,7 +194,7 @@ func (s *Scheduler) pumpLocked() []*Job {
 					s.nonReserved++
 				}
 			}
-			ex := &Execution{owner: s, job: j, granted: time.Now()}
+			ex := &Execution{owner: s, job: j, granted: s.nowTime()}
 			// The link refuses only during shutdown. The existing reservation
 			// is released even then; no caller can bypass it with a goroutine.
 			if !s.link.Run(func(ctx context.Context) {
@@ -181,7 +203,15 @@ func (s *Scheduler) pumpLocked() []*Job {
 				if j.Deadline.Before(deadline) {
 					deadline = j.Deadline
 				}
-				run, cancel := context.WithDeadline(ctx, deadline)
+				var run context.Context
+				var cancel context.CancelFunc
+				if s.after == nil {
+					run, cancel = context.WithDeadline(ctx, deadline)
+				} else {
+					run, cancel = context.WithCancel(ctx)
+					stop := s.after(deadline.Sub(ex.granted), cancel)
+					defer stop()
+				}
 				defer cancel()
 				j.Run(run, ex)
 			}) {
@@ -262,7 +292,7 @@ func (s *Scheduler) Close() {
 				break
 			}
 			j.state = 3
-			j.timer.Stop()
+			j.stopTimer()
 			j.stopWait()
 			rejected = append(rejected, j)
 		}

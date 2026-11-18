@@ -63,6 +63,8 @@ type Relay struct {
 	directSTUN     []string
 	directLoopback bool
 	directClock    func() time.Time
+	schedulerNow   func() time.Time
+	schedulerAfter func(time.Duration, func()) func() bool
 
 	observeApproval func(acquired bool, wait time.Duration)
 	scheduling      atomic.Pointer[transport.Scheduler]
