@@ -92,10 +92,7 @@ func BuildNewSession(st *State, projectKey string) *corev1.NewSessionViewModel {
 	projectSelectable := projectKey == ""
 	key := projectKey
 	if key == "" {
-		key = st.StandaloneProjectKey
-	}
-	if key == "" && len(projRes.Listed) > 0 {
-		key = projRes.Listed[0].Key
+		key = standaloneKey(st, projRes)
 	}
 
 	var draft *NewSessionDraft
@@ -598,4 +595,21 @@ func buildModelPanelView(
 		MachineChoices:        machineChoices,
 		CanSelectAutoMode:     canSelectAuto,
 	}
+}
+
+// StandaloneNewSessionKey is the project a new task without one in its route
+// works on: the one picked there, else the first listed. Actions and the view
+// must agree on it, or picks land on a draft the view never shows.
+func StandaloneNewSessionKey(st *State) string {
+	return standaloneKey(st, lists.BuildProjects(&st.World, st.ProjectSearch, st.RememberedScope, st.RememberedScopeToken, nil, st.Scope))
+}
+
+func standaloneKey(st *State, projRes *lists.ProjectsViewResult) string {
+	if st.StandaloneProjectKey != "" {
+		return st.StandaloneProjectKey
+	}
+	if projRes != nil && len(projRes.Listed) > 0 {
+		return projRes.Listed[0].Key
+	}
+	return ""
 }

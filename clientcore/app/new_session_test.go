@@ -12,70 +12,7 @@ func TestNewSessionProjectAddAndLatePrefsReloadModels(t *testing.T) {
 	c := New()
 	defer c.Close()
 
-	// Seed entropy, lifecycle, security, stream, and one multi-agent machine.
-	c.Dispatch(&corev1.Event{
-		NowMs: 1000,
-		Event: &corev1.Event_EntropyProvided{
-			EntropyProvided: &corev1.EntropyProvided{
-				RandomIds:  []string{"id-1", "id-2", "id-3", "id-4", "id-5", "id-6", "id-7", "id-8", "id-9", "id-10"},
-				UnitFloats: []float64{0.5, 0.5, 0.5, 0.5},
-			},
-		},
-	})
-	c.Dispatch(&corev1.Event{
-		NowMs: 1000,
-		Event: &corev1.Event_SyncLifecycle{
-			SyncLifecycle: &corev1.SyncLifecycleAction{Kind: corev1.SyncLifecycleKind_SYNC_LIFECYCLE_KIND_START},
-		},
-	})
-	c.Dispatch(&corev1.Event{
-		NowMs: 1010,
-		Event: &corev1.Event_SecuritySnapshot{
-			SecuritySnapshot: &corev1.SecuritySnapshotEvent{
-				OpId:              3,
-				IsMember:          true,
-				SelfDeviceId:      "dev-1",
-				AuthorityDeviceId: "dev-1",
-				LeaseEndMs:        99999999,
-				TrustedMachineIds: []string{"m-1"},
-			},
-		},
-	})
-	c.Dispatch(&corev1.Event{
-		NowMs: 1020,
-		Event: &corev1.Event_TokenResult{
-			TokenResult: &corev1.TokenResultEvent{OpId: 2, Token: "tok-1"},
-		},
-	})
-	c.Dispatch(&corev1.Event{
-		NowMs: 1030,
-		Event: &corev1.Event_StreamReady{
-			StreamReady: &corev1.StreamReadyEvent{LegId: 1, ServerTimeMs: 1030},
-		},
-	})
-	c.Dispatch(&corev1.Event{
-		NowMs: 1040,
-		Event: &corev1.Event_ListsFetched{
-			ListsFetched: &corev1.ListsFetchedEvent{
-				OpId: 4,
-				Machines: []*corev1.PlainMachine{
-					{
-						MachineId: "m-1",
-						Online:    true,
-						Meta: &v1.MachineMeta{
-							Hostname:        "Workstation",
-							ProtocolVersion: 16,
-							Agents: []*v1.AgentInfo{
-								{Agent: v1.Agent_AGENT_CODEX, DefaultMode: v1.ApprovalMode_APPROVAL_MODE_ASK},
-								{Agent: v1.Agent_AGENT_CLAUDE, DefaultMode: v1.ApprovalMode_APPROVAL_MODE_ASK},
-								{Agent: v1.Agent_AGENT_ANTIGRAVITY, DefaultMode: v1.ApprovalMode_APPROVAL_MODE_ASK},
-							},
-						},
-					},
-				},
-			},
-		},
-	})
+	seedOneMachine(c)
 
 	// Adding a project via directory picker for New Task must resolve a concrete non-unspecified agent.
 	c.Dispatch(&corev1.Event{
@@ -164,5 +101,100 @@ func TestNewSessionProjectAddAndLatePrefsReloadModels(t *testing.T) {
 	}
 	if len(op.SetSettings.Sets) != 1 || op.SetSettings.Sets[0].Agent != v1.Agent_AGENT_CODEX {
 		t.Fatalf("expected PlanStartSettings Agents entry to use CODEX, got %+v", op.SetSettings.Sets)
+	}
+}
+
+func seedOneMachine(c *Core) {
+	// Seed entropy, lifecycle, security, stream, and one multi-agent machine.
+	c.Dispatch(&corev1.Event{
+		NowMs: 1000,
+		Event: &corev1.Event_EntropyProvided{
+			EntropyProvided: &corev1.EntropyProvided{
+				RandomIds:  []string{"id-1", "id-2", "id-3", "id-4", "id-5", "id-6", "id-7", "id-8", "id-9", "id-10"},
+				UnitFloats: []float64{0.5, 0.5, 0.5, 0.5},
+			},
+		},
+	})
+	c.Dispatch(&corev1.Event{
+		NowMs: 1000,
+		Event: &corev1.Event_SyncLifecycle{
+			SyncLifecycle: &corev1.SyncLifecycleAction{Kind: corev1.SyncLifecycleKind_SYNC_LIFECYCLE_KIND_START},
+		},
+	})
+	c.Dispatch(&corev1.Event{
+		NowMs: 1010,
+		Event: &corev1.Event_SecuritySnapshot{
+			SecuritySnapshot: &corev1.SecuritySnapshotEvent{
+				OpId:              3,
+				IsMember:          true,
+				SelfDeviceId:      "dev-1",
+				AuthorityDeviceId: "dev-1",
+				LeaseEndMs:        99999999,
+				TrustedMachineIds: []string{"m-1"},
+			},
+		},
+	})
+	c.Dispatch(&corev1.Event{
+		NowMs: 1020,
+		Event: &corev1.Event_TokenResult{
+			TokenResult: &corev1.TokenResultEvent{OpId: 2, Token: "tok-1"},
+		},
+	})
+	c.Dispatch(&corev1.Event{
+		NowMs: 1030,
+		Event: &corev1.Event_StreamReady{
+			StreamReady: &corev1.StreamReadyEvent{LegId: 1, ServerTimeMs: 1030},
+		},
+	})
+	c.Dispatch(&corev1.Event{
+		NowMs: 1040,
+		Event: &corev1.Event_ListsFetched{
+			ListsFetched: &corev1.ListsFetchedEvent{
+				OpId: 4,
+				Machines: []*corev1.PlainMachine{
+					{
+						MachineId: "m-1",
+						Online:    true,
+						Meta: &v1.MachineMeta{
+							Hostname:        "Workstation",
+							ProtocolVersion: 16,
+							Agents: []*v1.AgentInfo{
+								{Agent: v1.Agent_AGENT_CODEX, DefaultMode: v1.ApprovalMode_APPROVAL_MODE_ASK},
+								{Agent: v1.Agent_AGENT_CLAUDE, DefaultMode: v1.ApprovalMode_APPROVAL_MODE_ASK},
+								{Agent: v1.Agent_AGENT_ANTIGRAVITY, DefaultMode: v1.ApprovalMode_APPROVAL_MODE_ASK},
+							},
+						},
+					},
+				},
+			},
+		},
+	})
+
+}
+
+func TestStandaloneNewTaskTakesCLIAndModelPicks(t *testing.T) {
+	c := New()
+	defer c.Close()
+	seedOneMachine(c)
+	// A saved project lists it; nothing has opened a new task on it by key.
+	c.Dispatch(&corev1.Event{NowMs: 1050, Event: &corev1.Event_AccountPrefsFetched{AccountPrefsFetched: &corev1.AccountPrefsFetchedEvent{OpId: 5, Prefs: &corev1.PlainAccountPrefs{Revision: 1, Prefs: &v1.ProjectPrefs{Schema: 1, Settings: []*v1.ProjectSettings{{Path: "/Users/alice", MachineId: "m-1", Agent: v1.Agent_AGENT_CODEX}}}}}}})
+	c.Dispatch(&corev1.Event{NowMs: 1060, Event: &corev1.Event_NewSessionOpen{NewSessionOpen: &corev1.NewSessionOpenAction{}}})
+	view := func() *corev1.NewSessionViewModel {
+		vm, err := c.View(&corev1.Screen{Screen: &corev1.Screen_NewSession{NewSession: &corev1.NewSessionScreenRequest{}}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return vm.GetNewSession()
+	}
+	if got := view().GetProjectKey(); got != "/Users/alice" {
+		t.Fatalf("standalone new task shows project %q", got)
+	}
+	c.Dispatch(&corev1.Event{NowMs: 1070, Event: &corev1.Event_NewSessionSelectAgent{NewSessionSelectAgent: &corev1.NewSessionSelectAgentAction{Agent: v1.Agent_AGENT_CLAUDE}}})
+	if got := view().GetConfig().GetAgent(); got != v1.Agent_AGENT_CLAUDE {
+		t.Fatalf("CLI pick did not show: %v", got)
+	}
+	c.Dispatch(&corev1.Event{NowMs: 1080, Event: &corev1.Event_NewSessionSelectModel{NewSessionSelectModel: &corev1.NewSessionSelectModelAction{Model: "claude-sonnet-5-5"}}})
+	if got := view().GetConfig().GetModel(); got != "claude-sonnet-5-5" {
+		t.Fatalf("model pick did not show: %q", got)
 	}
 }

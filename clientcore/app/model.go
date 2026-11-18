@@ -97,7 +97,7 @@ func (m *Model) activeNewSessionKey(explicit string) string {
 	if explicit != "" {
 		return explicit
 	}
-	return m.state.StandaloneProjectKey
+	return screens.StandaloneNewSessionKey(m.state)
 }
 
 func (m *Model) findMachine(id string) *lists.Machine {
