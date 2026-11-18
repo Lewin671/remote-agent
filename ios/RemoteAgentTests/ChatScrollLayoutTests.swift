@@ -7,6 +7,62 @@ import UIKit
 @testable import RemoteAgent
 
 @MainActor
+@Observable
+private final class SessionHolder {
+    var vm: PBSessionViewModel
+
+    init(vm: PBSessionViewModel) {
+        self.vm = vm
+    }
+}
+
+private struct ChatPaneTestHost: View {
+    let sessionID: String
+    var holder: SessionHolder
+
+    var body: some View {
+        ChatPane(
+            sessionID: sessionID,
+            vm: holder.vm,
+            onTerminal: {},
+            onLoadEarlier: {},
+            onToggleGroup: { _ in }
+        )
+    }
+}
+
+private func sessionViewModel(
+    sessionID: String,
+    items: [PBSessionTimelineItem],
+    totalCount: Int,
+    loaded: Bool,
+    dock: PBSessionDockView? = nil
+) -> PBSessionViewModel {
+    let firstSeq = items.first?.seq ?? 0
+    return .with {
+        $0.sessionID = sessionID
+        $0.header = .with {
+            $0.found = true
+            $0.machineID = "m1"
+            $0.computerOnline = true
+            $0.agent = .claude
+        }
+        $0.timeline = .with {
+            $0.items = items
+            $0.windowFirstSeq = firstSeq
+            $0.totalItems = Int32(totalCount)
+            $0.loaded = loaded
+            $0.hasEarlier_p = !loaded && firstSeq > 1
+            $0.canLoadEarlier = !loaded && firstSeq > 1
+            $0.historyPartial = !loaded
+        }
+        if let dock {
+            $0.dock = dock
+        }
+    }
+}
+
+@MainActor
 @Suite struct ChatScrollLayoutTests {
     /// Exercises the actual collection-backed chat, including its geometry callbacks. Pure
     /// tracker tests cannot detect a layout that never returns to the run loop.
@@ -20,23 +76,31 @@ import UIKit
         let defaults = try #require(UserDefaults(suiteName: defaultsName))
         defer { defaults.removePersistentDomain(forName: defaultsName) }
         let model = AppModel(settings: SettingsStore(defaults: defaults))
-        model.showDemo(account: Demo.account, remote: remote, initial: state) {}
+        model.showDemo(account: Demo.account, remote: remote, initial: state, events: [:]) {}
         defer { ImageCenter.remove(remote) }
         let context = try #require(model.context)
         let session = try #require(state.sessions["api"])
-        let chat = SessionModel()
-        var events: [PBEvent] = (1...120).map { n in
+        var items: [PBSessionTimelineItem] = (1...120).map { n in
             .with {
+                $0.id = "e\(n)"
                 $0.seq = UInt64(n)
-                $0.kind = n.isMultiple(of: 2)
-                    ? .agentMessage(.with { $0.text = String(repeating: "A reply with **variable height** and `code`.\n\n", count: n % 7 + 1) })
-                    : .userMessage(.with { $0.text = "Message \(n)" })
+                if n.isMultiple(of: 2) {
+                    $0.agentMessage = .with {
+                        $0.markdown = String(repeating: "A reply with **variable height** and `code`.\n\n", count: n % 7 + 1)
+                    }
+                } else {
+                    $0.userMessage = .with {
+                        $0.text = "Message \(n)"
+                        if n == 81 { $0.scheduledRunID = "target-run" }
+                    }
+                }
             }
         }
-        events[80].origin.scheduledRunID = "target-run"
-        await chat.show(SessionEvents(events: Array(events.suffix(20)), stateEvents: [], historyPartial: true))
+        let holder = SessionHolder(
+            vm: sessionViewModel(sessionID: session.id, items: Array(items.suffix(20)), totalCount: items.count, loaded: false)
+        )
         let host = UIHostingController(rootView:
-            ChatPane(session: session, status: .idle, chat: chat, onTerminal: {})
+            ChatPaneTestHost(sessionID: session.id, holder: holder)
                 .environment(model).environment(context).environment(Navigator()))
         let scene = try #require(UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first)
         let window = UIWindow(windowScene: scene)
@@ -62,18 +126,26 @@ import UIKit
             let fraction = CGFloat(n % 5) / 4
             scroll.setContentOffset(CGPoint(x: 0, y: bottom * fraction), animated: false)
             if n < 4 {
-                await chat.show(SessionEvents(events: Array(events.suffix(20 + (n + 1) * 25)), stateEvents: [], historyPartial: true))
+                holder.vm = sessionViewModel(
+                    sessionID: session.id,
+                    items: Array(items.suffix(20 + (n + 1) * 25)),
+                    totalCount: items.count,
+                    loaded: false
+                )
             } else {
-                events.append(.with {
-                    $0.seq = UInt64(events.count + 1)
-                    $0.agentMessage.text = "Streaming reply \(n)\n\n" + String(repeating: "More text.\n\n", count: n % 5 + 1)
+                let seq = UInt64(items.count + 1)
+                items.append(.with {
+                    $0.id = "e\(seq)"
+                    $0.seq = seq
+                    $0.agentMessage = .with {
+                        $0.markdown = "Streaming reply \(n)\n\n" + String(repeating: "More text.\n\n", count: n % 5 + 1)
+                    }
                 })
-                await chat.show(SessionEvents(events: events, loaded: true))
+                holder.vm = sessionViewModel(sessionID: session.id, items: items, totalCount: items.count, loaded: true)
             }
             var frames = 0
             try await waitForLayout { frames += 1; return frames >= 2 }
         }
-        #expect(chat.loaded && chat.joins > 0)
         #expect(scroll.contentSize.height.isFinite && scroll.contentSize.height > scroll.bounds.height)
         let collection = try #require(scroll as? UICollectionView)
         let source = try #require(collection.dataSource as? UICollectionViewDiffableDataSource<Int, String>)
@@ -106,51 +178,54 @@ import UIKit
         let defaults = try #require(UserDefaults(suiteName: defaultsName))
         defer { defaults.removePersistentDomain(forName: defaultsName) }
         let model = AppModel(settings: SettingsStore(defaults: defaults))
-        model.showDemo(account: Demo.account, remote: remote, initial: state) {}
+        model.showDemo(account: Demo.account, remote: remote, initial: state, events: [:]) {}
         defer { ImageCenter.remove(remote) }
         let context = try #require(model.context)
         let session = try #require(state.sessions["api"])
-        let chat = SessionModel()
-        var events: [PBEvent] = (1...80).map { n in
+        var items: [PBSessionTimelineItem] = (1...80).map { n in
             .with {
+                $0.id = "m\(n)"
                 $0.seq = UInt64(n)
                 switch n % 4 {
                 case 0:
-                    $0.planProposed.text = String(repeating: "A plan that wraps beyond the preview. ", count: n % 9 + 6)
+                    $0.plan = .with {
+                        $0.markdown = String(repeating: "A plan that wraps beyond the preview. ", count: n % 9 + 6)
+                    }
                 case 1:
-                    $0.userMessage.text = "Message \(n)"
+                    $0.userMessage = .with { $0.text = "Message \(n)" }
                 case 2:
-                    $0.agentMessage.text = "| Column | Value |\n| --- | --- |\n| A wrapping table cell with `code` | \(n) |\n\n"
-                        + String(repeating: "A reply with **variable height**.\n\n", count: n % 7 + 1)
+                    $0.agentMessage = .with {
+                        $0.markdown = "| Column | Value |\n| --- | --- |\n| A wrapping table cell with `code` | \(n) |\n\n"
+                            + String(repeating: "A reply with **variable height**.\n\n", count: n % 7 + 1)
+                    }
                 default:
                     $0.toolCall = .with {
-                        $0.callID = "call-\(n)"; $0.title = "echo example"
-                        $0.kind = .command; $0.status = "completed"
+                        $0.callID = "call-\(n)"
+                        $0.title = "echo example"
+                        $0.status = .ok
                     }
                 }
             }
         }
         // The open question dock also has a measured, capped scroll body.
-        events.append(.with {
-            $0.seq = 81
-            $0.questionAsked = .with {
+        let questionDock = PBSessionDockView.with {
+            $0.kind = .question
+            $0.itemID = "question"
+            $0.title = .with { $0.literal = "Question" }
+            $0.question = .with {
                 $0.questionID = "question"
-                $0.questions = [.with { $0.text = String(repeating: "Choose an option. ", count: 30) }]
+                $0.totalQuestions = 1
+                $0.question = .with {
+                    $0.questionText = String(repeating: "Choose an option. ", count: 30)
+                    $0.header = "Option"
+                }
             }
-        })
-        let live = PBLiveSnapshot.with {
-            $0.session.id = session.id
-            $0.session.lastSeq = 81
-            $0.actions = Array(events.suffix(1))
         }
-        func show(_ visible: [PBEvent], loaded: Bool = false) async {
-            var snapshot = SessionEvents(events: visible, loaded: loaded, stateEvents: [], historyPartial: !loaded)
-            snapshot.live = live
-            await chat.show(snapshot)
-        }
-        await show(Array(events.suffix(21)))
+        let holder = SessionHolder(
+            vm: sessionViewModel(sessionID: session.id, items: Array(items.suffix(21)), totalCount: items.count, loaded: false, dock: questionDock)
+        )
         let host = UIHostingController(rootView:
-            ChatPane(session: session, status: .idle, chat: chat, onTerminal: {})
+            ChatPaneTestHost(sessionID: session.id, holder: holder)
                 .environment(model).environment(context).environment(Navigator())
                 .environment(\.dynamicTypeSize, size).preferredColorScheme(scheme))
         let scene = try #require(UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first)
@@ -173,19 +248,29 @@ import UIKit
         }
         let scrolls = descendants(host.view).compactMap { $0 as? UIScrollView }
         let scroll = try #require(scrolls.max { $0.contentSize.height < $1.contentSize.height })
-        #expect(chat.rows.contains { if case .plan = $0.item { return true }; return false })
-        #expect(!chat.derived.questions.isEmpty)
         for n in 0..<12 {
             let bottom = max(0, scroll.contentSize.height - scroll.bounds.height)
             scroll.setContentOffset(CGPoint(x: 0, y: bottom * CGFloat(n % 5) / 4), animated: false)
             if n < 4 {
-                await show(Array(events.suffix(21 + (n + 1) * 15)))
+                holder.vm = sessionViewModel(
+                    sessionID: session.id,
+                    items: Array(items.suffix(21 + (n + 1) * 15)),
+                    totalCount: items.count,
+                    loaded: false,
+                    dock: questionDock
+                )
             } else {
                 // Grow the same last row: following must also work when IDs and
                 // row count stay unchanged, not just when new rows are appended.
-                if n == 4 { events.append(.with { $0.seq = 82; $0.agentMessage.text = "Streaming reply" }) }
-                events[events.count - 1].agentMessage.text += "\n\nMore streaming text with `code`."
-                await show(events, loaded: true)
+                if n == 4 {
+                    items.append(.with {
+                        $0.id = "m82"
+                        $0.seq = 82
+                        $0.agentMessage = .with { $0.markdown = "Streaming reply" }
+                    })
+                }
+                items[items.count - 1].agentMessage.markdown += "\n\nMore streaming text with `code`."
+                holder.vm = sessionViewModel(sessionID: session.id, items: items, totalCount: items.count, loaded: true, dock: questionDock)
             }
             if n.isMultiple(of: 4) {
                 window.frame.size = n.isMultiple(of: 8)
@@ -194,7 +279,6 @@ import UIKit
             var frames = 0
             try await waitForLayout { frames += 1; return frames >= 2 }
         }
-        #expect(chat.loaded && chat.joins > 0)
         // With all external inputs stopped, size and position must settle across frames.
         var lastSize = CGSize.zero
         var lastOffset = CGPoint.zero

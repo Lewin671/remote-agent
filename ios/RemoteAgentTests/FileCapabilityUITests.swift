@@ -23,15 +23,16 @@ import Testing
     @Test func aReadyFileCannotLeaveTheComposerAfterCapabilityDisappears() async throws {
         let remote = try remote(); await remote.showForTest(state: state(support: false))
         ImageCenter.install(remote: remote, files: VolatileFiles()); defer { ImageCenter.remove(remote) }
-        let center = ImageCenter.of(remote), draft = center.draft("session:s"), p = readyFile(), store = SessionStore(), commands = FakeCommands()
+        let center = ImageCenter.of(remote), draft = center.draft("session:s"), p = readyFile()
         await center.restoredDraft(draft.key); draft.append([p])
         var failure: String?
-        #expect(center.send(sid: "s", machineId: "m", store: store, text: "whole message", mode: .queue, commands: commands) {
+        var submitted: [Outgoing] = []
+        #expect(center.send(sid: "s", machineId: "m", text: "whole message", mode: .queue, submit: { submitted.append($0) }) {
             if case .failure(let error) = $0 { failure = errorText(error) }
         })
-        await eventually { failure != nil || !commands.sent.isEmpty }
+        await eventually { failure != nil || !submitted.isEmpty }
         #expect(failure?.contains("更新") == true)
-        #expect(commands.sent.isEmpty && store.outgoing("s").isEmpty && draft.images.first === p)
+        #expect(submitted.isEmpty && draft.images.first === p)
     }
 
     @Test(arguments: [false, true])
@@ -41,25 +42,19 @@ import Testing
         let center = ImageCenter.of(remote), draft = center.draft("session:s"), store = SessionStore()
         await center.restoredDraft(draft.key); store.setDraft("s", "existing text")
         let p = readyFile(), o = Outgoing(requestId: "original-request", text: "restore this", fileIds: ["file-1"], images: [p])
-        o.state = .failed; try OutgoingRecords(files: files).save(sid: "s", o.record, original: false); store.add("s", o)
+        o.state = .failed; try OutgoingRecords(files: files).save(sid: "s", o.record, original: false)
+        center.restoreOutgoing("s"); await center.restoredOutgoing("s")
+        #expect(!SessionImages.canPutBack(
+            requestId: o.requestId,
+            files: [.with { $0.name = "report.csv" }],
+            session: "s", state: state(support: false), remote: remote))
         let restored: Bool
         if direct { restored = center.putBack(sid: "s", max: 6, o) }
         else { restored = SessionImages.putBack(o, session: "s", state: state(support: false), remote: remote, store: store) }
         #expect(!restored && draft.images.isEmpty && p.imageId == "file-1")
-        #expect(store.draft("s") == "existing text" && store.find("s", requestId: o.requestId) === o)
+        #expect(store.draft("s") == "existing text" && center.restoredOutgoing["s"]?.first?.requestId == o.requestId)
         #expect(try OutgoingRecords(files: files).load(sid: "s").count == 1)
         #expect(center.notices["session:s"]?.text.contains("更新") == true)
-    }
-
-    @Test(arguments: [Outgoing.State.failed, .unknown])
-    func resendingAFileRecordCannotDowngradeItToTextOrSettleUnknown(previous: Outgoing.State) async throws {
-        let remote = try remote(); await remote.showForTest(state: state(support: false))
-        let store = SessionStore(), original = Outgoing(requestId: "original-request", text: "keep files", fileIds: ["file-1"])
-        let o = previous == .unknown ? OutgoingRecords.revive(original.record) : original
-        o.state = previous; store.add("s", o)
-        await store.deliver(remote, sid: "s", o).value
-        #expect(o.state == previous && o.error.contains("更新"))
-        #expect(o.requestId == "original-request" && o.fileIds == ["file-1"])
     }
 
     @Test func remoteHistoryRestoreRejectsBeforeAddingPlaceholdersOrText() async throws {
@@ -90,18 +85,19 @@ import Testing
     @Test func capabilityIsRecheckedAfterSavingTheOutgoingRecord() async throws {
         let remote = try remote(); await remote.showForTest(state: state(support: true))
         ImageCenter.install(remote: remote, files: VolatileFiles()); defer { ImageCenter.remove(remote) }
-        let center = ImageCenter.of(remote), draft = center.draft("session:s"), store = SessionStore(), commands = FakeCommands()
+        let center = ImageCenter.of(remote), draft = center.draft("session:s")
         await center.restoredDraft(draft.key); draft.append([readyFile()])
         let gate = CapabilitySaveGate(); defer { gate.open.signal() }
         var failure: String?
-        _ = center.send(sid: "s", machineId: "m", store: store, text: "whole message", mode: .queue, commands: commands, keep: { _, _, _ in
+        var submitted: [Outgoing] = []
+        _ = center.send(sid: "s", machineId: "m", text: "whole message", mode: .queue, keep: { _, _, _ in
             gate.markEntered(); gate.open.wait()
-        }) { if case .failure(let error) = $0 { failure = errorText(error) } }
+        }, submit: { submitted.append($0) }) { if case .failure(let error) = $0 { failure = errorText(error) } }
         await eventually { gate.entered }
         await remote.showForTest(state: state(support: false)); gate.open.signal()
-        await eventually { failure != nil || !commands.sent.isEmpty }
-        #expect(failure?.contains("更新") == true && commands.sent.isEmpty)
-        #expect(draft.images.count == 1 && store.outgoing("s").isEmpty)
+        await eventually { failure != nil || !submitted.isEmpty }
+        #expect(failure?.contains("更新") == true && submitted.isEmpty)
+        #expect(draft.images.count == 1 && center.heldOutgoing("s", requestId: "original") == nil)
     }
 }
 

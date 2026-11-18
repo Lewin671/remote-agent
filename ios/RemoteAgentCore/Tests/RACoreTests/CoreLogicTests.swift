@@ -136,64 +136,6 @@ import Testing
     }
 }
 
-/// Looking a session up by its ID (architecture §8 「按 ID 取」): when it counts as missing, and what a server that cannot be asked means.
-@Suite struct SessionLookupTests {
-    private final class Run {
-        let answers: [Result<Bool, UserError>]
-        var waits: [Int64] = []
-        var reports: [SessionLookup] = []
-        var asked = 0
-
-        init(_ answers: [Result<Bool, UserError>]) { self.answers = answers }
-
-        func go() async throws {
-            try await lookUpSession(
-                fetch: {
-                    asked += 1
-                    return try answers[asked - 1].get()
-                },
-                wait: { waits.append($0) },
-                report: { reports.append($0) })
-        }
-    }
-
-    @Test func aSessionTheServerHasIsFoundWithoutSayingAnything() async throws {
-        let r = Run([.success(true)])
-        try await r.go()
-        #expect(r.asked == 1)
-        #expect(r.reports == [])
-    }
-
-    @Test func aSessionJustStartedIsNotMissingUntilTheServerSaidSoForTenSeconds() async throws {
-        // Not uploaded yet for the first three asks, then there.
-        let started = Run([.success(false), .success(false), .success(false), .success(true)])
-        try await started.go()
-        #expect(started.waits == [2_500, 2_500, 2_500])
-        #expect(started.reports == [.reading, .reading, .reading])
-        // Never there: missing after the fifth ask, ten seconds after the first.
-        let none = Run(Array(repeating: .success(false), count: 5))
-        try await none.go()
-        #expect(none.asked == 5)
-        #expect(none.waits.reduce(0, +) == 10_000)
-        #expect(none.reports.last == .missing)
-    }
-
-    @Test func aServerThatCannotBeAskedIsNoAnswerAndIsAskedAgainEverMoreSlowly() async throws {
-        let down = Result<Bool, UserError>.failure(UserError("连不上"))
-        let r = Run(Array(repeating: down, count: 6) + [.success(false), down, .success(true)])
-        try await r.go()
-        // Said why each time, never as missing; the waits double up to half a minute and start over after an answer.
-        #expect(r.waits == [3_000, 6_000, 12_000, 24_000, 30_000, 30_000, 2_500, 3_000])
-        #expect(r.reports.first == .failed(reason: L10n.connectionUnreachable()))
-        #expect(!r.reports.contains(.missing))
-        // What the pages say meanwhile.
-        #expect(lookupNote(.failed(reason: L10n.connectionUnreachable())) == "没能读取这个会话：连不上")
-        #expect(lookupNote(.missing) == L10n.sessionIosMissing())
-        #expect(lookupNote(.reading) == nil)
-        #expect(lookupNote(nil) == nil)
-    }
-}
-
 @Suite struct PairLinkSecurityTests {
     @Test func rejectsMalformedQrWithoutThrowing() {
         for query in [
@@ -237,26 +179,17 @@ import Testing
             http: HTTP())
         defer { remote.close() }
         let m = MachineView(id: "m", online: true, lastSeenMs: 1)
-        var e = PBEvent()
-        e.seq = 1
-        e.agentMessage.text = "你好"
         var state = RemoteState()
         state.machines = ["m": m]
         state.loaded = true
         var list = PBListModelsResponse()
         list.defaultModel = "astra"
         await remote.showForTest(
-            state: state, events: ["s": [e]],
+            state: state,
             modelLists: [(machineId: "m", agent: .codex, models: list)])
         #expect(remote.current.machines["m"] == m)
-        let feed = remote.events("s")
-        await sleepMs(200)
-        // Nothing was fetched over the fixed history: the session is not in the lists.
-        #expect(Array(feed.value.events) == [e])
-        #expect(feed.value.loaded)
         #expect(try await remote.listModels("m", agent: .codex).defaultModel == "astra")
-        // Commands fail as they would offline, without a request.
-        await #expect(throws: CommandError.self) { try await remote.command("s", PBCommand()) }
+        await #expect(throws: CommandError.self) { try await remote.machineCommand("m", PBCommand()) }
     }
 }
 

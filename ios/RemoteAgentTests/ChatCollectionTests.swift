@@ -246,7 +246,7 @@ import UIKit
         let h = try Harness()
         defer { h.close() }
         let probe = AppearanceProbe()
-        let row = ChatRow(item: .agent(.init(key: "probe", text: "Example")), blocks: [])
+        let row = ChatTimelineRow(item: .with { $0.id = "probe"; $0.agentMessage = .with { $0.markdown = "Example" } }, blocks: [])
         let items = [ChatCollectionItem("probe", row: row) { EnvironmentProbe(probe: probe) }]
         var environment = EnvironmentValues()
         environment.horizontalSizeClass = .compact

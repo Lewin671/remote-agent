@@ -4,59 +4,13 @@ import Testing
 
 @testable import RACore
 
-/// Android's core QueueTest.
-@Suite struct QueueTests {
-    @Test func sampleDataStandsInForTheComputersQueue() {
-        let list = [
-            Mk.ev(1, Mk.inputState("a", .queued)), Mk.ev(2, Mk.inputState("b", .queued)), Mk.ev(3, Mk.inputState("b", .submitted)),
-        ]
-        var p = EventProjection()
-        let d = p.update(list, live: Remote.liveForTest(list, planOpen: false))
-        #expect(queued(d) == ["a"])
-        #expect(d.inputStatus("b") == .submitted)
-    }
-
-    @Test func failureTextNamesAgentWhenImageUnrecognized() {
-        #expect(failureText(reason: "image_not_recognized", agent: .claude) == "Claude Code 没认出图片")
-    }
-
-    @Test func theDaemonsReasonComesFirst() {
-        let s = Mk.session { $0.inputWait = "draft"; $0.agent = .codex }
-        #expect(queueWhy(s, status: .running).short == L10n.queueIosTerminalDraftShort())
-        let r = Mk.session()
-        #expect(queueWhy(r, status: .running).short == L10n.queueAfterCurrentTurn())
-        #expect(queueWhy(r, status: .running).long == L10n.queueIosTurnWait())
-    }
-
-    @Test func aCancelOutcomeSaysWhoCanceled() {
-        #expect(cancelOutcome(status: .canceled, canceledHere: true) == .canceled)
-        #expect(cancelOutcome(status: .canceled, canceledHere: false) == .canceledElsewhere)
-        #expect(cancelOutcome(status: .submitted, canceledHere: true) == .written)
-    }
-}
-
 /// Android's OriginTest (in QueueTest.kt).
 @Suite struct OriginTests {
-    private func o(_ kind: PBOriginKind, _ dev: String = "") -> PBOrigin { .with { $0.kind = kind; $0.deviceID = dev } }
-
     private func meta(_ name: String, _ platform: String, _ description: String) -> PBDeviceMeta {
         .with { $0.name = name; $0.platform = platform; $0.description_p = description }
     }
 
     @Test func onlySignedClientsAreNamedAndOnlyFromTheDeviceList() {
-        let phone = DeviceView(id: "aaaab71c", kind: .client, createdMs: 0, meta: .with { $0.platform = "android" })
-        let named = DeviceView(id: "cccc92de", kind: .client, createdMs: 0, meta: .with { $0.name = "我的手机" })
-        var state = RemoteState()
-        state.devices = [phone.id: phone, named.id: named]
-        // This client's own doings are not labelled.
-        #expect(originLabel(o(.client, "me"), state: state, me: "me", machine: "MacBook") == nil)
-        #expect(originLabel(o(.client, "aaaab71c"), state: state, me: "me", machine: "MacBook") == "Android")
-        #expect(originLabel(o(.client, "cccc92de"), state: state, me: "me", machine: "MacBook") == "我的手机")
-        // Removed: no part of its ID is shown.
-        #expect(originLabel(o(.client, "gone9999"), state: state, me: "me", machine: "MacBook") == L10n.sessionOriginRemoved())
-        #expect(originLabel(o(.client, ""), state: state, me: "me", machine: "MacBook") == L10n.sessionOriginOther())
-        // Before the device list is read nothing is known of who it was.
-        #expect(originLabel(o(.client, "gone9999"), state: RemoteState(), me: "me", machine: "MacBook") == L10n.sessionOriginOther())
         let zone = Mk.utc
         func at(_ y: Int, _ m: Int, _ d: Int, _ h: Int, _ min: Int) -> Int64 { Mk.at(y, m, d, h, min, zone: zone) }
         let now = at(2026, 10, 3, 12, 0)
@@ -87,9 +41,6 @@ import Testing
         #expect(clientUsed(nil, now: now, zone: zone) == L10n.securityPaired())
         func c(_ id: String, _ created: Int64, _ seen: Int64) -> DeviceView { device(id, created: created, seen: seen, chrome) }
         #expect(sortClients([c("old", 1, 0), c("me", 2, 5), c("new", 3, 0), c("recent", 1, 9), c("stale", 1, 4)], me: "me").map(\.id) == ["me", "recent", "stale", "new", "old"])
-        #expect(originLabel(o(.local), state: state, me: "me", machine: "MacBook") == "MacBook 终端")
-        #expect(originLabel(o(.local), state: state, me: "me", machine: "") == L10n.sessionTerminal())
-        #expect(originLabel(nil, state: state, me: "me", machine: "MacBook") == nil)
     }
 
     // --- not in Android's tests ---

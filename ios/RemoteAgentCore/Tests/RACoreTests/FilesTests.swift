@@ -187,11 +187,4 @@ private actor FileReceiver: UploadChannel {
         do { _ = try source.digest(); Issue.record("Deleted source was readable") }
         catch { #expect(errorText(error) == L10n.attachmentIosCannotReadTheSourceFileRemoveItAndSelect()) }
     }
-
-    @Test func queueProjectionKeepsFileMetadata() {
-        let file = PBSentFile.with { $0.name = "data.csv"; $0.fileID = "file"; $0.sizeBytes = 42 }
-        var derived = PBProjectionState()
-        derived.pendingInputs = [.with { $0.requestID = "r"; $0.files = [file] }]
-        #expect(pendingInputs(derived).first?.files == [file])
-    }
 }

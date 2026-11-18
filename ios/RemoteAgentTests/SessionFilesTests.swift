@@ -150,15 +150,13 @@ import Testing
         let draft = center.draft(ImageCenter.sessionKey("session"))
         await center.restoredDraft(draft.key)
         draft.append([p])
-        let commands = FakeCommands()
-        commands.answer(CommandError(CommandError.unknownOutcome, "unknown", outcome: .unknown))
-        let store = SessionStore()
-        let taken = center.send(sid: "session", machineId: "mac", store: store, text: "", mode: .queue, commands: commands) { _ in }
+        var submitted: [Outgoing] = []
+        let taken = center.send(sid: "session", machineId: "mac", text: "", mode: .queue, submit: { submitted.append($0) }) { _ in }
         #expect(taken)
-        await eventually { store.outgoing("session").first?.state == .unknown }
-        let outgoing = try #require(store.outgoing("session").first)
+        await eventually { !submitted.isEmpty }
+        let outgoing = try #require(center.heldOutgoing("session", requestId: submitted[0].requestId))
+        outgoing.state = .unknown
         #expect(outgoing.fileIds == ["uploaded-file"] && outgoing.imageIds.isEmpty)
-        #expect(commands.sent.first?.send.fileIds == ["uploaded-file"])
         let restored = try #require(OutgoingRecords(files: files).load(sid: "session").first)
         #expect(restored.fileIds == ["uploaded-file"] && restored.requestId == outgoing.requestId)
         #expect(restored.images.first?.file == p.file)

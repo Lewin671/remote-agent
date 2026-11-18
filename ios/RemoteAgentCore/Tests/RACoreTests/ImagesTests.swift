@@ -500,18 +500,6 @@ private let exifHeader = Data("Exif\0\0".utf8)
         #expect(imageText("[Image #1] text", refs: []) == "[Image #1] text")
     }
 
-    @Test func theViewerPagesThroughEveryImageInOrder() {
-        let events = [
-            Mk.ev(1, .userMessage(.with { $0.images = [ref(1), ref(2)] })),
-            Mk.ev(2, .toolCall(.with { $0.title = "Read a.png"; $0.images = [ref(0, "t")] })),
-            Mk.ev(3, .imageGenerated(.with { $0.images = [ref(0, "g")] })),
-        ]
-        let got = sessionImages(events)
-        #expect(got.map(\.ref.imageID) == ["i1", "i2", "t", "g"])
-        #expect(got.map(\.kind) == [.userMessage, .userMessage, .toolCall, .imageGenerated])
-        #expect(got[2].toolTitle == "Read a.png" && got[2].seq == 2)
-    }
-
     // --- not in Android's tests ---
 
     @Test func aNumberNoImageCouldHaveIsLeftAsTyped() {

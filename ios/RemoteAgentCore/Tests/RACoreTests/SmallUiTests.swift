@@ -4,67 +4,6 @@ import Testing
 
 @testable import RACore
 
-/// Android's app ApprovalDisplayTest.
-@Suite struct ApprovalDisplayTests {
-    @Test func revealsControlsAndPreservesOrdinaryLanguage() {
-        let normal = "العربية 中文 👩‍💻\n\tcode"
-        #expect(approvalDisplay(normal) == normal)
-        #expect(
-            approvalDisplay("\u{061c}\u{200e}\u{200f}\u{202e}\u{2066}\u{2069}\r\u{001b}\u{009b}")
-                == "\\u061c\\u200e\\u200f\\u202e\\u2066\\u2069\\u000d\\u001b\\u009b")
-    }
-
-    @Test func theDockShowsTheCommandWithoutRewritingTheApproval() throws {
-        let raw = "printf '\u{202e}'; dangerous"
-        let a = PBApprovalRequested.with { $0.approvalID = "approval"; $0.command = raw }
-        let before = try a.serializedData()
-        let shown = approvalDisplay(raw)
-        #expect(dockSummary(.approval(a), agent: "Codex") == (L10n.listStateIosRequestCommand(), shown))
-        #expect(a.command == raw)
-        #expect(try a.serializedData() == before)
-    }
-
-    @Test func detectsTruncationInEveryApprovalTextWithoutChangingTheEvent() throws {
-        let marker = "\n…（remote-agent：内容过长，已截断）"
-        #expect(!approvalTruncated(.with { $0.command = "complete" }))
-        for a in [PBApprovalRequested.with { $0.command = "cut" + marker },
-                  .with { $0.command = "complete"; $0.description_p = "cut" + marker },
-                  .with { $0.command = "complete"; $0.toolInputJson = "cut" + marker }] {
-            let before = try a.serializedData()
-            #expect(approvalTruncated(a))
-            #expect(approvalTruncatedMessage == L10n.approvalTruncated())
-            #expect(try a.serializedData() == before)
-        }
-    }
-
-    // --- not in Android's tests ---
-
-    @Test func theDockSaysOneLineOfWhateverWaits() {
-        #expect(dockSummary(.approval(.with { $0.toolName = "Write" }), agent: "Codex") == (L10n.listStateIosRequestPermission(), "Write"))
-        #expect(dockSummary(.approval(.with { $0.command = "a\r\nb" }), agent: "Codex") == (L10n.listStateIosRequestCommand(), "a\\u000d"))
-        let q = PBQuestionAsked.with { $0.questionID = "q1"; $0.questions = [.with { $0.text = "用哪个数据库？\n第二行" }] }
-        #expect(dockSummary(.question(q), agent: "Claude Code") == ("Claude Code 在问你", "用哪个数据库？"))
-        #expect(dockSummary(.plan(text: "x"), agent: "Codex") == (L10n.listStatePlan(), ""))
-        #expect(dockSummary(.popup(title: "trust folder"), agent: "Codex") == (L10n.listStatePopup(), L10n.listStatePopup()))
-        #expect(DockItem.question(q).id == "q:q1")
-        #expect(!longQuestion(.with { $0.text = String(repeating: "字", count: 120) }))
-        #expect(longQuestion(.with { $0.text = String(repeating: "字", count: 121) }))
-        // An emoji is two of Kotlin's characters.
-        #expect(longQuestion(.with { $0.text = String(repeating: "😀", count: 61) }))
-        #expect(longQuestion(.with { $0.options = (0..<5).map { i in .with { $0.label = "\(i)" } } }))
-    }
-
-    @Test func aFoldedItemIsRememberedByItsIdAndANewOneIsNot() {
-        let a1 = DockItem.approval(.with { $0.approvalID = "a1" })
-        #expect(dockFoldKey(session: "s1", a1) == dockFoldKey(session: "s1", .approval(.with { $0.approvalID = "a1"; $0.command = "ls" })))
-        #expect(dockFoldKey(session: "s1", a1) != dockFoldKey(session: "s1", .approval(.with { $0.approvalID = "a2" })))
-        #expect(dockFoldKey(session: "s1", a1) != dockFoldKey(session: "s2", a1))
-        // A session has one plan at a time: the next plan is told apart by what it says.
-        #expect(dockFoldKey(session: "s1", .plan(text: "1. a")) != dockFoldKey(session: "s1", .plan(text: "1. b")))
-        #expect(dockFoldKey(session: "s1", .popup(title: "trust")) != dockFoldKey(session: "s1", .popup(title: "update")))
-    }
-}
-
 /// Android's app AccountCacheTest.
 @Suite struct AccountCacheTests {
     @Test func reusedImageIdsAndLateLoadsCannotCrossAccounts() {
@@ -144,11 +83,8 @@ import Testing
 
 @Test func popupDiagnosticsNeverBecomeUserCopy() {
     for detail in ["trust folder", "hooks need review", "update available", "approval", "permission", "model menu", "model picker", "question", "plan", "permissions menu", "bypass warning", "menu", "artifacts", "unknown panel", "Native unrecognized panel"] {
-        #expect(popupTitle(detail) == L10n.listStatePopup())
-        #expect(dockSummary(.popup(title: detail), agent: "Antigravity").brief == L10n.listStatePopup())
         var session = SessionView(id: "popup-test", machineId: "machine")
         session.info = .with { $0.status = .blocked; $0.statusDetail = detail }
         #expect(previewOf(session, status: .popup) == L10n.listStatePopup())
     }
-    #expect(popupTitle("").isEmpty)
 }

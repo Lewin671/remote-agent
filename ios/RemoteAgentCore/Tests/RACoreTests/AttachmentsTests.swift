@@ -115,25 +115,6 @@ final class MemoryFiles: SealedFiles, @unchecked Sendable {
         #expect(!files.keys.contains { $0.hasPrefix("out:s:r1/") })
     }
 
-    @Test func submittedAndCanceledMessagesAreLetGo() {
-        let a = Outgoing(requestId: "a", text: "x", images: [img("1")])
-        let b = Outgoing(requestId: "b", text: "y", images: [img("2")])
-        let c = Outgoing(requestId: "c", text: "z")
-        func state(_ status: PBInputStatus, _ reason: String = "") -> PBInputState {
-            .with {
-                $0.status = status
-                $0.reason = reason
-            }
-        }
-        let done = recorded([a, b, c], inputs: ["a": state(.submitted), "b": state(.canceled)])
-        #expect(done.count == 2 && done[0] === a && done[1] === b)
-        for status: PBInputStatus in [.queued, .heldByCli, .failed, .needsTerminal, .unconfirmed] {
-            #expect(recorded([c], inputs: ["c": state(status)]).isEmpty)
-        }
-        // The session ended on it: the chat still offers to put it back, images included.
-        #expect(recorded([b], inputs: ["b": state(.canceled, "exited")]).isEmpty)
-    }
-
     @Test func sendingTakesOnlyItsImagesAndUntickesOriginal() {
         let d = draft("new:/p", MemoryFiles())
         let sent = [img("a"), img("b")]
@@ -340,14 +321,5 @@ final class MemoryFiles: SealedFiles, @unchecked Sendable {
         #expect(imageLimit(for: m(.with { $0.maxImagesPerMessage = 9 })) == 6)
         #expect(imageLimit(for: m(PBMachineCapabilities())) == 6)
         #expect(imageLimit(for: nil) == 6)
-    }
-}
-
-/// From Android's app SendImagesTest: the case that needs no connection.
-@Suite struct SendImagesTests {
-    @Test func theLatestStateOfEachMessageComesFromTheEvents() {
-        let m = inputStates([Mk.ev(1, Mk.inputState("a", .queued)), Mk.ev(2, Mk.inputState("a", .submitted)), Mk.ev(3, Mk.inputState("b", .queued))])
-        #expect(m["a"]?.status == .submitted)
-        #expect(m["b"]?.status == .queued)
     }
 }

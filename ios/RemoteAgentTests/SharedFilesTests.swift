@@ -74,30 +74,6 @@ private func nextEvent<T: Sendable>(_ events: AsyncStream<T>) async -> T? {
         }
     }
 
-    // MARK: Rows
-
-    private func events() -> [PBEvent] {
-        [
-            .with { $0.seq = 1; $0.kind = .turnStarted(.init()) },
-            .with {
-                $0.seq = 2
-                $0.kind = .toolCall(.with {
-                    $0.title = "send_file"; $0.callID = "c"; $0.status = "completed"
-                    $0.sharedFiles = [.with { $0.fileID = "f1"; $0.name = "a.mp4"; $0.sizeBytes = 10; $0.sha256 = Data(count: 32) }]
-                })
-            },
-        ]
-    }
-
-    @Test func theChatDrawsCardsOnlyForAComputerThatSaysItSharesFiles() async {
-        let builder = ChatBuilder()
-        let on = await builder.build(PagedList(events()), ChatParams(sharedFiles: true))
-        #expect(on.rows.contains { if case .sharedFiles = $0.item { true } else { false } })
-        let off = await ChatBuilder().build(PagedList(events()), ChatParams(sharedFiles: false))
-        #expect(!off.rows.contains { if case .sharedFiles = $0.item { true } else { false } })
-        #expect(off.rows.contains { if case .tool = $0.item { true } else { false } })
-    }
-
     // MARK: Downloading
 
     @Test func aTapDownloadsAndOpensWhereTheUserStayed() async throws {

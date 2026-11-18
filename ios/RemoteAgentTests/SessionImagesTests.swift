@@ -11,12 +11,17 @@ import UIKit
 /// Messages with images, from the box to the CLI: Android's SendImagesTest and the image half of `Outbox`.
 @MainActor
 @Suite struct SessionImagesTests {
+    @MainActor
+    private final class SubmitSpy {
+        var sent: [Outgoing] = []
+    }
+
     private let remote = try! Remote(
         account: Account(server: "http://127.0.0.1:1", root: Data(count: 32), deviceSeed: Data(count: 32), deviceId: "00112233445566778899aabbccddeeff"),
         http: AppModel.http)
     private let files = VolatileFiles()
     private let store = SessionStore()
-    private let computer = FakeCommands()
+    private let spy = SubmitSpy()
     private let sid = "s1"
 
     private func center() -> ImageCenter {
@@ -37,8 +42,11 @@ import UIKit
 
     private func send(_ c: ImageCenter, _ text: String, keep: (@Sendable (String, OutgoingRecord, Bool) throws -> Void)? = nil) async -> Result<Void, Error>? {
         await c.restoredDraft(ImageCenter.sessionKey(sid))
+        let spy = spy
         return await withCheckedContinuation { done in
-            let taken = c.send(sid: sid, machineId: "mac", store: store, text: text, mode: .steer, commands: computer, keep: keep) {
+            let taken = SessionImages.send(remote, session: sid, store: store, machineId: "mac", text: text, mode: .steer, keep: keep, submit: {
+                spy.sent.append($0)
+            }) {
                 done.resume(returning: $0)
             }
             if !taken { done.resume(returning: nil) }
@@ -64,7 +72,7 @@ import UIKit
     @Test func aDraftWithoutImagesIsNotThisCodesToSend() async {
         let c = center()
         #expect(await send(c, "只有文字") == nil)
-        #expect(store.outgoing(sid).isEmpty && computer.sent.isEmpty)
+        #expect(c.heldOutgoing(sid, requestId: "any") == nil && spy.sent.isEmpty)
     }
 
     @Test func sendingPreparedBytesMakesAnObservableThumbnailAndKeepsItAfterFailure() async throws {
@@ -87,13 +95,14 @@ import UIKit
         withObservationTracking {
             #expect(c.thumb(img) == nil)
         } onChange: { heard.yes = true }
-        computer.answer(CommandError(CommandError.unknownOutcome, "不确定电脑有没有执行", outcome: .unknown))
         _ = await send(c, "看图")
-        let o = try #require(store.outgoing(sid).first)
-        await eventually("unknown send keeps its picture") { o.state == .unknown && c.thumb(img) != nil }
+        await eventually("sent and held") { !spy.sent.isEmpty }
+        let submitted = try #require(spy.sent.first)
+        let o = try #require(c.heldOutgoing(sid, requestId: submitted.requestId))
+        await eventually("thumbnail decoded") { c.thumb(img) != nil }
         #expect(heard.yes)
         #expect(draft.images.isEmpty && o.images.first === img && img.processed?.bytes == png)
-        #expect(computer.sent.first?.send.imageIds == ["on-mac-photo"])
+        #expect(o.imageIds == ["on-mac-photo"])
 
         // Both terminal failures and a lost command response leave the same
         // attachment visible, whether or not its thumbnail decoded.
@@ -103,21 +112,24 @@ import UIKit
             #expect(try #require(rendered.uiImage).size.height >= 56)
         }
 
-        let restoredStore = SessionStore()
         let restoredCenter = center()
-        restoredCenter.restoreOutgoing(sid, store: restoredStore)
+        restoredCenter.restoreOutgoing(sid)
         await restoredCenter.restoredOutgoing(sid)
-        let restored = try #require(restoredStore.outgoing(sid).first)
+        let restored = try #require(restoredCenter.restoredOutgoing[sid]?.first)
         await eventually("restart rebuilds the thumbnail from sealed bytes") { restoredCenter.thumb(restored.images[0]) != nil }
         #expect(restored.state == .unknown && restored.images[0].processed?.bytes == png)
     }
 
-    @Test func picturesWithoutDecodedThumbnailsStillAppearInOutgoingAndPendingBubbles() throws {
+    @Test func picturesWithoutDecodedThumbnailsStillAppearInOutgoingAndPendingBubbles() async throws {
         let c = center()
         defer { ImageCenter.remove(remote) }
         // Invalid preview bytes exercise the decode-failure path, as well as
         // the interval before an asynchronous thumbnail has arrived.
-        let o = Outgoing(requestId: "picture", text: "看图", imageIds: ["on-mac-photo"], images: [ready("photo")])
+        let img = ready("photo")
+        c.draft(ImageCenter.sessionKey(sid)).append([img])
+        _ = await send(c, "看图")
+        await eventually("held outgoing ready") { !spy.sent.isEmpty }
+        let o = try #require(c.heldOutgoing(sid, requestId: spy.sent[0].requestId))
         #expect(c.thumb(o.images[0]) == nil)
         for state in [Outgoing.State.sending, .sent, .unknown, .failed] {
             o.state = state
@@ -126,16 +138,11 @@ import UIKit
         }
         let account = Account(server: "http://127.0.0.1:1", root: Data(count: 32), deviceSeed: Data(count: 32), deviceId: "00112233445566778899aabbccddeeff")
         let context = AccountContext(account: account, remote: remote)
-        context.sessionStore.add(sid, o)
-        // Once QUEUED or HELD_BY_CLI hides the outgoing bubble, the pending
-        // bubble must draw the still-retained local attachment itself.
-        for status in [PBInputStatus.queued, .heldByCli] {
-            #expect(!outgoingShown(input: status))
-            let rendered = ImageRenderer(content:
-                SessionImages.PendingThumbs(session: sid, requestId: o.requestId)
-                    .environment(context).frame(width: 320))
-            #expect(try #require(rendered.uiImage).size.height >= 56)
-        }
+        // PendingThumb draws the retained local attachment whenever Core shows a pending/queued item for requestId.
+        let rendered = ImageRenderer(content:
+            SessionImages.PendingThumbs(session: sid, requestId: o.requestId)
+                .environment(context).frame(width: 320))
+        #expect(try #require(rendered.uiImage).size.height >= 56)
     }
 
     @Test func aMessageWhoseImagesCouldNotBeKeptIsNotSent() async {
@@ -150,7 +157,7 @@ import UIKit
         }
         #expect(error is DiskFull)
         // Nothing went out, nothing waits here as if it had, and the draft is as it was.
-        #expect(store.outgoing(sid).isEmpty && computer.sent.isEmpty)
+        #expect(spy.sent.isEmpty)
         #expect(draft.images.map(\.id) == ["a"])
     }
 
@@ -182,8 +189,7 @@ import UIKit
         }
         #expect(errorText(error) == L10n.attachmentIosSignedOutOfTheAccount())
         try? await Task.sleep(nanoseconds: 50_000_000)
-        #expect(computer.sent.isEmpty && store.outgoing(sid).isEmpty)
-        #expect(remote.events(sid).followers == 0)
+        #expect(spy.sent.isEmpty)
     }
 
     @Test func aSecondSendWhileTheImagesAreBeingKeptSendsNothing() async throws {
@@ -193,20 +199,26 @@ import UIKit
         draft.append([ready("a")])
         let disk = DispatchSemaphore(value: 0)
         var outcomes = 0
-        #expect(SessionImages.send(remote, session: sid, store: store, machineId: "mac", text: "看图", mode: .steer, commands: computer, keep: { _, _, _ in disk.wait() }) { _ in outcomes += 1 })
+        #expect(SessionImages.send(remote, session: sid, store: store, machineId: "mac", text: "看图", mode: .steer, keep: { _, _, _ in disk.wait() }, submit: {
+            spy.sent.append($0)
+        }) { _ in outcomes += 1 })
         #expect(store.isKeeping(sid))
         // Taken over, and nothing done: the first message has these images.
-        #expect(SessionImages.send(remote, session: sid, store: store, machineId: "mac", text: "看图", mode: .steer, commands: computer, keep: { _, _, _ in }) { _ in outcomes += 1 })
+        #expect(SessionImages.send(remote, session: sid, store: store, machineId: "mac", text: "看图", mode: .steer, keep: { _, _, _ in }, submit: {
+            spy.sent.append($0)
+        }) { _ in outcomes += 1 })
         try await Task.sleep(nanoseconds: 50_000_000)
-        #expect(store.outgoing(sid).isEmpty && outcomes == 0)
+        #expect(spy.sent.isEmpty && outcomes == 0)
         disk.signal()
-        await eventually("the first message is delivered") { store.outgoing(sid).first?.state == .sent }
+        await eventually("the first message is delivered") { !spy.sent.isEmpty }
         #expect(!store.isKeeping(sid) && outcomes == 1)
-        #expect(store.outgoing(sid).count == 1 && computer.sent.count == 1 && draft.images.isEmpty)
+        #expect(spy.sent.count == 1 && draft.images.isEmpty)
         // The lock went with the message: the next one is sent.
         draft.append([ready("b")])
-        #expect(SessionImages.send(remote, session: sid, store: store, machineId: "mac", text: "再看", mode: .steer, commands: computer, keep: { _, _, _ in }) { _ in outcomes += 1 })
-        await eventually("the second message is delivered") { computer.sent.count == 2 }
+        #expect(SessionImages.send(remote, session: sid, store: store, machineId: "mac", text: "再看", mode: .steer, keep: { _, _, _ in }, submit: {
+            spy.sent.append($0)
+        }) { _ in outcomes += 1 })
+        await eventually("the second message is delivered") { spy.sent.count == 2 }
     }
 
     @Test func aMessageGoesWithItsImagesOnceTheyAreKept() async throws {
@@ -220,39 +232,25 @@ import UIKit
         }
         // Out of the box, into the message, and sealed for a run that may end before the CLI has it.
         #expect(draft.images.isEmpty)
-        let o = try #require(store.outgoing(sid).first)
+        await eventually("submitted") { !spy.sent.isEmpty }
+        let o = try #require(spy.sent.first)
         #expect(o.imageIds == ["on-mac-a", "on-mac-b"] && o.images.map(\.id) == ["a", "b"])
         #expect(try OutgoingRecords(files: files).load(sid: sid).map(\.requestId) == [o.requestId])
-        await eventually("the message is delivered") { o.state == .sent }
-        let sent = try #require(computer.sent.first?.send)
-        #expect(sent.imageIds == ["on-mac-a", "on-mac-b"] && sent.requestID == o.requestId && sent.text == "这两个页面底部的按钮都点不到")
+        #expect(c.heldOutgoing(sid, requestId: o.requestId) === o)
     }
 
-    @Test(arguments: [PBInputStatus.submitted, .canceled])
-    func itIsLetGoOfOnceSubmittedOrCanceled(_ status: PBInputStatus) async throws {
+    @Test func itIsLetGoOfOnceSettledOrCanceledInCore() async throws {
         let c = center()
         c.draft(ImageCenter.sessionKey(sid)).append([ready("a")])
-        computer.answer(CommandError(CommandError.unknownOutcome, "不确定电脑有没有收到", outcome: .unknown))
         _ = await send(c, "看图")
-        let o = try #require(store.outgoing(sid).first)
-        await eventually("answer lost") { o.state == .unknown }
-        func input(_ seq: UInt64, _ status: PBInputStatus) -> PBEvent {
-            .with {
-                $0.seq = seq
-                $0.inputState = .with {
-                    $0.requestID = o.requestId
-                    $0.status = status
-                }
-            }
-        }
-        // Queued is not yet recorded: the images stay.
-        await remote.showForTest(state: RemoteState(), events: [sid: [input(1, .queued)]])
-        try await Task.sleep(nanoseconds: 50_000_000)
-        #expect(store.find(sid, requestId: o.requestId) != nil && o.images[0].processed != nil)
-        await remote.showForTest(state: RemoteState(), events: [sid: [input(1, .queued), input(2, status)]])
-        await eventually("settled") { store.find(sid, requestId: o.requestId) == nil }
-        #expect(o.images[0].processed == nil)
-        await eventually("history released") { remote.events(sid).followers == 0 }
+        await eventually("submitted") { !spy.sent.isEmpty }
+        let o = try #require(spy.sent.first)
+        // While active in Core (pendingInputs / outgoing), the held images stay.
+        c.pruneSettled(sid, activeRequestIDs: [o.requestId])
+        #expect(c.heldOutgoing(sid, requestId: o.requestId) != nil && o.images[0].processed != nil)
+        // Once settled in timeline or removed from Core active IDs, release local bytes and record.
+        c.pruneSettled(sid, activeRequestIDs: [], timelineSettledRequestIDs: [o.requestId])
+        #expect(c.heldOutgoing(sid, requestId: o.requestId) == nil && o.images[0].processed == nil)
         await eventually("its record is gone") { (try? OutgoingRecords(files: files).load(sid: sid).isEmpty) == true }
     }
 
@@ -261,28 +259,20 @@ import UIKit
         let draft = c.draft(ImageCenter.sessionKey(sid))
         draft.append([ready("a")])
         _ = await send(c, "看图")
-        let o = try #require(store.outgoing(sid).first)
-        await eventually("delivered") { o.state == .sent }
-        func input(_ seq: UInt64, _ status: PBInputStatus, _ reason: String = "") -> PBEvent {
-            .with {
-                $0.seq = seq
-                $0.inputState = .with {
-                    $0.requestID = o.requestId
-                    $0.status = status
-                    $0.reason = reason
-                }
-            }
-        }
-        // The session ended while it waited: the chat offers to put it back.
-        let events = [input(1, .queued), input(2, .canceled, "exited")]
-        await remote.showForTest(state: RemoteState(), events: [sid: events])
-        store.settle(sid, inputs: derive(events).inputs)
-        try await Task.sleep(nanoseconds: 200_000_000)
-        #expect(store.find(sid, requestId: o.requestId) === o && o.images[0].processed != nil)
+        await eventually("submitted") { !spy.sent.isEmpty }
+        let o = try #require(spy.sent.first)
+        // Still held if unsentOnExit/active in Core.
+        c.pruneSettled(sid, activeRequestIDs: [o.requestId])
+        #expect(c.heldOutgoing(sid, requestId: o.requestId) === o && o.images[0].processed != nil)
         #expect(try OutgoingRecords(files: files).load(sid: sid).map(\.requestId) == [o.requestId])
 
-        #expect(SessionImages.putBack(o, session: sid, state: RemoteState(), remote: remote, store: store))
-        #expect(store.draft(sid) == "看图" && store.outgoing(sid).isEmpty)
+        let effect = PBSessionRestoreComposerEffect.with {
+            $0.sessionID = sid
+            $0.requestID = o.requestId
+            $0.text = "看图"
+        }
+        #expect(SessionImages.applyRestore(effect, session: sid, state: RemoteState(), remote: remote, store: store))
+        #expect(store.draft(sid) == "看图" && c.heldOutgoing(sid, requestId: o.requestId) == nil)
         #expect(draft.images.map(\.id) == ["a"] && draft.images[0].processed != nil)
     }
 
@@ -290,14 +280,14 @@ import UIKit
         let c = center()
         let draft = c.draft(ImageCenter.sessionKey(sid))
         draft.append([ready("a"), ready("b")])
-        computer.answer(CommandError(CommandError.unavailable, "电脑不在线，指令没有发出"))
         _ = await send(c, "看图")
-        let o = try #require(store.outgoing(sid).first)
-        await eventually("failed") { o.state == .failed }
+        await eventually("submitted") { !spy.sent.isEmpty }
+        let o = try #require(spy.sent.first)
+        o.state = .failed
         store.setDraft(sid, "已经在写的")
 
         #expect(SessionImages.putBack(o, session: sid, state: RemoteState(), remote: remote, store: store))
-        #expect(store.outgoing(sid).isEmpty)
+        #expect(c.heldOutgoing(sid, requestId: o.requestId) == nil)
         #expect(store.draft(sid) == "已经在写的\n看图")
         // The images are in the box again and go to the computer again; nothing of them was dropped.
         #expect(draft.images.map(\.id) == ["a", "b"])
@@ -330,10 +320,10 @@ import UIKit
         let key = ImageCenter.sessionKey(sid)
         let draft = c.draft(key)
         draft.append([ready("a")])
-        computer.answer(CommandError(CommandError.unavailable, "电脑不在线，指令没有发出"))
         _ = await send(c, "看图")
-        let o = try #require(store.outgoing(sid).first)
-        await eventually("failed") { o.state == .failed }
+        await eventually("submitted") { !spy.sent.isEmpty }
+        let o = try #require(spy.sent.first)
+        o.state = .failed
 
         // The box cannot keep the image it gets back: the message's record is the only copy on disk.
         files.full = key
@@ -353,86 +343,60 @@ import UIKit
         let c = center()
         let draft = c.draft(ImageCenter.sessionKey(sid))
         draft.append((1...4).map { ready("m\($0)") })
-        computer.answer(CommandError(CommandError.unavailable, "电脑不在线，指令没有发出"))
         _ = await send(c, "四张")
-        let o = try #require(store.outgoing(sid).first)
-        await eventually("failed") { o.state == .failed }
+        await eventually("submitted") { !spy.sent.isEmpty }
+        let o = try #require(spy.sent.first)
+        o.state = .failed
         draft.append((1...3).map { ready("n\($0)") })
 
+        #expect(!SessionImages.canPutBack(requestId: o.requestId, session: sid, state: RemoteState(), remote: remote))
         #expect(!SessionImages.putBack(o, session: sid, state: RemoteState(), remote: remote, store: store))
         // Nothing moved: the message is still there to retry or to put back later.
-        #expect(store.find(sid, requestId: o.requestId) != nil && store.draft(sid).isEmpty)
+        #expect(c.heldOutgoing(sid, requestId: o.requestId) != nil && store.draft(sid).isEmpty)
         #expect(draft.images.count == 3)
         #expect(draft.notice == "输入框里已有 3 张图，放回这 4 张会超过 6 张。先移除一些再放回")
         #expect(try OutgoingRecords(files: files).load(sid: sid).count == 1)
     }
 
-    /// A session that ended, or whose computer is offline, sends no more events: its history is not kept
-    /// followed waiting for one after the last message with images is put back or removed.
-    @Test func aSessionIsFollowedOnlyWhileAMessageOfItWaits() async throws {
-        let c = center()
-        c.draft(ImageCenter.sessionKey(sid)).append([ready("a")])
-        let down = CommandError(CommandError.unavailable, "电脑不在线，指令没有发出")
-        computer.answer(down, down)
-        _ = await send(c, "看图")
-        let o = try #require(store.outgoing(sid).first)
-        await eventually("failed") { o.state == .failed }
-        #expect(remote.events(sid).followers == 1)
-        #expect(SessionImages.putBack(o, session: sid, state: RemoteState(), remote: remote, store: store))
-        await eventually("let go of when put back") { remote.events(sid).followers == 0 }
-
-        // The put-back image has to finish a fresh upload before another message can use it.
-        let renewed = c.draft(ImageCenter.sessionKey(sid)).images[0]
-        renewed.machineId = "mac"
-        renewed.imageId = "renewed-a"
-        renewed.expiresMs = Int64.max
-        renewed.state = .ready
-        // Sent again and followed again; then removed in the chat.
-        _ = await send(c, "再看")
-        let again = try #require(store.outgoing(sid).first)
-        await eventually("failed") { again.state == .failed }
-        #expect(remote.events(sid).followers == 1)
-        store.remove(sid, again)
-        await eventually("let go of when removed") { remote.events(sid).followers == 0 }
-    }
-
-    @Test func aMessageWithoutImagesGoesBackAsItsTextAlone() async {
+    @Test func aMessageWithoutImagesGoesBackAsItsTextAlone() {
         _ = center()
-        await store.send(computer, sid: sid, text: "只有文字").value
-        let o = store.outgoing(sid)[0]
-        #expect(SessionImages.putBack(o, session: sid, state: RemoteState(), remote: remote, store: store))
-        #expect(store.draft(sid) == "只有文字" && store.outgoing(sid).isEmpty)
+        let effect = PBSessionRestoreComposerEffect.with {
+            $0.sessionID = sid
+            $0.requestID = "text-only"
+            $0.text = "只有文字"
+        }
+        #expect(SessionImages.applyRestore(effect, session: sid, state: RemoteState(), remote: remote, store: store))
+        #expect(store.draft(sid) == "只有文字")
     }
 
     @Test func aRunThatEndedLeavesItsMessagesToTheNext() async throws {
         let first = center()
         first.draft(ImageCenter.sessionKey(sid)).append([ready("a")])
         _ = await send(first, "看图")
-        let sent = try #require(store.outgoing(sid).first)
+        await eventually("submitted") { !spy.sent.isEmpty }
+        let sent = try #require(spy.sent.first)
 
-        // The process was reclaimed: a new store, a new center, the same sealed files.
-        let later = SessionStore()
+        // The process was reclaimed: a new center, the same sealed files.
         let c = center()
-        c.restoreOutgoing(sid, store: later)
+        c.restoreOutgoing(sid)
         await c.restoredOutgoing(sid)
-        let o = try #require(later.outgoing(sid).first)
+        let o = try #require(c.restoredOutgoing[sid]?.first)
         #expect(o.requestId == sent.requestId && o.text == "看图" && o.imageIds == ["on-mac-a"])
         #expect(o.state == .unknown && o.error == L10n.attachmentIosTheAppRestartedDeliveryOfThisMessageIsUnconfirmed())
         // Asked again, it is not doubled.
-        c.restoreOutgoing(sid, store: later)
+        c.restoreOutgoing(sid)
         await c.restoredOutgoing(sid)
-        #expect(later.outgoing(sid).count == 1)
+        #expect(c.restoredOutgoing[sid]?.count == 1)
     }
 
     @Test func aMessageTheUserRemovedDoesNotComeBack() async throws {
         let c = center()
         c.draft(ImageCenter.sessionKey(sid)).append([ready("a")])
-        computer.answer(CommandError(CommandError.unavailable, "电脑不在线，指令没有发出"))
         _ = await send(c, "看图")
-        let o = try #require(store.outgoing(sid).first)
-        await eventually("failed") { o.state == .failed }
-        // 移除此提示 in the chat.
-        store.remove(sid, o)
+        await eventually("submitted") { !spy.sent.isEmpty }
+        let o = try #require(spy.sent.first)
+        // Dismiss in the chat.
+        c.release(sid, o)
         await eventually("its record is gone") { (try? OutgoingRecords(files: files).load(sid: sid).isEmpty) == true }
         #expect(o.images[0].processed == nil)
     }
@@ -552,7 +516,7 @@ extension SessionImagesTests {
         release.signal()
         let outcome = await sending.value
         guard case .failure? = outcome else { Issue.record("expired upload must not be sent"); return }
-        #expect(computer.sent.isEmpty && store.outgoing(sid).isEmpty)
+        #expect(spy.sent.isEmpty)
         #expect(draft.images.first === img && img.processed != nil)
         ImageCenter.remove(remote)
     }
@@ -598,20 +562,20 @@ extension SessionImagesTests {
         defer { ImageCenter.remove(remote) }
         let c = ImageCenter.of(remote)
         let d = c.draft("session:s1")
-        c.restoreOutgoing(sid, store: store)
+        c.restoreOutgoing(sid)
         await c.restoredDraft("session:s1")
         await c.restoredOutgoing(sid)
         #expect(d.restoreError != nil && c.outgoingRestoreErrors[sid] != nil)
         d.persist()
-        #expect(store.outgoing(sid).isEmpty)
+        #expect(c.restoredOutgoing[sid] == nil)
         disk.failReads(false)
         c.retryDraft("session:s1")
-        c.restoreOutgoing(sid, store: store)
+        c.restoreOutgoing(sid)
         await c.restoredDraft("session:s1")
         await c.restoredOutgoing(sid)
         #expect(d.restoreError == nil && c.outgoingRestoreErrors[sid] == nil)
         #expect(d.images.map(\.id) == ["draft"])
-        #expect(store.outgoing(sid).map(\.requestId) == ["old"])
+        #expect(c.restoredOutgoing[sid]?.map(\.requestId) == ["old"])
     }
 
     @Test func textDraftReadFailureBlocksReplacementAndRetriesWithoutLosingEdits() {
@@ -657,14 +621,14 @@ extension SessionImagesTests {
         disk.hold()
         ImageCenter.install(remote: remote, files: disk)
         let c = ImageCenter.of(remote)
-        c.restoreOutgoing(sid, store: store)
+        c.restoreOutgoing(sid)
         let waiting = Task { await c.restoredOutgoing(sid) }
         await Task.detached { waitForDisk(disk.entered) }.value
-        #expect(!disk.mainRead && store.outgoing(sid).isEmpty)
+        #expect(!disk.mainRead && c.restoredOutgoing[sid] == nil)
         ImageCenter.remove(remote)
         disk.release.signal()
         await waiting.value
-        #expect(store.outgoing(sid).isEmpty)
+        #expect(c.restoredOutgoing[sid] == nil)
     }
 }
 

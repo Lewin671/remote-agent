@@ -92,8 +92,6 @@ private actor FakeCoreExecutor: CoreHostExecutor {
         publishedStates.append(snapshot)
     }
 
-    func publishSessionData(_ sid: String, events: SessionEvents) async {}
-
     func setNetworkGeneration(_ gen: UInt64) async {}
 
     func ensureToken(opId: UInt64, forceLogin: Bool, timeoutMs: Int64) async -> PBCoreTokenResultEvent {

@@ -367,25 +367,9 @@ actor FakeDaemon {
         else { return }
         var result: PBCommandResult
         if case .getLiveSnapshot(let ask)? = cmd.kind {
-            let events = history[ask.sessionID] ?? []
-            let derived = derive(events)
-            let actions = events.filter { event in
-                switch event.kind {
-                case .approvalRequested(let request)?:
-                    return derived.pendingApproval(request.approvalID) != nil
-                case .questionAsked(let request)?:
-                    return derived.pendingQuestion(request.questionID) != nil
-                case .inputState(let state)?:
-                    let status = derived.inputStatus(state.requestID)
-                    return status == .queued || status == .heldByCli
-                default: return false
-                }
-            }
             var snapshot = PBLiveSnapshot()
-            snapshot.running = derived.running
             snapshot.session = info[ask.sessionID] ?? PBSession()
             snapshot.session.id = ask.sessionID
-            snapshot.actions = actions
             var r = PBCommandResult()
             r.liveSnapshot = snapshot
             result = r
@@ -706,12 +690,4 @@ extension Remote {
             )
         }
     }
-
-    func awaitEvents(_ sid: String, _ n: Int, ms: Int = 10_000) async throws -> SessionEvents {
-        try await events(sid).await("\(n) events of \(sid)", ms: ms) { $0.events.count >= n }
-    }
-}
-
-extension SessionEvents {
-    var seqs: [UInt64] { events.map(\.seq) }
 }

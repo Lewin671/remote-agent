@@ -47,15 +47,6 @@ import RAProto
         t.spec.target.type = "resume_session"; #expect(t.missingTarget)
         t.reason = "execution_failed"; #expect(!t.missingTarget)
     }
-    @Test func queuedScheduledOriginKeepsItsFirstTimestampOnUpdates() {
-        var queued = PBEvent(); queued.seq = 1; queued.time.seconds = 1800000000
-        queued.origin.scheduledRunID = "run"; queued.inputState.requestID = "request"
-        queued.inputState.text = "检查"; queued.inputState.status = .queued; queued.inputState.mode = .queue
-        var update = queued; update.seq = 2; update.time.seconds += 60
-        let pending = pendingInputs(derive([queued, update]))
-        #expect(pending.count == 1 && pending[0].time == 1800000000000)
-        #expect(pending[0].origin?.scheduledRunID == "run")
-    }
     @Test func repeatedWallTimesChooseFirstForOnceAndEditedCutoff() throws {
         for (name, wall, first, second) in [
             ("America/Los_Angeles", "2027-11-07T01:30:00Z", "2027-11-07T08:30:00Z", "2027-11-07T09:30:00Z"),
@@ -418,83 +409,6 @@ import RAProto
         #expect(cmd.schedule.requestID == "stable-key" && cmd.schedule.expectedRevision == 7 && cmd.schedule.sessionID == "source")
         #expect(try JSONDecoder().decode(ScheduleSpec.self, from: cmd.schedule.specJson) == task().spec)
     }
-    func round(_ seq: UInt64, at: String = "2026-10-24T15:00:00Z", run: String) -> [PBEvent] {
-        var user = PBEvent(); user.seq = seq; user.time.seconds = Int64(scheduleDate(at)!.timeIntervalSince1970); user.userMessage.text = "检查"; user.origin.scheduledRunID = run
-        var reply = PBEvent(); reply.seq = seq + 1; reply.agentMessage.text = "没有新回复"
-        var end = PBEvent(); end.seq = seq + 2; end.turnEnded.outcome = .completed; end.turnEnded.scheduledRunID = run
-        return [user, reply, end]
-    }
-    @Test func visibleInterRoundEventsAreFoldingBoundaries() {
-        var model=PBEvent();model.settingsChanged.model="new-model"
-        var mode=PBEvent();mode.settingsChanged.mode = .auto
-        var compact=PBEvent();compact.settingsChanged.compacted=true
-        var answer=PBEvent();answer.questionAnswered.questionID="q"
-        var context=PBEvent();context.turnContext.model="new-model"
-        var ended=PBEvent();ended.turnEnded.durationMs=1000
-        var image=PBEvent();image.imageGenerated.revisedPrompt="image"
-        var exit=PBEvent();exit.sessionState.status = .exited
-        for var event in [model,mode,compact,answer,context,ended,image,exit] {
-            event.seq=4
-            #expect(silentScheduledGroups(round(1,run:"a")+[event]+round(5,run:"b"),zone:zone).isEmpty)
-        }
-    }
-    @Test func failedToolsAndProtectedInRoundRowsRemainVisible() {
-        var failed=PBEvent();failed.toolCall.title="failed";failed.toolCall.status="failed"
-        var nonzero=PBEvent();nonzero.toolCall.title="nonzero";nonzero.toolCall.exitCode=7
-        var background=PBEvent();background.toolCall.title="background";background.toolCall.background = .stillRunning
-        var pending=PBEvent();pending.toolStarted.callID="pending";pending.toolStarted.title="pending"
-        var setting=PBEvent();setting.settingsChanged.model="other-model"
-        var answer=PBEvent();answer.questionAnswered.questionID="q"
-        for var e in [failed,nonzero,background,pending,setting,answer] {
-            e.seq=2;var first=round(1,run:"a");first[1]=e
-            #expect(silentScheduledGroups(first+round(4,run:"b"),zone:zone).isEmpty)
-        }
-        var success=PBEvent();success.seq=2;success.toolCall.status="completed";success.toolCall.exitCode=0
-        var first=round(1,run:"a");first[1]=success
-        #expect(silentScheduledGroups(first+round(4,run:"b"),zone:zone).count == 1)
-    }
-    @Test func terminalSettingChangesInsideRoundsRemainVisible() {
-        var first=round(1,run:"a")
-        var initial=PBEvent();initial.seq=0;initial.turnContext.model="old-model"
-        first[1].turnContext.model="new-model"
-        let events=[initial]+first+round(4,run:"b")
-        #expect(derive(events).terminalChanges[2] != nil)
-        #expect(silentScheduledGroups(events,zone:zone).isEmpty)
-    }
-    @Test func lateFailedToolResultCannotHideAtTheEarlierStart() {
-        var second=round(4,run:"b");second[1].toolStarted.title="late";second[1].toolStarted.callID="late"
-        var third=round(7,run:"c");third[1].toolCall.title="late";third[1].toolCall.callID="late";third[1].toolCall.status="failed";third[1].toolCall.exitCode=7
-        let events=round(1,run:"a")+second+third
-        #expect(derive(events).completedAt[5] == 8)
-        #expect(silentScheduledGroups(events,zone:zone).isEmpty)
-    }
-    @Test func foldsOnlyConsecutiveSuccessfulSilentScheduledRounds() {
-        let first = round(1, run: "a"), second = round(4, at: "2026-10-24T16:00:00Z", run: "b")
-        #expect(silentScheduledGroups(first, zone: zone).isEmpty)
-        var undated = first; undated[0].clearTime()
-        #expect(silentScheduledGroups(undated + second, zone: zone).isEmpty)
-        let groups = silentScheduledGroups(first + second, zone: zone)
-        #expect(groups.count == 1 && groups[0].firstSeq == 1 && groups[0].lastSeq == 6)
-        var laterNotice = PBEvent(); laterNotice.seq = 7; laterNotice.scheduledNotification.runID = "b"; laterNotice.scheduledNotification.text = "后来发现了变化"
-        #expect(silentScheduledGroups(first + second + [laterNotice], zone: zone).isEmpty)
-        var laterFailure = PBEvent(); laterFailure.seq = 7; laterFailure.turnEnded.outcome = .aborted; laterFailure.turnEnded.scheduledRunID = "b"
-        #expect(silentScheduledGroups(first + second + [laterFailure], zone: zone).isEmpty)
-        for unsafe in ["notify", "skeleton", "pending", "failed", "autonomous", "human", "next-day"] {
-            var changed = second
-            switch unsafe {
-            case "notify": changed[1].scheduledNotification.text = "有变化"
-            case "skeleton": changed[1].agentMessage.text = skeletonNote
-            case "pending": changed[1].approvalRequested.approvalID = "approval"
-            case "failed": changed[2].turnEnded.outcome = .aborted
-            case "human": changed[0].origin.scheduledRunID = ""
-            case "next-day": changed = round(4, at: "2026-10-25T16:00:00Z", run: "b")
-            default:
-                var auto = PBEvent(); auto.seq = 3; auto.agentMessage.text = "自主继续的回复"
-                #expect(silentScheduledGroups(first + [auto] + second, zone: zone).isEmpty); continue
-            }
-            #expect(silentScheduledGroups(first + changed, zone: zone).isEmpty, "must preserve \(unsafe)")
-        }
-    }
 }
 
 @Suite struct ScheduleCompletionNotificationTests {
@@ -531,20 +445,5 @@ import RAProto
         #expect(scheduleListFrequency(trigger, zone: TimeZone(identifier: "Asia/Shanghai")!) == "每天 08:00")
         trigger.timezone = "America/Argentina/Buenos_Aires"
         #expect(scheduleListFrequency(trigger, zone: TimeZone(identifier: "Asia/Shanghai")!) == "每天 08:00（Buenos Aires时间）")
-    }
-    @Test func finalAnswerUsesLastFinalAndStopsAtEveryDaemonBoundary() {
-        func user(_ run: String = "", kind: PBOriginKind = .system) -> PBEvent {
-            .with { $0.userMessage.text = "检查"; $0.origin.scheduledRunID = run; $0.origin.kind = kind }
-        }
-        func reply(_ text: String, phase: String = "final_answer") -> PBEvent { .with { $0.agentMessage.text = text; $0.agentMessage.phase = phase } }
-        let prefix = [reply("以前"), user("run"), reply("过程", phase: "commentary"), reply("初稿"), reply("## 完整结果\n\n| 列 | 值 |\n| --- | --- |\n| a | b |")]
-        let expected = prefix.last!.agentMessage.text
-        let boundaries: [PBEvent] = [user(kind: .client), user(kind: .local), user("other"),
-            .with { $0.sessionState.detail = "resumed"; $0.origin.kind = .local }, .with { $0.sessionState.status = .exited }]
-        for boundary in boundaries { #expect(scheduleFinalAnswer(prefix + [boundary, reply("不属于本次")], runID: "run") == expected) }
-        #expect(scheduleFinalAnswer(prefix + [reply("后续最终回复")], runID: "run") == "后续最终回复")
-        #expect(scheduleFinalAnswer([reply("没有对应输入")], runID: "run") == nil)
-        #expect(scheduleFinalAnswer([user("run"), reply("过程", phase: "commentary")], runID: "run") == nil)
-        #expect(scheduleFinalAnswer([user("run"), reply("  ")], runID: "run") == nil)
     }
 }

@@ -19,14 +19,6 @@ import UIKit
         draft.message = String(repeating: "中", count: 10923)
         #expect(draft.spec(session: nil, state: state()) == nil)
     }
-    @Test func scheduledQueueCaptionDoesNotChangeOrdinaryPendingMessages() {
-        var p = PendingInput(id: "q", text: "检查", mode: .queue, paused: false, held: false, origin: nil, time: 1800000000000)
-        #expect(scheduledPendingLabel(p, label: L10n.queueAfterTurn()) == nil)
-        p.origin = .with { $0.scheduledRunID = "run" }
-        #expect(scheduledPendingLabel(p, label: L10n.queueAfterTurn()) == "定时任务 · " + scheduleTime(Date(timeIntervalSince1970: 1800000000)) + " · 这一轮结束后发")
-        p.paused = true
-        #expect(scheduledPendingLabel(p, label: L10n.queuePaused())?.hasSuffix(" · 已暂停") == true)
-    }
     @Test func attentionIsCountedAndOnlyTheViewedTaskOrSessionIsRead() async throws {
         let store = ScheduleStore()
         var current = task()
@@ -666,24 +658,6 @@ import UIKit
         #expect(scheduleResultBlockCount([24, 48], budget: 192) == 2)
         #expect(scheduleResultBlockCount([], budget: 192) == 0)
     }
-    @Test func builderKeepsNotificationAndScheduledCaptionVisibleAndFoldsSilentRounds() async throws {
-        var events = [PBEvent]()
-        for i in 0..<2 {
-            let seq = UInt64(i * 3 + 1), run = "run-\(i)"
-            var user = PBEvent(); user.seq = seq; user.time.seconds = 1_790_000_000 + Int64(i * 3600); user.userMessage.text = "检查"; user.origin.scheduledRunID = run
-            var agent = PBEvent(); agent.seq = seq + 1; agent.agentMessage.text = "没有变化"
-            var end = PBEvent(); end.seq = seq + 2; end.turnEnded.outcome = .completed; end.turnEnded.scheduledRunID = run
-            events += [user, agent, end]
-        }
-        let rows = await ChatBuilder().build(PagedList(events), ChatParams()).rows
-        #expect(rows.count == 1 && rows[0].folded.count >= 4)
-        guard case .user(let first) = rows[0].folded[0].item else { Issue.record("scheduled user message absent"); return }
-        #expect(first.from?.hasPrefix("定时任务 · ") == true && first.scheduledRunID == "run-0")
-        var notification = PBEvent(); notification.seq = 7; notification.scheduledNotification.text = "有新回复"
-        let notified = await ChatBuilder().build(PagedList(events + [notification]), ChatParams()).rows
-        guard case .note(let note) = notified.last?.item else { Issue.record("notification is hidden"); return }
-        #expect(note.text == "通知你：有新回复")
-    }
 }
 
 @MainActor @Suite struct ScheduleAlignmentTests {
@@ -884,7 +858,7 @@ import UIKit
         // Keep the observable values in a real SwiftUI body, not a captured one-time view value.
         struct Host:View {
             let probe:ScheduledJumpProbe
-            var body:some View { Text("history").modifier(ScheduledJumpObserver(rowIDs:["e5"],loaded:probe.loaded,jump:probe.jump) { probe.attempts += 1 }) }
+            var body:some View { Text("history").modifier(ScheduledJumpObserver(rowIDs:["e5"],loaded:probe.loaded,jump:probe.jump,anchorID:"") { probe.attempts += 1 }) }
         }
         let host=UIHostingController(rootView:Host(probe:probe))
         let window=UIWindow(windowScene:scene);window.frame=CGRect(x:0,y:0,width:320,height:200);window.rootViewController=host;window.isHidden=false

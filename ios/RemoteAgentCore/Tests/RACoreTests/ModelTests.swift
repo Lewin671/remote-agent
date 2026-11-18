@@ -13,21 +13,6 @@ import Testing
         #expect(modeLabel(s { $0.permissionMode = "未知审批模式" })?.text == "未知审批模式")
     }
 
-    @Test func nativeSendCapabilityControlsOperationAndCaption() {
-        for agent in [PBAgent.codex, .claude] {
-            #expect(sendModeFor(agent: agent, running: true) == .steer)
-            #expect(inputTimingLabel(agent: agent, mode: .steer, held: false, starting: nil) == L10n.queueInsert())
-        }
-        for mode in [PBSendMode.unspecified, .steer, .queue] {
-            #expect(sendModeFor(agent: .antigravity, requested: mode, running: true) == .queue)
-            for held in [false, true] {
-                #expect(inputTimingLabel(agent: .antigravity, mode: mode, held: held, starting: nil) == L10n.queueAfterTurn())
-            }
-        }
-        #expect(sendModeFor(agent: .antigravity, requested: .steer, running: false) == .steer)
-        #expect(inputTimingLabel(agent: .antigravity, mode: .steer, held: false, starting: "Antigravity") == L10n.queueAgentReady(agent: "Antigravity"))
-    }
-
     private func s(_ fill: (inout PBSession) -> Void = { _ in }) -> SessionView { Mk.session("s", fill) }
 
     @Test func statusFollowsThePriorityList() {
@@ -51,23 +36,12 @@ import Testing
         #expect(Status.allCases.map(\.rawValue) == Array(0...10))
     }
 
-    @Test func renameStartsFromTheTitleAndSendsOnlyAChange() {
-        #expect(renameInitial(s { $0.title = " 登录接口偶尔超时 " }) == "登录接口偶尔超时")
-        // The "<folder> · <start time>" placeholder is not a title to edit.
-        #expect(renameInitial(s { $0.cwd = "/Users/me/Code/billing" }) == "")
-        #expect(renameInitial(SessionView(id: "s", machineId: "m")) == "")
-
+    @Test func titleInputEnforcesSingleLineAndCodePointLimit() {
         // 60 code points, not UTF-16 units: an emoji counts once and is never cut in half.
         #expect(titleInput(String(repeating: "字", count: 61)) == String(repeating: "字", count: 60))
         #expect(titleInput(String(repeating: "😀", count: 61)) == String(repeating: "😀", count: 60))
         #expect(titleInput(String(repeating: "a", count: 59) + "😀" + "b") == String(repeating: "a", count: 59) + "😀")
         #expect(titleInput("第一行\r\n第二行") == "第一行 第二行")
-
-        #expect(renameTitle(typed: "  登录超时 ", initial: "登录超时") == nil)
-        #expect(renameTitle(typed: " 登录超时：限流和重试\u{3000}", initial: "登录超时") == "登录超时：限流和重试")
-        // Emptied: back to the automatic title; nothing to do when there was none.
-        #expect(renameTitle(typed: "  ", initial: "登录超时") == "")
-        #expect(renameTitle(typed: "", initial: "") == nil)
     }
 
     @Test func aTitleCountsCodePointsWhereSwiftWouldCountClusters() {
@@ -78,35 +52,6 @@ import Testing
         #expect(cut.unicodeScalars.count == 60)
         // Runs of line breaks, mixed, are one space each.
         #expect(titleInput("a\n\r\n\rb\nc") == "a b c")
-    }
-
-    @Test func forkNeedsAnIdleOrEndedSessionWithAMessage() {
-        #expect(forkBlocked(status: .idle, running: false, sent: true) == nil)
-        #expect(forkBlocked(status: .exited, running: false, sent: true) == nil)
-        for st in [Status.running, .approval, .question] { #expect(forkBlocked(status: st, running: false, sent: true) == L10n.sessionForkAfterTurn()) }
-        // The events show a turn before the session's status does.
-        #expect(forkBlocked(status: .idle, running: true, sent: true) == L10n.sessionForkAfterTurn())
-        for st in [Status.plan, .popup] { #expect(forkBlocked(status: st, running: false, sent: true) == L10n.sessionForkAfterPending()) }
-        #expect(forkBlocked(status: .starting, running: false, sent: false) == L10n.sessionForkAfterStart())
-        #expect(forkBlocked(status: .idle, running: false, sent: false) == L10n.sessionForkAfterMessage())
-        #expect(forkBlocked(status: .exited, running: false, sent: false) == L10n.sessionForkAfterMessage())
-        // What it waits for comes before the missing message.
-        #expect(forkBlocked(status: .running, running: true, sent: false) == L10n.sessionForkAfterTurn())
-
-        let message = [Mk.ev(1, Mk.user("hi"))]
-        #expect(sentMessage(s { $0.title = "登录接口偶尔超时" }, events: []))
-        #expect(sentMessage(s(), events: message))
-        #expect(!sentMessage(s { $0.cwd = "/Users/me/Code/foo" }, events: [Mk.ev(1, .turnContext(.with { $0.model = "m" }))]))
-        #expect(!sentMessage(SessionView(id: "s", machineId: "m"), events: []))
-
-        #expect(forked(s { $0.forkedFrom = "a1" }))
-        #expect(!forked(s()))
-        #expect(!forked(SessionView(id: "s", machineId: "m")))
-
-        let made = PBCommandResult.with { $0.forkSession = .with { $0.session = .with { $0.id = "new" } } }
-        #expect(forkedSession(made) == "new")
-        #expect(forkedSession(PBCommandResult()) == nil)
-        #expect(forkedSession(nil) == nil)
     }
 
     @Test func aModelIsTheOneChosenBySlugOrAlias() {
@@ -192,13 +137,6 @@ import Testing
         #expect(shownModels(many, picked: "g", all: true) == many)
     }
 
-    @Test func warnsAboutClaudeCodesTrustDialogOnly() {
-        #expect(popupHint(agent: .claude, detail: "trust folder") == L10n.dockTrustFolder())
-        #expect(popupHint(agent: .codex, detail: "trust folder") == "")
-        #expect(popupHint(agent: .unspecified, detail: "trust folder") == "")
-        #expect(popupHint(agent: .claude, detail: "hooks review") == "")
-    }
-
     @Test func readsTheDaemonsDefaultModePerCli() {
         let s = PBDaemonSettings.with { $0.defaultMode = .fullAccess; $0.claude = .with { $0.mode = .auto } }
         #expect(defaultMode(s, agent: .codex) == .full)
@@ -271,25 +209,6 @@ import Testing
         #expect("a\u{2028}b\u{85}c".jvmLines() == ["a\u{2028}b\u{85}c"])
     }
 
-    @Test func sessionModeRestrictionsComeFromSessionAndModelData() {
-        let unavailable = PBModelInfo.with { $0.slug = "model"; $0.autoUnavailable = true }
-        let available = PBModelInfo.with { $0.slug = "other" }
-        // These are protocol capabilities, regardless of which CLI owns the session.
-        for entry in AGENTS {
-            let locked = s { $0.agent = entry.agent; $0.mode = .fullAccess; $0.modeLocked = true }
-            for mode in Mode.allCases {
-                #expect(sessionModeUnavailableReason(mode, session: locked, models: [unavailable]) == L10n.modesLocked())
-            }
-            let regular = s { $0.agent = entry.agent; $0.model = "model"; $0.fullAccessUnavailable = true }
-            #expect(sessionModeUnavailableReason(.full, session: regular, models: nil) == L10n.modesFullUnavailable())
-            #expect(sessionModeUnavailableReason(.auto, session: regular, models: [unavailable]) == L10n.modesAccountUnsupported())
-            #expect(sessionModeUnavailableReason(.auto, session: regular, models: [unavailable, available]) == L10n.modesModelUnsupported())
-            #expect(sessionModeUnavailableReason(.auto, session: regular, models: nil) == nil)
-            #expect(sessionModeUnavailableReason(.ask, session: regular, models: [unavailable]) == nil)
-            #expect(sessionModeUnavailableReason(.plan, session: regular, models: [unavailable]) == nil)
-        }
-    }
-
     @Test func contextWindowsAreWrittenShort() {
         #expect(contextText(tokens: 0) == nil)
         #expect(contextText(tokens: 200_000) == "200k 上下文")
@@ -303,12 +222,6 @@ import Testing
         #expect(minutesLeft(deadlineMs: 0, now: 5) == 0)
     }
 
-    @Test func optionRecommendationsAreReadByPattern() {
-        #expect(optionLabel("Use Postgres (Recommended)").label == "Use Postgres")
-        #expect(optionLabel("Use Postgres (recommended) ").recommended)
-        #expect(optionLabel("用 Postgres（推荐）") == ("用 Postgres（推荐）", false))
-        #expect(optionLabel("用 Postgres (推荐)") == ("用 Postgres", true))
-    }
 }
 
 /// Android's TitleTest (in ImagesTest.kt).

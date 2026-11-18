@@ -16,7 +16,7 @@ extension Ref<ChatScroll> {
 }
 
 extension Ref<LiveAnnouncer> {
-    func announce(last: ChatItem?, dock: [DockItem], agent: String, now: Int64, initial: Bool) -> String? {
+    func announce(last: PBSessionTimelineItem?, dock: PBSessionDockView?, agent: String, now: Int64, initial: Bool) -> String? {
         v.announce(last: last, dock: dock, agent: agent, now: now, initial: initial)
     }
 }
@@ -181,102 +181,11 @@ extension Ref<LiveAnnouncer> {
 }
 
 @Suite struct SessionWordsTests {
-    @Test func scheduledCloseUsesExplicitCauseAndKeepsManualWording() {
-        #expect(exitReason("stopped", scheduledClosed: true) == L10n.sessionScheduledClosed())
-        #expect(exitReason("stopped", scheduledClosed: false) == L10n.sessionManuallyClosed())
-        #expect(exitReason("tmux session gone", scheduledClosed: true) == L10n.sessionTmuxMissing())
-        #expect(endedText(detail: "stopped", scheduledClosed: true, unlinked: false, machineOnline: true, machine: "Computer").hasPrefix(L10n.sessionScheduledClosed()))
-    }
-
-    @Test func idleCloseUsesExplicitCause() {
-        #expect(exitReason("stopped", idleClosed: true) == L10n.sessionIdleClosed())
-        #expect(exitReason("stopped", idleClosed: false) == L10n.sessionManuallyClosed())
-        #expect(exitReason("tmux session gone", idleClosed: true) == L10n.sessionTmuxMissing())
-        #expect(endedText(detail: "stopped", idleClosed: true, unlinked: false, machineOnline: true, machine: "Computer").hasPrefix(L10n.sessionIdleClosed()))
-    }
-
-    private func pending(mode: PBSendMode = .steer, paused: Bool = false, held: Bool = false) -> PendingInput {
-        PendingInput(id: "q", text: "t", mode: mode, paused: paused, held: held, origin: nil)
-    }
-
-    @Test func aWaitingMessageSaysWhatItWaitsFor() {
-        func label(_ p: PendingInput, cancel: SessionStore.CancelState? = nil, resuming: Bool = false, failed: Bool = false, starting: String? = nil) -> String {
-            pendingLabel(p, cancel: cancel, resuming: resuming, resumeFailed: failed, starting: starting)
-        }
-        #expect(label(pending()) == L10n.queueInsert())
-        #expect(label(pending(mode: .queue)) == L10n.queueAfterTurn())
-        #expect(label(pending(held: true)) == L10n.queueInsert())
-        #expect(label(pending(mode: .queue, paused: true)) == L10n.queuePaused())
-        #expect(label(pending(), starting: "Codex") == "等 Codex 就绪后发出")
-        #expect(label(pending(mode: .queue), starting: "Codex") == L10n.queueAfterTurn())
-        #expect(label(pending(paused: true), resuming: true) == L10n.queueResuming())
-        #expect(label(pending(paused: true), failed: true) == L10n.queueResumeFailed())
-        #expect(label(pending(paused: true), cancel: .canceling, resuming: true) == L10n.queueCanceling())
-        #expect(label(pending(), cancel: .failed("x")) == L10n.queueCancelFailed())
-    }
-
-    @Test func aWaitingMessageNamesAnotherSenderOrItsPlace() {
-        #expect(pendingSuffix(pending(mode: .queue), origin: nil, index: 2, of: 2) == " · 第 2 条")
-        #expect(pendingSuffix(pending(mode: .queue), origin: "我的 iPad", index: 2, of: 2) == " · 第 2 条 · 我的 iPad")
-        #expect(pendingSuffix(pending(), origin: nil, index: 1, of: 2) == " · 第 1 条")
-        #expect(pendingSuffix(pending(), origin: nil, index: 1, of: 2, cancel: .canceling).isEmpty)
-        #expect(pendingSuffix(pending(paused: true), origin: "iPad", index: 1, of: 2) == " · iPad")
-        #expect(pendingSuffix(pending(held: true), origin: nil, index: 1, of: 2).isEmpty)
-        // Its place is said only while more than one waits.
-        #expect(pendingSuffix(pending(mode: .queue), origin: nil, index: 1, of: 1).isEmpty)
-    }
-
     @Test func moreThanThreeWaitingMessagesFoldToTwo() {
-        let four = (0..<4).map { PendingInput(id: "\($0)", text: "", mode: .queue, paused: false, held: false, origin: nil) }
+        let four = (0..<4).map { n in PBSessionPendingInputView.with { $0.requestID = "\(n)" } }
         #expect(shownPending(four, expanded: false).count == 2)
         #expect(shownPending(four, expanded: true).count == 4)
         #expect(shownPending(Array(four.prefix(3)), expanded: false).count == 3)
-    }
-
-    @Test func aMessageOnItsWaySaysHowSendingStands() {
-        func note(_ state: Outgoing.State, _ input: PBInputStatus? = nil, failure: String? = nil, error: String = "原因") -> OutgoingNote {
-            outgoingNote(state: state, error: error, input: input, failure: failure, agent: .claude)
-        }
-        #expect(note(.sending) == OutgoingNote(caption: L10n.composerSending(), sending: true))
-        #expect(note(.sent) == OutgoingNote(caption: L10n.sessionDelivered()))
-        // Did not go: red, with a short reason.
-        #expect(note(.failed) == OutgoingNote(caption: "没发出去：原因", tone: .error, failed: true, actions: [.retry, .remove]))
-        #expect(note(.sent, .failed, failure: "input_changed") == OutgoingNote(
-            caption: "没发出去：无法确认终端输入框的内容", tone: .error, failed: true, actions: [.putBack]))
-        #expect(note(.sent, .failed, failure: "timeout").caption == "没发出去：等终端就绪超时")
-        #expect(note(.sent, .failed, failure: "restarted").caption == "没发出去：电脑上的 remote-agent 写入时重启了")
-        #expect(note(.sent, .failed, failure: "").caption == "没发出去：没有写进终端")
-        // May not have gone: orange, with what could be done before.
-        #expect(note(.unknown) == OutgoingNote(caption: "可能没发出去：原因", tone: .warn, failed: true, actions: [.retry, .remove]))
-        // SessionStore passes the separately captured outcome detail to the caption.
-        #expect(note(.unknown, error: "连接中途断了").caption == "可能没发出去：连接中途断了")
-        let raw = "不确定电脑有没有执行：CLI 原文"
-        #expect(note(.unknown, error: raw).caption.hasSuffix(raw))
-        #expect(note(.sent, .needsTerminal, failure: "write_failed") == OutgoingNote(
-            caption: "可能没发出去：写入终端失败", tone: .warn, failed: true, actions: [.terminal, .putBack]))
-        #expect(note(.sent, .unconfirmed) == OutgoingNote(
-            caption: "可能没发出去：已送到终端但没确认", tone: .warn, actions: [.remove]))
-        // The daemon has it queued and this client's own try was unsure: it did arrive, and nothing is drawn as failed.
-        #expect(!note(.unknown, .queued).failed)
-    }
-
-    @Test func aMessageIsShownUnderTheChatUntilTheEventsHaveIt() {
-        #expect(outgoingShown(input: nil))
-        #expect(!outgoingShown(input: .queued), "the pending bubble shows it from here")
-        #expect(!outgoingShown(input: .heldByCli))
-        // Whatever the try from here ended with, lost answer included: the CLI recorded the message.
-        #expect(!outgoingShown(input: .submitted))
-        #expect(!outgoingShown(input: .canceled))
-        #expect(outgoingShown(input: .failed))
-        #expect(outgoingShown(input: .needsTerminal))
-        #expect(outgoingShown(input: .unconfirmed))
-    }
-
-    @Test func theBoxSaysOnlyWhatTheMessageWillDo() {
-        #expect(composerPlaceholder(questionPending: false, planOpen: false) == L10n.composerMessage(), "tools starting and stopping never change it")
-        #expect(composerPlaceholder(questionPending: true, planOpen: false) == L10n.composerQueueAfterAnswer())
-        #expect(composerPlaceholder(questionPending: false, planOpen: true) == L10n.composerPlanPlaceholder())
-        #expect(composerPlaceholder(questionPending: true, planOpen: true) == L10n.composerQueueAfterAnswer())
     }
 
     @Test func sendingNeedsTextAConnectionAndAComputerThatSpeaksTheSameProtocol() {
@@ -299,125 +208,38 @@ extension Ref<LiveAnnouncer> {
         #expect(!slashWarning(""))
     }
 
-    @Test func theMenuStartsWithTheSettingsAsNameAndValue() {
-        let full = ModeLabel(text: "完全放行", mode: .full)
-        #expect(menuSettings(mode: full, model: "GPT-6", effort: "high", percent: 86) == [
-            MenuSetting(text: "审批模式", value: "完全放行", danger: true, opens: .mode),
-            MenuSetting(text: "模型", value: "GPT-6 · high", opens: .model),
-            MenuSetting(text: "上下文占用", value: "86%", warn: true, opens: .model),
-        ])
-        // A mode that could not be read has no row, a model not reported yet is 会话设置, an unknown context is left out.
-        #expect(menuSettings(mode: nil, model: "", effort: "", percent: nil) == [MenuSetting(text: L10n.sessionSettings(), value: "", opens: .model)])
-        #expect(menuSettings(mode: ModeLabel(text: L10n.modesAsk(), mode: .ask), model: "opus", effort: "", percent: 12).map(\.value) == [L10n.modesAsk(), "opus", "12%"])
-    }
-
-    @Test func theBarsSecondLineIsTheStateThenTheMode() {
-        let ask = ModeLabel(text: "询问", mode: .ask)
-        let full = ModeLabel(text: "完全放行", mode: .full)
-        #expect(sessionSubtitle(status: .running, mode: ask) == SessionSubtitle(status: L10n.listStateRunning(), mode: L10n.modesAsk(), danger: false))
-        #expect(sessionSubtitle(status: .approval, mode: full) == SessionSubtitle(status: L10n.listStateApproval(), mode: L10n.modesFullAccess(), danger: true))
-        #expect(sessionSubtitle(status: .approval, mode: full).text == "等待审批 · 完全放行")
-        #expect(sessionSubtitle(status: .exited, mode: full).text == L10n.listStateEnded())
-        #expect(sessionSubtitle(status: .starting, mode: nil).text == L10n.listStateStarting())
-        #expect(sessionSubtitle(status: .starting, mode: ask).text == "启动中 · 询问")
-        // A mode that could not be read is not written at all.
-        #expect(sessionSubtitle(status: .idle, mode: nil) == SessionSubtitle(status: L10n.listStateIdle(), mode: "", danger: false))
-        #expect(sessionSubtitle(status: .running, mode: nil).text == L10n.listStateRunning())
-        #expect(sessionSubtitle(status: .idle, mode: ModeLabel(text: "acceptEdits", mode: nil)).text == "空闲 · acceptEdits")
-        #expect(sessionSubtitle(status: .unlinked, mode: ask).text == "未连接 · 询问")
-    }
-
-    @Test func anEndedSessionSaysHowItEndedAndWhetherItCanBeResumed() {
-        #expect(endedText(detail: "stopped", unlinked: false, machineOnline: true, machine: "MacBook")
-            == "会话是被手动结束的。恢复会在 MacBook 上用同样的设置重新打开它，聊天记录都在。")
-        #expect(endedText(detail: "", unlinked: false, machineOnline: false, machine: "iMac") == "tmux 会话已经不在了。iMac 不在线，连上后才能恢复。")
-        #expect(endedText(detail: "", unlinked: true, machineOnline: true, machine: "iMac") == "tmux 会话已经不在了。连上服务器后才能恢复。")
-        #expect(offlineText(lastSeen: "").hasPrefix("可能是合盖睡眠"))
-        #expect(offlineText(lastSeen: "3 分钟前").hasPrefix("3 分钟前断开，可能是"))
-    }
-
-    @Test func anEndedSessionSaysWhenItsLoginShellCouldNotStartTheCLI() {
-        #expect(exitReason("the login shell could not find codex in PATH")
-            == "电脑上的登录 shell 没能启动 CLI（the login shell could not find codex in PATH）。请检查电脑上的 shell 配置，比如 ~/.zshrc。")
-        #expect(exitReason("the login shell did not start the CLI")
-            == "电脑上的登录 shell 没能启动 CLI（the login shell did not start the CLI）。请检查电脑上的 shell 配置，比如 ~/.zshrc。")
-        // The one the daemon ends itself: the shell may be waiting for input.
-        #expect(exitReason("the login shell did not start the CLI within 1m0s")
-            == "电脑上的登录 shell 没能启动 CLI（the login shell did not start the CLI within 1m0s），可能卡在等待输入。请检查电脑上的 shell 配置，比如 ~/.zshrc。")
-        #expect(endedText(detail: "the login shell did not start the CLI", unlinked: false, machineOnline: true, machine: "MacBook")
-            == "电脑上的登录 shell 没能启动 CLI（the login shell did not start the CLI）。请检查电脑上的 shell 配置，比如 ~/.zshrc。恢复会在 MacBook 上用同样的设置重新打开它，聊天记录都在。")
-        // Every other detail keeps the words the card had before.
-        #expect(exitReason("stopped") == L10n.sessionManuallyClosed())
-        #expect(exitReason("tmux session gone") == L10n.sessionTmuxMissing())
-    }
-
     @Test func voiceOverIsToldOfRepliesAndOfWhatWaitsButNotOfEverything() {
         let say = Ref(LiveAnnouncer())
-        let reply = { (n: Int) in ChatItem.agent(.init(key: "e\(n)", text: "好")) }
-        let approval = DockItem.approval(.with {
-            $0.approvalID = "A"
-            $0.command = "rm -rf build"
-        })
+        let reply = { (n: Int) in
+            PBSessionTimelineItem.with {
+                $0.id = "e\(n)"
+                $0.agentMessage = .with { $0.markdown = "好" }
+            }
+        }
+        let approval = PBSessionDockView.with {
+            $0.hasItem_p = true
+            $0.kind = .approval
+            $0.itemID = "A"
+            $0.title = .with { $0.literal = "Codex 请求执行命令" }
+            $0.approval = .with { $0.approvalID = "A" }
+        }
         // What is there when the page opens is not announced.
-        #expect(say.announce(last: reply(1), dock: [approval], agent: "Codex", now: 0, initial: true) == nil)
-        #expect(say.announce(last: reply(1), dock: [approval], agent: "Codex", now: 10_000, initial: false) == nil)
-        #expect(say.announce(last: reply(2), dock: [approval], agent: "Codex", now: 20_000, initial: false) == "Codex 回复了")
+        #expect(say.announce(last: reply(1), dock: approval, agent: "Codex", now: 0, initial: true) == nil)
+        #expect(say.announce(last: reply(1), dock: approval, agent: "Codex", now: 10_000, initial: false) == nil)
+        #expect(say.announce(last: reply(2), dock: approval, agent: "Codex", now: 20_000, initial: false) == "Codex 回复了")
         // A burst of replies is one announcement.
-        #expect(say.announce(last: reply(3), dock: [approval], agent: "Codex", now: 21_000, initial: false) == nil)
-        #expect(say.announce(last: .turnEnd(.init(key: "e4", text: "3 秒")), dock: [approval], agent: "Codex", now: 40_000, initial: false) == nil)
+        #expect(say.announce(last: reply(3), dock: approval, agent: "Codex", now: 21_000, initial: false) == nil)
+        let turnEnd = PBSessionTimelineItem.with { $0.id = "e4"; $0.turnEnd = .with { $0.outcome = .completed } }
+        #expect(say.announce(last: turnEnd, dock: approval, agent: "Codex", now: 40_000, initial: false) == nil)
         // Something new that needs the user is said at once.
-        let question = DockItem.question(.with { $0.questionID = "Q" })
-        #expect(say.announce(last: reply(5), dock: [approval, question], agent: "Codex", now: 41_000, initial: false) == "Codex 在问你")
-        #expect(say.announce(last: reply(5), dock: [approval, question], agent: "Codex", now: 60_000, initial: false) == nil)
-    }
-
-    @Test func theTerminalGivesWayToTheChatWhenItCannotBeShown() {
-        #expect(!terminalAvailable(.exited))
-        // The computer is away: the cached chat can still be read, the terminal cannot.
-        #expect(!terminalAvailable(.offline))
-        for status in [Status.idle, .running, .starting, .approval, .question, .plan, .popup, .unlinked, .loading] {
-            #expect(terminalAvailable(status))
+        let question = PBSessionDockView.with {
+            $0.hasItem_p = true
+            $0.kind = .question
+            $0.itemID = "Q"
+            $0.title = .with { $0.literal = "Codex 在问你" }
+            $0.question = .with { $0.questionID = "Q" }
         }
-    }
-
-    @Test func theForkActionSaysHowAForkStands() {
-        func row(blocked: String? = nil, running: Bool = false, error: String = "", frozen: Bool = false, expired: Bool = false) -> ForkAction {
-            forkAction(blocked: blocked, running: running, error: error, frozen: frozen, expired: expired)
-        }
-        #expect(row() == ForkAction(text: L10n.sessionFork(), note: "", noteError: true, enabled: true, busy: false, tap: .fork))
-        #expect(row(running: true, error: "x", frozen: true) == ForkAction(text: L10n.sessionForking(), busy: true))
-        #expect(row(blocked: L10n.sessionForkAfterTurn(), frozen: true) == ForkAction(note: L10n.sessionForkAfterTurn(), enabled: false))
-        #expect(row(error: L10n.projectsComputerOffline()) == ForkAction(note: "没能分叉：电脑不在线", noteError: true))
-        // It may have happened: the row never promises a new fork, only the same request again.
-        let unsure = row(error: "不确定电脑有没有执行", frozen: true)
-        #expect(unsure.tap == .fork && unsure.enabled && unsure.noteError)
-        #expect(unsure.note == L10n.sessionForkUnknown())
-        // Expired: it cannot be asked again, so the tap gives it up and nothing is sent.
-        let gone = row(error: "x", frozen: true, expired: true)
-        #expect(gone.text == L10n.sessionAbandonFork() && gone.tap == .abandon && gone.enabled)
-        #expect(gone.note == L10n.sessionForkExpired())
-    }
-
-    @Test func anApprovalIsHeadedByWhatItAsksFor() {
-        let command = PBApprovalRequested.with {
-            $0.command = "curl https://example.com\u{202E}"
-            $0.toolName = "Bash"
-        }
-        #expect(approvalHead(command) == L10n.listStateIosRequestCommand())
-        #expect(approvalBody(command) == "curl https://example.com\\u202e", "what a command hides is spelled out")
-        let tool = PBApprovalRequested.with {
-            $0.toolName = "WebFetch"
-            $0.toolInputJson = "{\"url\":\"https://example.com\"}"
-        }
-        #expect(approvalHead(tool) == "请求权限 · WebFetch")
-        #expect(approvalBody(tool) == "{\"url\":\"https://example.com\"}")
-    }
-
-    @Test func anApprovalsLastMinuteIsMarked() {
-        let a = PBApprovalRequested.with { $0.deadline = .with { $0.seconds = 1_000 } }
-        #expect(ApprovalDeadline(a, now: 700_000)?.text == "剩 5 分钟")
-        #expect(ApprovalDeadline(a, now: 700_000)?.last == false)
-        #expect(ApprovalDeadline(a, now: 950_000)?.last == true)
-        #expect(ApprovalDeadline(PBApprovalRequested(), now: 0) == nil)
+        #expect(say.announce(last: reply(5), dock: question, agent: "Codex", now: 41_000, initial: false) == "Codex 在问你")
+        #expect(say.announce(last: reply(5), dock: question, agent: "Codex", now: 60_000, initial: false) == nil)
     }
 }

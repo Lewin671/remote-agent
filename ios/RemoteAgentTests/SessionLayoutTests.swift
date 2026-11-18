@@ -60,12 +60,14 @@ import UIKit
     }
 
     private func dock(more: Int, size: DynamicTypeSize, brief: String, open: Bool = false, note: String = "", title: String? = nil) -> some View {
-        let question = PBQuestionAsked.with {
-            $0.questionID = "Q"
-            $0.questions = [.with { $0.text = brief }]
-        }
-        return PendingDock(
-            .question(question), agent: "Claude Code", more: more, title: title, note: DockNote(text: note), open: .constant(open), onOpen: {}
+        PendingDock(
+            label: L10n.listStateAgentAsking(agent: "Claude Code"),
+            brief: brief,
+            openTitle: title,
+            more: more,
+            note: DockNote(text: note),
+            open: .constant(open),
+            onOpen: {}
         ) {
             EmptyView()
         } actions: {
@@ -152,9 +154,7 @@ import UIKit
     @Test func questionProgressAndTerminalLinkGrowWhenEnglishNeedsAnotherLine() async throws {
         // SwiftUI renders outside the caller's TaskLocal context: pass the fixed title/note explicitly.
         let title = L10n.listStateAgentAsking(agent: "Claude Code", locale: "en")
-        let progress = MessageLocale.$overrideForTesting.withValue("en") {
-            questionProgress(count: 2, at: 0, multi: false)
-        }
+        let progress = "Question 1 of 2"
         let narrow = try await fitted(dock(more: 0, size: .large, brief: "", open: true, note: progress, title: title), width: 320, settle: true)
         let wide = try await fitted(dock(more: 0, size: .large, brief: "", open: true, note: progress, title: title), width: 600, settle: true)
         #expect(narrow.width <= 320.5 && narrow.height > wide.height + 1)
