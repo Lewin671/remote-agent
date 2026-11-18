@@ -1399,25 +1399,6 @@
     }
   },
   {
-    "key": "settings.ios_default_s_own_configuration",
-    "zh-CN": "默认（{value} 自己的配置）",
-    "en": "Default ({value}’s own configuration)",
-    "notes": "iOS MachineScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。变量来源：value = Swift 插值 agentName(agent)；用户内容和系统/CLI 原文不翻译。",
-    "params": {
-      "value": {
-        "type": "string",
-        "example": "Example"
-      }
-    },
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
     "key": "settings.ios_delete_entire_account",
     "zh-CN": "删除整个账户…",
     "en": "Delete entire account…",
@@ -1633,20 +1614,6 @@
     }
   },
   {
-    "key": "settings.ios_names_sync_encrypted_to_other_clients_the_server_cannot",
-    "zh-CN": "名称加密后同步到其他客户端，服务器看不到。",
-    "en": "Names sync encrypted to other clients. The server cannot read them.",
-    "notes": "iOS ClientScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
     "key": "settings.ios_no_computers_yet",
     "zh-CN": "还没有电脑",
     "en": "No computers yet",
@@ -1801,38 +1768,10 @@
     }
   },
   {
-    "key": "settings.ios_system",
-    "zh-CN": "系统",
-    "en": "System",
-    "notes": "iOS MachineScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
     "key": "settings.ios_the_android_app_and_home_screen_web_app_can",
     "zh-CN": "Android App 和添加到主屏幕的网页可以在各自的设置里开启提醒",
     "en": "The Android app and home screen web app can enable alerts in their own settings",
     "notes": "iOS NotificationsScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "settings.ios_the_computer_may_be_asleep_offline_or_not_running",
-    "zh-CN": "可能是合盖睡眠、断网，或 remote-agent 没在运行。电脑上的会话可能还在跑，重新连上后这里会自动更新。",
-    "en": "The computer may be asleep, offline, or not running remote-agent. Sessions may still be running. This page updates automatically after reconnecting.",
-    "notes": "iOS MachineScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
     "params": {},
     "platforms": [
       "ios"
@@ -1875,20 +1814,6 @@
     "zh-CN": "这些是 connect-swift 和 SwiftTerm 的可选部分用到的库，没有编进这个 App；许可证一并附上。",
     "en": "These libraries are used by optional parts of connect-swift and SwiftTerm and are not compiled into this app. Their licenses are included.",
     "notes": "iOS LicensesScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "settings.ios_this_change_was_not_saved_the_computer_still_has",
-    "zh-CN": "这次修改没有保存上，电脑上还是原来的设置",
-    "en": "This change was not saved. The computer still has its previous settings.",
-    "notes": "iOS MachineSettingsModel.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
     "params": {},
     "platforms": [
       "ios"
@@ -2030,25 +1955,6 @@
     "en": "Version",
     "notes": "iOS SettingsScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
     "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "settings.ios_when_unspecified_uses",
-    "zh-CN": "不指定时实际用：{value}",
-    "en": "When unspecified, uses: {value}",
-    "notes": "iOS DefaultModeSheet.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。变量来源：value = Swift 插值 modeLabel(chosen: nil, default: effective, agent: agent, includeDefault: false)；用户内容和系统/CLI 原文不翻译。",
-    "params": {
-      "value": {
-        "type": "string",
-        "example": "Example"
-      }
-    },
     "platforms": [
       "ios"
     ],

@@ -411,20 +411,6 @@
     }
   },
   {
-    "key": "transport.status_measuring",
-    "zh-CN": "直连已连上，正在测速",
-    "en": "Direct connected, measuring speed",
-    "notes": "仅 iOS 旧占位视图保留，Web/Android 已改为直连优先并移除。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
     "key": "transport.status_relay",
     "zh-CN": "正在用中继",
     "en": "Using relay",

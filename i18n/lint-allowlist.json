@@ -3978,5 +3978,20 @@
     "path": "web/src/views/Settings.tsx",
     "literal": "c.minutes === vm.selectedIdleCloseMinutes); const storage = vm.attachmentStorage, name = vm.name || id; return (",
     "reason": "Lexical JSX scanner false positive: TypeScript type arguments or code between angle brackets, not rendered text."
+  },
+  {
+    "path": "ios/RemoteAgent/UI/Settings/DevicesScreen.swift",
+    "literal": "plus",
+    "reason": "SF Symbol system image name for add-device row icon, never rendered as text."
+  },
+  {
+    "path": "ios/RemoteAgent/UI/Settings/SettingsScreen.swift",
+    "literal": "plus",
+    "reason": "SF Symbol system image name for add-device row icon, never rendered as text."
+  },
+  {
+    "path": "ios/RemoteAgent/UI/Settings/SettingsShared.swift",
+    "literal": "浏览器",
+    "reason": "Non-displayed client description keyword match used solely to pick the globe SF Symbol."
   }
 ]
