@@ -5,7 +5,7 @@ import Testing
 @testable import RACore
 
 /// Android's core OrderTest.
-@Suite struct OrderTests {
+@Suite(.timeLimit(.minutes(2))) struct OrderTests {
     private func s(_ id: String, _ created: Int64, _ updated: Int64, _ extra: (inout PBSession) -> Void = { _ in }) -> SessionView {
         Mk.session(id, updatedMs: updated) {
             $0.createdAt = Mk.ts(created)

@@ -6,7 +6,7 @@ import Testing
 @testable import RACore
 
 /// The Go vectors, checked in Swift.
-@Suite struct VectorsTests {
+@Suite(.timeLimit(.minutes(2))) struct VectorsTests {
     let v: [String: Any]
 
     init() throws { v = try loadJSON("internal/e2e/testdata/vectors.json") }
@@ -140,7 +140,7 @@ import Testing
 }
 
 /// The vectors Kotlin made, which Go and TypeScript also check.
-@Suite struct KotlinVectorsTests {
+@Suite(.timeLimit(.minutes(2))) struct KotlinVectorsTests {
     let v: [String: Any]
 
     init() throws { v = try loadJSON("internal/e2e/testdata/kotlin-vectors.json") }

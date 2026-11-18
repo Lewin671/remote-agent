@@ -47,7 +47,7 @@ private actor FileReceiver: UploadChannel {
     }
 }
 
-@MainActor @Suite struct FilesTests {
+@MainActor @Suite(.timeLimit(.minutes(2))) struct FilesTests {
     private func source(_ count: Int = 0, name: String = "report.csv") throws -> (URL, PickedFile) {
         let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)

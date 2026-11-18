@@ -34,7 +34,7 @@ private final class GuardedLinkStorage: DeviceSecurity.Storage, Sendable {
 }
 
 extension ServerTests {
-    @Suite struct LinkTests {
+    @Suite(.timeLimit(.minutes(2))) struct LinkTests {
         @Test func linkProjectionControlsCommandsAndProjectGates() async throws {
             try await World.run(setUp: { w in
                 await w.daemon.setAnswer { _, _ in .with { $0.createSession.session.id = "created" } }
@@ -85,7 +85,7 @@ extension ServerTests {
     }
 }
 
-@Suite struct LinkStreamTests {
+@Suite(.timeLimit(.minutes(2))) struct LinkStreamTests {
     private static let parkedSleep: Sleeper = { _ in
         try await Task.sleep(for: .seconds(3600))
     }

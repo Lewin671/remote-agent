@@ -40,7 +40,7 @@ final class MemoryFiles: SealedFiles, @unchecked Sendable {
 }
 
 /// Android's app AttachmentsTest.
-@MainActor @Suite struct AttachmentsTests {
+@MainActor @Suite(.timeLimit(.minutes(2))) struct AttachmentsTests {
     private func img(_ id: String) -> PendingImage {
         let i = PendingImage(id: id, uri: "content://picker/\(id)")
         i.processed = Processed(bytes: Data([1, 2, UInt8(id.count)]), format: .jpeg, width: 10, height: 20)

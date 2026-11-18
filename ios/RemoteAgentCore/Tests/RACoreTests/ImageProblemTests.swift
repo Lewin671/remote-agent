@@ -3,7 +3,7 @@ import RAProto
 import Testing
 @testable import RACore
 
-@Suite struct ImageProblemTests {
+@Suite(.timeLimit(.minutes(2))) struct ImageProblemTests {
     @Test func permanentRefusalsAndRecoverableUploadsHaveSafeExplanations() {
         #expect(rawImageProblem("原图超过20 MB").message == L10n.imageImageExceeds20MbTurnOffOriginalAndSend())
         #expect(!rawImageProblem("the image does not decode").retryable)

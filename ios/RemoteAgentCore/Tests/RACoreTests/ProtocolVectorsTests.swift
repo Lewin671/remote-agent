@@ -7,7 +7,7 @@ import Testing
 /// The reviewed protocol-10 vectors: a recovery boundary and an eight-state
 /// chain with a fork, a tampered replay, accumulated tombstone and a
 /// `RecoveryEd` rotation.
-@Suite struct ProtocolVectorsTests {
+@Suite(.timeLimit(.minutes(2))) struct ProtocolVectorsTests {
     typealias S = DeviceSecurity
     func state(_ value: Any) throws -> S.State {
         guard let o = value as? [String: Any], let raw = Data(base64Encoded: o.s("state")) else {

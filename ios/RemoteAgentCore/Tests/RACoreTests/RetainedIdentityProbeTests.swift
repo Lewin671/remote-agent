@@ -4,7 +4,7 @@ import Testing
 
 @testable import RACore
 
-@Suite struct RetainedIdentityProbeTests {
+@Suite(.timeLimit(.minutes(2))) struct RetainedIdentityProbeTests {
     @Test func aForgottenChallengeGetsOneFreshLoginBeforeDenial() async {
         for deniedAgain in [false, true] {
             let attempts = Counter()

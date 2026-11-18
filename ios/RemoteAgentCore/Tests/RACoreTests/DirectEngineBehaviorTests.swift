@@ -5,7 +5,7 @@ import Testing
 
 final class Flag: @unchecked Sendable { private let l = NSLock(); private var v = false; func set() { l.withLock { v = true } }; var isSet: Bool { l.withLock { v } } }
 
-@Suite struct DirectEngineBehaviorTests {
+@Suite(.timeLimit(.minutes(2))) struct DirectEngineBehaviorTests {
     func waitConnected(_ rig: EngineRig) async {
         await rig.waitForState {
             rig.engine.status(rig.machineId).state == .connected &&

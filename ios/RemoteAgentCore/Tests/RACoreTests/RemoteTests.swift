@@ -4,10 +4,10 @@ import Testing
 
 @testable import RACore
 
-@Suite(.enabled(if: GoServer.available, GoServer.missing))
+@Suite(.enabled(if: GoServer.available, GoServer.missing), .timeLimit(.minutes(2)))
 struct ServerTests {}
 
-@Suite(.enabled(if: GoServer.available, GoServer.missing))
+@Suite(.enabled(if: GoServer.available, GoServer.missing), .timeLimit(.minutes(2)))
 struct SyncServerTests {}
 
 /// Independent worlds overlap network waits, with at most four pairs of Go
@@ -170,7 +170,7 @@ private extension Remote {
 
 extension SyncServerTests {
     /// Executor I/O, security gate, terminal streaming, pairing, and image/ping tests against Go test server.
-    @Suite struct RemoteTests {
+    @Suite(.timeLimit(.minutes(2))) struct RemoteTests {
         private func world(_ body: (World) async throws -> Void) async throws {
             try await World.run(
                 setUp: { w in

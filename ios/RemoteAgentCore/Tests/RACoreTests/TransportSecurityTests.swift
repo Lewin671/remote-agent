@@ -59,7 +59,7 @@ private final class PingGate: @unchecked Sendable {
     }
 }
 
-@Suite struct TransportSecurityTests {
+@Suite(.timeLimit(.minutes(2))) struct TransportSecurityTests {
     /// A server that answers every request with a redirect to itself, and counts the requests it got.
     private func redirector() throws -> (Listener, Counter) {
         let listener = try Listener()

@@ -4,7 +4,7 @@ import Testing
 
 @testable import RACore
 
-@Suite struct PrefsTests {
+@Suite(.timeLimit(.minutes(2))) struct PrefsTests {
     private func set(_ agent: PBAgent, _ model: String = "", _ mode: PBApprovalMode = .unspecified) -> PBAgentSettings {
         var s = PBAgentSettings()
         s.agent = agent

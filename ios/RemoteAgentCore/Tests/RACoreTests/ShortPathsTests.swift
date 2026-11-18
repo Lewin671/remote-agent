@@ -5,7 +5,7 @@ import Testing
 
 /// The cases of "paths in tool titles" in web/src/model.test.ts, one for one
 /// (copied from there by way of Android's ShortPathsTest): the clients must show the same.
-@Suite struct ShortPathsTests {
+@Suite(.timeLimit(.minutes(2))) struct ShortPathsTests {
     // title, cwd, home, shown
     private let cases: [[String]] = [
         ["/Users/me/Code/foo/auth/login.go", "/Users/me/Code/foo", "/Users/me", "auth/login.go"],

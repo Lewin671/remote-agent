@@ -108,7 +108,7 @@ final class SessionPair: @unchecked Sendable {
     }
 }
 
-@Suite struct DirectSessionTests {
+@Suite(.timeLimit(.minutes(2))) struct DirectSessionTests {
     @Test func handshakeOpensBothUsesAndCarriesAFragmentedMessage() async throws {
         let pair = try SessionPair()
         defer { pair.close() }

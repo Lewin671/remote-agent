@@ -26,7 +26,7 @@ private final class DelayedTerminalSocket: TerminalSocket, Sendable {
     func close() {}
 }
 
-@Suite struct TerminalSendTests {
+@Suite(.timeLimit(.minutes(2))) struct TerminalSendTests {
     private var input: PBTerminalFrame { .with { $0.input = Data([1]) } }
 
     @Test func delayedSendKeepsEncodedBytesReserved() async throws {

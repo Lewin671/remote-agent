@@ -5,7 +5,7 @@ import Testing
 @testable import RACore
 
 /// Android's app ProjectTest.
-@Suite struct ProjectTests {
+@Suite(.timeLimit(.minutes(2))) struct ProjectTests {
     @Test func defaultModelResolvesSupportedEffortsWithoutPinningTheModel() {
         let models = PBListModelsResponse.with {
             $0.defaultModel = "fallback"
@@ -307,7 +307,7 @@ import Testing
 }
 
 /// Android's SwitchTest (in ProjectTest.kt).
-@Suite struct SwitchTests {
+@Suite(.timeLimit(.minutes(2))) struct SwitchTests {
     private let c = NewConfig(machineId: "mac", cwd: "/p", agent: .codex, model: "gpt-6-astra", effort: "medium", mode: .auto)
 
     @Test func anotherCliTakesTheProjectsSetForIt() {

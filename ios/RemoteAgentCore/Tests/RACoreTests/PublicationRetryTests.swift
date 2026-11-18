@@ -1,7 +1,7 @@
 import Testing
 @testable import RACore
 
-@Suite struct PublicationRetryTests {
+@Suite(.timeLimit(.minutes(2))) struct PublicationRetryTests {
     @Test func exhaustedCASRemainsPendingAndCanFinishOnTheNextPoll() async throws {
         let calls = Counter()
         await #expect(throws: CommandError.self) {

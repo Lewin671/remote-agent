@@ -4,7 +4,7 @@ import Testing
 
 @testable import RACore
 
-@Suite struct AgentsTests {
+@Suite(.timeLimit(.minutes(2))) struct AgentsTests {
     @Test func listsKnownClisInStableOrder() {
         #expect(AGENTS.map(\.id) == ["codex", "claude", "agy"])
         #expect(AGENTS.map(\.agent) == [.codex, .claude, .antigravity])

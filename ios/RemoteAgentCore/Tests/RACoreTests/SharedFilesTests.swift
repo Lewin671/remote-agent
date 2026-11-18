@@ -5,7 +5,7 @@ import Testing
 @testable import RACore
 
 /// What a card says and does, by state; the blocks' arithmetic against the vectors Go, the web and Android share.
-@Suite struct SharedFilesTests {
+@Suite(.timeLimit(.minutes(2))) struct SharedFilesTests {
     private func zh<T>(_ body: () -> T) -> T { MessageLocale.$overrideForTesting.withValue("zh-CN", operation: body) }
     private func en<T>(_ body: () -> T) -> T { MessageLocale.$overrideForTesting.withValue("en", operation: body) }
 

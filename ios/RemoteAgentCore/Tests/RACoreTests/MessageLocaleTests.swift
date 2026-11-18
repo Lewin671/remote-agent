@@ -2,7 +2,7 @@ import Foundation
 import Testing
 @testable import RACore
 
-@Suite struct MessageLocaleTests {
+@Suite(.timeLimit(.minutes(2))) struct MessageLocaleTests {
     @Test func sharedLanguageContract() throws {
         struct Vector: Decodable { let preference: String; let system: [String]; let expected: String }
         let vectors = try JSONDecoder().decode([Vector].self, from: Data(contentsOf: repoRoot.appendingPathComponent("i18n/locale-vectors.json")))

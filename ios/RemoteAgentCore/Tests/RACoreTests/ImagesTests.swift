@@ -106,7 +106,7 @@ private func tiff(_ orientation: UInt8) -> Data {
 private let exifHeader = Data("Exif\0\0".utf8)
 
 /// Android's core ImagesTest.
-@Suite struct ImagesTests {
+@Suite(.timeLimit(.minutes(2))) struct ImagesTests {
     private func withSegment(_ jpeg: Data, _ marker: UInt8, _ payload: Data) -> Data {
         jpeg.prefix(2) + seg(marker, payload) + jpeg.dropFirst(2)
     }
@@ -350,7 +350,7 @@ private let exifHeader = Data("Exif\0\0".utf8)
 }
 
 /// Android's UploadTest (in ImagesTest.kt).
-@Suite struct UploadTests {
+@Suite(.timeLimit(.minutes(2))) struct UploadTests {
     private struct Refused: UploadFailure {
         let code: String
         let message: String
@@ -488,7 +488,7 @@ private let exifHeader = Data("Exif\0\0".utf8)
 }
 
 /// Android's SessionImagesTest (in ImagesTest.kt).
-@Suite struct SessionImagesTests {
+@Suite(.timeLimit(.minutes(2))) struct SessionImagesTests {
     private func ref(_ n: Int32, _ id: String? = nil) -> PBImageRef { .with { $0.imageID = id ?? "i\(n)"; $0.cliIndex = n } }
 
     @Test func placeholdersBecomeNumbersAndLeadingOnesGo() {
@@ -513,7 +513,7 @@ private let exifHeader = Data("Exif\0\0".utf8)
 }
 
 /// Android's JpegAfterScanTest (in ImagesTest.kt).
-@Suite struct JpegAfterScanTests {
+@Suite(.timeLimit(.minutes(2))) struct JpegAfterScanTests {
     /// The bytes with `extra` put right before EOI.
     private func beforeEoi(_ j: Data, _ extra: Data) -> Data { j.dropLast(2) + extra + j.suffix(2) }
 
@@ -551,7 +551,7 @@ private let exifHeader = Data("Exif\0\0".utf8)
 }
 
 /// Android's DecodeBudgetTest (in ImagesTest.kt).
-@Suite struct DecodeBudgetTests {
+@Suite(.timeLimit(.minutes(2))) struct DecodeBudgetTests {
     @Test func aHugePictureIsDecodedWithinTheBudget() throws {
         // A 200 MP panorama as an original: never decoded whole.
         let s = try decodeSample(w: 20_000, h: 10_000, minLong: 0, pixelBudget: maxDecodePixels)

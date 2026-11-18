@@ -127,7 +127,7 @@ private struct FileMachineChannel: UploadChannel {
     func complete(transferId: String) async throws -> PBImageUploadStatus { try await server.complete(machine, transferId) }
     func abort(transferId: String) async throws { await server.abort(machine, transferId) }
 }
-@MainActor @Suite struct FileLifecycleTests {
+@MainActor @Suite(.timeLimit(.minutes(2))) struct FileLifecycleTests {
     private func picked() throws -> (URL, PendingImage) {
         let url = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".txt")
         try Data(repeating: 65, count: 8192).write(to: url)

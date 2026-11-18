@@ -5,7 +5,7 @@ import Testing
 @testable import RACore
 
 /// The Go envelope vector of protocol 10 (internal/e2e/testdata/v3-vectors.json).
-@Suite struct V3VectorsTests {
+@Suite(.timeLimit(.minutes(2))) struct V3VectorsTests {
     let v: [String: Any]
     init() throws { v = try loadJSON("internal/e2e/testdata/v3-vectors.json") }
 

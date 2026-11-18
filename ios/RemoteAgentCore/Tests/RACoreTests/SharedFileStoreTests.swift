@@ -92,7 +92,7 @@ private final class Ticker: @unchecked Sendable {
     var isOnline: Bool { lock.withLock { now >= onlineAfter } }
 }
 
-@Suite struct SharedFileStoreTests {
+@Suite(.timeLimit(.minutes(2))) struct SharedFileStoreTests {
     private let block = 1000
     private func pattern(_ n: Int) -> Data { Data((0..<n).map { UInt8($0 % 251) }) }
     private func file(_ content: Data, id: String = "f1", name: String = "clip.mp4") -> PBSharedFile {

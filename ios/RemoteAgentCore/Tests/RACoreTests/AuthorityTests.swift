@@ -37,7 +37,7 @@ private struct AuthorityVector: Codable {
   var ApprovalSignature: Data
   var RecoveryCode: String
 }
-@Suite struct AuthorityTests {
+@Suite(.timeLimit(.minutes(2))) struct AuthorityTests {
   typealias S = DeviceSecurity
   let now: Int64 = 1_700_000_000_000
   func fill(_ b: UInt8, _ n: Int = 32) -> Data { Data(repeating: b, count: n) }
@@ -260,7 +260,7 @@ private struct AuthorityVector: Codable {
   }
 }
 
-@Suite struct AccountPublicProfileTests {
+@Suite(.timeLimit(.minutes(2))) struct AccountPublicProfileTests {
   typealias S = DeviceSecurity
   @Test func creationAndRecoveryValidateAccountAndGenesisWithoutChangingExistingRecords() throws {
     let root = Data(repeating: 31, count: 32)

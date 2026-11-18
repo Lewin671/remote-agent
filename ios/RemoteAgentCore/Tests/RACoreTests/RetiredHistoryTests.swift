@@ -77,7 +77,7 @@ extension ServerTests {
     }
 }
 
-@Suite struct RetiredHistoryTests {
+@Suite(.timeLimit(.minutes(2))) struct RetiredHistoryTests {
     @Test func oldRecordKindsHaveIdenticalErrors() throws {
         for kind: PBPayloadKind in [.sessionKey, .sessionMeta, .event, .image] {
             var header = PBHeader(); header.version = 1; header.kind = kind

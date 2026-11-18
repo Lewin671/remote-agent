@@ -6,7 +6,7 @@ import Testing
 /// The real SDK, in one process, no network beyond loopback: two peer connections with the two
 /// negotiated channels (id 0 reliable, id 1 unreliable), no STUN, candidates handed across by hand.
 /// This is the adapter's own check; every behavior rule is tested against the fake SDK in RACore.
-@Suite(.serialized) struct WebRtcLoopbackTests {
+@Suite(.serialized, .timeLimit(.minutes(2))) struct WebRtcLoopbackTests {
     final class Side: RtcPeerListener, RtcDataChannelListener, @unchecked Sendable {
         let lock = NSLock()
         var candidates: [RtcIceCandidate] = []

@@ -5,7 +5,7 @@ import Testing
 @testable import RACore
 
 /// Android's term/KeysTest.
-@Suite struct TerminalKeysTests {
+@Suite(.timeLimit(.minutes(2))) struct TerminalKeysTests {
     /// A snapshot of that size arrives; whether it changed without this screen asking.
     private func snapshot(_ f: inout FitTracker, _ size: TerminalSize) -> Bool { f.onSnapshot(size) }
 
@@ -65,7 +65,7 @@ import Testing
 }
 
 /// Android's term/RedactTest.
-@Suite struct TerminalRedactTests {
+@Suite(.timeLimit(.minutes(2))) struct TerminalRedactTests {
     @Test func logsOnlyTheSize() {
         let m = "OSC Manipulate selection, invalid string 'sk-secret-token"
         let out = terminalLogRedact(m)
@@ -82,7 +82,7 @@ import Testing
 }
 
 /// Android's term/TerminalFramesTest.
-@Suite struct TerminalFramesTests {
+@Suite(.timeLimit(.minutes(2))) struct TerminalFramesTests {
     private func output(_ text: String) -> PBTerminalFrame {
         .with { $0.output = Data(text.utf8) }
     }
@@ -188,7 +188,7 @@ import Testing
 }
 
 /// Android's term/TerminalGeometryTest.
-@Suite struct TerminalGeometryTests {
+@Suite(.timeLimit(.minutes(2))) struct TerminalGeometryTests {
     @Test func capacityAccountsForRoundedRowsAndInitialBaseline() {
         let g = TerminalGeometry(cellWidth: 18.5, lineHeight: 45, topOffset: 8)
         let size = g.capacity(width: 1059, height: 1673)
@@ -245,7 +245,7 @@ import Testing
 
 /// The direction of a drag on the live screen (architecture §11 「尺寸」): the
 /// dominant axis decides, a downward pull reads, an upward one does nothing.
-@Suite struct TerminalDragTests {
+@Suite(.timeLimit(.minutes(2))) struct TerminalDragTests {
     @Test func theDominantAxisDecides() {
         // Sideways, either way: the screen is panned, and the remote is untouched.
         #expect(terminalDrag(dx: 40, dy: 3) == .pan)
@@ -270,7 +270,7 @@ import Testing
     }
 }
 
-@Suite struct TerminalStringFilterTests {
+@Suite(.timeLimit(.minutes(2))) struct TerminalStringFilterTests {
     private func run(_ frames: [[UInt8]]) -> [UInt8] {
         var f = TerminalStringFilter()
         return frames.flatMap { [UInt8](f.take(Data($0))) }

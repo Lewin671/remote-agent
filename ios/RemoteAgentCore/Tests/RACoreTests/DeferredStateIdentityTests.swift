@@ -3,7 +3,7 @@ import RAProto
 import Testing
 @testable import RACore
 
-@Suite struct DeferredStateIdentityTests {
+@Suite(.timeLimit(.minutes(2))) struct DeferredStateIdentityTests {
     @Test func errorEqualityUsesIdentityNotRenderedText() {
         let a = UserError(L10nMessage.commonSave()), b = UserError(L10nMessage.commonSave())
         let raw = UserError("保存")

@@ -6,7 +6,7 @@ import Testing
 @testable import RACore
 
 /// What the project screens decide before drawing: the list of projects, a new one's folder, the new-session box and 项目设置.
-@Suite struct ProjectRowsTests {
+@Suite(.timeLimit(.minutes(2))) struct ProjectRowsTests {
     private let now: Int64 = 1_791_000_000_000
     private func ts(_ ms: Int64) -> Google_Protobuf_Timestamp { .with { $0.seconds = ms / 1000 } }
 

@@ -3,7 +3,7 @@ import RAProto
 import Testing
 @testable import RACore
 
-@Test func goApprovalAndCandidateIdentitySas() throws {
+@Test(.timeLimit(.minutes(2))) func goApprovalAndCandidateIdentitySas() throws {
     let v = try loadJSON("internal/e2e/testdata/pair-approval-vectors.json")
     let e = Enrollment(seed: v.bytes("candidate_seed"), pairingId: v.s("pairing_id"), approval: v.bytes("approval"), signature: v.bytes("signature"))
     try verifyPairApproval(e, root: v.bytes("root"), kind: .client, now: 0)

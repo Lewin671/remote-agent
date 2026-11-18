@@ -5,7 +5,7 @@ import Testing
 @testable import RACore
 
 /// Android's app AccountCacheTest.
-@Suite struct AccountCacheTests {
+@Suite(.timeLimit(.minutes(2))) struct AccountCacheTests {
     @Test func reusedImageIdsAndLateLoadsCannotCrossAccounts() {
         let cache = AccountCache<String>(limit: 6)
         let old = NSObject()
@@ -40,7 +40,7 @@ import Testing
 }
 
 /// Android's app FollowTest.
-@Suite struct FollowTests {
+@Suite(.timeLimit(.minutes(2))) struct FollowTests {
     @Test func onlyTheUserStopsFollowing() {
         var f = Follow()
         // Opening a long history: the app's own jump ends before the list
@@ -58,7 +58,7 @@ import Testing
 }
 
 /// Words the screens share; Android has no tests of these.
-@Suite struct CommonTests {
+@Suite(.timeLimit(.minutes(2))) struct CommonTests {
     @Test func theLinkAndThePreferencesAreSaidInAWord() {
         var st = RemoteState()
         #expect(connWord(st) == L10n.connectionConnectingConnCheck())
@@ -81,7 +81,7 @@ import Testing
     }
 }
 
-@Test func popupDiagnosticsNeverBecomeUserCopy() {
+@Test(.timeLimit(.minutes(2))) func popupDiagnosticsNeverBecomeUserCopy() {
     for detail in ["trust folder", "hooks need review", "update available", "approval", "permission", "model menu", "model picker", "question", "plan", "permissions menu", "bypass warning", "menu", "artifacts", "unknown panel", "Native unrecognized panel"] {
         var session = SessionView(id: "popup-test", machineId: "machine")
         session.info = .with { $0.status = .blocked; $0.statusDetail = detail }

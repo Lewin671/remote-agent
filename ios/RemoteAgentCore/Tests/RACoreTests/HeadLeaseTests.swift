@@ -3,7 +3,7 @@ import Testing
 
 @testable import RACore
 
-struct HeadLeaseTests {
+@Suite(.timeLimit(.minutes(2))) struct HeadLeaseTests {
   @Test func sharedIndependentLeaseCertificates() throws {
     let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
       .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()

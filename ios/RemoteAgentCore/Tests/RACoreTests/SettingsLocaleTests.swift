@@ -3,7 +3,7 @@ import RAProto
 import Testing
 @testable import RACore
 
-@Suite struct SettingsLocaleTests {
+@Suite(.timeLimit(.minutes(2))) struct SettingsLocaleTests {
     @Test func localErrorsRetainMessagesUntilDisplayAndRawDetailsStayRaw() {
         let raw = "CLI 原因 % & \"quoted\""
         let failure = UserError(L10nMessage.settingsSaveError(reason: raw))

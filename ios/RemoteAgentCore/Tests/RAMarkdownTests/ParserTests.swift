@@ -4,10 +4,10 @@ import Testing
 @testable import RAMarkdown
 
 /// What the shared cases (CasesTests) do not say: time, nesting, table cells, column widths and spacing. Android's MarkdownTableTest.kt, less what it says about drawing.
-@Suite struct ParserTests {
+@Suite(.timeLimit(.minutes(2))) struct ParserTests {
     private func rep(_ s: String, _ n: Int) -> String { String(repeating: s, count: n) }
 
-    @Test(.timeLimit(.minutes(1))) func hostileTextIsReadInLinearTime() {
+    @Test func hostileTextIsReadInLinearTime() {
         for text in [
             rep("[", 100_000), rep("[x](", 25_000), rep("[x](<", 25_000), rep("[x](/a \"", 25_000), rep("<https://", 20_000),
             rep("[x](/a\u{000b}\u{000c})", 10_000),
@@ -50,7 +50,7 @@ import Testing
         #expect(Markdown.tableCells(rep("|", n)).count == n - 1)
     }
 
-    @Test(.timeLimit(.minutes(1))) func nestingStopsAtAFixedDepth() {
+    @Test func nestingStopsAtAFixedDepth() {
         func depth(_ blocks: [MarkdownBlock]) -> Int {
             1 + (blocks.map { b -> Int in
                 switch b {

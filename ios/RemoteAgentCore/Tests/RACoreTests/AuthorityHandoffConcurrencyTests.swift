@@ -4,7 +4,7 @@ import Testing
 
 @testable import RACore
 
-@Suite(.enabled(if: GoServer.available, GoServer.missing))
+@Suite(.enabled(if: GoServer.available, GoServer.missing), .timeLimit(.minutes(2)))
 struct AuthorityHandoffConcurrencyTests {
     @Test func discardCannotDeleteAnOfferWhileItsPublicationIsInFlight() async throws {
         let server = try await TestServer(); defer { server.close() }

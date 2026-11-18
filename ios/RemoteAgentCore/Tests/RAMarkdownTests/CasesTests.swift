@@ -15,7 +15,7 @@ private let repoRoot: URL = {
 /// (markdown.cases.test.ts) and Android (MarkdownCasesTest.kt) run the same
 /// file, so a change there changes all three or fails one. The trees are
 /// compared in the shape the file has them.
-@Suite struct CasesTests {
+@Suite(.timeLimit(.minutes(2))) struct CasesTests {
     let cases: [String: Any]
 
     init() throws {

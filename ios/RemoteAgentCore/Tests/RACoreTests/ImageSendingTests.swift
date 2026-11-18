@@ -105,7 +105,7 @@ private final class FakeSources: @unchecked Sendable {
 }
 
 /// Android's `ImageDraft` jobs: prepare, send, send again (ui/ImageDrafts.kt).
-@MainActor @Suite struct ImageSendingTests {
+@MainActor @Suite(.timeLimit(.minutes(2))) struct ImageSendingTests {
     private let machines = FakeMachines()
     private let sources = FakeSources()
     private let files = MemoryFiles()

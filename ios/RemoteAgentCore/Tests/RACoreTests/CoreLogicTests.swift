@@ -5,14 +5,14 @@ import Testing
 
 @testable import RACore
 
-@Suite struct PingTests {
+@Suite(.timeLimit(.minutes(2))) struct PingTests {
     @Test func oneSlowSampleDoesNotMakeTheLineSlow() {
         #expect(median([900, 80, 95]) == 95)
         #expect(median([70]) == 70)
     }
 }
 
-@Suite struct ErrorTextTests {
+@Suite(.timeLimit(.minutes(2))) struct ErrorTextTests {
     @Test func aRequestThatNeverLeftThePhoneNamesTheNetworkNotTheResolver() {
         let cause = URLError(.cannotFindHost)
         let e = ConnectError(code: .unknown, message: cause.localizedDescription, exception: cause)
@@ -74,7 +74,7 @@ import Testing
     }
 }
 
-@Suite struct PagedListTests {
+@Suite(.timeLimit(.minutes(2))) struct PagedListTests {
     @Test func appendsAcrossPageBoundariesWithoutMutatingPublishedSnapshots() {
         let values = Array(0..<1100)
         var list = PagedList<Int>()
@@ -136,7 +136,7 @@ import Testing
     }
 }
 
-@Suite struct PairLinkSecurityTests {
+@Suite(.timeLimit(.minutes(2))) struct PairLinkSecurityTests {
     @Test func rejectsMalformedQrWithoutThrowing() {
         for query in [
             "code=12345678&s=%", "code=12345678&s=%GG",
@@ -170,7 +170,7 @@ import Testing
 }
 
 /// The fixed state that layout tests and screenshots render, without a server.
-@Suite struct ShowForTestTests {
+@Suite(.timeLimit(.minutes(2))) struct ShowForTestTests {
     @Test func showsStateAndHistoryWithoutFetching() async throws {
         let remote = try fixtureRemote(
             account: Account(
@@ -193,7 +193,7 @@ import Testing
     }
 }
 
-@Suite struct LoginDenialTests {
+@Suite(.timeLimit(.minutes(2))) struct LoginDenialTests {
     @Test func translatesOnlyLoginDenialAndKeepsOfflineSeparate() {
         let denied = ConnectError(code: .permissionDenied, message: "login failed")
         #expect(loginDenied(denied))

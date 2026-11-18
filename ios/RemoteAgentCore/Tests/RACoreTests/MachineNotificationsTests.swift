@@ -2,7 +2,7 @@ import Foundation
 import RAProto
 import Testing
 @testable import RACore
-@Suite struct MachineNotificationsTests {
+@Suite(.timeLimit(.minutes(2))) struct MachineNotificationsTests {
  @Test func oldServerKeepsExistingKinds() {
   let base:[PBNotifyKind]=[.attention,.turnEnded,.security,.scheduled]
   var old=PBGetPushKeyResponse();old.publicKey="old-server"

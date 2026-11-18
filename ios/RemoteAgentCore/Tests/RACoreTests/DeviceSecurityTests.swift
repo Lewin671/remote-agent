@@ -5,7 +5,7 @@ import Testing
 
 @testable import RACore
 
-@Suite struct DeviceSecurityTests {
+@Suite(.timeLimit(.minutes(2))) struct DeviceSecurityTests {
     typealias S = DeviceSecurity
     let v: [String: Any]
     init() throws { v = try loadJSON("internal/deviceauth/testdata/domain-v3.json") }

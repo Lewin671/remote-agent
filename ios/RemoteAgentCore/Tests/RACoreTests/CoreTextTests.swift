@@ -3,7 +3,7 @@ import Testing
 import RAProto
 @testable import RACore
 
-@Suite("CoreText")
+@Suite("CoreText", .timeLimit(.minutes(2)))
 struct CoreTextTests {
     @Test func literalAndEmpty() {
         #expect(renderCoreText(nil) == "")

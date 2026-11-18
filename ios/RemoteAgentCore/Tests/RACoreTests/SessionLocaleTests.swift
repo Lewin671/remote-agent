@@ -3,7 +3,7 @@ import RAProto
 import Testing
 @testable import RACore
 
-@Suite struct SessionLocaleTests {
+@Suite(.timeLimit(.minutes(2))) struct SessionLocaleTests {
     @Test func quantitiesAndDurationsKeepChineseAndUseEnglishPlurals() {
         for count in [0, 1, 2, 1000] {
             #expect(L10n.toolsCompletedCommands(count: count, locale: "zh-CN") == "运行了 \(count) 条命令")

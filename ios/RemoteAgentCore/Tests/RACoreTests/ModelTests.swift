@@ -5,7 +5,7 @@ import Testing
 @testable import RACore
 
 /// Android's core ModelTest.
-@Suite struct ModelTests {
+@Suite(.timeLimit(.minutes(2))) struct ModelTests {
     @Test func unconfirmedStartupModeIsHidden() {
         for permission in ["", "未知审批模式", "default"] {
             #expect(modeLabel(s { $0.status = .starting; $0.permissionMode = permission }) == nil)
@@ -224,7 +224,7 @@ import Testing
 }
 
 /// Android's TitleTest (in ImagesTest.kt).
-@Suite struct TitleTests {
+@Suite(.timeLimit(.minutes(2))) struct TitleTests {
     @Test func titlesAndPreviewsLeaveOutImagePlaceholders() {
         let s = Mk.session { $0.title = "[Image #1]Which half is red?"; $0.preview = "[Image #1] [Image #2] look" }
         #expect(titleOf(s) == "Which half is red?")

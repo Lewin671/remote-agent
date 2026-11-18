@@ -3,7 +3,7 @@ import CryptoKit
 import Testing
 @testable import RACore
 
-@Suite struct PeerCodecTests {
+@Suite(.timeLimit(.minutes(2))) struct PeerCodecTests {
  typealias W = PeerWire
  let now: UInt64 = 1700000000000
  func identity(_ name: String, _ role: UInt64) throws -> W.Identity {

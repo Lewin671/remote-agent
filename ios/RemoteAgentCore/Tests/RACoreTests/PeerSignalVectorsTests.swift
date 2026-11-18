@@ -5,7 +5,7 @@ import Testing
 
 /// The shared frozen vectors (testdata/transport) against the Swift signalling state machine,
 /// sender and SDP validator: the same files the Go, web and Android implementations consume.
-@Suite struct PeerSignalVectorsTests {
+@Suite(.timeLimit(.minutes(2))) struct PeerSignalVectorsTests {
  typealias W = PeerWire
  static let base: UInt64 = 1700000000000
  static func identity(_ name: String, _ role: UInt64) throws -> W.Identity {

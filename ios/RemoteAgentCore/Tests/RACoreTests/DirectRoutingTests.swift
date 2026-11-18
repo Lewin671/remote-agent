@@ -3,7 +3,7 @@ import Testing
 @testable import RACore
 
 /// The read rule of docs/transport.md 「只读选路」, with the numbers the web's tests hold it to.
-@Suite struct DirectRoutingTests {
+@Suite(.timeLimit(.minutes(2))) struct DirectRoutingTests {
     final class Time: @unchecked Sendable { var ms = 100_000.0 }
     func make() -> (DirectRouting, Time) { let t = Time(); return (DirectRouting(now: { t.ms }), t) }
     func feed(_ r: DirectRouting, _ t: Time, relay: Double, direct: Double, each: Int = 8, gap: Double = 400) {

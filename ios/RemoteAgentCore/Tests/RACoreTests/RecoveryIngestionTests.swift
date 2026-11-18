@@ -4,7 +4,7 @@ import Testing
 
 @testable import RACore
 
-@Suite(.serialized, .enabled(if: GoServer.available, GoServer.missing))
+@Suite(.serialized, .enabled(if: GoServer.available, GoServer.missing), .timeLimit(.minutes(2)))
 struct RecoveryIngestionTests {
     struct World {
         let remote: Remote

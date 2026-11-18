@@ -110,7 +110,7 @@ private func createAuthority(_ server: TestServer, vault: AuthorityTestVault = A
     return (account, vault, code)
 }
 
-@Suite(.serialized, .enabled(if: GoServer.available, GoServer.missing))
+@Suite(.serialized, .enabled(if: GoServer.available, GoServer.missing), .timeLimit(.minutes(2)))
 struct AuthorityWorkflowTests {
     @Test func accountDeletionRequiresForegroundProofAndPreservesLocalKeys() async throws {
         let server = try await TestServer(); defer { server.close() }

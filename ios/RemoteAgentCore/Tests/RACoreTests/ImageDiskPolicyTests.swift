@@ -4,7 +4,7 @@ import Testing
 @testable import RACore
 
 /// Android's core ImageDiskPolicyTest.
-@Suite struct ImageDiskPolicyTests {
+@Suite(.timeLimit(.minutes(2))) struct ImageDiskPolicyTests {
     private let fm = FileManager.default
 
     private func tempDir(_ name: String) throws -> URL {

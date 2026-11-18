@@ -3,7 +3,7 @@ import Testing
 
 @testable import RAMarkdownUI
 
-@Suite @MainActor struct InlineTextTests {
+@Suite(.timeLimit(.minutes(2))) @MainActor struct InlineTextTests {
     @Test func destinationsRenderWithoutStrayParenthesesAndUnsafeTargetsStayInert() {
         let source = "[x](<https://example.com/a(b(c))> \"title\") [y](javascript:alert(1)) [z](https://en.wikipedia.org/wiki/Foo_(bar))"
         for scheme in [ColorScheme.light, .dark] {

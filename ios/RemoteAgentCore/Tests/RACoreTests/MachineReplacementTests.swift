@@ -5,7 +5,7 @@ import Testing
 
 @testable import RACore
 
-@Test func sharedMachineReplacementLineage() async throws {
+@Test(.timeLimit(.minutes(2))) func sharedMachineReplacementLineage() async throws {
   let v = try loadJSON("internal/e2e/testdata/machine-replacement-vectors.json")
   let states = try (v["states"] as! [String]).map {
     try DeviceSecurity.parseState(Data(base64Encoded: $0)!)

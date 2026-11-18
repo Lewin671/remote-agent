@@ -2,7 +2,7 @@ import Foundation
 import Testing
 @testable import RACore
 
-@Suite struct ChatDiagnosticsTests {
+@Suite(.timeLimit(.minutes(2))) struct ChatDiagnosticsTests {
     @Test func wraparoundKeepsOrderAndFiveSecondCountersSurviveEviction() {
         let ring = ChatDiagnosticRing(capacity: 3, timeOrigin: 0)
         for n in 1...10 { ring.record(.content, at: UInt64(n) * 1_000_000_000, Double(n)) }

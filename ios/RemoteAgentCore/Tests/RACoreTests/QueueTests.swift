@@ -5,7 +5,7 @@ import Testing
 @testable import RACore
 
 /// Android's OriginTest (in QueueTest.kt).
-@Suite struct OriginTests {
+@Suite(.timeLimit(.minutes(2))) struct OriginTests {
     private func meta(_ name: String, _ platform: String, _ description: String) -> PBDeviceMeta {
         .with { $0.name = name; $0.platform = platform; $0.description_p = description }
     }

@@ -5,7 +5,7 @@ import Testing
 @testable import RACore
 
 extension ServerTests {
-    @Suite(.serialized) struct DeviceEnrollment {
+    @Suite(.serialized, .timeLimit(.minutes(2))) struct DeviceEnrollment {
         @Test func aCompletedPairingAcceptsTheSameApprovalAgain() async throws {
             try await World.run(setUp: { w in
                 try await w.daemon.putMachine("synthetic-manager")

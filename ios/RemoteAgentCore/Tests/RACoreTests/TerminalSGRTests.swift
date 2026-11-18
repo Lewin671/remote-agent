@@ -6,7 +6,7 @@ import Testing
 /// The cases every client reads a line of terminal history by. The web client
 /// and Android run the same file, so a change there changes all three or
 /// fails one. Runs are compared in the shape the file has them.
-@Suite struct TerminalSGRCaseTests {
+@Suite(.timeLimit(.minutes(2))) struct TerminalSGRCaseTests {
     let json: [String: Any]
     let cases: [[String: Any]]
 

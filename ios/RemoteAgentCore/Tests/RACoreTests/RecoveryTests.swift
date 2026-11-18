@@ -3,7 +3,7 @@ import Testing
 import os
 @testable import RACore
 
-@Suite struct RecoveryTests {
+@Suite(.timeLimit(.minutes(2))) struct RecoveryTests {
     @Test func terminalRecoveryBackoffAndSharedGlobalBudget() {
         let time = OSAllocatedUnfairLock(initialState: Int64(0))
         let budget = RecoveryBudget()

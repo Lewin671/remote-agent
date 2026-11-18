@@ -4,7 +4,7 @@ import Testing
 
 @testable import RACore
 
-@Suite struct AuthorityReliabilityTests {
+@Suite(.timeLimit(.minutes(2))) struct AuthorityReliabilityTests {
     @Test func signingBuildersOnlyRunForWinnerUnderTheSharedStoreLock() throws {
         let store = AuthorityTestVault()
         let wins = Counter(), signed = Counter()

@@ -82,7 +82,7 @@ enum TestPictures {
 }
 
 /// What Android's ui/ImageProcess.kt does to a picked image, held to docs/session-images.md.
-@Suite struct ImagePrepareTests {
+@Suite(.timeLimit(.minutes(2))) struct ImagePrepareTests {
     private typealias P = TestPictures
 
     /// How a picture stored with each orientation looks once upright: the corners, top left first, clockwise.

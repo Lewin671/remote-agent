@@ -5,7 +5,7 @@ import Testing
 @testable import RACore
 
 /// The viewer's words and choices, as Android's ui/Viewer.kt has them.
-@Suite struct ImageViewingTests {
+@Suite(.timeLimit(.minutes(2))) struct ImageViewingTests {
     private func ref(_ edit: (inout PBImageRef) -> Void = { _ in }) -> PBImageRef {
         var r = PBImageRef.with {
             $0.imageID = "i1"

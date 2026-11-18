@@ -4,7 +4,7 @@ import RAProto
 import Testing
 @testable import RACore
 
-@Suite struct ImageFailureIdentityTests {
+@Suite(.timeLimit(.minutes(2))) struct ImageFailureIdentityTests {
     /// These are the app-owned failures produced while picking, preparing,
     /// restoring, validating, persisting or uploading an attachment.
     private var origins: [(LocalizedMessage, ImageProblem.Kind)] { [
