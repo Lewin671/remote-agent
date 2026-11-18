@@ -9,6 +9,7 @@ import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
 import io.github.lewin671.remoteagent.core.UiMessages
 import io.github.lewin671.remoteagent.core.proto.*
+import io.github.lewin671.remoteagent.core.proto.Event as CoreEvent
 import io.github.lewin671.remoteagent.data.ThemeMode
 import org.junit.Assert.*
 import org.junit.Rule
@@ -35,7 +36,10 @@ class SchedulesGoldenUiTest {
                 CompositionLocalProvider(LocalMessageLocale provides "zh-CN") {
                     SchedulesScreenContent(
                         vm = currentList,
-                        onMarkAllRead = { markedAll++ },
+                        onEvent = { block ->
+                            val ev = CoreEvent.newBuilder().apply(block).build()
+                            if (ev.hasScheduleMarkRead() && ev.scheduleMarkRead.allFresh) markedAll++
+                        },
                         onOpenTask = { openedTasks++ },
                     )
                 }
@@ -64,8 +68,11 @@ class SchedulesGoldenUiTest {
                     ScheduleDetailScreenContent(
                         vm = currentDetail,
                         onOpenSession = { sid, seq -> openedSession = sid to seq },
-                        onOperate = { ops += it },
-                        onRename = { renamed = it },
+                        onEvent = { block ->
+                            val ev = CoreEvent.newBuilder().apply(block).build()
+                            if (ev.hasScheduleOperate()) ops += ev.scheduleOperate.operation
+                            if (ev.hasScheduleRename()) renamed = ev.scheduleRename.value
+                        },
                     )
                 }
             }
@@ -122,9 +129,12 @@ class SchedulesGoldenUiTest {
                 CompositionLocalProvider(LocalMessageLocale provides "zh-CN") {
                     ScheduleEditorContent(
                         vm = currentForm,
-                        onSubmit = { submitted = it },
-                        onRetryMutation = { retries++ },
-                        onAbandonMutation = { abandons++ },
+                        onEvent = { block ->
+                            val ev = CoreEvent.newBuilder().apply(block).build()
+                            if (ev.hasScheduleFormSubmit()) submitted = ev.scheduleFormSubmit.value
+                            if (ev.hasScheduleRetryMutation()) retries++
+                            if (ev.hasScheduleAbandonMutation()) abandons++
+                        },
                     )
                 }
             }

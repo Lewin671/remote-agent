@@ -15,6 +15,7 @@ import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.unit.Density
 import io.github.lewin671.remoteagent.core.*
 import io.github.lewin671.remoteagent.core.proto.*
+import io.github.lewin671.remoteagent.core.proto.Event as CoreEvent
 import io.github.lewin671.remoteagent.data.ThemeMode
 import org.junit.Assert.*
 import org.junit.Rule
@@ -262,11 +263,13 @@ class ScheduleComponentsTest {
             RaTheme(ThemeMode.LIGHT) {
                 ScheduleTimeSheet(
                     draft = draft,
-                    mutation = ScheduleMutationView.getDefaultInstance(),
+                    formKey = "f1",
                     enabled = true,
                     submitOnApply = false,
-                    onUpdate = { b ->
-                        val act = b.build()
+                    onEvent = { block ->
+                        val ev = CoreEvent.newBuilder().apply(block).build()
+                        if (!ev.hasScheduleFormUpdateTiming()) return@ScheduleTimeSheet
+                        val act = ev.scheduleFormUpdateTiming
                         updates += act
                         if (act.replaceWeekdays) {
                             draft = draft.toBuilder()
@@ -282,8 +285,6 @@ class ScheduleComponentsTest {
                                 .build()
                         }
                     },
-                    onAppliedSubmit = {},
-                    close = {},
                 )
             }
         }
@@ -306,16 +307,32 @@ class ScheduleComponentsTest {
 
     @Test fun editorRejectsEmptyOrOversizeAndCancelConfirmsChanges() {
         var closed = false
+        var formVm by mutableStateOf(
+            ScheduleFormViewModel.newBuilder()
+                .setFormKey("f1")
+                .setMessage("原文")
+                .setEditable(true)
+                .setCanSubmit(true)
+                .build(),
+        )
         ui.setContent {
             RaTheme(ThemeMode.LIGHT) {
                 ScheduleMessageEditor(
-                    formKey = "f1",
-                    initial = "原文",
-                    mutation = ScheduleMutationView.getDefaultInstance(),
-                    writable = true,
-                    onSetMessage = {},
+                    vm = formVm,
+                    onEvent = { block ->
+                        val ev = CoreEvent.newBuilder().apply(block).build()
+                        if (ev.hasScheduleFormSetMessage()) {
+                            val msg = ev.scheduleFormSetMessage.value
+                            val tooLong = msg.toByteArray(Charsets.UTF_8).size > 32768
+                            formVm = formVm.toBuilder()
+                                .setMessage(msg)
+                                .setMessageTooLong(tooLong)
+                                .setMessageError(if (tooLong) coreMsgText("schedule.too_long_maximum_32_kb") else Text.getDefaultInstance())
+                                .setCanSubmit(msg.isNotBlank() && !tooLong)
+                                .build()
+                        }
+                    },
                     close = { closed = true },
-                    save = {},
                 )
             }
         }
@@ -343,13 +360,13 @@ class ScheduleComponentsTest {
         ui.setContent {
             RaTheme(ThemeMode.LIGHT) {
                 ScheduleMessageEditor(
-                    formKey = "f1",
-                    initial = "原文",
-                    mutation = ScheduleMutationView.getDefaultInstance(),
-                    writable = false,
-                    onSetMessage = {},
+                    vm = ScheduleFormViewModel.newBuilder()
+                        .setFormKey("f1")
+                        .setMessage("原文")
+                        .setEditable(false)
+                        .setCanSubmit(false)
+                        .build(),
                     close = { closed = true },
-                    save = {},
                 )
             }
         }

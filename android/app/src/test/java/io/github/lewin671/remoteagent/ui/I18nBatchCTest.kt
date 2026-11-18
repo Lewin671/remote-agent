@@ -261,29 +261,18 @@ class I18nBatchCTest(private val locale: String) {
     @Test fun scheduleMessage() {
         show {
             ScheduleMessageEditor(
-                formKey = "f",
-                initial = "Original user message",
-                mutation = io.github.lewin671.remoteagent.core.proto.ScheduleMutationView.getDefaultInstance(),
-                writable = true,
-                onSetMessage = {},
-                close = {},
-                save = {},
+                vm = io.github.lewin671.remoteagent.core.proto.ScheduleFormViewModel.newBuilder()
+                    .setFormKey("f")
+                    .setMessage("Original user message")
+                    .setEditable(true)
+                    .setCanSubmit(true)
+                    .build(),
             )
         }
         shot("schedule-message")
     }
     @Test fun scheduleTime() {
-        show {
-            ScheduleTimeSheet(
-                draft = sampleFormVm.timing,
-                mutation = io.github.lewin671.remoteagent.core.proto.ScheduleMutationView.getDefaultInstance(),
-                enabled = true,
-                submitOnApply = false,
-                onUpdate = {},
-                onAppliedSubmit = {},
-                close = {},
-            )
-        }
+        show { ScheduleTimeSheet(draft = sampleFormVm.timing, formKey = sampleFormVm.formKey) }
         shot("schedule-time")
     }
     @Test fun scheduleRuns() {
@@ -360,13 +349,12 @@ class I18nBatchCTest(private val locale: String) {
     @Test fun languageChangeKeepsEditor() {
         show {
             ScheduleMessageEditor(
-                formKey = "f",
-                initial = "Original draft stays unchanged",
-                mutation = io.github.lewin671.remoteagent.core.proto.ScheduleMutationView.getDefaultInstance(),
-                writable = true,
-                onSetMessage = {},
-                close = {},
-                save = {},
+                vm = io.github.lewin671.remoteagent.core.proto.ScheduleFormViewModel.newBuilder()
+                    .setFormKey("f")
+                    .setMessage("Original draft stays unchanged")
+                    .setEditable(true)
+                    .setCanSubmit(true)
+                    .build(),
             )
         }
         ui.runOnIdle { language = if (locale == "en") "zh-CN" else "en" }
