@@ -89,7 +89,7 @@ type commandAdmission struct {
 func (c *endpoint) admissionOwner() *commandAdmission {
 	c.admissionOnce.Do(func() {
 		ctx, cancel := context.WithCancel(c.link.Context())
-		a := &commandAdmission{endpoint: c, ctx: ctx, cancel: cancel, wake: make(chan struct{}, 2), replies: make(chan struct{}, 2), syncing: map[string]bool{}, inflight: map[string]*pendingExecution{}, scheduler: transport.NewSchedulerWithClock(c.link, c.r.schedulerNow, c.r.schedulerAfter)}
+		a := &commandAdmission{endpoint: c, ctx: ctx, cancel: cancel, wake: make(chan struct{}, 2), replies: make(chan struct{}, 2), syncing: map[string]bool{}, inflight: map[string]*pendingExecution{}, scheduler: transport.NewSchedulerWithClock(c.link, c.r.SchedulerNow, c.r.SchedulerAfter)}
 		a.frames = transport.FairQueue[*authFrame]{Entries: 64, Bytes: 4 << 20, PeerEntries: 8, PeerBytes: 1 << 20}
 		a.results = transport.FairQueue[*callResult]{Entries: 64, Bytes: 4 << 20, PeerEntries: 64, PeerBytes: 4 << 20}
 		a.authenticate = func(w deviceauth.Wire) (*deviceauth.Authenticated, error) {

@@ -76,13 +76,18 @@ func (b interruptedModelBackend) OpenTerminal(string) (relay.Terminal, error) {
 
 func startCancellationTestRelay(t *testing.T, backend relay.Backend, configure ...func(*httptest.Server)) (*remoteclient.Client, string) {
 	t.Helper()
+	return startCancellationTestRelayWithOptions(t, backend, configure, nil)
+}
+
+func startCancellationTestRelayWithOptions(t *testing.T, backend relay.Backend, configureServer []func(*httptest.Server), configureRelay []func(*relay.Relay)) (*remoteclient.Client, string) {
+	t.Helper()
 	srv, err := server.New(server.Config{DBPath: filepath.Join(t.TempDir(), "relay.db"), SetupToken: "test-setup"})
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { srv.Close() })
 	http := httptest.NewUnstartedServer(srv.Handler())
-	for _, fn := range configure {
+	for _, fn := range configureServer {
 		fn(http)
 	}
 	http.Start()
@@ -118,9 +123,11 @@ func startCancellationTestRelay(t *testing.T, backend relay.Backend, configure .
 	run, stop := context.WithCancel(ctx)
 	done := make(chan struct{})
 	r := relay.New(backend)
+	for _, fn := range configureRelay {
+		fn(r)
+	}
 	go func() { defer close(done); r.Run(run) }()
 	t.Cleanup(func() { stop(); <-done })
-	deadline := time.Now().Add(10 * time.Second)
 	for {
 		machines, err := client.Machines(ctx)
 		if err != nil {
@@ -133,10 +140,13 @@ func startCancellationTestRelay(t *testing.T, backend relay.Backend, configure .
 		if ready {
 			break
 		}
-		if time.Now().After(deadline) {
+		select {
+		case <-done:
+			t.Fatal("test relay stopped before connecting")
+		case <-t.Context().Done():
 			t.Fatal("test relay did not connect")
+		case <-time.After(10 * time.Millisecond):
 		}
-		time.Sleep(10 * time.Millisecond)
 	}
 	return client, machine.ID
 }
