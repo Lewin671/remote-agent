@@ -253,6 +253,13 @@ func TimingDraftFromTrigger(tr Trigger, nowMs int64, localZone string, bounds Ca
 
 // InZone updates the draft's timezone while preserving any tracked cutoff instant.
 func (d TimingDraft) InZone(nextZone string, resolvedUntilDate string, resolvedUntilMs int64, bounds CalendarBounds) TimingDraft {
+	if d.End == EndDate && resolvedUntilMs == 0 && d.UntilMs == 0 && d.UntilDate != "" && hasNativeTZData() {
+		if y, mo, day, ok := parseYMD(d.UntilDate); ok {
+			if ms, gap, avail, err := resolveLocalZoned(y, mo, day, 23, 59, 59, d.Zone); err == nil && avail && !gap {
+				d.UntilMs = ms
+			}
+		}
+	}
 	d.Zone = strings.TrimSpace(nextZone)
 	if resolvedUntilMs > 0 {
 		d.UntilMs = resolvedUntilMs
@@ -317,7 +324,7 @@ func resolveLocalZoned(y int, m time.Month, d, hr, min, sec int, zone string) (u
 		loc, loadErr = loadIANALocation(canon)
 		if loadErr != nil {
 			// On WASM without tzdata, LoadLocation fails for IANA zones; caller relies on shell resolution.
-			if strings.Contains(zone, "/") {
+			if !hasNativeTZData() && strings.Contains(zone, "/") {
 				return 0, false, false, nil
 			}
 			return 0, false, true, loadErr
@@ -353,7 +360,7 @@ func (d TimingDraft) BuildTrigger(in TimingBuildInput) (Trigger, *corev1.Text) {
 		if in.ZoneValid == nil {
 			canon := CanonicalZone(zone)
 			if canon != "Etc/UTC" && canon != "Etc/GMT" {
-				if _, err := loadIANALocation(canon); err != nil && !strings.Contains(zone, "/") {
+				if _, err := loadIANALocation(canon); err != nil && (hasNativeTZData() || !strings.Contains(zone, "/")) {
 					return Trigger{}, text.Msg(text.KeyScheduleIosChooseAValidIanaTimeZone)
 				}
 			}

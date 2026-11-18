@@ -384,3 +384,21 @@ func TestJSONCodec(t *testing.T) {
 func timestamppbNow(ms int64) *timestamppb.Timestamp {
 	return &timestamppb.Timestamp{Seconds: ms / 1000, Nanos: int32((ms % 1000) * 1_000_000)}
 }
+
+func TestNativeTimingResolutionInZoneAndDST(t *testing.T) {
+	b := testBounds()
+	// Invalid IANA zone containing '/' must fail natively even without ZoneValid hint from shell.
+	if _, errTxt := (TimingDraft{Kind: TimingDaily, Time: "08:00", Zone: "Asia/NoSuchCity"}).BuildTrigger(TimingBuildInput{}); errTxt == nil || errTxt.Key != text.KeyScheduleIosChooseAValidIanaTimeZone {
+		t.Fatalf("invalid zoned daily BuildTrigger = %+v, want %q", errTxt, text.KeyScheduleIosChooseAValidIanaTimeZone)
+	}
+	// Spring-forward DST gap in America/New_York (2026-03-08 02:30) detected natively without shell AtDstGap.
+	if _, errTxt := (TimingDraft{Kind: TimingOnce, Date: "2026-03-08", Time: "02:30", Zone: "America/New_York"}).BuildTrigger(TimingBuildInput{}); errTxt == nil || errTxt.Key != text.KeyScheduleDaylightSavingTimeSkipsThisTimeInTheSelected {
+		t.Fatalf("DST gap BuildTrigger = %+v, want %q", errTxt, text.KeyScheduleDaylightSavingTimeSkipsThisTimeInTheSelected)
+	}
+	// InZone preserves default/edited UntilDate instant across zones natively when shell omits resolvedUntilMs.
+	d := TimingDraft{Kind: TimingDaily, Time: "08:00", Zone: "America/Los_Angeles", End: EndDate, UntilDate: "2026-10-10"}
+	moved := d.InZone("Asia/Tokyo", "", 0, b)
+	if moved.UntilMs == 0 || moved.UntilDate != "2026-10-11" {
+		t.Fatalf("InZone moved = (UntilMs=%d, UntilDate=%q), want non-zero and 2026-10-11", moved.UntilMs, moved.UntilDate)
+	}
+}
