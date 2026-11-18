@@ -393,10 +393,12 @@ it("starts from what the browser kept: the token, and the last listing", async (
   let notified = 0;
   r.subscribe(() => notified++);
   r.start();
-  await vi.waitFor(() => expect(Socket.all).toHaveLength(1));
+  await vi.waitFor(() => {
+    expect(Socket.all).toHaveLength(1);
+    expect(r.sessions.get("kept")?.info?.title).toBe("from last time");
+  });
   // Shown before the server has said anything, without logging in.
   expect(login).not.toHaveBeenCalled();
-  expect(r.sessions.get("kept")?.info?.title).toBe("from last time");
   expect(r.machines.get(r.machine)?.online).toBe(false);
   expect(r.listed).toBe(false);
   expect(r.authHeader()).toBe("Bearer kept-token");
