@@ -55,7 +55,7 @@ final class Socket: FrameStream {
 
     private func didOpen(hello: Data, pingMs: Int64, sleep: @escaping Sleeper) {
         task.send(.data(hello)) { [weak self] error in
-            if let error { self?.fail(error) }
+            if let error { self?.failHello(error) }
         }
         let pinger = Task { [weak self] in
             while (try? await sleep(pingMs)) != nil, !Task.isCancelled {
@@ -69,6 +69,17 @@ final class Socket: FrameStream {
             return s.openWaiters
         }
         for w in waiters { w.resume(returning: true) }
+    }
+
+    /// Records an initial hello send error without cancelling before `receive()` can drain any server close frame.
+    private func failHello(_ error: Error) {
+        let code = task.closeCode.rawValue
+        let cancelNow = state.withLockUnchecked { s -> Bool in
+            if s.closeCode == nil, code != 0 { s.closeCode = code }
+            if s.failure == nil, s.closeCode == nil, !s.dropped { s.failure = error }
+            return s.closeCode != nil || s.dropped
+        }
+        if cancelNow { task.cancel() }
     }
 
     /// Sends a ping unless the one before it is still unanswered, which ends the connection.

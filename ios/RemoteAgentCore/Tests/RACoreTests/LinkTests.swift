@@ -86,8 +86,12 @@ extension ServerTests {
 }
 
 @Suite struct LinkStreamTests {
+    private static let parkedSleep: Sleeper = { _ in
+        try await Task.sleep(for: .seconds(3600))
+    }
+
     @Test func closedLinkDisposesAStreamRegisteredAfterSuspendedOpening() throws {
-        let path = RelayPath(api: try Api(server: "https://example.com", http: HTTP()), sleep: realSleep)
+        let path = RelayPath(api: try Api(server: "https://example.com", http: HTTP()), sleep: Self.parkedSleep)
         let link = Link(relay: path)
         let stopped = Counter(), notified = Counter()
         link.closeStreams()
@@ -102,7 +106,7 @@ extension ServerTests {
     @Test func physicalPathEndingDoesNotOwnProductClose() async throws {
         let server = try StreamBlackhole(firstClose: 1000)
         defer { server.close() }
-        let path = RelayPath(api: try Api(server: server.url, http: HTTP()), sleep: realSleep)
+        let path = RelayPath(api: try Api(server: server.url, http: HTTP()), sleep: Self.parkedSleep)
         let link = Link(relay: path)
         let closed = Counter(), stopped = Counter()
         let stream = link.openStream(stop: { _ in stopped.increment() }, onClose: { _ in closed.increment() })
