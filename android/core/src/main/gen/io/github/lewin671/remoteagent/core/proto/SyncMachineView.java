@@ -379,6 +379,32 @@ public  final class SyncMachineView extends
     clientOutOfDate_ = false;
   }
 
+  public static final int REACHABILITY_UNKNOWN_FIELD_NUMBER = 13;
+  private boolean reachabilityUnknown_;
+  /**
+   * <code>bool reachability_unknown = 13 [json_name = "reachabilityUnknown"];</code>
+   * @return The reachabilityUnknown.
+   */
+  @java.lang.Override
+  public boolean getReachabilityUnknown() {
+    return reachabilityUnknown_;
+  }
+  /**
+   * <code>bool reachability_unknown = 13 [json_name = "reachabilityUnknown"];</code>
+   * @param value The reachabilityUnknown to set.
+   */
+  private void setReachabilityUnknown(boolean value) {
+    
+    reachabilityUnknown_ = value;
+  }
+  /**
+   * <code>bool reachability_unknown = 13 [json_name = "reachabilityUnknown"];</code>
+   */
+  private void clearReachabilityUnknown() {
+
+    reachabilityUnknown_ = false;
+  }
+
   public static io.github.lewin671.remoteagent.core.proto.SyncMachineView parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -857,6 +883,34 @@ public  final class SyncMachineView extends
       return this;
     }
 
+    /**
+     * <code>bool reachability_unknown = 13 [json_name = "reachabilityUnknown"];</code>
+     * @return The reachabilityUnknown.
+     */
+    @java.lang.Override
+    public boolean getReachabilityUnknown() {
+      return instance.getReachabilityUnknown();
+    }
+    /**
+     * <code>bool reachability_unknown = 13 [json_name = "reachabilityUnknown"];</code>
+     * @param value The reachabilityUnknown to set.
+     * @return This builder for chaining.
+     */
+    public Builder setReachabilityUnknown(boolean value) {
+      copyOnWrite();
+      instance.setReachabilityUnknown(value);
+      return this;
+    }
+    /**
+     * <code>bool reachability_unknown = 13 [json_name = "reachabilityUnknown"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearReachabilityUnknown() {
+      copyOnWrite();
+      instance.clearReachabilityUnknown();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.SyncMachineView)
   }
   @java.lang.Override
@@ -886,11 +940,12 @@ public  final class SyncMachineView extends
             "protocolVersion_",
             "daemonOutOfDate_",
             "clientOutOfDate_",
+            "reachabilityUnknown_",
           };
           java.lang.String info =
-              "\u0000\f\u0000\u0001\u0001\f\f\u0000\u0000\u0000\u0001\u0208\u0002\u0007\u0003\u0002" +
+              "\u0000\r\u0000\u0001\u0001\r\r\u0000\u0000\u0000\u0001\u0208\u0002\u0007\u0003\u0002" +
               "\u0004\u1009\u0000\u0005\u0003\u0006\u0007\u0007\u0007\b\u0007\t\u0007\n\u000b\u000b" +
-              "\u0007\f\u0007";
+              "\u0007\f\u0007\r\u0007";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

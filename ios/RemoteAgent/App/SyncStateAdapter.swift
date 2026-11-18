@@ -39,6 +39,7 @@ enum SyncStateAdapter {
         s.removed = v.removed
         s.clockWarning = v.accountClockSkewed ? L10n.errorsIosThisDeviceIsOver5MinutesBehindTheSecurity() : ""
         s.displayGrace = v.displayGrace
+        s.reachabilityUnknown = v.reachabilityUnknown
         if v.hasConnectionReason {
             let text = renderCoreText(v.connectionReason)
             s.error = text

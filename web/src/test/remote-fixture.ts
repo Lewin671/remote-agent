@@ -35,6 +35,8 @@ export interface SyncStatePatch {
   moreSessions?: boolean;
   connError?: string;
   removed?: boolean;
+  displayGrace?: boolean;
+  reachabilityUnknown?: boolean;
   machines?: Map<string, MachineView>;
   sessions?: Map<string, SessionView>;
   devices?: Map<string, DeviceInfo>;
@@ -95,6 +97,8 @@ export function patchSyncState(r: Remote, patch: SyncStatePatch): void {
       liveLoaded: patch.everOnline ?? r.everOnline,
       hasMoreSessions: patch.moreSessions ?? r.moreSessions,
       removed,
+      displayGrace: patch.displayGrace ?? false,
+      reachabilityUnknown: patch.reachabilityUnknown ?? false,
       machinesListed,
       sessionsListed,
       machines: [...machinesMap.values()].map((m) =>

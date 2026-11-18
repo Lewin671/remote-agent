@@ -18,6 +18,15 @@ const (
 	SessionCommandStatus_SESSION_COMMAND_STATUS_UNKNOWN     SessionCommandStatus = 4
 )
 
+type ComputerReachability int32
+
+const (
+	ComputerReachability_COMPUTER_REACHABILITY_UNSPECIFIED ComputerReachability = 0
+	ComputerReachability_COMPUTER_REACHABILITY_ONLINE      ComputerReachability = 1
+	ComputerReachability_COMPUTER_REACHABILITY_OFFLINE     ComputerReachability = 2
+	ComputerReachability_COMPUTER_REACHABILITY_UNKNOWN     ComputerReachability = 3
+)
+
 type SessionDockKind int32
 
 const (
@@ -716,6 +725,7 @@ type SessionHeaderView struct {
 	ScheduledClosed       bool
 	Capabilities          *SessionCapabilitiesView
 	MissingText           *Text
+	ComputerReachability  ComputerReachability
 }
 
 func (m *SessionHeaderView) GetFound() bool {
@@ -1036,6 +1046,12 @@ func (m *SessionHeaderView) GetMissingText() *Text {
 	}
 	return nil
 }
+func (m *SessionHeaderView) GetComputerReachability() ComputerReachability {
+	if m != nil {
+		return m.ComputerReachability
+	}
+	return 0
+}
 
 func (m *SessionHeaderView) Size() int {
 	if m == nil {
@@ -1123,6 +1139,7 @@ func (m *SessionHeaderView) Size() int {
 	if m.MissingText != nil {
 		n += litewire.SizeMessage(53, m.MissingText.Size())
 	}
+	n += litewire.SizeInt32(54, int32(m.ComputerReachability))
 	return n
 }
 
@@ -1222,6 +1239,7 @@ func (m *SessionHeaderView) AppendMarshal(b []byte) []byte {
 	if m.MissingText != nil {
 		b = litewire.AppendMessage(b, 53, m.MissingText)
 	}
+	b = litewire.AppendInt32(b, 54, int32(m.ComputerReachability))
 	return b
 }
 

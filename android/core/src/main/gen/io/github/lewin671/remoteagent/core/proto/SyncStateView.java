@@ -1421,6 +1421,32 @@ public  final class SyncStateView extends
     displayGrace_ = false;
   }
 
+  public static final int REACHABILITY_UNKNOWN_FIELD_NUMBER = 39;
+  private boolean reachabilityUnknown_;
+  /**
+   * <code>bool reachability_unknown = 39 [json_name = "reachabilityUnknown"];</code>
+   * @return The reachabilityUnknown.
+   */
+  @java.lang.Override
+  public boolean getReachabilityUnknown() {
+    return reachabilityUnknown_;
+  }
+  /**
+   * <code>bool reachability_unknown = 39 [json_name = "reachabilityUnknown"];</code>
+   * @param value The reachabilityUnknown to set.
+   */
+  private void setReachabilityUnknown(boolean value) {
+    
+    reachabilityUnknown_ = value;
+  }
+  /**
+   * <code>bool reachability_unknown = 39 [json_name = "reachabilityUnknown"];</code>
+   */
+  private void clearReachabilityUnknown() {
+
+    reachabilityUnknown_ = false;
+  }
+
   public static io.github.lewin671.remoteagent.core.proto.SyncStateView parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -2984,6 +3010,34 @@ public  final class SyncStateView extends
       return this;
     }
 
+    /**
+     * <code>bool reachability_unknown = 39 [json_name = "reachabilityUnknown"];</code>
+     * @return The reachabilityUnknown.
+     */
+    @java.lang.Override
+    public boolean getReachabilityUnknown() {
+      return instance.getReachabilityUnknown();
+    }
+    /**
+     * <code>bool reachability_unknown = 39 [json_name = "reachabilityUnknown"];</code>
+     * @param value The reachabilityUnknown to set.
+     * @return This builder for chaining.
+     */
+    public Builder setReachabilityUnknown(boolean value) {
+      copyOnWrite();
+      instance.setReachabilityUnknown(value);
+      return this;
+    }
+    /**
+     * <code>bool reachability_unknown = 39 [json_name = "reachabilityUnknown"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearReachabilityUnknown() {
+      copyOnWrite();
+      instance.clearReachabilityUnknown();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.SyncStateView)
   }
   @java.lang.Override
@@ -3042,14 +3096,15 @@ public  final class SyncStateView extends
             "devices_",
             io.github.lewin671.remoteagent.core.proto.SyncDeviceView.class,
             "displayGrace_",
+            "reachabilityUnknown_",
           };
           java.lang.String info =
-              "\u0000&\u0000\u0001\u0001&&\u0000\u0003\u0000\u0001\f\u0002\u1009\u0000\u0003\u1009" +
-              "\u0001\u0004\u0002\u0005\u0007\u0006\u0007\u0007\u0007\b\u0208\t\u0208\n\u1009\u0002" +
-              "\u000b\u0007\f\u0007\r\u0007\u000e\u0007\u000f\u0007\u0010\u0002\u0011\u0007\u0012" +
-              "\u0002\u0013\u0007\u0014\u000b\u0015\u001b\u0016\u0007\u0017\u001b\u0018\u0007\u0019" +
-              "\u0007\u001a\u0007\u001b\u1009\u0003\u001c\u0007\u001d\u0007\u001e\u1009\u0004\u001f" +
-              "\u0007 \u0007!\u0007\"\u0003#\u0007$\u1009\u0005%\u001b&\u0007";
+              "\u0000\'\u0000\u0001\u0001\'\'\u0000\u0003\u0000\u0001\f\u0002\u1009\u0000\u0003" +
+              "\u1009\u0001\u0004\u0002\u0005\u0007\u0006\u0007\u0007\u0007\b\u0208\t\u0208\n\u1009" +
+              "\u0002\u000b\u0007\f\u0007\r\u0007\u000e\u0007\u000f\u0007\u0010\u0002\u0011\u0007" +
+              "\u0012\u0002\u0013\u0007\u0014\u000b\u0015\u001b\u0016\u0007\u0017\u001b\u0018\u0007" +
+              "\u0019\u0007\u001a\u0007\u001b\u1009\u0003\u001c\u0007\u001d\u0007\u001e\u1009\u0004" +
+              "\u001f\u0007 \u0007!\u0007\"\u0003#\u0007$\u1009\u0005%\u001b&\u0007\'\u0007";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

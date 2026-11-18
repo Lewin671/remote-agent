@@ -97,10 +97,11 @@ const (
 
 // Machine represents one daemon computer known to the client.
 type Machine struct {
-	ID              string
-	Online          bool
-	Reachable       *bool
-	Unlinked        *bool
+	ID                  string
+	Online              bool
+	Reachable           *bool
+	ReachabilityUnknown bool
+	Unlinked            *bool
 	LastSeenMs      int64
 	ProtocolVersion uint32
 	DaemonOutOfDate bool

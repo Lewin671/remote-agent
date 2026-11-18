@@ -1621,6 +1621,247 @@ func TestDisplayGraceHoldsConnectedViewDuringBackgroundResumeAndDisconnect(t *te
 	}
 }
 
+func TestColdStartGraceHoldsUnknownReachabilityUntilListsOrExpiry(t *testing.T) {
+	findColdStartTimer := func(res StepResult) uint64 {
+		for _, eff := range res.Effects {
+			if st := eff.GetScheduleTimer(); st != nil &&
+				st.Kind == corev1.TimerKind_TIMER_KIND_LINK_GRACE &&
+				st.Key == coldStartGraceTimerKey &&
+				st.DelayMs == DisplayGraceMs {
+				return st.TimerId
+			}
+		}
+		return 0
+	}
+
+	cases := []struct {
+		name string
+		run  func(t *testing.T)
+	}{
+		{
+			name: "cold_start_connecting_keeps_reachability_unknown_until_lists_fetched",
+			run: func(t *testing.T) {
+				e := NewEngine()
+				ids, fs := seedEntropy(8)
+				_, startRes := e.HandleEvent(&corev1.Event{
+					NowMs:      1_000,
+					MonoMs:     1_000,
+					RandomIds:  ids,
+					UnitFloats: fs,
+					Event: &corev1.Event_SyncLifecycle{
+						SyncLifecycle: &corev1.SyncLifecycleAction{Kind: corev1.SyncLifecycleKind_SYNC_LIFECYCLE_KIND_START},
+					},
+				})
+				if findColdStartTimer(startRes) == 0 {
+					t.Fatalf("expected START to schedule cold-start link grace timer")
+				}
+				v0 := e.BuildSyncStateView()
+				if v0.Connection != corev1.ConnState_CONN_STATE_CONNECTING || v0.DisplayGrace || !v0.ReachabilityUnknown {
+					t.Fatalf("expected CONNECTING + ReachabilityUnknown without DisplayGrace on cold start, got conn=%v grace=%v unknown=%v",
+						v0.Connection, v0.DisplayGrace, v0.ReachabilityUnknown)
+				}
+
+				// Cached offline machine + running session retain ReachabilityUnknown during grace.
+				var bootOp uint64
+				for _, eff := range startRes.Effects {
+					if cr := eff.GetCacheRead(); cr != nil && cr.GetBootstrap() != nil {
+						bootOp = cr.GetBootstrap().OpId
+					}
+				}
+				var tokOp uint64
+				for _, eff := range startRes.Effects {
+					if et := eff.GetEnsureToken(); et != nil {
+						tokOp = et.OpId
+					}
+				}
+				e.HandleEvent(&corev1.Event{
+					NowMs:  1_020,
+					MonoMs: 1_020,
+					Event: &corev1.Event_CacheBootstrapLoaded{
+						CacheBootstrapLoaded: &corev1.CacheBootstrapLoadedEvent{
+							OpId: bootOp,
+							Machines: []*corev1.PlainMachine{
+								{MachineId: "m1", Online: false},
+							},
+							Sessions: []*corev1.PlainSession{
+								{SessionId: "s1", MachineId: "m1", Meta: &v1.Session{Id: "s1", Status: v1.SessionStatus_SESSION_STATUS_RUNNING}},
+							},
+						},
+					},
+				})
+				vBoot := e.BuildSyncStateView()
+				if len(vBoot.Machines) != 1 || !vBoot.Machines[0].ReachabilityUnknown {
+					t.Fatalf("expected cached machine m1 to carry ReachabilityUnknown=true, got %+v", vBoot.Machines)
+				}
+				snapBoot := e.SessionSnapshot("s1")
+				if !snapBoot.ReachabilityUnknown || snapBoot.Machine == nil || !snapBoot.Machine.ReachabilityUnknown {
+					t.Fatalf("expected SessionSnapshot to carry ReachabilityUnknown=true, got snap=%+v", snapBoot)
+				}
+
+				// TokenResult + StreamReady before ListsFetched: connection is CONNECTED, reachability still UNKNOWN.
+				_, tokRes := e.HandleEvent(&corev1.Event{
+					NowMs:  1_040,
+					MonoMs: 1_040,
+					Event: &corev1.Event_TokenResult{
+						TokenResult: &corev1.TokenResultEvent{OpId: tokOp, Token: "tok-1"},
+					},
+				})
+				var legID uint64
+				for _, eff := range tokRes.Effects {
+					if osEff := eff.GetOpenStream(); osEff != nil {
+						legID = osEff.LegId
+					}
+				}
+				_, readyRes := e.HandleEvent(&corev1.Event{
+					NowMs:  1_100,
+					MonoMs: 1_100,
+					Event: &corev1.Event_StreamReady{
+						StreamReady: &corev1.StreamReadyEvent{LegId: legID},
+					},
+				})
+				var listsOp uint64
+				for _, eff := range readyRes.Effects {
+					if rpc := eff.GetRpc(); rpc != nil && rpc.GetFetchLists() != nil {
+						listsOp = rpc.OpId
+					}
+				}
+				vStream := e.BuildSyncStateView()
+				if vStream.Connection != corev1.ConnState_CONN_STATE_CONNECTED || !vStream.ReachabilityUnknown {
+					t.Fatalf("expected CONNECTED + ReachabilityUnknown=true between StreamReady and ListsFetched, got conn=%v unknown=%v",
+						vStream.Connection, vStream.ReachabilityUnknown)
+				}
+
+				// ListsFetched arrives with authoritative machine status and clears cold-start grace.
+				e.HandleEvent(&corev1.Event{
+					NowMs:  1_150,
+					MonoMs: 1_150,
+					Event: &corev1.Event_ListsFetched{
+						ListsFetched: &corev1.ListsFetchedEvent{
+							OpId:     listsOp,
+							Machines: []*corev1.PlainMachine{{MachineId: "m1", Online: true}},
+							Sessions: []*corev1.PlainSession{{SessionId: "s1", MachineId: "m1", Meta: &v1.Session{Id: "s1", Status: v1.SessionStatus_SESSION_STATUS_RUNNING}}},
+						},
+					},
+				})
+				vDone := e.BuildSyncStateView()
+				if vDone.ReachabilityUnknown || vDone.Unlinked {
+					t.Fatalf("expected ListsFetched to clear ReachabilityUnknown and Unlinked, got unknown=%v unlinked=%v",
+						vDone.ReachabilityUnknown, vDone.Unlinked)
+				}
+				if len(vDone.Machines) != 1 || vDone.Machines[0].ReachabilityUnknown || !vDone.Machines[0].Online {
+					t.Fatalf("expected machine m1 Online=true and ReachabilityUnknown=false after ListsFetched, got %+v", vDone.Machines)
+				}
+			},
+		},
+		{
+			name: "cold_start_grace_expires_on_timer_and_exposes_offline_machine",
+			run: func(t *testing.T) {
+				e := NewEngine()
+				ids, fs := seedEntropy(8)
+				_, startRes := e.HandleEvent(&corev1.Event{
+					NowMs:      1_000,
+					MonoMs:     1_000,
+					RandomIds:  ids,
+					UnitFloats: fs,
+					Event: &corev1.Event_SyncLifecycle{
+						SyncLifecycle: &corev1.SyncLifecycleAction{Kind: corev1.SyncLifecycleKind_SYNC_LIFECYCLE_KIND_START},
+					},
+				})
+				timerID := findColdStartTimer(startRes)
+				var bootOp uint64
+				for _, eff := range startRes.Effects {
+					if cr := eff.GetCacheRead(); cr != nil && cr.GetBootstrap() != nil {
+						bootOp = cr.GetBootstrap().OpId
+					}
+				}
+				e.HandleEvent(&corev1.Event{
+					NowMs:  1_020,
+					MonoMs: 1_020,
+					Event: &corev1.Event_CacheBootstrapLoaded{
+						CacheBootstrapLoaded: &corev1.CacheBootstrapLoadedEvent{
+							OpId:     bootOp,
+							Machines: []*corev1.PlainMachine{{MachineId: "m1", Online: false}},
+						},
+					},
+				})
+				e.HandleEvent(&corev1.Event{
+					NowMs:  2_400,
+					MonoMs: 2_400,
+					Event:  &corev1.Event_ClockUpdated{ClockUpdated: &corev1.LocalCalendar{NowMs: 2_400}},
+				})
+				inside := e.BuildSyncStateView()
+				if !inside.ReachabilityUnknown {
+					t.Fatalf("expected ReachabilityUnknown=true before 1500ms cold-start grace expiry")
+				}
+
+				e.HandleEvent(&corev1.Event{
+					NowMs:  2_500,
+					MonoMs: 2_500,
+					Event: &corev1.Event_TimerFired{
+						TimerFired: &corev1.TimerFiredEvent{
+							TimerId: timerID,
+							Kind:    corev1.TimerKind_TIMER_KIND_LINK_GRACE,
+							Key:     coldStartGraceTimerKey,
+						},
+					},
+				})
+				expired := e.BuildSyncStateView()
+				if expired.ReachabilityUnknown {
+					t.Fatalf("expected ReachabilityUnknown=false after cold-start grace timer fired")
+				}
+				if len(expired.Machines) != 1 || expired.Machines[0].ReachabilityUnknown || expired.Machines[0].Online {
+					t.Fatalf("expected machine m1 to revert to offline (ReachabilityUnknown=false) after expiry, got %+v", expired.Machines)
+				}
+				snapExpired := e.SessionSnapshot("")
+				if snapExpired.ReachabilityUnknown {
+					t.Fatalf("expected SessionSnapshot.ReachabilityUnknown=false after expiry")
+				}
+			},
+		},
+		{
+			name: "account_removed_clears_cold_start_grace_immediately",
+			run: func(t *testing.T) {
+				e := NewEngine()
+				ids, fs := seedEntropy(8)
+				_, startRes := e.HandleEvent(&corev1.Event{
+					NowMs:      1_000,
+					MonoMs:     1_000,
+					RandomIds:  ids,
+					UnitFloats: fs,
+					Event: &corev1.Event_SyncLifecycle{
+						SyncLifecycle: &corev1.SyncLifecycleAction{Kind: corev1.SyncLifecycleKind_SYNC_LIFECYCLE_KIND_START},
+					},
+				})
+				var tokOp uint64
+				for _, eff := range startRes.Effects {
+					if et := eff.GetEnsureToken(); et != nil {
+						tokOp = et.OpId
+					}
+				}
+				if !e.BuildSyncStateView().ReachabilityUnknown {
+					t.Fatalf("expected ReachabilityUnknown=true on start")
+				}
+				e.HandleEvent(&corev1.Event{
+					NowMs:  1_050,
+					MonoMs: 1_050,
+					Event: &corev1.Event_TokenResult{
+						TokenResult: &corev1.TokenResultEvent{OpId: tokOp, Removed: true},
+					},
+				})
+				after := e.BuildSyncStateView()
+				if after.ReachabilityUnknown || !after.Removed {
+					t.Fatalf("expected Removed=true and ReachabilityUnknown=false on account removal, got unknown=%v removed=%v",
+						after.ReachabilityUnknown, after.Removed)
+				}
+			},
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, tc.run)
+	}
+}
+
 func TestDirectEventsDedupAndCacheWriteOnRelay(t *testing.T) {
 	e := NewEngine()
 	now := int64(1_700_000_000_000)

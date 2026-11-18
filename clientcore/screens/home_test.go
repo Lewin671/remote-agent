@@ -254,3 +254,148 @@ func TestBuildSessionDisplayGraceHoldsEnabledComposerAndStatus(t *testing.T) {
 		})
 	}
 }
+
+func TestBuildHomeAndSessionColdStartReachabilityUnknown(t *testing.T) {
+	unlinkedTrue := true
+	unlinkedFalse := false
+	reachableFalse := false
+	cases := []struct {
+		name                string
+		conn                lists.ConnectionKind
+		worldUnlinked       bool
+		reachabilityUnknown bool
+		wantRowStatus       corev1.SessionDisplayStatus
+		wantReachability    corev1.ComputerReachability
+		wantUnlinked        bool
+		wantEnabled         bool
+		wantDisabledKey     string
+	}{
+		{
+			name:                "cold_start_connecting_before_stream_ready_hides_offline_and_unlinked",
+			conn:                lists.ConnConnecting,
+			worldUnlinked:       true,
+			reachabilityUnknown: true,
+			wantRowStatus:       corev1.SessionDisplayStatus_SESSION_DISPLAY_STATUS_RUNNING,
+			wantReachability:    corev1.ComputerReachability_COMPUTER_REACHABILITY_UNKNOWN,
+			wantUnlinked:        false,
+			wantEnabled:         false,
+			wantDisabledKey:     "connection.connecting",
+		},
+		{
+			name:                "cold_start_between_stream_ready_and_lists_fetched_stays_connecting",
+			conn:                lists.ConnConnected,
+			worldUnlinked:       true,
+			reachabilityUnknown: true,
+			wantRowStatus:       corev1.SessionDisplayStatus_SESSION_DISPLAY_STATUS_RUNNING,
+			wantReachability:    corev1.ComputerReachability_COMPUTER_REACHABILITY_UNKNOWN,
+			wantUnlinked:        false,
+			wantEnabled:         false,
+			wantDisabledKey:     "connection.connecting",
+		},
+		{
+			name:                "cold_start_grace_expired_while_unlinked_exposes_unlinked",
+			conn:                lists.ConnConnecting,
+			worldUnlinked:       true,
+			reachabilityUnknown: false,
+			wantRowStatus:       corev1.SessionDisplayStatus_SESSION_DISPLAY_STATUS_UNLINKED,
+			wantReachability:    corev1.ComputerReachability_COMPUTER_REACHABILITY_OFFLINE,
+			wantUnlinked:        true,
+			wantEnabled:         false,
+			wantDisabledKey:     "composer.ios_connect_send",
+		},
+		{
+			name:                "lists_fetched_machine_offline_shows_offline",
+			conn:                lists.ConnConnected,
+			worldUnlinked:       false,
+			reachabilityUnknown: false,
+			wantRowStatus:       corev1.SessionDisplayStatus_SESSION_DISPLAY_STATUS_OFFLINE,
+			wantReachability:    corev1.ComputerReachability_COMPUTER_REACHABILITY_OFFLINE,
+			wantUnlinked:        false,
+			wantEnabled:         false,
+			wantDisabledKey:     "errors.the_computer_is_offline_the_command_was_not_sent",
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			st := NewState()
+			st.Cal = lists.Calendar{NowMs: 1_700_000_000_000}
+			st.ReachabilityUnknown = tc.reachabilityUnknown
+			unlinkedPtr := &unlinkedFalse
+			if tc.worldUnlinked {
+				unlinkedPtr = &unlinkedTrue
+			}
+			mUnlinked := tc.worldUnlinked
+			m := &lists.Machine{
+				ID:                  "m1",
+				Online:              false,
+				LastSeenMs:          1_699_999_940_000,
+				Reachable:           &reachableFalse,
+				Unlinked:            &mUnlinked,
+				ReachabilityUnknown: tc.reachabilityUnknown,
+			}
+			s := &lists.Session{
+				ID:        "s1",
+				MachineID: "m1",
+				UpdatedMs: 1_699_999_990_000,
+				Info: &v1.Session{
+					Id:     "s1",
+					Cwd:    "/Users/me/proj",
+					Title:  "Run",
+					Status: v1.SessionStatus_SESSION_STATUS_RUNNING,
+				},
+			}
+			st.World = lists.World{
+				Connection:     tc.conn,
+				Unlinked:       unlinkedPtr,
+				MachinesListed: !tc.worldUnlinked,
+				SessionsListed: true,
+				LiveLoaded:     true,
+				Machines:       []*lists.Machine{m},
+				Sessions:       []*lists.Session{s},
+			}
+
+			homeVM := BuildHome(st, 0)
+			if len(homeVM.Running) != 1 || homeVM.Running[0].Status != tc.wantRowStatus {
+				t.Fatalf("expected Home Running[0].Status=%v, got %+v", tc.wantRowStatus, homeVM.Running)
+			}
+
+			in := SessionViewInput{
+				Found:               true,
+				SessionsListed:      true,
+				LiveLoaded:          true,
+				Conn:                tc.conn,
+				Unlinked:            tc.worldUnlinked,
+				ReachabilityUnknown: tc.reachabilityUnknown,
+				Session:             s,
+				Machine:             m,
+			}
+			sessVM := BuildSessionView(in, st, nil, nil)
+			if sessVM.Header == nil || sessVM.Header.Status != tc.wantRowStatus {
+				t.Fatalf("expected Header.Status=%v, got %+v", tc.wantRowStatus, sessVM.Header)
+			}
+			if sessVM.Header.ComputerReachability != tc.wantReachability {
+				t.Fatalf("expected ComputerReachability=%v, got %v", tc.wantReachability, sessVM.Header.ComputerReachability)
+			}
+			if sessVM.Header.ComputerOnline {
+				t.Fatalf("expected ComputerOnline=false, got true")
+			}
+			if sessVM.Header.ComputerUnlinked != tc.wantUnlinked {
+				t.Fatalf("expected ComputerUnlinked=%v, got %v", tc.wantUnlinked, sessVM.Header.ComputerUnlinked)
+			}
+			if tc.reachabilityUnknown && sessVM.Header.OfflineText != nil {
+				t.Fatalf("expected nil OfflineText during ReachabilityUnknown, got %+v", sessVM.Header.OfflineText)
+			}
+			if sessVM.Composer == nil || sessVM.Composer.Enabled != tc.wantEnabled {
+				t.Fatalf("expected Composer.Enabled=%v, got %+v", tc.wantEnabled, sessVM.Composer)
+			}
+			gotKey := ""
+			if sessVM.Composer.DisabledReason != nil {
+				gotKey = sessVM.Composer.DisabledReason.Key
+			}
+			if gotKey != tc.wantDisabledKey {
+				t.Fatalf("expected DisabledReason.Key=%q, got %q", tc.wantDisabledKey, gotKey)
+			}
+		})
+	}
+}

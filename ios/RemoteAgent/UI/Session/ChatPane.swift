@@ -416,7 +416,7 @@ struct ChatPane: View {
             !composer.outgoing.contains(where: { $0.requestID == r.requestId })
                 && !composer.pendingInputs.contains(where: { $0.requestID == r.requestId })
         }
-        let online = header.computerOnline && !header.computerUnlinked
+        let online = (header.computerOnline && !header.computerUnlinked) || header.computerReachability == .unknown
         let env = ChatEnv(
             agent: header.agent != .unspecified ? header.agent : (state.sessions[sessionID]?.agent ?? defaultAgent),
             frozenAt: online ? 0 : (header.offlineSinceMs > 0 ? header.offlineSinceMs : state.offlineSinceMs),
@@ -671,7 +671,7 @@ struct ChatPane: View {
                 if taskOwned { Text(L10n.sessionReplyMoves()).font(.footnote).foregroundStyle(DS.ink2).padding(8) }
                 EndedCard(sessionID: sessionID, header: header, actions: actions)
             }
-        } else if !header.computerOnline || header.computerUnlinked {
+        } else if (!header.computerOnline || header.computerUnlinked) && header.computerReachability != .unknown {
             let name = header.hasComputerName ? header.computerName.rendered() : machineLabel(model.state, id: header.machineID)
             let offlineDesc = header.hasOfflineText ? header.offlineText.rendered() : L10n.projectsComputerOffline()
             SessionEndCard(

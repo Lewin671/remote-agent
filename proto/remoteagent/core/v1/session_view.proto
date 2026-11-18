@@ -81,6 +81,13 @@ message SessionCapabilitiesView {
   int32 max_images = 15;
 }
 
+enum ComputerReachability {
+  COMPUTER_REACHABILITY_UNSPECIFIED = 0;
+  COMPUTER_REACHABILITY_ONLINE = 1;
+  COMPUTER_REACHABILITY_OFFLINE = 2;
+  COMPUTER_REACHABILITY_UNKNOWN = 3;
+}
+
 message SessionHeaderView {
   bool found = 1;
   bool sessions_listed = 2;
@@ -147,6 +154,7 @@ message SessionHeaderView {
 
   SessionCapabilitiesView capabilities = 52;
   Text missing_text = 53;
+  ComputerReachability computer_reachability = 54;
 }
 
 message SessionModelChoiceView {

@@ -75,6 +75,7 @@ type State struct {
 	World                lists.World
 	Cal                  lists.Calendar
 	DisplayGrace         bool
+	ReachabilityUnknown  bool
 	ConnectionReason     string
 	ConnectionReasonText *corev1.Text
 	SessionListErrorText *corev1.Text

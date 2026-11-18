@@ -77,6 +77,7 @@ import io.github.lewin671.remoteagent.core.listWhen
 import io.github.lewin671.remoteagent.core.maxFiles
 import io.github.lewin671.remoteagent.core.newRequestId
 import io.github.lewin671.remoteagent.core.projectName
+import io.github.lewin671.remoteagent.core.proto.ComputerReachability
 import io.github.lewin671.remoteagent.core.proto.SessionCommandStatus
 import io.github.lewin671.remoteagent.core.proto.SessionDisplayStatus
 import io.github.lewin671.remoteagent.core.proto.SessionOutgoingState
@@ -654,10 +655,12 @@ internal fun ChatPane(
     entrances.outgoing(outgoing.map { "out" + it.requestId } + visiblePending.map { "pending-${it.requestId}" })
 
     Column(modifier.clipToBounds().onSizeChanged { shownHeight = it.height }) {
+        val reachabilityUnknown = header.computerReachability == ComputerReachability.COMPUTER_REACHABILITY_UNKNOWN
+        val chatMachineOnline = header.computerOnline || reachabilityUnknown
         SharedFileHost(
             sessionId = sid,
             machineName = machineName,
-            machineOnline = header.computerOnline,
+            machineOnline = chatMachineOnline,
             sessionExited = header.exited,
             modifier = Modifier.weight(1f),
         ) {
@@ -669,7 +672,7 @@ internal fun ChatPane(
                     onImage = { seq, i -> nav.image(sid, seq, i) },
                     onSession = { nav.session(it) },
                     machineName = machineName,
-                    machineOnline = header.computerOnline,
+                    machineOnline = chatMachineOnline,
                     sessionExited = header.exited,
                 )
                 CompositionLocalProvider(LocalChat provides chatCtx) {
@@ -1007,7 +1010,7 @@ private fun BottomArea(
         return
     }
 
-    if (!header.computerOnline) {
+    if (!header.computerOnline && header.computerReachability != ComputerReachability.COMPUTER_REACHABILITY_UNKNOWN) {
         val t = now()
         val computer = if (header.hasComputerName()) uiText(header.computerName) else machineLabel(state, header.machineId)
         val offlineNote = if (header.hasOfflineText()) uiText(header.offlineText)

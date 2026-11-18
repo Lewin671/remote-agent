@@ -308,4 +308,10 @@ public interface SyncStateViewOrBuilder extends
    * @return The displayGrace.
    */
   boolean getDisplayGrace();
+
+  /**
+   * <code>bool reachability_unknown = 39 [json_name = "reachabilityUnknown"];</code>
+   * @return The reachabilityUnknown.
+   */
+  boolean getReachabilityUnknown();
 }

@@ -22,6 +22,14 @@
       "effects": {
         "effects": [
           {
+            "scheduleTimer": {
+              "timerId": "1",
+              "kind": "TIMER_KIND_LINK_GRACE",
+              "key": "cold-start",
+              "delayMs": "1500"
+            }
+          },
+          {
             "cacheRead": {
               "bootstrap": {
                 "opId": "1"
@@ -83,7 +91,7 @@
           },
           {
             "scheduleTimer": {
-              "timerId": "1",
+              "timerId": "2",
               "kind": "TIMER_KIND_STREAM_OPEN",
               "delayMs": "15000"
             }
@@ -121,13 +129,13 @@
         "effects": [
           {
             "cancelTimer": {
-              "timerId": "1",
+              "timerId": "2",
               "kind": "TIMER_KIND_STREAM_OPEN"
             }
           },
           {
             "scheduleTimer": {
-              "timerId": "2",
+              "timerId": "3",
               "kind": "TIMER_KIND_LIVENESS",
               "delayMs": "1000"
             }
@@ -165,6 +173,13 @@
     {
       "effects": {
         "effects": [
+          {
+            "cancelTimer": {
+              "timerId": "1",
+              "kind": "TIMER_KIND_LINK_GRACE",
+              "key": "cold-start"
+            }
+          },
           {
             "scheduleLoadSeen": {
               "machineId": "m1"

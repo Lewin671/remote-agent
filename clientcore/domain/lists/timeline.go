@@ -1176,7 +1176,7 @@ func BuildProjectPage(w *World, key string, endedLimit int, cal Calendar) *Proje
 	if pr != nil {
 		res.MachineNames = slices.Clone(pr.machineNames)
 		res.MachineIDs = slices.Clone(pr.machineIDs)
-		res.AnyOnline = !pr.allOffline
+		res.AnyOnline = pr.anyOnline
 		res.Project = toProjectSummary(pr, res.IsPinned, res.IsHidden)
 	}
 	moreLocal := len(endedSlice) < len(ended)

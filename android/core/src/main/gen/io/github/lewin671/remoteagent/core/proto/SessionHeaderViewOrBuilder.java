@@ -488,4 +488,15 @@ public interface SessionHeaderViewOrBuilder extends
    * @return The missingText.
    */
   io.github.lewin671.remoteagent.core.proto.Text getMissingText();
+
+  /**
+   * <code>.remoteagent.core.v1.ComputerReachability computer_reachability = 54 [json_name = "computerReachability"];</code>
+   * @return The enum numeric value on the wire for computerReachability.
+   */
+  int getComputerReachabilityValue();
+  /**
+   * <code>.remoteagent.core.v1.ComputerReachability computer_reachability = 54 [json_name = "computerReachability"];</code>
+   * @return The computerReachability.
+   */
+  io.github.lewin671.remoteagent.core.proto.ComputerReachability getComputerReachability();
 }

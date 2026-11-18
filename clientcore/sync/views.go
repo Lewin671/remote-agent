@@ -48,24 +48,26 @@ func (e *Engine) buildSyncMachineView(m *MachineEntry, unlinked bool) *corev1.Sy
 	}
 	directReady := e.directReady[m.ID]
 	reachable := e.machineReachable(m)
+	reachabilityUnknown := e.machineReachabilityUnknown(m)
 	mUnlinked := unlinked && !directReady
 	var pv uint32
 	if m.Meta != nil {
 		pv = m.Meta.ProtocolVersion
 	}
 	return &corev1.SyncMachineView{
-		MachineId:       m.ID,
-		Online:          m.Online,
-		LastSeenMs:      m.LastSeenMs,
-		Meta:            m.Meta.Clone(),
-		MetaRev:         m.MetaRev,
-		MetaBroken:      m.MetaBroken,
-		Reachable:       reachable,
-		Unlinked:        mUnlinked,
-		DirectReady:     directReady,
-		ProtocolVersion: pv,
-		DaemonOutOfDate: pv > 0 && pv < ProtocolVersion,
-		ClientOutOfDate: pv > 0 && pv > ProtocolVersion,
+		MachineId:           m.ID,
+		Online:              m.Online,
+		LastSeenMs:          m.LastSeenMs,
+		Meta:                m.Meta.Clone(),
+		MetaRev:             m.MetaRev,
+		MetaBroken:          m.MetaBroken,
+		Reachable:           reachable,
+		Unlinked:            mUnlinked,
+		DirectReady:         directReady,
+		ProtocolVersion:     pv,
+		DaemonOutOfDate:     pv > 0 && pv < ProtocolVersion,
+		ClientOutOfDate:     pv > 0 && pv > ProtocolVersion,
+		ReachabilityUnknown: reachabilityUnknown,
 	}
 }
 
@@ -227,6 +229,7 @@ func (e *Engine) BuildSyncStateView() *corev1.SyncStateView {
 		Prefs:                  prefsCopy,
 		Devices:                devices,
 		DisplayGrace:           displayGrace,
+		ReachabilityUnknown:    e.coldStartGraceActive(),
 	}
 }
 

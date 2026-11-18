@@ -92,6 +92,8 @@ public struct PBCoreSyncMachineView: Sendable {
 
   public var clientOutOfDate: Bool = false
 
+  public var reachabilityUnknown: Bool = false
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -464,6 +466,11 @@ public struct PBCoreSyncStateView: @unchecked Sendable {
     set {_uniqueStorage()._displayGrace = newValue}
   }
 
+  public var reachabilityUnknown: Bool {
+    get {return _storage._reachabilityUnknown}
+    set {_uniqueStorage()._reachabilityUnknown = newValue}
+  }
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -714,7 +721,7 @@ extension PBCoreSyncPendingAction: SwiftProtobuf.Message, SwiftProtobuf._Message
 
 extension PBCoreSyncMachineView: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".SyncMachineView"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}machine_id\0\u{1}online\0\u{3}last_seen_ms\0\u{1}meta\0\u{3}meta_rev\0\u{3}meta_broken\0\u{1}reachable\0\u{1}unlinked\0\u{3}direct_ready\0\u{3}protocol_version\0\u{3}daemon_out_of_date\0\u{3}client_out_of_date\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}machine_id\0\u{1}online\0\u{3}last_seen_ms\0\u{1}meta\0\u{3}meta_rev\0\u{3}meta_broken\0\u{1}reachable\0\u{1}unlinked\0\u{3}direct_ready\0\u{3}protocol_version\0\u{3}daemon_out_of_date\0\u{3}client_out_of_date\0\u{3}reachability_unknown\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -734,6 +741,7 @@ extension PBCoreSyncMachineView: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
       case 10: try { try decoder.decodeSingularUInt32Field(value: &self.protocolVersion) }()
       case 11: try { try decoder.decodeSingularBoolField(value: &self.daemonOutOfDate) }()
       case 12: try { try decoder.decodeSingularBoolField(value: &self.clientOutOfDate) }()
+      case 13: try { try decoder.decodeSingularBoolField(value: &self.reachabilityUnknown) }()
       default: break
       }
     }
@@ -780,6 +788,9 @@ extension PBCoreSyncMachineView: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
     if self.clientOutOfDate != false {
       try visitor.visitSingularBoolField(value: self.clientOutOfDate, fieldNumber: 12)
     }
+    if self.reachabilityUnknown != false {
+      try visitor.visitSingularBoolField(value: self.reachabilityUnknown, fieldNumber: 13)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -796,6 +807,7 @@ extension PBCoreSyncMachineView: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
     if lhs.protocolVersion != rhs.protocolVersion {return false}
     if lhs.daemonOutOfDate != rhs.daemonOutOfDate {return false}
     if lhs.clientOutOfDate != rhs.clientOutOfDate {return false}
+    if lhs.reachabilityUnknown != rhs.reachabilityUnknown {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -1047,7 +1059,7 @@ extension PBCoreSyncDeviceView: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
 
 extension PBCoreSyncStateView: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".SyncStateView"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}connection\0\u{3}connection_reason\0\u{3}connection_step\0\u{3}disconnected_at_ms\0\u{3}live_push_connected\0\u{1}unlinked\0\u{3}is_manager\0\u{3}self_device_id\0\u{3}authority_device_id\0\u{3}manager_name\0\u{3}account_control_lost\0\u{3}account_clock_skewed\0\u{1}removed\0\u{3}security_loaded\0\u{3}is_member\0\u{3}lease_end_ms\0\u{3}recovery_pending\0\u{3}recovery_ready_ms\0\u{3}recovery_objects_pending\0\u{3}client_protocol_version\0\u{1}machines\0\u{3}machines_listed\0\u{1}sessions\0\u{3}sessions_listed\0\u{3}live_loaded\0\u{3}has_more_sessions\0\u{3}next_cursor\0\u{3}loading_more_sessions\0\u{3}session_list_failed\0\u{3}session_list_error\0\u{3}prefs_loaded\0\u{3}prefs_load_failed\0\u{3}prefs_broken\0\u{3}prefs_revision\0\u{3}prefs_syncing\0\u{1}prefs\0\u{1}devices\0\u{3}display_grace\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}connection\0\u{3}connection_reason\0\u{3}connection_step\0\u{3}disconnected_at_ms\0\u{3}live_push_connected\0\u{1}unlinked\0\u{3}is_manager\0\u{3}self_device_id\0\u{3}authority_device_id\0\u{3}manager_name\0\u{3}account_control_lost\0\u{3}account_clock_skewed\0\u{1}removed\0\u{3}security_loaded\0\u{3}is_member\0\u{3}lease_end_ms\0\u{3}recovery_pending\0\u{3}recovery_ready_ms\0\u{3}recovery_objects_pending\0\u{3}client_protocol_version\0\u{1}machines\0\u{3}machines_listed\0\u{1}sessions\0\u{3}sessions_listed\0\u{3}live_loaded\0\u{3}has_more_sessions\0\u{3}next_cursor\0\u{3}loading_more_sessions\0\u{3}session_list_failed\0\u{3}session_list_error\0\u{3}prefs_loaded\0\u{3}prefs_load_failed\0\u{3}prefs_broken\0\u{3}prefs_revision\0\u{3}prefs_syncing\0\u{1}prefs\0\u{1}devices\0\u{3}display_grace\0\u{3}reachability_unknown\0")
 
   fileprivate class _StorageClass {
     var _connection: PBCoreConnState = .unspecified
@@ -1088,6 +1100,7 @@ extension PBCoreSyncStateView: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
     var _prefs: PBProjectPrefs? = nil
     var _devices: [PBCoreSyncDeviceView] = []
     var _displayGrace: Bool = false
+    var _reachabilityUnknown: Bool = false
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -1136,6 +1149,7 @@ extension PBCoreSyncStateView: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
       _prefs = source._prefs
       _devices = source._devices
       _displayGrace = source._displayGrace
+      _reachabilityUnknown = source._reachabilityUnknown
     }
   }
 
@@ -1192,6 +1206,7 @@ extension PBCoreSyncStateView: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
         case 36: try { try decoder.decodeSingularMessageField(value: &_storage._prefs) }()
         case 37: try { try decoder.decodeRepeatedMessageField(value: &_storage._devices) }()
         case 38: try { try decoder.decodeSingularBoolField(value: &_storage._displayGrace) }()
+        case 39: try { try decoder.decodeSingularBoolField(value: &_storage._reachabilityUnknown) }()
         default: break
         }
       }
@@ -1318,6 +1333,9 @@ extension PBCoreSyncStateView: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
       if _storage._displayGrace != false {
         try visitor.visitSingularBoolField(value: _storage._displayGrace, fieldNumber: 38)
       }
+      if _storage._reachabilityUnknown != false {
+        try visitor.visitSingularBoolField(value: _storage._reachabilityUnknown, fieldNumber: 39)
+      }
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -1365,6 +1383,7 @@ extension PBCoreSyncStateView: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
         if _storage._prefs != rhs_storage._prefs {return false}
         if _storage._devices != rhs_storage._devices {return false}
         if _storage._displayGrace != rhs_storage._displayGrace {return false}
+        if _storage._reachabilityUnknown != rhs_storage._reachabilityUnknown {return false}
         return true
       }
       if !storagesAreEqual {return false}

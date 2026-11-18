@@ -5,6 +5,7 @@ import { routeForTask, useCoreHost, useScheduleSessionStripView, useSessionView,
 import { renderText } from "../core/text";
 import { newRequestID } from "../crypto";
 import {
+  ComputerReachability,
   SessionCommandStatus,
   SessionDockKind,
   SessionInputNoticeKind,
@@ -324,7 +325,10 @@ export function SessionScreenView({
     (vm.composer?.outgoing.length ?? 0) > 0;
   const pending = (!header || (!header.found && !header.missing)) && !hasContent;
   const exited = !!header?.exited;
-  const inactive = exited || (!!header?.found && !header.computerOnline) || !!header?.computerUnlinked;
+  const reachabilityUnknown = (() => {
+    return header?.computerReachability === ComputerReachability.UNKNOWN;
+  })();
+  const inactive = exited || (!!header?.found && !header.computerOnline && !reachabilityUnknown) || (!!header?.computerUnlinked && !reachabilityUnknown);
   const [questionDraft, setQuestionDraft] = useState<QuestionDraftState | undefined>(undefined);
   const seenApprovals = useRef(new Set<string>());
   const resolvedByUs = useRef(new Set<string>());
@@ -1600,7 +1604,7 @@ function ChatBody({
       </div>
       {remote && (
         <HistoryOpening
-          waiting={!ready}
+          waiting={!ready && rows.length === 0}
           connected={remote.conn === "online"}
           scroller={scroller}
           error={historyError || undefined}
@@ -1977,28 +1981,35 @@ function EndCard({
     );
   }
 
+  let resumeBody: ReactNode;
+  if (header?.computerUnlinked) {
+    resumeBody = <div className="d">{i18n.t("session.connect_resume")}</div>;
+  } else if (header?.computerOnline || header?.computerReachability === ComputerReachability.UNKNOWN) {
+    resumeBody = (
+      <>
+        <div className="d">
+          {renderText(header.endedText) || renderText(actions?.resumeNote) || i18n.t("session.resume_note", { name: mname })}
+        </div>
+        {header?.computerOnline && (
+          <div className="btns">
+            <button className="btn pri" onClick={doResume} disabled={!actions?.canResume}>
+              {i18n.t("session.resume")}
+            </button>
+          </div>
+        )}
+      </>
+    );
+  } else {
+    resumeBody = <div className="d">{renderText(actions?.resumeNote) || i18n.t("session.offline_resume", { name: mname })}</div>;
+  }
+
   return (
     <div className="endcard">
       <div className="h">
         <StateMark kind="off" />
         {i18n.t("session.ended")}
       </div>
-      {header?.computerUnlinked ? (
-        <div className="d">{i18n.t("session.connect_resume")}</div>
-      ) : header?.computerOnline ? (
-        <>
-          <div className="d">
-            {renderText(header.endedText) || renderText(actions?.resumeNote) || i18n.t("session.resume_note", { name: mname })}
-          </div>
-          <div className="btns">
-            <button className="btn pri" onClick={doResume} disabled={!actions?.canResume}>
-              {i18n.t("session.resume")}
-            </button>
-          </div>
-        </>
-      ) : (
-        <div className="d">{renderText(actions?.resumeNote) || i18n.t("session.offline_resume", { name: mname })}</div>
-      )}
+      {resumeBody}
     </div>
   );
 }

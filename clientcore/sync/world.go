@@ -25,6 +25,16 @@ func (e *Engine) machineReachable(m *MachineEntry) bool {
 	return m.Online && !e.worldUnlinked()
 }
 
+func (e *Engine) machineReachabilityUnknown(m *MachineEntry) bool {
+	if !e.coldStartGraceActive() {
+		return false
+	}
+	if m != nil && e.directReady[m.ID] {
+		return false
+	}
+	return true
+}
+
 func (e *Engine) accountControlLost() bool {
 	if e.removed {
 		return true
@@ -93,6 +103,7 @@ func (e *Engine) SyncToState(st *screens.State) {
 		return
 	}
 	displayGrace := e.displayGraceActive()
+	reachabilityUnknown := e.coldStartGraceActive()
 	unlinked := e.worldUnlinked()
 
 	machines := make([]*lists.Machine, 0, len(e.machines))
@@ -101,21 +112,23 @@ func (e *Engine) SyncToState(st *screens.State) {
 			continue
 		}
 		reachable := e.machineReachable(m)
+		unknown := !reachable && e.machineReachabilityUnknown(m)
 		mUnlinked := unlinked && !e.directReady[m.ID]
 		var pv uint32
 		if m.Meta != nil {
 			pv = m.Meta.ProtocolVersion
 		}
 		machines = append(machines, &lists.Machine{
-			ID:              m.ID,
-			Online:          m.Online,
-			Reachable:       &reachable,
-			Unlinked:        &mUnlinked,
-			LastSeenMs:      m.LastSeenMs,
-			ProtocolVersion: pv,
-			DaemonOutOfDate: pv > 0 && pv < ProtocolVersion,
-			ClientOutOfDate: pv > 0 && pv > ProtocolVersion,
-			Meta:            m.Meta,
+			ID:                  m.ID,
+			Online:              m.Online,
+			Reachable:           &reachable,
+			ReachabilityUnknown: unknown,
+			Unlinked:            &mUnlinked,
+			LastSeenMs:          m.LastSeenMs,
+			ProtocolVersion:     pv,
+			DaemonOutOfDate:     pv > 0 && pv < ProtocolVersion,
+			ClientOutOfDate:     pv > 0 && pv > ProtocolVersion,
+			Meta:                m.Meta,
 		})
 	}
 	slices.SortFunc(machines, func(a, b *lists.Machine) int {
@@ -161,6 +174,7 @@ func (e *Engine) SyncToState(st *screens.State) {
 
 	st.Cal = e.cal
 	st.DisplayGrace = displayGrace
+	st.ReachabilityUnknown = reachabilityUnknown
 	st.ConnectionReason = ""
 	st.ConnectionReasonText = e.connReasonText
 	st.SessionListErrorText = e.sessionListErr

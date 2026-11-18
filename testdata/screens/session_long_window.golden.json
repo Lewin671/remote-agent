@@ -19,6 +19,14 @@
       "effects": {
         "effects": [
           {
+            "scheduleTimer": {
+              "timerId": "1",
+              "kind": "TIMER_KIND_LINK_GRACE",
+              "key": "cold-start",
+              "delayMs": "1500"
+            }
+          },
+          {
             "cacheRead": {
               "bootstrap": {
                 "opId": "1"
@@ -80,7 +88,7 @@
           },
           {
             "scheduleTimer": {
-              "timerId": "1",
+              "timerId": "2",
               "kind": "TIMER_KIND_STREAM_OPEN",
               "delayMs": "15000"
             }
@@ -101,13 +109,13 @@
         "effects": [
           {
             "cancelTimer": {
-              "timerId": "1",
+              "timerId": "2",
               "kind": "TIMER_KIND_STREAM_OPEN"
             }
           },
           {
             "scheduleTimer": {
-              "timerId": "2",
+              "timerId": "3",
               "kind": "TIMER_KIND_LIVENESS",
               "delayMs": "1000"
             }
@@ -145,6 +153,13 @@
     {
       "effects": {
         "effects": [
+          {
+            "cancelTimer": {
+              "timerId": "1",
+              "kind": "TIMER_KIND_LINK_GRACE",
+              "key": "cold-start"
+            }
+          },
           {
             "render": {
               "screens": [
@@ -224,7 +239,7 @@
           },
           {
             "scheduleTimer": {
-              "timerId": "3",
+              "timerId": "4",
               "kind": "TIMER_KIND_HISTORY_SWEEP",
               "delayMs": "15000"
             }
@@ -331,7 +346,8 @@
                 "supportsSchedule": true,
                 "terminalAvailable": true,
                 "maxImages": 6
-              }
+              },
+              "computerReachability": "COMPUTER_REACHABILITY_ONLINE"
             },
             "actions": {
               "interrupt": {
@@ -726,7 +742,8 @@
                 "supportsSchedule": true,
                 "terminalAvailable": true,
                 "maxImages": 6
-              }
+              },
+              "computerReachability": "COMPUTER_REACHABILITY_ONLINE"
             },
             "actions": {
               "interrupt": {

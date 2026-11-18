@@ -963,13 +963,14 @@ export class Remote implements CoreExecutor {
     if (!this.network) return "no-network";
     const v = this.syncStateView;
     if (!v) return "waiting";
-    if (v.removed || v.connection === CoreConnState.OFFLINE || v.unlinked) return "no-server";
+    if (v.removed || v.connection === CoreConnState.OFFLINE || (v.unlinked && !v.reachabilityUnknown)) return "no-server";
     return v.connection === CoreConnState.CONNECTED ? "online" : "waiting";
   }
   get displayGrace(): boolean { return Boolean(this.syncStateView?.displayGrace); }
+  get reachabilityUnknown(): boolean { return Boolean(this.syncStateView?.reachabilityUnknown); }
   get showWaiting(): boolean { return !this.displayGrace && this.conn !== "online" && this.link === "waiting"; }
   get awaiting(): boolean { return (this.syncStateView?.connection ?? CoreConnState.CONNECTING) === CoreConnState.CONNECTING; }
-  get unlinked(): boolean { return this.link === "no-network" || this.link === "no-server" || (this.link === "waiting" && !this.listed); }
+  get unlinked(): boolean { return !this.reachabilityUnknown && (this.link === "no-network" || this.link === "no-server" || (this.link === "waiting" && !this.listed)); }
   get lostAt(): number | undefined { const ms = Number(this.syncStateView?.disconnectedAtMs ?? 0n); return ms > 0 ? ms : undefined; }
   get listed(): boolean { return !!(this.syncStateView?.machinesListed && this.syncStateView?.sessionsListed); }
   get listError(): string { return renderText(this.syncStateView?.sessionListError); }

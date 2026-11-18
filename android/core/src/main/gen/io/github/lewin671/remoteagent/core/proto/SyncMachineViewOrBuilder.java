@@ -92,4 +92,10 @@ public interface SyncMachineViewOrBuilder extends
    * @return The clientOutOfDate.
    */
   boolean getClientOutOfDate();
+
+  /**
+   * <code>bool reachability_unknown = 13 [json_name = "reachabilityUnknown"];</code>
+   * @return The reachabilityUnknown.
+   */
+  boolean getReachabilityUnknown();
 }

@@ -48,8 +48,12 @@ const keys2: [ReactNode, string, string][] = [
 export function TerminalView({ remote, session, compact, wide, running }: { remote: Remote; session: Pick<SessionView, "id" | "machineId">; compact?: boolean; wide?: boolean; running: boolean }) {
   useRemote(remote);
   const online = remote.peer(session.machineId).ready;
+  const waitingPeer = !online && (remote.reachabilityUnknown || remote.displayGrace);
   const onlineRef = useRef(online);
   onlineRef.current = online;
+  const waitingPeerRef = useRef(waitingPeer);
+  waitingPeerRef.current = waitingPeer;
+  const heldForWaitingRef = useRef(false);
   const fine = usePointerFine();
   const box = useRef<HTMLDivElement>(null);
   const host = useRef<HTMLDivElement>(null);
@@ -274,6 +278,21 @@ export function TerminalView({ remote, session, compact, wide, running }: { remo
     };
   }, [remote, session.id]);
   useEffect(() => {
+    if (heldForWaitingRef.current) {
+      if (online) {
+        heldForWaitingRef.current = false;
+        setAttempt((n) => n + 1);
+        return;
+      }
+      if (!waitingPeer) {
+        heldForWaitingRef.current = false;
+        controllerRef.current?.markOfflineClosed();
+        setTerminalState("closed");
+        setReason("");
+        setLinked(false);
+        return;
+      }
+    }
     if (!online && stateRef.current === "closed") {
       controllerRef.current?.markOfflineClosed();
       return;
@@ -281,16 +300,25 @@ export function TerminalView({ remote, session, compact, wide, running }: { remo
     if (online && stateRef.current === "closed") {
       controllerRef.current?.onMainOnline();
     }
-  }, [online, remote, session.id]);
+  }, [online, waitingPeer, remote, session.id]);
   useEffect(() => {
     const ctrl = controllerRef.current;
     if (!onlineRef.current && !allowOpenRef.current) {
+      if (waitingPeerRef.current) {
+        heldForWaitingRef.current = true;
+        setTerminalState("connecting");
+        setReason("");
+        setLinked(false);
+        return;
+      }
+      heldForWaitingRef.current = false;
       ctrl?.markOfflineClosed();
       setTerminalState("closed");
       setReason("");
       setLinked(false);
       return;
     }
+    heldForWaitingRef.current = false;
     allowOpenRef.current = false;
     let alive = true, opened = false, ended = false;
     const opening = new AbortController();

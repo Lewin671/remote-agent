@@ -145,13 +145,15 @@ func BuildHome(st *State, endedLimit int) *corev1.HomeViewModel {
 }
 
 func displayWorld(st *State) lists.World {
-	if st == nil || !st.DisplayGrace {
+	if st == nil || (!st.DisplayGrace && !st.ReachabilityUnknown) {
 		return st.World
 	}
 	w := st.World
-	w.Connection = lists.ConnConnected
 	unlinked := false
 	w.Unlinked = &unlinked
+	if st.DisplayGrace {
+		w.Connection = lists.ConnConnected
+	}
 	if len(st.World.Machines) > 0 {
 		machines := make([]*lists.Machine, len(st.World.Machines))
 		for i, m := range st.World.Machines {
@@ -159,10 +161,15 @@ func displayWorld(st *State) lists.World {
 				continue
 			}
 			mc := *m
-			reachable := mc.Online || (m.Reachable != nil && *m.Reachable)
 			mUnlinked := false
-			mc.Reachable = &reachable
 			mc.Unlinked = &mUnlinked
+			if st.DisplayGrace {
+				reachable := mc.Online || (m.Reachable != nil && *m.Reachable)
+				mc.Reachable = &reachable
+				mc.ReachabilityUnknown = false
+			} else if st.ReachabilityUnknown && !lists.MachineReachable(&mc) {
+				mc.ReachabilityUnknown = true
+			}
 			machines[i] = &mc
 		}
 		w.Machines = machines

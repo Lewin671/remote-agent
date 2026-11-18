@@ -20,6 +20,7 @@ type SessionViewInput struct {
 	AccountClockSkewed   bool
 	Conn                 lists.ConnectionKind
 	Unlinked             bool
+	ReachabilityUnknown  bool
 	LookingUp            bool
 	ProtocolVersion      uint32
 	Session              *lists.Session
@@ -292,14 +293,19 @@ func buildSessionHeader(
 		out.ProjectName = text.Msg(text.KeyProjectsUnknown)
 	}
 
+	reachabilityUnknown := (in.ReachabilityUnknown || st.ReachabilityUnknown || (lm != nil && lm.ReachabilityUnknown)) && !in.Removed && !in.AccountControlLost
 	displayLm := lm
 	if st.DisplayGrace && lm != nil && lm.Online && !lists.MachineReachable(lm) {
 		mc := *lm
 		reachable := true
 		mc.Reachable = &reachable
 		displayLm = &mc
+	} else if !st.DisplayGrace && reachabilityUnknown && lm != nil && !lists.MachineReachable(lm) && !lm.ReachabilityUnknown {
+		mc := *lm
+		mc.ReachabilityUnknown = true
+		displayLm = &mc
 	}
-	unlinked := !st.DisplayGrace && (in.Unlinked || lists.MachineUnlinked(displayLm, &st.World))
+	unlinked := !st.DisplayGrace && !reachabilityUnknown && (in.Unlinked || lists.MachineUnlinked(displayLm, &st.World))
 	displayStatus := lists.ShownStatus(ls, displayLm, unlinked)
 	out.Status = mapStatus(displayStatus)
 	out.Tone = mapTone(lists.ToneOf(displayStatus))
@@ -367,15 +373,23 @@ func buildSessionHeader(
 	if lm != nil {
 		out.ComputerName = text.Plain(lists.MachineName(lm, machineID))
 		out.ComputerOnline = lists.MachineReachable(lm) || (st.DisplayGrace && lm.Online)
-		if !out.ComputerOnline {
+		if !out.ComputerOnline && !reachabilityUnknown {
 			out.OfflineSinceMs = lm.LastSeenMs
 		}
 		out.DaemonProtocolVersion = lists.MachineProtocolVersion(lm)
 	} else {
 		out.ComputerName = text.Msg(text.KeyCommonUnknownComputer)
 	}
+	switch {
+	case out.ComputerOnline:
+		out.ComputerReachability = corev1.ComputerReachability_COMPUTER_REACHABILITY_ONLINE
+	case reachabilityUnknown:
+		out.ComputerReachability = corev1.ComputerReachability_COMPUTER_REACHABILITY_UNKNOWN
+	default:
+		out.ComputerReachability = corev1.ComputerReachability_COMPUTER_REACHABILITY_OFFLINE
+	}
 	out.ComputerUnlinked = unlinked
-	if lm != nil && !out.ComputerOnline {
+	if lm != nil && !out.ComputerOnline && !reachabilityUnknown {
 		if lm.LastSeenMs > 0 {
 			out.OfflineText = text.Msg(text.KeySessionOfflineNote,
 				text.ArgText("lastSeen", formatRelativeTime(lm.LastSeenMs, st.Cal)),
@@ -575,7 +589,7 @@ func buildSessionActions(
 		out.EndConfirmNote = text.Msg(text.KeySessionEndNote, text.Str("agent", caps.Name), text.Str("name", machineDisplay))
 	}
 	out.CanResume = onlineReady && exited
-	if exited && !header.ComputerOnline && machineDisplay != "" {
+	if exited && !header.ComputerOnline && header.ComputerReachability != corev1.ComputerReachability_COMPUTER_REACHABILITY_UNKNOWN && machineDisplay != "" {
 		out.ResumeNote = text.Msg(text.KeySessionOfflineResume, text.Str("name", machineDisplay))
 	} else if machineDisplay != "" {
 		out.ResumeNote = text.Msg(text.KeySessionResumeNote, text.Str("name", machineDisplay))
@@ -1132,14 +1146,18 @@ func buildSessionComposer(
 	switch {
 	case header.Exited:
 		out.DisabledReason = text.Msg(text.KeySessionEnded)
-	case in.Conn != lists.ConnConnected && !st.DisplayGrace:
-		out.DisabledReason = text.Msg(text.KeyComposerIosConnectSend)
+	case in.AccountControlLost || in.Removed:
+		out.DisabledReason = text.Msg(text.KeyErrorsRemoteControlExpiredControlAndNewUploadsArePaused)
 	case header.ProtocolMismatch:
 		out.DisabledReason = header.ProtocolMismatchText
+	case header.ComputerReachability == corev1.ComputerReachability_COMPUTER_REACHABILITY_UNKNOWN:
+		out.DisabledReason = text.Msg(text.KeyConnectionConnecting)
+	case in.Conn != lists.ConnConnected && !st.DisplayGrace:
+		out.DisabledReason = text.Msg(text.KeyComposerIosConnectSend)
+	case header.ComputerUnlinked:
+		out.DisabledReason = text.Msg(text.KeyErrorsRemoteControlExpiredControlAndNewUploadsArePaused)
 	case !header.ComputerOnline:
 		out.DisabledReason = text.Msg(text.KeyErrorsTheComputerIsOfflineTheCommandWasNotSent)
-	case header.ComputerUnlinked || in.AccountControlLost || in.Removed:
-		out.DisabledReason = text.Msg(text.KeyErrorsRemoteControlExpiredControlAndNewUploadsArePaused)
 	}
 
 	switch {

@@ -138,18 +138,19 @@ func (m *SyncPendingAction) AppendMarshal(b []byte) []byte {
 }
 
 type SyncMachineView struct {
-	MachineId       string
-	Online          bool
-	LastSeenMs      int64
-	Meta            *v1.MachineMeta
-	MetaRev         uint64
-	MetaBroken      bool
-	Reachable       bool
-	Unlinked        bool
-	DirectReady     bool
-	ProtocolVersion uint32
-	DaemonOutOfDate bool
-	ClientOutOfDate bool
+	MachineId           string
+	Online              bool
+	LastSeenMs          int64
+	Meta                *v1.MachineMeta
+	MetaRev             uint64
+	MetaBroken          bool
+	Reachable           bool
+	Unlinked            bool
+	DirectReady         bool
+	ProtocolVersion     uint32
+	DaemonOutOfDate     bool
+	ClientOutOfDate     bool
+	ReachabilityUnknown bool
 }
 
 func (m *SyncMachineView) GetMachineId() string {
@@ -224,6 +225,12 @@ func (m *SyncMachineView) GetClientOutOfDate() bool {
 	}
 	return false
 }
+func (m *SyncMachineView) GetReachabilityUnknown() bool {
+	if m != nil {
+		return m.ReachabilityUnknown
+	}
+	return false
+}
 
 func (m *SyncMachineView) Size() int {
 	if m == nil {
@@ -244,6 +251,7 @@ func (m *SyncMachineView) Size() int {
 	n += litewire.SizeVarintField(10, uint64(m.ProtocolVersion))
 	n += litewire.SizeBool(11, m.DaemonOutOfDate)
 	n += litewire.SizeBool(12, m.ClientOutOfDate)
+	n += litewire.SizeBool(13, m.ReachabilityUnknown)
 	return n
 }
 
@@ -276,6 +284,7 @@ func (m *SyncMachineView) AppendMarshal(b []byte) []byte {
 	b = litewire.AppendVarint(b, 10, uint64(m.ProtocolVersion))
 	b = litewire.AppendBool(b, 11, m.DaemonOutOfDate)
 	b = litewire.AppendBool(b, 12, m.ClientOutOfDate)
+	b = litewire.AppendBool(b, 13, m.ReachabilityUnknown)
 	return b
 }
 
@@ -610,6 +619,7 @@ type SyncStateView struct {
 	Prefs                  *v1.ProjectPrefs
 	Devices                []*SyncDeviceView
 	DisplayGrace           bool
+	ReachabilityUnknown    bool
 }
 
 func (m *SyncStateView) GetConnection() ConnState {
@@ -840,6 +850,12 @@ func (m *SyncStateView) GetDisplayGrace() bool {
 	}
 	return false
 }
+func (m *SyncStateView) GetReachabilityUnknown() bool {
+	if m != nil {
+		return m.ReachabilityUnknown
+	}
+	return false
+}
 
 func (m *SyncStateView) Size() int {
 	if m == nil {
@@ -908,6 +924,7 @@ func (m *SyncStateView) Size() int {
 		}
 	}
 	n += litewire.SizeBool(38, m.DisplayGrace)
+	n += litewire.SizeBool(39, m.ReachabilityUnknown)
 	return n
 }
 
@@ -988,6 +1005,7 @@ func (m *SyncStateView) AppendMarshal(b []byte) []byte {
 		}
 	}
 	b = litewire.AppendBool(b, 38, m.DisplayGrace)
+	b = litewire.AppendBool(b, 39, m.ReachabilityUnknown)
 	return b
 }
 

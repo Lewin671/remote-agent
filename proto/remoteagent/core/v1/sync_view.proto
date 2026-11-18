@@ -41,6 +41,7 @@ message SyncMachineView {
   uint32 protocol_version = 10;
   bool daemon_out_of_date = 11;
   bool client_out_of_date = 12;
+  bool reachability_unknown = 13;
 }
 
 // Session snapshot for unmigrated Step 3-4 screens (session screen, schedules).
@@ -123,6 +124,7 @@ message SyncStateView {
 
   repeated SyncDeviceView devices = 37;
   bool display_grace = 38;
+  bool reachability_unknown = 39;
 }
 
 // Transitional view exposing per-session buffer status, Core-derived ProjectionState, latest LiveSnapshot,

@@ -33,6 +33,7 @@ struct TerminalPane: View {
 
     /// The main connection is up: a terminal needs it for its opening command.
     private var online: Bool { model.state.peer(model.state.sessions[sessionId]?.machineId).ready }
+    private var waitingReachability: Bool { model.state.reachabilityUnknown || model.state.displayGrace }
     private var active: Bool { online && model.foreground }
 
     var body: some View {
@@ -73,6 +74,10 @@ struct TerminalPane: View {
         .onChange(of: active) { _, now in
             if !model.foreground { terminal.close() }
             else if now { terminal.connectIfNeeded() }
+            else if !waitingReachability { terminal.close() }
+        }
+        .onChange(of: waitingReachability) { _, waiting in
+            if !waiting && !online { terminal.close() }
         }
         .task(id: terminal.resizedElsewhere) {
             // The toolbar says it for a while; nothing pops up over the screen.
@@ -91,6 +96,7 @@ struct TerminalPane: View {
                 hold: { app.holdTerminal($0) },
                 release: { app.releaseTerminal($0) }))
         if active { open() }
+        else if !waitingReachability { terminal.close() }
     }
 
     private func open() {

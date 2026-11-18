@@ -188,10 +188,16 @@ fun TerminalPane(remote: Remote, sessionId: String, sessionRunning: Boolean, mod
     val owner = androidx.lifecycle.compose.LocalLifecycleOwner.current
     val transportState = remote.state.collectAsStateWithLifecycle().value
     val online = transportState.peer(transportState.sessions[sessionId]?.machineId).ready
+    val waitingReachability = !online && (transportState.reachabilityUnknown || transportState.displayGrace)
     DisposableEffect(term, owner) {
         val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
             when (event) {
-                androidx.lifecycle.Lifecycle.Event.ON_START -> if (remote.state.value.peer(remote.state.value.sessions[sessionId]?.machineId).ready) term.connect()
+                androidx.lifecycle.Lifecycle.Event.ON_START -> {
+                    val currentState = remote.state.value
+                    val ready = currentState.peer(currentState.sessions[sessionId]?.machineId).ready
+                    if (ready) term.connect()
+                    else if (!currentState.reachabilityUnknown && !currentState.displayGrace) term.close()
+                }
                 androidx.lifecycle.Lifecycle.Event.ON_STOP -> term.close()
                 else -> {}
             }
@@ -199,8 +205,12 @@ fun TerminalPane(remote: Remote, sessionId: String, sessionRunning: Boolean, mod
         owner.lifecycle.addObserver(observer)
         onDispose { owner.lifecycle.removeObserver(observer); term.close() }
     }
-    LaunchedEffect(online) {
-        if (online && owner.lifecycle.currentState.isAtLeast(androidx.lifecycle.Lifecycle.State.STARTED)) term.connectIfNeeded()
+    LaunchedEffect(online, waitingReachability) {
+        if (online && owner.lifecycle.currentState.isAtLeast(androidx.lifecycle.Lifecycle.State.STARTED)) {
+            term.connectIfNeeded()
+        } else if (!online && !waitingReachability) {
+            term.close()
+        }
     }
     val state by term.state.collectAsState()
     val size by term.size.collectAsState()

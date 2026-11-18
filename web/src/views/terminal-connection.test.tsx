@@ -238,3 +238,41 @@ it("applies backoff before re-stabilizing when reopened terminal keeps failing",
  await act(async () => { await vi.advanceTimersByTimeAsync(1); });
  expect(vm.open).toHaveBeenCalledTimes(3);
 });
+
+it("keeps terminal in connecting state during cold-start reachability unknown, opens when ready, and closes when grace expires offline", async () => {
+ vi.spyOn(document, "hidden", "get").mockReturnValue(false);
+ vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockReturnValue(600);
+ vi.spyOn(HTMLElement.prototype, "clientHeight", "get").mockReturnValue(480);
+ vi.stubGlobal("ResizeObserver", class { observe() {} disconnect() {} });
+ const remote = track(DemoRemote.create(new URLSearchParams()));
+ await act(async () => { remote.start(); });
+ patchSyncState(remote, { conn: "connecting", listed: false, reachabilityUnknown: true });
+ const open = vi.spyOn(remote, "openTerminal").mockResolvedValue({ close: vi.fn(), send: vi.fn() } as never);
+ host = document.createElement("div"); document.body.append(host); root = createRoot(host);
+ const s1 = remote.sessions.get("s-run")!;
+ await act(async () => root!.render(<TerminalView remote={remote} session={s1} running />));
+
+ // Neutral connecting capsule, no "terminal closed" card while grace is active.
+ expect(open).toHaveBeenCalledTimes(0);
+ expect(host.querySelector(".tstate")).toBeNull();
+ expect(host.querySelector(".tchip")?.textContent).not.toContain("断开");
+ expect(host.querySelector(".tchip")?.textContent).not.toContain("Disconnected");
+
+ // Grace expires while still offline -> transitions to closed card.
+ await act(async () => { patchSyncState(remote, { conn: "connecting", listed: false, reachabilityUnknown: false }); });
+ expect(open).toHaveBeenCalledTimes(0);
+ expect(host.querySelector(".tstate")).not.toBeNull();
+
+ // Cold-start connecting -> main comes online -> automatically opens terminal.
+ act(() => root!.unmount());
+ const remote2 = track(DemoRemote.create(new URLSearchParams()));
+ await act(async () => { remote2.start(); });
+ patchSyncState(remote2, { conn: "connecting", listed: false, reachabilityUnknown: true });
+ const open2 = vi.spyOn(remote2, "openTerminal").mockResolvedValue({ close: vi.fn(), send: vi.fn() } as never);
+ root = createRoot(host);
+ await act(async () => root!.render(<TerminalView remote={remote2} session={remote2.sessions.get("s-run")!} running />));
+ expect(open2).toHaveBeenCalledTimes(0);
+ expect(host.querySelector(".tstate")).toBeNull();
+ await act(async () => { patchSyncState(remote2, { conn: "online", listed: true, reachabilityUnknown: false }); });
+ expect(open2).toHaveBeenCalledTimes(1);
+});

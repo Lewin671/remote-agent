@@ -208,6 +208,8 @@ func (e *Engine) handleListsFetched(ctx *StepContext, ev *corev1.ListsFetchedEve
 	e.machinesListed = true
 	e.sessionsListed = true
 	e.liveLoaded = true
+	e.coldStartGraceExpired = true
+	e.clearColdStartGrace(ctx)
 	e.sessionListErr = nil
 	e.sessionListRaw = ""
 

@@ -117,6 +117,14 @@ func (e *Engine) handleTimerFired(ctx *StepContext, ev *corev1.TimerFiredEvent) 
 			}
 			return
 		}
+		if ev.Key == coldStartGraceTimerKey {
+			if e.coldStartGraceUntilMs != 0 {
+				e.coldStartGraceUntilMs = 0
+				e.coldStartGraceExpired = true
+				ctx.Dirty.MarkAll()
+			}
+			return
+		}
 		if e.running && !e.streamOpen && e.networkAvailable {
 			e.conn = lists.ConnOffline
 			if e.offlineSinceMs == 0 && e.nowMs > 0 {

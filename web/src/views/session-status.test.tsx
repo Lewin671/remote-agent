@@ -6,9 +6,10 @@ import { t as message } from "../i18n";
 
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { getCoreHost } from "../core/host";
 import { DemoRemote } from "../dev/demo";
+import { ComputerReachability } from "../gen/remoteagent/core/v1/session_view_pb";
 import { patchSyncState } from "../test/remote-fixture";
 import { SessionPage } from "./Session";
 import { SessionRow } from "./Home";
@@ -108,4 +109,53 @@ it("counts a computer as the copy kept in the browser had it until the lists are
   const mListed = r.machines.get(m.id)!;
   expect(r.onlineOf(mListed)).toBe(false);
   expect(r.presence.get(mListed.id)).toBe(mListed);
+});
+
+it("does not overlay HistoryOpening skeleton or replace Composer with EndCard when cached rows exist during unknown reachability", async () => {
+  vi.useFakeTimers();
+  try {
+    const r = DemoRemote.create(new URLSearchParams(), async () => undefined);
+    remotes.push(r);
+    r.start();
+    const core = getCoreHost(r);
+    const origViewSession = core.viewSession.bind(core);
+    let reachability: ComputerReachability = ComputerReachability.UNKNOWN;
+    vi.spyOn(core, "viewSession").mockImplementation((sid, win) => {
+      const vm = origViewSession(sid, win);
+      return {
+        ...vm,
+        header: vm.header ? {
+          ...vm.header,
+          found: true,
+          computerOnline: false,
+          computerUnlinked: false,
+          computerReachability: reachability,
+        } : undefined,
+        timeline: vm.timeline ? {
+          ...vm.timeline,
+          loading: true,
+          loaded: false,
+        } : undefined,
+      };
+    });
+
+    host = document.createElement("div");
+    document.body.append(host);
+    root = createRoot(host);
+    await act(async () => root!.render(<SessionPage remote={r} sessionId="s-idle" onBack={() => undefined} wide />));
+    await act(async () => { await vi.advanceTimersByTimeAsync(400); });
+
+    // Cached rows render without overlaying the grey loading skeleton, and Composer stays visible instead of EndCard.
+    expect(host.querySelectorAll(".history-row").length).toBeGreaterThan(0);
+    expect(host.querySelector(".history-placeholder")).toBeNull();
+    expect(host.querySelector(".endcard")).toBeNull();
+    expect(host.querySelector(".cbar")).not.toBeNull();
+
+    // Once grace expires and computer is genuinely offline, EndCard replaces Composer.
+    reachability = ComputerReachability.OFFLINE;
+    await act(async () => root!.render(<SessionPage key="offline" remote={r} sessionId="s-idle" onBack={() => undefined} wide />));
+    expect(host.querySelector(".endcard")).not.toBeNull();
+  } finally {
+    vi.useRealTimers();
+  }
 });

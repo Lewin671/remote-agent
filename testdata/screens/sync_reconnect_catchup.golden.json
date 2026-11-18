@@ -19,6 +19,14 @@
       "effects": {
         "effects": [
           {
+            "scheduleTimer": {
+              "timerId": "1",
+              "kind": "TIMER_KIND_LINK_GRACE",
+              "key": "cold-start",
+              "delayMs": "1500"
+            }
+          },
+          {
             "cacheRead": {
               "bootstrap": {
                 "opId": "1"
@@ -80,7 +88,7 @@
           },
           {
             "scheduleTimer": {
-              "timerId": "1",
+              "timerId": "2",
               "kind": "TIMER_KIND_STREAM_OPEN",
               "delayMs": "15000"
             }
@@ -101,13 +109,13 @@
         "effects": [
           {
             "cancelTimer": {
-              "timerId": "1",
+              "timerId": "2",
               "kind": "TIMER_KIND_STREAM_OPEN"
             }
           },
           {
             "scheduleTimer": {
-              "timerId": "2",
+              "timerId": "3",
               "kind": "TIMER_KIND_LIVENESS",
               "delayMs": "1000"
             }
@@ -146,6 +154,13 @@
       "effects": {
         "effects": [
           {
+            "cancelTimer": {
+              "timerId": "1",
+              "kind": "TIMER_KIND_LINK_GRACE",
+              "key": "cold-start"
+            }
+          },
+          {
             "render": {
               "screens": [
                 "SCREEN_TARGET_HOME",
@@ -174,7 +189,7 @@
           },
           {
             "scheduleTimer": {
-              "timerId": "3",
+              "timerId": "4",
               "kind": "TIMER_KIND_HISTORY_SWEEP",
               "delayMs": "15000"
             }
@@ -232,13 +247,13 @@
         "effects": [
           {
             "cancelTimer": {
-              "timerId": "2",
+              "timerId": "3",
               "kind": "TIMER_KIND_LIVENESS"
             }
           },
           {
             "scheduleTimer": {
-              "timerId": "4",
+              "timerId": "5",
               "kind": "TIMER_KIND_LINK_GRACE",
               "delayMs": "10000"
             }
@@ -250,14 +265,14 @@
           },
           {
             "scheduleTimer": {
-              "timerId": "5",
+              "timerId": "6",
               "kind": "TIMER_KIND_RECONNECT",
               "delayMs": "500"
             }
           },
           {
             "scheduleTimer": {
-              "timerId": "6",
+              "timerId": "7",
               "kind": "TIMER_KIND_LINK_GRACE",
               "key": "display",
               "delayMs": "1500"
@@ -435,7 +450,7 @@
         "effects": [
           {
             "cancelTimer": {
-              "timerId": "6",
+              "timerId": "7",
               "kind": "TIMER_KIND_LINK_GRACE",
               "key": "display"
             }
@@ -462,38 +477,22 @@
             },
             "scopeShortPath": "~/Code/alpha",
             "connection": {
-              "state": "CONN_STATE_OFFLINE",
+              "state": "CONN_STATE_RECONNECTING",
               "badgeText": {
-                "key": "connection.unreachable"
+                "key": "connection.reconnecting_conn_check"
               },
               "detailText": {
-                "key": "connection.server_details",
-                "args": [
-                  {
-                    "name": "reason",
-                    "textValue": {
-                      "key": "errors.server_returned",
-                      "args": [
-                        {
-                          "name": "value",
-                          "strValue": "drop"
-                        }
-                      ]
-                    }
-                  }
-                ]
-              },
-              "disconnectedAtMs": "1791078070200"
+                "key": "connection.reconnecting"
+              }
             },
             "headline": {
               "kind": "HEADLINE_KIND_ERROR",
               "title": {
-                "key": "connection.no_server"
+                "key": "connection.reconnecting"
               },
               "sub": {
                 "key": "connection.previous_below"
               },
-              "detailsAction": true,
               "unlinked": true
             },
             "empty": {
@@ -516,245 +515,6 @@
                       "intValue": "1"
                     }
                   ]
-                },
-                "status": "SESSION_DISPLAY_STATUS_UNLINKED",
-                "tone": "SESSION_TONE_NEUTRAL",
-                "statusText": {
-                  "key": "list_state.unlinked"
-                },
-                "preview": {
-                  "key": "list_state.no_message"
-                },
-                "secondLine": {
-                  "join": [
-                    {
-                      "key": "list_state.unlinked"
-                    },
-                    {
-                      "key": "list_state.no_message"
-                    }
-                  ],
-                  "separatorLiteral": " · "
-                },
-                "agent": "AGENT_CODEX"
-              }
-            ],
-            "scopeMenu": [
-              {
-                "key": "/Users/me/Code/alpha",
-                "name": {
-                  "literal": "alpha"
-                },
-                "shortPath": "~/Code/alpha",
-                "subtitle": {
-                  "join": [
-                    {
-                      "key": "projects.live_count",
-                      "args": [
-                        {
-                          "name": "count",
-                          "intValue": "1"
-                        }
-                      ]
-                    },
-                    {
-                      "key": "projects.computer_offline"
-                    }
-                  ],
-                  "separatorLiteral": " · "
-                },
-                "liveCount": 1,
-                "allOffline": true,
-                "checked": true
-              }
-            ],
-            "sidebarProjects": {
-              "others": [
-                {
-                  "key": "/Users/me/Code/alpha",
-                  "name": {
-                    "literal": "alpha"
-                  },
-                  "shortPath": "~/Code/alpha",
-                  "subtitle": {
-                    "join": [
-                      {
-                        "key": "projects.live_count",
-                        "args": [
-                          {
-                            "name": "count",
-                            "intValue": "1"
-                          }
-                        ]
-                      },
-                      {
-                        "key": "projects.computer_offline"
-                      }
-                    ],
-                    "separatorLiteral": " · "
-                  },
-                  "liveCount": 1,
-                  "allOffline": true
-                }
-              ]
-            }
-          }
-        }
-      }
-    },
-    {
-      "effects": {
-        "effects": [
-          {
-            "ensureToken": {
-              "opId": "8",
-              "timeoutMs": "3000"
-            }
-          },
-          {
-            "render": {
-              "screens": [
-                "SCREEN_TARGET_HOME",
-                "SCREEN_TARGET_PROJECT",
-                "SCREEN_TARGET_NEW_SESSION",
-                "SCREEN_TARGET_SYNC_STATE"
-              ]
-            }
-          }
-        ]
-      }
-    },
-    {
-      "effects": {
-        "effects": [
-          {
-            "openStream": {
-              "legId": "2",
-              "token": "tok-2",
-              "timeoutMs": "15000"
-            }
-          },
-          {
-            "scheduleTimer": {
-              "timerId": "7",
-              "kind": "TIMER_KIND_STREAM_OPEN",
-              "delayMs": "15000"
-            }
-          },
-          {
-            "render": {
-              "screens": [
-                "SCREEN_TARGET_HOME",
-                "SCREEN_TARGET_SYNC_STATE"
-              ]
-            }
-          }
-        ]
-      }
-    },
-    {
-      "effects": {
-        "effects": [
-          {
-            "cancelTimer": {
-              "timerId": "7",
-              "kind": "TIMER_KIND_STREAM_OPEN"
-            }
-          },
-          {
-            "scheduleTimer": {
-              "timerId": "8",
-              "kind": "TIMER_KIND_LIVENESS",
-              "delayMs": "1000"
-            }
-          },
-          {
-            "rpc": {
-              "opId": "9",
-              "fetchLists": {
-                "limit": 50
-              }
-            }
-          },
-          {
-            "rpc": {
-              "opId": "10",
-              "getAccountPrefs": {
-                "objectId": "project-prefs"
-              }
-            }
-          },
-          {
-            "render": {
-              "screens": [
-                "SCREEN_TARGET_HOME",
-                "SCREEN_TARGET_PROJECT",
-                "SCREEN_TARGET_NEW_SESSION",
-                "SCREEN_TARGET_SYNC_STATE",
-                "SCREEN_TARGET_SESSION_DATA"
-              ]
-            }
-          }
-        ]
-      }
-    },
-    {
-      "effects": {
-        "effects": [
-          {
-            "render": {
-              "screens": [
-                "SCREEN_TARGET_HOME",
-                "SCREEN_TARGET_PROJECT",
-                "SCREEN_TARGET_NEW_SESSION",
-                "SCREEN_TARGET_SYNC_STATE",
-                "SCREEN_TARGET_SESSION_DATA"
-              ]
-            }
-          }
-        ]
-      },
-      "views": {
-        "reconnectedOnline": {
-          "home": {
-            "scopeKey": "/Users/me/Code/alpha",
-            "scopeTitle": {
-              "literal": "alpha"
-            },
-            "scopeShortPath": "~/Code/alpha",
-            "connection": {
-              "state": "CONN_STATE_CONNECTED",
-              "badgeText": {
-                "key": "connection.connected"
-              },
-              "livePushConnected": true
-            },
-            "headline": {
-              "kind": "HEADLINE_KIND_RUNNING",
-              "title": {
-                "key": "home.running_count",
-                "args": [
-                  {
-                    "name": "count",
-                    "intValue": "1"
-                  }
-                ]
-              }
-            },
-            "empty": {
-              "kind": "HOME_EMPTY_KIND_NONE"
-            },
-            "liveTotal": 1,
-            "timelineTotal": 1,
-            "running": [
-              {
-                "sessionId": "s1",
-                "machineId": "m1",
-                "title": {
-                  "literal": "Build worker"
-                },
-                "time": {
-                  "key": "time.just_now"
                 },
                 "status": "SESSION_DISPLAY_STATUS_RUNNING",
                 "tone": "SESSION_TONE_LIVE",
@@ -794,7 +554,13 @@
                         {
                           "name": "time",
                           "textValue": {
-                            "key": "time.just_now"
+                            "key": "time.minutes_ago",
+                            "args": [
+                              {
+                                "name": "count",
+                                "intValue": "1"
+                              }
+                            ]
                           }
                         }
                       ]
@@ -831,7 +597,176 @@
                           {
                             "name": "time",
                             "textValue": {
-                              "key": "time.just_now"
+                              "key": "time.minutes_ago",
+                              "args": [
+                                {
+                                  "name": "count",
+                                  "intValue": "1"
+                                }
+                              ]
+                            }
+                          }
+                        ]
+                      }
+                    ],
+                    "separatorLiteral": " · "
+                  },
+                  "liveCount": 1
+                }
+              ]
+            },
+            "canStart": true
+          }
+        }
+      }
+    },
+    {
+      "effects": {}
+    },
+    {
+      "effects": {}
+    },
+    {
+      "effects": {}
+    },
+    {
+      "effects": {},
+      "views": {
+        "reconnectedOnline": {
+          "home": {
+            "scopeKey": "/Users/me/Code/alpha",
+            "scopeTitle": {
+              "literal": "alpha"
+            },
+            "scopeShortPath": "~/Code/alpha",
+            "connection": {
+              "state": "CONN_STATE_RECONNECTING",
+              "badgeText": {
+                "key": "connection.reconnecting_conn_check"
+              },
+              "detailText": {
+                "key": "connection.reconnecting"
+              }
+            },
+            "headline": {
+              "kind": "HEADLINE_KIND_ERROR",
+              "title": {
+                "key": "connection.reconnecting"
+              },
+              "sub": {
+                "key": "connection.previous_below"
+              },
+              "unlinked": true
+            },
+            "empty": {
+              "kind": "HOME_EMPTY_KIND_NONE"
+            },
+            "liveTotal": 1,
+            "timelineTotal": 1,
+            "running": [
+              {
+                "sessionId": "s1",
+                "machineId": "m1",
+                "title": {
+                  "literal": "Build worker"
+                },
+                "time": {
+                  "key": "time.minutes_ago",
+                  "args": [
+                    {
+                      "name": "count",
+                      "intValue": "1"
+                    }
+                  ]
+                },
+                "status": "SESSION_DISPLAY_STATUS_RUNNING",
+                "tone": "SESSION_TONE_LIVE",
+                "statusText": {
+                  "key": "list_state.running"
+                },
+                "preview": {
+                  "key": "list_state.no_message"
+                },
+                "secondLine": {
+                  "key": "list_state.no_message"
+                },
+                "agent": "AGENT_CODEX"
+              }
+            ],
+            "scopeMenu": [
+              {
+                "key": "/Users/me/Code/alpha",
+                "name": {
+                  "literal": "alpha"
+                },
+                "shortPath": "~/Code/alpha",
+                "subtitle": {
+                  "join": [
+                    {
+                      "key": "projects.live_count",
+                      "args": [
+                        {
+                          "name": "count",
+                          "intValue": "1"
+                        }
+                      ]
+                    },
+                    {
+                      "key": "time.used_time",
+                      "args": [
+                        {
+                          "name": "time",
+                          "textValue": {
+                            "key": "time.minutes_ago",
+                            "args": [
+                              {
+                                "name": "count",
+                                "intValue": "1"
+                              }
+                            ]
+                          }
+                        }
+                      ]
+                    }
+                  ],
+                  "separatorLiteral": " · "
+                },
+                "liveCount": 1,
+                "checked": true
+              }
+            ],
+            "sidebarProjects": {
+              "others": [
+                {
+                  "key": "/Users/me/Code/alpha",
+                  "name": {
+                    "literal": "alpha"
+                  },
+                  "shortPath": "~/Code/alpha",
+                  "subtitle": {
+                    "join": [
+                      {
+                        "key": "projects.live_count",
+                        "args": [
+                          {
+                            "name": "count",
+                            "intValue": "1"
+                          }
+                        ]
+                      },
+                      {
+                        "key": "time.used_time",
+                        "args": [
+                          {
+                            "name": "time",
+                            "textValue": {
+                              "key": "time.minutes_ago",
+                              "args": [
+                                {
+                                  "name": "count",
+                                  "intValue": "1"
+                                }
+                              ]
                             }
                           }
                         ]

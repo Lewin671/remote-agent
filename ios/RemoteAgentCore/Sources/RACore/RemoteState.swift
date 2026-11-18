@@ -128,6 +128,7 @@ public struct RemoteState: Equatable, Sendable {
     /// control stays unsent until it is corrected.
     public var clockWarning = ""
     public var displayGrace = false
+    public var reachabilityUnknown = false
 
     public init() {}
 

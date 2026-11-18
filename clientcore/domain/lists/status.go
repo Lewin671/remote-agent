@@ -165,7 +165,7 @@ func StatusOf(s *Session, machine *Machine) SessionDisplayStatus {
 	if i.Status == v1.SessionStatus_SESSION_STATUS_EXITED {
 		return StatusEnded
 	}
-	if machine != nil && !MachineReachable(machine) {
+	if machine != nil && !machine.ReachabilityUnknown && !MachineReachable(machine) {
 		return StatusOffline
 	}
 	if i.PendingApprovals > 0 || s.Pending.HasApproval {

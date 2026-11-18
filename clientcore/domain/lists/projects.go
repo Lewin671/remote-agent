@@ -26,6 +26,7 @@ type ProjectSummary struct {
 	Ended           int32
 	WaitingCount    int32
 	LiveCount       int32
+	AnyOnline       bool
 	AllOffline      bool
 	Pinned          bool
 	Hidden          bool
@@ -138,6 +139,7 @@ type projectAgg struct {
 	ended           int32
 	waitingCount    int32
 	liveCount       int32
+	anyOnline       bool
 	allOffline      bool
 }
 
@@ -341,10 +343,13 @@ func aggregateProjects(w *World) ([]*projectAgg, map[string]*Machine) {
 
 		var machineNames []string
 		anyReachable := false
+		anyUnknown := false
 		for _, mid := range machineIDs {
 			m := machinesByID[mid]
 			if MachineReachable(m) {
 				anyReachable = true
+			} else if m != nil && m.ReachabilityUnknown {
+				anyUnknown = true
 			}
 			name := MachineName(m, mid)
 			if name != "" && !slices.Contains(machineNames, name) {
@@ -365,7 +370,8 @@ func aggregateProjects(w *World) ([]*projectAgg, map[string]*Machine) {
 			ended:           endedCount,
 			waitingCount:    waitingCount,
 			liveCount:       liveCount,
-			allOffline:      len(machineIDs) > 0 && !anyReachable,
+			anyOnline:       anyReachable,
+			allOffline:      len(machineIDs) > 0 && !anyReachable && !anyUnknown,
 		})
 	}
 
@@ -400,6 +406,7 @@ func toProjectSummary(p *projectAgg, pinned, hidden bool) *ProjectSummary {
 		Ended:           p.ended,
 		WaitingCount:    p.waitingCount,
 		LiveCount:       p.liveCount,
+		AnyOnline:       p.anyOnline,
 		AllOffline:      p.allOffline,
 		Pinned:          pinned,
 		Hidden:          hidden,

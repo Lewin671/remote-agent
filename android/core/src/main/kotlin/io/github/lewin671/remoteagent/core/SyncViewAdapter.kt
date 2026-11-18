@@ -123,6 +123,7 @@ data class RemoteState(
     val recoveryReadyMs: Long = 0,
     val clockWarning: Boolean = false,
     val displayGrace: Boolean = false,
+    val reachabilityUnknown: Boolean = false,
     val errorDetail: String = "",
     val connStep: MessageText = "".messageText(),
     val connStartedAtMs: Long? = null,
@@ -277,6 +278,7 @@ internal fun SyncStateView.toRemoteState(
         recoveryReadyMs = recoveryReadyMs,
         clockWarning = accountClockSkewed,
         displayGrace = displayGrace,
+        reachabilityUnknown = reachabilityUnknown,
         connStep = stepText,
         connError = if (conn == ConnState.OFFLINE) reasonText else "".messageText(),
     )

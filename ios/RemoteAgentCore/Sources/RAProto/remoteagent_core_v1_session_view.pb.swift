@@ -67,6 +67,48 @@ public enum PBSessionCommandStatus: SwiftProtobuf.Enum, Swift.CaseIterable {
 
 }
 
+public enum PBComputerReachability: SwiftProtobuf.Enum, Swift.CaseIterable {
+  public typealias RawValue = Int
+  case unspecified // = 0
+  case online // = 1
+  case offline // = 2
+  case unknown // = 3
+  case UNRECOGNIZED(Int)
+
+  public init() {
+    self = .unspecified
+  }
+
+  public init?(rawValue: Int) {
+    switch rawValue {
+    case 0: self = .unspecified
+    case 1: self = .online
+    case 2: self = .offline
+    case 3: self = .unknown
+    default: self = .UNRECOGNIZED(rawValue)
+    }
+  }
+
+  public var rawValue: Int {
+    switch self {
+    case .unspecified: return 0
+    case .online: return 1
+    case .offline: return 2
+    case .unknown: return 3
+    case .UNRECOGNIZED(let i): return i
+    }
+  }
+
+  // The compiler won't synthesize support with the UNRECOGNIZED case.
+  public static let allCases: [PBComputerReachability] = [
+    .unspecified,
+    .online,
+    .offline,
+    .unknown,
+  ]
+
+}
+
 public enum PBSessionDockKind: SwiftProtobuf.Enum, Swift.CaseIterable {
   public typealias RawValue = Int
   case unspecified // = 0
@@ -980,6 +1022,11 @@ public struct PBSessionHeaderView: @unchecked Sendable {
   public var hasMissingText: Bool {return _storage._missingText != nil}
   /// Clears the value of `missingText`. Subsequent reads from it will return its default value.
   public mutating func clearMissingText() {_uniqueStorage()._missingText = nil}
+
+  public var computerReachability: PBComputerReachability {
+    get {return _storage._computerReachability}
+    set {_uniqueStorage()._computerReachability = newValue}
+  }
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -3085,6 +3132,10 @@ extension PBSessionCommandStatus: SwiftProtobuf._ProtoNameProviding {
   public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0SESSION_COMMAND_STATUS_UNSPECIFIED\0\u{1}SESSION_COMMAND_STATUS_IDLE\0\u{1}SESSION_COMMAND_STATUS_PENDING\0\u{1}SESSION_COMMAND_STATUS_FAILED\0\u{1}SESSION_COMMAND_STATUS_UNKNOWN\0")
 }
 
+extension PBComputerReachability: SwiftProtobuf._ProtoNameProviding {
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0COMPUTER_REACHABILITY_UNSPECIFIED\0\u{1}COMPUTER_REACHABILITY_ONLINE\0\u{1}COMPUTER_REACHABILITY_OFFLINE\0\u{1}COMPUTER_REACHABILITY_UNKNOWN\0")
+}
+
 extension PBSessionDockKind: SwiftProtobuf._ProtoNameProviding {
   public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0SESSION_DOCK_KIND_UNSPECIFIED\0\u{1}SESSION_DOCK_KIND_APPROVAL\0\u{1}SESSION_DOCK_KIND_QUESTION\0\u{1}SESSION_DOCK_KIND_PLAN\0\u{1}SESSION_DOCK_KIND_TERMINAL_POPUP\0")
 }
@@ -3572,7 +3623,7 @@ extension PBSessionCapabilitiesView: SwiftProtobuf.Message, SwiftProtobuf._Messa
 
 extension PBSessionHeaderView: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".SessionHeaderView"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}found\0\u{3}sessions_listed\0\u{3}live_loaded\0\u{1}missing\0\u{1}title\0\u{3}project_name\0\u{3}project_key\0\u{1}cwd\0\u{1}agent\0\u{3}agent_name\0\u{1}status\0\u{1}tone\0\u{3}status_text\0\u{3}live_summary\0\u{3}approval_mode\0\u{3}approval_mode_raw\0\u{3}approval_mode_label\0\u{3}terminal_mode_override\0\u{1}model\0\u{3}model_label\0\u{1}effort\0\u{3}effort_label\0\u{3}standard_context\0\u{3}model_unknown\0\u{3}has_context\0\u{3}context_percent\0\u{3}context_tokens\0\u{3}context_window\0\u{3}context_text\0\u{3}high_context_warning\0\u{3}machine_id\0\u{3}computer_name\0\u{3}computer_online\0\u{3}computer_unlinked\0\u{3}offline_since_ms\0\u{3}offline_text\0\u{3}conn_state\0\u{3}protocol_mismatch\0\u{3}daemon_protocol_version\0\u{3}client_protocol_version\0\u{3}protocol_mismatch_text\0\u{1}exited\0\u{3}ended_at_ms\0\u{3}ended_text\0\u{3}idle_closed\0\u{3}forked_from_id\0\u{3}forked_from_title\0\u{3}is_scheduled\0\u{3}scheduled_task_id\0\u{3}scheduled_title\0\u{3}scheduled_closed\0\u{1}capabilities\0\u{3}missing_text\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}found\0\u{3}sessions_listed\0\u{3}live_loaded\0\u{1}missing\0\u{1}title\0\u{3}project_name\0\u{3}project_key\0\u{1}cwd\0\u{1}agent\0\u{3}agent_name\0\u{1}status\0\u{1}tone\0\u{3}status_text\0\u{3}live_summary\0\u{3}approval_mode\0\u{3}approval_mode_raw\0\u{3}approval_mode_label\0\u{3}terminal_mode_override\0\u{1}model\0\u{3}model_label\0\u{1}effort\0\u{3}effort_label\0\u{3}standard_context\0\u{3}model_unknown\0\u{3}has_context\0\u{3}context_percent\0\u{3}context_tokens\0\u{3}context_window\0\u{3}context_text\0\u{3}high_context_warning\0\u{3}machine_id\0\u{3}computer_name\0\u{3}computer_online\0\u{3}computer_unlinked\0\u{3}offline_since_ms\0\u{3}offline_text\0\u{3}conn_state\0\u{3}protocol_mismatch\0\u{3}daemon_protocol_version\0\u{3}client_protocol_version\0\u{3}protocol_mismatch_text\0\u{1}exited\0\u{3}ended_at_ms\0\u{3}ended_text\0\u{3}idle_closed\0\u{3}forked_from_id\0\u{3}forked_from_title\0\u{3}is_scheduled\0\u{3}scheduled_task_id\0\u{3}scheduled_title\0\u{3}scheduled_closed\0\u{1}capabilities\0\u{3}missing_text\0\u{3}computer_reachability\0")
 
   fileprivate class _StorageClass {
     var _found: Bool = false
@@ -3628,6 +3679,7 @@ extension PBSessionHeaderView: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
     var _scheduledClosed: Bool = false
     var _capabilities: PBSessionCapabilitiesView? = nil
     var _missingText: PBCoreText? = nil
+    var _computerReachability: PBComputerReachability = .unspecified
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -3691,6 +3743,7 @@ extension PBSessionHeaderView: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
       _scheduledClosed = source._scheduledClosed
       _capabilities = source._capabilities
       _missingText = source._missingText
+      _computerReachability = source._computerReachability
     }
   }
 
@@ -3762,6 +3815,7 @@ extension PBSessionHeaderView: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
         case 51: try { try decoder.decodeSingularBoolField(value: &_storage._scheduledClosed) }()
         case 52: try { try decoder.decodeSingularMessageField(value: &_storage._capabilities) }()
         case 53: try { try decoder.decodeSingularMessageField(value: &_storage._missingText) }()
+        case 54: try { try decoder.decodeSingularEnumField(value: &_storage._computerReachability) }()
         default: break
         }
       }
@@ -3933,6 +3987,9 @@ extension PBSessionHeaderView: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
       try { if let v = _storage._missingText {
         try visitor.visitSingularMessageField(value: v, fieldNumber: 53)
       } }()
+      if _storage._computerReachability != .unspecified {
+        try visitor.visitSingularEnumField(value: _storage._computerReachability, fieldNumber: 54)
+      }
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -3995,6 +4052,7 @@ extension PBSessionHeaderView: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
         if _storage._scheduledClosed != rhs_storage._scheduledClosed {return false}
         if _storage._capabilities != rhs_storage._capabilities {return false}
         if _storage._missingText != rhs_storage._missingText {return false}
+        if _storage._computerReachability != rhs_storage._computerReachability {return false}
         return true
       }
       if !storagesAreEqual {return false}

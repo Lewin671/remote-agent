@@ -15,9 +15,10 @@ func (e *Engine) SessionSnapshot(sessionID string) screens.SessionViewInput {
 		Removed:            e.removed,
 		AccountControlLost: e.accountControlLost(),
 		AccountClockSkewed: e.accountClockSkewed(),
-		Conn:               e.conn,
-		Unlinked:           e.worldUnlinked(),
-		ProtocolVersion:    ProtocolVersion,
+		Conn:                e.conn,
+		Unlinked:            e.worldUnlinked(),
+		ReachabilityUnknown: e.coldStartGraceActive(),
+		ProtocolVersion:     ProtocolVersion,
 		DeviceNames:        makeDeviceNameMap(e.devices),
 		ThisDeviceID:       e.security.SelfDeviceID,
 	}
@@ -52,6 +53,7 @@ func (e *Engine) SessionSnapshot(sessionID string) screens.SessionViewInput {
 		}
 		if s.MachineID != "" && e.directReady[s.MachineID] {
 			out.Unlinked = false
+			out.ReachabilityUnknown = false
 		}
 		if s.Meta != nil {
 			agent = s.Meta.Agent
@@ -59,11 +61,12 @@ func (e *Engine) SessionSnapshot(sessionID string) screens.SessionViewInput {
 		if m := e.machines[s.MachineID]; m != nil {
 			reachable := e.machineReachable(m)
 			out.Machine = &lists.Machine{
-				ID:         m.ID,
-				Online:     m.Online,
-				Reachable:  &reachable,
-				LastSeenMs: m.LastSeenMs,
-				Meta:       m.Meta,
+				ID:                  m.ID,
+				Online:              m.Online,
+				Reachable:           &reachable,
+				ReachabilityUnknown: e.machineReachabilityUnknown(m),
+				LastSeenMs:          m.LastSeenMs,
+				Meta:                m.Meta,
 			}
 		}
 		if s.Checkpoint != nil {

@@ -48,6 +48,11 @@ func (e *Engine) handleLifecycle(ctx *StepContext, act *corev1.SyncLifecycleActi
 		if e.everReady && !e.removed && e.foreground && e.conn != lists.ConnConnected {
 			e.startDisplayGrace(ctx)
 		}
+		e.coldStartGraceUntilMs = 0
+		e.coldStartGraceExpired = false
+		if !e.machinesListed && !e.removed && e.foreground && e.networkAvailable {
+			e.startColdStartGrace(ctx)
+		}
 		if !e.bootstrapped {
 			e.activeCacheBootID = e.allocOpID()
 			ctx.emit(&corev1.Effect{
@@ -70,6 +75,8 @@ func (e *Engine) handleLifecycle(ctx *StepContext, act *corev1.SyncLifecycleActi
 		e.running = false
 		e.conn = lists.ConnOffline
 		e.displayGraceUntilMs = 0
+		e.coldStartGraceUntilMs = 0
+		e.coldStartGraceExpired = false
 		e.lifecycleGen++
 		e.connectGen++
 		if e.legID > 0 {
@@ -101,6 +108,10 @@ func (e *Engine) handleLifecycle(ctx *StepContext, act *corev1.SyncLifecycleActi
 			e.startDisplayGrace(ctx)
 			ctx.Dirty.MarkAll()
 		}
+		if !wasForeground && !e.machinesListed && !e.coldStartGraceExpired && !e.removed && e.running && e.networkAvailable {
+			e.startColdStartGrace(ctx)
+			ctx.Dirty.MarkAll()
+		}
 		if !wasForeground && e.running && !e.removed {
 			if e.security.Loaded || e.everReady {
 				e.networkGen++
@@ -119,6 +130,7 @@ func (e *Engine) handleLifecycle(ctx *StepContext, act *corev1.SyncLifecycleActi
 	case corev1.SyncLifecycleKind_SYNC_LIFECYCLE_KIND_BACKGROUND:
 		e.foreground = false
 		e.clearDisplayGrace(ctx)
+		e.clearColdStartGrace(ctx)
 		if len(e.directReady) > 0 {
 			clear(e.directReady)
 		}
@@ -153,6 +165,7 @@ func (e *Engine) handleLifecycle(ctx *StepContext, act *corev1.SyncLifecycleActi
 		}
 		e.removed = false
 		e.clearDisplayGrace(ctx)
+		e.clearColdStartGrace(ctx)
 		e.forceLogin = true
 		if e.cachedToken != "" {
 			ctx.emit(&corev1.Effect{
@@ -207,6 +220,7 @@ func (e *Engine) handleNetworkChanged(ctx *StepContext, ev *corev1.NetworkChange
 		if wasConnected && e.everReady && !e.removed && e.running && e.foreground {
 			e.startDisplayGrace(ctx)
 		}
+		e.clearColdStartGrace(ctx)
 		e.updateLivePollers(ctx)
 		ctx.Dirty.MarkAll()
 		return
@@ -219,6 +233,9 @@ func (e *Engine) handleNetworkChanged(ctx *StepContext, ev *corev1.NetworkChange
 			e.conn = lists.ConnConnecting
 		}
 		e.connReasonText = nil
+	}
+	if !e.machinesListed && !e.coldStartGraceExpired && e.running && !e.removed && e.foreground && e.coldStartGraceUntilMs == 0 {
+		e.startColdStartGrace(ctx)
 	}
 	if sigChanged && e.streamOpen && e.legID > 0 {
 		legID := e.legID
@@ -303,6 +320,7 @@ func (e *Engine) handleTokenResult(ctx *StepContext, ev *corev1.TokenResultEvent
 	if ev.Removed {
 		e.removed = true
 		e.clearDisplayGrace(ctx)
+		e.clearColdStartGrace(ctx)
 		e.connecting = false
 		e.streamOpen = false
 		e.cachedToken = ""
@@ -481,10 +499,42 @@ func (e *Engine) clearDisplayGrace(ctx *StepContext) {
 }
 
 func (e *Engine) expireDisplayGraceOnClock(ctx *StepContext) {
+	dirty := false
 	if e.displayGraceUntilMs > 0 && e.monoMs >= e.displayGraceUntilMs {
 		e.clearDisplayGrace(ctx)
+		dirty = true
+	}
+	if e.coldStartGraceUntilMs > 0 && e.monoMs >= e.coldStartGraceUntilMs {
+		e.coldStartGraceExpired = true
+		e.clearColdStartGrace(ctx)
+		dirty = true
+	}
+	if dirty {
 		ctx.Dirty.MarkAll()
 	}
+}
+
+func (e *Engine) coldStartGraceActive() bool {
+	if e.machinesListed || e.removed || !e.running || !e.foreground || !e.networkAvailable {
+		return false
+	}
+	return e.coldStartGraceUntilMs > 0 && e.monoMs < e.coldStartGraceUntilMs
+}
+
+func (e *Engine) startColdStartGrace(ctx *StepContext) {
+	if e.machinesListed || e.coldStartGraceExpired || e.removed || !e.running || !e.foreground || !e.networkAvailable {
+		return
+	}
+	until := e.monoMs + DisplayGraceMs
+	if until > e.coldStartGraceUntilMs {
+		e.coldStartGraceUntilMs = until
+	}
+	e.scheduleTimer(ctx, corev1.TimerKind_TIMER_KIND_LINK_GRACE, coldStartGraceTimerKey, DisplayGraceMs)
+}
+
+func (e *Engine) clearColdStartGrace(ctx *StepContext) {
+	e.coldStartGraceUntilMs = 0
+	e.cancelTimer(ctx, corev1.TimerKind_TIMER_KIND_LINK_GRACE, coldStartGraceTimerKey)
 }
 
 func classifyConnectError(unresolvedHost bool, errCode, errMsg string) *corev1.Text {

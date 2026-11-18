@@ -2036,6 +2036,48 @@ public  final class SessionHeaderView extends
     bitField0_ = (bitField0_ & ~0x00002000);
   }
 
+  public static final int COMPUTER_REACHABILITY_FIELD_NUMBER = 54;
+  private int computerReachability_;
+  /**
+   * <code>.remoteagent.core.v1.ComputerReachability computer_reachability = 54 [json_name = "computerReachability"];</code>
+   * @return The enum numeric value on the wire for computerReachability.
+   */
+  @java.lang.Override
+  public int getComputerReachabilityValue() {
+    return computerReachability_;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ComputerReachability computer_reachability = 54 [json_name = "computerReachability"];</code>
+   * @return The computerReachability.
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.ComputerReachability getComputerReachability() {
+    io.github.lewin671.remoteagent.core.proto.ComputerReachability result = io.github.lewin671.remoteagent.core.proto.ComputerReachability.forNumber(computerReachability_);
+    return result == null ? io.github.lewin671.remoteagent.core.proto.ComputerReachability.UNRECOGNIZED : result;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ComputerReachability computer_reachability = 54 [json_name = "computerReachability"];</code>
+   * @param value The enum numeric value on the wire for computerReachability to set.
+   */
+  private void setComputerReachabilityValue(int value) {
+      computerReachability_ = value;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ComputerReachability computer_reachability = 54 [json_name = "computerReachability"];</code>
+   * @param value The computerReachability to set.
+   */
+  private void setComputerReachability(io.github.lewin671.remoteagent.core.proto.ComputerReachability value) {
+    computerReachability_ = value.getNumber();
+
+  }
+  /**
+   * <code>.remoteagent.core.v1.ComputerReachability computer_reachability = 54 [json_name = "computerReachability"];</code>
+   */
+  private void clearComputerReachability() {
+
+    computerReachability_ = 0;
+  }
+
   public static io.github.lewin671.remoteagent.core.proto.SessionHeaderView parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -4204,6 +4246,52 @@ public  final class SessionHeaderView extends
       return this;
     }
 
+    /**
+     * <code>.remoteagent.core.v1.ComputerReachability computer_reachability = 54 [json_name = "computerReachability"];</code>
+     * @return The enum numeric value on the wire for computerReachability.
+     */
+    @java.lang.Override
+    public int getComputerReachabilityValue() {
+      return instance.getComputerReachabilityValue();
+    }
+    /**
+     * <code>.remoteagent.core.v1.ComputerReachability computer_reachability = 54 [json_name = "computerReachability"];</code>
+     * @param value The computerReachability to set.
+     * @return This builder for chaining.
+     */
+    public Builder setComputerReachabilityValue(int value) {
+      copyOnWrite();
+      instance.setComputerReachabilityValue(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ComputerReachability computer_reachability = 54 [json_name = "computerReachability"];</code>
+     * @return The computerReachability.
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.ComputerReachability getComputerReachability() {
+      return instance.getComputerReachability();
+    }
+    /**
+     * <code>.remoteagent.core.v1.ComputerReachability computer_reachability = 54 [json_name = "computerReachability"];</code>
+     * @param value The enum numeric value on the wire for computerReachability to set.
+     * @return This builder for chaining.
+     */
+    public Builder setComputerReachability(io.github.lewin671.remoteagent.core.proto.ComputerReachability value) {
+      copyOnWrite();
+      instance.setComputerReachability(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ComputerReachability computer_reachability = 54 [json_name = "computerReachability"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearComputerReachability() {
+      copyOnWrite();
+      instance.clearComputerReachability();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.SessionHeaderView)
   }
   @java.lang.Override
@@ -4274,16 +4362,17 @@ public  final class SessionHeaderView extends
             "scheduledClosed_",
             "capabilities_",
             "missingText_",
+            "computerReachability_",
           };
           java.lang.String info =
-              "\u00005\u0000\u0001\u000155\u0000\u0000\u0000\u0001\u0007\u0002\u0007\u0003\u0007" +
+              "\u00006\u0000\u0001\u000166\u0000\u0000\u0000\u0001\u0007\u0002\u0007\u0003\u0007" +
               "\u0004\u0007\u0005\u1009\u0000\u0006\u1009\u0001\u0007\u0208\b\u0208\t\f\n\u0208" +
               "\u000b\f\f\f\r\u1009\u0002\u000e\u1009\u0003\u000f\f\u0010\u0208\u0011\u1009\u0004" +
               "\u0012\u0007\u0013\u0208\u0014\u0208\u0015\u0208\u0016\u1009\u0005\u0017\u0007\u0018" +
               "\u0007\u0019\u0007\u001a\u0004\u001b\u0002\u001c\u0002\u001d\u1009\u0006\u001e\u0007" +
               "\u001f\u0208 \u1009\u0007!\u0007\"\u0007#\u0002$\u1009\b%\f&\u0007\'\u000b(\u000b" +
               ")\u1009\t*\u0007+\u0002,\u1009\n-\u0007.\u0208/\u1009\u000b0\u00071\u02082\u0208" +
-              "3\u00074\u1009\f5\u1009\r";
+              "3\u00074\u1009\f5\u1009\r6\f";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

@@ -151,21 +151,22 @@ func (x *SyncPendingAction) GetPopupPreview() string {
 // Machine snapshot for unmigrated Step 3-4 screens (machine status, settings, schedules, session header).
 // Delete after Steps 3-4 finish migrating those screens into Core.
 type SyncMachineView struct {
-	state           protoimpl.MessageState `protogen:"open.v1"`
-	MachineId       string                 `protobuf:"bytes,1,opt,name=machine_id,json=machineId,proto3" json:"machine_id,omitempty"`
-	Online          bool                   `protobuf:"varint,2,opt,name=online,proto3" json:"online,omitempty"`
-	LastSeenMs      int64                  `protobuf:"varint,3,opt,name=last_seen_ms,json=lastSeenMs,proto3" json:"last_seen_ms,omitempty"`
-	Meta            *v1.MachineMeta        `protobuf:"bytes,4,opt,name=meta,proto3" json:"meta,omitempty"`
-	MetaRev         uint64                 `protobuf:"varint,5,opt,name=meta_rev,json=metaRev,proto3" json:"meta_rev,omitempty"`
-	MetaBroken      bool                   `protobuf:"varint,6,opt,name=meta_broken,json=metaBroken,proto3" json:"meta_broken,omitempty"`
-	Reachable       bool                   `protobuf:"varint,7,opt,name=reachable,proto3" json:"reachable,omitempty"`
-	Unlinked        bool                   `protobuf:"varint,8,opt,name=unlinked,proto3" json:"unlinked,omitempty"`
-	DirectReady     bool                   `protobuf:"varint,9,opt,name=direct_ready,json=directReady,proto3" json:"direct_ready,omitempty"`
-	ProtocolVersion uint32                 `protobuf:"varint,10,opt,name=protocol_version,json=protocolVersion,proto3" json:"protocol_version,omitempty"`
-	DaemonOutOfDate bool                   `protobuf:"varint,11,opt,name=daemon_out_of_date,json=daemonOutOfDate,proto3" json:"daemon_out_of_date,omitempty"`
-	ClientOutOfDate bool                   `protobuf:"varint,12,opt,name=client_out_of_date,json=clientOutOfDate,proto3" json:"client_out_of_date,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	state               protoimpl.MessageState `protogen:"open.v1"`
+	MachineId           string                 `protobuf:"bytes,1,opt,name=machine_id,json=machineId,proto3" json:"machine_id,omitempty"`
+	Online              bool                   `protobuf:"varint,2,opt,name=online,proto3" json:"online,omitempty"`
+	LastSeenMs          int64                  `protobuf:"varint,3,opt,name=last_seen_ms,json=lastSeenMs,proto3" json:"last_seen_ms,omitempty"`
+	Meta                *v1.MachineMeta        `protobuf:"bytes,4,opt,name=meta,proto3" json:"meta,omitempty"`
+	MetaRev             uint64                 `protobuf:"varint,5,opt,name=meta_rev,json=metaRev,proto3" json:"meta_rev,omitempty"`
+	MetaBroken          bool                   `protobuf:"varint,6,opt,name=meta_broken,json=metaBroken,proto3" json:"meta_broken,omitempty"`
+	Reachable           bool                   `protobuf:"varint,7,opt,name=reachable,proto3" json:"reachable,omitempty"`
+	Unlinked            bool                   `protobuf:"varint,8,opt,name=unlinked,proto3" json:"unlinked,omitempty"`
+	DirectReady         bool                   `protobuf:"varint,9,opt,name=direct_ready,json=directReady,proto3" json:"direct_ready,omitempty"`
+	ProtocolVersion     uint32                 `protobuf:"varint,10,opt,name=protocol_version,json=protocolVersion,proto3" json:"protocol_version,omitempty"`
+	DaemonOutOfDate     bool                   `protobuf:"varint,11,opt,name=daemon_out_of_date,json=daemonOutOfDate,proto3" json:"daemon_out_of_date,omitempty"`
+	ClientOutOfDate     bool                   `protobuf:"varint,12,opt,name=client_out_of_date,json=clientOutOfDate,proto3" json:"client_out_of_date,omitempty"`
+	ReachabilityUnknown bool                   `protobuf:"varint,13,opt,name=reachability_unknown,json=reachabilityUnknown,proto3" json:"reachability_unknown,omitempty"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
 }
 
 func (x *SyncMachineView) Reset() {
@@ -278,6 +279,13 @@ func (x *SyncMachineView) GetDaemonOutOfDate() bool {
 func (x *SyncMachineView) GetClientOutOfDate() bool {
 	if x != nil {
 		return x.ClientOutOfDate
+	}
+	return false
+}
+
+func (x *SyncMachineView) GetReachabilityUnknown() bool {
+	if x != nil {
+		return x.ReachabilityUnknown
 	}
 	return false
 }
@@ -593,6 +601,7 @@ type SyncStateView struct {
 	Prefs                  *v1.ProjectPrefs       `protobuf:"bytes,36,opt,name=prefs,proto3" json:"prefs,omitempty"`
 	Devices                []*SyncDeviceView      `protobuf:"bytes,37,rep,name=devices,proto3" json:"devices,omitempty"`
 	DisplayGrace           bool                   `protobuf:"varint,38,opt,name=display_grace,json=displayGrace,proto3" json:"display_grace,omitempty"`
+	ReachabilityUnknown    bool                   `protobuf:"varint,39,opt,name=reachability_unknown,json=reachabilityUnknown,proto3" json:"reachability_unknown,omitempty"`
 	unknownFields          protoimpl.UnknownFields
 	sizeCache              protoimpl.SizeCache
 }
@@ -893,6 +902,13 @@ func (x *SyncStateView) GetDisplayGrace() bool {
 	return false
 }
 
+func (x *SyncStateView) GetReachabilityUnknown() bool {
+	if x != nil {
+		return x.ReachabilityUnknown
+	}
+	return false
+}
+
 // Transitional view exposing per-session buffer status, Core-derived ProjectionState, latest LiveSnapshot,
 // and transitional transcript events for the unmigrated Step 3 session screen.
 // Delete once Step 3 moves the session timeline/screen into Core.
@@ -1137,7 +1153,7 @@ const file_remoteagent_core_v1_sync_view_proto_rawDesc = "" +
 	"\bhas_plan\x18\t \x01(\bR\ahasPlan\x12\x1b\n" +
 	"\thas_popup\x18\n" +
 	" \x01(\bR\bhasPopup\x12#\n" +
-	"\rpopup_preview\x18\v \x01(\tR\fpopupPreview\"\xb9\x03\n" +
+	"\rpopup_preview\x18\v \x01(\tR\fpopupPreview\"\xec\x03\n" +
 	"\x0fSyncMachineView\x12\x1d\n" +
 	"\n" +
 	"machine_id\x18\x01 \x01(\tR\tmachineId\x12\x16\n" +
@@ -1154,7 +1170,8 @@ const file_remoteagent_core_v1_sync_view_proto_rawDesc = "" +
 	"\x10protocol_version\x18\n" +
 	" \x01(\rR\x0fprotocolVersion\x12+\n" +
 	"\x12daemon_out_of_date\x18\v \x01(\bR\x0fdaemonOutOfDate\x12+\n" +
-	"\x12client_out_of_date\x18\f \x01(\bR\x0fclientOutOfDate\"\xf7\x04\n" +
+	"\x12client_out_of_date\x18\f \x01(\bR\x0fclientOutOfDate\x121\n" +
+	"\x14reachability_unknown\x18\r \x01(\bR\x13reachabilityUnknown\"\xf7\x04\n" +
 	"\x0fSyncSessionView\x12\x1d\n" +
 	"\n" +
 	"session_id\x18\x01 \x01(\tR\tsessionId\x12\x1d\n" +
@@ -1191,7 +1208,7 @@ const file_remoteagent_core_v1_sync_view_proto_rawDesc = "" +
 	"\bmeta_rev\x18\x06 \x01(\x04R\ametaRev\x12\x1f\n" +
 	"\vmeta_broken\x18\a \x01(\bR\n" +
 	"metaBroken\x12\x18\n" +
-	"\atrusted\x18\b \x01(\bR\atrusted\"\x9d\x0e\n" +
+	"\atrusted\x18\b \x01(\bR\atrusted\"\xd0\x0e\n" +
 	"\rSyncStateView\x12>\n" +
 	"\n" +
 	"connection\x18\x01 \x01(\x0e2\x1e.remoteagent.core.v1.ConnStateR\n" +
@@ -1237,7 +1254,8 @@ const file_remoteagent_core_v1_sync_view_proto_rawDesc = "" +
 	"\rprefs_syncing\x18# \x01(\bR\fprefsSyncing\x122\n" +
 	"\x05prefs\x18$ \x01(\v2\x1c.remoteagent.v1.ProjectPrefsR\x05prefs\x12=\n" +
 	"\adevices\x18% \x03(\v2#.remoteagent.core.v1.SyncDeviceViewR\adevices\x12#\n" +
-	"\rdisplay_grace\x18& \x01(\bR\fdisplayGrace\"\xcb\a\n" +
+	"\rdisplay_grace\x18& \x01(\bR\fdisplayGrace\x121\n" +
+	"\x14reachability_unknown\x18' \x01(\bR\x13reachabilityUnknown\"\xcb\a\n" +
 	"\x0fSessionDataView\x12\x1d\n" +
 	"\n" +
 	"session_id\x18\x01 \x01(\tR\tsessionId\x12\x14\n" +

@@ -23,6 +23,7 @@ const (
 	LinkGraceMs                int64  = 10_000
 	DisplayGraceMs             int64  = 1_500
 	displayGraceTimerKey              = "display"
+	coldStartGraceTimerKey            = "cold-start"
 	StreamOpenTimeoutMs        int64  = 15_000
 	TokenFastTimeoutMs         int64  = 3_000
 	SecuritySyncBudgetMs       int64  = 5_000
@@ -335,10 +336,12 @@ type Engine struct {
 	recovery   *Recovery
 	liveness   *LegLiveness
 	timers     map[timerKey]timerEntry
-	conn                lists.ConnectionKind
-	everReady           bool
-	displayGraceUntilMs int64
-	connecting          bool
+	conn                  lists.ConnectionKind
+	everReady             bool
+	displayGraceUntilMs   int64
+	coldStartGraceUntilMs int64
+	coldStartGraceExpired bool
+	connecting            bool
 	streamOpen bool
 	wantedConn bool
 
