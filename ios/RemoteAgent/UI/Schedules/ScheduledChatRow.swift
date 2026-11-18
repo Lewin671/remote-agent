@@ -1,29 +1,68 @@
 import RACore
 import RAProto
-import SwiftUI
 import RAMarkdown
 import RAMarkdownUI
+import SwiftUI
 
 struct SessionScheduleBar: View {
     let sessionID: String
-    let machineID: String
     @Environment(AccountContext.self) private var context
     @Environment(Navigator.self) private var nav
-    @State private var picking = false
+    @State private var watchToken: UUID?
+
     var body: some View {
-        let tasks = sessionSchedules(context.schedules.tasks, sessionID: sessionID, machineID: machineID)
-        if !tasks.isEmpty {
-            // A strip of glass under the session's title (design-system §6 「提示条」).
-            GlassStrip(text: scheduleBarText(tasks, online: context.schedules.online(machineID)), symbol: "clock", action: L10n.scheduleManage()) {
-                if let task = tasks.first, tasks.count == 1 { open(task) } else { picking = true }
+        let vm = context.core.scheduleStrips[sessionID] ?? PBScheduleSessionStripViewModel()
+        SessionScheduleStripContent(vm: vm) { task in
+            nav.open(.schedule(machine: task.machineID, id: task.taskID))
+        }
+        .task(id: sessionID) {
+            if let prev = watchToken {
+                watchToken = nil
+                await context.coreHost.releaseScheduleStripWatch(prev)
             }
-                .kitSheet(isPresented: $picking) {
-                    SheetHead(L10n.scheduleIosManageScheduledTask())
-                    ForEach(tasks) { entry in ListItem(entry.task.spec.title, desc: entry.task.stateText(online: context.schedules.online(entry.machineID))) { picking = false; open(entry) } }
-                }
+            watchToken = await context.coreHost.acquireScheduleStripWatch(sessionID)
+        }
+        .onDisappear {
+            let token = watchToken
+            watchToken = nil
+            Task { await context.coreHost.releaseScheduleStripWatch(token) }
         }
     }
-    private func open(_ entry: MachineSchedule) { nav.open(.schedule(machine: entry.machineID, id: entry.task.id)) }
+}
+
+struct SessionScheduleStripContent: View {
+    let vm: PBScheduleSessionStripViewModel
+    let onOpenTask: (PBScheduleSessionStripTaskView) -> Void
+    @State private var picking = false
+
+    var body: some View {
+        if vm.visible && !vm.tasks.isEmpty {
+            // A strip of glass under the session's title (design-system §6 「提示条」).
+            GlassStrip(text: vm.summaryText.rendered(), symbol: "clock", action: L10n.scheduleManage()) {
+                if let only = vm.tasks.first, vm.tasks.count == 1 {
+                    onOpenTask(only)
+                } else {
+                    picking = true
+                }
+            }
+            .kitSheet(isPresented: $picking) {
+                SheetHead(L10n.scheduleIosManageScheduledTask())
+                ForEach(vm.tasks, id: \.stripID) { task in
+                    let desc = [task.timingText.rendered(), task.nextRunText.rendered()]
+                        .filter { !$0.isEmpty }
+                        .joined(separator: " · ")
+                    ListItem(task.title, desc: desc) {
+                        picking = false
+                        onOpenTask(task)
+                    }
+                }
+            }
+        }
+    }
+}
+
+private extension PBScheduleSessionStripTaskView {
+    var stripID: String { "\(machineID)/\(taskID)" }
 }
 
 /// Keep whole blocks within roughly eight body lines, always showing the first.
@@ -38,86 +77,48 @@ func scheduleResultBlockCount(_ heights: [CGFloat], budget: CGFloat) -> Int {
 }
 
 struct ScheduleResultCard: View {
-    let run: ScheduleRun
-    let unread: Bool
-    let showConversation: Bool
+    let card: PBScheduleResultCardView
     let open: () -> Void
-    @Environment(AccountContext.self) private var context
     @Environment(\.horizontalSizeClass) private var sizeClass
+
     var body: some View {
-        let vm = (run.sessionID ?? "").isEmpty ? nil : context.core.sessions[run.sessionID!]
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 6) {
-                if unread { Circle().fill(DS.blue).frame(width: 8, height: 8).accessibilityLabel(L10n.scheduleUnreadOnEntry()) }
-                Text(scheduleMoment(run.notificationTime)).font(.footnote).ink(DS.ink2)
+                if card.unreadOnEntry {
+                    Circle().fill(DS.blue).frame(width: 8, height: 8)
+                        .accessibilityLabel(L10n.scheduleUnreadOnEntry())
+                }
+                Text(card.timeText.rendered()).font(.footnote).ink(DS.ink2)
                 Spacer(minLength: 0)
-                if showConversation, !(run.sessionID ?? "").isEmpty { TextAction(L10n.scheduleConversation(), arrow: true, action: open) }
+                if card.showConversationAction && !card.sessionID.isEmpty {
+                    TextAction(L10n.scheduleConversation(), arrow: true, action: open)
+                }
             }
-            if let title = run.resultTitle {
-                Text(title).font(.body.weight(.semibold)).ink(DS.ink).frame(maxWidth: .infinity, alignment: .leading)
+            if !card.resultTitle.isEmpty {
+                Text(card.resultTitle).font(.body.weight(.semibold)).ink(DS.ink)
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
-            let full = scheduleFinalAnswer(from: vm, runID: run.id)
-            let fallback = (run.finalSummary?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false ? run.finalSummary : nil) ?? scheduleReason(run.reason)
-            ScheduleResultBody(text: full ?? fallback, folds: sizeClass != .regular)
+            if card.resultLoading {
+                LoadingRow(L10n.scheduleReadingTasks())
+            } else {
+                let text = card.markdownBody.isEmpty ? card.fallbackReasonText.rendered() : card.markdownBody
+                if !text.isEmpty {
+                    ScheduleResultBody(text: text, folds: sizeClass != .regular)
+                }
+            }
         }
         .padding(16).background(DS.gbg, in: RoundedRectangle(cornerRadius: DS.Radius.group))
         .padding(.horizontal, 16).padding(.top, 16)
-        .task(id: "\(run.sessionID ?? "")#\(run.id)") {
-            guard let sid = run.sessionID, !sid.isEmpty else { return }
-            if context.remote.state.value.sessions[sid] == nil { _ = try? await context.remote.fetchSession(sid) }
-            await context.coreHost.openSession(sid)
-            let token = await context.coreHost.acquireSessionWatch(
-                sid,
-                initialWindow: .with {
-                    $0.limit = 80
-                    $0.revealRunID = run.id
-                }
-            )
-            defer { Task { await context.coreHost.releaseSessionWatch(token) } }
-            while !Task.isCancelled {
-                try? await Task.sleep(for: .seconds(3600))
-            }
-        }
     }
 }
 
-private func scheduleFinalAnswer(from vm: PBSessionViewModel?, runID: String) -> String? {
-    guard let vm, !runID.isEmpty else { return nil }
-    let tl = vm.timeline
-    guard tl.loaded, !tl.hasError, !tl.hasFetchError, !tl.historyPartial, !tl.retired else { return nil }
-    let flat = tl.items.flatMap { item -> [PBSessionTimelineItem] in
-        if case .quietScheduledGroup(let g)? = item.kind { return g.items }
-        return [item]
-    }
-    guard let start = flat.firstIndex(where: {
-        if case .userMessage(let u)? = $0.kind { return u.scheduledRunID == runID }
-        return false
-    }) else { return nil }
-    var answer: String?
-    for item in flat.dropFirst(start + 1) {
-        switch item.kind {
-        case .userMessage(let u)?:
-            if !u.isScheduled || (!u.scheduledRunID.isEmpty && u.scheduledRunID != runID) { return answer }
-        case .forkMarker?:
-            return answer
-        case .turnEnd(let end)? where end.isSessionEnded:
-            return answer
-        case .agentMessage(let a)? where !a.intermediate:
-            if !a.markdown.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                answer = a.markdown
-            }
-        default:
-            break
-        }
-    }
-    return answer
-}
 struct ScheduleResultBody: View {
     let text: String
     let folds: Bool
     @State private var expanded = false
     @State private var heights: [Int: CGFloat] = [:]
     @ScaledMetric(relativeTo: .body) private var lineHeight: CGFloat = 24
+
     var body: some View {
         let blocks = Markdown.parse(text)
         let measured = (0..<blocks.count).map { heights[$0] ?? lineHeight * 8 + 1 }
@@ -143,12 +144,17 @@ struct ScheduleResultBody: View {
                 ForEach(Array(blocks.enumerated()), id: \.offset) { index, block in
                     MarkdownView(blocks: [block], selectable: false)
                         .fixedSize(horizontal: false, vertical: true)
-                        .onGeometryChange(for: CGFloat.self) { g in ChatDiagnosticRing.shared.measure(.scheduleBlock) { g.size.height } } action: {
-                            ChatDiagnosticRing.shared.record(.scheduleBlock, Double(index), Double($0)); heights[index] = $0
+                        .onGeometryChange(for: CGFloat.self) { g in
+                            ChatDiagnosticRing.shared.measure(.scheduleBlock) { g.size.height }
+                        } action: {
+                            ChatDiagnosticRing.shared.record(.scheduleBlock, Double(index), Double($0))
+                            heights[index] = $0
                         }
                 }
-            }.hidden().allowsHitTesting(false).accessibilityHidden(true)
+            }
+            .hidden()
+            .allowsHitTesting(false)
+            .accessibilityHidden(true)
         }
-
     }
 }

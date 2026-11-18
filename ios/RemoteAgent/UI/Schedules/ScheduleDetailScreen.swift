@@ -1,67 +1,337 @@
-import Observation
 import RACore
 import RAProto
 import SwiftUI
 
-/// One immutable opening snapshot owns the whole edit, including its compare-and-set revision.
-@MainActor @Observable final class ScheduleEditDraft {
-    private(set) var task: ScheduleTask?
-    func open(_ task: ScheduleTask) { self.task = task }
-    func command(spec: ScheduleSpec) throws -> PBCommand {
-        guard let task else { throw UserError(L10nMessage.scheduleIosOpenTheTaskEditorFirst()) }
-        return try scheduleCommand(operation: "update", taskID: task.id, spec: spec, revision: task.revision)
-    }
-}
-
-func scheduleStopBanner(_ task: ScheduleTask, now: Date = Date(), zone: TimeZone = .current) -> String {
-    if task.missingTarget {
-        let failedAt = task.history.first { $0.status == "failed" && $0.reason == task.reason }
-            .flatMap { scheduleDate($0.startedAt) }
-        let reason = scheduleReason("execution_session_missing")
-        return failedAt.map { L10n.scheduleMissingTargetRun(reason: reason, time: scheduleMoment($0, now: now, zone: zone)) } ?? L10n.scheduleMissingTarget(reason: reason)
-    }
-    let reason = scheduleReason(task.reason)
-    let notice: String
-    if task.status == "uncertain" {
-        notice = L10n.scheduleAttentionUncertain(reason: reason)
-    } else if task.status == "failed" && task.oneShot {
-        notice = L10n.scheduleIosAttentionOnce(reason: reason)
-    } else {
-        notice = L10n.scheduleAttentionResume(reason: reason)
-    }
-    return task.reason == "agent_schedule_permissions_changed" ? L10n.scheduleIosTakeoverNotice(notice: notice) : notice
+private enum ScheduleDetailEditor: String, Identifiable {
+    case message, timing, target, mode
+    var id: String { rawValue }
 }
 
 struct ScheduleDetailScreen: View {
     let machine: String
     let id: String
-    @Environment(AppModel.self) private var model
     @Environment(AccountContext.self) private var context
     @Environment(Navigator.self) private var nav
     @Environment(\.page) private var page
-    @State private var editor = ScheduleEditDraft()
-    @State private var timing = false
+    @State private var editor: ScheduleDetailEditor? = nil
     @State private var rename = false
-    @State private var message = false
-    @State private var permissions = false
-    @State private var targetEdit = false
     @State private var delete = false
-    @State private var expanded: Set<String> = []
-    @State private var allHistory = false
     @State private var menu = false
+
+    private var taskRef: PBScheduleTaskRef {
+        .with { $0.machineID = machine; $0.taskID = id }
+    }
+
+    private func operate(_ op: PBScheduleOperationKind) {
+        context.dispatch {
+            $0.scheduleOperate = .with {
+                $0.machineID = machine
+                $0.taskID = id
+                $0.operation = op
+            }
+        }
+    }
+
+    private func openEdit(_ kind: ScheduleDetailEditor, mode: PBScheduleFormMode) {
+        editor = kind
+        Task {
+            await context.coreHost.openScheduleForm(
+                mode: mode,
+                machineID: machine,
+                taskID: id
+            )
+        }
+    }
+
+    private func openSession(_ sid: String, runID: String = "", seq: UInt64 = 0) {
+        guard !sid.isEmpty else { return }
+        if seq > 0 || !runID.isEmpty {
+            context.sessionStore.jumpToScheduledRun(sid, runID: runID, seq: seq)
+        }
+        nav.open(.session(id: sid))
+    }
+
+    private func markUnreadAndBack() {
+        guard nav.showing(page) else { return }
+        context.dispatch {
+            $0.scheduleMarkUnread = .with {
+                $0.machineID = machine
+                $0.taskID = id
+                $0.value = true
+            }
+        }
+        nav.back(from: page)
+    }
+
     var body: some View {
-        let store = context.schedules
-        let task = store.task(machine: machine, id: id)
-        let mutation = context.scheduleMutations.of(machine + "/" + id)
+        let vm = context.core.scheduleDetail
+        let form = context.core.scheduleForm
+        let matches = vm.machineID == machine && vm.taskID == id
+        let displayed = matches ? vm : PBScheduleDetailViewModel()
+
+        ScheduleDetailContent(
+            vm: displayed,
+            connectionBar: { ConnectionBar() },
+            onRetryMachine: { context.dispatch { $0.scheduleRefresh.value = machine } },
+            onRecover: { operate(.recover) },
+            onRetryMutation: { context.dispatch { $0.scheduleRetryMutation = .with { $0.machineID = machine; $0.taskID = id } } },
+            onAbandonMutation: { context.dispatch { $0.scheduleAbandonMutation = .with { $0.machineID = machine; $0.taskID = id } } },
+            onShowLatestResult: { context.dispatch { $0.scheduleDetailShowLatestResult = taskRef } },
+            onOpenSession: { sid, runID, seq in
+                if !runID.isEmpty || seq > 0 {
+                    context.dispatch {
+                        $0.scheduleDetailOpenRun = .with {
+                            $0.machineID = machine
+                            $0.taskID = id
+                            $0.value = runID
+                        }
+                    }
+                }
+                openSession(sid, runID: runID, seq: seq)
+            },
+            onToggleQuietGroup: { groupKey in
+                context.dispatch {
+                    $0.scheduleDetailToggleQuietGroup = .with {
+                        $0.machineID = machine
+                        $0.taskID = id
+                        $0.value = groupKey
+                    }
+                }
+            },
+            onShowAllRuns: {
+                context.dispatch {
+                    $0.scheduleDetailShowAllRuns = .with {
+                        $0.machineID = machine
+                        $0.taskID = id
+                        $0.value = true
+                    }
+                }
+            },
+            onEditMessage: { openEdit(.message, mode: .editMessage) },
+            onEditTiming: { openEdit(.timing, mode: .editTiming) },
+            onSetNotify: { on in
+                context.dispatch {
+                    $0.scheduleSetNotify = .with {
+                        $0.machineID = machine
+                        $0.taskID = id
+                        $0.value = on
+                    }
+                }
+            },
+            onEditTarget: { openEdit(.target, mode: .editTarget) },
+            onEditMode: { openEdit(.mode, mode: .editMode) },
+            onRename: { rename = true }
+        )
+        .navBar(
+            displayed.found ? displayed.title : L10n.scheduleIosTaskDetails(),
+            subtitle: displayed.found ? displayed.subtitle.rendered() : nil,
+            onMore: displayed.found ? { menu = true } : nil
+        )
+        .actionMenu(isPresented: $menu, actions: menuActions(displayed)) {
+            if displayed.found {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(displayed.title).font(.body.weight(.semibold)).ink(DS.ink)
+                    Text(displayed.menuSubtitle.rendered()).font(.footnote).ink(DS.ink2)
+                }
+            }
+        }
+        .kitSheet(item: $editor, size: .large, onDismiss: {
+            let key = form.formKey
+            context.dispatch {
+                $0.scheduleFormClose = .with {
+                    $0.formKey = key
+                    $0.value = true
+                }
+            }
+        }) { which in
+            switch which {
+            case .timing:
+                ScheduleTimingSheet(submitOnApply: true, onClose: { editor = nil })
+            case .target:
+                ScheduleConfigSheet(focus: .target, showSaveButton: true, onClose: { editor = nil })
+            case .mode:
+                ScheduleConfigSheet(focus: .mode, showSaveButton: true, onClose: { editor = nil })
+            case .message:
+                EmptyView()
+            }
+        }
+        .fullScreenCover(isPresented: Binding(
+            get: { editor == .message },
+            set: { if !$0 { editor = nil } }
+        ), onDismiss: {
+            let key = form.formKey
+            context.dispatch {
+                $0.scheduleFormClose = .with {
+                    $0.formKey = key
+                    $0.value = true
+                }
+            }
+        }) {
+            ScheduleMessageEditor(onClose: { editor = nil })
+        }
+        .modifier(ScheduleRenameDialog(
+            isPresented: $rename,
+            initialTitle: displayed.taskName,
+            mutation: displayed.mutation,
+            enabled: displayed.actions.canRename,
+            onSave: { newTitle in
+                context.dispatch {
+                    $0.scheduleRename = .with {
+                        $0.machineID = machine
+                        $0.taskID = id
+                        $0.value = newTitle
+                    }
+                }
+            }
+        ))
+        .confirm(
+            isPresented: $delete,
+            title: L10n.scheduleIosDeleteThisTask(),
+            text: L10n.scheduleIosStopsFutureAutomaticRunsMessagesAlreadySentAndConversations(),
+            confirm: L10n.scheduleDelete(),
+            danger: true
+        ) {
+            operate(.cancel)
+        }
+        .onChange(of: form.open) { wasOpen, isOpen in
+            if wasOpen && !isOpen { editor = nil }
+        }
+        .debugSignal("schedule.more") { menu = true }
+        .debugSignal("schedule.result.latest") {
+            context.dispatch { $0.scheduleDetailShowLatestResult = taskRef }
+        }
+        .debugSignal("schedule.mark-unread") { markUnreadAndBack() }
+        .debugSignal("schedule.history.all") {
+            context.dispatch {
+                $0.scheduleDetailShowAllRuns = .with {
+                    $0.machineID = machine
+                    $0.taskID = id
+                    $0.value = true
+                }
+            }
+        }
+        .debugSignal("schedule.edit-message") {
+            if displayed.found { openEdit(.message, mode: .editMessage) }
+        }
+        .debugSignal("schedule.edit-target") {
+            if displayed.found { openEdit(.target, mode: .editTarget) }
+        }
+        .debugSignal("schedule.open-run") {
+            for g in displayed.earlierGroups {
+                if let run = g.runs.first(where: { $0.canOpenSession && !$0.sessionID.isEmpty }) {
+                    openSession(run.sessionID, runID: run.runID, seq: run.firstSeq)
+                    return
+                }
+            }
+            if displayed.resultCard.showConversationAction && !displayed.resultCard.sessionID.isEmpty {
+                openSession(displayed.resultCard.sessionID, runID: displayed.resultCard.runID, seq: displayed.resultCard.firstSeq)
+            }
+        }
+        .debugSignal("schedule.pause") { operate(.pause) }
+        .debugSignal("schedule.run") { operate(.run) }
+        .task(id: "\(machine)/\(id)") {
+            await context.coreHost.openScheduleDetail(machineID: machine, taskID: id)
+            #if DEBUG
+            if HomeLaunch.value("-schedulePanel") == "editor" {
+                openEdit(.message, mode: .editMessage)
+            } else if HomeLaunch.value("-schedulePanel")?.hasPrefix("timing-") == true {
+                openEdit(.timing, mode: .editTiming)
+            }
+            #endif
+        }
+        .onDisappear {
+            let popped = !nav.path.contains(.schedule(machine: machine, id: id))
+            Task {
+                if popped {
+                    await context.coreHost.closeScheduleDetail(machineID: machine, taskID: id)
+                } else {
+                    await context.coreHost.hideScheduleDetail(machineID: machine, taskID: id)
+                }
+            }
+        }
+    }
+
+    private func menuActions(_ vm: PBScheduleDetailViewModel) -> [SheetAction] {
+        guard vm.found else { return [] }
+        let a = vm.actions
+        var actions: [SheetAction] = [
+            SheetAction(
+                L10n.scheduleRunOnceNow(),
+                enabled: a.canRunNow,
+                note: a.canRunNow ? "" : a.runNowDisabledReason.rendered()
+            ) {
+                operate(.run)
+            }
+        ]
+        if a.canMarkUnread {
+            actions.append(SheetAction(L10n.scheduleMarkAsUnread()) {
+                afterMenu { markUnreadAndBack() }
+            })
+        }
+        if a.showToggleAction {
+            actions.append(SheetAction(
+                a.toggleLabel.rendered(),
+                enabled: a.canToggle,
+                note: a.canToggle ? "" : a.toggleDisabledReason.rendered()
+            ) {
+                if a.isResumeAction {
+                    afterMenu { operate(.recover) }
+                } else {
+                    operate(.pause)
+                }
+            })
+        }
+        actions.append(SheetAction(
+            L10n.scheduleDeleteTask(),
+            danger: true,
+            enabled: a.canDelete,
+            note: a.canDelete ? "" : a.deleteDisabledReason.rendered()
+        ) {
+            afterMenu { delete = true }
+        })
+        return actions
+    }
+
+    private func afterMenu(_ action: @escaping @MainActor () -> Void) {
+        Task {
+            try? await Task.sleep(for: .milliseconds(220))
+            action()
+        }
+    }
+}
+
+/// Pure presentation body for `ScheduleDetailScreen`, driven solely by `PBScheduleDetailViewModel`.
+struct ScheduleDetailContent<ConnectionView: View>: View {
+    let vm: PBScheduleDetailViewModel
+    @ViewBuilder var connectionBar: () -> ConnectionView
+    var onRetryMachine: () -> Void = {}
+    var onRecover: () -> Void = {}
+    var onRetryMutation: () -> Void = {}
+    var onAbandonMutation: () -> Void = {}
+    var onShowLatestResult: () -> Void = {}
+    var onOpenSession: (_ sessionID: String, _ runID: String, _ seq: UInt64) -> Void = { _, _, _ in }
+    var onToggleQuietGroup: (_ groupKey: String) -> Void = { _ in }
+    var onShowAllRuns: () -> Void = {}
+    var onEditMessage: () -> Void = {}
+    var onEditTiming: () -> Void = {}
+    var onSetNotify: (Bool) -> Void = { _ in }
+    var onEditTarget: () -> Void = {}
+    var onEditMode: () -> Void = {}
+    var onRename: () -> Void = {}
+
+    var body: some View {
         Page(gray: true) {
             VStack(spacing: 0) {
-                ConnectionBar()
+                connectionBar()
                 ScrollViewReader { proxy in
                     ScrollView {
-                        if let task {
-                            content(task, mutation: mutation)
+                        if vm.found {
+                            taskBody
+                        } else if vm.loading {
+                            Text(L10n.scheduleIosLoadingTasks()).font(.body).ink(DS.ink2).padding(32)
                         } else {
-                            Text(store.loading.contains(machine) ? L10n.scheduleIosLoadingTasks() : L10n.scheduleIosTaskNotFound()).font(.body).ink(DS.ink2).padding(32)
+                            let notFound = vm.hasNotFoundText ? vm.notFoundText.rendered() : L10n.scheduleIosTaskNotFound()
+                            Text(notFound).font(.body).ink(DS.ink2).padding(32)
                         }
                         Color.clear.frame(height: 1).id("schedule-detail-end")
                     }
@@ -69,275 +339,300 @@ struct ScheduleDetailScreen: View {
                 }
             }
         }
-        .background(ScheduleConflictObserver(mutation: mutation) {
-            timing = false; targetEdit = false; permissions = false; rename = false; message = false
-        })
-        .navBar(task?.spec.title ?? L10n.scheduleIosTaskDetails(), subtitle: task.map { detailSubtitle($0) }, onMore: { menu = true })
-        .actionMenu(isPresented: $menu, actions: task.map { menuActions($0, mutation: mutation) } ?? []) {
-            if let task {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(task.spec.title).font(.body.weight(.semibold)).ink(DS.ink)
-                    Text(scheduleLocation(task, state: model.state, machine: machine) + " · " + task.creator +
-                         (scheduleDate(task.createdAt).map { " · " + scheduleDay($0) } ?? "")).font(.footnote).ink(DS.ink2)
-                }
-            }
-        }
-        .kitSheet(isPresented: $timing, size: .large) {
-            if let task = editor.task {
-                ScheduleTimingSheet(trigger: task.spec.trigger, onSave: { t in var spec = task.spec; spec.trigger = t; update(task, spec: spec) }, onClose: { timing = false })
-            }
-        }
-        .kitSheet(isPresented: $targetEdit, size: .large) {
-            if let task = editor.task { ScheduleTargetSheet(machine: machine, target: task.spec.target, onSave: { target in var spec = task.spec; spec.target = target; update(task, spec: spec) }, onClose: { targetEdit = false }) }
-        }
-        .kitSheet(isPresented: $permissions) {
-            if let task = editor.task {
-                ScheduleConfigSheet(page: .mode, config: Binding(get: {
-                    NewConfig(machineId: machine, cwd: task.spec.target.cwd ?? "", agent: agentById(task.spec.target.agent).agent,
-                              model: task.spec.target.model ?? "", effort: task.spec.target.effort ?? "", mode: ["ask": Mode.ask, "auto": .auto, "full": .full][task.spec.target.mode ?? ""])
-                }, set: { selected in
-                    var spec = task.spec
-                    spec.target.mode = selected?.mode.map { $0 == .full ? "full" : $0 == .auto ? "auto" : "ask" }
-                    update(task, spec: spec)
-                }), fixedMachine: machine) { permissions = false }
-            }
-        }
-        .inputAlert(isPresented: $rename, title: L10n.scheduleRenameTask(), initial: editor.task?.spec.title ?? "", placeholder: L10n.scheduleLeaveBlankToUseTheMessageSFirstSentence(), confirm: L10n.commonSave(), text: L10n.scheduleSavingBlankUsesTheMessageSFirstSentence(), limit: 60, lines: 1...1, save: { typed in
-            guard let task = editor.task else { return }
-            var spec = task.spec; spec.title = scheduleTitle(typed, message: task.spec.message)
-            guard spec.title != task.spec.title else { return }
-            try await save(task, spec: spec)
-        })
-        .fullScreenCover(isPresented: $message) {
-            if let snapshot = editor.task {
-                ScheduleMessageEditor(initial: snapshot.spec.message,
-                    enabled: ScheduleEditAccess(task: task ?? snapshot, online: store.online(machine), saving: mutation.running, unknown: mutation.frozen).definition,
-                    onSave: { typed in var spec = snapshot.spec; spec.message = typed; try await save(snapshot, spec: spec) },
-                    onClose: { message = false })
-            }
-        }
-        .confirm(isPresented: $delete, title: L10n.scheduleIosDeleteThisTask(), text: L10n.scheduleIosStopsFutureAutomaticRunsMessagesAlreadySentAndConversations(), confirm: L10n.scheduleDelete(), danger: true) {
-            if let task { perform(task, operation: "cancel", done: { nav.back(from: page) }) }
-        }
-        .debugSignal("schedule.more") { menu = true }
-        .debugSignal("schedule.result.latest") { store.refreshDetailResult(machine: machine, task: id) }
-        .debugSignal("schedule.mark-unread") {
-            markScheduleUnreadAndBack(machine: machine, taskID: id, store: store, nav: nav, page: page)
-        }
-        .debugSignal("schedule.history.all") { allHistory = true }
-        .debugSignal("schedule.edit-message") {
-            if let current = store.task(machine: machine, id: id) { editor.open(current); message = true }
-        }
-        .debugSignal("schedule.edit-target") {
-            if let current = store.task(machine: machine, id: id) { editor.open(current); targetEdit = true }
-        }
-        .debugSignal("schedule.open-run") {
-            if let run = store.task(machine: machine, id: id)?.history.first(where: { !($0.sessionID ?? "").isEmpty }) { open(run) }
-        }
-        .debugSignal("schedule.pause") { if let task = store.task(machine: machine, id: id) { perform(task, operation: "pause") } }
-        .debugSignal("schedule.run") { if let task = store.task(machine: machine, id: id) { perform(task, operation: "run") } }
-        .task { await store.refresh(machine) }
-        .onChange(of: task?.id, initial: true) { _, _ in
-            #if DEBUG
-            if model.isDemo, let task {
-                editor.open(task)
-                let panel = HomeLaunch.value("-schedulePanel")
-                message = panel == "editor"; timing = panel?.hasPrefix("timing-") == true
-            }
-            #endif
-        }
-        .task(id: task?.spec.target.session) {
-            if let sid = task?.spec.target.session, model.state.sessions[sid] == nil { _ = try? await context.remote.fetchSession(sid) }
-        }
     }
-    @ViewBuilder private func content(_ task: ScheduleTask, mutation: ScheduleMutation) -> some View {
-        let online = context.schedules.online(machine)
-        let access = ScheduleEditAccess(task: task, online: online, saving: mutation.running, unknown: mutation.frozen)
-        let mutable = access.definition
-        let displayedResult = context.schedules.detailResult
+
+    @ViewBuilder private var taskBody: some View {
+        let a = vm.actions
         VStack(alignment: .leading, spacing: 0) {
-            if access.showsReason {
-                ScheduleRecoveryNotice(text: scheduleStopBanner(task), recovery: access.primaryRecovery,
-                    enabled: online && !mutation.running && !mutation.frozen && (task.active == nil || task.active?.status == "uncertain") && task.manualRequest == nil) { recover(task) }
+            if vm.hasMachineError {
+                Banner(
+                    vm.machineError.rendered(),
+                    tone: .error,
+                    action: vm.canRetryMachineList ? L10n.commonRetry() : nil,
+                    onAction: vm.canRetryMachineList ? onRetryMachine : nil
+                )
+                .padding(.horizontal, 16).padding(.top, 12)
             }
-            if !mutation.error.isEmpty { Banner(mutation.error, tone: .error).padding(16) }
-            if mutation.frozen {
-                TextAction(L10n.scheduleRetrySameRequest(), enabled: online && !mutation.running && !mutation.expired) { perform(task, operation: "get") }.padding(.horizontal, 16)
-                Hint(L10n.scheduleIosTheComputerMayHaveAlreadyExecutedItCheckThe()).padding(.horizontal, 16)
-                TextAction(L10n.scheduleIosAbandonOriginalRequest(), enabled: online && !mutation.running) { mutation.abandon() }.padding(.horizontal, 16)
+            if vm.readOnly && vm.hasReadOnlyNotice {
+                Banner(vm.readOnlyNotice.rendered())
+                    .padding(.horizontal, 16).padding(.top, 12)
             }
-            if context.schedules.hasNewDetailResult {
-                TextAction(L10n.homeIosNewResults()) { context.schedules.refreshDetailResult(machine: machine, task: id) }
+            if vm.attention.show {
+                ScheduleRecoveryNotice(
+                    text: vm.attention.message.rendered(),
+                    recovery: vm.attention.showPrimaryAction ? vm.attention.primaryActionLabel.rendered() : nil,
+                    enabled: vm.attention.primaryActionEnabled,
+                    action: onRecover
+                )
+            }
+            ScheduleMutationBanner(
+                mutation: vm.mutation,
+                onRetry: onRetryMutation,
+                onAbandon: onAbandonMutation
+            )
+            .padding(.horizontal, 16).padding(.top, 12)
+
+            if vm.resultCard.hasResult_p && vm.resultCard.hasNewerResult_p {
+                TextAction(L10n.homeIosNewResults(), action: onShowLatestResult)
                     .padding(.horizontal, 16)
             }
-            if let running = task.running {
+
+            if vm.activeRun.hasActive_p {
                 HStack(spacing: 6) {
                     SymbolImage(Mark.progress, style: .subheadline, color: DS.blue)
-                    Text(L10n.scheduleRunningSince(time: String(describing: scheduleTime(running.date)))).font(.subheadline).ink(DS.blue)
+                    Text(vm.activeRun.statusText.rendered()).font(.subheadline).ink(DS.blue)
                     Spacer(minLength: 0)
-                    if !(running.sessionID ?? "").isEmpty { TextAction(L10n.scheduleConversation(), arrow: true) { open(running) } }
-                }.padding(16).background(DS.gbg, in: RoundedRectangle(cornerRadius: DS.Radius.group))
-                    .padding(.horizontal, 16).padding(.top, 16)
+                    if vm.activeRun.canOpenSession && !vm.activeRun.sessionID.isEmpty {
+                        TextAction(L10n.scheduleConversation(), arrow: true) {
+                            onOpenSession(vm.activeRun.sessionID, vm.activeRun.runID, vm.activeRun.firstSeq)
+                        }
+                    }
+                }
+                .padding(16)
+                .background(DS.gbg, in: RoundedRectangle(cornerRadius: DS.Radius.group))
+                .padding(.horizontal, 16).padding(.top, 16)
             }
-            if let result = displayedResult {
-                ScheduleResultCard(run: result,
-                    unread: context.schedules.wasUnreadOnEntry(machine: machine, task: id, run: result.id),
-                    showConversation: task.spec.target.type != "resume_session" || (task.running?.sessionID ?? "").isEmpty) { open(result) }
-                    .id(result.id)
+
+            if vm.resultCard.hasResult_p {
+                ScheduleResultCard(card: vm.resultCard) {
+                    onOpenSession(vm.resultCard.sessionID, vm.resultCard.runID, vm.resultCard.firstSeq)
+                }
+                .id(vm.resultCard.runID)
             }
-            let earlier = task.earlierRuns(resultID: displayedResult?.id)
-            if !earlier.isEmpty {
+
+            if !vm.earlierGroups.isEmpty {
                 HStack {
                     Text(L10n.scheduleEarlier()).font(.subheadline).ink(DS.ink2)
                     Spacer()
-                    Text(L10n.scheduleRunsCount(count: Int(earlier.count))).font(.subheadline).ink(DS.ink2)
-                }.padding(.horizontal, 30).padding(.top, 20).padding(.bottom, 6)
-                history(task, runs: earlier)
+                    Text(vm.earlierCountText.rendered()).font(.subheadline).ink(DS.ink2)
+                }
+                .padding(.horizontal, 30).padding(.top, 20).padding(.bottom, 6)
+                historySection
+            } else if vm.emptyHistory {
+                GroupCard {
+                    GRow(vm.hasEmptyHistoryText ? vm.emptyHistoryText.rendered() : L10n.scheduleHasNotRunYet())
+                }
+                .padding(.top, 16)
             }
+
             GroupCard {
                 VStack(alignment: .leading, spacing: 0) {
-                HStack {
-                    Text(L10n.scheduleWhatShouldTheAgentDo()).font(.subheadline.weight(.semibold)).ink(DS.ink)
-                    Spacer()
-                    TextAction(L10n.toolsIosEdit(), enabled: mutable) { editor.open(task); message = true }
-                }.padding(.horizontal, 14)
-                Text(task.spec.message).font(.body).ink(DS.ink).lineLimit(3)
-                    .frame(maxWidth: .infinity, alignment: .leading).padding(14)
+                    HStack {
+                        Text(L10n.scheduleWhatShouldTheAgentDo()).font(.subheadline.weight(.semibold)).ink(DS.ink)
+                        Spacer()
+                        TextAction(L10n.toolsIosEdit(), enabled: a.canEditDefinition, action: onEditMessage)
+                    }
+                    .padding(.horizontal, 14)
+                    Text(vm.message).font(.body).ink(DS.ink).lineLimit(3)
+                        .frame(maxWidth: .infinity, alignment: .leading).padding(14)
                 }
-            }.padding(.top, 16).padding(.bottom, 16)
+            }
+            .padding(.top, 16).padding(.bottom, 16)
+
             GroupLabel(L10n.commonSettings())
             GroupCard {
-                GRow(L10n.scheduleWhen(), value: scheduleFrequency(task.spec.trigger, includeZone: true), chevron: mutable, onTap: mutable ? { editor.open(task); timing = true } : nil)
-                ToggleRow(L10n.scheduleNotifyOnCompletion(), isOn: Binding(get: { task.spec.notifyOnFinish }, set: { on in var spec = task.spec; spec.notifyOnFinish = on; update(task, spec: spec) })).disabled(!access.rename)
-                let limits = scheduleLimits(task.spec.trigger)
-                if !limits.isEmpty { GRow(L10n.sessionEnd(), value: limits, chevron: mutable, onTap: mutable ? { editor.open(task); timing = true } : nil) }
-                if task.spec.target.type == "new_session" {
-                    GRow(L10n.scheduleRunIn(), value: scheduleLocation(task, state: model.state, machine: machine), chevron: mutable, onTap: mutable ? { editor.open(task); targetEdit = true } : nil)
-                    GRow(L10n.newSessionPermissions(), value: permission(task), chevron: mutable, valueColor: task.spec.target.mode == "full" ? DS.red : nil, onTap: mutable ? { editor.open(task); permissions = true } : nil)
-                } else {
-                    GRow(L10n.scheduleSendToSchedules(), value: scheduleDestination(task, state: model.state), chevron: online && !task.missingTarget, onTap: online && !task.missingTarget ? {
-                        if let sid = task.spec.target.session { nav.open(.session(id: sid)) }
-                    } : nil)
-                    GRow(L10n.newSessionPermissions(), value: permission(task), valueColor: targetSession(task).map { modeOf($0) == .full } == true ? DS.red : nil)
+                GRow(
+                    L10n.scheduleWhen(),
+                    value: vm.timingText.rendered(),
+                    chevron: a.canEditDefinition,
+                    onTap: a.canEditDefinition ? onEditTiming : nil
+                )
+                ToggleRow(
+                    L10n.scheduleNotifyOnCompletion(),
+                    isOn: Binding(get: { vm.notifyOnFinish }, set: { onSetNotify($0) })
+                )
+                .disabled(!a.canToggleNotify)
+                if vm.hasLimits_p {
+                    GRow(
+                        L10n.sessionEnd(),
+                        value: vm.limitsText.rendered(),
+                        chevron: a.canEditDefinition,
+                        onTap: a.canEditDefinition ? onEditTiming : nil
+                    )
                 }
-                GRow(L10n.scheduleTaskName(), value: task.spec.title, chevron: access.rename, valueLines: 1, onTap: access.rename ? { editor.open(task); rename = true } : nil)
+                let targetEditable = vm.targetType == .newSession ? a.canEditDefinition : (vm.machineOnline && !vm.targetSessionID.isEmpty)
+                GRow(
+                    vm.targetLabel.rendered(),
+                    value: vm.targetValue.rendered(),
+                    chevron: targetEditable,
+                    onTap: targetEditable ? {
+                        if vm.targetType == .newSession {
+                            onEditTarget()
+                        } else if vm.canOpenTargetSession && !vm.targetSessionID.isEmpty {
+                            onOpenSession(vm.targetSessionID, "", 0)
+                        }
+                    } : nil
+                )
+                let permEditable = vm.canEditPermissions && a.canEditDefinition
+                GRow(
+                    L10n.newSessionPermissions(),
+                    value: vm.permissionsText.rendered(),
+                    chevron: permEditable,
+                    valueColor: vm.permissionsIsDanger ? DS.red : nil,
+                    onTap: permEditable ? onEditMode : nil
+                )
+                GRow(
+                    L10n.scheduleTaskName(),
+                    value: vm.taskName,
+                    chevron: a.canRename,
+                    valueLines: 1,
+                    onTap: a.canRename ? onRename : nil
+                )
             }
-            Hint((task.spec.target.type == "new_session" ? L10n.scheduleEachRunOpensANewConversationGroupedUnderThis() : L10n.scheduleMessagesGoToTheCurrentConversationAndWaitFor()) + " " + task.creator + (task.createdAt.isEmpty ? "" : " · " + (scheduleDate(task.createdAt).map { scheduleMoment($0) } ?? ""))).padding(.horizontal, 16).padding(.bottom, 16)
-            if !online { Hint(L10n.scheduleIosConnectToEditRunOrDelete(value: String(describing: machineLabel(model.state, id: machine)))).padding(.horizontal, 16).padding(.bottom, 16) }
+
+            if vm.hasCreationFooter {
+                Hint(vm.creationFooter.rendered()).padding(.horizontal, 16).padding(.bottom, 8)
+            }
+            if vm.hasRunOnceFooter {
+                Hint(vm.runOnceFooter.rendered()).padding(.horizontal, 16).padding(.bottom, 16)
+            }
         }
     }
-    private func recover(_ task: ScheduleTask) {
-        if task.status == "cancelled" && task.visible {
-            if task.oneShot { editor.open(task); timing = true }
-            else { perform(task, operation: "update", spec: task.spec) }
-        } else { perform(task, operation: task.status == "failed" && task.oneShot ? "run" : "resume") }
-    }
-    private func targetSession(_ task: ScheduleTask) -> SessionView? { task.spec.target.session.flatMap { model.state.sessions[$0] } }
-    private func permission(_ task: ScheduleTask) -> String {
-        if task.spec.target.type == "resume_session" { return targetSession(task).flatMap { modeLabel($0) }?.text ?? L10n.scheduleVerifyCurrentPermissionsInTheConversation() }
-        return ["ask": L10n.modesAsk(), "auto": L10n.modesAuto(), "full": L10n.modesFullAccess()][task.spec.target.mode ?? ""] ?? L10n.newSessionFollowCli()
-    }
-    @ViewBuilder private func history(_ task: ScheduleTask, runs: [ScheduleRun]) -> some View {
-        let groups = scheduleHistoryGroups(runs)
+
+    private var historySection: some View {
         GroupCard {
-            if groups.isEmpty { GRow(L10n.scheduleHasNotRunYet()) }
-            if allHistory {
-                ForEach(runs) { run in record(run, task: task) }
-            } else {
-                ForEach(Array(groups.prefix(5))) { group in
-                    let run = group.runs[0]
-                    if group.folded {
-                        GRow(L10n.scheduleQuietRuns(count: Int(group.runs.count), day: String(describing: scheduleDay(run.notificationTime))), sub: L10n.scheduleLatestSummary(summary: String(describing: run.foldedSummary), time: String(describing: scheduleTime(run.notificationTime))), chevron: false) {
-                            if expanded.contains(group.id) { expanded.remove(group.id) } else { expanded.insert(group.id) }
-                        }.trailing { Arrow(DS.ink2, direction: expanded.contains(group.id) ? .up : .down) }
-                        if expanded.contains(group.id) { ForEach(group.runs) { record($0, task: task) } }
-                    } else { record(run, task: task) }
+            ForEach(vm.earlierGroups, id: \.groupKey) { group in
+                if group.foldedQuiet && group.runs.count > 1 {
+                    GRow(
+                        group.foldedTitle.rendered(),
+                        sub: group.hasFoldedSummary ? group.foldedSummary.rendered() : nil,
+                        chevron: false
+                    ) {
+                        onToggleQuietGroup(group.groupKey)
+                    }
+                    .trailing { Arrow(DS.ink2, direction: group.expanded ? .up : .down) }
+                    if group.expanded {
+                        ForEach(group.runs, id: \.runID) { runRow($0) }
+                    }
+                } else {
+                    ForEach(group.runs, id: \.runID) { runRow($0) }
                 }
             }
-            if groups.count > 5 && !allHistory {
-                GRow(L10n.scheduleViewAllRuns(count: Int(runs.count)), action: true) { allHistory = true }
+            if !vm.showAllRuns && vm.hasMoreEarlierRuns_p {
+                let label = vm.hasViewAllText ? vm.viewAllText.rendered() : L10n.scheduleViewAllRuns(count: Int(vm.totalEarlierRuns))
+                GRow(label, action: true, onTap: onShowAllRuns)
             }
         }
     }
-    private func record(_ run: ScheduleRun, task: ScheduleTask) -> some View {
-        let sid = run.sessionID ?? ""
-        return Button { open(run) } label: {
+
+    private func runRow(_ run: PBScheduleRunRowView) -> some View {
+        let canOpen = run.canOpenSession && !run.sessionID.isEmpty
+        return Button {
+            if canOpen {
+                onOpenSession(run.sessionID, run.runID, run.firstSeq)
+            }
+        } label: {
             HStack(alignment: .top, spacing: 0) {
                 ZStack {
-                    if context.schedules.wasUnreadOnEntry(machine: machine, task: id, run: run.id) {
-                        Circle().fill(DS.blue).frame(width: 8, height: 8).accessibilityLabel(L10n.scheduleUnreadOnEntry())
+                    if run.unreadOnEntry {
+                        Circle().fill(DS.blue).frame(width: 8, height: 8)
+                            .accessibilityLabel(L10n.scheduleUnreadOnEntry())
                     }
-                }.frame(width: 22, height: 20)
+                }
+                .frame(width: 22, height: 20)
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(scheduleMoment(run.notificationTime)).font(.subheadline).ink(DS.ink2)
-                    Text(scheduleRunSummary(run)).font(.body).ink(DS.ink).lineLimit(2)
+                    Text(run.timeText.rendered()).font(.subheadline).ink(DS.ink2)
+                    Text(run.summaryText.rendered()).font(.body).ink(DS.ink).lineLimit(2)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                if !sid.isEmpty { Arrow(DS.ink2).padding(.leading, 8).padding(.top, 12) }
-            }.padding(.horizontal, 14).padding(.vertical, 12).contentShape(Rectangle())
-        }.buttonStyle(RowPressStyle()).disabled(sid.isEmpty).accessibilityElement(children: .combine)
-    }
-    private func detailSubtitle(_ task: ScheduleTask) -> String {
-        if task.group == .attention { return L10n.scheduleStopped() }
-        let frequency = scheduleListFrequency(task.spec.trigger)
-        if task.spec.target.type == "resume_session" { return L10n.scheduleSendTo(detail: String(describing: scheduleDestination(task, state: model.state)), value: String(describing: frequency)) }
-        return frequency + (task.nextRunAt.flatMap(scheduleDate).map { L10n.scheduleIosNext(value: String(describing: scheduleMoment($0))) } ?? "")
-    }
-    private func menuActions(_ task: ScheduleTask, mutation: ScheduleMutation) -> [SheetAction] {
-        let online = context.schedules.online(machine)
-        let access = ScheduleEditAccess(task: task, online: online, saving: mutation.running, unknown: mutation.frozen)
-        var actions = [SheetAction(L10n.scheduleRunOnceNow(), enabled: access.run || (access.rename && task.oneShot && task.status == "failed" && task.active == nil && task.manualRequest == nil)) {
-            perform(task, operation: "run")
-        }]
-        if task.latestNotification != nil {
-            actions.append(SheetAction(L10n.scheduleMarkAsUnread()) {
-                afterMenu {
-                    markScheduleUnreadAndBack(machine: machine, taskID: id, store: context.schedules, nav: nav, page: page)
+                if canOpen {
+                    Arrow(DS.ink2).padding(.leading, 8).padding(.top, 12)
                 }
-            })
+            }
+            .padding(.horizontal, 14).padding(.vertical, 12).contentShape(Rectangle())
         }
-        if let toggle = access.menuToggle {
-            actions.append(SheetAction(toggle, enabled: online && !mutation.running && !mutation.frozen) {
-                if task.group == .paused || task.group == .attention { afterMenu { recover(task) } }
-                else { perform(task, operation: "pause") }
-            })
-        }
-        actions.append(SheetAction(L10n.scheduleDeleteTask(), danger: true, enabled: online && !mutation.running && !mutation.frozen) { afterMenu { delete = true } })
-        return actions
-    }
-    private func afterMenu(_ action: @escaping @MainActor () -> Void) {
-        Task { try? await Task.sleep(for: .milliseconds(220)); action() }
-    }
-    private func open(_ run: ScheduleRun) {
-        guard let sid = run.sessionID, !sid.isEmpty else { return }
-        context.sessionStore.jumpToScheduledRun(sid, runID: run.id, seq: run.firstSeq)
-        nav.open(.session(id: sid))
-    }
-    private func save(_ task: ScheduleTask, spec: ScheduleSpec) async throws {
-        guard context.schedules.online(machine) else { throw UserError(L10nMessage.scheduleIosTheComputerIsOfflineConnectToMakeChanges()) }
-        try await context.scheduleMutations.of(machine + "/" + id).execute(remote: context.remote, machine: machine, command: {
-            try editor.command(spec: spec)
-        }, refresh: { await context.schedules.refresh(machine) })
-    }
-    private func update(_ task: ScheduleTask, spec: ScheduleSpec) { perform(task, operation: "update", spec: spec) }
-    private func perform(_ task: ScheduleTask, operation: String, spec: ScheduleSpec? = nil, done: @escaping () -> Void = {}) {
-        guard context.schedules.online(machine) else { return }
-        context.scheduleMutations.of(machine + "/" + id).run(remote: context.remote, machine: machine, command: {
-            try scheduleCommand(operation: operation, taskID: id, spec: spec, revision: task.revision)
-        }, refresh: { await context.schedules.refresh(machine) }, done: { _ in done() })
+        .buttonStyle(RowPressStyle())
+        .disabled(!canOpen)
+        .accessibilityElement(children: .combine)
     }
 }
 
-struct ScheduleConflictObserver: View {
-    let mutation: ScheduleMutation
-    let dismiss: () -> Void
-    var body: some View { Color.clear.frame(width: 0, height: 0).onChange(of: mutation.conflicts) { _, _ in dismiss() } }
-}
+private struct ScheduleRenameDialog: ViewModifier {
+    @Binding var isPresented: Bool
+    let initialTitle: String
+    let mutation: PBScheduleMutationView
+    let enabled: Bool
+    let onSave: (String) -> Void
 
-@MainActor func markScheduleUnreadAndBack(machine: String, taskID: String, store: ScheduleStore, nav: Navigator, page: Route?) {
-    guard nav.showing(page), let task = store.task(machine: machine, id: taskID) else { return }
-    store.markUnread(.init(machineID: machine, task: task), keepingUnreadOn: nav.path.dropLast().last)
-    nav.back(from: page)
+    @State private var value = ""
+    @State private var submitted = false
+    @State private var sawBusy = false
+
+    func body(content: Content) -> some View {
+        let busy = mutation.busy
+        let hasError = mutation.hasError
+        content.modifier(OverlayCover(isPresented: $isPresented, alignment: .center, canDismiss: { !busy }) {
+            DialogCard {
+                Text(L10n.scheduleRenameTask()).font(.headline).ink(DS.ink)
+                    .multilineTextAlignment(.center).padding(.bottom, 12)
+                    .accessibilityAddTraits(.isHeader)
+                InputField(
+                    text: $value,
+                    placeholder: L10n.scheduleLeaveBlankToUseTheMessageSFirstSentence(),
+                    lines: 1...1,
+                    focusOnAppear: true,
+                    onSubmit: { submit() }
+                )
+                .onChange(of: value) { _, new in
+                    let sanitized = String(new.map { $0 == "\n" || $0 == "\r" ? " " : $0 }.prefix(60))
+                    if sanitized != new { value = sanitized }
+                }
+                .padding(.bottom, 8)
+                if hasError {
+                    Text(L10n.commonIosSaveFailed(reason: mutation.error.rendered()))
+                        .font(.subheadline).ink(DS.red).multilineTextAlignment(.center).padding(.bottom, 8)
+                } else {
+                    Text(L10n.scheduleSavingBlankUsesTheMessageSFirstSentence())
+                        .font(.subheadline).ink(DS.ink2).multilineTextAlignment(.center).padding(.bottom, 8)
+                }
+                Btns {
+                    Btn(L10n.commonCancel(), enabled: !busy) { isPresented = false }
+                    Btn(
+                        busy ? L10n.commonIosSaving() : L10n.commonSave(),
+                        kind: .primary,
+                        enabled: enabled && !busy && !mutation.frozen,
+                        action: submit
+                    )
+                }
+                .padding(.top, 6)
+            }
+        })
+        .onChange(of: isPresented) { _, open in
+            if open {
+                value = initialTitle
+                submitted = false
+                sawBusy = false
+            }
+        }
+        .onChange(of: busy) { _, nowBusy in
+            if nowBusy { sawBusy = true }
+            checkAutoClose()
+        }
+        .onChange(of: hasError) { _, _ in checkAutoClose() }
+        .onChange(of: mutation.frozen) { _, _ in checkAutoClose() }
+    }
+
+    private func submit() {
+        guard enabled && !mutation.busy && !mutation.frozen else { return }
+        if value == initialTitle {
+            isPresented = false
+            return
+        }
+        submitted = true
+        sawBusy = false
+        onSave(value)
+    }
+
+    private func checkAutoClose() {
+        guard submitted else { return }
+        if !mutation.busy && (sawBusy || (!mutation.hasError && !mutation.frozen)) {
+            submitted = false
+            if !mutation.hasError && !mutation.frozen {
+                Haptics.confirm()
+                isPresented = false
+            }
+        }
+    }
 }
 
 /// The notice and its primary action share the result cards' 16 pt edges.
@@ -347,12 +642,14 @@ struct ScheduleRecoveryNotice: View {
     let recovery: String?
     let enabled: Bool
     let action: () -> Void
+
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text(text).font(.subheadline).ink(DS.orangeInk)
                 .frame(maxWidth: .infinity, alignment: .leading).padding(16)
                 .background(DS.gbg, in: RoundedRectangle(cornerRadius: DS.Radius.small))
             if let recovery { Btn(recovery, kind: .primary, enabled: enabled, action: action) }
-        }.padding(.horizontal, 16).padding(.top, 16).padding(.bottom, 12)
+        }
+        .padding(.horizontal, 16).padding(.top, 16).padding(.bottom, 12)
     }
 }

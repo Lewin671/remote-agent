@@ -167,7 +167,7 @@ import UIKit
     }
 
     @Test func scheduleHintsWrapWhileTheNameRemainsASingleLine() async throws {
-        for hint in [L10n.scheduleIosWhatToCheckNotifyMeWhenThereAreResults(locale: "en"),
+        for hint in ["What to check; notify me when there are results.",
                      L10n.scheduleLeaveBlankToUseTheMessageSFirstSentence(locale: "en")] {
             let empty = try await fitted(InputField(text: .constant(""), placeholder: hint, wrapPlaceholder: true), width: 358, settle: true)
             let typed = try await fitted(InputField(text: .constant("x"), placeholder: hint, wrapPlaceholder: true), width: 358)
@@ -175,7 +175,7 @@ import UIKit
             #expect(empty.height > typed.height + 15)
             #expect(abs(longName.height - typed.height) < 0.5)
         }
-        for hint in [L10n.scheduleIosWhatToCheckNotifyMeWhenThereAreResults(locale: "zh-CN"),
+        for hint in ["想查什么，有结果通知你。",
                      L10n.scheduleLeaveBlankToUseTheMessageSFirstSentence(locale: "zh-CN")] {
             let original = try await fitted(InputField(text: .constant(""), placeholder: hint), width: 358)
             let wrapped = try await fitted(InputField(text: .constant(""), placeholder: hint, wrapPlaceholder: true), width: 358, settle: true)

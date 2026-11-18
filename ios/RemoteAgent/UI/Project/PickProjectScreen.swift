@@ -1,4 +1,4 @@
-// 新会话 · 选项目: rendered from `manageProjects.listing` (or `ScheduleConfigSheet`'s legacy wrapper).
+// 新会话 · 选项目: rendered from `manageProjects.listing`.
 import RACore
 import RAProto
 import SwiftUI
@@ -14,25 +14,6 @@ struct CoreProjectPickList: View {
         CoreProjectList(listing: listing, onSearch: onSearch, onNew: onNew) { pr in
             CoreProjectRow(row: pr, action: { onPick(pr.key) }) { Arrow(DS.ink3, style: .body) }
         }
-    }
-}
-
-/// Compatibility entry point for `ScheduleConfigSheet`.
-struct ProjectPickList: View {
-    let state: RemoteState
-    let onPick: (String) -> Void
-    let onNew: () -> Void
-    @Environment(AccountContext.self) private var context
-
-    var body: some View {
-        CoreProjectPickList(
-            listing: context.core.manageProjects.listing,
-            onSearch: { q in context.dispatch { $0.projectSetSearch.query = q } },
-            onPick: onPick,
-            onNew: onNew
-        )
-        .task { await context.coreHost.setManageActive(true) }
-        .onDisappear { Task { await context.coreHost.setManageActive(false) } }
     }
 }
 

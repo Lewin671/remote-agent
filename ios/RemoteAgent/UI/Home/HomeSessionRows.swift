@@ -10,9 +10,7 @@ struct HomeSessionRow: View {
     let row: PBCoreSessionRowView
     /// The last of its list draws no line under it.
     var last = false
-    @Environment(AppModel.self) private var model
     @Environment(Navigator.self) private var nav
-    @Environment(AccountContext.self) private var context
 
     var body: some View {
         let title = row.title.rendered()
@@ -20,7 +18,7 @@ struct HomeSessionRow: View {
         let status = row.statusText.rendered()
         let preview = row.preview.rendered()
         let second = preview.isEmpty ? status : "\(status) · \(preview)"
-        let third = sessionMeta(row.metaLine.rendered())
+        let third = row.metaLine.rendered()
         let spoken = [title, status, preview, third, time].filter { !$0.isEmpty }.joined(separator: L10n.commonIosSpokenSeparator())
         Button {
             nav.open(.session(id: row.sessionID))
@@ -40,16 +38,6 @@ struct HomeSessionRow: View {
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(spoken)
         .accessibilityAddTraits(.isButton)
-    }
-
-    private func sessionMeta(_ base: String) -> String {
-        guard let session = model.state.sessions[row.sessionID] else { return base }
-        let schedules = sessionSchedules(context.schedules.tasks, session: session)
-        guard let first = schedules.first else { return base }
-        let note = schedules.count == 1
-            ? L10n.homeScheduledFrequency(frequency: scheduleFrequency(first.task.spec.trigger))
-            : L10n.homeScheduledTasks(count: schedules.count)
-        return [base, note].filter { !$0.isEmpty }.joined(separator: " · ")
     }
 }
 

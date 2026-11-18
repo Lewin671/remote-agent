@@ -330,7 +330,6 @@ struct MainView: View {
             if let route = Route(path: UserDefaults.standard.string(forKey: "debug.route") ?? "") { nav.open(route) }
         }
         .debugSignal("app.back") { nav.back() }
-        .task { await context.schedules.follow(context.remote) }
         .task {
             await context.coreHost.setNavigateHandler { effect in
                 switch effect.route {
@@ -347,22 +346,47 @@ struct MainView: View {
                     break
                 }
             }
+            await context.coreHost.setScheduleNavigateHandler { effect in
+                switch effect.route {
+                case .list:
+                    context.dismissNewSchedule?()
+                    if case .schedule? = nav.path.last {
+                        nav.back()
+                    } else {
+                        nav.open(.schedules)
+                    }
+                case .detail:
+                    context.dismissNewSchedule?()
+                    if case .newSchedule? = nav.path.last {
+                        nav.back()
+                    }
+                    nav.open(.schedule(machine: effect.machineID, id: effect.taskID))
+                case .session:
+                    if effect.firstSeq > 0 {
+                        context.sessionStore.jumpToScheduledRun(effect.sessionID, runID: effect.runID, seq: effect.firstSeq)
+                    }
+                    nav.open(.session(id: effect.sessionID))
+                case .closeForm:
+                    context.dismissNewSchedule?()
+                    if case .newSchedule? = nav.path.last {
+                        nav.back()
+                    }
+                case .formTiming, .unspecified, .UNRECOGNIZED:
+                    break
+                }
+            }
         }
-        .modifier(ScheduleViewingObserver(store: context.schedules, page: nav.path.last, foreground: model.foreground))
+        .onChange(of: nav.path.last, initial: true) { _, page in
+            let viewingOther = switch page {
+            case .session, .schedule: false
+            default: true
+            }
+            if viewingOther {
+                Task { await context.coreHost.openScheduleList(true) }
+            }
+        }
         .environment(nav)
         .environment(context)
-    }
-}
-
-/// Visibility follows navigation, including routes opened from links and returning from a session.
-struct ScheduleViewingObserver: ViewModifier {
-    let store: ScheduleStore
-    let page: Route?
-    let foreground: Bool
-    func body(content: Content) -> some View {
-        content
-            .onChange(of: page, initial: true) { _, _ in store.setViewing(page, foreground: foreground) }
-            .onChange(of: foreground) { _, _ in store.setViewing(page, foreground: foreground) }
     }
 }
 
@@ -395,8 +419,8 @@ private struct FirstLevel: View {
         let home = context.core.home
         // What waits for the user, on the 会话 tab; it stays while the server is out of reach.
         let waiting = Int(home.waitingTotal)
-        let canCreate = nav.tab == .home ? home.canStart : state.machines.keys.contains { !state.peer($0).unlinked }
-        let schedules = context.schedules
+        let schedules = context.core.schedules
+        let canCreate = nav.tab == .home ? home.canStart : schedules.canCreate
         Group {
             switch nav.tab {
             case .home: HomeScreen()
@@ -414,7 +438,7 @@ private struct FirstLevel: View {
                     tab: $nav.tab,
                     badges: [
                         .home: TabBadge(count: waiting),
-                        .schedules: TabBadge(count: schedules.badgeCount, dot: schedules.hasNewResults, unit: .tasks),
+                        .schedules: TabBadge(count: Int(schedules.attentionCount), dot: schedules.hasNewResults_p, unit: .tasks),
                     ],
                     canCreate: canCreate,
                     onCreate: { create(home) })
@@ -447,11 +471,10 @@ private struct FirstLevel: View {
         }
         .sheet(isPresented: $newSchedule) {
             NavigationStack {
-                NewScheduleScreen(sessionID: "", onCreated: { route in
-                    newSchedule = false
-                    nav.open(route)
-                }, onClose: { newSchedule = false })
+                NewScheduleScreen(sessionID: "", onClose: { newSchedule = false })
             }
+            .onAppear { context.dismissNewSchedule = { newSchedule = false } }
+            .onDisappear { context.dismissNewSchedule = nil }
             .sheetSurface()
             .presentationDetents([.large])
         }

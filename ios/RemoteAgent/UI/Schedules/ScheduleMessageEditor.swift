@@ -1,4 +1,5 @@
 import RACore
+import RAProto
 import SwiftUI
 
 /// Measures the unabridged text at the same width and Dynamic Type size.
@@ -9,6 +10,7 @@ struct ScheduleMessageText: View {
     @State private var expanded = false
     @State private var fullHeight: CGFloat = 0
     @State private var clippedHeight: CGFloat = 0
+
     var body: some View {
         VStack(alignment: caption == nil ? .leading : .trailing, spacing: 0) {
             Text(text).font(.body).ink(DS.ink).lineLimit(expanded ? nil : 6)
@@ -21,26 +23,36 @@ struct ScheduleMessageText: View {
                 }
                 .background {
                     Text(text).font(.body).ink(DS.ink).fixedSize(horizontal: false, vertical: true).hidden()
-                        .background { GeometryReader { proxy in
-                            Color.clear.onAppear { fullHeight = proxy.size.height }
-                                .onChange(of: proxy.size.height) { _, height in fullHeight = height }
-                        } }
+                        .background {
+                            GeometryReader { proxy in
+                                Color.clear.onAppear { fullHeight = proxy.size.height }
+                                    .onChange(of: proxy.size.height) { _, height in fullHeight = height }
+                            }
+                        }
                 }
                 .padding(.horizontal, bubble ? 12 : 0).padding(.vertical, bubble ? 8 : 0)
                 .background {
                     if bubble {
-                        UnevenRoundedRectangle(topLeadingRadius: 18, bottomLeadingRadius: 18, bottomTrailingRadius: 5, topTrailingRadius: 18).fill(DS.gbg)
+                        UnevenRoundedRectangle(
+                            topLeadingRadius: 18,
+                            bottomLeadingRadius: 18,
+                            bottomTrailingRadius: 5,
+                            topTrailingRadius: 18
+                        ).fill(DS.gbg)
                     }
                 }
                 .textSelection(.enabled)
             if expanded || fullHeight > clippedHeight + 1 {
                 Button { expanded.toggle() } label: {
                     HStack(spacing: 4) {
-                        Text((caption.map { $0 + " · " } ?? "") + (expanded ? L10n.markdownCollapse() : L10n.markdownExpand())).font(.footnote).ink(DS.ink2)
+                        Text((caption.map { $0 + " · " } ?? "") + (expanded ? L10n.markdownCollapse() : L10n.markdownExpand()))
+                            .font(.footnote).ink(DS.ink2)
                         Arrow(DS.ink2, direction: expanded ? .up : .down)
                     }.frame(minHeight: 44)
                 }.buttonStyle(PressStyle())
-            } else if let caption { Text(caption).font(.footnote).ink(DS.ink2).padding(.top, 4) }
+            } else if let caption {
+                Text(caption).font(.footnote).ink(DS.ink2).padding(.top, 4)
+            }
         }
         .onChange(of: text) { _, _ in expanded = false }
         .debugSignal("schedule.description.toggle") { expanded.toggle() }
@@ -48,65 +60,127 @@ struct ScheduleMessageText: View {
 }
 
 struct ScheduleMessageEditor: View {
-    let initial: String
-    let enabled: Bool
-    let onSave: (String) async throws -> Void
     let onClose: () -> Void
-    @State private var text: String
-    @FocusState private var focused: Bool
-    @State private var discard = false
-    @State private var saving = false
-    @State private var error = ""
-    init(initial: String, enabled: Bool, onSave: @escaping (String) async throws -> Void, onClose: @escaping () -> Void) {
-        self.initial = initial; self.enabled = enabled; self.onSave = onSave; self.onClose = onClose
-        _text = State(initialValue: initial)
-    }
-    private func save() {
-        saving = true
-        Task { do { if text != initial { try await onSave(text) }; onClose() }
-            catch { self.error = errorText(error) }; saving = false }
-    }
+    @Environment(AccountContext.self) private var context
+
     var body: some View {
-        NavigationStack {
-            VStack(spacing: 0) {
-                TextEditor(text: $text).font(.body).ink(DS.ink)
-                    .textInputAutocapitalization(.never).autocorrectionDisabled()
-                    .scrollContentBackground(.hidden).padding(12).focused($focused).disabled(saving || !enabled)
-                    .accessibilityLabel(L10n.scheduleWhatShouldTheAgentDo())
-                if text.utf8.count > scheduleMessageLimit { Hint(L10n.scheduleTooLongMaximum32Kb(), color: DS.red).padding(.horizontal, 16) }
-                if !error.isEmpty { Banner(error, tone: .error).padding(16) }
-            }
-            .background(DS.gbg)
-            .navigationTitle(L10n.scheduleWhatShouldTheAgentDo()).navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    TextAction(L10n.commonCancel(), enabled: !saving) { if text == initial { onClose() } else { discard = true } }
-                }
-                ToolbarItem(placement: .topBarTrailing) {
-                    TextAction(saving ? L10n.commonIosSaving() : L10n.commonSave(), enabled: enabled && !saving && scheduleMessageValid(text)) {
-                        save()
+        let vm = context.core.scheduleForm
+        ScheduleMessageEditorContent(
+            vm: vm,
+            onSetMessage: { text in
+                context.dispatch {
+                    $0.scheduleFormSetMessage = .with {
+                        $0.formKey = vm.formKey
+                        $0.value = text
                     }
                 }
+            },
+            onSave: {
+                context.dispatch {
+                    $0.scheduleFormSubmit = .with {
+                        $0.formKey = vm.formKey
+                        $0.value = false
+                    }
+                }
+            },
+            onRetryMutation: {
+                context.dispatch { $0.scheduleRetryMutation = .with { $0.formKey = vm.formKey } }
+            },
+            onAbandonMutation: {
+                context.dispatch { $0.scheduleAbandonMutation = .with { $0.formKey = vm.formKey } }
+            },
+            onClose: {
+                context.dispatch {
+                    $0.scheduleFormClose = .with {
+                        $0.formKey = vm.formKey
+                        $0.value = true
+                    }
+                }
+                onClose()
             }
+        )
+    }
+}
+
+struct ScheduleMessageEditorContent: View {
+    let vm: PBScheduleFormViewModel
+    let onSetMessage: (String) -> Void
+    let onSave: () -> Void
+    let onRetryMutation: () -> Void
+    let onAbandonMutation: () -> Void
+    let onClose: () -> Void
+
+    @State private var text = ""
+    @State private var initialMessage = ""
+    @State private var capturedFormKey = ""
+    @FocusState private var focused: Bool
+    @State private var discard = false
+
+    var body: some View {
+        let busy = vm.mutation.busy
+        NavigationStack {
+            VStack(alignment: .leading, spacing: 0) {
+                ScheduleMutationBanner(
+                    mutation: vm.mutation,
+                    onRetry: onRetryMutation,
+                    onAbandon: onAbandonMutation
+                )
+                .padding(.horizontal, 16).padding(.top, 8)
+                TextEditor(text: $text)
+                    .font(.body).ink(DS.ink).scrollContentBackground(.hidden)
+                    .padding(.horizontal, 12).padding(.top, 8).focused($focused)
+                    .disabled(busy || !vm.editable)
+                    .onChange(of: text) { _, new in
+                        if new != vm.message { onSetMessage(new) }
+                    }
+                if vm.messageTooLong && vm.hasMessageError {
+                    Hint(vm.messageError.rendered()).padding(.horizontal, 16).padding(.bottom, 16)
+                }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(DS.paper.ignoresSafeArea())
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button(L10n.commonCancel()) { cancel() }
+                        .tint(DS.ink)
+                        .disabled(busy)
+                }
+                ToolbarItem(placement: .principal) {
+                    Text(L10n.scheduleWhatShouldTheAgentDo()).font(.headline).ink(DS.ink)
+                }
+                ToolbarItem(placement: .topBarTrailing) {
+                    let canSave = vm.editable && vm.canSubmit && !busy
+                    Button(busy ? L10n.commonIosSaving() : L10n.commonSave()) { onSave() }
+                        .tint(DS.blue)
+                        .disabled(!canSave)
+                }
+            }
+            .confirm(
+                isPresented: $discard,
+                title: L10n.scheduleDiscardChanges(),
+                text: L10n.scheduleIosUnsavedChangesWillBeLost(),
+                confirm: L10n.newSessionIosAbandon(),
+                danger: true
+            ) {
+                onClose()
+            }
+            .onChange(of: vm.formKey, initial: true) { _, key in
+                if !key.isEmpty && key != capturedFormKey {
+                    capturedFormKey = key
+                    initialMessage = vm.message
+                    text = vm.message
+                }
+            }
+            .onAppear { focused = true }
         }
-        .task {
-            #if DEBUG
-            if HomeLaunch.value("-scheduleEditorKeyboard") == "yes" { focused = true }
-            #endif
+    }
+
+    private func cancel() {
+        if text != initialMessage {
+            discard = true
+        } else {
+            onClose()
         }
-        .debugSignal("schedule.message.change") {
-            #if DEBUG
-            if let replacement = HomeLaunch.value("-scheduleEditedMessage") { text = replacement }
-            #endif
-        }
-        .debugSignal("schedule.message.cancel") { if text == initial { onClose() } else { discard = true } }
-        .debugSignal("schedule.message.save") {
-            #if DEBUG
-            if let replacement = HomeLaunch.value("-scheduleEditedMessage") { text = replacement }
-            if enabled && !saving && scheduleMessageValid(text) { save() }
-            #endif
-        }
-        .interactiveDismissDisabled(text != initial || saving)
-        .confirm(isPresented: $discard, title: L10n.scheduleDiscardChanges(), text: L10n.scheduleIosUnsavedChangesWillBeLost(), confirm: L10n.scheduleDiscardChangesScheduleText(), danger: true, onConfirm: onClose)
     }
 }

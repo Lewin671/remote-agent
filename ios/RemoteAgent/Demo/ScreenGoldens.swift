@@ -82,5 +82,51 @@ enum ScreenGoldens {
         if let index, all.indices.contains(index) { return all[index] }
         return all.last ?? PBSessionViewModel()
     }
+
+    static func schedulesList(_ name: String) -> [PBSchedulesViewModel] {
+        viewModels(named: name).compactMap { vm -> PBSchedulesViewModel? in
+            guard case .schedules(let s)? = vm.view else { return nil }
+            return s
+        }
+    }
+
+    static func schedules(_ name: String, index: Int? = nil) -> PBSchedulesViewModel {
+        let all = schedulesList(name)
+        if let index, all.indices.contains(index) { return all[index] }
+        return all.last ?? PBSchedulesViewModel()
+    }
+
+    static func scheduleDetails(_ name: String) -> [PBScheduleDetailViewModel] {
+        viewModels(named: name).compactMap { vm -> PBScheduleDetailViewModel? in
+            guard case .scheduleDetail(let d)? = vm.view else { return nil }
+            return d
+        }
+    }
+
+    static func scheduleDetail(_ name: String, index: Int? = nil) -> PBScheduleDetailViewModel {
+        let all = scheduleDetails(name)
+        if let index, all.indices.contains(index) { return all[index] }
+        return all.last ?? PBScheduleDetailViewModel()
+    }
+
+    static func scheduleForms(_ name: String) -> [PBScheduleFormViewModel] {
+        viewModels(named: name).compactMap { vm -> PBScheduleFormViewModel? in
+            guard case .scheduleForm(let f)? = vm.view else { return nil }
+            return f
+        }
+    }
+
+    static func scheduleForm(_ name: String, index: Int? = nil) -> PBScheduleFormViewModel {
+        let all = scheduleForms(name)
+        if let index, all.indices.contains(index) { return all[index] }
+        return all.last ?? PBScheduleFormViewModel()
+    }
+
+    static func scheduleStrips(_ name: String) -> [PBScheduleSessionStripViewModel] {
+        viewModels(named: name).compactMap { vm -> PBScheduleSessionStripViewModel? in
+            guard case .scheduleSessionStrip(let s)? = vm.view else { return nil }
+            return s
+        }
+    }
 }
 #endif

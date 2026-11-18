@@ -1,181 +1,384 @@
-import Observation
 import RACore
 import RAProto
 import SwiftUI
 
-@MainActor @Observable
-final class ScheduleDraft {
-    var name = ""
-    var message = ""
-    var notifyFinish = true
-    var trigger: ScheduleTrigger
-    var config: NewConfig?
-    private(set) var creationKey = UUID().uuidString
-    private var submitted: ScheduleSpec?
-    func key(for spec: ScheduleSpec) -> String {
-        if let submitted, submitted != spec, !mutation.frozen { creationKey = UUID().uuidString }
-        submitted = spec; return creationKey
-    }
-    let mutation = ScheduleMutation()
-    init() {
-        var t = ScheduleTrigger(type: "calendar"); t.time = "08:00"; t.timezone = TimeZone.current.identifier
-        trigger = t
-    }
-    func creationIssue(session: SessionView?, state: RemoteState) -> String? {
-        guard session == nil, let c = config else { return nil }
-        let mode = c.mode ?? defaultModeOf(state.machines[c.machineId], agent: c.agent).mode
-        if mode == nil { return L10n.scheduleSelectExplicitPermissionsBeforeCreatingAScheduledTask() }
-        return mode == .plan ? L10n.schedulePlanModeCannotCreateExecutionTasksChooseOtherPermissions() : nil
-    }
-    func spec(session: SessionView?, state: RemoteState) -> ScheduleSpec? {
-        guard creationIssue(session: session, state: state) == nil else { return nil }
-        var target: ScheduleTarget
-        if let session {
-            target = ScheduleTarget(type: "resume_session"); target.session = session.id
-        } else if let c = config {
-            target = ScheduleTarget(type: "new_session"); target.cwd = c.cwd; target.agent = agentInfo(c.agent).id
-            target.model = c.model.isEmpty ? nil : c.model
-            target.effort = c.effort.isEmpty ? nil : c.effort
-            let mode = c.mode ?? defaultModeOf(state.machines[c.machineId], agent: c.agent).mode
-            target.mode = mode.map { $0 == .full ? "full" : $0 == .auto ? "auto" : "ask" }
-        } else { return nil }
-        let title = scheduleTitle(name, message: message)
-        guard scheduleMessageValid(message), !title.isEmpty else { return nil }
-        var spec = ScheduleSpec(title: title, message: message, trigger: trigger, target: target)
-        spec.notifyOnFinish = notifyFinish
-        return spec
-    }
+private enum NewScheduleSheet: String, Identifiable {
+    case timing, project, mode, model, machineAll
+    var id: String { rawValue }
 }
-@MainActor final class ScheduleDrafts {
-    private var values: [String: ScheduleDraft] = [:]
-    func of(_ key: String) -> ScheduleDraft { if let d = values[key] { return d }; let d = ScheduleDraft(); values[key] = d; return d }
-    func clear(_ key: String) { values[key] = nil }
-}
-extension AccountContext { var scheduleDrafts: ScheduleDrafts { memory.value { ScheduleDrafts() } } }
 
-/// 新定时 (design-system §6 「弹层与对话框」): a whole-page sheet from the
-/// bottom, closed at its top left, submitted with 创建 at its top right.
 struct NewScheduleScreen: View {
     let sessionID: String
-    var onCreated: ((Route) -> Void)? = nil
-    /// Closes the sheet it is in; nil when it is a pushed page.
     var onClose: (() -> Void)? = nil
-    @Environment(AppModel.self) private var model
+
     @Environment(AccountContext.self) private var context
     @Environment(Navigator.self) private var nav
     @Environment(\.page) private var page
-    @State private var timing = false
-    @State private var picker: ScheduleConfigPage?
-    @State private var models = SummaryModels()
+    @State private var sheet: NewScheduleSheet? = nil
+    @State private var confirmFullAccess = false
+
+    private var vm: PBScheduleFormViewModel { context.core.scheduleForm }
+    private var formKey: String { vm.formKey }
+
+    private func close() {
+        context.dispatch {
+            $0.scheduleFormClose = .with {
+                $0.formKey = formKey
+                $0.value = true
+            }
+        }
+        if let onClose {
+            onClose()
+        } else {
+            nav.back(from: page)
+        }
+    }
+
     var body: some View {
-        let draft = context.scheduleDrafts.of(sessionID)
-        let state = model.state
-        let session = state.sessions[sessionID]
-        let machine = session?.machineId ?? draft.config?.machineId ?? ""
-        let spec = draft.spec(session: session, state: state)
-        let supported = state.peer(machine).capabilities?.scheduledTasks == true
-        let ready = (sessionID.isEmpty || session != nil) && context.schedules.online(machine) && supported && spec != nil
-        Page(gray: true) {
-            VStack(spacing: 0) {
-                ConnectionBar()
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 0) {
-                        VStack(spacing: 12) {
-                            InputField(L10n.scheduleWhatShouldTheAgentDo(), text: Bindable(draft).message, placeholder: L10n.scheduleIosWhatToCheckNotifyMeWhenThereAreResults(), wrapPlaceholder: true, lines: 1...(sessionID.isEmpty ? 8 : 4))
-                            if draft.message.utf8.count > scheduleMessageLimit { Hint(L10n.scheduleTooLongMaximum32Kb(), color: DS.red) }
-                            InputField(L10n.scheduleTaskName(), text: Bindable(draft).name, placeholder: draft.message.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? L10n.scheduleLeaveBlankToUseTheMessageSFirstSentence() : L10n.scheduleIfBlankUses(value: String(describing: scheduleTitle("", message: draft.message))), wrapPlaceholder: draft.message.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty).onChange(of: draft.name) { _, value in draft.name = titleInput(value) }
-                        }.padding(16).disabled(draft.mutation.frozen)
-                        GroupCard {
-                            ToggleRow(L10n.scheduleNotifyOnCompletion(), isOn: Bindable(draft).notifyFinish)
-                            GRow(L10n.scheduleWhen(), value: scheduleFrequency(draft.trigger, includeZone: true), chevron: true) { timing = true }
-                            if sessionID.isEmpty {
-                                GRow(L10n.scheduleProject(), value: draft.config.map { projectName($0.cwd) } ?? L10n.scheduleIosChooseAProject(), chevron: true) { picker = .project }
-                                ScheduleAgentRow(state: state, config: Bindable(draft).config)
-                                GRow(L10n.newSessionPermissions(), value: draft.config.map { effectiveModeText(chosen: $0.mode, default: defaultModeOf(state.machines[$0.machineId], agent: $0.agent)) } ?? L10n.newSessionFollowCli(), chevron: true, valueColor: draft.config.map { settingsModeRed($0, default: defaultModeOf(state.machines[$0.machineId], agent: $0.agent)) } == true ? DS.red : nil) { picker = .mode }
-                                GRow(state.machines.count > 1 ? L10n.scheduleComputerAndModel() : L10n.modelsTitle(), value: [state.machines.count > 1 ? machineLabel(state, id: machine) : "", modelValue(draft.config?.model ?? "", models: models.list)].filter { !$0.isEmpty }.joined(separator: " · "), chevron: true) { picker = state.machines.count > 1 ? .machine : .model }
-                            }
+        NewScheduleContent(
+            vm: vm,
+            onSetMessage: { text in
+                context.dispatch {
+                    $0.scheduleFormSetMessage = .with {
+                        $0.formKey = formKey
+                        $0.value = text
+                    }
+                }
+            },
+            onSetTitle: { text in
+                context.dispatch {
+                    $0.scheduleFormSetTitle = .with {
+                        $0.formKey = formKey
+                        $0.value = text
+                    }
+                }
+            },
+            onSetNotify: { on in
+                context.dispatch {
+                    $0.scheduleFormSetNotify = .with {
+                        $0.formKey = formKey
+                        $0.value = on
+                    }
+                }
+            },
+            onSelectAgent: { agent in
+                context.dispatch {
+                    $0.scheduleFormSelectAgent = .with {
+                        $0.formKey = formKey
+                        $0.agent = agent
+                    }
+                }
+            },
+            onOpenTiming: { sheet = .timing },
+            onOpenProject: { sheet = .project },
+            onOpenMode: { sheet = .mode },
+            onOpenModels: { sheet = vm.machineChoices.count > 1 ? .machineAll : .model },
+            onRetryMutation: {
+                context.dispatch { $0.scheduleRetryMutation = .with { $0.formKey = formKey } }
+            },
+            onAbandonMutation: {
+                context.dispatch { $0.scheduleAbandonMutation = .with { $0.formKey = formKey } }
+            },
+            onClose: close,
+            onCreate: {
+                if vm.requiresFullAccessConfirm {
+                    confirmFullAccess = true
+                } else {
+                    context.dispatch {
+                        $0.scheduleFormSubmit = .with {
+                            $0.formKey = formKey
+                            $0.value = false
                         }
-                        .disabled(draft.mutation.frozen)
-                        if !machine.isEmpty && !supported { Hint(L10n.scheduleIosUpdateRemoteAgentOnThisComputerToUseScheduled(), color: DS.orangeInk).padding(.horizontal, 16) }
-                        if !machine.isEmpty && supported && !context.schedules.online(machine) { Hint(L10n.scheduleTheComputerIsOfflineConnectToCreateTasks()).padding(.horizontal, 16) }
-                        if let issue = draft.creationIssue(session: session, state: state) { Hint(issue, color: DS.orangeInk).padding(.horizontal, 16) }
-                        if !sessionID.isEmpty && draft.trigger.type == "interval" { Hint(scheduleIntervalHint).padding(.horizontal, 16) }
-                        if sessionID.isEmpty { Hint(L10n.scheduleIosEachRunOpensANewConversationGroupedUnderThis()).padding(.horizontal, 16) }
-                        if !draft.mutation.error.isEmpty { Banner(draft.mutation.error, tone: .error).padding(16) }
-                        if draft.mutation.frozen {
-                            TextAction(L10n.scheduleIosAbandonOriginalRequest(), enabled: !draft.mutation.running) { draft.mutation.abandon() }.padding(.horizontal, 16)
-                        }
-                    }.disabled(draft.mutation.running)
-                }.scrollDismissesKeyboard(.interactively)
-            }
-        }
-        .navBar(sessionID.isEmpty ? L10n.homeNewSchedule() : L10n.scheduleScheduleMessagesToThisConversation())
-        .toolbar {
-            if let onClose {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button(action: onClose) { Image(systemName: "xmark") }.tint(DS.ink).accessibilityLabel(L10n.commonClose())
+                    }
                 }
             }
-            ToolbarItem(placement: .topBarTrailing) {
-                let enabled = ready && !draft.mutation.running && !draft.mutation.expired
-                Button { create(draft, machine: machine, spec: spec) } label: {
-                    Text(draft.mutation.running ? L10n.scheduleCreating() : draft.mutation.frozen ? L10n.commonRetry() : L10n.scheduleCreate()).font(.body.weight(.semibold))
+        )
+        .confirm(
+            isPresented: $confirmFullAccess,
+            title: L10n.scheduleRunWithFullAccess(),
+            text: L10n.scheduleNoApprovalIsRequiredForAnyOperationWheneverThis(),
+            confirm: L10n.modesFullAccess(),
+            danger: true
+        ) {
+            context.dispatch {
+                $0.scheduleFormSubmit = .with {
+                    $0.formKey = formKey
+                    $0.value = true
                 }
-                .buttonStyle(.borderedProminent).tint(DS.btn).foregroundStyle(DS.btnFg)
-                .disabled(!enabled)
             }
         }
-        .kitSheet(isPresented: $timing, size: .large) {
-            ScheduleTimingSheet(trigger: draft.trigger, onSave: { draft.trigger = $0 }, onClose: { timing = false })
+        .kitSheet(item: $sheet, size: .large) { which in
+            switch which {
+            case .timing:
+                ScheduleTimingSheet(submitOnApply: false, onClose: { sheet = nil })
+            case .project:
+                ScheduleConfigSheet(focus: .project, showSaveButton: false, onClose: { sheet = nil })
+            case .mode:
+                ScheduleConfigSheet(focus: .mode, showSaveButton: false, onClose: { sheet = nil })
+            case .model:
+                ScheduleConfigSheet(focus: .model, showSaveButton: false, onClose: { sheet = nil })
+            case .machineAll:
+                ScheduleConfigSheet(focus: .all, showSaveButton: false, onClose: { sheet = nil })
+            }
         }
-        .kitSheet(item: $picker, size: .large) { page in
-            ScheduleConfigSheet(page: page, config: Bindable(draft).config) { picker = nil }
-        }
-        .task {
+        .task(id: sessionID) {
+            let mode: PBScheduleFormMode = sessionID.isEmpty ? .createNew : .createForSession
+            await context.coreHost.openScheduleForm(
+                mode: mode,
+                sessionID: sessionID
+            )
             #if DEBUG
-            if model.isDemo { timing = HomeLaunch.value("-schedulePanel")?.hasPrefix("timing-") == true }
-            #endif
-        }
-        .modelNames(models, for: draft.config)
-        .task(id: state.machines.keys.sorted()) {
-            if draft.config == nil, let p = listedProjects(state).first { draft.config = projectStart(state, key: p.key)?.config }
-            #if DEBUG
-            if URL(string: context.account.server)?.host == "127.0.0.1", let cwd = HomeLaunch.value("-scheduleCwd"), let machine = state.machines.keys.sorted().first {
-                draft.config = projectStart(state, key: cwd, machine: machine)?.config ?? NewConfig(machineId: machine, cwd: cwd)
-                if let agent = HomeLaunch.value("-scheduleAgent") { draft.config?.agent = agentById(agent).agent }
-                if let model = HomeLaunch.value("-scheduleModel") { draft.config?.model = model }
-                if let mode = HomeLaunch.value("-scheduleMode") { draft.config?.mode = mode == "full" ? .full : mode == "auto" ? .auto : .ask }
+            if HomeLaunch.value("-schedulePanel")?.hasPrefix("timing-") == true {
+                sheet = .timing
+            }
+            if URL(string: context.account.server)?.host == "127.0.0.1",
+               let cwd = HomeLaunch.value("-scheduleCwd") {
+                let targetKey = context.core.scheduleForm.formKey
+                let formMachine = context.core.scheduleForm.machineID
+                let machineID = formMachine.isEmpty
+                    ? (context.core.scheduleForm.machineChoices.first?.machineID ?? "")
+                    : formMachine
+                await context.coreHost.dispatch { @Sendable ev in
+                    ev.scheduleFormSelectProject = .with {
+                        $0.formKey = targetKey
+                        $0.projectKey = cwd
+                        if !machineID.isEmpty { $0.machineID = machineID }
+                    }
+                }
+                if let agentStr = HomeLaunch.value("-scheduleAgent") {
+                    let ag: PBAgent = agentStr == "codex" ? .codex : agentStr == "antigravity" ? .antigravity : .claude
+                    await context.coreHost.dispatch { @Sendable ev in
+                        ev.scheduleFormSelectAgent = .with {
+                            $0.formKey = targetKey
+                            $0.agent = ag
+                        }
+                    }
+                }
+                let m = HomeLaunch.value("-scheduleModel") ?? context.core.scheduleForm.model
+                let modeStr = HomeLaunch.value("-scheduleMode")
+                let modeVal: PBApprovalMode? = modeStr == "full" ? .fullAccess : modeStr == "auto" ? .auto : modeStr == "ask" ? .ask : nil
+                if HomeLaunch.value("-scheduleModel") != nil || modeVal != nil {
+                    await context.coreHost.dispatch { @Sendable ev in
+                        ev.scheduleFormSelectModel = .with {
+                            $0.formKey = targetKey
+                            $0.model = m
+                            if let modeVal { $0.mode = modeVal }
+                        }
+                    }
+                }
             }
             #endif
         }
         .debugSignal("schedule.create") {
             #if DEBUG
-            if let message = HomeLaunch.value("-scheduleMessage") { draft.message = message }
-            if let name = HomeLaunch.value("-scheduleName") { draft.name = name }
-            if let at = HomeLaunch.value("-scheduleAt"), let date = scheduleDate(at) {
-                var t = ScheduleTrigger(type: "calendar"); t.time = scheduleTime(date); t.timezone = TimeZone.current.identifier; draft.trigger = t
+            let targetKey = context.core.scheduleForm.formKey
+            let fallbackMachine = context.core.scheduleForm.machineID.isEmpty
+                ? (context.core.scheduleForm.machineChoices.first?.machineID ?? "")
+                : ""
+            let message = HomeLaunch.value("-scheduleMessage")
+            let name = HomeLaunch.value("-scheduleName")
+            let atTiming: (date: String, time: String, zone: String)? = HomeLaunch.value("-scheduleAt").flatMap { raw in
+                guard let parsed = ISO8601DateFormatter().date(from: raw) else { return nil }
+                let tz = TimeZone.current
+                let df = DateFormatter()
+                df.locale = Locale(identifier: "en_US_POSIX")
+                df.timeZone = tz
+                df.dateFormat = "yyyy-MM-dd"
+                let tf = DateFormatter()
+                tf.locale = Locale(identifier: "en_US_POSIX")
+                tf.timeZone = tz
+                tf.dateFormat = "HH:mm"
+                return (df.string(from: parsed), tf.string(from: parsed), tz.identifier)
             }
-            if let sid = state.sessions[sessionID], !sessionID.isEmpty {
-                create(draft, machine: sid.machineId, spec: draft.spec(session: sid, state: model.state))
-            } else {
-                create(draft, machine: draft.config?.machineId ?? "", spec: draft.spec(session: nil, state: model.state))
+            let host = context.coreHost
+            Task {
+                if !fallbackMachine.isEmpty {
+                    await host.dispatch { @Sendable ev in
+                        ev.scheduleFormSelectMachine = .with { $0.formKey = targetKey; $0.value = fallbackMachine }
+                    }
+                }
+                if let message {
+                    await host.dispatch { @Sendable ev in
+                        ev.scheduleFormSetMessage = .with { $0.formKey = targetKey; $0.value = message }
+                    }
+                }
+                if let name {
+                    await host.dispatch { @Sendable ev in
+                        ev.scheduleFormSetTitle = .with { $0.formKey = targetKey; $0.value = name }
+                    }
+                }
+                if let atTiming {
+                    await host.dispatch { @Sendable ev in
+                        ev.scheduleFormUpdateTiming = .with {
+                            $0.formKey = targetKey
+                            $0.kind = .once
+                            $0.date = atTiming.date
+                            $0.time = atTiming.time
+                            $0.zone = atTiming.zone
+                            $0.apply = true
+                        }
+                    }
+                }
+                await host.dispatch { @Sendable ev in
+                    ev.scheduleFormSubmit = .with {
+                        $0.formKey = targetKey
+                        $0.value = true
+                    }
+                }
             }
             #endif
         }
     }
-    private func create(_ draft: ScheduleDraft, machine: String, spec: ScheduleSpec?) {
-        guard context.schedules.online(machine), let spec else { return }
-        let key = draft.key(for: spec)
-        draft.mutation.run(remote: context.remote, machine: machine, command: {
-            try scheduleCommand(operation: "create", spec: spec, creationKey: key, sessionID: sessionID)
-        }, refresh: { await context.schedules.refresh(machine) }) { result in
-            guard case .schedule(let response) = result.kind, let task = try? JSONDecoder().decode(ScheduleTask.self, from: response.resultJson) else { return }
-            context.scheduleDrafts.clear(sessionID)
-            if let onCreated { onCreated(.schedule(machine: machine, id: task.id)) }
-            else if nav.showing(page) {
-                nav.back()
-                nav.open(.schedule(machine: machine, id: task.id))
+}
+
+/// Pure presentation body for `NewScheduleScreen`, driven solely by `PBScheduleFormViewModel`.
+struct NewScheduleContent: View {
+    let vm: PBScheduleFormViewModel
+    var onSetMessage: (String) -> Void = { _ in }
+    var onSetTitle: (String) -> Void = { _ in }
+    var onSetNotify: (Bool) -> Void = { _ in }
+    var onSelectAgent: (PBAgent) -> Void = { _ in }
+    var onOpenTiming: () -> Void = {}
+    var onOpenProject: () -> Void = {}
+    var onOpenMode: () -> Void = {}
+    var onOpenModels: () -> Void = {}
+    var onRetryMutation: () -> Void = {}
+    var onAbandonMutation: () -> Void = {}
+    var onClose: () -> Void = {}
+    var onCreate: () -> Void = {}
+
+    @State private var messageText = ""
+    @State private var titleText = ""
+    @State private var syncedFormKey = ""
+
+    var body: some View {
+        let busy = vm.mutation.busy
+        let isCreateNew = vm.mode == .createNew
+
+        Page(gray: true) {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 14) {
+                    ForEach(Array(vm.notices.enumerated()), id: \.offset) { _, notice in
+                        Banner(notice.text.rendered(), tone: notice.severity == .error ? .error : notice.severity == .warn ? .warn : .plain)
+                    }
+                    ScheduleMutationBanner(
+                        mutation: vm.mutation,
+                        onRetry: onRetryMutation,
+                        onAbandon: onAbandonMutation
+                    )
+
+                    GroupCard {
+                        TextField(
+                            L10n.scheduleWhatShouldTheAgentDo(),
+                            text: $messageText,
+                            axis: .vertical
+                        )
+                        .lineLimit(3...8)
+                        .padding(14)
+                        .disabled(!vm.editable || busy)
+                        .onChange(of: messageText) { _, new in
+                            if new != vm.message { onSetMessage(new) }
+                        }
+                    }
+                    if vm.messageTooLong && vm.hasMessageError {
+                        Hint(vm.messageError.rendered())
+                    }
+
+                    GroupCard {
+                        GRow(L10n.scheduleWhen(), value: vm.timingSummary.rendered(), chevron: true) {
+                            if vm.editable && !busy { onOpenTiming() }
+                        }
+                        ToggleRow(
+                            L10n.scheduleNotifyOnCompletion(),
+                            isOn: Binding(get: { vm.notifyOnFinish }, set: { onSetNotify($0) })
+                        )
+                        .disabled(!vm.editable || busy)
+                    }
+
+                    if isCreateNew {
+                        GroupCard {
+                            let proj = vm.hasProject_p ? vm.projectName.rendered() : L10n.newSessionIosChooseProject()
+                            GRow(L10n.scheduleProject(), value: proj, chevron: true) {
+                                if vm.editable && !busy { onOpenProject() }
+                            }
+                            ScheduleAgentRow(
+                                availableAgents: vm.availableAgents,
+                                selected: vm.agent,
+                                enabled: vm.editable && !busy,
+                                onSelect: onSelectAgent
+                            )
+                            GRow(
+                                L10n.newSessionPermissions(),
+                                value: vm.hasApprovalModeLabel ? vm.approvalModeLabel.rendered() : L10n.newSessionFollowCli(),
+                                chevron: true,
+                                valueColor: vm.approvalModeIsDanger ? DS.red : nil
+                            ) {
+                                if vm.editable && !busy { onOpenMode() }
+                            }
+                            let modelValue = [
+                                vm.machineChoices.count > 1 ? vm.machineName : "",
+                                vm.hasModelLabel ? vm.modelLabel.rendered() : "",
+                                vm.effortLabel,
+                            ].filter { !$0.isEmpty }.joined(separator: " · ")
+                            GRow(
+                                vm.machineChoices.count > 1 ? L10n.scheduleComputerAndModel() : L10n.modelsTitle(),
+                                value: modelValue,
+                                chevron: true
+                            ) {
+                                if vm.editable && !busy { onOpenModels() }
+                            }
+                        }
+                    }
+
+                    if vm.hasLocationText {
+                        Hint(vm.locationText.rendered())
+                    }
+
+                    GroupLabel(L10n.scheduleTaskName())
+                    GroupCard {
+                        let placeholder = vm.hasTitlePlaceholder ? vm.titlePlaceholder.rendered() : (vm.autoTitle.isEmpty ? L10n.scheduleTaskName() : vm.autoTitle)
+                        TextField(placeholder, text: $titleText)
+                            .padding(.horizontal, 14).padding(.vertical, 12)
+                            .disabled(!vm.editable || busy)
+                            .onChange(of: titleText) { _, new in
+                                let filtered = String(new.prefix(60))
+                                if filtered != new { titleText = filtered; return }
+                                if filtered != vm.title { onSetTitle(filtered) }
+                            }
+                    }
+                }
+                .padding(.horizontal, 16).padding(.vertical, 12)
             }
+        }
+        .navigationTitle(L10n.homeNewSchedule())
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarLeading) {
+                Button(action: onClose) { Image(systemName: "xmark") }
+                    .tint(DS.ink)
+                    .accessibilityLabel(L10n.commonClose())
+            }
+            ToolbarItem(placement: .topBarTrailing) {
+                Button(action: onCreate) {
+                    Text(busy ? L10n.scheduleCreating() : vm.mutation.frozen ? L10n.commonRetry() : vm.hasSubmitLabel ? vm.submitLabel.rendered() : L10n.scheduleCreate())
+                        .font(.body.weight(.semibold))
+                }
+                .buttonStyle(.borderedProminent).tint(DS.btn).foregroundStyle(DS.btnFg)
+                .disabled(!vm.canSubmit || !vm.editable || busy || vm.mutation.expired)
+            }
+        }
+        .onChange(of: vm.formKey, initial: true) { _, key in
+            if !key.isEmpty && key != syncedFormKey {
+                syncedFormKey = key
+                messageText = vm.message
+                titleText = vm.title
+            }
+        }
+        .onChange(of: vm.message) { _, new in
+            if messageText != new { messageText = new }
+        }
+        .onChange(of: vm.title) { _, new in
+            if titleText != new { titleText = new }
         }
     }
 }

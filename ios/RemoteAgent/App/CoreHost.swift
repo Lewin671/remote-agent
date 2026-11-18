@@ -21,6 +21,10 @@ final class CoreScreens {
     var newSession = PBCoreNewSessionViewModel()
     var project = PBCoreProjectViewModel()
     var sessions: [String: PBSessionViewModel] = [:]
+    var schedules = PBSchedulesViewModel()
+    var scheduleDetail = PBScheduleDetailViewModel()
+    var scheduleForm = PBScheduleFormViewModel()
+    var scheduleStrips: [String: PBScheduleSessionStripViewModel] = [:]
     var pendingComposerRestores: [RestoredComposer] = []
 
     func consumeComposerRestores(_ ids: Set<UUID>) {
@@ -76,7 +80,14 @@ protocol CoreHostExecutor: AnyObject, Sendable {
     func dispatchCommandAttempt(_ effect: PBCoreDispatchCommandEffect) async -> PBCoreCommandOutcomeEvent
     func applyTransitionalPrefsOp(_ op: PrefsOp) async throws
     func describeSelf(platform: String, description: String) async throws
+    func cachedScheduleResultJson(_ machineId: String) async -> Data?
+    func deleteScheduleCache(_ machineId: String) async
     func close() async
+}
+
+extension CoreHostExecutor {
+    func cachedScheduleResultJson(_ machineId: String) async -> Data? { nil }
+    func deleteScheduleCache(_ machineId: String) async {}
 }
 
 extension Remote: CoreHostExecutor {}
@@ -89,9 +100,45 @@ private func hostMonoMs() -> Int64 {
 
 struct ScopeDefaults: @unchecked Sendable {
     let raw: UserDefaults
-    init(_ raw: UserDefaults = .standard) { self.raw = raw }
+    let scope: [String]
+    init(_ raw: UserDefaults = .standard, scope: [String] = []) {
+        self.raw = raw
+        self.scope = scope
+    }
     func homeScopeToken() -> String { raw.string(forKey: AccountDefaults.key("homeScopeToken")) ?? "" }
     func setHomeScopeToken(_ token: String) { raw.set(token, forKey: AccountDefaults.key("homeScopeToken")) }
+
+    private func scheduleSeenKey(_ machineID: String) -> String {
+        let arr = scope + [machineID]
+        let encoded = (try? JSONEncoder().encode(arr)).flatMap { String(data: $0, encoding: .utf8) } ?? "[]"
+        return "ra-schedule-seen:" + encoded
+    }
+
+    func loadScheduleSeen(machineID: String) -> [PBScheduleSeenToken]? {
+        guard let list = raw.stringArray(forKey: scheduleSeenKey(machineID)) else { return nil }
+        return list.compactMap { entry in
+            guard let data = entry.data(using: .utf8),
+                  let pair = try? JSONDecoder().decode([String].self, from: data),
+                  pair.count >= 2
+            else { return nil }
+            return PBScheduleSeenToken.with {
+                $0.taskID = pair[0]
+                $0.runID = pair[1]
+            }
+        }
+    }
+
+    func saveScheduleSeen(machineID: String, tokens: [PBScheduleSeenToken]) {
+        let encoded = tokens.compactMap { tok -> String? in
+            guard let data = try? JSONEncoder().encode([tok.taskID, tok.runID]) else { return nil }
+            return String(data: data, encoding: .utf8)
+        }
+        raw.set(encoded, forKey: scheduleSeenKey(machineID))
+    }
+
+    func deleteScheduleSeen(machineID: String) {
+        raw.removeObject(forKey: scheduleSeenKey(machineID))
+    }
 }
 
 /// Owns `CoreClient`, feeds system/UI/transport events into Core, and executes every
@@ -121,8 +168,11 @@ actor CoreHost: SyncEngine {
     private var demoModels: [String: PBListModelsResponse]
     private var demoState = RemoteState()
     private var demoEvents: [String: [PBEvent]] = [:]
+    private var demoSchedules: [String: Data] = [:]
+    private var demoScheduleSeen: [String: [PBScheduleSeenToken]] = [:]
     private var demoLegID: UInt64 = 0
     private var onNavigate: @MainActor @Sendable (PBCoreNavigateEffect) -> Void
+    private var onScheduleNavigate: @MainActor @Sendable (PBScheduleNavigateEffect) -> Void
     private var onSessionRemoved: (@Sendable (String) async -> Void)?
 
     private var closed = false
@@ -144,6 +194,9 @@ actor CoreHost: SyncEngine {
     private var manageSubscribers = 0
     private var sessionWatches: [UUID: SessionWatchEntry] = [:]
     private var sessionWatchOrder: [UUID] = []
+    private var activeScheduleDetail: (machineID: String, taskID: String)?
+    private var activeScheduleFormKey = ""
+    private var scheduleStripWatches: [UUID: String] = [:]
     private var syncStateRenderNeeded = false
     #if DEBUG
     enum DemoCommandAction: Sendable {
@@ -176,14 +229,15 @@ actor CoreHost: SyncEngine {
         demoMode: Bool = false,
         clock: @escaping @Sendable () -> Int64 = { Int64(Date().timeIntervalSince1970 * 1000) },
         sleep: @escaping Sleeper = realSleep,
-        onNavigate: @escaping @MainActor @Sendable (PBCoreNavigateEffect) -> Void
+        onNavigate: @escaping @MainActor @Sendable (PBCoreNavigateEffect) -> Void,
+        onScheduleNavigate: @escaping @MainActor @Sendable (PBScheduleNavigateEffect) -> Void = { _ in }
     ) throws -> CoreHost {
         let client = try CoreClient()
         let host = CoreHost(
             client: client,
             executor: remote,
             screens: screens,
-            defaults: ScopeDefaults(defaults),
+            defaults: ScopeDefaults(defaults, scope: [account.server, account.deviceId]),
             scopeHmacKey: RACore.scopeHmacKey(root: account.root),
             clock: clock,
             monoClock: hostMonoMs,
@@ -191,7 +245,8 @@ actor CoreHost: SyncEngine {
             demoDirectories: demoDirectories,
             demoModels: demoModels,
             demoMode: demoMode,
-            onNavigate: onNavigate
+            onNavigate: onNavigate,
+            onScheduleNavigate: onScheduleNavigate
         )
         Task {
             await host.wireExecutorHooks()
@@ -211,7 +266,8 @@ actor CoreHost: SyncEngine {
         demoDirectories: DirectorySource? = nil,
         demoModels: [String: PBListModelsResponse] = [:],
         demoMode: Bool = false,
-        onNavigate: @escaping @MainActor @Sendable (PBCoreNavigateEffect) -> Void = { _ in }
+        onNavigate: @escaping @MainActor @Sendable (PBCoreNavigateEffect) -> Void = { _ in },
+        onScheduleNavigate: @escaping @MainActor @Sendable (PBScheduleNavigateEffect) -> Void = { _ in }
     ) {
         self.client = client
         self.executor = executor
@@ -225,6 +281,7 @@ actor CoreHost: SyncEngine {
         self.demoModels = demoModels
         self.demoMode = demoMode
         self.onNavigate = onNavigate
+        self.onScheduleNavigate = onScheduleNavigate
         self.randomIdPool = (0..<16).map { _ in newRequestId() }
         self.unitFloatPool = (0..<16).map { _ in Double.random(in: 0..<1) }
     }
@@ -404,6 +461,10 @@ actor CoreHost: SyncEngine {
         onNavigate = handler
     }
 
+    func setScheduleNavigateHandler(_ handler: @escaping @MainActor @Sendable (PBScheduleNavigateEffect) -> Void) {
+        onScheduleNavigate = handler
+    }
+
     func setSessionRemovedHandler(_ handler: @escaping @Sendable (String) async -> Void) {
         onSessionRemoved = handler
     }
@@ -556,6 +617,93 @@ actor CoreHost: SyncEngine {
         await dispatch {
             $0.sessionLoadEarlier = .with {
                 $0.sessionID = sid
+            }
+        }
+    }
+
+    func openScheduleList(_ open: Bool = true) async {
+        guard !closed else { return }
+        await dispatch {
+            $0.scheduleListOpen = .with { $0.value = open }
+        }
+        await renderTargets([.schedules])
+    }
+
+    func openScheduleDetail(machineID: String, taskID: String) async {
+        guard !closed, !machineID.isEmpty, !taskID.isEmpty else { return }
+        activeScheduleDetail = (machineID, taskID)
+        await dispatch {
+            $0.scheduleDetailOpen = .with {
+                $0.machineID = machineID
+                $0.taskID = taskID
+            }
+        }
+        await renderTargets([.scheduleDetail])
+    }
+
+    func hideScheduleDetail(machineID: String, taskID: String) async {
+        guard !closed, !machineID.isEmpty, !taskID.isEmpty else { return }
+        await dispatch {
+            $0.scheduleDetailHide = .with {
+                $0.machineID = machineID
+                $0.taskID = taskID
+            }
+        }
+    }
+
+    func closeScheduleDetail(machineID: String, taskID: String) async {
+        guard !closed, !machineID.isEmpty, !taskID.isEmpty else { return }
+        if activeScheduleDetail?.machineID == machineID && activeScheduleDetail?.taskID == taskID {
+            activeScheduleDetail = nil
+        }
+        await dispatch {
+            $0.scheduleDetailClose = .with {
+                $0.machineID = machineID
+                $0.taskID = taskID
+            }
+        }
+    }
+
+    func openScheduleForm(
+        mode: PBScheduleFormMode,
+        machineID: String = "",
+        taskID: String = "",
+        sessionID: String = "",
+        projectKey: String = ""
+    ) async {
+        guard !closed else { return }
+        activeScheduleFormKey = ""
+        let tz = TimeZone.current.identifier
+        await dispatch {
+            $0.scheduleFormOpen = .with {
+                $0.mode = mode
+                $0.machineID = machineID
+                $0.taskID = taskID
+                $0.sessionID = sessionID
+                $0.projectKey = projectKey
+                $0.localTimezone = tz
+            }
+        }
+        await renderTargets([.scheduleForm])
+    }
+
+    func acquireScheduleStripWatch(_ sid: String) async -> UUID? {
+        guard !closed, !sid.isEmpty else { return nil }
+        let token = UUID()
+        let wasWatched = scheduleStripWatches.values.contains(sid)
+        scheduleStripWatches[token] = sid
+        if !wasWatched {
+            await renderTargets([.scheduleSessionStrip])
+        }
+        return token
+    }
+
+    func releaseScheduleStripWatch(_ token: UUID?) async {
+        guard let token, let sid = scheduleStripWatches.removeValue(forKey: token) else { return }
+        guard !closed else { return }
+        if !scheduleStripWatches.values.contains(sid) {
+            await MainActor.run { [screens] in
+                _ = screens.scheduleStrips.removeValue(forKey: sid)
             }
         }
     }
@@ -761,13 +909,75 @@ actor CoreHost: SyncEngine {
             case .sessionRestoreComposer(let r):
                 restoredComposers.append(r)
 
-            // Settings, machine, and schedules still render in Swift on iOS
+            case .scheduleReadCache(let r):
+                if demoMode {
+                    demoReplies.append(.with {
+                        $0.scheduleCacheLoaded = .with {
+                            $0.opID = r.opID
+                            $0.machineID = r.machineID
+                            if let data = demoSchedules[r.machineID] { $0.resultJson = data }
+                        }
+                    })
+                    continue
+                }
+                spawnIO { host in
+                    let data = await host.executor.cachedScheduleResultJson(r.machineID)
+                    await host.dispatch {
+                        $0.scheduleCacheLoaded = .with {
+                            $0.opID = r.opID
+                            $0.machineID = r.machineID
+                            if let data { $0.resultJson = data }
+                        }
+                    }
+                }
+
+            case .scheduleDeleteCache(let d):
+                guard !demoMode else { continue }
+                let mid = d.machineID
+                defaults.deleteScheduleSeen(machineID: mid)
+                enqueueCacheOp { executor in
+                    await executor.deleteScheduleCache(mid)
+                }
+
+            case .scheduleLoadSeen(let l):
+                if demoMode {
+                    let toks = demoScheduleSeen[l.machineID]
+                    demoReplies.append(.with {
+                        $0.scheduleSeenLoaded = .with {
+                            $0.machineID = l.machineID
+                            $0.tokens = toks ?? []
+                            $0.found = toks != nil
+                        }
+                    })
+                    continue
+                }
+                let loaded = defaults.loadScheduleSeen(machineID: l.machineID)
+                await dispatch {
+                    $0.scheduleSeenLoaded = .with {
+                        $0.machineID = l.machineID
+                        $0.tokens = loaded ?? []
+                        $0.found = loaded != nil
+                    }
+                }
+
+            case .scheduleSaveSeen(let s):
+                guard !demoMode else { continue }
+                defaults.saveScheduleSeen(machineID: s.machineID, tokens: s.tokens)
+
+            case .scheduleNavigate(let n):
+                if n.route == .detail, !n.machineID.isEmpty, !n.taskID.isEmpty {
+                    activeScheduleDetail = (n.machineID, n.taskID)
+                }
+                let handler = onScheduleNavigate
+                await MainActor.run { handler(n) }
+
+            case .scheduleDismissNotifications:
+                break
+
+            // Settings and machine still render in Swift on iOS
             // and never send the events behind these effects.
             case .scheduleMachinePoll, .directPreference, .renameClient,
-                 .checkUpdates, .persistClientPrefs, .prepareCleanupSession,
-                 .scheduleReadCache, .scheduleDeleteCache,
-                 .scheduleLoadSeen, .scheduleSaveSeen, .scheduleNavigate,
-                 .scheduleDismissNotifications:
+                 .checkUpdates, .persistClientPrefs, .prepareCleanupSession:
                 break
 
             case nil:
@@ -840,6 +1050,12 @@ actor CoreHost: SyncEngine {
                 }
                 return
             }
+            if demoMode, case .schedule(let req)? = cmd.kind, req.operation == "list" {
+                let json = demoSchedules[c.machineID] ?? Data("{\"tasks\":[]}".utf8)
+                let outcome = Self.demoExecutedOutcome(for: c) { $0.schedule.resultJson = json }
+                await dispatch { $0.commandOutcome = outcome }
+                return
+            }
             if demoMode {
                 await dispatch { $0.commandOutcome = Self.demoExecutedOutcome(for: c) }
                 return
@@ -874,7 +1090,11 @@ actor CoreHost: SyncEngine {
         var projectVM: PBCoreProjectViewModel?
         var newSessionVM: PBCoreNewSessionViewModel?
         var syncStateVM: PBCoreSyncStateView?
+        var schedulesVM: PBSchedulesViewModel?
+        var scheduleDetailVM: PBScheduleDetailViewModel?
+        var scheduleFormVM: PBScheduleFormViewModel?
         var sessionVMs: [String: PBSessionViewModel] = [:]
+        var scheduleStripVMs: [String: PBScheduleSessionStripViewModel] = [:]
 
         if targets.contains(.home) {
             homeVM = try? client.view(PBCoreScreen.with {
@@ -898,6 +1118,33 @@ actor CoreHost: SyncEngine {
             newSessionVM = try? client.view(PBCoreScreen.with {
                 $0.newSession = .with { $0.projectKey = activeNewSessionProjectKey }
             }).newSession
+        }
+        if targets.contains(.schedules) {
+            schedulesVM = try? client.view(PBCoreScreen.with {
+                $0.schedules = PBSchedulesScreenRequest()
+            }).schedules
+        }
+        if targets.contains(.scheduleDetail), let active = activeScheduleDetail {
+            scheduleDetailVM = try? client.view(PBCoreScreen.with {
+                $0.scheduleDetail = .with {
+                    $0.machineID = active.machineID
+                    $0.taskID = active.taskID
+                }
+            }).scheduleDetail
+        }
+        if targets.contains(.scheduleForm) {
+            scheduleFormVM = try? client.view(PBCoreScreen.with {
+                $0.scheduleForm = .with { $0.formKey = activeScheduleFormKey }
+            }).scheduleForm
+        }
+        if targets.contains(.scheduleSessionStrip) {
+            for sid in Set(scheduleStripWatches.values) {
+                if let vm = try? client.view(PBCoreScreen.with {
+                    $0.scheduleSessionStrip = .with { $0.sessionID = sid }
+                }).scheduleSessionStrip {
+                    scheduleStripVMs[sid] = vm
+                }
+            }
         }
         if !demoMode && targets.contains(.syncState) {
             syncStateVM = try? client.view(PBCoreScreen.with {
@@ -927,7 +1174,11 @@ actor CoreHost: SyncEngine {
             await executor.publishSyncState(adapted)
         }
 
-        await MainActor.run { [screens, homeVM, projectVM, newSessionVM, sessionVMs] in
+        await MainActor.run { [
+            screens, homeVM, projectVM, newSessionVM,
+            schedulesVM, scheduleDetailVM, scheduleFormVM,
+            sessionVMs, scheduleStripVMs
+        ] in
             if let homeVM { screens.home = homeVM }
             if let projectVM {
                 screens.project = projectVM
@@ -935,8 +1186,14 @@ actor CoreHost: SyncEngine {
                 if projectVM.hasManage { screens.manageProjects = projectVM.manage }
             }
             if let newSessionVM { screens.newSession = newSessionVM }
+            if let schedulesVM { screens.schedules = schedulesVM }
+            if let scheduleDetailVM { screens.scheduleDetail = scheduleDetailVM }
+            if let scheduleFormVM { screens.scheduleForm = scheduleFormVM }
             for (sid, vm) in sessionVMs {
                 screens.sessions[sid] = vm
+            }
+            for (sid, vm) in scheduleStripVMs {
+                screens.scheduleStrips[sid] = vm
             }
         }
     }
@@ -1000,8 +1257,27 @@ actor CoreHost: SyncEngine {
     }
 
     private func dispatchClockUpdated() async {
-        let cal = Self.makeLocalCalendar(nowMs: clock())
-        await dispatch { $0.clockUpdated = cal }
+        let nowMs = clock()
+        let cal = Self.makeLocalCalendar(nowMs: nowMs)
+        let sched = Self.makeScheduleLocalContext(nowMs: nowMs)
+        await dispatch {
+            $0.clockUpdated = cal
+            $0.scheduleLocalContext = sched
+        }
+    }
+
+    static func makeScheduleLocalContext(nowMs: Int64, timeZone: TimeZone = .current) -> PBScheduleLocalContextEvent {
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = timeZone
+        let now = Date(timeIntervalSince1970: Double(nowMs) / 1000)
+        let today = cal.startOfDay(for: now)
+        let tomorrow = cal.date(byAdding: .day, value: 1, to: today) ?? today
+        let dayAfterTomorrow = cal.date(byAdding: .day, value: 2, to: today) ?? tomorrow
+        return PBScheduleLocalContextEvent.with {
+            $0.localTimezone = timeZone.identifier
+            $0.tomorrowStartMs = Int64(tomorrow.timeIntervalSince1970 * 1000)
+            $0.dayAfterTomorrowStartMs = Int64(dayAfterTomorrow.timeIntervalSince1970 * 1000)
+        }
     }
 
     static func makeLocalCalendar(nowMs: Int64) -> PBCoreLocalCalendar {
@@ -1303,10 +1579,17 @@ actor CoreHost: SyncEngine {
     }
 
     /// Populates Core from an in-memory `RemoteState` for `-demo` / preview launches.
-    func seedDemo(state shown: RemoteState, events: [String: [PBEvent]] = [:]) async {
+    func seedDemo(
+        state shown: RemoteState,
+        events: [String: [PBEvent]] = [:],
+        schedules: [String: Data] = [:],
+        scheduleSeen: [String: [PBScheduleSeenToken]] = [:]
+    ) async {
         guard !closed else { return }
         demoMode = true; started = true; foregrounded = true
         mergeDemo(state: shown, events: events)
+        for (mid, data) in schedules { demoSchedules[mid] = data }
+        for (mid, tokens) in scheduleSeen { demoScheduleSeen[mid] = tokens }
         var secOpID: UInt64 = 0, tokenOpID: UInt64 = 0
         func scanPre(_ effects: [PBCoreEffect]) {
             for eff in effects {
@@ -1316,6 +1599,7 @@ actor CoreHost: SyncEngine {
         }
         scanPre(await stepDemo { $0.syncLifecycle = .with { $0.kind = .start; $0.scopeHmacKey = self.scopeHmacKey } })
         scanPre(await stepDemo { $0.clockUpdated = Self.makeLocalCalendar(nowMs: clock()) })
+        scanPre(await stepDemo { $0.scheduleLocalContext = Self.makeScheduleLocalContext(nowMs: clock()) })
         scanPre(await stepDemo { $0.networkChanged = .with { $0.signature = "demo-wifi"; $0.available = true } })
         scanPre(await stepDemo {
             $0.securitySnapshot = .with {
@@ -1353,7 +1637,7 @@ actor CoreHost: SyncEngine {
         case .online:
             break
         }
-        await renderTargets([.home, .project, .newSession, .session])
+        await renderTargets([.home, .project, .newSession, .session, .schedules])
     }
 
     func setDemoCommandResponder(
@@ -1419,7 +1703,7 @@ actor CoreHost: SyncEngine {
                 }
             }
         }
-        await renderTargets([.home, .project, .newSession, .session])
+        await renderTargets([.home, .project, .newSession, .session, .schedules])
     }
     #endif
 }

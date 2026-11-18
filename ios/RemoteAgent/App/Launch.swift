@@ -211,17 +211,17 @@ enum LaunchDriver {
             }
             let shown = state
             let events = Demo.events(demo)
+            let sampleSchedules = Demo.schedules(demo, now: nowMs())
             // The first frame has the data; the feed is followed once the Remote shows it too.
-            model.showDemo(account: Demo.account, remote: remote, initial: shown, events: events) {
+            model.showDemo(
+                account: Demo.account,
+                remote: remote,
+                initial: shown,
+                events: events,
+                schedules: sampleSchedules.schedules,
+                scheduleSeen: sampleSchedules.seen
+            ) {
                 await remote.showForTest(state: shown, modelLists: Demo.models)
-            }
-            // The 定时 page's sample tasks, answered from here: nothing is asked of a computer.
-            if let schedules = model.context?.schedules {
-                let sample = Demo.schedules(demo, now: nowMs())
-                let of = { (machine: String) in sample.tasks.filter { $0.machineID == machine }.map(\.task) }
-                schedules.configure(.init(cached: { of($0) }, list: { of($0) }))
-                schedules.show(sample.tasks, state: shown)
-                for e in sample.tasks where sample.unread.contains(e.task.id) { schedules.markUnread(e) }
             }
         }
         DebugSignals.on("app.logout") { Task { await model.logout() } }

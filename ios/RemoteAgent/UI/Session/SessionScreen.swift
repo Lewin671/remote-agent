@@ -203,7 +203,7 @@ struct SessionScreen: View {
                     GlassStrip(text: notice.text, symbol: notice.symbol, tone: notice.failed ? .error : .plain)
                         .transition(Motion.appear(rise: -Motion.bubbleRise))
                 }
-                SessionScheduleBar(sessionID: id, machineID: machineID)
+                SessionScheduleBar(sessionID: id)
             }
             .padding(.horizontal, DS.Space.m)
             .padding(.top, 4).padding(.bottom, 8)
@@ -291,11 +291,12 @@ struct SessionScreen: View {
         }
         .sheet(isPresented: $scheduleSending) {
             NavigationStack {
-                NewScheduleScreen(sessionID: id, onCreated: { route in
-                    guard scheduleSending else { return }
-                    scheduleSending = false; nav.open(route, from: page)
-                }, onClose: { scheduleSending = false })
-            }.sheetSurface().presentationDetents([.large])
+                NewScheduleScreen(sessionID: id, onClose: { scheduleSending = false })
+            }
+            .onAppear { context.dismissNewSchedule = { scheduleSending = false } }
+            .onDisappear { context.dismissNewSchedule = nil }
+            .sheetSurface()
+            .presentationDetents([.large])
         }
         .sessionRename(isPresented: $rename, sessionID: id)
         .confirm(
@@ -320,7 +321,9 @@ struct SessionScreen: View {
             #endif
         }
         .debugSignal("session.schedule") {
-            if context.schedules.online(machineID) { scheduleSending = true }
+            if header.computerOnline && !header.computerUnlinked && header.capabilities.supportsSchedule {
+                scheduleSending = true
+            }
         }
         .debugSignal("session.menu") { menu = true }
         .debugSignal("session.mode") { sheet = .mode }

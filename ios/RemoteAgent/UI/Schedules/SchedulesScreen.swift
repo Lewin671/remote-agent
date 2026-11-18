@@ -1,110 +1,225 @@
 import RACore
+import RAProto
 import SwiftUI
 
-/// 定时 (design-system §6 「定时列表」): a sentence for a title, the tasks
-/// that stopped as orange cards, those with new results as blue ones, the
-/// rest one a row, and the ended ones folded. 新定时 is the ink button of
-/// the bottom bar (UI/Shell); the page has no second way to it.
+/// 定时: renders `PBSchedulesViewModel` from Core and dispatches Core events.
 struct SchedulesScreen: View {
-    @Environment(AppModel.self) private var model
     @Environment(AccountContext.self) private var context
+    @Environment(Navigator.self) private var nav
     @Environment(\.sidebarCreate) private var create
     @AppStorage("schedules.endedExpanded") private var endedExpanded = false
 
     var body: some View {
-        let store = context.schedules
-        let stopped = store.rows(.attention)
-        let recent = store.rows(.recent)
-        let fresh = recent.filter(store.hasNewResult)
-        let others = recent.filter { !store.hasNewResult($0) }
-        let ended = store.rows(.ended)
-        let headline = scheduleHeadline(
-            stopped: stopped.count, fresh: fresh.count, visible: stopped.count + recent.count + ended.count, loading: !store.loading.isEmpty)
-        Page {
-            Ticking { now in
-                List {
-                    Group {
-                        if let create {
-                            HStack { Spacer(); SidebarCreateButton(create: create, schedules: true) }.padding(.horizontal, DS.Space.card)
-                        }
-                        ScheduleHeadlineView(headline: headline)
-                        ConnectionBar()
-                        if model.state.conn == .online,
-                           let offline = scheduleOfflineNotice(store.tasks, state: model.state, online: store.online) {
-                            Banner(offline).padding(.horizontal, DS.Space.l).padding(.vertical, 4)
-                        }
-                        ForEach(store.errors.keys.sorted(), id: \.self) { id in
-                            Banner(store.errors[id] ?? "", tone: .error, action: L10n.commonRetry()) { Task { await store.refresh(id) } }
-                                .padding(.horizontal, DS.Space.l).padding(.vertical, 4)
-                        }
-                        if store.tasks.isEmpty && store.loading.isEmpty {
-                            Text(scheduleEmpty).font(.body).foregroundStyle(DS.ink2)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .padding(.horizontal, DS.Space.page).padding(.top, 8)
-                        }
-                        ForEach(stopped) { ScheduleCard(entry: $0, now: now, attention: true) }
-                        if !fresh.isEmpty {
-                            ScheduleSectionTitle(L10n.scheduleNewResultsSchedules(), action: fresh.count > 1 ? L10n.scheduleMarkAllAsRead() : nil) { store.markRead(fresh) }
-                            ForEach(fresh) { ScheduleCard(entry: $0, now: now, attention: false) }
-                        }
-                        if !others.isEmpty {
-                            ScheduleSectionTitle(L10n.scheduleOtherTasks())
-                            ForEach(Array(others.enumerated()), id: \.element.id) { i, entry in
-                                ScheduleListRow(entry: entry, now: now, last: i == others.count - 1)
-                            }
-                        }
-                        if !ended.isEmpty {
-                            Button { endedExpanded.toggle() } label: {
-                                HStack(spacing: 6) {
-                                    Text(L10n.projectsIosEndedCount(count: Int(ended.count))).font(.subheadline).foregroundStyle(DS.ink2)
-                                    Image(systemName: endedExpanded ? "chevron.up" : "chevron.down")
-                                        .font(.footnote.weight(.semibold)).foregroundStyle(DS.ink3)
-                                    Spacer()
-                                }
-                                .frame(minHeight: DS.minHit).padding(.horizontal, DS.Space.page).padding(.top, 8)
-                                .contentShape(Rectangle())
-                            }
-                            .buttonStyle(PressStyle())
-                            .accessibilityValue(endedExpanded ? L10n.projectsIosExpanded() : L10n.sessionIosCollapsed())
-                            if endedExpanded {
-                                ForEach(Array(ended.enumerated()), id: \.element.id) { i, entry in
-                                    ScheduleListRow(entry: entry, now: now, last: i == ended.count - 1)
-                                }
-                            }
-                        }
-                        // Room for the bottom bar that floats over the end of the list.
-                        Color.clear.frame(height: 24)
+        let vm = context.core.schedules
+        SchedulesContent(
+            vm: vm,
+            sidebarCreate: create,
+            connectionBar: { ConnectionBar() },
+            onToggleEnded: {
+                let next = !vm.endedExpanded
+                endedExpanded = next
+                context.dispatch { $0.scheduleToggleEnded.value = next }
+            },
+            onRetryMachine: { mid in
+                context.dispatch { $0.scheduleRefresh.value = mid }
+            },
+            onMarkAllRead: {
+                context.dispatch { $0.scheduleMarkRead = .with { $0.allFresh = true } }
+            },
+            onMarkRead: { item in
+                context.dispatch {
+                    $0.scheduleMarkRead = .with {
+                        $0.tasks = [.with { $0.machineID = item.machineID; $0.taskID = item.taskID }]
                     }
-                    .listRowInsets(EdgeInsets()).listRowSeparator(.hidden).listRowBackground(Color.clear)
                 }
-                .listStyle(.plain).scrollContentBackground(.hidden)
-                .environment(\.defaultMinListRowHeight, 0)
-                .readableColumn()
+            },
+            onMarkUnread: { item in
+                context.dispatch {
+                    $0.scheduleMarkUnread = .with {
+                        $0.machineID = item.machineID
+                        $0.taskID = item.taskID
+                        $0.value = true
+                    }
+                }
+            },
+            onOpenTask: { item in
+                context.dispatch {
+                    $0.scheduleSelectTask = .with {
+                        $0.machineID = item.machineID
+                        $0.taskID = item.taskID
+                    }
+                }
+                nav.open(.schedule(machine: item.machineID, id: item.taskID))
+            }
+        )
+        .task {
+            let desired = endedExpanded
+            if desired != vm.endedExpanded {
+                await context.coreHost.dispatch { @Sendable ev in ev.scheduleToggleEnded.value = desired }
             }
         }
     }
 }
 
+/// Pure presentation body for `SchedulesScreen`, driven solely by `PBSchedulesViewModel`.
+struct SchedulesContent<ConnectionView: View>: View {
+    let vm: PBSchedulesViewModel
+    var sidebarCreate: SidebarCreate? = nil
+    @ViewBuilder var connectionBar: () -> ConnectionView
+    var onToggleEnded: () -> Void = {}
+    var onRetryMachine: (String) -> Void = { _ in }
+    var onMarkAllRead: () -> Void = {}
+    var onMarkRead: (PBScheduleTaskItemView) -> Void = { _ in }
+    var onMarkUnread: (PBScheduleTaskItemView) -> Void = { _ in }
+    var onOpenTask: (PBScheduleTaskItemView) -> Void = { _ in }
+
+    var body: some View {
+        Page {
+            List {
+                Group {
+                    if let sidebarCreate {
+                        HStack {
+                            Spacer()
+                            SidebarCreateButton(create: sidebarCreate, schedules: true)
+                        }
+                        .padding(.horizontal, DS.Space.card)
+                    }
+                    ScheduleHeadlineView(headline: vm.headline)
+                    connectionBar()
+                    if !vm.anyMachineSupported && vm.hasUnsupportedNotice {
+                        Banner(vm.unsupportedNotice.rendered())
+                            .padding(.horizontal, DS.Space.l).padding(.vertical, 4)
+                    } else if vm.hasOfflineNotice {
+                        let text = vm.offlineNotice.rendered()
+                        if !text.isEmpty {
+                            Banner(text).padding(.horizontal, DS.Space.l).padding(.vertical, 4)
+                        }
+                    }
+                    ForEach(vm.machineErrors, id: \.machineID) { err in
+                        Banner(
+                            err.error.rendered(),
+                            tone: .error,
+                            action: err.canRetry ? L10n.commonRetry() : nil,
+                            onAction: err.canRetry ? { onRetryMachine(err.machineID) } : nil
+                        )
+                        .padding(.horizontal, DS.Space.l).padding(.vertical, 4)
+                    }
+                    if vm.showEmptyHint && vm.hasEmptyHint {
+                        Text(vm.emptyHint.rendered())
+                            .font(.body).foregroundStyle(DS.ink2)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.horizontal, DS.Space.page).padding(.top, 8)
+                    }
+                    ForEach(vm.attention, id: \.listRowID) { item in
+                        ScheduleCard(
+                            item: item,
+                            attention: true,
+                            onMarkRead: { onMarkRead(item) },
+                            onOpen: { onOpenTask(item) }
+                        )
+                    }
+                    if !vm.fresh.isEmpty {
+                        ScheduleSectionTitle(
+                            L10n.scheduleNewResultsSchedules(),
+                            action: vm.canMarkAllRead ? L10n.scheduleMarkAllAsRead() : nil,
+                            onAction: onMarkAllRead
+                        )
+                        ForEach(vm.fresh, id: \.listRowID) { item in
+                            ScheduleCard(
+                                item: item,
+                                attention: false,
+                                onMarkRead: { onMarkRead(item) },
+                                onOpen: { onOpenTask(item) }
+                            )
+                        }
+                    }
+                    if !vm.others.isEmpty {
+                        let othersTitle = vm.othersSectionTitle.rendered()
+                        ScheduleSectionTitle(othersTitle.isEmpty ? L10n.scheduleOtherTasks() : othersTitle)
+                        ForEach(Array(vm.others.enumerated()), id: \.element.listRowID) { i, item in
+                            ScheduleListRow(
+                                item: item,
+                                last: i == vm.others.count - 1,
+                                onMarkUnread: { onMarkUnread(item) },
+                                onOpen: { onOpenTask(item) }
+                            )
+                        }
+                    }
+                    if !vm.ended.isEmpty || vm.totalEnded > 0 {
+                        let endedTitle = vm.endedLabel.rendered()
+                        Button(action: onToggleEnded) {
+                            HStack(spacing: 6) {
+                                Text(endedTitle.isEmpty ? L10n.projectsIosEndedCount(count: Int(vm.totalEnded)) : endedTitle)
+                                    .font(.subheadline).foregroundStyle(DS.ink2)
+                                Image(systemName: vm.endedExpanded ? "chevron.up" : "chevron.down")
+                                    .font(.footnote.weight(.semibold)).foregroundStyle(DS.ink3)
+                                Spacer()
+                            }
+                            .frame(minHeight: DS.minHit).padding(.horizontal, DS.Space.page).padding(.top, 8)
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(PressStyle())
+                        .accessibilityValue(vm.endedExpanded ? L10n.projectsIosExpanded() : L10n.sessionIosCollapsed())
+                        if vm.endedExpanded {
+                            ForEach(Array(vm.ended.enumerated()), id: \.element.listRowID) { i, item in
+                                ScheduleListRow(
+                                    item: item,
+                                    last: i == vm.ended.count - 1,
+                                    onMarkUnread: { onMarkUnread(item) },
+                                    onOpen: { onOpenTask(item) }
+                                )
+                            }
+                        }
+                    }
+                    // Room for the bottom bar that floats over the end of the list.
+                    Color.clear.frame(height: 24)
+                }
+                .listRowInsets(EdgeInsets()).listRowSeparator(.hidden).listRowBackground(Color.clear)
+            }
+            .listStyle(.plain).scrollContentBackground(.hidden)
+            .environment(\.defaultMinListRowHeight, 0)
+            .readableColumn()
+        }
+    }
+}
+
+private extension PBScheduleTaskItemView {
+    var listRowID: String { "\(machineID)/\(taskID)" }
+}
+
 /// The sentence at the top, 34 / 700 with the number of what stopped in orange, and the line under it.
 private struct ScheduleHeadlineView: View {
-    let headline: ScheduleHeadline
+    let headline: PBScheduleHeadlineView
 
     var body: some View {
         VStack(alignment: .leading, spacing: 7) {
             Group {
-                if let n = headline.count {
-                    stoppedTitle(n)
+                if headline.kind == .stopped && headline.highlightCount > 0 {
+                    stoppedTitle(Int(headline.highlightCount))
                 } else {
-                    Text(headline.title)
+                    Text(headline.title.rendered())
                 }
             }
             .font(.largeTitle.bold()).foregroundStyle(DS.ink)
             .fixedSize(horizontal: false, vertical: true)
             .accessibilityAddTraits(.isHeader)
-            if !headline.sub.isEmpty { Text(headline.sub).font(.body).foregroundStyle(DS.ink2) }
+            let sub = headline.sub.rendered()
+            if !sub.isEmpty {
+                Text(sub).font(.body).foregroundStyle(DS.ink2)
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, DS.Space.page).padding(.top, 6).padding(.bottom, 12)
+    }
+
+    /// Preserve the highlighted number while allowing the sentence to reorder it.
+    private func stoppedTitle(_ count: Int) -> Text {
+        let marker = "{total}"
+        let parts = L10n.scheduleStoppedCount(count: count, total: marker).components(separatedBy: marker)
+        if parts.count >= 2 {
+            return Text(parts[0]) + Text(String(count)).foregroundStyle(DS.orange) + Text(parts[1])
+        }
+        return Text(headline.title.rendered())
     }
 }
 
@@ -133,35 +248,46 @@ private struct ScheduleSectionTitle: View {
 
 /// A task that stopped (orange) or has a new result (blue): a `gbg` card of radius 28.
 private struct ScheduleCard: View {
-    let entry: MachineSchedule
-    let now: Int64
+    let item: PBScheduleTaskItemView
     let attention: Bool
-    @Environment(AppModel.self) private var model
-    @Environment(AccountContext.self) private var context
-    @Environment(Navigator.self) private var nav
+    let onMarkRead: () -> Void
+    let onOpen: () -> Void
 
     var body: some View {
-        let task = entry.task
-        let store = context.schedules
-        let date = Date(timeIntervalSince1970: Double(now) / 1000)
-        let when = attention ? task.stoppedAt : task.latestNotification?.notificationTime
-        Button { nav.open(.schedule(machine: entry.machineID, id: task.id)) } label: {
+        let canMark = item.actions.canMarkRead
+        let when = item.timeText.rendered()
+        Button(action: onOpen) {
             VStack(alignment: .leading, spacing: 8) {
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
                     StatusMark(attention ? .waiting : .unread)
-                    Text(task.spec.title).font(.body.weight(.semibold)).foregroundStyle(DS.ink).lineLimit(2)
+                    Text(item.title).font(.body.weight(.semibold)).foregroundStyle(DS.ink).lineLimit(2)
                         .frame(maxWidth: .infinity, alignment: .leading)
-                    if let when { Text(scheduleRowTime(when, now: date)).font(.footnote).foregroundStyle(DS.ink2).fixedSize() }
+                    if !when.isEmpty {
+                        Text(when).font(.footnote).foregroundStyle(DS.ink2).fixedSize()
+                    }
                 }
                 if attention {
-                    (Text(task.attentionWord).foregroundStyle(DS.orangeInk).fontWeight(.semibold)
-                        + Text(" · " + task.notificationPreview(now: date, shortReason: true)).foregroundStyle(DS.ink2))
-                        .font(.subheadline).lineLimit(2)
-                    HStack { Spacer(); Text(L10n.scheduleIosTakeAction()).font(.subheadline.weight(.semibold)).foregroundStyle(DS.blue) }
+                    let lead = item.attentionLead.rendered()
+                    let reason = item.attentionReason.rendered()
+                    if !lead.isEmpty {
+                        (Text(lead).foregroundStyle(DS.orangeInk).fontWeight(.semibold)
+                            + Text(reason).foregroundStyle(DS.ink2))
+                            .font(.subheadline).lineLimit(2)
+                    } else {
+                        Text(item.preview.rendered()).font(.subheadline).foregroundStyle(DS.ink2).lineLimit(2)
+                    }
+                    HStack {
+                        let meta = item.metadata.rendered()
+                        if !meta.isEmpty {
+                            Text(meta).font(.footnote).foregroundStyle(DS.ink2).lineLimit(1)
+                        }
+                        Spacer(minLength: 8)
+                        Text(L10n.scheduleIosTakeAction()).font(.subheadline.weight(.semibold)).foregroundStyle(DS.blue).fixedSize()
+                    }
                 } else {
-                    Text(task.listPreview(now: date)).font(.body).foregroundStyle(DS.ink).lineLimit(4)
+                    Text(item.preview.rendered()).font(.body).foregroundStyle(DS.ink).lineLimit(4)
                     HStack(alignment: .firstTextBaseline) {
-                        Text(scheduleListMetadata(entry, entries: store.tasks, state: model.state, online: store.online(entry.machineID)))
+                        Text(item.metadata.rendered())
                             .font(.footnote).foregroundStyle(DS.ink2).fixedSize(horizontal: false, vertical: true)
                         Spacer(minLength: 8)
                         Text(L10n.scheduleIosReadFullText()).font(.subheadline.weight(.semibold)).foregroundStyle(DS.blue).fixedSize()
@@ -177,45 +303,47 @@ private struct ScheduleCard: View {
         .accessibilityElement(children: .combine)
         .accessibilityHint(attention ? L10n.scheduleIosNeedsAttention() : L10n.homeIosNewResults())
         .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-            if !attention {
-                Button { store.markRead([entry]) } label: { Label(L10n.scheduleIosRead(), systemImage: "checkmark") }.tint(DS.blue)
+            if canMark {
+                Button(action: onMarkRead) { Label(L10n.scheduleIosRead(), systemImage: "checkmark") }.tint(DS.blue)
             }
         }
         .accessibilityActions {
-            if !attention { Button(L10n.scheduleMarkAsRead()) { store.markRead([entry]) } }
+            if canMark { Button(L10n.scheduleMarkAsRead(), action: onMarkRead) }
         }
     }
 }
 
 /// A task without a new result: one row, no mark at its head.
 struct ScheduleListRow: View {
-    let entry: MachineSchedule
-    let now: Int64
+    let item: PBScheduleTaskItemView
     let last: Bool
-    @Environment(AppModel.self) private var model
-    @Environment(AccountContext.self) private var context
-    @Environment(Navigator.self) private var nav
+    var onMarkUnread: () -> Void = {}
+    var onOpen: () -> Void = {}
 
     var body: some View {
-        let task = entry.task
-        let store = context.schedules
-        let date = Date(timeIntervalSince1970: Double(now) / 1000)
-        let canMark = task.latestNotification != nil && task.group != .attention
-        Button { nav.open(.schedule(machine: entry.machineID, id: task.id)) } label: {
+        let when = item.timeText.rendered()
+        let canMarkUnread = item.actions.canMarkUnread
+        Button(action: onOpen) {
             VStack(alignment: .leading, spacing: 3) {
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
-                    Text(task.spec.title).font(.body.weight(.medium)).foregroundStyle(task.group == .paused ? DS.ink2 : DS.ink)
+                    Text(item.title)
+                        .font(.body.weight(.medium))
+                        .foregroundStyle(item.paused || item.group == .ended ? DS.ink2 : DS.ink)
                         .lineLimit(1).frame(maxWidth: .infinity, alignment: .leading)
-                    if let when = task.latestNotification?.notificationTime {
-                        Text(scheduleRowTime(when, now: date)).font(.footnote).foregroundStyle(DS.ink2).fixedSize()
+                    if !when.isEmpty {
+                        Text(when).font(.footnote).foregroundStyle(DS.ink2).fixedSize()
                     }
                 }
-                Text(task.listPreview(now: date)).font(.subheadline).foregroundStyle(DS.ink2).lineLimit(2)
+                Text(item.preview.rendered())
+                    .font(.subheadline)
+                    .foregroundStyle(DS.ink2)
+                    .lineLimit(2)
                     .frame(maxWidth: .infinity, alignment: .leading)
                 HStack(spacing: 5) {
-                    if task.running != nil { Spinner().frame(width: 10, height: 10) }
-                    Text(scheduleListMetadata(entry, entries: store.tasks, state: model.state, online: store.online(entry.machineID)))
-                        .font(.footnote).foregroundStyle(DS.ink2).fixedSize(horizontal: false, vertical: true)
+                    if item.inProgress { Spinner().frame(width: 10, height: 10) }
+                    Text(item.metadata.rendered())
+                        .font(.footnote).foregroundStyle(DS.ink2)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
             }
             .padding(.horizontal, DS.Space.page).padding(.vertical, 12)
@@ -225,61 +353,39 @@ struct ScheduleListRow: View {
         .buttonStyle(RowPressStyle())
         .accessibilityElement(children: .combine)
         .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-            if canMark {
-                Button { store.markUnread(entry) } label: { Text(L10n.scheduleIosUnread()) }.tint(DS.blue)
+            if canMarkUnread {
+                Button(action: onMarkUnread) { Text(L10n.scheduleIosUnread()) }.tint(DS.blue)
             }
         }
         .accessibilityActions {
-            if canMark { Button(L10n.scheduleMarkAsUnread()) { store.markUnread(entry) } }
+            if canMarkUnread { Button(L10n.scheduleMarkAsUnread(), action: onMarkUnread) }
         }
     }
 }
 
-func scheduleListMetadata(_ entry: MachineSchedule, entries: [MachineSchedule], state: RemoteState, online: Bool) -> String {
-    func location(_ entry: MachineSchedule) -> (String, String) {
-        let target = entry.task.spec.target
-        if target.type == "resume_session" {
-            guard let sid = target.session, let session = state.sessions[sid], let info = session.info else { return ("", "") }
-            return (info.cwd, agentName(session.agent))
+/// Shared banner for pending/frozen/failed schedule create or edit mutations.
+struct ScheduleMutationBanner: View {
+    let mutation: PBScheduleMutationView
+    var onRetry: () -> Void = {}
+    var onAbandon: () -> Void = {}
+
+    var body: some View {
+        let error = mutation.hasError ? mutation.error.rendered() : ""
+        let notice = mutation.hasNotice ? mutation.notice.rendered() : ""
+        let frozenHint = mutation.frozen && mutation.hasFrozenHint ? mutation.frozenHint.rendered() : ""
+        if !error.isEmpty || !notice.isEmpty || !frozenHint.isEmpty || mutation.canRetry || mutation.canAbandon {
+            VStack(alignment: .leading, spacing: 6) {
+                if !error.isEmpty { Banner(error, tone: .error) }
+                if !notice.isEmpty { Banner(notice) }
+                if !frozenHint.isEmpty { Banner(frozenHint, tone: .warn) }
+                if mutation.canRetry || mutation.canAbandon {
+                    HStack(spacing: 12) {
+                        if mutation.canRetry { TextAction(L10n.commonRetry(), action: onRetry) }
+                        if mutation.canAbandon { TextAction(L10n.newSessionIosAbandon(), color: DS.red, action: onAbandon) }
+                    }
+                    .padding(.horizontal, 4)
+                }
+            }
         }
-        return (target.cwd ?? "", agentById(target.agent).name)
     }
-    let task = entry.task, place = location(entry)
-    let places = entries.map(location)
-    var parts = [String]()
-    if task.running != nil { parts.append(L10n.scheduleRunning()) }
-    parts.append(scheduleListFrequency(task.spec.trigger))
-    if !place.0.isEmpty && Set(places.map { $0.0 }.filter { !$0.isEmpty }).count > 1 { parts.append(projectName(place.0)) }
-    if !place.1.isEmpty && Set(places.map { $0.1 }.filter { !$0.isEmpty }).count > 1 { parts.append(place.1) }
-    if Set(entries.map(\.machineID)).count > 1 { parts.append(machineLabel(state, id: entry.machineID)) }
-    if task.spec.target.type == "resume_session" {
-        let loaded = task.spec.target.session.flatMap { state.sessions[$0]?.info } != nil
-        parts.append(loaded ? L10n.scheduleIn(value: String(describing: scheduleDestination(task, state: state))) : L10n.scheduleInConversation())
-    }
-    if task.group == .paused { parts.append(L10n.queuePaused()) }
-    if !online { parts.append(scheduleOfflineRow) }
-    return parts.joined(separator: " · ")
-}
-func scheduleLocation(_ task: ScheduleTask, state: RemoteState, machine: String, frequency: Bool = false) -> String {
-    let target = task.spec.target
-    let place: String
-    if target.type == "resume_session" {
-        if let sid = target.session, let session = state.sessions[sid], session.info != nil {
-            place = L10n.scheduleIn(value: String(describing: titleOf(session))) + (frequency ? " · " + agentName(session.agent) : "")
-        } else { place = L10n.scheduleInConversation() }
-    } else { place = projectName(target.cwd ?? "") + " · " + agentById(target.agent).name }
-    return (frequency ? scheduleFrequency(task.spec.trigger, includeZone: true) + " · " : "") + place + (state.machines.count > 1 ? " · " + machineLabel(state, id: machine) : "")
-}
-
-func scheduleOfflineNotice(_ entries: [MachineSchedule], state: RemoteState, online: (String) -> Bool) -> String? {
-    let ids = Set(entries.filter { !online($0.machineID) }.map(\.machineID)).sorted()
-    guard !ids.isEmpty else { return nil }
-    return ids.map { machineLabel(state, id: $0) }.joined(separator: L10n.commonIosListSeparator()) + " " + scheduleOffline
-}
-
-/// Preserve the highlighted number while allowing the sentence to reorder it.
-private func stoppedTitle(_ count: Int) -> Text {
-    let marker = "{total}"
-    let parts = L10n.scheduleStoppedCount(count: count, total: marker).components(separatedBy: marker)
-    return Text(parts[0]) + Text(String(count)).foregroundStyle(DS.orange) + Text(parts[1])
 }

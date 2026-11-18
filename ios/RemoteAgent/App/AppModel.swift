@@ -43,6 +43,7 @@ final class AccountContext {
     let core: CoreScreens
     let coreHost: CoreHost
     var dismissNewTask: (@MainActor () -> Void)?
+    var dismissNewSchedule: (@MainActor () -> Void)?
 
     /// This client's device ID.
     var me: String { account.deviceId }
@@ -784,6 +785,8 @@ final class AppModel {
         func showDemo(
             account: Account, remote: Remote, initial: RemoteState,
             events: [String: [PBEvent]] = [:],
+            schedules: [String: Data] = [:],
+            scheduleSeen: [String: [PBScheduleSeenToken]] = [:],
             load: @escaping @Sendable () async -> Void
         ) {
             isDemo = true
@@ -807,7 +810,12 @@ final class AppModel {
             Task {
                 await load()
                 if gen == generation { follow(remote.state, gen: gen) }
-                await host?.seedDemo(state: remote.current, events: events)
+                await host?.seedDemo(
+                    state: remote.current,
+                    events: events,
+                    schedules: schedules,
+                    scheduleSeen: scheduleSeen
+                )
             }
         }
 
