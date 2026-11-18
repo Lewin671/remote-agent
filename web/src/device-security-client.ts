@@ -97,6 +97,7 @@ export class DeviceSecurityClient {
   recoveryStatusStale = true;
   private syncJob?: Promise<SecurityRecord>;
   private syncController?: AbortController;
+  private followUp?: Promise<SecurityRecord>;
   private validated = new WeakMap<SecurityRecord, Promise<SecurityRecord>>();
   private contentKeys = new WeakMap<SecurityRecord, Map<bigint, Promise<B>>>();
   constructor(
@@ -184,7 +185,19 @@ export class DeviceSecurityClient {
     this.syncController = undefined;
     this.syncJob = undefined;
   }
-  async sync(waiter?: AbortSignal, budget = this.roundBudget()): Promise<SecurityRecord> {
+  /**
+   * A fresh sync needs a pull that starts after it was asked for: a push or an explicit
+   * refresh must not take the answer of a round that fetched the head before the change.
+   * It waits out a round in flight and then shares one follow-up round with other fresh callers.
+   */
+  async sync(waiter?: AbortSignal, budget = this.roundBudget(), fresh = false): Promise<SecurityRecord> {
+    if (fresh && this.syncJob) {
+      this.followUp ??= this.syncJob.catch(() => undefined).then(() => {
+        this.followUp = undefined;
+        return this.sync(undefined, budget);
+      });
+      return abortable(this.followUp, waiter);
+    }
     for (;;) {
       waiter?.throwIfAborted();
       let job = this.syncJob, controller = this.syncController;

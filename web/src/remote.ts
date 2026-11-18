@@ -718,7 +718,7 @@ export class Remote implements CoreExecutor {
     this.unwatchDirectInstall = watchSecurityInstall((record) => this.direct.install(record));
     this.unwatchSecurityPush?.();
     this.unwatchSecurityPush = watchSecurityPush(() => {
-      if (!this.closed) void this.security.sync(undefined, 5000).catch(() => undefined);
+      if (!this.closed) void this.security.sync(undefined, 5000, true).catch(() => undefined);
     });
     clearInterval(this.securityTimer);
     this.securityTimer = setInterval(() => {
@@ -1206,7 +1206,7 @@ export class Remote implements CoreExecutor {
     if (touch) this.touchAfterWake();
     this.coreSyncDepth++;
     try {
-      const record = await this.security.sync(undefined, 5000);
+      const record = await this.security.sync(undefined, 5000, true);
       this.verifiedNetworkGeneration = this.networkGeneration;
       this.wakeRequired = false;
       this.applySecurityRecordSets(record);

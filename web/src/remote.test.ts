@@ -777,13 +777,28 @@ it("revokes a removed machine and retains its archive when the head moves withou
     expect(getCoreHost(r).viewSyncState().securityLoaded).toBe(true);
     expect((r as unknown as { coreSyncDepth: number }).coreSyncDepth).toBe(0);
   });
-  // A pull already in flight fetched the head before the removal, and a later sync joins it;
-  // let any such background round finish so the pull below starts after the removal.
-  const security = r.security as unknown as { syncJob?: Promise<unknown> };
+  // A background pull fetches the head before the removal and is still finishing when the
+  // head pull below is asked for: that pull must not take the stale answer.
+  const security = r.security as unknown as { syncJob?: Promise<unknown>; fetchStates: (...a: unknown[]) => Promise<unknown> };
   while (security.syncJob) await security.syncJob.catch(() => undefined);
+  const fetchStates = security.fetchStates;
+  let release!: () => void;
+  const held = new Promise<void>((resolve) => { release = resolve; });
+  let fetched!: () => void;
+  const stale = new Promise<void>((resolve) => { fetched = resolve; });
+  let hold = true;
+  security.fetchStates = async (...a: unknown[]) => {
+    const reply = await fetchStates(...a);
+    if (hold) { hold = false; fetched(); await held; }
+    return reply;
+  };
+  void r.security.sync(undefined, 5000).catch(() => undefined);
+  await stale;
   await r.world.fixture.remove([r.machine]);
   // The relay withholds every removal push; the 60 s head pull must be enough.
-  const snap = await (r as unknown as { syncSecurity(opId: bigint, netGen: bigint, touch: boolean): Promise<unknown> }).syncSecurity(0n, 0n, false);
+  const pull = (r as unknown as { syncSecurity(opId: bigint, netGen: bigint, touch: boolean): Promise<unknown> }).syncSecurity(0n, 0n, false);
+  release();
+  const snap = await pull;
   const { EventSchema: CoreEventSchema } = await import("./gen/remoteagent/core/v1/app_pb");
   getCoreHost(r).dispatch(create(CoreEventSchema, { event: { case: "securitySnapshot", value: snap as never } }));
   expect(r.devices.get(r.machine)).toBeUndefined();
