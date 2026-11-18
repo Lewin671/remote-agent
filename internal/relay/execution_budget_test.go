@@ -123,7 +123,12 @@ func TestOverdueBackendAndContextIOKeepSlotAndQuarantine(t *testing.T) {
 func TestLargeDecodedSendAndApprovalKeepTheirClass(t *testing.T) {
 	backend := &approvalLoadBackend{release: make(chan struct{}), entered: make(chan string, 4)}
 	close(backend.release)
-	e := testEndpoint(t, New(backend))
+	r := New(backend)
+	fixedNow := time.Now()
+	SetSchedulerClockForTest(r, func() time.Time { return fixedNow }, func(time.Duration, func()) func() bool {
+		return func() bool { return false }
+	})
+	e := testEndpoint(t, r)
 	client := endpointClient(t, e)
 	defer func() { e.link.DrainCalls(); e.admissionOwner().close() }()
 	message := strings.Repeat("x", 3<<20)
@@ -139,7 +144,7 @@ func TestLargeDecodedSendAndApprovalKeepTheirClass(t *testing.T) {
 			if r.Outcome != "executed" {
 				t.Fatalf("legal decoded request %d refused: %s/%s", i, r.Outcome, r.Reason)
 			}
-		case <-time.After(time.Second):
+		case <-t.Context().Done():
 			t.Fatal("large decoded request stalled")
 		}
 	}
