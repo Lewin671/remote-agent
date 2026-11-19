@@ -37,6 +37,7 @@ import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
@@ -96,6 +97,7 @@ import io.github.lewin671.remoteagent.core.proto.SessionDisplayStatus
 import io.github.lewin671.remoteagent.core.proto.SessionOutgoingState
 import io.github.lewin671.remoteagent.core.proto.SessionOutgoingView
 import io.github.lewin671.remoteagent.core.proto.SessionPendingInputView
+import io.github.lewin671.remoteagent.core.proto.SessionTimelineItem
 import io.github.lewin671.remoteagent.core.proto.SessionViewModel
 import io.github.lewin671.remoteagent.core.proto.SessionWindowRequest
 import io.github.lewin671.remoteagent.core.sendModeFor
@@ -834,11 +836,13 @@ internal fun ChatPane(
                             }
                         }
                         if (showSkeleton && tl.loading && items.isEmpty()) item(key = "skeleton") { Skeleton() }
-                        items(items, key = { it.id }) { item ->
+                        itemsIndexed(items, key = { _, it -> it.id }) { i, item ->
                             val kind = remember(item.id) { entrances.take(item.id) }
                             Box(Modifier.entrance(kind)) {
                                 TimelineItemView(
                                     item = item,
+                                    receiptBefore = i > 0 && items[i - 1].kindCase == SessionTimelineItem.KindCase.NOTIFY_RECEIPT,
+                                    receiptAfter = i + 1 < items.size && items[i + 1].kindCase == SessionTimelineItem.KindCase.NOTIFY_RECEIPT,
                                     settling = kind == Entrance.SETTLE,
                                     onRestoreInput = { _, text ->
                                         val draft = ImageDrafts.forSession(sid)

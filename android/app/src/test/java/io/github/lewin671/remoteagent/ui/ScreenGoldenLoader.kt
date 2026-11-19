@@ -1534,6 +1534,18 @@ object ScreenGoldenLoader {
                 },
             )
         }
+        o.obj("notifyReceipt")?.let { r ->
+            setNotifyReceipt(
+                SessionNotifyReceiptItem.newBuilder().apply {
+                    r.obj("label")?.let { setLabel(parseText(it)) }
+                    r.obj("time")?.let { setTime(parseText(it)) }
+                    setPreview(r.str("preview"))
+                    setBody(r.str("body"))
+                    setExpandable(r.bool("expandable"))
+                    setScheduledRunId(r.str("scheduledRunId"))
+                },
+            )
+        }
         o.obj("errorLine")?.let { e ->
             setErrorLine(
                 SessionErrorLineItem.newBuilder().apply {

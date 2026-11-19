@@ -82,6 +82,13 @@ object Lucide {
     /** Down to the newest message; the terminal's down key. */
     val ArrowDown = lucide("arrow-down", "M12 5v14", "m19 12-7 7-7-7")
 
+    /** A push went out to you: the receipt in a conversation. */
+    val Bell = lucide(
+        "bell",
+        "M10.268 21a2 2 0 0 0 3.464 0",
+        "M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326",
+    )
+
     /** Done; also the chosen one of several. */
     val Check = lucide("check", "M20 6 9 17l-5-5")
 

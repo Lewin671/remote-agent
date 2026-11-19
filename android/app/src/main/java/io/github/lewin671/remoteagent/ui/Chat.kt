@@ -1,6 +1,10 @@
 package io.github.lewin671.remoteagent.ui
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Animatable
@@ -15,6 +19,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -38,19 +44,27 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.role
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import io.github.lewin671.remoteagent.core.UiMessages
 import io.github.lewin671.remoteagent.core.proto.SessionInputNoticeKind
 import io.github.lewin671.remoteagent.core.proto.SessionNoteKind
 import io.github.lewin671.remoteagent.core.proto.SessionNoteTone
+import io.github.lewin671.remoteagent.core.proto.SessionNotifyReceiptItem
 import io.github.lewin671.remoteagent.core.proto.SessionTimelineItem
 import io.github.lewin671.remoteagent.core.proto.SessionToolStatus
 import io.github.lewin671.remoteagent.proto.SentFile
@@ -272,6 +286,59 @@ fun Expandable(title: String, modifier: Modifier = Modifier, color: Color? = nul
     }
 }
 
+/**
+ * A scheduled run's push, left as one grey line (design-system §7): Core
+ * says what it shows; the agent's longer texts open in place. Two receipts
+ * in a row sit 4 apart, so the row is told whether one comes before or after.
+ */
+@Composable
+private fun NotifyReceiptRow(id: String, r: SessionNotifyReceiptItem, receiptBefore: Boolean, receiptAfter: Boolean) {
+    val copy = uiText()
+    val p = pal
+    var open by rememberSaveable(id) { mutableStateOf(false) }
+    val turn by animateFloatAsState(if (open) 180f else 0f, tween(160, easing = Motion.Decelerate), label = "receipt-chevron")
+    val line = uiText(r.label) + " · " + if (open || r.preview.isEmpty()) uiText(r.time) else r.preview
+    val bleed = 12.dp
+    Column(Modifier.fillMaxWidth().padding(start = ChatSide, end = ChatSide, top = if (receiptBefore) 0.dp else 6.dp, bottom = if (receiptAfter) 4.dp else 6.dp)) {
+        Row(
+            Modifier
+                .then(
+                    if (r.expandable) {
+                        // The whole line answers a tap, 12 more above and below, without taking that room.
+                        Modifier.layout { m, c ->
+                            val px = bleed.roundToPx()
+                            val pl = m.measure(c)
+                            layout(pl.width, (pl.height - 2 * px).coerceAtLeast(0)) { pl.place(0, -px) }
+                        }
+                            .clearAndSetSemantics {
+                                role = Role.Button
+                                contentDescription = if (open) copy(UiMessages.markdownCollapse()) else copy(UiMessages.sessionNotifyReceiptExpand())
+                                onClick { open = !open; true }
+                            }
+                            .clickable { open = !open }
+                            .padding(vertical = bleed)
+                    } else Modifier,
+                )
+                .heightIn(min = 20.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Mark(Lucide.Bell, p.ink3, 15.dp)
+            Spacer(Modifier.width(8.dp))
+            Text(line, style = T.s13, color = p.ink2, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
+            if (r.expandable) {
+                Spacer(Modifier.width(4.dp))
+                Box(Modifier.rotate(turn)) { Arrow(p.ink3, T.s13, down = true) }
+            }
+        }
+        AnimatedVisibility(open && r.expandable, enter = fadeIn(tween(Motion.FAST)), exit = ExitTransition.None) {
+            Row(Modifier.padding(top = 8.dp, bottom = 4.dp, start = 6.dp).height(IntrinsicSize.Min)) {
+                Box(Modifier.width(2.dp).fillMaxHeight().background(p.faint))
+                Text(r.body, style = T.s15.copy(lineHeight = 22.5.sp), color = p.ink2, modifier = Modifier.padding(start = 15.dp))
+            }
+        }
+    }
+}
+
 /** Renders one [SessionTimelineItem] from Core's [SessionViewModel.timeline]. */
 @Composable
 internal fun TimelineItemView(
@@ -279,6 +346,8 @@ internal fun TimelineItemView(
     settling: Boolean = false,
     onRestoreInput: ((requestId: String, text: String) -> Unit)? = null,
     onTerminalPopup: (() -> Unit)? = null,
+    receiptBefore: Boolean = false,
+    receiptAfter: Boolean = false,
 ) {
     val copy = uiText()
     val p = pal
@@ -415,6 +484,7 @@ internal fun TimelineItemView(
                 if (meta.isNotEmpty()) Text(meta, style = T.s13, color = p.ink2, modifier = Modifier.padding(top = 2.dp))
             }
         }
+        SessionTimelineItem.KindCase.NOTIFY_RECEIPT -> NotifyReceiptRow(item.id, item.notifyReceipt, receiptBefore, receiptAfter)
         SessionTimelineItem.KindCase.TURN_END -> SepLine(uiText(item.turnEnd.label))
         SessionTimelineItem.KindCase.ERROR_LINE -> Text(
             uiText(item.errorLine.text),

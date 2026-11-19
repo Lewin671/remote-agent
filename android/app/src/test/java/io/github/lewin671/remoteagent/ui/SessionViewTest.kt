@@ -123,6 +123,12 @@ class SessionViewTest {
             val quiet = folded.timeline.itemsList.first { it.hasQuietScheduledGroup() }
             val quietLabel = coreTextToMessageText(quiet.quietScheduledGroup.title).resolve(::messageTextForTest)
             ui.onNodeWithText(quietLabel, substring = true).performClick()
+
+            // The agent's short push renders as a one-line receipt.
+            val receiptIdx = folded.timeline.itemsList.indexOfFirst { it.hasNotifyReceipt() } +
+                if (folded.timeline.hasEarlier || folded.timeline.canLoadEarlier || folded.timeline.backfilling) 1 else 0
+            ui.onNode(hasScrollToIndexAction()).performScrollToIndex(receiptIdx)
+            ui.onNodeWithText(" · Disk warning sent", substring = true).assertIsDisplayed()
         } finally {
             remote.close()
         }

@@ -4578,5 +4578,10 @@
     "path": "web/src/views/Session.tsx",
     "literal": "notifyReceipt",
     "reason": "Non-UI identifier, CSS class, protobuf case, internal invariant, or JSX TypeScript generic false positive."
+  },
+  {
+    "path": "android/app/src/main/java/io/github/lewin671/remoteagent/ui/Chat.kt",
+    "literal": "receipt-chevron",
+    "reason": "Compose animation debug label, never rendered to users."
   }
 ]
