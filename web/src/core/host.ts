@@ -136,13 +136,15 @@ import {
 } from "../gen/remoteagent/core/v1/schedules_view_pb";
 import {
   SessionOpenActionSchema,
-  SessionOutgoingActionSchema,
   SessionQuestionStepActionSchema,
   SessionRefreshHistoryActionSchema,
   SessionScreenRequestSchema,
   SessionSlotActionSchema,
   SessionSubmitCommandActionSchema,
+  SessionTrayItemActionSchema,
+  SessionTraySessionActionSchema,
   SessionWindowRequestSchema,
+  type SessionResendAttachmentsEffect,
   type SessionRestoreComposerEffect,
   type SessionViewModel,
 } from "../gen/remoteagent/core/v1/session_view_pb";
@@ -662,6 +664,7 @@ export class CoreHost {
   private closed = false;
   private watchCounts = new Map<string, number>();
   private restoreComposerListeners = new Map<string, Set<(eff: SessionRestoreComposerEffect) => void>>();
+  private resendAttachmentsListeners = new Map<string, Set<(eff: SessionResendAttachmentsEffect) => void>>();
   private scheduleFormCloseListeners = new Map<string, Set<() => void>>();
   private scheduleFormTimingListeners = new Map<string, Set<(formKey: string) => void>>();
   private scheduleFocus = new Map<string, { runId: string; seq: bigint }>();
@@ -1003,17 +1006,59 @@ export class CoreHost {
     });
   }
 
-  sessionDismissOutgoing(sessionId: string, requestId: string) {
+  sessionCancelTrayItem(sessionId: string, requestId: string) {
     this.emit({
-      case: "sessionDismissOutgoing",
-      value: create(SessionOutgoingActionSchema, { sessionId, requestId }),
+      case: "sessionCancelTrayItem",
+      value: create(SessionTrayItemActionSchema, { sessionId, requestId }),
     });
   }
 
-  sessionRestoreOutgoing(sessionId: string, requestId: string) {
+  sessionIgnoreTrayItem(sessionId: string, requestId: string) {
     this.emit({
-      case: "sessionRestoreOutgoing",
-      value: create(SessionOutgoingActionSchema, { sessionId, requestId }),
+      case: "sessionIgnoreTrayItem",
+      value: create(SessionTrayItemActionSchema, { sessionId, requestId }),
+    });
+  }
+
+  sessionPromoteTrayItem(sessionId: string, requestId: string) {
+    this.emit({
+      case: "sessionPromoteTrayItem",
+      value: create(SessionTrayItemActionSchema, { sessionId, requestId }),
+    });
+  }
+
+  sessionRestoreTrayItem(sessionId: string, requestId: string) {
+    this.emit({
+      case: "sessionRestoreTrayItem",
+      value: create(SessionTrayItemActionSchema, { sessionId, requestId }),
+    });
+  }
+
+  sessionRetryTrayItem(sessionId: string, requestId: string) {
+    this.emit({
+      case: "sessionRetryTrayItem",
+      value: create(SessionTrayItemActionSchema, { sessionId, requestId }),
+    });
+  }
+
+  sessionResumeTrayItem(sessionId: string, requestId: string) {
+    this.emit({
+      case: "sessionResumeTrayItem",
+      value: create(SessionTrayItemActionSchema, { sessionId, requestId }),
+    });
+  }
+
+  sessionCancelAllPaused(sessionId: string) {
+    this.emit({
+      case: "sessionCancelAllPaused",
+      value: create(SessionTraySessionActionSchema, { sessionId }),
+    });
+  }
+
+  sessionUndoCancel(sessionId: string) {
+    this.emit({
+      case: "sessionUndoCancel",
+      value: create(SessionTraySessionActionSchema, { sessionId }),
     });
   }
 
@@ -1042,6 +1087,19 @@ export class CoreHost {
     return () => {
       set?.delete(fn);
       if (set?.size === 0) this.restoreComposerListeners.delete(sessionId);
+    };
+  }
+
+  onResendAttachments(sessionId: string, fn: (eff: SessionResendAttachmentsEffect) => void): () => void {
+    let set = this.resendAttachmentsListeners.get(sessionId);
+    if (!set) {
+      set = new Set();
+      this.resendAttachmentsListeners.set(sessionId, set);
+    }
+    set.add(fn);
+    return () => {
+      set?.delete(fn);
+      if (set?.size === 0) this.resendAttachmentsListeners.delete(sessionId);
     };
   }
 
@@ -2014,6 +2072,13 @@ export class CoreHost {
       case "sessionRestoreComposer": {
         const eff = val.value;
         const set = this.restoreComposerListeners.get(eff.sessionId);
+        if (set) for (const fn of [...set]) fn(eff);
+        break;
+      }
+
+      case "sessionResendAttachments": {
+        const eff = val.value;
+        const set = this.resendAttachmentsListeners.get(eff.sessionId);
         if (set) for (const fn of [...set]) fn(eff);
         break;
       }

@@ -168,8 +168,8 @@ describe("Home inline single-select question dark focus card", () => {
   });
 });
 
-describe("Running Composer send-mode pill, DOM identity, and dock demotion", () => {
-  it("switches between 插入这一轮 and 本轮结束后发 while keeping the same textarea node & focus", async () => {
+describe("Running Composer two-button actions, DOM identity, and dock demotion", () => {
+  it("offers 做完再发 and ↑ without sticky mode or losing textarea focus", async () => {
     vi.useFakeTimers();
     const r = DemoRemote.create(new URLSearchParams());
     remotes.push(r);
@@ -178,35 +178,30 @@ describe("Running Composer send-mode pill, DOM identity, and dock demotion", () 
     await mountAsync(<SessionPage remote={r} sessionId="s-run" onBack={() => undefined} wide={false} />);
 
     const textareaBefore = host.querySelector<HTMLTextAreaElement>("textarea.draft")!;
+    expect(host.querySelector(".smode")).toBeNull();
+    expect(host.querySelector(".send-menu")).toBeNull();
+    expect(host.querySelector(".snd.stop")).not.toBeNull();
+
     await act(async () => {
       textareaBefore.focus();
-      setTextarea(textareaBefore, "先发一句");
+      setTextarea(textareaBefore, "先排到后面");
     });
 
-    const pill = host.querySelector<HTMLButtonElement>(".smode")!;
-    expect(pill).not.toBeNull();
-    expect(pill.textContent).toContain(message("composer.mode_insert_short"));
+    const later = host.querySelector<HTMLButtonElement>("button.later")!;
+    expect(later.textContent).toContain(message("composer.send_after"));
     expect(host.querySelector("textarea.draft")).toBe(textareaBefore);
     expect(document.activeElement).toBe(textareaBefore);
 
-    await click(pill);
-    const items = [...document.querySelectorAll<HTMLButtonElement>('.send-menu [role="menuitemradio"]')];
-    expect(items).toHaveLength(2);
-    await click(items[1]);
-
-    expect(host.querySelector<HTMLButtonElement>(".smode")!.classList.contains("queue")).toBe(true);
-    expect(host.querySelector<HTMLButtonElement>(".smode")!.textContent).toContain(message("composer.mode_queue_short"));
-    expect(host.querySelector("textarea.draft")).toBe(textareaBefore);
-    expect(document.activeElement).toBe(textareaBefore);
-
-    await click(host.querySelector<HTMLButtonElement>(".snd"));
+    await click(later);
     expect(submit).toHaveBeenCalled();
     expect(submit.mock.calls[0][3].kind).toMatchObject({ case: "send", value: { mode: SendMode.QUEUE } });
-    // After sending and clearing draft while turn is still active, resets back to default mode
+    expect(textareaBefore.value).toBe("");
+
     await act(async () => {
-      setTextarea(textareaBefore, "第二句");
+      setTextarea(textareaBefore, "第二句直接发送");
     });
-    expect(host.querySelector<HTMLButtonElement>(".smode")!.textContent).toContain(message("composer.mode_insert_short"));
+    await click(host.querySelector<HTMLButtonElement>("button.snd")!);
+    expect(submit.mock.calls[1][3].kind).toMatchObject({ case: "send", value: { mode: SendMode.STEER } });
   });
 
   it("demotes send button when dock is open and hides composer while denying in dock", async () => {

@@ -131,6 +131,10 @@ it("does not overlay HistoryOpening skeleton or replace Composer with EndCard wh
           computerUnlinked: false,
           computerReachability: reachability,
         } : undefined,
+        composer: vm.composer ? {
+          ...vm.composer,
+          enabled: reachability === ComputerReachability.UNKNOWN,
+        } : undefined,
         timeline: vm.timeline ? {
           ...vm.timeline,
           loading: true,
@@ -151,10 +155,12 @@ it("does not overlay HistoryOpening skeleton or replace Composer with EndCard wh
     expect(host.querySelector(".endcard")).toBeNull();
     expect(host.querySelector(".cbar")).not.toBeNull();
 
-    // Once grace expires and computer is genuinely offline, EndCard replaces Composer.
+    // Once grace expires and computer is genuinely offline, Composer stays mounted & editable inside .cbar.offline instead of EndCard.
     reachability = ComputerReachability.OFFLINE;
     await act(async () => root!.render(<SessionPage key="offline" remote={r} sessionId="s-idle" onBack={() => undefined} wide />));
-    expect(host.querySelector(".endcard")).not.toBeNull();
+    expect(host.querySelector(".endcard")).toBeNull();
+    expect(host.querySelector(".cbar.offline")).not.toBeNull();
+    expect(host.querySelector<HTMLTextAreaElement>("textarea.draft")).not.toBeNull();
   } finally {
     vi.useRealTimers();
   }

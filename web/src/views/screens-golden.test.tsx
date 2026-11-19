@@ -308,8 +308,14 @@ function renderSessionGolden(vm: SessionViewModel, overrides: Partial<SessionScr
     onSend: vi.fn(),
     onSubmitCommand: vi.fn(),
     onAbandonCommand: vi.fn(),
-    onDismissOutgoing: vi.fn(),
-    onRestoreOutgoing: vi.fn(),
+    onCancelTrayItem: vi.fn(),
+    onIgnoreTrayItem: vi.fn(),
+    onPromoteTrayItem: vi.fn(),
+    onRestoreTrayItem: vi.fn(),
+    onRetryTrayItem: vi.fn(),
+    onResumeTrayItem: vi.fn(),
+    onCancelAllPaused: vi.fn(),
+    onUndoCancel: vi.fn(),
     onLoadEarlier: vi.fn(),
     onExpandGroup: vi.fn(),
     ...overrides,
@@ -427,45 +433,53 @@ describe("golden SessionScreenView layout and interaction", () => {
     expect(host.textContent).toContain(t("dock.plan_implement_record"));
   });
 
-  it("renders failed/unknown outgoing bubbles and pending queue from session_queue_retry.golden.json", () => {
-    const onSubmitCommand = vi.fn();
-    const onRestoreOutgoing = vi.fn();
-    const onDismissOutgoing = vi.fn();
+  it("renders failed/unsure tray rows and pending queue from session_queue_retry.golden.json", () => {
+    const onCancelTrayItem = vi.fn();
+    const onIgnoreTrayItem = vi.fn();
+    const onRestoreTrayItem = vi.fn();
+    const onRetryTrayItem = vi.fn();
 
     const bothVm = sessionGoldenView(sessionQueueRetryGolden as GoldenDoc, "outgoingFailedAndUnknown");
-    renderSessionGolden(bothVm, { onSubmitCommand, onRestoreOutgoing, onDismissOutgoing });
+    renderSessionGolden(bothVm, { onCancelTrayItem, onIgnoreTrayItem, onRestoreTrayItem, onRetryTrayItem });
 
-    expect(host.textContent).toContain("steer failed msg");
-    expect(host.textContent).toContain("queued second");
-    expect(host.querySelector(".me.fail")).toBeTruthy();
-    expect(host.querySelector(".me.warn")).toBeTruthy();
-    expect(host.textContent).toContain(t("errors.disconnected_from_server"));
-    expect(host.textContent).toContain(t("errors.the_computer_s_reply_could_not_be_verified_command"));
+    expect(host.querySelector(".ptray")?.textContent).toContain("steer failed msg");
+    expect(host.querySelector(".ptray")?.textContent).toContain("queued second");
+    expect(host.querySelector(".ptray-gl.red")).toBeTruthy();
+    expect(host.querySelector(".ptray-gl.orange")).toBeTruthy();
+    expect(host.querySelector(".ptray")?.textContent).toContain(t("errors.disconnected_from_server"));
+    expect(host.querySelector(".ptray")?.textContent).toContain(
+      t("errors.the_computer_s_reply_could_not_be_verified_command"),
+    );
 
-    const restoreBtn = host.querySelector<HTMLButtonElement>(".me.fail small button")!;
-    act(() => restoreBtn.click());
-    expect(onRestoreOutgoing).toHaveBeenCalledWith("msg-fail");
-
-    const dismissBtn = [...host.querySelectorAll<HTMLButtonElement>(".me.fail small button")].find((b) =>
-      b.textContent?.includes(t("session.dismiss_notice")),
+    const rows = [...host.querySelectorAll<HTMLElement>(".ptray-row")];
+    act(() => rows[0].querySelector<HTMLElement>(".ptray-hit")!.click());
+    const restoreBtn = [...rows[0].querySelectorAll<HTMLButtonElement>(".ptray-opts button")].find((b) =>
+      b.textContent?.includes(t("composer.restore")),
     )!;
-    act(() => dismissBtn.click());
-    expect(onDismissOutgoing).toHaveBeenCalledWith("msg-fail");
+    act(() => restoreBtn.click());
+    expect(onRestoreTrayItem).toHaveBeenCalledWith("msg-fail");
+
+    const retryBtn = [...rows[0].querySelectorAll<HTMLButtonElement>(".ptray-acts button")].find((b) =>
+      b.textContent?.includes(t("common.retry")),
+    )!;
+    act(() => retryBtn.click());
+    expect(onRetryTrayItem).toHaveBeenCalledWith("msg-fail");
+
+    const ignoreBtn = [...rows[1].querySelectorAll<HTMLButtonElement>(".ptray-acts button")].find((b) =>
+      b.textContent?.includes(t("queue.ignore")),
+    )!;
+    act(() => ignoreBtn.click());
+    expect(onIgnoreTrayItem).toHaveBeenCalledWith("msg-q");
 
     const queuedVm = sessionGoldenView(sessionQueueRetryGolden as GoldenDoc, "queuedPendingAndFailedOutgoing");
-    renderSessionGolden(queuedVm, { onSubmitCommand, onRestoreOutgoing, onDismissOutgoing });
-    expect(host.querySelector(".pending-bubble")?.textContent).toContain("queued second");
-    expect(host.querySelector(".pending-bubble")?.textContent).toContain(t("queue.after_turn"));
-    const cancelQueueBtn = [...host.querySelectorAll<HTMLButtonElement>(".pending-bubble button")].find((b) =>
-      b.textContent?.includes(t("common.cancel")),
+    renderSessionGolden(queuedVm, { onCancelTrayItem, onIgnoreTrayItem, onRestoreTrayItem, onRetryTrayItem });
+    const queuedRow = [...host.querySelectorAll<HTMLElement>(".ptray-row")].find((el) =>
+      el.textContent?.includes("queued second"),
     )!;
+    expect(host.querySelector(".ptray")?.textContent).toContain(t("queue.group_queue"));
+    const cancelQueueBtn = queuedRow.querySelector<HTMLButtonElement>(".ptray-acts button.x")!;
     act(() => cancelQueueBtn.click());
-    expect(onSubmitCommand).toHaveBeenCalledWith(
-      "cancel_input:s-qr:msg-q",
-      expect.objectContaining({
-        kind: expect.objectContaining({ case: "cancelInput", value: expect.objectContaining({ sessionId: "s-qr", requestId: "msg-q" }) }),
-      }),
-    );
+    expect(onCancelTrayItem).toHaveBeenCalledWith("msg-q");
   });
 
   it("renders folded quiet scheduled runs and dispatches onExpandGroup from session_scheduled_fold.golden.json", () => {

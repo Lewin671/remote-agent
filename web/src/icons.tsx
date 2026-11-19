@@ -30,6 +30,7 @@ import {
   Maximize2 as LMaximize2,
   MessageCircle as LMessageCircle,
   Minus as LMinus,
+  Paperclip as LPaperclip,
   Plus as LPlus,
   Search as LSearch,
   Settings as LSettings,
@@ -81,6 +82,7 @@ export const ChevronUp = icon(LChevronUp);
 export const Ellipsis = icon(LEllipsis);
 /** Adds to the message, or to the end of a list. */
 export const Plus = icon(LPlus);
+export const Paperclip = icon(LPaperclip);
 /** A new session. */
 export const SquarePen = icon(LSquarePen);
 /** Sends. */

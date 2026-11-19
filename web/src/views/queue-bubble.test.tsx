@@ -5,15 +5,17 @@ import { createRoot, type Root } from "react-dom/client";
 import { afterEach, expect, it, vi } from "vitest";
 import { create } from "@bufbuild/protobuf";
 import {
-  SessionCommandStateSchema,
-  SessionCommandStatus,
-  SessionOutgoingState,
-  SessionOutgoingViewSchema,
-  SessionPendingInputViewSchema,
+  SessionPendingTrayViewSchema,
+  SessionTrayGroupKind,
+  SessionTrayGroupViewSchema,
+  SessionTrayItemViewSchema,
+  SessionTrayRowActivity,
+  SessionTrayTone,
+  SessionTrayUndoViewSchema,
 } from "../gen/remoteagent/core/v1/session_view_pb";
 import { TextSchema } from "../gen/remoteagent/core/v1/text_pb";
-import { InputStatus, SendMode } from "../gen/remoteagent/v1/event_pb";
-import { OutgoingBubbles, PendingBubbles } from "./Queue";
+import { SendMode } from "../gen/remoteagent/v1/event_pb";
+import { PendingTray } from "./Queue";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -32,116 +34,240 @@ function render(node: React.ReactNode) {
   act(() => root!.render(node));
 }
 
-it("renders pending queued/held/paused items from SessionPendingInputView and dispatches cancel/resume commands", () => {
-  const onSubmit = vi.fn();
-  const queued = create(SessionPendingInputViewSchema, {
+it("renders pending tray groups, expands rows for promote/restore, and forwards actions", () => {
+  const onCancelItem = vi.fn();
+  const onIgnoreItem = vi.fn();
+  const onPromoteItem = vi.fn();
+  const onRestoreItem = vi.fn();
+  const onRetryItem = vi.fn();
+  const onResumeItem = vi.fn();
+  const onCancelAllPaused = vi.fn();
+  const onUndo = vi.fn();
+
+  const steer = create(SessionTrayItemViewSchema, {
     requestId: "m1",
-    text: "运行中排队的一句",
+    group: SessionTrayGroupKind.STEER,
+    tone: SessionTrayTone.NEUTRAL,
+    activity: SessionTrayRowActivity.IDLE,
+    showSpinner: true,
+    text: "运行中插一句",
     mode: SendMode.STEER,
-    status: InputStatus.QUEUED,
-    rank: 1,
-    totalPending: 2,
-    label: create(TextSchema, { key: "queue.insert" }),
-    caption: create(TextSchema, { key: "queue.insert" }),
     canCancel: true,
-    cancel: create(SessionCommandStateSchema, {
-      slotKey: "cancel_input:s-run:m1",
-      status: SessionCommandStatus.IDLE,
-    }),
+    canRestore: true,
+    serverBacked: true,
   });
-  const paused = create(SessionPendingInputViewSchema, {
+  const queued = create(SessionTrayItemViewSchema, {
     requestId: "m2",
+    group: SessionTrayGroupKind.QUEUE,
+    tone: SessionTrayTone.NEUTRAL,
+    activity: SessionTrayRowActivity.IDLE,
+    queueNumber: 1,
+    text: "排队消息",
+    mode: SendMode.QUEUE,
+    canCancel: true,
+    canPromote: true,
+    canRestore: true,
+    serverBacked: true,
+  });
+  const paused1 = create(SessionTrayItemViewSchema, {
+    requestId: "m3",
+    group: SessionTrayGroupKind.PAUSED,
+    tone: SessionTrayTone.NEUTRAL,
+    activity: SessionTrayRowActivity.IDLE,
     text: "Paused message",
     mode: SendMode.QUEUE,
-    status: InputStatus.QUEUED,
-    paused: true,
-    rank: 2,
-    totalPending: 2,
-    label: create(TextSchema, { key: "queue.paused" }),
-    caption: create(TextSchema, { key: "queue.paused" }),
     canCancel: true,
     canResume: true,
-    cancel: create(SessionCommandStateSchema, { slotKey: "cancel_input:s-run:m2", status: SessionCommandStatus.IDLE }),
-    resume: create(SessionCommandStateSchema, { slotKey: "resume_input:s-run:m2", status: SessionCommandStatus.IDLE }),
+    canRestore: true,
+    serverBacked: true,
+  });
+
+  const tray = create(SessionPendingTrayViewSchema, {
+    totalCount: 3,
+    orderedItems: [steer, queued, paused1],
+    groups: [
+      create(SessionTrayGroupViewSchema, {
+        kind: SessionTrayGroupKind.STEER,
+        tone: SessionTrayTone.NEUTRAL,
+        headerText: create(TextSchema, { key: "queue.group_steer" }),
+        totalCount: 1,
+        items: [steer],
+      }),
+      create(SessionTrayGroupViewSchema, {
+        kind: SessionTrayGroupKind.QUEUE,
+        tone: SessionTrayTone.NEUTRAL,
+        headerText: create(TextSchema, { key: "queue.group_queue" }),
+        totalCount: 1,
+        items: [queued],
+      }),
+      create(SessionTrayGroupViewSchema, {
+        kind: SessionTrayGroupKind.PAUSED,
+        tone: SessionTrayTone.NEUTRAL,
+        headerText: create(TextSchema, { key: "queue.group_paused" }),
+        totalCount: 1,
+        canCancelAll: true,
+        items: [paused1],
+      }),
+    ],
   });
 
   render(
-    <PendingBubbles
-      sessionId="s-run"
-      pendingInputs={[queued, paused]}
-      onSubmitCommand={onSubmit}
+    <PendingTray
+      tray={tray}
+      onCancelItem={onCancelItem}
+      onIgnoreItem={onIgnoreItem}
+      onPromoteItem={onPromoteItem}
+      onRestoreItem={onRestoreItem}
+      onRetryItem={onRetryItem}
+      onResumeItem={onResumeItem}
+      onCancelAllPaused={onCancelAllPaused}
+      onUndo={onUndo}
     />,
   );
 
-  const bubbles = [...host.querySelectorAll(".pending-bubble")];
-  expect(bubbles).toHaveLength(2);
-  expect(bubbles[0].textContent).toContain("运行中排队的一句");
-  expect(bubbles[0].querySelector(".pending-meta > span")?.textContent).toContain(message("queue.insert"));
+  const rows = [...host.querySelectorAll(".ptray-row")];
+  expect(rows).toHaveLength(3);
+  expect(rows[0].textContent).toContain("运行中插一句");
+  expect(rows[1].querySelector(".ptray-lead")?.textContent).toBe("1");
 
-  const sendBtn = [...bubbles[1].querySelectorAll("button")].find((b) => b.textContent === message("composer.send"))!;
+  // Tap queued row to reveal 现在发 / 放回输入框
+  act(() => rows[1].querySelector<HTMLElement>(".ptray-hit")!.click());
+  const opts = rows[1].querySelectorAll(".ptray-opts button");
+  expect(opts).toHaveLength(2);
+  act(() => (opts[0] as HTMLButtonElement).click());
+  expect(onPromoteItem).toHaveBeenCalledWith("m2");
+
+  // Re-open to click 放回输入框
+  act(() => rows[1].querySelector<HTMLElement>(".ptray-hit")!.click());
+  const restoreBtn = [...rows[1].querySelectorAll("button")].find((b) => b.textContent === message("composer.restore"))!;
+  act(() => restoreBtn.click());
+  expect(onRestoreItem).toHaveBeenCalledWith("m2");
+
+  // Paused row: 发送 + 全部取消 + ×
+  const sendBtn = [...rows[2].querySelectorAll("button")].find((b) => b.textContent === message("composer.send"))!;
   act(() => sendBtn.click());
-  expect(onSubmit).toHaveBeenCalledTimes(1);
-  expect(onSubmit.mock.calls[0][1].kind).toMatchObject({
-    case: "resumeInput",
-    value: { sessionId: "s-run", requestId: "m2" },
-  });
+  expect(onResumeItem).toHaveBeenCalledWith("m3");
 
-  const cancelBtn = [...bubbles[0].querySelectorAll("button")].find((b) => b.textContent === message("common.cancel"))!;
-  act(() => cancelBtn.click());
-  expect(onSubmit).toHaveBeenCalledTimes(2);
-  expect(onSubmit.mock.calls[1][1].kind).toMatchObject({
-    case: "cancelInput",
-    value: { sessionId: "s-run", requestId: "m1" },
-  });
+  const cancelAllBtn = [...host.querySelectorAll(".ptray-gl button")].find((b) => b.textContent === message("queue.cancel_all"))!;
+  act(() => (cancelAllBtn as HTMLButtonElement).click());
+  expect(onCancelAllPaused).toHaveBeenCalledTimes(1);
+
+  const xBtn = rows[0].querySelector<HTMLButtonElement>(".ptray-acts button.x")!;
+  act(() => xBtn.click());
+  expect(onCancelItem).toHaveBeenCalledWith("m1");
 });
 
-it("renders outgoing sending, failed, and unknown items with retry, restore, and dismiss actions", () => {
-  const onRetry = vi.fn();
-  const onRestore = vi.fn();
-  const onDismiss = vi.fn();
-  const failed = create(SessionOutgoingViewSchema, {
+it("renders failed/unsure rows, keyboard summary, and undo bar", () => {
+  const onRetryItem = vi.fn();
+  const onIgnoreItem = vi.fn();
+  const onTerminal = vi.fn();
+  const onUndo = vi.fn();
+
+  const failed = create(SessionTrayItemViewSchema, {
     requestId: "req-fail",
     slotKey: "send:s-qr:req-fail",
     text: "failed text",
+    group: SessionTrayGroupKind.FAILED,
+    tone: SessionTrayTone.RED,
+    activity: SessionTrayRowActivity.IDLE,
     mode: SendMode.STEER,
-    state: SessionOutgoingState.FAILED,
     canRetry: true,
     canRestore: true,
-    canDismiss: true,
-    caption: create(TextSchema, { literal: "disconnected" }),
-    feedback: create(TextSchema, { literal: "disconnected" }),
+    canCancel: true,
+    reasonText: create(TextSchema, { literal: "disconnected" }),
   });
-  const unknown = create(SessionOutgoingViewSchema, {
+  const unsure = create(SessionTrayItemViewSchema, {
     requestId: "req-unk",
     slotKey: "send:s-qr:req-unk",
     text: "unknown text",
+    group: SessionTrayGroupKind.UNSURE,
+    tone: SessionTrayTone.ORANGE,
+    activity: SessionTrayRowActivity.IDLE,
     mode: SendMode.QUEUE,
-    state: SessionOutgoingState.UNKNOWN,
-    frozen: true,
-    canRetry: true,
+    canOpenTerminal: true,
+    canIgnore: true,
     canRestore: true,
-    canDismiss: true,
-    caption: create(TextSchema, { literal: "unknown" }),
-    feedback: create(TextSchema, { literal: "unknown" }),
-    feedbackUncertain: true,
+    reasonText: create(TextSchema, { literal: "unknown" }),
+  });
+
+  const tray = create(SessionPendingTrayViewSchema, {
+    totalCount: 2,
+    failedCount: 2,
+    orderedItems: [failed, unsure],
+    groups: [
+      create(SessionTrayGroupViewSchema, {
+        kind: SessionTrayGroupKind.FAILED,
+        tone: SessionTrayTone.RED,
+        headerText: create(TextSchema, { key: "queue.group_failed" }),
+        totalCount: 1,
+        items: [failed],
+      }),
+      create(SessionTrayGroupViewSchema, {
+        kind: SessionTrayGroupKind.UNSURE,
+        tone: SessionTrayTone.ORANGE,
+        headerText: create(TextSchema, { key: "queue.group_unsure" }),
+        totalCount: 1,
+        items: [unsure],
+      }),
+    ],
+    undo: create(SessionTrayUndoViewSchema, {
+      visible: true,
+      count: 1,
+      canUndo: true,
+      label: create(TextSchema, { key: "queue.canceled_count", args: [{ name: "count", value: { case: "intValue", value: 1n } }] }),
+    }),
   });
 
   render(
-    <OutgoingBubbles
-      sessionId="s-qr"
-      outgoing={[failed, unknown]}
-      onRetry={onRetry}
-      onRestore={onRestore}
-      onDismiss={onDismiss}
+    <PendingTray
+      tray={tray}
+      onTerminal={onTerminal}
+      onCancelItem={vi.fn()}
+      onIgnoreItem={onIgnoreItem}
+      onPromoteItem={vi.fn()}
+      onRestoreItem={vi.fn()}
+      onRetryItem={onRetryItem}
+      onResumeItem={vi.fn()}
+      onCancelAllPaused={vi.fn()}
+      onUndo={onUndo}
     />,
   );
 
-  expect(host.querySelector(".me.fail")?.textContent).toContain("failed text");
-  expect(host.querySelector(".me.warn")?.textContent).toContain("unknown text");
-  act(() => [...host.querySelectorAll("button")].find((b) => b.textContent === message("common.retry"))!.click());
-  expect(onRetry).toHaveBeenCalledTimes(1);
-  act(() => [...host.querySelectorAll("button")].find((b) => b.textContent === message("composer.restore"))!.click());
-  expect(onRestore).toHaveBeenCalledWith("req-fail");
-  act(() => [...host.querySelectorAll("button")].find((b) => b.textContent === message("session.dismiss_notice"))!.click());
-  expect(onDismiss).toHaveBeenCalledWith("req-fail");
+  expect(host.querySelector(".ptray-gl.red")).toBeTruthy();
+  expect(host.querySelector(".ptray-gl.orange")).toBeTruthy();
+  expect(host.querySelector(".ptray-why.red")?.textContent).toBe("disconnected");
+  expect(host.querySelector(".ptray-why.orange")?.textContent).toBe("unknown");
+
+  const rows = [...host.querySelectorAll(".ptray-row")];
+  // Unsure row has 去终端 & 忽略, NO ×
+  expect(rows[1].querySelector("button.x")).toBeNull();
+  act(() => [...rows[0].querySelectorAll("button")].find((b) => b.textContent === message("common.retry"))!.click());
+  expect(onRetryItem).toHaveBeenCalledWith("req-fail");
+  act(() => [...rows[1].querySelectorAll("button")].find((b) => b.textContent === message("session.go_terminal"))!.click());
+  expect(onTerminal).toHaveBeenCalledTimes(1);
+  act(() => [...rows[1].querySelectorAll("button")].find((b) => b.textContent === message("queue.ignore"))!.click());
+  expect(onIgnoreItem).toHaveBeenCalledWith("req-unk");
+
+  // Undo footer
+  act(() => host.querySelector<HTMLButtonElement>(".ptray-undo button")!.click());
+  expect(onUndo).toHaveBeenCalledTimes(1);
+
+  // Keyboard collapsed summary
+  render(
+    <PendingTray
+      tray={tray}
+      keyboardCollapsed
+      onCancelItem={vi.fn()}
+      onIgnoreItem={vi.fn()}
+      onPromoteItem={vi.fn()}
+      onRestoreItem={vi.fn()}
+      onRetryItem={onRetryItem}
+      onResumeItem={vi.fn()}
+      onCancelAllPaused={vi.fn()}
+      onUndo={onUndo}
+    />,
+  );
+  const sum = host.querySelector(".ptray-sum")!;
+  expect(sum.textContent).toContain(message("queue.keyboard_summary", { count: 2 }));
+  expect(sum.querySelector("b")?.textContent).toContain(message("queue.keyboard_failed", { count: 2 }));
 });

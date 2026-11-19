@@ -15,16 +15,23 @@ import {
   ScheduleTimingEnd,
   ScheduleTimingKind,
 } from "../gen/remoteagent/core/v1/schedules_view_pb";
-import { SessionPendingInputViewSchema } from "../gen/remoteagent/core/v1/session_view_pb";
+import {
+  SessionPendingTrayViewSchema,
+  SessionTrayGroupKind,
+  SessionTrayGroupViewSchema,
+  SessionTrayItemViewSchema,
+  SessionTrayRowActivity,
+  SessionTrayTone,
+} from "../gen/remoteagent/core/v1/session_view_pb";
 import { TextSchema } from "../gen/remoteagent/core/v1/text_pb";
-import { Agent, ApprovalMode, EventSchema, InputStatus, OriginSchema, SendMode } from "../gen/remoteagent/v1/event_pb";
+import { Agent, ApprovalMode, EventSchema, OriginSchema, SendMode } from "../gen/remoteagent/v1/event_pb";
 import { CommandResultSchema, DefaultModeSource } from "../gen/remoteagent/v1/remote_pb";
 import { t as message } from "../i18n";
 import { CommandError } from "../remote";
 import { patchSyncState } from "../test/remote-fixture";
 import { run, task, type ScheduleTaskJson } from "../test/schedule-fixture";
 import { Sidebar } from "./Home";
-import { PendingBubbles } from "./Queue";
+import { PendingTray } from "./Queue";
 import {
   ScheduleCreate,
   ScheduleDetail,
@@ -952,26 +959,52 @@ it("replaces the wide session timeline with a task list and keeps navigation tab
   expect(host.querySelector(".sfoot .seg .on")?.textContent).toContain(message("home.schedules_tab"));
 });
 
-it("renders scheduled queue metadata from Core pending view and keeps cancellation available", async () => {
+it("renders scheduled source metadata from Core pending tray and keeps cancellation available", async () => {
   const r = remote();
   const session = r.sessions.get("s-idle")!;
-  const onSubmit = vi.fn();
-  const pending = create(SessionPendingInputViewSchema, {
+  expect(session.id).toBeTruthy();
+  const onCancelItem = vi.fn();
+  const item = create(SessionTrayItemViewSchema, {
     requestId: "scheduled-input",
     text: "检查新回复",
+    sourceLabel: create(TextSchema, { literal: "定时 15:00" }),
+    group: SessionTrayGroupKind.WAIT_ANSWER,
+    tone: SessionTrayTone.NEUTRAL,
+    activity: SessionTrayRowActivity.IDLE,
     mode: SendMode.QUEUE,
-    status: InputStatus.QUEUED,
     canCancel: true,
-    caption: create(TextSchema, { literal: "定时任务 · 15:00 · 这一轮结束后发" }),
   });
-  await mount(<PendingBubbles sessionId={session.id} pendingInputs={[pending]} onSubmitCommand={onSubmit} />);
-  expect(host.querySelector(".pending-meta")?.textContent).toContain("定时任务 · 15:00 · 这一轮结束后发");
-  await click(message("common.cancel"));
-  expect(onSubmit).toHaveBeenCalledTimes(1);
-  expect(onSubmit.mock.calls[0][1].kind).toMatchObject({
-    case: "cancelInput",
-    value: { sessionId: session.id, requestId: "scheduled-input" },
+  const tray = create(SessionPendingTrayViewSchema, {
+    totalCount: 1,
+    orderedItems: [item],
+    groups: [
+      create(SessionTrayGroupViewSchema, {
+        kind: SessionTrayGroupKind.WAIT_ANSWER,
+        tone: SessionTrayTone.NEUTRAL,
+        headerText: create(TextSchema, { key: "queue.group_wait_answer" }),
+        totalCount: 1,
+        items: [item],
+      }),
+    ],
   });
+  await mount(
+    <PendingTray
+      tray={tray}
+      onCancelItem={onCancelItem}
+      onIgnoreItem={vi.fn()}
+      onPromoteItem={vi.fn()}
+      onRestoreItem={vi.fn()}
+      onRetryItem={vi.fn()}
+      onResumeItem={vi.fn()}
+      onCancelAllPaused={vi.fn()}
+      onUndo={vi.fn()}
+    />,
+  );
+  expect(host.querySelector(".ptray-gl")?.textContent).toContain(message("queue.group_wait_answer"));
+  expect(host.querySelector(".ptray-t .src")?.textContent).toContain("定时 15:00");
+  await act(async () => host.querySelector<HTMLButtonElement>(".ptray-acts button.x")!.click());
+  expect(onCancelItem).toHaveBeenCalledTimes(1);
+  expect(onCancelItem).toHaveBeenCalledWith("scheduled-input");
 });
 
 it("offers a return to the owning task from a wide run conversation", async () => {

@@ -15,6 +15,7 @@ import {
   type SessionCommandState,
   type SessionHeaderView,
   type SessionNotifyReceiptItem,
+  type SessionResendAttachmentsEffect,
   type SessionRestoreComposerEffect,
   type SessionTimelineItem,
   type SessionViewModel,
@@ -39,7 +40,7 @@ import {
 } from "../icons";
 import { splitPlaceholders, timelineImages } from "../imageview";
 import { Markdown } from "../markdown";
-import { canAnimate, useExit, useKnob } from "../motion";
+import { canAnimate, easeBetween, useExit, useKnob } from "../motion";
 import { shortPath, shortenPath } from "../model";
 import { type Remote } from "../remote";
 import { previewBlobForFile, saveBlobAsDownload } from "../shared-files";
@@ -54,7 +55,7 @@ import { FileChips, withoutFileLines } from "./Files";
 import { HistoryOpening } from "./HistoryOpening";
 import { HistoryRows } from "./HistoryRows";
 import { GenCard, ImageStrip, ImageViewer, LocalThumbs, OpenImage } from "./Images";
-import { OutgoingBubbles, PendingBubbles, type LocalSendAttachments } from "./Queue";
+import { PendingTray, type LocalSendAttachments } from "./Queue";
 import { RememberDetails, RowState, useRowExpanded } from "./RowState";
 import { ScheduleCreate, ScheduleStrip } from "./pages";
 import { ScheduleText } from "./ScheduleText";
@@ -299,14 +300,20 @@ export interface SessionScreenViewProps {
   defaultTab?: Tab;
   defaultPage?: "" | "plan" | "question" | { approval: string };
   defaultMenu?: boolean;
-  defaultSendMenu?: boolean;
   defaultDenying?: boolean;
   defaultExpandedQueueAll?: boolean;
+  defaultKeyboardCollapsed?: boolean;
   onSend: (text: string, mode: SendMode) => void;
   onSubmitCommand: (slotKey: string, cmd: Command) => void;
   onAbandonCommand: (slotKey: string) => void;
-  onDismissOutgoing: (requestId: string) => void;
-  onRestoreOutgoing: (requestId: string) => void;
+  onCancelTrayItem?: (requestId: string) => void;
+  onIgnoreTrayItem?: (requestId: string) => void;
+  onPromoteTrayItem?: (requestId: string) => void;
+  onRestoreTrayItem?: (requestId: string) => void;
+  onRetryTrayItem?: (requestId: string) => void;
+  onResumeTrayItem?: (requestId: string) => void;
+  onCancelAllPaused?: () => void;
+  onUndoCancel?: () => void;
   onRestoreText?: (text: string, requestId?: string) => void;
   onLoadEarlier: () => void;
   onRetryEvents?: () => void;
@@ -314,6 +321,9 @@ export interface SessionScreenViewProps {
   onExpandGroup: (groupId: string) => void;
   onScheduleRevealed?: () => void;
 }
+
+const noopStr = (_id: string) => undefined;
+const noop = () => undefined;
 
 export function SessionScreenView({
   vm,
@@ -340,14 +350,20 @@ export function SessionScreenView({
   defaultTab,
   defaultPage = "",
   defaultMenu = false,
-  defaultSendMenu = false,
   defaultDenying = false,
   defaultExpandedQueueAll = false,
+  defaultKeyboardCollapsed = false,
   onSend,
   onSubmitCommand,
   onAbandonCommand,
-  onDismissOutgoing,
-  onRestoreOutgoing,
+  onCancelTrayItem = noopStr,
+  onIgnoreTrayItem = noopStr,
+  onPromoteTrayItem = noopStr,
+  onRestoreTrayItem = noopStr,
+  onRetryTrayItem = noopStr,
+  onResumeTrayItem = noopStr,
+  onCancelAllPaused = noop,
+  onUndoCancel = noop,
   onRestoreText,
   onLoadEarlier,
   onRetryEvents,
@@ -364,19 +380,124 @@ export function SessionScreenView({
 
   const [rootRef, width] = useWidth<HTMLDivElement>();
   const [colRef, colHeight] = useHeight();
+  const colNodeRef = useRef<HTMLDivElement | null>(null);
+  const setColRef = useCallback(
+    (el: HTMLDivElement | null) => {
+      colNodeRef.current = el;
+      colRef(el);
+    },
+    [colRef],
+  );
   const room = colHeight > 0 ? colHeight - 230 : Infinity;
   const canSplit = wide && width >= 840;
 
   const hasContent =
     (vm.timeline?.items.length ?? 0) > 0 ||
-    (vm.composer?.pendingInputs.length ?? 0) > 0 ||
-    (vm.composer?.outgoing.length ?? 0) > 0;
+    (vm.composer?.pendingTray?.totalCount ?? 0) > 0 ||
+    !!vm.composer?.pendingTray?.undo?.visible;
   const pending = (!header || (!header.found && !header.missing)) && !hasContent;
   const exited = !!header?.exited;
   const reachabilityUnknown = (() => {
     return header?.computerReachability === ComputerReachability.UNKNOWN;
   })();
-  const inactive = exited || (!!header?.found && !header.computerOnline && !reachabilityUnknown) || (!!header?.computerUnlinked && !reachabilityUnknown);
+  const unlinked = !!header?.computerUnlinked && !reachabilityUnknown;
+  const showEndCard = exited || unlinked;
+  const inactive = exited || unlinked || (!!header?.found && !header.computerOnline && !reachabilityUnknown);
+
+  // Mobile soft-keyboard tray collapse and 200ms FLIP row-to-bubble transition.
+  const [composerFocused, setComposerFocused] = useState(false);
+  const [kbCollapsed, setKbCollapsed] = useState(false);
+  useEffect(() => {
+    if (wide) {
+      setKbCollapsed(false);
+      return;
+    }
+    const vv = typeof window !== "undefined" ? window.visualViewport : null;
+    if (!vv) return;
+    const syncKb = () => {
+      const drop = window.innerHeight - vv.height;
+      setKbCollapsed(composerFocused && drop > 120);
+    };
+    syncKb();
+    vv.addEventListener("resize", syncKb);
+    return () => vv.removeEventListener("resize", syncKb);
+  }, [wide, composerFocused]);
+
+  const trayRowRefs = useRef(new Map<string, HTMLDivElement>());
+  const prevTraySnapRef = useRef<Array<{ id: string; text: string; top: number; left: number }>>([]);
+  const prevUserIDsRef = useRef<{ sid: string; ids: Set<string> }>({ sid: "", ids: new Set() });
+  const prevTrayHeightRef = useRef<{ sid: string; h: number }>({ sid: "", h: 0 });
+  const pendingTray = composer?.pendingTray;
+
+  useLayoutEffect(() => {
+    const items = timeline?.items ?? [];
+    const curUserIDs = new Set<string>();
+    const newUserMsgs: Array<{ id: string; reqId: string; text: string }> = [];
+    const prevSet = prevUserIDsRef.current.sid === sid ? prevUserIDsRef.current.ids : null;
+    for (const it of items) {
+      if (it.kind.case === "userMessage") {
+        curUserIDs.add(it.id);
+        if (prevSet && !prevSet.has(it.id)) {
+          newUserMsgs.push({
+            id: it.id,
+            reqId: it.kind.value.origin?.requestId ?? "",
+            text: it.kind.value.text.trim(),
+          });
+        }
+      }
+    }
+
+    const activeTrayIDs = new Set((pendingTray?.orderedItems ?? []).map((x) => x.requestId));
+    const colEl = colNodeRef.current;
+    const reduceMotion =
+      !canAnimate() ||
+      (typeof window !== "undefined" && !!window.matchMedia?.("(prefers-reduced-motion: reduce)").matches);
+
+    if (prevSet && colEl && !reduceMotion && newUserMsgs.length > 0 && prevTraySnapRef.current.length > 0) {
+      for (const msg of newUserMsgs) {
+        const snap = prevTraySnapRef.current.find(
+          (s) =>
+            !activeTrayIDs.has(s.id) &&
+            ((msg.reqId && s.id === msg.reqId) || (!msg.reqId && msg.text && s.text === msg.text)),
+        );
+        if (!snap) continue;
+        const msgEl =
+          colEl.querySelector<HTMLElement>(`[data-msg-id="${CSS.escape(msg.id)}"] .mo-text`) ??
+          colEl.querySelector<HTMLElement>(`[data-msg-id="${CSS.escape(msg.id)}"]`);
+        if (!msgEl || typeof msgEl.animate !== "function") continue;
+        const to = msgEl.getBoundingClientRect();
+        if (to.height <= 0 && to.width <= 0) continue;
+        const dx = snap.left - to.left;
+        const dy = snap.top - to.top;
+        if (Math.abs(dx) > 1 || Math.abs(dy) > 1) {
+          msgEl.animate(
+            [
+              { transform: `translate(${dx}px, ${dy}px) scale(.96)`, opacity: 0.72 },
+              { transform: "none", opacity: 1 },
+            ],
+            { duration: 200, easing: "cubic-bezier(.2, .8, .2, 1)" },
+          );
+        }
+      }
+    }
+
+    const ptrayEl = colEl?.querySelector<HTMLElement>(".ptray");
+    const curTrayH = ptrayEl ? ptrayEl.getBoundingClientRect().height : 0;
+    if (ptrayEl && prevTrayHeightRef.current.sid === sid && prevTrayHeightRef.current.h > 0 && curTrayH > 0 && !reduceMotion) {
+      easeBetween(ptrayEl, prevTrayHeightRef.current.h, curTrayH);
+    }
+    prevTrayHeightRef.current = { sid, h: curTrayH };
+
+    prevUserIDsRef.current = { sid, ids: curUserIDs };
+    const nextSnap: Array<{ id: string; text: string; top: number; left: number }> = [];
+    for (const it of pendingTray?.orderedItems ?? []) {
+      const el = trayRowRefs.current.get(it.requestId);
+      if (!el) continue;
+      const r = el.getBoundingClientRect();
+      nextSnap.push({ id: it.requestId, text: it.text.trim(), top: r.top, left: r.left });
+    }
+    prevTraySnapRef.current = nextSnap;
+  }, [sid, timeline?.items, pendingTray?.orderedItems, colRef]);
   const [questionDraft, setQuestionDraft] = useState<QuestionDraftState | undefined>(undefined);
   const seenApprovals = useRef(new Set<string>());
   const resolvedByUs = useRef(new Set<string>());
@@ -723,20 +844,15 @@ export function SessionScreenView({
   const forkBlockedReason = renderText(actions?.forkBlockedReason);
 
   const chatCol = (
-    <div className="ccol" ref={colRef}>
+    <div className="ccol" ref={setColRef}>
       <ChatBody
         vm={vm}
         remote={remote}
         sent={sentCount}
         localAttachments={localAttachments}
         retainedReasons={retainedReasons}
-        defaultExpandedQueueAll={defaultExpandedQueueAll}
         onRestoreText={onRestoreText}
         onTerminal={exited ? undefined : toTerminal}
-        onSubmitCommand={onSubmitCommand}
-        onRetryOutgoing={onSubmitCommand}
-        onDismissOutgoing={onDismissOutgoing}
-        onRestoreOutgoing={onRestoreOutgoing}
         onLoadEarlier={onLoadEarlier}
         onRetryEvents={onRetryEvents}
         onExpandGroup={onExpandGroup}
@@ -747,7 +863,7 @@ export function SessionScreenView({
           {toast}
         </div>
       )}
-      {!inactive && (
+      {!showEndCard && (
         <Dock
           sessionId={sid}
           dock={dock}
@@ -774,7 +890,7 @@ export function SessionScreenView({
         />
       )}
       {header?.isScheduled && <div className="schedule-reply-hint">{i18n.t("session.reply_moves")}</div>}
-      {inactive ? (
+      {showEndCard ? (
         <EndCard
           sessionId={sid}
           header={header}
@@ -783,7 +899,7 @@ export function SessionScreenView({
           onSubmitCommand={onSubmitCommand}
         />
       ) : null}
-      {!inactive && !dockDenying && (
+      {!showEndCard && !dockDenying && (
         <Composer
           key={composerKey}
           ref={composerElRef}
@@ -801,12 +917,30 @@ export function SessionScreenView({
           onDraft={onDraft}
           tray={tray}
           trayView={trayView}
+          pendingTray={
+            <PendingTray
+              tray={composer?.pendingTray}
+              keyboardCollapsed={defaultKeyboardCollapsed || kbCollapsed}
+              onTerminal={exited ? undefined : toTerminal}
+              onCancelItem={onCancelTrayItem}
+              onIgnoreItem={onIgnoreTrayItem}
+              onPromoteItem={onPromoteTrayItem}
+              onRestoreItem={onRestoreTrayItem}
+              onRetryItem={onRetryTrayItem}
+              onResumeItem={onResumeTrayItem}
+              onCancelAllPaused={onCancelAllPaused}
+              onUndo={onUndoCancel}
+              rowRefs={trayRowRefs}
+              defaultExpandedAll={defaultExpandedQueueAll}
+            />
+          }
           attach={attach}
           cardProps={cardProps}
           dropping={dropping}
           interruptDisabled={!!interruptCmd?.busy}
-          defaultSendMenu={defaultSendMenu}
           demoted={dockOpen}
+          wide={wide}
+          onFocusChange={setComposerFocused}
         />
       )}
     </div>
@@ -1269,23 +1403,122 @@ export function SessionPage({
         tray.restoreFiles(files.map((f) => ({ fileId: f.fileId, name: f.name, size: Number(f.sizeBytes), file: f.file })));
       }
       const existingDraft = remote.drafts.get(sessionId) ?? "";
-      remote.drafts.set(sessionId, existingDraft.trim() ? existingDraft.trimEnd() + "\n\n" + eff.text : eff.text);
+      remote.drafts.set(sessionId, existingDraft.trim() ? existingDraft.trimEnd() + "\n" + eff.text : eff.text);
       stash?.delete(eff.requestId);
       setComposerKey((k) => k + 1);
       setTimeout(() => composerRef.current?.focus());
     });
   }, [host, remote, sessionId, machineId, tray, stash]);
 
-  // Mirror slotKey -> Core requestId so local attachment previews follow across outgoing -> pendingInputs -> inputState notices.
   useEffect(() => {
-    if (!stash || stash.size === 0) return;
-    for (const o of vm.composer?.outgoing ?? []) {
-      if (o.slotKey && o.requestId && !stash.has(o.requestId)) {
-        const bySlot = stash.get(o.slotKey);
-        if (bySlot) stash.set(o.requestId, bySlot);
+    return host.onResendAttachments(sessionId, async (eff: SessionResendAttachmentsEffect) => {
+      const targetMachine = eff.machineId || machineId;
+      const saved = stash?.get(eff.sourceRequestId);
+      let imageIds = [...eff.imageIds];
+      let fileIds = [...eff.fileIds];
+      let nextSaved: LocalSendAttachments | undefined = saved
+        ? {
+            thumbs: saved.thumbs ? [...saved.thumbs] : undefined,
+            imageSizes: saved.imageSizes ? [...saved.imageSizes] : undefined,
+            files: saved.files ? [...saved.files] : undefined,
+            items: saved.items ? [...saved.items] : undefined,
+            original: saved.original,
+          }
+        : undefined;
+
+      if (saved?.items?.some((it) => it.file || it.prepared)) {
+        try {
+          const uploadedImages: string[] = [];
+          const uploadedFiles: NonNullable<LocalSendAttachments["files"]> = [];
+          const nextThumbs: Blob[] = [];
+          const nextSizes: { width: number; height: number }[] = [];
+          for (const it of saved.items) {
+            if (it.kind === "file") {
+              if (!it.file) continue;
+              const ab = await it.file.arrayBuffer();
+              const up = await remote.uploadImage(
+                targetMachine,
+                {
+                  bytes: new Uint8Array(ab),
+                  format: "file",
+                  fileName: it.name || "file",
+                },
+                () => undefined,
+              );
+              const fid = up.fileId || up.imageId;
+              uploadedFiles.push({
+                fileId: fid,
+                name: it.name || "file",
+                sizeBytes: BigInt(it.bytes ?? ab.byteLength),
+                file: it.file instanceof File ? it.file : undefined,
+              });
+            } else {
+              const prep = it.prepared ?? (it.file ? await remote.prepareImage(it.file, !!saved.original) : undefined);
+              if (!prep) continue;
+              const up = await remote.uploadImage(targetMachine, prep, () => undefined);
+              uploadedImages.push(up.imageId);
+              if (it.thumb) nextThumbs.push(it.thumb);
+              nextSizes.push({ width: prep.width, height: prep.height });
+            }
+          }
+          imageIds = uploadedImages;
+          fileIds = uploadedFiles.map((f) => f.fileId);
+          nextSaved = {
+            thumbs: nextThumbs.length ? nextThumbs : saved.thumbs,
+            imageSizes: nextSizes.length ? nextSizes : saved.imageSizes,
+            files: uploadedFiles.length ? uploadedFiles : saved.files,
+            items: saved.items.map((it) => ({ ...it })),
+            original: saved.original,
+          };
+        } catch (err) {
+          if (mountedSession.current) {
+            toastRef.current(err instanceof Error ? err.message : String(err));
+          }
+          return;
+        }
+      }
+
+      if (stash && nextSaved) {
+        stash.set(eff.newRequestId, nextSaved);
+      }
+      host.sessionSubmitCommand(
+        `send:${sessionId}:${eff.newRequestId}`,
+        targetMachine,
+        sessionId,
+        create(CommandSchema, {
+          kind: {
+            case: "send",
+            value: {
+              sessionId,
+              requestId: eff.newRequestId,
+              text: eff.text,
+              mode: eff.mode,
+              imageIds,
+              fileIds,
+            },
+          },
+        }),
+      );
+      if (mountedSession.current) setSent((n) => n + 1);
+    });
+  }, [host, remote, sessionId, machineId, stash]);
+
+  // Keep stash entries alive while retained by Core (including promote/cancel/5s undo), then prune once released.
+  const seenRetainedRef = useRef(new Set<string>());
+  useEffect(() => {
+    if (!stash) return;
+    const retained = new Set(vm.composer?.retainedAttachmentRequestIds ?? []);
+    for (const id of retained) {
+      seenRetainedRef.current.add(id);
+    }
+    for (const id of [...seenRetainedRef.current]) {
+      if (!retained.has(id)) {
+        stash.delete(id);
+        stash.delete(`send:${sessionId}:${id}`);
+        seenRetainedRef.current.delete(id);
       }
     }
-  }, [stash, vm.composer?.outgoing]);
+  }, [stash, sessionId, vm.composer?.retainedAttachmentRequestIds]);
 
   const handleSend = (text: string, mode: SendMode) => {
     const reqId = newRequestID();
@@ -1332,12 +1565,11 @@ export function SessionPage({
     setSent((n) => n + 1);
   };
 
-  const handleRestoreOutgoing = async (reqId: string) => {
-    const og = (vm.composer?.outgoing ?? []).find((o) => o.requestId === reqId);
-    const saved = stash?.get(reqId) ?? (og?.slotKey ? stash?.get(og.slotKey) : undefined);
-    if (saved && !stash?.has(reqId)) stash?.set(reqId, saved);
+  const handleRestoreTrayItem = async (reqId: string) => {
+    const it = (vm.composer?.pendingTray?.orderedItems ?? []).find((x) => x.requestId === reqId);
+    const saved = stash?.get(reqId);
     const files =
-      saved?.files ?? (og?.fileIds ?? []).map((fileId) => ({ fileId, name: "", sizeBytes: 0n }));
+      saved?.files ?? (it?.fileIds ?? []).map((fileId) => ({ fileId, name: "", sizeBytes: 0n }));
     try {
       await remote.restoreDraft(sessionId, tray);
     } catch {
@@ -1356,13 +1588,13 @@ export function SessionPage({
       }
       pendingRestoreFiles.current.set(reqId, files);
     }
-    if ((og?.imageIds.length ?? 0) > 0 && tray.images().length + og!.imageIds.length > tray.max) {
+    if ((it?.imageIds.length ?? 0) > 0 && tray.images().length + it!.imageIds.length > tray.max) {
       toastRef.current(
-        i18n.t("composer.restore_images_full", { existing: tray.images().length, count: og!.imageIds.length }),
+        i18n.t("composer.restore_images_full", { existing: tray.images().length, count: it!.imageIds.length }),
       );
       return;
     }
-    host.sessionRestoreOutgoing(sessionId, reqId);
+    host.sessionRestoreTrayItem(sessionId, reqId);
   };
 
   const handleBack = () => {
@@ -1378,8 +1610,8 @@ export function SessionPage({
 
   const timelineRef = useRef(vm.timeline);
   timelineRef.current = vm.timeline;
-  const restoreOutgoingRef = useRef(handleRestoreOutgoing);
-  restoreOutgoingRef.current = handleRestoreOutgoing;
+  const restoreTrayRef = useRef(handleRestoreTrayItem);
+  restoreTrayRef.current = handleRestoreTrayItem;
 
   const onSubmitCommand = useCallback(
     (slotKey: string, cmd: Command) => host.sessionSubmitCommand(slotKey, machineId, sessionId, cmd),
@@ -1389,14 +1621,14 @@ export function SessionPage({
     (slotKey: string) => host.sessionAbandonCommand(slotKey, sessionId),
     [host, sessionId],
   );
-  const onDismissOutgoing = useCallback(
-    (reqId: string) => host.sessionDismissOutgoing(sessionId, reqId),
-    [host, sessionId],
-  );
-  const onRestoreOutgoing = useCallback(
-    (reqId: string) => void restoreOutgoingRef.current(reqId),
-    [],
-  );
+  const onCancelTrayItem = useCallback((reqId: string) => host.sessionCancelTrayItem(sessionId, reqId), [host, sessionId]);
+  const onIgnoreTrayItem = useCallback((reqId: string) => host.sessionIgnoreTrayItem(sessionId, reqId), [host, sessionId]);
+  const onPromoteTrayItem = useCallback((reqId: string) => host.sessionPromoteTrayItem(sessionId, reqId), [host, sessionId]);
+  const onRestoreTrayItem = useCallback((reqId: string) => void restoreTrayRef.current(reqId), []);
+  const onRetryTrayItem = useCallback((reqId: string) => host.sessionRetryTrayItem(sessionId, reqId), [host, sessionId]);
+  const onResumeTrayItem = useCallback((reqId: string) => host.sessionResumeTrayItem(sessionId, reqId), [host, sessionId]);
+  const onCancelAllPaused = useCallback(() => host.sessionCancelAllPaused(sessionId), [host, sessionId]);
+  const onUndoCancel = useCallback(() => host.sessionUndoCancel(sessionId), [host, sessionId]);
   const onRestoreText = useCallback(
     async (text: string, reqId?: string) => {
       try {
@@ -1422,7 +1654,7 @@ export function SessionPage({
         }
       }
       const cur = remote.drafts.get(sessionId) ?? "";
-      remote.drafts.set(sessionId, cur.trim() ? cur.trimEnd() + "\n\n" + text : text);
+      remote.drafts.set(sessionId, cur.trim() ? cur.trimEnd() + "\n" + text : text);
       if (reqId) stash?.delete(reqId);
       setComposerKey((k) => k + 1);
       setTimeout(() => composerRef.current?.focus());
@@ -1478,8 +1710,14 @@ export function SessionPage({
       onSend={handleSend}
       onSubmitCommand={onSubmitCommand}
       onAbandonCommand={onAbandonCommand}
-      onDismissOutgoing={onDismissOutgoing}
-      onRestoreOutgoing={onRestoreOutgoing}
+      onCancelTrayItem={onCancelTrayItem}
+      onIgnoreTrayItem={onIgnoreTrayItem}
+      onPromoteTrayItem={onPromoteTrayItem}
+      onRestoreTrayItem={onRestoreTrayItem}
+      onRetryTrayItem={onRetryTrayItem}
+      onResumeTrayItem={onResumeTrayItem}
+      onCancelAllPaused={onCancelAllPaused}
+      onUndoCancel={onUndoCancel}
       onRestoreText={onRestoreText}
       onLoadEarlier={onLoadEarlier}
       onRetryEvents={onRetryEvents}
@@ -1496,13 +1734,8 @@ const ChatBody = memo(function ChatBody({
   sent,
   localAttachments,
   retainedReasons = [],
-  defaultExpandedQueueAll,
   onRestoreText,
   onTerminal,
-  onSubmitCommand,
-  onRetryOutgoing,
-  onDismissOutgoing,
-  onRestoreOutgoing,
   onLoadEarlier,
   onRetryEvents,
   onExpandGroup,
@@ -1513,13 +1746,8 @@ const ChatBody = memo(function ChatBody({
   sent: number;
   localAttachments?: Map<string, LocalSendAttachments>;
   retainedReasons?: Array<{ id: string; reason: string }>;
-  defaultExpandedQueueAll?: boolean;
   onRestoreText?: (text: string, requestId?: string) => void;
   onTerminal?: () => void;
-  onSubmitCommand: (slotKey: string, cmd: Command) => void;
-  onRetryOutgoing: (slotKey: string, cmd: Command) => void;
-  onDismissOutgoing: (requestId: string) => void;
-  onRestoreOutgoing: (requestId: string) => void;
   onLoadEarlier: () => void;
   onRetryEvents?: () => void;
   onExpandGroup: (groupId: string) => void;
@@ -1528,7 +1756,6 @@ const ChatBody = memo(function ChatBody({
   const sid = vm.sessionId;
   const header = vm.header;
   const timeline = vm.timeline;
-  const composer = vm.composer;
   const dock = vm.dock;
   const locale = i18n.useLocale();
   useRemote(remote);
@@ -1763,21 +1990,6 @@ const ChatBody = memo(function ChatBody({
           </button>
         </div>
       ))}
-      <OutgoingBubbles
-        sessionId={sid}
-        outgoing={composer?.outgoing ?? []}
-        localAttachments={localAttachments}
-        onRetry={onRetryOutgoing}
-        onRestore={onRestoreOutgoing}
-        onDismiss={onDismissOutgoing}
-      />
-      <PendingBubbles
-        sessionId={sid}
-        pendingInputs={composer?.pendingInputs ?? []}
-        localAttachments={localAttachments}
-        defaultExpandedAll={defaultExpandedQueueAll}
-        onSubmitCommand={onSubmitCommand}
-      />
     </>
   );
 
@@ -1998,7 +2210,7 @@ const TimelineRow = memo(function TimelineRow({
       const segs = splitPlaceholders(withoutFileLines(m.text, files), m.images);
       const caption = renderText(m.originCaption);
       return (
-        <div className="me">
+        <div className="me" data-msg-id={item.id}>
           <ImageStrip refs={m.images} numbered />
           <FileChips files={files} />
           {m.isScheduled ? (
@@ -2172,7 +2384,7 @@ const TimelineRow = memo(function TimelineRow({
       const reason = renderText(s.reasonText);
       const att = s.requestId ? localAttachments?.get(s.requestId) : undefined;
       if (s.kind === SessionInputNoticeKind.CANCELED) {
-        return <div className="sysline">{i18n.t("queue.canceled_record")}</div>;
+        return null;
       }
       if (s.kind === SessionInputNoticeKind.UNSENT_ON_EXIT) {
         return s.preview ? (

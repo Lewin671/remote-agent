@@ -98,17 +98,17 @@ it.each(["zh-CN", "en"] as const)("never enables approval of a skeleton in %s", 
 it.each(["zh-CN", "en"] as const)("resumes the same paused queue item in %s", async locale => {
   localeStore.overrideForTesting(locale);
   remote = DemoRemote.create(new URLSearchParams("queue-all=1"), async () => {}); remote.start();
-  const submit = vi.spyOn(getCoreHost(remote), "sessionSubmitCommand");
+  const cmd = vi.spyOn(remote, "command");
   await mount("s-multi");
-  const more = host.querySelector<HTMLButtonElement>(".more-row");
+  const more = host.querySelector<HTMLButtonElement>(".ptray-more");
   if (more) await act(async () => more.click());
-  const paused = [...host.querySelectorAll<HTMLElement>(".pending-bubble")].find(el => el.textContent?.includes(t("queue.paused")))!;
+  const paused = [...host.querySelectorAll<HTMLElement>(".ptray-row")].find(el => el.textContent?.includes("中断前排着的这条消息需要手动发送。"))!;
   const send = [...paused.querySelectorAll<HTMLButtonElement>("button")].find(b => b.textContent === t("composer.send"))!;
   expect(send.disabled).toBe(false);
   await act(async () => send.click());
-  expect(submit).toHaveBeenCalledTimes(1);
-  expect(submit.mock.calls[0].slice(1, 3)).toEqual(["vps", "s-multi"]);
-  expect(submit.mock.calls[0][3].kind).toMatchObject({
+  await vi.waitFor(() => expect(cmd).toHaveBeenCalledTimes(1));
+  expect(cmd.mock.calls[0][0]).toBe("s-multi");
+  expect(cmd.mock.calls[0][1]).toMatchObject({
     case: "resumeInput",
     value: { sessionId: "s-multi", requestId: "q-paused" },
   });

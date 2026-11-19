@@ -331,8 +331,14 @@ describe("long-session cold load, memo reactivity, and key-based unseen badge", 
             onSend={() => undefined}
             onSubmitCommand={() => undefined}
             onAbandonCommand={() => undefined}
-            onDismissOutgoing={() => undefined}
-            onRestoreOutgoing={() => undefined}
+            onCancelTrayItem={() => undefined}
+            onIgnoreTrayItem={() => undefined}
+            onPromoteTrayItem={() => undefined}
+            onRestoreTrayItem={() => undefined}
+            onRetryTrayItem={() => undefined}
+            onResumeTrayItem={() => undefined}
+            onCancelAllPaused={() => undefined}
+            onUndoCancel={() => undefined}
             onLoadEarlier={() => undefined}
             onExpandGroup={() => undefined}
             onScheduleRevealed={onScheduleRevealed}

@@ -4,9 +4,17 @@ import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, expect, it, vi } from "vitest";
 import { create } from "@bufbuild/protobuf";
-import { InputStatus, SendMode, SentFileSchema } from "../gen/remoteagent/v1/event_pb";
-import { SessionPendingInputViewSchema } from "../gen/remoteagent/core/v1/session_view_pb";
-import { PendingBubbles } from "./Queue";
+import { SentFileSchema } from "../gen/remoteagent/v1/event_pb";
+import {
+  SessionPendingTrayViewSchema,
+  SessionTrayGroupKind,
+  SessionTrayGroupViewSchema,
+  SessionTrayItemViewSchema,
+  SessionTrayRowActivity,
+  SessionTrayTone,
+} from "../gen/remoteagent/core/v1/session_view_pb";
+import { TextSchema } from "../gen/remoteagent/core/v1/text_pb";
+import { PendingTray } from "./Queue";
 import { Tray } from "../attach";
 import { AttachButton, TrayView, useDropPaste } from "./Attach";
 import { FileChip, withoutFileLines } from "./Files";
@@ -133,28 +141,52 @@ it("hides the exact quoted Claude reference and preserves surrounding text", () 
  expect(withoutFileLines(`File: @"${path}" (file) extra`,[{path}])).toContain("extra");
 });
 
-it.each([false, true])("renders file chips from a held pending input view (text=%s)", (text) => {
-  const file = create(SentFileSchema, { fileId: "held-file", name: "held.csv", sizeBytes: 9n, path: "/uploads/s/files/held-file/held.csv" });
-  const item = create(SessionPendingInputViewSchema, {
+it.each([false, true])("renders attachment indicator in pending tray row (text=%s)", (text) => {
+  const item = create(SessionTrayItemViewSchema, {
     requestId: "held",
+    group: SessionTrayGroupKind.STEER,
+    tone: SessionTrayTone.NEUTRAL,
+    activity: SessionTrayRowActivity.IDLE,
+    showSpinner: true,
     text: text ? "inspect this" : "",
-    mode: SendMode.QUEUE,
-    status: InputStatus.HELD_BY_CLI,
-    imageCount: text ? 1 : 0,
+    attachmentCount: 1,
     fileCount: 1,
+    canCancel: true,
+    canRestore: true,
+  });
+  const trayView = create(SessionPendingTrayViewSchema, {
+    totalCount: 1,
+    orderedItems: [item],
+    groups: [
+      create(SessionTrayGroupViewSchema, {
+        kind: SessionTrayGroupKind.STEER,
+        tone: SessionTrayTone.NEUTRAL,
+        headerText: create(TextSchema, { key: "queue.group_steer" }),
+        totalCount: 1,
+        items: [item],
+      }),
+    ],
   });
   mount(
-    <PendingBubbles
-      sessionId="s-run"
-      pendingInputs={[item]}
-      localAttachments={new Map([["held", { files: [file] }]])}
-      onSubmitCommand={vi.fn()}
+    <PendingTray
+      tray={trayView}
+      onCancelItem={vi.fn()}
+      onIgnoreItem={vi.fn()}
+      onPromoteItem={vi.fn()}
+      onRestoreItem={vi.fn()}
+      onRetryItem={vi.fn()}
+      onResumeItem={vi.fn()}
+      onCancelAllPaused={vi.fn()}
+      onUndo={vi.fn()}
     />,
   );
-  expect(host.querySelectorAll(".file-chip")).toHaveLength(1);
-  expect(host.querySelector(".file-name")?.getAttribute("aria-label")).toBe("held.csv");
-  expect(host.textContent).toContain("9 B");
-  expect(host.querySelector(".pending-text")?.textContent).toBe(text ? "inspect this" : "");
+  expect(host.querySelectorAll(".ptray-row")).toHaveLength(1);
+  expect(host.querySelector(".ptray-t .clip")?.getAttribute("aria-label")).toBe(
+    message("queue.attachments_a11y", { count: 1 }),
+  );
+  if (text) {
+    expect(host.querySelector(".ptray-t")?.textContent).toContain("inspect this");
+  }
   expect(host.textContent).not.toContain(message("queue.other_message"));
 });
 

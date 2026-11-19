@@ -1,27 +1,21 @@
 import * as i18n from "../i18n";
-// The message queue and in-flight outgoing bubbles (design-system §6 输入框):
-// every accepted input waiting to run, and local sends not yet confirmed in chat.
+// Pending tray above the composer (design-system §6 输入框): all unsent,
+// waiting, paused, failed, and unconfirmed messages in fixed 7-group order.
 
-import { create } from "@bufbuild/protobuf";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState, type MouseEvent, type MutableRefObject, type PointerEvent } from "react";
 import type { TrayItem } from "../attach";
 import { renderText } from "../core/text";
 import {
-  SessionCommandStatus,
-  SessionOutgoingState,
-  type SessionOutgoingView,
-  type SessionPendingInputView,
+  SessionTrayGroupKind,
+  SessionTrayRowActivity,
+  SessionTrayTone,
+  type SessionPendingTrayView,
+  type SessionTrayItemView,
 } from "../gen/remoteagent/core/v1/session_view_pb";
 import type { SentFile } from "../gen/remoteagent/v1/event_pb";
-import {
-  CommandSchema,
-  type Command,
-} from "../gen/remoteagent/v1/remote_pb";
-import { LoaderCircle } from "../icons";
+import { ChevronDown, ChevronUp, LoaderCircle, Paperclip, X } from "../icons";
 import { useFresh } from "../motion";
 import { isSkeleton, skeletonMessage } from "../skeleton";
-import { FileChips } from "./Files";
-import { LocalThumbs } from "./Images";
 
 export interface LocalSendAttachments {
   thumbs?: Blob[];
@@ -31,211 +25,358 @@ export interface LocalSendAttachments {
   original?: boolean;
 }
 
-export function PendingBubbles({
-  sessionId,
-  pendingInputs,
-  localAttachments,
-  defaultExpandedAll = false,
-  onSubmitCommand,
-}: {
-  sessionId: string;
-  pendingInputs: readonly SessionPendingInputView[];
-  localAttachments?: Map<string, LocalSendAttachments>;
+export interface PendingTrayProps {
+  tray?: SessionPendingTrayView;
+  keyboardCollapsed?: boolean;
+  onExpandKeyboard?: () => void;
+  onTerminal?: () => void;
+  onCancelItem: (requestId: string) => void;
+  onIgnoreItem: (requestId: string) => void;
+  onPromoteItem: (requestId: string) => void;
+  onRestoreItem: (requestId: string) => void;
+  onRetryItem: (requestId: string) => void;
+  onResumeItem: (requestId: string) => void;
+  onCancelAllPaused: () => void;
+  onUndo: () => void;
+  rowRefs?: MutableRefObject<Map<string, HTMLDivElement>>;
   defaultExpandedAll?: boolean;
-  onSubmitCommand: (slotKey: string, cmd: Command) => void;
-}) {
-  const [all, setAll] = useState(defaultExpandedAll);
-  const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
-  const shown = all || pendingInputs.length <= 3 ? pendingInputs : pendingInputs.slice(0, 2);
-  const ids = shown.map((p) => p.requestId);
-  const fresh = useFresh(ids, true, { bulk: 3 });
-
-  if (pendingInputs.length === 0) return null;
-
-  return (
-    <>
-      {shown.map((pi) => {
-        const id = pi.requestId;
-        if (isSkeleton(id) || isSkeleton(pi.text)) {
-          return (
-            <div className={"pending-bubble me" + (fresh(id) ? " mo-rise" : "")} key={id}>
-              {skeletonMessage()}
-            </div>
-          );
-        }
-        const att = localAttachments?.get(id);
-        const message =
-          pi.text ||
-          (pi.imageCount > 0
-            ? i18n.t("image.count", { count: pi.imageCount })
-            : pi.fileCount > 0
-              ? ""
-              : i18n.t("queue.other_message"));
-        const caption = (renderText(pi.caption) || renderText(pi.label))
-          .replace(/\s*·(?:\s*·)+\s*/g, " · ")
-          .replace(/^\s*·\s*|\s*·\s*$/g, "");
-        const feedback = renderText(pi.feedback);
-        const metaText = feedback && feedback !== caption ? `${caption} · ${feedback}` : caption;
-        const cancelFailed = pi.cancel?.status === SessionCommandStatus.FAILED || pi.cancel?.status === SessionCommandStatus.UNKNOWN;
-        const resumeFailed = pi.resume?.status === SessionCommandStatus.FAILED || pi.resume?.status === SessionCommandStatus.UNKNOWN;
-        const showCancel = pi.canCancel && !pi.cancel?.busy;
-        return (
-          <div className={"pending-bubble me" + (fresh(id) ? " mo-rise" : "")} key={id}>
-            <LocalThumbs blobs={att?.thumbs} sizes={att?.imageSizes} />
-            <FileChips files={att?.files} />
-            <button
-              className={"pending-text" + (expanded.has(id) ? " expanded" : "")}
-              onClick={() =>
-                setExpanded((old) =>
-                  new Set(old.has(id) ? [...old].filter((x) => x !== id) : [...old, id]),
-                )
-              }
-            >
-              {message}
-            </button>
-            <div className="pending-meta">
-              <span>{metaText}</span>
-              {pi.paused && (
-                <button
-                  disabled={!pi.canResume || !!pi.resume?.busy}
-                  onClick={() =>
-                    onSubmitCommand(
-                      pi.resume?.slotKey ?? "",
-                      create(CommandSchema, {
-                        kind: {
-                          case: "resumeInput",
-                          value: { sessionId, requestId: id },
-                        },
-                      }),
-                    )
-                  }
-                >
-                  {resumeFailed ? i18n.t("common.retry") : i18n.t("composer.send")}
-                </button>
-              )}
-              {showCancel && (
-                <button
-                  onClick={() =>
-                    onSubmitCommand(
-                      pi.cancel?.slotKey ?? "",
-                      create(CommandSchema, {
-                        kind: {
-                          case: "cancelInput",
-                          value: { sessionId, requestId: id },
-                        },
-                      }),
-                    )
-                  }
-                >
-                  {cancelFailed ? i18n.t("common.retry") : i18n.t("common.cancel")}
-                </button>
-              )}
-            </div>
-          </div>
-        );
-      })}
-      {!all && pendingInputs.length > 3 && (
-        <button className="more-row" onClick={() => setAll(true)}>
-          {i18n.t("queue.more", { count: pendingInputs.length - 2 })}
-        </button>
-      )}
-    </>
-  );
 }
 
-export function OutgoingBubbles({
-  sessionId,
-  outgoing,
-  localAttachments,
-  onRetry,
-  onRestore,
-  onDismiss,
-}: {
-  sessionId: string;
-  outgoing: readonly SessionOutgoingView[];
-  localAttachments?: Map<string, LocalSendAttachments>;
-  onRetry: (slotKey: string, cmd: Command) => void;
-  onRestore: (requestId: string) => void;
-  onDismiss: (requestId: string) => void;
-}) {
-  const retryGuard = useRef(new Set<string>());
-  useEffect(() => {
-    for (const id of [...retryGuard.current]) {
-      const og = outgoing.find((item) => item.requestId === id);
-      if (!og || (og.state !== SessionOutgoingState.FAILED && og.state !== SessionOutgoingState.UNKNOWN)) {
-        retryGuard.current.delete(id);
-      }
-    }
-  }, [outgoing]);
+const keepFocus = (e: PointerEvent | MouseEvent) => {
+  e.preventDefault();
+};
 
-  if (outgoing.length === 0) return null;
+function toneClass(tone: SessionTrayTone): string {
+  if (tone === SessionTrayTone.RED) return " red";
+  if (tone === SessionTrayTone.ORANGE) return " orange";
+  return "";
+}
+
+function rowBodyText(it: SessionTrayItemView): string {
+  if (it.text) return it.text;
+  if (it.foreignDimmed) return i18n.t("queue.other_message");
+  if (it.imageCount > 0) return i18n.t("image.count", { count: it.imageCount });
+  if (it.fileCount > 0) return "";
+  return i18n.t("queue.other_message");
+}
+
+export function PendingTray({
+  tray,
+  keyboardCollapsed = false,
+  onExpandKeyboard,
+  onTerminal,
+  onCancelItem,
+  onIgnoreItem,
+  onPromoteItem,
+  onRestoreItem,
+  onRetryItem,
+  onResumeItem,
+  onCancelAllPaused,
+  onUndo,
+  rowRefs,
+  defaultExpandedAll = false,
+}: PendingTrayProps) {
+  const [all, setAll] = useState(defaultExpandedAll);
+  const [openID, setOpenID] = useState<string | null>(null);
+  const [kbExpanded, setKbExpanded] = useState(false);
+
+  const totalCount = tray?.totalCount ?? 0;
+  useEffect(() => {
+    if (!keyboardCollapsed || totalCount === 0) {
+      setKbExpanded(false);
+    }
+  }, [keyboardCollapsed, totalCount]);
+
+  useEffect(() => {
+    if (openID && !tray?.orderedItems.some((it) => it.requestId === openID)) {
+      setOpenID(null);
+    }
+  }, [openID, tray?.orderedItems]);
+
+  const ordered = tray?.orderedItems ?? [];
+  const fresh = useFresh(
+    ordered.map((it) => it.requestId),
+    true,
+    { bulk: 3 },
+  );
+
+  if (!tray || (totalCount === 0 && !tray.undo?.visible)) {
+    return null;
+  }
+
+  if (keyboardCollapsed && !kbExpanded && totalCount > 0) {
+    return (
+      <div className="ptray">
+        <button
+          type="button"
+          className="ptray-sum"
+          onPointerDown={keepFocus}
+          onClick={() => {
+            setKbExpanded(true);
+            onExpandKeyboard?.();
+          }}
+        >
+          <span>
+            {i18n.t("queue.keyboard_summary", { count: totalCount })}
+            {tray.failedCount > 0 && (
+              <b>{" · " + i18n.t("queue.keyboard_failed", { count: tray.failedCount })}</b>
+            )}
+          </span>
+          <ChevronUp />
+        </button>
+      </div>
+    );
+  }
+
+  const limit = ordered.length > 3 && !all ? 2 : ordered.length;
+  const visibleIDs = new Set(ordered.slice(0, limit).map((it) => it.requestId));
 
   return (
-    <>
-      {outgoing.map((og) => {
-        const att = localAttachments?.get(og.requestId) ?? (og.slotKey ? localAttachments?.get(og.slotKey) : undefined);
-        const failed =
-          og.state === SessionOutgoingState.FAILED || og.state === SessionOutgoingState.UNKNOWN;
-        const unknown = og.state === SessionOutgoingState.UNKNOWN || og.feedbackUncertain;
-        const sending = og.state === SessionOutgoingState.SENDING || og.state === SessionOutgoingState.SENT;
-        const cls = failed ? (unknown ? " warn" : " fail") : sending ? " pending" : "";
-        const feedback = renderText(og.feedback) || renderText(og.caption);
-        const caption = renderText(og.caption) || i18n.t("composer.sending");
-        const canRestore = og.canRestore && (!og.imageIds.length ? true : !!att?.items?.length);
-        const missingUploadedAttachment =
-          !unknown && (og.imageIds.length > 0 || og.fileIds.length > 0) && /not on this machine|upload it again/i.test(feedback);
-        const canRetry = og.canRetry && !missingUploadedAttachment;
+    <div
+      className="ptray"
+      role="region"
+      aria-label={totalCount > 0 ? i18n.t("queue.keyboard_summary", { count: totalCount }) : undefined}
+    >
+      {tray.groups.map((group) => {
+        const visibleItems = group.items.filter((it) => visibleIDs.has(it.requestId));
+        if (visibleItems.length === 0) return null;
+        const gTone = toneClass(group.tone);
         return (
-          <div key={og.requestId} className={"me" + cls}>
-            <LocalThumbs blobs={att?.thumbs} sizes={att?.imageSizes} />
-            <FileChips files={att?.files} />
-            {og.text && <div className="mo-text">{og.text}</div>}
-            <small>
-              {failed ? (
-                <>
-                  {feedback}{" "}
-                  {canRestore && (
-                    <button onClick={() => onRestore(og.requestId)}>{i18n.t("composer.restore")}</button>
-                  )}
-                  {canRetry && (
-                    <button
-                      onClick={() => {
-                        if (retryGuard.current.has(og.requestId)) return;
-                        retryGuard.current.add(og.requestId);
-                        onRetry(
-                          og.slotKey,
-                          create(CommandSchema, {
-                            kind: {
-                              case: "send",
-                              value: {
-                                sessionId,
-                                requestId: og.requestId,
-                                text: og.text,
-                                mode: og.mode,
-                                imageIds: [...og.imageIds],
-                                fileIds: [...og.fileIds],
-                              },
-                            },
-                          }),
-                        );
+          <div className="ptray-grp" key={SessionTrayGroupKind[group.kind] ?? group.kind}>
+            <div className={"ptray-gl" + gTone}>
+              <span>{renderText(group.headerText)}</span>
+              {group.canCancelAll && (
+                <button
+                  type="button"
+                  disabled={tray.offline}
+                  onPointerDown={keepFocus}
+                  onClick={onCancelAllPaused}
+                >
+                  {i18n.t("queue.cancel_all")}
+                </button>
+              )}
+            </div>
+            {visibleItems.map((it) => {
+              const id = it.requestId;
+              if (isSkeleton(id) || isSkeleton(it.text)) {
+                return (
+                  <div className="ptray-row" key={id}>
+                    <span className="ptray-lead" />
+                    <div className="ptray-body">{skeletonMessage()}</div>
+                  </div>
+                );
+              }
+              const isOpen = openID === id;
+              const rTone = toneClass(it.tone);
+              const src = renderText(it.sourceLabel);
+              const reason = renderText(it.reasonText);
+              const canExpand = true;
+              const toggleOpen = () => setOpenID((prev) => (prev === id ? null : id));
+              const hasExpandOpts =
+                isOpen &&
+                it.activity === SessionTrayRowActivity.IDLE &&
+                (it.canPromote || it.canRestore);
+
+              return (
+                <div
+                  key={id}
+                  data-tray-req={id}
+                  ref={(el) => {
+                    if (!rowRefs) return;
+                    if (el) rowRefs.current.set(id, el);
+                    else rowRefs.current.delete(id);
+                  }}
+                  className={
+                    "ptray-row" +
+                    (isOpen ? " open" : "") +
+                    (fresh(id) ? " new" : "") +
+                    (reason ? " has-why" : "")
+                  }
+                >
+                  <span className="ptray-lead" aria-hidden="true">
+                    {it.showSpinner ? <LoaderCircle /> : it.queueNumber > 0 ? it.queueNumber : null}
+                  </span>
+                  <div className="ptray-body">
+                    <div
+                      className={"ptray-hit" + (canExpand ? "" : " static")}
+                      role="button"
+                      tabIndex={0}
+                      aria-expanded={isOpen}
+                      onPointerDown={keepFocus}
+                      onClick={toggleOpen}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          toggleOpen();
+                        }
                       }}
                     >
-                      {i18n.t("common.retry")}
-                    </button>
-                  )}
-                  {og.canDismiss && (
-                    <button onClick={() => onDismiss(og.requestId)}>{i18n.t("session.dismiss_notice")}</button>
-                  )}
-                </>
-              ) : (
-                <span className="mo-small">
-                  {sending && <LoaderCircle />} {caption}
-                </span>
-              )}
-            </small>
+                      <div className={"ptray-t" + (it.foreignDimmed ? " dimtxt" : "")}>
+                        {src && <span className="src">{src + " · "}</span>}
+                        {rowBodyText(it)}
+                        {it.attachmentCount > 0 && (
+                          <span
+                            className="clip"
+                            aria-label={i18n.t("queue.attachments_a11y", { count: it.attachmentCount })}
+                          >
+                            <Paperclip />
+                            {it.attachmentCount}
+                          </span>
+                        )}
+                      </div>
+                      {reason && <div className={"ptray-why" + rTone}>{reason}</div>}
+                    </div>
+                    {hasExpandOpts && (
+                      <div className="ptray-opts">
+                        {it.canPromote && (
+                          <button
+                            type="button"
+                            disabled={it.networkActionsDisabled}
+                            onPointerDown={keepFocus}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setOpenID(null);
+                              onPromoteItem(id);
+                            }}
+                          >
+                            {i18n.t("queue.send_now")}
+                          </button>
+                        )}
+                        {it.canRestore && (
+                          <button
+                            type="button"
+                            disabled={it.serverBacked && it.networkActionsDisabled}
+                            onPointerDown={keepFocus}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setOpenID(null);
+                              onRestoreItem(id);
+                            }}
+                          >
+                            {i18n.t("composer.restore")}
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  <div className="ptray-acts">
+                    {it.activity === SessionTrayRowActivity.CANCELING ? (
+                      <em>{i18n.t("queue.canceling")}</em>
+                    ) : it.activity === SessionTrayRowActivity.SENDING ? (
+                      <em>{i18n.t("queue.resuming")}</em>
+                    ) : it.canIgnore ? (
+                      <>
+                        {onTerminal && (
+                          <button
+                            type="button"
+                            disabled={it.networkActionsDisabled}
+                            onPointerDown={keepFocus}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onTerminal();
+                            }}
+                          >
+                            {i18n.t("session.go_terminal")}
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onPointerDown={keepFocus}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onIgnoreItem(id);
+                          }}
+                        >
+                          {i18n.t("queue.ignore")}
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        {it.canResume && (
+                          <button
+                            type="button"
+                            disabled={it.networkActionsDisabled}
+                            onPointerDown={keepFocus}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onResumeItem(id);
+                            }}
+                          >
+                            {i18n.t("composer.send")}
+                          </button>
+                        )}
+                        {it.canRetry && (
+                          <button
+                            type="button"
+                            disabled={it.networkActionsDisabled}
+                            onPointerDown={keepFocus}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onRetryItem(id);
+                            }}
+                          >
+                            {i18n.t("common.retry")}
+                          </button>
+                        )}
+                        {it.canCancel && (
+                          <button
+                            type="button"
+                            className="x"
+                            aria-label={i18n.t("common.cancel")}
+                            disabled={it.serverBacked && it.networkActionsDisabled}
+                            onPointerDown={keepFocus}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onCancelItem(id);
+                            }}
+                          >
+                            <X />
+                          </button>
+                        )}
+                      </>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         );
       })}
-    </>
+      {limit < ordered.length && (
+        <button
+          type="button"
+          className="ptray-more"
+          onPointerDown={keepFocus}
+          onClick={() => setAll(true)}
+        >
+          <span>{i18n.t("queue.more_items", { count: ordered.length - limit })}</span>
+          <ChevronDown />
+        </button>
+      )}
+      {all && ordered.length > 3 && (
+        <button
+          type="button"
+          className="ptray-more"
+          onPointerDown={keepFocus}
+          onClick={() => setAll(false)}
+        >
+          <span>{i18n.t("queue.collapse")}</span>
+          <ChevronUp />
+        </button>
+      )}
+      {tray.undo?.visible && (
+        <div className="ptray-undo">
+          <span>{renderText(tray.undo.label)}</span>
+          <button
+            type="button"
+            disabled={!tray.undo.canUndo}
+            onPointerDown={keepFocus}
+            onClick={onUndo}
+          >
+            {i18n.t("queue.undo")}
+          </button>
+        </div>
+      )}
+    </div>
   );
 }

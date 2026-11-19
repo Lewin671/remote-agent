@@ -34,23 +34,22 @@ afterEach(() => { act(() => root?.unmount()); host?.remove(); root = undefined; 
 const demo = (params = "") => { const r = DemoRemote.create(new URLSearchParams(params)); remotes.push(r); r.start(); return r; };
 const event = (seq: number, value: object, deviceId = ME) => create(EventSchema, { seq: BigInt(seq), kind: value as never, origin: { deviceId } });
 
-it("shows pending bubbles in place and folds more than three", async () => {
+it("shows pending tray in place and folds more than three", async () => {
   const r = demo();
   (r as unknown as { metas: Map<string, { meta: { name: string } }> }).metas.get(
     (await import("./dev/demo")).ANDROID,
   )!.meta.name = "Android";
   await r.loadDevices();
   await mount(<SessionPage remote={r} sessionId="s-multi" onBack={() => undefined} wide={false} />);
-  expect(host.querySelectorAll(".pending-bubble")).toHaveLength(2);
-  expect(host.textContent).toContain("还有 2 条排队");
-  await act(async () => host.querySelector<HTMLButtonElement>(".more-row")!.click());
-  expect(host.querySelectorAll(".pending-bubble")).toHaveLength(4);
-  const notes = [...host.querySelectorAll(".pending-meta > span")].map((x) => x.textContent ?? "");
-  expect(notes.some((n) => n.includes(t("queue.after_turn")))).toBe(true);
-  expect(notes.some((n) => n.includes(t("queue.paused")))).toBe(true);
-  expect(notes.some((n) => n.includes(t("queue.android_agent_note", { agent: "Claude Code" })))).toBe(true);
-  expect(notes.join("\n")).not.toMatch(/排队 ·|等当前工具结束后并入|中断前排着的/);
-  expect(host.textContent).toContain("Android");
+  expect(host.querySelectorAll(".ptray-row")).toHaveLength(2);
+  expect(host.textContent).toContain(t("queue.more_items", { count: 2 }));
+  await act(async () => host.querySelector<HTMLButtonElement>(".ptray-more")!.click());
+  expect(host.querySelectorAll(".ptray-row")).toHaveLength(4);
+  const headers = [...host.querySelectorAll(".ptray-gl span")].map((x) => x.textContent ?? "");
+  expect(headers).toContain(t("queue.group_steer"));
+  expect(headers).toContain(t("queue.group_count", { title: t("queue.group_queue"), count: 2 }));
+  expect(headers).toContain(t("queue.group_paused"));
+  expect(host.querySelector(".ptray")?.textContent).toContain("Android");
 });
 
 it("uses Alt+Enter for queue and Ctrl+Enter for steer while running", async () => {
@@ -208,9 +207,13 @@ it.each([InputStatus.FAILED, InputStatus.NEEDS_TERMINAL])("does not claim delive
   demoS.lastSeq = 2n;
   r.syncDemoToCore(true);
   await mount(<SessionPage remote={r} sessionId="s-idle" onBack={() => undefined} wide={false} />);
+  const row = host.querySelector<HTMLElement>(".ptray-row")!;
+  expect(row).toBeTruthy();
+  expect(row.textContent).toContain("核实图片中的内容");
+  await act(async () => row.querySelector<HTMLElement>(".ptray-hit")!.click());
   expect(host.textContent).toContain(t("composer.restore"));
   expect(host.textContent).not.toContain("已送达电脑");
-  expect(host.querySelectorAll(".me")).toHaveLength(1);
+  expect(host.querySelectorAll(".me")).toHaveLength(0);
 });
 
 it("expands original tool text, collapses it and copies the entire command", async () => {

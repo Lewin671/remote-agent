@@ -1791,7 +1791,6 @@ describe("a message the session ended before sending", () => {
   it("says it was not sent, and can go back into the input after resuming", async () => {
     await setup(false);
     expect(host.querySelector(".me.fail small")!.textContent).toBe(message("session.ended_message_failed") + message("composer.restore"));
-    expect(host.textContent).not.toContain(message("queue.canceled_record"));
     expect(host.querySelector(".queued")).toBeNull();
     await click(button(message("composer.restore")));
     expect(host.querySelector<HTMLTextAreaElement>("textarea[aria-label=消息]")!.value).toBe("顺便补一个测试");
@@ -1955,8 +1954,8 @@ describe("approvals whose answer was not confirmed (v2)", () => {
   });
 });
 
-describe("pending bubbles in the chat (v8)", () => {
-  it("lists every queued message with its sender, and cancels one", async () => {
+describe("pending tray in the chat", () => {
+  it("lists every pending message with its sender, cancels one, and shows 5s undo", async () => {
     const r = demo();
     const cancel = barrier();
     const command = r.command.bind(r);
@@ -1964,16 +1963,16 @@ describe("pending bubbles in the chat (v8)", () => {
     // One more from another client, whose text this page does not know.
     pushDemoEvent(r, "s-run", { case: "inputState", value: { requestId: "other", status: InputStatus.QUEUED } });
     await mountAsync(<SessionPage remote={r} sessionId="s-run" onBack={() => undefined} wide={false} />);
-    const entries = () => [...host.querySelectorAll(".pending-bubble")];
+    const entries = () => [...host.querySelectorAll(".ptray-row")];
     expect(entries().length).toBe(2);
     expect(entries()[0].textContent).toContain("顺便补一个测试");
-    expect(entries()[0].textContent).toContain(message("queue.android_sending_soon"));
     expect(entries()[1].textContent).toContain(message("session.origin_other"));
-    await click(button(message("common.cancel", {}, "zh-CN"), entries()[0]));
+    expect(entries()[1].textContent).toContain(message("queue.other_message"));
+    await click(entries()[0].querySelector<HTMLButtonElement>(".ptray-acts button.x")!);
     expect(entries()[0].textContent).toContain(message("queue.canceling"));
     await act(async () => cancel.release());
     await vi.waitFor(() => expect(entries().length).toBe(1), { timeout: 3000 });
-    expect(host.textContent).toContain(message("queue.canceled_record"));
+    expect(host.querySelector(".ptray-undo")?.textContent).toContain(message("queue.undo"));
   });
 
   it("keeps a message whose cancel failed, and says so", async () => {
@@ -1982,8 +1981,8 @@ describe("pending bubbles in the chat (v8)", () => {
       throw new CommandError("unavailable", "电脑不在线，指令没有发出");
     };
     await mountAsync(<SessionPage remote={r} sessionId="s-run" onBack={() => undefined} wide={false} />);
-    await click(button(message("common.cancel", {}, "zh-CN"), host.querySelector(".pending-bubble")!));
-    await vi.waitFor(() => expect(host.querySelector(".pending-bubble")!.textContent).toContain(message("queue.cancel_failed")));
+    await click(host.querySelector<HTMLButtonElement>(".ptray-row .ptray-acts button.x")!);
+    await vi.waitFor(() => expect(host.querySelector(".ptray-row")!.textContent).toContain(message("queue.cancel_failed")));
   });
 });
 
@@ -2433,17 +2432,17 @@ describe("who did what (v2)", () => {
     (r as unknown as { metas: Map<string, { meta: { name: string } }> }).metas.get((await import("../dev/demo")).ANDROID)!.meta.name = "Android · Pixel 9";
     await r.loadDevices();
     await mountAsync(<SessionPage remote={r} sessionId="s-multi" onBack={() => undefined} wide={false} />);
-    const notes = [...host.querySelectorAll(".me:not(.pending-bubble) small")].map((x) => x.textContent);
+    const notes = [...host.querySelectorAll(".me small")].map((x) => x.textContent);
     // The first message is this client's own: it carries no name.
     expect(notes).toEqual(["Android · Pixel 9", message("session.origin_terminal", {"name":"VPS-dev"})]);
     // A client that says nothing of itself, with no ID in its name.
     expect(host.textContent).toContain(message("session.mode_changed_by", {"origin":message("security.client"),"value":message("modes.plan")}));
     expect(host.querySelector(".record")?.textContent).toContain("已允许 · Android · Pixel 9");
-    await click(button(/还有 2 条排队/));
-    const entries = [...host.querySelectorAll(".pending-bubble")].map((x) => x.textContent);
-    expect(entries[0]).toContain("补充库存回滚测试。");
-    expect(entries[1]).toContain("Android · Pixel 9");
-    expect(entries[1]).toContain("最后检查 README。");
+    await click(button(/还有 2 条/));
+    const entries = [...host.querySelectorAll(".ptray-row")].map((x) => x.textContent);
+    expect(entries.some((e) => e?.includes("补充库存回滚测试。"))).toBe(true);
+    const androidEntry = entries.find((e) => e?.includes("最后检查 README。"))!;
+    expect(androidEntry).toContain("Android · Pixel 9");
   });
 
   it("names another client on model changes and leaves this client unnamed", async () => {
@@ -2474,29 +2473,25 @@ describe("who did what (v2)", () => {
       return real(sid, cmd, slot);
     };
     await mountAsync(<SessionPage remote={r} sessionId="s-msg" onBack={() => undefined} wide={false} />);
-    // History inputState FAILED shows reason; unconfirmed shows orange warning.
-    expect(host.querySelector(".me.fail")!.textContent).toContain("image_not_recognized");
-    const maybe = [...host.querySelectorAll(".me.warn small")].map((x) => x.textContent);
+    // History inputState FAILED shows reason; unconfirmed shows orange group & reason in tray.
+    expect(host.querySelector(".ptray-why.red")!.textContent).toBeTruthy();
+    const maybe = [...host.querySelectorAll(".ptray-why.orange")].map((x) => x.textContent);
     expect(maybe.length).toBeGreaterThan(0);
-    expect(host.textContent).not.toMatch(/没能发送|不会自动重发|终端里可能留着/);
-    // A connection that timed out leaves an outgoing send unknown: orange, no red frame.
+    // A connection that timed out leaves an outgoing send unsure: orange group, go_terminal + ignore, no Retry.
     await act(async () => {
       const input = host.querySelector<HTMLTextAreaElement>("textarea.draft")!;
       Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!.call(input, "顺便补一个测试");
       input.dispatchEvent(new Event("input", { bubbles: true }));
     });
     await click(sendButton());
-    await vi.waitFor(() => expect([...host.querySelectorAll(".me")].find((x) => x.textContent?.includes("顺便补一个测试"))).toBeTruthy());
-    const timedOut = [...host.querySelectorAll(".me")].find((x) => x.textContent?.includes("顺便补一个测试"))!;
-    expect(timedOut.classList.contains("warn")).toBe(true);
-    expect(timedOut.classList.contains("fail")).toBe(false);
-    expect(timedOut.querySelector("small")!.textContent).toBe(
-      message("composer.maybe_failure", { reason: "连接超时" }) +
-        " " +
-        message("composer.restore") +
-        message("common.retry", {}, "zh-CN") +
-        message("session.dismiss_notice"),
-    );
+    await vi.waitFor(() => expect(host.querySelector(".ptray-more")).toBeTruthy());
+    await click(host.querySelector<HTMLButtonElement>(".ptray-more")!);
+    await vi.waitFor(() => expect([...host.querySelectorAll(".ptray-row")].find((x) => x.textContent?.includes("顺便补一个测试"))).toBeTruthy());
+    const timedOut = [...host.querySelectorAll(".ptray-row")].find((x) => x.textContent?.includes("顺便补一个测试"))!;
+    expect(timedOut.querySelector(".ptray-why.orange")!.textContent).toContain("连接超时");
+    expect(button(message("session.go_terminal"), timedOut)).toBeTruthy();
+    expect(button(message("queue.ignore"), timedOut)).toBeTruthy();
+    expect(button(message("common.retry", {}, "zh-CN"), timedOut)).toBeUndefined();
     // Trigger a local failed send to exercise Retry through CoreHost.
     await act(async () => {
       const input = host.querySelector<HTMLTextAreaElement>("textarea.draft")!;
@@ -2504,27 +2499,28 @@ describe("who did what (v2)", () => {
       input.dispatchEvent(new Event("input", { bubbles: true }));
     });
     await click(sendButton());
-    await vi.waitFor(() => expect([...host.querySelectorAll(".me.fail")].find((x) => x.textContent?.includes("测试失败重发消息"))).toBeTruthy());
+    await vi.waitFor(() => expect([...host.querySelectorAll(".ptray-row")].find((x) => x.textContent?.includes("测试失败重发消息"))).toBeTruthy());
     const core = getCoreHost(r);
-    const submitSpy = vi.spyOn(core, "sessionSubmitCommand");
-    const failed = [...host.querySelectorAll(".me.fail")].find((x) => x.textContent?.includes("测试失败重发消息"))!;
+    const retrySpy = vi.spyOn(core, "sessionRetryTrayItem");
+    const cmdSpy = vi.spyOn(r, "command");
+    const failed = [...host.querySelectorAll(".ptray-row")].find((x) => x.textContent?.includes("测试失败重发消息"))!;
     await click(button(message("common.retry", {}, "zh-CN"), failed));
-    expect(submitSpy).toHaveBeenCalledTimes(1);
-    expect(submitSpy.mock.calls[0][3].kind).toMatchObject({ case: "send", value: { text: "测试失败重发消息" } });
+    expect(retrySpy).toHaveBeenCalledTimes(1);
+    await vi.waitFor(() => expect(cmdSpy).toHaveBeenCalled());
   });
 });
 
 describe("a send that failed", () => {
-  for (const [unknown, cls, words] of [
-    [false, ".me.fail", "没发出去：电脑不在线"],
-    [true, ".me.warn", "可能没发出去：连接超时"],
+  for (const [unknown, whyClass, text, hasRetry, hasIgnore] of [
+    [false, ".ptray-why.red", "电脑不在线", true, false],
+    [true, ".ptray-why.orange", "连接超时", false, true],
   ] as const)
-    it(`says ${words.split("：")[0]} with what is known`, async () => {
+    it(`routes ${unknown ? "unsure" : "failed"} sends to the pending tray with ${text}`, async () => {
       const r = demo();
       r.command = async () => {
         throw unknown
-          ? new CommandError("unknown_outcome", words.split("：")[1], false, false, "unknown")
-          : new CommandError("unavailable", words.split("：")[1]);
+          ? new CommandError("unknown_outcome", text, false, false, "unknown")
+          : new CommandError("unavailable", text);
       };
       await mountAsync(<SessionPage remote={r} sessionId="s-idle" onBack={() => undefined} wide={false} />);
       await act(async () => {
@@ -2533,11 +2529,12 @@ describe("a send that failed", () => {
         input.dispatchEvent(new Event("input", { bubbles: true }));
       });
       await click(sendButton());
-      await vi.waitFor(() => expect(host.querySelector(cls)).toBeTruthy());
-      const bubble = [...host.querySelectorAll(cls)].find((x) => x.textContent?.includes("顺便补一个测试"))!;
-      expect(bubble.querySelector("small")!.textContent).toMatch(new RegExp("^" + words));
-      expect(button(message("common.retry", {}, "zh-CN"), bubble)).toBeTruthy();
-      expect(button(message("session.dismiss_notice"), bubble)).toBeTruthy();
+      await vi.waitFor(() => expect(host.querySelector(whyClass)).toBeTruthy());
+      const row = [...host.querySelectorAll(".ptray-row")].find((x) => x.textContent?.includes("顺便补一个测试"))!;
+      expect(row.querySelector(whyClass)!.textContent).toContain(text);
+      expect(!!button(message("common.retry", {}, "zh-CN"), row)).toBe(hasRetry);
+      expect(!!button(message("queue.ignore"), row)).toBe(hasIgnore);
+      expect(!!row.querySelector("button.x")).toBe(hasRetry);
     });
 });
 
@@ -2770,14 +2767,14 @@ it("keeps a submitted message in view until the CLI records it", async () => {
   await act(async () => {
     pushDemoEvent(r, "s-idle", { case: "inputState", value: { requestId: reqId, status: InputStatus.QUEUED, text: "运行中插一句" } });
   });
-  expect(host.textContent).toContain("运行中插一句");
-  expect(host.querySelectorAll(".pending-bubble").length).toBeGreaterThan(0);
+  expect(host.querySelector(".ptray")?.textContent).toContain("运行中插一句");
+  expect(host.querySelectorAll(".ptray-row").length).toBeGreaterThan(0);
   await act(async () => {
     pushDemoEvent(r, "s-idle", { case: "inputState", value: { requestId: reqId, status: InputStatus.SUBMITTED } });
     pushDemoEvent(r, "s-idle", { case: "userMessage", value: { text: "运行中插一句", requestId: reqId } });
   });
   expect([...host.querySelectorAll(".me")].filter((m) => m.textContent?.includes("运行中插一句")).length).toBe(1);
-  expect(host.querySelectorAll(".pending-bubble").length).toBe(0);
+  expect(host.querySelectorAll(".ptray-row").length).toBe(0);
 });
 
 it("sends a failed message again only once, however often retry is pressed", async () => {
@@ -2799,7 +2796,7 @@ it("sends a failed message again only once, however often retry is pressed", asy
     input.dispatchEvent(new Event("input", { bubbles: true }));
   });
   await click(sendButton());
-  const failed = () => [...host.querySelectorAll(".me.fail")].find((x) => x.textContent?.includes("重发去重"))!;
+  const failed = () => [...host.querySelectorAll(".ptray-row")].find((x) => x.textContent?.includes("重发去重"))!;
   await vi.waitFor(() => expect(failed()).toBeTruthy());
   const retry = () => button(message("common.retry", {}, "zh-CN"), failed());
   await act(async () => {
@@ -2830,25 +2827,23 @@ describe("the first message of a session started here (review B5, B9)", () => {
     await act(async () => {
       patchDemoSession(r, "s-fresh", { status: SessionStatus.STARTING });
     });
-    expect(host.querySelector(".pending-meta > span")!.textContent).toBe(message("queue.android_agent_note", { agent: "Codex" }));
-    expect(host.textContent).not.toContain(message("queue.insert"));
+    expect(host.querySelector(".ptray-gl span")!.textContent).toBe(message("queue.group_wait_ready", { agent: "Codex" }));
     expect(host.textContent!.split("给登录接口加限流").length - 1).toBe(1);
   });
 
-  it("shows its real state, not 已送达 after another client canceled it", async () => {
+  it("removes a pending row after another client canceled it", async () => {
     const { push } = await setup();
-    // The only one waiting: not numbered.
-    expect(host.querySelector(".pending-meta > span")!.textContent).toBe(message("queue.android_sending_soon"));
+    expect(host.querySelectorAll(".ptray-row")).toHaveLength(1);
     await push({ case: "inputState", value: { requestId: "p1", status: InputStatus.CANCELED } });
-    expect(host.textContent).not.toContain(message("queue.android_sending_soon"));
-    expect(host.textContent).toContain(message("queue.canceled_record"));
+    expect(host.querySelectorAll(".ptray-row")).toHaveLength(0);
+    expect(host.textContent).not.toContain("给登录接口加限流");
   });
 
-  it("is a pending bubble, where it can be canceled", async () => {
+  it("is a pending tray row, where it can be canceled", async () => {
     await setup();
-    const entry = host.querySelector(".pending-bubble")!;
+    const entry = host.querySelector(".ptray-row")!;
     expect(entry.textContent).toContain("给登录接口加限流");
-    expect(button(message("common.cancel", {}, "zh-CN"), entry)).toBeTruthy();
+    expect(entry.querySelector(".ptray-acts button.x")).toBeTruthy();
   });
 
 });
@@ -2897,12 +2892,14 @@ describe("a failed message with images (review B6)", () => {
     }
     return { r, sent, reqId };
   }
-  const row = () => host.querySelector(".me.fail")!;
+  const row = () => host.querySelector(".ptray-row")!;
 
-  it("keeps uncertain thumbnails and restores source-backed pictures and text", async () => {
+  it("shows attachment count in uncertain row and restores source-backed pictures and text", async () => {
     await setup("没认出这两张", InputStatus.NEEDS_TERMINAL, true);
-    const warning = host.querySelector<HTMLElement>(".me.warn")!;
-    expect(warning.querySelectorAll(".pic.local")).toHaveLength(2);
+    const warning = row();
+    expect(warning.querySelector(".ptray-why.orange")).toBeTruthy();
+    expect(warning.querySelector(".clip")?.getAttribute("aria-label")).toBe(message("queue.attachments_a11y", { count: 2 }));
+    await act(async () => warning.querySelector<HTMLElement>(".ptray-hit")!.click());
     await click(button(message("composer.restore"), warning));
     expect(host.querySelector<HTMLTextAreaElement>("textarea[aria-label=消息]")!.value).toBe("没认出这两张");
     expect(host.querySelectorAll(".draft-open")).toHaveLength(2);
@@ -2914,25 +2911,28 @@ describe("a failed message with images (review B6)", () => {
     let done!: () => void;
     const gate = new Promise<void>(resolve => { done = resolve; });
     vi.spyOn(t.r, "restoreDraft").mockReturnValue(gate);
-    await click(button(message("composer.restore"), host.querySelector<HTMLElement>(".me.warn")!));
+    await act(async () => row().querySelector<HTMLElement>(".ptray-hit")!.click());
+    await click(button(message("composer.restore"), row()));
     expect(tray.items).toHaveLength(0);
-    expect(host.querySelectorAll(".me.warn")).toHaveLength(1);
+    expect(host.querySelectorAll(".ptray-row")).toHaveLength(1);
     await act(async () => {
       t.r.drafts.set("s-idle", "typed while reading");
       tray.hydrate([{ file: new Blob(["disk source"]) }], false);
       done();
     });
     expect(tray.items).toHaveLength(3);
-    expect(t.r.drafts.get("s-idle")).toBe("typed while reading\n\nput back");
+    expect(t.r.drafts.get("s-idle")).toBe("typed while reading\nput back");
   });
 
-  it("does not offer uncertain attachment recovery without local sources", async () => {
+  it("does not offer uncertain restore for another client's message without local content", async () => {
     const r = demo();
     pushDemoEvent(r, "s-idle", { case: "inputState", value: { requestId: "other-src", status: InputStatus.QUEUED, text: "other source", imageIds: ["i1"] } }, { kind: OriginKind.CLIENT, deviceId: ANDROID } as never);
     pushDemoEvent(r, "s-idle", { case: "inputState", value: { requestId: "other-src", status: InputStatus.NEEDS_TERMINAL, reason: "image_not_recognized" } });
     await mountAsync(<SessionPage remote={r} sessionId="s-idle" onBack={() => undefined} wide={false} />);
-    const warn = host.querySelector<HTMLElement>(".me.warn")!;
-    expect(warn.querySelectorAll(".pic.local")).toHaveLength(0);
+    const warn = row();
+    expect(warn.querySelector(".ptray-why.orange")).toBeTruthy();
+    await act(async () => warn.querySelector<HTMLElement>(".ptray-hit")!.click());
+    expect(button(message("composer.restore"), warn)).toBeUndefined();
   });
 
   it("puts text and images back into the input, to send them again", async () => {
@@ -2940,6 +2940,7 @@ describe("a failed message with images (review B6)", () => {
     t.r.prepareImage = async () => ({ bytes: new Uint8Array(4), format: "png", width: 1, height: 1 });
     let uploads = 0;
     t.r.uploadImage = async () => ({ imageId: "restored-" + ++uploads, expiresMs: Number.MAX_SAFE_INTEGER });
+    await act(async () => row().querySelector<HTMLElement>(".ptray-hit")!.click());
     await click(button(message("composer.restore"), row()));
     expect(host.querySelector<HTMLTextAreaElement>("textarea[aria-label=消息]")!.value).toBe("看这两张");
     expect(host.querySelectorAll(".att-tray .pic").length).toBe(2);
@@ -2951,10 +2952,11 @@ describe("a failed message with images (review B6)", () => {
 
   it("can retry or restore a message of images only", async () => {
     const t = await setup("");
+    await act(async () => row().querySelector<HTMLElement>(".ptray-hit")!.click());
     expect(button(message("composer.restore"), row())).toBeTruthy();
     await click(button(message("common.retry", {}, "zh-CN"), row()));
     await vi.waitFor(() => expect(t.sent).toHaveLength(1));
-    expect(t.sent[0]).toEqual({ text: "", imageIds: ["i1", "i2"] });
+    expect(t.sent[0]).toEqual({ text: "", imageIds: ["i3", "i4"] });
   });
 });
 
@@ -3327,9 +3329,8 @@ it("does not put another client's images into this input (review W3)", async () 
   ] as const)
     pushDemoEvent(r, "s-idle", kind as never, origin as never);
   await mountAsync(<SessionPage remote={r} sessionId="s-idle" onBack={() => undefined} wide={false} />);
-  await click(button(message("composer.restore"), host.querySelector(".me.fail")!));
-  expect(host.querySelector<HTMLTextAreaElement>("textarea[aria-label=消息]")!.value).toBe("看这两张");
-  expect(host.querySelector(".att-tray")).toBeNull();
+  await act(async () => host.querySelector<HTMLElement>(".ptray-row .ptray-hit")!.click());
+  expect(button(message("composer.restore"), host.querySelector(".ptray-row")!)).toBeUndefined();
 });
 
 it("keeps the wide home default project across background uploads before a draft starts", async () => {
@@ -4189,8 +4190,9 @@ it("appends a restored message to the current draft", async () => {
   pushDemoEvent(r, "s-idle", { case: "inputState", value: { requestId: "restore", status: InputStatus.QUEUED, text: "restore" } });
   pushDemoEvent(r, "s-idle", { case: "inputState", value: { requestId: "restore", status: InputStatus.FAILED, reason: "image_not_recognized" } });
   await mountAsync(<SessionPage remote={r} sessionId="s-idle" onBack={() => undefined} wide={false} />);
+  await act(async () => host.querySelector<HTMLElement>(".ptray-row .ptray-hit")!.click());
   await click(button(message("composer.restore")));
-  expect(host.querySelector<HTMLTextAreaElement>(`textarea[aria-label="${message("composer.message")}"]`)!.value).toBe("draft\n\nrestore");
+  expect(host.querySelector<HTMLTextAreaElement>(`textarea[aria-label="${message("composer.message")}"]`)!.value).toBe("draft\nrestore");
 });
 
 it("keeps an approval reason across dock and detail mounts", async () => {
@@ -4207,11 +4209,11 @@ it("shows failure and retry when resuming a paused message", async () => {
   const r = demo();
   r.command = async () => { throw new CommandError("unavailable", "电脑不在线"); };
   await mountAsync(<SessionPage remote={r} sessionId="s-multi" onBack={() => undefined} wide={false} />);
-  await click(button(/还有 2 条排队/));
-  const paused = [...host.querySelectorAll<HTMLElement>(".pending-bubble")].find((b) => b.textContent?.includes(message("queue.paused")))!;
-  await click(button(message("composer.send"), paused));
-  await vi.waitFor(() => expect(host.textContent).toContain(message("queue.resume_failed")));
-  expect(button(message("common.retry", {}, "zh-CN"), paused)).toBeTruthy();
+  await click(button(/还有 2 条/));
+  const findPaused = () => [...host.querySelectorAll<HTMLElement>(".ptray-row")].find((b) => b.textContent?.includes("中断前排着的这条消息需要手动发送。"))!;
+  await click(button(message("composer.send"), findPaused()));
+  await vi.waitFor(() => expect(findPaused().textContent).toContain(message("queue.resume_failed")));
+  expect(button(message("composer.send"), findPaused())).toBeTruthy();
 });
 
 it("offers more ended matches while filtering titles", async () => {
@@ -4422,15 +4424,15 @@ it("puts a daemon-rejected image message back with its text, original option and
     input.dispatchEvent(new Event("input", { bubbles: true }));
   });
   await click(sendButton());
-  await vi.waitFor(() => expect(host.textContent).toContain("image id is not on this machine; upload it again"));
-  expect(host.querySelector(".me.fail")!.textContent).not.toContain(message("common.retry", {}, "zh-CN"));
+  await vi.waitFor(() => expect(host.querySelector(".ptray")?.textContent).toContain("image id is not on this machine; upload it again"));
+  await act(async () => host.querySelector<HTMLElement>(".ptray-row .ptray-hit")!.click());
   await click(button(message("composer.restore")));
   const tray = r.trays.get("s-idle")!;
   expect(r.drafts.get("s-idle")).toBe("看原图");
   expect(tray.original).toBe(true);
   expect(tray.items[0].file).toBe(source);
   expect(tray.totalBytes()).toBe(20);
-  expect(getCoreHost(r).viewSession("s-idle").composer?.outgoing).toEqual([]);
+  expect(getCoreHost(r).viewSession("s-idle").composer?.pendingTray?.orderedItems ?? []).toEqual([]);
   expect(uploads).toBe(3);
 });
 
@@ -4535,14 +4537,15 @@ it("sends files-only messages and restores a missing file from its original File
   });
   await vi.waitFor(() => expect(sendButton()?.disabled).toBe(false));
   await click(sendButton());
-  await vi.waitFor(() => expect(host.textContent).toContain("file id is not on this machine; upload it again"));
+  await vi.waitFor(() => expect(host.querySelector(".ptray-why.red")).toBeTruthy());
   expect(sent[0]).toMatchObject({ case: "send", value: { text: "", imageIds: [], fileIds: ["data.csv1"] } });
-  expect(host.querySelector(".me.fail .file-chip")?.textContent).toContain("data.csv");
+  expect(host.querySelector(".ptray-row .clip")?.getAttribute("aria-label")).toBe(message("queue.attachments_a11y", { count: 1 }));
+  await act(async () => host.querySelector<HTMLElement>(".ptray-row .ptray-hit")!.click());
   await click(button(message("composer.restore")));
   const tray = r.trays.get(s.id)!;
   await vi.waitFor(() => expect(tray.fileIds()).toEqual(["data.csv2"]));
   expect(tray.files()[0].file).toBe(source);
-  expect(tray.imageIds()).toEqual([]); expect(getCoreHost(r).viewSession(s.id).composer?.outgoing).toEqual([]);
+  expect(tray.imageIds()).toEqual([]); expect(getCoreHost(r).viewSession(s.id).composer?.pendingTray?.orderedItems ?? []).toEqual([]);
 });
 
 it("creates a session with files-only and retains file IDs for an unknown retry", async () => {
@@ -4589,9 +4592,10 @@ it("requires reselecting a failed outgoing file when its local source has been r
   });
   await vi.waitFor(() => expect(r.trays.get(s.id)?.fileIds()).toEqual(["first-file"]));
   await click(sendButton());
-  await vi.waitFor(() => expect(host.querySelector(".me.fail")).toBeTruthy());
+  await vi.waitFor(() => expect(host.querySelector(".ptray-why.red")).toBeTruthy());
   upload.mockClear();
-  await click(button(message("composer.restore"), host.querySelector(".me.fail")!));
+  await act(async () => host.querySelector<HTMLElement>(".ptray-row .ptray-hit")!.click());
+  await click(button(message("composer.restore"), host.querySelector(".ptray-row")!));
   const tray = r.trays.get(s.id)!;
   await vi.waitFor(() => expect(tray.files().length).toBeGreaterThan(0));
   expect(tray.files()[0].name).toBe("first.csv");
@@ -4628,45 +4632,70 @@ it("rejects restoring a failed file message before changing draft or dismissing 
     input.dispatchEvent(new Event("input", { bubbles: true }));
   });
   await click(sendButton());
-  await vi.waitFor(() => expect(host.querySelector(".me.fail")).toBeTruthy());
+  await vi.waitFor(() => expect(host.querySelector(".ptray-why.red")).toBeTruthy());
   r.drafts.set(s.id, "existing draft");
   updateDemoMachine(r, s.machineId, (m) => { m.meta!.capabilities!.fileUpload = false; });
   const upload = vi.spyOn(r, "uploadImage");
-  await click(button(message("composer.restore"), host.querySelector(".me.fail")!));
+  await act(async () => host.querySelector<HTMLElement>(".ptray-row .ptray-hit")!.click());
+  await click(button(message("composer.restore"), host.querySelector(".ptray-row")!));
   expect(host.textContent).toContain(message("session.update_computer"));
   expect(r.drafts.get(s.id)).toBe("existing draft");
-  expect(getCoreHost(r).viewSession(s.id).composer?.outgoing).toHaveLength(1);
+  expect(getCoreHost(r).viewSession(s.id).composer?.pendingTray?.orderedItems ?? []).toHaveLength(1);
   expect(r.trays.get(s.id)?.items).toHaveLength(0);
   expect(upload).not.toHaveBeenCalled();
 });
 
-it.each(["retap", "outside", "typing", "escape"])("keeps the session draft focused and unsent when closing the send menu by %s", async (close) => {
+it("keeps focus while clicking 做完再发, and supports promoting and re-uploading local attachments", async () => {
   const r = demo();
+  const cmds: CommandKind[] = [];
+  r.command = async (sid, cmd) => {
+    cmds.push(cmd);
+    if (cmd?.case === "send") {
+      pushDemoEvent(r, sid, {
+        case: "inputState",
+        value: {
+          requestId: cmd.value.requestId,
+          status: InputStatus.QUEUED,
+          text: cmd.value.text,
+          imageIds: cmd.value.imageIds,
+          mode: cmd.value.mode,
+        },
+      });
+    } else if (cmd?.case === "cancelInput") {
+      pushDemoEvent(r, sid, {
+        case: "inputState",
+        value: { requestId: cmd.value.requestId, status: InputStatus.CANCELED },
+      });
+    }
+    return create(CommandResultSchema);
+  };
+  r.prepareImage = async () => ({ bytes: new Uint8Array(4), format: "png", width: 1, height: 1 });
+  let up = 0;
+  r.uploadImage = async () => ({ imageId: "promo-" + ++up, expiresMs: Number.MAX_SAFE_INTEGER });
   await mountAsync(<SessionPage remote={r} sessionId="s-run" onBack={() => undefined} wide={false} />);
+  const f1 = new File(["img"], "p.png", { type: "image/png" });
+  await act(async () => {
+    const picker = host.querySelector<HTMLInputElement>("input[type=file]")!;
+    Object.defineProperty(picker, "files", { value: [f1], configurable: true });
+    picker.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+  await vi.waitFor(() => expect(r.trays.get("s-run")?.imageIds()).toHaveLength(1));
   const input = host.querySelector<HTMLTextAreaElement>(".draft")!;
   await act(async () => {
     input.focus();
-    Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!.call(input, "Keep this draft");
+    Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!.call(input, "Promote with image");
     input.dispatchEvent(new Event("input", { bubbles: true }));
   });
-  const smode = host.querySelector<HTMLButtonElement>(".smode")!;
-  const down = new MouseEvent("mousedown", { bubbles: true, cancelable: true });
-  act(() => smode.dispatchEvent(down));
-  expect(down.defaultPrevented).toBe(true);
-  await click(smode);
-  expect(host.querySelector(".send-menu")).not.toBeNull();
-  expect(document.activeElement).toBe(input);
-  if (close === "retap") { act(() => smode.dispatchEvent(new MouseEvent("mousedown", { bubbles: true, cancelable: true }))); await click(smode); }
-  else if (close === "outside") {
-    const mouse = new MouseEvent("mousedown", { bubbles: true, cancelable: true });
-    act(() => document.body.dispatchEvent(mouse));
-    expect(mouse.defaultPrevented).toBe(true);
-    act(() => document.body.click());
-  } else if (close === "typing") act(() => input.dispatchEvent(new InputEvent("beforeinput", { bubbles: true })));
-  else act(() => window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" })));
-  expect(host.querySelector(".send-menu")).toBeNull();
-  expect(input.value).toBe("Keep this draft");
-  expect(document.activeElement).toBe(input);
+  const laterBtn = host.querySelector<HTMLButtonElement>("button.later")!;
+  await click(laterBtn);
+  await vi.waitFor(() => expect([...host.querySelectorAll(".ptray-row")].some((el) => el.textContent?.includes("Promote with image"))).toBe(true));
+  const queuedRow = [...host.querySelectorAll<HTMLElement>(".ptray-row")].find((el) => el.textContent?.includes("Promote with image"))!;
+  await act(async () => queuedRow.querySelector<HTMLElement>(".ptray-hit")!.click());
+  await click(button(message("queue.send_now"), queuedRow));
+  await vi.waitFor(() => expect(up).toBe(2));
+  await vi.waitFor(() =>
+    expect(cmds.some((c) => c?.case === "send" && c.value.text === "Promote with image" && c.value.mode === SendMode.STEER && c.value.imageIds?.[0] === "promo-2")).toBe(true),
+  );
 });
 
 it("hands a new session to its chat with the first prompt before its listing arrives", async () => {
@@ -4687,10 +4716,10 @@ it("hands a new session to its chat with the first prompt before its listing arr
   });
   await vi.waitFor(() => expect(go).toHaveBeenCalledWith("s/new-handoff", true));
   expect(r.sessions.has(info.id)).toBe(true);
-  // Seeded from CreateSession outcome, SessionPage and PendingStartPrompt render immediately before any stream/listing arrives.
+  // Seeded from CreateSession outcome, SessionPage and PendingStartPrompt render immediately in pending tray before any stream/listing arrives.
   await act(async () => root!.render(<SessionPage remote={r} sessionId={info.id} onBack={() => {}} wide={false} />));
   expect(host.querySelector(".session")).toBeTruthy();
-  expect(host.querySelector(".me")?.textContent).toContain("第一句话");
+  expect(host.querySelector(".ptray-row")?.textContent).toContain("第一句话");
   expect(host.querySelector("textarea")).toBeTruthy();
   // When stream sessionUpdated arrives later, it merges cleanly without losing the chat or duplicating the first prompt.
   await act(async () => {
@@ -4709,7 +4738,7 @@ it("hands a new session to its chat with the first prompt before its listing arr
       },
     }));
   });
-  expect(host.querySelectorAll(".me").length).toBe(1);
+  expect(host.querySelectorAll(".ptray-row").length).toBe(1);
 });
 
 it("shows 默认 for an unchosen effort, then sends the explicitly selected level", async () => {
@@ -4777,10 +4806,10 @@ it.each(["errors.executed_result_unavailable", "errors.request_identity_conflict
     input.dispatchEvent(new Event("input", { bubbles: true }));
   });
   await click(sendButton());
-  await vi.waitFor(() => expect(host.querySelector(".me.fail small, .me.warn small")?.firstChild?.textContent).toBe(message("composer.send_failure", { reason: message(key) })));
+  await vi.waitFor(() => expect(host.querySelector(".ptray-why")?.textContent).toBe(message(key)));
 });
 
-it.each([false, true])("queues agy sends without an insert menu (attachments=%s)", async (attached) => {
+it.each([false, true])("queues agy sends without a 做完再发 button (attachments=%s)", async (attached) => {
   const r = demo();
   patchDemoSession(r, "s-run", { agent: Agent.ANTIGRAVITY });
   const submit = vi.spyOn(getCoreHost(r), "sessionSubmitCommand");
@@ -4796,23 +4825,8 @@ it.each([false, true])("queues agy sends without an insert menu (attachments=%s)
     });
   }
   const send = sendButton()!;
-  expect(host.querySelector(".smode")).toBeNull();
-  expect(host.querySelector(".send-menu")).toBeNull();
+  expect(host.querySelector("button.later")).toBeNull();
   await click(send);
   expect(submit).toHaveBeenCalled();
-  expect(submit.mock.calls[0][3].kind).toMatchObject({ case: "send", value: { mode: SendMode.QUEUE } });
-});
-
-it("does not consume a send to close an unavailable insert menu", async () => {
-  const r = demo();
-  r.drafts.set("s-run", "Keep the next-turn draft");
-  const submit = vi.spyOn(getCoreHost(r), "sessionSubmitCommand");
-  await mountAsync(<SessionPage remote={r} sessionId="s-run" onBack={() => undefined} wide={false} />);
-  await click(host.querySelector<HTMLButtonElement>(".smode")!);
-  expect(host.querySelector(".send-menu")).not.toBeNull();
-  await act(async () => { patchDemoSession(r, "s-run", { agent: Agent.ANTIGRAVITY }); });
-  expect(host.querySelector(".send-menu")).toBeNull();
-  await click(sendButton()!);
-  expect(submit).toHaveBeenCalledTimes(1);
   expect(submit.mock.calls[0][3].kind).toMatchObject({ case: "send", value: { mode: SendMode.QUEUE } });
 });

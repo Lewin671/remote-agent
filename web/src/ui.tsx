@@ -600,6 +600,11 @@ export function sendKeys(fine: boolean, platform = navigator.platform): string {
   return /Mac|iP/.test(platform) ? "⌘↵" : "Ctrl+Enter";
 }
 
+export function queueKeys(fine: boolean, platform = navigator.platform): string {
+  if (!fine) return "";
+  return /Mac|iP/.test(platform) ? "⌥↵" : "Alt+↵";
+}
+
 /** Whether foreground UI work should run; App manages the connection lifetime. */
 export function usePageVisible() {
   return useSyncExternalStore(
