@@ -4309,13 +4309,13 @@ go test ./internal/... -count=1</div><div class="bs"><button class="cb no dis">�
 </svg>
 <section id="usage" class="sx-usage">
 <span id="speed" aria-hidden="true"></span>
-<h2>用量与速度（待实现）</h2>
+<h2>用量与速度</h2>
 <div class="note">
   <h4>同一页看齐「消耗量 / 缓存命中 / 输出速度 / 首字延迟」，只被动采集、不换算金额</h4>
   <ul>
     <li><b>统计单位不合并</b>：严格按 <code>(agent, model)</code> 这一对记录；不同 CLI 使用同名模型记作独立序列，不跨 CLI 合并也不归一模型名。</li>
     <li><b>四类互斥消耗与加权缓存命中率</b>：<code>总量 = 未缓存输入 + 缓存读取 + 缓存写入 + 输出</code>（推理 token 含在输出内并可附注标出，绝不折算金额；中英缩写分别为 <code>1.2万 / 34.8亿</code> 与 <code>12k / 3.5B</code>）；缓存命中率定义为 <code>缓存读取 ÷（未缓存输入 + 缓存读取 + 缓存写入）</code>，按输入 token 加权求和，缺失缓存写入字段标 <code>—</code> 并加脚注，低命中率保持黑白灰中性色（禁红橙）。</li>
-    <li><b>单色区分（不按品牌上色）</b>：堆叠柱状图用<b>实心墨色 + 中灰实色 + 45° 细斜线纹 + 细描边空心</b>区分最多 4 对模型，曲线图用<b>线型 + 节点形状</b>区分；近 7 天保留原始记录，8–90 天按小时桶汇总保存在本机。协议与 CLI 字段口径见 <a href="../architecture.md#22-模型用量与输出速度待实现">architecture §22</a>。</li>
+    <li><b>单色区分（不按品牌上色）</b>：堆叠柱状图用<b>实心墨色 + 中灰实色 + 45° 细斜线纹 + 细描边空心</b>区分最多 4 对模型，曲线图用<b>线型 + 节点形状</b>区分；近 7 天保留原始记录，8–90 天按小时桶汇总保存在本机。协议与 CLI 字段口径见 <a href="../architecture.md#22-模型用量与输出速度">architecture §22</a>。</li>
   </ul>
 </div>
 <div class="screens">

@@ -666,7 +666,7 @@ server 首次启动时生成 VAPID 密钥对，存在数据库里。客户端订
 
 daemon 的设置存在 `~/.remote-agent/settings.json`，客户端可以读取和修改：审批超时（30 秒到 hook 超时之前）、空闲自动结束会话的时长、这台电脑启用哪些已安装的 CLI、新项目默认的模型、effort 和审批模式（项目设置的初值，也是项目设置不适用时的回退）。未设置的项沿用启动参数或 Codex 自己的配置。
 
-- **按电脑启用哪些 CLI（待实现）**：一台电脑装了多个 CLI 时，用户可在「设置 › 电脑」里按电脑分开开关要启用的 CLI。配置存在本机 `settings.json` 的停用集合（如 `disabled_agents`，不在集合里的已安装 CLI 默认启用，因此新安装的 CLI 自动可用、无需迁移），随带单调修订号 `revision` 的 `DaemonSettings` 与 `MachineMeta` 端到端加密同步到各客户端。**本项涉及 `DaemonSettings` / `MachineMeta` 字段与错误码扩展，属于协议变更，开始实现前须经过协议 review 并同步提升四端协议版本号**
+- **按电脑启用哪些 CLI**：一台电脑装了多个 CLI 时，用户可在「设置 › 电脑」里按电脑分开开关要启用的 CLI。配置存在本机 `settings.json` 的停用集合（`disabled_agents`，不在集合里的已安装 CLI 默认启用，因此新安装的 CLI 自动可用、无需迁移），随带单调修订号 `revision` 的 `DaemonSettings` 与 `MachineMeta` 端到端加密同步到各客户端；`toggle_agent`/`toggle_enabled`、`cannot_disable_last_agent` / `settings_revision_conflict` / `agent_disabled` 与 `MachineCapabilities.cli_switches` 已随协议 17 在 daemon、共享核心、Web 与 Android 上实现（iOS 已接入协议与核心状态，原生开关界面待补）。
   - **修改权限与并发串行**：和同一页的默认模型、审批超时一样，**账户内所有已验证有效且处于有效租约期内的成员 Client（管理端和普通客户端）及电脑本机均可修改**；远程控制租约过期暂停时客户端禁止发起修改并置灰提示续期。多台客户端并发修改同一台电脑时，daemon 在本机设置锁下按到达顺序串行处理并递增 `revision`：先到的修改落盘并向所有在线客户端广播最新快照；若后到的修改会使「已安装 ∩ 已启用」变为空集（例如两台手机同时去关仅剩的两个 CLI），daemon 拒绝后一笔并返回最新 `DaemonSettings`，后一台客户端立即回滚并同步为锁定开启态
   - **离线不攒待改指令**：电脑离线时客户端开关置灰只读，不缓存待上线执行的开关变更，避免几小时后电脑重连时突然改变环境；拨动瞬间恰好断线或超时则客户端回滚原位并提示重试
   - **至少保留一个启用**：已安装集合与启用集合的交集（可用 CLI）不能为空。客户端请求关闭最后一个可用 CLI 时 daemon 直接拒绝；若用户在电脑终端卸载了原本唯一启用的 CLI，而本机仍装有其他被停用的 CLI，daemon 自动解除其中一个的停用并回报更新后的状态，避免整台电脑无法新建会话
@@ -879,6 +879,8 @@ MCP 每次操作先确认 daemon 支持受限委托；不支持时拒绝工具�
 
 ### 协议版本与升级
 
+协议 17 在协议 16 上新增按电脑启停 CLI（`DaemonSettings.disabled_agents` / `revision`、`UpdateSettings` 的 `toggle_agent` / `toggle_enabled`、错误码 `cannot_disable_last_agent` / `settings_revision_conflict` / `agent_disabled`，以及 `MachineCapabilities.cli_switches`）与模型用量及输出速度只读查询（`Command.get_usage_stats` / `CommandResult.usage_stats` 与 `MachineCapabilities.usage_stats`），Go daemon/server/relay/核心、Web、Android 与 iOS 协议常量与共享模型已同步升至 17；协议版本不一致的两端继续互拒。
+
 固定通知标题和删除 `notify_user` 的 title 参数不提升协议：NotifyContent 字段与签名路由不变，旧客户端照常显示标题；旧会话里仍在运行的 MCP 进程若传 title，daemon 明确拒绝该调用，不会被误解。Web Push 额外携带的是现有信封密文，旧网页忽略它并显示通用文案，新网页遇到未带密文的旧中继也退回通用文案。存储格式未变，无需清数据，既有已记录通知不改写。
 
 此前由错误的无来源直启逻辑创建、已保存为非登录 shell 且缺 PATH 的开发会话需重新派发创建，不迁移或推断修改其启动来源。
@@ -1063,9 +1065,9 @@ Antigravity 接入将协议从 12 提升为 13：`Agent` 枚举加 `AGENT_ANTIGR
 
 网页 Service Worker、Android FCM 接收逻辑和 RACore 的数据接收边界共用此约束；iOS 目前仍没有系统推送传输适配，不能把 RACore 的可用接收逻辑称为已实现 APNs。视图和系统路由消费这些逻辑输出，不从显示文案推断状态。此增量扩展保持协议 14，旧 daemon 不声明机器能力，旧客户端不会订阅新通知，旧 server 不被发送新订阅类型。
 
-## 22. 模型用量与输出速度（待实现）
+## 22. 模型用量与输出速度
 
-> **状态：待实现。** 本节记录被动采集与历史查询的技术边界；涉及新增机器级加密查询报文、机器能力位与会话摘要字段，**属于协议变更，开始写代码前必须先经过协议 review 并同步提升四端协议版本号**。界面见 [client-v63 · 用量与速度](design/client-v63.html#usage)，组件规则见 [design-system](design-system.md#用量与速度)。
+> **状态（协议 17）：** daemon 本地采集存储（`internal/usagestats`）、`GetUsageStats` 加密只读查询、共享核心 `clientcore`、Web 界面及 Android 原生界面已在当前分支实现；iOS 视图待后续接入。界面见 [client-v63 · 用量与速度](design/client-v63.html#usage)，组件规则见 [design-system](design-system.md#用量与速度)。
 
 统计单位严格是 **`(agent, model)` 这一对**：不同 CLI 使用同名或同族模型（如 Claude Code 的 `Opus 5.5` 与其他 CLI 的同名模型）记作独立序列，不跨 CLI 合并，也不对各 CLI 原生报出的模型名做跨端归一。daemon **只做被动采集**：只从 CLI 自己落盘的本地记录提取每次模型请求的 token 消耗量、缓存命中率、输出速度（`tok/s`）与首字延迟（TTFT），绝不主动发请求，也不为统计启动或唤醒 CLI。**不折算金额**：订阅制、团队配额与按量接口混用，按公开 API 单价换算的金额会误导用户，全端只展示 token 数量与比率。
 
@@ -1083,16 +1085,16 @@ Antigravity 接入将协议从 12 提升为 13：`Agent` 枚举加 `AGENT_ANTIGR
   - **消耗量与缓存命中率**：凡具备合法 token 统计字段的模型请求（按单次 API 调用去重）**全部计入**，不设最少输出门槛，确保仅输出十几个 token 去调工具、却读取十万级缓存上下文的轮次不会漏算。
   - **输出速度（`tok/s`）与首字延迟（TTFT）**：单次请求必须同时满足 **`output_tokens >= 16` 且首字后生成阶段耗时 `>= 200 ms`**，并具备单调递增的请求起点、首字到达与末块完成时间戳，才作为有效测速样本计入（`output_tokens == 0` 或首字前中断的请求丢弃；中途被用户中断但已落盘明确 `output_tokens >= 16` 与末块准确时刻的按已生成部分计入）。因此同一 `(agent, model)` 的有效测速请求数（`speed_request_count`）可小于或等于总用量请求数（`usage_request_count`），协议分开返回；输出速度与首字延迟内部共用同一有效测速样本集。
 
-### 各 CLI 的数据来源与字段口径（实现前须核实）
+### 各 CLI 的数据来源与已验证字段口径
 
-- **Claude Code**：读取 transcript JSONL 中每次 API 回复的 `message.usage`（同一 `message.id` 的流式中间行按请求 ID 去重，只取最终完成快照）：
-  - `input_tokens`（不含缓存的未缓存输入，见 [claude-code-notes §2](claude-code-notes.md#2-transcript)）、`cache_creation_input_tokens`（缓存写入，`cache_write_supported = true`）、`cache_read_input_tokens`（缓存读取）、`output_tokens`、`output_tokens_details.thinking_tokens`；
-  - **待实现前实测核实**（见 [plan.md](plan.md#待确认)）：核实 `output_tokens` 是否已包含 `output_tokens_details.thinking_tokens`，确保推理 token 计入输出且不重复累加；
-  - 速度与首字延迟取对应 `api-request` 起点、首个回复块到达与末块完成时间戳。
-- **Codex**：读取 rollout JSONL 中 `event_msg` 的 `token_count` 事件（`info.last_token_usage` 含 `input_tokens`、`cached_input_tokens`、`cache_write_input_tokens`、`output_tokens`、`reasoning_output_tokens`、`total_tokens`，配合事件时间戳计算速度）：
-  - **空值跳过与重复事件去重**：`token_count` 事件里 `info` 可能为 `null`（例如仅刷新账户额度的事件），`info == null` 或 `info.last_token_usage == null` 时必须直接跳过；同一模型请求重复发出的相同计数快照（可结合累计 `info.total_token_usage` 是否前进判断）须去重跳过；
-  - **待实现前实测核实**（见 [plan.md](plan.md#待确认)）：① 按 OpenAI 惯例，`input_tokens` **可能已经包含**缓存部分（`cached_input_tokens` 及可能的 `cache_write_input_tokens`），`output_tokens` 也可能已包含 `reasoning_output_tokens`；实现前必须用真实 rollout 样本核对各项与 `total_tokens` 的精确恒等式后再定拆解公式；② 核实不同模型下 `cache_write_input_tokens` 缺省与显式 `0` 的出现条件，缺省时置 `cache_write_supported = false`。
-- **Antigravity（`agy`）**：本地记录来源待查（见 [plan.md](plan.md#待确认)）；核实前该 CLI 标为 `source_unavailable`，daemon 不伪造 `0` 值，界面在混合启用时于表底附注说明、仅启用 `agy` 或在 `agy` 会话设置里如实说明暂不支持统计。
+- **Claude Code**：读取 transcript JSONL 中每次 API 回复的 `message.usage`（同一 `requestId` 或 `message.id` 的流式中间行按请求 ID 去重取字段最大值，见 `internal/usagestats/claude_parser.go`）：
+  - `input_tokens` 不含缓存（与 `cache_read_input_tokens`、`cache_creation_input_tokens` 互斥），`cache_creation_input_tokens` 记为缓存写入（`cache_write_supported = true`）；
+  - 已在真实 transcript 上核实：`output_tokens` **已包含** `output_tokens_details.thinking_tokens`，解析器在 `[0, output_tokens]` 钳制后单独保存 `reasoning_output_tokens`，不重复加到总输出里；
+  - 速度与首字延迟取 `api-request`（或父消息）时间戳、首个 assistant chunk 与最终完成块时间戳。
+- **Codex**：读取 rollout JSONL 的 `event_msg` `token_count` 与 `token_usage_record`（见 `internal/usagestats/codex_parser.go`）：
+  - **已核实恒等式**：`input_tokens == uncached + cached_input_tokens + cache_write_input_tokens`、`output_tokens` **已包含** `reasoning_output_tokens`，因此解析器按 `cache_read = min(inTotal, cached_input_tokens)`、`cache_write = min(inTotal - cache_read, cache_write_input_tokens)`、`uncached = inTotal - cache_read - cache_write` 拆解，避免重复计算；当 `cache_write_input_tokens > 0` 时标记 `cache_write_supported = true`，缺省或 `0` 时按未单独拆出处理（`cache_write_supported = false`）；
+  - **空值跳过与重复事件去重**：`token_count` 里 `info == null` / `info.last_token_usage == null` 或 `{in: 0, out: 0}` 的状态快照直接跳过；同一模型请求的重复快照按 `response_id`（`token_usage_record`）或单调递进的 `info.total_token_usage.total_tokens`（`token_count`）去重。
+- **Antigravity（`agy`）**：当前本地 statusline 与 brain 快照仅给出会话累计 `context_window` token 计数，未记录单次模型请求的缓存读写拆分与请求/首字/完成时间戳（见 [antigravity-notes §7](antigravity-notes.md) 与 [plan.md](plan.md#待确认)）；采集器将 `agy` 标为 `USAGE_SOURCE_STATE_UNAVAILABLE`，不伪造 `0` 值，界面在混合启用时于表底附注、仅启用 `agy` 或在 `agy` 会话设置里如实说明暂不支持统计。
 
 ### 本机保存、时区分桶与历史补算
 

@@ -27,7 +27,7 @@ MVP（[scope.md](scope.md) 里「做」的全部内容）已经完成。**所有
 | 传输模块与直连 | 协议 15 的 0a/0b 已随 v0.75.2 发布；0c 四端活性与换网恢复及 iMac 正式恢复测量完成；1b 分类队列、2/4/2 池与完整审批隔离完成本地验收，含超期输入/快照洪泛及终结锁竞争；协议 16 的 1c 已完成本地 daemon/网页只读与 bulk DirectPath、四端编解码和网页开关；原生移动直连、热备及旧终端续接未启用 | [0b 正式首条测量](acceptance-notes.md#重定基与-imac-正式测量2026-11-14)、[0c 本地恢复验收](acceptance-notes.md#传输-0c-中继活性与换网2026-11-14)、[0c 正式恢复测量](acceptance-notes.md#0c-imac-正式恢复测量2026-11-14)与 [1b 分类调度验收](acceptance-notes.md#1b-分类调度与完整审批验收2026-11-15) | 0c 真机网络验收、下列 1–4 期、网页/Android/iOS 按 v63 新直连设计重做界面（目前未实现），以及「待确认 › 传输模块与直连」 |
 | 测试与开发夹具 | 实例状态目录、共享准备步骤、受限并行与正确的增量输入依赖 | 各端完整前后对照与五轮 CPU 高负载复跑，用例和断言保留，见[第二轮记录](acceptance-notes.md#测试提速第二轮2026-11-04) | 改动仍在任务分支；机制审计候选尚未决定，未自动改隐私、协议或存储格式 |
 
-当前协议为 15，daemon、server、网页和 App 需要一起升级；不同协议版本互相拒绝。14→15 的安全状态手动升级见[开发说明](development.md#安全状态-v3-到-v4-的一次性手动升级)；0b 不改变协议或存储格式。定时任务的升级搭配见 [architecture §18](architecture.md#协议版本与升级)。v0.44.0 已包含管理端签名链、独立租约、持久安全操作、当前 checkpoint、到期暂停上传及移除保留档案。任一 Client（网页、Android、iOS）可成为唯一管理端，Machine 不能。任意客户端管理的 core、生命周期和网页界面已在独立工作树实现，三端完整有向交接矩阵、真实 CLI 产品链路和真机通知仍待联合验收，不能视为全能力发布完成。已有协议 10 账户不需重建；旧协议 9→10 的 Android 重建/离线固定路线独立保留。设计见 [architecture §9](architecture.md#9-账户设备和密钥)，边界见 [scope](scope.md#设备加入与移除)，已安装版本以 Release 为准。
+当前主线已合入的基准协议为 15（当前 `wt/v63-web-android-ui` 任务分支按协议 17 推进：在 16 的直连开关基础上完成按电脑 CLI 启停开关与被动模型用量/输出速度统计，覆盖 daemon、server、共享核心 `clientcore`、网页端与 Android 端；iOS 协议与核心已升级至 17，对应原生设置开关与用量视图待接入），daemon、server、网页和 App 需要一起升级；不同协议版本互相拒绝。14→15 的安全状态手动升级见[开发说明](development.md#安全状态-v3-到-v4-的一次性手动升级)；0b 不改变协议或存储格式。定时任务的升级搭配见 [architecture §18](architecture.md#协议版本与升级)。v0.44.0 已包含管理端签名链、独立租约、持久安全操作、当前 checkpoint、到期暂停上传及移除保留档案。任一 Client（网页、Android、iOS）可成为唯一管理端，Machine 不能。任意客户端管理的 core、生命周期和网页界面已在独立工作树实现，三端完整有向交接矩阵、真实 CLI 产品链路和真机通知仍待联合验收，不能视为全能力发布完成。已有协议 10 账户不需重建；旧协议 9→10 的 Android 重建/离线固定路线独立保留。设计见 [architecture §9](architecture.md#9-账户设备和密钥)，边界见 [scope](scope.md#设备加入与移除)，已安装版本以 Release 为准。
 
 ## 下一步
 
@@ -208,7 +208,6 @@ v61 整理时按当前代码核对，以下实现仍偏离负责人裁定，尚�
 - `auto_review` 直接拒绝时，模型是否会在对话里请求批准（目前没复现出来）
 - 模型提问：多个问题时按编号是否逐题前进；`None of the above` 加备注怎么按；非 Plan 模式下模型会不会用这两个工具
 - `[notice]` 下除 `hide_rate_limit_model_nudge` 以外的几个开关是否有效
-- rollout `token_count` 事件的 `info.last_token_usage` 中，`input_tokens` 是否已包含 `cached_input_tokens` / `cache_write_input_tokens`、`output_tokens` 是否已包含 `reasoning_output_tokens`，以及不同模型下 `cache_write_input_tokens` 缺省与显式 `0` 的出现条件（[architecture §22](architecture.md#22-模型用量与输出速度待实现)）
 
 **Claude Code 待实测**
 
@@ -219,11 +218,10 @@ v61 整理时按当前代码核对，以下实现仍偏离负责人裁定，尚�
 - AskUserQuestion 的选择框里按 Esc、选 `Type something.` 和 `Chat about this` 的结果
 - 2.1.293 忽略项目设置里的 bypass 默认值（[notes §5](claude-code-notes.md#5-权限模式)），daemon 读出的默认模式（[architecture §7](architecture.md#7-审批)）这时仍报「完全放行」。被忽略后是退回用户级的 `defaultMode` 还是直接 manual、托管设置里的算不算，都没测；测清后再改读法
 - Plan 模式里会话的模型会被临时换掉（回复用 sonnet），这时 Shift+Tab 的循环按哪个模型算（Haiku 4.5 的会话在 Plan 模式下有没有 auto）没测
-- transcript 的 `message.usage` 中，`output_tokens` 是否已包含 `output_tokens_details.thinking_tokens`（[architecture §22](architecture.md#22-模型用量与输出速度待实现)）
 
 **Antigravity 待实测**
 
-- 本地 brain / 日志里是否记录每次模型请求的输入、缓存读写、输出与推理 token 以及起止和首字时间戳，供 daemon 被动统计模型用量、缓存命中率与输出速度（[architecture §22](architecture.md#22-模型用量与输出速度待实现)）
+- 本地 brain / 日志里是否记录每次模型请求的输入、缓存读写、输出与推理 token 以及起止和首字时间戳，供 daemon 被动统计模型用量、缓存命中率与输出速度（当前 statusline 仅见会话累计 `context_window`，未拆分单次请求与缓存读写/时间戳；采集器已按 [architecture §22](architecture.md#22-模型用量与输出速度) 标为 `UNAVAILABLE`）
 
 **Android 待验证**
 
