@@ -1560,7 +1560,6 @@ object UiMessages {
     fun sessionTryAgain(): UiMessage = UiMessage("session.try_again", emptyMap())
     fun sessionTurnDuration(duration: String): UiMessage = UiMessage("session.turn_duration", mapOf("duration" to duration))
     fun sessionTurnError(reason: String): UiMessage = UiMessage("session.turn_error", mapOf("reason" to reason))
-    fun sessionTurnMTokens(count: String): UiMessage = UiMessage("session.turn_m_tokens", mapOf("count" to count))
     fun sessionUpdateComputer(): UiMessage = UiMessage("session.update_computer", emptyMap())
     fun sessionUsageEntryEmptyHint(): UiMessage = UiMessage("session.usage_entry_empty_hint", emptyMap())
     fun sessionUsageEntryNoData(): UiMessage = UiMessage("session.usage_entry_no_data", emptyMap())

@@ -1453,7 +1453,6 @@
 "session_try_again" = "Try again";
 "session_turn_duration" = "Turn took %1$@";
 "session_turn_error" = "Turn failed: %1$@";
-"session_turn_m_tokens" = "%1$@M tokens";
 "session_update_computer" = "Update remote-agent on the computer";
 "session_usage_entry_empty_hint" = "Usage, cache hit rate, and speed are recorded after conversations";
 "session_usage_entry_no_data" = "No records";

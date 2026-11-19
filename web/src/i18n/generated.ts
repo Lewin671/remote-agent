@@ -1251,7 +1251,6 @@ export interface MessageArgs {
   "session.try_again": { [name: string]: never };
   "session.turn_duration": { duration: string };
   "session.turn_error": { reason: string };
-  "session.turn_m_tokens": { count: string };
   "session.update_computer": { [name: string]: never };
   "session.usage_entry_empty_hint": { [name: string]: never };
   "session.usage_entry_no_data": { [name: string]: never };
@@ -3555,7 +3554,6 @@ export const messages = {
     "session.try_again": "Try again",
     "session.turn_duration": "Turn took {duration}",
     "session.turn_error": "Turn failed: {reason}",
-    "session.turn_m_tokens": "{count}M tokens",
     "session.update_computer": "Update remote-agent on the computer",
     "session.usage_entry_empty_hint": "Usage, cache hit rate, and speed are recorded after conversations",
     "session.usage_entry_no_data": "No records",
@@ -5847,7 +5845,6 @@ export const messages = {
     "session.try_again": "再试一次",
     "session.turn_duration": "本轮用时 {duration}",
     "session.turn_error": "本轮出错：{reason}",
-    "session.turn_m_tokens": "{count}M tokens",
     "session.update_computer": "请更新电脑上的 remote-agent",
     "session.usage_entry_empty_hint": "对话后自动统计消耗、缓存与速度",
     "session.usage_entry_no_data": "暂无记录",
