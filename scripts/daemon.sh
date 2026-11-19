@@ -51,7 +51,7 @@ installed() {
 wait_up() {
 	i=0
 	while [ $i -lt 120 ]; do
-		if "$BIN" ls >/dev/null 2>&1; then
+		if "$BIN" session list >/dev/null 2>&1; then
 			return 0
 		fi
 		sleep 0.5
@@ -85,7 +85,7 @@ install() {
 	BIN=$(cd "$(dirname "$BIN")" && pwd)/$(basename "$BIN")
 	# A daemon started by hand holds the lock; the service would keep
 	# failing to start next to it.
-	if [ ! -f "$UNIT" ] && "$BIN" ls >/dev/null 2>&1; then
+	if [ ! -f "$UNIT" ] && "$BIN" session list >/dev/null 2>&1; then
 		echo "a daemon is already running (started by hand?); stop it first, then run install again" >&2
 		exit 1
 	fi

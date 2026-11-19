@@ -82,7 +82,7 @@ func formatEvent(e *pb.Event) string {
 		}
 		if a.Deadline != nil {
 			body += "\n" + indent("answer by "+a.Deadline.AsTime().Local().Format("15:04:05")+
-				" with `remote-agent approve|deny "+shortID(e.SessionId)+" "+a.ApprovalId+"`")
+				" with `remote-agent session approve|deny "+shortID(e.SessionId)+" "+a.ApprovalId+"`")
 		}
 	case *pb.Event_ApprovalResolved:
 		a := k.ApprovalResolved
@@ -112,7 +112,7 @@ func formatEvent(e *pb.Event) string {
 			}
 		}
 		if !q.Async {
-			body += "\n" + indent("answer with `remote-agent answer "+shortID(e.SessionId)+" "+q.QuestionId+" <option>`")
+			body += "\n" + indent("answer with `remote-agent session answer "+shortID(e.SessionId)+" "+q.QuestionId+" <option>`")
 		}
 	case *pb.Event_QuestionAnswered:
 		q := k.QuestionAnswered

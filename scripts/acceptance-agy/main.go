@@ -178,7 +178,7 @@ func run() (runErr error) {
 	}
 	work := filepath.Join(dir, "work")
 	must(os.MkdirAll(work, 0700))
-	cmd := exec.Command(binary, "new", "--agent", "agy")
+	cmd := exec.Command(binary, "session", "create", "--agent", "agy")
 	cmd.Dir = work
 	// The host harness may export NO_COLOR. Exercise the normal styled TUI;
 	// unstyled mode placeholders cannot be distinguished from identical drafts.

@@ -23,11 +23,12 @@
 | 命令 | 用途 |
 |---|---|
 | `remote-agent codex` / `remote-agent claude` / `remote-agent agy` | 在当前目录启动会话并进入 |
-| `remote-agent new [flags] [-- args]` | 在后台新建会话并打印 ID（支持 `--agent`、`--cwd`、`--model`、`--effort`、`--mode`、`--standard-context`、`--title`、`--prompt`、`--login-shell`；见 `remote-agent new help`） |
-| `remote-agent ls [-a] [--json] [ID]` | 列出会话（或查看单个会话）；ID 可以只写能区分的前几位 |
-| `remote-agent attach ID` | 进入一个正在运行的会话 |
-| `remote-agent send [--queue] ID TEXT` | 不进入会话，直接发消息（`-` 从标准输入读取；`--queue` 等当前轮结束） |
-| `remote-agent events ID -f [--json]` | 持续查看会话事件 |
+| `remote-agent models [codex\|claude\|agy] [--json]` | 查看可用模型、支持的推理强度（effort）以及这台电脑新建会话的实际默认值 |
+| `remote-agent session create [flags] [-- args]` | 在后台新建会话并打印 ID（支持 `--agent`、`--cwd`、`--model`、`--effort`、`--mode`、`--standard-context`、`--title`、`--prompt`、`--login-shell`；见 `remote-agent session create help`） |
+| `remote-agent session list [-a] [--json]` | 列出会话（查看单个会话用 `remote-agent session get ID [--json]`；ID 可以只写能区分的前几位） |
+| `remote-agent session attach ID` | 进入一个正在运行的会话 |
+| `remote-agent session send [--queue] ID TEXT` | 不进入会话，直接发消息（`-` 从标准输入读取；`--queue` 等当前轮结束） |
+| `remote-agent session events ID -f [--json]` | 持续查看会话事件（审批、答问、切模型/模式、停止/恢复/fork 等见 `remote-agent session help`） |
 | `remote-agent schedule OPERATION` | 管理这台电脑上的持久定时任务（见 `remote-agent schedule help`） |
 | `remote-agent doctor` | 检查已安装的 CLI 是否符合 remote-agent 的预期；升级 Codex、Claude Code 或 Antigravity 后运行一次 |
 | `remote-agent account join --server URL --code CODE` | 用当前管理端显示的配对码加入账户 |

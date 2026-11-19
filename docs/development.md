@@ -22,12 +22,13 @@
 scripts/install.sh             # 编译到 ~/bin/remote-agent；装过后台服务的话顺便重启 daemon
 scripts/daemon.sh install      # 把 daemon 装成后台服务（macOS 用 launchd，Linux 用 systemd --user），开机自启
 remote-agent daemon            # 或者：在前台运行 daemon
-remote-agent codex             # 另开一个终端：在当前目录启动 Codex 并 attach
-remote-agent claude            # 同上，启动 Claude Code
-remote-agent agy               # 同上，启动 Antigravity
-remote-agent ls                # 列出会话
-remote-agent send <id> 你好     # 从别处发消息，id 可以只写前几位
-remote-agent events <id> -f    # 持续查看事件
+remote-agent codex                  # 另开一个终端：在当前目录启动 Codex 并 attach
+remote-agent claude                 # 同上，启动 Claude Code
+remote-agent agy                    # 同上，启动 Antigravity
+remote-agent models                 # 查看各 CLI 可用模型、推理强度和默认配置
+remote-agent session list           # 列出会话
+remote-agent session send <id> 你好  # 从别处发消息，id 可以只写前几位
+remote-agent session events <id> -f # 持续查看事件
 ```
 
 - 从手机或网页新开的会话由你自己的登录 shell 启动（交互式登录，读 `.zshrc`、`.profile` 等），环境每次现算：升级 nvm、装新命令、CLI 换了位置都会在下一个会话生效，不用重新 `install` 或重启 daemon。从终端用 `remote-agent codex` 开的会话仍用那个终端的环境，里面临时 `export` 的变量有效，启动的也是在那个终端里敲 `codex` 会找到的那个（PATH 里靠前的包装脚本同样生效）；找不到就报错，不会改用 daemon 自己找到的那个

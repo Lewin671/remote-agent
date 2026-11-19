@@ -4812,8 +4812,8 @@
   },
   {
     "key": "schedule.cli_mcp_help",
-    "zh-CN": "用法：\n  remote-agent mcp [--session ID]\n\n为单个托管会话在 stdio 上提供内置 MCP 工具（remote_agent）：\n  - send_file：在当前对话气泡中向客户端交付本机文件以供下载\n  - notify_user：在定时执行轮次内主动向客户端发送通知\n  - schedule_*：受限于本会话及同项目同权限的定时任务委托\n\n托管会话启动时会自动注入该 MCP 并设置 RA_SESSION。跨会话或机器级控制请使用 remote-agent 子命令（new、ls、send、events、schedule 等）。\n",
-    "en": "Usage:\n  remote-agent mcp [--session ID]\n\nServe the built-in per-session MCP server (remote_agent) over stdio:\n  - send_file: offer a local file as a downloadable card in this conversation\n  - notify_user: send an explicit notification during a scheduled turn\n  - schedule_*: manage tasks delegated by this session within its project/mode scope\n\nManaged sessions inject this MCP automatically with RA_SESSION set. For machine-wide session or schedule control, use the remote-agent CLI commands (new, ls, send, events, schedule, etc.).\n",
+    "zh-CN": "用法：\n  remote-agent mcp [--session ID]\n\n内部子命令：由 daemon 为每个托管会话自动注入并设置 RA_SESSION，在 stdio 上提供单会话绑定的 MCP 工具（remote_agent）：\n  - send_file：在当前对话气泡中向客户端交付本机文件以供下载\n  - notify_user：在定时执行轮次内主动向客户端发送通知\n  - schedule_*：受限于本会话项目与权限范围的定时任务委托\n\n跨会话或整机控制请使用 remote-agent session、remote-agent models 与 remote-agent schedule 子命令。\n",
+    "en": "Usage:\n  remote-agent mcp [--session ID]\n\nInternal subcommand injected automatically into managed sessions (with RA_SESSION set) to serve session-bound MCP tools (remote_agent) over stdio:\n  - send_file: offer a local file as a downloadable card in this conversation\n  - notify_user: send an explicit notification during a scheduled turn\n  - schedule_*: manage tasks delegated by this session within its project/mode scope\n\nFor machine-wide session, model or schedule control, use \"remote-agent session\", \"remote-agent models\" and \"remote-agent schedule\".\n",
     "notes": "remote-agent mcp --help 的命令行说明，阐述内置会话级 MCP 与机器级 CLI 子命令的职责边界。",
     "params": {},
     "platforms": [

@@ -167,10 +167,10 @@ echo "  Account:    $account_id"
 echo "  Tmux Sock:  $(cat "$dir/tmux-socket")"
 echo
 echo "CLI usage:"
-echo "  scripts/dev/e2e-up.sh cli ls"
-echo "  scripts/dev/e2e-up.sh cli new"
+echo "  scripts/dev/e2e-up.sh cli session list"
+echo "  scripts/dev/e2e-up.sh cli session create"
 echo "  # or with dev-env.sh:"
-echo "  RA_DEV_DIR=$dir ios/scripts/dev-env.sh cli ls"
+echo "  RA_DEV_DIR=$dir ios/scripts/dev-env.sh cli session list"
 echo
 echo "Stop & cleanup:"
 echo "  scripts/dev/e2e-down.sh $dir"

@@ -23,11 +23,12 @@ Sessions started from a client and sessions started in a terminal are the same k
 | Command | Purpose |
 |---|---|
 | `remote-agent codex` / `remote-agent claude` / `remote-agent agy` | Start a session in the current directory and attach to it |
-| `remote-agent new [flags] [-- args]` | Start a session without attaching and print its ID (`--agent`, `--cwd`, `--model`, `--effort`, `--mode`, `--standard-context`, `--title`, `--prompt`, `--login-shell`; see `remote-agent new help`) |
-| `remote-agent ls [-a] [--json] [ID]` | List sessions (or inspect one); IDs may be shortened to any unique prefix |
-| `remote-agent attach ID` | Attach to a running session |
-| `remote-agent send [--queue] ID TEXT` | Send a message without attaching (`-` reads stdin; `--queue` waits for the current turn to end) |
-| `remote-agent events ID -f [--json]` | Follow a session's events |
+| `remote-agent models [codex\|claude\|agy] [--json]` | List available models, valid effort levels, and this computer's effective new-session defaults |
+| `remote-agent session create [flags] [-- args]` | Start a session in the background and print its ID (`--agent`, `--cwd`, `--model`, `--effort`, `--mode`, `--standard-context`, `--title`, `--prompt`, `--login-shell`; see `remote-agent session create help`) |
+| `remote-agent session list [-a] [--json]` | List sessions (`remote-agent session get ID [--json]` inspects one; IDs may be shortened to any unique prefix) |
+| `remote-agent session attach ID` | Attach to a running session |
+| `remote-agent session send [--queue] ID TEXT` | Send a message without attaching (`-` reads stdin; `--queue` waits for the current turn to end) |
+| `remote-agent session events ID -f [--json]` | Follow a session's events (for approvals, questions, model/mode changes, stop/resume/fork, see `remote-agent session help`) |
 | `remote-agent schedule OPERATION` | Manage persistent scheduled tasks on this computer (see `remote-agent schedule help`) |
 | `remote-agent doctor` | Check that the installed CLIs behave as remote-agent expects; run it after upgrading Codex, Claude Code or Antigravity |
 | `remote-agent account join --server URL --code CODE` | Join an account with the code shown by the current authority |

@@ -139,7 +139,7 @@ remote-agent codex                                          # 或：remote-agent
 不需要。daemon 和客户端都通过 HTTPS 和 WebSocket 主动连中继。
 
 **电脑上还能接着用终端吗？**
-能。用 `remote-agent claude`、`remote-agent codex` 启动的会话，或用 `remote-agent attach <id>` 接上的会话，和手机看到的是同一个 tmux 会话。各设备的输入按到达顺序送进去。
+能。用 `remote-agent claude`、`remote-agent codex` 或 `remote-agent agy` 启动的会话，或用 `remote-agent session attach <id>` 接上的会话，和手机看到的是同一个 tmux 会话。各设备的输入按到达顺序送进去。
 
 **关掉 App 或者断网了会怎样？**
 agent 在 tmux 里继续运行，客户端重连后补上进度。电脑睡眠时 agent 跟着暂停；daemon 重启后会重新接上仍在运行的会话。

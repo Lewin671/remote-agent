@@ -26,6 +26,29 @@ func usage() string {
 	return i18n.StartupCliUsage("en", agentLines.String(), ids)
 }
 
+var removedSessionCommands = map[string]string{
+	"new":          "session create",
+	"ls":           "session list",
+	"list":         "session list",
+	"attach":       "session attach",
+	"send":         "session send",
+	"cancel":       "session cancel-input",
+	"resume-input": "session resume-input",
+	"events":       "session events",
+	"approve":      "session approve",
+	"deny":         "session deny",
+	"answer":       "session answer",
+	"interrupt":    "session interrupt",
+	"stop":         "session stop",
+	"resume":       "session resume",
+	"fork":         "session fork",
+	"model":        "models (or session model)",
+	"mode":         "session mode",
+	"rename":       "session rename",
+	"compact":      "session compact",
+	"plan":         "session plan",
+}
+
 func main() {
 	if len(os.Args) == 2 && (os.Args[1] == "--version" || os.Args[1] == "version") {
 		fmt.Println("remote-agent", buildinfo.String())
@@ -44,58 +67,24 @@ func main() {
 		}
 	}
 	switch cmd {
+	case "session":
+		err = runSession(args)
+	case "models":
+		err = runModels(args)
+	case "schedule":
+		err = runSchedule(args)
+	case "account":
+		err = runAccount(args)
 	case "update":
 		err = runUpdate(args)
 	case "update-build-info":
 		err = printUpdateJSON(updater.Build())
-	case "schedule":
-		err = runSchedule(args)
-	case "mcp":
-		err = runMCP(args)
-	case "daemon":
-		err = runDaemon(args)
-	case "new":
-		err = runNew(args)
-	case "ls", "list":
-		err = runList(args)
-	case "attach":
-		err = runAttach(args)
-	case "cancel":
-		err = runCancel(args)
-	case "resume-input":
-		err = runResumeInput(args)
-	case "send":
-		err = runSend(args)
-	case "events":
-		err = runEvents(args)
-	case "approve":
-		err = runResolve(args, true)
-	case "deny":
-		err = runResolve(args, false)
-	case "answer":
-		err = runAnswer(args)
-	case "interrupt":
-		err = runInterrupt(args)
-	case "stop":
-		err = runStop(args)
-	case "resume":
-		err = runResume(args)
-	case "fork":
-		err = runFork(args)
-	case "model":
-		err = runModel(args)
-	case "mode":
-		err = runMode(args)
-	case "rename":
-		err = runRename(args)
-	case "compact":
-		err = runCompact(args)
-	case "plan":
-		err = runPlan(args)
 	case "doctor":
 		err = runDoctor(args)
-	case "account":
-		err = runAccount(args)
+	case "daemon":
+		err = runDaemon(args)
+	case "mcp":
+		err = runMCP(args)
 	case "hook":
 		os.Exit(runHook(args))
 	case "statusline":
@@ -109,6 +98,10 @@ func main() {
 		if spec, ok := daemon.FindAgent(cmd); ok {
 			err = runAgent(spec.Kind, args, true)
 			break
+		}
+		if replacement, moved := removedSessionCommands[cmd]; moved {
+			os.Stderr.WriteString(i18n.StartupCliRemovedSessionCmd(cliLocale, cmd, replacement) + "\n")
+			os.Exit(2)
 		}
 		fmt.Fprintf(os.Stderr, "remote-agent: unknown command %q\n\n%s", cmd, usage())
 		os.Exit(2)

@@ -1373,10 +1373,56 @@
     }
   },
   {
+    "key": "new_session.cli_agy_model_at_launch",
+    "zh-CN": "Antigravity 仅在新建会话时选择模型；请使用 remote-agent session create --agent agy --model {model}",
+    "en": "Antigravity selects models at session launch; start a new session with \"remote-agent session create --agent agy --model {model}\"",
+    "notes": "对运行中的 Antigravity 会话调用 session model 切换模型时的明确提示。",
+    "params": {
+      "model": {
+        "type": "string",
+        "example": "gemini-pro-orchestrator"
+      }
+    },
+    "platforms": [
+      "go"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "new_session.cli_effort_unsupported_for_model",
+    "zh-CN": "模型 {model} 仅支持推理强度 [{supported}]，不支持「{effort}」",
+    "en": "model {model} supports effort [{supported}], not \"{effort}\"",
+    "notes": "模型支持部分推理强度档位而调用方传入了该模型不支持的档位时的错误提示。",
+    "params": {
+      "effort": {
+        "type": "string",
+        "example": "xhigh"
+      },
+      "model": {
+        "type": "string",
+        "example": "gpt-oss-120b"
+      },
+      "supported": {
+        "type": "string",
+        "example": "medium"
+      }
+    },
+    "platforms": [
+      "go"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
     "key": "new_session.cli_help",
-    "zh-CN": "用法：\n  remote-agent new [选项] [-- 底层CLI参数]\n\n在后台启动托管会话，不占用当前终端，并向标准输出打印会话 ID。\n\n选项：\n  --agent {agents}          要启动的 CLI（默认：{defaultAgent}）\n  --cwd DIR                 会话工作目录（默认：当前目录）\n  --model MODEL             启动模型标识（省略则使用本机或 CLI 默认值）\n  --effort EFFORT           推理强度（如 low、medium、high、xhigh、max）\n  --mode ask|auto|full|plan 审批模式\n  --standard-context        固定为 200k 标准上下文窗口（仅 Claude Code）\n  --title TITLE             会话标题（最多 60 个字）\n  --prompt TEXT             CLI 就绪后自动发送的首条消息（\"-\" 从标准输入读取）\n  --login-shell             经用户登录 shell 启动，与手机/网页客户端新建会话一致\n",
-    "en": "Usage:\n  remote-agent new [flags] [-- cli-args]\n\nStart a managed session without attaching and print its session ID.\n\nFlags:\n  --agent {agents}          CLI to start (default: {defaultAgent})\n  --cwd DIR                 working directory (default: current directory)\n  --model MODEL             model slug (empty uses daemon/CLI defaults)\n  --effort EFFORT           reasoning effort (e.g. low, medium, high, xhigh, max)\n  --mode ask|auto|full|plan approval mode\n  --standard-context        hold to the 200k standard context window (Claude Code)\n  --title TITLE             session title (up to 60 characters)\n  --prompt TEXT             first message sent once ready (\"-\" reads stdin)\n  --login-shell             start through the user's login shell, like a client session\n",
-    "notes": "remote-agent new --help 的命令行用法说明；agents 为可选 CLI 竖线列表，defaultAgent 为默认 CLI 标识。",
+    "zh-CN": "用法：\n  remote-agent session create [选项] [-- 底层CLI参数]\n\n在后台启动托管会话，不占用当前终端，并向标准输出打印会话 ID。\n先运行 remote-agent models AGENT 可查看可选模型 ID、显示名、支持的推理强度及本机默认配置。\n\n选项：\n  --agent {agents}          要启动的 CLI（默认：{defaultAgent}）\n  --cwd DIR                 会话工作目录（默认：当前目录）\n  --model MODEL             模型 ID 或客户端显示名（如 gemini-pro-orchestrator 或 \"Orchestrator (Carbon)\"；省略则跟随本机/CLI 默认值）\n  --effort EFFORT           推理强度（省略则使用模型默认档位；models 表中标为 - 的模型无此项，请勿传入）\n  --mode MODE               显式覆盖审批模式：ask|auto|full|plan（省略则跟随本机/CLI 默认配置，与网页/App 新建一致；codex 与 claude 需启动后再切 plan）\n  --standard-context        固定为 200k 标准上下文窗口（仅 Claude Code）\n  --title TITLE             会话标题（最多 60 个字）\n  --prompt TEXT             CLI 就绪后自动发送的首条消息（\"-\" 从标准输入读取）\n  --login-shell             经用户登录 shell 启动，与网页/App 客户端新建会话一致\n",
+    "en": "Usage:\n  remote-agent session create [flags] [-- cli-args]\n\nStart a managed session without attaching and print its session ID.\nRun \"remote-agent models AGENT\" first to inspect available model IDs, display names, supported efforts and this computer's effective defaults.\n\nFlags:\n  --agent {agents}          CLI to start (default: {defaultAgent})\n  --cwd DIR                 working directory (default: current directory)\n  --model MODEL             model ID or unambiguous display name (e.g. gemini-pro-orchestrator or \"Orchestrator (Carbon)\"; omit to follow machine/CLI default)\n  --effort EFFORT           reasoning effort (omit to use default, or when \"remote-agent models\" shows \"-\")\n  --mode MODE               explicit approval-mode override: ask|auto|full|plan (omit to follow machine/CLI defaults, matching Web/App new sessions; codex and claude switch to plan after launch)\n  --standard-context        hold to the 200k standard context window (Claude Code)\n  --title TITLE             session title (up to 60 characters)\n  --prompt TEXT             first message sent once ready (\"-\" reads stdin)\n  --login-shell             start through the user's login shell, like a client session\n",
+    "notes": "remote-agent session create --help 的命令行用法说明；agents 为可选 CLI 竖线列表，defaultAgent 为默认 CLI 标识。",
     "params": {
       "agents": {
         "type": "string",
@@ -1385,6 +1431,29 @@
       "defaultAgent": {
         "type": "string",
         "example": "codex"
+      }
+    },
+    "platforms": [
+      "go"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "new_session.cli_model_invalid",
+    "zh-CN": "未知或无效的模型「{model}」；请运行 remote-agent models {agent} 查看可用模型 ID",
+    "en": "unknown or invalid model \"{model}\"; run \"remote-agent models {agent}\" to list valid models",
+    "notes": "传入无法识别的模型名或非法模型标识时的命令行错误提示。",
+    "params": {
+      "agent": {
+        "type": "string",
+        "example": "agy"
+      },
+      "model": {
+        "type": "string",
+        "example": "bad model"
       }
     },
     "platforms": [
@@ -1415,11 +1484,68 @@
     }
   },
   {
+    "key": "new_session.cli_models_help",
+    "zh-CN": "用法：\n  remote-agent models [{agents}] [--json]\n\n列出这台电脑上已启用 CLI 的可选模型、客户端显示名、支持的推理强度，以及不传参数新建会话时的生效默认配置。\n指定单个 CLI（如 remote-agent models agy）时仅查询该 CLI；省略时依次列出所有可用的已启用 CLI。\n",
+    "en": "Usage:\n  remote-agent models [{agents}] [--json]\n\nList available models, client display names, supported reasoning efforts, and effective new-session defaults on this computer.\nPass an agent ID (e.g. \"remote-agent models agy\") to inspect one CLI, or omit it to list all enabled installed CLIs.\n",
+    "notes": "remote-agent models --help 的命令行用法说明。",
+    "params": {
+      "agents": {
+        "type": "string",
+        "example": "codex|claude|agy"
+      }
+    },
+    "platforms": [
+      "go"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
     "key": "new_session.cli_mode_invalid",
-    "zh-CN": "模式必须是 ask、auto、full 或 plan",
-    "en": "mode must be ask, auto, full or plan",
-    "notes": "remote-agent new --mode 传入无效模式名时的命令行错误提示。",
+    "zh-CN": "模式必须是 ask、auto、full 或 plan（省略 --mode 则跟随本机/CLI 默认配置）",
+    "en": "mode must be ask, auto, full or plan (omit --mode to follow machine/CLI defaults)",
+    "notes": "remote-agent session create --mode 传入无效模式名时的命令行错误提示。",
     "params": {},
+    "platforms": [
+      "go"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "new_session.cli_session_help",
+    "zh-CN": "用法：\n  remote-agent session create [flags] [-- args]         后台新建托管会话（见 session create help）\n  remote-agent session list [-a] [--json]               列出会话（-a 含已退出会话）\n  remote-agent session get ID [--json]                  查看单个会话详情\n  remote-agent session attach ID                        进入正在运行的会话终端\n  remote-agent session send [--queue] ID TEXT           向会话发消息（\"-\" 读标准输入；--queue 等当前轮结束）\n  remote-agent session cancel-input ID REQUEST-ID       撤回模型尚未收到的消息\n  remote-agent session resume-input ID REQUEST-ID       继续发送因中断而暂停的消息\n  remote-agent session events ID [-f] [--json]          查看或持续跟随（-f）会话事件流（支持 --after N）\n  remote-agent session approve [--always] ID APPROVAL-ID\n                                                        批准权限请求（--always：同类不再重复询问）\n  remote-agent session deny [-m REASON] ID APPROVAL-ID  拒绝权限请求\n  remote-agent session answer ID QUESTION-ID OPT[,OPT...]\n                                                        回答模型的选择题\n  remote-agent session plan ID implement|clear|keep     回答“是否实施此计划？”\n  remote-agent session interrupt ID                     中断当前运行轮次\n  remote-agent session model ID MODEL [EFFORT]          切换会话模型（支持运行中切模型的 CLI）\n  remote-agent session mode ID ask|auto|full|plan       切换会话审批模式\n  remote-agent session rename ID [TITLE]                重命名会话（省略标题恢复自动标题）\n  remote-agent session compact ID                       压缩会话上下文\n  remote-agent session stop ID                          结束会话\n  remote-agent session resume ID                        重新启动已退出的会话并继续原对话\n  remote-agent session fork ID                          从已有对话分叉出新会话\n\n会话 ID 均可简写为任意唯一前缀。查看可选模型与默认配置请运行 remote-agent models [{agents}]。\n",
+    "en": "Usage:\n  remote-agent session create [flags] [-- args]         start a session without attaching (session create help)\n  remote-agent session list [-a] [--json]               list sessions (-a includes exited sessions)\n  remote-agent session get ID [--json]                  inspect one session\n  remote-agent session attach ID                        attach to a running session\n  remote-agent session send [--queue] ID TEXT           send a message (\"-\" reads stdin; --queue waits for the turn to end)\n  remote-agent session cancel-input ID REQUEST-ID       withdraw a message the model has not received\n  remote-agent session resume-input ID REQUEST-ID       send a message paused by an interrupted turn\n  remote-agent session events ID [-f] [--json]          show or follow (-f) session events (supports --after N)\n  remote-agent session approve [--always] ID APPROVAL-ID\n                                                        allow a permission request (--always: stop asking for similar ones)\n  remote-agent session deny [-m REASON] ID APPROVAL-ID  deny a permission request\n  remote-agent session answer ID QUESTION-ID OPT[,OPT...]\n                                                        answer a model question\n  remote-agent session plan ID implement|clear|keep     answer \"Implement this plan?\"\n  remote-agent session interrupt ID                     interrupt the running turn\n  remote-agent session model ID MODEL [EFFORT]          switch a session's model (for CLIs that support mid-session switching)\n  remote-agent session mode ID ask|auto|full|plan       switch a session's approval mode\n  remote-agent session rename ID [TITLE]                title the session (omit TITLE to restore automatic title)\n  remote-agent session compact ID                       compact the session's context\n  remote-agent session stop ID                          end the session\n  remote-agent session resume ID                        restart an exited session on the same conversation\n  remote-agent session fork ID                          fork a new session from an existing conversation\n\nSession IDs may be abbreviated to any unique prefix. Run \"remote-agent models [{agents}]\" to inspect available models and defaults.\n",
+    "notes": "remote-agent session help 的完整子命令参考。",
+    "params": {
+      "agents": {
+        "type": "string",
+        "example": "codex|claude|agy"
+      }
+    },
+    "platforms": [
+      "go"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "new_session.cli_session_unknown_op",
+    "zh-CN": "未知的 session 子命令「{op}」；请运行 remote-agent session help 查看可用操作",
+    "en": "unknown session operation \"{op}\"; run \"remote-agent session help\"",
+    "notes": "remote-agent session 传入未知操作名时的错误提示。",
+    "params": {
+      "op": {
+        "type": "string",
+        "example": "foo"
+      }
+    },
     "platforms": [
       "go"
     ],

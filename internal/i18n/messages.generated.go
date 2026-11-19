@@ -237,6 +237,14 @@ func MachineStatusUnavailable(locale string) string {
 	return render(locale, "machine_status.unavailable", map[string]any{})
 }
 
+func NewSessionCliAgyModelAtLaunch(locale string, model string) string {
+	return render(locale, "new_session.cli_agy_model_at_launch", map[string]any{"model": model})
+}
+
+func NewSessionCliEffortUnsupportedForModel(locale string, effort string, model string, supported string) string {
+	return render(locale, "new_session.cli_effort_unsupported_for_model", map[string]any{"effort": effort, "model": model, "supported": supported})
+}
+
 func NewSessionCliHelp(locale string, agents string, defaultAgent string) string {
 	return render(locale, "new_session.cli_help", map[string]any{"agents": agents, "defaultAgent": defaultAgent})
 }
@@ -245,8 +253,24 @@ func NewSessionCliModeInvalid(locale string) string {
 	return render(locale, "new_session.cli_mode_invalid", map[string]any{})
 }
 
+func NewSessionCliModelInvalid(locale string, agent string, model string) string {
+	return render(locale, "new_session.cli_model_invalid", map[string]any{"agent": agent, "model": model})
+}
+
 func NewSessionCliModelNoEffort(locale string, model string) string {
 	return render(locale, "new_session.cli_model_no_effort", map[string]any{"model": model})
+}
+
+func NewSessionCliModelsHelp(locale string, agents string) string {
+	return render(locale, "new_session.cli_models_help", map[string]any{"agents": agents})
+}
+
+func NewSessionCliSessionHelp(locale string, agents string) string {
+	return render(locale, "new_session.cli_session_help", map[string]any{"agents": agents})
+}
+
+func NewSessionCliSessionUnknownOp(locale string, op string) string {
+	return render(locale, "new_session.cli_session_unknown_op", map[string]any{"op": op})
 }
 
 func NewSessionCliTitleTooLong(locale string, count int, max int) string {
@@ -331,6 +355,10 @@ func SecurityResultBodyUnavailable(locale string) string {
 
 func SecurityStorageV4Required(locale string) string {
 	return render(locale, "security.storage_v4_required", map[string]any{})
+}
+
+func StartupCliRemovedSessionCmd(locale string, cmd string, replacement string) string {
+	return render(locale, "startup.cli_removed_session_cmd", map[string]any{"cmd": cmd, "replacement": replacement})
 }
 
 func StartupCliUsage(locale string, agentLines string, agents string) string {

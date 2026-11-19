@@ -140,7 +140,7 @@ It drives the CLI you are already signed in to, so usage counts against that CLI
 No. The daemon and the clients all connect out to the relay over HTTPS and WebSocket.
 
 **Can I keep using the terminal on my computer?**
-Yes. The session you start with `remote-agent claude`, `remote-agent codex` or `remote-agent agy`, or attach to with `remote-agent attach <id>`, is the same tmux session the phone sees. Input from every device goes in, in order of arrival.
+Yes. The session you start with `remote-agent claude`, `remote-agent codex` or `remote-agent agy`, or attach to with `remote-agent session attach <id>`, is the same tmux session the phone sees. Input from every device goes in, in order of arrival.
 
 **What happens when I close the app or lose signal?**
 The agent keeps running in tmux, and the client catches up when it reconnects. If the computer sleeps, the agent pauses with it; if the daemon restarts, it reattaches to the sessions still running.

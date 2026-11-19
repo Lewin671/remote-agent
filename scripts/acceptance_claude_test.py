@@ -59,7 +59,7 @@ TMUX_SOCK=test
 target="$TEST_DIR/command"
 BIN=fake_cli
 fake_cli() {
-    if [ "$1" = send ]; then printf '%s' "$3" > "$TEST_DIR/prompt"; fi
+    if [ "$1" = session ] && [ "$2" = send ]; then printf '%s' "$4" > "$TEST_DIR/prompt"; fi
 }
 last_seq() { echo 1; }
 pane() { echo test; }

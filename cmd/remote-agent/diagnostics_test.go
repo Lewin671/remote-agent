@@ -56,9 +56,11 @@ func TestListKeepsLocalDiagnosticsSeparateFromCLIStatus(t *testing.T) {
 		os.Stdout = w
 		var args []string
 		if all {
-			args = []string{"-a"}
+			args = []string{"list", "-a"}
+		} else {
+			args = []string{"list"}
 		}
-		err = runList(args)
+		err = runSession(args)
 		w.Close()
 		os.Stdout = saved
 		b, readErr := io.ReadAll(r)

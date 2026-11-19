@@ -11,6 +11,7 @@ import (
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/internal/agent"
+	"github.com/Lewin671/remote-agent/internal/antigravity"
 )
 
 func composer(footer string) string {
@@ -145,6 +146,13 @@ func TestSetModel(t *testing.T) {
 	}
 	if info := h.s.info(); info.Model != "gpt-6-luna" || info.Effort != "high" {
 		t.Fatalf("info %v %v", info.Model, info.Effort)
+	}
+	// Display names and omitted effort resolve cleanly on Codex.
+	if err := h.s.setModel("GPT-6-Luna", ""); err != nil {
+		t.Fatalf("setModel by display name and default effort: %v", err)
+	}
+	if info := h.s.info(); info.Model != "gpt-6-luna" || info.Effort != "medium" {
+		t.Fatalf("expected canonical gpt-6-luna medium, got %v %v", info.Model, info.Effort)
 	}
 }
 
@@ -315,6 +323,27 @@ func TestSettingsAndSessionArgs(t *testing.T) {
 	defOrchArgs := mustSessionArgs(t, d, agyAg, &pb.CreateSessionRequest{})
 	if j := strings.Join(defOrchArgs, " "); !strings.Contains(j, "--model gemini-pro-orchestrator") || strings.Contains(j, "--effort") {
 		t.Fatalf("effortless default model kept stale effort: %q", defOrchArgs)
+	}
+
+	// Client display names and per-model effort constraints resolve uniformly across CLIs.
+	agyScript := filepath.Join(t.TempDir(), "fake-agy")
+	if err := os.WriteFile(agyScript, []byte("#!/bin/sh\nprintf 'gemini-4-carbon-medium Gemini 4 Carbon (Medium)\\ngemini-pro-orchestrator Orchestrator (Carbon)\\n'\n"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	agyWithCatalog := antigravity.New(agyScript, t.TempDir())
+	byDisplay, err := d.sessionArgs(agyWithCatalog, &pb.CreateSessionRequest{Model: "Orchestrator (Carbon)"})
+	if err != nil || !strings.Contains(strings.Join(byDisplay, " "), "--model gemini-pro-orchestrator") || strings.Contains(strings.Join(byDisplay, " "), "--effort") {
+		t.Fatalf("Orchestrator display name failed: %v %v", byDisplay, err)
+	}
+	byInline, err := d.sessionArgs(agyWithCatalog, &pb.CreateSessionRequest{Model: "gemini-4-carbon-medium"})
+	if err != nil || !strings.Contains(strings.Join(byInline, " "), "--model gemini-4-carbon --effort medium") {
+		t.Fatalf("inline Antigravity effort failed: %v %v", byInline, err)
+	}
+	if _, err := d.sessionArgs(agyWithCatalog, &pb.CreateSessionRequest{Model: "Gemini 4 Carbon", Effort: "xhigh"}); err == nil {
+		t.Fatal("accepted unsupported xhigh on Gemini 4 Carbon")
+	}
+	if _, err := d.sessionArgs(agyWithCatalog, &pb.CreateSessionRequest{Model: "Unknown Display Name"}); err == nil || !strings.Contains(err.Error(), "remote-agent models agy") {
+		t.Fatalf("expected actionable models hint, got %v", err)
 	}
 }
 

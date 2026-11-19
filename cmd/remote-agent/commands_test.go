@@ -189,7 +189,36 @@ func (h *newAndListTestHandler) GetSession(_ context.Context, req *connect.Reque
 	}), nil
 }
 
-func TestRunNewAndListJSONEndToEnd(t *testing.T) {
+func (h *newAndListTestHandler) GetSettings(_ context.Context, _ *connect.Request[pb.GetSettingsRequest]) (*connect.Response[pb.GetSettingsResponse], error) {
+	return connect.NewResponse(&pb.GetSettingsResponse{
+		Settings: &pb.DaemonSettings{
+			DisabledAgents: []pb.Agent{pb.Agent_AGENT_CLAUDE},
+			Antigravity:    &pb.AgentDefaults{Mode: pb.ApprovalMode_APPROVAL_MODE_FULL_ACCESS},
+		},
+	}), nil
+}
+
+func (h *newAndListTestHandler) ListModels(_ context.Context, req *connect.Request[pb.ListModelsRequest]) (*connect.Response[pb.ListModelsResponse], error) {
+	if req.Msg.Agent == pb.Agent_AGENT_ANTIGRAVITY {
+		return connect.NewResponse(&pb.ListModelsResponse{
+			DefaultModel: "gemini-4-neon",
+			Models: []*pb.ModelInfo{
+				{Slug: "gemini-4-neon", DisplayName: "Gemini 4 Neon", Efforts: []string{"low", "medium", "high"}},
+				{Slug: "gemini-pro-orchestrator", DisplayName: "Orchestrator (Carbon)"},
+			},
+		}), nil
+	}
+	return connect.NewResponse(&pb.ListModelsResponse{
+		DefaultModel: "gpt-6-sol",
+		Models:       []*pb.ModelInfo{{Slug: "gpt-6-sol", DisplayName: "GPT-6-Sol", Efforts: []string{"low", "medium", "high"}}},
+	}), nil
+}
+
+func (h *newAndListTestHandler) SetModel(_ context.Context, _ *connect.Request[pb.SetModelRequest]) (*connect.Response[pb.SetModelResponse], error) {
+	return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("this CLI does not support that"))
+}
+
+func TestSessionAndModelsCommandsEndToEnd(t *testing.T) {
 	dir, err := os.MkdirTemp("", "ra-cli-")
 	if err != nil {
 		t.Fatal(err)
@@ -228,7 +257,7 @@ func TestRunNewAndListJSONEndToEnd(t *testing.T) {
 	}
 
 	out := captureStdout(func() error {
-		return runNew([]string{"--agent", "agy", "--cwd", dir, "--model", "gemini-pro-orchestrator", "--title", "Settings Redesign", "--prompt", "implement it", "--login-shell"})
+		return runSession([]string{"create", "--agent", "agy", "--cwd", dir, "--model", "gemini-pro-orchestrator", "--title", "Settings Redesign", "--prompt", "implement it", "--login-shell"})
 	})
 	if strings.TrimSpace(out) != "abcdef0123456789" {
 		t.Fatalf("unexpected stdout: %q", out)
@@ -240,20 +269,43 @@ func TestRunNewAndListJSONEndToEnd(t *testing.T) {
 		t.Fatalf("unexpected RenameSession request: %+v", h.renamed)
 	}
 
-	tableOut := captureStdout(func() error { return runList(nil) })
+	tableOut := captureStdout(func() error { return runSession([]string{"list"}) })
 	if !strings.Contains(tableOut, "TITLE") || !strings.Contains(tableOut, "Settings Redesign") {
-		t.Fatalf("ls table missing title: %q", tableOut)
+		t.Fatalf("session list table missing title: %q", tableOut)
 	}
 
-	jsonListOut := captureStdout(func() error { return runList([]string{"--json"}) })
+	jsonListOut := captureStdout(func() error { return runSession([]string{"list", "--json"}) })
 	var arr []map[string]any
 	if err := json.Unmarshal([]byte(jsonListOut), &arr); err != nil || len(arr) != 1 || arr[0]["title"] != "Settings Redesign" {
-		t.Fatalf("bad ls --json output: %q (%v)", jsonListOut, err)
+		t.Fatalf("bad session list --json output: %q (%v)", jsonListOut, err)
 	}
 
-	jsonSingleOut := captureStdout(func() error { return runList([]string{"abcdef01", "--json"}) })
+	jsonSingleOut := captureStdout(func() error { return runSession([]string{"get", "abcdef01", "--json"}) })
 	var obj map[string]any
 	if err := json.Unmarshal([]byte(jsonSingleOut), &obj); err != nil || obj["id"] != "abcdef0123456789" {
-		t.Fatalf("bad ls <id> --json output: %q (%v)", jsonSingleOut, err)
+		t.Fatalf("bad session get --json output: %q (%v)", jsonSingleOut, err)
+	}
+
+	modelsTable := captureStdout(func() error { return runModels([]string{"agy"}) })
+	for _, want := range []string{"Agent: agy (Antigravity)", "mode=full (machine)", "Orchestrator (Carbon)", "-\n"} {
+		if !strings.Contains(modelsTable, want) {
+			t.Fatalf("models agy missing %q:\n%s", want, modelsTable)
+		}
+	}
+
+	allModelsJSON := captureStdout(func() error { return runModels([]string{"--json"}) })
+	var allSummaries []agentModelsSummary
+	if err := json.Unmarshal([]byte(allModelsJSON), &allSummaries); err != nil || len(allSummaries) != 2 {
+		t.Fatalf("expected disabled claude skipped in models --json, got %+v (%v)", allSummaries, err)
+	}
+
+	if err := runSession([]string{"model", "abcdef01", "gemini-pro-orchestrator"}); err == nil || !strings.Contains(err.Error(), "session create --agent agy") {
+		t.Fatalf("expected Antigravity launch-only model hint, got %v", err)
+	}
+
+	for _, flat := range []string{"new", "ls", "list", "attach", "send", "cancel", "resume-input", "events", "approve", "deny", "answer", "interrupt", "stop", "resume", "fork", "model", "mode", "rename", "compact", "plan"} {
+		if removedSessionCommands[flat] == "" {
+			t.Fatalf("missing migration target for removed command %q", flat)
+		}
 	}
 }

@@ -28,7 +28,7 @@
 #       joins with the code the authority client's 设置 › 添加设备 shows: as this
 #       computer when `start --no-account` made none, else as another one;
 #       --daemon then runs its daemon, on a tmux socket of its own
-#   dev-env.sh cli ARGS…     runs remote-agent with the daemon's environment (ls, new, send, …)
+#   dev-env.sh cli ARGS…     runs remote-agent with the daemon's environment (session list, session create, …)
 #   dev-env.sh status        says what is running
 #   dev-env.sh stop          stops what `start` and `join` started and removes the directory
 #

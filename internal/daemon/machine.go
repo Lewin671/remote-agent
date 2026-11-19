@@ -15,7 +15,9 @@ import (
 	"connectrpc.com/connect"
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/internal/agent"
+	"github.com/Lewin671/remote-agent/internal/codex"
 	"github.com/Lewin671/remote-agent/internal/contextio"
+	"github.com/Lewin671/remote-agent/internal/i18n"
 	"github.com/Lewin671/remote-agent/internal/outcome"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
@@ -382,6 +384,116 @@ func (d *Daemon) defaultMode(ag agent.Adapter, cwd string) (pb.ApprovalMode, pb.
 	return m, pb.DefaultModeSource_DEFAULT_MODE_SOURCE_CLI_CONFIG, varies
 }
 
+const daemonCliLocale = "en"
+
+var agyInlineEfforts = []string{"low", "medium", "high", "xhigh", "max"}
+
+func splitAntigravityInlineEffort(raw string) (base, inline string) {
+	if strings.HasPrefix(raw, "gemini-pro-orchestrator") {
+		return raw, ""
+	}
+	for _, eff := range agyInlineEfforts {
+		if base, ok := strings.CutSuffix(raw, "-"+eff); ok && base != "" {
+			return base, eff
+		}
+	}
+	return raw, ""
+}
+
+func findCatalogModel(models []*pb.ModelInfo, raw string) *pb.ModelInfo {
+	for _, m := range models {
+		if m.Slug == raw {
+			return m
+		}
+	}
+	trimmed := strings.TrimSpace(raw)
+	var byName *pb.ModelInfo
+	for _, m := range models {
+		if m.DisplayName != "" && strings.EqualFold(trimmed, m.DisplayName) {
+			if byName != nil && byName.Slug != m.Slug {
+				return nil
+			}
+			byName = m
+		}
+	}
+	return byName
+}
+
+// shouldLoadCatalog avoids spawning an external CLI (`agy models`) when a fast
+// synthetic slug is already valid and no effort/display-name lookup is needed.
+func shouldLoadCatalog(ag agent.Adapter, model, effort string) bool {
+	if model == "" {
+		return false
+	}
+	if ag.Kind() != pb.Agent_AGENT_ANTIGRAVITY {
+		return true
+	}
+	if !codex.SafeValue.MatchString(model) {
+		return ag.Bin() != ""
+	}
+	if effort != "" {
+		return ag.Bin() != "" && ag.Bin() != "agy" && ag.Bin() != "/usr/bin/true" && ag.Bin() != "/bin/true"
+	}
+	_, inline := splitAntigravityInlineEffort(model)
+	if inline != "" {
+		return ag.Bin() != "" && ag.Bin() != "agy" && ag.Bin() != "/usr/bin/true" && ag.Bin() != "/bin/true"
+	}
+	return false
+}
+
+// resolveModelAndEffort normalizes a model slug or client display name against
+// the CLI's catalog when available and validates per-model effort support.
+func resolveModelAndEffort(ag agent.Adapter, model, effort string, inheritedEffort bool) (string, string, *pb.ModelInfo, error) {
+	model = strings.TrimSpace(model)
+	effort = strings.TrimSpace(effort)
+	if model == "" {
+		return "", effort, nil, nil
+	}
+	var matched *pb.ModelInfo
+	if shouldLoadCatalog(ag, model, effort) {
+		if resp, err := ag.Models(); err == nil && resp != nil && len(resp.Models) > 0 {
+			matched = findCatalogModel(resp.Models, model)
+			if matched == nil && ag.Kind() == pb.Agent_AGENT_ANTIGRAVITY {
+				base, inline := splitAntigravityInlineEffort(model)
+				if inline != "" {
+					if m := findCatalogModel(resp.Models, base); m != nil && slices.Contains(m.Efforts, inline) {
+						if effort != "" && effort != inline {
+							return "", "", nil, errors.New(i18n.NewSessionCliEffortUnsupportedForModel(daemonCliLocale, effort, model, inline))
+						}
+						matched = m
+						effort = inline
+					}
+				}
+			}
+		}
+	}
+	if matched != nil {
+		model = matched.Slug
+		if effort != "" {
+			// Claude and Antigravity list empty Efforts for effortless models
+			// (e.g. Haiku, Orchestrator); Codex cache entries may omit levels.
+			if len(matched.Efforts) == 0 && ag.Kind() != pb.Agent_AGENT_CODEX {
+				if inheritedEffort {
+					effort = ""
+				} else {
+					return "", "", matched, &agent.EffortNotSupportedError{Msg: i18n.NewSessionCliModelNoEffort(daemonCliLocale, model)}
+				}
+			} else if len(matched.Efforts) > 0 && !slices.Contains(matched.Efforts, effort) {
+				if inheritedEffort {
+					effort = ""
+				} else {
+					return "", "", matched, errors.New(i18n.NewSessionCliEffortUnsupportedForModel(daemonCliLocale, effort, model, strings.Join(matched.Efforts, ", ")))
+				}
+			}
+		}
+		return model, effort, matched, nil
+	}
+	if !codex.SafeValue.MatchString(model) {
+		return "", "", nil, errors.New(i18n.NewSessionCliModelInvalid(daemonCliLocale, ag.ID(), model))
+	}
+	return model, effort, nil, nil
+}
+
 func (d *Daemon) sessionArgs(ag agent.Adapter, req *pb.CreateSessionRequest) ([]string, error) {
 	return d.sessionArgsContext(context.Background(), ag, req)
 }
@@ -406,10 +518,14 @@ func (d *Daemon) sessionArgsContext(ctx context.Context, ag agent.Adapter, req *
 		mode = def.Mode
 	}
 	return contextio.Read(ctx, func() ([]string, error) {
-		args, err := ag.Options(req.Args, model, effort, mode)
+		resolvedModel, resolvedEffort, _, err := resolveModelAndEffort(ag, model, effort, inheritedEffort)
+		if err != nil {
+			return nil, err
+		}
+		args, err := ag.Options(req.Args, resolvedModel, resolvedEffort, mode)
 		var noEffort *agent.EffortNotSupportedError
 		if inheritedEffort && errors.As(err, &noEffort) {
-			return ag.Options(req.Args, model, "", mode)
+			return ag.Options(req.Args, resolvedModel, "", mode)
 		}
 		return args, err
 	})

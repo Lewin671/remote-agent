@@ -202,8 +202,60 @@ func isHelpArg(args []string) bool {
 	return len(args) > 0 && (args[0] == "help" || args[0] == "-h" || args[0] == "--help")
 }
 
-// runNew starts a session without attaching and prints its session ID.
-func runNew(args []string) error {
+func runSession(args []string) error {
+	if len(args) == 0 || isHelpArg(args) {
+		os.Stdout.WriteString(i18n.NewSessionCliSessionHelp(cliLocale, strings.Join(daemon.AgentIDs(), "|")))
+		return nil
+	}
+	op, rest := args[0], args[1:]
+	switch op {
+	case "create":
+		return runSessionCreate(rest)
+	case "list":
+		return runSessionList(rest)
+	case "get":
+		return runSessionGet(rest)
+	case "attach":
+		return runAttach(rest)
+	case "send":
+		return runSend(rest)
+	case "cancel-input":
+		return runCancel(rest)
+	case "resume-input":
+		return runResumeInput(rest)
+	case "events":
+		return runEvents(rest)
+	case "approve":
+		return runResolve(rest, true)
+	case "deny":
+		return runResolve(rest, false)
+	case "answer":
+		return runAnswer(rest)
+	case "plan":
+		return runPlan(rest)
+	case "interrupt":
+		return runInterrupt(rest)
+	case "model":
+		return runSessionModel(rest)
+	case "mode":
+		return runMode(rest)
+	case "rename":
+		return runRename(rest)
+	case "compact":
+		return runCompact(rest)
+	case "stop":
+		return runStop(rest)
+	case "resume":
+		return runResume(rest)
+	case "fork":
+		return runFork(rest)
+	default:
+		return errors.New(i18n.NewSessionCliSessionUnknownOp(cliLocale, op))
+	}
+}
+
+// runSessionCreate starts a session without attaching and prints its session ID.
+func runSessionCreate(args []string) error {
 	if isHelpArg(args) {
 		os.Stdout.WriteString(i18n.NewSessionCliHelp(cliLocale, strings.Join(daemon.AgentIDs(), "|"), daemon.RegisteredAgents[0].ID))
 		return nil
@@ -350,11 +402,31 @@ func attach(tmuxSession string) error {
 	return syscall.Exec(bin, argv, env)
 }
 
-func runList(args []string) error {
-	fs := flag.NewFlagSet("ls", flag.ContinueOnError)
+func runSessionList(args []string) error {
+	fs := flag.NewFlagSet("session list", flag.ContinueOnError)
 	fs.SetOutput(io.Discard)
 	all := fs.Bool("a", false, "include exited sessions")
 	asJSON := fs.Bool("json", false, "print sessions as JSON")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if fs.NArg() > 0 {
+		return errors.New(i18n.NewSessionCliUnexpectedArgs(cliLocale))
+	}
+	resp, err := dial().ListSessions(context.Background(), connect.NewRequest(&pb.ListSessionsRequest{IncludeExited: *all}))
+	if err != nil {
+		return explain(err)
+	}
+	if *asJSON {
+		return printSessionsJSON(os.Stdout, resp.Msg.Sessions, false)
+	}
+	return printSessionsTable(os.Stdout, resp.Msg.Sessions, *all)
+}
+
+func runSessionGet(args []string) error {
+	fs := flag.NewFlagSet("session get", flag.ContinueOnError)
+	fs.SetOutput(io.Discard)
+	asJSON := fs.Bool("json", false, "print session as JSON")
 	var pos []string
 	for len(args) > 0 {
 		if strings.HasPrefix(args[0], "-") {
@@ -367,30 +439,26 @@ func runList(args []string) error {
 		pos = append(pos, args[0])
 		args = args[1:]
 	}
+	if err := needArgs(pos, 1, "session get ID [--json]"); err != nil {
+		return err
+	}
 	if len(pos) > 1 {
 		return errors.New(i18n.NewSessionCliUnexpectedArgs(cliLocale))
 	}
-	var sessions []*pb.Session
-	single := len(pos) == 1
-	if single {
-		s, err := getSession(pos[0])
-		if err != nil {
-			return err
-		}
-		sessions = []*pb.Session{s}
-	} else {
-		resp, err := dial().ListSessions(context.Background(), connect.NewRequest(&pb.ListSessionsRequest{IncludeExited: *all}))
-		if err != nil {
-			return explain(err)
-		}
-		sessions = resp.Msg.Sessions
+	s, err := getSession(pos[0])
+	if err != nil {
+		return err
 	}
 	if *asJSON {
-		return printSessionsJSON(os.Stdout, sessions, single)
+		return printSessionsJSON(os.Stdout, []*pb.Session{s}, true)
 	}
-	w := tabwriter.NewWriter(os.Stdout, 0, 4, 2, ' ', 0)
+	return printSessionsTable(os.Stdout, []*pb.Session{s}, false)
+}
+
+func printSessionsTable(out io.Writer, sessions []*pb.Session, all bool) error {
+	w := tabwriter.NewWriter(out, 0, 4, 2, ' ', 0)
 	header := "ID\tAGENT\tSTATUS\tMODEL\tPENDING\tCREATED\tTITLE\tDIRECTORY"
-	if *all {
+	if all {
 		header += "\tLOCAL DIAGNOSTICS"
 	}
 	fmt.Fprintln(w, header)
@@ -420,7 +488,7 @@ func runList(args []string) error {
 		rowTitle := shortTitle(s.Title, 28)
 		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s", shortID(s.Id), agentName(s.Agent), terminalText(status, false), terminalText(model, false), p,
 			s.CreatedAt.AsTime().Local().Format("01-02 15:04"), terminalText(rowTitle, false), terminalText(s.Cwd, false))
-		if *all {
+		if all {
 			detail, err := daemon.ReadSessionDiagnostics(paths.Dir(), s.Id)
 			if err != nil {
 				if detail != "" {
@@ -502,7 +570,7 @@ func getSession(id string) (*pb.Session, error) {
 }
 
 func runAttach(args []string) error {
-	if err := needArgs(args, 1, "attach <id>"); err != nil {
+	if err := needArgs(args, 1, "session attach ID"); err != nil {
 		return err
 	}
 	s, err := getSession(args[0])
@@ -526,7 +594,7 @@ func runSend(args []string) error {
 		rest = append(rest, a)
 	}
 	args = rest
-	if err := needArgs(args, 2, "send [--queue] <id> <text>"); err != nil {
+	if err := needArgs(args, 2, "session send [--queue] ID TEXT"); err != nil {
 		return err
 	}
 	text := strings.Join(args[1:], " ")
@@ -552,7 +620,7 @@ func runSend(args []string) error {
 
 // runCancel withdraws a message the model has not received.
 func runCancel(args []string) error {
-	if err := needArgs(args, 2, "cancel <id> <request-id>"); err != nil {
+	if err := needArgs(args, 2, "session cancel-input ID REQUEST-ID"); err != nil {
 		return err
 	}
 	_, err := dial().CancelInput(context.Background(), connect.NewRequest(&pb.CancelInputRequest{SessionId: args[0], RequestId: args[1]}))
@@ -561,7 +629,7 @@ func runCancel(args []string) error {
 
 // runResumeInput sends a message paused by an interrupted turn.
 func runResumeInput(args []string) error {
-	if err := needArgs(args, 2, "resume-input <id> <request-id>"); err != nil {
+	if err := needArgs(args, 2, "session resume-input ID REQUEST-ID"); err != nil {
 		return err
 	}
 	_, err := dial().ResumeInput(context.Background(), connect.NewRequest(&pb.ResumeInputRequest{SessionId: args[0], RequestId: args[1]}))
@@ -583,8 +651,8 @@ func runEvents(args []string) error {
 	id, rest := splitID(args)
 	fs.Parse(rest)
 	if id == "" {
-		if fs.NArg() < 1 {
-			return errors.New("usage: remote-agent events <id> [-f] [--json] [--after N]")
+		if err := needArgs(fs.Args(), 1, "session events ID [-f] [--json] [--after N]"); err != nil {
+			return err
 		}
 		id = fs.Arg(0)
 	}
@@ -641,7 +709,7 @@ func runResolve(args []string, allow bool) error {
 	if !allow {
 		verb = "deny"
 	}
-	if err := needArgs(pos, 2, verb+" <id> <approval-id>"); err != nil {
+	if err := needArgs(pos, 2, "session "+verb+" ID APPROVAL-ID"); err != nil {
 		return err
 	}
 	_, err := dial().ResolveApproval(context.Background(), connect.NewRequest(&pb.ResolveApprovalRequest{
@@ -651,7 +719,7 @@ func runResolve(args []string, allow bool) error {
 }
 
 func runAnswer(args []string) error {
-	if err := needArgs(args, 3, "answer <id> <question-id> <option>[,<option>...]"); err != nil {
+	if err := needArgs(args, 3, "session answer ID QUESTION-ID OPT[,OPT...]"); err != nil {
 		return err
 	}
 	req := &pb.AnswerQuestionRequest{SessionId: args[0], QuestionId: args[1]}
@@ -677,7 +745,7 @@ func agentName(a pb.Agent) string {
 }
 
 func runInterrupt(args []string) error {
-	if err := needArgs(args, 1, "interrupt <id>"); err != nil {
+	if err := needArgs(args, 1, "session interrupt ID"); err != nil {
 		return err
 	}
 	resp, err := dial().Interrupt(context.Background(), connect.NewRequest(&pb.InterruptRequest{SessionId: args[0]}))
@@ -691,7 +759,7 @@ func runInterrupt(args []string) error {
 }
 
 func runStop(args []string) error {
-	if err := needArgs(args, 1, "stop <id>"); err != nil {
+	if err := needArgs(args, 1, "session stop ID"); err != nil {
 		return err
 	}
 	_, err := dial().StopSession(context.Background(), connect.NewRequest(&pb.StopSessionRequest{SessionId: args[0]}))

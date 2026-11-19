@@ -37,6 +37,6 @@ if [ -f "$unit" ] && grep -qxF "$line" "$unit"; then
 elif [ -f "$unit" ]; then
 	# The service runs another binary: point it at this one.
 	BIN=$BIN "$ROOT/scripts/daemon.sh" install
-elif "$BIN" ls >/dev/null 2>&1; then
+elif "$BIN" session list >/dev/null 2>&1; then
 	echo "a daemon started by hand is running the old binary: restart it, or run scripts/daemon.sh install to have it managed"
 fi

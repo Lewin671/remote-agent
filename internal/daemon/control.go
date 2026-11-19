@@ -189,6 +189,21 @@ func (s *session) setModelBy(ctx context.Context, model, effort string, origin *
 	if !s.ag.Capabilities().ModelSwitch {
 		return outcome.FinalError(agent.ErrUnsupported)
 	}
+	if resp, err := s.ag.Models(); err == nil && resp != nil {
+		if matched := findCatalogModel(resp.Models, model); matched != nil {
+			model = matched.Slug
+			if effort == "" && s.ag.Kind() == pb.Agent_AGENT_CODEX {
+				if matched.DefaultEffort != "" {
+					effort = matched.DefaultEffort
+				} else {
+					effort = "medium"
+				}
+			}
+		}
+	}
+	if effort == "" && s.ag.Kind() == pb.Agent_AGENT_CODEX {
+		effort = "medium"
+	}
 	if err := s.ag.CheckEffort(effort); err != nil {
 		return outcome.FinalError(err)
 	}
