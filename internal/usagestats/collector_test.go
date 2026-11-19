@@ -2,12 +2,14 @@ package usagestats
 
 import (
 	"context"
+	"database/sql"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
+	"google.golang.org/protobuf/encoding/protowire"
 )
 
 func TestClaudeParserDedupAndThinkingInclusion(t *testing.T) {
@@ -339,5 +341,221 @@ func TestNoDoubleCountAcrossRawPruneBoundary(t *testing.T) {
 	// Exact sum across req_old (100,900,50) + req_new (20,80,10) + req_extra (30,70,15):
 	if cur.UsageRequestCount != 3 || cur.UncachedInputTokens != 150 || cur.CacheReadTokens != 1050 || cur.OutputTokens != 75 {
 		t.Fatalf("double-counted across 7d prune boundary: %+v", cur)
+	}
+}
+
+func encodeTestProtoTimestamp(ts time.Time) []byte {
+	var b []byte
+	b = protowire.AppendTag(b, 1, protowire.VarintType)
+	b = protowire.AppendVarint(b, uint64(ts.Unix()))
+	b = protowire.AppendTag(b, 2, protowire.VarintType)
+	b = protowire.AppendVarint(b, uint64(ts.Nanosecond()))
+	return b
+}
+
+func encodeTestProtoDuration(d time.Duration) []byte {
+	var b []byte
+	b = protowire.AppendTag(b, 1, protowire.VarintType)
+	b = protowire.AppendVarint(b, uint64(d/time.Second))
+	b = protowire.AppendTag(b, 2, protowire.VarintType)
+	b = protowire.AppendVarint(b, uint64(d%time.Second))
+	return b
+}
+
+func encodeTestAgyUsage(modelEnum, inTok, outTok, cacheReadTok, thinkingTok uint64, botID, respID string) []byte {
+	var b []byte
+	for _, kv := range []struct {
+		num protowire.Number
+		val uint64
+	}{
+		{1, modelEnum},
+		{2, inTok},
+		{3, outTok},
+		{5, cacheReadTok},
+		{9, thinkingTok},
+	} {
+		if kv.val > 0 || kv.num == 1 {
+			b = protowire.AppendTag(b, kv.num, protowire.VarintType)
+			b = protowire.AppendVarint(b, kv.val)
+		}
+	}
+	if botID != "" {
+		b = protowire.AppendTag(b, 7, protowire.BytesType)
+		b = protowire.AppendString(b, botID)
+	}
+	if respID != "" {
+		b = protowire.AppendTag(b, 11, protowire.BytesType)
+		b = protowire.AppendString(b, respID)
+	}
+	return b
+}
+
+func encodeTestAgyGenMeta(modelEnum uint64, model string, ttft, genDur time.Duration, usage []byte) []byte {
+	var inner []byte
+	inner = protowire.AppendTag(inner, 3, protowire.VarintType)
+	inner = protowire.AppendVarint(inner, modelEnum)
+	inner = protowire.AppendTag(inner, 4, protowire.BytesType)
+	inner = protowire.AppendBytes(inner, usage)
+	inner = protowire.AppendTag(inner, 11, protowire.BytesType)
+	inner = protowire.AppendBytes(inner, encodeTestProtoDuration(ttft))
+	inner = protowire.AppendTag(inner, 12, protowire.BytesType)
+	inner = protowire.AppendBytes(inner, encodeTestProtoDuration(genDur))
+	inner = protowire.AppendTag(inner, 19, protowire.BytesType)
+	inner = protowire.AppendString(inner, model)
+
+	var outer []byte
+	outer = protowire.AppendTag(outer, 1, protowire.BytesType)
+	outer = protowire.AppendBytes(outer, inner)
+	return outer
+}
+
+func encodeTestAgyStepMeta(tCreate, tFirst, tEnd time.Time, usage []byte) []byte {
+	var b []byte
+	b = protowire.AppendTag(b, 1, protowire.BytesType)
+	b = protowire.AppendBytes(b, encodeTestProtoTimestamp(tCreate))
+	b = protowire.AppendTag(b, 6, protowire.BytesType)
+	b = protowire.AppendBytes(b, encodeTestProtoTimestamp(tFirst))
+	b = protowire.AppendTag(b, 7, protowire.BytesType)
+	b = protowire.AppendBytes(b, encodeTestProtoTimestamp(tEnd))
+	b = protowire.AppendTag(b, 9, protowire.BytesType)
+	b = protowire.AppendBytes(b, usage)
+	return b
+}
+
+func TestAntigravityDBThinkingSpeedTTFTAndUpgradeFromTranscript(t *testing.T) {
+	dir := t.TempDir()
+	convID := "conv-wal-upgrade"
+	agyHome := filepath.Join(dir, "agy")
+	logsDir := filepath.Join(agyHome, "brain", convID, ".system_generated", "logs")
+	convDir := filepath.Join(agyHome, "conversations")
+	if err := os.MkdirAll(logsDir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(convDir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+
+	// Phase 1: simulate v0.89.3 state where only transcript.jsonl was scanned (no thinking, no speed).
+	transcript := "" +
+		`{"step_index":1,"source":"MODEL","type":"PLANNER_RESPONSE","status":"DONE","created_at":"2026-11-18T10:00:05Z","model":"gemini-4-hydrogen-high","input_tokens":2000,"cache_read_tokens":0,"output_tokens":500}` + "\n" +
+		`{"step_index":4,"source":"MODEL","type":"PLANNER_RESPONSE","status":"DONE","created_at":"2026-11-18T10:01:05Z","model":"gemini-4-hydrogen-medium","input_tokens":1000,"cache_read_tokens":7000,"output_tokens":300}` + "\n"
+	if err := os.WriteFile(filepath.Join(logsDir, "transcript.jsonl"), []byte(transcript), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	now := time.Date(2026, 11, 18, 12, 0, 0, 0, time.UTC)
+	c, err := New(Config{
+		StateDir:        filepath.Join(dir, "state"),
+		AntigravityHome: agyHome,
+		HasAntigravity:  true,
+		Now:             func() time.Time { return now },
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer c.Close()
+
+	c.scanOnce(context.Background())
+
+	// Phase 2: write conversations/<convID>.db in WAL mode with:
+	// - steps 1 & 4 matching transcript steps (must upgrade thinking/speed in-place WITHOUT double counting)
+	// - historical 10d-old step for "gemini-3.8-flash-n"
+	// - short output step (output=10) that counts in usage, not speed/TTFT
+	dbPath := filepath.Join(convDir, convID+".db")
+	wdb, err := sql.Open("sqlite", dbPath+"?_pragma=journal_mode(WAL)&_pragma=wal_autocheckpoint(0)")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer wdb.Close()
+	if _, err := wdb.Exec(`
+		CREATE TABLE steps(idx INTEGER PRIMARY KEY, step_type INTEGER NOT NULL, status INTEGER NOT NULL, metadata BLOB);
+		CREATE TABLE gen_metadata(idx INTEGER PRIMARY KEY, data BLOB, size INTEGER NOT NULL DEFAULT 0);
+	`); err != nil {
+		t.Fatal(err)
+	}
+
+	insertStep := func(gmIdx, stepIdx int64, modelEnum uint64, model string, botID string, inTok, cacheRead, outTok, thinkTok uint64, tCreate time.Time, ttft, genDur time.Duration) {
+		tFirst := tCreate.Add(ttft)
+		tEnd := tFirst.Add(genDur)
+		u := encodeTestAgyUsage(modelEnum, inTok, outTok, cacheRead, thinkTok, botID, "")
+		gm := encodeTestAgyGenMeta(modelEnum, model, ttft, genDur, u)
+		sm := encodeTestAgyStepMeta(tCreate, tFirst, tEnd, u)
+		if _, err := wdb.Exec(`INSERT INTO gen_metadata(idx, data, size) VALUES(?, ?, 0)`, gmIdx, gm); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := wdb.Exec(`INSERT INTO steps(idx, step_type, status, metadata) VALUES(?, 15, 5, ?)`, stepIdx, sm); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	tToday1 := time.Date(2026, 11, 18, 10, 0, 5, 0, time.UTC)
+	tToday2 := time.Date(2026, 11, 18, 10, 1, 5, 0, time.UTC)
+	tHist := time.Date(2026, 11, 8, 9, 0, 0, 0, time.UTC)
+	// Keep autocheckpoint=0 so rows remain in -wal file while scanAntigravityDB reads mode=ro.
+	insertStep(0, 1, 1525, "gemini-4-hydrogen", "bot-1", 2000, 0, 500, 300, tToday1, 1500*time.Millisecond, 2500*time.Millisecond)
+	insertStep(1, 4, 1525, "gemini-4-hydrogen", "bot-4", 1000, 7000, 300, 120, tToday2, 500*time.Millisecond, 1500*time.Millisecond)
+	// Short output reply on claude-opus-5-5-high (suffix stripped -> claude-opus-5-5), counts usage not speed.
+	insertStep(2, 6, 1402, "claude-opus-5-5-high", "bot-6", 100, 900, 10, 0, tToday2.Add(time.Minute), 400*time.Millisecond, 300*time.Millisecond)
+	// Historical 10d-old request
+	insertStep(3, 8, 1318, "gemini-3.8-flash-n", "bot-8", 400, 1600, 200, 120, tHist, 800*time.Millisecond, 1000*time.Millisecond)
+
+	// Append a WAL-only un-checkpointed write and touch brain transcript mtime to verify transcript is skipped when .db exists.
+	futureMtime := now.Add(5 * time.Second)
+	_ = os.Chtimes(filepath.Join(logsDir, "transcript.jsonl"), futureMtime, futureMtime)
+
+	c.scanOnce(context.Background())
+
+	// Verify discovery excludes transcript.jsonl when conversations/<convID>.db exists.
+	cands, err := discoverAntigravityLogs(agyHome, now.Add(-90*24*time.Hour))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(cands) != 1 || filepath.Ext(cands[0].path) != ".db" {
+		t.Fatalf("expected only .db candidate when both .db and transcript exist, got %+v", cands)
+	}
+
+	resp, err := c.Query(context.Background(), &pb.GetUsageStatsRequest{
+		Preset:   pb.UsageRangePreset_USAGE_RANGE_PRESET_THIRTY_DAYS,
+		Timezone: "UTC",
+	}, QueryOptions{
+		Installed: []pb.Agent{pb.Agent_AGENT_ANTIGRAVITY},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	byModel := map[string]*pb.UsageSeries{}
+	for _, s := range resp.Series {
+		byModel[s.Model] = s
+	}
+
+	h := byModel["gemini-4-hydrogen"]
+	if h == nil {
+		t.Fatalf("missing gemini-4-hydrogen series: %+v", byModel)
+	}
+	if h.CacheWriteSupported {
+		t.Fatalf("expected CacheWriteSupported=false")
+	}
+	if h.Current.UsageRequestCount != 2 || h.Current.UncachedInputTokens != 3000 || h.Current.CacheReadTokens != 7000 || h.Current.OutputTokens != 800 {
+		t.Fatalf("expected in-place upgrade without double count, got %+v", h.Current)
+	}
+	if h.Current.ReasoningOutputTokens != 420 || h.Current.SpeedRequestCount != 2 || !h.Current.HasSpeed || !h.Current.HasTtft {
+		t.Fatalf("expected thinking=420, speedReqs=2, HasSpeed & HasTtft true, got %+v", h.Current)
+	}
+	// Median of (200 tok/s, 200 tok/s) = 200; median of (500ms, 1500ms) = 1000ms.
+	if h.Current.SpeedP50 < 199.9 || h.Current.SpeedP50 > 200.1 || h.Current.TtftP50Ms < 999 || h.Current.TtftP50Ms > 1001 {
+		t.Fatalf("unexpected gemini-4-hydrogen speed/ttft medians: speed=%v ttft=%v", h.Current.SpeedP50, h.Current.TtftP50Ms)
+	}
+
+	hist := byModel["gemini-3.8-flash-n"]
+	if hist == nil || hist.Current.UsageRequestCount != 1 || hist.Current.SpeedRequestCount != 1 || hist.Current.ReasoningOutputTokens != 120 {
+		t.Fatalf("expected 10d-old historical gemini-3.8-flash-n row, got %+v", hist)
+	}
+	if hist.Current.SpeedP50 < 199.9 || hist.Current.SpeedP50 > 200.1 || hist.Current.TtftP50Ms < 799 || hist.Current.TtftP50Ms > 801 {
+		t.Fatalf("unexpected historical speed/ttft: %+v", hist.Current)
+	}
+
+	cl := byModel["claude-opus-5-5"]
+	if cl == nil || cl.Current.UsageRequestCount != 1 || cl.Current.SpeedRequestCount != 0 || cl.Current.HasSpeed {
+		t.Fatalf("expected claude-opus-5-5 (suffix stripped) with usage=1 speed=0, got %+v", cl)
 	}
 }

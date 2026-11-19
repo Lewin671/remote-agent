@@ -607,11 +607,13 @@ Gemini Flash 随后达到额度上限。分别用新会话请求 Claude Sonnet 5
 - 每次 `agy` 运行（交互或无头，含 `-p /usage`）都会在 `~/.gemini/antigravity-cli/log/` 新建 `cli-YYYYMMDD_HHMMSS.log`；`/usage` JSON 输出不含 `email`，登录邮箱仅记录在 CLI 日志中的 `applyAuthResult: email=..., authMethod=consumer, quotaProject=` 行内。
 - 禁用自动更新的环境变量 `AGY_CLI_DISABLE_AUTO_UPDATE` 必须为小写 `true`。
 
-## 16. `transcript.jsonl` 用量字段实测（1.5.x，2026-11-18）
+## 16. `conversations/*.db` 与 `transcript.jsonl` 用量字段实测（2026-11-18 ~ 19）
 
-基于本机 492 个真实 `brain/<conversation-id>/.system_generated/logs/transcript.jsonl` 会话日志核对：
+基于本机 500 个真实 `conversations/<conversation-id>.db` 与 492 个 `brain/<conversation-id>/.system_generated/logs/transcript.jsonl` 核对：
 
-- **记录位置与格式**：每个已完成的模型步骤为一条 `type == "PLANNER_RESPONSE"`、`status == "DONE"` 的 JSONL 行（`step_index` 在单文件内唯一，`created_at` 为 RFC3339 秒级时间戳）。`transcript.jsonl`（紧凑版）与 `transcript_full.jsonl` 的 token/模型元数据一致，无需读取后者。
-- **Token 互斥语义**：同一对话连续步骤中，`input_tokens` 随上下文建立从冷启动 `23,389` 降至续传 `2,275`、`cache_read_tokens` 同步增至 `23,390`，实证 **`input_tokens` 不包含 `cache_read_tokens`**（二者互斥）；未记录 `cache_write_tokens` 与独立的 `thinking_tokens` 字段。
-- **版本差异与特殊行**：2026-11-14 起的日志均包含带思考强度后缀的 `model` 字段（如 `gemini-4-hydrogen-high`、`gemini-4-carbon-medium`、`gemini-flash-worker-agy`）；更早旧版本日志的 `model` 为空字符串 `""`。系统摘要压缩行 `type == "CHECKPOINT"` 也不含 `model` 字段。
-- **无生成耗时字段**：`transcript.jsonl`、`transcript_full.jsonl` 与 `log/cli-*.log` 均不提供模型请求发出/首字到达/末块完成时间戳，仅靠 1 秒粒度的 `created_at` 无法可靠推算输出速度（`tok/s`）与 TTFT。
+- **`conversations/<conversation-id>.db`（主采集源，500 库、41,471 次 `step_type = 15` 100% 对齐 `gen_metadata`）**：
+  - `steps` 表中 `step_type = 15`（主状态为 `3`/`5`）的 `idx` 与 `transcript.jsonl` 的 `PLANNER_RESPONSE.step_index` 严格一致；其 `metadata`（protobuf）记录 `1` 创建时间、`6` 首字到达时间、`7` 完成时间，以及 `9` 用量载荷（含 `usage.7 = bot_id` 与 `usage.11 = resp_id`）。
+  - `usage` 内核实字段：`2 = input_tokens`（未缓存输入，与 `5 = cache_read_tokens` 互斥）、`3 = output_tokens`（在全部 41,474 条记录上严格满足 **`usage.9` 思考 token + `usage.10` 正文/工具输出 token == `usage.3`**，无一例外）；全库 41,537 条 `gen_metadata`（含 `claude-opus-5-5-high`）均未拆分报告 `usage.4`（缓存写入）。
+  - `gen_metadata.1` 以 `usage.7` / `usage.11` 与 `steps` 关联，除 11-03 起的完整模型名 `1.19`（涵盖旧日志缺失模型的时段）外，还以 protobuf `Duration`（秒 + 纳秒）保存 `1.11 = TTFT` 与 `1.12 = gen_duration`；实测 `|(t7 - t6) - gen_duration|` 的 p50/p95 均为 **1 ms**。
+  - `.db` 采用 SQLite WAL 模式，活跃会话的近期写入保留在 `<id>.db-wal` 中，监测变更须合并 `.db` 与 `.db-wal` 的大小与 mtime。
+- **`transcript.jsonl`（备选回退源）**：仅保留 `PLANNER_RESPONSE` 行级 1 秒时间戳 `created_at` 与 `input_tokens` / `cache_read_tokens` / `output_tokens`，无 `thinking_tokens`、无生成耗时与 TTFT 字段，且 2026-11-14 前的旧日志 `model` 为 `""`。仅在无对应 `.db` 时作回退读取。

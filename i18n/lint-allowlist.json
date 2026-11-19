@@ -4208,5 +4208,15 @@
     "path": "internal/usagestats/agy_parser.go",
     "literal": "agy:%s:%d",
     "reason": "Internal deduplication key format for Antigravity transcript steps, never displayed."
+  },
+  {
+    "path": "internal/usagestats/agy_db.go",
+    "literal": "no such table",
+    "reason": "Internal SQLite error substring check for uninitialized conversation DBs, never displayed."
+  },
+  {
+    "path": "internal/usagestats/agy_db.go",
+    "literal": "agy:%s:%d",
+    "reason": "Internal deduplication key format for Antigravity conversation DB steps matching transcript steps, never displayed."
   }
 ]

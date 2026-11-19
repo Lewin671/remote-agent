@@ -27,17 +27,55 @@ type agyTranscriptLine struct {
 }
 
 func discoverAntigravityLogs(agyHome string, cutoff time.Time) ([]logCandidate, error) {
+	var out []logCandidate
+	dbConvIDs := map[string]bool{}
+
+	convDir := filepath.Join(agyHome, "conversations")
+	convEntries, err := os.ReadDir(convDir)
+	if err != nil && !os.IsNotExist(err) {
+		return nil, err
+	}
+	for _, d := range convEntries {
+		if d.IsDir() || !strings.HasSuffix(d.Name(), ".db") {
+			continue
+		}
+		p := filepath.Join(convDir, d.Name())
+		info, statErr := os.Stat(p)
+		if statErr != nil || info.IsDir() {
+			continue
+		}
+		convID := strings.TrimSuffix(d.Name(), ".db")
+		dbConvIDs[convID] = true
+
+		size := info.Size()
+		mtime := info.ModTime()
+		if walInfo, walErr := os.Stat(p + "-wal"); walErr == nil && !walInfo.IsDir() {
+			size += walInfo.Size()
+			if walInfo.ModTime().After(mtime) {
+				mtime = walInfo.ModTime()
+			}
+		}
+		if mtime.Before(cutoff) {
+			continue
+		}
+		out = append(out, logCandidate{
+			agent: pb.Agent_AGENT_ANTIGRAVITY,
+			path:  p,
+			size:  size,
+			mtime: mtime,
+		})
+	}
+
 	brainDir := filepath.Join(agyHome, "brain")
 	entries, err := os.ReadDir(brainDir)
 	if os.IsNotExist(err) {
-		return nil, nil
+		return out, nil
 	}
 	if err != nil {
 		return nil, err
 	}
-	var out []logCandidate
 	for _, d := range entries {
-		if !d.IsDir() {
+		if !d.IsDir() || dbConvIDs[d.Name()] {
 			continue
 		}
 		p := filepath.Join(brainDir, d.Name(), ".system_generated", "logs", "transcript.jsonl")
@@ -71,6 +109,13 @@ func normalizeAntigravityModel(raw string) string {
 }
 
 func scanAntigravityFile(path string) (samples []requestSample, offset int64, err error) {
+	if strings.HasSuffix(path, ".db") {
+		return scanAntigravityDB(path)
+	}
+	return scanAntigravityTranscriptFile(path)
+}
+
+func scanAntigravityTranscriptFile(path string) (samples []requestSample, offset int64, err error) {
 	f, err := os.Open(path)
 	if err != nil {
 		return nil, 0, err
