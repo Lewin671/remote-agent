@@ -406,6 +406,7 @@ class Remote(
     val coreNavigation: SharedFlow<NavigateEffect> get() = coreHost.navigationEvents
     val scheduleNavigationEvents: SharedFlow<ScheduleNavigateEffect> get() = coreHost.scheduleNavigationEvents
     val restoreComposerEvents: SharedFlow<SessionRestoreComposerEffect> get() = coreHost.restoreComposerEvents
+    val resendAttachmentsEvents: SharedFlow<SessionResendAttachmentsEffect> get() = coreHost.resendAttachmentsEvents
 
     fun watchSession(sid: String, initialWindow: SessionWindowRequest? = null): Flow<SessionViewModel> {
         state.value.sessions[sid]?.machineId?.takeIf { it.isNotEmpty() }?.let { coreHost.hydrateUsageCache(it) }
@@ -427,11 +428,29 @@ class Remote(
     fun abandonSessionCommand(sid: String, slotKey: String) =
         coreHost.abandonSessionCommand(sid, slotKey)
 
-    fun dismissOutgoing(sid: String, requestId: String) =
-        coreHost.dismissOutgoing(sid, requestId)
+    fun cancelTrayItem(sid: String, requestId: String) =
+        coreHost.cancelTrayItem(sid, requestId)
 
-    fun restoreOutgoing(sid: String, requestId: String) =
-        coreHost.restoreOutgoing(sid, requestId)
+    fun ignoreTrayItem(sid: String, requestId: String) =
+        coreHost.ignoreTrayItem(sid, requestId)
+
+    fun promoteTrayItem(sid: String, requestId: String) =
+        coreHost.promoteTrayItem(sid, requestId)
+
+    fun restoreTrayItem(sid: String, requestId: String) =
+        coreHost.restoreTrayItem(sid, requestId)
+
+    fun retryTrayItem(sid: String, requestId: String) =
+        coreHost.retryTrayItem(sid, requestId)
+
+    fun resumeTrayItem(sid: String, requestId: String) =
+        coreHost.resumeTrayItem(sid, requestId)
+
+    fun cancelAllPaused(sid: String) =
+        coreHost.cancelAllPaused(sid)
+
+    fun undoCancel(sid: String) =
+        coreHost.undoCancel(sid)
 
     fun setSessionQuestionIndex(sid: String, questionId: String, index: Int) =
         coreHost.setSessionQuestionIndex(sid, questionId, index)

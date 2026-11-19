@@ -25,8 +25,13 @@ import io.github.lewin671.remoteagent.core.proto.SessionCapabilitiesView
 import io.github.lewin671.remoteagent.core.proto.SessionComposerView
 import io.github.lewin671.remoteagent.core.proto.SessionDisplayStatus
 import io.github.lewin671.remoteagent.core.proto.SessionHeaderView
-import io.github.lewin671.remoteagent.core.proto.SessionPendingInputView
+import io.github.lewin671.remoteagent.core.proto.SessionPendingTrayView
 import io.github.lewin671.remoteagent.core.proto.SessionTimelineView
+import io.github.lewin671.remoteagent.core.proto.SessionTrayGroupKind
+import io.github.lewin671.remoteagent.core.proto.SessionTrayGroupView
+import io.github.lewin671.remoteagent.core.proto.SessionTrayItemView
+import io.github.lewin671.remoteagent.core.proto.SessionTrayRowActivity
+import io.github.lewin671.remoteagent.core.proto.SessionTrayTone
 import io.github.lewin671.remoteagent.core.proto.SessionViewModel
 import io.github.lewin671.remoteagent.core.proto.Text
 import io.github.lewin671.remoteagent.data.ThemeMode
@@ -99,8 +104,8 @@ class SessionViewTest {
 
             ui.runOnIdle { remote.showForTest(st, sessions = mapOf(approval.sessionId to queueRetry)) }
             ui.waitForIdle()
-            if (queueRetry.composer.pendingInputsCount > 0) {
-                ui.onNodeWithText(queueRetry.composer.getPendingInputs(0).text, substring = true).assertIsDisplayed()
+            if (queueRetry.composer.pendingTray.orderedItemsCount > 0) {
+                ui.onNodeWithText(queueRetry.composer.pendingTray.getOrderedItems(0).text, substring = true).assertIsDisplayed()
             }
 
             ui.runOnIdle { remote.showForTest(st, sessions = mapOf(approval.sessionId to longTail)) }
@@ -135,13 +140,32 @@ class SessionViewTest {
     }
 
     @Test
-    fun pendingBubbleRendersCoreCaptionOnceWithoutDuplicatingLabelOrOrigin() {
-        val label = Text.newBuilder().setKey("queue.android_sending_soon").build()
+    fun pendingTrayRendersGroupHeaderAndOriginOnce() {
         val origin = Text.newBuilder().setLiteral("MyPhone").build()
-        val caption = Text.newBuilder()
-            .setSeparatorLiteral(" · ")
-            .addJoin(label)
-            .addJoin(origin)
+        val item = SessionTrayItemView.newBuilder()
+            .setRequestId("req-1")
+            .setGroup(SessionTrayGroupKind.SESSION_TRAY_GROUP_KIND_STEER)
+            .setTone(SessionTrayTone.SESSION_TRAY_TONE_NEUTRAL)
+            .setActivity(SessionTrayRowActivity.SESSION_TRAY_ROW_ACTIVITY_IDLE)
+            .setShowSpinner(true)
+            .setText("hi")
+            .setMode(SendMode.SEND_MODE_STEER)
+            .setSourceLabel(origin)
+            .setCanCancel(true)
+            .setCanRestore(true)
+            .build()
+        val tray = SessionPendingTrayView.newBuilder()
+            .setTotalCount(1)
+            .addOrderedItems(item)
+            .addGroups(
+                SessionTrayGroupView.newBuilder()
+                    .setKind(SessionTrayGroupKind.SESSION_TRAY_GROUP_KIND_STEER)
+                    .setTone(SessionTrayTone.SESSION_TRAY_TONE_NEUTRAL)
+                    .setTitle(Text.newBuilder().setKey("queue.group_steer"))
+                    .setHeaderText(Text.newBuilder().setKey("queue.group_steer"))
+                    .setTotalCount(1)
+                    .addItems(item),
+            )
             .build()
         val vm = SessionViewModel.newBuilder()
             .setSessionId("s-pending-cap")
@@ -162,17 +186,7 @@ class SessionViewTest {
             .setComposer(
                 SessionComposerView.newBuilder()
                     .setEnabled(true)
-                    .addPendingInputs(
-                        SessionPendingInputView.newBuilder()
-                            .setRequestId("req-1")
-                            .setText("hi")
-                            .setMode(SendMode.SEND_MODE_STEER)
-                            .setStatus(InputStatus.INPUT_STATUS_QUEUED)
-                            .setLabel(label)
-                            .setOriginLabel(origin)
-                            .setCaption(caption)
-                            .setCanCancel(true),
-                    ),
+                    .setPendingTray(tray),
             )
             .setTimeline(SessionTimelineView.newBuilder().setLoaded(true))
             .build()
@@ -198,8 +212,8 @@ class SessionViewTest {
                 }
             }
             ui.waitForIdle()
-            ui.onNodeWithText("即将发送 · MyPhone").assertIsDisplayed()
-            assertEquals(0, ui.onAllNodesWithText("即将发送 · 即将发送", substring = true).fetchSemanticsNodes().size)
+            ui.onNodeWithText("MyPhone · hi").assertIsDisplayed()
+            ui.onNodeWithText("这一步结束就送达").assertIsDisplayed()
         } finally {
             remote.close()
         }

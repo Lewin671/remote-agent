@@ -94,9 +94,6 @@ import io.github.lewin671.remoteagent.core.projectName
 import io.github.lewin671.remoteagent.core.proto.ComputerReachability
 import io.github.lewin671.remoteagent.core.proto.SessionCommandStatus
 import io.github.lewin671.remoteagent.core.proto.SessionDisplayStatus
-import io.github.lewin671.remoteagent.core.proto.SessionOutgoingState
-import io.github.lewin671.remoteagent.core.proto.SessionOutgoingView
-import io.github.lewin671.remoteagent.core.proto.SessionPendingInputView
 import io.github.lewin671.remoteagent.core.proto.SessionTimelineItem
 import io.github.lewin671.remoteagent.core.proto.SessionViewModel
 import io.github.lewin671.remoteagent.core.proto.SessionWindowRequest
@@ -104,11 +101,9 @@ import io.github.lewin671.remoteagent.core.sendModeFor
 import io.github.lewin671.remoteagent.core.shortPath
 import io.github.lewin671.remoteagent.proto.Agent
 import io.github.lewin671.remoteagent.proto.ApprovalMode
-import io.github.lewin671.remoteagent.proto.CancelInputRequest
 import io.github.lewin671.remoteagent.proto.Command
 import io.github.lewin671.remoteagent.proto.ForkSessionRequest
 import io.github.lewin671.remoteagent.proto.InterruptRequest
-import io.github.lewin671.remoteagent.proto.ResumeInputRequest
 import io.github.lewin671.remoteagent.proto.ResumeSessionRequest
 import io.github.lewin671.remoteagent.proto.SendMode
 import io.github.lewin671.remoteagent.proto.SendRequest
@@ -190,10 +185,17 @@ fun SessionScreen(sid: String) {
         }
     }
 
-    LaunchedEffect(vm.composer.outgoingList, vm.composer.pendingInputsList) {
+    LaunchedEffect(remote, sid) {
+        remote.resendAttachmentsEvents.collect { eff ->
+            if (eff.sessionId != sid) return@collect
+            Outbox.resendWithAttachments(this, remote, sid, eff)
+        }
+    }
+
+    LaunchedEffect(vm.composer.retainedAttachmentRequestIdsList, vm.composer.pendingTray.orderedItemsList) {
         val active = buildSet {
-            vm.composer.outgoingList.forEach { add(it.requestId) }
-            vm.composer.pendingInputsList.forEach { add(it.requestId) }
+            addAll(vm.composer.retainedAttachmentRequestIdsList)
+            vm.composer.pendingTray.orderedItemsList.forEach { add(it.requestId) }
         }
         Outbox.pruneSettled(sid, active)
     }
@@ -727,24 +729,19 @@ internal fun ChatPane(
         if (tl.windowFirstSeq > 0L) prevFirstSeq = tl.windowFirstSeq
     }
 
-    val pendingInputs = vm.composer.pendingInputsList
-    var allPending by remember { mutableStateOf(false) }
-    val visiblePending = if (pendingInputs.size > 3 && !allPending) pendingInputs.take(2) else pendingInputs
-    val outgoing = vm.composer.outgoingList
-
+    val trayItems = vm.composer.pendingTray.orderedItemsList
     val scope = rememberCoroutineScope()
     val atBottom by remember { derivedStateOf { !list.canScrollForward } }
     val dragged by list.interactionSource.collectIsDraggedAsState()
     LaunchedEffect(dragged, atBottom) { followState.observe(dragged, atBottom) }
     val follow = followState.on
-    val endIndex by rememberUpdatedState(items.size + visiblePending.size + outgoing.size + 4)
+    val endIndex by rememberUpdatedState(items.size + 4)
     val ime = WindowInsets.ime.getBottom(LocalDensity.current)
 
     LaunchedEffect(
         followState.sends,
         items.size,
-        outgoing.size,
-        visiblePending.size,
+        trayItems.size,
         ime,
         vm.dock.hasItem,
         vm.dock.kind,
@@ -781,7 +778,7 @@ internal fun ChatPane(
     val density = LocalDensity.current
     val dockMax = with(density) { maxOf(240.dp, (shownHeight * 0.6f).toDp()) }
 
-    entrances.outgoing(outgoing.map { "out" + it.requestId } + visiblePending.map { "pending-${it.requestId}" })
+    entrances.outgoing(trayItems.map { it.requestId })
 
     Column(modifier.clipToBounds().onSizeChanged { shownHeight = it.height }) {
         val reachabilityUnknown = header.computerReachability == ComputerReachability.COMPUTER_REACHABILITY_UNKNOWN
@@ -864,21 +861,6 @@ internal fun ChatPane(
                                 )
                             }
                         }
-                        items(visiblePending, key = { "pending-${it.requestId}" }) { pending ->
-                            Box(Modifier.entrance(remember { entrances.take("pending-${pending.requestId}") })) {
-                                PendingBubble(sid, header.machineId, header.computerOnline && !header.computerUnlinked, pending)
-                            }
-                        }
-                        if (pendingInputs.size > 3 && !allPending) {
-                            item(key = "pending-more") {
-                                TextAction(copy(UiMessages.queueMore(count = pendingInputs.size - 2)), { allPending = true }, Modifier.padding(horizontal = ChatSide), style = T.s13)
-                            }
-                        }
-                        items(outgoing, key = { "out" + it.requestId }) { o ->
-                            Box(Modifier.entrance(remember { entrances.take("out" + o.requestId) })) {
-                                OutgoingView(sid, header.machineId, o)
-                            }
-                        }
                         item(key = "end-spacer") { Spacer(Modifier.height(8.dp)) }
                     }
                 }
@@ -914,182 +896,6 @@ internal fun ChatPane(
                 onSent = followState::sent,
             )
         }
-    }
-}
-
-@Composable
-private fun PendingBubble(
-    sid: String,
-    machineId: String,
-    online: Boolean,
-    pending: SessionPendingInputView,
-) {
-    val copy = uiText()
-    val p = pal
-    val remote = LocalRemote.current
-    var expanded by remember(pending.requestId) { mutableStateOf(false) }
-    val cancelBusy = pending.cancel.busy || pending.cancel.status == SessionCommandStatus.SESSION_COMMAND_STATUS_PENDING
-    val resumeBusy = pending.resume.busy || pending.resume.status == SessionCommandStatus.SESSION_COMMAND_STATUS_PENDING
-    val captionText = when {
-        pending.hasCaption() -> uiText(pending.caption).ifEmpty {
-            if (pending.hasLabel()) uiText(pending.label) else ""
-        }
-        pending.hasLabel() -> uiText(pending.label)
-        else -> ""
-    }
-    val errText = if (pending.hasFeedback()) uiText(pending.feedback) else ""
-
-    Column(Modifier.fillMaxWidth().padding(horizontal = ChatSide, vertical = 6.dp), horizontalAlignment = Alignment.End) {
-        Column(
-            Modifier.fillMaxWidth(.84f).wrapContentWidth(Alignment.End)
-                .clip(Radii.R22)
-                .border(1.dp, p.faint, Radii.R22)
-                .clickable { expanded = !expanded }
-                .padding(horizontal = 16.dp, vertical = 10.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            Text(
-                pending.text.ifEmpty { copy(UiMessages.imageAndroidBubble()) },
-                style = T.s17,
-                color = p.ink2,
-                maxLines = if (expanded) Int.MAX_VALUE else 4,
-                overflow = TextOverflow.Ellipsis,
-            )
-        }
-        Row(
-            Modifier.fillMaxWidth(.84f).heightIn(min = 36.dp).padding(start = 8.dp, end = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.End,
-        ) {
-            val shownCap = errText.ifEmpty { captionText }
-            Text(
-                shownCap,
-                style = T.s13,
-                color = if (errText.isNotEmpty() && !pending.feedbackUncertain) p.red else if (pending.feedbackUncertain) p.orangeInk else p.ink2,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                textAlign = TextAlign.End,
-                modifier = Modifier.weight(1f, fill = false),
-            )
-            if (pending.canResume) {
-                TextAction(
-                    if (pending.resume.status == SessionCommandStatus.SESSION_COMMAND_STATUS_FAILED) copy(UiMessages.commonRetry()) else copy(UiMessages.composerSend()),
-                    {
-                        remote.submitSessionCommand(
-                            sid,
-                            Command.newBuilder().setResumeInput(ResumeInputRequest.newBuilder().setSessionId(sid).setRequestId(pending.requestId)).build(),
-                            machineId = machineId,
-                        )
-                    },
-                    enabled = online && !resumeBusy,
-                    modifier = Modifier.padding(start = 8.dp),
-                    style = T.s13,
-                    alignment = Alignment.Center,
-                )
-            }
-            if (pending.canCancel) {
-                TextAction(
-                    if (pending.cancel.status == SessionCommandStatus.SESSION_COMMAND_STATUS_FAILED) copy(UiMessages.commonRetry()) else copy(UiMessages.commonCancel()),
-                    {
-                        remote.submitSessionCommand(
-                            sid,
-                            Command.newBuilder().setCancelInput(CancelInputRequest.newBuilder().setSessionId(sid).setRequestId(pending.requestId)).build(),
-                            machineId = machineId,
-                        )
-                    },
-                    enabled = online && !cancelBusy,
-                    modifier = Modifier.padding(start = 8.dp),
-                    style = T.s13,
-                    alignment = Alignment.Center,
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun OutgoingView(
-    sid: String,
-    machineId: String,
-    o: SessionOutgoingView,
-) {
-    val copy = uiText()
-    val p = pal
-    val remote = LocalRemote.current
-    val local = Outbox.find(sid, o.requestId)
-    val failed = o.state == SessionOutgoingState.SESSION_OUTGOING_STATE_FAILED
-    val uncertain = o.feedbackUncertain || o.state == SessionOutgoingState.SESSION_OUTGOING_STATE_UNKNOWN
-
-    val captionText = when {
-        o.hasFeedback() -> uiText(o.feedback)
-        o.hasCaption() -> uiText(o.caption)
-        else -> ""
-    }
-    val captionColor = when {
-        failed && !uncertain -> p.red
-        uncertain -> p.orangeInk
-        else -> p.ink2
-    }
-
-    val links = buildList {
-        if (o.canRestore) {
-            add(CaptionLink(CaptionAction.RESTORE, copy(UiMessages.composerRestore())) {
-                remote.restoreOutgoing(sid, o.requestId)
-            })
-        }
-        if (o.canRetry) {
-            add(CaptionLink(CaptionAction.RETRY, copy(UiMessages.commonRetry())) {
-                remote.submitSessionCommand(
-                    sid,
-                    Command.newBuilder().setSend(
-                        SendRequest.newBuilder()
-                            .setSessionId(sid)
-                            .setRequestId(o.requestId)
-                            .setText(o.text)
-                            .addAllImageIds(o.imageIdsList)
-                            .addAllFileIds(o.fileIdsList)
-                            .setMode(o.mode),
-                    ).build(),
-                    machineId = machineId,
-                )
-            })
-        }
-        if (o.canDismiss) {
-            add(CaptionLink(CaptionAction.DROP, copy(UiMessages.sessionDismissNotice())) {
-                remote.dismissOutgoing(sid, o.requestId)
-                Outbox.remove(sid, o.requestId, releaseImages = true)
-            })
-        }
-    }
-
-    Column(Modifier.fillMaxWidth().padding(horizontal = ChatSide)) {
-        if (local != null) {
-            FileChips(
-                local.images.filter { it.isFile }.map {
-                    io.github.lewin671.remoteagent.proto.SentFile.newBuilder()
-                        .setFileId(it.fileId.orEmpty())
-                        .setName(it.fileName.orEmpty())
-                        .setSizeBytes(it.fileBytes)
-                        .build()
-                },
-            )
-            if (local.images.any { !it.isFile }) {
-                Row(Modifier.align(Alignment.End).padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    for (img in local.images.filterNot { it.isFile }.take(4)) img.thumb?.let { bmp ->
-                        Image(bmp, null, Modifier.size(64.dp).clip(Radii.R14), contentScale = ContentScale.Crop)
-                    }
-                }
-            }
-        }
-        MeBubble(
-            o.text.ifEmpty { if (o.imageIdsCount > 0 || o.fileIdsCount > 0 || local != null) null else "" },
-            caption = captionText.ifEmpty { null },
-            captionColor = captionColor,
-            failed = failed && !uncertain,
-            links = links,
-            padded = false,
-            animated = true,
-        )
     }
 }
 
@@ -1143,11 +949,10 @@ private fun BottomArea(
         return
     }
 
-    if (!header.computerOnline && header.computerReachability != ComputerReachability.COMPUTER_REACHABILITY_UNKNOWN) {
-        val t = now()
+    if (header.computerUnlinked && header.computerReachability != ComputerReachability.COMPUTER_REACHABILITY_UNKNOWN) {
         val computer = if (header.hasComputerName()) uiText(header.computerName) else machineLabel(state, header.machineId)
         val offlineNote = if (header.hasOfflineText()) uiText(header.offlineText)
-        else copy(UiMessages.sessionOfflineNote(lastSeen = if (header.offlineSinceMs > 0) copy(UiMessages.sessionDisconnectedAgo(listWhen(header.offlineSinceMs, t).resolve(copy))) else ""))
+        else copy(UiMessages.projectsComputerOffline())
         EndCard(copy(UiMessages.newSessionMachineOffline(name = computer)), offlineNote) {}
         return
     }
@@ -1173,7 +978,7 @@ private fun BottomArea(
     }
 
     if (!dockDenying) {
-        Composer(sid = sid, state = state, vm = vm, onSent = onSent, onFocus = {}, demoted = showDock && dockOpen)
+        Composer(sid = sid, state = state, vm = vm, onSent = onSent, onFocus = {}, onTerminal = onTerminal, demoted = showDock && dockOpen)
     }
 }
 
@@ -1210,6 +1015,7 @@ internal fun Composer(
     vm: SessionViewModel,
     onSent: () -> Unit,
     onFocus: (Boolean) -> Unit,
+    onTerminal: (() -> Unit)? = null,
     demoted: Boolean = false,
 ) {
     val copy = uiText()
@@ -1278,6 +1084,9 @@ internal fun Composer(
     val interruptSlot = vm.actions.interrupt
     val interruptBusy = interruptSlot.busy || interruptSlot.status == SessionCommandStatus.SESSION_COMMAND_STATUS_PENDING
     val placeholder = if (composer.hasPlaceholder()) uiText(composer.placeholder) else copy(UiMessages.composerMessage())
+    val hasPendingTray = composer.hasPendingTray() && (composer.pendingTray.totalCount > 0 || (composer.pendingTray.hasUndo() && composer.pendingTray.undo.visible))
+    val imeOpen = WindowInsets.ime.getBottom(LocalDensity.current) > 0
+    val compactWidth = LocalConfiguration.current.screenWidthDp < 600
 
     ComposeBox(
         text = text,
@@ -1304,12 +1113,28 @@ internal fun Composer(
         hasDraft = text.isNotBlank() || images.images.isNotEmpty(),
         demoted = demoted,
         onFocus = onFocus,
+        hasPendingTray = hasPendingTray,
+        pendingTray = if (hasPendingTray) ({
+            PendingTray(
+                tray = composer.pendingTray,
+                keyboardCollapsed = imeOpen && compactWidth,
+                onTerminal = onTerminal,
+                onCancelItem = { remote.cancelTrayItem(sid, it) },
+                onIgnoreItem = { remote.ignoreTrayItem(sid, it) },
+                onPromoteItem = { remote.promoteTrayItem(sid, it) },
+                onRestoreItem = { remote.restoreTrayItem(sid, it) },
+                onRetryItem = { remote.retryTrayItem(sid, it) },
+                onResumeItem = { remote.resumeTrayItem(sid, it) },
+                onCancelAllPaused = { remote.cancelAllPaused(sid) },
+                onUndo = { remote.undoCancel(sid) },
+            )
+        }) else null,
         top = { ImageStrip(images, remote, machineId, maxImg) },
     )
     if (interruptSlot.hasErrorText()) {
         Notice(copy(UiMessages.sessionAndroidInterruptFailed(reason = uiText(interruptSlot.errorText))), Modifier.padding(horizontal = 12.dp).padding(bottom = 8.dp), NoticeTone.ERROR)
     }
-    if (composer.hasDisabledReason() && !composer.enabled) {
+    if (composer.hasDisabledReason() && !composer.enabled && !hasPendingTray) {
         Hint(uiText(composer.disabledReason), Modifier.padding(horizontal = ChatSide), inset = 0.dp)
     }
     if (text.trimStart().startsWith("/")) {

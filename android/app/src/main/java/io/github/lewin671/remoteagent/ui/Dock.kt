@@ -102,7 +102,7 @@ fun hasDraft(sid: String): Boolean =
 
 val LocalDockMax = androidx.compose.runtime.compositionLocalOf { 240.dp }
 
-val ChatMax = 760.dp
+val ChatMax = 720.dp
 
 internal fun <S> androidx.compose.animation.AnimatedContentTransitionScope<S>.dockSwap(): androidx.compose.animation.ContentTransform =
     (fadeIn(Motion.fadeInSpec(Motion.BASE)) togetherWith fadeOut(Motion.fadeOutSpec(Motion.BASE))) using

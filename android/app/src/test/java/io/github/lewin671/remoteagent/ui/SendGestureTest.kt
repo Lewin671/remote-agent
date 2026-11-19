@@ -24,35 +24,29 @@ class SendGestureTest {
             ComposeBox(draft.value, { draft.value = it }, "", true, { sent++ }, {}, onQueue = { queued++ })
         } }
     }
-    @Test fun modePillSwitchesSendActionWithoutLosingDraft() {
+    @Test fun sendAfterButtonTriggersQueueWithoutChangingSendButton() {
         show()
         val send = ui.onNodeWithContentDescription("发送")
         send.assertWidthIsAtLeast(44.dp).assertHeightIsAtLeast(44.dp)
-        val pill = ui.onNodeWithText("插入这一轮")
-        pill.performClick()
-        ui.onNodeWithText("这一轮结束后再发").assertIsDisplayed().performClick()
-        ui.onNodeWithText("本轮结束后发").assertIsDisplayed()
-        assertEquals(0, sent)
-        assertEquals(0, queued)
-        send.performClick()
+        val sendAfter = ui.onNodeWithText("做完再发")
+        sendAfter.assertIsDisplayed().assertHeightIsAtLeast(44.dp)
+        sendAfter.performClick()
         assertEquals(0, sent)
         assertEquals(1, queued)
     }
     @Test fun defaultSendActionTriggersOnSendWithoutOpeningMenu() {
         show()
         val send = ui.onNodeWithContentDescription("发送")
-        ui.onNodeWithText("插入这一轮").assertIsDisplayed()
-        ui.onNodeWithText("这一轮结束后再发").assertDoesNotExist()
+        ui.onNodeWithText("做完再发").assertIsDisplayed()
         send.performClick()
         assertEquals(1, sent)
         assertEquals(0, queued)
     }
-    @Test fun clickingModePillAgainClosesMenuWithoutSending() {
+    @Test fun noLegacyModeMenuTextAppearsWhenRunningWithDraft() {
         show()
-        ui.onNodeWithText("插入这一轮").performClick()
-        ui.onNodeWithText("这一轮结束后再发").assertIsDisplayed()
-        ui.onAllNodesWithText("插入这一轮").onFirst().performClick()
+        ui.onNodeWithText("插入这一轮").assertDoesNotExist()
         ui.onNodeWithText("这一轮结束后再发").assertDoesNotExist()
+        ui.onNodeWithText("本轮结束后发").assertDoesNotExist()
         assertEquals(0, sent)
         assertEquals(0, queued)
     }

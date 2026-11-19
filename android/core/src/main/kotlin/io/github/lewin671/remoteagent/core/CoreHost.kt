@@ -340,6 +340,9 @@ class CoreHost(
     private val _restoreComposerEvents = MutableSharedFlow<SessionRestoreComposerEffect>(extraBufferCapacity = 16)
     val restoreComposerEvents: SharedFlow<SessionRestoreComposerEffect> = _restoreComposerEvents.asSharedFlow()
 
+    private val _resendAttachmentsEvents = MutableSharedFlow<SessionResendAttachmentsEffect>(extraBufferCapacity = 16)
+    val resendAttachmentsEvents: SharedFlow<SessionResendAttachmentsEffect> = _resendAttachmentsEvents.asSharedFlow()
+
     init {
         if (!closed.get()) {
             // Queue initial calendar, entropy pool, and default view models onto the serial mailbox
@@ -511,6 +514,9 @@ class CoreHost(
             }
             Effect.EffectCase.SESSION_RESTORE_COMPOSER -> {
                 _restoreComposerEvents.tryEmit(effect.sessionRestoreComposer)
+            }
+            Effect.EffectCase.SESSION_RESEND_ATTACHMENTS -> {
+                _resendAttachmentsEvents.tryEmit(effect.sessionResendAttachments)
             }
             Effect.EffectCase.SCHEDULE_READ_CACHE -> onScheduleReadCache(effect.scheduleReadCache)
             Effect.EffectCase.SCHEDULE_DELETE_CACHE -> onScheduleDeleteCache(effect.scheduleDeleteCache)
@@ -1383,12 +1389,36 @@ class CoreHost(
         setSessionAbandonCommand(SessionSlotAction.newBuilder().setSessionId(sessionId).setSlotKey(slotKey))
     }
 
-    fun dismissOutgoing(sessionId: String, requestId: String) = send {
-        setSessionDismissOutgoing(SessionOutgoingAction.newBuilder().setSessionId(sessionId).setRequestId(requestId))
+    fun cancelTrayItem(sessionId: String, requestId: String) = send {
+        setSessionCancelTrayItem(SessionTrayItemAction.newBuilder().setSessionId(sessionId).setRequestId(requestId))
     }
 
-    fun restoreOutgoing(sessionId: String, requestId: String) = send {
-        setSessionRestoreOutgoing(SessionOutgoingAction.newBuilder().setSessionId(sessionId).setRequestId(requestId))
+    fun ignoreTrayItem(sessionId: String, requestId: String) = send {
+        setSessionIgnoreTrayItem(SessionTrayItemAction.newBuilder().setSessionId(sessionId).setRequestId(requestId))
+    }
+
+    fun promoteTrayItem(sessionId: String, requestId: String) = send {
+        setSessionPromoteTrayItem(SessionTrayItemAction.newBuilder().setSessionId(sessionId).setRequestId(requestId))
+    }
+
+    fun restoreTrayItem(sessionId: String, requestId: String) = send {
+        setSessionRestoreTrayItem(SessionTrayItemAction.newBuilder().setSessionId(sessionId).setRequestId(requestId))
+    }
+
+    fun retryTrayItem(sessionId: String, requestId: String) = send {
+        setSessionRetryTrayItem(SessionTrayItemAction.newBuilder().setSessionId(sessionId).setRequestId(requestId))
+    }
+
+    fun resumeTrayItem(sessionId: String, requestId: String) = send {
+        setSessionResumeTrayItem(SessionTrayItemAction.newBuilder().setSessionId(sessionId).setRequestId(requestId))
+    }
+
+    fun cancelAllPaused(sessionId: String) = send {
+        setSessionCancelAllPaused(SessionTraySessionAction.newBuilder().setSessionId(sessionId))
+    }
+
+    fun undoCancel(sessionId: String) = send {
+        setSessionUndoCancel(SessionTraySessionAction.newBuilder().setSessionId(sessionId))
     }
 
     fun setSessionQuestionIndex(sessionId: String, questionId: String, questionIndex: Int) = send {

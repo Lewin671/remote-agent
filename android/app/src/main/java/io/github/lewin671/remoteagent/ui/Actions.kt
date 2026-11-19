@@ -1,5 +1,6 @@
 package io.github.lewin671.remoteagent.ui
 
+import android.net.Uri
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
@@ -8,11 +9,16 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import io.github.lewin671.remoteagent.RaApp
 import io.github.lewin671.remoteagent.core.CommandException
 import io.github.lewin671.remoteagent.core.Remote
 import io.github.lewin671.remoteagent.core.UiMessages
+import io.github.lewin671.remoteagent.core.maxFileBytes
 import io.github.lewin671.remoteagent.core.messageText
 import io.github.lewin671.remoteagent.core.newRequestId
+import io.github.lewin671.remoteagent.core.proto.SessionResendAttachmentsEffect
+import io.github.lewin671.remoteagent.core.uploadFile
+import io.github.lewin671.remoteagent.core.uploadImage
 import io.github.lewin671.remoteagent.proto.Command
 import io.github.lewin671.remoteagent.proto.CommandResult
 import io.github.lewin671.remoteagent.proto.SendMode
@@ -292,6 +298,98 @@ object Outbox {
     }
 
     fun find(sid: String, requestId: String): Outgoing? = bySession[sid]?.firstOrNull { it.requestId == requestId }
+
+    fun resendWithAttachments(
+        scope: CoroutineScope,
+        remote: Remote,
+        sid: String,
+        eff: SessionResendAttachmentsEffect,
+    ) {
+        val targetMachine = eff.machineId.ifEmpty { remote.state.value.sessions[sid]?.machineId.orEmpty() }
+        val source = find(sid, eff.sourceRequestId)
+        val account = AccountMemory.token
+        scope.launch {
+            var imgIds = eff.imageIdsList
+            var fileIds = eff.fileIdsList
+            if (source != null && source.images.isNotEmpty() && targetMachine.isNotEmpty()) {
+                val uploadedImgs = ArrayList<String>()
+                val uploadedFiles = ArrayList<String>()
+                val clones = ArrayList<PendingImage>(source.images.size)
+                val channel = remote.uploadChannel(targetMachine)
+                val machine = remote.state.value.machines[targetMachine]
+                val ok = runCatching {
+                    withContext(Dispatchers.IO) {
+                        for (orig in source.images) {
+                            val clone = PendingImage(
+                                id = newRequestId(),
+                                uri = orig.uri,
+                                fileName = orig.fileName,
+                                fileBytes = orig.fileBytes,
+                                retainSource = true,
+                            )
+                            if (orig.isFile) {
+                                val u = orig.uri ?: throw java.io.FileNotFoundException()
+                                val res = uploadFile(
+                                    channel,
+                                    newRequestId(),
+                                    orig.fileName ?: "file",
+                                    orig.fileBytes,
+                                    { RaApp.instance.contentResolver.openInputStream(Uri.parse(u)) ?: throw java.io.FileNotFoundException() },
+                                    maxBytes = maxFileBytes(machine),
+                                )
+                                clone.fileId = res.fileId
+                                clone.machineId = targetMachine
+                                clone.expiresMs = res.expiresMs
+                                clone.sizeVerified = true
+                                clone.state = PendingImage.State.Ready
+                                uploadedFiles += res.fileId
+                            } else {
+                                val p = orig.processed ?: orig.uri?.let { processImage(RaApp.instance, Uri.parse(it), source.original) }
+                                    ?: throw java.io.FileNotFoundException()
+                                val res = uploadImage(channel, newRequestId(), p.bytes)
+                                clone.processed = p
+                                clone.thumb = orig.thumb
+                                clone.imageId = res.imageId
+                                clone.machineId = targetMachine
+                                clone.expiresMs = res.expiresMs
+                                clone.state = PendingImage.State.Ready
+                                uploadedImgs += res.imageId
+                            }
+                            clones += clone
+                        }
+                    }
+                }.isSuccess
+                if (account !== AccountMemory.token) {
+                    clones.forEach { it.release(abort = false) }
+                    return@launch
+                }
+                if (ok) {
+                    imgIds = uploadedImgs
+                    fileIds = uploadedFiles
+                    val newOutgoing = Outgoing(eff.newRequestId, clones, source.original)
+                    runCatching { withContext(Dispatchers.IO) { records.save(sid, newOutgoing, source.original) } }
+                    of(sid) += newOutgoing
+                } else {
+                    clones.forEach { it.release(abort = false) }
+                }
+            }
+            if (account !== AccountMemory.token) return@launch
+            remote.submitSessionCommand(
+                sid,
+                remote.cmd {
+                    send = SendRequest.newBuilder()
+                        .setSessionId(sid)
+                        .setRequestId(eff.newRequestId)
+                        .setText(eff.text)
+                        .setMode(eff.mode)
+                        .addAllImageIds(imgIds)
+                        .addAllFileIds(fileIds)
+                        .build()
+                },
+                machineId = targetMachine,
+            )
+        }
+    }
 
     fun forgetSession(sid: String) {
         forgotten += sid

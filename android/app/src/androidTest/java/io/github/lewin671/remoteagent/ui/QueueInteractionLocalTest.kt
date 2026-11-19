@@ -52,17 +52,15 @@ class QueueInteractionLocalTest {
                     if (!keyboard) { shell("input keyevent 4"); Thread.sleep(650) }
                     check(shell("dumpsys input_method").contains("mInputShown=true") == keyboard) { "keyboard state did not settle" }
                     for (edge in listOf(false, true)) repeat(3) { trial ->
-                        val pill = requireNotNull(find("插入这一轮"))
-                        val rect = bounds(pill)
+                        val btn = requireNotNull(find("做完再发"))
+                        val rect = bounds(btn)
                         val x = rect.centerX() + if (edge) (16 * ctx.resources.displayMetrics.density).toInt() else 0
                         val fd = inst.uiAutomation.executeShellCommand("input tap $x ${rect.centerY()}")
                         ParcelFileDescriptor.AutoCloseInputStream(fd).bufferedReader().use { it.readText() }
                         Thread.sleep(300)
-                        val menu = find("这一轮结束后再发") != null
                         val ime = shell("dumpsys input_method").contains("mInputShown=true")
-                        log.appendText("$kind ime=$keyboard actualIme=$ime edge=$edge trial=$trial menu=$menu bounds=$rect\n")
-                        if (trial == 0) capture("$kind-ime$keyboard-edge$edge-opened")
-                        if (menu) { shell("input keyevent 4"); Thread.sleep(250) }
+                        log.appendText("$kind ime=$keyboard actualIme=$ime edge=$edge trial=$trial bounds=$rect\n")
+                        if (trial == 0) capture("$kind-ime$keyboard-edge$edge-tapped")
                     }
                 }
             }

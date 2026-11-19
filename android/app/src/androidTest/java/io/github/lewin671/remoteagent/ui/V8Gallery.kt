@@ -292,8 +292,7 @@ class V8Gallery {
             shoot("10-queue-send-menu", sessionState(session("queue-menu", "mac", foo, "修复登录超时", SessionStatus.SESSION_STATUS_RUNNING)),
                 mapOf("queue-menu" to events(turn(), user("修复登录超时"))),
                 then = {
-                    ui.onNodeWithText("插入这一轮").performClick()
-                    ui.onNodeWithText("这一轮结束后再发").assertIsDisplayed()
+                    ui.onNodeWithText("做完再发").assertIsDisplayed()
                 }) { SessionScreen("queue-menu") }
         } finally { ImageDrafts.forSession("queue-menu").text.value = "" }
     }
@@ -380,8 +379,8 @@ class V8Gallery {
             Event.newBuilder().setInputState(InputState.newBuilder().setRequestId("s1").setStatus(InputStatus.INPUT_STATUS_HELD_BY_CLI)),
             Event.newBuilder().setInputState(InputState.newBuilder().setRequestId("q1").setStatus(InputStatus.INPUT_STATUS_QUEUED).setPaused(true)))
         shoot("20-pending-bubbles", sessionState(session("pending", "mac", foo, "检查所有界面", SessionStatus.SESSION_STATUS_RUNNING, agent = Agent.AGENT_CLAUDE)), mapOf("pending" to ev)) { SessionScreen("pending") }
-        ui.onNodeWithText("已暂停").assertIsDisplayed()
-        ui.onNodeWithText("插入这一轮").assertIsDisplayed()
+        ui.onNodeWithText("已中断，先不发").assertIsDisplayed()
+        ui.onNodeWithText("这一步结束就送达").assertIsDisplayed()
     }
 
     @Test fun pendingMany() {
@@ -390,7 +389,7 @@ class V8Gallery {
                 .setMode(SendMode.SEND_MODE_QUEUE).setText("第 $n 条：检查不同项目的待发消息"))
         }.toTypedArray())
         shoot("20-pending-many", sessionState(session("many", "mac", foo, "多个待发消息", SessionStatus.SESSION_STATUS_RUNNING)), mapOf("many" to ev)) { SessionScreen("many") }
-        ui.onNodeWithText("还有 2 条排队 展开").assertIsDisplayed()
+        ui.onNodeWithText("还有 2 条").assertIsDisplayed()
     }
 
     @Test fun modeSheet() {

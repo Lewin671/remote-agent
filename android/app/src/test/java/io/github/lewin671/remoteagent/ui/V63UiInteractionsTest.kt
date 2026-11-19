@@ -263,17 +263,17 @@ class V63UiInteractionsTest {
         field.performTouchInput { click() }
         field.assertIsFocused()
 
-        ui.onNodeWithText("插入这一轮").performClick()
-        ui.onNodeWithText("这一轮结束后再发").performClick()
-        ui.onNodeWithText("本轮结束后发").assertIsDisplayed()
+        val sendAfter = ui.onNodeWithText("做完再发")
+        sendAfter.assertIsDisplayed()
         field.performTextInput(" now")
         ui.waitForIdle()
         assertEquals("check logs now", text)
 
+        sendAfter.performClick()
         demoted = true
         ui.waitForIdle()
         ui.onNodeWithContentDescription("发送").performClick()
-        assertEquals(0, sends)
+        assertEquals(1, sends)
         assertEquals(1, queues)
     }
 

@@ -18,7 +18,7 @@ import io.github.lewin671.remoteagent.core.proto.SessionDockView
 import io.github.lewin671.remoteagent.core.proto.SessionFileRefView
 import io.github.lewin671.remoteagent.core.proto.SessionHeaderView
 import io.github.lewin671.remoteagent.core.proto.SessionModeChoiceView
-import io.github.lewin671.remoteagent.core.proto.SessionPendingInputView
+import io.github.lewin671.remoteagent.core.proto.SessionPendingTrayView
 import io.github.lewin671.remoteagent.core.proto.SessionPlanChoiceOptionView
 import io.github.lewin671.remoteagent.core.proto.SessionPlanDockView
 import io.github.lewin671.remoteagent.core.proto.SessionPlanItem
@@ -30,6 +30,11 @@ import io.github.lewin671.remoteagent.core.proto.SessionTimelineView
 import io.github.lewin671.remoteagent.core.proto.SessionToolCallItem
 import io.github.lewin671.remoteagent.core.proto.SessionToolGroupItem
 import io.github.lewin671.remoteagent.core.proto.SessionToolStatus
+import io.github.lewin671.remoteagent.core.proto.SessionTrayGroupKind
+import io.github.lewin671.remoteagent.core.proto.SessionTrayGroupView
+import io.github.lewin671.remoteagent.core.proto.SessionTrayItemView
+import io.github.lewin671.remoteagent.core.proto.SessionTrayRowActivity
+import io.github.lewin671.remoteagent.core.proto.SessionTrayTone
 import io.github.lewin671.remoteagent.core.proto.SessionTurnEndItem
 import io.github.lewin671.remoteagent.core.proto.SessionUserMessageItem
 import io.github.lewin671.remoteagent.core.proto.SessionViewModel
@@ -100,7 +105,7 @@ internal fun sessionFixtureVm(
         completedCalls.clear()
     }
 
-    val pendingByReq = LinkedHashMap<String, SessionPendingInputView>()
+    val pendingByReq = LinkedHashMap<String, SessionTrayItemView>()
     for (e in events) {
         when {
             e.hasUserMessage() -> {
@@ -178,22 +183,27 @@ internal fun sessionFixtureVm(
             e.hasInputState() -> {
                 val ip = e.inputState
                 val scheduled = e.hasOrigin() && e.origin.scheduledTaskId.isNotEmpty()
-                val label = when {
-                    scheduled && e.hasTime() -> Text.newBuilder().setLiteral("定时任务 · 15:00 · 这一轮结束后发")
-                    ip.paused -> Text.newBuilder().setKey(UiMessages.queuePaused().key)
-                    else -> Text.newBuilder().setKey(UiMessages.queueAfterTurn().key)
-                }
                 if (ip.status in setOf(InputStatus.INPUT_STATUS_QUEUED, InputStatus.INPUT_STATUS_HELD_BY_CLI)) {
                     val prev = pendingByReq[ip.requestId]
-                    pendingByReq[ip.requestId] = SessionPendingInputView.newBuilder()
+                    val group = if (ip.paused) SessionTrayGroupKind.SESSION_TRAY_GROUP_KIND_PAUSED
+                    else if (ip.mode == io.github.lewin671.remoteagent.proto.SendMode.SEND_MODE_QUEUE) SessionTrayGroupKind.SESSION_TRAY_GROUP_KIND_QUEUE
+                    else SessionTrayGroupKind.SESSION_TRAY_GROUP_KIND_STEER
+                    pendingByReq[ip.requestId] = SessionTrayItemView.newBuilder()
                         .setRequestId(ip.requestId)
+                        .setGroup(group)
+                        .setTone(SessionTrayTone.SESSION_TRAY_TONE_NEUTRAL)
+                        .setActivity(SessionTrayRowActivity.SESSION_TRAY_ROW_ACTIVITY_IDLE)
+                        .setShowSpinner(group == SessionTrayGroupKind.SESSION_TRAY_GROUP_KIND_STEER)
                         .setText(ip.text.ifEmpty { prev?.text.orEmpty() })
-                        .setStatus(ip.status)
                         .setMode(ip.mode)
-                        .setPaused(ip.paused)
                         .setCanCancel(true)
                         .setCanResume(ip.paused)
-                        .setLabel(label)
+                        .setCanPromote(group == SessionTrayGroupKind.SESSION_TRAY_GROUP_KIND_QUEUE)
+                        .setCanRestore(true)
+                        .setServerBacked(true)
+                        .apply {
+                            if (scheduled && e.hasTime()) setSourceLabel(Text.newBuilder().setLiteral("定时 15:00"))
+                        }
                         .build()
                 } else {
                     pendingByReq.remove(ip.requestId)
@@ -334,11 +344,42 @@ internal fun sessionFixtureVm(
                 .setEnabled(!exited)
                 .setPlaceholder(Text.newBuilder().setKey(UiMessages.composerMessage().key))
                 .setSupportsQueueMode(true)
-                .setSteerModeDefault(false)
                 .setCanAttachImages(!exited)
                 .setCanAttachFiles(!exited && (machine?.meta?.capabilities?.fileUpload ?: true))
                 .setHasActiveTurn(running)
-                .addAllPendingInputs(pendingByReq.values),
+                .apply {
+                    if (pendingByReq.isNotEmpty()) {
+                        val ordered = ArrayList<SessionTrayItemView>()
+                        val trayB = SessionPendingTrayView.newBuilder()
+                        val byGroup = LinkedHashMap<SessionTrayGroupKind, MutableList<SessionTrayItemView>>()
+                        pendingByReq.values.forEach { it ->
+                            byGroup.getOrPut(it.group) { ArrayList() } += it
+                        }
+                        for ((g, list) in byGroup) {
+                            val items = if (g == SessionTrayGroupKind.SESSION_TRAY_GROUP_KIND_QUEUE) {
+                                list.mapIndexed { idx, it -> it.toBuilder().setQueueNumber(idx + 1).build() }
+                            } else list
+                            val key = when (g) {
+                                SessionTrayGroupKind.SESSION_TRAY_GROUP_KIND_PAUSED -> UiMessages.queueGroupPaused().key
+                                SessionTrayGroupKind.SESSION_TRAY_GROUP_KIND_QUEUE -> UiMessages.queueGroupQueue().key
+                                else -> UiMessages.queueGroupSteer().key
+                            }
+                            ordered += items
+                            trayB.addGroups(
+                                SessionTrayGroupView.newBuilder()
+                                    .setKind(g)
+                                    .setTone(SessionTrayTone.SESSION_TRAY_TONE_NEUTRAL)
+                                    .setTitle(Text.newBuilder().setKey(key))
+                                    .setHeaderText(Text.newBuilder().setKey(key))
+                                    .setTotalCount(items.size)
+                                    .setCanCancelAll(g == SessionTrayGroupKind.SESSION_TRAY_GROUP_KIND_PAUSED && items.size > 1)
+                                    .addAllItems(items),
+                            )
+                        }
+                        trayB.addAllOrderedItems(ordered).setTotalCount(ordered.size)
+                        setPendingTray(trayB)
+                    }
+                },
         )
         .setTimeline(
             SessionTimelineView.newBuilder()

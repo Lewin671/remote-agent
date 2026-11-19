@@ -1330,63 +1330,81 @@ object ScreenGoldenLoader {
             )
         }
         o.obj("composer")?.let { cp ->
+            fun parseTrayItem(itemObj: JsonObject): SessionTrayItemView =
+                SessionTrayItemView.newBuilder()
+                    .setRequestId(itemObj.str("requestId"))
+                    .setSlotKey(itemObj.str("slotKey"))
+                    .setGroup(itemObj.enum("group", SessionTrayGroupKind.SESSION_TRAY_GROUP_KIND_UNSPECIFIED))
+                    .setTone(itemObj.enum("tone", SessionTrayTone.SESSION_TRAY_TONE_UNSPECIFIED))
+                    .setActivity(itemObj.enum("activity", SessionTrayRowActivity.SESSION_TRAY_ROW_ACTIVITY_UNSPECIFIED))
+                    .setQueueNumber(itemObj.i32("queueNumber"))
+                    .setShowSpinner(itemObj.bool("showSpinner"))
+                    .setText(itemObj.str("text"))
+                    .setForeignDimmed(itemObj.bool("foreignDimmed"))
+                    .setAttachmentCount(itemObj.i32("attachmentCount"))
+                    .setImageCount(itemObj.i32("imageCount"))
+                    .setFileCount(itemObj.i32("fileCount"))
+                    .addAllImageIds(itemObj.arr("imageIds").map { it.jsonPrimitive.content })
+                    .addAllFileIds(itemObj.arr("fileIds").map { it.jsonPrimitive.content })
+                    .setMode(itemObj.enum("mode", SendMode.SEND_MODE_UNSPECIFIED))
+                    .setCanCancel(itemObj.bool("canCancel"))
+                    .setCanResume(itemObj.bool("canResume"))
+                    .setCanRetry(itemObj.bool("canRetry"))
+                    .setCanOpenTerminal(itemObj.bool("canOpenTerminal"))
+                    .setCanIgnore(itemObj.bool("canIgnore"))
+                    .setCanPromote(itemObj.bool("canPromote"))
+                    .setCanRestore(itemObj.bool("canRestore"))
+                    .setNetworkActionsDisabled(itemObj.bool("networkActionsDisabled"))
+                    .setServerBacked(itemObj.bool("serverBacked"))
+                    .apply {
+                        itemObj.obj("sourceLabel")?.let { setSourceLabel(parseText(it)) }
+                        itemObj.obj("reasonText")?.let { setReasonText(parseText(it)) }
+                    }
+                    .build()
+
             setComposer(
                 SessionComposerView.newBuilder().apply {
                     setEnabled(cp.bool("enabled"))
                     cp.obj("placeholder")?.let { setPlaceholder(parseText(it)) }
                     cp.obj("disabledReason")?.let { setDisabledReason(parseText(it)) }
                     setSupportsQueueMode(cp.bool("supportsQueueMode"))
-                    setSteerModeDefault(cp.bool("steerModeDefault"))
                     setCanAttachImages(cp.bool("canAttachImages"))
                     setCanAttachFiles(cp.bool("canAttachFiles"))
                     setHasActiveTurn(cp.bool("hasActiveTurn"))
                     setInterruptVisible(cp.bool("interruptVisible"))
-                    cp.arr("pendingInputs").forEach { pe ->
-                        val p = pe.jsonObject
-                        addPendingInputs(
-                            SessionPendingInputView.newBuilder()
-                                .setRequestId(p.str("requestId"))
-                                .setText(p.str("text"))
-                                .setImageCount(p.i32("imageCount"))
-                                .setFileCount(p.i32("fileCount"))
-                                .setStatus(p.enum("status", InputStatus.INPUT_STATUS_UNSPECIFIED))
-                                .setMode(p.enum("mode", SendMode.SEND_MODE_UNSPECIFIED))
-                                .setHeld(p.bool("held"))
-                                .setPaused(p.bool("paused"))
-                                .setCanCancel(p.bool("canCancel"))
-                                .setCanResume(p.bool("canResume"))
-                                .setRank(p.i32("rank"))
-                                .setTotalPending(p.i32("totalPending"))
-                                .apply {
-                                    p.obj("label")?.let { setLabel(parseText(it)) }
-                                    p.obj("caption")?.let { setCaption(parseText(it)) }
-                                    p.obj("originLabel")?.let { setOriginLabel(parseText(it)) }
-                                    p.obj("cancel")?.let { setCancel(parseCommandState(it)) }
-                                    p.obj("resume")?.let { setResume(parseCommandState(it)) }
-                                },
-                        )
-                    }
-                    cp.arr("outgoing").forEach { oe ->
-                        val ov = oe.jsonObject
-                        addOutgoing(
-                            SessionOutgoingView.newBuilder()
-                                .setSlotKey(ov.str("slotKey"))
-                                .setRequestId(ov.str("requestId"))
-                                .setText(ov.str("text"))
-                                .addAllImageIds(ov.arr("imageIds").map { it.jsonPrimitive.content })
-                                .addAllFileIds(ov.arr("fileIds").map { it.jsonPrimitive.content })
-                                .setMode(ov.enum("mode", SendMode.SEND_MODE_UNSPECIFIED))
-                                .setState(ov.enum("state", SessionOutgoingState.SESSION_OUTGOING_STATE_UNSPECIFIED))
-                                .setFrozen(ov.bool("frozen"))
-                                .setCanRetry(ov.bool("canRetry"))
-                                .setCanRestore(ov.bool("canRestore"))
-                                .setCanDismiss(ov.bool("canDismiss"))
-                                .setCreatedMs(ov.i64("createdMs"))
-                                .setFeedbackUncertain(ov.bool("feedbackUncertain"))
-                                .apply {
-                                    ov.obj("caption")?.let { setCaption(parseText(it)) }
-                                    ov.obj("feedback")?.let { setFeedback(parseText(it)) }
-                                },
+                    addAllRetainedAttachmentRequestIds(cp.arr("retainedAttachmentRequestIds").map { it.jsonPrimitive.content })
+                    cp.obj("pendingTray")?.let { pt ->
+                        setPendingTray(
+                            SessionPendingTrayView.newBuilder().apply {
+                                setTotalCount(pt.i32("totalCount"))
+                                setFailedCount(pt.i32("failedCount"))
+                                setOffline(pt.bool("offline"))
+                                pt.arr("groups").forEach { ge ->
+                                    val g = ge.jsonObject
+                                    addGroups(
+                                        SessionTrayGroupView.newBuilder()
+                                            .setKind(g.enum("kind", SessionTrayGroupKind.SESSION_TRAY_GROUP_KIND_UNSPECIFIED))
+                                            .setTone(g.enum("tone", SessionTrayTone.SESSION_TRAY_TONE_UNSPECIFIED))
+                                            .setTotalCount(g.i32("totalCount"))
+                                            .setCanCancelAll(g.bool("canCancelAll"))
+                                            .apply {
+                                                g.obj("title")?.let { setTitle(parseText(it)) }
+                                                g.obj("headerText")?.let { setHeaderText(parseText(it)) }
+                                                g.arr("items").forEach { ie -> addItems(parseTrayItem(ie.jsonObject)) }
+                                            },
+                                    )
+                                }
+                                pt.arr("orderedItems").forEach { ie -> addOrderedItems(parseTrayItem(ie.jsonObject)) }
+                                pt.obj("undo")?.let { u ->
+                                    setUndo(
+                                        SessionTrayUndoView.newBuilder()
+                                            .setVisible(u.bool("visible"))
+                                            .setCount(u.i32("count"))
+                                            .setCanUndo(u.bool("canUndo"))
+                                            .apply { u.obj("label")?.let { setLabel(parseText(it)) } },
+                                    )
+                                }
+                            },
                         )
                     }
                 },

@@ -57,6 +57,7 @@ object Lucide {
     /** Adds to the message, or to the end of a list. */
     val Image = lucide("image", "M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z", circle(9, 9, 2), "m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21")
     val File = lucide("file", "M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z", "M14 2v6h6")
+    val Paperclip = lucide("paperclip", "m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48")
     val Plus = lucide("plus", "M5 12h14", "M12 5v14")
 
     /** A new session. */

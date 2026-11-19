@@ -57,7 +57,7 @@ class I18nBatchBTest(private val locale: String) {
     private fun sessionVm(
         items: List<SessionTimelineItem> = history,
         dock: SessionDockView = SessionDockView.getDefaultInstance(),
-        pending: List<SessionPendingInputView> = emptyList(),
+        pendingTray: SessionPendingTrayView? = null,
         exited: Boolean = false,
         canSwitchModel: Boolean = true,
         modelsLoading: Boolean = false,
@@ -125,7 +125,7 @@ class I18nBatchBTest(private val locale: String) {
             SessionComposerView.newBuilder()
                 .setEnabled(!exited)
                 .setPlaceholder(Text.newBuilder().setKey(UiMessages.composerMessage().key))
-                .addAllPendingInputs(pending),
+                .apply { if (pendingTray != null) setPendingTray(pendingTray) },
         )
         .setTimeline(SessionTimelineView.newBuilder().setLoaded(true).addAllItems(items))
         .build()
@@ -187,8 +187,7 @@ class I18nBatchBTest(private val locale: String) {
             ComposeBox("Preserve draft text", {}, text(UiMessages.composerMessage()), true, {}, {}, onFile = {}, onQueue = {})
         } }
         shot("composer")
-        ui.onNodeWithText(text(UiMessages.composerModeInsertShort())).performClick()
-        shot("send-menu")
+        ui.onNodeWithText(text(UiMessages.composerSendAfter())).assertExists()
     }
     @Test fun attachmentMenu() {
         show { Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.Bottom) {
@@ -206,19 +205,32 @@ class I18nBatchBTest(private val locale: String) {
         shot("history")
     }
     @Test fun queuedMessages() {
-        val pending = SessionPendingInputView.newBuilder()
+        val pausedItem = SessionTrayItemView.newBuilder()
             .setRequestId("queued")
+            .setGroup(SessionTrayGroupKind.SESSION_TRAY_GROUP_KIND_PAUSED)
+            .setTone(SessionTrayTone.SESSION_TRAY_TONE_NEUTRAL)
+            .setActivity(SessionTrayRowActivity.SESSION_TRAY_ROW_ACTIVITY_IDLE)
             .setText("A pending message with original content")
-            .setStatus(InputStatus.INPUT_STATUS_QUEUED)
             .setMode(SendMode.SEND_MODE_QUEUE)
-            .setPaused(true)
             .setCanCancel(true)
             .setCanResume(true)
-            .setLabel(Text.newBuilder().setKey(UiMessages.queuePaused().key))
             .build()
-        remote.showForTest(state, sessions = mapOf("s" to sessionVm(pending = listOf(pending))))
+        val tray = SessionPendingTrayView.newBuilder()
+            .setTotalCount(1)
+            .addOrderedItems(pausedItem)
+            .addGroups(
+                SessionTrayGroupView.newBuilder()
+                    .setKind(SessionTrayGroupKind.SESSION_TRAY_GROUP_KIND_PAUSED)
+                    .setTone(SessionTrayTone.SESSION_TRAY_TONE_NEUTRAL)
+                    .setTitle(Text.newBuilder().setKey(UiMessages.queueGroupPaused().key))
+                    .setHeaderText(Text.newBuilder().setKey(UiMessages.queueGroupPaused().key))
+                    .setTotalCount(1)
+                    .addItems(pausedItem),
+            )
+            .build()
+        remote.showForTest(state, sessions = mapOf("s" to sessionVm(pendingTray = tray)))
         show { SessionScreen("s") }; shot("queue")
-        ui.onNodeWithText(text(UiMessages.queuePaused())).assertExists()
+        ui.onNodeWithText(text(UiMessages.queueGroupPaused())).assertExists()
     }
     @Test fun approvalDockAndPage() {
         val dock = SessionDockView.newBuilder()
@@ -344,7 +356,7 @@ class I18nBatchBTest(private val locale: String) {
         for (count in listOf(0, 1, 2, 1000)) {
             val rendered = text(UiMessages.toolsCompletedCommands(count)); Assert.assertTrue(rendered.contains(count.toString()))
             if (locale == "en") Assert.assertEquals("Ran $count ${if (count == 1) "command" else "commands"}", rendered)
-            Assert.assertTrue(text(UiMessages.queueMore(count)).contains(count.toString()))
+            Assert.assertTrue(text(UiMessages.queueMoreItems(count)).contains(count.toString()))
             Assert.assertTrue(text(UiMessages.imagePosition(count, 1)).contains(count.toString()))
             val restore = text(UiMessages.imageAndroidRestoreLimit(count, 1, 9))
             if (locale == "en") Assert.assertTrue(restore.contains("Returning $count ${if (count == 1) "image would" else "images would"}"))
