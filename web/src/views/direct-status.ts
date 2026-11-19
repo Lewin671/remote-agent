@@ -48,16 +48,13 @@ export function stageToMark(stage: ConnectionGroupStage): Mark {
 export function buildDirectRouteReport(
   s: DirectStatus,
   enabled: boolean,
-  hasDiagnostics = s.reason === "no_response" || s.reason === "no_traversal" || s.reason === "failed",
+  hasDiagnostics = s.reason === "peer_unsupported" || s.reason === "no_response" || s.reason === "no_traversal" || s.reason === "failed",
 ): DirectRouteReport {
-  const activeRtt = s.read === "direct"
-    ? s.readMs.direct
-    : s.state === "connected"
-      ? s.readMs.relay
-      : undefined;
+  const activeRtt = s.read === "direct" ? s.readMs.direct : s.readMs.relay;
   return create(DirectRouteReportSchema, {
     enabled,
     capable: s.state !== "unsupported",
+    daemonDisabled: s.reason === "disabled" && enabled,
     state: toCoreState(s.state),
     reason: toCoreReason(s.reason),
     fileRoute: s.file === "direct" ? DirectPathChoice.DIRECT : DirectPathChoice.RELAY,
@@ -81,10 +78,10 @@ export function buildDirectRouteReport(
 }
 
 export function directRowTrailing(row: ConnCheckDirectRowView): string {
-  return [renderCoreText(row.statusText), renderCoreText(row.metricText)].filter(Boolean).join(" · ");
+  return renderCoreText(row.statusText);
 }
 
 export function connFooter(unsupported: boolean): string {
   const base = l10n.t("connection.latency_is_one_round_trip_the_server_row_measures");
-  return unsupported ? `${base}${base.endsWith(".") ? " " : ""}${l10n.t("transport.conn_footer_unsupported")}` : base;
+  return unsupported ? `${base}${base.endsWith(".") ? " " : ""}${l10n.t("transport.conn_footer_unsupported_browser")}` : base;
 }

@@ -895,6 +895,8 @@ export function MachineSettingsScreenView({ id, vm, section, go, onBack, onRetry
   useEffect(() => {
     if (section === "storage" && vm.attachmentStorage?.loaded) {
       document.getElementById("attachment-storage")?.scrollIntoView({ behavior: "smooth" });
+    } else if (section === "connection") {
+      document.getElementById("connection-group")?.scrollIntoView({ behavior: "smooth" });
     }
   }, [section, vm.attachmentStorage?.loaded]);
 

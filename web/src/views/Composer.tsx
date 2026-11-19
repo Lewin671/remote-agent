@@ -9,7 +9,7 @@ import type { Tray } from "../attach";
 import { renderText } from "../core/text";
 import type { SessionComposerView } from "../gen/remoteagent/core/v1/session_view_pb";
 import { SendMode } from "../gen/remoteagent/v1/event_pb";
-import { ArrowUp, Square } from "../icons";
+import { ArrowUp, Check, ChevronDown, Square } from "../icons";
 import { easeBetween, easing, heightNow, stopEasing, Swap } from "../motion";
 import { Alert, sendKeys, usePointerFine } from "../ui";
 import { keepComposerFocus, useComposerMenuDismiss } from "./ComposerPicker";
@@ -69,6 +69,7 @@ export function Composer({
   dropping,
   interruptDisabled = false,
   defaultSendMenu = false,
+  demoted = false,
 }: {
   ref: RefObject<HTMLTextAreaElement | null>;
   composer?: SessionComposerView;
@@ -83,6 +84,7 @@ export function Composer({
   dropping?: boolean;
   interruptDisabled?: boolean;
   defaultSendMenu?: boolean;
+  demoted?: boolean;
 }) {
   const [text, setTextState] = useState(draft);
   useLayoutEffect(() => setTextState(draft), [draft]);
@@ -93,13 +95,15 @@ export function Composer({
   const fine = usePointerFine();
   const [slash, setSlash] = useState<SendMode>();
   const [sendMenu, setSendMenu] = useState(defaultSendMenu);
+  const [pickedMode, setPickedMode] = useState<SendMode | null>(null);
   const hold = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const held = useRef(false);
   const sendWrap = useRef<HTMLDivElement>(null);
+  const smodeWrap = useRef<HTMLDivElement>(null);
 
   const running = !!composer?.hasActiveTurn;
   const canChooseSendMode = running && !!composer?.supportsQueueMode;
-  useComposerMenuDismiss(sendMenu && canChooseSendMode, sendWrap, () => setSendMenu(false));
+  useComposerMenuDismiss(sendMenu && canChooseSendMode, smodeWrap, () => setSendMenu(false));
   useEffect(() => () => clearTimeout(hold.current), []);
 
   const input = ref;
@@ -108,10 +112,20 @@ export function Composer({
   const online = composer?.enabled ?? false;
   const t = text.trim();
   const images = tray?.items.length ?? 0;
+  const hasDraft = !!(t || images);
   const canSend = online && (images ? (tray?.ready() ?? false) : !!t);
   const defaultMode = running && !composer?.steerModeDefault ? SendMode.QUEUE : SendMode.STEER;
+  const activeMode = pickedMode ?? defaultMode;
+  const showModePill = canChooseSendMode && hasDraft;
 
-  const submit = (force = false, sendMode = defaultMode) => {
+  useEffect(() => {
+    if (!canChooseSendMode || !hasDraft) {
+      setPickedMode(null);
+      setSendMenu(false);
+    }
+  }, [canChooseSendMode, hasDraft]);
+
+  const submit = (force = false, sendMode = activeMode) => {
     const resolvedMode =
       running && composer && !composer.supportsQueueMode ? SendMode.QUEUE : sendMode;
     tray?.refreshExpired();
@@ -119,6 +133,7 @@ export function Composer({
     if (t.startsWith("/") && !force && !images) return setSlash(resolvedMode);
     onSend(t, resolvedMode);
     setText("");
+    setPickedMode(null);
     setSendMenu(false);
   };
 
@@ -131,12 +146,13 @@ export function Composer({
         ? i18n.t("composer.shortcut", { keys })
         : corePlaceholder || i18n.t("composer.message");
 
-  const stopping = running && !t && !images;
+  const stopping = running && !hasDraft;
   const stopEnabled = (composer?.interruptVisible ?? online) && !interruptDisabled;
+  const demoteCls = demoted ? " demote" : "";
 
   const send = stopping ? (
     <button
-      className="snd stop"
+      className={"snd stop" + demoteCls}
       disabled={!stopEnabled}
       onMouseDown={(e) => e.preventDefault()}
       onClick={onInterrupt}
@@ -147,7 +163,7 @@ export function Composer({
   ) : (
     <div className="send-wrap" ref={sendWrap}>
       <button
-        className={"snd" + (canSend ? "" : " off")}
+        className={"snd" + (canSend ? "" : " off") + demoteCls}
         disabled={!canSend}
         onMouseDown={(e) => e.preventDefault()}
         onPointerDown={(e) => {
@@ -182,25 +198,13 @@ export function Composer({
       >
         <ArrowUp />
       </button>
-      {sendMenu && canChooseSendMode && (
-        <div className="send-menu">
-          <button onClick={() => submit(false, SendMode.STEER)}>
-            <b>{i18n.t("composer.insert_now")}</b>
-            <small>{i18n.t("composer.insert_hint")}</small>
-          </button>
-          <button onClick={() => submit(false, SendMode.QUEUE)}>
-            <b>{i18n.t("composer.after_turn")}</b>
-            <small>{i18n.t("composer.queue_hint")}</small>
-          </button>
-        </div>
-      )}
     </div>
   );
 
   return (
     <div className={"cbar glass" + (dropping ? " drop" : "")} data-drop-label={i18n.t("attachment.release_to_add")} {...cardProps}>
       {trayView}
-      <div className="cline">
+      <div className={"cline" + (showModePill ? " run-draft" : "")}>
         {attach}
         <textarea
           ref={input}
@@ -216,10 +220,75 @@ export function Composer({
             } else if (e.key === "Enter" && e.altKey && running && !e.nativeEvent.isComposing) {
               e.preventDefault();
               submit(false, SendMode.QUEUE);
+            } else if (e.key === "Escape" && sendMenu) {
+              e.preventDefault();
+              setSendMenu(false);
             }
           }}
           aria-label={i18n.t("composer.message")}
         />
+        {canChooseSendMode && (
+          <div className="smode-wrap" ref={smodeWrap}>
+            <button
+              type="button"
+              className={"smode" + (activeMode === SendMode.QUEUE ? " queue" : "")}
+              aria-haspopup="menu"
+              aria-expanded={sendMenu}
+              aria-label={i18n.t("composer.mode_picker_label")}
+              onMouseDown={keepComposerFocus}
+              onClick={() => setSendMenu((v) => !v)}
+              onKeyDown={(e) => {
+                if (e.key === "Escape") {
+                  e.preventDefault();
+                  setSendMenu(false);
+                  input.current?.focus();
+                } else if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+                  e.preventDefault();
+                  setSendMenu(true);
+                }
+              }}
+            >
+              <span>{activeMode === SendMode.QUEUE ? i18n.t("composer.mode_queue_short") : i18n.t("composer.mode_insert_short")}</span>
+              <ChevronDown />
+            </button>
+            {sendMenu && showModePill && (
+              <div className="send-menu" role="menu" aria-label={i18n.t("composer.mode_picker_label")}>
+                <button
+                  type="button"
+                  role="menuitemradio"
+                  aria-checked={activeMode === SendMode.STEER}
+                  onMouseDown={keepComposerFocus}
+                  onClick={() => {
+                    setPickedMode(SendMode.STEER);
+                    setSendMenu(false);
+                  }}
+                >
+                  <span className="sm-row">
+                    <b>{i18n.t("composer.mode_insert_short")}</b>
+                    {activeMode === SendMode.STEER && <Check />}
+                  </span>
+                  <small>{i18n.t("composer.insert_hint")}</small>
+                </button>
+                <button
+                  type="button"
+                  role="menuitemradio"
+                  aria-checked={activeMode === SendMode.QUEUE}
+                  onMouseDown={keepComposerFocus}
+                  onClick={() => {
+                    setPickedMode(SendMode.QUEUE);
+                    setSendMenu(false);
+                  }}
+                >
+                  <span className="sm-row">
+                    <b>{i18n.t("composer.after_turn")}</b>
+                    {activeMode === SendMode.QUEUE && <Check />}
+                  </span>
+                  <small>{i18n.t("composer.queue_hint")}</small>
+                </button>
+              </div>
+            )}
+          </div>
+        )}
         <Swap k={stopping ? "stop" : "send"} className="mo-send" hold>
           {send}
         </Swap>

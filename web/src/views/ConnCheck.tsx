@@ -12,7 +12,7 @@ import { machineName } from "../model";
 import { errorText, type Remote } from "../remote";
 import { Banner, StateMark, Sheet, useRemote, type Mark } from "../ui";
 import { LoaderCircle } from "../icons";
-import { connFooter, directRowTrailing, stageToMark } from "./direct-status";
+import { connFooter } from "./direct-status";
 
 type Ping = { state: "wait" } | { state: "ok"; ms: number } | { state: "fail"; error: string } | { state: "skip" };
 
@@ -144,23 +144,18 @@ export function ConnCheck({ remote, onClose }: { remote: Remote; onClose: () => 
         {list.map((m) => {
           const reachable = remote.peer(m.id).reachable;
           const directRow = reachable ? settingsVm.machines.find((x) => x.machineId === m.id)?.directRow : undefined;
+          const status = directRow ? renderText(directRow.statusText) : "";
           const detail = directRow ? renderText(directRow.detailText) : "";
-          const trailing = directRow ? directRowTrailing(directRow) : "";
+          const summary = [status, detail].filter(Boolean).join(" · ");
           return (
             <Fragment key={m.id}>
               <div className="mi">
                 <span className="mt">{machineName(m)}</span>
                 {reachable ? <Result p={machines.get(m.id)} slow={SLOW_MACHINE_MS} /> : <span className="mv"><StateMark kind="off" /><em>{l10n.t("common.ios_offline")}</em></span>}
               </div>
-              {directRow?.visible && (
+              {directRow?.visible && summary && (
                 <div className="mi conn-direct" data-machine-id={m.id}>
-                  <span className="mt">
-                    {renderText(directRow.labelText) || l10n.t("transport.direct")}
-                    {detail && <small className="direct-line">{detail}</small>}
-                  </span>
-                  {trailing && (
-                    <span className="mv"><StateMark kind={stageToMark(directRow.stage)} /><em>{trailing}</em></span>
-                  )}
+                  <span className="mt">{summary}</span>
                 </div>
               )}
             </Fragment>

@@ -33,6 +33,7 @@ import {
   Ellipsis,
   Minus,
   X,
+  Zap,
 } from "../icons";
 import { splitPlaceholders, timelineImages } from "../imageview";
 import { Markdown } from "../markdown";
@@ -64,6 +65,7 @@ import {
 } from "./SharedFiles";
 import { ToolCallView, ToolGroupView } from "./Tools";
 import { create } from "@bufbuild/protobuf";
+import { createPortal } from "react-dom";
 import {
   lazy,
   memo,
@@ -274,6 +276,7 @@ export interface SessionScreenViewProps {
   vm: SessionViewModel;
   wide: boolean;
   onBack: () => void;
+  go?: Go;
   remote?: Remote;
   scheduleTaskCount?: number;
   draft: string;
@@ -314,6 +317,7 @@ export function SessionScreenView({
   vm,
   wide,
   onBack,
+  go,
   remote,
   scheduleTaskCount = 0,
   draft,
@@ -408,11 +412,55 @@ export function SessionScreenView({
   const [scheduling, setScheduling] = useState(false);
   const [confirmEnd, setConfirmEnd] = useState(false);
   const [renaming, setRenaming] = useState(false);
+  const [dockDenying, setDockDenying] = useState(defaultDenying);
+  const [dockOpen, setDockOpen] = useState(false);
+  const [directOpen, setDirectOpen] = useState(false);
+  const directBtnRef = useRef<HTMLButtonElement>(null);
+  const [popPos, setPopPos] = useState<{ top: number; left: number } | undefined>(undefined);
   const [page, setPage] = useState<"" | "plan" | "question" | { approval: string }>(defaultPage);
   useEffect(() => {
     setMenu(false);
+    setDirectOpen(false);
+    setDockDenying(defaultDenying);
     setPage(defaultPage);
-  }, [sid, defaultPage]);
+  }, [sid, defaultPage, defaultDenying]);
+
+  const directStatus = remote && header?.machineId ? remote.direct.status(header.machineId) : undefined;
+  const directActive =
+    !exited &&
+    !!header?.computerOnline &&
+    !header?.computerUnlinked &&
+    directStatus?.state === "connected" &&
+    (directStatus.read === "direct" || directStatus.file === "direct");
+  const showDirectChip = directActive || directOpen;
+
+  useLayoutEffect(() => {
+    if (!directOpen) return;
+    const place = () => {
+      const el = directBtnRef.current;
+      if (!el || typeof window === "undefined") return;
+      const rect = el.getBoundingClientRect();
+      const w = Math.min(332, Math.max(220, window.innerWidth - 40));
+      const left = Math.max(20, Math.min(rect.left + rect.width / 2 - w / 2, window.innerWidth - w - 20));
+      setPopPos({ top: rect.bottom + 8, left });
+    };
+    place();
+    window.addEventListener("resize", place);
+    return () => window.removeEventListener("resize", place);
+  }, [directOpen]);
+
+  useEffect(() => {
+    if (!directOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        setDirectOpen(false);
+        directBtnRef.current?.focus();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [directOpen]);
   const forkCmd = actions?.fork;
   const forkErr = commandErrorText(forkCmd);
   const wasForkBusy = useRef(false);
@@ -571,10 +619,27 @@ export function SessionScreenView({
       </>
     ) : null;
   const statusText = pending ? t("common.loading") : renderText(header?.statusText);
+  const directChip = showDirectChip ? (
+    <span className="dchip-wrap">
+      {!wide && " · "}
+      <button
+        ref={directBtnRef}
+        type="button"
+        className="dchip"
+        aria-expanded={directOpen}
+        aria-label={t("transport.popover_a11y")}
+        onClick={() => setDirectOpen((v) => !v)}
+      >
+        <Zap />
+        <span>{t("transport.direct")}</span>
+      </button>
+    </span>
+  ) : null;
   const sub = (
     <>
       {pending ? <span data-late="1">{statusText}</span> : statusText}
       {modeTail}
+      {directChip}
     </>
   );
 
@@ -619,6 +684,7 @@ export function SessionScreenView({
           {statusText}
           {modeTail}
         </span>
+        {directChip}
       </span>
       <span className="sp" />
       {seg}
@@ -694,6 +760,8 @@ export function SessionScreenView({
           onReasonChange={onApprovalReasonChange}
           questionDraft={questionDraft}
           onQuestionDraftChange={setQuestionDraft}
+          onDenyingChange={setDockDenying}
+          onOpenChange={setDockOpen}
           onExpand={() => composerElRef.current?.blur()}
           onDetail={(id) => setPage({ approval: id })}
           onPlan={() => setPage("plan")}
@@ -712,7 +780,7 @@ export function SessionScreenView({
           composer={composer}
           onSubmitCommand={onSubmitCommand}
         />
-      ) : (
+      ) : dockDenying ? null : (
         <Composer
           key={composerKey}
           ref={composerElRef}
@@ -735,6 +803,7 @@ export function SessionScreenView({
           dropping={dropping}
           interruptDisabled={!!interruptCmd?.busy}
           defaultSendMenu={defaultSendMenu}
+          demoted={dockOpen}
         />
       )}
     </div>
@@ -1026,6 +1095,57 @@ export function SessionScreenView({
               target={viewingShared}
               onClose={() => setViewingShared(undefined)}
             />
+          )}
+          {directOpen && directStatus && header && typeof document !== "undefined" && createPortal(
+            <>
+              <div className="dpop-back" onClick={() => setDirectOpen(false)} />
+              <div
+                className="dpop"
+                role="dialog"
+                aria-label={t("transport.direct")}
+                style={popPos ? { top: `${popPos.top}px`, left: `${popPos.left}px` } : { top: "56px", left: "20px" }}
+              >
+                <div className="dpop-hd">
+                  <StateMark kind={directActive ? "online" : "off"} />
+                  <span>
+                    {directActive
+                      ? directStatus.read === "direct" && directStatus.readMs.direct !== undefined
+                        ? t("transport.popover_direct_title_rtt", { name: mname, ms: String(Math.round(directStatus.readMs.direct)) })
+                        : t("transport.popover_direct_title", { name: mname })
+                      : directStatus.readMs.relay !== undefined
+                        ? t("transport.popover_relay_title_rtt", { name: mname, ms: String(Math.round(directStatus.readMs.relay)) })
+                        : t("transport.popover_relay_title", { name: mname })}
+                  </span>
+                </div>
+                <p className="dpop-body">
+                  {directActive ? t("transport.popover_direct_body") : t("transport.popover_relay_body")}
+                </p>
+                <div className="dpop-foot">
+                  <span>
+                    {!directActive
+                      ? t("transport.popover_switched_relay")
+                      : directStatus.read === "direct" && directStatus.file === "direct"
+                        ? t("transport.popover_stable")
+                        : directStatus.read === "direct"
+                          ? t("transport.popover_read_only")
+                          : t("transport.popover_file_only")}
+                  </span>
+                  {go && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setDirectOpen(false);
+                        go(`machine/${encodeURIComponent(header.machineId)}/connection`);
+                      }}
+                    >
+                      {t("transport.popover_settings")}
+                      <ChevronRight />
+                    </button>
+                  )}
+                </div>
+              </div>
+            </>,
+            document.body,
           )}
         </div>
       </OpenImage.Provider>
@@ -1319,6 +1439,7 @@ export function SessionPage({
       vm={vm}
       wide={wide}
       onBack={handleBack}
+      go={go}
       remote={remote}
       scheduleTaskCount={stripVm.visible ? stripVm.tasks.length : 0}
       draft={remote.drafts.get(sessionId) ?? ""}

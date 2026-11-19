@@ -223,6 +223,147 @@ function resultGroup(rounds: RoundData[], chosen: RoundData | undefined, now: nu
   return { title: l10n.t("transport.diag_g_result"), rows };
 }
 
+export interface PlainDiagCheck {
+  mark: "online" | "off" | "run";
+  label: string;
+  detail?: string;
+  status: string;
+}
+
+export interface PlainDiagView {
+  connected: boolean;
+  peerOutdated: boolean;
+  title: string;
+  body: string;
+  checks: [PlainDiagCheck, PlainDiagCheck, PlainDiagCheck];
+  report: string;
+}
+
+export function plainDiagView(input: DiagInput & { reason?: string; connectedNow?: boolean; trying?: boolean }): PlainDiagView {
+  const full = diagView(input);
+  const verdict = full.verdict;
+  const connected = !!input.connectedNow || verdict === "connected";
+  const peerOutdated = !connected && (input.reason === "peer_unsupported" || verdict === "peer_refused");
+  const noReply = !connected && !peerOutdated && (input.reason === "no_response" || verdict === "no_reply");
+  const probeBlocked = !connected && !peerOutdated && !noReply && (verdict === "no_stun" || verdict === "no_local");
+  const natBlocked =
+    !connected &&
+    !peerOutdated &&
+    !noReply &&
+    !probeBlocked &&
+    (input.reason === "no_traversal" ||
+      verdict === "all_failed" ||
+      verdict === "ipv6_silent" ||
+      verdict === "no_remote" ||
+      verdict === "dtls" ||
+      verdict === "channel" ||
+      verdict === "confirm");
+
+  let title: string;
+  let body: string;
+  if (connected) {
+    title = l10n.t("transport.diag_connected_title");
+    body = l10n.t("transport.diag_connected_body");
+  } else if (peerOutdated) {
+    title = l10n.t("transport.reason_peer_unsupported");
+    body = l10n.t("transport.diag_explain_peer_old");
+  } else if (noReply) {
+    title = l10n.t("transport.diag_title_no_reply");
+    body = l10n.t("transport.diag_explain_no_reply");
+  } else if (probeBlocked) {
+    title = l10n.t("transport.diag_title_probe_blocked");
+    body = l10n.t("transport.diag_explain_probe_blocked");
+  } else if (natBlocked) {
+    title = l10n.t("transport.reason_no_traversal");
+    body = l10n.t("transport.diag_explain_nat");
+  } else {
+    title = l10n.t("transport.diag_title_generic");
+    body = l10n.t("transport.diag_explain_generic");
+  }
+
+  const peerCheck: PlainDiagCheck = peerOutdated
+    ? {
+        mark: "off",
+        label: l10n.t("transport.diag_check_peer"),
+        detail: l10n.t("transport.diag_peer_old_desc"),
+        status: l10n.t("transport.diag_status_peer_old"),
+      }
+    : noReply
+      ? {
+          mark: "off",
+          label: l10n.t("transport.diag_check_peer"),
+          detail: l10n.t("transport.diag_peer_no_reply_desc"),
+          status: l10n.t("transport.diag_status_no_reply"),
+        }
+      : {
+          mark: "online",
+          label: l10n.t("transport.diag_check_peer"),
+          status: l10n.t("transport.diag_status_ok"),
+        };
+
+  const pathCheck: PlainDiagCheck = connected
+    ? {
+        mark: "online",
+        label: l10n.t("transport.diag_check_path"),
+        status: l10n.t("transport.diag_status_connected"),
+      }
+    : input.trying
+      ? {
+          mark: "run",
+          label: l10n.t("transport.diag_check_path"),
+          status: l10n.t("transport.diag_status_checking"),
+        }
+      : peerOutdated || noReply
+        ? {
+            mark: "off",
+            label: l10n.t("transport.diag_check_path"),
+            status: l10n.t("transport.diag_status_not_started"),
+          }
+        : probeBlocked
+          ? {
+              mark: "off",
+              label: l10n.t("transport.diag_check_path"),
+              detail: l10n.t("transport.diag_path_udp_blocked"),
+              status: l10n.t("transport.diag_status_blocked"),
+            }
+          : natBlocked
+            ? {
+                mark: "off",
+                label: l10n.t("transport.diag_check_path"),
+                detail: l10n.t("transport.diag_path_nat"),
+                status: l10n.t("transport.diag_status_blocked"),
+              }
+            : {
+                mark: "off",
+                label: l10n.t("transport.diag_check_path"),
+                detail: l10n.t("transport.diag_path_failed"),
+                status: l10n.t("transport.diag_status_blocked"),
+              };
+
+  const retryCheck: PlainDiagCheck = peerOutdated
+    ? {
+        mark: "off",
+        label: l10n.t("transport.diag_check_retry"),
+        detail: l10n.t("transport.diag_retry_wait_desc"),
+        status: l10n.t("transport.diag_status_wait_update"),
+      }
+    : {
+        mark: "online",
+        label: l10n.t("transport.diag_check_retry"),
+        detail: l10n.t("transport.diag_retry_auto_desc"),
+        status: l10n.t("transport.diag_status_enabled"),
+      };
+
+  return {
+    connected,
+    peerOutdated,
+    title,
+    body,
+    checks: [peerCheck, pathCheck, retryCheck],
+    report: full.report,
+  };
+}
+
 /** The round the sentence is about: the newest that finished or connected; else the one in progress. */
 export function chosenRound(rounds: RoundData[]): RoundData | undefined {
   return rounds.find((r) => r.end !== undefined || r.established !== undefined) ?? rounds[0];

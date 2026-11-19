@@ -7,15 +7,17 @@ import * as i18n from "../i18n";
 // on its own page) the command is whole and scrolls with the content above
 // the buttons, which stay in view.
 
-import { useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { approvalDisplay, approvalTruncatedMessage } from "../approval-display";
 import { renderText } from "../core/text";
 import { SessionCommandStatus, type SessionCommandState } from "../gen/remoteagent/core/v1/session_view_pb";
-import { ChevronRight } from "../icons";
+import { ChevronRight, LoaderCircle } from "../icons";
 import { skeletonMessage } from "../skeleton";
 
 /** Whole lines a card's command shows before 看完整命令. */
 export const CARD_LINES = 5;
+
+const latchedBottomIds = new Set<string>();
 
 /** How many lines el's text takes as laid out, or, with no layout to
  * measure, how many lines the text has. */
@@ -31,6 +33,7 @@ function linesOf(el: HTMLElement | null, text: string): number {
 }
 
 export interface ApprovalCardProps {
+  approvalId?: string;
   kind: string;
   body: string;
   description?: string;
@@ -65,6 +68,7 @@ export interface ApprovalCardProps {
 }
 
 export function ApprovalCard({
+  approvalId = "",
   kind,
   body,
   description = "",
@@ -94,6 +98,10 @@ export function ApprovalCard({
   const [denying, setDenyingState] = useState(defaultDenying);
   const [localReason, setLocalReason] = useState("");
   const [lastAllow, setLastAllow] = useState<boolean | undefined>(undefined);
+  const lastSentReason = useRef("");
+  const [reachedBottom, setReachedBottom] = useState(() => !docked || (!!approvalId && latchedBottomIds.has(approvalId)));
+  const [shortViewport, setShortViewport] = useState(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
   const setDenying = (v: boolean) => {
     setDenyingState(v);
     onDenying?.(v);
@@ -101,6 +109,28 @@ export function ApprovalCard({
   const cmd = useRef<HTMLPreElement>(null);
   const text = approvalDisplay(body);
   const [lines, setLines] = useState(() => linesOf(null, "❯ " + text));
+
+  const checkScrollBottom = useCallback(() => {
+    if (!docked) {
+      setReachedBottom(true);
+      return;
+    }
+    if (approvalId && latchedBottomIds.has(approvalId)) {
+      setReachedBottom(true);
+      return;
+    }
+    const el = scrollRef.current;
+    if (!el) return;
+    const needsScroll = el.scrollHeight > el.clientHeight + 4;
+    const atBottom = !needsScroll || el.scrollTop + el.clientHeight >= el.scrollHeight - 8;
+    if (atBottom) {
+      if (approvalId && el.clientHeight > 0) latchedBottomIds.add(approvalId);
+      setReachedBottom(true);
+    } else {
+      setReachedBottom(false);
+    }
+  }, [approvalId, docked]);
+
   useLayoutEffect(() => {
     // Measured open, or with no clamp: a clamped box's scroll height is
     // still the whole text's, so either way it counts every line.
@@ -111,6 +141,33 @@ export function ApprovalCard({
     ro.observe(cmd.current);
     return () => ro.disconnect();
   }, [text]);
+
+  useLayoutEffect(() => {
+    checkScrollBottom();
+    const el = scrollRef.current;
+    if (!docked || !el || typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(checkScrollBottom);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [docked, text, denying, checkScrollBottom]);
+
+  useEffect(() => {
+    if (!docked || !denying || typeof window === "undefined") {
+      setShortViewport(false);
+      return;
+    }
+    const check = () => {
+      const h = window.visualViewport?.height ?? window.innerHeight;
+      setShortViewport(h > 0 && h < 420);
+    };
+    check();
+    window.visualViewport?.addEventListener("resize", check);
+    window.addEventListener("resize", check);
+    return () => {
+      window.visualViewport?.removeEventListener("resize", check);
+      window.removeEventListener("resize", check);
+    };
+  }, [docked, denying]);
 
   const reason = controlledReason ?? localReason;
   const setReason = (v: string) => {
@@ -148,8 +205,11 @@ export function ApprovalCard({
     );
   }
 
-  // Submitted or failed: one line of where it stands.
-  if (cmdBusy || cmdError) {
+  // While denying with reason, keep the full card open during delivery & failure so the draft and command remain visible.
+  const holdDenyCard = denying && lastAllow === false && (cmdBusy || cmdError);
+
+  // Submitted or failed: one line of where it stands (unless holding the open deny card).
+  if ((cmdBusy || cmdError) && !holdDenyCard) {
     const busyLabel =
       cmdStatusMsg ||
       (lastAllow === false
@@ -180,7 +240,32 @@ export function ApprovalCard({
 
   const submit = (allow: boolean, why = "", always = false) => {
     setLastAllow(allow);
+    if (!allow) lastSentReason.current = why;
     onResolve(allow, why, always);
+  };
+
+  const submitDeny = () => {
+    const trimmed = reason.trim();
+    if (cmdError && lastAllow === false) {
+      if (trimmed === lastSentReason.current && command?.canRetry && onRetry) {
+        onRetry();
+      } else {
+        onAbandon?.();
+        submit(false, trimmed, false);
+      }
+      return;
+    }
+    submit(false, trimmed, false);
+  };
+
+  const scrollToBottom = () => {
+    const el = scrollRef.current;
+    if (!el) return;
+    el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
+    if (el.scrollTop + el.clientHeight >= el.scrollHeight - 8 || el.scrollHeight <= el.clientHeight + 4) {
+      if (approvalId) latchedBottomIds.add(approvalId);
+      setReachedBottom(true);
+    }
   };
 
   const more = docked ? 0 : lines - CARD_LINES;
@@ -207,6 +292,10 @@ export function ApprovalCard({
     </>
   );
 
+  const denyBusy = cmdBusy && lastAllow === false;
+  const denyFailed = !!cmdError && lastAllow === false;
+  const canSubmitDeny = !lockedProp && !cmdBusy && (!cmdError || !!command?.canRetry || !!command?.canAbandon);
+
   const actions = (
     <>
       {denying ? (
@@ -215,17 +304,37 @@ export function ApprovalCard({
             className="inp"
             autoFocus
             rows={1}
+            readOnly={denyBusy}
             aria-label={i18n.t("approval.denial_reason")}
             placeholder={denyReasonPlaceholder || i18n.t("approval.reason_placeholder")}
             value={reason}
             onChange={(e) => setReason(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Escape") {
+                e.preventDefault();
+                if (!denyBusy) setDenying(false);
+              } else if (e.key === "Enter" && !e.nativeEvent.isComposing && (!e.shiftKey || e.metaKey || e.ctrlKey)) {
+                e.preventDefault();
+                if (canSubmitDeny) submitDeny();
+              }
+            }}
           />
+          {denyFailed && <div className="deny-err" role="alert">{i18n.t("approval.delivery_failed", { reason: cmdErrorMsg })}</div>}
           <div className="btns decide">
-            <button className="btn" onClick={() => setDenying(false)}>
+            <button className="btn" disabled={denyBusy} onClick={() => setDenying(false)}>
               {i18n.t("common.cancel")}
             </button>
-            <button className="btn pri" disabled={locked} onClick={() => submit(false, reason.trim(), false)}>
-              {i18n.t("approval.deny")}
+            <button className={"btn pri" + (denyBusy ? " spin-btn" : "")} disabled={!canSubmitDeny} onClick={submitDeny}>
+              {denyBusy ? (
+                <>
+                  <LoaderCircle />
+                  {i18n.t("approval.denying")}
+                </>
+              ) : denyFailed ? (
+                i18n.t("approval.retry_deny")
+              ) : (
+                i18n.t("approval.deny")
+              )}
             </button>
           </div>
         </>
@@ -238,6 +347,10 @@ export function ApprovalCard({
             <button className="btn pri" aria-expanded={false} onClick={() => setFull(true)}>
               {i18n.t("approval.full_command")}
             </button>
+          ) : docked && !reachedBottom && !truncated ? (
+            <button className="btn pri" disabled={locked} onClick={scrollToBottom}>
+              {i18n.t("approval.scroll_to_view")}
+            </button>
           ) : (
             <button className="btn pri" disabled={locked || truncated} onClick={() => submit(true, "", false)}>
               {i18n.t("approval.allow")}
@@ -245,11 +358,16 @@ export function ApprovalCard({
           )}
         </div>
       )}
-      {canAlwaysAllow && !denying && !cut && (
+      {canAlwaysAllow && !denying && !cut && reachedBottom && (
         <div className="ml">
           <button disabled={locked || truncated} onClick={() => submit(true, "", true)}>
             {alwaysLabel || i18n.t("approval.always_allow")}
           </button>
+        </div>
+      )}
+      {denying && !docked && cut && (
+        <div className="ml">
+          <button onClick={() => setFull(true)}>{i18n.t("approval.full_command")}</button>
         </div>
       )}
     </>
@@ -257,10 +375,10 @@ export function ApprovalCard({
 
   if (docked) {
     return (
-      <div className="tc">
+      <div className={"tc" + (denying ? " docked-deny" : "") + (shortViewport ? " short-vp" : "")}>
         {dockHead ?? head(timeText, hot)}
         <div className="pending-content">
-          <div className="pending-scroll">{commandBody}</div>
+          <div ref={scrollRef} className="pending-scroll" onScroll={checkScrollBottom}>{commandBody}</div>
           <div className="pending-actions">{actions}</div>
         </div>
       </div>

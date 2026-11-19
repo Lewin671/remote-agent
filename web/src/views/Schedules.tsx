@@ -410,8 +410,15 @@ export function TimingSheetView({ draft, formError, onUpdate, onApplied, onClose
     [ScheduleIntervalUnit.HOURS, t("schedule.android_hours")], [ScheduleIntervalUnit.DAYS, t("schedule.android_days")],
   ];
 
+  const timingSnap = JSON.stringify({
+    k: kind, d: draft.date, tm: draft.time, w: draft.weekdays, iv: draft.interval,
+    u: draft.unit, z: draft.zone, wd: draft.workdays, e: draft.end, ud: draft.untilDate,
+    um: String(draft.untilMs), mc: draft.count,
+  });
+  const [initialTimingSnap] = useState(timingSnap);
+
   return (
-    <Sheet onClose={onClose} className="timing-sheet" title={t("schedule.when")}
+    <Sheet onClose={onClose} dirty={timingSnap !== initialTimingSnap} className="timing-sheet" title={t("schedule.when")}
       action={{ label: t("common.done"), onClick: apply, disabled: !draft.timingDoneEnabled || (kind === ScheduleTimingKind.WEEKLY && draft.weekdays.length === 0) }}>
       <Segmented className="full" label={t("schedule.frequency")} value={String(kind)} onChange={(v) => onUpdate({ kind: Number(v) as ScheduleTimingKind })} options={kindOptions} />
       <div className="schedule-inputs">
@@ -521,7 +528,7 @@ function ScheduleConfigSheet({ vm, focusMode = false, onSelectMachine, onSelectM
   ];
   const errText = renderText(panel?.modelsError) || renderText(vm.mutation?.error);
   return (
-    <Sheet onClose={() => !busy && onClose()} title={focusMode ? t("new_session.permissions") : t("schedule.model_and_permissions")}
+    <Sheet onClose={() => !busy && onClose()} dirty={!!onDone && vm.hasUnsavedChanges} title={focusMode ? t("new_session.permissions") : t("schedule.model_and_permissions")}
       action={{ label: onDone ? (renderText(vm.submitLabel) || t("common.save")) : t("common.done"), disabled: busy || (!!onDone && !vm.canSubmit), onClick: onDone ?? onClose }}>
       {!focusMode && vm.machineSelectable && vm.machineChoices.length > 1 && onSelectMachine && (
         <div className="list" style={{ marginBottom: 10 }}>
@@ -658,7 +665,7 @@ function ScheduleTargetEditorSheet({ host, vm, onClose }: { host: CoreHost; vm: 
     );
   }
   return (
-    <Sheet onClose={() => !busy && onClose()} title={t("schedule.run_in")} action={{ label: renderText(vm.submitLabel) || t("common.save"), disabled: busy || !vm.editable || !vm.canSubmit, onClick: submit }}>
+    <Sheet onClose={() => !busy && onClose()} dirty={vm.hasUnsavedChanges} title={t("schedule.run_in")} action={{ label: renderText(vm.submitLabel) || t("common.save"), disabled: busy || !vm.editable || !vm.canSubmit, onClick: submit }}>
       <div className="grp">
         <TargetFields vm={vm} onOpenProject={() => setSub("project")} onSelectAgent={(a) => host.scheduleFormSelectAgent(vm.formKey, a)} onOpenConfig={() => setSub("config")} />
       </div>

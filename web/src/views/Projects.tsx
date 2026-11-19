@@ -78,10 +78,12 @@ export function RemoveProjectAlert({ name, onOk, onCancel }: { name: string; onO
 
 /** Core-driven directory picker sheet for adding a project. */
 export function DirPickerSheet({ picker, onNavigate, onConfirm, onBack, onClose }: { picker: DirPickerView; onNavigate: (machineId: string, path: string) => void; onConfirm: (path: string) => void; onBack?: () => void; onClose: () => void }) {
+  const [initialPath] = useState(() => `${picker.machineId}:${picker.currentPath}`);
+  const dirty = picker.canConfirm && `${picker.machineId}:${picker.currentPath}` !== initialPath;
   const crumbs = picker.crumbs.map((c) => ({ label: renderText(c.label), path: c.path }));
   const confirmLabel = renderText(picker.confirmLabel) || t("projects.use_directory", { name: crumbs[crumbs.length - 1]?.label || "/" });
   return (
-    <Sheet onClose={onClose} title={t("projects.new_choose_directory")} back={onBack}>
+    <Sheet onClose={onClose} dirty={dirty} title={t("projects.new_choose_directory")} back={onBack}>
       {picker.machines.length > 1 && (
         <Segmented className="full machines" label={t("common.machine")} value={picker.machineId || undefined} onChange={(id) => onNavigate(id, "")} options={picker.machines.map((x) => ({ value: x.machineId, disabled: !x.online, label: <><StateMark kind={x.online ? "online" : "off"} />{x.name}</> }))} />
       )}

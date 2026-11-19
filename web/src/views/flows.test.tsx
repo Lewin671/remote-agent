@@ -869,8 +869,8 @@ it("writes a reason in place on 不允许, then shrinks to a line once sent", as
   expect(card().querySelector("textarea")).toBeNull();
   await click(button(message("approval.deny"), card()));
   await click(button(message("approval.deny"), card().querySelector(".btns")!));
-  expect(card().classList.contains("line")).toBe(true);
-  expect(card().textContent).toContain(message("approval.denied"));
+  expect(card().classList.contains("line")).toBe(false);
+  expect(card().textContent).toContain(message("approval.denying"));
   await act(async () => sent.release());
   await vi.waitFor(() => expect(card().textContent).toContain("/etc/hosts"), { timeout: 3000 });
 });
@@ -4624,16 +4624,14 @@ it.each(["retap", "outside", "typing", "escape"])("keeps the session draft focus
     Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!.call(input, "Keep this draft");
     input.dispatchEvent(new Event("input", { bubbles: true }));
   });
-  const send = sendButton()!;
-  const down = new PointerEvent("pointerdown", { bubbles: true, cancelable: true });
-  act(() => send.dispatchEvent(down));
+  const smode = host.querySelector<HTMLButtonElement>(".smode")!;
+  const down = new MouseEvent("mousedown", { bubbles: true, cancelable: true });
+  act(() => smode.dispatchEvent(down));
   expect(down.defaultPrevented).toBe(true);
-  act(() => send.dispatchEvent(new PointerEvent("pointercancel", { bubbles: true })));
-  // The native context menu is the alternate route to the same long-press menu.
-  act(() => send.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true })));
-  await click(send); // release click from the original long press must not send
+  await click(smode);
   expect(host.querySelector(".send-menu")).not.toBeNull();
-  if (close === "retap") { act(() => send.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, cancelable: true }))); await click(send); }
+  expect(document.activeElement).toBe(input);
+  if (close === "retap") { act(() => smode.dispatchEvent(new MouseEvent("mousedown", { bubbles: true, cancelable: true }))); await click(smode); }
   else if (close === "outside") {
     const mouse = new MouseEvent("mousedown", { bubbles: true, cancelable: true });
     act(() => document.body.dispatchEvent(mouse));
@@ -4771,7 +4769,7 @@ it.each([false, true])("queues agy sends without an insert menu (attachments=%s)
     });
   }
   const send = sendButton()!;
-  act(() => send.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true })));
+  expect(host.querySelector(".smode")).toBeNull();
   expect(host.querySelector(".send-menu")).toBeNull();
   await click(send);
   expect(submit).toHaveBeenCalled();
@@ -4783,8 +4781,7 @@ it("does not consume a send to close an unavailable insert menu", async () => {
   r.drafts.set("s-run", "Keep the next-turn draft");
   const submit = vi.spyOn(getCoreHost(r), "sessionSubmitCommand");
   await mountAsync(<SessionPage remote={r} sessionId="s-run" onBack={() => undefined} wide={false} />);
-  act(() => sendButton()!.dispatchEvent(new MouseEvent("contextmenu", {bubbles: true, cancelable: true})));
-  await click(sendButton()!); // consume the original long-press release
+  await click(host.querySelector<HTMLButtonElement>(".smode")!);
   expect(host.querySelector(".send-menu")).not.toBeNull();
   await act(async () => { patchDemoSession(r, "s-run", { agent: Agent.ANTIGRAVITY }); });
   expect(host.querySelector(".send-menu")).toBeNull();

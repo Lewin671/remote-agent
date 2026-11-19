@@ -184,6 +184,7 @@ function ApprovalDock({
   return (
     <div className={"dock pending open" + (reasoning ? " reasoning" : "") + (cmd?.busy ? " submitting" : "")}>
       <ApprovalCard
+        approvalId={approval.approvalId}
         kind={title}
         body={body}
         description={approval.description}
@@ -680,6 +681,8 @@ export interface DockProps {
   questionDraft?: QuestionDraftState;
   onQuestionDraftChange?: (next: QuestionDraftState) => void;
   onExpand?: () => void;
+  onDenyingChange?: (denying: boolean) => void;
+  onOpenChange?: (open: boolean) => void;
   onDetail?: (approvalId: string) => void;
   onPlan?: () => void;
   onQuestion?: () => void;
@@ -703,6 +706,8 @@ export function Dock({
   questionDraft,
   onQuestionDraftChange,
   onExpand,
+  onDenyingChange,
+  onOpenChange,
   onDetail,
   onPlan,
   onQuestion,
@@ -714,18 +719,61 @@ export function Dock({
   const localSeen = useRef<Set<string>>(new Set());
   const localClosed = useRef<Set<string>>(new Set());
   const [reasoning, setReasoning] = useState(false);
+  const [externalNote, setExternalNote] = useState(false);
+  const prevApprovalId = useRef("");
+  const localResolveAt = useRef(0);
 
-  if (!dock?.hasItem) return null;
-
-  const seen = seenKeys ?? localSeen.current;
-  const closed = closedKeys ?? localClosed.current;
-  const key = dockKey(sessionId, dock);
-  if (!seen.has(key)) {
-    seen.add(key);
-    if (drafting) closed.add(key);
+  const hasDock = !!dock?.hasItem;
+  const key = hasDock ? dockKey(sessionId, dock!) : "";
+  if (hasDock && !((seenKeys ?? localSeen.current).has(key))) {
+    (seenKeys ?? localSeen.current).add(key);
+    if (drafting) (closedKeys ?? localClosed.current).add(key);
   }
-  const open = !closed.has(key);
+  const open = hasDock && !((closedKeys ?? localClosed.current).has(key));
   const shown = open && (reasoning || room >= DOCK_MIN_ROOM);
+  const activeApprovalId = hasDock && dock!.kind === SessionDockKind.APPROVAL && dock!.detail.case === "approval" ? dock!.detail.value.approvalId : "";
+  const isDenyingNow = shown && !!activeApprovalId && reasoning;
+
+  useEffect(() => {
+    if (prevApprovalId.current && prevApprovalId.current !== activeApprovalId) {
+      if (reasoning && Date.now() - localResolveAt.current > 2000) {
+        setExternalNote(true);
+        setReasoning(false);
+        const timer = setTimeout(() => setExternalNote(false), 1200);
+        prevApprovalId.current = activeApprovalId;
+        return () => clearTimeout(timer);
+      }
+      setReasoning(false);
+    }
+    prevApprovalId.current = activeApprovalId;
+  }, [activeApprovalId, reasoning]);
+
+  useEffect(() => {
+    onDenyingChange?.(isDenyingNow);
+    return () => onDenyingChange?.(false);
+  }, [isDenyingNow, onDenyingChange]);
+
+  useEffect(() => {
+    onOpenChange?.(shown);
+    return () => onOpenChange?.(false);
+  }, [shown, onOpenChange]);
+
+  const closed = closedKeys ?? localClosed.current;
+
+  if (!hasDock) {
+    if (externalNote) {
+      return (
+        <DockBox style={dockContentMax(room, height) === undefined ? {} : ({ "--content-max": `${dockContentMax(room, height)}px` } as CSSProperties)}>
+          <div className="dock pending">
+            <div className="tc line" role="status">
+              <div className="k"><i />{i18n.t("approval.handled_in_terminal")}</div>
+            </div>
+          </div>
+        </DockBox>
+      );
+    }
+    return null;
+  }
 
   const openAsPage = () => {
     if (dock.kind === SessionDockKind.APPROVAL && dock.detail.case === "approval") onDetail?.(dock.detail.value.approvalId);
@@ -769,7 +817,10 @@ export function Dock({
           onReasonChange={onReasonChange ? (v) => onReasonChange(a.approvalId, v) : undefined}
           reasoning={reasoning}
           onReasonOpen={setReasoning}
-          onSubmitCommand={onSubmitCommand}
+          onSubmitCommand={(sk, cmd) => {
+            localResolveAt.current = Date.now();
+            onSubmitCommand(sk, cmd);
+          }}
           onAbandonCommand={onAbandonCommand}
         />
       );
@@ -825,6 +876,13 @@ export function Dock({
   if (!card) return null;
   return (
     <DockBox style={style}>
+      {externalNote && (
+        <div className="dock pending">
+          <div className="tc line" role="status">
+            <div className="k"><i />{i18n.t("approval.handled_in_terminal")}</div>
+          </div>
+        </div>
+      )}
       {card}
     </DockBox>
   );

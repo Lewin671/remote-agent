@@ -65,11 +65,12 @@ export function ConnectionGroup({
 
   const rawStatus = remote.direct.status(id);
   const browserUnsupported = rawStatus.state === "unsupported";
-  const peerUnsupported = cg.stage === ConnectionGroupStage.UNSUPPORTED && !browserUnsupported;
   const tryingPending = turnedOn !== undefined && rawStatus.state === "none" &&
     (!rawStatus.reason || rawStatus.reason === "starting" || rawStatus.reason === "security_pending");
   const on = !browserUnsupported && cg.toggleChecked;
-  const showStatus = browserUnsupported || peerUnsupported ||
+  const rawDetailText = renderText(cg.detailText);
+  const daemonDisabled = cg.stage === ConnectionGroupStage.DISABLED && !on && !!rawDetailText;
+  const showStatus = browserUnsupported || daemonDisabled ||
     (on && cg.stage !== ConnectionGroupStage.OFFLINE && cg.stage !== ConnectionGroupStage.DISABLED);
   const enter = armed.current;
 
@@ -79,17 +80,19 @@ export function ConnectionGroup({
     : tryingPending
       ? t("transport.status_connecting")
       : renderText(cg.statusText);
-  const detailText = browserUnsupported || tryingPending ? "" : renderText(cg.detailText);
-  const fileSpeed = renderText(cg.fileSpeedText) || (on && rawStatus.state === "connected" ? t("transport.file_speed_pending") : "");
-  const readLatency = renderText(cg.readLatencyText);
+  const detailText = browserUnsupported
+    ? t("transport.detail_relay_only")
+    : tryingPending
+      ? ""
+      : rawDetailText;
+  const metricText = browserUnsupported ? "" : renderText(cg.metricText);
   const footer = renderText(cg.footerText) || t("transport.footer");
-  const hasRounds = remote.direct.diagnostics(id).rounds.length > 0;
-  const showDiag = on && (cg.showDiagnosticsEntry || hasRounds);
+  const showDiag = on && !tryingPending && cg.showDiagnosticsEntry;
 
   return (
     <>
       {error && <Banner kind="err">{error}</Banner>}
-      <div className="label">{t("transport.group")}</div>
+      <div id="connection-group" className="label">{t("transport.group")}</div>
       <div className="grp conn-grp" aria-live="polite">
         <div className="row">
           {t("transport.direct")}
@@ -112,22 +115,11 @@ export function ConnectionGroup({
               <Swap k={`${stage}:${statusText}`} tier="base">{statusText}</Swap>
               {detailText && <SubLine text={detailText} enter={enter} />}
             </span>
-          </GroupRow>
-        )}
-        {on && fileSpeed && (
-          <GroupRow className="row speed" enter={enter}>
-            <span>{t("transport.speed_file")}</span>
-            <span className="v">{fileSpeed}</span>
-          </GroupRow>
-        )}
-        {on && readLatency && (
-          <GroupRow className="row speed" enter={enter}>
-            <span>{t("transport.speed_read")}</span>
-            <span className="v">{readLatency}</span>
+            {metricText && <span className="v dx-rtt">{metricText}</span>}
           </GroupRow>
         )}
         {showDiag && (
-          <NavRow enter={enter} onClick={() => setDiagOpen(true)}>{t("transport.diag")}</NavRow>
+          <NavRow enter={enter} onClick={() => setDiagOpen(true)}>{t("transport.why_not_connected")}</NavRow>
         )}
       </div>
       <p className="gf">{footer}</p>

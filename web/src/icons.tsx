@@ -53,6 +53,7 @@ import {
   MemoryStick as LMemoryStick,
   HardDrive as LHardDrive,
   SquareTerminal as LSquareTerminal,
+  Zap as LZap,
 } from "lucide-react";
 
 /** An icon as tall as the text around it and in that text's color, drawn
@@ -148,3 +149,5 @@ export const CpuIcon = icon(LCpu);
 export const MemoryIcon = icon(LMemoryStick);
 export const DiskIcon = icon(LHardDrive);
 export const TerminalIcon = icon(LSquareTerminal);
+/** Direct connection marker. */
+export const Zap = icon(LZap);

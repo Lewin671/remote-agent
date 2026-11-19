@@ -6,7 +6,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { AgentMark } from "../agent-mark";
 import { useCoreHost, useHomeView, useNewSessionView, useProjectView, useSchedulesView, useSessionView, type Go } from "../core/host";
 import { renderText } from "../core/text";
-import { SessionDockKind } from "../gen/remoteagent/core/v1/session_view_pb";
+import { SessionCommandStatus, SessionDockKind } from "../gen/remoteagent/core/v1/session_view_pb";
 import { CommandSchema, type Command } from "../gen/remoteagent/v1/remote_pb";
 import {
   ConnState,
@@ -19,13 +19,14 @@ import {
   type EndedGroupView,
   type HomeEmptyView,
   type HomeHeadlineView,
+  type HomeQuestionCardView,
   type HomeViewModel,
   type ScopeRowView,
   type SessionRowView,
   type TailRowView,
 } from "../gen/remoteagent/core/v1/home_view_pb";
 import { t } from "../i18n";
-import { Check, ChevronDown, ChevronRight, Clock, MessageCircle, Plus, Search, Settings, X } from "../icons";
+import { Check, ChevronDown, ChevronRight, Clock, LoaderCircle, MessageCircle, Plus, Search, Settings, X } from "../icons";
 import { useFresh } from "../motion";
 import { type Remote } from "../remote";
 import { Avatar, Banner, ConnBar, GlassButton, PathText, Segmented, Sheet, Skeleton, StateMark, useRemote, type Mark } from "../ui";
@@ -89,10 +90,25 @@ function suppressWaitingHeadline(remote?: Remote, vm?: HomeHeadlineView): boolea
 }
 
 function Headline({ vm, onDetails }: { vm?: HomeHeadlineView; onDetails?: () => void }) {
+  const prevKind = useRef<HeadlineKind | undefined>(undefined);
+  const [crossfade, setCrossfade] = useState(false);
+
+  useEffect(() => {
+    const kind = vm?.kind;
+    if (prevKind.current === HeadlineKind.WAITING && kind !== undefined && kind !== HeadlineKind.WAITING) {
+      setCrossfade(true);
+      const timer = setTimeout(() => setCrossfade(false), 200);
+      prevKind.current = kind;
+      return () => clearTimeout(timer);
+    }
+    prevKind.current = kind;
+    return undefined;
+  }, [vm?.kind]);
+
   if (!vm) return null;
   const subText = renderText(vm.sub);
   return (
-    <>
+    <div className={crossfade ? "hl-wrap crossfade" : "hl-wrap"}>
       <h1 className="hl">{highlightTitle(renderText(vm.title), vm.highlightCount)}</h1>
       {(subText || vm.detailsAction) && (
         <div className={"hl-sub" + (vm.subError ? " err" : "") + (vm.subPath ? " path" : "")}>
@@ -100,7 +116,7 @@ function Headline({ vm, onDetails }: { vm?: HomeHeadlineView; onDetails?: () => 
           {vm.detailsAction && onDetails && <button type="button" onClick={onDetails}>{t("common.details")}</button>}
         </div>
       )}
-    </>
+    </div>
   );
 }
 
@@ -113,6 +129,343 @@ function HomeEmpty({ empty, onAddDevice, onStartFirst, onRetry }: { empty?: Home
       {empty.canAddDevice && <button type="button" className="btn pri" onClick={onAddDevice}>{t("home.add_device")}</button>}
       {empty.canStartFirst && <button type="button" className="btn pri" onClick={() => onStartFirst(empty.readyMachineId)}>{t("home.start_first")}</button>}
       {empty.canRetry && <button type="button" className="btn pri" onClick={onRetry}>{t("common.retry")}</button>}
+    </div>
+  );
+}
+
+function TopQuestionSlot({
+  question,
+  remote,
+  onOpen,
+  onOpenTerminal,
+}: {
+  question?: HomeQuestionCardView;
+  remote?: Remote;
+  onOpen: (sessionId: string) => void;
+  onOpenTerminal: (sessionId: string) => void;
+}) {
+  const [held, setHeld] = useState<HomeQuestionCardView | undefined>(question);
+  const [phase, setPhase] = useState<"idle" | "sending" | "error" | "delivered" | "elsewhere" | "exiting">("idle");
+  const [exitKind, setExitKind] = useState<"delivered" | "elsewhere">("delivered");
+  const [picked, setPicked] = useState<{ num: number; label: string } | undefined>(undefined);
+  const [showSpinner, setShowSpinner] = useState(false);
+  const [errMsg, setErrMsg] = useState("");
+  const spinTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+
+  useEffect(() => () => clearTimeout(spinTimer.current), []);
+
+  // Track changes to active question (switch, external answer, or cleared after submit)
+  useEffect(() => {
+    if (question) {
+      if (!held || held.sessionId !== question.sessionId || held.questionId !== question.questionId) {
+        clearTimeout(spinTimer.current);
+        setShowSpinner(false);
+        setPicked(undefined);
+        setErrMsg("");
+        setPhase("idle");
+        setHeld(question);
+      } else {
+        setHeld(question);
+      }
+      return;
+    }
+    if (!held) return;
+    if (phase === "sending") {
+      clearTimeout(spinTimer.current);
+      setShowSpinner(false);
+      setExitKind("delivered");
+      setPhase("delivered");
+    } else if (phase === "idle" || phase === "error") {
+      clearTimeout(spinTimer.current);
+      setShowSpinner(false);
+      setExitKind("elsewhere");
+      setPhase("elsewhere");
+    }
+  }, [question, held, phase]);
+
+  // 900ms confirmation hold -> 160ms collapse fade
+  useEffect(() => {
+    if (phase !== "delivered" && phase !== "elsewhere") return;
+    const t1 = setTimeout(() => setPhase("exiting"), 900);
+    return () => clearTimeout(t1);
+  }, [phase]);
+
+  useEffect(() => {
+    if (phase !== "exiting") return;
+    const t2 = setTimeout(() => {
+      setHeld(undefined);
+      setPicked(undefined);
+      setErrMsg("");
+      setPhase("idle");
+    }, 160);
+    return () => clearTimeout(t2);
+  }, [phase]);
+
+  if (!held) return null;
+
+  const finishDelivery = (label: string) => {
+    clearTimeout(spinTimer.current);
+    setShowSpinner(false);
+    setPicked((p) => p ?? { num: 0, label });
+    setExitKind("delivered");
+    setPhase("delivered");
+  };
+
+  if (phase === "delivered" || phase === "elsewhere" || phase === "exiting") {
+    const isElsewhere = phase === "elsewhere" || (phase === "exiting" && exitKind === "elsewhere");
+    const label = isElsewhere
+      ? t("home.question_answered_elsewhere")
+      : t("home.question_answered_line", { answer: picked?.label || "" });
+    return (
+      <div className={"tc line" + (phase === "exiting" ? " q-exit" : "")} role="status">
+        <div className="k">
+          {!isElsewhere && <Check />}
+          <span>{label}</span>
+        </div>
+      </div>
+    );
+  }
+
+  return remote ? (
+    <TopQuestionLive
+      card={held}
+      remote={remote}
+      phase={phase}
+      picked={picked}
+      showSpinner={showSpinner}
+      errMsg={errMsg}
+      onStartSend={(num, label) => {
+        clearTimeout(spinTimer.current);
+        setErrMsg("");
+        setPicked({ num, label });
+        setPhase("sending");
+        setShowSpinner(false);
+        spinTimer.current = setTimeout(() => setShowSpinner(true), 150);
+      }}
+      onDelivered={finishDelivery}
+      onError={(msg) => {
+        clearTimeout(spinTimer.current);
+        setShowSpinner(false);
+        setErrMsg(msg);
+        setPhase("error");
+      }}
+      onOpen={() => onOpen(held.sessionId)}
+      onOpenTerminal={() => onOpenTerminal(held.sessionId)}
+    />
+  ) : (
+    <TopQuestionCardView
+      card={held}
+      phase={phase}
+      picked={picked}
+      showSpinner={showSpinner}
+      errMsg={errMsg}
+      onPick={(opt) => {
+        setPicked({ num: opt.optionNum, label: opt.label });
+        setPhase("delivered");
+      }}
+      onRetry={() => setPhase("idle")}
+      onOpen={() => onOpen(held.sessionId)}
+      onOpenTerminal={() => onOpenTerminal(held.sessionId)}
+    />
+  );
+}
+
+function TopQuestionLive({
+  card,
+  remote,
+  phase,
+  picked,
+  showSpinner,
+  errMsg,
+  onStartSend,
+  onDelivered,
+  onError,
+  onOpen,
+  onOpenTerminal,
+}: {
+  card: HomeQuestionCardView;
+  remote: Remote;
+  phase: "idle" | "sending" | "error";
+  picked?: { num: number; label: string };
+  showSpinner: boolean;
+  errMsg: string;
+  onStartSend: (num: number, label: string) => void;
+  onDelivered: (label: string) => void;
+  onError: (msg: string) => void;
+  onOpen: () => void;
+  onOpenTerminal: () => void;
+}) {
+  const host = useCoreHost(remote);
+  const vm = useSessionView(host, card.sessionId);
+  const dock = vm.dock;
+  const cmd =
+    dock?.hasItem && dock.kind === SessionDockKind.QUESTION && dock.itemId === card.questionId
+      ? dock.command
+      : undefined;
+  const machineId = vm.header?.machineId || card.machineId || "";
+  const slotKey = cmd?.slotKey || `question:${card.sessionId}:${card.questionId}#0`;
+  const lastCmd = useRef<Command | undefined>(undefined);
+  const wasBusy = useRef(false);
+
+  const cmdBusy = !!cmd?.busy;
+  const cmdError =
+    !!cmd &&
+    (cmd.status === SessionCommandStatus.FAILED || cmd.status === SessionCommandStatus.UNKNOWN || !!cmd.expired);
+  const cmdErrText = renderText(cmd?.errorText) || renderText(cmd?.statusText);
+
+  useEffect(() => {
+    if (cmdBusy) {
+      wasBusy.current = true;
+      return;
+    }
+    if (phase === "sending" && wasBusy.current) {
+      wasBusy.current = false;
+      if (cmdError) {
+        onError(cmdErrText || t("composer.android_unknown_reason"));
+      } else {
+        onDelivered(picked?.label || "");
+      }
+    }
+  }, [cmdBusy, cmdError, cmdErrText, phase, picked?.label, onDelivered, onError]);
+
+  const sendOption = (num: number, label: string) => {
+    if (phase === "sending" || !card.canAnswer) return;
+    wasBusy.current = false;
+    onStartSend(num, label);
+    const built = create(CommandSchema, {
+      kind: {
+        case: "answerQuestion",
+        value: {
+          sessionId: card.sessionId,
+          questionId: card.questionId,
+          option: num,
+          questionIndex: 0,
+          options: [],
+          observedEventSeq: card.observedEventSeq,
+        },
+      },
+    });
+    lastCmd.current = built;
+    host.sessionSubmitCommand(slotKey, machineId, card.sessionId, built);
+  };
+
+  return (
+    <TopQuestionCardView
+      card={card}
+      phase={phase}
+      picked={picked}
+      showSpinner={showSpinner}
+      errMsg={errMsg}
+      onPick={(opt) => sendOption(opt.optionNum, opt.label)}
+      onRetry={() => {
+        if (picked) {
+          onStartSend(picked.num, picked.label);
+          const built =
+            lastCmd.current ??
+            create(CommandSchema, {
+              kind: {
+                case: "answerQuestion",
+                value: {
+                  sessionId: card.sessionId,
+                  questionId: card.questionId,
+                  option: picked.num,
+                  questionIndex: 0,
+                  options: [],
+                  observedEventSeq: card.observedEventSeq,
+                },
+              },
+            });
+          host.sessionSubmitCommand(slotKey, machineId, card.sessionId, built);
+        }
+      }}
+      onOpen={onOpen}
+      onOpenTerminal={onOpenTerminal}
+    />
+  );
+}
+
+function TopQuestionCardView({
+  card,
+  phase,
+  picked,
+  showSpinner,
+  errMsg,
+  onPick,
+  onRetry,
+  onOpen,
+  onOpenTerminal,
+}: {
+  card: HomeQuestionCardView;
+  phase: "idle" | "sending" | "error";
+  picked?: { num: number; label: string };
+  showSpinner: boolean;
+  errMsg: string;
+  onPick: (opt: HomeQuestionCardView["options"][number]) => void;
+  onRetry: () => void;
+  onOpen: () => void;
+  onOpenTerminal: () => void;
+}) {
+  const sending = phase === "sending";
+  const rightMeta = !card.canAnswer
+    ? renderText(card.offlineNote) || t("list_state.unlinked")
+    : renderText(card.timeText);
+  const title = renderText(card.title);
+  const where = renderText(card.where);
+
+  return (
+    <div className="tc">
+      <div className="k">
+        <i />
+        {renderText(card.badgeText) || t("dock.answer_title")}
+        {rightMeta && <span>{rightMeta}</span>}
+      </div>
+      <h4>
+        <button type="button" onClick={onOpen}>
+          <span>{title}</span>
+          <ChevronRight />
+        </button>
+      </h4>
+      {where && <div className="m">{where}</div>}
+      <div className="q">{card.questionText}</div>
+      <div className="q-opts">
+        {card.options.map((opt) => {
+          const isPicked = picked?.num === opt.optionNum;
+          const cls =
+            "q-opt" +
+            (isPicked ? " picking" : sending ? " dimmed" : "");
+          return (
+            <button
+              key={opt.optionNum}
+              type="button"
+              className={cls}
+              disabled={!card.canAnswer || sending}
+              onClick={() => onPick(opt)}
+            >
+              <div>
+                <b>
+                  {opt.label}
+                  {opt.recommended ? ` · ${t("dock.recommended")}` : ""}
+                </b>
+                {opt.description && <small>{opt.description}</small>}
+              </div>
+              {sending && isPicked && showSpinner && <LoaderCircle />}
+            </button>
+          );
+        })}
+      </div>
+      {phase === "error" && (
+        <div className="q-err" role="alert">
+          <span>{t("home.question_send_failed", { reason: errMsg })}</span>
+          <button type="button" onClick={onRetry}>{t("common.retry")}</button>
+        </div>
+      )}
+      <div className="q-foot">
+        <span>{t("dock.none_fit")}</span>
+        <button type="button" onClick={onOpenTerminal}>
+          {t("home.question_answer_in_terminal")}
+          <ChevronRight />
+        </button>
+      </div>
     </div>
   );
 }
@@ -302,6 +655,7 @@ export function HomeView(p: {
   onSelectScope: (scopeKey: string) => void;
   onSetFilter: (query: string) => void;
   onOpenSession: (sessionId: string) => void;
+  onOpenSessionTerminal?: (sessionId: string) => void;
   onOpenSettings: () => void;
   onManageProjects: () => void;
   onAddDevice: () => void;
@@ -321,8 +675,11 @@ export function HomeView(p: {
   const isAllScope = !vm.scopeKey;
   const filtering = Boolean(vm.filterQuery);
   const card = vm.topAttentionCard;
+  const qCard = !card ? vm.topAttentionQuestion : undefined;
   const showTopCard = Boolean(card && card.sessionId && !filtering);
-  const restAttention = showTopCard ? vm.attention.filter((a) => a.sessionId !== card!.sessionId) : vm.attention;
+  const showTopQuestion = Boolean(qCard && qCard.sessionId && !filtering);
+  const excludedTopId = showTopCard ? card!.sessionId : showTopQuestion ? qCard!.sessionId : "";
+  const restAttention = excludedTopId ? vm.attention.filter((a) => a.sessionId !== excludedTopId) : vm.attention;
   const shownAttention = allTodo || filtering ? restAttention : restAttention.slice(0, 3);
   const hiddenAttention = restAttention.length - shownAttention.length;
   const selectedRunIndex = vm.running.findIndex((r) => r.selected);
@@ -351,6 +708,14 @@ export function HomeView(p: {
         <HomeEmpty empty={vm.empty} onAddDevice={p.onAddDevice} onStartFirst={p.onStart} onRetry={p.onRetryLoad} />
         {vm.canFilter && <FilterBar query={vm.filterQuery} onChange={p.onSetFilter} />}
         {showTopCard && card && <TopApproval card={card} remote={remote} onOpen={() => p.onOpenSession(card.sessionId)} />}
+        {!showTopCard && (
+          <TopQuestionSlot
+            question={!filtering ? qCard : undefined}
+            remote={remote}
+            onOpen={p.onOpenSession}
+            onOpenTerminal={p.onOpenSessionTerminal ?? p.onOpenSession}
+          />
+        )}
         {shownAttention.length > 0 && (
           <div className="pl">
             {shownAttention.map((row) => {
@@ -413,6 +778,10 @@ export function Home({ remote, go }: { remote: Remote; go: Go }) {
         onSelectScope={host.homeSetScope}
         onSetFilter={host.homeSetFilter}
         onOpenSession={(sid) => go("s/" + encodeURIComponent(sid))}
+        onOpenSessionTerminal={(sid) => {
+          remote.termFirst.add(sid);
+          go("s/" + encodeURIComponent(sid));
+        }}
         onOpenSettings={() => go("settings")}
         onManageProjects={() => go("projects")}
         onAddDevice={() => go("devices")}
@@ -614,12 +983,29 @@ export interface BottomBarAction { label: string; icon: ReactNode; onClick: () =
 
 function BottomBarInner(p: { remote?: Remote; active: "sessions" | "tasks"; action?: BottomBarAction; waiting: number; canStart: boolean; scheduleAttention?: number; scheduleNew?: boolean; onStart?: () => void; go: Go }) {
   const [picking, setPicking] = useState(false);
+  const prevWaiting = useRef(p.waiting);
+  const [exitingBadge, setExitingBadge] = useState<number | undefined>(undefined);
+
+  useEffect(() => {
+    if (prevWaiting.current > 0 && p.waiting === 0) {
+      setExitingBadge(prevWaiting.current);
+      const timer = setTimeout(() => setExitingBadge(undefined), 120);
+      prevWaiting.current = p.waiting;
+      return () => clearTimeout(timer);
+    }
+    if (p.waiting > 0) setExitingBadge(undefined);
+    prevWaiting.current = p.waiting;
+    return undefined;
+  }, [p.waiting]);
+
+  const badgeNum = p.waiting > 0 ? p.waiting : exitingBadge;
+
   return (
     <>
       <div className="bbar">
         <div className="tabs glass">
           <button type="button" className={p.active === "sessions" ? "on" : undefined} onClick={() => p.go("")}>
-            <MessageCircle />{t("home.sessions_tab")}{p.waiting > 0 && <span className="count">{p.waiting > 99 ? "99+" : p.waiting}</span>}
+            <MessageCircle />{t("home.sessions_tab")}{badgeNum !== undefined && <span className={"count" + (p.waiting === 0 ? " exit" : "")}>{badgeNum > 99 ? "99+" : badgeNum}</span>}
           </button>
           <button type="button" className={p.active === "tasks" ? "on" : undefined} onClick={() => p.go("tasks")}>
             <Clock />{t("home.schedules_tab")}<ScheduleBadges attention={p.scheduleAttention ?? 0} hasNew={p.scheduleNew ?? false} />

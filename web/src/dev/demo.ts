@@ -2419,6 +2419,71 @@ export class DemoRemote extends Remote {
           e.kind.value.command = longCommand;
           e.kind.value.description = e.kind.value.description.repeat(3);
         }
+    if (this.opts.has("question")) {
+      const sappr = this.demoSessions.get("s-appr");
+      if (sappr?.info) {
+        sappr.info.pendingApprovals = 0;
+        sappr.info.status = SessionStatus.IDLE;
+      }
+      const sapprEvs = this.evs.get("s-appr");
+      if (sapprEvs) {
+        this.evs.set(
+          "s-appr",
+          sapprEvs.filter(
+            (e) =>
+              e.kind.case !== "approvalRequested" ||
+              e.kind.value.approvalId === "a0",
+          ),
+        );
+      }
+      const sask = this.demoSessions.get("s-ask");
+      if (sask) {
+        sask.updatedMs = BigInt(now - 35 * min);
+        if (sask.info) {
+          sask.info.createdAt = timestampFromMs(now - 40 * min);
+          sask.info.attentionSince = timestampFromMs(now - 40 * min);
+        }
+      }
+      const saskEvs = this.evs.get("s-ask");
+      if (saskEvs) {
+        for (const e of saskEvs) {
+          if (e.kind.case === "questionAsked") {
+            e.time = timestampFromMs(now - 35 * min);
+            if (e.kind.value.questions.length > 1) {
+              e.kind.value.questions = e.kind.value.questions.slice(0, 1);
+            }
+          }
+        }
+      }
+      if (this.opts.get("question") === "only") {
+        const sclaude = this.demoSessions.get("s-claude");
+        if (sclaude?.info) {
+          sclaude.info.pendingQuestions = 0;
+          sclaude.info.status = SessionStatus.IDLE;
+        }
+        const claudeEvs = this.evs.get("s-claude");
+        if (claudeEvs) {
+          this.evs.set(
+            "s-claude",
+            claudeEvs.filter((e) => e.kind.case !== "questionAsked"),
+          );
+        }
+        const splan = this.demoSessions.get("s-plan");
+        if (splan?.info) splan.info.planOpen = false;
+        const planEvs = this.evs.get("s-plan");
+        if (planEvs) {
+          this.evs.set(
+            "s-plan",
+            planEvs.filter((e) => e.kind.case !== "planProposed"),
+          );
+        }
+        const spopup = this.demoSessions.get("s-popup");
+        if (spopup?.info) {
+          spopup.info.status = SessionStatus.IDLE;
+          spopup.info.statusDetail = "";
+        }
+      }
+    }
     if (this.opts.has("many"))
       for (let i = 0; i < 16; i++) {
         const id = `s-extra-${i}`;

@@ -1,7 +1,7 @@
 import { t } from "./i18n";
 // Small building blocks shared by the views.
 
-import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode, type RefObject } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type ReactNode, type RefObject, type TouchEvent } from "react";
 import { useExit, useKnob, useMarkSwap } from "./motion";
 import type { Tone } from "./model";
 import type { Remote } from "./remote";
@@ -93,9 +93,39 @@ function subscribeWide(fn: () => void) {
  * A title, when given, is centered in a head with at most a 取消 or 完成 on
  * the right, only where something is to be confirmed, and a round back
  * button on the left a level down. On a wide window it is centered. */
-export function Sheet({ onClose, children, className = "", title, action, back, anchor }: { onClose: () => void; children: ReactNode; className?: string; title?: ReactNode; action?: { label: string; onClick: () => void; disabled?: boolean }; back?: () => void; anchor?: RefObject<HTMLElement | null> }) {
-  useEscape(onClose);
+export function Sheet({
+  onClose,
+  children,
+  className = "",
+  title,
+  action,
+  back,
+  anchor,
+  dirty = false,
+}: {
+  onClose: () => void;
+  children: ReactNode;
+  className?: string;
+  title?: ReactNode;
+  action?: { label: string; onClick: () => void; disabled?: boolean };
+  back?: () => void;
+  anchor?: RefObject<HTMLElement | null>;
+  dirty?: boolean;
+}) {
   const root = useRef<HTMLDivElement>(null);
+  const sheetRef = useRef<HTMLDivElement>(null);
+  const [confirmDiscard, setConfirmDiscard] = useState(false);
+  const [dragY, setDragY] = useState(0);
+  const [dragging, setDragging] = useState(false);
+  const [snapping, setSnapping] = useState(false);
+  const dragState = useRef<{ startY: number; startAt: number; eligible: boolean; lockedScroll: boolean; dragY: number; dragging: boolean } | null>(null);
+
+  const requestClose = useCallback(() => {
+    if (dirty) setConfirmDiscard(true);
+    else onClose();
+  }, [dirty, onClose]);
+
+  useEscape(requestClose, !confirmDiscard);
   useOverlayExit(root);
   useDialogFocus(root);
   // A short choice made from a control in a wide window opens against that
@@ -107,12 +137,109 @@ export function Sheet({ onClose, children, className = "", title, action, back, 
   // Under the control; over it when there is little room under and more over.
   const over = at && innerHeight - at.bottom < 340 && at.top > innerHeight - at.bottom;
   const place = at ? { ...(at.left + 376 > innerWidth ? { left: "auto", right: innerWidth - at.right } : { left: at.left }), ...(over ? { top: "auto", bottom: innerHeight - at.top + 8, maxHeight: at.top - 24 } : { top: at.bottom + 8, maxHeight: innerHeight - at.bottom - 24 }) } : undefined;
+
+  const canPull = !wide && !anchor && !confirmDiscard;
+
+  const hasScrolledDescendant = (target: EventTarget | null, bound: HTMLElement | null): boolean => {
+    let node = target instanceof Element ? target : null;
+    while (node && node !== bound) {
+      if (node.scrollTop > 0) return true;
+      node = node.parentElement;
+    }
+    return false;
+  };
+
+  const onTouchStart = (e: TouchEvent<HTMLDivElement>) => {
+    if (!canPull || e.touches.length !== 1) return;
+    const sheet = sheetRef.current;
+    const fromHeader = e.target instanceof Element && !!e.target.closest(".grab, .sheet-head");
+    const atTop = fromHeader || ((sheet?.scrollTop ?? 0) <= 0 && !hasScrolledDescendant(e.target, sheet));
+    dragState.current = {
+      startY: e.touches[0].clientY,
+      startAt: Date.now(),
+      eligible: atTop,
+      lockedScroll: false,
+      dragY: 0,
+      dragging: false,
+    };
+  };
+
+  const onTouchMove = (e: TouchEvent<HTMLDivElement>) => {
+    const st = dragState.current;
+    if (!st || !st.eligible || e.touches.length !== 1) return;
+    const dy = e.touches[0].clientY - st.startY;
+    const sheet = sheetRef.current;
+    if (!st.lockedScroll && (sheet?.scrollTop ?? 0) > 0) {
+      st.eligible = false;
+      st.dragging = false;
+      st.dragY = 0;
+      setDragging(false);
+      setDragY(0);
+      return;
+    }
+    if (dy <= 6 && !st.dragging) return;
+    if (dy <= 0) {
+      st.dragY = 0;
+      setDragY(0);
+      return;
+    }
+    st.lockedScroll = true;
+    st.dragging = true;
+    const visual = dirty && dy > 72 ? 72 + (dy - 72) * 0.32 : dy;
+    const clamped = Math.min(360, visual);
+    st.dragY = clamped;
+    setDragging(true);
+    setSnapping(false);
+    setDragY(clamped);
+  };
+
+  const finishDrag = () => {
+    const st = dragState.current;
+    dragState.current = null;
+    if (!st || !st.dragging) {
+      setDragging(false);
+      return;
+    }
+    setDragging(false);
+    const dy = st.dragY;
+    const elapsed = Math.max(1, Date.now() - st.startAt);
+    const velocity = dy / elapsed;
+    const pulledPast = dirty ? dy > 72 : (dy > 88 || velocity > 0.65);
+    if (pulledPast) {
+      if (dirty) {
+        setSnapping(true);
+        setDragY(0);
+        setTimeout(() => setSnapping(false), 240);
+        setConfirmDiscard(true);
+      } else {
+        setDragY(0);
+        onClose();
+      }
+    } else {
+      setSnapping(true);
+      setDragY(0);
+      setTimeout(() => setSnapping(false), 200);
+    }
+  };
+
+  const dragStyle = dragY > 0 && !place ? { transform: `translateY(${Math.round(dragY)}px)` } : place;
+
   return (
     <div className="overlay" ref={root}>
-      <div className="dim" onClick={onClose} />
-      <div className={"sheet " + (at ? "anchored " : "") + className} style={place} role="dialog" aria-modal="true">
+      <div className="dim" onClick={requestClose} />
+      <div
+        ref={sheetRef}
+        className={"sheet " + (at ? "anchored " : "") + (dragging ? "dragging " : "") + (snapping ? "snap " : "") + className}
+        style={dragStyle}
+        role="dialog"
+        aria-modal="true"
+        onTouchStart={onTouchStart}
+        onTouchMove={onTouchMove}
+        onTouchEnd={finishDrag}
+        onTouchCancel={finishDrag}
+      >
         {/* The handle is the phone sheet's; a dialog in a wide window has nothing to drag. */}
-        {!wide && <button className="grab" aria-label={t("common.close")} onClick={onClose} />}
+        {!wide && <button className="grab" aria-label={t("common.close")} onClick={requestClose} />}
         {title !== undefined && (
           <div className="sheet-head">
             {back ? (
@@ -125,11 +252,25 @@ export function Sheet({ onClose, children, className = "", title, action, back, 
               <span className="side-act" />
             )}
             <b>{title}</b>
-            {action ? <button className="side-act" disabled={action.disabled} onClick={action.onClick}>{action.label}</button> : wide ? <button className="side-act close" aria-label={t("common.close")} title={t("common.close")} onClick={onClose}><X /></button> : <span className="side-act" />}
+            {action ? <button className="side-act" disabled={action.disabled} onClick={action.onClick}>{action.label}</button> : wide ? <button className="side-act close" aria-label={t("common.close")} title={t("common.close")} onClick={requestClose}><X /></button> : <span className="side-act" />}
           </div>
         )}
         {children}
       </div>
+      {confirmDiscard && (
+        <Alert
+          title={t("common.discard_changes_title")}
+          text=""
+          ok={t("common.discard_changes")}
+          cancel={t("common.keep_editing")}
+          danger
+          onCancel={() => setConfirmDiscard(false)}
+          onOk={() => {
+            setConfirmDiscard(false);
+            onClose();
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -204,6 +345,7 @@ export function Alert({
   title,
   text,
   ok,
+  cancel,
   danger,
   onOk,
   onCancel,
@@ -211,6 +353,7 @@ export function Alert({
   title: string;
   text: string;
   ok: string;
+  cancel?: string;
   danger?: boolean;
   onOk: () => void;
   onCancel: () => void;
@@ -225,10 +368,10 @@ export function Alert({
       <div className="dialog" role="alertdialog" aria-modal="true">
         {/* Danger shows on the button, never the title (design-system §2). */}
         <h5>{title}</h5>
-        <p>{text}</p>
+        {text && <p>{text}</p>}
         <div className="btns">
           <button className="btn" onClick={onCancel}>
-            {t("common.cancel")}
+            {cancel ?? t("common.cancel")}
           </button>
           <button className={"btn " + (danger ? "danger" : "pri")} onClick={onOk}>
             {ok}
