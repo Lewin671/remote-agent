@@ -483,7 +483,7 @@ func buildSessionTimeline(
 		})
 	}
 
-	repliedTurns := turnsWithReplies(events)
+	replies := replyTexts(events)
 
 	var prevInputTokens, prevOutputTokens int64
 	var turnStartInputTokens, turnStartOutputTokens int64
@@ -634,7 +634,7 @@ func buildSessionTimeline(
 				TimestampMs: ts,
 				TurnId:      e.TurnId,
 				Kind: &corev1.SessionTimelineItem_NotifyReceipt{
-					NotifyReceipt: buildNotifyReceipt(e, k.ScheduledNotification, ts, repliedTurns, st.Cal),
+					NotifyReceipt: buildNotifyReceipt(e, k.ScheduledNotification, ts, replies, st.Cal),
 				},
 			})
 

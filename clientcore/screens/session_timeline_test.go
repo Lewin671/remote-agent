@@ -164,30 +164,33 @@ func TestNotifyReceipts(t *testing.T) {
 			ScheduledNotification: &v1.ScheduledNotification{RunId: "r1", Text: body},
 		}}
 	}
-	turn := func(reply bool, tail ...*v1.Event) []*v1.Event {
+	turn := func(reply string, tail ...*v1.Event) []*v1.Event {
 		evs := []*v1.Event{
 			{Seq: 1, TurnId: "t1", Kind: &v1.Event_UserMessage{UserMessage: &v1.UserMessage{Text: "check"}}},
 			{Seq: 2, TurnId: "t1", Kind: &v1.Event_TurnStarted{TurnStarted: &v1.TurnStarted{}}},
 		}
-		if reply {
-			evs = append(evs, &v1.Event{Seq: 3, TurnId: "t1", Kind: &v1.Event_AgentMessage{AgentMessage: &v1.AgentMessage{Text: "13 runs, all fine."}}})
+		if reply != "" {
+			evs = append(evs, &v1.Event{Seq: 3, TurnId: "t1", Kind: &v1.Event_AgentMessage{AgentMessage: &v1.AgentMessage{Text: reply}}})
 		}
 		evs = append(evs, &v1.Event{Seq: 4, TurnId: "t1", Kind: &v1.Event_TurnEnded{TurnEnded: &v1.TurnEnded{Outcome: v1.TurnOutcome_TURN_OUTCOME_COMPLETED, DurationMs: 90_000}}})
 		return append(evs, tail...)
 	}
 	cjk20 := strings.Repeat("通", 20)
+	reply := "## 结论\n\n- 最近 24 小时 **13 次**运行全部成功\n- 没有中途 `malformed`\n\n详见 [日志](https://example.com/log)。"
 	for _, tc := range []struct {
 		name                 string
 		events               []*v1.Event
 		preview, body        string
 		expandable, withDate bool
 	}{
-		{name: "computer's copy of the reply shows only the time", events: turn(true, notice(5, system, today, "13 runs, all fine."))},
-		{name: "computer's push for a turn without reply keeps its text", events: turn(false, notice(5, system, today, "定时任务运行已中断。")), preview: "定时任务运行已中断。"},
-		{name: "short single line is the whole text", events: turn(true, notice(5, nil, today, cjk20)), preview: cjk20},
-		{name: "over 40 columns can open", events: turn(true, notice(5, nil, today, cjk20+"知")), preview: cjk20 + "知", body: cjk20 + "知", expandable: true},
-		{name: "a line break can open and previews the first line", events: turn(true, notice(5, nil, today, "2 runs hit malformed\nOne took 2h 40m.\n")), preview: "2 runs hit malformed", body: "2 runs hit malformed\nOne took 2h 40m.", expandable: true},
-		{name: "not today writes the date", events: turn(true, notice(5, system, today-2*86_400_000, "x")), withDate: true},
+		// The computer sends the reply's first 200 characters with the line breaks dropped.
+		{name: "computer's copy of a Markdown reply shows only the time", events: turn(reply, notice(5, system, today, string([]rune(strings.ReplaceAll(reply, "\n", ""))[:30])))},
+		{name: "computer's fixed sentence after a reply keeps its text", events: turn(reply, notice(5, system, today, "定时任务运行失败：execution_session_exited")), preview: "定时任务运行失败：execution_session_exited", body: "定时任务运行失败：execution_session_exited", expandable: true},
+		{name: "computer's push for a turn without reply keeps its text", events: turn("", notice(5, system, today, "定时任务运行已中断。")), preview: "定时任务运行已中断。"},
+		{name: "short single line is the whole text", events: turn(reply, notice(5, nil, today, cjk20)), preview: cjk20},
+		{name: "over 40 columns can open", events: turn(reply, notice(5, nil, today, cjk20+"知")), preview: cjk20 + "知", body: cjk20 + "知", expandable: true},
+		{name: "a line break can open and previews the first line", events: turn(reply, notice(5, nil, today, "2 runs hit malformed\nOne took 2h 40m.\n")), preview: "2 runs hit malformed", body: "2 runs hit malformed\nOne took 2h 40m.", expandable: true},
+		{name: "not today writes the date", events: turn(reply, notice(5, system, today-2*86_400_000, "## 结论")), withDate: true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			st := NewState()

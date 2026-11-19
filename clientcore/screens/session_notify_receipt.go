@@ -2,6 +2,7 @@ package screens
 
 import (
 	"strings"
+	"unicode"
 
 	"github.com/Lewin671/remote-agent/clientcore/domain/lists"
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
@@ -14,17 +15,19 @@ import (
 const receiptFoldColumns = 40
 
 // buildNotifyReceipt turns a scheduled run's push into its receipt line
-// (design-system.md §7 「通知回执」). A push the computer sent on the agent's
-// behalf repeats the turn's reply, so its receipt shows only the time; when
-// the turn has no reply (it failed or stopped first) the text is the only
-// record and shows like one the agent wrote.
-func buildNotifyReceipt(e *v1.Event, n *v1.ScheduledNotification, ts int64, repliedTurns map[string]bool, cal lists.Calendar) *corev1.SessionNotifyReceiptItem {
+// (design-system.md §6 「通知回执」). A push the computer sent on the agent's
+// behalf usually copies the start of the turn's reply, so its receipt shows
+// only the time. It counts as a copy only when that can be shown from the
+// text; anything else (the computer's fixed sentences for a failed, stopped
+// or cancelled run, or a turn without reply) shows its text, so a wrong guess
+// adds a line rather than losing one.
+func buildNotifyReceipt(e *v1.Event, n *v1.ScheduledNotification, ts int64, replies map[string][]string, cal lists.Calendar) *corev1.SessionNotifyReceiptItem {
 	out := &corev1.SessionNotifyReceiptItem{
 		Label:          text.Msg(text.KeySessionNotifyReceipt),
 		Time:           receiptTimeText(ts, cal),
 		ScheduledRunId: n.GetRunId(),
 	}
-	copyOfReply := e.GetOrigin().GetKind() == v1.OriginKind_ORIGIN_KIND_SYSTEM && e.TurnId != "" && repliedTurns[e.TurnId]
+	copyOfReply := e.GetOrigin().GetKind() == v1.OriginKind_ORIGIN_KIND_SYSTEM && e.TurnId != "" && copiesReply(n.GetText(), replies[e.TurnId])
 	body := strings.TrimSpace(strings.ReplaceAll(n.GetText(), "\r\n", "\n"))
 	if copyOfReply || body == "" {
 		return out
@@ -67,15 +70,45 @@ func receiptTimeText(ms int64, cal lists.Calendar) *corev1.Text {
 	return text.Time(ms, corev1.TimestampStyle_TIMESTAMP_STYLE_DATE_TIME)
 }
 
-// turnsWithReplies lists the turns in which the agent said something.
-func turnsWithReplies(events []*v1.Event) map[string]bool {
-	out := map[string]bool{}
+// replyTexts collects each turn's agent replies, kept to letters and
+// digits for copiesReply.
+func replyTexts(events []*v1.Event) map[string][]string {
+	out := map[string][]string{}
 	for _, e := range events {
-		if m := e.GetAgentMessage(); m != nil && e.TurnId != "" && strings.TrimSpace(m.Text) != "" {
-			out[e.TurnId] = true
+		if m := e.GetAgentMessage(); m != nil && e.TurnId != "" {
+			if t := lettersAndDigits(m.Text); t != "" {
+				out[e.TurnId] = append(out[e.TurnId], t)
+			}
 		}
 	}
 	return out
+}
+
+// copiesReply reports whether a push's text is the start of one of the
+// turn's replies. The computer cuts the reply to 200 characters and drops
+// its line breaks, and Markdown marks differ from what was sent, so both
+// sides keep only letters and digits before comparing.
+func copiesReply(notice string, replies []string) bool {
+	n := lettersAndDigits(notice)
+	if n == "" {
+		return false
+	}
+	for _, r := range replies {
+		if strings.HasPrefix(r, n) {
+			return true
+		}
+	}
+	return false
+}
+
+func lettersAndDigits(s string) string {
+	var b strings.Builder
+	for _, r := range s {
+		if unicode.IsLetter(r) || unicode.IsDigit(r) {
+			b.WriteRune(r)
+		}
+	}
+	return b.String()
 }
 
 // placeReceiptsInTurns moves each receipt that came after its turn's
