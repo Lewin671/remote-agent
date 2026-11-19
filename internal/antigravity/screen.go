@@ -36,7 +36,11 @@ func composerRegion(styled string) (lines []string, top, bottom int, ok bool) {
 		if previous >= 0 && i-previous >= 2 && i-previous <= 40 && strings.HasPrefix(strings.TrimSpace(StripANSI(lines[previous+1])), ">") {
 			valid := true
 			for _, row := range lines[previous+1 : i] {
-				if spinnerRE.MatchString(strings.TrimSpace(StripANSI(row))) {
+				trimmed := strings.TrimSpace(StripANSI(row))
+				if spinnerRE.MatchString(trimmed) {
+					valid = false
+				}
+				if after, hasCursor := strings.CutPrefix(trimmed, ">"); hasCursor && backgroundRowRE.MatchString(strings.TrimSpace(after)) {
 					valid = false
 				}
 			}
@@ -49,22 +53,35 @@ func composerRegion(styled string) (lines []string, top, bottom int, ok bool) {
 	return
 }
 
-var backgroundRowRE = regexp.MustCompile(`^● \[\d{2}:\d{2}:\d{2}\] .+`)
+var backgroundRowRE = regexp.MustCompile(`^[●○✓✗] (?:\[\d{2}:\d{2}:\d{2}\] .+|(?:Agent|Swarm)\(.*)`)
+var backgroundMoreRE = regexp.MustCompile(`^[↑↓] \d+ more$`)
 
 // A panel may leave the composer visible. Its immediate trailing section is
 // interactive until proved otherwise; the native background bar is passive.
 func trailingPanel(lines []string, bottom int) string {
 	tail := lines[bottom+1:]
-	for len(tail) > 0 && backgroundRowRE.MatchString(strings.TrimSpace(StripANSI(tail[0]))) {
-		// The task bar is one group, with a single closing rule. Both
-		// the task name and its status can be clipped to the pane width.
-		for len(tail) > 0 && backgroundRowRE.MatchString(strings.TrimSpace(StripANSI(tail[0]))) {
-			tail = tail[1:]
+	for len(tail) > 0 {
+		i := 0
+		if backgroundMoreRE.MatchString(strings.TrimSpace(StripANSI(tail[0]))) {
+			i++
 		}
-		if len(tail) == 0 || !dividerRE.MatchString(strings.TrimSpace(StripANSI(tail[0]))) {
+		hasItem := false
+		// The active-items tray is one group, with a single closing rule. Both
+		// task/agent names and statuses can be clipped to the pane width.
+		for i < len(tail) && backgroundRowRE.MatchString(strings.TrimSpace(StripANSI(tail[i]))) {
+			hasItem = true
+			i++
+		}
+		if !hasItem {
+			break
+		}
+		if i < len(tail) && backgroundMoreRE.MatchString(strings.TrimSpace(StripANSI(tail[i]))) {
+			i++
+		}
+		if i >= len(tail) || !dividerRE.MatchString(strings.TrimSpace(StripANSI(tail[i]))) {
 			return "unknown panel"
 		}
-		tail = tail[1:]
+		tail = tail[i+1:]
 	}
 	// Since 1.5.9 the default footer can directly follow the composer or
 	// task bar. It is passive; still inspect any following menu controls.

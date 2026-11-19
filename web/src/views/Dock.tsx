@@ -630,7 +630,7 @@ function PopupDock({
         title ? (
           <>
             <div className="q mono">{title}</div>
-            {hint ? <div className="y">{hint}</div> : trustHint && isTrust && <div className="y">{formatTrustHint(trustHint)}</div>}
+            {hint ? <div className="y">{formatTrustHint(hint)}</div> : trustHint && isTrust && <div className="y">{formatTrustHint(trustHint)}</div>}
           </>
         ) : undefined
       }

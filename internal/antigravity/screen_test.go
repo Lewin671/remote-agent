@@ -317,3 +317,77 @@ func TestBackgroundBarRequiresNativeBoundary(t *testing.T) {
 		}
 	}
 }
+
+func TestActiveItemsTraySubagentsAndSwarm(t *testing.T) {
+	a := New("", "")
+	base := "────────────────────\n> \n────────────────────\n"
+	customFooter := "\nOrchestrator │ co-work-space main │ idle 1s · hit 93%\nctx ██████░░░░ 30%\n5h  ████░░░░░░ 22% ↻ 9m (03:22)\n7d  █████░░░░░ 29% ↻ 5d 12h (Tue 15:33)\n"
+
+	t.Run("screenshot-subagent-tray-and-custom-footer", func(t *testing.T) {
+		tray := "  ● Agent(self: iOS SwiftUI Worker) · Gemini 4 Hydrog... Generating · 35m3s\n" +
+			"  ● Agent(self: Web Frontend Worker) · Gemini 4 Hydrog... Generating · 35m8s\n" +
+			"────────────────────────────────────────────────────────────────────────\n"
+		screen := base + tray + customFooter
+		s := a.Analyze(screen)
+		if !s.ComposerReady || !s.DraftEmpty || s.Busy || s.Popup != "" {
+			t.Fatalf("passive subagent tray blocked composer: %+v", s)
+		}
+		if text, ok := a.ComposerText(screen, ""); !ok || text != "" {
+			t.Fatalf("composer text: %q, ok=%v", text, ok)
+		}
+	})
+
+	t.Run("tray-variants-narrow-swarm-mixed-and-scroll", func(t *testing.T) {
+		variants := []string{
+			"  ● Agent(self: iOS",
+			"  ● Swarm(Settings Redesign) · #4 worker Done",
+			"  ● Swarm()",
+			"  ○ Agent(self: Researcher) · idle",
+			"  ✓ Swarm(Audit) · Done",
+			"  ● [07:27:33] sleep 60 running\n  ● Agent(self: Worker) · Generating\n  ● Swarm(Team) · 2 working",
+			"  ↑ 1 more\n  ● Agent(self: Worker) · Generating\n  ↓ 3 more",
+		}
+		for _, rows := range variants {
+			screen := base + rows + "\n────────────────────\n? for shortcuts\n"
+			s := a.Analyze(screen)
+			if !s.ComposerReady || !s.DraftEmpty || s.Popup != "" {
+				t.Fatalf("tray variant %q blocked composer: %+v", rows, s)
+			}
+			if text, ok := a.ComposerText(screen, ""); !ok || text != "" {
+				t.Fatalf("tray variant %q hid composer text: %q, ok=%v", rows, text, ok)
+			}
+		}
+	})
+
+	t.Run("negative-cases-stay-popup", func(t *testing.T) {
+		unclosed := base + "  ● Agent(self: Worker) · Generating\n" + customFooter
+		if s := a.Analyze(unclosed); s.Popup == "" || s.ComposerReady {
+			t.Fatalf("unclosed subagent tray was trusted: %+v", s)
+		}
+
+		focusedFirst := base + "  › ● Agent(self: Worker) · Generating\n────────────────────\n"
+		if s := a.Analyze(focusedFirst); s.Popup == "" || s.ComposerReady {
+			t.Fatalf("focused first tray row was trusted: %+v", s)
+		}
+
+		focusedSecond := base + "  ● Agent(self: Worker 1) · Generating\n  › ● Agent(self: Worker 2) · Generating\n────────────────────\n"
+		if s := a.Analyze(focusedSecond); s.Popup == "" || s.ComposerReady {
+			t.Fatalf("focused second tray row was trusted: %+v", s)
+		}
+
+		focusedArrow := base + "  > ● Agent(self: Worker) · Generating\n────────────────────\n"
+		if s := a.Analyze(focusedArrow); s.Popup == "" || s.ComposerReady {
+			t.Fatalf("focused > tray row was trusted: %+v", s)
+		}
+
+		onlyMore := base + "  ↑ 2 more\n────────────────────\n"
+		if s := a.Analyze(onlyMore); s.Popup == "" || s.ComposerReady {
+			t.Fatalf("only-more tray without items was trusted: %+v", s)
+		}
+
+		withMenu := base + "  ● Agent(self: Worker) · Generating\n────────────────────\nUnknown dialog\n> 1. Choose\nKeyboard: Navigate\n"
+		if s := a.Analyze(withMenu); s.Popup == "" || s.ComposerReady {
+			t.Fatalf("subagent tray hid active menu: %+v", s)
+		}
+	})
+}

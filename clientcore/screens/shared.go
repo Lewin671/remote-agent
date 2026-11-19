@@ -226,11 +226,7 @@ func buildSessionRow(item *lists.SessionItem, meta lists.RowMeta, cal lists.Cale
 	var preview *corev1.Text
 	switch item.ShownStatus {
 	case lists.StatusPopup:
-		if item.Session != nil && item.Session.Pending.PopupPreview != "" {
-			preview = text.Plain(item.Session.Pending.PopupPreview)
-		} else if item.StatusDetail != "" {
-			preview = text.Plain(item.StatusDetail)
-		}
+		preview = text.Msg(text.KeyListStatePopup)
 	case lists.StatusApproval:
 		if item.Session != nil && item.Session.Pending.HasApproval {
 			if item.Session.Pending.ApprovalCommand != "" {

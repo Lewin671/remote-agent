@@ -399,3 +399,55 @@ func TestBuildHomeAndSessionColdStartReachabilityUnknown(t *testing.T) {
 		})
 	}
 }
+
+func TestBuildHomePopupRowLocalizesDiagnosticPreview(t *testing.T) {
+	st := NewState()
+	st.Cal = lists.Calendar{NowMs: 1_700_000_000_000}
+	st.World.Connection = lists.ConnConnected
+	st.World.LiveLoaded = true
+	st.World.MachinesListed = true
+	st.World.SessionsListed = true
+	st.World.Machines = []*lists.Machine{
+		{
+			ID:     "m1",
+			Online: true,
+			Meta:   &v1.MachineMeta{Hostname: "dev-box"},
+		},
+	}
+	st.World.Sessions = []*lists.Session{
+		{
+			ID:        "s-popup",
+			MachineID: "m1",
+			UpdatedMs: 1_700_000_000_000,
+			Info: &v1.Session{
+				Id:           "s-popup",
+				Cwd:          "/work/app",
+				Title:        "Investigate popup",
+				Status:       v1.SessionStatus_SESSION_STATUS_BLOCKED,
+				StatusDetail: "● Agent(self: Worker) · Generating",
+			},
+			Pending: lists.PendingAction{
+				HasPopup:     true,
+				PopupPreview: "● Agent(self: Worker) · Generating",
+			},
+		},
+	}
+
+	vm := BuildHome(st, 0)
+	if len(vm.Attention) != 1 {
+		t.Fatalf("expected 1 attention row, got %d", len(vm.Attention))
+	}
+	att := vm.Attention[0]
+	if att == nil || att.GetKindText() == nil || att.GetKindText().GetKey() != "list_state.popup" {
+		t.Fatalf("expected attention kind key list_state.popup, got %+v", att)
+	}
+
+	pvm := BuildProject(st, lists.ProjectKey(st.World.Sessions[0]), false, 0)
+	active := pvm.GetDetail().GetActive()
+	if len(active) != 1 {
+		t.Fatalf("expected 1 active project row, got %d", len(active))
+	}
+	if active[0].GetPreview() == nil || active[0].GetPreview().GetKey() != "list_state.popup" {
+		t.Fatalf("expected popup row preview key list_state.popup without leaking diagnostic, got %+v", active[0])
+	}
+}

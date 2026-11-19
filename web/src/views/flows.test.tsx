@@ -1730,8 +1730,25 @@ it("tells how to trust a folder in Claude Code, whose prompt starts on No, exit"
     });
   await mountAsync(<HostDock r={r} sid="s-popup" dockOverride={popupDock(true)} />);
   expect(host.textContent).toContain(message("dock.trust_folder"));
+  expect(Array.from(host.querySelectorAll(".tc .y b")).map((b) => b.textContent)).toEqual(["No, exit", "Yes, I trust this folder"]);
   await act(async () => root!.render(<HostDock r={r} sid="s-popup" dockOverride={popupDock(false)} />));
   expect(host.textContent).not.toContain("No, exit");
+});
+
+it("renders generic terminal popup from core without other_terminal or duplicated action hint", async () => {
+  const r = demo();
+  patchDemoSession(r, "s-popup", {
+    agent: Agent.ANTIGRAVITY,
+    status: SessionStatus.BLOCKED,
+    statusDetail: "MCP Servers",
+  });
+  await mountAsync(<HostDock r={r} sid="s-popup" />);
+  expect(host.querySelector(".tc .k")?.textContent).toContain(message("list_state.popup"));
+  expect(host.querySelector(".tc .k")?.textContent).toContain(message("dock.agent_waiting", { agent: "Antigravity" }));
+  expect(host.querySelector(".tc .q")?.textContent).toBe(message("list_state.popup"));
+  expect(host.querySelector(".tc .y")).toBeNull();
+  expect(host.textContent).not.toContain(message("dock.other_terminal"));
+  expect(host.querySelector(".tc .btns .btn")?.textContent).toBe(message("dock.handle_terminal"));
 });
 
 it("shows a running file edit in one line", async () => {

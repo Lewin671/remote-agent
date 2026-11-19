@@ -1088,18 +1088,33 @@ func buildSessionDock(
 	if hasPopup {
 		out.HasItem = true
 		out.Kind = corev1.SessionDockKind_SESSION_DOCK_KIND_TERMINAL_POPUP
-		out.ItemId = "terminal-popup"
-		title := text.Msg(text.KeyDockOtherTerminal)
-		if metaInfo != nil && strings.Contains(strings.ToLower(metaInfo.StatusDetail), "trust") {
-			title = text.Msg(text.KeyDockTrustFolder)
+		detail := ""
+		if metaInfo != nil {
+			detail = metaInfo.StatusDetail
 		}
-		out.Title = title
-		out.Summary = text.Msg(text.KeyDockHandleTerminal)
+		if detail == "" && ls != nil {
+			detail = ls.Pending.PopupPreview
+		}
+		out.ItemId = "terminal-popup"
+		if detail != "" {
+			out.ItemId = detail
+		}
+		var popupTitle *corev1.Text
+		if detail != "" {
+			popupTitle = text.Msg(text.KeyListStatePopup)
+		}
+		var hint *corev1.Text
+		if caps.Agent == v1.Agent_AGENT_CLAUDE && detail == "trust folder" {
+			hint = text.Msg(text.KeyDockTrustFolder)
+		}
+		out.Title = text.Msg(text.KeyListStatePopup)
+		out.Summary = popupTitle
+		out.Meta = text.Msg(text.KeyDockAgentWaiting, text.Str("agent", caps.Name))
 		termAvail := metaInfo != nil && metaInfo.Status != v1.SessionStatus_SESSION_STATUS_EXITED
 		out.Detail = &corev1.SessionDockView_TerminalPopup{
 			TerminalPopup: &corev1.SessionTerminalPopupDockView{
-				PopupTitle:    title,
-				Hint:          text.Msg(text.KeyDockHandleTerminal),
+				PopupTitle:    popupTitle,
+				Hint:          hint,
 				CanGoTerminal: termAvail,
 			},
 		}

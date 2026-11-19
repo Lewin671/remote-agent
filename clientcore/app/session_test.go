@@ -958,3 +958,153 @@ func TestCoreClearsTimelineCacheOnTrimHistoryEviction(t *testing.T) {
 		t.Fatalf("expected timeline cache to be released when trimHistory evicts EventBuffer")
 	}
 }
+
+func TestSessionTerminalPopupDockLocalizationAndTrustHint(t *testing.T) {
+	cases := []struct {
+		name           string
+		agent          v1.Agent
+		wantAgentName  string
+		statusDetail   string
+		wantItemID     string
+		wantHasTitle   bool
+		wantHintKey    string
+	}{
+		{
+			name:          "antigravity_generic_popup",
+			agent:         v1.Agent_AGENT_ANTIGRAVITY,
+			wantAgentName: "Antigravity",
+			statusDetail:  "MCP Servers",
+			wantItemID:    "MCP Servers",
+			wantHasTitle:  true,
+		},
+		{
+			name:          "codex_unknown_panel",
+			agent:         v1.Agent_AGENT_CODEX,
+			wantAgentName: "Codex",
+			statusDetail:  "unknown panel",
+			wantItemID:    "unknown panel",
+			wantHasTitle:  true,
+		},
+		{
+			name:          "claude_trust_folder_shows_hint",
+			agent:         v1.Agent_AGENT_CLAUDE,
+			wantAgentName: "Claude Code",
+			statusDetail:  "trust folder",
+			wantItemID:    "trust folder",
+			wantHasTitle:  true,
+			wantHintKey:   "dock.trust_folder",
+		},
+		{
+			name:          "codex_trust_folder_hides_claude_hint",
+			agent:         v1.Agent_AGENT_CODEX,
+			wantAgentName: "Codex",
+			statusDetail:  "trust folder",
+			wantItemID:    "trust folder",
+			wantHasTitle:  true,
+		},
+		{
+			name:          "antigravity_trust_folder_hides_claude_hint",
+			agent:         v1.Agent_AGENT_ANTIGRAVITY,
+			wantAgentName: "Antigravity",
+			statusDetail:  "trust folder",
+			wantItemID:    "trust folder",
+			wantHasTitle:  true,
+		},
+		{
+			name:          "empty_status_detail_omits_popup_title_and_hint",
+			agent:         v1.Agent_AGENT_ANTIGRAVITY,
+			wantAgentName: "Antigravity",
+			statusDetail:  "",
+			wantItemID:    "terminal-popup",
+			wantHasTitle:  false,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			c := bootstrapReadyApp(t,
+				[]*corev1.PlainMachine{{MachineId: "m-1", Online: true, Meta: &v1.MachineMeta{Hostname: "dev"}}},
+				[]*corev1.PlainSession{{
+					SessionId: "s-popup",
+					MachineId: "m-1",
+					UpdatedMs: 1_791_078_050_000,
+					Meta: &v1.Session{
+						Id:           "s-popup",
+						Cwd:          "/work/app",
+						Agent:        tc.agent,
+						Status:       v1.SessionStatus_SESSION_STATUS_BLOCKED,
+						StatusDetail: tc.statusDetail,
+					},
+					Checkpoint: &v1.LiveSnapshot{
+						Session: &v1.Session{
+							Id:           "s-popup",
+							Cwd:          "/work/app",
+							Agent:        tc.agent,
+							Status:       v1.SessionStatus_SESSION_STATUS_BLOCKED,
+							StatusDetail: tc.statusDetail,
+						},
+					},
+				}},
+			)
+			watchBatch := c.Dispatch(&corev1.Event{
+				NowMs: 1_791_078_060_060,
+				Event: &corev1.Event_SessionWatch{
+					SessionWatch: &corev1.SessionWatchEvent{SessionId: "s-popup", Watched: true},
+				},
+			})
+			c.Dispatch(&corev1.Event{
+				NowMs: 1_791_078_060_070,
+				Event: &corev1.Event_CacheEventsLoaded{
+					CacheEventsLoaded: &corev1.CacheEventsLoadedEvent{
+						OpId:      watchCacheReadOpID(watchBatch),
+						SessionId: "s-popup",
+					},
+				},
+			})
+
+			vm, err := c.View(&corev1.Screen{Screen: &corev1.Screen_Session{Session: &corev1.SessionScreenRequest{SessionId: "s-popup"}}})
+			if err != nil {
+				t.Fatalf("View: %v", err)
+			}
+			dock := vm.GetSession().GetDock()
+			if !dock.GetHasItem() || dock.GetKind() != corev1.SessionDockKind_SESSION_DOCK_KIND_TERMINAL_POPUP {
+				t.Fatalf("expected TERMINAL_POPUP dock, got %+v", dock)
+			}
+			if dock.GetItemId() != tc.wantItemID {
+				t.Fatalf("ItemId = %q, want %q", dock.GetItemId(), tc.wantItemID)
+			}
+			if dock.GetTitle().GetKey() != "list_state.popup" {
+				t.Fatalf("Title = %+v, want list_state.popup", dock.GetTitle())
+			}
+			if args := dock.GetMeta().GetArgs(); dock.GetMeta().GetKey() != "dock.agent_waiting" || len(args) != 1 || args[0].GetName() != "agent" || args[0].GetStrValue() != tc.wantAgentName {
+				t.Fatalf("Meta = %+v, want dock.agent_waiting(%q)", dock.GetMeta(), tc.wantAgentName)
+			}
+			tp := dock.GetTerminalPopup()
+			if tp == nil || !tp.GetCanGoTerminal() {
+				t.Fatalf("expected TerminalPopup with CanGoTerminal=true, got %+v", tp)
+			}
+			if tc.wantHasTitle {
+				if dock.GetSummary().GetKey() != "list_state.popup" {
+					t.Fatalf("Summary = %+v, want list_state.popup", dock.GetSummary())
+				}
+				if tp.GetPopupTitle().GetKey() != "list_state.popup" {
+					t.Fatalf("PopupTitle = %+v, want list_state.popup", tp.GetPopupTitle())
+				}
+			} else {
+				if dock.GetSummary() != nil {
+					t.Fatalf("expected nil Summary when statusDetail empty, got %+v", dock.GetSummary())
+				}
+				if tp.GetPopupTitle() != nil {
+					t.Fatalf("expected nil PopupTitle when statusDetail empty, got %+v", tp.GetPopupTitle())
+				}
+			}
+			gotHintKey := ""
+			if tp.GetHint() != nil {
+				gotHintKey = tp.GetHint().GetKey()
+			}
+			if gotHintKey != tc.wantHintKey {
+				t.Fatalf("Hint key = %q, want %q (hint=%+v)", gotHintKey, tc.wantHintKey, tp.GetHint())
+			}
+		})
+	}
+}
