@@ -50,6 +50,7 @@ import {
   Download as LDownload,
   Trash2 as LTrash2,
   Cpu as LCpu,
+  Gauge as LGauge,
   MemoryStick as LMemoryStick,
   HardDrive as LHardDrive,
   SquareTerminal as LSquareTerminal,
@@ -151,3 +152,5 @@ export const DiskIcon = icon(LHardDrive);
 export const TerminalIcon = icon(LSquareTerminal);
 /** Direct connection marker. */
 export const Zap = icon(LZap);
+/** Usage & speed indicator. */
+export const Gauge = icon(LGauge);

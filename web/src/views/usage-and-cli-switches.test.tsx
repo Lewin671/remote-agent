@@ -102,56 +102,89 @@ describe("Phase 2 formatters and bounds", () => {
   });
 });
 
+const cliRow = (name: string) =>
+  [...hostEl.querySelectorAll<HTMLButtonElement>(".cli-row")].find(
+    (b) => b.querySelector(".row-name b")?.textContent === name,
+  )!;
+const closeSheet = async () => {
+  const done = [...document.querySelectorAll<HTMLButtonElement>(".sheet .sheet-head button")].find(
+    (b) => b.textContent === message("common.done"),
+  )!;
+  await act(async () => done.click());
+  await flushUi();
+};
+
 describe("Per-machine CLI switches and entry points", () => {
-  it("renders accessible switches, toggles agents, and locks the last remaining CLI", async () => {
+  it("opens CLI sheet with accessible switches, toggles agents, and locks the last remaining CLI", async () => {
     const r = createDemo("cliswitches=normal");
     await mountAsync(<MachinePage remote={r} id="mac" go={() => undefined} onBack={() => undefined} />);
-    const switches = [...hostEl.querySelectorAll<HTMLButtonElement>('.cli-sw-grp [role="switch"]')];
-    expect(switches).toHaveLength(3);
-    expect(switches[2].getAttribute("aria-checked")).toBe("true");
 
-    // Disable Antigravity
-    await act(async () => switches[2].click());
+    // Disable Antigravity in its CLI sheet
+    await act(async () => cliRow("Antigravity").click());
     await flushUi();
-    expect(switches[2].getAttribute("aria-checked")).toBe("false");
+    let sw = document.querySelector<HTMLButtonElement>('.sheet [role="switch"]')!;
+    expect(sw.getAttribute("aria-checked")).toBe("true");
+    await act(async () => sw.click());
+    await flushUi();
+    sw = document.querySelector<HTMLButtonElement>('.sheet [role="switch"]')!;
+    expect(sw.getAttribute("aria-checked")).toBe("false");
+    expect(document.querySelector(".sheet")!.textContent).toContain(message("settings.cli_disabled_explanation"));
+    await closeSheet();
 
     // Disable Claude -> Codex becomes locked last enabled
-    await act(async () => switches[1].click());
+    await act(async () => cliRow("Claude Code").click());
     await flushUi();
-    const refreshed = [...hostEl.querySelectorAll<HTMLButtonElement>('.cli-sw-grp [role="switch"]')];
-    expect(refreshed[0].disabled).toBe(true);
-    expect(refreshed[0].getAttribute("aria-checked")).toBe("true");
-    expect(refreshed[0].textContent).toContain(message("settings.cli_switches_keep_one"));
-    expect(refreshed[0].getAttribute("aria-label")).toContain(message("settings.cli_switches_keep_one"));
+    await act(async () => document.querySelector<HTMLButtonElement>('.sheet [role="switch"]')!.click());
+    await flushUi();
+    await closeSheet();
+
+    await act(async () => cliRow("Codex").click());
+    await flushUi();
+    const codexSw = document.querySelector<HTMLButtonElement>('.sheet [role="switch"]')!;
+    expect(codexSw.disabled).toBe(true);
+    expect(codexSw.getAttribute("aria-checked")).toBe("true");
+    expect(codexSw.textContent).toContain(message("settings.cli_switches_keep_one"));
+    expect(codexSw.getAttribute("aria-label")).toContain(message("settings.cli_switches_keep_one"));
+    expect(codexSw.querySelector(".sw.locked")).toBeTruthy();
   });
 
   it("shows offline, lease-expired, and conflict states and falls back cleanly on legacy machines", async () => {
     const rOffline = createDemo("cliswitches=offline");
     await mountAsync(<MachinePage remote={rOffline} id="mac" go={() => undefined} onBack={() => undefined} />);
-    expect(hostEl.textContent).toContain(message("settings.cli_switches_offline_reason", { name: "MacBook" }));
-    expect([...hostEl.querySelectorAll<HTMLButtonElement>('.cli-sw-grp [role="switch"]')].every((el) => el.disabled)).toBe(true);
+    await act(async () => cliRow("Codex").click());
+    await flushUi();
+    expect(document.querySelector(".sheet")!.textContent).toContain(
+      message("settings.cli_switches_offline_reason", { name: "MacBook" }),
+    );
+    expect(document.querySelector<HTMLButtonElement>('.sheet [role="switch"]')!.disabled).toBe(true);
+    await closeSheet();
 
     act(() => root?.unmount());
     hostEl.remove();
 
     const rConflict = createDemo("cliswitches=conflict");
     await mountAsync(<MachinePage remote={rConflict} id="mac" go={() => undefined} onBack={() => undefined} />);
-    const first = hostEl.querySelector<HTMLButtonElement>('.cli-sw-grp [role="switch"]')!;
-    await act(async () => first.click());
+    await act(async () => cliRow("Codex").click());
     await flushUi();
-    expect(hostEl.textContent).toContain(message("settings.cli_switches_conflict"));
+    await act(async () => document.querySelector<HTMLButtonElement>('.sheet [role="switch"]')!.click());
+    await flushUi();
+    expect(document.querySelector(".sheet")!.textContent).toContain(message("settings.cli_switches_conflict"));
+    await closeSheet();
 
     act(() => root?.unmount());
     hostEl.remove();
 
-    // VPS has cliSwitches=false -> renders read-only cli_version row without switches
+    // VPS has cliSwitches=false -> opens CLI sheet with readonly version and no enable switch
     await mountAsync(<MachinePage remote={rConflict} id="vps" go={() => undefined} onBack={() => undefined} />);
-    expect(hostEl.querySelectorAll('.cli-sw-grp [role="switch"]')).toHaveLength(0);
-    expect(hostEl.textContent).toContain("Codex");
+    await act(async () => cliRow("Codex").click());
+    await flushUi();
+    expect(document.querySelectorAll('.sheet [role="switch"]')).toHaveLength(0);
+    expect(document.querySelector(".sheet")!.textContent).toContain(message("settings.cli_installed_version"));
+    expect(document.querySelector(".sheet")!.textContent).toContain("Codex");
   });
 
   it("routes ENABLE_AGENT in NewBoxView and enable_cli in ScheduleDetailView to machine settings", async () => {
-    const openedMachines: string[] = [];
+    const opened: Array<[string, Agent | undefined]> = [];
     const vm = create(NewSessionViewModelSchema, {
       projectKey: "p1",
       notices: [
@@ -160,6 +193,7 @@ describe("Per-machine CLI switches and entry points", () => {
           severity: NoticeSeverity.INFO,
           action: NoticeActionKind.ENABLE_AGENT,
           targetMachineId: "mac",
+          targetAgent: Agent.CLAUDE,
           text: create(TextSchema, { literal: "disabled fallback" }),
         }),
       ],
@@ -175,7 +209,7 @@ describe("Per-machine CLI switches and entry points", () => {
         onSetPrompt={() => undefined}
         onSubmit={() => undefined}
         onAbandonStart={() => undefined}
-        onOpenMachineSettings={(id) => openedMachines.push(id)}
+        onOpenMachineSettings={(id, agent) => opened.push([id, agent])}
         onOpenDiskUsage={() => undefined}
         onReaddProject={() => undefined}
       />,
@@ -183,7 +217,7 @@ describe("Per-machine CLI switches and entry points", () => {
     const btn = [...hostEl.querySelectorAll("button")].find((b) => b.textContent?.includes(message("new_session.enable_agent")));
     expect(btn).toBeTruthy();
     btn!.click();
-    expect(openedMachines).toEqual(["mac"]);
+    expect(opened).toEqual([["mac", Agent.CLAUDE]]);
 
     act(() => root?.unmount());
     hostEl.remove();

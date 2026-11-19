@@ -3,7 +3,7 @@ import { t } from "../i18n";
 
 import { Fragment, useEffect, useLayoutEffect, useRef, useState, type ComponentProps, type ReactNode } from "react";
 import { AgentMark } from "../agent-mark";
-import { useCoreHost, useNewSessionView, useProjectView, type Go, type StartTraySnapshot } from "../core/host";
+import { useCoreHost, useNewSessionView, useProjectView, routeForMachineCli, routeForMachineSettings, type Go, type StartTraySnapshot } from "../core/host";
 import { renderText } from "../core/text";
 import { NoticeActionKind, NoticeKind, NoticeSeverity, type NewSessionNoticeView, type NewSessionViewModel } from "../gen/remoteagent/core/v1/new_session_view_pb";
 import { Agent } from "../gen/remoteagent/v1/event_pb";
@@ -61,7 +61,7 @@ export function NewBoxView(p: {
   onSubmit: () => void;
   onRetryDiskFull?: () => void;
   onAbandonStart: () => void;
-  onOpenMachineSettings: (machineId: string) => void;
+  onOpenMachineSettings: (machineId: string, agent?: Agent) => void;
   onOpenDiskUsage: (machineId: string) => void;
   onReaddProject: () => void;
   onRegisterTray?: (projectKey: string, getter: () => StartTraySnapshot) => () => void;
@@ -228,7 +228,7 @@ export function NewBoxView(p: {
         case NoticeActionKind.CHANGE_MACHINE: setConfig("machine"); break;
         case NoticeActionKind.CHANGE_MODEL: setChoosing(false); setConfig("model"); p.onRetryModels(); break;
         case NoticeActionKind.OPEN_MACHINE_SETTINGS: p.onOpenMachineSettings(n.targetMachineId || machineId); break;
-        case NoticeActionKind.ENABLE_AGENT: p.onOpenMachineSettings(n.targetMachineId || machineId); break;
+        case NoticeActionKind.ENABLE_AGENT: p.onOpenMachineSettings(n.targetMachineId || machineId, n.targetAgent || undefined); break;
         case NoticeActionKind.RETRY_SAVE_CONFIG: p.onRetrySaveConfig(); break;
         case NoticeActionKind.READD_PROJECT: p.onReaddProject(); break;
         case NoticeActionKind.RETRY_READ_SETTINGS: p.onRetryModels(); break;
@@ -414,7 +414,9 @@ export function NewBox({ remote, projectKey, go, autoFocus, variant = "sheet", f
       onSubmit={() => host.newSessionSubmit(activeKey)}
       onRetryDiskFull={() => host.newSessionSubmit(activeKey)}
       onAbandonStart={() => host.newSessionAbandonStart(activeKey)}
-      onOpenMachineSettings={(machineId) => go("m/" + machineId)}
+      onOpenMachineSettings={(machineId, agent) =>
+        go(agent ? routeForMachineCli(machineId, agent) : routeForMachineSettings(machineId))
+      }
       onOpenDiskUsage={(machineId) => go("machine-status/" + encodeURIComponent(machineId))}
       onReaddProject={() => host.projectToggleHide(activeKey)}
       onRegisterTray={(k, getter) => host.registerTray(k, getter)}

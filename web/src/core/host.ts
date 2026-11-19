@@ -374,8 +374,24 @@ export function routeForProject(projectKey: string): string {
   return projectKey ? "p/" + encodeURIComponent(projectKey) : "projects";
 }
 
+export function routeForProjects(machineId = ""): string {
+  return machineId ? "projects/" + encodeURIComponent(machineId) : "projects";
+}
+
 export function routeForMachineSettings(machineId: string): string {
   return "m/" + machineId;
+}
+
+export function routeForMachineStorage(machineId: string): string {
+  return "m/" + encodeURIComponent(machineId) + "/storage";
+}
+
+export function routeForMachineDirect(machineId: string): string {
+  return "m/" + encodeURIComponent(machineId) + "/direct";
+}
+
+export function routeForMachineCli(machineId: string, agent: Agent): string {
+  return "m/" + encodeURIComponent(machineId) + "/cli/" + encodeURIComponent(String(agent));
 }
 
 export function routeForMachineStatus(machineId: string): string {
@@ -622,7 +638,7 @@ export class CoreHost {
   private totalListeners = 0;
 
   private homeCache?: { version: number; endedLimit: number; vm: HomeViewModel };
-  private projectCache?: { version: number; key: string; manage: boolean; endedLimit: number; vm: ProjectViewModel };
+  private projectCache?: { version: number; key: string; manage: boolean; endedLimit: number; machineId: string; vm: ProjectViewModel };
   private sessionCache = new Map<string, { version: number; windowKey: string; vm: SessionViewModel }>();
   private newSessionCache?: { version: number; key: string; vm: NewSessionViewModel };
   private syncStateCache?: { version: number; view: SyncStateView };
@@ -1462,22 +1478,23 @@ export class CoreHost {
     return value;
   }
 
-  viewProject(projectKey: string, manage: boolean, endedLimit = 30): ProjectViewModel {
+  viewProject(projectKey: string, manage: boolean, endedLimit = 30, machineId = ""): ProjectViewModel {
     const ver = this.version(ScreenTarget.PROJECT);
     if (
       this.projectCache &&
       this.projectCache.version === ver &&
       this.projectCache.key === projectKey &&
       this.projectCache.manage === manage &&
-      this.projectCache.endedLimit === endedLimit
+      this.projectCache.endedLimit === endedLimit &&
+      this.projectCache.machineId === machineId
     ) {
       return this.projectCache.vm;
     }
     const value = this.queryView<ProjectViewModel>(
-      { case: "project", value: create(ProjectScreenRequestSchema, { projectKey, manage, endedLimit }) },
+      { case: "project", value: create(ProjectScreenRequestSchema, { projectKey, manage, endedLimit, machineId }) },
       "project",
     );
-    this.projectCache = { version: ver, key: projectKey, manage, endedLimit, vm: value };
+    this.projectCache = { version: ver, key: projectKey, manage, endedLimit, machineId, vm: value };
     return value;
   }
 
@@ -2412,9 +2429,9 @@ export function useHomeView(host: CoreHost, endedLimit = 30): HomeViewModel {
   return useMemo(() => host.viewHome(endedLimit), [host, version, endedLimit]);
 }
 
-export function useProjectView(host: CoreHost, projectKey: string, manage: boolean, endedLimit = 30): ProjectViewModel {
+export function useProjectView(host: CoreHost, projectKey: string, manage: boolean, endedLimit = 30, machineId = ""): ProjectViewModel {
   const version = useScreenVersion(host, ScreenTarget.PROJECT);
-  return useMemo(() => host.viewProject(projectKey, manage, endedLimit), [host, version, projectKey, manage, endedLimit]);
+  return useMemo(() => host.viewProject(projectKey, manage, endedLimit, machineId), [host, version, projectKey, manage, endedLimit, machineId]);
 }
 
 export function useNewSessionView(host: CoreHost, projectKey = ""): NewSessionViewModel {

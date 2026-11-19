@@ -67,6 +67,9 @@ export function inOwnFile(route: string): boolean {
 }
 
 export const SettingsPage = page(() => settings().then((m) => ({ default: m.Settings })));
+export const NotificationsPage = page(() => settings().then((m) => ({ default: m.NotificationsPage })));
+export const ClientsPage = page(() => settings().then((m) => ({ default: m.ClientsPage })));
+export const LicensesPage = page(() => settings().then((m) => ({ default: m.LicensesPage })));
 export const ClientPage = page(() => settings().then((m) => ({ default: m.ClientPage })));
 export const DevicesPage = page(() => settings().then((m) => ({ default: m.DevicesPage })));
 export const MachinePage = page(() => settings().then((m) => ({ default: m.MachinePage })));
@@ -96,7 +99,7 @@ export function preloadRoute(route: string): Promise<void> {
   } else if (kind === "settings" && (sub === "security" || sub === "add-device")) {
     tasks.push(SecurityPage.preload(), PairCodePage.preload());
   } else if (kind === "settings" || kind === "devices" || kind === "q" || kind === "c" || kind === "m") {
-    tasks.push(SettingsPage.preload(), DevicesPage.preload(), QuotaPage.preload(), ClientPage.preload(), MachinePage.preload());
+    tasks.push(SettingsPage.preload(), NotificationsPage.preload(), ClientsPage.preload(), LicensesPage.preload(), DevicesPage.preload(), QuotaPage.preload(), ClientPage.preload(), MachinePage.preload());
   } else if (kind === "machine-status") {
     tasks.push(MachineStatusPage.preload());
   } else if (kind === "u") {

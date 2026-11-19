@@ -3206,7 +3206,7 @@ it("renders Antigravity's quota windows grouped by family on the quota page", as
   expect(bar.style.width).toBe("82%");
 });
 
-it("switches new-project defaults by CLI tab on multi-CLI machines and omits tabs on single-CLI machines", async () => {
+it("opens CLI sheet for new-project defaults on multi-CLI machines and hides CLI switch on single-CLI machines", async () => {
   const r = demo();
   const m = r.machines.get("mac")!;
   if (!m.meta!.agents.some((a) => a.agent === Agent.ANTIGRAVITY)) {
@@ -3231,21 +3231,25 @@ it("switches new-project defaults by CLI tab on multi-CLI machines and omits tab
   };
   const { MachinePage } = await import("./Settings");
   mount(<MachinePage remote={r} id="mac" go={() => undefined} onBack={() => undefined} />);
-  // The machine's page lists every window, each with what is left.
+  // The machine's page lists quota primary + window summary cleanly.
   expect([...host.querySelectorAll(".quota-line")].find((r) => r.textContent?.startsWith("Antigravity"))?.querySelector(".v")?.textContent).toBe(
-    "第三方模型；剩 60%",
+    "剩 60% · 第三方模型",
   );
-  await vi.waitFor(() => expect(host.querySelector(".cli-tabs")).not.toBeNull());
-  expect([...host.querySelectorAll(".cli-tabs button")].map((b) => b.textContent)).toEqual(["Codex", "Claude Code", "Antigravity"]);
-  await click(button("Antigravity", host.querySelector(".cli-tabs")!));
-  await click(button(new RegExp("^" + message("modes.title"))));
+  const antigravityRow = [...host.querySelectorAll<HTMLButtonElement>(".cli-row")].find((b) => b.textContent?.startsWith("Antigravity"))!;
+  await click(antigravityRow);
+  await vi.waitFor(() => expect(document.querySelector(".sheet")?.textContent).toContain(message("settings.cli_sheet_mode")));
+  await click(button(new RegExp("^" + message("settings.cli_sheet_mode")), document));
   await vi.waitFor(() => expect(button(new RegExp("^" + message("modes.auto")), document)?.disabled).toBe(true));
   expect(document.body.textContent).toContain(message("modes.account_unsupported"));
+  await click(document.querySelector<HTMLButtonElement>(`.sheet-head button[aria-label="${message("common.back")}"]`)!);
+  await click(button(message("common.done"), document));
 
-  // Single-CLI machine: no .cli-tabs, header says 新项目默认设置 · Codex.
+  // Single-CLI machine: no enable switch in CLI sheet, only readonly version + new-project defaults.
   act(() => root!.render(<MachinePage remote={r} id="vps" go={() => undefined} onBack={() => undefined} />));
-  await vi.waitFor(() => expect(host.textContent).toContain("新项目默认设置 · Codex"));
-  expect(host.querySelector(".cli-tabs")).toBeNull();
+  const vpsCodexRow = [...host.querySelectorAll<HTMLButtonElement>(".cli-row")].find((b) => b.textContent?.startsWith("Codex"))!;
+  await click(vpsCodexRow);
+  await vi.waitFor(() => expect(document.querySelector(".sheet")?.textContent).toContain(message("settings.cli_installed_version")));
+  expect(document.querySelector('.sheet [role="switch"]')).toBeNull();
 });
 
 it("shows and saves the machine's idle close setting, including a value outside the list", async () => {
@@ -4431,7 +4435,8 @@ it("puts a daemon-rejected image message back with its text, original option and
 });
 
 describe("adding devices on the current authority", () => {
-  const hint = "要添加电脑或客户端，在管理端（Android · Pixel 9）上打开「设置 › 添加设备」。";
+  const hint = "要添加电脑或客户端，在管理端（Android 16 · Pixel 9）上打开「设置 › 添加设备」。";
+  const clientHint = "要添加电脑或客户端，在管理端（Android · Pixel 9）上打开「设置 › 添加设备」。";
 
   it("says where to add a device in settings, with no 添加设备 to tap", async () => {
     const r = demo();
@@ -4444,10 +4449,10 @@ describe("adding devices on the current authority", () => {
 
   it("says the same on the devices page", async () => {
     const r = demo();
-    const { DevicesPage } = await import("./Settings");
-    mount(<DevicesPage remote={r} go={() => undefined} onBack={() => undefined} />);
-    expect(button(/添加设备|添加电脑或客户端/)).toBeUndefined();
-    expect(host.textContent).toContain(hint);
+    const { ClientsPage } = await import("./Settings");
+    mount(<ClientsPage remote={r} go={() => undefined} onBack={() => undefined} />);
+    expect(button(/添加设备|添加新客户端/)).toBeUndefined();
+    expect(host.textContent).toContain(clientHint);
   });
 
   it("tells an account with no computer where to add one, without a button", () => {
@@ -4474,20 +4479,23 @@ describe("client names", () => {
 });
 
 describe("devices in settings", () => {
-  it("draws clients with an icon as computers are, and ends every computer's row with its status", async () => {
+  it("renders unified 46px leading-icon computer rows and concise quota subtitles cleanly", async () => {
     const r = demo();
     await vi.waitFor(() => expect(r.devicesStatus).toBe("ready"));
-    const { Settings } = await import("./Settings");
+    const { Settings, ClientsPage } = await import("./Settings");
     mount(<Settings remote={r} go={() => undefined} />);
-    const rows = [...host.querySelectorAll<HTMLButtonElement>(".grp .row")].filter((x) => x.querySelector(".ico"));
-    const named = (name: string) => rows.find((x) => x.querySelector(".row-name")?.firstChild?.textContent === name)!;
-    // A computer is a card: its name, then 在线 under it, then a quota line for each CLI.
-    const mac = [...host.querySelectorAll(".mach-card")].find((x) => x.querySelector(".mach-name b")?.textContent === "MacBook")!;
-    expect(mac.querySelector(".s")!.textContent).toBe(message("common.online"));
-    const codex = [...mac.querySelectorAll(".qt")].find((x) => x.querySelector("b")?.textContent === "Codex")!;
-    expect(codex.querySelector(".n")!.textContent).toMatch(/^剩 \d+%$|^已用尽$|^暂未获取额度$/);
-    expect(named("Chrome on macOS").querySelector(".ico svg")).toBeTruthy();
-    expect(named("Android 16 · Pixel 9").querySelector(".ico svg")).toBeTruthy();
+    const rows = [...host.querySelectorAll<HTMLButtonElement>(".grp .row.has-ic")];
+    const mac = rows.find((x) => x.querySelector(".row-name b")?.textContent === "MacBook")!;
+    expect(mac.querySelector(".lead svg")).toBeTruthy();
+    expect(mac.querySelector(".v")?.textContent).toBe(message("common.online"));
+    expect(mac.querySelector(".row-name small")?.textContent).toMatch(/Codex.*Antigravity/);
+    expect(host.querySelector(".mach-card")).toBeNull();
+    // Clients are housed on the pure Clients secondary page, without repeating computers.
+    act(() => root!.render(<ClientsPage remote={r} go={() => undefined} onBack={() => undefined} />));
+    const clientRows = [...host.querySelectorAll<HTMLButtonElement>(".row.has-ic.client")];
+    expect(clientRows.length).toBeGreaterThan(0);
+    expect(clientRows.every((c) => !!c.querySelector(".lead svg"))).toBe(true);
+    expect(host.textContent).not.toContain("MacBook");
   });
 });
 

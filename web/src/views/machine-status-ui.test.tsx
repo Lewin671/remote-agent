@@ -546,7 +546,7 @@ describe("the reminder on the home", () => {
     // No way to close one: it goes when the space comes back.
     expect(host.querySelectorAll(".ms-alert button, .ms-alert [aria-label]")).toHaveLength(0);
     await click(cards[1]);
-    expect(go).toHaveBeenCalledWith("machine-status/mac");
+    expect(go).toHaveBeenCalledWith("m/mac/storage");
   });
 
   it("is not shown for a computer that is offline, has enough space or cannot report", () => {
@@ -630,17 +630,18 @@ describe("the emergency reserve in the attachment storage", () => {
     const row = [...host.querySelectorAll(".row")].find((e) => e.textContent?.includes("应急预留"))!;
     expect(row.textContent).toBe("应急预留256 MB磁盘写满时自动释放，让你还能开会话处理。");
     expect(row.querySelector("button")).toBeNull();
-    // The rings are the top of the page.
-    expect(host.querySelector(".body")!.firstElementChild!.querySelector(".ms-rings")).not.toBeNull();
+    // Attachment storage secondary page shows the composition bar and uses no native <select>.
+    expect(host.querySelector(".stor-bar")).not.toBeNull();
+    expect(host.querySelector("select")).toBeNull();
   });
 
   it("is not listed for a computer that cannot report, nor once the daemon has released it", async () => {
     const r = demo();
     r.machines.get("mac")!.meta!.diskStatus!.emergencyReserveBytes = 0n;
-    mount(<MachinePage remote={r} id="mac" go={none} onBack={none} />);
+    mount(<MachinePage remote={r} id="mac" section="storage" go={none} onBack={none} />);
     await vi.waitFor(() => expect(host.textContent).toContain(message("settings.attachment_storage")));
     expect(host.textContent).not.toContain("应急预留");
-    act(() => root!.render(<MachinePage remote={r} id="vps" go={none} onBack={none} />));
+    act(() => root!.render(<MachinePage remote={r} id="vps" section="storage" go={none} onBack={none} />));
     await vi.waitFor(() => expect(host.textContent).toContain(message("settings.attachment_storage")));
     expect(host.textContent).not.toContain("应急预留");
   });

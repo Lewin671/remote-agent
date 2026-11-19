@@ -348,7 +348,7 @@ describe("Session header ⚡ 直连 chip & light popover", () => {
 
     const settingsBtn = pop()!.querySelector<HTMLButtonElement>(".dpop-foot button")!;
     await click(settingsBtn);
-    expect(go).toHaveBeenCalledWith("machine/mac/connection");
+    expect(go).toHaveBeenCalledWith("m/mac/direct");
   });
 });
 

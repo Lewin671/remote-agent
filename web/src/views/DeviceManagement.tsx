@@ -22,9 +22,10 @@ export function ManagementEntry({
   row?: boolean;
 }) {
   return remote.isAuthority ? (
-    <button className={row ? "row add" : "addrow"} onClick={() => go("settings/add-device")}>
-      <Plus />
-      {l10n.t("home.add_device")}</button>
+    <button className={row ? "row has-ic act" : "addrow"} onClick={() => go("settings/add-device")}>
+      <span className={row ? "lead" : undefined}><Plus /></span>
+      <span className={row ? "row-name" : undefined}>{l10n.t("home.add_device")}</span>
+    </button>
   ) : (
     <p className="gf">
       {l10n.t("security.add_on_authority", { name: authorityName(remote) })}</p>
@@ -52,7 +53,10 @@ export function DeviceActions({
   if (!remote.isAuthority)
     return (
       <p className="gf">
-        {l10n.t("security.manage_on_authority", { name: authorityName(remote) })}</p>
+        {machine
+          ? l10n.t("settings.remove_non_authority_footer", { name: authorityName(remote) })
+          : l10n.t("security.manage_on_authority", { name: authorityName(remote) })}
+      </p>
     );
   if (id === remote.authorityDeviceId)
     return (
@@ -67,7 +71,11 @@ export function DeviceActions({
             disabled={busy}
             onClick={() => setConfirm("remove")}
           >
-            {incomplete ? l10n.t("security.remove_unfinished_pairing") : l10n.t("security.remove_device")}
+            {incomplete
+              ? l10n.t("security.remove_unfinished_pairing")
+              : machine
+                ? l10n.t("settings.remove_computer_ellipsis")
+                : l10n.t("security.remove_device")}
           </button>
         ) : (
           machine && (
@@ -83,7 +91,7 @@ export function DeviceActions({
                 disabled={busy}
                 onClick={() => setConfirm("delete")}
               >
-                {l10n.t("security.delete_this_computer_s_records")}</button>
+                {l10n.t("settings.delete_computer_records_ellipsis")}</button>
             </>
           )
         )}

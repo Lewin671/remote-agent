@@ -111,24 +111,22 @@ it.each(["authority", "member", "machine"])(
     const r = demo(`role=${role}&empty=none`);
     const go = vi.fn();
     await mount(<Settings remote={r} go={go} />);
-    expect(!!button(message("home.add_device"))).toBe(role === "authority");
+    expect(!!button(message("settings.add_first_computer"))).toBe(role === "authority");
     if (role !== "authority")
       expect(host.textContent).toContain(
-        "要添加电脑或客户端，在管理端（Android · Pixel 9）上打开「设置 › 添加设备」。",
+        message("settings.empty_computers_member_body", { name: "Android 16 · Pixel 9" }),
       );
     if (role === "authority") {
-      // After the computers' cards: a line of blue words with ＋.
-      const add = button(message("home.add_device"));
-      expect(add.closest(".grp")).toBeNull();
-      expect(add.classList.contains("addrow")).toBe(true);
+      const add = button(message("settings.add_first_computer"));
+      expect(add.classList.contains("pri-btn")).toBe(true);
       expect(add.querySelector("svg")).toBeTruthy();
-      await click(message("home.add_device"));
+      await click(message("settings.add_first_computer"));
       expect(go).toHaveBeenCalledWith("settings/add-device");
     }
     await act(async () =>
       root.render(<DevicesPage remote={r} go={go} onBack={() => {}} />),
     );
-    expect(!!button(message("home.add_device"))).toBe(role === "authority");
+    expect(!!button(message("settings.clients_add_client"))).toBe(role === "authority");
     await act(async () => root.render(<Home remote={r} go={go} />));
     expect(!!button(message("home.add_device"))).toBe(role === "authority");
     if (role !== "authority")
@@ -187,13 +185,13 @@ it("separates device removal from archive deletion and retains the actions after
     .mockRejectedValue(new Error("storage failed"));
   const deletion = vi.spyOn(r, "deleteMachineRecords");
   await mount(<DeviceActions remote={r} id="mini" machine />);
-  await click(message("security.remove_device"));
+  await click(message("settings.remove_computer_ellipsis"));
   expect(host.textContent).toContain("历史档案仍保留");
   await click(message("common.remove"));
   expect(remove).toHaveBeenCalledWith("mini");
   expect(deletion).not.toHaveBeenCalled();
   expect(host.textContent).toContain("storage failed");
-  expect(button(message("security.remove_device"))).toBeTruthy();
+  expect(button(message("settings.remove_computer_ellipsis"))).toBeTruthy();
 });
 it("shows pending recovery on home and settings, with the actual ready time", async () => {
   const r = demo("role=authority&recovery=pending");

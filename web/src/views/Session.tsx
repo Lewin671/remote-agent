@@ -1144,7 +1144,7 @@ export function SessionScreenView({
                       type="button"
                       onClick={() => {
                         setDirectOpen(false);
-                        go(`machine/${encodeURIComponent(header.machineId)}/connection`);
+                        go(`m/${encodeURIComponent(header.machineId)}/direct`);
                       }}
                     >
                       {t("transport.popover_settings")}

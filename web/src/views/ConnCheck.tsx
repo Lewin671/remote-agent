@@ -110,7 +110,7 @@ export function ConnCheck({ remote, onClose }: { remote: Remote; onClose: () => 
   }, [check]);
   const down = remote.conn !== "online";
   return (
-    <Sheet onClose={onClose} title={l10n.t("home.connection_check")} action={{ label: l10n.t("common.done"), onClick: onClose }}>
+    <Sheet onClose={onClose} title={l10n.t("settings.server_and_connection")} action={{ label: l10n.t("common.done"), onClick: onClose }}>
       {down && (
         <div className="set-banners">
           <Banner>

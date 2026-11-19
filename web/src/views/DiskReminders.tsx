@@ -1,4 +1,4 @@
-import { routeForMachineStatus, useCoreHost, useSettingsView, type Go } from "../core/host";
+import { routeForMachineStorage, useCoreHost, useSettingsView, type Go } from "../core/host";
 import { renderText } from "../core/text";
 import { DiskIcon } from "../icons";
 import type { Remote } from "../remote";
@@ -15,7 +15,7 @@ export function DiskReminders({ remote, go }: { remote: Remote; go: Go }) {
           key={d.machineId}
           type="button"
           className="ms-alert"
-          onClick={() => go(routeForMachineStatus(d.machineId))}
+          onClick={() => go(routeForMachineStorage(d.machineId))}
         >
           <span className={d.critical ? "blk crit" : "blk"} aria-hidden="true">
             <DiskIcon />

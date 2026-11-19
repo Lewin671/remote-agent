@@ -72,6 +72,10 @@ let root: Root | undefined;
 let host: HTMLDivElement;
 
 function mount(node: React.ReactNode) {
+  if (root) {
+    act(() => root?.unmount());
+    host?.remove();
+  }
   host = document.createElement("div");
   document.body.append(host);
   root = createRoot(host);
@@ -745,7 +749,7 @@ describe("golden SessionScreenView layout and interaction", () => {
     if (devicesVm.view.case !== "devices") return;
     const devView = devicesVm.view.value;
     act(() => root!.render(<DevicesScreenView vm={devView} go={onGo} onBack={vi.fn()} onRetry={vi.fn()} />));
-    expect(host.textContent).toContain("BuildBox");
+    expect(host.textContent).not.toContain("BuildBox");
     expect(host.querySelectorAll(".row.client").length).toBeGreaterThan(0);
 
     const authVm = goldenView(settingsOverviewGolden as GoldenDoc, "authClient");
@@ -794,12 +798,25 @@ describe("golden SessionScreenView layout and interaction", () => {
 
     mount(renderMS(initVm.view.value));
     expect(host.textContent).toContain(initVm.view.value.name);
-    const claudeTab = [...host.querySelectorAll<HTMLButtonElement>(".cli-tabs button")].find((b) =>
-      b.textContent === "Claude Code",
+    const claudeRow = [...host.querySelectorAll<HTMLButtonElement>(".cli-row")].find((b) =>
+      b.textContent?.includes("Claude Code"),
     )!;
-    expect(claudeTab).toBeTruthy();
-    act(() => claudeTab.click());
-    expect(onSelectAgent).toHaveBeenCalledWith(Agent.CLAUDE);
+    expect(claudeRow).toBeTruthy();
+    act(() => claudeRow.click());
+    expect(document.querySelector(".sheet")?.textContent).toContain(t("settings.cli_sheet_model"));
+    const modeRow = [...document.querySelectorAll<HTMLButtonElement>(".sheet button.row")].find((b) =>
+      b.textContent?.includes(t("settings.cli_sheet_mode")),
+    )!;
+    act(() => modeRow.click());
+    const firstChoice = document.querySelector<HTMLButtonElement>(".sheet [role='radio']");
+    if (firstChoice) {
+      act(() => firstChoice.click());
+      expect(onUpdateDefaults).toHaveBeenCalledWith(Agent.CLAUDE, expect.any(Object));
+    }
+    const doneBtn = [...document.querySelectorAll<HTMLButtonElement>(".sheet .sheet-head button")].find(
+      (b) => b.textContent === t("common.done"),
+    )!;
+    act(() => doneBtn.click());
 
     const timeoutBtn = [...host.querySelectorAll<HTMLButtonElement>("button.row")].find((b) =>
       b.textContent?.includes(t("settings.approval_timeout")),
@@ -815,7 +832,7 @@ describe("golden SessionScreenView layout and interaction", () => {
     if (savingVm.view.case !== "machineSettings") return;
     const savingView = savingVm.view.value;
     act(() => root!.render(renderMS(savingView)));
-    expect(host.querySelector(".cli-tabs")).toBeTruthy();
+    expect(host.textContent).toContain(savingView.name);
 
     const unknownVm = goldenView(machineSettingsEditGolden as GoldenDoc, "unknownTriggersReread");
     expect(unknownVm.view.case).toBe("machineSettings");

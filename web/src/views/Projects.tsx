@@ -11,7 +11,7 @@ import type { DirPickerView, HiddenProjectNoticeView, ManageProjectsView } from 
 import { TextSchema } from "../gen/remoteagent/core/v1/text_pb";
 import type { Remote } from "../remote";
 import { ActionSheet, Alert, Avatar, Banner, NavBar, PathText, Segmented, Sheet, StateMark, useNow } from "../ui";
-import { Ellipsis, LoaderCircle, Plus, Search, X } from "../icons";
+import { Ellipsis, Laptop, LoaderCircle, Plus, Search, X } from "../icons";
 import { DirBrowserView } from "./DirBrowser";
 
 /** What the list's sync is doing on Home banners: saving, failed, or changed elsewhere. */
@@ -95,7 +95,7 @@ export function DirPickerSheet({ picker, onNavigate, onConfirm, onBack, onClose 
 }
 
 /** Pure ViewModel renderer for 项目管理; used by ManagePage and golden UI tests. */
-export function ManageProjectsScreen(p: { vm: ManageProjectsView; onSearch: (query: string) => void; onTogglePin: (key: string) => void; onToggleHide: (key: string) => void; onOpenDirPicker: () => void; onDirNavigate: (machineId: string, path: string) => void; onCloseDirPicker: () => void; onAddProject: (path: string) => void; onSelectProject: (key: string) => void; onRetryPrefs?: () => void; onBack: () => void }) {
+export function ManageProjectsScreen(p: { vm: ManageProjectsView; onSearch: (query: string) => void; onTogglePin: (key: string) => void; onToggleHide: (key: string) => void; onOpenDirPicker: () => void; onDirNavigate: (machineId: string, path: string) => void; onCloseDirPicker: () => void; onAddProject: (path: string) => void; onSelectProject: (key: string) => void; onRetryPrefs?: () => void; onResetFilter?: () => void; onBack: () => void }) {
   const { vm } = p;
   const [menuKey, setMenuKey] = useState("");
   const [removingKey, setRemovingKey] = useState("");
@@ -103,11 +103,25 @@ export function ManageProjectsScreen(p: { vm: ManageProjectsView; onSearch: (que
   const menu = menuKey ? allRows.find((r) => r.key === menuKey) : undefined;
   const removing = removingKey ? allRows.find((r) => r.key === removingKey) : undefined;
   const blocked = !vm.canEdit ? renderText(vm.blockedReason) || t("projects.connect_to_edit") : "";
+  const filterName = vm.filterMachineName || vm.filterMachineId;
   return (
     <div className="page set">
       <NavBar onBack={p.onBack} title={t("projects.manage")} />
       <div className="body">
         <div className="manage">
+          {vm.filterMachineId && (
+            <div className="proj-filter-bar">
+              <span className="proj-filter-pill">
+                <Laptop />
+                <span>{t("projects.filter_machine_subtitle", { name: filterName })}</span>
+              </span>
+              {p.onResetFilter && (
+                <button type="button" className="link" onClick={p.onResetFilter}>
+                  {t("projects.filter_show_all")}
+                </button>
+              )}
+            </div>
+          )}
           {vm.saveError && <Banner kind="err" action={p.onRetryPrefs ? t("common.retry") : undefined} onAction={p.onRetryPrefs}>{renderText(vm.saveError)}</Banner>}
           {vm.syncing && <Banner><LoaderCircle /> {t("projects.syncing")}</Banner>}
           {vm.listing?.loadFailed && <Banner kind="err" action={p.onRetryPrefs ? t("common.retry") : undefined} onAction={p.onRetryPrefs}>{t("projects.load_failed")}</Banner>}
@@ -140,9 +154,9 @@ export function ManageProjectsScreen(p: { vm: ManageProjectsView; onSearch: (que
 }
 
 /** 项目管理: connected to CoreHost. */
-export function ManagePage({ remote, go, onBack }: { remote: Remote; go: Go; onBack: () => void }) {
+export function ManagePage({ remote, machineId = "", go, onBack }: { remote: Remote; machineId?: string; go: Go; onBack: () => void }) {
   const host = useCoreHost(remote, go);
-  const manage = useProjectView(host, "", true).manage;
+  const manage = useProjectView(host, "", true, 30, machineId).manage;
   if (!manage) return null;
   const effectiveManage = remote.conn !== "online" && manage.canEdit
     ? { ...manage, canEdit: false, blockedReason: manage.blockedReason ?? create(TextSchema, { literal: t("projects.connect_to_edit") }) }
@@ -162,6 +176,7 @@ export function ManagePage({ remote, go, onBack }: { remote: Remote; go: Go; onB
       }}
       onSelectProject={(scopeKey) => { host.homeSetScope(scopeKey); go(""); }}
       onRetryPrefs={() => remote.retryPrefs()}
+      onResetFilter={machineId ? () => go("projects", true) : undefined}
       onBack={onBack}
     />
   );

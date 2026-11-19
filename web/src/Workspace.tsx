@@ -7,7 +7,7 @@ import { ProjectPage } from "./views/Project";
 import { ManagePage } from "./views/Projects";
 import { SessionPage } from "./views/Session";
 import {
-  ClientPage, DevicesPage, MachinePage, MachineStatusPage, PairCodePage, QuotaPage, RemovedScreen,
+  ClientPage, ClientsPage, LicensesPage, MachinePage, MachineStatusPage, NotificationsPage, PairCodePage, QuotaPage, RemovedScreen,
   ScheduleCreate, ScheduleDetail, SchedulesPage, SecurityPage, SettingsPage, UsagePage, inOwnFile, page,
 } from "./views/pages";
 import { routeForTask, useCoreHost, useSchedulesView } from "./core/host";
@@ -22,7 +22,13 @@ function parseRoute(route: string) {
   const sub = rest[0] ? decodeURIComponent(rest[0]) : "";
   const isTab = !kind || (kind === "tasks" && !sub);
   const isSheet = kind === "p" || (kind === "tasks" && sub === "new");
-  const depth = isTab ? 0 : kind === "settings" ? (sub ? 2 : 1) : kind === "devices" ? 2 : kind === "projects" || kind === "s" || kind === "p" || kind === "tasks" ? 1 : 3;
+  const depth =
+    isTab ? 0
+    : kind === "settings" || kind === "devices" ? (sub ? 2 : 1)
+    : kind === "projects" ? (sub ? 4 : 1)
+    : kind === "s" || kind === "p" || kind === "tasks" ? 1
+    : kind === "m" && rest[1] === "storage" ? 4
+    : 3;
   return { kind, rest, arg, isTab, isSheet, depth };
 }
 
@@ -142,20 +148,28 @@ export default function Workspace({ remote }: { remote: Remote }) {
     ) : (
       <ProjectPage key={arg} remote={remote} pkey={arg} go={go} onBack={back} />
     );
-  else if (kind === "projects")
-    page = <ManagePage remote={remote} go={go} onBack={back} />;
+  else if (kind === "projects") {
+    const decode = (s: string) => { try { return decodeURIComponent(s); } catch { return s; } };
+    page = <ManagePage remote={remote} machineId={rest[0] ? decode(rest[0]) : ""} go={go} onBack={back} />;
+  }
   else if (kind === "settings" && arg === "rejoin") page = <Suspense fallback={loading}><Setup existing={remote.account} onDone={() => location.reload()} /></Suspense>;
   else if (kind === "settings" && arg === "security") page = <SecurityPage remote={remote} onBack={back} />;
+  else if (kind === "settings" && arg === "notifications") page = <NotificationsPage remote={remote} onBack={back} />;
+  else if (kind === "settings" && arg === "clients") page = <ClientsPage remote={remote} go={go} onBack={back} />;
+  else if (kind === "settings" && arg === "licenses") page = <LicensesPage onBack={back} />;
   else if (kind === "settings" && arg.startsWith("add-device")) page = <PairCodePage remote={remote} replaces={arg.split("/")[1]} onBack={back} />;
   else if (kind === "settings") page = <SettingsPage remote={remote} go={go} onBack={wide ? undefined : () => go("")} />;
   else if (kind === "devices")
-    page = <DevicesPage remote={remote} go={go} onBack={back} />;
+    page = <ClientsPage remote={remote} go={go} onBack={back} />;
   else if (kind === "q")
     page = <QuotaPage remote={remote} id={arg} go={go} onBack={back} />;
   else if (kind === "c")
     page = <ClientPage remote={remote} id={arg} onBack={back} />;
-  else if (kind === "m")
-    page = <MachinePage remote={remote} id={arg.split("/")[0]} section={arg.split("/")[1]} go={go} onBack={back} />;
+  else if (kind === "m") {
+    const [machineRaw = "", secRaw = "", subRaw = ""] = rest;
+    const decode = (s: string) => { try { return decodeURIComponent(s); } catch { return s; } };
+    page = <MachinePage remote={remote} id={decode(machineRaw)} section={decode(secRaw)} subParam={decode(subRaw)} go={go} onBack={back} />;
+  }
   else if (kind === "machine-status")
     page = <MachineStatusPage key={arg} remote={remote} id={arg} go={go} onBack={back} />;
   else if (kind === "u") {
@@ -185,7 +199,7 @@ export default function Workspace({ remote }: { remote: Remote }) {
         <Sidebar
           remote={remote}
           go={go}
-          active={kind === "tasks" || scheduleSession ? "tasks" : kind === "settings" ? "settings" : "sessions"}
+          active={kind === "tasks" || scheduleSession ? "tasks" : kind === "settings" || kind === "devices" || kind === "m" || kind === "q" || kind === "c" ? "settings" : "sessions"}
           selectedTask={scheduleSession ?? route}
           selected={session?.id}
           project={kind === "p" ? arg : undefined}
