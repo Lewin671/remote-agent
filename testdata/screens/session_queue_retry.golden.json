@@ -371,15 +371,6 @@
               "statusText": {
                 "key": "list_state.running"
               },
-              "approvalModeLabel": {
-                "key": "modes.agent_own",
-                "args": [
-                  {
-                    "name": "agent",
-                    "strValue": "Codex"
-                  }
-                ]
-              },
               "modelUnknown": true,
               "machineId": "m1",
               "computerName": {
@@ -726,15 +717,6 @@
               "tone": "SESSION_TONE_LIVE",
               "statusText": {
                 "key": "list_state.running"
-              },
-              "approvalModeLabel": {
-                "key": "modes.agent_own",
-                "args": [
-                  {
-                    "name": "agent",
-                    "strValue": "Codex"
-                  }
-                ]
               },
               "modelUnknown": true,
               "machineId": "m1",

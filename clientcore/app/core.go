@@ -321,6 +321,20 @@ func (c *Core) processSyncStep(res sync.StepResult) ([]*corev1.Effect, sync.Dirt
 						},
 					},
 				})
+				saveRes := c.m.sync.Run(func(ctx *sync.StepContext) {
+					if sess != nil && sess.Id != "" {
+						c.m.sync.SeedSession(ctx, sc.MachineID, sess)
+					}
+					cfg := d.Config
+					if cfg.Cwd == "" {
+						cfg.Cwd = meta.projectKey
+					}
+					saved := lists.SavedSettings(c.m.state.World.Prefs, cfg.Cwd)
+					if op := lists.PlanStartSettings(cfg, &cfg, saved); op != nil {
+						c.m.sync.EnqueuePrefsOp(ctx, op, true, meta.projectKey)
+					}
+				})
+				effects = append(effects, saveRes.Effects...)
 				if sessionID != "" {
 					effects = append(effects, &corev1.Effect{
 						Effect: &corev1.Effect_Navigate{
@@ -333,17 +347,6 @@ func (c *Core) processSyncStep(res sync.StepResult) ([]*corev1.Effect, sync.Dirt
 						},
 					})
 				}
-				saveRes := c.m.sync.Run(func(ctx *sync.StepContext) {
-					cfg := d.Config
-					if cfg.Cwd == "" {
-						cfg.Cwd = meta.projectKey
-					}
-					saved := lists.SavedSettings(c.m.state.World.Prefs, cfg.Cwd)
-					if op := lists.PlanStartSettings(cfg, &cfg, saved); op != nil {
-						c.m.sync.EnqueuePrefsOp(ctx, op, true, meta.projectKey)
-					}
-				})
-				effects = append(effects, saveRes.Effects...)
 			} else if sc.Category == outcome.Unknown {
 				d.Frozen = true
 				d.Expired = sc.Expired

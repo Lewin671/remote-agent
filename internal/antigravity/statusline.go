@@ -32,8 +32,8 @@ func (a *Adapter) ParseStatusLine(raw []byte, sessionDir string) (*agent.StatusL
 			ID     string `json:"id"`
 			Effort string `json:"effort"`
 		} `json:"model"`
-		Window struct {
-			Size int64 `json:"context_window_size"`
+		Window *struct {
+			Size *int64 `json:"context_window_size"`
 		} `json:"context_window"`
 		Quota map[string]*struct {
 			Remaining *float64 `json:"remaining_fraction"`
@@ -50,10 +50,26 @@ func (a *Adapter) ParseStatusLine(raw []byte, sessionDir string) (*agent.StatusL
 	if mode == "" && in.State != "" {
 		mode = "default"
 	}
-	model := a.models.Resolve(a.Bin(), in.Model.ID)
+	// During startup before agy loads its model catalog and applies CLI flags,
+	// statusLine emits settings.json's default display name with context_window_size: 0
+	// and empty effort. Suppress that unresolved model so applying the real
+	// model ~2s later does not look like a terminal model change.
+	var windowSize int64
+	modelUnresolved := false
+	if in.Window != nil && in.Window.Size != nil {
+		windowSize = *in.Window.Size
+		if windowSize <= 0 && in.Model.Effort == "" {
+			modelUnresolved = true
+		}
+	}
+	model, effort := "", ""
+	if !modelUnresolved {
+		model = a.models.Resolve(a.Bin(), in.Model.ID)
+		effort = in.Model.Effort
+	}
 	out := &agent.StatusLine{ConversationID: in.Conversation, TranscriptPath: a.transcriptFor(in.Conversation, in.Transcript), CycleMode: mode, IdleKnown: in.State == "idle" || in.State == "reviewing", Background: in.State != "idle",
-		Context:       &pb.TurnContext{Model: model, Effort: in.Model.Effort, PermissionMode: mode},
-		ContextWindow: in.Window.Size,
+		Context:       &pb.TurnContext{Model: model, Effort: effort, PermissionMode: mode},
+		ContextWindow: windowSize,
 	}
 	var settings struct {
 		ToolPermission string `json:"toolPermission"`

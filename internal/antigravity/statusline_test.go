@@ -91,3 +91,46 @@ func TestStatusLineObservedContract(t *testing.T) {
 		t.Fatalf("native footer %q", out)
 	}
 }
+
+func TestStatusLineSuppressesUnresolvedStartupModel(t *testing.T) {
+	a := New("agy", t.TempDir())
+	models, err := ParseModels(sampleAgyModelsOutput)
+	if err != nil {
+		t.Fatal(err)
+	}
+	a.models.cached, a.models.bin = &pb.ListModelsResponse{Models: models}, "agy"
+
+	// Startup statusLine before model catalog & CLI flags are applied reports the
+	// settings.json default display name with explicit context_window_size: 0 and no effort.
+	startupRaw := []byte(`{"product":"antigravity","agent_state":"idle","model":{"id":"Gemini 4 Argon (High)","display_name":"Gemini 4 Argon (High)"},"context_window":{"context_window_size":0},"sandbox":{"enabled":false}}`)
+	r, err := a.ParseStatusLine(startupRaw, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if r.Context.Model != "" || r.Context.Effort != "" {
+		t.Fatalf("expected unresolved startup model suppressed, got model=%q effort=%q", r.Context.Model, r.Context.Effort)
+	}
+	if r.Context.PermissionMode != "default" || !r.IdleKnown || r.Context.Sandbox != "disabled" {
+		t.Fatalf("startup metadata lost: %+v", r)
+	}
+
+	// Subsequent payload once catalog and flags apply resolves effort-bearing models.
+	readyRaw := []byte(`{"product":"antigravity","agent_state":"idle","model":{"id":"Gemini 4 Hydrogen (Medium)","display_name":"Gemini 4 Hydrogen (Medium)","effort":"medium"},"context_window":{"context_window_size":1048576},"sandbox":{"enabled":false}}`)
+	r, err = a.ParseStatusLine(readyRaw, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if r.Context.Model != "gemini-4-hydrogen" || r.Context.Effort != "medium" || r.ContextWindow != 1048576 {
+		t.Fatalf("unexpected resolved model context: %+v", r)
+	}
+
+	// Effortless model once window size is populated must also resolve.
+	orchRaw := []byte(`{"product":"antigravity","agent_state":"idle","model":{"id":"Orchestrator (Neon)","display_name":"Orchestrator (Neon)"},"context_window":{"context_window_size":1048576}}`)
+	r, err = a.ParseStatusLine(orchRaw, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if r.Context.Model != "gemini-pro-orchestrator-neon" || r.Context.Effort != "" || r.ContextWindow != 1048576 {
+		t.Fatalf("unexpected effortless model context: %+v", r)
+	}
+}

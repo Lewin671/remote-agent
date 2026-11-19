@@ -289,15 +289,6 @@
               "statusText": {
                 "key": "list_state.question"
               },
-              "approvalModeLabel": {
-                "key": "modes.agent_own",
-                "args": [
-                  {
-                    "name": "agent",
-                    "strValue": "Codex"
-                  }
-                ]
-              },
               "modelUnknown": true,
               "machineId": "m1",
               "computerName": {
@@ -608,15 +599,6 @@
               "tone": "SESSION_TONE_WARN",
               "statusText": {
                 "key": "list_state.question"
-              },
-              "approvalModeLabel": {
-                "key": "modes.agent_own",
-                "args": [
-                  {
-                    "name": "agent",
-                    "strValue": "Codex"
-                  }
-                ]
               },
               "modelUnknown": true,
               "machineId": "m1",
@@ -932,15 +914,6 @@
               "tone": "SESSION_TONE_WARN",
               "statusText": {
                 "key": "list_state.plan"
-              },
-              "approvalModeLabel": {
-                "key": "modes.agent_own",
-                "args": [
-                  {
-                    "name": "agent",
-                    "strValue": "Codex"
-                  }
-                ]
               },
               "modelUnknown": true,
               "machineId": "m1",
@@ -1269,15 +1242,6 @@
               "statusText": {
                 "key": "list_state.plan"
               },
-              "approvalModeLabel": {
-                "key": "modes.agent_own",
-                "args": [
-                  {
-                    "name": "agent",
-                    "strValue": "Codex"
-                  }
-                ]
-              },
               "modelUnknown": true,
               "machineId": "m1",
               "computerName": {
@@ -1588,15 +1552,6 @@
               "tone": "SESSION_TONE_WARN",
               "statusText": {
                 "key": "list_state.plan"
-              },
-              "approvalModeLabel": {
-                "key": "modes.agent_own",
-                "args": [
-                  {
-                    "name": "agent",
-                    "strValue": "Codex"
-                  }
-                ]
               },
               "modelUnknown": true,
               "machineId": "m1",

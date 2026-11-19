@@ -147,8 +147,18 @@ func reconcileSessionSnapshot(snap syncSessionInputAlias, ui *screens.SessionUIS
 			}
 		}
 	}
-	if hasUserMsg && ui.PendingStartPrompt != nil {
-		ui.PendingStartPrompt = nil
+	if ui.PendingStartPrompt != nil {
+		if hasUserMsg {
+			ui.PendingStartPrompt = nil
+		} else if startInput := screens.FindStartPromptInput(snap.Projection, ui); startInput != nil {
+			switch startInput.Status {
+			case v1.InputStatus_INPUT_STATUS_CANCELED,
+				v1.InputStatus_INPUT_STATUS_FAILED,
+				v1.InputStatus_INPUT_STATUS_NEEDS_TERMINAL,
+				v1.InputStatus_INPUT_STATUS_UNCONFIRMED:
+				ui.PendingStartPrompt = nil
+			}
+		}
 	}
 	if len(ui.Outgoing) > 0 && len(recordedReqs) > 0 {
 		kept := ui.Outgoing[:0]
@@ -247,6 +257,10 @@ func (c *Core) processSessionSettled(
 			}
 			if meta.kind == slotKindFork && sc.Result != nil && sc.Result.GetForkSession() != nil {
 				if ns := sc.Result.GetForkSession().GetSession(); ns != nil && ns.Id != "" {
+					seedRes := c.m.sync.Run(func(ctx *sync.StepContext) {
+						c.m.sync.SeedSession(ctx, meta.machineID, ns)
+					})
+					*effects = append(*effects, seedRes.Effects...)
 					*effects = append(*effects, &corev1.Effect{
 						Effect: &corev1.Effect_Navigate{
 							Navigate: &corev1.NavigateEffect{

@@ -7,7 +7,9 @@ import (
 	"github.com/Lewin671/remote-agent/clientcore/domain/lists"
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
+	"github.com/Lewin671/remote-agent/clientcore/screens"
 	"github.com/Lewin671/remote-agent/clientcore/sync"
+	"github.com/Lewin671/remote-agent/clientcore/text"
 )
 
 func bootstrapReadyApp(t *testing.T, machines []*corev1.PlainMachine, sessions []*corev1.PlainSession) *Core {
@@ -1106,5 +1108,562 @@ func TestSessionTerminalPopupDockLocalizationAndTrustHint(t *testing.T) {
 				t.Fatalf("Hint key = %q, want %q (hint=%+v)", gotHintKey, tc.wantHintKey, tp.GetHint())
 			}
 		})
+	}
+}
+
+func startSessionForStartupPromptTest(t *testing.T, sid, prompt string) (*Core, string) {
+	t.Helper()
+	c := bootstrapReadyApp(t,
+		[]*corev1.PlainMachine{
+			{
+				MachineId: "m-on",
+				Online:    true,
+				Meta: &v1.MachineMeta{
+					Hostname:        "MacStudio",
+					ProtocolVersion: sync.ProtocolVersion,
+					Agents: []*v1.AgentInfo{
+						{Agent: v1.Agent_AGENT_ANTIGRAVITY, DefaultMode: v1.ApprovalMode_APPROVAL_MODE_ASK},
+					},
+				},
+			},
+		},
+		nil,
+	)
+
+	c.Dispatch(&corev1.Event{
+		NowMs: 1_791_078_060_043,
+		Event: &corev1.Event_ProjectOpenDirPicker{
+			ProjectOpenDirPicker: &corev1.DirPickerOpenAction{MachineId: "m-on", Path: "/Users/me/proj", ForNewTask: true},
+		},
+	})
+	c.Dispatch(&corev1.Event{
+		NowMs: 1_791_078_060_044,
+		Event: &corev1.Event_ProjectAdd{
+			ProjectAdd: &corev1.ProjectAddAction{Path: "/Users/me/proj"},
+		},
+	})
+	c.Dispatch(&corev1.Event{
+		NowMs: 1_791_078_060_045,
+		Event: &corev1.Event_NewSessionOpen{
+			NewSessionOpen: &corev1.NewSessionOpenAction{ProjectKey: "/Users/me/proj"},
+		},
+	})
+	c.Dispatch(&corev1.Event{
+		NowMs: 1_791_078_060_048,
+		Event: &corev1.Event_NewSessionSelectAgent{
+			NewSessionSelectAgent: &corev1.NewSessionSelectAgentAction{
+				Agent: v1.Agent_AGENT_ANTIGRAVITY,
+			},
+		},
+	})
+	c.Dispatch(&corev1.Event{
+		NowMs: 1_791_078_060_050,
+		Event: &corev1.Event_NewSessionSetPrompt{
+			NewSessionSetPrompt: &corev1.NewSessionSetPromptAction{Prompt: prompt},
+		},
+	})
+	submitBatch := c.Dispatch(&corev1.Event{
+		NowMs: 1_791_078_060_060,
+		Event: &corev1.Event_NewSessionSubmit{
+			NewSessionSubmit: &corev1.NewSessionSubmitAction{
+				ProjectKey:        "/Users/me/proj",
+				AutoModeSupported: true,
+			},
+		},
+	})
+	var createReqID, createAttID string
+	for _, eff := range submitBatch.Effects {
+		if dc := eff.GetDispatchCommand(); dc != nil {
+			var cmd v1.Command
+			if err := cmd.Unmarshal(dc.CommandBytes); err == nil && cmd.GetCreateSession() != nil {
+				createReqID = dc.RequestId
+				createAttID = dc.AttemptId
+			}
+		}
+	}
+	if createReqID == "" {
+		t.Fatal("expected CreateSession dispatch command")
+	}
+
+	c.Dispatch(&corev1.Event{
+		NowMs: 1_791_078_060_100,
+		Event: &corev1.Event_CommandOutcome{
+			CommandOutcome: &corev1.CommandOutcomeEvent{
+				RequestId:         createReqID,
+				AttemptId:         createAttID,
+				Source:            corev1.OutcomeSource_OUTCOME_SOURCE_DAEMON,
+				Signed:            true,
+				HashesMatch:       true,
+				AttemptBound:      true,
+				OuterMatchesInner: true,
+				OuterOutcome:      "executed",
+				OuterReason:       "ok",
+				Result: &v1.CommandResult{
+					Outcome:         "executed",
+					Reason:          "ok",
+					ResultAvailable: true,
+					Kind: &v1.CommandResult_CreateSession{
+						CreateSession: &v1.CreateSessionResponse{
+							Session: &v1.Session{
+								Id:     sid,
+								Cwd:    "/Users/me/proj",
+								Agent:  v1.Agent_AGENT_ANTIGRAVITY,
+								Status: v1.SessionStatus_SESSION_STATUS_STARTING,
+							},
+						},
+					},
+				},
+			},
+		},
+	})
+	c.Dispatch(&corev1.Event{
+		NowMs: 1_791_078_060_110,
+		Event: &corev1.Event_StreamFrame{
+			StreamFrame: &corev1.StreamFrameEvent{
+				LegId: 1,
+				Frame: &corev1.StreamFrameEvent_SessionUpdated{
+					SessionUpdated: &corev1.PlainSession{
+						SessionId: sid,
+						MachineId: "m-on",
+						Meta: &v1.Session{
+							Id:     sid,
+							Cwd:    "/Users/me/proj",
+							Agent:  v1.Agent_AGENT_ANTIGRAVITY,
+							Status: v1.SessionStatus_SESSION_STATUS_STARTING,
+						},
+					},
+				},
+			},
+		},
+	})
+	return c, createReqID
+}
+
+func TestStartupPromptLifecycleDeduplicatesAndWaitsForCLI(t *testing.T) {
+	c, createReqID := startSessionForStartupPromptTest(t, "s-start", "hi")
+
+	// 1. Before any events load: synthetic start-prompt appears once, no pending inputs, no bogus mode label.
+	vm0, err := c.View(&corev1.Screen{Screen: &corev1.Screen_Session{Session: &corev1.SessionScreenRequest{SessionId: "s-start"}}})
+	if err != nil {
+		t.Fatalf("View step 1: %v", err)
+	}
+	s0 := vm0.GetSession()
+	if s0.GetHeader().GetApprovalModeLabel() != nil {
+		t.Fatalf("expected nil ApprovalModeLabel while STARTING, got %+v", s0.GetHeader().GetApprovalModeLabel())
+	}
+	if len(s0.GetTimeline().GetItems()) != 1 || s0.GetTimeline().GetItems()[0].Id != "start-prompt" {
+		t.Fatalf("step 1 expected [start-prompt], got %+v", s0.GetTimeline().GetItems())
+	}
+	if len(s0.GetComposer().GetPendingInputs()) != 0 {
+		t.Fatalf("step 1 expected 0 pending inputs, got %+v", s0.GetComposer().GetPendingInputs())
+	}
+
+	// 2. SessionState{STARTING} + InputState{QUEUED} arrives: PendingInputs takes over with "等 Antigravity 就绪", no duplicate start-prompt.
+	watchBatch := c.Dispatch(&corev1.Event{
+		NowMs: 1_791_078_060_120,
+		Event: &corev1.Event_SessionWatch{SessionWatch: &corev1.SessionWatchEvent{SessionId: "s-start", Watched: true}},
+	})
+	c.Dispatch(&corev1.Event{
+		NowMs: 1_791_078_060_130,
+		Event: &corev1.Event_CacheEventsLoaded{
+			CacheEventsLoaded: &corev1.CacheEventsLoadedEvent{
+				OpId:      watchCacheReadOpID(watchBatch),
+				SessionId: "s-start",
+				Events: []*corev1.PlainEvent{
+					{
+						Seq:      1,
+						Verified: true,
+						Event: &v1.Event{
+							Seq:  1,
+							Kind: &v1.Event_SessionState{SessionState: &v1.SessionState{Status: v1.SessionStatus_SESSION_STATUS_STARTING}},
+						},
+					},
+					{
+						Seq:      2,
+						Verified: true,
+						Event: &v1.Event{
+							Seq:    2,
+							Origin: &v1.Origin{Kind: v1.OriginKind_ORIGIN_KIND_CLIENT, DeviceId: "dev-1", RequestId: createReqID},
+							Kind: &v1.Event_InputState{
+								InputState: &v1.InputState{
+									RequestId: "in-1",
+									Status:    v1.InputStatus_INPUT_STATUS_QUEUED,
+									Stage:     v1.InputStage_INPUT_STAGE_WAITING,
+									Text:      "hi",
+									Mode:      v1.SendMode_SEND_MODE_STEER,
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	})
+
+	vm1, err := c.View(&corev1.Screen{Screen: &corev1.Screen_Session{Session: &corev1.SessionScreenRequest{SessionId: "s-start"}}})
+	if err != nil {
+		t.Fatalf("View step 2: %v", err)
+	}
+	s1 := vm1.GetSession()
+	if s1.GetHeader().GetApprovalModeLabel() != nil {
+		t.Fatalf("step 2 expected nil ApprovalModeLabel while STARTING, got %+v", s1.GetHeader().GetApprovalModeLabel())
+	}
+	if len(s1.GetTimeline().GetItems()) != 0 {
+		t.Fatalf("step 2 expected 0 timeline items while queued, got %+v", s1.GetTimeline().GetItems())
+	}
+	pending := s1.GetComposer().GetPendingInputs()
+	if len(pending) != 1 {
+		t.Fatalf("step 2 expected 1 pending input, got %+v", pending)
+	}
+	if pending[0].GetLabel().GetKey() != text.KeyQueueAndroidAgentNote {
+		t.Fatalf("step 2 expected pending label %q, got %+v", text.KeyQueueAndroidAgentNote, pending[0].GetLabel())
+	}
+	if args := pending[0].GetLabel().GetArgs(); len(args) != 1 || args[0].GetStrValue() != "Antigravity" {
+		t.Fatalf("step 2 expected agent arg Antigravity, got %+v", pending[0].GetLabel())
+	}
+
+	// 3. InputState{SUBMITTED} arrives before UserMessage: PendingInputs empties, synthetic start-prompt bridges the gap without blinking.
+	c.Dispatch(&corev1.Event{
+		NowMs: 1_791_078_060_200,
+		Event: &corev1.Event_StreamFrame{
+			StreamFrame: &corev1.StreamFrameEvent{
+				LegId: 1,
+				Frame: &corev1.StreamFrameEvent_EventsAppended{
+					EventsAppended: &corev1.EventsAppendedFrame{
+						SessionId: "s-start",
+						Events: []*corev1.PlainEvent{
+							{
+								Seq:      3,
+								Verified: true,
+								Event: &v1.Event{
+									Seq:  3,
+									Kind: &v1.Event_InputState{InputState: &v1.InputState{RequestId: "in-1", Status: v1.InputStatus_INPUT_STATUS_SUBMITTED}},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	})
+
+	vm2, err := c.View(&corev1.Screen{Screen: &corev1.Screen_Session{Session: &corev1.SessionScreenRequest{SessionId: "s-start"}}})
+	if err != nil {
+		t.Fatalf("View step 3: %v", err)
+	}
+	s2 := vm2.GetSession()
+	if len(s2.GetComposer().GetPendingInputs()) != 0 {
+		t.Fatalf("step 3 expected 0 pending inputs after SUBMITTED, got %+v", s2.GetComposer().GetPendingInputs())
+	}
+	if items := s2.GetTimeline().GetItems(); len(items) != 1 || items[0].Id != "start-prompt" {
+		t.Fatalf("step 3 expected [start-prompt] bridge, got %+v", items)
+	}
+
+	// 4. UserMessage arrives: replaces start-prompt with real timeline event e4 and clears PendingStartPrompt.
+	c.Dispatch(&corev1.Event{
+		NowMs: 1_791_078_060_250,
+		Event: &corev1.Event_StreamFrame{
+			StreamFrame: &corev1.StreamFrameEvent{
+				LegId: 1,
+				Frame: &corev1.StreamFrameEvent_EventsAppended{
+					EventsAppended: &corev1.EventsAppendedFrame{
+						SessionId: "s-start",
+						Events: []*corev1.PlainEvent{
+							{
+								Seq:      4,
+								Verified: true,
+								Event: &v1.Event{
+									Seq: 4,
+									Kind: &v1.Event_UserMessage{
+										UserMessage: &v1.UserMessage{Text: "hi", RequestId: "in-1"},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	})
+
+	vm3, err := c.View(&corev1.Screen{Screen: &corev1.Screen_Session{Session: &corev1.SessionScreenRequest{SessionId: "s-start"}}})
+	if err != nil {
+		t.Fatalf("View step 4: %v", err)
+	}
+	if items := vm3.GetSession().GetTimeline().GetItems(); len(items) != 1 || items[0].Id != "e4" {
+		t.Fatalf("step 4 expected [e4] only, got %+v", items)
+	}
+	if c.m.ensureSessionStore().ensureUI("s-start").PendingStartPrompt != nil {
+		t.Fatalf("step 4 expected PendingStartPrompt cleared")
+	}
+}
+
+func TestCanceledStartupPromptDoesNotResurrectGhostBubble(t *testing.T) {
+	c, createReqID := startSessionForStartupPromptTest(t, "s-cancel", "hi")
+	watchBatch := c.Dispatch(&corev1.Event{
+		NowMs: 1_791_078_060_120,
+		Event: &corev1.Event_SessionWatch{SessionWatch: &corev1.SessionWatchEvent{SessionId: "s-cancel", Watched: true}},
+	})
+	c.Dispatch(&corev1.Event{
+		NowMs: 1_791_078_060_130,
+		Event: &corev1.Event_CacheEventsLoaded{
+			CacheEventsLoaded: &corev1.CacheEventsLoadedEvent{
+				OpId:      watchCacheReadOpID(watchBatch),
+				SessionId: "s-cancel",
+				Events: []*corev1.PlainEvent{
+					{
+						Seq:      1,
+						Verified: true,
+						Event: &v1.Event{
+							Seq:    1,
+							Origin: &v1.Origin{Kind: v1.OriginKind_ORIGIN_KIND_CLIENT, DeviceId: "dev-1", RequestId: createReqID},
+							Kind: &v1.Event_InputState{
+								InputState: &v1.InputState{
+									RequestId: "in-1",
+									Status:    v1.InputStatus_INPUT_STATUS_QUEUED,
+									Text:      "hi",
+								},
+							},
+						},
+					},
+					{
+						Seq:      2,
+						Verified: true,
+						Event: &v1.Event{
+							Seq: 2,
+							Kind: &v1.Event_InputState{
+								InputState: &v1.InputState{
+									RequestId: "in-1",
+									Status:    v1.InputStatus_INPUT_STATUS_CANCELED,
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	})
+
+	vm, err := c.View(&corev1.Screen{Screen: &corev1.Screen_Session{Session: &corev1.SessionScreenRequest{SessionId: "s-cancel"}}})
+	if err != nil {
+		t.Fatalf("View: %v", err)
+	}
+	for _, it := range vm.GetSession().GetTimeline().GetItems() {
+		if it.Id == "start-prompt" || it.GetUserMessage() != nil {
+			t.Fatalf("canceled startup prompt resurrected as user message: %+v", it)
+		}
+	}
+	if len(vm.GetSession().GetComposer().GetPendingInputs()) != 0 {
+		t.Fatalf("expected 0 pending inputs after cancel, got %+v", vm.GetSession().GetComposer().GetPendingInputs())
+	}
+	if c.m.ensureSessionStore().ensureUI("s-cancel").PendingStartPrompt != nil {
+		t.Fatalf("expected PendingStartPrompt cleared after cancel")
+	}
+}
+
+func TestPendingInputsCaptionJoinsRankWithoutDoubleDot(t *testing.T) {
+	st := screens.NewState()
+	ls := &lists.Session{
+		ID:        "s1",
+		MachineID: "m1",
+		Info:      &v1.Session{Id: "s1", Agent: v1.Agent_AGENT_CODEX, Status: v1.SessionStatus_SESSION_STATUS_RUNNING},
+	}
+	in := screens.SessionViewInput{
+		Found:        true,
+		Session:      ls,
+		ThisDeviceID: "dev-self",
+		DeviceNames:  map[string]string{"dev-other": "MyPhone"},
+		Projection: &corev1.ProjectionState{
+			PendingInputs: []*corev1.PendingInput{
+				{
+					RequestId: "r1",
+					Text:      "first",
+					Mode:      v1.SendMode_SEND_MODE_STEER,
+					Origin:    &v1.Origin{Kind: v1.OriginKind_ORIGIN_KIND_CLIENT, DeviceId: "dev-other"},
+				},
+				{
+					RequestId: "r2",
+					Text:      "second",
+					Mode:      v1.SendMode_SEND_MODE_QUEUE,
+				},
+			},
+		},
+	}
+	vm := screens.BuildSessionView(in, st, &corev1.SessionScreenRequest{SessionId: "s1"}, screens.NewSessionUIState())
+	pending := vm.GetComposer().GetPendingInputs()
+	if len(pending) != 2 {
+		t.Fatalf("expected 2 pending inputs, got %d", len(pending))
+	}
+
+	// Rank must join onto label with "" (because queue.rank already begins with " · "),
+	// and originLabel must join with " · ".
+	cap0 := pending[0].GetCaption()
+	if cap0.GetSeparatorLiteral() != " · " || len(cap0.GetJoin()) != 2 {
+		t.Fatalf("unexpected outer join on pending[0] caption: %+v", cap0)
+	}
+	left := cap0.GetJoin()[0]
+	if left.GetSeparatorLiteral() != "" || len(left.GetJoin()) != 2 {
+		t.Fatalf("expected empty separator between label and queue.rank, got %+v", left)
+	}
+	if left.GetJoin()[0].GetKey() != text.KeyQueueAndroidSendingSoon || left.GetJoin()[1].GetKey() != text.KeyQueueRank {
+		t.Fatalf("unexpected label+rank parts: %+v", left.GetJoin())
+	}
+	if cap0.GetJoin()[1].GetLiteral() != "MyPhone" {
+		t.Fatalf("expected origin MyPhone, got %+v", cap0.GetJoin()[1])
+	}
+
+	cap1 := pending[1].GetCaption()
+	if cap1.GetSeparatorLiteral() != "" || len(cap1.GetJoin()) != 2 {
+		t.Fatalf("expected empty separator between label and queue.rank on pending[1], got %+v", cap1)
+	}
+	if cap1.GetJoin()[0].GetKey() != text.KeyQueueAfterTurn || cap1.GetJoin()[1].GetKey() != text.KeyQueueRank {
+		t.Fatalf("unexpected parts on pending[1]: %+v", cap1.GetJoin())
+	}
+}
+
+func TestCreateSessionSeedsSessionBeforeStreamUpdatedAndLoadingHidesMissingText(t *testing.T) {
+	c := bootstrapReadyApp(t,
+		[]*corev1.PlainMachine{
+			{
+				MachineId: "m-on",
+				Online:    true,
+				Meta: &v1.MachineMeta{
+					Hostname:        "MacStudio",
+					ProtocolVersion: sync.ProtocolVersion,
+					Agents: []*v1.AgentInfo{
+						{Agent: v1.Agent_AGENT_ANTIGRAVITY, DefaultMode: v1.ApprovalMode_APPROVAL_MODE_ASK},
+					},
+				},
+			},
+		},
+		nil,
+	)
+
+	c.Dispatch(&corev1.Event{
+		NowMs: 1_791_078_060_043,
+		Event: &corev1.Event_ProjectOpenDirPicker{
+			ProjectOpenDirPicker: &corev1.DirPickerOpenAction{MachineId: "m-on", Path: "/Users/me/proj", ForNewTask: true},
+		},
+	})
+	c.Dispatch(&corev1.Event{
+		NowMs: 1_791_078_060_044,
+		Event: &corev1.Event_ProjectAdd{
+			ProjectAdd: &corev1.ProjectAddAction{Path: "/Users/me/proj"},
+		},
+	})
+	c.Dispatch(&corev1.Event{
+		NowMs: 1_791_078_060_045,
+		Event: &corev1.Event_NewSessionOpen{
+			NewSessionOpen: &corev1.NewSessionOpenAction{ProjectKey: "/Users/me/proj"},
+		},
+	})
+	c.Dispatch(&corev1.Event{
+		NowMs: 1_791_078_060_048,
+		Event: &corev1.Event_NewSessionSelectAgent{
+			NewSessionSelectAgent: &corev1.NewSessionSelectAgentAction{Agent: v1.Agent_AGENT_ANTIGRAVITY},
+		},
+	})
+	c.Dispatch(&corev1.Event{
+		NowMs: 1_791_078_060_050,
+		Event: &corev1.Event_NewSessionSetPrompt{
+			NewSessionSetPrompt: &corev1.NewSessionSetPromptAction{Prompt: "hi"},
+		},
+	})
+	submitBatch := c.Dispatch(&corev1.Event{
+		NowMs: 1_791_078_060_060,
+		Event: &corev1.Event_NewSessionSubmit{
+			NewSessionSubmit: &corev1.NewSessionSubmitAction{
+				ProjectKey:        "/Users/me/proj",
+				AutoModeSupported: true,
+			},
+		},
+	})
+	var createReqID, createAttID string
+	for _, eff := range submitBatch.Effects {
+		if dc := eff.GetDispatchCommand(); dc != nil {
+			var cmd v1.Command
+			if err := cmd.Unmarshal(dc.CommandBytes); err == nil && cmd.GetCreateSession() != nil {
+				createReqID = dc.RequestId
+				createAttID = dc.AttemptId
+			}
+		}
+	}
+	if createReqID == "" {
+		t.Fatal("expected CreateSession dispatch command")
+	}
+
+	// CommandOutcome(CreateSession) arrives WITHOUT any StreamFrameEvent_SessionUpdated yet.
+	outcomeBatch := c.Dispatch(&corev1.Event{
+		NowMs: 1_791_078_060_100,
+		Event: &corev1.Event_CommandOutcome{
+			CommandOutcome: &corev1.CommandOutcomeEvent{
+				RequestId:         createReqID,
+				AttemptId:         createAttID,
+				Source:            corev1.OutcomeSource_OUTCOME_SOURCE_DAEMON,
+				Signed:            true,
+				HashesMatch:       true,
+				AttemptBound:      true,
+				OuterMatchesInner: true,
+				OuterOutcome:      "executed",
+				OuterReason:       "ok",
+				Result: &v1.CommandResult{
+					Outcome:         "executed",
+					Reason:          "ok",
+					ResultAvailable: true,
+					Kind: &v1.CommandResult_CreateSession{
+						CreateSession: &v1.CreateSessionResponse{
+							Session: &v1.Session{
+								Id:     "s-seeded",
+								Cwd:    "/Users/me/proj",
+								Agent:  v1.Agent_AGENT_ANTIGRAVITY,
+								Status: v1.SessionStatus_SESSION_STATUS_STARTING,
+							},
+						},
+					},
+				},
+			},
+		},
+	})
+	var navigated bool
+	for _, eff := range outcomeBatch.Effects {
+		if nav := eff.GetNavigate(); nav != nil && nav.Route == corev1.NavigateRoute_NAVIGATE_ROUTE_SESSION && nav.SessionId == "s-seeded" {
+			navigated = true
+		}
+	}
+	if !navigated {
+		t.Fatalf("expected Navigate to s-seeded on CreateSession outcome")
+	}
+
+	// Immediately viewing the session must show Found=true, Missing=false, MissingText=nil, and [start-prompt].
+	vm, err := c.View(&corev1.Screen{Screen: &corev1.Screen_Session{Session: &corev1.SessionScreenRequest{SessionId: "s-seeded"}}})
+	if err != nil {
+		t.Fatalf("View seeded session: %v", err)
+	}
+	hdr := vm.GetSession().GetHeader()
+	if !hdr.GetFound() || hdr.GetMissing() || hdr.GetMissingText() != nil {
+		t.Fatalf("expected Found=true, Missing=false, MissingText=nil immediately after CreateSession, got found=%v missing=%v missingText=%+v", hdr.GetFound(), hdr.GetMissing(), hdr.GetMissingText())
+	}
+	if items := vm.GetSession().GetTimeline().GetItems(); len(items) != 1 || items[0].Id != "start-prompt" {
+		t.Fatalf("expected [start-prompt], got %+v", items)
+	}
+
+	// Unknown session while LookingUp=true must populate StatusText=common.loading with Missing=false and MissingText=nil.
+	loadingVM := screens.BuildSessionView(
+		screens.SessionViewInput{Found: false, SessionsListed: true, LookingUp: true},
+		screens.NewState(),
+		&corev1.SessionScreenRequest{SessionId: "s-unknown"},
+		screens.NewSessionUIState(),
+	)
+	if loadingVM.GetHeader().GetMissing() {
+		t.Fatalf("expected Missing=false while LookingUp=true")
+	}
+	if loadingVM.GetHeader().GetMissingText() != nil {
+		t.Fatalf("expected nil MissingText while LookingUp=true, got %+v", loadingVM.GetHeader().GetMissingText())
+	}
+	if loadingVM.GetHeader().GetStatusText().GetKey() != text.KeyCommonLoading {
+		t.Fatalf("expected StatusText %q while LookingUp=true, got %+v", text.KeyCommonLoading, loadingVM.GetHeader().GetStatusText())
+	}
+	if loadingVM.GetComposer().GetDisabledReason().GetKey() != text.KeyCommonLoading {
+		t.Fatalf("expected Composer.DisabledReason %q while LookingUp=true, got %+v", text.KeyCommonLoading, loadingVM.GetComposer().GetDisabledReason())
 	}
 }

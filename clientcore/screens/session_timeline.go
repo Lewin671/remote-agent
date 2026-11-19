@@ -92,6 +92,9 @@ func computeTimelineCacheKey(
 			inputsSig = mixString(inputsSig, ip.RequestId)
 			if ip.Accepted != nil {
 				inputsSig = mixString(inputsSig, ip.Accepted.Text)
+				if ip.Accepted.Origin != nil {
+					inputsSig = mixString(inputsSig, ip.Accepted.Origin.RequestId)
+				}
 			}
 			if ip.Detail != nil {
 				inputsSig = mixString(mixString(inputsSig, ip.Detail.Text), ip.Detail.Reason)
@@ -113,7 +116,7 @@ func computeTimelineCacheKey(
 		if ui.PendingStartPrompt != nil && ui.PendingStartPrompt.Text != "" {
 			hasPendingStart = true
 			pendingCreated = ui.PendingStartPrompt.CreatedMs
-			pendingTextSig = mixString(fnvOffset64, ui.PendingStartPrompt.Text)
+			pendingTextSig = mixString(mixString(fnvOffset64, ui.PendingStartPrompt.Text), ui.PendingStartPrompt.RequestID)
 		}
 	}
 
@@ -138,6 +141,36 @@ func computeTimelineCacheKey(
 		inputsSig:           inputsSig,
 		unavailableCount:    in.UnavailableCount,
 	}
+}
+
+// FindStartPromptInput locates the InputProjection belonging to ui.PendingStartPrompt.
+func FindStartPromptInput(p *corev1.ProjectionState, ui *SessionUIState) *corev1.InputProjection {
+	if p == nil || ui == nil || ui.PendingStartPrompt == nil || len(p.Inputs) == 0 {
+		return nil
+	}
+	if ui.PendingStartPrompt.RequestID != "" {
+		for _, ip := range p.Inputs {
+			if ip != nil && ip.GetAccepted().GetOrigin().GetRequestId() == ui.PendingStartPrompt.RequestID {
+				return ip
+			}
+		}
+	}
+	localIDs := make(map[string]bool, len(ui.Outgoing))
+	for _, og := range ui.Outgoing {
+		if og != nil && og.RequestID != "" {
+			localIDs[og.RequestID] = true
+		}
+	}
+	for _, ip := range p.Inputs {
+		if ip == nil || ip.RequestId == "" || localIDs[ip.RequestId] {
+			continue
+		}
+		if origReq := ip.GetAccepted().GetOrigin().GetRequestId(); origReq != "" && ui.PendingStartPrompt.RequestID != "" {
+			continue
+		}
+		return ip
+	}
+	return nil
 }
 
 func findEventBySeq(events []*v1.Event, seq uint64) *v1.Event {
@@ -428,8 +461,13 @@ func buildSessionTimeline(
 		toolRunEndSeq = e.Seq
 	}
 
-	// Include synthetic startup prompt before the first recorded UserMessage (matching all 3 shells).
-	if ui != nil && ui.PendingStartPrompt != nil && !hasAnyUserMsg && !sessionExited && ui.PendingStartPrompt.Text != "" {
+	// Include synthetic startup prompt only before projection tracks it (or while
+	// SUBMITTED bridges the brief gap before UserMessage arrives), matching
+	// PendingInputs ownership so startup prompts never render twice.
+	startInput := FindStartPromptInput(p, ui)
+	showStartPrompt := ui != nil && ui.PendingStartPrompt != nil && !hasAnyUserMsg && !sessionExited && ui.PendingStartPrompt.Text != "" &&
+		(startInput == nil || startInput.Status == v1.InputStatus_INPUT_STATUS_SUBMITTED)
+	if showStartPrompt {
 		rawItems = append(rawItems, &corev1.SessionTimelineItem{
 			Id:          "start-prompt",
 			Seq:         0,

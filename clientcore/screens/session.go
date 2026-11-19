@@ -254,7 +254,7 @@ func buildSessionHeader(
 		if out.Missing {
 			out.MissingText = text.Msg(text.KeyCommonAndroidCannotFindThisSession)
 		} else {
-			out.MissingText = text.Msg(text.KeyCommonLoading)
+			out.StatusText = text.Msg(text.KeyCommonLoading)
 		}
 		out.Title = text.Msg(text.KeySessionTitle)
 		out.Capabilities = &corev1.SessionCapabilitiesView{}
@@ -329,7 +329,7 @@ func buildSessionHeader(
 	mode, rawMode := lists.SessionMode(ls)
 	out.ApprovalMode = mode
 	out.ApprovalModeRaw = rawMode
-	out.ApprovalModeLabel = sessionApprovalModeText(mode, rawMode, caps.Name)
+	out.ApprovalModeLabel = knownSessionModeText(mode, rawMode)
 	if in.Projection != nil && len(in.Projection.TerminalChanges) > 0 {
 		out.TerminalModeOverride = rawMode != ""
 	}
@@ -485,12 +485,19 @@ func maxImagesCount(mc *v1.MachineCapabilities) int32 {
 	return mc.MaxImagesPerMessage
 }
 
-func sessionApprovalModeText(mode v1.ApprovalMode, raw, agentName string) *corev1.Text {
+func knownSessionModeText(mode v1.ApprovalMode, raw string) *corev1.Text {
 	if t := modeNameText(mode); t != nil {
 		return t
 	}
 	if raw != "" {
 		return text.Plain(raw)
+	}
+	return nil
+}
+
+func sessionApprovalModeText(mode v1.ApprovalMode, raw, agentName string) *corev1.Text {
+	if t := knownSessionModeText(mode, raw); t != nil {
+		return t
 	}
 	return text.Msg(text.KeyModesAgentOwn, text.Str("agent", agentName))
 }
@@ -1274,7 +1281,11 @@ func buildSessionComposer(
 ) *corev1.SessionComposerView {
 	out := &corev1.SessionComposerView{}
 	if !in.Found {
-		out.DisabledReason = header.MissingText
+		if header.MissingText != nil {
+			out.DisabledReason = header.MissingText
+		} else {
+			out.DisabledReason = text.Msg(text.KeyCommonLoading)
+		}
 		return out
 	}
 
@@ -1356,19 +1367,21 @@ func buildSessionComposer(
 				label = text.Msg(text.KeyQueueAndroidAgentNote, text.Str("agent", caps.Name))
 			case pi.Mode == v1.SendMode_SEND_MODE_QUEUE:
 				label = text.Msg(text.KeyQueueAfterTurn)
+			case ls != nil && ls.Info != nil && ls.Info.Status == v1.SessionStatus_SESSION_STATUS_STARTING:
+				label = text.Msg(text.KeyQueueAndroidAgentNote, text.Str("agent", caps.Name))
 			default:
 				label = text.Msg(text.KeyQueueAndroidSendingSoon)
 			}
 
 			originLabel := originText(pi.Origin, st, in.DeviceNames, in.ThisDeviceID, lm)
-			parts := []*corev1.Text{label}
+			caption := label
 			if total > 1 {
-				parts = append(parts, text.Msg(text.KeyQueueRank, text.Int("rank", int64(i+1))))
+				// KeyQueueRank already begins with " · ", so join with "" to avoid " ·  · ".
+				caption = text.JoinLiteral("", caption, text.Msg(text.KeyQueueRank, text.Int("rank", int64(i+1))))
 			}
 			if originLabel != nil {
-				parts = append(parts, originLabel)
+				caption = text.JoinLiteral(" · ", caption, originLabel)
 			}
-			caption := text.JoinLiteral(" · ", parts...)
 
 			var schedRun string
 			if pi.Origin != nil && pi.Origin.ScheduledRunId != "" {

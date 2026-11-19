@@ -926,11 +926,13 @@ private fun PendingBubble(
     var expanded by remember(pending.requestId) { mutableStateOf(false) }
     val cancelBusy = pending.cancel.busy || pending.cancel.status == SessionCommandStatus.SESSION_COMMAND_STATUS_PENDING
     val resumeBusy = pending.resume.busy || pending.resume.status == SessionCommandStatus.SESSION_COMMAND_STATUS_PENDING
-    val captionText = listOfNotNull(
-        if (pending.hasOriginLabel()) uiText(pending.originLabel).ifEmpty { null } else null,
-        if (pending.hasLabel()) uiText(pending.label).ifEmpty { null } else null,
-        if (pending.hasCaption()) uiText(pending.caption).ifEmpty { null } else null,
-    ).joinToString(" · ")
+    val captionText = when {
+        pending.hasCaption() -> uiText(pending.caption).ifEmpty {
+            if (pending.hasLabel()) uiText(pending.label) else ""
+        }
+        pending.hasLabel() -> uiText(pending.label)
+        else -> ""
+    }
     val errText = if (pending.hasFeedback()) uiText(pending.feedback) else ""
 
     Column(Modifier.fillMaxWidth().padding(horizontal = ChatSide, vertical = 6.dp), horizontalAlignment = Alignment.End) {

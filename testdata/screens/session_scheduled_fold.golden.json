@@ -342,15 +342,6 @@
               "statusText": {
                 "key": "list_state.idle"
               },
-              "approvalModeLabel": {
-                "key": "modes.agent_own",
-                "args": [
-                  {
-                    "name": "agent",
-                    "strValue": "Codex"
-                  }
-                ]
-              },
               "modelUnknown": true,
               "machineId": "m1",
               "computerName": {
@@ -869,15 +860,6 @@
               "tone": "SESSION_TONE_NEUTRAL",
               "statusText": {
                 "key": "list_state.idle"
-              },
-              "approvalModeLabel": {
-                "key": "modes.agent_own",
-                "args": [
-                  {
-                    "name": "agent",
-                    "strValue": "Codex"
-                  }
-                ]
               },
               "modelUnknown": true,
               "machineId": "m1",

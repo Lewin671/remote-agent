@@ -876,16 +876,16 @@
             }
           },
           {
+            "requestEntropy": {
+              "minIds": 16
+            }
+          },
+          {
             "navigate": {
               "route": "NAVIGATE_ROUTE_SESSION",
               "projectKey": "/Users/me/Code/app",
               "sessionId": "s-new",
               "machineId": "m-on"
-            }
-          },
-          {
-            "requestEntropy": {
-              "minIds": 16
             }
           },
           {

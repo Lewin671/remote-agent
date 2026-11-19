@@ -316,15 +316,6 @@
               "statusText": {
                 "key": "list_state.approval"
               },
-              "approvalModeLabel": {
-                "key": "modes.agent_own",
-                "args": [
-                  {
-                    "name": "agent",
-                    "strValue": "Claude Code"
-                  }
-                ]
-              },
               "model": "claude-sonnet-4-6",
               "modelLabel": "claude-sonnet-4-6",
               "machineId": "m1",
@@ -607,15 +598,6 @@
               "tone": "SESSION_TONE_WARN",
               "statusText": {
                 "key": "list_state.approval"
-              },
-              "approvalModeLabel": {
-                "key": "modes.agent_own",
-                "args": [
-                  {
-                    "name": "agent",
-                    "strValue": "Claude Code"
-                  }
-                ]
               },
               "model": "claude-sonnet-4-6",
               "modelLabel": "claude-sonnet-4-6",
@@ -929,15 +911,6 @@
               "tone": "SESSION_TONE_NEUTRAL",
               "statusText": {
                 "key": "list_state.idle"
-              },
-              "approvalModeLabel": {
-                "key": "modes.agent_own",
-                "args": [
-                  {
-                    "name": "agent",
-                    "strValue": "Claude Code"
-                  }
-                ]
               },
               "model": "claude-sonnet-4-6",
               "modelLabel": "claude-sonnet-4-6",

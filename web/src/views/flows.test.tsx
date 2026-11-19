@@ -582,7 +582,7 @@ it("leaves an unknown approval mode unsaid in the navbar, and a new session does
   // s-run's CLI has not said its mode.
   patchDemoSession(r, "s-run", { mode: ApprovalMode.UNSPECIFIED, approvalsReviewer: "", approvalPolicy: "", sandbox: "", collaborationMode: "" });
   await mountAsync(<SessionPage remote={r} sessionId="s-run" onBack={() => undefined} wide={false} />);
-  expect(host.querySelector(".navbar .title > span")!.textContent).toBe(`${message("list_state.running", {}, "zh-CN")} · ${message("modes.agent_own", { agent: "Codex" })}`);
+  expect(host.querySelector(".navbar .title > span")!.textContent).toBe(message("list_state.running", {}, "zh-CN"));
   act(() => root!.unmount());
   host.remove();
   // Neither the project nor the machine says how a new Codex session starts.
@@ -2830,7 +2830,7 @@ describe("the first message of a session started here (review B5, B9)", () => {
     await act(async () => {
       patchDemoSession(r, "s-fresh", { status: SessionStatus.STARTING });
     });
-    expect(host.querySelector(".pending-meta > span")!.textContent).toBe(message("queue.android_sending_soon"));
+    expect(host.querySelector(".pending-meta > span")!.textContent).toBe(message("queue.android_agent_note", { agent: "Codex" }));
     expect(host.textContent).not.toContain(message("queue.insert"));
     expect(host.textContent!.split("给登录接口加限流").length - 1).toBe(1);
   });
@@ -4686,8 +4686,13 @@ it("hands a new session to its chat with the first prompt before its listing arr
     core.dispatch(create(CoreEventSchema, { event: { case: "newSessionSubmit", value: create(NewSessionSubmitActionSchema, { projectKey: project, autoModeSupported: true }) } }));
   });
   await vi.waitFor(() => expect(go).toHaveBeenCalledWith("s/new-handoff", true));
-  expect(r.sessions.has(info.id)).toBe(false);
-  // Once list/session metadata arrives, PendingStartPrompt renders immediately even before events load.
+  expect(r.sessions.has(info.id)).toBe(true);
+  // Seeded from CreateSession outcome, SessionPage and PendingStartPrompt render immediately before any stream/listing arrives.
+  await act(async () => root!.render(<SessionPage remote={r} sessionId={info.id} onBack={() => {}} wide={false} />));
+  expect(host.querySelector(".session")).toBeTruthy();
+  expect(host.querySelector(".me")?.textContent).toContain("第一句话");
+  expect(host.querySelector("textarea")).toBeTruthy();
+  // When stream sessionUpdated arrives later, it merges cleanly without losing the chat or duplicating the first prompt.
   await act(async () => {
     const { PlainSessionSchema, StreamFrameEventSchema } = await import("../gen/remoteagent/core/v1/app_pb");
     const legId = (r as unknown as { demoStream?: { legId: bigint } }).demoStream?.legId ?? 1n;
@@ -4704,10 +4709,7 @@ it("hands a new session to its chat with the first prompt before its listing arr
       },
     }));
   });
-  await act(async () => root!.render(<SessionPage remote={r} sessionId={info.id} onBack={() => {}} wide={false} />));
-  expect(host.querySelector(".session")).toBeTruthy();
-  expect(host.querySelector(".me")?.textContent).toContain("第一句话");
-  expect(host.querySelector("textarea")).toBeTruthy();
+  expect(host.querySelectorAll(".me").length).toBe(1);
 });
 
 it("shows 默认 for an unchosen effort, then sends the explicitly selected level", async () => {

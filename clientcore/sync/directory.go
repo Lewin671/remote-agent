@@ -634,6 +634,31 @@ func (e *Engine) putSession(ctx *StepContext, ps *corev1.PlainSession, writeCach
 	}
 }
 
+// SeedSession records a session learned from a daemon command result
+// (CreateSession / ForkSession) before the relay's SessionUpdated frame arrives,
+// so navigating straight into it never flashes "not found".
+func (e *Engine) SeedSession(ctx *StepContext, machineID string, meta *v1.Session) {
+	if meta == nil || meta.Id == "" || e.sessions[meta.Id] != nil {
+		return
+	}
+	updated := e.nowMs
+	if meta.CreatedAt != nil {
+		if ms := meta.CreatedAt.Seconds*1000 + int64(meta.CreatedAt.Nanos)/1_000_000; ms > 0 {
+			updated = ms
+		}
+	}
+	e.nextPushSeq++
+	e.sessionPushes[meta.Id] = e.nextPushSeq
+	e.putSession(ctx, &corev1.PlainSession{
+		SessionId: meta.Id,
+		MachineId: machineID,
+		UpdatedMs: updated,
+		Meta:      meta.Clone(),
+	}, false)
+	e.updateLivePollers(ctx)
+	ctx.Dirty.MarkAll()
+}
+
 func (e *Engine) removeSession(ctx *StepContext, sid string, dropFromCache bool) {
 	delete(e.sessions, sid)
 	delete(e.listed, sid)

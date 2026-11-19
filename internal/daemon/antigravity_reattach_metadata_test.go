@@ -52,3 +52,49 @@ func TestAgyReattachCatalogPrecedesFirstNativeModelObservation(t *testing.T) {
 		t.Fatalf("incomplete observation erased model: %v", got)
 	}
 }
+
+func TestAgyStartupStatusLineDoesNotLogBogusDefaultModelBeforeFlagsApply(t *testing.T) {
+	t.Parallel()
+	h := agyHarness(t)
+	bin := filepath.Join(t.TempDir(), "agy")
+	script := "#!/bin/sh\n[ \"$1\" = models ] || exit 1\nprintf '%s\\n' 'gemini-4-neon-high Gemini 4 Neon (High)' 'gemini-4-hydrogen-medium Gemini 4 Hydrogen (Medium)'\n"
+	if err := os.WriteFile(bin, []byte(script), 0700); err != nil {
+		t.Fatal(err)
+	}
+	a := antigravity.New(bin, t.TempDir())
+	if _, err := a.Models(); err != nil {
+		t.Fatal(err)
+	}
+	h.d.agents[a.Kind()] = a
+	h.s.ag = a
+	h.s.parser = a.NewParser()
+	h.s.meta.CodexSessionID = ""
+	if err := os.WriteFile(filepath.Join(h.s.dir, antigravity.SettingsFile), []byte(`{"toolPermission":"always-proceed"}`), 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	now := time.Now()
+	// Tick 1: pre-catalog startup statusLine emits global default display name with context_window_size: 0.
+	h.d.statusLine(h.s.meta.ID, []byte(`{"product":"antigravity","agent_state":"idle","model":{"id":"Gemini 4 Neon (High)","display_name":"Gemini 4 Neon (High)"},"context_window":{"context_window_size":0},"sandbox":{"enabled":false}}`), now)
+	// Tick 2: real requested model & effort arrive ~2s later with context_window_size: 1048576.
+	h.d.statusLine(h.s.meta.ID, []byte(`{"product":"antigravity","agent_state":"idle","model":{"id":"Gemini 4 Hydrogen (Medium)","display_name":"Gemini 4 Hydrogen (Medium)","effort":"medium"},"context_window":{"context_window_size":1048576},"sandbox":{"enabled":false}}`), now.Add(2*time.Second))
+
+	var contexts []*pb.TurnContext
+	for _, ev := range h.events() {
+		if tc := ev.GetTurnContext(); tc != nil {
+			contexts = append(contexts, tc)
+		}
+	}
+	if len(contexts) != 2 {
+		t.Fatalf("expected 2 TurnContext events, got %d: %+v", len(contexts), contexts)
+	}
+	if contexts[0].Model != "" || contexts[0].Effort != "" {
+		t.Fatalf("first TurnContext must suppress unresolved startup model, got %+v", contexts[0])
+	}
+	if contexts[1].Model != "gemini-4-hydrogen" || contexts[1].Effort != "medium" {
+		t.Fatalf("second TurnContext = %+v, want gemini-4-hydrogen/medium", contexts[1])
+	}
+	if got := h.s.info(); got.Model != "gemini-4-hydrogen" || got.Effort != "medium" {
+		t.Fatalf("session info model=%q effort=%q, want gemini-4-hydrogen/medium", got.Model, got.Effort)
+	}
+}
