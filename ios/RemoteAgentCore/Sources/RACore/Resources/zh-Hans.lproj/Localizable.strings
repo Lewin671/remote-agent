@@ -1453,6 +1453,7 @@
 "session_try_again" = "再试一次";
 "session_turn_duration" = "本轮用时 %1$@";
 "session_turn_error" = "本轮出错：%1$@";
+"session_turn_m_tokens" = "%1$@M tokens";
 "session_update_computer" = "请更新电脑上的 remote-agent";
 "session_usage_entry_empty_hint" = "对话后自动统计消耗、缓存与速度";
 "session_usage_entry_no_data" = "暂无记录";

@@ -1815,6 +1815,7 @@
     <string name="session_try_again" formatted="false">"Try again"</string>
     <string name="session_turn_duration">"Turn took %1$s"</string>
     <string name="session_turn_error">"Turn failed: %1$s"</string>
+    <string name="session_turn_m_tokens">"%1$sM tokens"</string>
     <string name="session_update_computer" formatted="false">"Update remote-agent on the computer"</string>
     <string name="session_usage_entry_empty_hint" formatted="false">"Usage, cache hit rate, and speed are recorded after conversations"</string>
     <string name="session_usage_entry_no_data" formatted="false">"No records"</string>

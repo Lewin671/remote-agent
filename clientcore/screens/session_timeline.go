@@ -1306,12 +1306,32 @@ func turnDurationText(ms, turnTokens int64) *corev1.Text {
 		return base
 	}
 	var tokTxt *corev1.Text
-	if turnTokens >= 1000 {
+	if turnTokens >= 1_000_000 {
+		tokTxt = text.Msg(text.KeySessionTurnMTokens, text.Str("count", millionsText(turnTokens)))
+	} else if turnTokens >= 1000 {
 		tokTxt = text.Msg(text.KeySessionIosTurnKTokens, text.Int("count", turnTokens/1000))
 	} else {
 		tokTxt = text.Msg(text.KeySessionIosTurnTokens, text.Int("count", turnTokens))
 	}
 	return text.JoinLiteral(" · ", base, tokTxt)
+}
+
+// millionsText writes n in millions to three significant digits without
+// trailing zeros: 1.26, 12.6, 126.
+func millionsText(n int64) string {
+	v := float64(n) / 1_000_000
+	prec := 0
+	switch {
+	case v < 9.995:
+		prec = 2
+	case v < 99.95:
+		prec = 1
+	}
+	s := strconv.FormatFloat(v, 'f', prec, 64)
+	if strings.Contains(s, ".") {
+		s = strings.TrimRight(strings.TrimRight(s, "0"), ".")
+	}
+	return s
 }
 
 func buildSettingsChangedNote(

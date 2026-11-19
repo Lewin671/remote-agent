@@ -1,6 +1,7 @@
 package screens
 
 import (
+	"strconv"
 	"strings"
 	"testing"
 
@@ -216,5 +217,36 @@ func TestNotifyReceipts(t *testing.T) {
 				t.Fatalf("time style = %v, want %v", got, style)
 			}
 		})
+	}
+}
+
+// The turn line's token count: whole k below a million, then M to three
+// significant digits (it once read 「1256k tokens」).
+func TestTurnDurationTokens(t *testing.T) {
+	for _, tc := range []struct {
+		tokens int64
+		key    string
+		count  string
+	}{
+		{999, text.KeySessionIosTurnTokens, "999"},
+		{1_500, text.KeySessionIosTurnKTokens, "1"},
+		{999_999, text.KeySessionIosTurnKTokens, "999"},
+		{1_000_000, text.KeySessionTurnMTokens, "1"},
+		{1_256_000, text.KeySessionTurnMTokens, "1.26"},
+		{9_996_000, text.KeySessionTurnMTokens, "10"},
+		{12_560_000, text.KeySessionTurnMTokens, "12.6"},
+		{125_600_000, text.KeySessionTurnMTokens, "126"},
+	} {
+		label := turnDurationText(90_000, tc.tokens)
+		tok := label.GetJoin()[1]
+		var count string
+		if a := tok.GetArgs()[0]; a.GetStrValue() != "" {
+			count = a.GetStrValue()
+		} else {
+			count = strconv.FormatInt(a.GetIntValue(), 10)
+		}
+		if tok.GetKey() != tc.key || count != tc.count {
+			t.Errorf("%d tokens: %s(%s), want %s(%s)", tc.tokens, tok.GetKey(), count, tc.key, tc.count)
+		}
 	}
 }

@@ -1729,6 +1729,7 @@
     <string name="session_try_again" formatted="false">"再试一次"</string>
     <string name="session_turn_duration">"本轮用时 %1$s"</string>
     <string name="session_turn_error">"本轮出错：%1$s"</string>
+    <string name="session_turn_m_tokens">"%1$sM tokens"</string>
     <string name="session_update_computer" formatted="false">"请更新电脑上的 remote-agent"</string>
     <string name="session_usage_entry_empty_hint" formatted="false">"对话后自动统计消耗、缓存与速度"</string>
     <string name="session_usage_entry_no_data" formatted="false">"暂无记录"</string>

@@ -1280,6 +1280,27 @@
     }
   },
   {
+    "en": "{count}M tokens",
+    "key": "session.turn_m_tokens",
+    "notes": "聊天轮次结束的 token 数，一百万及以上时用 M（百万）写，count 是保留三位有效数字的小数，如 1.26、12.6、126。中文同样用英文单位。",
+    "params": {
+      "count": {
+        "example": "1.26",
+        "type": "string"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "{count}M tokens"
+  },
+  {
     "en": {
       "forms": {
         "one": "{count} token",
