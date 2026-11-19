@@ -29,6 +29,7 @@
 //                                         the 「诊断信息」 row of the 「连接」 group (open it to see the sheet): one failure class each (direct-demo.ts);
 //                                         add &diagsheet=1 to open the sheet at once
 //   ?demo&conncheck=1#/settings            opens the connection check sheet at once
+//   ?demo&notify=1#/s/s-notify              scheduled pushes' receipts: the computer's copy, the agent's own, a stopped run's
 
 import { localeStore, t, type Locale } from "../i18n";
 import { seedDirect } from "./direct-demo";
@@ -1944,10 +1945,51 @@ export class DemoRemote extends Remote {
     }
     if (q.has("scheduled-final")) r.seedSchedules();
     if (q.has("shared-files")) r.seedSharedFiles();
+    if (q.has("notify")) r.seedNotify();
     if (q.has("one-machine")) for (const id of [...r.demoMachines.keys()]) if (id !== "mac") r.demoMachines.delete(id);
     void r.loadDevices();
     r.syncDemoToCore();
     return r;
+  }
+
+  /** Receipts of scheduled pushes (design-system §7 「通知回执」). */
+  private seedNotify() {
+    const id = "s-notify";
+    const now = Date.now();
+    const sched = (run: string) => ({ kind: OriginKind.SYSTEM, scheduledTaskId: "agy-health", scheduledRunId: run });
+    const reply1 = "最近 24 小时 agy 13 次运行全部拿到了结果，这期间没有出现任务中途的 malformed。";
+    const agentText = "2 次中途 malformed，重试都接上了。\n另有 1 次 Hydrogen task 跑了 2 小时 40 分，超过平时的两倍，建议看一眼。";
+    const rows: [string, Partial<{ origin: ReturnType<typeof sched> }>, EventKind][] = [
+      ["t1", { origin: sched("r1") }, { case: "userMessage", value: { text: "查一下最近 24 小时 agy 的运行情况，有异常才通知我。" } }],
+      ["t1", {}, { case: "turnStarted", value: {} }],
+      ["t1", {}, { case: "agentMessage", value: { text: reply1 } }],
+      ["t1", {}, { case: "tokenUsage", value: { inputTokens: 1_200_000n, outputTokens: 56_000n } }],
+      ["t1", {}, { case: "turnEnded", value: { durationMs: 89_000n, outcome: TurnOutcome.COMPLETED } }],
+      ["t1", { origin: { kind: OriginKind.SYSTEM } as ReturnType<typeof sched> }, { case: "scheduledNotification", value: { taskId: "agy-health", runId: "r1", text: reply1 } }],
+      ["t2", { origin: sched("r2") }, { case: "userMessage", value: { text: "查一下最近 24 小时 agy 的运行情况，有异常才通知我。" } }],
+      ["t2", {}, { case: "turnStarted", value: {} }],
+      ["t2", {}, { case: "agentMessage", value: { text: "13 次运行里有 2 次中途 malformed，重试都在同一会话接上了，缓存命中。另有 1 次超过 2 小时。" } }],
+      ["t2", {}, { case: "scheduledNotification", value: { taskId: "agy-health", runId: "r2", text: agentText } }],
+      ["t2", {}, { case: "scheduledNotification", value: { taskId: "agy-health", runId: "r2", text: "@lin 要求把重试次数改成可配置" } }],
+      ["t2", {}, { case: "tokenUsage", value: { inputTokens: 1_300_000n, outputTokens: 60_000n } }],
+      ["t2", {}, { case: "turnEnded", value: { durationMs: 75_000n, outcome: TurnOutcome.COMPLETED } }],
+    ];
+    const info = create(SessionSchema, {
+      id,
+      title: "agy-health",
+      cwd: "/Users/me/code/remote-agent",
+      agent: Agent.CODEX,
+      status: SessionStatus.IDLE,
+      mode: ApprovalMode.ASK,
+      createdAt: timestampFromMs(now - 60 * min),
+    });
+    this.demoSessions.set(id, { id, machineId: "mac", info, metaRev: 1n, lastSeq: BigInt(rows.length), updatedMs: BigInt(now), endedMs: 0n });
+    this.evs.set(
+      id,
+      rows.map(([turnId, extra, kind], i) =>
+        create(EventSchema, { seq: BigInt(i + 1), sessionId: id, turnId, time: timestampFromMs(now - (rows.length - i) * min), kind, ...extra }),
+      ),
+    );
   }
 
   private seedSharedFiles() {

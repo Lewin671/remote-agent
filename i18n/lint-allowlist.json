@@ -4518,5 +4518,65 @@
     "path": "web/src/views/Settings.tsx",
     "literal": "settings/add-device",
     "reason": "Internal CSS class name, ARIA/HTML attribute, route path, MIME type, or internal Error sentinel; never rendered to users."
+  },
+  {
+    "path": "web/src/dev/demo.ts",
+    "literal": "最近 24 小时 agy 13 次运行全部拿到了结果，这期间没有出现任务中途的 malformed。",
+    "reason": "DEBUG-only demo fixture data (sample sessions and file cards for screenshots and UI tests); not compiled into release builds and never shown as product copy."
+  },
+  {
+    "path": "web/src/dev/demo.ts",
+    "literal": "2 次中途 malformed，重试都接上了。\\n另有 1 次 Hydrogen task 跑了 2 小时 40 分，超过平时的两倍，建议看一眼。",
+    "reason": "DEBUG-only demo fixture data (sample sessions and file cards for screenshots and UI tests); not compiled into release builds and never shown as product copy."
+  },
+  {
+    "path": "web/src/dev/demo.ts",
+    "literal": "查一下最近 24 小时 agy 的运行情况，有异常才通知我。",
+    "reason": "DEBUG-only demo fixture data (sample sessions and file cards for screenshots and UI tests); not compiled into release builds and never shown as product copy."
+  },
+  {
+    "path": "web/src/dev/demo.ts",
+    "literal": "13 次运行里有 2 次中途 malformed，重试都在同一会话接上了，缓存命中。另有 1 次超过 2 小时。",
+    "reason": "DEBUG-only demo fixture data (sample sessions and file cards for screenshots and UI tests); not compiled into release builds and never shown as product copy."
+  },
+  {
+    "path": "web/src/dev/demo.ts",
+    "literal": "@lin 要求把重试次数改成可配置",
+    "reason": "DEBUG-only demo fixture data (sample sessions and file cards for screenshots and UI tests); not compiled into release builds and never shown as product copy."
+  },
+  {
+    "path": "web/src/dev/demo.ts",
+    "literal": "agy-health",
+    "reason": "DEBUG-only demo fixture data (sample sessions and file cards for screenshots and UI tests); not compiled into release builds and never shown as product copy."
+  },
+  {
+    "path": "web/src/dev/demo.ts",
+    "literal": "/Users/me/code/remote-agent",
+    "reason": "DEBUG-only demo fixture data (sample sessions and file cards for screenshots and UI tests); not compiled into release builds and never shown as product copy."
+  },
+  {
+    "path": "web/src/dev/demo.ts",
+    "literal": "tokenUsage",
+    "reason": "Non-UI identifier, CSS class, protobuf case, internal invariant, or JSX TypeScript generic false positive."
+  },
+  {
+    "path": "web/src/dev/demo.ts",
+    "literal": "userMessage",
+    "reason": "Non-UI identifier, CSS class, protobuf case, internal invariant, or JSX TypeScript generic false positive."
+  },
+  {
+    "path": "web/src/dev/demo.ts",
+    "literal": "scheduledNotification",
+    "reason": "Non-UI identifier, CSS class, protobuf case, internal invariant, or JSX TypeScript generic false positive."
+  },
+  {
+    "path": "web/src/views/Session.tsx",
+    "literal": "tx",
+    "reason": "Non-UI identifier, CSS class, protobuf case, internal invariant, or JSX TypeScript generic false positive."
+  },
+  {
+    "path": "web/src/views/Session.tsx",
+    "literal": "notifyReceipt",
+    "reason": "Non-UI identifier, CSS class, protobuf case, internal invariant, or JSX TypeScript generic false positive."
   }
 ]

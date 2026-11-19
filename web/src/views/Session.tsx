@@ -14,6 +14,7 @@ import {
   type SessionActionsView,
   type SessionCommandState,
   type SessionHeaderView,
+  type SessionNotifyReceiptItem,
   type SessionRestoreComposerEffect,
   type SessionTimelineItem,
   type SessionViewModel,
@@ -26,6 +27,7 @@ import {
 } from "../gen/remoteagent/v1/remote_pb";
 import {
   ArrowDown,
+  Bell,
   Check,
   ChevronDown,
   ChevronLeft,
@@ -53,7 +55,7 @@ import { HistoryOpening } from "./HistoryOpening";
 import { HistoryRows } from "./HistoryRows";
 import { GenCard, ImageStrip, ImageViewer, LocalThumbs, OpenImage } from "./Images";
 import { OutgoingBubbles, PendingBubbles, type LocalSendAttachments } from "./Queue";
-import { RememberDetails, RowState } from "./RowState";
+import { RememberDetails, RowState, useRowExpanded } from "./RowState";
 import { ScheduleCreate, ScheduleStrip } from "./pages";
 import { ScheduleText } from "./ScheduleText";
 import { followsEnd, NEAR_END, type Scrolled } from "./scroll-follow";
@@ -1625,12 +1627,19 @@ const ChatBody = memo(function ChatBody({
     }
   }
   const freshRow = (k: string) => !!canAnimate() && newRowKeys.current.has(k);
+  // Receipts in a row sit 4 apart (design-system §7): the wrapper of one
+  // followed by another says so, since each row has its own wrapper.
+  const receiptRun = useMemo(
+    () => new Set(rows.filter((r, i) => r.item.kind.case === "notifyReceipt" && rows[i + 1]?.item.kind.case === "notifyReceipt").map((r) => r.key)),
+    [rows],
+  );
   const rowClass = (it: TimelineRowEntry) => {
-    if (!freshRow(it.key)) return undefined;
+    const run = receiptRun.has(it.key) ? "nt-run" : "";
+    if (!freshRow(it.key)) return run || undefined;
     const k = it.item.kind.case;
     if (k === "userMessage") return "mo-rise";
-    if (k === "toolCall" || k === "toolGroup") return "mo-fade";
-    return undefined;
+    if (k === "toolCall" || k === "toolGroup") return run ? "mo-fade " + run : "mo-fade";
+    return run || undefined;
   };
 
   const pressedAt = useRef(0);
@@ -1912,6 +1921,42 @@ function NewMessages({ n, onClick }: { n: number; onClick: () => void }) {
   );
 }
 
+/** A scheduled run's push, left as one grey line (design-system §7): Core
+ * says what it shows; the agent's longer texts open in place. */
+function NotifyReceipt({ receipt: r }: { receipt: SessionNotifyReceiptItem }) {
+  const [open, setOpen] = useRowExpanded("receipt");
+  const label = renderText(r.label);
+  const line = (
+    <>
+      <Bell />
+      <span className="tx">
+        {label} · {open || !r.preview ? renderText(r.time) : r.preview}
+      </span>
+    </>
+  );
+  if (!r.expandable) {
+    return (
+      <div className="nt">
+        <div className="hd">{line}</div>
+      </div>
+    );
+  }
+  return (
+    <div className={"nt can" + (open ? " open" : "")}>
+      <button
+        className="hd"
+        onClick={() => setOpen(!open)}
+        aria-expanded={open}
+        aria-label={open ? i18n.t("markdown.collapse") : i18n.t("session.notify_receipt_expand")}
+      >
+        {line}
+        <ChevronDown className="chev" />
+      </button>
+      {open && <div className="bd">{r.body}</div>}
+    </div>
+  );
+}
+
 const TimelineRow = memo(function TimelineRow({
   item,
   sessionId,
@@ -2094,6 +2139,8 @@ const TimelineRow = memo(function TimelineRow({
       const cls = n.tone === SessionNoteTone.NEGATIVE ? " fail" : n.tone === SessionNoteTone.WARNING ? " warn" : "";
       return <div className={"sysline" + cls}>{renderText(n.text)}</div>;
     }
+    case "notifyReceipt":
+      return <NotifyReceipt receipt={item.kind.value} />;
     case "turnEnd": {
       const te = item.kind.value;
       if (te.interrupted) return <div className="sysline">{renderText(te.label)}</div>;

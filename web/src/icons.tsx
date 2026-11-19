@@ -7,6 +7,7 @@ import {
   ArrowLeft as LArrowLeft,
   ArrowRight as LArrowRight,
   ArrowUp as LArrowUp,
+  Bell as LBell,
   Check as LCheck,
   Copy as LCopy,
   Clock as LClock,
@@ -93,6 +94,8 @@ export const Copy = icon(LCopy);
 /** A task in a reply's list: still to do, and done. */
 export const Box = icon(LSquare);
 export const BoxChecked = icon(LSquareCheck);
+/** A push went out to you: the receipt in a conversation. */
+export const Bell = icon(LBell);
 /** Done; also the chosen one of several. */
 export const Check = icon(LCheck);
 /** Failed; also closes and clears. */

@@ -476,7 +476,8 @@ describe("golden SessionScreenView layout and interaction", () => {
     const foldBtn = host.querySelector<HTMLButtonElement>("button.schedule-quiet")!;
     expect(foldBtn).toBeTruthy();
     expect(host.textContent).toContain("Alert: disk usage 95%!");
-    expect(host.textContent).toContain("Disk warning sent");
+    // The agent's short push renders as a receipt line that cannot open.
+    expect(host.querySelector(".nt:not(.can) .tx")?.textContent).toMatch(/ · Disk warning sent$/);
     act(() => foldBtn.click());
     expect(onExpandGroup).toHaveBeenCalledWith("quiet-run-1");
 
