@@ -553,6 +553,11 @@ func (e *Engine) putMachine(ctx *StepContext, pm *corev1.PlainMachine, staleOnli
 			entry.Meta = cur.Meta
 			entry.MetaRev = cur.MetaRev
 		}
+		if cur.Meta != nil && entry.Meta != nil && cur.Meta.SettingsRevision > entry.Meta.SettingsRevision {
+			entry.Meta = entry.Meta.Clone()
+			entry.Meta.DisabledAgents = append([]v1.Agent(nil), cur.Meta.DisabledAgents...)
+			entry.Meta.SettingsRevision = cur.Meta.SettingsRevision
+		}
 	}
 	e.machines[pm.MachineId] = entry
 	if writeCache && pm.CacheRef != "" {

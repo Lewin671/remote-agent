@@ -248,8 +248,11 @@ func (d *Daemon) updateSettingsReq(req *pb.UpdateSettingsRequest) (settings *pb.
 			resultErr = outcome.FinalError(resultErr)
 		}
 	}()
-	if req == nil || req.Settings == nil {
+	if req == nil || (req.Settings == nil && req.ToggleAgent == nil) {
 		return nil, errors.New("settings are required")
+	}
+	if req.ToggleAgent != nil && req.ToggleEnabled == nil {
+		return nil, errors.New("toggle_enabled is required with toggle_agent")
 	}
 
 	d.settingsCommitMu.Lock()
@@ -276,7 +279,7 @@ func (d *Daemon) updateSettingsReq(req *pb.UpdateSettingsRequest) (settings *pb.
 		st.DisabledAgents = normalizeDisabledAgents(nextDisabled)
 	} else {
 		st = proto.CloneOf(req.Settings)
-		st.DisabledAgents = normalizeDisabledAgents(st.DisabledAgents)
+		st.DisabledAgents = append([]pb.Agent(nil), cur.DisabledAgents...)
 	}
 
 	for _, n := range []int64{st.ImageUploadQuotaBytes} {

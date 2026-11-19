@@ -4188,5 +4188,15 @@
     "path": "web/src/dev/demo.ts",
     "literal": "unknown",
     "reason": "Simulated daemon RPC error outcome string in dev/test DemoRemote fixture."
+  },
+  {
+    "path": "internal/daemon/machine.go",
+    "literal": "toggle_enabled is required with toggle_agent",
+    "reason": "Internal daemon validation error message, never rendered raw in UI."
+  },
+  {
+    "path": "internal/daemon/rpc.go",
+    "literal": "toggle_enabled is required with toggle_agent",
+    "reason": "Internal daemon RPC validation error message, never rendered raw in UI."
   }
 ]

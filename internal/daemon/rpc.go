@@ -329,8 +329,11 @@ func (h *handler) GetSettings(ctx context.Context, req *connect.Request[pb.GetSe
 }
 
 func (h *handler) UpdateSettings(ctx context.Context, req *connect.Request[pb.UpdateSettingsRequest]) (*connect.Response[pb.UpdateSettingsResponse], error) {
-	if req.Msg.Settings == nil {
+	if req.Msg.Settings == nil && req.Msg.ToggleAgent == nil {
 		return nil, outcome.FinalError(connect.NewError(connect.CodeInvalidArgument, errors.New("settings are required")))
+	}
+	if req.Msg.ToggleAgent != nil && req.Msg.ToggleEnabled == nil {
+		return nil, outcome.FinalError(connect.NewError(connect.CodeInvalidArgument, errors.New("toggle_enabled is required with toggle_agent")))
 	}
 	st, err := h.d.updateSettingsReq(req.Msg)
 	if err != nil {

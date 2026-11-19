@@ -165,16 +165,21 @@ func TestCliSwitchesToggleConflictAndDraftFallback(t *testing.T) {
 		},
 	})
 	var dc *corev1.DispatchCommandEffect
+	var toggleReq *v1.UpdateSettingsRequest
 	for _, eff := range tBatch.Effects {
 		if eff.GetDispatchCommand() != nil {
 			var cmd v1.Command
 			if err := cmd.Unmarshal(eff.GetDispatchCommand().CommandBytes); err == nil && cmd.GetUpdateSettings() != nil {
 				dc = eff.GetDispatchCommand()
+				toggleReq = cmd.GetUpdateSettings()
 			}
 		}
 	}
-	if dc == nil {
+	if dc == nil || toggleReq == nil {
 		t.Fatal("expected UpdateSettings DispatchCommand for ToggleMachineAgent")
+	}
+	if toggleReq.Settings != nil || toggleReq.ToggleAgent == nil || toggleReq.ToggleEnabled == nil || *toggleReq.ToggleAgent != v1.Agent_AGENT_CLAUDE || *toggleReq.ToggleEnabled {
+		t.Fatalf("expected atomic ToggleMachineAgent request with nil Settings, got %+v", toggleReq)
 	}
 	settleUpdateSettings(c, dc, 1_791_633_600_080, &v1.CommandResult{
 		Outcome:         "executed",
@@ -188,6 +193,34 @@ func TestCliSwitchesToggleConflictAndDraftFallback(t *testing.T) {
 			},
 		},
 	}, "")
+
+	// Stale MachineUpdated/ListsFetched snapshot with lower SettingsRevision must not revert disabled Claude.
+	c.Dispatch(&corev1.Event{
+		NowMs: 1_791_633_600_085,
+		Event: &corev1.Event_ListsFetched{
+			ListsFetched: &corev1.ListsFetchedEvent{
+				OpId: 4,
+				Machines: []*corev1.PlainMachine{
+					{
+						MachineId: "m-1",
+						Online:    true,
+						MetaRev:   10,
+						Meta: &v1.MachineMeta{
+							Hostname:         "MacStudio",
+							ProtocolVersion:  17,
+							SettingsRevision: 1,
+							Capabilities:     &v1.MachineCapabilities{CliSwitches: true, UsageStats: true},
+							Agents: []*v1.AgentInfo{
+								{Agent: v1.Agent_AGENT_CODEX, Version: "0.90.0", Verified: true},
+								{Agent: v1.Agent_AGENT_CLAUDE, Version: "2.1.0", Verified: true},
+								{Agent: v1.Agent_AGENT_ANTIGRAVITY, Version: "1.4.0", Verified: true},
+							},
+						},
+					},
+				},
+			},
+		},
+	})
 
 	// Mid-draft NewSession preserves prompt text and surfaces NOTICE_KIND_AGENT_DISABLED_FALLBACK.
 	nsVM, err := c.View(&corev1.Screen{Screen: &corev1.Screen_NewSession{NewSession: &corev1.NewSessionScreenRequest{ProjectKey: "/Users/me/proj"}}})

@@ -30,11 +30,10 @@ func TestCliSwitchesPersistenceConflictAndEnforcement(t *testing.T) {
 		t.Fatalf("expected cli_switches and usage_stats capabilities enabled: %+v", meta0.GetCapabilities())
 	}
 
-	// Disable Claude atomically.
+	// Disable Claude atomically (wire requests from clientcore omit Settings).
 	agClaude := pb.Agent_AGENT_CLAUDE
 	enFalse := false
 	res, err := rpc.UpdateSettings(ctx, connect.NewRequest(&pb.UpdateSettingsRequest{
-		Settings:      &pb.DaemonSettings{},
 		ToggleAgent:   &agClaude,
 		ToggleEnabled: &enFalse,
 	}))
@@ -48,10 +47,27 @@ func TestCliSwitchesPersistenceConflictAndEnforcement(t *testing.T) {
 		t.Fatalf("MachineMeta did not reflect disabled agent / revision: %+v", d.MachineMeta())
 	}
 
+	// ToggleAgent without ToggleEnabled is rejected cleanly as InvalidArgument.
+	if _, err := rpc.UpdateSettings(ctx, connect.NewRequest(&pb.UpdateSettingsRequest{
+		ToggleAgent: &agClaude,
+	})); err == nil || connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("expected InvalidArgument when ToggleEnabled omitted, got %v", err)
+	}
+
+	// Non-toggle UpdateSettings preserves disabled_agents instead of resetting it.
+	resPreserve, err := rpc.UpdateSettings(ctx, connect.NewRequest(&pb.UpdateSettingsRequest{
+		Settings: &pb.DaemonSettings{IdleCloseMinutes: 120},
+	}))
+	if err != nil {
+		t.Fatalf("non-toggle UpdateSettings failed: %v", err)
+	}
+	if len(resPreserve.Msg.Settings.DisabledAgents) != 1 || resPreserve.Msg.Settings.DisabledAgents[0] != pb.Agent_AGENT_CLAUDE || resPreserve.Msg.Settings.Revision != 2 {
+		t.Fatalf("non-toggle UpdateSettings wiped disabled_agents: %+v", resPreserve.Msg.Settings)
+	}
+
 	// Attempting to disable the last remaining CLI (Codex) must fail with FailedPrecondition.
 	agCodex := pb.Agent_AGENT_CODEX
 	_, err = rpc.UpdateSettings(ctx, connect.NewRequest(&pb.UpdateSettingsRequest{
-		Settings:      &pb.DaemonSettings{},
 		ToggleAgent:   &agCodex,
 		ToggleEnabled: &enFalse,
 	}))
