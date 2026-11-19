@@ -1141,13 +1141,37 @@ func findInPath(name, path string) string {
 	return ""
 }
 
-// skipEnv lists variables that belong to the caller's terminal rather than
-// to the CLI process.
-var skipEnv = map[string]bool{
-	"TMUX": true, "TMUX_PANE": true, "TERM": true, "TERM_PROGRAM": true, "TERM_PROGRAM_VERSION": true,
-	"TERM_SESSION_ID": true, "COLUMNS": true, "LINES": true, "SHLVL": true, "PWD": true, "OLDPWD": true,
-	"_": true, "RA_SESSION": true, "RA_EXE": true, "COLORTERM": true, "ITERM_SESSION_ID": true,
+// parentAgentEnv lists per-session runtime markers set by coding CLIs that
+// must never leak into a child session's process environment.
+var parentAgentEnv = []string{
+	"CLAUDECODE", "CLAUDE_CODE_ENTRYPOINT", "CLAUDE_CODE_SSE_PORT", "CLAUDE_CODE_SESSION_ID",
+	"CODEX_CI", "CODEX_SANDBOX", "CODEX_SANDBOX_NETWORK_DISABLED", "CODEX_THREAD_ID",
+	"ANTIGRAVITY_AGENT", "ANTIGRAVITY_AGENTAPI_EXE", "ANTIGRAVITY_CONVERSATION_ID",
+	"ANTIGRAVITY_CSRF_TOKEN", "ANTIGRAVITY_LS_ADDRESS", "ANTIGRAVITY_LS_VERSION",
+	"ANTIGRAVITY_PROJECT_ID", "ANTIGRAVITY_SOURCE_METADATA", "ANTIGRAVITY_TRAJECTORY_ID",
 }
+
+// ScrubParentAgentEnv removes parent coding-CLI session markers inherited from
+// a foreground daemon or tmux server before applying a session's own env file.
+func ScrubParentAgentEnv() {
+	for _, k := range parentAgentEnv {
+		_ = os.Unsetenv(k)
+	}
+}
+
+// skipEnv lists variables that belong to the caller's terminal or parent
+// coding-CLI session rather than to the new CLI process.
+var skipEnv = func() map[string]bool {
+	m := map[string]bool{
+		"TMUX": true, "TMUX_PANE": true, "TERM": true, "TERM_PROGRAM": true, "TERM_PROGRAM_VERSION": true,
+		"TERM_SESSION_ID": true, "COLUMNS": true, "LINES": true, "SHLVL": true, "PWD": true, "OLDPWD": true,
+		"_": true, "RA_SESSION": true, "RA_EXE": true, "COLORTERM": true, "ITERM_SESSION_ID": true,
+	}
+	for _, k := range parentAgentEnv {
+		m[k] = true
+	}
+	return m
+}()
 
 func sessionEnv(fromClient, extra map[string]string) map[string]string {
 	env := map[string]string{}

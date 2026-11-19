@@ -15,6 +15,7 @@ import (
 	"connectrpc.com/connect"
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/internal/buildinfo"
+	"github.com/Lewin671/remote-agent/internal/i18n"
 	"github.com/Lewin671/remote-agent/internal/schedulemcp"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
@@ -137,6 +138,10 @@ func runSchedule(args []string) error {
 }
 
 func runMCP(args []string) error {
+	if isHelpArg(args) {
+		os.Stdout.WriteString(i18n.ScheduleCliMcpHelp(cliLocale))
+		return nil
+	}
 	fs := flag.NewFlagSet("mcp", flag.ContinueOnError)
 	session := fs.String("session", os.Getenv("RA_SESSION"), "bound Remote Agent session")
 	if err := fs.Parse(args); err != nil {

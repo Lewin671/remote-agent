@@ -10,6 +10,7 @@ import (
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/internal/agent"
+	"github.com/Lewin671/remote-agent/internal/i18n"
 )
 
 // Hook command executed by Antigravity CLI lifecycle hooks.
@@ -79,6 +80,11 @@ func (a *Adapter) Options(extra []string, model, effort string, mode pb.Approval
 	if effort != "" {
 		if err := CheckEffort(effort); err != nil {
 			return nil, err
+		}
+		if model != "" {
+			if supported, known := a.models.SupportsEffort(a.Bin(), model); known && !supported {
+				return nil, &agent.EffortNotSupportedError{Msg: i18n.NewSessionCliModelNoEffort("en", model)}
+			}
 		}
 		args = append(args, "--effort", effort)
 	}
@@ -250,10 +256,16 @@ func (a *Adapter) Argv(l *agent.Launch) ([]string, error) {
 			if l.Context.Model != "" && agent.SafeValue.MatchString(l.Context.Model) {
 				args = setFlag(args, "--model", l.Context.Model)
 			}
-			if l.Context.Effort != "" && CheckEffort(l.Context.Effort) == nil {
+			if l.Context.Model != "" {
+				if supported, known := a.models.SupportsEffort(a.Bin(), l.Context.Model); known && !supported {
+					args = filterValueFlag(args, "--effort")
+				} else if l.Context.Effort != "" && CheckEffort(l.Context.Effort) == nil {
+					args = setFlag(args, "--effort", l.Context.Effort)
+				}
+			} else if l.Context.Effort != "" && CheckEffort(l.Context.Effort) == nil {
 				args = setFlag(args, "--effort", l.Context.Effort)
 			}
-			args = filterModeArgs(args)
+			args = filterValueFlag(args, "--mode")
 			if l.Context.PermissionMode == "auto" {
 				args = setFlag(args, "--mode", "auto")
 			} else if l.Context.PermissionMode == "plan" || l.Context.PermissionMode == "accept-edits" {
@@ -395,14 +407,14 @@ func setFlag(args []string, name, value string) []string {
 	return append(out, name, value)
 }
 
-func filterModeArgs(args []string) []string {
+func filterValueFlag(args []string, name string) []string {
 	var out []string
 	for i := 0; i < len(args); i++ {
-		if args[i] == "--mode" {
+		if args[i] == name {
 			i++
 			continue
 		}
-		if strings.HasPrefix(args[i], "--mode=") {
+		if strings.HasPrefix(args[i], name+"=") {
 			continue
 		}
 		out = append(out, args[i])

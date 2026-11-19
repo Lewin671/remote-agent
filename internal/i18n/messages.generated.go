@@ -237,6 +237,30 @@ func MachineStatusUnavailable(locale string) string {
 	return render(locale, "machine_status.unavailable", map[string]any{})
 }
 
+func NewSessionCliHelp(locale string, agents string, defaultAgent string) string {
+	return render(locale, "new_session.cli_help", map[string]any{"agents": agents, "defaultAgent": defaultAgent})
+}
+
+func NewSessionCliModeInvalid(locale string) string {
+	return render(locale, "new_session.cli_mode_invalid", map[string]any{})
+}
+
+func NewSessionCliModelNoEffort(locale string, model string) string {
+	return render(locale, "new_session.cli_model_no_effort", map[string]any{"model": model})
+}
+
+func NewSessionCliTitleTooLong(locale string, count int, max int) string {
+	return render(locale, "new_session.cli_title_too_long", map[string]any{"count": count, "max": max})
+}
+
+func NewSessionCliUnexpectedArgs(locale string) string {
+	return render(locale, "new_session.cli_unexpected_args", map[string]any{})
+}
+
+func NewSessionCliUnknownAgent(locale string, allowed string, value string) string {
+	return render(locale, "new_session.cli_unknown_agent", map[string]any{"allowed": allowed, "value": value})
+}
+
 func QuotaAgyProbeFailed(locale string) string {
 	return render(locale, "quota.agy_probe_failed", map[string]any{})
 }
@@ -267,6 +291,10 @@ func QuotaManaged(locale string) string {
 
 func QuotaReadFailed(locale string) string {
 	return render(locale, "quota.read_failed", map[string]any{})
+}
+
+func ScheduleCliMcpHelp(locale string) string {
+	return render(locale, "schedule.cli_mcp_help", map[string]any{})
 }
 
 func SecurityMigrationAcceptanceCorrupt(locale string) string {
@@ -303,6 +331,10 @@ func SecurityResultBodyUnavailable(locale string) string {
 
 func SecurityStorageV4Required(locale string) string {
 	return render(locale, "security.storage_v4_required", map[string]any{})
+}
+
+func StartupCliUsage(locale string, agentLines string, agents string) string {
+	return render(locale, "startup.cli_usage", map[string]any{"agentLines": agentLines, "agents": agents})
 }
 
 func TransportStunBytes(locale string) string {

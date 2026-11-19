@@ -21,6 +21,7 @@ import (
 	"syscall"
 	"text/tabwriter"
 	"time"
+	"unicode/utf8"
 
 	"connectrpc.com/connect"
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
@@ -28,6 +29,7 @@ import (
 	"github.com/Lewin671/remote-agent/internal/agent"
 	"github.com/Lewin671/remote-agent/internal/client"
 	"github.com/Lewin671/remote-agent/internal/daemon"
+	"github.com/Lewin671/remote-agent/internal/i18n"
 	"github.com/Lewin671/remote-agent/internal/paths"
 	"github.com/Lewin671/remote-agent/internal/ptyhost"
 	"github.com/Lewin671/remote-agent/internal/relay"
@@ -194,29 +196,118 @@ func environ() map[string]string {
 	return env
 }
 
-// runNew starts a session without attaching: Codex, or the CLI named by
-// a leading --agent.
+const cliLocale = "en"
+
+func isHelpArg(args []string) bool {
+	return len(args) > 0 && (args[0] == "help" || args[0] == "-h" || args[0] == "--help")
+}
+
+// runNew starts a session without attaching and prints its session ID.
 func runNew(args []string) error {
-	kind := daemon.RegisteredAgents[0].Kind
-	if len(args) > 0 {
-		name, value, inline := strings.Cut(args[0], "=")
-		if name == "--agent" {
-			rest := args[1:]
-			if !inline {
-				if len(rest) == 0 {
-					return fmt.Errorf("usage: remote-agent new [--agent %s] [args]", strings.Join(daemon.AgentIDs(), "|"))
-				}
-				value, rest = rest[0], rest[1:]
-			}
-			spec, ok := daemon.FindAgent(value)
-			if !ok {
-				return fmt.Errorf("unknown agent %q; use %s", value, strings.Join(daemon.AgentIDs(), " or "))
-			}
-			kind = spec.Kind
-			args = rest
+	if isHelpArg(args) {
+		os.Stdout.WriteString(i18n.NewSessionCliHelp(cliLocale, strings.Join(daemon.AgentIDs(), "|"), daemon.RegisteredAgents[0].ID))
+		return nil
+	}
+	req, sessionTitle, err := parseNewOptions(args, os.Stdin, os.Getwd, environ)
+	if errors.Is(err, flag.ErrHelp) {
+		os.Stdout.WriteString(i18n.NewSessionCliHelp(cliLocale, strings.Join(daemon.AgentIDs(), "|"), daemon.RegisteredAgents[0].ID))
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	c := dial()
+	resp, err := c.CreateSession(context.Background(), connect.NewRequest(req))
+	if err != nil {
+		return explain(err)
+	}
+	s := resp.Msg.Session
+	fmt.Println(s.Id)
+	if sessionTitle != "" {
+		if _, err := c.RenameSession(context.Background(), connect.NewRequest(&pb.RenameSessionRequest{SessionId: s.Id, Title: sessionTitle})); err != nil {
+			return explain(err)
 		}
 	}
-	return runAgent(kind, args, false)
+	return nil
+}
+
+func splitDashDash(args []string) (ownArgs, cliArgs []string) {
+	for i, a := range args {
+		if a == "--" {
+			return args[:i], args[i+1:]
+		}
+	}
+	return args, nil
+}
+
+func parseNewOptions(args []string, stdin io.Reader, getwd func() (string, error), getEnv func() map[string]string) (*pb.CreateSessionRequest, string, error) {
+	ownArgs, cliArgs := splitDashDash(args)
+	fs := flag.NewFlagSet("new", flag.ContinueOnError)
+	fs.SetOutput(io.Discard)
+	agentID := fs.String("agent", daemon.RegisteredAgents[0].ID, "")
+	cwdFlag := fs.String("cwd", "", "")
+	model := fs.String("model", "", "")
+	effort := fs.String("effort", "", "")
+	modeFlag := fs.String("mode", "", "")
+	stdCtx := fs.Bool("standard-context", false, "")
+	sessionTitle := fs.String("title", "", "")
+	firstPrompt := fs.String("prompt", "", "")
+	viaLoginShell := fs.Bool("login-shell", false, "")
+	if err := fs.Parse(ownArgs); err != nil {
+		return nil, "", err
+	}
+	if fs.NArg() > 0 {
+		return nil, "", errors.New(i18n.NewSessionCliUnexpectedArgs(cliLocale))
+	}
+	spec, ok := daemon.FindAgent(*agentID)
+	if !ok {
+		return nil, "", errors.New(i18n.NewSessionCliUnknownAgent(cliLocale, strings.Join(daemon.AgentIDs(), " or "), *agentID))
+	}
+	var cwd string
+	var err error
+	if *cwdFlag == "" {
+		cwd, err = getwd()
+	} else {
+		cwd, err = filepath.Abs(*cwdFlag)
+	}
+	if err != nil {
+		return nil, "", err
+	}
+	var mode pb.ApprovalMode
+	if *modeFlag != "" {
+		m, valid := modeNames[*modeFlag]
+		if !valid {
+			return nil, "", errors.New(i18n.NewSessionCliModeInvalid(cliLocale))
+		}
+		mode = m
+	}
+	normalizedTitle := strings.Join(strings.Fields(*sessionTitle), " ")
+	if n := utf8.RuneCountInString(normalizedTitle); n > 60 {
+		return nil, "", errors.New(i18n.NewSessionCliTitleTooLong(cliLocale, n, 60))
+	}
+	promptBody := *firstPrompt
+	if promptBody == "-" {
+		b, err := io.ReadAll(stdin)
+		if err != nil {
+			return nil, "", err
+		}
+		promptBody = strings.TrimRight(string(b), "\n")
+	}
+	var env map[string]string
+	if !*viaLoginShell && getEnv != nil {
+		env = getEnv()
+	}
+	return &pb.CreateSessionRequest{
+		Cwd:             cwd,
+		Args:            cliArgs,
+		Env:             env,
+		Prompt:          promptBody,
+		Model:           *model,
+		Effort:          *effort,
+		Mode:            mode,
+		Agent:           spec.Kind,
+		StandardContext: *stdCtx,
+	}, normalizedTitle, nil
 }
 
 // runAgent starts a session of the CLI in this directory, passing args to
@@ -260,20 +351,50 @@ func attach(tmuxSession string) error {
 }
 
 func runList(args []string) error {
-	fs := flag.NewFlagSet("ls", flag.ExitOnError)
+	fs := flag.NewFlagSet("ls", flag.ContinueOnError)
+	fs.SetOutput(io.Discard)
 	all := fs.Bool("a", false, "include exited sessions")
-	fs.Parse(args)
-	resp, err := dial().ListSessions(context.Background(), connect.NewRequest(&pb.ListSessionsRequest{IncludeExited: *all}))
-	if err != nil {
-		return explain(err)
+	asJSON := fs.Bool("json", false, "print sessions as JSON")
+	var pos []string
+	for len(args) > 0 {
+		if strings.HasPrefix(args[0], "-") {
+			if err := fs.Parse(args); err != nil {
+				return err
+			}
+			args = fs.Args()
+			continue
+		}
+		pos = append(pos, args[0])
+		args = args[1:]
+	}
+	if len(pos) > 1 {
+		return errors.New(i18n.NewSessionCliUnexpectedArgs(cliLocale))
+	}
+	var sessions []*pb.Session
+	single := len(pos) == 1
+	if single {
+		s, err := getSession(pos[0])
+		if err != nil {
+			return err
+		}
+		sessions = []*pb.Session{s}
+	} else {
+		resp, err := dial().ListSessions(context.Background(), connect.NewRequest(&pb.ListSessionsRequest{IncludeExited: *all}))
+		if err != nil {
+			return explain(err)
+		}
+		sessions = resp.Msg.Sessions
+	}
+	if *asJSON {
+		return printSessionsJSON(os.Stdout, sessions, single)
 	}
 	w := tabwriter.NewWriter(os.Stdout, 0, 4, 2, ' ', 0)
-	header := "ID\tAGENT\tSTATUS\tMODEL\tPENDING\tCREATED\tDIRECTORY"
+	header := "ID\tAGENT\tSTATUS\tMODEL\tPENDING\tCREATED\tTITLE\tDIRECTORY"
 	if *all {
 		header += "\tLOCAL DIAGNOSTICS"
 	}
 	fmt.Fprintln(w, header)
-	for _, s := range resp.Msg.Sessions {
+	for _, s := range sessions {
 		status := statusName(s.Status)
 		if s.StatusDetail != "" {
 			status += " (" + s.StatusDetail + ")"
@@ -296,8 +417,9 @@ func runList(args []string) error {
 		if p == "" {
 			p = "-"
 		}
-		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\t%s", shortID(s.Id), agentName(s.Agent), terminalText(status, false), terminalText(model, false), p,
-			s.CreatedAt.AsTime().Local().Format("01-02 15:04"), terminalText(s.Cwd, false))
+		rowTitle := shortTitle(s.Title, 28)
+		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s", shortID(s.Id), agentName(s.Agent), terminalText(status, false), terminalText(model, false), p,
+			s.CreatedAt.AsTime().Local().Format("01-02 15:04"), terminalText(rowTitle, false), terminalText(s.Cwd, false))
 		if *all {
 			detail, err := daemon.ReadSessionDiagnostics(paths.Dir(), s.Id)
 			if err != nil {
@@ -314,6 +436,50 @@ func runList(args []string) error {
 		fmt.Fprintln(w)
 	}
 	return w.Flush()
+}
+
+func shortTitle(raw string, maxRunes int) string {
+	clean := strings.Join(strings.Fields(raw), " ")
+	if clean == "" {
+		return "-"
+	}
+	runes := []rune(clean)
+	if len(runes) <= maxRunes {
+		return clean
+	}
+	return string(runes[:maxRunes-1]) + "…"
+}
+
+func printSessionsJSON(out io.Writer, sessions []*pb.Session, single bool) error {
+	opts := protojson.MarshalOptions{Indent: "  "}
+	if single {
+		b, err := opts.Marshal(sessions[0])
+		if err != nil {
+			return err
+		}
+		_, err = out.Write(append(b, '\n'))
+		return err
+	}
+	if len(sessions) == 0 {
+		_, err := io.WriteString(out, "[]\n")
+		return err
+	}
+	var buf strings.Builder
+	buf.WriteString("[\n")
+	for i, s := range sessions {
+		b, err := protojson.Marshal(s)
+		if err != nil {
+			return err
+		}
+		if i > 0 {
+			buf.WriteString(",\n")
+		}
+		buf.WriteString("  ")
+		buf.Write(b)
+	}
+	buf.WriteString("\n]\n")
+	_, err := io.WriteString(out, buf.String())
+	return err
 }
 
 func statusName(s pb.SessionStatus) string {
@@ -636,6 +802,7 @@ func runPTYHost(args []string) int {
 			// the daemon's copy, which may hold an outdated PATH.
 			env = envList(vars)
 		} else {
+			daemon.ScrubParentAgentEnv()
 			for k, v := range vars {
 				if err := os.Setenv(k, v); err != nil {
 					fmt.Fprintln(os.Stderr, "remote-agent pty-host:", err)

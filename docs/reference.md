@@ -23,15 +23,26 @@ Sessions started from a client and sessions started in a terminal are the same k
 | Command | Purpose |
 |---|---|
 | `remote-agent codex` / `remote-agent claude` / `remote-agent agy` | Start a session in the current directory and attach to it |
-| `remote-agent ls` | List sessions; IDs may be shortened to any unique prefix |
-| `remote-agent attach <id>` | Attach to a running session |
-| `remote-agent send <id> <text>` | Send a message without attaching |
-| `remote-agent events <id> -f` | Follow a session's events |
+| `remote-agent new [flags] [-- args]` | Start a session without attaching and print its ID (`--agent`, `--cwd`, `--model`, `--effort`, `--mode`, `--standard-context`, `--title`, `--prompt`, `--login-shell`; see `remote-agent new help`) |
+| `remote-agent ls [-a] [--json] [ID]` | List sessions (or inspect one); IDs may be shortened to any unique prefix |
+| `remote-agent attach ID` | Attach to a running session |
+| `remote-agent send [--queue] ID TEXT` | Send a message without attaching (`-` reads stdin; `--queue` waits for the current turn to end) |
+| `remote-agent events ID -f [--json]` | Follow a session's events |
+| `remote-agent schedule OPERATION` | Manage persistent scheduled tasks on this computer (see `remote-agent schedule help`) |
 | `remote-agent doctor` | Check that the installed CLIs behave as remote-agent expects; run it after upgrading Codex, Claude Code or Antigravity |
 | `remote-agent account join --server URL --code CODE` | Join an account with the code shown by the current authority |
 | `remote-agent account secret` | Print retained root backup material; it cannot enroll a device, recover management, or make retired history readable in current clients |
 
 `remote-agent --help` lists every command.
+
+### CLI vs built-in MCP
+
+Both surfaces talk to the same local daemon over `daemon.sock`, with distinct roles:
+
+| Surface | Scope | Responsibility |
+|---|---|---|
+| **`remote-agent` CLI** | Machine-wide | Complete local control for terminals, scripts and authorized orchestrating agents: create, list, inspect, steer, approve, rename, resume or stop any session, and manage all scheduled tasks on this computer. |
+| **`remote-agent mcp`** (`remote_agent`) | Bound to one session (`RA_SESSION`) | Automatically injected into every managed session without modifying global or repository config. Exposes only turn- and conversation-bound tools (`send_file` for offering downloadable file cards in that conversation, `notify_user` during a scheduled run, and delegated `schedule_*` within the session's project and permission scope). |
 
 ## Security model
 

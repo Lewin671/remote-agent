@@ -23,15 +23,26 @@
 | 命令 | 用途 |
 |---|---|
 | `remote-agent codex` / `remote-agent claude` / `remote-agent agy` | 在当前目录启动会话并进入 |
-| `remote-agent ls` | 列出会话；ID 可以只写能区分的前几位 |
-| `remote-agent attach <id>` | 进入一个正在运行的会话 |
-| `remote-agent send <id> <内容>` | 不进入会话，直接发消息 |
-| `remote-agent events <id> -f` | 持续查看会话事件 |
+| `remote-agent new [flags] [-- args]` | 在后台新建会话并打印 ID（支持 `--agent`、`--cwd`、`--model`、`--effort`、`--mode`、`--standard-context`、`--title`、`--prompt`、`--login-shell`；见 `remote-agent new help`） |
+| `remote-agent ls [-a] [--json] [ID]` | 列出会话（或查看单个会话）；ID 可以只写能区分的前几位 |
+| `remote-agent attach ID` | 进入一个正在运行的会话 |
+| `remote-agent send [--queue] ID TEXT` | 不进入会话，直接发消息（`-` 从标准输入读取；`--queue` 等当前轮结束） |
+| `remote-agent events ID -f [--json]` | 持续查看会话事件 |
+| `remote-agent schedule OPERATION` | 管理这台电脑上的持久定时任务（见 `remote-agent schedule help`） |
 | `remote-agent doctor` | 检查已安装的 CLI 是否符合 remote-agent 的预期；升级 Codex、Claude Code 或 Antigravity 后运行一次 |
 | `remote-agent account join --server URL --code CODE` | 用当前管理端显示的配对码加入账户 |
 | `remote-agent account secret` | 打印保留的 root 备份材料；不能授权新设备、恢复管理权或让当前客户端读取已弃用的历史 |
 
 全部命令见 `remote-agent --help`。
+
+### CLI 与内置 MCP 的边界
+
+两者都通过本机 `daemon.sock` 连接同一个 daemon，按场景分工：
+
+| 入口 | 作用范围 | 职责 |
+|---|---|---|
+| **`remote-agent` CLI** | 整机级 | 面向终端用户、脚本与获授权的主控 Agent，提供完整的本机控制面：新建、列出、查看、发消息、审批、改名、恢复或结束任意会话，以及管理整机的全部定时任务。 |
+| **`remote-agent mcp`**（`remote_agent`） | 绑定单个会话（`RA_SESSION`） | 托管会话启动时自动注入，无需修改全局或仓库配置；仅提供依赖当前对话与轮次上下文的能力（向该对话气泡交付下载卡片的 `send_file`、定时轮次内主动提醒的 `notify_user`，以及受限于本会话项目与权限范围的 `schedule_*`）。 |
 
 ## 安全模型
 

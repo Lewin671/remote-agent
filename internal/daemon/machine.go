@@ -393,14 +393,24 @@ func (d *Daemon) sessionArgsContext(ctx context.Context, ag agent.Adapter, req *
 	}
 	model, effort, mode := req.Model, req.Effort, req.Mode
 	def := defaultsFor(st, ag.Kind())
+	inheritedEffort := false
 	if model == "" {
 		model = def.Model
-	}
-	if effort == "" {
-		effort = def.Effort
+		if effort == "" && def.Effort != "" {
+			effort, inheritedEffort = def.Effort, true
+		}
+	} else if effort == "" && model == def.Model && def.Effort != "" {
+		effort, inheritedEffort = def.Effort, true
 	}
 	if mode == pb.ApprovalMode_APPROVAL_MODE_UNSPECIFIED {
 		mode = def.Mode
 	}
-	return contextio.Read(ctx, func() ([]string, error) { return ag.Options(req.Args, model, effort, mode) })
+	return contextio.Read(ctx, func() ([]string, error) {
+		args, err := ag.Options(req.Args, model, effort, mode)
+		var noEffort *agent.EffortNotSupportedError
+		if inheritedEffort && errors.As(err, &noEffort) {
+			return ag.Options(req.Args, model, "", mode)
+		}
+		return args, err
+	})
 }

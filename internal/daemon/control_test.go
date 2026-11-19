@@ -282,6 +282,84 @@ func TestSettingsAndSessionArgs(t *testing.T) {
 	if _, err := d.sessionArgs(ag, &pb.CreateSessionRequest{Model: "x; rm -rf /"}); err == nil {
 		t.Fatal("accepted a bad model name")
 	}
+
+	// Selecting a different model explicitly must not inherit DefaultEffort from
+	// DefaultModel, and an effortless Antigravity model (Orchestrator) must not
+	// inherit DefaultEffort even if saved in settings.
+	if strings.Contains(strings.Join(mustSessionArgs(t, d, ag, &pb.CreateSessionRequest{Model: "gpt-6-luna"}), " "), "model_reasoning_effort") {
+		t.Fatal("different explicit model inherited DefaultModel's effort")
+	}
+	agyAg, err := d.knownAgent(pb.Agent_AGENT_ANTIGRAVITY)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := d.updateSettings(&pb.DaemonSettings{
+		ApprovalTimeoutSeconds: 300,
+		Antigravity:            &pb.AgentDefaults{Model: "gemini-4-neon", Effort: "high", Mode: pb.ApprovalMode_APPROVAL_MODE_AUTO},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	orchArgs := mustSessionArgs(t, d, agyAg, &pb.CreateSessionRequest{Model: "gemini-pro-orchestrator"})
+	if j := strings.Join(orchArgs, " "); !strings.Contains(j, "--model gemini-pro-orchestrator") || strings.Contains(j, "--effort") {
+		t.Fatalf("orchestrator inherited default effort: %q", orchArgs)
+	}
+	if _, err := d.sessionArgs(agyAg, &pb.CreateSessionRequest{Model: "gemini-pro-orchestrator", Effort: "medium"}); err == nil {
+		t.Fatal("explicit effort on orchestrator must fail")
+	}
+	if _, err := d.updateSettings(&pb.DaemonSettings{
+		ApprovalTimeoutSeconds: 300,
+		Antigravity:            &pb.AgentDefaults{Model: "gemini-pro-orchestrator", Effort: "high"},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	defOrchArgs := mustSessionArgs(t, d, agyAg, &pb.CreateSessionRequest{})
+	if j := strings.Join(defOrchArgs, " "); !strings.Contains(j, "--model gemini-pro-orchestrator") || strings.Contains(j, "--effort") {
+		t.Fatalf("effortless default model kept stale effort: %q", defOrchArgs)
+	}
+}
+
+func mustSessionArgs(t *testing.T, d *Daemon, ag agent.Adapter, req *pb.CreateSessionRequest) []string {
+	t.Helper()
+	args, err := d.sessionArgs(ag, req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return args
+}
+
+func TestSessionEnvStripsParentCodingCLISessionMarkers(t *testing.T) {
+	t.Parallel()
+	got := sessionEnv(map[string]string{
+		"PATH":                              "/usr/local/bin:/usr/bin",
+		"HTTPS_PROXY":                       "http://127.0.0.1:7890",
+		"CODEX_HOME":                        "/tmp/codex-home",
+		"CLAUDE_CONFIG_DIR":                 "/tmp/claude-home",
+		"CLAUDE_CODE_USE_VERTEX":            "1",
+		"RA_SESSION":                        "parent-ra-session",
+		"RA_EXE":                            "/bin/remote-agent",
+		"CLAUDECODE":                        "1",
+		"CLAUDE_CODE_ENTRYPOINT":            "cli",
+		"CODEX_THREAD_ID":                   "thread-123",
+		"CODEX_SANDBOX_NETWORK_DISABLED":    "1",
+		"ANTIGRAVITY_AGENT":                 "1",
+		"ANTIGRAVITY_CONVERSATION_ID":       "conv-123",
+		"ANTIGRAVITY_CSRF_TOKEN":            "secret",
+		"ANTIGRAVITY_TRAJECTORY_ID":         "traj-123",
+	}, nil)
+	for _, stripped := range []string{
+		"RA_SESSION", "RA_EXE", "CLAUDECODE", "CLAUDE_CODE_ENTRYPOINT",
+		"CODEX_THREAD_ID", "CODEX_SANDBOX_NETWORK_DISABLED",
+		"ANTIGRAVITY_AGENT", "ANTIGRAVITY_CONVERSATION_ID", "ANTIGRAVITY_CSRF_TOKEN", "ANTIGRAVITY_TRAJECTORY_ID",
+	} {
+		if _, exists := got[stripped]; exists {
+			t.Fatalf("%s leaked into child session env: %v", stripped, got)
+		}
+	}
+	for _, kept := range []string{"PATH", "HTTPS_PROXY", "CODEX_HOME", "CLAUDE_CONFIG_DIR", "CLAUDE_CODE_USE_VERTEX"} {
+		if got[kept] == "" {
+			t.Fatalf("expected %s to be preserved: %v", kept, got)
+		}
+	}
 }
 
 // The busy state found by drive is passed to Codex, and a rejected mode

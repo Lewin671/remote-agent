@@ -2,6 +2,7 @@ package antigravity
 
 import (
 	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 	"slices"
@@ -205,5 +206,43 @@ func TestFollowingSettingsPreservesExplicitNativeCycle(t *testing.T) {
 		if err != nil || hasFlag(args, "--mode") {
 			t.Fatalf("explicit Ask inherited wider mode: %v %v", args, err)
 		}
+	}
+}
+
+func TestEffortlessOrchestratorModelsRejectExplicitEffortAndClearOnResume(t *testing.T) {
+	// Even with an unpopulated cache, Orchestrator models never accept --effort.
+	cold := New("agy", t.TempDir())
+	for _, slug := range []string{"gemini-pro-orchestrator", "gemini-pro-orchestrator-neon", "gemini-pro-orchestrator-argon"} {
+		args, err := cold.Options(nil, slug, "", pb.ApprovalMode_APPROVAL_MODE_AUTO)
+		if err != nil || hasFlag(args, "--effort") || !slices.Contains(args, slug) {
+			t.Fatalf("%s without effort: args=%v err=%v", slug, args, err)
+		}
+		_, err = cold.Options(nil, slug, "medium", pb.ApprovalMode_APPROVAL_MODE_AUTO)
+		var noEff *agent.EffortNotSupportedError
+		if !errors.As(err, &noEff) {
+			t.Fatalf("%s with effort: expected EffortNotSupportedError, got %v", slug, err)
+		}
+	}
+
+	home := t.TempDir()
+	mustWrite(t, filepath.Join(home, "settings.json"), []byte(`{"toolPermission":"request-review"}`))
+	a := launchTestAdapter(t, home)
+	dir := t.TempDir()
+	initial, err := a.Options(nil, "gemini-4-argon", "high", pb.ApprovalMode_APPROVAL_MODE_AUTO)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := a.Argv(&agent.Launch{Dir: dir, Cwd: "/workspace", Args: initial, Exe: "/bin/remote-agent", RemoteSession: "s1"}); err != nil {
+		t.Fatal(err)
+	}
+	resumed, err := a.Argv(&agent.Launch{
+		Dir: dir, Cwd: "/workspace", Args: initial, Resume: true, SessionID: "conv-1",
+		Context: &pb.TurnContext{Model: "gemini-pro-orchestrator", Effort: "high", PermissionMode: "auto"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if hasFlag(resumed, "--effort") || !slices.Contains(resumed, "gemini-pro-orchestrator") {
+		t.Fatalf("resume kept --effort for effortless model: %v", resumed)
 	}
 }

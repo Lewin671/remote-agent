@@ -544,6 +544,122 @@
       },
       "zh-CN": "读不到这台电脑的状态"
     },
+    "new_session.cli_help": {
+      "en": "Usage:\n  remote-agent new [flags] [-- cli-args]\n\nStart a managed session without attaching and print its session ID.\n\nFlags:\n  --agent {agents}          CLI to start (default: {defaultAgent})\n  --cwd DIR                 working directory (default: current directory)\n  --model MODEL             model slug (empty uses daemon/CLI defaults)\n  --effort EFFORT           reasoning effort (e.g. low, medium, high, xhigh, max)\n  --mode ask|auto|full|plan approval mode\n  --standard-context        hold to the 200k standard context window (Claude Code)\n  --title TITLE             session title (up to 60 characters)\n  --prompt TEXT             first message sent once ready (\"-\" reads stdin)\n  --login-shell             start through the user's login shell, like a client session\n",
+      "key": "new_session.cli_help",
+      "notes": "remote-agent new --help 的命令行用法说明；agents 为可选 CLI 竖线列表，defaultAgent 为默认 CLI 标识。",
+      "params": {
+        "agents": {
+          "example": "codex|claude|agy",
+          "type": "string"
+        },
+        "defaultAgent": {
+          "example": "codex",
+          "type": "string"
+        }
+      },
+      "platforms": [
+        "go"
+      ],
+      "status": {
+        "en": "draft",
+        "zh-CN": "source"
+      },
+      "zh-CN": "用法：\n  remote-agent new [选项] [-- 底层CLI参数]\n\n在后台启动托管会话，不占用当前终端，并向标准输出打印会话 ID。\n\n选项：\n  --agent {agents}          要启动的 CLI（默认：{defaultAgent}）\n  --cwd DIR                 会话工作目录（默认：当前目录）\n  --model MODEL             启动模型标识（省略则使用本机或 CLI 默认值）\n  --effort EFFORT           推理强度（如 low、medium、high、xhigh、max）\n  --mode ask|auto|full|plan 审批模式\n  --standard-context        固定为 200k 标准上下文窗口（仅 Claude Code）\n  --title TITLE             会话标题（最多 60 个字）\n  --prompt TEXT             CLI 就绪后自动发送的首条消息（\"-\" 从标准输入读取）\n  --login-shell             经用户登录 shell 启动，与手机/网页客户端新建会话一致\n"
+    },
+    "new_session.cli_mode_invalid": {
+      "en": "mode must be ask, auto, full or plan",
+      "key": "new_session.cli_mode_invalid",
+      "notes": "remote-agent new --mode 传入无效模式名时的命令行错误提示。",
+      "params": {},
+      "platforms": [
+        "go"
+      ],
+      "status": {
+        "en": "draft",
+        "zh-CN": "source"
+      },
+      "zh-CN": "模式必须是 ask、auto、full 或 plan"
+    },
+    "new_session.cli_model_no_effort": {
+      "en": "model {model} does not support --effort; omit --effort",
+      "key": "new_session.cli_model_no_effort",
+      "notes": "命令行或新建会话对不支持推理强度的模型（如 Antigravity Orchestrator）显式传入 effort 时的错误提示。",
+      "params": {
+        "model": {
+          "example": "gemini-pro-orchestrator",
+          "type": "string"
+        }
+      },
+      "platforms": [
+        "go"
+      ],
+      "status": {
+        "en": "draft",
+        "zh-CN": "source"
+      },
+      "zh-CN": "模型 {model} 不支持推理强度参数，请去掉 --effort"
+    },
+    "new_session.cli_title_too_long": {
+      "en": "the title has {count} characters; at most {max} fit",
+      "key": "new_session.cli_title_too_long",
+      "notes": "remote-agent new --title 超出 60 字上限时的命令行错误提示。",
+      "params": {
+        "count": {
+          "example": 65,
+          "type": "integer"
+        },
+        "max": {
+          "example": 60,
+          "type": "integer"
+        }
+      },
+      "platforms": [
+        "go"
+      ],
+      "status": {
+        "en": "draft",
+        "zh-CN": "source"
+      },
+      "zh-CN": "标题有 {count} 个字，最多只能写 {max} 个字"
+    },
+    "new_session.cli_unexpected_args": {
+      "en": "unexpected arguments; pass --prompt TEXT for the first message, or put underlying CLI flags after --",
+      "key": "new_session.cli_unexpected_args",
+      "notes": "remote-agent new 在 -- 之前遇到未知位置参数时的命令行错误提示。",
+      "params": {},
+      "platforms": [
+        "go"
+      ],
+      "status": {
+        "en": "draft",
+        "zh-CN": "source"
+      },
+      "zh-CN": "存在多余参数；首条消息请用 --prompt TEXT，传给底层 CLI 的参数请写在 -- 之后"
+    },
+    "new_session.cli_unknown_agent": {
+      "en": "unknown agent \"{value}\"; use {allowed}",
+      "key": "new_session.cli_unknown_agent",
+      "notes": "remote-agent new --agent 传入未注册 CLI 名称时的命令行错误提示。",
+      "params": {
+        "allowed": {
+          "example": "codex or claude or agy",
+          "type": "string"
+        },
+        "value": {
+          "example": "foo",
+          "type": "string"
+        }
+      },
+      "platforms": [
+        "go"
+      ],
+      "status": {
+        "en": "draft",
+        "zh-CN": "source"
+      },
+      "zh-CN": "未知的 CLI「{value}」，请使用 {allowed}"
+    },
     "quota.agy_probe_failed": {
       "en": "Could not read Antigravity quota. Check the CLI status and network connection.",
       "key": "quota.agy_probe_failed",
@@ -659,6 +775,20 @@
         "zh-CN": "source"
       },
       "zh-CN": "无法解析 CLI 状态栏数据，请检查 CLI 版本和会话设置。"
+    },
+    "schedule.cli_mcp_help": {
+      "en": "Usage:\n  remote-agent mcp [--session ID]\n\nServe the built-in per-session MCP server (remote_agent) over stdio:\n  - send_file: offer a local file as a downloadable card in this conversation\n  - notify_user: send an explicit notification during a scheduled turn\n  - schedule_*: manage tasks delegated by this session within its project/mode scope\n\nManaged sessions inject this MCP automatically with RA_SESSION set. For machine-wide session or schedule control, use the remote-agent CLI commands (new, ls, send, events, schedule, etc.).\n",
+      "key": "schedule.cli_mcp_help",
+      "notes": "remote-agent mcp --help 的命令行说明，阐述内置会话级 MCP 与机器级 CLI 子命令的职责边界。",
+      "params": {},
+      "platforms": [
+        "go"
+      ],
+      "status": {
+        "en": "draft",
+        "zh-CN": "source"
+      },
+      "zh-CN": "用法：\n  remote-agent mcp [--session ID]\n\n为单个托管会话在 stdio 上提供内置 MCP 工具（remote_agent）：\n  - send_file：在当前对话气泡中向客户端交付本机文件以供下载\n  - notify_user：在定时执行轮次内主动向客户端发送通知\n  - schedule_*：受限于本会话及同项目同权限的定时任务委托\n\n托管会话启动时会自动注入该 MCP 并设置 RA_SESSION。跨会话或机器级控制请使用 remote-agent 子命令（new、ls、send、events、schedule 等）。\n"
     },
     "security.migration_acceptance_corrupt": {
       "en": "Generation-3 request records failed validation; their original deadlines cannot be trusted. Upgrade was refused. The source, backup and generation marker were not changed. Keep the daemon stopped and verify the source or a valid backup; do not alter deadlines or skip damaged records.",
@@ -785,6 +915,29 @@
         "zh-CN": "source"
       },
       "zh-CN": "本机安全库需要升级到第 4 代。请先停止 daemon，运行 scripts/migrate-security-v4；无需重新配对。旧请求结果无法恢复，请先核对在途操作。"
+    },
+    "startup.cli_usage": {
+      "en": "remote-agent: operate native AI coding CLIs running in tmux\n\nUsage:\n  remote-agent update [check|status|auto]  update the daemon; update help for options\n  remote-agent --version                   show product version and source revision\n  remote-agent schedule OPERATION          manage persistent timed Agent messages (schedule help)\n  remote-agent mcp [--session ID]          serve in-session MCP tools over stdio (mcp help)\n  remote-agent daemon [flags]              run the daemon in the foreground\n{agentLines}  remote-agent new [flags] [-- args]       start a session without attaching (new help)\n  remote-agent ls [-a] [--json] [ID]       list sessions (or inspect one)\n  remote-agent attach ID                   attach to a session\n  remote-agent send [--queue] ID TEXT      send a message (\"-\" reads stdin); --queue waits for the turn to end\n  remote-agent cancel ID REQUEST-ID        withdraw a message the model has not received\n  remote-agent resume-input ID REQUEST-ID  send a message paused by an interrupted turn\n  remote-agent events ID [-f] [--json]     show the session's events\n  remote-agent approve ID APPROVAL-ID      allow a permission request (--always: don't ask again)\n  remote-agent deny ID APPROVAL-ID [-m REASON]\n  remote-agent answer ID QUESTION-ID OPT[,OPT...]\n  remote-agent interrupt ID                interrupt the running turn\n  remote-agent stop ID                     end the session\n  remote-agent resume ID                   start an ended session again\n  remote-agent fork ID                     start a new session from a session's conversation\n  remote-agent model [{agents}]        list a CLI's models\n  remote-agent model ID MODEL [EFFORT]\n                                           switch a session's model\n  remote-agent mode ID ask|auto|full|plan  switch the approval mode\n  remote-agent rename ID [TITLE]           title the session; no title goes back\n                                           to the automatic one\n  remote-agent compact ID                  compact the session's context\n  remote-agent plan ID implement|clear|keep\n                                           answer \"Implement this plan?\"\n  remote-agent doctor [{agents}]       check that the installed CLIs work with remote-agent\n  remote-agent account join|secret|status\n                                           connect this machine to a server\n\nSession IDs may be abbreviated to any unique prefix.\n",
+      "key": "startup.cli_usage",
+      "notes": "remote-agent --help 顶层命令行用法说明；agentLines 为已注册 CLI 直启命令行，agents 为竖线分隔的 CLI 列表。",
+      "params": {
+        "agentLines": {
+          "example": "  remote-agent codex [codex args]          start a Codex session here and attach to it\n",
+          "type": "string"
+        },
+        "agents": {
+          "example": "codex|claude|agy",
+          "type": "string"
+        }
+      },
+      "platforms": [
+        "go"
+      ],
+      "status": {
+        "en": "draft",
+        "zh-CN": "source"
+      },
+      "zh-CN": "remote-agent：在 tmux 中托管与操控本机 AI 编程 CLI\n\n用法：\n  remote-agent update [check|status|auto]  更新 daemon；详细选项见 update help\n  remote-agent --version                   查看产品版本与源码修订\n  remote-agent schedule OPERATION          管理持久定时任务（见 schedule help）\n  remote-agent mcp [--session ID]          通过 stdio 提供会话内 MCP 工具（mcp help）\n  remote-agent daemon [flags]              在前台运行 daemon\n{agentLines}  remote-agent new [flags] [-- args]       后台新建会话，不直接附着（见 new help）\n  remote-agent ls [-a] [--json] [ID]       列出会话（或查看单个会话）\n  remote-agent attach ID                   进入正在运行的会话\n  remote-agent send [--queue] ID TEXT      发送消息（\"-\" 读标准输入）；--queue 等当前轮结束\n  remote-agent cancel ID REQUEST-ID        撤回模型尚未收到的消息\n  remote-agent resume-input ID REQUEST-ID  继续发送因中断暂停的消息\n  remote-agent events ID [-f] [--json]     查看会话事件流\n  remote-agent approve ID APPROVAL-ID      批准权限请求（--always：不再重复询问）\n  remote-agent deny ID APPROVAL-ID [-m REASON]\n  remote-agent answer ID QUESTION-ID OPT[,OPT...]\n  remote-agent interrupt ID                中断当前运行轮次\n  remote-agent stop ID                     结束会话\n  remote-agent resume ID                   重新启动已退出的会话\n  remote-agent fork ID                     从已有对话分叉出新会话\n  remote-agent model [{agents}]            列出某个 CLI 的可用模型\n  remote-agent model ID MODEL [EFFORT]     切换会话模型\n  remote-agent mode ID ask|auto|full|plan  切换会话审批模式\n  remote-agent rename ID [TITLE]           重命名会话；省略标题恢复自动标题\n  remote-agent compact ID                  压缩会话上下文\n  remote-agent plan ID implement|clear|keep\n                                           回答“是否实施此计划？”\n  remote-agent doctor [{agents}]           检查已安装的 CLI 是否与 remote-agent 兼容\n  remote-agent account join|secret|status  将本机连接到账户服务器\n\n会话 ID 均可简写为任意唯一前缀。\n"
     },
     "transport.stun_bytes": {
       "en": "Maximum STUN response bytes per second",

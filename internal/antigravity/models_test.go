@@ -25,6 +25,8 @@ claude-sonnet-5-5-low     Claude Sonnet 5.5 (Low)
 claude-sonnet-5-5-medium  Claude Sonnet 5.5 (Medium)
 claude-sonnet-5-5-high    Claude Sonnet 5.5 (High)
 gpt-oss-120b-medium       GPT-OSS 120B (Medium)
+gemini-pro-orchestrator   Orchestrator (Carbon)
+gemini-pro-orchestrator-neon Orchestrator (Neon)
 `
 
 func TestParseModels(t *testing.T) {
@@ -40,6 +42,8 @@ func TestParseModels(t *testing.T) {
 		"claude-opus-5-5",
 		"claude-sonnet-5-5",
 		"gpt-oss-120b",
+		"gemini-pro-orchestrator",
+		"gemini-pro-orchestrator-neon",
 	}
 
 	if len(models) != len(expectedSlugs) {
@@ -90,6 +94,11 @@ func TestParseModels(t *testing.T) {
 	}
 	if gpt.ContextWindow != 0 {
 		t.Errorf("expected no inferred context window, got %d", gpt.ContextWindow)
+	}
+
+	orch := models[6]
+	if orch.DisplayName != "Orchestrator (Carbon)" || len(orch.Efforts) != 0 || orch.DefaultEffort != "" {
+		t.Errorf("unexpected orchestrator model info: %+v", orch)
 	}
 }
 

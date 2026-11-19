@@ -1371,5 +1371,121 @@
       "zh-CN": "source",
       "en": "draft"
     }
+  },
+  {
+    "key": "new_session.cli_help",
+    "zh-CN": "用法：\n  remote-agent new [选项] [-- 底层CLI参数]\n\n在后台启动托管会话，不占用当前终端，并向标准输出打印会话 ID。\n\n选项：\n  --agent {agents}          要启动的 CLI（默认：{defaultAgent}）\n  --cwd DIR                 会话工作目录（默认：当前目录）\n  --model MODEL             启动模型标识（省略则使用本机或 CLI 默认值）\n  --effort EFFORT           推理强度（如 low、medium、high、xhigh、max）\n  --mode ask|auto|full|plan 审批模式\n  --standard-context        固定为 200k 标准上下文窗口（仅 Claude Code）\n  --title TITLE             会话标题（最多 60 个字）\n  --prompt TEXT             CLI 就绪后自动发送的首条消息（\"-\" 从标准输入读取）\n  --login-shell             经用户登录 shell 启动，与手机/网页客户端新建会话一致\n",
+    "en": "Usage:\n  remote-agent new [flags] [-- cli-args]\n\nStart a managed session without attaching and print its session ID.\n\nFlags:\n  --agent {agents}          CLI to start (default: {defaultAgent})\n  --cwd DIR                 working directory (default: current directory)\n  --model MODEL             model slug (empty uses daemon/CLI defaults)\n  --effort EFFORT           reasoning effort (e.g. low, medium, high, xhigh, max)\n  --mode ask|auto|full|plan approval mode\n  --standard-context        hold to the 200k standard context window (Claude Code)\n  --title TITLE             session title (up to 60 characters)\n  --prompt TEXT             first message sent once ready (\"-\" reads stdin)\n  --login-shell             start through the user's login shell, like a client session\n",
+    "notes": "remote-agent new --help 的命令行用法说明；agents 为可选 CLI 竖线列表，defaultAgent 为默认 CLI 标识。",
+    "params": {
+      "agents": {
+        "type": "string",
+        "example": "codex|claude|agy"
+      },
+      "defaultAgent": {
+        "type": "string",
+        "example": "codex"
+      }
+    },
+    "platforms": [
+      "go"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "new_session.cli_model_no_effort",
+    "zh-CN": "模型 {model} 不支持推理强度参数，请去掉 --effort",
+    "en": "model {model} does not support --effort; omit --effort",
+    "notes": "命令行或新建会话对不支持推理强度的模型（如 Antigravity Orchestrator）显式传入 effort 时的错误提示。",
+    "params": {
+      "model": {
+        "type": "string",
+        "example": "gemini-pro-orchestrator"
+      }
+    },
+    "platforms": [
+      "go"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "new_session.cli_mode_invalid",
+    "zh-CN": "模式必须是 ask、auto、full 或 plan",
+    "en": "mode must be ask, auto, full or plan",
+    "notes": "remote-agent new --mode 传入无效模式名时的命令行错误提示。",
+    "params": {},
+    "platforms": [
+      "go"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "new_session.cli_title_too_long",
+    "zh-CN": "标题有 {count} 个字，最多只能写 {max} 个字",
+    "en": "the title has {count} characters; at most {max} fit",
+    "notes": "remote-agent new --title 超出 60 字上限时的命令行错误提示。",
+    "params": {
+      "count": {
+        "type": "integer",
+        "example": 65
+      },
+      "max": {
+        "type": "integer",
+        "example": 60
+      }
+    },
+    "platforms": [
+      "go"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "new_session.cli_unexpected_args",
+    "zh-CN": "存在多余参数；首条消息请用 --prompt TEXT，传给底层 CLI 的参数请写在 -- 之后",
+    "en": "unexpected arguments; pass --prompt TEXT for the first message, or put underlying CLI flags after --",
+    "notes": "remote-agent new 在 -- 之前遇到未知位置参数时的命令行错误提示。",
+    "params": {},
+    "platforms": [
+      "go"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "new_session.cli_unknown_agent",
+    "zh-CN": "未知的 CLI「{value}」，请使用 {allowed}",
+    "en": "unknown agent \"{value}\"; use {allowed}",
+    "notes": "remote-agent new --agent 传入未注册 CLI 名称时的命令行错误提示。",
+    "params": {
+      "value": {
+        "type": "string",
+        "example": "foo"
+      },
+      "allowed": {
+        "type": "string",
+        "example": "codex or claude or agy"
+      }
+    },
+    "platforms": [
+      "go"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
   }
 ]

@@ -179,6 +179,34 @@ func NewModelCache(ttl time.Duration) *ModelCache {
 	return &ModelCache{ttl: ttl}
 }
 
+// SupportsEffort reports whether model accepts --effort when known.
+// Orchestrator models in Antigravity have no effort variants and silently fall
+// back to another model if --effort is passed.
+func (mc *ModelCache) SupportsEffort(bin, raw string) (supported, known bool) {
+	if raw == "" {
+		return false, false
+	}
+	baseID, inlineEffort := splitModelEffort(raw)
+	if strings.HasPrefix(baseID, "gemini-pro-orchestrator") {
+		return false, true
+	}
+	if inlineEffort != "" {
+		return true, true
+	}
+	mc.mu.Lock()
+	defer mc.mu.Unlock()
+	if mc.cached == nil || mc.bin != bin {
+		return false, false
+	}
+	name := cleanDisplayName(raw, "")
+	for _, model := range mc.cached.Models {
+		if model.Slug == baseID || (name != "" && strings.EqualFold(name, model.DisplayName)) {
+			return len(model.Efforts) > 0, true
+		}
+	}
+	return false, false
+}
+
 // Resolve uses the CLI's actual catalog, without metadata I/O in the status
 // callback. A display name is not a slug: punctuation differs by model family.
 func (mc *ModelCache) Resolve(bin, raw string) string {

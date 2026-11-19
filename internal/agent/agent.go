@@ -33,6 +33,12 @@ var (
 // ErrNotAnswering: the terminal does not show the question to answer.
 var ErrNotAnswering = errors.New("the question is not showing in the terminal")
 
+// EffortNotSupportedError reports that the target model does not accept a
+// reasoning effort option.
+type EffortNotSupportedError struct{ Msg string }
+
+func (e *EffortNotSupportedError) Error() string { return e.Msg }
+
 // HookTimeoutSeconds is the timeout the CLIs give the PermissionRequest
 // hook. Approvals must be decided before it, because a hook that times out
 // leaves the decision to the terminal. Changing it changes Codex's hook

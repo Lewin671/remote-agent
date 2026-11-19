@@ -8,6 +8,7 @@ import (
 
 	"github.com/Lewin671/remote-agent/internal/buildinfo"
 	"github.com/Lewin671/remote-agent/internal/daemon"
+	"github.com/Lewin671/remote-agent/internal/i18n"
 	"github.com/Lewin671/remote-agent/internal/paths"
 	"github.com/Lewin671/remote-agent/internal/updater"
 )
@@ -22,43 +23,7 @@ func usage() string {
 		}
 		fmt.Fprintf(&agentLines, "  remote-agent %-24s start %s %s session here and attach to it\n", a.ID+" ["+a.ID+" args]", article, a.Name)
 	}
-	return fmt.Sprintf(`remote-agent: operate native AI coding CLIs running in tmux
-
-Usage:
-  remote-agent update [check|status|auto]  update the daemon; update help for options
-  remote-agent --version                  show product version and source revision
-  remote-agent schedule <operation>       manage persistent timed Agent messages (schedule help)
-  remote-agent mcp [--session ID]          serve scheduling tools over stdio
-  remote-agent daemon [flags]              run the daemon in the foreground
-%s  remote-agent new [--agent %s] [args] start a session here without attaching
-  remote-agent ls [-a]                     list sessions
-  remote-agent attach <id>                 attach to a session
-  remote-agent send [--queue] <id> <text>  send a message ("-" reads stdin); --queue waits for the turn to end
-  remote-agent cancel <id> <request-id>    withdraw a message the model has not received
-  remote-agent resume-input <id> <req-id>  send a message paused by an interrupted turn
-  remote-agent events <id> [-f] [--json]   show the session's events
-  remote-agent approve <id> <approval-id>  allow a permission request (--always: don't ask again)
-  remote-agent deny <id> <approval-id> [-m reason]
-  remote-agent answer <id> <question-id> <option>[,<option>...]
-  remote-agent interrupt <id>              interrupt the running turn
-  remote-agent stop <id>                   end the session
-  remote-agent resume <id>                 start an ended session again
-  remote-agent fork <id>                   start a new session from a session's conversation
-  remote-agent model [%s]        list a CLI's models
-  remote-agent model <id> <model> [<effort>]
-                                           switch a session's model
-  remote-agent mode <id> ask|auto|full|plan switch the approval mode
-  remote-agent rename <id> [<title>]       title the session; no title goes back
-                                           to the automatic one
-  remote-agent compact <id>                compact the session's context
-  remote-agent plan <id> implement|clear|keep
-                                           answer "Implement this plan?"
-  remote-agent doctor [%s]       check that the installed CLIs work with remote-agent
-  remote-agent account join|secret|status
-                                           connect this machine to a server
-
-Session IDs may be abbreviated to any unique prefix.
-`, agentLines.String(), ids, ids, ids)
+	return i18n.StartupCliUsage("en", agentLines.String(), ids)
 }
 
 func main() {
