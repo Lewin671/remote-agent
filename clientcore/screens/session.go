@@ -1,6 +1,7 @@
 package screens
 
 import (
+	"sort"
 	"strconv"
 	"strings"
 
@@ -71,21 +72,79 @@ type SessionCommandRecord struct {
 	SubmittedAtMs int64
 }
 
-// SessionOutgoingRecord tracks one outgoing user message from send until projection/dismissal.
-type SessionOutgoingRecord struct {
+// SessionOutgoingState is Core's internal pre-projection delivery state for a client send.
+type SessionOutgoingState uint8
+
+const (
+	OutgoingSending SessionOutgoingState = iota
+	OutgoingSent
+	OutgoingFailed
+	OutgoingUnknown
+)
+
+// CancelIntentKind identifies the follow-up action after a CancelInput command settles.
+type CancelIntentKind uint8
+
+const (
+	CancelIntentCancel CancelIntentKind = iota
+	CancelIntentCancelAll
+	CancelIntentPromote
+	CancelIntentRestore
+)
+
+// SessionCancelIntent holds message content across a pending CancelInput command.
+type SessionCancelIntent struct {
+	Kind            CancelIntentKind
+	BatchID         string
+	SourceReqID     string
+	Text            string
+	ImageIDs        []string
+	FileIDs         []string
+	Mode            v1.SendMode
+	HasLocalContent bool
+	HasAttachments  bool
+}
+
+// LocalSentContent retains local text/attachments for retry, promote, restore, and 5-second undo.
+type LocalSentContent struct {
 	RequestID string
-	SlotKey   string
 	Text      string
 	ImageIDs  []string
 	FileIDs   []string
 	Mode      v1.SendMode
-	State     corev1.SessionOutgoingState
-	Frozen    bool
-	Expired   bool
-	ErrorCode string
-	ErrorText *corev1.Text
-	Restored  bool
-	CreatedMs int64
+}
+
+// SessionUndoItem records one canceled message that can be re-sent within the 5-second undo window.
+type SessionUndoItem struct {
+	SourceReqID string
+	Text        string
+	ImageIDs    []string
+	FileIDs     []string
+	Mode        v1.SendMode
+}
+
+// SessionUndoBatch holds the active 5-second undo batch for a session.
+type SessionUndoBatch struct {
+	BatchID string
+	Items   []*SessionUndoItem
+}
+
+// SessionOutgoingRecord tracks one outgoing user message from send until projection/dismissal.
+type SessionOutgoingRecord struct {
+	RequestID      string
+	SlotKey        string
+	Text           string
+	ImageIDs       []string
+	FileIDs        []string
+	Mode           v1.SendMode
+	State          SessionOutgoingState
+	Frozen         bool
+	Expired        bool
+	ErrorCode      string
+	ErrorText      *corev1.Text
+	Restored       bool
+	CreatedMs      int64
+	VisibleAfterMs int64
 }
 
 // PendingStartPrompt captures the initial prompt passed to CreateSession until recorded in timeline.
@@ -97,18 +156,25 @@ type PendingStartPrompt struct {
 	CreatedMs  int64
 }
 
-// SessionUIState holds per-session client UI state owned by Core (slots, outgoing sends, dock steps).
+// SessionUIState holds per-session client UI state owned by Core (slots, outgoing sends, tray actions, dock steps).
 type SessionUIState struct {
-	Commands           map[string]*SessionCommandRecord
-	Outgoing           []*SessionOutgoingRecord
-	QuestionIndexByID  map[string]int32
-	PendingStartPrompt *PendingStartPrompt
-	LastApprovalSeq    map[string]uint64
-	LastQuestionSeq    map[string]uint64
-	LastPlanSeq        uint64
-	LastPlanHash       []byte
-	LookupError        string
-	timeline           *timelineCache
+	Commands             map[string]*SessionCommandRecord
+	Outgoing             []*SessionOutgoingRecord
+	LocalContents        map[string]*LocalSentContent
+	CancelIntents        map[string]*SessionCancelIntent
+	PendingResendSources   map[string]string
+	DismissedInputIDs      map[string]bool
+	SteerVisibleAfterMs    map[string]int64
+	SteerGraceNextTargetMs int64
+	Undo                   *SessionUndoBatch
+	QuestionIndexByID    map[string]int32
+	PendingStartPrompt   *PendingStartPrompt
+	LastApprovalSeq      map[string]uint64
+	LastQuestionSeq      map[string]uint64
+	LastPlanSeq          uint64
+	LastPlanHash         []byte
+	LookupError          string
+	timeline             *timelineCache
 }
 
 // ClearTimelineCache releases cached timeline items when the underlying event buffer is evicted.
@@ -126,10 +192,15 @@ func (ui *SessionUIState) HasTimelineCache() bool {
 // NewSessionUIState allocates an initialized SessionUIState.
 func NewSessionUIState() *SessionUIState {
 	return &SessionUIState{
-		Commands:          make(map[string]*SessionCommandRecord),
-		QuestionIndexByID: make(map[string]int32),
-		LastApprovalSeq:   make(map[string]uint64),
-		LastQuestionSeq:   make(map[string]uint64),
+		Commands:             make(map[string]*SessionCommandRecord),
+		LocalContents:        make(map[string]*LocalSentContent),
+		CancelIntents:        make(map[string]*SessionCancelIntent),
+		PendingResendSources: make(map[string]string),
+		DismissedInputIDs:    make(map[string]bool),
+		SteerVisibleAfterMs:  make(map[string]int64),
+		QuestionIndexByID:    make(map[string]int32),
+		LastApprovalSeq:      make(map[string]uint64),
+		LastQuestionSeq:      make(map[string]uint64),
 	}
 }
 
@@ -1298,7 +1369,6 @@ func buildSessionComposer(
 
 	out.Enabled = onlineReady
 	out.HasActiveTurn = runningTurn
-	out.SteerModeDefault = caps.SteersDuringTurn
 	out.SupportsQueueMode = caps.SteersDuringTurn
 	out.CanAttachImages = onlineReady && header.Capabilities.SupportsImages
 	out.CanAttachFiles = onlineReady && header.Capabilities.SupportsFiles
@@ -1325,168 +1395,667 @@ func buildSessionComposer(
 	case hasPlan:
 		out.Placeholder = text.Msg(text.KeyComposerPlanPlaceholder)
 	case hasQuestion || hasApproval:
-		out.Placeholder = text.Msg(text.KeyComposerQueueAfterAnswer)
+		out.Placeholder = text.Msg(text.KeyComposerAnswerFirstPlaceholder)
 	case runningTurn:
-		out.Placeholder = text.Msg(text.KeyComposerQueueHint)
+		out.Placeholder = text.Msg(text.KeyComposerRunningPlaceholder)
 	default:
 		out.Placeholder = text.Msg(text.KeyComposerMessage)
 	}
 
-	// Build pending inputs from projection.
-	if in.Projection != nil && len(in.Projection.PendingInputs) > 0 {
-		projByID := make(map[string]*corev1.InputProjection, len(in.Projection.Inputs))
-		for _, ip := range in.Projection.Inputs {
-			if ip != nil {
-				projByID[ip.RequestId] = ip
-			}
-		}
-		total := len(in.Projection.PendingInputs)
-		for i, pi := range in.Projection.PendingInputs {
-			if pi == nil {
-				continue
-			}
-			ip := projByID[pi.RequestId]
-			cancelSlot := "cancel_input:" + sid + ":" + pi.RequestId
-			resumeSlot := "resume_input:" + sid + ":" + pi.RequestId
-			cancelState := commandSlotState(ui, cancelSlot, nil, nil)
-			resumeState := commandSlotState(ui, resumeSlot, nil, nil)
-
-			var label *corev1.Text
-			switch {
-			case cancelState.Busy:
-				label = text.Msg(text.KeyQueueCanceling)
-			case cancelState.Status == corev1.SessionCommandStatus_SESSION_COMMAND_STATUS_FAILED:
-				label = text.Msg(text.KeyQueueCancelFailed)
-			case resumeState.Busy:
-				label = text.Msg(text.KeyQueueResuming)
-			case resumeState.Status == corev1.SessionCommandStatus_SESSION_COMMAND_STATUS_FAILED:
-				label = text.Msg(text.KeyQueueResumeFailed)
-			case pi.Paused:
-				label = text.Msg(text.KeyQueuePaused)
-			case pi.Held:
-				label = text.Msg(text.KeyQueueAndroidAgentNote, text.Str("agent", caps.Name))
-			case pi.Mode == v1.SendMode_SEND_MODE_QUEUE:
-				label = text.Msg(text.KeyQueueAfterTurn)
-			case ls != nil && ls.Info != nil && ls.Info.Status == v1.SessionStatus_SESSION_STATUS_STARTING:
-				label = text.Msg(text.KeyQueueAndroidAgentNote, text.Str("agent", caps.Name))
-			default:
-				label = text.Msg(text.KeyQueueAndroidSendingSoon)
-			}
-
-			originLabel := originText(pi.Origin, st, in.DeviceNames, in.ThisDeviceID, lm)
-			caption := label
-			if total > 1 {
-				// KeyQueueRank already begins with " · ", so join with "" to avoid " ·  · ".
-				caption = text.JoinLiteral("", caption, text.Msg(text.KeyQueueRank, text.Int("rank", int64(i+1))))
-			}
-			if originLabel != nil {
-				caption = text.JoinLiteral(" · ", caption, originLabel)
-			}
-
-			var schedRun string
-			if pi.Origin != nil && pi.Origin.ScheduledRunId != "" {
-				schedRun = pi.Origin.ScheduledRunId
-			}
-			var imgCount int32
-			var status v1.InputStatus
-			var detail *v1.InputState
-			if ip != nil {
-				status = ip.Status
-				detail = ip.Detail
-				if ip.Accepted != nil {
-					imgCount = int32(len(ip.Accepted.ImageIds))
-				} else if ip.Detail != nil {
-					imgCount = int32(len(ip.Detail.ImageIds))
-				}
-			}
-
-			out.PendingInputs = append(out.PendingInputs, &corev1.SessionPendingInputView{
-				RequestId:         pi.RequestId,
-				Text:              pi.Text,
-				ImageCount:        imgCount,
-				FileCount:         int32(len(pi.Files)),
-				Mode:              pi.Mode,
-				Status:            status,
-				Held:              pi.Held,
-				Paused:            pi.Paused,
-				Rank:              int32(i + 1),
-				TotalPending:      int32(total),
-				Label:             label,
-				Caption:           caption,
-				OriginLabel:       originLabel,
-				ScheduledRunId:    schedRun,
-				CanCancel:         onlineReady && !cancelState.Busy,
-				CanResume:         onlineReady && pi.Paused && !resumeState.Busy,
-				Cancel:            cancelState,
-				Resume:            resumeState,
-				Feedback:          inputStatusFeedback(status, detail),
-				FeedbackUncertain: status == v1.InputStatus_INPUT_STATUS_UNCONFIRMED || status == v1.InputStatus_INPUT_STATUS_NEEDS_TERMINAL,
-			})
-		}
+	starting := ls != nil && ls.Info != nil && ls.Info.Status == v1.SessionStatus_SESSION_STATUS_STARTING
+	nowMs := int64(0)
+	if st != nil {
+		nowMs = st.Cal.NowMs
 	}
-
-	// Build local outgoing queue items (not yet confirmed in UserMessage/PendingInputs or failed/unknown).
-	if ui != nil {
-		for _, og := range ui.Outgoing {
-			if og == nil || og.Restored {
-				continue
-			}
-			var caption, feedback *corev1.Text
-			uncertain := og.State == corev1.SessionOutgoingState_SESSION_OUTGOING_STATE_UNKNOWN
-			switch og.State {
-			case corev1.SessionOutgoingState_SESSION_OUTGOING_STATE_SENDING:
-				caption = text.Msg(text.KeyComposerSending)
-			case corev1.SessionOutgoingState_SESSION_OUTGOING_STATE_SENT:
-				caption = text.Msg(text.KeyComposerAwaitRecord, text.Str("agent", caps.Name))
-			case corev1.SessionOutgoingState_SESSION_OUTGOING_STATE_FAILED:
-				reason := reasonArg("reason", og.ErrorText, og.ErrorCode)
-				if og.ErrorText == nil && og.ErrorCode == "" {
-					reason = text.ArgText("reason", text.Msg(text.KeyComposerAndroidUnknownReason))
-				}
-				feedback = text.Msg(text.KeyComposerSendFailure, reason)
-				caption = feedback
-			case corev1.SessionOutgoingState_SESSION_OUTGOING_STATE_UNKNOWN:
-				reason := reasonArg("reason", og.ErrorText, og.ErrorCode)
-				if og.ErrorText == nil && og.ErrorCode == "" {
-					reason = text.ArgText("reason", text.Msg(text.KeyApprovalAndroidUnknownResult))
-				}
-				feedback = text.Msg(text.KeyComposerMaybeFailure, reason)
-				caption = feedback
-			}
-			failedOrUnknown := og.State == corev1.SessionOutgoingState_SESSION_OUTGOING_STATE_FAILED ||
-				og.State == corev1.SessionOutgoingState_SESSION_OUTGOING_STATE_UNKNOWN
-			out.Outgoing = append(out.Outgoing, &corev1.SessionOutgoingView{
-				RequestId:         og.RequestID,
-				SlotKey:           og.SlotKey,
-				Text:              og.Text,
-				ImageIds:          append([]string(nil), og.ImageIDs...),
-				FileIds:           append([]string(nil), og.FileIDs...),
-				Mode:              og.Mode,
-				State:             og.State,
-				Frozen:            og.Frozen,
-				Expired:           og.Expired,
-				CanRetry:          onlineReady && failedOrUnknown && !og.Expired,
-				CanRestore:        failedOrUnknown,
-				CanDismiss:        failedOrUnknown,
-				Caption:           caption,
-				Feedback:          feedback,
-				FeedbackUncertain: uncertain,
-				CreatedMs:         og.CreatedMs,
-			})
-		}
-	}
-
+	out.PendingTray = buildSessionPendingTray(trayBuildParams{
+		sid:           sid,
+		in:            in,
+		st:            st,
+		lm:            lm,
+		caps:          caps,
+		ui:            ui,
+		onlineReady:   onlineReady,
+		exited:        header.Exited,
+		starting:      starting,
+		waitingAnswer: hasApproval || hasQuestion,
+		nowMs:         nowMs,
+	})
+	out.RetainedAttachmentRequestIds = collectRetainedAttachmentIDs(in.Projection, ui)
 	return out
 }
 
-func inputStatusFeedback(status v1.InputStatus, detail *v1.InputState) *corev1.Text {
-	if status == v1.InputStatus_INPUT_STATUS_UNCONFIRMED {
-		return text.Msg(text.KeyComposerMaybeFailure, text.ArgText("reason", text.Msg(text.KeyQueueAndroidUnconfirmed)))
+var trayGroupOrder = []corev1.SessionTrayGroupKind{
+	corev1.SessionTrayGroupKind_SESSION_TRAY_GROUP_KIND_FAILED,
+	corev1.SessionTrayGroupKind_SESSION_TRAY_GROUP_KIND_UNSURE,
+	corev1.SessionTrayGroupKind_SESSION_TRAY_GROUP_KIND_WAIT_READY,
+	corev1.SessionTrayGroupKind_SESSION_TRAY_GROUP_KIND_WAIT_ANSWER,
+	corev1.SessionTrayGroupKind_SESSION_TRAY_GROUP_KIND_STEER,
+	corev1.SessionTrayGroupKind_SESSION_TRAY_GROUP_KIND_QUEUE,
+	corev1.SessionTrayGroupKind_SESSION_TRAY_GROUP_KIND_PAUSED,
+}
+
+type trayBuildParams struct {
+	sid           string
+	in            SessionViewInput
+	st            *State
+	lm            *lists.Machine
+	caps          lists.AgentCapabilities
+	ui            *SessionUIState
+	onlineReady   bool
+	exited        bool
+	starting      bool
+	waitingAnswer bool
+	nowMs         int64
+}
+
+func buildSessionPendingTray(p trayBuildParams) *corev1.SessionPendingTrayView {
+	tray := &corev1.SessionPendingTrayView{
+		Offline: !p.onlineReady,
 	}
-	if detail != nil && detail.Reason != "" {
-		return text.Msg(text.KeyComposerSendFailure, text.Str("reason", detail.Reason))
+	buckets := make(map[corev1.SessionTrayGroupKind][]*corev1.SessionTrayItemView, len(trayGroupOrder))
+	seen := make(map[string]bool)
+
+	var projByID map[string]*corev1.InputProjection
+	if p.in.Projection != nil && len(p.in.Projection.Inputs) > 0 {
+		projByID = make(map[string]*corev1.InputProjection, len(p.in.Projection.Inputs))
+		for _, ip := range p.in.Projection.Inputs {
+			if ip != nil && ip.RequestId != "" {
+				projByID[ip.RequestId] = ip
+			}
+		}
 	}
-	return nil
+
+	var outgoingByID map[string]*SessionOutgoingRecord
+	if p.ui != nil && len(p.ui.Outgoing) > 0 {
+		outgoingByID = make(map[string]*SessionOutgoingRecord, len(p.ui.Outgoing))
+		for _, og := range p.ui.Outgoing {
+			if og != nil && og.RequestID != "" {
+				outgoingByID[og.RequestID] = og
+			}
+		}
+	}
+
+	if p.in.Projection != nil {
+		for _, pi := range p.in.Projection.PendingInputs {
+			if pi == nil || pi.RequestId == "" {
+				continue
+			}
+			if p.ui != nil && p.ui.DismissedInputIDs[pi.RequestId] {
+				seen[pi.RequestId] = true
+				continue
+			}
+			seen[pi.RequestId] = true
+			item, visible := buildPendingInputTrayItem(p, pi, projByID[pi.RequestId])
+			if visible {
+				buckets[item.Group] = append(buckets[item.Group], item)
+			}
+		}
+		if !p.exited {
+			for _, ip := range p.in.Projection.Inputs {
+				if ip == nil || ip.RequestId == "" || seen[ip.RequestId] {
+					continue
+				}
+				if p.ui != nil && p.ui.DismissedInputIDs[ip.RequestId] {
+					continue
+				}
+				og := outgoingByID[ip.RequestId]
+				if og != nil && og.Restored {
+					seen[ip.RequestId] = true
+					continue
+				}
+				item, ok := buildTerminalInputTrayItem(p, ip, og)
+				if ok {
+					seen[ip.RequestId] = true
+					buckets[item.Group] = append(buckets[item.Group], item)
+				}
+			}
+		}
+	}
+
+	if p.ui != nil {
+		for _, og := range p.ui.Outgoing {
+			if og == nil || og.Restored || seen[og.RequestID] {
+				continue
+			}
+			seen[og.RequestID] = true
+			item, visible := buildLocalOutgoingTrayItem(p, og)
+			if visible {
+				buckets[item.Group] = append(buckets[item.Group], item)
+			}
+		}
+		if startItem := buildStartPromptTrayItem(p); startItem != nil && !seen[startItem.RequestId] {
+			buckets[startItem.Group] = append(buckets[startItem.Group], startItem)
+		}
+	}
+
+	for _, kind := range trayGroupOrder {
+		items := buckets[kind]
+		if len(items) == 0 {
+			continue
+		}
+		tone := trayGroupTone(kind)
+		title := trayGroupTitle(kind, p.caps.Name)
+		headerText := title
+		if len(items) > 1 {
+			headerText = text.Msg(text.KeyQueueGroupCount, text.ArgText("title", title), text.Int("count", int64(len(items))))
+		}
+		if kind == corev1.SessionTrayGroupKind_SESSION_TRAY_GROUP_KIND_QUEUE {
+			for i, it := range items {
+				it.QueueNumber = int32(i + 1)
+			}
+		}
+		if kind == corev1.SessionTrayGroupKind_SESSION_TRAY_GROUP_KIND_FAILED ||
+			kind == corev1.SessionTrayGroupKind_SESSION_TRAY_GROUP_KIND_UNSURE {
+			tray.FailedCount += int32(len(items))
+		}
+		tray.Groups = append(tray.Groups, &corev1.SessionTrayGroupView{
+			Kind:         kind,
+			Tone:         tone,
+			Title:        title,
+			HeaderText:   headerText,
+			TotalCount:   int32(len(items)),
+			CanCancelAll: kind == corev1.SessionTrayGroupKind_SESSION_TRAY_GROUP_KIND_PAUSED && len(items) > 1,
+			Items:        items,
+		})
+		tray.OrderedItems = append(tray.OrderedItems, items...)
+	}
+	tray.TotalCount = int32(len(tray.OrderedItems))
+
+	if p.ui != nil && p.ui.Undo != nil && len(p.ui.Undo.Items) > 0 {
+		n := int32(len(p.ui.Undo.Items))
+		tray.Undo = &corev1.SessionTrayUndoView{
+			Visible: true,
+			Count:   n,
+			Label:   text.Msg(text.KeyQueueCanceledCount, text.Int("count", int64(n))),
+			CanUndo: p.onlineReady,
+		}
+	}
+	return tray
+}
+
+func buildPendingInputTrayItem(p trayBuildParams, pi *corev1.PendingInput, ip *corev1.InputProjection) (*corev1.SessionTrayItemView, bool) {
+	cancelSlot := "cancel_input:" + p.sid + ":" + pi.RequestId
+	resumeSlot := "resume_input:" + p.sid + ":" + pi.RequestId
+	cancelState := commandSlotState(p.ui, cancelSlot, nil, nil)
+	resumeState := commandSlotState(p.ui, resumeSlot, nil, nil)
+
+	activity := corev1.SessionTrayRowActivity_SESSION_TRAY_ROW_ACTIVITY_IDLE
+	if cancelState != nil && cancelState.Busy {
+		activity = corev1.SessionTrayRowActivity_SESSION_TRAY_ROW_ACTIVITY_CANCELING
+	} else if resumeState != nil && resumeState.Busy {
+		activity = corev1.SessionTrayRowActivity_SESSION_TRAY_ROW_ACTIVITY_SENDING
+	}
+
+	mode := pi.Mode
+	if mode == v1.SendMode_SEND_MODE_UNSPECIFIED {
+		mode = v1.SendMode_SEND_MODE_STEER
+	}
+	group := trayPendingGroup(pi.Paused, mode, p.starting, p.waitingAnswer)
+
+	if shouldHideCodexSteerGrace(p, pi.RequestId, group, activity) {
+		return nil, false
+	}
+
+	var local *LocalSentContent
+	if p.ui != nil {
+		local = p.ui.LocalContents[pi.RequestId]
+	}
+	imgIDs, fileIDs, imgCount, fileCount := trayAttachments(local, ip, pi.Files)
+	itemText := pi.Text
+	if itemText == "" && local != nil {
+		itemText = local.Text
+	}
+	foreignDimmed := itemText == "" && imgCount == 0 && fileCount == 0
+	hasLocalCopy := !foreignDimmed && ((imgCount == 0 && fileCount == 0) || local != nil)
+
+	origin := pi.Origin
+	if origin == nil && ip != nil && ip.Accepted != nil {
+		origin = ip.Accepted.Origin
+	}
+	var acceptedMs int64
+	if ip != nil && ip.Accepted != nil {
+		acceptedMs = ip.Accepted.TimeMs
+	}
+
+	var reasonText *corev1.Text
+	if cancelState != nil && (cancelState.Status == corev1.SessionCommandStatus_SESSION_COMMAND_STATUS_FAILED || cancelState.Status == corev1.SessionCommandStatus_SESSION_COMMAND_STATUS_UNKNOWN) {
+		reasonText = text.Msg(text.KeyQueueCancelFailed)
+	} else if resumeState != nil && (resumeState.Status == corev1.SessionCommandStatus_SESSION_COMMAND_STATUS_FAILED || resumeState.Status == corev1.SessionCommandStatus_SESSION_COMMAND_STATUS_UNKNOWN) {
+		reasonText = text.Msg(text.KeyQueueResumeFailed)
+	}
+
+	idle := activity == corev1.SessionTrayRowActivity_SESSION_TRAY_ROW_ACTIVITY_IDLE
+	return &corev1.SessionTrayItemView{
+		RequestId:              pi.RequestId,
+		SlotKey:                "send:" + p.sid + ":" + pi.RequestId,
+		Group:                  group,
+		Tone:                   trayGroupTone(group),
+		Activity:               activity,
+		ShowSpinner:            group == corev1.SessionTrayGroupKind_SESSION_TRAY_GROUP_KIND_STEER || !idle,
+		Text:                   itemText,
+		SourceLabel:            traySourceLabel(origin, acceptedMs, p.st, p.in.DeviceNames, p.in.ThisDeviceID, p.lm),
+		ForeignDimmed:          foreignDimmed,
+		AttachmentCount:        imgCount + fileCount,
+		ImageCount:             imgCount,
+		FileCount:              fileCount,
+		ImageIds:               imgIDs,
+		FileIds:                fileIDs,
+		Mode:                   mode,
+		ReasonText:             reasonText,
+		CanCancel:              idle,
+		CanResume:              idle && group == corev1.SessionTrayGroupKind_SESSION_TRAY_GROUP_KIND_PAUSED,
+		CanPromote:             idle && group == corev1.SessionTrayGroupKind_SESSION_TRAY_GROUP_KIND_QUEUE && hasLocalCopy,
+		CanRestore:             idle && hasLocalCopy,
+		NetworkActionsDisabled: !p.onlineReady,
+		ServerBacked:           true,
+	}, true
+}
+
+func buildTerminalInputTrayItem(p trayBuildParams, ip *corev1.InputProjection, og *SessionOutgoingRecord) (*corev1.SessionTrayItemView, bool) {
+	var group corev1.SessionTrayGroupKind
+	switch ip.Status {
+	case v1.InputStatus_INPUT_STATUS_FAILED:
+		group = corev1.SessionTrayGroupKind_SESSION_TRAY_GROUP_KIND_FAILED
+	case v1.InputStatus_INPUT_STATUS_NEEDS_TERMINAL, v1.InputStatus_INPUT_STATUS_UNCONFIRMED:
+		group = corev1.SessionTrayGroupKind_SESSION_TRAY_GROUP_KIND_UNSURE
+	default:
+		return nil, false
+	}
+
+	var local *LocalSentContent
+	if p.ui != nil {
+		local = p.ui.LocalContents[ip.RequestId]
+	}
+	var itemText string
+	var mode v1.SendMode
+	var origin *v1.Origin
+	var acceptedMs int64
+	if ip.Accepted != nil {
+		itemText = ip.Accepted.Text
+		origin = ip.Accepted.Origin
+		acceptedMs = ip.Accepted.TimeMs
+	}
+	if ip.Detail != nil {
+		if itemText == "" {
+			itemText = ip.Detail.Text
+		}
+		mode = ip.Detail.Mode
+	}
+	if og != nil {
+		if itemText == "" {
+			itemText = og.Text
+		}
+		if mode == v1.SendMode_SEND_MODE_UNSPECIFIED {
+			mode = og.Mode
+		}
+	}
+	if local != nil {
+		if itemText == "" {
+			itemText = local.Text
+		}
+		if mode == v1.SendMode_SEND_MODE_UNSPECIFIED {
+			mode = local.Mode
+		}
+	}
+	if mode == v1.SendMode_SEND_MODE_UNSPECIFIED {
+		mode = v1.SendMode_SEND_MODE_STEER
+	}
+
+	var files []*v1.SentFile
+	if ip.Accepted != nil && len(ip.Accepted.Files) > 0 {
+		files = ip.Accepted.Files
+	} else if ip.Detail != nil {
+		files = ip.Detail.Files
+	}
+	imgIDs, fileIDs, imgCount, fileCount := trayAttachments(local, ip, files)
+	if og != nil && local == nil {
+		if len(imgIDs) == 0 && len(og.ImageIDs) > 0 {
+			imgIDs = append([]string(nil), og.ImageIDs...)
+			imgCount = int32(len(imgIDs))
+		}
+		if len(fileIDs) == 0 && len(og.FileIDs) > 0 {
+			fileIDs = append([]string(nil), og.FileIDs...)
+			fileCount = int32(len(fileIDs))
+		}
+	}
+
+	foreignDimmed := itemText == "" && imgCount == 0 && fileCount == 0
+	hasAllLocalBytes := !foreignDimmed && ((imgCount == 0 && fileCount == 0) || local != nil || og != nil)
+	isOwnOrigin := origin == nil || origin.Kind != v1.OriginKind_ORIGIN_KIND_CLIENT || origin.DeviceId == "" || origin.DeviceId == p.in.ThisDeviceID
+	canRestore := !foreignDimmed && (hasAllLocalBytes || (isOwnOrigin && itemText != ""))
+	expired := og != nil && og.Expired
+
+	var code string
+	var errText *corev1.Text
+	if ip.Detail != nil && ip.Detail.Reason != "" {
+		code = ip.Detail.Reason
+	} else if ip.FailureReason != nil && *ip.FailureReason != "" {
+		code = *ip.FailureReason
+	} else if ip.Status == v1.InputStatus_INPUT_STATUS_NEEDS_TERMINAL {
+		code = "input_changed"
+	}
+	if og != nil {
+		if code == "" {
+			code = og.ErrorCode
+		}
+		errText = og.ErrorText
+	}
+
+	var reasonText *corev1.Text
+	if group == corev1.SessionTrayGroupKind_SESSION_TRAY_GROUP_KIND_UNSURE {
+		if code != "" || errText != nil {
+			reasonText = trayFailureReasonText(p.caps.Name, code, errText)
+		} else if ip.Status == v1.InputStatus_INPUT_STATUS_NEEDS_TERMINAL {
+			reasonText = text.Msg(text.KeyComposerInputUnconfirmed)
+		} else {
+			reasonText = trayUnsureReasonText(og)
+		}
+	} else {
+		reasonText = trayFailureReasonText(p.caps.Name, code, errText)
+	}
+
+	return &corev1.SessionTrayItemView{
+		RequestId:              ip.RequestId,
+		SlotKey:                "send:" + p.sid + ":" + ip.RequestId,
+		Group:                  group,
+		Tone:                   trayGroupTone(group),
+		Activity:               corev1.SessionTrayRowActivity_SESSION_TRAY_ROW_ACTIVITY_IDLE,
+		ShowSpinner:            false,
+		Text:                   itemText,
+		SourceLabel:            traySourceLabel(origin, acceptedMs, p.st, p.in.DeviceNames, p.in.ThisDeviceID, p.lm),
+		ForeignDimmed:          foreignDimmed,
+		AttachmentCount:        imgCount + fileCount,
+		ImageCount:             imgCount,
+		FileCount:              fileCount,
+		ImageIds:               imgIDs,
+		FileIds:                fileIDs,
+		Mode:                   mode,
+		ReasonText:             reasonText,
+		CanCancel:              group == corev1.SessionTrayGroupKind_SESSION_TRAY_GROUP_KIND_FAILED,
+		CanRetry:               group == corev1.SessionTrayGroupKind_SESSION_TRAY_GROUP_KIND_FAILED && hasAllLocalBytes && !expired,
+		CanOpenTerminal:        group == corev1.SessionTrayGroupKind_SESSION_TRAY_GROUP_KIND_UNSURE,
+		CanIgnore:              group == corev1.SessionTrayGroupKind_SESSION_TRAY_GROUP_KIND_UNSURE,
+		CanRestore:             canRestore,
+		NetworkActionsDisabled: !p.onlineReady,
+		ServerBacked:           false,
+	}, true
+}
+
+func buildLocalOutgoingTrayItem(p trayBuildParams, og *SessionOutgoingRecord) (*corev1.SessionTrayItemView, bool) {
+	mode := og.Mode
+	if mode == v1.SendMode_SEND_MODE_UNSPECIFIED {
+		mode = v1.SendMode_SEND_MODE_STEER
+	}
+	imgCount := int32(len(og.ImageIDs))
+	fileCount := int32(len(og.FileIDs))
+	item := &corev1.SessionTrayItemView{
+		RequestId:              og.RequestID,
+		SlotKey:                og.SlotKey,
+		Text:                   og.Text,
+		AttachmentCount:        imgCount + fileCount,
+		ImageCount:             imgCount,
+		FileCount:              fileCount,
+		ImageIds:               append([]string(nil), og.ImageIDs...),
+		FileIds:                append([]string(nil), og.FileIDs...),
+		Mode:                   mode,
+		NetworkActionsDisabled: !p.onlineReady,
+		ServerBacked:           false,
+	}
+
+	switch og.State {
+	case OutgoingSending, OutgoingSent:
+		group := trayPendingGroup(false, mode, p.starting, p.waitingAnswer)
+		if shouldHideCodexSteerGrace(p, og.RequestID, group, corev1.SessionTrayRowActivity_SESSION_TRAY_ROW_ACTIVITY_SENDING) ||
+			(p.caps.Agent == v1.Agent_AGENT_CODEX && group == corev1.SessionTrayGroupKind_SESSION_TRAY_GROUP_KIND_STEER && p.nowMs > 0 && og.VisibleAfterMs > p.nowMs) {
+			return nil, false
+		}
+		item.Group = group
+		item.Tone = trayGroupTone(group)
+		item.Activity = corev1.SessionTrayRowActivity_SESSION_TRAY_ROW_ACTIVITY_SENDING
+		item.ShowSpinner = true
+		return item, true
+
+	case OutgoingFailed:
+		item.Group = corev1.SessionTrayGroupKind_SESSION_TRAY_GROUP_KIND_FAILED
+		item.Tone = corev1.SessionTrayTone_SESSION_TRAY_TONE_RED
+		item.Activity = corev1.SessionTrayRowActivity_SESSION_TRAY_ROW_ACTIVITY_IDLE
+		item.ReasonText = trayFailureReasonText(p.caps.Name, og.ErrorCode, og.ErrorText)
+		item.CanRetry = !og.Expired
+		item.CanCancel = true
+		item.CanRestore = true
+		return item, true
+
+	case OutgoingUnknown:
+		item.Group = corev1.SessionTrayGroupKind_SESSION_TRAY_GROUP_KIND_UNSURE
+		item.Tone = corev1.SessionTrayTone_SESSION_TRAY_TONE_ORANGE
+		item.Activity = corev1.SessionTrayRowActivity_SESSION_TRAY_ROW_ACTIVITY_IDLE
+		item.ReasonText = trayUnsureReasonText(og)
+		item.CanOpenTerminal = true
+		item.CanIgnore = true
+		item.CanRestore = true
+		return item, true
+	}
+	return nil, false
+}
+
+func buildStartPromptTrayItem(p trayBuildParams) *corev1.SessionTrayItemView {
+	if p.ui == nil || p.ui.PendingStartPrompt == nil || p.exited || p.ui.PendingStartPrompt.Text == "" {
+		return nil
+	}
+	for _, ev := range p.in.Events {
+		if ev != nil && ev.GetUserMessage() != nil {
+			return nil
+		}
+	}
+	if FindStartPromptInput(p.in.Projection, p.ui) != nil {
+		return nil
+	}
+	reqID := p.ui.PendingStartPrompt.RequestID
+	if reqID == "" {
+		reqID = "start-prompt"
+	}
+	imgCount := p.ui.PendingStartPrompt.ImageCount
+	fileCount := p.ui.PendingStartPrompt.FileCount
+	return &corev1.SessionTrayItemView{
+		RequestId:              reqID,
+		SlotKey:                "send:" + p.sid + ":" + reqID,
+		Group:                  corev1.SessionTrayGroupKind_SESSION_TRAY_GROUP_KIND_WAIT_READY,
+		Tone:                   corev1.SessionTrayTone_SESSION_TRAY_TONE_NEUTRAL,
+		Activity:               corev1.SessionTrayRowActivity_SESSION_TRAY_ROW_ACTIVITY_IDLE,
+		Text:                   p.ui.PendingStartPrompt.Text,
+		AttachmentCount:        imgCount + fileCount,
+		ImageCount:             imgCount,
+		FileCount:              fileCount,
+		Mode:                   v1.SendMode_SEND_MODE_STEER,
+		NetworkActionsDisabled: !p.onlineReady,
+		ServerBacked:           false,
+	}
+}
+
+func shouldHideCodexSteerGrace(
+	p trayBuildParams,
+	reqID string,
+	group corev1.SessionTrayGroupKind,
+	activity corev1.SessionTrayRowActivity,
+) bool {
+	if p.caps.Agent != v1.Agent_AGENT_CODEX ||
+		group != corev1.SessionTrayGroupKind_SESSION_TRAY_GROUP_KIND_STEER ||
+		activity == corev1.SessionTrayRowActivity_SESSION_TRAY_ROW_ACTIVITY_CANCELING ||
+		p.ui == nil || p.nowMs <= 0 {
+		return false
+	}
+	return p.ui.SteerVisibleAfterMs[reqID] > p.nowMs
+}
+
+func trayPendingGroup(paused bool, mode v1.SendMode, starting, waitingAnswer bool) corev1.SessionTrayGroupKind {
+	switch {
+	case paused:
+		return corev1.SessionTrayGroupKind_SESSION_TRAY_GROUP_KIND_PAUSED
+	case starting:
+		return corev1.SessionTrayGroupKind_SESSION_TRAY_GROUP_KIND_WAIT_READY
+	case waitingAnswer && mode != v1.SendMode_SEND_MODE_QUEUE:
+		return corev1.SessionTrayGroupKind_SESSION_TRAY_GROUP_KIND_WAIT_ANSWER
+	case mode == v1.SendMode_SEND_MODE_QUEUE:
+		return corev1.SessionTrayGroupKind_SESSION_TRAY_GROUP_KIND_QUEUE
+	default:
+		return corev1.SessionTrayGroupKind_SESSION_TRAY_GROUP_KIND_STEER
+	}
+}
+
+func trayGroupTone(kind corev1.SessionTrayGroupKind) corev1.SessionTrayTone {
+	switch kind {
+	case corev1.SessionTrayGroupKind_SESSION_TRAY_GROUP_KIND_FAILED:
+		return corev1.SessionTrayTone_SESSION_TRAY_TONE_RED
+	case corev1.SessionTrayGroupKind_SESSION_TRAY_GROUP_KIND_UNSURE:
+		return corev1.SessionTrayTone_SESSION_TRAY_TONE_ORANGE
+	default:
+		return corev1.SessionTrayTone_SESSION_TRAY_TONE_NEUTRAL
+	}
+}
+
+func trayGroupTitle(kind corev1.SessionTrayGroupKind, agentName string) *corev1.Text {
+	switch kind {
+	case corev1.SessionTrayGroupKind_SESSION_TRAY_GROUP_KIND_FAILED:
+		return text.Msg(text.KeyQueueGroupFailed)
+	case corev1.SessionTrayGroupKind_SESSION_TRAY_GROUP_KIND_UNSURE:
+		return text.Msg(text.KeyQueueGroupUnsure)
+	case corev1.SessionTrayGroupKind_SESSION_TRAY_GROUP_KIND_WAIT_READY:
+		return text.Msg(text.KeyQueueGroupWaitReady, text.Str("agent", agentName))
+	case corev1.SessionTrayGroupKind_SESSION_TRAY_GROUP_KIND_WAIT_ANSWER:
+		return text.Msg(text.KeyQueueGroupWaitAnswer)
+	case corev1.SessionTrayGroupKind_SESSION_TRAY_GROUP_KIND_STEER:
+		return text.Msg(text.KeyQueueGroupSteer)
+	case corev1.SessionTrayGroupKind_SESSION_TRAY_GROUP_KIND_QUEUE:
+		return text.Msg(text.KeyQueueGroupQueue)
+	case corev1.SessionTrayGroupKind_SESSION_TRAY_GROUP_KIND_PAUSED:
+		return text.Msg(text.KeyQueueGroupPaused)
+	default:
+		return text.Msg(text.KeyQueueGroupSteer)
+	}
+}
+
+func trayAttachments(local *LocalSentContent, ip *corev1.InputProjection, piFiles []*v1.SentFile) (imgIDs, fileIDs []string, imgCount, fileCount int32) {
+	if local != nil {
+		imgIDs = append([]string(nil), local.ImageIDs...)
+		fileIDs = append([]string(nil), local.FileIDs...)
+		return imgIDs, fileIDs, int32(len(imgIDs)), int32(len(fileIDs))
+	}
+	if ip != nil {
+		if ip.Accepted != nil && len(ip.Accepted.ImageIds) > 0 {
+			imgIDs = append([]string(nil), ip.Accepted.ImageIds...)
+		} else if ip.Detail != nil && len(ip.Detail.ImageIds) > 0 {
+			imgIDs = append([]string(nil), ip.Detail.ImageIds...)
+		}
+	}
+	for _, f := range piFiles {
+		if f != nil && f.FileId != "" {
+			fileIDs = append(fileIDs, f.FileId)
+		}
+	}
+	fileCount = int32(len(piFiles))
+	if int32(len(fileIDs)) > fileCount {
+		fileCount = int32(len(fileIDs))
+	}
+	imgCount = int32(len(imgIDs))
+	return imgIDs, fileIDs, imgCount, fileCount
+}
+
+func traySourceLabel(origin *v1.Origin, acceptedMs int64, st *State, devices map[string]string, thisDeviceID string, lm *lists.Machine) *corev1.Text {
+	if origin != nil && origin.ScheduledTaskId != "" {
+		if acceptedMs > 0 {
+			return text.Msg(text.KeyQueueScheduledTime, text.ArgTimestamp("time", acceptedMs, corev1.TimestampStyle_TIMESTAMP_STYLE_TIME))
+		}
+		return text.Msg(text.KeyQueueAndroidScheduled)
+	}
+	return originText(origin, st, devices, thisDeviceID, lm)
+}
+
+func trayFailureReasonText(agentName, rawCode string, errText *corev1.Text) *corev1.Text {
+	switch rawCode {
+	case "image_not_recognized":
+		return text.Msg(text.KeyComposerImagesUnrecognized, text.Str("agent", agentName))
+	case "timeout":
+		return text.Msg(text.KeyComposerReadyTimeout)
+	case "restarted":
+		return text.Msg(text.KeyComposerComputerRestarted)
+	case "write_failed":
+		return text.Msg(text.KeyComposerWriteFailed)
+	case "exited":
+		return text.Msg(text.KeySessionEndedMessageFailed)
+	case "input_changed":
+		return text.Msg(text.KeyComposerNotWritten)
+	}
+	if errText != nil {
+		return errText
+	}
+	if rawCode == "" {
+		return text.Msg(text.KeyComposerAndroidUnknownReason)
+	}
+	return text.Plain(rawCode)
+}
+
+func trayUnsureReasonText(og *SessionOutgoingRecord) *corev1.Text {
+	if og != nil {
+		if og.ErrorText != nil {
+			return og.ErrorText
+		}
+		if og.ErrorCode != "" {
+			return trayFailureReasonText("", og.ErrorCode, nil)
+		}
+	}
+	return text.Msg(text.KeyQueueUnconfirmedReason)
+}
+
+func collectRetainedAttachmentIDs(p *corev1.ProjectionState, ui *SessionUIState) []string {
+	set := make(map[string]bool)
+	if ui != nil {
+		for reqID, lc := range ui.LocalContents {
+			if lc != nil && reqID != "" && (len(lc.ImageIDs) > 0 || len(lc.FileIDs) > 0) {
+				set[reqID] = true
+			}
+		}
+		for _, og := range ui.Outgoing {
+			if og != nil && og.RequestID != "" && (len(og.ImageIDs) > 0 || len(og.FileIDs) > 0) {
+				set[og.RequestID] = true
+			}
+		}
+		if ui.Undo != nil {
+			for _, it := range ui.Undo.Items {
+				if it != nil && it.SourceReqID != "" && (len(it.ImageIDs) > 0 || len(it.FileIDs) > 0) {
+					set[it.SourceReqID] = true
+				}
+			}
+		}
+		for _, intent := range ui.CancelIntents {
+			if intent != nil && intent.SourceReqID != "" && intent.HasAttachments {
+				set[intent.SourceReqID] = true
+			}
+		}
+		for srcReqID := range ui.PendingResendSources {
+			if srcReqID != "" {
+				set[srcReqID] = true
+			}
+		}
+	}
+	if p != nil {
+		for _, pi := range p.PendingInputs {
+			if pi == nil || pi.RequestId == "" {
+				continue
+			}
+			if len(pi.Files) > 0 {
+				set[pi.RequestId] = true
+			}
+		}
+	}
+	if len(set) == 0 {
+		return nil
+	}
+	out := make([]string, 0, len(set))
+	for id := range set {
+		out = append(out, id)
+	}
+	sort.Strings(out)
+	return out
 }
 
 func originText(o *v1.Origin, st *State, devices map[string]string, thisDeviceID string, lm *lists.Machine) *corev1.Text {

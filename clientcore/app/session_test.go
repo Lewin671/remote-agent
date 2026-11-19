@@ -243,8 +243,12 @@ func TestSessionStartPromptDeduplicationAndForkNavigation(t *testing.T) {
 		t.Fatalf("View before UserMessage: %v", err)
 	}
 	itemsBefore := vmBefore.GetSession().GetTimeline().GetItems()
-	if len(itemsBefore) != 1 || itemsBefore[0].Id != "start-prompt" || itemsBefore[0].GetUserMessage().GetText() != "Build core session tests" {
-		t.Fatalf("expected synthetic start-prompt item before UserMessage, found=%v ui=%+v got=%+v", vmBefore.GetSession().GetHeader().GetFound(), c.m.ensureSessionStore().ensureUI("s-created"), itemsBefore)
+	if len(itemsBefore) != 0 {
+		t.Fatalf("expected empty timeline before UserMessage, got %+v", itemsBefore)
+	}
+	trayBefore := vmBefore.GetSession().GetComposer().GetPendingTray()
+	if trayBefore.GetTotalCount() != 1 || trayBefore.GetOrderedItems()[0].GetGroup() != corev1.SessionTrayGroupKind_SESSION_TRAY_GROUP_KIND_WAIT_READY || trayBefore.GetOrderedItems()[0].GetText() != "Build core session tests" {
+		t.Fatalf("expected startup prompt in WAIT_READY tray before UserMessage, got %+v", trayBefore)
 	}
 
 	// Once real UserMessage arrives in events, synthetic start-prompt deduplicates.
@@ -543,14 +547,17 @@ func TestSessionMissingLookupMismatchOfflineAndRichTimeline(t *testing.T) {
 		t.Fatalf("expected TERMINAL_POPUP dock for blocked session, got %+v", s.GetDock())
 	}
 	tlItems := s.GetTimeline().GetItems()
-	if len(tlItems) != 6 {
-		t.Fatalf("expected 6 timeline items (user, reasoning, sharedFiles, genImg, asyncQuestion, inputState), got %d", len(tlItems))
+	if len(tlItems) != 5 {
+		t.Fatalf("expected 5 timeline items (user, reasoning, sharedFiles, genImg, asyncQuestion), got %d", len(tlItems))
 	}
 	if tlItems[0].GetUserMessage().GetText() != "Look at main.go" {
 		t.Fatalf("expected injected File line stripped from UserMessage, got %q", tlItems[0].GetUserMessage().GetText())
 	}
-	if tlItems[2].GetSharedFiles() == nil || tlItems[3].GetGeneratedImages() == nil || tlItems[4].GetAsyncQuestion() == nil || tlItems[5].GetInputState().GetKind() != corev1.SessionInputNoticeKind_SESSION_INPUT_NOTICE_KIND_FAILED {
+	if tlItems[2].GetSharedFiles() == nil || tlItems[3].GetGeneratedImages() == nil || tlItems[4].GetAsyncQuestion() == nil {
 		t.Fatalf("expected rich timeline rows present and typed cleanly: %+v", tlItems)
+	}
+	if trayItems := s.GetComposer().GetPendingTray().GetOrderedItems(); len(trayItems) != 1 || trayItems[0].GetGroup() != corev1.SessionTrayGroupKind_SESSION_TRAY_GROUP_KIND_FAILED {
+		t.Fatalf("expected non-exited FAILED input in pending tray, got %+v", s.GetComposer().GetPendingTray())
 	}
 	var _ = lists.DefaultAgent
 }
@@ -1242,7 +1249,7 @@ func startSessionForStartupPromptTest(t *testing.T, sid, prompt string) (*Core, 
 func TestStartupPromptLifecycleDeduplicatesAndWaitsForCLI(t *testing.T) {
 	c, createReqID := startSessionForStartupPromptTest(t, "s-start", "hi")
 
-	// 1. Before any events load: synthetic start-prompt appears once, no pending inputs, no bogus mode label.
+	// 1. Before any events load: synthetic startup prompt sits in WAIT_READY tray, timeline is empty, no bogus mode label.
 	vm0, err := c.View(&corev1.Screen{Screen: &corev1.Screen_Session{Session: &corev1.SessionScreenRequest{SessionId: "s-start"}}})
 	if err != nil {
 		t.Fatalf("View step 1: %v", err)
@@ -1251,11 +1258,12 @@ func TestStartupPromptLifecycleDeduplicatesAndWaitsForCLI(t *testing.T) {
 	if s0.GetHeader().GetApprovalModeLabel() != nil {
 		t.Fatalf("expected nil ApprovalModeLabel while STARTING, got %+v", s0.GetHeader().GetApprovalModeLabel())
 	}
-	if len(s0.GetTimeline().GetItems()) != 1 || s0.GetTimeline().GetItems()[0].Id != "start-prompt" {
-		t.Fatalf("step 1 expected [start-prompt], got %+v", s0.GetTimeline().GetItems())
+	if len(s0.GetTimeline().GetItems()) != 0 {
+		t.Fatalf("step 1 expected empty timeline, got %+v", s0.GetTimeline().GetItems())
 	}
-	if len(s0.GetComposer().GetPendingInputs()) != 0 {
-		t.Fatalf("step 1 expected 0 pending inputs, got %+v", s0.GetComposer().GetPendingInputs())
+	tray0 := s0.GetComposer().GetPendingTray()
+	if len(tray0.GetGroups()) != 1 || tray0.GetGroups()[0].GetKind() != corev1.SessionTrayGroupKind_SESSION_TRAY_GROUP_KIND_WAIT_READY || tray0.GetGroups()[0].GetTitle().GetKey() != text.KeyQueueGroupWaitReady {
+		t.Fatalf("step 1 expected WAIT_READY tray item, got %+v", tray0)
 	}
 
 	// 2. SessionState{STARTING} + InputState{QUEUED} arrives: PendingInputs takes over with "等 Antigravity 就绪", no duplicate start-prompt.
@@ -1311,18 +1319,20 @@ func TestStartupPromptLifecycleDeduplicatesAndWaitsForCLI(t *testing.T) {
 	if len(s1.GetTimeline().GetItems()) != 0 {
 		t.Fatalf("step 2 expected 0 timeline items while queued, got %+v", s1.GetTimeline().GetItems())
 	}
-	pending := s1.GetComposer().GetPendingInputs()
-	if len(pending) != 1 {
-		t.Fatalf("step 2 expected 1 pending input, got %+v", pending)
+	tray1 := s1.GetComposer().GetPendingTray()
+	if len(tray1.GetGroups()) != 1 || len(tray1.GetOrderedItems()) != 1 {
+		t.Fatalf("step 2 expected 1 pending tray item, got %+v", tray1)
 	}
-	if pending[0].GetLabel().GetKey() != text.KeyQueueAndroidAgentNote {
-		t.Fatalf("step 2 expected pending label %q, got %+v", text.KeyQueueAndroidAgentNote, pending[0].GetLabel())
+	if g := tray1.GetGroups()[0]; g.GetKind() != corev1.SessionTrayGroupKind_SESSION_TRAY_GROUP_KIND_WAIT_READY || g.GetTitle().GetKey() != text.KeyQueueGroupWaitReady {
+		t.Fatalf("step 2 expected group %q, got %+v", text.KeyQueueGroupWaitReady, g.GetTitle())
+	} else if args := g.GetTitle().GetArgs(); len(args) != 1 || args[0].GetStrValue() != "Antigravity" {
+		t.Fatalf("step 2 expected agent arg Antigravity, got %+v", g.GetTitle())
 	}
-	if args := pending[0].GetLabel().GetArgs(); len(args) != 1 || args[0].GetStrValue() != "Antigravity" {
-		t.Fatalf("step 2 expected agent arg Antigravity, got %+v", pending[0].GetLabel())
+	if !tray1.GetOrderedItems()[0].GetServerBacked() {
+		t.Fatalf("step 2 expected server-backed queued item replacing synthetic prompt")
 	}
 
-	// 3. InputState{SUBMITTED} arrives before UserMessage: PendingInputs empties, synthetic start-prompt bridges the gap without blinking.
+	// 3. InputState{SUBMITTED} arrives before UserMessage: PendingTray empties (written to terminal).
 	c.Dispatch(&corev1.Event{
 		NowMs: 1_791_078_060_200,
 		Event: &corev1.Event_StreamFrame{
@@ -1352,11 +1362,11 @@ func TestStartupPromptLifecycleDeduplicatesAndWaitsForCLI(t *testing.T) {
 		t.Fatalf("View step 3: %v", err)
 	}
 	s2 := vm2.GetSession()
-	if len(s2.GetComposer().GetPendingInputs()) != 0 {
-		t.Fatalf("step 3 expected 0 pending inputs after SUBMITTED, got %+v", s2.GetComposer().GetPendingInputs())
+	if s2.GetComposer().GetPendingTray().GetTotalCount() != 0 {
+		t.Fatalf("step 3 expected empty pending tray after SUBMITTED, got %+v", s2.GetComposer().GetPendingTray())
 	}
-	if items := s2.GetTimeline().GetItems(); len(items) != 1 || items[0].Id != "start-prompt" {
-		t.Fatalf("step 3 expected [start-prompt] bridge, got %+v", items)
+	if items := s2.GetTimeline().GetItems(); len(items) != 0 {
+		t.Fatalf("step 3 expected empty timeline before UserMessage, got %+v", items)
 	}
 
 	// 4. UserMessage arrives: replaces start-prompt with real timeline event e4 and clears PendingStartPrompt.
@@ -1453,15 +1463,15 @@ func TestCanceledStartupPromptDoesNotResurrectGhostBubble(t *testing.T) {
 			t.Fatalf("canceled startup prompt resurrected as user message: %+v", it)
 		}
 	}
-	if len(vm.GetSession().GetComposer().GetPendingInputs()) != 0 {
-		t.Fatalf("expected 0 pending inputs after cancel, got %+v", vm.GetSession().GetComposer().GetPendingInputs())
+	if vm.GetSession().GetComposer().GetPendingTray().GetTotalCount() != 0 {
+		t.Fatalf("expected 0 pending tray items after cancel, got %+v", vm.GetSession().GetComposer().GetPendingTray())
 	}
 	if c.m.ensureSessionStore().ensureUI("s-cancel").PendingStartPrompt != nil {
 		t.Fatalf("expected PendingStartPrompt cleared after cancel")
 	}
 }
 
-func TestPendingInputsCaptionJoinsRankWithoutDoubleDot(t *testing.T) {
+func TestPendingTrayGroupingNumberingAndOrigin(t *testing.T) {
 	st := screens.NewState()
 	ls := &lists.Session{
 		ID:        "s1",
@@ -1486,38 +1496,36 @@ func TestPendingInputsCaptionJoinsRankWithoutDoubleDot(t *testing.T) {
 					Text:      "second",
 					Mode:      v1.SendMode_SEND_MODE_QUEUE,
 				},
+				{
+					RequestId: "r3",
+					Text:      "third",
+					Mode:      v1.SendMode_SEND_MODE_QUEUE,
+				},
 			},
 		},
 	}
 	vm := screens.BuildSessionView(in, st, &corev1.SessionScreenRequest{SessionId: "s1"}, screens.NewSessionUIState())
-	pending := vm.GetComposer().GetPendingInputs()
-	if len(pending) != 2 {
-		t.Fatalf("expected 2 pending inputs, got %d", len(pending))
+	tray := vm.GetComposer().GetPendingTray()
+	if len(tray.GetGroups()) != 2 {
+		t.Fatalf("expected 2 tray groups (STEER, QUEUE), got %+v", tray.GetGroups())
 	}
-
-	// Rank must join onto label with "" (because queue.rank already begins with " · "),
-	// and originLabel must join with " · ".
-	cap0 := pending[0].GetCaption()
-	if cap0.GetSeparatorLiteral() != " · " || len(cap0.GetJoin()) != 2 {
-		t.Fatalf("unexpected outer join on pending[0] caption: %+v", cap0)
+	steerGroup := tray.GetGroups()[0]
+	if steerGroup.GetKind() != corev1.SessionTrayGroupKind_SESSION_TRAY_GROUP_KIND_STEER ||
+		steerGroup.GetHeaderText().GetKey() != text.KeyQueueGroupSteer ||
+		len(steerGroup.GetItems()) != 1 {
+		t.Fatalf("unexpected steer group: %+v", steerGroup)
 	}
-	left := cap0.GetJoin()[0]
-	if left.GetSeparatorLiteral() != "" || len(left.GetJoin()) != 2 {
-		t.Fatalf("expected empty separator between label and queue.rank, got %+v", left)
+	if steerGroup.GetItems()[0].GetSourceLabel().GetLiteral() != "MyPhone" {
+		t.Fatalf("expected origin MyPhone on steer item, got %+v", steerGroup.GetItems()[0].GetSourceLabel())
 	}
-	if left.GetJoin()[0].GetKey() != text.KeyQueueAndroidSendingSoon || left.GetJoin()[1].GetKey() != text.KeyQueueRank {
-		t.Fatalf("unexpected label+rank parts: %+v", left.GetJoin())
+	queueGroup := tray.GetGroups()[1]
+	if queueGroup.GetKind() != corev1.SessionTrayGroupKind_SESSION_TRAY_GROUP_KIND_QUEUE ||
+		queueGroup.GetHeaderText().GetKey() != text.KeyQueueGroupCount ||
+		len(queueGroup.GetItems()) != 2 {
+		t.Fatalf("unexpected queue group: %+v", queueGroup)
 	}
-	if cap0.GetJoin()[1].GetLiteral() != "MyPhone" {
-		t.Fatalf("expected origin MyPhone, got %+v", cap0.GetJoin()[1])
-	}
-
-	cap1 := pending[1].GetCaption()
-	if cap1.GetSeparatorLiteral() != "" || len(cap1.GetJoin()) != 2 {
-		t.Fatalf("expected empty separator between label and queue.rank on pending[1], got %+v", cap1)
-	}
-	if cap1.GetJoin()[0].GetKey() != text.KeyQueueAfterTurn || cap1.GetJoin()[1].GetKey() != text.KeyQueueRank {
-		t.Fatalf("unexpected parts on pending[1]: %+v", cap1.GetJoin())
+	if queueGroup.GetItems()[0].GetQueueNumber() != 1 || queueGroup.GetItems()[1].GetQueueNumber() != 2 {
+		t.Fatalf("expected queue numbers 1 and 2, got %d, %d", queueGroup.GetItems()[0].GetQueueNumber(), queueGroup.GetItems()[1].GetQueueNumber())
 	}
 }
 
@@ -1634,7 +1642,7 @@ func TestCreateSessionSeedsSessionBeforeStreamUpdatedAndLoadingHidesMissingText(
 		t.Fatalf("expected Navigate to s-seeded on CreateSession outcome")
 	}
 
-	// Immediately viewing the session must show Found=true, Missing=false, MissingText=nil, and [start-prompt].
+	// Immediately viewing the session must show Found=true, Missing=false, MissingText=nil, empty timeline, and WAIT_READY tray item.
 	vm, err := c.View(&corev1.Screen{Screen: &corev1.Screen_Session{Session: &corev1.SessionScreenRequest{SessionId: "s-seeded"}}})
 	if err != nil {
 		t.Fatalf("View seeded session: %v", err)
@@ -1643,8 +1651,11 @@ func TestCreateSessionSeedsSessionBeforeStreamUpdatedAndLoadingHidesMissingText(
 	if !hdr.GetFound() || hdr.GetMissing() || hdr.GetMissingText() != nil {
 		t.Fatalf("expected Found=true, Missing=false, MissingText=nil immediately after CreateSession, got found=%v missing=%v missingText=%+v", hdr.GetFound(), hdr.GetMissing(), hdr.GetMissingText())
 	}
-	if items := vm.GetSession().GetTimeline().GetItems(); len(items) != 1 || items[0].Id != "start-prompt" {
-		t.Fatalf("expected [start-prompt], got %+v", items)
+	if items := vm.GetSession().GetTimeline().GetItems(); len(items) != 0 {
+		t.Fatalf("expected empty timeline immediately after CreateSession, got %+v", items)
+	}
+	if trayItems := vm.GetSession().GetComposer().GetPendingTray().GetOrderedItems(); len(trayItems) != 1 || trayItems[0].GetGroup() != corev1.SessionTrayGroupKind_SESSION_TRAY_GROUP_KIND_WAIT_READY {
+		t.Fatalf("expected WAIT_READY item in pending tray, got %+v", vm.GetSession().GetComposer().GetPendingTray())
 	}
 
 	// Unknown session while LookingUp=true must populate StatusText=common.loading with Missing=false and MissingText=nil.

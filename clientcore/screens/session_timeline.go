@@ -28,9 +28,6 @@ type timelineCacheKey struct {
 	agent               v1.Agent
 	thisDeviceID        string
 	deviceSig           uint64
-	hasPendingStart     bool
-	pendingStartCreated int64
-	pendingStartTextSig uint64
 	outgoingSig         uint64
 	inputsSig           uint64
 	unavailableCount    uint32
@@ -104,9 +101,6 @@ func computeTimelineCacheKey(
 		}
 	}
 
-	var hasPendingStart bool
-	var pendingCreated int64
-	var pendingTextSig uint64
 	outgoingSig := fnvOffset64
 	if ui != nil {
 		outgoingSig = mixUint64(fnvOffset64, uint64(len(ui.Outgoing)))
@@ -114,11 +108,6 @@ func computeTimelineCacheKey(
 			if og != nil {
 				outgoingSig = mixString(mixString(outgoingSig, og.RequestID), og.Text)
 			}
-		}
-		if ui.PendingStartPrompt != nil && ui.PendingStartPrompt.Text != "" {
-			hasPendingStart = true
-			pendingCreated = ui.PendingStartPrompt.CreatedMs
-			pendingTextSig = mixString(mixString(fnvOffset64, ui.PendingStartPrompt.Text), ui.PendingStartPrompt.RequestID)
 		}
 	}
 
@@ -136,9 +125,6 @@ func computeTimelineCacheKey(
 		agent:               caps.Agent,
 		thisDeviceID:        in.ThisDeviceID,
 		deviceSig:           devSig,
-		hasPendingStart:     hasPendingStart,
-		pendingStartCreated: pendingCreated,
-		pendingStartTextSig: pendingTextSig,
 		outgoingSig:         outgoingSig,
 		inputsSig:           inputsSig,
 		unavailableCount:    in.UnavailableCount,
@@ -317,16 +303,6 @@ func buildSessionTimeline(
 		}
 	}
 
-	hasAnyUserMsg := false
-	if ui != nil && ui.PendingStartPrompt != nil && !sessionExited && ui.PendingStartPrompt.Text != "" {
-		for _, e := range events {
-			if e != nil && e.GetUserMessage() != nil {
-				hasAnyUserMsg = true
-				break
-			}
-		}
-	}
-
 	callAt := make(map[uint64]*v1.Event, len(p.CompletedAt))
 	placed := make(map[uint64]bool, len(p.CompletedAt))
 	for startSeq, callSeq := range p.CompletedAt {
@@ -349,18 +325,20 @@ func buildSessionTimeline(
 		}
 	}
 
-	// Terminal InputProjection items (failed, canceled non-exited, needs_terminal, unconfirmed) mapped by LastSeq.
+	// Exited-only InputProjection notices (non-exited unsent/failed/unconfirmed items live in
+	// composer.pending_tray, and non-exited cancellations never render in timeline).
 	inputNoticeAt := make(map[uint64][]*corev1.InputProjection)
-	for _, ip := range p.Inputs {
-		if ip == nil || unsentIDs[ip.RequestId] {
-			continue
-		}
-		switch ip.Status {
-		case v1.InputStatus_INPUT_STATUS_FAILED,
-			v1.InputStatus_INPUT_STATUS_NEEDS_TERMINAL,
-			v1.InputStatus_INPUT_STATUS_UNCONFIRMED,
-			v1.InputStatus_INPUT_STATUS_CANCELED:
-			inputNoticeAt[ip.LastSeq] = append(inputNoticeAt[ip.LastSeq], ip)
+	if sessionExited {
+		for _, ip := range p.Inputs {
+			if ip == nil || unsentIDs[ip.RequestId] {
+				continue
+			}
+			switch ip.Status {
+			case v1.InputStatus_INPUT_STATUS_FAILED,
+				v1.InputStatus_INPUT_STATUS_NEEDS_TERMINAL,
+				v1.InputStatus_INPUT_STATUS_UNCONFIRMED:
+				inputNoticeAt[ip.LastSeq] = append(inputNoticeAt[ip.LastSeq], ip)
+			}
 		}
 	}
 
@@ -462,25 +440,6 @@ func buildSessionTimeline(
 		}
 		toolRun = append(toolRun, item)
 		toolRunEndSeq = e.Seq
-	}
-
-	// Include synthetic startup prompt only before projection tracks it (or while
-	// SUBMITTED bridges the brief gap before UserMessage arrives), matching
-	// PendingInputs ownership so startup prompts never render twice.
-	startInput := FindStartPromptInput(p, ui)
-	showStartPrompt := ui != nil && ui.PendingStartPrompt != nil && !hasAnyUserMsg && !sessionExited && ui.PendingStartPrompt.Text != "" &&
-		(startInput == nil || startInput.Status == v1.InputStatus_INPUT_STATUS_SUBMITTED)
-	if showStartPrompt {
-		rawItems = append(rawItems, &corev1.SessionTimelineItem{
-			Id:          "start-prompt",
-			Seq:         0,
-			TimestampMs: ui.PendingStartPrompt.CreatedMs,
-			Kind: &corev1.SessionTimelineItem_UserMessage{
-				UserMessage: &corev1.SessionUserMessageItem{
-					Text: ui.PendingStartPrompt.Text,
-				},
-			},
-		})
 	}
 
 	replies := replyTexts(events)

@@ -124,7 +124,9 @@ func reconcileSessionSnapshot(snap syncSessionInputAlias, ui *screens.SessionUIS
 	}
 
 	// Reconcile pendingCreatePrompt and outgoing sends against recorded events and projection inputs.
+	userMsgReqs := make(map[string]bool)
 	recordedReqs := make(map[string]bool)
+	activeInputReqs := make(map[string]bool)
 	hasUserMsg := false
 	for _, ev := range snap.Events {
 		if ev == nil {
@@ -134,6 +136,7 @@ func reconcileSessionSnapshot(snap syncSessionInputAlias, ui *screens.SessionUIS
 			hasUserMsg = true
 			if um.RequestId != "" {
 				recordedReqs[um.RequestId] = true
+				userMsgReqs[um.RequestId] = true
 			}
 		}
 		if is := ev.GetInputState(); is != nil && is.RequestId != "" {
@@ -141,9 +144,23 @@ func reconcileSessionSnapshot(snap syncSessionInputAlias, ui *screens.SessionUIS
 		}
 	}
 	if snap.Projection != nil {
+		for _, pi := range snap.Projection.PendingInputs {
+			if pi != nil && pi.RequestId != "" {
+				activeInputReqs[pi.RequestId] = true
+			}
+		}
 		for _, ip := range snap.Projection.Inputs {
-			if ip != nil && ip.RequestId != "" {
-				recordedReqs[ip.RequestId] = true
+			if ip == nil || ip.RequestId == "" {
+				continue
+			}
+			recordedReqs[ip.RequestId] = true
+			if !ui.DismissedInputIDs[ip.RequestId] {
+				switch ip.Status {
+				case v1.InputStatus_INPUT_STATUS_FAILED,
+					v1.InputStatus_INPUT_STATUS_NEEDS_TERMINAL,
+					v1.InputStatus_INPUT_STATUS_UNCONFIRMED:
+					activeInputReqs[ip.RequestId] = true
+				}
 			}
 		}
 	}
@@ -166,12 +183,11 @@ func reconcileSessionSnapshot(snap syncSessionInputAlias, ui *screens.SessionUIS
 			if og == nil {
 				continue
 			}
-			if og.State == corev1.SessionOutgoingState_SESSION_OUTGOING_STATE_SENDING ||
-				og.State == corev1.SessionOutgoingState_SESSION_OUTGOING_STATE_SENT {
+			if og.State == screens.OutgoingSending || og.State == screens.OutgoingSent {
 				if recordedReqs[og.RequestID] {
 					continue
 				}
-			} else if recordedReqs[og.RequestID] && og.State == corev1.SessionOutgoingState_SESSION_OUTGOING_STATE_UNKNOWN {
+			} else if recordedReqs[og.RequestID] && og.State == screens.OutgoingUnknown {
 				// Once observed in events or InputProjection, clear unknown local duplicate.
 				continue
 			}
@@ -179,6 +195,63 @@ func reconcileSessionSnapshot(snap syncSessionInputAlias, ui *screens.SessionUIS
 		}
 		ui.Outgoing = kept
 	}
+	for reqID := range userMsgReqs {
+		delete(ui.SteerVisibleAfterMs, reqID)
+	}
+	pruneSessionLocalContents(ui, userMsgReqs, activeInputReqs)
+}
+
+func pruneSessionLocalContents(ui *screens.SessionUIState, userMsgReqs, activeInputReqs map[string]bool) {
+	if ui == nil {
+		return
+	}
+	for srcReqID, dstReqID := range ui.PendingResendSources {
+		if userMsgReqs[dstReqID] || (dstReqID != "" && ui.LocalContents[dstReqID] != nil) {
+			delete(ui.PendingResendSources, srcReqID)
+		}
+	}
+	keep := make(map[string]bool, len(activeInputReqs))
+	for reqID := range activeInputReqs {
+		keep[reqID] = true
+	}
+	for _, og := range ui.Outgoing {
+		if og != nil && !og.Restored && og.RequestID != "" {
+			keep[og.RequestID] = true
+		}
+	}
+	for _, intent := range ui.CancelIntents {
+		if intent != nil && intent.SourceReqID != "" {
+			keep[intent.SourceReqID] = true
+		}
+	}
+	if ui.Undo != nil {
+		for _, it := range ui.Undo.Items {
+			if it != nil && it.SourceReqID != "" {
+				keep[it.SourceReqID] = true
+			}
+		}
+	}
+	for srcReqID := range ui.PendingResendSources {
+		keep[srcReqID] = true
+	}
+	for reqID := range ui.LocalContents {
+		if userMsgReqs[reqID] && !keep[reqID] {
+			delete(ui.LocalContents, reqID)
+			continue
+		}
+		if !keep[reqID] {
+			delete(ui.LocalContents, reqID)
+		}
+	}
+}
+
+func hasOutgoingReq(ui *screens.SessionUIState, reqID string) bool {
+	for _, og := range ui.Outgoing {
+		if og != nil && og.RequestID == reqID {
+			return true
+		}
+	}
+	return false
 }
 
 type syncSessionInputAlias = screens.SessionViewInput
@@ -292,6 +365,9 @@ func (c *Core) processSessionSettled(
 	if meta.kind == slotKindSend && meta.outgoingReqID != "" {
 		store.settleOutgoing(ui, meta.outgoingReqID, sc)
 	}
+	if meta.kind == slotKindCancelInput && meta.outgoingReqID != "" {
+		c.settleCancelInput(store, ui, meta, sc, effects, dirty)
+	}
 	store.pendingDirty = true
 }
 
@@ -344,12 +420,25 @@ func (c *Core) submitSessionCommandDirect(
 
 	if kind == slotKindSend && cmd.GetSend() != nil && outReqID != "" {
 		sr := cmd.GetSend()
+		for srcReqID, dstReqID := range ui.PendingResendSources {
+			if dstReqID == outReqID {
+				delete(ui.PendingResendSources, srcReqID)
+			}
+		}
+		ui.LocalContents[outReqID] = &screens.LocalSentContent{
+			RequestID: outReqID,
+			Text:      sr.Text,
+			ImageIDs:  append([]string(nil), sr.ImageIds...),
+			FileIDs:   append([]string(nil), sr.FileIds...),
+			Mode:      sr.Mode,
+		}
 		og := findOrAppendOutgoing(ui, outReqID, slotKey, sr, c.m.sync.NowMs())
 		if dispatched {
-			og.State = corev1.SessionOutgoingState_SESSION_OUTGOING_STATE_SENDING
+			og.State = screens.OutgoingSending
 			og.ErrorCode = ""
 			og.ErrorText = nil
 		}
+		c.maybeStartCodexSteerGrace(ctx, ui, og, sid)
 	}
 	store.pendingDirty = true
 }
@@ -508,26 +597,26 @@ func (s *sessionStore) settleOutgoing(ui *screens.SessionUIState, reqID string, 
 		switch sc.Category {
 		case outcome.Executed:
 			if sc.ErrorCode != "" {
-				og.State = corev1.SessionOutgoingState_SESSION_OUTGOING_STATE_FAILED
+				og.State = screens.OutgoingFailed
 				og.Frozen = false
 				og.Expired = false
 				og.ErrorCode = sc.ErrorCode
 				og.ErrorText = sc.ErrorText
 			} else {
-				og.State = corev1.SessionOutgoingState_SESSION_OUTGOING_STATE_SENT
+				og.State = screens.OutgoingSent
 				og.Frozen = false
 				og.Expired = false
 				og.ErrorCode = ""
 				og.ErrorText = nil
 			}
 		case outcome.NotSent, outcome.Rejected, outcome.Conflict:
-			og.State = corev1.SessionOutgoingState_SESSION_OUTGOING_STATE_FAILED
+			og.State = screens.OutgoingFailed
 			og.Frozen = false
 			og.Expired = false
 			og.ErrorCode = sc.ErrorCode
 			og.ErrorText = sc.ErrorText
 		case outcome.Unknown:
-			og.State = corev1.SessionOutgoingState_SESSION_OUTGOING_STATE_UNKNOWN
+			og.State = screens.OutgoingUnknown
 			og.Frozen = sc.Frozen
 			og.Expired = sc.Expired
 			og.ErrorCode = sc.ErrorCode
@@ -618,7 +707,7 @@ func (c *Core) dispatchSessionUI(ctx *sync.StepContext, ev *corev1.Event) []*cor
 						if og != nil && og.RequestID == meta.outgoingReqID {
 							og.Frozen = false
 							og.Expired = true
-							og.State = corev1.SessionOutgoingState_SESSION_OUTGOING_STATE_FAILED
+							og.State = screens.OutgoingFailed
 						}
 					}
 				}
@@ -628,50 +717,56 @@ func (c *Core) dispatchSessionUI(ctx *sync.StepContext, ev *corev1.Event) []*cor
 		store.pendingDirty = true
 		return nil
 
-	case *corev1.Event_SessionDismissOutgoing:
-		if k.SessionDismissOutgoing == nil || k.SessionDismissOutgoing.SessionId == "" {
+	case *corev1.Event_SessionCancelTrayItem:
+		if k.SessionCancelTrayItem == nil || k.SessionCancelTrayItem.SessionId == "" || k.SessionCancelTrayItem.RequestId == "" {
 			return nil
 		}
-		act := k.SessionDismissOutgoing
-		ui := store.ensureUI(act.SessionId)
-		slotKey := removeOutgoing(ui, act.RequestId)
-		if slotKey != "" {
-			c.m.sync.AbandonAttempt(ctx, slotKey)
-			delete(ui.Commands, slotKey)
-			delete(store.slotMeta, slotKey)
-		}
-		store.pendingDirty = true
-		return nil
+		return c.handleCancelTrayItem(ctx, store, k.SessionCancelTrayItem.SessionId, k.SessionCancelTrayItem.RequestId)
 
-	case *corev1.Event_SessionRestoreOutgoing:
-		if k.SessionRestoreOutgoing == nil || k.SessionRestoreOutgoing.SessionId == "" {
+	case *corev1.Event_SessionIgnoreTrayItem:
+		if k.SessionIgnoreTrayItem == nil || k.SessionIgnoreTrayItem.SessionId == "" || k.SessionIgnoreTrayItem.RequestId == "" {
 			return nil
 		}
-		act := k.SessionRestoreOutgoing
-		ui := store.ensureUI(act.SessionId)
-		og := popOutgoing(ui, act.RequestId)
-		if og == nil {
+		return c.handleIgnoreTrayItem(ctx, store, k.SessionIgnoreTrayItem.SessionId, k.SessionIgnoreTrayItem.RequestId)
+
+	case *corev1.Event_SessionPromoteTrayItem:
+		if k.SessionPromoteTrayItem == nil || k.SessionPromoteTrayItem.SessionId == "" || k.SessionPromoteTrayItem.RequestId == "" {
 			return nil
 		}
-		if og.SlotKey != "" {
-			c.m.sync.AbandonAttempt(ctx, og.SlotKey)
-			delete(ui.Commands, og.SlotKey)
-			delete(store.slotMeta, og.SlotKey)
+		return c.handlePromoteTrayItem(ctx, store, k.SessionPromoteTrayItem.SessionId, k.SessionPromoteTrayItem.RequestId)
+
+	case *corev1.Event_SessionRestoreTrayItem:
+		if k.SessionRestoreTrayItem == nil || k.SessionRestoreTrayItem.SessionId == "" || k.SessionRestoreTrayItem.RequestId == "" {
+			return nil
 		}
-		store.pendingDirty = true
-		return []*corev1.Effect{
-			{
-				Effect: &corev1.Effect_SessionRestoreComposer{
-					SessionRestoreComposer: &corev1.SessionRestoreComposerEffect{
-						SessionId: act.SessionId,
-						RequestId: og.RequestID,
-						Text:      og.Text,
-						ImageIds:  append([]string(nil), og.ImageIDs...),
-						FileIds:   append([]string(nil), og.FileIDs...),
-					},
-				},
-			},
+		return c.handleRestoreTrayItem(ctx, store, k.SessionRestoreTrayItem.SessionId, k.SessionRestoreTrayItem.RequestId)
+
+	case *corev1.Event_SessionRetryTrayItem:
+		if k.SessionRetryTrayItem == nil || k.SessionRetryTrayItem.SessionId == "" || k.SessionRetryTrayItem.RequestId == "" {
+			return nil
 		}
+		return c.handleRetryTrayItem(ctx, store, k.SessionRetryTrayItem.SessionId, k.SessionRetryTrayItem.RequestId)
+
+	case *corev1.Event_SessionResumeTrayItem:
+		if k.SessionResumeTrayItem == nil || k.SessionResumeTrayItem.SessionId == "" || k.SessionResumeTrayItem.RequestId == "" {
+			return nil
+		}
+		return c.handleResumeTrayItem(ctx, store, k.SessionResumeTrayItem.SessionId, k.SessionResumeTrayItem.RequestId)
+
+	case *corev1.Event_SessionCancelAllPaused:
+		if k.SessionCancelAllPaused == nil || k.SessionCancelAllPaused.SessionId == "" {
+			return nil
+		}
+		return c.handleCancelAllPaused(ctx, store, k.SessionCancelAllPaused.SessionId)
+
+	case *corev1.Event_SessionUndoCancel:
+		if k.SessionUndoCancel == nil || k.SessionUndoCancel.SessionId == "" {
+			return nil
+		}
+		return c.handleUndoCancel(ctx, store, k.SessionUndoCancel.SessionId)
+
+	case *corev1.Event_TimerFired:
+		return c.handleSessionTimerFired(ctx, store, k.TimerFired)
 
 	case *corev1.Event_SessionSetQuestionIndex:
 		if k.SessionSetQuestionIndex == nil || k.SessionSetQuestionIndex.SessionId == "" {
@@ -780,9 +875,13 @@ func classifySessionCommand(cmd *v1.Command, sid string) (kind sessionSlotKind, 
 	case *v1.Command_ForkSession:
 		return slotKindFork, "", 0, ""
 	case *v1.Command_CancelInput:
-		return slotKindCancelInput, "", 0, ""
+		if k.CancelInput != nil {
+			return slotKindCancelInput, "", 0, k.CancelInput.RequestId
+		}
 	case *v1.Command_ResumeInput:
-		return slotKindResumeInput, "", 0, ""
+		if k.ResumeInput != nil {
+			return slotKindResumeInput, "", 0, k.ResumeInput.RequestId
+		}
 	}
 	return slotKindGeneric, "", 0, ""
 }
@@ -903,11 +1002,499 @@ func findOrAppendOutgoing(
 		ImageIDs:  append([]string(nil), sr.ImageIds...),
 		FileIDs:   append([]string(nil), sr.FileIds...),
 		Mode:      sr.Mode,
-		State:     corev1.SessionOutgoingState_SESSION_OUTGOING_STATE_SENDING,
+		State:     screens.OutgoingSending,
 		CreatedMs: nowMs,
 	}
 	ui.Outgoing = append(ui.Outgoing, og)
 	return og
+}
+
+func (c *Core) sessionMachineID(sid string, snap screens.SessionViewInput) string {
+	if snap.Session != nil && snap.Session.MachineID != "" {
+		return snap.Session.MachineID
+	}
+	if se := c.m.sync.SessionEntry(sid); se != nil && se.MachineID != "" {
+		return se.MachineID
+	}
+	return ""
+}
+
+func (c *Core) findTrayViewAndItem(store *sessionStore, sid, reqID string) (*screens.SessionUIState, screens.SessionViewInput, *corev1.SessionPendingTrayView, *corev1.SessionTrayItemView) {
+	ui := store.ensureUI(sid)
+	snap := c.m.sync.SessionSnapshot(sid)
+	reconcileSessionSnapshot(snap, ui)
+	vm := screens.BuildSessionView(snap, c.m.state, &corev1.SessionScreenRequest{SessionId: sid}, ui)
+	tray := vm.GetComposer().GetPendingTray()
+	var found *corev1.SessionTrayItemView
+	if tray != nil && reqID != "" {
+		for _, it := range tray.GetOrderedItems() {
+			if it != nil && it.RequestId == reqID {
+				found = it
+				break
+			}
+		}
+	}
+	return ui, snap, tray, found
+}
+
+func (c *Core) submitCancelInput(ctx *sync.StepContext, store *sessionStore, ui *screens.SessionUIState, snap screens.SessionViewInput, sid, reqID string) {
+	cmd := &v1.Command{
+		ProtocolVersion: sync.ProtocolVersion,
+		Kind: &v1.Command_CancelInput{
+			CancelInput: &v1.CancelInputRequest{
+				SessionId: sid,
+				RequestId: reqID,
+			},
+		},
+	}
+	fillObservedPreconditions(cmd, snap, ui)
+	slotKey := canonicalSlotKey(cmd, sid, 0)
+	c.submitSessionCommandDirect(ctx, store, ui, sid, c.sessionMachineID(sid, snap), slotKey, slotKindCancelInput, "", 0, reqID, cmd)
+}
+
+func (c *Core) clearOutgoingAndSlot(ctx *sync.StepContext, store *sessionStore, ui *screens.SessionUIState, reqID, slotKey string, restored bool) {
+	if restored {
+		if og := popOutgoing(ui, reqID); og != nil && slotKey == "" {
+			slotKey = og.SlotKey
+		}
+	} else {
+		if removed := removeOutgoing(ui, reqID); removed != "" && slotKey == "" {
+			slotKey = removed
+		}
+	}
+	if slotKey != "" && ctx != nil {
+		c.m.sync.AbandonAttempt(ctx, slotKey)
+		delete(ui.Commands, slotKey)
+		delete(store.slotMeta, slotKey)
+	}
+}
+
+func (c *Core) scheduleUndoBatch(ctx *sync.StepContext, ui *screens.SessionUIState, sid, batchID string, item *screens.SessionUndoItem) {
+	if ui == nil || item == nil {
+		return
+	}
+	if ui.Undo != nil && ui.Undo.BatchID == batchID {
+		ui.Undo.Items = append(ui.Undo.Items, item)
+	} else {
+		ui.Undo = &screens.SessionUndoBatch{
+			BatchID: batchID,
+			Items:   []*screens.SessionUndoItem{item},
+		}
+	}
+	c.m.sync.ScheduleAppTimer(ctx, corev1.TimerKind_TIMER_KIND_SESSION_UNDO, sid, 5000)
+}
+
+func (c *Core) resendTrayContent(
+	ctx *sync.StepContext,
+	store *sessionStore,
+	ui *screens.SessionUIState,
+	sid, machineID, sourceReqID, textStr string,
+	mode v1.SendMode,
+	imgIDs, fileIDs []string,
+) *corev1.Effect {
+	newReqID := c.m.sync.NextID(ctx)
+	if len(imgIDs) > 0 || len(fileIDs) > 0 {
+		ui.PendingResendSources[sourceReqID] = newReqID
+		return &corev1.Effect{
+			Effect: &corev1.Effect_SessionResendAttachments{
+				SessionResendAttachments: &corev1.SessionResendAttachmentsEffect{
+					SessionId:       sid,
+					MachineId:       machineID,
+					SourceRequestId: sourceReqID,
+					NewRequestId:    newReqID,
+					Text:            textStr,
+					Mode:            mode,
+					ImageIds:        append([]string(nil), imgIDs...),
+					FileIds:         append([]string(nil), fileIDs...),
+				},
+			},
+		}
+	}
+	cmd := &v1.Command{
+		ProtocolVersion: sync.ProtocolVersion,
+		Kind: &v1.Command_Send{
+			Send: &v1.SendRequest{
+				SessionId: sid,
+				RequestId: newReqID,
+				Text:      textStr,
+				Mode:      mode,
+			},
+		},
+	}
+	snap := c.m.sync.SessionSnapshot(sid)
+	fillObservedPreconditions(cmd, snap, ui)
+	slotKey := canonicalSlotKey(cmd, sid, 0)
+	c.submitSessionCommandDirect(ctx, store, ui, sid, machineID, slotKey, slotKindSend, "", 0, newReqID, cmd)
+	return nil
+}
+
+func (c *Core) handleCancelTrayItem(ctx *sync.StepContext, store *sessionStore, sid, reqID string) []*corev1.Effect {
+	ui, snap, _, item := c.findTrayViewAndItem(store, sid, reqID)
+	if item == nil || !item.CanCancel {
+		return nil
+	}
+	hasLocal := !item.ForeignDimmed && (item.Text != "" || len(item.ImageIds) > 0 || len(item.FileIds) > 0)
+	if !item.ServerBacked {
+		c.clearOutgoingAndSlot(ctx, store, ui, reqID, item.SlotKey, false)
+		ui.DismissedInputIDs[reqID] = true
+		if hasLocal {
+			batchID := c.m.sync.NextID(ctx)
+			c.scheduleUndoBatch(ctx, ui, sid, batchID, &screens.SessionUndoItem{
+				SourceReqID: reqID,
+				Text:        item.Text,
+				ImageIDs:    append([]string(nil), item.ImageIds...),
+				FileIDs:     append([]string(nil), item.FileIds...),
+				Mode:        item.Mode,
+			})
+		}
+		pruneSessionLocalContents(ui, map[string]bool{}, activeInputSetFromSnap(snap, ui))
+		store.pendingDirty = true
+		return nil
+	}
+	if item.NetworkActionsDisabled {
+		return nil
+	}
+	ui.CancelIntents[reqID] = &screens.SessionCancelIntent{
+		Kind:            screens.CancelIntentCancel,
+		BatchID:         c.m.sync.NextID(ctx),
+		SourceReqID:     reqID,
+		Text:            item.Text,
+		ImageIDs:        append([]string(nil), item.ImageIds...),
+		FileIDs:         append([]string(nil), item.FileIds...),
+		Mode:            item.Mode,
+		HasLocalContent: hasLocal,
+		HasAttachments:  len(item.ImageIds) > 0 || len(item.FileIds) > 0,
+	}
+	c.submitCancelInput(ctx, store, ui, snap, sid, reqID)
+	return nil
+}
+
+func (c *Core) handleIgnoreTrayItem(ctx *sync.StepContext, store *sessionStore, sid, reqID string) []*corev1.Effect {
+	ui, snap, _, item := c.findTrayViewAndItem(store, sid, reqID)
+	if item == nil || !item.CanIgnore {
+		return nil
+	}
+	c.clearOutgoingAndSlot(ctx, store, ui, reqID, item.SlotKey, false)
+	ui.DismissedInputIDs[reqID] = true
+	pruneSessionLocalContents(ui, map[string]bool{}, activeInputSetFromSnap(snap, ui))
+	store.pendingDirty = true
+	return nil
+}
+
+func (c *Core) handlePromoteTrayItem(ctx *sync.StepContext, store *sessionStore, sid, reqID string) []*corev1.Effect {
+	ui, snap, _, item := c.findTrayViewAndItem(store, sid, reqID)
+	if item == nil || !item.CanPromote || !item.ServerBacked || item.NetworkActionsDisabled {
+		return nil
+	}
+	ui.CancelIntents[reqID] = &screens.SessionCancelIntent{
+		Kind:            screens.CancelIntentPromote,
+		SourceReqID:     reqID,
+		Text:            item.Text,
+		ImageIDs:        append([]string(nil), item.ImageIds...),
+		FileIDs:         append([]string(nil), item.FileIds...),
+		Mode:            v1.SendMode_SEND_MODE_STEER,
+		HasLocalContent: true,
+		HasAttachments:  len(item.ImageIds) > 0 || len(item.FileIds) > 0,
+	}
+	c.submitCancelInput(ctx, store, ui, snap, sid, reqID)
+	return nil
+}
+
+func (c *Core) handleRestoreTrayItem(ctx *sync.StepContext, store *sessionStore, sid, reqID string) []*corev1.Effect {
+	ui, snap, _, item := c.findTrayViewAndItem(store, sid, reqID)
+	if item == nil || !item.CanRestore {
+		return nil
+	}
+	if !item.ServerBacked {
+		c.clearOutgoingAndSlot(ctx, store, ui, reqID, item.SlotKey, true)
+		ui.DismissedInputIDs[reqID] = true
+		pruneSessionLocalContents(ui, map[string]bool{}, activeInputSetFromSnap(snap, ui))
+		store.pendingDirty = true
+		return []*corev1.Effect{
+			{
+				Effect: &corev1.Effect_SessionRestoreComposer{
+					SessionRestoreComposer: &corev1.SessionRestoreComposerEffect{
+						SessionId: sid,
+						RequestId: reqID,
+						Text:      item.Text,
+						ImageIds:  append([]string(nil), item.ImageIds...),
+						FileIds:   append([]string(nil), item.FileIds...),
+					},
+				},
+			},
+		}
+	}
+	if item.NetworkActionsDisabled {
+		return nil
+	}
+	ui.CancelIntents[reqID] = &screens.SessionCancelIntent{
+		Kind:            screens.CancelIntentRestore,
+		SourceReqID:     reqID,
+		Text:            item.Text,
+		ImageIDs:        append([]string(nil), item.ImageIds...),
+		FileIDs:         append([]string(nil), item.FileIds...),
+		Mode:            item.Mode,
+		HasLocalContent: true,
+		HasAttachments:  len(item.ImageIds) > 0 || len(item.FileIds) > 0,
+	}
+	c.submitCancelInput(ctx, store, ui, snap, sid, reqID)
+	return nil
+}
+
+func (c *Core) handleRetryTrayItem(ctx *sync.StepContext, store *sessionStore, sid, reqID string) []*corev1.Effect {
+	ui, snap, _, item := c.findTrayViewAndItem(store, sid, reqID)
+	if item == nil || !item.CanRetry || item.NetworkActionsDisabled {
+		return nil
+	}
+	c.clearOutgoingAndSlot(ctx, store, ui, reqID, item.SlotKey, false)
+	ui.DismissedInputIDs[reqID] = true
+	eff := c.resendTrayContent(ctx, store, ui, sid, c.sessionMachineID(sid, snap), reqID, item.Text, item.Mode, item.ImageIds, item.FileIds)
+	pruneSessionLocalContents(ui, map[string]bool{}, activeInputSetFromSnap(snap, ui))
+	store.pendingDirty = true
+	if eff != nil {
+		return []*corev1.Effect{eff}
+	}
+	return nil
+}
+
+func (c *Core) handleResumeTrayItem(ctx *sync.StepContext, store *sessionStore, sid, reqID string) []*corev1.Effect {
+	ui, snap, _, item := c.findTrayViewAndItem(store, sid, reqID)
+	if item == nil || !item.CanResume || item.NetworkActionsDisabled {
+		return nil
+	}
+	cmd := &v1.Command{
+		ProtocolVersion: sync.ProtocolVersion,
+		Kind: &v1.Command_ResumeInput{
+			ResumeInput: &v1.ResumeInputRequest{
+				SessionId: sid,
+				RequestId: reqID,
+			},
+		},
+	}
+	fillObservedPreconditions(cmd, snap, ui)
+	slotKey := canonicalSlotKey(cmd, sid, 0)
+	c.submitSessionCommandDirect(ctx, store, ui, sid, c.sessionMachineID(sid, snap), slotKey, slotKindResumeInput, "", 0, reqID, cmd)
+	return nil
+}
+
+func (c *Core) handleCancelAllPaused(ctx *sync.StepContext, store *sessionStore, sid string) []*corev1.Effect {
+	ui, snap, tray, _ := c.findTrayViewAndItem(store, sid, "")
+	if tray == nil || tray.Offline {
+		return nil
+	}
+	var pausedItems []*corev1.SessionTrayItemView
+	for _, g := range tray.GetGroups() {
+		if g != nil && g.Kind == corev1.SessionTrayGroupKind_SESSION_TRAY_GROUP_KIND_PAUSED {
+			pausedItems = g.GetItems()
+			break
+		}
+	}
+	if len(pausedItems) == 0 {
+		return nil
+	}
+	batchID := c.m.sync.NextID(ctx)
+	for _, item := range pausedItems {
+		if item == nil || !item.CanCancel || !item.ServerBacked || item.NetworkActionsDisabled {
+			continue
+		}
+		hasLocal := !item.ForeignDimmed && (item.Text != "" || len(item.ImageIds) > 0 || len(item.FileIds) > 0)
+		ui.CancelIntents[item.RequestId] = &screens.SessionCancelIntent{
+			Kind:            screens.CancelIntentCancelAll,
+			BatchID:         batchID,
+			SourceReqID:     item.RequestId,
+			Text:            item.Text,
+			ImageIDs:        append([]string(nil), item.ImageIds...),
+			FileIDs:         append([]string(nil), item.FileIds...),
+			Mode:            item.Mode,
+			HasLocalContent: hasLocal,
+			HasAttachments:  len(item.ImageIds) > 0 || len(item.FileIds) > 0,
+		}
+		c.submitCancelInput(ctx, store, ui, snap, sid, item.RequestId)
+	}
+	return nil
+}
+
+func (c *Core) handleUndoCancel(ctx *sync.StepContext, store *sessionStore, sid string) []*corev1.Effect {
+	ui, snap, tray, _ := c.findTrayViewAndItem(store, sid, "")
+	if ui.Undo == nil || len(ui.Undo.Items) == 0 || (tray != nil && tray.Offline) {
+		return nil
+	}
+	c.m.sync.CancelAppTimer(ctx, corev1.TimerKind_TIMER_KIND_SESSION_UNDO, sid)
+	items := ui.Undo.Items
+	ui.Undo = nil
+	machineID := c.sessionMachineID(sid, snap)
+	var outEffects []*corev1.Effect
+	for _, it := range items {
+		if it == nil {
+			continue
+		}
+		if eff := c.resendTrayContent(ctx, store, ui, sid, machineID, it.SourceReqID, it.Text, it.Mode, it.ImageIDs, it.FileIDs); eff != nil {
+			outEffects = append(outEffects, eff)
+		}
+	}
+	pruneSessionLocalContents(ui, map[string]bool{}, activeInputSetFromSnap(snap, ui))
+	store.pendingDirty = true
+	return outEffects
+}
+
+func (c *Core) handleSessionTimerFired(ctx *sync.StepContext, store *sessionStore, ev *corev1.TimerFiredEvent) []*corev1.Effect {
+	if ev == nil || !c.m.sync.ConsumeAppTimer(ev) || ev.Key == "" {
+		return nil
+	}
+	sid := ev.Key
+	ui := store.ensureUI(sid)
+	switch ev.Kind {
+	case corev1.TimerKind_TIMER_KIND_SESSION_UNDO:
+		ui.Undo = nil
+		snap := c.m.sync.SessionSnapshot(sid)
+		reconcileSessionSnapshot(snap, ui)
+		store.pendingDirty = true
+	case corev1.TimerKind_TIMER_KIND_SESSION_STEER_GRACE:
+		nowMs := c.m.sync.NowMs()
+		ui.SteerGraceNextTargetMs = 0
+		for reqID, expMs := range ui.SteerVisibleAfterMs {
+			if nowMs <= 0 || expMs <= nowMs {
+				delete(ui.SteerVisibleAfterMs, reqID)
+			}
+		}
+		for _, og := range ui.Outgoing {
+			if og != nil && og.VisibleAfterMs > 0 && (nowMs <= 0 || og.VisibleAfterMs <= nowMs) {
+				og.VisibleAfterMs = 0
+			}
+		}
+		var earliest int64
+		for _, expMs := range ui.SteerVisibleAfterMs {
+			if nowMs > 0 && expMs > nowMs && (earliest == 0 || expMs < earliest) {
+				earliest = expMs
+			}
+		}
+		if earliest > 0 {
+			ui.SteerGraceNextTargetMs = earliest
+			c.m.sync.ScheduleAppTimer(ctx, corev1.TimerKind_TIMER_KIND_SESSION_STEER_GRACE, sid, earliest-nowMs)
+		}
+		store.pendingDirty = true
+	}
+	return nil
+}
+
+func (c *Core) settleCancelInput(
+	store *sessionStore,
+	ui *screens.SessionUIState,
+	meta sessionSlotMeta,
+	sc sync.SettledCommand,
+	effects *[]*corev1.Effect,
+	dirty *sync.DirtyFlags,
+) {
+	reqID := meta.outgoingReqID
+	intent := ui.CancelIntents[reqID]
+	delete(ui.CancelIntents, reqID)
+	if sc.Category != outcome.Executed || sc.ErrorCode != "" {
+		return
+	}
+	ui.DismissedInputIDs[reqID] = true
+	if intent == nil {
+		return
+	}
+	snap := c.m.sync.SessionSnapshot(meta.sessionID)
+	machineID := meta.machineID
+	if machineID == "" {
+		machineID = c.sessionMachineID(meta.sessionID, snap)
+	}
+	stepRes := c.m.sync.Run(func(ctx *sync.StepContext) {
+		switch intent.Kind {
+		case screens.CancelIntentPromote:
+			if eff := c.resendTrayContent(ctx, store, ui, meta.sessionID, machineID, intent.SourceReqID, intent.Text, v1.SendMode_SEND_MODE_STEER, intent.ImageIDs, intent.FileIDs); eff != nil {
+				*effects = append(*effects, eff)
+			}
+		case screens.CancelIntentRestore:
+			*effects = append(*effects, &corev1.Effect{
+				Effect: &corev1.Effect_SessionRestoreComposer{
+					SessionRestoreComposer: &corev1.SessionRestoreComposerEffect{
+						SessionId: meta.sessionID,
+						RequestId: intent.SourceReqID,
+						Text:      intent.Text,
+						ImageIds:  append([]string(nil), intent.ImageIDs...),
+						FileIds:   append([]string(nil), intent.FileIDs...),
+					},
+				},
+			})
+		case screens.CancelIntentCancel, screens.CancelIntentCancelAll:
+			if intent.HasLocalContent {
+				c.scheduleUndoBatch(ctx, ui, meta.sessionID, intent.BatchID, &screens.SessionUndoItem{
+					SourceReqID: intent.SourceReqID,
+					Text:        intent.Text,
+					ImageIDs:    append([]string(nil), intent.ImageIDs...),
+					FileIDs:     append([]string(nil), intent.FileIDs...),
+					Mode:        intent.Mode,
+				})
+			}
+		}
+		pruneSessionLocalContents(ui, map[string]bool{}, activeInputSetFromSnap(snap, ui))
+	})
+	*effects = append(*effects, stepRes.Effects...)
+	dirty.Add(stepRes.Dirty.Home, stepRes.Dirty.Project, stepRes.Dirty.NewSession)
+	if stepRes.Dirty.SessionData {
+		dirty.MarkSessionData()
+	}
+}
+
+func (c *Core) maybeStartCodexSteerGrace(ctx *sync.StepContext, ui *screens.SessionUIState, og *screens.SessionOutgoingRecord, sid string) {
+	if ui == nil || og == nil || og.Mode == v1.SendMode_SEND_MODE_QUEUE || sid == "" {
+		return
+	}
+	snap := c.m.sync.SessionSnapshot(sid)
+	var agent v1.Agent
+	var status v1.SessionStatus
+	if snap.Session != nil && snap.Session.Info != nil {
+		agent = snap.Session.Info.Agent
+		status = snap.Session.Info.Status
+	} else if se := c.m.sync.SessionEntry(sid); se != nil && se.Meta != nil {
+		agent = se.Meta.Agent
+		status = se.Meta.Status
+	}
+	if agent != v1.Agent_AGENT_CODEX || status == v1.SessionStatus_SESSION_STATUS_STARTING {
+		return
+	}
+	running := snap.Projection != nil && snap.Projection.Running
+	waitingAnswer := snap.Projection != nil && (len(snap.Projection.Approvals) > 0 || len(snap.Projection.Questions) > 0)
+	if !running || waitingAnswer {
+		return
+	}
+	nowMs := c.m.sync.NowMs()
+	if nowMs <= 0 {
+		return
+	}
+	expMs := nowMs + 1000
+	og.VisibleAfterMs = expMs
+	ui.SteerVisibleAfterMs[og.RequestID] = expMs
+	if ui.SteerGraceNextTargetMs == 0 || ui.SteerGraceNextTargetMs <= nowMs || expMs < ui.SteerGraceNextTargetMs {
+		ui.SteerGraceNextTargetMs = expMs
+		c.m.sync.ScheduleAppTimer(ctx, corev1.TimerKind_TIMER_KIND_SESSION_STEER_GRACE, sid, 1000)
+	}
+}
+
+func activeInputSetFromSnap(snap screens.SessionViewInput, ui *screens.SessionUIState) map[string]bool {
+	out := make(map[string]bool)
+	if snap.Projection == nil {
+		return out
+	}
+	for _, pi := range snap.Projection.PendingInputs {
+		if pi != nil && pi.RequestId != "" && (ui == nil || !ui.DismissedInputIDs[pi.RequestId]) {
+			out[pi.RequestId] = true
+		}
+	}
+	for _, ip := range snap.Projection.Inputs {
+		if ip == nil || ip.RequestId == "" || (ui != nil && ui.DismissedInputIDs[ip.RequestId]) {
+			continue
+		}
+		switch ip.Status {
+		case v1.InputStatus_INPUT_STATUS_FAILED,
+			v1.InputStatus_INPUT_STATUS_NEEDS_TERMINAL,
+			v1.InputStatus_INPUT_STATUS_UNCONFIRMED:
+			out[ip.RequestId] = true
+		}
+	}
+	return out
 }
 
 func removeOutgoing(ui *screens.SessionUIState, reqID string) string {

@@ -551,7 +551,11 @@ func (e *Engine) HandleEvent(ev *corev1.Event) (consumed bool, res StepResult) {
 	case *corev1.Event_NetworkChanged:
 		e.handleNetworkChanged(ctx, k.NetworkChanged)
 	case *corev1.Event_TimerFired:
-		e.handleTimerFired(ctx, k.TimerFired)
+		if k.TimerFired != nil && isAppTimerKind(k.TimerFired.Kind) {
+			consumed = false
+		} else {
+			e.handleTimerFired(ctx, k.TimerFired)
+		}
 	case *corev1.Event_CacheBootstrapLoaded:
 		e.handleCacheBootstrapLoaded(ctx, k.CacheBootstrapLoaded)
 	case *corev1.Event_CacheEventsLoaded:
@@ -612,4 +616,9 @@ func finalizeResult(ctx *StepContext) StepResult {
 		Dirty:   ctx.Dirty,
 		Settled: ctx.Settled,
 	}
+}
+
+// NextID allocates the next deterministic ID from the engine entropy pool.
+func (e *Engine) NextID(ctx *StepContext) string {
+	return e.entropy.nextID(ctx)
 }

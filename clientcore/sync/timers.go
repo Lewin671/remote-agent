@@ -76,6 +76,34 @@ func (e *Engine) isTimerActive(kind corev1.TimerKind, key string) bool {
 	return ok
 }
 
+// ScheduleAppTimer schedules or replaces an application-managed timer.
+func (e *Engine) ScheduleAppTimer(ctx *StepContext, kind corev1.TimerKind, key string, delayMs int64) uint64 {
+	return e.scheduleTimer(ctx, kind, key, delayMs)
+}
+
+// CancelAppTimer cancels an application-managed timer if currently scheduled.
+func (e *Engine) CancelAppTimer(ctx *StepContext, kind corev1.TimerKind, key string) {
+	e.cancelTimer(ctx, kind, key)
+}
+
+// ConsumeAppTimer validates and consumes a fired application-managed timer.
+func (e *Engine) ConsumeAppTimer(ev *corev1.TimerFiredEvent) bool {
+	if ev == nil {
+		return false
+	}
+	tk := timerKey{kind: ev.Kind, key: ev.Key}
+	cur, ok := e.timers[tk]
+	if !ok || cur.id != ev.TimerId {
+		return false
+	}
+	delete(e.timers, tk)
+	return true
+}
+
+func isAppTimerKind(k corev1.TimerKind) bool {
+	return k == corev1.TimerKind_TIMER_KIND_SESSION_UNDO || k == corev1.TimerKind_TIMER_KIND_SESSION_STEER_GRACE
+}
+
 func (e *Engine) handleTimerFired(ctx *StepContext, ev *corev1.TimerFiredEvent) {
 	if ev == nil {
 		return

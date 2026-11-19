@@ -483,10 +483,10 @@
               "placeholder": {
                 "key": "composer.message"
               },
-              "steerModeDefault": true,
               "supportsQueueMode": true,
               "canAttachImages": true,
-              "canAttachFiles": true
+              "canAttachFiles": true,
+              "pendingTray": {}
             },
             "timeline": {
               "items": [
@@ -880,10 +880,10 @@
               "placeholder": {
                 "key": "composer.message"
               },
-              "steerModeDefault": true,
               "supportsQueueMode": true,
               "canAttachImages": true,
-              "canAttachFiles": true
+              "canAttachFiles": true,
+              "pendingTray": {}
             },
             "timeline": {
               "items": [

@@ -376,7 +376,7 @@
       "event": {
         "nowMs": "1791078060150",
         "monoMs": "1550",
-        "sessionRestoreOutgoing": {
+        "sessionRestoreTrayItem": {
           "sessionId": "s-qr",
           "requestId": "msg-fail"
         }

@@ -518,14 +518,14 @@
             "composer": {
               "enabled": true,
               "placeholder": {
-                "key": "composer.queue_after_answer"
+                "key": "composer.answer_first_placeholder"
               },
               "hasActiveTurn": true,
-              "steerModeDefault": true,
               "supportsQueueMode": true,
               "canAttachImages": true,
               "canAttachFiles": true,
-              "interruptVisible": true
+              "interruptVisible": true,
+              "pendingTray": {}
             },
             "timeline": {
               "loading": true,
@@ -829,14 +829,14 @@
             "composer": {
               "enabled": true,
               "placeholder": {
-                "key": "composer.queue_after_answer"
+                "key": "composer.answer_first_placeholder"
               },
               "hasActiveTurn": true,
-              "steerModeDefault": true,
               "supportsQueueMode": true,
               "canAttachImages": true,
               "canAttachFiles": true,
-              "interruptVisible": true
+              "interruptVisible": true,
+              "pendingTray": {}
             },
             "timeline": {
               "loading": true,
@@ -1131,11 +1131,11 @@
                 "key": "composer.plan_placeholder"
               },
               "hasActiveTurn": true,
-              "steerModeDefault": true,
               "supportsQueueMode": true,
               "canAttachImages": true,
               "canAttachFiles": true,
-              "interruptVisible": true
+              "interruptVisible": true,
+              "pendingTray": {}
             },
             "timeline": {
               "items": [
@@ -1467,11 +1467,11 @@
                 "key": "composer.plan_placeholder"
               },
               "hasActiveTurn": true,
-              "steerModeDefault": true,
               "supportsQueueMode": true,
               "canAttachImages": true,
               "canAttachFiles": true,
-              "interruptVisible": true
+              "interruptVisible": true,
+              "pendingTray": {}
             },
             "timeline": {
               "items": [
@@ -1769,11 +1769,11 @@
                 "key": "composer.plan_placeholder"
               },
               "hasActiveTurn": true,
-              "steerModeDefault": true,
               "supportsQueueMode": true,
               "canAttachImages": true,
               "canAttachFiles": true,
-              "interruptVisible": true
+              "interruptVisible": true,
+              "pendingTray": {}
             },
             "timeline": {
               "items": [

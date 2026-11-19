@@ -282,6 +282,14 @@
             }
           },
           {
+            "scheduleTimer": {
+              "timerId": "5",
+              "kind": "TIMER_KIND_SESSION_STEER_GRACE",
+              "key": "s-qr",
+              "delayMs": "1000"
+            }
+          },
+          {
             "render": {
               "screens": [
                 "SCREEN_TARGET_SESSION"
@@ -538,84 +546,107 @@
             "composer": {
               "enabled": true,
               "placeholder": {
-                "key": "composer.queue_hint"
+                "key": "composer.running_placeholder"
               },
               "hasActiveTurn": true,
-              "steerModeDefault": true,
               "supportsQueueMode": true,
               "canAttachImages": true,
               "canAttachFiles": true,
               "interruptVisible": true,
-              "outgoing": [
-                {
-                  "requestId": "msg-fail",
-                  "slotKey": "send:s-qr:msg-fail",
-                  "text": "steer failed msg",
-                  "mode": "SEND_MODE_STEER",
-                  "state": "SESSION_OUTGOING_STATE_FAILED",
-                  "canRetry": true,
-                  "canRestore": true,
-                  "canDismiss": true,
-                  "caption": {
-                    "key": "composer.send_failure",
-                    "args": [
+              "pendingTray": {
+                "groups": [
+                  {
+                    "kind": "SESSION_TRAY_GROUP_KIND_FAILED",
+                    "tone": "SESSION_TRAY_TONE_RED",
+                    "title": {
+                      "key": "queue.group_failed"
+                    },
+                    "headerText": {
+                      "key": "queue.group_failed"
+                    },
+                    "totalCount": 1,
+                    "items": [
                       {
-                        "name": "reason",
-                        "textValue": {
+                        "requestId": "msg-fail",
+                        "slotKey": "send:s-qr:msg-fail",
+                        "group": "SESSION_TRAY_GROUP_KIND_FAILED",
+                        "tone": "SESSION_TRAY_TONE_RED",
+                        "activity": "SESSION_TRAY_ROW_ACTIVITY_IDLE",
+                        "text": "steer failed msg",
+                        "mode": "SEND_MODE_STEER",
+                        "reasonText": {
                           "key": "errors.disconnected_from_server"
-                        }
+                        },
+                        "canCancel": true,
+                        "canRetry": true,
+                        "canRestore": true
                       }
                     ]
                   },
-                  "feedback": {
-                    "key": "composer.send_failure",
-                    "args": [
+                  {
+                    "kind": "SESSION_TRAY_GROUP_KIND_UNSURE",
+                    "tone": "SESSION_TRAY_TONE_ORANGE",
+                    "title": {
+                      "key": "queue.group_unsure"
+                    },
+                    "headerText": {
+                      "key": "queue.group_unsure"
+                    },
+                    "totalCount": 1,
+                    "items": [
                       {
-                        "name": "reason",
-                        "textValue": {
-                          "key": "errors.disconnected_from_server"
-                        }
-                      }
-                    ]
-                  },
-                  "createdMs": "1791078060080"
-                },
-                {
-                  "requestId": "msg-q",
-                  "slotKey": "send:s-qr:msg-q",
-                  "text": "queued second",
-                  "mode": "SEND_MODE_QUEUE",
-                  "state": "SESSION_OUTGOING_STATE_UNKNOWN",
-                  "frozen": true,
-                  "canRetry": true,
-                  "canRestore": true,
-                  "canDismiss": true,
-                  "caption": {
-                    "key": "composer.maybe_failure",
-                    "args": [
-                      {
-                        "name": "reason",
-                        "textValue": {
+                        "requestId": "msg-q",
+                        "slotKey": "send:s-qr:msg-q",
+                        "group": "SESSION_TRAY_GROUP_KIND_UNSURE",
+                        "tone": "SESSION_TRAY_TONE_ORANGE",
+                        "activity": "SESSION_TRAY_ROW_ACTIVITY_IDLE",
+                        "text": "queued second",
+                        "mode": "SEND_MODE_QUEUE",
+                        "reasonText": {
                           "key": "errors.the_computer_s_reply_could_not_be_verified_command"
-                        }
+                        },
+                        "canOpenTerminal": true,
+                        "canIgnore": true,
+                        "canRestore": true
                       }
                     ]
+                  }
+                ],
+                "orderedItems": [
+                  {
+                    "requestId": "msg-fail",
+                    "slotKey": "send:s-qr:msg-fail",
+                    "group": "SESSION_TRAY_GROUP_KIND_FAILED",
+                    "tone": "SESSION_TRAY_TONE_RED",
+                    "activity": "SESSION_TRAY_ROW_ACTIVITY_IDLE",
+                    "text": "steer failed msg",
+                    "mode": "SEND_MODE_STEER",
+                    "reasonText": {
+                      "key": "errors.disconnected_from_server"
+                    },
+                    "canCancel": true,
+                    "canRetry": true,
+                    "canRestore": true
                   },
-                  "feedback": {
-                    "key": "composer.maybe_failure",
-                    "args": [
-                      {
-                        "name": "reason",
-                        "textValue": {
-                          "key": "errors.the_computer_s_reply_could_not_be_verified_command"
-                        }
-                      }
-                    ]
-                  },
-                  "feedbackUncertain": true,
-                  "createdMs": "1791078060100"
-                }
-              ]
+                  {
+                    "requestId": "msg-q",
+                    "slotKey": "send:s-qr:msg-q",
+                    "group": "SESSION_TRAY_GROUP_KIND_UNSURE",
+                    "tone": "SESSION_TRAY_TONE_ORANGE",
+                    "activity": "SESSION_TRAY_ROW_ACTIVITY_IDLE",
+                    "text": "queued second",
+                    "mode": "SEND_MODE_QUEUE",
+                    "reasonText": {
+                      "key": "errors.the_computer_s_reply_could_not_be_verified_command"
+                    },
+                    "canOpenTerminal": true,
+                    "canIgnore": true,
+                    "canRestore": true
+                  }
+                ],
+                "totalCount": 2,
+                "failedCount": 2
+              }
             },
             "timeline": {
               "loading": true,
@@ -885,74 +916,105 @@
             "composer": {
               "enabled": true,
               "placeholder": {
-                "key": "composer.queue_hint"
+                "key": "composer.running_placeholder"
               },
               "hasActiveTurn": true,
-              "steerModeDefault": true,
               "supportsQueueMode": true,
               "canAttachImages": true,
               "canAttachFiles": true,
               "interruptVisible": true,
-              "pendingInputs": [
-                {
-                  "requestId": "msg-q",
-                  "text": "queued second",
-                  "mode": "SEND_MODE_QUEUE",
-                  "status": "INPUT_STATUS_QUEUED",
-                  "rank": 1,
-                  "totalPending": 1,
-                  "label": {
-                    "key": "queue.after_turn"
+              "pendingTray": {
+                "groups": [
+                  {
+                    "kind": "SESSION_TRAY_GROUP_KIND_FAILED",
+                    "tone": "SESSION_TRAY_TONE_RED",
+                    "title": {
+                      "key": "queue.group_failed"
+                    },
+                    "headerText": {
+                      "key": "queue.group_failed"
+                    },
+                    "totalCount": 1,
+                    "items": [
+                      {
+                        "requestId": "msg-fail",
+                        "slotKey": "send:s-qr:msg-fail",
+                        "group": "SESSION_TRAY_GROUP_KIND_FAILED",
+                        "tone": "SESSION_TRAY_TONE_RED",
+                        "activity": "SESSION_TRAY_ROW_ACTIVITY_IDLE",
+                        "text": "steer failed msg",
+                        "mode": "SEND_MODE_STEER",
+                        "reasonText": {
+                          "key": "errors.disconnected_from_server"
+                        },
+                        "canCancel": true,
+                        "canRetry": true,
+                        "canRestore": true
+                      }
+                    ]
                   },
-                  "caption": {
-                    "key": "queue.after_turn"
-                  },
-                  "canCancel": true,
-                  "cancel": {
-                    "slotKey": "cancel_input:s-qr:msg-q",
-                    "status": "SESSION_COMMAND_STATUS_IDLE"
-                  },
-                  "resume": {
-                    "slotKey": "resume_input:s-qr:msg-q",
-                    "status": "SESSION_COMMAND_STATUS_IDLE"
+                  {
+                    "kind": "SESSION_TRAY_GROUP_KIND_QUEUE",
+                    "tone": "SESSION_TRAY_TONE_NEUTRAL",
+                    "title": {
+                      "key": "queue.group_queue"
+                    },
+                    "headerText": {
+                      "key": "queue.group_queue"
+                    },
+                    "totalCount": 1,
+                    "items": [
+                      {
+                        "requestId": "msg-q",
+                        "slotKey": "send:s-qr:msg-q",
+                        "group": "SESSION_TRAY_GROUP_KIND_QUEUE",
+                        "tone": "SESSION_TRAY_TONE_NEUTRAL",
+                        "activity": "SESSION_TRAY_ROW_ACTIVITY_IDLE",
+                        "queueNumber": 1,
+                        "text": "queued second",
+                        "mode": "SEND_MODE_QUEUE",
+                        "canCancel": true,
+                        "canPromote": true,
+                        "canRestore": true,
+                        "serverBacked": true
+                      }
+                    ]
                   }
-                }
-              ],
-              "outgoing": [
-                {
-                  "requestId": "msg-fail",
-                  "slotKey": "send:s-qr:msg-fail",
-                  "text": "steer failed msg",
-                  "mode": "SEND_MODE_STEER",
-                  "state": "SESSION_OUTGOING_STATE_FAILED",
-                  "canRetry": true,
-                  "canRestore": true,
-                  "canDismiss": true,
-                  "caption": {
-                    "key": "composer.send_failure",
-                    "args": [
-                      {
-                        "name": "reason",
-                        "textValue": {
-                          "key": "errors.disconnected_from_server"
-                        }
-                      }
-                    ]
+                ],
+                "orderedItems": [
+                  {
+                    "requestId": "msg-fail",
+                    "slotKey": "send:s-qr:msg-fail",
+                    "group": "SESSION_TRAY_GROUP_KIND_FAILED",
+                    "tone": "SESSION_TRAY_TONE_RED",
+                    "activity": "SESSION_TRAY_ROW_ACTIVITY_IDLE",
+                    "text": "steer failed msg",
+                    "mode": "SEND_MODE_STEER",
+                    "reasonText": {
+                      "key": "errors.disconnected_from_server"
+                    },
+                    "canCancel": true,
+                    "canRetry": true,
+                    "canRestore": true
                   },
-                  "feedback": {
-                    "key": "composer.send_failure",
-                    "args": [
-                      {
-                        "name": "reason",
-                        "textValue": {
-                          "key": "errors.disconnected_from_server"
-                        }
-                      }
-                    ]
-                  },
-                  "createdMs": "1791078060080"
-                }
-              ]
+                  {
+                    "requestId": "msg-q",
+                    "slotKey": "send:s-qr:msg-q",
+                    "group": "SESSION_TRAY_GROUP_KIND_QUEUE",
+                    "tone": "SESSION_TRAY_TONE_NEUTRAL",
+                    "activity": "SESSION_TRAY_ROW_ACTIVITY_IDLE",
+                    "queueNumber": 1,
+                    "text": "queued second",
+                    "mode": "SEND_MODE_QUEUE",
+                    "canCancel": true,
+                    "canPromote": true,
+                    "canRestore": true,
+                    "serverBacked": true
+                  }
+                ],
+                "totalCount": 2,
+                "failedCount": 1
+              }
             },
             "timeline": {
               "items": [
