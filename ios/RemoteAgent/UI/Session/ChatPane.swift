@@ -298,6 +298,11 @@ private final class MarkdownBlockCache {
             }
         }
         entries = nextEntries
+        for i in rows.indices {
+            guard case .notifyReceipt? = rows[i].item.kind else { continue }
+            if i > 0, case .notifyReceipt? = rows[i - 1].item.kind { rows[i].receiptBefore = true }
+            if i + 1 < rows.count, case .notifyReceipt? = rows[i + 1].item.kind { rows[i].receiptAfter = true }
+        }
         return rows
     }
 }

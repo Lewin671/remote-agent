@@ -14,9 +14,13 @@ struct ChatTimelineRow: Identifiable, Equatable, Sendable {
     var id: String { item.id }
     let item: PBSessionTimelineItem
     let blocks: [MarkdownBlock]
+    /// Notify receipts in a row sit 4 apart (design-system §7), so a receipt knows its neighbours.
+    var receiptBefore = false
+    var receiptAfter = false
 
     static func == (lhs: ChatTimelineRow, rhs: ChatTimelineRow) -> Bool {
         lhs.item == rhs.item && lhs.blocks.count == rhs.blocks.count
+            && lhs.receiptBefore == rhs.receiptBefore && lhs.receiptAfter == rhs.receiptAfter
     }
 }
 
@@ -186,6 +190,9 @@ struct ChatRowView: View, Equatable {
                 captionColor: u.kind == .failed || u.kind == .unsentOnExit ? DS.red : DS.orangeInk,
                 links: links
             )
+
+        case .notifyReceipt(let r):
+            NotifyReceiptRow(key: tlItem.id, item: r, before: row.receiptBefore, after: row.receiptAfter)
 
         case .turnEnd(let t):
             ChatSepLine(t.label.rendered())
@@ -726,6 +733,63 @@ private struct ToolGroupRow: View {
                 }
             }
         }
+    }
+}
+
+// MARK: Notify receipts
+
+/// A scheduled run's push, left as one grey line (design-system §7): Core says what it shows;
+/// the agent's longer texts open in place under a faint rule.
+private struct NotifyReceiptRow: View {
+    let key: String
+    let item: PBSessionNotifyReceiptItem
+    let before: Bool
+    let after: Bool
+    @Environment(ChatOpen.self) private var open
+
+    var body: some View {
+        let isOpen = item.expandable && open.isOpen("receipt/" + key)
+        let detail = isOpen || item.preview.isEmpty ? item.time.rendered() : item.preview
+        VStack(alignment: .leading, spacing: 0) {
+            if item.expandable {
+                Button { open.toggle("receipt/" + key) } label: {
+                    line(detail, chevron: isOpen ? 180 : 0)
+                        .padding(.vertical, 12).contentShape(Rectangle()).padding(.vertical, -12)
+                }
+                .buttonStyle(PressStyle())
+                .accessibilityLabel(isOpen ? L10n.markdownCollapse() : L10n.sessionNotifyReceiptExpand())
+                if isOpen {
+                    HStack(spacing: 0) {
+                        Rectangle().fill(DS.faint).frame(width: 2)
+                        Text(verbatim: item.body).font(.subheadline).lineSpacing(2.5).ink(DS.ink2)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.leading, 14)
+                    }
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.leading, 5).padding(.top, 8).padding(.bottom, 4)
+                }
+            } else {
+                line(detail, chevron: nil).accessibilityElement(children: .combine)
+            }
+        }
+        .padding(.horizontal, chatMargin).padding(.top, before ? 0 : 6).padding(.bottom, after ? 4 : 6)
+    }
+
+    private func line(_ detail: String, chevron: Double?) -> some View {
+        HStack(spacing: 8) {
+            Mark("bell", color: DS.ink3)
+            HStack(spacing: 4) {
+                Text(verbatim: item.label.rendered() + " · " + detail).font(.footnote).ink(DS.ink2)
+                    .lineLimit(1).truncationMode(.tail)
+                if let chevron {
+                    Arrow(DS.ink3, style: .footnote, direction: .down)
+                        .rotationEffect(.degrees(chevron))
+                        .animation(.easeOut(duration: 0.16), value: chevron)
+                }
+            }
+            Spacer(minLength: 0)
+        }
+        .frame(minHeight: 20)
     }
 }
 
