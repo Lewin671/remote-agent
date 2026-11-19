@@ -34,6 +34,8 @@ type timelineCacheKey struct {
 	outgoingSig         uint64
 	inputsSig           uint64
 	unavailableCount    uint32
+	// Receipts write the date unless the push went out today.
+	todayStartMs int64
 }
 
 type timelineCache struct {
@@ -279,6 +281,7 @@ func buildSessionTimeline(
 			in, events, p, caps, cwd, home, machineName,
 			supportsSharedFiles, sessionExited, endedAtMs, ui,
 		)
+		cacheKey.todayStartMs = st.Cal.TodayStartMs
 		if ui.timeline != nil && !ui.timeline.hasFork && ui.timeline.key == cacheKey {
 			folded := foldQuietScheduledItemsWithSpans(ui.timeline.rawItems, ui.timeline.spans, st.Cal, win)
 			applyTimelineWindow(out, folded, win)
@@ -480,6 +483,8 @@ func buildSessionTimeline(
 		})
 	}
 
+	repliedTurns := turnsWithReplies(events)
+
 	var prevInputTokens, prevOutputTokens int64
 	var turnStartInputTokens, turnStartOutputTokens int64
 	hasTurnTokenBase := false
@@ -628,13 +633,8 @@ func buildSessionTimeline(
 				EndSeq:      e.Seq,
 				TimestampMs: ts,
 				TurnId:      e.TurnId,
-				Kind: &corev1.SessionTimelineItem_Note{
-					Note: &corev1.SessionNoteItem{
-						Kind:           corev1.SessionNoteKind_SESSION_NOTE_KIND_NOTIFICATION,
-						Tone:           corev1.SessionNoteTone_SESSION_NOTE_TONE_POSITIVE,
-						Text:           text.Msg(text.KeySessionNotification, text.Str("text", k.ScheduledNotification.Text)),
-						ScheduledRunId: e.GetOrigin().GetScheduledRunId(),
-					},
+				Kind: &corev1.SessionTimelineItem_NotifyReceipt{
+					NotifyReceipt: buildNotifyReceipt(e, k.ScheduledNotification, ts, repliedTurns, st.Cal),
 				},
 			})
 
@@ -965,6 +965,7 @@ func buildSessionTimeline(
 		}
 	}
 	flushTools()
+	placeReceiptsInTurns(rawItems)
 
 	// Fold contiguous same-day quiet scheduled runs.
 	spans := findQuietSpans(events, p)
@@ -1858,7 +1859,7 @@ func applyTimelineWindow(out *corev1.SessionTimelineView, all []*corev1.SessionT
 				out.AnchorItemId = it.Id
 				break
 			}
-			if nt := it.GetNote(); nt != nil && nt.ScheduledRunId == revealRunID {
+			if nr := it.GetNotifyReceipt(); nr != nil && nr.ScheduledRunId == revealRunID {
 				anchorIdx = i
 				out.AnchorSeq = it.Seq
 				out.AnchorItemId = it.Id

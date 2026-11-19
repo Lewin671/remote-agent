@@ -452,6 +452,7 @@ message SessionTimelineItem {
     SessionInputStateItem input_state = 23;
     SessionQuietScheduledGroupItem quiet_scheduled_group = 24;
     SessionSkeletonItem skeleton = 25;
+    SessionNotifyReceiptItem notify_receipt = 26;
   }
 }
 
@@ -564,7 +565,6 @@ enum SessionNoteTone {
 
 enum SessionNoteKind {
   SESSION_NOTE_KIND_UNSPECIFIED = 0;
-  SESSION_NOTE_KIND_NOTIFICATION = 1;
   SESSION_NOTE_KIND_APPROVAL = 2;
   SESSION_NOTE_KIND_QUESTION = 3;
   SESSION_NOTE_KIND_INTERRUPTED = 4;
@@ -580,6 +580,25 @@ message SessionNoteItem {
   Text text = 3;
   Text meta = 4;
   Text emphasis = 5;
+  string scheduled_run_id = 6;
+}
+
+// A scheduled run's push left in the conversation as a one-line receipt
+// (design-system.md §7). Core decides what the line says; shells render
+// "label · preview" collapsed and "label · time" plus body when open.
+message SessionNotifyReceiptItem {
+  // 「已通知你」.
+  Text label = 1;
+  // When the push went out: the clock today, with the date otherwise.
+  Text time = 2;
+  // The body's first line, shown after the label while collapsed. Empty for
+  // a push the computer sent on the agent's behalf whose text repeats the
+  // reply above: the line then shows the time instead.
+  string preview = 3;
+  // The whole body, shown when opened; set only when expandable.
+  string body = 4;
+  // The body has a line break or runs past 40 half-width columns.
+  bool expandable = 5;
   string scheduled_run_id = 6;
 }
 

@@ -37,6 +37,7 @@ public  final class SessionTimelineItem extends
     INPUT_STATE(23),
     QUIET_SCHEDULED_GROUP(24),
     SKELETON(25),
+    NOTIFY_RECEIPT(26),
     KIND_NOT_SET(0);
     private final int value;
     private KindCase(int value) {
@@ -68,6 +69,7 @@ public  final class SessionTimelineItem extends
         case 23: return INPUT_STATE;
         case 24: return QUIET_SCHEDULED_GROUP;
         case 25: return SKELETON;
+        case 26: return NOTIFY_RECEIPT;
         case 0: return KIND_NOT_SET;
         default: return null;
       }
@@ -1090,6 +1092,58 @@ public  final class SessionTimelineItem extends
    */
   private void clearSkeleton() {
     if (kindCase_ == 25) {
+      kindCase_ = 0;
+      kind_ = null;
+    }
+  }
+
+  public static final int NOTIFY_RECEIPT_FIELD_NUMBER = 26;
+  /**
+   * <code>.remoteagent.core.v1.SessionNotifyReceiptItem notify_receipt = 26 [json_name = "notifyReceipt"];</code>
+   */
+  @java.lang.Override
+  public boolean hasNotifyReceipt() {
+    return kindCase_ == 26;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionNotifyReceiptItem notify_receipt = 26 [json_name = "notifyReceipt"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.SessionNotifyReceiptItem getNotifyReceipt() {
+    if (kindCase_ == 26) {
+       return (io.github.lewin671.remoteagent.core.proto.SessionNotifyReceiptItem) kind_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.SessionNotifyReceiptItem.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionNotifyReceiptItem notify_receipt = 26 [json_name = "notifyReceipt"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setNotifyReceipt(io.github.lewin671.remoteagent.core.proto.SessionNotifyReceiptItem value) {
+    value.getClass();  // minimal bytecode null check
+    kind_ = value;
+    kindCase_ = 26;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionNotifyReceiptItem notify_receipt = 26 [json_name = "notifyReceipt"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeNotifyReceipt(io.github.lewin671.remoteagent.core.proto.SessionNotifyReceiptItem value) {
+    value.getClass();  // minimal bytecode null check
+    if (kindCase_ == 26 &&
+        kind_ != io.github.lewin671.remoteagent.core.proto.SessionNotifyReceiptItem.getDefaultInstance()) {
+      kind_ = io.github.lewin671.remoteagent.core.proto.SessionNotifyReceiptItem.newBuilder((io.github.lewin671.remoteagent.core.proto.SessionNotifyReceiptItem) kind_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      kind_ = value;
+    }
+    kindCase_ = 26;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionNotifyReceiptItem notify_receipt = 26 [json_name = "notifyReceipt"];</code>
+   */
+  private void clearNotifyReceipt() {
+    if (kindCase_ == 26) {
       kindCase_ = 0;
       kind_ = null;
     }
@@ -2154,6 +2208,54 @@ public  final class SessionTimelineItem extends
       return this;
     }
 
+    /**
+     * <code>.remoteagent.core.v1.SessionNotifyReceiptItem notify_receipt = 26 [json_name = "notifyReceipt"];</code>
+     */
+    @java.lang.Override
+    public boolean hasNotifyReceipt() {
+      return instance.hasNotifyReceipt();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionNotifyReceiptItem notify_receipt = 26 [json_name = "notifyReceipt"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.SessionNotifyReceiptItem getNotifyReceipt() {
+      return instance.getNotifyReceipt();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionNotifyReceiptItem notify_receipt = 26 [json_name = "notifyReceipt"];</code>
+     */
+    public Builder setNotifyReceipt(io.github.lewin671.remoteagent.core.proto.SessionNotifyReceiptItem value) {
+      copyOnWrite();
+      instance.setNotifyReceipt(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionNotifyReceiptItem notify_receipt = 26 [json_name = "notifyReceipt"];</code>
+     */
+    public Builder setNotifyReceipt(
+        io.github.lewin671.remoteagent.core.proto.SessionNotifyReceiptItem.Builder builderForValue) {
+      copyOnWrite();
+      instance.setNotifyReceipt(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionNotifyReceiptItem notify_receipt = 26 [json_name = "notifyReceipt"];</code>
+     */
+    public Builder mergeNotifyReceipt(io.github.lewin671.remoteagent.core.proto.SessionNotifyReceiptItem value) {
+      copyOnWrite();
+      instance.mergeNotifyReceipt(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionNotifyReceiptItem notify_receipt = 26 [json_name = "notifyReceipt"];</code>
+     */
+    public Builder clearNotifyReceipt() {
+      copyOnWrite();
+      instance.clearNotifyReceipt();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.SessionTimelineItem)
   }
   @java.lang.Override
@@ -2193,12 +2295,13 @@ public  final class SessionTimelineItem extends
             io.github.lewin671.remoteagent.core.proto.SessionInputStateItem.class,
             io.github.lewin671.remoteagent.core.proto.SessionQuietScheduledGroupItem.class,
             io.github.lewin671.remoteagent.core.proto.SessionSkeletonItem.class,
+            io.github.lewin671.remoteagent.core.proto.SessionNotifyReceiptItem.class,
           };
           java.lang.String info =
-              "\u0000\u0015\u0001\u0000\u0001\u0019\u0015\u0000\u0000\u0000\u0001\u0208\u0002\u0003" +
+              "\u0000\u0016\u0001\u0000\u0001\u001a\u0016\u0000\u0000\u0000\u0001\u0208\u0002\u0003" +
               "\u0003\u0003\u0004\u0002\u0005\u0208\n<\u0000\u000b<\u0000\f<\u0000\r<\u0000\u000e" +
               "<\u0000\u000f<\u0000\u0010<\u0000\u0011<\u0000\u0012<\u0000\u0013<\u0000\u0014<\u0000" +
-              "\u0015<\u0000\u0016<\u0000\u0017<\u0000\u0018<\u0000\u0019<\u0000";
+              "\u0015<\u0000\u0016<\u0000\u0017<\u0000\u0018<\u0000\u0019<\u0000\u001a<\u0000";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

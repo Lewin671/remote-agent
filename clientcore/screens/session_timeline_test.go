@@ -1,11 +1,14 @@
 package screens
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/Lewin671/remote-agent/clientcore/domain/lists"
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
+	"github.com/Lewin671/remote-agent/clientcore/gen/timestamppb"
+	"github.com/Lewin671/remote-agent/clientcore/text"
 )
 
 func TestTimelineCacheReuseAndInvalidation(t *testing.T) {
@@ -141,5 +144,77 @@ func TestTimelineReportsOfflineForOfflineAndNoNetworkAndClearsCacheOnZeroRev(t *
 	BuildSessionView(SessionViewInput{Found: true, Session: ls, EventRev: 0}, st, req, ui)
 	if ui.HasTimelineCache() {
 		t.Fatalf("expected EventRev=0 to release timeline cache")
+	}
+}
+
+// Receipts of scheduled pushes: who wrote them decides what the line shows,
+// and a push sent after the turn ended still sits before its 「本轮用时」.
+func TestNotifyReceipts(t *testing.T) {
+	const today = int64(1_700_000_000_000)
+	ls := &lists.Session{
+		ID:        "s1",
+		MachineID: "m1",
+		Info:      &v1.Session{Id: "s1", Agent: v1.Agent_AGENT_CODEX, Status: v1.SessionStatus_SESSION_STATUS_IDLE},
+	}
+	system := &v1.Origin{Kind: v1.OriginKind_ORIGIN_KIND_SYSTEM}
+	at := func(ms int64) *timestamppb.Timestamp { return &timestamppb.Timestamp{Seconds: ms / 1000} }
+	notice := func(seq uint64, origin *v1.Origin, ms int64, body string) *v1.Event {
+		return &v1.Event{Seq: seq, TurnId: "t1", Origin: origin, Time: at(ms), Kind: &v1.Event_ScheduledNotification{
+			ScheduledNotification: &v1.ScheduledNotification{RunId: "r1", Text: body},
+		}}
+	}
+	turn := func(reply bool, tail ...*v1.Event) []*v1.Event {
+		evs := []*v1.Event{
+			{Seq: 1, TurnId: "t1", Kind: &v1.Event_UserMessage{UserMessage: &v1.UserMessage{Text: "check"}}},
+			{Seq: 2, TurnId: "t1", Kind: &v1.Event_TurnStarted{TurnStarted: &v1.TurnStarted{}}},
+		}
+		if reply {
+			evs = append(evs, &v1.Event{Seq: 3, TurnId: "t1", Kind: &v1.Event_AgentMessage{AgentMessage: &v1.AgentMessage{Text: "13 runs, all fine."}}})
+		}
+		evs = append(evs, &v1.Event{Seq: 4, TurnId: "t1", Kind: &v1.Event_TurnEnded{TurnEnded: &v1.TurnEnded{Outcome: v1.TurnOutcome_TURN_OUTCOME_COMPLETED, DurationMs: 90_000}}})
+		return append(evs, tail...)
+	}
+	cjk20 := strings.Repeat("通", 20)
+	for _, tc := range []struct {
+		name                 string
+		events               []*v1.Event
+		preview, body        string
+		expandable, withDate bool
+	}{
+		{name: "computer's copy of the reply shows only the time", events: turn(true, notice(5, system, today, "13 runs, all fine."))},
+		{name: "computer's push for a turn without reply keeps its text", events: turn(false, notice(5, system, today, "定时任务运行已中断。")), preview: "定时任务运行已中断。"},
+		{name: "short single line is the whole text", events: turn(true, notice(5, nil, today, cjk20)), preview: cjk20},
+		{name: "over 40 columns can open", events: turn(true, notice(5, nil, today, cjk20+"知")), preview: cjk20 + "知", body: cjk20 + "知", expandable: true},
+		{name: "a line break can open and previews the first line", events: turn(true, notice(5, nil, today, "2 runs hit malformed\nOne took 2h 40m.\n")), preview: "2 runs hit malformed", body: "2 runs hit malformed\nOne took 2h 40m.", expandable: true},
+		{name: "not today writes the date", events: turn(true, notice(5, system, today-2*86_400_000, "x")), withDate: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			st := NewState()
+			st.Cal = lists.Calendar{NowMs: today + 60_000, TodayStartMs: today - 3_600_000, NowYear: 2023, UTCOffsetMinutes: 0}
+			vm := BuildSessionView(SessionViewInput{Found: true, Session: ls, Loaded: true, EventRev: 1, Events: tc.events},
+				st, &corev1.SessionScreenRequest{SessionId: "s1"}, NewSessionUIState())
+			items := vm.GetTimeline().GetItems()
+			last := items[len(items)-1]
+			if last.GetTurnEnd() == nil {
+				t.Fatalf("last item = %v, want the turn's end line after the receipt", last.Kind)
+			}
+			r := items[len(items)-2].GetNotifyReceipt()
+			if r == nil {
+				t.Fatalf("item before the turn end = %v, want the receipt", items[len(items)-2].Kind)
+			}
+			if items[len(items)-2].Seq != last.Seq {
+				t.Fatalf("receipt seq = %d, want the turn end's %d to keep paging in order", items[len(items)-2].Seq, last.Seq)
+			}
+			if r.Label.GetKey() != text.KeySessionNotifyReceipt || r.Preview != tc.preview || r.Body != tc.body || r.Expandable != tc.expandable || r.ScheduledRunId != "r1" {
+				t.Fatalf("receipt = %+v, want preview %q body %q expandable %v", r, tc.preview, tc.body, tc.expandable)
+			}
+			style := corev1.TimestampStyle_TIMESTAMP_STYLE_TIME
+			if tc.withDate {
+				style = corev1.TimestampStyle_TIMESTAMP_STYLE_MONTH_DAY_TIME
+			}
+			if got := r.Time.GetTimestamp().GetStyle(); got != style {
+				t.Fatalf("time style = %v, want %v", got, style)
+			}
+		})
 	}
 }

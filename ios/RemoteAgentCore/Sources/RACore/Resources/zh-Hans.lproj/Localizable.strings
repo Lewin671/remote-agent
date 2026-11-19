@@ -1414,7 +1414,8 @@
 "session_no_effort" = "无推理强度";
 "session_no_effort_adjustment" = "%1$@ 没有推理强度可调";
 "session_not_running" = "会话不在运行。";
-"session_notification" = "通知你：%1$@";
+"session_notify_receipt" = "已通知你";
+"session_notify_receipt_expand" = "已通知你，展开";
 "session_offline_note" = "%1$@可能是合盖睡眠、断网，或 remote-agent 没在运行。电脑上的会话可能还在跑，重新连上后这里会自动更新，现在只能看历史。";
 "session_offline_resume" = "%1$@ 不在线，连上后才能恢复。";
 "session_only_current" = "只改当前会话";

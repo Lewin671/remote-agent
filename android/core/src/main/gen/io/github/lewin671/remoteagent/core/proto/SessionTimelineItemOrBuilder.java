@@ -228,5 +228,16 @@ public interface SessionTimelineItemOrBuilder extends
    */
   io.github.lewin671.remoteagent.core.proto.SessionSkeletonItem getSkeleton();
 
+  /**
+   * <code>.remoteagent.core.v1.SessionNotifyReceiptItem notify_receipt = 26 [json_name = "notifyReceipt"];</code>
+   * @return Whether the notifyReceipt field is set.
+   */
+  boolean hasNotifyReceipt();
+  /**
+   * <code>.remoteagent.core.v1.SessionNotifyReceiptItem notify_receipt = 26 [json_name = "notifyReceipt"];</code>
+   * @return The notifyReceipt.
+   */
+  io.github.lewin671.remoteagent.core.proto.SessionNotifyReceiptItem getNotifyReceipt();
+
   public io.github.lewin671.remoteagent.core.proto.SessionTimelineItem.KindCase getKindCase();
 }

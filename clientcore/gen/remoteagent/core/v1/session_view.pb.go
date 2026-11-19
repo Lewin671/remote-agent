@@ -73,7 +73,6 @@ type SessionNoteKind int32
 
 const (
 	SessionNoteKind_SESSION_NOTE_KIND_UNSPECIFIED      SessionNoteKind = 0
-	SessionNoteKind_SESSION_NOTE_KIND_NOTIFICATION     SessionNoteKind = 1
 	SessionNoteKind_SESSION_NOTE_KIND_APPROVAL         SessionNoteKind = 2
 	SessionNoteKind_SESSION_NOTE_KIND_QUESTION         SessionNoteKind = 3
 	SessionNoteKind_SESSION_NOTE_KIND_INTERRUPTED      SessionNoteKind = 4
@@ -3898,6 +3897,10 @@ type SessionTimelineItem_Skeleton struct{ Skeleton *SessionSkeletonItem }
 
 func (*SessionTimelineItem_Skeleton) isSessionTimelineItem_Kind() {}
 
+type SessionTimelineItem_NotifyReceipt struct{ NotifyReceipt *SessionNotifyReceiptItem }
+
+func (*SessionTimelineItem_NotifyReceipt) isSessionTimelineItem_Kind() {}
+
 func (m *SessionTimelineItem) GetKind() isSessionTimelineItem_Kind {
 	if m != nil {
 		return m.Kind
@@ -4030,6 +4033,12 @@ func (m *SessionTimelineItem) GetSkeleton() *SessionSkeletonItem {
 	}
 	return nil
 }
+func (m *SessionTimelineItem) GetNotifyReceipt() *SessionNotifyReceiptItem {
+	if x, ok := m.GetKind().(*SessionTimelineItem_NotifyReceipt); ok && x != nil {
+		return x.NotifyReceipt
+	}
+	return nil
+}
 
 func (m *SessionTimelineItem) Size() int {
 	if m == nil {
@@ -4136,6 +4145,12 @@ func (m *SessionTimelineItem) Size() int {
 		if x != nil {
 			if x.Skeleton != nil {
 				n += litewire.SizeMessage(25, x.Skeleton.Size())
+			}
+		}
+	case *SessionTimelineItem_NotifyReceipt:
+		if x != nil {
+			if x.NotifyReceipt != nil {
+				n += litewire.SizeMessage(26, x.NotifyReceipt.Size())
 			}
 		}
 	}
@@ -4257,6 +4272,12 @@ func (m *SessionTimelineItem) AppendMarshal(b []byte) []byte {
 		if x != nil {
 			if x.Skeleton != nil {
 				b = litewire.AppendMessage(b, 25, x.Skeleton)
+			}
+		}
+	case *SessionTimelineItem_NotifyReceipt:
+		if x != nil {
+			if x.NotifyReceipt != nil {
+				b = litewire.AppendMessage(b, 26, x.NotifyReceipt)
 			}
 		}
 	}
@@ -5265,6 +5286,98 @@ func (m *SessionNoteItem) AppendMarshal(b []byte) []byte {
 	if m.Emphasis != nil {
 		b = litewire.AppendMessage(b, 5, m.Emphasis)
 	}
+	b = litewire.AppendString(b, 6, m.ScheduledRunId)
+	return b
+}
+
+type SessionNotifyReceiptItem struct {
+	Label          *Text
+	Time           *Text
+	Preview        string
+	Body           string
+	Expandable     bool
+	ScheduledRunId string
+}
+
+func (m *SessionNotifyReceiptItem) GetLabel() *Text {
+	if m != nil {
+		return m.Label
+	}
+	return nil
+}
+func (m *SessionNotifyReceiptItem) GetTime() *Text {
+	if m != nil {
+		return m.Time
+	}
+	return nil
+}
+func (m *SessionNotifyReceiptItem) GetPreview() string {
+	if m != nil {
+		return m.Preview
+	}
+	return ""
+}
+func (m *SessionNotifyReceiptItem) GetBody() string {
+	if m != nil {
+		return m.Body
+	}
+	return ""
+}
+func (m *SessionNotifyReceiptItem) GetExpandable() bool {
+	if m != nil {
+		return m.Expandable
+	}
+	return false
+}
+func (m *SessionNotifyReceiptItem) GetScheduledRunId() string {
+	if m != nil {
+		return m.ScheduledRunId
+	}
+	return ""
+}
+
+func (m *SessionNotifyReceiptItem) Size() int {
+	if m == nil {
+		return 0
+	}
+	n := 0
+	if m.Label != nil {
+		n += litewire.SizeMessage(1, m.Label.Size())
+	}
+	if m.Time != nil {
+		n += litewire.SizeMessage(2, m.Time.Size())
+	}
+	n += litewire.SizeString(3, m.Preview)
+	n += litewire.SizeString(4, m.Body)
+	n += litewire.SizeBool(5, m.Expandable)
+	n += litewire.SizeString(6, m.ScheduledRunId)
+	return n
+}
+
+func (m *SessionNotifyReceiptItem) Marshal() ([]byte, error) {
+	if m == nil {
+		return nil, nil
+	}
+	sz := m.Size()
+	if sz == 0 {
+		return nil, nil
+	}
+	return m.AppendMarshal(make([]byte, 0, sz)), nil
+}
+
+func (m *SessionNotifyReceiptItem) AppendMarshal(b []byte) []byte {
+	if m == nil {
+		return b
+	}
+	if m.Label != nil {
+		b = litewire.AppendMessage(b, 1, m.Label)
+	}
+	if m.Time != nil {
+		b = litewire.AppendMessage(b, 2, m.Time)
+	}
+	b = litewire.AppendString(b, 3, m.Preview)
+	b = litewire.AppendString(b, 4, m.Body)
+	b = litewire.AppendBool(b, 5, m.Expandable)
 	b = litewire.AppendString(b, 6, m.ScheduledRunId)
 	return b
 }

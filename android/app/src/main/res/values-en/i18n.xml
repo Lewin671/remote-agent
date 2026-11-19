@@ -1776,7 +1776,8 @@
     <string name="session_no_effort" formatted="false">"No reasoning effort"</string>
     <string name="session_no_effort_adjustment">"%1$s has no adjustable reasoning effort"</string>
     <string name="session_not_running" formatted="false">"Nothing is running"</string>
-    <string name="session_notification">"Notification: %1$s"</string>
+    <string name="session_notify_receipt" formatted="false">"Notified you"</string>
+    <string name="session_notify_receipt_expand" formatted="false">"Notified you, expand"</string>
     <string name="session_offline_note">"%1$sThe computer may be asleep, offline, or remote-agent may not be running. Sessions may still be running there. This page updates automatically after reconnecting; only history is available now."</string>
     <string name="session_offline_resume">"%1$s is offline. Reconnect to resume."</string>
     <string name="session_only_current" formatted="false">"Applies only to this session"</string>

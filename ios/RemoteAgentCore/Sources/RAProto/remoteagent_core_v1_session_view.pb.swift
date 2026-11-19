@@ -304,7 +304,6 @@ public enum PBSessionNoteTone: SwiftProtobuf.Enum, Swift.CaseIterable {
 public enum PBSessionNoteKind: SwiftProtobuf.Enum, Swift.CaseIterable {
   public typealias RawValue = Int
   case unspecified // = 0
-  case notification // = 1
   case approval // = 2
   case question // = 3
   case interrupted // = 4
@@ -321,7 +320,6 @@ public enum PBSessionNoteKind: SwiftProtobuf.Enum, Swift.CaseIterable {
   public init?(rawValue: Int) {
     switch rawValue {
     case 0: self = .unspecified
-    case 1: self = .notification
     case 2: self = .approval
     case 3: self = .question
     case 4: self = .interrupted
@@ -336,7 +334,6 @@ public enum PBSessionNoteKind: SwiftProtobuf.Enum, Swift.CaseIterable {
   public var rawValue: Int {
     switch self {
     case .unspecified: return 0
-    case .notification: return 1
     case .approval: return 2
     case .question: return 3
     case .interrupted: return 4
@@ -351,7 +348,6 @@ public enum PBSessionNoteKind: SwiftProtobuf.Enum, Swift.CaseIterable {
   // The compiler won't synthesize support with the UNRECOGNIZED case.
   public static let allCases: [PBSessionNoteKind] = [
     .unspecified,
-    .notification,
     .approval,
     .question,
     .interrupted,
@@ -2505,6 +2501,14 @@ public struct PBSessionTimelineItem: @unchecked Sendable {
     set {_uniqueStorage()._kind = .skeleton(newValue)}
   }
 
+  public var notifyReceipt: PBSessionNotifyReceiptItem {
+    get {
+      if case .notifyReceipt(let v)? = _storage._kind {return v}
+      return PBSessionNotifyReceiptItem()
+    }
+    set {_uniqueStorage()._kind = .notifyReceipt(newValue)}
+  }
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public enum OneOf_Kind: Equatable, Sendable {
@@ -2524,6 +2528,7 @@ public struct PBSessionTimelineItem: @unchecked Sendable {
     case inputState(PBSessionInputStateItem)
     case quietScheduledGroup(PBSessionQuietScheduledGroupItem)
     case skeleton(PBSessionSkeletonItem)
+    case notifyReceipt(PBSessionNotifyReceiptItem)
 
   }
 
@@ -2927,6 +2932,66 @@ public struct PBSessionNoteItem: @unchecked Sendable {
   fileprivate var _storage = _StorageClass.defaultInstance
 }
 
+/// A scheduled run's push left in the conversation as a one-line receipt
+/// (design-system.md §7). Core decides what the line says; shells render
+/// "label · preview" collapsed and "label · time" plus body when open.
+public struct PBSessionNotifyReceiptItem: @unchecked Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  /// 「已通知你」.
+  public var label: PBCoreText {
+    get {return _storage._label ?? PBCoreText()}
+    set {_uniqueStorage()._label = newValue}
+  }
+  /// Returns true if `label` has been explicitly set.
+  public var hasLabel: Bool {return _storage._label != nil}
+  /// Clears the value of `label`. Subsequent reads from it will return its default value.
+  public mutating func clearLabel() {_uniqueStorage()._label = nil}
+
+  /// When the push went out: the clock today, with the date otherwise.
+  public var time: PBCoreText {
+    get {return _storage._time ?? PBCoreText()}
+    set {_uniqueStorage()._time = newValue}
+  }
+  /// Returns true if `time` has been explicitly set.
+  public var hasTime: Bool {return _storage._time != nil}
+  /// Clears the value of `time`. Subsequent reads from it will return its default value.
+  public mutating func clearTime() {_uniqueStorage()._time = nil}
+
+  /// The body's first line, shown after the label while collapsed. Empty for
+  /// a push the computer sent on the agent's behalf whose text repeats the
+  /// reply above: the line then shows the time instead.
+  public var preview: String {
+    get {return _storage._preview}
+    set {_uniqueStorage()._preview = newValue}
+  }
+
+  /// The whole body, shown when opened; set only when expandable.
+  public var body: String {
+    get {return _storage._body}
+    set {_uniqueStorage()._body = newValue}
+  }
+
+  /// The body has a line break or runs past 40 half-width columns.
+  public var expandable: Bool {
+    get {return _storage._expandable}
+    set {_uniqueStorage()._expandable = newValue}
+  }
+
+  public var scheduledRunID: String {
+    get {return _storage._scheduledRunID}
+    set {_uniqueStorage()._scheduledRunID = newValue}
+  }
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+
+  fileprivate var _storage = _StorageClass.defaultInstance
+}
+
 public struct PBSessionTurnEndItem: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
@@ -3272,7 +3337,7 @@ extension PBSessionNoteTone: SwiftProtobuf._ProtoNameProviding {
 }
 
 extension PBSessionNoteKind: SwiftProtobuf._ProtoNameProviding {
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0SESSION_NOTE_KIND_UNSPECIFIED\0\u{1}SESSION_NOTE_KIND_NOTIFICATION\0\u{1}SESSION_NOTE_KIND_APPROVAL\0\u{1}SESSION_NOTE_KIND_QUESTION\0\u{1}SESSION_NOTE_KIND_INTERRUPTED\0\u{1}SESSION_NOTE_KIND_COMPACTED\0\u{1}SESSION_NOTE_KIND_MODEL_CHANGED\0\u{1}SESSION_NOTE_KIND_MODE_CHANGED\0\u{1}SESSION_NOTE_KIND_TERMINAL_CHANGES\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0SESSION_NOTE_KIND_UNSPECIFIED\0\u{2}\u{2}SESSION_NOTE_KIND_APPROVAL\0\u{1}SESSION_NOTE_KIND_QUESTION\0\u{1}SESSION_NOTE_KIND_INTERRUPTED\0\u{1}SESSION_NOTE_KIND_COMPACTED\0\u{1}SESSION_NOTE_KIND_MODEL_CHANGED\0\u{1}SESSION_NOTE_KIND_MODE_CHANGED\0\u{1}SESSION_NOTE_KIND_TERMINAL_CHANGES\0")
 }
 
 extension PBSessionInputNoticeKind: SwiftProtobuf._ProtoNameProviding {
@@ -6362,7 +6427,7 @@ extension PBSessionTimelineView: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
 
 extension PBSessionTimelineItem: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".SessionTimelineItem"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}seq\0\u{3}end_seq\0\u{3}timestamp_ms\0\u{3}turn_id\0\u{4}\u{5}user_message\0\u{3}agent_message\0\u{1}reasoning\0\u{3}tool_call\0\u{3}tool_group\0\u{3}shared_files\0\u{3}generated_images\0\u{3}async_question\0\u{1}plan\0\u{1}note\0\u{3}turn_end\0\u{3}error_line\0\u{3}fork_marker\0\u{3}input_state\0\u{3}quiet_scheduled_group\0\u{1}skeleton\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}seq\0\u{3}end_seq\0\u{3}timestamp_ms\0\u{3}turn_id\0\u{4}\u{5}user_message\0\u{3}agent_message\0\u{1}reasoning\0\u{3}tool_call\0\u{3}tool_group\0\u{3}shared_files\0\u{3}generated_images\0\u{3}async_question\0\u{1}plan\0\u{1}note\0\u{3}turn_end\0\u{3}error_line\0\u{3}fork_marker\0\u{3}input_state\0\u{3}quiet_scheduled_group\0\u{1}skeleton\0\u{3}notify_receipt\0")
 
   fileprivate class _StorageClass {
     var _id: String = String()
@@ -6618,6 +6683,19 @@ extension PBSessionTimelineItem: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
             _storage._kind = .skeleton(v)
           }
         }()
+        case 26: try {
+          var v: PBSessionNotifyReceiptItem?
+          var hadOneofValue = false
+          if let current = _storage._kind {
+            hadOneofValue = true
+            if case .notifyReceipt(let m) = current {v = m}
+          }
+          try decoder.decodeSingularMessageField(value: &v)
+          if let v = v {
+            if hadOneofValue {try decoder.handleConflictingOneOf()}
+            _storage._kind = .notifyReceipt(v)
+          }
+        }()
         default: break
         }
       }
@@ -6709,6 +6787,10 @@ extension PBSessionTimelineItem: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
       case .skeleton?: try {
         guard case .skeleton(let v)? = _storage._kind else { preconditionFailure() }
         try visitor.visitSingularMessageField(value: v, fieldNumber: 25)
+      }()
+      case .notifyReceipt?: try {
+        guard case .notifyReceipt(let v)? = _storage._kind else { preconditionFailure() }
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 26)
       }()
       case nil: break
       }
@@ -7526,6 +7608,111 @@ extension PBSessionNoteItem: SwiftProtobuf.Message, SwiftProtobuf._MessageImplem
         if _storage._text != rhs_storage._text {return false}
         if _storage._meta != rhs_storage._meta {return false}
         if _storage._emphasis != rhs_storage._emphasis {return false}
+        if _storage._scheduledRunID != rhs_storage._scheduledRunID {return false}
+        return true
+      }
+      if !storagesAreEqual {return false}
+    }
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension PBSessionNotifyReceiptItem: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".SessionNotifyReceiptItem"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}label\0\u{1}time\0\u{1}preview\0\u{1}body\0\u{1}expandable\0\u{3}scheduled_run_id\0")
+
+  fileprivate class _StorageClass {
+    var _label: PBCoreText? = nil
+    var _time: PBCoreText? = nil
+    var _preview: String = String()
+    var _body: String = String()
+    var _expandable: Bool = false
+    var _scheduledRunID: String = String()
+
+      // This property is used as the initial default value for new instances of the type.
+      // The type itself is protecting the reference to its storage via CoW semantics.
+      // This will force a copy to be made of this reference when the first mutation occurs;
+      // hence, it is safe to mark this as `nonisolated(unsafe)`.
+      static nonisolated(unsafe) let defaultInstance = _StorageClass()
+
+    private init() {}
+
+    init(copying source: _StorageClass) {
+      _label = source._label
+      _time = source._time
+      _preview = source._preview
+      _body = source._body
+      _expandable = source._expandable
+      _scheduledRunID = source._scheduledRunID
+    }
+  }
+
+  fileprivate mutating func _uniqueStorage() -> _StorageClass {
+    if !isKnownUniquelyReferenced(&_storage) {
+      _storage = _StorageClass(copying: _storage)
+    }
+    return _storage
+  }
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    _ = _uniqueStorage()
+    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+      while let fieldNumber = try decoder.nextFieldNumber() {
+        // The use of inline closures is to circumvent an issue where the compiler
+        // allocates stack space for every case branch when no optimizations are
+        // enabled. https://github.com/apple/swift-protobuf/issues/1034
+        switch fieldNumber {
+        case 1: try { try decoder.decodeSingularMessageField(value: &_storage._label) }()
+        case 2: try { try decoder.decodeSingularMessageField(value: &_storage._time) }()
+        case 3: try { try decoder.decodeSingularStringField(value: &_storage._preview) }()
+        case 4: try { try decoder.decodeSingularStringField(value: &_storage._body) }()
+        case 5: try { try decoder.decodeSingularBoolField(value: &_storage._expandable) }()
+        case 6: try { try decoder.decodeSingularStringField(value: &_storage._scheduledRunID) }()
+        default: break
+        }
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every if/case branch local when no optimizations
+      // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+      // https://github.com/apple/swift-protobuf/issues/1182
+      try { if let v = _storage._label {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 1)
+      } }()
+      try { if let v = _storage._time {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 2)
+      } }()
+      if !_storage._preview.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._preview, fieldNumber: 3)
+      }
+      if !_storage._body.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._body, fieldNumber: 4)
+      }
+      if _storage._expandable != false {
+        try visitor.visitSingularBoolField(value: _storage._expandable, fieldNumber: 5)
+      }
+      if !_storage._scheduledRunID.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._scheduledRunID, fieldNumber: 6)
+      }
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: PBSessionNotifyReceiptItem, rhs: PBSessionNotifyReceiptItem) -> Bool {
+    if lhs._storage !== rhs._storage {
+      let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
+        let _storage = _args.0
+        let rhs_storage = _args.1
+        if _storage._label != rhs_storage._label {return false}
+        if _storage._time != rhs_storage._time {return false}
+        if _storage._preview != rhs_storage._preview {return false}
+        if _storage._body != rhs_storage._body {return false}
+        if _storage._expandable != rhs_storage._expandable {return false}
         if _storage._scheduledRunID != rhs_storage._scheduledRunID {return false}
         return true
       }

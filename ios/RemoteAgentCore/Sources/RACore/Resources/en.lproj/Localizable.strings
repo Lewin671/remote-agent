@@ -1414,7 +1414,8 @@
 "session_no_effort" = "No reasoning effort";
 "session_no_effort_adjustment" = "%1$@ has no adjustable reasoning effort";
 "session_not_running" = "Nothing is running";
-"session_notification" = "Notification: %1$@";
+"session_notify_receipt" = "Notified you";
+"session_notify_receipt_expand" = "Notified you, expand";
 "session_offline_note" = "%1$@The computer may be asleep, offline, or remote-agent may not be running. Sessions may still be running there. This page updates automatically after reconnecting; only history is available now.";
 "session_offline_resume" = "%1$@ is offline. Reconnect to resume.";
 "session_only_current" = "Applies only to this session";

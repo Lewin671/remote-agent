@@ -1690,7 +1690,8 @@
     <string name="session_no_effort" formatted="false">"无推理强度"</string>
     <string name="session_no_effort_adjustment">"%1$s 没有推理强度可调"</string>
     <string name="session_not_running" formatted="false">"会话不在运行。"</string>
-    <string name="session_notification">"通知你：%1$s"</string>
+    <string name="session_notify_receipt" formatted="false">"已通知你"</string>
+    <string name="session_notify_receipt_expand" formatted="false">"已通知你，展开"</string>
     <string name="session_offline_note">"%1$s可能是合盖睡眠、断网，或 remote-agent 没在运行。电脑上的会话可能还在跑，重新连上后这里会自动更新，现在只能看历史。"</string>
     <string name="session_offline_resume">"%1$s 不在线，连上后才能恢复。"</string>
     <string name="session_only_current" formatted="false">"只改当前会话"</string>

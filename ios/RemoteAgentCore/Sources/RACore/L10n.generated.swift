@@ -6041,9 +6041,13 @@ public enum L10n {
         let key = "session_not_running"
         return format(key, locale: locale, args: [])
     }
-    public static func sessionNotification(text: String, locale: String = MessageLocale.current) -> String {
-        let key = "session_notification"
-        return format(key, locale: locale, args: [text])
+    public static func sessionNotifyReceipt(locale: String = MessageLocale.current) -> String {
+        let key = "session_notify_receipt"
+        return format(key, locale: locale, args: [])
+    }
+    public static func sessionNotifyReceiptExpand(locale: String = MessageLocale.current) -> String {
+        let key = "session_notify_receipt_expand"
+        return format(key, locale: locale, args: [])
     }
     public static func sessionOfflineNote(lastSeen: String, locale: String = MessageLocale.current) -> String {
         let key = "session_offline_note"
@@ -14853,9 +14857,13 @@ public enum L10nMessage {
         let key = "session_not_running"
         return LocalizedMessage(key: key, arguments: [])
     }
-    public static func sessionNotification(text: String) -> LocalizedMessage {
-        let key = "session_notification"
-        return LocalizedMessage(key: key, arguments: [.string(text)])
+    public static func sessionNotifyReceipt() -> LocalizedMessage {
+        let key = "session_notify_receipt"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func sessionNotifyReceiptExpand() -> LocalizedMessage {
+        let key = "session_notify_receipt_expand"
+        return LocalizedMessage(key: key, arguments: [])
     }
     public static func sessionOfflineNote(lastSeen: String) -> LocalizedMessage {
         let key = "session_offline_note"
@@ -19268,7 +19276,8 @@ public enum L10nText {
         case "session.no_effort": return L10n.format("session_no_effort", locale: locale, args: [])
         case "session.no_effort_adjustment": return L10n.format("session_no_effort_adjustment", locale: locale, args: [strArg(args["model"])])
         case "session.not_running": return L10n.format("session_not_running", locale: locale, args: [])
-        case "session.notification": return L10n.format("session_notification", locale: locale, args: [strArg(args["text"])])
+        case "session.notify_receipt": return L10n.format("session_notify_receipt", locale: locale, args: [])
+        case "session.notify_receipt_expand": return L10n.format("session_notify_receipt_expand", locale: locale, args: [])
         case "session.offline_note": return L10n.format("session_offline_note", locale: locale, args: [strArg(args["lastSeen"])])
         case "session.offline_resume": return L10n.format("session_offline_resume", locale: locale, args: [strArg(args["name"])])
         case "session.only_current": return L10n.format("session_only_current", locale: locale, args: [])
@@ -19410,12 +19419,12 @@ public enum L10nText {
         case "settings.ios_is_offline_connect_to_read_and_edit_new_session": return L10n.format("settings_ios_is_offline_connect_to_read_and_edit_new_session", locale: locale, args: [strArg(args["value"])])
         case "settings.ios_leave_blank_for_the_default_name": return L10n.format("settings_ios_leave_blank_for_the_default_name", locale: locale, args: [])
         case "settings.ios_libraries_resolved_with_dependencies": return L10n.format("settings_ios_libraries_resolved_with_dependencies", locale: locale, args: [])
-        case "settings.ios_license_text_is_not_bundled_with_the_app": return L10n.format("settings_ios_license_text_is_not_bundled_with_the_app", locale: locale, args: [])
         default: return nil
         }
     }
     private static func resolve11(_ key: String, args: [String: L10nTextValue], locale: String) -> String? {
         switch key {
+        case "settings.ios_license_text_is_not_bundled_with_the_app": return L10n.format("settings_ios_license_text_is_not_bundled_with_the_app", locale: locale, args: [])
         case "settings.ios_local_ciphertext_cache": return L10n.format("settings_ios_local_ciphertext_cache", locale: locale, args: [])
         case "settings.ios_name_set_in_settings": return L10n.format("settings_ios_name_set_in_settings", locale: locale, args: [])
         case "settings.ios_no_computers_yet": return L10n.format("settings_ios_no_computers_yet", locale: locale, args: [])
@@ -19565,12 +19574,12 @@ public enum L10nText {
         case "shared_file.a11y_state_downloading": return L10n.format("shared_file_a11y_state_downloading", locale: locale, args: [])
         case "shared_file.a11y_state_paused": return L10n.format("shared_file_a11y_state_paused", locale: locale, args: [])
         case "shared_file.action_cancel_download": return L10n.format("shared_file_action_cancel_download", locale: locale, args: [])
-        case "shared_file.action_download": return L10n.format("shared_file_action_download", locale: locale, args: [])
         default: return nil
         }
     }
     private static func resolve12(_ key: String, args: [String: L10nTextValue], locale: String) -> String? {
         switch key {
+        case "shared_file.action_download": return L10n.format("shared_file_action_download", locale: locale, args: [])
         case "shared_file.action_open": return L10n.format("shared_file_action_open", locale: locale, args: [])
         case "shared_file.action_pause": return L10n.format("shared_file_action_pause", locale: locale, args: [])
         case "shared_file.action_resume": return L10n.format("shared_file_action_resume", locale: locale, args: [])
@@ -19732,12 +19741,12 @@ public enum L10nText {
         case "transport.diag_family_unknown": return L10n.format("transport_diag_family_unknown", locale: locale, args: [])
         case "transport.diag_g_checks": return L10n.format("transport_diag_g_checks", locale: locale, args: [])
         case "transport.diag_g_local": return L10n.format("transport_diag_g_local", locale: locale, args: [])
-        case "transport.diag_g_peer": return L10n.format("transport_diag_g_peer", locale: locale, args: [])
         default: return nil
         }
     }
     private static func resolve13(_ key: String, args: [String: L10nTextValue], locale: String) -> String? {
         switch key {
+        case "transport.diag_g_peer": return L10n.format("transport_diag_g_peer", locale: locale, args: [])
         case "transport.diag_g_result": return L10n.format("transport_diag_g_result", locale: locale, args: [])
         case "transport.diag_gather": return L10n.format("transport_diag_gather", locale: locale, args: [])
         case "transport.diag_hidden": return L10n.format("transport_diag_hidden", locale: locale, args: [])
@@ -19887,12 +19896,12 @@ public enum L10nText {
         case "transport.row_diag_copy_support": return L10n.format("transport_row_diag_copy_support", locale: locale, args: [])
         case "transport.row_off": return L10n.format("transport_row_off", locale: locale, args: [])
         case "transport.row_relay": return L10n.format("transport_row_relay", locale: locale, args: [])
-        case "transport.row_relay_ms": return L10n.format("transport_row_relay_ms", locale: locale, args: [strArg(args["ms"])])
         default: return nil
         }
     }
     private static func resolve14(_ key: String, args: [String: L10nTextValue], locale: String) -> String? {
         switch key {
+        case "transport.row_relay_ms": return L10n.format("transport_row_relay_ms", locale: locale, args: [strArg(args["ms"])])
         case "transport.row_retry_direct": return L10n.format("transport_row_retry_direct", locale: locale, args: [])
         case "transport.row_unavailable": return L10n.format("transport_row_unavailable", locale: locale, args: [])
         case "transport.row_using_direct": return L10n.format("transport_row_using_direct", locale: locale, args: [])

@@ -1648,15 +1648,10 @@
     "zh-CN": "会话不在运行。"
   },
   {
-    "en": "Notification: {text}",
-    "key": "session.notification",
-    "notes": "会话页顶栏、菜单、历史行或恢复卡。完整提示/历史行；参数可重排，不翻译用户内容。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：text 为原始通知/用户文本，不翻译。",
-    "params": {
-      "text": {
-        "example": "Example",
-        "type": "string"
-      }
-    },
+    "en": "Notified you",
+    "key": "session.notify_receipt",
+    "notes": "对话里定时任务推送的回执行，跟在铃铛后，后接「 · 」和发出时间或通知原文第一行。完成时，表示推送已发出，不是正在通知。 无变量。",
+    "params": {},
     "platforms": [
       "web",
       "android",
@@ -1666,7 +1661,23 @@
       "en": "draft",
       "zh-CN": "source"
     },
-    "zh-CN": "通知你：{text}"
+    "zh-CN": "已通知你"
+  },
+  {
+    "en": "Notified you, expand",
+    "key": "session.notify_receipt_expand",
+    "notes": "通知回执行收起时的读屏名称：点一下就地展开通知全文。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "已通知你，展开"
   },
   {
     "en": "{lastSeen}The computer may be asleep, offline, or remote-agent may not be running. Sessions may still be running there. This page updates automatically after reconnecting; only history is available now.",

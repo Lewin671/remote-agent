@@ -778,18 +778,17 @@
                   "seq": "12",
                   "endSeq": "12",
                   "timestampMs": "1791076512000",
-                  "note": {
-                    "kind": "SESSION_NOTE_KIND_NOTIFICATION",
-                    "tone": "SESSION_NOTE_TONE_POSITIVE",
-                    "text": {
-                      "key": "session.notification",
-                      "args": [
-                        {
-                          "name": "text",
-                          "strValue": "Disk warning sent"
-                        }
-                      ]
-                    }
+                  "notifyReceipt": {
+                    "label": {
+                      "key": "session.notify_receipt"
+                    },
+                    "time": {
+                      "timestamp": {
+                        "unixMs": "1791076512000",
+                        "style": "TIMESTAMP_STYLE_TIME"
+                      }
+                    },
+                    "preview": "Disk warning sent"
                   }
                 },
                 {
@@ -1298,18 +1297,17 @@
                   "seq": "12",
                   "endSeq": "12",
                   "timestampMs": "1791076512000",
-                  "note": {
-                    "kind": "SESSION_NOTE_KIND_NOTIFICATION",
-                    "tone": "SESSION_NOTE_TONE_POSITIVE",
-                    "text": {
-                      "key": "session.notification",
-                      "args": [
-                        {
-                          "name": "text",
-                          "strValue": "Disk warning sent"
-                        }
-                      ]
-                    }
+                  "notifyReceipt": {
+                    "label": {
+                      "key": "session.notify_receipt"
+                    },
+                    "time": {
+                      "timestamp": {
+                        "unixMs": "1791076512000",
+                        "style": "TIMESTAMP_STYLE_TIME"
+                      }
+                    },
+                    "preview": "Disk warning sent"
                   }
                 },
                 {

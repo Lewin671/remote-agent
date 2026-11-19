@@ -5050,9 +5050,11 @@ private fun resolveUiMessage10(resources: android.content.res.Resources, message
         "session.not_running" -> {
             resources.getString(R.string.session_not_running)
         }
-        "session.notification" -> {
-            val text = message.args.getValue("text") as String
-            resources.getString(R.string.session_notification, text)
+        "session.notify_receipt" -> {
+            resources.getString(R.string.session_notify_receipt)
+        }
+        "session.notify_receipt_expand" -> {
+            resources.getString(R.string.session_notify_receipt_expand)
         }
         "session.offline_note" -> {
             val lastSeen = message.args.getValue("lastSeen") as String
@@ -5482,15 +5484,15 @@ private fun resolveUiMessage10(resources: android.content.res.Resources, message
         "settings.appearance" -> {
             resources.getString(R.string.settings_appearance)
         }
-        "settings.approval_timeout" -> {
-            resources.getString(R.string.settings_approval_timeout)
-        }
         else -> null
     }
 }
 
 private fun resolveUiMessage11(resources: android.content.res.Resources, message: UiMessage): String? {
     return when (message.key) {
+        "settings.approval_timeout" -> {
+            resources.getString(R.string.settings_approval_timeout)
+        }
         "settings.attachment_storage" -> {
             resources.getString(R.string.settings_attachment_storage)
         }
@@ -5970,15 +5972,15 @@ private fun resolveUiMessage11(resources: android.content.res.Resources, message
         "settings.storage_legend_reserve" -> {
             resources.getString(R.string.settings_storage_legend_reserve)
         }
-        "settings.storage_legend_uploaded" -> {
-            resources.getString(R.string.settings_storage_legend_uploaded)
-        }
         else -> null
     }
 }
 
 private fun resolveUiMessage12(resources: android.content.res.Resources, message: UiMessage): String? {
     return when (message.key) {
+        "settings.storage_legend_uploaded" -> {
+            resources.getString(R.string.settings_storage_legend_uploaded)
+        }
         "settings.storage_limit" -> {
             resources.getString(R.string.settings_storage_limit)
         }
@@ -6486,15 +6488,15 @@ private fun resolveUiMessage12(resources: android.content.res.Resources, message
         "time.today" -> {
             resources.getString(R.string.time_today)
         }
-        "time.tomorrow" -> {
-            resources.getString(R.string.time_tomorrow)
-        }
         else -> null
     }
 }
 
 private fun resolveUiMessage13(resources: android.content.res.Resources, message: UiMessage): String? {
     return when (message.key) {
+        "time.tomorrow" -> {
+            resources.getString(R.string.time_tomorrow)
+        }
         "time.used_time" -> {
             val time = message.args.getValue("time") as String
             resources.getString(R.string.time_used_time, time)
@@ -6998,17 +7000,17 @@ private fun resolveUiMessage13(resources: android.content.res.Resources, message
             val pct = message.args.getValue("pct") as String
             resources.getString(R.string.usage_entry_cache_pct, pct)
         }
-        "usage.entry_few_samples" -> {
-            val count = message.args.getValue("count") as Int
-            val detail = message.args.getValue("detail") as String
-            resources.getString(R.string.usage_entry_few_samples, count, detail)
-        }
         else -> null
     }
 }
 
 private fun resolveUiMessage14(resources: android.content.res.Resources, message: UiMessage): String? {
     return when (message.key) {
+        "usage.entry_few_samples" -> {
+            val count = message.args.getValue("count") as Int
+            val detail = message.args.getValue("detail") as String
+            resources.getString(R.string.usage_entry_few_samples, count, detail)
+        }
         "usage.entry_last_30d" -> {
             resources.getString(R.string.usage_entry_last_30d)
         }

@@ -1211,7 +1211,8 @@ export interface MessageArgs {
   "session.no_effort": { [name: string]: never };
   "session.no_effort_adjustment": { model: string };
   "session.not_running": { [name: string]: never };
-  "session.notification": { text: string };
+  "session.notify_receipt": { [name: string]: never };
+  "session.notify_receipt_expand": { [name: string]: never };
   "session.offline_note": { lastSeen: string };
   "session.offline_resume": { name: string };
   "session.only_current": { [name: string]: never };
@@ -3513,7 +3514,8 @@ export const messages = {
     "session.no_effort": "No reasoning effort",
     "session.no_effort_adjustment": "{model} has no adjustable reasoning effort",
     "session.not_running": "Nothing is running",
-    "session.notification": "Notification: {text}",
+    "session.notify_receipt": "Notified you",
+    "session.notify_receipt_expand": "Notified you, expand",
     "session.offline_note": "{lastSeen}The computer may be asleep, offline, or remote-agent may not be running. Sessions may still be running there. This page updates automatically after reconnecting; only history is available now.",
     "session.offline_resume": "{name} is offline. Reconnect to resume.",
     "session.only_current": "Applies only to this session",
@@ -5803,7 +5805,8 @@ export const messages = {
     "session.no_effort": "无推理强度",
     "session.no_effort_adjustment": "{model} 没有推理强度可调",
     "session.not_running": "会话不在运行。",
-    "session.notification": "通知你：{text}",
+    "session.notify_receipt": "已通知你",
+    "session.notify_receipt_expand": "已通知你，展开",
     "session.offline_note": "{lastSeen}可能是合盖睡眠、断网，或 remote-agent 没在运行。电脑上的会话可能还在跑，重新连上后这里会自动更新，现在只能看历史。",
     "session.offline_resume": "{name} 不在线，连上后才能恢复。",
     "session.only_current": "只改当前会话",

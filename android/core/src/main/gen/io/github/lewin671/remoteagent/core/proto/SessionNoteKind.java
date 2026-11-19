@@ -16,10 +16,6 @@ public enum SessionNoteKind
    */
   SESSION_NOTE_KIND_UNSPECIFIED(0),
   /**
-   * <code>SESSION_NOTE_KIND_NOTIFICATION = 1;</code>
-   */
-  SESSION_NOTE_KIND_NOTIFICATION(1),
-  /**
    * <code>SESSION_NOTE_KIND_APPROVAL = 2;</code>
    */
   SESSION_NOTE_KIND_APPROVAL(2),
@@ -54,10 +50,6 @@ public enum SessionNoteKind
    * <code>SESSION_NOTE_KIND_UNSPECIFIED = 0;</code>
    */
   public static final int SESSION_NOTE_KIND_UNSPECIFIED_VALUE = 0;
-  /**
-   * <code>SESSION_NOTE_KIND_NOTIFICATION = 1;</code>
-   */
-  public static final int SESSION_NOTE_KIND_NOTIFICATION_VALUE = 1;
   /**
    * <code>SESSION_NOTE_KIND_APPROVAL = 2;</code>
    */
@@ -110,7 +102,6 @@ public enum SessionNoteKind
   public static SessionNoteKind forNumber(int value) {
     switch (value) {
       case 0: return SESSION_NOTE_KIND_UNSPECIFIED;
-      case 1: return SESSION_NOTE_KIND_NOTIFICATION;
       case 2: return SESSION_NOTE_KIND_APPROVAL;
       case 3: return SESSION_NOTE_KIND_QUESTION;
       case 4: return SESSION_NOTE_KIND_INTERRUPTED;
