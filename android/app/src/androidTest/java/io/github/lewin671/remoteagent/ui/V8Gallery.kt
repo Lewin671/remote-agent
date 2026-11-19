@@ -292,7 +292,7 @@ class V8Gallery {
             shoot("10-queue-send-menu", sessionState(session("queue-menu", "mac", foo, "修复登录超时", SessionStatus.SESSION_STATUS_RUNNING)),
                 mapOf("queue-menu" to events(turn(), user("修复登录超时"))),
                 then = {
-                    ui.onNodeWithContentDescription("发送").performTouchInput { longClick() }
+                    ui.onNodeWithText("插入这一轮").performClick()
                     ui.onNodeWithText("这一轮结束后再发").assertIsDisplayed()
                 }) { SessionScreen("queue-menu") }
         } finally { ImageDrafts.forSession("queue-menu").text.value = "" }

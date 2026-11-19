@@ -143,7 +143,7 @@ export function ConnCheck({ remote, onClose }: { remote: Remote; onClose: () => 
         </div>
         {list.map((m) => {
           const reachable = remote.peer(m.id).reachable;
-          const directRow = reachable ? settingsVm.machines.find((x) => x.machineId === m.id)?.directRow : undefined;
+          const directRow = reachable ? settingsVm.machines.find((x) => { return x.machineId === m.id; })?.directRow : undefined;
           const status = directRow ? renderText(directRow.statusText) : "";
           const detail = directRow ? renderText(directRow.detailText) : "";
           const summary = [status, detail].filter(Boolean).join(" · ");

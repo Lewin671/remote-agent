@@ -187,7 +187,7 @@ class I18nBatchBTest(private val locale: String) {
             ComposeBox("Preserve draft text", {}, text(UiMessages.composerMessage()), true, {}, {}, onFile = {}, onQueue = {})
         } }
         shot("composer")
-        ui.onNodeWithContentDescription(text(UiMessages.composerSend())).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnLongClick) { it() }
+        ui.onNodeWithText(text(UiMessages.composerModeInsertShort())).performClick()
         shot("send-menu")
     }
     @Test fun attachmentMenu() {

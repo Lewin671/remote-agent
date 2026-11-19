@@ -1735,20 +1735,16 @@
 "transport_detail_relay_only" = "已全部经中继连接，不影响正常使用";
 "transport_diag" = "诊断信息";
 "transport_diag_copy" = "复制诊断信息";
-"transport_diag_copy_failed" = "没能复制";
 "transport_diag_footer" = "诊断信息只包含地址的类型和范围，不含具体地址。";
 "transport_diag_retry" = "重新尝试";
 "transport_diag_verdict_none" = "还没有直连尝试的记录";
 "transport_direct" = "直连";
 "transport_direct_slow" = "直连较慢，暂时改用中继";
-"transport_file_fallback" = "文件暂时用中继";
 "transport_file_speed_both" = "直连 %1$@ · 中继 %2$@ MiB/s";
 "transport_file_speed_direct" = "直连 %1$@ MiB/s";
-"transport_file_speed_pending" = "下次传输时比较";
 "transport_file_speed_relay" = "中继 %1$@ MiB/s";
 "transport_footer" = "发消息和审批同时经直连和中继发出，以先到的为准；后台时只用中继。";
 "transport_group" = "连接";
-"transport_read_fallback" = "加载暂时用中继";
 "transport_read_latency_both" = "直连 %1$@ · 中继 %2$@ ms";
 "transport_read_latency_direct" = "直连 %1$@ ms";
 "transport_read_latency_relay" = "中继 %1$@ ms";
@@ -1770,6 +1766,5 @@
 "transport_status_direct" = "正在用直连";
 "transport_status_relay" = "正在用中继";
 "transport_summary_off" = "直连已关闭";
-"transport_unavailable" = "直连不可用：%1$@";
 "transport_use_file" = "用于文件";
 "transport_use_read" = "用于加载";

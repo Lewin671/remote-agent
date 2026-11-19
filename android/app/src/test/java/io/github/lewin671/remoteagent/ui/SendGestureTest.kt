@@ -24,32 +24,36 @@ class SendGestureTest {
             ComposeBox(draft.value, { draft.value = it }, "", true, { sent++ }, {}, onQueue = { queued++ })
         } }
     }
-    @Test fun longPressAtTheTargetEdgeOpensQueueWithoutSending() {
+    @Test fun modePillSwitchesSendActionWithoutLosingDraft() {
         show()
         val send = ui.onNodeWithContentDescription("发送")
         send.assertWidthIsAtLeast(44.dp).assertHeightIsAtLeast(44.dp)
-        val edge = with(ui.density) { 21.dp.toPx() }
-        send.performTouchInput { longClick(androidx.compose.ui.geometry.Offset(center.x + edge, center.y)) }
+        val pill = ui.onNodeWithText("插入这一轮")
+        pill.performClick()
         ui.onNodeWithText("这一轮结束后再发").assertIsDisplayed().performClick()
+        ui.onNodeWithText("本轮结束后发").assertIsDisplayed()
+        assertEquals(0, sent)
+        assertEquals(0, queued)
+        send.performClick()
         assertEquals(0, sent)
         assertEquals(1, queued)
     }
-    @Test fun cancelingAPressDoesNotOpenOrSendAndNextTapStillSends() {
+    @Test fun defaultSendActionTriggersOnSendWithoutOpeningMenu() {
         show()
         val send = ui.onNodeWithContentDescription("发送")
-        send.performTouchInput { down(center) }
-        ui.mainClock.advanceTimeBy(100)
-        send.performTouchInput { cancel() }
+        ui.onNodeWithText("插入这一轮").assertIsDisplayed()
         ui.onNodeWithText("这一轮结束后再发").assertDoesNotExist()
-        assertEquals(0, sent)
-        send.performTouchInput { click() }
+        send.performClick()
         assertEquals(1, sent)
         assertEquals(0, queued)
     }
-    @Test fun accessibilityLongClickOpensImmediately() {
+    @Test fun clickingModePillAgainClosesMenuWithoutSending() {
         show()
-        ui.onNodeWithContentDescription("发送").performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnLongClick) { it() }
+        ui.onNodeWithText("插入这一轮").performClick()
         ui.onNodeWithText("这一轮结束后再发").assertIsDisplayed()
+        ui.onAllNodesWithText("插入这一轮").onFirst().performClick()
+        ui.onNodeWithText("这一轮结束后再发").assertDoesNotExist()
         assertEquals(0, sent)
+        assertEquals(0, queued)
     }
 }

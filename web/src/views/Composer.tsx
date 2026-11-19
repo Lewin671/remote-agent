@@ -93,13 +93,13 @@ export function Composer({
     onDraft(v);
   };
   const fine = usePointerFine();
-  const [slash, setSlash] = useState<SendMode>();
+  const [slash, setSlash] = useState(undefined as SendMode | undefined);
   const [sendMenu, setSendMenu] = useState(defaultSendMenu);
-  const [pickedMode, setPickedMode] = useState<SendMode | null>(null);
-  const hold = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const [pickedMode, setPickedMode] = useState(null as SendMode | null);
+  const hold = useRef(undefined as ReturnType<typeof setTimeout> | undefined);
   const held = useRef(false);
-  const sendWrap = useRef<HTMLDivElement>(null);
-  const smodeWrap = useRef<HTMLDivElement>(null);
+  const sendWrap = useRef(null as HTMLDivElement | null);
+  const smodeWrap = useRef(null as HTMLDivElement | null);
 
   const running = !!composer?.hasActiveTurn;
   const canChooseSendMode = running && !!composer?.supportsQueueMode;

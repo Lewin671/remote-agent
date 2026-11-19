@@ -168,6 +168,7 @@ data class Nav(
     val machineStatus: (String) -> Unit = {},
     val deviceStorage: (String) -> Unit = {},
     val cleanup: (String) -> Unit = {},
+    val deviceConnection: (String) -> Unit = {},
 )
 
 val LocalNav = staticCompositionLocalOf<Nav> { error("no nav") }
@@ -326,7 +327,7 @@ fun Confirm(
     danger: Boolean = false,
     onDismiss: () -> Unit,
     onConfirm: () -> Unit,
-) = Alert(title, text, confirm, danger, onDismiss, onConfirm)
+) = Alert(title = title, text = text, confirm = confirm, danger = danger, onDismiss = onDismiss, onConfirm = onConfirm)
 
 fun statusIn(state: RemoteState, s: SessionView): Status = shownStatus(state, s)
 

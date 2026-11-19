@@ -100,6 +100,10 @@ public struct PBPendingQuestion: Sendable {
   /// Clears the value of `request`. Subsequent reads from it will return its default value.
   public mutating func clearRequest() {self._request = nil}
 
+  public var seq: UInt64 = 0
+
+  public var askedAtMs: Int64 = 0
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -686,7 +690,7 @@ extension PBResolvedApproval: SwiftProtobuf.Message, SwiftProtobuf._MessageImple
 
 extension PBPendingQuestion: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".PendingQuestion"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}question_id\0\u{1}request\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}question_id\0\u{1}request\0\u{1}seq\0\u{3}asked_at_ms\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -696,6 +700,8 @@ extension PBPendingQuestion: SwiftProtobuf.Message, SwiftProtobuf._MessageImplem
       switch fieldNumber {
       case 1: try { try decoder.decodeSingularStringField(value: &self.questionID) }()
       case 2: try { try decoder.decodeSingularMessageField(value: &self._request) }()
+      case 3: try { try decoder.decodeSingularUInt64Field(value: &self.seq) }()
+      case 4: try { try decoder.decodeSingularInt64Field(value: &self.askedAtMs) }()
       default: break
       }
     }
@@ -712,12 +718,20 @@ extension PBPendingQuestion: SwiftProtobuf.Message, SwiftProtobuf._MessageImplem
     try { if let v = self._request {
       try visitor.visitSingularMessageField(value: v, fieldNumber: 2)
     } }()
+    if self.seq != 0 {
+      try visitor.visitSingularUInt64Field(value: self.seq, fieldNumber: 3)
+    }
+    if self.askedAtMs != 0 {
+      try visitor.visitSingularInt64Field(value: self.askedAtMs, fieldNumber: 4)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
   public static func ==(lhs: PBPendingQuestion, rhs: PBPendingQuestion) -> Bool {
     if lhs.questionID != rhs.questionID {return false}
     if lhs._request != rhs._request {return false}
+    if lhs.seq != rhs.seq {return false}
+    if lhs.askedAtMs != rhs.askedAtMs {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

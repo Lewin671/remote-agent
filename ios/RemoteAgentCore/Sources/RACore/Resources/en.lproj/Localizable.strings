@@ -1735,20 +1735,16 @@
 "transport_detail_relay_only" = "Everything connects via relay as usual";
 "transport_diag" = "Diagnostics";
 "transport_diag_copy" = "Copy diagnostics";
-"transport_diag_copy_failed" = "Couldn't copy";
 "transport_diag_footer" = "Diagnostics show address types and ranges only, never the addresses themselves.";
 "transport_diag_retry" = "Try again";
 "transport_diag_verdict_none" = "No direct attempts recorded yet";
 "transport_direct" = "Direct connection";
 "transport_direct_slow" = "Direct is slow; using relay for now";
-"transport_file_fallback" = "Files using relay for now";
 "transport_file_speed_both" = "Direct %1$@ · Relay %2$@ MiB/s";
 "transport_file_speed_direct" = "Direct %1$@ MiB/s";
-"transport_file_speed_pending" = "Compared on the next transfer";
 "transport_file_speed_relay" = "Relay %1$@ MiB/s";
 "transport_footer" = "Messages and approvals are sent over both direct and relay, taking whichever arrives first; only relay is used in the background.";
 "transport_group" = "Connection";
-"transport_read_fallback" = "Loading using relay for now";
 "transport_read_latency_both" = "Direct %1$@ · Relay %2$@ ms";
 "transport_read_latency_direct" = "Direct %1$@ ms";
 "transport_read_latency_relay" = "Relay %1$@ ms";
@@ -1770,6 +1766,5 @@
 "transport_status_direct" = "Using direct";
 "transport_status_relay" = "Using relay";
 "transport_summary_off" = "Direct is off";
-"transport_unavailable" = "Direct unavailable: %1$@";
 "transport_use_file" = "Used for files";
 "transport_use_read" = "Used for loading";

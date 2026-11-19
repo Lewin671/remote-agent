@@ -32,4 +32,16 @@ public interface PendingQuestionOrBuilder extends
    * @return The request.
    */
   io.github.lewin671.remoteagent.proto.QuestionAsked getRequest();
+
+  /**
+   * <code>uint64 seq = 3 [json_name = "seq"];</code>
+   * @return The seq.
+   */
+  long getSeq();
+
+  /**
+   * <code>int64 asked_at_ms = 4 [json_name = "askedAtMs"];</code>
+   * @return The askedAtMs.
+   */
+  long getAskedAtMs();
 }

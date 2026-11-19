@@ -1298,6 +1298,54 @@ public  final class HomeViewModel extends
     hasMoreEnded_ = false;
   }
 
+  public static final int TOP_ATTENTION_QUESTION_FIELD_NUMBER = 29;
+  private io.github.lewin671.remoteagent.core.proto.HomeQuestionCardView topAttentionQuestion_;
+  /**
+   * <code>.remoteagent.core.v1.HomeQuestionCardView top_attention_question = 29 [json_name = "topAttentionQuestion"];</code>
+   */
+  @java.lang.Override
+  public boolean hasTopAttentionQuestion() {
+    return ((bitField0_ & 0x00000100) != 0);
+  }
+  /**
+   * <code>.remoteagent.core.v1.HomeQuestionCardView top_attention_question = 29 [json_name = "topAttentionQuestion"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.HomeQuestionCardView getTopAttentionQuestion() {
+    return topAttentionQuestion_ == null ? io.github.lewin671.remoteagent.core.proto.HomeQuestionCardView.getDefaultInstance() : topAttentionQuestion_;
+  }
+  /**
+   * <code>.remoteagent.core.v1.HomeQuestionCardView top_attention_question = 29 [json_name = "topAttentionQuestion"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setTopAttentionQuestion(io.github.lewin671.remoteagent.core.proto.HomeQuestionCardView value) {
+    value.getClass();  // minimal bytecode null check
+    topAttentionQuestion_ = value;
+    bitField0_ |= 0x00000100;
+  }
+  /**
+   * <code>.remoteagent.core.v1.HomeQuestionCardView top_attention_question = 29 [json_name = "topAttentionQuestion"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeTopAttentionQuestion(io.github.lewin671.remoteagent.core.proto.HomeQuestionCardView value) {
+    value.getClass();  // minimal bytecode null check
+    if (topAttentionQuestion_ != null &&
+        topAttentionQuestion_ != io.github.lewin671.remoteagent.core.proto.HomeQuestionCardView.getDefaultInstance()) {
+      topAttentionQuestion_ =
+        io.github.lewin671.remoteagent.core.proto.HomeQuestionCardView.newBuilder(topAttentionQuestion_).mergeFrom(value).buildPartial();
+    } else {
+      topAttentionQuestion_ = value;
+    }
+    bitField0_ |= 0x00000100;
+  }
+  /**
+   * <code>.remoteagent.core.v1.HomeQuestionCardView top_attention_question = 29 [json_name = "topAttentionQuestion"];</code>
+   */
+  private void clearTopAttentionQuestion() {
+    topAttentionQuestion_ = null;
+    bitField0_ = (bitField0_ & ~0x00000100);
+  }
+
   public static io.github.lewin671.remoteagent.core.proto.HomeViewModel parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -2704,6 +2752,53 @@ public  final class HomeViewModel extends
       return this;
     }
 
+    /**
+     * <code>.remoteagent.core.v1.HomeQuestionCardView top_attention_question = 29 [json_name = "topAttentionQuestion"];</code>
+     */
+    @java.lang.Override
+    public boolean hasTopAttentionQuestion() {
+      return instance.hasTopAttentionQuestion();
+    }
+    /**
+     * <code>.remoteagent.core.v1.HomeQuestionCardView top_attention_question = 29 [json_name = "topAttentionQuestion"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.HomeQuestionCardView getTopAttentionQuestion() {
+      return instance.getTopAttentionQuestion();
+    }
+    /**
+     * <code>.remoteagent.core.v1.HomeQuestionCardView top_attention_question = 29 [json_name = "topAttentionQuestion"];</code>
+     */
+    public Builder setTopAttentionQuestion(io.github.lewin671.remoteagent.core.proto.HomeQuestionCardView value) {
+      copyOnWrite();
+      instance.setTopAttentionQuestion(value);
+      return this;
+      }
+    /**
+     * <code>.remoteagent.core.v1.HomeQuestionCardView top_attention_question = 29 [json_name = "topAttentionQuestion"];</code>
+     */
+    public Builder setTopAttentionQuestion(
+        io.github.lewin671.remoteagent.core.proto.HomeQuestionCardView.Builder builderForValue) {
+      copyOnWrite();
+      instance.setTopAttentionQuestion(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.HomeQuestionCardView top_attention_question = 29 [json_name = "topAttentionQuestion"];</code>
+     */
+    public Builder mergeTopAttentionQuestion(io.github.lewin671.remoteagent.core.proto.HomeQuestionCardView value) {
+      copyOnWrite();
+      instance.mergeTopAttentionQuestion(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.HomeQuestionCardView top_attention_question = 29 [json_name = "topAttentionQuestion"];</code>
+     */
+    public Builder clearTopAttentionQuestion() {  copyOnWrite();
+      instance.clearTopAttentionQuestion();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.HomeViewModel)
   }
   @java.lang.Override
@@ -2752,14 +2847,15 @@ public  final class HomeViewModel extends
             "canStart_",
             "selectedSessionId_",
             "hasMoreEnded_",
+            "topAttentionQuestion_",
           };
           java.lang.String info =
-              "\u0000\u001b\u0000\u0001\u0002\u001c\u001b\u0000\u0004\u0000\u0002\u0007\u0003\u0208" +
+              "\u0000\u001c\u0000\u0001\u0002\u001d\u001c\u0000\u0004\u0000\u0002\u0007\u0003\u0208" +
               "\u0004\u1009\u0000\u0005\u0208\u0006\u1009\u0001\u0007\u1009\u0002\b\u1009\u0003" +
               "\t\u0007\n\u0208\u000b\u1009\u0004\f\u0007\r\u0004\u000e\u0004\u000f\u0004\u0010" +
               "\u0004\u0011\u0208\u0012\u0007\u0013\u1009\u0005\u0014\u001b\u0015\u001b\u0016\u001b" +
               "\u0017\u1009\u0006\u0018\u001b\u0019\u1009\u0007\u001a\u0007\u001b\u0208\u001c\u0007" +
-              "";
+              "\u001d\u1009\b";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

@@ -26,6 +26,7 @@ public  final class SyncPendingAction extends
     approvalToolInput_ = "";
     popupPreview_ = "";
   }
+  private int bitField0_;
   public static final int HAS_APPROVAL_FIELD_NUMBER = 1;
   private boolean hasApproval_;
   /**
@@ -420,6 +421,54 @@ public  final class SyncPendingAction extends
     checkByteStringIsUtf8(value);
     popupPreview_ = value.toStringUtf8();
 
+  }
+
+  public static final int QUESTION_FIELD_NUMBER = 12;
+  private io.github.lewin671.remoteagent.core.proto.SyncPendingQuestion question_;
+  /**
+   * <code>.remoteagent.core.v1.SyncPendingQuestion question = 12 [json_name = "question"];</code>
+   */
+  @java.lang.Override
+  public boolean hasQuestion() {
+    return ((bitField0_ & 0x00000001) != 0);
+  }
+  /**
+   * <code>.remoteagent.core.v1.SyncPendingQuestion question = 12 [json_name = "question"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.SyncPendingQuestion getQuestion() {
+    return question_ == null ? io.github.lewin671.remoteagent.core.proto.SyncPendingQuestion.getDefaultInstance() : question_;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SyncPendingQuestion question = 12 [json_name = "question"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setQuestion(io.github.lewin671.remoteagent.core.proto.SyncPendingQuestion value) {
+    value.getClass();  // minimal bytecode null check
+    question_ = value;
+    bitField0_ |= 0x00000001;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SyncPendingQuestion question = 12 [json_name = "question"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeQuestion(io.github.lewin671.remoteagent.core.proto.SyncPendingQuestion value) {
+    value.getClass();  // minimal bytecode null check
+    if (question_ != null &&
+        question_ != io.github.lewin671.remoteagent.core.proto.SyncPendingQuestion.getDefaultInstance()) {
+      question_ =
+        io.github.lewin671.remoteagent.core.proto.SyncPendingQuestion.newBuilder(question_).mergeFrom(value).buildPartial();
+    } else {
+      question_ = value;
+    }
+    bitField0_ |= 0x00000001;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SyncPendingQuestion question = 12 [json_name = "question"];</code>
+   */
+  private void clearQuestion() {
+    question_ = null;
+    bitField0_ = (bitField0_ & ~0x00000001);
   }
 
   public static io.github.lewin671.remoteagent.core.proto.SyncPendingAction parseFrom(
@@ -937,6 +986,53 @@ public  final class SyncPendingAction extends
       return this;
     }
 
+    /**
+     * <code>.remoteagent.core.v1.SyncPendingQuestion question = 12 [json_name = "question"];</code>
+     */
+    @java.lang.Override
+    public boolean hasQuestion() {
+      return instance.hasQuestion();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SyncPendingQuestion question = 12 [json_name = "question"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.SyncPendingQuestion getQuestion() {
+      return instance.getQuestion();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SyncPendingQuestion question = 12 [json_name = "question"];</code>
+     */
+    public Builder setQuestion(io.github.lewin671.remoteagent.core.proto.SyncPendingQuestion value) {
+      copyOnWrite();
+      instance.setQuestion(value);
+      return this;
+      }
+    /**
+     * <code>.remoteagent.core.v1.SyncPendingQuestion question = 12 [json_name = "question"];</code>
+     */
+    public Builder setQuestion(
+        io.github.lewin671.remoteagent.core.proto.SyncPendingQuestion.Builder builderForValue) {
+      copyOnWrite();
+      instance.setQuestion(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SyncPendingQuestion question = 12 [json_name = "question"];</code>
+     */
+    public Builder mergeQuestion(io.github.lewin671.remoteagent.core.proto.SyncPendingQuestion value) {
+      copyOnWrite();
+      instance.mergeQuestion(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SyncPendingQuestion question = 12 [json_name = "question"];</code>
+     */
+    public Builder clearQuestion() {  copyOnWrite();
+      instance.clearQuestion();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.SyncPendingAction)
   }
   @java.lang.Override
@@ -953,6 +1049,7 @@ public  final class SyncPendingAction extends
       }
       case BUILD_MESSAGE_INFO: {
           java.lang.Object[] objects = new java.lang.Object[] {
+            "bitField0_",
             "hasApproval_",
             "approvalId_",
             "approvalToolName_",
@@ -964,11 +1061,12 @@ public  final class SyncPendingAction extends
             "hasPlan_",
             "hasPopup_",
             "popupPreview_",
+            "question_",
           };
           java.lang.String info =
-              "\u0000\u000b\u0000\u0000\u0001\u000b\u000b\u0000\u0000\u0000\u0001\u0007\u0002\u0208" +
-              "\u0003\u0208\u0004\u0208\u0005\u0208\u0006\u0007\u0007\u0002\b\u0007\t\u0007\n\u0007" +
-              "\u000b\u0208";
+              "\u0000\f\u0000\u0001\u0001\f\f\u0000\u0000\u0000\u0001\u0007\u0002\u0208\u0003\u0208" +
+              "\u0004\u0208\u0005\u0208\u0006\u0007\u0007\u0002\b\u0007\t\u0007\n\u0007\u000b\u0208" +
+              "\f\u1009\u0000";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

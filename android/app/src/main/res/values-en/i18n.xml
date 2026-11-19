@@ -2165,7 +2165,6 @@
     <string name="tools_tool" formatted="false">"Tool"</string>
     <string name="tools_waiting_sync" formatted="false">"Waiting to sync"</string>
     <string name="transport_conn_footer_unsupported_app" formatted="false">"This app version does not support direct connections yet; everything connects via relay."</string>
-    <string name="transport_conn_footer_unsupported_device" formatted="false">"This device doesn\'t support direct connections."</string>
     <string name="transport_detail_daemon_disabled" formatted="false">"Turn it on from this computer to use direct connections"</string>
     <string name="transport_detail_relay_only" formatted="false">"Everything connects via relay as usual"</string>
     <string name="transport_diag" formatted="false">"Diagnostics"</string>
@@ -2175,7 +2174,6 @@
     <string name="transport_diag_connected_body" formatted="false">"Loading and files are back on a direct connection."</string>
     <string name="transport_diag_connected_title" formatted="false">"Direct connected"</string>
     <string name="transport_diag_copy" formatted="false">"Copy diagnostics"</string>
-    <string name="transport_diag_copy_failed" formatted="false">"Couldn\'t copy"</string>
     <string name="transport_diag_copy_permission" formatted="false">"Couldn’t copy; check clipboard permission"</string>
     <string name="transport_diag_copy_support" formatted="false">"Copy diagnostics for support"</string>
     <string name="transport_diag_explain_generic" formatted="false">"Direct negotiation did not finish within the time budget and will retry when the network changes. Everything currently uses relay automatically with no impact on use."</string>
@@ -2190,6 +2188,8 @@
     <string name="transport_diag_peer_no_reply_desc" formatted="false">"Timed out waiting for the computer to respond"</string>
     <string name="transport_diag_peer_old_desc" formatted="false">"remote-agent on this computer doesn’t support direct yet"</string>
     <string name="transport_diag_privacy_footer" formatted="false">"Copied diagnostics include address types and ranges only—no IP addresses, ports, or chat content."</string>
+    <string name="transport_diag_report_title" formatted="false">"Direct connection diagnostics"</string>
+    <string name="transport_diag_report_verdict">"Summary: %1$s"</string>
     <string name="transport_diag_retry" formatted="false">"Try again"</string>
     <string name="transport_diag_retry_auto_desc" formatted="false">"Retries automatically when Wi-Fi or network changes"</string>
     <string name="transport_diag_retry_wait_desc" formatted="false">"Resumes automatically after updating remote-agent on the computer"</string>
@@ -2209,10 +2209,8 @@
     <string name="transport_diag_verdict_none" formatted="false">"No direct attempts recorded yet"</string>
     <string name="transport_direct" formatted="false">"Direct connection"</string>
     <string name="transport_direct_slow" formatted="false">"Direct is slow; using relay for now"</string>
-    <string name="transport_file_fallback" formatted="false">"Files using relay for now"</string>
     <string name="transport_file_speed_both">"Direct %1$s · Relay %2$s MiB/s"</string>
     <string name="transport_file_speed_direct">"Direct %1$s MiB/s"</string>
-    <string name="transport_file_speed_pending" formatted="false">"Compared on the next transfer"</string>
     <string name="transport_file_speed_relay">"Relay %1$s MiB/s"</string>
     <string name="transport_footer" formatted="false">"Messages and approvals are sent over both direct and relay, taking whichever arrives first; only relay is used in the background."</string>
     <string name="transport_group" formatted="false">"Connection"</string>
@@ -2228,7 +2226,6 @@
     <string name="transport_popover_settings" formatted="false">"Connection settings"</string>
     <string name="transport_popover_stable" formatted="false">"Connection stable"</string>
     <string name="transport_popover_switched_relay" formatted="false">"Switched to relay"</string>
-    <string name="transport_read_fallback" formatted="false">"Loading using relay for now"</string>
     <string name="transport_read_latency_both">"Direct %1$s · Relay %2$s ms"</string>
     <string name="transport_read_latency_direct">"Direct %1$s ms"</string>
     <string name="transport_read_latency_relay">"Relay %1$s ms"</string>
@@ -2249,9 +2246,7 @@
     <string name="transport_status_daemon_disabled" formatted="false">"Direct connection is off on this computer"</string>
     <string name="transport_status_direct" formatted="false">"Using direct"</string>
     <string name="transport_status_relay" formatted="false">"Using relay"</string>
-    <string name="transport_status_unsupported_app" formatted="false">"This app version does not support direct connections yet"</string>
     <string name="transport_summary_off" formatted="false">"Direct is off"</string>
-    <string name="transport_unavailable">"Direct unavailable: %1$s"</string>
     <string name="transport_use_file" formatted="false">"Used for files"</string>
     <string name="transport_use_read" formatted="false">"Used for loading"</string>
     <string name="transport_why_not_connected" formatted="false">"Why it didn’t connect"</string>

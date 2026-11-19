@@ -72,7 +72,7 @@ class ComposerMenuKeyboardTest {
                 }
             }
             fun plus() = ui.onNodeWithContentDescription("添加附件").performTouchInput { click() }
-            fun send() = ui.onNodeWithContentDescription("发送").performTouchInput { longClick() }
+            fun sendMode() = ui.onNodeWithText("插入这一轮").performTouchInput { click() }
             fun back() = instrumentation.sendKeyDownUpSync(KeyEvent.KEYCODE_BACK)
             capture("android-baseline")
             plus(); ui.onNodeWithText("照片和视频").assertIsDisplayed(); capture("android-attach-open")
@@ -86,11 +86,11 @@ class ComposerMenuKeyboardTest {
             instrumentation.uiAutomation.executeShellCommand("input tap 100 ${height - 260}").close()
             ui.waitUntil(5000) { ui.onAllNodesWithText("照片和视频").fetchSemanticsNodes().isEmpty() }
             capture("android-attach-keyboard")
-            send(); ui.onNodeWithText("这一轮结束后再发").assertIsDisplayed(); capture("android-send-open")
-            ui.onNodeWithContentDescription("发送").performTouchInput { click() }
+            sendMode(); ui.onNodeWithText("这一轮结束后再发").assertIsDisplayed(); capture("android-send-open")
+            sendMode()
             ui.onNodeWithText("这一轮结束后再发").assertDoesNotExist(); capture("android-send-retap")
-            send(); field.performTouchInput { click() }; ui.onNodeWithText("这一轮结束后再发").assertDoesNotExist(); capture("android-send-outside")
-            send(); back(); ui.onNodeWithText("这一轮结束后再发").assertDoesNotExist(); capture("android-send-back")
+            sendMode(); field.performTouchInput { click() }; ui.onNodeWithText("这一轮结束后再发").assertDoesNotExist(); capture("android-send-outside")
+            sendMode(); back(); ui.onNodeWithText("这一轮结束后再发").assertDoesNotExist(); capture("android-send-back")
         } finally { remote.close(); ImageDrafts.forSession("menu-session").clear() }
     }
 }

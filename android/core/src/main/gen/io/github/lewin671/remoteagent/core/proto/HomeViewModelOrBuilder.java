@@ -273,4 +273,15 @@ public interface HomeViewModelOrBuilder extends
    * @return The hasMoreEnded.
    */
   boolean getHasMoreEnded();
+
+  /**
+   * <code>.remoteagent.core.v1.HomeQuestionCardView top_attention_question = 29 [json_name = "topAttentionQuestion"];</code>
+   * @return Whether the topAttentionQuestion field is set.
+   */
+  boolean hasTopAttentionQuestion();
+  /**
+   * <code>.remoteagent.core.v1.HomeQuestionCardView top_attention_question = 29 [json_name = "topAttentionQuestion"];</code>
+   * @return The topAttentionQuestion.
+   */
+  io.github.lewin671.remoteagent.core.proto.HomeQuestionCardView getTopAttentionQuestion();
 }

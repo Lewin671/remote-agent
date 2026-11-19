@@ -1,6 +1,11 @@
 package io.github.lewin671.remoteagent.ui
 
 import io.github.lewin671.remoteagent.core.UiMessages
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -33,6 +38,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -148,8 +156,16 @@ fun BottomBar(
                         Box {
                             Ic(if (tab == ShellTab.SESSIONS) Lucide.MessageCircle else Lucide.Clock, 22.dp, if (on) p.ink else p.ink2)
                             Box(Modifier.align(Alignment.TopStart).offset(x = 15.dp, y = (-6).dp).wrapContentSize(unbounded = true, align = Alignment.TopStart)) {
-                                if (count > 0) TabBadge(count)
-                                else if (tab == ShellTab.SCHEDULES && newResults) Box(Modifier.offset(x = 3.dp, y = 3.dp).size(9.dp).clip(CircleShape).background(p.blue))
+                                var heldCount by remember { mutableIntStateOf(count) }
+                                if (count > 0) heldCount = count
+                                androidx.compose.animation.AnimatedVisibility(
+                                    visible = count > 0,
+                                    enter = fadeIn(tween(150)),
+                                    exit = if (Motion.reduced) fadeOut(tween(120)) else scaleOut(tween(120), targetScale = 0.6f) + fadeOut(tween(120)),
+                                ) {
+                                    TabBadge(heldCount.coerceAtLeast(1))
+                                }
+                                if (count <= 0 && tab == ShellTab.SCHEDULES && newResults) Box(Modifier.offset(x = 3.dp, y = 3.dp).size(9.dp).clip(CircleShape).background(p.blue))
                             }
                         }
                         Text(label, style = T.s10, color = if (on) p.ink else p.ink2)

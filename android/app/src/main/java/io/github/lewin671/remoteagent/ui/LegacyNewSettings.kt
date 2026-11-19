@@ -271,7 +271,8 @@ fun NewSettingsSheet(state: RemoteState, cwd: String, name: String, machineId: S
     val blockedPrefs = if (lockMachine) null else prefsBlocked(state)
     val defaults = defaultModeOf(state.machines[c.machineId], c.agent)
     val shownModel = models?.let { projectModel(c, it, settings) }
-    Sheet(onClose) {
+    val settingsDirty = moved || edited.isNotEmpty()
+    Sheet(onClose, dirty = settingsDirty) {
         when (page) {
             "" -> {
                 SheetHead(if (lockMachine) copy(UiMessages.newSessionTaskSettings()) else uiText(UiMessages.projectsAndroidSettings()), if (blockedPrefs == null) uiText(UiMessages.commonDone()) else null, { done() })

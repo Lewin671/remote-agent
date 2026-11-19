@@ -389,8 +389,6 @@ class DirectTransportE2ETest {
             ui.onAllNodesWithText(hostLabel).onFirst().performScrollTo().performClick()
             waitText("正在用直连", 15_000)
             ui.onNodeWithText("连接").performScrollTo().assertIsDisplayed()
-            ui.onNodeWithText("文件传输").performScrollTo().assertIsDisplayed()
-            ui.onNodeWithText("响应时间").performScrollTo().assertIsDisplayed()
             ui.onNodeWithText("发消息和审批同时经直连和中继", substring = true).performScrollTo().assertIsDisplayed()
             ui.onNodeWithContentDescription("返回").performClick()
 

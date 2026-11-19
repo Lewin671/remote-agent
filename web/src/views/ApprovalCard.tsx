@@ -13,6 +13,7 @@ import { renderText } from "../core/text";
 import { SessionCommandStatus, type SessionCommandState } from "../gen/remoteagent/core/v1/session_view_pb";
 import { ChevronRight, LoaderCircle } from "../icons";
 import { skeletonMessage } from "../skeleton";
+import { isApprovalAtBottom, isShortApprovalViewport } from "./approval-scroll";
 
 /** Whole lines a card's command shows before 看完整命令. */
 export const CARD_LINES = 5;
@@ -97,16 +98,16 @@ export function ApprovalCard({
   const [full, setFull] = useState(false);
   const [denying, setDenyingState] = useState(defaultDenying);
   const [localReason, setLocalReason] = useState("");
-  const [lastAllow, setLastAllow] = useState<boolean | undefined>(undefined);
+  const [lastAllow, setLastAllow] = useState(undefined as boolean | undefined);
   const lastSentReason = useRef("");
   const [reachedBottom, setReachedBottom] = useState(() => !docked || (!!approvalId && latchedBottomIds.has(approvalId)));
   const [shortViewport, setShortViewport] = useState(false);
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef(null as HTMLDivElement | null);
   const setDenying = (v: boolean) => {
     setDenyingState(v);
     onDenying?.(v);
   };
-  const cmd = useRef<HTMLPreElement>(null);
+  const cmd = useRef(null as HTMLPreElement | null);
   const text = approvalDisplay(body);
   const [lines, setLines] = useState(() => linesOf(null, "❯ " + text));
 
@@ -121,9 +122,7 @@ export function ApprovalCard({
     }
     const el = scrollRef.current;
     if (!el) return;
-    const needsScroll = el.scrollHeight > el.clientHeight + 4;
-    const atBottom = !needsScroll || el.scrollTop + el.clientHeight >= el.scrollHeight - 8;
-    if (atBottom) {
+    if (isApprovalAtBottom(el)) {
       if (approvalId && el.clientHeight > 0) latchedBottomIds.add(approvalId);
       setReachedBottom(true);
     } else {
@@ -157,8 +156,7 @@ export function ApprovalCard({
       return;
     }
     const check = () => {
-      const h = window.visualViewport?.height ?? window.innerHeight;
-      setShortViewport(h > 0 && h < 420);
+      setShortViewport(isShortApprovalViewport());
     };
     check();
     window.visualViewport?.addEventListener("resize", check);
@@ -262,7 +260,7 @@ export function ApprovalCard({
     const el = scrollRef.current;
     if (!el) return;
     el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
-    if (el.scrollTop + el.clientHeight >= el.scrollHeight - 8 || el.scrollHeight <= el.clientHeight + 4) {
+    if (isApprovalAtBottom(el)) {
       if (approvalId) latchedBottomIds.add(approvalId);
       setReachedBottom(true);
     }
@@ -343,15 +341,17 @@ export function ApprovalCard({
           <button className="btn" disabled={locked} onClick={() => setDenying(true)}>
             {i18n.t("approval.deny")}
           </button>
-          {cut ? (
+          {cut && (
             <button className="btn pri" aria-expanded={false} onClick={() => setFull(true)}>
               {i18n.t("approval.full_command")}
             </button>
-          ) : docked && !reachedBottom && !truncated ? (
+          )}
+          {!cut && docked && !reachedBottom && !truncated && (
             <button className="btn pri" disabled={locked} onClick={scrollToBottom}>
               {i18n.t("approval.scroll_to_view")}
             </button>
-          ) : (
+          )}
+          {!cut && !(docked && !reachedBottom && !truncated) && (
             <button className="btn pri" disabled={locked || truncated} onClick={() => submit(true, "", false)}>
               {i18n.t("approval.allow")}
             </button>

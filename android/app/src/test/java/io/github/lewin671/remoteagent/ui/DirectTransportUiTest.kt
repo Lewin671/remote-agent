@@ -120,10 +120,9 @@ class DirectTransportUiTest {
             ui.onNodeWithText("连接").performScrollTo().assertIsDisplayed()
             ui.onNodeWithText("直连").performScrollTo().assertIsDisplayed()
             ui.onNodeWithText("正在用直连").performScrollTo().assertIsDisplayed()
-            ui.onNodeWithText("文件传输").performScrollTo().assertIsDisplayed()
-            ui.onNodeWithText("直连 6.3 · 中继 4.1 MiB/s").performScrollTo().assertIsDisplayed()
-            ui.onNodeWithText("响应时间").performScrollTo().assertIsDisplayed()
-            ui.onNodeWithText("直连 12 · 中继 180 ms").performScrollTo().assertIsDisplayed()
+            ui.onNodeWithText("12 ms").performScrollTo().assertIsDisplayed()
+            ui.onAllNodesWithText("文件传输").assertCountEquals(0)
+            ui.onAllNodesWithText("响应时间").assertCountEquals(0)
             ui.onNodeWithText("发消息和审批同时经直连和中继发出，以先到的为准；后台时只用中继。").performScrollTo().assertIsDisplayed()
 
             ui.onNodeWithText("直连").performScrollTo().performClick()
@@ -132,8 +131,7 @@ class DirectTransportUiTest {
             assertFalse(SharedPrefsDirectPreferenceStore(context).isEnabled("https://example.com", acct.deviceId, machineId))
             ui.waitUntil(3000) {
                 !remote.machineSettingsView.value.connection.toggleChecked &&
-                    ui.onAllNodesWithText("正在用直连").fetchSemanticsNodes().isEmpty() &&
-                    ui.onAllNodesWithText("文件传输").fetchSemanticsNodes().isEmpty()
+                    ui.onAllNodesWithText("正在用直连").fetchSemanticsNodes().isEmpty()
             }
             ui.waitForIdle()
             ui.onAllNodesWithText("正在用直连").assertCountEquals(0)
@@ -171,12 +169,12 @@ class DirectTransportUiTest {
                 .setStage(io.github.lewin671.remoteagent.core.proto.ConnectionGroupStage.CONNECTION_GROUP_STAGE_MEASURING)
                 .setTone(io.github.lewin671.remoteagent.core.proto.ConnectionGroupTone.CONNECTION_GROUP_TONE_MUTED)
                 .setStatusText(lit("直连已连上，正在测速"))
-                .setFileSpeedText(lit("下次传输时比较"))
+                .setMetricText(lit("12 ms"))
                 .build()
         }
         ui.waitForIdle()
         ui.onNodeWithText("直连已连上，正在测速").assertIsDisplayed()
-        ui.onNodeWithText("下次传输时比较").assertIsDisplayed()
+        ui.onNodeWithText("12 ms").assertIsDisplayed()
 
         ui.runOnUiThread {
             viewState.value = io.github.lewin671.remoteagent.core.proto.ConnectionGroupView.newBuilder()
@@ -187,13 +185,26 @@ class DirectTransportUiTest {
                 .setTone(io.github.lewin671.remoteagent.core.proto.ConnectionGroupTone.CONNECTION_GROUP_TONE_LIVE)
                 .setStatusText(lit("正在用直连"))
                 .setDetailText(lit("用于加载"))
-                .setFileSpeedText(lit("中继 4.1 MiB/s"))
+                .setMetricText(lit("12 ms"))
                 .build()
         }
         ui.waitForIdle()
         ui.onNodeWithText("正在用直连").assertIsDisplayed()
         ui.onNodeWithText("用于加载").assertIsDisplayed()
-        ui.onNodeWithText("中继 4.1 MiB/s").assertIsDisplayed()
+        ui.onNodeWithText("12 ms").assertIsDisplayed()
+
+        ui.runOnUiThread {
+            viewState.value = io.github.lewin671.remoteagent.core.proto.ConnectionGroupView.newBuilder()
+                .setToggleVisible(true)
+                .setToggleEnabled(true)
+                .setToggleChecked(true)
+                .setStage(io.github.lewin671.remoteagent.core.proto.ConnectionGroupStage.CONNECTION_GROUP_STAGE_OFFLINE)
+                .setTone(io.github.lewin671.remoteagent.core.proto.ConnectionGroupTone.CONNECTION_GROUP_TONE_MUTED)
+                .setStatusText(lit("设备离线"))
+                .build()
+        }
+        ui.waitForIdle()
+        ui.onAllNodesWithText("设备离线").assertCountEquals(0)
 
         ui.runOnUiThread {
             viewState.value = io.github.lewin671.remoteagent.core.proto.ConnectionGroupView.newBuilder()
@@ -261,7 +272,7 @@ class DirectTransportUiTest {
         ui.onNodeWithText("delta").performScrollTo().assertIsDisplayed()
         ui.onAllNodesWithText("40 ms").assertCountEquals(2)
         ui.onNodeWithText("离线").performScrollTo().assertIsDisplayed()
-        ui.onNodeWithText("这台设备不支持直连。", substring = true).performScrollTo().assertIsDisplayed()
+        ui.onNodeWithText("当前应用版本暂不支持直连，已全部经中继连接。", substring = true).performScrollTo().assertIsDisplayed()
     }
 
     @Test
@@ -321,8 +332,8 @@ class DirectTransportUiTest {
             }
         }
         ui.waitForIdle()
-        ui.onNodeWithText("正在用直连 · 直连 18 ms").performScrollTo().assertIsDisplayed()
-        ui.onNodeWithText("两边的网络不能直接连通").performScrollTo().assertIsDisplayed()
+        ui.onNodeWithText("正在用直连").performScrollTo().assertIsDisplayed()
+        ui.onNodeWithText("正在用中继 · 两边的网络隔开了，不能直接连通").performScrollTo().assertIsDisplayed()
     }
 
     @Test
@@ -375,11 +386,15 @@ class DirectTransportUiTest {
                 }
             }
         }
-        ui.onNodeWithText("诊断信息").performClick()
+        ui.onNodeWithText("为什么没连上").performClick()
         assertTrue(openedDiag)
         ui.waitForIdle()
-        ui.onNodeWithText("两边的网络不能直接连通").assertIsDisplayed()
-        ui.onNodeWithText("重新尝试").performClick()
+        ui.onNodeWithText("两边的网络隔开了，不能直接连通").performScrollTo().assertIsDisplayed()
+        ui.onNodeWithText("电脑在线并响应").performScrollTo().assertIsDisplayed()
+        ui.onNodeWithText("局域网或公网直通").performScrollTo().assertIsDisplayed()
+        ui.onNodeWithText("后台自动重试").performScrollTo().assertIsDisplayed()
+        ui.onNodeWithText("复制诊断给支持").performScrollTo().assertIsDisplayed()
+        ui.onNodeWithText("重新尝试").performScrollTo().performClick()
         assertTrue(retried)
     }
 
@@ -400,6 +415,8 @@ class DirectTransportUiTest {
                             supported = true,
                             enabled = true,
                             stage = DirectStage.DIRECT_ACTIVE,
+                            readDirect = true,
+                            fileDirect = true,
                             reason = null,
                         ),
                     ),
@@ -417,7 +434,7 @@ class DirectTransportUiTest {
             }
         }
         ui.waitForIdle()
-        ui.onNodeWithText("正在用直连").assertIsDisplayed()
+        ui.onNodeWithText("直连已连上").assertIsDisplayed()
     }
 
     @Test

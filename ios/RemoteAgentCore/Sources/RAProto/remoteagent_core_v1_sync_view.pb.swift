@@ -20,38 +20,128 @@ fileprivate struct _GeneratedWithProtocGenSwiftVersion: SwiftProtobuf.ProtobufAP
   typealias Version = _2
 }
 
-/// Pending action summary derived by Core for Home, Session, and transition views.
-/// Transitional helper shared by SyncSessionView and SessionDataView; delete with SyncStateView/SessionDataView after Steps 3-4.
-public struct PBCoreSyncPendingAction: Sendable {
+public struct PBCoreSyncPendingQuestionOption: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  public var hasApproval_p: Bool = false
+  public var label: String = String()
 
-  public var approvalID: String = String()
-
-  public var approvalToolName: String = String()
-
-  public var approvalCommand: String = String()
-
-  public var approvalToolInput: String = String()
-
-  public var approvalTruncated: Bool = false
-
-  public var approvalDeadlineMs: Int64 = 0
-
-  public var hasQuestion_p: Bool = false
-
-  public var hasPlan_p: Bool = false
-
-  public var hasPopup_p: Bool = false
-
-  public var popupPreview: String = String()
+  public var description_p: String = String()
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
+}
+
+public struct PBCoreSyncPendingQuestion: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var questionID: String = String()
+
+  public var questionKey: String = String()
+
+  public var header: String = String()
+
+  public var text: String = String()
+
+  public var multiSelect: Bool = false
+
+  public var questionCount: Int32 = 0
+
+  public var options: [PBCoreSyncPendingQuestionOption] = []
+
+  public var canFreeText: Bool = false
+
+  public var async: Bool = false
+
+  public var observedEventSeq: UInt64 = 0
+
+  public var askedAtMs: Int64 = 0
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+/// Pending action summary derived by Core for Home, Session, and transition views.
+/// Transitional helper shared by SyncSessionView and SessionDataView; delete with SyncStateView/SessionDataView after Steps 3-4.
+public struct PBCoreSyncPendingAction: @unchecked Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var hasApproval_p: Bool {
+    get {return _storage._hasApproval_p}
+    set {_uniqueStorage()._hasApproval_p = newValue}
+  }
+
+  public var approvalID: String {
+    get {return _storage._approvalID}
+    set {_uniqueStorage()._approvalID = newValue}
+  }
+
+  public var approvalToolName: String {
+    get {return _storage._approvalToolName}
+    set {_uniqueStorage()._approvalToolName = newValue}
+  }
+
+  public var approvalCommand: String {
+    get {return _storage._approvalCommand}
+    set {_uniqueStorage()._approvalCommand = newValue}
+  }
+
+  public var approvalToolInput: String {
+    get {return _storage._approvalToolInput}
+    set {_uniqueStorage()._approvalToolInput = newValue}
+  }
+
+  public var approvalTruncated: Bool {
+    get {return _storage._approvalTruncated}
+    set {_uniqueStorage()._approvalTruncated = newValue}
+  }
+
+  public var approvalDeadlineMs: Int64 {
+    get {return _storage._approvalDeadlineMs}
+    set {_uniqueStorage()._approvalDeadlineMs = newValue}
+  }
+
+  public var hasQuestion_p: Bool {
+    get {return _storage._hasQuestion_p}
+    set {_uniqueStorage()._hasQuestion_p = newValue}
+  }
+
+  public var hasPlan_p: Bool {
+    get {return _storage._hasPlan_p}
+    set {_uniqueStorage()._hasPlan_p = newValue}
+  }
+
+  public var hasPopup_p: Bool {
+    get {return _storage._hasPopup_p}
+    set {_uniqueStorage()._hasPopup_p = newValue}
+  }
+
+  public var popupPreview: String {
+    get {return _storage._popupPreview}
+    set {_uniqueStorage()._popupPreview = newValue}
+  }
+
+  public var question: PBCoreSyncPendingQuestion {
+    get {return _storage._question ?? PBCoreSyncPendingQuestion()}
+    set {_uniqueStorage()._question = newValue}
+  }
+  /// Returns true if `question` has been explicitly set.
+  public var hasQuestion: Bool {return _storage._question != nil}
+  /// Clears the value of `question`. Subsequent reads from it will return its default value.
+  public mutating func clearQuestion() {_uniqueStorage()._question = nil}
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+
+  fileprivate var _storage = _StorageClass.defaultInstance
 }
 
 /// Machine snapshot for unmigrated Step 3-4 screens (machine status, settings, schedules, session header).
@@ -639,9 +729,9 @@ public struct PBCoreSessionDataView: @unchecked Sendable {
 
 fileprivate let _protobuf_package = "remoteagent.core.v1"
 
-extension PBCoreSyncPendingAction: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  public static let protoMessageName: String = _protobuf_package + ".SyncPendingAction"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}has_approval\0\u{3}approval_id\0\u{3}approval_tool_name\0\u{3}approval_command\0\u{3}approval_tool_input\0\u{3}approval_truncated\0\u{3}approval_deadline_ms\0\u{3}has_question\0\u{3}has_plan\0\u{3}has_popup\0\u{3}popup_preview\0")
+extension PBCoreSyncPendingQuestionOption: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".SyncPendingQuestionOption"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}label\0\u{1}description\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -649,71 +739,253 @@ extension PBCoreSyncPendingAction: SwiftProtobuf.Message, SwiftProtobuf._Message
       // allocates stack space for every case branch when no optimizations are
       // enabled. https://github.com/apple/swift-protobuf/issues/1034
       switch fieldNumber {
-      case 1: try { try decoder.decodeSingularBoolField(value: &self.hasApproval_p) }()
-      case 2: try { try decoder.decodeSingularStringField(value: &self.approvalID) }()
-      case 3: try { try decoder.decodeSingularStringField(value: &self.approvalToolName) }()
-      case 4: try { try decoder.decodeSingularStringField(value: &self.approvalCommand) }()
-      case 5: try { try decoder.decodeSingularStringField(value: &self.approvalToolInput) }()
-      case 6: try { try decoder.decodeSingularBoolField(value: &self.approvalTruncated) }()
-      case 7: try { try decoder.decodeSingularInt64Field(value: &self.approvalDeadlineMs) }()
-      case 8: try { try decoder.decodeSingularBoolField(value: &self.hasQuestion_p) }()
-      case 9: try { try decoder.decodeSingularBoolField(value: &self.hasPlan_p) }()
-      case 10: try { try decoder.decodeSingularBoolField(value: &self.hasPopup_p) }()
-      case 11: try { try decoder.decodeSingularStringField(value: &self.popupPreview) }()
+      case 1: try { try decoder.decodeSingularStringField(value: &self.label) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.description_p) }()
       default: break
       }
     }
   }
 
   public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
-    if self.hasApproval_p != false {
-      try visitor.visitSingularBoolField(value: self.hasApproval_p, fieldNumber: 1)
+    if !self.label.isEmpty {
+      try visitor.visitSingularStringField(value: self.label, fieldNumber: 1)
     }
-    if !self.approvalID.isEmpty {
-      try visitor.visitSingularStringField(value: self.approvalID, fieldNumber: 2)
+    if !self.description_p.isEmpty {
+      try visitor.visitSingularStringField(value: self.description_p, fieldNumber: 2)
     }
-    if !self.approvalToolName.isEmpty {
-      try visitor.visitSingularStringField(value: self.approvalToolName, fieldNumber: 3)
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: PBCoreSyncPendingQuestionOption, rhs: PBCoreSyncPendingQuestionOption) -> Bool {
+    if lhs.label != rhs.label {return false}
+    if lhs.description_p != rhs.description_p {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension PBCoreSyncPendingQuestion: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".SyncPendingQuestion"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}question_id\0\u{3}question_key\0\u{1}header\0\u{1}text\0\u{3}multi_select\0\u{3}question_count\0\u{1}options\0\u{3}can_free_text\0\u{1}async\0\u{3}observed_event_seq\0\u{3}asked_at_ms\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.questionID) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.questionKey) }()
+      case 3: try { try decoder.decodeSingularStringField(value: &self.header) }()
+      case 4: try { try decoder.decodeSingularStringField(value: &self.text) }()
+      case 5: try { try decoder.decodeSingularBoolField(value: &self.multiSelect) }()
+      case 6: try { try decoder.decodeSingularInt32Field(value: &self.questionCount) }()
+      case 7: try { try decoder.decodeRepeatedMessageField(value: &self.options) }()
+      case 8: try { try decoder.decodeSingularBoolField(value: &self.canFreeText) }()
+      case 9: try { try decoder.decodeSingularBoolField(value: &self.async) }()
+      case 10: try { try decoder.decodeSingularUInt64Field(value: &self.observedEventSeq) }()
+      case 11: try { try decoder.decodeSingularInt64Field(value: &self.askedAtMs) }()
+      default: break
+      }
     }
-    if !self.approvalCommand.isEmpty {
-      try visitor.visitSingularStringField(value: self.approvalCommand, fieldNumber: 4)
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.questionID.isEmpty {
+      try visitor.visitSingularStringField(value: self.questionID, fieldNumber: 1)
     }
-    if !self.approvalToolInput.isEmpty {
-      try visitor.visitSingularStringField(value: self.approvalToolInput, fieldNumber: 5)
+    if !self.questionKey.isEmpty {
+      try visitor.visitSingularStringField(value: self.questionKey, fieldNumber: 2)
     }
-    if self.approvalTruncated != false {
-      try visitor.visitSingularBoolField(value: self.approvalTruncated, fieldNumber: 6)
+    if !self.header.isEmpty {
+      try visitor.visitSingularStringField(value: self.header, fieldNumber: 3)
     }
-    if self.approvalDeadlineMs != 0 {
-      try visitor.visitSingularInt64Field(value: self.approvalDeadlineMs, fieldNumber: 7)
+    if !self.text.isEmpty {
+      try visitor.visitSingularStringField(value: self.text, fieldNumber: 4)
     }
-    if self.hasQuestion_p != false {
-      try visitor.visitSingularBoolField(value: self.hasQuestion_p, fieldNumber: 8)
+    if self.multiSelect != false {
+      try visitor.visitSingularBoolField(value: self.multiSelect, fieldNumber: 5)
     }
-    if self.hasPlan_p != false {
-      try visitor.visitSingularBoolField(value: self.hasPlan_p, fieldNumber: 9)
+    if self.questionCount != 0 {
+      try visitor.visitSingularInt32Field(value: self.questionCount, fieldNumber: 6)
     }
-    if self.hasPopup_p != false {
-      try visitor.visitSingularBoolField(value: self.hasPopup_p, fieldNumber: 10)
+    if !self.options.isEmpty {
+      try visitor.visitRepeatedMessageField(value: self.options, fieldNumber: 7)
     }
-    if !self.popupPreview.isEmpty {
-      try visitor.visitSingularStringField(value: self.popupPreview, fieldNumber: 11)
+    if self.canFreeText != false {
+      try visitor.visitSingularBoolField(value: self.canFreeText, fieldNumber: 8)
+    }
+    if self.async != false {
+      try visitor.visitSingularBoolField(value: self.async, fieldNumber: 9)
+    }
+    if self.observedEventSeq != 0 {
+      try visitor.visitSingularUInt64Field(value: self.observedEventSeq, fieldNumber: 10)
+    }
+    if self.askedAtMs != 0 {
+      try visitor.visitSingularInt64Field(value: self.askedAtMs, fieldNumber: 11)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: PBCoreSyncPendingQuestion, rhs: PBCoreSyncPendingQuestion) -> Bool {
+    if lhs.questionID != rhs.questionID {return false}
+    if lhs.questionKey != rhs.questionKey {return false}
+    if lhs.header != rhs.header {return false}
+    if lhs.text != rhs.text {return false}
+    if lhs.multiSelect != rhs.multiSelect {return false}
+    if lhs.questionCount != rhs.questionCount {return false}
+    if lhs.options != rhs.options {return false}
+    if lhs.canFreeText != rhs.canFreeText {return false}
+    if lhs.async != rhs.async {return false}
+    if lhs.observedEventSeq != rhs.observedEventSeq {return false}
+    if lhs.askedAtMs != rhs.askedAtMs {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension PBCoreSyncPendingAction: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".SyncPendingAction"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}has_approval\0\u{3}approval_id\0\u{3}approval_tool_name\0\u{3}approval_command\0\u{3}approval_tool_input\0\u{3}approval_truncated\0\u{3}approval_deadline_ms\0\u{3}has_question\0\u{3}has_plan\0\u{3}has_popup\0\u{3}popup_preview\0\u{1}question\0")
+
+  fileprivate class _StorageClass {
+    var _hasApproval_p: Bool = false
+    var _approvalID: String = String()
+    var _approvalToolName: String = String()
+    var _approvalCommand: String = String()
+    var _approvalToolInput: String = String()
+    var _approvalTruncated: Bool = false
+    var _approvalDeadlineMs: Int64 = 0
+    var _hasQuestion_p: Bool = false
+    var _hasPlan_p: Bool = false
+    var _hasPopup_p: Bool = false
+    var _popupPreview: String = String()
+    var _question: PBCoreSyncPendingQuestion? = nil
+
+      // This property is used as the initial default value for new instances of the type.
+      // The type itself is protecting the reference to its storage via CoW semantics.
+      // This will force a copy to be made of this reference when the first mutation occurs;
+      // hence, it is safe to mark this as `nonisolated(unsafe)`.
+      static nonisolated(unsafe) let defaultInstance = _StorageClass()
+
+    private init() {}
+
+    init(copying source: _StorageClass) {
+      _hasApproval_p = source._hasApproval_p
+      _approvalID = source._approvalID
+      _approvalToolName = source._approvalToolName
+      _approvalCommand = source._approvalCommand
+      _approvalToolInput = source._approvalToolInput
+      _approvalTruncated = source._approvalTruncated
+      _approvalDeadlineMs = source._approvalDeadlineMs
+      _hasQuestion_p = source._hasQuestion_p
+      _hasPlan_p = source._hasPlan_p
+      _hasPopup_p = source._hasPopup_p
+      _popupPreview = source._popupPreview
+      _question = source._question
+    }
+  }
+
+  fileprivate mutating func _uniqueStorage() -> _StorageClass {
+    if !isKnownUniquelyReferenced(&_storage) {
+      _storage = _StorageClass(copying: _storage)
+    }
+    return _storage
+  }
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    _ = _uniqueStorage()
+    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+      while let fieldNumber = try decoder.nextFieldNumber() {
+        // The use of inline closures is to circumvent an issue where the compiler
+        // allocates stack space for every case branch when no optimizations are
+        // enabled. https://github.com/apple/swift-protobuf/issues/1034
+        switch fieldNumber {
+        case 1: try { try decoder.decodeSingularBoolField(value: &_storage._hasApproval_p) }()
+        case 2: try { try decoder.decodeSingularStringField(value: &_storage._approvalID) }()
+        case 3: try { try decoder.decodeSingularStringField(value: &_storage._approvalToolName) }()
+        case 4: try { try decoder.decodeSingularStringField(value: &_storage._approvalCommand) }()
+        case 5: try { try decoder.decodeSingularStringField(value: &_storage._approvalToolInput) }()
+        case 6: try { try decoder.decodeSingularBoolField(value: &_storage._approvalTruncated) }()
+        case 7: try { try decoder.decodeSingularInt64Field(value: &_storage._approvalDeadlineMs) }()
+        case 8: try { try decoder.decodeSingularBoolField(value: &_storage._hasQuestion_p) }()
+        case 9: try { try decoder.decodeSingularBoolField(value: &_storage._hasPlan_p) }()
+        case 10: try { try decoder.decodeSingularBoolField(value: &_storage._hasPopup_p) }()
+        case 11: try { try decoder.decodeSingularStringField(value: &_storage._popupPreview) }()
+        case 12: try { try decoder.decodeSingularMessageField(value: &_storage._question) }()
+        default: break
+        }
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every if/case branch local when no optimizations
+      // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+      // https://github.com/apple/swift-protobuf/issues/1182
+      if _storage._hasApproval_p != false {
+        try visitor.visitSingularBoolField(value: _storage._hasApproval_p, fieldNumber: 1)
+      }
+      if !_storage._approvalID.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._approvalID, fieldNumber: 2)
+      }
+      if !_storage._approvalToolName.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._approvalToolName, fieldNumber: 3)
+      }
+      if !_storage._approvalCommand.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._approvalCommand, fieldNumber: 4)
+      }
+      if !_storage._approvalToolInput.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._approvalToolInput, fieldNumber: 5)
+      }
+      if _storage._approvalTruncated != false {
+        try visitor.visitSingularBoolField(value: _storage._approvalTruncated, fieldNumber: 6)
+      }
+      if _storage._approvalDeadlineMs != 0 {
+        try visitor.visitSingularInt64Field(value: _storage._approvalDeadlineMs, fieldNumber: 7)
+      }
+      if _storage._hasQuestion_p != false {
+        try visitor.visitSingularBoolField(value: _storage._hasQuestion_p, fieldNumber: 8)
+      }
+      if _storage._hasPlan_p != false {
+        try visitor.visitSingularBoolField(value: _storage._hasPlan_p, fieldNumber: 9)
+      }
+      if _storage._hasPopup_p != false {
+        try visitor.visitSingularBoolField(value: _storage._hasPopup_p, fieldNumber: 10)
+      }
+      if !_storage._popupPreview.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._popupPreview, fieldNumber: 11)
+      }
+      try { if let v = _storage._question {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 12)
+      } }()
     }
     try unknownFields.traverse(visitor: &visitor)
   }
 
   public static func ==(lhs: PBCoreSyncPendingAction, rhs: PBCoreSyncPendingAction) -> Bool {
-    if lhs.hasApproval_p != rhs.hasApproval_p {return false}
-    if lhs.approvalID != rhs.approvalID {return false}
-    if lhs.approvalToolName != rhs.approvalToolName {return false}
-    if lhs.approvalCommand != rhs.approvalCommand {return false}
-    if lhs.approvalToolInput != rhs.approvalToolInput {return false}
-    if lhs.approvalTruncated != rhs.approvalTruncated {return false}
-    if lhs.approvalDeadlineMs != rhs.approvalDeadlineMs {return false}
-    if lhs.hasQuestion_p != rhs.hasQuestion_p {return false}
-    if lhs.hasPlan_p != rhs.hasPlan_p {return false}
-    if lhs.hasPopup_p != rhs.hasPopup_p {return false}
-    if lhs.popupPreview != rhs.popupPreview {return false}
+    if lhs._storage !== rhs._storage {
+      let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
+        let _storage = _args.0
+        let rhs_storage = _args.1
+        if _storage._hasApproval_p != rhs_storage._hasApproval_p {return false}
+        if _storage._approvalID != rhs_storage._approvalID {return false}
+        if _storage._approvalToolName != rhs_storage._approvalToolName {return false}
+        if _storage._approvalCommand != rhs_storage._approvalCommand {return false}
+        if _storage._approvalToolInput != rhs_storage._approvalToolInput {return false}
+        if _storage._approvalTruncated != rhs_storage._approvalTruncated {return false}
+        if _storage._approvalDeadlineMs != rhs_storage._approvalDeadlineMs {return false}
+        if _storage._hasQuestion_p != rhs_storage._hasQuestion_p {return false}
+        if _storage._hasPlan_p != rhs_storage._hasPlan_p {return false}
+        if _storage._hasPopup_p != rhs_storage._hasPopup_p {return false}
+        if _storage._popupPreview != rhs_storage._popupPreview {return false}
+        if _storage._question != rhs_storage._question {return false}
+        return true
+      }
+      if !storagesAreEqual {return false}
+    }
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

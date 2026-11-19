@@ -1,6 +1,11 @@
 package io.github.lewin671.remoteagent.ui
 
 import android.content.Context
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -75,15 +80,21 @@ fun HomeScreen() {
     var allRunning by remember(vm.scopeKey, vm.filterQuery) { mutableStateOf(false) }
 
     val showCard = vm.topAttentionActionable && vm.hasTopAttentionCard() && vm.topAttentionCard.approvalId.isNotEmpty()
+    val showQuestion = !showCard && vm.topAttentionActionable && vm.hasTopAttentionQuestion() && vm.topAttentionQuestion.questionId.isNotEmpty()
     if (vm.topAttentionActionable && !showCard && vm.topAttentionSessionId.isNotEmpty()) {
         // Hydrate approval details for the top attention item when only metadata was available.
         remote.watchSession(vm.topAttentionSessionId).collectAsState(
             initial = io.github.lewin671.remoteagent.core.proto.SessionViewModel.getDefaultInstance(),
         )
     }
+    val excludedTopId = when {
+        showCard -> vm.topAttentionCard.sessionId.ifEmpty { vm.topAttentionSessionId }
+        showQuestion -> vm.topAttentionQuestion.sessionId.ifEmpty { vm.topAttentionSessionId }
+        else -> ""
+    }
     val attentionRows =
-        if (showCard && vm.attentionList.firstOrNull()?.sessionId == vm.topAttentionSessionId) {
-            vm.attentionList.drop(1)
+        if (excludedTopId.isNotEmpty()) {
+            vm.attentionList.filter { it.sessionId != excludedTopId }
         } else {
             vm.attentionList
         }
@@ -97,7 +108,7 @@ fun HomeScreen() {
         else vm.runningList.take(RUNNING_MAX)
     val hiddenRunningCount = vm.runningList.size - visibleRunning.size
 
-    val hasRows = showCard || visibleAttention.isNotEmpty() || visibleRunning.isNotEmpty() || vm.endedGroupsCount > 0 || vm.hasEndedTail()
+    val hasRows = showCard || showQuestion || visibleAttention.isNotEmpty() || visibleRunning.isNotEmpty() || vm.endedGroupsCount > 0 || vm.hasEndedTail()
     var calm by remember { mutableStateOf(false) }
     LaunchedEffect(vm.scopeKey, vm.filterQuery, hasRows) {
         calm = false
@@ -179,8 +190,21 @@ fun HomeScreen() {
                     }
                 }
             }
+            if (!showCard) {
+                item(key = "top-question") {
+                    val anim = if (calm) Modifier.animateItem(Motion.fadeInSpec(), Motion.enter(Motion.BASE), Motion.fadeOutSpec()) else Modifier
+                    Box(anim) {
+                        HomeQuestionSlot(
+                            question = if (showQuestion && filterText.isEmpty()) vm.topAttentionQuestion else null,
+                            onOpenSession = { sid -> nav.session(sid) },
+                            onOpenTerminal = { sid -> nav.sessionTerminal(sid) },
+                            modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 20.dp),
+                        )
+                    }
+                }
+            }
             itemsIndexed(visibleAttention, key = { _, r -> "att:${r.sessionId}" }) { idx, row ->
-                val first = !showCard && idx == 0
+                val first = !showCard && !showQuestion && idx == 0
                 val last = idx == visibleAttention.lastIndex && hiddenAttentionCount == 0
                 val anim = if (calm) Modifier.animateItem(Motion.fadeInSpec(), Motion.enter(Motion.BASE), Motion.fadeOutSpec()) else Modifier
                 Box(anim) {
@@ -269,31 +293,39 @@ fun HomeScreen() {
 @Composable
 internal fun Headline(h: HomeHeadlineView, onDetails: () -> Unit) {
     val p = pal
-    val sub = uiText(h.sub)
-    Text(
-        uiHighlightedText(h.title, h.highlightArg, SpanStyle(color = p.orange)),
-        style = T.title, color = p.ink,
-        modifier = Modifier.fillMaxWidth().padding(start = 24.dp, end = 24.dp, top = 6.dp).semantics { heading() }.testTag("headline"),
-    )
-    Row(
-        Modifier.fillMaxWidth().padding(start = 24.dp, end = 24.dp, top = 7.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(
-            sub.ifEmpty { uiText(UiMessages.connectionPreviousBelow()) },
-            minLines = 1,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            style = if (h.subPath) T.mono13.copy(fontSize = 15.sp, lineHeight = 21.sp) else T.s17,
-            color = if (h.subError) p.red else p.ink2,
-            modifier = Modifier.weight(1f, fill = false).then(
-                if (sub.isEmpty()) Modifier.alpha(0f).clearAndSetSemantics {} else Modifier,
-            ),
-        )
-        if (h.detailsAction) Box(
-            Modifier.heightIn(min = 44.dp).clickable(role = Role.Button, onClick = onDetails).padding(start = 12.dp, end = 4.dp),
-            contentAlignment = Alignment.Center,
-        ) { Text(uiText(UiMessages.commonDetails()), style = T.s17, color = p.blue) }
+    val ms = if (Motion.reduced) 100 else 200
+    val key = Triple(h.kind, uiText(h.title), uiText(h.sub))
+    AnimatedContent(
+        targetState = key,
+        transitionSpec = { fadeIn(tween(ms)) togetherWith fadeOut(tween(ms)) },
+    ) { (_, _, sub) ->
+        Column {
+            Text(
+                uiHighlightedText(h.title, h.highlightArg, SpanStyle(color = p.orange)),
+                style = T.title, color = p.ink,
+                modifier = Modifier.fillMaxWidth().padding(start = 24.dp, end = 24.dp, top = 6.dp).semantics { heading() }.testTag("headline"),
+            )
+            Row(
+                Modifier.fillMaxWidth().padding(start = 24.dp, end = 24.dp, top = 7.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    sub.ifEmpty { uiText(UiMessages.connectionPreviousBelow()) },
+                    minLines = 1,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    style = if (h.subPath) T.mono13.copy(fontSize = 15.sp, lineHeight = 21.sp) else T.s17,
+                    color = if (h.subError) p.red else p.ink2,
+                    modifier = Modifier.weight(1f, fill = false).then(
+                        if (sub.isEmpty()) Modifier.alpha(0f).clearAndSetSemantics {} else Modifier,
+                    ),
+                )
+                if (h.detailsAction) Box(
+                    Modifier.heightIn(min = 44.dp).clickable(role = Role.Button, onClick = onDetails).padding(start = 12.dp, end = 4.dp),
+                    contentAlignment = Alignment.Center,
+                ) { Text(uiText(UiMessages.commonDetails()), style = T.s17, color = p.blue) }
+            }
+        }
     }
 }
 

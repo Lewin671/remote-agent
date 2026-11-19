@@ -238,13 +238,22 @@ fun ToolLine(
     Row(
         modifier.fillMaxWidth().then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier).padding(vertical = 5.dp).heightIn(min = 20.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Mark(mark, markColor, 15.dp)
-        if (bold) Text(title, style = T.s13, color = p.ink2, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
-        else Text(title, style = T.mono13, color = p.ink2, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
-        if (meta.isNotEmpty()) Text(meta, style = T.s13, color = metaColor ?: p.ink2, maxLines = 1)
-        trailing?.invoke()
+        Spacer(Modifier.width(8.dp))
+        Row(
+            Modifier.weight(1f),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(if (trailing != null) 4.dp else 8.dp),
+        ) {
+            if (bold) Text(title, style = T.s13, color = p.ink2, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
+            else Text(title, style = T.mono13, color = p.ink2, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
+            trailing?.invoke()
+        }
+        if (meta.isNotEmpty()) {
+            Spacer(Modifier.width(8.dp))
+            Text(meta, style = T.s13, color = metaColor ?: p.ink2, maxLines = 1)
+        }
     }
 }
 

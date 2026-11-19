@@ -208,27 +208,6 @@
     }
   },
   {
-    "key": "transport.unavailable",
-    "zh-CN": "直连不可用：{reason}",
-    "en": "Direct unavailable: {reason}",
-    "notes": "状态行「正在用中继」的第二行，也出现在连接检测摘要里：直连没建立，{reason} 是下面 transport.reason_* 之一的整句，必须能接在冒号后面读通。",
-    "params": {
-      "reason": {
-        "type": "string",
-        "example": "两边的网络不能直接连通"
-      }
-    },
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
     "key": "transport.file_speed_both",
     "zh-CN": "直连 {direct} · 中继 {relay} MiB/s",
     "en": "Direct {direct} · Relay {relay} MiB/s",
@@ -363,22 +342,6 @@
     }
   },
   {
-    "key": "transport.file_speed_pending",
-    "zh-CN": "下次传输时比较",
-    "en": "Compared on the next transfer",
-    "notes": "「文件传输」速度行右侧的值：文件还没有实测时如实说明，文件在下一次传输时比较两条路，不假装已经测过。",
-    "params": {},
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
     "key": "transport.group",
     "zh-CN": "连接",
     "en": "Connection",
@@ -475,38 +438,6 @@
     }
   },
   {
-    "key": "transport.file_fallback",
-    "zh-CN": "文件暂时用中继",
-    "en": "Files using relay for now",
-    "notes": "状态行「正在用直连」下面的第二行：加载仍在用直连，文件通道因直连吞吐较慢而暂时改用中继。",
-    "params": {},
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "transport.read_fallback",
-    "zh-CN": "加载暂时用中继",
-    "en": "Loading using relay for now",
-    "notes": "状态行「正在用直连」下面的第二行：文件仍在用直连，加载通道因直连较慢而暂时改用中继。",
-    "params": {},
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
     "key": "transport.speed_file",
     "zh-CN": "文件传输",
     "en": "File transfer",
@@ -571,34 +502,6 @@
     }
   },
   {
-    "key": "transport.conn_footer_unsupported",
-    "zh-CN": "这个浏览器不支持直连。",
-    "en": "This browser doesn't support direct connections.",
-    "notes": "连接检测页脚末尾的一句，只在本设备的浏览器不支持直连时出现，取代在每台电脑下重复写。无变量。",
-    "params": {},
-    "platforms": [
-      "web"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "transport.conn_footer_unsupported_device",
-    "zh-CN": "这台设备不支持直连。",
-    "en": "This device doesn't support direct connections.",
-    "notes": "连接检测页脚末尾的一句，设备不支持直连时才出现；不在每台电脑一行重复。",
-    "params": {},
-    "platforms": [
-      "android"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
     "key": "transport.diag",
     "zh-CN": "诊断信息",
     "en": "Diagnostics",
@@ -619,22 +522,6 @@
     "zh-CN": "复制诊断信息",
     "en": "Copy diagnostics",
     "notes": "直连诊断页（电脑设置页「连接」组最后一行「诊断信息」点开）里的文字操作：把同样内容（地址已隐去）复制成纯文字，方便发给支持。",
-    "params": {},
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "transport.diag_copy_failed",
-    "zh-CN": "没能复制",
-    "en": "Couldn't copy",
-    "notes": "复制诊断信息失败时，替换操作文字一会儿。成功时用 common.copied。",
     "params": {},
     "platforms": [
       "web",
@@ -2141,7 +2028,8 @@
     "notes": "复制出的诊断文字的第一行。",
     "params": {},
     "platforms": [
-      "web"
+      "web",
+      "android"
     ],
     "status": {
       "zh-CN": "source",
@@ -2160,7 +2048,8 @@
       }
     },
     "platforms": [
-      "web"
+      "web",
+      "android"
     ],
     "status": {
       "zh-CN": "source",
@@ -2352,20 +2241,6 @@
       "web",
       "android",
       "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "transport.status_unsupported_app",
-    "zh-CN": "当前应用版本暂不支持直连",
-    "en": "This app version does not support direct connections yet",
-    "notes": "Android 设置连接组状态 5e：应用版本暂不支持直连。",
-    "params": {},
-    "platforms": [
-      "android"
     ],
     "status": {
       "zh-CN": "source",

@@ -1456,7 +1456,6 @@ export interface MessageArgs {
   "tools.exit_code": { code: string };
   "tools.tool": { [name: string]: never };
   "tools.waiting_sync": { [name: string]: never };
-  "transport.conn_footer_unsupported": { [name: string]: never };
   "transport.conn_footer_unsupported_browser": { [name: string]: never };
   "transport.detail_daemon_disabled": { [name: string]: never };
   "transport.detail_relay_only": { [name: string]: never };
@@ -1470,7 +1469,6 @@ export interface MessageArgs {
   "transport.diag_connected_body": { [name: string]: never };
   "transport.diag_connected_title": { [name: string]: never };
   "transport.diag_copy": { [name: string]: never };
-  "transport.diag_copy_failed": { [name: string]: never };
   "transport.diag_copy_permission": { [name: string]: never };
   "transport.diag_copy_support": { [name: string]: never };
   "transport.diag_count": { count: number };
@@ -1600,10 +1598,8 @@ export interface MessageArgs {
   "transport.diag_verdict_unknown": { [name: string]: never };
   "transport.direct": { [name: string]: never };
   "transport.direct_slow": { [name: string]: never };
-  "transport.file_fallback": { [name: string]: never };
   "transport.file_speed_both": { direct: string; relay: string };
   "transport.file_speed_direct": { direct: string };
-  "transport.file_speed_pending": { [name: string]: never };
   "transport.file_speed_relay": { relay: string };
   "transport.footer": { [name: string]: never };
   "transport.group": { [name: string]: never };
@@ -1619,7 +1615,6 @@ export interface MessageArgs {
   "transport.popover_settings": { [name: string]: never };
   "transport.popover_stable": { [name: string]: never };
   "transport.popover_switched_relay": { [name: string]: never };
-  "transport.read_fallback": { [name: string]: never };
   "transport.read_latency_both": { direct: string; relay: string };
   "transport.read_latency_direct": { direct: string };
   "transport.read_latency_relay": { relay: string };
@@ -1642,7 +1637,6 @@ export interface MessageArgs {
   "transport.status_relay": { [name: string]: never };
   "transport.status_unsupported": { [name: string]: never };
   "transport.summary_off": { [name: string]: never };
-  "transport.unavailable": { reason: string };
   "transport.use_file": { [name: string]: never };
   "transport.use_read": { [name: string]: never };
   "transport.why_not_connected": { [name: string]: never };
@@ -3633,7 +3627,6 @@ export const messages = {
     "tools.exit_code": "Exit code {code}",
     "tools.tool": "Tool",
     "tools.waiting_sync": "Waiting to sync",
-    "transport.conn_footer_unsupported": "This browser doesn't support direct connections.",
     "transport.conn_footer_unsupported_browser": "This browser does not support direct connections; everything connects via relay.",
     "transport.detail_daemon_disabled": "Turn it on from this computer to use direct connections",
     "transport.detail_relay_only": "Everything connects via relay as usual",
@@ -3647,7 +3640,6 @@ export const messages = {
     "transport.diag_connected_body": "Loading and files are back on a direct connection.",
     "transport.diag_connected_title": "Direct connected",
     "transport.diag_copy": "Copy diagnostics",
-    "transport.diag_copy_failed": "Couldn't copy",
     "transport.diag_copy_permission": "Couldn’t copy; check clipboard permission",
     "transport.diag_copy_support": "Copy diagnostics for support",
     "transport.diag_count": "×{count}",
@@ -3777,10 +3769,8 @@ export const messages = {
     "transport.diag_verdict_unknown": "Couldn't connect; the cause is unknown",
     "transport.direct": "Direct connection",
     "transport.direct_slow": "Direct is slow; using relay for now",
-    "transport.file_fallback": "Files using relay for now",
     "transport.file_speed_both": "Direct {direct} · Relay {relay} MiB/s",
     "transport.file_speed_direct": "Direct {direct} MiB/s",
-    "transport.file_speed_pending": "Compared on the next transfer",
     "transport.file_speed_relay": "Relay {relay} MiB/s",
     "transport.footer": "Messages and approvals are sent over both direct and relay, taking whichever arrives first; only relay is used in the background.",
     "transport.group": "Connection",
@@ -3796,7 +3786,6 @@ export const messages = {
     "transport.popover_settings": "Connection settings",
     "transport.popover_stable": "Connection stable",
     "transport.popover_switched_relay": "Switched to relay",
-    "transport.read_fallback": "Loading using relay for now",
     "transport.read_latency_both": "Direct {direct} · Relay {relay} ms",
     "transport.read_latency_direct": "Direct {direct} ms",
     "transport.read_latency_relay": "Relay {relay} ms",
@@ -3819,7 +3808,6 @@ export const messages = {
     "transport.status_relay": "Using relay",
     "transport.status_unsupported": "This browser doesn't support direct connections",
     "transport.summary_off": "Direct is off",
-    "transport.unavailable": "Direct unavailable: {reason}",
     "transport.use_file": "Used for files",
     "transport.use_read": "Used for loading",
     "transport.why_not_connected": "Why it didn’t connect"
@@ -5716,7 +5704,6 @@ export const messages = {
     "tools.exit_code": "退出码 {code}",
     "tools.tool": "工具",
     "tools.waiting_sync": "等待同步",
-    "transport.conn_footer_unsupported": "这个浏览器不支持直连。",
     "transport.conn_footer_unsupported_browser": "这个浏览器不支持直连，已全部经中继连接。",
     "transport.detail_daemon_disabled": "在这台电脑上开启后可用",
     "transport.detail_relay_only": "已全部经中继连接，不影响正常使用",
@@ -5730,7 +5717,6 @@ export const messages = {
     "transport.diag_connected_body": "加载与文件现在已恢复直连。",
     "transport.diag_connected_title": "直连已连上",
     "transport.diag_copy": "复制诊断信息",
-    "transport.diag_copy_failed": "没能复制",
     "transport.diag_copy_permission": "没能复制，请检查剪贴板权限",
     "transport.diag_copy_support": "复制诊断给支持",
     "transport.diag_count": "×{count}",
@@ -5860,10 +5846,8 @@ export const messages = {
     "transport.diag_verdict_unknown": "没连上，原因不明",
     "transport.direct": "直连",
     "transport.direct_slow": "直连较慢，暂时改用中继",
-    "transport.file_fallback": "文件暂时用中继",
     "transport.file_speed_both": "直连 {direct} · 中继 {relay} MiB/s",
     "transport.file_speed_direct": "直连 {direct} MiB/s",
-    "transport.file_speed_pending": "下次传输时比较",
     "transport.file_speed_relay": "中继 {relay} MiB/s",
     "transport.footer": "发消息和审批同时经直连和中继发出，以先到的为准；后台时只用中继。",
     "transport.group": "连接",
@@ -5879,7 +5863,6 @@ export const messages = {
     "transport.popover_settings": "连接设置",
     "transport.popover_stable": "连接稳定",
     "transport.popover_switched_relay": "已切回中继",
-    "transport.read_fallback": "加载暂时用中继",
     "transport.read_latency_both": "直连 {direct} · 中继 {relay} ms",
     "transport.read_latency_direct": "直连 {direct} ms",
     "transport.read_latency_relay": "中继 {relay} ms",
@@ -5902,7 +5885,6 @@ export const messages = {
     "transport.status_relay": "正在用中继",
     "transport.status_unsupported": "这个浏览器不支持直连",
     "transport.summary_off": "直连已关闭",
-    "transport.unavailable": "直连不可用：{reason}",
     "transport.use_file": "用于文件",
     "transport.use_read": "用于加载",
     "transport.why_not_connected": "为什么没连上"

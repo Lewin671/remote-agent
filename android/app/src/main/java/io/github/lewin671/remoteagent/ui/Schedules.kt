@@ -890,7 +890,10 @@ private fun ScheduleConfigSheet(
         else onEvent { setScheduleFormSubmit(ScheduleFormBoolAction.newBuilder().setFormKey(vm.formKey).setValue(false)) }
     }
 
-    Sheet({ if (!vm.mutation.busy) onClose() }) {
+    val initialSnapshot = remember(vm.formKey) { listOf(vm.machineId, vm.agent.name, vm.model, vm.effort, vm.mode.name) }
+    val dirty = showSaveButton && initialSnapshot != listOf(vm.machineId, vm.agent.name, vm.model, vm.effort, vm.mode.name)
+
+    Sheet({ if (!vm.mutation.busy) onClose() }, dirty = dirty) {
         Row(Modifier.fillMaxWidth().padding(bottom = 10.dp), verticalAlignment = Alignment.CenterVertically) {
             Text(if (focus == ScheduleConfigFocus.MODE) copy(UiMessages.newSessionPermissions()) else copy(UiMessages.modelsTitle()), Modifier.weight(1f), style = T.s17b, color = pal.ink)
             TextAction(copy(UiMessages.commonCancel()), { if (!vm.mutation.busy) onClose() }, enabled = !vm.mutation.busy)
@@ -1006,6 +1009,12 @@ internal fun ScheduleTimeSheet(
     val endSegs = listOf(ScheduleTimingEnd.SCHEDULE_TIMING_END_NEVER, ScheduleTimingEnd.SCHEDULE_TIMING_END_COUNT, ScheduleTimingEnd.SCHEDULE_TIMING_END_DATE)
     val busy = mutation.busy
     val sheetEnabled = enabled && !busy
+    val initialTiming = remember(formKey) {
+        listOf(draft.kind.name, draft.date, draft.time, draft.interval, draft.unit.name, draft.end.name, draft.count, draft.zone, draft.workdays.toString())
+    }
+    val timingDirty = submitOnApply && initialTiming != listOf(
+        draft.kind.name, draft.date, draft.time, intervalInput, draft.unit.name, draft.end.name, countInput, zoneInput, draft.workdays.toString(),
+    )
 
     fun applyNow() {
         if (!sheetEnabled) return
@@ -1018,7 +1027,7 @@ internal fun ScheduleTimeSheet(
         }
     }
 
-    Sheet({ if (!busy) close() }) {
+    Sheet({ if (!busy) close() }, dirty = timingDirty) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Text(copy(UiMessages.scheduleWhen()), Modifier.weight(1f), style = T.s17b, color = pal.ink)
             TextAction(if (submitOnApply && busy) copy(UiMessages.scheduleAndroidSaving()) else copy(UiMessages.commonDone()), ::applyNow, enabled = sheetEnabled && draft.timingDoneEnabled)

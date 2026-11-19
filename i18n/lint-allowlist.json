@@ -4063,5 +4063,25 @@
     "path": "web/src/views/Session.tsx",
     "literal": "), [sid, online, remote, remote?.lostAt, awaitingApprovalTool, mname, hasSharedFiles, locale, onTerminal, localAttachments, onRestoreText, onExpandGroup], ); return (",
     "reason": "Lexical JSX scanner false positive: comparison operator '>' earlier on line/block and JSX opening tag '<', not rendered text."
+  },
+  {
+    "path": "web/src/views/Home.tsx",
+    "literal": "sending",
+    "reason": "Internal question submission phase discriminant ('sending'), never rendered as product text."
+  },
+  {
+    "path": "web/src/views/Home.tsx",
+    "literal": "delivered",
+    "reason": "Internal question submission phase discriminant ('delivered'), never rendered as product text."
+  },
+  {
+    "path": "web/src/views/ApprovalCard.tsx",
+    "literal": "); const denyBusy = cmdBusy && lastAllow === false; const denyFailed = !!cmdError && lastAllow === false; const canSubmitDeny = !lockedProp && !cmdBusy && (!cmdError || !!command?.canRetry || !!command?.canAbandon); const actions = (",
+    "reason": "Lexical JSX scanner false positive: TypeScript/JSX expression between angle brackets, not rendered text."
+  },
+  {
+    "path": "web/src/views/Session.tsx",
+    "literal": ") : null; const directChip = showDirectChip ? (",
+    "reason": "Lexical JSX scanner false positive: TypeScript/JSX expression between angle brackets, not rendered text."
   }
 ]

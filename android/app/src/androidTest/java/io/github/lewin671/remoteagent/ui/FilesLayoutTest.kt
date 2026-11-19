@@ -69,13 +69,20 @@ class FilesLayoutTest {
             ui.onNodeWithText("照片和视频").assertDoesNotExist()
             field.assertIsFocused()
         }
-        for (choice in listOf("现在插入这一轮", "这一轮结束后再发")) {
-            ui.onNodeWithContentDescription("发送").performTouchInput { longClick() }
-            field.assertIsFocused()
-            ui.onNodeWithText(choice, substring = true).performClick()
-            ui.onNodeWithText("这一轮结束后再发").assertDoesNotExist()
-            field.assertIsFocused()
-        }
+        ui.onNodeWithText("插入这一轮").performClick()
+        field.assertIsFocused()
+        ui.onNodeWithText("这一轮结束后再发").performClick()
+        ui.onNodeWithText("这一轮结束后再发").assertDoesNotExist()
+        field.assertIsFocused()
+        ui.onNodeWithContentDescription("发送").performClick()
+        field.assertIsFocused()
+        ui.onNodeWithText("本轮结束后发").assertDoesNotExist()
+        ui.onNodeWithText("插入这一轮").performClick()
+        ui.onAllNodesWithText("插入这一轮").onLast().performClick()
+        ui.onNodeWithText("这一轮结束后再发").assertDoesNotExist()
+        field.assertIsFocused()
+        ui.onNodeWithContentDescription("发送").performClick()
+        field.assertIsFocused()
         ui.runOnIdle {
             assertEquals(1, media); assertEquals(1, files)
             assertEquals(1, sends); assertEquals(1, queues)

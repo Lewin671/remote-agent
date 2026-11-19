@@ -158,6 +158,9 @@ object Lucide {
 
     /** Fits the terminal to this screen. */
     val Maximize2 = lucide("maximize-2", "M15 3h6v6", "m21 3-7 7", "m3 21 7-7", "M9 21H3v-6")
+
+    /** Direct LAN/P2P connection indicator. */
+    val Zap = lucide("zap", "M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z")
 }
 
 /**

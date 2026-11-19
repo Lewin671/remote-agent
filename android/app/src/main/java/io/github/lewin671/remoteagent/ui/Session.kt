@@ -3,6 +3,11 @@ package io.github.lewin671.remoteagent.ui
 import android.content.Context
 import android.content.res.Configuration
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -53,6 +58,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Brush
@@ -62,11 +68,18 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Popup
+import androidx.compose.ui.window.PopupProperties
+import kotlin.math.roundToInt
+import io.github.lewin671.remoteagent.core.transport.DirectStage
 import io.github.lewin671.remoteagent.RaApp
 import io.github.lewin671.remoteagent.core.CORE_SESSION_WINDOW_LIMIT
 import io.github.lewin671.remoteagent.core.DEFAULT_AGENT
@@ -381,25 +394,131 @@ private fun SessionTopBar(
     BackHandler(enabled = taskOwned && !dark) { nav.task(header.machineId, header.scheduledTaskId) }
     val back = { if (taskOwned) nav.task(header.machineId, header.scheduledTaskId) else nav.back() }
 
-    Row(
-        Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 6.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
-    ) {
-        GlassButton(Lucide.ChevronLeft, uiText(UiMessages.commonBack()), back, dark = dark)
-        Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(uiText(header.title), style = T.s17b, color = if (dark) CardColors.text else p.ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                val sub = if (dark) CardColors.text2 else p.ink2
-                displayMarkKind(header.status)?.let { mk ->
-                    StatusMark(mk, size = 7.dp, color = if (dark && mk != MarkKind.WAITING) CardColors.text2 else null)
-                    Spacer(Modifier.width(5.dp))
+    val peer = state.peer(header.machineId)
+    val ds = peer.directStatus
+    val directActive = !header.exited && peer.reachable &&
+        ds.stage == DirectStage.DIRECT_ACTIVE && (ds.readDirect || ds.fileDirect)
+    var directOpen by remember(sid) { mutableStateOf(false) }
+    LaunchedEffect(header.exited, peer.reachable) {
+        if (header.exited || !peer.reachable) directOpen = false
+    }
+    val showDirectBadge = !dark && (directActive || directOpen)
+    val computer = if (header.hasComputerName()) uiText(header.computerName) else machineLabel(state, header.machineId)
+
+    Box(Modifier.fillMaxWidth()) {
+        Row(
+            Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            GlassButton(Lucide.ChevronLeft, uiText(UiMessages.commonBack()), back, dark = dark)
+            Column(
+                Modifier.weight(1f)
+                    .heightIn(min = 44.dp)
+                    .then(
+                        if (showDirectBadge) {
+                            Modifier
+                                .clickable(role = Role.Button, onClickLabel = copy(UiMessages.transportPopoverA11Y())) {
+                                    directOpen = !directOpen
+                                }
+                                .semantics { contentDescription = copy(UiMessages.transportPopoverA11Y()) }
+                        } else Modifier,
+                    ),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center,
+            ) {
+                Text(uiText(header.title), style = T.s17b, color = if (dark) CardColors.text else p.ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    val sub = if (dark) CardColors.text2 else p.ink2
+                    displayMarkKind(header.status)?.let { mk ->
+                        StatusMark(mk, size = 7.dp, color = if (dark && mk != MarkKind.WAITING) CardColors.text2 else null)
+                        Spacer(Modifier.width(5.dp))
+                    }
+                    if (rich != null) Text(rich, style = T.s12, color = sub, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
+                    else Text(subtitleText, style = T.s12, color = sub, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
+                    AnimatedVisibility(
+                        visible = showDirectBadge,
+                        enter = fadeIn(tween(200)),
+                        exit = fadeOut(tween(160)),
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(" · ", style = T.s12, color = sub)
+                            Ic(Lucide.Zap, 12.dp, sub)
+                            Spacer(Modifier.width(3.dp))
+                            Text(copy(UiMessages.transportDirect()), style = T.s12, color = sub, maxLines = 1)
+                        }
+                    }
                 }
-                if (rich != null) Text(rich, style = T.s12, color = sub, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                else Text(subtitleText, style = T.s12, color = sub, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+            GlassButton(Lucide.Ellipsis, copy(UiMessages.commonAndroidMore()), { menu = true }, dot = high, dark = dark)
+        }
+        if (directOpen && !dark) {
+            Popup(
+                alignment = Alignment.TopCenter,
+                onDismissRequest = { directOpen = false },
+                properties = PopupProperties(focusable = true, dismissOnBackPress = true, dismissOnClickOutside = true),
+            ) {
+                val rttDirect = ds.readDirectMs?.roundToInt()
+                val rttRelay = ds.readRelayMs?.roundToInt()
+                val popBg = if (p.dark) p.raised else p.paper
+                Column(
+                    Modifier
+                        .padding(top = 58.dp, start = 20.dp, end = 20.dp)
+                        .widthIn(max = 332.dp)
+                        .fillMaxWidth()
+                        .floating(p, Radii.R18)
+                        .clip(Radii.R18)
+                        .background(popBg)
+                        .border(0.5.dp, p.sep, Radii.R18)
+                        .padding(start = 16.dp, end = 16.dp, top = 14.dp, bottom = 6.dp),
+                ) {
+                    Crossfade(
+                        targetState = directActive,
+                        animationSpec = tween(if (Motion.reduced) 100 else 200),
+                    ) { isDirect ->
+                        Column {
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                StatusMark(if (isDirect) MarkKind.ONLINE else MarkKind.OFF, color = if (isDirect) p.green else p.faint)
+                                val title = when {
+                                    isDirect && rttDirect != null -> copy(UiMessages.transportPopoverDirectTitleRtt(name = computer, ms = rttDirect.toString()))
+                                    isDirect -> copy(UiMessages.transportPopoverDirectTitle(name = computer))
+                                    rttRelay != null -> copy(UiMessages.transportPopoverRelayTitleRtt(name = computer, ms = rttRelay.toString()))
+                                    else -> copy(UiMessages.transportPopoverRelayTitle(name = computer))
+                                }
+                                Text(title, style = T.s15b.digits(), color = p.ink, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                            }
+                            Text(
+                                copy(if (isDirect) UiMessages.transportPopoverDirectBody() else UiMessages.transportPopoverRelayBody()),
+                                style = T.s13,
+                                color = p.ink2,
+                                modifier = Modifier.padding(top = 6.dp),
+                            )
+                        }
+                    }
+                    Row(
+                        Modifier.fillMaxWidth().padding(top = 10.dp).topLine(p.sep).heightIn(min = 44.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                    ) {
+                        val footerStatus = when {
+                            !directActive -> copy(UiMessages.transportPopoverSwitchedRelay())
+                            ds.readDirect && !ds.fileDirect -> copy(UiMessages.transportPopoverReadOnly())
+                            ds.fileDirect && !ds.readDirect -> copy(UiMessages.transportPopoverFileOnly())
+                            else -> copy(UiMessages.transportPopoverStable())
+                        }
+                        Text(footerStatus, style = T.s13, color = p.ink2, modifier = Modifier.weight(1f, fill = false))
+                        TextAction(
+                            copy(UiMessages.transportPopoverSettings()),
+                            onClick = {
+                                directOpen = false
+                                nav.deviceConnection(header.machineId)
+                            },
+                            arrow = true,
+                        )
+                    }
+                }
             }
         }
-        GlassButton(Lucide.Ellipsis, copy(UiMessages.commonAndroidMore()), { menu = true }, dot = high, dark = dark)
     }
 
     if (menu) {
@@ -1019,15 +1138,29 @@ private fun BottomArea(
         return
     }
 
+    var dockDenying by remember(sid) { mutableStateOf(false) }
+    var dockOpen by remember(sid) { mutableStateOf(false) }
+    val showDock = vm.dock.hasItem
+
     Reveal(
-        visible = vm.dock.hasItem,
+        visible = showDock || dockDenying,
         enter = Motion.appear(Motion.BASE, riseDp = Motion.DOCK_RISE_DP, grow = true),
         exit = Motion.vanish(Motion.BASE),
     ) {
-        SessionDock(vm, onTerminal = onTerminal, onPlan = onPlan, onQuestion = onQuestion, onApproval = onApproval)
+        SessionDock(
+            vm,
+            onTerminal = onTerminal,
+            onPlan = onPlan,
+            onQuestion = onQuestion,
+            onApproval = onApproval,
+            onDenyingChange = { dockDenying = it },
+            onOpenChange = { dockOpen = it },
+        )
     }
 
-    Composer(sid = sid, state = state, vm = vm, onSent = onSent, onFocus = {})
+    if (!dockDenying) {
+        Composer(sid = sid, state = state, vm = vm, onSent = onSent, onFocus = {}, demoted = showDock && dockOpen)
+    }
 }
 
 @Composable
@@ -1063,6 +1196,7 @@ internal fun Composer(
     vm: SessionViewModel,
     onSent: () -> Unit,
     onFocus: (Boolean) -> Unit,
+    demoted: Boolean = false,
 ) {
     val copy = uiText()
     val p = pal
@@ -1154,6 +1288,7 @@ internal fun Composer(
         }) else null,
         canInterrupt = online && vm.actions.canInterrupt && !interruptBusy,
         hasDraft = text.isNotBlank() || images.images.isNotEmpty(),
+        demoted = demoted,
         onFocus = onFocus,
         top = { ImageStrip(images, remote, machineId, maxImg) },
     )

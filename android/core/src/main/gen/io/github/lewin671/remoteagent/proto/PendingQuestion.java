@@ -118,6 +118,58 @@ public  final class PendingQuestion extends
     bitField0_ = (bitField0_ & ~0x00000001);
   }
 
+  public static final int SEQ_FIELD_NUMBER = 3;
+  private long seq_;
+  /**
+   * <code>uint64 seq = 3 [json_name = "seq"];</code>
+   * @return The seq.
+   */
+  @java.lang.Override
+  public long getSeq() {
+    return seq_;
+  }
+  /**
+   * <code>uint64 seq = 3 [json_name = "seq"];</code>
+   * @param value The seq to set.
+   */
+  private void setSeq(long value) {
+    
+    seq_ = value;
+  }
+  /**
+   * <code>uint64 seq = 3 [json_name = "seq"];</code>
+   */
+  private void clearSeq() {
+
+    seq_ = 0L;
+  }
+
+  public static final int ASKED_AT_MS_FIELD_NUMBER = 4;
+  private long askedAtMs_;
+  /**
+   * <code>int64 asked_at_ms = 4 [json_name = "askedAtMs"];</code>
+   * @return The askedAtMs.
+   */
+  @java.lang.Override
+  public long getAskedAtMs() {
+    return askedAtMs_;
+  }
+  /**
+   * <code>int64 asked_at_ms = 4 [json_name = "askedAtMs"];</code>
+   * @param value The askedAtMs to set.
+   */
+  private void setAskedAtMs(long value) {
+    
+    askedAtMs_ = value;
+  }
+  /**
+   * <code>int64 asked_at_ms = 4 [json_name = "askedAtMs"];</code>
+   */
+  private void clearAskedAtMs() {
+
+    askedAtMs_ = 0L;
+  }
+
   public static io.github.lewin671.remoteagent.proto.PendingQuestion parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -315,6 +367,62 @@ public  final class PendingQuestion extends
       return this;
     }
 
+    /**
+     * <code>uint64 seq = 3 [json_name = "seq"];</code>
+     * @return The seq.
+     */
+    @java.lang.Override
+    public long getSeq() {
+      return instance.getSeq();
+    }
+    /**
+     * <code>uint64 seq = 3 [json_name = "seq"];</code>
+     * @param value The seq to set.
+     * @return This builder for chaining.
+     */
+    public Builder setSeq(long value) {
+      copyOnWrite();
+      instance.setSeq(value);
+      return this;
+    }
+    /**
+     * <code>uint64 seq = 3 [json_name = "seq"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearSeq() {
+      copyOnWrite();
+      instance.clearSeq();
+      return this;
+    }
+
+    /**
+     * <code>int64 asked_at_ms = 4 [json_name = "askedAtMs"];</code>
+     * @return The askedAtMs.
+     */
+    @java.lang.Override
+    public long getAskedAtMs() {
+      return instance.getAskedAtMs();
+    }
+    /**
+     * <code>int64 asked_at_ms = 4 [json_name = "askedAtMs"];</code>
+     * @param value The askedAtMs to set.
+     * @return This builder for chaining.
+     */
+    public Builder setAskedAtMs(long value) {
+      copyOnWrite();
+      instance.setAskedAtMs(value);
+      return this;
+    }
+    /**
+     * <code>int64 asked_at_ms = 4 [json_name = "askedAtMs"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearAskedAtMs() {
+      copyOnWrite();
+      instance.clearAskedAtMs();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.PendingQuestion)
   }
   @java.lang.Override
@@ -334,10 +442,12 @@ public  final class PendingQuestion extends
             "bitField0_",
             "questionId_",
             "request_",
+            "seq_",
+            "askedAtMs_",
           };
           java.lang.String info =
-              "\u0000\u0002\u0000\u0001\u0001\u0002\u0002\u0000\u0000\u0000\u0001\u0208\u0002\u1009" +
-              "\u0000";
+              "\u0000\u0004\u0000\u0001\u0001\u0004\u0004\u0000\u0000\u0000\u0001\u0208\u0002\u1009" +
+              "\u0000\u0003\u0003\u0004\u0002";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

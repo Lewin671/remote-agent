@@ -562,6 +562,7 @@ private fun ChoiceSheet(
 fun DeviceScreen(
     id: String,
     scrollToStorage: Boolean = false,
+    scrollToConnection: Boolean = false,
 ) {
     val remote = LocalRemote.current
     val nav = LocalNav.current
@@ -597,6 +598,7 @@ fun DeviceScreen(
     DeviceScreenContent(
         vm = vm,
         scrollToStorage = scrollToStorage,
+        scrollToConnection = scrollToConnection,
         isAuthority = state.isAuthority,
         appOnline = state.conn == io.github.lewin671.remoteagent.core.ConnState.ONLINE,
         removeRunning = remove.running,
@@ -644,6 +646,7 @@ fun DeviceScreen(
 internal fun DeviceScreenContent(
     vm: MachineSettingsViewModel,
     scrollToStorage: Boolean = false,
+    scrollToConnection: Boolean = false,
     isAuthority: Boolean = false,
     appOnline: Boolean = true,
     removeRunning: Boolean = false,
@@ -669,6 +672,7 @@ internal fun DeviceScreenContent(
     var pickTimeout by remember(vm.machineId) { mutableStateOf(false) }
     var pickIdleClose by remember(vm.machineId) { mutableStateOf(false) }
     val storageAt = remember { androidx.compose.foundation.relocation.BringIntoViewRequester() }
+    val connectionAt = remember { androidx.compose.foundation.relocation.BringIntoViewRequester() }
     val title = vm.name.ifEmpty { vm.machineId }
     PageScaffold(title, readable = true) {
         if (!vm.found) {
@@ -736,7 +740,14 @@ internal fun DeviceScreenContent(
                 )
             }
             if (vm.member && vm.hasConnection()) {
-                DirectConnectionGroup(vm.connection, onToggle = onToggleDirect, onDiagnostics = onOpenDiagnostics)
+                Box(Modifier.bringIntoViewRequester(connectionAt)) {
+                    Column {
+                        DirectConnectionGroup(vm.connection, onToggle = onToggleDirect, onDiagnostics = onOpenDiagnostics)
+                    }
+                }
+                LaunchedEffect(scrollToConnection) {
+                    if (scrollToConnection) { androidx.compose.runtime.withFrameNanos { }; connectionAt.bringIntoView() }
+                }
             }
             if (vm.cliVersionsList.isNotEmpty()) {
                 Group(

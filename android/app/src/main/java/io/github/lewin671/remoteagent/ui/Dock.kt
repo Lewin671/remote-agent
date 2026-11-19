@@ -5,6 +5,7 @@ import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -24,18 +25,22 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.semantics.Role
@@ -45,6 +50,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import io.github.lewin671.remoteagent.core.UiMessages
 import io.github.lewin671.remoteagent.core.plain
 import io.github.lewin671.remoteagent.core.proto.SessionApprovalDockView
@@ -171,15 +178,85 @@ internal fun SessionDock(
     onPlan: () -> Unit,
     onQuestion: (qid: String) -> Unit,
     onApproval: (aid: String) -> Unit,
+    onDenyingChange: (Boolean) -> Unit = {},
+    onOpenChange: (Boolean) -> Unit = {},
 ) {
+    val copy = uiText()
     val dock = vm.dock
-    if (!dock.hasItem) return
+    var prevApprovalId by remember(vm.sessionId) { mutableStateOf("") }
+    var wasDenying by remember(vm.sessionId) { mutableStateOf(false) }
+    var localResolveAt by remember(vm.sessionId) { mutableLongStateOf(0L) }
+    var externalNote by remember(vm.sessionId) { mutableStateOf(false) }
+
+    val activeApprovalId = if (dock.hasItem && dock.kind == SessionDockKind.SESSION_DOCK_KIND_APPROVAL) dock.approval.approvalId else ""
+    LaunchedEffect(activeApprovalId) {
+        if (prevApprovalId.isNotEmpty() && prevApprovalId != activeApprovalId && wasDenying &&
+            (System.currentTimeMillis() - localResolveAt > 2000L)
+        ) {
+            externalNote = true
+            wasDenying = false
+            onDenyingChange(false)
+            prevApprovalId = activeApprovalId
+            delay(1200)
+            externalNote = false
+        } else {
+            if (prevApprovalId != activeApprovalId) wasDenying = false
+            prevApprovalId = activeApprovalId
+        }
+    }
+
+    if (!dock.hasItem) {
+        DisposableEffect(Unit) {
+            onOpenChange(false)
+            onDenyingChange(false)
+            onDispose { }
+        }
+        if (externalNote) {
+            DockShell {
+                DarkCardLine(copy(UiMessages.approvalHandledInTerminal()), "")
+            }
+        }
+        return
+    }
+    if (externalNote) {
+        DockShell {
+            DarkCardLine(copy(UiMessages.approvalHandledInTerminal()), "")
+        }
+    }
     val sid = vm.sessionId
     when (dock.kind) {
-        SessionDockKind.SESSION_DOCK_KIND_APPROVAL -> ApprovalDock(sid, vm, onApproval)
-        SessionDockKind.SESSION_DOCK_KIND_QUESTION -> QuestionDock(sid, vm, onTerminal, onQuestion)
-        SessionDockKind.SESSION_DOCK_KIND_PLAN -> PlanDock(sid, vm, onPlan)
-        SessionDockKind.SESSION_DOCK_KIND_TERMINAL_POPUP -> PopupDock(sid, dock, onTerminal)
+        SessionDockKind.SESSION_DOCK_KIND_APPROVAL -> ApprovalDock(
+            sid = sid,
+            vm = vm,
+            onDenyingChange = { d ->
+                wasDenying = d
+                onDenyingChange(d)
+            },
+            onOpenChange = onOpenChange,
+            onLocalResolve = { localResolveAt = System.currentTimeMillis() },
+            onFull = onApproval,
+        )
+        SessionDockKind.SESSION_DOCK_KIND_QUESTION -> {
+            DisposableEffect(Unit) {
+                onDenyingChange(false)
+                onDispose {}
+            }
+            QuestionDock(sid, vm, onTerminal, onQuestion, onOpenChange = onOpenChange)
+        }
+        SessionDockKind.SESSION_DOCK_KIND_PLAN -> {
+            DisposableEffect(Unit) {
+                onDenyingChange(false)
+                onDispose {}
+            }
+            PlanDock(sid = sid, vm = vm, onOpenChange = onOpenChange, onFull = onPlan)
+        }
+        SessionDockKind.SESSION_DOCK_KIND_TERMINAL_POPUP -> {
+            DisposableEffect(Unit) {
+                onDenyingChange(false)
+                onDispose {}
+            }
+            PopupDock(sid, dock, onTerminal, onOpenChange = onOpenChange)
+        }
         else -> {}
     }
 }
@@ -189,12 +266,20 @@ private fun PendingCoreDock(
     sid: String,
     dock: SessionDockView,
     headExtra: (@Composable () -> Unit)? = null,
+    scrollState: ScrollState = rememberScrollState(),
+    scrollMinHeight: androidx.compose.ui.unit.Dp = 0.dp,
+    onOpenChange: (Boolean) -> Unit = {},
+    onScrollMeasured: () -> Unit = {},
     body: @Composable ColumnScope.(close: () -> Unit) -> Unit,
     actions: @Composable ColumnScope.() -> Unit,
 ) {
     val copy = uiText()
     val itemId = dock.kind.name + ":" + dock.itemId
     val open = DockFolds.isOpen(sid, itemId) { hasDraft(sid) }
+    DisposableEffect(open) {
+        onOpenChange(open)
+        onDispose { onOpenChange(false) }
+    }
     val keyboard = LocalSoftwareKeyboardController.current
     val focus = LocalFocusManager.current
     val label = uiText(dock.title)
@@ -223,7 +308,12 @@ private fun PendingCoreDock(
                     CardLink(copy(UiMessages.markdownCollapse()), toggle, up = true)
                 })
                 Column(Modifier.heightIn(max = LocalDockMax.current)) {
-                    Column(Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState())) {
+                    Column(
+                        Modifier.weight(1f, fill = false)
+                            .then(if (scrollMinHeight > 0.dp) Modifier.heightIn(min = scrollMinHeight) else Modifier)
+                            .onGloballyPositioned { onScrollMeasured() }
+                            .verticalScroll(scrollState),
+                    ) {
                         body { DockFolds.set(sid, itemId, false) }
                     }
                     Column { actions() }
@@ -244,7 +334,14 @@ fun ApprovalContent(a: SessionApprovalDockView) {
 }
 
 @Composable
-internal fun ApprovalDock(sid: String, vm: SessionViewModel, onFull: (String) -> Unit) {
+internal fun ApprovalDock(
+    sid: String,
+    vm: SessionViewModel,
+    onDenyingChange: (Boolean) -> Unit = {},
+    onOpenChange: (Boolean) -> Unit = {},
+    onLocalResolve: () -> Unit = {},
+    onFull: (String) -> Unit,
+) {
     val copy = uiText()
     val dock = vm.dock
     val a = dock.approval
@@ -254,16 +351,43 @@ internal fun ApprovalDock(sid: String, vm: SessionViewModel, onFull: (String) ->
     val locked = vm.header.computerUnlinked || (dock.deadlineMs > 0 && t >= dock.deadlineMs)
     var denying by rememberSaveable(a.approvalId) { mutableStateOf(false) }
     var expandFull by rememberSaveable(a.approvalId) { mutableStateOf(false) }
-    AnimatedContent(d.submitted, transitionSpec = { dockSwap() }, label = "approval-answered") { submitted ->
+    var dockOpen by remember { mutableStateOf(true) }
+    val scrollState = rememberScrollState()
+    var seenBottom by rememberSaveable(a.approvalId) { mutableStateOf(false) }
+    var scrollMeasured by remember(a.approvalId) { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+
+    LaunchedEffect(scrollMeasured, scrollState.value, scrollState.maxValue, a.approvalId) {
+        if (scrollMeasured && (scrollState.maxValue == 0 || scrollState.value >= scrollState.maxValue - 4)) {
+            seenBottom = true
+        }
+    }
+
+    val holdOpenForDeny = denying && d.chosenAllow == false && (d.running || d.failed)
+    val showCompactSubmitted = d.submitted && !holdOpenForDeny
+    val activeDenying = denying && dockOpen && !showCompactSubmitted
+    DisposableEffect(activeDenying) {
+        onDenyingChange(activeDenying)
+        onDispose { onDenyingChange(false) }
+    }
+
+    AnimatedContent(showCompactSubmitted, transitionSpec = { dockSwap() }, label = "approval-answered") { submitted ->
         if (submitted) DockShell { ApprovalSubmitted(uiText(dock.title), d) }
         else PendingCoreDock(
             sid,
             dock,
             headExtra = if (a.body.length > 240) { { CardLink(copy(UiMessages.markdownExpand()), { onFull(a.approvalId) }) } } else null,
+            scrollState = scrollState,
+            scrollMinHeight = if (denying) 120.dp else 0.dp,
+            onOpenChange = {
+                dockOpen = it
+                onOpenChange(it)
+            },
+            onScrollMeasured = { scrollMeasured = true },
             body = {
                 val shown = a.body.trim().ifEmpty { a.commandPreview.trim() }
                 if (shown.isNotEmpty()) {
-                    CommandBlock(shown, Modifier.padding(top = 14.dp), maxLines = if (denying) 2 else if (expandFull) Int.MAX_VALUE else CARD_LINES)
+                    CommandBlock(shown, Modifier.padding(top = 14.dp), maxLines = if (expandFull || denying) Int.MAX_VALUE else CARD_LINES)
                 }
                 if (a.bodyTruncated) Text(copy(UiMessages.approvalTruncated()), style = T.s13, color = CardColors.red, modifier = Modifier.padding(top = 8.dp))
                 if (a.description.isNotEmpty()) Text(a.description.trim(), style = T.s15, color = CardColors.text2, modifier = Modifier.padding(top = 12.dp))
@@ -279,6 +403,9 @@ internal fun ApprovalDock(sid: String, vm: SessionViewModel, onFull: (String) ->
                 always = a.canAlwaysAllow,
                 alwaysLabel = uiText(a.alwaysLabel).ifEmpty { copy(UiMessages.approvalAlwaysAllow()) },
                 denyPlaceholder = uiText(a.denyReasonPlaceholder).ifEmpty { copy(UiMessages.approvalReasonPlaceholder()) },
+                scrollToBottomNeeded = !denying && scrollState.maxValue > 0 && !seenBottom,
+                onScrollToBottom = { scope.launch { scrollState.animateScrollTo(scrollState.maxValue) } },
+                onResolveStarted = { onLocalResolve() },
             )
         }
     }
@@ -442,11 +569,12 @@ internal fun QuestionBody(
 }
 
 @Composable
-private fun QuestionDock(sid: String, vm: SessionViewModel, onTerminal: () -> Unit, onQuestion: (String) -> Unit) {
+private fun QuestionDock(sid: String, vm: SessionViewModel, onTerminal: () -> Unit, onQuestion: (String) -> Unit, onOpenChange: (Boolean) -> Unit = {}) {
     val q = vm.dock.question
     PendingCoreDock(
         sid,
         vm.dock,
+        onOpenChange = onOpenChange,
         body = { QuestionBody(sid, vm, onTerminal, full = false, onLong = { onQuestion(q.questionId) }, part = 1) },
     ) {
         QuestionBody(sid, vm, onTerminal, full = false, part = 2)
@@ -489,7 +617,7 @@ fun QuestionPage(sid: String, qid: String) {
 }
 
 @Composable
-internal fun PlanDock(sid: String, vm: SessionViewModel, onFull: () -> Unit) {
+internal fun PlanDock(sid: String, vm: SessionViewModel, onOpenChange: (Boolean) -> Unit = {}, onFull: () -> Unit) {
     val copy = uiText()
     val dock = vm.dock
     val plan = dock.plan
@@ -498,6 +626,7 @@ internal fun PlanDock(sid: String, vm: SessionViewModel, onFull: () -> Unit) {
         sid,
         dock,
         headExtra = { CardLink(copy(UiMessages.markdownExpand()), onFull) },
+        onOpenChange = onOpenChange,
         body = {
             Text(
                 plan.markdown.lines().map { plain(it) }.filter { it.isNotBlank() }.joinToString("\n"),
@@ -592,12 +721,13 @@ internal fun PlanButtons(
 }
 
 @Composable
-private fun PopupDock(sid: String, dock: SessionDockView, onTerminal: () -> Unit) {
+private fun PopupDock(sid: String, dock: SessionDockView, onTerminal: () -> Unit, onOpenChange: (Boolean) -> Unit = {}) {
     val copy = uiText()
     val popup = dock.terminalPopup
     PendingCoreDock(
         sid,
         dock,
+        onOpenChange = onOpenChange,
         body = {
             if (popup.hasPopupTitle()) {
                 Text(uiText(popup.popupTitle), style = T.mono13.copy(fontSize = 15.sp, lineHeight = 22.sp), color = CardColors.text, modifier = Modifier.padding(top = 12.dp))

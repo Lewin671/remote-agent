@@ -1350,6 +1350,130 @@ public struct PBCoreHomeViewModel: @unchecked Sendable {
     set {_uniqueStorage()._hasMoreEnded_p = newValue}
   }
 
+  public var topAttentionQuestion: PBCoreHomeQuestionCardView {
+    get {return _storage._topAttentionQuestion ?? PBCoreHomeQuestionCardView()}
+    set {_uniqueStorage()._topAttentionQuestion = newValue}
+  }
+  /// Returns true if `topAttentionQuestion` has been explicitly set.
+  public var hasTopAttentionQuestion: Bool {return _storage._topAttentionQuestion != nil}
+  /// Clears the value of `topAttentionQuestion`. Subsequent reads from it will return its default value.
+  public mutating func clearTopAttentionQuestion() {_uniqueStorage()._topAttentionQuestion = nil}
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+
+  fileprivate var _storage = _StorageClass.defaultInstance
+}
+
+public struct PBCoreHomeQuestionOptionView: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var optionNum: Int32 = 0
+
+  public var label: String = String()
+
+  public var description_p: String = String()
+
+  public var recommended: Bool = false
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public struct PBCoreHomeQuestionCardView: @unchecked Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var sessionID: String {
+    get {return _storage._sessionID}
+    set {_uniqueStorage()._sessionID = newValue}
+  }
+
+  public var machineID: String {
+    get {return _storage._machineID}
+    set {_uniqueStorage()._machineID = newValue}
+  }
+
+  public var questionID: String {
+    get {return _storage._questionID}
+    set {_uniqueStorage()._questionID = newValue}
+  }
+
+  public var observedEventSeq: UInt64 {
+    get {return _storage._observedEventSeq}
+    set {_uniqueStorage()._observedEventSeq = newValue}
+  }
+
+  public var badgeText: PBCoreText {
+    get {return _storage._badgeText ?? PBCoreText()}
+    set {_uniqueStorage()._badgeText = newValue}
+  }
+  /// Returns true if `badgeText` has been explicitly set.
+  public var hasBadgeText: Bool {return _storage._badgeText != nil}
+  /// Clears the value of `badgeText`. Subsequent reads from it will return its default value.
+  public mutating func clearBadgeText() {_uniqueStorage()._badgeText = nil}
+
+  public var timeText: PBCoreText {
+    get {return _storage._timeText ?? PBCoreText()}
+    set {_uniqueStorage()._timeText = newValue}
+  }
+  /// Returns true if `timeText` has been explicitly set.
+  public var hasTimeText: Bool {return _storage._timeText != nil}
+  /// Clears the value of `timeText`. Subsequent reads from it will return its default value.
+  public mutating func clearTimeText() {_uniqueStorage()._timeText = nil}
+
+  public var title: PBCoreText {
+    get {return _storage._title ?? PBCoreText()}
+    set {_uniqueStorage()._title = newValue}
+  }
+  /// Returns true if `title` has been explicitly set.
+  public var hasTitle: Bool {return _storage._title != nil}
+  /// Clears the value of `title`. Subsequent reads from it will return its default value.
+  public mutating func clearTitle() {_uniqueStorage()._title = nil}
+
+  public var `where`: PBCoreText {
+    get {return _storage._where ?? PBCoreText()}
+    set {_uniqueStorage()._where = newValue}
+  }
+  /// Returns true if ``where`` has been explicitly set.
+  public var hasWhere: Bool {return _storage._where != nil}
+  /// Clears the value of ``where``. Subsequent reads from it will return its default value.
+  public mutating func clearWhere() {_uniqueStorage()._where = nil}
+
+  public var header: String {
+    get {return _storage._header}
+    set {_uniqueStorage()._header = newValue}
+  }
+
+  public var questionText: String {
+    get {return _storage._questionText}
+    set {_uniqueStorage()._questionText = newValue}
+  }
+
+  public var options: [PBCoreHomeQuestionOptionView] {
+    get {return _storage._options}
+    set {_uniqueStorage()._options = newValue}
+  }
+
+  public var canAnswer: Bool {
+    get {return _storage._canAnswer}
+    set {_uniqueStorage()._canAnswer = newValue}
+  }
+
+  public var offlineNote: PBCoreText {
+    get {return _storage._offlineNote ?? PBCoreText()}
+    set {_uniqueStorage()._offlineNote = newValue}
+  }
+  /// Returns true if `offlineNote` has been explicitly set.
+  public var hasOfflineNote: Bool {return _storage._offlineNote != nil}
+  /// Clears the value of `offlineNote`. Subsequent reads from it will return its default value.
+  public mutating func clearOfflineNote() {_uniqueStorage()._offlineNote = nil}
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -2733,7 +2857,7 @@ extension PBCoreProjectListingView: SwiftProtobuf.Message, SwiftProtobuf._Messag
 
 extension PBCoreHomeViewModel: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".HomeViewModel"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{4}\u{2}scope_selectable\0\u{3}scope_key\0\u{3}scope_title\0\u{3}scope_short_path\0\u{1}connection\0\u{1}headline\0\u{1}empty\0\u{3}can_filter\0\u{3}filter_query\0\u{3}filter_summary\0\u{3}no_matches\0\u{3}waiting_total\0\u{3}live_total\0\u{3}ended_total\0\u{3}timeline_total\0\u{3}top_attention_session_id\0\u{3}top_attention_actionable\0\u{3}top_attention_card\0\u{1}attention\0\u{1}running\0\u{3}ended_groups\0\u{3}ended_tail\0\u{3}scope_menu\0\u{3}sidebar_projects\0\u{3}can_start\0\u{3}selected_session_id\0\u{3}has_more_ended\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{4}\u{2}scope_selectable\0\u{3}scope_key\0\u{3}scope_title\0\u{3}scope_short_path\0\u{1}connection\0\u{1}headline\0\u{1}empty\0\u{3}can_filter\0\u{3}filter_query\0\u{3}filter_summary\0\u{3}no_matches\0\u{3}waiting_total\0\u{3}live_total\0\u{3}ended_total\0\u{3}timeline_total\0\u{3}top_attention_session_id\0\u{3}top_attention_actionable\0\u{3}top_attention_card\0\u{1}attention\0\u{1}running\0\u{3}ended_groups\0\u{3}ended_tail\0\u{3}scope_menu\0\u{3}sidebar_projects\0\u{3}can_start\0\u{3}selected_session_id\0\u{3}has_more_ended\0\u{3}top_attention_question\0")
 
   fileprivate class _StorageClass {
     var _scopeSelectable: Bool = false
@@ -2763,6 +2887,7 @@ extension PBCoreHomeViewModel: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
     var _canStart: Bool = false
     var _selectedSessionID: String = String()
     var _hasMoreEnded_p: Bool = false
+    var _topAttentionQuestion: PBCoreHomeQuestionCardView? = nil
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -2800,6 +2925,7 @@ extension PBCoreHomeViewModel: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
       _canStart = source._canStart
       _selectedSessionID = source._selectedSessionID
       _hasMoreEnded_p = source._hasMoreEnded_p
+      _topAttentionQuestion = source._topAttentionQuestion
     }
   }
 
@@ -2845,6 +2971,7 @@ extension PBCoreHomeViewModel: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
         case 26: try { try decoder.decodeSingularBoolField(value: &_storage._canStart) }()
         case 27: try { try decoder.decodeSingularStringField(value: &_storage._selectedSessionID) }()
         case 28: try { try decoder.decodeSingularBoolField(value: &_storage._hasMoreEnded_p) }()
+        case 29: try { try decoder.decodeSingularMessageField(value: &_storage._topAttentionQuestion) }()
         default: break
         }
       }
@@ -2938,6 +3065,9 @@ extension PBCoreHomeViewModel: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
       if _storage._hasMoreEnded_p != false {
         try visitor.visitSingularBoolField(value: _storage._hasMoreEnded_p, fieldNumber: 28)
       }
+      try { if let v = _storage._topAttentionQuestion {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 29)
+      } }()
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -2974,6 +3104,206 @@ extension PBCoreHomeViewModel: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
         if _storage._canStart != rhs_storage._canStart {return false}
         if _storage._selectedSessionID != rhs_storage._selectedSessionID {return false}
         if _storage._hasMoreEnded_p != rhs_storage._hasMoreEnded_p {return false}
+        if _storage._topAttentionQuestion != rhs_storage._topAttentionQuestion {return false}
+        return true
+      }
+      if !storagesAreEqual {return false}
+    }
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension PBCoreHomeQuestionOptionView: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".HomeQuestionOptionView"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}option_num\0\u{1}label\0\u{1}description\0\u{1}recommended\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularInt32Field(value: &self.optionNum) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.label) }()
+      case 3: try { try decoder.decodeSingularStringField(value: &self.description_p) }()
+      case 4: try { try decoder.decodeSingularBoolField(value: &self.recommended) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if self.optionNum != 0 {
+      try visitor.visitSingularInt32Field(value: self.optionNum, fieldNumber: 1)
+    }
+    if !self.label.isEmpty {
+      try visitor.visitSingularStringField(value: self.label, fieldNumber: 2)
+    }
+    if !self.description_p.isEmpty {
+      try visitor.visitSingularStringField(value: self.description_p, fieldNumber: 3)
+    }
+    if self.recommended != false {
+      try visitor.visitSingularBoolField(value: self.recommended, fieldNumber: 4)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: PBCoreHomeQuestionOptionView, rhs: PBCoreHomeQuestionOptionView) -> Bool {
+    if lhs.optionNum != rhs.optionNum {return false}
+    if lhs.label != rhs.label {return false}
+    if lhs.description_p != rhs.description_p {return false}
+    if lhs.recommended != rhs.recommended {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension PBCoreHomeQuestionCardView: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".HomeQuestionCardView"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}session_id\0\u{3}machine_id\0\u{3}question_id\0\u{3}observed_event_seq\0\u{3}badge_text\0\u{3}time_text\0\u{1}title\0\u{1}where\0\u{1}header\0\u{3}question_text\0\u{1}options\0\u{3}can_answer\0\u{3}offline_note\0")
+
+  fileprivate class _StorageClass {
+    var _sessionID: String = String()
+    var _machineID: String = String()
+    var _questionID: String = String()
+    var _observedEventSeq: UInt64 = 0
+    var _badgeText: PBCoreText? = nil
+    var _timeText: PBCoreText? = nil
+    var _title: PBCoreText? = nil
+    var _where: PBCoreText? = nil
+    var _header: String = String()
+    var _questionText: String = String()
+    var _options: [PBCoreHomeQuestionOptionView] = []
+    var _canAnswer: Bool = false
+    var _offlineNote: PBCoreText? = nil
+
+      // This property is used as the initial default value for new instances of the type.
+      // The type itself is protecting the reference to its storage via CoW semantics.
+      // This will force a copy to be made of this reference when the first mutation occurs;
+      // hence, it is safe to mark this as `nonisolated(unsafe)`.
+      static nonisolated(unsafe) let defaultInstance = _StorageClass()
+
+    private init() {}
+
+    init(copying source: _StorageClass) {
+      _sessionID = source._sessionID
+      _machineID = source._machineID
+      _questionID = source._questionID
+      _observedEventSeq = source._observedEventSeq
+      _badgeText = source._badgeText
+      _timeText = source._timeText
+      _title = source._title
+      _where = source._where
+      _header = source._header
+      _questionText = source._questionText
+      _options = source._options
+      _canAnswer = source._canAnswer
+      _offlineNote = source._offlineNote
+    }
+  }
+
+  fileprivate mutating func _uniqueStorage() -> _StorageClass {
+    if !isKnownUniquelyReferenced(&_storage) {
+      _storage = _StorageClass(copying: _storage)
+    }
+    return _storage
+  }
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    _ = _uniqueStorage()
+    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+      while let fieldNumber = try decoder.nextFieldNumber() {
+        // The use of inline closures is to circumvent an issue where the compiler
+        // allocates stack space for every case branch when no optimizations are
+        // enabled. https://github.com/apple/swift-protobuf/issues/1034
+        switch fieldNumber {
+        case 1: try { try decoder.decodeSingularStringField(value: &_storage._sessionID) }()
+        case 2: try { try decoder.decodeSingularStringField(value: &_storage._machineID) }()
+        case 3: try { try decoder.decodeSingularStringField(value: &_storage._questionID) }()
+        case 4: try { try decoder.decodeSingularUInt64Field(value: &_storage._observedEventSeq) }()
+        case 5: try { try decoder.decodeSingularMessageField(value: &_storage._badgeText) }()
+        case 6: try { try decoder.decodeSingularMessageField(value: &_storage._timeText) }()
+        case 7: try { try decoder.decodeSingularMessageField(value: &_storage._title) }()
+        case 8: try { try decoder.decodeSingularMessageField(value: &_storage._where) }()
+        case 9: try { try decoder.decodeSingularStringField(value: &_storage._header) }()
+        case 10: try { try decoder.decodeSingularStringField(value: &_storage._questionText) }()
+        case 11: try { try decoder.decodeRepeatedMessageField(value: &_storage._options) }()
+        case 12: try { try decoder.decodeSingularBoolField(value: &_storage._canAnswer) }()
+        case 13: try { try decoder.decodeSingularMessageField(value: &_storage._offlineNote) }()
+        default: break
+        }
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every if/case branch local when no optimizations
+      // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+      // https://github.com/apple/swift-protobuf/issues/1182
+      if !_storage._sessionID.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._sessionID, fieldNumber: 1)
+      }
+      if !_storage._machineID.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._machineID, fieldNumber: 2)
+      }
+      if !_storage._questionID.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._questionID, fieldNumber: 3)
+      }
+      if _storage._observedEventSeq != 0 {
+        try visitor.visitSingularUInt64Field(value: _storage._observedEventSeq, fieldNumber: 4)
+      }
+      try { if let v = _storage._badgeText {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 5)
+      } }()
+      try { if let v = _storage._timeText {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 6)
+      } }()
+      try { if let v = _storage._title {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 7)
+      } }()
+      try { if let v = _storage._where {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 8)
+      } }()
+      if !_storage._header.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._header, fieldNumber: 9)
+      }
+      if !_storage._questionText.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._questionText, fieldNumber: 10)
+      }
+      if !_storage._options.isEmpty {
+        try visitor.visitRepeatedMessageField(value: _storage._options, fieldNumber: 11)
+      }
+      if _storage._canAnswer != false {
+        try visitor.visitSingularBoolField(value: _storage._canAnswer, fieldNumber: 12)
+      }
+      try { if let v = _storage._offlineNote {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 13)
+      } }()
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: PBCoreHomeQuestionCardView, rhs: PBCoreHomeQuestionCardView) -> Bool {
+    if lhs._storage !== rhs._storage {
+      let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
+        let _storage = _args.0
+        let rhs_storage = _args.1
+        if _storage._sessionID != rhs_storage._sessionID {return false}
+        if _storage._machineID != rhs_storage._machineID {return false}
+        if _storage._questionID != rhs_storage._questionID {return false}
+        if _storage._observedEventSeq != rhs_storage._observedEventSeq {return false}
+        if _storage._badgeText != rhs_storage._badgeText {return false}
+        if _storage._timeText != rhs_storage._timeText {return false}
+        if _storage._title != rhs_storage._title {return false}
+        if _storage._where != rhs_storage._where {return false}
+        if _storage._header != rhs_storage._header {return false}
+        if _storage._questionText != rhs_storage._questionText {return false}
+        if _storage._options != rhs_storage._options {return false}
+        if _storage._canAnswer != rhs_storage._canAnswer {return false}
+        if _storage._offlineNote != rhs_storage._offlineNote {return false}
         return true
       }
       if !storagesAreEqual {return false}

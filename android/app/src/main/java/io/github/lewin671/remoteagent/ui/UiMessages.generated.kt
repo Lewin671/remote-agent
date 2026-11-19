@@ -6232,9 +6232,6 @@ private fun resolveUiMessage12(resources: android.content.res.Resources, message
         "transport.conn_footer_unsupported_app" -> {
             resources.getString(R.string.transport_conn_footer_unsupported_app)
         }
-        "transport.conn_footer_unsupported_device" -> {
-            resources.getString(R.string.transport_conn_footer_unsupported_device)
-        }
         "transport.detail_daemon_disabled" -> {
             resources.getString(R.string.transport_detail_daemon_disabled)
         }
@@ -6261,9 +6258,6 @@ private fun resolveUiMessage12(resources: android.content.res.Resources, message
         }
         "transport.diag_copy" -> {
             resources.getString(R.string.transport_diag_copy)
-        }
-        "transport.diag_copy_failed" -> {
-            resources.getString(R.string.transport_diag_copy_failed)
         }
         "transport.diag_copy_permission" -> {
             resources.getString(R.string.transport_diag_copy_permission)
@@ -6306,6 +6300,13 @@ private fun resolveUiMessage12(resources: android.content.res.Resources, message
         }
         "transport.diag_privacy_footer" -> {
             resources.getString(R.string.transport_diag_privacy_footer)
+        }
+        "transport.diag_report_title" -> {
+            resources.getString(R.string.transport_diag_report_title)
+        }
+        "transport.diag_report_verdict" -> {
+            val verdict = message.args.getValue("verdict") as String
+            resources.getString(R.string.transport_diag_report_verdict, verdict)
         }
         "transport.diag_retry" -> {
             resources.getString(R.string.transport_diag_retry)
@@ -6364,9 +6365,6 @@ private fun resolveUiMessage12(resources: android.content.res.Resources, message
         "transport.direct_slow" -> {
             resources.getString(R.string.transport_direct_slow)
         }
-        "transport.file_fallback" -> {
-            resources.getString(R.string.transport_file_fallback)
-        }
         "transport.file_speed_both" -> {
             val direct = message.args.getValue("direct") as String
             val relay = message.args.getValue("relay") as String
@@ -6375,9 +6373,6 @@ private fun resolveUiMessage12(resources: android.content.res.Resources, message
         "transport.file_speed_direct" -> {
             val direct = message.args.getValue("direct") as String
             resources.getString(R.string.transport_file_speed_direct, direct)
-        }
-        "transport.file_speed_pending" -> {
-            resources.getString(R.string.transport_file_speed_pending)
         }
         "transport.file_speed_relay" -> {
             val relay = message.args.getValue("relay") as String
@@ -6431,9 +6426,6 @@ private fun resolveUiMessage12(resources: android.content.res.Resources, message
         "transport.popover_switched_relay" -> {
             resources.getString(R.string.transport_popover_switched_relay)
         }
-        "transport.read_fallback" -> {
-            resources.getString(R.string.transport_read_fallback)
-        }
         "transport.read_latency_both" -> {
             val direct = message.args.getValue("direct") as String
             val relay = message.args.getValue("relay") as String
@@ -6481,12 +6473,6 @@ private fun resolveUiMessage12(resources: android.content.res.Resources, message
             val ms = message.args.getValue("ms") as String
             resources.getString(R.string.transport_rtt_ms, ms)
         }
-        else -> null
-    }
-}
-
-private fun resolveUiMessage13(resources: android.content.res.Resources, message: UiMessage): String? {
-    return when (message.key) {
         "transport.speed_file" -> {
             resources.getString(R.string.transport_speed_file)
         }
@@ -6496,6 +6482,12 @@ private fun resolveUiMessage13(resources: android.content.res.Resources, message
         "transport.status_connecting" -> {
             resources.getString(R.string.transport_status_connecting)
         }
+        else -> null
+    }
+}
+
+private fun resolveUiMessage13(resources: android.content.res.Resources, message: UiMessage): String? {
+    return when (message.key) {
         "transport.status_daemon_disabled" -> {
             resources.getString(R.string.transport_status_daemon_disabled)
         }
@@ -6505,15 +6497,8 @@ private fun resolveUiMessage13(resources: android.content.res.Resources, message
         "transport.status_relay" -> {
             resources.getString(R.string.transport_status_relay)
         }
-        "transport.status_unsupported_app" -> {
-            resources.getString(R.string.transport_status_unsupported_app)
-        }
         "transport.summary_off" -> {
             resources.getString(R.string.transport_summary_off)
-        }
-        "transport.unavailable" -> {
-            val reason = message.args.getValue("reason") as String
-            resources.getString(R.string.transport_unavailable, reason)
         }
         "transport.use_file" -> {
             resources.getString(R.string.transport_use_file)

@@ -10,9 +10,11 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
@@ -23,19 +25,30 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.clickable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import io.github.lewin671.remoteagent.core.RemoteState
 import io.github.lewin671.remoteagent.core.UiMessages
 import io.github.lewin671.remoteagent.core.transport.DirectDiag
@@ -45,6 +58,11 @@ import io.github.lewin671.remoteagent.core.proto.ConnectionGroupStage
 import io.github.lewin671.remoteagent.core.proto.ConnectionGroupTone
 import io.github.lewin671.remoteagent.core.proto.ConnectionGroupView
 import kotlinx.coroutines.delay
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+
+private val IP_PORT_STRIP = Regex("""(\b\d{1,3}(?:\.\d{1,3}){3}(?::\d+)?\b|\[[0-9a-fA-F:]+\](?::\d+)?)""")
 
 /**
  * Renders Core's 「连接」 group ([ConnectionGroupView]) directly inside [DeviceScreen].
@@ -61,10 +79,10 @@ internal fun DirectConnectionGroup(
     val statusText = uiText(view.statusText)
     val detailText = uiText(view.detailText)
     val metricText = uiText(view.metricText)
-    val fileSpeed = uiText(view.fileSpeedText)
-    val readLatency = uiText(view.readLatencyText)
     val footerText = uiText(view.footerText).ifEmpty { copy(UiMessages.transportFooter()) }
-    val showStatus = statusText.isNotEmpty() || detailText.isNotEmpty() || metricText.isNotEmpty()
+    val hideStatus = view.stage == ConnectionGroupStage.CONNECTION_GROUP_STAGE_OFFLINE ||
+        (view.stage == ConnectionGroupStage.CONNECTION_GROUP_STAGE_DISABLED && detailText.isEmpty())
+    val showStatus = !hideStatus && (statusText.isNotEmpty() || detailText.isNotEmpty() || metricText.isNotEmpty())
 
     val enter = if (Motion.reduced) fadeIn(tween(150)) else expandVertically(tween(200)) + fadeIn(tween(200))
     val exit = if (Motion.reduced) fadeOut(tween(150)) else shrinkVertically(tween(200)) + fadeOut(tween(200))
@@ -73,7 +91,7 @@ internal fun DirectConnectionGroup(
     Column(
         Modifier.fillMaxWidth()
             .padding(start = 16.dp, end = 16.dp, bottom = 6.dp)
-            .clip(Radii.R20)
+            .clip(Radii.R18)
             .background(if (LocalOnSoft.current) p.raised else p.gbg),
     ) {
         Box(Modifier.alpha(if (supported) 1f else 0.4f)) {
@@ -90,23 +108,10 @@ internal fun DirectConnectionGroup(
                 DirectStatusRow(view.stage, view.tone, statusText, detailText, metricText)
             }
         }
-        val showSpeeds = view.stage != ConnectionGroupStage.CONNECTION_GROUP_STAGE_DISABLED &&
-            view.stage != ConnectionGroupStage.CONNECTION_GROUP_STAGE_UNSUPPORTED &&
-            view.stage != ConnectionGroupStage.CONNECTION_GROUP_STAGE_OFFLINE
-        if (showSpeeds && fileSpeed.isNotEmpty()) {
-            Box(Modifier.topLine(p.sep, 18.dp)) {
-                SpeedMetricRow(copy(UiMessages.transportSpeedFile()), fileSpeed)
-            }
-        }
-        if (showSpeeds && readLatency.isNotEmpty()) {
-            Box(Modifier.topLine(p.sep, 18.dp)) {
-                SpeedMetricRow(copy(UiMessages.transportSpeedRead()), readLatency)
-            }
-        }
         if (view.showDiagnosticsEntry && onDiagnostics != null) {
             Box(Modifier.topLine(p.sep, 18.dp)) {
                 GRow(
-                    copy(UiMessages.transportDiag()),
+                    copy(UiMessages.transportWhyNotConnected()),
                     onClick = onDiagnostics,
                     chevron = true,
                 )
@@ -115,6 +120,15 @@ internal fun DirectConnectionGroup(
     }
     Hint(footerText, Modifier.padding(bottom = 12.dp))
 }
+
+private data class PlainDiagCheckRow(
+    val mark: MarkKind,
+    val label: String,
+    val detail: String?,
+    val status: String,
+)
+
+private enum class CopyFeedback { IDLE, OK, FAIL }
 
 @Composable
 internal fun DirectDiagSheet(
@@ -126,80 +140,209 @@ internal fun DirectDiagSheet(
     val copy = uiText()
     val p = pal
     val clipboard = LocalClipboardManager.current
-    var copied by remember { mutableStateOf(false) }
+    var copyFeedback by remember { mutableStateOf(CopyFeedback.IDLE) }
+    var cooldown by remember { mutableStateOf(false) }
+    var retryInitiated by remember { mutableStateOf(false) }
+    var prevRunning by remember { mutableStateOf(false) }
     var diagLines by remember(machineId, state) { mutableStateOf(DirectDiag.lines()) }
-    LaunchedEffect(machineId) {
-        while (true) {
-            diagLines = DirectDiag.lines()
-            delay(1000)
-        }
-    }
-    LaunchedEffect(copied) {
-        if (copied) {
-            delay(1500)
-            copied = false
-        }
-    }
+
     val status = state.machines[machineId]?.pathState?.directStatus
-    val verdict = when (status?.reason) {
-        DirectFailReason.PEER_UNSUPPORTED -> copy(UiMessages.transportReasonPeerUnsupported())
-        DirectFailReason.NO_RESPONSE -> copy(UiMessages.transportReasonNoResponse())
-        DirectFailReason.NO_TRAVERSAL -> copy(UiMessages.transportReasonNoTraversal())
-        DirectFailReason.FAILED -> copy(UiMessages.transportReasonFailed())
-        DirectFailReason.AT_CAP -> copy(UiMessages.transportReasonAtCap())
-        DirectFailReason.SECURITY_PENDING -> copy(UiMessages.transportReasonSecurityPending())
-        DirectFailReason.STARTING -> copy(UiMessages.transportReasonStarting())
-        null -> when {
-            status?.readSlow == true || status?.fileSlow == true -> copy(UiMessages.transportDirectSlow())
-            status?.stage == DirectStage.DIRECT_ACTIVE -> copy(UiMessages.transportStatusDirect())
-            status?.stage == DirectStage.TRYING -> copy(UiMessages.transportStatusConnecting())
-            status?.stage == DirectStage.CONNECTED_RELAY -> copy(UiMessages.transportReasonChannelPending())
-            else -> copy(UiMessages.transportDiagVerdictNone())
+    val connected = status?.stage == DirectStage.DIRECT_ACTIVE && (status.readDirect || status.fileDirect)
+    val running = status?.stage == DirectStage.TRYING
+
+    LaunchedEffect(machineId, running) {
+        diagLines = DirectDiag.lines()
+        if (running) {
+            while (true) {
+                delay(1000)
+                diagLines = DirectDiag.lines()
+            }
         }
     }
-    Sheet(onClose) {
-        SheetHead(copy(UiMessages.transportDiag()), copy(UiMessages.commonDone()), onClose)
-        Text(verdict, style = T.s15, color = p.ink, modifier = Modifier.padding(bottom = 12.dp))
-        Column(
-            Modifier.fillMaxWidth()
-                .clip(Radii.R14)
-                .background(if (LocalOnSoft.current) p.raised else p.gbg)
-                .padding(horizontal = 14.dp, vertical = 10.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp),
-        ) {
-            if (diagLines.isEmpty()) {
-                Text(copy(UiMessages.transportDiagVerdictNone()), style = T.s13, color = p.ink2)
+    LaunchedEffect(connected, retryInitiated) {
+        if (connected && retryInitiated) {
+            delay(600)
+            onClose()
+        }
+    }
+    LaunchedEffect(running, connected) {
+        if (prevRunning && !running && !connected) {
+            cooldown = true
+            delay(2000)
+            cooldown = false
+        }
+        prevRunning = running
+    }
+    LaunchedEffect(cooldown) {
+        if (cooldown && !running) {
+            delay(2000)
+            cooldown = false
+        }
+    }
+    LaunchedEffect(copyFeedback) {
+        if (copyFeedback != CopyFeedback.IDLE) {
+            delay(if (copyFeedback == CopyFeedback.FAIL) 2500L else 1500L)
+            copyFeedback = CopyFeedback.IDLE
+        }
+    }
+
+    val peerOutdated = !connected && status?.reason == DirectFailReason.PEER_UNSUPPORTED
+    val noReply = !connected && !peerOutdated && status?.reason == DirectFailReason.NO_RESPONSE
+    val probeBlocked = !connected && !peerOutdated && !noReply &&
+        diagLines.any { it.contains("no_stun", ignoreCase = true) || it.contains("no_local", ignoreCase = true) }
+    val natBlocked = !connected && !peerOutdated && !noReply && !probeBlocked &&
+        (status?.reason == DirectFailReason.NO_TRAVERSAL || status?.stage == DirectStage.UNCONNECTED)
+
+    val title = when {
+        connected -> copy(UiMessages.transportDiagConnectedTitle())
+        peerOutdated -> copy(UiMessages.transportReasonPeerUnsupported())
+        noReply -> copy(UiMessages.transportDiagTitleNoReply())
+        probeBlocked -> copy(UiMessages.transportDiagTitleProbeBlocked())
+        natBlocked -> copy(UiMessages.transportReasonNoTraversal())
+        else -> copy(UiMessages.transportDiagTitleGeneric())
+    }
+    val body = when {
+        connected -> copy(UiMessages.transportDiagConnectedBody())
+        peerOutdated -> copy(UiMessages.transportDiagExplainPeerOld())
+        noReply -> copy(UiMessages.transportDiagExplainNoReply())
+        probeBlocked -> copy(UiMessages.transportDiagExplainProbeBlocked())
+        natBlocked -> copy(UiMessages.transportDiagExplainNat())
+        else -> copy(UiMessages.transportDiagExplainGeneric())
+    }
+
+    val peerCheck = when {
+        peerOutdated -> PlainDiagCheckRow(MarkKind.OFF, copy(UiMessages.transportDiagCheckPeer()), copy(UiMessages.transportDiagPeerOldDesc()), copy(UiMessages.transportDiagStatusPeerOld()))
+        noReply -> PlainDiagCheckRow(MarkKind.OFF, copy(UiMessages.transportDiagCheckPeer()), copy(UiMessages.transportDiagPeerNoReplyDesc()), copy(UiMessages.transportDiagStatusNoReply()))
+        else -> PlainDiagCheckRow(MarkKind.ONLINE, copy(UiMessages.transportDiagCheckPeer()), null, copy(UiMessages.transportDiagStatusOk()))
+    }
+    val pathCheck = when {
+        connected -> PlainDiagCheckRow(MarkKind.ONLINE, copy(UiMessages.transportDiagCheckPath()), null, copy(UiMessages.transportDiagStatusConnected()))
+        running -> PlainDiagCheckRow(MarkKind.RUNNING, copy(UiMessages.transportDiagCheckPath()), null, copy(UiMessages.transportDiagStatusChecking()))
+        peerOutdated || noReply -> PlainDiagCheckRow(MarkKind.OFF, copy(UiMessages.transportDiagCheckPath()), null, copy(UiMessages.transportDiagStatusNotStarted()))
+        probeBlocked -> PlainDiagCheckRow(MarkKind.OFF, copy(UiMessages.transportDiagCheckPath()), copy(UiMessages.transportDiagPathUdpBlocked()), copy(UiMessages.transportDiagStatusBlocked()))
+        natBlocked -> PlainDiagCheckRow(MarkKind.OFF, copy(UiMessages.transportDiagCheckPath()), copy(UiMessages.transportDiagPathNat()), copy(UiMessages.transportDiagStatusBlocked()))
+        else -> PlainDiagCheckRow(MarkKind.OFF, copy(UiMessages.transportDiagCheckPath()), copy(UiMessages.transportDiagPathFailed()), copy(UiMessages.transportDiagStatusBlocked()))
+    }
+    val retryCheck = if (peerOutdated) {
+        PlainDiagCheckRow(MarkKind.OFF, copy(UiMessages.transportDiagCheckRetry()), copy(UiMessages.transportDiagRetryWaitDesc()), copy(UiMessages.transportDiagStatusWaitUpdate()))
+    } else {
+        PlainDiagCheckRow(MarkKind.ONLINE, copy(UiMessages.transportDiagCheckRetry()), copy(UiMessages.transportDiagRetryAutoDesc()), copy(UiMessages.transportDiagStatusEnabled()))
+    }
+    val checks = listOf(peerCheck, pathCheck, retryCheck)
+
+    val retryDisabled = running || cooldown || connected || peerOutdated || status?.supported == false
+    val computerName = machineLabel(state, machineId)
+    val reportPayload = remember(title, diagLines, computerName) {
+        buildString {
+            appendLine(copy(UiMessages.transportDiagReportTitle()))
+            appendLine(copy(UiMessages.transportDiagReportVerdict(verdict = title)))
+            appendLine("Client: Android ${android.os.Build.VERSION.RELEASE}")
+            if (computerName.isNotEmpty()) appendLine("Computer: $computerName")
+            appendLine("Time: ${SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US).format(Date())}")
+            val recent = diagLines.takeLast(3).asReversed()
+            if (recent.isEmpty()) {
+                appendLine(copy(UiMessages.transportDiagVerdictNone()))
             } else {
-                for (line in diagLines.asReversed()) {
-                    Text(line, style = T.s12.digits(), color = p.ink2)
+                for (line in recent) appendLine(IP_PORT_STRIP.replace(line, "[redacted]"))
+            }
+        }.trim()
+    }
+
+    val content: @Composable ColumnScope.(surfaceBg: Color) -> Unit = { cardBg ->
+        Column(Modifier.semantics { liveRegion = LiveRegionMode.Polite }.padding(bottom = 14.dp)) {
+            Text(title, style = T.h20, color = p.ink)
+            Spacer(Modifier.height(6.dp))
+            Text(body, style = T.s15.copy(lineHeight = 21.sp), color = p.ink2)
+        }
+        Column(Modifier.fillMaxWidth().clip(Radii.R18).background(cardBg)) {
+            checks.forEachIndexed { idx, row ->
+                Row(
+                    Modifier.fillMaxWidth().heightIn(min = 50.dp)
+                        .then(if (idx > 0) Modifier.topLine(p.sep, 18.dp) else Modifier)
+                        .padding(horizontal = 16.dp, vertical = 10.dp)
+                        .semantics(mergeDescendants = true) {},
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    StatusMark(row.mark, color = if (row.mark == MarkKind.ONLINE) p.green else if (row.mark == MarkKind.RUNNING) p.ink else p.faint)
+                    Column(Modifier.weight(1f)) {
+                        Text(row.label, style = T.s15, color = p.ink)
+                        if (!row.detail.isNullOrEmpty()) Text(row.detail, style = T.s13, color = p.ink2)
+                    }
+                    Text(row.status, style = T.s13, color = p.ink2)
                 }
             }
         }
-        Spacer(Modifier.height(12.dp))
-        Btns {
-            PillButton(
-                copy(if (copied) UiMessages.commonCopied() else UiMessages.transportDiagCopy()),
-                onClick = {
-                    val payload = buildString {
-                        appendLine(verdict)
-                        for (line in diagLines.asReversed()) appendLine(line)
-                    }.trim()
-                    clipboard.setText(AnnotatedString(payload))
-                    copied = true
-                },
-                Modifier.weight(1f),
-            )
-            PillButton(
-                copy(UiMessages.transportDiagRetry()),
-                onClick = {
-                    onRetry()
+        Spacer(Modifier.height(14.dp))
+        Row(
+            Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                .disabledAlpha(!retryDisabled)
+                .clip(Radii.Pill)
+                .background(p.btn)
+                .clickable(enabled = !retryDisabled, role = Role.Button) {
+                    retryInitiated = true
+                    if (!onRetry()) cooldown = true
                     diagLines = DirectDiag.lines()
-                },
-                Modifier.weight(1f),
-                enabled = status?.stage != DirectStage.DIRECT_ACTIVE && status?.stage != DirectStage.TRYING,
+                }
+                .padding(horizontal = 22.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+        ) {
+            if (running) Spinner(p.btnFg, size = 16.dp)
+            Text(
+                if (running) copy(UiMessages.transportDiagRetrying()) else copy(UiMessages.transportDiagRetry()),
+                style = T.s17b,
+                color = p.btnFg,
+                textAlign = TextAlign.Center,
+                maxLines = 2,
             )
         }
-        Hint(copy(UiMessages.transportDiagFooter()))
+        Box(
+            Modifier.fillMaxWidth().heightIn(min = 44.dp).clickable(role = Role.Button) {
+                runCatching { clipboard.setText(AnnotatedString(reportPayload)) }
+                    .onSuccess { copyFeedback = CopyFeedback.OK }
+                    .onFailure { copyFeedback = CopyFeedback.FAIL }
+            },
+            contentAlignment = Alignment.Center,
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                when (copyFeedback) {
+                    CopyFeedback.OK -> {
+                        Ic(Lucide.Check, 15.dp, p.ink2)
+                        Text(copy(UiMessages.commonCopied()), style = T.s15, color = p.ink2)
+                    }
+                    CopyFeedback.FAIL -> {
+                        Text(copy(UiMessages.transportDiagCopyPermission()), style = T.s15, color = p.red)
+                    }
+                    CopyFeedback.IDLE -> {
+                        Ic(Lucide.Copy, 15.dp, p.blue)
+                        Text(copy(UiMessages.transportDiagCopySupport()), style = T.s15b, color = p.blue)
+                    }
+                }
+            }
+        }
+        Hint(copy(UiMessages.transportDiagPrivacyFooter()))
+    }
+
+    if (wideWindow()) {
+        Dialog(onDismissRequest = onClose, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+            Box(Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) {
+                Column(
+                    Modifier.widthIn(max = 460.dp).fillMaxWidth()
+                        .floating(p, Radii.R18).clip(Radii.R18)
+                        .background(p.gbg).border(0.5.dp, p.sep, Radii.R18)
+                        .padding(horizontal = 20.dp, vertical = 18.dp),
+                ) {
+                    SheetHead(copy(UiMessages.transportWhyNotConnected()), copy(UiMessages.commonDone()), onClose)
+                    content(p.raised)
+                }
+            }
+        }
+    } else {
+        Sheet(onClose) {
+            SheetHead(copy(UiMessages.transportWhyNotConnected()), copy(UiMessages.commonDone()), onClose)
+            content(p.raised)
+        }
     }
 }
 
@@ -238,31 +381,6 @@ private fun DirectStatusRow(
         }
         if (detail.isNotEmpty()) {
             Text(detail, style = T.s13, color = p.ink2, modifier = Modifier.padding(start = 19.dp, top = 3.dp))
-        }
-    }
-}
-
-@Composable
-private fun SpeedMetricRow(label: String, value: String) {
-    val p = pal
-    val stacked = LocalDensity.current.fontScale >= 1.5f
-    val valueStyle = T.s17.digits()
-    if (stacked) {
-        Column(
-            Modifier.fillMaxWidth().heightIn(min = 50.dp).padding(start = 18.dp, end = 16.dp, top = 10.dp, bottom = 10.dp),
-            verticalArrangement = Arrangement.spacedBy(3.dp),
-        ) {
-            Text(label, style = T.s17, color = p.ink)
-            Text(value, style = valueStyle, color = p.ink2)
-        }
-    } else {
-        Row(
-            Modifier.fillMaxWidth().heightIn(min = 50.dp).padding(start = 18.dp, end = 16.dp, top = 11.dp, bottom = 11.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-            Text(label, style = T.s17, color = p.ink, modifier = Modifier.weight(1f))
-            Text(value, style = valueStyle, color = p.ink2, textAlign = TextAlign.End, maxLines = 2, overflow = TextOverflow.Ellipsis)
         }
     }
 }

@@ -106,9 +106,10 @@ function Headline({ vm, onDetails }: { vm?: HomeHeadlineView; onDetails?: () => 
   }, [vm?.kind]);
 
   if (!vm) return null;
+  const hlClass = crossfade ? "hl-wrap crossfade" : "hl-wrap";
   const subText = renderText(vm.sub);
   return (
-    <div className={crossfade ? "hl-wrap crossfade" : "hl-wrap"}>
+    <div className={hlClass}>
       <h1 className="hl">{highlightTitle(renderText(vm.title), vm.highlightCount)}</h1>
       {(subText || vm.detailsAction) && (
         <div className={"hl-sub" + (vm.subError ? " err" : "") + (vm.subPath ? " path" : "")}>
@@ -144,13 +145,13 @@ function TopQuestionSlot({
   onOpen: (sessionId: string) => void;
   onOpenTerminal: (sessionId: string) => void;
 }) {
-  const [held, setHeld] = useState<HomeQuestionCardView | undefined>(question);
-  const [phase, setPhase] = useState<"idle" | "sending" | "error" | "delivered" | "elsewhere" | "exiting">("idle");
-  const [exitKind, setExitKind] = useState<"delivered" | "elsewhere">("delivered");
-  const [picked, setPicked] = useState<{ num: number; label: string } | undefined>(undefined);
+  const [held, setHeld] = useState(question as HomeQuestionCardView | undefined);
+  const [phase, setPhase] = useState("idle" as "idle" | "sending" | "error" | "delivered" | "elsewhere" | "exiting");
+  const [exitKind, setExitKind] = useState("delivered" as "delivered" | "elsewhere");
+  const [picked, setPicked] = useState(undefined as { num: number; label: string } | undefined);
   const [showSpinner, setShowSpinner] = useState(false);
   const [errMsg, setErrMsg] = useState("");
-  const spinTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const spinTimer = useRef(undefined as ReturnType<typeof setTimeout> | undefined);
 
   useEffect(() => () => clearTimeout(spinTimer.current), []);
 
@@ -984,7 +985,7 @@ export interface BottomBarAction { label: string; icon: ReactNode; onClick: () =
 function BottomBarInner(p: { remote?: Remote; active: "sessions" | "tasks"; action?: BottomBarAction; waiting: number; canStart: boolean; scheduleAttention?: number; scheduleNew?: boolean; onStart?: () => void; go: Go }) {
   const [picking, setPicking] = useState(false);
   const prevWaiting = useRef(p.waiting);
-  const [exitingBadge, setExitingBadge] = useState<number | undefined>(undefined);
+  const [exitingBadge, setExitingBadge] = useState(undefined as number | undefined);
 
   useEffect(() => {
     if (prevWaiting.current > 0 && p.waiting === 0) {
@@ -998,7 +999,7 @@ function BottomBarInner(p: { remote?: Remote; active: "sessions" | "tasks"; acti
     return undefined;
   }, [p.waiting]);
 
-  const badgeNum = p.waiting > 0 ? p.waiting : exitingBadge;
+  const badgeNum = p.waiting ? p.waiting : exitingBadge;
 
   return (
     <>

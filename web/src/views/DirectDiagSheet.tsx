@@ -125,7 +125,8 @@ export function DirectDiagSheet({ remote, id, onClose }: { remote: Remote; id: s
           className={"diag-copy" + (copied === "ok" ? " ok" : copied === "fail" ? " err" : "")}
           onClick={copy}
         >
-          {copied === "ok" ? <Check /> : copied === "fail" ? null : <Copy />}
+          {copied === "ok" ? <Check /> : null}
+          {!copied ? <Copy /> : null}
           <span>
             {copied === "ok"
               ? l10n.t("common.copied")

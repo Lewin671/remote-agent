@@ -407,7 +407,7 @@ export function SessionScreenView({
   if ((exited || pending) && tab !== "chat") tab = "chat";
   const toTerminal = useCallback(() => setTab(canSplit ? "split" : "term"), [canSplit]);
 
-  const [sheet, setSheet] = useState<"" | "mode" | "model">("");
+  const [sheet, setSheet] = useState("" as "" | "mode" | "model");
   const [menu, setMenu] = useState(defaultMenu);
   const [scheduling, setScheduling] = useState(false);
   const [confirmEnd, setConfirmEnd] = useState(false);
@@ -415,9 +415,9 @@ export function SessionScreenView({
   const [dockDenying, setDockDenying] = useState(defaultDenying);
   const [dockOpen, setDockOpen] = useState(false);
   const [directOpen, setDirectOpen] = useState(false);
-  const directBtnRef = useRef<HTMLButtonElement>(null);
-  const [popPos, setPopPos] = useState<{ top: number; left: number } | undefined>(undefined);
-  const [page, setPage] = useState<"" | "plan" | "question" | { approval: string }>(defaultPage);
+  const directBtnRef = useRef(null as HTMLButtonElement | null);
+  const [popPos, setPopPos] = useState(undefined as { top: number; left: number } | undefined);
+  const [page, setPage] = useState(defaultPage as "" | "plan" | "question" | { approval: string });
   useEffect(() => {
     setMenu(false);
     setDirectOpen(false);
@@ -618,7 +618,6 @@ export function SessionScreenView({
         · <span className={header?.approvalMode === ApprovalMode.FULL_ACCESS ? "red" : ""}>{modeLabel}</span>
       </>
     ) : null;
-  const statusText = pending ? t("common.loading") : renderText(header?.statusText);
   const directChip = showDirectChip ? (
     <span className="dchip-wrap">
       {!wide && " · "}
@@ -635,6 +634,7 @@ export function SessionScreenView({
       </button>
     </span>
   ) : null;
+  const statusText = pending ? t("common.loading") : renderText(header?.statusText);
   const sub = (
     <>
       {pending ? <span data-late="1">{statusText}</span> : statusText}
@@ -780,7 +780,8 @@ export function SessionScreenView({
           composer={composer}
           onSubmitCommand={onSubmitCommand}
         />
-      ) : dockDenying ? null : (
+      ) : null}
+      {!inactive && !dockDenying && (
         <Composer
           key={composerKey}
           ref={composerElRef}

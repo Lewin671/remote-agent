@@ -105,4 +105,15 @@ public interface SyncPendingActionOrBuilder extends
    */
   com.google.protobuf.ByteString
       getPopupPreviewBytes();
+
+  /**
+   * <code>.remoteagent.core.v1.SyncPendingQuestion question = 12 [json_name = "question"];</code>
+   * @return Whether the question field is set.
+   */
+  boolean hasQuestion();
+  /**
+   * <code>.remoteagent.core.v1.SyncPendingQuestion question = 12 [json_name = "question"];</code>
+   * @return The question.
+   */
+  io.github.lewin671.remoteagent.core.proto.SyncPendingQuestion getQuestion();
 }

@@ -112,13 +112,13 @@ export function Sheet({
   anchor?: RefObject<HTMLElement | null>;
   dirty?: boolean;
 }) {
-  const root = useRef<HTMLDivElement>(null);
-  const sheetRef = useRef<HTMLDivElement>(null);
+  const root = useRef(null as HTMLDivElement | null);
+  const sheetRef = useRef(null as HTMLDivElement | null);
   const [confirmDiscard, setConfirmDiscard] = useState(false);
   const [dragY, setDragY] = useState(0);
   const [dragging, setDragging] = useState(false);
   const [snapping, setSnapping] = useState(false);
-  const dragState = useRef<{ startY: number; startAt: number; eligible: boolean; lockedScroll: boolean; dragY: number; dragging: boolean } | null>(null);
+  const dragState = useRef(null as { startY: number; startAt: number; eligible: boolean; lockedScroll: boolean; dragY: number; dragging: boolean } | null);
 
   const requestClose = useCallback(() => {
     if (dirty) setConfirmDiscard(true);

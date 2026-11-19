@@ -40,7 +40,9 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -306,11 +308,27 @@ private fun Grab() {
 /** A bottom sheet (design-system §6): gbg, top corners 38, grab handle, 16 dp sides; groups inside are raised. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun Sheet(onClose: () -> Unit, scroll: Boolean = true, canDismiss: Boolean = true, content: @Composable ColumnScope.() -> Unit) {
+fun Sheet(onClose: () -> Unit, scroll: Boolean = true, canDismiss: Boolean = true, dirty: Boolean = false, content: @Composable ColumnScope.() -> Unit) {
+    val copy = uiText()
     val p = pal
+    var confirmDiscard by remember { mutableStateOf(false) }
+    val currentDirty by rememberUpdatedState(dirty)
+    val currentCanDismiss by rememberUpdatedState(canDismiss)
     ModalBottomSheet(
-        onDismissRequest = onClose,
-        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true, confirmValueChange = { canDismiss || it != androidx.compose.material3.SheetValue.Hidden }),
+        onDismissRequest = {
+            if (currentDirty) confirmDiscard = true else onClose()
+        },
+        sheetState = rememberModalBottomSheetState(
+            skipPartiallyExpanded = true,
+            confirmValueChange = { target ->
+                if (target == androidx.compose.material3.SheetValue.Hidden && currentDirty) {
+                    confirmDiscard = true
+                    false
+                } else {
+                    currentCanDismiss || target != androidx.compose.material3.SheetValue.Hidden
+                }
+            },
+        ),
         containerColor = p.gbg,
         shape = Radii.sheet,
         dragHandle = { Grab() },
@@ -323,6 +341,20 @@ fun Sheet(onClose: () -> Unit, scroll: Boolean = true, canDismiss: Boolean = tru
                 content = content,
             )
         }
+    }
+    if (confirmDiscard) {
+        Alert(
+            title = copy(UiMessages.commonDiscardChangesTitle()),
+            text = "",
+            confirm = copy(UiMessages.commonDiscardChanges()),
+            danger = true,
+            cancel = copy(UiMessages.commonKeepEditing()),
+            onDismiss = { confirmDiscard = false },
+            onConfirm = {
+                confirmDiscard = false
+                onClose()
+            },
+        )
     }
 }
 
@@ -387,12 +419,12 @@ fun SheetList(modifier: Modifier = Modifier, content: @Composable ColumnScope.()
 
 /** A dialog (design-system §6 对话框): gbg, radius 24, floating; 取消 at the left, the confirmation at the right, ink or red. */
 @Composable
-fun Alert(title: String, text: String, confirm: String, danger: Boolean = false, onDismiss: () -> Unit, onConfirm: () -> Unit) {
+fun Alert(title: String, text: String, confirm: String, danger: Boolean = false, cancel: String = uiText(UiMessages.commonCancel()), onDismiss: () -> Unit, onConfirm: () -> Unit) {
     DialogCard(onDismiss) {
-        Text(title, style = T.s17b, color = pal.ink, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().padding(bottom = 6.dp))
-        Text(text, style = T.s15, color = pal.ink2, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().padding(bottom = 18.dp))
+        Text(title, style = T.s17b, color = pal.ink, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().padding(bottom = if (text.isEmpty()) 18.dp else 6.dp))
+        if (text.isNotEmpty()) Text(text, style = T.s15, color = pal.ink2, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().padding(bottom = 18.dp))
         Btns {
-            PillButton(uiText(UiMessages.commonCancel()), onDismiss, Modifier.weight(1f))
+            PillButton(cancel, onDismiss, Modifier.weight(1f))
             PillButton(confirm, { onDismiss(); onConfirm() }, Modifier.weight(1f), if (danger) ButtonKind.DANGER else ButtonKind.INK)
         }
     }

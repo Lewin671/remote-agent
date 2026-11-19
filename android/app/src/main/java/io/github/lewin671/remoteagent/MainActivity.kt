@@ -336,7 +336,13 @@ class MainActivity : ComponentActivity() {
                         it.arguments?.getString("focus") == "1",
                     )
                 }
-                page("device/{id}?storage={storage}") { DeviceScreen(it.arguments?.getString("id").orEmpty(), scrollToStorage = it.arguments?.getString("storage") == "1") }
+                page("device/{id}?storage={storage}&connection={connection}") {
+                    DeviceScreen(
+                        it.arguments?.getString("id").orEmpty(),
+                        scrollToStorage = it.arguments?.getString("storage") == "1",
+                        scrollToConnection = it.arguments?.getString("connection") == "1",
+                    )
+                }
                 page("machine/{id}") { io.github.lewin671.remoteagent.ui.MachineStatusScreen(it.arguments?.getString("id").orEmpty()) }
                 page("pair?replace={replace}") {
                     PairScreen(it.arguments?.getString("replace").orEmpty())
@@ -438,6 +444,7 @@ class MainActivity : ComponentActivity() {
                 go("session/$sid", single = true)
             },
             device = { go("device/$it") },
+            deviceConnection = { go("device/$it?connection=1") },
             machineStatus = { go("machine/$it", single = true) },
             deviceStorage = { go("device/$it?storage=1") },
             cleanup = { machine -> remote.coreHost.prepareCleanupSession(machine) },
