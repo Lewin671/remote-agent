@@ -74,18 +74,18 @@ private struct CapsuleInputLayout: Layout {
             let textW = max(40, bounds.width - plus.width - trailing.width - gap * 2)
             let text = subviews[1].sizeThatFits(ProposedViewSize(width: textW, height: bounds.height))
             subviews[0].place(
-                at: CGPoint(x: bounds.minX, y: bounds.maxY - plus.height),
-                anchor: .topLeading,
+                at: CGPoint(x: bounds.minX, y: bounds.maxY),
+                anchor: .bottomLeading,
                 proposal: ProposedViewSize(plus)
             )
             subviews[1].place(
-                at: CGPoint(x: bounds.minX + plus.width + gap, y: bounds.maxY - text.height),
-                anchor: .topLeading,
+                at: CGPoint(x: bounds.minX + plus.width + gap, y: bounds.maxY),
+                anchor: .bottomLeading,
                 proposal: ProposedViewSize(width: textW, height: text.height)
             )
             subviews[2].place(
-                at: CGPoint(x: bounds.maxX - trailing.width, y: bounds.maxY - trailing.height),
-                anchor: .topLeading,
+                at: CGPoint(x: bounds.maxX, y: bounds.maxY),
+                anchor: .bottomTrailing,
                 proposal: ProposedViewSize(trailing)
             )
             return

@@ -27,6 +27,9 @@ final class ComposerHitTests: XCTestCase {
         let tap: Bool
     }
 
+    // AX frames at 3x scale can report exact 132px (1604/3 - 1472/3) as 43.99999999999994.
+    private let minHit: CGFloat = 44 - 1e-6
+
     private func present(_ element: XCUIElement, timeout: TimeInterval) -> Bool {
         element.present(timeout: timeout)
     }
@@ -148,10 +151,10 @@ final class ComposerHitTests: XCTestCase {
                 }
                 let frame = try sendFrame(app, keyboardShown: scenario != .dismissed, expected: settledFrame)
                 settledFrame = frame
-                XCTAssertGreaterThanOrEqual(frame.width, 44)
-                XCTAssertGreaterThanOrEqual(frame.height, 44)
+                XCTAssertGreaterThanOrEqual(frame.width, minHit)
+                XCTAssertGreaterThanOrEqual(frame.height, minHit)
                 XCTAssertTrue(sendAfter.exists && sendAfter.isHittable)
-                XCTAssertGreaterThanOrEqual(sendAfter.frame.height, 44)
+                XCTAssertGreaterThanOrEqual(sendAfter.frame.height, minHit)
                 if hit == .center { capture(app, name: "ios-send-open") }
                 let targetButton = hit == .center ? sendAfter : app.buttons["session-send"].firstMatch
                 if hit == .center {
@@ -306,8 +309,8 @@ final class ComposerHitTests: XCTestCase {
             fill(app, field, draft)
             let frame = try sendFrame(app, keyboardShown: true, expected: settledFrame)
             settledFrame = frame
-            XCTAssertGreaterThanOrEqual(frame.width, 44)
-            XCTAssertGreaterThanOrEqual(frame.height, 44)
+            XCTAssertGreaterThanOrEqual(frame.width, minHit)
+            XCTAssertGreaterThanOrEqual(frame.height, minHit)
             point(app, frame, hit).tap()
             let sent = draftIsCleared(field)
             observations.append(Observation(scenario: "short", point: hit.rawValue,
