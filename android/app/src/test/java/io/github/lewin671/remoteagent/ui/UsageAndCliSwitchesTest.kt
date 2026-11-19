@@ -53,8 +53,14 @@ import io.github.lewin671.remoteagent.core.proto.SessionUsageEntryView
 import io.github.lewin671.remoteagent.core.proto.SessionViewModel
 import io.github.lewin671.remoteagent.core.proto.Text as CoreText
 import io.github.lewin671.remoteagent.core.proto.TextArg
-import io.github.lewin671.remoteagent.core.proto.UsageMetricTab
-import io.github.lewin671.remoteagent.core.proto.UsageSeriesView
+import io.github.lewin671.remoteagent.core.proto.UsageBarBucketView
+import io.github.lewin671.remoteagent.core.proto.UsageBarChartView
+import io.github.lewin671.remoteagent.core.proto.UsageCompositionView
+import io.github.lewin671.remoteagent.core.proto.UsageHeroView
+import io.github.lewin671.remoteagent.core.proto.UsageMetricStripView
+import io.github.lewin671.remoteagent.core.proto.UsageModelRowView
+import io.github.lewin671.remoteagent.core.proto.UsageSortColumn
+import io.github.lewin671.remoteagent.core.proto.UsageStripPointView
 import io.github.lewin671.remoteagent.core.proto.UsageViewModel
 import io.github.lewin671.remoteagent.data.ThemeMode
 import io.github.lewin671.remoteagent.proto.Agent
@@ -91,118 +97,68 @@ class UsageAndCliSwitchesTest {
 
     private fun coreLit(s: String) = CoreText.newBuilder().setLiteral(s).build()
 
-    private fun sampleSeries(
+    private fun sampleRow(
         agent: Agent,
         agentName: String,
         model: String,
-        patternIndex: Int,
-        totalOut: Long = 12_000L,
-        speedReqs: Long = 10L,
-        speedP50: Double = 64.0,
+        totalTokens: Long,
+        shareRatio: Double,
+        selected: Boolean = false,
+        hasCacheHit: Boolean = true,
+        cacheHitRate: Double = 0.88,
+        hasSpeed: Boolean = true,
+        speedP50: Double = 72.0,
+        hasTtft: Boolean = true,
         ttftP50Ms: Double = 520.0,
-        focused: Boolean = false,
-        cacheWriteSupported: Boolean = true,
-    ): UsageSeriesView {
-        val now = 1_760_000_000_000L
-        val b0 = UsageBucketPoint.newBuilder()
-            .setStartMs(now - 2 * 86_400_000L)
-            .setEndMs(now - 86_400_000L)
-            .setUncachedInputTokens(30_000L)
-            .setCacheReadTokens(80_000L)
-            .setCacheWriteTokens(if (cacheWriteSupported) 10_000L else 0L)
-            .setOutputTokens(totalOut / 2L)
-            .setUsageRequestCount(12L)
-            .setSpeedRequestCount(speedReqs / 2L)
-            .setSpeedP10(speedP50 * 0.7)
-            .setSpeedP50(speedP50)
-            .setSpeedP90(speedP50 * 1.4)
-            .setTtftP10Ms(ttftP50Ms * 0.6)
-            .setTtftP50Ms(ttftP50Ms)
-            .setTtftP90Ms(ttftP50Ms * 1.8)
-            .build()
-        val b1 = UsageBucketPoint.newBuilder()
-            .setStartMs(now - 86_400_000L)
-            .setEndMs(now)
-            .setUncachedInputTokens(20_000L)
-            .setCacheReadTokens(90_000L)
-            .setCacheWriteTokens(if (cacheWriteSupported) 5_000L else 0L)
-            .setOutputTokens(totalOut / 2L)
-            .setUsageRequestCount(10L)
-            .setSpeedRequestCount(speedReqs - speedReqs / 2L)
-            .setSpeedP10(speedP50 * 0.75)
-            .setSpeedP50(speedP50 + 6.0)
-            .setSpeedP90(speedP50 * 1.35)
-            .setTtftP10Ms(ttftP50Ms * 0.7)
-            .setTtftP50Ms(ttftP50Ms - 40.0)
-            .setTtftP90Ms(ttftP50Ms * 1.7)
-            .build()
-        return UsageSeriesView.newBuilder()
-            .setAgent(agent)
-            .setAgentName(agentName)
-            .setModel(model)
-            .setSeriesKey("${agent.number}:$model")
-            .setPatternIndex(patternIndex)
-            .setFocused(focused)
-            .setCacheWriteSupported(cacheWriteSupported)
-            .setFewSpeedSamples(speedReqs in 1L until 3L)
-            .setCurrent(
-                UsagePeriodSummary.newBuilder()
-                    .setUncachedInputTokens(50_000L)
-                    .setCacheReadTokens(170_000L)
-                    .setCacheWriteTokens(if (cacheWriteSupported) 15_000L else 0L)
-                    .setOutputTokens(totalOut)
-                    .setReasoningOutputTokens(totalOut / 4L)
-                    .setUsageRequestCount(22L)
-                    .setSpeedRequestCount(speedReqs)
-                    .setHasCacheHitRate(true)
-                    .setCacheHitRate(0.72)
-                    .setHasSpeed(speedReqs >= 3L)
-                    .setSpeedP10(speedP50 * 0.7)
-                    .setSpeedP50(speedP50)
-                    .setSpeedP90(speedP50 * 1.4)
-                    .setHasTtft(speedReqs >= 3L)
-                    .setTtftP10Ms(ttftP50Ms * 0.65)
-                    .setTtftP50Ms(ttftP50Ms)
-                    .setTtftP90Ms(ttftP50Ms * 1.75)
-                    .setRecent10SpeedCount(speedReqs.coerceAtMost(10L))
-                    .setRecent10SpeedP50(speedP50 + 4.0)
-                    .build(),
-            )
-            .setPrevious(
-                UsagePeriodSummary.newBuilder()
-                    .setUncachedInputTokens(40_000L)
-                    .setCacheReadTokens(120_000L)
-                    .setOutputTokens(8_000L)
-                    .setUsageRequestCount(15L)
-                    .setSpeedRequestCount(speedReqs)
-                    .setHasCacheHitRate(true)
-                    .setCacheHitRate(0.68)
-                    .setHasSpeed(speedReqs >= 3L)
-                    .setSpeedP50(speedP50 - 5.0)
-                    .setHasTtft(speedReqs >= 3L)
-                    .setTtftP50Ms(ttftP50Ms + 150.0)
-                    .build(),
-            )
-            .setHasTokensDelta(true)
-            .setTokensDeltaPercent(18.0)
-            .setHasCacheHitDelta(true)
-            .setCacheHitDeltaPoints(4.0)
-            .setHasSpeedDelta(speedReqs >= 3L)
-            .setSpeedDeltaPercent(9.0)
-            .setHasTtftDelta(speedReqs >= 3L)
-            .setTtftDeltaPercent(-22.0)
-            .addBuckets(b0)
-            .addBuckets(b1)
-            .build()
+        hasDelta: Boolean = true,
+        deltaPct: Double = 18.0,
+    ): UsageModelRowView = UsageModelRowView.newBuilder()
+        .setAgent(agent)
+        .setAgentName(agentName)
+        .setModel(model)
+        .setSeriesKey("${agent.number}:$model")
+        .setSelected(selected)
+        .setShareRatio(shareRatio)
+        .setTotalTokens(totalTokens)
+        .setHasCacheHit(hasCacheHit)
+        .setCacheHitRate(cacheHitRate)
+        .setHasSpeed(hasSpeed)
+        .setSpeedP50(speedP50)
+        .setHasTtft(hasTtft)
+        .setTtftP50Ms(ttftP50Ms)
+        .setHasTokensDelta(hasDelta)
+        .setTokensDeltaPercent(deltaPct)
+        .setUsageRequestCount(22L)
+        .setSpeedRequestCount(if (hasSpeed) 18L else 0L)
+        .build()
+
+    private fun sampleStrip(cur: Double, min: Double, max: Double, hasSelected: Boolean = false): UsageMetricStripView {
+        val b = UsageMetricStripView.newBuilder()
+            .setHasValue(true)
+            .setCurrentValue(cur)
+            .setHasRange(true)
+            .setMinValue(min)
+            .setMaxValue(max)
+            .setScaleMin(min * 0.9)
+            .setScaleMax(max * 1.1)
+            .setLastValidIndex(1)
+            .addAllPoints(UsageStripPointView.newBuilder().setHasValue(true).setValue(min))
+            .addAllPoints(UsageStripPointView.newBuilder().setHasValue(true).setValue(max))
+        if (hasSelected) {
+            b.addSelectedPoints(UsageStripPointView.newBuilder().setHasValue(true).setValue(cur))
+            b.addSelectedPoints(UsageStripPointView.newBuilder().setHasValue(true).setValue(cur))
+        }
+        return b.build()
     }
 
     @Test
-    fun pureFormattersCustomRangeClampingTzOffsetAndOverlayReplacement() {
-        // Locale formatting: zh uses 万/亿, en uses k/M/B
+    fun pureFormattersCustomRangeClampingTzOffsetAndSevenDayBuckets() {
+        // Locale formatting: zh uses 万/亿 (keeping 1 decimal < 1000亿), en uses k/M/B
         assertEquals("9,999", formatUsageTokens(9_999L, "万", "亿", chinese = true))
         assertEquals("12.3万", formatUsageTokens(123_456L, "万", "亿", chinese = true))
         assertEquals("1亿", formatUsageTokens(99_990_000L, "万", "亿", chinese = true))
         assertEquals("1.5亿", formatUsageTokens(150_000_000L, "万", "亿", chinese = true))
+        assertEquals("128.6亿", formatUsageTokens(12_860_000_000L, "万", "亿", chinese = true))
         assertEquals("999", formatUsageTokens(999L, "10k", "100M", chinese = false))
         assertEquals("12.3k", formatUsageTokens(12_345L, "10k", "100M", chinese = false))
         assertEquals("1.5M", formatUsageTokens(1_500_000L, "10k", "100M", chinese = false))
@@ -216,19 +172,14 @@ class UsageAndCliSwitchesTest {
 
         assertEquals("6.8", formatUsageSpeed(6.82))
         assertEquals("124", formatUsageSpeed(124.2))
-        assertEquals("420 ms", formatUsageTtft(420.0))
-        assertEquals("1.2 s", formatUsageTtft(1_240.0))
-        assertEquals("12 s", formatUsageTtft(12_100.0))
+        assertEquals("0.4s", formatUsageTtftSeconds(420.0))
+        assertEquals("1.2s", formatUsageTtftSeconds(1_240.0))
+        assertEquals("12s", formatUsageTtftSeconds(12_100.0))
 
         val flat = messageTextForTest(UiMessages.usageFlat(), "zh-CN")
-        assertEquals("+12%", formatUsageSignedPercent(12.4, flat))
-        assertEquals("−8%", formatUsageSignedPercent(-8.2, flat))
-        assertEquals(flat, formatUsageSignedPercent(0.2, flat))
-        assertEquals("+4 pt", formatUsageSignedPoints(3.7, flat))
-        assertEquals("−3 pt", formatUsageSignedPoints(-3.2, flat))
-        assertEquals("−180 ms", formatUsageTtftDelta(320.0, 500.0, flat))
-        assertEquals("+1.4 s", formatUsageTtftDelta(2400.0, 1000.0, flat))
-        assertEquals(flat, formatUsageTtftDelta(1020.0, 1000.0, flat))
+        assertEquals("▲1,240%", formatUsageDeltaTriangle(1240.0, flat))
+        assertEquals("▼72%", formatUsageDeltaTriangle(-72.2, flat))
+        assertEquals(flat, formatUsageDeltaTriangle(0.2, flat))
 
         // East-of-UTC timezone offset sign
         val shanghai = ZoneId.of("Asia/Shanghai")
@@ -253,6 +204,10 @@ class UsageAndCliSwitchesTest {
         val dstToday = buildUsageOpenParams(UsageRangePreset.USAGE_RANGE_PRESET_TODAY, nowMs = dstNow, zoneId = la)
         assertEquals(24, dstToday.bucketBoundsMs.size) // 23 hours + end bound
 
+        // 7-day range produces 28 6-hour buckets (29 bounds)
+        val sevenDays = buildUsageOpenParams(UsageRangePreset.USAGE_RANGE_PRESET_SEVEN_DAYS, nowMs = nowMs, zoneId = shanghai)
+        assertEquals(29, sevenDays.bucketBoundsMs.size)
+
         val twoDaysEnd = ZonedDateTime.of(2026, 7, 1, 0, 0, 0, 0, shanghai).toInstant().toEpochMilli()
         val twoDaysStart = twoDaysEnd - 86_400_000L
         val sixHourParams = buildUsageOpenParams(
@@ -263,16 +218,6 @@ class UsageAndCliSwitchesTest {
             zoneId = shanghai,
         )
         assertEquals(9, sixHourParams.bucketBoundsMs.size) // 2 days * 4 quarters + 1
-
-        // Max-4 overlay replacement
-        var sel = listOf("a", "b", "c")
-        sel = toggleUsageOverlaySelection(sel, "d")
-        assertEquals(listOf("a", "b", "c", "d"), sel)
-        sel = toggleUsageOverlaySelection(sel, "e")
-        assertEquals(listOf("a", "b", "c", "e"), sel)
-        sel = toggleUsageOverlaySelection(sel, "e")
-        assertEquals(listOf("a", "b", "c"), sel)
-        assertEquals(listOf("a"), toggleUsageOverlaySelection(listOf("a"), "a"))
     }
 
     @Test
@@ -551,25 +496,66 @@ class UsageAndCliSwitchesTest {
     }
 
     @Test
-    fun usageScreenRendersMetricsSeriesOverlayCapAndEdgeStates() {
-        val fiveSeries = UsageViewModel.newBuilder()
+    fun usageScreenRendersAllFourMetricsFocusSortScrubEmptyAndEdgeStates() {
+        val now = 1_760_000_000_000L
+        val vm = UsageViewModel.newBuilder()
             .setMachineId("m1")
             .setMachineName("Mac Studio")
             .setFound(true)
             .setSupported(true)
             .setOnline(true)
-            .setGranularity(UsageBucketGranularity.USAGE_BUCKET_GRANULARITY_DAY)
-            .setPreset(UsageRangePreset.USAGE_RANGE_PRESET_SEVEN_DAYS)
-            .setMetric(UsageMetricTab.USAGE_METRIC_TAB_TOKENS)
-            .addSeries(sampleSeries(Agent.AGENT_CLAUDE, "Claude Code", "claude-sonnet-4-6", 0, totalOut = 10_000L, focused = true))
-            .addSeries(sampleSeries(Agent.AGENT_CODEX, "Codex", "gpt-5", 1, totalOut = 9_000L, cacheWriteSupported = false))
-            .addSeries(sampleSeries(Agent.AGENT_CLAUDE, "Claude Code", "claude-opus-4-6", 2, totalOut = 8_000L))
-            .addSeries(sampleSeries(Agent.AGENT_CODEX, "Codex", "o4-mini", 3, totalOut = 7_000L, speedReqs = 2L))
-            .addSeries(sampleSeries(Agent.AGENT_ANTIGRAVITY, "Antigravity", "gemini-2.5-pro", 0, totalOut = 6_000L))
+            .setGranularity(UsageBucketGranularity.USAGE_BUCKET_GRANULARITY_HOUR)
+            .setPreset(UsageRangePreset.USAGE_RANGE_PRESET_TODAY)
+            .setRangeDays(1)
+            .setSortBy(UsageSortColumn.USAGE_SORT_COLUMN_TOKENS)
+            .setHasAnyUsage(true)
+            .setHero(
+                UsageHeroView.newBuilder()
+                    .setTotalModelCount(3)
+                    .setTotalTokens(720_000_000L)
+                    .setRequestCount(862L)
+                    .setHasTokensDelta(true)
+                    .setTokensDeltaPercent(-72.0)
+                    .setPeriodCompositionRows(5)
+                    .setComposition(
+                        UsageCompositionView.newBuilder()
+                            .setUncachedInputTokens(42_260_000L)
+                            .setCacheReadTokens(670_000_000L)
+                            .setCacheWriteTokens(4_400_000L)
+                            .setOutputTokens(3_240_000L)
+                            .setReasoningOutputTokens(1_360_000L),
+                    ),
+            )
+            .setBarChart(
+                UsageBarChartView.newBuilder()
+                    .setYMax(100_000_000L)
+                    .setYMid(50_000_000L)
+                    .addBuckets(
+                        UsageBarBucketView.newBuilder()
+                            .setStartMs(now - 7_200_000L)
+                            .setEndMs(now - 3_600_000L)
+                            .setAllTokens(45_000_000L)
+                            .setHasData(true),
+                    )
+                    .addBuckets(
+                        UsageBarBucketView.newBuilder()
+                            .setStartMs(now - 3_600_000L)
+                            .setEndMs(now)
+                            .setAllTokens(85_000_000L)
+                            .setHasData(true),
+                    ),
+            )
+            .setCacheHitStrip(sampleStrip(0.94, 0.92, 0.96))
+            .setOutputSpeedStrip(sampleStrip(95.0, 86.0, 112.0))
+            .setTtftStrip(sampleStrip(900.0, 600.0, 1000.0))
+            .addRows(sampleRow(Agent.AGENT_ANTIGRAVITY, "Antigravity", "gemini-flash-workhorse", 380_000_000L, 1.0, speedP50 = 118.0, ttftP50Ms = 400.0))
+            .addRows(sampleRow(Agent.AGENT_CLAUDE, "Claude Code", "claude-opus-4-6-thinking", 16_800_000L, 0.04, speedP50 = 62.0, ttftP50Ms = 2300.0, deltaPct = -12.0))
+            .addRows(sampleRow(Agent.AGENT_CODEX, "Codex", "gpt-5.4-codex-mini", 2_000_000L, 0.005, hasCacheHit = false, hasSpeed = false, hasTtft = false, hasDelta = false))
             .build()
 
-        val vmState = mutableStateOf(fiveSeries)
-        val pickedMetrics = mutableListOf<UsageMetricTab>()
+        val vmState = mutableStateOf(vm)
+        val pickedSorts = mutableListOf<UsageSortColumn>()
+        val pickedSeries = mutableListOf<Pair<String, Boolean>>()
         val pickedPresets = mutableListOf<UsageRangePreset>()
         var retried = 0
 
@@ -578,11 +564,9 @@ class UsageAndCliSwitchesTest {
                 CompositionLocalProvider(LocalChartFrozen provides true) {
                     UsageScreenContent(
                         vm = vmState.value,
-                        onSelectMetric = {
-                            pickedMetrics += it
-                            vmState.value = vmState.value.toBuilder().setMetric(it).build()
-                        },
                         onSelectPreset = { pickedPresets += it },
+                        onSelectSort = { pickedSorts += it },
+                        onSelectSeries = { key, toggle -> pickedSeries += key to toggle },
                         onRetry = { retried++ },
                     )
                 }
@@ -590,39 +574,67 @@ class UsageAndCliSwitchesTest {
         }
         ui.waitForIdle()
 
-        // Initially 3 of 5 selected
-        ui.onNodeWithText(messageTextForTest(UiMessages.usagePairsSummary(count = 5, name = "Mac Studio"))).assertIsDisplayed()
+        // Hero & all 4 simultaneous strips rendered
+        ui.onNodeWithText(messageTextForTest(UiMessages.usageScopeAllModels(3))).assertIsDisplayed()
+        ui.onNodeWithText(messageTextForTest(UiMessages.usageStripCacheHit())).performScrollTo().assertIsDisplayed()
+        ui.onNodeWithText(messageTextForTest(UiMessages.usageStripSpeed())).performScrollTo().assertIsDisplayed()
+        ui.onNodeWithText(messageTextForTest(UiMessages.usageStripTtft())).performScrollTo().assertIsDisplayed()
+        ui.onNodeWithText("95").performScrollTo().assertIsDisplayed()
+        ui.onNodeWithText("0.9s").performScrollTo().assertIsDisplayed()
 
-        // Selecting 4th series reaches 4; selecting 5th series replaces 4th and triggers capped summary
-        ui.onNodeWithText("Codex · o4-mini").performScrollTo().performClick()
-        ui.onNodeWithText("Antigravity · gemini-2.5-pro").performScrollTo().performClick()
-        ui.waitForIdle()
-        ui.onNodeWithText(messageTextForTest(UiMessages.usagePairsCappedSummary(5))).performScrollTo().assertIsDisplayed()
-
-        // Switch through metric tabs
-        ui.onNodeWithText(messageTextForTest(UiMessages.usageTabCacheHit())).performScrollTo().performClick()
-        ui.onNodeWithText(messageTextForTest(UiMessages.usageTabSpeed())).performScrollTo().performClick()
-        ui.onNodeWithText(messageTextForTest(UiMessages.usageTabTtft())).performScrollTo().performClick()
+        // Sort header & row selection callbacks
+        ui.onNodeWithText(messageTextForTest(UiMessages.usageColTtft())).performScrollTo().performClick()
+        ui.onNodeWithText("claude-opus-4-6-thinking").performScrollTo().performClick()
         ui.onNodeWithText(messageTextForTest(UiMessages.usageRange30D())).performScrollTo().performClick()
         ui.waitForIdle()
-        assertEquals(
-            listOf(
-                UsageMetricTab.USAGE_METRIC_TAB_CACHE_HIT,
-                UsageMetricTab.USAGE_METRIC_TAB_OUTPUT_SPEED,
-                UsageMetricTab.USAGE_METRIC_TAB_TTFT,
-            ),
-            pickedMetrics,
-        )
+        assertEquals(listOf(UsageSortColumn.USAGE_SORT_COLUMN_TTFT), pickedSorts)
+        assertEquals(listOf("${Agent.AGENT_CLAUDE_VALUE}:claude-opus-4-6-thinking" to true), pickedSeries)
         assertEquals(listOf(UsageRangePreset.USAGE_RANGE_PRESET_THIRTY_DAYS), pickedPresets)
 
-        // Edge states: offline empty & retry
+        // Single-model focus + clear × button
+        val focusedVm = vm.toBuilder()
+            .setHero(
+                vm.hero.toBuilder()
+                    .setHasSelectedModel(true)
+                    .setSelectedAgent(Agent.AGENT_CLAUDE)
+                    .setSelectedAgentName("Claude Code")
+                    .setSelectedModel("claude-opus-4-6-thinking")
+                    .setSelectedSeriesKey("${Agent.AGENT_CLAUDE_VALUE}:claude-opus-4-6-thinking")
+                    .setTotalTokens(16_800_000L)
+                    .setHasSharePercent(true)
+                    .setShareRatio(0.04),
+            )
+            .setCacheHitStrip(sampleStrip(0.90, 0.88, 0.92, hasSelected = true))
+            .build()
+        vmState.value = focusedVm
+        ui.waitForIdle()
+        ui.onNodeWithContentDescription(messageTextForTest(UiMessages.usageScopeClearA11Y()), useUnmergedTree = true).performClick()
+        ui.waitForIdle()
+        assertEquals("" to false, pickedSeries.last())
+
+        // Minimal empty records state (s7)
+        vmState.value = UsageViewModel.newBuilder()
+            .setMachineId("m1")
+            .setMachineName("VPS-dev")
+            .setFound(true)
+            .setSupported(true)
+            .setOnline(true)
+            .setPreset(UsageRangePreset.USAGE_RANGE_PRESET_TODAY)
+            .setGranularity(UsageBucketGranularity.USAGE_BUCKET_GRANULARITY_HOUR)
+            .setHasAnyUsage(false)
+            .build()
+        ui.waitForIdle()
+        ui.onNodeWithText(messageTextForTest(UiMessages.usageScopeAllEmpty())).assertIsDisplayed()
+        ui.onNodeWithText(messageTextForTest(UiMessages.usageEmptyNoRecords())).assertIsDisplayed()
+
+        // Edge state: offline & error retry
         vmState.value = UsageViewModel.newBuilder()
             .setMachineId("m1")
             .setMachineName("Mac Studio")
             .setFound(true)
             .setSupported(true)
-            .setOnline(false)
-            .setCachedOffline(true)
+            .setOnline(true)
+            .setErrorText(coreLit("boom"))
             .build()
         ui.waitForIdle()
         ui.onNodeWithText(messageTextForTest(UiMessages.commonRetry())).performClick()
@@ -645,39 +657,11 @@ class UsageAndCliSwitchesTest {
             .setMachineName("Mac Studio")
             .setFound(true)
             .setSupported(true)
+            .setOnline(true)
             .addSources(UsageAgentSource.newBuilder().setAgent(Agent.AGENT_ANTIGRAVITY).setState(UsageSourceState.USAGE_SOURCE_STATE_UNAVAILABLE))
             .build()
         ui.waitForIdle()
         assertTrue(ui.onAllNodesWithText(messageTextForTest(UiMessages.usageOnlyUnavailableTitle("Antigravity")), substring = true).fetchSemanticsNodes().isNotEmpty())
-
-        // Zero speed samples (e.g. Antigravity): Speed tab shows "—" cleanly without few-samples notice
-        vmState.value = UsageViewModel.newBuilder()
-            .setMachineId("m1")
-            .setMachineName("Mac Studio")
-            .setFound(true)
-            .setSupported(true)
-            .setOnline(true)
-            .setGranularity(UsageBucketGranularity.USAGE_BUCKET_GRANULARITY_DAY)
-            .setPreset(UsageRangePreset.USAGE_RANGE_PRESET_SEVEN_DAYS)
-            .setMetric(UsageMetricTab.USAGE_METRIC_TAB_OUTPUT_SPEED)
-            .addSeries(
-                sampleSeries(
-                    Agent.AGENT_ANTIGRAVITY,
-                    "Antigravity",
-                    "gemini-4-hydrogen",
-                    0,
-                    speedReqs = 0L,
-                    speedP50 = 0.0,
-                    ttftP50Ms = 0.0,
-                    cacheWriteSupported = false,
-                ).toBuilder().apply {
-                    current = current.toBuilder().setHasSpeed(false).setHasTtft(false).build()
-                }.build(),
-            )
-            .build()
-        ui.waitForIdle()
-        assertEquals(0, ui.onAllNodesWithText(messageTextForTest(UiMessages.usageFewSamplesCount(0)), substring = true).fetchSemanticsNodes().size)
-        assertEquals(0, ui.onAllNodesWithText(messageTextForTest(UiMessages.usageFewSamplesHint()), substring = true).fetchSemanticsNodes().size)
     }
 
     @Test
@@ -732,8 +716,9 @@ class UsageAndCliSwitchesTest {
             assertTrue(view.found)
             assertTrue(view.cachedOffline)
             assertFalse(view.online)
-            assertEquals(1, view.seriesCount)
-            assertEquals("claude-sonnet-4-6", view.getSeries(0).model)
+            assertTrue(view.hasAnyUsage)
+            assertEquals(1, view.rowsCount)
+            assertEquals("claude-sonnet-4-6", view.getRows(0).model)
         } finally {
             remote.close()
         }

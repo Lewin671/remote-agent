@@ -1,30 +1,39 @@
 package io.github.lewin671.remoteagent.ui
 
+import android.graphics.Paint
+import androidx.compose.animation.core.Animatable
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectHorizontalDragGestures
-import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DateRangePicker
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
 import androidx.compose.material3.SelectableDates
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -33,33 +42,45 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.drawscope.clipRect
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
+import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.layout
+import androidx.compose.ui.layout.onPlaced
+import androidx.compose.ui.layout.positionInParent
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.lewin671.remoteagent.core.MessageResolver
@@ -67,43 +88,34 @@ import io.github.lewin671.remoteagent.core.USAGE_RETENTION_DAYS
 import io.github.lewin671.remoteagent.core.UiMessages
 import io.github.lewin671.remoteagent.core.agentName
 import io.github.lewin671.remoteagent.core.clampUsageCustomRange
-import io.github.lewin671.remoteagent.core.proto.UsageMetricTab
-import io.github.lewin671.remoteagent.core.proto.UsageSeriesView
+import io.github.lewin671.remoteagent.core.proto.UsageBarBucketView
+import io.github.lewin671.remoteagent.core.proto.UsageHeroView
+import io.github.lewin671.remoteagent.core.proto.UsageMetricStripView
+import io.github.lewin671.remoteagent.core.proto.UsageModelRowView
+import io.github.lewin671.remoteagent.core.proto.UsageSortColumn
 import io.github.lewin671.remoteagent.core.proto.UsageViewModel
 import io.github.lewin671.remoteagent.proto.Agent
 import io.github.lewin671.remoteagent.proto.UsageBucketGranularity
-import io.github.lewin671.remoteagent.proto.UsageBucketPoint
 import io.github.lewin671.remoteagent.proto.UsageRangePreset
 import io.github.lewin671.remoteagent.proto.UsageSourceState
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
 import java.time.ZoneOffset
-import java.time.format.DateTimeFormatter
 import java.util.Locale
 import kotlin.math.abs
-import kotlin.math.ceil
 import kotlin.math.max
-import kotlin.math.min
 import kotlin.math.round
 import kotlin.math.roundToInt
-import kotlin.math.roundToLong
 
-const val MAX_USAGE_OVERLAY_SERIES = 4
-const val DEFAULT_USAGE_OVERLAY_SERIES = 3
-private const val USAGE_FEW_SAMPLES_MIN = 3L
 private const val DAY_MS = 86_400_000L
-
-private const val EM_DASH = "—"
-private const val MINUS_SIGN = "−"
+private const val EN_DASH = "–"
 private const val UNIT_K = "k"
 private const val UNIT_M = "M"
 private const val UNIT_B = "B"
 private const val UNIT_PCT = "%"
-private const val UNIT_PT = " pt"
-private const val UNIT_MS = " ms"
-private const val UNIT_S = " s"
 private const val ENGLISH_WAN_MARKER = "10k"
 
 fun formatUsageCommaUint(n: Long): String {
@@ -111,8 +123,8 @@ fun formatUsageCommaUint(n: Long): String {
     return String.format(Locale.US, "%,d", clamped)
 }
 
-private fun formatUsageScaled(value: Double, unit: String): String {
-    if (value < 100.0) {
+private fun formatUsageScaled(value: Double, unit: String, maxOneDec: Double = 100.0): String {
+    if (value < maxOneDec) {
         val rounded = round(value * 10.0) / 10.0
         val whole = round(rounded)
         val numStr =
@@ -138,9 +150,14 @@ fun formatUsageTokens(
         return formatUsageScaled(v / 1_000_000_000.0, UNIT_B)
     }
     if (v < 10_000.0) return formatUsageCommaUint(n)
-    if (v < 99_950_000.0) return formatUsageScaled(v / 10_000.0, wanUnit)
+    if (v < 99_950_000.0) {
+        val w = v / 10_000.0
+        return if (w < 100.0) formatUsageScaled(w, wanUnit, 100.0)
+        else formatUsageCommaUint(round(w).toLong()) + wanUnit
+    }
     if (v < 100_000_000.0) return "1$yiUnit"
-    return formatUsageScaled(v / 100_000_000.0, yiUnit)
+    if (v < 99_995_000_000.0) return formatUsageScaled(v / 100_000_000.0, yiUnit, 1000.0)
+    return formatUsageCommaUint(round(v / 100_000_000.0).toLong()) + yiUnit
 }
 
 fun formatUsageTokens(n: Long, copy: MessageResolver): String {
@@ -175,305 +192,207 @@ fun formatUsageSpeed(tokPerSec: Double): String {
     return formatUsageCommaUint(round(tokPerSec).toLong())
 }
 
-fun formatUsageTtft(ms: Double): String {
-    if (!ms.isFinite() || ms <= 0.0) return "0$UNIT_MS"
-    if (ms < 1000.0) return "${round(ms).toLong()}$UNIT_MS"
+fun formatUsageTtftSeconds(ms: Double): String {
+    if (!ms.isFinite() || ms <= 0.0) return "0.0s"
     if (ms < 10_000.0) {
-        val sec = round(ms / 100.0) / 10.0
-        return String.format(Locale.US, "%.1f", sec) + UNIT_S
+        val sec = max(0.1, round(ms / 100.0) / 10.0)
+        return String.format(Locale.US, "%.1fs", sec)
     }
-    return "${round(ms / 1000.0).toLong()}$UNIT_S"
+    return "${round(ms / 1000.0).toLong()}s"
 }
 
-fun formatUsageSignedPercent(pct: Double, flatText: String): String {
+fun formatUsageDeltaTriangle(pct: Double, flatText: String): String {
     if (!pct.isFinite() || abs(pct) < 0.5) return flatText
-    val r = round(pct).toLong()
-    return if (r > 0L) "+$r$UNIT_PCT" else "$MINUS_SIGN${abs(r)}$UNIT_PCT"
+    val rounded = round(abs(pct)).toLong()
+    val arrow = if (pct > 0.0) "▲" else "▼"
+    return "$arrow${formatUsageCommaUint(rounded)}$UNIT_PCT"
 }
 
-fun formatUsageSignedPercent(pct: Double, copy: MessageResolver): String =
-    formatUsageSignedPercent(pct, copy(UiMessages.usageFlat()))
+fun formatUsageDeltaTriangle(pct: Double, copy: MessageResolver): String =
+    formatUsageDeltaTriangle(pct, copy(UiMessages.usageFlat()))
 
-fun formatUsageSignedPoints(pts: Double, flatText: String): String {
-    if (!pts.isFinite() || abs(pts) < 0.5) return flatText
-    val r = round(pts).toLong()
-    return if (r > 0L) "+$r$UNIT_PT" else "$MINUS_SIGN${abs(r)}$UNIT_PT"
-}
+enum class UsageTickAlign { START, CENTER, END }
 
-fun formatUsageSignedPoints(pts: Double, copy: MessageResolver): String =
-    formatUsageSignedPoints(pts, copy(UiMessages.usageFlat()))
+data class UsageAxisTick(
+    val pct: Float,
+    val label: String,
+    val align: UsageTickAlign,
+)
 
-fun formatUsageTtftDelta(curMs: Double, prevMs: Double, flatText: String): String {
-    if (!curMs.isFinite() || !prevMs.isFinite() || prevMs <= 0.0) return EM_DASH
-    val diff = curMs - prevMs
-    if (abs(diff) < 50.0) return flatText
-    val sign = if (diff > 0.0) "+" else MINUS_SIGN
-    val absDiff = abs(diff)
-    if (absDiff < 1000.0) return "$sign${round(absDiff).toLong()}$UNIT_MS"
-    if (absDiff < 10_000.0) {
-        val sec = round(absDiff / 100.0) / 10.0
-        return sign + String.format(Locale.US, "%.1f", sec) + UNIT_S
+private fun effectiveGranularity(
+    granularity: UsageBucketGranularity,
+    preset: UsageRangePreset,
+): UsageBucketGranularity =
+    if (granularity != UsageBucketGranularity.USAGE_BUCKET_GRANULARITY_UNSPECIFIED) granularity
+    else when (preset) {
+        UsageRangePreset.USAGE_RANGE_PRESET_TODAY -> UsageBucketGranularity.USAGE_BUCKET_GRANULARITY_HOUR
+        UsageRangePreset.USAGE_RANGE_PRESET_SEVEN_DAYS -> UsageBucketGranularity.USAGE_BUCKET_GRANULARITY_SIX_HOURS
+        else -> UsageBucketGranularity.USAGE_BUCKET_GRANULARITY_DAY
     }
-    return "$sign${round(absDiff / 1000.0).toLong()}$UNIT_S"
-}
 
-fun formatUsageTtftDelta(curMs: Double, prevMs: Double, copy: MessageResolver): String =
-    formatUsageTtftDelta(curMs, prevMs, copy(UiMessages.usageFlat()))
+private fun mdLabel(m: Int, d: Int): String = listOf(m, d).joinToString("/")
 
-fun toggleUsageOverlaySelection(
-    selected: List<String>,
-    key: String,
-    maxOverlay: Int = MAX_USAGE_OVERLAY_SERIES,
-): List<String> {
-    if (key.isEmpty()) return selected
-    val idx = selected.indexOf(key)
-    if (idx >= 0) {
-        return if (selected.size <= 1) selected else selected.filter { it != key }
+fun buildUsageAxisTicks(
+    granularity: UsageBucketGranularity,
+    buckets: List<UsageBarBucketView>,
+    startMs: Long,
+    endMs: Long,
+    preset: UsageRangePreset,
+    axis24h: String,
+    zone: ZoneId = ZoneId.systemDefault(),
+    nowMs: Long = System.currentTimeMillis(),
+): List<UsageAxisTick> {
+    val gran = effectiveGranularity(granularity, preset)
+    if (gran == UsageBucketGranularity.USAGE_BUCKET_GRANULARITY_HOUR) {
+        return listOf(
+            UsageAxisTick(0f, "0", UsageTickAlign.START),
+            UsageAxisTick(25f, "6", UsageTickAlign.CENTER),
+            UsageAxisTick(50f, "12", UsageTickAlign.CENTER),
+            UsageAxisTick(75f, "18", UsageTickAlign.CENTER),
+            UsageAxisTick(100f, axis24h, UsageTickAlign.END),
+        )
     }
-    if (selected.size < maxOverlay) return selected + key
-    return selected.take(maxOverlay - 1) + key
-}
 
-fun initialUsageSelection(series: List<UsageSeriesView>): List<String> {
-    if (series.isEmpty()) return emptyList()
-    val focused = series.firstOrNull { it.focused }?.seriesKey
-    val top = series.take(DEFAULT_USAGE_OVERLAY_SERIES).map { it.seriesKey }.toMutableList()
-    if (!focused.isNullOrEmpty() && focused !in top) {
-        if (top.size < MAX_USAGE_OVERLAY_SERIES) top.add(0, focused)
-        else {
-            top[top.lastIndex] = focused
+    val todayStart = Instant.ofEpochMilli(nowMs).atZone(zone).toLocalDate()
+    val fallbackDays = if (preset == UsageRangePreset.USAGE_RANGE_PRESET_THIRTY_DAYS) 30 else 7
+    val effStartMs = when {
+        startMs > 0L -> startMs
+        buckets.isNotEmpty() && buckets[0].startMs > 0L -> buckets[0].startMs
+        else -> todayStart.minusDays((fallbackDays - 1).toLong()).atStartOfDay(zone).toInstant().toEpochMilli()
+    }
+
+    if (gran == UsageBucketGranularity.USAGE_BUCKET_GRANULARITY_SIX_HOURS) {
+        val n = if (buckets.isNotEmpty()) buckets.size else 28
+        val days = max(1, round(n / 4.0).toInt())
+        val out = ArrayList<UsageAxisTick>(days)
+        var prevMonth = -1
+        val startDate = Instant.ofEpochMilli(effStartMs).atZone(zone).toLocalDate()
+        for (d in 0 until days) {
+            val idx = d * 4
+            val dt = if (idx < buckets.size && buckets[idx].startMs > 0L) {
+                Instant.ofEpochMilli(buckets[idx].startMs).atZone(zone).toLocalDate()
+            } else {
+                startDate.plusDays(d.toLong())
+            }
+            val m = dt.monthValue
+            val day = dt.dayOfMonth
+            val lbl = if (d == 0 || m != prevMonth) mdLabel(m, day) else day.toString()
+            prevMonth = m
+            out.add(
+                UsageAxisTick(
+                    pct = ((d * 4 + 2).toFloat() / n.toFloat()) * 100f,
+                    label = lbl,
+                    align = UsageTickAlign.CENTER,
+                ),
+            )
         }
+        return out
     }
-    return top
+
+    val derivedDays =
+        if (endMs > startMs && startMs > 0L) max(1, round((endMs - startMs).toDouble() / DAY_MS.toDouble()).toInt())
+        else fallbackDays
+    val n = if (buckets.isNotEmpty()) buckets.size else derivedDays
+    val startDate = Instant.ofEpochMilli(effStartMs).atZone(zone).toLocalDate()
+    if (n <= 1) {
+        return listOf(UsageAxisTick(50f, mdLabel(startDate.monthValue, startDate.dayOfMonth), UsageTickAlign.CENTER))
+    }
+
+    val lastDate = when {
+        buckets.isNotEmpty() && buckets.last().startMs > 0L ->
+            Instant.ofEpochMilli(buckets.last().startMs).atZone(zone).toLocalDate()
+        endMs > 0L -> Instant.ofEpochMilli(endMs - 1L).atZone(zone).toLocalDate()
+        else -> startDate.plusDays((n - 1).toLong())
+    }
+    val tickCount = when {
+        n <= 4 -> n
+        n <= 18 -> 4
+        else -> 5
+    }
+    val out = ArrayList<UsageAxisTick>(tickCount)
+    for (k in 0 until tickCount) {
+        val last = k == tickCount - 1
+        val posIdx = if (last) n else round(k.toDouble() * n / (tickCount - 1)).toInt()
+        val dt = when {
+            last -> lastDate
+            posIdx < buckets.size && buckets[posIdx].startMs > 0L ->
+                Instant.ofEpochMilli(buckets[posIdx].startMs).atZone(zone).toLocalDate()
+            else -> startDate.plusDays(posIdx.toLong())
+        }
+        val align = when (k) {
+            0 -> UsageTickAlign.START
+            tickCount - 1 -> UsageTickAlign.END
+            else -> UsageTickAlign.CENTER
+        }
+        out.add(
+            UsageAxisTick(
+                pct = (posIdx.toFloat() / n.toFloat()) * 100f,
+                label = mdLabel(dt.monthValue, dt.dayOfMonth),
+                align = align,
+            ),
+        )
+    }
+    return out
 }
 
-internal fun usageBucketTokens(b: UsageBucketPoint): Long =
-    b.uncachedInputTokens + b.cacheReadTokens + b.cacheWriteTokens + b.outputTokens
-
-internal fun usageSeriesTotalTokens(s: UsageSeriesView): Long {
-    if (!s.hasCurrent()) return 0L
-    val c = s.current
-    return c.uncachedInputTokens + c.cacheReadTokens + c.cacheWriteTokens + c.outputTokens
-}
-
-private fun bucketCacheHit(b: UsageBucketPoint): Double? {
-    val denom = b.uncachedInputTokens + b.cacheReadTokens + b.cacheWriteTokens
-    if (denom <= 0L) return null
-    return b.cacheReadTokens.toDouble() / denom.toDouble()
-}
-
-private fun bucketHasSpeed(b: UsageBucketPoint): Boolean = b.speedRequestCount > 0L && b.speedP50 > 0.0
-
-private fun bucketHasTtft(b: UsageBucketPoint): Boolean = b.speedRequestCount > 0L && b.ttftP50Ms > 0.0
-
-private fun seriesIsFewSamples(s: UsageSeriesView, metric: UsageMetricTab): Boolean = when (metric) {
-    UsageMetricTab.USAGE_METRIC_TAB_TOKENS -> false
-    UsageMetricTab.USAGE_METRIC_TAB_CACHE_HIT -> s.current.usageRequestCount in 1L until USAGE_FEW_SAMPLES_MIN
-    else -> s.fewSpeedSamples || s.current.speedRequestCount in 1L until USAGE_FEW_SAMPLES_MIN
-}
-
-private fun formatBucketAxisTime(ms: Long, gran: UsageBucketGranularity, zone: ZoneId = ZoneId.systemDefault()): String {
-    val zdt = Instant.ofEpochMilli(ms).atZone(zone)
-    return if (gran == UsageBucketGranularity.USAGE_BUCKET_GRANULARITY_HOUR) {
-        String.format(Locale.US, "%02d:00", zdt.hour)
-    } else {
-        "${zdt.monthValue}/${zdt.dayOfMonth}"
+fun formatUsageBucketLabel(
+    startMs: Long,
+    endMs: Long,
+    granularity: UsageBucketGranularity,
+    copy: MessageResolver,
+    zone: ZoneId = ZoneId.systemDefault(),
+): String {
+    val s = Instant.ofEpochMilli(startMs).atZone(zone)
+    val e = Instant.ofEpochMilli(if (endMs > startMs) endMs else startMs + 3_600_000L).atZone(zone)
+    val startH = s.hour
+    var endH = e.hour
+    if (endH <= startH && endMs > startMs) endH = 24
+    return when (granularity) {
+        UsageBucketGranularity.USAGE_BUCKET_GRANULARITY_HOUR ->
+            copy(UiMessages.usageScrubHourRange(end = endH, start = startH))
+        UsageBucketGranularity.USAGE_BUCKET_GRANULARITY_SIX_HOURS ->
+            copy(UiMessages.usageScrubDayHourRange(day = s.dayOfMonth, end = endH, month = s.monthValue, start = startH))
+        else ->
+            copy(UiMessages.usageScrubDay(day = s.dayOfMonth, month = s.monthValue))
     }
 }
 
-private fun formatShortDay(ms: Long, zone: ZoneId = ZoneId.systemDefault()): String {
-    val d = Instant.ofEpochMilli(ms).atZone(zone).toLocalDate()
-    return d.format(DateTimeFormatter.ofPattern("yyyy-MM-dd", Locale.US))
+fun formatUsageCustomRange(
+    startMs: Long,
+    inclusiveEndMs: Long,
+    copy: MessageResolver,
+    zone: ZoneId = ZoneId.systemDefault(),
+): String {
+    val s = Instant.ofEpochMilli(startMs).atZone(zone).toLocalDate()
+    val e = Instant.ofEpochMilli(inclusiveEndMs).atZone(zone).toLocalDate()
+    return when {
+        s == e -> copy(UiMessages.usageCustomRangeSingleDay(day = s.dayOfMonth, month = s.monthValue, year = s.year))
+        s.year == e.year -> copy(
+            UiMessages.usageCustomRangeSameYear(
+                endDay = e.dayOfMonth,
+                endMonth = e.monthValue,
+                startDay = s.dayOfMonth,
+                startMonth = s.monthValue,
+                year = s.year,
+            ),
+        )
+        else -> copy(
+            UiMessages.usageCustomRangeCrossYear(
+                endDay = e.dayOfMonth,
+                endMonth = e.monthValue,
+                endYear = e.year,
+                startDay = s.dayOfMonth,
+                startMonth = s.monthValue,
+                startYear = s.year,
+            ),
+        )
+    }
 }
 
 private fun formatCachedAt(ms: Long, zone: ZoneId = ZoneId.systemDefault()): String {
     if (ms <= 0L) return ""
     val zdt = Instant.ofEpochMilli(ms).atZone(zone)
-    return String.format(Locale.US, "%02d/%02d %02d:%02d", zdt.monthValue, zdt.dayOfMonth, zdt.hour, zdt.minute)
-}
-
-private data class ActiveSummary(
-    val uncached: Long,
-    val read: Long,
-    val write: Long,
-    val out: Long,
-    val reas: Long,
-    val total: Long,
-    val usageReqs: Long,
-    val speedReqs: Long,
-    val hitRate: Double,
-    val inDenom: Long,
-    val tokDeltaPct: Double?,
-    val prevLabel: String,
-    val hasWeightedSpeed: Boolean,
-    val hasOutlier: Boolean,
-    val primary: UsageSeriesView?,
-)
-
-private data class UsageLinePoint(
-    val bucketIndex: Int,
-    val xFrac: Float,
-    val value: Double,
-    val lowValue: Double?,
-    val highValue: Double?,
-)
-
-private data class UsageLineSeries(
-    val series: UsageSeriesView,
-    val slot: Int,
-    val few: Boolean,
-    val segments: List<List<UsageLinePoint>>,
-)
-
-private data class UsageChartModel(
-    val isBars: Boolean,
-    val bucketCount: Int,
-    val yMax: Double,
-    val yLabels: List<String>,
-    val xLabels: List<String>,
-    val barTotals: LongArray,
-    val barSeriesValues: List<Pair<Int, LongArray>>,
-    val lineSeries: List<UsageLineSeries>,
-)
-
-private fun buildAndroidUsageChart(
-    selectedSeries: List<UsageSeriesView>,
-    bucketCount: Int,
-    metric: UsageMetricTab,
-    granularity: UsageBucketGranularity,
-    copy: MessageResolver,
-): UsageChartModel? {
-    if (bucketCount <= 0 || selectedSeries.isEmpty()) return null
-    val firstBuckets = selectedSeries.first().bucketsList
-    val xLabels =
-        if (firstBuckets.isNotEmpty()) {
-            listOf(
-                formatBucketAxisTime(firstBuckets.first().startMs, granularity),
-                formatBucketAxisTime(firstBuckets[(firstBuckets.size - 1) / 2].startMs, granularity),
-                formatBucketAxisTime(firstBuckets.last().startMs, granularity),
-            )
-        } else {
-            emptyList()
-        }
-
-    if (metric == UsageMetricTab.USAGE_METRIC_TAB_TOKENS) {
-        val totals = LongArray(bucketCount)
-        val seriesRows = ArrayList<Pair<Int, LongArray>>(selectedSeries.size)
-        for ((slot, s) in selectedSeries.withIndex()) {
-            val arr = LongArray(bucketCount)
-            for (bi in 0 until bucketCount) {
-                val b = s.bucketsList.getOrNull(bi)
-                val v = if (b != null) usageBucketTokens(b) else 0L
-                arr[bi] = v
-                totals[bi] += v
-            }
-            seriesRows += slot to arr
-        }
-        val peak = totals.maxOrNull()?.coerceAtLeast(1L) ?: 1L
-        val yMax = ceil(peak * 1.12).coerceAtLeast(1.0)
-        val yLabels = listOf(
-            formatUsageTokens(yMax.roundToLong(), copy),
-            formatUsageTokens((yMax / 2.0).roundToLong(), copy),
-            "0",
-        )
-        return UsageChartModel(
-            isBars = true,
-            bucketCount = bucketCount,
-            yMax = yMax,
-            yLabels = yLabels,
-            xLabels = xLabels,
-            barTotals = totals,
-            barSeriesValues = seriesRows,
-            lineSeries = emptyList(),
-        )
-    }
-
-    val maxY: Double =
-        if (metric == UsageMetricTab.USAGE_METRIC_TAB_CACHE_HIT) {
-            100.0
-        } else {
-            var peak = 0.0
-            for (s in selectedSeries) {
-                val few = seriesIsFewSamples(s, metric)
-                for (b in s.bucketsList) {
-                    if (metric == UsageMetricTab.USAGE_METRIC_TAB_OUTPUT_SPEED && bucketHasSpeed(b)) {
-                        peak = max(peak, if (!few && b.speedP90 > 0.0) b.speedP90 else b.speedP50)
-                    } else if (metric == UsageMetricTab.USAGE_METRIC_TAB_TTFT && bucketHasTtft(b)) {
-                        peak = max(peak, if (!few && b.ttftP90Ms > 0.0) b.ttftP90Ms else b.ttftP50Ms)
-                    }
-                }
-            }
-            max(if (metric == UsageMetricTab.USAGE_METRIC_TAB_TTFT) 200.0 else 10.0, ceil(peak * 1.15))
-        }
-
-    val yLabels =
-        if (metric == UsageMetricTab.USAGE_METRIC_TAB_CACHE_HIT) {
-            listOf("100$UNIT_PCT", "50$UNIT_PCT", "0$UNIT_PCT")
-        } else {
-            val mid = maxY / 2.0
-            listOf(
-                if (metric == UsageMetricTab.USAGE_METRIC_TAB_TTFT) formatUsageTtft(maxY) else formatUsageSpeed(maxY),
-                if (metric == UsageMetricTab.USAGE_METRIC_TAB_TTFT) formatUsageTtft(mid) else formatUsageSpeed(mid),
-                "0",
-            )
-        }
-
-    val lineSeries = selectedSeries.mapIndexed { slot, s ->
-        val few = seriesIsFewSamples(s, metric)
-        val segs = ArrayList<List<UsageLinePoint>>()
-        var curSeg = ArrayList<UsageLinePoint>()
-        for (bi in 0 until bucketCount) {
-            val b = s.bucketsList.getOrNull(bi)
-            var v: Double? = null
-            var lo: Double? = null
-            var hi: Double? = null
-            if (b != null) {
-                when (metric) {
-                    UsageMetricTab.USAGE_METRIC_TAB_CACHE_HIT -> {
-                        val r = bucketCacheHit(b)
-                        if (r != null) v = r * 100.0
-                    }
-                    UsageMetricTab.USAGE_METRIC_TAB_OUTPUT_SPEED -> if (bucketHasSpeed(b)) {
-                        v = b.speedP50
-                        if (!few && b.speedP10 > 0.0 && b.speedP90 >= b.speedP10) {
-                            lo = b.speedP10
-                            hi = b.speedP90
-                        }
-                    }
-                    UsageMetricTab.USAGE_METRIC_TAB_TTFT -> if (bucketHasTtft(b)) {
-                        v = b.ttftP50Ms
-                        if (!few && b.ttftP10Ms > 0.0 && b.ttftP90Ms >= b.ttftP10Ms) {
-                            lo = b.ttftP10Ms
-                            hi = b.ttftP90Ms
-                        }
-                    }
-                    else -> {}
-                }
-            }
-            if (v == null) {
-                if (curSeg.isNotEmpty()) {
-                    segs.add(curSeg)
-                    curSeg = ArrayList()
-                }
-            } else {
-                val xFrac = if (bucketCount <= 1) 0.5f else bi.toFloat() / (bucketCount - 1).toFloat()
-                curSeg.add(UsageLinePoint(bi, xFrac, v, lo, hi))
-            }
-        }
-        if (curSeg.isNotEmpty()) segs.add(curSeg)
-        UsageLineSeries(series = s, slot = slot, few = few, segments = segs)
-    }
-
-    return UsageChartModel(
-        isBars = false,
-        bucketCount = bucketCount,
-        yMax = maxY,
-        yLabels = yLabels,
-        xLabels = xLabels,
-        barTotals = LongArray(0),
-        barSeriesValues = emptyList(),
-        lineSeries = lineSeries,
-    )
+    return String.format(Locale.US, "%02d:%02d", zdt.hour, zdt.minute)
 }
 
 @Composable
@@ -500,20 +419,20 @@ fun UsageScreen(
             focusAgent = focusAgent,
             focusModel = focusModel,
             preset = UsageRangePreset.USAGE_RANGE_PRESET_SEVEN_DAYS,
-            metric = UsageMetricTab.USAGE_METRIC_TAB_TOKENS,
+            applyFocus = true,
         )
     }
 
     UsageScreenContent(
         vm = view,
         onBack = nav.back,
-        onSelectMetric = { remote.coreHost.setUsageMetric(it) },
         onSelectPreset = { preset ->
             remote.coreHost.openUsageScreen(
                 machineId = machineId,
                 focusAgent = focusAgent,
                 focusModel = focusModel,
                 preset = preset,
+                applyFocus = false,
             )
         },
         onSelectCustomRange = { startMs, endMs ->
@@ -524,8 +443,12 @@ fun UsageScreen(
                 preset = UsageRangePreset.USAGE_RANGE_PRESET_CUSTOM,
                 customStartMs = startMs,
                 customEndMs = endMs,
+                applyFocus = false,
             )
         },
+        onSelectSort = { remote.coreHost.selectUsageSort(machineId, it) },
+        onSelectSeries = { key, toggle -> remote.coreHost.selectUsageSeries(machineId, key, toggle) },
+        onScrub = { idx, clear -> remote.coreHost.scrubUsage(machineId, idx, clear) },
         onRetry = { remote.coreHost.retryUsageScreen(machineId) },
     )
 }
@@ -534,25 +457,22 @@ fun UsageScreen(
 fun UsageScreenContent(
     vm: UsageViewModel,
     onBack: () -> Unit = {},
-    onSelectMetric: (UsageMetricTab) -> Unit = {},
     onSelectPreset: (UsageRangePreset) -> Unit = {},
     onSelectCustomRange: (Long, Long) -> Unit = { _, _ -> },
+    onSelectSort: (UsageSortColumn) -> Unit = {},
+    onSelectSeries: (String, Boolean) -> Unit = { _, _ -> },
+    onScrub: (Int, Boolean) -> Unit = { _, _ -> },
     onRetry: () -> Unit = {},
 ) {
     val copy = uiText()
     val p = pal
-    val largeFont = LocalDensity.current.fontScale >= 1.8f
-    val metric =
-        if (vm.metric == UsageMetricTab.USAGE_METRIC_TAB_UNSPECIFIED) UsageMetricTab.USAGE_METRIC_TAB_TOKENS
-        else vm.metric
     val preset =
         if (vm.preset == UsageRangePreset.USAGE_RANGE_PRESET_UNSPECIFIED) UsageRangePreset.USAGE_RANGE_PRESET_SEVEN_DAYS
         else vm.preset
 
     var showSkeleton by remember(vm.machineId) { mutableStateOf(false) }
-    val hasSeries = vm.seriesList.isNotEmpty()
-    LaunchedEffect(vm.loading, hasSeries) {
-        if (!vm.loading || hasSeries) {
+    LaunchedEffect(vm.loading, vm.hasAnyUsage) {
+        if (!vm.loading || vm.hasAnyUsage) {
             showSkeleton = false
         } else {
             delay(200)
@@ -561,364 +481,257 @@ fun UsageScreenContent(
     }
 
     val clampedDefault = remember(vm.startMs, vm.endMs) {
-        val rawEnd = if (vm.endMs > 0L) vm.endMs - DAY_MS else 0L
+        val rawEnd = if (vm.endMs > vm.startMs && vm.endMs > 0L) vm.endMs - 1L else vm.endMs
         clampUsageCustomRange(vm.startMs, rawEnd)
     }
     var customPickerOpen by remember { mutableStateOf(false) }
 
-    var selectedKeys by remember(vm.machineId) { mutableStateOf(emptyList<String>()) }
-    val seriesSig = remember(vm.seriesList) {
-        vm.seriesList.joinToString("|") { "${it.seriesKey}:${if (it.focused) 1 else 0}" }
-    }
-    LaunchedEffect(seriesSig) {
-        selectedKeys = initialUsageSelection(vm.seriesList)
-    }
-    val selectedSeries = remember(vm.seriesList, selectedKeys) {
-        val byKey = vm.seriesList.associateBy { it.seriesKey }
-        val picked = selectedKeys.mapNotNull { byKey[it] }
-        picked.ifEmpty { vm.seriesList.take(1) }
-    }
-
-    var scrubIndex by remember(metric, preset, vm.startMs, vm.endMs, selectedKeys) { mutableStateOf<Int?>(null) }
-
     val name = vm.machineName.ifEmpty { vm.machineId.ifEmpty { copy(UiMessages.commonUnknownComputer()) } }
-    val subtitle =
-        if (vm.found) {
-            if (vm.cachedOffline || !vm.online) copy(UiMessages.usageSubtitleOffline(name))
-            else copy(UiMessages.usageSubtitleLive(name))
-        } else {
-            ""
-        }
+    val subtitle = if (vm.found && !vm.online) copy(UiMessages.usageSubtitleOffline(name)) else name
     val errStr = if (vm.hasErrorText()) uiText(vm.errorText) else ""
 
     val allSourcesUnavailable =
         vm.found &&
             vm.supported &&
-            ((vm.sourcesList.isNotEmpty() && vm.sourcesList.all { it.state == UsageSourceState.USAGE_SOURCE_STATE_UNAVAILABLE }) ||
-                (!hasSeries && vm.hasUnsupportedFootnote() && vm.unsupportedFootnote.key == "usage.only_unavailable_title"))
+            !vm.hasAnyUsage &&
+            !vm.loading &&
+            errStr.isEmpty() &&
+            (vm.online || vm.cachedOffline) &&
+            vm.sourcesList.isNotEmpty() &&
+            vm.sourcesList.all { it.state == UsageSourceState.USAGE_SOURCE_STATE_UNAVAILABLE }
+
+    val showOfflineEmpty =
+        vm.found && vm.supported && !vm.online && !vm.hasAnyUsage && !vm.cachedOffline && !vm.loading
+
+    val showEmptyRecords =
+        vm.found &&
+            vm.supported &&
+            !vm.hasAnyUsage &&
+            !vm.loading &&
+            errStr.isEmpty() &&
+            !showOfflineEmpty &&
+            !allSourcesUnavailable
+
     val unavailAgentNames = vm.sourcesList
         .filter { it.state == UsageSourceState.USAGE_SOURCE_STATE_UNAVAILABLE }
         .joinToString(", ") { agentName(it.agent, copy = copy) }
         .ifEmpty { agentName(Agent.AGENT_ANTIGRAVITY, copy = copy) }
 
-    val summary = remember(selectedSeries, preset, copy) {
-        var uncached = 0L
-        var read = 0L
-        var write = 0L
-        var out = 0L
-        var reas = 0L
-        var prevTok = 0L
-        var usageReqs = 0L
-        var speedReqs = 0L
-        var hasWeightedSpeed = false
-        var hasOutlier = false
-        for (s in selectedSeries) {
-            if (!s.hasCurrent()) continue
-            val c = s.current
-            uncached += c.uncachedInputTokens
-            read += c.cacheReadTokens
-            write += c.cacheWriteTokens
-            out += c.outputTokens
-            reas += c.reasoningOutputTokens
-            usageReqs += c.usageRequestCount
-            speedReqs += c.speedRequestCount
-            if (s.hasPrevious()) {
-                val pr = s.previous
-                prevTok += pr.uncachedInputTokens + pr.cacheReadTokens + pr.cacheWriteTokens + pr.outputTokens
-            }
-            if (c.hasSpeed) hasWeightedSpeed = true
-            if (c.speedP50 > 0.0 && c.speedP90 > c.speedP50 * 4.0) hasOutlier = true
-            if (c.ttftP50Ms > 0.0 && c.ttftP90Ms > c.ttftP50Ms * 4.0) hasOutlier = true
-        }
-        val total = uncached + read + write + out
-        val inDenom = uncached + read + write
-        val hitRate = if (inDenom > 0L) read.toDouble() / inDenom.toDouble() else 0.0
-        val prevLabel = when (preset) {
-            UsageRangePreset.USAGE_RANGE_PRESET_SEVEN_DAYS -> copy(UiMessages.usageSubVsPrev7D())
-            UsageRangePreset.USAGE_RANGE_PRESET_THIRTY_DAYS -> copy(UiMessages.usageSubVsPrev30D())
-            else -> copy(UiMessages.usageSubVsPrevGeneric())
-        }
-        val anyPrevBf = selectedSeries.any { it.previousBackfilling }
-        val tokDeltaPct =
-            if (!anyPrevBf && usageReqs >= 3L && prevTok > 0L) ((total - prevTok).toDouble() / prevTok.toDouble()) * 100.0
-            else null
-        ActiveSummary(
-            uncached = uncached,
-            read = read,
-            write = write,
-            out = out,
-            reas = reas,
-            total = total,
-            usageReqs = usageReqs,
-            speedReqs = speedReqs,
-            hitRate = hitRate,
-            inDenom = inDenom,
-            tokDeltaPct = tokDeltaPct,
-            prevLabel = prevLabel,
-            hasWeightedSpeed = hasWeightedSpeed,
-            hasOutlier = hasOutlier,
-            primary = selectedSeries.firstOrNull(),
-        )
-    }
+    val ranges = listOf(
+        UsageRangePreset.USAGE_RANGE_PRESET_TODAY to copy(UiMessages.usageRangeToday()),
+        UsageRangePreset.USAGE_RANGE_PRESET_SEVEN_DAYS to copy(UiMessages.usageRange7D()),
+        UsageRangePreset.USAGE_RANGE_PRESET_THIRTY_DAYS to copy(UiMessages.usageRange30D()),
+        UsageRangePreset.USAGE_RANGE_PRESET_CUSTOM to copy(UiMessages.usageRangeCustom()),
+    )
+    val selectedRangeIdx = ranges.indexOfFirst { it.first == preset }.coerceAtLeast(0)
 
-    val anySelectedFewSamples =
-        metric != UsageMetricTab.USAGE_METRIC_TAB_TOKENS &&
-            selectedSeries.isNotEmpty() &&
-            selectedSeries.all { seriesIsFewSamples(it, metric) }
-
-    val pairHeadline = when {
-        selectedSeries.size == 1 -> {
-            val s = selectedSeries.first()
-            "${s.agentName} · ${s.model}"
-        }
-        selectedKeys.size >= MAX_USAGE_OVERLAY_SERIES && vm.seriesList.size > MAX_USAGE_OVERLAY_SERIES ->
-            copy(UiMessages.usagePairsCappedSummary(vm.seriesList.size))
-        selectedSeries.size < vm.seriesList.size ->
-            copy(UiMessages.usagePairsSummary(count = vm.seriesList.size, name = name))
-        else -> "$name · ${copy(UiMessages.usageFilterAll())}"
-    }
-
-    val bucketCount = selectedSeries.maxOfOrNull { it.bucketsCount } ?: 0
-    val chartData = remember(selectedSeries, bucketCount, metric, vm.granularity, copy) {
-        buildAndroidUsageChart(selectedSeries, bucketCount, metric, vm.granularity, copy)
-    }
-
-    val kpiHeadline = TextStyle(
-        fontSize = 30.sp,
-        lineHeight = 34.sp,
-        fontWeight = FontWeight.SemiBold,
-        letterSpacing = (-0.5).sp,
-    ).digits()
-
-    Column(Modifier.fillMaxSize().background(p.paper).testTag("usage-page")) {
-        PageBar(
-            title = copy(UiMessages.usageTitle()),
-            onBack = onBack,
-            subtitle = subtitle.ifEmpty { null },
-        )
-        Column(
-            Modifier.weight(1f)
-                .fillMaxWidth()
-                .readableColumn()
-                .verticalScrollFaded()
-                .padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            val metrics = listOf(
-                UsageMetricTab.USAGE_METRIC_TAB_TOKENS to copy(UiMessages.usageTabTokens()),
-                UsageMetricTab.USAGE_METRIC_TAB_CACHE_HIT to copy(UiMessages.usageTabCacheHit()),
-                UsageMetricTab.USAGE_METRIC_TAB_OUTPUT_SPEED to copy(UiMessages.usageTabSpeed()),
-                UsageMetricTab.USAGE_METRIC_TAB_TTFT to copy(UiMessages.usageTabTtft()),
-            )
-            Segmented(
-                items = metrics.map { it.second },
-                selected = metrics.indexOfFirst { it.first == metric }.coerceAtLeast(0),
-                onSelect = { idx -> onSelectMetric(metrics[idx].first) },
-                modifier = Modifier.fillMaxWidth(),
-            )
-
-            val ranges = listOf(
-                UsageRangePreset.USAGE_RANGE_PRESET_TODAY to copy(UiMessages.usageRangeToday()),
-                UsageRangePreset.USAGE_RANGE_PRESET_SEVEN_DAYS to copy(UiMessages.usageRange7D()),
-                UsageRangePreset.USAGE_RANGE_PRESET_THIRTY_DAYS to copy(UiMessages.usageRange30D()),
-                UsageRangePreset.USAGE_RANGE_PRESET_CUSTOM to copy(UiMessages.usageRangeCustom()),
-            )
-            Segmented(
-                items = ranges.map { it.second },
-                selected = ranges.indexOfFirst { it.first == preset }.coerceAtLeast(0),
-                onSelect = { idx ->
-                    val chosen = ranges[idx].first
-                    if (chosen == UsageRangePreset.USAGE_RANGE_PRESET_CUSTOM) {
-                        customPickerOpen = true
-                    } else {
-                        onSelectPreset(chosen)
-                    }
-                },
-                modifier = Modifier.fillMaxWidth(),
-            )
-
+    val handleSelectRangeIdx: (Int) -> Unit = { idx ->
+        val chosen = ranges[idx].first
+        if (chosen == UsageRangePreset.USAGE_RANGE_PRESET_CUSTOM) {
             if (preset == UsageRangePreset.USAGE_RANGE_PRESET_CUSTOM) {
-                val rangeStart = if (vm.startMs > 0L) vm.startMs else clampedDefault.first
-                val rangeEndInc = if (vm.endMs > 0L) vm.endMs - DAY_MS else clampedDefault.second
-                val days = if (vm.startMs > 0L && vm.endMs > vm.startMs) max(1, ((vm.endMs - vm.startMs) / DAY_MS).toInt()) else 7
-                Row(
-                    Modifier.fillMaxWidth()
-                        .clip(Radii.R14)
-                        .background(p.gbg)
-                        .clickable(role = Role.Button) { customPickerOpen = true }
-                        .padding(horizontal = 14.dp, vertical = 10.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    Text(
-                        copy(
-                            UiMessages.usageCustomRangeSummary(
-                                days = days,
-                                end = formatShortDay(rangeEndInc),
-                                start = formatShortDay(rangeStart),
-                            ),
-                        ),
-                        style = T.s13.digits(),
-                        color = p.ink2,
-                        modifier = Modifier.weight(1f),
-                    )
-                    Text(copy(UiMessages.usageCustomRangeChange()), style = T.s13b, color = p.blue)
-                }
+                customPickerOpen = true
+            } else {
+                onSelectPreset(chosen)
+                customPickerOpen = true
             }
+        } else {
+            onSelectPreset(chosen)
+        }
+    }
 
-            if (vm.cachedOffline && hasSeries) {
-                val cachedStr = formatCachedAt(vm.cachedAtMs)
-                Notice(
-                    copy(UiMessages.usageOfflineBanner(name = name, time = cachedStr)),
-                    tone = NoticeTone.WARN,
-                    action = copy(UiMessages.commonRetry()),
-                    onAction = onRetry,
+    BoxWithConstraints(Modifier.fillMaxSize().background(p.paper).testTag("usage-page")) {
+        val isWide = maxWidth >= 900.dp
+
+        Column(Modifier.fillMaxSize()) {
+            if (isWide) {
+                WideUsageToolbar(
+                    title = copy(UiMessages.usageTitle()),
+                    subtitle = subtitle,
+                    onBack = onBack,
+                    customDateText = if (preset == UsageRangePreset.USAGE_RANGE_PRESET_CUSTOM) {
+                        formatUsageCustomRange(clampedDefault.first, clampedDefault.second, copy)
+                    } else null,
+                    onOpenCustomDate = { customPickerOpen = true },
+                    rangeLabels = ranges.map { it.second },
+                    selectedRangeIdx = selectedRangeIdx,
+                    onSelectRangeIdx = handleSelectRangeIdx,
                 )
-            }
-            if (vm.backfilling) {
-                Notice(
-                    copy(UiMessages.usageBackfillingBanner(scanned = vm.backfillScannedDays, total = vm.backfillTotalDays)),
-                    tone = NoticeTone.PLAIN,
-                )
-            }
-            if (errStr.isNotEmpty() && hasSeries) {
-                Notice(
-                    errStr,
-                    tone = NoticeTone.ERROR,
-                    action = copy(UiMessages.commonRetry()),
-                    onAction = onRetry,
+            } else {
+                PageBar(
+                    title = copy(UiMessages.usageTitle()),
+                    onBack = onBack,
+                    subtitle = subtitle.ifEmpty { null },
                 )
             }
 
-            when {
-                !vm.found -> PageNote(copy(UiMessages.settingsAndroidThisComputerIsOutsideTheCurrentTrustedDirectoryCheckThe()))
-                !vm.supported -> Notice(
-                    "${copy(UiMessages.usageUnsupportedTitle())}\n${copy(UiMessages.usageUnsupportedBody(name))}",
-                    tone = NoticeTone.WARN,
-                )
-                vm.loading && !hasSeries -> {
-                    if (showSkeleton) UsageLoadingSkeleton()
-                }
-                vm.cachedOffline && !hasSeries -> Notice(
-                    "${copy(UiMessages.usageOfflineEmptyTitle(name))}\n${copy(UiMessages.usageOfflineEmptyBody(name))}",
-                    tone = NoticeTone.WARN,
-                    action = copy(UiMessages.commonRetry()),
-                    onAction = onRetry,
-                )
-                errStr.isNotEmpty() && !hasSeries -> Notice(
-                    "${copy(UiMessages.usageLoadErrorTitle())}\n$errStr",
-                    tone = NoticeTone.ERROR,
-                    action = copy(UiMessages.commonRetry()),
-                    onAction = onRetry,
-                )
-                allSourcesUnavailable -> Notice(
-                    "${copy(UiMessages.usageOnlyUnavailableTitle(unavailAgentNames))}\n${copy(UiMessages.usageOnlyUnavailableBody(unavailAgentNames))}",
-                    tone = NoticeTone.PLAIN,
-                )
-                !hasSeries -> Notice(
-                    "${copy(UiMessages.usageEmptyTitle())}\n${copy(UiMessages.usageEmptyBody())}",
-                    tone = NoticeTone.PLAIN,
-                )
-                else -> {
-                    Column(Modifier.fillMaxWidth().statusCard(p).padding(16.dp)) {
-                        UsageCardHeader(
-                            metric = metric,
-                            pairHeadline = pairHeadline,
-                            summary = summary,
-                            anyFewSamples = anySelectedFewSamples,
-                            kpiStyle = kpiHeadline,
-                            copy = copy,
-                        )
-                        Spacer(Modifier.height(10.dp))
-
-                        if (scrubIndex != null && chartData != null) {
-                            UsageScrubCallout(
-                                chart = chartData,
-                                metric = metric,
-                                bucketIndex = scrubIndex!!,
-                                buckets = selectedSeries.first().bucketsList,
-                                granularity = vm.granularity,
-                                copy = copy,
-                            )
-                            Spacer(Modifier.height(6.dp))
+            if (isWide && vm.found && vm.supported && vm.hasAnyUsage) {
+                val leftScroll = rememberScrollState()
+                val rightScroll = rememberScrollState()
+                Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
+                    Column(Modifier.widthIn(max = 1120.dp).fillMaxSize().padding(horizontal = 28.dp)) {
+                        UsageBanners(vm, name, errStr, onRetry, copy, Modifier.padding(top = 8.dp))
+                        Row(
+                            Modifier.weight(1f).fillMaxWidth().padding(top = 6.dp),
+                            horizontalArrangement = Arrangement.spacedBy(48.dp),
+                            verticalAlignment = Alignment.Top,
+                        ) {
+                            Column(
+                                Modifier.weight(0.54f).widthIn(max = 600.dp)
+                                    .verticalScroll(leftScroll)
+                                    .padding(bottom = 22.dp),
+                            ) {
+                                UsageHeroBlock(
+                                    vm = vm,
+                                    isWide = true,
+                                    copy = copy,
+                                    onClearSeries = { onSelectSeries("", false) },
+                                )
+                                Spacer(Modifier.height(16.dp))
+                                UsageChartsStack(
+                                    vm = vm,
+                                    isWide = true,
+                                    copy = copy,
+                                    onScrub = onScrub,
+                                )
+                            }
+                            Column(
+                                Modifier.weight(0.46f)
+                                    .verticalScroll(rightScroll)
+                                    .padding(top = 20.dp, bottom = 22.dp),
+                            ) {
+                                UsageModelTable(
+                                    vm = vm,
+                                    isWide = true,
+                                    copy = copy,
+                                    onSelectSort = onSelectSort,
+                                    onSelectSeries = { key, _ -> onSelectSeries(key, true) },
+                                )
+                            }
                         }
+                    }
+                }
+            } else {
+                val scrollState = rememberScrollState()
+                val scope = rememberCoroutineScope()
+                Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
+                    Column(
+                        Modifier
+                            .widthIn(max = 560.dp)
+                            .fillMaxSize()
+                            .verticalScroll(scrollState),
+                    ) {
+                        Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+                            if (!isWide) {
+                                Spacer(Modifier.height(6.dp))
+                                UsageRangeSegmented(
+                                    items = ranges.map { it.second },
+                                    selected = selectedRangeIdx,
+                                    onSelect = handleSelectRangeIdx,
+                                    height = 32.dp,
+                                    modifier = Modifier.fillMaxWidth(),
+                                )
+                                if (preset == UsageRangePreset.USAGE_RANGE_PRESET_CUSTOM) {
+                                    Spacer(Modifier.height(8.dp))
+                                    Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                                        UsageCustomRangeTrigger(
+                                            text = formatUsageCustomRange(clampedDefault.first, clampedDefault.second, copy),
+                                            onClick = { customPickerOpen = true },
+                                        )
+                                    }
+                                }
+                            }
 
-                        if (chartData != null) {
-                            val chartA11y =
-                                if (metric == UsageMetricTab.USAGE_METRIC_TAB_TOKENS) {
-                                    copy(
-                                        UiMessages.usageChartA11YTokens(
-                                            count = bucketCount,
-                                            name = pairHeadline,
-                                            total = formatUsageTokens(summary.total, copy),
-                                        ),
-                                    )
-                                } else {
-                                    copy(
-                                        UiMessages.usageChartA11YLine(
-                                            count = bucketCount,
-                                            metric = metrics.firstOrNull { it.first == metric }?.second.orEmpty(),
-                                            name = pairHeadline,
-                                        ),
+                            UsageBanners(vm, name, errStr, onRetry, copy, Modifier.padding(top = 8.dp))
+
+                            when {
+                                !vm.found -> {
+                                    if (vm.loading && showSkeleton) UsageLoadingSkeleton()
+                                    else PageNote(copy(UiMessages.settingsAndroidThisComputerIsOutsideTheCurrentTrustedDirectoryCheckThe()))
+                                }
+                                !vm.supported -> {
+                                    Spacer(Modifier.height(14.dp))
+                                    val body = if (vm.hasUnsupportedFootnote()) uiText(vm.unsupportedFootnote) else ""
+                                    Notice(
+                                        "${copy(UiMessages.usageUnsupportedTitle())}\n${body.ifEmpty { copy(UiMessages.usageUnsupportedBody(name)) }}",
+                                        tone = NoticeTone.WARN,
                                     )
                                 }
-                            UsageChartCanvas(
-                                chart = chartData,
-                                metric = metric,
-                                scrubIndex = scrubIndex,
-                                a11yDescription = chartA11y,
-                                onScrub = { next -> scrubIndex = next },
+                                showOfflineEmpty -> {
+                                    Spacer(Modifier.height(14.dp))
+                                    Notice(
+                                        "${copy(UiMessages.usageOfflineEmptyTitle(name))}\n${copy(UiMessages.usageOfflineEmptyBody(name))}",
+                                        tone = NoticeTone.WARN,
+                                        action = copy(UiMessages.commonRetry()),
+                                        onAction = onRetry,
+                                    )
+                                }
+                                vm.loading && !vm.hasAnyUsage -> {
+                                    if (showSkeleton) UsageLoadingSkeleton()
+                                }
+                                errStr.isNotEmpty() && !vm.hasAnyUsage -> {
+                                    Spacer(Modifier.height(14.dp))
+                                    Notice(
+                                        "${copy(UiMessages.usageLoadErrorTitle())}\n$errStr",
+                                        tone = NoticeTone.ERROR,
+                                        action = copy(UiMessages.commonRetry()),
+                                        onAction = onRetry,
+                                    )
+                                }
+                                allSourcesUnavailable -> {
+                                    Spacer(Modifier.height(14.dp))
+                                    val title = if (vm.hasUnsupportedFootnote()) uiText(vm.unsupportedFootnote) else ""
+                                    Notice(
+                                        "${title.ifEmpty { copy(UiMessages.usageOnlyUnavailableTitle(unavailAgentNames)) }}\n${copy(UiMessages.usageOnlyUnavailableBody(unavailAgentNames))}",
+                                        tone = NoticeTone.PLAIN,
+                                    )
+                                }
+                                showEmptyRecords -> {
+                                    UsageEmptyRecordsView(vm = vm, preset = preset, isWide = false, copy = copy)
+                                }
+                                vm.hasAnyUsage -> {
+                                    UsageHeroBlock(
+                                        vm = vm,
+                                        isWide = false,
+                                        copy = copy,
+                                        onClearSeries = { onSelectSeries("", false) },
+                                    )
+                                    Spacer(Modifier.height(16.dp))
+                                    UsageChartsStack(
+                                        vm = vm,
+                                        isWide = false,
+                                        copy = copy,
+                                        onScrub = onScrub,
+                                    )
+                                }
+                            }
+                        }
+
+                        if (vm.found && vm.supported && vm.hasAnyUsage) {
+                            Spacer(Modifier.height(22.dp))
+                            UsageModelTable(
+                                vm = vm,
+                                isWide = false,
+                                copy = copy,
+                                onSelectSort = onSelectSort,
+                                onSelectSeries = { key, selecting ->
+                                    onSelectSeries(key, true)
+                                    if (selecting) {
+                                        scope.launch { scrollState.animateScrollTo(0) }
+                                    }
+                                },
                             )
                         }
-
-                        if (metric == UsageMetricTab.USAGE_METRIC_TAB_TOKENS && summary.total > 0L) {
-                            Spacer(Modifier.height(14.dp))
-                            UsageCompositionBar(summary = summary, anyWriteSupported = selectedSeries.any { it.cacheWriteSupported }, copy = copy)
-                        }
-
-                        Spacer(Modifier.height(14.dp))
-                        Box(Modifier.fillMaxWidth().height(0.5.dp).background(p.sep))
-                        Spacer(Modifier.height(10.dp))
-
-                        UsageSeriesList(
-                            series = vm.seriesList,
-                            selectedKeys = selectedKeys,
-                            metric = metric,
-                            largeFont = largeFont,
-                            copy = copy,
-                            onToggleSeries = { key ->
-                                selectedKeys = toggleUsageOverlaySelection(selectedKeys, key)
-                            },
-                        )
-
-                        if (anySelectedFewSamples && summary.speedReqs > 0L) {
-                            Spacer(Modifier.height(10.dp))
-                            Hint(copy(UiMessages.usageFewSamplesHint()), Modifier.fillMaxWidth())
-                        }
-                        if ((metric == UsageMetricTab.USAGE_METRIC_TAB_OUTPUT_SPEED || metric == UsageMetricTab.USAGE_METRIC_TAB_TTFT) && summary.hasOutlier) {
-                            Spacer(Modifier.height(8.dp))
-                            Hint(copy(UiMessages.usageOutlierNote()), Modifier.fillMaxWidth())
-                        }
+                        Spacer(Modifier.height(24.dp))
                     }
-
-                    UsageFootnotes(
-                        vm = vm,
-                        metric = metric,
-                        summary = summary,
-                        copy = copy,
-                    )
                 }
             }
-            Spacer(Modifier.height(20.dp))
         }
     }
 
     if (customPickerOpen) {
-        val initStart = if (vm.startMs > 0L) vm.startMs else clampedDefault.first
-        val initEnd = if (vm.endMs > 0L) vm.endMs - DAY_MS else clampedDefault.second
         UsageCustomRangeDialog(
-            initialStartMs = initStart,
-            initialEndMs = initEnd,
+            initialStartMs = clampedDefault.first,
+            initialEndMs = clampedDefault.second,
             copy = copy,
             onApply = { s, e ->
                 customPickerOpen = false
@@ -930,589 +743,960 @@ fun UsageScreenContent(
 }
 
 @Composable
-private fun UsageLoadingSkeleton() {
+private fun WideUsageToolbar(
+    title: String,
+    subtitle: String,
+    onBack: () -> Unit,
+    customDateText: String?,
+    onOpenCustomDate: () -> Unit,
+    rangeLabels: List<String>,
+    selectedRangeIdx: Int,
+    onSelectRangeIdx: (Int) -> Unit,
+) {
     val p = pal
-    Column(Modifier.fillMaxWidth().statusCard(p).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Box(Modifier.fillMaxWidth(0.45f).height(14.dp).clip(RoundedCornerShape(10.dp)).background(p.fill))
-        Box(Modifier.fillMaxWidth(0.35f).height(30.dp).clip(RoundedCornerShape(10.dp)).background(p.fill))
-        Box(Modifier.fillMaxWidth().height(140.dp).clip(Radii.R14).background(p.fill))
-        Box(Modifier.fillMaxWidth().height(42.dp).clip(Radii.R14).background(p.fill))
+    val backLabel = uiText(UiMessages.commonBack())
+    Column(Modifier.fillMaxWidth()) {
+        Row(
+            Modifier.fillMaxWidth().height(52.dp).padding(horizontal = 20.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Box(
+                Modifier.size(28.dp).clip(CircleShape).background(p.fill)
+                    .clickable(role = Role.Button, onClickLabel = backLabel, onClick = onBack),
+                contentAlignment = Alignment.Center,
+            ) {
+                Ic(Lucide.ChevronLeft, 18.dp, p.ink)
+            }
+            Text(title, style = T.s15b, color = p.ink, maxLines = 1)
+            Box(Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
+                if (subtitle.isNotEmpty()) {
+                    Text(subtitle, style = T.s13, color = p.ink2, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+            }
+            if (customDateText != null) {
+                UsageCustomRangeTrigger(text = customDateText, onClick = onOpenCustomDate)
+            }
+            UsageRangeSegmented(
+                items = rangeLabels,
+                selected = selectedRangeIdx,
+                onSelect = onSelectRangeIdx,
+                height = 30.dp,
+                modifier = Modifier.width(300.dp),
+            )
+        }
+        Box(Modifier.fillMaxWidth().height(0.5.dp).background(p.sep))
     }
 }
 
 @Composable
-private fun UsageCardHeader(
-    metric: UsageMetricTab,
-    pairHeadline: String,
-    summary: ActiveSummary,
-    anyFewSamples: Boolean,
-    kpiStyle: TextStyle,
-    copy: MessageResolver,
+private fun UsageRangeSegmented(
+    items: List<String>,
+    selected: Int,
+    onSelect: (Int) -> Unit,
+    height: androidx.compose.ui.unit.Dp,
+    modifier: Modifier = Modifier,
 ) {
     val p = pal
-    val prim = summary.primary
-    val rightCol: @Composable (List<String>) -> Unit = { lines ->
-        Column(horizontalAlignment = Alignment.End) {
-            lines.forEachIndexed { idx, line ->
-                Text(
-                    line,
-                    style = T.s12.digits(),
-                    color = if (idx == 0) p.ink else p.ink2,
-                    textAlign = TextAlign.End,
-                )
-            }
+    val outerShape = RoundedCornerShape(9.dp)
+    val innerShape = RoundedCornerShape(7.dp)
+    val bounds = remember { mutableStateMapOf<Int, IntRange>() }
+    val density = LocalDensity.current
+    val target = bounds[selected]
+    val animX = remember { Animatable(0f) }
+    val animW = remember { Animatable(0f) }
+    var placed by remember { mutableStateOf(false) }
+    val frozen = Motion.reduced || LocalChartFrozen.current
+
+    LaunchedEffect(target, frozen) {
+        if (target == null) return@LaunchedEffect
+        val left = target.first.toFloat()
+        val width = (target.last - target.first + 1).toFloat()
+        if (!placed || frozen) {
+            animX.snapTo(left)
+            animW.snapTo(width)
+            placed = true
+        } else {
+            launch { animX.animateTo(left, Motion.enter(Motion.BASE)) }
+            launch { animW.animateTo(width, Motion.enter(Motion.BASE)) }
         }
     }
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
-        Column(Modifier.weight(1f).padding(end = 10.dp)) {
-            Text(pairHeadline, style = T.s12, color = p.ink2, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Spacer(Modifier.height(2.dp))
-            when (metric) {
-                UsageMetricTab.USAGE_METRIC_TAB_TOKENS -> Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-                    Text(formatUsageTokens(summary.total, copy), style = kpiStyle, color = p.ink)
-                    Text(copy(UiMessages.usageKpiUnitTokens()), style = T.s13, color = p.ink2, modifier = Modifier.padding(bottom = 4.dp))
-                }
-                UsageMetricTab.USAGE_METRIC_TAB_CACHE_HIT -> Text(
-                    if (summary.inDenom > 0L) formatUsageCacheHit(summary.hitRate) else EM_DASH,
-                    style = kpiStyle,
-                    color = p.ink,
-                )
-                UsageMetricTab.USAGE_METRIC_TAB_OUTPUT_SPEED -> {
-                    val c = prim?.takeIf { it.hasCurrent() }?.current
-                    val showNum = !anyFewSamples && c != null && c.hasSpeed && c.speedRequestCount >= USAGE_FEW_SAMPLES_MIN
-                    if (showNum) {
-                        Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-                            Text(formatUsageSpeed(c!!.speedP50), style = kpiStyle, color = p.ink)
-                            Text(copy(UiMessages.usageKpiUnitToks()), style = T.s13, color = p.ink2, modifier = Modifier.padding(bottom = 4.dp))
+
+    Box(
+        modifier
+            .heightIn(min = height)
+            .clip(outerShape)
+            .background(p.fill)
+            .padding(2.dp),
+    ) {
+        if (placed && animW.value > 0f) {
+            Box(
+                Modifier
+                    .offset { IntOffset(animX.value.roundToInt(), 0) }
+                    .width(with(density) { animW.value.toDp() })
+                    .height(height - 4.dp)
+                    .shadow(1.dp, innerShape, clip = false, ambientColor = p.glassShadow, spotColor = p.glassShadow)
+                    .clip(innerShape)
+                    .background(p.raised)
+                    .border(0.5.dp, p.sep, innerShape),
+            )
+        }
+        Row(Modifier.selectableGroup(), verticalAlignment = Alignment.CenterVertically) {
+            items.forEachIndexed { idx, label ->
+                val on = idx == selected
+                Box(
+                    Modifier
+                        .weight(1f)
+                        .heightIn(min = height - 4.dp)
+                        .onPlaced { coords ->
+                            val x = coords.positionInParent().x.roundToInt()
+                            bounds[idx] = x until (x + coords.size.width)
                         }
-                    } else {
-                        Text(
-                            if (anyFewSamples) copy(UiMessages.usageFewSamplesCount(summary.speedReqs.toInt())) else EM_DASH,
-                            style = T.h20,
-                            color = p.ink2,
-                        )
-                    }
-                }
-                else -> {
-                    val c = prim?.takeIf { it.hasCurrent() }?.current
-                    val showNum = !anyFewSamples && c != null && c.hasTtft && c.speedRequestCount >= USAGE_FEW_SAMPLES_MIN
+                        .clip(innerShape)
+                        .selectable(selected = on, role = Role.Tab) { onSelect(idx) }
+                        .padding(horizontal = 4.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
                     Text(
-                        when {
-                            showNum -> formatUsageTtft(c!!.ttftP50Ms)
-                            anyFewSamples -> copy(UiMessages.usageFewSamplesCount(summary.speedReqs.toInt()))
-                            else -> EM_DASH
-                        },
-                        style = if (showNum) kpiStyle else T.h20,
-                        color = if (showNum) p.ink else p.ink2,
+                        label,
+                        style = if (on) T.s13b else T.s13.copy(fontWeight = platformWeight(FontWeight.Medium)),
+                        color = if (on) p.ink else p.ink2,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
                     )
                 }
             }
         }
-        when (metric) {
-            UsageMetricTab.USAGE_METRIC_TAB_TOKENS -> {
-                val deltaStr = summary.tokDeltaPct?.let { formatUsageSignedPercent(it, copy) } ?: EM_DASH
-                val hitStr = if (summary.inDenom > 0L) formatUsageCacheHit(summary.hitRate) else EM_DASH
-                rightCol(
-                    listOf(
-                        "$deltaStr ${summary.prevLabel}",
-                        "${copy(UiMessages.usageColHitRate())} $hitStr",
-                    ),
+    }
+}
+
+@Composable
+private fun UsageCustomRangeTrigger(text: String, onClick: () -> Unit) {
+    val p = pal
+    Row(
+        Modifier
+            .height(32.dp)
+            .clip(Radii.R6)
+            .clickable(role = Role.Button, onClick = onClick)
+            .padding(horizontal = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        Text(text, style = T.s13.copy(fontWeight = platformWeight(FontWeight.Medium)).digits(), color = p.blue, maxLines = 1)
+        Ic(Lucide.ChevronDown, 14.dp, p.blue)
+    }
+}
+
+@Composable
+private fun UsageBanners(
+    vm: UsageViewModel,
+    name: String,
+    errStr: String,
+    onRetry: () -> Unit,
+    copy: MessageResolver,
+    modifier: Modifier = Modifier,
+) {
+    if (!(vm.found && vm.supported)) return
+    if (!vm.cachedOffline && !vm.backfilling && !(errStr.isNotEmpty() && vm.hasAnyUsage)) return
+    Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        if (vm.cachedOffline && vm.hasAnyUsage) {
+            Notice(
+                copy(UiMessages.usageOfflineBanner(name = name, time = formatCachedAt(vm.cachedAtMs))),
+                tone = NoticeTone.WARN,
+                action = copy(UiMessages.commonRetry()),
+                onAction = onRetry,
+            )
+        }
+        if (vm.backfilling) {
+            Notice(
+                copy(UiMessages.usageBackfillingBanner(scanned = vm.backfillScannedDays, total = max(1, vm.backfillTotalDays))),
+                tone = NoticeTone.PLAIN,
+            )
+        }
+        if (errStr.isNotEmpty() && vm.hasAnyUsage) {
+            Notice(
+                errStr,
+                tone = NoticeTone.ERROR,
+                action = copy(UiMessages.commonRetry()),
+                onAction = onRetry,
+            )
+        }
+    }
+}
+
+@Composable
+private fun UsageHeroBlock(
+    vm: UsageViewModel,
+    isWide: Boolean,
+    copy: MessageResolver,
+    onClearSeries: () -> Unit,
+) {
+    val p = pal
+    val hero = if (vm.hasHero()) vm.hero else UsageHeroView.getDefaultInstance()
+    val comp = if (hero.hasComposition()) hero.composition else null
+    val compRowHeight = if (isWide) 18 else 17
+    val minCompHeight = (max(0, hero.periodCompositionRows) * compRowHeight + 5).dp
+    val topMargin = if (isWide) 14.dp else 18.dp
+    val compWidth = if (isWide) 168.dp else 132.dp
+    val bigSize = if (isWide) 52.sp else 44.sp
+
+    Spacer(Modifier.height(topMargin))
+
+    // Scope line
+    Row(
+        Modifier.fillMaxWidth().heightIn(min = 18.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(5.dp),
+    ) {
+        when {
+            hero.scrubbing -> {
+                val bucketLabel = formatUsageBucketLabel(hero.scrubStartMs, hero.scrubEndMs, vm.granularity, copy)
+                Text(
+                    bucketLabel,
+                    style = T.s12.copy(fontWeight = platformWeight(FontWeight.Medium)).digits(),
+                    color = p.ink,
+                    maxLines = 1,
                 )
+                if (hero.hasSelectedModel) {
+                    val modelSuffix = "· " + hero.selectedModel
+                    Text(
+                        modelSuffix,
+                        style = T.s12,
+                        color = p.ink2,
+                        maxLines = 1,
+                        overflow = TextOverflow.MiddleEllipsis,
+                        modifier = Modifier.weight(1f, fill = false),
+                    )
+                }
             }
-            UsageMetricTab.USAGE_METRIC_TAB_CACHE_HIT -> {
-                val sub1 =
-                    if (prim != null && prim.hasCacheHitDelta && !prim.previousBackfilling) {
-                        "${formatUsageSignedPoints(prim.cacheHitDeltaPoints, copy)} ${summary.prevLabel}"
-                    } else {
-                        "${formatUsageCommaUint(summary.usageReqs)} ${copy(UiMessages.usageColReqs())}"
-                    }
-                rightCol(listOf(sub1, copy(UiMessages.usageSubWeightedCache())))
-            }
-            UsageMetricTab.USAGE_METRIC_TAB_OUTPUT_SPEED -> {
-                val c = prim?.takeIf { it.hasCurrent() }?.current
-                val p10 = if (c != null && c.speedP10 > 0.0) formatUsageSpeed(c.speedP10) else EM_DASH
-                val p90 = if (c != null && c.speedP90 > 0.0) formatUsageSpeed(c.speedP90) else EM_DASH
-                val sub2 =
-                    if (c != null && c.recent10SpeedCount > 0L && c.recent10SpeedP50 > 0.0) {
-                        copy(UiMessages.usageSubRecent10(formatUsageSpeed(c.recent10SpeedP50)))
-                    } else {
-                        "${formatUsageCommaUint(summary.speedReqs)} ${copy(UiMessages.usageColValidReqs())}"
-                    }
-                rightCol(listOf(copy(UiMessages.usageSubMedianP10P90(high = p90, low = p10)), sub2))
+            hero.hasSelectedModel -> {
+                UsageAgentMarkIcon(hero.selectedAgent, size = 13.dp, tint = p.ink2)
+                Text(
+                    hero.selectedModel,
+                    style = T.s12.copy(fontWeight = platformWeight(FontWeight.Medium)),
+                    color = p.ink,
+                    maxLines = 1,
+                    overflow = TextOverflow.MiddleEllipsis,
+                    modifier = Modifier.weight(1f, fill = false),
+                )
+                Box(
+                    Modifier
+                        .size(18.dp)
+                        .clip(CircleShape)
+                        .background(p.fill2)
+                        .semantics { contentDescription = copy(UiMessages.usageScopeClearA11Y()) }
+                        .clickable(
+                            role = Role.Button,
+                            onClick = onClearSeries,
+                        ),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Ic(Lucide.X, 10.dp, p.ink)
+                }
             }
             else -> {
-                val c = prim?.takeIf { it.hasCurrent() }?.current
-                val p10 = if (c != null && c.ttftP10Ms > 0.0) formatUsageTtft(c.ttftP10Ms) else EM_DASH
-                val p90 = if (c != null && c.ttftP90Ms > 0.0) formatUsageTtft(c.ttftP90Ms) else EM_DASH
-                rightCol(
-                    listOf(
-                        copy(UiMessages.usageSubP10P90(high = p90, low = p10)),
-                        "${formatUsageCommaUint(summary.speedReqs)} ${copy(UiMessages.usageColValidReqs())}",
-                    ),
+                Text(
+                    copy(UiMessages.usageScopeAllModels(hero.totalModelCount)),
+                    style = T.s12,
+                    color = p.ink2,
+                    maxLines = 1,
                 )
+            }
+        }
+    }
+
+    Spacer(Modifier.height(2.dp))
+
+    Row(
+        Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.Top,
+    ) {
+        Column(Modifier.weight(1f)) {
+            val bigText = formatUsageTokens(hero.totalTokens, copy)
+            val unitText = copy(UiMessages.usageKpiUnitTokens())
+            Text(
+                text = buildAnnotatedString {
+                    withStyle(
+                        SpanStyle(
+                            fontSize = bigSize,
+                            fontWeight = platformWeight(FontWeight.Bold),
+                            letterSpacing = (-0.8).sp,
+                            color = p.ink,
+                        ),
+                    ) {
+                        append(bigText)
+                    }
+                    append(" ")
+                    withStyle(
+                        SpanStyle(
+                            fontSize = 13.sp,
+                            fontWeight = platformWeight(FontWeight.Medium),
+                            letterSpacing = 0.sp,
+                            color = p.ink2,
+                        ),
+                    ) {
+                        append(unitText)
+                    }
+                },
+                style = TextStyle(fontFamily = UiFamily, lineHeight = (bigSize.value * 1.08f).sp).digits(),
+                maxLines = 1,
+                softWrap = false,
+            )
+            Spacer(Modifier.height(3.dp))
+            val subText = if (hero.scrubbing) "" else buildHeroSubline(vm, hero, copy)
+            Box(Modifier.height(17.dp), contentAlignment = Alignment.CenterStart) {
+                if (subText.isNotEmpty()) {
+                    Text(
+                        subText,
+                        style = T.s12.digits(),
+                        color = p.ink2,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            }
+        }
+
+        Column(
+            Modifier.width(compWidth).heightIn(min = minCompHeight).padding(top = 5.dp),
+        ) {
+            if (comp != null) {
+                val compTextSize = if (isWide) 12.5.sp else 12.sp
+                val compLineH = if (isWide) 18.sp else 17.sp
+                val items = listOf(
+                    Triple(copy(UiMessages.usageCompUncached()), comp.uncachedInputTokens, false),
+                    Triple(copy(UiMessages.usageCompCacheRead()), comp.cacheReadTokens, false),
+                    Triple(copy(UiMessages.usageCompCacheWrite()), comp.cacheWriteTokens, false),
+                    Triple(copy(UiMessages.usageCompOutput()), comp.outputTokens, false),
+                    Triple(copy(UiMessages.usageCompReasoningLabel()), comp.reasoningOutputTokens, true),
+                ).filter { it.second > 0L }
+                items.forEach { (label, amount, indent) ->
+                    Row(
+                        Modifier.fillMaxWidth().height(compLineH.value.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            label,
+                            style = TextStyle(fontFamily = UiFamily, fontSize = compTextSize).digits(),
+                            color = p.ink2,
+                            modifier = if (indent) Modifier.padding(start = 10.dp) else Modifier,
+                            maxLines = 1,
+                        )
+                        Text(
+                            formatUsageTokens(amount, copy),
+                            style = TextStyle(
+                                fontFamily = UiFamily,
+                                fontSize = compTextSize,
+                                fontWeight = if (indent) FontWeight.Normal else platformWeight(FontWeight.Medium),
+                            ).digits(),
+                            color = if (indent) p.ink2 else p.ink,
+                            maxLines = 1,
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+private fun buildHeroSubline(vm: UsageViewModel, hero: UsageHeroView, copy: MessageResolver): String {
+    val parts = ArrayList<String>(3)
+    parts += copy(UiMessages.usageHeroReqs(count = hero.requestCount.toInt(), formatted = formatUsageCommaUint(hero.requestCount)))
+    if (hero.hasSharePercent) {
+        val shareText = if (hero.shareRatio < 0.01) "<1%" else "${round(hero.shareRatio * 100.0).toInt()}%"
+        parts += copy(UiMessages.usageHeroShare(shareText))
+    }
+    if (hero.previousBackfilling) {
+        parts += copy(UiMessages.usageBackfillingCell())
+    } else if (hero.hasTokensDelta) {
+        if (abs(hero.tokensDeltaPercent) < 0.5) {
+            parts += copy(UiMessages.usageFlat())
+        } else {
+            val periodLabel =
+                if (vm.rangeDays <= 1) copy(UiMessages.usageVsYesterday())
+                else copy(UiMessages.usageVsPrevDays(vm.rangeDays))
+            parts += "${formatUsageDeltaTriangle(hero.tokensDeltaPercent, copy)} $periodLabel"
+        }
+    }
+    return parts.joinToString(" · ")
+}
+
+@Composable
+private fun UsageEmptyRecordsView(
+    vm: UsageViewModel,
+    preset: UsageRangePreset,
+    isWide: Boolean,
+    copy: MessageResolver,
+) {
+    val p = pal
+    val bigSize = if (isWide) 52.sp else 44.sp
+    val barHeight = if (isWide) 150.dp else 108.dp
+    val ticks = remember(vm.granularity, vm.startMs, vm.endMs, preset, copy) {
+        buildUsageAxisTicks(
+            granularity = vm.granularity,
+            buckets = emptyList(),
+            startMs = vm.startMs,
+            endMs = vm.endMs,
+            preset = preset,
+            axis24h = copy(UiMessages.usageAxis24H()),
+        )
+    }
+    Spacer(Modifier.height(if (isWide) 14.dp else 18.dp))
+    Text(copy(UiMessages.usageScopeAllEmpty()), style = T.s12, color = p.ink2, maxLines = 1)
+    Spacer(Modifier.height(2.dp))
+    Text(
+        text = buildAnnotatedString {
+            withStyle(SpanStyle(fontSize = bigSize, fontWeight = platformWeight(FontWeight.Bold), color = p.ink3)) {
+                append("0")
+            }
+            append(" ")
+            withStyle(SpanStyle(fontSize = 13.sp, fontWeight = platformWeight(FontWeight.Medium), color = p.ink2)) {
+                append(copy(UiMessages.usageKpiUnitTokens()))
+            }
+        },
+        style = TextStyle(fontFamily = UiFamily, lineHeight = (bigSize.value * 1.08f).sp).digits(),
+        maxLines = 1,
+    )
+    Spacer(Modifier.height(20.dp + 16.dp))
+    Column(Modifier.fillMaxWidth()) {
+        Box(Modifier.fillMaxWidth().height(barHeight), contentAlignment = Alignment.Center) {
+            Text(copy(UiMessages.usageEmptyNoRecords()), style = T.s13, color = p.ink2)
+        }
+        Box(Modifier.fillMaxWidth().height(1.dp).background(p.faint))
+        Spacer(Modifier.height(4.dp))
+        UsageAxisRow(ticks = ticks)
+    }
+}
+
+@Composable
+private fun UsageChartsStack(
+    vm: UsageViewModel,
+    isWide: Boolean,
+    copy: MessageResolver,
+    onScrub: (Int, Boolean) -> Unit,
+) {
+    val p = pal
+    val haptic = LocalHapticFeedback.current
+    val density = LocalDensity.current
+    val barH = if (isWide) 150.dp else 108.dp
+    val stripH = if (isWide) 34.dp else 26.dp
+    val topPadDp = 12.dp
+
+    val barChart = if (vm.hasBarChart()) vm.barChart else null
+    val buckets = barChart?.bucketsList ?: emptyList()
+    val n = buckets.size
+    val hero = if (vm.hasHero()) vm.hero else null
+    val scrubbing = (hero?.scrubbing == true) && n > 0
+    val scrubIdx = hero?.scrubBucketIndex ?: -1
+    val hasSelected = hero?.hasSelectedModel == true
+
+    val ticks = remember(vm.granularity, buckets, vm.startMs, vm.endMs, vm.preset, copy) {
+        buildUsageAxisTicks(
+            granularity = vm.granularity,
+            buckets = buckets,
+            startMs = vm.startMs,
+            endMs = vm.endMs,
+            preset = vm.preset,
+            axis24h = copy(UiMessages.usageAxis24H()),
+        )
+    }
+
+    val chartsA11y = copy(
+        UiMessages.usageChartsA11Y(
+            count = vm.rowsCount,
+            name = vm.machineName.ifEmpty { vm.machineId },
+            total = formatUsageTokens(hero?.totalTokens ?: 0L, copy),
+        ),
+    )
+
+    val labelStrokePaint = remember(p.paper, density) {
+        Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.STROKE
+            strokeWidth = with(density) { 4.dp.toPx() }
+            strokeJoin = Paint.Join.ROUND
+            color = p.paper.toArgb()
+            textSize = with(density) { 10.5.sp.toPx() }
+            textAlign = Paint.Align.RIGHT
+        }
+    }
+    val labelFillPaint = remember(p.ink2, density) {
+        Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.FILL
+            color = p.ink2.toArgb()
+            textSize = with(density) { 10.5.sp.toPx() }
+            textAlign = Paint.Align.RIGHT
+        }
+    }
+
+    Column(Modifier.fillMaxWidth().semantics { contentDescription = chartsA11y }) {
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .pointerInput(n) {
+                    if (n <= 0) return@pointerInput
+                    val slop = viewConfiguration.touchSlop
+                    awaitEachGesture {
+                        val down = awaitFirstDown(requireUnconsumed = false)
+                        val startPos = down.position
+                        var active = false
+                        var lastBucket = -1
+                        try {
+                            val early = withTimeoutOrNull(150L) {
+                                while (true) {
+                                    val ev = awaitPointerEvent()
+                                    val change = ev.changes.firstOrNull { it.id == down.id } ?: ev.changes.firstOrNull()
+                                    if (change == null || !change.pressed) return@withTimeoutOrNull "up"
+                                    if ((change.position - startPos).getDistance() > slop) return@withTimeoutOrNull "moved"
+                                }
+                            }
+                            if (early != null) return@awaitEachGesture
+                            active = true
+                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            val wPx = size.width.coerceAtLeast(1)
+                            val b0 = ((startPos.x / wPx.toFloat()) * n).toInt().coerceIn(0, n - 1)
+                            lastBucket = b0
+                            onScrub(b0, false)
+                            while (true) {
+                                val ev = awaitPointerEvent()
+                                val change = ev.changes.firstOrNull { it.id == down.id } ?: ev.changes.firstOrNull()
+                                if (change == null || !change.pressed) break
+                                change.consume()
+                                val next = ((change.position.x / wPx.toFloat()) * n).toInt().coerceIn(0, n - 1)
+                                if (next != lastBucket) {
+                                    lastBucket = next
+                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                    onScrub(next, false)
+                                }
+                            }
+                        } finally {
+                            if (active) onScrub(0, true)
+                        }
+                    }
+                },
+        ) {
+            Column(Modifier.fillMaxWidth()) {
+                // Bar chart
+                Canvas(Modifier.fillMaxWidth().height(barH)) {
+                    val w = size.width
+                    val h = size.height
+                    val topPx = topPadDp.toPx()
+                    val innerH = (h - topPx).coerceAtLeast(1f)
+                    val midY = topPx + innerH / 2f
+
+                    drawLine(p.sep, Offset(0f, topPx), Offset(w, topPx), strokeWidth = 1.dp.toPx())
+                    drawLine(p.sep, Offset(0f, midY), Offset(w, midY), strokeWidth = 1.dp.toPx())
+
+                    val yMax = (barChart?.yMax ?: 0L).toDouble()
+                    if (yMax > 0.0 && n > 0) {
+                        val bw = w / n.toFloat()
+                        val gap = (if (n > 26) 2.dp else 3.dp).toPx()
+                        val barW = (bw - gap).coerceAtLeast(1f)
+                        val minH = 1.5.dp.toPx()
+                        val rx = CornerRadius(1.5.dp.toPx(), 1.5.dp.toPx())
+
+                        buckets.forEachIndexed { i, b ->
+                            val allTok = b.allTokens.toDouble()
+                            if (allTok <= 0.0) return@forEachIndexed
+                            val x = i * bw + gap / 2f
+                            val allH = max(minH, ((allTok / yMax) * innerH).toFloat()).coerceAtMost(innerH)
+                            val alpha = if (scrubbing && scrubIdx != i) 0.28f else 1f
+                            if (hasSelected) {
+                                drawRoundRect(
+                                    color = p.fill2.copy(alpha = p.fill2.alpha * alpha),
+                                    topLeft = Offset(x, h - allH),
+                                    size = Size(barW, allH),
+                                    cornerRadius = rx,
+                                )
+                                val selTok = b.selectedTokens.toDouble()
+                                if (selTok > 0.0) {
+                                    val selH = max(minH, ((selTok / yMax) * innerH).toFloat()).coerceAtMost(innerH)
+                                    drawRoundRect(
+                                        color = p.ink.copy(alpha = alpha),
+                                        topLeft = Offset(x, h - selH),
+                                        size = Size(barW, selH),
+                                        cornerRadius = rx,
+                                    )
+                                }
+                            } else {
+                                drawRoundRect(
+                                    color = p.ink.copy(alpha = alpha),
+                                    topLeft = Offset(x, h - allH),
+                                    size = Size(barW, allH),
+                                    cornerRadius = rx,
+                                )
+                            }
+                        }
+
+                        val maxLabel = formatUsageTokens(barChart?.yMax ?: 0L, copy)
+                        val midLabel = formatUsageTokens(barChart?.yMid ?: 0L, copy)
+                        val labelOffset = 4.dp.toPx()
+                        drawIntoCanvas { canvas ->
+                            val nc = canvas.nativeCanvas
+                            nc.drawText(maxLabel, w, topPx - labelOffset, labelStrokePaint)
+                            nc.drawText(maxLabel, w, topPx - labelOffset, labelFillPaint)
+                            nc.drawText(midLabel, w, midY - labelOffset, labelStrokePaint)
+                            nc.drawText(midLabel, w, midY - labelOffset, labelFillPaint)
+                        }
+                    }
+
+                    val baseY = h - 0.5.dp.toPx()
+                    drawLine(p.faint, Offset(0f, baseY), Offset(w, baseY), strokeWidth = 1.dp.toPx())
+                }
+
+                // Strip 1: Cache Hit
+                UsageMetricStrip(
+                    label = copy(UiMessages.usageStripCacheHit()),
+                    unit = null,
+                    strip = if (vm.hasCacheHitStrip()) vm.cacheHitStrip else null,
+                    formatVal = ::formatUsageCacheHit,
+                    scrubbing = scrubbing,
+                    scrubIdx = scrubIdx,
+                    stripHeight = stripH,
+                    noSampleA11y = copy(UiMessages.usageNoSampleA11Y()),
+                )
+
+                // Strip 2: Output Speed
+                UsageMetricStrip(
+                    label = copy(UiMessages.usageStripSpeed()),
+                    unit = copy(UiMessages.usageKpiUnitToks()),
+                    strip = if (vm.hasOutputSpeedStrip()) vm.outputSpeedStrip else null,
+                    formatVal = ::formatUsageSpeed,
+                    scrubbing = scrubbing,
+                    scrubIdx = scrubIdx,
+                    stripHeight = stripH,
+                    noSampleA11y = copy(UiMessages.usageNoSampleA11Y()),
+                )
+
+                // Strip 3: TTFT
+                UsageMetricStrip(
+                    label = copy(UiMessages.usageStripTtft()),
+                    unit = null,
+                    strip = if (vm.hasTtftStrip()) vm.ttftStrip else null,
+                    formatVal = ::formatUsageTtftSeconds,
+                    scrubbing = scrubbing,
+                    scrubIdx = scrubIdx,
+                    stripHeight = stripH,
+                    noSampleA11y = copy(UiMessages.usageNoSampleA11Y()),
+                )
+            }
+
+            if (scrubbing && scrubIdx in 0 until n) {
+                Canvas(Modifier.matchParentSize()) {
+                    val cx = ((scrubIdx + 0.5f) / n.toFloat()) * size.width
+                    drawLine(p.ink2, Offset(cx, 0f), Offset(cx, size.height), strokeWidth = 1.dp.toPx())
+                }
+            }
+        }
+
+        Spacer(Modifier.height(4.dp))
+        UsageAxisRow(ticks = ticks)
+    }
+}
+
+@Composable
+private fun UsageMetricStrip(
+    label: String,
+    unit: String?,
+    strip: UsageMetricStripView?,
+    formatVal: (Double) -> String,
+    scrubbing: Boolean,
+    scrubIdx: Int,
+    stripHeight: androidx.compose.ui.unit.Dp,
+    noSampleA11y: String,
+) {
+    val p = pal
+    Spacer(Modifier.height(12.dp))
+    if (strip == null || !strip.hasRange) {
+        Row(Modifier.fillMaxWidth().height(17.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text(label, style = T.s12, color = p.ink2)
+            Text(EN_DASH, style = T.s13b, color = p.ink3, modifier = Modifier.semantics { contentDescription = noSampleA11y })
+        }
+        Spacer(Modifier.fillMaxWidth().height(stripHeight))
+        return
+    }
+
+    val curStr = if (strip.hasValue) formatVal(strip.currentValue) else EN_DASH
+    val minStr = formatVal(strip.minValue)
+    val maxStr = formatVal(strip.maxValue)
+    val showRange = minStr != maxStr
+
+    Row(Modifier.fillMaxWidth().height(17.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        Text(label, style = T.s12, color = p.ink2, maxLines = 1)
+        Text(
+            curStr,
+            style = T.s13b.copy(fontSize = 13.5.sp).digits(),
+            color = if (strip.hasValue) p.ink else p.ink3,
+            modifier = if (strip.hasValue) Modifier else Modifier.semantics { contentDescription = noSampleA11y },
+            maxLines = 1,
+        )
+        if (strip.hasValue && unit != null) {
+            Text(unit, style = T.s12, color = p.ink2, maxLines = 1)
+        }
+        Spacer(Modifier.weight(1f))
+        if (showRange) {
+            val rangeText = listOf(minStr, maxStr).joinToString(" – ")
+            Text(rangeText, style = T.s12.copy(fontSize = 11.sp).digits(), color = p.ink2, maxLines = 1)
+        }
+    }
+
+    Canvas(Modifier.fillMaxWidth().height(stripHeight)) {
+        val w = size.width
+        val h = size.height
+        val pad = 3.dp.toPx()
+        val innerH = (h - pad * 2f).coerceAtLeast(1f)
+        val span = max(strip.scaleMax - strip.scaleMin, 1e-9)
+
+        fun pointCoord(pts: List<io.github.lewin671.remoteagent.core.proto.UsageStripPointView>, i: Int): Offset? {
+            if (i !in pts.indices || !pts[i].hasValue) return null
+            val n = pts.size
+            val x = ((i + 0.5f) / n.toFloat()) * w
+            val y = h - pad - (((pts[i].value - strip.scaleMin) / span) * innerH).toFloat()
+            return Offset(x, y)
+        }
+
+        fun drawSeries(
+            pts: List<io.github.lewin671.remoteagent.core.proto.UsageStripPointView>,
+            strokeColor: Color,
+            strokeWidthPx: Float,
+            drawDots: Boolean,
+        ) {
+            val n = pts.size
+            if (n == 0) return
+            val path = Path()
+            var pen = false
+            for (i in 0 until n) {
+                val c = pointCoord(pts, i)
+                if (c == null) {
+                    pen = false
+                    continue
+                }
+                val prev = pointCoord(pts, i - 1)
+                val next = pointCoord(pts, i + 1)
+                if (prev == null && next == null) {
+                    if (drawDots) {
+                        drawCircle(color = strokeColor, radius = 1.8.dp.toPx(), center = c)
+                    }
+                    pen = false
+                    continue
+                }
+                if (!pen) path.moveTo(c.x, c.y) else path.lineTo(c.x, c.y)
+                pen = true
+            }
+            if (!path.isEmpty) {
+                drawPath(
+                    path = path,
+                    color = strokeColor,
+                    style = Stroke(width = strokeWidthPx, cap = StrokeCap.Round, join = StrokeJoin.Round),
+                )
+            }
+        }
+
+        val hasSel = strip.selectedPointsList.isNotEmpty()
+        if (hasSel) {
+            drawSeries(strip.allPointsList, p.faint, 1.2.dp.toPx(), drawDots = false)
+        }
+        val frontPts = if (hasSel) strip.selectedPointsList else strip.allPointsList
+        drawSeries(frontPts, p.ink, 1.6.dp.toPx(), drawDots = true)
+
+        val markOffset = if (scrubbing) {
+            pointCoord(frontPts, scrubIdx)
+        } else {
+            pointCoord(frontPts, strip.lastValidIndex)
+        }
+        if (markOffset != null) {
+            if (scrubbing) {
+                drawCircle(color = p.paper, radius = 3.dp.toPx(), center = markOffset)
+                drawCircle(
+                    color = p.ink,
+                    radius = 3.dp.toPx(),
+                    center = markOffset,
+                    style = Stroke(width = 1.6.dp.toPx()),
+                )
+            } else {
+                drawCircle(color = p.ink, radius = 2.2.dp.toPx(), center = markOffset)
             }
         }
     }
 }
 
 @Composable
-private fun UsageScrubCallout(
-    chart: UsageChartModel,
-    metric: UsageMetricTab,
-    bucketIndex: Int,
-    buckets: List<UsageBucketPoint>,
-    granularity: UsageBucketGranularity,
-    copy: MessageResolver,
-) {
+private fun UsageAxisRow(ticks: List<UsageAxisTick>) {
     val p = pal
-    val b = buckets.getOrNull(bucketIndex) ?: return
-    val timeLabel = formatBucketAxisTime(b.startMs, granularity)
-    val valueText = when (metric) {
-        UsageMetricTab.USAGE_METRIC_TAB_TOKENS ->
-            copy(UiMessages.usageScrubTotal(formatUsageTokens(chart.barTotals.getOrElse(bucketIndex) { 0L }, copy)))
-        else -> chart.lineSeries.mapNotNull { ls ->
-            val pt = ls.segments.flatten().firstOrNull { it.bucketIndex == bucketIndex } ?: return@mapNotNull null
-            val formatted = when (metric) {
-                UsageMetricTab.USAGE_METRIC_TAB_CACHE_HIT -> formatUsageCacheHit(pt.value / 100.0)
-                UsageMetricTab.USAGE_METRIC_TAB_TTFT -> formatUsageTtft(pt.value)
-                else -> "${formatUsageSpeed(pt.value)} ${copy(UiMessages.usageKpiUnitToks())}"
-            }
-            "${ls.series.model}: $formatted"
-        }.joinToString(" · ").ifEmpty { EM_DASH }
-    }
-    Row(
-        Modifier.fillMaxWidth()
-            .clip(RoundedCornerShape(10.dp))
-            .background(p.paper)
-            .padding(horizontal = 10.dp, vertical = 6.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(timeLabel, style = T.s12.digits(), color = p.ink2)
-        Text(valueText, style = T.s12b.digits(), color = p.ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
+    Box(Modifier.fillMaxWidth().height(20.dp)) {
+        ticks.forEach { tick ->
+            Text(
+                tick.label,
+                style = T.s12.copy(fontSize = 10.5.sp).digits(),
+                color = p.ink2,
+                maxLines = 1,
+                softWrap = false,
+                modifier = Modifier.layout { measurable, constraints ->
+                    val placeable = measurable.measure(constraints.copy(minWidth = 0))
+                    val w = constraints.maxWidth
+                    val anchor = ((tick.pct / 100f) * w).roundToInt()
+                    val rawX = when (tick.align) {
+                        UsageTickAlign.START -> anchor
+                        UsageTickAlign.CENTER -> anchor - placeable.width / 2
+                        UsageTickAlign.END -> anchor - placeable.width
+                    }
+                    val x = rawX.coerceIn(0, max(0, w - placeable.width))
+                    layout(placeable.width, placeable.height) {
+                        placeable.place(x, 4.dp.roundToPx())
+                    }
+                },
+            )
+        }
     }
 }
 
 @Composable
-private fun UsageChartCanvas(
-    chart: UsageChartModel,
-    metric: UsageMetricTab,
-    scrubIndex: Int?,
-    a11yDescription: String,
-    onScrub: (Int?) -> Unit,
+private fun UsageModelTable(
+    vm: UsageViewModel,
+    isWide: Boolean,
+    copy: MessageResolver,
+    onSelectSort: (UsageSortColumn) -> Unit,
+    onSelectSeries: (String, Boolean) -> Unit,
 ) {
     val p = pal
-    val bar2 = p.ink2
-    val bandFill = p.ink.copy(alpha = 0.08f)
-    val bandAlt = p.ink2.copy(alpha = 0.06f)
+    val sortBy =
+        if (vm.sortBy == UsageSortColumn.USAGE_SORT_COLUMN_UNSPECIFIED) UsageSortColumn.USAGE_SORT_COLUMN_TOKENS
+        else vm.sortBy
+    val hPad = if (isWide) 12.dp else 16.dp
+    val noSampleA11y = copy(UiMessages.usageNoSampleA11Y())
 
     Column(Modifier.fillMaxWidth()) {
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
-            Column(
-                Modifier.height(148.dp).padding(end = 6.dp),
-                verticalArrangement = Arrangement.SpaceBetween,
-                horizontalAlignment = Alignment.End,
-            ) {
-                for (lbl in chart.yLabels) {
-                    Text(lbl, style = T.s12.digits(), color = p.ink3)
-                }
-            }
-            Canvas(
-                Modifier.weight(1f)
-                    .height(148.dp)
-                    .semantics { contentDescription = a11yDescription }
-                    .pointerInput(chart.bucketCount, metric) {
-                        detectTapGestures { pos ->
-                            if (chart.bucketCount <= 0 || size.width <= 0) return@detectTapGestures
-                            val frac = (pos.x / size.width.toFloat()).coerceIn(0f, 0.9999f)
-                            val idx = (frac * chart.bucketCount).toInt().coerceIn(0, chart.bucketCount - 1)
-                            onScrub(if (scrubIndex == idx) null else idx)
-                        }
-                    }
-                    .pointerInput(chart.bucketCount, metric) {
-                        detectHorizontalDragGestures(
-                            onDragEnd = {},
-                            onDragCancel = { onScrub(null) },
-                        ) { change, _ ->
-                            if (chart.bucketCount <= 0 || size.width <= 0) return@detectHorizontalDragGestures
-                            change.consume()
-                            val frac = (change.position.x / size.width.toFloat()).coerceIn(0f, 0.9999f)
-                            val idx = (frac * chart.bucketCount).toInt().coerceIn(0, chart.bucketCount - 1)
-                            onScrub(idx)
-                        }
-                    },
-            ) {
-                val topY = 8.dp.toPx()
-                val baseY = size.height - 8.dp.toPx()
-                val plotH = max(1f, baseY - topY)
-                val dash = PathEffect.dashPathEffect(floatArrayOf(3.dp.toPx(), 3.dp.toPx()))
-                drawLine(p.sep, Offset(0f, topY), Offset(size.width, topY), strokeWidth = 0.7.dp.toPx(), pathEffect = dash)
-                drawLine(p.sep, Offset(0f, topY + plotH / 2f), Offset(size.width, topY + plotH / 2f), strokeWidth = 0.7.dp.toPx(), pathEffect = dash)
-                drawLine(p.sep, Offset(0f, baseY), Offset(size.width, baseY), strokeWidth = 1.dp.toPx())
-
-                if (chart.isBars && chart.bucketCount > 0) {
-                    val step = size.width / chart.bucketCount.toFloat()
-                    val barW = max(3.dp.toPx(), min(18.dp.toPx(), step * 0.62f))
-                    val hatchStep = 5.dp.toPx()
-                    for (bi in 0 until chart.bucketCount) {
-                        val cx = (bi + 0.5f) * step
-                        val bx = cx - barW / 2f
-                        val dimmed = scrubIndex != null && scrubIndex != bi
-                        val alpha = if (dimmed) 0.28f else 1f
-                        var curY = baseY
-                        for ((slot, arr) in chart.barSeriesValues) {
-                            val v = arr[bi]
-                            if (v <= 0L) continue
-                            val segH = max(2.dp.toPx(), ((v.toDouble() / chart.yMax) * plotH).toFloat())
-                            curY -= segH
-                            when (slot) {
-                                0 -> drawRoundRect(
-                                    color = p.ink.copy(alpha = alpha),
-                                    topLeft = Offset(bx, curY),
-                                    size = Size(barW, segH),
-                                    cornerRadius = CornerRadius(1.5.dp.toPx()),
-                                )
-                                1 -> drawRoundRect(
-                                    color = bar2.copy(alpha = alpha * 0.72f),
-                                    topLeft = Offset(bx, curY),
-                                    size = Size(barW, segH),
-                                    cornerRadius = CornerRadius(1.5.dp.toPx()),
-                                )
-                                2 -> {
-                                    drawRect(p.paper.copy(alpha = alpha), Offset(bx, curY), Size(barW, segH))
-                                    clipRect(bx, curY, bx + barW, curY + segH) {
-                                        var x = bx - segH
-                                        while (x < bx + barW + segH) {
-                                            drawLine(
-                                                color = p.ink.copy(alpha = alpha * 0.85f),
-                                                start = Offset(x, curY + segH),
-                                                end = Offset(x + segH, curY),
-                                                strokeWidth = 1.4.dp.toPx(),
-                                            )
-                                            x += hatchStep
-                                        }
-                                    }
-                                    drawRect(
-                                        color = p.ink3.copy(alpha = alpha),
-                                        topLeft = Offset(bx, curY),
-                                        size = Size(barW, segH),
-                                        style = Stroke(width = 0.6.dp.toPx()),
-                                    )
-                                }
-                                else -> {
-                                    drawRect(p.fill.copy(alpha = alpha), Offset(bx, curY), Size(barW, segH))
-                                    drawRect(
-                                        color = p.ink2.copy(alpha = alpha),
-                                        topLeft = Offset(bx, curY),
-                                        size = Size(barW, segH),
-                                        style = Stroke(width = 1.dp.toPx()),
-                                    )
-                                }
-                            }
-                        }
-                    }
-                    if (scrubIndex != null && scrubIndex in 0 until chart.bucketCount) {
-                        val sx = (scrubIndex + 0.5f) * step
-                        drawLine(p.ink3, Offset(sx, topY), Offset(sx, baseY), strokeWidth = 1.dp.toPx())
-                    }
-                } else {
-                    fun yOf(valNum: Double): Float {
-                        val norm = (valNum / chart.yMax).coerceIn(0.0, 1.0).toFloat()
-                        return baseY - norm * plotH
-                    }
-                    for (ls in chart.lineSeries) {
-                        if (!ls.few) {
-                            for (seg in ls.segments) {
-                                val bandPts = seg.filter { it.lowValue != null && it.highValue != null }
-                                if (bandPts.size >= 2) {
-                                    val band = Path().apply {
-                                        moveTo(bandPts.first().xFrac * size.width, yOf(bandPts.first().highValue!!))
-                                        for (pt in bandPts.drop(1)) {
-                                            lineTo(pt.xFrac * size.width, yOf(pt.highValue!!))
-                                        }
-                                        for (pt in bandPts.asReversed()) {
-                                            lineTo(pt.xFrac * size.width, yOf(pt.lowValue!!))
-                                        }
-                                        close()
-                                    }
-                                    drawPath(band, color = if (ls.slot == 0) bandFill else bandAlt)
-                                }
-                            }
-                            for (seg in ls.segments) {
-                                if (seg.size < 2) continue
-                                val strokePath = Path().apply {
-                                    moveTo(seg.first().xFrac * size.width, yOf(seg.first().value))
-                                    for (pt in seg.drop(1)) {
-                                        lineTo(pt.xFrac * size.width, yOf(pt.value))
-                                    }
-                                }
-                                val strokeColor = if (ls.slot % 2 == 0) p.ink else bar2
-                                val strokeWidth = when (ls.slot) {
-                                    0 -> 2.2.dp.toPx()
-                                    1 -> 1.8.dp.toPx()
-                                    2 -> 1.7.dp.toPx()
-                                    else -> 1.6.dp.toPx()
-                                }
-                                val effect = when (ls.slot) {
-                                    2 -> PathEffect.dashPathEffect(floatArrayOf(6.dp.toPx(), 4.dp.toPx()))
-                                    3 -> PathEffect.dashPathEffect(floatArrayOf(2.dp.toPx(), 4.dp.toPx()))
-                                    else -> null
-                                }
-                                drawPath(
-                                    strokePath,
-                                    color = strokeColor,
-                                    style = Stroke(width = strokeWidth, cap = StrokeCap.Round, join = StrokeJoin.Round, pathEffect = effect),
-                                )
-                            }
-                        }
-                        val markerColor = if (ls.slot % 2 == 0) p.ink else bar2
-                        val r = 3.2.dp.toPx()
-                        for (pt in ls.segments.flatten()) {
-                            val cx = pt.xFrac * size.width
-                            val cy = yOf(pt.value)
-                            when (ls.slot) {
-                                0 -> drawCircle(markerColor, radius = r, center = Offset(cx, cy))
-                                1 -> {
-                                    drawCircle(p.paper, radius = r, center = Offset(cx, cy))
-                                    drawCircle(markerColor, radius = r, center = Offset(cx, cy), style = Stroke(width = 1.6.dp.toPx()))
-                                }
-                                2 -> {
-                                    val dia = Path().apply {
-                                        moveTo(cx, cy - r * 1.15f)
-                                        lineTo(cx + r * 1.15f, cy)
-                                        lineTo(cx, cy + r * 1.15f)
-                                        lineTo(cx - r * 1.15f, cy)
-                                        close()
-                                    }
-                                    drawPath(dia, markerColor)
-                                }
-                                else -> drawRect(
-                                    markerColor,
-                                    topLeft = Offset(cx - r * 0.85f, cy - r * 0.85f),
-                                    size = Size(r * 1.7f, r * 1.7f),
-                                )
-                            }
-                        }
-                    }
-                    if (scrubIndex != null && chart.bucketCount > 0) {
-                        val sx =
-                            if (chart.bucketCount <= 1) size.width / 2f
-                            else (scrubIndex.toFloat() / (chart.bucketCount - 1).toFloat()) * size.width
-                        drawLine(p.ink3, Offset(sx, topY), Offset(sx, baseY), strokeWidth = 1.dp.toPx())
-                    }
-                }
-            }
-        }
-        if (chart.xLabels.isNotEmpty()) {
-            Spacer(Modifier.height(4.dp))
-            Row(Modifier.fillMaxWidth().padding(start = 34.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-                for (lbl in chart.xLabels) {
-                    Text(lbl, style = T.s12.digits(), color = p.ink3)
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun UsageCompositionBar(
-    summary: ActiveSummary,
-    anyWriteSupported: Boolean,
-    copy: MessageResolver,
-) {
-    val p = pal
-    val total = summary.total.coerceAtLeast(1L).toFloat()
-    val parts = listOf(
-        Triple(copy(UiMessages.usageCompUncached()), summary.uncached, p.ink),
-        Triple(copy(UiMessages.usageCompCacheRead()), summary.read, p.ink2),
-        Triple(copy(UiMessages.usageCompCacheWrite()), summary.write, p.ink3),
-        Triple(copy(UiMessages.usageCompOutput()), summary.out, p.faint),
-    )
-    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        // Table Header
         Row(
-            Modifier.fillMaxWidth().height(8.dp).clip(Radii.Pill).background(p.fill),
-        ) {
-            for ((_, count, color) in parts) {
-                if (count > 0L) {
-                    Box(Modifier.weight(count.toFloat() / total).height(8.dp).background(color))
-                }
-            }
-        }
-        val uncachedLabel = "${parts[0].first} ${formatUsageTokens(parts[0].second, copy)}"
-        val readLabel = "${parts[1].first} ${formatUsageTokens(parts[1].second, copy)}"
-        val writeVal = if (anyWriteSupported) formatUsageTokens(parts[2].second, copy) else EM_DASH
-        val writeLabel = "${parts[2].first} $writeVal"
-        val reasNote =
-            if (summary.reas > 0L) " (${copy(UiMessages.usageCompReasoning(formatUsageTokens(summary.reas, copy)))})"
-            else ""
-        val outLabel = "${parts[3].first} ${formatUsageTokens(parts[3].second, copy)}$reasNote"
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(uncachedLabel, style = T.s12.digits(), color = p.ink2)
-                Text(readLabel, style = T.s12.digits(), color = p.ink2)
-            }
-            Column(Modifier.weight(1f), horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(writeLabel, style = T.s12.digits(), color = p.ink2)
-                Text(outLabel, style = T.s12.digits(), color = p.ink2)
-            }
-        }
-    }
-}
-
-@Composable
-private fun UsageSeriesSwatch(slot: Int, isBars: Boolean, selected: Boolean) {
-    val p = pal
-    val alpha = if (selected) 1f else 0.3f
-    if (isBars) {
-        Canvas(Modifier.size(12.dp).alpha(alpha)) {
-            when (slot) {
-                0 -> drawRoundRect(p.ink, cornerRadius = CornerRadius(2.dp.toPx()))
-                1 -> drawRoundRect(p.ink2, cornerRadius = CornerRadius(2.dp.toPx()))
-                2 -> {
-                    drawRoundRect(p.paper, cornerRadius = CornerRadius(2.dp.toPx()))
-                    clipRect {
-                        var x = -size.height
-                        while (x < size.width + size.height) {
-                            drawLine(p.ink, Offset(x, size.height), Offset(x + size.height, 0f), strokeWidth = 1.4.dp.toPx())
-                            x += 4.dp.toPx()
-                        }
-                    }
-                    drawRoundRect(p.ink3, style = Stroke(0.6.dp.toPx()), cornerRadius = CornerRadius(2.dp.toPx()))
-                }
-                else -> {
-                    drawRoundRect(p.fill, cornerRadius = CornerRadius(2.dp.toPx()))
-                    drawRoundRect(p.ink2, style = Stroke(1.dp.toPx()), cornerRadius = CornerRadius(2.dp.toPx()))
-                }
-            }
-        }
-    } else {
-        Canvas(Modifier.size(width = 20.dp, height = 10.dp).alpha(alpha)) {
-            val c = if (slot % 2 == 0) p.ink else p.ink2
-            val effect = when (slot) {
-                2 -> PathEffect.dashPathEffect(floatArrayOf(4.dp.toPx(), 2.dp.toPx()))
-                3 -> PathEffect.dashPathEffect(floatArrayOf(1.5.dp.toPx(), 2.5.dp.toPx()))
-                else -> null
-            }
-            drawLine(c, Offset(0f, size.height / 2f), Offset(size.width, size.height / 2f), strokeWidth = 1.6.dp.toPx(), pathEffect = effect)
-            drawCircle(c, radius = 2.4.dp.toPx(), center = Offset(size.width / 2f, size.height / 2f))
-        }
-    }
-}
-
-@Composable
-private fun UsageSeriesList(
-    series: List<UsageSeriesView>,
-    selectedKeys: List<String>,
-    metric: UsageMetricTab,
-    largeFont: Boolean,
-    copy: MessageResolver,
-    onToggleSeries: (String) -> Unit,
-) {
-    val p = pal
-    val isBars = metric == UsageMetricTab.USAGE_METRIC_TAB_TOKENS
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        for (s in series) {
-            val slot = selectedKeys.indexOf(s.seriesKey)
-            val isSelected = slot >= 0
-            val c = if (s.hasCurrent()) s.current else null
-            val writeStr = if (s.cacheWriteSupported) formatUsageTokens(c?.cacheWriteTokens ?: 0L, copy) else EM_DASH
-            val primaryVal = when (metric) {
-                UsageMetricTab.USAGE_METRIC_TAB_TOKENS -> formatUsageTokens(usageSeriesTotalTokens(s), copy)
-                UsageMetricTab.USAGE_METRIC_TAB_CACHE_HIT -> if (c != null && c.hasCacheHitRate) formatUsageCacheHit(c.cacheHitRate) else EM_DASH
-                UsageMetricTab.USAGE_METRIC_TAB_OUTPUT_SPEED ->
-                    if (c != null && c.hasSpeed) "${formatUsageSpeed(c.speedP50)} ${copy(UiMessages.usageKpiUnitToks())}"
-                    else EM_DASH
-                else -> if (c != null && c.hasTtft) formatUsageTtft(c.ttftP50Ms) else EM_DASH
-            }
-            val deltaVal = when {
-                s.previousBackfilling -> copy(UiMessages.usageBackfillingCell())
-                metric == UsageMetricTab.USAGE_METRIC_TAB_TOKENS ->
-                    if (s.hasTokensDelta) formatUsageSignedPercent(s.tokensDeltaPercent, copy) else EM_DASH
-                metric == UsageMetricTab.USAGE_METRIC_TAB_CACHE_HIT ->
-                    if (s.hasCacheHitDelta) formatUsageSignedPoints(s.cacheHitDeltaPoints, copy) else EM_DASH
-                metric == UsageMetricTab.USAGE_METRIC_TAB_OUTPUT_SPEED ->
-                    if (s.hasSpeedDelta) formatUsageSignedPercent(s.speedDeltaPercent, copy) else EM_DASH
-                else ->
-                    if (s.hasTtftDelta && s.hasCurrent() && s.hasPrevious()) {
-                        formatUsageTtftDelta(s.current.ttftP50Ms, s.previous.ttftP50Ms, copy)
-                    } else EM_DASH
-            }
-            val subText = when (metric) {
-                UsageMetricTab.USAGE_METRIC_TAB_TOKENS -> {
-                    val inp = formatUsageTokens(c?.uncachedInputTokens ?: 0L, copy)
-                    val out = formatUsageTokens(c?.outputTokens ?: 0L, copy)
-                    val rd = formatUsageTokens(c?.cacheReadTokens ?: 0L, copy)
-                    if ((c?.reasoningOutputTokens ?: 0L) > 0L) {
-                        copy(
-                            UiMessages.usageRowSubTokensReasoning(
-                                inp = inp,
-                                out = out,
-                                read = rd,
-                                reas = formatUsageTokens(c!!.reasoningOutputTokens, copy),
-                                write = writeStr,
-                            ),
-                        )
-                    } else {
-                        copy(UiMessages.usageRowSubTokens(inp = inp, out = out, read = rd, write = writeStr))
-                    }
-                }
-                UsageMetricTab.USAGE_METRIC_TAB_CACHE_HIT -> copy(
-                    UiMessages.usageRowSubCache(
-                        inp = formatUsageTokens(c?.uncachedInputTokens ?: 0L, copy),
-                        read = formatUsageTokens(c?.cacheReadTokens ?: 0L, copy),
-                        write = writeStr,
-                    ),
-                )
-                else -> {
-                    val hi = if (c != null && c.speedP90 > 0.0) formatUsageSpeed(c.speedP90) else EM_DASH
-                    val lo = if (c != null && c.speedP10 > 0.0) formatUsageSpeed(c.speedP10) else EM_DASH
-                    val ttft = if (c != null && c.hasTtft) formatUsageTtft(c.ttftP50Ms) else EM_DASH
-                    copy(UiMessages.usageRowSubSpeed(high = hi, low = lo, ttft = ttft))
-                }
-            }
-            val rowModifier = Modifier
+            Modifier
                 .fillMaxWidth()
-                .clip(Radii.R14)
-                .background(if (isSelected) p.paper else Color.Transparent)
-                .border(
-                    width = if (isSelected) 1.dp else 0.5.dp,
-                    color = if (isSelected) p.ink3 else p.sep,
-                    shape = Radii.R14,
-                )
-                .clickable(role = Role.Button) { onToggleSeries(s.seriesKey) }
-                .padding(horizontal = 12.dp, vertical = 10.dp)
+                .padding(start = hPad, end = hPad, bottom = 7.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Text(
+                copy(UiMessages.usageColModel()),
+                style = T.s12.copy(fontSize = 11.5.sp),
+                color = p.ink2,
+                modifier = Modifier.weight(1f),
+                maxLines = 1,
+            )
+            SortHeaderCell(copy(UiMessages.usageColTokens()), UsageSortColumn.USAGE_SORT_COLUMN_TOKENS, sortBy, 62.dp, asc = false, onSelectSort)
+            SortHeaderCell(copy(UiMessages.usageColCache()), UsageSortColumn.USAGE_SORT_COLUMN_CACHE_HIT, sortBy, 42.dp, asc = false, onSelectSort)
+            SortHeaderCell(copy(UiMessages.usageColSpeed()), UsageSortColumn.USAGE_SORT_COLUMN_SPEED, sortBy, 46.dp, asc = false, onSelectSort)
+            SortHeaderCell(copy(UiMessages.usageColTtft()), UsageSortColumn.USAGE_SORT_COLUMN_TTFT, sortBy, 44.dp, asc = true, onSelectSort)
+        }
+        Box(Modifier.fillMaxWidth().height(0.5.dp).background(p.sep))
 
-            if (largeFont) {
-                Column(rowModifier, verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        UsageSeriesSwatch(slot = if (slot >= 0) slot else 3, isBars = isBars, selected = isSelected)
-                        AgentMark(s.agent, T.s13, p.ink)
-                        Text(s.model, style = T.s15b, color = p.ink, modifier = Modifier.weight(1f))
+        // Rows
+        vm.rowsList.forEachIndexed { idx, row ->
+            val prevSel = idx > 0 && vm.rowsList[idx - 1].selected
+            if (idx > 0 && !row.selected && !prevSel) {
+                Box(Modifier.fillMaxWidth().padding(horizontal = hPad).height(0.5.dp).background(p.sep))
+            }
+            val rowShape = if (isWide) RoundedCornerShape(10.dp) else RoundedCornerShape(0.dp)
+            Column(
+                Modifier
+                    .fillMaxWidth()
+                    .clip(rowShape)
+                    .background(if (row.selected) p.fill else Color.Transparent)
+                    .clickable(role = Role.Button) {
+                        onSelectSeries(row.seriesKey, !row.selected)
                     }
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text(primaryVal, style = T.s15b.digits(), color = p.ink)
-                        Text(deltaVal, style = T.s13.digits(), color = p.ink2)
+                    .padding(start = hPad, end = hPad, top = 9.dp, bottom = 10.dp),
+            ) {
+                Row(
+                    Modifier.fillMaxWidth().heightIn(min = 18.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    UsageAgentMarkIcon(row.agent, size = 13.dp, tint = p.ink2)
+                    Text(
+                        row.model,
+                        style = T.s13.copy(fontSize = 13.5.sp, fontWeight = platformWeight(FontWeight.Medium)),
+                        color = p.ink,
+                        maxLines = 1,
+                        overflow = TextOverflow.MiddleEllipsis,
+                        modifier = Modifier.weight(1f),
+                    )
+                    val deltaStr = when {
+                        row.previousBackfilling -> copy(UiMessages.usageBackfillingCell())
+                        row.hasTokensDelta -> formatUsageDeltaTriangle(row.tokensDeltaPercent, copy)
+                        else -> ""
                     }
-                    Text(subText, style = T.s12.digits(), color = p.ink2)
+                    if (deltaStr.isNotEmpty()) {
+                        Text(deltaStr, style = T.s12.copy(fontSize = 11.5.sp).digits(), color = p.ink2, maxLines = 1)
+                    }
                 }
-            } else {
-                Column(rowModifier, verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                    val rowPairTitle = "${s.agentName} · ${s.model}"
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        UsageSeriesSwatch(slot = if (slot >= 0) slot else 3, isBars = isBars, selected = isSelected)
-                        AgentMark(s.agent, T.s13, p.ink)
-                        Text(
-                            rowPairTitle,
-                            style = T.s13b,
-                            color = p.ink,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.weight(1f),
+
+                Spacer(Modifier.height(4.dp))
+
+                Row(
+                    Modifier.fillMaxWidth().heightIn(min = 17.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    // Share bar always proportional to tokens
+                    Box(
+                        Modifier
+                            .weight(1f)
+                            .height(3.dp)
+                            .clip(RoundedCornerShape(1.5.dp))
+                            .background(p.fill),
+                    ) {
+                        val frac = row.shareRatio.toFloat().coerceIn(0f, 1f)
+                        Box(
+                            Modifier
+                                .fillMaxHeight()
+                                .fillMaxWidth(frac)
+                                .widthIn(min = 2.dp)
+                                .clip(RoundedCornerShape(1.5.dp))
+                                .background(if (row.selected) p.ink else p.ink2),
                         )
-                        Text(primaryVal, style = T.s13b.digits(), color = p.ink)
-                        Text(deltaVal, style = T.s12.digits(), color = p.ink2)
                     }
-                    Text(subText, style = T.s12.digits(), color = p.ink2)
+
+                    Text(
+                        formatUsageTokens(row.totalTokens, copy),
+                        style = T.s13b.digits(),
+                        color = p.ink,
+                        textAlign = TextAlign.End,
+                        maxLines = 1,
+                        modifier = Modifier.width(62.dp),
+                    )
+                    MetricCell(
+                        text = if (row.hasCacheHit) formatUsageCacheHit(row.cacheHitRate) else EN_DASH,
+                        hasValue = row.hasCacheHit,
+                        width = 42.dp,
+                        noSampleA11y = noSampleA11y,
+                    )
+                    MetricCell(
+                        text = if (row.hasSpeed) formatUsageSpeed(row.speedP50) else EN_DASH,
+                        hasValue = row.hasSpeed,
+                        width = 46.dp,
+                        noSampleA11y = noSampleA11y,
+                    )
+                    MetricCell(
+                        text = if (row.hasTtft) formatUsageTtftSeconds(row.ttftP50Ms) else EN_DASH,
+                        hasValue = row.hasTtft,
+                        width = 44.dp,
+                        noSampleA11y = noSampleA11y,
+                    )
+                }
+            }
+        }
+
+        // Footer
+        Box(Modifier.fillMaxWidth().height(0.5.dp).background(p.sep))
+        Column(
+            Modifier.fillMaxWidth().padding(start = hPad, end = hPad, top = 14.dp, bottom = 6.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            Text(copy(UiMessages.usageFooterNote()), style = T.s12.copy(fontSize = 11.5.sp, lineHeight = 17.sp), color = p.ink2)
+            if (vm.hasUnsupportedFootnote()) {
+                val extra = uiText(vm.unsupportedFootnote)
+                if (extra.isNotEmpty()) {
+                    Text(extra, style = T.s12.copy(fontSize = 11.5.sp, lineHeight = 17.sp), color = p.ink2)
                 }
             }
         }
@@ -1520,33 +1704,82 @@ private fun UsageSeriesList(
 }
 
 @Composable
-private fun UsageFootnotes(
-    vm: UsageViewModel,
-    metric: UsageMetricTab,
-    summary: ActiveSummary,
-    copy: MessageResolver,
+private fun SortHeaderCell(
+    label: String,
+    column: UsageSortColumn,
+    activeSort: UsageSortColumn,
+    width: androidx.compose.ui.unit.Dp,
+    asc: Boolean,
+    onSelect: (UsageSortColumn) -> Unit,
 ) {
-    Column(Modifier.fillMaxWidth().padding(horizontal = 4.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        if (vm.hasUnsupportedFootnote()) {
-            val txt = uiText(vm.unsupportedFootnote)
-            if (txt.isNotEmpty()) Text(txt, style = T.s12, color = pal.ink2)
-        }
-        val unavail = vm.sourcesList.filter { it.state == UsageSourceState.USAGE_SOURCE_STATE_UNAVAILABLE }
-        if (unavail.isNotEmpty()) {
-            val agentsStr = unavail.joinToString(", ") { agentName(it.agent, copy = copy) }
-            Text(copy(UiMessages.usageMixedUnavailableFootnote(agentsStr)), style = T.s12, color = pal.ink2)
-        }
-        if (vm.showCacheWriteFootnote && metric == UsageMetricTab.USAGE_METRIC_TAB_TOKENS) {
-            Text(copy(UiMessages.usageCacheWriteFootnote()), style = T.s12, color = pal.ink2)
-        }
-        if (metric == UsageMetricTab.USAGE_METRIC_TAB_CACHE_HIT) {
-            Text(copy(UiMessages.usageCacheFormulaFootnote()), style = T.s12, color = pal.ink2)
-        }
-        if (metric == UsageMetricTab.USAGE_METRIC_TAB_OUTPUT_SPEED && summary.speedReqs > 0L) {
-            Text(copy(UiMessages.usageSpeedThresholdFootnote()), style = T.s12, color = pal.ink2)
-        }
-        Text(copy(UiMessages.usagePassiveFootnote()), style = T.s12, color = pal.ink2)
+    val p = pal
+    val active = activeSort == column
+    val arrow = if (active) (if (asc) " ↑" else " ↓") else ""
+    val headerText = label + arrow
+    Box(
+        Modifier
+            .width(width)
+            .heightIn(min = 24.dp)
+            .clickable(role = Role.Button) { onSelect(column) },
+        contentAlignment = Alignment.CenterEnd,
+    ) {
+        Text(
+            headerText,
+            style = T.s12.copy(
+                fontSize = 11.5.sp,
+                fontWeight = if (active) platformWeight(FontWeight.SemiBold) else FontWeight.Normal,
+            ),
+            color = if (active) p.ink else p.ink2,
+            textAlign = TextAlign.End,
+            maxLines = 1,
+        )
     }
+}
+
+@Composable
+private fun MetricCell(
+    text: String,
+    hasValue: Boolean,
+    width: androidx.compose.ui.unit.Dp,
+    noSampleA11y: String,
+) {
+    val p = pal
+    Text(
+        text,
+        style = T.s13.digits(),
+        color = if (hasValue) p.ink else p.ink3,
+        textAlign = TextAlign.End,
+        maxLines = 1,
+        modifier = Modifier.width(width).let { base ->
+            if (hasValue) base else base.semantics { contentDescription = noSampleA11y }
+        },
+    )
+}
+
+@Composable
+private fun UsageAgentMarkIcon(
+    agent: Agent,
+    size: androidx.compose.ui.unit.Dp,
+    tint: Color,
+) {
+    val copy = uiText()
+    val vector = AgentMarks.of(agent) ?: return
+    Icon(
+        imageVector = vector,
+        contentDescription = agentName(agent, copy = copy),
+        modifier = Modifier.size(size),
+        tint = tint,
+    )
+}
+
+@Composable
+private fun UsageLoadingSkeleton() {
+    val p = pal
+    Box(
+        Modifier.fillMaxWidth().padding(top = 16.dp).height(260.dp)
+            .clip(Radii.R18)
+            .background(p.gbg),
+    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

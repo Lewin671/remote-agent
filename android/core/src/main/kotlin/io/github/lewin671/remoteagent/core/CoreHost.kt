@@ -193,7 +193,6 @@ class CoreHost(
     private var usagePreset: UsageRangePreset = UsageRangePreset.USAGE_RANGE_PRESET_SEVEN_DAYS
     private var usageCustomStartMs: Long = 0L
     private var usageCustomEndMs: Long = 0L
-    private var usageMetric: UsageMetricTab = UsageMetricTab.USAGE_METRIC_TAB_TOKENS
     private var scheduleDetailMachineId: String = ""
     private var scheduleDetailTaskId: String = ""
     private var scheduleFormKey: String = ""
@@ -289,8 +288,7 @@ class CoreHost(
                         .setFocusModel(usageFocusModel)
                         .setPreset(usagePreset)
                         .setCustomStartMs(usageCustomStartMs)
-                        .setCustomEndMs(usageCustomEndMs)
-                        .setMetric(usageMetric),
+                        .setCustomEndMs(usageCustomEndMs),
                 ).build()
             }
         },
@@ -817,7 +815,6 @@ class CoreHost(
         preset: UsageRangePreset = UsageRangePreset.USAGE_RANGE_PRESET_SEVEN_DAYS,
         customStartMs: Long = 0L,
         customEndMs: Long = 0L,
-        metric: UsageMetricTab = UsageMetricTab.USAGE_METRIC_TAB_TOKENS,
     ): UsageViewModel = snapshotSlot(
         ScreenTarget.SCREEN_TARGET_USAGE,
         usageSlot,
@@ -828,8 +825,7 @@ class CoreHost(
                 usageFocusModel == focusModel &&
                 usagePreset == preset &&
                 usageCustomStartMs == customStartMs &&
-                usageCustomEndMs == customEndMs &&
-                usageMetric == metric
+                usageCustomEndMs == customEndMs
         },
         screen = {
             Screen.newBuilder().setUsage(
@@ -839,8 +835,7 @@ class CoreHost(
                     .setFocusModel(focusModel)
                     .setPreset(preset)
                     .setCustomStartMs(customStartMs)
-                    .setCustomEndMs(customEndMs)
-                    .setMetric(metric),
+                    .setCustomEndMs(customEndMs),
             ).build()
         },
         extract = { if (it.viewCase == ViewModel.ViewCase.USAGE) it.usage else null },
@@ -1189,7 +1184,7 @@ class CoreHost(
         preset: UsageRangePreset = UsageRangePreset.USAGE_RANGE_PRESET_SEVEN_DAYS,
         customStartMs: Long = 0L,
         customEndMs: Long = 0L,
-        metric: UsageMetricTab? = null,
+        applyFocus: Boolean = false,
     ) = dispatchAction {
         if (machineId.isEmpty()) return@dispatchAction
         onHydrateUsageCache(machineId)
@@ -1206,7 +1201,6 @@ class CoreHost(
         usagePreset = params.preset
         usageCustomStartMs = params.customStartMs
         usageCustomEndMs = params.customEndMs
-        metric?.let { usageMetric = it }
         sendOnWorker {
             setUsageScreenOpen(
                 UsageScreenOpenEvent.newBuilder()
@@ -1217,15 +1211,48 @@ class CoreHost(
                     .setTimezone(params.timezone)
                     .setTzOffsetMinutes(params.tzOffsetMinutes)
                     .addAllBucketBoundsMs(params.bucketBoundsMs)
-                    .setPrevStartMs(params.prevStartMs),
+                    .setPrevStartMs(params.prevStartMs)
+                    .setApplyFocus(applyFocus)
+                    .setFocusAgent(focusAgent)
+                    .setFocusModel(focusModel),
             )
         }
         refreshScreenOnWorker(ScreenTarget.SCREEN_TARGET_USAGE)
     }
 
-    fun setUsageMetric(metric: UsageMetricTab) = dispatchAction {
-        usageMetric = metric
-        refreshScreenOnWorker(ScreenTarget.SCREEN_TARGET_USAGE)
+    fun selectUsageSort(machineId: String, sortBy: UsageSortColumn) {
+        if (machineId.isEmpty()) return
+        send {
+            setUsageScreenSelectSort(
+                UsageScreenSelectSortEvent.newBuilder()
+                    .setMachineId(machineId)
+                    .setSortBy(sortBy),
+            )
+        }
+    }
+
+    fun selectUsageSeries(machineId: String, seriesKey: String, toggle: Boolean = true) {
+        if (machineId.isEmpty()) return
+        send {
+            setUsageScreenSelectSeries(
+                UsageScreenSelectSeriesEvent.newBuilder()
+                    .setMachineId(machineId)
+                    .setSeriesKey(seriesKey)
+                    .setToggle(toggle),
+            )
+        }
+    }
+
+    fun scrubUsage(machineId: String, bucketIndex: Int, clear: Boolean = false) {
+        if (machineId.isEmpty()) return
+        send {
+            setUsageScreenScrub(
+                UsageScreenScrubEvent.newBuilder()
+                    .setMachineId(machineId)
+                    .setBucketIndex(bucketIndex)
+                    .setClear(clear),
+            )
+        }
     }
 
     fun retryUsageScreen(machineId: String) {
@@ -1727,7 +1754,7 @@ fun buildUsageOpenParams(
             cur += 3_600_000L
         }
         bounds.add(endExclMs)
-    } else if (numDays <= 3L) {
+    } else if (numDays <= 7L) {
         var day = startDay
         while (day.isBefore(endExclDay)) {
             val dayMs = dayStartMs(day)
