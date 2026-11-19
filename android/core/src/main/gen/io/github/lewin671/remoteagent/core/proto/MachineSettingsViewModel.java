@@ -1627,6 +1627,228 @@ public  final class MachineSettingsViewModel extends
     loading_ = false;
   }
 
+  public static final int SHOW_CLI_SWITCHES_FIELD_NUMBER = 33;
+  private boolean showCliSwitches_;
+  /**
+   * <code>bool show_cli_switches = 33 [json_name = "showCliSwitches"];</code>
+   * @return The showCliSwitches.
+   */
+  @java.lang.Override
+  public boolean getShowCliSwitches() {
+    return showCliSwitches_;
+  }
+  /**
+   * <code>bool show_cli_switches = 33 [json_name = "showCliSwitches"];</code>
+   * @param value The showCliSwitches to set.
+   */
+  private void setShowCliSwitches(boolean value) {
+    
+    showCliSwitches_ = value;
+  }
+  /**
+   * <code>bool show_cli_switches = 33 [json_name = "showCliSwitches"];</code>
+   */
+  private void clearShowCliSwitches() {
+
+    showCliSwitches_ = false;
+  }
+
+  public static final int CLI_SWITCHES_EDITABLE_FIELD_NUMBER = 34;
+  private boolean cliSwitchesEditable_;
+  /**
+   * <code>bool cli_switches_editable = 34 [json_name = "cliSwitchesEditable"];</code>
+   * @return The cliSwitchesEditable.
+   */
+  @java.lang.Override
+  public boolean getCliSwitchesEditable() {
+    return cliSwitchesEditable_;
+  }
+  /**
+   * <code>bool cli_switches_editable = 34 [json_name = "cliSwitchesEditable"];</code>
+   * @param value The cliSwitchesEditable to set.
+   */
+  private void setCliSwitchesEditable(boolean value) {
+    
+    cliSwitchesEditable_ = value;
+  }
+  /**
+   * <code>bool cli_switches_editable = 34 [json_name = "cliSwitchesEditable"];</code>
+   */
+  private void clearCliSwitchesEditable() {
+
+    cliSwitchesEditable_ = false;
+  }
+
+  public static final int CLI_SWITCHES_LEASE_EXPIRED_FIELD_NUMBER = 35;
+  private boolean cliSwitchesLeaseExpired_;
+  /**
+   * <code>bool cli_switches_lease_expired = 35 [json_name = "cliSwitchesLeaseExpired"];</code>
+   * @return The cliSwitchesLeaseExpired.
+   */
+  @java.lang.Override
+  public boolean getCliSwitchesLeaseExpired() {
+    return cliSwitchesLeaseExpired_;
+  }
+  /**
+   * <code>bool cli_switches_lease_expired = 35 [json_name = "cliSwitchesLeaseExpired"];</code>
+   * @param value The cliSwitchesLeaseExpired to set.
+   */
+  private void setCliSwitchesLeaseExpired(boolean value) {
+    
+    cliSwitchesLeaseExpired_ = value;
+  }
+  /**
+   * <code>bool cli_switches_lease_expired = 35 [json_name = "cliSwitchesLeaseExpired"];</code>
+   */
+  private void clearCliSwitchesLeaseExpired() {
+
+    cliSwitchesLeaseExpired_ = false;
+  }
+
+  public static final int CLI_SWITCHES_DISABLED_REASON_FIELD_NUMBER = 36;
+  private io.github.lewin671.remoteagent.core.proto.Text cliSwitchesDisabledReason_;
+  /**
+   * <code>.remoteagent.core.v1.Text cli_switches_disabled_reason = 36 [json_name = "cliSwitchesDisabledReason"];</code>
+   */
+  @java.lang.Override
+  public boolean hasCliSwitchesDisabledReason() {
+    return ((bitField0_ & 0x00000100) != 0);
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text cli_switches_disabled_reason = 36 [json_name = "cliSwitchesDisabledReason"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.Text getCliSwitchesDisabledReason() {
+    return cliSwitchesDisabledReason_ == null ? io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance() : cliSwitchesDisabledReason_;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text cli_switches_disabled_reason = 36 [json_name = "cliSwitchesDisabledReason"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setCliSwitchesDisabledReason(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    cliSwitchesDisabledReason_ = value;
+    bitField0_ |= 0x00000100;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text cli_switches_disabled_reason = 36 [json_name = "cliSwitchesDisabledReason"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeCliSwitchesDisabledReason(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    if (cliSwitchesDisabledReason_ != null &&
+        cliSwitchesDisabledReason_ != io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance()) {
+      cliSwitchesDisabledReason_ =
+        io.github.lewin671.remoteagent.core.proto.Text.newBuilder(cliSwitchesDisabledReason_).mergeFrom(value).buildPartial();
+    } else {
+      cliSwitchesDisabledReason_ = value;
+    }
+    bitField0_ |= 0x00000100;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text cli_switches_disabled_reason = 36 [json_name = "cliSwitchesDisabledReason"];</code>
+   */
+  private void clearCliSwitchesDisabledReason() {
+    cliSwitchesDisabledReason_ = null;
+    bitField0_ = (bitField0_ & ~0x00000100);
+  }
+
+  public static final int CLI_SWITCHES_CONFLICT_BANNER_FIELD_NUMBER = 37;
+  private io.github.lewin671.remoteagent.core.proto.Text cliSwitchesConflictBanner_;
+  /**
+   * <code>.remoteagent.core.v1.Text cli_switches_conflict_banner = 37 [json_name = "cliSwitchesConflictBanner"];</code>
+   */
+  @java.lang.Override
+  public boolean hasCliSwitchesConflictBanner() {
+    return ((bitField0_ & 0x00000200) != 0);
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text cli_switches_conflict_banner = 37 [json_name = "cliSwitchesConflictBanner"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.Text getCliSwitchesConflictBanner() {
+    return cliSwitchesConflictBanner_ == null ? io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance() : cliSwitchesConflictBanner_;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text cli_switches_conflict_banner = 37 [json_name = "cliSwitchesConflictBanner"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setCliSwitchesConflictBanner(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    cliSwitchesConflictBanner_ = value;
+    bitField0_ |= 0x00000200;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text cli_switches_conflict_banner = 37 [json_name = "cliSwitchesConflictBanner"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeCliSwitchesConflictBanner(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    if (cliSwitchesConflictBanner_ != null &&
+        cliSwitchesConflictBanner_ != io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance()) {
+      cliSwitchesConflictBanner_ =
+        io.github.lewin671.remoteagent.core.proto.Text.newBuilder(cliSwitchesConflictBanner_).mergeFrom(value).buildPartial();
+    } else {
+      cliSwitchesConflictBanner_ = value;
+    }
+    bitField0_ |= 0x00000200;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text cli_switches_conflict_banner = 37 [json_name = "cliSwitchesConflictBanner"];</code>
+   */
+  private void clearCliSwitchesConflictBanner() {
+    cliSwitchesConflictBanner_ = null;
+    bitField0_ = (bitField0_ & ~0x00000200);
+  }
+
+  public static final int CLI_SWITCHES_FOOTER_FIELD_NUMBER = 38;
+  private io.github.lewin671.remoteagent.core.proto.Text cliSwitchesFooter_;
+  /**
+   * <code>.remoteagent.core.v1.Text cli_switches_footer = 38 [json_name = "cliSwitchesFooter"];</code>
+   */
+  @java.lang.Override
+  public boolean hasCliSwitchesFooter() {
+    return ((bitField0_ & 0x00000400) != 0);
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text cli_switches_footer = 38 [json_name = "cliSwitchesFooter"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.Text getCliSwitchesFooter() {
+    return cliSwitchesFooter_ == null ? io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance() : cliSwitchesFooter_;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text cli_switches_footer = 38 [json_name = "cliSwitchesFooter"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setCliSwitchesFooter(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    cliSwitchesFooter_ = value;
+    bitField0_ |= 0x00000400;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text cli_switches_footer = 38 [json_name = "cliSwitchesFooter"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeCliSwitchesFooter(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    if (cliSwitchesFooter_ != null &&
+        cliSwitchesFooter_ != io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance()) {
+      cliSwitchesFooter_ =
+        io.github.lewin671.remoteagent.core.proto.Text.newBuilder(cliSwitchesFooter_).mergeFrom(value).buildPartial();
+    } else {
+      cliSwitchesFooter_ = value;
+    }
+    bitField0_ |= 0x00000400;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text cli_switches_footer = 38 [json_name = "cliSwitchesFooter"];</code>
+   */
+  private void clearCliSwitchesFooter() {
+    cliSwitchesFooter_ = null;
+    bitField0_ = (bitField0_ & ~0x00000400);
+  }
+
   public static io.github.lewin671.remoteagent.core.proto.MachineSettingsViewModel parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -3367,6 +3589,231 @@ public  final class MachineSettingsViewModel extends
       return this;
     }
 
+    /**
+     * <code>bool show_cli_switches = 33 [json_name = "showCliSwitches"];</code>
+     * @return The showCliSwitches.
+     */
+    @java.lang.Override
+    public boolean getShowCliSwitches() {
+      return instance.getShowCliSwitches();
+    }
+    /**
+     * <code>bool show_cli_switches = 33 [json_name = "showCliSwitches"];</code>
+     * @param value The showCliSwitches to set.
+     * @return This builder for chaining.
+     */
+    public Builder setShowCliSwitches(boolean value) {
+      copyOnWrite();
+      instance.setShowCliSwitches(value);
+      return this;
+    }
+    /**
+     * <code>bool show_cli_switches = 33 [json_name = "showCliSwitches"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearShowCliSwitches() {
+      copyOnWrite();
+      instance.clearShowCliSwitches();
+      return this;
+    }
+
+    /**
+     * <code>bool cli_switches_editable = 34 [json_name = "cliSwitchesEditable"];</code>
+     * @return The cliSwitchesEditable.
+     */
+    @java.lang.Override
+    public boolean getCliSwitchesEditable() {
+      return instance.getCliSwitchesEditable();
+    }
+    /**
+     * <code>bool cli_switches_editable = 34 [json_name = "cliSwitchesEditable"];</code>
+     * @param value The cliSwitchesEditable to set.
+     * @return This builder for chaining.
+     */
+    public Builder setCliSwitchesEditable(boolean value) {
+      copyOnWrite();
+      instance.setCliSwitchesEditable(value);
+      return this;
+    }
+    /**
+     * <code>bool cli_switches_editable = 34 [json_name = "cliSwitchesEditable"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearCliSwitchesEditable() {
+      copyOnWrite();
+      instance.clearCliSwitchesEditable();
+      return this;
+    }
+
+    /**
+     * <code>bool cli_switches_lease_expired = 35 [json_name = "cliSwitchesLeaseExpired"];</code>
+     * @return The cliSwitchesLeaseExpired.
+     */
+    @java.lang.Override
+    public boolean getCliSwitchesLeaseExpired() {
+      return instance.getCliSwitchesLeaseExpired();
+    }
+    /**
+     * <code>bool cli_switches_lease_expired = 35 [json_name = "cliSwitchesLeaseExpired"];</code>
+     * @param value The cliSwitchesLeaseExpired to set.
+     * @return This builder for chaining.
+     */
+    public Builder setCliSwitchesLeaseExpired(boolean value) {
+      copyOnWrite();
+      instance.setCliSwitchesLeaseExpired(value);
+      return this;
+    }
+    /**
+     * <code>bool cli_switches_lease_expired = 35 [json_name = "cliSwitchesLeaseExpired"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearCliSwitchesLeaseExpired() {
+      copyOnWrite();
+      instance.clearCliSwitchesLeaseExpired();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.Text cli_switches_disabled_reason = 36 [json_name = "cliSwitchesDisabledReason"];</code>
+     */
+    @java.lang.Override
+    public boolean hasCliSwitchesDisabledReason() {
+      return instance.hasCliSwitchesDisabledReason();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text cli_switches_disabled_reason = 36 [json_name = "cliSwitchesDisabledReason"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.Text getCliSwitchesDisabledReason() {
+      return instance.getCliSwitchesDisabledReason();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text cli_switches_disabled_reason = 36 [json_name = "cliSwitchesDisabledReason"];</code>
+     */
+    public Builder setCliSwitchesDisabledReason(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.setCliSwitchesDisabledReason(value);
+      return this;
+      }
+    /**
+     * <code>.remoteagent.core.v1.Text cli_switches_disabled_reason = 36 [json_name = "cliSwitchesDisabledReason"];</code>
+     */
+    public Builder setCliSwitchesDisabledReason(
+        io.github.lewin671.remoteagent.core.proto.Text.Builder builderForValue) {
+      copyOnWrite();
+      instance.setCliSwitchesDisabledReason(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text cli_switches_disabled_reason = 36 [json_name = "cliSwitchesDisabledReason"];</code>
+     */
+    public Builder mergeCliSwitchesDisabledReason(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.mergeCliSwitchesDisabledReason(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text cli_switches_disabled_reason = 36 [json_name = "cliSwitchesDisabledReason"];</code>
+     */
+    public Builder clearCliSwitchesDisabledReason() {  copyOnWrite();
+      instance.clearCliSwitchesDisabledReason();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.Text cli_switches_conflict_banner = 37 [json_name = "cliSwitchesConflictBanner"];</code>
+     */
+    @java.lang.Override
+    public boolean hasCliSwitchesConflictBanner() {
+      return instance.hasCliSwitchesConflictBanner();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text cli_switches_conflict_banner = 37 [json_name = "cliSwitchesConflictBanner"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.Text getCliSwitchesConflictBanner() {
+      return instance.getCliSwitchesConflictBanner();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text cli_switches_conflict_banner = 37 [json_name = "cliSwitchesConflictBanner"];</code>
+     */
+    public Builder setCliSwitchesConflictBanner(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.setCliSwitchesConflictBanner(value);
+      return this;
+      }
+    /**
+     * <code>.remoteagent.core.v1.Text cli_switches_conflict_banner = 37 [json_name = "cliSwitchesConflictBanner"];</code>
+     */
+    public Builder setCliSwitchesConflictBanner(
+        io.github.lewin671.remoteagent.core.proto.Text.Builder builderForValue) {
+      copyOnWrite();
+      instance.setCliSwitchesConflictBanner(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text cli_switches_conflict_banner = 37 [json_name = "cliSwitchesConflictBanner"];</code>
+     */
+    public Builder mergeCliSwitchesConflictBanner(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.mergeCliSwitchesConflictBanner(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text cli_switches_conflict_banner = 37 [json_name = "cliSwitchesConflictBanner"];</code>
+     */
+    public Builder clearCliSwitchesConflictBanner() {  copyOnWrite();
+      instance.clearCliSwitchesConflictBanner();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.Text cli_switches_footer = 38 [json_name = "cliSwitchesFooter"];</code>
+     */
+    @java.lang.Override
+    public boolean hasCliSwitchesFooter() {
+      return instance.hasCliSwitchesFooter();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text cli_switches_footer = 38 [json_name = "cliSwitchesFooter"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.Text getCliSwitchesFooter() {
+      return instance.getCliSwitchesFooter();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text cli_switches_footer = 38 [json_name = "cliSwitchesFooter"];</code>
+     */
+    public Builder setCliSwitchesFooter(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.setCliSwitchesFooter(value);
+      return this;
+      }
+    /**
+     * <code>.remoteagent.core.v1.Text cli_switches_footer = 38 [json_name = "cliSwitchesFooter"];</code>
+     */
+    public Builder setCliSwitchesFooter(
+        io.github.lewin671.remoteagent.core.proto.Text.Builder builderForValue) {
+      copyOnWrite();
+      instance.setCliSwitchesFooter(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text cli_switches_footer = 38 [json_name = "cliSwitchesFooter"];</code>
+     */
+    public Builder mergeCliSwitchesFooter(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.mergeCliSwitchesFooter(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text cli_switches_footer = 38 [json_name = "cliSwitchesFooter"];</code>
+     */
+    public Builder clearCliSwitchesFooter() {  copyOnWrite();
+      instance.clearCliSwitchesFooter();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.MachineSettingsViewModel)
   }
   @java.lang.Override
@@ -3422,14 +3869,21 @@ public  final class MachineSettingsViewModel extends
             io.github.lewin671.remoteagent.core.proto.MachineProjectView.class,
             "management_",
             "loading_",
+            "showCliSwitches_",
+            "cliSwitchesEditable_",
+            "cliSwitchesLeaseExpired_",
+            "cliSwitchesDisabledReason_",
+            "cliSwitchesConflictBanner_",
+            "cliSwitchesFooter_",
           };
           java.lang.String info =
-              "\u0000 \u0000\u0001\u0001  \u0000\u0007\u0000\u0001\u0208\u0002\u0208\u0003\u0007" +
+              "\u0000&\u0000\u0001\u0001&&\u0000\u0007\u0000\u0001\u0208\u0002\u0208\u0003\u0007" +
               "\u0004\u0007\u0005\u0007\u0006\u0007\u0007\u0004\b\u0007\t\u1009\u0000\n\u1009\u0001" +
               "\u000b\u0007\f\u001b\r\u001b\u000e\u1009\u0002\u000f\u001b\u0010\u0007\u0011\u0007" +
               "\u0012\u1009\u0003\u0013\u0007\u0014\u0007\u0015\u1009\u0004\u0016,\u0017\f\u0018" +
               "\u1009\u0005\u0019\u001b\u001a\u0004\u001b\u001b\u001c\u0004\u001d\u1009\u0006\u001e" +
-              "\u001b\u001f\u1009\u0007 \u0007";
+              "\u001b\u001f\u1009\u0007 \u0007!\u0007\"\u0007#\u0007$\u1009\b%\u1009\t&\u1009\n" +
+              "";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

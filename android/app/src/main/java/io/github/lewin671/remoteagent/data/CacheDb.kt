@@ -121,6 +121,9 @@ interface CacheDao {
         }
         deleteMachine(id)
         deleteBlob("schedule:$id")
+        deleteBlob("usage:$id:1")
+        deleteBlob("usage:$id:2")
+        deleteBlob("usage:$id:3")
     }
 
     @Transaction

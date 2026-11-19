@@ -30,4 +30,43 @@ public interface UpdateSettingsRequestOrBuilder extends
    * @return The cleanImages.
    */
   boolean getCleanImages();
+
+  /**
+   * <pre>
+   * Atomic CLI enable/disable delta applied onto the latest persisted settings under lock.
+   * </pre>
+   *
+   * <code>optional .remoteagent.v1.Agent toggle_agent = 3 [json_name = "toggleAgent"];</code>
+   * @return Whether the toggleAgent field is set.
+   */
+  boolean hasToggleAgent();
+  /**
+   * <pre>
+   * Atomic CLI enable/disable delta applied onto the latest persisted settings under lock.
+   * </pre>
+   *
+   * <code>optional .remoteagent.v1.Agent toggle_agent = 3 [json_name = "toggleAgent"];</code>
+   * @return The enum numeric value on the wire for toggleAgent.
+   */
+  int getToggleAgentValue();
+  /**
+   * <pre>
+   * Atomic CLI enable/disable delta applied onto the latest persisted settings under lock.
+   * </pre>
+   *
+   * <code>optional .remoteagent.v1.Agent toggle_agent = 3 [json_name = "toggleAgent"];</code>
+   * @return The toggleAgent.
+   */
+  io.github.lewin671.remoteagent.proto.Agent getToggleAgent();
+
+  /**
+   * <code>optional bool toggle_enabled = 4 [json_name = "toggleEnabled"];</code>
+   * @return Whether the toggleEnabled field is set.
+   */
+  boolean hasToggleEnabled();
+  /**
+   * <code>optional bool toggle_enabled = 4 [json_name = "toggleEnabled"];</code>
+   * @return The toggleEnabled.
+   */
+  boolean getToggleEnabled();
 }

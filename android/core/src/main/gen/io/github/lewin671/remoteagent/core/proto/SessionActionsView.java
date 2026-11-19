@@ -1291,6 +1291,54 @@ public  final class SessionActionsView extends
     modeChoices_.remove(index);
   }
 
+  public static final int USAGE_ENTRY_FIELD_NUMBER = 29;
+  private io.github.lewin671.remoteagent.core.proto.SessionUsageEntryView usageEntry_;
+  /**
+   * <code>.remoteagent.core.v1.SessionUsageEntryView usage_entry = 29 [json_name = "usageEntry"];</code>
+   */
+  @java.lang.Override
+  public boolean hasUsageEntry() {
+    return ((bitField0_ & 0x00008000) != 0);
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionUsageEntryView usage_entry = 29 [json_name = "usageEntry"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.SessionUsageEntryView getUsageEntry() {
+    return usageEntry_ == null ? io.github.lewin671.remoteagent.core.proto.SessionUsageEntryView.getDefaultInstance() : usageEntry_;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionUsageEntryView usage_entry = 29 [json_name = "usageEntry"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setUsageEntry(io.github.lewin671.remoteagent.core.proto.SessionUsageEntryView value) {
+    value.getClass();  // minimal bytecode null check
+    usageEntry_ = value;
+    bitField0_ |= 0x00008000;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionUsageEntryView usage_entry = 29 [json_name = "usageEntry"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeUsageEntry(io.github.lewin671.remoteagent.core.proto.SessionUsageEntryView value) {
+    value.getClass();  // minimal bytecode null check
+    if (usageEntry_ != null &&
+        usageEntry_ != io.github.lewin671.remoteagent.core.proto.SessionUsageEntryView.getDefaultInstance()) {
+      usageEntry_ =
+        io.github.lewin671.remoteagent.core.proto.SessionUsageEntryView.newBuilder(usageEntry_).mergeFrom(value).buildPartial();
+    } else {
+      usageEntry_ = value;
+    }
+    bitField0_ |= 0x00008000;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionUsageEntryView usage_entry = 29 [json_name = "usageEntry"];</code>
+   */
+  private void clearUsageEntry() {
+    usageEntry_ = null;
+    bitField0_ = (bitField0_ & ~0x00008000);
+  }
+
   public static io.github.lewin671.remoteagent.core.proto.SessionActionsView parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -2679,6 +2727,53 @@ public  final class SessionActionsView extends
       return this;
     }
 
+    /**
+     * <code>.remoteagent.core.v1.SessionUsageEntryView usage_entry = 29 [json_name = "usageEntry"];</code>
+     */
+    @java.lang.Override
+    public boolean hasUsageEntry() {
+      return instance.hasUsageEntry();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionUsageEntryView usage_entry = 29 [json_name = "usageEntry"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.SessionUsageEntryView getUsageEntry() {
+      return instance.getUsageEntry();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionUsageEntryView usage_entry = 29 [json_name = "usageEntry"];</code>
+     */
+    public Builder setUsageEntry(io.github.lewin671.remoteagent.core.proto.SessionUsageEntryView value) {
+      copyOnWrite();
+      instance.setUsageEntry(value);
+      return this;
+      }
+    /**
+     * <code>.remoteagent.core.v1.SessionUsageEntryView usage_entry = 29 [json_name = "usageEntry"];</code>
+     */
+    public Builder setUsageEntry(
+        io.github.lewin671.remoteagent.core.proto.SessionUsageEntryView.Builder builderForValue) {
+      copyOnWrite();
+      instance.setUsageEntry(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionUsageEntryView usage_entry = 29 [json_name = "usageEntry"];</code>
+     */
+    public Builder mergeUsageEntry(io.github.lewin671.remoteagent.core.proto.SessionUsageEntryView value) {
+      copyOnWrite();
+      instance.mergeUsageEntry(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionUsageEntryView usage_entry = 29 [json_name = "usageEntry"];</code>
+     */
+    public Builder clearUsageEntry() {  copyOnWrite();
+      instance.clearUsageEntry();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.SessionActionsView)
   }
   @java.lang.Override
@@ -2727,14 +2822,15 @@ public  final class SessionActionsView extends
             "setMode_",
             "modeChoices_",
             io.github.lewin671.remoteagent.core.proto.SessionModeChoiceView.class,
+            "usageEntry_",
           };
           java.lang.String info =
-              "\u0000\u001c\u0000\u0001\u0001\u001c\u001c\u0000\u0003\u0000\u0001\u0007\u0002\u1009" +
+              "\u0000\u001d\u0000\u0001\u0001\u001d\u001d\u0000\u0003\u0000\u0001\u0007\u0002\u1009" +
               "\u0000\u0003\u0007\u0004\u1009\u0001\u0005\u1009\u0002\u0006\u0007\u0007\u1009\u0003" +
               "\b\u1009\u0004\t\u0007\n\u1009\u0005\u000b\u0007\f\u1009\u0006\r\u1009\u0007\u000e" +
               "\u0007\u000f\u1009\b\u0010\u1009\t\u0011\u0007\u0012\u1009\n\u0013\u1009\u000b\u0014" +
               "\u0007\u0015\u0007\u0016\u1009\f\u0017\u001b\u0018\u001b\u0019\u0007\u001a\u1009" +
-              "\r\u001b\u1009\u000e\u001c\u001b";
+              "\r\u001b\u1009\u000e\u001c\u001b\u001d\u1009\u000f";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

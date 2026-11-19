@@ -39,6 +39,9 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.ClipEntry
 import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalWindowInfo
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.TextFieldValue
@@ -267,7 +270,7 @@ private fun foldModelChoices(offered: List<SessionModelChoiceView>, pickedSlug: 
 }
 
 @Composable
-fun ModelSheet(sid: String, vm: SessionViewModel, onClose: () -> Unit) {
+fun ModelSheet(sid: String, vm: SessionViewModel, onOpenUsage: (() -> Unit)? = null, onClose: () -> Unit) {
     val copy = uiText()
     val p = pal
     val remote = LocalRemote.current
@@ -400,6 +403,48 @@ fun ModelSheet(sid: String, vm: SessionViewModel, onClose: () -> Unit) {
         }
         if (modelBusy) Hint(copy(UiMessages.modesSwitching()))
         if (modelSlot.hasErrorText()) Hint(copy(UiMessages.modesSwitchFailed(reason = uiText(modelSlot.errorText))), color = p.red)
+        if (actions.hasUsageEntry() && actions.usageEntry.visible) {
+            val ue = actions.usageEntry
+            val titleText = copy(UiMessages.sessionUsageEntryTitle())
+            val sub = uiText(ue.subtitle)
+            val valText = uiText(ue.valueText)
+            val foot = uiText(ue.footnote)
+            val canNav = ue.supported && onOpenUsage != null
+            val a11yLabel = listOf(titleText, sub, valText).filter { it.isNotEmpty() }.joinToString(" · ")
+            androidx.compose.foundation.layout.Spacer(Modifier.heightIn(min = 8.dp))
+            SheetList {
+                Row(
+                    Modifier.fillMaxWidth()
+                        .heightIn(min = 50.dp)
+                        .then(
+                            if (canNav) Modifier.clickable(role = Role.Button) {
+                                onClose()
+                                onOpenUsage?.invoke()
+                            } else Modifier,
+                        )
+                        .semantics(mergeDescendants = true) {
+                            contentDescription = a11yLabel
+                        }
+                        .padding(horizontal = 18.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    Column(Modifier.weight(1f)) {
+                        Text(titleText, style = T.s17, color = if (canNav) p.ink else p.ink2)
+                        if (sub.isNotEmpty()) {
+                            Text(sub, style = T.s13, color = p.ink2)
+                        }
+                    }
+                    if (valText.isNotEmpty()) {
+                        Text(valText, style = T.s15.digits(), color = p.ink2)
+                    }
+                    if (canNav) {
+                        Arrow(p.ink3, T.s15)
+                    }
+                }
+            }
+            if (foot.isNotEmpty()) Hint(foot)
+        }
     }
 }
 

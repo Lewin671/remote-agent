@@ -148,6 +148,17 @@ public interface ViewModelOrBuilder extends
   io.github.lewin671.remoteagent.core.proto.ClientDetailViewModel getClientDetail();
 
   /**
+   * <code>.remoteagent.core.v1.UsageViewModel usage = 36 [json_name = "usage"];</code>
+   * @return Whether the usage field is set.
+   */
+  boolean hasUsage();
+  /**
+   * <code>.remoteagent.core.v1.UsageViewModel usage = 36 [json_name = "usage"];</code>
+   * @return The usage.
+   */
+  io.github.lewin671.remoteagent.core.proto.UsageViewModel getUsage();
+
+  /**
    * <code>.remoteagent.core.v1.SessionViewModel session = 10 [json_name = "session"];</code>
    * @return Whether the session field is set.
    */

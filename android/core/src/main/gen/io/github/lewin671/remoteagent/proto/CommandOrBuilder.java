@@ -348,6 +348,17 @@ public interface CommandOrBuilder extends
   io.github.lewin671.remoteagent.proto.GetMachineStatusRequest getGetMachineStatus();
 
   /**
+   * <code>.remoteagent.v1.GetUsageStatsRequest get_usage_stats = 34 [json_name = "getUsageStats"];</code>
+   * @return Whether the getUsageStats field is set.
+   */
+  boolean hasGetUsageStats();
+  /**
+   * <code>.remoteagent.v1.GetUsageStatsRequest get_usage_stats = 34 [json_name = "getUsageStats"];</code>
+   * @return The getUsageStats.
+   */
+  io.github.lewin671.remoteagent.proto.GetUsageStatsRequest getGetUsageStats();
+
+  /**
    * <pre>
    * The protocol version the client speaks (internal/protocol). A daemon
    * of another version refuses the command and says which side to update.

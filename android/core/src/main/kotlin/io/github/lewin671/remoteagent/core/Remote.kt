@@ -119,6 +119,17 @@ class Remote(
     @Volatile private var relayObservation = RemoteState()
     private val directTransfers = LinkedHashMap<String, UploadKind>()
     private val scope = CoroutineScope(SupervisorJob() + this.dispatcher)
+    private val usageHydratedMachines = ConcurrentHashMap.newKeySet<String>()
+
+    private fun usageBlobKey(machineId: String, preset: UsageRangePreset): String =
+        "usage:$machineId:${preset.number}"
+
+    private suspend fun removeUsageBlobs(machineId: String) {
+        usageHydratedMachines.remove(machineId)
+        for (preset in USAGE_CACHE_PRESETS) {
+            cache?.removeBlob(usageBlobKey(machineId, preset))
+        }
+    }
 
     // --- Token & stream runtime state ---
 
@@ -388,6 +399,7 @@ class Remote(
     val quotaView: StateFlow<QuotaViewModel> get() = coreHost.quotaView
     val devicesView: StateFlow<DevicesViewModel> get() = coreHost.devicesView
     val clientDetailView: StateFlow<ClientDetailViewModel> get() = coreHost.clientDetailView
+    val usageView: StateFlow<UsageViewModel> get() = coreHost.usageView
     val schedulesView: StateFlow<SchedulesViewModel> get() = coreHost.schedulesView
     val scheduleDetailView: StateFlow<ScheduleDetailViewModel> get() = coreHost.scheduleDetailView
     val scheduleFormView: StateFlow<ScheduleFormViewModel> get() = coreHost.scheduleFormView
@@ -395,8 +407,10 @@ class Remote(
     val scheduleNavigationEvents: SharedFlow<ScheduleNavigateEffect> get() = coreHost.scheduleNavigationEvents
     val restoreComposerEvents: SharedFlow<SessionRestoreComposerEffect> get() = coreHost.restoreComposerEvents
 
-    fun watchSession(sid: String, initialWindow: SessionWindowRequest? = null): Flow<SessionViewModel> =
-        coreHost.watchSession(sid, initialWindow)
+    fun watchSession(sid: String, initialWindow: SessionWindowRequest? = null): Flow<SessionViewModel> {
+        state.value.sessions[sid]?.machineId?.takeIf { it.isNotEmpty() }?.let { coreHost.hydrateUsageCache(it) }
+        return coreHost.watchSession(sid, initialWindow)
+    }
 
     fun currentSessionView(sid: String): SessionViewModel? =
         coreHost.currentSessionView(sid)
@@ -569,6 +583,35 @@ class Remote(
         }
         coreHost.onScheduleDismissNotifications = { eff ->
             onDismissScheduleNotifications(eff.runsList)
+        }
+        coreHost.onUsageCacheWrite = { eff ->
+            val mid = eff.machineId
+            val snap = eff.snapshot
+            if (mid.isNotEmpty() && eff.hasSnapshot() && snap.preset in USAGE_CACHE_PRESETS && cache != null) {
+                enqueueCacheOp {
+                    if (currentScheduleMember(mid)) {
+                        cache?.putBlob(usageBlobKey(mid, snap.preset), snap.toByteArray())
+                        if (!currentScheduleMember(mid)) cache?.removeBlob(usageBlobKey(mid, snap.preset))
+                    } else {
+                        removeUsageBlobs(mid)
+                    }
+                }
+            }
+        }
+        coreHost.onHydrateUsageCache = { mid ->
+            if (mid.isNotEmpty() && cache != null && usageHydratedMachines.add(mid)) {
+                enqueueCacheOp {
+                    if (!currentScheduleMember(mid)) {
+                        removeUsageBlobs(mid)
+                    } else {
+                        for (preset in USAGE_CACHE_PRESETS) {
+                            val bytes = runCatching { cache?.blob(usageBlobKey(mid, preset)) }.getOrNull() ?: continue
+                            val snap = runCatching { UsageStatsResponse.parseFrom(bytes) }.getOrNull() ?: continue
+                            coreHost.deliverUsageCacheLoaded(mid, snap)
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -1346,7 +1389,10 @@ class Remote(
                 try {
                     runCatching { security.record() }.getOrNull()?.let { record ->
                         refreshSecuritySets(record)
-                        archiveMachines.filter { trustedMembers[it]?.kind != 1u }.forEach { cache?.removeBlob("schedule:$it") }
+                        archiveMachines.filter { trustedMembers[it]?.kind != 1u }.forEach {
+                            cache?.removeBlob("schedule:$it")
+                            removeUsageBlobs(it)
+                        }
                     }
                     b.addAllMachines(cache?.machines().orEmpty().map { openPlainMachine(it, fromCache = true) })
                         .addAllSessions(cache?.sessions().orEmpty().map { openPlainSession(it, fromCache = true) })
@@ -1436,6 +1482,7 @@ class Remote(
                 CacheDeleteEffect.KindCase.REMOVE_MACHINE_ID -> {
                     val mid = eff.removeMachineId
                     cache?.removeBlob("schedule:$mid")
+                    removeUsageBlobs(mid)
                     cache?.removeMachine(mid)
                     direct.invalidate("machine_removed")
                 }
@@ -2037,7 +2084,10 @@ class Remote(
                     refreshSecuritySets(latest)
                     archiveMachines.filter { trustedMembers[it]?.kind != 1u }
                 }
-            prunedArchive.forEach { cache?.removeBlob("schedule:$it") }
+            prunedArchive.forEach {
+                cache?.removeBlob("schedule:$it")
+                removeUsageBlobs(it)
+            }
         } catch (e: DeviceSecurity.Failure) {
             if (e.code != "clock") throw e
         }
@@ -3171,7 +3221,7 @@ class Remote(
 }
 
 internal fun Command.isReadOnlyCommand(): Boolean =
-    hasGetMachineStatus() || hasGetSettings() || hasListModels() || hasListDirectories() ||
+    hasGetMachineStatus() || hasGetUsageStats() || hasGetSettings() || hasListModels() || hasListDirectories() ||
         hasGetLiveSnapshot() || hasGetImageUploadStatus() || hasGetSharedFileChunk() ||
         (hasSchedule() && schedule.operation in setOf("list", "get"))
 

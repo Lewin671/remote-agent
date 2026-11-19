@@ -693,6 +693,50 @@ public interface EventOrBuilder extends
   io.github.lewin671.remoteagent.core.proto.MachineDirectStatusEvent getMachineDirectStatus();
 
   /**
+   * <code>.remoteagent.core.v1.ToggleMachineAgentEvent toggle_machine_agent = 366 [json_name = "toggleMachineAgent"];</code>
+   * @return Whether the toggleMachineAgent field is set.
+   */
+  boolean hasToggleMachineAgent();
+  /**
+   * <code>.remoteagent.core.v1.ToggleMachineAgentEvent toggle_machine_agent = 366 [json_name = "toggleMachineAgent"];</code>
+   * @return The toggleMachineAgent.
+   */
+  io.github.lewin671.remoteagent.core.proto.ToggleMachineAgentEvent getToggleMachineAgent();
+
+  /**
+   * <code>.remoteagent.core.v1.UsageScreenOpenEvent usage_screen_open = 380 [json_name = "usageScreenOpen"];</code>
+   * @return Whether the usageScreenOpen field is set.
+   */
+  boolean hasUsageScreenOpen();
+  /**
+   * <code>.remoteagent.core.v1.UsageScreenOpenEvent usage_screen_open = 380 [json_name = "usageScreenOpen"];</code>
+   * @return The usageScreenOpen.
+   */
+  io.github.lewin671.remoteagent.core.proto.UsageScreenOpenEvent getUsageScreenOpen();
+
+  /**
+   * <code>.remoteagent.core.v1.UsageScreenRetryEvent usage_screen_retry = 381 [json_name = "usageScreenRetry"];</code>
+   * @return Whether the usageScreenRetry field is set.
+   */
+  boolean hasUsageScreenRetry();
+  /**
+   * <code>.remoteagent.core.v1.UsageScreenRetryEvent usage_screen_retry = 381 [json_name = "usageScreenRetry"];</code>
+   * @return The usageScreenRetry.
+   */
+  io.github.lewin671.remoteagent.core.proto.UsageScreenRetryEvent getUsageScreenRetry();
+
+  /**
+   * <code>.remoteagent.core.v1.UsageCacheLoadedEvent usage_cache_loaded = 382 [json_name = "usageCacheLoaded"];</code>
+   * @return Whether the usageCacheLoaded field is set.
+   */
+  boolean hasUsageCacheLoaded();
+  /**
+   * <code>.remoteagent.core.v1.UsageCacheLoadedEvent usage_cache_loaded = 382 [json_name = "usageCacheLoaded"];</code>
+   * @return The usageCacheLoaded.
+   */
+  io.github.lewin671.remoteagent.core.proto.UsageCacheLoadedEvent getUsageCacheLoaded();
+
+  /**
    * <code>.remoteagent.core.v1.UpdateClientNameEvent update_client_name = 370 [json_name = "updateClientName"];</code>
    * @return Whether the updateClientName field is set.
    */

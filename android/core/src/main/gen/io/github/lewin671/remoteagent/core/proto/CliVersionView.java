@@ -231,6 +231,84 @@ public  final class CliVersionView extends
     bitField0_ = (bitField0_ & ~0x00000001);
   }
 
+  public static final int ENABLED_FIELD_NUMBER = 6;
+  private boolean enabled_;
+  /**
+   * <code>bool enabled = 6 [json_name = "enabled"];</code>
+   * @return The enabled.
+   */
+  @java.lang.Override
+  public boolean getEnabled() {
+    return enabled_;
+  }
+  /**
+   * <code>bool enabled = 6 [json_name = "enabled"];</code>
+   * @param value The enabled to set.
+   */
+  private void setEnabled(boolean value) {
+    
+    enabled_ = value;
+  }
+  /**
+   * <code>bool enabled = 6 [json_name = "enabled"];</code>
+   */
+  private void clearEnabled() {
+
+    enabled_ = false;
+  }
+
+  public static final int LOCKED_LAST_ENABLED_FIELD_NUMBER = 7;
+  private boolean lockedLastEnabled_;
+  /**
+   * <code>bool locked_last_enabled = 7 [json_name = "lockedLastEnabled"];</code>
+   * @return The lockedLastEnabled.
+   */
+  @java.lang.Override
+  public boolean getLockedLastEnabled() {
+    return lockedLastEnabled_;
+  }
+  /**
+   * <code>bool locked_last_enabled = 7 [json_name = "lockedLastEnabled"];</code>
+   * @param value The lockedLastEnabled to set.
+   */
+  private void setLockedLastEnabled(boolean value) {
+    
+    lockedLastEnabled_ = value;
+  }
+  /**
+   * <code>bool locked_last_enabled = 7 [json_name = "lockedLastEnabled"];</code>
+   */
+  private void clearLockedLastEnabled() {
+
+    lockedLastEnabled_ = false;
+  }
+
+  public static final int SAVING_FIELD_NUMBER = 8;
+  private boolean saving_;
+  /**
+   * <code>bool saving = 8 [json_name = "saving"];</code>
+   * @return The saving.
+   */
+  @java.lang.Override
+  public boolean getSaving() {
+    return saving_;
+  }
+  /**
+   * <code>bool saving = 8 [json_name = "saving"];</code>
+   * @param value The saving to set.
+   */
+  private void setSaving(boolean value) {
+    
+    saving_ = value;
+  }
+  /**
+   * <code>bool saving = 8 [json_name = "saving"];</code>
+   */
+  private void clearSaving() {
+
+    saving_ = false;
+  }
+
   public static io.github.lewin671.remoteagent.core.proto.CliVersionView parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -547,6 +625,90 @@ public  final class CliVersionView extends
       return this;
     }
 
+    /**
+     * <code>bool enabled = 6 [json_name = "enabled"];</code>
+     * @return The enabled.
+     */
+    @java.lang.Override
+    public boolean getEnabled() {
+      return instance.getEnabled();
+    }
+    /**
+     * <code>bool enabled = 6 [json_name = "enabled"];</code>
+     * @param value The enabled to set.
+     * @return This builder for chaining.
+     */
+    public Builder setEnabled(boolean value) {
+      copyOnWrite();
+      instance.setEnabled(value);
+      return this;
+    }
+    /**
+     * <code>bool enabled = 6 [json_name = "enabled"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearEnabled() {
+      copyOnWrite();
+      instance.clearEnabled();
+      return this;
+    }
+
+    /**
+     * <code>bool locked_last_enabled = 7 [json_name = "lockedLastEnabled"];</code>
+     * @return The lockedLastEnabled.
+     */
+    @java.lang.Override
+    public boolean getLockedLastEnabled() {
+      return instance.getLockedLastEnabled();
+    }
+    /**
+     * <code>bool locked_last_enabled = 7 [json_name = "lockedLastEnabled"];</code>
+     * @param value The lockedLastEnabled to set.
+     * @return This builder for chaining.
+     */
+    public Builder setLockedLastEnabled(boolean value) {
+      copyOnWrite();
+      instance.setLockedLastEnabled(value);
+      return this;
+    }
+    /**
+     * <code>bool locked_last_enabled = 7 [json_name = "lockedLastEnabled"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearLockedLastEnabled() {
+      copyOnWrite();
+      instance.clearLockedLastEnabled();
+      return this;
+    }
+
+    /**
+     * <code>bool saving = 8 [json_name = "saving"];</code>
+     * @return The saving.
+     */
+    @java.lang.Override
+    public boolean getSaving() {
+      return instance.getSaving();
+    }
+    /**
+     * <code>bool saving = 8 [json_name = "saving"];</code>
+     * @param value The saving to set.
+     * @return This builder for chaining.
+     */
+    public Builder setSaving(boolean value) {
+      copyOnWrite();
+      instance.setSaving(value);
+      return this;
+    }
+    /**
+     * <code>bool saving = 8 [json_name = "saving"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearSaving() {
+      copyOnWrite();
+      instance.clearSaving();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.CliVersionView)
   }
   @java.lang.Override
@@ -569,10 +731,13 @@ public  final class CliVersionView extends
             "version_",
             "verified_",
             "unverifiedLabel_",
+            "enabled_",
+            "lockedLastEnabled_",
+            "saving_",
           };
           java.lang.String info =
-              "\u0000\u0005\u0000\u0001\u0001\u0005\u0005\u0000\u0000\u0000\u0001\f\u0002\u0208" +
-              "\u0003\u0208\u0004\u0007\u0005\u1009\u0000";
+              "\u0000\b\u0000\u0001\u0001\b\b\u0000\u0000\u0000\u0001\f\u0002\u0208\u0003\u0208" +
+              "\u0004\u0007\u0005\u1009\u0000\u0006\u0007\u0007\u0007\b\u0007";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

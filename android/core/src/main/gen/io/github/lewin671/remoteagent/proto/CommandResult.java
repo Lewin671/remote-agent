@@ -60,6 +60,7 @@ public  final class CommandResult extends
     LIVE_SNAPSHOT(41),
     GET_SHARED_FILE_CHUNK(42),
     MACHINE_STATUS(43),
+    USAGE_STATS(44),
     KIND_NOT_SET(0);
     private final int value;
     private KindCase(int value) {
@@ -104,6 +105,7 @@ public  final class CommandResult extends
         case 41: return LIVE_SNAPSHOT;
         case 42: return GET_SHARED_FILE_CHUNK;
         case 43: return MACHINE_STATUS;
+        case 44: return USAGE_STATS;
         case 0: return KIND_NOT_SET;
         default: return null;
       }
@@ -2018,6 +2020,58 @@ public  final class CommandResult extends
     }
   }
 
+  public static final int USAGE_STATS_FIELD_NUMBER = 44;
+  /**
+   * <code>.remoteagent.v1.UsageStatsResponse usage_stats = 44 [json_name = "usageStats"];</code>
+   */
+  @java.lang.Override
+  public boolean hasUsageStats() {
+    return kindCase_ == 44;
+  }
+  /**
+   * <code>.remoteagent.v1.UsageStatsResponse usage_stats = 44 [json_name = "usageStats"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.proto.UsageStatsResponse getUsageStats() {
+    if (kindCase_ == 44) {
+       return (io.github.lewin671.remoteagent.proto.UsageStatsResponse) kind_;
+    }
+    return io.github.lewin671.remoteagent.proto.UsageStatsResponse.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.v1.UsageStatsResponse usage_stats = 44 [json_name = "usageStats"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setUsageStats(io.github.lewin671.remoteagent.proto.UsageStatsResponse value) {
+    value.getClass();  // minimal bytecode null check
+    kind_ = value;
+    kindCase_ = 44;
+  }
+  /**
+   * <code>.remoteagent.v1.UsageStatsResponse usage_stats = 44 [json_name = "usageStats"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeUsageStats(io.github.lewin671.remoteagent.proto.UsageStatsResponse value) {
+    value.getClass();  // minimal bytecode null check
+    if (kindCase_ == 44 &&
+        kind_ != io.github.lewin671.remoteagent.proto.UsageStatsResponse.getDefaultInstance()) {
+      kind_ = io.github.lewin671.remoteagent.proto.UsageStatsResponse.newBuilder((io.github.lewin671.remoteagent.proto.UsageStatsResponse) kind_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      kind_ = value;
+    }
+    kindCase_ = 44;
+  }
+  /**
+   * <code>.remoteagent.v1.UsageStatsResponse usage_stats = 44 [json_name = "usageStats"];</code>
+   */
+  private void clearUsageStats() {
+    if (kindCase_ == 44) {
+      kindCase_ = 0;
+      kind_ = null;
+    }
+  }
+
   public static io.github.lewin671.remoteagent.proto.CommandResult parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -3918,6 +3972,54 @@ public  final class CommandResult extends
       return this;
     }
 
+    /**
+     * <code>.remoteagent.v1.UsageStatsResponse usage_stats = 44 [json_name = "usageStats"];</code>
+     */
+    @java.lang.Override
+    public boolean hasUsageStats() {
+      return instance.hasUsageStats();
+    }
+    /**
+     * <code>.remoteagent.v1.UsageStatsResponse usage_stats = 44 [json_name = "usageStats"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.proto.UsageStatsResponse getUsageStats() {
+      return instance.getUsageStats();
+    }
+    /**
+     * <code>.remoteagent.v1.UsageStatsResponse usage_stats = 44 [json_name = "usageStats"];</code>
+     */
+    public Builder setUsageStats(io.github.lewin671.remoteagent.proto.UsageStatsResponse value) {
+      copyOnWrite();
+      instance.setUsageStats(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.UsageStatsResponse usage_stats = 44 [json_name = "usageStats"];</code>
+     */
+    public Builder setUsageStats(
+        io.github.lewin671.remoteagent.proto.UsageStatsResponse.Builder builderForValue) {
+      copyOnWrite();
+      instance.setUsageStats(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.UsageStatsResponse usage_stats = 44 [json_name = "usageStats"];</code>
+     */
+    public Builder mergeUsageStats(io.github.lewin671.remoteagent.proto.UsageStatsResponse value) {
+      copyOnWrite();
+      instance.mergeUsageStats(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.UsageStatsResponse usage_stats = 44 [json_name = "usageStats"];</code>
+     */
+    public Builder clearUsageStats() {
+      copyOnWrite();
+      instance.clearUsageStats();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.v1.CommandResult)
   }
   @java.lang.Override
@@ -3973,14 +4075,15 @@ public  final class CommandResult extends
             io.github.lewin671.remoteagent.proto.LiveSnapshot.class,
             io.github.lewin671.remoteagent.proto.GetSharedFileChunkResponse.class,
             io.github.lewin671.remoteagent.proto.MachineStatus.class,
+            io.github.lewin671.remoteagent.proto.UsageStatsResponse.class,
           };
           java.lang.String info =
-              "\u0000%\u0001\u0000\u0001+%\u0000\u0000\u0000\u0001\u0208\u0002\u0208\u0003\u0208" +
+              "\u0000&\u0001\u0000\u0001,&\u0000\u0000\u0000\u0001\u0208\u0002\u0208\u0003\u0208" +
               "\u0004\u0208\u0005\u0208\u0006\n\u0007\n\b\u0007\n<\u0000\u000b<\u0000\f<\u0000\r" +
               "<\u0000\u000e<\u0000\u000f<\u0000\u0010<\u0000\u0011<\u0000\u0012<\u0000\u0013<\u0000" +
               "\u0014<\u0000\u0015<\u0000\u0016<\u0000\u0017<\u0000\u0018<\u0000\u001e<\u0000\u001f" +
               "<\u0000 <\u0000!<\u0000\"<\u0000#<\u0000$<\u0000%<\u0000&<\u0000\'<\u0000(<\u0000" +
-              ")<\u0000*<\u0000+<\u0000";
+              ")<\u0000*<\u0000+<\u0000,<\u0000";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

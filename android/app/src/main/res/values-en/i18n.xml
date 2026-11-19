@@ -662,6 +662,11 @@
     <string name="machine_status_load">"%1$s load"</string>
     <string name="machine_status_loading" formatted="false">"Loading"</string>
     <string name="machine_status_memory" formatted="false">"Memory"</string>
+    <string name="machine_status_model_usage_empty" formatted="false">"No usage or speed records yet"</string>
+    <string name="machine_status_model_usage_mixed_unavailable">"%1$s usage and speed telemetry unavailable"</string>
+    <string name="machine_status_model_usage_only_unavailable" formatted="false">"Enabled CLIs do not support usage and speed telemetry yet"</string>
+    <string name="machine_status_model_usage_title" formatted="false">"Usage &amp; speed"</string>
+    <string name="machine_status_model_usage_view_trends" formatted="false">"Trends"</string>
     <string name="machine_status_no_running_sessions" formatted="false">"No running sessions"</string>
     <string name="machine_status_notify_critical">"%1$s disk is almost full, only %2$s left"</string>
     <string name="machine_status_notify_critical_body" formatted="false">"Clean up now or sessions may not start."</string>
@@ -777,11 +782,13 @@
     <string name="new_session_change_machine" formatted="false">"Change computer"</string>
     <string name="new_session_change_model" formatted="false">"Change model"</string>
     <string name="new_session_choose_cli" formatted="false">"Which CLI?"</string>
+    <string name="new_session_cli_disabled_fallback">"%2$s is disabled on %3$s. Using %1$s for this session"</string>
     <string name="new_session_cli_fallback">"%3$s does not have %2$s. Using %1$s for this session"</string>
     <string name="new_session_cli_label">"CLI: %1$s"</string>
     <string name="new_session_cli_picker_label" formatted="false">"CLI"</string>
     <string name="new_session_default_model" formatted="false">"Default model"</string>
     <string name="new_session_draft_kept" formatted="false">"Your draft is saved. Choose an online computer; the computer and CLI will not switch automatically."</string>
+    <string name="new_session_enable_agent" formatted="false">"Enable"</string>
     <string name="new_session_expired_start" formatted="false">"The start is unconfirmed. Check the session list first. This request has expired and will not be retried or replaced."</string>
     <string name="new_session_expired_start_prompt">"It is unclear whether “%1$s” started. The request has expired and will not be resent. Check active sessions first."</string>
     <string name="new_session_first_message" formatted="false">"First message of the new session"</string>
@@ -1012,6 +1019,8 @@
         <item quantity="other">"%1$d sec after each turn ends"</item>
     </plurals>
     <string name="schedule_after_turn_ends" formatted="false">"After turn ends"</string>
+    <string name="schedule_agent_disabled_list_note">"%1$s is disabled on %2$s; enable it or switch CLI to resume"</string>
+    <string name="schedule_agent_disabled_pre_run">"%1$s is disabled on %2$s. Enable that CLI or edit the task to use another CLI before resuming"</string>
     <string name="schedule_android_agent_notification" formatted="false">"agent notification"</string>
     <string name="schedule_android_agent_notification_completion_notification" formatted="false">"agent notification, completion notification"</string>
     <string name="schedule_android_automatic_run_count" formatted="false">"Automatic run count"</string>
@@ -1108,6 +1117,7 @@
     <string name="schedule_each_run_opens_a_new_conversation_grouped_under_this" formatted="false">"Each run opens a new conversation grouped under this task."</string>
     <string name="schedule_each_run_opens_a_new_conversation_grouped_under_this_schedules" formatted="false">"Each run opens a new conversation grouped under this task, outside the session list."</string>
     <string name="schedule_earlier" formatted="false">"Earlier"</string>
+    <string name="schedule_enable_cli" formatted="false">"Enable CLI"</string>
     <string name="schedule_end_date" formatted="false">"End date"</string>
     <string name="schedule_end_time" formatted="false">"End time"</string>
     <string name="schedule_ended" formatted="false">"Ended "</string>
@@ -1806,6 +1816,13 @@
     <string name="session_turn_duration">"Turn took %1$s"</string>
     <string name="session_turn_error">"Turn failed: %1$s"</string>
     <string name="session_update_computer" formatted="false">"Update remote-agent on the computer"</string>
+    <string name="session_usage_entry_empty_hint" formatted="false">"Usage, cache hit rate, and speed are recorded after conversations"</string>
+    <string name="session_usage_entry_no_data" formatted="false">"No records"</string>
+    <string name="session_usage_entry_offline_cached">"Last record · %1$s (computer offline)"</string>
+    <string name="session_usage_entry_offline_none" formatted="false">"Computer offline"</string>
+    <string name="session_usage_entry_read_failed" formatted="false">"Read failed"</string>
+    <string name="session_usage_entry_title" formatted="false">"Usage &amp; speed"</string>
+    <string name="session_usage_entry_unavailable">"%1$s usage and speed telemetry unavailable"</string>
     <string name="session_view" formatted="false">"View"</string>
     <string name="settings_about" formatted="false">"About"</string>
     <string name="settings_account" formatted="false">"Account"</string>
@@ -1911,6 +1928,17 @@
     <string name="settings_clear_reclaimable_attachments_and_cache" formatted="false">"Clear reclaimable attachments and cache?"</string>
     <string name="settings_clear_settings" formatted="false">"Clear"</string>
     <string name="settings_clears_reclaimable_originals_previews_and_unsynced_large_image_cache" formatted="false">"Clears reclaimable originals, previews, and unsynced large image cache. Queued and active originals, session files, and history remain; unsynced large images will show only previews."</string>
+    <string name="settings_cli_switches_a11y_locked">"%1$s, version %2$s, on, locked: keep at least one on"</string>
+    <string name="settings_cli_switches_a11y_row">"%1$s, version %3$s, %2$s"</string>
+    <string name="settings_cli_switches_conflict" formatted="false">"Another client updated enabled CLIs; synced to the latest state"</string>
+    <string name="settings_cli_switches_footer" formatted="false">"Disabled CLIs are hidden from new tasks, schedules, quota, and usage &amp; speed. Existing sessions and history remain available."</string>
+    <string name="settings_cli_switches_keep_one" formatted="false">"Keep at least one on"</string>
+    <string name="settings_cli_switches_lease_expired_footer" formatted="false">"Remote control is paused; renew on the managing device to make changes."</string>
+    <string name="settings_cli_switches_offline_reason">"%1$s is offline. Showing the last synced state"</string>
+    <string name="settings_cli_switches_state_off" formatted="false">"off"</string>
+    <string name="settings_cli_switches_state_on" formatted="false">"on"</string>
+    <string name="settings_cli_switches_title" formatted="false">"Enabled CLIs"</string>
+    <string name="settings_cli_switches_update_error">"Could not update enabled CLIs: %1$s"</string>
     <string name="settings_cli_version">"%1$s version"</string>
     <string name="settings_client_name" formatted="false">"Client name"</string>
     <string name="settings_clients_control_sessions" formatted="false">"Clients · Control sessions"</string>
@@ -2250,4 +2278,90 @@
     <string name="transport_use_file" formatted="false">"Used for files"</string>
     <string name="transport_use_read" formatted="false">"Used for loading"</string>
     <string name="transport_why_not_connected" formatted="false">"Why it didn’t connect"</string>
+    <string name="usage_backfilled_summary">"%1$s · %2$dd indexed"</string>
+    <string name="usage_backfilling_banner">"Indexing local history · %1$d / %2$d days"</string>
+    <string name="usage_backfilling_cell" formatted="false">"Indexing"</string>
+    <string name="usage_backfilling_zone" formatted="false">"Indexing earlier history…"</string>
+    <string name="usage_cache_formula_footnote" formatted="false">"Cache hit rate = cache read ÷ (uncached input + cache read + cache write), weighted by input tokens."</string>
+    <string name="usage_cache_write_footnote" formatted="false">"Note: “—” means the CLI or model did not report cache write separately; those input tokens are included in uncached input and do not affect total input or hit rate."</string>
+    <string name="usage_chart_a11y_line">"%3$s %2$s trend chart with %1$d series"</string>
+    <string name="usage_chart_a11y_tokens">"Bar chart of %2$s token usage, %3$s tokens across %1$d agent-model pairs; full breakdown in the table below"</string>
+    <string name="usage_col_cache_read" formatted="false">"Cache read"</string>
+    <string name="usage_col_cache_write" formatted="false">"Cache write"</string>
+    <string name="usage_col_hit_rate" formatted="false">"Cache hit"</string>
+    <string name="usage_col_median" formatted="false">"Median"</string>
+    <string name="usage_col_output" formatted="false">"Output"</string>
+    <string name="usage_col_pair" formatted="false">"Agent · Model"</string>
+    <string name="usage_col_reqs" formatted="false">"Reqs"</string>
+    <string name="usage_col_total" formatted="false">"Total"</string>
+    <string name="usage_col_ttft_median" formatted="false">"TTFT med"</string>
+    <string name="usage_col_uncached" formatted="false">"Uncached"</string>
+    <string name="usage_col_valid_reqs" formatted="false">"Valid"</string>
+    <string name="usage_col_vs_prev" formatted="false">"vs prev"</string>
+    <string name="usage_comp_cache_read" formatted="false">"Read"</string>
+    <string name="usage_comp_cache_write" formatted="false">"Write"</string>
+    <string name="usage_comp_output" formatted="false">"Output"</string>
+    <string name="usage_comp_reasoning">"incl. %1$s reasoning"</string>
+    <string name="usage_comp_uncached" formatted="false">"Uncached"</string>
+    <string name="usage_custom_end_label" formatted="false">"End date"</string>
+    <string name="usage_custom_range_change" formatted="false">"Dates"</string>
+    <string name="usage_custom_range_limit_hint" formatted="false">"Up to 90 days ago, 1–90d span"</string>
+    <string name="usage_custom_range_summary">"%3$s – %2$s (%1$dd)"</string>
+    <string name="usage_custom_start_label" formatted="false">"Start date"</string>
+    <string name="usage_duration_min_sec">"%1$dm %2$ds"</string>
+    <string name="usage_empty_body" formatted="false">"After using CLIs on this computer, per-request token usage, cache hit rate, and output speed appear here automatically. remote-agent never sends extra requests."</string>
+    <string name="usage_empty_title" formatted="false">"No usage or speed records in this period"</string>
+    <string name="usage_entry_cache_pct">"Cache %1$s"</string>
+    <string name="usage_entry_few_samples">"%2$s (%1$d only)"</string>
+    <string name="usage_entry_last_30d" formatted="false">"Last 30d"</string>
+    <string name="usage_entry_last_7d" formatted="false">"Last 7d"</string>
+    <string name="usage_entry_no_speed">"%1$s (no speed samples yet)"</string>
+    <string name="usage_entry_reqs">"%1$d reqs"</string>
+    <string name="usage_few_samples_count">"Only %1$d requests"</string>
+    <string name="usage_few_samples_hint" formatted="false">"Trend starts at 3 requests"</string>
+    <string name="usage_filter_all" formatted="false">"All"</string>
+    <string name="usage_flat" formatted="false">"Flat"</string>
+    <string name="usage_kpi_unit_tokens" formatted="false">"tokens"</string>
+    <string name="usage_kpi_unit_toks" formatted="false">"tok/s"</string>
+    <string name="usage_load_error_title" formatted="false">"Could not load usage and speed"</string>
+    <string name="usage_mixed_unavailable_footnote">"Enabled %1$s has no local usage source and is excluded above."</string>
+    <string name="usage_offline_banner">"%1$s is offline. Showing cached data from %2$s"</string>
+    <string name="usage_offline_empty_body">"No cached usage records for %1$s on this device yet. Data will load automatically when online."</string>
+    <string name="usage_offline_empty_title">"%1$s is currently offline"</string>
+    <string name="usage_only_unavailable_body">"Only %1$s is currently enabled on this computer. Local telemetry for Claude Code and Codex is collected automatically."</string>
+    <string name="usage_only_unavailable_title">"%1$s usage and speed telemetry unavailable"</string>
+    <string name="usage_outlier_note" formatted="false">"High variance from long reasoning"</string>
+    <string name="usage_pairs_capped_summary">"Max 4 overlaid (%1$d total)"</string>
+    <string name="usage_pairs_summary">"%2$s · %1$d pairs"</string>
+    <string name="usage_passive_footnote" formatted="false">"Passively collected from local CLI logs; no monetary conversion."</string>
+    <string name="usage_range_30d" formatted="false">"30d"</string>
+    <string name="usage_range_7d" formatted="false">"7d"</string>
+    <string name="usage_range_custom" formatted="false">"Custom"</string>
+    <string name="usage_range_today" formatted="false">"Today"</string>
+    <string name="usage_row_sub_cache">"Read %2$s · Uncached %1$s · Write %3$s"</string>
+    <string name="usage_row_sub_speed">"p10–p90 %2$s–%1$s · TTFT %3$s"</string>
+    <string name="usage_row_sub_tap_overlay" formatted="false">"Tap to overlay"</string>
+    <string name="usage_row_sub_tokens">"In %1$s · Read %3$s · Write %4$s · Out %2$s"</string>
+    <string name="usage_row_sub_tokens_reasoning">"In %1$s · Read %3$s · Write %5$s · Out %2$s (%4$s reasoning)"</string>
+    <string name="usage_scrub_total">"Total %1$s"</string>
+    <string name="usage_speed_threshold_footnote" formatted="false">"Speed and TTFT count only responses with ≥ 16 output tokens and ≥ 200 ms generation duration; shorter tool replies still count in Tokens and Cache Hit."</string>
+    <string name="usage_sub_median_p10_p90">"Median · p10–p90 %2$s–%1$s"</string>
+    <string name="usage_sub_p10_p90">"p10–p90 %2$s–%1$s"</string>
+    <string name="usage_sub_recent10">"Last 10 p50 %1$s tok/s"</string>
+    <string name="usage_sub_vs_prev_30d" formatted="false">"vs prev 30d"</string>
+    <string name="usage_sub_vs_prev_7d" formatted="false">"vs prev 7d"</string>
+    <string name="usage_sub_vs_prev_generic" formatted="false">"vs prev"</string>
+    <string name="usage_sub_weighted_cache" formatted="false">"Weighted by input tokens"</string>
+    <string name="usage_subtitle_live">"%1$s · Passive log"</string>
+    <string name="usage_subtitle_offline">"%1$s · Offline"</string>
+    <string name="usage_tab_cache_hit" formatted="false">"Cache Hit"</string>
+    <string name="usage_tab_speed" formatted="false">"Speed"</string>
+    <string name="usage_tab_tokens" formatted="false">"Tokens"</string>
+    <string name="usage_tab_ttft" formatted="false">"TTFT"</string>
+    <string name="usage_title" formatted="false">"Usage &amp; speed"</string>
+    <string name="usage_unit_wan" formatted="false">"10k"</string>
+    <string name="usage_unit_yi" formatted="false">"100M"</string>
+    <string name="usage_unreported_aria" formatted="false">"not reported separately"</string>
+    <string name="usage_unsupported_body">"Update remote-agent on %1$s to view token consumption, cache hit rate, and output speed."</string>
+    <string name="usage_unsupported_title" formatted="false">"remote-agent on this computer is older"</string>
 </resources>

@@ -30,6 +30,7 @@ public  final class Screen extends
     QUOTA(33),
     DEVICES(34),
     CLIENT_DETAIL(35),
+    USAGE(36),
     SESSION(10),
     SCHEDULES(20),
     SCHEDULE_DETAIL(21),
@@ -61,6 +62,7 @@ public  final class Screen extends
         case 33: return QUOTA;
         case 34: return DEVICES;
         case 35: return CLIENT_DETAIL;
+        case 36: return USAGE;
         case 10: return SESSION;
         case 20: return SCHEDULES;
         case 21: return SCHEDULE_DETAIL;
@@ -694,6 +696,58 @@ public  final class Screen extends
    */
   private void clearClientDetail() {
     if (screenCase_ == 35) {
+      screenCase_ = 0;
+      screen_ = null;
+    }
+  }
+
+  public static final int USAGE_FIELD_NUMBER = 36;
+  /**
+   * <code>.remoteagent.core.v1.UsageScreenRequest usage = 36 [json_name = "usage"];</code>
+   */
+  @java.lang.Override
+  public boolean hasUsage() {
+    return screenCase_ == 36;
+  }
+  /**
+   * <code>.remoteagent.core.v1.UsageScreenRequest usage = 36 [json_name = "usage"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.UsageScreenRequest getUsage() {
+    if (screenCase_ == 36) {
+       return (io.github.lewin671.remoteagent.core.proto.UsageScreenRequest) screen_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.UsageScreenRequest.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.UsageScreenRequest usage = 36 [json_name = "usage"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setUsage(io.github.lewin671.remoteagent.core.proto.UsageScreenRequest value) {
+    value.getClass();  // minimal bytecode null check
+    screen_ = value;
+    screenCase_ = 36;
+  }
+  /**
+   * <code>.remoteagent.core.v1.UsageScreenRequest usage = 36 [json_name = "usage"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeUsage(io.github.lewin671.remoteagent.core.proto.UsageScreenRequest value) {
+    value.getClass();  // minimal bytecode null check
+    if (screenCase_ == 36 &&
+        screen_ != io.github.lewin671.remoteagent.core.proto.UsageScreenRequest.getDefaultInstance()) {
+      screen_ = io.github.lewin671.remoteagent.core.proto.UsageScreenRequest.newBuilder((io.github.lewin671.remoteagent.core.proto.UsageScreenRequest) screen_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      screen_ = value;
+    }
+    screenCase_ = 36;
+  }
+  /**
+   * <code>.remoteagent.core.v1.UsageScreenRequest usage = 36 [json_name = "usage"];</code>
+   */
+  private void clearUsage() {
+    if (screenCase_ == 36) {
       screenCase_ = 0;
       screen_ = null;
     }
@@ -1645,6 +1699,54 @@ public  final class Screen extends
     }
 
     /**
+     * <code>.remoteagent.core.v1.UsageScreenRequest usage = 36 [json_name = "usage"];</code>
+     */
+    @java.lang.Override
+    public boolean hasUsage() {
+      return instance.hasUsage();
+    }
+    /**
+     * <code>.remoteagent.core.v1.UsageScreenRequest usage = 36 [json_name = "usage"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.UsageScreenRequest getUsage() {
+      return instance.getUsage();
+    }
+    /**
+     * <code>.remoteagent.core.v1.UsageScreenRequest usage = 36 [json_name = "usage"];</code>
+     */
+    public Builder setUsage(io.github.lewin671.remoteagent.core.proto.UsageScreenRequest value) {
+      copyOnWrite();
+      instance.setUsage(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.UsageScreenRequest usage = 36 [json_name = "usage"];</code>
+     */
+    public Builder setUsage(
+        io.github.lewin671.remoteagent.core.proto.UsageScreenRequest.Builder builderForValue) {
+      copyOnWrite();
+      instance.setUsage(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.UsageScreenRequest usage = 36 [json_name = "usage"];</code>
+     */
+    public Builder mergeUsage(io.github.lewin671.remoteagent.core.proto.UsageScreenRequest value) {
+      copyOnWrite();
+      instance.mergeUsage(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.UsageScreenRequest usage = 36 [json_name = "usage"];</code>
+     */
+    public Builder clearUsage() {
+      copyOnWrite();
+      instance.clearUsage();
+      return this;
+    }
+
+    /**
      * <code>.remoteagent.core.v1.SessionScreenRequest session = 10 [json_name = "session"];</code>
      */
     @java.lang.Override
@@ -1918,11 +2020,13 @@ public  final class Screen extends
             io.github.lewin671.remoteagent.core.proto.QuotaScreenRequest.class,
             io.github.lewin671.remoteagent.core.proto.DevicesScreenRequest.class,
             io.github.lewin671.remoteagent.core.proto.ClientDetailScreenRequest.class,
+            io.github.lewin671.remoteagent.core.proto.UsageScreenRequest.class,
           };
           java.lang.String info =
-              "\u0000\u0010\u0001\u0000\u0001#\u0010\u0000\u0000\u0000\u0001<\u0000\u0002<\u0000" +
+              "\u0000\u0011\u0001\u0000\u0001$\u0011\u0000\u0000\u0000\u0001<\u0000\u0002<\u0000" +
               "\u0003<\u0000\u0004<\u0000\u0005<\u0000\n<\u0000\u0014<\u0000\u0015<\u0000\u0016" +
-              "<\u0000\u0017<\u0000\u001e<\u0000\u001f<\u0000 <\u0000!<\u0000\"<\u0000#<\u0000";
+              "<\u0000\u0017<\u0000\u001e<\u0000\u001f<\u0000 <\u0000!<\u0000\"<\u0000#<\u0000$" +
+              "<\u0000";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

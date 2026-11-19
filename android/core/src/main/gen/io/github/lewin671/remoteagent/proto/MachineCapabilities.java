@@ -626,6 +626,82 @@ public  final class MachineCapabilities extends
     machineStatus_ = false;
   }
 
+  public static final int USAGE_STATS_FIELD_NUMBER = 20;
+  private boolean usageStats_;
+  /**
+   * <pre>
+   * Passive local model token usage, cache hit rate, speed and TTFT statistics.
+   * </pre>
+   *
+   * <code>bool usage_stats = 20 [json_name = "usageStats"];</code>
+   * @return The usageStats.
+   */
+  @java.lang.Override
+  public boolean getUsageStats() {
+    return usageStats_;
+  }
+  /**
+   * <pre>
+   * Passive local model token usage, cache hit rate, speed and TTFT statistics.
+   * </pre>
+   *
+   * <code>bool usage_stats = 20 [json_name = "usageStats"];</code>
+   * @param value The usageStats to set.
+   */
+  private void setUsageStats(boolean value) {
+    
+    usageStats_ = value;
+  }
+  /**
+   * <pre>
+   * Passive local model token usage, cache hit rate, speed and TTFT statistics.
+   * </pre>
+   *
+   * <code>bool usage_stats = 20 [json_name = "usageStats"];</code>
+   */
+  private void clearUsageStats() {
+
+    usageStats_ = false;
+  }
+
+  public static final int CLI_SWITCHES_FIELD_NUMBER = 21;
+  private boolean cliSwitches_;
+  /**
+   * <pre>
+   * Per-machine CLI enable/disable configuration with revision conflict checks.
+   * </pre>
+   *
+   * <code>bool cli_switches = 21 [json_name = "cliSwitches"];</code>
+   * @return The cliSwitches.
+   */
+  @java.lang.Override
+  public boolean getCliSwitches() {
+    return cliSwitches_;
+  }
+  /**
+   * <pre>
+   * Per-machine CLI enable/disable configuration with revision conflict checks.
+   * </pre>
+   *
+   * <code>bool cli_switches = 21 [json_name = "cliSwitches"];</code>
+   * @param value The cliSwitches to set.
+   */
+  private void setCliSwitches(boolean value) {
+    
+    cliSwitches_ = value;
+  }
+  /**
+   * <pre>
+   * Per-machine CLI enable/disable configuration with revision conflict checks.
+   * </pre>
+   *
+   * <code>bool cli_switches = 21 [json_name = "cliSwitches"];</code>
+   */
+  private void clearCliSwitches() {
+
+    cliSwitches_ = false;
+  }
+
   public static io.github.lewin671.remoteagent.proto.MachineCapabilities parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -1344,6 +1420,86 @@ public  final class MachineCapabilities extends
       return this;
     }
 
+    /**
+     * <pre>
+     * Passive local model token usage, cache hit rate, speed and TTFT statistics.
+     * </pre>
+     *
+     * <code>bool usage_stats = 20 [json_name = "usageStats"];</code>
+     * @return The usageStats.
+     */
+    @java.lang.Override
+    public boolean getUsageStats() {
+      return instance.getUsageStats();
+    }
+    /**
+     * <pre>
+     * Passive local model token usage, cache hit rate, speed and TTFT statistics.
+     * </pre>
+     *
+     * <code>bool usage_stats = 20 [json_name = "usageStats"];</code>
+     * @param value The usageStats to set.
+     * @return This builder for chaining.
+     */
+    public Builder setUsageStats(boolean value) {
+      copyOnWrite();
+      instance.setUsageStats(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * Passive local model token usage, cache hit rate, speed and TTFT statistics.
+     * </pre>
+     *
+     * <code>bool usage_stats = 20 [json_name = "usageStats"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearUsageStats() {
+      copyOnWrite();
+      instance.clearUsageStats();
+      return this;
+    }
+
+    /**
+     * <pre>
+     * Per-machine CLI enable/disable configuration with revision conflict checks.
+     * </pre>
+     *
+     * <code>bool cli_switches = 21 [json_name = "cliSwitches"];</code>
+     * @return The cliSwitches.
+     */
+    @java.lang.Override
+    public boolean getCliSwitches() {
+      return instance.getCliSwitches();
+    }
+    /**
+     * <pre>
+     * Per-machine CLI enable/disable configuration with revision conflict checks.
+     * </pre>
+     *
+     * <code>bool cli_switches = 21 [json_name = "cliSwitches"];</code>
+     * @param value The cliSwitches to set.
+     * @return This builder for chaining.
+     */
+    public Builder setCliSwitches(boolean value) {
+      copyOnWrite();
+      instance.setCliSwitches(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * Per-machine CLI enable/disable configuration with revision conflict checks.
+     * </pre>
+     *
+     * <code>bool cli_switches = 21 [json_name = "cliSwitches"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearCliSwitches() {
+      copyOnWrite();
+      instance.clearCliSwitches();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.v1.MachineCapabilities)
   }
   @java.lang.Override
@@ -1374,11 +1530,13 @@ public  final class MachineCapabilities extends
             "maxSharedFileBytes_",
             "sharedFileChunkBytes_",
             "machineStatus_",
+            "usageStats_",
+            "cliSwitches_",
           };
           java.lang.String info =
-              "\u0000\u000e\u0000\u0000\u0002\u0013\u000e\u0000\u0001\u0000\u0002\u0007\u0003\u0004" +
+              "\u0000\u0010\u0000\u0000\u0002\u0015\u0010\u0000\u0001\u0000\u0002\u0007\u0003\u0004" +
               "\u0004\u0002\u0005\u0004\u0006,\n\u0007\f\u0007\r\u0007\u000e\u0002\u000f\u0004\u0010" +
-              "\u0007\u0011\u0002\u0012\u0004\u0013\u0007";
+              "\u0007\u0011\u0002\u0012\u0004\u0013\u0007\u0014\u0007\u0015\u0007";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

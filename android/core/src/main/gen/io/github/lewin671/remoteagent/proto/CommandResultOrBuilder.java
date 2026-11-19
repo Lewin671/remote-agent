@@ -433,5 +433,16 @@ public interface CommandResultOrBuilder extends
    */
   io.github.lewin671.remoteagent.proto.MachineStatus getMachineStatus();
 
+  /**
+   * <code>.remoteagent.v1.UsageStatsResponse usage_stats = 44 [json_name = "usageStats"];</code>
+   * @return Whether the usageStats field is set.
+   */
+  boolean hasUsageStats();
+  /**
+   * <code>.remoteagent.v1.UsageStatsResponse usage_stats = 44 [json_name = "usageStats"];</code>
+   * @return The usageStats.
+   */
+  io.github.lewin671.remoteagent.proto.UsageStatsResponse getUsageStats();
+
   public io.github.lewin671.remoteagent.proto.CommandResult.KindCase getKindCase();
 }

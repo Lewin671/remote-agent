@@ -30,6 +30,7 @@ public  final class ViewModel extends
     QUOTA(33),
     DEVICES(34),
     CLIENT_DETAIL(35),
+    USAGE(36),
     SESSION(10),
     SCHEDULES(20),
     SCHEDULE_DETAIL(21),
@@ -61,6 +62,7 @@ public  final class ViewModel extends
         case 33: return QUOTA;
         case 34: return DEVICES;
         case 35: return CLIENT_DETAIL;
+        case 36: return USAGE;
         case 10: return SESSION;
         case 20: return SCHEDULES;
         case 21: return SCHEDULE_DETAIL;
@@ -694,6 +696,58 @@ public  final class ViewModel extends
    */
   private void clearClientDetail() {
     if (viewCase_ == 35) {
+      viewCase_ = 0;
+      view_ = null;
+    }
+  }
+
+  public static final int USAGE_FIELD_NUMBER = 36;
+  /**
+   * <code>.remoteagent.core.v1.UsageViewModel usage = 36 [json_name = "usage"];</code>
+   */
+  @java.lang.Override
+  public boolean hasUsage() {
+    return viewCase_ == 36;
+  }
+  /**
+   * <code>.remoteagent.core.v1.UsageViewModel usage = 36 [json_name = "usage"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.UsageViewModel getUsage() {
+    if (viewCase_ == 36) {
+       return (io.github.lewin671.remoteagent.core.proto.UsageViewModel) view_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.UsageViewModel.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.UsageViewModel usage = 36 [json_name = "usage"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setUsage(io.github.lewin671.remoteagent.core.proto.UsageViewModel value) {
+    value.getClass();  // minimal bytecode null check
+    view_ = value;
+    viewCase_ = 36;
+  }
+  /**
+   * <code>.remoteagent.core.v1.UsageViewModel usage = 36 [json_name = "usage"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeUsage(io.github.lewin671.remoteagent.core.proto.UsageViewModel value) {
+    value.getClass();  // minimal bytecode null check
+    if (viewCase_ == 36 &&
+        view_ != io.github.lewin671.remoteagent.core.proto.UsageViewModel.getDefaultInstance()) {
+      view_ = io.github.lewin671.remoteagent.core.proto.UsageViewModel.newBuilder((io.github.lewin671.remoteagent.core.proto.UsageViewModel) view_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      view_ = value;
+    }
+    viewCase_ = 36;
+  }
+  /**
+   * <code>.remoteagent.core.v1.UsageViewModel usage = 36 [json_name = "usage"];</code>
+   */
+  private void clearUsage() {
+    if (viewCase_ == 36) {
       viewCase_ = 0;
       view_ = null;
     }
@@ -1645,6 +1699,54 @@ public  final class ViewModel extends
     }
 
     /**
+     * <code>.remoteagent.core.v1.UsageViewModel usage = 36 [json_name = "usage"];</code>
+     */
+    @java.lang.Override
+    public boolean hasUsage() {
+      return instance.hasUsage();
+    }
+    /**
+     * <code>.remoteagent.core.v1.UsageViewModel usage = 36 [json_name = "usage"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.UsageViewModel getUsage() {
+      return instance.getUsage();
+    }
+    /**
+     * <code>.remoteagent.core.v1.UsageViewModel usage = 36 [json_name = "usage"];</code>
+     */
+    public Builder setUsage(io.github.lewin671.remoteagent.core.proto.UsageViewModel value) {
+      copyOnWrite();
+      instance.setUsage(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.UsageViewModel usage = 36 [json_name = "usage"];</code>
+     */
+    public Builder setUsage(
+        io.github.lewin671.remoteagent.core.proto.UsageViewModel.Builder builderForValue) {
+      copyOnWrite();
+      instance.setUsage(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.UsageViewModel usage = 36 [json_name = "usage"];</code>
+     */
+    public Builder mergeUsage(io.github.lewin671.remoteagent.core.proto.UsageViewModel value) {
+      copyOnWrite();
+      instance.mergeUsage(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.UsageViewModel usage = 36 [json_name = "usage"];</code>
+     */
+    public Builder clearUsage() {
+      copyOnWrite();
+      instance.clearUsage();
+      return this;
+    }
+
+    /**
      * <code>.remoteagent.core.v1.SessionViewModel session = 10 [json_name = "session"];</code>
      */
     @java.lang.Override
@@ -1918,11 +2020,13 @@ public  final class ViewModel extends
             io.github.lewin671.remoteagent.core.proto.QuotaViewModel.class,
             io.github.lewin671.remoteagent.core.proto.DevicesViewModel.class,
             io.github.lewin671.remoteagent.core.proto.ClientDetailViewModel.class,
+            io.github.lewin671.remoteagent.core.proto.UsageViewModel.class,
           };
           java.lang.String info =
-              "\u0000\u0010\u0001\u0000\u0001#\u0010\u0000\u0000\u0000\u0001<\u0000\u0002<\u0000" +
+              "\u0000\u0011\u0001\u0000\u0001$\u0011\u0000\u0000\u0000\u0001<\u0000\u0002<\u0000" +
               "\u0003<\u0000\u0004<\u0000\u0005<\u0000\n<\u0000\u0014<\u0000\u0015<\u0000\u0016" +
-              "<\u0000\u0017<\u0000\u001e<\u0000\u001f<\u0000 <\u0000!<\u0000\"<\u0000#<\u0000";
+              "<\u0000\u0017<\u0000\u001e<\u0000\u001f<\u0000 <\u0000!<\u0000\"<\u0000#<\u0000$" +
+              "<\u0000";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

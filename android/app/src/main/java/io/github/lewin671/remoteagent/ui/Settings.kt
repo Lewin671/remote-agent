@@ -50,6 +50,10 @@ import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.toggleableState
+import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -609,6 +613,7 @@ fun DeviceScreen(
         onOpenDiagnostics = { showDirectDiag = true },
         onRetrySettings = { remote.coreHost.openMachineSettings(id) },
         onSelectAgent = { agent -> remote.coreHost.selectMachineSettingsAgent(id, agent) },
+        onToggleAgent = { agent, enabled -> remote.coreHost.toggleMachineAgent(id, agent, enabled) },
         onUpdateAgentDefaults = { agent, model, effort, mode ->
             remote.coreHost.updateMachineAgentDefaults(id, agent, model = model, effort = effort, mode = mode)
         },
@@ -662,6 +667,7 @@ internal fun DeviceScreenContent(
     onProject: (String) -> Unit = {},
     onRejoin: () -> Unit = {},
     onRemove: () -> Unit = {},
+    onToggleAgent: ((Agent, Boolean) -> Unit)? = null,
 ) {
     val copy = uiText()
     val p = pal
@@ -749,7 +755,117 @@ internal fun DeviceScreenContent(
                     if (scrollToConnection) { androidx.compose.runtime.withFrameNanos { }; connectionAt.bringIntoView() }
                 }
             }
-            if (vm.cliVersionsList.isNotEmpty()) {
+            if (vm.showCliSwitches) {
+                GLabel(copy(UiMessages.settingsCliSwitchesTitle()))
+                val conflictBanner = if (vm.hasCliSwitchesConflictBanner()) uiText(vm.cliSwitchesConflictBanner) else ""
+                if (conflictBanner.isNotEmpty()) {
+                    Notice(
+                        conflictBanner,
+                        Modifier.padding(horizontal = 16.dp).padding(bottom = 8.dp),
+                        tone = NoticeTone.WARN,
+                    )
+                }
+                val disabledReason = if (vm.hasCliSwitchesDisabledReason()) uiText(vm.cliSwitchesDisabledReason) else ""
+                if (disabledReason.isNotEmpty()) {
+                    Notice(
+                        disabledReason,
+                        Modifier.padding(horizontal = 16.dp).padding(bottom = 8.dp),
+                        tone = NoticeTone.WARN,
+                    )
+                }
+                if (vm.cliVersionsList.isNotEmpty()) {
+                    Group(
+                        rows = vm.cliVersionsList.map { a ->
+                            @Composable {
+                                val unverifiedWord =
+                                    uiText(a.unverifiedLabel)
+                                        .ifEmpty { copy(UiMessages.settingsAndroidUnverified()) }
+                                        .trimEnd()
+                                        .removeSuffix("·")
+                                        .trimEnd()
+                                val verText = a.version.ifEmpty { copy(UiMessages.settingsAndroidUnknown()) }
+                                val locked = a.lockedLastEnabled
+                                val canTap = vm.cliSwitchesEditable && !locked && !a.saving && onToggleAgent != null
+                                val a11yText =
+                                    if (locked) {
+                                        copy(UiMessages.settingsCliSwitchesA11YLocked(a.name, verText))
+                                    } else {
+                                        copy(
+                                            UiMessages.settingsCliSwitchesA11YRow(
+                                                name = a.name,
+                                                state =
+                                                    if (a.enabled) copy(UiMessages.settingsCliSwitchesStateOn())
+                                                    else copy(UiMessages.settingsCliSwitchesStateOff()),
+                                                version = verText,
+                                            ),
+                                        )
+                                    }
+                                Row(
+                                    Modifier.fillMaxWidth()
+                                        .heightIn(min = 50.dp)
+                                        .clickable(enabled = canTap, role = Role.Switch) {
+                                            onToggleAgent?.invoke(a.agent, !a.enabled)
+                                        }
+                                        .semantics(mergeDescendants = true) {
+                                            contentDescription = a11yText
+                                            toggleableState =
+                                                if (a.enabled) ToggleableState.On else ToggleableState.Off
+                                        }
+                                        .alpha(if (vm.cliSwitchesEditable && !a.saving) 1f else 0.65f)
+                                        .padding(start = 18.dp, end = 16.dp, top = 8.dp, bottom = 8.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                ) {
+                                    AgentMarkLead(a.agent, T.s17, if (a.enabled) p.ink else p.ink2)
+                                    Column(Modifier.weight(1f)) {
+                                        Text(
+                                            a.name,
+                                            style = T.s17,
+                                            color = p.ink,
+                                            maxLines = 1,
+                                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                                        )
+                                        Text(
+                                            androidx.compose.ui.text.buildAnnotatedString {
+                                                if (!a.verified) {
+                                                    pushStyle(androidx.compose.ui.text.SpanStyle(color = p.orangeInk))
+                                                    append(unverifiedWord)
+                                                    pop()
+                                                    append(" · ")
+                                                }
+                                                append(verText)
+                                                if (locked) {
+                                                    append(" · ")
+                                                    append(copy(UiMessages.settingsCliSwitchesKeepOne()))
+                                                }
+                                            },
+                                            style = T.s13,
+                                            color = p.ink2,
+                                        )
+                                    }
+                                    Box(Modifier.alpha(if (locked || !vm.cliSwitchesEditable || a.saving) 0.5f else 1f)) {
+                                        Sw(a.enabled)
+                                    }
+                                }
+                            }
+                        },
+                    )
+                }
+                val footerText =
+                    (if (vm.hasCliSwitchesFooter()) uiText(vm.cliSwitchesFooter) else "").ifEmpty {
+                        if (vm.cliSwitchesLeaseExpired) copy(UiMessages.settingsCliSwitchesLeaseExpiredFooter())
+                        else copy(UiMessages.settingsCliSwitchesFooter())
+                    }
+                if (footerText.isNotEmpty()) {
+                    Hint(footerText, Modifier.padding(bottom = if (vm.hasUnverifiedCli) 4.dp else 12.dp))
+                }
+                if (vm.hasUnverifiedCli) {
+                    Hint(
+                        copy(UiMessages.settingsAndroidForAnUnverifiedVersionRunRemoteAgentDoctorOnThe()),
+                        Modifier.padding(bottom = 12.dp),
+                    )
+                }
+            } else if (vm.cliVersionsList.isNotEmpty()) {
                 Group(
                     rows =
                         vm.cliVersionsList.map { a ->

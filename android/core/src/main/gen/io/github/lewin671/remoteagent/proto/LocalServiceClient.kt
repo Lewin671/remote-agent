@@ -31,6 +31,18 @@ public class LocalServiceClient(
   )
 
 
+  override suspend fun getUsageStats(request: GetUsageStatsRequest, headers: Headers): ResponseMessage<UsageStatsResponse> = client.unary(
+    request,
+    headers,
+    MethodSpec(
+    "remoteagent.v1.LocalService/GetUsageStats",
+      io.github.lewin671.remoteagent.proto.GetUsageStatsRequest::class,
+      io.github.lewin671.remoteagent.proto.UsageStatsResponse::class,
+      StreamType.UNARY,
+    ),
+  )
+
+
   /**
    *  Schedule manages daemon-owned tasks. It is also used by the local MCP.
    */

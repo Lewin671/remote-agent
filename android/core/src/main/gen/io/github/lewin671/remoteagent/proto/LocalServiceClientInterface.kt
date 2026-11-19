@@ -16,6 +16,8 @@ import com.connectrpc.ServerOnlyStreamInterface
 public interface LocalServiceClientInterface {
   public suspend fun getMachineStatus(request: GetMachineStatusRequest, headers: Headers = emptyMap()): ResponseMessage<MachineStatus>
 
+  public suspend fun getUsageStats(request: GetUsageStatsRequest, headers: Headers = emptyMap()): ResponseMessage<UsageStatsResponse>
+
   /**
    *  Schedule manages daemon-owned tasks. It is also used by the local MCP.
    */

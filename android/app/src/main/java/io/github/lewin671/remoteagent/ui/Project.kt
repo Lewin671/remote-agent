@@ -210,6 +210,7 @@ fun NewSessionBox(
                                 NoticeActionKind.NOTICE_ACTION_KIND_READD_PROJECT -> remote.coreHost.addProject(key)
                                 NoticeActionKind.NOTICE_ACTION_KIND_OPEN_DISK_USAGE -> nav.machineStatus(n.targetMachineId.ifEmpty { cfg.machineId })
                                 NoticeActionKind.NOTICE_ACTION_KIND_RETRY_READ_SETTINGS -> remote.coreHost.retryNewSessionModels(key)
+                                NoticeActionKind.NOTICE_ACTION_KIND_ENABLE_AGENT -> nav.device(n.targetMachineId.ifEmpty { cfg.machineId })
                                 else -> {}
                             }
                         },
@@ -303,7 +304,7 @@ fun NewSessionBox(
 }
 
 @Composable
-private fun NewSessionNoticeRow(
+internal fun NewSessionNoticeRow(
     n: NewSessionNoticeView,
     onAction: (NoticeActionKind) -> Unit,
     onChooseOfflineMachine: (String) -> Unit,
@@ -346,6 +347,7 @@ private fun NewSessionNoticeRow(
         NoticeActionKind.NOTICE_ACTION_KIND_OPEN_MACHINE_SETTINGS -> uiText(UiMessages.newSessionChangeDefaults())
         NoticeActionKind.NOTICE_ACTION_KIND_READD_PROJECT -> uiText(UiMessages.projectsAddAgain())
         NoticeActionKind.NOTICE_ACTION_KIND_OPEN_DISK_USAGE -> uiText(UiMessages.machineStatusTitle())
+        NoticeActionKind.NOTICE_ACTION_KIND_ENABLE_AGENT -> uiText(UiMessages.newSessionEnableAgent())
         else -> null
     }
     if (n.kind == io.github.lewin671.remoteagent.core.proto.NoticeKind.NOTICE_KIND_DISK_FULL) {

@@ -122,4 +122,63 @@ public interface DaemonSettingsOrBuilder extends
    * @return The idleCloseMinutes.
    */
   int getIdleCloseMinutes();
+
+  /**
+   * <pre>
+   * Installed CLIs disabled on this machine; newly installed CLIs default to enabled.
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.Agent disabled_agents = 9 [json_name = "disabledAgents"];</code>
+   * @return A list containing the disabledAgents.
+   */
+  java.util.List<io.github.lewin671.remoteagent.proto.Agent> getDisabledAgentsList();
+  /**
+   * <pre>
+   * Installed CLIs disabled on this machine; newly installed CLIs default to enabled.
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.Agent disabled_agents = 9 [json_name = "disabledAgents"];</code>
+   * @return The count of disabledAgents.
+   */
+  int getDisabledAgentsCount();
+  /**
+   * <pre>
+   * Installed CLIs disabled on this machine; newly installed CLIs default to enabled.
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.Agent disabled_agents = 9 [json_name = "disabledAgents"];</code>
+   * @param index The index of the element to return.
+   * @return The disabledAgents at the given index.
+   */
+  io.github.lewin671.remoteagent.proto.Agent getDisabledAgents(int index);
+  /**
+   * <pre>
+   * Installed CLIs disabled on this machine; newly installed CLIs default to enabled.
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.Agent disabled_agents = 9 [json_name = "disabledAgents"];</code>
+   * @return A list containing the enum numeric values on the wire for disabledAgents.
+   */
+  java.util.List<java.lang.Integer>
+  getDisabledAgentsValueList();
+  /**
+   * <pre>
+   * Installed CLIs disabled on this machine; newly installed CLIs default to enabled.
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.Agent disabled_agents = 9 [json_name = "disabledAgents"];</code>
+   * @param index The index of the value to return.
+   * @return The enum numeric value on the wire of disabledAgents at the given index.
+   */
+  int getDisabledAgentsValue(int index);
+
+  /**
+   * <pre>
+   * Monotonically incremented each time settings commit on this machine.
+   * </pre>
+   *
+   * <code>uint64 revision = 10 [json_name = "revision"];</code>
+   * @return The revision.
+   */
+  long getRevision();
 }

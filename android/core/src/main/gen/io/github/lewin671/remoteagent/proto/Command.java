@@ -54,6 +54,7 @@ public  final class Command extends
     GET_LIVE_SNAPSHOT(31),
     GET_SHARED_FILE_CHUNK(32),
     GET_MACHINE_STATUS(33),
+    GET_USAGE_STATS(34),
     KIND_NOT_SET(0);
     private final int value;
     private KindCase(int value) {
@@ -98,6 +99,7 @@ public  final class Command extends
         case 31: return GET_LIVE_SNAPSHOT;
         case 32: return GET_SHARED_FILE_CHUNK;
         case 33: return GET_MACHINE_STATUS;
+        case 34: return GET_USAGE_STATS;
         case 0: return KIND_NOT_SET;
         default: return null;
       }
@@ -1667,6 +1669,58 @@ public  final class Command extends
    */
   private void clearGetMachineStatus() {
     if (kindCase_ == 33) {
+      kindCase_ = 0;
+      kind_ = null;
+    }
+  }
+
+  public static final int GET_USAGE_STATS_FIELD_NUMBER = 34;
+  /**
+   * <code>.remoteagent.v1.GetUsageStatsRequest get_usage_stats = 34 [json_name = "getUsageStats"];</code>
+   */
+  @java.lang.Override
+  public boolean hasGetUsageStats() {
+    return kindCase_ == 34;
+  }
+  /**
+   * <code>.remoteagent.v1.GetUsageStatsRequest get_usage_stats = 34 [json_name = "getUsageStats"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.proto.GetUsageStatsRequest getGetUsageStats() {
+    if (kindCase_ == 34) {
+       return (io.github.lewin671.remoteagent.proto.GetUsageStatsRequest) kind_;
+    }
+    return io.github.lewin671.remoteagent.proto.GetUsageStatsRequest.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.v1.GetUsageStatsRequest get_usage_stats = 34 [json_name = "getUsageStats"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setGetUsageStats(io.github.lewin671.remoteagent.proto.GetUsageStatsRequest value) {
+    value.getClass();  // minimal bytecode null check
+    kind_ = value;
+    kindCase_ = 34;
+  }
+  /**
+   * <code>.remoteagent.v1.GetUsageStatsRequest get_usage_stats = 34 [json_name = "getUsageStats"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeGetUsageStats(io.github.lewin671.remoteagent.proto.GetUsageStatsRequest value) {
+    value.getClass();  // minimal bytecode null check
+    if (kindCase_ == 34 &&
+        kind_ != io.github.lewin671.remoteagent.proto.GetUsageStatsRequest.getDefaultInstance()) {
+      kind_ = io.github.lewin671.remoteagent.proto.GetUsageStatsRequest.newBuilder((io.github.lewin671.remoteagent.proto.GetUsageStatsRequest) kind_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      kind_ = value;
+    }
+    kindCase_ = 34;
+  }
+  /**
+   * <code>.remoteagent.v1.GetUsageStatsRequest get_usage_stats = 34 [json_name = "getUsageStats"];</code>
+   */
+  private void clearGetUsageStats() {
+    if (kindCase_ == 34) {
       kindCase_ = 0;
       kind_ = null;
     }
@@ -3275,6 +3329,54 @@ public  final class Command extends
     }
 
     /**
+     * <code>.remoteagent.v1.GetUsageStatsRequest get_usage_stats = 34 [json_name = "getUsageStats"];</code>
+     */
+    @java.lang.Override
+    public boolean hasGetUsageStats() {
+      return instance.hasGetUsageStats();
+    }
+    /**
+     * <code>.remoteagent.v1.GetUsageStatsRequest get_usage_stats = 34 [json_name = "getUsageStats"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.proto.GetUsageStatsRequest getGetUsageStats() {
+      return instance.getGetUsageStats();
+    }
+    /**
+     * <code>.remoteagent.v1.GetUsageStatsRequest get_usage_stats = 34 [json_name = "getUsageStats"];</code>
+     */
+    public Builder setGetUsageStats(io.github.lewin671.remoteagent.proto.GetUsageStatsRequest value) {
+      copyOnWrite();
+      instance.setGetUsageStats(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.GetUsageStatsRequest get_usage_stats = 34 [json_name = "getUsageStats"];</code>
+     */
+    public Builder setGetUsageStats(
+        io.github.lewin671.remoteagent.proto.GetUsageStatsRequest.Builder builderForValue) {
+      copyOnWrite();
+      instance.setGetUsageStats(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.GetUsageStatsRequest get_usage_stats = 34 [json_name = "getUsageStats"];</code>
+     */
+    public Builder mergeGetUsageStats(io.github.lewin671.remoteagent.proto.GetUsageStatsRequest value) {
+      copyOnWrite();
+      instance.mergeGetUsageStats(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.GetUsageStatsRequest get_usage_stats = 34 [json_name = "getUsageStats"];</code>
+     */
+    public Builder clearGetUsageStats() {
+      copyOnWrite();
+      instance.clearGetUsageStats();
+      return this;
+    }
+
+    /**
      * <pre>
      * The protocol version the client speaks (internal/protocol). A daemon
      * of another version refuses the command and says which side to update.
@@ -3364,14 +3466,16 @@ public  final class Command extends
             io.github.lewin671.remoteagent.proto.GetLiveSnapshotRequest.class,
             io.github.lewin671.remoteagent.proto.GetSharedFileChunkRequest.class,
             io.github.lewin671.remoteagent.proto.GetMachineStatusRequest.class,
+            io.github.lewin671.remoteagent.proto.GetUsageStatsRequest.class,
             "protocolVersion_",
           };
           java.lang.String info =
-              "\u0000\u001e\u0001\u0000\u0001d\u001e\u0000\u0000\u0000\u0001<\u0000\u0002<\u0000" +
+              "\u0000\u001f\u0001\u0000\u0001d\u001f\u0000\u0000\u0000\u0001<\u0000\u0002<\u0000" +
               "\u0003<\u0000\u0004<\u0000\u0005<\u0000\u0006<\u0000\u0007<\u0000\b<\u0000\t<\u0000" +
               "\n<\u0000\u000b<\u0000\f<\u0000\r<\u0000\u000e<\u0000\u000f<\u0000\u0014<\u0000\u0015" +
               "<\u0000\u0016<\u0000\u0017<\u0000\u0018<\u0000\u0019<\u0000\u001a<\u0000\u001b<\u0000" +
-              "\u001c<\u0000\u001d<\u0000\u001e<\u0000\u001f<\u0000 <\u0000!<\u0000d\u000b";
+              "\u001c<\u0000\u001d<\u0000\u001e<\u0000\u001f<\u0000 <\u0000!<\u0000\"<\u0000d\u000b" +
+              "";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

@@ -75,6 +75,10 @@ public enum NoticeKind
    * <code>NOTICE_KIND_NO_ONLINE_MACHINES = 15;</code>
    */
   NOTICE_KIND_NO_ONLINE_MACHINES(15),
+  /**
+   * <code>NOTICE_KIND_AGENT_DISABLED_FALLBACK = 16;</code>
+   */
+  NOTICE_KIND_AGENT_DISABLED_FALLBACK(16),
   UNRECOGNIZED(-1),
   ;
 
@@ -142,6 +146,10 @@ public enum NoticeKind
    * <code>NOTICE_KIND_NO_ONLINE_MACHINES = 15;</code>
    */
   public static final int NOTICE_KIND_NO_ONLINE_MACHINES_VALUE = 15;
+  /**
+   * <code>NOTICE_KIND_AGENT_DISABLED_FALLBACK = 16;</code>
+   */
+  public static final int NOTICE_KIND_AGENT_DISABLED_FALLBACK_VALUE = 16;
 
 
   @java.lang.Override
@@ -181,6 +189,7 @@ public enum NoticeKind
       case 13: return NOTICE_KIND_UNKNOWN_START;
       case 14: return NOTICE_KIND_PROJECT_REMOVED;
       case 15: return NOTICE_KIND_NO_ONLINE_MACHINES;
+      case 16: return NOTICE_KIND_AGENT_DISABLED_FALLBACK;
       default: return null;
     }
   }

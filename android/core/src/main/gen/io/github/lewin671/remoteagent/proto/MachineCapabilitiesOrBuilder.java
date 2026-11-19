@@ -166,4 +166,24 @@ public interface MachineCapabilitiesOrBuilder extends
    * @return The machineStatus.
    */
   boolean getMachineStatus();
+
+  /**
+   * <pre>
+   * Passive local model token usage, cache hit rate, speed and TTFT statistics.
+   * </pre>
+   *
+   * <code>bool usage_stats = 20 [json_name = "usageStats"];</code>
+   * @return The usageStats.
+   */
+  boolean getUsageStats();
+
+  /**
+   * <pre>
+   * Per-machine CLI enable/disable configuration with revision conflict checks.
+   * </pre>
+   *
+   * <code>bool cli_switches = 21 [json_name = "cliSwitches"];</code>
+   * @return The cliSwitches.
+   */
+  boolean getCliSwitches();
 }

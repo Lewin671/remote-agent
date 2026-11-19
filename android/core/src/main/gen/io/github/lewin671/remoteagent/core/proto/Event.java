@@ -83,6 +83,10 @@ public  final class Event extends
     UPDATE_MACHINE_DAEMON_SETTINGS(363),
     UPDATE_DIRECT_PREFERENCE(364),
     MACHINE_DIRECT_STATUS(365),
+    TOGGLE_MACHINE_AGENT(366),
+    USAGE_SCREEN_OPEN(380),
+    USAGE_SCREEN_RETRY(381),
+    USAGE_CACHE_LOADED(382),
     UPDATE_CLIENT_NAME(370),
     SET_NOTIFICATION_PREF(375),
     SET_APPEARANCE_PREF(376),
@@ -208,6 +212,10 @@ public  final class Event extends
         case 363: return UPDATE_MACHINE_DAEMON_SETTINGS;
         case 364: return UPDATE_DIRECT_PREFERENCE;
         case 365: return MACHINE_DIRECT_STATUS;
+        case 366: return TOGGLE_MACHINE_AGENT;
+        case 380: return USAGE_SCREEN_OPEN;
+        case 381: return USAGE_SCREEN_RETRY;
+        case 382: return USAGE_CACHE_LOADED;
         case 370: return UPDATE_CLIENT_NAME;
         case 375: return SET_NOTIFICATION_PREF;
         case 376: return SET_APPEARANCE_PREF;
@@ -3496,6 +3504,214 @@ public  final class Event extends
    */
   private void clearMachineDirectStatus() {
     if (eventCase_ == 365) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int TOGGLE_MACHINE_AGENT_FIELD_NUMBER = 366;
+  /**
+   * <code>.remoteagent.core.v1.ToggleMachineAgentEvent toggle_machine_agent = 366 [json_name = "toggleMachineAgent"];</code>
+   */
+  @java.lang.Override
+  public boolean hasToggleMachineAgent() {
+    return eventCase_ == 366;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ToggleMachineAgentEvent toggle_machine_agent = 366 [json_name = "toggleMachineAgent"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.ToggleMachineAgentEvent getToggleMachineAgent() {
+    if (eventCase_ == 366) {
+       return (io.github.lewin671.remoteagent.core.proto.ToggleMachineAgentEvent) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.ToggleMachineAgentEvent.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.ToggleMachineAgentEvent toggle_machine_agent = 366 [json_name = "toggleMachineAgent"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setToggleMachineAgent(io.github.lewin671.remoteagent.core.proto.ToggleMachineAgentEvent value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 366;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ToggleMachineAgentEvent toggle_machine_agent = 366 [json_name = "toggleMachineAgent"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeToggleMachineAgent(io.github.lewin671.remoteagent.core.proto.ToggleMachineAgentEvent value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 366 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.ToggleMachineAgentEvent.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.ToggleMachineAgentEvent.newBuilder((io.github.lewin671.remoteagent.core.proto.ToggleMachineAgentEvent) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 366;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ToggleMachineAgentEvent toggle_machine_agent = 366 [json_name = "toggleMachineAgent"];</code>
+   */
+  private void clearToggleMachineAgent() {
+    if (eventCase_ == 366) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int USAGE_SCREEN_OPEN_FIELD_NUMBER = 380;
+  /**
+   * <code>.remoteagent.core.v1.UsageScreenOpenEvent usage_screen_open = 380 [json_name = "usageScreenOpen"];</code>
+   */
+  @java.lang.Override
+  public boolean hasUsageScreenOpen() {
+    return eventCase_ == 380;
+  }
+  /**
+   * <code>.remoteagent.core.v1.UsageScreenOpenEvent usage_screen_open = 380 [json_name = "usageScreenOpen"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.UsageScreenOpenEvent getUsageScreenOpen() {
+    if (eventCase_ == 380) {
+       return (io.github.lewin671.remoteagent.core.proto.UsageScreenOpenEvent) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.UsageScreenOpenEvent.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.UsageScreenOpenEvent usage_screen_open = 380 [json_name = "usageScreenOpen"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setUsageScreenOpen(io.github.lewin671.remoteagent.core.proto.UsageScreenOpenEvent value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 380;
+  }
+  /**
+   * <code>.remoteagent.core.v1.UsageScreenOpenEvent usage_screen_open = 380 [json_name = "usageScreenOpen"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeUsageScreenOpen(io.github.lewin671.remoteagent.core.proto.UsageScreenOpenEvent value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 380 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.UsageScreenOpenEvent.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.UsageScreenOpenEvent.newBuilder((io.github.lewin671.remoteagent.core.proto.UsageScreenOpenEvent) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 380;
+  }
+  /**
+   * <code>.remoteagent.core.v1.UsageScreenOpenEvent usage_screen_open = 380 [json_name = "usageScreenOpen"];</code>
+   */
+  private void clearUsageScreenOpen() {
+    if (eventCase_ == 380) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int USAGE_SCREEN_RETRY_FIELD_NUMBER = 381;
+  /**
+   * <code>.remoteagent.core.v1.UsageScreenRetryEvent usage_screen_retry = 381 [json_name = "usageScreenRetry"];</code>
+   */
+  @java.lang.Override
+  public boolean hasUsageScreenRetry() {
+    return eventCase_ == 381;
+  }
+  /**
+   * <code>.remoteagent.core.v1.UsageScreenRetryEvent usage_screen_retry = 381 [json_name = "usageScreenRetry"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.UsageScreenRetryEvent getUsageScreenRetry() {
+    if (eventCase_ == 381) {
+       return (io.github.lewin671.remoteagent.core.proto.UsageScreenRetryEvent) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.UsageScreenRetryEvent.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.UsageScreenRetryEvent usage_screen_retry = 381 [json_name = "usageScreenRetry"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setUsageScreenRetry(io.github.lewin671.remoteagent.core.proto.UsageScreenRetryEvent value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 381;
+  }
+  /**
+   * <code>.remoteagent.core.v1.UsageScreenRetryEvent usage_screen_retry = 381 [json_name = "usageScreenRetry"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeUsageScreenRetry(io.github.lewin671.remoteagent.core.proto.UsageScreenRetryEvent value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 381 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.UsageScreenRetryEvent.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.UsageScreenRetryEvent.newBuilder((io.github.lewin671.remoteagent.core.proto.UsageScreenRetryEvent) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 381;
+  }
+  /**
+   * <code>.remoteagent.core.v1.UsageScreenRetryEvent usage_screen_retry = 381 [json_name = "usageScreenRetry"];</code>
+   */
+  private void clearUsageScreenRetry() {
+    if (eventCase_ == 381) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int USAGE_CACHE_LOADED_FIELD_NUMBER = 382;
+  /**
+   * <code>.remoteagent.core.v1.UsageCacheLoadedEvent usage_cache_loaded = 382 [json_name = "usageCacheLoaded"];</code>
+   */
+  @java.lang.Override
+  public boolean hasUsageCacheLoaded() {
+    return eventCase_ == 382;
+  }
+  /**
+   * <code>.remoteagent.core.v1.UsageCacheLoadedEvent usage_cache_loaded = 382 [json_name = "usageCacheLoaded"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.UsageCacheLoadedEvent getUsageCacheLoaded() {
+    if (eventCase_ == 382) {
+       return (io.github.lewin671.remoteagent.core.proto.UsageCacheLoadedEvent) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.UsageCacheLoadedEvent.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.UsageCacheLoadedEvent usage_cache_loaded = 382 [json_name = "usageCacheLoaded"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setUsageCacheLoaded(io.github.lewin671.remoteagent.core.proto.UsageCacheLoadedEvent value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 382;
+  }
+  /**
+   * <code>.remoteagent.core.v1.UsageCacheLoadedEvent usage_cache_loaded = 382 [json_name = "usageCacheLoaded"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeUsageCacheLoaded(io.github.lewin671.remoteagent.core.proto.UsageCacheLoadedEvent value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 382 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.UsageCacheLoadedEvent.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.UsageCacheLoadedEvent.newBuilder((io.github.lewin671.remoteagent.core.proto.UsageCacheLoadedEvent) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 382;
+  }
+  /**
+   * <code>.remoteagent.core.v1.UsageCacheLoadedEvent usage_cache_loaded = 382 [json_name = "usageCacheLoaded"];</code>
+   */
+  private void clearUsageCacheLoaded() {
+    if (eventCase_ == 382) {
       eventCase_ = 0;
       event_ = null;
     }
@@ -9301,6 +9517,198 @@ public  final class Event extends
     }
 
     /**
+     * <code>.remoteagent.core.v1.ToggleMachineAgentEvent toggle_machine_agent = 366 [json_name = "toggleMachineAgent"];</code>
+     */
+    @java.lang.Override
+    public boolean hasToggleMachineAgent() {
+      return instance.hasToggleMachineAgent();
+    }
+    /**
+     * <code>.remoteagent.core.v1.ToggleMachineAgentEvent toggle_machine_agent = 366 [json_name = "toggleMachineAgent"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.ToggleMachineAgentEvent getToggleMachineAgent() {
+      return instance.getToggleMachineAgent();
+    }
+    /**
+     * <code>.remoteagent.core.v1.ToggleMachineAgentEvent toggle_machine_agent = 366 [json_name = "toggleMachineAgent"];</code>
+     */
+    public Builder setToggleMachineAgent(io.github.lewin671.remoteagent.core.proto.ToggleMachineAgentEvent value) {
+      copyOnWrite();
+      instance.setToggleMachineAgent(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ToggleMachineAgentEvent toggle_machine_agent = 366 [json_name = "toggleMachineAgent"];</code>
+     */
+    public Builder setToggleMachineAgent(
+        io.github.lewin671.remoteagent.core.proto.ToggleMachineAgentEvent.Builder builderForValue) {
+      copyOnWrite();
+      instance.setToggleMachineAgent(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ToggleMachineAgentEvent toggle_machine_agent = 366 [json_name = "toggleMachineAgent"];</code>
+     */
+    public Builder mergeToggleMachineAgent(io.github.lewin671.remoteagent.core.proto.ToggleMachineAgentEvent value) {
+      copyOnWrite();
+      instance.mergeToggleMachineAgent(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ToggleMachineAgentEvent toggle_machine_agent = 366 [json_name = "toggleMachineAgent"];</code>
+     */
+    public Builder clearToggleMachineAgent() {
+      copyOnWrite();
+      instance.clearToggleMachineAgent();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.UsageScreenOpenEvent usage_screen_open = 380 [json_name = "usageScreenOpen"];</code>
+     */
+    @java.lang.Override
+    public boolean hasUsageScreenOpen() {
+      return instance.hasUsageScreenOpen();
+    }
+    /**
+     * <code>.remoteagent.core.v1.UsageScreenOpenEvent usage_screen_open = 380 [json_name = "usageScreenOpen"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.UsageScreenOpenEvent getUsageScreenOpen() {
+      return instance.getUsageScreenOpen();
+    }
+    /**
+     * <code>.remoteagent.core.v1.UsageScreenOpenEvent usage_screen_open = 380 [json_name = "usageScreenOpen"];</code>
+     */
+    public Builder setUsageScreenOpen(io.github.lewin671.remoteagent.core.proto.UsageScreenOpenEvent value) {
+      copyOnWrite();
+      instance.setUsageScreenOpen(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.UsageScreenOpenEvent usage_screen_open = 380 [json_name = "usageScreenOpen"];</code>
+     */
+    public Builder setUsageScreenOpen(
+        io.github.lewin671.remoteagent.core.proto.UsageScreenOpenEvent.Builder builderForValue) {
+      copyOnWrite();
+      instance.setUsageScreenOpen(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.UsageScreenOpenEvent usage_screen_open = 380 [json_name = "usageScreenOpen"];</code>
+     */
+    public Builder mergeUsageScreenOpen(io.github.lewin671.remoteagent.core.proto.UsageScreenOpenEvent value) {
+      copyOnWrite();
+      instance.mergeUsageScreenOpen(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.UsageScreenOpenEvent usage_screen_open = 380 [json_name = "usageScreenOpen"];</code>
+     */
+    public Builder clearUsageScreenOpen() {
+      copyOnWrite();
+      instance.clearUsageScreenOpen();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.UsageScreenRetryEvent usage_screen_retry = 381 [json_name = "usageScreenRetry"];</code>
+     */
+    @java.lang.Override
+    public boolean hasUsageScreenRetry() {
+      return instance.hasUsageScreenRetry();
+    }
+    /**
+     * <code>.remoteagent.core.v1.UsageScreenRetryEvent usage_screen_retry = 381 [json_name = "usageScreenRetry"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.UsageScreenRetryEvent getUsageScreenRetry() {
+      return instance.getUsageScreenRetry();
+    }
+    /**
+     * <code>.remoteagent.core.v1.UsageScreenRetryEvent usage_screen_retry = 381 [json_name = "usageScreenRetry"];</code>
+     */
+    public Builder setUsageScreenRetry(io.github.lewin671.remoteagent.core.proto.UsageScreenRetryEvent value) {
+      copyOnWrite();
+      instance.setUsageScreenRetry(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.UsageScreenRetryEvent usage_screen_retry = 381 [json_name = "usageScreenRetry"];</code>
+     */
+    public Builder setUsageScreenRetry(
+        io.github.lewin671.remoteagent.core.proto.UsageScreenRetryEvent.Builder builderForValue) {
+      copyOnWrite();
+      instance.setUsageScreenRetry(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.UsageScreenRetryEvent usage_screen_retry = 381 [json_name = "usageScreenRetry"];</code>
+     */
+    public Builder mergeUsageScreenRetry(io.github.lewin671.remoteagent.core.proto.UsageScreenRetryEvent value) {
+      copyOnWrite();
+      instance.mergeUsageScreenRetry(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.UsageScreenRetryEvent usage_screen_retry = 381 [json_name = "usageScreenRetry"];</code>
+     */
+    public Builder clearUsageScreenRetry() {
+      copyOnWrite();
+      instance.clearUsageScreenRetry();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.UsageCacheLoadedEvent usage_cache_loaded = 382 [json_name = "usageCacheLoaded"];</code>
+     */
+    @java.lang.Override
+    public boolean hasUsageCacheLoaded() {
+      return instance.hasUsageCacheLoaded();
+    }
+    /**
+     * <code>.remoteagent.core.v1.UsageCacheLoadedEvent usage_cache_loaded = 382 [json_name = "usageCacheLoaded"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.UsageCacheLoadedEvent getUsageCacheLoaded() {
+      return instance.getUsageCacheLoaded();
+    }
+    /**
+     * <code>.remoteagent.core.v1.UsageCacheLoadedEvent usage_cache_loaded = 382 [json_name = "usageCacheLoaded"];</code>
+     */
+    public Builder setUsageCacheLoaded(io.github.lewin671.remoteagent.core.proto.UsageCacheLoadedEvent value) {
+      copyOnWrite();
+      instance.setUsageCacheLoaded(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.UsageCacheLoadedEvent usage_cache_loaded = 382 [json_name = "usageCacheLoaded"];</code>
+     */
+    public Builder setUsageCacheLoaded(
+        io.github.lewin671.remoteagent.core.proto.UsageCacheLoadedEvent.Builder builderForValue) {
+      copyOnWrite();
+      instance.setUsageCacheLoaded(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.UsageCacheLoadedEvent usage_cache_loaded = 382 [json_name = "usageCacheLoaded"];</code>
+     */
+    public Builder mergeUsageCacheLoaded(io.github.lewin671.remoteagent.core.proto.UsageCacheLoadedEvent value) {
+      copyOnWrite();
+      instance.mergeUsageCacheLoaded(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.UsageCacheLoadedEvent usage_cache_loaded = 382 [json_name = "usageCacheLoaded"];</code>
+     */
+    public Builder clearUsageCacheLoaded() {
+      copyOnWrite();
+      instance.clearUsageCacheLoaded();
+      return this;
+    }
+
+    /**
      * <code>.remoteagent.core.v1.UpdateClientNameEvent update_client_name = 370 [json_name = "updateClientName"];</code>
      */
     @java.lang.Override
@@ -11947,15 +12355,19 @@ public  final class Event extends
             io.github.lewin671.remoteagent.core.proto.UpdateMachineDaemonSettingsEvent.class,
             io.github.lewin671.remoteagent.core.proto.UpdateDirectPreferenceEvent.class,
             io.github.lewin671.remoteagent.core.proto.MachineDirectStatusEvent.class,
+            io.github.lewin671.remoteagent.core.proto.ToggleMachineAgentEvent.class,
             io.github.lewin671.remoteagent.core.proto.UpdateClientNameEvent.class,
             io.github.lewin671.remoteagent.core.proto.SetNotificationPrefEvent.class,
             io.github.lewin671.remoteagent.core.proto.SetAppearancePrefEvent.class,
             io.github.lewin671.remoteagent.core.proto.ConnCheckStatusEvent.class,
             io.github.lewin671.remoteagent.core.proto.ClientUpdateStateEvent.class,
             io.github.lewin671.remoteagent.core.proto.CheckForUpdatesEvent.class,
+            io.github.lewin671.remoteagent.core.proto.UsageScreenOpenEvent.class,
+            io.github.lewin671.remoteagent.core.proto.UsageScreenRetryEvent.class,
+            io.github.lewin671.remoteagent.core.proto.UsageCacheLoadedEvent.class,
           };
           java.lang.String info =
-              "\u0000r\u0001\u0000\u0001\u017br\u0000\u0002\u0000\u0001<\u0000\u0002<\u0000\u0003" +
+              "\u0000v\u0001\u0000\u0001\u017ev\u0000\u0002\u0000\u0001<\u0000\u0002<\u0000\u0003" +
               "<\u0000\u0004<\u0000\u0005<\u0000\u0006<\u0000\u0007<\u0000\b<\u0000\t<\u0000\n<" +
               "\u0000\u000b<\u0000\f<\u0000\r<\u0000\u000e<\u0000\u000f<\u0000\u0010<\u0000\u0011" +
               "<\u0000\u0012<\u0000\u0013<\u0000\u0014<\u0000\u0015<\u0000\u0016<\u0000\u0017<\u0000" +
@@ -11970,8 +12382,9 @@ public  final class Event extends
               "\u0152<\u0000\u0153<\u0000\u0154<\u0000\u0155<\u0000\u0156<\u0000\u0157<\u0000\u0158" +
               "<\u0000\u0159<\u0000\u015a<\u0000\u015b<\u0000\u015c<\u0000\u015d<\u0000\u015e<\u0000" +
               "\u015f<\u0000\u0160<\u0000\u0161<\u0000\u0162<\u0000\u0163<\u0000\u0168<\u0000\u0169" +
-              "<\u0000\u016a<\u0000\u016b<\u0000\u016c<\u0000\u016d<\u0000\u0172<\u0000\u0177<\u0000" +
-              "\u0178<\u0000\u0179<\u0000\u017a<\u0000\u017b<\u0000";
+              "<\u0000\u016a<\u0000\u016b<\u0000\u016c<\u0000\u016d<\u0000\u016e<\u0000\u0172<\u0000" +
+              "\u0177<\u0000\u0178<\u0000\u0179<\u0000\u017a<\u0000\u017b<\u0000\u017c<\u0000\u017d" +
+              "<\u0000\u017e<\u0000";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

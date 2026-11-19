@@ -148,6 +148,17 @@ public interface ScreenOrBuilder extends
   io.github.lewin671.remoteagent.core.proto.ClientDetailScreenRequest getClientDetail();
 
   /**
+   * <code>.remoteagent.core.v1.UsageScreenRequest usage = 36 [json_name = "usage"];</code>
+   * @return Whether the usage field is set.
+   */
+  boolean hasUsage();
+  /**
+   * <code>.remoteagent.core.v1.UsageScreenRequest usage = 36 [json_name = "usage"];</code>
+   * @return The usage.
+   */
+  io.github.lewin671.remoteagent.core.proto.UsageScreenRequest getUsage();
+
+  /**
    * <code>.remoteagent.core.v1.SessionScreenRequest session = 10 [json_name = "session"];</code>
    * @return Whether the session field is set.
    */

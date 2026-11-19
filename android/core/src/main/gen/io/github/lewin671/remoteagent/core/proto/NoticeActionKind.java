@@ -51,6 +51,10 @@ public enum NoticeActionKind
    * <code>NOTICE_ACTION_KIND_RETRY_READ_SETTINGS = 9;</code>
    */
   NOTICE_ACTION_KIND_RETRY_READ_SETTINGS(9),
+  /**
+   * <code>NOTICE_ACTION_KIND_ENABLE_AGENT = 10;</code>
+   */
+  NOTICE_ACTION_KIND_ENABLE_AGENT(10),
   UNRECOGNIZED(-1),
   ;
 
@@ -94,6 +98,10 @@ public enum NoticeActionKind
    * <code>NOTICE_ACTION_KIND_RETRY_READ_SETTINGS = 9;</code>
    */
   public static final int NOTICE_ACTION_KIND_RETRY_READ_SETTINGS_VALUE = 9;
+  /**
+   * <code>NOTICE_ACTION_KIND_ENABLE_AGENT = 10;</code>
+   */
+  public static final int NOTICE_ACTION_KIND_ENABLE_AGENT_VALUE = 10;
 
 
   @java.lang.Override
@@ -127,6 +135,7 @@ public enum NoticeActionKind
       case 7: return NOTICE_ACTION_KIND_READD_PROJECT;
       case 8: return NOTICE_ACTION_KIND_OPEN_DISK_USAGE;
       case 9: return NOTICE_ACTION_KIND_RETRY_READ_SETTINGS;
+      case 10: return NOTICE_ACTION_KIND_ENABLE_AGENT;
       default: return null;
     }
   }

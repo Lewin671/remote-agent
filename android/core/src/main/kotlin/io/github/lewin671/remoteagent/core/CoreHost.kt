@@ -12,6 +12,8 @@ import io.github.lewin671.remoteagent.corebind.Corebind
 import io.github.lewin671.remoteagent.proto.Agent
 import io.github.lewin671.remoteagent.proto.ApprovalMode
 import io.github.lewin671.remoteagent.proto.Command
+import io.github.lewin671.remoteagent.proto.UsageRangePreset
+import io.github.lewin671.remoteagent.proto.UsageStatsResponse
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.*
@@ -171,6 +173,8 @@ class CoreHost(
     var onScheduleDismissNotifications: (ScheduleDismissNotificationsEffect) -> Unit = {}
     var onScheduleNavigate: (ScheduleNavigateEffect) -> Unit = {}
     var onRender: (List<ScreenTarget>) -> Unit = {}
+    var onUsageCacheWrite: (UsageCacheWriteEffect) -> Unit = {}
+    var onHydrateUsageCache: (String) -> Unit = {}
 
     private var homeEndedLimit: Int = CORE_ENDED_PAGE
     private var projectKey: String = ""
@@ -182,6 +186,13 @@ class CoreHost(
     private var quotaMachineId: String = ""
     private var quotaFilterAgent: Agent = Agent.AGENT_UNSPECIFIED
     private var clientDetailId: String = ""
+    private var usageMachineId: String = ""
+    private var usageFocusAgent: Agent = Agent.AGENT_UNSPECIFIED
+    private var usageFocusModel: String = ""
+    private var usagePreset: UsageRangePreset = UsageRangePreset.USAGE_RANGE_PRESET_SEVEN_DAYS
+    private var usageCustomStartMs: Long = 0L
+    private var usageCustomEndMs: Long = 0L
+    private var usageMetric: UsageMetricTab = UsageMetricTab.USAGE_METRIC_TAB_TOKENS
     private var scheduleDetailMachineId: String = ""
     private var scheduleDetailTaskId: String = ""
     private var scheduleFormKey: String = ""
@@ -257,6 +268,26 @@ class CoreHost(
         { if (it.viewCase == ViewModel.ViewCase.CLIENT_DETAIL) it.clientDetail else null },
     )
     val clientDetailView: StateFlow<ClientDetailViewModel> = clientDetailSlot.flow.asStateFlow()
+
+    private val usageSlot = registerScreen(
+        ScreenTarget.SCREEN_TARGET_USAGE, UsageViewModel.getDefaultInstance(),
+        {
+            usageMachineId.takeIf { it.isNotEmpty() }?.let { mid ->
+                Screen.newBuilder().setUsage(
+                    UsageScreenRequest.newBuilder()
+                        .setMachineId(mid)
+                        .setFocusAgent(usageFocusAgent)
+                        .setFocusModel(usageFocusModel)
+                        .setPreset(usagePreset)
+                        .setCustomStartMs(usageCustomStartMs)
+                        .setCustomEndMs(usageCustomEndMs)
+                        .setMetric(usageMetric),
+                ).build()
+            }
+        },
+        { if (it.viewCase == ViewModel.ViewCase.USAGE) it.usage else null },
+    )
+    val usageView: StateFlow<UsageViewModel> = usageSlot.flow.asStateFlow()
 
     private val schedulesSlot = registerScreen(
         ScreenTarget.SCREEN_TARGET_SCHEDULES, SchedulesViewModel.getDefaultInstance(),
@@ -500,6 +531,9 @@ class CoreHost(
                         .setEntropyProvided(buildEntropyProvided(ids, floats))
                         .build(),
                 )
+            }
+            Effect.EffectCase.USAGE_CACHE_WRITE -> {
+                onUsageCacheWrite(effect.usageCacheWrite)
             }
             else -> {}
         }
@@ -767,6 +801,42 @@ class CoreHost(
         extract = { if (it.viewCase == ViewModel.ViewCase.CLIENT_DETAIL) it.clientDetail else null },
     )
 
+    fun snapshotUsageView(
+        machineId: String,
+        focusAgent: Agent = Agent.AGENT_UNSPECIFIED,
+        focusModel: String = "",
+        preset: UsageRangePreset = UsageRangePreset.USAGE_RANGE_PRESET_SEVEN_DAYS,
+        customStartMs: Long = 0L,
+        customEndMs: Long = 0L,
+        metric: UsageMetricTab = UsageMetricTab.USAGE_METRIC_TAB_TOKENS,
+    ): UsageViewModel = snapshotSlot(
+        ScreenTarget.SCREEN_TARGET_USAGE,
+        usageSlot,
+        matches = {
+            machineId.isNotEmpty() &&
+                it.machineId == machineId &&
+                usageFocusAgent == focusAgent &&
+                usageFocusModel == focusModel &&
+                usagePreset == preset &&
+                usageCustomStartMs == customStartMs &&
+                usageCustomEndMs == customEndMs &&
+                usageMetric == metric
+        },
+        screen = {
+            Screen.newBuilder().setUsage(
+                UsageScreenRequest.newBuilder()
+                    .setMachineId(machineId)
+                    .setFocusAgent(focusAgent)
+                    .setFocusModel(focusModel)
+                    .setPreset(preset)
+                    .setCustomStartMs(customStartMs)
+                    .setCustomEndMs(customEndMs)
+                    .setMetric(metric),
+            ).build()
+        },
+        extract = { if (it.viewCase == ViewModel.ViewCase.USAGE) it.usage else null },
+    )
+
     fun snapshotScheduleDetailView(machineId: String, taskId: String): ScheduleDetailViewModel = snapshotSlot(
         ScreenTarget.SCREEN_TARGET_SCHEDULE_DETAIL,
         scheduleDetailSlot,
@@ -1026,6 +1096,9 @@ class CoreHost(
     }
 
     fun watchMachineStatus(machineId: String, visible: Boolean, mode: MachinePollMode) = dispatchAction {
+        if (visible && machineId.isNotEmpty()) {
+            onHydrateUsageCache(machineId)
+        }
         if (visible && mode == MachinePollMode.MACHINE_POLL_MODE_LIVE && machineId.isNotEmpty()) {
             machineStatusId = machineId
         }
@@ -1065,6 +1138,81 @@ class CoreHost(
         machineSettingsId = machineId
         sendOnWorker { setMachineSettingsOpen(MachineSettingsOpenEvent.newBuilder().setMachineId(machineId)) }
         refreshScreenOnWorker(ScreenTarget.SCREEN_TARGET_MACHINE_SETTINGS)
+    }
+
+    fun toggleMachineAgent(machineId: String, agent: Agent, enabled: Boolean) = send {
+        setToggleMachineAgent(
+            ToggleMachineAgentEvent.newBuilder()
+                .setMachineId(machineId)
+                .setAgent(agent)
+                .setEnabled(enabled),
+        )
+    }
+
+    fun hydrateUsageCache(machineId: String) {
+        if (machineId.isNotEmpty() && !closed.get()) onHydrateUsageCache(machineId)
+    }
+
+    fun deliverUsageCacheLoaded(machineId: String, snapshot: UsageStatsResponse) {
+        if (machineId.isEmpty() || closed.get()) return
+        send {
+            setUsageCacheLoaded(
+                UsageCacheLoadedEvent.newBuilder()
+                    .setMachineId(machineId)
+                    .setSnapshot(snapshot),
+            )
+        }
+    }
+
+    fun openUsageScreen(
+        machineId: String,
+        focusAgent: Agent = Agent.AGENT_UNSPECIFIED,
+        focusModel: String = "",
+        preset: UsageRangePreset = UsageRangePreset.USAGE_RANGE_PRESET_SEVEN_DAYS,
+        customStartMs: Long = 0L,
+        customEndMs: Long = 0L,
+        metric: UsageMetricTab? = null,
+    ) = dispatchAction {
+        if (machineId.isEmpty()) return@dispatchAction
+        onHydrateUsageCache(machineId)
+        val params = buildUsageOpenParams(
+            preset = preset,
+            customStartMs = customStartMs,
+            customEndMs = customEndMs,
+            nowMs = clock(),
+            zoneId = zone(),
+        )
+        usageMachineId = machineId
+        usageFocusAgent = focusAgent
+        usageFocusModel = focusModel
+        usagePreset = params.preset
+        usageCustomStartMs = params.customStartMs
+        usageCustomEndMs = params.customEndMs
+        metric?.let { usageMetric = it }
+        sendOnWorker {
+            setUsageScreenOpen(
+                UsageScreenOpenEvent.newBuilder()
+                    .setMachineId(machineId)
+                    .setPreset(params.preset)
+                    .setCustomStartMs(params.customStartMs)
+                    .setCustomEndMs(params.customEndMs)
+                    .setTimezone(params.timezone)
+                    .setTzOffsetMinutes(params.tzOffsetMinutes)
+                    .addAllBucketBoundsMs(params.bucketBoundsMs)
+                    .setPrevStartMs(params.prevStartMs),
+            )
+        }
+        refreshScreenOnWorker(ScreenTarget.SCREEN_TARGET_USAGE)
+    }
+
+    fun setUsageMetric(metric: UsageMetricTab) = dispatchAction {
+        usageMetric = metric
+        refreshScreenOnWorker(ScreenTarget.SCREEN_TARGET_USAGE)
+    }
+
+    fun retryUsageScreen(machineId: String) {
+        if (machineId.isEmpty()) return
+        send { setUsageScreenRetry(UsageScreenRetryEvent.newBuilder().setMachineId(machineId)) }
     }
 
     fun selectMachineSettingsAgent(machineId: String, agent: Agent) = send {
@@ -1329,6 +1477,7 @@ class CoreHost(
         scheduleForm: ScheduleFormViewModel? = null,
         scheduleStrips: Map<String, ScheduleSessionStripViewModel> = emptyMap(),
         sessions: Map<String, SessionViewModel> = emptyMap(),
+        usage: UsageViewModel? = null,
     ) {
         if (home != null || project != null || newSession != null || syncState != null) {
             testOverrideViews = true
@@ -1346,6 +1495,7 @@ class CoreHost(
         quota?.let { quotaSlot.flow.value = it }
         devices?.let { devicesSlot.flow.value = it }
         clientDetail?.let { clientDetailSlot.flow.value = it }
+        usage?.let { overrideSlot(ScreenTarget.SCREEN_TARGET_USAGE, usageSlot, it) }
         if (scheduleStrips.isNotEmpty()) {
             synchronized(scheduleStripWatchers) {
                 testScheduleStripViews.putAll(scheduleStrips)
@@ -1456,4 +1606,138 @@ fun buildDirectViews(online: Boolean, prefEnabled: Boolean, status: DirectStatus
         .setReport(status.toRouteReport())
         .build()
     return DirectViewsResponse.parseFrom(Corebind.buildDirectViews(req.toByteArray()))
+}
+
+const val USAGE_RETENTION_DAYS = 90
+
+internal val USAGE_CACHE_PRESETS = listOf(
+    UsageRangePreset.USAGE_RANGE_PRESET_TODAY,
+    UsageRangePreset.USAGE_RANGE_PRESET_SEVEN_DAYS,
+    UsageRangePreset.USAGE_RANGE_PRESET_THIRTY_DAYS,
+)
+
+data class UsageOpenParams(
+    val preset: UsageRangePreset,
+    val customStartMs: Long,
+    val customEndMs: Long,
+    val timezone: String,
+    val tzOffsetMinutes: Int,
+    val bucketBoundsMs: List<Long>,
+    val prevStartMs: Long,
+)
+
+fun localTzOffsetMinutes(
+    nowMs: Long = System.currentTimeMillis(),
+    zoneId: java.time.ZoneId = java.time.ZoneId.systemDefault(),
+): Int = zoneId.rules.getOffset(java.time.Instant.ofEpochMilli(nowMs)).totalSeconds / 60
+
+fun clampUsageCustomRange(
+    customStartMs: Long,
+    customEndMs: Long,
+    nowMs: Long = System.currentTimeMillis(),
+    zoneId: java.time.ZoneId = java.time.ZoneId.systemDefault(),
+): Pair<Long, Long> {
+    val today = java.time.Instant.ofEpochMilli(nowMs).atZone(zoneId).toLocalDate()
+    val todayStartMs = today.atStartOfDay(zoneId).toInstant().toEpochMilli()
+    val minDay = today.minusDays((USAGE_RETENTION_DAYS - 1).toLong())
+    val minDayMs = minDay.atStartOfDay(zoneId).toInstant().toEpochMilli()
+    val sDate =
+        if (customStartMs > 0L) java.time.Instant.ofEpochMilli(customStartMs).atZone(zoneId).toLocalDate()
+        else today.minusDays(6)
+    val eDate =
+        if (customEndMs > 0L) java.time.Instant.ofEpochMilli(customEndMs).atZone(zoneId).toLocalDate()
+        else today
+    var sDayMs = sDate.atStartOfDay(zoneId).toInstant().toEpochMilli()
+    var eDayMs = eDate.atStartOfDay(zoneId).toInstant().toEpochMilli()
+    if (eDayMs < sDayMs) eDayMs = sDayMs
+    if (sDayMs < minDayMs) sDayMs = minDayMs
+    if (eDayMs > todayStartMs) eDayMs = todayStartMs
+    if (eDayMs < sDayMs) sDayMs = eDayMs
+    return sDayMs to eDayMs
+}
+
+fun buildUsageOpenParams(
+    preset: UsageRangePreset,
+    customStartMs: Long = 0L,
+    customEndMs: Long = 0L,
+    nowMs: Long = System.currentTimeMillis(),
+    zoneId: java.time.ZoneId = java.time.ZoneId.systemDefault(),
+): UsageOpenParams {
+    val effectivePreset =
+        if (preset == UsageRangePreset.USAGE_RANGE_PRESET_UNSPECIFIED) UsageRangePreset.USAGE_RANGE_PRESET_SEVEN_DAYS
+        else preset
+    val today = java.time.Instant.ofEpochMilli(nowMs).atZone(zoneId).toLocalDate()
+    var normCustomStart = 0L
+    var normCustomEnd = 0L
+    val startDay: java.time.LocalDate
+    val endExclDay: java.time.LocalDate
+    when (effectivePreset) {
+        UsageRangePreset.USAGE_RANGE_PRESET_TODAY -> {
+            startDay = today
+            endExclDay = today.plusDays(1)
+        }
+        UsageRangePreset.USAGE_RANGE_PRESET_THIRTY_DAYS -> {
+            startDay = today.minusDays(29)
+            endExclDay = today.plusDays(1)
+        }
+        UsageRangePreset.USAGE_RANGE_PRESET_CUSTOM -> {
+            val (clampedStart, clampedEnd) = clampUsageCustomRange(customStartMs, customEndMs, nowMs, zoneId)
+            normCustomStart = clampedStart
+            normCustomEnd = clampedEnd
+            startDay = java.time.Instant.ofEpochMilli(clampedStart).atZone(zoneId).toLocalDate()
+            val endIncDay = java.time.Instant.ofEpochMilli(clampedEnd).atZone(zoneId).toLocalDate()
+            endExclDay = endIncDay.plusDays(1)
+        }
+        else -> {
+            startDay = today.minusDays(6)
+            endExclDay = today.plusDays(1)
+        }
+    }
+    var numDays = 0L
+    var probe = startDay
+    while (probe.isBefore(endExclDay) && numDays <= USAGE_RETENTION_DAYS + 2L) {
+        numDays++
+        probe = probe.plusDays(1)
+    }
+    fun dayStartMs(d: java.time.LocalDate): Long = d.atStartOfDay(zoneId).toInstant().toEpochMilli()
+    val endExclMs = dayStartMs(endExclDay)
+    val bounds = ArrayList<Long>()
+    if (numDays <= 1L) {
+        var cur = dayStartMs(startDay)
+        while (cur < endExclMs) {
+            bounds.add(cur)
+            cur += 3_600_000L
+        }
+        bounds.add(endExclMs)
+    } else if (numDays <= 3L) {
+        var day = startDay
+        while (day.isBefore(endExclDay)) {
+            val dayMs = dayStartMs(day)
+            val nextDay = day.plusDays(1)
+            val nextMs = dayStartMs(nextDay)
+            val span = nextMs - dayMs
+            for (q in 0 until 4) {
+                bounds.add(dayMs + kotlin.math.round(span * q / 4.0).toLong())
+            }
+            day = nextDay
+        }
+        bounds.add(endExclMs)
+    } else {
+        var cur = startDay
+        while (cur.isBefore(endExclDay)) {
+            bounds.add(dayStartMs(cur))
+            cur = cur.plusDays(1)
+        }
+        bounds.add(endExclMs)
+    }
+    val prevStartMs = dayStartMs(startDay.minusDays(numDays))
+    return UsageOpenParams(
+        preset = effectivePreset,
+        customStartMs = normCustomStart,
+        customEndMs = normCustomEnd,
+        timezone = zoneId.id,
+        tzOffsetMinutes = localTzOffsetMinutes(nowMs, zoneId),
+        bucketBoundsMs = bounds,
+        prevStartMs = prevStartMs,
+    )
 }

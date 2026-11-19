@@ -187,4 +187,15 @@ public interface MachineStatusViewModelOrBuilder extends
    * @return The batteryText.
    */
   io.github.lewin671.remoteagent.core.proto.Text getBatteryText();
+
+  /**
+   * <code>.remoteagent.core.v1.MachineModelUsagePreview model_usage = 19 [json_name = "modelUsage"];</code>
+   * @return Whether the modelUsage field is set.
+   */
+  boolean hasModelUsage();
+  /**
+   * <code>.remoteagent.core.v1.MachineModelUsagePreview model_usage = 19 [json_name = "modelUsage"];</code>
+   * @return The modelUsage.
+   */
+  io.github.lewin671.remoteagent.core.proto.MachineModelUsagePreview getModelUsage();
 }

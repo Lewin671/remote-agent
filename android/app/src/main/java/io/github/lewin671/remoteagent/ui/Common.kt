@@ -169,6 +169,7 @@ data class Nav(
     val deviceStorage: (String) -> Unit = {},
     val cleanup: (String) -> Unit = {},
     val deviceConnection: (String) -> Unit = {},
+    val openUsage: (String, io.github.lewin671.remoteagent.proto.Agent, String) -> Unit = { _, _, _ -> },
 )
 
 val LocalNav = staticCompositionLocalOf<Nav> { error("no nav") }

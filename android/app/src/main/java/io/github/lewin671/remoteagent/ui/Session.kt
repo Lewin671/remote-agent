@@ -630,7 +630,15 @@ private fun SessionTopBar(
     if (rename) RenameDialog(sid, vm, onClose = { rename = false })
     when (sheet) {
         1 -> ModeSheet(sid, vm, onClose = { sheet = 0 })
-        2 -> ModelSheet(sid, vm, onClose = { sheet = 0 })
+        2 -> ModelSheet(
+            sid,
+            vm,
+            onClose = { sheet = 0 },
+            onOpenUsage = {
+                val ag = header.agent
+                nav.openUsage(header.machineId, ag, header.model)
+            },
+        )
         3 -> header.projectKey.takeIf { it.isNotEmpty() }?.let { key ->
             projectConfig(state, key)?.let { initial ->
                 val ag = header.agent.takeIf { it != Agent.AGENT_UNSPECIFIED } ?: DEFAULT_AGENT

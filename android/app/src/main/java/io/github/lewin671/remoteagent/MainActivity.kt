@@ -371,6 +371,16 @@ class MainActivity : ComponentActivity() {
                         it.arguments?.getString("id").orEmpty(),
                     )
                 }
+                page("usage/{id}?agent={agent}&model={model}") {
+                    val agentNum = it.arguments?.getString("agent")?.toIntOrNull() ?: 0
+                    val focusAgent = io.github.lewin671.remoteagent.proto.Agent.forNumber(agentNum)
+                        ?: io.github.lewin671.remoteagent.proto.Agent.AGENT_UNSPECIFIED
+                    io.github.lewin671.remoteagent.ui.UsageScreen(
+                        machineId = it.arguments?.getString("id").orEmpty(),
+                        focusAgent = focusAgent,
+                        focusModel = routeValue(it.arguments?.getString("model")),
+                    )
+                }
                 page("question/{sid}/{qid}") {
                     io.github.lewin671.remoteagent.ui.QuestionPage(
                         it.arguments?.getString("sid").orEmpty(),
@@ -469,6 +479,9 @@ class MainActivity : ComponentActivity() {
             sessionTerminal = { sid ->
                 OpenTerminal.requested[sid] = true
                 go("session/$sid", single = true)
+            },
+            openUsage = { machine, agent, model ->
+                go("usage/${routeArg(machine)}?agent=${agent.number}&model=${routeArg(model)}", single = true)
             },
         )
     }

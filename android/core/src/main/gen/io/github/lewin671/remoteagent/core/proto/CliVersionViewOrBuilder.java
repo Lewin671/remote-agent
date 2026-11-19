@@ -61,4 +61,22 @@ public interface CliVersionViewOrBuilder extends
    * @return The unverifiedLabel.
    */
   io.github.lewin671.remoteagent.core.proto.Text getUnverifiedLabel();
+
+  /**
+   * <code>bool enabled = 6 [json_name = "enabled"];</code>
+   * @return The enabled.
+   */
+  boolean getEnabled();
+
+  /**
+   * <code>bool locked_last_enabled = 7 [json_name = "lockedLastEnabled"];</code>
+   * @return The lockedLastEnabled.
+   */
+  boolean getLockedLastEnabled();
+
+  /**
+   * <code>bool saving = 8 [json_name = "saving"];</code>
+   * @return The saving.
+   */
+  boolean getSaving();
 }

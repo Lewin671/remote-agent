@@ -264,6 +264,17 @@ public interface EffectOrBuilder extends
   io.github.lewin671.remoteagent.core.proto.PrepareCleanupSessionEffect getPrepareCleanupSession();
 
   /**
+   * <code>.remoteagent.core.v1.UsageCacheWriteEffect usage_cache_write = 76 [json_name = "usageCacheWrite"];</code>
+   * @return Whether the usageCacheWrite field is set.
+   */
+  boolean hasUsageCacheWrite();
+  /**
+   * <code>.remoteagent.core.v1.UsageCacheWriteEffect usage_cache_write = 76 [json_name = "usageCacheWrite"];</code>
+   * @return The usageCacheWrite.
+   */
+  io.github.lewin671.remoteagent.core.proto.UsageCacheWriteEffect getUsageCacheWrite();
+
+  /**
    * <code>.remoteagent.core.v1.SessionRestoreComposerEffect session_restore_composer = 40 [json_name = "sessionRestoreComposer"];</code>
    * @return Whether the sessionRestoreComposer field is set.
    */

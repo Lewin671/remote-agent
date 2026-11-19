@@ -42,6 +42,7 @@ public  final class Effect extends
     CHECK_UPDATES(73),
     PERSIST_CLIENT_PREFS(74),
     PREPARE_CLEANUP_SESSION(75),
+    USAGE_CACHE_WRITE(76),
     SESSION_RESTORE_COMPOSER(40),
     SCHEDULE_READ_CACHE(60),
     SCHEDULE_DELETE_CACHE(61),
@@ -87,6 +88,7 @@ public  final class Effect extends
         case 73: return CHECK_UPDATES;
         case 74: return PERSIST_CLIENT_PREFS;
         case 75: return PREPARE_CLEANUP_SESSION;
+        case 76: return USAGE_CACHE_WRITE;
         case 40: return SESSION_RESTORE_COMPOSER;
         case 60: return SCHEDULE_READ_CACHE;
         case 61: return SCHEDULE_DELETE_CACHE;
@@ -1306,6 +1308,58 @@ public  final class Effect extends
    */
   private void clearPrepareCleanupSession() {
     if (effectCase_ == 75) {
+      effectCase_ = 0;
+      effect_ = null;
+    }
+  }
+
+  public static final int USAGE_CACHE_WRITE_FIELD_NUMBER = 76;
+  /**
+   * <code>.remoteagent.core.v1.UsageCacheWriteEffect usage_cache_write = 76 [json_name = "usageCacheWrite"];</code>
+   */
+  @java.lang.Override
+  public boolean hasUsageCacheWrite() {
+    return effectCase_ == 76;
+  }
+  /**
+   * <code>.remoteagent.core.v1.UsageCacheWriteEffect usage_cache_write = 76 [json_name = "usageCacheWrite"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.UsageCacheWriteEffect getUsageCacheWrite() {
+    if (effectCase_ == 76) {
+       return (io.github.lewin671.remoteagent.core.proto.UsageCacheWriteEffect) effect_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.UsageCacheWriteEffect.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.UsageCacheWriteEffect usage_cache_write = 76 [json_name = "usageCacheWrite"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setUsageCacheWrite(io.github.lewin671.remoteagent.core.proto.UsageCacheWriteEffect value) {
+    value.getClass();  // minimal bytecode null check
+    effect_ = value;
+    effectCase_ = 76;
+  }
+  /**
+   * <code>.remoteagent.core.v1.UsageCacheWriteEffect usage_cache_write = 76 [json_name = "usageCacheWrite"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeUsageCacheWrite(io.github.lewin671.remoteagent.core.proto.UsageCacheWriteEffect value) {
+    value.getClass();  // minimal bytecode null check
+    if (effectCase_ == 76 &&
+        effect_ != io.github.lewin671.remoteagent.core.proto.UsageCacheWriteEffect.getDefaultInstance()) {
+      effect_ = io.github.lewin671.remoteagent.core.proto.UsageCacheWriteEffect.newBuilder((io.github.lewin671.remoteagent.core.proto.UsageCacheWriteEffect) effect_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      effect_ = value;
+    }
+    effectCase_ = 76;
+  }
+  /**
+   * <code>.remoteagent.core.v1.UsageCacheWriteEffect usage_cache_write = 76 [json_name = "usageCacheWrite"];</code>
+   */
+  private void clearUsageCacheWrite() {
+    if (effectCase_ == 76) {
       effectCase_ = 0;
       effect_ = null;
     }
@@ -2889,6 +2943,54 @@ public  final class Effect extends
     }
 
     /**
+     * <code>.remoteagent.core.v1.UsageCacheWriteEffect usage_cache_write = 76 [json_name = "usageCacheWrite"];</code>
+     */
+    @java.lang.Override
+    public boolean hasUsageCacheWrite() {
+      return instance.hasUsageCacheWrite();
+    }
+    /**
+     * <code>.remoteagent.core.v1.UsageCacheWriteEffect usage_cache_write = 76 [json_name = "usageCacheWrite"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.UsageCacheWriteEffect getUsageCacheWrite() {
+      return instance.getUsageCacheWrite();
+    }
+    /**
+     * <code>.remoteagent.core.v1.UsageCacheWriteEffect usage_cache_write = 76 [json_name = "usageCacheWrite"];</code>
+     */
+    public Builder setUsageCacheWrite(io.github.lewin671.remoteagent.core.proto.UsageCacheWriteEffect value) {
+      copyOnWrite();
+      instance.setUsageCacheWrite(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.UsageCacheWriteEffect usage_cache_write = 76 [json_name = "usageCacheWrite"];</code>
+     */
+    public Builder setUsageCacheWrite(
+        io.github.lewin671.remoteagent.core.proto.UsageCacheWriteEffect.Builder builderForValue) {
+      copyOnWrite();
+      instance.setUsageCacheWrite(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.UsageCacheWriteEffect usage_cache_write = 76 [json_name = "usageCacheWrite"];</code>
+     */
+    public Builder mergeUsageCacheWrite(io.github.lewin671.remoteagent.core.proto.UsageCacheWriteEffect value) {
+      copyOnWrite();
+      instance.mergeUsageCacheWrite(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.UsageCacheWriteEffect usage_cache_write = 76 [json_name = "usageCacheWrite"];</code>
+     */
+    public Builder clearUsageCacheWrite() {
+      copyOnWrite();
+      instance.clearUsageCacheWrite();
+      return this;
+    }
+
+    /**
      * <code>.remoteagent.core.v1.SessionRestoreComposerEffect session_restore_composer = 40 [json_name = "sessionRestoreComposer"];</code>
      */
     @java.lang.Override
@@ -3272,13 +3374,14 @@ public  final class Effect extends
             io.github.lewin671.remoteagent.core.proto.CheckUpdatesEffect.class,
             io.github.lewin671.remoteagent.core.proto.PersistClientPrefsEffect.class,
             io.github.lewin671.remoteagent.core.proto.PrepareCleanupSessionEffect.class,
+            io.github.lewin671.remoteagent.core.proto.UsageCacheWriteEffect.class,
           };
           java.lang.String info =
-              "\u0000\u001e\u0001\u0000\u0001K\u001e\u0000\u0000\u0000\u0001<\u0000\u0002<\u0000" +
+              "\u0000\u001f\u0001\u0000\u0001L\u001f\u0000\u0000\u0000\u0001<\u0000\u0002<\u0000" +
               "\u0003<\u0000\u0004<\u0000\u0005<\u0000\u0006<\u0000\u0007<\u0000\b<\u0000\t<\u0000" +
               "\n<\u0000\u000b<\u0000\f<\u0000\r<\u0000\u000e<\u0000\u000f<\u0000\u0010<\u0000\u0011" +
               "<\u0000(<\u0000<<\u0000=<\u0000><\u0000?<\u0000@<\u0000A<\u0000F<\u0000G<\u0000H" +
-              "<\u0000I<\u0000J<\u0000K<\u0000";
+              "<\u0000I<\u0000J<\u0000K<\u0000L<\u0000";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

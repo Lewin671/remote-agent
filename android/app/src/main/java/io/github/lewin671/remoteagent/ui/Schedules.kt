@@ -367,6 +367,7 @@ fun ScheduleDetailScreen(machine: String, id: String) {
             remote.coreHost.sendEvent { setScheduleMarkUnread(ScheduleTaskBoolAction.newBuilder().setMachineId(machine).setTaskId(id).setValue(true)) }
             nav.schedules()
         },
+        onOpenMachineSettings = nav.device,
     )
 }
 
@@ -381,6 +382,7 @@ internal fun ScheduleDetailScreenContent(
     onOpenTargetSession: (String) -> Unit = {},
     onOpenEdit: (ScheduleFormMode) -> Unit = {},
     onMarkUnreadAndBackToInbox: () -> Unit = {},
+    onOpenMachineSettings: (String) -> Unit = {},
 ) {
     val copy = uiText()
     var menu by remember { mutableStateOf(false) }
@@ -427,7 +429,14 @@ internal fun ScheduleDetailScreenContent(
                 { onEvent { setScheduleAbandonMutation(ScheduleMutationRef.newBuilder().setMachineId(vm.machineId).setTaskId(vm.taskId)) } },
             )
             if (vm.attention.show) {
-                ScheduleAttentionBanner(uiText(vm.attention.message))
+                val disabledBanner =
+                    vm.attention.message.key == "schedule.agent_disabled_pre_run" ||
+                        vm.attention.message.key == "schedule.agent_disabled_stopped"
+                ScheduleAttentionBanner(
+                    uiText(vm.attention.message),
+                    action = if (disabledBanner && vm.machineId.isNotEmpty()) copy(UiMessages.scheduleEnableCli()) else null,
+                    onAction = if (disabledBanner && vm.machineId.isNotEmpty()) ({ onOpenMachineSettings(vm.machineId) }) else null,
+                )
                 if (vm.attention.showPrimaryAction) {
                     PillButton(uiText(vm.attention.primaryActionLabel), { operate(ScheduleOperationKind.SCHEDULE_OPERATION_KIND_RECOVER) },
                         Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), ButtonKind.INK, vm.attention.primaryActionEnabled)
@@ -590,8 +599,19 @@ internal fun ScheduleLatestResult(card: ScheduleResultCardView, open: () -> Unit
 }
 
 @Composable
-internal fun ScheduleAttentionBanner(text: String, modifier: Modifier = Modifier) {
-    Notice(text, Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp).then(modifier), tone = NoticeTone.WARN)
+internal fun ScheduleAttentionBanner(
+    text: String,
+    modifier: Modifier = Modifier,
+    action: String? = null,
+    onAction: (() -> Unit)? = null,
+) {
+    Notice(
+        text,
+        Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp).then(modifier),
+        tone = NoticeTone.WARN,
+        action = action,
+        onAction = onAction,
+    )
 }
 
 @Composable

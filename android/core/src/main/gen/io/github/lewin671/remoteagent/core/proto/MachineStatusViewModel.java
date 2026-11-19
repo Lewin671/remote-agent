@@ -811,6 +811,54 @@ public  final class MachineStatusViewModel extends
     bitField0_ = (bitField0_ & ~0x00000080);
   }
 
+  public static final int MODEL_USAGE_FIELD_NUMBER = 19;
+  private io.github.lewin671.remoteagent.core.proto.MachineModelUsagePreview modelUsage_;
+  /**
+   * <code>.remoteagent.core.v1.MachineModelUsagePreview model_usage = 19 [json_name = "modelUsage"];</code>
+   */
+  @java.lang.Override
+  public boolean hasModelUsage() {
+    return ((bitField0_ & 0x00000100) != 0);
+  }
+  /**
+   * <code>.remoteagent.core.v1.MachineModelUsagePreview model_usage = 19 [json_name = "modelUsage"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.MachineModelUsagePreview getModelUsage() {
+    return modelUsage_ == null ? io.github.lewin671.remoteagent.core.proto.MachineModelUsagePreview.getDefaultInstance() : modelUsage_;
+  }
+  /**
+   * <code>.remoteagent.core.v1.MachineModelUsagePreview model_usage = 19 [json_name = "modelUsage"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setModelUsage(io.github.lewin671.remoteagent.core.proto.MachineModelUsagePreview value) {
+    value.getClass();  // minimal bytecode null check
+    modelUsage_ = value;
+    bitField0_ |= 0x00000100;
+  }
+  /**
+   * <code>.remoteagent.core.v1.MachineModelUsagePreview model_usage = 19 [json_name = "modelUsage"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeModelUsage(io.github.lewin671.remoteagent.core.proto.MachineModelUsagePreview value) {
+    value.getClass();  // minimal bytecode null check
+    if (modelUsage_ != null &&
+        modelUsage_ != io.github.lewin671.remoteagent.core.proto.MachineModelUsagePreview.getDefaultInstance()) {
+      modelUsage_ =
+        io.github.lewin671.remoteagent.core.proto.MachineModelUsagePreview.newBuilder(modelUsage_).mergeFrom(value).buildPartial();
+    } else {
+      modelUsage_ = value;
+    }
+    bitField0_ |= 0x00000100;
+  }
+  /**
+   * <code>.remoteagent.core.v1.MachineModelUsagePreview model_usage = 19 [json_name = "modelUsage"];</code>
+   */
+  private void clearModelUsage() {
+    modelUsage_ = null;
+    bitField0_ = (bitField0_ & ~0x00000100);
+  }
+
   public static io.github.lewin671.remoteagent.core.proto.MachineStatusViewModel parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -1716,6 +1764,53 @@ public  final class MachineStatusViewModel extends
       return this;
     }
 
+    /**
+     * <code>.remoteagent.core.v1.MachineModelUsagePreview model_usage = 19 [json_name = "modelUsage"];</code>
+     */
+    @java.lang.Override
+    public boolean hasModelUsage() {
+      return instance.hasModelUsage();
+    }
+    /**
+     * <code>.remoteagent.core.v1.MachineModelUsagePreview model_usage = 19 [json_name = "modelUsage"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.MachineModelUsagePreview getModelUsage() {
+      return instance.getModelUsage();
+    }
+    /**
+     * <code>.remoteagent.core.v1.MachineModelUsagePreview model_usage = 19 [json_name = "modelUsage"];</code>
+     */
+    public Builder setModelUsage(io.github.lewin671.remoteagent.core.proto.MachineModelUsagePreview value) {
+      copyOnWrite();
+      instance.setModelUsage(value);
+      return this;
+      }
+    /**
+     * <code>.remoteagent.core.v1.MachineModelUsagePreview model_usage = 19 [json_name = "modelUsage"];</code>
+     */
+    public Builder setModelUsage(
+        io.github.lewin671.remoteagent.core.proto.MachineModelUsagePreview.Builder builderForValue) {
+      copyOnWrite();
+      instance.setModelUsage(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.MachineModelUsagePreview model_usage = 19 [json_name = "modelUsage"];</code>
+     */
+    public Builder mergeModelUsage(io.github.lewin671.remoteagent.core.proto.MachineModelUsagePreview value) {
+      copyOnWrite();
+      instance.mergeModelUsage(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.MachineModelUsagePreview model_usage = 19 [json_name = "modelUsage"];</code>
+     */
+    public Builder clearModelUsage() {  copyOnWrite();
+      instance.clearModelUsage();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.MachineStatusViewModel)
   }
   @java.lang.Override
@@ -1752,12 +1847,13 @@ public  final class MachineStatusViewModel extends
             "topUsage_",
             "uptimeText_",
             "batteryText_",
+            "modelUsage_",
           };
           java.lang.String info =
-              "\u0000\u0012\u0000\u0001\u0001\u0012\u0012\u0000\u0001\u0000\u0001\u0208\u0002\u0208" +
+              "\u0000\u0013\u0000\u0001\u0001\u0013\u0013\u0000\u0001\u0000\u0001\u0208\u0002\u0208" +
               "\u0003\u0007\u0004\u0007\u0005\u0007\u0006\f\u0007\u0007\b\f\t\u1009\u0000\n\u0007" +
               "\u000b\u1009\u0001\f\u001b\r\u1009\u0002\u000e\u1009\u0003\u000f\u1009\u0004\u0010" +
-              "\u1009\u0005\u0011\u1009\u0006\u0012\u1009\u0007";
+              "\u1009\u0005\u0011\u1009\u0006\u0012\u1009\u0007\u0013\u1009\b";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

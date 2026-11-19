@@ -26,6 +26,7 @@ public  final class MachineMeta extends
     agents_ = emptyProtobufList();
     quotas_ = emptyProtobufList();
     projects_ = emptyProtobufList();
+    disabledAgents_ = emptyIntList();
   }
   private int bitField0_;
   public static final int HOSTNAME_FIELD_NUMBER = 1;
@@ -1004,6 +1005,225 @@ public  final class MachineMeta extends
   private void clearDiskStatus() {
     diskStatus_ = null;
     bitField0_ = (bitField0_ & ~0x00000002);
+  }
+
+  public static final int DISABLED_AGENTS_FIELD_NUMBER = 16;
+  private com.google.protobuf.Internal.IntList disabledAgents_;
+  private static final com.google.protobuf.Internal.IntListAdapter.IntConverter<
+      io.github.lewin671.remoteagent.proto.Agent> disabledAgents_converter_ =
+          new com.google.protobuf.Internal.IntListAdapter.IntConverter<
+              io.github.lewin671.remoteagent.proto.Agent>() {
+            @java.lang.Override
+            public io.github.lewin671.remoteagent.proto.Agent convert(int from) {
+              io.github.lewin671.remoteagent.proto.Agent result = io.github.lewin671.remoteagent.proto.Agent.forNumber(from);
+              return result == null ? io.github.lewin671.remoteagent.proto.Agent.UNRECOGNIZED : result;
+            }
+          };
+  /**
+   * <pre>
+   * Installed CLIs toggled off on this machine (agents &#92; disabled_agents remain active).
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.Agent disabled_agents = 16 [json_name = "disabledAgents"];</code>
+   * @return A list containing the disabledAgents.
+   */
+  @java.lang.Override
+  public java.util.List<io.github.lewin671.remoteagent.proto.Agent> getDisabledAgentsList() {
+    return new com.google.protobuf.Internal.IntListAdapter<
+        io.github.lewin671.remoteagent.proto.Agent>(disabledAgents_, disabledAgents_converter_);
+  }
+  /**
+   * <pre>
+   * Installed CLIs toggled off on this machine (agents &#92; disabled_agents remain active).
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.Agent disabled_agents = 16 [json_name = "disabledAgents"];</code>
+   * @return The count of disabledAgents.
+   */
+  @java.lang.Override
+  public int getDisabledAgentsCount() {
+    return disabledAgents_.size();
+  }
+  /**
+   * <pre>
+   * Installed CLIs toggled off on this machine (agents &#92; disabled_agents remain active).
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.Agent disabled_agents = 16 [json_name = "disabledAgents"];</code>
+   * @param index The index of the element to return.
+   * @return The disabledAgents at the given index.
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.proto.Agent getDisabledAgents(int index) {
+    io.github.lewin671.remoteagent.proto.Agent result = io.github.lewin671.remoteagent.proto.Agent.forNumber(disabledAgents_.getInt(index));
+    return result == null ? io.github.lewin671.remoteagent.proto.Agent.UNRECOGNIZED : result;
+  }
+  /**
+   * <pre>
+   * Installed CLIs toggled off on this machine (agents &#92; disabled_agents remain active).
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.Agent disabled_agents = 16 [json_name = "disabledAgents"];</code>
+   * @return A list containing the enum numeric values on the wire for disabledAgents.
+   */
+  @java.lang.Override
+  public java.util.List<java.lang.Integer>
+  getDisabledAgentsValueList() {
+    return disabledAgents_;
+  }
+  /**
+   * <pre>
+   * Installed CLIs toggled off on this machine (agents &#92; disabled_agents remain active).
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.Agent disabled_agents = 16 [json_name = "disabledAgents"];</code>
+   * @param index The index of the value to return.
+   * @return The enum numeric value on the wire of disabledAgents at the given index.
+   */
+  @java.lang.Override
+  public int getDisabledAgentsValue(int index) {
+    return disabledAgents_.getInt(index);
+  }
+  private int disabledAgentsMemoizedSerializedSize;
+  private void ensureDisabledAgentsIsMutable() {
+    com.google.protobuf.Internal.IntList tmp = disabledAgents_;
+    if (!tmp.isModifiable()) {
+      disabledAgents_ =
+          com.google.protobuf.GeneratedMessageLite.mutableCopy(tmp);
+    }
+  }
+  /**
+   * <pre>
+   * Installed CLIs toggled off on this machine (agents &#92; disabled_agents remain active).
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.Agent disabled_agents = 16 [json_name = "disabledAgents"];</code>
+   * @param index The index to set the value at.
+   * @param value The disabledAgents to set.
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setDisabledAgents(
+      int index, io.github.lewin671.remoteagent.proto.Agent value) {
+    value.getClass();  // minimal bytecode null check
+    ensureDisabledAgentsIsMutable();
+    disabledAgents_.setInt(index, value.getNumber());
+  }
+  /**
+   * <pre>
+   * Installed CLIs toggled off on this machine (agents &#92; disabled_agents remain active).
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.Agent disabled_agents = 16 [json_name = "disabledAgents"];</code>
+   * @param value The disabledAgents to add.
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void addDisabledAgents(io.github.lewin671.remoteagent.proto.Agent value) {
+    value.getClass();  // minimal bytecode null check
+    ensureDisabledAgentsIsMutable();
+    disabledAgents_.addInt(value.getNumber());
+  }
+  /**
+   * <pre>
+   * Installed CLIs toggled off on this machine (agents &#92; disabled_agents remain active).
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.Agent disabled_agents = 16 [json_name = "disabledAgents"];</code>
+   * @param values The disabledAgents to add.
+   */
+  private void addAllDisabledAgents(
+      java.lang.Iterable<? extends io.github.lewin671.remoteagent.proto.Agent> values) {
+    ensureDisabledAgentsIsMutable();
+    for (io.github.lewin671.remoteagent.proto.Agent value : values) {
+      disabledAgents_.addInt(value.getNumber());
+    }
+  }
+  /**
+   * <pre>
+   * Installed CLIs toggled off on this machine (agents &#92; disabled_agents remain active).
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.Agent disabled_agents = 16 [json_name = "disabledAgents"];</code>
+   */
+  private void clearDisabledAgents() {
+    disabledAgents_ = emptyIntList();
+  }
+  /**
+   * <pre>
+   * Installed CLIs toggled off on this machine (agents &#92; disabled_agents remain active).
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.Agent disabled_agents = 16 [json_name = "disabledAgents"];</code>
+   * @param value The enum numeric value on the wire for disabledAgents to set.
+   */
+  private void setDisabledAgentsValue(
+      int index, int value) {
+    ensureDisabledAgentsIsMutable();
+    disabledAgents_.setInt(index, value);
+  }
+  /**
+   * <pre>
+   * Installed CLIs toggled off on this machine (agents &#92; disabled_agents remain active).
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.Agent disabled_agents = 16 [json_name = "disabledAgents"];</code>
+   * @param value The enum numeric value on the wire for disabledAgents to add.
+   */
+  private void addDisabledAgentsValue(int value) {
+    ensureDisabledAgentsIsMutable();
+    disabledAgents_.addInt(value);
+  }
+  /**
+   * <pre>
+   * Installed CLIs toggled off on this machine (agents &#92; disabled_agents remain active).
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.Agent disabled_agents = 16 [json_name = "disabledAgents"];</code>
+   * @param values The enum numeric values on the wire for disabledAgents to add.
+   */
+  private void addAllDisabledAgentsValue(
+      java.lang.Iterable<java.lang.Integer> values) {
+    ensureDisabledAgentsIsMutable();
+    for (int value : values) {
+      disabledAgents_.addInt(value);
+    }
+  }
+
+  public static final int SETTINGS_REVISION_FIELD_NUMBER = 17;
+  private long settingsRevision_;
+  /**
+   * <pre>
+   * Monotonic settings revision from DaemonSettings.revision.
+   * </pre>
+   *
+   * <code>uint64 settings_revision = 17 [json_name = "settingsRevision"];</code>
+   * @return The settingsRevision.
+   */
+  @java.lang.Override
+  public long getSettingsRevision() {
+    return settingsRevision_;
+  }
+  /**
+   * <pre>
+   * Monotonic settings revision from DaemonSettings.revision.
+   * </pre>
+   *
+   * <code>uint64 settings_revision = 17 [json_name = "settingsRevision"];</code>
+   * @param value The settingsRevision to set.
+   */
+  private void setSettingsRevision(long value) {
+    
+    settingsRevision_ = value;
+  }
+  /**
+   * <pre>
+   * Monotonic settings revision from DaemonSettings.revision.
+   * </pre>
+   *
+   * <code>uint64 settings_revision = 17 [json_name = "settingsRevision"];</code>
+   */
+  private void clearSettingsRevision() {
+
+    settingsRevision_ = 0L;
   }
 
   public static io.github.lewin671.remoteagent.proto.MachineMeta parseFrom(
@@ -2135,6 +2355,213 @@ public  final class MachineMeta extends
       return this;
     }
 
+    /**
+     * <pre>
+     * Installed CLIs toggled off on this machine (agents &#92; disabled_agents remain active).
+     * </pre>
+     *
+     * <code>repeated .remoteagent.v1.Agent disabled_agents = 16 [json_name = "disabledAgents"];</code>
+     * @return A list containing the disabledAgents.
+     */
+    @java.lang.Override
+    public java.util.List<io.github.lewin671.remoteagent.proto.Agent> getDisabledAgentsList() {
+      return instance.getDisabledAgentsList();
+    }
+    /**
+     * <pre>
+     * Installed CLIs toggled off on this machine (agents &#92; disabled_agents remain active).
+     * </pre>
+     *
+     * <code>repeated .remoteagent.v1.Agent disabled_agents = 16 [json_name = "disabledAgents"];</code>
+     * @return The count of disabledAgents.
+     */
+    @java.lang.Override
+    public int getDisabledAgentsCount() {
+      return instance.getDisabledAgentsCount();
+    }
+    /**
+     * <pre>
+     * Installed CLIs toggled off on this machine (agents &#92; disabled_agents remain active).
+     * </pre>
+     *
+     * <code>repeated .remoteagent.v1.Agent disabled_agents = 16 [json_name = "disabledAgents"];</code>
+     * @param index The index of the element to return.
+     * @return The disabledAgents at the given index.
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.proto.Agent getDisabledAgents(int index) {
+      return instance.getDisabledAgents(index);
+    }
+    /**
+     * <pre>
+     * Installed CLIs toggled off on this machine (agents &#92; disabled_agents remain active).
+     * </pre>
+     *
+     * <code>repeated .remoteagent.v1.Agent disabled_agents = 16 [json_name = "disabledAgents"];</code>
+     * @param index The index to set the value at.
+     * @param value The disabledAgents to set.
+     * @return This builder for chaining.
+     */
+    public Builder setDisabledAgents(
+        int index, io.github.lewin671.remoteagent.proto.Agent value) {
+      copyOnWrite();
+      instance.setDisabledAgents(index, value);
+      return this;
+    }
+    /**
+     * <pre>
+     * Installed CLIs toggled off on this machine (agents &#92; disabled_agents remain active).
+     * </pre>
+     *
+     * <code>repeated .remoteagent.v1.Agent disabled_agents = 16 [json_name = "disabledAgents"];</code>
+     * @param value The disabledAgents to add.
+     * @return This builder for chaining.
+     */
+    public Builder addDisabledAgents(io.github.lewin671.remoteagent.proto.Agent value) {
+      copyOnWrite();
+      instance.addDisabledAgents(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * Installed CLIs toggled off on this machine (agents &#92; disabled_agents remain active).
+     * </pre>
+     *
+     * <code>repeated .remoteagent.v1.Agent disabled_agents = 16 [json_name = "disabledAgents"];</code>
+     * @param values The disabledAgents to add.
+     * @return This builder for chaining.
+     */
+    public Builder addAllDisabledAgents(
+        java.lang.Iterable<? extends io.github.lewin671.remoteagent.proto.Agent> values) {
+      copyOnWrite();
+      instance.addAllDisabledAgents(values);  return this;
+    }
+    /**
+     * <pre>
+     * Installed CLIs toggled off on this machine (agents &#92; disabled_agents remain active).
+     * </pre>
+     *
+     * <code>repeated .remoteagent.v1.Agent disabled_agents = 16 [json_name = "disabledAgents"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearDisabledAgents() {
+      copyOnWrite();
+      instance.clearDisabledAgents();
+      return this;
+    }
+    /**
+     * <pre>
+     * Installed CLIs toggled off on this machine (agents &#92; disabled_agents remain active).
+     * </pre>
+     *
+     * <code>repeated .remoteagent.v1.Agent disabled_agents = 16 [json_name = "disabledAgents"];</code>
+     * @return A list containing the enum numeric values on the wire for disabledAgents.
+     */
+    @java.lang.Override
+    public java.util.List<java.lang.Integer>
+    getDisabledAgentsValueList() {
+      return java.util.Collections.unmodifiableList(
+          instance.getDisabledAgentsValueList());
+    }
+    /**
+     * <pre>
+     * Installed CLIs toggled off on this machine (agents &#92; disabled_agents remain active).
+     * </pre>
+     *
+     * <code>repeated .remoteagent.v1.Agent disabled_agents = 16 [json_name = "disabledAgents"];</code>
+     * @param index The index of the value to return.
+     * @return The enum numeric value on the wire of disabledAgents at the given index.
+     */
+    @java.lang.Override
+    public int getDisabledAgentsValue(int index) {
+      return instance.getDisabledAgentsValue(index);
+    }
+    /**
+     * <pre>
+     * Installed CLIs toggled off on this machine (agents &#92; disabled_agents remain active).
+     * </pre>
+     *
+     * <code>repeated .remoteagent.v1.Agent disabled_agents = 16 [json_name = "disabledAgents"];</code>
+     * @param index The index to set the value at.
+     * @param value The enum numeric value on the wire for disabledAgents to set.
+     * @return This builder for chaining.
+     */
+    public Builder setDisabledAgentsValue(
+        int index, int value) {
+      copyOnWrite();
+      instance.setDisabledAgentsValue(index, value);
+      return this;
+    }
+    /**
+     * <pre>
+     * Installed CLIs toggled off on this machine (agents &#92; disabled_agents remain active).
+     * </pre>
+     *
+     * <code>repeated .remoteagent.v1.Agent disabled_agents = 16 [json_name = "disabledAgents"];</code>
+     * @param value The enum numeric value on the wire for disabledAgents to add.
+     * @return This builder for chaining.
+     */
+    public Builder addDisabledAgentsValue(int value) {
+      copyOnWrite();
+      instance.addDisabledAgentsValue(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * Installed CLIs toggled off on this machine (agents &#92; disabled_agents remain active).
+     * </pre>
+     *
+     * <code>repeated .remoteagent.v1.Agent disabled_agents = 16 [json_name = "disabledAgents"];</code>
+     * @param values The enum numeric values on the wire for disabledAgents to add.
+     * @return This builder for chaining.
+     */
+    public Builder addAllDisabledAgentsValue(
+        java.lang.Iterable<java.lang.Integer> values) {
+      copyOnWrite();
+      instance.addAllDisabledAgentsValue(values);
+      return this;
+    }
+
+    /**
+     * <pre>
+     * Monotonic settings revision from DaemonSettings.revision.
+     * </pre>
+     *
+     * <code>uint64 settings_revision = 17 [json_name = "settingsRevision"];</code>
+     * @return The settingsRevision.
+     */
+    @java.lang.Override
+    public long getSettingsRevision() {
+      return instance.getSettingsRevision();
+    }
+    /**
+     * <pre>
+     * Monotonic settings revision from DaemonSettings.revision.
+     * </pre>
+     *
+     * <code>uint64 settings_revision = 17 [json_name = "settingsRevision"];</code>
+     * @param value The settingsRevision to set.
+     * @return This builder for chaining.
+     */
+    public Builder setSettingsRevision(long value) {
+      copyOnWrite();
+      instance.setSettingsRevision(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * Monotonic settings revision from DaemonSettings.revision.
+     * </pre>
+     *
+     * <code>uint64 settings_revision = 17 [json_name = "settingsRevision"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearSettingsRevision() {
+      copyOnWrite();
+      instance.clearSettingsRevision();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.v1.MachineMeta)
   }
   @java.lang.Override
@@ -2167,11 +2594,13 @@ public  final class MachineMeta extends
             io.github.lewin671.remoteagent.proto.ProjectSummary.class,
             "scheduleRevision_",
             "diskStatus_",
+            "disabledAgents_",
+            "settingsRevision_",
           };
           java.lang.String info =
-              "\u0000\f\u0000\u0001\u0001\u000f\f\u0000\u0003\u0000\u0001\u0208\u0002\u0208\u0006" +
-              "\u0208\u0007\u0208\b\u0007\t\u001b\n\u1009\u0000\u000b\u001b\f\u000b\r\u001b\u000e" +
-              "\u0003\u000f\u1009\u0001";
+              "\u0000\u000e\u0000\u0001\u0001\u0011\u000e\u0000\u0004\u0000\u0001\u0208\u0002\u0208" +
+              "\u0006\u0208\u0007\u0208\b\u0007\t\u001b\n\u1009\u0000\u000b\u001b\f\u000b\r\u001b" +
+              "\u000e\u0003\u000f\u1009\u0001\u0010,\u0011\u0003";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

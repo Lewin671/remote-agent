@@ -103,6 +103,114 @@ public  final class UpdateSettingsRequest extends
     cleanImages_ = false;
   }
 
+  public static final int TOGGLE_AGENT_FIELD_NUMBER = 3;
+  private int toggleAgent_;
+  /**
+   * <pre>
+   * Atomic CLI enable/disable delta applied onto the latest persisted settings under lock.
+   * </pre>
+   *
+   * <code>optional .remoteagent.v1.Agent toggle_agent = 3 [json_name = "toggleAgent"];</code>
+   * @return Whether the toggleAgent field is set.
+   */
+  @java.lang.Override
+  public boolean hasToggleAgent() {
+    return ((bitField0_ & 0x00000002) != 0);
+  }
+  /**
+   * <pre>
+   * Atomic CLI enable/disable delta applied onto the latest persisted settings under lock.
+   * </pre>
+   *
+   * <code>optional .remoteagent.v1.Agent toggle_agent = 3 [json_name = "toggleAgent"];</code>
+   * @return The enum numeric value on the wire for toggleAgent.
+   */
+  @java.lang.Override
+  public int getToggleAgentValue() {
+    return toggleAgent_;
+  }
+  /**
+   * <pre>
+   * Atomic CLI enable/disable delta applied onto the latest persisted settings under lock.
+   * </pre>
+   *
+   * <code>optional .remoteagent.v1.Agent toggle_agent = 3 [json_name = "toggleAgent"];</code>
+   * @return The toggleAgent.
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.proto.Agent getToggleAgent() {
+    io.github.lewin671.remoteagent.proto.Agent result = io.github.lewin671.remoteagent.proto.Agent.forNumber(toggleAgent_);
+    return result == null ? io.github.lewin671.remoteagent.proto.Agent.UNRECOGNIZED : result;
+  }
+  /**
+   * <pre>
+   * Atomic CLI enable/disable delta applied onto the latest persisted settings under lock.
+   * </pre>
+   *
+   * <code>optional .remoteagent.v1.Agent toggle_agent = 3 [json_name = "toggleAgent"];</code>
+   * @param value The enum numeric value on the wire for toggleAgent to set.
+   */
+  private void setToggleAgentValue(int value) {
+    bitField0_ |= 0x00000002;  toggleAgent_ = value;
+  }
+  /**
+   * <pre>
+   * Atomic CLI enable/disable delta applied onto the latest persisted settings under lock.
+   * </pre>
+   *
+   * <code>optional .remoteagent.v1.Agent toggle_agent = 3 [json_name = "toggleAgent"];</code>
+   * @param value The toggleAgent to set.
+   */
+  private void setToggleAgent(io.github.lewin671.remoteagent.proto.Agent value) {
+    toggleAgent_ = value.getNumber();
+    bitField0_ |= 0x00000002;
+  }
+  /**
+   * <pre>
+   * Atomic CLI enable/disable delta applied onto the latest persisted settings under lock.
+   * </pre>
+   *
+   * <code>optional .remoteagent.v1.Agent toggle_agent = 3 [json_name = "toggleAgent"];</code>
+   */
+  private void clearToggleAgent() {
+    bitField0_ = (bitField0_ & ~0x00000002);
+    toggleAgent_ = 0;
+  }
+
+  public static final int TOGGLE_ENABLED_FIELD_NUMBER = 4;
+  private boolean toggleEnabled_;
+  /**
+   * <code>optional bool toggle_enabled = 4 [json_name = "toggleEnabled"];</code>
+   * @return Whether the toggleEnabled field is set.
+   */
+  @java.lang.Override
+  public boolean hasToggleEnabled() {
+    return ((bitField0_ & 0x00000004) != 0);
+  }
+  /**
+   * <code>optional bool toggle_enabled = 4 [json_name = "toggleEnabled"];</code>
+   * @return The toggleEnabled.
+   */
+  @java.lang.Override
+  public boolean getToggleEnabled() {
+    return toggleEnabled_;
+  }
+  /**
+   * <code>optional bool toggle_enabled = 4 [json_name = "toggleEnabled"];</code>
+   * @param value The toggleEnabled to set.
+   */
+  private void setToggleEnabled(boolean value) {
+    bitField0_ |= 0x00000004;
+    toggleEnabled_ = value;
+  }
+  /**
+   * <code>optional bool toggle_enabled = 4 [json_name = "toggleEnabled"];</code>
+   */
+  private void clearToggleEnabled() {
+    bitField0_ = (bitField0_ & ~0x00000004);
+    toggleEnabled_ = false;
+  }
+
   public static io.github.lewin671.remoteagent.proto.UpdateSettingsRequest parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -287,6 +395,120 @@ public  final class UpdateSettingsRequest extends
       return this;
     }
 
+    /**
+     * <pre>
+     * Atomic CLI enable/disable delta applied onto the latest persisted settings under lock.
+     * </pre>
+     *
+     * <code>optional .remoteagent.v1.Agent toggle_agent = 3 [json_name = "toggleAgent"];</code>
+     * @return Whether the toggleAgent field is set.
+     */
+    @java.lang.Override
+    public boolean hasToggleAgent() {
+      return instance.hasToggleAgent();
+    }
+    /**
+     * <pre>
+     * Atomic CLI enable/disable delta applied onto the latest persisted settings under lock.
+     * </pre>
+     *
+     * <code>optional .remoteagent.v1.Agent toggle_agent = 3 [json_name = "toggleAgent"];</code>
+     * @return The enum numeric value on the wire for toggleAgent.
+     */
+    @java.lang.Override
+    public int getToggleAgentValue() {
+      return instance.getToggleAgentValue();
+    }
+    /**
+     * <pre>
+     * Atomic CLI enable/disable delta applied onto the latest persisted settings under lock.
+     * </pre>
+     *
+     * <code>optional .remoteagent.v1.Agent toggle_agent = 3 [json_name = "toggleAgent"];</code>
+     * @param value The toggleAgent to set.
+     * @return This builder for chaining.
+     */
+    public Builder setToggleAgentValue(int value) {
+      copyOnWrite();
+      instance.setToggleAgentValue(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * Atomic CLI enable/disable delta applied onto the latest persisted settings under lock.
+     * </pre>
+     *
+     * <code>optional .remoteagent.v1.Agent toggle_agent = 3 [json_name = "toggleAgent"];</code>
+     * @return The toggleAgent.
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.proto.Agent getToggleAgent() {
+      return instance.getToggleAgent();
+    }
+    /**
+     * <pre>
+     * Atomic CLI enable/disable delta applied onto the latest persisted settings under lock.
+     * </pre>
+     *
+     * <code>optional .remoteagent.v1.Agent toggle_agent = 3 [json_name = "toggleAgent"];</code>
+     * @param value The enum numeric value on the wire for toggleAgent to set.
+     * @return This builder for chaining.
+     */
+    public Builder setToggleAgent(io.github.lewin671.remoteagent.proto.Agent value) {
+      copyOnWrite();
+      instance.setToggleAgent(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * Atomic CLI enable/disable delta applied onto the latest persisted settings under lock.
+     * </pre>
+     *
+     * <code>optional .remoteagent.v1.Agent toggle_agent = 3 [json_name = "toggleAgent"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearToggleAgent() {
+      copyOnWrite();
+      instance.clearToggleAgent();
+      return this;
+    }
+
+    /**
+     * <code>optional bool toggle_enabled = 4 [json_name = "toggleEnabled"];</code>
+     * @return Whether the toggleEnabled field is set.
+     */
+    @java.lang.Override
+    public boolean hasToggleEnabled() {
+      return instance.hasToggleEnabled();
+    }
+    /**
+     * <code>optional bool toggle_enabled = 4 [json_name = "toggleEnabled"];</code>
+     * @return The toggleEnabled.
+     */
+    @java.lang.Override
+    public boolean getToggleEnabled() {
+      return instance.getToggleEnabled();
+    }
+    /**
+     * <code>optional bool toggle_enabled = 4 [json_name = "toggleEnabled"];</code>
+     * @param value The toggleEnabled to set.
+     * @return This builder for chaining.
+     */
+    public Builder setToggleEnabled(boolean value) {
+      copyOnWrite();
+      instance.setToggleEnabled(value);
+      return this;
+    }
+    /**
+     * <code>optional bool toggle_enabled = 4 [json_name = "toggleEnabled"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearToggleEnabled() {
+      copyOnWrite();
+      instance.clearToggleEnabled();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.v1.UpdateSettingsRequest)
   }
   @java.lang.Override
@@ -306,10 +528,12 @@ public  final class UpdateSettingsRequest extends
             "bitField0_",
             "settings_",
             "cleanImages_",
+            "toggleAgent_",
+            "toggleEnabled_",
           };
           java.lang.String info =
-              "\u0000\u0002\u0000\u0001\u0001\u0002\u0002\u0000\u0000\u0000\u0001\u1009\u0000\u0002" +
-              "\u0007";
+              "\u0000\u0004\u0000\u0001\u0001\u0004\u0004\u0000\u0000\u0000\u0001\u1009\u0000\u0002" +
+              "\u0007\u0003\u100c\u0001\u0004\u1007\u0002";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

@@ -329,4 +329,55 @@ public interface MachineSettingsViewModelOrBuilder extends
    * @return The loading.
    */
   boolean getLoading();
+
+  /**
+   * <code>bool show_cli_switches = 33 [json_name = "showCliSwitches"];</code>
+   * @return The showCliSwitches.
+   */
+  boolean getShowCliSwitches();
+
+  /**
+   * <code>bool cli_switches_editable = 34 [json_name = "cliSwitchesEditable"];</code>
+   * @return The cliSwitchesEditable.
+   */
+  boolean getCliSwitchesEditable();
+
+  /**
+   * <code>bool cli_switches_lease_expired = 35 [json_name = "cliSwitchesLeaseExpired"];</code>
+   * @return The cliSwitchesLeaseExpired.
+   */
+  boolean getCliSwitchesLeaseExpired();
+
+  /**
+   * <code>.remoteagent.core.v1.Text cli_switches_disabled_reason = 36 [json_name = "cliSwitchesDisabledReason"];</code>
+   * @return Whether the cliSwitchesDisabledReason field is set.
+   */
+  boolean hasCliSwitchesDisabledReason();
+  /**
+   * <code>.remoteagent.core.v1.Text cli_switches_disabled_reason = 36 [json_name = "cliSwitchesDisabledReason"];</code>
+   * @return The cliSwitchesDisabledReason.
+   */
+  io.github.lewin671.remoteagent.core.proto.Text getCliSwitchesDisabledReason();
+
+  /**
+   * <code>.remoteagent.core.v1.Text cli_switches_conflict_banner = 37 [json_name = "cliSwitchesConflictBanner"];</code>
+   * @return Whether the cliSwitchesConflictBanner field is set.
+   */
+  boolean hasCliSwitchesConflictBanner();
+  /**
+   * <code>.remoteagent.core.v1.Text cli_switches_conflict_banner = 37 [json_name = "cliSwitchesConflictBanner"];</code>
+   * @return The cliSwitchesConflictBanner.
+   */
+  io.github.lewin671.remoteagent.core.proto.Text getCliSwitchesConflictBanner();
+
+  /**
+   * <code>.remoteagent.core.v1.Text cli_switches_footer = 38 [json_name = "cliSwitchesFooter"];</code>
+   * @return Whether the cliSwitchesFooter field is set.
+   */
+  boolean hasCliSwitchesFooter();
+  /**
+   * <code>.remoteagent.core.v1.Text cli_switches_footer = 38 [json_name = "cliSwitchesFooter"];</code>
+   * @return The cliSwitchesFooter.
+   */
+  io.github.lewin671.remoteagent.core.proto.Text getCliSwitchesFooter();
 }

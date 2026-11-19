@@ -276,4 +276,15 @@ public interface SessionActionsViewOrBuilder extends
    * <code>repeated .remoteagent.core.v1.SessionModeChoiceView mode_choices = 28 [json_name = "modeChoices"];</code>
    */
   int getModeChoicesCount();
+
+  /**
+   * <code>.remoteagent.core.v1.SessionUsageEntryView usage_entry = 29 [json_name = "usageEntry"];</code>
+   * @return Whether the usageEntry field is set.
+   */
+  boolean hasUsageEntry();
+  /**
+   * <code>.remoteagent.core.v1.SessionUsageEntryView usage_entry = 29 [json_name = "usageEntry"];</code>
+   * @return The usageEntry.
+   */
+  io.github.lewin671.remoteagent.core.proto.SessionUsageEntryView getUsageEntry();
 }

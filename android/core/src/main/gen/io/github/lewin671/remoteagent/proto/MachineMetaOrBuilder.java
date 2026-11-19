@@ -239,4 +239,63 @@ public interface MachineMetaOrBuilder extends
    * @return The diskStatus.
    */
   io.github.lewin671.remoteagent.proto.DiskStatus getDiskStatus();
+
+  /**
+   * <pre>
+   * Installed CLIs toggled off on this machine (agents &#92; disabled_agents remain active).
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.Agent disabled_agents = 16 [json_name = "disabledAgents"];</code>
+   * @return A list containing the disabledAgents.
+   */
+  java.util.List<io.github.lewin671.remoteagent.proto.Agent> getDisabledAgentsList();
+  /**
+   * <pre>
+   * Installed CLIs toggled off on this machine (agents &#92; disabled_agents remain active).
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.Agent disabled_agents = 16 [json_name = "disabledAgents"];</code>
+   * @return The count of disabledAgents.
+   */
+  int getDisabledAgentsCount();
+  /**
+   * <pre>
+   * Installed CLIs toggled off on this machine (agents &#92; disabled_agents remain active).
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.Agent disabled_agents = 16 [json_name = "disabledAgents"];</code>
+   * @param index The index of the element to return.
+   * @return The disabledAgents at the given index.
+   */
+  io.github.lewin671.remoteagent.proto.Agent getDisabledAgents(int index);
+  /**
+   * <pre>
+   * Installed CLIs toggled off on this machine (agents &#92; disabled_agents remain active).
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.Agent disabled_agents = 16 [json_name = "disabledAgents"];</code>
+   * @return A list containing the enum numeric values on the wire for disabledAgents.
+   */
+  java.util.List<java.lang.Integer>
+  getDisabledAgentsValueList();
+  /**
+   * <pre>
+   * Installed CLIs toggled off on this machine (agents &#92; disabled_agents remain active).
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.Agent disabled_agents = 16 [json_name = "disabledAgents"];</code>
+   * @param index The index of the value to return.
+   * @return The enum numeric value on the wire of disabledAgents at the given index.
+   */
+  int getDisabledAgentsValue(int index);
+
+  /**
+   * <pre>
+   * Monotonic settings revision from DaemonSettings.revision.
+   * </pre>
+   *
+   * <code>uint64 settings_revision = 17 [json_name = "settingsRevision"];</code>
+   * @return The settingsRevision.
+   */
+  long getSettingsRevision();
 }

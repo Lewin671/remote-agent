@@ -70,6 +70,7 @@ import io.github.lewin671.remoteagent.core.UiMessage
 import io.github.lewin671.remoteagent.core.UiMessages
 import io.github.lewin671.remoteagent.core.proto.DiskPressureState
 import io.github.lewin671.remoteagent.core.proto.MachineChartKind
+import io.github.lewin671.remoteagent.core.proto.MachineModelUsagePreview
 import io.github.lewin671.remoteagent.core.proto.MachinePollMode
 import io.github.lewin671.remoteagent.core.proto.MachinePollState
 import io.github.lewin671.remoteagent.core.proto.MachineRingKind
@@ -677,6 +678,7 @@ fun MachineStatusContent(
     onCleanup: () -> Unit,
     onSession: (String) -> Unit,
     swap: SwapAnimation = remember { SwapAnimation() },
+    onOpenUsage: (Agent, String) -> Unit = { _, _ -> },
 ) {
     val p = pal
     val copy = uiText()
@@ -777,6 +779,13 @@ fun MachineStatusContent(
                         uiText(view.topUsage.emptyText).ifEmpty { copy(UiMessages.machineStatusNoRunningSessions()) },
                         onSession,
                     )
+                    if (view.hasModelUsage() && view.modelUsage.supported) {
+                        ModelUsagePreviewSection(
+                            mu = view.modelUsage,
+                            dim = dim,
+                            onOpenUsage = onOpenUsage,
+                        )
+                    }
                     val footer = listOf(uiText(view.uptimeText), uiText(view.batteryText)).filter { it.isNotEmpty() }.joinToString(" · ")
                     if (footer.isNotEmpty()) {
                         Text(footer, style = T.s13.digits(), color = p.ink3, modifier = Modifier.padding(top = 14.dp, bottom = 18.dp))
@@ -831,5 +840,102 @@ fun MachineStatusScreen(id: String) {
         onOpenStorage = { nav.deviceStorage(id) },
         onCleanup = { nav.cleanup(id) },
         onSession = nav.session,
+        onOpenUsage = { agent, model -> nav.openUsage(id, agent, model) },
     )
+}
+
+@Composable
+private fun ModelUsagePreviewSection(
+    mu: MachineModelUsagePreview,
+    dim: Boolean,
+    onOpenUsage: (Agent, String) -> Unit,
+) {
+    val copy = uiText()
+    val p = pal
+    val windowLabel = if (mu.fallbackThirtyDays) copy(UiMessages.usageEntryLast30D()) else copy(UiMessages.usageEntryLast7D())
+    Row(Modifier.fillMaxWidth().padding(top = 24.dp, bottom = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+        Text(
+            copy(UiMessages.machineStatusModelUsageTitle()),
+            style = T.h20,
+            color = p.ink,
+            modifier = Modifier.weight(1f).semantics { heading() },
+        )
+        Box(
+            Modifier.heightIn(min = 44.dp)
+                .clip(Radii.R14)
+                .clickable(role = Role.Button) { onOpenUsage(Agent.AGENT_UNSPECIFIED, "") }
+                .padding(horizontal = 6.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(copy(UiMessages.machineStatusModelUsageViewTrends()), style = T.s15, color = p.blue)
+        }
+    }
+    Column(Modifier.fillMaxWidth().statusCard(p).padding(vertical = 2.dp)) {
+        if (mu.hasData && mu.rowsList.isNotEmpty()) {
+            mu.rowsList.forEachIndexed { idx, row ->
+                if (idx > 0) {
+                    Box(Modifier.padding(start = 54.dp).fillMaxWidth().height(0.5.dp).background(p.sep))
+                }
+                val hitPart = if (row.hasCacheHit) copy(UiMessages.usageEntryCachePct(formatUsageCacheHit(row.cacheHitRate))) else ""
+                val speedPart = if (row.hasSpeed) "${formatUsageSpeed(row.speedP50)} ${copy(UiMessages.usageKpiUnitToks())}" else ""
+                val meta = when {
+                    row.hasSpeed -> listOf(
+                        hitPart,
+                        speedPart,
+                        copy(UiMessages.usageEntryReqs(row.usageRequestCount.toInt())),
+                        windowLabel,
+                    ).filter { it.isNotEmpty() }.joinToString(" · ")
+                    row.fewSpeedSamples -> copy(
+                        UiMessages.usageEntryFewSamples(
+                            count = row.speedRequestCount.toInt(),
+                            detail = hitPart.ifEmpty { windowLabel },
+                        ),
+                    )
+                    else -> copy(UiMessages.usageEntryNoSpeed(hitPart.ifEmpty { windowLabel }))
+                }
+                val tokenStr = formatUsageTokens(row.totalTokens, copy)
+                val pairLabel = "${row.agentName} · ${row.model}"
+                Row(
+                    Modifier.fillMaxWidth()
+                        .clickable(role = Role.Button) { onOpenUsage(row.agent, row.model) }
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    Box(
+                        Modifier.size(28.dp).clip(CircleShape).background(if (p.dark) Color(0x18FFFFFF) else Color(0x0D000000)),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        AgentMark(row.agent, T.s15, if (dim) p.ink3 else p.ink)
+                    }
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                pairLabel,
+                                style = T.s15b,
+                                color = p.ink,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.weight(1f),
+                            )
+                            Text(
+                                tokenStr,
+                                style = T.s15.digits(),
+                                color = p.ink,
+                                modifier = Modifier.padding(start = 8.dp),
+                            )
+                        }
+                        Text(meta, style = T.s13.digits(), color = p.ink2)
+                    }
+                }
+            }
+        } else {
+            val emptyStr = uiText(mu.emptyText).ifEmpty { copy(UiMessages.machineStatusModelUsageEmpty()) }
+            Text(emptyStr, style = T.s15, color = p.ink3, modifier = Modifier.padding(16.dp))
+        }
+    }
+    val unavail = if (mu.hasUnsupportedFootnote()) uiText(mu.unsupportedFootnote) else ""
+    if (unavail.isNotEmpty()) {
+        Text(unavail, style = T.s13, color = p.ink2, modifier = Modifier.padding(top = 8.dp))
+    }
 }
