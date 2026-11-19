@@ -16,7 +16,7 @@ struct HomeDiskReminders: View {
                 ForEach(reminders, id: \.machineID) { r in
                     let title = r.title.rendered()
                     let detail = r.detail.rendered()
-                    Button { nav.open(.machineStatus(id: r.machineID)) } label: {
+                    Button { nav.open(.machineStorage(id: r.machineID)) } label: {
                         DiskReminderCard(critical: r.critical, title: title, detail: detail)
                     }
                     .buttonStyle(PressStyle())

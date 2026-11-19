@@ -154,11 +154,38 @@ struct StatusRing: View {
 struct MachineRingsCard: View {
     let rings: [PBMachineRingView]
     let online: Bool
+    var showHeader = false
+    var statusDot: PBMachineStatusDot = .unspecified
+    var statusBadge = ""
+    var statusWarn = false
     let onOpen: () -> Void
     @Environment(\.dynamicTypeSize) private var typeSize
 
     var body: some View {
-        Group {
+        VStack(spacing: 0) {
+            if showHeader {
+                HStack(spacing: 8) {
+                    Text(L10n.settingsStatusCardTitle())
+                        .font(.body.weight(.semibold))
+                        .foregroundStyle(DS.ink)
+                    Spacer(minLength: 0)
+                    HStack(spacing: 5) {
+                        machineStatusDotView(statusDot, size: 7)
+                        if !statusBadge.isEmpty {
+                            Text(statusBadge)
+                                .font(.subheadline)
+                                .foregroundStyle(statusWarn ? DS.orangeInk : DS.ink2)
+                                .fontWeight(statusWarn ? .semibold : .regular)
+                        }
+                        Arrow(DS.ink2)
+                    }
+                }
+                .padding(.horizontal, 14)
+                .padding(.vertical, 12)
+                Rectangle().fill(DS.sep).frame(height: 1)
+                    .padding(.horizontal, 14)
+                    .accessibilityHidden(true)
+            }
             if typeSize.isAccessibilitySize {
                 VStack(alignment: .leading, spacing: 14) {
                     ForEach(Array(rings.enumerated()), id: \.offset) { _, r in
@@ -172,8 +199,8 @@ struct MachineRingsCard: View {
                         }
                         .accessibilityElement(children: .ignore)
                         .accessibilityLabel(r.a11YLabel.rendered())
-                        .accessibilityAddTraits(online ? .isButton : [])
-                        .accessibilityAction { if online { onOpen() } }
+                        .accessibilityAddTraits(.isButton)
+                        .accessibilityAction { onOpen() }
                     }
                 }
                 .padding(.horizontal, 18).padding(.vertical, 16)
@@ -190,8 +217,8 @@ struct MachineRingsCard: View {
                         .frame(maxWidth: .infinity)
                         .accessibilityElement(children: .ignore)
                         .accessibilityLabel(r.a11YLabel.rendered())
-                        .accessibilityAddTraits(online ? .isButton : [])
-                        .accessibilityAction { if online { onOpen() } }
+                        .accessibilityAddTraits(.isButton)
+                        .accessibilityAction { onOpen() }
                     }
                 }
                 .padding(.horizontal, 6).padding(.top, 16).padding(.bottom, 14)
@@ -201,7 +228,7 @@ struct MachineRingsCard: View {
         .background(DS.gbg, in: RoundedRectangle(cornerRadius: DS.Radius.group, style: .continuous))
         .opacity(online ? 1 : 0.55)
         .contentShape(RoundedRectangle(cornerRadius: DS.Radius.group, style: .continuous))
-        .onTapGesture { if online { onOpen() } }
+        .onTapGesture { onOpen() }
         .padding(.init(top: 0, leading: 16, bottom: 12, trailing: 16))
         .accessibilityIdentifier("machine-rings")
     }

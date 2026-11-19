@@ -18,6 +18,7 @@ struct NewSessionBox: View {
     var onMachine: () -> Void = {}
     var onModel: () -> Void = {}
     var onMachineSettings: (String) -> Void = { _ in }
+    var onEnableAgent: ((String, PBAgent) -> Void)? = nil
     var onMachineStatus: (String) -> Void = { _ in }
     var sheet: NewTaskChrome?
 
@@ -102,6 +103,7 @@ struct NewSessionBox: View {
             onMachine: onMachine,
             onModel: onModel,
             onMachineSettings: onMachineSettings,
+            onEnableAgent: onEnableAgent,
             onMachineStatus: onMachineStatus,
             sheet: sheet
         )
@@ -140,6 +142,7 @@ struct NewSessionContent: View {
     var onMachine: () -> Void = {}
     var onModel: () -> Void = {}
     var onMachineSettings: (String) -> Void = { _ in }
+    var onEnableAgent: ((String, PBAgent) -> Void)? = nil
     var onMachineStatus: (String) -> Void = { _ in }
     var sheet: NewTaskChrome?
 
@@ -431,8 +434,32 @@ struct NewSessionContent: View {
                 }
             case .configSaveError:
                 Banner(message, tone: .error, action: L10n.commonRetry(), onAction: onRetrySaveConfig)
+            case .agentDisabledFallback:
+                if n.action == .enableAgent {
+                    Banner(message, tone: .plain, action: L10n.newSessionEnableAgent()) {
+                        let machineID = n.targetMachineID.isEmpty ? vm.config.machineID : n.targetMachineID
+                        if let onEnableAgent {
+                            onEnableAgent(machineID, n.targetAgent)
+                        } else {
+                            onMachineSettings(machineID)
+                        }
+                    }
+                } else {
+                    Banner(message, tone: .plain)
+                }
             default:
-                Banner(message, tone: n.severity == .error ? .error : n.severity == .warn ? .warn : .plain)
+                if n.action == .enableAgent {
+                    Banner(message, tone: n.severity == .error ? .error : n.severity == .warn ? .warn : .plain, action: L10n.newSessionEnableAgent()) {
+                        let machineID = n.targetMachineID.isEmpty ? vm.config.machineID : n.targetMachineID
+                        if let onEnableAgent {
+                            onEnableAgent(machineID, n.targetAgent)
+                        } else {
+                            onMachineSettings(machineID)
+                        }
+                    }
+                } else {
+                    Banner(message, tone: n.severity == .error ? .error : n.severity == .warn ? .warn : .plain)
+                }
             }
         }
     }

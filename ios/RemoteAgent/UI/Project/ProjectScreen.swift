@@ -55,6 +55,9 @@ struct ProjectPageView: View {
                     onMachine: { settings = ProjectSettingsRequest(page: .machine) },
                     onModel: { settings = ProjectSettingsRequest(page: .model) },
                     onMachineSettings: { nav.open(.machine(id: $0), from: route) },
+                    onEnableAgent: { id, agent in
+                        nav.open(.machine(id: id, initialCliAgent: MachineScreenContent<EmptyView>.agentSlug(agent)), from: route)
+                    },
                     onMachineStatus: { nav.open(.machineStatus(id: $0), from: route) }
                 )
             }

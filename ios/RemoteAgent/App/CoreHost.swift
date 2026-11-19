@@ -33,9 +33,11 @@ final class CoreScreens {
     var settings = PBSettingsViewModel()
     var machineStatus = PBMachineStatusViewModel()
     var machineSettings = PBMachineSettingsViewModel()
+    var usageView = PBCoreUsageViewModel()
     var quota = PBQuotaViewModel()
     var devices = PBDevicesViewModel()
     var clientDetail = PBClientDetailViewModel()
+    var directReports: [String: PBDirectRouteReport] = [:]
     var pendingComposerRestores: [RestoredComposer] = []
     var pendingCleanup: PendingCleanup?
 
@@ -161,6 +163,27 @@ struct ScopeDefaults: @unchecked Sendable {
     func deleteScheduleSeen(machineID: String) {
         raw.removeObject(forKey: scheduleSeenKey(machineID))
     }
+
+    private func usageCacheKey(machineID: String, preset: PBUsageRangePreset) -> String {
+        let arr = scope + [machineID, String(preset.rawValue)]
+        let encoded = (try? JSONEncoder().encode(arr)).flatMap { String(data: $0, encoding: .utf8) } ?? "[]"
+        return AccountDefaults.key("usageCache:" + encoded)
+    }
+
+    func loadUsageCache(machineID: String) -> [PBUsageStatsResponse] {
+        let presets: [PBUsageRangePreset] = [.today, .sevenDays, .thirtyDays]
+        return presets.compactMap { preset in
+            guard let data = raw.data(forKey: usageCacheKey(machineID: machineID, preset: preset)) else { return nil }
+            return try? PBUsageStatsResponse(serializedBytes: data)
+        }
+    }
+
+    func saveUsageCache(machineID: String, snapshot: PBUsageStatsResponse) {
+        let preset = snapshot.preset
+        guard preset == .today || preset == .sevenDays || preset == .thirtyDays,
+              let data = try? snapshot.serializedData() else { return }
+        raw.set(data, forKey: usageCacheKey(machineID: machineID, preset: preset))
+    }
 }
 
 /// Owns `CoreClient`, feeds system/UI/transport events into Core, and executes every
@@ -219,12 +242,21 @@ actor CoreHost: SyncEngine {
 
     private var activeProjectKey = ""
     private var activeNewSessionProjectKey = ""
+    private var activeManageMachineID = ""
     private var manageSubscribers = 0
     private var activeMachineStatusID = ""
     private var activeMachineSettingsID = ""
     private var activeQuotaMachineID = ""
     private var activeQuotaFilterAgent: PBAgent = .unspecified
     private var activeClientDetailID = ""
+    private var usageMachineID = ""
+    private var usageFocusAgent: PBAgent = .unspecified
+    private var usageFocusModel = ""
+    private var usagePreset: PBUsageRangePreset = .sevenDays
+    private var usageCustomStartMs: Int64 = 0
+    private var usageCustomEndMs: Int64 = 0
+    private var usageMetric: PBCoreUsageMetricTab = .tokens
+    private var usageHydratedMachines: Set<String> = []
     private var sessionWatches: [UUID: SessionWatchEntry] = [:]
     private var sessionWatchOrder: [UUID] = []
     private var activeScheduleDetail: (machineID: String, taskID: String)?
@@ -511,6 +543,9 @@ actor CoreHost: SyncEngine {
     }
 
     private func handleDirectStatus(machineId: String, ready: Bool, report: PBDirectRouteReport) async {
+        await MainActor.run { [screens] in
+            screens.directReports[machineId] = report
+        }
         await dispatch {
             $0.machineRouteStatus = .with {
                 $0.machineID = machineId
@@ -600,6 +635,7 @@ actor CoreHost: SyncEngine {
     func openMachineSettings(machineID: String) async {
         guard !closed, !machineID.isEmpty else { return }
         activeMachineSettingsID = machineID
+        await hydrateUsageCache(machineID: machineID)
         if !demoMode {
             let report = await executor.directRouteReport(machineID)
             if lastDirectReports[machineID] != report {
@@ -616,6 +652,231 @@ actor CoreHost: SyncEngine {
             $0.machineSettingsOpen.machineID = machineID
         }
         await renderTargets([.machineSettings])
+    }
+
+    static let usageRetentionDays = 90
+
+    struct UsageOpenParams: Equatable, Sendable {
+        let preset: PBUsageRangePreset
+        let customStartMs: Int64
+        let customEndMs: Int64
+        let timezone: String
+        let tzOffsetMinutes: Int32
+        let bucketBoundsMs: [Int64]
+        let prevStartMs: Int64
+    }
+
+    nonisolated static func clampUsageCustomRange(
+        startMs: Int64,
+        endMs: Int64,
+        nowMs: Int64 = Int64(Date().timeIntervalSince1970 * 1000)
+    ) -> (startMs: Int64, endMs: Int64) {
+        let cal = Calendar.current
+        let nowDate = Date(timeIntervalSince1970: Double(nowMs) / 1000.0)
+        let todayStartDate = cal.startOfDay(for: nowDate)
+        let minDayDate = cal.date(byAdding: .day, value: -(usageRetentionDays - 1), to: todayStartDate) ?? todayStartDate
+        let defaultStartDate = cal.date(byAdding: .day, value: -6, to: todayStartDate) ?? todayStartDate
+        let rawStartDate = startMs > 0 ? cal.startOfDay(for: Date(timeIntervalSince1970: Double(startMs) / 1000.0)) : defaultStartDate
+        let rawEndDate = endMs > 0 ? cal.startOfDay(for: Date(timeIntervalSince1970: Double(endMs) / 1000.0)) : todayStartDate
+        var sDay = rawStartDate
+        var eDay = rawEndDate < sDay ? sDay : rawEndDate
+        if sDay < minDayDate { sDay = minDayDate }
+        if eDay > todayStartDate { eDay = todayStartDate }
+        if eDay < sDay { sDay = eDay }
+        return (
+            Int64(sDay.timeIntervalSince1970 * 1000),
+            Int64(eDay.timeIntervalSince1970 * 1000)
+        )
+    }
+
+    nonisolated static func buildUsageOpenParams(
+        preset: PBUsageRangePreset,
+        customStartMs: Int64 = 0,
+        customEndMs: Int64 = 0,
+        nowMs: Int64 = Int64(Date().timeIntervalSince1970 * 1000)
+    ) -> UsageOpenParams {
+        let cal = Calendar.current
+        let tz = TimeZone.current
+        let effectivePreset = preset == .unspecified ? .sevenDays : preset
+        let nowDate = Date(timeIntervalSince1970: Double(nowMs) / 1000.0)
+        let todayStartDate = cal.startOfDay(for: nowDate)
+        let tomorrowStartDate = cal.date(byAdding: .day, value: 1, to: todayStartDate) ?? todayStartDate.addingTimeInterval(86_400)
+
+        let startDayDate: Date
+        let endExclDate: Date
+        var normCustomStart: Int64 = 0
+        var normCustomEnd: Int64 = 0
+
+        switch effectivePreset {
+        case .today:
+            startDayDate = todayStartDate
+            endExclDate = tomorrowStartDate
+        case .thirtyDays:
+            startDayDate = cal.date(byAdding: .day, value: -29, to: todayStartDate) ?? todayStartDate
+            endExclDate = tomorrowStartDate
+        case .custom:
+            let clamped = clampUsageCustomRange(startMs: customStartMs, endMs: customEndMs, nowMs: nowMs)
+            normCustomStart = clamped.startMs
+            normCustomEnd = clamped.endMs
+            startDayDate = cal.startOfDay(for: Date(timeIntervalSince1970: Double(clamped.startMs) / 1000.0))
+            let endIncDate = cal.startOfDay(for: Date(timeIntervalSince1970: Double(clamped.endMs) / 1000.0))
+            endExclDate = cal.date(byAdding: .day, value: 1, to: endIncDate) ?? endIncDate.addingTimeInterval(86_400)
+        default:
+            startDayDate = cal.date(byAdding: .day, value: -6, to: todayStartDate) ?? todayStartDate
+            endExclDate = tomorrowStartDate
+        }
+
+        var numDays = 0
+        var cursor = startDayDate
+        while cursor < endExclDate && numDays <= usageRetentionDays + 2 {
+            numDays += 1
+            guard let next = cal.date(byAdding: .day, value: 1, to: cursor), next > cursor else { break }
+            cursor = next
+        }
+
+        var bounds: [Int64] = []
+        if numDays <= 1 {
+            let startMs = Int64(startDayDate.timeIntervalSince1970 * 1000)
+            let endMs = Int64(endExclDate.timeIntervalSince1970 * 1000)
+            var cur = startMs
+            while cur < endMs {
+                bounds.append(cur)
+                cur += 3_600_000
+            }
+            bounds.append(endMs)
+        } else if numDays <= 3 {
+            var day = startDayDate
+            while day < endExclDate {
+                guard let nextDay = cal.date(byAdding: .day, value: 1, to: day), nextDay > day else { break }
+                let dayMs = day.timeIntervalSince1970 * 1000.0
+                let spanMs = nextDay.timeIntervalSince1970 * 1000.0 - dayMs
+                for q in 0..<4 {
+                    bounds.append(Int64((dayMs + (spanMs * Double(q)) / 4.0).rounded()))
+                }
+                day = nextDay
+            }
+            bounds.append(Int64(endExclDate.timeIntervalSince1970 * 1000))
+        } else {
+            var day = startDayDate
+            while day < endExclDate {
+                bounds.append(Int64(day.timeIntervalSince1970 * 1000))
+                guard let nextDay = cal.date(byAdding: .day, value: 1, to: day), nextDay > day else { break }
+                day = nextDay
+            }
+            bounds.append(Int64(endExclDate.timeIntervalSince1970 * 1000))
+        }
+
+        let prevStartDate = cal.date(byAdding: .day, value: -max(1, numDays), to: startDayDate) ?? startDayDate
+        return UsageOpenParams(
+            preset: effectivePreset,
+            customStartMs: normCustomStart,
+            customEndMs: normCustomEnd,
+            timezone: tz.identifier,
+            tzOffsetMinutes: Int32(tz.secondsFromGMT(for: nowDate) / 60),
+            bucketBoundsMs: bounds,
+            prevStartMs: Int64(prevStartDate.timeIntervalSince1970 * 1000)
+        )
+    }
+
+    private func hydrateUsageCache(machineID: String) async {
+        guard !machineID.isEmpty, usageHydratedMachines.insert(machineID).inserted else { return }
+        let snapshots = defaults.loadUsageCache(machineID: machineID)
+        for snap in snapshots {
+            await dispatch {
+                $0.usageCacheLoaded = .with {
+                    $0.machineID = machineID
+                    $0.snapshot = snap
+                }
+            }
+        }
+    }
+
+    func openUsageScreen(
+        machineID: String,
+        focusAgent: PBAgent = .unspecified,
+        focusModel: String = "",
+        preset: PBUsageRangePreset? = nil,
+        customStartMs: Int64? = nil,
+        customEndMs: Int64? = nil,
+        metric: PBCoreUsageMetricTab? = nil
+    ) async {
+        guard !closed, !machineID.isEmpty else { return }
+        let switchingMachine = usageMachineID != machineID
+        usageMachineID = machineID
+        usageFocusAgent = focusAgent
+        usageFocusModel = focusModel
+        if let preset {
+            usagePreset = preset == .unspecified ? .sevenDays : preset
+        } else if switchingMachine {
+            usagePreset = .sevenDays
+        }
+        if let customStartMs { usageCustomStartMs = customStartMs }
+        if let customEndMs { usageCustomEndMs = customEndMs }
+        if let metric {
+            usageMetric = metric == .unspecified ? .tokens : metric
+        } else if switchingMachine {
+            usageMetric = .tokens
+        }
+        await dispatchUsageScreenOpen()
+    }
+
+    func usageSelectMetric(_ metric: PBCoreUsageMetricTab) async {
+        guard !closed else { return }
+        usageMetric = metric == .unspecified ? .tokens : metric
+        await renderTargets([.usage])
+    }
+
+    func usageSelectRange(_ preset: PBUsageRangePreset) async {
+        guard !closed, !usageMachineID.isEmpty else { return }
+        let next = preset == .unspecified ? .sevenDays : preset
+        usagePreset = next
+        if next == .custom {
+            let clamped = Self.clampUsageCustomRange(startMs: usageCustomStartMs, endMs: usageCustomEndMs, nowMs: clock())
+            usageCustomStartMs = clamped.startMs
+            usageCustomEndMs = clamped.endMs
+        }
+        await dispatchUsageScreenOpen()
+    }
+
+    func usageSelectCustomDates(startMs: Int64, endMs: Int64) async {
+        guard !closed, !usageMachineID.isEmpty else { return }
+        let clamped = Self.clampUsageCustomRange(startMs: startMs, endMs: endMs, nowMs: clock())
+        usagePreset = .custom
+        usageCustomStartMs = clamped.startMs
+        usageCustomEndMs = clamped.endMs
+        await dispatchUsageScreenOpen()
+    }
+
+    func retryUsageScreen(machineID: String) async {
+        guard !closed, !machineID.isEmpty else { return }
+        await dispatch {
+            $0.usageScreenRetry = .with { $0.machineID = machineID }
+        }
+    }
+
+    private func dispatchUsageScreenOpen() async {
+        guard !usageMachineID.isEmpty else { return }
+        await hydrateUsageCache(machineID: usageMachineID)
+        let params = Self.buildUsageOpenParams(
+            preset: usagePreset,
+            customStartMs: usageCustomStartMs,
+            customEndMs: usageCustomEndMs,
+            nowMs: clock()
+        )
+        let machineID = usageMachineID
+        await dispatch {
+            $0.usageScreenOpen = .with {
+                $0.machineID = machineID
+                $0.preset = params.preset
+                $0.customStartMs = params.customStartMs
+                $0.customEndMs = params.customEndMs
+                $0.timezone = params.timezone
+                $0.tzOffsetMinutes = params.tzOffsetMinutes
+                $0.bucketBoundsMs = params.bucketBoundsMs
+                $0.prevStartMs = params.prevStartMs
+            }
+        }
+        await renderTargets([.usage])
     }
 
     func acquireMachineStatusWatch(_ machineID: String, mode: PBMachinePollMode) async -> UUID? {
@@ -686,12 +947,23 @@ actor CoreHost: SyncEngine {
         }
     }
 
-    func setManageActive(_ active: Bool) async {
+    func setManageActive(_ active: Bool, machineID: String? = nil) async {
         guard !closed else { return }
         manageSubscribers = max(0, manageSubscribers + (active ? 1 : -1))
         if active {
+            if let machineID {
+                activeManageMachineID = machineID
+            }
             await renderTargets([.project])
+        } else if manageSubscribers == 0 {
+            activeManageMachineID = ""
         }
+    }
+
+    func selectProjectsMachine(_ machineID: String) async {
+        guard !closed else { return }
+        activeManageMachineID = machineID
+        await renderTargets([.project])
     }
 
     func acquireSessionWatch(
@@ -1213,8 +1485,8 @@ actor CoreHost: SyncEngine {
                     screens.pendingCleanup = CoreScreens.PendingCleanup(effect: eff)
                 }
 
-            case .usageCacheWrite:
-                break
+            case .usageCacheWrite(let eff):
+                defaults.saveUsageCache(machineID: eff.machineID, snapshot: eff.snapshot)
 
             case nil:
                 break
@@ -1372,6 +1644,25 @@ actor CoreHost: SyncEngine {
                 await dispatch { $0.commandOutcome = outcome }
                 return
             }
+            if demoMode, case .getUsageStats(let req)? = cmd.kind {
+                let demoState = SettingsDemo.state
+                if demoState == "usageLoading" { return }
+                if demoState == "usageFailed" {
+                    await dispatch {
+                        $0.commandOutcome = .with {
+                            $0.requestID = c.requestID; $0.attemptID = c.attemptID
+                            $0.source = .local; $0.notForwarded = true
+                            $0.transportCode = CommandError.unavailable
+                            $0.transportDetail = L10n.errorsTheComputerIsOfflineTheCommandWasNotSent()
+                        }
+                    }
+                    return
+                }
+                let stats = SettingsDemo.usageStats(request: req, machineID: c.machineID, now: self.clock())
+                let outcome = Self.demoExecutedOutcome(for: c) { $0.usageStats = stats }
+                await dispatch { $0.commandOutcome = outcome }
+                return
+            }
             #endif
             if demoMode {
                 await dispatch { $0.commandOutcome = Self.demoExecutedOutcome(for: c) }
@@ -1414,6 +1705,7 @@ actor CoreHost: SyncEngine {
         var machineStatusVM: PBMachineStatusViewModel?
         var machineSettingsVM: PBMachineSettingsViewModel?
         var quotaVM: PBQuotaViewModel?
+        var usageVM: PBCoreUsageViewModel?
         var devicesVM: PBDevicesViewModel?
         var clientDetailVM: PBClientDetailViewModel?
         var sessionVMs: [String: PBSessionViewModel] = [:]
@@ -1433,6 +1725,7 @@ actor CoreHost: SyncEngine {
                         $0.projectKey = key
                         $0.manage = manage
                         $0.endedLimit = 50
+                        $0.machineID = activeManageMachineID
                     }
                 }).project
             }
@@ -1502,6 +1795,22 @@ actor CoreHost: SyncEngine {
                 }
             }).quota
         }
+        if targets.contains(.usage), !usageMachineID.isEmpty {
+            let clamped = usagePreset == .custom
+                ? Self.clampUsageCustomRange(startMs: usageCustomStartMs, endMs: usageCustomEndMs, nowMs: clock())
+                : (startMs: Int64(0), endMs: Int64(0))
+            usageVM = try? client.view(PBCoreScreen.with {
+                $0.usage = .with {
+                    $0.machineID = usageMachineID
+                    $0.focusAgent = usageFocusAgent
+                    $0.focusModel = usageFocusModel
+                    $0.preset = usagePreset
+                    $0.customStartMs = clamped.startMs
+                    $0.customEndMs = clamped.endMs
+                    $0.metric = usageMetric
+                }
+            }).usage
+        }
         if targets.contains(.clientDetail), !activeClientDetailID.isEmpty {
             clientDetailVM = try? client.view(PBCoreScreen.with {
                 $0.clientDetail = .with { $0.deviceID = activeClientDetailID }
@@ -1529,13 +1838,23 @@ actor CoreHost: SyncEngine {
             let adapted = SyncStateAdapter.toRemoteState(syncStateVM)
             await executor.publishSyncState(adapted)
             if !demoMode {
+                var initialReports: [String: PBDirectRouteReport] = [:]
                 for m in syncStateVM.machines where lastDirectReports[m.machineID] == nil {
                     let report = await executor.directRouteReport(m.machineID)
                     lastDirectReports[m.machineID] = report
+                    initialReports[m.machineID] = report
                     await dispatch {
                         $0.machineDirectStatus = .with {
                             $0.machineID = m.machineID
                             $0.report = report
+                        }
+                    }
+                }
+                if !initialReports.isEmpty {
+                    let captured = initialReports
+                    await MainActor.run { [screens] in
+                        for (id, report) in captured {
+                            screens.directReports[id] = report
                         }
                     }
                 }
@@ -1545,7 +1864,7 @@ actor CoreHost: SyncEngine {
         await MainActor.run { [
             screens, homeVM, projectVM, newSessionVM,
             schedulesVM, scheduleDetailVM, scheduleFormVM,
-            settingsVM, machineStatusVM, machineSettingsVM, quotaVM, devicesVM, clientDetailVM,
+            settingsVM, machineStatusVM, machineSettingsVM, quotaVM, usageVM, devicesVM, clientDetailVM,
             sessionVMs, scheduleStripVMs
         ] in
             if let homeVM { screens.home = homeVM }
@@ -1562,6 +1881,7 @@ actor CoreHost: SyncEngine {
             if let machineStatusVM { screens.machineStatus = machineStatusVM }
             if let machineSettingsVM { screens.machineSettings = machineSettingsVM }
             if let quotaVM { screens.quota = quotaVM }
+            if let usageVM { screens.usageView = usageVM }
             if let devicesVM { screens.devices = devicesVM }
             if let clientDetailVM { screens.clientDetail = clientDetailVM }
             for (sid, vm) in sessionVMs {

@@ -4,6 +4,7 @@ import RAProto
 import SwiftUI
 
 struct ManageProjectsScreen: View {
+    var initialMachineId: String = ""
     @Environment(Navigator.self) private var nav
     @Environment(AccountContext.self) private var context
     @State private var menu: PBCoreProjectRowView?
@@ -14,10 +15,18 @@ struct ManageProjectsScreen: View {
 
     var body: some View {
         let manage = context.core.manageProjects
+        let subtitle: String? = if !manage.filterMachineID.isEmpty {
+            L10n.projectsFilterMachineSubtitle(name: manage.filterMachineName.or(manage.filterMachineID))
+        } else {
+            nil
+        }
         ManageProjectsContent(
             manage: manage,
             showElsewhere: (manage.changedElsewhere && !elsewhereDismissed) || HomeLaunch.flag("-projectsElsewhere"),
             onDismissElsewhere: { elsewhereDismissed = true },
+            onShowAllMachines: {
+                context.selectProjectsMachine("")
+            },
             onSearch: { q in context.dispatch { $0.projectSetSearch.query = q } },
             onOpenProject: { key in
                 context.dispatch { $0.homeSetScope.scopeKey = key }
@@ -34,7 +43,7 @@ struct ManageProjectsScreen: View {
             onAskRemove: { key in removingKey = key },
             onStartAdd: { adding = true }
         )
-        .navBar(L10n.projectsManage())
+        .navBar(L10n.projectsManage(), subtitle: subtitle)
         .actionMenu(isPresented: $menuShown, actions: menu.map { actions(manage, $0) } ?? []) {
             if let pr = menu {
                 VStack(alignment: .leading, spacing: 2) {
@@ -53,8 +62,8 @@ struct ManageProjectsScreen: View {
                 adding = false
             }
         }
-        .task {
-            await context.coreHost.setManageActive(true)
+        .task(id: initialMachineId) {
+            await context.coreHost.setManageActive(true, machineID: initialMachineId)
             if let key = HomeLaunch.value("-projectsMenu"),
                let pr = (manage.listing.pinned + manage.listing.others).first(where: { $0.key == key }) {
                 menu = pr
@@ -123,6 +132,7 @@ struct ManageProjectsContent: View {
     let manage: PBCoreManageProjectsView
     var showElsewhere = false
     var onDismissElsewhere: () -> Void = {}
+    var onShowAllMachines: () -> Void = {}
     var onSearch: (String) -> Void = { _ in }
     var onOpenProject: (String) -> Void = { _ in }
     var onOpenMenu: (PBCoreProjectRowView) -> Void = { _ in }
@@ -136,6 +146,14 @@ struct ManageProjectsContent: View {
                 ConnectionBar()
                 List {
                     Group {
+                        if !manage.filterMachineID.isEmpty {
+                            Banner(
+                                L10n.projectsFilterMachineSubtitle(name: manage.filterMachineName.or(manage.filterMachineID)),
+                                action: L10n.projectsFilterShowAll(),
+                                onAction: onShowAllMachines
+                            )
+                            .padding(.vertical, 4)
+                        }
                         if showElsewhere {
                             Banner(L10n.projectsChangedElsewhere(), action: L10n.commonGotIt(), onAction: onDismissElsewhere)
                                 .padding(.vertical, 4)

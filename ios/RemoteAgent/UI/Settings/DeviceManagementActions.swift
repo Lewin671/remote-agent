@@ -19,12 +19,12 @@ struct DeviceManagementActions: View {
         if access.isAuthority && id != context.me {
             GroupCard {
                 if present {
-                    GRow(L10n.securityRemoveDevice(), danger: true, enabled: !action.running) { removing = true }
+                    GRow(machine ? L10n.settingsRemoveComputerEllipsis() : L10n.securityRemoveDevice(), danger: true, enabled: !action.running) { removing = true }
                 } else if machine {
                     GRow(L10n.securityIosRejoinFromOriginalRecords(), chevron: true, enabled: !action.running) {
                         nav.open(.addDevice(replacing: id))
                     }
-                    GRow(L10n.securityDeleteThisComputerSRecords(), danger: true, enabled: !action.running) { deleting = true }
+                    GRow(L10n.settingsDeleteComputerRecordsEllipsis(), danger: true, enabled: !action.running) { deleting = true }
                 }
             }
             if !action.error.isEmpty { GroupBanner(action.error, tone: .error) }

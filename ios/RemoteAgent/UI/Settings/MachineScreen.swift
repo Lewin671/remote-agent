@@ -1,15 +1,15 @@
 import RACore
 import RAProto
 import SwiftUI
+import UIKit
 
-/// Where a link into this page scrolls to.
-enum MachineAnchor: Hashable { case storage }
-
-/// A computer's details and daemon settings: renders Core's `PBMachineSettingsViewModel` directly.
+/// A computer's redesigned details and settings screen:
+/// Header + Module 0 (`电脑状态`) + 4 core modules (`额度与用量`, `编程 CLI`, `运行与存储`, `管理`)
+/// + bottom danger card (`DeviceManagementActions`).
 struct MachineScreen: View {
     let id: String
-    /// Opened from the disk card or 「remote-agent 的占用」 of 电脑状态: scrolled to 附件存储.
-    var scrollToStorage = false
+    var initialDirect = false
+    var initialCliAgent: String? = nil
     @Environment(AppModel.self) private var model
     @Environment(AccountContext.self) private var context
     @Environment(Navigator.self) private var nav
@@ -41,57 +41,66 @@ struct MachineScreen: View {
         } else {
             nil
         }
-        let toggleDirect: (Bool) -> Void = { enabled in
-            context.dispatch {
-                $0.updateDirectPreference = .with {
-                    $0.machineID = id
-                    $0.enabled = enabled
-                }
-            }
-        }
-        let selectAgent: (PBAgent) -> Void = { agent in
-            context.dispatch {
-                $0.machineSettingsSelectAgent = .with {
-                    $0.machineID = id
-                    $0.agent = agent
-                }
-            }
-        }
-        let updateDefaults: (PBAgent, String?, String?, PBApprovalMode?) -> Void = { agent, modelID, effort, mode in
-            context.dispatch {
-                $0.updateMachineAgentDefaults = .with {
-                    $0.machineID = id
-                    $0.agent = agent
-                    if let modelID { $0.model = modelID }
-                    if let effort { $0.effort = effort }
-                    if let mode { $0.mode = mode }
-                }
-            }
-        }
-        let updateDaemon: (Int32?, Int32?, Int64?, Bool) -> Void = { timeoutSeconds, idleCloseMinutes, imageQuotaBytes, cleanImages in
-            context.dispatch {
-                $0.updateMachineDaemonSettings = .with {
-                    $0.machineID = id
-                    if let timeoutSeconds { $0.approvalTimeoutSeconds = timeoutSeconds }
-                    if let idleCloseMinutes { $0.idleCloseMinutes = idleCloseMinutes }
-                    if let imageQuotaBytes { $0.imageUploadQuotaBytes = imageQuotaBytes }
-                    $0.cleanImages = cleanImages
-                }
-            }
-        }
         return MachineScreenContent<DeviceManagementActions>(
             vm: vm,
-            scrollToStorage: scrollToStorage,
+            initialDirect: initialDirect,
+            initialCliAgent: initialCliAgent,
+            directStatus: model.isDemo ? nil : context.remote.directStatus(id),
             onOpenStatus: { nav.open(.machineStatus(id: id)) },
             onOpenQuota: { nav.open(.quota(machine: id)) },
-            onToggleDirect: toggleDirect,
+            onOpenUsage: { nav.open(.usage(machine: id)) },
+            onOpenStorage: { nav.open(.machineStorage(id: id)) },
+            onOpenProjects: { nav.open(.machineProjects(id: id)) },
+            onToggleDirect: { enabled in
+                context.dispatch {
+                    $0.updateDirectPreference = .with {
+                        $0.machineID = id
+                        $0.enabled = enabled
+                    }
+                }
+            },
             onRetryDirect: { context.remote.refreshDirect(id) },
             onRetrySettings: { Task { await host.openMachineSettings(machineID: id) } },
             onRefresh: refreshAction,
-            onSelectAgent: selectAgent,
-            onUpdateAgentDefaults: updateDefaults,
-            onUpdateDaemonSettings: updateDaemon,
-            onOpenProject: { key in nav.open(.project(key: key)) },
+            onSelectAgent: { agent in
+                context.dispatch {
+                    $0.machineSettingsSelectAgent = .with {
+                        $0.machineID = id
+                        $0.agent = agent
+                    }
+                }
+            },
+            onToggleAgent: { agent, enabled in
+                context.dispatch {
+                    $0.toggleMachineAgent = .with {
+                        $0.machineID = id
+                        $0.agent = agent
+                        $0.enabled = enabled
+                    }
+                }
+            },
+            onUpdateAgentDefaults: { agent, modelID, effort, mode in
+                context.dispatch {
+                    $0.updateMachineAgentDefaults = .with {
+                        $0.machineID = id
+                        $0.agent = agent
+                        if let modelID { $0.model = modelID }
+                        if let effort { $0.effort = effort }
+                        if let mode { $0.mode = mode }
+                    }
+                }
+            },
+            onUpdateDaemonSettings: { timeoutSeconds, idleCloseMinutes, imageQuotaBytes, cleanImages in
+                context.dispatch {
+                    $0.updateMachineDaemonSettings = .with {
+                        $0.machineID = id
+                        if let timeoutSeconds { $0.approvalTimeoutSeconds = timeoutSeconds }
+                        if let idleCloseMinutes { $0.idleCloseMinutes = idleCloseMinutes }
+                        if let imageQuotaBytes { $0.imageUploadQuotaBytes = imageQuotaBytes }
+                        $0.cleanImages = cleanImages
+                    }
+                }
+            },
             managementSection: { DeviceManagementActions(id: id, machine: true) }
         )
     }
@@ -100,60 +109,102 @@ struct MachineScreen: View {
 /// Pure presentation body for `PBMachineSettingsViewModel`, usable directly by golden snapshot tests.
 struct MachineScreenContent<Management: View>: View {
     let vm: PBMachineSettingsViewModel
-    var scrollToStorage = false
+    var initialDirect = false
+    var initialCliAgent: String? = nil
+    var directStatus: DirectStatus? = nil
     let onOpenStatus: () -> Void
     let onOpenQuota: () -> Void
+    var onOpenUsage: () -> Void = {}
+    var onOpenStorage: () -> Void = {}
+    var onOpenProjects: () -> Void = {}
     let onToggleDirect: (Bool) -> Void
     let onRetryDirect: () -> Void
     let onRetrySettings: () -> Void
     let onRefresh: (@MainActor @Sendable () async -> Void)?
     let onSelectAgent: (PBAgent) -> Void
+    var onToggleAgent: (PBAgent, Bool) -> Void = { _, _ in }
     let onUpdateAgentDefaults: (PBAgent, _ model: String?, _ effort: String?, _ mode: PBApprovalMode?) -> Void
     let onUpdateDaemonSettings: (_ timeoutSeconds: Int32?, _ idleCloseMinutes: Int32?, _ imageQuotaBytes: Int64?, _ cleanImages: Bool) -> Void
-    let onOpenProject: (String) -> Void
+    var onOpenProject: ((String) -> Void)? = nil
     @ViewBuilder let managementSection: () -> Management
 
     @Environment(\.dynamicTypeSize) private var typeSize
-    @State private var picking: Pick?
-    @State private var cleaning = false
+    @State private var cliSheetAgent: CliSheetAgent?
+    @State private var directSheetOpen = false
+    @State private var daemonPick: DaemonPick?
+    @State private var handledInitialDeepLink = false
 
-    private enum Pick: Identifiable, Hashable {
-        case model(PBAgent)
-        case effort(PBAgent)
-        case mode(PBAgent)
-        case timeout, idleClose, imageQuota
+    private struct CliSheetAgent: Identifiable, Hashable {
+        let agent: PBAgent
+        var id: Int { agent.rawValue }
+    }
 
+    private enum DaemonPick: Identifiable, Hashable {
+        case timeout, idleClose
         var id: String {
             switch self {
-            case .model(let agent): "model-\(agent.rawValue)"
-            case .effort(let agent): "effort-\(agent.rawValue)"
-            case .mode(let agent): "mode-\(agent.rawValue)"
             case .timeout: "timeout"
             case .idleClose: "idle-close"
-            case .imageQuota: "image-quota"
             }
         }
     }
 
     var body: some View {
         let title = vm.found ? vm.name.or(vm.machineID) : L10n.settingsComputer()
-        let scrollReady = vm.hasAttachmentStorage && vm.attachmentStorage.loaded
-        SettingsPage(
-            refresh: onRefresh,
-            scrollTo: scrollToStorage ? (id: MachineAnchor.storage, ready: scrollReady) : nil
-        ) {
+        let subtitle: String? = if vm.found {
+            vm.headerSubtitle.rendered().or(vm.online ? L10n.commonIosOnline() : L10n.commonIosOffline())
+        } else {
+            nil
+        }
+        let dotColor: Color? = if vm.found {
+            statusDotColor(vm.headerDot, fallbackOnline: vm.online)
+        } else {
+            nil
+        }
+
+        SettingsPage(refresh: onRefresh) {
             if vm.found {
                 details(vm)
             } else {
                 PageNote(L10n.settingsIosThisComputerIsNotInTheCurrentTrustedDirectory())
             }
         }
-        .navBar(
-            title,
-            subtitle: vm.found ? (vm.online ? L10n.commonIosOnline() : L10n.commonIosOffline()) : nil,
-            dot: vm.found ? (vm.online ? DS.green : DS.ink3) : nil
-        )
-        .kitSheet(item: $picking) { pick in sheet(pick) }
+        .navBar(title, subtitle: subtitle, dot: dotColor)
+        .onChange(of: vm.found, initial: true) { _, found in
+            guard found, !handledInitialDeepLink else { return }
+            handledInitialDeepLink = true
+            if initialDirect && vm.member && vm.hasConnection && vm.connection.toggleVisible {
+                directSheetOpen = true
+            } else if let target = Self.parseAgentSlug(initialCliAgent),
+                      vm.cliVersions.contains(where: { $0.agent == target }) {
+                onSelectAgent(target)
+                cliSheetAgent = CliSheetAgent(agent: target)
+            }
+        }
+        .sheet(item: $cliSheetAgent) { item in
+            CliSettingsSheet(
+                vm: vm,
+                agent: item.agent,
+                onSelectAgent: onSelectAgent,
+                onToggleAgent: onToggleAgent,
+                onUpdateDefaults: onUpdateAgentDefaults,
+                onClose: { cliSheetAgent = nil }
+            )
+        }
+        .sheet(isPresented: $directSheetOpen) {
+            DirectSettingsSheet(
+                machineID: vm.machineID,
+                machineName: vm.name.or(vm.machineID),
+                view: vm.connection,
+                directStatus: directStatus,
+                onToggle: onToggleDirect,
+                onRetry: onRetryDirect,
+                onClose: { directSheetOpen = false }
+            )
+        }
+        .kitSheet(item: $daemonPick) { pick in
+            daemonPickerSheet(pick)
+        }
         .debugSignal("machine.timeout") {
             let choices = vm.approvalTimeoutChoices
             guard !choices.isEmpty else { return }
@@ -161,15 +212,44 @@ struct MachineScreenContent<Management: View>: View {
             let next = choices[(idx + 1) % choices.count]
             onUpdateDaemonSettings(next.seconds, nil, nil, false)
         }
-        .confirm(
-            isPresented: $cleaning,
-            title: L10n.settingsIosClearReclaimableImages(),
-            text: L10n.settingsIosClearsReclaimableOriginalsAndCacheUnsyncedFullSizeImages(),
-            confirm: L10n.settingsClearSettings()
-        ) {
-            onUpdateDaemonSettings(nil, nil, nil, true)
+    }
+
+    static func parseAgentSlug(_ slug: String?) -> PBAgent? {
+        guard let slug = slug?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased(), !slug.isEmpty else {
+            return nil
+        }
+        switch slug {
+        case "codex": return .codex
+        case "claude", "claude_code", "claudecode": return .claude
+        case "antigravity": return .antigravity
+        default:
+            if let raw = Int(slug), let agent = PBAgent(rawValue: raw), agent != .unspecified {
+                return agent
+            }
+            return nil
         }
     }
+
+    static func agentSlug(_ agent: PBAgent) -> String? {
+        switch agent {
+        case .codex: "codex"
+        case .claude: "claude"
+        case .antigravity: "antigravity"
+        default: nil
+        }
+    }
+
+    private func statusDotColor(_ dot: PBMachineStatusDot, fallbackOnline: Bool) -> Color {
+        switch dot {
+        case .greenLive: DS.green
+        case .orangeStatic: DS.orange
+        case .redStatic: DS.red
+        case .grayStatic: DS.ink3
+        case .unspecified, .UNRECOGNIZED: fallbackOnline ? DS.green : DS.ink3
+        }
+    }
+
+    // MARK: Sections
 
     @ViewBuilder private func details(_ vm: PBMachineSettingsViewModel) -> some View {
         let name = vm.name.or(vm.machineID)
@@ -181,215 +261,485 @@ struct MachineScreenContent<Management: View>: View {
             GroupBanner(banner, tone: vm.protocolMismatch != 0 ? .warn : .plain)
         }
 
+        // Module 0: 电脑状态 overview card
         if vm.showStatusEntry {
+            let cardOnline = vm.online && vm.member && vm.protocolMismatch == 0
             MachineRingsCard(
                 rings: vm.statusRings,
-                online: vm.online && vm.member && vm.protocolMismatch == 0,
+                online: cardOnline,
+                showHeader: true,
+                statusDot: vm.statusCardDot,
+                statusBadge: vm.statusCardBadge.rendered(),
+                statusWarn: vm.statusCardWarn,
                 onOpen: onOpenStatus
             )
         }
 
-        GroupLabel(L10n.settingsComputer())
-        GroupCard {
-            GRow(L10n.settingsName(), value: name)
-            GRow(L10n.settingsDeviceId(), value: "…" + String(vm.machineID.suffix(8)))
-        }
+        // Module 1: 额度与用量
+        quotaAndUsageModule(vm)
 
-        if !vm.quotaRows.isEmpty {
-            GroupLabel(L10n.settingsAccountQuota())
-            GroupCard {
-                ForEach(Array(vm.quotaRows.enumerated()), id: \.offset) { _, sec in
-                    let summary = sec.hasSummaryRow ? sec.summaryRow : nil
-                    let rem = summary?.remainingText.rendered() ?? ""
-                    let win = summary?.label.rendered() ?? ""
-                    let fallback = sec.emptyOrErrorText.rendered()
-                    if !rem.isEmpty && !win.isEmpty {
-                        let warn = summary?.tone == .warn || summary?.tone == .full
-                        GRow(sec.agentName, value: "· " + win, chevron: true, valueLines: 1) {
-                            onOpenQuota()
-                        }
-                        .valueLead {
-                            Text(rem)
-                                .font(.subheadline)
-                                .ink(warn ? DS.orangeInk : DS.ink2)
-                                .lineLimit(typeSize.isAccessibilitySize ? nil : 1)
-                        }
-                    } else {
-                        GRow(sec.agentName, value: rem.isEmpty ? fallback : rem, chevron: true) {
-                            onOpenQuota()
-                        }
-                    }
-                }
-            }
-        }
+        // Module 2: 编程 CLI
+        codingCliModule(vm)
 
-        if vm.member && vm.hasConnection && vm.connection.toggleVisible {
-            ConnectionGroup(view: vm.connection, onToggle: onToggleDirect, onRetryDirect: onRetryDirect)
-        }
+        // Module 3: 运行与存储
+        runtimeAndStorageModule(vm, name: name)
 
-        if !vm.cliVersions.isEmpty {
-            GroupLabel(L10n.settingsIosCliVersions())
-            GroupCard {
-                ForEach(Array(vm.cliVersions.enumerated()), id: \.offset) { _, a in
-                    GRow(a.name, value: a.version.or(L10n.settingsIosUnknown()))
-                        .valueLead {
-                            Text(a.verified ? L10n.settingsIosVerified() : L10n.settingsIosUnverified())
-                                .font(.subheadline)
-                                .ink(a.verified ? DS.ink2 : DS.orangeInk)
-                        }
-                }
-            }
-            if vm.hasUnverifiedCli_p {
-                GroupNote(L10n.settingsIosForUnverifiedVersionsRunRemoteAgentDoctorOnThe())
-            }
-        }
-
-        daemonSettings(vm, name: name)
-
-        if !vm.projects.isEmpty {
-            GroupLabel(L10n.scheduleProject())
-            GroupCard {
-                ForEach(Array(vm.projects.enumerated()), id: \.offset) { _, p in
-                    GRow(p.name, value: shortPath(p.path), chevron: true) {
-                        onOpenProject(p.projectKey)
-                    }
-                }
-            }
-        }
-
+        // Module 4: 管理 + Bottom Danger
+        managementModule(vm)
         managementSection()
     }
 
-    @ViewBuilder private func daemonSettings(_ vm: PBMachineSettingsViewModel, name: String) -> some View {
+    @ViewBuilder private func quotaAndUsageModule(_ vm: PBMachineSettingsViewModel) -> some View {
+        if !vm.quotaRows.isEmpty || vm.showUsageEntry {
+            GroupLabel(L10n.settingsSectionQuotaAndUsage())
+            GroupCard {
+                ForEach(Array(vm.quotaRows.enumerated()), id: \.offset) { _, sec in
+                    quotaRow(sec)
+                }
+                if vm.showUsageEntry {
+                    GRow(
+                        L10n.settingsUsageAndSpeed(),
+                        value: usageEntrySummary(vm),
+                        chevron: true,
+                        valueLines: 1
+                    ) {
+                        onOpenUsage()
+                    }
+                    .lead {
+                        SymbolImage("speedometer", size: 17, color: DS.ink)
+                            .frame(width: 22, alignment: .center)
+                    }
+                }
+            }
+        }
+    }
+
+    @ViewBuilder private func quotaRow(_ sec: PBQuotaCliSection) -> some View {
+        let primaryText = sec.summaryPrimaryText.rendered()
+        let windowText = sec.summaryWindowText.rendered()
+        let summary = sec.hasSummaryRow ? sec.summaryRow : nil
+        let rem = primaryText.or(summary?.remainingText.rendered() ?? "")
+        let win = windowText.or(summary?.label.rendered() ?? "")
+        let warn = !primaryText.isEmpty ? sec.summaryPrimaryWarn : (summary?.tone == .warn || summary?.tone == .full)
+        let fallback = sec.emptyOrErrorText.rendered()
+
+        if !rem.isEmpty && !win.isEmpty {
+            GRow(sec.agentName, value: "· " + win, chevron: true, valueLines: 1) {
+                onOpenQuota()
+            }
+            .lead {
+                AgentMark(sec.agent, style: .body, named: true)
+                    .frame(width: 22, alignment: .center)
+            }
+            .valueLead {
+                Text(rem)
+                    .font(.subheadline)
+                    .fontWeight(warn ? .semibold : .regular)
+                    .ink(warn ? DS.orangeInk : DS.ink2)
+                    .lineLimit(typeSize.isAccessibilitySize ? nil : 1)
+            }
+        } else {
+            let singleVal = rem.isEmpty ? fallback : rem
+            GRow(
+                sec.agentName,
+                value: singleVal,
+                chevron: true,
+                valueColor: (!rem.isEmpty && warn) ? DS.orangeInk : DS.ink2,
+                valueLines: 1
+            ) {
+                onOpenQuota()
+            }
+            .lead {
+                AgentMark(sec.agent, style: .body, named: true)
+                    .frame(width: 22, alignment: .center)
+            }
+        }
+    }
+
+    private func usageEntrySummary(_ vm: PBMachineSettingsViewModel) -> String {
+        if vm.usageTotalTokens > 0 {
+            let formatted = UsageFormat.formatTokens(Double(vm.usageTotalTokens))
+            if vm.usageCachedOffline {
+                return L10n.settingsUsageSummaryCached(value: formatted)
+            } else if vm.usageFallbackThirtyDays {
+                return L10n.settingsUsageSummary30D(value: formatted)
+            } else {
+                return L10n.settingsUsageSummary7D(value: formatted)
+            }
+        }
+        return vm.usageEmptyText.rendered().or(L10n.settingsUsageSummaryEmpty())
+    }
+
+    @ViewBuilder private func codingCliModule(_ vm: PBMachineSettingsViewModel) -> some View {
+        if !vm.cliVersions.isEmpty {
+            GroupLabel(L10n.settingsSectionCodingClis())
+            let conflictBanner = vm.cliSwitchesConflictBanner.rendered()
+            if !conflictBanner.isEmpty {
+                GroupBanner(conflictBanner, tone: .warn)
+            }
+            let disabledReason = vm.cliSwitchesDisabledReason.rendered()
+            if !disabledReason.isEmpty {
+                GroupBanner(disabledReason, tone: .warn)
+            }
+
+            GroupCard {
+                ForEach(Array(vm.cliVersions.enumerated()), id: \.offset) { _, a in
+                    cliRow(a)
+                }
+            }
+
+            let switchesFooter = vm.cliSwitchesFooter.rendered()
+            if !switchesFooter.isEmpty {
+                GroupNote(switchesFooter)
+            } else if vm.cliSwitchesLeaseExpired {
+                GroupNote(L10n.settingsCliSwitchesLeaseExpiredFooter())
+            }
+        }
+    }
+
+    @ViewBuilder private func cliRow(_ a: PBCliVersionView) -> some View {
+        let ver = a.version.or(L10n.settingsIosUnknown())
+        let unverifiedWord = a.unverifiedLabel.rendered().or(L10n.settingsCliUnverifiedShort())
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .trimmingCharacters(in: CharacterSet(charactersIn: "·"))
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        let modelLabel = a.defaultModelLabel.rendered()
+        let modeLabel = a.defaultModeLabel.rendered()
+        let disabledLabel = a.disabledLabel.rendered().or(L10n.settingsCliDisabled())
+
+        let (leadValue, trailingValue, trailingColor): (String?, String?, Color) = {
+            if !a.enabled {
+                return (nil, disabledLabel, DS.ink2)
+            }
+            if !modelLabel.isEmpty && !modeLabel.isEmpty {
+                return (modelLabel + " · ", modeLabel, a.defaultModeDanger ? DS.red : DS.ink2)
+            }
+            if !modeLabel.isEmpty {
+                return (nil, modeLabel, a.defaultModeDanger ? DS.red : DS.ink2)
+            }
+            return (nil, modelLabel.isEmpty ? nil : modelLabel, DS.ink2)
+        }()
+
+        GRow(
+            a.name.or(agentName(a.agent)),
+            value: trailingValue,
+            chevron: true,
+            valueColor: trailingColor,
+            valueLines: 1
+        ) {
+            onSelectAgent(a.agent)
+            cliSheetAgent = CliSheetAgent(agent: a.agent)
+        }
+        .lead {
+            AgentMark(a.agent, style: .body, named: true)
+                .frame(width: 22, alignment: .center)
+                .opacity(a.enabled ? 1 : 0.45)
+        }
+        .subView {
+            if !a.verified {
+                let verSuffix = " · " + ver
+                let line = Text(unverifiedWord).foregroundStyle(DS.orangeInk).fontWeight(.semibold)
+                    + Text(verSuffix).foregroundStyle(DS.ink2)
+                line
+            }
+        }
+        .valueLead {
+            if let leadValue {
+                Text(leadValue)
+                    .font(.subheadline)
+                    .foregroundStyle(DS.ink2)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+            }
+        }
+    }
+
+    @ViewBuilder private func runtimeAndStorageModule(_ vm: PBMachineSettingsViewModel, name: String) -> some View {
+        let busy = vm.savePending || !vm.editable
         let readError = vm.settingsError.rendered()
         let saveErr = vm.saveError.rendered()
+        let showDirect = vm.member && vm.hasConnection && vm.connection.toggleVisible
+        let showStorage = vm.hasAttachmentStorage && vm.attachmentStorage.loaded
+        let showDaemonPickers = vm.editable && !vm.settingsLoading && !vm.approvalTimeoutChoices.isEmpty
 
-        if !vm.editable {
-            if vm.protocolMismatch == 0 && !vm.online {
-                GroupNote(L10n.settingsIosIsOfflineConnectToReadAndEditNewSession(value: name))
-            } else if vm.protocolMismatch == 0 && vm.unlinked {
-                GroupNote(L10n.settingsIosConnectToTheServerToReadAndEditNew())
+        if showDirect || showStorage || vm.editable || !vm.online || vm.unlinked {
+            GroupLabel(L10n.settingsSectionRuntimeAndStorage())
+            GroupCard {
+                if showDirect {
+                    let sub = vm.connection.rowSubtitleText.rendered()
+                    GRow(
+                        L10n.transportDirect(),
+                        sub: sub.isEmpty ? nil : sub,
+                        value: vm.connection.rowValueText.rendered(),
+                        chevron: true,
+                        valueLines: 1
+                    ) {
+                        directSheetOpen = true
+                    }
+                    .valueLead {
+                        if vm.connection.rowSpinning {
+                            ProgressView().controlSize(.small)
+                        } else {
+                            machineStatusDotView(vm.connection.rowDot, size: 8)
+                        }
+                    }
+                }
+                if showDaemonPickers {
+                    let timeoutValue = vm.approvalTimeoutChoices.first(where: \.selected)?.label.rendered()
+                        ?? L10n.quotaMin(count: Int(vm.selectedApprovalTimeoutSeconds / 60))
+                    let idleValue = vm.idleCloseChoices.first(where: \.selected)?.label.rendered() ?? ""
+                    GRow(L10n.settingsApprovalTimeout(), value: timeoutValue, chevron: true, enabled: !busy) {
+                        daemonPick = .timeout
+                    }
+                    GRow(L10n.settingsIdleCloseShort(), value: idleValue, chevron: true, enabled: !busy) {
+                        daemonPick = .idleClose
+                    }
+                }
+                if showStorage {
+                    let s = vm.attachmentStorage
+                    GRow(
+                        L10n.settingsAttachmentStorage(),
+                        value: s.summaryText.rendered(),
+                        chevron: true,
+                        valueColor: s.summaryWarn ? DS.orangeInk : DS.ink2,
+                        valueLines: 1
+                    ) {
+                        onOpenStorage()
+                    }
+                }
             }
-        } else if vm.settingsLoading {
-            GroupLabel(L10n.settingsNewProjectDefaults())
-            LoadingRow(inset: 30).padding(.bottom, 4)
-        } else if !readError.isEmpty && !vm.hasAgentDefaults {
-            GroupLabel(L10n.settingsNewProjectDefaults())
-            GroupBanner(readError, tone: .error, action: L10n.commonRetry(), onAction: onRetrySettings)
-        } else if vm.hasAgentDefaults {
-            let busy = vm.savePending || !vm.editable
-            let agents = vm.availableAgents
-            let d = vm.agentDefaults
-            let activeAgent = agents.contains(vm.selectedAgent) ? vm.selectedAgent : (agents.first ?? d.agent)
 
-            if agents.count > 1 {
-                GroupLabel(L10n.settingsNewProjectDefaults())
-                SegPick(
-                    agents.map(agentName),
-                    selected: Binding(
-                        get: { agents.firstIndex(of: activeAgent) ?? 0 },
-                        set: { onSelectAgent(agents[$0]) }
-                    )
-                )
-                .padding(.horizontal, DS.Space.l)
+            if !vm.editable {
+                if vm.protocolMismatch == 0 && !vm.online {
+                    GroupNote(L10n.settingsIosIsOfflineConnectToReadAndEditNewSession(value: name))
+                } else if vm.protocolMismatch == 0 && vm.unlinked {
+                    GroupNote(L10n.settingsIosConnectToTheServerToReadAndEditNew())
+                }
+            } else if vm.settingsLoading {
+                LoadingRow(inset: 30).padding(.bottom, 4)
             } else {
-                GroupLabel(L10n.settingsNewProjectDefaultsSettings(value: d.agentName.or(agentName(activeAgent))))
+                if vm.savePending {
+                    LoadingRow(L10n.settingsIosSaving(), inset: 30).padding(.bottom, 4)
+                }
+                if vm.saveUnknown {
+                    GroupBanner(
+                        saveErr.or(L10n.settingsIosUnsureWhetherTheComputerSavedThisChangeReloadTo()),
+                        tone: .warn,
+                        action: L10n.settingsIosReload(),
+                        onAction: onRetrySettings
+                    )
+                } else if !saveErr.isEmpty {
+                    GroupBanner(saveErr, tone: .error)
+                }
+                if !readError.isEmpty {
+                    GroupBanner(readError, tone: .error, action: L10n.commonRetry(), onAction: onRetrySettings)
+                }
+            }
+        }
+    }
+
+    @ViewBuilder private func managementModule(_ vm: PBMachineSettingsViewModel) -> some View {
+        let projectCount = vm.projectCountText.rendered().or(vm.projectCount > 0 ? "\(vm.projectCount)" : "\(vm.projects.count)")
+        let shortIdText = vm.shortID.or("…" + String(vm.machineID.suffix(8)))
+
+        GroupLabel(L10n.settingsSectionManagement())
+        GroupCard {
+            GRow(L10n.settingsProjectsRow(), value: projectCount, chevron: true, valueLines: 1) {
+                onOpenProjects()
+            }
+            GRow(L10n.settingsDeviceId()) {}
+                .trailing {
+                    Text(shortIdText)
+                        .font(.subheadline.monospaced())
+                        .foregroundStyle(DS.ink2)
+                }
+                .contextMenu {
+                    Button(L10n.settingsIosCopyDeviceId()) {
+                        UIPasteboard.general.string = vm.machineID
+                    }
+                }
+        }
+    }
+
+    @ViewBuilder private func daemonPickerSheet(_ pick: DaemonPick) -> some View {
+        switch pick {
+        case .timeout:
+            SheetHead(L10n.settingsApprovalTimeout())
+            ForEach(Array(vm.approvalTimeoutChoices.enumerated()), id: \.offset) { idx, c in
+                ListItem(
+                    c.label.rendered(),
+                    checked: c.selected,
+                    last: idx == vm.approvalTimeoutChoices.count - 1
+                ) {
+                    daemonPick = nil
+                    onUpdateDaemonSettings(c.seconds, nil, nil, false)
+                }
+            }
+            Hint(L10n.settingsTimeoutFooter())
+
+        case .idleClose:
+            SheetHead(L10n.settingsIdleCloseShort())
+            ForEach(Array(vm.idleCloseChoices.enumerated()), id: \.offset) { idx, c in
+                ListItem(
+                    c.label.rendered(),
+                    checked: c.selected,
+                    last: idx == vm.idleCloseChoices.count - 1
+                ) {
+                    daemonPick = nil
+                    onUpdateDaemonSettings(nil, c.minutes, nil, false)
+                }
+            }
+            Hint(L10n.settingsIosSessionsEndAutomaticallyAfterThisMuchInactivityNotRunning())
+        }
+    }
+}
+
+// MARK: - CLI Settings Sheet
+
+private struct CliSettingsSheet: View {
+    let vm: PBMachineSettingsViewModel
+    let agent: PBAgent
+    let onSelectAgent: (PBAgent) -> Void
+    let onToggleAgent: (PBAgent, Bool) -> Void
+    let onUpdateDefaults: (PBAgent, String?, String?, PBApprovalMode?) -> Void
+    let onClose: () -> Void
+
+    @Environment(\.horizontalSizeClass) private var sizeClass
+    @State private var subpage: Subpage = .root
+
+    private enum Subpage: Equatable {
+        case root, model, effort, mode
+    }
+
+    private var cli: PBCliVersionView? {
+        vm.cliVersions.first { $0.agent == agent }
+    }
+
+    private var defaultsView: PBMachineAgentDefaultsView? {
+        if let cli, cli.hasDefaults {
+            return cli.defaults
+        }
+        if vm.hasAgentDefaults && vm.agentDefaults.agent == agent {
+            return vm.agentDefaults
+        }
+        return nil
+    }
+
+    var body: some View {
+        let name = cli?.name.or(agentName(agent)) ?? agentName(agent)
+        let busy = vm.savePending || !vm.editable
+        ScrollView {
+            VStack(alignment: .leading, spacing: 0) {
+                switch subpage {
+                case .root:
+                    SheetHead(name, action: L10n.commonDone(), onAction: onClose)
+                    rootBody(cli: cli, busy: busy)
+                case .model:
+                    SheetHead(L10n.settingsIosDefaultModelForNewSessions(value: name), onBack: { subpage = .root })
+                    modelPicker
+                case .effort:
+                    SheetHead(L10n.modelsEffort(), onBack: { subpage = .root })
+                    effortPicker
+                case .mode:
+                    SheetHead(L10n.settingsDefaultApprovalMode(), onBack: { subpage = .root })
+                    modePicker
+                }
+            }
+            .padding(.init(top: 26, leading: 16, bottom: 24, trailing: 16))
+        }
+        .scrollBounceBehavior(.basedOnSize)
+        .sheetSurface()
+        .tint(DS.blue)
+        .adaptiveModalPresentation(sizeClass: sizeClass)
+        .onAppear { onSelectAgent(agent) }
+    }
+
+    @ViewBuilder private func rootBody(cli: PBCliVersionView?, busy: Bool) -> some View {
+        let ver = cli?.version.or(L10n.settingsIosUnknown()) ?? L10n.settingsIosUnknown()
+        let verified = cli?.verified ?? true
+        let enabled = cli?.enabled ?? true
+        let locked = cli?.lockedLastEnabled ?? false
+        let saving = cli?.saving ?? false
+        let showSwitch = vm.cliVersions.count >= 2 && vm.showCliSwitches
+        let canToggle = vm.cliSwitchesEditable && !locked && !saving && vm.editable && !vm.savePending
+
+        GroupCard {
+            if showSwitch {
+                HStack(spacing: 10) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(L10n.settingsCliEnableOnComputer())
+                            .font(.body)
+                            .foregroundStyle(DS.ink)
+                        if locked {
+                            Text(L10n.settingsCliSwitchesKeepOne())
+                                .font(.footnote)
+                                .foregroundStyle(DS.ink2)
+                        }
+                    }
+                    Spacer(minLength: 8)
+                    if saving {
+                        ProgressView().controlSize(.small)
+                    }
+                    Toggle("", isOn: Binding(
+                        get: { enabled },
+                        set: { onToggleAgent(agent, $0) }
+                    ))
+                    .labelsHidden()
+                    .tint(locked ? DS.green.opacity(0.4) : DS.green)
+                    .disabled(!canToggle)
+                }
+                .padding(.horizontal, 14)
+                .padding(.vertical, 10)
+                .frame(minHeight: DS.minHit)
             }
 
+            GRow(L10n.settingsCliInstalledVersion(), value: ver)
+                .valueLead {
+                    if !verified {
+                        Text(L10n.settingsCliUnverifiedBadge())
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(DS.orangeInk)
+                            .padding(.trailing, 2)
+                    }
+                }
+        }
+
+        if !verified {
+            GroupNote(L10n.settingsIosForUnverifiedVersionsRunRemoteAgentDoctorOnThe())
+        }
+
+        if !enabled {
+            GroupNote(L10n.settingsCliDisabledExplanation())
+        } else if let d = defaultsView, cli?.hasDefaults != false {
             let modelValue = d.selectedModelLabel.rendered().or(d.selectedModel).or(L10n.modelsDefault())
             let selectedEffort = d.effortChoices.first(where: \.selected)
             let effortValue = selectedEffort?.label.rendered().or(d.selectedEffort) ?? d.selectedEffort.or(L10n.modelsDefault())
-            let selectedMode = d.modeChoices.first(where: \.selected)
-            let modeValue = selectedMode?.label.rendered() ?? ""
-            let timeoutValue = vm.approvalTimeoutChoices.first(where: \.selected)?.label.rendered()
-                ?? L10n.quotaMin(count: Int(vm.selectedApprovalTimeoutSeconds / 60))
-            let idleValue = vm.idleCloseChoices.first(where: \.selected)?.label.rendered() ?? ""
+            let modeValue = d.modeChoices.first(where: \.selected)?.label.rendered() ?? ""
 
+            GroupLabel(L10n.settingsNewProjectDefaults())
             GroupCard {
-                GRow(L10n.modelsTitle(), value: modelValue, chevron: true, enabled: !busy) {
-                    picking = .model(activeAgent)
+                GRow(L10n.settingsCliSheetModel(), value: modelValue, chevron: true, enabled: !busy) {
+                    subpage = .model
                 }
-                GRow(L10n.modelsEffort(), value: effortValue, chevron: true, enabled: !busy) {
-                    picking = d.effortChoices.count > 1 ? .effort(activeAgent) : .model(activeAgent)
+                GRow(L10n.settingsCliSheetEffort(), value: effortValue, chevron: true, enabled: !busy) {
+                    subpage = d.effortChoices.count > 1 ? .effort : .model
                 }
                 GRow(
-                    L10n.modesTitle(),
+                    L10n.settingsCliSheetMode(),
                     value: modeValue,
                     chevron: true,
                     enabled: !busy,
                     valueColor: d.selectedMode == .fullAccess ? DS.red : nil
                 ) {
-                    picking = .mode(activeAgent)
+                    subpage = .mode
                 }
             }
-
-            GroupCard {
-                GRow(L10n.settingsApprovalTimeout(), value: timeoutValue, chevron: true, enabled: !busy) {
-                    picking = .timeout
-                }
-                GRow(L10n.settingsAutomaticallyEndIdleSessions(), value: idleValue, chevron: true, enabled: !busy) {
-                    picking = .idleClose
-                }
-            }
-
-            if vm.savePending {
-                LoadingRow(L10n.settingsIosSaving(), inset: 30).padding(.bottom, 4)
-            }
-            if vm.saveUnknown {
-                GroupBanner(
-                    saveErr.or(L10n.settingsIosUnsureWhetherTheComputerSavedThisChangeReloadTo()),
-                    tone: .warn,
-                    action: L10n.settingsIosReload(),
-                    onAction: onRetrySettings
-                )
-            } else if !saveErr.isEmpty {
-                GroupBanner(saveErr, tone: .error)
-            }
-            if !readError.isEmpty {
-                GroupBanner(readError, tone: .error, action: L10n.commonRetry(), onAction: onRetrySettings)
-            }
-
-            if vm.hasAttachmentStorage && vm.attachmentStorage.loaded {
-                attachmentStorage(vm.attachmentStorage, enabled: !busy)
-            }
+            GroupNote(L10n.settingsCliNewProjectDefaultsFooter())
         }
     }
 
-    @ViewBuilder private func attachmentStorage(_ s: PBAttachmentStorageView, enabled: Bool) -> some View {
-        let quotaLabel = s.quotaChoices.first(where: \.selected)?.label.rendered()
-            ?? wholeBytes(s.selectedQuotaBytes)
-        let uploaded = s.uploadedText.rendered()
-        let previewCache = s.previewCacheText.rendered()
-        let clearLabel = s.clearButtonLabel_p.rendered().or(L10n.settingsNothingToClear())
-        let footer = s.footerText.rendered().or(L10n.settingsIosImagesAreStoredOnThisComputerImagesBeingSent())
-
-        GroupLabel(L10n.settingsAttachmentStorage()).id(MachineAnchor.storage)
-        GroupCard {
-            GRow(L10n.settingsUploadedImagesAndFiles(), value: uploaded, valueLines: nil)
-            GRow(L10n.settingsStorageLimit(), value: quotaLabel, chevron: true, enabled: enabled) {
-                picking = .imageQuota
-            }
-            GRow(L10n.settingsPreviewCache(), value: previewCache.or("—"))
-            if s.showEmergencyReserve {
-                EmergencyReserveRow(text: s.emergencyReserveText.rendered())
-            }
-            GRow(
-                L10n.settingsClear(),
-                value: clearLabel,
-                action: true,
-                enabled: enabled && s.canClear && !s.cleaning
-            ) {
-                cleaning = true
-            }
-        }
-        GroupNote(footer)
-    }
-
-    @ViewBuilder private func sheet(_ pick: Pick) -> some View {
-        let d = vm.agentDefaults
-        switch pick {
-        case .model(let agent):
-            SheetHead(L10n.settingsIosDefaultModelForNewSessions(value: d.agentName.or(agentName(agent))))
+    @ViewBuilder private var modelPicker: some View {
+        if let d = defaultsView {
             ForEach(Array(d.modelChoices.enumerated()), id: \.offset) { idx, c in
                 ListItem(
                     c.label.rendered().or(c.id),
@@ -397,28 +747,32 @@ struct MachineScreenContent<Management: View>: View {
                     small: c.desc.isEmpty ? nil : c.desc,
                     last: idx == d.modelChoices.count - 1
                 ) {
-                    picking = nil
-                    onUpdateAgentDefaults(agent, c.id, nil, nil)
+                    onUpdateDefaults(agent, c.id, nil, nil)
+                    subpage = .root
                 }
             }
-            let defaultFooter = d.footerText.rendered()
-            if !defaultFooter.isEmpty { Hint(defaultFooter) }
+            let footer = d.footerText.rendered()
+            if !footer.isEmpty { Hint(footer) }
+        }
+    }
 
-        case .effort(let agent):
-            SheetHead(L10n.modelsEffort())
+    @ViewBuilder private var effortPicker: some View {
+        if let d = defaultsView {
             ForEach(Array(d.effortChoices.enumerated()), id: \.offset) { idx, c in
                 ListItem(
                     c.label.rendered().or(c.id),
                     checked: c.selected,
                     last: idx == d.effortChoices.count - 1
                 ) {
-                    picking = nil
-                    onUpdateAgentDefaults(agent, nil, c.id, nil)
+                    onUpdateDefaults(agent, nil, c.id, nil)
+                    subpage = .root
                 }
             }
+        }
+    }
 
-        case .mode(let agent):
-            SheetHead(L10n.settingsDefaultApprovalMode())
+    @ViewBuilder private var modePicker: some View {
+        if let d = defaultsView {
             ForEach(Array(d.modeChoices.enumerated()), id: \.offset) { idx, c in
                 let disabledReason = c.disabledReason.rendered()
                 ListItem(
@@ -428,77 +782,202 @@ struct MachineScreenContent<Management: View>: View {
                     small: disabledReason.isEmpty ? nil : disabledReason,
                     last: idx == d.modeChoices.count - 1
                 ) {
-                    picking = nil
-                    onUpdateAgentDefaults(agent, nil, nil, c.mode)
+                    onUpdateDefaults(agent, nil, nil, c.mode)
+                    subpage = .root
                 }
             }
             let notice = d.autoUnavailableNotice.rendered()
-            if !notice.isEmpty {
-                Hint(notice)
-            }
-
-        case .timeout:
-            SheetHead(L10n.settingsApprovalTimeout())
-            ForEach(Array(vm.approvalTimeoutChoices.enumerated()), id: \.offset) { idx, c in
-                ListItem(
-                    c.label.rendered(),
-                    checked: c.selected,
-                    last: idx == vm.approvalTimeoutChoices.count - 1
-                ) {
-                    picking = nil
-                    onUpdateDaemonSettings(c.seconds, nil, nil, false)
-                }
-            }
-            Hint(L10n.settingsIosUnansweredApprovalsAreDeniedAfterThisTime())
-
-        case .idleClose:
-            SheetHead(L10n.settingsAutomaticallyEndIdleSessions())
-            ForEach(Array(vm.idleCloseChoices.enumerated()), id: \.offset) { idx, c in
-                ListItem(
-                    c.label.rendered(),
-                    checked: c.selected,
-                    last: idx == vm.idleCloseChoices.count - 1
-                ) {
-                    picking = nil
-                    onUpdateDaemonSettings(nil, c.minutes, nil, false)
-                }
-            }
-            Hint(L10n.settingsIosSessionsEndAutomaticallyAfterThisMuchInactivityNotRunning())
-
-        case .imageQuota:
-            let choices = vm.attachmentStorage.quotaChoices
-            SheetHead(L10n.settingsStorageLimit())
-            ForEach(Array(choices.enumerated()), id: \.offset) { idx, c in
-                ListItem(
-                    c.label.rendered().or(wholeBytes(c.bytes)),
-                    checked: c.selected,
-                    last: idx == choices.count - 1
-                ) {
-                    picking = nil
-                    onUpdateDaemonSettings(nil, nil, c.bytes, false)
-                }
-            }
+            if !notice.isEmpty { Hint(notice) }
         }
     }
 }
 
-/// 应急预留 in 附件存储: its size and why it is there; no action.
-private struct EmergencyReserveRow: View {
-    let text: String
+// MARK: - Unified Direct Connection Sheet
+
+private struct DirectSettingsSheet: View {
+    let machineID: String
+    let machineName: String
+    let view: PBConnectionGroupView
+    let directStatus: DirectStatus?
+    let onToggle: (Bool) -> Void
+    let onRetry: () -> Void
+    let onClose: () -> Void
+
+    @Environment(\.horizontalSizeClass) private var sizeClass
+    @State private var copied = false
+    @State private var cooldown = false
+
+    private struct DiagCheckRow {
+        let dotColor: Color
+        let label: String
+        let detail: String?
+        let status: String
+    }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            HStack(alignment: .firstTextBaseline, spacing: 10) {
-                Text(L10n.machineStatusEmergencyReserve()).font(.body).foregroundStyle(DS.ink)
-                Spacer(minLength: 0)
-                if !text.isEmpty {
-                    Text(text).font(.subheadline).foregroundStyle(DS.ink2)
+        let supported = view.toggleVisible
+        let status = view.statusText.rendered()
+        let detail = view.detailText.rendered()
+        let metric = view.metricText.rendered()
+        let fileSpeed = view.fileSpeedText.rendered()
+        let readLatency = view.readLatencyText.rendered()
+        let showStatus = !status.isEmpty || !detail.isEmpty || !metric.isEmpty
+        let showSpeeds = view.stage != .disabled && view.stage != .unsupported && view.stage != .offline
+        let isDirect = view.stage == .direct
+        let isRunning = view.stage == .connecting || view.stage == .measuring || directStatus?.state == .connecting
+        let isEnabledPath = view.toggleChecked && view.stage != .disabled && view.stage != .unsupported && view.stage != .offline
+
+        ScrollView {
+            VStack(alignment: .leading, spacing: 0) {
+                SheetHead(L10n.transportDirect(), action: L10n.commonDone(), onAction: onClose)
+
+                GroupCard {
+                    ToggleRow(
+                        L10n.transportRowAllowDirect(),
+                        isOn: Binding(
+                            get: { supported && view.toggleChecked },
+                            set: { onToggle($0) }
+                        )
+                    )
+                    .disabled(!view.toggleEnabled)
+                    .opacity(supported ? 1 : 0.4)
+
+                    if showStatus {
+                        DirectStatusRow(stage: view.stage, tone: view.tone, status: status, detail: detail, metric: metric)
+                    }
+                    if showSpeeds && !fileSpeed.isEmpty {
+                        GRow(L10n.transportSpeedFile(), value: fileSpeed)
+                    }
+                    if showSpeeds && !readLatency.isEmpty {
+                        GRow(L10n.transportSpeedRead(), value: readLatency)
+                    }
                 }
+
+                if isEnabledPath {
+                    let checks = buildDiagChecks(connected: isDirect, running: isRunning)
+                    GroupCard(separatorLeading: 34) {
+                        ForEach(Array(checks.enumerated()), id: \.offset) { _, row in
+                            HStack(alignment: .center, spacing: 10) {
+                                Dot(row.dotColor, size: 8)
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(row.label).font(.body).foregroundStyle(DS.ink)
+                                    if let d = row.detail, !d.isEmpty {
+                                        Text(d).font(.footnote).foregroundStyle(DS.ink2)
+                                    }
+                                }
+                                Spacer(minLength: 8)
+                                Text(row.status).font(.subheadline).foregroundStyle(DS.ink2)
+                            }
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 10)
+                            .frame(minHeight: DS.minHit)
+                        }
+                    }
+
+                    if !isDirect {
+                        let peerOutdated = directStatus?.reason == .peerUnsupported
+                        let retryDisabled = isRunning || cooldown || peerOutdated || view.stage == .unsupported
+                        VStack(spacing: 10) {
+                            Btn(
+                                isRunning ? L10n.transportDiagRetrying() : L10n.transportRowRetryDirect(),
+                                kind: .primary,
+                                enabled: !retryDisabled
+                            ) {
+                                cooldown = true
+                                onRetry()
+                                Task {
+                                    try? await Task.sleep(for: .seconds(2))
+                                    cooldown = false
+                                }
+                            }
+                            Btn(
+                                copied ? L10n.transportRowDiagCopied() : L10n.transportRowDiagCopySupport(),
+                                kind: .secondary
+                            ) {
+                                UIPasteboard.general.string = diagnosticReport(verdict: detail.or(status))
+                                copied = true
+                                Task {
+                                    try? await Task.sleep(for: .seconds(1.8))
+                                    copied = false
+                                }
+                            }
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.bottom, 12)
+                    }
+                }
+
+                GroupNote(view.footerText.rendered().or(L10n.transportDiagPrivacyFooter()))
             }
-            Text(L10n.machineStatusEmergencyReserveNote()).font(.footnote).foregroundStyle(DS.ink2)
+            .padding(.init(top: 26, leading: 16, bottom: 24, trailing: 16))
         }
-        .padding(.horizontal, 14).padding(.vertical, 11)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .accessibilityElement(children: .combine)
+        .scrollBounceBehavior(.basedOnSize)
+        .sheetSurface()
+        .tint(DS.blue)
+        .adaptiveModalPresentation(sizeClass: sizeClass)
+    }
+
+    private func buildDiagChecks(connected: Bool, running: Bool) -> [DiagCheckRow] {
+        let reason = directStatus?.reason
+        let peerOutdated = !connected && reason == .peerUnsupported
+        let noReply = !connected && !peerOutdated && reason == .noResponse
+        let natBlocked = !connected && !peerOutdated && !noReply && (reason == .noTraversal || reason == .failed)
+
+        let peerRow: DiagCheckRow = if peerOutdated {
+            DiagCheckRow(dotColor: DS.ink3, label: L10n.transportDiagCheckPeer(), detail: L10n.transportDiagPeerOldDesc(), status: L10n.transportDiagStatusPeerOld())
+        } else if noReply {
+            DiagCheckRow(dotColor: DS.ink3, label: L10n.transportDiagCheckPeer(), detail: L10n.transportDiagPeerNoReplyDesc(), status: L10n.transportDiagStatusNoReply())
+        } else {
+            DiagCheckRow(dotColor: DS.green, label: L10n.transportDiagCheckPeer(), detail: nil, status: L10n.transportDiagStatusOk())
+        }
+
+        let pathRow: DiagCheckRow = if connected {
+            DiagCheckRow(dotColor: DS.green, label: L10n.transportDiagCheckPath(), detail: nil, status: L10n.transportDiagStatusConnected())
+        } else if running {
+            DiagCheckRow(dotColor: DS.ink, label: L10n.transportDiagCheckPath(), detail: nil, status: L10n.transportDiagStatusChecking())
+        } else if peerOutdated || noReply {
+            DiagCheckRow(dotColor: DS.ink3, label: L10n.transportDiagCheckPath(), detail: nil, status: L10n.transportDiagStatusNotStarted())
+        } else if natBlocked {
+            DiagCheckRow(dotColor: DS.ink3, label: L10n.transportDiagCheckPath(), detail: L10n.transportDiagPathNat(), status: L10n.transportDiagStatusBlocked())
+        } else {
+            DiagCheckRow(dotColor: DS.ink3, label: L10n.transportDiagCheckPath(), detail: L10n.transportDiagPathFailed(), status: L10n.transportDiagStatusBlocked())
+        }
+
+        let retryRow: DiagCheckRow = if peerOutdated {
+            DiagCheckRow(dotColor: DS.ink3, label: L10n.transportDiagCheckRetry(), detail: L10n.transportDiagRetryWaitDesc(), status: L10n.transportDiagStatusWaitUpdate())
+        } else {
+            DiagCheckRow(dotColor: DS.green, label: L10n.transportDiagCheckRetry(), detail: L10n.transportDiagRetryAutoDesc(), status: L10n.transportDiagStatusEnabled())
+        }
+
+        return [peerRow, pathRow, retryRow]
+    }
+
+    private func diagnosticReport(verdict: String) -> String {
+        let fmt = DateFormatter()
+        fmt.locale = Locale(identifier: "en_US_POSIX")
+        fmt.dateFormat = "yyyy-MM-dd HH:mm:ss"
+        let lines = [
+            L10n.transportDiagReportTitle(),
+            L10n.transportDiagReportVerdict(verdict: verdict.or(L10n.transportDiagVerdictNone())),
+            "Client: iOS \(UIDevice.current.systemVersion)",
+            "Computer: \(machineName)",
+            "Time: \(fmt.string(from: Date()))",
+            "Stage: \(view.stage.rawValue), Reason: \(directStatus?.reason.map { String(describing: $0) } ?? "none")",
+        ]
+        return lines.joined(separator: "\n")
+    }
+}
+
+private extension View {
+    @ViewBuilder func adaptiveModalPresentation(sizeClass: UserInterfaceSizeClass?) -> some View {
+        if sizeClass == .regular {
+            if #available(iOS 18.0, *) {
+                self.presentationSizing(.form)
+            } else {
+                self
+            }
+        } else {
+            self.presentationDetents([.medium, .large])
+        }
     }
 }

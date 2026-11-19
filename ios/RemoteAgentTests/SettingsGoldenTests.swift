@@ -39,12 +39,9 @@ import UIKit
 
         for vm in settingsVMs {
             render(SettingsPage {
-                ForEach(vm.machines, id: \.machineID) { m in
-                    MachineCard(machine: m)
-                }
-                GroupCard {
-                    ForEach(vm.recentClients, id: \.deviceID) { c in
-                        ClientRow(client: c)
+                GroupCard(separatorLeading: 46) {
+                    ForEach(vm.machines, id: \.machineID) { m in
+                        MachineCard(machine: m)
                     }
                 }
                 HomeDiskReminders(reminders: vm.diskReminders)
@@ -53,10 +50,10 @@ import UIKit
         for d in devicesVMs {
             render(SettingsPage {
                 GroupCard {
-                    ForEach(d.computers, id: \.machineID) { m in
-                        MachineRow(machine: m)
-                    }
                     ForEach(d.clients, id: \.deviceID) { c in
+                        ClientRow(client: c)
+                    }
+                    ForEach(d.unfinishedPairings, id: \.deviceID) { c in
                         ClientRow(client: c)
                     }
                 }
@@ -72,17 +69,115 @@ import UIKit
                 vm: vm,
                 onOpenStatus: {},
                 onOpenQuota: {},
+                onOpenUsage: {},
+                onOpenStorage: {},
+                onOpenProjects: {},
                 onToggleDirect: { _ in },
                 onRetryDirect: {},
                 onRetrySettings: {},
                 onRefresh: nil,
                 onSelectAgent: { _ in },
+                onToggleAgent: { _, _ in },
                 onUpdateAgentDefaults: { _, _, _, _ in },
                 onUpdateDaemonSettings: { _, _, _, _ in },
-                onOpenProject: { _ in },
                 managementSection: { EmptyView() }
             ))
+            if vm.hasAttachmentStorage && vm.attachmentStorage.loaded {
+                render(MachineStorageContent(
+                    vm: vm,
+                    onRefresh: nil,
+                    onRetry: {},
+                    onSelectQuota: { _ in },
+                    onClear: {}
+                ))
+            }
         }
+    }
+
+    @Test func usageFormatAndOpenParamsWorkAcrossLocalesAndPresets() {
+        MessageLocale.$overrideForTesting.withValue("zh-CN") {
+            #expect(UsageFormat.formatTokens(0) == "0")
+            #expect(UsageFormat.formatTokens(9_850) == "9,850")
+            #expect(UsageFormat.formatTokens(34_500_000) == "3,450万")
+            #expect(UsageFormat.formatTokens(120_000_000) == "1.2亿")
+            #expect(UsageFormat.formatCacheHit(0.624) == "62%")
+            #expect(UsageFormat.formatSpeed(74.2) == "74")
+            #expect(UsageFormat.formatTtft(820) == "820 ms")
+        }
+        MessageLocale.$overrideForTesting.withValue("en") {
+            #expect(UsageFormat.formatTokens(1_500) == "1.5k")
+            #expect(UsageFormat.formatTokens(2_400_000) == "2.4M")
+        }
+
+        let nowMs: Int64 = 1_760_000_000_000
+        let today = CoreHost.buildUsageOpenParams(preset: .today, nowMs: nowMs)
+        #expect(today.bucketBoundsMs.count == 25)
+        let seven = CoreHost.buildUsageOpenParams(preset: .sevenDays, nowMs: nowMs)
+        #expect(seven.bucketBoundsMs.count == 8)
+        let thirty = CoreHost.buildUsageOpenParams(preset: .thirtyDays, nowMs: nowMs)
+        #expect(thirty.bucketBoundsMs.count == 31)
+
+        let tooOldStart = nowMs - Int64(180) * 86_400_000
+        let clamped = CoreHost.clampUsageCustomRange(startMs: tooOldStart, endMs: nowMs + 5 * 86_400_000, nowMs: nowMs)
+        #expect(clamped.startMs >= tooOldStart)
+        #expect(clamped.endMs <= nowMs)
+
+        #expect(MachineScreenContent<EmptyView>.parseAgentSlug("claude") == .claude)
+        #expect(MachineScreenContent<EmptyView>.parseAgentSlug("codex") == .codex)
+        #expect(MachineScreenContent<EmptyView>.agentSlug(.claude) == "claude")
+    }
+
+    @Test func usageScreenRendersAllFourMetricsAndEmptyStates() {
+        let now: Int64 = 1_760_000_000_000
+        let params = CoreHost.buildUsageOpenParams(preset: .sevenDays, nowMs: now)
+        let req = PBGetUsageStatsRequest.with {
+            $0.preset = .sevenDays
+            $0.bucketBoundsMs = params.bucketBoundsMs
+        }
+        let stats = SettingsDemo.usageStats(request: req, machineID: "mac", now: now)
+        for metric: PBCoreUsageMetricTab in [.tokens, .cacheHit, .outputSpeed, .ttft] {
+            let vm = PBCoreUsageViewModel.with {
+                $0.machineID = "mac"
+                $0.machineName = "Workstation"
+                $0.found = true
+                $0.supported = true
+                $0.online = true
+                $0.preset = .sevenDays
+                $0.granularity = stats.granularity
+                $0.startMs = stats.startMs
+                $0.endMs = stats.endMs
+                $0.metric = metric
+                $0.sources = stats.sources
+                $0.series = stats.series.enumerated().map { idx, s in
+                    PBCoreUsageSeriesView.with {
+                        $0.agent = s.agent
+                        $0.agentName = agentName(s.agent)
+                        $0.model = s.model
+                        $0.seriesKey = "\(s.agent.rawValue):\(s.model)"
+                        $0.patternIndex = Int32(idx)
+                        $0.cacheWriteSupported = s.cacheWriteSupported
+                        $0.current = s.current
+                        $0.previous = s.previous
+                        $0.hasTokensDelta_p = true
+                        $0.tokensDeltaPercent = 14
+                        $0.hasCacheHitDelta_p = true
+                        $0.cacheHitDeltaPoints = 4
+                        $0.hasSpeedDelta_p = true
+                        $0.speedDeltaPercent = 6
+                        $0.hasTtftDelta_p = true
+                        $0.ttftDeltaPercent = -7
+                        $0.buckets = s.buckets
+                    }
+                }
+            }
+            render(UsageScreenContent(vm: vm))
+        }
+        render(UsageScreenContent(vm: PBCoreUsageViewModel.with {
+            $0.machineID = "mac"
+            $0.machineName = "Workstation"
+            $0.found = true
+            $0.supported = false
+        }))
     }
 
     @Test func machineStatusGoldenViewsRenderEveryStep() {

@@ -38,6 +38,8 @@ enum Route: Hashable, Sendable {
     case pickProject
     /// 管理项目: pinned and hidden projects.
     case manageProjects
+    /// 管理项目 filtered to a specific computer.
+    case machineProjects(id: String)
     /// An approval on a page of its own, as opened from a notification.
     case approval(session: String, approval: String)
     /// A proposed plan on a page of its own.
@@ -46,14 +48,16 @@ enum Route: Hashable, Sendable {
     case question(session: String, question: String)
     /// The image viewer at an event's image.
     case image(session: String, seq: UInt64, index: Int)
-    /// 设备: computers and clients.
+    /// 客户端: paired clients and unfinished pairings.
     case devices
     case addDevice(replacing: String = "")
     case accountSecurity, recoveryCode, handoff, rePair
     /// A computer's details and settings.
-    case machine(id: String)
-    /// A computer's details, scrolled to 附件存储 (the disk card and 「remote-agent 的占用」 lead here).
+    case machine(id: String, initialDirect: Bool = false, initialCliAgent: String? = nil)
+    /// A computer's attachment storage management screen.
     case machineStorage(id: String)
+    /// A computer's usage & speed screen.
+    case usage(machine: String, agent: PBAgent = .unspecified, model: String = "")
     /// 电脑状态: a computer's CPU, memory, disk and what uses them.
     case machineStatus(id: String)
     /// A client's details.
@@ -85,6 +89,7 @@ enum Route: Hashable, Sendable {
         case .newProjectAt(let machine, let path): "new-project/\(machine)/\(path)"
         case .pickProject: "pick-project"
         case .manageProjects: "projects"
+        case .machineProjects(let id): "projects/\(id)"
         case .approval(let sid, let aid): "approval/\(sid)/\(aid)"
         case .plan(let sid): "plan/\(sid)"
         case .question(let sid, let qid): "question/\(sid)/\(qid)"
@@ -95,8 +100,21 @@ enum Route: Hashable, Sendable {
         case .rePair: "re-pair"
         case .devices: "devices"
         case .addDevice(let id): id.isEmpty ? "add-device" : "add-device/" + id
-        case .machine(let id): "machine/\(id)"
+        case .machine(let id, let initialDirect, let initialCliAgent):
+            if initialDirect {
+                "machine-direct/\(id)"
+            } else if let agent = initialCliAgent, !agent.isEmpty {
+                "machine-cli/\(id)/\(agent)"
+            } else {
+                "machine/\(id)"
+            }
         case .machineStorage(let id): "machine-storage/\(id)"
+        case .usage(let machine, let agent, let model):
+            if agent == .unspecified && model.isEmpty {
+                "usage/\(machine)"
+            } else {
+                "usage/\(machine)/\(agent.rawValue)/\(model)"
+            }
         case .machineStatus(let id): "machine-status/\(id)"
         case .client(let id): "client/\(id)"
         case .quota(let machine): "quota/\(machine)"
@@ -134,6 +152,7 @@ enum Route: Hashable, Sendable {
             self = .newProjectAt(machine: machine, path: path)
         case ("pick-project", true): self = .pickProject
         case ("projects", true): self = .manageProjects
+        case ("projects", false): self = .machineProjects(id: rest)
         case ("approval", false):
             guard let (sid, aid) = two() else { return nil }
             self = .approval(session: sid, approval: aid)
@@ -152,7 +171,22 @@ enum Route: Hashable, Sendable {
         case ("devices", true): self = .devices
         case ("add-device", _): self = .addDevice(replacing: rest)
         case ("machine", false): self = .machine(id: rest)
+        case ("machine-direct", false): self = .machine(id: rest, initialDirect: true)
+        case ("machine-cli", false):
+            guard let (id, agent) = two() else { return nil }
+            self = .machine(id: id, initialCliAgent: agent)
         case ("machine-storage", false): self = .machineStorage(id: rest)
+        case ("usage", false):
+            let segs = rest.split(separator: "/", maxSplits: 2, omittingEmptySubsequences: false).map(String.init)
+            guard let machine = segs.first, !machine.isEmpty else { return nil }
+            if segs.count == 1 {
+                self = .usage(machine: machine)
+            } else if segs.count >= 2, let raw = Int(segs[1]), let agent = PBAgent(rawValue: raw) {
+                let model = segs.count >= 3 ? segs[2] : ""
+                self = .usage(machine: machine, agent: agent, model: model)
+            } else {
+                return nil
+            }
         case ("machine-status", false): self = .machineStatus(id: rest)
         case ("client", false): self = .client(id: rest)
         case ("quota", false): self = .quota(machine: rest)
@@ -258,6 +292,7 @@ extension Route {
         case .newProjectAt(let machine, let path): NewProjectAtScreen(machine: machine, path: path)
         case .pickProject: PickProjectScreen()
         case .manageProjects: ManageProjectsScreen()
+        case .machineProjects(let id): ManageProjectsScreen(initialMachineId: id)
         case .approval(let sid, let aid): ApprovalScreen(session: sid, approval: aid)
         case .plan(let sid): PlanScreen(session: sid)
         case .question(let sid, let qid): QuestionScreen(session: sid, question: qid)
@@ -268,8 +303,10 @@ extension Route {
         case .rePair: RePairScreen()
         case .devices: DevicesScreen()
         case .addDevice(let id): AddDeviceScreen(replacing: id)
-        case .machine(let id): MachineScreen(id: id)
-        case .machineStorage(let id): MachineScreen(id: id, scrollToStorage: true)
+        case .machine(let id, let initialDirect, let initialCliAgent):
+            MachineScreen(id: id, initialDirect: initialDirect, initialCliAgent: initialCliAgent)
+        case .machineStorage(let id): MachineStorageScreen(id: id)
+        case .usage(let machine, let agent, let model): UsageScreen(machineID: machine, focusAgent: agent, focusModel: model)
         case .machineStatus(let id): MachineStatusScreen(id: id)
         case .client(let id): ClientScreen(id: id)
         case .quota(let machine): QuotaScreen(machine: machine)

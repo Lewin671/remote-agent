@@ -77,6 +77,7 @@ struct SessionScreen: View {
     @State private var rename = false
     @State private var projectSettings: ProjectSettingsRequest?
     @State private var confirmStop = false
+    @State private var directPopoverOpen = false
     @State private var windowLimit: Int32 = 80
     @State private var expandedGroups: [String] = []
 
@@ -226,10 +227,72 @@ struct SessionScreen: View {
         .navigationBarTitleDisplayMode(.inline)
         .navigationTitle(titleText)
         .toolbarRole(.editor)
+        .onChange(of: header.exited) { _, exited in
+            if exited { directPopoverOpen = false }
+        }
+        .onChange(of: header.computerOnline) { _, online in
+            if !online { directPopoverOpen = false }
+        }
+        .onChange(of: header.computerUnlinked) { _, unlinked in
+            if unlinked { directPopoverOpen = false }
+        }
         .toolbar {
             ToolbarItem(placement: .principal) {
-                SessionTitle(
-                    title: titleText, mark: StatusKind(header), status: statusText, mode: modeText, danger: modeDanger)
+                let computer = header.hasComputerName ? header.computerName.rendered() : machineLabel(state, id: machineID)
+                let liveDirectReport: PBDirectRouteReport? = {
+                    if let rep = context.core.directReports[machineID] { return rep }
+                    #if DEBUG
+                    if model.isDemo && SessionDebug.shows("direct") {
+                        return PBDirectRouteReport.with {
+                            $0.enabled = true
+                            $0.capable = true
+                            $0.state = .connected
+                            $0.readRoute = .direct
+                            $0.fileRoute = .direct
+                            $0.hasDirectReadMs_p = true
+                            $0.directReadMs = 12
+                            $0.hasActiveRttMs_p = true
+                            $0.activeRttMs = 12
+                        }
+                    }
+                    #endif
+                    return nil
+                }()
+                let directActive = !term && !header.exited && header.computerOnline && !header.computerUnlinked
+                    && liveDirectReport?.state == .connected
+                    && (liveDirectReport?.readRoute == .direct || liveDirectReport?.fileRoute == .direct)
+                let showDirectChip = !term && (directActive || directPopoverOpen)
+                let titleView = SessionTitle(
+                    title: titleText,
+                    mark: StatusKind(header),
+                    status: statusText,
+                    mode: modeText,
+                    danger: modeDanger,
+                    showDirect: showDirectChip
+                )
+                if showDirectChip {
+                    Button {
+                        directPopoverOpen.toggle()
+                    } label: {
+                        titleView
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(L10n.transportPopoverA11Y())
+                    .popover(isPresented: $directPopoverOpen, attachmentAnchor: .rect(.bounds), arrowEdge: .top) {
+                        SessionDirectPopover(
+                            computerName: computer,
+                            directActive: directActive,
+                            report: liveDirectReport,
+                            onSettings: {
+                                directPopoverOpen = false
+                                nav.open(.machine(id: machineID, initialDirect: true))
+                            }
+                        )
+                        .presentationCompactAdaptation(.popover)
+                    }
+                } else {
+                    titleView
+                }
             }
             if wide {
                 ToolbarItem(placement: .topBarTrailing) {
@@ -524,12 +587,15 @@ private struct SessionAbsent: View {
     }
 }
 
+private let directChipSymbol = "bolt.horizontal"
+
 private struct SessionTitle: View {
     let title: String
     let mark: StatusKind?
     let status: String
     let mode: String
     let danger: Bool
+    var showDirect: Bool = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 1) {
@@ -538,11 +604,84 @@ private struct SessionTitle: View {
                 if let mark { StatusMark(mark).scaleEffect(0.8) }
                 Text("\(Text(status).foregroundStyle(DS.ink2))\(Text(mode.isEmpty ? "" : " · ").foregroundStyle(DS.ink2))\(Text(mode).foregroundStyle(danger ? DS.red : DS.ink2))")
                     .font(.caption).lineLimit(1)
+                if showDirect {
+                    HStack(spacing: 3) {
+                        Text("·").foregroundStyle(DS.ink2)
+                        SymbolImage(directChipSymbol, style: .caption2, color: DS.ink2)
+                        Text(L10n.transportDirect()).foregroundStyle(DS.ink2)
+                    }
+                    .font(.caption)
+                    .lineLimit(1)
+                }
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .dynamicTypeSize(...DynamicTypeSize.accessibility1)
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(.isHeader)
+    }
+}
+
+private struct SessionDirectPopover: View {
+    let computerName: String
+    let directActive: Bool
+    let report: PBDirectRouteReport?
+    let onSettings: () -> Void
+
+    var body: some View {
+        let rttDirect: Int? = report.flatMap { r in r.hasDirectReadMs_p ? Int(r.directReadMs) : (r.hasActiveRttMs_p ? Int(r.activeRttMs) : nil) }
+        let rttRelay: Int? = report.flatMap { r in r.hasRelayReadMs_p ? Int(r.relayReadMs) : nil }
+        let titleText: String = {
+            if directActive, let rttDirect {
+                return L10n.transportPopoverDirectTitleRtt(ms: "\(rttDirect)", name: computerName)
+            }
+            if directActive {
+                return L10n.transportPopoverDirectTitle(name: computerName)
+            }
+            if let rttRelay {
+                return L10n.transportPopoverRelayTitleRtt(ms: "\(rttRelay)", name: computerName)
+            }
+            return L10n.transportPopoverRelayTitle(name: computerName)
+        }()
+        let readDirect = report?.readRoute == .direct
+        let fileDirect = report?.fileRoute == .direct
+        let footerStatus: String = {
+            if !directActive { return L10n.transportPopoverSwitchedRelay() }
+            if readDirect && !fileDirect { return L10n.transportPopoverReadOnly() }
+            if fileDirect && !readDirect { return L10n.transportPopoverFileOnly() }
+            return L10n.transportPopoverStable()
+        }()
+
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 8) {
+                Dot(directActive ? DS.green : DS.ink3, size: 8)
+                Text(titleText)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(DS.ink)
+                    .monospacedDigit()
+            }
+            Text(directActive ? L10n.transportPopoverDirectBody() : L10n.transportPopoverRelayBody())
+                .font(.footnote)
+                .foregroundStyle(DS.ink2)
+                .fixedSize(horizontal: false, vertical: true)
+            Rectangle()
+                .fill(DS.sep)
+                .frame(height: 1)
+                .accessibilityHidden(true)
+            HStack(spacing: 10) {
+                Text(footerStatus)
+                    .font(.footnote)
+                    .foregroundStyle(DS.ink2)
+                Spacer(minLength: 8)
+                Button(action: onSettings) {
+                    ArrowText(L10n.transportPopoverSettings(), style: .footnote)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 14)
+        .frame(width: 300)
+        .background(DS.lift)
     }
 }

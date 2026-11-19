@@ -106,6 +106,36 @@ final class AccountContext {
             )
         }
     }
+
+    func selectProjectsMachine(_ machineID: String) {
+        Task { await coreHost.selectProjectsMachine(machineID) }
+    }
+
+    func openUsageScreen(
+        machineID: String,
+        focusAgent: PBAgent = .unspecified,
+        focusModel: String = ""
+    ) {
+        Task {
+            await coreHost.openUsageScreen(
+                machineID: machineID,
+                focusAgent: focusAgent,
+                focusModel: focusModel
+            )
+        }
+    }
+
+    func usageSelectMetric(_ metric: PBCoreUsageMetricTab) {
+        Task { await coreHost.usageSelectMetric(metric) }
+    }
+
+    func usageSelectRange(_ preset: PBUsageRangePreset) {
+        Task { await coreHost.usageSelectRange(preset) }
+    }
+
+    func usageSelectCustomDates(startMs: Int64, endMs: Int64) {
+        Task { await coreHost.usageSelectCustomDates(startMs: startMs, endMs: endMs) }
+    }
 }
 
 /// Plaintext a screen keeps between visits, per account and only in memory

@@ -40,12 +40,14 @@ struct SectionLabel: View {
 /// A label above a group (13, `ink2`): room above it apart from what is over it, a large title or the group before.
 struct GroupLabel: View {
     private let count: Int?
+    private let trailing: String?
     private let text: String
     private let action: String?
     private let onAction: (() -> Void)?
 
-    init(_ text: String, count: Int? = nil, action: String? = nil, onAction: (() -> Void)? = nil) {
+    init(_ text: String, count: Int? = nil, trailing: String? = nil, action: String? = nil, onAction: (() -> Void)? = nil) {
         self.count = count
+        self.trailing = trailing
         self.text = text
         self.action = action
         self.onAction = onAction
@@ -54,13 +56,14 @@ struct GroupLabel: View {
     @Environment(\.dynamicTypeSize) private var typeSize
 
     var body: some View {
+        let trailingText = trailing.flatMap { $0.isEmpty ? nil : $0 } ?? count.map(String.init)
         if typeSize.isAccessibilitySize, let action, let onAction {
             // At accessibility sizes the heading and its link do not share a line: the link goes under it.
             VStack(alignment: .leading, spacing: 4) {
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
                     Text(text).font(.subheadline).ink(DS.ink2).accessibilityAddTraits(.isHeader)
                     Spacer(minLength: 0)
-                    if let count { Text(String(count)).font(.subheadline).ink(DS.ink2) }
+                    if let trailingText { Text(trailingText).font(.subheadline).ink(DS.ink2) }
                 }
                 Button(action: onAction) { ArrowText(action, style: .subheadline).multilineTextAlignment(.leading) }
                     .frame(minHeight: DS.minHit, alignment: .leading)
@@ -70,7 +73,7 @@ struct GroupLabel: View {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
                 Text(text).font(.subheadline).ink(DS.ink2).accessibilityAddTraits(.isHeader)
                 Spacer(minLength: 0)
-                if let count { Text(String(count)).font(.subheadline).ink(DS.ink2) }
+                if let trailingText { Text(trailingText).font(.subheadline).ink(DS.ink2) }
                 if let action, onAction != nil { ArrowText(action, style: .subheadline).lineLimit(1).fixedSize() }
             }
             .padding(.init(top: 18, leading: 30, bottom: 8, trailing: 30))
@@ -106,13 +109,21 @@ enum RowsBuilder {
 /// A grouped list on a grey page: card, radius 14, 16 pt in from the sides, a 1 pt line between rows.
 struct GroupCard: View {
     private let rows: [AnyView]
+    private let separatorLeading: CGFloat
 
-    init(@RowsBuilder rows: () -> [AnyView]) { self.rows = rows() }
+    init(separatorLeading: CGFloat = 0, @RowsBuilder rows: () -> [AnyView]) {
+        self.separatorLeading = separatorLeading
+        self.rows = rows()
+    }
 
     var body: some View {
         VStack(spacing: 0) {
             ForEach(rows.indices, id: \.self) { i in
-                if i > 0 { Rectangle().fill(DS.sep).frame(height: 1).accessibilityHidden(true) }
+                if i > 0 {
+                    Rectangle().fill(DS.sep).frame(height: 1)
+                        .padding(.leading, separatorLeading)
+                        .accessibilityHidden(true)
+                }
                 rows[i]
             }
         }
@@ -190,6 +201,7 @@ struct GRow: View {
     private let icon: String?
     private let onTap: (() -> Void)?
     private var lead: AnyView?
+    private var subView: AnyView?
     private var valueLead: AnyView?
     private var trailing: AnyView?
     @Environment(\.dynamicTypeSize) private var typeSize
@@ -219,6 +231,13 @@ struct GRow: View {
         return row
     }
 
+    /// Custom subtitle content when segments use mixed emphasis or colors.
+    func subView<V: View>(@ViewBuilder _ view: () -> V) -> GRow {
+        var row = self
+        row.subView = AnyView(view())
+        return row
+    }
+
     /// What stands right before the value and moves with it: a status dot, the turning circle of a value being read.
     func valueLead<V: View>(@ViewBuilder _ view: () -> V) -> GRow {
         var row = self
@@ -244,7 +263,11 @@ struct GRow: View {
                 Text(text).font(.body).ink(ink).lineLimit(lines)
                 if chevron && isAction { Arrow(ink, style: .body).padding(.leading, 4) }
             }
-            if let sub, !sub.isEmpty { Text(sub).font(.subheadline).ink(DS.ink2).lineLimit(lines) }
+            if let subView {
+                subView.font(.subheadline).lineLimit(lines)
+            } else if let sub, !sub.isEmpty {
+                Text(sub).font(.subheadline).ink(DS.ink2).lineLimit(lines)
+            }
         }
     }
 

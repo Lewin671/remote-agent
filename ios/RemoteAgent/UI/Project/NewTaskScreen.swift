@@ -25,6 +25,10 @@ struct NewTaskScreen: View {
                 onClose()
                 nav.open(.machine(id: id))
             },
+            onEnableAgent: { id, agent in
+                onClose()
+                nav.open(.machine(id: id, initialCliAgent: MachineScreenContent<EmptyView>.agentSlug(agent)))
+            },
             onMachineStatus: { id in
                 onClose()
                 nav.open(.machineStatus(id: id))

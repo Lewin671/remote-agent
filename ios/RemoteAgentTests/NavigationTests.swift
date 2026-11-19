@@ -8,11 +8,15 @@ import Testing
     nonisolated static let routes: [Route] = [
         .home, .settings, .session(id: "abc"), .session(id: "abc", terminal: true),
         .project(key: "/Users/me/Code/foo"), .project(key: "/Users/me/a b/项目?x=1&y", focusNew: true), .newProject,
-        .newProjectAt(machine: "m1", path: "/srv/www/site"), .pickProject, .manageProjects,
+        .newProjectAt(machine: "m1", path: "/srv/www/site"), .pickProject, .manageProjects, .machineProjects(id: "m1"),
         .approval(session: "s", approval: "A1"), .plan(session: "s"), .question(session: "s", question: "toolu_01/x"),
-        .image(session: "s", seq: 18_446_744_073_709_551_615, index: 2), .devices, .machine(id: "m1"), .client(id: "c1"),
+        .image(session: "s", seq: 18_446_744_073_709_551_615, index: 2), .devices,
+        .machine(id: "m1"), .machine(id: "m1", initialDirect: true), .machine(id: "m1", initialCliAgent: "claude"),
+        .client(id: "c1"),
         .addDevice(), .addDevice(replacing: "archived"), .accountSecurity, .recoveryCode, .handoff, .rePair,
-        .quota(machine: "m1"), .machineStatus(id: "m1"), .machineStorage(id: "m1"), .notifications, .connectionCheck, .imageStorage, .licenses,
+        .quota(machine: "m1"), .machineStatus(id: "m1"), .machineStorage(id: "m1"),
+        .usage(machine: "m1"), .usage(machine: "m1", agent: .codex, model: "gpt-6-astra"),
+        .notifications, .connectionCheck, .imageStorage, .licenses,
     ]
 
     @Test(arguments: routes)
