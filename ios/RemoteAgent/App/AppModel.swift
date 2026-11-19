@@ -125,16 +125,24 @@ final class AccountContext {
         }
     }
 
-    func usageSelectMetric(_ metric: PBCoreUsageMetricTab) {
-        Task { await coreHost.usageSelectMetric(metric) }
-    }
-
     func usageSelectRange(_ preset: PBUsageRangePreset) {
         Task { await coreHost.usageSelectRange(preset) }
     }
 
     func usageSelectCustomDates(startMs: Int64, endMs: Int64) {
         Task { await coreHost.usageSelectCustomDates(startMs: startMs, endMs: endMs) }
+    }
+
+    func usageSelectSort(machineID: String, sortBy: PBCoreUsageSortColumn) {
+        Task { await coreHost.usageSelectSort(machineID: machineID, sortBy: sortBy) }
+    }
+
+    func usageSelectSeries(machineID: String, seriesKey: String, toggle: Bool = true) {
+        Task { await coreHost.usageSelectSeries(machineID: machineID, seriesKey: seriesKey, toggle: toggle) }
+    }
+
+    func usageScrub(machineID: String, bucketIndex: Int32, clear: Bool = false) {
+        Task { await coreHost.usageScrub(machineID: machineID, bucketIndex: bucketIndex, clear: clear) }
     }
 }
 

@@ -255,7 +255,6 @@ actor CoreHost: SyncEngine {
     private var usagePreset: PBUsageRangePreset = .sevenDays
     private var usageCustomStartMs: Int64 = 0
     private var usageCustomEndMs: Int64 = 0
-    private var usageMetric: PBCoreUsageMetricTab = .tokens
     private var usageHydratedMachines: Set<String> = []
     private var sessionWatches: [UUID: SessionWatchEntry] = [:]
     private var sessionWatchOrder: [UUID] = []
@@ -751,7 +750,7 @@ actor CoreHost: SyncEngine {
                 cur += 3_600_000
             }
             bounds.append(endMs)
-        } else if numDays <= 3 {
+        } else if numDays <= 7 {
             var day = startDayDate
             while day < endExclDate {
                 guard let nextDay = cal.date(byAdding: .day, value: 1, to: day), nextDay > day else { break }
@@ -804,8 +803,7 @@ actor CoreHost: SyncEngine {
         focusModel: String = "",
         preset: PBUsageRangePreset? = nil,
         customStartMs: Int64? = nil,
-        customEndMs: Int64? = nil,
-        metric: PBCoreUsageMetricTab? = nil
+        customEndMs: Int64? = nil
     ) async {
         guard !closed, !machineID.isEmpty else { return }
         let switchingMachine = usageMachineID != machineID
@@ -819,18 +817,7 @@ actor CoreHost: SyncEngine {
         }
         if let customStartMs { usageCustomStartMs = customStartMs }
         if let customEndMs { usageCustomEndMs = customEndMs }
-        if let metric {
-            usageMetric = metric == .unspecified ? .tokens : metric
-        } else if switchingMachine {
-            usageMetric = .tokens
-        }
-        await dispatchUsageScreenOpen()
-    }
-
-    func usageSelectMetric(_ metric: PBCoreUsageMetricTab) async {
-        guard !closed else { return }
-        usageMetric = metric == .unspecified ? .tokens : metric
-        await renderTargets([.usage])
+        await dispatchUsageScreenOpen(applyFocus: true)
     }
 
     func usageSelectRange(_ preset: PBUsageRangePreset) async {
@@ -842,7 +829,7 @@ actor CoreHost: SyncEngine {
             usageCustomStartMs = clamped.startMs
             usageCustomEndMs = clamped.endMs
         }
-        await dispatchUsageScreenOpen()
+        await dispatchUsageScreenOpen(applyFocus: false)
     }
 
     func usageSelectCustomDates(startMs: Int64, endMs: Int64) async {
@@ -851,7 +838,39 @@ actor CoreHost: SyncEngine {
         usagePreset = .custom
         usageCustomStartMs = clamped.startMs
         usageCustomEndMs = clamped.endMs
-        await dispatchUsageScreenOpen()
+        await dispatchUsageScreenOpen(applyFocus: false)
+    }
+
+    func usageSelectSort(machineID: String, sortBy: PBCoreUsageSortColumn) async {
+        guard !closed, !machineID.isEmpty else { return }
+        await dispatch {
+            $0.usageScreenSelectSort = .with {
+                $0.machineID = machineID
+                $0.sortBy = sortBy
+            }
+        }
+    }
+
+    func usageSelectSeries(machineID: String, seriesKey: String, toggle: Bool = true) async {
+        guard !closed, !machineID.isEmpty else { return }
+        await dispatch {
+            $0.usageScreenSelectSeries = .with {
+                $0.machineID = machineID
+                $0.seriesKey = seriesKey
+                $0.toggle = toggle
+            }
+        }
+    }
+
+    func usageScrub(machineID: String, bucketIndex: Int32, clear: Bool = false) async {
+        guard !closed, !machineID.isEmpty else { return }
+        await dispatch {
+            $0.usageScreenScrub = .with {
+                $0.machineID = machineID
+                $0.bucketIndex = bucketIndex
+                $0.clear = clear
+            }
+        }
     }
 
     func retryUsageScreen(machineID: String) async {
@@ -861,7 +880,7 @@ actor CoreHost: SyncEngine {
         }
     }
 
-    private func dispatchUsageScreenOpen() async {
+    private func dispatchUsageScreenOpen(applyFocus: Bool) async {
         guard !usageMachineID.isEmpty else { return }
         await hydrateUsageCache(machineID: usageMachineID)
         let params = Self.buildUsageOpenParams(
@@ -871,6 +890,8 @@ actor CoreHost: SyncEngine {
             nowMs: clock()
         )
         let machineID = usageMachineID
+        let fAgent = usageFocusAgent
+        let fModel = usageFocusModel
         await dispatch {
             $0.usageScreenOpen = .with {
                 $0.machineID = machineID
@@ -881,6 +902,9 @@ actor CoreHost: SyncEngine {
                 $0.tzOffsetMinutes = params.tzOffsetMinutes
                 $0.bucketBoundsMs = params.bucketBoundsMs
                 $0.prevStartMs = params.prevStartMs
+                $0.applyFocus = applyFocus
+                $0.focusAgent = fAgent
+                $0.focusModel = fModel
             }
         }
         await renderTargets([.usage])
@@ -1814,7 +1838,6 @@ actor CoreHost: SyncEngine {
                     $0.preset = usagePreset
                     $0.customStartMs = clamped.startMs
                     $0.customEndMs = clamped.endMs
-                    $0.metric = usageMetric
                 }
             }).usage
         }

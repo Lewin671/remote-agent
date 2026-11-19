@@ -262,7 +262,8 @@ extension View {
             now: Int64
         ) -> PBUsageStatsResponse {
             let bounds = req.bucketBoundsMs
-            let gran: PBUsageBucketGranularity = bounds.count > 20 ? .hour : (bounds.count > 8 ? .sixHours : .day)
+            let avgSpan = bounds.count >= 2 ? Double(bounds.last! - bounds.first!) / Double(bounds.count - 1) : 86_400_000
+            let gran: PBUsageBucketGranularity = avgSpan <= 7_200_000 ? .hour : (avgSpan <= 43_200_000 ? .sixHours : .day)
             let startMs = bounds.first ?? (now - 7 * 86_400_000)
             let endMs = bounds.last ?? now
             if state == "usageEmpty" {

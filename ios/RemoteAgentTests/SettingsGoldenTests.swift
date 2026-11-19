@@ -100,9 +100,14 @@ import UIKit
             #expect(UsageFormat.formatTokens(9_850) == "9,850")
             #expect(UsageFormat.formatTokens(34_500_000) == "3,450万")
             #expect(UsageFormat.formatTokens(120_000_000) == "1.2亿")
+            #expect(UsageFormat.formatTokens(12_860_000_000) == "128.6亿")
             #expect(UsageFormat.formatCacheHit(0.624) == "62%")
             #expect(UsageFormat.formatSpeed(74.2) == "74")
-            #expect(UsageFormat.formatTtft(820) == "820 ms")
+            #expect(UsageFormat.formatTtftSeconds(820) == "0.8s")
+            #expect(UsageFormat.formatTtftSeconds(14_200) == "14s")
+            #expect(UsageFormat.formatDeltaTriangle(1_240) == "▲1,240%")
+            #expect(UsageFormat.formatDeltaTriangle(-72) == "▼72%")
+            #expect(UsageFormat.formatDeltaTriangle(0.2) == L10n.usageFlat())
         }
         MessageLocale.$overrideForTesting.withValue("en") {
             #expect(UsageFormat.formatTokens(1_500) == "1.5k")
@@ -113,7 +118,7 @@ import UIKit
         let today = CoreHost.buildUsageOpenParams(preset: .today, nowMs: nowMs)
         #expect(today.bucketBoundsMs.count == 25)
         let seven = CoreHost.buildUsageOpenParams(preset: .sevenDays, nowMs: nowMs)
-        #expect(seven.bucketBoundsMs.count == 8)
+        #expect(seven.bucketBoundsMs.count == 29)
         let thirty = CoreHost.buildUsageOpenParams(preset: .thirtyDays, nowMs: nowMs)
         #expect(thirty.bucketBoundsMs.count == 31)
 
@@ -129,49 +134,103 @@ import UIKit
 
     @Test func usageScreenRendersAllFourMetricsAndEmptyStates() {
         let now: Int64 = 1_760_000_000_000
-        let params = CoreHost.buildUsageOpenParams(preset: .sevenDays, nowMs: now)
-        let req = PBGetUsageStatsRequest.with {
-            $0.preset = .sevenDays
-            $0.bucketBoundsMs = params.bucketBoundsMs
+        let strip = PBCoreUsageMetricStripView.with {
+            $0.hasValue_p = true
+            $0.currentValue = 0.94
+            $0.hasRange_p = true
+            $0.minValue = 0.90
+            $0.maxValue = 0.97
+            $0.scaleMin = 0.88
+            $0.scaleMax = 0.99
+            $0.lastValidIndex = 1
+            $0.allPoints = [
+                .with { $0.hasValue_p = true; $0.value = 0.91 },
+                .with { $0.hasValue_p = true; $0.value = 0.96 },
+            ]
         }
-        let stats = SettingsDemo.usageStats(request: req, machineID: "mac", now: now)
-        for metric: PBCoreUsageMetricTab in [.tokens, .cacheHit, .outputSpeed, .ttft] {
-            let vm = PBCoreUsageViewModel.with {
-                $0.machineID = "mac"
-                $0.machineName = "Workstation"
-                $0.found = true
-                $0.supported = true
-                $0.online = true
-                $0.preset = .sevenDays
-                $0.granularity = stats.granularity
-                $0.startMs = stats.startMs
-                $0.endMs = stats.endMs
-                $0.metric = metric
-                $0.sources = stats.sources
-                $0.series = stats.series.enumerated().map { idx, s in
-                    PBCoreUsageSeriesView.with {
-                        $0.agent = s.agent
-                        $0.agentName = agentName(s.agent)
-                        $0.model = s.model
-                        $0.seriesKey = "\(s.agent.rawValue):\(s.model)"
-                        $0.patternIndex = Int32(idx)
-                        $0.cacheWriteSupported = s.cacheWriteSupported
-                        $0.current = s.current
-                        $0.previous = s.previous
-                        $0.hasTokensDelta_p = true
-                        $0.tokensDeltaPercent = 14
-                        $0.hasCacheHitDelta_p = true
-                        $0.cacheHitDeltaPoints = 4
-                        $0.hasSpeedDelta_p = true
-                        $0.speedDeltaPercent = 6
-                        $0.hasTtftDelta_p = true
-                        $0.ttftDeltaPercent = -7
-                        $0.buckets = s.buckets
-                    }
+        let vm = PBCoreUsageViewModel.with {
+            $0.machineID = "mac"
+            $0.machineName = "Workstation"
+            $0.found = true
+            $0.supported = true
+            $0.online = true
+            $0.preset = .today
+            $0.granularity = .hour
+            $0.rangeDays = 1
+            $0.sortBy = .tokens
+            $0.hasAnyUsage_p = true
+            $0.hero = .with {
+                $0.totalModelCount = 2
+                $0.totalTokens = 720_000_000
+                $0.requestCount = 862
+                $0.hasTokensDelta_p = true
+                $0.tokensDeltaPercent = -72
+                $0.periodCompositionRows = 5
+                $0.composition = .with {
+                    $0.uncachedInputTokens = 42_260_000
+                    $0.cacheReadTokens = 670_000_000
+                    $0.cacheWriteTokens = 4_400_000
+                    $0.outputTokens = 3_240_000
+                    $0.reasoningOutputTokens = 1_360_000
                 }
             }
-            render(UsageScreenContent(vm: vm))
+            $0.barChart = .with {
+                $0.yMax = 100_000_000
+                $0.yMid = 50_000_000
+                $0.buckets = [
+                    .with {
+                        $0.startMs = now - 7_200_000
+                        $0.endMs = now - 3_600_000
+                        $0.allTokens = 45_000_000
+                        $0.hasData_p = true
+                    },
+                    .with {
+                        $0.startMs = now - 3_600_000
+                        $0.endMs = now
+                        $0.allTokens = 85_000_000
+                        $0.hasData_p = true
+                    },
+                ]
+            }
+            $0.cacheHitStrip = strip
+            $0.outputSpeedStrip = strip
+            $0.ttftStrip = strip
+            $0.rows = [
+                .with {
+                    $0.agent = .codex
+                    $0.agentName = "Codex"
+                    $0.model = "gpt-6-astra"
+                    $0.seriesKey = "1:gpt-6-astra"
+                    $0.shareRatio = 1
+                    $0.totalTokens = 380_000_000
+                    $0.hasCacheHit_p = true
+                    $0.cacheHitRate = 0.96
+                    $0.hasSpeed_p = true
+                    $0.speedP50 = 118
+                    $0.hasTtft_p = true
+                    $0.ttftP50Ms = 400
+                },
+                .with {
+                    $0.agent = .claude
+                    $0.agentName = "Claude Code"
+                    $0.model = "claude-sonnet-4-6"
+                    $0.seriesKey = "2:claude-sonnet-4-6"
+                    $0.shareRatio = 0.05
+                    $0.totalTokens = 18_000_000
+                },
+            ]
         }
+        render(UsageScreenContent(vm: vm))
+        render(UsageScreenContent(vm: PBCoreUsageViewModel.with {
+            $0.machineID = "mac"
+            $0.machineName = "Workstation"
+            $0.found = true
+            $0.supported = true
+            $0.online = true
+            $0.preset = .today
+            $0.granularity = .hour
+            $0.hasAnyUsage_p = false
+        }))
         render(UsageScreenContent(vm: PBCoreUsageViewModel.with {
             $0.machineID = "mac"
             $0.machineName = "Workstation"
