@@ -12,6 +12,7 @@ import (
 	"github.com/Lewin671/remote-agent/internal/machinestatus"
 	"github.com/Lewin671/remote-agent/internal/outcome"
 	"github.com/Lewin671/remote-agent/internal/protocol"
+	"github.com/Lewin671/remote-agent/internal/usagestats"
 )
 
 func (d *Daemon) machineRoots() map[int]string {
@@ -55,6 +56,54 @@ func (h *handler) GetMachineStatus(ctx context.Context, _ *connect.Request[pb.Ge
 		}
 	}
 	return connect.NewResponse(s), nil
+}
+
+func (d *Daemon) newUsageCollector() *usagestats.Collector {
+	claudeCfg := d.cfg.Agents[pb.Agent_AGENT_CLAUDE]
+	codexCfg := d.cfg.Agents[pb.Agent_AGENT_CODEX]
+	agyCfg := d.cfg.Agents[pb.Agent_AGENT_ANTIGRAVITY]
+	uc, err := usagestats.New(usagestats.Config{
+		StateDir:       d.dir,
+		ClaudeHome:     claudeCfg.Home,
+		CodexHome:      codexCfg.Home,
+		HasClaude:      d.agents[pb.Agent_AGENT_CLAUDE] != nil && (d.agents[pb.Agent_AGENT_CLAUDE].Bin() != "" || claudeCfg.Home != ""),
+		HasCodex:       d.agents[pb.Agent_AGENT_CODEX] != nil && (d.agents[pb.Agent_AGENT_CODEX].Bin() != "" || codexCfg.Home != ""),
+		HasAntigravity: d.agents[pb.Agent_AGENT_ANTIGRAVITY] != nil && (d.agents[pb.Agent_AGENT_ANTIGRAVITY].Bin() != "" || agyCfg.Bin != ""),
+	})
+	if err != nil {
+		slog.Warn("init usage stats collector", "err", errClass(err))
+		return nil
+	}
+	return uc
+}
+
+func (d *Daemon) ensureUsageCollector() *usagestats.Collector {
+	d.usageMu.Lock()
+	defer d.usageMu.Unlock()
+	if d.usageCollector == nil {
+		d.usageCollector = d.newUsageCollector()
+	}
+	return d.usageCollector
+}
+
+func (h *handler) GetUsageStats(ctx context.Context, req *connect.Request[pb.GetUsageStatsRequest]) (*connect.Response[pb.UsageStatsResponse], error) {
+	uc := h.d.ensureUsageCollector()
+	if uc == nil {
+		return nil, connect.NewError(connect.CodeUnavailable, errors.New("usage stats unavailable"))
+	}
+	st, err := h.d.settingsContext(ctx)
+	var disabled []pb.Agent
+	if err == nil && st != nil {
+		disabled = st.DisabledAgents
+	}
+	resp, err := uc.Query(ctx, req.Msg, usagestats.QueryOptions{
+		Installed: h.d.installedKinds(),
+		Disabled:  disabled,
+	})
+	if err != nil {
+		return nil, h.d.rpcErr(err)
+	}
+	return connect.NewResponse(resp), nil
 }
 func (d *Daemon) diskLoop(ctx context.Context) {
 	t := time.NewTicker(time.Minute)

@@ -58,7 +58,7 @@
               "online": true,
               "meta": {
                 "hostname": "MacBook",
-                "protocolVersion": 16,
+                "protocolVersion": 17,
                 "agents": [{ "agent": "AGENT_CODEX", "defaultMode": "APPROVAL_MODE_ASK" }]
               }
             }
@@ -155,7 +155,7 @@
               "online": true,
               "meta": {
                 "hostname": "MacBook",
-                "protocolVersion": 16,
+                "protocolVersion": 17,
                 "agents": [{ "agent": "AGENT_CODEX", "defaultMode": "APPROVAL_MODE_ASK" }]
               }
             }

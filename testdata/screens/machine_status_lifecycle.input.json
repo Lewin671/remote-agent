@@ -66,7 +66,7 @@
               "online": true,
               "meta": {
                 "hostname": "MacStudio",
-                "protocolVersion": 16,
+                "protocolVersion": 17,
                 "capabilities": { "machineStatus": true },
                 "projects": [
                   { "path": "/Users/me/Code/alpha", "latestCreatedMs": "1791070000000", "latestEndedMs": "1791075000000" }

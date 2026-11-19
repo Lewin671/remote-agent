@@ -156,6 +156,10 @@
   {
     "kind": "getMachineStatus",
     "readOnly": true
+  },
+  {
+    "kind": "getUsageStats",
+    "readOnly": true
   }
 ],
   "vectors": [

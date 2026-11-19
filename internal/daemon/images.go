@@ -322,7 +322,7 @@ func (st *imageStore) uploaded(id string, ok bool, expiresMs int64) {
 
 // capabilities says what this daemon offers that depends on the machine.
 func (d *Daemon) capabilities() *pb.MachineCapabilities {
-	c := &pb.MachineCapabilities{MachineStatus: true, ScheduledTasks: true, SharedFiles: true, MaxSharedFileBytes: maxSharedFileBytes, SharedFileChunkBytes: sharedChunkBytes}
+	c := &pb.MachineCapabilities{MachineStatus: true, ScheduledTasks: true, SharedFiles: true, MaxSharedFileBytes: maxSharedFileBytes, SharedFileChunkBytes: sharedChunkBytes, UsageStats: true, CliSwitches: true}
 	if d.uploads.usable() {
 		c.ImageUpload = true
 		c.FileUpload = true

@@ -312,7 +312,19 @@ func BuildNewSession(st *State, projectKey string) *corev1.NewSessionViewModel {
 			Text:     text.Msg(text.KeyErrorsClientOutOfDate),
 		})
 	}
-	if res.MissingAgent != v1.Agent_AGENT_UNSPECIFIED && !offline {
+	disabledFallback := res.DisabledAgent
+	if disabledFallback == v1.Agent_AGENT_UNSPECIFIED && draft != nil && draft.DisabledFromAgent != v1.Agent_AGENT_UNSPECIFIED {
+		disabledFallback = draft.DisabledFromAgent
+	}
+	if disabledFallback != v1.Agent_AGENT_UNSPECIFIED && !offline {
+		notices = append(notices, &corev1.NewSessionNoticeView{
+			Kind:            corev1.NoticeKind_NOTICE_KIND_AGENT_DISABLED_FALLBACK,
+			Severity:        corev1.NoticeSeverity_NOTICE_SEVERITY_INFO,
+			Text:            text.Msg(text.KeyNewSessionCliDisabledFallback, text.Str("name", machineName), text.Str("missing", lists.AgentInfo(disabledFallback).Name), text.Str("agent", agentCap.Name)),
+			Action:          corev1.NoticeActionKind_NOTICE_ACTION_KIND_ENABLE_AGENT,
+			TargetMachineId: cfg.MachineID,
+		})
+	} else if res.MissingAgent != v1.Agent_AGENT_UNSPECIFIED && !offline {
 		notices = append(notices, &corev1.NewSessionNoticeView{
 			Kind:     corev1.NoticeKind_NOTICE_KIND_MISSING_AGENT,
 			Severity: corev1.NoticeSeverity_NOTICE_SEVERITY_INFO,

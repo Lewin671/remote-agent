@@ -1294,5 +1294,90 @@
       "zh-CN": "source",
       "en": "draft"
     }
+  },
+  {
+    "key": "machine_status.model_usage_title",
+    "zh-CN": "用量与速度",
+    "en": "Usage & speed",
+    "notes": "电脑状态页底部用量与速度小节标题。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "machine_status.model_usage_view_trends",
+    "zh-CN": "查看趋势",
+    "en": "Trends",
+    "notes": "电脑状态页用量与速度小节右上角蓝色跳转操作。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "machine_status.model_usage_empty",
+    "zh-CN": "还没有用量与速度记录",
+    "en": "No usage or speed records yet",
+    "notes": "电脑状态页全部启用 CLI 均暂无统计时的占位说明。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "machine_status.model_usage_only_unavailable",
+    "zh-CN": "当前启用的 CLI 暂不支持统计用量与速度",
+    "en": "Enabled CLIs do not support usage and speed telemetry yet",
+    "notes": "电脑仅启用无采集来源 CLI（如 Antigravity）时的说明。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "machine_status.model_usage_mixed_unavailable",
+    "zh-CN": "{agents} 暂不支持统计用量与速度",
+    "en": "{agents} usage and speed telemetry unavailable",
+    "notes": "电脑同时启用有来源与无来源 CLI 时附在卡片底部的脚注。",
+    "params": {
+      "agents": {
+        "type": "string",
+        "example": "Antigravity"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
   }
 ]

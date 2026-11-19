@@ -184,6 +184,26 @@ message SessionModeChoiceView {
   bool switch_after_turn = 7;
 }
 
+message SessionUsageEntryView {
+  bool visible = 1;
+  bool supported = 2;
+  bool loading = 3;
+  bool source_unavailable = 4;
+  bool has_data = 5;
+  bool fallback_thirty_days = 6;
+  bool few_speed_samples = 7;
+  bool backfilling = 8;
+  uint64 total_tokens = 9;
+  bool has_cache_hit = 10;
+  double cache_hit_rate = 11;
+  bool has_speed = 12;
+  double recent10_speed_p50 = 13;
+  uint64 recent10_speed_count = 14;
+  Text subtitle = 15;
+  Text value_text = 16;
+  Text footnote = 17;
+}
+
 message SessionActionsView {
   bool can_interrupt = 1;
   SessionCommandState interrupt = 2;
@@ -220,6 +240,7 @@ message SessionActionsView {
   Text mode_switch_blocked_reason = 26;
   SessionCommandState set_mode = 27;
   repeated SessionModeChoiceView mode_choices = 28;
+  SessionUsageEntryView usage_entry = 29;
 }
 
 enum SessionDockKind {

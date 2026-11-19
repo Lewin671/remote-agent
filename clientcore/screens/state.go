@@ -31,6 +31,26 @@ type SettingsCacheEntry struct {
 	ErrorText *corev1.Text
 }
 
+// UsageCacheKey indexes passive usage snapshots per machine and range/custom interval.
+type UsageCacheKey struct {
+	MachineID     string
+	Preset        v1.UsageRangePreset
+	CustomStartMs int64
+	CustomEndMs   int64
+}
+
+// UsageSnapshotEntry holds live and offline-cached usage telemetry for one machine+range.
+type UsageSnapshotEntry struct {
+	Live        *v1.UsageStatsResponse
+	LiveAtMs    int64
+	Cached      *v1.UsageStatsResponse
+	CachedAtMs  int64
+	Loading     bool
+	ActiveReqID string
+	Error       string
+	ErrorText   *corev1.Text
+}
+
 // DirPickerState holds the directory chooser state used by Manage Projects and New Task.
 type DirPickerState struct {
 	Open            bool
@@ -54,6 +74,7 @@ type NewSessionDraft struct {
 	MachineChosen        bool
 	ResetOnNextOpen      bool
 	AgentOverride        v1.Agent
+	DisabledFromAgent    v1.Agent
 	Prompt               string
 	AttachmentCount      int32
 	AttachmentsMoved     bool
@@ -104,6 +125,7 @@ type State struct {
 
 	MachineModels   map[MachineAgentKey]*ModelsCacheEntry
 	MachineSettings map[string]*SettingsCacheEntry
+	UsageSnapshots  map[UsageCacheKey]*UsageSnapshotEntry
 
 	StandaloneProjectKey string
 	NewSessions          map[string]*NewSessionDraft
@@ -125,6 +147,7 @@ func NewState() *State {
 		PrefsSettingsErrorText:   make(map[string]*corev1.Text),
 		MachineModels:            make(map[MachineAgentKey]*ModelsCacheEntry),
 		MachineSettings:          make(map[string]*SettingsCacheEntry),
+		UsageSnapshots:           make(map[UsageCacheKey]*UsageSnapshotEntry),
 		NewSessions:              make(map[string]*NewSessionDraft),
 		Schedules:                NewScheduleState(),
 	}

@@ -594,10 +594,20 @@ func buildTaskItemView(
 
 	var attentionLead, attentionReason, preview *corev1.Text
 	var previewPlaceholder bool
+	disabledAgentName := disabledNewSessionAgentName(st, e)
 	if tg == schedule.GroupAttention {
 		attentionLead = schedule.AttentionLeadText(t)
-		attentionReason = schedule.ReasonText(t.Reason, true)
+		if disabledAgentName != "" && strings.HasPrefix(t.Reason, "agent_disabled:") {
+			mac := findMachine(st, e.MachineID)
+			attentionReason = text.Msg(text.KeyScheduleAgentDisabledListNote, text.Str("machine", lists.MachineName(mac, e.MachineID)), text.Str("agent", disabledAgentName))
+		} else {
+			attentionReason = schedule.ReasonText(t.Reason, true)
+		}
 		preview = text.JoinLiteral(" · ", attentionLead, attentionReason)
+	} else if disabledAgentName != "" {
+		mac := findMachine(st, e.MachineID)
+		attentionReason = text.Msg(text.KeyScheduleAgentDisabledListNote, text.Str("machine", lists.MachineName(mac, e.MachineID)), text.Str("agent", disabledAgentName))
+		preview = attentionReason
 	} else if hasUnread && ln != nil {
 		if schedule.IsStoppedRun(ln.Status) {
 			preview = schedule.ReasonText(ln.Reason, true)
@@ -974,10 +984,16 @@ func BuildScheduleDetail(st *State, machineID, taskID string, earlierLimit int) 
 	}
 
 	// Attention banner.
+	entry := schedule.TaskEntry{MachineID: machineID, Task: task}
 	attView := &corev1.ScheduleAttentionView{}
+	disabledAgentName := disabledNewSessionAgentName(st, entry)
 	if tg == schedule.GroupAttention {
 		attView.Show = true
-		attView.Message = schedule.AttentionBannerText(task, bounds)
+		if disabledAgentName != "" && strings.HasPrefix(task.Reason, "agent_disabled:") {
+			attView.Message = text.Msg(text.KeyScheduleAgentDisabledPreRun, text.Str("machine", lists.MachineName(mac, machineID)), text.Str("agent", disabledAgentName))
+		} else {
+			attView.Message = schedule.AttentionBannerText(task, bounds)
+		}
 		targetMissing := schedule.TargetMissing(task)
 		attView.ShowPrimaryAction = !targetMissing
 		if !targetMissing {
@@ -1005,6 +1021,10 @@ func BuildScheduleDetail(st *State, machineID, taskID string, earlierLimit int) 
 				attView.PrimaryActionDisabledReason = actions.ToggleDisabledReason
 			}
 		}
+	} else if disabledAgentName != "" {
+		// Pre-run notice when target new_session CLI is already disabled before the next run fires.
+		attView.Show = false
+		attView.Message = text.Msg(text.KeyScheduleAgentDisabledPreRun, text.Str("machine", lists.MachineName(mac, machineID)), text.Str("agent", disabledAgentName))
 	}
 
 	// Active run.
@@ -1187,7 +1207,6 @@ func BuildScheduleDetail(st *State, machineID, taskID string, earlierLimit int) 
 	}
 
 	limitsTxt := schedule.LimitsText(task.Spec.Trigger, bounds)
-	entry := schedule.TaskEntry{MachineID: machineID, Task: task}
 	targetType := corev1.ScheduleTargetType_SCHEDULE_TARGET_TYPE_NEW_SESSION
 	var targetLbl, targetVal, permTxt *corev1.Text
 	var canOpenTarget, permDanger, canEditPerm bool
@@ -1874,4 +1893,22 @@ func BuildScheduleSessionStrip(st *State, sessionID string) *corev1.ScheduleSess
 		Tasks:          taskViews,
 		MachineOffline: !writable,
 	}
+}
+
+func disabledNewSessionAgentName(st *State, e schedule.TaskEntry) string {
+	if st == nil || e.Task == nil || e.Task.Spec.Target.Type != "new_session" {
+		return ""
+	}
+	if e.Task.Status == "completed" || e.Task.Status == "cancelled" {
+		return ""
+	}
+	mac := findMachine(st, e.MachineID)
+	if mac == nil || mac.Meta == nil {
+		return ""
+	}
+	ag := agentByIDString(e.Task.Spec.Target.Agent)
+	if lists.IsAgentDisabled(mac.Meta, ag) {
+		return lists.AgentInfo(ag).Name
+	}
+	return ""
 }

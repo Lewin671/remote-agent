@@ -1154,6 +1154,115 @@ public struct PBSessionModeChoiceView: @unchecked Sendable {
   fileprivate var _storage = _StorageClass.defaultInstance
 }
 
+public struct PBSessionUsageEntryView: @unchecked Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var visible: Bool {
+    get {return _storage._visible}
+    set {_uniqueStorage()._visible = newValue}
+  }
+
+  public var supported: Bool {
+    get {return _storage._supported}
+    set {_uniqueStorage()._supported = newValue}
+  }
+
+  public var loading: Bool {
+    get {return _storage._loading}
+    set {_uniqueStorage()._loading = newValue}
+  }
+
+  public var sourceUnavailable: Bool {
+    get {return _storage._sourceUnavailable}
+    set {_uniqueStorage()._sourceUnavailable = newValue}
+  }
+
+  public var hasData_p: Bool {
+    get {return _storage._hasData_p}
+    set {_uniqueStorage()._hasData_p = newValue}
+  }
+
+  public var fallbackThirtyDays: Bool {
+    get {return _storage._fallbackThirtyDays}
+    set {_uniqueStorage()._fallbackThirtyDays = newValue}
+  }
+
+  public var fewSpeedSamples: Bool {
+    get {return _storage._fewSpeedSamples}
+    set {_uniqueStorage()._fewSpeedSamples = newValue}
+  }
+
+  public var backfilling: Bool {
+    get {return _storage._backfilling}
+    set {_uniqueStorage()._backfilling = newValue}
+  }
+
+  public var totalTokens: UInt64 {
+    get {return _storage._totalTokens}
+    set {_uniqueStorage()._totalTokens = newValue}
+  }
+
+  public var hasCacheHit_p: Bool {
+    get {return _storage._hasCacheHit_p}
+    set {_uniqueStorage()._hasCacheHit_p = newValue}
+  }
+
+  public var cacheHitRate: Double {
+    get {return _storage._cacheHitRate}
+    set {_uniqueStorage()._cacheHitRate = newValue}
+  }
+
+  public var hasSpeed_p: Bool {
+    get {return _storage._hasSpeed_p}
+    set {_uniqueStorage()._hasSpeed_p = newValue}
+  }
+
+  public var recent10SpeedP50: Double {
+    get {return _storage._recent10SpeedP50}
+    set {_uniqueStorage()._recent10SpeedP50 = newValue}
+  }
+
+  public var recent10SpeedCount: UInt64 {
+    get {return _storage._recent10SpeedCount}
+    set {_uniqueStorage()._recent10SpeedCount = newValue}
+  }
+
+  public var subtitle: PBCoreText {
+    get {return _storage._subtitle ?? PBCoreText()}
+    set {_uniqueStorage()._subtitle = newValue}
+  }
+  /// Returns true if `subtitle` has been explicitly set.
+  public var hasSubtitle: Bool {return _storage._subtitle != nil}
+  /// Clears the value of `subtitle`. Subsequent reads from it will return its default value.
+  public mutating func clearSubtitle() {_uniqueStorage()._subtitle = nil}
+
+  public var valueText: PBCoreText {
+    get {return _storage._valueText ?? PBCoreText()}
+    set {_uniqueStorage()._valueText = newValue}
+  }
+  /// Returns true if `valueText` has been explicitly set.
+  public var hasValueText: Bool {return _storage._valueText != nil}
+  /// Clears the value of `valueText`. Subsequent reads from it will return its default value.
+  public mutating func clearValueText() {_uniqueStorage()._valueText = nil}
+
+  public var footnote: PBCoreText {
+    get {return _storage._footnote ?? PBCoreText()}
+    set {_uniqueStorage()._footnote = newValue}
+  }
+  /// Returns true if `footnote` has been explicitly set.
+  public var hasFootnote: Bool {return _storage._footnote != nil}
+  /// Clears the value of `footnote`. Subsequent reads from it will return its default value.
+  public mutating func clearFootnote() {_uniqueStorage()._footnote = nil}
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+
+  fileprivate var _storage = _StorageClass.defaultInstance
+}
+
 public struct PBSessionActionsView: @unchecked Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
@@ -1358,6 +1467,15 @@ public struct PBSessionActionsView: @unchecked Sendable {
     get {return _storage._modeChoices}
     set {_uniqueStorage()._modeChoices = newValue}
   }
+
+  public var usageEntry: PBSessionUsageEntryView {
+    get {return _storage._usageEntry ?? PBSessionUsageEntryView()}
+    set {_uniqueStorage()._usageEntry = newValue}
+  }
+  /// Returns true if `usageEntry` has been explicitly set.
+  public var hasUsageEntry: Bool {return _storage._usageEntry != nil}
+  /// Clears the value of `usageEntry`. Subsequent reads from it will return its default value.
+  public mutating func clearUsageEntry() {_uniqueStorage()._usageEntry = nil}
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -3000,40 +3118,31 @@ public struct PBSessionSkeletonItem: Sendable {
 }
 
 /// SessionSubmitCommandAction dispatches any session/machine command through sync.SubmitCommand.
-public struct PBSessionSubmitCommandAction: @unchecked Sendable {
+public struct PBSessionSubmitCommandAction: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  public var slotKey: String {
-    get {return _storage._slotKey}
-    set {_uniqueStorage()._slotKey = newValue}
-  }
+  public var slotKey: String = String()
 
-  public var machineID: String {
-    get {return _storage._machineID}
-    set {_uniqueStorage()._machineID = newValue}
-  }
+  public var machineID: String = String()
 
-  public var sessionID: String {
-    get {return _storage._sessionID}
-    set {_uniqueStorage()._sessionID = newValue}
-  }
+  public var sessionID: String = String()
 
   public var command: PBCommand {
-    get {return _storage._command ?? PBCommand()}
-    set {_uniqueStorage()._command = newValue}
+    get {return _command ?? PBCommand()}
+    set {_command = newValue}
   }
   /// Returns true if `command` has been explicitly set.
-  public var hasCommand: Bool {return _storage._command != nil}
+  public var hasCommand: Bool {return self._command != nil}
   /// Clears the value of `command`. Subsequent reads from it will return its default value.
-  public mutating func clearCommand() {_uniqueStorage()._command = nil}
+  public mutating func clearCommand() {self._command = nil}
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
 
-  fileprivate var _storage = _StorageClass.defaultInstance
+  fileprivate var _command: PBCommand? = nil
 }
 
 /// SessionSlotAction references one command attempt slot (e.g. abandon).
@@ -4297,9 +4406,191 @@ extension PBSessionModeChoiceView: SwiftProtobuf.Message, SwiftProtobuf._Message
   }
 }
 
+extension PBSessionUsageEntryView: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".SessionUsageEntryView"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}visible\0\u{1}supported\0\u{1}loading\0\u{3}source_unavailable\0\u{3}has_data\0\u{3}fallback_thirty_days\0\u{3}few_speed_samples\0\u{1}backfilling\0\u{3}total_tokens\0\u{3}has_cache_hit\0\u{3}cache_hit_rate\0\u{3}has_speed\0\u{3}recent10_speed_p50\0\u{3}recent10_speed_count\0\u{1}subtitle\0\u{3}value_text\0\u{1}footnote\0")
+
+  fileprivate class _StorageClass {
+    var _visible: Bool = false
+    var _supported: Bool = false
+    var _loading: Bool = false
+    var _sourceUnavailable: Bool = false
+    var _hasData_p: Bool = false
+    var _fallbackThirtyDays: Bool = false
+    var _fewSpeedSamples: Bool = false
+    var _backfilling: Bool = false
+    var _totalTokens: UInt64 = 0
+    var _hasCacheHit_p: Bool = false
+    var _cacheHitRate: Double = 0
+    var _hasSpeed_p: Bool = false
+    var _recent10SpeedP50: Double = 0
+    var _recent10SpeedCount: UInt64 = 0
+    var _subtitle: PBCoreText? = nil
+    var _valueText: PBCoreText? = nil
+    var _footnote: PBCoreText? = nil
+
+      // This property is used as the initial default value for new instances of the type.
+      // The type itself is protecting the reference to its storage via CoW semantics.
+      // This will force a copy to be made of this reference when the first mutation occurs;
+      // hence, it is safe to mark this as `nonisolated(unsafe)`.
+      static nonisolated(unsafe) let defaultInstance = _StorageClass()
+
+    private init() {}
+
+    init(copying source: _StorageClass) {
+      _visible = source._visible
+      _supported = source._supported
+      _loading = source._loading
+      _sourceUnavailable = source._sourceUnavailable
+      _hasData_p = source._hasData_p
+      _fallbackThirtyDays = source._fallbackThirtyDays
+      _fewSpeedSamples = source._fewSpeedSamples
+      _backfilling = source._backfilling
+      _totalTokens = source._totalTokens
+      _hasCacheHit_p = source._hasCacheHit_p
+      _cacheHitRate = source._cacheHitRate
+      _hasSpeed_p = source._hasSpeed_p
+      _recent10SpeedP50 = source._recent10SpeedP50
+      _recent10SpeedCount = source._recent10SpeedCount
+      _subtitle = source._subtitle
+      _valueText = source._valueText
+      _footnote = source._footnote
+    }
+  }
+
+  fileprivate mutating func _uniqueStorage() -> _StorageClass {
+    if !isKnownUniquelyReferenced(&_storage) {
+      _storage = _StorageClass(copying: _storage)
+    }
+    return _storage
+  }
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    _ = _uniqueStorage()
+    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+      while let fieldNumber = try decoder.nextFieldNumber() {
+        // The use of inline closures is to circumvent an issue where the compiler
+        // allocates stack space for every case branch when no optimizations are
+        // enabled. https://github.com/apple/swift-protobuf/issues/1034
+        switch fieldNumber {
+        case 1: try { try decoder.decodeSingularBoolField(value: &_storage._visible) }()
+        case 2: try { try decoder.decodeSingularBoolField(value: &_storage._supported) }()
+        case 3: try { try decoder.decodeSingularBoolField(value: &_storage._loading) }()
+        case 4: try { try decoder.decodeSingularBoolField(value: &_storage._sourceUnavailable) }()
+        case 5: try { try decoder.decodeSingularBoolField(value: &_storage._hasData_p) }()
+        case 6: try { try decoder.decodeSingularBoolField(value: &_storage._fallbackThirtyDays) }()
+        case 7: try { try decoder.decodeSingularBoolField(value: &_storage._fewSpeedSamples) }()
+        case 8: try { try decoder.decodeSingularBoolField(value: &_storage._backfilling) }()
+        case 9: try { try decoder.decodeSingularUInt64Field(value: &_storage._totalTokens) }()
+        case 10: try { try decoder.decodeSingularBoolField(value: &_storage._hasCacheHit_p) }()
+        case 11: try { try decoder.decodeSingularDoubleField(value: &_storage._cacheHitRate) }()
+        case 12: try { try decoder.decodeSingularBoolField(value: &_storage._hasSpeed_p) }()
+        case 13: try { try decoder.decodeSingularDoubleField(value: &_storage._recent10SpeedP50) }()
+        case 14: try { try decoder.decodeSingularUInt64Field(value: &_storage._recent10SpeedCount) }()
+        case 15: try { try decoder.decodeSingularMessageField(value: &_storage._subtitle) }()
+        case 16: try { try decoder.decodeSingularMessageField(value: &_storage._valueText) }()
+        case 17: try { try decoder.decodeSingularMessageField(value: &_storage._footnote) }()
+        default: break
+        }
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every if/case branch local when no optimizations
+      // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+      // https://github.com/apple/swift-protobuf/issues/1182
+      if _storage._visible != false {
+        try visitor.visitSingularBoolField(value: _storage._visible, fieldNumber: 1)
+      }
+      if _storage._supported != false {
+        try visitor.visitSingularBoolField(value: _storage._supported, fieldNumber: 2)
+      }
+      if _storage._loading != false {
+        try visitor.visitSingularBoolField(value: _storage._loading, fieldNumber: 3)
+      }
+      if _storage._sourceUnavailable != false {
+        try visitor.visitSingularBoolField(value: _storage._sourceUnavailable, fieldNumber: 4)
+      }
+      if _storage._hasData_p != false {
+        try visitor.visitSingularBoolField(value: _storage._hasData_p, fieldNumber: 5)
+      }
+      if _storage._fallbackThirtyDays != false {
+        try visitor.visitSingularBoolField(value: _storage._fallbackThirtyDays, fieldNumber: 6)
+      }
+      if _storage._fewSpeedSamples != false {
+        try visitor.visitSingularBoolField(value: _storage._fewSpeedSamples, fieldNumber: 7)
+      }
+      if _storage._backfilling != false {
+        try visitor.visitSingularBoolField(value: _storage._backfilling, fieldNumber: 8)
+      }
+      if _storage._totalTokens != 0 {
+        try visitor.visitSingularUInt64Field(value: _storage._totalTokens, fieldNumber: 9)
+      }
+      if _storage._hasCacheHit_p != false {
+        try visitor.visitSingularBoolField(value: _storage._hasCacheHit_p, fieldNumber: 10)
+      }
+      if _storage._cacheHitRate.bitPattern != 0 {
+        try visitor.visitSingularDoubleField(value: _storage._cacheHitRate, fieldNumber: 11)
+      }
+      if _storage._hasSpeed_p != false {
+        try visitor.visitSingularBoolField(value: _storage._hasSpeed_p, fieldNumber: 12)
+      }
+      if _storage._recent10SpeedP50.bitPattern != 0 {
+        try visitor.visitSingularDoubleField(value: _storage._recent10SpeedP50, fieldNumber: 13)
+      }
+      if _storage._recent10SpeedCount != 0 {
+        try visitor.visitSingularUInt64Field(value: _storage._recent10SpeedCount, fieldNumber: 14)
+      }
+      try { if let v = _storage._subtitle {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 15)
+      } }()
+      try { if let v = _storage._valueText {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 16)
+      } }()
+      try { if let v = _storage._footnote {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 17)
+      } }()
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: PBSessionUsageEntryView, rhs: PBSessionUsageEntryView) -> Bool {
+    if lhs._storage !== rhs._storage {
+      let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
+        let _storage = _args.0
+        let rhs_storage = _args.1
+        if _storage._visible != rhs_storage._visible {return false}
+        if _storage._supported != rhs_storage._supported {return false}
+        if _storage._loading != rhs_storage._loading {return false}
+        if _storage._sourceUnavailable != rhs_storage._sourceUnavailable {return false}
+        if _storage._hasData_p != rhs_storage._hasData_p {return false}
+        if _storage._fallbackThirtyDays != rhs_storage._fallbackThirtyDays {return false}
+        if _storage._fewSpeedSamples != rhs_storage._fewSpeedSamples {return false}
+        if _storage._backfilling != rhs_storage._backfilling {return false}
+        if _storage._totalTokens != rhs_storage._totalTokens {return false}
+        if _storage._hasCacheHit_p != rhs_storage._hasCacheHit_p {return false}
+        if _storage._cacheHitRate != rhs_storage._cacheHitRate {return false}
+        if _storage._hasSpeed_p != rhs_storage._hasSpeed_p {return false}
+        if _storage._recent10SpeedP50 != rhs_storage._recent10SpeedP50 {return false}
+        if _storage._recent10SpeedCount != rhs_storage._recent10SpeedCount {return false}
+        if _storage._subtitle != rhs_storage._subtitle {return false}
+        if _storage._valueText != rhs_storage._valueText {return false}
+        if _storage._footnote != rhs_storage._footnote {return false}
+        return true
+      }
+      if !storagesAreEqual {return false}
+    }
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
 extension PBSessionActionsView: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".SessionActionsView"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}can_interrupt\0\u{1}interrupt\0\u{3}can_end\0\u{1}end\0\u{3}end_confirm_note\0\u{3}can_resume\0\u{1}resume\0\u{3}resume_note\0\u{3}can_rename\0\u{1}rename\0\u{3}can_fork\0\u{3}fork_blocked_reason\0\u{1}fork\0\u{3}can_compact\0\u{3}compact_blocked_reason\0\u{1}compact\0\u{3}can_switch_model\0\u{3}model_switch_blocked_reason\0\u{3}set_model\0\u{3}models_loading\0\u{3}models_loaded\0\u{3}models_error\0\u{3}model_choices\0\u{3}effort_choices\0\u{3}can_switch_mode\0\u{3}mode_switch_blocked_reason\0\u{3}set_mode\0\u{3}mode_choices\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}can_interrupt\0\u{1}interrupt\0\u{3}can_end\0\u{1}end\0\u{3}end_confirm_note\0\u{3}can_resume\0\u{1}resume\0\u{3}resume_note\0\u{3}can_rename\0\u{1}rename\0\u{3}can_fork\0\u{3}fork_blocked_reason\0\u{1}fork\0\u{3}can_compact\0\u{3}compact_blocked_reason\0\u{1}compact\0\u{3}can_switch_model\0\u{3}model_switch_blocked_reason\0\u{3}set_model\0\u{3}models_loading\0\u{3}models_loaded\0\u{3}models_error\0\u{3}model_choices\0\u{3}effort_choices\0\u{3}can_switch_mode\0\u{3}mode_switch_blocked_reason\0\u{3}set_mode\0\u{3}mode_choices\0\u{3}usage_entry\0")
 
   fileprivate class _StorageClass {
     var _canInterrupt: Bool = false
@@ -4330,6 +4621,7 @@ extension PBSessionActionsView: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
     var _modeSwitchBlockedReason: PBCoreText? = nil
     var _setMode: PBSessionCommandState? = nil
     var _modeChoices: [PBSessionModeChoiceView] = []
+    var _usageEntry: PBSessionUsageEntryView? = nil
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -4368,6 +4660,7 @@ extension PBSessionActionsView: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
       _modeSwitchBlockedReason = source._modeSwitchBlockedReason
       _setMode = source._setMode
       _modeChoices = source._modeChoices
+      _usageEntry = source._usageEntry
     }
   }
 
@@ -4414,6 +4707,7 @@ extension PBSessionActionsView: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
         case 26: try { try decoder.decodeSingularMessageField(value: &_storage._modeSwitchBlockedReason) }()
         case 27: try { try decoder.decodeSingularMessageField(value: &_storage._setMode) }()
         case 28: try { try decoder.decodeRepeatedMessageField(value: &_storage._modeChoices) }()
+        case 29: try { try decoder.decodeSingularMessageField(value: &_storage._usageEntry) }()
         default: break
         }
       }
@@ -4510,6 +4804,9 @@ extension PBSessionActionsView: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
       if !_storage._modeChoices.isEmpty {
         try visitor.visitRepeatedMessageField(value: _storage._modeChoices, fieldNumber: 28)
       }
+      try { if let v = _storage._usageEntry {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 29)
+      } }()
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -4547,6 +4844,7 @@ extension PBSessionActionsView: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
         if _storage._modeSwitchBlockedReason != rhs_storage._modeSwitchBlockedReason {return false}
         if _storage._setMode != rhs_storage._setMode {return false}
         if _storage._modeChoices != rhs_storage._modeChoices {return false}
+        if _storage._usageEntry != rhs_storage._usageEntry {return false}
         return true
       }
       if !storagesAreEqual {return false}
@@ -7625,88 +7923,46 @@ extension PBSessionSubmitCommandAction: SwiftProtobuf.Message, SwiftProtobuf._Me
   public static let protoMessageName: String = _protobuf_package + ".SessionSubmitCommandAction"
   public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}slot_key\0\u{3}machine_id\0\u{3}session_id\0\u{1}command\0")
 
-  fileprivate class _StorageClass {
-    var _slotKey: String = String()
-    var _machineID: String = String()
-    var _sessionID: String = String()
-    var _command: PBCommand? = nil
-
-      // This property is used as the initial default value for new instances of the type.
-      // The type itself is protecting the reference to its storage via CoW semantics.
-      // This will force a copy to be made of this reference when the first mutation occurs;
-      // hence, it is safe to mark this as `nonisolated(unsafe)`.
-      static nonisolated(unsafe) let defaultInstance = _StorageClass()
-
-    private init() {}
-
-    init(copying source: _StorageClass) {
-      _slotKey = source._slotKey
-      _machineID = source._machineID
-      _sessionID = source._sessionID
-      _command = source._command
-    }
-  }
-
-  fileprivate mutating func _uniqueStorage() -> _StorageClass {
-    if !isKnownUniquelyReferenced(&_storage) {
-      _storage = _StorageClass(copying: _storage)
-    }
-    return _storage
-  }
-
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
-    _ = _uniqueStorage()
-    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
-      while let fieldNumber = try decoder.nextFieldNumber() {
-        // The use of inline closures is to circumvent an issue where the compiler
-        // allocates stack space for every case branch when no optimizations are
-        // enabled. https://github.com/apple/swift-protobuf/issues/1034
-        switch fieldNumber {
-        case 1: try { try decoder.decodeSingularStringField(value: &_storage._slotKey) }()
-        case 2: try { try decoder.decodeSingularStringField(value: &_storage._machineID) }()
-        case 3: try { try decoder.decodeSingularStringField(value: &_storage._sessionID) }()
-        case 4: try { try decoder.decodeSingularMessageField(value: &_storage._command) }()
-        default: break
-        }
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.slotKey) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.machineID) }()
+      case 3: try { try decoder.decodeSingularStringField(value: &self.sessionID) }()
+      case 4: try { try decoder.decodeSingularMessageField(value: &self._command) }()
+      default: break
       }
     }
   }
 
   public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
-    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
-      // The use of inline closures is to circumvent an issue where the compiler
-      // allocates stack space for every if/case branch local when no optimizations
-      // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
-      // https://github.com/apple/swift-protobuf/issues/1182
-      if !_storage._slotKey.isEmpty {
-        try visitor.visitSingularStringField(value: _storage._slotKey, fieldNumber: 1)
-      }
-      if !_storage._machineID.isEmpty {
-        try visitor.visitSingularStringField(value: _storage._machineID, fieldNumber: 2)
-      }
-      if !_storage._sessionID.isEmpty {
-        try visitor.visitSingularStringField(value: _storage._sessionID, fieldNumber: 3)
-      }
-      try { if let v = _storage._command {
-        try visitor.visitSingularMessageField(value: v, fieldNumber: 4)
-      } }()
+    // The use of inline closures is to circumvent an issue where the compiler
+    // allocates stack space for every if/case branch local when no optimizations
+    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+    // https://github.com/apple/swift-protobuf/issues/1182
+    if !self.slotKey.isEmpty {
+      try visitor.visitSingularStringField(value: self.slotKey, fieldNumber: 1)
     }
+    if !self.machineID.isEmpty {
+      try visitor.visitSingularStringField(value: self.machineID, fieldNumber: 2)
+    }
+    if !self.sessionID.isEmpty {
+      try visitor.visitSingularStringField(value: self.sessionID, fieldNumber: 3)
+    }
+    try { if let v = self._command {
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 4)
+    } }()
     try unknownFields.traverse(visitor: &visitor)
   }
 
   public static func ==(lhs: PBSessionSubmitCommandAction, rhs: PBSessionSubmitCommandAction) -> Bool {
-    if lhs._storage !== rhs._storage {
-      let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
-        let _storage = _args.0
-        let rhs_storage = _args.1
-        if _storage._slotKey != rhs_storage._slotKey {return false}
-        if _storage._machineID != rhs_storage._machineID {return false}
-        if _storage._sessionID != rhs_storage._sessionID {return false}
-        if _storage._command != rhs_storage._command {return false}
-        return true
-      }
-      if !storagesAreEqual {return false}
-    }
+    if lhs.slotKey != rhs.slotKey {return false}
+    if lhs.machineID != rhs.machineID {return false}
+    if lhs.sessionID != rhs.sessionID {return false}
+    if lhs._command != rhs._command {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

@@ -47,6 +47,8 @@ type MachineMeta struct {
 	Projects         []*ProjectSummary
 	ScheduleRevision uint64
 	DiskStatus       *DiskStatus
+	DisabledAgents   []Agent
+	SettingsRevision uint64
 }
 
 func (m *MachineMeta) GetHostname() string {
@@ -121,6 +123,18 @@ func (m *MachineMeta) GetDiskStatus() *DiskStatus {
 	}
 	return nil
 }
+func (m *MachineMeta) GetDisabledAgents() []Agent {
+	if m != nil {
+		return m.DisabledAgents
+	}
+	return nil
+}
+func (m *MachineMeta) GetSettingsRevision() uint64 {
+	if m != nil {
+		return m.SettingsRevision
+	}
+	return 0
+}
 
 func (m *MachineMeta) Clone() *MachineMeta {
 	if m == nil {
@@ -147,6 +161,7 @@ func (m *MachineMeta) Clone() *MachineMeta {
 		}
 	}
 	cp.DiskStatus = m.DiskStatus.Clone()
+	cp.DisabledAgents = slices.Clone(m.DisabledAgents)
 	return &cp
 }
 
@@ -183,6 +198,14 @@ func (m *MachineMeta) Size() int {
 	if m.DiskStatus != nil {
 		n += litewire.SizeMessage(15, m.DiskStatus.Size())
 	}
+	if len(m.DisabledAgents) > 0 {
+		psz := 0
+		for _, v := range m.DisabledAgents {
+			psz += litewire.SizeVarint(uint64(int64(v)))
+		}
+		n += litewire.SizeMessage(16, psz)
+	}
+	n += litewire.SizeVarintField(17, uint64(m.SettingsRevision))
 	return n
 }
 
@@ -229,6 +252,17 @@ func (m *MachineMeta) AppendMarshal(b []byte) []byte {
 	if m.DiskStatus != nil {
 		b = litewire.AppendMessage(b, 15, m.DiskStatus)
 	}
+	if len(m.DisabledAgents) > 0 {
+		psz := 0
+		for _, v := range m.DisabledAgents {
+			psz += litewire.SizeVarint(uint64(int64(v)))
+		}
+		b = litewire.AppendMessagePrefix(b, 16, psz)
+		for _, v := range m.DisabledAgents {
+			b = litewire.AppendRawVarint(b, uint64(int64(v)))
+		}
+	}
+	b = litewire.AppendVarint(b, 17, uint64(m.SettingsRevision))
 	return b
 }
 
@@ -347,6 +381,38 @@ func (m *MachineMeta) Unmarshal(b []byte) error {
 				if err := litewire.ReadMessage(&b, m.DiskStatus); err != nil {
 					return err
 				}
+				continue
+			}
+		case 16:
+			if wtyp == litewire.BytesType {
+				raw, err := litewire.ReadBytesRaw(&b)
+				if err != nil {
+					return err
+				}
+				for len(raw) > 0 {
+					v, err := litewire.ReadVarint(&raw)
+					if err != nil {
+						return err
+					}
+					m.DisabledAgents = append(m.DisabledAgents, Agent(int32(v)))
+				}
+				continue
+			}
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.DisabledAgents = append(m.DisabledAgents, Agent(int32(v)))
+				continue
+			}
+		case 17:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.SettingsRevision = v
 				continue
 			}
 		}
@@ -1128,6 +1194,10 @@ type Command_GetMachineStatus struct{ GetMachineStatus *GetMachineStatusRequest 
 
 func (*Command_GetMachineStatus) isCommand_Kind() {}
 
+type Command_GetUsageStats struct{ GetUsageStats *GetUsageStatsRequest }
+
+func (*Command_GetUsageStats) isCommand_Kind() {}
+
 func (m *Command) GetKind() isCommand_Kind {
 	if m != nil {
 		return m.Kind
@@ -1308,6 +1378,12 @@ func (m *Command) GetGetMachineStatus() *GetMachineStatusRequest {
 	}
 	return nil
 }
+func (m *Command) GetGetUsageStats() *GetUsageStatsRequest {
+	if x, ok := m.GetKind().(*Command_GetUsageStats); ok && x != nil {
+		return x.GetUsageStats
+	}
+	return nil
+}
 func (m *Command) GetProtocolVersion() uint32 {
 	if m != nil {
 		return m.ProtocolVersion
@@ -1436,6 +1512,10 @@ func (m *Command) Clone() *Command {
 	case *Command_GetMachineStatus:
 		if v != nil {
 			cp.Kind = &Command_GetMachineStatus{GetMachineStatus: v.GetMachineStatus.Clone()}
+		}
+	case *Command_GetUsageStats:
+		if v != nil {
+			cp.Kind = &Command_GetUsageStats{GetUsageStats: v.GetUsageStats.Clone()}
 		}
 	}
 	return &cp
@@ -1619,6 +1699,12 @@ func (m *Command) Size() int {
 		if x != nil {
 			if x.GetMachineStatus != nil {
 				n += litewire.SizeMessage(33, x.GetMachineStatus.Size())
+			}
+		}
+	case *Command_GetUsageStats:
+		if x != nil {
+			if x.GetUsageStats != nil {
+				n += litewire.SizeMessage(34, x.GetUsageStats.Size())
 			}
 		}
 	}
@@ -1814,6 +1900,12 @@ func (m *Command) AppendMarshal(b []byte) []byte {
 		if x != nil {
 			if x.GetMachineStatus != nil {
 				b = litewire.AppendMessage(b, 33, x.GetMachineStatus)
+			}
+		}
+	case *Command_GetUsageStats:
+		if x != nil {
+			if x.GetUsageStats != nil {
+				b = litewire.AppendMessage(b, 34, x.GetUsageStats)
 			}
 		}
 	}
@@ -2263,6 +2355,21 @@ func (m *Command) Unmarshal(b []byte) error {
 				m.Kind = &Command_GetMachineStatus{GetMachineStatus: sub}
 				continue
 			}
+		case 34:
+			if wtyp == litewire.BytesType {
+				var sub *GetUsageStatsRequest
+				if cur, ok := m.Kind.(*Command_GetUsageStats); ok && cur != nil {
+					sub = cur.GetUsageStats
+				}
+				if sub == nil {
+					sub = &GetUsageStatsRequest{}
+				}
+				if err := litewire.ReadMessage(&b, sub); err != nil {
+					return err
+				}
+				m.Kind = &Command_GetUsageStats{GetUsageStats: sub}
+				continue
+			}
 		case 100:
 			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
@@ -2408,6 +2515,10 @@ func (*CommandResult_GetSharedFileChunk) isCommandResult_Kind() {}
 type CommandResult_MachineStatus struct{ MachineStatus *MachineStatus }
 
 func (*CommandResult_MachineStatus) isCommandResult_Kind() {}
+
+type CommandResult_UsageStats struct{ UsageStats *UsageStatsResponse }
+
+func (*CommandResult_UsageStats) isCommandResult_Kind() {}
 
 func (m *CommandResult) GetKind() isCommandResult_Kind {
 	if m != nil {
@@ -2634,6 +2745,12 @@ func (m *CommandResult) GetGetSharedFileChunk() *GetSharedFileChunkResponse {
 func (m *CommandResult) GetMachineStatus() *MachineStatus {
 	if x, ok := m.GetKind().(*CommandResult_MachineStatus); ok && x != nil {
 		return x.MachineStatus
+	}
+	return nil
+}
+func (m *CommandResult) GetUsageStats() *UsageStatsResponse {
+	if x, ok := m.GetKind().(*CommandResult_UsageStats); ok && x != nil {
+		return x.UsageStats
 	}
 	return nil
 }
@@ -3150,6 +3267,21 @@ func (m *CommandResult) Unmarshal(b []byte) error {
 					return err
 				}
 				m.Kind = &CommandResult_MachineStatus{MachineStatus: sub}
+				continue
+			}
+		case 44:
+			if wtyp == litewire.BytesType {
+				var sub *UsageStatsResponse
+				if cur, ok := m.Kind.(*CommandResult_UsageStats); ok && cur != nil {
+					sub = cur.UsageStats
+				}
+				if sub == nil {
+					sub = &UsageStatsResponse{}
+				}
+				if err := litewire.ReadMessage(&b, sub); err != nil {
+					return err
+				}
+				m.Kind = &CommandResult_UsageStats{UsageStats: sub}
 				continue
 			}
 		}

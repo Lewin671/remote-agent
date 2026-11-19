@@ -80,6 +80,7 @@ public enum PBCoreNoticeKind: SwiftProtobuf.Enum, Swift.CaseIterable {
   case unknownStart // = 13
   case projectRemoved // = 14
   case noOnlineMachines // = 15
+  case agentDisabledFallback // = 16
   case UNRECOGNIZED(Int)
 
   public init() {
@@ -104,6 +105,7 @@ public enum PBCoreNoticeKind: SwiftProtobuf.Enum, Swift.CaseIterable {
     case 13: self = .unknownStart
     case 14: self = .projectRemoved
     case 15: self = .noOnlineMachines
+    case 16: self = .agentDisabledFallback
     default: self = .UNRECOGNIZED(rawValue)
     }
   }
@@ -126,6 +128,7 @@ public enum PBCoreNoticeKind: SwiftProtobuf.Enum, Swift.CaseIterable {
     case .unknownStart: return 13
     case .projectRemoved: return 14
     case .noOnlineMachines: return 15
+    case .agentDisabledFallback: return 16
     case .UNRECOGNIZED(let i): return i
     }
   }
@@ -148,6 +151,7 @@ public enum PBCoreNoticeKind: SwiftProtobuf.Enum, Swift.CaseIterable {
     .unknownStart,
     .projectRemoved,
     .noOnlineMachines,
+    .agentDisabledFallback,
   ]
 
 }
@@ -206,6 +210,7 @@ public enum PBCoreNoticeActionKind: SwiftProtobuf.Enum, Swift.CaseIterable {
   case readdProject // = 7
   case openDiskUsage // = 8
   case retryReadSettings // = 9
+  case enableAgent // = 10
   case UNRECOGNIZED(Int)
 
   public init() {
@@ -224,6 +229,7 @@ public enum PBCoreNoticeActionKind: SwiftProtobuf.Enum, Swift.CaseIterable {
     case 7: self = .readdProject
     case 8: self = .openDiskUsage
     case 9: self = .retryReadSettings
+    case 10: self = .enableAgent
     default: self = .UNRECOGNIZED(rawValue)
     }
   }
@@ -240,6 +246,7 @@ public enum PBCoreNoticeActionKind: SwiftProtobuf.Enum, Swift.CaseIterable {
     case .readdProject: return 7
     case .openDiskUsage: return 8
     case .retryReadSettings: return 9
+    case .enableAgent: return 10
     case .UNRECOGNIZED(let i): return i
     }
   }
@@ -256,6 +263,7 @@ public enum PBCoreNoticeActionKind: SwiftProtobuf.Enum, Swift.CaseIterable {
     .readdProject,
     .openDiskUsage,
     .retryReadSettings,
+    .enableAgent,
   ]
 
 }
@@ -786,7 +794,7 @@ extension PBCoreAutoIssueKind: SwiftProtobuf._ProtoNameProviding {
 }
 
 extension PBCoreNoticeKind: SwiftProtobuf._ProtoNameProviding {
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0NOTICE_KIND_UNSPECIFIED\0\u{1}NOTICE_KIND_ATTACHMENTS_MOVED\0\u{1}NOTICE_KIND_READING_PREVIOUS\0\u{1}NOTICE_KIND_OFFLINE_DRAFT_CHOICES\0\u{1}NOTICE_KIND_MACHINE_OFFLINE\0\u{1}NOTICE_KIND_PROTOCOL_MISMATCH\0\u{1}NOTICE_KIND_MISSING_AGENT\0\u{1}NOTICE_KIND_CONFIG_FALLBACK\0\u{1}NOTICE_KIND_AUTO_UNAVAILABLE\0\u{1}NOTICE_KIND_CONFIG_SAVE_ERROR\0\u{1}NOTICE_KIND_STARTING\0\u{1}NOTICE_KIND_FAILED\0\u{1}NOTICE_KIND_DISK_FULL\0\u{1}NOTICE_KIND_UNKNOWN_START\0\u{1}NOTICE_KIND_PROJECT_REMOVED\0\u{1}NOTICE_KIND_NO_ONLINE_MACHINES\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0NOTICE_KIND_UNSPECIFIED\0\u{1}NOTICE_KIND_ATTACHMENTS_MOVED\0\u{1}NOTICE_KIND_READING_PREVIOUS\0\u{1}NOTICE_KIND_OFFLINE_DRAFT_CHOICES\0\u{1}NOTICE_KIND_MACHINE_OFFLINE\0\u{1}NOTICE_KIND_PROTOCOL_MISMATCH\0\u{1}NOTICE_KIND_MISSING_AGENT\0\u{1}NOTICE_KIND_CONFIG_FALLBACK\0\u{1}NOTICE_KIND_AUTO_UNAVAILABLE\0\u{1}NOTICE_KIND_CONFIG_SAVE_ERROR\0\u{1}NOTICE_KIND_STARTING\0\u{1}NOTICE_KIND_FAILED\0\u{1}NOTICE_KIND_DISK_FULL\0\u{1}NOTICE_KIND_UNKNOWN_START\0\u{1}NOTICE_KIND_PROJECT_REMOVED\0\u{1}NOTICE_KIND_NO_ONLINE_MACHINES\0\u{1}NOTICE_KIND_AGENT_DISABLED_FALLBACK\0")
 }
 
 extension PBCoreNoticeSeverity: SwiftProtobuf._ProtoNameProviding {
@@ -794,7 +802,7 @@ extension PBCoreNoticeSeverity: SwiftProtobuf._ProtoNameProviding {
 }
 
 extension PBCoreNoticeActionKind: SwiftProtobuf._ProtoNameProviding {
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0NOTICE_ACTION_KIND_UNSPECIFIED\0\u{1}NOTICE_ACTION_KIND_RETRY_START\0\u{1}NOTICE_ACTION_KIND_ABANDON_START\0\u{1}NOTICE_ACTION_KIND_CHANGE_MACHINE\0\u{1}NOTICE_ACTION_KIND_CHANGE_MODEL\0\u{1}NOTICE_ACTION_KIND_OPEN_MACHINE_SETTINGS\0\u{1}NOTICE_ACTION_KIND_RETRY_SAVE_CONFIG\0\u{1}NOTICE_ACTION_KIND_READD_PROJECT\0\u{1}NOTICE_ACTION_KIND_OPEN_DISK_USAGE\0\u{1}NOTICE_ACTION_KIND_RETRY_READ_SETTINGS\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0NOTICE_ACTION_KIND_UNSPECIFIED\0\u{1}NOTICE_ACTION_KIND_RETRY_START\0\u{1}NOTICE_ACTION_KIND_ABANDON_START\0\u{1}NOTICE_ACTION_KIND_CHANGE_MACHINE\0\u{1}NOTICE_ACTION_KIND_CHANGE_MODEL\0\u{1}NOTICE_ACTION_KIND_OPEN_MACHINE_SETTINGS\0\u{1}NOTICE_ACTION_KIND_RETRY_SAVE_CONFIG\0\u{1}NOTICE_ACTION_KIND_READD_PROJECT\0\u{1}NOTICE_ACTION_KIND_OPEN_DISK_USAGE\0\u{1}NOTICE_ACTION_KIND_RETRY_READ_SETTINGS\0\u{1}NOTICE_ACTION_KIND_ENABLE_AGENT\0")
 }
 
 extension PBCoreDefaultModeInfo: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {

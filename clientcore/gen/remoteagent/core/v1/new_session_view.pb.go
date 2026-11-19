@@ -20,22 +20,23 @@ const (
 type NoticeKind int32
 
 const (
-	NoticeKind_NOTICE_KIND_UNSPECIFIED           NoticeKind = 0
-	NoticeKind_NOTICE_KIND_ATTACHMENTS_MOVED     NoticeKind = 1
-	NoticeKind_NOTICE_KIND_READING_PREVIOUS      NoticeKind = 2
-	NoticeKind_NOTICE_KIND_OFFLINE_DRAFT_CHOICES NoticeKind = 3
-	NoticeKind_NOTICE_KIND_MACHINE_OFFLINE       NoticeKind = 4
-	NoticeKind_NOTICE_KIND_PROTOCOL_MISMATCH     NoticeKind = 5
-	NoticeKind_NOTICE_KIND_MISSING_AGENT         NoticeKind = 6
-	NoticeKind_NOTICE_KIND_CONFIG_FALLBACK       NoticeKind = 7
-	NoticeKind_NOTICE_KIND_AUTO_UNAVAILABLE      NoticeKind = 8
-	NoticeKind_NOTICE_KIND_CONFIG_SAVE_ERROR     NoticeKind = 9
-	NoticeKind_NOTICE_KIND_STARTING              NoticeKind = 10
-	NoticeKind_NOTICE_KIND_FAILED                NoticeKind = 11
-	NoticeKind_NOTICE_KIND_DISK_FULL             NoticeKind = 12
-	NoticeKind_NOTICE_KIND_UNKNOWN_START         NoticeKind = 13
-	NoticeKind_NOTICE_KIND_PROJECT_REMOVED       NoticeKind = 14
-	NoticeKind_NOTICE_KIND_NO_ONLINE_MACHINES    NoticeKind = 15
+	NoticeKind_NOTICE_KIND_UNSPECIFIED             NoticeKind = 0
+	NoticeKind_NOTICE_KIND_ATTACHMENTS_MOVED       NoticeKind = 1
+	NoticeKind_NOTICE_KIND_READING_PREVIOUS        NoticeKind = 2
+	NoticeKind_NOTICE_KIND_OFFLINE_DRAFT_CHOICES   NoticeKind = 3
+	NoticeKind_NOTICE_KIND_MACHINE_OFFLINE         NoticeKind = 4
+	NoticeKind_NOTICE_KIND_PROTOCOL_MISMATCH       NoticeKind = 5
+	NoticeKind_NOTICE_KIND_MISSING_AGENT           NoticeKind = 6
+	NoticeKind_NOTICE_KIND_CONFIG_FALLBACK         NoticeKind = 7
+	NoticeKind_NOTICE_KIND_AUTO_UNAVAILABLE        NoticeKind = 8
+	NoticeKind_NOTICE_KIND_CONFIG_SAVE_ERROR       NoticeKind = 9
+	NoticeKind_NOTICE_KIND_STARTING                NoticeKind = 10
+	NoticeKind_NOTICE_KIND_FAILED                  NoticeKind = 11
+	NoticeKind_NOTICE_KIND_DISK_FULL               NoticeKind = 12
+	NoticeKind_NOTICE_KIND_UNKNOWN_START           NoticeKind = 13
+	NoticeKind_NOTICE_KIND_PROJECT_REMOVED         NoticeKind = 14
+	NoticeKind_NOTICE_KIND_NO_ONLINE_MACHINES      NoticeKind = 15
+	NoticeKind_NOTICE_KIND_AGENT_DISABLED_FALLBACK NoticeKind = 16
 )
 
 type NoticeSeverity int32
@@ -60,6 +61,7 @@ const (
 	NoticeActionKind_NOTICE_ACTION_KIND_READD_PROJECT         NoticeActionKind = 7
 	NoticeActionKind_NOTICE_ACTION_KIND_OPEN_DISK_USAGE       NoticeActionKind = 8
 	NoticeActionKind_NOTICE_ACTION_KIND_RETRY_READ_SETTINGS   NoticeActionKind = 9
+	NoticeActionKind_NOTICE_ACTION_KIND_ENABLE_AGENT          NoticeActionKind = 10
 )
 
 type DefaultModeInfo struct {

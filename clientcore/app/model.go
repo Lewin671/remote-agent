@@ -21,17 +21,21 @@ const (
 	cmdKindScheduleCreate
 	cmdKindScheduleOperate
 	cmdKindScheduleUpdate
+	cmdKindToggleMachineAgent
+	cmdKindGetUsageStats
 )
 
 type cmdMeta struct {
-	kind       cmdKind
-	machineID  string
-	agent      v1.Agent
-	projectKey string
-	taskID     string
-	formKey    string
-	opName     string
-	revision   uint64
+	kind          cmdKind
+	machineID     string
+	agent         v1.Agent
+	projectKey    string
+	taskID        string
+	formKey       string
+	opName        string
+	revision      uint64
+	usageKey      screens.UsageCacheKey
+	toggleEnabled bool
 }
 
 type scheduleDirty struct {
@@ -59,14 +63,21 @@ type Model struct {
 	schedDirty            scheduleDirty
 	nextScheduleCacheOpID uint64
 	frozenSchedOps        map[string]frozenSchedOp
+	usageDirty            bool
+	usageActive           bool
+	lastUsageFetchedMs    map[screens.UsageCacheKey]int64
+	activeUsageReq        *corev1.UsageScreenRequest
+	lastUsageParams       map[string]*corev1.UsageScreenOpenEvent
 }
 
 func newModel() *Model {
 	m := &Model{
-		sync:           sync.NewEngine(),
-		state:          screens.NewState(),
-		pendingCmdMeta: make(map[string]cmdMeta),
-		frozenSchedOps: make(map[string]frozenSchedOp),
+		sync:               sync.NewEngine(),
+		state:              screens.NewState(),
+		pendingCmdMeta:     make(map[string]cmdMeta),
+		frozenSchedOps:     make(map[string]frozenSchedOp),
+		lastUsageFetchedMs: make(map[screens.UsageCacheKey]int64),
+		lastUsageParams:    make(map[string]*corev1.UsageScreenOpenEvent),
 	}
 	m.state.Schedules.SessionEvents = func(sid string) ([]*v1.Event, bool) {
 		if sid == "" {
@@ -131,6 +142,22 @@ func (m *Model) resolveDraftConfig(key string, d *screens.NewSessionDraft) lists
 	}
 	if d != nil && d.ConfigInitialized {
 		d.Config.Agent = lists.EffectiveAgent(d.Config.Agent)
+		if !d.Busy && !d.Frozen && d.Config.MachineID != "" {
+			if mac := m.findMachine(d.Config.MachineID); mac != nil && lists.IsAgentDisabled(mac.Meta, d.Config.Agent) {
+				d.DisabledFromAgent = d.Config.Agent
+				enabled := lists.MachineAgents(mac.Meta)
+				nextAgent := d.Config.Agent
+				if len(enabled) > 0 {
+					nextAgent = enabled[0]
+				}
+				if nextAgent != d.Config.Agent {
+					fb := lists.ResolveProjectStart(&m.state.World, key, d.Config.MachineID, nextAgent, nil, false)
+					d.Config = lists.SwitchAgent(fb.Config, &d.Config, nextAgent)
+					d.Config.Agent = lists.EffectiveAgent(d.Config.Agent)
+					d.AgentOverride = d.Config.Agent
+				}
+			}
+		}
 	}
 	return res
 }

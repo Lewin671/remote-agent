@@ -577,6 +577,7 @@ func routeHintFor(cmd *v1.Command) corev1.CommandRouteHint {
 		*v1.Command_GetSettings,
 		*v1.Command_GetLiveSnapshot,
 		*v1.Command_GetMachineStatus,
+		*v1.Command_GetUsageStats,
 		*v1.Command_GetImageUploadStatus:
 		return corev1.CommandRouteHint_COMMAND_ROUTE_HINT_READ
 	case *v1.Command_Schedule:

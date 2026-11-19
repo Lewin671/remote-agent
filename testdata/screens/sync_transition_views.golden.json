@@ -187,7 +187,7 @@
             "securityLoaded": true,
             "isMember": true,
             "leaseEndMs": "1791164460000",
-            "clientProtocolVersion": 16,
+            "clientProtocolVersion": 17,
             "machines": [
               {
                 "machineId": "m1",
@@ -201,10 +201,10 @@
                       "defaultMode": "APPROVAL_MODE_ASK"
                     }
                   ],
-                  "protocolVersion": 16
+                  "protocolVersion": 17
                 },
                 "reachable": true,
-                "protocolVersion": 16
+                "protocolVersion": 17
               }
             ],
             "machinesListed": true,
@@ -307,7 +307,7 @@
               "machineId": "m1",
               "sessionId": "s-tr",
               "deadlineMs": "1791078120060",
-              "commandBytes": "+gEGCgRzLXRyoAYQ",
+              "commandBytes": "+gEGCgRzLXRyoAYR",
               "routeHint": "COMMAND_ROUTE_HINT_READ"
             }
           },
@@ -551,7 +551,7 @@
             "securityLoaded": true,
             "isMember": true,
             "leaseEndMs": "1791164460000",
-            "clientProtocolVersion": 16,
+            "clientProtocolVersion": 17,
             "machines": [
               {
                 "machineId": "m1",
@@ -565,10 +565,10 @@
                       "defaultMode": "APPROVAL_MODE_ASK"
                     }
                   ],
-                  "protocolVersion": 16
+                  "protocolVersion": 17
                 },
                 "reachable": true,
-                "protocolVersion": 16
+                "protocolVersion": 17
               }
             ],
             "machinesListed": true,

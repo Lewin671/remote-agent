@@ -1,0 +1,284 @@
+package app
+
+import (
+	"slices"
+
+	"github.com/Lewin671/remote-agent/clientcore/domain/lists"
+	"github.com/Lewin671/remote-agent/clientcore/domain/outcome"
+	"github.com/Lewin671/remote-agent/clientcore/domain/usage"
+	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
+	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
+	"github.com/Lewin671/remote-agent/clientcore/screens"
+	"github.com/Lewin671/remote-agent/clientcore/sync"
+)
+
+const usageStaleMs int64 = 60_000
+
+func usageCacheKey(machineID string, preset v1.UsageRangePreset, cStart, cEnd int64) screens.UsageCacheKey {
+	if preset == v1.UsageRangePreset_USAGE_RANGE_PRESET_UNSPECIFIED {
+		preset = v1.UsageRangePreset_USAGE_RANGE_PRESET_SEVEN_DAYS
+	}
+	if preset != v1.UsageRangePreset_USAGE_RANGE_PRESET_CUSTOM {
+		cStart, cEnd = 0, 0
+	}
+	return screens.UsageCacheKey{
+		MachineID:     machineID,
+		Preset:        preset,
+		CustomStartMs: cStart,
+		CustomEndMs:   cEnd,
+	}
+}
+
+func (m *Model) ensureUsageEntry(key screens.UsageCacheKey) *screens.UsageSnapshotEntry {
+	if m.state.UsageSnapshots == nil {
+		m.state.UsageSnapshots = make(map[screens.UsageCacheKey]*screens.UsageSnapshotEntry)
+	}
+	entry := m.state.UsageSnapshots[key]
+	if entry == nil {
+		entry = &screens.UsageSnapshotEntry{}
+		m.state.UsageSnapshots[key] = entry
+	}
+	return entry
+}
+
+func (c *Core) viewUsage(req *corev1.UsageScreenRequest) (*corev1.ViewModel, error) {
+	sv := c.m.sync.BuildSyncStateView()
+	vm := screens.BuildUsageView(c.m.state, sv, req)
+	return &corev1.ViewModel{
+		View: &corev1.ViewModel_Usage{
+			Usage: vm,
+		},
+	}, nil
+}
+
+func (c *Core) appendUsageRender(effects []*corev1.Effect, syncDirty sync.DirtyFlags) []*corev1.Effect {
+	want := c.m.usageDirty || (c.m.usageActive && (syncDirty.SyncState || syncDirty.Home))
+	c.m.usageDirty = false
+	if !want {
+		return effects
+	}
+	for _, eff := range effects {
+		if eff == nil {
+			continue
+		}
+		if r := eff.GetRender(); r != nil {
+			if !slices.Contains(r.Screens, corev1.ScreenTarget_SCREEN_TARGET_USAGE) {
+				r.Screens = append(r.Screens, corev1.ScreenTarget_SCREEN_TARGET_USAGE)
+			}
+			return effects
+		}
+	}
+	return append(effects, &corev1.Effect{
+		Effect: &corev1.Effect_Render{
+			Render: &corev1.RenderEffect{
+				Screens: []corev1.ScreenTarget{corev1.ScreenTarget_SCREEN_TARGET_USAGE},
+			},
+		},
+	})
+}
+
+func (c *Core) dispatchUsageUI(ctx *sync.StepContext, ev *corev1.Event) []*corev1.Effect {
+	switch k := ev.Event.(type) {
+	case *corev1.Event_UsageScreenOpen:
+		if k.UsageScreenOpen == nil || k.UsageScreenOpen.MachineId == "" {
+			return nil
+		}
+		src := k.UsageScreenOpen
+		u := &corev1.UsageScreenOpenEvent{
+			MachineId:       src.MachineId,
+			Preset:          src.Preset,
+			CustomStartMs:   src.CustomStartMs,
+			CustomEndMs:     src.CustomEndMs,
+			Timezone:        src.Timezone,
+			TzOffsetMinutes: src.TzOffsetMinutes,
+			BucketBoundsMs:  slices.Clone(src.BucketBoundsMs),
+			PrevStartMs:     src.PrevStartMs,
+		}
+		if u.Preset == v1.UsageRangePreset_USAGE_RANGE_PRESET_UNSPECIFIED {
+			u.Preset = v1.UsageRangePreset_USAGE_RANGE_PRESET_SEVEN_DAYS
+		}
+		if c.m.lastUsageParams == nil {
+			c.m.lastUsageParams = make(map[string]*corev1.UsageScreenOpenEvent)
+		}
+		c.m.lastUsageParams[u.MachineId] = u
+		c.m.usageActive = true
+		c.fetchUsage(ctx, u.MachineId, u.Preset, u.CustomStartMs, u.CustomEndMs, u)
+		c.m.usageDirty = true
+
+	case *corev1.Event_UsageScreenRetry:
+		if k.UsageScreenRetry == nil || k.UsageScreenRetry.MachineId == "" {
+			return nil
+		}
+		id := k.UsageScreenRetry.MachineId
+		c.m.usageActive = true
+		params := c.m.lastUsageParams[id]
+		if params != nil {
+			c.fetchUsage(ctx, id, params.Preset, params.CustomStartMs, params.CustomEndMs, params)
+		} else {
+			c.fetchUsage(ctx, id, v1.UsageRangePreset_USAGE_RANGE_PRESET_SEVEN_DAYS, 0, 0, nil)
+		}
+		c.m.usageDirty = true
+
+	case *corev1.Event_UsageCacheLoaded:
+		if k.UsageCacheLoaded == nil || k.UsageCacheLoaded.MachineId == "" || k.UsageCacheLoaded.Snapshot == nil {
+			return nil
+		}
+		snap := k.UsageCacheLoaded.Snapshot
+		key := usageCacheKey(k.UsageCacheLoaded.MachineId, snap.Preset, 0, 0)
+		entry := c.m.ensureUsageEntry(key)
+		entry.Cached = snap.Clone()
+		entry.CachedAtMs = snap.GeneratedAtMs
+		if c.m.usageActive {
+			c.m.usageDirty = true
+		}
+		if c.m.settings != nil && c.m.settings.Active {
+			c.m.settingsDirty.MachineStatus = true
+		}
+		if len(c.m.ensureSessionStore().opened) > 0 {
+			c.m.ensureSessionStore().pendingDirty = true
+		}
+	}
+	return nil
+}
+
+func (c *Core) maybeFetchUsage(ctx *sync.StepContext, machineID string, preset v1.UsageRangePreset, openEv *corev1.UsageScreenOpenEvent) {
+	if machineID == "" || preset == v1.UsageRangePreset_USAGE_RANGE_PRESET_CUSTOM {
+		return
+	}
+	if preset == v1.UsageRangePreset_USAGE_RANGE_PRESET_UNSPECIFIED {
+		preset = v1.UsageRangePreset_USAGE_RANGE_PRESET_SEVEN_DAYS
+	}
+	mac := c.m.findMachine(machineID)
+	if !lists.MachineReachable(mac) || mac.Meta == nil || mac.Meta.Capabilities == nil || !mac.Meta.Capabilities.UsageStats {
+		return
+	}
+	key := usageCacheKey(machineID, preset, 0, 0)
+	entry := c.m.ensureUsageEntry(key)
+	if entry.Loading {
+		return
+	}
+	nowMs := c.m.sync.NowMs()
+	if last := c.m.lastUsageFetchedMs[key]; last > 0 && nowMs > 0 && nowMs-last < usageStaleMs {
+		return
+	}
+	c.fetchUsage(ctx, machineID, preset, 0, 0, openEv)
+}
+
+func (c *Core) fetchUsage(ctx *sync.StepContext, machineID string, preset v1.UsageRangePreset, cStart, cEnd int64, openEv *corev1.UsageScreenOpenEvent) {
+	if machineID == "" {
+		return
+	}
+	if preset == v1.UsageRangePreset_USAGE_RANGE_PRESET_UNSPECIFIED {
+		preset = v1.UsageRangePreset_USAGE_RANGE_PRESET_SEVEN_DAYS
+	}
+	mac := c.m.findMachine(machineID)
+	if !lists.MachineReachable(mac) || mac.Meta == nil || mac.Meta.Capabilities == nil || !mac.Meta.Capabilities.UsageStats {
+		return
+	}
+	key := usageCacheKey(machineID, preset, cStart, cEnd)
+	entry := c.m.ensureUsageEntry(key)
+
+	req := &v1.GetUsageStatsRequest{
+		Preset:        preset,
+		CustomStartMs: key.CustomStartMs,
+		CustomEndMs:   key.CustomEndMs,
+	}
+	if openEv != nil {
+		req.Timezone = openEv.Timezone
+		req.TzOffsetMinutes = openEv.TzOffsetMinutes
+		if len(openEv.BucketBoundsMs) > 0 {
+			req.BucketBoundsMs = slices.Clone(openEv.BucketBoundsMs)
+		}
+		req.PrevStartMs = openEv.PrevStartMs
+	}
+
+	reqID, ok := c.m.sync.SubmitCommand(ctx, sync.SubmitCommandParams{
+		MachineID: machineID,
+		Command: &v1.Command{
+			Kind: &v1.Command_GetUsageStats{
+				GetUsageStats: req,
+			},
+		},
+	})
+	if !ok {
+		entry.Loading = false
+		entry.ActiveReqID = ""
+		return
+	}
+	entry.Loading = true
+	entry.ActiveReqID = reqID
+	entry.Error = ""
+	entry.ErrorText = nil
+	if reqID != "" {
+		c.m.pendingCmdMeta[reqID] = cmdMeta{
+			kind:      cmdKindGetUsageStats,
+			machineID: machineID,
+			usageKey:  key,
+		}
+	}
+}
+
+func (c *Core) onUsageStatsSettled(sc sync.SettledCommand, meta cmdMeta, dirty *sync.DirtyFlags) []*corev1.Effect {
+	entry := c.m.ensureUsageEntry(meta.usageKey)
+	if entry.ActiveReqID != "" && sc.RequestID != "" && entry.ActiveReqID != sc.RequestID {
+		return nil
+	}
+	entry.Loading = false
+	entry.ActiveReqID = ""
+
+	var out []*corev1.Effect
+	nowMs := c.m.sync.NowMs()
+
+	if sc.Category == outcome.Executed && sc.ErrorCode == "" && sc.Result != nil && sc.Result.GetUsageStats() != nil {
+		resp := sc.Result.GetUsageStats().Clone()
+		entry.Live = resp
+		entry.LiveAtMs = nowMs
+		entry.Error = ""
+		entry.ErrorText = nil
+		if c.m.lastUsageFetchedMs == nil {
+			c.m.lastUsageFetchedMs = make(map[screens.UsageCacheKey]int64)
+		}
+		c.m.lastUsageFetchedMs[meta.usageKey] = nowMs
+
+		if meta.usageKey.Preset != v1.UsageRangePreset_USAGE_RANGE_PRESET_CUSTOM {
+			entry.Cached = resp.Clone()
+			entry.CachedAtMs = resp.GeneratedAtMs
+			if entry.CachedAtMs == 0 {
+				entry.CachedAtMs = nowMs
+			}
+			out = append(out, &corev1.Effect{
+				Effect: &corev1.Effect_UsageCacheWrite{
+					UsageCacheWrite: &corev1.UsageCacheWriteEffect{
+						MachineId: meta.machineID,
+						Snapshot:  resp.Clone(),
+					},
+				},
+			})
+		}
+
+		if meta.usageKey.Preset == v1.UsageRangePreset_USAGE_RANGE_PRESET_SEVEN_DAYS && len(usage.ActiveSeries(resp)) == 0 {
+			res := c.m.sync.Run(func(ctx *sync.StepContext) {
+				c.maybeFetchUsage(ctx, meta.machineID, v1.UsageRangePreset_USAGE_RANGE_PRESET_THIRTY_DAYS, nil)
+			})
+			out = append(out, res.Effects...)
+		}
+	} else {
+		entry.ErrorText = sc.ErrorText
+		entry.Error = sc.ErrorCode
+		if entry.Error == "" && entry.ErrorText == nil {
+			entry.Error = "failed"
+		}
+	}
+
+	if c.m.usageActive {
+		c.m.usageDirty = true
+	}
+	if c.m.settings != nil && c.m.settings.Active {
+		c.m.settingsDirty.MachineStatus = true
+	}
+	if len(c.m.ensureSessionStore().opened) > 0 {
+		c.m.ensureSessionStore().pendingDirty = true
+	}
+	dirty.MarkSessionData()
+	return out
+}

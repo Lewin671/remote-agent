@@ -43,6 +43,10 @@ message MachineMeta {
   uint64 schedule_revision = 14;
   // Last minute disk check; clients use only while online.
   DiskStatus disk_status = 15;
+  // Installed CLIs toggled off on this machine (agents \ disabled_agents remain active).
+  repeated Agent disabled_agents = 16;
+  // Monotonic settings revision from DaemonSettings.revision.
+  uint64 settings_revision = 17;
 }
 
 // ProjectSummary is what a machine knows of a project beyond its live
@@ -176,6 +180,7 @@ message Command {
     // A session command: its header names the session.
     GetSharedFileChunkRequest get_shared_file_chunk = 32;
     GetMachineStatusRequest get_machine_status = 33;
+    GetUsageStatsRequest get_usage_stats = 34;
   }
   // The protocol version the client speaks (internal/protocol). A daemon
   // of another version refuses the command and says which side to update.
@@ -227,6 +232,7 @@ message CommandResult {
     LiveSnapshot live_snapshot = 41;
     GetSharedFileChunkResponse get_shared_file_chunk = 42;
     MachineStatus machine_status = 43;
+    UsageStatsResponse usage_stats = 44;
   }
 }
 

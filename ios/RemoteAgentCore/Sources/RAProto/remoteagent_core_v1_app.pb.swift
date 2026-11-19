@@ -205,6 +205,7 @@ public enum PBCoreScreenTarget: SwiftProtobuf.Enum, Swift.CaseIterable {
   case quota // = 33
   case devices // = 34
   case clientDetail // = 35
+  case usage // = 36
   case session // = 10
   case schedules // = 20
   case scheduleDetail // = 21
@@ -235,6 +236,7 @@ public enum PBCoreScreenTarget: SwiftProtobuf.Enum, Swift.CaseIterable {
     case 33: self = .quota
     case 34: self = .devices
     case 35: self = .clientDetail
+    case 36: self = .usage
     default: self = .UNRECOGNIZED(rawValue)
     }
   }
@@ -258,6 +260,7 @@ public enum PBCoreScreenTarget: SwiftProtobuf.Enum, Swift.CaseIterable {
     case .quota: return 33
     case .devices: return 34
     case .clientDetail: return 35
+    case .usage: return 36
     case .UNRECOGNIZED(let i): return i
     }
   }
@@ -276,6 +279,7 @@ public enum PBCoreScreenTarget: SwiftProtobuf.Enum, Swift.CaseIterable {
     .quota,
     .devices,
     .clientDetail,
+    .usage,
     .session,
     .schedules,
     .scheduleDetail,
@@ -534,6 +538,14 @@ public struct PBCoreScreen: Sendable {
     set {screen = .clientDetail(newValue)}
   }
 
+  public var usage: PBCoreUsageScreenRequest {
+    get {
+      if case .usage(let v)? = screen {return v}
+      return PBCoreUsageScreenRequest()
+    }
+    set {screen = .usage(newValue)}
+  }
+
   public var session: PBSessionScreenRequest {
     get {
       if case .session(let v)? = screen {return v}
@@ -590,6 +602,7 @@ public struct PBCoreScreen: Sendable {
     case quota(PBQuotaScreenRequest)
     case devices(PBDevicesScreenRequest)
     case clientDetail(PBClientDetailScreenRequest)
+    case usage(PBCoreUsageScreenRequest)
     case session(PBSessionScreenRequest)
     case schedules(PBSchedulesScreenRequest)
     case scheduleDetail(PBScheduleDetailScreenRequest)
@@ -698,6 +711,14 @@ public struct PBCoreViewModel: Sendable {
     set {view = .clientDetail(newValue)}
   }
 
+  public var usage: PBCoreUsageViewModel {
+    get {
+      if case .usage(let v)? = view {return v}
+      return PBCoreUsageViewModel()
+    }
+    set {view = .usage(newValue)}
+  }
+
   public var session: PBSessionViewModel {
     get {
       if case .session(let v)? = view {return v}
@@ -754,6 +775,7 @@ public struct PBCoreViewModel: Sendable {
     case quota(PBQuotaViewModel)
     case devices(PBDevicesViewModel)
     case clientDetail(PBClientDetailViewModel)
+    case usage(PBCoreUsageViewModel)
     case session(PBSessionViewModel)
     case schedules(PBSchedulesViewModel)
     case scheduleDetail(PBScheduleDetailViewModel)
@@ -2493,6 +2515,38 @@ public struct PBCoreEvent: @unchecked Sendable {
     set {_uniqueStorage()._event = .machineDirectStatus(newValue)}
   }
 
+  public var toggleMachineAgent: PBToggleMachineAgentEvent {
+    get {
+      if case .toggleMachineAgent(let v)? = _storage._event {return v}
+      return PBToggleMachineAgentEvent()
+    }
+    set {_uniqueStorage()._event = .toggleMachineAgent(newValue)}
+  }
+
+  public var usageScreenOpen: PBCoreUsageScreenOpenEvent {
+    get {
+      if case .usageScreenOpen(let v)? = _storage._event {return v}
+      return PBCoreUsageScreenOpenEvent()
+    }
+    set {_uniqueStorage()._event = .usageScreenOpen(newValue)}
+  }
+
+  public var usageScreenRetry: PBCoreUsageScreenRetryEvent {
+    get {
+      if case .usageScreenRetry(let v)? = _storage._event {return v}
+      return PBCoreUsageScreenRetryEvent()
+    }
+    set {_uniqueStorage()._event = .usageScreenRetry(newValue)}
+  }
+
+  public var usageCacheLoaded: PBCoreUsageCacheLoadedEvent {
+    get {
+      if case .usageCacheLoaded(let v)? = _storage._event {return v}
+      return PBCoreUsageCacheLoadedEvent()
+    }
+    set {_uniqueStorage()._event = .usageCacheLoaded(newValue)}
+  }
+
   public var updateClientName: PBUpdateClientNameEvent {
     get {
       if case .updateClientName(let v)? = _storage._event {return v}
@@ -2962,6 +3016,10 @@ public struct PBCoreEvent: @unchecked Sendable {
     case updateMachineDaemonSettings(PBUpdateMachineDaemonSettingsEvent)
     case updateDirectPreference(PBUpdateDirectPreferenceEvent)
     case machineDirectStatus(PBMachineDirectStatusEvent)
+    case toggleMachineAgent(PBToggleMachineAgentEvent)
+    case usageScreenOpen(PBCoreUsageScreenOpenEvent)
+    case usageScreenRetry(PBCoreUsageScreenRetryEvent)
+    case usageCacheLoaded(PBCoreUsageCacheLoadedEvent)
     case updateClientName(PBUpdateClientNameEvent)
     case setNotificationPref(PBSetNotificationPrefEvent)
     case setAppearancePref(PBSetAppearancePrefEvent)
@@ -3832,6 +3890,14 @@ public struct PBCoreEffect: Sendable {
     set {effect = .prepareCleanupSession(newValue)}
   }
 
+  public var usageCacheWrite: PBCoreUsageCacheWriteEffect {
+    get {
+      if case .usageCacheWrite(let v)? = effect {return v}
+      return PBCoreUsageCacheWriteEffect()
+    }
+    set {effect = .usageCacheWrite(newValue)}
+  }
+
   public var sessionRestoreComposer: PBSessionRestoreComposerEffect {
     get {
       if case .sessionRestoreComposer(let v)? = effect {return v}
@@ -3914,6 +3980,7 @@ public struct PBCoreEffect: Sendable {
     case checkUpdates(PBCheckUpdatesEffect)
     case persistClientPrefs(PBPersistClientPrefsEffect)
     case prepareCleanupSession(PBPrepareCleanupSessionEffect)
+    case usageCacheWrite(PBCoreUsageCacheWriteEffect)
     case sessionRestoreComposer(PBSessionRestoreComposerEffect)
     case scheduleReadCache(PBScheduleReadCacheEffect)
     case scheduleDeleteCache(PBScheduleDeleteCacheEffect)
@@ -3956,7 +4023,7 @@ extension PBCoreOutcomeSource: SwiftProtobuf._ProtoNameProviding {
 }
 
 extension PBCoreScreenTarget: SwiftProtobuf._ProtoNameProviding {
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0SCREEN_TARGET_UNSPECIFIED\0\u{1}SCREEN_TARGET_HOME\0\u{1}SCREEN_TARGET_PROJECT\0\u{1}SCREEN_TARGET_NEW_SESSION\0\u{1}SCREEN_TARGET_SYNC_STATE\0\u{1}SCREEN_TARGET_SESSION_DATA\0\u{2}\u{5}SCREEN_TARGET_SESSION\0\u{2}\u{a}SCREEN_TARGET_SCHEDULES\0\u{1}SCREEN_TARGET_SCHEDULE_DETAIL\0\u{1}SCREEN_TARGET_SCHEDULE_FORM\0\u{1}SCREEN_TARGET_SCHEDULE_SESSION_STRIP\0\u{2}\u{7}SCREEN_TARGET_SETTINGS\0\u{1}SCREEN_TARGET_MACHINE_STATUS\0\u{1}SCREEN_TARGET_MACHINE_SETTINGS\0\u{1}SCREEN_TARGET_QUOTA\0\u{1}SCREEN_TARGET_DEVICES\0\u{1}SCREEN_TARGET_CLIENT_DETAIL\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0SCREEN_TARGET_UNSPECIFIED\0\u{1}SCREEN_TARGET_HOME\0\u{1}SCREEN_TARGET_PROJECT\0\u{1}SCREEN_TARGET_NEW_SESSION\0\u{1}SCREEN_TARGET_SYNC_STATE\0\u{1}SCREEN_TARGET_SESSION_DATA\0\u{2}\u{5}SCREEN_TARGET_SESSION\0\u{2}\u{a}SCREEN_TARGET_SCHEDULES\0\u{1}SCREEN_TARGET_SCHEDULE_DETAIL\0\u{1}SCREEN_TARGET_SCHEDULE_FORM\0\u{1}SCREEN_TARGET_SCHEDULE_SESSION_STRIP\0\u{2}\u{7}SCREEN_TARGET_SETTINGS\0\u{1}SCREEN_TARGET_MACHINE_STATUS\0\u{1}SCREEN_TARGET_MACHINE_SETTINGS\0\u{1}SCREEN_TARGET_QUOTA\0\u{1}SCREEN_TARGET_DEVICES\0\u{1}SCREEN_TARGET_CLIENT_DETAIL\0\u{1}SCREEN_TARGET_USAGE\0")
 }
 
 extension PBCoreCommandRouteHint: SwiftProtobuf._ProtoNameProviding {
@@ -4118,7 +4185,7 @@ extension PBCoreSessionDataScreenRequest: SwiftProtobuf.Message, SwiftProtobuf._
 
 extension PBCoreScreen: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".Screen"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}home\0\u{1}project\0\u{3}new_session\0\u{3}sync_state\0\u{3}session_data\0\u{2}\u{5}session\0\u{2}\u{a}schedules\0\u{3}schedule_detail\0\u{3}schedule_form\0\u{3}schedule_session_strip\0\u{2}\u{7}settings\0\u{3}machine_status\0\u{3}machine_settings\0\u{1}quota\0\u{1}devices\0\u{3}client_detail\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}home\0\u{1}project\0\u{3}new_session\0\u{3}sync_state\0\u{3}session_data\0\u{2}\u{5}session\0\u{2}\u{a}schedules\0\u{3}schedule_detail\0\u{3}schedule_form\0\u{3}schedule_session_strip\0\u{2}\u{7}settings\0\u{3}machine_status\0\u{3}machine_settings\0\u{1}quota\0\u{1}devices\0\u{3}client_detail\0\u{1}usage\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -4334,6 +4401,19 @@ extension PBCoreScreen: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementat
           self.screen = .clientDetail(v)
         }
       }()
+      case 36: try {
+        var v: PBCoreUsageScreenRequest?
+        var hadOneofValue = false
+        if let current = self.screen {
+          hadOneofValue = true
+          if case .usage(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.screen = .usage(v)
+        }
+      }()
       default: break
       }
     }
@@ -4409,6 +4489,10 @@ extension PBCoreScreen: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementat
       guard case .clientDetail(let v)? = self.screen else { preconditionFailure() }
       try visitor.visitSingularMessageField(value: v, fieldNumber: 35)
     }()
+    case .usage?: try {
+      guard case .usage(let v)? = self.screen else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 36)
+    }()
     case nil: break
     }
     try unknownFields.traverse(visitor: &visitor)
@@ -4423,7 +4507,7 @@ extension PBCoreScreen: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementat
 
 extension PBCoreViewModel: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".ViewModel"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}home\0\u{1}project\0\u{3}new_session\0\u{3}sync_state\0\u{3}session_data\0\u{2}\u{5}session\0\u{2}\u{a}schedules\0\u{3}schedule_detail\0\u{3}schedule_form\0\u{3}schedule_session_strip\0\u{2}\u{7}settings\0\u{3}machine_status\0\u{3}machine_settings\0\u{1}quota\0\u{1}devices\0\u{3}client_detail\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}home\0\u{1}project\0\u{3}new_session\0\u{3}sync_state\0\u{3}session_data\0\u{2}\u{5}session\0\u{2}\u{a}schedules\0\u{3}schedule_detail\0\u{3}schedule_form\0\u{3}schedule_session_strip\0\u{2}\u{7}settings\0\u{3}machine_status\0\u{3}machine_settings\0\u{1}quota\0\u{1}devices\0\u{3}client_detail\0\u{1}usage\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -4639,6 +4723,19 @@ extension PBCoreViewModel: SwiftProtobuf.Message, SwiftProtobuf._MessageImplemen
           self.view = .clientDetail(v)
         }
       }()
+      case 36: try {
+        var v: PBCoreUsageViewModel?
+        var hadOneofValue = false
+        if let current = self.view {
+          hadOneofValue = true
+          if case .usage(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.view = .usage(v)
+        }
+      }()
       default: break
       }
     }
@@ -4713,6 +4810,10 @@ extension PBCoreViewModel: SwiftProtobuf.Message, SwiftProtobuf._MessageImplemen
     case .clientDetail?: try {
       guard case .clientDetail(let v)? = self.view else { preconditionFailure() }
       try visitor.visitSingularMessageField(value: v, fieldNumber: 35)
+    }()
+    case .usage?: try {
+      guard case .usage(let v)? = self.view else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 36)
     }()
     case nil: break
     }
@@ -7333,7 +7434,7 @@ extension PBCoreNewSessionSubmitAction: SwiftProtobuf.Message, SwiftProtobuf._Me
 
 extension PBCoreEvent: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".Event"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}clock_updated\0\u{3}entropy_provided\0\u{3}sync_lifecycle\0\u{3}network_changed\0\u{3}timer_fired\0\u{3}cache_bootstrap_loaded\0\u{3}cache_events_loaded\0\u{3}token_result\0\u{3}security_snapshot\0\u{3}stream_ready\0\u{3}stream_closed\0\u{3}stream_frame\0\u{3}lists_fetched\0\u{3}sessions_page_fetched\0\u{3}session_by_id_fetched\0\u{3}events_page_fetched\0\u{3}account_prefs_fetched\0\u{3}account_prefs_put_result\0\u{3}devices_fetched\0\u{3}command_outcome\0\u{3}session_watch\0\u{3}session_pin\0\u{3}retry_session_events\0\u{3}fetch_session\0\u{3}machine_route_status\0\u{3}session_schedule_hints\0\u{3}direct_events_received\0\u{4}\u{3}home_set_scope\0\u{3}home_set_filter\0\u{3}home_load_more_ended\0\u{3}home_retry_load\0\u{3}home_select_session\0\u{4}\u{6}project_set_search\0\u{3}project_toggle_pin\0\u{3}project_toggle_hide\0\u{3}project_add\0\u{3}project_load_more_ended\0\u{3}project_open_dir_picker\0\u{3}project_dir_navigate\0\u{3}project_close_dir_picker\0\u{4}\u{3}new_session_open\0\u{3}new_session_select_project\0\u{3}new_session_select_machine\0\u{3}new_session_select_agent\0\u{3}new_session_select_model\0\u{3}new_session_set_prompt\0\u{3}new_session_retry_models\0\u{3}new_session_retry_save_config\0\u{3}new_session_submit\0\u{3}new_session_abandon_start\0\u{4}'now_ms\0\u{3}mono_ms\0\u{3}random_ids\0\u{3}unit_floats\0\u{4}c\u{1}session_submit_command\0\u{3}session_abandon_command\0\u{3}session_open\0\u{3}session_dismiss_outgoing\0\u{3}session_restore_outgoing\0\u{3}session_set_question_index\0\u{3}session_load_earlier\0\u{4}^\u{1}schedule_cache_loaded\0\u{3}schedule_seen_loaded\0\u{3}schedule_local_context\0\u{3}schedule_refresh\0\u{3}schedule_set_visible_session\0\u{4}\u{6}schedule_list_open\0\u{3}schedule_select_task\0\u{3}schedule_toggle_ended\0\u{3}schedule_mark_read\0\u{3}schedule_mark_unread\0\u{4}\u{6}schedule_detail_open\0\u{3}schedule_detail_hide\0\u{3}schedule_detail_close\0\u{3}schedule_detail_show_latest_result\0\u{3}schedule_detail_toggle_quiet_group\0\u{3}schedule_detail_show_all_runs\0\u{3}schedule_detail_open_run\0\u{4}\u{4}schedule_operate\0\u{3}schedule_rename\0\u{3}schedule_set_notify\0\u{3}schedule_update_message\0\u{3}schedule_abandon_mutation\0\u{3}schedule_retry_mutation\0\u{4}\u{3}schedule_form_open\0\u{3}schedule_form_close\0\u{3}schedule_form_set_message\0\u{3}schedule_form_set_title\0\u{3}schedule_form_set_notify\0\u{3}schedule_form_select_project\0\u{3}schedule_form_select_machine\0\u{3}schedule_form_select_agent\0\u{3}schedule_form_select_model\0\u{3}schedule_form_update_timing\0\u{3}schedule_form_submit\0\u{3}schedule_form_retry_models\0\u{3}machine_status_watch\0\u{3}machine_status_retry\0\u{3}machine_status_tab\0\u{3}machine_status_scrub\0\u{3}machine_status_cleanup\0\u{3}machine_status_poll_tick\0\u{4}\u{5}machine_settings_open\0\u{3}machine_settings_select_agent\0\u{3}update_machine_agent_defaults\0\u{3}update_machine_daemon_settings\0\u{3}update_direct_preference\0\u{3}machine_direct_status\0\u{4}\u{5}update_client_name\0\u{4}\u{5}set_notification_pref\0\u{3}set_appearance_pref\0\u{3}conn_check_status\0\u{3}client_update_state\0\u{3}check_for_updates\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}clock_updated\0\u{3}entropy_provided\0\u{3}sync_lifecycle\0\u{3}network_changed\0\u{3}timer_fired\0\u{3}cache_bootstrap_loaded\0\u{3}cache_events_loaded\0\u{3}token_result\0\u{3}security_snapshot\0\u{3}stream_ready\0\u{3}stream_closed\0\u{3}stream_frame\0\u{3}lists_fetched\0\u{3}sessions_page_fetched\0\u{3}session_by_id_fetched\0\u{3}events_page_fetched\0\u{3}account_prefs_fetched\0\u{3}account_prefs_put_result\0\u{3}devices_fetched\0\u{3}command_outcome\0\u{3}session_watch\0\u{3}session_pin\0\u{3}retry_session_events\0\u{3}fetch_session\0\u{3}machine_route_status\0\u{3}session_schedule_hints\0\u{3}direct_events_received\0\u{4}\u{3}home_set_scope\0\u{3}home_set_filter\0\u{3}home_load_more_ended\0\u{3}home_retry_load\0\u{3}home_select_session\0\u{4}\u{6}project_set_search\0\u{3}project_toggle_pin\0\u{3}project_toggle_hide\0\u{3}project_add\0\u{3}project_load_more_ended\0\u{3}project_open_dir_picker\0\u{3}project_dir_navigate\0\u{3}project_close_dir_picker\0\u{4}\u{3}new_session_open\0\u{3}new_session_select_project\0\u{3}new_session_select_machine\0\u{3}new_session_select_agent\0\u{3}new_session_select_model\0\u{3}new_session_set_prompt\0\u{3}new_session_retry_models\0\u{3}new_session_retry_save_config\0\u{3}new_session_submit\0\u{3}new_session_abandon_start\0\u{4}'now_ms\0\u{3}mono_ms\0\u{3}random_ids\0\u{3}unit_floats\0\u{4}c\u{1}session_submit_command\0\u{3}session_abandon_command\0\u{3}session_open\0\u{3}session_dismiss_outgoing\0\u{3}session_restore_outgoing\0\u{3}session_set_question_index\0\u{3}session_load_earlier\0\u{4}^\u{1}schedule_cache_loaded\0\u{3}schedule_seen_loaded\0\u{3}schedule_local_context\0\u{3}schedule_refresh\0\u{3}schedule_set_visible_session\0\u{4}\u{6}schedule_list_open\0\u{3}schedule_select_task\0\u{3}schedule_toggle_ended\0\u{3}schedule_mark_read\0\u{3}schedule_mark_unread\0\u{4}\u{6}schedule_detail_open\0\u{3}schedule_detail_hide\0\u{3}schedule_detail_close\0\u{3}schedule_detail_show_latest_result\0\u{3}schedule_detail_toggle_quiet_group\0\u{3}schedule_detail_show_all_runs\0\u{3}schedule_detail_open_run\0\u{4}\u{4}schedule_operate\0\u{3}schedule_rename\0\u{3}schedule_set_notify\0\u{3}schedule_update_message\0\u{3}schedule_abandon_mutation\0\u{3}schedule_retry_mutation\0\u{4}\u{3}schedule_form_open\0\u{3}schedule_form_close\0\u{3}schedule_form_set_message\0\u{3}schedule_form_set_title\0\u{3}schedule_form_set_notify\0\u{3}schedule_form_select_project\0\u{3}schedule_form_select_machine\0\u{3}schedule_form_select_agent\0\u{3}schedule_form_select_model\0\u{3}schedule_form_update_timing\0\u{3}schedule_form_submit\0\u{3}schedule_form_retry_models\0\u{3}machine_status_watch\0\u{3}machine_status_retry\0\u{3}machine_status_tab\0\u{3}machine_status_scrub\0\u{3}machine_status_cleanup\0\u{3}machine_status_poll_tick\0\u{4}\u{5}machine_settings_open\0\u{3}machine_settings_select_agent\0\u{3}update_machine_agent_defaults\0\u{3}update_machine_daemon_settings\0\u{3}update_direct_preference\0\u{3}machine_direct_status\0\u{3}toggle_machine_agent\0\u{4}\u{4}update_client_name\0\u{4}\u{5}set_notification_pref\0\u{3}set_appearance_pref\0\u{3}conn_check_status\0\u{3}client_update_state\0\u{3}check_for_updates\0\u{3}usage_screen_open\0\u{3}usage_screen_retry\0\u{3}usage_cache_loaded\0")
 
   fileprivate class _StorageClass {
     var _event: PBCoreEvent.OneOf_Event?
@@ -8730,6 +8831,19 @@ extension PBCoreEvent: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementati
             _storage._event = .machineDirectStatus(v)
           }
         }()
+        case 366: try {
+          var v: PBToggleMachineAgentEvent?
+          var hadOneofValue = false
+          if let current = _storage._event {
+            hadOneofValue = true
+            if case .toggleMachineAgent(let m) = current {v = m}
+          }
+          try decoder.decodeSingularMessageField(value: &v)
+          if let v = v {
+            if hadOneofValue {try decoder.handleConflictingOneOf()}
+            _storage._event = .toggleMachineAgent(v)
+          }
+        }()
         case 370: try {
           var v: PBUpdateClientNameEvent?
           var hadOneofValue = false
@@ -8806,6 +8920,45 @@ extension PBCoreEvent: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementati
           if let v = v {
             if hadOneofValue {try decoder.handleConflictingOneOf()}
             _storage._event = .checkForUpdates(v)
+          }
+        }()
+        case 380: try {
+          var v: PBCoreUsageScreenOpenEvent?
+          var hadOneofValue = false
+          if let current = _storage._event {
+            hadOneofValue = true
+            if case .usageScreenOpen(let m) = current {v = m}
+          }
+          try decoder.decodeSingularMessageField(value: &v)
+          if let v = v {
+            if hadOneofValue {try decoder.handleConflictingOneOf()}
+            _storage._event = .usageScreenOpen(v)
+          }
+        }()
+        case 381: try {
+          var v: PBCoreUsageScreenRetryEvent?
+          var hadOneofValue = false
+          if let current = _storage._event {
+            hadOneofValue = true
+            if case .usageScreenRetry(let m) = current {v = m}
+          }
+          try decoder.decodeSingularMessageField(value: &v)
+          if let v = v {
+            if hadOneofValue {try decoder.handleConflictingOneOf()}
+            _storage._event = .usageScreenRetry(v)
+          }
+        }()
+        case 382: try {
+          var v: PBCoreUsageCacheLoadedEvent?
+          var hadOneofValue = false
+          if let current = _storage._event {
+            hadOneofValue = true
+            if case .usageCacheLoaded(let m) = current {v = m}
+          }
+          try decoder.decodeSingularMessageField(value: &v)
+          if let v = v {
+            if hadOneofValue {try decoder.handleConflictingOneOf()}
+            _storage._event = .usageCacheLoaded(v)
           }
         }()
         default: break
@@ -9252,6 +9405,10 @@ extension PBCoreEvent: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementati
         guard case .machineDirectStatus(let v)? = _storage._event else { preconditionFailure() }
         try visitor.visitSingularMessageField(value: v, fieldNumber: 365)
       }()
+      case .toggleMachineAgent?: try {
+        guard case .toggleMachineAgent(let v)? = _storage._event else { preconditionFailure() }
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 366)
+      }()
       case .updateClientName?: try {
         guard case .updateClientName(let v)? = _storage._event else { preconditionFailure() }
         try visitor.visitSingularMessageField(value: v, fieldNumber: 370)
@@ -9275,6 +9432,18 @@ extension PBCoreEvent: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementati
       case .checkForUpdates?: try {
         guard case .checkForUpdates(let v)? = _storage._event else { preconditionFailure() }
         try visitor.visitSingularMessageField(value: v, fieldNumber: 379)
+      }()
+      case .usageScreenOpen?: try {
+        guard case .usageScreenOpen(let v)? = _storage._event else { preconditionFailure() }
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 380)
+      }()
+      case .usageScreenRetry?: try {
+        guard case .usageScreenRetry(let v)? = _storage._event else { preconditionFailure() }
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 381)
+      }()
+      case .usageCacheLoaded?: try {
+        guard case .usageCacheLoaded(let v)? = _storage._event else { preconditionFailure() }
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 382)
       }()
       default: break
       }
@@ -10651,7 +10820,7 @@ extension PBCoreRequestEntropyEffect: SwiftProtobuf.Message, SwiftProtobuf._Mess
 
 extension PBCoreEffect: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".Effect"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}render\0\u{3}open_stream\0\u{3}close_stream\0\u{3}ensure_token\0\u{3}discard_token\0\u{3}sync_security\0\u{3}schedule_timer\0\u{3}cancel_timer\0\u{3}cache_read\0\u{3}cache_write\0\u{3}cache_delete\0\u{1}rpc\0\u{3}dispatch_command\0\u{3}save_home_scope\0\u{1}navigate\0\u{3}attachments_settled\0\u{3}request_entropy\0\u{4}\u{17}session_restore_composer\0\u{4}\u{14}schedule_read_cache\0\u{3}schedule_delete_cache\0\u{3}schedule_load_seen\0\u{3}schedule_save_seen\0\u{3}schedule_dismiss_notifications\0\u{3}schedule_navigate\0\u{4}\u{5}schedule_machine_poll\0\u{3}direct_preference\0\u{3}rename_client\0\u{3}check_updates\0\u{3}persist_client_prefs\0\u{3}prepare_cleanup_session\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}render\0\u{3}open_stream\0\u{3}close_stream\0\u{3}ensure_token\0\u{3}discard_token\0\u{3}sync_security\0\u{3}schedule_timer\0\u{3}cancel_timer\0\u{3}cache_read\0\u{3}cache_write\0\u{3}cache_delete\0\u{1}rpc\0\u{3}dispatch_command\0\u{3}save_home_scope\0\u{1}navigate\0\u{3}attachments_settled\0\u{3}request_entropy\0\u{4}\u{17}session_restore_composer\0\u{4}\u{14}schedule_read_cache\0\u{3}schedule_delete_cache\0\u{3}schedule_load_seen\0\u{3}schedule_save_seen\0\u{3}schedule_dismiss_notifications\0\u{3}schedule_navigate\0\u{4}\u{5}schedule_machine_poll\0\u{3}direct_preference\0\u{3}rename_client\0\u{3}check_updates\0\u{3}persist_client_prefs\0\u{3}prepare_cleanup_session\0\u{3}usage_cache_write\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -11049,6 +11218,19 @@ extension PBCoreEffect: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementat
           self.effect = .prepareCleanupSession(v)
         }
       }()
+      case 76: try {
+        var v: PBCoreUsageCacheWriteEffect?
+        var hadOneofValue = false
+        if let current = self.effect {
+          hadOneofValue = true
+          if case .usageCacheWrite(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.effect = .usageCacheWrite(v)
+        }
+      }()
       default: break
       }
     }
@@ -11179,6 +11361,10 @@ extension PBCoreEffect: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementat
     case .prepareCleanupSession?: try {
       guard case .prepareCleanupSession(let v)? = self.effect else { preconditionFailure() }
       try visitor.visitSingularMessageField(value: v, fieldNumber: 75)
+    }()
+    case .usageCacheWrite?: try {
+      guard case .usageCacheWrite(let v)? = self.effect else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 76)
     }()
     case nil: break
     }

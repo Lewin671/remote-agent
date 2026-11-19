@@ -10,6 +10,7 @@ import "remoteagent/core/v1/settings_view.proto";
 import "remoteagent/core/v1/session_view.proto";
 import "remoteagent/core/v1/schedules_view.proto";
 import "remoteagent/core/v1/sync_view.proto";
+import "remoteagent/core/v1/usage_view.proto";
 import "remoteagent/v1/event.proto";
 import "remoteagent/v1/local.proto";
 import "remoteagent/v1/relay.proto";
@@ -52,6 +53,7 @@ message Screen {
     QuotaScreenRequest quota = 33;
     DevicesScreenRequest devices = 34;
     ClientDetailScreenRequest client_detail = 35;
+    UsageScreenRequest usage = 36;
     SessionScreenRequest session = 10;
     SchedulesScreenRequest schedules = 20;
     ScheduleDetailScreenRequest schedule_detail = 21;
@@ -75,6 +77,7 @@ message ViewModel {
     QuotaViewModel quota = 33;
     DevicesViewModel devices = 34;
     ClientDetailViewModel client_detail = 35;
+    UsageViewModel usage = 36;
     SessionViewModel session = 10;
     SchedulesViewModel schedules = 20;
     ScheduleDetailViewModel schedule_detail = 21;
@@ -545,6 +548,10 @@ message Event {
     UpdateMachineDaemonSettingsEvent update_machine_daemon_settings = 363;
     UpdateDirectPreferenceEvent update_direct_preference = 364;
     MachineDirectStatusEvent machine_direct_status = 365;
+    ToggleMachineAgentEvent toggle_machine_agent = 366;
+    UsageScreenOpenEvent usage_screen_open = 380;
+    UsageScreenRetryEvent usage_screen_retry = 381;
+    UsageCacheLoadedEvent usage_cache_loaded = 382;
     UpdateClientNameEvent update_client_name = 370;
     SetNotificationPrefEvent set_notification_pref = 375;
     SetAppearancePrefEvent set_appearance_pref = 376;
@@ -615,6 +622,7 @@ enum ScreenTarget {
   SCREEN_TARGET_QUOTA = 33;
   SCREEN_TARGET_DEVICES = 34;
   SCREEN_TARGET_CLIENT_DETAIL = 35;
+  SCREEN_TARGET_USAGE = 36;
   SCREEN_TARGET_SESSION = 10;
   SCREEN_TARGET_SCHEDULES = 20;
   SCREEN_TARGET_SCHEDULE_DETAIL = 21;
@@ -838,6 +846,7 @@ message Effect {
     CheckUpdatesEffect check_updates = 73;
     PersistClientPrefsEffect persist_client_prefs = 74;
     PrepareCleanupSessionEffect prepare_cleanup_session = 75;
+    UsageCacheWriteEffect usage_cache_write = 76;
     SessionRestoreComposerEffect session_restore_composer = 40;
     ScheduleReadCacheEffect schedule_read_cache = 60;
     ScheduleDeleteCacheEffect schedule_delete_cache = 61;

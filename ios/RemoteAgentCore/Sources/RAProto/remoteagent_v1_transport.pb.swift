@@ -1217,29 +1217,35 @@ public struct PBUnsupported: Sendable {
 }
 
 /// First extension after the protocol 16 freeze: authenticated Control type 14.
-public struct PBCapabilitySnapshot: Sendable {
+public struct PBCapabilitySnapshot: @unchecked Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  public var capabilityID: Data = Data()
+  public var capabilityID: Data {
+    get {return _storage._capabilityID}
+    set {_uniqueStorage()._capabilityID = newValue}
+  }
 
   public var capabilities: PBMachineCapabilities {
-    get {return _capabilities ?? PBMachineCapabilities()}
-    set {_capabilities = newValue}
+    get {return _storage._capabilities ?? PBMachineCapabilities()}
+    set {_uniqueStorage()._capabilities = newValue}
   }
   /// Returns true if `capabilities` has been explicitly set.
-  public var hasCapabilities: Bool {return self._capabilities != nil}
+  public var hasCapabilities: Bool {return _storage._capabilities != nil}
   /// Clears the value of `capabilities`. Subsequent reads from it will return its default value.
-  public mutating func clearCapabilities() {self._capabilities = nil}
+  public mutating func clearCapabilities() {_uniqueStorage()._capabilities = nil}
 
-  public var expiresAtMs: Int64 = 0
+  public var expiresAtMs: Int64 {
+    get {return _storage._expiresAtMs}
+    set {_uniqueStorage()._expiresAtMs = newValue}
+  }
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
 
-  fileprivate var _capabilities: PBMachineCapabilities? = nil
+  fileprivate var _storage = _StorageClass.defaultInstance
 }
 
 /// Second extension after the protocol 16 freeze: authenticated Control type 15.
@@ -3172,41 +3178,81 @@ extension PBCapabilitySnapshot: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
   public static let protoMessageName: String = _protobuf_package + ".CapabilitySnapshot"
   public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}capability_id\0\u{1}capabilities\0\u{3}expires_at_ms\0")
 
+  fileprivate class _StorageClass {
+    var _capabilityID: Data = Data()
+    var _capabilities: PBMachineCapabilities? = nil
+    var _expiresAtMs: Int64 = 0
+
+      // This property is used as the initial default value for new instances of the type.
+      // The type itself is protecting the reference to its storage via CoW semantics.
+      // This will force a copy to be made of this reference when the first mutation occurs;
+      // hence, it is safe to mark this as `nonisolated(unsafe)`.
+      static nonisolated(unsafe) let defaultInstance = _StorageClass()
+
+    private init() {}
+
+    init(copying source: _StorageClass) {
+      _capabilityID = source._capabilityID
+      _capabilities = source._capabilities
+      _expiresAtMs = source._expiresAtMs
+    }
+  }
+
+  fileprivate mutating func _uniqueStorage() -> _StorageClass {
+    if !isKnownUniquelyReferenced(&_storage) {
+      _storage = _StorageClass(copying: _storage)
+    }
+    return _storage
+  }
+
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
-    while let fieldNumber = try decoder.nextFieldNumber() {
-      // The use of inline closures is to circumvent an issue where the compiler
-      // allocates stack space for every case branch when no optimizations are
-      // enabled. https://github.com/apple/swift-protobuf/issues/1034
-      switch fieldNumber {
-      case 1: try { try decoder.decodeSingularBytesField(value: &self.capabilityID) }()
-      case 2: try { try decoder.decodeSingularMessageField(value: &self._capabilities) }()
-      case 3: try { try decoder.decodeSingularInt64Field(value: &self.expiresAtMs) }()
-      default: break
+    _ = _uniqueStorage()
+    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+      while let fieldNumber = try decoder.nextFieldNumber() {
+        // The use of inline closures is to circumvent an issue where the compiler
+        // allocates stack space for every case branch when no optimizations are
+        // enabled. https://github.com/apple/swift-protobuf/issues/1034
+        switch fieldNumber {
+        case 1: try { try decoder.decodeSingularBytesField(value: &_storage._capabilityID) }()
+        case 2: try { try decoder.decodeSingularMessageField(value: &_storage._capabilities) }()
+        case 3: try { try decoder.decodeSingularInt64Field(value: &_storage._expiresAtMs) }()
+        default: break
+        }
       }
     }
   }
 
   public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
-    // The use of inline closures is to circumvent an issue where the compiler
-    // allocates stack space for every if/case branch local when no optimizations
-    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
-    // https://github.com/apple/swift-protobuf/issues/1182
-    if !self.capabilityID.isEmpty {
-      try visitor.visitSingularBytesField(value: self.capabilityID, fieldNumber: 1)
-    }
-    try { if let v = self._capabilities {
-      try visitor.visitSingularMessageField(value: v, fieldNumber: 2)
-    } }()
-    if self.expiresAtMs != 0 {
-      try visitor.visitSingularInt64Field(value: self.expiresAtMs, fieldNumber: 3)
+    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every if/case branch local when no optimizations
+      // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+      // https://github.com/apple/swift-protobuf/issues/1182
+      if !_storage._capabilityID.isEmpty {
+        try visitor.visitSingularBytesField(value: _storage._capabilityID, fieldNumber: 1)
+      }
+      try { if let v = _storage._capabilities {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 2)
+      } }()
+      if _storage._expiresAtMs != 0 {
+        try visitor.visitSingularInt64Field(value: _storage._expiresAtMs, fieldNumber: 3)
+      }
     }
     try unknownFields.traverse(visitor: &visitor)
   }
 
   public static func ==(lhs: PBCapabilitySnapshot, rhs: PBCapabilitySnapshot) -> Bool {
-    if lhs.capabilityID != rhs.capabilityID {return false}
-    if lhs._capabilities != rhs._capabilities {return false}
-    if lhs.expiresAtMs != rhs.expiresAtMs {return false}
+    if lhs._storage !== rhs._storage {
+      let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
+        let _storage = _args.0
+        let rhs_storage = _args.1
+        if _storage._capabilityID != rhs_storage._capabilityID {return false}
+        if _storage._capabilities != rhs_storage._capabilities {return false}
+        if _storage._expiresAtMs != rhs_storage._expiresAtMs {return false}
+        return true
+      }
+      if !storagesAreEqual {return false}
+    }
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

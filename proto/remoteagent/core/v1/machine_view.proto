@@ -186,6 +186,33 @@ message MachineTopUsageSection {
   Text empty_text = 3;
 }
 
+message MachineModelUsageRow {
+  remoteagent.v1.Agent agent = 1;
+  string agent_name = 2;
+  string model = 3;
+  uint64 total_tokens = 4;
+  bool has_cache_hit = 5;
+  double cache_hit_rate = 6;
+  bool has_speed = 7;
+  double speed_p50 = 8;
+  uint64 usage_request_count = 9;
+  uint64 speed_request_count = 10;
+  bool few_speed_samples = 11;
+}
+
+message MachineModelUsagePreview {
+  bool supported = 1;
+  bool loading = 2;
+  bool has_data = 3;
+  bool fallback_thirty_days = 4;
+  bool backfilling = 5;
+  bool cached_offline = 6;
+  int64 cached_at_ms = 7;
+  repeated MachineModelUsageRow rows = 8;
+  Text unsupported_footnote = 9;
+  Text empty_text = 10;
+}
+
 message MachineStatusViewModel {
   string machine_id = 1;
   string machine_name = 2;
@@ -205,6 +232,7 @@ message MachineStatusViewModel {
   MachineTopUsageSection top_usage = 16;
   Text uptime_text = 17;
   Text battery_text = 18;
+  MachineModelUsagePreview model_usage = 19;
 }
 
 message DiskReminderView {

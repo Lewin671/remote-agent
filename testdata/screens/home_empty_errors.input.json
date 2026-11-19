@@ -71,7 +71,7 @@
           "machineUpdated": {
             "machineId": "m-off",
             "online": false,
-            "meta": { "hostname": "OldMac", "protocolVersion": 16 }
+            "meta": { "hostname": "OldMac", "protocolVersion": 17 }
           }
         }
       },

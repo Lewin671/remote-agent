@@ -77,22 +77,23 @@ func (AutoIssueKind) EnumDescriptor() ([]byte, []int) {
 type NoticeKind int32
 
 const (
-	NoticeKind_NOTICE_KIND_UNSPECIFIED           NoticeKind = 0
-	NoticeKind_NOTICE_KIND_ATTACHMENTS_MOVED     NoticeKind = 1
-	NoticeKind_NOTICE_KIND_READING_PREVIOUS      NoticeKind = 2
-	NoticeKind_NOTICE_KIND_OFFLINE_DRAFT_CHOICES NoticeKind = 3
-	NoticeKind_NOTICE_KIND_MACHINE_OFFLINE       NoticeKind = 4
-	NoticeKind_NOTICE_KIND_PROTOCOL_MISMATCH     NoticeKind = 5
-	NoticeKind_NOTICE_KIND_MISSING_AGENT         NoticeKind = 6
-	NoticeKind_NOTICE_KIND_CONFIG_FALLBACK       NoticeKind = 7
-	NoticeKind_NOTICE_KIND_AUTO_UNAVAILABLE      NoticeKind = 8
-	NoticeKind_NOTICE_KIND_CONFIG_SAVE_ERROR     NoticeKind = 9
-	NoticeKind_NOTICE_KIND_STARTING              NoticeKind = 10
-	NoticeKind_NOTICE_KIND_FAILED                NoticeKind = 11
-	NoticeKind_NOTICE_KIND_DISK_FULL             NoticeKind = 12
-	NoticeKind_NOTICE_KIND_UNKNOWN_START         NoticeKind = 13
-	NoticeKind_NOTICE_KIND_PROJECT_REMOVED       NoticeKind = 14
-	NoticeKind_NOTICE_KIND_NO_ONLINE_MACHINES    NoticeKind = 15
+	NoticeKind_NOTICE_KIND_UNSPECIFIED             NoticeKind = 0
+	NoticeKind_NOTICE_KIND_ATTACHMENTS_MOVED       NoticeKind = 1
+	NoticeKind_NOTICE_KIND_READING_PREVIOUS        NoticeKind = 2
+	NoticeKind_NOTICE_KIND_OFFLINE_DRAFT_CHOICES   NoticeKind = 3
+	NoticeKind_NOTICE_KIND_MACHINE_OFFLINE         NoticeKind = 4
+	NoticeKind_NOTICE_KIND_PROTOCOL_MISMATCH       NoticeKind = 5
+	NoticeKind_NOTICE_KIND_MISSING_AGENT           NoticeKind = 6
+	NoticeKind_NOTICE_KIND_CONFIG_FALLBACK         NoticeKind = 7
+	NoticeKind_NOTICE_KIND_AUTO_UNAVAILABLE        NoticeKind = 8
+	NoticeKind_NOTICE_KIND_CONFIG_SAVE_ERROR       NoticeKind = 9
+	NoticeKind_NOTICE_KIND_STARTING                NoticeKind = 10
+	NoticeKind_NOTICE_KIND_FAILED                  NoticeKind = 11
+	NoticeKind_NOTICE_KIND_DISK_FULL               NoticeKind = 12
+	NoticeKind_NOTICE_KIND_UNKNOWN_START           NoticeKind = 13
+	NoticeKind_NOTICE_KIND_PROJECT_REMOVED         NoticeKind = 14
+	NoticeKind_NOTICE_KIND_NO_ONLINE_MACHINES      NoticeKind = 15
+	NoticeKind_NOTICE_KIND_AGENT_DISABLED_FALLBACK NoticeKind = 16
 )
 
 // Enum value maps for NoticeKind.
@@ -114,24 +115,26 @@ var (
 		13: "NOTICE_KIND_UNKNOWN_START",
 		14: "NOTICE_KIND_PROJECT_REMOVED",
 		15: "NOTICE_KIND_NO_ONLINE_MACHINES",
+		16: "NOTICE_KIND_AGENT_DISABLED_FALLBACK",
 	}
 	NoticeKind_value = map[string]int32{
-		"NOTICE_KIND_UNSPECIFIED":           0,
-		"NOTICE_KIND_ATTACHMENTS_MOVED":     1,
-		"NOTICE_KIND_READING_PREVIOUS":      2,
-		"NOTICE_KIND_OFFLINE_DRAFT_CHOICES": 3,
-		"NOTICE_KIND_MACHINE_OFFLINE":       4,
-		"NOTICE_KIND_PROTOCOL_MISMATCH":     5,
-		"NOTICE_KIND_MISSING_AGENT":         6,
-		"NOTICE_KIND_CONFIG_FALLBACK":       7,
-		"NOTICE_KIND_AUTO_UNAVAILABLE":      8,
-		"NOTICE_KIND_CONFIG_SAVE_ERROR":     9,
-		"NOTICE_KIND_STARTING":              10,
-		"NOTICE_KIND_FAILED":                11,
-		"NOTICE_KIND_DISK_FULL":             12,
-		"NOTICE_KIND_UNKNOWN_START":         13,
-		"NOTICE_KIND_PROJECT_REMOVED":       14,
-		"NOTICE_KIND_NO_ONLINE_MACHINES":    15,
+		"NOTICE_KIND_UNSPECIFIED":             0,
+		"NOTICE_KIND_ATTACHMENTS_MOVED":       1,
+		"NOTICE_KIND_READING_PREVIOUS":        2,
+		"NOTICE_KIND_OFFLINE_DRAFT_CHOICES":   3,
+		"NOTICE_KIND_MACHINE_OFFLINE":         4,
+		"NOTICE_KIND_PROTOCOL_MISMATCH":       5,
+		"NOTICE_KIND_MISSING_AGENT":           6,
+		"NOTICE_KIND_CONFIG_FALLBACK":         7,
+		"NOTICE_KIND_AUTO_UNAVAILABLE":        8,
+		"NOTICE_KIND_CONFIG_SAVE_ERROR":       9,
+		"NOTICE_KIND_STARTING":                10,
+		"NOTICE_KIND_FAILED":                  11,
+		"NOTICE_KIND_DISK_FULL":               12,
+		"NOTICE_KIND_UNKNOWN_START":           13,
+		"NOTICE_KIND_PROJECT_REMOVED":         14,
+		"NOTICE_KIND_NO_ONLINE_MACHINES":      15,
+		"NOTICE_KIND_AGENT_DISABLED_FALLBACK": 16,
 	}
 )
 
@@ -227,21 +230,23 @@ const (
 	NoticeActionKind_NOTICE_ACTION_KIND_READD_PROJECT         NoticeActionKind = 7
 	NoticeActionKind_NOTICE_ACTION_KIND_OPEN_DISK_USAGE       NoticeActionKind = 8
 	NoticeActionKind_NOTICE_ACTION_KIND_RETRY_READ_SETTINGS   NoticeActionKind = 9
+	NoticeActionKind_NOTICE_ACTION_KIND_ENABLE_AGENT          NoticeActionKind = 10
 )
 
 // Enum value maps for NoticeActionKind.
 var (
 	NoticeActionKind_name = map[int32]string{
-		0: "NOTICE_ACTION_KIND_UNSPECIFIED",
-		1: "NOTICE_ACTION_KIND_RETRY_START",
-		2: "NOTICE_ACTION_KIND_ABANDON_START",
-		3: "NOTICE_ACTION_KIND_CHANGE_MACHINE",
-		4: "NOTICE_ACTION_KIND_CHANGE_MODEL",
-		5: "NOTICE_ACTION_KIND_OPEN_MACHINE_SETTINGS",
-		6: "NOTICE_ACTION_KIND_RETRY_SAVE_CONFIG",
-		7: "NOTICE_ACTION_KIND_READD_PROJECT",
-		8: "NOTICE_ACTION_KIND_OPEN_DISK_USAGE",
-		9: "NOTICE_ACTION_KIND_RETRY_READ_SETTINGS",
+		0:  "NOTICE_ACTION_KIND_UNSPECIFIED",
+		1:  "NOTICE_ACTION_KIND_RETRY_START",
+		2:  "NOTICE_ACTION_KIND_ABANDON_START",
+		3:  "NOTICE_ACTION_KIND_CHANGE_MACHINE",
+		4:  "NOTICE_ACTION_KIND_CHANGE_MODEL",
+		5:  "NOTICE_ACTION_KIND_OPEN_MACHINE_SETTINGS",
+		6:  "NOTICE_ACTION_KIND_RETRY_SAVE_CONFIG",
+		7:  "NOTICE_ACTION_KIND_READD_PROJECT",
+		8:  "NOTICE_ACTION_KIND_OPEN_DISK_USAGE",
+		9:  "NOTICE_ACTION_KIND_RETRY_READ_SETTINGS",
+		10: "NOTICE_ACTION_KIND_ENABLE_AGENT",
 	}
 	NoticeActionKind_value = map[string]int32{
 		"NOTICE_ACTION_KIND_UNSPECIFIED":           0,
@@ -254,6 +259,7 @@ var (
 		"NOTICE_ACTION_KIND_READD_PROJECT":         7,
 		"NOTICE_ACTION_KIND_OPEN_DISK_USAGE":       8,
 		"NOTICE_ACTION_KIND_RETRY_READ_SETTINGS":   9,
+		"NOTICE_ACTION_KIND_ENABLE_AGENT":          10,
 	}
 )
 
@@ -1351,7 +1357,7 @@ const file_remoteagent_core_v1_new_session_view_proto_rawDesc = "" +
 	"\x1bAUTO_ISSUE_KIND_UNSPECIFIED\x10\x00\x12\x18\n" +
 	"\x14AUTO_ISSUE_KIND_NONE\x10\x01\x12\x19\n" +
 	"\x15AUTO_ISSUE_KIND_MODEL\x10\x02\x12\x1b\n" +
-	"\x17AUTO_ISSUE_KIND_ACCOUNT\x10\x03*\x8f\x04\n" +
+	"\x17AUTO_ISSUE_KIND_ACCOUNT\x10\x03*\xb8\x04\n" +
 	"\n" +
 	"NoticeKind\x12\x1b\n" +
 	"\x17NOTICE_KIND_UNSPECIFIED\x10\x00\x12!\n" +
@@ -1370,12 +1376,13 @@ const file_remoteagent_core_v1_new_session_view_proto_rawDesc = "" +
 	"\x15NOTICE_KIND_DISK_FULL\x10\f\x12\x1d\n" +
 	"\x19NOTICE_KIND_UNKNOWN_START\x10\r\x12\x1f\n" +
 	"\x1bNOTICE_KIND_PROJECT_REMOVED\x10\x0e\x12\"\n" +
-	"\x1eNOTICE_KIND_NO_ONLINE_MACHINES\x10\x0f*\x80\x01\n" +
+	"\x1eNOTICE_KIND_NO_ONLINE_MACHINES\x10\x0f\x12'\n" +
+	"#NOTICE_KIND_AGENT_DISABLED_FALLBACK\x10\x10*\x80\x01\n" +
 	"\x0eNoticeSeverity\x12\x1f\n" +
 	"\x1bNOTICE_SEVERITY_UNSPECIFIED\x10\x00\x12\x18\n" +
 	"\x14NOTICE_SEVERITY_INFO\x10\x01\x12\x18\n" +
 	"\x14NOTICE_SEVERITY_WARN\x10\x02\x12\x19\n" +
-	"\x15NOTICE_SEVERITY_ERROR\x10\x03*\x9e\x03\n" +
+	"\x15NOTICE_SEVERITY_ERROR\x10\x03*\xc3\x03\n" +
 	"\x10NoticeActionKind\x12\"\n" +
 	"\x1eNOTICE_ACTION_KIND_UNSPECIFIED\x10\x00\x12\"\n" +
 	"\x1eNOTICE_ACTION_KIND_RETRY_START\x10\x01\x12$\n" +
@@ -1386,7 +1393,9 @@ const file_remoteagent_core_v1_new_session_view_proto_rawDesc = "" +
 	"$NOTICE_ACTION_KIND_RETRY_SAVE_CONFIG\x10\x06\x12$\n" +
 	" NOTICE_ACTION_KIND_READD_PROJECT\x10\a\x12&\n" +
 	"\"NOTICE_ACTION_KIND_OPEN_DISK_USAGE\x10\b\x12*\n" +
-	"&NOTICE_ACTION_KIND_RETRY_READ_SETTINGS\x10\tB\xdd\x01\n" +
+	"&NOTICE_ACTION_KIND_RETRY_READ_SETTINGS\x10\t\x12#\n" +
+	"\x1fNOTICE_ACTION_KIND_ENABLE_AGENT\x10\n" +
+	"B\xdd\x01\n" +
 	"\x17com.remoteagent.core.v1B\x13NewSessionViewProtoP\x01Z?github.com/Lewin671/remote-agent/gen/remoteagent/core/v1;corev1\xa2\x02\x03RCX\xaa\x02\x13Remoteagent.Core.V1\xca\x02\x13Remoteagent\\Core\\V1\xe2\x02\x1fRemoteagent\\Core\\V1\\GPBMetadata\xea\x02\x15Remoteagent::Core::V1b\x06proto3"
 
 var (

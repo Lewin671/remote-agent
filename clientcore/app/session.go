@@ -542,6 +542,7 @@ func (c *Core) dispatchSessionUI(ctx *sync.StepContext, ev *corev1.Event) []*cor
 				delete(c.m.state.MachineModels, screens.MachineAgentKey{MachineID: sess.MachineID, Agent: agent})
 			}
 			c.m.maybeFetchMachineConfig(ctx, sess.MachineID, agent)
+			c.maybeFetchUsage(ctx, sess.MachineID, v1.UsageRangePreset_USAGE_RANGE_PRESET_SEVEN_DAYS, nil)
 		}
 		store.pendingDirty = true
 		return nil

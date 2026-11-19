@@ -1,0 +1,863 @@
+[
+  {
+    "key": "usage.backfilled_summary",
+    "zh-CN": "{name} · 已算近 {scanned} 天",
+    "en": "{name} · {scanned}d indexed",
+    "params": {
+      "name": { "type": "string", "example": "MacBook" },
+      "scanned": { "type": "integer", "example": 12 }
+    },
+    "notes": "历史补算期间主卡副标题摘要。",
+    "platforms": ["web", "android"],
+    "status": { "zh-CN": "source", "en": "draft" }
+  },
+  {
+    "key": "usage.backfilling_banner",
+    "zh-CN": "正在从本机记录补算历史 · 已算 {scanned} / {total} 天",
+    "en": "Indexing local history · {scanned} / {total} days",
+    "params": {
+      "scanned": { "type": "integer", "example": 12 },
+      "total": { "type": "integer", "example": 30 }
+    },
+    "notes": "daemon 正在后台补算 90 天历史日志时的顶部提示条。",
+    "platforms": ["web", "android"],
+    "status": { "zh-CN": "source", "en": "draft" }
+  },
+  {
+    "key": "usage.backfilling_cell",
+    "zh-CN": "补算中",
+    "en": "Indexing",
+    "params": {},
+    "notes": "上期数据仍在补算时表格较上期格显示的中性文字。",
+    "platforms": ["web", "android"],
+    "status": { "zh-CN": "source", "en": "draft" }
+  },
+  {
+    "key": "usage.backfilling_zone",
+    "zh-CN": "更早记录补算中…",
+    "en": "Indexing earlier history…",
+    "params": {},
+    "notes": "补算中图表左侧虚线区占位文字。",
+    "platforms": ["web", "android"],
+    "status": { "zh-CN": "source", "en": "draft" }
+  },
+  {
+    "key": "usage.cache_formula_footnote",
+    "zh-CN": "命中率 = 缓存读取 ÷（未缓存输入 + 缓存读取 + 缓存写入），按输入 token 加权。",
+    "en": "Cache hit rate = cache read ÷ (uncached input + cache read + cache write), weighted by input tokens.",
+    "params": {},
+    "notes": "缓存命中视图表底公式说明。",
+    "platforms": ["web", "android"],
+    "status": { "zh-CN": "source", "en": "draft" }
+  },
+  {
+    "key": "usage.cache_write_footnote",
+    "zh-CN": "注：「—」表示该 CLI 或模型未单独上报缓存写入量，对应输入已计入未缓存输入，不影响总输入与命中率计算。",
+    "en": "Note: “—” means the CLI or model did not report cache write separately; those input tokens are included in uncached input and do not affect total input or hit rate.",
+    "params": {},
+    "notes": "当表格包含缺失缓存写入上报的序列时显示的脚注。",
+    "platforms": ["web", "android", "ios"],
+    "status": { "zh-CN": "source", "en": "draft" }
+  },
+  {
+    "key": "usage.chart_a11y_line",
+    "zh-CN": "{name} {metric}趋势图，含 {count} 条序列",
+    "en": "{name} {metric} trend chart with {count} series",
+    "params": {
+      "name": { "type": "string", "example": "MacBook" },
+      "metric": { "type": "string", "example": "缓存命中" },
+      "count": { "type": "integer", "example": 3 }
+    },
+    "notes": "折线图读屏描述。",
+    "platforms": ["web", "android"],
+    "status": { "zh-CN": "source", "en": "draft" }
+  },
+  {
+    "key": "usage.chart_a11y_tokens",
+    "zh-CN": "{name} 消耗量柱状图，共 {total} tokens，含 {count} 对模型；下方表格含全部拆分数值",
+    "en": "Bar chart of {name} token usage, {total} tokens across {count} agent-model pairs; full breakdown in the table below",
+    "params": {
+      "name": { "type": "string", "example": "MacBook" },
+      "total": { "type": "string", "example": "893万" },
+      "count": { "type": "integer", "example": 3 }
+    },
+    "notes": "Token 堆叠柱状图读屏描述。",
+    "platforms": ["web", "android"],
+    "status": { "zh-CN": "source", "en": "draft" }
+  },
+  {
+    "key": "usage.col_cache_read",
+    "zh-CN": "缓存读取",
+    "en": "Cache read",
+    "params": {},
+    "notes": "对比表表头列：缓存读取。",
+    "platforms": ["web", "android"],
+    "status": { "zh-CN": "source", "en": "draft" }
+  },
+  {
+    "key": "usage.col_cache_write",
+    "zh-CN": "缓存写入",
+    "en": "Cache write",
+    "params": {},
+    "notes": "对比表表头列：缓存写入。",
+    "platforms": ["web", "android"],
+    "status": { "zh-CN": "source", "en": "draft" }
+  },
+  {
+    "key": "usage.col_hit_rate",
+    "zh-CN": "命中率",
+    "en": "Cache hit",
+    "params": {},
+    "notes": "对比表表头列：命中率。",
+    "platforms": ["web", "android"],
+    "status": { "zh-CN": "source", "en": "draft" }
+  },
+  {
+    "key": "usage.col_median",
+    "zh-CN": "中位",
+    "en": "Median",
+    "params": {},
+    "notes": "输出速度表头列：中位数。",
+    "platforms": ["web", "android"],
+    "status": { "zh-CN": "source", "en": "draft" }
+  },
+  {
+    "key": "usage.col_output",
+    "zh-CN": "输出",
+    "en": "Output",
+    "params": {},
+    "notes": "对比表表头列：输出。",
+    "platforms": ["web", "android"],
+    "status": { "zh-CN": "source", "en": "draft" }
+  },
+  {
+    "key": "usage.col_pair",
+    "zh-CN": "Agent · 模型",
+    "en": "Agent · Model",
+    "params": {},
+    "notes": "对比表首列表头。",
+    "platforms": ["web", "android"],
+    "status": { "zh-CN": "source", "en": "draft" }
+  },
+  {
+    "key": "usage.col_reqs",
+    "zh-CN": "次数",
+    "en": "Reqs",
+    "params": {},
+    "notes": "对比表请求次数表头。",
+    "platforms": ["web", "android"],
+    "status": { "zh-CN": "source", "en": "draft" }
+  },
+  {
+    "key": "usage.col_total",
+    "zh-CN": "总量",
+    "en": "Total",
+    "params": {},
+    "notes": "对比表总量表头。",
+    "platforms": ["web", "android"],
+    "status": { "zh-CN": "source", "en": "draft" }
+  },
+  {
+    "key": "usage.col_ttft_median",
+    "zh-CN": "首字中位",
+    "en": "TTFT med",
+    "params": {},
+    "notes": "首字延迟表头列：首字中位。",
+    "platforms": ["web", "android"],
+    "status": { "zh-CN": "source", "en": "draft" }
+  },
+  {
+    "key": "usage.col_uncached",
+    "zh-CN": "未缓存输入",
+    "en": "Uncached",
+    "params": {},
+    "notes": "对比表表头列：未缓存输入。",
+    "platforms": ["web", "android"],
+    "status": { "zh-CN": "source", "en": "draft" }
+  },
+  {
+    "key": "usage.col_valid_reqs",
+    "zh-CN": "有效次",
+    "en": "Valid",
+    "params": {},
+    "notes": "速度与首字延迟表头列：有效测速次数。",
+    "platforms": ["web", "android"],
+    "status": { "zh-CN": "source", "en": "draft" }
+  },
+  {
+    "key": "usage.col_vs_prev",
+    "zh-CN": "较上期",
+    "en": "vs prev",
+    "params": {},
+    "notes": "对比表较上期表头。",
+    "platforms": ["web", "android"],
+    "status": { "zh-CN": "source", "en": "draft" }
+  },
+  {
+    "key": "usage.comp_cache_read",
+    "zh-CN": "缓存读",
+    "en": "Read",
+    "params": {},
+    "notes": "四段构成条图例：缓存读取。",
+    "platforms": ["web", "android"],
+    "status": { "zh-CN": "source", "en": "draft" }
+  },
+  {
+    "key": "usage.comp_cache_write",
+    "zh-CN": "缓存写",
+    "en": "Write",
+    "params": {},
+    "notes": "四段构成条图例：缓存写入。",
+    "platforms": ["web", "android"],
+    "status": { "zh-CN": "source", "en": "draft" }
+  },
+  {
+    "key": "usage.comp_output",
+    "zh-CN": "输出",
+    "en": "Output",
+    "params": {},
+    "notes": "四段构成条图例：输出。",
+    "platforms": ["web", "android"],
+    "status": { "zh-CN": "source", "en": "draft" }
+  },
+  {
+    "key": "usage.comp_reasoning",
+    "zh-CN": "含推理 {value}",
+    "en": "incl. {value} reasoning",
+    "params": {
+      "value": { "type": "string", "example": "21.8万" }
+    },
+    "notes": "输出 token 内含有的推理 token 附注。",
+    "platforms": ["web", "android"],
+    "status": { "zh-CN": "source", "en": "draft" }
+  },
+  {
+    "key": "usage.comp_uncached",
+    "zh-CN": "输入",
+    "en": "Uncached",
+    "params": {},
+    "notes": "四段构成条图例：未缓存输入。",
+    "platforms": ["web", "android"],
+    "status": { "zh-CN": "source", "en": "draft" }
+  },
+  {
+    "key": "usage.custom_end_label",
+    "zh-CN": "结束日期",
+    "en": "End date",
+    "params": {},
+    "notes": "自定义起止日期选择结束日期标签。",
+    "platforms": ["web", "android"],
+    "status": { "zh-CN": "source", "en": "draft" }
+  },
+  {
+    "key": "usage.custom_range_change",
+    "zh-CN": "改日期",
+    "en": "Dates",
+    "params": {},
+    "notes": "自定义日期条右侧按钮文字。",
+    "platforms": ["web", "android"],
+    "status": { "zh-CN": "source", "en": "draft" }
+  },
+  {
+    "key": "usage.custom_range_limit_hint",
+    "zh-CN": "可选近 90 天内，跨度 1–90 天",
+    "en": "Up to 90 days ago, 1–90d span",
+    "params": {},
+    "notes": "自定义日期范围约束说明。",
+    "platforms": ["web", "android"],
+    "status": { "zh-CN": "source", "en": "draft" }
+  },
+  {
+    "key": "usage.custom_range_summary",
+    "zh-CN": "{start} – {end}（{days} 天）",
+    "en": "{start} – {end} ({days}d)",
+    "params": {
+      "start": { "type": "string", "example": "10/25" },
+      "end": { "type": "string", "example": "11/08" },
+      "days": { "type": "integer", "example": 15 }
+    },
+    "notes": "自定义时间条左侧起止与天数摘要。",
+    "platforms": ["web", "android"],
+    "status": { "zh-CN": "source", "en": "draft" }
+  },
+  {
+    "key": "usage.custom_start_label",
+    "zh-CN": "开始日期",
+    "en": "Start date",
+    "params": {},
+    "notes": "自定义起止日期选择开始日期标签。",
+    "platforms": ["web", "android"],
+    "status": { "zh-CN": "source", "en": "draft" }
+  },
+  {
+    "key": "usage.duration_min_sec",
+    "zh-CN": "{min} 分 {sec} 秒",
+    "en": "{min}m {sec}s",
+    "params": {
+      "min": { "type": "integer", "example": 1 },
+      "sec": { "type": "integer", "example": 12 }
+    },
+    "notes": "首字延迟超过 60 秒时的格式化模板。",
+    "platforms": ["web", "android"],
+    "status": { "zh-CN": "source", "en": "draft" }
+  },
+  {
+    "key": "usage.empty_body",
+    "zh-CN": "在电脑上正常使用 CLI 对话后，这里会自动统计每次模型请求的 token 消耗、缓存命中率与输出速度。remote-agent 不会主动发请求。",
+    "en": "After using CLIs on this computer, per-request token usage, cache hit rate, and output speed appear here automatically. remote-agent never sends extra requests.",
+    "params": {},
+    "notes": "所选时间段无任何请求记录时的说明卡正文。",
+    "platforms": ["web", "android"],
+    "status": { "zh-CN": "source", "en": "draft" }
+  },
+  {
+    "key": "usage.empty_title",
+    "zh-CN": "这段时间没有用量与速度记录",
+    "en": "No usage or speed records in this period",
+    "params": {},
+    "notes": "所选时间段无任何请求记录时的说明卡标题。",
+    "platforms": ["web", "android"],
+    "status": { "zh-CN": "source", "en": "draft" }
+  },
+  {
+    "key": "usage.entry_cache_pct",
+    "zh-CN": "缓存 {pct}",
+    "en": "Cache {pct}",
+    "params": {
+      "pct": { "type": "string", "example": "88%" }
+    },
+    "notes": "会话设置与电脑状态预览副行中的缓存命中段。",
+    "platforms": ["web", "android"],
+    "status": { "zh-CN": "source", "en": "draft" }
+  },
+  {
+    "key": "usage.entry_few_samples",
+    "zh-CN": "{detail}（仅 {count} 次）",
+    "en": "{detail} ({count} only)",
+    "params": {
+      "detail": { "type": "string", "example": "63 tok/s" },
+      "count": { "type": "integer", "example": 2 }
+    },
+    "notes": "会话设置入口仅 1-2 次有效测速样本时的副行提示。",
+    "platforms": ["web", "android"],
+    "status": { "zh-CN": "source", "en": "draft" }
+  },
+  {
+    "key": "usage.entry_last_30d",
+    "zh-CN": "近 30 天",
+    "en": "Last 30d",
+    "params": {},
+    "notes": "会话设置入口 7 天为空、回退显示近 30 天时的前缀。",
+    "platforms": ["web", "android"],
+    "status": { "zh-CN": "source", "en": "draft" }
+  },
+  {
+    "key": "usage.entry_last_7d",
+    "zh-CN": "近 7 天",
+    "en": "Last 7d",
+    "params": {},
+    "notes": "会话设置入口默认近 7 天前缀。",
+    "platforms": ["web", "android"],
+    "status": { "zh-CN": "source", "en": "draft" }
+  },
+  {
+    "key": "usage.entry_no_speed",
+    "zh-CN": "{detail}（尚无测速样本）",
+    "en": "{detail} (no speed samples yet)",
+    "params": {
+      "detail": { "type": "string", "example": "近 7 天 · 缓存 72%" }
+    },
+    "notes": "会话设置入口尚无满 16 token 有效测速样本时的副行后缀。",
+    "platforms": ["web", "android"],
+    "status": { "zh-CN": "source", "en": "draft" }
+  },
+  {
+    "key": "usage.entry_reqs",
+    "zh-CN": "{count} 次",
+    "en": "{count} reqs",
+    "params": {
+      "count": { "type": "integer", "example": 148 }
+    },
+    "notes": "电脑状态页用量预览副行中的请求次数段。",
+    "platforms": ["web", "android"],
+    "status": { "zh-CN": "source", "en": "draft" }
+  },
+  {
+    "key": "usage.few_samples_count",
+    "zh-CN": "仅 {count} 次请求",
+    "en": "Only {count} requests",
+    "params": {
+      "count": { "type": "integer", "example": 2 }
+    },
+    "notes": "样本不足 3 次时主卡右上角数量提示。",
+    "platforms": ["web", "android"],
+    "status": { "zh-CN": "source", "en": "draft" }
+  },
+  {
+    "key": "usage.few_samples_hint",
+    "zh-CN": "满 3 次后画趋势线",
+    "en": "Trend starts at 3 requests",
+    "params": {},
+    "notes": "样本不足 3 次时仅画散点不连折线的提示。",
+    "platforms": ["web", "android"],
+    "status": { "zh-CN": "source", "en": "draft" }
+  },
+  {
+    "key": "usage.filter_all",
+    "zh-CN": "全部",
+    "en": "All",
+    "params": {},
+    "notes": "用量与速度页模型筛选胶囊的首项，恢复显示全部模型。",
+    "platforms": ["web", "android"],
+    "status": { "zh-CN": "source", "en": "draft" }
+  },
+  {
+    "key": "usage.flat",
+    "zh-CN": "持平",
+    "en": "Flat",
+    "params": {},
+    "notes": "较上期变化微小时（<1% 或 <50ms）的中性措辞。",
+    "platforms": ["web", "android"],
+    "status": { "zh-CN": "source", "en": "draft" }
+  },
+  {
+    "key": "usage.kpi_unit_tokens",
+    "zh-CN": "tokens",
+    "en": "tokens",
+    "params": {},
+    "notes": "消耗量 KPI 单位。",
+    "platforms": ["web", "android"],
+    "status": { "zh-CN": "source", "en": "draft" }
+  },
+  {
+    "key": "usage.kpi_unit_toks",
+    "zh-CN": "tok/s",
+    "en": "tok/s",
+    "params": {},
+    "notes": "输出速度 KPI 单位。",
+    "platforms": ["web", "android"],
+    "status": { "zh-CN": "source", "en": "draft" }
+  },
+  {
+    "key": "usage.load_error_title",
+    "zh-CN": "没能读取用量与速度",
+    "en": "Could not load usage and speed",
+    "params": {},
+    "notes": "查询失败时的错误卡与提示条标题。",
+    "platforms": ["web", "android", "ios"],
+    "status": { "zh-CN": "source", "en": "draft" }
+  },
+  {
+    "key": "usage.mixed_unavailable_footnote",
+    "zh-CN": "已启用的 {agents} 暂无本地用量来源，未计入上表。",
+    "en": "Enabled {agents} has no local usage source and is excluded above.",
+    "params": {
+      "agents": { "type": "string", "example": "Antigravity" }
+    },
+    "notes": "混合启用有来源与无来源 CLI 时表底附注。",
+    "platforms": ["web", "android", "ios"],
+    "status": { "zh-CN": "source", "en": "draft" }
+  },
+  {
+    "key": "usage.offline_banner",
+    "zh-CN": "{name} 不在线，下面是 {time} 的记录",
+    "en": "{name} is offline. Showing cached data from {time}",
+    "params": {
+      "name": { "type": "string", "example": "iMac" },
+      "time": { "type": "string", "example": "昨天 21:40" }
+    },
+    "notes": "电脑离线但有本机加密缓存时的顶部提示条。",
+    "platforms": ["web", "android"],
+    "status": { "zh-CN": "source", "en": "draft" }
+  },
+  {
+    "key": "usage.offline_empty_body",
+    "zh-CN": "这台设备还没有缓存过 {name} 的用量与速度记录，等电脑连上后自动读取。",
+    "en": "No cached usage records for {name} on this device yet. Data will load automatically when online.",
+    "params": {
+      "name": { "type": "string", "example": "iMac" }
+    },
+    "notes": "电脑离线且无本机缓存时的说明卡正文。",
+    "platforms": ["web", "android"],
+    "status": { "zh-CN": "source", "en": "draft" }
+  },
+  {
+    "key": "usage.offline_empty_title",
+    "zh-CN": "{name} 当前不在线",
+    "en": "{name} is currently offline",
+    "params": {
+      "name": { "type": "string", "example": "iMac" }
+    },
+    "notes": "电脑离线且无本机缓存时的说明卡标题。",
+    "platforms": ["web", "android"],
+    "status": { "zh-CN": "source", "en": "draft" }
+  },
+  {
+    "key": "usage.only_unavailable_body",
+    "zh-CN": "这台电脑当前只启用了 {agents}；Claude Code 与 Codex 的本地记录会自动统计。",
+    "en": "Only {agents} is currently enabled on this computer. Local telemetry for Claude Code and Codex is collected automatically.",
+    "params": {
+      "agents": { "type": "string", "example": "Antigravity" }
+    },
+    "notes": "仅启用无用量来源 CLI 时的中性说明卡正文。",
+    "platforms": ["web", "android", "ios"],
+    "status": { "zh-CN": "source", "en": "draft" }
+  },
+  {
+    "key": "usage.only_unavailable_title",
+    "zh-CN": "{agents} 暂不支持统计用量与速度",
+    "en": "{agents} usage and speed telemetry unavailable",
+    "params": {
+      "agents": { "type": "string", "example": "Antigravity" }
+    },
+    "notes": "仅启用无用量来源 CLI 时的中性说明卡标题。",
+    "platforms": ["web", "android", "ios"],
+    "status": { "zh-CN": "source", "en": "draft" }
+  },
+  {
+    "key": "usage.outlier_note",
+    "zh-CN": "含长思考高波动样本",
+    "en": "High variance from long reasoning",
+    "params": {},
+    "notes": "当 p90 显著高于中位数时的温和附注。",
+    "platforms": ["web", "android"],
+    "status": { "zh-CN": "source", "en": "draft" }
+  },
+  {
+    "key": "usage.pairs_capped_summary",
+    "zh-CN": "已叠满 4 对上限（共 {count} 对）",
+    "en": "Max 4 overlaid ({count} total)",
+    "params": {
+      "count": { "type": "integer", "example": 12 }
+    },
+    "notes": "当存在 5 对及以上模型且叠满 4 条序列时的标题。",
+    "platforms": ["web", "android"],
+    "status": { "zh-CN": "source", "en": "draft" }
+  },
+  {
+    "key": "usage.pairs_summary",
+    "zh-CN": "{name} · 共 {count} 对",
+    "en": "{name} · {count} pairs",
+    "params": {
+      "name": { "type": "string", "example": "MacBook" },
+      "count": { "type": "integer", "example": 3 }
+    },
+    "notes": "多模型聚合视图下的主卡顶部标签。",
+    "platforms": ["web", "android"],
+    "status": { "zh-CN": "source", "en": "draft" }
+  },
+  {
+    "key": "usage.passive_footnote",
+    "zh-CN": "数据基于本机 CLI 日志被动采集，不换算货币金额。",
+    "en": "Passively collected from local CLI logs; no monetary conversion.",
+    "params": {},
+    "notes": "页面底部固定合规注记。",
+    "platforms": ["web", "android"],
+    "status": { "zh-CN": "source", "en": "draft" }
+  },
+  {
+    "key": "usage.range_30d",
+    "zh-CN": "30 天",
+    "en": "30d",
+    "params": {},
+    "notes": "时间范围分段：近 30 天。",
+    "platforms": ["web", "android"],
+    "status": { "zh-CN": "source", "en": "draft" }
+  },
+  {
+    "key": "usage.range_7d",
+    "zh-CN": "7 天",
+    "en": "7d",
+    "params": {},
+    "notes": "时间范围分段：近 7 天。",
+    "platforms": ["web", "android"],
+    "status": { "zh-CN": "source", "en": "draft" }
+  },
+  {
+    "key": "usage.range_custom",
+    "zh-CN": "自定义",
+    "en": "Custom",
+    "params": {},
+    "notes": "时间范围分段：自定义日期。",
+    "platforms": ["web", "android"],
+    "status": { "zh-CN": "source", "en": "draft" }
+  },
+  {
+    "key": "usage.range_today",
+    "zh-CN": "今天",
+    "en": "Today",
+    "params": {},
+    "notes": "时间范围分段：今天。",
+    "platforms": ["web", "android"],
+    "status": { "zh-CN": "source", "en": "draft" }
+  },
+  {
+    "key": "usage.row_sub_cache",
+    "zh-CN": "读 {read} · 未缓存 {inp} · 写 {write}",
+    "en": "Read {read} · Uncached {inp} · Write {write}",
+    "params": {
+      "read": { "type": "string", "example": "382万" },
+      "inp": { "type": "string", "example": "52万" },
+      "write": { "type": "string", "example": "—" }
+    },
+    "notes": "手机窄屏缓存命中率表格第二行拆解。",
+    "platforms": ["web", "android"],
+    "status": { "zh-CN": "source", "en": "draft" }
+  },
+  {
+    "key": "usage.row_sub_speed",
+    "zh-CN": "p10–p90 {low}–{high} · 首字 {ttft}",
+    "en": "p10–p90 {low}–{high} · TTFT {ttft}",
+    "params": {
+      "low": { "type": "string", "example": "78" },
+      "high": { "type": "string", "example": "108 tok/s" },
+      "ttft": { "type": "string", "example": "0.9 s" }
+    },
+    "notes": "手机窄屏输出速度表格第二行分位与首字延迟拆解。",
+    "platforms": ["web", "android"],
+    "status": { "zh-CN": "source", "en": "draft" }
+  },
+  {
+    "key": "usage.row_sub_tap_overlay",
+    "zh-CN": "点按叠加上图",
+    "en": "Tap to overlay",
+    "params": {},
+    "notes": "未在图上叠加的模型行副提示，告知可点按叠加。",
+    "platforms": ["web", "android"],
+    "status": { "zh-CN": "source", "en": "draft" }
+  },
+  {
+    "key": "usage.row_sub_tokens",
+    "zh-CN": "入 {inp} · 读 {read} · 写 {write} · 出 {out}",
+    "en": "In {inp} · Read {read} · Write {write} · Out {out}",
+    "params": {
+      "inp": { "type": "string", "example": "52万" },
+      "read": { "type": "string", "example": "382万" },
+      "write": { "type": "string", "example": "—" },
+      "out": { "type": "string", "example": "48万" }
+    },
+    "notes": "手机窄屏消耗量表格第二行四项互斥拆解。",
+    "platforms": ["web", "android"],
+    "status": { "zh-CN": "source", "en": "draft" }
+  },
+  {
+    "key": "usage.row_sub_tokens_reasoning",
+    "zh-CN": "入 {inp} · 读 {read} · 写 {write} · 出 {out}（推理 {reas}）",
+    "en": "In {inp} · Read {read} · Write {write} · Out {out} ({reas} reasoning)",
+    "params": {
+      "inp": { "type": "string", "example": "52万" },
+      "read": { "type": "string", "example": "382万" },
+      "write": { "type": "string", "example": "—" },
+      "out": { "type": "string", "example": "48万" },
+      "reas": { "type": "string", "example": "19万" }
+    },
+    "notes": "手机窄屏消耗量表格第二行含推理量附注。",
+    "platforms": ["web", "android"],
+    "status": { "zh-CN": "source", "en": "draft" }
+  },
+  {
+    "key": "usage.scrub_total",
+    "zh-CN": "共 {total}",
+    "en": "Total {total}",
+    "params": {
+      "total": { "type": "string", "example": "2.1亿" }
+    },
+    "notes": "游标读数浮层中某时间桶的总消耗量。",
+    "platforms": ["web", "android"],
+    "status": { "zh-CN": "source", "en": "draft" }
+  },
+  {
+    "key": "usage.speed_threshold_footnote",
+    "zh-CN": "速度与首字延迟仅计单次输出满 16 token 且生成耗时 ≥ 200 ms 的请求；极短工具回复仍计入消耗量与缓存命中率。",
+    "en": "Speed and TTFT count only responses with ≥ 16 output tokens and ≥ 200 ms generation duration; shorter tool replies still count in Tokens and Cache Hit.",
+    "params": {},
+    "notes": "输出速度与首字延迟页底的有效样本门槛说明。",
+    "platforms": ["web", "android"],
+    "status": { "zh-CN": "source", "en": "draft" }
+  },
+  {
+    "key": "usage.sub_median_p10_p90",
+    "zh-CN": "中位数 · p10–p90 {low}–{high}",
+    "en": "Median · p10–p90 {low}–{high}",
+    "params": {
+      "low": { "type": "string", "example": "78" },
+      "high": { "type": "string", "example": "108" }
+    },
+    "notes": "输出速度主卡右上副标分位范围。",
+    "platforms": ["web", "android"],
+    "status": { "zh-CN": "source", "en": "draft" }
+  },
+  {
+    "key": "usage.sub_p10_p90",
+    "zh-CN": "p10–p90 {low}–{high}",
+    "en": "p10–p90 {low}–{high}",
+    "params": {
+      "low": { "type": "string", "example": "1.1" },
+      "high": { "type": "string", "example": "2.6 s" }
+    },
+    "notes": "首字延迟主卡与表格行次要分位范围。",
+    "platforms": ["web", "android"],
+    "status": { "zh-CN": "source", "en": "draft" }
+  },
+  {
+    "key": "usage.sub_recent10",
+    "zh-CN": "近 10 次 p50 {speed} tok/s",
+    "en": "Last 10 p50 {speed} tok/s",
+    "params": {
+      "speed": { "type": "string", "example": "92" }
+    },
+    "notes": "输出速度页展示最近 10 次有效响应中位数。",
+    "platforms": ["web", "android"],
+    "status": { "zh-CN": "source", "en": "draft" }
+  },
+  {
+    "key": "usage.sub_vs_prev_30d",
+    "zh-CN": "较上个 30 天",
+    "en": "vs prev 30d",
+    "params": {},
+    "notes": "30 天视图主卡右上较上期标签。",
+    "platforms": ["web", "android"],
+    "status": { "zh-CN": "source", "en": "draft" }
+  },
+  {
+    "key": "usage.sub_vs_prev_7d",
+    "zh-CN": "较上个 7 天",
+    "en": "vs prev 7d",
+    "params": {},
+    "notes": "7 天视图主卡右上较上期标签。",
+    "platforms": ["web", "android"],
+    "status": { "zh-CN": "source", "en": "draft" }
+  },
+  {
+    "key": "usage.sub_vs_prev_generic",
+    "zh-CN": "较上期",
+    "en": "vs prev",
+    "params": {},
+    "notes": "今日与自定义时段主卡右上较上期标签。",
+    "platforms": ["web", "android"],
+    "status": { "zh-CN": "source", "en": "draft" }
+  },
+  {
+    "key": "usage.sub_weighted_cache",
+    "zh-CN": "按输入 token 加权",
+    "en": "Weighted by input tokens",
+    "params": {},
+    "notes": "缓存命中率主卡右上第一行说明。",
+    "platforms": ["web", "android"],
+    "status": { "zh-CN": "source", "en": "draft" }
+  },
+  {
+    "key": "usage.subtitle_live",
+    "zh-CN": "{name} · 被动记录",
+    "en": "{name} · Passive log",
+    "params": {
+      "name": { "type": "string", "example": "MacBook" }
+    },
+    "notes": "用量与速度页在线时的副标题。",
+    "platforms": ["web", "android"],
+    "status": { "zh-CN": "source", "en": "draft" }
+  },
+  {
+    "key": "usage.subtitle_offline",
+    "zh-CN": "{name} · 离线",
+    "en": "{name} · Offline",
+    "params": {
+      "name": { "type": "string", "example": "MacBook" }
+    },
+    "notes": "用量与速度页电脑离线时的副标题。",
+    "platforms": ["web", "android"],
+    "status": { "zh-CN": "source", "en": "draft" }
+  },
+  {
+    "key": "usage.tab_cache_hit",
+    "zh-CN": "缓存命中",
+    "en": "Cache Hit",
+    "params": {},
+    "notes": "指标分段第 2 项：缓存命中率。",
+    "platforms": ["web", "android"],
+    "status": { "zh-CN": "source", "en": "draft" }
+  },
+  {
+    "key": "usage.tab_speed",
+    "zh-CN": "输出速度",
+    "en": "Speed",
+    "params": {},
+    "notes": "指标分段第 3 项：输出速度。",
+    "platforms": ["web", "android"],
+    "status": { "zh-CN": "source", "en": "draft" }
+  },
+  {
+    "key": "usage.tab_tokens",
+    "zh-CN": "消耗量",
+    "en": "Tokens",
+    "params": {},
+    "notes": "指标分段第 1 项：Token 消耗量。",
+    "platforms": ["web", "android"],
+    "status": { "zh-CN": "source", "en": "draft" }
+  },
+  {
+    "key": "usage.tab_ttft",
+    "zh-CN": "首字延迟",
+    "en": "TTFT",
+    "params": {},
+    "notes": "指标分段第 4 项：首字延迟。",
+    "platforms": ["web", "android"],
+    "status": { "zh-CN": "source", "en": "draft" }
+  },
+  {
+    "key": "usage.title",
+    "zh-CN": "用量与速度",
+    "en": "Usage & speed",
+    "params": {},
+    "notes": "用量与速度页面标题。",
+    "platforms": ["web", "android"],
+    "status": { "zh-CN": "source", "en": "draft" }
+  },
+  {
+    "key": "usage.unit_wan",
+    "zh-CN": "万",
+    "en": "10k",
+    "params": {},
+    "notes": "中文 token 缩写万单位。",
+    "platforms": ["web", "android"],
+    "status": { "zh-CN": "source", "en": "draft" }
+  },
+  {
+    "key": "usage.unit_yi",
+    "zh-CN": "亿",
+    "en": "100M",
+    "params": {},
+    "notes": "中文 token 缩写亿单位。",
+    "platforms": ["web", "android"],
+    "status": { "zh-CN": "source", "en": "draft" }
+  },
+  {
+    "key": "usage.unreported_aria",
+    "zh-CN": "未单独上报",
+    "en": "not reported separately",
+    "params": {},
+    "notes": "缺失缓存写入字段标为破折号时的读屏朗读文本。",
+    "platforms": ["web", "android"],
+    "status": { "zh-CN": "source", "en": "draft" }
+  },
+  {
+    "key": "usage.unsupported_body",
+    "zh-CN": "更新 {name} 上的 remote-agent 后，可查看 token 消耗量、缓存命中率与输出速度。",
+    "en": "Update remote-agent on {name} to view token consumption, cache hit rate, and output speed.",
+    "params": {
+      "name": { "type": "string", "example": "MacBook" }
+    },
+    "notes": "旧版 daemon 不支持用量统计时的说明卡正文。",
+    "platforms": ["web", "android", "ios"],
+    "status": { "zh-CN": "source", "en": "draft" }
+  },
+  {
+    "key": "usage.unsupported_title",
+    "zh-CN": "电脑上的 remote-agent 版本较旧",
+    "en": "remote-agent on this computer is older",
+    "params": {},
+    "notes": "旧版 daemon 不支持用量统计时的说明卡标题。",
+    "platforms": ["web", "android", "ios"],
+    "status": { "zh-CN": "source", "en": "draft" }
+  }
+]

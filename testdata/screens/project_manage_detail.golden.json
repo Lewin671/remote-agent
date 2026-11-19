@@ -410,7 +410,7 @@
               "attemptId": "dir-att-1",
               "machineId": "m1",
               "deadlineMs": "1791078120090",
-              "commandBytes": "sgEQCg4vVXNlcnMvbWUvQ29kZaAGEA==",
+              "commandBytes": "sgEQCg4vVXNlcnMvbWUvQ29kZaAGEQ==",
               "routeHint": "COMMAND_ROUTE_HINT_READ"
             }
           },
@@ -688,7 +688,7 @@
               "attemptId": "r6",
               "machineId": "m1",
               "deadlineMs": "1791078120140",
-              "commandBytes": "sgEDCgEvoAYQ",
+              "commandBytes": "sgEDCgEvoAYR",
               "routeHint": "COMMAND_ROUTE_HINT_READ"
             }
           },

@@ -332,10 +332,13 @@ func (h *handler) UpdateSettings(ctx context.Context, req *connect.Request[pb.Up
 	if req.Msg.Settings == nil {
 		return nil, outcome.FinalError(connect.NewError(connect.CodeInvalidArgument, errors.New("settings are required")))
 	}
-	st, err := h.d.updateSettings(req.Msg.Settings)
+	st, err := h.d.updateSettingsReq(req.Msg)
 	if err != nil {
 		if e := h.d.diskError(err); e != nil {
 			return nil, e
+		}
+		if connect.CodeOf(err) == connect.CodeFailedPrecondition {
+			return nil, err
 		}
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}

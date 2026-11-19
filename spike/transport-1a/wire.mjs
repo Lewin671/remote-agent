@@ -45,15 +45,15 @@ export function context(from,to,connection,use,generation,seq,now,cls=1,boot=fal
   senderInstance:from.instance,receiverInstance:to.instance,senderBoot:from.boot,receiverBoot:to.boot,connection,
   use:BigInt(use),generation:BigInt(generation),seq:BigInt(seq),issued:BigInt(now),deadline:BigInt(now)+10000n,cls:BigInt(cls),recipientUnknown:0n};
 }
-export function encodeContext(c){return pb(b(1,c.domain),b(2,account),b(3,c.from),b(4,c.to),u(5,c.fromRole),u(6,c.toRole),b(7,c.machine),u(8,16),u(9,1),b(10,head),b(11,c.senderInstance),b(12,c.receiverInstance),b(13,c.senderBoot),b(14,c.receiverBoot),b(15,c.connection),u(16,c.use),u(17,c.generation),u(18,c.seq),u(19,c.issued),u(20,c.deadline),u(21,c.cls),b(22,c.from),b(23,accountDomain),u(24,c.recipientUnknown))}
+export function encodeContext(c){return pb(b(1,c.domain),b(2,account),b(3,c.from),b(4,c.to),u(5,c.fromRole),u(6,c.toRole),b(7,c.machine),u(8,17),u(9,1),b(10,head),b(11,c.senderInstance),b(12,c.receiverInstance),b(13,c.senderBoot),b(14,c.receiverBoot),b(15,c.connection),u(16,c.use),u(17,c.generation),u(18,c.seq),u(19,c.issued),u(20,c.deadline),u(21,c.cls),b(22,c.from),b(23,accountDomain),u(24,c.recipientUnknown))}
 function decodeContext(raw){const f=fields(raw,'Context');need(f,'bbbbuubuubbbbbbuuuuuubbu');const v=n=>value(f,n);
- if(!equal(v(23),accountDomain)||!equal(v(2),account)||v(8)!==16n||v(9)!==1n||!equal(v(10),head)||!equal(v(22),v(3)))throw Error('scope');
+ if(!equal(v(23),accountDomain)||!equal(v(2),account)||v(8)!==17n||v(9)!==1n||!equal(v(10),head)||!equal(v(22),v(3)))throw Error('scope');
  return {domain:v(1),from:v(3),to:v(4),fromRole:v(5),toRole:v(6),machine:v(7),senderInstance:v(11),receiverInstance:v(12),senderBoot:v(13),receiverBoot:v(14),connection:v(15),use:v(16),generation:v(17),seq:v(18),issued:v(19),deadline:v(20),cls:v(21),recipientUnknown:v(24)};
 }
 function wrapInfo(from,to){const sorted=[from,to].sort((a,b)=>{for(let i=0;i<Math.min(a.length,b.length);i++)if(a[i]!==b[i])return a[i]-b[i];return a.length-b.length});return lp(utf8('remote-agent/peer-context/v1'),account,accountDomain,...sorted,from,to)}
 function bodyInfo(c){if(text(c.domain)==='bootstrap')return lp(utf8('remote-agent/peer-bootstrap/v1'),account,accountDomain,c.from,c.to);
  return lp(utf8('remote-agent/peer-body/v1'),account,accountDomain,c.from,c.to,c.senderInstance,c.receiverInstance,c.senderBoot,c.receiverBoot,c.connection,num(c.use),num(c.generation),num(c.cls));}
-function aad(from,to,cls,id){return lp(utf8('remote-agent/peer-aad/v1'),account,accountDomain,num(16),pb(b(1,from),b(2,to),u(3,cls),b(4,id)))}
+function aad(from,to,cls,id){return lp(utf8('remote-agent/peer-aad/v1'),account,accountDomain,num(17),pb(b(1,from),b(2,to),u(3,cls),b(4,id)))}
 function sigInput(ad,nc,ec,nb,eb){return lp(utf8('remote-agent/peer-signature/v1'),ad,nc,ec,nb,eb)}
 async function kdf(shared,info){const key=await subtle.importKey('raw',shared,'HKDF',false,['deriveBits']);return new Uint8Array(await subtle.deriveBits({name:'HKDF',hash:'SHA-256',salt:await hash(utf8('remote-agent/peer-hkdf/v1')),info},key,256))}
 async function gcm(key,iv,additionalData,body,seal){const k=await subtle.importKey('raw',key,'AES-GCM',false,[seal?'encrypt':'decrypt']);return new Uint8Array(await subtle[seal?'encrypt':'decrypt']({name:'AES-GCM',iv,additionalData,tagLength:128},k,body))}

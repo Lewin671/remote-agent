@@ -17,6 +17,9 @@ public protocol PBLocalServiceClientInterface: Sendable {
     @available(iOS 13, *)
     func `getMachineStatus`(request: PBGetMachineStatusRequest, headers: Connect.Headers) async -> ResponseMessage<PBMachineStatus>
 
+    @available(iOS 13, *)
+    func `getUsageStats`(request: PBGetUsageStatsRequest, headers: Connect.Headers) async -> ResponseMessage<PBUsageStatsResponse>
+
     /// Schedule manages daemon-owned tasks. It is also used by the local MCP.
     @available(iOS 13, *)
     func `schedule`(request: PBScheduleRequest, headers: Connect.Headers) async -> ResponseMessage<PBScheduleResponse>
@@ -149,6 +152,11 @@ public final class PBLocalServiceClient: PBLocalServiceClientInterface, Sendable
     @available(iOS 13, *)
     public func `getMachineStatus`(request: PBGetMachineStatusRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<PBMachineStatus> {
         return await self.client.unary(path: "/remoteagent.v1.LocalService/GetMachineStatus", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
+    public func `getUsageStats`(request: PBGetUsageStatsRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<PBUsageStatsResponse> {
+        return await self.client.unary(path: "/remoteagent.v1.LocalService/GetUsageStats", idempotencyLevel: .unknown, request: request, headers: headers)
     }
 
     @available(iOS 13, *)
@@ -309,6 +317,7 @@ public final class PBLocalServiceClient: PBLocalServiceClientInterface, Sendable
     public enum Metadata {
         public enum Methods {
             public static let getMachineStatus = Connect.MethodSpec(name: "GetMachineStatus", service: "remoteagent.v1.LocalService", type: .unary)
+            public static let getUsageStats = Connect.MethodSpec(name: "GetUsageStats", service: "remoteagent.v1.LocalService", type: .unary)
             public static let schedule = Connect.MethodSpec(name: "Schedule", service: "remoteagent.v1.LocalService", type: .unary)
             public static let createSession = Connect.MethodSpec(name: "CreateSession", service: "remoteagent.v1.LocalService", type: .unary)
             public static let listSessions = Connect.MethodSpec(name: "ListSessions", service: "remoteagent.v1.LocalService", type: .unary)

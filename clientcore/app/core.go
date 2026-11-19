@@ -96,6 +96,9 @@ func (c *Core) View(screen *corev1.Screen) (*corev1.ViewModel, error) {
 	case *corev1.Screen_Session:
 		return c.viewSession(s.Session)
 
+	case *corev1.Screen_Usage:
+		return c.viewUsage(s.Usage)
+
 	default:
 		if vm, ok, err := c.viewSettings(screen); ok || err != nil {
 			return vm, err
@@ -130,6 +133,7 @@ func (c *Core) Dispatch(ev *corev1.Event) *corev1.EffectBatch {
 			effects = append(effects, r)
 		}
 		effects = c.appendSettingsRender(effects, syncRes.Dirty)
+		effects = c.appendUsageRender(effects, syncRes.Dirty)
 		effects = c.appendSessionRenderTarget(syncRes.Dirty, effects)
 		effects = c.m.mergeScheduleRender(effects)
 		return &corev1.EffectBatch{Effects: effects}
@@ -153,6 +157,7 @@ func (c *Core) Dispatch(ev *corev1.Event) *corev1.EffectBatch {
 		effects = append(effects, r)
 	}
 	effects = c.appendSettingsRender(effects, stepRes.Dirty)
+	effects = c.appendUsageRender(effects, stepRes.Dirty)
 	effects = c.appendSessionRenderTarget(stepRes.Dirty, effects)
 	effects = c.m.mergeScheduleRender(effects)
 	return &corev1.EffectBatch{Effects: effects}
@@ -230,6 +235,14 @@ func (c *Core) processSyncStep(res sync.StepResult) ([]*corev1.Effect, sync.Dirt
 				se.Loaded = true
 				se.Error = ""
 				se.ErrorText = nil
+				if c.m.sync.ApplyMachineSettingsSnapshot(meta.machineID, se.Settings) {
+					dirty.Add(true, true, true)
+					c.m.markAllScheduleScreensDirty()
+					c.m.usageDirty = true
+					if c.m.settings != nil {
+						c.m.settingsDirty.markAll()
+					}
+				}
 			} else {
 				se.ErrorText = sc.ErrorText
 				se.Error = sc.ErrorCode
@@ -242,6 +255,12 @@ func (c *Core) processSyncStep(res sync.StepResult) ([]*corev1.Effect, sync.Dirt
 			if c.m.settings != nil && c.m.settings.Active {
 				c.m.settingsDirty.MachineSettings = true
 			}
+
+		case cmdKindToggleMachineAgent:
+			effects = append(effects, c.onToggleMachineAgentSettled(sc, meta, &dirty)...)
+
+		case cmdKindGetUsageStats:
+			effects = append(effects, c.onUsageStatsSettled(sc, meta, &dirty)...)
 
 		case cmdKindListDirs:
 			dp := &c.m.state.DirPicker
@@ -384,6 +403,25 @@ func (c *Core) processSyncStep(res sync.StepResult) ([]*corev1.Effect, sync.Dirt
 
 	if res.Dirty.Home || res.Dirty.SyncState {
 		c.reconcileWatchedMachinePolls(&effects)
+		if c.m.usageActive {
+			c.m.usageDirty = true
+		}
+		if !(res.Dirty.NewSession || dirty.NewSession) {
+			extraRes := c.m.sync.Run(func(ctx *sync.StepContext) {
+				for key, d := range c.m.state.NewSessions {
+					if d == nil || !d.ConfigInitialized || d.Busy || d.Frozen || d.Config.MachineID == "" {
+						continue
+					}
+					if mac := c.m.findMachine(d.Config.MachineID); mac != nil && lists.IsAgentDisabled(mac.Meta, d.Config.Agent) {
+						psr := c.m.resolveDraftConfig(key, d)
+						c.m.syncDraftAutoSupport(key, psr)
+						c.m.maybeFetchMachineConfig(ctx, d.Config.MachineID, d.Config.Agent)
+						dirty.Add(false, false, true)
+					}
+				}
+			})
+			effects = append(effects, extraRes.Effects...)
+		}
 	}
 
 	c.processSchedulesSyncStep(res, &effects)
@@ -587,6 +625,7 @@ func (c *Core) dispatchUI(ctx *sync.StepContext, ev *corev1.Event) []*corev1.Eff
 					d.ConfigChosen = false
 					d.MachineChosen = false
 					d.AgentOverride = v1.Agent_AGENT_UNSPECIFIED
+					d.DisabledFromAgent = v1.Agent_AGENT_UNSPECIFIED
 					d.ConfigInitialized = false
 					d.ResetOnNextOpen = false
 				}
@@ -626,6 +665,7 @@ func (c *Core) dispatchUI(ctx *sync.StepContext, ev *corev1.Event) []*corev1.Eff
 				d.ConfigChosen = true
 				d.MachineChosen = true
 				d.ResetOnNextOpen = false
+				d.DisabledFromAgent = v1.Agent_AGENT_UNSPECIFIED
 				d.AgentOverride = d.Config.Agent
 				c.m.maybeFetchMachineConfig(ctx, d.Config.MachineID, d.Config.Agent)
 				op := buildFullSettingsOp(d.Config, true)
@@ -646,6 +686,7 @@ func (c *Core) dispatchUI(ctx *sync.StepContext, ev *corev1.Event) []*corev1.Eff
 				d.ConfigInitialized = true
 				d.ConfigChosen = true
 				d.ResetOnNextOpen = false
+				d.DisabledFromAgent = v1.Agent_AGENT_UNSPECIFIED
 				c.m.maybeFetchMachineConfig(ctx, d.Config.MachineID, d.Config.Agent)
 				op := buildFullSettingsOp(d.Config, false)
 				c.m.sync.EnqueuePrefsOp(ctx, op, true, key)
@@ -790,6 +831,7 @@ func (c *Core) dispatchUI(ctx *sync.StepContext, ev *corev1.Event) []*corev1.Eff
 	default:
 		effects = append(effects, c.dispatchSettingsUI(ctx, ev)...)
 		effects = append(effects, c.dispatchSessionUI(ctx, ev)...)
+		effects = append(effects, c.dispatchUsageUI(ctx, ev)...)
 		if schedEffects, handled := c.dispatchSchedulesUI(ctx, ev); handled {
 			effects = append(effects, schedEffects...)
 		}

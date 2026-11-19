@@ -1519,6 +1519,201 @@ func (m *SessionModeChoiceView) AppendMarshal(b []byte) []byte {
 	return b
 }
 
+type SessionUsageEntryView struct {
+	Visible            bool
+	Supported          bool
+	Loading            bool
+	SourceUnavailable  bool
+	HasData            bool
+	FallbackThirtyDays bool
+	FewSpeedSamples    bool
+	Backfilling        bool
+	TotalTokens        uint64
+	HasCacheHit        bool
+	CacheHitRate       float64
+	HasSpeed           bool
+	Recent10SpeedP50   float64
+	Recent10SpeedCount uint64
+	Subtitle           *Text
+	ValueText          *Text
+	Footnote           *Text
+}
+
+func (m *SessionUsageEntryView) GetVisible() bool {
+	if m != nil {
+		return m.Visible
+	}
+	return false
+}
+func (m *SessionUsageEntryView) GetSupported() bool {
+	if m != nil {
+		return m.Supported
+	}
+	return false
+}
+func (m *SessionUsageEntryView) GetLoading() bool {
+	if m != nil {
+		return m.Loading
+	}
+	return false
+}
+func (m *SessionUsageEntryView) GetSourceUnavailable() bool {
+	if m != nil {
+		return m.SourceUnavailable
+	}
+	return false
+}
+func (m *SessionUsageEntryView) GetHasData() bool {
+	if m != nil {
+		return m.HasData
+	}
+	return false
+}
+func (m *SessionUsageEntryView) GetFallbackThirtyDays() bool {
+	if m != nil {
+		return m.FallbackThirtyDays
+	}
+	return false
+}
+func (m *SessionUsageEntryView) GetFewSpeedSamples() bool {
+	if m != nil {
+		return m.FewSpeedSamples
+	}
+	return false
+}
+func (m *SessionUsageEntryView) GetBackfilling() bool {
+	if m != nil {
+		return m.Backfilling
+	}
+	return false
+}
+func (m *SessionUsageEntryView) GetTotalTokens() uint64 {
+	if m != nil {
+		return m.TotalTokens
+	}
+	return 0
+}
+func (m *SessionUsageEntryView) GetHasCacheHit() bool {
+	if m != nil {
+		return m.HasCacheHit
+	}
+	return false
+}
+func (m *SessionUsageEntryView) GetCacheHitRate() float64 {
+	if m != nil {
+		return m.CacheHitRate
+	}
+	return 0
+}
+func (m *SessionUsageEntryView) GetHasSpeed() bool {
+	if m != nil {
+		return m.HasSpeed
+	}
+	return false
+}
+func (m *SessionUsageEntryView) GetRecent10SpeedP50() float64 {
+	if m != nil {
+		return m.Recent10SpeedP50
+	}
+	return 0
+}
+func (m *SessionUsageEntryView) GetRecent10SpeedCount() uint64 {
+	if m != nil {
+		return m.Recent10SpeedCount
+	}
+	return 0
+}
+func (m *SessionUsageEntryView) GetSubtitle() *Text {
+	if m != nil {
+		return m.Subtitle
+	}
+	return nil
+}
+func (m *SessionUsageEntryView) GetValueText() *Text {
+	if m != nil {
+		return m.ValueText
+	}
+	return nil
+}
+func (m *SessionUsageEntryView) GetFootnote() *Text {
+	if m != nil {
+		return m.Footnote
+	}
+	return nil
+}
+
+func (m *SessionUsageEntryView) Size() int {
+	if m == nil {
+		return 0
+	}
+	n := 0
+	n += litewire.SizeBool(1, m.Visible)
+	n += litewire.SizeBool(2, m.Supported)
+	n += litewire.SizeBool(3, m.Loading)
+	n += litewire.SizeBool(4, m.SourceUnavailable)
+	n += litewire.SizeBool(5, m.HasData)
+	n += litewire.SizeBool(6, m.FallbackThirtyDays)
+	n += litewire.SizeBool(7, m.FewSpeedSamples)
+	n += litewire.SizeBool(8, m.Backfilling)
+	n += litewire.SizeVarintField(9, uint64(m.TotalTokens))
+	n += litewire.SizeBool(10, m.HasCacheHit)
+	n += litewire.SizeDouble(11, m.CacheHitRate)
+	n += litewire.SizeBool(12, m.HasSpeed)
+	n += litewire.SizeDouble(13, m.Recent10SpeedP50)
+	n += litewire.SizeVarintField(14, uint64(m.Recent10SpeedCount))
+	if m.Subtitle != nil {
+		n += litewire.SizeMessage(15, m.Subtitle.Size())
+	}
+	if m.ValueText != nil {
+		n += litewire.SizeMessage(16, m.ValueText.Size())
+	}
+	if m.Footnote != nil {
+		n += litewire.SizeMessage(17, m.Footnote.Size())
+	}
+	return n
+}
+
+func (m *SessionUsageEntryView) Marshal() ([]byte, error) {
+	if m == nil {
+		return nil, nil
+	}
+	sz := m.Size()
+	if sz == 0 {
+		return nil, nil
+	}
+	return m.AppendMarshal(make([]byte, 0, sz)), nil
+}
+
+func (m *SessionUsageEntryView) AppendMarshal(b []byte) []byte {
+	if m == nil {
+		return b
+	}
+	b = litewire.AppendBool(b, 1, m.Visible)
+	b = litewire.AppendBool(b, 2, m.Supported)
+	b = litewire.AppendBool(b, 3, m.Loading)
+	b = litewire.AppendBool(b, 4, m.SourceUnavailable)
+	b = litewire.AppendBool(b, 5, m.HasData)
+	b = litewire.AppendBool(b, 6, m.FallbackThirtyDays)
+	b = litewire.AppendBool(b, 7, m.FewSpeedSamples)
+	b = litewire.AppendBool(b, 8, m.Backfilling)
+	b = litewire.AppendVarint(b, 9, uint64(m.TotalTokens))
+	b = litewire.AppendBool(b, 10, m.HasCacheHit)
+	b = litewire.AppendDouble(b, 11, m.CacheHitRate)
+	b = litewire.AppendBool(b, 12, m.HasSpeed)
+	b = litewire.AppendDouble(b, 13, m.Recent10SpeedP50)
+	b = litewire.AppendVarint(b, 14, uint64(m.Recent10SpeedCount))
+	if m.Subtitle != nil {
+		b = litewire.AppendMessage(b, 15, m.Subtitle)
+	}
+	if m.ValueText != nil {
+		b = litewire.AppendMessage(b, 16, m.ValueText)
+	}
+	if m.Footnote != nil {
+		b = litewire.AppendMessage(b, 17, m.Footnote)
+	}
+	return b
+}
+
 type SessionActionsView struct {
 	CanInterrupt             bool
 	Interrupt                *SessionCommandState
@@ -1548,6 +1743,7 @@ type SessionActionsView struct {
 	ModeSwitchBlockedReason  *Text
 	SetMode                  *SessionCommandState
 	ModeChoices              []*SessionModeChoiceView
+	UsageEntry               *SessionUsageEntryView
 }
 
 func (m *SessionActionsView) GetCanInterrupt() bool {
@@ -1718,6 +1914,12 @@ func (m *SessionActionsView) GetModeChoices() []*SessionModeChoiceView {
 	}
 	return nil
 }
+func (m *SessionActionsView) GetUsageEntry() *SessionUsageEntryView {
+	if m != nil {
+		return m.UsageEntry
+	}
+	return nil
+}
 
 func (m *SessionActionsView) Size() int {
 	if m == nil {
@@ -1793,6 +1995,9 @@ func (m *SessionActionsView) Size() int {
 		if v != nil {
 			n += litewire.SizeMessage(28, v.Size())
 		}
+	}
+	if m.UsageEntry != nil {
+		n += litewire.SizeMessage(29, m.UsageEntry.Size())
 	}
 	return n
 }
@@ -1881,6 +2086,9 @@ func (m *SessionActionsView) AppendMarshal(b []byte) []byte {
 		if v != nil {
 			b = litewire.AppendMessage(b, 28, v)
 		}
+	}
+	if m.UsageEntry != nil {
+		b = litewire.AppendMessage(b, 29, m.UsageEntry)
 	}
 	return b
 }

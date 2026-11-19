@@ -4743,5 +4743,71 @@
       "zh-CN": "source",
       "en": "draft"
     }
+  },
+  {
+    "key": "schedule.agent_disabled_list_note",
+    "zh-CN": "{machine} 已停用 {agent}，启用或改用其他 CLI 后可恢复",
+    "en": "{agent} is disabled on {machine}; enable it or switch CLI to resume",
+    "notes": "定时任务因目标 CLI 被停用而处于已停下状态时的列表卡片说明。",
+    "params": {
+      "machine": {
+        "type": "string",
+        "example": "MacBook"
+      },
+      "agent": {
+        "type": "string",
+        "example": "Antigravity"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.agent_disabled_pre_run",
+    "zh-CN": "{machine} 已停用 {agent}，启用该 CLI 或编辑改用其他 CLI 后才能继续自动运行",
+    "en": "{agent} is disabled on {machine}. Enable that CLI or edit the task to use another CLI before resuming",
+    "notes": "指向被停用 CLI 的新开对话定时任务在列表或详情里的提示横幅。",
+    "params": {
+      "machine": {
+        "type": "string",
+        "example": "MacBook"
+      },
+      "agent": {
+        "type": "string",
+        "example": "Antigravity"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.enable_cli",
+    "zh-CN": "去启用 CLI",
+    "en": "Enable CLI",
+    "notes": "定时任务详情页当目标 CLI 已停用时跳转至机器设置的次操作文案。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
   }
 ]

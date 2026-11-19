@@ -15,15 +15,19 @@ import (
 
 // MachineSettingsExtra holds per-machine transient and UI-owned settings state in Core.
 type MachineSettingsExtra struct {
-	SelectedAgent  v1.Agent
-	ImageStorage   *v1.ImageStorageUsage
-	SavePending    bool
-	SaveUnknown    bool
-	CleaningImages bool
-	SaveError      *corev1.Text
-	DirectEnabled  bool
-	DirectHasPref  bool
-	DirectReport   *corev1.DirectRouteReport
+	SelectedAgent      v1.Agent
+	ImageStorage       *v1.ImageStorageUsage
+	SavePending        bool
+	SaveUnknown        bool
+	CleaningImages     bool
+	SaveError          *corev1.Text
+	DirectEnabled      bool
+	DirectHasPref      bool
+	DirectReport       *corev1.DirectRouteReport
+	ToggleSaving       map[v1.Agent]bool
+	TogglePendingValue map[v1.Agent]bool
+	ToggleBaseRevision uint64
+	ToggleBanner       *corev1.Text
 }
 
 // NotificationPrefs holds client-local notification preferences and push registration state.
@@ -544,24 +548,68 @@ func BuildMachineSettings(st *State, syncView *corev1.SyncStateView, extra *Sett
 	directPref, directReport := machineDirectInputs(extra, machineID)
 	vm.Connection = machine.BuildConnectionGroup(vm.Online && vm.Member, directPref, directReport)
 
-	// CLI versions
-	for _, info := range lists.MachineVersions(m.Meta) {
+	// CLI versions & switches
+	versions := lists.MachineVersions(m.Meta)
+	disabledMap := lists.MachineDisabledSet(m.Meta)
+	if disabledMap == nil {
+		disabledMap = make(map[v1.Agent]bool)
+	}
+	if mExtra != nil {
+		for ag, en := range mExtra.TogglePendingValue {
+			if mExtra.ToggleSaving[ag] {
+				disabledMap[ag] = !en
+			}
+		}
+	}
+	installedAgents := lists.MachineInstalledAgents(m.Meta)
+	enabledCount := 0
+	for _, a := range installedAgents {
+		if !disabledMap[a] {
+			enabledCount++
+		}
+	}
+	for _, info := range versions {
 		if info == nil {
 			continue
 		}
+		eff := lists.EffectiveAgent(info.Agent)
 		cliName := lists.AgentInfo(info.Agent).Name
 		var unv *corev1.Text
 		if !info.Verified {
 			vm.HasUnverifiedCli = true
 			unv = text.Msg(text.KeySettingsUnverified)
 		}
+		isEnabled := !disabledMap[eff]
+		isLocked := enabledCount <= 1 && isEnabled
+		isSaving := mExtra != nil && mExtra.ToggleSaving[eff]
 		vm.CliVersions = append(vm.CliVersions, &corev1.CliVersionView{
-			Agent:           info.Agent,
-			Name:            cliName,
-			Version:         info.Version,
-			Verified:        info.Verified,
-			UnverifiedLabel: unv,
+			Agent:             info.Agent,
+			Name:              cliName,
+			Version:           info.Version,
+			Verified:          info.Verified,
+			UnverifiedLabel:   unv,
+			Enabled:           isEnabled,
+			LockedLastEnabled: isLocked,
+			Saving:            isSaving,
 		})
+	}
+	leaseExpired := syncView != nil && syncView.GetSecurityLoaded() && syncView.GetLeaseEndMs() > 0 && st.Cal.NowMs > 0 && st.Cal.NowMs >= syncView.GetLeaseEndMs()
+	hasCliSwitchesCap := m.Meta != nil && m.Meta.Capabilities != nil && m.Meta.Capabilities.CliSwitches
+	vm.ShowCliSwitches = hasCliSwitchesCap && len(installedAgents) >= 2
+	vm.CliSwitchesLeaseExpired = leaseExpired
+	vm.CliSwitchesEditable = vm.Editable && !leaseExpired
+	if vm.ShowCliSwitches {
+		if !vm.Online && vm.Member {
+			vm.CliSwitchesDisabledReason = text.Msg(text.KeySettingsCliSwitchesOfflineReason, text.Str("name", vm.Name))
+		}
+		if leaseExpired {
+			vm.CliSwitchesFooter = text.Msg(text.KeySettingsCliSwitchesLeaseExpiredFooter)
+		} else {
+			vm.CliSwitchesFooter = text.Msg(text.KeySettingsCliSwitchesFooter)
+		}
+		if mExtra != nil && mExtra.ToggleBanner != nil {
+			vm.CliSwitchesConflictBanner = mExtra.ToggleBanner
+		}
 	}
 
 	// Available CLIs for per-CLI defaults

@@ -101,7 +101,7 @@ func TestCoreRoundTrip(t *testing.T) {
 						Online:    true,
 						Meta: &stdv1.MachineMeta{
 							Hostname:        "DevBook.local",
-							ProtocolVersion: 16,
+							ProtocolVersion: 17,
 							Agents: []*stdv1.AgentInfo{
 								{Agent: stdv1.Agent_AGENT_CODEX, DefaultMode: stdv1.ApprovalMode_APPROVAL_MODE_ASK, DefaultModeSource: stdv1.DefaultModeSource_DEFAULT_MODE_SOURCE_CLI_CONFIG},
 							},

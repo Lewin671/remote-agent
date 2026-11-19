@@ -2163,11 +2163,14 @@ func (m *ConnectionGroupView) AppendMarshal(b []byte) []byte {
 }
 
 type CliVersionView struct {
-	Agent           v1.Agent
-	Name            string
-	Version         string
-	Verified        bool
-	UnverifiedLabel *Text
+	Agent             v1.Agent
+	Name              string
+	Version           string
+	Verified          bool
+	UnverifiedLabel   *Text
+	Enabled           bool
+	LockedLastEnabled bool
+	Saving            bool
 }
 
 func (m *CliVersionView) GetAgent() v1.Agent {
@@ -2200,6 +2203,24 @@ func (m *CliVersionView) GetUnverifiedLabel() *Text {
 	}
 	return nil
 }
+func (m *CliVersionView) GetEnabled() bool {
+	if m != nil {
+		return m.Enabled
+	}
+	return false
+}
+func (m *CliVersionView) GetLockedLastEnabled() bool {
+	if m != nil {
+		return m.LockedLastEnabled
+	}
+	return false
+}
+func (m *CliVersionView) GetSaving() bool {
+	if m != nil {
+		return m.Saving
+	}
+	return false
+}
 
 func (m *CliVersionView) Size() int {
 	if m == nil {
@@ -2213,6 +2234,9 @@ func (m *CliVersionView) Size() int {
 	if m.UnverifiedLabel != nil {
 		n += litewire.SizeMessage(5, m.UnverifiedLabel.Size())
 	}
+	n += litewire.SizeBool(6, m.Enabled)
+	n += litewire.SizeBool(7, m.LockedLastEnabled)
+	n += litewire.SizeBool(8, m.Saving)
 	return n
 }
 
@@ -2238,6 +2262,9 @@ func (m *CliVersionView) AppendMarshal(b []byte) []byte {
 	if m.UnverifiedLabel != nil {
 		b = litewire.AppendMessage(b, 5, m.UnverifiedLabel)
 	}
+	b = litewire.AppendBool(b, 6, m.Enabled)
+	b = litewire.AppendBool(b, 7, m.LockedLastEnabled)
+	b = litewire.AppendBool(b, 8, m.Saving)
 	return b
 }
 
@@ -3173,6 +3200,12 @@ type MachineSettingsViewModel struct {
 	Projects                       []*MachineProjectView
 	Management                     *MachineManagementActionsView
 	Loading                        bool
+	ShowCliSwitches                bool
+	CliSwitchesEditable            bool
+	CliSwitchesLeaseExpired        bool
+	CliSwitchesDisabledReason      *Text
+	CliSwitchesConflictBanner      *Text
+	CliSwitchesFooter              *Text
 }
 
 func (m *MachineSettingsViewModel) GetMachineId() string {
@@ -3367,6 +3400,42 @@ func (m *MachineSettingsViewModel) GetLoading() bool {
 	}
 	return false
 }
+func (m *MachineSettingsViewModel) GetShowCliSwitches() bool {
+	if m != nil {
+		return m.ShowCliSwitches
+	}
+	return false
+}
+func (m *MachineSettingsViewModel) GetCliSwitchesEditable() bool {
+	if m != nil {
+		return m.CliSwitchesEditable
+	}
+	return false
+}
+func (m *MachineSettingsViewModel) GetCliSwitchesLeaseExpired() bool {
+	if m != nil {
+		return m.CliSwitchesLeaseExpired
+	}
+	return false
+}
+func (m *MachineSettingsViewModel) GetCliSwitchesDisabledReason() *Text {
+	if m != nil {
+		return m.CliSwitchesDisabledReason
+	}
+	return nil
+}
+func (m *MachineSettingsViewModel) GetCliSwitchesConflictBanner() *Text {
+	if m != nil {
+		return m.CliSwitchesConflictBanner
+	}
+	return nil
+}
+func (m *MachineSettingsViewModel) GetCliSwitchesFooter() *Text {
+	if m != nil {
+		return m.CliSwitchesFooter
+	}
+	return nil
+}
 
 func (m *MachineSettingsViewModel) Size() int {
 	if m == nil {
@@ -3451,6 +3520,18 @@ func (m *MachineSettingsViewModel) Size() int {
 		n += litewire.SizeMessage(31, m.Management.Size())
 	}
 	n += litewire.SizeBool(32, m.Loading)
+	n += litewire.SizeBool(33, m.ShowCliSwitches)
+	n += litewire.SizeBool(34, m.CliSwitchesEditable)
+	n += litewire.SizeBool(35, m.CliSwitchesLeaseExpired)
+	if m.CliSwitchesDisabledReason != nil {
+		n += litewire.SizeMessage(36, m.CliSwitchesDisabledReason.Size())
+	}
+	if m.CliSwitchesConflictBanner != nil {
+		n += litewire.SizeMessage(37, m.CliSwitchesConflictBanner.Size())
+	}
+	if m.CliSwitchesFooter != nil {
+		n += litewire.SizeMessage(38, m.CliSwitchesFooter.Size())
+	}
 	return n
 }
 
@@ -3550,6 +3631,18 @@ func (m *MachineSettingsViewModel) AppendMarshal(b []byte) []byte {
 		b = litewire.AppendMessage(b, 31, m.Management)
 	}
 	b = litewire.AppendBool(b, 32, m.Loading)
+	b = litewire.AppendBool(b, 33, m.ShowCliSwitches)
+	b = litewire.AppendBool(b, 34, m.CliSwitchesEditable)
+	b = litewire.AppendBool(b, 35, m.CliSwitchesLeaseExpired)
+	if m.CliSwitchesDisabledReason != nil {
+		b = litewire.AppendMessage(b, 36, m.CliSwitchesDisabledReason)
+	}
+	if m.CliSwitchesConflictBanner != nil {
+		b = litewire.AppendMessage(b, 37, m.CliSwitchesConflictBanner)
+	}
+	if m.CliSwitchesFooter != nil {
+		b = litewire.AppendMessage(b, 38, m.CliSwitchesFooter)
+	}
 	return b
 }
 
@@ -4051,6 +4144,73 @@ func (m *MachineSettingsOpenEvent) Unmarshal(b []byte) error {
 					return err
 				}
 				m.MachineId = v
+				continue
+			}
+		}
+		if err := litewire.Skip(&b, num, wtyp); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+type ToggleMachineAgentEvent struct {
+	MachineId string
+	Agent     v1.Agent
+	Enabled   bool
+}
+
+func (m *ToggleMachineAgentEvent) GetMachineId() string {
+	if m != nil {
+		return m.MachineId
+	}
+	return ""
+}
+func (m *ToggleMachineAgentEvent) GetAgent() v1.Agent {
+	if m != nil {
+		return m.Agent
+	}
+	return 0
+}
+func (m *ToggleMachineAgentEvent) GetEnabled() bool {
+	if m != nil {
+		return m.Enabled
+	}
+	return false
+}
+
+func (m *ToggleMachineAgentEvent) Unmarshal(b []byte) error {
+	for len(b) > 0 {
+		num, wtyp, err := litewire.ReadTag(&b)
+		if err != nil {
+			return err
+		}
+		switch num {
+		case 1:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadString(&b)
+				if err != nil {
+					return err
+				}
+				m.MachineId = v
+				continue
+			}
+		case 2:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.Agent = v1.Agent(int32(v))
+				continue
+			}
+		case 3:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.Enabled = litewire.DecodeBool(v)
 				continue
 			}
 		}

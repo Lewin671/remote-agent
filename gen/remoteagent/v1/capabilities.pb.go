@@ -47,8 +47,12 @@ type MachineCapabilities struct {
 	// Every GetSharedFileChunkResponse.data is exactly this long.
 	SharedFileChunkBytes int32 `protobuf:"varint,18,opt,name=shared_file_chunk_bytes,json=sharedFileChunkBytes,proto3" json:"shared_file_chunk_bytes,omitempty"`
 	MachineStatus        bool  `protobuf:"varint,19,opt,name=machine_status,json=machineStatus,proto3" json:"machine_status,omitempty"`
-	unknownFields        protoimpl.UnknownFields
-	sizeCache            protoimpl.SizeCache
+	// Passive local model token usage, cache hit rate, speed and TTFT statistics.
+	UsageStats bool `protobuf:"varint,20,opt,name=usage_stats,json=usageStats,proto3" json:"usage_stats,omitempty"`
+	// Per-machine CLI enable/disable configuration with revision conflict checks.
+	CliSwitches   bool `protobuf:"varint,21,opt,name=cli_switches,json=cliSwitches,proto3" json:"cli_switches,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *MachineCapabilities) Reset() {
@@ -179,11 +183,25 @@ func (x *MachineCapabilities) GetMachineStatus() bool {
 	return false
 }
 
+func (x *MachineCapabilities) GetUsageStats() bool {
+	if x != nil {
+		return x.UsageStats
+	}
+	return false
+}
+
+func (x *MachineCapabilities) GetCliSwitches() bool {
+	if x != nil {
+		return x.CliSwitches
+	}
+	return false
+}
+
 var File_remoteagent_v1_capabilities_proto protoreflect.FileDescriptor
 
 const file_remoteagent_v1_capabilities_proto_rawDesc = "" +
 	"\n" +
-	"!remoteagent/v1/capabilities.proto\x12\x0eremoteagent.v1\x1a\x1aremoteagent/v1/event.proto\"\xae\x05\n" +
+	"!remoteagent/v1/capabilities.proto\x12\x0eremoteagent.v1\x1a\x1aremoteagent/v1/event.proto\"\xf2\x05\n" +
 	"\x13MachineCapabilities\x12!\n" +
 	"\fimage_upload\x18\x02 \x01(\bR\vimageUpload\x123\n" +
 	"\x16max_images_per_message\x18\x03 \x01(\x05R\x13maxImagesPerMessage\x12(\n" +
@@ -200,7 +218,10 @@ const file_remoteagent_v1_capabilities_proto_rawDesc = "" +
 	"\fshared_files\x18\x10 \x01(\bR\vsharedFiles\x121\n" +
 	"\x15max_shared_file_bytes\x18\x11 \x01(\x03R\x12maxSharedFileBytes\x125\n" +
 	"\x17shared_file_chunk_bytes\x18\x12 \x01(\x05R\x14sharedFileChunkBytes\x12%\n" +
-	"\x0emachine_status\x18\x13 \x01(\bR\rmachineStatusJ\x04\b\x01\x10\x02J\x04\b\a\x10\bJ\x04\b\b\x10\tJ\x04\b\t\x10\n" +
+	"\x0emachine_status\x18\x13 \x01(\bR\rmachineStatus\x12\x1f\n" +
+	"\vusage_stats\x18\x14 \x01(\bR\n" +
+	"usageStats\x12!\n" +
+	"\fcli_switches\x18\x15 \x01(\bR\vcliSwitchesJ\x04\b\x01\x10\x02J\x04\b\a\x10\bJ\x04\b\b\x10\tJ\x04\b\t\x10\n" +
 	"J\x04\b\v\x10\fB\xc3\x01\n" +
 	"\x12com.remoteagent.v1B\x11CapabilitiesProtoP\x01ZAgithub.com/Lewin671/remote-agent/gen/remoteagent/v1;remoteagentv1\xa2\x02\x03RXX\xaa\x02\x0eRemoteagent.V1\xca\x02\x0eRemoteagent\\V1\xe2\x02\x1aRemoteagent\\V1\\GPBMetadata\xea\x02\x0fRemoteagent::V1b\x06proto3"
 

@@ -10,6 +10,7 @@ import "remoteagent/v1/event.proto";
 // from clients through the server.
 service LocalService {
   rpc GetMachineStatus(GetMachineStatusRequest) returns (MachineStatus);
+  rpc GetUsageStats(GetUsageStatsRequest) returns (UsageStatsResponse);
   // Schedule manages daemon-owned tasks. It is also used by the local MCP.
   rpc Schedule(ScheduleRequest) returns (ScheduleResponse);
   rpc CreateSession(CreateSessionRequest) returns (CreateSessionResponse);
@@ -420,6 +421,10 @@ message DaemonSettings {
   // resuming it continues the conversation. Zero retains the daemon's
   // default (6 hours), negative never closes.
   int32 idle_close_minutes = 8;
+  // Installed CLIs disabled on this machine; newly installed CLIs default to enabled.
+  repeated Agent disabled_agents = 9;
+  // Monotonically incremented each time settings commit on this machine.
+  uint64 revision = 10;
 }
 
 message AgentDefaults {
@@ -439,6 +444,9 @@ message UpdateSettingsRequest {
   DaemonSettings settings = 1;
   // Clear reclaimable images and caches; preserve queued/CLI-dependent originals.
   bool clean_images = 2;
+  // Atomic CLI enable/disable delta applied onto the latest persisted settings under lock.
+  optional Agent toggle_agent = 3;
+  optional bool toggle_enabled = 4;
 }
 
 message UpdateSettingsResponse {
@@ -683,3 +691,110 @@ message MachineStatus {
 
 // Structured failure detail, independent of translated human text.
 message MachineError { string code = 1; }
+
+// ---- Passive Model Usage, Cache Hit Rate, Output Speed & TTFT ----
+
+enum UsageRangePreset {
+  USAGE_RANGE_PRESET_UNSPECIFIED = 0;
+  USAGE_RANGE_PRESET_TODAY = 1;
+  USAGE_RANGE_PRESET_SEVEN_DAYS = 2;
+  USAGE_RANGE_PRESET_THIRTY_DAYS = 3;
+  USAGE_RANGE_PRESET_CUSTOM = 4;
+}
+
+enum UsageBucketGranularity {
+  USAGE_BUCKET_GRANULARITY_UNSPECIFIED = 0;
+  USAGE_BUCKET_GRANULARITY_HOUR = 1;
+  USAGE_BUCKET_GRANULARITY_SIX_HOURS = 2;
+  USAGE_BUCKET_GRANULARITY_DAY = 3;
+}
+
+enum UsageSourceState {
+  USAGE_SOURCE_STATE_UNSPECIFIED = 0;
+  USAGE_SOURCE_STATE_OK = 1;
+  USAGE_SOURCE_STATE_UNAVAILABLE = 2;
+  USAGE_SOURCE_STATE_FAILED = 3;
+}
+
+message GetUsageStatsRequest {
+  UsageRangePreset preset = 1;
+  int64 custom_start_ms = 2;
+  int64 custom_end_ms = 3;
+  string timezone = 4;
+  int32 tz_offset_minutes = 5;
+  // Explicit monotonic UTC millisecond bucket boundaries supplied by the client's local calendar (length N+1 for N buckets).
+  repeated int64 bucket_bounds_ms = 6;
+  // Equal-length previous period start UTC milliseconds: [prev_start_ms, start_ms).
+  int64 prev_start_ms = 7;
+  // Internal/debug option; normal client queries exclude disabled CLIs.
+  bool include_disabled = 8;
+}
+
+message UsageAgentSource {
+  Agent agent = 1;
+  UsageSourceState state = 2;
+  string detail = 3;
+}
+
+message UsageBucketPoint {
+  int64 start_ms = 1;
+  int64 end_ms = 2;
+  uint64 uncached_input_tokens = 3;
+  uint64 cache_read_tokens = 4;
+  uint64 cache_write_tokens = 5;
+  uint64 output_tokens = 6;
+  uint64 reasoning_output_tokens = 7;
+  uint64 usage_request_count = 8;
+  uint64 speed_request_count = 9;
+  double speed_p10 = 10;
+  double speed_p50 = 11;
+  double speed_p90 = 12;
+  double ttft_p10_ms = 13;
+  double ttft_p50_ms = 14;
+  double ttft_p90_ms = 15;
+}
+
+message UsagePeriodSummary {
+  uint64 uncached_input_tokens = 1;
+  uint64 cache_read_tokens = 2;
+  uint64 cache_write_tokens = 3;
+  uint64 output_tokens = 4;
+  uint64 reasoning_output_tokens = 5;
+  uint64 usage_request_count = 6;
+  uint64 speed_request_count = 7;
+  bool has_cache_hit_rate = 8;
+  double cache_hit_rate = 9;
+  bool has_speed = 10;
+  double speed_p10 = 11;
+  double speed_p50 = 12;
+  double speed_p90 = 13;
+  bool has_ttft = 14;
+  double ttft_p10_ms = 15;
+  double ttft_p50_ms = 16;
+  double ttft_p90_ms = 17;
+  uint64 recent10_speed_count = 18;
+  double recent10_speed_p50 = 19;
+}
+
+message UsageSeries {
+  Agent agent = 1;
+  string model = 2;
+  bool cache_write_supported = 3;
+  UsagePeriodSummary current = 4;
+  UsagePeriodSummary previous = 5;
+  repeated UsageBucketPoint buckets = 6;
+}
+
+message UsageStatsResponse {
+  UsageRangePreset preset = 1;
+  UsageBucketGranularity granularity = 2;
+  int64 start_ms = 3;
+  int64 end_ms = 4;
+  int64 generated_at_ms = 5;
+  bool backfilling = 6;
+  int32 backfill_scanned_days = 7;
+  int32 backfill_total_days = 8;
+  bool previous_period_backfilling = 9;
+  repeated UsageAgentSource sources = 10;
+  repeated UsageSeries series = 11;
+}

@@ -464,13 +464,13 @@ func buildAccountGroup(agent v1.Agent, q *v1.AgentQuota, reachable bool, nowMs i
 	return grp, rows
 }
 
-// MachineAgentOrder returns the ordered list of CLIs installed/reported on a machine for quota display.
+// MachineAgentOrder returns the ordered list of enabled CLIs installed/reported on a machine for quota display.
 func MachineAgentOrder(meta *v1.MachineMeta) []v1.Agent {
 	var out []v1.Agent
 	seen := make(map[v1.Agent]bool)
 	for _, info := range lists.MachineVersions(meta) {
 		a := info.Agent
-		if a == v1.Agent_AGENT_UNSPECIFIED || seen[a] {
+		if a == v1.Agent_AGENT_UNSPECIFIED || seen[a] || lists.IsAgentDisabled(meta, a) {
 			continue
 		}
 		seen[a] = true
@@ -478,11 +478,20 @@ func MachineAgentOrder(meta *v1.MachineMeta) []v1.Agent {
 	}
 	if meta != nil {
 		for _, q := range meta.Quotas {
-			if q == nil || q.Agent == v1.Agent_AGENT_UNSPECIFIED || seen[q.Agent] {
+			if q == nil || q.Agent == v1.Agent_AGENT_UNSPECIFIED || seen[q.Agent] || lists.IsAgentDisabled(meta, q.Agent) {
 				continue
 			}
 			seen[q.Agent] = true
 			out = append(out, q.Agent)
+		}
+	}
+	if len(out) == 0 && meta != nil && len(meta.DisabledAgents) > 0 {
+		// Safety fallback matching daemon invariant: never leave zero enabled CLIs.
+		for _, info := range lists.MachineVersions(meta) {
+			if info.Agent != v1.Agent_AGENT_UNSPECIFIED && !seen[info.Agent] {
+				seen[info.Agent] = true
+				out = append(out, info.Agent)
+			}
 		}
 	}
 	return out

@@ -36,6 +36,9 @@ const (
 	// LocalServiceGetMachineStatusProcedure is the fully-qualified name of the LocalService's
 	// GetMachineStatus RPC.
 	LocalServiceGetMachineStatusProcedure = "/remoteagent.v1.LocalService/GetMachineStatus"
+	// LocalServiceGetUsageStatsProcedure is the fully-qualified name of the LocalService's
+	// GetUsageStats RPC.
+	LocalServiceGetUsageStatsProcedure = "/remoteagent.v1.LocalService/GetUsageStats"
 	// LocalServiceScheduleProcedure is the fully-qualified name of the LocalService's Schedule RPC.
 	LocalServiceScheduleProcedure = "/remoteagent.v1.LocalService/Schedule"
 	// LocalServiceCreateSessionProcedure is the fully-qualified name of the LocalService's
@@ -124,6 +127,7 @@ const (
 // LocalServiceClient is a client for the remoteagent.v1.LocalService service.
 type LocalServiceClient interface {
 	GetMachineStatus(context.Context, *connect.Request[v1.GetMachineStatusRequest]) (*connect.Response[v1.MachineStatus], error)
+	GetUsageStats(context.Context, *connect.Request[v1.GetUsageStatsRequest]) (*connect.Response[v1.UsageStatsResponse], error)
 	// Schedule manages daemon-owned tasks. It is also used by the local MCP.
 	Schedule(context.Context, *connect.Request[v1.ScheduleRequest]) (*connect.Response[v1.ScheduleResponse], error)
 	CreateSession(context.Context, *connect.Request[v1.CreateSessionRequest]) (*connect.Response[v1.CreateSessionResponse], error)
@@ -199,6 +203,12 @@ func NewLocalServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 			httpClient,
 			baseURL+LocalServiceGetMachineStatusProcedure,
 			connect.WithSchema(localServiceMethods.ByName("GetMachineStatus")),
+			connect.WithClientOptions(opts...),
+		),
+		getUsageStats: connect.NewClient[v1.GetUsageStatsRequest, v1.UsageStatsResponse](
+			httpClient,
+			baseURL+LocalServiceGetUsageStatsProcedure,
+			connect.WithSchema(localServiceMethods.ByName("GetUsageStats")),
 			connect.WithClientOptions(opts...),
 		),
 		schedule: connect.NewClient[v1.ScheduleRequest, v1.ScheduleResponse](
@@ -393,6 +403,7 @@ func NewLocalServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 // localServiceClient implements LocalServiceClient.
 type localServiceClient struct {
 	getMachineStatus     *connect.Client[v1.GetMachineStatusRequest, v1.MachineStatus]
+	getUsageStats        *connect.Client[v1.GetUsageStatsRequest, v1.UsageStatsResponse]
 	schedule             *connect.Client[v1.ScheduleRequest, v1.ScheduleResponse]
 	createSession        *connect.Client[v1.CreateSessionRequest, v1.CreateSessionResponse]
 	listSessions         *connect.Client[v1.ListSessionsRequest, v1.ListSessionsResponse]
@@ -429,6 +440,11 @@ type localServiceClient struct {
 // GetMachineStatus calls remoteagent.v1.LocalService.GetMachineStatus.
 func (c *localServiceClient) GetMachineStatus(ctx context.Context, req *connect.Request[v1.GetMachineStatusRequest]) (*connect.Response[v1.MachineStatus], error) {
 	return c.getMachineStatus.CallUnary(ctx, req)
+}
+
+// GetUsageStats calls remoteagent.v1.LocalService.GetUsageStats.
+func (c *localServiceClient) GetUsageStats(ctx context.Context, req *connect.Request[v1.GetUsageStatsRequest]) (*connect.Response[v1.UsageStatsResponse], error) {
+	return c.getUsageStats.CallUnary(ctx, req)
 }
 
 // Schedule calls remoteagent.v1.LocalService.Schedule.
@@ -589,6 +605,7 @@ func (c *localServiceClient) Hook(ctx context.Context, req *connect.Request[v1.H
 // LocalServiceHandler is an implementation of the remoteagent.v1.LocalService service.
 type LocalServiceHandler interface {
 	GetMachineStatus(context.Context, *connect.Request[v1.GetMachineStatusRequest]) (*connect.Response[v1.MachineStatus], error)
+	GetUsageStats(context.Context, *connect.Request[v1.GetUsageStatsRequest]) (*connect.Response[v1.UsageStatsResponse], error)
 	// Schedule manages daemon-owned tasks. It is also used by the local MCP.
 	Schedule(context.Context, *connect.Request[v1.ScheduleRequest]) (*connect.Response[v1.ScheduleResponse], error)
 	CreateSession(context.Context, *connect.Request[v1.CreateSessionRequest]) (*connect.Response[v1.CreateSessionResponse], error)
@@ -660,6 +677,12 @@ func NewLocalServiceHandler(svc LocalServiceHandler, opts ...connect.HandlerOpti
 		LocalServiceGetMachineStatusProcedure,
 		svc.GetMachineStatus,
 		connect.WithSchema(localServiceMethods.ByName("GetMachineStatus")),
+		connect.WithHandlerOptions(opts...),
+	)
+	localServiceGetUsageStatsHandler := connect.NewUnaryHandler(
+		LocalServiceGetUsageStatsProcedure,
+		svc.GetUsageStats,
+		connect.WithSchema(localServiceMethods.ByName("GetUsageStats")),
 		connect.WithHandlerOptions(opts...),
 	)
 	localServiceScheduleHandler := connect.NewUnaryHandler(
@@ -852,6 +875,8 @@ func NewLocalServiceHandler(svc LocalServiceHandler, opts ...connect.HandlerOpti
 		switch r.URL.Path {
 		case LocalServiceGetMachineStatusProcedure:
 			localServiceGetMachineStatusHandler.ServeHTTP(w, r)
+		case LocalServiceGetUsageStatsProcedure:
+			localServiceGetUsageStatsHandler.ServeHTTP(w, r)
 		case LocalServiceScheduleProcedure:
 			localServiceScheduleHandler.ServeHTTP(w, r)
 		case LocalServiceCreateSessionProcedure:
@@ -925,6 +950,10 @@ type UnimplementedLocalServiceHandler struct{}
 
 func (UnimplementedLocalServiceHandler) GetMachineStatus(context.Context, *connect.Request[v1.GetMachineStatusRequest]) (*connect.Response[v1.MachineStatus], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("remoteagent.v1.LocalService.GetMachineStatus is not implemented"))
+}
+
+func (UnimplementedLocalServiceHandler) GetUsageStats(context.Context, *connect.Request[v1.GetUsageStatsRequest]) (*connect.Response[v1.UsageStatsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("remoteagent.v1.LocalService.GetUsageStats is not implemented"))
 }
 
 func (UnimplementedLocalServiceHandler) Schedule(context.Context, *connect.Request[v1.ScheduleRequest]) (*connect.Response[v1.ScheduleResponse], error) {

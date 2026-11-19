@@ -1092,6 +1092,271 @@ func (m *MachineTopUsageSection) AppendMarshal(b []byte) []byte {
 	return b
 }
 
+type MachineModelUsageRow struct {
+	Agent             v1.Agent
+	AgentName         string
+	Model             string
+	TotalTokens       uint64
+	HasCacheHit       bool
+	CacheHitRate      float64
+	HasSpeed          bool
+	SpeedP50          float64
+	UsageRequestCount uint64
+	SpeedRequestCount uint64
+	FewSpeedSamples   bool
+}
+
+func (m *MachineModelUsageRow) GetAgent() v1.Agent {
+	if m != nil {
+		return m.Agent
+	}
+	return 0
+}
+func (m *MachineModelUsageRow) GetAgentName() string {
+	if m != nil {
+		return m.AgentName
+	}
+	return ""
+}
+func (m *MachineModelUsageRow) GetModel() string {
+	if m != nil {
+		return m.Model
+	}
+	return ""
+}
+func (m *MachineModelUsageRow) GetTotalTokens() uint64 {
+	if m != nil {
+		return m.TotalTokens
+	}
+	return 0
+}
+func (m *MachineModelUsageRow) GetHasCacheHit() bool {
+	if m != nil {
+		return m.HasCacheHit
+	}
+	return false
+}
+func (m *MachineModelUsageRow) GetCacheHitRate() float64 {
+	if m != nil {
+		return m.CacheHitRate
+	}
+	return 0
+}
+func (m *MachineModelUsageRow) GetHasSpeed() bool {
+	if m != nil {
+		return m.HasSpeed
+	}
+	return false
+}
+func (m *MachineModelUsageRow) GetSpeedP50() float64 {
+	if m != nil {
+		return m.SpeedP50
+	}
+	return 0
+}
+func (m *MachineModelUsageRow) GetUsageRequestCount() uint64 {
+	if m != nil {
+		return m.UsageRequestCount
+	}
+	return 0
+}
+func (m *MachineModelUsageRow) GetSpeedRequestCount() uint64 {
+	if m != nil {
+		return m.SpeedRequestCount
+	}
+	return 0
+}
+func (m *MachineModelUsageRow) GetFewSpeedSamples() bool {
+	if m != nil {
+		return m.FewSpeedSamples
+	}
+	return false
+}
+
+func (m *MachineModelUsageRow) Size() int {
+	if m == nil {
+		return 0
+	}
+	n := 0
+	n += litewire.SizeInt32(1, int32(m.Agent))
+	n += litewire.SizeString(2, m.AgentName)
+	n += litewire.SizeString(3, m.Model)
+	n += litewire.SizeVarintField(4, uint64(m.TotalTokens))
+	n += litewire.SizeBool(5, m.HasCacheHit)
+	n += litewire.SizeDouble(6, m.CacheHitRate)
+	n += litewire.SizeBool(7, m.HasSpeed)
+	n += litewire.SizeDouble(8, m.SpeedP50)
+	n += litewire.SizeVarintField(9, uint64(m.UsageRequestCount))
+	n += litewire.SizeVarintField(10, uint64(m.SpeedRequestCount))
+	n += litewire.SizeBool(11, m.FewSpeedSamples)
+	return n
+}
+
+func (m *MachineModelUsageRow) Marshal() ([]byte, error) {
+	if m == nil {
+		return nil, nil
+	}
+	sz := m.Size()
+	if sz == 0 {
+		return nil, nil
+	}
+	return m.AppendMarshal(make([]byte, 0, sz)), nil
+}
+
+func (m *MachineModelUsageRow) AppendMarshal(b []byte) []byte {
+	if m == nil {
+		return b
+	}
+	b = litewire.AppendInt32(b, 1, int32(m.Agent))
+	b = litewire.AppendString(b, 2, m.AgentName)
+	b = litewire.AppendString(b, 3, m.Model)
+	b = litewire.AppendVarint(b, 4, uint64(m.TotalTokens))
+	b = litewire.AppendBool(b, 5, m.HasCacheHit)
+	b = litewire.AppendDouble(b, 6, m.CacheHitRate)
+	b = litewire.AppendBool(b, 7, m.HasSpeed)
+	b = litewire.AppendDouble(b, 8, m.SpeedP50)
+	b = litewire.AppendVarint(b, 9, uint64(m.UsageRequestCount))
+	b = litewire.AppendVarint(b, 10, uint64(m.SpeedRequestCount))
+	b = litewire.AppendBool(b, 11, m.FewSpeedSamples)
+	return b
+}
+
+type MachineModelUsagePreview struct {
+	Supported           bool
+	Loading             bool
+	HasData             bool
+	FallbackThirtyDays  bool
+	Backfilling         bool
+	CachedOffline       bool
+	CachedAtMs          int64
+	Rows                []*MachineModelUsageRow
+	UnsupportedFootnote *Text
+	EmptyText           *Text
+}
+
+func (m *MachineModelUsagePreview) GetSupported() bool {
+	if m != nil {
+		return m.Supported
+	}
+	return false
+}
+func (m *MachineModelUsagePreview) GetLoading() bool {
+	if m != nil {
+		return m.Loading
+	}
+	return false
+}
+func (m *MachineModelUsagePreview) GetHasData() bool {
+	if m != nil {
+		return m.HasData
+	}
+	return false
+}
+func (m *MachineModelUsagePreview) GetFallbackThirtyDays() bool {
+	if m != nil {
+		return m.FallbackThirtyDays
+	}
+	return false
+}
+func (m *MachineModelUsagePreview) GetBackfilling() bool {
+	if m != nil {
+		return m.Backfilling
+	}
+	return false
+}
+func (m *MachineModelUsagePreview) GetCachedOffline() bool {
+	if m != nil {
+		return m.CachedOffline
+	}
+	return false
+}
+func (m *MachineModelUsagePreview) GetCachedAtMs() int64 {
+	if m != nil {
+		return m.CachedAtMs
+	}
+	return 0
+}
+func (m *MachineModelUsagePreview) GetRows() []*MachineModelUsageRow {
+	if m != nil {
+		return m.Rows
+	}
+	return nil
+}
+func (m *MachineModelUsagePreview) GetUnsupportedFootnote() *Text {
+	if m != nil {
+		return m.UnsupportedFootnote
+	}
+	return nil
+}
+func (m *MachineModelUsagePreview) GetEmptyText() *Text {
+	if m != nil {
+		return m.EmptyText
+	}
+	return nil
+}
+
+func (m *MachineModelUsagePreview) Size() int {
+	if m == nil {
+		return 0
+	}
+	n := 0
+	n += litewire.SizeBool(1, m.Supported)
+	n += litewire.SizeBool(2, m.Loading)
+	n += litewire.SizeBool(3, m.HasData)
+	n += litewire.SizeBool(4, m.FallbackThirtyDays)
+	n += litewire.SizeBool(5, m.Backfilling)
+	n += litewire.SizeBool(6, m.CachedOffline)
+	n += litewire.SizeVarintField(7, uint64(m.CachedAtMs))
+	for _, v := range m.Rows {
+		if v != nil {
+			n += litewire.SizeMessage(8, v.Size())
+		}
+	}
+	if m.UnsupportedFootnote != nil {
+		n += litewire.SizeMessage(9, m.UnsupportedFootnote.Size())
+	}
+	if m.EmptyText != nil {
+		n += litewire.SizeMessage(10, m.EmptyText.Size())
+	}
+	return n
+}
+
+func (m *MachineModelUsagePreview) Marshal() ([]byte, error) {
+	if m == nil {
+		return nil, nil
+	}
+	sz := m.Size()
+	if sz == 0 {
+		return nil, nil
+	}
+	return m.AppendMarshal(make([]byte, 0, sz)), nil
+}
+
+func (m *MachineModelUsagePreview) AppendMarshal(b []byte) []byte {
+	if m == nil {
+		return b
+	}
+	b = litewire.AppendBool(b, 1, m.Supported)
+	b = litewire.AppendBool(b, 2, m.Loading)
+	b = litewire.AppendBool(b, 3, m.HasData)
+	b = litewire.AppendBool(b, 4, m.FallbackThirtyDays)
+	b = litewire.AppendBool(b, 5, m.Backfilling)
+	b = litewire.AppendBool(b, 6, m.CachedOffline)
+	b = litewire.AppendVarint(b, 7, uint64(m.CachedAtMs))
+	for _, v := range m.Rows {
+		if v != nil {
+			b = litewire.AppendMessage(b, 8, v)
+		}
+	}
+	if m.UnsupportedFootnote != nil {
+		b = litewire.AppendMessage(b, 9, m.UnsupportedFootnote)
+	}
+	if m.EmptyText != nil {
+		b = litewire.AppendMessage(b, 10, m.EmptyText)
+	}
+	return b
+}
+
 type MachineStatusViewModel struct {
 	MachineId        string
 	MachineName      string
@@ -1111,6 +1376,7 @@ type MachineStatusViewModel struct {
 	TopUsage         *MachineTopUsageSection
 	UptimeText       *Text
 	BatteryText      *Text
+	ModelUsage       *MachineModelUsagePreview
 }
 
 func (m *MachineStatusViewModel) GetMachineId() string {
@@ -1221,6 +1487,12 @@ func (m *MachineStatusViewModel) GetBatteryText() *Text {
 	}
 	return nil
 }
+func (m *MachineStatusViewModel) GetModelUsage() *MachineModelUsagePreview {
+	if m != nil {
+		return m.ModelUsage
+	}
+	return nil
+}
 
 func (m *MachineStatusViewModel) Size() int {
 	if m == nil {
@@ -1264,6 +1536,9 @@ func (m *MachineStatusViewModel) Size() int {
 	}
 	if m.BatteryText != nil {
 		n += litewire.SizeMessage(18, m.BatteryText.Size())
+	}
+	if m.ModelUsage != nil {
+		n += litewire.SizeMessage(19, m.ModelUsage.Size())
 	}
 	return n
 }
@@ -1320,6 +1595,9 @@ func (m *MachineStatusViewModel) AppendMarshal(b []byte) []byte {
 	}
 	if m.BatteryText != nil {
 		b = litewire.AppendMessage(b, 18, m.BatteryText)
+	}
+	if m.ModelUsage != nil {
+		b = litewire.AppendMessage(b, 19, m.ModelUsage)
 	}
 	return b
 }

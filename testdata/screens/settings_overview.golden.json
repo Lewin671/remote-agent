@@ -908,7 +908,7 @@
             },
             "update": {
               "currentVersion": "0.32.0",
-              "protocolVersion": 16,
+              "protocolVersion": 17,
               "channel": "stable",
               "hasUpdate": true,
               "availableVersion": "v0.32.4",
@@ -1384,7 +1384,7 @@
             },
             "update": {
               "currentVersion": "0.32.0",
-              "protocolVersion": 16,
+              "protocolVersion": 17,
               "channel": "stable",
               "checking": true,
               "hasUpdate": true,

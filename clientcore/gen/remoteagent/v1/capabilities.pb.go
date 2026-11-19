@@ -23,6 +23,8 @@ type MachineCapabilities struct {
 	MaxSharedFileBytes   int64
 	SharedFileChunkBytes int32
 	MachineStatus        bool
+	UsageStats           bool
+	CliSwitches          bool
 }
 
 func (m *MachineCapabilities) GetImageUpload() bool {
@@ -109,6 +111,18 @@ func (m *MachineCapabilities) GetMachineStatus() bool {
 	}
 	return false
 }
+func (m *MachineCapabilities) GetUsageStats() bool {
+	if m != nil {
+		return m.UsageStats
+	}
+	return false
+}
+func (m *MachineCapabilities) GetCliSwitches() bool {
+	if m != nil {
+		return m.CliSwitches
+	}
+	return false
+}
 
 func (m *MachineCapabilities) Clone() *MachineCapabilities {
 	if m == nil {
@@ -144,6 +158,8 @@ func (m *MachineCapabilities) Size() int {
 	n += litewire.SizeVarintField(17, uint64(m.MaxSharedFileBytes))
 	n += litewire.SizeInt32(18, int32(m.SharedFileChunkBytes))
 	n += litewire.SizeBool(19, m.MachineStatus)
+	n += litewire.SizeBool(20, m.UsageStats)
+	n += litewire.SizeBool(21, m.CliSwitches)
 	return n
 }
 
@@ -185,6 +201,8 @@ func (m *MachineCapabilities) AppendMarshal(b []byte) []byte {
 	b = litewire.AppendVarint(b, 17, uint64(m.MaxSharedFileBytes))
 	b = litewire.AppendInt32(b, 18, int32(m.SharedFileChunkBytes))
 	b = litewire.AppendBool(b, 19, m.MachineStatus)
+	b = litewire.AppendBool(b, 20, m.UsageStats)
+	b = litewire.AppendBool(b, 21, m.CliSwitches)
 	return b
 }
 
@@ -333,6 +351,24 @@ func (m *MachineCapabilities) Unmarshal(b []byte) error {
 					return err
 				}
 				m.MachineStatus = litewire.DecodeBool(v)
+				continue
+			}
+		case 20:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.UsageStats = litewire.DecodeBool(v)
+				continue
+			}
+		case 21:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.CliSwitches = litewire.DecodeBool(v)
 				continue
 			}
 		}

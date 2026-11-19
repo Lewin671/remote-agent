@@ -60,7 +60,7 @@
               "lastSeenMs": "1791078060000",
               "meta": {
                 "hostname": "BuildBox",
-                "protocolVersion": 16,
+                "protocolVersion": 17,
                 "capabilities": { "machineStatus": true },
                 "diskStatus": { "totalBytes": "500000000000", "availableBytes": "1500000000", "pressure": "RESOURCE_PRESSURE_CRITICAL" },
                 "quotas": [
@@ -125,7 +125,7 @@
         "nowMs": "1791078060080",
         "clientUpdateState": {
           "currentVersion": "0.32.0",
-          "protocolVersion": 16,
+          "protocolVersion": 17,
           "channel": "stable",
           "releases": [
             { "version": "v0.33.0-rc1", "prerelease": true },

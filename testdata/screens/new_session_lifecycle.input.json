@@ -42,7 +42,7 @@
               "lastSeenMs": "1791000000000",
               "meta": {
                 "hostname": "OldMac",
-                "protocolVersion": 16,
+                "protocolVersion": 17,
                 "agents": [{ "agent": "AGENT_CODEX", "defaultMode": "APPROVAL_MODE_ASK" }]
               }
             }
@@ -111,7 +111,7 @@
               "lastSeenMs": "1791000000000",
               "meta": {
                 "hostname": "OldMac",
-                "protocolVersion": 16,
+                "protocolVersion": 17,
                 "agents": [{ "agent": "AGENT_CODEX", "defaultMode": "APPROVAL_MODE_ASK" }]
               }
             },
@@ -120,7 +120,7 @@
               "online": true,
               "meta": {
                 "hostname": "Workstation",
-                "protocolVersion": 16,
+                "protocolVersion": 17,
                 "agents": [
                   { "agent": "AGENT_CODEX", "defaultMode": "APPROVAL_MODE_ASK" },
                   { "agent": "AGENT_CLAUDE", "defaultMode": "APPROVAL_MODE_ASK" }

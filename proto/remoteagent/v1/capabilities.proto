@@ -28,4 +28,8 @@ message MachineCapabilities {
   // Every GetSharedFileChunkResponse.data is exactly this long.
   int32 shared_file_chunk_bytes = 18;
   bool machine_status = 19;
+  // Passive local model token usage, cache hit rate, speed and TTFT statistics.
+  bool usage_stats = 20;
+  // Per-machine CLI enable/disable configuration with revision conflict checks.
+  bool cli_switches = 21;
 }

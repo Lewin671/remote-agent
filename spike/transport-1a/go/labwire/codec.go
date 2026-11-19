@@ -22,7 +22,7 @@ var AccountDomain = Hash([]byte("lab/account-domain"))
 var Head = Hash([]byte("lab/member-head/1"))
 var MemberEpoch uint64 = 1
 
-const Protocol uint64 = 16 // Draft only. Does not change the product version.
+const Protocol uint64 = 17 // Draft only. Does not change the product version.
 
 type Field struct {
 	N     uint64

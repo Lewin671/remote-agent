@@ -494,6 +494,9 @@ func (c *Core) dispatchSettingsUI(ctx *sync.StepContext, ev *corev1.Event) []*co
 		feed.Visible = w.Visible
 		feed.Mode = w.Mode
 		effects = append(effects, c.reconcilePollFeed(ctx, w.MachineId, feed, prevMode != w.Mode)...)
+		if w.Visible {
+			c.maybeFetchUsage(ctx, w.MachineId, v1.UsageRangePreset_USAGE_RANGE_PRESET_SEVEN_DAYS, nil)
+		}
 
 	case *corev1.Event_MachineStatusRetry:
 		if a.MachineStatusRetry == nil {
@@ -624,6 +627,7 @@ func (c *Core) dispatchSettingsUI(ctx *sync.StepContext, ev *corev1.Event) []*co
 		}
 		id := a.MachineSettingsOpen.MachineId
 		me := extra.EnsureMachine(id)
+		me.ToggleBanner = nil
 		fetchAgent := me.SelectedAgent
 		if fetchAgent == v1.Agent_AGENT_UNSPECIFIED {
 			if mac := c.m.findMachine(id); mac != nil {
@@ -685,6 +689,81 @@ func (c *Core) dispatchSettingsUI(ctx *sync.StepContext, ev *corev1.Event) []*co
 			next.ImageUploadQuotaBytes = *u.ImageUploadQuotaBytes
 		}
 		c.dispatchUpdateSettings(ctx, u.MachineId, next, u.CleanImages)
+
+	case *corev1.Event_ToggleMachineAgent:
+		if a.ToggleMachineAgent == nil {
+			return nil
+		}
+		t := a.ToggleMachineAgent
+		id := t.MachineId
+		mac := c.m.findMachine(id)
+		if mac == nil || mac.Meta == nil || mac.Meta.Capabilities == nil || !mac.Meta.Capabilities.CliSwitches {
+			return nil
+		}
+		if !lists.MachineReachable(mac) || lists.WorldUnlinked(&c.m.state.World) || c.m.sync.LeaseExpired() {
+			return nil
+		}
+		agent := lists.EffectiveAgent(t.Agent)
+		me := extra.EnsureMachine(id)
+		disabled := lists.MachineDisabledSet(mac.Meta)
+		if disabled == nil {
+			disabled = make(map[v1.Agent]bool)
+		}
+		for ag, en := range me.TogglePendingValue {
+			if me.ToggleSaving[ag] {
+				disabled[ag] = !en
+			}
+		}
+		if !t.Enabled {
+			enabledAfter := 0
+			for _, inst := range lists.MachineInstalledAgents(mac.Meta) {
+				isDisabled := disabled[inst]
+				if inst == agent {
+					isDisabled = true
+				}
+				if !isDisabled {
+					enabledAfter++
+				}
+			}
+			if enabledAfter == 0 {
+				return nil
+			}
+		}
+		if me.ToggleSaving == nil {
+			me.ToggleSaving = make(map[v1.Agent]bool)
+		}
+		if me.TogglePendingValue == nil {
+			me.TogglePendingValue = make(map[v1.Agent]bool)
+		}
+		me.ToggleSaving[agent] = true
+		me.TogglePendingValue[agent] = t.Enabled
+		me.ToggleBanner = nil
+
+		enabledVal := t.Enabled
+		reqID, ok := c.m.sync.SubmitCommand(ctx, sync.SubmitCommandParams{
+			MachineID: id,
+			Command: &v1.Command{
+				Kind: &v1.Command_UpdateSettings{
+					UpdateSettings: &v1.UpdateSettingsRequest{
+						ToggleAgent:   &agent,
+						ToggleEnabled: &enabledVal,
+					},
+				},
+			},
+		})
+		if !ok {
+			delete(me.ToggleSaving, agent)
+			delete(me.TogglePendingValue, agent)
+			me.ToggleBanner = text.Msg(text.KeySettingsCliSwitchesUpdateError)
+		} else if reqID != "" {
+			c.m.pendingCmdMeta[reqID] = cmdMeta{
+				kind:          cmdKindToggleMachineAgent,
+				machineID:     id,
+				agent:         agent,
+				toggleEnabled: enabledVal,
+			}
+		}
+		c.m.settingsDirty.MachineSettings = true
 
 	case *corev1.Event_UpdateDirectPreference:
 		if a.UpdateDirectPreference == nil {
@@ -875,4 +954,68 @@ func (c *Core) emitPersistPrefs() *corev1.Effect {
 			},
 		},
 	}
+}
+
+func (c *Core) onToggleMachineAgentSettled(sc sync.SettledCommand, meta cmdMeta, dirty *sync.DirtyFlags) []*corev1.Effect {
+	extra := c.m.ensureSettings()
+	me := extra.EnsureMachine(meta.machineID)
+	delete(me.ToggleSaving, meta.agent)
+	delete(me.TogglePendingValue, meta.agent)
+
+	var out []*corev1.Effect
+	if sc.Category == outcome.Executed && sc.ErrorCode == "" && sc.Result != nil && sc.Result.GetUpdateSettings() != nil {
+		resp := sc.Result.GetUpdateSettings()
+		if st := resp.GetSettings(); st != nil {
+			se := c.m.state.MachineSettings[meta.machineID]
+			if se == nil {
+				se = &screens.SettingsCacheEntry{}
+				c.m.state.MachineSettings[meta.machineID] = se
+			}
+			se.Settings = st.Clone()
+			se.Loaded = true
+			se.Error = ""
+			se.ErrorText = nil
+			me.ImageStorage = resp.GetImageStorage().Clone()
+			c.m.sync.ApplyMachineSettingsSnapshot(meta.machineID, st)
+			c.m.sync.SyncToState(c.m.state)
+		}
+		me.ToggleBanner = nil
+
+		if !meta.toggleEnabled && me.SelectedAgent == meta.agent {
+			if mac := c.m.findMachine(meta.machineID); mac != nil {
+				enabled := lists.MachineAgents(mac.Meta)
+				if len(enabled) > 0 && enabled[0] != meta.agent {
+					me.SelectedAgent = enabled[0]
+					fetchRes := c.m.sync.Run(func(ctx *sync.StepContext) {
+						c.m.maybeFetchMachineConfig(ctx, meta.machineID, enabled[0])
+					})
+					out = append(out, fetchRes.Effects...)
+				}
+			}
+		}
+
+		c.m.settingsDirty.markAll()
+		dirty.Add(true, true, true)
+		c.m.markAllScheduleScreensDirty()
+		c.m.usageDirty = true
+		return out
+	}
+
+	isConflict := sc.ErrorCode == "cannot_disable_last_agent" ||
+		sc.ErrorCode == "failed_precondition" ||
+		sc.ErrorCode == "settings_revision_conflict" ||
+		sc.Category == outcome.Conflict ||
+		sc.Category == outcome.Unknown ||
+		(sc.ErrorText != nil && strings.Contains(sc.ErrorText.GetLiteral(), "cannot_disable_last_agent"))
+	if isConflict {
+		me.ToggleBanner = text.Msg(text.KeySettingsCliSwitchesConflict)
+		res := c.m.sync.Run(func(ctx *sync.StepContext) {
+			c.submitGetSettings(ctx, meta.machineID)
+		})
+		out = append(out, res.Effects...)
+	} else {
+		me.ToggleBanner = text.Msg(text.KeySettingsCliSwitchesUpdateError)
+	}
+	c.m.settingsDirty.MachineSettings = true
+	return out
 }

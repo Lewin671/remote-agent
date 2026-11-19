@@ -4,6 +4,7 @@ import (
 	"math"
 	"slices"
 	"strconv"
+	"strings"
 
 	"github.com/Lewin671/remote-agent/clientcore/domain/lists"
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
@@ -376,6 +377,14 @@ func ReasonText(reason string, compact bool) *corev1.Text {
 	case "":
 		return text.Msg(text.KeyScheduleExecutionOutcomeIsUnconfirmed)
 	default:
+		if strings.HasPrefix(reason, "agent_disabled:") {
+			id := strings.TrimPrefix(reason, "agent_disabled:")
+			agName := lists.AgentByID(id).Name
+			if agName == "" {
+				agName = id
+			}
+			return text.Msg(text.KeyScheduleReasonReturnedByTheComputer, text.Str("value", agName+" disabled"))
+		}
 		return text.Msg(text.KeyScheduleReasonReturnedByTheComputer, text.Str("value", reason))
 	}
 }

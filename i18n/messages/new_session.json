@@ -1326,5 +1326,50 @@
       "zh-CN": "source",
       "en": "draft"
     }
+  },
+  {
+    "key": "new_session.cli_disabled_fallback",
+    "zh-CN": "{name} 已停用 {missing}，这次用 {agent}",
+    "en": "{missing} is disabled on {name}. Using {agent} for this session",
+    "notes": "新任务所记 CLI 已在本机停用时的中性提示条；保留草稿并改用首个启用 CLI。",
+    "params": {
+      "name": {
+        "type": "string",
+        "example": "MacBook"
+      },
+      "missing": {
+        "type": "string",
+        "example": "Antigravity"
+      },
+      "agent": {
+        "type": "string",
+        "example": "Codex"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "new_session.enable_agent",
+    "zh-CN": "去启用",
+    "en": "Enable",
+    "notes": "新任务因 CLI 停用自动回退时，提示条右侧打开电脑设置的按钮文案。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
   }
 ]

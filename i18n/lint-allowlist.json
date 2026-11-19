@@ -4083,5 +4083,110 @@
     "path": "web/src/views/Session.tsx",
     "literal": ") : null; const directChip = showDirectChip ? (",
     "reason": "Lexical JSX scanner false positive: TypeScript/JSX expression between angle brackets, not rendered text."
+  },
+  {
+    "path": "internal/usagestats/store.go",
+    "literal": "file:%s?_pragma=journal_mode(WAL)&_pragma=synchronous(NORMAL)&_pragma=busy_timeout(5000)",
+    "reason": "Internal SQLite DSN with pragma query parameters, never rendered as product text."
+  },
+  {
+    "path": "internal/usagestats/codex_parser.go",
+    "literal": "codex:%s:%d",
+    "reason": "Internal deduplication key format for Codex token events, never displayed."
+  },
+  {
+    "path": "internal/usagestats/codex_parser.go",
+    "literal": "codex-tc:%s:%d",
+    "reason": "Internal deduplication key format for Codex fallback token events, never displayed."
+  },
+  {
+    "path": "internal/usagestats/codex_parser.go",
+    "literal": "codex-tot:%s:%d",
+    "reason": "Internal deduplication key format for Codex cumulative token events, never displayed."
+  },
+  {
+    "path": "internal/daemon/machine_status.go",
+    "literal": "usage stats unavailable",
+    "reason": "Internal RPC precondition detail returned over protocol, mapped to localized UI copy in clientcore."
+  },
+  {
+    "path": "internal/daemon/machine.go",
+    "literal": "cannot_disable_last_agent: at least one installed CLI must remain enabled",
+    "reason": "Daemon error code and diagnostic message matched by clientcore to localized conflict/lock text."
+  },
+  {
+    "path": "internal/daemon/machine.go",
+    "literal": "agent_disabled: this CLI is disabled on this machine",
+    "reason": "Daemon session rejection error prefix matched by clientcore to localized agent_disabled notice."
+  },
+  {
+    "path": "internal/daemon/machine.go",
+    "literal": "settings are required",
+    "reason": "Internal daemon validation error message, never rendered raw in UI."
+  },
+  {
+    "path": "internal/daemon/schedule.go",
+    "literal": "save disabled-agent scheduled pause",
+    "reason": "Internal daemon error context wrapping storage failure."
+  },
+  {
+    "path": "clientcore/screens/schedules.go",
+    "literal": "agent_disabled:",
+    "reason": "Internal schedule stop reason prefix inspected before rendering localized text."
+  },
+  {
+    "path": "clientcore/domain/usage/usage.go",
+    "literal": "1亿",
+    "reason": "Pure Go domain locale formatter output tested in usage_test.go; Web and Android UI use usage.unit_yi."
+  },
+  {
+    "path": "clientcore/domain/usage/usage.go",
+    "literal": "万",
+    "reason": "Pure Go domain locale formatter unit; Web and Android UI use usage.unit_wan."
+  },
+  {
+    "path": "clientcore/domain/usage/usage.go",
+    "literal": "亿",
+    "reason": "Pure Go domain locale formatter unit; Web and Android UI use usage.unit_yi."
+  },
+  {
+    "path": "internal/daemon/schedule.go",
+    "literal": "task",
+    "reason": "Internal structured slog field key, never displayed in UI."
+  },
+  {
+    "path": "internal/daemon/schedule.go",
+    "literal": "err",
+    "reason": "Internal structured slog field key, never displayed in UI."
+  },
+  {
+    "path": "web/src/dev/demo.ts",
+    "literal": "settings_revision_conflict",
+    "reason": "Simulated daemon RPC error code in dev/test DemoRemote fixture."
+  },
+  {
+    "path": "web/src/dev/demo.ts",
+    "literal": "cannot_disable_last_agent",
+    "reason": "Simulated daemon RPC error code in dev/test DemoRemote fixture."
+  },
+  {
+    "path": "web/src/dev/demo.ts",
+    "literal": "rejected",
+    "reason": "Simulated command outcome enum string in dev/test DemoRemote fixture."
+  },
+  {
+    "path": "web/src/dev/demo.ts",
+    "literal": "internal",
+    "reason": "Simulated daemon RPC error code in dev/test DemoRemote fixture."
+  },
+  {
+    "path": "web/src/dev/demo.ts",
+    "literal": "usage stats query failed",
+    "reason": "Simulated daemon RPC error detail in dev/test DemoRemote fixture."
+  },
+  {
+    "path": "web/src/dev/demo.ts",
+    "literal": "unknown",
+    "reason": "Simulated daemon RPC error outcome string in dev/test DemoRemote fixture."
   }
 ]

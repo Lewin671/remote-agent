@@ -751,6 +751,9 @@ func (d *Daemon) prepareSchedule(ctx context.Context, t *schedule.Task, now time
 		if ag.Bin() == "" {
 			return errors.New("requested Agent is not installed")
 		}
+		if d.isAgentDisabled(kind) {
+			return connect.NewError(connect.CodeFailedPrecondition, fmt.Errorf("%w (%s)", errAgentDisabled, ag.Name()))
+		}
 		mode, err := scheduleMode(target.Mode)
 		if err != nil {
 			return err
@@ -1121,6 +1124,10 @@ func (d *Daemon) dispatchScheduled(ctx context.Context, snapshot *schedule.Task,
 		return
 	}
 	if err != nil {
+		if errors.Is(err, errAgentDisabled) {
+			d.pauseDisabledAgentScheduledDispatch(ctx, snapshot, now)
+			return
+		}
 		d.finishScheduledDispatch(ctx, snapshot, now, "could_not_start_session: "+err.Error(), nil)
 		return
 	}
@@ -1204,6 +1211,29 @@ func (d *Daemon) uncertainDispatchLocked(t *schedule.Task, reason string) {
 	t.NextRunAt = nil
 	if t.Status != "paused" && t.Status != "cancelled" {
 		t.Status, t.Reason = "uncertain", reason
+	}
+}
+
+func (d *Daemon) pauseDisabledAgentScheduledDispatch(ctx context.Context, snapshot *schedule.Task, now time.Time) {
+	d.scheduleMu.Lock()
+	defer d.scheduleMu.Unlock()
+	t := d.dispatchingTaskLocked(snapshot)
+	if t == nil || ctx.Err() != nil {
+		return
+	}
+	reason := "agent_disabled:" + t.Spec.Target.Agent
+	d.endScheduledRun(t, now, "skipped", reason)
+	if t.Status != "cancelled" {
+		t.Status = "paused"
+		t.Reason = reason
+		t.NextRunAt = nil
+	}
+	touchTask(t, now)
+	if err := d.saveSchedulesLocked(); err != nil {
+		if t.Active != nil {
+			d.uncertainDispatchLocked(t, "could_not_persist_dispatch_result")
+		}
+		slog.Error("save disabled-agent scheduled pause", "task", t.ID, "err", errClass(err))
 	}
 }
 

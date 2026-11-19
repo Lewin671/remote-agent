@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/Lewin671/remote-agent/clientcore/domain/lists"
+	"github.com/Lewin671/remote-agent/clientcore/domain/usage"
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/clientcore/text"
@@ -702,7 +703,109 @@ func buildSessionActions(
 		})
 	}
 
+	out.UsageEntry = buildSessionUsageEntry(st, lm, caps, header.Model)
 	return out
+}
+
+func buildSessionUsageEntry(st *State, lm *lists.Machine, caps lists.AgentCapabilities, model string) *corev1.SessionUsageEntryView {
+	if lm == nil || lm.Meta == nil || lm.Meta.Capabilities == nil || !lm.Meta.Capabilities.UsageStats {
+		return &corev1.SessionUsageEntryView{Visible: false, Supported: false}
+	}
+	entry := &corev1.SessionUsageEntryView{
+		Visible:   true,
+		Supported: true,
+	}
+	if caps.Agent == v1.Agent_AGENT_ANTIGRAVITY {
+		entry.SourceUnavailable = true
+		entry.Subtitle = text.Msg(text.KeySessionUsageEntryUnavailable, text.Str("agent", caps.Name))
+		return entry
+	}
+	if lm.ID == "" {
+		return entry
+	}
+	online := lists.MachineReachable(lm)
+	snapKey := UsageCacheKey{MachineID: lm.ID, Preset: v1.UsageRangePreset_USAGE_RANGE_PRESET_SEVEN_DAYS}
+	var rawEntry *UsageSnapshotEntry
+	if st != nil && st.UsageSnapshots != nil {
+		rawEntry = st.UsageSnapshots[snapKey]
+	}
+	snap, cachedOffline, cachedAt, loading := lookupUsageSnapshot(st, lm.ID, v1.UsageRangePreset_USAGE_RANGE_PRESET_SEVEN_DAYS, 0, 0, online)
+	if !online && snap == nil {
+		entry.Subtitle = text.Msg(text.KeySessionUsageEntryOfflineNone)
+		return entry
+	}
+	matchSeries := func(s *v1.UsageStatsResponse) *v1.UsageSeries {
+		if s == nil {
+			return nil
+		}
+		eff := lists.EffectiveAgent(caps.Agent)
+		for _, item := range s.Series {
+			if item == nil || item.Current == nil || item.Current.UsageRequestCount == 0 {
+				continue
+			}
+			if lists.EffectiveAgent(item.Agent) != eff {
+				continue
+			}
+			if model == "" || item.Model == model {
+				return item
+			}
+		}
+		return nil
+	}
+	matched := matchSeries(snap)
+	if matched == nil && !loading {
+		snap30, cachedOff30, cachedAt30, loading30 := lookupUsageSnapshot(st, lm.ID, v1.UsageRangePreset_USAGE_RANGE_PRESET_THIRTY_DAYS, 0, 0, online)
+		if m30 := matchSeries(snap30); m30 != nil {
+			matched = m30
+			snap = snap30
+			entry.FallbackThirtyDays = true
+			cachedOffline = cachedOff30
+			cachedAt = cachedAt30
+		}
+		loading = loading || loading30
+	}
+
+	if matched == nil {
+		if loading {
+			entry.Loading = true
+			return entry
+		}
+		if online && rawEntry != nil && (!text.IsEmpty(rawEntry.ErrorText) || rawEntry.Error != "") {
+			entry.Subtitle = text.Msg(text.KeySessionUsageEntryReadFailed)
+			if !text.IsEmpty(rawEntry.ErrorText) {
+				entry.Footnote = rawEntry.ErrorText
+			} else {
+				entry.Footnote = text.Plain(rawEntry.Error)
+			}
+			return entry
+		}
+		entry.ValueText = text.Msg(text.KeySessionUsageEntryNoData)
+		entry.Subtitle = text.Msg(text.KeySessionUsageEntryEmptyHint)
+		return entry
+	}
+
+	entry.HasData = true
+	entry.Backfilling = snap != nil && snap.Backfilling
+	entry.TotalTokens = usage.TotalTokens(matched.Current)
+	entry.HasCacheHit = matched.Current.HasCacheHitRate
+	entry.CacheHitRate = matched.Current.CacheHitRate
+
+	if matched.Current.Recent10SpeedCount > 0 {
+		entry.HasSpeed = true
+		entry.Recent10SpeedP50 = matched.Current.Recent10SpeedP50
+		entry.Recent10SpeedCount = matched.Current.Recent10SpeedCount
+		entry.FewSpeedSamples = matched.Current.Recent10SpeedCount < usage.MinTrendRequests
+	} else if matched.Current.HasSpeed {
+		entry.HasSpeed = true
+		entry.Recent10SpeedP50 = matched.Current.SpeedP50
+		entry.Recent10SpeedCount = matched.Current.SpeedRequestCount
+		entry.FewSpeedSamples = matched.Current.SpeedRequestCount < usage.MinTrendRequests
+	}
+
+	if cachedOffline && cachedAt > 0 {
+		entry.Subtitle = text.Msg(text.KeySessionUsageEntryOfflineCached, text.ArgTimestamp("time", cachedAt, corev1.TimestampStyle_TIMESTAMP_STYLE_TIME))
+	}
+	return entry
 }
 
 func modeNoteText(caps lists.AgentCapabilities, mode v1.ApprovalMode) *corev1.Text {

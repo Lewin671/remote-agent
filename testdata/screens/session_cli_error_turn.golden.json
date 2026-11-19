@@ -200,7 +200,7 @@
               "attemptId": "r-2",
               "machineId": "m1",
               "deadlineMs": "1791078120060",
-              "commandBytes": "qgECCAGgBhA=",
+              "commandBytes": "qgECCAGgBhE=",
               "routeHint": "COMMAND_ROUTE_HINT_READ"
             }
           },
@@ -210,7 +210,7 @@
               "attemptId": "r-4",
               "machineId": "m1",
               "deadlineMs": "1791078120060",
-              "commandBytes": "ugEAoAYQ",
+              "commandBytes": "ugEAoAYR",
               "routeHint": "COMMAND_ROUTE_HINT_READ"
             }
           },
@@ -251,7 +251,7 @@
               "machineId": "m1",
               "sessionId": "s-err",
               "deadlineMs": "1791078120070",
-              "commandBytes": "+gEHCgVzLWVycqAGEA==",
+              "commandBytes": "+gEHCgVzLWVycqAGEQ==",
               "routeHint": "COMMAND_ROUTE_HINT_READ"
             }
           },
@@ -332,8 +332,8 @@
               },
               "computerOnline": true,
               "connState": "CONN_STATE_CONNECTED",
-              "daemonProtocolVersion": 16,
-              "clientProtocolVersion": 16,
+              "daemonProtocolVersion": 17,
+              "clientProtocolVersion": 17,
               "endedAtMs": "1791075600000",
               "capabilities": {
                 "canSend": true,
@@ -477,7 +477,8 @@
                   },
                   "available": true
                 }
-              ]
+              ],
+              "usageEntry": {}
             },
             "dock": {},
             "composer": {

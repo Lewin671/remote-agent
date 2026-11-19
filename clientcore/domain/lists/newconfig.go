@@ -21,6 +21,7 @@ type ProjectStartResult struct {
 	Config           StartConfig
 	Settled          bool
 	WantedAgent      v1.Agent
+	DisabledAgent    v1.Agent
 	MissingAgent     v1.Agent
 	DefaultMode      DefaultMode
 	ProtocolMismatch int32
@@ -234,7 +235,11 @@ func ResolveProjectStart(w *World, key, pickMachineID string, pickAgent v1.Agent
 	res.Settled = !from.unsettled
 	res.WantedAgent = wanted
 	if wanted != v1.Agent_AGENT_UNSPECIFIED && wanted != agent && !slices.Contains(agents, wanted) {
-		res.MissingAgent = wanted
+		if slices.Contains(MachineInstalledAgents(mMeta), wanted) && IsAgentDisabled(mMeta, wanted) {
+			res.DisabledAgent = wanted
+		} else {
+			res.MissingAgent = wanted
+		}
 	}
 	res.DefaultMode = DefaultModeOf(m, agent)
 	res.ProtocolMismatch = ProtocolMismatchDirection(m, w.ClientVersion)

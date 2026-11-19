@@ -183,7 +183,7 @@
               "attemptId": "a1",
               "machineId": "m1",
               "deadlineMs": "1791078120050",
-              "commandBytes": "qgECCAGgBhA=",
+              "commandBytes": "qgECCAGgBhE=",
               "routeHint": "COMMAND_ROUTE_HINT_READ"
             }
           },
@@ -193,7 +193,7 @@
               "attemptId": "a2",
               "machineId": "m1",
               "deadlineMs": "1791078120050",
-              "commandBytes": "ugEAoAYQ",
+              "commandBytes": "ugEAoAYR",
               "routeHint": "COMMAND_ROUTE_HINT_READ"
             }
           },
@@ -418,7 +418,8 @@
                 "agent": "AGENT_CODEX",
                 "name": "Codex",
                 "version": "0.42.0",
-                "verified": true
+                "verified": true,
+                "enabled": true
               },
               {
                 "agent": "AGENT_CLAUDE",
@@ -426,7 +427,8 @@
                 "version": "2.1.0",
                 "unverifiedLabel": {
                   "key": "settings.unverified"
-                }
+                },
+                "enabled": true
               }
             ],
             "hasUnverifiedCli": true,
@@ -785,7 +787,8 @@
             ],
             "management": {
               "canRemove": true
-            }
+            },
+            "cliSwitchesEditable": true
           }
         }
       }
@@ -799,7 +802,7 @@
               "attemptId": "a3",
               "machineId": "m1",
               "deadlineMs": "1791078120090",
-              "commandBytes": "qgECCAKgBhA=",
+              "commandBytes": "qgECCAKgBhE=",
               "routeHint": "COMMAND_ROUTE_HINT_READ"
             }
           },
@@ -844,7 +847,7 @@
               "attemptId": "a4",
               "machineId": "m1",
               "deadlineMs": "1791078120110",
-              "commandBytes": "wgFACjwI2AQSB2dwdC01LjQaBGhpZ2ggASoVChFjbGF1ZGUtc29ubmV0LTQtNRgCMICAgIAEQP///////////wEQAaAGEA==",
+              "commandBytes": "wgFACjwI2AQSB2dwdC01LjQaBGhpZ2ggASoVChFjbGF1ZGUtc29ubmV0LTQtNRgCMICAgIAEQP///////////wEQAaAGEQ==",
               "routeHint": "COMMAND_ROUTE_HINT_NORMAL"
             }
           },
@@ -1011,7 +1014,8 @@
                 "agent": "AGENT_CODEX",
                 "name": "Codex",
                 "version": "0.42.0",
-                "verified": true
+                "verified": true,
+                "enabled": true
               },
               {
                 "agent": "AGENT_CLAUDE",
@@ -1019,7 +1023,8 @@
                 "version": "2.1.0",
                 "unverifiedLabel": {
                   "key": "settings.unverified"
-                }
+                },
+                "enabled": true
               }
             ],
             "hasUnverifiedCli": true,
@@ -1373,7 +1378,8 @@
             ],
             "management": {
               "canRemove": true
-            }
+            },
+            "cliSwitchesEditable": true
           }
         }
       }
@@ -1387,7 +1393,7 @@
               "attemptId": "a5",
               "machineId": "m1",
               "deadlineMs": "1791078120120",
-              "commandBytes": "ugEAoAYQ",
+              "commandBytes": "ugEAoAYR",
               "routeHint": "COMMAND_ROUTE_HINT_READ"
             }
           },
@@ -1563,7 +1569,8 @@
                 "agent": "AGENT_CODEX",
                 "name": "Codex",
                 "version": "0.42.0",
-                "verified": true
+                "verified": true,
+                "enabled": true
               },
               {
                 "agent": "AGENT_CLAUDE",
@@ -1571,7 +1578,8 @@
                 "version": "2.1.0",
                 "unverifiedLabel": {
                   "key": "settings.unverified"
-                }
+                },
+                "enabled": true
               }
             ],
             "hasUnverifiedCli": true,
@@ -1926,7 +1934,8 @@
             ],
             "management": {
               "canRemove": true
-            }
+            },
+            "cliSwitchesEditable": true
           }
         }
       }
@@ -2090,7 +2099,8 @@
                 "agent": "AGENT_CODEX",
                 "name": "Codex",
                 "version": "0.42.0",
-                "verified": true
+                "verified": true,
+                "enabled": true
               },
               {
                 "agent": "AGENT_CLAUDE",
@@ -2098,7 +2108,8 @@
                 "version": "2.1.0",
                 "unverifiedLabel": {
                   "key": "settings.unverified"
-                }
+                },
+                "enabled": true
               }
             ],
             "hasUnverifiedCli": true,
@@ -2453,7 +2464,8 @@
             ],
             "management": {
               "canRemove": true
-            }
+            },
+            "cliSwitchesEditable": true
           }
         }
       }

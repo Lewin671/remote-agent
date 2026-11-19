@@ -287,8 +287,9 @@ func MachineVersions(meta *v1.MachineMeta) []*v1.AgentInfo {
 	return append(out, others...)
 }
 
-// MachineAgents returns the distinct CLIs a machine advertises, defaulting to [DefaultAgent].
-func MachineAgents(meta *v1.MachineMeta) []v1.Agent {
+// MachineInstalledAgents returns all distinct CLIs reported as installed on the machine,
+// ignoring disabled_agents, defaulting to [DefaultAgent].
+func MachineInstalledAgents(meta *v1.MachineMeta) []v1.Agent {
 	if meta == nil || len(meta.Agents) == 0 {
 		return []v1.Agent{DefaultAgent}
 	}
@@ -306,6 +307,55 @@ func MachineAgents(meta *v1.MachineMeta) []v1.Agent {
 	}
 	if len(out) == 0 {
 		return []v1.Agent{DefaultAgent}
+	}
+	return out
+}
+
+// MachineDisabledSet returns the normalized set of disabled CLIs on the machine.
+func MachineDisabledSet(meta *v1.MachineMeta) map[v1.Agent]bool {
+	if meta == nil || len(meta.DisabledAgents) == 0 {
+		return nil
+	}
+	out := make(map[v1.Agent]bool, len(meta.DisabledAgents))
+	for _, a := range meta.DisabledAgents {
+		if a == v1.Agent_AGENT_UNSPECIFIED {
+			continue
+		}
+		out[EffectiveAgent(a)] = true
+	}
+	return out
+}
+
+// IsAgentDisabled reports whether agent is installed/advertised on the machine and explicitly disabled.
+func IsAgentDisabled(meta *v1.MachineMeta, agent v1.Agent) bool {
+	if meta == nil || len(meta.DisabledAgents) == 0 {
+		return false
+	}
+	eff := EffectiveAgent(agent)
+	for _, a := range meta.DisabledAgents {
+		if a != v1.Agent_AGENT_UNSPECIFIED && EffectiveAgent(a) == eff {
+			return true
+		}
+	}
+	return false
+}
+
+// MachineAgents returns the distinct enabled CLIs a machine advertises (installed minus disabled),
+// falling back to all installed if every installed CLI were marked disabled, or [DefaultAgent].
+func MachineAgents(meta *v1.MachineMeta) []v1.Agent {
+	installed := MachineInstalledAgents(meta)
+	if meta == nil || len(meta.DisabledAgents) == 0 {
+		return installed
+	}
+	disabled := MachineDisabledSet(meta)
+	var out []v1.Agent
+	for _, a := range installed {
+		if !disabled[a] {
+			out = append(out, a)
+		}
+	}
+	if len(out) == 0 {
+		return installed
 	}
 	return out
 }

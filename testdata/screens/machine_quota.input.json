@@ -56,7 +56,7 @@
               "online": true,
               "meta": {
                 "hostname": "MacPro",
-                "protocolVersion": 16,
+                "protocolVersion": 17,
                 "agents": [
                   { "agent": "AGENT_CODEX", "version": "0.42.0", "verified": true },
                   { "agent": "AGENT_CLAUDE", "version": "2.1.0", "verified": true },

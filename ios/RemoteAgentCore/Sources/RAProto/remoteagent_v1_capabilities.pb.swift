@@ -63,6 +63,12 @@ public struct PBMachineCapabilities: Sendable {
 
   public var machineStatus: Bool = false
 
+  /// Passive local model token usage, cache hit rate, speed and TTFT statistics.
+  public var usageStats: Bool = false
+
+  /// Per-machine CLI enable/disable configuration with revision conflict checks.
+  public var cliSwitches: Bool = false
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -74,7 +80,7 @@ fileprivate let _protobuf_package = "remoteagent.v1"
 
 extension PBMachineCapabilities: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".MachineCapabilities"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{4}\u{2}image_upload\0\u{3}max_images_per_message\0\u{3}max_upload_bytes\0\u{3}max_chunk_bytes\0\u{3}upload_formats\0\u{4}\u{4}approval_always\0\u{4}\u{2}scheduled_tasks\0\u{3}file_upload\0\u{3}max_file_upload_bytes\0\u{3}max_files_per_message\0\u{3}shared_files\0\u{3}max_shared_file_bytes\0\u{3}shared_file_chunk_bytes\0\u{3}machine_status\0\u{c}\u{1}\u{1}\u{c}\u{7}\u{1}\u{c}\u{8}\u{1}\u{c}\u{9}\u{1}\u{c}\u{b}\u{1}")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{4}\u{2}image_upload\0\u{3}max_images_per_message\0\u{3}max_upload_bytes\0\u{3}max_chunk_bytes\0\u{3}upload_formats\0\u{4}\u{4}approval_always\0\u{4}\u{2}scheduled_tasks\0\u{3}file_upload\0\u{3}max_file_upload_bytes\0\u{3}max_files_per_message\0\u{3}shared_files\0\u{3}max_shared_file_bytes\0\u{3}shared_file_chunk_bytes\0\u{3}machine_status\0\u{3}usage_stats\0\u{3}cli_switches\0\u{c}\u{1}\u{1}\u{c}\u{7}\u{1}\u{c}\u{8}\u{1}\u{c}\u{9}\u{1}\u{c}\u{b}\u{1}")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -96,6 +102,8 @@ extension PBMachineCapabilities: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
       case 17: try { try decoder.decodeSingularInt64Field(value: &self.maxSharedFileBytes) }()
       case 18: try { try decoder.decodeSingularInt32Field(value: &self.sharedFileChunkBytes) }()
       case 19: try { try decoder.decodeSingularBoolField(value: &self.machineStatus) }()
+      case 20: try { try decoder.decodeSingularBoolField(value: &self.usageStats) }()
+      case 21: try { try decoder.decodeSingularBoolField(value: &self.cliSwitches) }()
       default: break
       }
     }
@@ -144,6 +152,12 @@ extension PBMachineCapabilities: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
     if self.machineStatus != false {
       try visitor.visitSingularBoolField(value: self.machineStatus, fieldNumber: 19)
     }
+    if self.usageStats != false {
+      try visitor.visitSingularBoolField(value: self.usageStats, fieldNumber: 20)
+    }
+    if self.cliSwitches != false {
+      try visitor.visitSingularBoolField(value: self.cliSwitches, fieldNumber: 21)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -162,6 +176,8 @@ extension PBMachineCapabilities: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
     if lhs.maxSharedFileBytes != rhs.maxSharedFileBytes {return false}
     if lhs.sharedFileChunkBytes != rhs.sharedFileChunkBytes {return false}
     if lhs.machineStatus != rhs.machineStatus {return false}
+    if lhs.usageStats != rhs.usageStats {return false}
+    if lhs.cliSwitches != rhs.cliSwitches {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

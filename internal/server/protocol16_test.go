@@ -10,7 +10,7 @@ import (
 	"github.com/Lewin671/remote-agent/internal/protocol"
 )
 
-func TestProtocol15CannotLoginTo16(t *testing.T) {
+func TestProtocol16CannotLoginTo17(t *testing.T) {
 	ts := newTestServer(t)
 	private, id, err := ts.register(t, ts.keys, pb.DeviceKind_DEVICE_KIND_CLIENT, "setup")
 	if err != nil {
@@ -21,14 +21,14 @@ func TestProtocol15CannotLoginTo16(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	request := &pb.LoginRequest{DeviceId: id, Challenge: challenge.Msg.Challenge, Signature: e2e.SignLogin(private, challenge.Msg.Challenge), ProtocolVersion: 15}
-	if protocol.Version != 16 {
-		t.Fatal("test requires protocol 16")
+	request := &pb.LoginRequest{DeviceId: id, Challenge: challenge.Msg.Challenge, Signature: e2e.SignLogin(private, challenge.Msg.Challenge), ProtocolVersion: 16}
+	if protocol.Version != 17 {
+		t.Fatal("test requires protocol 17")
 	}
 	if _, err = ts.auth.Login(ctx, connect.NewRequest(request)); connect.CodeOf(err) != connect.CodeFailedPrecondition {
 		t.Fatalf("old client not told to update: %v", err)
 	}
-	request.ProtocolVersion = 16
+	request.ProtocolVersion = 17
 	if _, err = ts.auth.Login(ctx, connect.NewRequest(request)); err != nil {
 		t.Fatalf("current client: %v", err)
 	}

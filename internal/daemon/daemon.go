@@ -32,6 +32,7 @@ import (
 	"github.com/Lewin671/remote-agent/internal/schedule"
 	"github.com/Lewin671/remote-agent/internal/tmux"
 	"github.com/Lewin671/remote-agent/internal/updater"
+	"github.com/Lewin671/remote-agent/internal/usagestats"
 	"golang.org/x/sys/unix"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
@@ -162,6 +163,8 @@ type Daemon struct {
 	cached           *pb.DaemonSettings
 
 	statusCollector *machinestatus.Collector
+	usageMu         sync.Mutex
+	usageCollector  *usagestats.Collector
 	diskGuard       *machinestatus.DiskGuard
 	diskVolume      func() (*pb.DiskStatus, error)
 	diskLogMu       sync.Mutex
@@ -258,6 +261,7 @@ func (d *Daemon) Run(ctx context.Context) error {
 	d.ctx = ctx
 	var background sync.WaitGroup
 	var stopSchedules, stopIdleClose func()
+	var usageCol *usagestats.Collector
 	defer func() {
 		// No locks are held while joining: workers can finish event commits or
 		// session lifecycle work here. The daemon lock outlives every worker.
@@ -269,6 +273,9 @@ func (d *Daemon) Run(ctx context.Context) error {
 			stopIdleClose()
 		}
 		background.Wait()
+		if usageCol != nil {
+			_ = usageCol.Close()
+		}
 		// HTTP has drained and all producers have stopped; no generation can
 		// be added now. Shutdown detaches workers, never kills native tmux/CLI.
 		d.sessionWorkers.Wait()
@@ -280,8 +287,13 @@ func (d *Daemon) Run(ctx context.Context) error {
 	if err := updater.EnsureState(d.dir); err != nil {
 		return err
 	}
+	d.reconcileEnabledAgents()
 	d.loadQuotas()
 	background.Go(func() { d.statusCollector.Run(ctx) })
+	if uc := d.ensureUsageCollector(); uc != nil {
+		usageCol = uc
+		background.Go(func() { uc.Run(ctx) })
+	}
 	background.Go(func() { d.diskLoop(ctx) })
 	background.Go(func() { d.accountLimitsLoop(ctx) })
 	background.Go(func() { d.agyQuotaLoop(ctx) })
@@ -664,6 +676,9 @@ func (d *Daemon) createByContext(ctx context.Context, req *pb.CreateSessionReque
 	if err != nil {
 		return nil, err
 	}
+	if d.isAgentDisabled(ag.Kind()) {
+		return nil, connect.NewError(connect.CodeFailedPrecondition, fmt.Errorf("%w (%s)", errAgentDisabled, ag.Name()))
+	}
 	// The first message's images must be here before a session starts.
 	owner := ""
 	if len(req.ImageIds) > 0 || len(req.FileIds) > 0 {
@@ -890,6 +905,9 @@ func (d *Daemon) MachineMeta() *pb.MachineMeta {
 	}
 	m := &pb.MachineMeta{Hostname: host, Os: runtime.GOOS, Home: home, CodexVersion: cxVer, CodexVerified: cxVerified}
 	m.Agents = d.installed()
+	st := d.settings()
+	m.DisabledAgents = append([]pb.Agent(nil), st.DisabledAgents...)
+	m.SettingsRevision = st.Revision
 	m.Capabilities = d.capabilities()
 	m.ProtocolVersion = protocol.Version
 	if d.diskGuard != nil {
@@ -944,6 +962,7 @@ func projectSummaries(sessions []*session) []*pb.ProjectSummary {
 
 // installed lists the CLIs on this machine and their versions.
 func (d *Daemon) installed() []*pb.AgentInfo {
+	d.reconcileEnabledAgents()
 	var out []*pb.AgentInfo
 	for _, a := range d.adapterList() {
 		if a == nil || a.Bin() == "" {

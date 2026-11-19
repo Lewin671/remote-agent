@@ -61,6 +61,7 @@ const (
 	ScreenTarget_SCREEN_TARGET_QUOTA                  ScreenTarget = 33
 	ScreenTarget_SCREEN_TARGET_DEVICES                ScreenTarget = 34
 	ScreenTarget_SCREEN_TARGET_CLIENT_DETAIL          ScreenTarget = 35
+	ScreenTarget_SCREEN_TARGET_USAGE                  ScreenTarget = 36
 	ScreenTarget_SCREEN_TARGET_SESSION                ScreenTarget = 10
 	ScreenTarget_SCREEN_TARGET_SCHEDULES              ScreenTarget = 20
 	ScreenTarget_SCREEN_TARGET_SCHEDULE_DETAIL        ScreenTarget = 21
@@ -324,6 +325,10 @@ type Screen_ClientDetail struct{ ClientDetail *ClientDetailScreenRequest }
 
 func (*Screen_ClientDetail) isScreen_Screen() {}
 
+type Screen_Usage struct{ Usage *UsageScreenRequest }
+
+func (*Screen_Usage) isScreen_Screen() {}
+
 type Screen_Session struct{ Session *SessionScreenRequest }
 
 func (*Screen_Session) isScreen_Screen() {}
@@ -415,6 +420,12 @@ func (m *Screen) GetDevices() *DevicesScreenRequest {
 func (m *Screen) GetClientDetail() *ClientDetailScreenRequest {
 	if x, ok := m.GetScreen().(*Screen_ClientDetail); ok && x != nil {
 		return x.ClientDetail
+	}
+	return nil
+}
+func (m *Screen) GetUsage() *UsageScreenRequest {
+	if x, ok := m.GetScreen().(*Screen_Usage); ok && x != nil {
+		return x.Usage
 	}
 	return nil
 }
@@ -621,6 +632,21 @@ func (m *Screen) Unmarshal(b []byte) error {
 				m.Screen = &Screen_ClientDetail{ClientDetail: sub}
 				continue
 			}
+		case 36:
+			if wtyp == litewire.BytesType {
+				var sub *UsageScreenRequest
+				if cur, ok := m.Screen.(*Screen_Usage); ok && cur != nil {
+					sub = cur.Usage
+				}
+				if sub == nil {
+					sub = &UsageScreenRequest{}
+				}
+				if err := litewire.ReadMessage(&b, sub); err != nil {
+					return err
+				}
+				m.Screen = &Screen_Usage{Usage: sub}
+				continue
+			}
 		case 10:
 			if wtyp == litewire.BytesType {
 				var sub *SessionScreenRequest
@@ -753,6 +779,10 @@ type ViewModel_ClientDetail struct{ ClientDetail *ClientDetailViewModel }
 
 func (*ViewModel_ClientDetail) isViewModel_View() {}
 
+type ViewModel_Usage struct{ Usage *UsageViewModel }
+
+func (*ViewModel_Usage) isViewModel_View() {}
+
 type ViewModel_Session struct{ Session *SessionViewModel }
 
 func (*ViewModel_Session) isViewModel_View() {}
@@ -844,6 +874,12 @@ func (m *ViewModel) GetDevices() *DevicesViewModel {
 func (m *ViewModel) GetClientDetail() *ClientDetailViewModel {
 	if x, ok := m.GetView().(*ViewModel_ClientDetail); ok && x != nil {
 		return x.ClientDetail
+	}
+	return nil
+}
+func (m *ViewModel) GetUsage() *UsageViewModel {
+	if x, ok := m.GetView().(*ViewModel_Usage); ok && x != nil {
+		return x.Usage
 	}
 	return nil
 }
@@ -948,6 +984,12 @@ func (m *ViewModel) Size() int {
 		if x != nil {
 			if x.ClientDetail != nil {
 				n += litewire.SizeMessage(35, x.ClientDetail.Size())
+			}
+		}
+	case *ViewModel_Usage:
+		if x != nil {
+			if x.Usage != nil {
+				n += litewire.SizeMessage(36, x.Usage.Size())
 			}
 		}
 	case *ViewModel_Session:
@@ -1064,6 +1106,12 @@ func (m *ViewModel) AppendMarshal(b []byte) []byte {
 		if x != nil {
 			if x.ClientDetail != nil {
 				b = litewire.AppendMessage(b, 35, x.ClientDetail)
+			}
+		}
+	case *ViewModel_Usage:
+		if x != nil {
+			if x.Usage != nil {
+				b = litewire.AppendMessage(b, 36, x.Usage)
 			}
 		}
 	case *ViewModel_Session:
@@ -5678,6 +5726,22 @@ type Event_MachineDirectStatus struct{ MachineDirectStatus *MachineDirectStatusE
 
 func (*Event_MachineDirectStatus) isEvent_Event() {}
 
+type Event_ToggleMachineAgent struct{ ToggleMachineAgent *ToggleMachineAgentEvent }
+
+func (*Event_ToggleMachineAgent) isEvent_Event() {}
+
+type Event_UsageScreenOpen struct{ UsageScreenOpen *UsageScreenOpenEvent }
+
+func (*Event_UsageScreenOpen) isEvent_Event() {}
+
+type Event_UsageScreenRetry struct{ UsageScreenRetry *UsageScreenRetryEvent }
+
+func (*Event_UsageScreenRetry) isEvent_Event() {}
+
+type Event_UsageCacheLoaded struct{ UsageCacheLoaded *UsageCacheLoadedEvent }
+
+func (*Event_UsageCacheLoaded) isEvent_Event() {}
+
 type Event_UpdateClientName struct{ UpdateClientName *UpdateClientNameEvent }
 
 func (*Event_UpdateClientName) isEvent_Event() {}
@@ -6253,6 +6317,30 @@ func (m *Event) GetUpdateDirectPreference() *UpdateDirectPreferenceEvent {
 func (m *Event) GetMachineDirectStatus() *MachineDirectStatusEvent {
 	if x, ok := m.GetEvent().(*Event_MachineDirectStatus); ok && x != nil {
 		return x.MachineDirectStatus
+	}
+	return nil
+}
+func (m *Event) GetToggleMachineAgent() *ToggleMachineAgentEvent {
+	if x, ok := m.GetEvent().(*Event_ToggleMachineAgent); ok && x != nil {
+		return x.ToggleMachineAgent
+	}
+	return nil
+}
+func (m *Event) GetUsageScreenOpen() *UsageScreenOpenEvent {
+	if x, ok := m.GetEvent().(*Event_UsageScreenOpen); ok && x != nil {
+		return x.UsageScreenOpen
+	}
+	return nil
+}
+func (m *Event) GetUsageScreenRetry() *UsageScreenRetryEvent {
+	if x, ok := m.GetEvent().(*Event_UsageScreenRetry); ok && x != nil {
+		return x.UsageScreenRetry
+	}
+	return nil
+}
+func (m *Event) GetUsageCacheLoaded() *UsageCacheLoadedEvent {
+	if x, ok := m.GetEvent().(*Event_UsageCacheLoaded); ok && x != nil {
+		return x.UsageCacheLoaded
 	}
 	return nil
 }
@@ -7504,6 +7592,66 @@ func (m *Event) Unmarshal(b []byte) error {
 					return err
 				}
 				m.Event = &Event_MachineDirectStatus{MachineDirectStatus: sub}
+				continue
+			}
+		case 366:
+			if wtyp == litewire.BytesType {
+				var sub *ToggleMachineAgentEvent
+				if cur, ok := m.Event.(*Event_ToggleMachineAgent); ok && cur != nil {
+					sub = cur.ToggleMachineAgent
+				}
+				if sub == nil {
+					sub = &ToggleMachineAgentEvent{}
+				}
+				if err := litewire.ReadMessage(&b, sub); err != nil {
+					return err
+				}
+				m.Event = &Event_ToggleMachineAgent{ToggleMachineAgent: sub}
+				continue
+			}
+		case 380:
+			if wtyp == litewire.BytesType {
+				var sub *UsageScreenOpenEvent
+				if cur, ok := m.Event.(*Event_UsageScreenOpen); ok && cur != nil {
+					sub = cur.UsageScreenOpen
+				}
+				if sub == nil {
+					sub = &UsageScreenOpenEvent{}
+				}
+				if err := litewire.ReadMessage(&b, sub); err != nil {
+					return err
+				}
+				m.Event = &Event_UsageScreenOpen{UsageScreenOpen: sub}
+				continue
+			}
+		case 381:
+			if wtyp == litewire.BytesType {
+				var sub *UsageScreenRetryEvent
+				if cur, ok := m.Event.(*Event_UsageScreenRetry); ok && cur != nil {
+					sub = cur.UsageScreenRetry
+				}
+				if sub == nil {
+					sub = &UsageScreenRetryEvent{}
+				}
+				if err := litewire.ReadMessage(&b, sub); err != nil {
+					return err
+				}
+				m.Event = &Event_UsageScreenRetry{UsageScreenRetry: sub}
+				continue
+			}
+		case 382:
+			if wtyp == litewire.BytesType {
+				var sub *UsageCacheLoadedEvent
+				if cur, ok := m.Event.(*Event_UsageCacheLoaded); ok && cur != nil {
+					sub = cur.UsageCacheLoaded
+				}
+				if sub == nil {
+					sub = &UsageCacheLoadedEvent{}
+				}
+				if err := litewire.ReadMessage(&b, sub); err != nil {
+					return err
+				}
+				m.Event = &Event_UsageCacheLoaded{UsageCacheLoaded: sub}
 				continue
 			}
 		case 370:
@@ -10267,6 +10415,10 @@ type Effect_PrepareCleanupSession struct{ PrepareCleanupSession *PrepareCleanupS
 
 func (*Effect_PrepareCleanupSession) isEffect_Effect() {}
 
+type Effect_UsageCacheWrite struct{ UsageCacheWrite *UsageCacheWriteEffect }
+
+func (*Effect_UsageCacheWrite) isEffect_Effect() {}
+
 type Effect_SessionRestoreComposer struct{ SessionRestoreComposer *SessionRestoreComposerEffect }
 
 func (*Effect_SessionRestoreComposer) isEffect_Effect() {}
@@ -10438,6 +10590,12 @@ func (m *Effect) GetPersistClientPrefs() *PersistClientPrefsEffect {
 func (m *Effect) GetPrepareCleanupSession() *PrepareCleanupSessionEffect {
 	if x, ok := m.GetEffect().(*Effect_PrepareCleanupSession); ok && x != nil {
 		return x.PrepareCleanupSession
+	}
+	return nil
+}
+func (m *Effect) GetUsageCacheWrite() *UsageCacheWriteEffect {
+	if x, ok := m.GetEffect().(*Effect_UsageCacheWrite); ok && x != nil {
+		return x.UsageCacheWrite
 	}
 	return nil
 }
@@ -10626,6 +10784,12 @@ func (m *Effect) Size() int {
 		if x != nil {
 			if x.PrepareCleanupSession != nil {
 				n += litewire.SizeMessage(75, x.PrepareCleanupSession.Size())
+			}
+		}
+	case *Effect_UsageCacheWrite:
+		if x != nil {
+			if x.UsageCacheWrite != nil {
+				n += litewire.SizeMessage(76, x.UsageCacheWrite.Size())
 			}
 		}
 	case *Effect_SessionRestoreComposer:
@@ -10826,6 +10990,12 @@ func (m *Effect) AppendMarshal(b []byte) []byte {
 		if x != nil {
 			if x.PrepareCleanupSession != nil {
 				b = litewire.AppendMessage(b, 75, x.PrepareCleanupSession)
+			}
+		}
+	case *Effect_UsageCacheWrite:
+		if x != nil {
+			if x.UsageCacheWrite != nil {
+				b = litewire.AppendMessage(b, 76, x.UsageCacheWrite)
 			}
 		}
 	case *Effect_SessionRestoreComposer:

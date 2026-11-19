@@ -541,7 +541,7 @@ extension Duration {
 extension PBCommand {
     var isReadOnlyCommand: Bool {
         switch kind {
-        case .getMachineStatus, .getSettings, .listModels, .listDirectories, .getLiveSnapshot, .getImageUploadStatus, .getSharedFileChunk:
+        case .getMachineStatus, .getUsageStats, .getSettings, .listModels, .listDirectories, .getLiveSnapshot, .getImageUploadStatus, .getSharedFileChunk:
             true
         case .schedule(let request):
             ["list", "get"].contains(request.operation)

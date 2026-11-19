@@ -283,6 +283,10 @@ func (c *endpoint) executeEvidence(ctx context.Context, sessionID string, cmd *p
 		err = machine(func() error {
 			return call(ctx, l.GetMachineStatus, k.GetMachineStatus, func(m *pb.MachineStatus) { out.Kind = &pb.CommandResult_MachineStatus{MachineStatus: m} })
 		})
+	case *pb.Command_GetUsageStats:
+		err = machine(func() error {
+			return call(ctx, l.GetUsageStats, k.GetUsageStats, func(m *pb.UsageStatsResponse) { out.Kind = &pb.CommandResult_UsageStats{UsageStats: m} })
+		})
 	case *pb.Command_GetLiveSnapshot:
 		err = on(k.GetLiveSnapshot.SessionId, func() error {
 			owner, ok := r.backend.(interface {

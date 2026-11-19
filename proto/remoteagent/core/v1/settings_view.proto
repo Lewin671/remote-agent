@@ -280,6 +280,9 @@ message CliVersionView {
   string version = 3;
   bool verified = 4;
   Text unverified_label = 5;
+  bool enabled = 6;
+  bool locked_last_enabled = 7;
+  bool saving = 8;
 }
 
 message ModelChoiceView {
@@ -400,6 +403,12 @@ message MachineSettingsViewModel {
   repeated MachineProjectView projects = 30;
   MachineManagementActionsView management = 31;
   bool loading = 32;
+  bool show_cli_switches = 33;
+  bool cli_switches_editable = 34;
+  bool cli_switches_lease_expired = 35;
+  Text cli_switches_disabled_reason = 36;
+  Text cli_switches_conflict_banner = 37;
+  Text cli_switches_footer = 38;
 }
 
 // ---- Devices & Client Detail Screens ----
@@ -454,6 +463,12 @@ message ClientDetailViewModel {
 
 message MachineSettingsOpenEvent {
   string machine_id = 1;
+}
+
+message ToggleMachineAgentEvent {
+  string machine_id = 1;
+  remoteagent.v1.Agent agent = 2;
+  bool enabled = 3;
 }
 
 message MachineSettingsSelectAgentEvent {

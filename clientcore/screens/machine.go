@@ -1,9 +1,13 @@
 package screens
 
 import (
+	"slices"
+	"strings"
+
 	"github.com/Lewin671/remote-agent/clientcore/domain/lists"
 	"github.com/Lewin671/remote-agent/clientcore/domain/machine"
 	"github.com/Lewin671/remote-agent/clientcore/domain/quota"
+	"github.com/Lewin671/remote-agent/clientcore/domain/usage"
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/clientcore/text"
@@ -178,8 +182,160 @@ func BuildMachineStatus(st *State, feed *MachinePollFeed, machineID string) *cor
 		}
 	}
 	vm.TopUsage = top
+	vm.ModelUsage = buildMachineModelUsagePreview(st, m)
 	return vm
 }
+
+func buildMachineModelUsagePreview(st *State, m *lists.Machine) *corev1.MachineModelUsagePreview {
+	if st == nil || m == nil || m.Meta == nil || m.Meta.Capabilities == nil || !m.Meta.Capabilities.UsageStats {
+		return nil
+	}
+	online := lists.MachineReachable(m)
+	preview := &corev1.MachineModelUsagePreview{
+		Supported: true,
+	}
+
+	// Collect enabled CLIs lacking usage telemetry (Antigravity).
+	enabled := lists.MachineAgents(m.Meta)
+	var availCount int
+	var unavailNames []string
+	for _, a := range enabled {
+		if a == v1.Agent_AGENT_ANTIGRAVITY {
+			unavailNames = append(unavailNames, lists.AgentInfo(a).Name)
+		} else {
+			availCount++
+		}
+	}
+
+	snap7, cachedOffline7, cachedAt7, loading7 := lookupUsageSnapshot(st, m.ID, v1.UsageRangePreset_USAGE_RANGE_PRESET_SEVEN_DAYS, 0, 0, online)
+	active7 := filterDisabledSeries(m.Meta, usage.ActiveSeries(snap7))
+	selected := active7
+	usedSnap := snap7
+	cachedOffline := cachedOffline7
+	cachedAt := cachedAt7
+	loading := loading7
+
+	if len(selected) == 0 {
+		snap30, cachedOffline30, cachedAt30, loading30 := lookupUsageSnapshot(st, m.ID, v1.UsageRangePreset_USAGE_RANGE_PRESET_THIRTY_DAYS, 0, 0, online)
+		active30 := filterDisabledSeries(m.Meta, usage.ActiveSeries(snap30))
+		if len(active30) > 0 {
+			selected = active30
+			usedSnap = snap30
+			preview.FallbackThirtyDays = true
+			cachedOffline = cachedOffline30
+			cachedAt = cachedAt30
+		}
+		loading = loading || loading30
+	}
+
+	preview.Loading = loading && len(selected) == 0
+	preview.CachedOffline = cachedOffline
+	preview.CachedAtMs = cachedAt
+	if usedSnap != nil {
+		preview.Backfilling = usedSnap.Backfilling
+	}
+
+	if availCount == 0 && len(unavailNames) > 0 {
+		preview.EmptyText = text.Msg(text.KeyMachineStatusModelUsageOnlyUnavailable)
+		return preview
+	}
+
+	if len(selected) == 0 {
+		if !preview.Loading {
+			preview.EmptyText = text.Msg(text.KeyMachineStatusModelUsageEmpty)
+		}
+	} else {
+		preview.HasData = true
+		limit := len(selected)
+		if limit > 4 {
+			limit = 4
+		}
+		for _, s := range selected[:limit] {
+			eff := lists.EffectiveAgent(s.Agent)
+			preview.Rows = append(preview.Rows, &corev1.MachineModelUsageRow{
+				Agent:             eff,
+				AgentName:         lists.AgentInfo(eff).Name,
+				Model:             s.Model,
+				TotalTokens:       usage.TotalTokens(s.Current),
+				HasCacheHit:       s.Current.HasCacheHitRate,
+				CacheHitRate:      s.Current.CacheHitRate,
+				HasSpeed:          s.Current.HasSpeed,
+				SpeedP50:          s.Current.SpeedP50,
+				UsageRequestCount: s.Current.UsageRequestCount,
+				SpeedRequestCount: s.Current.SpeedRequestCount,
+				FewSpeedSamples:   s.Current.SpeedRequestCount > 0 && s.Current.SpeedRequestCount < usage.MinTrendRequests,
+			})
+		}
+	}
+
+	if len(unavailNames) > 0 && availCount > 0 {
+		preview.UnsupportedFootnote = text.Msg(text.KeyMachineStatusModelUsageMixedUnavailable, text.Str("agents", strings.Join(unavailNames, ", ")))
+	}
+	return preview
+}
+
+func filterDisabledSeries(meta *v1.MachineMeta, in []*v1.UsageSeries) []*v1.UsageSeries {
+	if meta == nil || len(meta.DisabledAgents) == 0 {
+		return in
+	}
+	disabled := lists.MachineDisabledSet(meta)
+	if len(disabled) == 0 {
+		return in
+	}
+	out := make([]*v1.UsageSeries, 0, len(in))
+	for _, s := range in {
+		if s != nil && !disabled[lists.EffectiveAgent(s.Agent)] {
+			out = append(out, s)
+		}
+	}
+	return out
+}
+
+func lookupUsageSnapshot(st *State, machineID string, preset v1.UsageRangePreset, cStart, cEnd int64, online bool) (snap *v1.UsageStatsResponse, cachedOffline bool, cachedAtMs int64, loading bool) {
+	if st == nil || st.UsageSnapshots == nil || machineID == "" {
+		return nil, false, 0, false
+	}
+	if preset != v1.UsageRangePreset_USAGE_RANGE_PRESET_CUSTOM {
+		cStart, cEnd = 0, 0
+	}
+	entry := st.UsageSnapshots[UsageCacheKey{
+		MachineID:     machineID,
+		Preset:        preset,
+		CustomStartMs: cStart,
+		CustomEndMs:   cEnd,
+	}]
+	if entry == nil {
+		return nil, false, 0, false
+	}
+	loading = entry.Loading
+	if online {
+		if entry.Live != nil {
+			return entry.Live, false, entry.LiveAtMs, loading
+		}
+		if entry.Cached != nil {
+			return entry.Cached, false, entry.CachedAtMs, loading
+		}
+		return nil, false, 0, loading
+	}
+	if entry.Live != nil {
+		ts := entry.LiveAtMs
+		if ts == 0 {
+			ts = entry.Live.GeneratedAtMs
+		}
+		return entry.Live, true, ts, false
+	}
+	if entry.Cached != nil {
+		ts := entry.CachedAtMs
+		if ts == 0 {
+			ts = entry.Cached.GeneratedAtMs
+		}
+		return entry.Cached, true, ts, false
+	}
+	return nil, false, 0, false
+}
+
+// Keep slices import used for future preview filters.
+var _ = slices.Contains[[]v1.Agent]
 
 // BuildQuota renders the per-machine Account Quota screen ViewModel.
 func BuildQuota(st *State, syncView *corev1.SyncStateView, machineID string, filterAgent v1.Agent) *corev1.QuotaViewModel {

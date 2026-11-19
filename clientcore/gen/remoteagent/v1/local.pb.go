@@ -37,6 +37,34 @@ const (
 	ResourcePressure_RESOURCE_PRESSURE_CRITICAL    ResourcePressure = 3
 )
 
+type UsageRangePreset int32
+
+const (
+	UsageRangePreset_USAGE_RANGE_PRESET_UNSPECIFIED UsageRangePreset = 0
+	UsageRangePreset_USAGE_RANGE_PRESET_TODAY       UsageRangePreset = 1
+	UsageRangePreset_USAGE_RANGE_PRESET_SEVEN_DAYS  UsageRangePreset = 2
+	UsageRangePreset_USAGE_RANGE_PRESET_THIRTY_DAYS UsageRangePreset = 3
+	UsageRangePreset_USAGE_RANGE_PRESET_CUSTOM      UsageRangePreset = 4
+)
+
+type UsageBucketGranularity int32
+
+const (
+	UsageBucketGranularity_USAGE_BUCKET_GRANULARITY_UNSPECIFIED UsageBucketGranularity = 0
+	UsageBucketGranularity_USAGE_BUCKET_GRANULARITY_HOUR        UsageBucketGranularity = 1
+	UsageBucketGranularity_USAGE_BUCKET_GRANULARITY_SIX_HOURS   UsageBucketGranularity = 2
+	UsageBucketGranularity_USAGE_BUCKET_GRANULARITY_DAY         UsageBucketGranularity = 3
+)
+
+type UsageSourceState int32
+
+const (
+	UsageSourceState_USAGE_SOURCE_STATE_UNSPECIFIED UsageSourceState = 0
+	UsageSourceState_USAGE_SOURCE_STATE_OK          UsageSourceState = 1
+	UsageSourceState_USAGE_SOURCE_STATE_UNAVAILABLE UsageSourceState = 2
+	UsageSourceState_USAGE_SOURCE_STATE_FAILED      UsageSourceState = 3
+)
+
 type Session struct {
 	Id                    string
 	Cwd                   string
@@ -3232,6 +3260,8 @@ type DaemonSettings struct {
 	ImageUploadQuotaBytes  int64
 	Antigravity            *AgentDefaults
 	IdleCloseMinutes       int32
+	DisabledAgents         []Agent
+	Revision               uint64
 }
 
 func (m *DaemonSettings) GetApprovalTimeoutSeconds() int32 {
@@ -3282,6 +3312,18 @@ func (m *DaemonSettings) GetIdleCloseMinutes() int32 {
 	}
 	return 0
 }
+func (m *DaemonSettings) GetDisabledAgents() []Agent {
+	if m != nil {
+		return m.DisabledAgents
+	}
+	return nil
+}
+func (m *DaemonSettings) GetRevision() uint64 {
+	if m != nil {
+		return m.Revision
+	}
+	return 0
+}
 
 func (m *DaemonSettings) Clone() *DaemonSettings {
 	if m == nil {
@@ -3290,6 +3332,7 @@ func (m *DaemonSettings) Clone() *DaemonSettings {
 	cp := *m
 	cp.Claude = m.Claude.Clone()
 	cp.Antigravity = m.Antigravity.Clone()
+	cp.DisabledAgents = slices.Clone(m.DisabledAgents)
 	return &cp
 }
 
@@ -3310,6 +3353,14 @@ func (m *DaemonSettings) Size() int {
 		n += litewire.SizeMessage(7, m.Antigravity.Size())
 	}
 	n += litewire.SizeInt32(8, int32(m.IdleCloseMinutes))
+	if len(m.DisabledAgents) > 0 {
+		psz := 0
+		for _, v := range m.DisabledAgents {
+			psz += litewire.SizeVarint(uint64(int64(v)))
+		}
+		n += litewire.SizeMessage(9, psz)
+	}
+	n += litewire.SizeVarintField(10, uint64(m.Revision))
 	return n
 }
 
@@ -3340,6 +3391,17 @@ func (m *DaemonSettings) AppendMarshal(b []byte) []byte {
 		b = litewire.AppendMessage(b, 7, m.Antigravity)
 	}
 	b = litewire.AppendInt32(b, 8, int32(m.IdleCloseMinutes))
+	if len(m.DisabledAgents) > 0 {
+		psz := 0
+		for _, v := range m.DisabledAgents {
+			psz += litewire.SizeVarint(uint64(int64(v)))
+		}
+		b = litewire.AppendMessagePrefix(b, 9, psz)
+		for _, v := range m.DisabledAgents {
+			b = litewire.AppendRawVarint(b, uint64(int64(v)))
+		}
+	}
+	b = litewire.AppendVarint(b, 10, uint64(m.Revision))
 	return b
 }
 
@@ -3422,6 +3484,38 @@ func (m *DaemonSettings) Unmarshal(b []byte) error {
 					return err
 				}
 				m.IdleCloseMinutes = int32(v)
+				continue
+			}
+		case 9:
+			if wtyp == litewire.BytesType {
+				raw, err := litewire.ReadBytesRaw(&b)
+				if err != nil {
+					return err
+				}
+				for len(raw) > 0 {
+					v, err := litewire.ReadVarint(&raw)
+					if err != nil {
+						return err
+					}
+					m.DisabledAgents = append(m.DisabledAgents, Agent(int32(v)))
+				}
+				continue
+			}
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.DisabledAgents = append(m.DisabledAgents, Agent(int32(v)))
+				continue
+			}
+		case 10:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.Revision = v
 				continue
 			}
 		}
@@ -3642,8 +3736,10 @@ func (m *GetSettingsResponse) Unmarshal(b []byte) error {
 }
 
 type UpdateSettingsRequest struct {
-	Settings    *DaemonSettings
-	CleanImages bool
+	Settings      *DaemonSettings
+	CleanImages   bool
+	ToggleAgent   *Agent
+	ToggleEnabled *bool
 }
 
 func (m *UpdateSettingsRequest) GetSettings() *DaemonSettings {
@@ -3658,6 +3754,18 @@ func (m *UpdateSettingsRequest) GetCleanImages() bool {
 	}
 	return false
 }
+func (m *UpdateSettingsRequest) GetToggleAgent() Agent {
+	if m != nil && m.ToggleAgent != nil {
+		return *m.ToggleAgent
+	}
+	return 0
+}
+func (m *UpdateSettingsRequest) GetToggleEnabled() bool {
+	if m != nil && m.ToggleEnabled != nil {
+		return *m.ToggleEnabled
+	}
+	return false
+}
 
 func (m *UpdateSettingsRequest) Clone() *UpdateSettingsRequest {
 	if m == nil {
@@ -3665,6 +3773,14 @@ func (m *UpdateSettingsRequest) Clone() *UpdateSettingsRequest {
 	}
 	cp := *m
 	cp.Settings = m.Settings.Clone()
+	if m.ToggleAgent != nil {
+		v := *m.ToggleAgent
+		cp.ToggleAgent = &v
+	}
+	if m.ToggleEnabled != nil {
+		v := *m.ToggleEnabled
+		cp.ToggleEnabled = &v
+	}
 	return &cp
 }
 
@@ -3677,6 +3793,12 @@ func (m *UpdateSettingsRequest) Size() int {
 		n += litewire.SizeMessage(1, m.Settings.Size())
 	}
 	n += litewire.SizeBool(2, m.CleanImages)
+	if m.ToggleAgent != nil {
+		n += litewire.SizeInt32Always(3, int32(*m.ToggleAgent))
+	}
+	if m.ToggleEnabled != nil {
+		n += litewire.SizeBoolAlways(4)
+	}
 	return n
 }
 
@@ -3699,6 +3821,12 @@ func (m *UpdateSettingsRequest) AppendMarshal(b []byte) []byte {
 		b = litewire.AppendMessage(b, 1, m.Settings)
 	}
 	b = litewire.AppendBool(b, 2, m.CleanImages)
+	if m.ToggleAgent != nil {
+		b = litewire.AppendInt32Always(b, 3, int32(*m.ToggleAgent))
+	}
+	if m.ToggleEnabled != nil {
+		b = litewire.AppendBoolAlways(b, 4, *m.ToggleEnabled)
+	}
 	return b
 }
 
@@ -3726,6 +3854,26 @@ func (m *UpdateSettingsRequest) Unmarshal(b []byte) error {
 					return err
 				}
 				m.CleanImages = litewire.DecodeBool(v)
+				continue
+			}
+		case 3:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				pv := Agent(int32(v))
+				m.ToggleAgent = &pv
+				continue
+			}
+		case 4:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				pv := litewire.DecodeBool(v)
+				m.ToggleEnabled = &pv
 				continue
 			}
 		}
@@ -6149,6 +6297,1524 @@ func (m *MachineStatus) Unmarshal(b []byte) error {
 					return err
 				}
 				m.Samples = append(m.Samples, elem)
+				continue
+			}
+		}
+		if err := litewire.Skip(&b, num, wtyp); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+type GetUsageStatsRequest struct {
+	Preset          UsageRangePreset
+	CustomStartMs   int64
+	CustomEndMs     int64
+	Timezone        string
+	TzOffsetMinutes int32
+	BucketBoundsMs  []int64
+	PrevStartMs     int64
+	IncludeDisabled bool
+}
+
+func (m *GetUsageStatsRequest) GetPreset() UsageRangePreset {
+	if m != nil {
+		return m.Preset
+	}
+	return 0
+}
+func (m *GetUsageStatsRequest) GetCustomStartMs() int64 {
+	if m != nil {
+		return m.CustomStartMs
+	}
+	return 0
+}
+func (m *GetUsageStatsRequest) GetCustomEndMs() int64 {
+	if m != nil {
+		return m.CustomEndMs
+	}
+	return 0
+}
+func (m *GetUsageStatsRequest) GetTimezone() string {
+	if m != nil {
+		return m.Timezone
+	}
+	return ""
+}
+func (m *GetUsageStatsRequest) GetTzOffsetMinutes() int32 {
+	if m != nil {
+		return m.TzOffsetMinutes
+	}
+	return 0
+}
+func (m *GetUsageStatsRequest) GetBucketBoundsMs() []int64 {
+	if m != nil {
+		return m.BucketBoundsMs
+	}
+	return nil
+}
+func (m *GetUsageStatsRequest) GetPrevStartMs() int64 {
+	if m != nil {
+		return m.PrevStartMs
+	}
+	return 0
+}
+func (m *GetUsageStatsRequest) GetIncludeDisabled() bool {
+	if m != nil {
+		return m.IncludeDisabled
+	}
+	return false
+}
+
+func (m *GetUsageStatsRequest) Clone() *GetUsageStatsRequest {
+	if m == nil {
+		return nil
+	}
+	cp := *m
+	cp.BucketBoundsMs = slices.Clone(m.BucketBoundsMs)
+	return &cp
+}
+
+func (m *GetUsageStatsRequest) Size() int {
+	if m == nil {
+		return 0
+	}
+	n := 0
+	n += litewire.SizeInt32(1, int32(m.Preset))
+	n += litewire.SizeVarintField(2, uint64(m.CustomStartMs))
+	n += litewire.SizeVarintField(3, uint64(m.CustomEndMs))
+	n += litewire.SizeString(4, m.Timezone)
+	n += litewire.SizeInt32(5, int32(m.TzOffsetMinutes))
+	if len(m.BucketBoundsMs) > 0 {
+		psz := 0
+		for _, v := range m.BucketBoundsMs {
+			psz += litewire.SizeVarint(uint64(v))
+		}
+		n += litewire.SizeMessage(6, psz)
+	}
+	n += litewire.SizeVarintField(7, uint64(m.PrevStartMs))
+	n += litewire.SizeBool(8, m.IncludeDisabled)
+	return n
+}
+
+func (m *GetUsageStatsRequest) Marshal() ([]byte, error) {
+	if m == nil {
+		return nil, nil
+	}
+	sz := m.Size()
+	if sz == 0 {
+		return nil, nil
+	}
+	return m.AppendMarshal(make([]byte, 0, sz)), nil
+}
+
+func (m *GetUsageStatsRequest) AppendMarshal(b []byte) []byte {
+	if m == nil {
+		return b
+	}
+	b = litewire.AppendInt32(b, 1, int32(m.Preset))
+	b = litewire.AppendVarint(b, 2, uint64(m.CustomStartMs))
+	b = litewire.AppendVarint(b, 3, uint64(m.CustomEndMs))
+	b = litewire.AppendString(b, 4, m.Timezone)
+	b = litewire.AppendInt32(b, 5, int32(m.TzOffsetMinutes))
+	if len(m.BucketBoundsMs) > 0 {
+		psz := 0
+		for _, v := range m.BucketBoundsMs {
+			psz += litewire.SizeVarint(uint64(v))
+		}
+		b = litewire.AppendMessagePrefix(b, 6, psz)
+		for _, v := range m.BucketBoundsMs {
+			b = litewire.AppendRawVarint(b, uint64(v))
+		}
+	}
+	b = litewire.AppendVarint(b, 7, uint64(m.PrevStartMs))
+	b = litewire.AppendBool(b, 8, m.IncludeDisabled)
+	return b
+}
+
+func (m *GetUsageStatsRequest) Unmarshal(b []byte) error {
+	for len(b) > 0 {
+		num, wtyp, err := litewire.ReadTag(&b)
+		if err != nil {
+			return err
+		}
+		switch num {
+		case 1:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.Preset = UsageRangePreset(int32(v))
+				continue
+			}
+		case 2:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.CustomStartMs = int64(v)
+				continue
+			}
+		case 3:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.CustomEndMs = int64(v)
+				continue
+			}
+		case 4:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadString(&b)
+				if err != nil {
+					return err
+				}
+				m.Timezone = v
+				continue
+			}
+		case 5:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.TzOffsetMinutes = int32(v)
+				continue
+			}
+		case 6:
+			if wtyp == litewire.BytesType {
+				raw, err := litewire.ReadBytesRaw(&b)
+				if err != nil {
+					return err
+				}
+				for len(raw) > 0 {
+					v, err := litewire.ReadVarint(&raw)
+					if err != nil {
+						return err
+					}
+					m.BucketBoundsMs = append(m.BucketBoundsMs, int64(v))
+				}
+				continue
+			}
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.BucketBoundsMs = append(m.BucketBoundsMs, int64(v))
+				continue
+			}
+		case 7:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.PrevStartMs = int64(v)
+				continue
+			}
+		case 8:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.IncludeDisabled = litewire.DecodeBool(v)
+				continue
+			}
+		}
+		if err := litewire.Skip(&b, num, wtyp); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+type UsageAgentSource struct {
+	Agent  Agent
+	State  UsageSourceState
+	Detail string
+}
+
+func (m *UsageAgentSource) GetAgent() Agent {
+	if m != nil {
+		return m.Agent
+	}
+	return 0
+}
+func (m *UsageAgentSource) GetState() UsageSourceState {
+	if m != nil {
+		return m.State
+	}
+	return 0
+}
+func (m *UsageAgentSource) GetDetail() string {
+	if m != nil {
+		return m.Detail
+	}
+	return ""
+}
+
+func (m *UsageAgentSource) Clone() *UsageAgentSource {
+	if m == nil {
+		return nil
+	}
+	cp := *m
+	return &cp
+}
+
+func (m *UsageAgentSource) Size() int {
+	if m == nil {
+		return 0
+	}
+	n := 0
+	n += litewire.SizeInt32(1, int32(m.Agent))
+	n += litewire.SizeInt32(2, int32(m.State))
+	n += litewire.SizeString(3, m.Detail)
+	return n
+}
+
+func (m *UsageAgentSource) Marshal() ([]byte, error) {
+	if m == nil {
+		return nil, nil
+	}
+	sz := m.Size()
+	if sz == 0 {
+		return nil, nil
+	}
+	return m.AppendMarshal(make([]byte, 0, sz)), nil
+}
+
+func (m *UsageAgentSource) AppendMarshal(b []byte) []byte {
+	if m == nil {
+		return b
+	}
+	b = litewire.AppendInt32(b, 1, int32(m.Agent))
+	b = litewire.AppendInt32(b, 2, int32(m.State))
+	b = litewire.AppendString(b, 3, m.Detail)
+	return b
+}
+
+func (m *UsageAgentSource) Unmarshal(b []byte) error {
+	for len(b) > 0 {
+		num, wtyp, err := litewire.ReadTag(&b)
+		if err != nil {
+			return err
+		}
+		switch num {
+		case 1:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.Agent = Agent(int32(v))
+				continue
+			}
+		case 2:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.State = UsageSourceState(int32(v))
+				continue
+			}
+		case 3:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadString(&b)
+				if err != nil {
+					return err
+				}
+				m.Detail = v
+				continue
+			}
+		}
+		if err := litewire.Skip(&b, num, wtyp); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+type UsageBucketPoint struct {
+	StartMs               int64
+	EndMs                 int64
+	UncachedInputTokens   uint64
+	CacheReadTokens       uint64
+	CacheWriteTokens      uint64
+	OutputTokens          uint64
+	ReasoningOutputTokens uint64
+	UsageRequestCount     uint64
+	SpeedRequestCount     uint64
+	SpeedP10              float64
+	SpeedP50              float64
+	SpeedP90              float64
+	TtftP10Ms             float64
+	TtftP50Ms             float64
+	TtftP90Ms             float64
+}
+
+func (m *UsageBucketPoint) GetStartMs() int64 {
+	if m != nil {
+		return m.StartMs
+	}
+	return 0
+}
+func (m *UsageBucketPoint) GetEndMs() int64 {
+	if m != nil {
+		return m.EndMs
+	}
+	return 0
+}
+func (m *UsageBucketPoint) GetUncachedInputTokens() uint64 {
+	if m != nil {
+		return m.UncachedInputTokens
+	}
+	return 0
+}
+func (m *UsageBucketPoint) GetCacheReadTokens() uint64 {
+	if m != nil {
+		return m.CacheReadTokens
+	}
+	return 0
+}
+func (m *UsageBucketPoint) GetCacheWriteTokens() uint64 {
+	if m != nil {
+		return m.CacheWriteTokens
+	}
+	return 0
+}
+func (m *UsageBucketPoint) GetOutputTokens() uint64 {
+	if m != nil {
+		return m.OutputTokens
+	}
+	return 0
+}
+func (m *UsageBucketPoint) GetReasoningOutputTokens() uint64 {
+	if m != nil {
+		return m.ReasoningOutputTokens
+	}
+	return 0
+}
+func (m *UsageBucketPoint) GetUsageRequestCount() uint64 {
+	if m != nil {
+		return m.UsageRequestCount
+	}
+	return 0
+}
+func (m *UsageBucketPoint) GetSpeedRequestCount() uint64 {
+	if m != nil {
+		return m.SpeedRequestCount
+	}
+	return 0
+}
+func (m *UsageBucketPoint) GetSpeedP10() float64 {
+	if m != nil {
+		return m.SpeedP10
+	}
+	return 0
+}
+func (m *UsageBucketPoint) GetSpeedP50() float64 {
+	if m != nil {
+		return m.SpeedP50
+	}
+	return 0
+}
+func (m *UsageBucketPoint) GetSpeedP90() float64 {
+	if m != nil {
+		return m.SpeedP90
+	}
+	return 0
+}
+func (m *UsageBucketPoint) GetTtftP10Ms() float64 {
+	if m != nil {
+		return m.TtftP10Ms
+	}
+	return 0
+}
+func (m *UsageBucketPoint) GetTtftP50Ms() float64 {
+	if m != nil {
+		return m.TtftP50Ms
+	}
+	return 0
+}
+func (m *UsageBucketPoint) GetTtftP90Ms() float64 {
+	if m != nil {
+		return m.TtftP90Ms
+	}
+	return 0
+}
+
+func (m *UsageBucketPoint) Clone() *UsageBucketPoint {
+	if m == nil {
+		return nil
+	}
+	cp := *m
+	return &cp
+}
+
+func (m *UsageBucketPoint) Size() int {
+	if m == nil {
+		return 0
+	}
+	n := 0
+	n += litewire.SizeVarintField(1, uint64(m.StartMs))
+	n += litewire.SizeVarintField(2, uint64(m.EndMs))
+	n += litewire.SizeVarintField(3, uint64(m.UncachedInputTokens))
+	n += litewire.SizeVarintField(4, uint64(m.CacheReadTokens))
+	n += litewire.SizeVarintField(5, uint64(m.CacheWriteTokens))
+	n += litewire.SizeVarintField(6, uint64(m.OutputTokens))
+	n += litewire.SizeVarintField(7, uint64(m.ReasoningOutputTokens))
+	n += litewire.SizeVarintField(8, uint64(m.UsageRequestCount))
+	n += litewire.SizeVarintField(9, uint64(m.SpeedRequestCount))
+	n += litewire.SizeDouble(10, m.SpeedP10)
+	n += litewire.SizeDouble(11, m.SpeedP50)
+	n += litewire.SizeDouble(12, m.SpeedP90)
+	n += litewire.SizeDouble(13, m.TtftP10Ms)
+	n += litewire.SizeDouble(14, m.TtftP50Ms)
+	n += litewire.SizeDouble(15, m.TtftP90Ms)
+	return n
+}
+
+func (m *UsageBucketPoint) Marshal() ([]byte, error) {
+	if m == nil {
+		return nil, nil
+	}
+	sz := m.Size()
+	if sz == 0 {
+		return nil, nil
+	}
+	return m.AppendMarshal(make([]byte, 0, sz)), nil
+}
+
+func (m *UsageBucketPoint) AppendMarshal(b []byte) []byte {
+	if m == nil {
+		return b
+	}
+	b = litewire.AppendVarint(b, 1, uint64(m.StartMs))
+	b = litewire.AppendVarint(b, 2, uint64(m.EndMs))
+	b = litewire.AppendVarint(b, 3, uint64(m.UncachedInputTokens))
+	b = litewire.AppendVarint(b, 4, uint64(m.CacheReadTokens))
+	b = litewire.AppendVarint(b, 5, uint64(m.CacheWriteTokens))
+	b = litewire.AppendVarint(b, 6, uint64(m.OutputTokens))
+	b = litewire.AppendVarint(b, 7, uint64(m.ReasoningOutputTokens))
+	b = litewire.AppendVarint(b, 8, uint64(m.UsageRequestCount))
+	b = litewire.AppendVarint(b, 9, uint64(m.SpeedRequestCount))
+	b = litewire.AppendDouble(b, 10, m.SpeedP10)
+	b = litewire.AppendDouble(b, 11, m.SpeedP50)
+	b = litewire.AppendDouble(b, 12, m.SpeedP90)
+	b = litewire.AppendDouble(b, 13, m.TtftP10Ms)
+	b = litewire.AppendDouble(b, 14, m.TtftP50Ms)
+	b = litewire.AppendDouble(b, 15, m.TtftP90Ms)
+	return b
+}
+
+func (m *UsageBucketPoint) Unmarshal(b []byte) error {
+	for len(b) > 0 {
+		num, wtyp, err := litewire.ReadTag(&b)
+		if err != nil {
+			return err
+		}
+		switch num {
+		case 1:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.StartMs = int64(v)
+				continue
+			}
+		case 2:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.EndMs = int64(v)
+				continue
+			}
+		case 3:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.UncachedInputTokens = v
+				continue
+			}
+		case 4:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.CacheReadTokens = v
+				continue
+			}
+		case 5:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.CacheWriteTokens = v
+				continue
+			}
+		case 6:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.OutputTokens = v
+				continue
+			}
+		case 7:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.ReasoningOutputTokens = v
+				continue
+			}
+		case 8:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.UsageRequestCount = v
+				continue
+			}
+		case 9:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.SpeedRequestCount = v
+				continue
+			}
+		case 10:
+			if wtyp == litewire.Fixed64Type {
+				v, err := litewire.ReadFixed64(&b)
+				if err != nil {
+					return err
+				}
+				m.SpeedP10 = math.Float64frombits(v)
+				continue
+			}
+		case 11:
+			if wtyp == litewire.Fixed64Type {
+				v, err := litewire.ReadFixed64(&b)
+				if err != nil {
+					return err
+				}
+				m.SpeedP50 = math.Float64frombits(v)
+				continue
+			}
+		case 12:
+			if wtyp == litewire.Fixed64Type {
+				v, err := litewire.ReadFixed64(&b)
+				if err != nil {
+					return err
+				}
+				m.SpeedP90 = math.Float64frombits(v)
+				continue
+			}
+		case 13:
+			if wtyp == litewire.Fixed64Type {
+				v, err := litewire.ReadFixed64(&b)
+				if err != nil {
+					return err
+				}
+				m.TtftP10Ms = math.Float64frombits(v)
+				continue
+			}
+		case 14:
+			if wtyp == litewire.Fixed64Type {
+				v, err := litewire.ReadFixed64(&b)
+				if err != nil {
+					return err
+				}
+				m.TtftP50Ms = math.Float64frombits(v)
+				continue
+			}
+		case 15:
+			if wtyp == litewire.Fixed64Type {
+				v, err := litewire.ReadFixed64(&b)
+				if err != nil {
+					return err
+				}
+				m.TtftP90Ms = math.Float64frombits(v)
+				continue
+			}
+		}
+		if err := litewire.Skip(&b, num, wtyp); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+type UsagePeriodSummary struct {
+	UncachedInputTokens   uint64
+	CacheReadTokens       uint64
+	CacheWriteTokens      uint64
+	OutputTokens          uint64
+	ReasoningOutputTokens uint64
+	UsageRequestCount     uint64
+	SpeedRequestCount     uint64
+	HasCacheHitRate       bool
+	CacheHitRate          float64
+	HasSpeed              bool
+	SpeedP10              float64
+	SpeedP50              float64
+	SpeedP90              float64
+	HasTtft               bool
+	TtftP10Ms             float64
+	TtftP50Ms             float64
+	TtftP90Ms             float64
+	Recent10SpeedCount    uint64
+	Recent10SpeedP50      float64
+}
+
+func (m *UsagePeriodSummary) GetUncachedInputTokens() uint64 {
+	if m != nil {
+		return m.UncachedInputTokens
+	}
+	return 0
+}
+func (m *UsagePeriodSummary) GetCacheReadTokens() uint64 {
+	if m != nil {
+		return m.CacheReadTokens
+	}
+	return 0
+}
+func (m *UsagePeriodSummary) GetCacheWriteTokens() uint64 {
+	if m != nil {
+		return m.CacheWriteTokens
+	}
+	return 0
+}
+func (m *UsagePeriodSummary) GetOutputTokens() uint64 {
+	if m != nil {
+		return m.OutputTokens
+	}
+	return 0
+}
+func (m *UsagePeriodSummary) GetReasoningOutputTokens() uint64 {
+	if m != nil {
+		return m.ReasoningOutputTokens
+	}
+	return 0
+}
+func (m *UsagePeriodSummary) GetUsageRequestCount() uint64 {
+	if m != nil {
+		return m.UsageRequestCount
+	}
+	return 0
+}
+func (m *UsagePeriodSummary) GetSpeedRequestCount() uint64 {
+	if m != nil {
+		return m.SpeedRequestCount
+	}
+	return 0
+}
+func (m *UsagePeriodSummary) GetHasCacheHitRate() bool {
+	if m != nil {
+		return m.HasCacheHitRate
+	}
+	return false
+}
+func (m *UsagePeriodSummary) GetCacheHitRate() float64 {
+	if m != nil {
+		return m.CacheHitRate
+	}
+	return 0
+}
+func (m *UsagePeriodSummary) GetHasSpeed() bool {
+	if m != nil {
+		return m.HasSpeed
+	}
+	return false
+}
+func (m *UsagePeriodSummary) GetSpeedP10() float64 {
+	if m != nil {
+		return m.SpeedP10
+	}
+	return 0
+}
+func (m *UsagePeriodSummary) GetSpeedP50() float64 {
+	if m != nil {
+		return m.SpeedP50
+	}
+	return 0
+}
+func (m *UsagePeriodSummary) GetSpeedP90() float64 {
+	if m != nil {
+		return m.SpeedP90
+	}
+	return 0
+}
+func (m *UsagePeriodSummary) GetHasTtft() bool {
+	if m != nil {
+		return m.HasTtft
+	}
+	return false
+}
+func (m *UsagePeriodSummary) GetTtftP10Ms() float64 {
+	if m != nil {
+		return m.TtftP10Ms
+	}
+	return 0
+}
+func (m *UsagePeriodSummary) GetTtftP50Ms() float64 {
+	if m != nil {
+		return m.TtftP50Ms
+	}
+	return 0
+}
+func (m *UsagePeriodSummary) GetTtftP90Ms() float64 {
+	if m != nil {
+		return m.TtftP90Ms
+	}
+	return 0
+}
+func (m *UsagePeriodSummary) GetRecent10SpeedCount() uint64 {
+	if m != nil {
+		return m.Recent10SpeedCount
+	}
+	return 0
+}
+func (m *UsagePeriodSummary) GetRecent10SpeedP50() float64 {
+	if m != nil {
+		return m.Recent10SpeedP50
+	}
+	return 0
+}
+
+func (m *UsagePeriodSummary) Clone() *UsagePeriodSummary {
+	if m == nil {
+		return nil
+	}
+	cp := *m
+	return &cp
+}
+
+func (m *UsagePeriodSummary) Size() int {
+	if m == nil {
+		return 0
+	}
+	n := 0
+	n += litewire.SizeVarintField(1, uint64(m.UncachedInputTokens))
+	n += litewire.SizeVarintField(2, uint64(m.CacheReadTokens))
+	n += litewire.SizeVarintField(3, uint64(m.CacheWriteTokens))
+	n += litewire.SizeVarintField(4, uint64(m.OutputTokens))
+	n += litewire.SizeVarintField(5, uint64(m.ReasoningOutputTokens))
+	n += litewire.SizeVarintField(6, uint64(m.UsageRequestCount))
+	n += litewire.SizeVarintField(7, uint64(m.SpeedRequestCount))
+	n += litewire.SizeBool(8, m.HasCacheHitRate)
+	n += litewire.SizeDouble(9, m.CacheHitRate)
+	n += litewire.SizeBool(10, m.HasSpeed)
+	n += litewire.SizeDouble(11, m.SpeedP10)
+	n += litewire.SizeDouble(12, m.SpeedP50)
+	n += litewire.SizeDouble(13, m.SpeedP90)
+	n += litewire.SizeBool(14, m.HasTtft)
+	n += litewire.SizeDouble(15, m.TtftP10Ms)
+	n += litewire.SizeDouble(16, m.TtftP50Ms)
+	n += litewire.SizeDouble(17, m.TtftP90Ms)
+	n += litewire.SizeVarintField(18, uint64(m.Recent10SpeedCount))
+	n += litewire.SizeDouble(19, m.Recent10SpeedP50)
+	return n
+}
+
+func (m *UsagePeriodSummary) Marshal() ([]byte, error) {
+	if m == nil {
+		return nil, nil
+	}
+	sz := m.Size()
+	if sz == 0 {
+		return nil, nil
+	}
+	return m.AppendMarshal(make([]byte, 0, sz)), nil
+}
+
+func (m *UsagePeriodSummary) AppendMarshal(b []byte) []byte {
+	if m == nil {
+		return b
+	}
+	b = litewire.AppendVarint(b, 1, uint64(m.UncachedInputTokens))
+	b = litewire.AppendVarint(b, 2, uint64(m.CacheReadTokens))
+	b = litewire.AppendVarint(b, 3, uint64(m.CacheWriteTokens))
+	b = litewire.AppendVarint(b, 4, uint64(m.OutputTokens))
+	b = litewire.AppendVarint(b, 5, uint64(m.ReasoningOutputTokens))
+	b = litewire.AppendVarint(b, 6, uint64(m.UsageRequestCount))
+	b = litewire.AppendVarint(b, 7, uint64(m.SpeedRequestCount))
+	b = litewire.AppendBool(b, 8, m.HasCacheHitRate)
+	b = litewire.AppendDouble(b, 9, m.CacheHitRate)
+	b = litewire.AppendBool(b, 10, m.HasSpeed)
+	b = litewire.AppendDouble(b, 11, m.SpeedP10)
+	b = litewire.AppendDouble(b, 12, m.SpeedP50)
+	b = litewire.AppendDouble(b, 13, m.SpeedP90)
+	b = litewire.AppendBool(b, 14, m.HasTtft)
+	b = litewire.AppendDouble(b, 15, m.TtftP10Ms)
+	b = litewire.AppendDouble(b, 16, m.TtftP50Ms)
+	b = litewire.AppendDouble(b, 17, m.TtftP90Ms)
+	b = litewire.AppendVarint(b, 18, uint64(m.Recent10SpeedCount))
+	b = litewire.AppendDouble(b, 19, m.Recent10SpeedP50)
+	return b
+}
+
+func (m *UsagePeriodSummary) Unmarshal(b []byte) error {
+	for len(b) > 0 {
+		num, wtyp, err := litewire.ReadTag(&b)
+		if err != nil {
+			return err
+		}
+		switch num {
+		case 1:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.UncachedInputTokens = v
+				continue
+			}
+		case 2:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.CacheReadTokens = v
+				continue
+			}
+		case 3:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.CacheWriteTokens = v
+				continue
+			}
+		case 4:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.OutputTokens = v
+				continue
+			}
+		case 5:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.ReasoningOutputTokens = v
+				continue
+			}
+		case 6:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.UsageRequestCount = v
+				continue
+			}
+		case 7:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.SpeedRequestCount = v
+				continue
+			}
+		case 8:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.HasCacheHitRate = litewire.DecodeBool(v)
+				continue
+			}
+		case 9:
+			if wtyp == litewire.Fixed64Type {
+				v, err := litewire.ReadFixed64(&b)
+				if err != nil {
+					return err
+				}
+				m.CacheHitRate = math.Float64frombits(v)
+				continue
+			}
+		case 10:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.HasSpeed = litewire.DecodeBool(v)
+				continue
+			}
+		case 11:
+			if wtyp == litewire.Fixed64Type {
+				v, err := litewire.ReadFixed64(&b)
+				if err != nil {
+					return err
+				}
+				m.SpeedP10 = math.Float64frombits(v)
+				continue
+			}
+		case 12:
+			if wtyp == litewire.Fixed64Type {
+				v, err := litewire.ReadFixed64(&b)
+				if err != nil {
+					return err
+				}
+				m.SpeedP50 = math.Float64frombits(v)
+				continue
+			}
+		case 13:
+			if wtyp == litewire.Fixed64Type {
+				v, err := litewire.ReadFixed64(&b)
+				if err != nil {
+					return err
+				}
+				m.SpeedP90 = math.Float64frombits(v)
+				continue
+			}
+		case 14:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.HasTtft = litewire.DecodeBool(v)
+				continue
+			}
+		case 15:
+			if wtyp == litewire.Fixed64Type {
+				v, err := litewire.ReadFixed64(&b)
+				if err != nil {
+					return err
+				}
+				m.TtftP10Ms = math.Float64frombits(v)
+				continue
+			}
+		case 16:
+			if wtyp == litewire.Fixed64Type {
+				v, err := litewire.ReadFixed64(&b)
+				if err != nil {
+					return err
+				}
+				m.TtftP50Ms = math.Float64frombits(v)
+				continue
+			}
+		case 17:
+			if wtyp == litewire.Fixed64Type {
+				v, err := litewire.ReadFixed64(&b)
+				if err != nil {
+					return err
+				}
+				m.TtftP90Ms = math.Float64frombits(v)
+				continue
+			}
+		case 18:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.Recent10SpeedCount = v
+				continue
+			}
+		case 19:
+			if wtyp == litewire.Fixed64Type {
+				v, err := litewire.ReadFixed64(&b)
+				if err != nil {
+					return err
+				}
+				m.Recent10SpeedP50 = math.Float64frombits(v)
+				continue
+			}
+		}
+		if err := litewire.Skip(&b, num, wtyp); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+type UsageSeries struct {
+	Agent               Agent
+	Model               string
+	CacheWriteSupported bool
+	Current             *UsagePeriodSummary
+	Previous            *UsagePeriodSummary
+	Buckets             []*UsageBucketPoint
+}
+
+func (m *UsageSeries) GetAgent() Agent {
+	if m != nil {
+		return m.Agent
+	}
+	return 0
+}
+func (m *UsageSeries) GetModel() string {
+	if m != nil {
+		return m.Model
+	}
+	return ""
+}
+func (m *UsageSeries) GetCacheWriteSupported() bool {
+	if m != nil {
+		return m.CacheWriteSupported
+	}
+	return false
+}
+func (m *UsageSeries) GetCurrent() *UsagePeriodSummary {
+	if m != nil {
+		return m.Current
+	}
+	return nil
+}
+func (m *UsageSeries) GetPrevious() *UsagePeriodSummary {
+	if m != nil {
+		return m.Previous
+	}
+	return nil
+}
+func (m *UsageSeries) GetBuckets() []*UsageBucketPoint {
+	if m != nil {
+		return m.Buckets
+	}
+	return nil
+}
+
+func (m *UsageSeries) Clone() *UsageSeries {
+	if m == nil {
+		return nil
+	}
+	cp := *m
+	cp.Current = m.Current.Clone()
+	cp.Previous = m.Previous.Clone()
+	if m.Buckets != nil {
+		cp.Buckets = make([]*UsageBucketPoint, len(m.Buckets))
+		for i, v := range m.Buckets {
+			cp.Buckets[i] = v.Clone()
+		}
+	}
+	return &cp
+}
+
+func (m *UsageSeries) Size() int {
+	if m == nil {
+		return 0
+	}
+	n := 0
+	n += litewire.SizeInt32(1, int32(m.Agent))
+	n += litewire.SizeString(2, m.Model)
+	n += litewire.SizeBool(3, m.CacheWriteSupported)
+	if m.Current != nil {
+		n += litewire.SizeMessage(4, m.Current.Size())
+	}
+	if m.Previous != nil {
+		n += litewire.SizeMessage(5, m.Previous.Size())
+	}
+	for _, v := range m.Buckets {
+		if v != nil {
+			n += litewire.SizeMessage(6, v.Size())
+		}
+	}
+	return n
+}
+
+func (m *UsageSeries) Marshal() ([]byte, error) {
+	if m == nil {
+		return nil, nil
+	}
+	sz := m.Size()
+	if sz == 0 {
+		return nil, nil
+	}
+	return m.AppendMarshal(make([]byte, 0, sz)), nil
+}
+
+func (m *UsageSeries) AppendMarshal(b []byte) []byte {
+	if m == nil {
+		return b
+	}
+	b = litewire.AppendInt32(b, 1, int32(m.Agent))
+	b = litewire.AppendString(b, 2, m.Model)
+	b = litewire.AppendBool(b, 3, m.CacheWriteSupported)
+	if m.Current != nil {
+		b = litewire.AppendMessage(b, 4, m.Current)
+	}
+	if m.Previous != nil {
+		b = litewire.AppendMessage(b, 5, m.Previous)
+	}
+	for _, v := range m.Buckets {
+		if v != nil {
+			b = litewire.AppendMessage(b, 6, v)
+		}
+	}
+	return b
+}
+
+func (m *UsageSeries) Unmarshal(b []byte) error {
+	for len(b) > 0 {
+		num, wtyp, err := litewire.ReadTag(&b)
+		if err != nil {
+			return err
+		}
+		switch num {
+		case 1:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.Agent = Agent(int32(v))
+				continue
+			}
+		case 2:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadString(&b)
+				if err != nil {
+					return err
+				}
+				m.Model = v
+				continue
+			}
+		case 3:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.CacheWriteSupported = litewire.DecodeBool(v)
+				continue
+			}
+		case 4:
+			if wtyp == litewire.BytesType {
+				if m.Current == nil {
+					m.Current = &UsagePeriodSummary{}
+				}
+				if err := litewire.ReadMessage(&b, m.Current); err != nil {
+					return err
+				}
+				continue
+			}
+		case 5:
+			if wtyp == litewire.BytesType {
+				if m.Previous == nil {
+					m.Previous = &UsagePeriodSummary{}
+				}
+				if err := litewire.ReadMessage(&b, m.Previous); err != nil {
+					return err
+				}
+				continue
+			}
+		case 6:
+			if wtyp == litewire.BytesType {
+				elem := &UsageBucketPoint{}
+				if err := litewire.ReadMessage(&b, elem); err != nil {
+					return err
+				}
+				m.Buckets = append(m.Buckets, elem)
+				continue
+			}
+		}
+		if err := litewire.Skip(&b, num, wtyp); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+type UsageStatsResponse struct {
+	Preset                    UsageRangePreset
+	Granularity               UsageBucketGranularity
+	StartMs                   int64
+	EndMs                     int64
+	GeneratedAtMs             int64
+	Backfilling               bool
+	BackfillScannedDays       int32
+	BackfillTotalDays         int32
+	PreviousPeriodBackfilling bool
+	Sources                   []*UsageAgentSource
+	Series                    []*UsageSeries
+}
+
+func (m *UsageStatsResponse) GetPreset() UsageRangePreset {
+	if m != nil {
+		return m.Preset
+	}
+	return 0
+}
+func (m *UsageStatsResponse) GetGranularity() UsageBucketGranularity {
+	if m != nil {
+		return m.Granularity
+	}
+	return 0
+}
+func (m *UsageStatsResponse) GetStartMs() int64 {
+	if m != nil {
+		return m.StartMs
+	}
+	return 0
+}
+func (m *UsageStatsResponse) GetEndMs() int64 {
+	if m != nil {
+		return m.EndMs
+	}
+	return 0
+}
+func (m *UsageStatsResponse) GetGeneratedAtMs() int64 {
+	if m != nil {
+		return m.GeneratedAtMs
+	}
+	return 0
+}
+func (m *UsageStatsResponse) GetBackfilling() bool {
+	if m != nil {
+		return m.Backfilling
+	}
+	return false
+}
+func (m *UsageStatsResponse) GetBackfillScannedDays() int32 {
+	if m != nil {
+		return m.BackfillScannedDays
+	}
+	return 0
+}
+func (m *UsageStatsResponse) GetBackfillTotalDays() int32 {
+	if m != nil {
+		return m.BackfillTotalDays
+	}
+	return 0
+}
+func (m *UsageStatsResponse) GetPreviousPeriodBackfilling() bool {
+	if m != nil {
+		return m.PreviousPeriodBackfilling
+	}
+	return false
+}
+func (m *UsageStatsResponse) GetSources() []*UsageAgentSource {
+	if m != nil {
+		return m.Sources
+	}
+	return nil
+}
+func (m *UsageStatsResponse) GetSeries() []*UsageSeries {
+	if m != nil {
+		return m.Series
+	}
+	return nil
+}
+
+func (m *UsageStatsResponse) Clone() *UsageStatsResponse {
+	if m == nil {
+		return nil
+	}
+	cp := *m
+	if m.Sources != nil {
+		cp.Sources = make([]*UsageAgentSource, len(m.Sources))
+		for i, v := range m.Sources {
+			cp.Sources[i] = v.Clone()
+		}
+	}
+	if m.Series != nil {
+		cp.Series = make([]*UsageSeries, len(m.Series))
+		for i, v := range m.Series {
+			cp.Series[i] = v.Clone()
+		}
+	}
+	return &cp
+}
+
+func (m *UsageStatsResponse) Size() int {
+	if m == nil {
+		return 0
+	}
+	n := 0
+	n += litewire.SizeInt32(1, int32(m.Preset))
+	n += litewire.SizeInt32(2, int32(m.Granularity))
+	n += litewire.SizeVarintField(3, uint64(m.StartMs))
+	n += litewire.SizeVarintField(4, uint64(m.EndMs))
+	n += litewire.SizeVarintField(5, uint64(m.GeneratedAtMs))
+	n += litewire.SizeBool(6, m.Backfilling)
+	n += litewire.SizeInt32(7, int32(m.BackfillScannedDays))
+	n += litewire.SizeInt32(8, int32(m.BackfillTotalDays))
+	n += litewire.SizeBool(9, m.PreviousPeriodBackfilling)
+	for _, v := range m.Sources {
+		if v != nil {
+			n += litewire.SizeMessage(10, v.Size())
+		}
+	}
+	for _, v := range m.Series {
+		if v != nil {
+			n += litewire.SizeMessage(11, v.Size())
+		}
+	}
+	return n
+}
+
+func (m *UsageStatsResponse) Marshal() ([]byte, error) {
+	if m == nil {
+		return nil, nil
+	}
+	sz := m.Size()
+	if sz == 0 {
+		return nil, nil
+	}
+	return m.AppendMarshal(make([]byte, 0, sz)), nil
+}
+
+func (m *UsageStatsResponse) AppendMarshal(b []byte) []byte {
+	if m == nil {
+		return b
+	}
+	b = litewire.AppendInt32(b, 1, int32(m.Preset))
+	b = litewire.AppendInt32(b, 2, int32(m.Granularity))
+	b = litewire.AppendVarint(b, 3, uint64(m.StartMs))
+	b = litewire.AppendVarint(b, 4, uint64(m.EndMs))
+	b = litewire.AppendVarint(b, 5, uint64(m.GeneratedAtMs))
+	b = litewire.AppendBool(b, 6, m.Backfilling)
+	b = litewire.AppendInt32(b, 7, int32(m.BackfillScannedDays))
+	b = litewire.AppendInt32(b, 8, int32(m.BackfillTotalDays))
+	b = litewire.AppendBool(b, 9, m.PreviousPeriodBackfilling)
+	for _, v := range m.Sources {
+		if v != nil {
+			b = litewire.AppendMessage(b, 10, v)
+		}
+	}
+	for _, v := range m.Series {
+		if v != nil {
+			b = litewire.AppendMessage(b, 11, v)
+		}
+	}
+	return b
+}
+
+func (m *UsageStatsResponse) Unmarshal(b []byte) error {
+	for len(b) > 0 {
+		num, wtyp, err := litewire.ReadTag(&b)
+		if err != nil {
+			return err
+		}
+		switch num {
+		case 1:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.Preset = UsageRangePreset(int32(v))
+				continue
+			}
+		case 2:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.Granularity = UsageBucketGranularity(int32(v))
+				continue
+			}
+		case 3:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.StartMs = int64(v)
+				continue
+			}
+		case 4:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.EndMs = int64(v)
+				continue
+			}
+		case 5:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.GeneratedAtMs = int64(v)
+				continue
+			}
+		case 6:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.Backfilling = litewire.DecodeBool(v)
+				continue
+			}
+		case 7:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.BackfillScannedDays = int32(v)
+				continue
+			}
+		case 8:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.BackfillTotalDays = int32(v)
+				continue
+			}
+		case 9:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.PreviousPeriodBackfilling = litewire.DecodeBool(v)
+				continue
+			}
+		case 10:
+			if wtyp == litewire.BytesType {
+				elem := &UsageAgentSource{}
+				if err := litewire.ReadMessage(&b, elem); err != nil {
+					return err
+				}
+				m.Sources = append(m.Sources, elem)
+				continue
+			}
+		case 11:
+			if wtyp == litewire.BytesType {
+				elem := &UsageSeries{}
+				if err := litewire.ReadMessage(&b, elem); err != nil {
+					return err
+				}
+				m.Series = append(m.Series, elem)
 				continue
 			}
 		}

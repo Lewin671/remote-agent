@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -158,7 +159,78 @@ func (d *Daemon) settingsContext(ctx context.Context) (*pb.DaemonSettings, error
 	if st.IdleCloseMinutes == 0 {
 		st.IdleCloseMinutes = defaultIdleCloseMinutes
 	}
+	st.DisabledAgents = normalizeDisabledAgents(st.DisabledAgents)
 	return st, nil
+}
+
+var errCannotDisableLastAgent = errors.New("cannot_disable_last_agent: at least one installed CLI must remain enabled")
+var errAgentDisabled = errors.New("agent_disabled: this CLI is disabled on this machine")
+
+func normalizeDisabledAgents(in []pb.Agent) []pb.Agent {
+	if len(in) == 0 {
+		return nil
+	}
+	seen := make(map[pb.Agent]bool, len(in))
+	var out []pb.Agent
+	for _, a := range in {
+		if a == pb.Agent_AGENT_UNSPECIFIED {
+			continue
+		}
+		if !seen[a] {
+			seen[a] = true
+			out = append(out, a)
+		}
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i] < out[j] })
+	return out
+}
+
+func (d *Daemon) installedKinds() []pb.Agent {
+	var out []pb.Agent
+	for _, a := range d.adapterList() {
+		if a != nil && a.Bin() != "" {
+			out = append(out, a.Kind())
+		}
+	}
+	return out
+}
+
+func (d *Daemon) isAgentDisabled(k pb.Agent) bool {
+	k = resolveKind(k)
+	st := d.settings()
+	return slices.Contains(st.DisabledAgents, k)
+}
+
+func (d *Daemon) enabledCountLocked(disabled []pb.Agent, installed []pb.Agent) int {
+	n := 0
+	for _, k := range installed {
+		if !slices.Contains(disabled, k) {
+			n++
+		}
+	}
+	return n
+}
+
+// reconcileEnabledAgents re-enables one installed CLI if the user uninstalled the
+// last remaining enabled CLI locally while other disabled CLIs are still installed.
+func (d *Daemon) reconcileEnabledAgents() {
+	installed := d.installedKinds()
+	if len(installed) == 0 {
+		return
+	}
+	st := d.settings()
+	if d.enabledCountLocked(st.DisabledAgents, installed) > 0 {
+		return
+	}
+	var nextDisabled []pb.Agent
+	for _, a := range st.DisabledAgents {
+		if a != installed[0] {
+			nextDisabled = append(nextDisabled, a)
+		}
+	}
+	st.DisabledAgents = normalizeDisabledAgents(nextDisabled)
+	st.Revision++
+	_, _ = d.saveSettings(st, writeFileAtomic)
 }
 
 // maxApprovalTimeout keeps the timeout below the hook's own, after which
@@ -166,12 +238,46 @@ func (d *Daemon) settingsContext(ctx context.Context) (*pb.DaemonSettings, error
 var maxApprovalTimeout = time.Duration(agent.HookTimeoutSeconds-60) * time.Second
 
 func (d *Daemon) updateSettings(st *pb.DaemonSettings) (settings *pb.DaemonSettings, resultErr error) {
+	return d.updateSettingsReq(&pb.UpdateSettingsRequest{Settings: st})
+}
+
+func (d *Daemon) updateSettingsReq(req *pb.UpdateSettingsRequest) (settings *pb.DaemonSettings, resultErr error) {
 	saving := false
 	defer func() {
 		if !saving && resultErr != nil {
 			resultErr = outcome.FinalError(resultErr)
 		}
 	}()
+	if req == nil || req.Settings == nil {
+		return nil, errors.New("settings are required")
+	}
+
+	d.settingsCommitMu.Lock()
+	defer d.settingsCommitMu.Unlock()
+
+	cur, err := d.settingsContext(context.Background())
+	if err != nil {
+		return nil, err
+	}
+	var st *pb.DaemonSettings
+	if req.ToggleAgent != nil {
+		st = proto.CloneOf(cur)
+		target := resolveKind(req.GetToggleAgent())
+		enabled := req.GetToggleEnabled()
+		var nextDisabled []pb.Agent
+		for _, a := range st.DisabledAgents {
+			if a != target {
+				nextDisabled = append(nextDisabled, a)
+			}
+		}
+		if !enabled {
+			nextDisabled = append(nextDisabled, target)
+		}
+		st.DisabledAgents = normalizeDisabledAgents(nextDisabled)
+	} else {
+		st = proto.CloneOf(req.Settings)
+		st.DisabledAgents = normalizeDisabledAgents(st.DisabledAgents)
+	}
 
 	for _, n := range []int64{st.ImageUploadQuotaBytes} {
 		if n != 0 && (n < 32<<20 || n > 1024<<30) {
@@ -201,14 +307,23 @@ func (d *Daemon) updateSettings(st *pb.DaemonSettings) (settings *pb.DaemonSetti
 			return nil, fmt.Errorf("invalid model %q", def.Model)
 		}
 	}
+	installed := d.installedKinds()
+	if len(installed) > 0 && d.enabledCountLocked(st.DisabledAgents, installed) == 0 {
+		return nil, connect.NewError(connect.CodeFailedPrecondition, errCannotDisableLastAgent)
+	}
+	st.Revision = cur.Revision + 1
 	saving = true
-	return d.saveSettings(st, writeFileAtomic)
+	return d.saveSettingsLocked(st, writeFileAtomic)
 }
 
 // saveSettings commits the file and its in-memory projection together.
 func (d *Daemon) saveSettings(st *pb.DaemonSettings, write func(string, []byte) error) (*pb.DaemonSettings, error) {
 	d.settingsCommitMu.Lock()
 	defer d.settingsCommitMu.Unlock()
+	return d.saveSettingsLocked(st, write)
+}
+
+func (d *Daemon) saveSettingsLocked(st *pb.DaemonSettings, write func(string, []byte) error) (*pb.DaemonSettings, error) {
 	b, err := protojson.Marshal(st)
 	if err != nil {
 		return nil, err

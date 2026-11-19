@@ -58,7 +58,7 @@
               "online": true,
               "meta": {
                 "hostname": "MacBook",
-                "protocolVersion": 16,
+                "protocolVersion": 17,
                 "agents": [{ "agent": "AGENT_CODEX", "defaultMode": "APPROVAL_MODE_ASK" }],
                 "projects": [
                   { "path": "/Users/me/Code/alpha", "ended": 1 },

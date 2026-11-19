@@ -3689,5 +3689,209 @@
       "zh-CN": "source",
       "en": "draft"
     }
+  },
+  {
+    "key": "settings.cli_switches_title",
+    "zh-CN": "启用的 CLI",
+    "en": "Enabled CLIs",
+    "params": {},
+    "notes": "设置在电脑详情页的分组标题，用于按电脑独立开关已安装的 CLI。",
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.cli_switches_keep_one",
+    "zh-CN": "至少保留一个启用",
+    "en": "Keep at least one on",
+    "params": {},
+    "notes": "当一台电脑仅剩 1 个启用 CLI 时，附在版本号后的锁定原因，短句不换行或自动换行。",
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.cli_switches_footer",
+    "zh-CN": "停用的 CLI 不出现在新任务、新定时、额度和用量与速度里；已有会话和历史照常可用。",
+    "en": "Disabled CLIs are hidden from new tasks, schedules, quota, and usage & speed. Existing sessions and history remain available.",
+    "params": {},
+    "notes": "启用的 CLI 分组下方固定说明。",
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.cli_switches_lease_expired_footer",
+    "zh-CN": "远程控制已暂停，在管理端续期后可修改。",
+    "en": "Remote control is paused; renew on the managing device to make changes.",
+    "params": {},
+    "notes": "管理端 72 小时租约过期后，追加在启用的 CLI 分组下方的只读原因。",
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.cli_switches_offline_reason",
+    "zh-CN": "{name} 未连接，显示的是上次的状态",
+    "en": "{name} is offline. Showing the last synced state",
+    "params": {
+      "name": {
+        "type": "string",
+        "example": "MacBook"
+      }
+    },
+    "notes": "电脑离线时在启用的 CLI 分组上方显示的只读原因。",
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.cli_switches_conflict",
+    "zh-CN": "另一台客户端刚刚修改了启用的 CLI，已同步为最新状态",
+    "en": "Another client updated enabled CLIs; synced to the latest state",
+    "params": {},
+    "notes": "并发修改最后一个 CLI 开关撞车或修订冲突回滚后的提示条。",
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.cli_switches_update_error",
+    "zh-CN": "没能更新启用的 CLI：{reason}",
+    "en": "Could not update enabled CLIs: {reason}",
+    "params": {
+      "reason": {
+        "type": "string",
+        "example": "offline"
+      }
+    },
+    "notes": "拨动 CLI 开关因断线或超时失败时显示在分组上方的错误提示条。",
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.cli_switches_a11y_locked",
+    "zh-CN": "{name}，版本 {version}，已开启，不可关闭：至少保留一个启用",
+    "en": "{name}, version {version}, on, locked: keep at least one on",
+    "params": {
+      "name": {
+        "type": "string",
+        "example": "Codex"
+      },
+      "version": {
+        "type": "string",
+        "example": "0.163.0"
+      }
+    },
+    "notes": "最后一个启用 CLI 开关锁定时读屏播报文本。",
+    "platforms": [
+      "web",
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.cli_switches_a11y_row",
+    "zh-CN": "{name}，版本 {version}，{state}",
+    "en": "{name}, version {version}, {state}",
+    "params": {
+      "name": {
+        "type": "string",
+        "example": "Claude Code"
+      },
+      "version": {
+        "type": "string",
+        "example": "2.4.12"
+      },
+      "state": {
+        "type": "string",
+        "example": "已开启"
+      }
+    },
+    "notes": "可切换 CLI 开关整行无障碍读屏文本。",
+    "platforms": [
+      "web",
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.cli_switches_state_on",
+    "zh-CN": "已开启",
+    "en": "on",
+    "params": {},
+    "notes": "读屏开关开启态短词。",
+    "platforms": [
+      "web",
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.cli_switches_state_off",
+    "zh-CN": "已停用",
+    "en": "off",
+    "params": {},
+    "notes": "读屏开关停用态短词。",
+    "platforms": [
+      "web",
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
   }
 ]

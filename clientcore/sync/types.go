@@ -15,7 +15,7 @@ import (
 
 const (
 	// ProtocolVersion must match internal/protocol.Version (and web/android/ios).
-	ProtocolVersion uint32 = 16
+	ProtocolVersion uint32 = 17
 
 	MaxClockSkewMs             int64  = 300_000
 	CommandTTLMs               int64  = 60_000

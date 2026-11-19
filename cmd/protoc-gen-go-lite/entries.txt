@@ -49,3 +49,6 @@ clone: remoteagent.v1.MachineStatus
 clone: remoteagent.v1.ProjectPrefs
 clone: remoteagent.v1.ProjectSettings
 clone: remoteagent.v1.Session
+clone: remoteagent.v1.UsageStatsResponse
+in: remoteagent.v1.UsageStatsResponse
+out: remoteagent.v1.UsageStatsResponse

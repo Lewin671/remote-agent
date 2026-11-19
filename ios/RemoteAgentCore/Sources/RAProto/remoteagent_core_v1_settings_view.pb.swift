@@ -1460,6 +1460,12 @@ public struct PBCliVersionView: Sendable {
   /// Clears the value of `unverifiedLabel`. Subsequent reads from it will return its default value.
   public mutating func clearUnverifiedLabel() {self._unverifiedLabel = nil}
 
+  public var enabled: Bool = false
+
+  public var lockedLastEnabled: Bool = false
+
+  public var saving: Bool = false
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -2071,6 +2077,48 @@ public struct PBMachineSettingsViewModel: @unchecked Sendable {
     set {_uniqueStorage()._loading = newValue}
   }
 
+  public var showCliSwitches: Bool {
+    get {return _storage._showCliSwitches}
+    set {_uniqueStorage()._showCliSwitches = newValue}
+  }
+
+  public var cliSwitchesEditable: Bool {
+    get {return _storage._cliSwitchesEditable}
+    set {_uniqueStorage()._cliSwitchesEditable = newValue}
+  }
+
+  public var cliSwitchesLeaseExpired: Bool {
+    get {return _storage._cliSwitchesLeaseExpired}
+    set {_uniqueStorage()._cliSwitchesLeaseExpired = newValue}
+  }
+
+  public var cliSwitchesDisabledReason: PBCoreText {
+    get {return _storage._cliSwitchesDisabledReason ?? PBCoreText()}
+    set {_uniqueStorage()._cliSwitchesDisabledReason = newValue}
+  }
+  /// Returns true if `cliSwitchesDisabledReason` has been explicitly set.
+  public var hasCliSwitchesDisabledReason: Bool {return _storage._cliSwitchesDisabledReason != nil}
+  /// Clears the value of `cliSwitchesDisabledReason`. Subsequent reads from it will return its default value.
+  public mutating func clearCliSwitchesDisabledReason() {_uniqueStorage()._cliSwitchesDisabledReason = nil}
+
+  public var cliSwitchesConflictBanner: PBCoreText {
+    get {return _storage._cliSwitchesConflictBanner ?? PBCoreText()}
+    set {_uniqueStorage()._cliSwitchesConflictBanner = newValue}
+  }
+  /// Returns true if `cliSwitchesConflictBanner` has been explicitly set.
+  public var hasCliSwitchesConflictBanner: Bool {return _storage._cliSwitchesConflictBanner != nil}
+  /// Clears the value of `cliSwitchesConflictBanner`. Subsequent reads from it will return its default value.
+  public mutating func clearCliSwitchesConflictBanner() {_uniqueStorage()._cliSwitchesConflictBanner = nil}
+
+  public var cliSwitchesFooter: PBCoreText {
+    get {return _storage._cliSwitchesFooter ?? PBCoreText()}
+    set {_uniqueStorage()._cliSwitchesFooter = newValue}
+  }
+  /// Returns true if `cliSwitchesFooter` has been explicitly set.
+  public var hasCliSwitchesFooter: Bool {return _storage._cliSwitchesFooter != nil}
+  /// Clears the value of `cliSwitchesFooter`. Subsequent reads from it will return its default value.
+  public mutating func clearCliSwitchesFooter() {_uniqueStorage()._cliSwitchesFooter = nil}
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -2332,6 +2380,22 @@ public struct PBMachineSettingsOpenEvent: Sendable {
   // methods supported on all messages.
 
   public var machineID: String = String()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public struct PBToggleMachineAgentEvent: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var machineID: String = String()
+
+  public var agent: PBAgent = .unspecified
+
+  public var enabled: Bool = false
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -4408,7 +4472,7 @@ extension PBConnectionGroupView: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
 
 extension PBCliVersionView: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".CliVersionView"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}agent\0\u{1}name\0\u{1}version\0\u{1}verified\0\u{3}unverified_label\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}agent\0\u{1}name\0\u{1}version\0\u{1}verified\0\u{3}unverified_label\0\u{1}enabled\0\u{3}locked_last_enabled\0\u{1}saving\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -4421,6 +4485,9 @@ extension PBCliVersionView: SwiftProtobuf.Message, SwiftProtobuf._MessageImpleme
       case 3: try { try decoder.decodeSingularStringField(value: &self.version) }()
       case 4: try { try decoder.decodeSingularBoolField(value: &self.verified) }()
       case 5: try { try decoder.decodeSingularMessageField(value: &self._unverifiedLabel) }()
+      case 6: try { try decoder.decodeSingularBoolField(value: &self.enabled) }()
+      case 7: try { try decoder.decodeSingularBoolField(value: &self.lockedLastEnabled) }()
+      case 8: try { try decoder.decodeSingularBoolField(value: &self.saving) }()
       default: break
       }
     }
@@ -4446,6 +4513,15 @@ extension PBCliVersionView: SwiftProtobuf.Message, SwiftProtobuf._MessageImpleme
     try { if let v = self._unverifiedLabel {
       try visitor.visitSingularMessageField(value: v, fieldNumber: 5)
     } }()
+    if self.enabled != false {
+      try visitor.visitSingularBoolField(value: self.enabled, fieldNumber: 6)
+    }
+    if self.lockedLastEnabled != false {
+      try visitor.visitSingularBoolField(value: self.lockedLastEnabled, fieldNumber: 7)
+    }
+    if self.saving != false {
+      try visitor.visitSingularBoolField(value: self.saving, fieldNumber: 8)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -4455,6 +4531,9 @@ extension PBCliVersionView: SwiftProtobuf.Message, SwiftProtobuf._MessageImpleme
     if lhs.version != rhs.version {return false}
     if lhs.verified != rhs.verified {return false}
     if lhs._unverifiedLabel != rhs._unverifiedLabel {return false}
+    if lhs.enabled != rhs.enabled {return false}
+    if lhs.lockedLastEnabled != rhs.lockedLastEnabled {return false}
+    if lhs.saving != rhs.saving {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -5185,7 +5264,7 @@ extension PBMachineManagementActionsView: SwiftProtobuf.Message, SwiftProtobuf._
 
 extension PBMachineSettingsViewModel: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".MachineSettingsViewModel"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}machine_id\0\u{1}name\0\u{1}found\0\u{1}member\0\u{1}online\0\u{1}unlinked\0\u{3}protocol_mismatch\0\u{1}editable\0\u{3}offline_or_mismatch_banner\0\u{3}removed_banner\0\u{3}show_status_entry\0\u{3}status_rings\0\u{3}quota_rows\0\u{1}connection\0\u{3}cli_versions\0\u{3}has_unverified_cli\0\u{3}settings_loading\0\u{3}settings_error\0\u{3}save_pending\0\u{3}save_unknown\0\u{3}save_error\0\u{3}available_agents\0\u{3}selected_agent\0\u{3}agent_defaults\0\u{3}approval_timeout_choices\0\u{3}selected_approval_timeout_seconds\0\u{3}idle_close_choices\0\u{3}selected_idle_close_minutes\0\u{3}attachment_storage\0\u{1}projects\0\u{1}management\0\u{1}loading\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}machine_id\0\u{1}name\0\u{1}found\0\u{1}member\0\u{1}online\0\u{1}unlinked\0\u{3}protocol_mismatch\0\u{1}editable\0\u{3}offline_or_mismatch_banner\0\u{3}removed_banner\0\u{3}show_status_entry\0\u{3}status_rings\0\u{3}quota_rows\0\u{1}connection\0\u{3}cli_versions\0\u{3}has_unverified_cli\0\u{3}settings_loading\0\u{3}settings_error\0\u{3}save_pending\0\u{3}save_unknown\0\u{3}save_error\0\u{3}available_agents\0\u{3}selected_agent\0\u{3}agent_defaults\0\u{3}approval_timeout_choices\0\u{3}selected_approval_timeout_seconds\0\u{3}idle_close_choices\0\u{3}selected_idle_close_minutes\0\u{3}attachment_storage\0\u{1}projects\0\u{1}management\0\u{1}loading\0\u{3}show_cli_switches\0\u{3}cli_switches_editable\0\u{3}cli_switches_lease_expired\0\u{3}cli_switches_disabled_reason\0\u{3}cli_switches_conflict_banner\0\u{3}cli_switches_footer\0")
 
   fileprivate class _StorageClass {
     var _machineID: String = String()
@@ -5220,6 +5299,12 @@ extension PBMachineSettingsViewModel: SwiftProtobuf.Message, SwiftProtobuf._Mess
     var _projects: [PBMachineProjectView] = []
     var _management: PBMachineManagementActionsView? = nil
     var _loading: Bool = false
+    var _showCliSwitches: Bool = false
+    var _cliSwitchesEditable: Bool = false
+    var _cliSwitchesLeaseExpired: Bool = false
+    var _cliSwitchesDisabledReason: PBCoreText? = nil
+    var _cliSwitchesConflictBanner: PBCoreText? = nil
+    var _cliSwitchesFooter: PBCoreText? = nil
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -5262,6 +5347,12 @@ extension PBMachineSettingsViewModel: SwiftProtobuf.Message, SwiftProtobuf._Mess
       _projects = source._projects
       _management = source._management
       _loading = source._loading
+      _showCliSwitches = source._showCliSwitches
+      _cliSwitchesEditable = source._cliSwitchesEditable
+      _cliSwitchesLeaseExpired = source._cliSwitchesLeaseExpired
+      _cliSwitchesDisabledReason = source._cliSwitchesDisabledReason
+      _cliSwitchesConflictBanner = source._cliSwitchesConflictBanner
+      _cliSwitchesFooter = source._cliSwitchesFooter
     }
   }
 
@@ -5312,6 +5403,12 @@ extension PBMachineSettingsViewModel: SwiftProtobuf.Message, SwiftProtobuf._Mess
         case 30: try { try decoder.decodeRepeatedMessageField(value: &_storage._projects) }()
         case 31: try { try decoder.decodeSingularMessageField(value: &_storage._management) }()
         case 32: try { try decoder.decodeSingularBoolField(value: &_storage._loading) }()
+        case 33: try { try decoder.decodeSingularBoolField(value: &_storage._showCliSwitches) }()
+        case 34: try { try decoder.decodeSingularBoolField(value: &_storage._cliSwitchesEditable) }()
+        case 35: try { try decoder.decodeSingularBoolField(value: &_storage._cliSwitchesLeaseExpired) }()
+        case 36: try { try decoder.decodeSingularMessageField(value: &_storage._cliSwitchesDisabledReason) }()
+        case 37: try { try decoder.decodeSingularMessageField(value: &_storage._cliSwitchesConflictBanner) }()
+        case 38: try { try decoder.decodeSingularMessageField(value: &_storage._cliSwitchesFooter) }()
         default: break
         }
       }
@@ -5420,6 +5517,24 @@ extension PBMachineSettingsViewModel: SwiftProtobuf.Message, SwiftProtobuf._Mess
       if _storage._loading != false {
         try visitor.visitSingularBoolField(value: _storage._loading, fieldNumber: 32)
       }
+      if _storage._showCliSwitches != false {
+        try visitor.visitSingularBoolField(value: _storage._showCliSwitches, fieldNumber: 33)
+      }
+      if _storage._cliSwitchesEditable != false {
+        try visitor.visitSingularBoolField(value: _storage._cliSwitchesEditable, fieldNumber: 34)
+      }
+      if _storage._cliSwitchesLeaseExpired != false {
+        try visitor.visitSingularBoolField(value: _storage._cliSwitchesLeaseExpired, fieldNumber: 35)
+      }
+      try { if let v = _storage._cliSwitchesDisabledReason {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 36)
+      } }()
+      try { if let v = _storage._cliSwitchesConflictBanner {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 37)
+      } }()
+      try { if let v = _storage._cliSwitchesFooter {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 38)
+      } }()
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -5461,6 +5576,12 @@ extension PBMachineSettingsViewModel: SwiftProtobuf.Message, SwiftProtobuf._Mess
         if _storage._projects != rhs_storage._projects {return false}
         if _storage._management != rhs_storage._management {return false}
         if _storage._loading != rhs_storage._loading {return false}
+        if _storage._showCliSwitches != rhs_storage._showCliSwitches {return false}
+        if _storage._cliSwitchesEditable != rhs_storage._cliSwitchesEditable {return false}
+        if _storage._cliSwitchesLeaseExpired != rhs_storage._cliSwitchesLeaseExpired {return false}
+        if _storage._cliSwitchesDisabledReason != rhs_storage._cliSwitchesDisabledReason {return false}
+        if _storage._cliSwitchesConflictBanner != rhs_storage._cliSwitchesConflictBanner {return false}
+        if _storage._cliSwitchesFooter != rhs_storage._cliSwitchesFooter {return false}
         return true
       }
       if !storagesAreEqual {return false}
@@ -5908,6 +6029,46 @@ extension PBMachineSettingsOpenEvent: SwiftProtobuf.Message, SwiftProtobuf._Mess
 
   public static func ==(lhs: PBMachineSettingsOpenEvent, rhs: PBMachineSettingsOpenEvent) -> Bool {
     if lhs.machineID != rhs.machineID {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension PBToggleMachineAgentEvent: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".ToggleMachineAgentEvent"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}machine_id\0\u{1}agent\0\u{1}enabled\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.machineID) }()
+      case 2: try { try decoder.decodeSingularEnumField(value: &self.agent) }()
+      case 3: try { try decoder.decodeSingularBoolField(value: &self.enabled) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.machineID.isEmpty {
+      try visitor.visitSingularStringField(value: self.machineID, fieldNumber: 1)
+    }
+    if self.agent != .unspecified {
+      try visitor.visitSingularEnumField(value: self.agent, fieldNumber: 2)
+    }
+    if self.enabled != false {
+      try visitor.visitSingularBoolField(value: self.enabled, fieldNumber: 3)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: PBToggleMachineAgentEvent, rhs: PBToggleMachineAgentEvent) -> Bool {
+    if lhs.machineID != rhs.machineID {return false}
+    if lhs.agent != rhs.agent {return false}
+    if lhs.enabled != rhs.enabled {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

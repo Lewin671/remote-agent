@@ -5,6 +5,7 @@ import (
 
 	"github.com/Lewin671/remote-agent/clientcore/domain/lists"
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
+	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/clientcore/screens"
 	"github.com/Lewin671/remote-agent/clientcore/text"
 )
@@ -46,6 +47,37 @@ func (e *Engine) accountControlLost() bool {
 		return true
 	}
 	return e.security.LeaseEndMs > 0 && e.nowMs > 0 && e.nowMs >= e.security.LeaseEndMs
+}
+
+// LeaseExpired reports whether the client's remote-control lease has expired.
+func (e *Engine) LeaseExpired() bool {
+	return e.security.Loaded && e.security.LeaseEndMs > 0 && e.nowMs > 0 && e.nowMs >= e.security.LeaseEndMs
+}
+
+// ApplyMachineSettingsSnapshot updates a machine's in-memory DisabledAgents and SettingsRevision
+// immediately from an authoritative GetSettings/UpdateSettings response so all screens converge
+// without waiting for relay stream push.
+func (e *Engine) ApplyMachineSettingsSnapshot(machineID string, st *v1.DaemonSettings) bool {
+	if e == nil || machineID == "" || st == nil {
+		return false
+	}
+	m := e.machines[machineID]
+	if m == nil || m.Meta == nil {
+		return false
+	}
+	if st.Revision < m.Meta.SettingsRevision {
+		return false
+	}
+	next := make([]v1.Agent, 0, len(st.DisabledAgents))
+	for _, a := range st.DisabledAgents {
+		if a != v1.Agent_AGENT_UNSPECIFIED {
+			next = append(next, a)
+		}
+	}
+	changed := m.Meta.SettingsRevision != st.Revision || !slices.Equal(m.Meta.DisabledAgents, next)
+	m.Meta.DisabledAgents = next
+	m.Meta.SettingsRevision = st.Revision
+	return changed
 }
 
 func (e *Engine) accountClockSkewed() bool {

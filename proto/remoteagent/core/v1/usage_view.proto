@@ -1,0 +1,104 @@
+syntax = "proto3";
+
+package remoteagent.core.v1;
+
+import "remoteagent/core/v1/text.proto";
+import "remoteagent/v1/event.proto";
+import "remoteagent/v1/local.proto";
+
+enum UsageMetricTab {
+  USAGE_METRIC_TAB_UNSPECIFIED = 0;
+  USAGE_METRIC_TAB_TOKENS = 1;
+  USAGE_METRIC_TAB_CACHE_HIT = 2;
+  USAGE_METRIC_TAB_OUTPUT_SPEED = 3;
+  USAGE_METRIC_TAB_TTFT = 4;
+}
+
+message UsageScreenRequest {
+  string machine_id = 1;
+  remoteagent.v1.Agent focus_agent = 2;
+  string focus_model = 3;
+  remoteagent.v1.UsageRangePreset preset = 4;
+  int64 custom_start_ms = 5;
+  int64 custom_end_ms = 6;
+  UsageMetricTab metric = 7;
+}
+
+message UsageSeriesView {
+  remoteagent.v1.Agent agent = 1;
+  string agent_name = 2;
+  string model = 3;
+  string series_key = 4;
+  int32 pattern_index = 5;
+  bool focused = 6;
+  bool cache_write_supported = 7;
+  bool few_speed_samples = 8;
+  remoteagent.v1.UsagePeriodSummary current = 9;
+  remoteagent.v1.UsagePeriodSummary previous = 10;
+  bool has_tokens_delta = 11;
+  double tokens_delta_percent = 12;
+  bool has_cache_hit_delta = 13;
+  double cache_hit_delta_points = 14;
+  bool has_speed_delta = 15;
+  double speed_delta_percent = 16;
+  bool has_ttft_delta = 17;
+  double ttft_delta_percent = 18;
+  bool previous_backfilling = 19;
+  repeated remoteagent.v1.UsageBucketPoint buckets = 20;
+}
+
+message UsageViewModel {
+  string machine_id = 1;
+  string machine_name = 2;
+  bool found = 3;
+  bool supported = 4;
+  bool online = 5;
+  bool loading = 6;
+  Text error_text = 7;
+  bool cached_offline = 8;
+  int64 cached_at_ms = 9;
+  bool backfilling = 10;
+  int32 backfill_scanned_days = 11;
+  int32 backfill_total_days = 12;
+  bool previous_period_backfilling = 13;
+  remoteagent.v1.UsageRangePreset preset = 14;
+  remoteagent.v1.UsageBucketGranularity granularity = 15;
+  int64 start_ms = 16;
+  int64 end_ms = 17;
+  UsageMetricTab metric = 18;
+  remoteagent.v1.Agent focus_agent = 19;
+  string focus_model = 20;
+  repeated remoteagent.v1.UsageAgentSource sources = 21;
+  repeated UsageSeriesView series = 22;
+  bool has_any_usage = 23;
+  bool has_any_speed = 24;
+  bool show_cache_write_footnote = 25;
+  Text unsupported_footnote = 26;
+}
+
+// ---- Events & Effects (Usage & Speed) ----
+
+message UsageScreenOpenEvent {
+  string machine_id = 1;
+  remoteagent.v1.UsageRangePreset preset = 2;
+  int64 custom_start_ms = 3;
+  int64 custom_end_ms = 4;
+  string timezone = 5;
+  int32 tz_offset_minutes = 6;
+  repeated int64 bucket_bounds_ms = 7;
+  int64 prev_start_ms = 8;
+}
+
+message UsageScreenRetryEvent {
+  string machine_id = 1;
+}
+
+message UsageCacheLoadedEvent {
+  string machine_id = 1;
+  remoteagent.v1.UsageStatsResponse snapshot = 2;
+}
+
+message UsageCacheWriteEffect {
+  string machine_id = 1;
+  remoteagent.v1.UsageStatsResponse snapshot = 2;
+}

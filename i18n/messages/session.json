@@ -2387,5 +2387,127 @@
       "zh-CN": "source"
     },
     "zh-CN": "视图"
+  },
+  {
+    "en": "Usage & speed",
+    "key": "session.usage_entry_title",
+    "notes": "会话设置（模型与上下文）卡片内用量与速度入口行标题。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "用量与速度"
+  },
+  {
+    "en": "No records",
+    "key": "session.usage_entry_no_data",
+    "notes": "会话设置用量与速度入口行当该模型尚无记录时的右值文案。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "暂无记录"
+  },
+  {
+    "en": "Usage, cache hit rate, and speed are recorded after conversations",
+    "key": "session.usage_entry_empty_hint",
+    "notes": "会话设置用量与速度入口行无记录时的副行说明。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "对话后自动统计消耗、缓存与速度"
+  },
+  {
+    "en": "{agent} usage and speed telemetry unavailable",
+    "key": "session.usage_entry_unavailable",
+    "notes": "当前会话所在 CLI 暂无用量来源（如 Antigravity）时的副行说明。",
+    "params": {
+      "agent": {
+        "example": "Antigravity",
+        "type": "string"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "{agent} 暂不支持统计用量与速度"
+  },
+  {
+    "en": "Last record · {time} (computer offline)",
+    "key": "session.usage_entry_offline_cached",
+    "notes": "电脑离线但有本地用量缓存时，会话设置入口行副行。",
+    "params": {
+      "time": {
+        "example": "21:40",
+        "type": "string"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "上次记录 · {time}（电脑不在线）"
+  },
+  {
+    "en": "Computer offline",
+    "key": "session.usage_entry_offline_none",
+    "notes": "电脑离线且无本地用量缓存时，会话设置入口行副行。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "电脑不在线"
+  },
+  {
+    "en": "Read failed",
+    "key": "session.usage_entry_read_failed",
+    "notes": "会话设置入口读取用量失败时的副行红字。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "读取失败"
   }
 ]
