@@ -323,6 +323,7 @@ private class DirectBridgeDaemon(
     @Volatile var advertiseEventPush = false
     @Volatile var dropDirectOnNextPut = false
     var onDropDirect: () -> Unit = {}
+    var beforeDirectReply: (suspend (Command) -> Unit)? = null
 
     private var daemonSession: DirectSession? = null
     val paths = java.util.concurrent.ConcurrentHashMap<Int, DirectChannel>()
@@ -470,6 +471,7 @@ private class DirectBridgeDaemon(
                         val proof = res.toBuilder().setRequestKeyHash(ByteString.copyFrom(binding.first)).setPayloadHash(ByteString.copyFrom(binding.second)).setOutcome("executed").setReason("completed").setResultAvailable(true).build()
                         val rEnv = seal(Header.newBuilder().setKind(PayloadKind.PAYLOAD_KIND_COMMAND_RESULT).setMachineId(machine.deviceId).setSessionId(h.sessionId).setRequestId(h.requestId).setSender(machine.deviceId).build(), proof.toByteArray())
                         CoroutineScope(Dispatchers.IO).launch {
+                            beforeDirectReply?.invoke(cmd)
                             paths[use]?.write(rEnv.toByteArray()) {}
                         }
                     },
@@ -1511,6 +1513,8 @@ class DirectTransportTest {
                 stunUrls = emptyList(),
             )
             val id = daemonAccount.deviceId
+            val relayDispatched = CompletableDeferred<Unit>()
+            val relayBlocked = CompletableDeferred<Unit>()
             try {
                 remote.start()
                 remote.state.first { it.conn == ConnState.ONLINE && id in it.machines }
@@ -1519,7 +1523,11 @@ class DirectTransportTest {
 
                 val relayEnvelopes = CopyOnWriteArrayList<ByteArray>()
                 val relayCancelled = CompletableDeferred<Unit>()
-                val relayBlocked = CompletableDeferred<Unit>()
+                daemon.beforeDirectReply = { c ->
+                    if (c.hasSend() && c.send.text == "dual-remote-send") {
+                        relayDispatched.await()
+                    }
+                }
 
                 val origPath = remote.deviceLink.router.path
                 remote.deviceLink = Link(
@@ -1530,6 +1538,7 @@ class DirectTransportTest {
                             override suspend fun prepare(prior: Boolean) {}
                             override suspend fun send(machineId: String, command: Envelope): io.github.lewin671.remoteagent.proto.ForwardResponse {
                                 relayEnvelopes += command.toByteArray()
+                                relayDispatched.complete(Unit)
                                 try {
                                     relayBlocked.await()
                                 } catch (c: kotlinx.coroutines.CancellationException) {
@@ -1572,6 +1581,8 @@ class DirectTransportTest {
                 relayCancelled.await()
                 relayBlocked.complete(Unit)
             } finally {
+                relayDispatched.complete(Unit)
+                relayBlocked.complete(Unit)
                 remote.close()
                 daemon.close()
             }
