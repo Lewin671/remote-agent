@@ -236,12 +236,14 @@ func TestCliSwitchesToggleConflictAndDraftFallback(t *testing.T) {
 	}
 	var hasDisabledNotice bool
 	for _, n := range ns.GetNotices() {
-		if n.Kind == corev1.NoticeKind_NOTICE_KIND_AGENT_DISABLED_FALLBACK && n.Action == corev1.NoticeActionKind_NOTICE_ACTION_KIND_ENABLE_AGENT {
+		if n.Kind == corev1.NoticeKind_NOTICE_KIND_AGENT_DISABLED_FALLBACK &&
+			n.Action == corev1.NoticeActionKind_NOTICE_ACTION_KIND_ENABLE_AGENT &&
+			n.TargetAgent == v1.Agent_AGENT_CLAUDE {
 			hasDisabledNotice = true
 		}
 	}
 	if !hasDisabledNotice {
-		t.Fatalf("expected NOTICE_KIND_AGENT_DISABLED_FALLBACK in notices, got %+v", ns.GetNotices())
+		t.Fatalf("expected NOTICE_KIND_AGENT_DISABLED_FALLBACK with TargetAgent=AGENT_CLAUDE in notices, got %+v", ns.GetNotices())
 	}
 
 	// Quota screen excludes disabled Claude.
@@ -673,5 +675,48 @@ func TestAntigravityUsageWithoutSpeedInUsageMachineAndSession(t *testing.T) {
 	ue := sessVM.GetSession().GetActions().GetUsageEntry()
 	if ue == nil || ue.GetSourceUnavailable() || !ue.GetHasData() || ue.GetTotalTokens() != 110_000 || !ue.GetHasCacheHit() || ue.GetHasSpeed() {
 		t.Fatalf("unexpected Antigravity Session UsageEntry: %+v", ue)
+	}
+}
+
+func TestMachineSettingsOpenPrefetchesAllAgentsAndUsage(t *testing.T) {
+	c := New()
+	defer c.Close()
+	seedDualCLIMachine(t, c)
+
+	batch := c.Dispatch(&corev1.Event{
+		NowMs: 1_791_633_600_050,
+		Event: &corev1.Event_MachineSettingsOpen{
+			MachineSettingsOpen: &corev1.MachineSettingsOpenEvent{MachineId: "m-1"},
+		},
+	})
+
+	listModelsAgents := map[v1.Agent]bool{}
+	var gotSettings, gotUsage7d bool
+	for _, eff := range batch.Effects {
+		dc := eff.GetDispatchCommand()
+		if dc == nil {
+			continue
+		}
+		var cmd v1.Command
+		if err := cmd.Unmarshal(dc.CommandBytes); err != nil {
+			t.Fatalf("unmarshal command: %v", err)
+		}
+		if lm := cmd.GetListModels(); lm != nil {
+			listModelsAgents[lm.Agent] = true
+		}
+		if cmd.GetGetSettings() != nil {
+			gotSettings = true
+		}
+		if u := cmd.GetGetUsageStats(); u != nil && u.Preset == v1.UsageRangePreset_USAGE_RANGE_PRESET_SEVEN_DAYS {
+			gotUsage7d = true
+		}
+	}
+	for _, ag := range []v1.Agent{v1.Agent_AGENT_CODEX, v1.Agent_AGENT_CLAUDE, v1.Agent_AGENT_ANTIGRAVITY} {
+		if !listModelsAgents[ag] {
+			t.Fatalf("expected MachineSettingsOpen to prefetch ListModels for %v, got %+v", ag, listModelsAgents)
+		}
+	}
+	if !gotSettings || !gotUsage7d {
+		t.Fatalf("expected GetSettings (%v) and 7d GetUsageStats (%v)", gotSettings, gotUsage7d)
 	}
 }

@@ -138,4 +138,15 @@ public interface DevicesViewModelOrBuilder extends
    * @return The emptyComputersText.
    */
   io.github.lewin671.remoteagent.core.proto.Text getEmptyComputersText();
+
+  /**
+   * <code>.remoteagent.core.v1.Text client_count_text = 14 [json_name = "clientCountText"];</code>
+   * @return Whether the clientCountText field is set.
+   */
+  boolean hasClientCountText();
+  /**
+   * <code>.remoteagent.core.v1.Text client_count_text = 14 [json_name = "clientCountText"];</code>
+   * @return The clientCountText.
+   */
+  io.github.lewin671.remoteagent.core.proto.Text getClientCountText();
 }

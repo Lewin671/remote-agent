@@ -376,6 +376,80 @@ public  final class NotificationsView extends
 
   }
 
+  public static final int SUMMARY_TEXT_FIELD_NUMBER = 11;
+  private io.github.lewin671.remoteagent.core.proto.Text summaryText_;
+  /**
+   * <code>.remoteagent.core.v1.Text summary_text = 11 [json_name = "summaryText"];</code>
+   */
+  @java.lang.Override
+  public boolean hasSummaryText() {
+    return ((bitField0_ & 0x00000004) != 0);
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text summary_text = 11 [json_name = "summaryText"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.Text getSummaryText() {
+    return summaryText_ == null ? io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance() : summaryText_;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text summary_text = 11 [json_name = "summaryText"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setSummaryText(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    summaryText_ = value;
+    bitField0_ |= 0x00000004;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text summary_text = 11 [json_name = "summaryText"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeSummaryText(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    if (summaryText_ != null &&
+        summaryText_ != io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance()) {
+      summaryText_ =
+        io.github.lewin671.remoteagent.core.proto.Text.newBuilder(summaryText_).mergeFrom(value).buildPartial();
+    } else {
+      summaryText_ = value;
+    }
+    bitField0_ |= 0x00000004;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text summary_text = 11 [json_name = "summaryText"];</code>
+   */
+  private void clearSummaryText() {
+    summaryText_ = null;
+    bitField0_ = (bitField0_ & ~0x00000004);
+  }
+
+  public static final int SUMMARY_WARN_FIELD_NUMBER = 12;
+  private boolean summaryWarn_;
+  /**
+   * <code>bool summary_warn = 12 [json_name = "summaryWarn"];</code>
+   * @return The summaryWarn.
+   */
+  @java.lang.Override
+  public boolean getSummaryWarn() {
+    return summaryWarn_;
+  }
+  /**
+   * <code>bool summary_warn = 12 [json_name = "summaryWarn"];</code>
+   * @param value The summaryWarn to set.
+   */
+  private void setSummaryWarn(boolean value) {
+    
+    summaryWarn_ = value;
+  }
+  /**
+   * <code>bool summary_warn = 12 [json_name = "summaryWarn"];</code>
+   */
+  private void clearSummaryWarn() {
+
+    summaryWarn_ = false;
+  }
+
   public static io.github.lewin671.remoteagent.core.proto.NotificationsView parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -848,6 +922,81 @@ public  final class NotificationsView extends
       return this;
     }
 
+    /**
+     * <code>.remoteagent.core.v1.Text summary_text = 11 [json_name = "summaryText"];</code>
+     */
+    @java.lang.Override
+    public boolean hasSummaryText() {
+      return instance.hasSummaryText();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text summary_text = 11 [json_name = "summaryText"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.Text getSummaryText() {
+      return instance.getSummaryText();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text summary_text = 11 [json_name = "summaryText"];</code>
+     */
+    public Builder setSummaryText(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.setSummaryText(value);
+      return this;
+      }
+    /**
+     * <code>.remoteagent.core.v1.Text summary_text = 11 [json_name = "summaryText"];</code>
+     */
+    public Builder setSummaryText(
+        io.github.lewin671.remoteagent.core.proto.Text.Builder builderForValue) {
+      copyOnWrite();
+      instance.setSummaryText(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text summary_text = 11 [json_name = "summaryText"];</code>
+     */
+    public Builder mergeSummaryText(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.mergeSummaryText(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text summary_text = 11 [json_name = "summaryText"];</code>
+     */
+    public Builder clearSummaryText() {  copyOnWrite();
+      instance.clearSummaryText();
+      return this;
+    }
+
+    /**
+     * <code>bool summary_warn = 12 [json_name = "summaryWarn"];</code>
+     * @return The summaryWarn.
+     */
+    @java.lang.Override
+    public boolean getSummaryWarn() {
+      return instance.getSummaryWarn();
+    }
+    /**
+     * <code>bool summary_warn = 12 [json_name = "summaryWarn"];</code>
+     * @param value The summaryWarn to set.
+     * @return This builder for chaining.
+     */
+    public Builder setSummaryWarn(boolean value) {
+      copyOnWrite();
+      instance.setSummaryWarn(value);
+      return this;
+    }
+    /**
+     * <code>bool summary_warn = 12 [json_name = "summaryWarn"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearSummaryWarn() {
+      copyOnWrite();
+      instance.clearSummaryWarn();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.NotificationsView)
   }
   @java.lang.Override
@@ -875,10 +1024,13 @@ public  final class NotificationsView extends
             "statusText_",
             "hintText_",
             "errorDetail_",
+            "summaryText_",
+            "summaryWarn_",
           };
           java.lang.String info =
-              "\u0000\n\u0000\u0001\u0001\n\n\u0000\u0000\u0000\u0001\u0007\u0002\f\u0003\f\u0004" +
-              "\u0007\u0005\u0007\u0006\u0007\u0007\u0007\b\u1009\u0000\t\u1009\u0001\n\u0208";
+              "\u0000\f\u0000\u0001\u0001\f\f\u0000\u0000\u0000\u0001\u0007\u0002\f\u0003\f\u0004" +
+              "\u0007\u0005\u0007\u0006\u0007\u0007\u0007\b\u1009\u0000\t\u1009\u0001\n\u0208\u000b" +
+              "\u1009\u0002\f\u0007";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

@@ -432,6 +432,11 @@ public struct PBCoreNewSessionNoticeView: @unchecked Sendable {
   /// Clears the value of `draftNoneText`. Subsequent reads from it will return its default value.
   public mutating func clearDraftNoneText() {_uniqueStorage()._draftNoneText = nil}
 
+  public var targetAgent: PBAgent {
+    get {return _storage._targetAgent}
+    set {_uniqueStorage()._targetAgent = newValue}
+  }
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -1002,7 +1007,7 @@ extension PBCoreOfflineMachineChoiceView: SwiftProtobuf.Message, SwiftProtobuf._
 
 extension PBCoreNewSessionNoticeView: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".NewSessionNoticeView"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}kind\0\u{1}severity\0\u{1}text\0\u{1}action\0\u{3}target_machine_id\0\u{3}has_draft_choices\0\u{3}draft_title\0\u{3}draft_subtitle\0\u{3}draft_choices\0\u{3}draft_none_text\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}kind\0\u{1}severity\0\u{1}text\0\u{1}action\0\u{3}target_machine_id\0\u{3}has_draft_choices\0\u{3}draft_title\0\u{3}draft_subtitle\0\u{3}draft_choices\0\u{3}draft_none_text\0\u{3}target_agent\0")
 
   fileprivate class _StorageClass {
     var _kind: PBCoreNoticeKind = .unspecified
@@ -1015,6 +1020,7 @@ extension PBCoreNewSessionNoticeView: SwiftProtobuf.Message, SwiftProtobuf._Mess
     var _draftSubtitle: PBCoreText? = nil
     var _draftChoices: [PBCoreOfflineMachineChoiceView] = []
     var _draftNoneText: PBCoreText? = nil
+    var _targetAgent: PBAgent = .unspecified
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -1035,6 +1041,7 @@ extension PBCoreNewSessionNoticeView: SwiftProtobuf.Message, SwiftProtobuf._Mess
       _draftSubtitle = source._draftSubtitle
       _draftChoices = source._draftChoices
       _draftNoneText = source._draftNoneText
+      _targetAgent = source._targetAgent
     }
   }
 
@@ -1063,6 +1070,7 @@ extension PBCoreNewSessionNoticeView: SwiftProtobuf.Message, SwiftProtobuf._Mess
         case 8: try { try decoder.decodeSingularMessageField(value: &_storage._draftSubtitle) }()
         case 9: try { try decoder.decodeRepeatedMessageField(value: &_storage._draftChoices) }()
         case 10: try { try decoder.decodeSingularMessageField(value: &_storage._draftNoneText) }()
+        case 11: try { try decoder.decodeSingularEnumField(value: &_storage._targetAgent) }()
         default: break
         }
       }
@@ -1105,6 +1113,9 @@ extension PBCoreNewSessionNoticeView: SwiftProtobuf.Message, SwiftProtobuf._Mess
       try { if let v = _storage._draftNoneText {
         try visitor.visitSingularMessageField(value: v, fieldNumber: 10)
       } }()
+      if _storage._targetAgent != .unspecified {
+        try visitor.visitSingularEnumField(value: _storage._targetAgent, fieldNumber: 11)
+      }
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -1124,6 +1135,7 @@ extension PBCoreNewSessionNoticeView: SwiftProtobuf.Message, SwiftProtobuf._Mess
         if _storage._draftSubtitle != rhs_storage._draftSubtitle {return false}
         if _storage._draftChoices != rhs_storage._draftChoices {return false}
         if _storage._draftNoneText != rhs_storage._draftNoneText {return false}
+        if _storage._targetAgent != rhs_storage._targetAgent {return false}
         return true
       }
       if !storagesAreEqual {return false}

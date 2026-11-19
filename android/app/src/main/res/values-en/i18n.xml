@@ -882,6 +882,8 @@
         <item quantity="other">"%1$d projects"</item>
     </plurals>
     <string name="projects_directory_failed">"Could not read this folder: %1$s"</string>
+    <string name="projects_filter_machine_subtitle">"Projects on %1$s"</string>
+    <string name="projects_filter_show_all" formatted="false">"Show all projects"</string>
     <string name="projects_ios_expanded" formatted="false">"Expanded"</string>
     <plurals name="projects_live_count">
         <item quantity="one">"%1$d in progress"</item>
@@ -1827,6 +1829,10 @@
     <string name="settings_about" formatted="false">"About"</string>
     <string name="settings_account" formatted="false">"Account"</string>
     <string name="settings_account_quota" formatted="false">"Account quota"</string>
+    <string name="settings_account_security_title" formatted="false">"Account security"</string>
+    <string name="settings_add_device_footer_hint">"To add a computer or client, open Settings › Add device on the managing client (%1$s)."</string>
+    <string name="settings_add_device_item" formatted="false">"Add device"</string>
+    <string name="settings_add_first_computer" formatted="false">"Add first computer"</string>
     <string name="settings_added" formatted="false">"Added"</string>
     <string name="settings_all_clients" formatted="false">"All clients"</string>
     <string name="settings_all_devices" formatted="false">"All devices"</string>
@@ -1928,6 +1934,14 @@
     <string name="settings_clear_reclaimable_attachments_and_cache" formatted="false">"Clear reclaimable attachments and cache?"</string>
     <string name="settings_clear_settings" formatted="false">"Clear"</string>
     <string name="settings_clears_reclaimable_originals_previews_and_unsynced_large_image_cache" formatted="false">"Clears reclaimable originals, previews, and unsynced large image cache. Queued and active originals, session files, and history remain; unsynced large images will show only previews."</string>
+    <string name="settings_cli_disabled" formatted="false">"Disabled"</string>
+    <string name="settings_cli_disabled_explanation" formatted="false">"When disabled, hidden from new tasks, schedules, quota, and usage &amp; speed; earlier sessions and history stay available."</string>
+    <string name="settings_cli_enable_on_computer" formatted="false">"Enable on this computer"</string>
+    <string name="settings_cli_installed_version" formatted="false">"Installed version"</string>
+    <string name="settings_cli_new_project_defaults_footer" formatted="false">"Used when a new project starts its first session; existing projects keep their last model and mode."</string>
+    <string name="settings_cli_sheet_effort" formatted="false">"Reasoning effort"</string>
+    <string name="settings_cli_sheet_mode" formatted="false">"Approval mode"</string>
+    <string name="settings_cli_sheet_model" formatted="false">"Model"</string>
     <string name="settings_cli_switches_a11y_locked">"%1$s, version %2$s, on, locked: keep at least one on"</string>
     <string name="settings_cli_switches_a11y_row">"%1$s, version %3$s, %2$s"</string>
     <string name="settings_cli_switches_conflict" formatted="false">"Another client updated enabled CLIs; synced to the latest state"</string>
@@ -1939,9 +1953,22 @@
     <string name="settings_cli_switches_state_on" formatted="false">"on"</string>
     <string name="settings_cli_switches_title" formatted="false">"Enabled CLIs"</string>
     <string name="settings_cli_switches_update_error">"Could not update enabled CLIs: %1$s"</string>
+    <string name="settings_cli_unverified_badge" formatted="false">"Unverified"</string>
+    <string name="settings_cli_unverified_short" formatted="false">"Unverified"</string>
     <string name="settings_cli_version">"%1$s version"</string>
     <string name="settings_client_name" formatted="false">"Client name"</string>
+    <string name="settings_clients_add_client" formatted="false">"Add client"</string>
     <string name="settings_clients_control_sessions" formatted="false">"Clients · Control sessions"</string>
+    <string name="settings_clients_count">"%1$d"</string>
+    <string name="settings_clients_footer_redesign" formatted="false">"Times on the right show last use, not active viewing. Tap this device to rename it; computers are managed on Settings home."</string>
+    <string name="settings_clients_group_paired" formatted="false">"Paired clients"</string>
+    <string name="settings_clients_pairing_incomplete_badge" formatted="false">"Pending"</string>
+    <string name="settings_clients_pairing_incomplete_desc" formatted="false">"Waiting for pattern verification and approval"</string>
+    <string name="settings_clients_summary_pending">"%1$d · %2$d pending"</string>
+    <string name="settings_clients_summary_pending_only">"%1$d pending"</string>
+    <string name="settings_clients_summary_self_only" formatted="false">"This device only"</string>
+    <string name="settings_clients_summary_with_others">"%1$d including this"</string>
+    <string name="settings_clients_title" formatted="false">"Clients"</string>
     <string name="settings_computer" formatted="false">"Computer"</string>
     <string name="settings_computer_offline_showing_the_last_reading" formatted="false">"Computer offline. Showing the last reading."</string>
     <string name="settings_computer_settings_offline">"%1$s is offline. Its settings are unavailable for now."</string>
@@ -1949,23 +1976,41 @@
     <string name="settings_could_not_download_retry_later" formatted="false">"Could not download. Retry later."</string>
     <string name="settings_could_not_read_the_device_list" formatted="false">"Could not read the device list"</string>
     <string name="settings_current" formatted="false">"Current"</string>
+    <string name="settings_daemon_protocol_tag">"daemon v%1$d"</string>
     <string name="settings_dark" formatted="false">"Dark"</string>
     <string name="settings_default" formatted="false">" (default)"</string>
+    <string name="settings_delete_computer_records_ellipsis" formatted="false">"Delete computer records…"</string>
     <string name="settings_details" formatted="false">"Details"</string>
     <string name="settings_device_id" formatted="false">"Device ID"</string>
     <string name="settings_device_not_found" formatted="false">"Device not found"</string>
     <string name="settings_devices" formatted="false">"Devices"</string>
+    <string name="settings_empty_computers_authority_body" formatted="false">"Generate a pairing code and run remote-agent account join in your computer\'s terminal."</string>
+    <string name="settings_empty_computers_member_body">"Open Settings › Add device on the managing client (%1$s) to add a computer."</string>
+    <string name="settings_empty_computers_title" formatted="false">"No computers yet"</string>
     <string name="settings_enable" formatted="false">"Enable"</string>
     <string name="settings_enable_security_notifications" formatted="false">"Enable security notifications"</string>
     <string name="settings_enabled" formatted="false">"Enabled"</string>
     <string name="settings_exit_and_delete_local_keys" formatted="false">"Exit and delete local keys…"</string>
     <string name="settings_follow_configuration">"Follow %1$s configuration"</string>
+    <string name="settings_header_subtitle_pair">"%1$s · %2$s"</string>
     <string name="settings_how_to_enable" formatted="false">"How to enable"</string>
     <string name="settings_idle_close_off" formatted="false">"Off"</string>
+    <string name="settings_idle_close_short" formatted="false">"Auto-end idle"</string>
     <string name="settings_iphone_push_help" formatted="false">"On iPhone, add to Home Screen and open from there to receive push notifications: in Safari, tap Share, choose Add to Home Screen, then open its icon."</string>
     <string name="settings_last_used" formatted="false">"Last used"</string>
     <string name="settings_less_than_0_1_mib" formatted="false">"Less than 0.1 MiB"</string>
+    <string name="settings_licenses_view_full" formatted="false">"View text"</string>
+    <string name="settings_licenses_web_fonts_title" formatted="false">"Fonts"</string>
+    <string name="settings_licenses_web_icons_title" formatted="false">"Icons"</string>
+    <string name="settings_licenses_web_packages_title" formatted="false">"Third-party packages &amp; runtime"</string>
     <string name="settings_light" formatted="false">"Light"</string>
+    <string name="settings_local_cache" formatted="false">"Local cache"</string>
+    <string name="settings_machine_count">"%1$d"</string>
+    <string name="settings_machine_sub_disk_alert">"Disk %1$s free"</string>
+    <string name="settings_machine_sub_quota_exhausted">"%1$s exhausted"</string>
+    <string name="settings_machine_sub_quota_left">"%1$s %2$s%% left"</string>
+    <string name="settings_machine_sub_removed" formatted="false">"Retaining session history"</string>
+    <string name="settings_machine_sub_version_mismatch" formatted="false">"Protocol mismatch; update on the computer"</string>
     <string name="settings_managing_client" formatted="false">"Managing client"</string>
     <string name="settings_name" formatted="false">"Name"</string>
     <string name="settings_name_save_error">"Could not save name: %1$s"</string>
@@ -1976,25 +2021,71 @@
     <string name="settings_no_record" formatted="false">"No record"</string>
     <string name="settings_nothing_to_clear" formatted="false">"Nothing to clear"</string>
     <string name="settings_notification_permission_help" formatted="false">"The browser denied notification permission. In site settings to the left of the address bar, allow Notifications, then return and turn on the switch."</string>
+    <string name="settings_notifications_group_alerts" formatted="false">"Session &amp; schedule alerts"</string>
+    <string name="settings_notifications_group_privacy" formatted="false">"Lock screen &amp; privacy"</string>
     <string name="settings_notifications_on_this_client" formatted="false">"Notifications on this client"</string>
+    <string name="settings_notifications_scheduled_results_desc" formatted="false">"Notify when a scheduled task produces an actionable result"</string>
+    <string name="settings_notifications_security_footer" formatted="false">"Security notifications such as management takeover requests stay enabled regardless of these switches."</string>
+    <string name="settings_notifications_show_content_desc" formatted="false">"When off, notifications show generic text without command details"</string>
+    <string name="settings_notifications_show_content_title" formatted="false">"Show details and approve in notifications"</string>
+    <string name="settings_notifications_subtitle" formatted="false">"Applies only to this device"</string>
+    <string name="settings_notifications_summary_off" formatted="false">"Off"</string>
+    <string name="settings_notifications_summary_on" formatted="false">"On"</string>
+    <string name="settings_notifications_summary_pending_only" formatted="false">"Pending only"</string>
+    <string name="settings_notifications_summary_unreachable" formatted="false">"Push unavailable"</string>
+    <string name="settings_notifications_title" formatted="false">"Notifications"</string>
+    <string name="settings_notifications_when_a_turn_ends_desc" formatted="false">"Notify when a long task finishes a turn"</string>
+    <string name="settings_notifications_when_i_need_to_act_desc" formatted="false">"Command approvals, agent questions, and plan confirmations"</string>
     <string name="settings_now" formatted="false">"Now"</string>
     <string name="settings_offline" formatted="false">"Offline"</string>
     <string name="settings_on_iphone_add_to_home_screen_and_open_from" formatted="false">"On iPhone, add to Home Screen and open from there to receive push notifications"</string>
+    <string name="settings_open_source_licenses" formatted="false">"Open-source licenses"</string>
     <string name="settings_paired_client" formatted="false">"Paired client"</string>
     <string name="settings_preview_cache" formatted="false">"Preview cache"</string>
+    <string name="settings_project_count_value">"%1$d"</string>
+    <string name="settings_projects_row" formatted="false">"Projects"</string>
     <string name="settings_read_error">"Could not read settings: %1$s"</string>
+    <string name="settings_recovery_waiting_banner" formatted="false">"A recovery request is pending until the waiting period ends or the managing client responds."</string>
     <string name="settings_rejoin_account" formatted="false">"Rejoin account"</string>
+    <string name="settings_remove_computer_ellipsis" formatted="false">"Remove this computer…"</string>
+    <string name="settings_remove_non_authority_footer">"To remove this computer, do it on the managing client (%1$s)."</string>
     <string name="settings_restore_default_name" formatted="false">"Restore default name"</string>
     <string name="settings_runs_on" formatted="false">"Runs on"</string>
     <string name="settings_save_error">"Could not save: %1$s"</string>
     <string name="settings_scheduled_task_results" formatted="false">"Scheduled task results"</string>
+    <string name="settings_section_account_and_devices" formatted="false">"Account &amp; devices"</string>
+    <string name="settings_section_coding_clis" formatted="false">"Coding CLIs"</string>
+    <string name="settings_section_computers" formatted="false">"Computers"</string>
+    <string name="settings_section_management" formatted="false">"Management"</string>
+    <string name="settings_section_quota_and_usage" formatted="false">"Quota &amp; usage"</string>
+    <string name="settings_section_runtime_and_storage" formatted="false">"Runtime &amp; storage"</string>
+    <string name="settings_section_this_device" formatted="false">"This device"</string>
     <string name="settings_security_notifications" formatted="false">"Security notifications"</string>
     <string name="settings_security_notifications_are_independent_of_session_alerts_delivery_is" formatted="false">"Security notifications are independent of session alerts. Delivery is not guaranteed; open the managing client daily to check recovery requests."</string>
+    <string name="settings_security_summary_authority" formatted="false">"This device manages"</string>
+    <string name="settings_security_summary_non_authority">"Manager: %1$s"</string>
+    <string name="settings_server_and_connection" formatted="false">"Server &amp; connection"</string>
     <string name="settings_session_alerts_are_off_you_will_not_be_notified" formatted="false">"Session alerts are off. You will not be notified of approvals."</string>
     <string name="settings_sessions_end_automatically_after_this_much_inactivity_not_running" formatted="false">"Sessions end automatically after this much inactivity (not running, nothing pending, no terminal input). Resume anytime; chat history is preserved."</string>
     <string name="settings_set_the_name_and_notification_preferences_on_that_device" formatted="false">"Set the name and notification preferences on that device."</string>
     <string name="settings_signed_account_state_confirms_this_device_was_removed_sessions" formatted="false">"Signed account state confirms this device was removed. Sessions on your computers are unaffected; rejoining requires a pairing code from the managing client."</string>
+    <string name="settings_status_card_disk_tight" formatted="false">"Disk low"</string>
+    <string name="settings_status_card_paused" formatted="false">"Paused"</string>
+    <string name="settings_status_card_title" formatted="false">"Computer status"</string>
+    <string name="settings_status_needs_update" formatted="false">"Update needed"</string>
+    <string name="settings_status_removed" formatted="false">"Removed"</string>
+    <string name="settings_storage_clear_row" formatted="false">"Clear reclaimable space…"</string>
+    <string name="settings_storage_legend_preview" formatted="false">"Preview cache"</string>
+    <string name="settings_storage_legend_reserve" formatted="false">"Emergency reserve"</string>
+    <string name="settings_storage_legend_uploaded" formatted="false">"Uploaded"</string>
     <string name="settings_storage_limit" formatted="false">"Storage limit"</string>
+    <string name="settings_storage_limit_headline">"Limit %1$s"</string>
+    <string name="settings_storage_limit_row" formatted="false">"Storage limit"</string>
+    <string name="settings_storage_page_footer" formatted="false">"Attachments stay on this computer; clearing frees reclaimable originals and preview cache while keeping files used by live sessions."</string>
+    <string name="settings_storage_section_details" formatted="false">"Breakdown &amp; limit"</string>
+    <string name="settings_storage_summary_pair">"%2$s / %1$s"</string>
+    <string name="settings_storage_summary_reserve">"%2$s / %1$s · Reserve on"</string>
+    <string name="settings_storage_used_headline">"Used %1$s"</string>
     <string name="settings_subscription_error">"Subscription failed: %1$s"</string>
     <string name="settings_the_account_keys_in_this_browser_will_be_deleted" formatted="false">"The account keys in this browser will be deleted before joining with a pairing code."</string>
     <string name="settings_the_browser_denied_notification_permission" formatted="false">"The browser denied notification permission"</string>
@@ -2007,6 +2098,7 @@
     <string name="settings_theme_auto" formatted="false">"Auto"</string>
     <string name="settings_this_browser_does_not_support_push_notifications" formatted="false">"This browser does not support push notifications"</string>
     <string name="settings_this_device_was_removed_from_the_account" formatted="false">"This device was removed from the account"</string>
+    <string name="settings_timeout_footer" formatted="false">"Unanswered approval requests are denied automatically after this time."</string>
     <string name="settings_times_are_shown_in_beijing_time_quotas_belong_to" formatted="false">"Times are shown in Beijing time. Quotas belong to the CLI’s signed-in account; other usage on that account may also count."</string>
     <string name="settings_unanswered_approvals_are_denied_after_this_time" formatted="false">"Unanswered approvals are denied after this time"</string>
     <string name="settings_unfinished_pairing" formatted="false">"Unfinished pairing"</string>
@@ -2016,7 +2108,13 @@
     <string name="settings_up_to_date" formatted="false">"Up to date"</string>
     <string name="settings_uploaded_images_and_files" formatted="false">"Uploaded images and files"</string>
     <string name="settings_uploading">"Uploading %1$s"</string>
+    <string name="settings_usage_and_speed" formatted="false">"Usage &amp; speed"</string>
+    <string name="settings_usage_summary_30d">"30d · %1$s"</string>
+    <string name="settings_usage_summary_7d">"7d · %1$s"</string>
+    <string name="settings_usage_summary_cached">"Last · %1$s"</string>
+    <string name="settings_usage_summary_empty" formatted="false">"No data"</string>
     <string name="settings_verify_and_continue_security_operation" formatted="false">"Verify and continue security operation"</string>
+    <string name="settings_version_label" formatted="false">"Version"</string>
     <string name="settings_version_unverified_run_remote_agent_doctor_on_this_computer" formatted="false">"Version unverified: run remote-agent doctor on this computer to check features in a temporary session."</string>
     <string name="settings_view_usage_in_the_local_cli" formatted="false">"View usage in the local CLI"</string>
     <string name="settings_when_a_turn_ends" formatted="false">"When a turn ends"</string>
@@ -2222,6 +2320,7 @@
     <string name="transport_diag_retry_auto_desc" formatted="false">"Retries automatically when Wi-Fi or network changes"</string>
     <string name="transport_diag_retry_wait_desc" formatted="false">"Resumes automatically after updating remote-agent on the computer"</string>
     <string name="transport_diag_retrying" formatted="false">"Trying…"</string>
+    <string name="transport_diag_section_auto" formatted="false">"Automatic check"</string>
     <string name="transport_diag_status_blocked" formatted="false">"Unreachable"</string>
     <string name="transport_diag_status_checking" formatted="false">"Checking…"</string>
     <string name="transport_diag_status_connected" formatted="false">"Connected"</string>
@@ -2267,6 +2366,16 @@
     <string name="transport_reason_peer_unsupported" formatted="false">"The computer\'s version is too old; update it to use direct"</string>
     <string name="transport_reason_security_pending" formatted="false">"Waiting for security refresh"</string>
     <string name="transport_reason_starting" formatted="false">"Preparing direct connection"</string>
+    <string name="transport_row_allow_direct" formatted="false">"Allow direct connection"</string>
+    <string name="transport_row_diag_copied" formatted="false">"Sanitized diagnostics copied"</string>
+    <string name="transport_row_diag_copy_support" formatted="false">"Copy diagnostics for support"</string>
+    <string name="transport_row_off" formatted="false">"Off"</string>
+    <string name="transport_row_relay" formatted="false">"Relay"</string>
+    <string name="transport_row_relay_ms">"Relay · %1$s ms"</string>
+    <string name="transport_row_retry_direct" formatted="false">"Retry direct connection"</string>
+    <string name="transport_row_unavailable" formatted="false">"Unavailable"</string>
+    <string name="transport_row_using_direct" formatted="false">"Direct"</string>
+    <string name="transport_row_using_direct_ms">"Direct · %1$s ms"</string>
     <string name="transport_rtt_ms">"%1$s ms"</string>
     <string name="transport_speed_file" formatted="false">"File transfer"</string>
     <string name="transport_speed_read" formatted="false">"Response time"</string>

@@ -119,4 +119,61 @@ public interface AttachmentStorageViewOrBuilder extends
    * @return The footerText.
    */
   io.github.lewin671.remoteagent.core.proto.Text getFooterText();
+
+  /**
+   * <code>.remoteagent.core.v1.Text summary_text = 13 [json_name = "summaryText"];</code>
+   * @return Whether the summaryText field is set.
+   */
+  boolean hasSummaryText();
+  /**
+   * <code>.remoteagent.core.v1.Text summary_text = 13 [json_name = "summaryText"];</code>
+   * @return The summaryText.
+   */
+  io.github.lewin671.remoteagent.core.proto.Text getSummaryText();
+
+  /**
+   * <code>bool summary_warn = 14 [json_name = "summaryWarn"];</code>
+   * @return The summaryWarn.
+   */
+  boolean getSummaryWarn();
+
+  /**
+   * <code>.remoteagent.core.v1.Text used_total_text = 15 [json_name = "usedTotalText"];</code>
+   * @return Whether the usedTotalText field is set.
+   */
+  boolean hasUsedTotalText();
+  /**
+   * <code>.remoteagent.core.v1.Text used_total_text = 15 [json_name = "usedTotalText"];</code>
+   * @return The usedTotalText.
+   */
+  io.github.lewin671.remoteagent.core.proto.Text getUsedTotalText();
+
+  /**
+   * <code>.remoteagent.core.v1.Text limit_label = 16 [json_name = "limitLabel"];</code>
+   * @return Whether the limitLabel field is set.
+   */
+  boolean hasLimitLabel();
+  /**
+   * <code>.remoteagent.core.v1.Text limit_label = 16 [json_name = "limitLabel"];</code>
+   * @return The limitLabel.
+   */
+  io.github.lewin671.remoteagent.core.proto.Text getLimitLabel();
+
+  /**
+   * <code>int32 uploaded_percent = 17 [json_name = "uploadedPercent"];</code>
+   * @return The uploadedPercent.
+   */
+  int getUploadedPercent();
+
+  /**
+   * <code>int32 preview_percent = 18 [json_name = "previewPercent"];</code>
+   * @return The previewPercent.
+   */
+  int getPreviewPercent();
+
+  /**
+   * <code>int32 reserve_percent = 19 [json_name = "reservePercent"];</code>
+   * @return The reservePercent.
+   */
+  int getReservePercent();
 }

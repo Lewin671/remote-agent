@@ -617,6 +617,8 @@ export interface MessageArgs {
   "projects.connect_to_edit": { [name: string]: never };
   "projects.count": { count: number };
   "projects.directory_failed": { reason: string };
+  "projects.filter_machine_subtitle": { name: string };
+  "projects.filter_show_all": { [name: string]: never };
   "projects.live_count": { count: number };
   "projects.load_failed": { [name: string]: never };
   "projects.loading": { [name: string]: never };
@@ -1260,6 +1262,10 @@ export interface MessageArgs {
   "settings.about": { [name: string]: never };
   "settings.account": { [name: string]: never };
   "settings.account_quota": { [name: string]: never };
+  "settings.account_security_title": { [name: string]: never };
+  "settings.add_device_footer_hint": { name: string };
+  "settings.add_device_item": { [name: string]: never };
+  "settings.add_first_computer": { [name: string]: never };
   "settings.added": { [name: string]: never };
   "settings.all_clients": { [name: string]: never };
   "settings.all_devices": { [name: string]: never };
@@ -1278,6 +1284,14 @@ export interface MessageArgs {
   "settings.clear_reclaimable_attachments_and_cache": { [name: string]: never };
   "settings.clear_settings": { [name: string]: never };
   "settings.clears_reclaimable_originals_previews_and_unsynced_large_image_cache": { [name: string]: never };
+  "settings.cli_disabled": { [name: string]: never };
+  "settings.cli_disabled_explanation": { [name: string]: never };
+  "settings.cli_enable_on_computer": { [name: string]: never };
+  "settings.cli_installed_version": { [name: string]: never };
+  "settings.cli_new_project_defaults_footer": { [name: string]: never };
+  "settings.cli_sheet_effort": { [name: string]: never };
+  "settings.cli_sheet_mode": { [name: string]: never };
+  "settings.cli_sheet_model": { [name: string]: never };
   "settings.cli_switches_a11y_locked": { name: string; version: string };
   "settings.cli_switches_a11y_row": { name: string; state: string; version: string };
   "settings.cli_switches_conflict": { [name: string]: never };
@@ -1289,9 +1303,22 @@ export interface MessageArgs {
   "settings.cli_switches_state_on": { [name: string]: never };
   "settings.cli_switches_title": { [name: string]: never };
   "settings.cli_switches_update_error": { reason: string };
+  "settings.cli_unverified_badge": { [name: string]: never };
+  "settings.cli_unverified_short": { [name: string]: never };
   "settings.cli_version": { name: string };
   "settings.client_name": { [name: string]: never };
+  "settings.clients_add_client": { [name: string]: never };
   "settings.clients_control_sessions": { [name: string]: never };
+  "settings.clients_count": { count: number };
+  "settings.clients_footer_redesign": { [name: string]: never };
+  "settings.clients_group_paired": { [name: string]: never };
+  "settings.clients_pairing_incomplete_badge": { [name: string]: never };
+  "settings.clients_pairing_incomplete_desc": { [name: string]: never };
+  "settings.clients_summary_pending": { count: number; pending: number };
+  "settings.clients_summary_pending_only": { pending: number };
+  "settings.clients_summary_self_only": { [name: string]: never };
+  "settings.clients_summary_with_others": { count: number };
+  "settings.clients_title": { [name: string]: never };
   "settings.computer": { [name: string]: never };
   "settings.computer_offline_showing_the_last_reading": { [name: string]: never };
   "settings.computer_settings_offline": { name: string };
@@ -1299,23 +1326,41 @@ export interface MessageArgs {
   "settings.could_not_download_retry_later": { [name: string]: never };
   "settings.could_not_read_the_device_list": { [name: string]: never };
   "settings.current": { [name: string]: never };
+  "settings.daemon_protocol_tag": { version: number };
   "settings.dark": { [name: string]: never };
   "settings.default": { [name: string]: never };
+  "settings.delete_computer_records_ellipsis": { [name: string]: never };
   "settings.details": { [name: string]: never };
   "settings.device_id": { [name: string]: never };
   "settings.device_not_found": { [name: string]: never };
   "settings.devices": { [name: string]: never };
+  "settings.empty_computers_authority_body": { [name: string]: never };
+  "settings.empty_computers_member_body": { name: string };
+  "settings.empty_computers_title": { [name: string]: never };
   "settings.enable": { [name: string]: never };
   "settings.enable_security_notifications": { [name: string]: never };
   "settings.enabled": { [name: string]: never };
   "settings.exit_and_delete_local_keys": { [name: string]: never };
   "settings.follow_configuration": { value: string };
+  "settings.header_subtitle_pair": { left: string; right: string };
   "settings.how_to_enable": { [name: string]: never };
   "settings.idle_close_off": { [name: string]: never };
+  "settings.idle_close_short": { [name: string]: never };
   "settings.iphone_push_help": { [name: string]: never };
   "settings.last_used": { [name: string]: never };
   "settings.less_than_0_1_mib": { [name: string]: never };
+  "settings.licenses_view_full": { [name: string]: never };
+  "settings.licenses_web_fonts_title": { [name: string]: never };
+  "settings.licenses_web_icons_title": { [name: string]: never };
+  "settings.licenses_web_packages_title": { [name: string]: never };
   "settings.light": { [name: string]: never };
+  "settings.local_cache": { [name: string]: never };
+  "settings.machine_count": { count: number };
+  "settings.machine_sub_disk_alert": { size: string };
+  "settings.machine_sub_quota_exhausted": { name: string };
+  "settings.machine_sub_quota_left": { name: string; value: string };
+  "settings.machine_sub_removed": { [name: string]: never };
+  "settings.machine_sub_version_mismatch": { [name: string]: never };
   "settings.managing_client": { [name: string]: never };
   "settings.name": { [name: string]: never };
   "settings.name_save_error": { reason: string };
@@ -1326,25 +1371,71 @@ export interface MessageArgs {
   "settings.no_record": { [name: string]: never };
   "settings.nothing_to_clear": { [name: string]: never };
   "settings.notification_permission_help": { [name: string]: never };
+  "settings.notifications_group_alerts": { [name: string]: never };
+  "settings.notifications_group_privacy": { [name: string]: never };
   "settings.notifications_on_this_client": { [name: string]: never };
+  "settings.notifications_scheduled_results_desc": { [name: string]: never };
+  "settings.notifications_security_footer": { [name: string]: never };
+  "settings.notifications_show_content_desc": { [name: string]: never };
+  "settings.notifications_show_content_title": { [name: string]: never };
+  "settings.notifications_subtitle": { [name: string]: never };
+  "settings.notifications_summary_off": { [name: string]: never };
+  "settings.notifications_summary_on": { [name: string]: never };
+  "settings.notifications_summary_pending_only": { [name: string]: never };
+  "settings.notifications_summary_unreachable": { [name: string]: never };
+  "settings.notifications_title": { [name: string]: never };
+  "settings.notifications_when_a_turn_ends_desc": { [name: string]: never };
+  "settings.notifications_when_i_need_to_act_desc": { [name: string]: never };
   "settings.now": { [name: string]: never };
   "settings.offline": { [name: string]: never };
   "settings.on_iphone_add_to_home_screen_and_open_from": { [name: string]: never };
+  "settings.open_source_licenses": { [name: string]: never };
   "settings.paired_client": { [name: string]: never };
   "settings.preview_cache": { [name: string]: never };
+  "settings.project_count_value": { count: number };
+  "settings.projects_row": { [name: string]: never };
   "settings.read_error": { reason: string };
+  "settings.recovery_waiting_banner": { [name: string]: never };
   "settings.rejoin_account": { [name: string]: never };
+  "settings.remove_computer_ellipsis": { [name: string]: never };
+  "settings.remove_non_authority_footer": { name: string };
   "settings.restore_default_name": { [name: string]: never };
   "settings.runs_on": { [name: string]: never };
   "settings.save_error": { reason: string };
   "settings.scheduled_task_results": { [name: string]: never };
+  "settings.section_account_and_devices": { [name: string]: never };
+  "settings.section_coding_clis": { [name: string]: never };
+  "settings.section_computers": { [name: string]: never };
+  "settings.section_management": { [name: string]: never };
+  "settings.section_quota_and_usage": { [name: string]: never };
+  "settings.section_runtime_and_storage": { [name: string]: never };
+  "settings.section_this_device": { [name: string]: never };
   "settings.security_notifications": { [name: string]: never };
   "settings.security_notifications_are_independent_of_session_alerts_delivery_is": { [name: string]: never };
+  "settings.security_summary_authority": { [name: string]: never };
+  "settings.security_summary_non_authority": { name: string };
+  "settings.server_and_connection": { [name: string]: never };
   "settings.session_alerts_are_off_you_will_not_be_notified": { [name: string]: never };
   "settings.sessions_end_automatically_after_this_much_inactivity_not_running": { [name: string]: never };
   "settings.set_the_name_and_notification_preferences_on_that_device": { [name: string]: never };
   "settings.signed_account_state_confirms_this_device_was_removed_sessions": { [name: string]: never };
+  "settings.status_card_disk_tight": { [name: string]: never };
+  "settings.status_card_paused": { [name: string]: never };
+  "settings.status_card_title": { [name: string]: never };
+  "settings.status_needs_update": { [name: string]: never };
+  "settings.status_removed": { [name: string]: never };
+  "settings.storage_clear_row": { [name: string]: never };
+  "settings.storage_legend_preview": { [name: string]: never };
+  "settings.storage_legend_reserve": { [name: string]: never };
+  "settings.storage_legend_uploaded": { [name: string]: never };
   "settings.storage_limit": { [name: string]: never };
+  "settings.storage_limit_headline": { limit: string };
+  "settings.storage_limit_row": { [name: string]: never };
+  "settings.storage_page_footer": { [name: string]: never };
+  "settings.storage_section_details": { [name: string]: never };
+  "settings.storage_summary_pair": { limit: string; used: string };
+  "settings.storage_summary_reserve": { limit: string; used: string };
+  "settings.storage_used_headline": { used: string };
   "settings.subscription_error": { reason: string };
   "settings.the_account_keys_in_this_browser_will_be_deleted": { [name: string]: never };
   "settings.the_browser_denied_notification_permission": { [name: string]: never };
@@ -1357,6 +1448,7 @@ export interface MessageArgs {
   "settings.theme_auto": { [name: string]: never };
   "settings.this_browser_does_not_support_push_notifications": { [name: string]: never };
   "settings.this_device_was_removed_from_the_account": { [name: string]: never };
+  "settings.timeout_footer": { [name: string]: never };
   "settings.times_are_shown_in_beijing_time_quotas_belong_to": { [name: string]: never };
   "settings.unanswered_approvals_are_denied_after_this_time": { [name: string]: never };
   "settings.unfinished_pairing": { [name: string]: never };
@@ -1366,7 +1458,13 @@ export interface MessageArgs {
   "settings.up_to_date": { [name: string]: never };
   "settings.uploaded_images_and_files": { [name: string]: never };
   "settings.uploading": { value: string };
+  "settings.usage_and_speed": { [name: string]: never };
+  "settings.usage_summary_30d": { value: string };
+  "settings.usage_summary_7d": { value: string };
+  "settings.usage_summary_cached": { value: string };
+  "settings.usage_summary_empty": { [name: string]: never };
   "settings.verify_and_continue_security_operation": { [name: string]: never };
+  "settings.version_label": { [name: string]: never };
   "settings.version_unverified_run_remote_agent_doctor_on_this_computer": { [name: string]: never };
   "settings.view_usage_in_the_local_cli": { [name: string]: never };
   "settings.when_a_turn_ends": { [name: string]: never };
@@ -1565,6 +1663,7 @@ export interface MessageArgs {
   "transport.diag_retrying": { [name: string]: never };
   "transport.diag_round": { result: string; seconds: string };
   "transport.diag_rtt": { ms: number };
+  "transport.diag_section_auto": { [name: string]: never };
   "transport.diag_sig_limited": { count: number };
   "transport.diag_sig_offline": { count: number };
   "transport.diag_sig_refused": { [name: string]: never };
@@ -1656,6 +1755,16 @@ export interface MessageArgs {
   "transport.reason_peer_unsupported": { [name: string]: never };
   "transport.reason_security_pending": { [name: string]: never };
   "transport.reason_starting": { [name: string]: never };
+  "transport.row_allow_direct": { [name: string]: never };
+  "transport.row_diag_copied": { [name: string]: never };
+  "transport.row_diag_copy_support": { [name: string]: never };
+  "transport.row_off": { [name: string]: never };
+  "transport.row_relay": { [name: string]: never };
+  "transport.row_relay_ms": { ms: string };
+  "transport.row_retry_direct": { [name: string]: never };
+  "transport.row_unavailable": { [name: string]: never };
+  "transport.row_using_direct": { [name: string]: never };
+  "transport.row_using_direct_ms": { ms: string };
   "transport.rtt_ms": { ms: string };
   "transport.speed_file": { [name: string]: never };
   "transport.speed_read": { [name: string]: never };
@@ -2578,6 +2687,8 @@ export const messages = {
       "plural": "count"
     },
     "projects.directory_failed": "Could not read this folder: {reason}",
+    "projects.filter_machine_subtitle": "Projects on {name}",
+    "projects.filter_show_all": "Show all projects",
     "projects.live_count": {
       "forms": {
         "one": "{count} in progress",
@@ -3473,6 +3584,10 @@ export const messages = {
     "settings.about": "About",
     "settings.account": "Account",
     "settings.account_quota": "Account quota",
+    "settings.account_security_title": "Account security",
+    "settings.add_device_footer_hint": "To add a computer or client, open Settings › Add device on the managing client ({name}).",
+    "settings.add_device_item": "Add device",
+    "settings.add_first_computer": "Add first computer",
     "settings.added": "Added",
     "settings.all_clients": "All clients",
     "settings.all_devices": "All devices",
@@ -3491,6 +3606,14 @@ export const messages = {
     "settings.clear_reclaimable_attachments_and_cache": "Clear reclaimable attachments and cache?",
     "settings.clear_settings": "Clear",
     "settings.clears_reclaimable_originals_previews_and_unsynced_large_image_cache": "Clears reclaimable originals, previews, and unsynced large image cache. Queued and active originals, session files, and history remain; unsynced large images will show only previews.",
+    "settings.cli_disabled": "Disabled",
+    "settings.cli_disabled_explanation": "When disabled, hidden from new tasks, schedules, quota, and usage & speed; earlier sessions and history stay available.",
+    "settings.cli_enable_on_computer": "Enable on this computer",
+    "settings.cli_installed_version": "Installed version",
+    "settings.cli_new_project_defaults_footer": "Used when a new project starts its first session; existing projects keep their last model and mode.",
+    "settings.cli_sheet_effort": "Reasoning effort",
+    "settings.cli_sheet_mode": "Approval mode",
+    "settings.cli_sheet_model": "Model",
     "settings.cli_switches_a11y_locked": "{name}, version {version}, on, locked: keep at least one on",
     "settings.cli_switches_a11y_row": "{name}, version {version}, {state}",
     "settings.cli_switches_conflict": "Another client updated enabled CLIs; synced to the latest state",
@@ -3502,9 +3625,22 @@ export const messages = {
     "settings.cli_switches_state_on": "on",
     "settings.cli_switches_title": "Enabled CLIs",
     "settings.cli_switches_update_error": "Could not update enabled CLIs: {reason}",
+    "settings.cli_unverified_badge": "Unverified",
+    "settings.cli_unverified_short": "Unverified",
     "settings.cli_version": "{name} version",
     "settings.client_name": "Client name",
+    "settings.clients_add_client": "Add client",
     "settings.clients_control_sessions": "Clients · Control sessions",
+    "settings.clients_count": "{count}",
+    "settings.clients_footer_redesign": "Times on the right show last use, not active viewing. Tap this device to rename it; computers are managed on Settings home.",
+    "settings.clients_group_paired": "Paired clients",
+    "settings.clients_pairing_incomplete_badge": "Pending",
+    "settings.clients_pairing_incomplete_desc": "Waiting for pattern verification and approval",
+    "settings.clients_summary_pending": "{count} · {pending} pending",
+    "settings.clients_summary_pending_only": "{pending} pending",
+    "settings.clients_summary_self_only": "This device only",
+    "settings.clients_summary_with_others": "{count} including this",
+    "settings.clients_title": "Clients",
     "settings.computer": "Computer",
     "settings.computer_offline_showing_the_last_reading": "Computer offline. Showing the last reading.",
     "settings.computer_settings_offline": "{name} is offline. Its settings are unavailable for now.",
@@ -3512,23 +3648,41 @@ export const messages = {
     "settings.could_not_download_retry_later": "Could not download. Retry later.",
     "settings.could_not_read_the_device_list": "Could not read the device list",
     "settings.current": "Current",
+    "settings.daemon_protocol_tag": "daemon v{version}",
     "settings.dark": "Dark",
     "settings.default": " (default)",
+    "settings.delete_computer_records_ellipsis": "Delete computer records…",
     "settings.details": "Details",
     "settings.device_id": "Device ID",
     "settings.device_not_found": "Device not found",
     "settings.devices": "Devices",
+    "settings.empty_computers_authority_body": "Generate a pairing code and run remote-agent account join in your computer's terminal.",
+    "settings.empty_computers_member_body": "Open Settings › Add device on the managing client ({name}) to add a computer.",
+    "settings.empty_computers_title": "No computers yet",
     "settings.enable": "Enable",
     "settings.enable_security_notifications": "Enable security notifications",
     "settings.enabled": "Enabled",
     "settings.exit_and_delete_local_keys": "Exit and delete local keys…",
     "settings.follow_configuration": "Follow {value} configuration",
+    "settings.header_subtitle_pair": "{left} · {right}",
     "settings.how_to_enable": "How to enable",
     "settings.idle_close_off": "Off",
+    "settings.idle_close_short": "Auto-end idle",
     "settings.iphone_push_help": "On iPhone, add to Home Screen and open from there to receive push notifications: in Safari, tap Share, choose Add to Home Screen, then open its icon.",
     "settings.last_used": "Last used",
     "settings.less_than_0_1_mib": "Less than 0.1 MiB",
+    "settings.licenses_view_full": "View text",
+    "settings.licenses_web_fonts_title": "Fonts",
+    "settings.licenses_web_icons_title": "Icons",
+    "settings.licenses_web_packages_title": "Third-party packages & runtime",
     "settings.light": "Light",
+    "settings.local_cache": "Local cache",
+    "settings.machine_count": "{count}",
+    "settings.machine_sub_disk_alert": "Disk {size} free",
+    "settings.machine_sub_quota_exhausted": "{name} exhausted",
+    "settings.machine_sub_quota_left": "{name} {value}% left",
+    "settings.machine_sub_removed": "Retaining session history",
+    "settings.machine_sub_version_mismatch": "Protocol mismatch; update on the computer",
     "settings.managing_client": "Managing client",
     "settings.name": "Name",
     "settings.name_save_error": "Could not save name: {reason}",
@@ -3539,25 +3693,71 @@ export const messages = {
     "settings.no_record": "No record",
     "settings.nothing_to_clear": "Nothing to clear",
     "settings.notification_permission_help": "The browser denied notification permission. In site settings to the left of the address bar, allow Notifications, then return and turn on the switch.",
+    "settings.notifications_group_alerts": "Session & schedule alerts",
+    "settings.notifications_group_privacy": "Lock screen & privacy",
     "settings.notifications_on_this_client": "Notifications on this client",
+    "settings.notifications_scheduled_results_desc": "Notify when a scheduled task produces an actionable result",
+    "settings.notifications_security_footer": "Security notifications such as management takeover requests stay enabled regardless of these switches.",
+    "settings.notifications_show_content_desc": "When off, notifications show generic text without command details",
+    "settings.notifications_show_content_title": "Show details and approve in notifications",
+    "settings.notifications_subtitle": "Applies only to this device",
+    "settings.notifications_summary_off": "Off",
+    "settings.notifications_summary_on": "On",
+    "settings.notifications_summary_pending_only": "Pending only",
+    "settings.notifications_summary_unreachable": "Push unavailable",
+    "settings.notifications_title": "Notifications",
+    "settings.notifications_when_a_turn_ends_desc": "Notify when a long task finishes a turn",
+    "settings.notifications_when_i_need_to_act_desc": "Command approvals, agent questions, and plan confirmations",
     "settings.now": "Now",
     "settings.offline": "Offline",
     "settings.on_iphone_add_to_home_screen_and_open_from": "On iPhone, add to Home Screen and open from there to receive push notifications",
+    "settings.open_source_licenses": "Open-source licenses",
     "settings.paired_client": "Paired client",
     "settings.preview_cache": "Preview cache",
+    "settings.project_count_value": "{count}",
+    "settings.projects_row": "Projects",
     "settings.read_error": "Could not read settings: {reason}",
+    "settings.recovery_waiting_banner": "A recovery request is pending until the waiting period ends or the managing client responds.",
     "settings.rejoin_account": "Rejoin account",
+    "settings.remove_computer_ellipsis": "Remove this computer…",
+    "settings.remove_non_authority_footer": "To remove this computer, do it on the managing client ({name}).",
     "settings.restore_default_name": "Restore default name",
     "settings.runs_on": "Runs on",
     "settings.save_error": "Could not save: {reason}",
     "settings.scheduled_task_results": "Scheduled task results",
+    "settings.section_account_and_devices": "Account & devices",
+    "settings.section_coding_clis": "Coding CLIs",
+    "settings.section_computers": "Computers",
+    "settings.section_management": "Management",
+    "settings.section_quota_and_usage": "Quota & usage",
+    "settings.section_runtime_and_storage": "Runtime & storage",
+    "settings.section_this_device": "This device",
     "settings.security_notifications": "Security notifications",
     "settings.security_notifications_are_independent_of_session_alerts_delivery_is": "Security notifications are independent of session alerts. Delivery is not guaranteed; open the managing client daily to check recovery requests.",
+    "settings.security_summary_authority": "This device manages",
+    "settings.security_summary_non_authority": "Manager: {name}",
+    "settings.server_and_connection": "Server & connection",
     "settings.session_alerts_are_off_you_will_not_be_notified": "Session alerts are off. You will not be notified of approvals.",
     "settings.sessions_end_automatically_after_this_much_inactivity_not_running": "Sessions end automatically after this much inactivity (not running, nothing pending, no terminal input). Resume anytime; chat history is preserved.",
     "settings.set_the_name_and_notification_preferences_on_that_device": "Set the name and notification preferences on that device.",
     "settings.signed_account_state_confirms_this_device_was_removed_sessions": "Signed account state confirms this device was removed. Sessions on your computers are unaffected; rejoining requires a pairing code from the managing client.",
+    "settings.status_card_disk_tight": "Disk low",
+    "settings.status_card_paused": "Paused",
+    "settings.status_card_title": "Computer status",
+    "settings.status_needs_update": "Update needed",
+    "settings.status_removed": "Removed",
+    "settings.storage_clear_row": "Clear reclaimable space…",
+    "settings.storage_legend_preview": "Preview cache",
+    "settings.storage_legend_reserve": "Emergency reserve",
+    "settings.storage_legend_uploaded": "Uploaded",
     "settings.storage_limit": "Storage limit",
+    "settings.storage_limit_headline": "Limit {limit}",
+    "settings.storage_limit_row": "Storage limit",
+    "settings.storage_page_footer": "Attachments stay on this computer; clearing frees reclaimable originals and preview cache while keeping files used by live sessions.",
+    "settings.storage_section_details": "Breakdown & limit",
+    "settings.storage_summary_pair": "{used} / {limit}",
+    "settings.storage_summary_reserve": "{used} / {limit} · Reserve on",
+    "settings.storage_used_headline": "Used {used}",
     "settings.subscription_error": "Subscription failed: {reason}",
     "settings.the_account_keys_in_this_browser_will_be_deleted": "The account keys in this browser will be deleted before joining with a pairing code.",
     "settings.the_browser_denied_notification_permission": "The browser denied notification permission",
@@ -3570,6 +3770,7 @@ export const messages = {
     "settings.theme_auto": "Auto",
     "settings.this_browser_does_not_support_push_notifications": "This browser does not support push notifications",
     "settings.this_device_was_removed_from_the_account": "This device was removed from the account",
+    "settings.timeout_footer": "Unanswered approval requests are denied automatically after this time.",
     "settings.times_are_shown_in_beijing_time_quotas_belong_to": "Times are shown in Beijing time. Quotas belong to the CLI’s signed-in account; other usage on that account may also count.",
     "settings.unanswered_approvals_are_denied_after_this_time": "Unanswered approvals are denied after this time",
     "settings.unfinished_pairing": "Unfinished pairing",
@@ -3579,7 +3780,13 @@ export const messages = {
     "settings.up_to_date": "Up to date",
     "settings.uploaded_images_and_files": "Uploaded images and files",
     "settings.uploading": "Uploading {value}",
+    "settings.usage_and_speed": "Usage & speed",
+    "settings.usage_summary_30d": "30d · {value}",
+    "settings.usage_summary_7d": "7d · {value}",
+    "settings.usage_summary_cached": "Last · {value}",
+    "settings.usage_summary_empty": "No data",
     "settings.verify_and_continue_security_operation": "Verify and continue security operation",
+    "settings.version_label": "Version",
     "settings.version_unverified_run_remote_agent_doctor_on_this_computer": "Version unverified: run remote-agent doctor on this computer to check features in a temporary session.",
     "settings.view_usage_in_the_local_cli": "View usage in the local CLI",
     "settings.when_a_turn_ends": "When a turn ends",
@@ -3850,6 +4057,7 @@ export const messages = {
     "transport.diag_retrying": "Trying…",
     "transport.diag_round": "{result} · {seconds} s",
     "transport.diag_rtt": "{ms} ms",
+    "transport.diag_section_auto": "Automatic check",
     "transport.diag_sig_limited": "Rate-limited by the relay ×{count}",
     "transport.diag_sig_offline": "Computer offline ×{count}",
     "transport.diag_sig_refused": "The computer replied it is unsupported",
@@ -3941,6 +4149,16 @@ export const messages = {
     "transport.reason_peer_unsupported": "The computer's version is too old; update it to use direct",
     "transport.reason_security_pending": "Waiting for security refresh",
     "transport.reason_starting": "Preparing direct connection",
+    "transport.row_allow_direct": "Allow direct connection",
+    "transport.row_diag_copied": "Sanitized diagnostics copied",
+    "transport.row_diag_copy_support": "Copy diagnostics for support",
+    "transport.row_off": "Off",
+    "transport.row_relay": "Relay",
+    "transport.row_relay_ms": "Relay · {ms} ms",
+    "transport.row_retry_direct": "Retry direct connection",
+    "transport.row_unavailable": "Unavailable",
+    "transport.row_using_direct": "Direct",
+    "transport.row_using_direct_ms": "Direct · {ms} ms",
     "transport.rtt_ms": "{ms} ms",
     "transport.speed_file": "File transfer",
     "transport.speed_read": "Response time",
@@ -4821,6 +5039,8 @@ export const messages = {
       "plural": "count"
     },
     "projects.directory_failed": "读不了这个目录：{reason}",
+    "projects.filter_machine_subtitle": "仅显示 {name} 的项目",
+    "projects.filter_show_all": "查看全部项目",
     "projects.live_count": {
       "forms": {
         "other": "{count} 个进行中"
@@ -5674,6 +5894,10 @@ export const messages = {
     "settings.about": "关于",
     "settings.account": "账户",
     "settings.account_quota": "账户额度",
+    "settings.account_security_title": "账户安全",
+    "settings.add_device_footer_hint": "要添加电脑或客户端，在管理端（{name}）上打开「设置 › 添加设备」。",
+    "settings.add_device_item": "添加设备",
+    "settings.add_first_computer": "添加第一台电脑",
     "settings.added": "添加于",
     "settings.all_clients": "全部客户端",
     "settings.all_devices": "全部设备",
@@ -5692,6 +5916,14 @@ export const messages = {
     "settings.clear_reclaimable_attachments_and_cache": "清理可回收附件和缓存？",
     "settings.clear_settings": "清理",
     "settings.clears_reclaimable_originals_previews_and_unsynced_large_image_cache": "清除可回收原图、预览和待同步的大图缓存。排队与当前执行中的原图、会话文件和历史保留；尚未同步的大图会只显示预览。",
+    "settings.cli_disabled": "已停用",
+    "settings.cli_disabled_explanation": "停用后不出现在这台电脑的新任务、新定时、额度和用量与速度里；停用前已创建的会话和历史照常可用。",
+    "settings.cli_enable_on_computer": "在此电脑启用",
+    "settings.cli_installed_version": "已安装版本",
+    "settings.cli_new_project_defaults_footer": "新项目首次创建会话时采用；已有项目保留各自上次使用的模型与模式。",
+    "settings.cli_sheet_effort": "推理强度",
+    "settings.cli_sheet_mode": "审批模式",
+    "settings.cli_sheet_model": "模型",
     "settings.cli_switches_a11y_locked": "{name}，版本 {version}，已开启，不可关闭：至少保留一个启用",
     "settings.cli_switches_a11y_row": "{name}，版本 {version}，{state}",
     "settings.cli_switches_conflict": "另一台客户端刚刚修改了启用的 CLI，已同步为最新状态",
@@ -5703,9 +5935,22 @@ export const messages = {
     "settings.cli_switches_state_on": "已开启",
     "settings.cli_switches_title": "启用的 CLI",
     "settings.cli_switches_update_error": "没能更新启用的 CLI：{reason}",
+    "settings.cli_unverified_badge": "版本未验证",
+    "settings.cli_unverified_short": "未验证",
     "settings.cli_version": "{name} 版本",
     "settings.client_name": "客户端名称",
+    "settings.clients_add_client": "添加新客户端",
     "settings.clients_control_sessions": "客户端 · 操作会话",
+    "settings.clients_count": "{count} 台",
+    "settings.clients_footer_redesign": "右侧是上次使用时间，不代表此刻正在查看。点本机可修改显示名称；电脑已在设置首页统一管理。",
+    "settings.clients_group_paired": "已配对的客户端",
+    "settings.clients_pairing_incomplete_badge": "待完成",
+    "settings.clients_pairing_incomplete_desc": "尚未完成图案核对与确认",
+    "settings.clients_summary_pending": "{count} 台 · {pending} 台待完成",
+    "settings.clients_summary_pending_only": "{pending} 台待完成",
+    "settings.clients_summary_self_only": "仅本机",
+    "settings.clients_summary_with_others": "本机等 {count} 台",
+    "settings.clients_title": "客户端",
     "settings.computer": "电脑",
     "settings.computer_offline_showing_the_last_reading": "电脑不在线，显示上次记录",
     "settings.computer_settings_offline": "{name} 不在线，暂时看不到它的设置。",
@@ -5713,23 +5958,41 @@ export const messages = {
     "settings.could_not_download_retry_later": "没能下载，稍后再试",
     "settings.could_not_read_the_device_list": "没能读取设备列表",
     "settings.current": "当前",
+    "settings.daemon_protocol_tag": "daemon v{version}",
     "settings.dark": "暗色",
     "settings.default": "（默认）",
+    "settings.delete_computer_records_ellipsis": "删除这台电脑的记录…",
     "settings.details": "说明",
     "settings.device_id": "设备 ID",
     "settings.device_not_found": "没有这台设备",
     "settings.devices": "设备",
+    "settings.empty_computers_authority_body": "生成配对码后，在电脑终端运行 remote-agent account join 即可接入。",
+    "settings.empty_computers_member_body": "在管理端（{name}）上打开「设置 › 添加设备」，把电脑加进来。",
+    "settings.empty_computers_title": "还没有电脑",
     "settings.enable": "开启",
     "settings.enable_security_notifications": "开启安全通知",
     "settings.enabled": "已开启",
     "settings.exit_and_delete_local_keys": "退出并删除本机密钥…",
     "settings.follow_configuration": "跟随 {value} 配置",
+    "settings.header_subtitle_pair": "{left} · {right}",
     "settings.how_to_enable": "怎么打开",
     "settings.idle_close_off": "关闭",
+    "settings.idle_close_short": "空闲自动结束",
     "settings.iphone_push_help": "iPhone 要先「添加到主屏幕」，从主屏幕打开才能收推送：在 Safari 里点分享按钮，选「添加到主屏幕」，再从主屏幕上的图标打开。",
     "settings.last_used": "上次使用",
     "settings.less_than_0_1_mib": "不到 0.1 MiB",
+    "settings.licenses_view_full": "查看全文",
+    "settings.licenses_web_fonts_title": "字体",
+    "settings.licenses_web_icons_title": "图标",
+    "settings.licenses_web_packages_title": "第三方依赖与运行时",
     "settings.light": "亮色",
+    "settings.local_cache": "本机缓存",
+    "settings.machine_count": "{count} 台",
+    "settings.machine_sub_disk_alert": "磁盘剩 {size}",
+    "settings.machine_sub_quota_exhausted": "{name} 已用尽",
+    "settings.machine_sub_quota_left": "{name} 剩 {value}%",
+    "settings.machine_sub_removed": "保留历史会话记录",
+    "settings.machine_sub_version_mismatch": "协议版本不一致，需在电脑上更新",
     "settings.managing_client": "管理端",
     "settings.name": "名称",
     "settings.name_save_error": "没能保存名称：{reason}",
@@ -5740,25 +6003,71 @@ export const messages = {
     "settings.no_record": "没有记录",
     "settings.nothing_to_clear": "没有可清理的",
     "settings.notification_permission_help": "浏览器拒绝了通知权限。在地址栏左边的网站设置里把「通知」改成允许，再回来打开开关。",
+    "settings.notifications_group_alerts": "会话与定时提醒",
+    "settings.notifications_group_privacy": "锁屏与隐私",
     "settings.notifications_on_this_client": "本客户端的通知",
+    "settings.notifications_scheduled_results_desc": "定时运行产出需要关注的结果时提醒",
+    "settings.notifications_security_footer": "管理权恢复申请等安全通知独立于上方开关，始终尝试送达。",
+    "settings.notifications_show_content_desc": "关闭后通知只写通用提示，不露出命令原文",
+    "settings.notifications_show_content_title": "通知中显示内容并直接审批",
+    "settings.notifications_subtitle": "只影响这台设备",
+    "settings.notifications_summary_off": "未开启",
+    "settings.notifications_summary_on": "开启",
+    "settings.notifications_summary_pending_only": "仅待处理",
+    "settings.notifications_summary_unreachable": "收不到推送",
+    "settings.notifications_title": "通知",
+    "settings.notifications_when_a_turn_ends_desc": "长任务跑完回复后提醒",
+    "settings.notifications_when_i_need_to_act_desc": "审批命令、模型提问、计划待确认",
     "settings.now": "现在",
     "settings.offline": "离线",
     "settings.on_iphone_add_to_home_screen_and_open_from": "iPhone 要先「添加到主屏幕」，从主屏幕打开才能收推送",
+    "settings.open_source_licenses": "开源许可",
     "settings.paired_client": "已配对的客户端",
     "settings.preview_cache": "预览缓存",
+    "settings.project_count_value": "{count} 个",
+    "settings.projects_row": "项目",
     "settings.read_error": "没能读取设置：{reason}",
+    "settings.recovery_waiting_banner": "已有客户端提交管理权恢复申请，等待生效或由原管理端处理。",
     "settings.rejoin_account": "重新加入账户",
+    "settings.remove_computer_ellipsis": "移除这台电脑…",
+    "settings.remove_non_authority_footer": "要移除这台电脑，请在管理端（{name}）上操作。",
     "settings.restore_default_name": "恢复默认名称",
     "settings.runs_on": "运行在",
     "settings.save_error": "没能保存：{reason}",
     "settings.scheduled_task_results": "定时任务结果",
+    "settings.section_account_and_devices": "账户与设备",
+    "settings.section_coding_clis": "编程 CLI",
+    "settings.section_computers": "电脑",
+    "settings.section_management": "管理",
+    "settings.section_quota_and_usage": "额度与用量",
+    "settings.section_runtime_and_storage": "运行与存储",
+    "settings.section_this_device": "本机",
     "settings.security_notifications": "安全通知",
     "settings.security_notifications_are_independent_of_session_alerts_delivery_is": "安全通知独立于会话提醒。通知不保证送达，建议每天打开管理端核实恢复申请。",
+    "settings.security_summary_authority": "本机是管理端",
+    "settings.security_summary_non_authority": "管理端：{name}",
+    "settings.server_and_connection": "服务器与连接",
     "settings.session_alerts_are_off_you_will_not_be_notified": "会话提醒没开，审批来了不会提醒你",
     "settings.sessions_end_automatically_after_this_much_inactivity_not_running": "会话这么久没有任何活动（没在运行、没有待处理、终端里没人输入）就自动结束，随时可以恢复，聊天记录都在。",
     "settings.set_the_name_and_notification_preferences_on_that_device": "名称和通知开关要在那台设备上设置。",
     "settings.signed_account_state_confirms_this_device_was_removed_sessions": "已通过账户签名状态核实本机被移除。电脑上的会话不受影响；重新加入需要管理端提供配对码。",
+    "settings.status_card_disk_tight": "磁盘紧张",
+    "settings.status_card_paused": "暂停采集",
+    "settings.status_card_title": "电脑状态",
+    "settings.status_needs_update": "需更新",
+    "settings.status_removed": "已移除",
+    "settings.storage_clear_row": "清理可释放空间…",
+    "settings.storage_legend_preview": "预览缓存",
+    "settings.storage_legend_reserve": "应急预留",
+    "settings.storage_legend_uploaded": "上传附件",
     "settings.storage_limit": "空间上限",
+    "settings.storage_limit_headline": "上限 {limit}",
+    "settings.storage_limit_row": "存储上限",
+    "settings.storage_page_footer": "附件保存在这台电脑上；清理只释放可回收原图与预览缓存，进行中会话引用的文件保留。",
+    "settings.storage_section_details": "明细与上限",
+    "settings.storage_summary_pair": "{used} / {limit}",
+    "settings.storage_summary_reserve": "{used} / {limit} · 预留启用",
+    "settings.storage_used_headline": "已占用 {used}",
     "settings.subscription_error": "订阅失败：{reason}",
     "settings.the_account_keys_in_this_browser_will_be_deleted": "会先删除这个浏览器里的账户密钥，再用配对码加入。",
     "settings.the_browser_denied_notification_permission": "浏览器拒绝了通知权限",
@@ -5771,6 +6080,7 @@ export const messages = {
     "settings.theme_auto": "自动",
     "settings.this_browser_does_not_support_push_notifications": "这个浏览器不支持推送",
     "settings.this_device_was_removed_from_the_account": "本机已被移出账户",
+    "settings.timeout_footer": "超时未处理的审批请求会自动拒绝。",
     "settings.times_are_shown_in_beijing_time_quotas_belong_to": "时间按北京时间显示。额度属于 CLI 登录账户，该账户的其他使用也可能计入。",
     "settings.unanswered_approvals_are_denied_after_this_time": "没人处理的审批过了这个时间就拒绝。",
     "settings.unfinished_pairing": "未完成的配对",
@@ -5780,7 +6090,13 @@ export const messages = {
     "settings.up_to_date": "已是最新版本",
     "settings.uploaded_images_and_files": "上传的图片和文件",
     "settings.uploading": "正在上传 {value}",
+    "settings.usage_and_speed": "用量与速度",
+    "settings.usage_summary_30d": "近 30 天 {value}",
+    "settings.usage_summary_7d": "近 7 天 {value}",
+    "settings.usage_summary_cached": "上次 {value}",
+    "settings.usage_summary_empty": "暂无记录",
     "settings.verify_and_continue_security_operation": "核实并继续安全操作",
+    "settings.version_label": "版本",
     "settings.version_unverified_run_remote_agent_doctor_on_this_computer": "版本未验证：在这台电脑上运行 remote-agent doctor，它会用一个临时会话检查各项功能。",
     "settings.view_usage_in_the_local_cli": "可在本机 CLI 中查看用量",
     "settings.when_a_turn_ends": "一轮结束时",
@@ -6041,6 +6357,7 @@ export const messages = {
     "transport.diag_retrying": "正在尝试…",
     "transport.diag_round": "{result} · {seconds} 秒",
     "transport.diag_rtt": "{ms} ms",
+    "transport.diag_section_auto": "自动排障检查",
     "transport.diag_sig_limited": "被中继限速 ×{count}",
     "transport.diag_sig_offline": "电脑不在线 ×{count}",
     "transport.diag_sig_refused": "电脑回复不支持",
@@ -6132,6 +6449,16 @@ export const messages = {
     "transport.reason_peer_unsupported": "电脑上的版本太旧，更新后可用",
     "transport.reason_security_pending": "安全状态待刷新",
     "transport.reason_starting": "正在准备直连",
+    "transport.row_allow_direct": "允许直连",
+    "transport.row_diag_copied": "已复制脱敏诊断",
+    "transport.row_diag_copy_support": "复制诊断给支持",
+    "transport.row_off": "已关闭",
+    "transport.row_relay": "中继",
+    "transport.row_relay_ms": "中继 · {ms} ms",
+    "transport.row_retry_direct": "重新尝试直连",
+    "transport.row_unavailable": "不可用",
+    "transport.row_using_direct": "正在使用",
+    "transport.row_using_direct_ms": "正在使用 · {ms} ms",
     "transport.rtt_ms": "{ms} ms",
     "transport.speed_file": "文件传输",
     "transport.speed_read": "响应时间",

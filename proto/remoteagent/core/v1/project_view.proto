@@ -88,6 +88,8 @@ message ManageProjectsView {
   Text save_error = 6;
   DirPickerView dir_picker = 7;
   int32 project_count = 8;
+  string filter_machine_id = 9;
+  string filter_machine_name = 10;
 }
 
 message ProjectViewModel {

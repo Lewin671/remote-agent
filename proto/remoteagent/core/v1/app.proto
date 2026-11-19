@@ -24,6 +24,7 @@ message ProjectScreenRequest {
   string project_key = 1;
   bool manage = 2;
   int32 ended_limit = 3;
+  string machine_id = 4;
 }
 
 message NewSessionScreenRequest {

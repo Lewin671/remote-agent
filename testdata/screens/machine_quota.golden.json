@@ -363,7 +363,26 @@
                   ],
                   "separatorKey": "common.note_separator"
                 },
-                "summaryTone": "QUOTA_TONE_WARN"
+                "summaryTone": "QUOTA_TONE_WARN",
+                "summaryPrimaryText": {
+                  "key": "quota.left",
+                  "args": [
+                    {
+                      "name": "value",
+                      "strValue": "15"
+                    }
+                  ]
+                },
+                "summaryPrimaryWarn": true,
+                "summaryWindowText": {
+                  "key": "quota.hr",
+                  "args": [
+                    {
+                      "name": "count",
+                      "intValue": "5"
+                    }
+                  ]
+                }
               },
               {
                 "agent": "AGENT_CLAUDE",
@@ -412,6 +431,19 @@
                 },
                 "summaryTone": "QUOTA_TONE_STALE",
                 "summaryMeta": {
+                  "key": "quota.failure",
+                  "args": [
+                    {
+                      "name": "name",
+                      "strValue": "Claude Code"
+                    },
+                    {
+                      "name": "detail",
+                      "strValue": "Status line unavailable"
+                    }
+                  ]
+                },
+                "summaryPrimaryText": {
                   "key": "quota.failure",
                   "args": [
                     {
@@ -604,7 +636,24 @@
                   ],
                   "separatorKey": "common.note_separator"
                 },
-                "summaryTone": "QUOTA_TONE_FULL"
+                "summaryTone": "QUOTA_TONE_FULL",
+                "summaryPrimaryText": {
+                  "key": "quota.exhausted_quota"
+                },
+                "summaryPrimaryWarn": true,
+                "summaryWindowText": {
+                  "key": "quota.resets_in_hr_min",
+                  "args": [
+                    {
+                      "name": "count",
+                      "intValue": "2"
+                    },
+                    {
+                      "name": "detail",
+                      "strValue": "59"
+                    }
+                  ]
+                }
               }
             ],
             "footerNote": {
@@ -801,7 +850,26 @@
                   ],
                   "separatorKey": "common.note_separator"
                 },
-                "summaryTone": "QUOTA_TONE_WARN"
+                "summaryTone": "QUOTA_TONE_WARN",
+                "summaryPrimaryText": {
+                  "key": "quota.left",
+                  "args": [
+                    {
+                      "name": "value",
+                      "strValue": "15"
+                    }
+                  ]
+                },
+                "summaryPrimaryWarn": true,
+                "summaryWindowText": {
+                  "key": "quota.hr",
+                  "args": [
+                    {
+                      "name": "count",
+                      "intValue": "5"
+                    }
+                  ]
+                }
               }
             ],
             "footerNote": {

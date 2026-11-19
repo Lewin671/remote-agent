@@ -9,14 +9,18 @@ import (
 )
 
 // BuildProject constructs the ProjectViewModel for project detail (with endedLimit window) or management.
-func BuildProject(st *State, projectKey string, manage bool, endedLimit int) *corev1.ProjectViewModel {
+func BuildProject(st *State, projectKey string, manage bool, endedLimit int, machineID ...string) *corev1.ProjectViewModel {
 	if st == nil {
 		st = NewState()
 	}
-	if manage || projectKey == "" {
+	var filterMachineID string
+	if len(machineID) > 0 {
+		filterMachineID = machineID[0]
+	}
+	if manage || projectKey == "" || filterMachineID != "" {
 		return &corev1.ProjectViewModel{
 			Kind:   corev1.ProjectViewKind_PROJECT_VIEW_KIND_MANAGE,
-			Manage: buildManageProjectsView(st),
+			Manage: buildManageProjectsView(st, filterMachineID),
 		}
 	}
 	return &corev1.ProjectViewModel{
@@ -134,8 +138,37 @@ func buildProjectDetailView(st *State, key string, endedLimit int) *corev1.Proje
 	}
 }
 
-func buildManageProjectsView(st *State) *corev1.ManageProjectsView {
+func filterProjectsByMachine(res *lists.ProjectsViewResult, machineID string) *lists.ProjectsViewResult {
+	if res == nil || machineID == "" {
+		return res
+	}
+	hasMachine := func(p *lists.ProjectSummary) bool {
+		return p != nil && slices.Contains(p.MachineIDs, machineID)
+	}
+	filterSlice := func(in []*lists.ProjectSummary) []*lists.ProjectSummary {
+		out := make([]*lists.ProjectSummary, 0, len(in))
+		for _, p := range in {
+			if hasMachine(p) {
+				out = append(out, p)
+			}
+		}
+		return out
+	}
+	copyRes := *res
+	copyRes.Listed = filterSlice(res.Listed)
+	copyRes.FilteredPin = filterSlice(res.FilteredPin)
+	copyRes.FilteredOther = filterSlice(res.FilteredOther)
+	var waiting int32
+	for _, p := range copyRes.Listed {
+		waiting += p.WaitingCount
+	}
+	copyRes.WaitingTotal = waiting
+	return &copyRes
+}
+
+func buildManageProjectsView(st *State, filterMachineID string) *corev1.ManageProjectsView {
 	res := lists.BuildProjects(&st.World, st.ProjectSearch, st.RememberedScope, st.RememberedScopeToken, nil, st.Scope)
+	res = filterProjectsByMachine(res, filterMachineID)
 	canEdit := st.World.Connection == lists.ConnConnected && !st.World.AccountControlLost && !st.World.AccountClockSkewed
 	var blocked *corev1.Text
 	if st.World.Connection != lists.ConnConnected {
@@ -145,15 +178,21 @@ func buildManageProjectsView(st *State) *corev1.ManageProjectsView {
 	if hasReason(st.PrefsGlobalErrorText, st.PrefsGlobalError) {
 		saveErr = text.Msg(text.KeyProjectsSaveFailedReason, reasonArg("reason", st.PrefsGlobalErrorText, st.PrefsGlobalError))
 	}
+	var filterMachineName string
+	if filterMachineID != "" {
+		filterMachineName = lists.MachineName(findMachineByID(st, filterMachineID), filterMachineID)
+	}
 	return &corev1.ManageProjectsView{
-		Listing:          buildProjectListing(res, st, true),
-		CanEdit:          canEdit,
-		BlockedReason:    blocked,
-		ChangedElsewhere: st.ProjectChangedElsewhere,
-		Syncing:          st.World.PrefsSyncing,
-		SaveError:        saveErr,
-		DirPicker:        buildDirPickerView(st),
-		ProjectCount:     int32(len(res.Listed)),
+		Listing:           buildProjectListing(res, st, true),
+		CanEdit:           canEdit,
+		BlockedReason:     blocked,
+		ChangedElsewhere:  st.ProjectChangedElsewhere,
+		Syncing:           st.World.PrefsSyncing,
+		SaveError:         saveErr,
+		DirPicker:         buildDirPickerView(st),
+		ProjectCount:      int32(len(res.Listed)),
+		FilterMachineId:   filterMachineID,
+		FilterMachineName: filterMachineName,
 	}
 }
 

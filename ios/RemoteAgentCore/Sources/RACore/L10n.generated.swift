@@ -3009,6 +3009,14 @@ public enum L10n {
         let key = "projects_directory_failed"
         return format(key, locale: locale, args: [reason])
     }
+    public static func projectsFilterMachineSubtitle(name: String, locale: String = MessageLocale.current) -> String {
+        let key = "projects_filter_machine_subtitle"
+        return format(key, locale: locale, args: [name])
+    }
+    public static func projectsFilterShowAll(locale: String = MessageLocale.current) -> String {
+        let key = "projects_filter_show_all"
+        return format(key, locale: locale, args: [])
+    }
     public static func projectsIosActivePrefix(count: Int, locale: String = MessageLocale.current) -> String {
         let key = "projects_ios_active_prefix"
         return format(key, locale: locale, args: [Int64(count)])
@@ -6233,6 +6241,22 @@ public enum L10n {
         let key = "settings_account_quota"
         return format(key, locale: locale, args: [])
     }
+    public static func settingsAccountSecurityTitle(locale: String = MessageLocale.current) -> String {
+        let key = "settings_account_security_title"
+        return format(key, locale: locale, args: [])
+    }
+    public static func settingsAddDeviceFooterHint(name: String, locale: String = MessageLocale.current) -> String {
+        let key = "settings_add_device_footer_hint"
+        return format(key, locale: locale, args: [name])
+    }
+    public static func settingsAddDeviceItem(locale: String = MessageLocale.current) -> String {
+        let key = "settings_add_device_item"
+        return format(key, locale: locale, args: [])
+    }
+    public static func settingsAddFirstComputer(locale: String = MessageLocale.current) -> String {
+        let key = "settings_add_first_computer"
+        return format(key, locale: locale, args: [])
+    }
     public static func settingsAdded(locale: String = MessageLocale.current) -> String {
         let key = "settings_added"
         return format(key, locale: locale, args: [])
@@ -6305,6 +6329,38 @@ public enum L10n {
         let key = "settings_clears_reclaimable_originals_previews_and_unsynced_large_image_cache"
         return format(key, locale: locale, args: [])
     }
+    public static func settingsCliDisabled(locale: String = MessageLocale.current) -> String {
+        let key = "settings_cli_disabled"
+        return format(key, locale: locale, args: [])
+    }
+    public static func settingsCliDisabledExplanation(locale: String = MessageLocale.current) -> String {
+        let key = "settings_cli_disabled_explanation"
+        return format(key, locale: locale, args: [])
+    }
+    public static func settingsCliEnableOnComputer(locale: String = MessageLocale.current) -> String {
+        let key = "settings_cli_enable_on_computer"
+        return format(key, locale: locale, args: [])
+    }
+    public static func settingsCliInstalledVersion(locale: String = MessageLocale.current) -> String {
+        let key = "settings_cli_installed_version"
+        return format(key, locale: locale, args: [])
+    }
+    public static func settingsCliNewProjectDefaultsFooter(locale: String = MessageLocale.current) -> String {
+        let key = "settings_cli_new_project_defaults_footer"
+        return format(key, locale: locale, args: [])
+    }
+    public static func settingsCliSheetEffort(locale: String = MessageLocale.current) -> String {
+        let key = "settings_cli_sheet_effort"
+        return format(key, locale: locale, args: [])
+    }
+    public static func settingsCliSheetMode(locale: String = MessageLocale.current) -> String {
+        let key = "settings_cli_sheet_mode"
+        return format(key, locale: locale, args: [])
+    }
+    public static func settingsCliSheetModel(locale: String = MessageLocale.current) -> String {
+        let key = "settings_cli_sheet_model"
+        return format(key, locale: locale, args: [])
+    }
     public static func settingsCliSwitchesConflict(locale: String = MessageLocale.current) -> String {
         let key = "settings_cli_switches_conflict"
         return format(key, locale: locale, args: [])
@@ -6333,6 +6389,14 @@ public enum L10n {
         let key = "settings_cli_switches_update_error"
         return format(key, locale: locale, args: [reason])
     }
+    public static func settingsCliUnverifiedBadge(locale: String = MessageLocale.current) -> String {
+        let key = "settings_cli_unverified_badge"
+        return format(key, locale: locale, args: [])
+    }
+    public static func settingsCliUnverifiedShort(locale: String = MessageLocale.current) -> String {
+        let key = "settings_cli_unverified_short"
+        return format(key, locale: locale, args: [])
+    }
     public static func settingsCliVersion(name: String, locale: String = MessageLocale.current) -> String {
         let key = "settings_cli_version"
         return format(key, locale: locale, args: [name])
@@ -6341,8 +6405,52 @@ public enum L10n {
         let key = "settings_client_name"
         return format(key, locale: locale, args: [])
     }
+    public static func settingsClientsAddClient(locale: String = MessageLocale.current) -> String {
+        let key = "settings_clients_add_client"
+        return format(key, locale: locale, args: [])
+    }
     public static func settingsClientsControlSessions(locale: String = MessageLocale.current) -> String {
         let key = "settings_clients_control_sessions"
+        return format(key, locale: locale, args: [])
+    }
+    public static func settingsClientsCount(count: Int, locale: String = MessageLocale.current) -> String {
+        let key = "settings_clients_count"
+        return format(key, locale: locale, args: [Int64(count)])
+    }
+    public static func settingsClientsFooterRedesign(locale: String = MessageLocale.current) -> String {
+        let key = "settings_clients_footer_redesign"
+        return format(key, locale: locale, args: [])
+    }
+    public static func settingsClientsGroupPaired(locale: String = MessageLocale.current) -> String {
+        let key = "settings_clients_group_paired"
+        return format(key, locale: locale, args: [])
+    }
+    public static func settingsClientsPairingIncompleteBadge(locale: String = MessageLocale.current) -> String {
+        let key = "settings_clients_pairing_incomplete_badge"
+        return format(key, locale: locale, args: [])
+    }
+    public static func settingsClientsPairingIncompleteDesc(locale: String = MessageLocale.current) -> String {
+        let key = "settings_clients_pairing_incomplete_desc"
+        return format(key, locale: locale, args: [])
+    }
+    public static func settingsClientsSummaryPending(count: Int, pending: Int, locale: String = MessageLocale.current) -> String {
+        let key = "settings_clients_summary_pending"
+        return format(key, locale: locale, args: [Int64(count), Int64(pending)])
+    }
+    public static func settingsClientsSummaryPendingOnly(pending: Int, locale: String = MessageLocale.current) -> String {
+        let key = "settings_clients_summary_pending_only"
+        return format(key, locale: locale, args: [Int64(pending)])
+    }
+    public static func settingsClientsSummarySelfOnly(locale: String = MessageLocale.current) -> String {
+        let key = "settings_clients_summary_self_only"
+        return format(key, locale: locale, args: [])
+    }
+    public static func settingsClientsSummaryWithOthers(count: Int, locale: String = MessageLocale.current) -> String {
+        let key = "settings_clients_summary_with_others"
+        return format(key, locale: locale, args: [Int64(count)])
+    }
+    public static func settingsClientsTitle(locale: String = MessageLocale.current) -> String {
+        let key = "settings_clients_title"
         return format(key, locale: locale, args: [])
     }
     public static func settingsComputer(locale: String = MessageLocale.current) -> String {
@@ -6373,6 +6481,10 @@ public enum L10n {
         let key = "settings_current"
         return format(key, locale: locale, args: [])
     }
+    public static func settingsDaemonProtocolTag(version: Int, locale: String = MessageLocale.current) -> String {
+        let key = "settings_daemon_protocol_tag"
+        return format(key, locale: locale, args: [Int64(version)])
+    }
     public static func settingsDark(locale: String = MessageLocale.current) -> String {
         let key = "settings_dark"
         return format(key, locale: locale, args: [])
@@ -6383,6 +6495,10 @@ public enum L10n {
     }
     public static func settingsDefaultApprovalMode(locale: String = MessageLocale.current) -> String {
         let key = "settings_default_approval_mode"
+        return format(key, locale: locale, args: [])
+    }
+    public static func settingsDeleteComputerRecordsEllipsis(locale: String = MessageLocale.current) -> String {
+        let key = "settings_delete_computer_records_ellipsis"
         return format(key, locale: locale, args: [])
     }
     public static func settingsDetails(locale: String = MessageLocale.current) -> String {
@@ -6399,6 +6515,18 @@ public enum L10n {
     }
     public static func settingsDevices(locale: String = MessageLocale.current) -> String {
         let key = "settings_devices"
+        return format(key, locale: locale, args: [])
+    }
+    public static func settingsEmptyComputersAuthorityBody(locale: String = MessageLocale.current) -> String {
+        let key = "settings_empty_computers_authority_body"
+        return format(key, locale: locale, args: [])
+    }
+    public static func settingsEmptyComputersMemberBody(name: String, locale: String = MessageLocale.current) -> String {
+        let key = "settings_empty_computers_member_body"
+        return format(key, locale: locale, args: [name])
+    }
+    public static func settingsEmptyComputersTitle(locale: String = MessageLocale.current) -> String {
+        let key = "settings_empty_computers_title"
         return format(key, locale: locale, args: [])
     }
     public static func settingsEnable(locale: String = MessageLocale.current) -> String {
@@ -6421,12 +6549,20 @@ public enum L10n {
         let key = "settings_follow_configuration"
         return format(key, locale: locale, args: [value])
     }
+    public static func settingsHeaderSubtitlePair(left: String, right: String, locale: String = MessageLocale.current) -> String {
+        let key = "settings_header_subtitle_pair"
+        return format(key, locale: locale, args: [left, right])
+    }
     public static func settingsHowToEnable(locale: String = MessageLocale.current) -> String {
         let key = "settings_how_to_enable"
         return format(key, locale: locale, args: [])
     }
     public static func settingsIdleCloseOff(locale: String = MessageLocale.current) -> String {
         let key = "settings_idle_close_off"
+        return format(key, locale: locale, args: [])
+    }
+    public static func settingsIdleCloseShort(locale: String = MessageLocale.current) -> String {
+        let key = "settings_idle_close_short"
         return format(key, locale: locale, args: [])
     }
     public static func settingsIosApprovalsQuestionsAndPlansWaitingForYouAppearAt(locale: String = MessageLocale.current) -> String {
@@ -6649,8 +6785,52 @@ public enum L10n {
         let key = "settings_less_than_0_1_mib"
         return format(key, locale: locale, args: [])
     }
+    public static func settingsLicensesViewFull(locale: String = MessageLocale.current) -> String {
+        let key = "settings_licenses_view_full"
+        return format(key, locale: locale, args: [])
+    }
+    public static func settingsLicensesWebFontsTitle(locale: String = MessageLocale.current) -> String {
+        let key = "settings_licenses_web_fonts_title"
+        return format(key, locale: locale, args: [])
+    }
+    public static func settingsLicensesWebIconsTitle(locale: String = MessageLocale.current) -> String {
+        let key = "settings_licenses_web_icons_title"
+        return format(key, locale: locale, args: [])
+    }
+    public static func settingsLicensesWebPackagesTitle(locale: String = MessageLocale.current) -> String {
+        let key = "settings_licenses_web_packages_title"
+        return format(key, locale: locale, args: [])
+    }
     public static func settingsLight(locale: String = MessageLocale.current) -> String {
         let key = "settings_light"
+        return format(key, locale: locale, args: [])
+    }
+    public static func settingsLocalCache(locale: String = MessageLocale.current) -> String {
+        let key = "settings_local_cache"
+        return format(key, locale: locale, args: [])
+    }
+    public static func settingsMachineCount(count: Int, locale: String = MessageLocale.current) -> String {
+        let key = "settings_machine_count"
+        return format(key, locale: locale, args: [Int64(count)])
+    }
+    public static func settingsMachineSubDiskAlert(size: String, locale: String = MessageLocale.current) -> String {
+        let key = "settings_machine_sub_disk_alert"
+        return format(key, locale: locale, args: [size])
+    }
+    public static func settingsMachineSubQuotaExhausted(name: String, locale: String = MessageLocale.current) -> String {
+        let key = "settings_machine_sub_quota_exhausted"
+        return format(key, locale: locale, args: [name])
+    }
+    public static func settingsMachineSubQuotaLeft(name: String, value: String, locale: String = MessageLocale.current) -> String {
+        let key = "settings_machine_sub_quota_left"
+        return format(key, locale: locale, args: [name, value])
+    }
+    public static func settingsMachineSubRemoved(locale: String = MessageLocale.current) -> String {
+        let key = "settings_machine_sub_removed"
+        return format(key, locale: locale, args: [])
+    }
+    public static func settingsMachineSubVersionMismatch(locale: String = MessageLocale.current) -> String {
+        let key = "settings_machine_sub_version_mismatch"
         return format(key, locale: locale, args: [])
     }
     public static func settingsManagingClient(locale: String = MessageLocale.current) -> String {
@@ -6693,8 +6873,64 @@ public enum L10n {
         let key = "settings_notification_permission_help"
         return format(key, locale: locale, args: [])
     }
+    public static func settingsNotificationsGroupAlerts(locale: String = MessageLocale.current) -> String {
+        let key = "settings_notifications_group_alerts"
+        return format(key, locale: locale, args: [])
+    }
+    public static func settingsNotificationsGroupPrivacy(locale: String = MessageLocale.current) -> String {
+        let key = "settings_notifications_group_privacy"
+        return format(key, locale: locale, args: [])
+    }
     public static func settingsNotificationsOnThisClient(locale: String = MessageLocale.current) -> String {
         let key = "settings_notifications_on_this_client"
+        return format(key, locale: locale, args: [])
+    }
+    public static func settingsNotificationsScheduledResultsDesc(locale: String = MessageLocale.current) -> String {
+        let key = "settings_notifications_scheduled_results_desc"
+        return format(key, locale: locale, args: [])
+    }
+    public static func settingsNotificationsSecurityFooter(locale: String = MessageLocale.current) -> String {
+        let key = "settings_notifications_security_footer"
+        return format(key, locale: locale, args: [])
+    }
+    public static func settingsNotificationsShowContentDesc(locale: String = MessageLocale.current) -> String {
+        let key = "settings_notifications_show_content_desc"
+        return format(key, locale: locale, args: [])
+    }
+    public static func settingsNotificationsShowContentTitle(locale: String = MessageLocale.current) -> String {
+        let key = "settings_notifications_show_content_title"
+        return format(key, locale: locale, args: [])
+    }
+    public static func settingsNotificationsSubtitle(locale: String = MessageLocale.current) -> String {
+        let key = "settings_notifications_subtitle"
+        return format(key, locale: locale, args: [])
+    }
+    public static func settingsNotificationsSummaryOff(locale: String = MessageLocale.current) -> String {
+        let key = "settings_notifications_summary_off"
+        return format(key, locale: locale, args: [])
+    }
+    public static func settingsNotificationsSummaryOn(locale: String = MessageLocale.current) -> String {
+        let key = "settings_notifications_summary_on"
+        return format(key, locale: locale, args: [])
+    }
+    public static func settingsNotificationsSummaryPendingOnly(locale: String = MessageLocale.current) -> String {
+        let key = "settings_notifications_summary_pending_only"
+        return format(key, locale: locale, args: [])
+    }
+    public static func settingsNotificationsSummaryUnreachable(locale: String = MessageLocale.current) -> String {
+        let key = "settings_notifications_summary_unreachable"
+        return format(key, locale: locale, args: [])
+    }
+    public static func settingsNotificationsTitle(locale: String = MessageLocale.current) -> String {
+        let key = "settings_notifications_title"
+        return format(key, locale: locale, args: [])
+    }
+    public static func settingsNotificationsWhenATurnEndsDesc(locale: String = MessageLocale.current) -> String {
+        let key = "settings_notifications_when_a_turn_ends_desc"
+        return format(key, locale: locale, args: [])
+    }
+    public static func settingsNotificationsWhenINeedToActDesc(locale: String = MessageLocale.current) -> String {
+        let key = "settings_notifications_when_i_need_to_act_desc"
         return format(key, locale: locale, args: [])
     }
     public static func settingsNow(locale: String = MessageLocale.current) -> String {
@@ -6709,6 +6945,10 @@ public enum L10n {
         let key = "settings_on_iphone_add_to_home_screen_and_open_from"
         return format(key, locale: locale, args: [])
     }
+    public static func settingsOpenSourceLicenses(locale: String = MessageLocale.current) -> String {
+        let key = "settings_open_source_licenses"
+        return format(key, locale: locale, args: [])
+    }
     public static func settingsPairedClient(locale: String = MessageLocale.current) -> String {
         let key = "settings_paired_client"
         return format(key, locale: locale, args: [])
@@ -6717,13 +6957,33 @@ public enum L10n {
         let key = "settings_preview_cache"
         return format(key, locale: locale, args: [])
     }
+    public static func settingsProjectCountValue(count: Int, locale: String = MessageLocale.current) -> String {
+        let key = "settings_project_count_value"
+        return format(key, locale: locale, args: [Int64(count)])
+    }
+    public static func settingsProjectsRow(locale: String = MessageLocale.current) -> String {
+        let key = "settings_projects_row"
+        return format(key, locale: locale, args: [])
+    }
     public static func settingsReadError(reason: String, locale: String = MessageLocale.current) -> String {
         let key = "settings_read_error"
         return format(key, locale: locale, args: [reason])
     }
+    public static func settingsRecoveryWaitingBanner(locale: String = MessageLocale.current) -> String {
+        let key = "settings_recovery_waiting_banner"
+        return format(key, locale: locale, args: [])
+    }
     public static func settingsRejoinAccount(locale: String = MessageLocale.current) -> String {
         let key = "settings_rejoin_account"
         return format(key, locale: locale, args: [])
+    }
+    public static func settingsRemoveComputerEllipsis(locale: String = MessageLocale.current) -> String {
+        let key = "settings_remove_computer_ellipsis"
+        return format(key, locale: locale, args: [])
+    }
+    public static func settingsRemoveNonAuthorityFooter(name: String, locale: String = MessageLocale.current) -> String {
+        let key = "settings_remove_non_authority_footer"
+        return format(key, locale: locale, args: [name])
     }
     public static func settingsRestoreDefaultName(locale: String = MessageLocale.current) -> String {
         let key = "settings_restore_default_name"
@@ -6741,12 +7001,52 @@ public enum L10n {
         let key = "settings_scheduled_task_results"
         return format(key, locale: locale, args: [])
     }
+    public static func settingsSectionAccountAndDevices(locale: String = MessageLocale.current) -> String {
+        let key = "settings_section_account_and_devices"
+        return format(key, locale: locale, args: [])
+    }
+    public static func settingsSectionCodingClis(locale: String = MessageLocale.current) -> String {
+        let key = "settings_section_coding_clis"
+        return format(key, locale: locale, args: [])
+    }
+    public static func settingsSectionComputers(locale: String = MessageLocale.current) -> String {
+        let key = "settings_section_computers"
+        return format(key, locale: locale, args: [])
+    }
+    public static func settingsSectionManagement(locale: String = MessageLocale.current) -> String {
+        let key = "settings_section_management"
+        return format(key, locale: locale, args: [])
+    }
+    public static func settingsSectionQuotaAndUsage(locale: String = MessageLocale.current) -> String {
+        let key = "settings_section_quota_and_usage"
+        return format(key, locale: locale, args: [])
+    }
+    public static func settingsSectionRuntimeAndStorage(locale: String = MessageLocale.current) -> String {
+        let key = "settings_section_runtime_and_storage"
+        return format(key, locale: locale, args: [])
+    }
+    public static func settingsSectionThisDevice(locale: String = MessageLocale.current) -> String {
+        let key = "settings_section_this_device"
+        return format(key, locale: locale, args: [])
+    }
     public static func settingsSecurityNotifications(locale: String = MessageLocale.current) -> String {
         let key = "settings_security_notifications"
         return format(key, locale: locale, args: [])
     }
     public static func settingsSecurityNotificationsAreIndependentOfSessionAlertsDeliveryIs(locale: String = MessageLocale.current) -> String {
         let key = "settings_security_notifications_are_independent_of_session_alerts_delivery_is"
+        return format(key, locale: locale, args: [])
+    }
+    public static func settingsSecuritySummaryAuthority(locale: String = MessageLocale.current) -> String {
+        let key = "settings_security_summary_authority"
+        return format(key, locale: locale, args: [])
+    }
+    public static func settingsSecuritySummaryNonAuthority(name: String, locale: String = MessageLocale.current) -> String {
+        let key = "settings_security_summary_non_authority"
+        return format(key, locale: locale, args: [name])
+    }
+    public static func settingsServerAndConnection(locale: String = MessageLocale.current) -> String {
+        let key = "settings_server_and_connection"
         return format(key, locale: locale, args: [])
     }
     public static func settingsSessionAlertsAreOffYouWillNotBeNotified(locale: String = MessageLocale.current) -> String {
@@ -6765,9 +7065,73 @@ public enum L10n {
         let key = "settings_signed_account_state_confirms_this_device_was_removed_sessions"
         return format(key, locale: locale, args: [])
     }
+    public static func settingsStatusCardDiskTight(locale: String = MessageLocale.current) -> String {
+        let key = "settings_status_card_disk_tight"
+        return format(key, locale: locale, args: [])
+    }
+    public static func settingsStatusCardPaused(locale: String = MessageLocale.current) -> String {
+        let key = "settings_status_card_paused"
+        return format(key, locale: locale, args: [])
+    }
+    public static func settingsStatusCardTitle(locale: String = MessageLocale.current) -> String {
+        let key = "settings_status_card_title"
+        return format(key, locale: locale, args: [])
+    }
+    public static func settingsStatusNeedsUpdate(locale: String = MessageLocale.current) -> String {
+        let key = "settings_status_needs_update"
+        return format(key, locale: locale, args: [])
+    }
+    public static func settingsStatusRemoved(locale: String = MessageLocale.current) -> String {
+        let key = "settings_status_removed"
+        return format(key, locale: locale, args: [])
+    }
+    public static func settingsStorageClearRow(locale: String = MessageLocale.current) -> String {
+        let key = "settings_storage_clear_row"
+        return format(key, locale: locale, args: [])
+    }
+    public static func settingsStorageLegendPreview(locale: String = MessageLocale.current) -> String {
+        let key = "settings_storage_legend_preview"
+        return format(key, locale: locale, args: [])
+    }
+    public static func settingsStorageLegendReserve(locale: String = MessageLocale.current) -> String {
+        let key = "settings_storage_legend_reserve"
+        return format(key, locale: locale, args: [])
+    }
+    public static func settingsStorageLegendUploaded(locale: String = MessageLocale.current) -> String {
+        let key = "settings_storage_legend_uploaded"
+        return format(key, locale: locale, args: [])
+    }
     public static func settingsStorageLimit(locale: String = MessageLocale.current) -> String {
         let key = "settings_storage_limit"
         return format(key, locale: locale, args: [])
+    }
+    public static func settingsStorageLimitHeadline(limit: String, locale: String = MessageLocale.current) -> String {
+        let key = "settings_storage_limit_headline"
+        return format(key, locale: locale, args: [limit])
+    }
+    public static func settingsStorageLimitRow(locale: String = MessageLocale.current) -> String {
+        let key = "settings_storage_limit_row"
+        return format(key, locale: locale, args: [])
+    }
+    public static func settingsStoragePageFooter(locale: String = MessageLocale.current) -> String {
+        let key = "settings_storage_page_footer"
+        return format(key, locale: locale, args: [])
+    }
+    public static func settingsStorageSectionDetails(locale: String = MessageLocale.current) -> String {
+        let key = "settings_storage_section_details"
+        return format(key, locale: locale, args: [])
+    }
+    public static func settingsStorageSummaryPair(limit: String, used: String, locale: String = MessageLocale.current) -> String {
+        let key = "settings_storage_summary_pair"
+        return format(key, locale: locale, args: [limit, used])
+    }
+    public static func settingsStorageSummaryReserve(limit: String, used: String, locale: String = MessageLocale.current) -> String {
+        let key = "settings_storage_summary_reserve"
+        return format(key, locale: locale, args: [limit, used])
+    }
+    public static func settingsStorageUsedHeadline(used: String, locale: String = MessageLocale.current) -> String {
+        let key = "settings_storage_used_headline"
+        return format(key, locale: locale, args: [used])
     }
     public static func settingsSubscriptionError(reason: String, locale: String = MessageLocale.current) -> String {
         let key = "settings_subscription_error"
@@ -6817,6 +7181,10 @@ public enum L10n {
         let key = "settings_this_device_was_removed_from_the_account"
         return format(key, locale: locale, args: [])
     }
+    public static func settingsTimeoutFooter(locale: String = MessageLocale.current) -> String {
+        let key = "settings_timeout_footer"
+        return format(key, locale: locale, args: [])
+    }
     public static func settingsTimesAreShownInBeijingTimeQuotasBelongTo(locale: String = MessageLocale.current) -> String {
         let key = "settings_times_are_shown_in_beijing_time_quotas_belong_to"
         return format(key, locale: locale, args: [])
@@ -6853,8 +7221,32 @@ public enum L10n {
         let key = "settings_uploading"
         return format(key, locale: locale, args: [value])
     }
+    public static func settingsUsageAndSpeed(locale: String = MessageLocale.current) -> String {
+        let key = "settings_usage_and_speed"
+        return format(key, locale: locale, args: [])
+    }
+    public static func settingsUsageSummary30D(value: String, locale: String = MessageLocale.current) -> String {
+        let key = "settings_usage_summary_30d"
+        return format(key, locale: locale, args: [value])
+    }
+    public static func settingsUsageSummary7D(value: String, locale: String = MessageLocale.current) -> String {
+        let key = "settings_usage_summary_7d"
+        return format(key, locale: locale, args: [value])
+    }
+    public static func settingsUsageSummaryCached(value: String, locale: String = MessageLocale.current) -> String {
+        let key = "settings_usage_summary_cached"
+        return format(key, locale: locale, args: [value])
+    }
+    public static func settingsUsageSummaryEmpty(locale: String = MessageLocale.current) -> String {
+        let key = "settings_usage_summary_empty"
+        return format(key, locale: locale, args: [])
+    }
     public static func settingsVerifyAndContinueSecurityOperation(locale: String = MessageLocale.current) -> String {
         let key = "settings_verify_and_continue_security_operation"
+        return format(key, locale: locale, args: [])
+    }
+    public static func settingsVersionLabel(locale: String = MessageLocale.current) -> String {
+        let key = "settings_version_label"
         return format(key, locale: locale, args: [])
     }
     public static func settingsVersionUnverifiedRunRemoteAgentDoctorOnThisComputer(locale: String = MessageLocale.current) -> String {
@@ -7423,6 +7815,10 @@ public enum L10n {
         let key = "tools_waiting_sync"
         return format(key, locale: locale, args: [])
     }
+    public static func transportConnFooterUnsupportedApp(locale: String = MessageLocale.current) -> String {
+        let key = "transport_conn_footer_unsupported_app"
+        return format(key, locale: locale, args: [])
+    }
     public static func transportDetailDaemonDisabled(locale: String = MessageLocale.current) -> String {
         let key = "transport_detail_daemon_disabled"
         return format(key, locale: locale, args: [])
@@ -7435,20 +7831,552 @@ public enum L10n {
         let key = "transport_diag"
         return format(key, locale: locale, args: [])
     }
+    public static func transportDiagAt(seconds: String, state: String, locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_at"
+        return format(key, locale: locale, args: [seconds, state])
+    }
+    public static func transportDiagCand(count: Int, kind: String, scope: String, locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_cand"
+        return format(key, locale: locale, args: [Int64(count), kind, scope])
+    }
+    public static func transportDiagChannel(locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_channel"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportDiagCheckPath(locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_check_path"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportDiagCheckPeer(locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_check_peer"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportDiagCheckRetry(locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_check_retry"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportDiagConnectedBody(locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_connected_body"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportDiagConnectedTitle(locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_connected_title"
+        return format(key, locale: locale, args: [])
+    }
     public static func transportDiagCopy(locale: String = MessageLocale.current) -> String {
         let key = "transport_diag_copy"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportDiagCopyPermission(locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_copy_permission"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportDiagCopySupport(locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_copy_support"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportDiagCount(count: Int, locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_count"
+        return format(key, locale: locale, args: [Int64(count)])
+    }
+    public static func transportDiagDtls(locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_dtls"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportDiagExplainGeneric(locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_explain_generic"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportDiagExplainNat(locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_explain_nat"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportDiagExplainNoReply(locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_explain_no_reply"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportDiagExplainPeerOld(locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_explain_peer_old"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportDiagExplainProbeBlocked(locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_explain_probe_blocked"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportDiagFamilyUnknown(locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_family_unknown"
         return format(key, locale: locale, args: [])
     }
     public static func transportDiagFooter(locale: String = MessageLocale.current) -> String {
         let key = "transport_diag_footer"
         return format(key, locale: locale, args: [])
     }
+    public static func transportDiagGChecks(locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_g_checks"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportDiagGLocal(locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_g_local"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportDiagGPeer(locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_g_peer"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportDiagGResult(locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_g_result"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportDiagGather(locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_gather"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportDiagHidden(locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_hidden"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportDiagIce(locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_ice"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportDiagIpv4(locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_ipv4"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportDiagIpv6(locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_ipv6"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportDiagNoAttempt(locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_no_attempt"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportDiagNone(locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_none"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportDiagNotSampled(locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_not_sampled"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportDiagPair(local: String, remote: String, locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_pair"
+        return format(key, locale: locale, args: [local, remote])
+    }
+    public static func transportDiagPairFailed(count: Int, locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_pair_failed"
+        return format(key, locale: locale, args: [Int64(count)])
+    }
+    public static func transportDiagPairOk(count: Int, locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_pair_ok"
+        return format(key, locale: locale, args: [Int64(count)])
+    }
+    public static func transportDiagPairTraffic(got: Int, sent: Int, locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_pair_traffic"
+        return format(key, locale: locale, args: [Int64(got), Int64(sent)])
+    }
+    public static func transportDiagPairWait(count: Int, locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_pair_wait"
+        return format(key, locale: locale, args: [Int64(count)])
+    }
+    public static func transportDiagPathFailed(locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_path_failed"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportDiagPathNat(locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_path_nat"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportDiagPathUdpBlocked(locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_path_udp_blocked"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportDiagPeerNoReplyDesc(locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_peer_no_reply_desc"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportDiagPeerOldDesc(locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_peer_old_desc"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportDiagPrivacyFooter(locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_privacy_footer"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportDiagRangeCgnat(locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_range_cgnat"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportDiagRangeGlobal(locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_range_global"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportDiagRangeLinkLocal(locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_range_link_local"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportDiagRangeLoopback(locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_range_loopback"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportDiagRangeOther(locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_range_other"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportDiagRangePrivate(locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_range_private"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportDiagRangePublic(locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_range_public"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportDiagRangeUla(locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_range_ula"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportDiagRejBrowser(locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_rej_browser"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportDiagRejCandidates(locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_rej_candidates"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportDiagRejConfirm(locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_rej_confirm"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportDiagRejEnd(locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_rej_end"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportDiagRejSdp(locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_rej_sdp"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportDiagRejSignal(locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_rej_signal"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportDiagRejValue(count: Int, kind: String, reason: String, locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_rej_value"
+        return format(key, locale: locale, args: [Int64(count), kind, reason])
+    }
+    public static func transportDiagRejected(locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_rejected"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportDiagReportBrowser(value: String, locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_report_browser"
+        return format(key, locale: locale, args: [value])
+    }
+    public static func transportDiagReportRound(age: String, n: Int, locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_report_round"
+        return format(key, locale: locale, args: [age, Int64(n)])
+    }
+    public static func transportDiagReportTitle(locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_report_title"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportDiagReportVerdict(verdict: String, locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_report_verdict"
+        return format(key, locale: locale, args: [verdict])
+    }
+    public static func transportDiagResultCancelled(locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_result_cancelled"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportDiagResultLost(locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_result_lost"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportDiagResultNoResponse(locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_result_no_response"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportDiagResultOk(locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_result_ok"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportDiagResultRefused(locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_result_refused"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportDiagResultRetired(locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_result_retired"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportDiagResultTimeout(locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_result_timeout"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportDiagResultTrying(locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_result_trying"
+        return format(key, locale: locale, args: [])
+    }
     public static func transportDiagRetry(locale: String = MessageLocale.current) -> String {
         let key = "transport_diag_retry"
         return format(key, locale: locale, args: [])
     }
+    public static func transportDiagRetryAutoDesc(locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_retry_auto_desc"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportDiagRetryWaitDesc(locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_retry_wait_desc"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportDiagRetrying(locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_retrying"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportDiagRound(result: String, seconds: String, locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_round"
+        return format(key, locale: locale, args: [result, seconds])
+    }
+    public static func transportDiagRtt(ms: Int, locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_rtt"
+        return format(key, locale: locale, args: [Int64(ms)])
+    }
+    public static func transportDiagSectionAuto(locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_section_auto"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportDiagSigLimited(count: Int, locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_sig_limited"
+        return format(key, locale: locale, args: [Int64(count)])
+    }
+    public static func transportDiagSigOffline(count: Int, locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_sig_offline"
+        return format(key, locale: locale, args: [Int64(count)])
+    }
+    public static func transportDiagSigRefused(locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_sig_refused"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportDiagSignal(locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_signal"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportDiagStage(locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_stage"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportDiagStageChannel(locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_stage_channel"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportDiagStageConfirm(locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_stage_confirm"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportDiagStageDtls(locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_stage_dtls"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportDiagStageHandshake(locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_stage_handshake"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportDiagStageIce(locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_stage_ice"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportDiagStageReady(locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_stage_ready"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportDiagStageSdp(locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_stage_sdp"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportDiagStateClosed(locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_state_closed"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportDiagStateDoing(locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_state_doing"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportDiagStateDropped(locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_state_dropped"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportDiagStateFailed(locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_state_failed"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportDiagStateNone(locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_state_none"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportDiagStateOk(locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_state_ok"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportDiagStatusBlocked(locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_status_blocked"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportDiagStatusChecking(locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_status_checking"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportDiagStatusConnected(locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_status_connected"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportDiagStatusEnabled(locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_status_enabled"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportDiagStatusNoReply(locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_status_no_reply"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportDiagStatusNotStarted(locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_status_not_started"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportDiagStatusOk(locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_status_ok"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportDiagStatusPeerOld(locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_status_peer_old"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportDiagStatusWaitUpdate(locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_status_wait_update"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportDiagStunError(code: Int, count: Int, family: String, locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_stun_error"
+        return format(key, locale: locale, args: [Int64(code), Int64(count), family])
+    }
+    public static func transportDiagStunErrors(locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_stun_errors"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportDiagTitleGeneric(locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_title_generic"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportDiagTitleNoReply(locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_title_no_reply"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportDiagTitleProbeBlocked(locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_title_probe_blocked"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportDiagTypeHost(locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_type_host"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportDiagTypeOther(locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_type_other"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportDiagTypePrflx(locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_type_prflx"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportDiagTypeRelay(locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_type_relay"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportDiagTypeSrflx(locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_type_srflx"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportDiagUseFile(locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_use_file"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportDiagUseRead(locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_use_read"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportDiagVerdictAllFailed(locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_verdict_all_failed"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportDiagVerdictBudget(locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_verdict_budget"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportDiagVerdictCancelled(locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_verdict_cancelled"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportDiagVerdictChannel(locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_verdict_channel"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportDiagVerdictConfirm(locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_verdict_confirm"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportDiagVerdictConnected(locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_verdict_connected"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportDiagVerdictCreateFailed(locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_verdict_create_failed"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportDiagVerdictDtls(locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_verdict_dtls"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportDiagVerdictIpv6Silent(locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_verdict_ipv6_silent"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportDiagVerdictLost(locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_verdict_lost"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportDiagVerdictNoLocal(locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_verdict_no_local"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportDiagVerdictNoRemote(locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_verdict_no_remote"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportDiagVerdictNoReply(locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_verdict_no_reply"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportDiagVerdictNoSdp(locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_verdict_no_sdp"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportDiagVerdictNoStun(locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_verdict_no_stun"
+        return format(key, locale: locale, args: [])
+    }
     public static func transportDiagVerdictNone(locale: String = MessageLocale.current) -> String {
         let key = "transport_diag_verdict_none"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportDiagVerdictPeerRefused(locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_verdict_peer_refused"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportDiagVerdictSignalLimited(locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_verdict_signal_limited"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportDiagVerdictSignalOffline(locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_verdict_signal_offline"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportDiagVerdictUnknown(locale: String = MessageLocale.current) -> String {
+        let key = "transport_diag_verdict_unknown"
         return format(key, locale: locale, args: [])
     }
     public static func transportDirect(locale: String = MessageLocale.current) -> String {
@@ -7477,6 +8405,54 @@ public enum L10n {
     }
     public static func transportGroup(locale: String = MessageLocale.current) -> String {
         let key = "transport_group"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportPopoverA11Y(locale: String = MessageLocale.current) -> String {
+        let key = "transport_popover_a11y"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportPopoverDirectBody(locale: String = MessageLocale.current) -> String {
+        let key = "transport_popover_direct_body"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportPopoverDirectTitle(name: String, locale: String = MessageLocale.current) -> String {
+        let key = "transport_popover_direct_title"
+        return format(key, locale: locale, args: [name])
+    }
+    public static func transportPopoverDirectTitleRtt(ms: String, name: String, locale: String = MessageLocale.current) -> String {
+        let key = "transport_popover_direct_title_rtt"
+        return format(key, locale: locale, args: [ms, name])
+    }
+    public static func transportPopoverFileOnly(locale: String = MessageLocale.current) -> String {
+        let key = "transport_popover_file_only"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportPopoverReadOnly(locale: String = MessageLocale.current) -> String {
+        let key = "transport_popover_read_only"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportPopoverRelayBody(locale: String = MessageLocale.current) -> String {
+        let key = "transport_popover_relay_body"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportPopoverRelayTitle(name: String, locale: String = MessageLocale.current) -> String {
+        let key = "transport_popover_relay_title"
+        return format(key, locale: locale, args: [name])
+    }
+    public static func transportPopoverRelayTitleRtt(ms: String, name: String, locale: String = MessageLocale.current) -> String {
+        let key = "transport_popover_relay_title_rtt"
+        return format(key, locale: locale, args: [ms, name])
+    }
+    public static func transportPopoverSettings(locale: String = MessageLocale.current) -> String {
+        let key = "transport_popover_settings"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportPopoverStable(locale: String = MessageLocale.current) -> String {
+        let key = "transport_popover_stable"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportPopoverSwitchedRelay(locale: String = MessageLocale.current) -> String {
+        let key = "transport_popover_switched_relay"
         return format(key, locale: locale, args: [])
     }
     public static func transportReadLatencyBoth(direct: String, relay: String, locale: String = MessageLocale.current) -> String {
@@ -7531,6 +8507,46 @@ public enum L10n {
         let key = "transport_reason_starting"
         return format(key, locale: locale, args: [])
     }
+    public static func transportRowAllowDirect(locale: String = MessageLocale.current) -> String {
+        let key = "transport_row_allow_direct"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportRowDiagCopied(locale: String = MessageLocale.current) -> String {
+        let key = "transport_row_diag_copied"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportRowDiagCopySupport(locale: String = MessageLocale.current) -> String {
+        let key = "transport_row_diag_copy_support"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportRowOff(locale: String = MessageLocale.current) -> String {
+        let key = "transport_row_off"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportRowRelay(locale: String = MessageLocale.current) -> String {
+        let key = "transport_row_relay"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportRowRelayMs(ms: String, locale: String = MessageLocale.current) -> String {
+        let key = "transport_row_relay_ms"
+        return format(key, locale: locale, args: [ms])
+    }
+    public static func transportRowRetryDirect(locale: String = MessageLocale.current) -> String {
+        let key = "transport_row_retry_direct"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportRowUnavailable(locale: String = MessageLocale.current) -> String {
+        let key = "transport_row_unavailable"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportRowUsingDirect(locale: String = MessageLocale.current) -> String {
+        let key = "transport_row_using_direct"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportRowUsingDirectMs(ms: String, locale: String = MessageLocale.current) -> String {
+        let key = "transport_row_using_direct_ms"
+        return format(key, locale: locale, args: [ms])
+    }
     public static func transportRttMs(ms: String, locale: String = MessageLocale.current) -> String {
         let key = "transport_rtt_ms"
         return format(key, locale: locale, args: [ms])
@@ -7571,8 +8587,184 @@ public enum L10n {
         let key = "transport_use_read"
         return format(key, locale: locale, args: [])
     }
+    public static func usageBackfilledSummary(name: String, scanned: Int, locale: String = MessageLocale.current) -> String {
+        let key = "usage_backfilled_summary"
+        return format(key, locale: locale, args: [name, Int64(scanned)])
+    }
+    public static func usageBackfillingBanner(scanned: Int, total: Int, locale: String = MessageLocale.current) -> String {
+        let key = "usage_backfilling_banner"
+        return format(key, locale: locale, args: [Int64(scanned), Int64(total)])
+    }
+    public static func usageBackfillingCell(locale: String = MessageLocale.current) -> String {
+        let key = "usage_backfilling_cell"
+        return format(key, locale: locale, args: [])
+    }
+    public static func usageBackfillingZone(locale: String = MessageLocale.current) -> String {
+        let key = "usage_backfilling_zone"
+        return format(key, locale: locale, args: [])
+    }
+    public static func usageCacheFormulaFootnote(locale: String = MessageLocale.current) -> String {
+        let key = "usage_cache_formula_footnote"
+        return format(key, locale: locale, args: [])
+    }
     public static func usageCacheWriteFootnote(locale: String = MessageLocale.current) -> String {
         let key = "usage_cache_write_footnote"
+        return format(key, locale: locale, args: [])
+    }
+    public static func usageChartA11YLine(count: Int, metric: String, name: String, locale: String = MessageLocale.current) -> String {
+        let key = "usage_chart_a11y_line"
+        return format(key, locale: locale, args: [Int64(count), metric, name])
+    }
+    public static func usageChartA11YTokens(count: Int, name: String, total: String, locale: String = MessageLocale.current) -> String {
+        let key = "usage_chart_a11y_tokens"
+        return format(key, locale: locale, args: [Int64(count), name, total])
+    }
+    public static func usageColCacheRead(locale: String = MessageLocale.current) -> String {
+        let key = "usage_col_cache_read"
+        return format(key, locale: locale, args: [])
+    }
+    public static func usageColCacheWrite(locale: String = MessageLocale.current) -> String {
+        let key = "usage_col_cache_write"
+        return format(key, locale: locale, args: [])
+    }
+    public static func usageColHitRate(locale: String = MessageLocale.current) -> String {
+        let key = "usage_col_hit_rate"
+        return format(key, locale: locale, args: [])
+    }
+    public static func usageColMedian(locale: String = MessageLocale.current) -> String {
+        let key = "usage_col_median"
+        return format(key, locale: locale, args: [])
+    }
+    public static func usageColOutput(locale: String = MessageLocale.current) -> String {
+        let key = "usage_col_output"
+        return format(key, locale: locale, args: [])
+    }
+    public static func usageColPair(locale: String = MessageLocale.current) -> String {
+        let key = "usage_col_pair"
+        return format(key, locale: locale, args: [])
+    }
+    public static func usageColReqs(locale: String = MessageLocale.current) -> String {
+        let key = "usage_col_reqs"
+        return format(key, locale: locale, args: [])
+    }
+    public static func usageColTotal(locale: String = MessageLocale.current) -> String {
+        let key = "usage_col_total"
+        return format(key, locale: locale, args: [])
+    }
+    public static func usageColTtftMedian(locale: String = MessageLocale.current) -> String {
+        let key = "usage_col_ttft_median"
+        return format(key, locale: locale, args: [])
+    }
+    public static func usageColUncached(locale: String = MessageLocale.current) -> String {
+        let key = "usage_col_uncached"
+        return format(key, locale: locale, args: [])
+    }
+    public static func usageColValidReqs(locale: String = MessageLocale.current) -> String {
+        let key = "usage_col_valid_reqs"
+        return format(key, locale: locale, args: [])
+    }
+    public static func usageColVsPrev(locale: String = MessageLocale.current) -> String {
+        let key = "usage_col_vs_prev"
+        return format(key, locale: locale, args: [])
+    }
+    public static func usageCompCacheRead(locale: String = MessageLocale.current) -> String {
+        let key = "usage_comp_cache_read"
+        return format(key, locale: locale, args: [])
+    }
+    public static func usageCompCacheWrite(locale: String = MessageLocale.current) -> String {
+        let key = "usage_comp_cache_write"
+        return format(key, locale: locale, args: [])
+    }
+    public static func usageCompOutput(locale: String = MessageLocale.current) -> String {
+        let key = "usage_comp_output"
+        return format(key, locale: locale, args: [])
+    }
+    public static func usageCompReasoning(value: String, locale: String = MessageLocale.current) -> String {
+        let key = "usage_comp_reasoning"
+        return format(key, locale: locale, args: [value])
+    }
+    public static func usageCompUncached(locale: String = MessageLocale.current) -> String {
+        let key = "usage_comp_uncached"
+        return format(key, locale: locale, args: [])
+    }
+    public static func usageCustomEndLabel(locale: String = MessageLocale.current) -> String {
+        let key = "usage_custom_end_label"
+        return format(key, locale: locale, args: [])
+    }
+    public static func usageCustomRangeChange(locale: String = MessageLocale.current) -> String {
+        let key = "usage_custom_range_change"
+        return format(key, locale: locale, args: [])
+    }
+    public static func usageCustomRangeLimitHint(locale: String = MessageLocale.current) -> String {
+        let key = "usage_custom_range_limit_hint"
+        return format(key, locale: locale, args: [])
+    }
+    public static func usageCustomRangeSummary(days: Int, end: String, start: String, locale: String = MessageLocale.current) -> String {
+        let key = "usage_custom_range_summary"
+        return format(key, locale: locale, args: [Int64(days), end, start])
+    }
+    public static func usageCustomStartLabel(locale: String = MessageLocale.current) -> String {
+        let key = "usage_custom_start_label"
+        return format(key, locale: locale, args: [])
+    }
+    public static func usageDurationMinSec(min: Int, sec: Int, locale: String = MessageLocale.current) -> String {
+        let key = "usage_duration_min_sec"
+        return format(key, locale: locale, args: [Int64(min), Int64(sec)])
+    }
+    public static func usageEmptyBody(locale: String = MessageLocale.current) -> String {
+        let key = "usage_empty_body"
+        return format(key, locale: locale, args: [])
+    }
+    public static func usageEmptyTitle(locale: String = MessageLocale.current) -> String {
+        let key = "usage_empty_title"
+        return format(key, locale: locale, args: [])
+    }
+    public static func usageEntryCachePct(pct: String, locale: String = MessageLocale.current) -> String {
+        let key = "usage_entry_cache_pct"
+        return format(key, locale: locale, args: [pct])
+    }
+    public static func usageEntryFewSamples(count: Int, detail: String, locale: String = MessageLocale.current) -> String {
+        let key = "usage_entry_few_samples"
+        return format(key, locale: locale, args: [Int64(count), detail])
+    }
+    public static func usageEntryLast30D(locale: String = MessageLocale.current) -> String {
+        let key = "usage_entry_last_30d"
+        return format(key, locale: locale, args: [])
+    }
+    public static func usageEntryLast7D(locale: String = MessageLocale.current) -> String {
+        let key = "usage_entry_last_7d"
+        return format(key, locale: locale, args: [])
+    }
+    public static func usageEntryNoSpeed(detail: String, locale: String = MessageLocale.current) -> String {
+        let key = "usage_entry_no_speed"
+        return format(key, locale: locale, args: [detail])
+    }
+    public static func usageEntryReqs(count: Int, locale: String = MessageLocale.current) -> String {
+        let key = "usage_entry_reqs"
+        return format(key, locale: locale, args: [Int64(count)])
+    }
+    public static func usageFewSamplesCount(count: Int, locale: String = MessageLocale.current) -> String {
+        let key = "usage_few_samples_count"
+        return format(key, locale: locale, args: [Int64(count)])
+    }
+    public static func usageFewSamplesHint(locale: String = MessageLocale.current) -> String {
+        let key = "usage_few_samples_hint"
+        return format(key, locale: locale, args: [])
+    }
+    public static func usageFilterAll(locale: String = MessageLocale.current) -> String {
+        let key = "usage_filter_all"
+        return format(key, locale: locale, args: [])
+    }
+    public static func usageFlat(locale: String = MessageLocale.current) -> String {
+        let key = "usage_flat"
+        return format(key, locale: locale, args: [])
+    }
+    public static func usageKpiUnitTokens(locale: String = MessageLocale.current) -> String {
+        let key = "usage_kpi_unit_tokens"
+        return format(key, locale: locale, args: [])
+    }
+    public static func usageKpiUnitToks(locale: String = MessageLocale.current) -> String {
+        let key = "usage_kpi_unit_toks"
         return format(key, locale: locale, args: [])
     }
     public static func usageLoadErrorTitle(locale: String = MessageLocale.current) -> String {
@@ -7583,6 +8775,18 @@ public enum L10n {
         let key = "usage_mixed_unavailable_footnote"
         return format(key, locale: locale, args: [agents])
     }
+    public static func usageOfflineBanner(name: String, time: String, locale: String = MessageLocale.current) -> String {
+        let key = "usage_offline_banner"
+        return format(key, locale: locale, args: [name, time])
+    }
+    public static func usageOfflineEmptyBody(name: String, locale: String = MessageLocale.current) -> String {
+        let key = "usage_offline_empty_body"
+        return format(key, locale: locale, args: [name])
+    }
+    public static func usageOfflineEmptyTitle(name: String, locale: String = MessageLocale.current) -> String {
+        let key = "usage_offline_empty_title"
+        return format(key, locale: locale, args: [name])
+    }
     public static func usageOnlyUnavailableBody(agents: String, locale: String = MessageLocale.current) -> String {
         let key = "usage_only_unavailable_body"
         return format(key, locale: locale, args: [agents])
@@ -7590,6 +8794,134 @@ public enum L10n {
     public static func usageOnlyUnavailableTitle(agents: String, locale: String = MessageLocale.current) -> String {
         let key = "usage_only_unavailable_title"
         return format(key, locale: locale, args: [agents])
+    }
+    public static func usageOutlierNote(locale: String = MessageLocale.current) -> String {
+        let key = "usage_outlier_note"
+        return format(key, locale: locale, args: [])
+    }
+    public static func usagePairsCappedSummary(count: Int, locale: String = MessageLocale.current) -> String {
+        let key = "usage_pairs_capped_summary"
+        return format(key, locale: locale, args: [Int64(count)])
+    }
+    public static func usagePairsSummary(count: Int, name: String, locale: String = MessageLocale.current) -> String {
+        let key = "usage_pairs_summary"
+        return format(key, locale: locale, args: [Int64(count), name])
+    }
+    public static func usagePassiveFootnote(locale: String = MessageLocale.current) -> String {
+        let key = "usage_passive_footnote"
+        return format(key, locale: locale, args: [])
+    }
+    public static func usageRange30D(locale: String = MessageLocale.current) -> String {
+        let key = "usage_range_30d"
+        return format(key, locale: locale, args: [])
+    }
+    public static func usageRange7D(locale: String = MessageLocale.current) -> String {
+        let key = "usage_range_7d"
+        return format(key, locale: locale, args: [])
+    }
+    public static func usageRangeCustom(locale: String = MessageLocale.current) -> String {
+        let key = "usage_range_custom"
+        return format(key, locale: locale, args: [])
+    }
+    public static func usageRangeToday(locale: String = MessageLocale.current) -> String {
+        let key = "usage_range_today"
+        return format(key, locale: locale, args: [])
+    }
+    public static func usageRowSubCache(inp: String, read: String, write: String, locale: String = MessageLocale.current) -> String {
+        let key = "usage_row_sub_cache"
+        return format(key, locale: locale, args: [inp, read, write])
+    }
+    public static func usageRowSubSpeed(high: String, low: String, ttft: String, locale: String = MessageLocale.current) -> String {
+        let key = "usage_row_sub_speed"
+        return format(key, locale: locale, args: [high, low, ttft])
+    }
+    public static func usageRowSubTapOverlay(locale: String = MessageLocale.current) -> String {
+        let key = "usage_row_sub_tap_overlay"
+        return format(key, locale: locale, args: [])
+    }
+    public static func usageRowSubTokens(inp: String, out: String, read: String, write: String, locale: String = MessageLocale.current) -> String {
+        let key = "usage_row_sub_tokens"
+        return format(key, locale: locale, args: [inp, out, read, write])
+    }
+    public static func usageRowSubTokensReasoning(inp: String, out: String, read: String, reas: String, write: String, locale: String = MessageLocale.current) -> String {
+        let key = "usage_row_sub_tokens_reasoning"
+        return format(key, locale: locale, args: [inp, out, read, reas, write])
+    }
+    public static func usageScrubTotal(total: String, locale: String = MessageLocale.current) -> String {
+        let key = "usage_scrub_total"
+        return format(key, locale: locale, args: [total])
+    }
+    public static func usageSpeedThresholdFootnote(locale: String = MessageLocale.current) -> String {
+        let key = "usage_speed_threshold_footnote"
+        return format(key, locale: locale, args: [])
+    }
+    public static func usageSubMedianP10P90(high: String, low: String, locale: String = MessageLocale.current) -> String {
+        let key = "usage_sub_median_p10_p90"
+        return format(key, locale: locale, args: [high, low])
+    }
+    public static func usageSubP10P90(high: String, low: String, locale: String = MessageLocale.current) -> String {
+        let key = "usage_sub_p10_p90"
+        return format(key, locale: locale, args: [high, low])
+    }
+    public static func usageSubRecent10(speed: String, locale: String = MessageLocale.current) -> String {
+        let key = "usage_sub_recent10"
+        return format(key, locale: locale, args: [speed])
+    }
+    public static func usageSubVsPrev30D(locale: String = MessageLocale.current) -> String {
+        let key = "usage_sub_vs_prev_30d"
+        return format(key, locale: locale, args: [])
+    }
+    public static func usageSubVsPrev7D(locale: String = MessageLocale.current) -> String {
+        let key = "usage_sub_vs_prev_7d"
+        return format(key, locale: locale, args: [])
+    }
+    public static func usageSubVsPrevGeneric(locale: String = MessageLocale.current) -> String {
+        let key = "usage_sub_vs_prev_generic"
+        return format(key, locale: locale, args: [])
+    }
+    public static func usageSubWeightedCache(locale: String = MessageLocale.current) -> String {
+        let key = "usage_sub_weighted_cache"
+        return format(key, locale: locale, args: [])
+    }
+    public static func usageSubtitleLive(name: String, locale: String = MessageLocale.current) -> String {
+        let key = "usage_subtitle_live"
+        return format(key, locale: locale, args: [name])
+    }
+    public static func usageSubtitleOffline(name: String, locale: String = MessageLocale.current) -> String {
+        let key = "usage_subtitle_offline"
+        return format(key, locale: locale, args: [name])
+    }
+    public static func usageTabCacheHit(locale: String = MessageLocale.current) -> String {
+        let key = "usage_tab_cache_hit"
+        return format(key, locale: locale, args: [])
+    }
+    public static func usageTabSpeed(locale: String = MessageLocale.current) -> String {
+        let key = "usage_tab_speed"
+        return format(key, locale: locale, args: [])
+    }
+    public static func usageTabTokens(locale: String = MessageLocale.current) -> String {
+        let key = "usage_tab_tokens"
+        return format(key, locale: locale, args: [])
+    }
+    public static func usageTabTtft(locale: String = MessageLocale.current) -> String {
+        let key = "usage_tab_ttft"
+        return format(key, locale: locale, args: [])
+    }
+    public static func usageTitle(locale: String = MessageLocale.current) -> String {
+        let key = "usage_title"
+        return format(key, locale: locale, args: [])
+    }
+    public static func usageUnitWan(locale: String = MessageLocale.current) -> String {
+        let key = "usage_unit_wan"
+        return format(key, locale: locale, args: [])
+    }
+    public static func usageUnitYi(locale: String = MessageLocale.current) -> String {
+        let key = "usage_unit_yi"
+        return format(key, locale: locale, args: [])
+    }
+    public static func usageUnreportedAria(locale: String = MessageLocale.current) -> String {
+        let key = "usage_unreported_aria"
+        return format(key, locale: locale, args: [])
     }
     public static func usageUnsupportedBody(name: String, locale: String = MessageLocale.current) -> String {
         let key = "usage_unsupported_body"
@@ -10596,6 +11928,14 @@ public enum L10nMessage {
     public static func projectsDirectoryFailed(reason: String) -> LocalizedMessage {
         let key = "projects_directory_failed"
         return LocalizedMessage(key: key, arguments: [.string(reason)])
+    }
+    public static func projectsFilterMachineSubtitle(name: String) -> LocalizedMessage {
+        let key = "projects_filter_machine_subtitle"
+        return LocalizedMessage(key: key, arguments: [.string(name)])
+    }
+    public static func projectsFilterShowAll() -> LocalizedMessage {
+        let key = "projects_filter_show_all"
+        return LocalizedMessage(key: key, arguments: [])
     }
     public static func projectsIosActivePrefix(count: Int) -> LocalizedMessage {
         let key = "projects_ios_active_prefix"
@@ -13821,6 +15161,22 @@ public enum L10nMessage {
         let key = "settings_account_quota"
         return LocalizedMessage(key: key, arguments: [])
     }
+    public static func settingsAccountSecurityTitle() -> LocalizedMessage {
+        let key = "settings_account_security_title"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsAddDeviceFooterHint(name: String) -> LocalizedMessage {
+        let key = "settings_add_device_footer_hint"
+        return LocalizedMessage(key: key, arguments: [.string(name)])
+    }
+    public static func settingsAddDeviceItem() -> LocalizedMessage {
+        let key = "settings_add_device_item"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsAddFirstComputer() -> LocalizedMessage {
+        let key = "settings_add_first_computer"
+        return LocalizedMessage(key: key, arguments: [])
+    }
     public static func settingsAdded() -> LocalizedMessage {
         let key = "settings_added"
         return LocalizedMessage(key: key, arguments: [])
@@ -13893,6 +15249,38 @@ public enum L10nMessage {
         let key = "settings_clears_reclaimable_originals_previews_and_unsynced_large_image_cache"
         return LocalizedMessage(key: key, arguments: [])
     }
+    public static func settingsCliDisabled() -> LocalizedMessage {
+        let key = "settings_cli_disabled"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsCliDisabledExplanation() -> LocalizedMessage {
+        let key = "settings_cli_disabled_explanation"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsCliEnableOnComputer() -> LocalizedMessage {
+        let key = "settings_cli_enable_on_computer"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsCliInstalledVersion() -> LocalizedMessage {
+        let key = "settings_cli_installed_version"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsCliNewProjectDefaultsFooter() -> LocalizedMessage {
+        let key = "settings_cli_new_project_defaults_footer"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsCliSheetEffort() -> LocalizedMessage {
+        let key = "settings_cli_sheet_effort"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsCliSheetMode() -> LocalizedMessage {
+        let key = "settings_cli_sheet_mode"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsCliSheetModel() -> LocalizedMessage {
+        let key = "settings_cli_sheet_model"
+        return LocalizedMessage(key: key, arguments: [])
+    }
     public static func settingsCliSwitchesConflict() -> LocalizedMessage {
         let key = "settings_cli_switches_conflict"
         return LocalizedMessage(key: key, arguments: [])
@@ -13921,6 +15309,14 @@ public enum L10nMessage {
         let key = "settings_cli_switches_update_error"
         return LocalizedMessage(key: key, arguments: [.string(reason)])
     }
+    public static func settingsCliUnverifiedBadge() -> LocalizedMessage {
+        let key = "settings_cli_unverified_badge"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsCliUnverifiedShort() -> LocalizedMessage {
+        let key = "settings_cli_unverified_short"
+        return LocalizedMessage(key: key, arguments: [])
+    }
     public static func settingsCliVersion(name: String) -> LocalizedMessage {
         let key = "settings_cli_version"
         return LocalizedMessage(key: key, arguments: [.string(name)])
@@ -13929,8 +15325,52 @@ public enum L10nMessage {
         let key = "settings_client_name"
         return LocalizedMessage(key: key, arguments: [])
     }
+    public static func settingsClientsAddClient() -> LocalizedMessage {
+        let key = "settings_clients_add_client"
+        return LocalizedMessage(key: key, arguments: [])
+    }
     public static func settingsClientsControlSessions() -> LocalizedMessage {
         let key = "settings_clients_control_sessions"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsClientsCount(count: Int) -> LocalizedMessage {
+        let key = "settings_clients_count"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(count))])
+    }
+    public static func settingsClientsFooterRedesign() -> LocalizedMessage {
+        let key = "settings_clients_footer_redesign"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsClientsGroupPaired() -> LocalizedMessage {
+        let key = "settings_clients_group_paired"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsClientsPairingIncompleteBadge() -> LocalizedMessage {
+        let key = "settings_clients_pairing_incomplete_badge"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsClientsPairingIncompleteDesc() -> LocalizedMessage {
+        let key = "settings_clients_pairing_incomplete_desc"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsClientsSummaryPending(count: Int, pending: Int) -> LocalizedMessage {
+        let key = "settings_clients_summary_pending"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(count)), .integer(Int64(pending))])
+    }
+    public static func settingsClientsSummaryPendingOnly(pending: Int) -> LocalizedMessage {
+        let key = "settings_clients_summary_pending_only"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(pending))])
+    }
+    public static func settingsClientsSummarySelfOnly() -> LocalizedMessage {
+        let key = "settings_clients_summary_self_only"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsClientsSummaryWithOthers(count: Int) -> LocalizedMessage {
+        let key = "settings_clients_summary_with_others"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(count))])
+    }
+    public static func settingsClientsTitle() -> LocalizedMessage {
+        let key = "settings_clients_title"
         return LocalizedMessage(key: key, arguments: [])
     }
     public static func settingsComputer() -> LocalizedMessage {
@@ -13961,6 +15401,10 @@ public enum L10nMessage {
         let key = "settings_current"
         return LocalizedMessage(key: key, arguments: [])
     }
+    public static func settingsDaemonProtocolTag(version: Int) -> LocalizedMessage {
+        let key = "settings_daemon_protocol_tag"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(version))])
+    }
     public static func settingsDark() -> LocalizedMessage {
         let key = "settings_dark"
         return LocalizedMessage(key: key, arguments: [])
@@ -13971,6 +15415,10 @@ public enum L10nMessage {
     }
     public static func settingsDefaultApprovalMode() -> LocalizedMessage {
         let key = "settings_default_approval_mode"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsDeleteComputerRecordsEllipsis() -> LocalizedMessage {
+        let key = "settings_delete_computer_records_ellipsis"
         return LocalizedMessage(key: key, arguments: [])
     }
     public static func settingsDetails() -> LocalizedMessage {
@@ -13987,6 +15435,18 @@ public enum L10nMessage {
     }
     public static func settingsDevices() -> LocalizedMessage {
         let key = "settings_devices"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsEmptyComputersAuthorityBody() -> LocalizedMessage {
+        let key = "settings_empty_computers_authority_body"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsEmptyComputersMemberBody(name: String) -> LocalizedMessage {
+        let key = "settings_empty_computers_member_body"
+        return LocalizedMessage(key: key, arguments: [.string(name)])
+    }
+    public static func settingsEmptyComputersTitle() -> LocalizedMessage {
+        let key = "settings_empty_computers_title"
         return LocalizedMessage(key: key, arguments: [])
     }
     public static func settingsEnable() -> LocalizedMessage {
@@ -14009,12 +15469,20 @@ public enum L10nMessage {
         let key = "settings_follow_configuration"
         return LocalizedMessage(key: key, arguments: [.string(value)])
     }
+    public static func settingsHeaderSubtitlePair(left: String, right: String) -> LocalizedMessage {
+        let key = "settings_header_subtitle_pair"
+        return LocalizedMessage(key: key, arguments: [.string(left), .string(right)])
+    }
     public static func settingsHowToEnable() -> LocalizedMessage {
         let key = "settings_how_to_enable"
         return LocalizedMessage(key: key, arguments: [])
     }
     public static func settingsIdleCloseOff() -> LocalizedMessage {
         let key = "settings_idle_close_off"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsIdleCloseShort() -> LocalizedMessage {
+        let key = "settings_idle_close_short"
         return LocalizedMessage(key: key, arguments: [])
     }
     public static func settingsIosApprovalsQuestionsAndPlansWaitingForYouAppearAt() -> LocalizedMessage {
@@ -14237,8 +15705,52 @@ public enum L10nMessage {
         let key = "settings_less_than_0_1_mib"
         return LocalizedMessage(key: key, arguments: [])
     }
+    public static func settingsLicensesViewFull() -> LocalizedMessage {
+        let key = "settings_licenses_view_full"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsLicensesWebFontsTitle() -> LocalizedMessage {
+        let key = "settings_licenses_web_fonts_title"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsLicensesWebIconsTitle() -> LocalizedMessage {
+        let key = "settings_licenses_web_icons_title"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsLicensesWebPackagesTitle() -> LocalizedMessage {
+        let key = "settings_licenses_web_packages_title"
+        return LocalizedMessage(key: key, arguments: [])
+    }
     public static func settingsLight() -> LocalizedMessage {
         let key = "settings_light"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsLocalCache() -> LocalizedMessage {
+        let key = "settings_local_cache"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsMachineCount(count: Int) -> LocalizedMessage {
+        let key = "settings_machine_count"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(count))])
+    }
+    public static func settingsMachineSubDiskAlert(size: String) -> LocalizedMessage {
+        let key = "settings_machine_sub_disk_alert"
+        return LocalizedMessage(key: key, arguments: [.string(size)])
+    }
+    public static func settingsMachineSubQuotaExhausted(name: String) -> LocalizedMessage {
+        let key = "settings_machine_sub_quota_exhausted"
+        return LocalizedMessage(key: key, arguments: [.string(name)])
+    }
+    public static func settingsMachineSubQuotaLeft(name: String, value: String) -> LocalizedMessage {
+        let key = "settings_machine_sub_quota_left"
+        return LocalizedMessage(key: key, arguments: [.string(name), .string(value)])
+    }
+    public static func settingsMachineSubRemoved() -> LocalizedMessage {
+        let key = "settings_machine_sub_removed"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsMachineSubVersionMismatch() -> LocalizedMessage {
+        let key = "settings_machine_sub_version_mismatch"
         return LocalizedMessage(key: key, arguments: [])
     }
     public static func settingsManagingClient() -> LocalizedMessage {
@@ -14281,8 +15793,64 @@ public enum L10nMessage {
         let key = "settings_notification_permission_help"
         return LocalizedMessage(key: key, arguments: [])
     }
+    public static func settingsNotificationsGroupAlerts() -> LocalizedMessage {
+        let key = "settings_notifications_group_alerts"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsNotificationsGroupPrivacy() -> LocalizedMessage {
+        let key = "settings_notifications_group_privacy"
+        return LocalizedMessage(key: key, arguments: [])
+    }
     public static func settingsNotificationsOnThisClient() -> LocalizedMessage {
         let key = "settings_notifications_on_this_client"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsNotificationsScheduledResultsDesc() -> LocalizedMessage {
+        let key = "settings_notifications_scheduled_results_desc"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsNotificationsSecurityFooter() -> LocalizedMessage {
+        let key = "settings_notifications_security_footer"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsNotificationsShowContentDesc() -> LocalizedMessage {
+        let key = "settings_notifications_show_content_desc"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsNotificationsShowContentTitle() -> LocalizedMessage {
+        let key = "settings_notifications_show_content_title"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsNotificationsSubtitle() -> LocalizedMessage {
+        let key = "settings_notifications_subtitle"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsNotificationsSummaryOff() -> LocalizedMessage {
+        let key = "settings_notifications_summary_off"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsNotificationsSummaryOn() -> LocalizedMessage {
+        let key = "settings_notifications_summary_on"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsNotificationsSummaryPendingOnly() -> LocalizedMessage {
+        let key = "settings_notifications_summary_pending_only"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsNotificationsSummaryUnreachable() -> LocalizedMessage {
+        let key = "settings_notifications_summary_unreachable"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsNotificationsTitle() -> LocalizedMessage {
+        let key = "settings_notifications_title"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsNotificationsWhenATurnEndsDesc() -> LocalizedMessage {
+        let key = "settings_notifications_when_a_turn_ends_desc"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsNotificationsWhenINeedToActDesc() -> LocalizedMessage {
+        let key = "settings_notifications_when_i_need_to_act_desc"
         return LocalizedMessage(key: key, arguments: [])
     }
     public static func settingsNow() -> LocalizedMessage {
@@ -14297,6 +15865,10 @@ public enum L10nMessage {
         let key = "settings_on_iphone_add_to_home_screen_and_open_from"
         return LocalizedMessage(key: key, arguments: [])
     }
+    public static func settingsOpenSourceLicenses() -> LocalizedMessage {
+        let key = "settings_open_source_licenses"
+        return LocalizedMessage(key: key, arguments: [])
+    }
     public static func settingsPairedClient() -> LocalizedMessage {
         let key = "settings_paired_client"
         return LocalizedMessage(key: key, arguments: [])
@@ -14305,13 +15877,33 @@ public enum L10nMessage {
         let key = "settings_preview_cache"
         return LocalizedMessage(key: key, arguments: [])
     }
+    public static func settingsProjectCountValue(count: Int) -> LocalizedMessage {
+        let key = "settings_project_count_value"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(count))])
+    }
+    public static func settingsProjectsRow() -> LocalizedMessage {
+        let key = "settings_projects_row"
+        return LocalizedMessage(key: key, arguments: [])
+    }
     public static func settingsReadError(reason: String) -> LocalizedMessage {
         let key = "settings_read_error"
         return LocalizedMessage(key: key, arguments: [.string(reason)])
     }
+    public static func settingsRecoveryWaitingBanner() -> LocalizedMessage {
+        let key = "settings_recovery_waiting_banner"
+        return LocalizedMessage(key: key, arguments: [])
+    }
     public static func settingsRejoinAccount() -> LocalizedMessage {
         let key = "settings_rejoin_account"
         return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsRemoveComputerEllipsis() -> LocalizedMessage {
+        let key = "settings_remove_computer_ellipsis"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsRemoveNonAuthorityFooter(name: String) -> LocalizedMessage {
+        let key = "settings_remove_non_authority_footer"
+        return LocalizedMessage(key: key, arguments: [.string(name)])
     }
     public static func settingsRestoreDefaultName() -> LocalizedMessage {
         let key = "settings_restore_default_name"
@@ -14329,12 +15921,52 @@ public enum L10nMessage {
         let key = "settings_scheduled_task_results"
         return LocalizedMessage(key: key, arguments: [])
     }
+    public static func settingsSectionAccountAndDevices() -> LocalizedMessage {
+        let key = "settings_section_account_and_devices"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsSectionCodingClis() -> LocalizedMessage {
+        let key = "settings_section_coding_clis"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsSectionComputers() -> LocalizedMessage {
+        let key = "settings_section_computers"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsSectionManagement() -> LocalizedMessage {
+        let key = "settings_section_management"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsSectionQuotaAndUsage() -> LocalizedMessage {
+        let key = "settings_section_quota_and_usage"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsSectionRuntimeAndStorage() -> LocalizedMessage {
+        let key = "settings_section_runtime_and_storage"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsSectionThisDevice() -> LocalizedMessage {
+        let key = "settings_section_this_device"
+        return LocalizedMessage(key: key, arguments: [])
+    }
     public static func settingsSecurityNotifications() -> LocalizedMessage {
         let key = "settings_security_notifications"
         return LocalizedMessage(key: key, arguments: [])
     }
     public static func settingsSecurityNotificationsAreIndependentOfSessionAlertsDeliveryIs() -> LocalizedMessage {
         let key = "settings_security_notifications_are_independent_of_session_alerts_delivery_is"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsSecuritySummaryAuthority() -> LocalizedMessage {
+        let key = "settings_security_summary_authority"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsSecuritySummaryNonAuthority(name: String) -> LocalizedMessage {
+        let key = "settings_security_summary_non_authority"
+        return LocalizedMessage(key: key, arguments: [.string(name)])
+    }
+    public static func settingsServerAndConnection() -> LocalizedMessage {
+        let key = "settings_server_and_connection"
         return LocalizedMessage(key: key, arguments: [])
     }
     public static func settingsSessionAlertsAreOffYouWillNotBeNotified() -> LocalizedMessage {
@@ -14353,9 +15985,73 @@ public enum L10nMessage {
         let key = "settings_signed_account_state_confirms_this_device_was_removed_sessions"
         return LocalizedMessage(key: key, arguments: [])
     }
+    public static func settingsStatusCardDiskTight() -> LocalizedMessage {
+        let key = "settings_status_card_disk_tight"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsStatusCardPaused() -> LocalizedMessage {
+        let key = "settings_status_card_paused"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsStatusCardTitle() -> LocalizedMessage {
+        let key = "settings_status_card_title"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsStatusNeedsUpdate() -> LocalizedMessage {
+        let key = "settings_status_needs_update"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsStatusRemoved() -> LocalizedMessage {
+        let key = "settings_status_removed"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsStorageClearRow() -> LocalizedMessage {
+        let key = "settings_storage_clear_row"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsStorageLegendPreview() -> LocalizedMessage {
+        let key = "settings_storage_legend_preview"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsStorageLegendReserve() -> LocalizedMessage {
+        let key = "settings_storage_legend_reserve"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsStorageLegendUploaded() -> LocalizedMessage {
+        let key = "settings_storage_legend_uploaded"
+        return LocalizedMessage(key: key, arguments: [])
+    }
     public static func settingsStorageLimit() -> LocalizedMessage {
         let key = "settings_storage_limit"
         return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsStorageLimitHeadline(limit: String) -> LocalizedMessage {
+        let key = "settings_storage_limit_headline"
+        return LocalizedMessage(key: key, arguments: [.string(limit)])
+    }
+    public static func settingsStorageLimitRow() -> LocalizedMessage {
+        let key = "settings_storage_limit_row"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsStoragePageFooter() -> LocalizedMessage {
+        let key = "settings_storage_page_footer"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsStorageSectionDetails() -> LocalizedMessage {
+        let key = "settings_storage_section_details"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsStorageSummaryPair(limit: String, used: String) -> LocalizedMessage {
+        let key = "settings_storage_summary_pair"
+        return LocalizedMessage(key: key, arguments: [.string(limit), .string(used)])
+    }
+    public static func settingsStorageSummaryReserve(limit: String, used: String) -> LocalizedMessage {
+        let key = "settings_storage_summary_reserve"
+        return LocalizedMessage(key: key, arguments: [.string(limit), .string(used)])
+    }
+    public static func settingsStorageUsedHeadline(used: String) -> LocalizedMessage {
+        let key = "settings_storage_used_headline"
+        return LocalizedMessage(key: key, arguments: [.string(used)])
     }
     public static func settingsSubscriptionError(reason: String) -> LocalizedMessage {
         let key = "settings_subscription_error"
@@ -14405,6 +16101,10 @@ public enum L10nMessage {
         let key = "settings_this_device_was_removed_from_the_account"
         return LocalizedMessage(key: key, arguments: [])
     }
+    public static func settingsTimeoutFooter() -> LocalizedMessage {
+        let key = "settings_timeout_footer"
+        return LocalizedMessage(key: key, arguments: [])
+    }
     public static func settingsTimesAreShownInBeijingTimeQuotasBelongTo() -> LocalizedMessage {
         let key = "settings_times_are_shown_in_beijing_time_quotas_belong_to"
         return LocalizedMessage(key: key, arguments: [])
@@ -14441,8 +16141,32 @@ public enum L10nMessage {
         let key = "settings_uploading"
         return LocalizedMessage(key: key, arguments: [.string(value)])
     }
+    public static func settingsUsageAndSpeed() -> LocalizedMessage {
+        let key = "settings_usage_and_speed"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsUsageSummary30D(value: String) -> LocalizedMessage {
+        let key = "settings_usage_summary_30d"
+        return LocalizedMessage(key: key, arguments: [.string(value)])
+    }
+    public static func settingsUsageSummary7D(value: String) -> LocalizedMessage {
+        let key = "settings_usage_summary_7d"
+        return LocalizedMessage(key: key, arguments: [.string(value)])
+    }
+    public static func settingsUsageSummaryCached(value: String) -> LocalizedMessage {
+        let key = "settings_usage_summary_cached"
+        return LocalizedMessage(key: key, arguments: [.string(value)])
+    }
+    public static func settingsUsageSummaryEmpty() -> LocalizedMessage {
+        let key = "settings_usage_summary_empty"
+        return LocalizedMessage(key: key, arguments: [])
+    }
     public static func settingsVerifyAndContinueSecurityOperation() -> LocalizedMessage {
         let key = "settings_verify_and_continue_security_operation"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsVersionLabel() -> LocalizedMessage {
+        let key = "settings_version_label"
         return LocalizedMessage(key: key, arguments: [])
     }
     public static func settingsVersionUnverifiedRunRemoteAgentDoctorOnThisComputer() -> LocalizedMessage {
@@ -15011,6 +16735,10 @@ public enum L10nMessage {
         let key = "tools_waiting_sync"
         return LocalizedMessage(key: key, arguments: [])
     }
+    public static func transportConnFooterUnsupportedApp() -> LocalizedMessage {
+        let key = "transport_conn_footer_unsupported_app"
+        return LocalizedMessage(key: key, arguments: [])
+    }
     public static func transportDetailDaemonDisabled() -> LocalizedMessage {
         let key = "transport_detail_daemon_disabled"
         return LocalizedMessage(key: key, arguments: [])
@@ -15023,20 +16751,552 @@ public enum L10nMessage {
         let key = "transport_diag"
         return LocalizedMessage(key: key, arguments: [])
     }
+    public static func transportDiagAt(seconds: String, state: String) -> LocalizedMessage {
+        let key = "transport_diag_at"
+        return LocalizedMessage(key: key, arguments: [.string(seconds), .string(state)])
+    }
+    public static func transportDiagCand(count: Int, kind: String, scope: String) -> LocalizedMessage {
+        let key = "transport_diag_cand"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(count)), .string(kind), .string(scope)])
+    }
+    public static func transportDiagChannel() -> LocalizedMessage {
+        let key = "transport_diag_channel"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportDiagCheckPath() -> LocalizedMessage {
+        let key = "transport_diag_check_path"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportDiagCheckPeer() -> LocalizedMessage {
+        let key = "transport_diag_check_peer"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportDiagCheckRetry() -> LocalizedMessage {
+        let key = "transport_diag_check_retry"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportDiagConnectedBody() -> LocalizedMessage {
+        let key = "transport_diag_connected_body"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportDiagConnectedTitle() -> LocalizedMessage {
+        let key = "transport_diag_connected_title"
+        return LocalizedMessage(key: key, arguments: [])
+    }
     public static func transportDiagCopy() -> LocalizedMessage {
         let key = "transport_diag_copy"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportDiagCopyPermission() -> LocalizedMessage {
+        let key = "transport_diag_copy_permission"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportDiagCopySupport() -> LocalizedMessage {
+        let key = "transport_diag_copy_support"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportDiagCount(count: Int) -> LocalizedMessage {
+        let key = "transport_diag_count"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(count))])
+    }
+    public static func transportDiagDtls() -> LocalizedMessage {
+        let key = "transport_diag_dtls"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportDiagExplainGeneric() -> LocalizedMessage {
+        let key = "transport_diag_explain_generic"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportDiagExplainNat() -> LocalizedMessage {
+        let key = "transport_diag_explain_nat"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportDiagExplainNoReply() -> LocalizedMessage {
+        let key = "transport_diag_explain_no_reply"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportDiagExplainPeerOld() -> LocalizedMessage {
+        let key = "transport_diag_explain_peer_old"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportDiagExplainProbeBlocked() -> LocalizedMessage {
+        let key = "transport_diag_explain_probe_blocked"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportDiagFamilyUnknown() -> LocalizedMessage {
+        let key = "transport_diag_family_unknown"
         return LocalizedMessage(key: key, arguments: [])
     }
     public static func transportDiagFooter() -> LocalizedMessage {
         let key = "transport_diag_footer"
         return LocalizedMessage(key: key, arguments: [])
     }
+    public static func transportDiagGChecks() -> LocalizedMessage {
+        let key = "transport_diag_g_checks"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportDiagGLocal() -> LocalizedMessage {
+        let key = "transport_diag_g_local"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportDiagGPeer() -> LocalizedMessage {
+        let key = "transport_diag_g_peer"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportDiagGResult() -> LocalizedMessage {
+        let key = "transport_diag_g_result"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportDiagGather() -> LocalizedMessage {
+        let key = "transport_diag_gather"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportDiagHidden() -> LocalizedMessage {
+        let key = "transport_diag_hidden"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportDiagIce() -> LocalizedMessage {
+        let key = "transport_diag_ice"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportDiagIpv4() -> LocalizedMessage {
+        let key = "transport_diag_ipv4"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportDiagIpv6() -> LocalizedMessage {
+        let key = "transport_diag_ipv6"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportDiagNoAttempt() -> LocalizedMessage {
+        let key = "transport_diag_no_attempt"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportDiagNone() -> LocalizedMessage {
+        let key = "transport_diag_none"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportDiagNotSampled() -> LocalizedMessage {
+        let key = "transport_diag_not_sampled"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportDiagPair(local: String, remote: String) -> LocalizedMessage {
+        let key = "transport_diag_pair"
+        return LocalizedMessage(key: key, arguments: [.string(local), .string(remote)])
+    }
+    public static func transportDiagPairFailed(count: Int) -> LocalizedMessage {
+        let key = "transport_diag_pair_failed"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(count))])
+    }
+    public static func transportDiagPairOk(count: Int) -> LocalizedMessage {
+        let key = "transport_diag_pair_ok"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(count))])
+    }
+    public static func transportDiagPairTraffic(got: Int, sent: Int) -> LocalizedMessage {
+        let key = "transport_diag_pair_traffic"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(got)), .integer(Int64(sent))])
+    }
+    public static func transportDiagPairWait(count: Int) -> LocalizedMessage {
+        let key = "transport_diag_pair_wait"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(count))])
+    }
+    public static func transportDiagPathFailed() -> LocalizedMessage {
+        let key = "transport_diag_path_failed"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportDiagPathNat() -> LocalizedMessage {
+        let key = "transport_diag_path_nat"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportDiagPathUdpBlocked() -> LocalizedMessage {
+        let key = "transport_diag_path_udp_blocked"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportDiagPeerNoReplyDesc() -> LocalizedMessage {
+        let key = "transport_diag_peer_no_reply_desc"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportDiagPeerOldDesc() -> LocalizedMessage {
+        let key = "transport_diag_peer_old_desc"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportDiagPrivacyFooter() -> LocalizedMessage {
+        let key = "transport_diag_privacy_footer"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportDiagRangeCgnat() -> LocalizedMessage {
+        let key = "transport_diag_range_cgnat"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportDiagRangeGlobal() -> LocalizedMessage {
+        let key = "transport_diag_range_global"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportDiagRangeLinkLocal() -> LocalizedMessage {
+        let key = "transport_diag_range_link_local"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportDiagRangeLoopback() -> LocalizedMessage {
+        let key = "transport_diag_range_loopback"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportDiagRangeOther() -> LocalizedMessage {
+        let key = "transport_diag_range_other"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportDiagRangePrivate() -> LocalizedMessage {
+        let key = "transport_diag_range_private"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportDiagRangePublic() -> LocalizedMessage {
+        let key = "transport_diag_range_public"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportDiagRangeUla() -> LocalizedMessage {
+        let key = "transport_diag_range_ula"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportDiagRejBrowser() -> LocalizedMessage {
+        let key = "transport_diag_rej_browser"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportDiagRejCandidates() -> LocalizedMessage {
+        let key = "transport_diag_rej_candidates"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportDiagRejConfirm() -> LocalizedMessage {
+        let key = "transport_diag_rej_confirm"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportDiagRejEnd() -> LocalizedMessage {
+        let key = "transport_diag_rej_end"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportDiagRejSdp() -> LocalizedMessage {
+        let key = "transport_diag_rej_sdp"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportDiagRejSignal() -> LocalizedMessage {
+        let key = "transport_diag_rej_signal"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportDiagRejValue(count: Int, kind: String, reason: String) -> LocalizedMessage {
+        let key = "transport_diag_rej_value"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(count)), .string(kind), .string(reason)])
+    }
+    public static func transportDiagRejected() -> LocalizedMessage {
+        let key = "transport_diag_rejected"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportDiagReportBrowser(value: String) -> LocalizedMessage {
+        let key = "transport_diag_report_browser"
+        return LocalizedMessage(key: key, arguments: [.string(value)])
+    }
+    public static func transportDiagReportRound(age: String, n: Int) -> LocalizedMessage {
+        let key = "transport_diag_report_round"
+        return LocalizedMessage(key: key, arguments: [.string(age), .integer(Int64(n))])
+    }
+    public static func transportDiagReportTitle() -> LocalizedMessage {
+        let key = "transport_diag_report_title"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportDiagReportVerdict(verdict: String) -> LocalizedMessage {
+        let key = "transport_diag_report_verdict"
+        return LocalizedMessage(key: key, arguments: [.string(verdict)])
+    }
+    public static func transportDiagResultCancelled() -> LocalizedMessage {
+        let key = "transport_diag_result_cancelled"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportDiagResultLost() -> LocalizedMessage {
+        let key = "transport_diag_result_lost"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportDiagResultNoResponse() -> LocalizedMessage {
+        let key = "transport_diag_result_no_response"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportDiagResultOk() -> LocalizedMessage {
+        let key = "transport_diag_result_ok"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportDiagResultRefused() -> LocalizedMessage {
+        let key = "transport_diag_result_refused"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportDiagResultRetired() -> LocalizedMessage {
+        let key = "transport_diag_result_retired"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportDiagResultTimeout() -> LocalizedMessage {
+        let key = "transport_diag_result_timeout"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportDiagResultTrying() -> LocalizedMessage {
+        let key = "transport_diag_result_trying"
+        return LocalizedMessage(key: key, arguments: [])
+    }
     public static func transportDiagRetry() -> LocalizedMessage {
         let key = "transport_diag_retry"
         return LocalizedMessage(key: key, arguments: [])
     }
+    public static func transportDiagRetryAutoDesc() -> LocalizedMessage {
+        let key = "transport_diag_retry_auto_desc"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportDiagRetryWaitDesc() -> LocalizedMessage {
+        let key = "transport_diag_retry_wait_desc"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportDiagRetrying() -> LocalizedMessage {
+        let key = "transport_diag_retrying"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportDiagRound(result: String, seconds: String) -> LocalizedMessage {
+        let key = "transport_diag_round"
+        return LocalizedMessage(key: key, arguments: [.string(result), .string(seconds)])
+    }
+    public static func transportDiagRtt(ms: Int) -> LocalizedMessage {
+        let key = "transport_diag_rtt"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(ms))])
+    }
+    public static func transportDiagSectionAuto() -> LocalizedMessage {
+        let key = "transport_diag_section_auto"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportDiagSigLimited(count: Int) -> LocalizedMessage {
+        let key = "transport_diag_sig_limited"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(count))])
+    }
+    public static func transportDiagSigOffline(count: Int) -> LocalizedMessage {
+        let key = "transport_diag_sig_offline"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(count))])
+    }
+    public static func transportDiagSigRefused() -> LocalizedMessage {
+        let key = "transport_diag_sig_refused"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportDiagSignal() -> LocalizedMessage {
+        let key = "transport_diag_signal"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportDiagStage() -> LocalizedMessage {
+        let key = "transport_diag_stage"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportDiagStageChannel() -> LocalizedMessage {
+        let key = "transport_diag_stage_channel"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportDiagStageConfirm() -> LocalizedMessage {
+        let key = "transport_diag_stage_confirm"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportDiagStageDtls() -> LocalizedMessage {
+        let key = "transport_diag_stage_dtls"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportDiagStageHandshake() -> LocalizedMessage {
+        let key = "transport_diag_stage_handshake"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportDiagStageIce() -> LocalizedMessage {
+        let key = "transport_diag_stage_ice"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportDiagStageReady() -> LocalizedMessage {
+        let key = "transport_diag_stage_ready"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportDiagStageSdp() -> LocalizedMessage {
+        let key = "transport_diag_stage_sdp"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportDiagStateClosed() -> LocalizedMessage {
+        let key = "transport_diag_state_closed"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportDiagStateDoing() -> LocalizedMessage {
+        let key = "transport_diag_state_doing"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportDiagStateDropped() -> LocalizedMessage {
+        let key = "transport_diag_state_dropped"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportDiagStateFailed() -> LocalizedMessage {
+        let key = "transport_diag_state_failed"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportDiagStateNone() -> LocalizedMessage {
+        let key = "transport_diag_state_none"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportDiagStateOk() -> LocalizedMessage {
+        let key = "transport_diag_state_ok"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportDiagStatusBlocked() -> LocalizedMessage {
+        let key = "transport_diag_status_blocked"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportDiagStatusChecking() -> LocalizedMessage {
+        let key = "transport_diag_status_checking"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportDiagStatusConnected() -> LocalizedMessage {
+        let key = "transport_diag_status_connected"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportDiagStatusEnabled() -> LocalizedMessage {
+        let key = "transport_diag_status_enabled"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportDiagStatusNoReply() -> LocalizedMessage {
+        let key = "transport_diag_status_no_reply"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportDiagStatusNotStarted() -> LocalizedMessage {
+        let key = "transport_diag_status_not_started"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportDiagStatusOk() -> LocalizedMessage {
+        let key = "transport_diag_status_ok"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportDiagStatusPeerOld() -> LocalizedMessage {
+        let key = "transport_diag_status_peer_old"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportDiagStatusWaitUpdate() -> LocalizedMessage {
+        let key = "transport_diag_status_wait_update"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportDiagStunError(code: Int, count: Int, family: String) -> LocalizedMessage {
+        let key = "transport_diag_stun_error"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(code)), .integer(Int64(count)), .string(family)])
+    }
+    public static func transportDiagStunErrors() -> LocalizedMessage {
+        let key = "transport_diag_stun_errors"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportDiagTitleGeneric() -> LocalizedMessage {
+        let key = "transport_diag_title_generic"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportDiagTitleNoReply() -> LocalizedMessage {
+        let key = "transport_diag_title_no_reply"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportDiagTitleProbeBlocked() -> LocalizedMessage {
+        let key = "transport_diag_title_probe_blocked"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportDiagTypeHost() -> LocalizedMessage {
+        let key = "transport_diag_type_host"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportDiagTypeOther() -> LocalizedMessage {
+        let key = "transport_diag_type_other"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportDiagTypePrflx() -> LocalizedMessage {
+        let key = "transport_diag_type_prflx"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportDiagTypeRelay() -> LocalizedMessage {
+        let key = "transport_diag_type_relay"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportDiagTypeSrflx() -> LocalizedMessage {
+        let key = "transport_diag_type_srflx"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportDiagUseFile() -> LocalizedMessage {
+        let key = "transport_diag_use_file"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportDiagUseRead() -> LocalizedMessage {
+        let key = "transport_diag_use_read"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportDiagVerdictAllFailed() -> LocalizedMessage {
+        let key = "transport_diag_verdict_all_failed"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportDiagVerdictBudget() -> LocalizedMessage {
+        let key = "transport_diag_verdict_budget"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportDiagVerdictCancelled() -> LocalizedMessage {
+        let key = "transport_diag_verdict_cancelled"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportDiagVerdictChannel() -> LocalizedMessage {
+        let key = "transport_diag_verdict_channel"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportDiagVerdictConfirm() -> LocalizedMessage {
+        let key = "transport_diag_verdict_confirm"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportDiagVerdictConnected() -> LocalizedMessage {
+        let key = "transport_diag_verdict_connected"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportDiagVerdictCreateFailed() -> LocalizedMessage {
+        let key = "transport_diag_verdict_create_failed"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportDiagVerdictDtls() -> LocalizedMessage {
+        let key = "transport_diag_verdict_dtls"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportDiagVerdictIpv6Silent() -> LocalizedMessage {
+        let key = "transport_diag_verdict_ipv6_silent"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportDiagVerdictLost() -> LocalizedMessage {
+        let key = "transport_diag_verdict_lost"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportDiagVerdictNoLocal() -> LocalizedMessage {
+        let key = "transport_diag_verdict_no_local"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportDiagVerdictNoRemote() -> LocalizedMessage {
+        let key = "transport_diag_verdict_no_remote"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportDiagVerdictNoReply() -> LocalizedMessage {
+        let key = "transport_diag_verdict_no_reply"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportDiagVerdictNoSdp() -> LocalizedMessage {
+        let key = "transport_diag_verdict_no_sdp"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportDiagVerdictNoStun() -> LocalizedMessage {
+        let key = "transport_diag_verdict_no_stun"
+        return LocalizedMessage(key: key, arguments: [])
+    }
     public static func transportDiagVerdictNone() -> LocalizedMessage {
         let key = "transport_diag_verdict_none"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportDiagVerdictPeerRefused() -> LocalizedMessage {
+        let key = "transport_diag_verdict_peer_refused"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportDiagVerdictSignalLimited() -> LocalizedMessage {
+        let key = "transport_diag_verdict_signal_limited"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportDiagVerdictSignalOffline() -> LocalizedMessage {
+        let key = "transport_diag_verdict_signal_offline"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportDiagVerdictUnknown() -> LocalizedMessage {
+        let key = "transport_diag_verdict_unknown"
         return LocalizedMessage(key: key, arguments: [])
     }
     public static func transportDirect() -> LocalizedMessage {
@@ -15065,6 +17325,54 @@ public enum L10nMessage {
     }
     public static func transportGroup() -> LocalizedMessage {
         let key = "transport_group"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportPopoverA11Y() -> LocalizedMessage {
+        let key = "transport_popover_a11y"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportPopoverDirectBody() -> LocalizedMessage {
+        let key = "transport_popover_direct_body"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportPopoverDirectTitle(name: String) -> LocalizedMessage {
+        let key = "transport_popover_direct_title"
+        return LocalizedMessage(key: key, arguments: [.string(name)])
+    }
+    public static func transportPopoverDirectTitleRtt(ms: String, name: String) -> LocalizedMessage {
+        let key = "transport_popover_direct_title_rtt"
+        return LocalizedMessage(key: key, arguments: [.string(ms), .string(name)])
+    }
+    public static func transportPopoverFileOnly() -> LocalizedMessage {
+        let key = "transport_popover_file_only"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportPopoverReadOnly() -> LocalizedMessage {
+        let key = "transport_popover_read_only"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportPopoverRelayBody() -> LocalizedMessage {
+        let key = "transport_popover_relay_body"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportPopoverRelayTitle(name: String) -> LocalizedMessage {
+        let key = "transport_popover_relay_title"
+        return LocalizedMessage(key: key, arguments: [.string(name)])
+    }
+    public static func transportPopoverRelayTitleRtt(ms: String, name: String) -> LocalizedMessage {
+        let key = "transport_popover_relay_title_rtt"
+        return LocalizedMessage(key: key, arguments: [.string(ms), .string(name)])
+    }
+    public static func transportPopoverSettings() -> LocalizedMessage {
+        let key = "transport_popover_settings"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportPopoverStable() -> LocalizedMessage {
+        let key = "transport_popover_stable"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportPopoverSwitchedRelay() -> LocalizedMessage {
+        let key = "transport_popover_switched_relay"
         return LocalizedMessage(key: key, arguments: [])
     }
     public static func transportReadLatencyBoth(direct: String, relay: String) -> LocalizedMessage {
@@ -15119,6 +17427,46 @@ public enum L10nMessage {
         let key = "transport_reason_starting"
         return LocalizedMessage(key: key, arguments: [])
     }
+    public static func transportRowAllowDirect() -> LocalizedMessage {
+        let key = "transport_row_allow_direct"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportRowDiagCopied() -> LocalizedMessage {
+        let key = "transport_row_diag_copied"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportRowDiagCopySupport() -> LocalizedMessage {
+        let key = "transport_row_diag_copy_support"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportRowOff() -> LocalizedMessage {
+        let key = "transport_row_off"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportRowRelay() -> LocalizedMessage {
+        let key = "transport_row_relay"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportRowRelayMs(ms: String) -> LocalizedMessage {
+        let key = "transport_row_relay_ms"
+        return LocalizedMessage(key: key, arguments: [.string(ms)])
+    }
+    public static func transportRowRetryDirect() -> LocalizedMessage {
+        let key = "transport_row_retry_direct"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportRowUnavailable() -> LocalizedMessage {
+        let key = "transport_row_unavailable"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportRowUsingDirect() -> LocalizedMessage {
+        let key = "transport_row_using_direct"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportRowUsingDirectMs(ms: String) -> LocalizedMessage {
+        let key = "transport_row_using_direct_ms"
+        return LocalizedMessage(key: key, arguments: [.string(ms)])
+    }
     public static func transportRttMs(ms: String) -> LocalizedMessage {
         let key = "transport_rtt_ms"
         return LocalizedMessage(key: key, arguments: [.string(ms)])
@@ -15159,8 +17507,184 @@ public enum L10nMessage {
         let key = "transport_use_read"
         return LocalizedMessage(key: key, arguments: [])
     }
+    public static func usageBackfilledSummary(name: String, scanned: Int) -> LocalizedMessage {
+        let key = "usage_backfilled_summary"
+        return LocalizedMessage(key: key, arguments: [.string(name), .integer(Int64(scanned))])
+    }
+    public static func usageBackfillingBanner(scanned: Int, total: Int) -> LocalizedMessage {
+        let key = "usage_backfilling_banner"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(scanned)), .integer(Int64(total))])
+    }
+    public static func usageBackfillingCell() -> LocalizedMessage {
+        let key = "usage_backfilling_cell"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func usageBackfillingZone() -> LocalizedMessage {
+        let key = "usage_backfilling_zone"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func usageCacheFormulaFootnote() -> LocalizedMessage {
+        let key = "usage_cache_formula_footnote"
+        return LocalizedMessage(key: key, arguments: [])
+    }
     public static func usageCacheWriteFootnote() -> LocalizedMessage {
         let key = "usage_cache_write_footnote"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func usageChartA11YLine(count: Int, metric: String, name: String) -> LocalizedMessage {
+        let key = "usage_chart_a11y_line"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(count)), .string(metric), .string(name)])
+    }
+    public static func usageChartA11YTokens(count: Int, name: String, total: String) -> LocalizedMessage {
+        let key = "usage_chart_a11y_tokens"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(count)), .string(name), .string(total)])
+    }
+    public static func usageColCacheRead() -> LocalizedMessage {
+        let key = "usage_col_cache_read"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func usageColCacheWrite() -> LocalizedMessage {
+        let key = "usage_col_cache_write"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func usageColHitRate() -> LocalizedMessage {
+        let key = "usage_col_hit_rate"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func usageColMedian() -> LocalizedMessage {
+        let key = "usage_col_median"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func usageColOutput() -> LocalizedMessage {
+        let key = "usage_col_output"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func usageColPair() -> LocalizedMessage {
+        let key = "usage_col_pair"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func usageColReqs() -> LocalizedMessage {
+        let key = "usage_col_reqs"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func usageColTotal() -> LocalizedMessage {
+        let key = "usage_col_total"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func usageColTtftMedian() -> LocalizedMessage {
+        let key = "usage_col_ttft_median"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func usageColUncached() -> LocalizedMessage {
+        let key = "usage_col_uncached"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func usageColValidReqs() -> LocalizedMessage {
+        let key = "usage_col_valid_reqs"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func usageColVsPrev() -> LocalizedMessage {
+        let key = "usage_col_vs_prev"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func usageCompCacheRead() -> LocalizedMessage {
+        let key = "usage_comp_cache_read"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func usageCompCacheWrite() -> LocalizedMessage {
+        let key = "usage_comp_cache_write"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func usageCompOutput() -> LocalizedMessage {
+        let key = "usage_comp_output"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func usageCompReasoning(value: String) -> LocalizedMessage {
+        let key = "usage_comp_reasoning"
+        return LocalizedMessage(key: key, arguments: [.string(value)])
+    }
+    public static func usageCompUncached() -> LocalizedMessage {
+        let key = "usage_comp_uncached"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func usageCustomEndLabel() -> LocalizedMessage {
+        let key = "usage_custom_end_label"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func usageCustomRangeChange() -> LocalizedMessage {
+        let key = "usage_custom_range_change"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func usageCustomRangeLimitHint() -> LocalizedMessage {
+        let key = "usage_custom_range_limit_hint"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func usageCustomRangeSummary(days: Int, end: String, start: String) -> LocalizedMessage {
+        let key = "usage_custom_range_summary"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(days)), .string(end), .string(start)])
+    }
+    public static func usageCustomStartLabel() -> LocalizedMessage {
+        let key = "usage_custom_start_label"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func usageDurationMinSec(min: Int, sec: Int) -> LocalizedMessage {
+        let key = "usage_duration_min_sec"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(min)), .integer(Int64(sec))])
+    }
+    public static func usageEmptyBody() -> LocalizedMessage {
+        let key = "usage_empty_body"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func usageEmptyTitle() -> LocalizedMessage {
+        let key = "usage_empty_title"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func usageEntryCachePct(pct: String) -> LocalizedMessage {
+        let key = "usage_entry_cache_pct"
+        return LocalizedMessage(key: key, arguments: [.string(pct)])
+    }
+    public static func usageEntryFewSamples(count: Int, detail: String) -> LocalizedMessage {
+        let key = "usage_entry_few_samples"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(count)), .string(detail)])
+    }
+    public static func usageEntryLast30D() -> LocalizedMessage {
+        let key = "usage_entry_last_30d"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func usageEntryLast7D() -> LocalizedMessage {
+        let key = "usage_entry_last_7d"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func usageEntryNoSpeed(detail: String) -> LocalizedMessage {
+        let key = "usage_entry_no_speed"
+        return LocalizedMessage(key: key, arguments: [.string(detail)])
+    }
+    public static func usageEntryReqs(count: Int) -> LocalizedMessage {
+        let key = "usage_entry_reqs"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(count))])
+    }
+    public static func usageFewSamplesCount(count: Int) -> LocalizedMessage {
+        let key = "usage_few_samples_count"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(count))])
+    }
+    public static func usageFewSamplesHint() -> LocalizedMessage {
+        let key = "usage_few_samples_hint"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func usageFilterAll() -> LocalizedMessage {
+        let key = "usage_filter_all"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func usageFlat() -> LocalizedMessage {
+        let key = "usage_flat"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func usageKpiUnitTokens() -> LocalizedMessage {
+        let key = "usage_kpi_unit_tokens"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func usageKpiUnitToks() -> LocalizedMessage {
+        let key = "usage_kpi_unit_toks"
         return LocalizedMessage(key: key, arguments: [])
     }
     public static func usageLoadErrorTitle() -> LocalizedMessage {
@@ -15171,6 +17695,18 @@ public enum L10nMessage {
         let key = "usage_mixed_unavailable_footnote"
         return LocalizedMessage(key: key, arguments: [.string(agents)])
     }
+    public static func usageOfflineBanner(name: String, time: String) -> LocalizedMessage {
+        let key = "usage_offline_banner"
+        return LocalizedMessage(key: key, arguments: [.string(name), .string(time)])
+    }
+    public static func usageOfflineEmptyBody(name: String) -> LocalizedMessage {
+        let key = "usage_offline_empty_body"
+        return LocalizedMessage(key: key, arguments: [.string(name)])
+    }
+    public static func usageOfflineEmptyTitle(name: String) -> LocalizedMessage {
+        let key = "usage_offline_empty_title"
+        return LocalizedMessage(key: key, arguments: [.string(name)])
+    }
     public static func usageOnlyUnavailableBody(agents: String) -> LocalizedMessage {
         let key = "usage_only_unavailable_body"
         return LocalizedMessage(key: key, arguments: [.string(agents)])
@@ -15178,6 +17714,134 @@ public enum L10nMessage {
     public static func usageOnlyUnavailableTitle(agents: String) -> LocalizedMessage {
         let key = "usage_only_unavailable_title"
         return LocalizedMessage(key: key, arguments: [.string(agents)])
+    }
+    public static func usageOutlierNote() -> LocalizedMessage {
+        let key = "usage_outlier_note"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func usagePairsCappedSummary(count: Int) -> LocalizedMessage {
+        let key = "usage_pairs_capped_summary"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(count))])
+    }
+    public static func usagePairsSummary(count: Int, name: String) -> LocalizedMessage {
+        let key = "usage_pairs_summary"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(count)), .string(name)])
+    }
+    public static func usagePassiveFootnote() -> LocalizedMessage {
+        let key = "usage_passive_footnote"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func usageRange30D() -> LocalizedMessage {
+        let key = "usage_range_30d"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func usageRange7D() -> LocalizedMessage {
+        let key = "usage_range_7d"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func usageRangeCustom() -> LocalizedMessage {
+        let key = "usage_range_custom"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func usageRangeToday() -> LocalizedMessage {
+        let key = "usage_range_today"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func usageRowSubCache(inp: String, read: String, write: String) -> LocalizedMessage {
+        let key = "usage_row_sub_cache"
+        return LocalizedMessage(key: key, arguments: [.string(inp), .string(read), .string(write)])
+    }
+    public static func usageRowSubSpeed(high: String, low: String, ttft: String) -> LocalizedMessage {
+        let key = "usage_row_sub_speed"
+        return LocalizedMessage(key: key, arguments: [.string(high), .string(low), .string(ttft)])
+    }
+    public static func usageRowSubTapOverlay() -> LocalizedMessage {
+        let key = "usage_row_sub_tap_overlay"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func usageRowSubTokens(inp: String, out: String, read: String, write: String) -> LocalizedMessage {
+        let key = "usage_row_sub_tokens"
+        return LocalizedMessage(key: key, arguments: [.string(inp), .string(out), .string(read), .string(write)])
+    }
+    public static func usageRowSubTokensReasoning(inp: String, out: String, read: String, reas: String, write: String) -> LocalizedMessage {
+        let key = "usage_row_sub_tokens_reasoning"
+        return LocalizedMessage(key: key, arguments: [.string(inp), .string(out), .string(read), .string(reas), .string(write)])
+    }
+    public static func usageScrubTotal(total: String) -> LocalizedMessage {
+        let key = "usage_scrub_total"
+        return LocalizedMessage(key: key, arguments: [.string(total)])
+    }
+    public static func usageSpeedThresholdFootnote() -> LocalizedMessage {
+        let key = "usage_speed_threshold_footnote"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func usageSubMedianP10P90(high: String, low: String) -> LocalizedMessage {
+        let key = "usage_sub_median_p10_p90"
+        return LocalizedMessage(key: key, arguments: [.string(high), .string(low)])
+    }
+    public static func usageSubP10P90(high: String, low: String) -> LocalizedMessage {
+        let key = "usage_sub_p10_p90"
+        return LocalizedMessage(key: key, arguments: [.string(high), .string(low)])
+    }
+    public static func usageSubRecent10(speed: String) -> LocalizedMessage {
+        let key = "usage_sub_recent10"
+        return LocalizedMessage(key: key, arguments: [.string(speed)])
+    }
+    public static func usageSubVsPrev30D() -> LocalizedMessage {
+        let key = "usage_sub_vs_prev_30d"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func usageSubVsPrev7D() -> LocalizedMessage {
+        let key = "usage_sub_vs_prev_7d"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func usageSubVsPrevGeneric() -> LocalizedMessage {
+        let key = "usage_sub_vs_prev_generic"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func usageSubWeightedCache() -> LocalizedMessage {
+        let key = "usage_sub_weighted_cache"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func usageSubtitleLive(name: String) -> LocalizedMessage {
+        let key = "usage_subtitle_live"
+        return LocalizedMessage(key: key, arguments: [.string(name)])
+    }
+    public static func usageSubtitleOffline(name: String) -> LocalizedMessage {
+        let key = "usage_subtitle_offline"
+        return LocalizedMessage(key: key, arguments: [.string(name)])
+    }
+    public static func usageTabCacheHit() -> LocalizedMessage {
+        let key = "usage_tab_cache_hit"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func usageTabSpeed() -> LocalizedMessage {
+        let key = "usage_tab_speed"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func usageTabTokens() -> LocalizedMessage {
+        let key = "usage_tab_tokens"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func usageTabTtft() -> LocalizedMessage {
+        let key = "usage_tab_ttft"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func usageTitle() -> LocalizedMessage {
+        let key = "usage_title"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func usageUnitWan() -> LocalizedMessage {
+        let key = "usage_unit_wan"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func usageUnitYi() -> LocalizedMessage {
+        let key = "usage_unit_yi"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func usageUnreportedAria() -> LocalizedMessage {
+        let key = "usage_unreported_aria"
+        return LocalizedMessage(key: key, arguments: [])
     }
     public static func usageUnsupportedBody(name: String) -> LocalizedMessage {
         let key = "usage_unsupported_body"
@@ -15257,6 +17921,8 @@ public enum L10nText {
         if let hit = resolve10(key, args: args, locale: locale) { return hit }
         if let hit = resolve11(key, args: args, locale: locale) { return hit }
         if let hit = resolve12(key, args: args, locale: locale) { return hit }
+        if let hit = resolve13(key, args: args, locale: locale) { return hit }
+        if let hit = resolve14(key, args: args, locale: locale) { return hit }
         preconditionFailure("Unknown UI message key: \(key)")
     }
     private static func resolve0(_ key: String, args: [String: L10nTextValue], locale: String) -> String? {
@@ -16030,12 +18696,14 @@ public enum L10nText {
         case "projects.connect_to_edit": return L10n.format("projects_connect_to_edit", locale: locale, args: [])
         case "projects.count": return L10n.format("projects_count", locale: locale, args: [intArg(args["count"])])
         case "projects.directory_failed": return L10n.format("projects_directory_failed", locale: locale, args: [strArg(args["reason"])])
-        case "projects.ios_active_prefix": return L10n.format("projects_ios_active_prefix", locale: locale, args: [intArg(args["count"])])
+        case "projects.filter_machine_subtitle": return L10n.format("projects_filter_machine_subtitle", locale: locale, args: [strArg(args["name"])])
         default: return nil
         }
     }
     private static func resolve5(_ key: String, args: [String: L10nTextValue], locale: String) -> String? {
         switch key {
+        case "projects.filter_show_all": return L10n.format("projects_filter_show_all", locale: locale, args: [])
+        case "projects.ios_active_prefix": return L10n.format("projects_ios_active_prefix", locale: locale, args: [intArg(args["count"])])
         case "projects.ios_adding": return L10n.format("projects_ios_adding", locale: locale, args: [])
         case "projects.ios_collapsed": return L10n.format("projects_ios_collapsed", locale: locale, args: [])
         case "projects.ios_current_directory": return L10n.format("projects_ios_current_directory", locale: locale, args: [strArg(args["path"])])
@@ -16184,13 +18852,13 @@ public enum L10nText {
         case "schedule.deleted": return L10n.format("schedule_deleted", locale: locale, args: [])
         case "schedule.delivery_before_the_computer_restarted_could_not_be_confirmed": return L10n.format("schedule_delivery_before_the_computer_restarted_could_not_be_confirmed", locale: locale, args: [])
         case "schedule.discard_changes": return L10n.format("schedule_discard_changes", locale: locale, args: [])
-        case "schedule.each_run_opens_a_new_conversation_grouped_under_this": return L10n.format("schedule_each_run_opens_a_new_conversation_grouped_under_this", locale: locale, args: [])
-        case "schedule.each_run_opens_a_new_conversation_grouped_under_this_schedules": return L10n.format("schedule_each_run_opens_a_new_conversation_grouped_under_this_schedules", locale: locale, args: [])
         default: return nil
         }
     }
     private static func resolve6(_ key: String, args: [String: L10nTextValue], locale: String) -> String? {
         switch key {
+        case "schedule.each_run_opens_a_new_conversation_grouped_under_this": return L10n.format("schedule_each_run_opens_a_new_conversation_grouped_under_this", locale: locale, args: [])
+        case "schedule.each_run_opens_a_new_conversation_grouped_under_this_schedules": return L10n.format("schedule_each_run_opens_a_new_conversation_grouped_under_this_schedules", locale: locale, args: [])
         case "schedule.earlier": return L10n.format("schedule_earlier", locale: locale, args: [])
         case "schedule.enable_cli": return L10n.format("schedule_enable_cli", locale: locale, args: [])
         case "schedule.end_date": return L10n.format("schedule_end_date", locale: locale, args: [])
@@ -16339,13 +19007,13 @@ public enum L10nText {
         case "schedule.the_running_conversation_ended": return L10n.format("schedule_the_running_conversation_ended", locale: locale, args: [])
         case "schedule.the_scheduled_message_is_paused_resume_or_cancel_it": return L10n.format("schedule_the_scheduled_message_is_paused_resume_or_cancel_it", locale: locale, args: [])
         case "schedule.the_scheduled_message_was_canceled_before_delivery": return L10n.format("schedule_the_scheduled_message_was_canceled_before_delivery", locale: locale, args: [])
-        case "schedule.the_scheduled_message_was_canceled_before_delivery_the_task": return L10n.format("schedule_the_scheduled_message_was_canceled_before_delivery_the_task", locale: locale, args: [])
-        case "schedule.this_task_could_not_be_found_if_the_computer": return L10n.format("schedule_this_task_could_not_be_found_if_the_computer", locale: locale, args: [])
         default: return nil
         }
     }
     private static func resolve7(_ key: String, args: [String: L10nTextValue], locale: String) -> String? {
         switch key {
+        case "schedule.the_scheduled_message_was_canceled_before_delivery_the_task": return L10n.format("schedule_the_scheduled_message_was_canceled_before_delivery_the_task", locale: locale, args: [])
+        case "schedule.this_task_could_not_be_found_if_the_computer": return L10n.format("schedule_this_task_could_not_be_found_if_the_computer", locale: locale, args: [])
         case "schedule.thu": return L10n.format("schedule_thu", locale: locale, args: [])
         case "schedule.time": return L10n.format("schedule_time", locale: locale, args: [])
         case "schedule.time_zone": return L10n.format("schedule_time_zone", locale: locale, args: [])
@@ -16494,13 +19162,13 @@ public enum L10nText {
         case "security.ios_open_settings_account_security_and_tap_renew_now": return L10n.format("security_ios_open_settings_account_security_and_tap_renew_now", locale: locale, args: [])
         case "security.ios_open_to_renew": return L10n.format("security_ios_open_to_renew", locale: locale, args: [strArg(args["value"])])
         case "security.ios_original_cli_sessions_and_project_files_on_computers_and": return L10n.format("security_ios_original_cli_sessions_and_project_files_on_computers_and", locale: locale, args: [])
-        case "security.ios_original_security_operation_verified_this_device_no_longer_has": return L10n.format("security_ios_original_security_operation_verified_this_device_no_longer_has", locale: locale, args: [])
-        case "security.ios_pair_again_and_preserve_identity": return L10n.format("security_ios_pair_again_and_preserve_identity", locale: locale, args: [])
         default: return nil
         }
     }
     private static func resolve8(_ key: String, args: [String: L10nTextValue], locale: String) -> String? {
         switch key {
+        case "security.ios_original_security_operation_verified_this_device_no_longer_has": return L10n.format("security_ios_original_security_operation_verified_this_device_no_longer_has", locale: locale, args: [])
+        case "security.ios_pair_again_and_preserve_identity": return L10n.format("security_ios_pair_again_and_preserve_identity", locale: locale, args: [])
         case "security.ios_pair_patterns": return L10n.format("security_ios_pair_patterns", locale: locale, args: [strArg(args["patterns"])])
         case "security.ios_pairing_abandoned_you_can_generate_a_new_pairing_code": return L10n.format("security_ios_pairing_abandoned_you_can_generate_a_new_pairing_code", locale: locale, args: [])
         case "security.ios_pairing_approval_does_not_match_this_device": return L10n.format("security_ios_pairing_approval_does_not_match_this_device", locale: locale, args: [])
@@ -16649,13 +19317,13 @@ public enum L10nText {
         case "security.remove_unfinished_pairing": return L10n.format("security_remove_unfinished_pairing", locale: locale, args: [])
         case "security.renew_now": return L10n.format("security_renew_now", locale: locale, args: [])
         case "security.replacing_the_recovery_code_immediately_invalidates_the_old_code": return L10n.format("security_replacing_the_recovery_code_immediately_invalidates_the_old_code", locale: locale, args: [])
-        case "security.restore_account_public_key": return L10n.format("security_restore_account_public_key", locale: locale, args: [])
-        case "security.restore_public_information": return L10n.format("security_restore_public_information", locale: locale, args: [])
         default: return nil
         }
     }
     private static func resolve9(_ key: String, args: [String: L10nTextValue], locale: String) -> String? {
         switch key {
+        case "security.restore_account_public_key": return L10n.format("security_restore_account_public_key", locale: locale, args: [])
+        case "security.restore_public_information": return L10n.format("security_restore_public_information", locale: locale, args: [])
         case "security.return_to_account_creation_or_recovery_to_continue_the": return L10n.format("security_return_to_account_creation_or_recovery_to_continue_the", locale: locale, args: [])
         case "security.returning_stops_this_wait_reject_the_old_request_on": return L10n.format("security_returning_stops_this_wait_reject_the_old_request_on", locale: locale, args: [])
         case "security.save_the_new_recovery_code_first_then_ask_the": return L10n.format("security_save_the_new_recovery_code_first_then_ask_the", locale: locale, args: [])
@@ -16804,13 +19472,13 @@ public enum L10nText {
         case "session.model_changed": return L10n.format("session_model_changed", locale: locale, args: [strArg(args["value"])])
         case "session.model_changed_by": return L10n.format("session_model_changed_by", locale: locale, args: [strArg(args["origin"]), strArg(args["value"])])
         case "session.model_locked": return L10n.format("session_model_locked", locale: locale, args: [])
-        case "session.model_switch_failed": return L10n.format("session_model_switch_failed", locale: locale, args: [strArg(args["model"]), strArg(args["reason"])])
-        case "session.models_failed": return L10n.format("session_models_failed", locale: locale, args: [])
         default: return nil
         }
     }
     private static func resolve10(_ key: String, args: [String: L10nTextValue], locale: String) -> String? {
         switch key {
+        case "session.model_switch_failed": return L10n.format("session_model_switch_failed", locale: locale, args: [strArg(args["model"]), strArg(args["reason"])])
+        case "session.models_failed": return L10n.format("session_models_failed", locale: locale, args: [])
         case "session.more_context": return L10n.format("session_more_context", locale: locale, args: [intArg(args["percent"])])
         case "session.new_messages": return L10n.format("session_new_messages", locale: locale, args: [intArg(args["count"])])
         case "session.no_effort": return L10n.format("session_no_effort", locale: locale, args: [])
@@ -16866,6 +19534,10 @@ public enum L10nText {
         case "settings.about": return L10n.format("settings_about", locale: locale, args: [])
         case "settings.account": return L10n.format("settings_account", locale: locale, args: [])
         case "settings.account_quota": return L10n.format("settings_account_quota", locale: locale, args: [])
+        case "settings.account_security_title": return L10n.format("settings_account_security_title", locale: locale, args: [])
+        case "settings.add_device_footer_hint": return L10n.format("settings_add_device_footer_hint", locale: locale, args: [strArg(args["name"])])
+        case "settings.add_device_item": return L10n.format("settings_add_device_item", locale: locale, args: [])
+        case "settings.add_first_computer": return L10n.format("settings_add_first_computer", locale: locale, args: [])
         case "settings.added": return L10n.format("settings_added", locale: locale, args: [])
         case "settings.all_clients": return L10n.format("settings_all_clients", locale: locale, args: [])
         case "settings.all_devices": return L10n.format("settings_all_devices", locale: locale, args: [])
@@ -16884,6 +19556,14 @@ public enum L10nText {
         case "settings.clear_reclaimable_attachments_and_cache": return L10n.format("settings_clear_reclaimable_attachments_and_cache", locale: locale, args: [])
         case "settings.clear_settings": return L10n.format("settings_clear_settings", locale: locale, args: [])
         case "settings.clears_reclaimable_originals_previews_and_unsynced_large_image_cache": return L10n.format("settings_clears_reclaimable_originals_previews_and_unsynced_large_image_cache", locale: locale, args: [])
+        case "settings.cli_disabled": return L10n.format("settings_cli_disabled", locale: locale, args: [])
+        case "settings.cli_disabled_explanation": return L10n.format("settings_cli_disabled_explanation", locale: locale, args: [])
+        case "settings.cli_enable_on_computer": return L10n.format("settings_cli_enable_on_computer", locale: locale, args: [])
+        case "settings.cli_installed_version": return L10n.format("settings_cli_installed_version", locale: locale, args: [])
+        case "settings.cli_new_project_defaults_footer": return L10n.format("settings_cli_new_project_defaults_footer", locale: locale, args: [])
+        case "settings.cli_sheet_effort": return L10n.format("settings_cli_sheet_effort", locale: locale, args: [])
+        case "settings.cli_sheet_mode": return L10n.format("settings_cli_sheet_mode", locale: locale, args: [])
+        case "settings.cli_sheet_model": return L10n.format("settings_cli_sheet_model", locale: locale, args: [])
         case "settings.cli_switches_conflict": return L10n.format("settings_cli_switches_conflict", locale: locale, args: [])
         case "settings.cli_switches_footer": return L10n.format("settings_cli_switches_footer", locale: locale, args: [])
         case "settings.cli_switches_keep_one": return L10n.format("settings_cli_switches_keep_one", locale: locale, args: [])
@@ -16891,9 +19571,22 @@ public enum L10nText {
         case "settings.cli_switches_offline_reason": return L10n.format("settings_cli_switches_offline_reason", locale: locale, args: [strArg(args["name"])])
         case "settings.cli_switches_title": return L10n.format("settings_cli_switches_title", locale: locale, args: [])
         case "settings.cli_switches_update_error": return L10n.format("settings_cli_switches_update_error", locale: locale, args: [strArg(args["reason"])])
+        case "settings.cli_unverified_badge": return L10n.format("settings_cli_unverified_badge", locale: locale, args: [])
+        case "settings.cli_unverified_short": return L10n.format("settings_cli_unverified_short", locale: locale, args: [])
         case "settings.cli_version": return L10n.format("settings_cli_version", locale: locale, args: [strArg(args["name"])])
         case "settings.client_name": return L10n.format("settings_client_name", locale: locale, args: [])
+        case "settings.clients_add_client": return L10n.format("settings_clients_add_client", locale: locale, args: [])
         case "settings.clients_control_sessions": return L10n.format("settings_clients_control_sessions", locale: locale, args: [])
+        case "settings.clients_count": return L10n.format("settings_clients_count", locale: locale, args: [intArg(args["count"])])
+        case "settings.clients_footer_redesign": return L10n.format("settings_clients_footer_redesign", locale: locale, args: [])
+        case "settings.clients_group_paired": return L10n.format("settings_clients_group_paired", locale: locale, args: [])
+        case "settings.clients_pairing_incomplete_badge": return L10n.format("settings_clients_pairing_incomplete_badge", locale: locale, args: [])
+        case "settings.clients_pairing_incomplete_desc": return L10n.format("settings_clients_pairing_incomplete_desc", locale: locale, args: [])
+        case "settings.clients_summary_pending": return L10n.format("settings_clients_summary_pending", locale: locale, args: [intArg(args["count"]), intArg(args["pending"])])
+        case "settings.clients_summary_pending_only": return L10n.format("settings_clients_summary_pending_only", locale: locale, args: [intArg(args["pending"])])
+        case "settings.clients_summary_self_only": return L10n.format("settings_clients_summary_self_only", locale: locale, args: [])
+        case "settings.clients_summary_with_others": return L10n.format("settings_clients_summary_with_others", locale: locale, args: [intArg(args["count"])])
+        case "settings.clients_title": return L10n.format("settings_clients_title", locale: locale, args: [])
         case "settings.computer": return L10n.format("settings_computer", locale: locale, args: [])
         case "settings.computer_offline_showing_the_last_reading": return L10n.format("settings_computer_offline_showing_the_last_reading", locale: locale, args: [])
         case "settings.computer_settings_offline": return L10n.format("settings_computer_settings_offline", locale: locale, args: [strArg(args["name"])])
@@ -16901,20 +19594,27 @@ public enum L10nText {
         case "settings.could_not_download_retry_later": return L10n.format("settings_could_not_download_retry_later", locale: locale, args: [])
         case "settings.could_not_read_the_device_list": return L10n.format("settings_could_not_read_the_device_list", locale: locale, args: [])
         case "settings.current": return L10n.format("settings_current", locale: locale, args: [])
+        case "settings.daemon_protocol_tag": return L10n.format("settings_daemon_protocol_tag", locale: locale, args: [intArg(args["version"])])
         case "settings.dark": return L10n.format("settings_dark", locale: locale, args: [])
         case "settings.default": return L10n.format("settings_default", locale: locale, args: [])
         case "settings.default_approval_mode": return L10n.format("settings_default_approval_mode", locale: locale, args: [])
+        case "settings.delete_computer_records_ellipsis": return L10n.format("settings_delete_computer_records_ellipsis", locale: locale, args: [])
         case "settings.details": return L10n.format("settings_details", locale: locale, args: [])
         case "settings.device_id": return L10n.format("settings_device_id", locale: locale, args: [])
         case "settings.device_not_found": return L10n.format("settings_device_not_found", locale: locale, args: [])
         case "settings.devices": return L10n.format("settings_devices", locale: locale, args: [])
+        case "settings.empty_computers_authority_body": return L10n.format("settings_empty_computers_authority_body", locale: locale, args: [])
+        case "settings.empty_computers_member_body": return L10n.format("settings_empty_computers_member_body", locale: locale, args: [strArg(args["name"])])
+        case "settings.empty_computers_title": return L10n.format("settings_empty_computers_title", locale: locale, args: [])
         case "settings.enable": return L10n.format("settings_enable", locale: locale, args: [])
         case "settings.enable_security_notifications": return L10n.format("settings_enable_security_notifications", locale: locale, args: [])
         case "settings.enabled": return L10n.format("settings_enabled", locale: locale, args: [])
         case "settings.exit_and_delete_local_keys": return L10n.format("settings_exit_and_delete_local_keys", locale: locale, args: [])
         case "settings.follow_configuration": return L10n.format("settings_follow_configuration", locale: locale, args: [strArg(args["value"])])
+        case "settings.header_subtitle_pair": return L10n.format("settings_header_subtitle_pair", locale: locale, args: [strArg(args["left"]), strArg(args["right"])])
         case "settings.how_to_enable": return L10n.format("settings_how_to_enable", locale: locale, args: [])
         case "settings.idle_close_off": return L10n.format("settings_idle_close_off", locale: locale, args: [])
+        case "settings.idle_close_short": return L10n.format("settings_idle_close_short", locale: locale, args: [])
         case "settings.ios_approvals_questions_and_plans_waiting_for_you_appear_at": return L10n.format("settings_ios_approvals_questions_and_plans_waiting_for_you_appear_at", locale: locale, args: [])
         case "settings.ios_clear_reclaimable_images": return L10n.format("settings_ios_clear_reclaimable_images", locale: locale, args: [])
         case "settings.ios_clears_reclaimable_originals_and_cache_unsynced_full_size_images": return L10n.format("settings_ios_clears_reclaimable_originals_and_cache_unsynced_full_size_images", locale: locale, args: [])
@@ -16927,6 +19627,11 @@ public enum L10nText {
         case "settings.ios_delete_entire_account": return L10n.format("settings_ios_delete_entire_account", locale: locale, args: [])
         case "settings.ios_event_projection_core": return L10n.format("settings_ios_event_projection_core", locale: locale, args: [])
         case "settings.ios_exit_and_delete_local_keys_from_settings": return L10n.format("settings_ios_exit_and_delete_local_keys_from_settings", locale: locale, args: [])
+        default: return nil
+        }
+    }
+    private static func resolve11(_ key: String, args: [String: L10nTextValue], locale: String) -> String? {
+        switch key {
         case "settings.ios_fonts_use_the_system_s_sf_pro_pingfang_and": return L10n.format("settings_ios_fonts_use_the_system_s_sf_pro_pingfang_and", locale: locale, args: [])
         case "settings.ios_for_unverified_versions_run_remote_agent_doctor_on_the": return L10n.format("settings_ios_for_unverified_versions_run_remote_agent_doctor_on_the", locale: locale, args: [])
         case "settings.ios_how_many_sessions_are_waiting_for_you": return L10n.format("settings_ios_how_many_sessions_are_waiting_for_you", locale: locale, args: [])
@@ -16961,11 +19666,6 @@ public enum L10nText {
         case "settings.ios_this_ios_version_cannot_send_alerts_yet_you_will": return L10n.format("settings_ios_this_ios_version_cannot_send_alerts_yet_you_will", locale: locale, args: [])
         case "settings.ios_type": return L10n.format("settings_ios_type", locale: locale, args: [])
         case "settings.ios_unanswered_approvals_are_denied_after_this_time": return L10n.format("settings_ios_unanswered_approvals_are_denied_after_this_time", locale: locale, args: [])
-        default: return nil
-        }
-    }
-    private static func resolve11(_ key: String, args: [String: L10nTextValue], locale: String) -> String? {
-        switch key {
         case "settings.ios_unknown": return L10n.format("settings_ios_unknown", locale: locale, args: [])
         case "settings.ios_unsure_whether_the_computer_saved_this_change_reload_to": return L10n.format("settings_ios_unsure_whether_the_computer_saved_this_change_reload_to", locale: locale, args: [])
         case "settings.ios_unverified": return L10n.format("settings_ios_unverified", locale: locale, args: [])
@@ -16975,7 +19675,18 @@ public enum L10nText {
         case "settings.iphone_push_help": return L10n.format("settings_iphone_push_help", locale: locale, args: [])
         case "settings.last_used": return L10n.format("settings_last_used", locale: locale, args: [])
         case "settings.less_than_0_1_mib": return L10n.format("settings_less_than_0_1_mib", locale: locale, args: [])
+        case "settings.licenses_view_full": return L10n.format("settings_licenses_view_full", locale: locale, args: [])
+        case "settings.licenses_web_fonts_title": return L10n.format("settings_licenses_web_fonts_title", locale: locale, args: [])
+        case "settings.licenses_web_icons_title": return L10n.format("settings_licenses_web_icons_title", locale: locale, args: [])
+        case "settings.licenses_web_packages_title": return L10n.format("settings_licenses_web_packages_title", locale: locale, args: [])
         case "settings.light": return L10n.format("settings_light", locale: locale, args: [])
+        case "settings.local_cache": return L10n.format("settings_local_cache", locale: locale, args: [])
+        case "settings.machine_count": return L10n.format("settings_machine_count", locale: locale, args: [intArg(args["count"])])
+        case "settings.machine_sub_disk_alert": return L10n.format("settings_machine_sub_disk_alert", locale: locale, args: [strArg(args["size"])])
+        case "settings.machine_sub_quota_exhausted": return L10n.format("settings_machine_sub_quota_exhausted", locale: locale, args: [strArg(args["name"])])
+        case "settings.machine_sub_quota_left": return L10n.format("settings_machine_sub_quota_left", locale: locale, args: [strArg(args["name"]), strArg(args["value"])])
+        case "settings.machine_sub_removed": return L10n.format("settings_machine_sub_removed", locale: locale, args: [])
+        case "settings.machine_sub_version_mismatch": return L10n.format("settings_machine_sub_version_mismatch", locale: locale, args: [])
         case "settings.managing_client": return L10n.format("settings_managing_client", locale: locale, args: [])
         case "settings.name": return L10n.format("settings_name", locale: locale, args: [])
         case "settings.name_save_error": return L10n.format("settings_name_save_error", locale: locale, args: [strArg(args["reason"])])
@@ -16986,25 +19697,71 @@ public enum L10nText {
         case "settings.no_record": return L10n.format("settings_no_record", locale: locale, args: [])
         case "settings.nothing_to_clear": return L10n.format("settings_nothing_to_clear", locale: locale, args: [])
         case "settings.notification_permission_help": return L10n.format("settings_notification_permission_help", locale: locale, args: [])
+        case "settings.notifications_group_alerts": return L10n.format("settings_notifications_group_alerts", locale: locale, args: [])
+        case "settings.notifications_group_privacy": return L10n.format("settings_notifications_group_privacy", locale: locale, args: [])
         case "settings.notifications_on_this_client": return L10n.format("settings_notifications_on_this_client", locale: locale, args: [])
+        case "settings.notifications_scheduled_results_desc": return L10n.format("settings_notifications_scheduled_results_desc", locale: locale, args: [])
+        case "settings.notifications_security_footer": return L10n.format("settings_notifications_security_footer", locale: locale, args: [])
+        case "settings.notifications_show_content_desc": return L10n.format("settings_notifications_show_content_desc", locale: locale, args: [])
+        case "settings.notifications_show_content_title": return L10n.format("settings_notifications_show_content_title", locale: locale, args: [])
+        case "settings.notifications_subtitle": return L10n.format("settings_notifications_subtitle", locale: locale, args: [])
+        case "settings.notifications_summary_off": return L10n.format("settings_notifications_summary_off", locale: locale, args: [])
+        case "settings.notifications_summary_on": return L10n.format("settings_notifications_summary_on", locale: locale, args: [])
+        case "settings.notifications_summary_pending_only": return L10n.format("settings_notifications_summary_pending_only", locale: locale, args: [])
+        case "settings.notifications_summary_unreachable": return L10n.format("settings_notifications_summary_unreachable", locale: locale, args: [])
+        case "settings.notifications_title": return L10n.format("settings_notifications_title", locale: locale, args: [])
+        case "settings.notifications_when_a_turn_ends_desc": return L10n.format("settings_notifications_when_a_turn_ends_desc", locale: locale, args: [])
+        case "settings.notifications_when_i_need_to_act_desc": return L10n.format("settings_notifications_when_i_need_to_act_desc", locale: locale, args: [])
         case "settings.now": return L10n.format("settings_now", locale: locale, args: [])
         case "settings.offline": return L10n.format("settings_offline", locale: locale, args: [])
         case "settings.on_iphone_add_to_home_screen_and_open_from": return L10n.format("settings_on_iphone_add_to_home_screen_and_open_from", locale: locale, args: [])
+        case "settings.open_source_licenses": return L10n.format("settings_open_source_licenses", locale: locale, args: [])
         case "settings.paired_client": return L10n.format("settings_paired_client", locale: locale, args: [])
         case "settings.preview_cache": return L10n.format("settings_preview_cache", locale: locale, args: [])
+        case "settings.project_count_value": return L10n.format("settings_project_count_value", locale: locale, args: [intArg(args["count"])])
+        case "settings.projects_row": return L10n.format("settings_projects_row", locale: locale, args: [])
         case "settings.read_error": return L10n.format("settings_read_error", locale: locale, args: [strArg(args["reason"])])
+        case "settings.recovery_waiting_banner": return L10n.format("settings_recovery_waiting_banner", locale: locale, args: [])
         case "settings.rejoin_account": return L10n.format("settings_rejoin_account", locale: locale, args: [])
+        case "settings.remove_computer_ellipsis": return L10n.format("settings_remove_computer_ellipsis", locale: locale, args: [])
+        case "settings.remove_non_authority_footer": return L10n.format("settings_remove_non_authority_footer", locale: locale, args: [strArg(args["name"])])
         case "settings.restore_default_name": return L10n.format("settings_restore_default_name", locale: locale, args: [])
         case "settings.runs_on": return L10n.format("settings_runs_on", locale: locale, args: [])
         case "settings.save_error": return L10n.format("settings_save_error", locale: locale, args: [strArg(args["reason"])])
         case "settings.scheduled_task_results": return L10n.format("settings_scheduled_task_results", locale: locale, args: [])
+        case "settings.section_account_and_devices": return L10n.format("settings_section_account_and_devices", locale: locale, args: [])
+        case "settings.section_coding_clis": return L10n.format("settings_section_coding_clis", locale: locale, args: [])
+        case "settings.section_computers": return L10n.format("settings_section_computers", locale: locale, args: [])
+        case "settings.section_management": return L10n.format("settings_section_management", locale: locale, args: [])
+        case "settings.section_quota_and_usage": return L10n.format("settings_section_quota_and_usage", locale: locale, args: [])
+        case "settings.section_runtime_and_storage": return L10n.format("settings_section_runtime_and_storage", locale: locale, args: [])
+        case "settings.section_this_device": return L10n.format("settings_section_this_device", locale: locale, args: [])
         case "settings.security_notifications": return L10n.format("settings_security_notifications", locale: locale, args: [])
         case "settings.security_notifications_are_independent_of_session_alerts_delivery_is": return L10n.format("settings_security_notifications_are_independent_of_session_alerts_delivery_is", locale: locale, args: [])
+        case "settings.security_summary_authority": return L10n.format("settings_security_summary_authority", locale: locale, args: [])
+        case "settings.security_summary_non_authority": return L10n.format("settings_security_summary_non_authority", locale: locale, args: [strArg(args["name"])])
+        case "settings.server_and_connection": return L10n.format("settings_server_and_connection", locale: locale, args: [])
         case "settings.session_alerts_are_off_you_will_not_be_notified": return L10n.format("settings_session_alerts_are_off_you_will_not_be_notified", locale: locale, args: [])
         case "settings.sessions_end_automatically_after_this_much_inactivity_not_running": return L10n.format("settings_sessions_end_automatically_after_this_much_inactivity_not_running", locale: locale, args: [])
         case "settings.set_the_name_and_notification_preferences_on_that_device": return L10n.format("settings_set_the_name_and_notification_preferences_on_that_device", locale: locale, args: [])
         case "settings.signed_account_state_confirms_this_device_was_removed_sessions": return L10n.format("settings_signed_account_state_confirms_this_device_was_removed_sessions", locale: locale, args: [])
+        case "settings.status_card_disk_tight": return L10n.format("settings_status_card_disk_tight", locale: locale, args: [])
+        case "settings.status_card_paused": return L10n.format("settings_status_card_paused", locale: locale, args: [])
+        case "settings.status_card_title": return L10n.format("settings_status_card_title", locale: locale, args: [])
+        case "settings.status_needs_update": return L10n.format("settings_status_needs_update", locale: locale, args: [])
+        case "settings.status_removed": return L10n.format("settings_status_removed", locale: locale, args: [])
+        case "settings.storage_clear_row": return L10n.format("settings_storage_clear_row", locale: locale, args: [])
+        case "settings.storage_legend_preview": return L10n.format("settings_storage_legend_preview", locale: locale, args: [])
+        case "settings.storage_legend_reserve": return L10n.format("settings_storage_legend_reserve", locale: locale, args: [])
+        case "settings.storage_legend_uploaded": return L10n.format("settings_storage_legend_uploaded", locale: locale, args: [])
         case "settings.storage_limit": return L10n.format("settings_storage_limit", locale: locale, args: [])
+        case "settings.storage_limit_headline": return L10n.format("settings_storage_limit_headline", locale: locale, args: [strArg(args["limit"])])
+        case "settings.storage_limit_row": return L10n.format("settings_storage_limit_row", locale: locale, args: [])
+        case "settings.storage_page_footer": return L10n.format("settings_storage_page_footer", locale: locale, args: [])
+        case "settings.storage_section_details": return L10n.format("settings_storage_section_details", locale: locale, args: [])
+        case "settings.storage_summary_pair": return L10n.format("settings_storage_summary_pair", locale: locale, args: [strArg(args["limit"]), strArg(args["used"])])
+        case "settings.storage_summary_reserve": return L10n.format("settings_storage_summary_reserve", locale: locale, args: [strArg(args["limit"]), strArg(args["used"])])
+        case "settings.storage_used_headline": return L10n.format("settings_storage_used_headline", locale: locale, args: [strArg(args["used"])])
         case "settings.subscription_error": return L10n.format("settings_subscription_error", locale: locale, args: [strArg(args["reason"])])
         case "settings.the_account_keys_in_this_browser_will_be_deleted": return L10n.format("settings_the_account_keys_in_this_browser_will_be_deleted", locale: locale, args: [])
         case "settings.the_browser_denied_notification_permission": return L10n.format("settings_the_browser_denied_notification_permission", locale: locale, args: [])
@@ -17017,6 +19774,7 @@ public enum L10nText {
         case "settings.theme_auto": return L10n.format("settings_theme_auto", locale: locale, args: [])
         case "settings.this_browser_does_not_support_push_notifications": return L10n.format("settings_this_browser_does_not_support_push_notifications", locale: locale, args: [])
         case "settings.this_device_was_removed_from_the_account": return L10n.format("settings_this_device_was_removed_from_the_account", locale: locale, args: [])
+        case "settings.timeout_footer": return L10n.format("settings_timeout_footer", locale: locale, args: [])
         case "settings.times_are_shown_in_beijing_time_quotas_belong_to": return L10n.format("settings_times_are_shown_in_beijing_time_quotas_belong_to", locale: locale, args: [])
         case "settings.unanswered_approvals_are_denied_after_this_time": return L10n.format("settings_unanswered_approvals_are_denied_after_this_time", locale: locale, args: [])
         case "settings.unfinished_pairing": return L10n.format("settings_unfinished_pairing", locale: locale, args: [])
@@ -17024,9 +19782,20 @@ public enum L10nText {
         case "settings.unnamed": return L10n.format("settings_unnamed", locale: locale, args: [])
         case "settings.unverified": return L10n.format("settings_unverified", locale: locale, args: [])
         case "settings.up_to_date": return L10n.format("settings_up_to_date", locale: locale, args: [])
+        default: return nil
+        }
+    }
+    private static func resolve12(_ key: String, args: [String: L10nTextValue], locale: String) -> String? {
+        switch key {
         case "settings.uploaded_images_and_files": return L10n.format("settings_uploaded_images_and_files", locale: locale, args: [])
         case "settings.uploading": return L10n.format("settings_uploading", locale: locale, args: [strArg(args["value"])])
+        case "settings.usage_and_speed": return L10n.format("settings_usage_and_speed", locale: locale, args: [])
+        case "settings.usage_summary_30d": return L10n.format("settings_usage_summary_30d", locale: locale, args: [strArg(args["value"])])
+        case "settings.usage_summary_7d": return L10n.format("settings_usage_summary_7d", locale: locale, args: [strArg(args["value"])])
+        case "settings.usage_summary_cached": return L10n.format("settings_usage_summary_cached", locale: locale, args: [strArg(args["value"])])
+        case "settings.usage_summary_empty": return L10n.format("settings_usage_summary_empty", locale: locale, args: [])
         case "settings.verify_and_continue_security_operation": return L10n.format("settings_verify_and_continue_security_operation", locale: locale, args: [])
+        case "settings.version_label": return L10n.format("settings_version_label", locale: locale, args: [])
         case "settings.version_unverified_run_remote_agent_doctor_on_this_computer": return L10n.format("settings_version_unverified_run_remote_agent_doctor_on_this_computer", locale: locale, args: [])
         case "settings.view_usage_in_the_local_cli": return L10n.format("settings_view_usage_in_the_local_cli", locale: locale, args: [])
         case "settings.when_a_turn_ends": return L10n.format("settings_when_a_turn_ends", locale: locale, args: [])
@@ -17116,11 +19885,6 @@ public enum L10nText {
         case "terminal.ios_size_changed": return L10n.format("terminal_ios_size_changed", locale: locale, args: [strArg(args["size"])])
         case "terminal.ios_wait_connection": return L10n.format("terminal_ios_wait_connection", locale: locale, args: [])
         case "terminal.keyboard": return L10n.format("terminal_keyboard", locale: locale, args: [])
-        default: return nil
-        }
-    }
-    private static func resolve12(_ key: String, args: [String: L10nTextValue], locale: String) -> String? {
-        switch key {
         case "terminal.left": return L10n.format("terminal_left", locale: locale, args: [])
         case "terminal.live": return L10n.format("terminal_live", locale: locale, args: [])
         case "terminal.read_failed": return L10n.format("terminal_read_failed", locale: locale, args: [])
@@ -17183,13 +19947,152 @@ public enum L10nText {
         case "tools.ios_running_label": return L10n.format("tools_ios_running_label", locale: locale, args: [strArg(args["title"])])
         case "tools.tool": return L10n.format("tools_tool", locale: locale, args: [])
         case "tools.waiting_sync": return L10n.format("tools_waiting_sync", locale: locale, args: [])
+        case "transport.conn_footer_unsupported_app": return L10n.format("transport_conn_footer_unsupported_app", locale: locale, args: [])
         case "transport.detail_daemon_disabled": return L10n.format("transport_detail_daemon_disabled", locale: locale, args: [])
+        default: return nil
+        }
+    }
+    private static func resolve13(_ key: String, args: [String: L10nTextValue], locale: String) -> String? {
+        switch key {
         case "transport.detail_relay_only": return L10n.format("transport_detail_relay_only", locale: locale, args: [])
         case "transport.diag": return L10n.format("transport_diag", locale: locale, args: [])
+        case "transport.diag_at": return L10n.format("transport_diag_at", locale: locale, args: [strArg(args["seconds"]), strArg(args["state"])])
+        case "transport.diag_cand": return L10n.format("transport_diag_cand", locale: locale, args: [intArg(args["count"]), strArg(args["kind"]), strArg(args["scope"])])
+        case "transport.diag_channel": return L10n.format("transport_diag_channel", locale: locale, args: [])
+        case "transport.diag_check_path": return L10n.format("transport_diag_check_path", locale: locale, args: [])
+        case "transport.diag_check_peer": return L10n.format("transport_diag_check_peer", locale: locale, args: [])
+        case "transport.diag_check_retry": return L10n.format("transport_diag_check_retry", locale: locale, args: [])
+        case "transport.diag_connected_body": return L10n.format("transport_diag_connected_body", locale: locale, args: [])
+        case "transport.diag_connected_title": return L10n.format("transport_diag_connected_title", locale: locale, args: [])
         case "transport.diag_copy": return L10n.format("transport_diag_copy", locale: locale, args: [])
+        case "transport.diag_copy_permission": return L10n.format("transport_diag_copy_permission", locale: locale, args: [])
+        case "transport.diag_copy_support": return L10n.format("transport_diag_copy_support", locale: locale, args: [])
+        case "transport.diag_count": return L10n.format("transport_diag_count", locale: locale, args: [intArg(args["count"])])
+        case "transport.diag_dtls": return L10n.format("transport_diag_dtls", locale: locale, args: [])
+        case "transport.diag_explain_generic": return L10n.format("transport_diag_explain_generic", locale: locale, args: [])
+        case "transport.diag_explain_nat": return L10n.format("transport_diag_explain_nat", locale: locale, args: [])
+        case "transport.diag_explain_no_reply": return L10n.format("transport_diag_explain_no_reply", locale: locale, args: [])
+        case "transport.diag_explain_peer_old": return L10n.format("transport_diag_explain_peer_old", locale: locale, args: [])
+        case "transport.diag_explain_probe_blocked": return L10n.format("transport_diag_explain_probe_blocked", locale: locale, args: [])
+        case "transport.diag_family_unknown": return L10n.format("transport_diag_family_unknown", locale: locale, args: [])
         case "transport.diag_footer": return L10n.format("transport_diag_footer", locale: locale, args: [])
+        case "transport.diag_g_checks": return L10n.format("transport_diag_g_checks", locale: locale, args: [])
+        case "transport.diag_g_local": return L10n.format("transport_diag_g_local", locale: locale, args: [])
+        case "transport.diag_g_peer": return L10n.format("transport_diag_g_peer", locale: locale, args: [])
+        case "transport.diag_g_result": return L10n.format("transport_diag_g_result", locale: locale, args: [])
+        case "transport.diag_gather": return L10n.format("transport_diag_gather", locale: locale, args: [])
+        case "transport.diag_hidden": return L10n.format("transport_diag_hidden", locale: locale, args: [])
+        case "transport.diag_ice": return L10n.format("transport_diag_ice", locale: locale, args: [])
+        case "transport.diag_ipv4": return L10n.format("transport_diag_ipv4", locale: locale, args: [])
+        case "transport.diag_ipv6": return L10n.format("transport_diag_ipv6", locale: locale, args: [])
+        case "transport.diag_no_attempt": return L10n.format("transport_diag_no_attempt", locale: locale, args: [])
+        case "transport.diag_none": return L10n.format("transport_diag_none", locale: locale, args: [])
+        case "transport.diag_not_sampled": return L10n.format("transport_diag_not_sampled", locale: locale, args: [])
+        case "transport.diag_pair": return L10n.format("transport_diag_pair", locale: locale, args: [strArg(args["local"]), strArg(args["remote"])])
+        case "transport.diag_pair_failed": return L10n.format("transport_diag_pair_failed", locale: locale, args: [intArg(args["count"])])
+        case "transport.diag_pair_ok": return L10n.format("transport_diag_pair_ok", locale: locale, args: [intArg(args["count"])])
+        case "transport.diag_pair_traffic": return L10n.format("transport_diag_pair_traffic", locale: locale, args: [intArg(args["got"]), intArg(args["sent"])])
+        case "transport.diag_pair_wait": return L10n.format("transport_diag_pair_wait", locale: locale, args: [intArg(args["count"])])
+        case "transport.diag_path_failed": return L10n.format("transport_diag_path_failed", locale: locale, args: [])
+        case "transport.diag_path_nat": return L10n.format("transport_diag_path_nat", locale: locale, args: [])
+        case "transport.diag_path_udp_blocked": return L10n.format("transport_diag_path_udp_blocked", locale: locale, args: [])
+        case "transport.diag_peer_no_reply_desc": return L10n.format("transport_diag_peer_no_reply_desc", locale: locale, args: [])
+        case "transport.diag_peer_old_desc": return L10n.format("transport_diag_peer_old_desc", locale: locale, args: [])
+        case "transport.diag_privacy_footer": return L10n.format("transport_diag_privacy_footer", locale: locale, args: [])
+        case "transport.diag_range_cgnat": return L10n.format("transport_diag_range_cgnat", locale: locale, args: [])
+        case "transport.diag_range_global": return L10n.format("transport_diag_range_global", locale: locale, args: [])
+        case "transport.diag_range_link_local": return L10n.format("transport_diag_range_link_local", locale: locale, args: [])
+        case "transport.diag_range_loopback": return L10n.format("transport_diag_range_loopback", locale: locale, args: [])
+        case "transport.diag_range_other": return L10n.format("transport_diag_range_other", locale: locale, args: [])
+        case "transport.diag_range_private": return L10n.format("transport_diag_range_private", locale: locale, args: [])
+        case "transport.diag_range_public": return L10n.format("transport_diag_range_public", locale: locale, args: [])
+        case "transport.diag_range_ula": return L10n.format("transport_diag_range_ula", locale: locale, args: [])
+        case "transport.diag_rej_browser": return L10n.format("transport_diag_rej_browser", locale: locale, args: [])
+        case "transport.diag_rej_candidates": return L10n.format("transport_diag_rej_candidates", locale: locale, args: [])
+        case "transport.diag_rej_confirm": return L10n.format("transport_diag_rej_confirm", locale: locale, args: [])
+        case "transport.diag_rej_end": return L10n.format("transport_diag_rej_end", locale: locale, args: [])
+        case "transport.diag_rej_sdp": return L10n.format("transport_diag_rej_sdp", locale: locale, args: [])
+        case "transport.diag_rej_signal": return L10n.format("transport_diag_rej_signal", locale: locale, args: [])
+        case "transport.diag_rej_value": return L10n.format("transport_diag_rej_value", locale: locale, args: [intArg(args["count"]), strArg(args["kind"]), strArg(args["reason"])])
+        case "transport.diag_rejected": return L10n.format("transport_diag_rejected", locale: locale, args: [])
+        case "transport.diag_report_browser": return L10n.format("transport_diag_report_browser", locale: locale, args: [strArg(args["value"])])
+        case "transport.diag_report_round": return L10n.format("transport_diag_report_round", locale: locale, args: [strArg(args["age"]), intArg(args["n"])])
+        case "transport.diag_report_title": return L10n.format("transport_diag_report_title", locale: locale, args: [])
+        case "transport.diag_report_verdict": return L10n.format("transport_diag_report_verdict", locale: locale, args: [strArg(args["verdict"])])
+        case "transport.diag_result_cancelled": return L10n.format("transport_diag_result_cancelled", locale: locale, args: [])
+        case "transport.diag_result_lost": return L10n.format("transport_diag_result_lost", locale: locale, args: [])
+        case "transport.diag_result_no_response": return L10n.format("transport_diag_result_no_response", locale: locale, args: [])
+        case "transport.diag_result_ok": return L10n.format("transport_diag_result_ok", locale: locale, args: [])
+        case "transport.diag_result_refused": return L10n.format("transport_diag_result_refused", locale: locale, args: [])
+        case "transport.diag_result_retired": return L10n.format("transport_diag_result_retired", locale: locale, args: [])
+        case "transport.diag_result_timeout": return L10n.format("transport_diag_result_timeout", locale: locale, args: [])
+        case "transport.diag_result_trying": return L10n.format("transport_diag_result_trying", locale: locale, args: [])
         case "transport.diag_retry": return L10n.format("transport_diag_retry", locale: locale, args: [])
+        case "transport.diag_retry_auto_desc": return L10n.format("transport_diag_retry_auto_desc", locale: locale, args: [])
+        case "transport.diag_retry_wait_desc": return L10n.format("transport_diag_retry_wait_desc", locale: locale, args: [])
+        case "transport.diag_retrying": return L10n.format("transport_diag_retrying", locale: locale, args: [])
+        case "transport.diag_round": return L10n.format("transport_diag_round", locale: locale, args: [strArg(args["result"]), strArg(args["seconds"])])
+        case "transport.diag_rtt": return L10n.format("transport_diag_rtt", locale: locale, args: [intArg(args["ms"])])
+        case "transport.diag_section_auto": return L10n.format("transport_diag_section_auto", locale: locale, args: [])
+        case "transport.diag_sig_limited": return L10n.format("transport_diag_sig_limited", locale: locale, args: [intArg(args["count"])])
+        case "transport.diag_sig_offline": return L10n.format("transport_diag_sig_offline", locale: locale, args: [intArg(args["count"])])
+        case "transport.diag_sig_refused": return L10n.format("transport_diag_sig_refused", locale: locale, args: [])
+        case "transport.diag_signal": return L10n.format("transport_diag_signal", locale: locale, args: [])
+        case "transport.diag_stage": return L10n.format("transport_diag_stage", locale: locale, args: [])
+        case "transport.diag_stage_channel": return L10n.format("transport_diag_stage_channel", locale: locale, args: [])
+        case "transport.diag_stage_confirm": return L10n.format("transport_diag_stage_confirm", locale: locale, args: [])
+        case "transport.diag_stage_dtls": return L10n.format("transport_diag_stage_dtls", locale: locale, args: [])
+        case "transport.diag_stage_handshake": return L10n.format("transport_diag_stage_handshake", locale: locale, args: [])
+        case "transport.diag_stage_ice": return L10n.format("transport_diag_stage_ice", locale: locale, args: [])
+        case "transport.diag_stage_ready": return L10n.format("transport_diag_stage_ready", locale: locale, args: [])
+        case "transport.diag_stage_sdp": return L10n.format("transport_diag_stage_sdp", locale: locale, args: [])
+        case "transport.diag_state_closed": return L10n.format("transport_diag_state_closed", locale: locale, args: [])
+        case "transport.diag_state_doing": return L10n.format("transport_diag_state_doing", locale: locale, args: [])
+        case "transport.diag_state_dropped": return L10n.format("transport_diag_state_dropped", locale: locale, args: [])
+        case "transport.diag_state_failed": return L10n.format("transport_diag_state_failed", locale: locale, args: [])
+        case "transport.diag_state_none": return L10n.format("transport_diag_state_none", locale: locale, args: [])
+        case "transport.diag_state_ok": return L10n.format("transport_diag_state_ok", locale: locale, args: [])
+        case "transport.diag_status_blocked": return L10n.format("transport_diag_status_blocked", locale: locale, args: [])
+        case "transport.diag_status_checking": return L10n.format("transport_diag_status_checking", locale: locale, args: [])
+        case "transport.diag_status_connected": return L10n.format("transport_diag_status_connected", locale: locale, args: [])
+        case "transport.diag_status_enabled": return L10n.format("transport_diag_status_enabled", locale: locale, args: [])
+        case "transport.diag_status_no_reply": return L10n.format("transport_diag_status_no_reply", locale: locale, args: [])
+        case "transport.diag_status_not_started": return L10n.format("transport_diag_status_not_started", locale: locale, args: [])
+        case "transport.diag_status_ok": return L10n.format("transport_diag_status_ok", locale: locale, args: [])
+        case "transport.diag_status_peer_old": return L10n.format("transport_diag_status_peer_old", locale: locale, args: [])
+        case "transport.diag_status_wait_update": return L10n.format("transport_diag_status_wait_update", locale: locale, args: [])
+        case "transport.diag_stun_error": return L10n.format("transport_diag_stun_error", locale: locale, args: [intArg(args["code"]), intArg(args["count"]), strArg(args["family"])])
+        case "transport.diag_stun_errors": return L10n.format("transport_diag_stun_errors", locale: locale, args: [])
+        case "transport.diag_title_generic": return L10n.format("transport_diag_title_generic", locale: locale, args: [])
+        case "transport.diag_title_no_reply": return L10n.format("transport_diag_title_no_reply", locale: locale, args: [])
+        case "transport.diag_title_probe_blocked": return L10n.format("transport_diag_title_probe_blocked", locale: locale, args: [])
+        case "transport.diag_type_host": return L10n.format("transport_diag_type_host", locale: locale, args: [])
+        case "transport.diag_type_other": return L10n.format("transport_diag_type_other", locale: locale, args: [])
+        case "transport.diag_type_prflx": return L10n.format("transport_diag_type_prflx", locale: locale, args: [])
+        case "transport.diag_type_relay": return L10n.format("transport_diag_type_relay", locale: locale, args: [])
+        case "transport.diag_type_srflx": return L10n.format("transport_diag_type_srflx", locale: locale, args: [])
+        case "transport.diag_use_file": return L10n.format("transport_diag_use_file", locale: locale, args: [])
+        case "transport.diag_use_read": return L10n.format("transport_diag_use_read", locale: locale, args: [])
+        case "transport.diag_verdict_all_failed": return L10n.format("transport_diag_verdict_all_failed", locale: locale, args: [])
+        case "transport.diag_verdict_budget": return L10n.format("transport_diag_verdict_budget", locale: locale, args: [])
+        case "transport.diag_verdict_cancelled": return L10n.format("transport_diag_verdict_cancelled", locale: locale, args: [])
+        case "transport.diag_verdict_channel": return L10n.format("transport_diag_verdict_channel", locale: locale, args: [])
+        case "transport.diag_verdict_confirm": return L10n.format("transport_diag_verdict_confirm", locale: locale, args: [])
+        case "transport.diag_verdict_connected": return L10n.format("transport_diag_verdict_connected", locale: locale, args: [])
+        case "transport.diag_verdict_create_failed": return L10n.format("transport_diag_verdict_create_failed", locale: locale, args: [])
+        case "transport.diag_verdict_dtls": return L10n.format("transport_diag_verdict_dtls", locale: locale, args: [])
+        case "transport.diag_verdict_ipv6_silent": return L10n.format("transport_diag_verdict_ipv6_silent", locale: locale, args: [])
+        case "transport.diag_verdict_lost": return L10n.format("transport_diag_verdict_lost", locale: locale, args: [])
+        case "transport.diag_verdict_no_local": return L10n.format("transport_diag_verdict_no_local", locale: locale, args: [])
+        case "transport.diag_verdict_no_remote": return L10n.format("transport_diag_verdict_no_remote", locale: locale, args: [])
+        case "transport.diag_verdict_no_reply": return L10n.format("transport_diag_verdict_no_reply", locale: locale, args: [])
+        case "transport.diag_verdict_no_sdp": return L10n.format("transport_diag_verdict_no_sdp", locale: locale, args: [])
+        case "transport.diag_verdict_no_stun": return L10n.format("transport_diag_verdict_no_stun", locale: locale, args: [])
         case "transport.diag_verdict_none": return L10n.format("transport_diag_verdict_none", locale: locale, args: [])
+        case "transport.diag_verdict_peer_refused": return L10n.format("transport_diag_verdict_peer_refused", locale: locale, args: [])
+        case "transport.diag_verdict_signal_limited": return L10n.format("transport_diag_verdict_signal_limited", locale: locale, args: [])
+        case "transport.diag_verdict_signal_offline": return L10n.format("transport_diag_verdict_signal_offline", locale: locale, args: [])
+        case "transport.diag_verdict_unknown": return L10n.format("transport_diag_verdict_unknown", locale: locale, args: [])
         case "transport.direct": return L10n.format("transport_direct", locale: locale, args: [])
         case "transport.direct_slow": return L10n.format("transport_direct_slow", locale: locale, args: [])
         case "transport.file_speed_both": return L10n.format("transport_file_speed_both", locale: locale, args: [strArg(args["direct"]), strArg(args["relay"])])
@@ -17197,6 +20100,23 @@ public enum L10nText {
         case "transport.file_speed_relay": return L10n.format("transport_file_speed_relay", locale: locale, args: [strArg(args["relay"])])
         case "transport.footer": return L10n.format("transport_footer", locale: locale, args: [])
         case "transport.group": return L10n.format("transport_group", locale: locale, args: [])
+        case "transport.popover_a11y": return L10n.format("transport_popover_a11y", locale: locale, args: [])
+        case "transport.popover_direct_body": return L10n.format("transport_popover_direct_body", locale: locale, args: [])
+        case "transport.popover_direct_title": return L10n.format("transport_popover_direct_title", locale: locale, args: [strArg(args["name"])])
+        case "transport.popover_direct_title_rtt": return L10n.format("transport_popover_direct_title_rtt", locale: locale, args: [strArg(args["ms"]), strArg(args["name"])])
+        default: return nil
+        }
+    }
+    private static func resolve14(_ key: String, args: [String: L10nTextValue], locale: String) -> String? {
+        switch key {
+        case "transport.popover_file_only": return L10n.format("transport_popover_file_only", locale: locale, args: [])
+        case "transport.popover_read_only": return L10n.format("transport_popover_read_only", locale: locale, args: [])
+        case "transport.popover_relay_body": return L10n.format("transport_popover_relay_body", locale: locale, args: [])
+        case "transport.popover_relay_title": return L10n.format("transport_popover_relay_title", locale: locale, args: [strArg(args["name"])])
+        case "transport.popover_relay_title_rtt": return L10n.format("transport_popover_relay_title_rtt", locale: locale, args: [strArg(args["ms"]), strArg(args["name"])])
+        case "transport.popover_settings": return L10n.format("transport_popover_settings", locale: locale, args: [])
+        case "transport.popover_stable": return L10n.format("transport_popover_stable", locale: locale, args: [])
+        case "transport.popover_switched_relay": return L10n.format("transport_popover_switched_relay", locale: locale, args: [])
         case "transport.read_latency_both": return L10n.format("transport_read_latency_both", locale: locale, args: [strArg(args["direct"]), strArg(args["relay"])])
         case "transport.read_latency_direct": return L10n.format("transport_read_latency_direct", locale: locale, args: [strArg(args["direct"])])
         case "transport.read_latency_relay": return L10n.format("transport_read_latency_relay", locale: locale, args: [strArg(args["relay"])])
@@ -17210,6 +20130,16 @@ public enum L10nText {
         case "transport.reason_peer_unsupported": return L10n.format("transport_reason_peer_unsupported", locale: locale, args: [])
         case "transport.reason_security_pending": return L10n.format("transport_reason_security_pending", locale: locale, args: [])
         case "transport.reason_starting": return L10n.format("transport_reason_starting", locale: locale, args: [])
+        case "transport.row_allow_direct": return L10n.format("transport_row_allow_direct", locale: locale, args: [])
+        case "transport.row_diag_copied": return L10n.format("transport_row_diag_copied", locale: locale, args: [])
+        case "transport.row_diag_copy_support": return L10n.format("transport_row_diag_copy_support", locale: locale, args: [])
+        case "transport.row_off": return L10n.format("transport_row_off", locale: locale, args: [])
+        case "transport.row_relay": return L10n.format("transport_row_relay", locale: locale, args: [])
+        case "transport.row_relay_ms": return L10n.format("transport_row_relay_ms", locale: locale, args: [strArg(args["ms"])])
+        case "transport.row_retry_direct": return L10n.format("transport_row_retry_direct", locale: locale, args: [])
+        case "transport.row_unavailable": return L10n.format("transport_row_unavailable", locale: locale, args: [])
+        case "transport.row_using_direct": return L10n.format("transport_row_using_direct", locale: locale, args: [])
+        case "transport.row_using_direct_ms": return L10n.format("transport_row_using_direct_ms", locale: locale, args: [strArg(args["ms"])])
         case "transport.rtt_ms": return L10n.format("transport_rtt_ms", locale: locale, args: [strArg(args["ms"])])
         case "transport.speed_file": return L10n.format("transport_speed_file", locale: locale, args: [])
         case "transport.speed_read": return L10n.format("transport_speed_read", locale: locale, args: [])
@@ -17220,11 +20150,90 @@ public enum L10nText {
         case "transport.summary_off": return L10n.format("transport_summary_off", locale: locale, args: [])
         case "transport.use_file": return L10n.format("transport_use_file", locale: locale, args: [])
         case "transport.use_read": return L10n.format("transport_use_read", locale: locale, args: [])
+        case "usage.backfilled_summary": return L10n.format("usage_backfilled_summary", locale: locale, args: [strArg(args["name"]), intArg(args["scanned"])])
+        case "usage.backfilling_banner": return L10n.format("usage_backfilling_banner", locale: locale, args: [intArg(args["scanned"]), intArg(args["total"])])
+        case "usage.backfilling_cell": return L10n.format("usage_backfilling_cell", locale: locale, args: [])
+        case "usage.backfilling_zone": return L10n.format("usage_backfilling_zone", locale: locale, args: [])
+        case "usage.cache_formula_footnote": return L10n.format("usage_cache_formula_footnote", locale: locale, args: [])
         case "usage.cache_write_footnote": return L10n.format("usage_cache_write_footnote", locale: locale, args: [])
+        case "usage.chart_a11y_line": return L10n.format("usage_chart_a11y_line", locale: locale, args: [intArg(args["count"]), strArg(args["metric"]), strArg(args["name"])])
+        case "usage.chart_a11y_tokens": return L10n.format("usage_chart_a11y_tokens", locale: locale, args: [intArg(args["count"]), strArg(args["name"]), strArg(args["total"])])
+        case "usage.col_cache_read": return L10n.format("usage_col_cache_read", locale: locale, args: [])
+        case "usage.col_cache_write": return L10n.format("usage_col_cache_write", locale: locale, args: [])
+        case "usage.col_hit_rate": return L10n.format("usage_col_hit_rate", locale: locale, args: [])
+        case "usage.col_median": return L10n.format("usage_col_median", locale: locale, args: [])
+        case "usage.col_output": return L10n.format("usage_col_output", locale: locale, args: [])
+        case "usage.col_pair": return L10n.format("usage_col_pair", locale: locale, args: [])
+        case "usage.col_reqs": return L10n.format("usage_col_reqs", locale: locale, args: [])
+        case "usage.col_total": return L10n.format("usage_col_total", locale: locale, args: [])
+        case "usage.col_ttft_median": return L10n.format("usage_col_ttft_median", locale: locale, args: [])
+        case "usage.col_uncached": return L10n.format("usage_col_uncached", locale: locale, args: [])
+        case "usage.col_valid_reqs": return L10n.format("usage_col_valid_reqs", locale: locale, args: [])
+        case "usage.col_vs_prev": return L10n.format("usage_col_vs_prev", locale: locale, args: [])
+        case "usage.comp_cache_read": return L10n.format("usage_comp_cache_read", locale: locale, args: [])
+        case "usage.comp_cache_write": return L10n.format("usage_comp_cache_write", locale: locale, args: [])
+        case "usage.comp_output": return L10n.format("usage_comp_output", locale: locale, args: [])
+        case "usage.comp_reasoning": return L10n.format("usage_comp_reasoning", locale: locale, args: [strArg(args["value"])])
+        case "usage.comp_uncached": return L10n.format("usage_comp_uncached", locale: locale, args: [])
+        case "usage.custom_end_label": return L10n.format("usage_custom_end_label", locale: locale, args: [])
+        case "usage.custom_range_change": return L10n.format("usage_custom_range_change", locale: locale, args: [])
+        case "usage.custom_range_limit_hint": return L10n.format("usage_custom_range_limit_hint", locale: locale, args: [])
+        case "usage.custom_range_summary": return L10n.format("usage_custom_range_summary", locale: locale, args: [intArg(args["days"]), strArg(args["end"]), strArg(args["start"])])
+        case "usage.custom_start_label": return L10n.format("usage_custom_start_label", locale: locale, args: [])
+        case "usage.duration_min_sec": return L10n.format("usage_duration_min_sec", locale: locale, args: [intArg(args["min"]), intArg(args["sec"])])
+        case "usage.empty_body": return L10n.format("usage_empty_body", locale: locale, args: [])
+        case "usage.empty_title": return L10n.format("usage_empty_title", locale: locale, args: [])
+        case "usage.entry_cache_pct": return L10n.format("usage_entry_cache_pct", locale: locale, args: [strArg(args["pct"])])
+        case "usage.entry_few_samples": return L10n.format("usage_entry_few_samples", locale: locale, args: [intArg(args["count"]), strArg(args["detail"])])
+        case "usage.entry_last_30d": return L10n.format("usage_entry_last_30d", locale: locale, args: [])
+        case "usage.entry_last_7d": return L10n.format("usage_entry_last_7d", locale: locale, args: [])
+        case "usage.entry_no_speed": return L10n.format("usage_entry_no_speed", locale: locale, args: [strArg(args["detail"])])
+        case "usage.entry_reqs": return L10n.format("usage_entry_reqs", locale: locale, args: [intArg(args["count"])])
+        case "usage.few_samples_count": return L10n.format("usage_few_samples_count", locale: locale, args: [intArg(args["count"])])
+        case "usage.few_samples_hint": return L10n.format("usage_few_samples_hint", locale: locale, args: [])
+        case "usage.filter_all": return L10n.format("usage_filter_all", locale: locale, args: [])
+        case "usage.flat": return L10n.format("usage_flat", locale: locale, args: [])
+        case "usage.kpi_unit_tokens": return L10n.format("usage_kpi_unit_tokens", locale: locale, args: [])
+        case "usage.kpi_unit_toks": return L10n.format("usage_kpi_unit_toks", locale: locale, args: [])
         case "usage.load_error_title": return L10n.format("usage_load_error_title", locale: locale, args: [])
         case "usage.mixed_unavailable_footnote": return L10n.format("usage_mixed_unavailable_footnote", locale: locale, args: [strArg(args["agents"])])
+        case "usage.offline_banner": return L10n.format("usage_offline_banner", locale: locale, args: [strArg(args["name"]), strArg(args["time"])])
+        case "usage.offline_empty_body": return L10n.format("usage_offline_empty_body", locale: locale, args: [strArg(args["name"])])
+        case "usage.offline_empty_title": return L10n.format("usage_offline_empty_title", locale: locale, args: [strArg(args["name"])])
         case "usage.only_unavailable_body": return L10n.format("usage_only_unavailable_body", locale: locale, args: [strArg(args["agents"])])
         case "usage.only_unavailable_title": return L10n.format("usage_only_unavailable_title", locale: locale, args: [strArg(args["agents"])])
+        case "usage.outlier_note": return L10n.format("usage_outlier_note", locale: locale, args: [])
+        case "usage.pairs_capped_summary": return L10n.format("usage_pairs_capped_summary", locale: locale, args: [intArg(args["count"])])
+        case "usage.pairs_summary": return L10n.format("usage_pairs_summary", locale: locale, args: [intArg(args["count"]), strArg(args["name"])])
+        case "usage.passive_footnote": return L10n.format("usage_passive_footnote", locale: locale, args: [])
+        case "usage.range_30d": return L10n.format("usage_range_30d", locale: locale, args: [])
+        case "usage.range_7d": return L10n.format("usage_range_7d", locale: locale, args: [])
+        case "usage.range_custom": return L10n.format("usage_range_custom", locale: locale, args: [])
+        case "usage.range_today": return L10n.format("usage_range_today", locale: locale, args: [])
+        case "usage.row_sub_cache": return L10n.format("usage_row_sub_cache", locale: locale, args: [strArg(args["inp"]), strArg(args["read"]), strArg(args["write"])])
+        case "usage.row_sub_speed": return L10n.format("usage_row_sub_speed", locale: locale, args: [strArg(args["high"]), strArg(args["low"]), strArg(args["ttft"])])
+        case "usage.row_sub_tap_overlay": return L10n.format("usage_row_sub_tap_overlay", locale: locale, args: [])
+        case "usage.row_sub_tokens": return L10n.format("usage_row_sub_tokens", locale: locale, args: [strArg(args["inp"]), strArg(args["out"]), strArg(args["read"]), strArg(args["write"])])
+        case "usage.row_sub_tokens_reasoning": return L10n.format("usage_row_sub_tokens_reasoning", locale: locale, args: [strArg(args["inp"]), strArg(args["out"]), strArg(args["read"]), strArg(args["reas"]), strArg(args["write"])])
+        case "usage.scrub_total": return L10n.format("usage_scrub_total", locale: locale, args: [strArg(args["total"])])
+        case "usage.speed_threshold_footnote": return L10n.format("usage_speed_threshold_footnote", locale: locale, args: [])
+        case "usage.sub_median_p10_p90": return L10n.format("usage_sub_median_p10_p90", locale: locale, args: [strArg(args["high"]), strArg(args["low"])])
+        case "usage.sub_p10_p90": return L10n.format("usage_sub_p10_p90", locale: locale, args: [strArg(args["high"]), strArg(args["low"])])
+        case "usage.sub_recent10": return L10n.format("usage_sub_recent10", locale: locale, args: [strArg(args["speed"])])
+        case "usage.sub_vs_prev_30d": return L10n.format("usage_sub_vs_prev_30d", locale: locale, args: [])
+        case "usage.sub_vs_prev_7d": return L10n.format("usage_sub_vs_prev_7d", locale: locale, args: [])
+        case "usage.sub_vs_prev_generic": return L10n.format("usage_sub_vs_prev_generic", locale: locale, args: [])
+        case "usage.sub_weighted_cache": return L10n.format("usage_sub_weighted_cache", locale: locale, args: [])
+        case "usage.subtitle_live": return L10n.format("usage_subtitle_live", locale: locale, args: [strArg(args["name"])])
+        case "usage.subtitle_offline": return L10n.format("usage_subtitle_offline", locale: locale, args: [strArg(args["name"])])
+        case "usage.tab_cache_hit": return L10n.format("usage_tab_cache_hit", locale: locale, args: [])
+        case "usage.tab_speed": return L10n.format("usage_tab_speed", locale: locale, args: [])
+        case "usage.tab_tokens": return L10n.format("usage_tab_tokens", locale: locale, args: [])
+        case "usage.tab_ttft": return L10n.format("usage_tab_ttft", locale: locale, args: [])
+        case "usage.title": return L10n.format("usage_title", locale: locale, args: [])
+        case "usage.unit_wan": return L10n.format("usage_unit_wan", locale: locale, args: [])
+        case "usage.unit_yi": return L10n.format("usage_unit_yi", locale: locale, args: [])
+        case "usage.unreported_aria": return L10n.format("usage_unreported_aria", locale: locale, args: [])
         case "usage.unsupported_body": return L10n.format("usage_unsupported_body", locale: locale, args: [strArg(args["name"])])
         case "usage.unsupported_title": return L10n.format("usage_unsupported_title", locale: locale, args: [])
         default: return nil

@@ -87,6 +87,7 @@ message NewSessionNoticeView {
   Text draft_subtitle = 8;
   repeated OfflineMachineChoiceView draft_choices = 9;
   Text draft_none_text = 10;
+  remoteagent.v1.Agent target_agent = 11;
 }
 
 message AgentOptionView {

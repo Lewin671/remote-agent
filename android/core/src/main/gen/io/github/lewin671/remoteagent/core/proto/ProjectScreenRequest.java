@@ -16,6 +16,7 @@ public  final class ProjectScreenRequest extends
     ProjectScreenRequestOrBuilder {
   private ProjectScreenRequest() {
     projectKey_ = "";
+    machineId_ = "";
   }
   public static final int PROJECT_KEY_FIELD_NUMBER = 1;
   private java.lang.String projectKey_;
@@ -115,6 +116,54 @@ public  final class ProjectScreenRequest extends
   private void clearEndedLimit() {
 
     endedLimit_ = 0;
+  }
+
+  public static final int MACHINE_ID_FIELD_NUMBER = 4;
+  private java.lang.String machineId_;
+  /**
+   * <code>string machine_id = 4 [json_name = "machineId"];</code>
+   * @return The machineId.
+   */
+  @java.lang.Override
+  public java.lang.String getMachineId() {
+    return machineId_;
+  }
+  /**
+   * <code>string machine_id = 4 [json_name = "machineId"];</code>
+   * @return The bytes for machineId.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString
+      getMachineIdBytes() {
+    return com.google.protobuf.ByteString.copyFromUtf8(machineId_);
+  }
+  /**
+   * <code>string machine_id = 4 [json_name = "machineId"];</code>
+   * @param value The machineId to set.
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setMachineId(
+      java.lang.String value) {
+    value.getClass();  // minimal bytecode null check
+
+    machineId_ = value;
+  }
+  /**
+   * <code>string machine_id = 4 [json_name = "machineId"];</code>
+   */
+  private void clearMachineId() {
+
+    machineId_ = getDefaultInstance().getMachineId();
+  }
+  /**
+   * <code>string machine_id = 4 [json_name = "machineId"];</code>
+   * @param value The bytes for machineId to set.
+   */
+  private void setMachineIdBytes(
+      com.google.protobuf.ByteString value) {
+    checkByteStringIsUtf8(value);
+    machineId_ = value.toStringUtf8();
+
   }
 
   public static io.github.lewin671.remoteagent.core.proto.ProjectScreenRequest parseFrom(
@@ -319,6 +368,55 @@ public  final class ProjectScreenRequest extends
       return this;
     }
 
+    /**
+     * <code>string machine_id = 4 [json_name = "machineId"];</code>
+     * @return The machineId.
+     */
+    @java.lang.Override
+    public java.lang.String getMachineId() {
+      return instance.getMachineId();
+    }
+    /**
+     * <code>string machine_id = 4 [json_name = "machineId"];</code>
+     * @return The bytes for machineId.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString
+        getMachineIdBytes() {
+      return instance.getMachineIdBytes();
+    }
+    /**
+     * <code>string machine_id = 4 [json_name = "machineId"];</code>
+     * @param value The machineId to set.
+     * @return This builder for chaining.
+     */
+    public Builder setMachineId(
+        java.lang.String value) {
+      copyOnWrite();
+      instance.setMachineId(value);
+      return this;
+    }
+    /**
+     * <code>string machine_id = 4 [json_name = "machineId"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearMachineId() {
+      copyOnWrite();
+      instance.clearMachineId();
+      return this;
+    }
+    /**
+     * <code>string machine_id = 4 [json_name = "machineId"];</code>
+     * @param value The bytes for machineId to set.
+     * @return This builder for chaining.
+     */
+    public Builder setMachineIdBytes(
+        com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setMachineIdBytes(value);
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.ProjectScreenRequest)
   }
   @java.lang.Override
@@ -338,10 +436,11 @@ public  final class ProjectScreenRequest extends
             "projectKey_",
             "manage_",
             "endedLimit_",
+            "machineId_",
           };
           java.lang.String info =
-              "\u0000\u0003\u0000\u0000\u0001\u0003\u0003\u0000\u0000\u0000\u0001\u0208\u0002\u0007" +
-              "\u0003\u0004";
+              "\u0000\u0004\u0000\u0000\u0001\u0004\u0004\u0000\u0000\u0000\u0001\u0208\u0002\u0007" +
+              "\u0003\u0004\u0004\u0208";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

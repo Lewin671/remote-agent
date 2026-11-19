@@ -541,6 +541,7 @@ func BuildCliSections(m *lists.Machine, filterAgent v1.Agent, nowMs int64) []*co
 			sec.UsageHint = usageHintForAgent(agent)
 			sec.SummaryMeta = text.Msg(text.KeyQuotaQuotaLookupIsNotSupportedYet)
 			sec.SummaryTone = corev1.QuotaTone_QUOTA_TONE_STALE
+			sec.SummaryPrimaryText = text.Msg(text.KeyQuotaQuotaLookupIsNotSupportedYet)
 			sections = append(sections, sec)
 			continue
 		}
@@ -569,10 +570,18 @@ func BuildCliSections(m *lists.Machine, filterAgent v1.Agent, nowMs int64) []*co
 			} else if val != nil {
 				sec.SummaryLine = val
 			}
+			sec.SummaryPrimaryText = val
+			sec.SummaryPrimaryWarn = tight.Tone == corev1.QuotaTone_QUOTA_TONE_WARN || tight.Tone == corev1.QuotaTone_QUOTA_TONE_FULL
+			if tight.Exhausted && !tight.Stale && !tight.PastReset && tight.ResetText != nil {
+				sec.SummaryWindowText = tight.ResetText
+			} else {
+				sec.SummaryWindowText = lineLabel
+			}
 		} else {
 			sec.SummaryTone = corev1.QuotaTone_QUOTA_TONE_STALE
 			sec.EmptyOrErrorText = first.StatusText
 			sec.SummaryMeta = first.StatusText
+			sec.SummaryPrimaryText = first.StatusText
 			if first.ErrorText != nil && !text.IsEmpty(first.ErrorText) {
 				sec.EmptyOrErrorText = first.ErrorText
 			}

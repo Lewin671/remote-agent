@@ -118,4 +118,15 @@ public interface NewSessionNoticeViewOrBuilder extends
    * @return The draftNoneText.
    */
   io.github.lewin671.remoteagent.core.proto.Text getDraftNoneText();
+
+  /**
+   * <code>.remoteagent.v1.Agent target_agent = 11 [json_name = "targetAgent"];</code>
+   * @return The enum numeric value on the wire for targetAgent.
+   */
+  int getTargetAgentValue();
+  /**
+   * <code>.remoteagent.v1.Agent target_agent = 11 [json_name = "targetAgent"];</code>
+   * @return The targetAgent.
+   */
+  io.github.lewin671.remoteagent.proto.Agent getTargetAgent();
 }

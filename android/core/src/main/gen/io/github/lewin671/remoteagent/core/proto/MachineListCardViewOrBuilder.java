@@ -93,4 +93,35 @@ public interface MachineListCardViewOrBuilder extends
    * @return The directRow.
    */
   io.github.lewin671.remoteagent.core.proto.ConnCheckDirectRowView getDirectRow();
+
+  /**
+   * <code>.remoteagent.core.v1.MachineStatusDot status_dot = 10 [json_name = "statusDot"];</code>
+   * @return The enum numeric value on the wire for statusDot.
+   */
+  int getStatusDotValue();
+  /**
+   * <code>.remoteagent.core.v1.MachineStatusDot status_dot = 10 [json_name = "statusDot"];</code>
+   * @return The statusDot.
+   */
+  io.github.lewin671.remoteagent.core.proto.MachineStatusDot getStatusDot();
+
+  /**
+   * <code>bool status_warn = 11 [json_name = "statusWarn"];</code>
+   * @return The statusWarn.
+   */
+  boolean getStatusWarn();
+
+  /**
+   * <code>repeated .remoteagent.core.v1.SubtitleSegment subtitle_parts = 12 [json_name = "subtitleParts"];</code>
+   */
+  java.util.List<io.github.lewin671.remoteagent.core.proto.SubtitleSegment> 
+      getSubtitlePartsList();
+  /**
+   * <code>repeated .remoteagent.core.v1.SubtitleSegment subtitle_parts = 12 [json_name = "subtitleParts"];</code>
+   */
+  io.github.lewin671.remoteagent.core.proto.SubtitleSegment getSubtitleParts(int index);
+  /**
+   * <code>repeated .remoteagent.core.v1.SubtitleSegment subtitle_parts = 12 [json_name = "subtitleParts"];</code>
+   */
+  int getSubtitlePartsCount();
 }

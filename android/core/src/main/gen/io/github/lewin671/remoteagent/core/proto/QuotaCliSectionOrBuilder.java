@@ -129,4 +129,32 @@ public interface QuotaCliSectionOrBuilder extends
    * @return The summaryMeta.
    */
   io.github.lewin671.remoteagent.core.proto.Text getSummaryMeta();
+
+  /**
+   * <code>.remoteagent.core.v1.Text summary_primary_text = 12 [json_name = "summaryPrimaryText"];</code>
+   * @return Whether the summaryPrimaryText field is set.
+   */
+  boolean hasSummaryPrimaryText();
+  /**
+   * <code>.remoteagent.core.v1.Text summary_primary_text = 12 [json_name = "summaryPrimaryText"];</code>
+   * @return The summaryPrimaryText.
+   */
+  io.github.lewin671.remoteagent.core.proto.Text getSummaryPrimaryText();
+
+  /**
+   * <code>bool summary_primary_warn = 13 [json_name = "summaryPrimaryWarn"];</code>
+   * @return The summaryPrimaryWarn.
+   */
+  boolean getSummaryPrimaryWarn();
+
+  /**
+   * <code>.remoteagent.core.v1.Text summary_window_text = 14 [json_name = "summaryWindowText"];</code>
+   * @return Whether the summaryWindowText field is set.
+   */
+  boolean hasSummaryWindowText();
+  /**
+   * <code>.remoteagent.core.v1.Text summary_window_text = 14 [json_name = "summaryWindowText"];</code>
+   * @return The summaryWindowText.
+   */
+  io.github.lewin671.remoteagent.core.proto.Text getSummaryWindowText();
 }

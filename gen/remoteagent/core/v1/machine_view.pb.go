@@ -2453,20 +2453,23 @@ func (x *QuotaAccountGroupView) GetIsSubscriptionLogin() bool {
 }
 
 type QuotaCliSection struct {
-	state            protoimpl.MessageState   `protogen:"open.v1"`
-	Agent            v1.Agent                 `protobuf:"varint,1,opt,name=agent,proto3,enum=remoteagent.v1.Agent" json:"agent,omitempty"`
-	AgentName        string                   `protobuf:"bytes,2,opt,name=agent_name,json=agentName,proto3" json:"agent_name,omitempty"`
-	State            QuotaSectionState        `protobuf:"varint,3,opt,name=state,proto3,enum=remoteagent.core.v1.QuotaSectionState" json:"state,omitempty"`
-	Unsupported      bool                     `protobuf:"varint,4,opt,name=unsupported,proto3" json:"unsupported,omitempty"`
-	Accounts         []*QuotaAccountGroupView `protobuf:"bytes,5,rep,name=accounts,proto3" json:"accounts,omitempty"`
-	EmptyOrErrorText *Text                    `protobuf:"bytes,6,opt,name=empty_or_error_text,json=emptyOrErrorText,proto3" json:"empty_or_error_text,omitempty"`
-	UsageHint        *Text                    `protobuf:"bytes,7,opt,name=usage_hint,json=usageHint,proto3" json:"usage_hint,omitempty"`
-	SummaryRow       *QuotaRowView            `protobuf:"bytes,8,opt,name=summary_row,json=summaryRow,proto3" json:"summary_row,omitempty"`
-	SummaryLine      *Text                    `protobuf:"bytes,9,opt,name=summary_line,json=summaryLine,proto3" json:"summary_line,omitempty"`
-	SummaryTone      QuotaTone                `protobuf:"varint,10,opt,name=summary_tone,json=summaryTone,proto3,enum=remoteagent.core.v1.QuotaTone" json:"summary_tone,omitempty"`
-	SummaryMeta      *Text                    `protobuf:"bytes,11,opt,name=summary_meta,json=summaryMeta,proto3" json:"summary_meta,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	state              protoimpl.MessageState   `protogen:"open.v1"`
+	Agent              v1.Agent                 `protobuf:"varint,1,opt,name=agent,proto3,enum=remoteagent.v1.Agent" json:"agent,omitempty"`
+	AgentName          string                   `protobuf:"bytes,2,opt,name=agent_name,json=agentName,proto3" json:"agent_name,omitempty"`
+	State              QuotaSectionState        `protobuf:"varint,3,opt,name=state,proto3,enum=remoteagent.core.v1.QuotaSectionState" json:"state,omitempty"`
+	Unsupported        bool                     `protobuf:"varint,4,opt,name=unsupported,proto3" json:"unsupported,omitempty"`
+	Accounts           []*QuotaAccountGroupView `protobuf:"bytes,5,rep,name=accounts,proto3" json:"accounts,omitempty"`
+	EmptyOrErrorText   *Text                    `protobuf:"bytes,6,opt,name=empty_or_error_text,json=emptyOrErrorText,proto3" json:"empty_or_error_text,omitempty"`
+	UsageHint          *Text                    `protobuf:"bytes,7,opt,name=usage_hint,json=usageHint,proto3" json:"usage_hint,omitempty"`
+	SummaryRow         *QuotaRowView            `protobuf:"bytes,8,opt,name=summary_row,json=summaryRow,proto3" json:"summary_row,omitempty"`
+	SummaryLine        *Text                    `protobuf:"bytes,9,opt,name=summary_line,json=summaryLine,proto3" json:"summary_line,omitempty"`
+	SummaryTone        QuotaTone                `protobuf:"varint,10,opt,name=summary_tone,json=summaryTone,proto3,enum=remoteagent.core.v1.QuotaTone" json:"summary_tone,omitempty"`
+	SummaryMeta        *Text                    `protobuf:"bytes,11,opt,name=summary_meta,json=summaryMeta,proto3" json:"summary_meta,omitempty"`
+	SummaryPrimaryText *Text                    `protobuf:"bytes,12,opt,name=summary_primary_text,json=summaryPrimaryText,proto3" json:"summary_primary_text,omitempty"`
+	SummaryPrimaryWarn bool                     `protobuf:"varint,13,opt,name=summary_primary_warn,json=summaryPrimaryWarn,proto3" json:"summary_primary_warn,omitempty"`
+	SummaryWindowText  *Text                    `protobuf:"bytes,14,opt,name=summary_window_text,json=summaryWindowText,proto3" json:"summary_window_text,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
 }
 
 func (x *QuotaCliSection) Reset() {
@@ -2572,6 +2575,27 @@ func (x *QuotaCliSection) GetSummaryTone() QuotaTone {
 func (x *QuotaCliSection) GetSummaryMeta() *Text {
 	if x != nil {
 		return x.SummaryMeta
+	}
+	return nil
+}
+
+func (x *QuotaCliSection) GetSummaryPrimaryText() *Text {
+	if x != nil {
+		return x.SummaryPrimaryText
+	}
+	return nil
+}
+
+func (x *QuotaCliSection) GetSummaryPrimaryWarn() bool {
+	if x != nil {
+		return x.SummaryPrimaryWarn
+	}
+	return false
+}
+
+func (x *QuotaCliSection) GetSummaryWindowText() *Text {
+	if x != nil {
+		return x.SummaryWindowText
 	}
 	return nil
 }
@@ -3389,7 +3413,7 @@ const file_remoteagent_core_v1_machine_view_proto_rawDesc = "" +
 	"\n" +
 	"usage_hint\x18\t \x01(\v2\x19.remoteagent.core.v1.TextR\tusageHint\x122\n" +
 	"\x15is_subscription_login\x18\n" +
-	" \x01(\bR\x13isSubscriptionLogin\"\x8c\x05\n" +
+	" \x01(\bR\x13isSubscriptionLogin\"\xd6\x06\n" +
 	"\x0fQuotaCliSection\x12+\n" +
 	"\x05agent\x18\x01 \x01(\x0e2\x15.remoteagent.v1.AgentR\x05agent\x12\x1d\n" +
 	"\n" +
@@ -3405,7 +3429,10 @@ const file_remoteagent_core_v1_machine_view_proto_rawDesc = "" +
 	"\fsummary_line\x18\t \x01(\v2\x19.remoteagent.core.v1.TextR\vsummaryLine\x12A\n" +
 	"\fsummary_tone\x18\n" +
 	" \x01(\x0e2\x1e.remoteagent.core.v1.QuotaToneR\vsummaryTone\x12<\n" +
-	"\fsummary_meta\x18\v \x01(\v2\x19.remoteagent.core.v1.TextR\vsummaryMeta\"\xbc\x04\n" +
+	"\fsummary_meta\x18\v \x01(\v2\x19.remoteagent.core.v1.TextR\vsummaryMeta\x12K\n" +
+	"\x14summary_primary_text\x18\f \x01(\v2\x19.remoteagent.core.v1.TextR\x12summaryPrimaryText\x120\n" +
+	"\x14summary_primary_warn\x18\r \x01(\bR\x12summaryPrimaryWarn\x12I\n" +
+	"\x13summary_window_text\x18\x0e \x01(\v2\x19.remoteagent.core.v1.TextR\x11summaryWindowText\"\xbc\x04\n" +
 	"\x0eQuotaViewModel\x12\x1d\n" +
 	"\n" +
 	"machine_id\x18\x01 \x01(\tR\tmachineId\x12!\n" +
@@ -3675,19 +3702,21 @@ var file_remoteagent_core_v1_machine_view_proto_depIdxs = []int32{
 	40, // 81: remoteagent.core.v1.QuotaCliSection.summary_line:type_name -> remoteagent.core.v1.Text
 	9,  // 82: remoteagent.core.v1.QuotaCliSection.summary_tone:type_name -> remoteagent.core.v1.QuotaTone
 	40, // 83: remoteagent.core.v1.QuotaCliSection.summary_meta:type_name -> remoteagent.core.v1.Text
-	40, // 84: remoteagent.core.v1.QuotaViewModel.offline_notice:type_name -> remoteagent.core.v1.Text
-	26, // 85: remoteagent.core.v1.QuotaViewModel.banner:type_name -> remoteagent.core.v1.QuotaBannerView
-	30, // 86: remoteagent.core.v1.QuotaViewModel.sections:type_name -> remoteagent.core.v1.QuotaCliSection
-	40, // 87: remoteagent.core.v1.QuotaViewModel.footer_note:type_name -> remoteagent.core.v1.Text
-	40, // 88: remoteagent.core.v1.QuotaViewModel.empty_text:type_name -> remoteagent.core.v1.Text
-	1,  // 89: remoteagent.core.v1.MachineStatusWatchEvent.mode:type_name -> remoteagent.core.v1.MachinePollMode
-	5,  // 90: remoteagent.core.v1.MachineStatusTabEvent.tab:type_name -> remoteagent.core.v1.MachineUsageTab
-	6,  // 91: remoteagent.core.v1.MachineStatusScrubEvent.kind:type_name -> remoteagent.core.v1.MachineChartKind
-	92, // [92:92] is the sub-list for method output_type
-	92, // [92:92] is the sub-list for method input_type
-	92, // [92:92] is the sub-list for extension type_name
-	92, // [92:92] is the sub-list for extension extendee
-	0,  // [0:92] is the sub-list for field type_name
+	40, // 84: remoteagent.core.v1.QuotaCliSection.summary_primary_text:type_name -> remoteagent.core.v1.Text
+	40, // 85: remoteagent.core.v1.QuotaCliSection.summary_window_text:type_name -> remoteagent.core.v1.Text
+	40, // 86: remoteagent.core.v1.QuotaViewModel.offline_notice:type_name -> remoteagent.core.v1.Text
+	26, // 87: remoteagent.core.v1.QuotaViewModel.banner:type_name -> remoteagent.core.v1.QuotaBannerView
+	30, // 88: remoteagent.core.v1.QuotaViewModel.sections:type_name -> remoteagent.core.v1.QuotaCliSection
+	40, // 89: remoteagent.core.v1.QuotaViewModel.footer_note:type_name -> remoteagent.core.v1.Text
+	40, // 90: remoteagent.core.v1.QuotaViewModel.empty_text:type_name -> remoteagent.core.v1.Text
+	1,  // 91: remoteagent.core.v1.MachineStatusWatchEvent.mode:type_name -> remoteagent.core.v1.MachinePollMode
+	5,  // 92: remoteagent.core.v1.MachineStatusTabEvent.tab:type_name -> remoteagent.core.v1.MachineUsageTab
+	6,  // 93: remoteagent.core.v1.MachineStatusScrubEvent.kind:type_name -> remoteagent.core.v1.MachineChartKind
+	94, // [94:94] is the sub-list for method output_type
+	94, // [94:94] is the sub-list for method input_type
+	94, // [94:94] is the sub-list for extension type_name
+	94, // [94:94] is the sub-list for extension extendee
+	0,  // [0:94] is the sub-list for field type_name
 }
 
 func init() { file_remoteagent_core_v1_machine_view_proto_init() }

@@ -687,17 +687,19 @@ func (x *DirPickerView) GetCanConfirm() bool {
 }
 
 type ManageProjectsView struct {
-	state            protoimpl.MessageState `protogen:"open.v1"`
-	Listing          *ProjectListingView    `protobuf:"bytes,1,opt,name=listing,proto3" json:"listing,omitempty"`
-	CanEdit          bool                   `protobuf:"varint,2,opt,name=can_edit,json=canEdit,proto3" json:"can_edit,omitempty"`
-	BlockedReason    *Text                  `protobuf:"bytes,3,opt,name=blocked_reason,json=blockedReason,proto3" json:"blocked_reason,omitempty"`
-	ChangedElsewhere bool                   `protobuf:"varint,4,opt,name=changed_elsewhere,json=changedElsewhere,proto3" json:"changed_elsewhere,omitempty"`
-	Syncing          bool                   `protobuf:"varint,5,opt,name=syncing,proto3" json:"syncing,omitempty"`
-	SaveError        *Text                  `protobuf:"bytes,6,opt,name=save_error,json=saveError,proto3" json:"save_error,omitempty"`
-	DirPicker        *DirPickerView         `protobuf:"bytes,7,opt,name=dir_picker,json=dirPicker,proto3" json:"dir_picker,omitempty"`
-	ProjectCount     int32                  `protobuf:"varint,8,opt,name=project_count,json=projectCount,proto3" json:"project_count,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	state             protoimpl.MessageState `protogen:"open.v1"`
+	Listing           *ProjectListingView    `protobuf:"bytes,1,opt,name=listing,proto3" json:"listing,omitempty"`
+	CanEdit           bool                   `protobuf:"varint,2,opt,name=can_edit,json=canEdit,proto3" json:"can_edit,omitempty"`
+	BlockedReason     *Text                  `protobuf:"bytes,3,opt,name=blocked_reason,json=blockedReason,proto3" json:"blocked_reason,omitempty"`
+	ChangedElsewhere  bool                   `protobuf:"varint,4,opt,name=changed_elsewhere,json=changedElsewhere,proto3" json:"changed_elsewhere,omitempty"`
+	Syncing           bool                   `protobuf:"varint,5,opt,name=syncing,proto3" json:"syncing,omitempty"`
+	SaveError         *Text                  `protobuf:"bytes,6,opt,name=save_error,json=saveError,proto3" json:"save_error,omitempty"`
+	DirPicker         *DirPickerView         `protobuf:"bytes,7,opt,name=dir_picker,json=dirPicker,proto3" json:"dir_picker,omitempty"`
+	ProjectCount      int32                  `protobuf:"varint,8,opt,name=project_count,json=projectCount,proto3" json:"project_count,omitempty"`
+	FilterMachineId   string                 `protobuf:"bytes,9,opt,name=filter_machine_id,json=filterMachineId,proto3" json:"filter_machine_id,omitempty"`
+	FilterMachineName string                 `protobuf:"bytes,10,opt,name=filter_machine_name,json=filterMachineName,proto3" json:"filter_machine_name,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *ManageProjectsView) Reset() {
@@ -784,6 +786,20 @@ func (x *ManageProjectsView) GetProjectCount() int32 {
 		return x.ProjectCount
 	}
 	return 0
+}
+
+func (x *ManageProjectsView) GetFilterMachineId() string {
+	if x != nil {
+		return x.FilterMachineId
+	}
+	return ""
+}
+
+func (x *ManageProjectsView) GetFilterMachineName() string {
+	if x != nil {
+		return x.FilterMachineName
+	}
+	return ""
 }
 
 type ProjectViewModel struct {
@@ -921,7 +937,7 @@ const file_remoteagent_core_v1_project_view_proto_rawDesc = "" +
 	" \x01(\v2\x19.remoteagent.core.v1.TextR\x05error\x12>\n" +
 	"\rconfirm_label\x18\v \x01(\v2\x19.remoteagent.core.v1.TextR\fconfirmLabel\x12\x1f\n" +
 	"\vcan_confirm\x18\f \x01(\bR\n" +
-	"canConfirm\"\x9d\x03\n" +
+	"canConfirm\"\xf9\x03\n" +
 	"\x12ManageProjectsView\x12A\n" +
 	"\alisting\x18\x01 \x01(\v2'.remoteagent.core.v1.ProjectListingViewR\alisting\x12\x19\n" +
 	"\bcan_edit\x18\x02 \x01(\bR\acanEdit\x12@\n" +
@@ -932,7 +948,10 @@ const file_remoteagent_core_v1_project_view_proto_rawDesc = "" +
 	"save_error\x18\x06 \x01(\v2\x19.remoteagent.core.v1.TextR\tsaveError\x12A\n" +
 	"\n" +
 	"dir_picker\x18\a \x01(\v2\".remoteagent.core.v1.DirPickerViewR\tdirPicker\x12#\n" +
-	"\rproject_count\x18\b \x01(\x05R\fprojectCount\"\xcd\x01\n" +
+	"\rproject_count\x18\b \x01(\x05R\fprojectCount\x12*\n" +
+	"\x11filter_machine_id\x18\t \x01(\tR\x0ffilterMachineId\x12.\n" +
+	"\x13filter_machine_name\x18\n" +
+	" \x01(\tR\x11filterMachineName\"\xcd\x01\n" +
 	"\x10ProjectViewModel\x128\n" +
 	"\x04kind\x18\x01 \x01(\x0e2$.remoteagent.core.v1.ProjectViewKindR\x04kind\x12>\n" +
 	"\x06detail\x18\x02 \x01(\v2&.remoteagent.core.v1.ProjectDetailViewR\x06detail\x12?\n" +

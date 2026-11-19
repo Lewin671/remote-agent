@@ -302,17 +302,10 @@
                 "member": true,
                 "protocolMismatch": -1,
                 "statusText": {
-                  "join": [
-                    {
-                      "key": "common.offline"
-                    },
-                    {
-                      "key": "time.yesterday"
-                    }
-                  ],
-                  "separatorKey": "common.note_separator"
+                  "key": "time.yesterday"
                 },
-                "lastSeenMs": "1791000000000"
+                "lastSeenMs": "1791000000000",
+                "statusDot": "MACHINE_STATUS_DOT_GRAY_STATIC"
               },
               {
                 "machineId": "m1",
@@ -322,7 +315,30 @@
                 "statusText": {
                   "key": "common.online"
                 },
-                "lastSeenMs": "1791078060000"
+                "lastSeenMs": "1791078060000",
+                "statusDot": "MACHINE_STATUS_DOT_GREEN_LIVE",
+                "subtitleParts": [
+                  {
+                    "text": {
+                      "key": "settings.machine_sub_disk_alert",
+                      "args": [
+                        {
+                          "name": "size",
+                          "textValue": {
+                            "key": "machine_status.size_gb",
+                            "args": [
+                              {
+                                "name": "size",
+                                "strValue": "1.5"
+                              }
+                            ]
+                          }
+                        }
+                      ]
+                    },
+                    "warn": true
+                  }
+                ]
               }
             ],
             "clients": [
@@ -516,7 +532,16 @@
                   ]
                 }
               }
-            ]
+            ],
+            "clientCountText": {
+              "key": "settings.clients_count",
+              "args": [
+                {
+                  "name": "count",
+                  "intValue": "5"
+                }
+              ]
+            }
           }
         },
         "selfClient": {
@@ -565,6 +590,9 @@
             "authorityName": "iPad Pro",
             "recoveryPending": true,
             "recoveryReadyMs": "1791250860000",
+            "recoveryBannerText": {
+              "key": "settings.recovery_waiting_banner"
+            },
             "machines": [
               {
                 "machineId": "m2",
@@ -572,21 +600,14 @@
                 "member": true,
                 "protocolMismatch": -1,
                 "statusText": {
-                  "join": [
-                    {
-                      "key": "common.offline"
-                    },
-                    {
-                      "key": "time.yesterday"
-                    }
-                  ],
-                  "separatorKey": "common.note_separator"
+                  "key": "time.yesterday"
                 },
                 "lastSeenMs": "1791000000000",
                 "directRow": {
                   "stage": "CONNECTION_GROUP_STAGE_OFFLINE",
                   "tone": "CONNECTION_GROUP_TONE_MUTED"
-                }
+                },
+                "statusDot": "MACHINE_STATUS_DOT_GRAY_STATIC"
               },
               {
                 "machineId": "m1",
@@ -718,7 +739,26 @@
                       ],
                       "separatorKey": "common.note_separator"
                     },
-                    "summaryTone": "QUOTA_TONE_WARN"
+                    "summaryTone": "QUOTA_TONE_WARN",
+                    "summaryPrimaryText": {
+                      "key": "quota.left",
+                      "args": [
+                        {
+                          "name": "value",
+                          "strValue": "10"
+                        }
+                      ]
+                    },
+                    "summaryPrimaryWarn": true,
+                    "summaryWindowText": {
+                      "key": "quota.hr",
+                      "args": [
+                        {
+                          "name": "count",
+                          "intValue": "5"
+                        }
+                      ]
+                    }
                   }
                 ],
                 "lastSeenMs": "1791078060000",
@@ -735,11 +775,50 @@
                   "detailText": {
                     "key": "transport.reason_starting"
                   }
-                }
+                },
+                "statusDot": "MACHINE_STATUS_DOT_GREEN_LIVE",
+                "subtitleParts": [
+                  {
+                    "text": {
+                      "key": "settings.machine_sub_disk_alert",
+                      "args": [
+                        {
+                          "name": "size",
+                          "textValue": {
+                            "key": "machine_status.size_gb",
+                            "args": [
+                              {
+                                "name": "size",
+                                "strValue": "1.5"
+                              }
+                            ]
+                          }
+                        }
+                      ]
+                    },
+                    "warn": true
+                  },
+                  {
+                    "text": {
+                      "key": "settings.machine_sub_quota_left",
+                      "args": [
+                        {
+                          "name": "name",
+                          "strValue": "Codex"
+                        },
+                        {
+                          "name": "value",
+                          "strValue": "10"
+                        }
+                      ]
+                    },
+                    "warn": true
+                  }
+                ]
               }
             ],
             "addDeviceHint": {
-              "key": "security.add_on_authority",
+              "key": "settings.add_device_footer_hint",
               "args": [
                 {
                   "name": "name",
@@ -881,13 +960,16 @@
               "recoveryPending": true,
               "recoveryReadyMs": "1791250860000",
               "summaryText": {
-                "key": "security.manage_on_authority",
+                "key": "settings.security_summary_non_authority",
                 "args": [
                   {
                     "name": "name",
                     "strValue": "iPad Pro"
                   }
                 ]
+              },
+              "recoveryNotice": {
+                "key": "settings.recovery_waiting_banner"
               }
             },
             "notifications": {
@@ -898,6 +980,9 @@
               "notifyScheduled": true,
               "statusText": {
                 "key": "settings.enabled"
+              },
+              "summaryText": {
+                "key": "settings.notifications_summary_on"
               }
             },
             "appearance": {
@@ -994,7 +1079,22 @@
               "agent": "AGENT_CODEX",
               "windowName": "primary"
             },
-            "canExitAccount": true
+            "canExitAccount": true,
+            "clientsSummaryText": {
+              "key": "settings.clients_summary_pending",
+              "args": [
+                {
+                  "name": "count",
+                  "intValue": "5"
+                },
+                {
+                  "name": "pending",
+                  "intValue": "1"
+                }
+              ]
+            },
+            "clientsSummaryWarn": true,
+            "unfinishedPairingCount": 1
           }
         }
       }
@@ -1041,6 +1141,9 @@
             "authorityName": "iPad Pro",
             "recoveryPending": true,
             "recoveryReadyMs": "1791250860000",
+            "recoveryBannerText": {
+              "key": "settings.recovery_waiting_banner"
+            },
             "machines": [
               {
                 "machineId": "m2",
@@ -1048,21 +1151,14 @@
                 "member": true,
                 "protocolMismatch": -1,
                 "statusText": {
-                  "join": [
-                    {
-                      "key": "common.offline"
-                    },
-                    {
-                      "key": "time.yesterday"
-                    }
-                  ],
-                  "separatorKey": "common.note_separator"
+                  "key": "time.yesterday"
                 },
                 "lastSeenMs": "1791000000000",
                 "directRow": {
                   "stage": "CONNECTION_GROUP_STAGE_OFFLINE",
                   "tone": "CONNECTION_GROUP_TONE_MUTED"
-                }
+                },
+                "statusDot": "MACHINE_STATUS_DOT_GRAY_STATIC"
               },
               {
                 "machineId": "m1",
@@ -1194,7 +1290,26 @@
                       ],
                       "separatorKey": "common.note_separator"
                     },
-                    "summaryTone": "QUOTA_TONE_WARN"
+                    "summaryTone": "QUOTA_TONE_WARN",
+                    "summaryPrimaryText": {
+                      "key": "quota.left",
+                      "args": [
+                        {
+                          "name": "value",
+                          "strValue": "10"
+                        }
+                      ]
+                    },
+                    "summaryPrimaryWarn": true,
+                    "summaryWindowText": {
+                      "key": "quota.hr",
+                      "args": [
+                        {
+                          "name": "count",
+                          "intValue": "5"
+                        }
+                      ]
+                    }
                   }
                 ],
                 "lastSeenMs": "1791078060000",
@@ -1211,11 +1326,50 @@
                   "detailText": {
                     "key": "transport.reason_starting"
                   }
-                }
+                },
+                "statusDot": "MACHINE_STATUS_DOT_GREEN_LIVE",
+                "subtitleParts": [
+                  {
+                    "text": {
+                      "key": "settings.machine_sub_disk_alert",
+                      "args": [
+                        {
+                          "name": "size",
+                          "textValue": {
+                            "key": "machine_status.size_gb",
+                            "args": [
+                              {
+                                "name": "size",
+                                "strValue": "1.5"
+                              }
+                            ]
+                          }
+                        }
+                      ]
+                    },
+                    "warn": true
+                  },
+                  {
+                    "text": {
+                      "key": "settings.machine_sub_quota_left",
+                      "args": [
+                        {
+                          "name": "name",
+                          "strValue": "Codex"
+                        },
+                        {
+                          "name": "value",
+                          "strValue": "10"
+                        }
+                      ]
+                    },
+                    "warn": true
+                  }
+                ]
               }
             ],
             "addDeviceHint": {
-              "key": "security.add_on_authority",
+              "key": "settings.add_device_footer_hint",
               "args": [
                 {
                   "name": "name",
@@ -1357,13 +1511,16 @@
               "recoveryPending": true,
               "recoveryReadyMs": "1791250860000",
               "summaryText": {
-                "key": "security.manage_on_authority",
+                "key": "settings.security_summary_non_authority",
                 "args": [
                   {
                     "name": "name",
                     "strValue": "iPad Pro"
                   }
                 ]
+              },
+              "recoveryNotice": {
+                "key": "settings.recovery_waiting_banner"
               }
             },
             "notifications": {
@@ -1374,6 +1531,9 @@
               "notifyScheduled": true,
               "statusText": {
                 "key": "settings.enabled"
+              },
+              "summaryText": {
+                "key": "settings.notifications_summary_on"
               }
             },
             "appearance": {
@@ -1471,7 +1631,22 @@
               "agent": "AGENT_CODEX",
               "windowName": "primary"
             },
-            "canExitAccount": true
+            "canExitAccount": true,
+            "clientsSummaryText": {
+              "key": "settings.clients_summary_pending",
+              "args": [
+                {
+                  "name": "count",
+                  "intValue": "5"
+                },
+                {
+                  "name": "pending",
+                  "intValue": "1"
+                }
+              ]
+            },
+            "clientsSummaryWarn": true,
+            "unfinishedPairingCount": 1
           }
         }
       }

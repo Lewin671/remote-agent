@@ -400,6 +400,8 @@ public struct PBCoreProjectScreenRequest: Sendable {
 
   public var endedLimit: Int32 = 0
 
+  public var machineID: String = String()
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -4066,7 +4068,7 @@ extension PBCoreHomeScreenRequest: SwiftProtobuf.Message, SwiftProtobuf._Message
 
 extension PBCoreProjectScreenRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".ProjectScreenRequest"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}project_key\0\u{1}manage\0\u{3}ended_limit\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}project_key\0\u{1}manage\0\u{3}ended_limit\0\u{3}machine_id\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -4077,6 +4079,7 @@ extension PBCoreProjectScreenRequest: SwiftProtobuf.Message, SwiftProtobuf._Mess
       case 1: try { try decoder.decodeSingularStringField(value: &self.projectKey) }()
       case 2: try { try decoder.decodeSingularBoolField(value: &self.manage) }()
       case 3: try { try decoder.decodeSingularInt32Field(value: &self.endedLimit) }()
+      case 4: try { try decoder.decodeSingularStringField(value: &self.machineID) }()
       default: break
       }
     }
@@ -4092,6 +4095,9 @@ extension PBCoreProjectScreenRequest: SwiftProtobuf.Message, SwiftProtobuf._Mess
     if self.endedLimit != 0 {
       try visitor.visitSingularInt32Field(value: self.endedLimit, fieldNumber: 3)
     }
+    if !self.machineID.isEmpty {
+      try visitor.visitSingularStringField(value: self.machineID, fieldNumber: 4)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -4099,6 +4105,7 @@ extension PBCoreProjectScreenRequest: SwiftProtobuf.Message, SwiftProtobuf._Mess
     if lhs.projectKey != rhs.projectKey {return false}
     if lhs.manage != rhs.manage {return false}
     if lhs.endedLimit != rhs.endedLimit {return false}
+    if lhs.machineID != rhs.machineID {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

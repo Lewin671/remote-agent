@@ -309,6 +309,224 @@ public  final class CliVersionView extends
     saving_ = false;
   }
 
+  public static final int DEFAULT_MODEL_LABEL_FIELD_NUMBER = 9;
+  private io.github.lewin671.remoteagent.core.proto.Text defaultModelLabel_;
+  /**
+   * <code>.remoteagent.core.v1.Text default_model_label = 9 [json_name = "defaultModelLabel"];</code>
+   */
+  @java.lang.Override
+  public boolean hasDefaultModelLabel() {
+    return ((bitField0_ & 0x00000002) != 0);
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text default_model_label = 9 [json_name = "defaultModelLabel"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.Text getDefaultModelLabel() {
+    return defaultModelLabel_ == null ? io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance() : defaultModelLabel_;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text default_model_label = 9 [json_name = "defaultModelLabel"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setDefaultModelLabel(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    defaultModelLabel_ = value;
+    bitField0_ |= 0x00000002;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text default_model_label = 9 [json_name = "defaultModelLabel"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeDefaultModelLabel(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    if (defaultModelLabel_ != null &&
+        defaultModelLabel_ != io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance()) {
+      defaultModelLabel_ =
+        io.github.lewin671.remoteagent.core.proto.Text.newBuilder(defaultModelLabel_).mergeFrom(value).buildPartial();
+    } else {
+      defaultModelLabel_ = value;
+    }
+    bitField0_ |= 0x00000002;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text default_model_label = 9 [json_name = "defaultModelLabel"];</code>
+   */
+  private void clearDefaultModelLabel() {
+    defaultModelLabel_ = null;
+    bitField0_ = (bitField0_ & ~0x00000002);
+  }
+
+  public static final int DEFAULT_MODE_LABEL_FIELD_NUMBER = 10;
+  private io.github.lewin671.remoteagent.core.proto.Text defaultModeLabel_;
+  /**
+   * <code>.remoteagent.core.v1.Text default_mode_label = 10 [json_name = "defaultModeLabel"];</code>
+   */
+  @java.lang.Override
+  public boolean hasDefaultModeLabel() {
+    return ((bitField0_ & 0x00000004) != 0);
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text default_mode_label = 10 [json_name = "defaultModeLabel"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.Text getDefaultModeLabel() {
+    return defaultModeLabel_ == null ? io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance() : defaultModeLabel_;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text default_mode_label = 10 [json_name = "defaultModeLabel"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setDefaultModeLabel(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    defaultModeLabel_ = value;
+    bitField0_ |= 0x00000004;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text default_mode_label = 10 [json_name = "defaultModeLabel"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeDefaultModeLabel(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    if (defaultModeLabel_ != null &&
+        defaultModeLabel_ != io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance()) {
+      defaultModeLabel_ =
+        io.github.lewin671.remoteagent.core.proto.Text.newBuilder(defaultModeLabel_).mergeFrom(value).buildPartial();
+    } else {
+      defaultModeLabel_ = value;
+    }
+    bitField0_ |= 0x00000004;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text default_mode_label = 10 [json_name = "defaultModeLabel"];</code>
+   */
+  private void clearDefaultModeLabel() {
+    defaultModeLabel_ = null;
+    bitField0_ = (bitField0_ & ~0x00000004);
+  }
+
+  public static final int DEFAULT_MODE_DANGER_FIELD_NUMBER = 11;
+  private boolean defaultModeDanger_;
+  /**
+   * <code>bool default_mode_danger = 11 [json_name = "defaultModeDanger"];</code>
+   * @return The defaultModeDanger.
+   */
+  @java.lang.Override
+  public boolean getDefaultModeDanger() {
+    return defaultModeDanger_;
+  }
+  /**
+   * <code>bool default_mode_danger = 11 [json_name = "defaultModeDanger"];</code>
+   * @param value The defaultModeDanger to set.
+   */
+  private void setDefaultModeDanger(boolean value) {
+    
+    defaultModeDanger_ = value;
+  }
+  /**
+   * <code>bool default_mode_danger = 11 [json_name = "defaultModeDanger"];</code>
+   */
+  private void clearDefaultModeDanger() {
+
+    defaultModeDanger_ = false;
+  }
+
+  public static final int DISABLED_LABEL_FIELD_NUMBER = 12;
+  private io.github.lewin671.remoteagent.core.proto.Text disabledLabel_;
+  /**
+   * <code>.remoteagent.core.v1.Text disabled_label = 12 [json_name = "disabledLabel"];</code>
+   */
+  @java.lang.Override
+  public boolean hasDisabledLabel() {
+    return ((bitField0_ & 0x00000008) != 0);
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text disabled_label = 12 [json_name = "disabledLabel"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.Text getDisabledLabel() {
+    return disabledLabel_ == null ? io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance() : disabledLabel_;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text disabled_label = 12 [json_name = "disabledLabel"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setDisabledLabel(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    disabledLabel_ = value;
+    bitField0_ |= 0x00000008;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text disabled_label = 12 [json_name = "disabledLabel"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeDisabledLabel(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    if (disabledLabel_ != null &&
+        disabledLabel_ != io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance()) {
+      disabledLabel_ =
+        io.github.lewin671.remoteagent.core.proto.Text.newBuilder(disabledLabel_).mergeFrom(value).buildPartial();
+    } else {
+      disabledLabel_ = value;
+    }
+    bitField0_ |= 0x00000008;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text disabled_label = 12 [json_name = "disabledLabel"];</code>
+   */
+  private void clearDisabledLabel() {
+    disabledLabel_ = null;
+    bitField0_ = (bitField0_ & ~0x00000008);
+  }
+
+  public static final int DEFAULTS_FIELD_NUMBER = 13;
+  private io.github.lewin671.remoteagent.core.proto.MachineAgentDefaultsView defaults_;
+  /**
+   * <code>.remoteagent.core.v1.MachineAgentDefaultsView defaults = 13 [json_name = "defaults"];</code>
+   */
+  @java.lang.Override
+  public boolean hasDefaults() {
+    return ((bitField0_ & 0x00000010) != 0);
+  }
+  /**
+   * <code>.remoteagent.core.v1.MachineAgentDefaultsView defaults = 13 [json_name = "defaults"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.MachineAgentDefaultsView getDefaults() {
+    return defaults_ == null ? io.github.lewin671.remoteagent.core.proto.MachineAgentDefaultsView.getDefaultInstance() : defaults_;
+  }
+  /**
+   * <code>.remoteagent.core.v1.MachineAgentDefaultsView defaults = 13 [json_name = "defaults"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setDefaults(io.github.lewin671.remoteagent.core.proto.MachineAgentDefaultsView value) {
+    value.getClass();  // minimal bytecode null check
+    defaults_ = value;
+    bitField0_ |= 0x00000010;
+  }
+  /**
+   * <code>.remoteagent.core.v1.MachineAgentDefaultsView defaults = 13 [json_name = "defaults"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeDefaults(io.github.lewin671.remoteagent.core.proto.MachineAgentDefaultsView value) {
+    value.getClass();  // minimal bytecode null check
+    if (defaults_ != null &&
+        defaults_ != io.github.lewin671.remoteagent.core.proto.MachineAgentDefaultsView.getDefaultInstance()) {
+      defaults_ =
+        io.github.lewin671.remoteagent.core.proto.MachineAgentDefaultsView.newBuilder(defaults_).mergeFrom(value).buildPartial();
+    } else {
+      defaults_ = value;
+    }
+    bitField0_ |= 0x00000010;
+  }
+  /**
+   * <code>.remoteagent.core.v1.MachineAgentDefaultsView defaults = 13 [json_name = "defaults"];</code>
+   */
+  private void clearDefaults() {
+    defaults_ = null;
+    bitField0_ = (bitField0_ & ~0x00000010);
+  }
+
   public static io.github.lewin671.remoteagent.core.proto.CliVersionView parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -709,6 +927,222 @@ public  final class CliVersionView extends
       return this;
     }
 
+    /**
+     * <code>.remoteagent.core.v1.Text default_model_label = 9 [json_name = "defaultModelLabel"];</code>
+     */
+    @java.lang.Override
+    public boolean hasDefaultModelLabel() {
+      return instance.hasDefaultModelLabel();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text default_model_label = 9 [json_name = "defaultModelLabel"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.Text getDefaultModelLabel() {
+      return instance.getDefaultModelLabel();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text default_model_label = 9 [json_name = "defaultModelLabel"];</code>
+     */
+    public Builder setDefaultModelLabel(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.setDefaultModelLabel(value);
+      return this;
+      }
+    /**
+     * <code>.remoteagent.core.v1.Text default_model_label = 9 [json_name = "defaultModelLabel"];</code>
+     */
+    public Builder setDefaultModelLabel(
+        io.github.lewin671.remoteagent.core.proto.Text.Builder builderForValue) {
+      copyOnWrite();
+      instance.setDefaultModelLabel(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text default_model_label = 9 [json_name = "defaultModelLabel"];</code>
+     */
+    public Builder mergeDefaultModelLabel(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.mergeDefaultModelLabel(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text default_model_label = 9 [json_name = "defaultModelLabel"];</code>
+     */
+    public Builder clearDefaultModelLabel() {  copyOnWrite();
+      instance.clearDefaultModelLabel();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.Text default_mode_label = 10 [json_name = "defaultModeLabel"];</code>
+     */
+    @java.lang.Override
+    public boolean hasDefaultModeLabel() {
+      return instance.hasDefaultModeLabel();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text default_mode_label = 10 [json_name = "defaultModeLabel"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.Text getDefaultModeLabel() {
+      return instance.getDefaultModeLabel();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text default_mode_label = 10 [json_name = "defaultModeLabel"];</code>
+     */
+    public Builder setDefaultModeLabel(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.setDefaultModeLabel(value);
+      return this;
+      }
+    /**
+     * <code>.remoteagent.core.v1.Text default_mode_label = 10 [json_name = "defaultModeLabel"];</code>
+     */
+    public Builder setDefaultModeLabel(
+        io.github.lewin671.remoteagent.core.proto.Text.Builder builderForValue) {
+      copyOnWrite();
+      instance.setDefaultModeLabel(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text default_mode_label = 10 [json_name = "defaultModeLabel"];</code>
+     */
+    public Builder mergeDefaultModeLabel(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.mergeDefaultModeLabel(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text default_mode_label = 10 [json_name = "defaultModeLabel"];</code>
+     */
+    public Builder clearDefaultModeLabel() {  copyOnWrite();
+      instance.clearDefaultModeLabel();
+      return this;
+    }
+
+    /**
+     * <code>bool default_mode_danger = 11 [json_name = "defaultModeDanger"];</code>
+     * @return The defaultModeDanger.
+     */
+    @java.lang.Override
+    public boolean getDefaultModeDanger() {
+      return instance.getDefaultModeDanger();
+    }
+    /**
+     * <code>bool default_mode_danger = 11 [json_name = "defaultModeDanger"];</code>
+     * @param value The defaultModeDanger to set.
+     * @return This builder for chaining.
+     */
+    public Builder setDefaultModeDanger(boolean value) {
+      copyOnWrite();
+      instance.setDefaultModeDanger(value);
+      return this;
+    }
+    /**
+     * <code>bool default_mode_danger = 11 [json_name = "defaultModeDanger"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearDefaultModeDanger() {
+      copyOnWrite();
+      instance.clearDefaultModeDanger();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.Text disabled_label = 12 [json_name = "disabledLabel"];</code>
+     */
+    @java.lang.Override
+    public boolean hasDisabledLabel() {
+      return instance.hasDisabledLabel();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text disabled_label = 12 [json_name = "disabledLabel"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.Text getDisabledLabel() {
+      return instance.getDisabledLabel();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text disabled_label = 12 [json_name = "disabledLabel"];</code>
+     */
+    public Builder setDisabledLabel(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.setDisabledLabel(value);
+      return this;
+      }
+    /**
+     * <code>.remoteagent.core.v1.Text disabled_label = 12 [json_name = "disabledLabel"];</code>
+     */
+    public Builder setDisabledLabel(
+        io.github.lewin671.remoteagent.core.proto.Text.Builder builderForValue) {
+      copyOnWrite();
+      instance.setDisabledLabel(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text disabled_label = 12 [json_name = "disabledLabel"];</code>
+     */
+    public Builder mergeDisabledLabel(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.mergeDisabledLabel(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text disabled_label = 12 [json_name = "disabledLabel"];</code>
+     */
+    public Builder clearDisabledLabel() {  copyOnWrite();
+      instance.clearDisabledLabel();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.MachineAgentDefaultsView defaults = 13 [json_name = "defaults"];</code>
+     */
+    @java.lang.Override
+    public boolean hasDefaults() {
+      return instance.hasDefaults();
+    }
+    /**
+     * <code>.remoteagent.core.v1.MachineAgentDefaultsView defaults = 13 [json_name = "defaults"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.MachineAgentDefaultsView getDefaults() {
+      return instance.getDefaults();
+    }
+    /**
+     * <code>.remoteagent.core.v1.MachineAgentDefaultsView defaults = 13 [json_name = "defaults"];</code>
+     */
+    public Builder setDefaults(io.github.lewin671.remoteagent.core.proto.MachineAgentDefaultsView value) {
+      copyOnWrite();
+      instance.setDefaults(value);
+      return this;
+      }
+    /**
+     * <code>.remoteagent.core.v1.MachineAgentDefaultsView defaults = 13 [json_name = "defaults"];</code>
+     */
+    public Builder setDefaults(
+        io.github.lewin671.remoteagent.core.proto.MachineAgentDefaultsView.Builder builderForValue) {
+      copyOnWrite();
+      instance.setDefaults(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.MachineAgentDefaultsView defaults = 13 [json_name = "defaults"];</code>
+     */
+    public Builder mergeDefaults(io.github.lewin671.remoteagent.core.proto.MachineAgentDefaultsView value) {
+      copyOnWrite();
+      instance.mergeDefaults(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.MachineAgentDefaultsView defaults = 13 [json_name = "defaults"];</code>
+     */
+    public Builder clearDefaults() {  copyOnWrite();
+      instance.clearDefaults();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.CliVersionView)
   }
   @java.lang.Override
@@ -734,10 +1168,16 @@ public  final class CliVersionView extends
             "enabled_",
             "lockedLastEnabled_",
             "saving_",
+            "defaultModelLabel_",
+            "defaultModeLabel_",
+            "defaultModeDanger_",
+            "disabledLabel_",
+            "defaults_",
           };
           java.lang.String info =
-              "\u0000\b\u0000\u0001\u0001\b\b\u0000\u0000\u0000\u0001\f\u0002\u0208\u0003\u0208" +
-              "\u0004\u0007\u0005\u1009\u0000\u0006\u0007\u0007\u0007\b\u0007";
+              "\u0000\r\u0000\u0001\u0001\r\r\u0000\u0000\u0000\u0001\f\u0002\u0208\u0003\u0208" +
+              "\u0004\u0007\u0005\u1009\u0000\u0006\u0007\u0007\u0007\b\u0007\t\u1009\u0001\n\u1009" +
+              "\u0002\u000b\u0007\f\u1009\u0003\r\u1009\u0004";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

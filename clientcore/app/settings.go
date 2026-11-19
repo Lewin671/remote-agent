@@ -628,18 +628,21 @@ func (c *Core) dispatchSettingsUI(ctx *sync.StepContext, ev *corev1.Event) []*co
 		id := a.MachineSettingsOpen.MachineId
 		me := extra.EnsureMachine(id)
 		me.ToggleBanner = nil
-		fetchAgent := me.SelectedAgent
-		if fetchAgent == v1.Agent_AGENT_UNSPECIFIED {
-			if mac := c.m.findMachine(id); mac != nil {
-				if agents := lists.MachineAgents(mac.Meta); len(agents) > 0 {
-					fetchAgent = agents[0]
-				}
+		if mac := c.m.findMachine(id); mac != nil {
+			installed := lists.MachineInstalledAgents(mac.Meta)
+			for _, ag := range installed {
+				c.m.maybeFetchMachineConfig(ctx, id, ag)
 			}
+			if len(installed) == 0 && me.SelectedAgent != v1.Agent_AGENT_UNSPECIFIED {
+				c.m.maybeFetchMachineConfig(ctx, id, me.SelectedAgent)
+			}
+		} else {
+			c.m.maybeFetchMachineConfig(ctx, id, me.SelectedAgent)
 		}
-		c.m.maybeFetchMachineConfig(ctx, id, fetchAgent)
 		if se := c.m.state.MachineSettings[id]; se == nil || (!se.Loading && !se.Loaded) {
 			c.submitGetSettings(ctx, id)
 		}
+		c.maybeFetchUsage(ctx, id, v1.UsageRangePreset_USAGE_RANGE_PRESET_SEVEN_DAYS, nil)
 		c.m.settingsDirty.MachineSettings = true
 
 	case *corev1.Event_MachineSettingsSelectAgent:

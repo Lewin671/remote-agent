@@ -3893,5 +3893,1671 @@
       "zh-CN": "source",
       "en": "draft"
     }
+  },
+  {
+    "key": "settings.section_computers",
+    "zh-CN": "电脑",
+    "en": "Computers",
+    "notes": "设置首页第一组（电脑列表）分组标题。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.machine_count",
+    "zh-CN": "{count} 台",
+    "en": "{count}",
+    "notes": "电脑超过 2 台时组标题右侧显示的数量角标。",
+    "params": {
+      "count": {
+        "type": "integer",
+        "example": 3
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.section_this_device",
+    "zh-CN": "本机",
+    "en": "This device",
+    "notes": "设置首页第二组（本机偏好：通知、外观、本机缓存）分组标题。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.section_account_and_devices",
+    "zh-CN": "账户与设备",
+    "en": "Account & devices",
+    "notes": "设置首页第三组（客户端、账户安全、服务器与连接）分组标题。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.notifications_title",
+    "zh-CN": "通知",
+    "en": "Notifications",
+    "notes": "设置页行名与「通知」二级页标题。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.notifications_subtitle",
+    "zh-CN": "只影响这台设备",
+    "en": "Applies only to this device",
+    "notes": "「通知」二级页顶栏副标题。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.notifications_summary_on",
+    "zh-CN": "开启",
+    "en": "On",
+    "notes": "设置页「通知」行右侧：提醒已开启且推送工作正常时的简短摘要。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.notifications_summary_pending_only",
+    "zh-CN": "仅待处理",
+    "en": "Pending only",
+    "notes": "设置页「通知」行右侧：只开启了「等我处理时」提醒时的简短摘要。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.notifications_summary_off",
+    "zh-CN": "未开启",
+    "en": "Off",
+    "notes": "设置页「通知」行右侧：通知全部关闭或平台暂未开启推送时的简短摘要。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.notifications_summary_unreachable",
+    "zh-CN": "收不到推送",
+    "en": "Push unavailable",
+    "notes": "设置页「通知」行右侧：期望收推送但权限被拒、未添主屏或订阅出错时的橙色异常摘要。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.notifications_group_alerts",
+    "zh-CN": "会话与定时提醒",
+    "en": "Session & schedule alerts",
+    "notes": "「通知」二级页第一组分组标题。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.notifications_when_i_need_to_act_desc",
+    "zh-CN": "审批命令、模型提问、计划待确认",
+    "en": "Command approvals, agent questions, and plan confirmations",
+    "notes": "「等我处理时」开关下方说明。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.notifications_when_a_turn_ends_desc",
+    "zh-CN": "长任务跑完回复后提醒",
+    "en": "Notify when a long task finishes a turn",
+    "notes": "「一轮结束时」开关下方说明。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.notifications_scheduled_results_desc",
+    "zh-CN": "定时运行产出需要关注的结果时提醒",
+    "en": "Notify when a scheduled task produces an actionable result",
+    "notes": "「定时任务结果」开关下方说明。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.notifications_group_privacy",
+    "zh-CN": "锁屏与隐私",
+    "en": "Lock screen & privacy",
+    "notes": "「通知」二级页第二组分组标题。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.notifications_show_content_title",
+    "zh-CN": "通知中显示内容并直接审批",
+    "en": "Show details and approve in notifications",
+    "notes": "锁屏与隐私组内开关名称。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.notifications_show_content_desc",
+    "zh-CN": "关闭后通知只写通用提示，不露出命令原文",
+    "en": "When off, notifications show generic text without command details",
+    "notes": "「通知中显示内容并直接审批」下方说明。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.notifications_security_footer",
+    "zh-CN": "管理权恢复申请等安全通知独立于上方开关，始终尝试送达。",
+    "en": "Security notifications such as management takeover requests stay enabled regardless of these switches.",
+    "notes": "「通知」二级页底部的安全通知独立性说明。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.local_cache",
+    "zh-CN": "本机缓存",
+    "en": "Local cache",
+    "notes": "原生端设置页「本机」组内查看/清理本机附件与图片缓存的入口行名。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.clients_title",
+    "zh-CN": "客户端",
+    "en": "Clients",
+    "notes": "设置页入口及纯「客户端」二级页标题。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.clients_summary_self_only",
+    "zh-CN": "仅本机",
+    "en": "This device only",
+    "notes": "只有当前这台已配对客户端时「客户端」行尾摘要。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.clients_summary_with_others",
+    "zh-CN": "本机等 {count} 台",
+    "en": "{count} including this",
+    "notes": "有多台已配对客户端时「客户端」行尾摘要。",
+    "params": {
+      "count": {
+        "type": "integer",
+        "example": 3
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.clients_summary_pending",
+    "zh-CN": "{count} 台 · {pending} 台待完成",
+    "en": "{count} · {pending} pending",
+    "notes": "既有已配对客户端又有未完成配对时行尾摘要。",
+    "params": {
+      "count": {
+        "type": "integer",
+        "example": 6
+      },
+      "pending": {
+        "type": "integer",
+        "example": 1
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.clients_summary_pending_only",
+    "zh-CN": "{pending} 台待完成",
+    "en": "{pending} pending",
+    "notes": "仅有未完成配对请求时行尾摘要。",
+    "params": {
+      "pending": {
+        "type": "integer",
+        "example": 1
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.clients_count",
+    "zh-CN": "{count} 台",
+    "en": "{count}",
+    "notes": "「已配对的客户端」分组标题右侧数量标签。",
+    "params": {
+      "count": {
+        "type": "integer",
+        "example": 3
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.clients_group_paired",
+    "zh-CN": "已配对的客户端",
+    "en": "Paired clients",
+    "notes": "纯「客户端」二级页列表分组标题。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.clients_pairing_incomplete_badge",
+    "zh-CN": "待完成",
+    "en": "Pending",
+    "notes": "未完成配对的客户端行尾橙色状态标签。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.clients_pairing_incomplete_desc",
+    "zh-CN": "尚未完成图案核对与确认",
+    "en": "Waiting for pattern verification and approval",
+    "notes": "未完成配对行副标题说明。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.clients_add_client",
+    "zh-CN": "添加新客户端",
+    "en": "Add client",
+    "notes": "纯「客户端」二级页管理端组内操作行名。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.clients_footer_redesign",
+    "zh-CN": "右侧是上次使用时间，不代表此刻正在查看。点本机可修改显示名称；电脑已在设置首页统一管理。",
+    "en": "Times on the right show last use, not active viewing. Tap this device to rename it; computers are managed on Settings home.",
+    "notes": "纯「客户端」二级页底部说明，明确电脑已收在设置首页。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.account_security_title",
+    "zh-CN": "账户安全",
+    "en": "Account security",
+    "notes": "设置页行名与账户安全二级页标题。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.security_summary_authority",
+    "zh-CN": "本机是管理端",
+    "en": "This device manages",
+    "notes": "「账户安全」行尾：本机就是管理端时的简短摘要。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.security_summary_non_authority",
+    "zh-CN": "管理端：{name}",
+    "en": "Manager: {name}",
+    "notes": "「账户安全」行尾：非管理端显示管理端名字的摘要。",
+    "params": {
+      "name": {
+        "type": "string",
+        "example": "Pixel 9"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.server_and_connection",
+    "zh-CN": "服务器与连接",
+    "en": "Server & connection",
+    "notes": "设置页合并后的「服务器与连接」行名与检测页标题。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.version_label",
+    "zh-CN": "版本",
+    "en": "Version",
+    "notes": "设置页「关于」组内的客户端版本行名。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.open_source_licenses",
+    "zh-CN": "开源许可",
+    "en": "Open-source licenses",
+    "notes": "设置页「关于」组内「开源许可」行名与许可页标题。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.empty_computers_title",
+    "zh-CN": "还没有电脑",
+    "en": "No computers yet",
+    "notes": "无任何电脑时设置页空状态卡片标题。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.empty_computers_authority_body",
+    "zh-CN": "生成配对码后，在电脑终端运行 remote-agent account join 即可接入。",
+    "en": "Generate a pairing code and run remote-agent account join in your computer's terminal.",
+    "notes": "无电脑时管理端的引导文案。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.empty_computers_member_body",
+    "zh-CN": "在管理端（{name}）上打开「设置 › 添加设备」，把电脑加进来。",
+    "en": "Open Settings › Add device on the managing client ({name}) to add a computer.",
+    "notes": "无电脑时非管理端的引导文案。",
+    "params": {
+      "name": {
+        "type": "string",
+        "example": "Pixel 9"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.add_first_computer",
+    "zh-CN": "添加第一台电脑",
+    "en": "Add first computer",
+    "notes": "空状态卡片内管理端主按钮。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.add_device_item",
+    "zh-CN": "添加设备",
+    "en": "Add device",
+    "notes": "电脑列表同组末行「+ 添加设备」操作行。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.add_device_footer_hint",
+    "zh-CN": "要添加电脑或客户端，在管理端（{name}）上打开「设置 › 添加设备」。",
+    "en": "To add a computer or client, open Settings › Add device on the managing client ({name}).",
+    "notes": "非管理端电脑列表组脚说明。",
+    "params": {
+      "name": {
+        "type": "string",
+        "example": "Pixel 9"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.status_needs_update",
+    "zh-CN": "需更新",
+    "en": "Update needed",
+    "notes": "电脑协议版本与客户端不一致时的状态标签。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.status_removed",
+    "zh-CN": "已移除",
+    "en": "Removed",
+    "notes": "电脑已从账户移除时的归档状态标签。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.machine_sub_disk_alert",
+    "zh-CN": "磁盘剩 {size}",
+    "en": "Disk {size} free",
+    "notes": "设置页电脑副行中的低磁盘告警段（着橙色）。",
+    "params": {
+      "size": {
+        "type": "string",
+        "example": "3.1 GB"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.machine_sub_version_mismatch",
+    "zh-CN": "协议版本不一致，需在电脑上更新",
+    "en": "Protocol mismatch; update on the computer",
+    "notes": "设置页电脑副行：协议不一致警告（着橙色）。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.machine_sub_removed",
+    "zh-CN": "保留历史会话记录",
+    "en": "Retaining session history",
+    "notes": "设置页或电脑页顶栏：已移除电脑保留历史会话的说明。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.machine_sub_quota_left",
+    "zh-CN": "{name} 剩 {value}%",
+    "en": "{name} {value}% left",
+    "notes": "设置页电脑副行中的 CLI 剩余额度段。",
+    "params": {
+      "name": {
+        "type": "string",
+        "example": "Codex"
+      },
+      "value": {
+        "type": "string",
+        "example": "18"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.machine_sub_quota_exhausted",
+    "zh-CN": "{name} 已用尽",
+    "en": "{name} exhausted",
+    "notes": "设置页电脑副行中的 CLI 额度耗尽段。",
+    "params": {
+      "name": {
+        "type": "string",
+        "example": "Codex"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.daemon_protocol_tag",
+    "zh-CN": "daemon v{version}",
+    "en": "daemon v{version}",
+    "notes": "电脑页顶栏副标题里的 daemon 协议版本标记。",
+    "params": {
+      "version": {
+        "type": "integer",
+        "example": 17
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.header_subtitle_pair",
+    "zh-CN": "{left} · {right}",
+    "en": "{left} · {right}",
+    "notes": "用于用中点拼接两段短副标题/摘要的格式模板。",
+    "params": {
+      "left": {
+        "type": "string",
+        "example": "在线"
+      },
+      "right": {
+        "type": "string",
+        "example": "daemon v17"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.status_card_title",
+    "zh-CN": "电脑状态",
+    "en": "Computer status",
+    "notes": "电脑页模块 0 圆环卡顶部标题。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.status_card_disk_tight",
+    "zh-CN": "磁盘紧张",
+    "en": "Disk low",
+    "notes": "电脑页模块 0 圆环卡顶部橙色状态标记。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.status_card_paused",
+    "zh-CN": "暂停采集",
+    "en": "Paused",
+    "notes": "需更新或不可采集时圆环卡顶部灰字标记。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.section_quota_and_usage",
+    "zh-CN": "额度与用量",
+    "en": "Quota & usage",
+    "notes": "电脑页模块 1 分组标题。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.usage_and_speed",
+    "zh-CN": "用量与速度",
+    "en": "Usage & speed",
+    "notes": "电脑页模块 1 末行直达「用量与速度」页的入口名。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.usage_summary_7d",
+    "zh-CN": "近 7 天 {value}",
+    "en": "7d · {value}",
+    "notes": "电脑页「用量与速度」行尾近 7 天 token 总量摘要。",
+    "params": {
+      "value": {
+        "type": "string",
+        "example": "892万"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.usage_summary_30d",
+    "zh-CN": "近 30 天 {value}",
+    "en": "30d · {value}",
+    "notes": "近 7 天无记录时回退显示近 30 天 token 总量摘要。",
+    "params": {
+      "value": {
+        "type": "string",
+        "example": "1.2亿"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.usage_summary_cached",
+    "zh-CN": "上次 {value}",
+    "en": "Last · {value}",
+    "notes": "电脑离线时使用本地缓存用量展示的前缀摘要。",
+    "params": {
+      "value": {
+        "type": "string",
+        "example": "120万"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.usage_summary_empty",
+    "zh-CN": "暂无记录",
+    "en": "No data",
+    "notes": "电脑支持用量统计但所选周期尚无 token 记录时的摘要。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.section_coding_clis",
+    "zh-CN": "编程 CLI",
+    "en": "Coding CLIs",
+    "notes": "电脑页模块 2（每个已装 CLI 一行）分组标题。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.cli_disabled",
+    "zh-CN": "已停用",
+    "en": "Disabled",
+    "notes": "电脑页「编程 CLI」停用行右侧状态文字，或弹窗内状态。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.cli_enable_on_computer",
+    "zh-CN": "在此电脑启用",
+    "en": "Enable on this computer",
+    "notes": "CLI 设置弹层顶卡开关标题。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.cli_installed_version",
+    "zh-CN": "已安装版本",
+    "en": "Installed version",
+    "notes": "CLI 设置弹层顶卡只读版本行名称。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.cli_unverified_short",
+    "zh-CN": "未验证",
+    "en": "Unverified",
+    "notes": "CLI 设置弹层版本旁未验证橙色标记。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.cli_unverified_badge",
+    "zh-CN": "版本未验证",
+    "en": "Unverified",
+    "notes": "电脑页 CLI 行副标题中的未验证橙色前缀。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.cli_sheet_model",
+    "zh-CN": "模型",
+    "en": "Model",
+    "notes": "CLI 设置弹层「新项目默认设置」组：模型行名。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.cli_sheet_effort",
+    "zh-CN": "推理强度",
+    "en": "Reasoning effort",
+    "notes": "CLI 设置弹层「新项目默认设置」组：推理强度行名。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.cli_sheet_mode",
+    "zh-CN": "审批模式",
+    "en": "Approval mode",
+    "notes": "CLI 设置弹层「新项目默认设置」组：审批模式行名。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.cli_new_project_defaults_footer",
+    "zh-CN": "新项目首次创建会话时采用；已有项目保留各自上次使用的模型与模式。",
+    "en": "Used when a new project starts its first session; existing projects keep their last model and mode.",
+    "notes": "CLI 设置弹层下卡组脚说明。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.cli_disabled_explanation",
+    "zh-CN": "停用后不出现在这台电脑的新任务、新定时、额度和用量与速度里；停用前已创建的会话和历史照常可用。",
+    "en": "When disabled, hidden from new tasks, schedules, quota, and usage & speed; earlier sessions and history stay available.",
+    "notes": "CLI 在弹层中被停用后替代默认设置卡片的解释文字。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.section_runtime_and_storage",
+    "zh-CN": "运行与存储",
+    "en": "Runtime & storage",
+    "notes": "电脑页模块 3（直连、审批超时、空闲自动结束、附件存储）分组标题。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.idle_close_short",
+    "zh-CN": "空闲自动结束",
+    "en": "Auto-end idle",
+    "notes": "电脑页「运行与存储」组行名及选择弹层标题，较原句更精炼。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.timeout_footer",
+    "zh-CN": "超时未处理的审批请求会自动拒绝。",
+    "en": "Unanswered approval requests are denied automatically after this time.",
+    "notes": "「审批超时」单选弹层组脚说明。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.section_management",
+    "zh-CN": "管理",
+    "en": "Management",
+    "notes": "电脑页模块 4 分组标题。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.projects_row",
+    "zh-CN": "项目",
+    "en": "Projects",
+    "notes": "电脑页「管理」组跳转到该电脑筛选项目的入口行名。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.project_count_value",
+    "zh-CN": "{count} 个",
+    "en": "{count}",
+    "notes": "电脑页「项目」行尾数量。",
+    "params": {
+      "count": {
+        "type": "integer",
+        "example": 6
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.remove_computer_ellipsis",
+    "zh-CN": "移除这台电脑…",
+    "en": "Remove this computer…",
+    "notes": "电脑页底部独立红字危险按钮：移除成员电脑。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.delete_computer_records_ellipsis",
+    "zh-CN": "删除这台电脑的记录…",
+    "en": "Delete computer records…",
+    "notes": "已移除电脑归档页底部红字按钮：清除历史记录。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.remove_non_authority_footer",
+    "zh-CN": "要移除这台电脑，请在管理端（{name}）上操作。",
+    "en": "To remove this computer, do it on the managing client ({name}).",
+    "notes": "非管理端浏览电脑页底部的说明。",
+    "params": {
+      "name": {
+        "type": "string",
+        "example": "Pixel 9"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.storage_used_headline",
+    "zh-CN": "已占用 {used}",
+    "en": "Used {used}",
+    "notes": "「附件存储」二级页用量条上方左侧总占用标题。",
+    "params": {
+      "used": {
+        "type": "string",
+        "example": "152 MB"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.storage_limit_headline",
+    "zh-CN": "上限 {limit}",
+    "en": "Limit {limit}",
+    "notes": "「附件存储」二级页用量条上方右侧上限标题。",
+    "params": {
+      "limit": {
+        "type": "string",
+        "example": "512 MB"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.storage_summary_pair",
+    "zh-CN": "{used} / {limit}",
+    "en": "{used} / {limit}",
+    "notes": "电脑页「附件存储」行尾摘要。",
+    "params": {
+      "used": {
+        "type": "string",
+        "example": "152 MB"
+      },
+      "limit": {
+        "type": "string",
+        "example": "512 MB"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.storage_summary_reserve",
+    "zh-CN": "{used} / {limit} · 预留启用",
+    "en": "{used} / {limit} · Reserve on",
+    "notes": "触发应急预留时电脑页「附件存储」行尾橙色告警摘要。",
+    "params": {
+      "used": {
+        "type": "string",
+        "example": "498 MB"
+      },
+      "limit": {
+        "type": "string",
+        "example": "512 MB"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.storage_legend_uploaded",
+    "zh-CN": "上传附件",
+    "en": "Uploaded",
+    "notes": "附件存储构成条图例：已上传附件。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.storage_legend_preview",
+    "zh-CN": "预览缓存",
+    "en": "Preview cache",
+    "notes": "附件存储构成条图例：预览缓存。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.storage_legend_reserve",
+    "zh-CN": "应急预留",
+    "en": "Emergency reserve",
+    "notes": "附件存储构成条图例：应急预留。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.storage_section_details",
+    "zh-CN": "明细与上限",
+    "en": "Breakdown & limit",
+    "notes": "「附件存储」二级页明细卡片组标题。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.storage_limit_row",
+    "zh-CN": "存储上限",
+    "en": "Storage limit",
+    "notes": "「附件存储」二级页内触发存储上限 ChoiceSheet 的行名。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.storage_clear_row",
+    "zh-CN": "清理可释放空间…",
+    "en": "Clear reclaimable space…",
+    "notes": "「附件存储」二级页清理操作行名。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.storage_page_footer",
+    "zh-CN": "附件保存在这台电脑上；清理只释放可回收原图与预览缓存，进行中会话引用的文件保留。",
+    "en": "Attachments stay on this computer; clearing frees reclaimable originals and preview cache while keeping files used by live sessions.",
+    "notes": "「附件存储」二级页底部说明。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.recovery_waiting_banner",
+    "zh-CN": "已有客户端提交管理权恢复申请，等待生效或由原管理端处理。",
+    "en": "A recovery request is pending until the waiting period ends or the managing client responds.",
+    "notes": "非管理端或等待期间设置在顶部的管理权恢复提示条。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.licenses_web_fonts_title",
+    "zh-CN": "字体",
+    "en": "Fonts",
+    "notes": "Web 端开源许可二级页：字体分组标题。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.licenses_web_icons_title",
+    "zh-CN": "图标",
+    "en": "Icons",
+    "notes": "Web 端开源许可二级页：图标分组标题。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.licenses_web_packages_title",
+    "zh-CN": "第三方依赖与运行时",
+    "en": "Third-party packages & runtime",
+    "notes": "Web 端开源许可二级页：第三方开源依赖与 Go 运行时公告分组。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.licenses_view_full",
+    "zh-CN": "查看全文",
+    "en": "View text",
+    "notes": "Web 端开源许可二级页查看全文操作文案。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
   }
 ]

@@ -556,6 +556,128 @@ public  final class QuotaCliSection extends
     bitField0_ = (bitField0_ & ~0x00000010);
   }
 
+  public static final int SUMMARY_PRIMARY_TEXT_FIELD_NUMBER = 12;
+  private io.github.lewin671.remoteagent.core.proto.Text summaryPrimaryText_;
+  /**
+   * <code>.remoteagent.core.v1.Text summary_primary_text = 12 [json_name = "summaryPrimaryText"];</code>
+   */
+  @java.lang.Override
+  public boolean hasSummaryPrimaryText() {
+    return ((bitField0_ & 0x00000020) != 0);
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text summary_primary_text = 12 [json_name = "summaryPrimaryText"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.Text getSummaryPrimaryText() {
+    return summaryPrimaryText_ == null ? io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance() : summaryPrimaryText_;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text summary_primary_text = 12 [json_name = "summaryPrimaryText"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setSummaryPrimaryText(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    summaryPrimaryText_ = value;
+    bitField0_ |= 0x00000020;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text summary_primary_text = 12 [json_name = "summaryPrimaryText"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeSummaryPrimaryText(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    if (summaryPrimaryText_ != null &&
+        summaryPrimaryText_ != io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance()) {
+      summaryPrimaryText_ =
+        io.github.lewin671.remoteagent.core.proto.Text.newBuilder(summaryPrimaryText_).mergeFrom(value).buildPartial();
+    } else {
+      summaryPrimaryText_ = value;
+    }
+    bitField0_ |= 0x00000020;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text summary_primary_text = 12 [json_name = "summaryPrimaryText"];</code>
+   */
+  private void clearSummaryPrimaryText() {
+    summaryPrimaryText_ = null;
+    bitField0_ = (bitField0_ & ~0x00000020);
+  }
+
+  public static final int SUMMARY_PRIMARY_WARN_FIELD_NUMBER = 13;
+  private boolean summaryPrimaryWarn_;
+  /**
+   * <code>bool summary_primary_warn = 13 [json_name = "summaryPrimaryWarn"];</code>
+   * @return The summaryPrimaryWarn.
+   */
+  @java.lang.Override
+  public boolean getSummaryPrimaryWarn() {
+    return summaryPrimaryWarn_;
+  }
+  /**
+   * <code>bool summary_primary_warn = 13 [json_name = "summaryPrimaryWarn"];</code>
+   * @param value The summaryPrimaryWarn to set.
+   */
+  private void setSummaryPrimaryWarn(boolean value) {
+    
+    summaryPrimaryWarn_ = value;
+  }
+  /**
+   * <code>bool summary_primary_warn = 13 [json_name = "summaryPrimaryWarn"];</code>
+   */
+  private void clearSummaryPrimaryWarn() {
+
+    summaryPrimaryWarn_ = false;
+  }
+
+  public static final int SUMMARY_WINDOW_TEXT_FIELD_NUMBER = 14;
+  private io.github.lewin671.remoteagent.core.proto.Text summaryWindowText_;
+  /**
+   * <code>.remoteagent.core.v1.Text summary_window_text = 14 [json_name = "summaryWindowText"];</code>
+   */
+  @java.lang.Override
+  public boolean hasSummaryWindowText() {
+    return ((bitField0_ & 0x00000040) != 0);
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text summary_window_text = 14 [json_name = "summaryWindowText"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.Text getSummaryWindowText() {
+    return summaryWindowText_ == null ? io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance() : summaryWindowText_;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text summary_window_text = 14 [json_name = "summaryWindowText"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setSummaryWindowText(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    summaryWindowText_ = value;
+    bitField0_ |= 0x00000040;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text summary_window_text = 14 [json_name = "summaryWindowText"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeSummaryWindowText(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    if (summaryWindowText_ != null &&
+        summaryWindowText_ != io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance()) {
+      summaryWindowText_ =
+        io.github.lewin671.remoteagent.core.proto.Text.newBuilder(summaryWindowText_).mergeFrom(value).buildPartial();
+    } else {
+      summaryWindowText_ = value;
+    }
+    bitField0_ |= 0x00000040;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text summary_window_text = 14 [json_name = "summaryWindowText"];</code>
+   */
+  private void clearSummaryWindowText() {
+    summaryWindowText_ = null;
+    bitField0_ = (bitField0_ & ~0x00000040);
+  }
+
   public static io.github.lewin671.remoteagent.core.proto.QuotaCliSection parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -1205,6 +1327,128 @@ public  final class QuotaCliSection extends
       return this;
     }
 
+    /**
+     * <code>.remoteagent.core.v1.Text summary_primary_text = 12 [json_name = "summaryPrimaryText"];</code>
+     */
+    @java.lang.Override
+    public boolean hasSummaryPrimaryText() {
+      return instance.hasSummaryPrimaryText();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text summary_primary_text = 12 [json_name = "summaryPrimaryText"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.Text getSummaryPrimaryText() {
+      return instance.getSummaryPrimaryText();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text summary_primary_text = 12 [json_name = "summaryPrimaryText"];</code>
+     */
+    public Builder setSummaryPrimaryText(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.setSummaryPrimaryText(value);
+      return this;
+      }
+    /**
+     * <code>.remoteagent.core.v1.Text summary_primary_text = 12 [json_name = "summaryPrimaryText"];</code>
+     */
+    public Builder setSummaryPrimaryText(
+        io.github.lewin671.remoteagent.core.proto.Text.Builder builderForValue) {
+      copyOnWrite();
+      instance.setSummaryPrimaryText(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text summary_primary_text = 12 [json_name = "summaryPrimaryText"];</code>
+     */
+    public Builder mergeSummaryPrimaryText(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.mergeSummaryPrimaryText(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text summary_primary_text = 12 [json_name = "summaryPrimaryText"];</code>
+     */
+    public Builder clearSummaryPrimaryText() {  copyOnWrite();
+      instance.clearSummaryPrimaryText();
+      return this;
+    }
+
+    /**
+     * <code>bool summary_primary_warn = 13 [json_name = "summaryPrimaryWarn"];</code>
+     * @return The summaryPrimaryWarn.
+     */
+    @java.lang.Override
+    public boolean getSummaryPrimaryWarn() {
+      return instance.getSummaryPrimaryWarn();
+    }
+    /**
+     * <code>bool summary_primary_warn = 13 [json_name = "summaryPrimaryWarn"];</code>
+     * @param value The summaryPrimaryWarn to set.
+     * @return This builder for chaining.
+     */
+    public Builder setSummaryPrimaryWarn(boolean value) {
+      copyOnWrite();
+      instance.setSummaryPrimaryWarn(value);
+      return this;
+    }
+    /**
+     * <code>bool summary_primary_warn = 13 [json_name = "summaryPrimaryWarn"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearSummaryPrimaryWarn() {
+      copyOnWrite();
+      instance.clearSummaryPrimaryWarn();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.Text summary_window_text = 14 [json_name = "summaryWindowText"];</code>
+     */
+    @java.lang.Override
+    public boolean hasSummaryWindowText() {
+      return instance.hasSummaryWindowText();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text summary_window_text = 14 [json_name = "summaryWindowText"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.Text getSummaryWindowText() {
+      return instance.getSummaryWindowText();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text summary_window_text = 14 [json_name = "summaryWindowText"];</code>
+     */
+    public Builder setSummaryWindowText(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.setSummaryWindowText(value);
+      return this;
+      }
+    /**
+     * <code>.remoteagent.core.v1.Text summary_window_text = 14 [json_name = "summaryWindowText"];</code>
+     */
+    public Builder setSummaryWindowText(
+        io.github.lewin671.remoteagent.core.proto.Text.Builder builderForValue) {
+      copyOnWrite();
+      instance.setSummaryWindowText(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text summary_window_text = 14 [json_name = "summaryWindowText"];</code>
+     */
+    public Builder mergeSummaryWindowText(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.mergeSummaryWindowText(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text summary_window_text = 14 [json_name = "summaryWindowText"];</code>
+     */
+    public Builder clearSummaryWindowText() {  copyOnWrite();
+      instance.clearSummaryWindowText();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.QuotaCliSection)
   }
   @java.lang.Override
@@ -1234,11 +1478,14 @@ public  final class QuotaCliSection extends
             "summaryLine_",
             "summaryTone_",
             "summaryMeta_",
+            "summaryPrimaryText_",
+            "summaryPrimaryWarn_",
+            "summaryWindowText_",
           };
           java.lang.String info =
-              "\u0000\u000b\u0000\u0001\u0001\u000b\u000b\u0000\u0001\u0000\u0001\f\u0002\u0208" +
+              "\u0000\u000e\u0000\u0001\u0001\u000e\u000e\u0000\u0001\u0000\u0001\f\u0002\u0208" +
               "\u0003\f\u0004\u0007\u0005\u001b\u0006\u1009\u0000\u0007\u1009\u0001\b\u1009\u0002" +
-              "\t\u1009\u0003\n\f\u000b\u1009\u0004";
+              "\t\u1009\u0003\n\f\u000b\u1009\u0004\f\u1009\u0005\r\u0007\u000e\u1009\u0006";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

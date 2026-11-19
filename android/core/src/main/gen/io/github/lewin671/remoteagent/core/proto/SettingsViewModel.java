@@ -1226,6 +1226,202 @@ public  final class SettingsViewModel extends
     machinesLoading_ = false;
   }
 
+  public static final int MACHINE_COUNT_TEXT_FIELD_NUMBER = 29;
+  private io.github.lewin671.remoteagent.core.proto.Text machineCountText_;
+  /**
+   * <code>.remoteagent.core.v1.Text machine_count_text = 29 [json_name = "machineCountText"];</code>
+   */
+  @java.lang.Override
+  public boolean hasMachineCountText() {
+    return ((bitField0_ & 0x00000800) != 0);
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text machine_count_text = 29 [json_name = "machineCountText"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.Text getMachineCountText() {
+    return machineCountText_ == null ? io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance() : machineCountText_;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text machine_count_text = 29 [json_name = "machineCountText"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setMachineCountText(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    machineCountText_ = value;
+    bitField0_ |= 0x00000800;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text machine_count_text = 29 [json_name = "machineCountText"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeMachineCountText(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    if (machineCountText_ != null &&
+        machineCountText_ != io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance()) {
+      machineCountText_ =
+        io.github.lewin671.remoteagent.core.proto.Text.newBuilder(machineCountText_).mergeFrom(value).buildPartial();
+    } else {
+      machineCountText_ = value;
+    }
+    bitField0_ |= 0x00000800;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text machine_count_text = 29 [json_name = "machineCountText"];</code>
+   */
+  private void clearMachineCountText() {
+    machineCountText_ = null;
+    bitField0_ = (bitField0_ & ~0x00000800);
+  }
+
+  public static final int CLIENTS_SUMMARY_TEXT_FIELD_NUMBER = 30;
+  private io.github.lewin671.remoteagent.core.proto.Text clientsSummaryText_;
+  /**
+   * <code>.remoteagent.core.v1.Text clients_summary_text = 30 [json_name = "clientsSummaryText"];</code>
+   */
+  @java.lang.Override
+  public boolean hasClientsSummaryText() {
+    return ((bitField0_ & 0x00001000) != 0);
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text clients_summary_text = 30 [json_name = "clientsSummaryText"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.Text getClientsSummaryText() {
+    return clientsSummaryText_ == null ? io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance() : clientsSummaryText_;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text clients_summary_text = 30 [json_name = "clientsSummaryText"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setClientsSummaryText(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    clientsSummaryText_ = value;
+    bitField0_ |= 0x00001000;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text clients_summary_text = 30 [json_name = "clientsSummaryText"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeClientsSummaryText(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    if (clientsSummaryText_ != null &&
+        clientsSummaryText_ != io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance()) {
+      clientsSummaryText_ =
+        io.github.lewin671.remoteagent.core.proto.Text.newBuilder(clientsSummaryText_).mergeFrom(value).buildPartial();
+    } else {
+      clientsSummaryText_ = value;
+    }
+    bitField0_ |= 0x00001000;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text clients_summary_text = 30 [json_name = "clientsSummaryText"];</code>
+   */
+  private void clearClientsSummaryText() {
+    clientsSummaryText_ = null;
+    bitField0_ = (bitField0_ & ~0x00001000);
+  }
+
+  public static final int CLIENTS_SUMMARY_WARN_FIELD_NUMBER = 31;
+  private boolean clientsSummaryWarn_;
+  /**
+   * <code>bool clients_summary_warn = 31 [json_name = "clientsSummaryWarn"];</code>
+   * @return The clientsSummaryWarn.
+   */
+  @java.lang.Override
+  public boolean getClientsSummaryWarn() {
+    return clientsSummaryWarn_;
+  }
+  /**
+   * <code>bool clients_summary_warn = 31 [json_name = "clientsSummaryWarn"];</code>
+   * @param value The clientsSummaryWarn to set.
+   */
+  private void setClientsSummaryWarn(boolean value) {
+    
+    clientsSummaryWarn_ = value;
+  }
+  /**
+   * <code>bool clients_summary_warn = 31 [json_name = "clientsSummaryWarn"];</code>
+   */
+  private void clearClientsSummaryWarn() {
+
+    clientsSummaryWarn_ = false;
+  }
+
+  public static final int UNFINISHED_PAIRING_COUNT_FIELD_NUMBER = 32;
+  private int unfinishedPairingCount_;
+  /**
+   * <code>int32 unfinished_pairing_count = 32 [json_name = "unfinishedPairingCount"];</code>
+   * @return The unfinishedPairingCount.
+   */
+  @java.lang.Override
+  public int getUnfinishedPairingCount() {
+    return unfinishedPairingCount_;
+  }
+  /**
+   * <code>int32 unfinished_pairing_count = 32 [json_name = "unfinishedPairingCount"];</code>
+   * @param value The unfinishedPairingCount to set.
+   */
+  private void setUnfinishedPairingCount(int value) {
+    
+    unfinishedPairingCount_ = value;
+  }
+  /**
+   * <code>int32 unfinished_pairing_count = 32 [json_name = "unfinishedPairingCount"];</code>
+   */
+  private void clearUnfinishedPairingCount() {
+
+    unfinishedPairingCount_ = 0;
+  }
+
+  public static final int EMPTY_MACHINES_BODY_FIELD_NUMBER = 33;
+  private io.github.lewin671.remoteagent.core.proto.Text emptyMachinesBody_;
+  /**
+   * <code>.remoteagent.core.v1.Text empty_machines_body = 33 [json_name = "emptyMachinesBody"];</code>
+   */
+  @java.lang.Override
+  public boolean hasEmptyMachinesBody() {
+    return ((bitField0_ & 0x00002000) != 0);
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text empty_machines_body = 33 [json_name = "emptyMachinesBody"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.Text getEmptyMachinesBody() {
+    return emptyMachinesBody_ == null ? io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance() : emptyMachinesBody_;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text empty_machines_body = 33 [json_name = "emptyMachinesBody"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setEmptyMachinesBody(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    emptyMachinesBody_ = value;
+    bitField0_ |= 0x00002000;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text empty_machines_body = 33 [json_name = "emptyMachinesBody"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeEmptyMachinesBody(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    if (emptyMachinesBody_ != null &&
+        emptyMachinesBody_ != io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance()) {
+      emptyMachinesBody_ =
+        io.github.lewin671.remoteagent.core.proto.Text.newBuilder(emptyMachinesBody_).mergeFrom(value).buildPartial();
+    } else {
+      emptyMachinesBody_ = value;
+    }
+    bitField0_ |= 0x00002000;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text empty_machines_body = 33 [json_name = "emptyMachinesBody"];</code>
+   */
+  private void clearEmptyMachinesBody() {
+    emptyMachinesBody_ = null;
+    bitField0_ = (bitField0_ & ~0x00002000);
+  }
+
   public static io.github.lewin671.remoteagent.core.proto.SettingsViewModel parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -2559,6 +2755,203 @@ public  final class SettingsViewModel extends
       return this;
     }
 
+    /**
+     * <code>.remoteagent.core.v1.Text machine_count_text = 29 [json_name = "machineCountText"];</code>
+     */
+    @java.lang.Override
+    public boolean hasMachineCountText() {
+      return instance.hasMachineCountText();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text machine_count_text = 29 [json_name = "machineCountText"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.Text getMachineCountText() {
+      return instance.getMachineCountText();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text machine_count_text = 29 [json_name = "machineCountText"];</code>
+     */
+    public Builder setMachineCountText(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.setMachineCountText(value);
+      return this;
+      }
+    /**
+     * <code>.remoteagent.core.v1.Text machine_count_text = 29 [json_name = "machineCountText"];</code>
+     */
+    public Builder setMachineCountText(
+        io.github.lewin671.remoteagent.core.proto.Text.Builder builderForValue) {
+      copyOnWrite();
+      instance.setMachineCountText(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text machine_count_text = 29 [json_name = "machineCountText"];</code>
+     */
+    public Builder mergeMachineCountText(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.mergeMachineCountText(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text machine_count_text = 29 [json_name = "machineCountText"];</code>
+     */
+    public Builder clearMachineCountText() {  copyOnWrite();
+      instance.clearMachineCountText();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.Text clients_summary_text = 30 [json_name = "clientsSummaryText"];</code>
+     */
+    @java.lang.Override
+    public boolean hasClientsSummaryText() {
+      return instance.hasClientsSummaryText();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text clients_summary_text = 30 [json_name = "clientsSummaryText"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.Text getClientsSummaryText() {
+      return instance.getClientsSummaryText();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text clients_summary_text = 30 [json_name = "clientsSummaryText"];</code>
+     */
+    public Builder setClientsSummaryText(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.setClientsSummaryText(value);
+      return this;
+      }
+    /**
+     * <code>.remoteagent.core.v1.Text clients_summary_text = 30 [json_name = "clientsSummaryText"];</code>
+     */
+    public Builder setClientsSummaryText(
+        io.github.lewin671.remoteagent.core.proto.Text.Builder builderForValue) {
+      copyOnWrite();
+      instance.setClientsSummaryText(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text clients_summary_text = 30 [json_name = "clientsSummaryText"];</code>
+     */
+    public Builder mergeClientsSummaryText(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.mergeClientsSummaryText(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text clients_summary_text = 30 [json_name = "clientsSummaryText"];</code>
+     */
+    public Builder clearClientsSummaryText() {  copyOnWrite();
+      instance.clearClientsSummaryText();
+      return this;
+    }
+
+    /**
+     * <code>bool clients_summary_warn = 31 [json_name = "clientsSummaryWarn"];</code>
+     * @return The clientsSummaryWarn.
+     */
+    @java.lang.Override
+    public boolean getClientsSummaryWarn() {
+      return instance.getClientsSummaryWarn();
+    }
+    /**
+     * <code>bool clients_summary_warn = 31 [json_name = "clientsSummaryWarn"];</code>
+     * @param value The clientsSummaryWarn to set.
+     * @return This builder for chaining.
+     */
+    public Builder setClientsSummaryWarn(boolean value) {
+      copyOnWrite();
+      instance.setClientsSummaryWarn(value);
+      return this;
+    }
+    /**
+     * <code>bool clients_summary_warn = 31 [json_name = "clientsSummaryWarn"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearClientsSummaryWarn() {
+      copyOnWrite();
+      instance.clearClientsSummaryWarn();
+      return this;
+    }
+
+    /**
+     * <code>int32 unfinished_pairing_count = 32 [json_name = "unfinishedPairingCount"];</code>
+     * @return The unfinishedPairingCount.
+     */
+    @java.lang.Override
+    public int getUnfinishedPairingCount() {
+      return instance.getUnfinishedPairingCount();
+    }
+    /**
+     * <code>int32 unfinished_pairing_count = 32 [json_name = "unfinishedPairingCount"];</code>
+     * @param value The unfinishedPairingCount to set.
+     * @return This builder for chaining.
+     */
+    public Builder setUnfinishedPairingCount(int value) {
+      copyOnWrite();
+      instance.setUnfinishedPairingCount(value);
+      return this;
+    }
+    /**
+     * <code>int32 unfinished_pairing_count = 32 [json_name = "unfinishedPairingCount"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearUnfinishedPairingCount() {
+      copyOnWrite();
+      instance.clearUnfinishedPairingCount();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.Text empty_machines_body = 33 [json_name = "emptyMachinesBody"];</code>
+     */
+    @java.lang.Override
+    public boolean hasEmptyMachinesBody() {
+      return instance.hasEmptyMachinesBody();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text empty_machines_body = 33 [json_name = "emptyMachinesBody"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.Text getEmptyMachinesBody() {
+      return instance.getEmptyMachinesBody();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text empty_machines_body = 33 [json_name = "emptyMachinesBody"];</code>
+     */
+    public Builder setEmptyMachinesBody(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.setEmptyMachinesBody(value);
+      return this;
+      }
+    /**
+     * <code>.remoteagent.core.v1.Text empty_machines_body = 33 [json_name = "emptyMachinesBody"];</code>
+     */
+    public Builder setEmptyMachinesBody(
+        io.github.lewin671.remoteagent.core.proto.Text.Builder builderForValue) {
+      copyOnWrite();
+      instance.setEmptyMachinesBody(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text empty_machines_body = 33 [json_name = "emptyMachinesBody"];</code>
+     */
+    public Builder mergeEmptyMachinesBody(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.mergeEmptyMachinesBody(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text empty_machines_body = 33 [json_name = "emptyMachinesBody"];</code>
+     */
+    public Builder clearEmptyMachinesBody() {  copyOnWrite();
+      instance.clearEmptyMachinesBody();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.SettingsViewModel)
   }
   @java.lang.Override
@@ -2607,14 +3000,19 @@ public  final class SettingsViewModel extends
             "canExitAccount_",
             "exitNeedsTransfer_",
             "machinesLoading_",
+            "machineCountText_",
+            "clientsSummaryText_",
+            "clientsSummaryWarn_",
+            "unfinishedPairingCount_",
+            "emptyMachinesBody_",
           };
           java.lang.String info =
-              "\u0000\u001c\u0000\u0001\u0001\u001c\u001c\u0000\u0003\u0000\u0001\u0007\u0002\u0007" +
-              "\u0003\u0007\u0004\u0007\u0005\u0007\u0006\u0208\u0007\u0007\b\u0002\t\u1009\u0000" +
-              "\n\u1009\u0001\u000b\u1009\u0002\f\u001b\r\u0007\u000e\u1009\u0003\u000f\u1009\u0004" +
-              "\u0010\u001b\u0011\u0007\u0012\u0004\u0013\u1009\u0005\u0014\u1009\u0006\u0015\u1009" +
-              "\u0007\u0016\u1009\b\u0017\u1009\t\u0018\u001b\u0019\u1009\n\u001a\u0007\u001b\u0007" +
-              "\u001c\u0007";
+              "\u0000!\u0000\u0001\u0001!!\u0000\u0003\u0000\u0001\u0007\u0002\u0007\u0003\u0007" +
+              "\u0004\u0007\u0005\u0007\u0006\u0208\u0007\u0007\b\u0002\t\u1009\u0000\n\u1009\u0001" +
+              "\u000b\u1009\u0002\f\u001b\r\u0007\u000e\u1009\u0003\u000f\u1009\u0004\u0010\u001b" +
+              "\u0011\u0007\u0012\u0004\u0013\u1009\u0005\u0014\u1009\u0006\u0015\u1009\u0007\u0016" +
+              "\u1009\b\u0017\u1009\t\u0018\u001b\u0019\u1009\n\u001a\u0007\u001b\u0007\u001c\u0007" +
+              "\u001d\u1009\u000b\u001e\u1009\f\u001f\u0007 \u0004!\u1009\r";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

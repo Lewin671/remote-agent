@@ -470,6 +470,16 @@ public struct PBCoreManageProjectsView: @unchecked Sendable {
     set {_uniqueStorage()._projectCount = newValue}
   }
 
+  public var filterMachineID: String {
+    get {return _storage._filterMachineID}
+    set {_uniqueStorage()._filterMachineID = newValue}
+  }
+
+  public var filterMachineName: String {
+    get {return _storage._filterMachineName}
+    set {_uniqueStorage()._filterMachineName = newValue}
+  }
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -1124,7 +1134,7 @@ extension PBCoreDirPickerView: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
 
 extension PBCoreManageProjectsView: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".ManageProjectsView"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}listing\0\u{3}can_edit\0\u{3}blocked_reason\0\u{3}changed_elsewhere\0\u{1}syncing\0\u{3}save_error\0\u{3}dir_picker\0\u{3}project_count\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}listing\0\u{3}can_edit\0\u{3}blocked_reason\0\u{3}changed_elsewhere\0\u{1}syncing\0\u{3}save_error\0\u{3}dir_picker\0\u{3}project_count\0\u{3}filter_machine_id\0\u{3}filter_machine_name\0")
 
   fileprivate class _StorageClass {
     var _listing: PBCoreProjectListingView? = nil
@@ -1135,6 +1145,8 @@ extension PBCoreManageProjectsView: SwiftProtobuf.Message, SwiftProtobuf._Messag
     var _saveError: PBCoreText? = nil
     var _dirPicker: PBCoreDirPickerView? = nil
     var _projectCount: Int32 = 0
+    var _filterMachineID: String = String()
+    var _filterMachineName: String = String()
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -1153,6 +1165,8 @@ extension PBCoreManageProjectsView: SwiftProtobuf.Message, SwiftProtobuf._Messag
       _saveError = source._saveError
       _dirPicker = source._dirPicker
       _projectCount = source._projectCount
+      _filterMachineID = source._filterMachineID
+      _filterMachineName = source._filterMachineName
     }
   }
 
@@ -1179,6 +1193,8 @@ extension PBCoreManageProjectsView: SwiftProtobuf.Message, SwiftProtobuf._Messag
         case 6: try { try decoder.decodeSingularMessageField(value: &_storage._saveError) }()
         case 7: try { try decoder.decodeSingularMessageField(value: &_storage._dirPicker) }()
         case 8: try { try decoder.decodeSingularInt32Field(value: &_storage._projectCount) }()
+        case 9: try { try decoder.decodeSingularStringField(value: &_storage._filterMachineID) }()
+        case 10: try { try decoder.decodeSingularStringField(value: &_storage._filterMachineName) }()
         default: break
         }
       }
@@ -1215,6 +1231,12 @@ extension PBCoreManageProjectsView: SwiftProtobuf.Message, SwiftProtobuf._Messag
       if _storage._projectCount != 0 {
         try visitor.visitSingularInt32Field(value: _storage._projectCount, fieldNumber: 8)
       }
+      if !_storage._filterMachineID.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._filterMachineID, fieldNumber: 9)
+      }
+      if !_storage._filterMachineName.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._filterMachineName, fieldNumber: 10)
+      }
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -1232,6 +1254,8 @@ extension PBCoreManageProjectsView: SwiftProtobuf.Message, SwiftProtobuf._Messag
         if _storage._saveError != rhs_storage._saveError {return false}
         if _storage._dirPicker != rhs_storage._dirPicker {return false}
         if _storage._projectCount != rhs_storage._projectCount {return false}
+        if _storage._filterMachineID != rhs_storage._filterMachineID {return false}
+        if _storage._filterMachineName != rhs_storage._filterMachineName {return false}
         return true
       }
       if !storagesAreEqual {return false}

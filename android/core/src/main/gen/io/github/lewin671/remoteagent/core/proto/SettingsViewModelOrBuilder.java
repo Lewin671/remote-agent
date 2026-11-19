@@ -262,4 +262,49 @@ public interface SettingsViewModelOrBuilder extends
    * @return The machinesLoading.
    */
   boolean getMachinesLoading();
+
+  /**
+   * <code>.remoteagent.core.v1.Text machine_count_text = 29 [json_name = "machineCountText"];</code>
+   * @return Whether the machineCountText field is set.
+   */
+  boolean hasMachineCountText();
+  /**
+   * <code>.remoteagent.core.v1.Text machine_count_text = 29 [json_name = "machineCountText"];</code>
+   * @return The machineCountText.
+   */
+  io.github.lewin671.remoteagent.core.proto.Text getMachineCountText();
+
+  /**
+   * <code>.remoteagent.core.v1.Text clients_summary_text = 30 [json_name = "clientsSummaryText"];</code>
+   * @return Whether the clientsSummaryText field is set.
+   */
+  boolean hasClientsSummaryText();
+  /**
+   * <code>.remoteagent.core.v1.Text clients_summary_text = 30 [json_name = "clientsSummaryText"];</code>
+   * @return The clientsSummaryText.
+   */
+  io.github.lewin671.remoteagent.core.proto.Text getClientsSummaryText();
+
+  /**
+   * <code>bool clients_summary_warn = 31 [json_name = "clientsSummaryWarn"];</code>
+   * @return The clientsSummaryWarn.
+   */
+  boolean getClientsSummaryWarn();
+
+  /**
+   * <code>int32 unfinished_pairing_count = 32 [json_name = "unfinishedPairingCount"];</code>
+   * @return The unfinishedPairingCount.
+   */
+  int getUnfinishedPairingCount();
+
+  /**
+   * <code>.remoteagent.core.v1.Text empty_machines_body = 33 [json_name = "emptyMachinesBody"];</code>
+   * @return Whether the emptyMachinesBody field is set.
+   */
+  boolean hasEmptyMachinesBody();
+  /**
+   * <code>.remoteagent.core.v1.Text empty_machines_body = 33 [json_name = "emptyMachinesBody"];</code>
+   * @return The emptyMachinesBody.
+   */
+  io.github.lewin671.remoteagent.core.proto.Text getEmptyMachinesBody();
 }

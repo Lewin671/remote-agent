@@ -121,4 +121,43 @@ public interface ConnectionGroupViewOrBuilder extends
    * @return The footerText.
    */
   io.github.lewin671.remoteagent.core.proto.Text getFooterText();
+
+  /**
+   * <code>.remoteagent.core.v1.MachineStatusDot row_dot = 13 [json_name = "rowDot"];</code>
+   * @return The enum numeric value on the wire for rowDot.
+   */
+  int getRowDotValue();
+  /**
+   * <code>.remoteagent.core.v1.MachineStatusDot row_dot = 13 [json_name = "rowDot"];</code>
+   * @return The rowDot.
+   */
+  io.github.lewin671.remoteagent.core.proto.MachineStatusDot getRowDot();
+
+  /**
+   * <code>bool row_spinning = 14 [json_name = "rowSpinning"];</code>
+   * @return The rowSpinning.
+   */
+  boolean getRowSpinning();
+
+  /**
+   * <code>.remoteagent.core.v1.Text row_value_text = 15 [json_name = "rowValueText"];</code>
+   * @return Whether the rowValueText field is set.
+   */
+  boolean hasRowValueText();
+  /**
+   * <code>.remoteagent.core.v1.Text row_value_text = 15 [json_name = "rowValueText"];</code>
+   * @return The rowValueText.
+   */
+  io.github.lewin671.remoteagent.core.proto.Text getRowValueText();
+
+  /**
+   * <code>.remoteagent.core.v1.Text row_subtitle_text = 16 [json_name = "rowSubtitleText"];</code>
+   * @return Whether the rowSubtitleText field is set.
+   */
+  boolean hasRowSubtitleText();
+  /**
+   * <code>.remoteagent.core.v1.Text row_subtitle_text = 16 [json_name = "rowSubtitleText"];</code>
+   * @return The rowSubtitleText.
+   */
+  io.github.lewin671.remoteagent.core.proto.Text getRowSubtitleText();
 }

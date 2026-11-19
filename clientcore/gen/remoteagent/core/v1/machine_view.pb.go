@@ -2222,17 +2222,20 @@ func (m *QuotaAccountGroupView) AppendMarshal(b []byte) []byte {
 }
 
 type QuotaCliSection struct {
-	Agent            v1.Agent
-	AgentName        string
-	State            QuotaSectionState
-	Unsupported      bool
-	Accounts         []*QuotaAccountGroupView
-	EmptyOrErrorText *Text
-	UsageHint        *Text
-	SummaryRow       *QuotaRowView
-	SummaryLine      *Text
-	SummaryTone      QuotaTone
-	SummaryMeta      *Text
+	Agent              v1.Agent
+	AgentName          string
+	State              QuotaSectionState
+	Unsupported        bool
+	Accounts           []*QuotaAccountGroupView
+	EmptyOrErrorText   *Text
+	UsageHint          *Text
+	SummaryRow         *QuotaRowView
+	SummaryLine        *Text
+	SummaryTone        QuotaTone
+	SummaryMeta        *Text
+	SummaryPrimaryText *Text
+	SummaryPrimaryWarn bool
+	SummaryWindowText  *Text
 }
 
 func (m *QuotaCliSection) GetAgent() v1.Agent {
@@ -2301,6 +2304,24 @@ func (m *QuotaCliSection) GetSummaryMeta() *Text {
 	}
 	return nil
 }
+func (m *QuotaCliSection) GetSummaryPrimaryText() *Text {
+	if m != nil {
+		return m.SummaryPrimaryText
+	}
+	return nil
+}
+func (m *QuotaCliSection) GetSummaryPrimaryWarn() bool {
+	if m != nil {
+		return m.SummaryPrimaryWarn
+	}
+	return false
+}
+func (m *QuotaCliSection) GetSummaryWindowText() *Text {
+	if m != nil {
+		return m.SummaryWindowText
+	}
+	return nil
+}
 
 func (m *QuotaCliSection) Size() int {
 	if m == nil {
@@ -2331,6 +2352,13 @@ func (m *QuotaCliSection) Size() int {
 	n += litewire.SizeInt32(10, int32(m.SummaryTone))
 	if m.SummaryMeta != nil {
 		n += litewire.SizeMessage(11, m.SummaryMeta.Size())
+	}
+	if m.SummaryPrimaryText != nil {
+		n += litewire.SizeMessage(12, m.SummaryPrimaryText.Size())
+	}
+	n += litewire.SizeBool(13, m.SummaryPrimaryWarn)
+	if m.SummaryWindowText != nil {
+		n += litewire.SizeMessage(14, m.SummaryWindowText.Size())
 	}
 	return n
 }
@@ -2374,6 +2402,13 @@ func (m *QuotaCliSection) AppendMarshal(b []byte) []byte {
 	b = litewire.AppendInt32(b, 10, int32(m.SummaryTone))
 	if m.SummaryMeta != nil {
 		b = litewire.AppendMessage(b, 11, m.SummaryMeta)
+	}
+	if m.SummaryPrimaryText != nil {
+		b = litewire.AppendMessage(b, 12, m.SummaryPrimaryText)
+	}
+	b = litewire.AppendBool(b, 13, m.SummaryPrimaryWarn)
+	if m.SummaryWindowText != nil {
+		b = litewire.AppendMessage(b, 14, m.SummaryWindowText)
 	}
 	return b
 }

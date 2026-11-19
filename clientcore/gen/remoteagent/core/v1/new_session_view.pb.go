@@ -307,6 +307,7 @@ type NewSessionNoticeView struct {
 	DraftSubtitle   *Text
 	DraftChoices    []*OfflineMachineChoiceView
 	DraftNoneText   *Text
+	TargetAgent     v1.Agent
 }
 
 func (m *NewSessionNoticeView) GetKind() NoticeKind {
@@ -369,6 +370,12 @@ func (m *NewSessionNoticeView) GetDraftNoneText() *Text {
 	}
 	return nil
 }
+func (m *NewSessionNoticeView) GetTargetAgent() v1.Agent {
+	if m != nil {
+		return m.TargetAgent
+	}
+	return 0
+}
 
 func (m *NewSessionNoticeView) Size() int {
 	if m == nil {
@@ -397,6 +404,7 @@ func (m *NewSessionNoticeView) Size() int {
 	if m.DraftNoneText != nil {
 		n += litewire.SizeMessage(10, m.DraftNoneText.Size())
 	}
+	n += litewire.SizeInt32(11, int32(m.TargetAgent))
 	return n
 }
 
@@ -437,6 +445,7 @@ func (m *NewSessionNoticeView) AppendMarshal(b []byte) []byte {
 	if m.DraftNoneText != nil {
 		b = litewire.AppendMessage(b, 10, m.DraftNoneText)
 	}
+	b = litewire.AppendInt32(b, 11, int32(m.TargetAgent))
 	return b
 }
 

@@ -746,14 +746,16 @@ func (m *DirPickerView) AppendMarshal(b []byte) []byte {
 }
 
 type ManageProjectsView struct {
-	Listing          *ProjectListingView
-	CanEdit          bool
-	BlockedReason    *Text
-	ChangedElsewhere bool
-	Syncing          bool
-	SaveError        *Text
-	DirPicker        *DirPickerView
-	ProjectCount     int32
+	Listing           *ProjectListingView
+	CanEdit           bool
+	BlockedReason     *Text
+	ChangedElsewhere  bool
+	Syncing           bool
+	SaveError         *Text
+	DirPicker         *DirPickerView
+	ProjectCount      int32
+	FilterMachineId   string
+	FilterMachineName string
 }
 
 func (m *ManageProjectsView) GetListing() *ProjectListingView {
@@ -804,6 +806,18 @@ func (m *ManageProjectsView) GetProjectCount() int32 {
 	}
 	return 0
 }
+func (m *ManageProjectsView) GetFilterMachineId() string {
+	if m != nil {
+		return m.FilterMachineId
+	}
+	return ""
+}
+func (m *ManageProjectsView) GetFilterMachineName() string {
+	if m != nil {
+		return m.FilterMachineName
+	}
+	return ""
+}
 
 func (m *ManageProjectsView) Size() int {
 	if m == nil {
@@ -826,6 +840,8 @@ func (m *ManageProjectsView) Size() int {
 		n += litewire.SizeMessage(7, m.DirPicker.Size())
 	}
 	n += litewire.SizeInt32(8, int32(m.ProjectCount))
+	n += litewire.SizeString(9, m.FilterMachineId)
+	n += litewire.SizeString(10, m.FilterMachineName)
 	return n
 }
 
@@ -860,6 +876,8 @@ func (m *ManageProjectsView) AppendMarshal(b []byte) []byte {
 		b = litewire.AppendMessage(b, 7, m.DirPicker)
 	}
 	b = litewire.AppendInt32(b, 8, int32(m.ProjectCount))
+	b = litewire.AppendString(b, 9, m.FilterMachineId)
+	b = litewire.AppendString(b, 10, m.FilterMachineName)
 	return b
 }
 

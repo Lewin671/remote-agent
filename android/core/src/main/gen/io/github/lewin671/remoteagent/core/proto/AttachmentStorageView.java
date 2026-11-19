@@ -533,6 +533,254 @@ public  final class AttachmentStorageView extends
     bitField0_ = (bitField0_ & ~0x00000020);
   }
 
+  public static final int SUMMARY_TEXT_FIELD_NUMBER = 13;
+  private io.github.lewin671.remoteagent.core.proto.Text summaryText_;
+  /**
+   * <code>.remoteagent.core.v1.Text summary_text = 13 [json_name = "summaryText"];</code>
+   */
+  @java.lang.Override
+  public boolean hasSummaryText() {
+    return ((bitField0_ & 0x00000040) != 0);
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text summary_text = 13 [json_name = "summaryText"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.Text getSummaryText() {
+    return summaryText_ == null ? io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance() : summaryText_;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text summary_text = 13 [json_name = "summaryText"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setSummaryText(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    summaryText_ = value;
+    bitField0_ |= 0x00000040;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text summary_text = 13 [json_name = "summaryText"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeSummaryText(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    if (summaryText_ != null &&
+        summaryText_ != io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance()) {
+      summaryText_ =
+        io.github.lewin671.remoteagent.core.proto.Text.newBuilder(summaryText_).mergeFrom(value).buildPartial();
+    } else {
+      summaryText_ = value;
+    }
+    bitField0_ |= 0x00000040;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text summary_text = 13 [json_name = "summaryText"];</code>
+   */
+  private void clearSummaryText() {
+    summaryText_ = null;
+    bitField0_ = (bitField0_ & ~0x00000040);
+  }
+
+  public static final int SUMMARY_WARN_FIELD_NUMBER = 14;
+  private boolean summaryWarn_;
+  /**
+   * <code>bool summary_warn = 14 [json_name = "summaryWarn"];</code>
+   * @return The summaryWarn.
+   */
+  @java.lang.Override
+  public boolean getSummaryWarn() {
+    return summaryWarn_;
+  }
+  /**
+   * <code>bool summary_warn = 14 [json_name = "summaryWarn"];</code>
+   * @param value The summaryWarn to set.
+   */
+  private void setSummaryWarn(boolean value) {
+    
+    summaryWarn_ = value;
+  }
+  /**
+   * <code>bool summary_warn = 14 [json_name = "summaryWarn"];</code>
+   */
+  private void clearSummaryWarn() {
+
+    summaryWarn_ = false;
+  }
+
+  public static final int USED_TOTAL_TEXT_FIELD_NUMBER = 15;
+  private io.github.lewin671.remoteagent.core.proto.Text usedTotalText_;
+  /**
+   * <code>.remoteagent.core.v1.Text used_total_text = 15 [json_name = "usedTotalText"];</code>
+   */
+  @java.lang.Override
+  public boolean hasUsedTotalText() {
+    return ((bitField0_ & 0x00000080) != 0);
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text used_total_text = 15 [json_name = "usedTotalText"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.Text getUsedTotalText() {
+    return usedTotalText_ == null ? io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance() : usedTotalText_;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text used_total_text = 15 [json_name = "usedTotalText"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setUsedTotalText(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    usedTotalText_ = value;
+    bitField0_ |= 0x00000080;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text used_total_text = 15 [json_name = "usedTotalText"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeUsedTotalText(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    if (usedTotalText_ != null &&
+        usedTotalText_ != io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance()) {
+      usedTotalText_ =
+        io.github.lewin671.remoteagent.core.proto.Text.newBuilder(usedTotalText_).mergeFrom(value).buildPartial();
+    } else {
+      usedTotalText_ = value;
+    }
+    bitField0_ |= 0x00000080;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text used_total_text = 15 [json_name = "usedTotalText"];</code>
+   */
+  private void clearUsedTotalText() {
+    usedTotalText_ = null;
+    bitField0_ = (bitField0_ & ~0x00000080);
+  }
+
+  public static final int LIMIT_LABEL_FIELD_NUMBER = 16;
+  private io.github.lewin671.remoteagent.core.proto.Text limitLabel_;
+  /**
+   * <code>.remoteagent.core.v1.Text limit_label = 16 [json_name = "limitLabel"];</code>
+   */
+  @java.lang.Override
+  public boolean hasLimitLabel() {
+    return ((bitField0_ & 0x00000100) != 0);
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text limit_label = 16 [json_name = "limitLabel"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.Text getLimitLabel() {
+    return limitLabel_ == null ? io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance() : limitLabel_;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text limit_label = 16 [json_name = "limitLabel"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setLimitLabel(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    limitLabel_ = value;
+    bitField0_ |= 0x00000100;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text limit_label = 16 [json_name = "limitLabel"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeLimitLabel(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    if (limitLabel_ != null &&
+        limitLabel_ != io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance()) {
+      limitLabel_ =
+        io.github.lewin671.remoteagent.core.proto.Text.newBuilder(limitLabel_).mergeFrom(value).buildPartial();
+    } else {
+      limitLabel_ = value;
+    }
+    bitField0_ |= 0x00000100;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text limit_label = 16 [json_name = "limitLabel"];</code>
+   */
+  private void clearLimitLabel() {
+    limitLabel_ = null;
+    bitField0_ = (bitField0_ & ~0x00000100);
+  }
+
+  public static final int UPLOADED_PERCENT_FIELD_NUMBER = 17;
+  private int uploadedPercent_;
+  /**
+   * <code>int32 uploaded_percent = 17 [json_name = "uploadedPercent"];</code>
+   * @return The uploadedPercent.
+   */
+  @java.lang.Override
+  public int getUploadedPercent() {
+    return uploadedPercent_;
+  }
+  /**
+   * <code>int32 uploaded_percent = 17 [json_name = "uploadedPercent"];</code>
+   * @param value The uploadedPercent to set.
+   */
+  private void setUploadedPercent(int value) {
+    
+    uploadedPercent_ = value;
+  }
+  /**
+   * <code>int32 uploaded_percent = 17 [json_name = "uploadedPercent"];</code>
+   */
+  private void clearUploadedPercent() {
+
+    uploadedPercent_ = 0;
+  }
+
+  public static final int PREVIEW_PERCENT_FIELD_NUMBER = 18;
+  private int previewPercent_;
+  /**
+   * <code>int32 preview_percent = 18 [json_name = "previewPercent"];</code>
+   * @return The previewPercent.
+   */
+  @java.lang.Override
+  public int getPreviewPercent() {
+    return previewPercent_;
+  }
+  /**
+   * <code>int32 preview_percent = 18 [json_name = "previewPercent"];</code>
+   * @param value The previewPercent to set.
+   */
+  private void setPreviewPercent(int value) {
+    
+    previewPercent_ = value;
+  }
+  /**
+   * <code>int32 preview_percent = 18 [json_name = "previewPercent"];</code>
+   */
+  private void clearPreviewPercent() {
+
+    previewPercent_ = 0;
+  }
+
+  public static final int RESERVE_PERCENT_FIELD_NUMBER = 19;
+  private int reservePercent_;
+  /**
+   * <code>int32 reserve_percent = 19 [json_name = "reservePercent"];</code>
+   * @return The reservePercent.
+   */
+  @java.lang.Override
+  public int getReservePercent() {
+    return reservePercent_;
+  }
+  /**
+   * <code>int32 reserve_percent = 19 [json_name = "reservePercent"];</code>
+   * @param value The reservePercent to set.
+   */
+  private void setReservePercent(int value) {
+    
+    reservePercent_ = value;
+  }
+  /**
+   * <code>int32 reserve_percent = 19 [json_name = "reservePercent"];</code>
+   */
+  private void clearReservePercent() {
+
+    reservePercent_ = 0;
+  }
+
   public static io.github.lewin671.remoteagent.core.proto.AttachmentStorageView parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -1154,6 +1402,259 @@ public  final class AttachmentStorageView extends
       return this;
     }
 
+    /**
+     * <code>.remoteagent.core.v1.Text summary_text = 13 [json_name = "summaryText"];</code>
+     */
+    @java.lang.Override
+    public boolean hasSummaryText() {
+      return instance.hasSummaryText();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text summary_text = 13 [json_name = "summaryText"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.Text getSummaryText() {
+      return instance.getSummaryText();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text summary_text = 13 [json_name = "summaryText"];</code>
+     */
+    public Builder setSummaryText(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.setSummaryText(value);
+      return this;
+      }
+    /**
+     * <code>.remoteagent.core.v1.Text summary_text = 13 [json_name = "summaryText"];</code>
+     */
+    public Builder setSummaryText(
+        io.github.lewin671.remoteagent.core.proto.Text.Builder builderForValue) {
+      copyOnWrite();
+      instance.setSummaryText(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text summary_text = 13 [json_name = "summaryText"];</code>
+     */
+    public Builder mergeSummaryText(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.mergeSummaryText(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text summary_text = 13 [json_name = "summaryText"];</code>
+     */
+    public Builder clearSummaryText() {  copyOnWrite();
+      instance.clearSummaryText();
+      return this;
+    }
+
+    /**
+     * <code>bool summary_warn = 14 [json_name = "summaryWarn"];</code>
+     * @return The summaryWarn.
+     */
+    @java.lang.Override
+    public boolean getSummaryWarn() {
+      return instance.getSummaryWarn();
+    }
+    /**
+     * <code>bool summary_warn = 14 [json_name = "summaryWarn"];</code>
+     * @param value The summaryWarn to set.
+     * @return This builder for chaining.
+     */
+    public Builder setSummaryWarn(boolean value) {
+      copyOnWrite();
+      instance.setSummaryWarn(value);
+      return this;
+    }
+    /**
+     * <code>bool summary_warn = 14 [json_name = "summaryWarn"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearSummaryWarn() {
+      copyOnWrite();
+      instance.clearSummaryWarn();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.Text used_total_text = 15 [json_name = "usedTotalText"];</code>
+     */
+    @java.lang.Override
+    public boolean hasUsedTotalText() {
+      return instance.hasUsedTotalText();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text used_total_text = 15 [json_name = "usedTotalText"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.Text getUsedTotalText() {
+      return instance.getUsedTotalText();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text used_total_text = 15 [json_name = "usedTotalText"];</code>
+     */
+    public Builder setUsedTotalText(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.setUsedTotalText(value);
+      return this;
+      }
+    /**
+     * <code>.remoteagent.core.v1.Text used_total_text = 15 [json_name = "usedTotalText"];</code>
+     */
+    public Builder setUsedTotalText(
+        io.github.lewin671.remoteagent.core.proto.Text.Builder builderForValue) {
+      copyOnWrite();
+      instance.setUsedTotalText(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text used_total_text = 15 [json_name = "usedTotalText"];</code>
+     */
+    public Builder mergeUsedTotalText(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.mergeUsedTotalText(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text used_total_text = 15 [json_name = "usedTotalText"];</code>
+     */
+    public Builder clearUsedTotalText() {  copyOnWrite();
+      instance.clearUsedTotalText();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.Text limit_label = 16 [json_name = "limitLabel"];</code>
+     */
+    @java.lang.Override
+    public boolean hasLimitLabel() {
+      return instance.hasLimitLabel();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text limit_label = 16 [json_name = "limitLabel"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.Text getLimitLabel() {
+      return instance.getLimitLabel();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text limit_label = 16 [json_name = "limitLabel"];</code>
+     */
+    public Builder setLimitLabel(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.setLimitLabel(value);
+      return this;
+      }
+    /**
+     * <code>.remoteagent.core.v1.Text limit_label = 16 [json_name = "limitLabel"];</code>
+     */
+    public Builder setLimitLabel(
+        io.github.lewin671.remoteagent.core.proto.Text.Builder builderForValue) {
+      copyOnWrite();
+      instance.setLimitLabel(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text limit_label = 16 [json_name = "limitLabel"];</code>
+     */
+    public Builder mergeLimitLabel(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.mergeLimitLabel(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text limit_label = 16 [json_name = "limitLabel"];</code>
+     */
+    public Builder clearLimitLabel() {  copyOnWrite();
+      instance.clearLimitLabel();
+      return this;
+    }
+
+    /**
+     * <code>int32 uploaded_percent = 17 [json_name = "uploadedPercent"];</code>
+     * @return The uploadedPercent.
+     */
+    @java.lang.Override
+    public int getUploadedPercent() {
+      return instance.getUploadedPercent();
+    }
+    /**
+     * <code>int32 uploaded_percent = 17 [json_name = "uploadedPercent"];</code>
+     * @param value The uploadedPercent to set.
+     * @return This builder for chaining.
+     */
+    public Builder setUploadedPercent(int value) {
+      copyOnWrite();
+      instance.setUploadedPercent(value);
+      return this;
+    }
+    /**
+     * <code>int32 uploaded_percent = 17 [json_name = "uploadedPercent"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearUploadedPercent() {
+      copyOnWrite();
+      instance.clearUploadedPercent();
+      return this;
+    }
+
+    /**
+     * <code>int32 preview_percent = 18 [json_name = "previewPercent"];</code>
+     * @return The previewPercent.
+     */
+    @java.lang.Override
+    public int getPreviewPercent() {
+      return instance.getPreviewPercent();
+    }
+    /**
+     * <code>int32 preview_percent = 18 [json_name = "previewPercent"];</code>
+     * @param value The previewPercent to set.
+     * @return This builder for chaining.
+     */
+    public Builder setPreviewPercent(int value) {
+      copyOnWrite();
+      instance.setPreviewPercent(value);
+      return this;
+    }
+    /**
+     * <code>int32 preview_percent = 18 [json_name = "previewPercent"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearPreviewPercent() {
+      copyOnWrite();
+      instance.clearPreviewPercent();
+      return this;
+    }
+
+    /**
+     * <code>int32 reserve_percent = 19 [json_name = "reservePercent"];</code>
+     * @return The reservePercent.
+     */
+    @java.lang.Override
+    public int getReservePercent() {
+      return instance.getReservePercent();
+    }
+    /**
+     * <code>int32 reserve_percent = 19 [json_name = "reservePercent"];</code>
+     * @param value The reservePercent to set.
+     * @return This builder for chaining.
+     */
+    public Builder setReservePercent(int value) {
+      copyOnWrite();
+      instance.setReservePercent(value);
+      return this;
+    }
+    /**
+     * <code>int32 reserve_percent = 19 [json_name = "reservePercent"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearReservePercent() {
+      copyOnWrite();
+      instance.clearReservePercent();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.AttachmentStorageView)
   }
   @java.lang.Override
@@ -1184,11 +1685,19 @@ public  final class AttachmentStorageView extends
             "cleaning_",
             "clearButtonLabel_",
             "footerText_",
+            "summaryText_",
+            "summaryWarn_",
+            "usedTotalText_",
+            "limitLabel_",
+            "uploadedPercent_",
+            "previewPercent_",
+            "reservePercent_",
           };
           java.lang.String info =
-              "\u0000\f\u0000\u0001\u0001\f\f\u0000\u0001\u0000\u0001\u0007\u0002\u1009\u0000\u0003" +
-              "\u1009\u0001\u0004\u0002\u0005\u001b\u0006\u1009\u0002\u0007\u0007\b\u1009\u0003" +
-              "\t\u0007\n\u0007\u000b\u1009\u0004\f\u1009\u0005";
+              "\u0000\u0013\u0000\u0001\u0001\u0013\u0013\u0000\u0001\u0000\u0001\u0007\u0002\u1009" +
+              "\u0000\u0003\u1009\u0001\u0004\u0002\u0005\u001b\u0006\u1009\u0002\u0007\u0007\b" +
+              "\u1009\u0003\t\u0007\n\u0007\u000b\u1009\u0004\f\u1009\u0005\r\u1009\u0006\u000e" +
+              "\u0007\u000f\u1009\u0007\u0010\u1009\b\u0011\u0004\u0012\u0004\u0013\u0004";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

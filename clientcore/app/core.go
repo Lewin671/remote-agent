@@ -50,14 +50,16 @@ func (c *Core) View(screen *corev1.Screen) (*corev1.ViewModel, error) {
 		var key string
 		var manage bool
 		var endedLimit int
+		var machineID string
 		if s.Project != nil {
 			key = s.Project.ProjectKey
 			manage = s.Project.Manage
 			endedLimit = int(s.Project.EndedLimit)
+			machineID = s.Project.MachineId
 		}
 		return &corev1.ViewModel{
 			View: &corev1.ViewModel_Project{
-				Project: screens.BuildProject(c.m.state, key, manage, endedLimit),
+				Project: screens.BuildProject(c.m.state, key, manage, endedLimit, machineID),
 			},
 		}, nil
 

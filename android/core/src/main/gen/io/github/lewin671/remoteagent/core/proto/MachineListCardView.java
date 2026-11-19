@@ -18,6 +18,7 @@ public  final class MachineListCardView extends
     machineId_ = "";
     name_ = "";
     quotaSummaries_ = emptyProtobufList();
+    subtitleParts_ = emptyProtobufList();
   }
   private int bitField0_;
   public static final int MACHINE_ID_FIELD_NUMBER = 1;
@@ -411,6 +412,171 @@ public  final class MachineListCardView extends
   private void clearDirectRow() {
     directRow_ = null;
     bitField0_ = (bitField0_ & ~0x00000002);
+  }
+
+  public static final int STATUS_DOT_FIELD_NUMBER = 10;
+  private int statusDot_;
+  /**
+   * <code>.remoteagent.core.v1.MachineStatusDot status_dot = 10 [json_name = "statusDot"];</code>
+   * @return The enum numeric value on the wire for statusDot.
+   */
+  @java.lang.Override
+  public int getStatusDotValue() {
+    return statusDot_;
+  }
+  /**
+   * <code>.remoteagent.core.v1.MachineStatusDot status_dot = 10 [json_name = "statusDot"];</code>
+   * @return The statusDot.
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.MachineStatusDot getStatusDot() {
+    io.github.lewin671.remoteagent.core.proto.MachineStatusDot result = io.github.lewin671.remoteagent.core.proto.MachineStatusDot.forNumber(statusDot_);
+    return result == null ? io.github.lewin671.remoteagent.core.proto.MachineStatusDot.UNRECOGNIZED : result;
+  }
+  /**
+   * <code>.remoteagent.core.v1.MachineStatusDot status_dot = 10 [json_name = "statusDot"];</code>
+   * @param value The enum numeric value on the wire for statusDot to set.
+   */
+  private void setStatusDotValue(int value) {
+      statusDot_ = value;
+  }
+  /**
+   * <code>.remoteagent.core.v1.MachineStatusDot status_dot = 10 [json_name = "statusDot"];</code>
+   * @param value The statusDot to set.
+   */
+  private void setStatusDot(io.github.lewin671.remoteagent.core.proto.MachineStatusDot value) {
+    statusDot_ = value.getNumber();
+
+  }
+  /**
+   * <code>.remoteagent.core.v1.MachineStatusDot status_dot = 10 [json_name = "statusDot"];</code>
+   */
+  private void clearStatusDot() {
+
+    statusDot_ = 0;
+  }
+
+  public static final int STATUS_WARN_FIELD_NUMBER = 11;
+  private boolean statusWarn_;
+  /**
+   * <code>bool status_warn = 11 [json_name = "statusWarn"];</code>
+   * @return The statusWarn.
+   */
+  @java.lang.Override
+  public boolean getStatusWarn() {
+    return statusWarn_;
+  }
+  /**
+   * <code>bool status_warn = 11 [json_name = "statusWarn"];</code>
+   * @param value The statusWarn to set.
+   */
+  private void setStatusWarn(boolean value) {
+    
+    statusWarn_ = value;
+  }
+  /**
+   * <code>bool status_warn = 11 [json_name = "statusWarn"];</code>
+   */
+  private void clearStatusWarn() {
+
+    statusWarn_ = false;
+  }
+
+  public static final int SUBTITLE_PARTS_FIELD_NUMBER = 12;
+  private com.google.protobuf.Internal.ProtobufList<io.github.lewin671.remoteagent.core.proto.SubtitleSegment> subtitleParts_;
+  /**
+   * <code>repeated .remoteagent.core.v1.SubtitleSegment subtitle_parts = 12 [json_name = "subtitleParts"];</code>
+   */
+  @java.lang.Override
+  public java.util.List<io.github.lewin671.remoteagent.core.proto.SubtitleSegment> getSubtitlePartsList() {
+    return subtitleParts_;
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.SubtitleSegment subtitle_parts = 12 [json_name = "subtitleParts"];</code>
+   */
+  public java.util.List<? extends io.github.lewin671.remoteagent.core.proto.SubtitleSegmentOrBuilder> 
+      getSubtitlePartsOrBuilderList() {
+    return subtitleParts_;
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.SubtitleSegment subtitle_parts = 12 [json_name = "subtitleParts"];</code>
+   */
+  @java.lang.Override
+  public int getSubtitlePartsCount() {
+    return subtitleParts_.size();
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.SubtitleSegment subtitle_parts = 12 [json_name = "subtitleParts"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.SubtitleSegment getSubtitleParts(int index) {
+    return subtitleParts_.get(index);
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.SubtitleSegment subtitle_parts = 12 [json_name = "subtitleParts"];</code>
+   */
+  public io.github.lewin671.remoteagent.core.proto.SubtitleSegmentOrBuilder getSubtitlePartsOrBuilder(
+      int index) {
+    return subtitleParts_.get(index);
+  }
+  private void ensureSubtitlePartsIsMutable() {
+    com.google.protobuf.Internal.ProtobufList<io.github.lewin671.remoteagent.core.proto.SubtitleSegment> tmp = subtitleParts_;
+    if (!tmp.isModifiable()) {
+      subtitleParts_ =
+          com.google.protobuf.GeneratedMessageLite.mutableCopy(tmp);
+     }
+  }
+
+  /**
+   * <code>repeated .remoteagent.core.v1.SubtitleSegment subtitle_parts = 12 [json_name = "subtitleParts"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setSubtitleParts(
+      int index, io.github.lewin671.remoteagent.core.proto.SubtitleSegment value) {
+    value.getClass();  // minimal bytecode null check
+    ensureSubtitlePartsIsMutable();
+    subtitleParts_.set(index, value);
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.SubtitleSegment subtitle_parts = 12 [json_name = "subtitleParts"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void addSubtitleParts(io.github.lewin671.remoteagent.core.proto.SubtitleSegment value) {
+    value.getClass();  // minimal bytecode null check
+    ensureSubtitlePartsIsMutable();
+    subtitleParts_.add(value);
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.SubtitleSegment subtitle_parts = 12 [json_name = "subtitleParts"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void addSubtitleParts(
+      int index, io.github.lewin671.remoteagent.core.proto.SubtitleSegment value) {
+    value.getClass();  // minimal bytecode null check
+    ensureSubtitlePartsIsMutable();
+    subtitleParts_.add(index, value);
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.SubtitleSegment subtitle_parts = 12 [json_name = "subtitleParts"];</code>
+   */
+  private void addAllSubtitleParts(
+      java.lang.Iterable<? extends io.github.lewin671.remoteagent.core.proto.SubtitleSegment> values) {
+    ensureSubtitlePartsIsMutable();
+    com.google.protobuf.AbstractMessageLite.addAll(
+        values, subtitleParts_);
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.SubtitleSegment subtitle_parts = 12 [json_name = "subtitleParts"];</code>
+   */
+  private void clearSubtitleParts() {
+    subtitleParts_ = emptyProtobufList();
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.SubtitleSegment subtitle_parts = 12 [json_name = "subtitleParts"];</code>
+   */
+  private void removeSubtitleParts(int index) {
+    ensureSubtitlePartsIsMutable();
+    subtitleParts_.remove(index);
   }
 
   public static io.github.lewin671.remoteagent.core.proto.MachineListCardView parseFrom(
@@ -916,6 +1082,182 @@ public  final class MachineListCardView extends
       return this;
     }
 
+    /**
+     * <code>.remoteagent.core.v1.MachineStatusDot status_dot = 10 [json_name = "statusDot"];</code>
+     * @return The enum numeric value on the wire for statusDot.
+     */
+    @java.lang.Override
+    public int getStatusDotValue() {
+      return instance.getStatusDotValue();
+    }
+    /**
+     * <code>.remoteagent.core.v1.MachineStatusDot status_dot = 10 [json_name = "statusDot"];</code>
+     * @param value The statusDot to set.
+     * @return This builder for chaining.
+     */
+    public Builder setStatusDotValue(int value) {
+      copyOnWrite();
+      instance.setStatusDotValue(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.MachineStatusDot status_dot = 10 [json_name = "statusDot"];</code>
+     * @return The statusDot.
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.MachineStatusDot getStatusDot() {
+      return instance.getStatusDot();
+    }
+    /**
+     * <code>.remoteagent.core.v1.MachineStatusDot status_dot = 10 [json_name = "statusDot"];</code>
+     * @param value The enum numeric value on the wire for statusDot to set.
+     * @return This builder for chaining.
+     */
+    public Builder setStatusDot(io.github.lewin671.remoteagent.core.proto.MachineStatusDot value) {
+      copyOnWrite();
+      instance.setStatusDot(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.MachineStatusDot status_dot = 10 [json_name = "statusDot"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearStatusDot() {
+      copyOnWrite();
+      instance.clearStatusDot();
+      return this;
+    }
+
+    /**
+     * <code>bool status_warn = 11 [json_name = "statusWarn"];</code>
+     * @return The statusWarn.
+     */
+    @java.lang.Override
+    public boolean getStatusWarn() {
+      return instance.getStatusWarn();
+    }
+    /**
+     * <code>bool status_warn = 11 [json_name = "statusWarn"];</code>
+     * @param value The statusWarn to set.
+     * @return This builder for chaining.
+     */
+    public Builder setStatusWarn(boolean value) {
+      copyOnWrite();
+      instance.setStatusWarn(value);
+      return this;
+    }
+    /**
+     * <code>bool status_warn = 11 [json_name = "statusWarn"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearStatusWarn() {
+      copyOnWrite();
+      instance.clearStatusWarn();
+      return this;
+    }
+
+    /**
+     * <code>repeated .remoteagent.core.v1.SubtitleSegment subtitle_parts = 12 [json_name = "subtitleParts"];</code>
+     */
+    @java.lang.Override
+    public java.util.List<io.github.lewin671.remoteagent.core.proto.SubtitleSegment> getSubtitlePartsList() {
+      return java.util.Collections.unmodifiableList(
+          instance.getSubtitlePartsList());
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.SubtitleSegment subtitle_parts = 12 [json_name = "subtitleParts"];</code>
+     */
+    @java.lang.Override
+    public int getSubtitlePartsCount() {
+      return instance.getSubtitlePartsCount();
+    }/**
+     * <code>repeated .remoteagent.core.v1.SubtitleSegment subtitle_parts = 12 [json_name = "subtitleParts"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.SubtitleSegment getSubtitleParts(int index) {
+      return instance.getSubtitleParts(index);
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.SubtitleSegment subtitle_parts = 12 [json_name = "subtitleParts"];</code>
+     */
+    public Builder setSubtitleParts(
+        int index, io.github.lewin671.remoteagent.core.proto.SubtitleSegment value) {
+      copyOnWrite();
+      instance.setSubtitleParts(index, value);
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.SubtitleSegment subtitle_parts = 12 [json_name = "subtitleParts"];</code>
+     */
+    public Builder setSubtitleParts(
+        int index, io.github.lewin671.remoteagent.core.proto.SubtitleSegment.Builder builderForValue) {
+      copyOnWrite();
+      instance.setSubtitleParts(index,
+          builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.SubtitleSegment subtitle_parts = 12 [json_name = "subtitleParts"];</code>
+     */
+    public Builder addSubtitleParts(io.github.lewin671.remoteagent.core.proto.SubtitleSegment value) {
+      copyOnWrite();
+      instance.addSubtitleParts(value);
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.SubtitleSegment subtitle_parts = 12 [json_name = "subtitleParts"];</code>
+     */
+    public Builder addSubtitleParts(
+        int index, io.github.lewin671.remoteagent.core.proto.SubtitleSegment value) {
+      copyOnWrite();
+      instance.addSubtitleParts(index, value);
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.SubtitleSegment subtitle_parts = 12 [json_name = "subtitleParts"];</code>
+     */
+    public Builder addSubtitleParts(
+        io.github.lewin671.remoteagent.core.proto.SubtitleSegment.Builder builderForValue) {
+      copyOnWrite();
+      instance.addSubtitleParts(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.SubtitleSegment subtitle_parts = 12 [json_name = "subtitleParts"];</code>
+     */
+    public Builder addSubtitleParts(
+        int index, io.github.lewin671.remoteagent.core.proto.SubtitleSegment.Builder builderForValue) {
+      copyOnWrite();
+      instance.addSubtitleParts(index,
+          builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.SubtitleSegment subtitle_parts = 12 [json_name = "subtitleParts"];</code>
+     */
+    public Builder addAllSubtitleParts(
+        java.lang.Iterable<? extends io.github.lewin671.remoteagent.core.proto.SubtitleSegment> values) {
+      copyOnWrite();
+      instance.addAllSubtitleParts(values);
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.SubtitleSegment subtitle_parts = 12 [json_name = "subtitleParts"];</code>
+     */
+    public Builder clearSubtitleParts() {
+      copyOnWrite();
+      instance.clearSubtitleParts();
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.SubtitleSegment subtitle_parts = 12 [json_name = "subtitleParts"];</code>
+     */
+    public Builder removeSubtitleParts(int index) {
+      copyOnWrite();
+      instance.removeSubtitleParts(index);
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.MachineListCardView)
   }
   @java.lang.Override
@@ -943,10 +1285,15 @@ public  final class MachineListCardView extends
             io.github.lewin671.remoteagent.core.proto.QuotaCliSection.class,
             "lastSeenMs_",
             "directRow_",
+            "statusDot_",
+            "statusWarn_",
+            "subtitleParts_",
+            io.github.lewin671.remoteagent.core.proto.SubtitleSegment.class,
           };
           java.lang.String info =
-              "\u0000\t\u0000\u0001\u0001\t\t\u0000\u0001\u0000\u0001\u0208\u0002\u0208\u0003\u0007" +
-              "\u0004\u0007\u0005\u0004\u0006\u1009\u0000\u0007\u001b\b\u0002\t\u1009\u0001";
+              "\u0000\f\u0000\u0001\u0001\f\f\u0000\u0002\u0000\u0001\u0208\u0002\u0208\u0003\u0007" +
+              "\u0004\u0007\u0005\u0004\u0006\u1009\u0000\u0007\u001b\b\u0002\t\u1009\u0001\n\f" +
+              "\u000b\u0007\f\u001b";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

@@ -380,4 +380,118 @@ public interface MachineSettingsViewModelOrBuilder extends
    * @return The cliSwitchesFooter.
    */
   io.github.lewin671.remoteagent.core.proto.Text getCliSwitchesFooter();
+
+  /**
+   * <code>.remoteagent.core.v1.MachineStatusDot header_dot = 39 [json_name = "headerDot"];</code>
+   * @return The enum numeric value on the wire for headerDot.
+   */
+  int getHeaderDotValue();
+  /**
+   * <code>.remoteagent.core.v1.MachineStatusDot header_dot = 39 [json_name = "headerDot"];</code>
+   * @return The headerDot.
+   */
+  io.github.lewin671.remoteagent.core.proto.MachineStatusDot getHeaderDot();
+
+  /**
+   * <code>.remoteagent.core.v1.Text header_subtitle = 40 [json_name = "headerSubtitle"];</code>
+   * @return Whether the headerSubtitle field is set.
+   */
+  boolean hasHeaderSubtitle();
+  /**
+   * <code>.remoteagent.core.v1.Text header_subtitle = 40 [json_name = "headerSubtitle"];</code>
+   * @return The headerSubtitle.
+   */
+  io.github.lewin671.remoteagent.core.proto.Text getHeaderSubtitle();
+
+  /**
+   * <code>.remoteagent.core.v1.MachineStatusDot status_card_dot = 41 [json_name = "statusCardDot"];</code>
+   * @return The enum numeric value on the wire for statusCardDot.
+   */
+  int getStatusCardDotValue();
+  /**
+   * <code>.remoteagent.core.v1.MachineStatusDot status_card_dot = 41 [json_name = "statusCardDot"];</code>
+   * @return The statusCardDot.
+   */
+  io.github.lewin671.remoteagent.core.proto.MachineStatusDot getStatusCardDot();
+
+  /**
+   * <code>.remoteagent.core.v1.Text status_card_badge = 42 [json_name = "statusCardBadge"];</code>
+   * @return Whether the statusCardBadge field is set.
+   */
+  boolean hasStatusCardBadge();
+  /**
+   * <code>.remoteagent.core.v1.Text status_card_badge = 42 [json_name = "statusCardBadge"];</code>
+   * @return The statusCardBadge.
+   */
+  io.github.lewin671.remoteagent.core.proto.Text getStatusCardBadge();
+
+  /**
+   * <code>bool status_card_warn = 43 [json_name = "statusCardWarn"];</code>
+   * @return The statusCardWarn.
+   */
+  boolean getStatusCardWarn();
+
+  /**
+   * <code>bool show_usage_entry = 44 [json_name = "showUsageEntry"];</code>
+   * @return The showUsageEntry.
+   */
+  boolean getShowUsageEntry();
+
+  /**
+   * <code>uint64 usage_total_tokens = 45 [json_name = "usageTotalTokens"];</code>
+   * @return The usageTotalTokens.
+   */
+  long getUsageTotalTokens();
+
+  /**
+   * <code>bool usage_fallback_thirty_days = 46 [json_name = "usageFallbackThirtyDays"];</code>
+   * @return The usageFallbackThirtyDays.
+   */
+  boolean getUsageFallbackThirtyDays();
+
+  /**
+   * <code>bool usage_cached_offline = 47 [json_name = "usageCachedOffline"];</code>
+   * @return The usageCachedOffline.
+   */
+  boolean getUsageCachedOffline();
+
+  /**
+   * <code>.remoteagent.core.v1.Text usage_empty_text = 48 [json_name = "usageEmptyText"];</code>
+   * @return Whether the usageEmptyText field is set.
+   */
+  boolean hasUsageEmptyText();
+  /**
+   * <code>.remoteagent.core.v1.Text usage_empty_text = 48 [json_name = "usageEmptyText"];</code>
+   * @return The usageEmptyText.
+   */
+  io.github.lewin671.remoteagent.core.proto.Text getUsageEmptyText();
+
+  /**
+   * <code>int32 project_count = 49 [json_name = "projectCount"];</code>
+   * @return The projectCount.
+   */
+  int getProjectCount();
+
+  /**
+   * <code>.remoteagent.core.v1.Text project_count_text = 50 [json_name = "projectCountText"];</code>
+   * @return Whether the projectCountText field is set.
+   */
+  boolean hasProjectCountText();
+  /**
+   * <code>.remoteagent.core.v1.Text project_count_text = 50 [json_name = "projectCountText"];</code>
+   * @return The projectCountText.
+   */
+  io.github.lewin671.remoteagent.core.proto.Text getProjectCountText();
+
+  /**
+   * <code>string short_id = 51 [json_name = "shortId"];</code>
+   * @return The shortId.
+   */
+  java.lang.String getShortId();
+  /**
+   * <code>string short_id = 51 [json_name = "shortId"];</code>
+   * @return The bytes for shortId.
+   */
+  com.google.protobuf.ByteString
+      getShortIdBytes();
 }

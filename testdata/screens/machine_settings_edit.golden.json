@@ -198,6 +198,16 @@
             }
           },
           {
+            "dispatchCommand": {
+              "requestId": "r3",
+              "attemptId": "a3",
+              "machineId": "m1",
+              "deadlineMs": "1791078120050",
+              "commandBytes": "qgECCAKgBhE=",
+              "routeHint": "COMMAND_ROUTE_HINT_READ"
+            }
+          },
+          {
             "render": {
               "screens": [
                 "SCREEN_TARGET_MACHINE_SETTINGS"
@@ -369,6 +379,9 @@
                 "summaryTone": "QUOTA_TONE_STALE",
                 "summaryMeta": {
                   "key": "quota.quota_lookup_is_not_supported_yet"
+                },
+                "summaryPrimaryText": {
+                  "key": "quota.quota_lookup_is_not_supported_yet"
                 }
               },
               {
@@ -384,6 +397,9 @@
                 },
                 "summaryTone": "QUOTA_TONE_STALE",
                 "summaryMeta": {
+                  "key": "quota.quota_lookup_is_not_supported_yet"
+                },
+                "summaryPrimaryText": {
                   "key": "quota.quota_lookup_is_not_supported_yet"
                 }
               }
@@ -411,6 +427,19 @@
               },
               "footerText": {
                 "key": "transport.footer"
+              },
+              "rowDot": "MACHINE_STATUS_DOT_GREEN_LIVE",
+              "rowValueText": {
+                "key": "transport.row_using_direct_ms",
+                "args": [
+                  {
+                    "name": "ms",
+                    "strValue": "12"
+                  }
+                ]
+              },
+              "rowSubtitleText": {
+                "key": "transport.use_read"
               }
             },
             "cliVersions": [
@@ -419,7 +448,104 @@
                 "name": "Codex",
                 "version": "0.42.0",
                 "verified": true,
-                "enabled": true
+                "enabled": true,
+                "defaultModelLabel": {
+                  "literal": "GPT-5.4"
+                },
+                "defaultModeLabel": {
+                  "key": "modes.ask"
+                },
+                "disabledLabel": {
+                  "key": "settings.cli_disabled"
+                },
+                "defaults": {
+                  "agent": "AGENT_CODEX",
+                  "agentName": "Codex",
+                  "selectedModel": "gpt-5.4",
+                  "selectedModelLabel": {
+                    "literal": "GPT-5.4"
+                  },
+                  "modelChoices": [
+                    {
+                      "label": {
+                        "key": "models.default"
+                      },
+                      "isDefault": true
+                    },
+                    {
+                      "id": "gpt-5.4",
+                      "label": {
+                        "literal": "GPT-5.4"
+                      },
+                      "selected": true
+                    }
+                  ],
+                  "selectedEffort": "high",
+                  "effortChoices": [
+                    {
+                      "label": {
+                        "key": "models.effort_default"
+                      },
+                      "isDefault": true
+                    },
+                    {
+                      "id": "medium",
+                      "label": {
+                        "literal": "medium"
+                      }
+                    },
+                    {
+                      "id": "high",
+                      "label": {
+                        "literal": "high"
+                      },
+                      "selected": true
+                    }
+                  ],
+                  "selectedMode": "APPROVAL_MODE_ASK",
+                  "modeChoices": [
+                    {
+                      "label": {
+                        "key": "settings.follow_configuration",
+                        "args": [
+                          {
+                            "name": "value",
+                            "strValue": "Codex"
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "mode": "APPROVAL_MODE_ASK",
+                      "label": {
+                        "key": "modes.ask"
+                      },
+                      "selected": true
+                    },
+                    {
+                      "mode": "APPROVAL_MODE_AUTO",
+                      "label": {
+                        "key": "modes.auto"
+                      }
+                    },
+                    {
+                      "mode": "APPROVAL_MODE_FULL_ACCESS",
+                      "label": {
+                        "key": "modes.full_access"
+                      },
+                      "danger": true
+                    }
+                  ],
+                  "footerText": {
+                    "key": "settings.new_project_defaults_settings",
+                    "args": [
+                      {
+                        "name": "value",
+                        "strValue": "Codex"
+                      }
+                    ]
+                  }
+                }
               },
               {
                 "agent": "AGENT_CLAUDE",
@@ -428,7 +554,84 @@
                 "unverifiedLabel": {
                   "key": "settings.unverified"
                 },
-                "enabled": true
+                "enabled": true,
+                "defaultModelLabel": {
+                  "literal": "claude-sonnet-4-5"
+                },
+                "defaultModeLabel": {
+                  "key": "modes.auto"
+                },
+                "disabledLabel": {
+                  "key": "settings.cli_disabled"
+                },
+                "defaults": {
+                  "agent": "AGENT_CLAUDE",
+                  "agentName": "Claude Code",
+                  "selectedModel": "claude-sonnet-4-5",
+                  "selectedModelLabel": {
+                    "literal": "claude-sonnet-4-5"
+                  },
+                  "modelChoices": [
+                    {
+                      "label": {
+                        "key": "models.default"
+                      },
+                      "isDefault": true
+                    }
+                  ],
+                  "effortChoices": [
+                    {
+                      "label": {
+                        "key": "models.effort_default"
+                      },
+                      "selected": true,
+                      "isDefault": true
+                    }
+                  ],
+                  "selectedMode": "APPROVAL_MODE_AUTO",
+                  "modeChoices": [
+                    {
+                      "label": {
+                        "key": "settings.follow_configuration",
+                        "args": [
+                          {
+                            "name": "value",
+                            "strValue": "Claude Code"
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "mode": "APPROVAL_MODE_ASK",
+                      "label": {
+                        "key": "modes.ask"
+                      }
+                    },
+                    {
+                      "mode": "APPROVAL_MODE_AUTO",
+                      "label": {
+                        "key": "modes.auto"
+                      },
+                      "selected": true
+                    },
+                    {
+                      "mode": "APPROVAL_MODE_FULL_ACCESS",
+                      "label": {
+                        "key": "modes.full_access"
+                      },
+                      "danger": true
+                    }
+                  ],
+                  "footerText": {
+                    "key": "settings.new_project_defaults_settings",
+                    "args": [
+                      {
+                        "name": "value",
+                        "strValue": "Claude Code"
+                      }
+                    ]
+                  }
+                }
               }
             ],
             "hasUnverifiedCli": true,
@@ -506,6 +709,13 @@
                   "label": {
                     "key": "modes.auto"
                   }
+                },
+                {
+                  "mode": "APPROVAL_MODE_FULL_ACCESS",
+                  "label": {
+                    "key": "modes.full_access"
+                  },
+                  "danger": true
                 }
               ],
               "footerText": {
@@ -767,7 +977,58 @@
               },
               "footerText": {
                 "key": "settings.attachments_are_stored_on_this_computer_session_files_remain"
-              }
+              },
+              "summaryText": {
+                "key": "settings.storage_summary_reserve",
+                "args": [
+                  {
+                    "name": "used",
+                    "textValue": {
+                      "key": "machine_status.size_mb",
+                      "args": [
+                        {
+                          "name": "size",
+                          "strValue": "110"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "name": "limit",
+                    "textValue": {
+                      "key": "machine_status.size_gb",
+                      "args": [
+                        {
+                          "name": "size",
+                          "strValue": "1"
+                        }
+                      ]
+                    }
+                  }
+                ]
+              },
+              "summaryWarn": true,
+              "usedTotalText": {
+                "key": "machine_status.size_mb",
+                "args": [
+                  {
+                    "name": "size",
+                    "strValue": "110"
+                  }
+                ]
+              },
+              "limitLabel": {
+                "key": "machine_status.size_gb",
+                "args": [
+                  {
+                    "name": "size",
+                    "strValue": "1"
+                  }
+                ]
+              },
+              "uploadedPercent": 10,
+              "previewPercent": 2,
+              "reservePercent": 5
             },
             "projects": [
               {
@@ -788,7 +1049,44 @@
             "management": {
               "canRemove": true
             },
-            "cliSwitchesEditable": true
+            "cliSwitchesEditable": true,
+            "headerDot": "MACHINE_STATUS_DOT_GREEN_LIVE",
+            "headerSubtitle": {
+              "join": [
+                {
+                  "key": "common.online"
+                },
+                {
+                  "key": "settings.daemon_protocol_tag",
+                  "args": [
+                    {
+                      "name": "version",
+                      "intValue": "17"
+                    }
+                  ]
+                }
+              ],
+              "separatorLiteral": " · "
+            },
+            "statusCardDot": "MACHINE_STATUS_DOT_GREEN_LIVE",
+            "statusCardBadge": {
+              "key": "machine_status.live"
+            },
+            "showUsageEntry": true,
+            "usageEmptyText": {
+              "literal": "—"
+            },
+            "projectCount": 1,
+            "projectCountText": {
+              "key": "settings.project_count_value",
+              "args": [
+                {
+                  "name": "count",
+                  "intValue": "1"
+                }
+              ]
+            },
+            "shortId": "m1"
           }
         }
       }
@@ -796,16 +1094,6 @@
     {
       "effects": {
         "effects": [
-          {
-            "dispatchCommand": {
-              "requestId": "r3",
-              "attemptId": "a3",
-              "machineId": "m1",
-              "deadlineMs": "1791078120090",
-              "commandBytes": "qgECCAKgBhE=",
-              "routeHint": "COMMAND_ROUTE_HINT_READ"
-            }
-          },
           {
             "render": {
               "screens": [
@@ -965,6 +1253,9 @@
                 "summaryTone": "QUOTA_TONE_STALE",
                 "summaryMeta": {
                   "key": "quota.quota_lookup_is_not_supported_yet"
+                },
+                "summaryPrimaryText": {
+                  "key": "quota.quota_lookup_is_not_supported_yet"
                 }
               },
               {
@@ -980,6 +1271,9 @@
                 },
                 "summaryTone": "QUOTA_TONE_STALE",
                 "summaryMeta": {
+                  "key": "quota.quota_lookup_is_not_supported_yet"
+                },
+                "summaryPrimaryText": {
                   "key": "quota.quota_lookup_is_not_supported_yet"
                 }
               }
@@ -1007,6 +1301,19 @@
               },
               "footerText": {
                 "key": "transport.footer"
+              },
+              "rowDot": "MACHINE_STATUS_DOT_GREEN_LIVE",
+              "rowValueText": {
+                "key": "transport.row_using_direct_ms",
+                "args": [
+                  {
+                    "name": "ms",
+                    "strValue": "12"
+                  }
+                ]
+              },
+              "rowSubtitleText": {
+                "key": "transport.use_read"
               }
             },
             "cliVersions": [
@@ -1015,7 +1322,104 @@
                 "name": "Codex",
                 "version": "0.42.0",
                 "verified": true,
-                "enabled": true
+                "enabled": true,
+                "defaultModelLabel": {
+                  "literal": "GPT-5.4"
+                },
+                "defaultModeLabel": {
+                  "key": "modes.ask"
+                },
+                "disabledLabel": {
+                  "key": "settings.cli_disabled"
+                },
+                "defaults": {
+                  "agent": "AGENT_CODEX",
+                  "agentName": "Codex",
+                  "selectedModel": "gpt-5.4",
+                  "selectedModelLabel": {
+                    "literal": "GPT-5.4"
+                  },
+                  "modelChoices": [
+                    {
+                      "label": {
+                        "key": "models.default"
+                      },
+                      "isDefault": true
+                    },
+                    {
+                      "id": "gpt-5.4",
+                      "label": {
+                        "literal": "GPT-5.4"
+                      },
+                      "selected": true
+                    }
+                  ],
+                  "selectedEffort": "high",
+                  "effortChoices": [
+                    {
+                      "label": {
+                        "key": "models.effort_default"
+                      },
+                      "isDefault": true
+                    },
+                    {
+                      "id": "medium",
+                      "label": {
+                        "literal": "medium"
+                      }
+                    },
+                    {
+                      "id": "high",
+                      "label": {
+                        "literal": "high"
+                      },
+                      "selected": true
+                    }
+                  ],
+                  "selectedMode": "APPROVAL_MODE_ASK",
+                  "modeChoices": [
+                    {
+                      "label": {
+                        "key": "settings.follow_configuration",
+                        "args": [
+                          {
+                            "name": "value",
+                            "strValue": "Codex"
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "mode": "APPROVAL_MODE_ASK",
+                      "label": {
+                        "key": "modes.ask"
+                      },
+                      "selected": true
+                    },
+                    {
+                      "mode": "APPROVAL_MODE_AUTO",
+                      "label": {
+                        "key": "modes.auto"
+                      }
+                    },
+                    {
+                      "mode": "APPROVAL_MODE_FULL_ACCESS",
+                      "label": {
+                        "key": "modes.full_access"
+                      },
+                      "danger": true
+                    }
+                  ],
+                  "footerText": {
+                    "key": "settings.new_project_defaults_settings",
+                    "args": [
+                      {
+                        "name": "value",
+                        "strValue": "Codex"
+                      }
+                    ]
+                  }
+                }
               },
               {
                 "agent": "AGENT_CLAUDE",
@@ -1024,7 +1428,98 @@
                 "unverifiedLabel": {
                   "key": "settings.unverified"
                 },
-                "enabled": true
+                "enabled": true,
+                "defaultModelLabel": {
+                  "literal": "Sonnet 4.5"
+                },
+                "defaultModeLabel": {
+                  "key": "modes.auto"
+                },
+                "disabledLabel": {
+                  "key": "settings.cli_disabled"
+                },
+                "defaults": {
+                  "agent": "AGENT_CLAUDE",
+                  "agentName": "Claude Code",
+                  "selectedModel": "claude-sonnet-4-5",
+                  "selectedModelLabel": {
+                    "literal": "Sonnet 4.5"
+                  },
+                  "modelChoices": [
+                    {
+                      "label": {
+                        "key": "models.default"
+                      },
+                      "isDefault": true
+                    },
+                    {
+                      "id": "claude-sonnet-4-5",
+                      "label": {
+                        "literal": "Sonnet 4.5"
+                      },
+                      "selected": true
+                    }
+                  ],
+                  "effortChoices": [
+                    {
+                      "label": {
+                        "key": "models.effort_default"
+                      },
+                      "selected": true,
+                      "isDefault": true
+                    }
+                  ],
+                  "selectedMode": "APPROVAL_MODE_AUTO",
+                  "modeChoices": [
+                    {
+                      "label": {
+                        "key": "settings.follow_configuration",
+                        "args": [
+                          {
+                            "name": "value",
+                            "strValue": "Claude Code"
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "mode": "APPROVAL_MODE_ASK",
+                      "label": {
+                        "key": "modes.ask"
+                      }
+                    },
+                    {
+                      "mode": "APPROVAL_MODE_AUTO",
+                      "label": {
+                        "key": "modes.auto"
+                      },
+                      "selected": true,
+                      "disabled": true,
+                      "disabledReason": {
+                        "key": "modes.account_no_auto"
+                      }
+                    },
+                    {
+                      "mode": "APPROVAL_MODE_FULL_ACCESS",
+                      "label": {
+                        "key": "modes.full_access"
+                      },
+                      "danger": true
+                    }
+                  ],
+                  "autoUnavailableNotice": {
+                    "key": "modes.account_no_auto"
+                  },
+                  "footerText": {
+                    "key": "settings.new_project_defaults_settings",
+                    "args": [
+                      {
+                        "name": "value",
+                        "strValue": "Claude Code"
+                      }
+                    ]
+                  }
+                }
               }
             ],
             "hasUnverifiedCli": true,
@@ -1094,6 +1589,13 @@
                   "disabledReason": {
                     "key": "modes.account_no_auto"
                   }
+                },
+                {
+                  "mode": "APPROVAL_MODE_FULL_ACCESS",
+                  "label": {
+                    "key": "modes.full_access"
+                  },
+                  "danger": true
                 }
               ],
               "autoUnavailableNotice": {
@@ -1358,7 +1860,58 @@
               },
               "footerText": {
                 "key": "settings.attachments_are_stored_on_this_computer_session_files_remain"
-              }
+              },
+              "summaryText": {
+                "key": "settings.storage_summary_reserve",
+                "args": [
+                  {
+                    "name": "used",
+                    "textValue": {
+                      "key": "machine_status.size_mb",
+                      "args": [
+                        {
+                          "name": "size",
+                          "strValue": "110"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "name": "limit",
+                    "textValue": {
+                      "key": "machine_status.size_gb",
+                      "args": [
+                        {
+                          "name": "size",
+                          "strValue": "1"
+                        }
+                      ]
+                    }
+                  }
+                ]
+              },
+              "summaryWarn": true,
+              "usedTotalText": {
+                "key": "machine_status.size_mb",
+                "args": [
+                  {
+                    "name": "size",
+                    "strValue": "110"
+                  }
+                ]
+              },
+              "limitLabel": {
+                "key": "machine_status.size_gb",
+                "args": [
+                  {
+                    "name": "size",
+                    "strValue": "1"
+                  }
+                ]
+              },
+              "uploadedPercent": 10,
+              "previewPercent": 2,
+              "reservePercent": 5
             },
             "projects": [
               {
@@ -1379,7 +1932,44 @@
             "management": {
               "canRemove": true
             },
-            "cliSwitchesEditable": true
+            "cliSwitchesEditable": true,
+            "headerDot": "MACHINE_STATUS_DOT_GREEN_LIVE",
+            "headerSubtitle": {
+              "join": [
+                {
+                  "key": "common.online"
+                },
+                {
+                  "key": "settings.daemon_protocol_tag",
+                  "args": [
+                    {
+                      "name": "version",
+                      "intValue": "17"
+                    }
+                  ]
+                }
+              ],
+              "separatorLiteral": " · "
+            },
+            "statusCardDot": "MACHINE_STATUS_DOT_GREEN_LIVE",
+            "statusCardBadge": {
+              "key": "machine_status.live"
+            },
+            "showUsageEntry": true,
+            "usageEmptyText": {
+              "literal": "—"
+            },
+            "projectCount": 1,
+            "projectCountText": {
+              "key": "settings.project_count_value",
+              "args": [
+                {
+                  "name": "count",
+                  "intValue": "1"
+                }
+              ]
+            },
+            "shortId": "m1"
           }
         }
       }
@@ -1520,6 +2110,9 @@
                 "summaryTone": "QUOTA_TONE_STALE",
                 "summaryMeta": {
                   "key": "quota.quota_lookup_is_not_supported_yet"
+                },
+                "summaryPrimaryText": {
+                  "key": "quota.quota_lookup_is_not_supported_yet"
                 }
               },
               {
@@ -1535,6 +2128,9 @@
                 },
                 "summaryTone": "QUOTA_TONE_STALE",
                 "summaryMeta": {
+                  "key": "quota.quota_lookup_is_not_supported_yet"
+                },
+                "summaryPrimaryText": {
                   "key": "quota.quota_lookup_is_not_supported_yet"
                 }
               }
@@ -1562,6 +2158,19 @@
               },
               "footerText": {
                 "key": "transport.footer"
+              },
+              "rowDot": "MACHINE_STATUS_DOT_GREEN_LIVE",
+              "rowValueText": {
+                "key": "transport.row_using_direct_ms",
+                "args": [
+                  {
+                    "name": "ms",
+                    "strValue": "12"
+                  }
+                ]
+              },
+              "rowSubtitleText": {
+                "key": "transport.use_read"
               }
             },
             "cliVersions": [
@@ -1570,7 +2179,104 @@
                 "name": "Codex",
                 "version": "0.42.0",
                 "verified": true,
-                "enabled": true
+                "enabled": true,
+                "defaultModelLabel": {
+                  "literal": "GPT-5.4"
+                },
+                "defaultModeLabel": {
+                  "key": "modes.ask"
+                },
+                "disabledLabel": {
+                  "key": "settings.cli_disabled"
+                },
+                "defaults": {
+                  "agent": "AGENT_CODEX",
+                  "agentName": "Codex",
+                  "selectedModel": "gpt-5.4",
+                  "selectedModelLabel": {
+                    "literal": "GPT-5.4"
+                  },
+                  "modelChoices": [
+                    {
+                      "label": {
+                        "key": "models.default"
+                      },
+                      "isDefault": true
+                    },
+                    {
+                      "id": "gpt-5.4",
+                      "label": {
+                        "literal": "GPT-5.4"
+                      },
+                      "selected": true
+                    }
+                  ],
+                  "selectedEffort": "high",
+                  "effortChoices": [
+                    {
+                      "label": {
+                        "key": "models.effort_default"
+                      },
+                      "isDefault": true
+                    },
+                    {
+                      "id": "medium",
+                      "label": {
+                        "literal": "medium"
+                      }
+                    },
+                    {
+                      "id": "high",
+                      "label": {
+                        "literal": "high"
+                      },
+                      "selected": true
+                    }
+                  ],
+                  "selectedMode": "APPROVAL_MODE_ASK",
+                  "modeChoices": [
+                    {
+                      "label": {
+                        "key": "settings.follow_configuration",
+                        "args": [
+                          {
+                            "name": "value",
+                            "strValue": "Codex"
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "mode": "APPROVAL_MODE_ASK",
+                      "label": {
+                        "key": "modes.ask"
+                      },
+                      "selected": true
+                    },
+                    {
+                      "mode": "APPROVAL_MODE_AUTO",
+                      "label": {
+                        "key": "modes.auto"
+                      }
+                    },
+                    {
+                      "mode": "APPROVAL_MODE_FULL_ACCESS",
+                      "label": {
+                        "key": "modes.full_access"
+                      },
+                      "danger": true
+                    }
+                  ],
+                  "footerText": {
+                    "key": "settings.new_project_defaults_settings",
+                    "args": [
+                      {
+                        "name": "value",
+                        "strValue": "Codex"
+                      }
+                    ]
+                  }
+                }
               },
               {
                 "agent": "AGENT_CLAUDE",
@@ -1579,7 +2285,98 @@
                 "unverifiedLabel": {
                   "key": "settings.unverified"
                 },
-                "enabled": true
+                "enabled": true,
+                "defaultModelLabel": {
+                  "literal": "Sonnet 4.5"
+                },
+                "defaultModeLabel": {
+                  "key": "modes.auto"
+                },
+                "disabledLabel": {
+                  "key": "settings.cli_disabled"
+                },
+                "defaults": {
+                  "agent": "AGENT_CLAUDE",
+                  "agentName": "Claude Code",
+                  "selectedModel": "claude-sonnet-4-5",
+                  "selectedModelLabel": {
+                    "literal": "Sonnet 4.5"
+                  },
+                  "modelChoices": [
+                    {
+                      "label": {
+                        "key": "models.default"
+                      },
+                      "isDefault": true
+                    },
+                    {
+                      "id": "claude-sonnet-4-5",
+                      "label": {
+                        "literal": "Sonnet 4.5"
+                      },
+                      "selected": true
+                    }
+                  ],
+                  "effortChoices": [
+                    {
+                      "label": {
+                        "key": "models.effort_default"
+                      },
+                      "selected": true,
+                      "isDefault": true
+                    }
+                  ],
+                  "selectedMode": "APPROVAL_MODE_AUTO",
+                  "modeChoices": [
+                    {
+                      "label": {
+                        "key": "settings.follow_configuration",
+                        "args": [
+                          {
+                            "name": "value",
+                            "strValue": "Claude Code"
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "mode": "APPROVAL_MODE_ASK",
+                      "label": {
+                        "key": "modes.ask"
+                      }
+                    },
+                    {
+                      "mode": "APPROVAL_MODE_AUTO",
+                      "label": {
+                        "key": "modes.auto"
+                      },
+                      "selected": true,
+                      "disabled": true,
+                      "disabledReason": {
+                        "key": "modes.account_no_auto"
+                      }
+                    },
+                    {
+                      "mode": "APPROVAL_MODE_FULL_ACCESS",
+                      "label": {
+                        "key": "modes.full_access"
+                      },
+                      "danger": true
+                    }
+                  ],
+                  "autoUnavailableNotice": {
+                    "key": "modes.account_no_auto"
+                  },
+                  "footerText": {
+                    "key": "settings.new_project_defaults_settings",
+                    "args": [
+                      {
+                        "name": "value",
+                        "strValue": "Claude Code"
+                      }
+                    ]
+                  }
+                }
               }
             ],
             "hasUnverifiedCli": true,
@@ -1650,6 +2447,13 @@
                   "disabledReason": {
                     "key": "modes.account_no_auto"
                   }
+                },
+                {
+                  "mode": "APPROVAL_MODE_FULL_ACCESS",
+                  "label": {
+                    "key": "modes.full_access"
+                  },
+                  "danger": true
                 }
               ],
               "autoUnavailableNotice": {
@@ -1914,7 +2718,58 @@
               },
               "footerText": {
                 "key": "settings.attachments_are_stored_on_this_computer_session_files_remain"
-              }
+              },
+              "summaryText": {
+                "key": "settings.storage_summary_reserve",
+                "args": [
+                  {
+                    "name": "used",
+                    "textValue": {
+                      "key": "machine_status.size_mb",
+                      "args": [
+                        {
+                          "name": "size",
+                          "strValue": "110"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "name": "limit",
+                    "textValue": {
+                      "key": "machine_status.size_gb",
+                      "args": [
+                        {
+                          "name": "size",
+                          "strValue": "1"
+                        }
+                      ]
+                    }
+                  }
+                ]
+              },
+              "summaryWarn": true,
+              "usedTotalText": {
+                "key": "machine_status.size_mb",
+                "args": [
+                  {
+                    "name": "size",
+                    "strValue": "110"
+                  }
+                ]
+              },
+              "limitLabel": {
+                "key": "machine_status.size_gb",
+                "args": [
+                  {
+                    "name": "size",
+                    "strValue": "1"
+                  }
+                ]
+              },
+              "uploadedPercent": 10,
+              "previewPercent": 2,
+              "reservePercent": 5
             },
             "projects": [
               {
@@ -1935,7 +2790,44 @@
             "management": {
               "canRemove": true
             },
-            "cliSwitchesEditable": true
+            "cliSwitchesEditable": true,
+            "headerDot": "MACHINE_STATUS_DOT_GREEN_LIVE",
+            "headerSubtitle": {
+              "join": [
+                {
+                  "key": "common.online"
+                },
+                {
+                  "key": "settings.daemon_protocol_tag",
+                  "args": [
+                    {
+                      "name": "version",
+                      "intValue": "17"
+                    }
+                  ]
+                }
+              ],
+              "separatorLiteral": " · "
+            },
+            "statusCardDot": "MACHINE_STATUS_DOT_GREEN_LIVE",
+            "statusCardBadge": {
+              "key": "machine_status.live"
+            },
+            "showUsageEntry": true,
+            "usageEmptyText": {
+              "literal": "—"
+            },
+            "projectCount": 1,
+            "projectCountText": {
+              "key": "settings.project_count_value",
+              "args": [
+                {
+                  "name": "count",
+                  "intValue": "1"
+                }
+              ]
+            },
+            "shortId": "m1"
           }
         }
       }
@@ -2058,6 +2950,9 @@
                 "summaryTone": "QUOTA_TONE_STALE",
                 "summaryMeta": {
                   "key": "quota.quota_lookup_is_not_supported_yet"
+                },
+                "summaryPrimaryText": {
+                  "key": "quota.quota_lookup_is_not_supported_yet"
                 }
               },
               {
@@ -2073,6 +2968,9 @@
                 },
                 "summaryTone": "QUOTA_TONE_STALE",
                 "summaryMeta": {
+                  "key": "quota.quota_lookup_is_not_supported_yet"
+                },
+                "summaryPrimaryText": {
                   "key": "quota.quota_lookup_is_not_supported_yet"
                 }
               }
@@ -2092,6 +2990,13 @@
               "showDiagnosticsEntry": true,
               "footerText": {
                 "key": "transport.footer"
+              },
+              "rowDot": "MACHINE_STATUS_DOT_GRAY_STATIC",
+              "rowValueText": {
+                "key": "transport.row_relay"
+              },
+              "rowSubtitleText": {
+                "key": "transport.reason_no_traversal"
               }
             },
             "cliVersions": [
@@ -2100,7 +3005,104 @@
                 "name": "Codex",
                 "version": "0.42.0",
                 "verified": true,
-                "enabled": true
+                "enabled": true,
+                "defaultModelLabel": {
+                  "literal": "GPT-5.4"
+                },
+                "defaultModeLabel": {
+                  "key": "modes.ask"
+                },
+                "disabledLabel": {
+                  "key": "settings.cli_disabled"
+                },
+                "defaults": {
+                  "agent": "AGENT_CODEX",
+                  "agentName": "Codex",
+                  "selectedModel": "gpt-5.4",
+                  "selectedModelLabel": {
+                    "literal": "GPT-5.4"
+                  },
+                  "modelChoices": [
+                    {
+                      "label": {
+                        "key": "models.default"
+                      },
+                      "isDefault": true
+                    },
+                    {
+                      "id": "gpt-5.4",
+                      "label": {
+                        "literal": "GPT-5.4"
+                      },
+                      "selected": true
+                    }
+                  ],
+                  "selectedEffort": "high",
+                  "effortChoices": [
+                    {
+                      "label": {
+                        "key": "models.effort_default"
+                      },
+                      "isDefault": true
+                    },
+                    {
+                      "id": "medium",
+                      "label": {
+                        "literal": "medium"
+                      }
+                    },
+                    {
+                      "id": "high",
+                      "label": {
+                        "literal": "high"
+                      },
+                      "selected": true
+                    }
+                  ],
+                  "selectedMode": "APPROVAL_MODE_ASK",
+                  "modeChoices": [
+                    {
+                      "label": {
+                        "key": "settings.follow_configuration",
+                        "args": [
+                          {
+                            "name": "value",
+                            "strValue": "Codex"
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "mode": "APPROVAL_MODE_ASK",
+                      "label": {
+                        "key": "modes.ask"
+                      },
+                      "selected": true
+                    },
+                    {
+                      "mode": "APPROVAL_MODE_AUTO",
+                      "label": {
+                        "key": "modes.auto"
+                      }
+                    },
+                    {
+                      "mode": "APPROVAL_MODE_FULL_ACCESS",
+                      "label": {
+                        "key": "modes.full_access"
+                      },
+                      "danger": true
+                    }
+                  ],
+                  "footerText": {
+                    "key": "settings.new_project_defaults_settings",
+                    "args": [
+                      {
+                        "name": "value",
+                        "strValue": "Codex"
+                      }
+                    ]
+                  }
+                }
               },
               {
                 "agent": "AGENT_CLAUDE",
@@ -2109,7 +3111,98 @@
                 "unverifiedLabel": {
                   "key": "settings.unverified"
                 },
-                "enabled": true
+                "enabled": true,
+                "defaultModelLabel": {
+                  "literal": "Sonnet 4.5"
+                },
+                "defaultModeLabel": {
+                  "key": "modes.auto"
+                },
+                "disabledLabel": {
+                  "key": "settings.cli_disabled"
+                },
+                "defaults": {
+                  "agent": "AGENT_CLAUDE",
+                  "agentName": "Claude Code",
+                  "selectedModel": "claude-sonnet-4-5",
+                  "selectedModelLabel": {
+                    "literal": "Sonnet 4.5"
+                  },
+                  "modelChoices": [
+                    {
+                      "label": {
+                        "key": "models.default"
+                      },
+                      "isDefault": true
+                    },
+                    {
+                      "id": "claude-sonnet-4-5",
+                      "label": {
+                        "literal": "Sonnet 4.5"
+                      },
+                      "selected": true
+                    }
+                  ],
+                  "effortChoices": [
+                    {
+                      "label": {
+                        "key": "models.effort_default"
+                      },
+                      "selected": true,
+                      "isDefault": true
+                    }
+                  ],
+                  "selectedMode": "APPROVAL_MODE_AUTO",
+                  "modeChoices": [
+                    {
+                      "label": {
+                        "key": "settings.follow_configuration",
+                        "args": [
+                          {
+                            "name": "value",
+                            "strValue": "Claude Code"
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "mode": "APPROVAL_MODE_ASK",
+                      "label": {
+                        "key": "modes.ask"
+                      }
+                    },
+                    {
+                      "mode": "APPROVAL_MODE_AUTO",
+                      "label": {
+                        "key": "modes.auto"
+                      },
+                      "selected": true,
+                      "disabled": true,
+                      "disabledReason": {
+                        "key": "modes.account_no_auto"
+                      }
+                    },
+                    {
+                      "mode": "APPROVAL_MODE_FULL_ACCESS",
+                      "label": {
+                        "key": "modes.full_access"
+                      },
+                      "danger": true
+                    }
+                  ],
+                  "autoUnavailableNotice": {
+                    "key": "modes.account_no_auto"
+                  },
+                  "footerText": {
+                    "key": "settings.new_project_defaults_settings",
+                    "args": [
+                      {
+                        "name": "value",
+                        "strValue": "Claude Code"
+                      }
+                    ]
+                  }
+                }
               }
             ],
             "hasUnverifiedCli": true,
@@ -2180,6 +3273,13 @@
                   "disabledReason": {
                     "key": "modes.account_no_auto"
                   }
+                },
+                {
+                  "mode": "APPROVAL_MODE_FULL_ACCESS",
+                  "label": {
+                    "key": "modes.full_access"
+                  },
+                  "danger": true
                 }
               ],
               "autoUnavailableNotice": {
@@ -2444,7 +3544,58 @@
               },
               "footerText": {
                 "key": "settings.attachments_are_stored_on_this_computer_session_files_remain"
-              }
+              },
+              "summaryText": {
+                "key": "settings.storage_summary_reserve",
+                "args": [
+                  {
+                    "name": "used",
+                    "textValue": {
+                      "key": "machine_status.size_mb",
+                      "args": [
+                        {
+                          "name": "size",
+                          "strValue": "110"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "name": "limit",
+                    "textValue": {
+                      "key": "machine_status.size_gb",
+                      "args": [
+                        {
+                          "name": "size",
+                          "strValue": "1"
+                        }
+                      ]
+                    }
+                  }
+                ]
+              },
+              "summaryWarn": true,
+              "usedTotalText": {
+                "key": "machine_status.size_mb",
+                "args": [
+                  {
+                    "name": "size",
+                    "strValue": "110"
+                  }
+                ]
+              },
+              "limitLabel": {
+                "key": "machine_status.size_gb",
+                "args": [
+                  {
+                    "name": "size",
+                    "strValue": "1"
+                  }
+                ]
+              },
+              "uploadedPercent": 10,
+              "previewPercent": 2,
+              "reservePercent": 5
             },
             "projects": [
               {
@@ -2465,7 +3616,44 @@
             "management": {
               "canRemove": true
             },
-            "cliSwitchesEditable": true
+            "cliSwitchesEditable": true,
+            "headerDot": "MACHINE_STATUS_DOT_GREEN_LIVE",
+            "headerSubtitle": {
+              "join": [
+                {
+                  "key": "common.online"
+                },
+                {
+                  "key": "settings.daemon_protocol_tag",
+                  "args": [
+                    {
+                      "name": "version",
+                      "intValue": "17"
+                    }
+                  ]
+                }
+              ],
+              "separatorLiteral": " · "
+            },
+            "statusCardDot": "MACHINE_STATUS_DOT_GREEN_LIVE",
+            "statusCardBadge": {
+              "key": "machine_status.live"
+            },
+            "showUsageEntry": true,
+            "usageEmptyText": {
+              "literal": "—"
+            },
+            "projectCount": 1,
+            "projectCountText": {
+              "key": "settings.project_count_value",
+              "args": [
+                {
+                  "name": "count",
+                  "intValue": "1"
+                }
+              ]
+            },
+            "shortId": "m1"
           }
         }
       }

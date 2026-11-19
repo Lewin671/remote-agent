@@ -588,7 +588,8 @@
     "notes": "诊断页顶部的一句结论。",
     "params": {},
     "platforms": [
-      "web"
+      "web",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -602,7 +603,8 @@
     "notes": "诊断页顶部的一句结论：这一轮曾经连上，后来断了。",
     "params": {},
     "platforms": [
-      "web"
+      "web",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -616,7 +618,8 @@
     "notes": "诊断页顶部的一句结论。",
     "params": {},
     "platforms": [
-      "web"
+      "web",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -630,7 +633,8 @@
     "notes": "诊断页顶部的一句结论：握手消息发出后电脑一直没有回应。",
     "params": {},
     "platforms": [
-      "web"
+      "web",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -644,7 +648,8 @@
     "notes": "诊断页顶部的一句结论：电脑明确回复了不支持。",
     "params": {},
     "platforms": [
-      "web"
+      "web",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -658,7 +663,8 @@
     "notes": "诊断页顶部的一句结论。",
     "params": {},
     "platforms": [
-      "web"
+      "web",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -672,7 +678,8 @@
     "notes": "诊断页顶部的一句结论。",
     "params": {},
     "platforms": [
-      "web"
+      "web",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -686,7 +693,8 @@
     "notes": "诊断页顶部的一句结论：浏览器没有收集到任何网络地址。",
     "params": {},
     "platforms": [
-      "web"
+      "web",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -700,7 +708,8 @@
     "notes": "诊断页顶部的一句结论：STUN 是用来发现本机公网地址的服务。保留 STUN 一词。",
     "params": {},
     "platforms": [
-      "web"
+      "web",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -714,7 +723,8 @@
     "notes": "诊断页顶部的一句结论。",
     "params": {},
     "platforms": [
-      "web"
+      "web",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -728,7 +738,8 @@
     "notes": "诊断页顶部的一句结论：握手通了，但双方的连接描述没有交换完。",
     "params": {},
     "platforms": [
-      "web"
+      "web",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -742,7 +753,8 @@
     "notes": "诊断页顶部的一句结论：两边都给出了公网 IPv6，本机发出的检查一个回应也没收到。",
     "params": {},
     "platforms": [
-      "web"
+      "web",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -756,7 +768,8 @@
     "notes": "诊断页顶部的一句结论。",
     "params": {},
     "platforms": [
-      "web"
+      "web",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -770,7 +783,8 @@
     "notes": "诊断页顶部的一句结论：网络层连上了，DTLS 加密握手没完成。",
     "params": {},
     "platforms": [
-      "web"
+      "web",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -784,7 +798,8 @@
     "notes": "诊断页顶部的一句结论。",
     "params": {},
     "platforms": [
-      "web"
+      "web",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -798,7 +813,8 @@
     "notes": "诊断页顶部的一句结论。",
     "params": {},
     "platforms": [
-      "web"
+      "web",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -812,7 +828,8 @@
     "notes": "诊断页顶部的一句结论：本机同时直连的电脑数已到上限。",
     "params": {},
     "platforms": [
-      "web"
+      "web",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -826,7 +843,8 @@
     "notes": "诊断页顶部的一句结论。",
     "params": {},
     "platforms": [
-      "web"
+      "web",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -840,7 +858,8 @@
     "notes": "诊断页顶部的一句结论：兜底。",
     "params": {},
     "platforms": [
-      "web"
+      "web",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -854,7 +873,8 @@
     "notes": "诊断页分组标题。",
     "params": {},
     "platforms": [
-      "web"
+      "web",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -868,7 +888,8 @@
     "notes": "诊断页分组标题：电脑通过中继告诉本机的候选地址。",
     "params": {},
     "platforms": [
-      "web"
+      "web",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -882,7 +903,8 @@
     "notes": "诊断页分组标题：双方地址两两配对后的检查。",
     "params": {},
     "platforms": [
-      "web"
+      "web",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -896,7 +918,8 @@
     "notes": "诊断页分组标题：停在哪一步，以及最近几次的结果。",
     "params": {},
     "platforms": [
-      "web"
+      "web",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -910,7 +933,8 @@
     "notes": "行名。",
     "params": {},
     "platforms": [
-      "web"
+      "web",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -924,7 +948,8 @@
     "notes": "行名。",
     "params": {},
     "platforms": [
-      "web"
+      "web",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -938,7 +963,8 @@
     "notes": "行名：浏览器用 mDNS 名字代替了局域网地址，对方看不到具体地址。值是个数。",
     "params": {},
     "platforms": [
-      "web"
+      "web",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -952,7 +978,8 @@
     "notes": "行名：值是错误码和个数。",
     "params": {},
     "platforms": [
-      "web"
+      "web",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -966,7 +993,8 @@
     "notes": "行名：电脑发来、被本机校验或浏览器拒绝的地址或连接信息。",
     "params": {},
     "platforms": [
-      "web"
+      "web",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -980,7 +1008,8 @@
     "notes": "行名：浏览器收集本机地址的过程，值是状态与时间。",
     "params": {},
     "platforms": [
-      "web"
+      "web",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -994,7 +1023,8 @@
     "notes": "行名：连通检查的状态与时间。ICE 是术语，保留。",
     "params": {},
     "platforms": [
-      "web"
+      "web",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -1008,7 +1038,8 @@
     "notes": "行名。",
     "params": {},
     "platforms": [
-      "web"
+      "web",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -1022,7 +1053,8 @@
     "notes": "行名。",
     "params": {},
     "platforms": [
-      "web"
+      "web",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -1036,7 +1068,8 @@
     "notes": "行名：这一轮卡在哪一步，值是 diag_stage_* 之一。",
     "params": {},
     "platforms": [
-      "web"
+      "web",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -1050,7 +1083,8 @@
     "notes": "行名：值是被限速或没送到的次数。",
     "params": {},
     "platforms": [
-      "web"
+      "web",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -1064,7 +1098,8 @@
     "notes": "值：这一族一个地址也没有。",
     "params": {},
     "platforms": [
-      "web"
+      "web",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -1078,7 +1113,8 @@
     "notes": "行名：这一轮没走到创建连接这一步，值用「—」。",
     "params": {},
     "platforms": [
-      "web"
+      "web",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -1092,7 +1128,8 @@
     "notes": "行名：连通检查的数据没读到。",
     "params": {},
     "platforms": [
-      "web"
+      "web",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -1111,7 +1148,8 @@
       }
     },
     "platforms": [
-      "web"
+      "web",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -1125,7 +1163,8 @@
     "notes": "两条直连通道之一的名字：用于加载会话和列表。",
     "params": {},
     "platforms": [
-      "web"
+      "web",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -1139,7 +1178,8 @@
     "notes": "两条直连通道之一的名字：用于文件传输。",
     "params": {},
     "platforms": [
-      "web"
+      "web",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -1153,7 +1193,8 @@
     "notes": "候选地址类型 host：来自本机网卡的地址。",
     "params": {},
     "platforms": [
-      "web"
+      "web",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -1167,7 +1208,8 @@
     "notes": "候选地址类型 srflx：STUN 看到的公网地址。",
     "params": {},
     "platforms": [
-      "web"
+      "web",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -1181,7 +1223,8 @@
     "notes": "候选地址类型 prflx：检查过程中学到的地址。",
     "params": {},
     "platforms": [
-      "web"
+      "web",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -1195,7 +1238,8 @@
     "notes": "候选地址类型 relay。",
     "params": {},
     "platforms": [
-      "web"
+      "web",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -1209,7 +1253,8 @@
     "notes": "无法识别的候选类型。",
     "params": {},
     "platforms": [
-      "web"
+      "web",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -1223,7 +1268,8 @@
     "notes": "IPv4 范围：10.x、172.16–31.x、192.168.x。小写词，放在括号里。",
     "params": {},
     "platforms": [
-      "web"
+      "web",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -1237,7 +1283,8 @@
     "notes": "IPv4 范围。",
     "params": {},
     "platforms": [
-      "web"
+      "web",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -1251,7 +1298,8 @@
     "notes": "IPv4 范围：100.64.0.0/10，运营商级 NAT。",
     "params": {},
     "platforms": [
-      "web"
+      "web",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -1265,7 +1313,8 @@
     "notes": "地址范围：169.254.x 或 fe80::。",
     "params": {},
     "platforms": [
-      "web"
+      "web",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -1279,7 +1328,8 @@
     "notes": "地址范围：127.x 或 ::1。",
     "params": {},
     "platforms": [
-      "web"
+      "web",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -1293,7 +1343,8 @@
     "notes": "IPv6 范围：2000::/3，公网可路由。",
     "params": {},
     "platforms": [
-      "web"
+      "web",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -1307,7 +1358,8 @@
     "notes": "IPv6 范围：fc00::/7。",
     "params": {},
     "platforms": [
-      "web"
+      "web",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -1321,7 +1373,8 @@
     "notes": "无法归类的地址范围。",
     "params": {},
     "platforms": [
-      "web"
+      "web",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -1348,7 +1401,8 @@
       }
     },
     "platforms": [
-      "web"
+      "web",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -1371,7 +1425,8 @@
       }
     },
     "platforms": [
-      "web"
+      "web",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -1390,7 +1445,8 @@
       }
     },
     "platforms": [
-      "web"
+      "web",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -1409,7 +1465,8 @@
       }
     },
     "platforms": [
-      "web"
+      "web",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -1428,7 +1485,8 @@
       }
     },
     "platforms": [
-      "web"
+      "web",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -1451,7 +1509,8 @@
       }
     },
     "platforms": [
-      "web"
+      "web",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -1470,7 +1529,8 @@
       }
     },
     "platforms": [
-      "web"
+      "web",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -1484,7 +1544,8 @@
     "notes": "状态词。",
     "params": {},
     "platforms": [
-      "web"
+      "web",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -1498,7 +1559,8 @@
     "notes": "状态词。",
     "params": {},
     "platforms": [
-      "web"
+      "web",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -1512,7 +1574,8 @@
     "notes": "状态词。",
     "params": {},
     "platforms": [
-      "web"
+      "web",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -1526,7 +1589,8 @@
     "notes": "状态词。",
     "params": {},
     "platforms": [
-      "web"
+      "web",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -1540,7 +1604,8 @@
     "notes": "状态词。",
     "params": {},
     "platforms": [
-      "web"
+      "web",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -1554,7 +1619,8 @@
     "notes": "状态词。",
     "params": {},
     "platforms": [
-      "web"
+      "web",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -1577,7 +1643,8 @@
       }
     },
     "platforms": [
-      "web"
+      "web",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -1591,7 +1658,8 @@
     "notes": "这一轮停在的步骤。",
     "params": {},
     "platforms": [
-      "web"
+      "web",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -1605,7 +1673,8 @@
     "notes": "这一轮停在的步骤。",
     "params": {},
     "platforms": [
-      "web"
+      "web",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -1619,7 +1688,8 @@
     "notes": "这一轮停在的步骤。",
     "params": {},
     "platforms": [
-      "web"
+      "web",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -1633,7 +1703,8 @@
     "notes": "这一轮停在的步骤。",
     "params": {},
     "platforms": [
-      "web"
+      "web",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -1647,7 +1718,8 @@
     "notes": "这一轮停在的步骤。",
     "params": {},
     "platforms": [
-      "web"
+      "web",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -1661,7 +1733,8 @@
     "notes": "这一轮停在的步骤。",
     "params": {},
     "platforms": [
-      "web"
+      "web",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -1675,7 +1748,8 @@
     "notes": "这一轮走完了全部步骤。",
     "params": {},
     "platforms": [
-      "web"
+      "web",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -1694,7 +1768,8 @@
       }
     },
     "platforms": [
-      "web"
+      "web",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -1713,7 +1788,8 @@
       }
     },
     "platforms": [
-      "web"
+      "web",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -1727,7 +1803,8 @@
     "notes": "电脑对握手消息回复了不支持。",
     "params": {},
     "platforms": [
-      "web"
+      "web",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -1741,7 +1818,8 @@
     "notes": "被拒绝的消息种类。",
     "params": {},
     "platforms": [
-      "web"
+      "web",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -1755,7 +1833,8 @@
     "notes": "被拒绝的消息种类。",
     "params": {},
     "platforms": [
-      "web"
+      "web",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -1769,7 +1848,8 @@
     "notes": "被拒绝的消息种类。",
     "params": {},
     "platforms": [
-      "web"
+      "web",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -1783,7 +1863,8 @@
     "notes": "被拒绝的消息种类。",
     "params": {},
     "platforms": [
-      "web"
+      "web",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -1797,7 +1878,8 @@
     "notes": "被拒绝的消息种类。",
     "params": {},
     "platforms": [
-      "web"
+      "web",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -1811,7 +1893,8 @@
     "notes": "被拒绝的消息种类：浏览器拒绝添加电脑的候选地址。",
     "params": {},
     "platforms": [
-      "web"
+      "web",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -1838,7 +1921,8 @@
       }
     },
     "platforms": [
-      "web"
+      "web",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -1865,7 +1949,8 @@
       }
     },
     "platforms": [
-      "web"
+      "web",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -1879,7 +1964,8 @@
     "notes": "地址族未知。",
     "params": {},
     "platforms": [
-      "web"
+      "web",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -1893,7 +1979,8 @@
     "notes": "最近几次尝试的结果词。",
     "params": {},
     "platforms": [
-      "web"
+      "web",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -1907,7 +1994,8 @@
     "notes": "最近几次尝试的结果词。",
     "params": {},
     "platforms": [
-      "web"
+      "web",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -1921,7 +2009,8 @@
     "notes": "最近几次尝试的结果词。",
     "params": {},
     "platforms": [
-      "web"
+      "web",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -1935,7 +2024,8 @@
     "notes": "最近几次尝试的结果词。",
     "params": {},
     "platforms": [
-      "web"
+      "web",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -1949,7 +2039,8 @@
     "notes": "最近几次尝试的结果词。",
     "params": {},
     "platforms": [
-      "web"
+      "web",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -1963,7 +2054,8 @@
     "notes": "最近几次尝试的结果词。",
     "params": {},
     "platforms": [
-      "web"
+      "web",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -1977,7 +2069,8 @@
     "notes": "最近几次尝试的结果词。",
     "params": {},
     "platforms": [
-      "web"
+      "web",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -1991,7 +2084,8 @@
     "notes": "最近几次尝试的结果词。",
     "params": {},
     "platforms": [
-      "web"
+      "web",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -2014,7 +2108,8 @@
       }
     },
     "platforms": [
-      "web"
+      "web",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -2029,7 +2124,8 @@
     "params": {},
     "platforms": [
       "web",
-      "android"
+      "android",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -2049,7 +2145,8 @@
     },
     "platforms": [
       "web",
-      "android"
+      "android",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -2068,7 +2165,8 @@
       }
     },
     "platforms": [
-      "web"
+      "web",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -2091,7 +2189,8 @@
       }
     },
     "platforms": [
-      "web"
+      "web",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -2270,7 +2369,8 @@
     "notes": "Android 连接检测页面整体不支持直连时的末尾补充说明。",
     "params": {},
     "platforms": [
-      "android"
+      "android",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -2299,7 +2399,8 @@
     "params": {},
     "platforms": [
       "web",
-      "android"
+      "android",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -2319,7 +2420,8 @@
     },
     "platforms": [
       "web",
-      "android"
+      "android",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -2343,7 +2445,8 @@
     },
     "platforms": [
       "web",
-      "android"
+      "android",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -2363,7 +2466,8 @@
     },
     "platforms": [
       "web",
-      "android"
+      "android",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -2387,7 +2491,8 @@
     },
     "platforms": [
       "web",
-      "android"
+      "android",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -2402,7 +2507,8 @@
     "params": {},
     "platforms": [
       "web",
-      "android"
+      "android",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -2417,7 +2523,8 @@
     "params": {},
     "platforms": [
       "web",
-      "android"
+      "android",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -2432,7 +2539,8 @@
     "params": {},
     "platforms": [
       "web",
-      "android"
+      "android",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -2447,7 +2555,8 @@
     "params": {},
     "platforms": [
       "web",
-      "android"
+      "android",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -2462,7 +2571,8 @@
     "params": {},
     "platforms": [
       "web",
-      "android"
+      "android",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -2477,7 +2587,8 @@
     "params": {},
     "platforms": [
       "web",
-      "android"
+      "android",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -2492,7 +2603,8 @@
     "params": {},
     "platforms": [
       "web",
-      "android"
+      "android",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -2522,7 +2634,8 @@
     "params": {},
     "platforms": [
       "web",
-      "android"
+      "android",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -2537,7 +2650,8 @@
     "params": {},
     "platforms": [
       "web",
-      "android"
+      "android",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -2552,7 +2666,8 @@
     "params": {},
     "platforms": [
       "web",
-      "android"
+      "android",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -2567,7 +2682,8 @@
     "params": {},
     "platforms": [
       "web",
-      "android"
+      "android",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -2582,7 +2698,8 @@
     "params": {},
     "platforms": [
       "web",
-      "android"
+      "android",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -2597,7 +2714,8 @@
     "params": {},
     "platforms": [
       "web",
-      "android"
+      "android",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -2612,7 +2730,8 @@
     "params": {},
     "platforms": [
       "web",
-      "android"
+      "android",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -2627,7 +2746,8 @@
     "params": {},
     "platforms": [
       "web",
-      "android"
+      "android",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -2642,7 +2762,8 @@
     "params": {},
     "platforms": [
       "web",
-      "android"
+      "android",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -2657,7 +2778,8 @@
     "params": {},
     "platforms": [
       "web",
-      "android"
+      "android",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -2672,7 +2794,8 @@
     "params": {},
     "platforms": [
       "web",
-      "android"
+      "android",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -2687,7 +2810,8 @@
     "params": {},
     "platforms": [
       "web",
-      "android"
+      "android",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -2702,7 +2826,8 @@
     "params": {},
     "platforms": [
       "web",
-      "android"
+      "android",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -2717,7 +2842,8 @@
     "params": {},
     "platforms": [
       "web",
-      "android"
+      "android",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -2732,7 +2858,8 @@
     "params": {},
     "platforms": [
       "web",
-      "android"
+      "android",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -2747,7 +2874,8 @@
     "params": {},
     "platforms": [
       "web",
-      "android"
+      "android",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -2762,7 +2890,8 @@
     "params": {},
     "platforms": [
       "web",
-      "android"
+      "android",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -2777,7 +2906,8 @@
     "params": {},
     "platforms": [
       "web",
-      "android"
+      "android",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -2792,7 +2922,8 @@
     "params": {},
     "platforms": [
       "web",
-      "android"
+      "android",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -2807,7 +2938,8 @@
     "params": {},
     "platforms": [
       "web",
-      "android"
+      "android",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -2822,7 +2954,8 @@
     "params": {},
     "platforms": [
       "web",
-      "android"
+      "android",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -2837,7 +2970,8 @@
     "params": {},
     "platforms": [
       "web",
-      "android"
+      "android",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -2852,7 +2986,8 @@
     "params": {},
     "platforms": [
       "web",
-      "android"
+      "android",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -2867,7 +3002,8 @@
     "params": {},
     "platforms": [
       "web",
-      "android"
+      "android",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -2882,7 +3018,8 @@
     "params": {},
     "platforms": [
       "web",
-      "android"
+      "android",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -2897,7 +3034,8 @@
     "params": {},
     "platforms": [
       "web",
-      "android"
+      "android",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -2912,7 +3050,8 @@
     "params": {},
     "platforms": [
       "web",
-      "android"
+      "android",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -2927,7 +3066,8 @@
     "params": {},
     "platforms": [
       "web",
-      "android"
+      "android",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -2942,7 +3082,8 @@
     "params": {},
     "platforms": [
       "web",
-      "android"
+      "android",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -2957,7 +3098,8 @@
     "params": {},
     "platforms": [
       "web",
-      "android"
+      "android",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -2972,7 +3114,8 @@
     "params": {},
     "platforms": [
       "web",
-      "android"
+      "android",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -2987,7 +3130,8 @@
     "params": {},
     "platforms": [
       "web",
-      "android"
+      "android",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -3002,7 +3146,194 @@
     "params": {},
     "platforms": [
       "web",
-      "android"
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.row_using_direct_ms",
+    "zh-CN": "正在使用 · {ms} ms",
+    "en": "Direct · {ms} ms",
+    "notes": "电脑页「运行与存储 › 直连」行尾绿点旁摘要。",
+    "params": {
+      "ms": {
+        "type": "string",
+        "example": "14"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.row_using_direct",
+    "zh-CN": "正在使用",
+    "en": "Direct",
+    "notes": "直连已通但暂无延迟样本时行尾摘要。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.row_relay_ms",
+    "zh-CN": "中继 · {ms} ms",
+    "en": "Relay · {ms} ms",
+    "notes": "电脑页「直连」行尾：走中继且有往返延迟。",
+    "params": {
+      "ms": {
+        "type": "string",
+        "example": "184"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.row_relay",
+    "zh-CN": "中继",
+    "en": "Relay",
+    "notes": "电脑页「直连」行尾：走中继且暂无延迟。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.row_off",
+    "zh-CN": "已关闭",
+    "en": "Off",
+    "notes": "电脑页「直连」行尾：允许直连开关已关闭。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.row_unavailable",
+    "zh-CN": "不可用",
+    "en": "Unavailable",
+    "notes": "电脑页「直连」行尾：协议不匹配或浏览器/客户端不支持直连。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.row_allow_direct",
+    "zh-CN": "允许直连",
+    "en": "Allow direct connection",
+    "notes": "统一「直连」弹层顶部开关名称。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.row_retry_direct",
+    "zh-CN": "重新尝试直连",
+    "en": "Retry direct connection",
+    "notes": "统一「直连」弹层主按钮：立即重试直连。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.row_diag_copied",
+    "zh-CN": "已复制脱敏诊断",
+    "en": "Sanitized diagnostics copied",
+    "notes": "复制脱敏诊断按钮成功反馈态文字。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.row_diag_copy_support",
+    "zh-CN": "复制诊断给支持",
+    "en": "Copy diagnostics for support",
+    "notes": "统一「直连」弹层复制脱敏诊断操作按钮文字。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_section_auto",
+    "zh-CN": "自动排障检查",
+    "en": "Automatic check",
+    "notes": "直连未打通时同一弹层下半部三行自检卡片的分组标题。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",

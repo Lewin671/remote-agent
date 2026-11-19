@@ -24,6 +24,7 @@ public  final class MachineSettingsViewModel extends
     approvalTimeoutChoices_ = emptyProtobufList();
     idleCloseChoices_ = emptyProtobufList();
     projects_ = emptyProtobufList();
+    shortId_ = "";
   }
   private int bitField0_;
   public static final int MACHINE_ID_FIELD_NUMBER = 1;
@@ -1847,6 +1848,486 @@ public  final class MachineSettingsViewModel extends
   private void clearCliSwitchesFooter() {
     cliSwitchesFooter_ = null;
     bitField0_ = (bitField0_ & ~0x00000400);
+  }
+
+  public static final int HEADER_DOT_FIELD_NUMBER = 39;
+  private int headerDot_;
+  /**
+   * <code>.remoteagent.core.v1.MachineStatusDot header_dot = 39 [json_name = "headerDot"];</code>
+   * @return The enum numeric value on the wire for headerDot.
+   */
+  @java.lang.Override
+  public int getHeaderDotValue() {
+    return headerDot_;
+  }
+  /**
+   * <code>.remoteagent.core.v1.MachineStatusDot header_dot = 39 [json_name = "headerDot"];</code>
+   * @return The headerDot.
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.MachineStatusDot getHeaderDot() {
+    io.github.lewin671.remoteagent.core.proto.MachineStatusDot result = io.github.lewin671.remoteagent.core.proto.MachineStatusDot.forNumber(headerDot_);
+    return result == null ? io.github.lewin671.remoteagent.core.proto.MachineStatusDot.UNRECOGNIZED : result;
+  }
+  /**
+   * <code>.remoteagent.core.v1.MachineStatusDot header_dot = 39 [json_name = "headerDot"];</code>
+   * @param value The enum numeric value on the wire for headerDot to set.
+   */
+  private void setHeaderDotValue(int value) {
+      headerDot_ = value;
+  }
+  /**
+   * <code>.remoteagent.core.v1.MachineStatusDot header_dot = 39 [json_name = "headerDot"];</code>
+   * @param value The headerDot to set.
+   */
+  private void setHeaderDot(io.github.lewin671.remoteagent.core.proto.MachineStatusDot value) {
+    headerDot_ = value.getNumber();
+
+  }
+  /**
+   * <code>.remoteagent.core.v1.MachineStatusDot header_dot = 39 [json_name = "headerDot"];</code>
+   */
+  private void clearHeaderDot() {
+
+    headerDot_ = 0;
+  }
+
+  public static final int HEADER_SUBTITLE_FIELD_NUMBER = 40;
+  private io.github.lewin671.remoteagent.core.proto.Text headerSubtitle_;
+  /**
+   * <code>.remoteagent.core.v1.Text header_subtitle = 40 [json_name = "headerSubtitle"];</code>
+   */
+  @java.lang.Override
+  public boolean hasHeaderSubtitle() {
+    return ((bitField0_ & 0x00000800) != 0);
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text header_subtitle = 40 [json_name = "headerSubtitle"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.Text getHeaderSubtitle() {
+    return headerSubtitle_ == null ? io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance() : headerSubtitle_;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text header_subtitle = 40 [json_name = "headerSubtitle"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setHeaderSubtitle(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    headerSubtitle_ = value;
+    bitField0_ |= 0x00000800;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text header_subtitle = 40 [json_name = "headerSubtitle"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeHeaderSubtitle(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    if (headerSubtitle_ != null &&
+        headerSubtitle_ != io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance()) {
+      headerSubtitle_ =
+        io.github.lewin671.remoteagent.core.proto.Text.newBuilder(headerSubtitle_).mergeFrom(value).buildPartial();
+    } else {
+      headerSubtitle_ = value;
+    }
+    bitField0_ |= 0x00000800;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text header_subtitle = 40 [json_name = "headerSubtitle"];</code>
+   */
+  private void clearHeaderSubtitle() {
+    headerSubtitle_ = null;
+    bitField0_ = (bitField0_ & ~0x00000800);
+  }
+
+  public static final int STATUS_CARD_DOT_FIELD_NUMBER = 41;
+  private int statusCardDot_;
+  /**
+   * <code>.remoteagent.core.v1.MachineStatusDot status_card_dot = 41 [json_name = "statusCardDot"];</code>
+   * @return The enum numeric value on the wire for statusCardDot.
+   */
+  @java.lang.Override
+  public int getStatusCardDotValue() {
+    return statusCardDot_;
+  }
+  /**
+   * <code>.remoteagent.core.v1.MachineStatusDot status_card_dot = 41 [json_name = "statusCardDot"];</code>
+   * @return The statusCardDot.
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.MachineStatusDot getStatusCardDot() {
+    io.github.lewin671.remoteagent.core.proto.MachineStatusDot result = io.github.lewin671.remoteagent.core.proto.MachineStatusDot.forNumber(statusCardDot_);
+    return result == null ? io.github.lewin671.remoteagent.core.proto.MachineStatusDot.UNRECOGNIZED : result;
+  }
+  /**
+   * <code>.remoteagent.core.v1.MachineStatusDot status_card_dot = 41 [json_name = "statusCardDot"];</code>
+   * @param value The enum numeric value on the wire for statusCardDot to set.
+   */
+  private void setStatusCardDotValue(int value) {
+      statusCardDot_ = value;
+  }
+  /**
+   * <code>.remoteagent.core.v1.MachineStatusDot status_card_dot = 41 [json_name = "statusCardDot"];</code>
+   * @param value The statusCardDot to set.
+   */
+  private void setStatusCardDot(io.github.lewin671.remoteagent.core.proto.MachineStatusDot value) {
+    statusCardDot_ = value.getNumber();
+
+  }
+  /**
+   * <code>.remoteagent.core.v1.MachineStatusDot status_card_dot = 41 [json_name = "statusCardDot"];</code>
+   */
+  private void clearStatusCardDot() {
+
+    statusCardDot_ = 0;
+  }
+
+  public static final int STATUS_CARD_BADGE_FIELD_NUMBER = 42;
+  private io.github.lewin671.remoteagent.core.proto.Text statusCardBadge_;
+  /**
+   * <code>.remoteagent.core.v1.Text status_card_badge = 42 [json_name = "statusCardBadge"];</code>
+   */
+  @java.lang.Override
+  public boolean hasStatusCardBadge() {
+    return ((bitField0_ & 0x00001000) != 0);
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text status_card_badge = 42 [json_name = "statusCardBadge"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.Text getStatusCardBadge() {
+    return statusCardBadge_ == null ? io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance() : statusCardBadge_;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text status_card_badge = 42 [json_name = "statusCardBadge"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setStatusCardBadge(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    statusCardBadge_ = value;
+    bitField0_ |= 0x00001000;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text status_card_badge = 42 [json_name = "statusCardBadge"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeStatusCardBadge(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    if (statusCardBadge_ != null &&
+        statusCardBadge_ != io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance()) {
+      statusCardBadge_ =
+        io.github.lewin671.remoteagent.core.proto.Text.newBuilder(statusCardBadge_).mergeFrom(value).buildPartial();
+    } else {
+      statusCardBadge_ = value;
+    }
+    bitField0_ |= 0x00001000;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text status_card_badge = 42 [json_name = "statusCardBadge"];</code>
+   */
+  private void clearStatusCardBadge() {
+    statusCardBadge_ = null;
+    bitField0_ = (bitField0_ & ~0x00001000);
+  }
+
+  public static final int STATUS_CARD_WARN_FIELD_NUMBER = 43;
+  private boolean statusCardWarn_;
+  /**
+   * <code>bool status_card_warn = 43 [json_name = "statusCardWarn"];</code>
+   * @return The statusCardWarn.
+   */
+  @java.lang.Override
+  public boolean getStatusCardWarn() {
+    return statusCardWarn_;
+  }
+  /**
+   * <code>bool status_card_warn = 43 [json_name = "statusCardWarn"];</code>
+   * @param value The statusCardWarn to set.
+   */
+  private void setStatusCardWarn(boolean value) {
+    
+    statusCardWarn_ = value;
+  }
+  /**
+   * <code>bool status_card_warn = 43 [json_name = "statusCardWarn"];</code>
+   */
+  private void clearStatusCardWarn() {
+
+    statusCardWarn_ = false;
+  }
+
+  public static final int SHOW_USAGE_ENTRY_FIELD_NUMBER = 44;
+  private boolean showUsageEntry_;
+  /**
+   * <code>bool show_usage_entry = 44 [json_name = "showUsageEntry"];</code>
+   * @return The showUsageEntry.
+   */
+  @java.lang.Override
+  public boolean getShowUsageEntry() {
+    return showUsageEntry_;
+  }
+  /**
+   * <code>bool show_usage_entry = 44 [json_name = "showUsageEntry"];</code>
+   * @param value The showUsageEntry to set.
+   */
+  private void setShowUsageEntry(boolean value) {
+    
+    showUsageEntry_ = value;
+  }
+  /**
+   * <code>bool show_usage_entry = 44 [json_name = "showUsageEntry"];</code>
+   */
+  private void clearShowUsageEntry() {
+
+    showUsageEntry_ = false;
+  }
+
+  public static final int USAGE_TOTAL_TOKENS_FIELD_NUMBER = 45;
+  private long usageTotalTokens_;
+  /**
+   * <code>uint64 usage_total_tokens = 45 [json_name = "usageTotalTokens"];</code>
+   * @return The usageTotalTokens.
+   */
+  @java.lang.Override
+  public long getUsageTotalTokens() {
+    return usageTotalTokens_;
+  }
+  /**
+   * <code>uint64 usage_total_tokens = 45 [json_name = "usageTotalTokens"];</code>
+   * @param value The usageTotalTokens to set.
+   */
+  private void setUsageTotalTokens(long value) {
+    
+    usageTotalTokens_ = value;
+  }
+  /**
+   * <code>uint64 usage_total_tokens = 45 [json_name = "usageTotalTokens"];</code>
+   */
+  private void clearUsageTotalTokens() {
+
+    usageTotalTokens_ = 0L;
+  }
+
+  public static final int USAGE_FALLBACK_THIRTY_DAYS_FIELD_NUMBER = 46;
+  private boolean usageFallbackThirtyDays_;
+  /**
+   * <code>bool usage_fallback_thirty_days = 46 [json_name = "usageFallbackThirtyDays"];</code>
+   * @return The usageFallbackThirtyDays.
+   */
+  @java.lang.Override
+  public boolean getUsageFallbackThirtyDays() {
+    return usageFallbackThirtyDays_;
+  }
+  /**
+   * <code>bool usage_fallback_thirty_days = 46 [json_name = "usageFallbackThirtyDays"];</code>
+   * @param value The usageFallbackThirtyDays to set.
+   */
+  private void setUsageFallbackThirtyDays(boolean value) {
+    
+    usageFallbackThirtyDays_ = value;
+  }
+  /**
+   * <code>bool usage_fallback_thirty_days = 46 [json_name = "usageFallbackThirtyDays"];</code>
+   */
+  private void clearUsageFallbackThirtyDays() {
+
+    usageFallbackThirtyDays_ = false;
+  }
+
+  public static final int USAGE_CACHED_OFFLINE_FIELD_NUMBER = 47;
+  private boolean usageCachedOffline_;
+  /**
+   * <code>bool usage_cached_offline = 47 [json_name = "usageCachedOffline"];</code>
+   * @return The usageCachedOffline.
+   */
+  @java.lang.Override
+  public boolean getUsageCachedOffline() {
+    return usageCachedOffline_;
+  }
+  /**
+   * <code>bool usage_cached_offline = 47 [json_name = "usageCachedOffline"];</code>
+   * @param value The usageCachedOffline to set.
+   */
+  private void setUsageCachedOffline(boolean value) {
+    
+    usageCachedOffline_ = value;
+  }
+  /**
+   * <code>bool usage_cached_offline = 47 [json_name = "usageCachedOffline"];</code>
+   */
+  private void clearUsageCachedOffline() {
+
+    usageCachedOffline_ = false;
+  }
+
+  public static final int USAGE_EMPTY_TEXT_FIELD_NUMBER = 48;
+  private io.github.lewin671.remoteagent.core.proto.Text usageEmptyText_;
+  /**
+   * <code>.remoteagent.core.v1.Text usage_empty_text = 48 [json_name = "usageEmptyText"];</code>
+   */
+  @java.lang.Override
+  public boolean hasUsageEmptyText() {
+    return ((bitField0_ & 0x00002000) != 0);
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text usage_empty_text = 48 [json_name = "usageEmptyText"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.Text getUsageEmptyText() {
+    return usageEmptyText_ == null ? io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance() : usageEmptyText_;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text usage_empty_text = 48 [json_name = "usageEmptyText"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setUsageEmptyText(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    usageEmptyText_ = value;
+    bitField0_ |= 0x00002000;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text usage_empty_text = 48 [json_name = "usageEmptyText"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeUsageEmptyText(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    if (usageEmptyText_ != null &&
+        usageEmptyText_ != io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance()) {
+      usageEmptyText_ =
+        io.github.lewin671.remoteagent.core.proto.Text.newBuilder(usageEmptyText_).mergeFrom(value).buildPartial();
+    } else {
+      usageEmptyText_ = value;
+    }
+    bitField0_ |= 0x00002000;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text usage_empty_text = 48 [json_name = "usageEmptyText"];</code>
+   */
+  private void clearUsageEmptyText() {
+    usageEmptyText_ = null;
+    bitField0_ = (bitField0_ & ~0x00002000);
+  }
+
+  public static final int PROJECT_COUNT_FIELD_NUMBER = 49;
+  private int projectCount_;
+  /**
+   * <code>int32 project_count = 49 [json_name = "projectCount"];</code>
+   * @return The projectCount.
+   */
+  @java.lang.Override
+  public int getProjectCount() {
+    return projectCount_;
+  }
+  /**
+   * <code>int32 project_count = 49 [json_name = "projectCount"];</code>
+   * @param value The projectCount to set.
+   */
+  private void setProjectCount(int value) {
+    
+    projectCount_ = value;
+  }
+  /**
+   * <code>int32 project_count = 49 [json_name = "projectCount"];</code>
+   */
+  private void clearProjectCount() {
+
+    projectCount_ = 0;
+  }
+
+  public static final int PROJECT_COUNT_TEXT_FIELD_NUMBER = 50;
+  private io.github.lewin671.remoteagent.core.proto.Text projectCountText_;
+  /**
+   * <code>.remoteagent.core.v1.Text project_count_text = 50 [json_name = "projectCountText"];</code>
+   */
+  @java.lang.Override
+  public boolean hasProjectCountText() {
+    return ((bitField0_ & 0x00004000) != 0);
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text project_count_text = 50 [json_name = "projectCountText"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.Text getProjectCountText() {
+    return projectCountText_ == null ? io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance() : projectCountText_;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text project_count_text = 50 [json_name = "projectCountText"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setProjectCountText(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    projectCountText_ = value;
+    bitField0_ |= 0x00004000;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text project_count_text = 50 [json_name = "projectCountText"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeProjectCountText(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    if (projectCountText_ != null &&
+        projectCountText_ != io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance()) {
+      projectCountText_ =
+        io.github.lewin671.remoteagent.core.proto.Text.newBuilder(projectCountText_).mergeFrom(value).buildPartial();
+    } else {
+      projectCountText_ = value;
+    }
+    bitField0_ |= 0x00004000;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text project_count_text = 50 [json_name = "projectCountText"];</code>
+   */
+  private void clearProjectCountText() {
+    projectCountText_ = null;
+    bitField0_ = (bitField0_ & ~0x00004000);
+  }
+
+  public static final int SHORT_ID_FIELD_NUMBER = 51;
+  private java.lang.String shortId_;
+  /**
+   * <code>string short_id = 51 [json_name = "shortId"];</code>
+   * @return The shortId.
+   */
+  @java.lang.Override
+  public java.lang.String getShortId() {
+    return shortId_;
+  }
+  /**
+   * <code>string short_id = 51 [json_name = "shortId"];</code>
+   * @return The bytes for shortId.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString
+      getShortIdBytes() {
+    return com.google.protobuf.ByteString.copyFromUtf8(shortId_);
+  }
+  /**
+   * <code>string short_id = 51 [json_name = "shortId"];</code>
+   * @param value The shortId to set.
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setShortId(
+      java.lang.String value) {
+    value.getClass();  // minimal bytecode null check
+
+    shortId_ = value;
+  }
+  /**
+   * <code>string short_id = 51 [json_name = "shortId"];</code>
+   */
+  private void clearShortId() {
+
+    shortId_ = getDefaultInstance().getShortId();
+  }
+  /**
+   * <code>string short_id = 51 [json_name = "shortId"];</code>
+   * @param value The bytes for shortId to set.
+   */
+  private void setShortIdBytes(
+      com.google.protobuf.ByteString value) {
+    checkByteStringIsUtf8(value);
+    shortId_ = value.toStringUtf8();
+
   }
 
   public static io.github.lewin671.remoteagent.core.proto.MachineSettingsViewModel parseFrom(
@@ -3814,6 +4295,503 @@ public  final class MachineSettingsViewModel extends
       return this;
     }
 
+    /**
+     * <code>.remoteagent.core.v1.MachineStatusDot header_dot = 39 [json_name = "headerDot"];</code>
+     * @return The enum numeric value on the wire for headerDot.
+     */
+    @java.lang.Override
+    public int getHeaderDotValue() {
+      return instance.getHeaderDotValue();
+    }
+    /**
+     * <code>.remoteagent.core.v1.MachineStatusDot header_dot = 39 [json_name = "headerDot"];</code>
+     * @param value The headerDot to set.
+     * @return This builder for chaining.
+     */
+    public Builder setHeaderDotValue(int value) {
+      copyOnWrite();
+      instance.setHeaderDotValue(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.MachineStatusDot header_dot = 39 [json_name = "headerDot"];</code>
+     * @return The headerDot.
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.MachineStatusDot getHeaderDot() {
+      return instance.getHeaderDot();
+    }
+    /**
+     * <code>.remoteagent.core.v1.MachineStatusDot header_dot = 39 [json_name = "headerDot"];</code>
+     * @param value The enum numeric value on the wire for headerDot to set.
+     * @return This builder for chaining.
+     */
+    public Builder setHeaderDot(io.github.lewin671.remoteagent.core.proto.MachineStatusDot value) {
+      copyOnWrite();
+      instance.setHeaderDot(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.MachineStatusDot header_dot = 39 [json_name = "headerDot"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearHeaderDot() {
+      copyOnWrite();
+      instance.clearHeaderDot();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.Text header_subtitle = 40 [json_name = "headerSubtitle"];</code>
+     */
+    @java.lang.Override
+    public boolean hasHeaderSubtitle() {
+      return instance.hasHeaderSubtitle();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text header_subtitle = 40 [json_name = "headerSubtitle"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.Text getHeaderSubtitle() {
+      return instance.getHeaderSubtitle();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text header_subtitle = 40 [json_name = "headerSubtitle"];</code>
+     */
+    public Builder setHeaderSubtitle(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.setHeaderSubtitle(value);
+      return this;
+      }
+    /**
+     * <code>.remoteagent.core.v1.Text header_subtitle = 40 [json_name = "headerSubtitle"];</code>
+     */
+    public Builder setHeaderSubtitle(
+        io.github.lewin671.remoteagent.core.proto.Text.Builder builderForValue) {
+      copyOnWrite();
+      instance.setHeaderSubtitle(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text header_subtitle = 40 [json_name = "headerSubtitle"];</code>
+     */
+    public Builder mergeHeaderSubtitle(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.mergeHeaderSubtitle(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text header_subtitle = 40 [json_name = "headerSubtitle"];</code>
+     */
+    public Builder clearHeaderSubtitle() {  copyOnWrite();
+      instance.clearHeaderSubtitle();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.MachineStatusDot status_card_dot = 41 [json_name = "statusCardDot"];</code>
+     * @return The enum numeric value on the wire for statusCardDot.
+     */
+    @java.lang.Override
+    public int getStatusCardDotValue() {
+      return instance.getStatusCardDotValue();
+    }
+    /**
+     * <code>.remoteagent.core.v1.MachineStatusDot status_card_dot = 41 [json_name = "statusCardDot"];</code>
+     * @param value The statusCardDot to set.
+     * @return This builder for chaining.
+     */
+    public Builder setStatusCardDotValue(int value) {
+      copyOnWrite();
+      instance.setStatusCardDotValue(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.MachineStatusDot status_card_dot = 41 [json_name = "statusCardDot"];</code>
+     * @return The statusCardDot.
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.MachineStatusDot getStatusCardDot() {
+      return instance.getStatusCardDot();
+    }
+    /**
+     * <code>.remoteagent.core.v1.MachineStatusDot status_card_dot = 41 [json_name = "statusCardDot"];</code>
+     * @param value The enum numeric value on the wire for statusCardDot to set.
+     * @return This builder for chaining.
+     */
+    public Builder setStatusCardDot(io.github.lewin671.remoteagent.core.proto.MachineStatusDot value) {
+      copyOnWrite();
+      instance.setStatusCardDot(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.MachineStatusDot status_card_dot = 41 [json_name = "statusCardDot"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearStatusCardDot() {
+      copyOnWrite();
+      instance.clearStatusCardDot();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.Text status_card_badge = 42 [json_name = "statusCardBadge"];</code>
+     */
+    @java.lang.Override
+    public boolean hasStatusCardBadge() {
+      return instance.hasStatusCardBadge();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text status_card_badge = 42 [json_name = "statusCardBadge"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.Text getStatusCardBadge() {
+      return instance.getStatusCardBadge();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text status_card_badge = 42 [json_name = "statusCardBadge"];</code>
+     */
+    public Builder setStatusCardBadge(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.setStatusCardBadge(value);
+      return this;
+      }
+    /**
+     * <code>.remoteagent.core.v1.Text status_card_badge = 42 [json_name = "statusCardBadge"];</code>
+     */
+    public Builder setStatusCardBadge(
+        io.github.lewin671.remoteagent.core.proto.Text.Builder builderForValue) {
+      copyOnWrite();
+      instance.setStatusCardBadge(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text status_card_badge = 42 [json_name = "statusCardBadge"];</code>
+     */
+    public Builder mergeStatusCardBadge(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.mergeStatusCardBadge(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text status_card_badge = 42 [json_name = "statusCardBadge"];</code>
+     */
+    public Builder clearStatusCardBadge() {  copyOnWrite();
+      instance.clearStatusCardBadge();
+      return this;
+    }
+
+    /**
+     * <code>bool status_card_warn = 43 [json_name = "statusCardWarn"];</code>
+     * @return The statusCardWarn.
+     */
+    @java.lang.Override
+    public boolean getStatusCardWarn() {
+      return instance.getStatusCardWarn();
+    }
+    /**
+     * <code>bool status_card_warn = 43 [json_name = "statusCardWarn"];</code>
+     * @param value The statusCardWarn to set.
+     * @return This builder for chaining.
+     */
+    public Builder setStatusCardWarn(boolean value) {
+      copyOnWrite();
+      instance.setStatusCardWarn(value);
+      return this;
+    }
+    /**
+     * <code>bool status_card_warn = 43 [json_name = "statusCardWarn"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearStatusCardWarn() {
+      copyOnWrite();
+      instance.clearStatusCardWarn();
+      return this;
+    }
+
+    /**
+     * <code>bool show_usage_entry = 44 [json_name = "showUsageEntry"];</code>
+     * @return The showUsageEntry.
+     */
+    @java.lang.Override
+    public boolean getShowUsageEntry() {
+      return instance.getShowUsageEntry();
+    }
+    /**
+     * <code>bool show_usage_entry = 44 [json_name = "showUsageEntry"];</code>
+     * @param value The showUsageEntry to set.
+     * @return This builder for chaining.
+     */
+    public Builder setShowUsageEntry(boolean value) {
+      copyOnWrite();
+      instance.setShowUsageEntry(value);
+      return this;
+    }
+    /**
+     * <code>bool show_usage_entry = 44 [json_name = "showUsageEntry"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearShowUsageEntry() {
+      copyOnWrite();
+      instance.clearShowUsageEntry();
+      return this;
+    }
+
+    /**
+     * <code>uint64 usage_total_tokens = 45 [json_name = "usageTotalTokens"];</code>
+     * @return The usageTotalTokens.
+     */
+    @java.lang.Override
+    public long getUsageTotalTokens() {
+      return instance.getUsageTotalTokens();
+    }
+    /**
+     * <code>uint64 usage_total_tokens = 45 [json_name = "usageTotalTokens"];</code>
+     * @param value The usageTotalTokens to set.
+     * @return This builder for chaining.
+     */
+    public Builder setUsageTotalTokens(long value) {
+      copyOnWrite();
+      instance.setUsageTotalTokens(value);
+      return this;
+    }
+    /**
+     * <code>uint64 usage_total_tokens = 45 [json_name = "usageTotalTokens"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearUsageTotalTokens() {
+      copyOnWrite();
+      instance.clearUsageTotalTokens();
+      return this;
+    }
+
+    /**
+     * <code>bool usage_fallback_thirty_days = 46 [json_name = "usageFallbackThirtyDays"];</code>
+     * @return The usageFallbackThirtyDays.
+     */
+    @java.lang.Override
+    public boolean getUsageFallbackThirtyDays() {
+      return instance.getUsageFallbackThirtyDays();
+    }
+    /**
+     * <code>bool usage_fallback_thirty_days = 46 [json_name = "usageFallbackThirtyDays"];</code>
+     * @param value The usageFallbackThirtyDays to set.
+     * @return This builder for chaining.
+     */
+    public Builder setUsageFallbackThirtyDays(boolean value) {
+      copyOnWrite();
+      instance.setUsageFallbackThirtyDays(value);
+      return this;
+    }
+    /**
+     * <code>bool usage_fallback_thirty_days = 46 [json_name = "usageFallbackThirtyDays"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearUsageFallbackThirtyDays() {
+      copyOnWrite();
+      instance.clearUsageFallbackThirtyDays();
+      return this;
+    }
+
+    /**
+     * <code>bool usage_cached_offline = 47 [json_name = "usageCachedOffline"];</code>
+     * @return The usageCachedOffline.
+     */
+    @java.lang.Override
+    public boolean getUsageCachedOffline() {
+      return instance.getUsageCachedOffline();
+    }
+    /**
+     * <code>bool usage_cached_offline = 47 [json_name = "usageCachedOffline"];</code>
+     * @param value The usageCachedOffline to set.
+     * @return This builder for chaining.
+     */
+    public Builder setUsageCachedOffline(boolean value) {
+      copyOnWrite();
+      instance.setUsageCachedOffline(value);
+      return this;
+    }
+    /**
+     * <code>bool usage_cached_offline = 47 [json_name = "usageCachedOffline"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearUsageCachedOffline() {
+      copyOnWrite();
+      instance.clearUsageCachedOffline();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.Text usage_empty_text = 48 [json_name = "usageEmptyText"];</code>
+     */
+    @java.lang.Override
+    public boolean hasUsageEmptyText() {
+      return instance.hasUsageEmptyText();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text usage_empty_text = 48 [json_name = "usageEmptyText"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.Text getUsageEmptyText() {
+      return instance.getUsageEmptyText();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text usage_empty_text = 48 [json_name = "usageEmptyText"];</code>
+     */
+    public Builder setUsageEmptyText(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.setUsageEmptyText(value);
+      return this;
+      }
+    /**
+     * <code>.remoteagent.core.v1.Text usage_empty_text = 48 [json_name = "usageEmptyText"];</code>
+     */
+    public Builder setUsageEmptyText(
+        io.github.lewin671.remoteagent.core.proto.Text.Builder builderForValue) {
+      copyOnWrite();
+      instance.setUsageEmptyText(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text usage_empty_text = 48 [json_name = "usageEmptyText"];</code>
+     */
+    public Builder mergeUsageEmptyText(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.mergeUsageEmptyText(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text usage_empty_text = 48 [json_name = "usageEmptyText"];</code>
+     */
+    public Builder clearUsageEmptyText() {  copyOnWrite();
+      instance.clearUsageEmptyText();
+      return this;
+    }
+
+    /**
+     * <code>int32 project_count = 49 [json_name = "projectCount"];</code>
+     * @return The projectCount.
+     */
+    @java.lang.Override
+    public int getProjectCount() {
+      return instance.getProjectCount();
+    }
+    /**
+     * <code>int32 project_count = 49 [json_name = "projectCount"];</code>
+     * @param value The projectCount to set.
+     * @return This builder for chaining.
+     */
+    public Builder setProjectCount(int value) {
+      copyOnWrite();
+      instance.setProjectCount(value);
+      return this;
+    }
+    /**
+     * <code>int32 project_count = 49 [json_name = "projectCount"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearProjectCount() {
+      copyOnWrite();
+      instance.clearProjectCount();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.Text project_count_text = 50 [json_name = "projectCountText"];</code>
+     */
+    @java.lang.Override
+    public boolean hasProjectCountText() {
+      return instance.hasProjectCountText();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text project_count_text = 50 [json_name = "projectCountText"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.Text getProjectCountText() {
+      return instance.getProjectCountText();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text project_count_text = 50 [json_name = "projectCountText"];</code>
+     */
+    public Builder setProjectCountText(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.setProjectCountText(value);
+      return this;
+      }
+    /**
+     * <code>.remoteagent.core.v1.Text project_count_text = 50 [json_name = "projectCountText"];</code>
+     */
+    public Builder setProjectCountText(
+        io.github.lewin671.remoteagent.core.proto.Text.Builder builderForValue) {
+      copyOnWrite();
+      instance.setProjectCountText(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text project_count_text = 50 [json_name = "projectCountText"];</code>
+     */
+    public Builder mergeProjectCountText(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.mergeProjectCountText(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text project_count_text = 50 [json_name = "projectCountText"];</code>
+     */
+    public Builder clearProjectCountText() {  copyOnWrite();
+      instance.clearProjectCountText();
+      return this;
+    }
+
+    /**
+     * <code>string short_id = 51 [json_name = "shortId"];</code>
+     * @return The shortId.
+     */
+    @java.lang.Override
+    public java.lang.String getShortId() {
+      return instance.getShortId();
+    }
+    /**
+     * <code>string short_id = 51 [json_name = "shortId"];</code>
+     * @return The bytes for shortId.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString
+        getShortIdBytes() {
+      return instance.getShortIdBytes();
+    }
+    /**
+     * <code>string short_id = 51 [json_name = "shortId"];</code>
+     * @param value The shortId to set.
+     * @return This builder for chaining.
+     */
+    public Builder setShortId(
+        java.lang.String value) {
+      copyOnWrite();
+      instance.setShortId(value);
+      return this;
+    }
+    /**
+     * <code>string short_id = 51 [json_name = "shortId"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearShortId() {
+      copyOnWrite();
+      instance.clearShortId();
+      return this;
+    }
+    /**
+     * <code>string short_id = 51 [json_name = "shortId"];</code>
+     * @param value The bytes for shortId to set.
+     * @return This builder for chaining.
+     */
+    public Builder setShortIdBytes(
+        com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setShortIdBytes(value);
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.MachineSettingsViewModel)
   }
   @java.lang.Override
@@ -3875,15 +4853,29 @@ public  final class MachineSettingsViewModel extends
             "cliSwitchesDisabledReason_",
             "cliSwitchesConflictBanner_",
             "cliSwitchesFooter_",
+            "headerDot_",
+            "headerSubtitle_",
+            "statusCardDot_",
+            "statusCardBadge_",
+            "statusCardWarn_",
+            "showUsageEntry_",
+            "usageTotalTokens_",
+            "usageFallbackThirtyDays_",
+            "usageCachedOffline_",
+            "usageEmptyText_",
+            "projectCount_",
+            "projectCountText_",
+            "shortId_",
           };
           java.lang.String info =
-              "\u0000&\u0000\u0001\u0001&&\u0000\u0007\u0000\u0001\u0208\u0002\u0208\u0003\u0007" +
+              "\u00003\u0000\u0001\u000133\u0000\u0007\u0000\u0001\u0208\u0002\u0208\u0003\u0007" +
               "\u0004\u0007\u0005\u0007\u0006\u0007\u0007\u0004\b\u0007\t\u1009\u0000\n\u1009\u0001" +
               "\u000b\u0007\f\u001b\r\u001b\u000e\u1009\u0002\u000f\u001b\u0010\u0007\u0011\u0007" +
               "\u0012\u1009\u0003\u0013\u0007\u0014\u0007\u0015\u1009\u0004\u0016,\u0017\f\u0018" +
               "\u1009\u0005\u0019\u001b\u001a\u0004\u001b\u001b\u001c\u0004\u001d\u1009\u0006\u001e" +
               "\u001b\u001f\u1009\u0007 \u0007!\u0007\"\u0007#\u0007$\u1009\b%\u1009\t&\u1009\n" +
-              "";
+              "\'\f(\u1009\u000b)\f*\u1009\f+\u0007,\u0007-\u0003.\u0007/\u00070\u1009\r1\u0004" +
+              "2\u1009\u000e3\u0208";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

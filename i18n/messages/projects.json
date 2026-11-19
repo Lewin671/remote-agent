@@ -1133,5 +1133,42 @@
       "zh-CN": "source",
       "en": "draft"
     }
+  },
+  {
+    "key": "projects.filter_machine_subtitle",
+    "zh-CN": "仅显示 {name} 的项目",
+    "en": "Projects on {name}",
+    "notes": "从电脑页「管理 › 项目」跳转后在项目管理页顶栏提示当前按电脑筛选。",
+    "params": {
+      "name": {
+        "type": "string",
+        "example": "MacBook Pro"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "projects.filter_show_all",
+    "zh-CN": "查看全部项目",
+    "en": "Show all projects",
+    "notes": "按电脑筛选项目管理页取消筛选的操作按钮。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
   }
 ]

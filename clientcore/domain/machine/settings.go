@@ -12,6 +12,7 @@ import (
 const (
 	IdleCloseDefaultMinutes int32 = 360
 	MaxClientNameLength     int32 = 40
+	DefaultUploadQuotaBytes int64 = 1024 * 1024 * 1024
 )
 
 var (
@@ -142,6 +143,15 @@ func ShortID(id string) string {
 		return id
 	}
 	return "…" + string(r[len(r)-4:])
+}
+
+// ShortMachineID returns "…" + last 8 characters of a machine ID, or the ID itself if <= 8 runes.
+func ShortMachineID(id string) string {
+	r := []rune(id)
+	if len(r) <= 8 {
+		return id
+	}
+	return "…" + string(r[len(r)-8:])
 }
 
 // DefaultClientName returns the hardware/browser description fallback for a client device.

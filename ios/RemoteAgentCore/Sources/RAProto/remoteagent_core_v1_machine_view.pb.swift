@@ -1691,6 +1691,29 @@ public struct PBQuotaCliSection: @unchecked Sendable {
   /// Clears the value of `summaryMeta`. Subsequent reads from it will return its default value.
   public mutating func clearSummaryMeta() {_uniqueStorage()._summaryMeta = nil}
 
+  public var summaryPrimaryText: PBCoreText {
+    get {return _storage._summaryPrimaryText ?? PBCoreText()}
+    set {_uniqueStorage()._summaryPrimaryText = newValue}
+  }
+  /// Returns true if `summaryPrimaryText` has been explicitly set.
+  public var hasSummaryPrimaryText: Bool {return _storage._summaryPrimaryText != nil}
+  /// Clears the value of `summaryPrimaryText`. Subsequent reads from it will return its default value.
+  public mutating func clearSummaryPrimaryText() {_uniqueStorage()._summaryPrimaryText = nil}
+
+  public var summaryPrimaryWarn: Bool {
+    get {return _storage._summaryPrimaryWarn}
+    set {_uniqueStorage()._summaryPrimaryWarn = newValue}
+  }
+
+  public var summaryWindowText: PBCoreText {
+    get {return _storage._summaryWindowText ?? PBCoreText()}
+    set {_uniqueStorage()._summaryWindowText = newValue}
+  }
+  /// Returns true if `summaryWindowText` has been explicitly set.
+  public var hasSummaryWindowText: Bool {return _storage._summaryWindowText != nil}
+  /// Clears the value of `summaryWindowText`. Subsequent reads from it will return its default value.
+  public mutating func clearSummaryWindowText() {_uniqueStorage()._summaryWindowText = nil}
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -3805,7 +3828,7 @@ extension PBQuotaAccountGroupView: SwiftProtobuf.Message, SwiftProtobuf._Message
 
 extension PBQuotaCliSection: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".QuotaCliSection"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}agent\0\u{3}agent_name\0\u{1}state\0\u{1}unsupported\0\u{1}accounts\0\u{3}empty_or_error_text\0\u{3}usage_hint\0\u{3}summary_row\0\u{3}summary_line\0\u{3}summary_tone\0\u{3}summary_meta\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}agent\0\u{3}agent_name\0\u{1}state\0\u{1}unsupported\0\u{1}accounts\0\u{3}empty_or_error_text\0\u{3}usage_hint\0\u{3}summary_row\0\u{3}summary_line\0\u{3}summary_tone\0\u{3}summary_meta\0\u{3}summary_primary_text\0\u{3}summary_primary_warn\0\u{3}summary_window_text\0")
 
   fileprivate class _StorageClass {
     var _agent: PBAgent = .unspecified
@@ -3819,6 +3842,9 @@ extension PBQuotaCliSection: SwiftProtobuf.Message, SwiftProtobuf._MessageImplem
     var _summaryLine: PBCoreText? = nil
     var _summaryTone: PBQuotaTone = .unspecified
     var _summaryMeta: PBCoreText? = nil
+    var _summaryPrimaryText: PBCoreText? = nil
+    var _summaryPrimaryWarn: Bool = false
+    var _summaryWindowText: PBCoreText? = nil
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -3840,6 +3866,9 @@ extension PBQuotaCliSection: SwiftProtobuf.Message, SwiftProtobuf._MessageImplem
       _summaryLine = source._summaryLine
       _summaryTone = source._summaryTone
       _summaryMeta = source._summaryMeta
+      _summaryPrimaryText = source._summaryPrimaryText
+      _summaryPrimaryWarn = source._summaryPrimaryWarn
+      _summaryWindowText = source._summaryWindowText
     }
   }
 
@@ -3869,6 +3898,9 @@ extension PBQuotaCliSection: SwiftProtobuf.Message, SwiftProtobuf._MessageImplem
         case 9: try { try decoder.decodeSingularMessageField(value: &_storage._summaryLine) }()
         case 10: try { try decoder.decodeSingularEnumField(value: &_storage._summaryTone) }()
         case 11: try { try decoder.decodeSingularMessageField(value: &_storage._summaryMeta) }()
+        case 12: try { try decoder.decodeSingularMessageField(value: &_storage._summaryPrimaryText) }()
+        case 13: try { try decoder.decodeSingularBoolField(value: &_storage._summaryPrimaryWarn) }()
+        case 14: try { try decoder.decodeSingularMessageField(value: &_storage._summaryWindowText) }()
         default: break
         }
       }
@@ -3914,6 +3946,15 @@ extension PBQuotaCliSection: SwiftProtobuf.Message, SwiftProtobuf._MessageImplem
       try { if let v = _storage._summaryMeta {
         try visitor.visitSingularMessageField(value: v, fieldNumber: 11)
       } }()
+      try { if let v = _storage._summaryPrimaryText {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 12)
+      } }()
+      if _storage._summaryPrimaryWarn != false {
+        try visitor.visitSingularBoolField(value: _storage._summaryPrimaryWarn, fieldNumber: 13)
+      }
+      try { if let v = _storage._summaryWindowText {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 14)
+      } }()
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -3934,6 +3975,9 @@ extension PBQuotaCliSection: SwiftProtobuf.Message, SwiftProtobuf._MessageImplem
         if _storage._summaryLine != rhs_storage._summaryLine {return false}
         if _storage._summaryTone != rhs_storage._summaryTone {return false}
         if _storage._summaryMeta != rhs_storage._summaryMeta {return false}
+        if _storage._summaryPrimaryText != rhs_storage._summaryPrimaryText {return false}
+        if _storage._summaryPrimaryWarn != rhs_storage._summaryPrimaryWarn {return false}
+        if _storage._summaryWindowText != rhs_storage._summaryWindowText {return false}
         return true
       }
       if !storagesAreEqual {return false}

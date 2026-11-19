@@ -91,6 +91,11 @@ enum ConnProbeState {
 
 message SettingsScreenRequest {}
 
+message SubtitleSegment {
+  Text text = 1;
+  bool warn = 2;
+}
+
 message MachineListCardView {
   string machine_id = 1;
   string name = 2;
@@ -101,6 +106,9 @@ message MachineListCardView {
   repeated QuotaCliSection quota_summaries = 7;
   int64 last_seen_ms = 8;
   ConnCheckDirectRowView direct_row = 9;
+  MachineStatusDot status_dot = 10;
+  bool status_warn = 11;
+  repeated SubtitleSegment subtitle_parts = 12;
 }
 
 message ClientRowView {
@@ -139,6 +147,8 @@ message NotificationsView {
   Text status_text = 8;
   Text hint_text = 9;
   string error_detail = 10;
+  Text summary_text = 11;
+  bool summary_warn = 12;
 }
 
 message AppearanceView {
@@ -205,6 +215,11 @@ message SettingsViewModel {
   bool can_exit_account = 26;
   bool exit_needs_transfer = 27;
   bool machines_loading = 28;
+  Text machine_count_text = 29;
+  Text clients_summary_text = 30;
+  bool clients_summary_warn = 31;
+  int32 unfinished_pairing_count = 32;
+  Text empty_machines_body = 33;
 }
 
 // ---- Per-Machine Settings Screen ----
@@ -272,6 +287,10 @@ message ConnectionGroupView {
   Text read_latency_text = 10;
   bool show_diagnostics_entry = 11;
   Text footer_text = 12;
+  MachineStatusDot row_dot = 13;
+  bool row_spinning = 14;
+  Text row_value_text = 15;
+  Text row_subtitle_text = 16;
 }
 
 message CliVersionView {
@@ -283,6 +302,11 @@ message CliVersionView {
   bool enabled = 6;
   bool locked_last_enabled = 7;
   bool saving = 8;
+  Text default_model_label = 9;
+  Text default_mode_label = 10;
+  bool default_mode_danger = 11;
+  Text disabled_label = 12;
+  MachineAgentDefaultsView defaults = 13;
 }
 
 message ModelChoiceView {
@@ -306,6 +330,7 @@ message ModeChoiceView {
   bool selected = 3;
   bool disabled = 4;
   Text disabled_reason = 5;
+  bool danger = 6;
 }
 
 message MachineAgentDefaultsView {
@@ -353,6 +378,13 @@ message AttachmentStorageView {
   bool cleaning = 10;
   Text clear_button_label = 11;
   Text footer_text = 12;
+  Text summary_text = 13;
+  bool summary_warn = 14;
+  Text used_total_text = 15;
+  Text limit_label = 16;
+  int32 uploaded_percent = 17;
+  int32 preview_percent = 18;
+  int32 reserve_percent = 19;
 }
 
 message MachineProjectView {
@@ -409,6 +441,19 @@ message MachineSettingsViewModel {
   Text cli_switches_disabled_reason = 36;
   Text cli_switches_conflict_banner = 37;
   Text cli_switches_footer = 38;
+  MachineStatusDot header_dot = 39;
+  Text header_subtitle = 40;
+  MachineStatusDot status_card_dot = 41;
+  Text status_card_badge = 42;
+  bool status_card_warn = 43;
+  bool show_usage_entry = 44;
+  uint64 usage_total_tokens = 45;
+  bool usage_fallback_thirty_days = 46;
+  bool usage_cached_offline = 47;
+  Text usage_empty_text = 48;
+  int32 project_count = 49;
+  Text project_count_text = 50;
+  string short_id = 51;
 }
 
 // ---- Devices & Client Detail Screens ----
@@ -429,6 +474,7 @@ message DevicesViewModel {
   Text error_text = 11;
   bool machines_loading = 12;
   Text empty_computers_text = 13;
+  Text client_count_text = 14;
 }
 
 message ClientDetailScreenRequest {

@@ -95,4 +95,21 @@ public interface NotificationsViewOrBuilder extends
    */
   com.google.protobuf.ByteString
       getErrorDetailBytes();
+
+  /**
+   * <code>.remoteagent.core.v1.Text summary_text = 11 [json_name = "summaryText"];</code>
+   * @return Whether the summaryText field is set.
+   */
+  boolean hasSummaryText();
+  /**
+   * <code>.remoteagent.core.v1.Text summary_text = 11 [json_name = "summaryText"];</code>
+   * @return The summaryText.
+   */
+  io.github.lewin671.remoteagent.core.proto.Text getSummaryText();
+
+  /**
+   * <code>bool summary_warn = 12 [json_name = "summaryWarn"];</code>
+   * @return The summaryWarn.
+   */
+  boolean getSummaryWarn();
 }

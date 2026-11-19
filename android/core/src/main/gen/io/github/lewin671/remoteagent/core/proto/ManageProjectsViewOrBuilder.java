@@ -77,4 +77,28 @@ public interface ManageProjectsViewOrBuilder extends
    * @return The projectCount.
    */
   int getProjectCount();
+
+  /**
+   * <code>string filter_machine_id = 9 [json_name = "filterMachineId"];</code>
+   * @return The filterMachineId.
+   */
+  java.lang.String getFilterMachineId();
+  /**
+   * <code>string filter_machine_id = 9 [json_name = "filterMachineId"];</code>
+   * @return The bytes for filterMachineId.
+   */
+  com.google.protobuf.ByteString
+      getFilterMachineIdBytes();
+
+  /**
+   * <code>string filter_machine_name = 10 [json_name = "filterMachineName"];</code>
+   * @return The filterMachineName.
+   */
+  java.lang.String getFilterMachineName();
+  /**
+   * <code>string filter_machine_name = 10 [json_name = "filterMachineName"];</code>
+   * @return The bytes for filterMachineName.
+   */
+  com.google.protobuf.ByteString
+      getFilterMachineNameBytes();
 }

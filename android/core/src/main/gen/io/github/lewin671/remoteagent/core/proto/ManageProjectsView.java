@@ -15,6 +15,8 @@ public  final class ManageProjectsView extends
     // @@protoc_insertion_point(message_implements:remoteagent.core.v1.ManageProjectsView)
     ManageProjectsViewOrBuilder {
   private ManageProjectsView() {
+    filterMachineId_ = "";
+    filterMachineName_ = "";
   }
   private int bitField0_;
   public static final int LISTING_FIELD_NUMBER = 1;
@@ -311,6 +313,102 @@ public  final class ManageProjectsView extends
   private void clearProjectCount() {
 
     projectCount_ = 0;
+  }
+
+  public static final int FILTER_MACHINE_ID_FIELD_NUMBER = 9;
+  private java.lang.String filterMachineId_;
+  /**
+   * <code>string filter_machine_id = 9 [json_name = "filterMachineId"];</code>
+   * @return The filterMachineId.
+   */
+  @java.lang.Override
+  public java.lang.String getFilterMachineId() {
+    return filterMachineId_;
+  }
+  /**
+   * <code>string filter_machine_id = 9 [json_name = "filterMachineId"];</code>
+   * @return The bytes for filterMachineId.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString
+      getFilterMachineIdBytes() {
+    return com.google.protobuf.ByteString.copyFromUtf8(filterMachineId_);
+  }
+  /**
+   * <code>string filter_machine_id = 9 [json_name = "filterMachineId"];</code>
+   * @param value The filterMachineId to set.
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setFilterMachineId(
+      java.lang.String value) {
+    value.getClass();  // minimal bytecode null check
+
+    filterMachineId_ = value;
+  }
+  /**
+   * <code>string filter_machine_id = 9 [json_name = "filterMachineId"];</code>
+   */
+  private void clearFilterMachineId() {
+
+    filterMachineId_ = getDefaultInstance().getFilterMachineId();
+  }
+  /**
+   * <code>string filter_machine_id = 9 [json_name = "filterMachineId"];</code>
+   * @param value The bytes for filterMachineId to set.
+   */
+  private void setFilterMachineIdBytes(
+      com.google.protobuf.ByteString value) {
+    checkByteStringIsUtf8(value);
+    filterMachineId_ = value.toStringUtf8();
+
+  }
+
+  public static final int FILTER_MACHINE_NAME_FIELD_NUMBER = 10;
+  private java.lang.String filterMachineName_;
+  /**
+   * <code>string filter_machine_name = 10 [json_name = "filterMachineName"];</code>
+   * @return The filterMachineName.
+   */
+  @java.lang.Override
+  public java.lang.String getFilterMachineName() {
+    return filterMachineName_;
+  }
+  /**
+   * <code>string filter_machine_name = 10 [json_name = "filterMachineName"];</code>
+   * @return The bytes for filterMachineName.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString
+      getFilterMachineNameBytes() {
+    return com.google.protobuf.ByteString.copyFromUtf8(filterMachineName_);
+  }
+  /**
+   * <code>string filter_machine_name = 10 [json_name = "filterMachineName"];</code>
+   * @param value The filterMachineName to set.
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setFilterMachineName(
+      java.lang.String value) {
+    value.getClass();  // minimal bytecode null check
+
+    filterMachineName_ = value;
+  }
+  /**
+   * <code>string filter_machine_name = 10 [json_name = "filterMachineName"];</code>
+   */
+  private void clearFilterMachineName() {
+
+    filterMachineName_ = getDefaultInstance().getFilterMachineName();
+  }
+  /**
+   * <code>string filter_machine_name = 10 [json_name = "filterMachineName"];</code>
+   * @param value The bytes for filterMachineName to set.
+   */
+  private void setFilterMachineNameBytes(
+      com.google.protobuf.ByteString value) {
+    checkByteStringIsUtf8(value);
+    filterMachineName_ = value.toStringUtf8();
+
   }
 
   public static io.github.lewin671.remoteagent.core.proto.ManageProjectsView parseFrom(
@@ -710,6 +808,104 @@ public  final class ManageProjectsView extends
       return this;
     }
 
+    /**
+     * <code>string filter_machine_id = 9 [json_name = "filterMachineId"];</code>
+     * @return The filterMachineId.
+     */
+    @java.lang.Override
+    public java.lang.String getFilterMachineId() {
+      return instance.getFilterMachineId();
+    }
+    /**
+     * <code>string filter_machine_id = 9 [json_name = "filterMachineId"];</code>
+     * @return The bytes for filterMachineId.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString
+        getFilterMachineIdBytes() {
+      return instance.getFilterMachineIdBytes();
+    }
+    /**
+     * <code>string filter_machine_id = 9 [json_name = "filterMachineId"];</code>
+     * @param value The filterMachineId to set.
+     * @return This builder for chaining.
+     */
+    public Builder setFilterMachineId(
+        java.lang.String value) {
+      copyOnWrite();
+      instance.setFilterMachineId(value);
+      return this;
+    }
+    /**
+     * <code>string filter_machine_id = 9 [json_name = "filterMachineId"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearFilterMachineId() {
+      copyOnWrite();
+      instance.clearFilterMachineId();
+      return this;
+    }
+    /**
+     * <code>string filter_machine_id = 9 [json_name = "filterMachineId"];</code>
+     * @param value The bytes for filterMachineId to set.
+     * @return This builder for chaining.
+     */
+    public Builder setFilterMachineIdBytes(
+        com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setFilterMachineIdBytes(value);
+      return this;
+    }
+
+    /**
+     * <code>string filter_machine_name = 10 [json_name = "filterMachineName"];</code>
+     * @return The filterMachineName.
+     */
+    @java.lang.Override
+    public java.lang.String getFilterMachineName() {
+      return instance.getFilterMachineName();
+    }
+    /**
+     * <code>string filter_machine_name = 10 [json_name = "filterMachineName"];</code>
+     * @return The bytes for filterMachineName.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString
+        getFilterMachineNameBytes() {
+      return instance.getFilterMachineNameBytes();
+    }
+    /**
+     * <code>string filter_machine_name = 10 [json_name = "filterMachineName"];</code>
+     * @param value The filterMachineName to set.
+     * @return This builder for chaining.
+     */
+    public Builder setFilterMachineName(
+        java.lang.String value) {
+      copyOnWrite();
+      instance.setFilterMachineName(value);
+      return this;
+    }
+    /**
+     * <code>string filter_machine_name = 10 [json_name = "filterMachineName"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearFilterMachineName() {
+      copyOnWrite();
+      instance.clearFilterMachineName();
+      return this;
+    }
+    /**
+     * <code>string filter_machine_name = 10 [json_name = "filterMachineName"];</code>
+     * @param value The bytes for filterMachineName to set.
+     * @return This builder for chaining.
+     */
+    public Builder setFilterMachineNameBytes(
+        com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setFilterMachineNameBytes(value);
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.ManageProjectsView)
   }
   @java.lang.Override
@@ -735,11 +931,13 @@ public  final class ManageProjectsView extends
             "saveError_",
             "dirPicker_",
             "projectCount_",
+            "filterMachineId_",
+            "filterMachineName_",
           };
           java.lang.String info =
-              "\u0000\b\u0000\u0001\u0001\b\b\u0000\u0000\u0000\u0001\u1009\u0000\u0002\u0007\u0003" +
+              "\u0000\n\u0000\u0001\u0001\n\n\u0000\u0000\u0000\u0001\u1009\u0000\u0002\u0007\u0003" +
               "\u1009\u0001\u0004\u0007\u0005\u0007\u0006\u1009\u0002\u0007\u1009\u0003\b\u0004" +
-              "";
+              "\t\u0208\n\u0208";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

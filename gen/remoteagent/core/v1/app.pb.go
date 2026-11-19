@@ -460,6 +460,7 @@ type ProjectScreenRequest struct {
 	ProjectKey    string                 `protobuf:"bytes,1,opt,name=project_key,json=projectKey,proto3" json:"project_key,omitempty"`
 	Manage        bool                   `protobuf:"varint,2,opt,name=manage,proto3" json:"manage,omitempty"`
 	EndedLimit    int32                  `protobuf:"varint,3,opt,name=ended_limit,json=endedLimit,proto3" json:"ended_limit,omitempty"`
+	MachineId     string                 `protobuf:"bytes,4,opt,name=machine_id,json=machineId,proto3" json:"machine_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -513,6 +514,13 @@ func (x *ProjectScreenRequest) GetEndedLimit() int32 {
 		return x.EndedLimit
 	}
 	return 0
+}
+
+func (x *ProjectScreenRequest) GetMachineId() string {
+	if x != nil {
+		return x.MachineId
+	}
+	return ""
 }
 
 type NewSessionScreenRequest struct {
@@ -9307,13 +9315,15 @@ const file_remoteagent_core_v1_app_proto_rawDesc = "" +
 	"\x1dremoteagent/core/v1/app.proto\x12\x13remoteagent.core.v1\x1a#remoteagent/core/v1/home_view.proto\x1a&remoteagent/core/v1/machine_view.proto\x1a*remoteagent/core/v1/new_session_view.proto\x1a&remoteagent/core/v1/project_view.proto\x1a'remoteagent/core/v1/settings_view.proto\x1a&remoteagent/core/v1/session_view.proto\x1a(remoteagent/core/v1/schedules_view.proto\x1a#remoteagent/core/v1/sync_view.proto\x1a$remoteagent/core/v1/usage_view.proto\x1a\x1aremoteagent/v1/event.proto\x1a\x1aremoteagent/v1/local.proto\x1a\x1aremoteagent/v1/relay.proto\x1a\x1bremoteagent/v1/remote.proto\"4\n" +
 	"\x11HomeScreenRequest\x12\x1f\n" +
 	"\vended_limit\x18\x01 \x01(\x05R\n" +
-	"endedLimit\"p\n" +
+	"endedLimit\"\x8f\x01\n" +
 	"\x14ProjectScreenRequest\x12\x1f\n" +
 	"\vproject_key\x18\x01 \x01(\tR\n" +
 	"projectKey\x12\x16\n" +
 	"\x06manage\x18\x02 \x01(\bR\x06manage\x12\x1f\n" +
 	"\vended_limit\x18\x03 \x01(\x05R\n" +
-	"endedLimit\":\n" +
+	"endedLimit\x12\x1d\n" +
+	"\n" +
+	"machine_id\x18\x04 \x01(\tR\tmachineId\":\n" +
 	"\x17NewSessionScreenRequest\x12\x1f\n" +
 	"\vproject_key\x18\x01 \x01(\tR\n" +
 	"projectKey\"\x18\n" +

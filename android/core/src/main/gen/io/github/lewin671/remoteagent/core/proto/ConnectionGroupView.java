@@ -493,6 +493,170 @@ public  final class ConnectionGroupView extends
     bitField0_ = (bitField0_ & ~0x00000020);
   }
 
+  public static final int ROW_DOT_FIELD_NUMBER = 13;
+  private int rowDot_;
+  /**
+   * <code>.remoteagent.core.v1.MachineStatusDot row_dot = 13 [json_name = "rowDot"];</code>
+   * @return The enum numeric value on the wire for rowDot.
+   */
+  @java.lang.Override
+  public int getRowDotValue() {
+    return rowDot_;
+  }
+  /**
+   * <code>.remoteagent.core.v1.MachineStatusDot row_dot = 13 [json_name = "rowDot"];</code>
+   * @return The rowDot.
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.MachineStatusDot getRowDot() {
+    io.github.lewin671.remoteagent.core.proto.MachineStatusDot result = io.github.lewin671.remoteagent.core.proto.MachineStatusDot.forNumber(rowDot_);
+    return result == null ? io.github.lewin671.remoteagent.core.proto.MachineStatusDot.UNRECOGNIZED : result;
+  }
+  /**
+   * <code>.remoteagent.core.v1.MachineStatusDot row_dot = 13 [json_name = "rowDot"];</code>
+   * @param value The enum numeric value on the wire for rowDot to set.
+   */
+  private void setRowDotValue(int value) {
+      rowDot_ = value;
+  }
+  /**
+   * <code>.remoteagent.core.v1.MachineStatusDot row_dot = 13 [json_name = "rowDot"];</code>
+   * @param value The rowDot to set.
+   */
+  private void setRowDot(io.github.lewin671.remoteagent.core.proto.MachineStatusDot value) {
+    rowDot_ = value.getNumber();
+
+  }
+  /**
+   * <code>.remoteagent.core.v1.MachineStatusDot row_dot = 13 [json_name = "rowDot"];</code>
+   */
+  private void clearRowDot() {
+
+    rowDot_ = 0;
+  }
+
+  public static final int ROW_SPINNING_FIELD_NUMBER = 14;
+  private boolean rowSpinning_;
+  /**
+   * <code>bool row_spinning = 14 [json_name = "rowSpinning"];</code>
+   * @return The rowSpinning.
+   */
+  @java.lang.Override
+  public boolean getRowSpinning() {
+    return rowSpinning_;
+  }
+  /**
+   * <code>bool row_spinning = 14 [json_name = "rowSpinning"];</code>
+   * @param value The rowSpinning to set.
+   */
+  private void setRowSpinning(boolean value) {
+    
+    rowSpinning_ = value;
+  }
+  /**
+   * <code>bool row_spinning = 14 [json_name = "rowSpinning"];</code>
+   */
+  private void clearRowSpinning() {
+
+    rowSpinning_ = false;
+  }
+
+  public static final int ROW_VALUE_TEXT_FIELD_NUMBER = 15;
+  private io.github.lewin671.remoteagent.core.proto.Text rowValueText_;
+  /**
+   * <code>.remoteagent.core.v1.Text row_value_text = 15 [json_name = "rowValueText"];</code>
+   */
+  @java.lang.Override
+  public boolean hasRowValueText() {
+    return ((bitField0_ & 0x00000040) != 0);
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text row_value_text = 15 [json_name = "rowValueText"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.Text getRowValueText() {
+    return rowValueText_ == null ? io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance() : rowValueText_;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text row_value_text = 15 [json_name = "rowValueText"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setRowValueText(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    rowValueText_ = value;
+    bitField0_ |= 0x00000040;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text row_value_text = 15 [json_name = "rowValueText"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeRowValueText(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    if (rowValueText_ != null &&
+        rowValueText_ != io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance()) {
+      rowValueText_ =
+        io.github.lewin671.remoteagent.core.proto.Text.newBuilder(rowValueText_).mergeFrom(value).buildPartial();
+    } else {
+      rowValueText_ = value;
+    }
+    bitField0_ |= 0x00000040;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text row_value_text = 15 [json_name = "rowValueText"];</code>
+   */
+  private void clearRowValueText() {
+    rowValueText_ = null;
+    bitField0_ = (bitField0_ & ~0x00000040);
+  }
+
+  public static final int ROW_SUBTITLE_TEXT_FIELD_NUMBER = 16;
+  private io.github.lewin671.remoteagent.core.proto.Text rowSubtitleText_;
+  /**
+   * <code>.remoteagent.core.v1.Text row_subtitle_text = 16 [json_name = "rowSubtitleText"];</code>
+   */
+  @java.lang.Override
+  public boolean hasRowSubtitleText() {
+    return ((bitField0_ & 0x00000080) != 0);
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text row_subtitle_text = 16 [json_name = "rowSubtitleText"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.Text getRowSubtitleText() {
+    return rowSubtitleText_ == null ? io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance() : rowSubtitleText_;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text row_subtitle_text = 16 [json_name = "rowSubtitleText"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setRowSubtitleText(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    rowSubtitleText_ = value;
+    bitField0_ |= 0x00000080;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text row_subtitle_text = 16 [json_name = "rowSubtitleText"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeRowSubtitleText(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    if (rowSubtitleText_ != null &&
+        rowSubtitleText_ != io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance()) {
+      rowSubtitleText_ =
+        io.github.lewin671.remoteagent.core.proto.Text.newBuilder(rowSubtitleText_).mergeFrom(value).buildPartial();
+    } else {
+      rowSubtitleText_ = value;
+    }
+    bitField0_ |= 0x00000080;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text row_subtitle_text = 16 [json_name = "rowSubtitleText"];</code>
+   */
+  private void clearRowSubtitleText() {
+    rowSubtitleText_ = null;
+    bitField0_ = (bitField0_ & ~0x00000080);
+  }
+
   public static io.github.lewin671.remoteagent.core.proto.ConnectionGroupView parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -1076,6 +1240,174 @@ public  final class ConnectionGroupView extends
       return this;
     }
 
+    /**
+     * <code>.remoteagent.core.v1.MachineStatusDot row_dot = 13 [json_name = "rowDot"];</code>
+     * @return The enum numeric value on the wire for rowDot.
+     */
+    @java.lang.Override
+    public int getRowDotValue() {
+      return instance.getRowDotValue();
+    }
+    /**
+     * <code>.remoteagent.core.v1.MachineStatusDot row_dot = 13 [json_name = "rowDot"];</code>
+     * @param value The rowDot to set.
+     * @return This builder for chaining.
+     */
+    public Builder setRowDotValue(int value) {
+      copyOnWrite();
+      instance.setRowDotValue(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.MachineStatusDot row_dot = 13 [json_name = "rowDot"];</code>
+     * @return The rowDot.
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.MachineStatusDot getRowDot() {
+      return instance.getRowDot();
+    }
+    /**
+     * <code>.remoteagent.core.v1.MachineStatusDot row_dot = 13 [json_name = "rowDot"];</code>
+     * @param value The enum numeric value on the wire for rowDot to set.
+     * @return This builder for chaining.
+     */
+    public Builder setRowDot(io.github.lewin671.remoteagent.core.proto.MachineStatusDot value) {
+      copyOnWrite();
+      instance.setRowDot(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.MachineStatusDot row_dot = 13 [json_name = "rowDot"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearRowDot() {
+      copyOnWrite();
+      instance.clearRowDot();
+      return this;
+    }
+
+    /**
+     * <code>bool row_spinning = 14 [json_name = "rowSpinning"];</code>
+     * @return The rowSpinning.
+     */
+    @java.lang.Override
+    public boolean getRowSpinning() {
+      return instance.getRowSpinning();
+    }
+    /**
+     * <code>bool row_spinning = 14 [json_name = "rowSpinning"];</code>
+     * @param value The rowSpinning to set.
+     * @return This builder for chaining.
+     */
+    public Builder setRowSpinning(boolean value) {
+      copyOnWrite();
+      instance.setRowSpinning(value);
+      return this;
+    }
+    /**
+     * <code>bool row_spinning = 14 [json_name = "rowSpinning"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearRowSpinning() {
+      copyOnWrite();
+      instance.clearRowSpinning();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.Text row_value_text = 15 [json_name = "rowValueText"];</code>
+     */
+    @java.lang.Override
+    public boolean hasRowValueText() {
+      return instance.hasRowValueText();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text row_value_text = 15 [json_name = "rowValueText"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.Text getRowValueText() {
+      return instance.getRowValueText();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text row_value_text = 15 [json_name = "rowValueText"];</code>
+     */
+    public Builder setRowValueText(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.setRowValueText(value);
+      return this;
+      }
+    /**
+     * <code>.remoteagent.core.v1.Text row_value_text = 15 [json_name = "rowValueText"];</code>
+     */
+    public Builder setRowValueText(
+        io.github.lewin671.remoteagent.core.proto.Text.Builder builderForValue) {
+      copyOnWrite();
+      instance.setRowValueText(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text row_value_text = 15 [json_name = "rowValueText"];</code>
+     */
+    public Builder mergeRowValueText(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.mergeRowValueText(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text row_value_text = 15 [json_name = "rowValueText"];</code>
+     */
+    public Builder clearRowValueText() {  copyOnWrite();
+      instance.clearRowValueText();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.Text row_subtitle_text = 16 [json_name = "rowSubtitleText"];</code>
+     */
+    @java.lang.Override
+    public boolean hasRowSubtitleText() {
+      return instance.hasRowSubtitleText();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text row_subtitle_text = 16 [json_name = "rowSubtitleText"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.Text getRowSubtitleText() {
+      return instance.getRowSubtitleText();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text row_subtitle_text = 16 [json_name = "rowSubtitleText"];</code>
+     */
+    public Builder setRowSubtitleText(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.setRowSubtitleText(value);
+      return this;
+      }
+    /**
+     * <code>.remoteagent.core.v1.Text row_subtitle_text = 16 [json_name = "rowSubtitleText"];</code>
+     */
+    public Builder setRowSubtitleText(
+        io.github.lewin671.remoteagent.core.proto.Text.Builder builderForValue) {
+      copyOnWrite();
+      instance.setRowSubtitleText(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text row_subtitle_text = 16 [json_name = "rowSubtitleText"];</code>
+     */
+    public Builder mergeRowSubtitleText(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.mergeRowSubtitleText(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text row_subtitle_text = 16 [json_name = "rowSubtitleText"];</code>
+     */
+    public Builder clearRowSubtitleText() {  copyOnWrite();
+      instance.clearRowSubtitleText();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.ConnectionGroupView)
   }
   @java.lang.Override
@@ -1105,11 +1437,16 @@ public  final class ConnectionGroupView extends
             "readLatencyText_",
             "showDiagnosticsEntry_",
             "footerText_",
+            "rowDot_",
+            "rowSpinning_",
+            "rowValueText_",
+            "rowSubtitleText_",
           };
           java.lang.String info =
-              "\u0000\f\u0000\u0001\u0001\f\f\u0000\u0000\u0000\u0001\u0007\u0002\u0007\u0003\u0007" +
-              "\u0004\f\u0005\f\u0006\u1009\u0000\u0007\u1009\u0001\b\u1009\u0002\t\u1009\u0003" +
-              "\n\u1009\u0004\u000b\u0007\f\u1009\u0005";
+              "\u0000\u0010\u0000\u0001\u0001\u0010\u0010\u0000\u0000\u0000\u0001\u0007\u0002\u0007" +
+              "\u0003\u0007\u0004\f\u0005\f\u0006\u1009\u0000\u0007\u1009\u0001\b\u1009\u0002\t" +
+              "\u1009\u0003\n\u1009\u0004\u000b\u0007\f\u1009\u0005\r\f\u000e\u0007\u000f\u1009" +
+              "\u0006\u0010\u1009\u0007";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

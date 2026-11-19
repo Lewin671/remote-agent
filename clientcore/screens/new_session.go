@@ -323,6 +323,7 @@ func BuildNewSession(st *State, projectKey string) *corev1.NewSessionViewModel {
 			Text:            text.Msg(text.KeyNewSessionCliDisabledFallback, text.Str("name", machineName), text.Str("missing", lists.AgentInfo(disabledFallback).Name), text.Str("agent", agentCap.Name)),
 			Action:          corev1.NoticeActionKind_NOTICE_ACTION_KIND_ENABLE_AGENT,
 			TargetMachineId: cfg.MachineID,
+			TargetAgent:     disabledFallback,
 		})
 	} else if res.MissingAgent != v1.Agent_AGENT_UNSPECIFIED && !offline {
 		notices = append(notices, &corev1.NewSessionNoticeView{

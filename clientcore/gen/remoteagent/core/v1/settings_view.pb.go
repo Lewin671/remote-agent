@@ -122,6 +122,58 @@ func (m *SettingsScreenRequest) Unmarshal(b []byte) error {
 	return nil
 }
 
+type SubtitleSegment struct {
+	Text *Text
+	Warn bool
+}
+
+func (m *SubtitleSegment) GetText() *Text {
+	if m != nil {
+		return m.Text
+	}
+	return nil
+}
+func (m *SubtitleSegment) GetWarn() bool {
+	if m != nil {
+		return m.Warn
+	}
+	return false
+}
+
+func (m *SubtitleSegment) Size() int {
+	if m == nil {
+		return 0
+	}
+	n := 0
+	if m.Text != nil {
+		n += litewire.SizeMessage(1, m.Text.Size())
+	}
+	n += litewire.SizeBool(2, m.Warn)
+	return n
+}
+
+func (m *SubtitleSegment) Marshal() ([]byte, error) {
+	if m == nil {
+		return nil, nil
+	}
+	sz := m.Size()
+	if sz == 0 {
+		return nil, nil
+	}
+	return m.AppendMarshal(make([]byte, 0, sz)), nil
+}
+
+func (m *SubtitleSegment) AppendMarshal(b []byte) []byte {
+	if m == nil {
+		return b
+	}
+	if m.Text != nil {
+		b = litewire.AppendMessage(b, 1, m.Text)
+	}
+	b = litewire.AppendBool(b, 2, m.Warn)
+	return b
+}
+
 type MachineListCardView struct {
 	MachineId        string
 	Name             string
@@ -132,6 +184,9 @@ type MachineListCardView struct {
 	QuotaSummaries   []*QuotaCliSection
 	LastSeenMs       int64
 	DirectRow        *ConnCheckDirectRowView
+	StatusDot        MachineStatusDot
+	StatusWarn       bool
+	SubtitleParts    []*SubtitleSegment
 }
 
 func (m *MachineListCardView) GetMachineId() string {
@@ -188,6 +243,24 @@ func (m *MachineListCardView) GetDirectRow() *ConnCheckDirectRowView {
 	}
 	return nil
 }
+func (m *MachineListCardView) GetStatusDot() MachineStatusDot {
+	if m != nil {
+		return m.StatusDot
+	}
+	return 0
+}
+func (m *MachineListCardView) GetStatusWarn() bool {
+	if m != nil {
+		return m.StatusWarn
+	}
+	return false
+}
+func (m *MachineListCardView) GetSubtitleParts() []*SubtitleSegment {
+	if m != nil {
+		return m.SubtitleParts
+	}
+	return nil
+}
 
 func (m *MachineListCardView) Size() int {
 	if m == nil {
@@ -210,6 +283,13 @@ func (m *MachineListCardView) Size() int {
 	n += litewire.SizeVarintField(8, uint64(m.LastSeenMs))
 	if m.DirectRow != nil {
 		n += litewire.SizeMessage(9, m.DirectRow.Size())
+	}
+	n += litewire.SizeInt32(10, int32(m.StatusDot))
+	n += litewire.SizeBool(11, m.StatusWarn)
+	for _, v := range m.SubtitleParts {
+		if v != nil {
+			n += litewire.SizeMessage(12, v.Size())
+		}
 	}
 	return n
 }
@@ -245,6 +325,13 @@ func (m *MachineListCardView) AppendMarshal(b []byte) []byte {
 	b = litewire.AppendVarint(b, 8, uint64(m.LastSeenMs))
 	if m.DirectRow != nil {
 		b = litewire.AppendMessage(b, 9, m.DirectRow)
+	}
+	b = litewire.AppendInt32(b, 10, int32(m.StatusDot))
+	b = litewire.AppendBool(b, 11, m.StatusWarn)
+	for _, v := range m.SubtitleParts {
+		if v != nil {
+			b = litewire.AppendMessage(b, 12, v)
+		}
 	}
 	return b
 }
@@ -511,6 +598,8 @@ type NotificationsView struct {
 	StatusText      *Text
 	HintText        *Text
 	ErrorDetail     string
+	SummaryText     *Text
+	SummaryWarn     bool
 }
 
 func (m *NotificationsView) GetSupported() bool {
@@ -573,6 +662,18 @@ func (m *NotificationsView) GetErrorDetail() string {
 	}
 	return ""
 }
+func (m *NotificationsView) GetSummaryText() *Text {
+	if m != nil {
+		return m.SummaryText
+	}
+	return nil
+}
+func (m *NotificationsView) GetSummaryWarn() bool {
+	if m != nil {
+		return m.SummaryWarn
+	}
+	return false
+}
 
 func (m *NotificationsView) Size() int {
 	if m == nil {
@@ -593,6 +694,10 @@ func (m *NotificationsView) Size() int {
 		n += litewire.SizeMessage(9, m.HintText.Size())
 	}
 	n += litewire.SizeString(10, m.ErrorDetail)
+	if m.SummaryText != nil {
+		n += litewire.SizeMessage(11, m.SummaryText.Size())
+	}
+	n += litewire.SizeBool(12, m.SummaryWarn)
 	return n
 }
 
@@ -625,6 +730,10 @@ func (m *NotificationsView) AppendMarshal(b []byte) []byte {
 		b = litewire.AppendMessage(b, 9, m.HintText)
 	}
 	b = litewire.AppendString(b, 10, m.ErrorDetail)
+	if m.SummaryText != nil {
+		b = litewire.AppendMessage(b, 11, m.SummaryText)
+	}
+	b = litewire.AppendBool(b, 12, m.SummaryWarn)
 	return b
 }
 
@@ -1004,34 +1113,39 @@ func (m *ConnCheckSummaryView) AppendMarshal(b []byte) []byte {
 }
 
 type SettingsViewModel struct {
-	Online              bool
-	ClockSkewed         bool
-	Unlinked            bool
-	HasAccount          bool
-	IsManager           bool
-	AuthorityName       string
-	RecoveryPending     bool
-	RecoveryReadyMs     int64
-	RecoveryBannerText  *Text
-	UnlinkedBannerText  *Text
-	ClockSkewBannerText *Text
-	Machines            []*MachineListCardView
-	CanAddDevice        bool
-	AddDeviceHint       *Text
-	EmptyMachinesText   *Text
-	RecentClients       []*ClientRowView
-	HasMoreClients      bool
-	TotalDevicesCount   int32
-	Security            *SecuritySummaryView
-	Notifications       *NotificationsView
-	Appearance          *AppearanceView
-	Update              *ClientUpdateView
-	ConnCheck           *ConnCheckSummaryView
-	DiskReminders       []*DiskReminderView
-	QuotaBanner         *QuotaBannerView
-	CanExitAccount      bool
-	ExitNeedsTransfer   bool
-	MachinesLoading     bool
+	Online                 bool
+	ClockSkewed            bool
+	Unlinked               bool
+	HasAccount             bool
+	IsManager              bool
+	AuthorityName          string
+	RecoveryPending        bool
+	RecoveryReadyMs        int64
+	RecoveryBannerText     *Text
+	UnlinkedBannerText     *Text
+	ClockSkewBannerText    *Text
+	Machines               []*MachineListCardView
+	CanAddDevice           bool
+	AddDeviceHint          *Text
+	EmptyMachinesText      *Text
+	RecentClients          []*ClientRowView
+	HasMoreClients         bool
+	TotalDevicesCount      int32
+	Security               *SecuritySummaryView
+	Notifications          *NotificationsView
+	Appearance             *AppearanceView
+	Update                 *ClientUpdateView
+	ConnCheck              *ConnCheckSummaryView
+	DiskReminders          []*DiskReminderView
+	QuotaBanner            *QuotaBannerView
+	CanExitAccount         bool
+	ExitNeedsTransfer      bool
+	MachinesLoading        bool
+	MachineCountText       *Text
+	ClientsSummaryText     *Text
+	ClientsSummaryWarn     bool
+	UnfinishedPairingCount int32
+	EmptyMachinesBody      *Text
 }
 
 func (m *SettingsViewModel) GetOnline() bool {
@@ -1202,6 +1316,36 @@ func (m *SettingsViewModel) GetMachinesLoading() bool {
 	}
 	return false
 }
+func (m *SettingsViewModel) GetMachineCountText() *Text {
+	if m != nil {
+		return m.MachineCountText
+	}
+	return nil
+}
+func (m *SettingsViewModel) GetClientsSummaryText() *Text {
+	if m != nil {
+		return m.ClientsSummaryText
+	}
+	return nil
+}
+func (m *SettingsViewModel) GetClientsSummaryWarn() bool {
+	if m != nil {
+		return m.ClientsSummaryWarn
+	}
+	return false
+}
+func (m *SettingsViewModel) GetUnfinishedPairingCount() int32 {
+	if m != nil {
+		return m.UnfinishedPairingCount
+	}
+	return 0
+}
+func (m *SettingsViewModel) GetEmptyMachinesBody() *Text {
+	if m != nil {
+		return m.EmptyMachinesBody
+	}
+	return nil
+}
 
 func (m *SettingsViewModel) Size() int {
 	if m == nil {
@@ -1270,6 +1414,17 @@ func (m *SettingsViewModel) Size() int {
 	n += litewire.SizeBool(26, m.CanExitAccount)
 	n += litewire.SizeBool(27, m.ExitNeedsTransfer)
 	n += litewire.SizeBool(28, m.MachinesLoading)
+	if m.MachineCountText != nil {
+		n += litewire.SizeMessage(29, m.MachineCountText.Size())
+	}
+	if m.ClientsSummaryText != nil {
+		n += litewire.SizeMessage(30, m.ClientsSummaryText.Size())
+	}
+	n += litewire.SizeBool(31, m.ClientsSummaryWarn)
+	n += litewire.SizeInt32(32, int32(m.UnfinishedPairingCount))
+	if m.EmptyMachinesBody != nil {
+		n += litewire.SizeMessage(33, m.EmptyMachinesBody.Size())
+	}
 	return n
 }
 
@@ -1350,6 +1505,17 @@ func (m *SettingsViewModel) AppendMarshal(b []byte) []byte {
 	b = litewire.AppendBool(b, 26, m.CanExitAccount)
 	b = litewire.AppendBool(b, 27, m.ExitNeedsTransfer)
 	b = litewire.AppendBool(b, 28, m.MachinesLoading)
+	if m.MachineCountText != nil {
+		b = litewire.AppendMessage(b, 29, m.MachineCountText)
+	}
+	if m.ClientsSummaryText != nil {
+		b = litewire.AppendMessage(b, 30, m.ClientsSummaryText)
+	}
+	b = litewire.AppendBool(b, 31, m.ClientsSummaryWarn)
+	b = litewire.AppendInt32(b, 32, int32(m.UnfinishedPairingCount))
+	if m.EmptyMachinesBody != nil {
+		b = litewire.AppendMessage(b, 33, m.EmptyMachinesBody)
+	}
 	return b
 }
 
@@ -2013,6 +2179,10 @@ type ConnectionGroupView struct {
 	ReadLatencyText      *Text
 	ShowDiagnosticsEntry bool
 	FooterText           *Text
+	RowDot               MachineStatusDot
+	RowSpinning          bool
+	RowValueText         *Text
+	RowSubtitleText      *Text
 }
 
 func (m *ConnectionGroupView) GetToggleVisible() bool {
@@ -2087,6 +2257,30 @@ func (m *ConnectionGroupView) GetFooterText() *Text {
 	}
 	return nil
 }
+func (m *ConnectionGroupView) GetRowDot() MachineStatusDot {
+	if m != nil {
+		return m.RowDot
+	}
+	return 0
+}
+func (m *ConnectionGroupView) GetRowSpinning() bool {
+	if m != nil {
+		return m.RowSpinning
+	}
+	return false
+}
+func (m *ConnectionGroupView) GetRowValueText() *Text {
+	if m != nil {
+		return m.RowValueText
+	}
+	return nil
+}
+func (m *ConnectionGroupView) GetRowSubtitleText() *Text {
+	if m != nil {
+		return m.RowSubtitleText
+	}
+	return nil
+}
 
 func (m *ConnectionGroupView) Size() int {
 	if m == nil {
@@ -2116,6 +2310,14 @@ func (m *ConnectionGroupView) Size() int {
 	n += litewire.SizeBool(11, m.ShowDiagnosticsEntry)
 	if m.FooterText != nil {
 		n += litewire.SizeMessage(12, m.FooterText.Size())
+	}
+	n += litewire.SizeInt32(13, int32(m.RowDot))
+	n += litewire.SizeBool(14, m.RowSpinning)
+	if m.RowValueText != nil {
+		n += litewire.SizeMessage(15, m.RowValueText.Size())
+	}
+	if m.RowSubtitleText != nil {
+		n += litewire.SizeMessage(16, m.RowSubtitleText.Size())
 	}
 	return n
 }
@@ -2159,6 +2361,14 @@ func (m *ConnectionGroupView) AppendMarshal(b []byte) []byte {
 	if m.FooterText != nil {
 		b = litewire.AppendMessage(b, 12, m.FooterText)
 	}
+	b = litewire.AppendInt32(b, 13, int32(m.RowDot))
+	b = litewire.AppendBool(b, 14, m.RowSpinning)
+	if m.RowValueText != nil {
+		b = litewire.AppendMessage(b, 15, m.RowValueText)
+	}
+	if m.RowSubtitleText != nil {
+		b = litewire.AppendMessage(b, 16, m.RowSubtitleText)
+	}
 	return b
 }
 
@@ -2171,6 +2381,11 @@ type CliVersionView struct {
 	Enabled           bool
 	LockedLastEnabled bool
 	Saving            bool
+	DefaultModelLabel *Text
+	DefaultModeLabel  *Text
+	DefaultModeDanger bool
+	DisabledLabel     *Text
+	Defaults          *MachineAgentDefaultsView
 }
 
 func (m *CliVersionView) GetAgent() v1.Agent {
@@ -2221,6 +2436,36 @@ func (m *CliVersionView) GetSaving() bool {
 	}
 	return false
 }
+func (m *CliVersionView) GetDefaultModelLabel() *Text {
+	if m != nil {
+		return m.DefaultModelLabel
+	}
+	return nil
+}
+func (m *CliVersionView) GetDefaultModeLabel() *Text {
+	if m != nil {
+		return m.DefaultModeLabel
+	}
+	return nil
+}
+func (m *CliVersionView) GetDefaultModeDanger() bool {
+	if m != nil {
+		return m.DefaultModeDanger
+	}
+	return false
+}
+func (m *CliVersionView) GetDisabledLabel() *Text {
+	if m != nil {
+		return m.DisabledLabel
+	}
+	return nil
+}
+func (m *CliVersionView) GetDefaults() *MachineAgentDefaultsView {
+	if m != nil {
+		return m.Defaults
+	}
+	return nil
+}
 
 func (m *CliVersionView) Size() int {
 	if m == nil {
@@ -2237,6 +2482,19 @@ func (m *CliVersionView) Size() int {
 	n += litewire.SizeBool(6, m.Enabled)
 	n += litewire.SizeBool(7, m.LockedLastEnabled)
 	n += litewire.SizeBool(8, m.Saving)
+	if m.DefaultModelLabel != nil {
+		n += litewire.SizeMessage(9, m.DefaultModelLabel.Size())
+	}
+	if m.DefaultModeLabel != nil {
+		n += litewire.SizeMessage(10, m.DefaultModeLabel.Size())
+	}
+	n += litewire.SizeBool(11, m.DefaultModeDanger)
+	if m.DisabledLabel != nil {
+		n += litewire.SizeMessage(12, m.DisabledLabel.Size())
+	}
+	if m.Defaults != nil {
+		n += litewire.SizeMessage(13, m.Defaults.Size())
+	}
 	return n
 }
 
@@ -2265,6 +2523,19 @@ func (m *CliVersionView) AppendMarshal(b []byte) []byte {
 	b = litewire.AppendBool(b, 6, m.Enabled)
 	b = litewire.AppendBool(b, 7, m.LockedLastEnabled)
 	b = litewire.AppendBool(b, 8, m.Saving)
+	if m.DefaultModelLabel != nil {
+		b = litewire.AppendMessage(b, 9, m.DefaultModelLabel)
+	}
+	if m.DefaultModeLabel != nil {
+		b = litewire.AppendMessage(b, 10, m.DefaultModeLabel)
+	}
+	b = litewire.AppendBool(b, 11, m.DefaultModeDanger)
+	if m.DisabledLabel != nil {
+		b = litewire.AppendMessage(b, 12, m.DisabledLabel)
+	}
+	if m.Defaults != nil {
+		b = litewire.AppendMessage(b, 13, m.Defaults)
+	}
 	return b
 }
 
@@ -2423,6 +2694,7 @@ type ModeChoiceView struct {
 	Selected       bool
 	Disabled       bool
 	DisabledReason *Text
+	Danger         bool
 }
 
 func (m *ModeChoiceView) GetMode() v1.ApprovalMode {
@@ -2455,6 +2727,12 @@ func (m *ModeChoiceView) GetDisabledReason() *Text {
 	}
 	return nil
 }
+func (m *ModeChoiceView) GetDanger() bool {
+	if m != nil {
+		return m.Danger
+	}
+	return false
+}
 
 func (m *ModeChoiceView) Size() int {
 	if m == nil {
@@ -2470,6 +2748,7 @@ func (m *ModeChoiceView) Size() int {
 	if m.DisabledReason != nil {
 		n += litewire.SizeMessage(5, m.DisabledReason.Size())
 	}
+	n += litewire.SizeBool(6, m.Danger)
 	return n
 }
 
@@ -2497,6 +2776,7 @@ func (m *ModeChoiceView) AppendMarshal(b []byte) []byte {
 	if m.DisabledReason != nil {
 		b = litewire.AppendMessage(b, 5, m.DisabledReason)
 	}
+	b = litewire.AppendBool(b, 6, m.Danger)
 	return b
 }
 
@@ -2861,6 +3141,13 @@ type AttachmentStorageView struct {
 	Cleaning             bool
 	ClearButtonLabel     *Text
 	FooterText           *Text
+	SummaryText          *Text
+	SummaryWarn          bool
+	UsedTotalText        *Text
+	LimitLabel           *Text
+	UploadedPercent      int32
+	PreviewPercent       int32
+	ReservePercent       int32
 }
 
 func (m *AttachmentStorageView) GetLoaded() bool {
@@ -2935,6 +3222,48 @@ func (m *AttachmentStorageView) GetFooterText() *Text {
 	}
 	return nil
 }
+func (m *AttachmentStorageView) GetSummaryText() *Text {
+	if m != nil {
+		return m.SummaryText
+	}
+	return nil
+}
+func (m *AttachmentStorageView) GetSummaryWarn() bool {
+	if m != nil {
+		return m.SummaryWarn
+	}
+	return false
+}
+func (m *AttachmentStorageView) GetUsedTotalText() *Text {
+	if m != nil {
+		return m.UsedTotalText
+	}
+	return nil
+}
+func (m *AttachmentStorageView) GetLimitLabel() *Text {
+	if m != nil {
+		return m.LimitLabel
+	}
+	return nil
+}
+func (m *AttachmentStorageView) GetUploadedPercent() int32 {
+	if m != nil {
+		return m.UploadedPercent
+	}
+	return 0
+}
+func (m *AttachmentStorageView) GetPreviewPercent() int32 {
+	if m != nil {
+		return m.PreviewPercent
+	}
+	return 0
+}
+func (m *AttachmentStorageView) GetReservePercent() int32 {
+	if m != nil {
+		return m.ReservePercent
+	}
+	return 0
+}
 
 func (m *AttachmentStorageView) Size() int {
 	if m == nil {
@@ -2969,6 +3298,19 @@ func (m *AttachmentStorageView) Size() int {
 	if m.FooterText != nil {
 		n += litewire.SizeMessage(12, m.FooterText.Size())
 	}
+	if m.SummaryText != nil {
+		n += litewire.SizeMessage(13, m.SummaryText.Size())
+	}
+	n += litewire.SizeBool(14, m.SummaryWarn)
+	if m.UsedTotalText != nil {
+		n += litewire.SizeMessage(15, m.UsedTotalText.Size())
+	}
+	if m.LimitLabel != nil {
+		n += litewire.SizeMessage(16, m.LimitLabel.Size())
+	}
+	n += litewire.SizeInt32(17, int32(m.UploadedPercent))
+	n += litewire.SizeInt32(18, int32(m.PreviewPercent))
+	n += litewire.SizeInt32(19, int32(m.ReservePercent))
 	return n
 }
 
@@ -3015,6 +3357,19 @@ func (m *AttachmentStorageView) AppendMarshal(b []byte) []byte {
 	if m.FooterText != nil {
 		b = litewire.AppendMessage(b, 12, m.FooterText)
 	}
+	if m.SummaryText != nil {
+		b = litewire.AppendMessage(b, 13, m.SummaryText)
+	}
+	b = litewire.AppendBool(b, 14, m.SummaryWarn)
+	if m.UsedTotalText != nil {
+		b = litewire.AppendMessage(b, 15, m.UsedTotalText)
+	}
+	if m.LimitLabel != nil {
+		b = litewire.AppendMessage(b, 16, m.LimitLabel)
+	}
+	b = litewire.AppendInt32(b, 17, int32(m.UploadedPercent))
+	b = litewire.AppendInt32(b, 18, int32(m.PreviewPercent))
+	b = litewire.AppendInt32(b, 19, int32(m.ReservePercent))
 	return b
 }
 
@@ -3206,6 +3561,19 @@ type MachineSettingsViewModel struct {
 	CliSwitchesDisabledReason      *Text
 	CliSwitchesConflictBanner      *Text
 	CliSwitchesFooter              *Text
+	HeaderDot                      MachineStatusDot
+	HeaderSubtitle                 *Text
+	StatusCardDot                  MachineStatusDot
+	StatusCardBadge                *Text
+	StatusCardWarn                 bool
+	ShowUsageEntry                 bool
+	UsageTotalTokens               uint64
+	UsageFallbackThirtyDays        bool
+	UsageCachedOffline             bool
+	UsageEmptyText                 *Text
+	ProjectCount                   int32
+	ProjectCountText               *Text
+	ShortId                        string
 }
 
 func (m *MachineSettingsViewModel) GetMachineId() string {
@@ -3436,6 +3804,84 @@ func (m *MachineSettingsViewModel) GetCliSwitchesFooter() *Text {
 	}
 	return nil
 }
+func (m *MachineSettingsViewModel) GetHeaderDot() MachineStatusDot {
+	if m != nil {
+		return m.HeaderDot
+	}
+	return 0
+}
+func (m *MachineSettingsViewModel) GetHeaderSubtitle() *Text {
+	if m != nil {
+		return m.HeaderSubtitle
+	}
+	return nil
+}
+func (m *MachineSettingsViewModel) GetStatusCardDot() MachineStatusDot {
+	if m != nil {
+		return m.StatusCardDot
+	}
+	return 0
+}
+func (m *MachineSettingsViewModel) GetStatusCardBadge() *Text {
+	if m != nil {
+		return m.StatusCardBadge
+	}
+	return nil
+}
+func (m *MachineSettingsViewModel) GetStatusCardWarn() bool {
+	if m != nil {
+		return m.StatusCardWarn
+	}
+	return false
+}
+func (m *MachineSettingsViewModel) GetShowUsageEntry() bool {
+	if m != nil {
+		return m.ShowUsageEntry
+	}
+	return false
+}
+func (m *MachineSettingsViewModel) GetUsageTotalTokens() uint64 {
+	if m != nil {
+		return m.UsageTotalTokens
+	}
+	return 0
+}
+func (m *MachineSettingsViewModel) GetUsageFallbackThirtyDays() bool {
+	if m != nil {
+		return m.UsageFallbackThirtyDays
+	}
+	return false
+}
+func (m *MachineSettingsViewModel) GetUsageCachedOffline() bool {
+	if m != nil {
+		return m.UsageCachedOffline
+	}
+	return false
+}
+func (m *MachineSettingsViewModel) GetUsageEmptyText() *Text {
+	if m != nil {
+		return m.UsageEmptyText
+	}
+	return nil
+}
+func (m *MachineSettingsViewModel) GetProjectCount() int32 {
+	if m != nil {
+		return m.ProjectCount
+	}
+	return 0
+}
+func (m *MachineSettingsViewModel) GetProjectCountText() *Text {
+	if m != nil {
+		return m.ProjectCountText
+	}
+	return nil
+}
+func (m *MachineSettingsViewModel) GetShortId() string {
+	if m != nil {
+		return m.ShortId
+	}
+	return ""
+}
 
 func (m *MachineSettingsViewModel) Size() int {
 	if m == nil {
@@ -3532,6 +3978,27 @@ func (m *MachineSettingsViewModel) Size() int {
 	if m.CliSwitchesFooter != nil {
 		n += litewire.SizeMessage(38, m.CliSwitchesFooter.Size())
 	}
+	n += litewire.SizeInt32(39, int32(m.HeaderDot))
+	if m.HeaderSubtitle != nil {
+		n += litewire.SizeMessage(40, m.HeaderSubtitle.Size())
+	}
+	n += litewire.SizeInt32(41, int32(m.StatusCardDot))
+	if m.StatusCardBadge != nil {
+		n += litewire.SizeMessage(42, m.StatusCardBadge.Size())
+	}
+	n += litewire.SizeBool(43, m.StatusCardWarn)
+	n += litewire.SizeBool(44, m.ShowUsageEntry)
+	n += litewire.SizeVarintField(45, uint64(m.UsageTotalTokens))
+	n += litewire.SizeBool(46, m.UsageFallbackThirtyDays)
+	n += litewire.SizeBool(47, m.UsageCachedOffline)
+	if m.UsageEmptyText != nil {
+		n += litewire.SizeMessage(48, m.UsageEmptyText.Size())
+	}
+	n += litewire.SizeInt32(49, int32(m.ProjectCount))
+	if m.ProjectCountText != nil {
+		n += litewire.SizeMessage(50, m.ProjectCountText.Size())
+	}
+	n += litewire.SizeString(51, m.ShortId)
 	return n
 }
 
@@ -3643,6 +4110,27 @@ func (m *MachineSettingsViewModel) AppendMarshal(b []byte) []byte {
 	if m.CliSwitchesFooter != nil {
 		b = litewire.AppendMessage(b, 38, m.CliSwitchesFooter)
 	}
+	b = litewire.AppendInt32(b, 39, int32(m.HeaderDot))
+	if m.HeaderSubtitle != nil {
+		b = litewire.AppendMessage(b, 40, m.HeaderSubtitle)
+	}
+	b = litewire.AppendInt32(b, 41, int32(m.StatusCardDot))
+	if m.StatusCardBadge != nil {
+		b = litewire.AppendMessage(b, 42, m.StatusCardBadge)
+	}
+	b = litewire.AppendBool(b, 43, m.StatusCardWarn)
+	b = litewire.AppendBool(b, 44, m.ShowUsageEntry)
+	b = litewire.AppendVarint(b, 45, uint64(m.UsageTotalTokens))
+	b = litewire.AppendBool(b, 46, m.UsageFallbackThirtyDays)
+	b = litewire.AppendBool(b, 47, m.UsageCachedOffline)
+	if m.UsageEmptyText != nil {
+		b = litewire.AppendMessage(b, 48, m.UsageEmptyText)
+	}
+	b = litewire.AppendInt32(b, 49, int32(m.ProjectCount))
+	if m.ProjectCountText != nil {
+		b = litewire.AppendMessage(b, 50, m.ProjectCountText)
+	}
+	b = litewire.AppendString(b, 51, m.ShortId)
 	return b
 }
 
@@ -3676,6 +4164,7 @@ type DevicesViewModel struct {
 	ErrorText          *Text
 	MachinesLoading    bool
 	EmptyComputersText *Text
+	ClientCountText    *Text
 }
 
 func (m *DevicesViewModel) GetIsManager() bool {
@@ -3756,6 +4245,12 @@ func (m *DevicesViewModel) GetEmptyComputersText() *Text {
 	}
 	return nil
 }
+func (m *DevicesViewModel) GetClientCountText() *Text {
+	if m != nil {
+		return m.ClientCountText
+	}
+	return nil
+}
 
 func (m *DevicesViewModel) Size() int {
 	if m == nil {
@@ -3792,6 +4287,9 @@ func (m *DevicesViewModel) Size() int {
 	n += litewire.SizeBool(12, m.MachinesLoading)
 	if m.EmptyComputersText != nil {
 		n += litewire.SizeMessage(13, m.EmptyComputersText.Size())
+	}
+	if m.ClientCountText != nil {
+		n += litewire.SizeMessage(14, m.ClientCountText.Size())
 	}
 	return n
 }
@@ -3841,6 +4339,9 @@ func (m *DevicesViewModel) AppendMarshal(b []byte) []byte {
 	b = litewire.AppendBool(b, 12, m.MachinesLoading)
 	if m.EmptyComputersText != nil {
 		b = litewire.AppendMessage(b, 13, m.EmptyComputersText)
+	}
+	if m.ClientCountText != nil {
+		b = litewire.AppendMessage(b, 14, m.ClientCountText)
 	}
 	return b
 }

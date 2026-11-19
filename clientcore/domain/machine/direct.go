@@ -28,6 +28,8 @@ func BuildConnectionGroup(online bool, prefEnabled bool, report *corev1.DirectRo
 		FooterText:    text.Msg(text.KeyTransportFooter),
 	}
 
+	defer populateConnectionRowSummary(view, report)
+
 	if !report.Capable {
 		view.Stage = corev1.ConnectionGroupStage_CONNECTION_GROUP_STAGE_UNSUPPORTED
 		view.Tone = corev1.ConnectionGroupTone_CONNECTION_GROUP_TONE_MUTED
@@ -274,4 +276,63 @@ func formatMiBps(v float64) string {
 		return strconv.FormatFloat(v, 'f', 0, 64)
 	}
 	return strconv.FormatFloat(v, 'f', 1, 64)
+}
+
+func populateConnectionRowSummary(view *corev1.ConnectionGroupView, report *corev1.DirectRouteReport) {
+	if view == nil {
+		return
+	}
+	switch view.Stage {
+	case corev1.ConnectionGroupStage_CONNECTION_GROUP_STAGE_UNSUPPORTED:
+		view.RowValueText = text.Msg(text.KeyTransportRowUnavailable)
+	case corev1.ConnectionGroupStage_CONNECTION_GROUP_STAGE_OFFLINE:
+		view.RowDot = corev1.MachineStatusDot_MACHINE_STATUS_DOT_GRAY_STATIC
+		view.RowValueText = text.Msg(text.KeySettingsOffline)
+	case corev1.ConnectionGroupStage_CONNECTION_GROUP_STAGE_DISABLED:
+		view.RowValueText = text.Msg(text.KeyTransportRowOff)
+		if report != nil && (report.DaemonDisabled || report.Reason == corev1.DirectRouteReason_DIRECT_ROUTE_REASON_DAEMON_DISABLED) {
+			view.RowSubtitleText = view.DetailText
+		}
+	case corev1.ConnectionGroupStage_CONNECTION_GROUP_STAGE_DIRECT:
+		view.RowDot = corev1.MachineStatusDot_MACHINE_STATUS_DOT_GREEN_LIVE
+		if ms := activeRttMillisString(report, true); ms != "" {
+			view.RowValueText = text.Msg(text.KeyTransportRowUsingDirectMs, text.Str("ms", ms))
+		} else {
+			view.RowValueText = text.Msg(text.KeyTransportRowUsingDirect)
+		}
+		view.RowSubtitleText = view.DetailText
+	case corev1.ConnectionGroupStage_CONNECTION_GROUP_STAGE_CONNECTING:
+		view.RowSpinning = true
+		view.RowValueText = text.Msg(text.KeyTransportStatusConnecting)
+	default:
+		view.RowDot = corev1.MachineStatusDot_MACHINE_STATUS_DOT_GRAY_STATIC
+		if ms := activeRttMillisString(report, false); ms != "" {
+			view.RowValueText = text.Msg(text.KeyTransportRowRelayMs, text.Str("ms", ms))
+		} else {
+			view.RowValueText = text.Msg(text.KeyTransportRowRelay)
+		}
+		view.RowSubtitleText = view.DetailText
+	}
+}
+
+func activeRttMillisString(r *corev1.DirectRouteReport, preferDirect bool) string {
+	if r == nil {
+		return ""
+	}
+	if preferDirect && r.HasDirectReadMs && r.DirectReadMs >= 0 {
+		return strconv.FormatInt(int64(r.DirectReadMs), 10)
+	}
+	if !preferDirect && r.HasRelayReadMs && r.RelayReadMs >= 0 {
+		return strconv.FormatInt(int64(r.RelayReadMs), 10)
+	}
+	if r.HasActiveRttMs && r.ActiveRttMs >= 0 {
+		return strconv.FormatInt(int64(r.ActiveRttMs), 10)
+	}
+	if r.HasDirectReadMs && r.DirectReadMs >= 0 {
+		return strconv.FormatInt(int64(r.DirectReadMs), 10)
+	}
+	if r.HasRelayReadMs && r.RelayReadMs >= 0 {
+		return strconv.FormatInt(int64(r.RelayReadMs), 10)
+	}
+	return ""
 }

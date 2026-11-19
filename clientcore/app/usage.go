@@ -133,6 +133,7 @@ func (c *Core) dispatchUsageUI(ctx *sync.StepContext, ev *corev1.Event) []*corev
 		}
 		if c.m.settings != nil && c.m.settings.Active {
 			c.m.settingsDirty.MachineStatus = true
+			c.m.settingsDirty.MachineSettings = true
 		}
 		if len(c.m.ensureSessionStore().opened) > 0 {
 			c.m.ensureSessionStore().pendingDirty = true
@@ -275,6 +276,7 @@ func (c *Core) onUsageStatsSettled(sc sync.SettledCommand, meta cmdMeta, dirty *
 	}
 	if c.m.settings != nil && c.m.settings.Active {
 		c.m.settingsDirty.MachineStatus = true
+		c.m.settingsDirty.MachineSettings = true
 	}
 	if len(c.m.ensureSessionStore().opened) > 0 {
 		c.m.ensureSessionStore().pendingDirty = true

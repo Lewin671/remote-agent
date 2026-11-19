@@ -54,4 +54,10 @@ public interface ModeChoiceViewOrBuilder extends
    * @return The disabledReason.
    */
   io.github.lewin671.remoteagent.core.proto.Text getDisabledReason();
+
+  /**
+   * <code>bool danger = 6 [json_name = "danger"];</code>
+   * @return The danger.
+   */
+  boolean getDanger();
 }

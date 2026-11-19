@@ -307,6 +307,9 @@ message QuotaCliSection {
   Text summary_line = 9;
   QuotaTone summary_tone = 10;
   Text summary_meta = 11;
+  Text summary_primary_text = 12;
+  bool summary_primary_warn = 13;
+  Text summary_window_text = 14;
 }
 
 message QuotaViewModel {

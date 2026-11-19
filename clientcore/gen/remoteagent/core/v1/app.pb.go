@@ -127,6 +127,7 @@ type ProjectScreenRequest struct {
 	ProjectKey string
 	Manage     bool
 	EndedLimit int32
+	MachineId  string
 }
 
 func (m *ProjectScreenRequest) GetProjectKey() string {
@@ -146,6 +147,12 @@ func (m *ProjectScreenRequest) GetEndedLimit() int32 {
 		return m.EndedLimit
 	}
 	return 0
+}
+func (m *ProjectScreenRequest) GetMachineId() string {
+	if m != nil {
+		return m.MachineId
+	}
+	return ""
 }
 
 func (m *ProjectScreenRequest) Unmarshal(b []byte) error {
@@ -180,6 +187,15 @@ func (m *ProjectScreenRequest) Unmarshal(b []byte) error {
 					return err
 				}
 				m.EndedLimit = int32(v)
+				continue
+			}
+		case 4:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadString(&b)
+				if err != nil {
+					return err
+				}
+				m.MachineId = v
 				continue
 			}
 		}

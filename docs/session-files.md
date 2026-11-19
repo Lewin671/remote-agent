@@ -75,7 +75,7 @@ daemon 在每个解析出的用户消息里识别精确的 `File: @"<path>" (fil
 
 新会话首条消息的本机 File 在创建成功后随草稿清空，当前没有保存到该首条消息的待确认记录；与首条图片相同，这是已知缺口，并非可恢复保证。放回输入框时如果只剩服务器/daemon 的文件引用而没有本机副本，文件条目明确标为失败、提示重新选择，并阻止发送；本轮不改创建响应或重设计首条消息缓存，后续取舍见 [plan.md](plan.md) 的待确认。
 
-界面见 [client-v63 · 文件](design/client-v63.html#files)。
+界面见 [client-v64 · 文件](design/client-v64.html#files)。
 
 ## 协议改动的依赖
 
@@ -91,7 +91,7 @@ daemon 在每个解析出的用户消息里识别精确的 `File: @"<path>" (fil
 
 ## Agent 给客户端发文件
 
-做不做、信任边界和中继能看到什么见 [scope §4「Agent 发来的文件」](scope.md#agent-发来的文件)；字段以 proto 为准。三端的文件卡与下载交互见本节，画面见 [client-v63 · Agent 发来的文件](design/client-v63.html#shared-files)，整合与验收进度见 [plan.md](plan.md)。
+做不做、信任边界和中继能看到什么见 [scope §4「Agent 发来的文件」](scope.md#agent-发来的文件)；字段以 proto 为准。三端的文件卡与下载交互见本节，画面见 [client-v64 · Agent 发来的文件](design/client-v64.html#shared-files)，整合与验收进度见 [plan.md](plan.md)。
 
 ### 发起
 

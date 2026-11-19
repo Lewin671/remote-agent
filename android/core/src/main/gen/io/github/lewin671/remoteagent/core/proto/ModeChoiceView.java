@@ -207,6 +207,32 @@ public  final class ModeChoiceView extends
     bitField0_ = (bitField0_ & ~0x00000002);
   }
 
+  public static final int DANGER_FIELD_NUMBER = 6;
+  private boolean danger_;
+  /**
+   * <code>bool danger = 6 [json_name = "danger"];</code>
+   * @return The danger.
+   */
+  @java.lang.Override
+  public boolean getDanger() {
+    return danger_;
+  }
+  /**
+   * <code>bool danger = 6 [json_name = "danger"];</code>
+   * @param value The danger to set.
+   */
+  private void setDanger(boolean value) {
+    
+    danger_ = value;
+  }
+  /**
+   * <code>bool danger = 6 [json_name = "danger"];</code>
+   */
+  private void clearDanger() {
+
+    danger_ = false;
+  }
+
   public static io.github.lewin671.remoteagent.core.proto.ModeChoiceView parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -500,6 +526,34 @@ public  final class ModeChoiceView extends
       return this;
     }
 
+    /**
+     * <code>bool danger = 6 [json_name = "danger"];</code>
+     * @return The danger.
+     */
+    @java.lang.Override
+    public boolean getDanger() {
+      return instance.getDanger();
+    }
+    /**
+     * <code>bool danger = 6 [json_name = "danger"];</code>
+     * @param value The danger to set.
+     * @return This builder for chaining.
+     */
+    public Builder setDanger(boolean value) {
+      copyOnWrite();
+      instance.setDanger(value);
+      return this;
+    }
+    /**
+     * <code>bool danger = 6 [json_name = "danger"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearDanger() {
+      copyOnWrite();
+      instance.clearDanger();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.ModeChoiceView)
   }
   @java.lang.Override
@@ -522,10 +576,11 @@ public  final class ModeChoiceView extends
             "selected_",
             "disabled_",
             "disabledReason_",
+            "danger_",
           };
           java.lang.String info =
-              "\u0000\u0005\u0000\u0001\u0001\u0005\u0005\u0000\u0000\u0000\u0001\f\u0002\u1009" +
-              "\u0000\u0003\u0007\u0004\u0007\u0005\u1009\u0001";
+              "\u0000\u0006\u0000\u0001\u0001\u0006\u0006\u0000\u0000\u0000\u0001\f\u0002\u1009" +
+              "\u0000\u0003\u0007\u0004\u0007\u0005\u1009\u0001\u0006\u0007";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

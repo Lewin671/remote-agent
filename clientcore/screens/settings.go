@@ -1,6 +1,7 @@
 package screens
 
 import (
+	"math"
 	"sort"
 	"strconv"
 	"strings"
@@ -8,6 +9,7 @@ import (
 	"github.com/Lewin671/remote-agent/clientcore/domain/lists"
 	"github.com/Lewin671/remote-agent/clientcore/domain/machine"
 	"github.com/Lewin671/remote-agent/clientcore/domain/quota"
+	"github.com/Lewin671/remote-agent/clientcore/domain/usage"
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/clientcore/text"
@@ -160,16 +162,72 @@ func buildMachineListCards(st *State, machines []*lists.Machine, extra *Settings
 		online := lists.MachineReachable(m)
 		unlinked := lists.MachineUnlinked(m, &st.World)
 		mismatch := lists.ProtocolMismatchDirection(m, clientVer)
+
 		var statusTxt *corev1.Text
-		if unlinked {
-			statusTxt = text.Msg(text.KeySettingsThisDeviceWasRemovedFromTheAccount)
-		} else if online {
-			statusTxt = text.Msg(text.KeyCommonOnline)
-		} else if m.LastSeenMs > 0 {
-			statusTxt = text.Join(text.KeyCommonNoteSeparator, text.Msg(text.KeyCommonOffline), formatRelativeTime(m.LastSeenMs, st.Cal))
-		} else {
-			statusTxt = text.Msg(text.KeyCommonOffline)
+		var statusDot corev1.MachineStatusDot
+		var statusWarn bool
+		var subParts []*corev1.SubtitleSegment
+
+		var quotaSummaries []*corev1.QuotaCliSection
+		if includeSummary {
+			quotaSummaries = quota.MachineCardSummaries(m, st.Cal.NowMs)
 		}
+
+		if unlinked {
+			statusDot = corev1.MachineStatusDot_MACHINE_STATUS_DOT_UNSPECIFIED
+			statusTxt = text.Msg(text.KeySettingsStatusRemoved)
+			subParts = append(subParts, &corev1.SubtitleSegment{
+				Text: text.Msg(text.KeySettingsMachineSubRemoved),
+			})
+		} else if online && mismatch != 0 {
+			statusDot = corev1.MachineStatusDot_MACHINE_STATUS_DOT_ORANGE_STATIC
+			statusWarn = true
+			statusTxt = text.Msg(text.KeySettingsStatusNeedsUpdate)
+			subParts = append(subParts, &corev1.SubtitleSegment{
+				Text: text.Msg(text.KeySettingsMachineSubVersionMismatch),
+				Warn: true,
+			})
+		} else if online {
+			statusDot = corev1.MachineStatusDot_MACHINE_STATUS_DOT_GREEN_LIVE
+			statusTxt = text.Msg(text.KeyCommonOnline)
+			if m.Meta != nil && m.Meta.Capabilities != nil && m.Meta.Capabilities.MachineStatus &&
+				m.Meta.DiskStatus != nil && m.Meta.DiskStatus.AvailableBytes < machine.DiskReminderThresholdBytes {
+				subParts = append(subParts, &corev1.SubtitleSegment{
+					Text: text.Msg(text.KeySettingsMachineSubDiskAlert, text.ArgText("size", machine.FormatDecimalSize(m.Meta.DiskStatus.AvailableBytes))),
+					Warn: true,
+				})
+			}
+			for _, qs := range quotaSummaries {
+				r := qs.SummaryRow
+				if r == nil || !r.HasPercent || r.Stale || r.PastReset {
+					continue
+				}
+				warn := r.Tone == corev1.QuotaTone_QUOTA_TONE_WARN || r.Tone == corev1.QuotaTone_QUOTA_TONE_FULL
+				var segText *corev1.Text
+				if r.Exhausted {
+					segText = text.Msg(text.KeySettingsMachineSubQuotaExhausted, text.Str("name", qs.AgentName))
+				} else {
+					segText = text.Msg(
+						text.KeySettingsMachineSubQuotaLeft,
+						text.Str("name", qs.AgentName),
+						text.Str("value", strconv.FormatInt(int64(r.RemainingPercent), 10)),
+					)
+				}
+				subParts = append(subParts, &corev1.SubtitleSegment{
+					Text: segText,
+					Warn: warn,
+				})
+			}
+		} else {
+			statusDot = corev1.MachineStatusDot_MACHINE_STATUS_DOT_GRAY_STATIC
+			if m.LastSeenMs > 0 {
+				statusTxt = formatRelativeTime(m.LastSeenMs, st.Cal)
+			}
+			if statusTxt == nil {
+				statusTxt = text.Msg(text.KeySettingsOffline)
+			}
+		}
+
 		card := &corev1.MachineListCardView{
 			MachineId:        m.ID,
 			Name:             lists.MachineName(m, m.ID),
@@ -177,10 +235,13 @@ func buildMachineListCards(st *State, machines []*lists.Machine, extra *Settings
 			Member:           !unlinked,
 			ProtocolMismatch: mismatch,
 			StatusText:       statusTxt,
+			StatusDot:        statusDot,
+			StatusWarn:       statusWarn,
+			SubtitleParts:    subParts,
 			LastSeenMs:       m.LastSeenMs,
 		}
 		if includeSummary {
-			card.QuotaSummaries = quota.MachineCardSummaries(m, st.Cal.NowMs)
+			card.QuotaSummaries = quotaSummaries
 			directPref, directReport := machineDirectInputs(extra, m.ID)
 			card.DirectRow = machine.BuildConnCheckDirectRow(online && !unlinked, directPref, directReport)
 		}
@@ -270,6 +331,22 @@ func buildNotificationsView(n NotificationPrefs) *corev1.NotificationsView {
 		ShowContent:     n.ShowContent,
 		ErrorDetail:     n.ErrorDetail,
 	}
+	hasIssue := n.Supported && (n.Permission == corev1.NotificationPermissionState_NOTIFICATION_PERMISSION_STATE_NEEDS_HOME_SCREEN ||
+		n.Permission == corev1.NotificationPermissionState_NOTIFICATION_PERMISSION_STATE_DENIED ||
+		n.PushState == corev1.PushRegistrationState_PUSH_REGISTRATION_STATE_FAILED)
+	switch {
+	case hasIssue:
+		v.SummaryWarn = true
+		v.SummaryText = text.Msg(text.KeySettingsNotificationsSummaryUnreachable)
+	case !n.Supported || n.PushState == corev1.PushRegistrationState_PUSH_REGISTRATION_STATE_DISABLED ||
+		(!n.NotifyAttention && !n.NotifyTurnEnded && !n.NotifyScheduled):
+		v.SummaryText = text.Msg(text.KeySettingsNotificationsSummaryOff)
+	case n.NotifyAttention && !n.NotifyTurnEnded && !n.NotifyScheduled:
+		v.SummaryText = text.Msg(text.KeySettingsNotificationsSummaryPendingOnly)
+	default:
+		v.SummaryText = text.Msg(text.KeySettingsNotificationsSummaryOn)
+	}
+
 	if !n.Supported {
 		v.StatusText = text.Msg(text.KeySettingsThisBrowserDoesNotSupportPushNotifications)
 		return v
@@ -453,24 +530,57 @@ func BuildSettings(st *State, syncView *corev1.SyncStateView, extra *SettingsExt
 	if vm.Unlinked {
 		vm.UnlinkedBannerText = text.Msg(text.KeySettingsThisDeviceWasRemovedFromTheAccount)
 	}
-	if vm.RecoveryPending && isMgr {
-		vm.RecoveryBannerText = text.Msg(text.KeySecuritySomeoneIsRequestingManagementTakeoverWithARecoveryCode)
+	if vm.RecoveryPending {
+		if isMgr {
+			vm.RecoveryBannerText = text.Msg(text.KeySecuritySomeoneIsRequestingManagementTakeoverWithARecoveryCode)
+		} else {
+			vm.RecoveryBannerText = text.Msg(text.KeySettingsRecoveryWaitingBanner)
+		}
 	}
+	if len(vm.Machines) > 2 {
+		vm.MachineCountText = text.Msg(text.KeySettingsMachineCount, text.Int("count", int64(len(vm.Machines))))
+	}
+	vm.UnfinishedPairingCount = int32(len(unfinished))
+	totalClients := int64(len(allClients))
+	if len(unfinished) > 0 {
+		vm.ClientsSummaryWarn = true
+		if totalClients > 0 {
+			vm.ClientsSummaryText = text.Msg(
+				text.KeySettingsClientsSummaryPending,
+				text.Int("count", totalClients),
+				text.Int("pending", int64(len(unfinished))),
+			)
+		} else {
+			vm.ClientsSummaryText = text.Msg(text.KeySettingsClientsSummaryPendingOnly, text.Int("pending", int64(len(unfinished))))
+		}
+	} else if totalClients <= 1 {
+		vm.ClientsSummaryText = text.Msg(text.KeySettingsClientsSummarySelfOnly)
+	} else {
+		vm.ClientsSummaryText = text.Msg(text.KeySettingsClientsSummaryWithOthers, text.Int("count", totalClients))
+	}
+
 	if !isMgr && authName != "" {
-		vm.AddDeviceHint = text.Msg(text.KeySecurityAddOnAuthority, text.Str("name", authName))
+		vm.AddDeviceHint = text.Msg(text.KeySettingsAddDeviceFooterHint, text.Str("name", authName))
 	}
 	if len(vm.Machines) == 0 {
 		if waitingForMachineList(st) {
 			vm.MachinesLoading = true
 			vm.EmptyMachinesText = text.Msg(text.KeyCommonLoading)
 		} else {
-			vm.EmptyMachinesText = text.Msg(text.KeySettingsNoComputersYet)
+			vm.EmptyMachinesText = text.Msg(text.KeySettingsEmptyComputersTitle)
+			if isMgr {
+				vm.EmptyMachinesBody = text.Msg(text.KeySettingsEmptyComputersAuthorityBody)
+			} else if authName != "" {
+				vm.EmptyMachinesBody = text.Msg(text.KeySettingsEmptyComputersMemberBody, text.Str("name", authName))
+			}
 		}
 	}
 
-	secSummary := text.Msg(text.KeySecurityManageOnAuthority, text.Str("name", authName))
+	var secSummary *corev1.Text
 	if isMgr {
 		secSummary = text.Msg(text.KeySecurityThisDeviceManagesTheAccount)
+	} else {
+		secSummary = text.Msg(text.KeySettingsSecuritySummaryNonAuthority, text.Str("name", authName))
 	}
 	vm.Security = &corev1.SecuritySummaryView{
 		IsManager:         isMgr,
@@ -513,6 +623,7 @@ func BuildMachineSettings(st *State, syncView *corev1.SyncStateView, extra *Sett
 
 	vm.Found = true
 	vm.Name = lists.MachineName(m, machineID)
+	vm.ShortId = machine.ShortMachineID(machineID)
 	vm.Member = !lists.MachineUnlinked(m, &st.World)
 	vm.Online = lists.MachineReachable(m)
 	vm.ProtocolMismatch = lists.ProtocolMismatchDirection(m, st.World.ClientVersion)
@@ -526,7 +637,43 @@ func BuildMachineSettings(st *State, syncView *corev1.SyncStateView, extra *Sett
 		vm.OfflineOrMismatchBanner = text.Msg(text.KeySettingsComputerSettingsOffline, text.Str("name", vm.Name))
 	}
 
-	// Overview telemetry rings
+	// Top bar dot + subtitle
+	var statusWord *corev1.Text
+	switch {
+	case !vm.Member:
+		vm.HeaderDot = corev1.MachineStatusDot_MACHINE_STATUS_DOT_GRAY_STATIC
+		statusWord = text.Msg(text.KeySettingsStatusRemoved)
+	case vm.ProtocolMismatch != 0:
+		vm.HeaderDot = corev1.MachineStatusDot_MACHINE_STATUS_DOT_ORANGE_STATIC
+		statusWord = text.Msg(text.KeySettingsStatusNeedsUpdate)
+	case vm.Online:
+		vm.HeaderDot = corev1.MachineStatusDot_MACHINE_STATUS_DOT_GREEN_LIVE
+		statusWord = text.Msg(text.KeyCommonOnline)
+	default:
+		vm.HeaderDot = corev1.MachineStatusDot_MACHINE_STATUS_DOT_GRAY_STATIC
+		statusWord = text.Msg(text.KeySettingsOffline)
+	}
+	if !vm.Member {
+		vm.HeaderSubtitle = text.Msg(
+			text.KeySettingsHeaderSubtitlePair,
+			text.ArgText("left", statusWord),
+			text.ArgText("right", text.Msg(text.KeySettingsMachineSubRemoved)),
+		)
+	} else {
+		var subParts []*corev1.Text
+		subParts = append(subParts, statusWord)
+		if !vm.Online && m.LastSeenMs > 0 {
+			if rel := formatRelativeTime(m.LastSeenMs, st.Cal); rel != nil {
+				subParts = append(subParts, rel)
+			}
+		}
+		if m.Meta != nil && m.Meta.ProtocolVersion > 0 {
+			subParts = append(subParts, text.Msg(text.KeySettingsDaemonProtocolTag, text.Int("version", int64(m.Meta.ProtocolVersion))))
+		}
+		vm.HeaderSubtitle = text.JoinLiteral(" · ", subParts...)
+	}
+
+	// Overview telemetry rings & card header
 	if m.Meta != nil && m.Meta.Capabilities != nil && m.Meta.Capabilities.MachineStatus {
 		vm.ShowStatusEntry = true
 		var feed *MachinePollFeed
@@ -538,17 +685,81 @@ func BuildMachineSettings(st *State, syncView *corev1.SyncStateView, extra *Sett
 			shown = feed.Last
 		}
 		vm.StatusRings = machine.BuildRings(vm.Online && shown != nil, shown)
+		diskTight := (shown != nil && shown.Disk != nil &&
+			(shown.Disk.Pressure == v1.ResourcePressure_RESOURCE_PRESSURE_WARNING ||
+				shown.Disk.Pressure == v1.ResourcePressure_RESOURCE_PRESSURE_CRITICAL)) ||
+			(m.Meta.DiskStatus != nil && m.Meta.DiskStatus.AvailableBytes < machine.DiskReminderThresholdBytes)
+		switch {
+		case !vm.Member:
+			vm.StatusCardDot = corev1.MachineStatusDot_MACHINE_STATUS_DOT_GRAY_STATIC
+			vm.StatusCardBadge = text.Msg(text.KeySettingsStatusRemoved)
+		case vm.ProtocolMismatch != 0:
+			vm.StatusCardDot = corev1.MachineStatusDot_MACHINE_STATUS_DOT_GRAY_STATIC
+			vm.StatusCardBadge = text.Msg(text.KeySettingsStatusCardPaused)
+		case !vm.Online:
+			vm.StatusCardDot = corev1.MachineStatusDot_MACHINE_STATUS_DOT_GRAY_STATIC
+			vm.StatusCardBadge = text.Msg(text.KeySettingsOffline)
+		case diskTight:
+			vm.StatusCardDot = corev1.MachineStatusDot_MACHINE_STATUS_DOT_ORANGE_STATIC
+			vm.StatusCardBadge = text.Msg(text.KeySettingsStatusCardDiskTight)
+			vm.StatusCardWarn = true
+		default:
+			vm.StatusCardDot = corev1.MachineStatusDot_MACHINE_STATUS_DOT_GREEN_LIVE
+			vm.StatusCardBadge = text.Msg(text.KeyMachineStatusLive)
+		}
 	}
 
-	// Account quota rows
+	// Account quota rows + 7d usage summary row
 	vm.QuotaRows = quota.BuildCliSections(m, v1.Agent_AGENT_UNSPECIFIED, st.Cal.NowMs)
+	usageCap := m.Meta != nil && m.Meta.Capabilities != nil && m.Meta.Capabilities.UsageStats
+	vm.ShowUsageEntry = true
+	if !vm.Member || vm.ProtocolMismatch != 0 || !usageCap {
+		vm.UsageEmptyText = text.Plain("—")
+	} else {
+		snap7, cached7, _, _ := lookupUsageSnapshot(st, machineID, v1.UsageRangePreset_USAGE_RANGE_PRESET_SEVEN_DAYS, 0, 0, vm.Online)
+		tot := sumEnabledUsageTokens(m.Meta, snap7)
+		if tot > 0 {
+			vm.UsageTotalTokens = tot
+			vm.UsageCachedOffline = cached7
+		} else {
+			snap30, cached30, _, _ := lookupUsageSnapshot(st, machineID, v1.UsageRangePreset_USAGE_RANGE_PRESET_THIRTY_DAYS, 0, 0, vm.Online)
+			if tot30 := sumEnabledUsageTokens(m.Meta, snap30); tot30 > 0 {
+				vm.UsageTotalTokens = tot30
+				vm.UsageFallbackThirtyDays = true
+				vm.UsageCachedOffline = cached30
+			} else if snap7 != nil || snap30 != nil {
+				vm.UsageEmptyText = text.Msg(text.KeySettingsUsageSummaryEmpty)
+			}
+		}
+	}
 
 	// Direct connection group
 	mExtra := extra.Machines[machineID]
 	directPref, directReport := machineDirectInputs(extra, machineID)
 	vm.Connection = machine.BuildConnectionGroup(vm.Online && vm.Member, directPref, directReport)
 
-	// CLI versions & switches
+	// Daemon Settings & Cache (needed before building per-CLI defaults summaries)
+	sEntry := st.MachineSettings[machineID]
+	if sEntry != nil {
+		vm.SettingsLoading = sEntry.Loading
+		if sEntry.ErrorText != nil {
+			vm.SettingsError = sEntry.ErrorText
+		} else if sEntry.Error != "" {
+			vm.SettingsError = text.Msg(text.KeySettingsReadError, text.Str("reason", sEntry.Error))
+		}
+	}
+	if mExtra != nil {
+		vm.SavePending = mExtra.SavePending
+		vm.SaveUnknown = mExtra.SaveUnknown
+		vm.SaveError = mExtra.SaveError
+	}
+
+	var ds *v1.DaemonSettings
+	if sEntry != nil && sEntry.Settings != nil {
+		ds = sEntry.Settings
+	}
+
+	// CLI versions, switches & per-CLI defaults
 	versions := lists.MachineVersions(m.Meta)
 	disabledMap := lists.MachineDisabledSet(m.Meta)
 	if disabledMap == nil {
@@ -582,6 +793,8 @@ func BuildMachineSettings(st *State, syncView *corev1.SyncStateView, extra *Sett
 		isEnabled := !disabledMap[eff]
 		isLocked := enabledCount <= 1 && isEnabled
 		isSaving := mExtra != nil && mExtra.ToggleSaving[eff]
+		cliDef := buildAgentDefaultsView(st, m, ds, eff)
+		defModeLbl, defModeDanger := summarizeDefaultMode(st, m, eff, cliDef)
 		vm.CliVersions = append(vm.CliVersions, &corev1.CliVersionView{
 			Agent:             info.Agent,
 			Name:              cliName,
@@ -591,6 +804,11 @@ func BuildMachineSettings(st *State, syncView *corev1.SyncStateView, extra *Sett
 			Enabled:           isEnabled,
 			LockedLastEnabled: isLocked,
 			Saving:            isSaving,
+			DefaultModelLabel: cliDef.SelectedModelLabel,
+			DefaultModeLabel:  defModeLbl,
+			DefaultModeDanger: defModeDanger,
+			DisabledLabel:     text.Msg(text.KeySettingsCliDisabled),
+			Defaults:          cliDef,
 		})
 	}
 	leaseExpired := syncView != nil && syncView.GetSecurityLoaded() && syncView.GetLeaseEndMs() > 0 && st.Cal.NowMs > 0 && st.Cal.NowMs >= syncView.GetLeaseEndMs()
@@ -628,27 +846,6 @@ func BuildMachineSettings(st *State, syncView *corev1.SyncStateView, extra *Sett
 		}
 	}
 	vm.SelectedAgent = selAgent
-
-	// Daemon Settings & Cache
-	sEntry := st.MachineSettings[machineID]
-	if sEntry != nil {
-		vm.SettingsLoading = sEntry.Loading
-		if sEntry.ErrorText != nil {
-			vm.SettingsError = sEntry.ErrorText
-		} else if sEntry.Error != "" {
-			vm.SettingsError = text.Msg(text.KeySettingsReadError, text.Str("reason", sEntry.Error))
-		}
-	}
-	if mExtra != nil {
-		vm.SavePending = mExtra.SavePending
-		vm.SaveUnknown = mExtra.SaveUnknown
-		vm.SaveError = mExtra.SaveError
-	}
-
-	var ds *v1.DaemonSettings
-	if sEntry != nil && sEntry.Settings != nil {
-		ds = sEntry.Settings
-	}
 	vm.AgentDefaults = buildAgentDefaultsView(st, m, ds, selAgent)
 
 	var timeoutSec int32
@@ -663,9 +860,9 @@ func BuildMachineSettings(st *State, syncView *corev1.SyncStateView, extra *Sett
 	vm.ApprovalTimeoutChoices = machine.BuildTimeoutChoices(timeoutSec)
 	vm.SelectedIdleCloseMinutes = machine.IdleCloseValue(idleMin)
 	vm.IdleCloseChoices = machine.BuildIdleCloseChoices(idleMin)
-	vm.AttachmentStorage = buildAttachmentStorageView(imgQuotaBytes, mExtra)
+	vm.AttachmentStorage = buildAttachmentStorageView(imgQuotaBytes, mExtra, vm.Member && vm.ProtocolMismatch == 0)
 
-	// Projects on machine
+	// Projects on machine: align count with ManageProjects(machineId) filter
 	for _, p := range machine.CollectMachineProjects(m, st.World.Sessions) {
 		vm.Projects = append(vm.Projects, &corev1.MachineProjectView{
 			ProjectKey:     p.Path,
@@ -673,6 +870,12 @@ func BuildMachineSettings(st *State, syncView *corev1.SyncStateView, extra *Sett
 			Path:           p.Path,
 			LastActiveText: formatRelativeTime(p.LastActiveMs, st.Cal),
 		})
+	}
+	allProjRes := lists.BuildProjects(&st.World, "", st.RememberedScope, st.RememberedScopeToken, nil, st.Scope)
+	filteredProj := filterProjectsByMachine(allProjRes, machineID)
+	vm.ProjectCount = int32(len(filteredProj.Listed))
+	if vm.ProjectCount > 0 {
+		vm.ProjectCountText = text.Msg(text.KeySettingsProjectCountValue, text.Int("count", int64(vm.ProjectCount)))
 	}
 
 	// Machine management availability
@@ -685,6 +888,10 @@ func BuildMachineSettings(st *State, syncView *corev1.SyncStateView, extra *Sett
 	}
 	if isAuth {
 		vm.Management.ExplanationText = text.Msg(text.KeySecurityThisDeviceManagesTheAccount)
+	} else if !isMgr {
+		if authName := machine.AuthorityName(syncView, st.World.Machines); authName != "" {
+			vm.Management.ExplanationText = text.Msg(text.KeySettingsRemoveNonAuthorityFooter, text.Str("name", authName))
+		}
 	}
 	return vm
 }
@@ -757,10 +964,12 @@ func buildAgentDefaultsView(st *State, m *lists.Machine, ds *v1.DaemonSettings, 
 		}
 	}
 
-	// Approval modes in Settings: [UNSPECIFIED (follow CLI), ASK, AUTO]
+	// Approval modes in Settings: [UNSPECIFIED (follow CLI), ASK, AUTO, FULL_ACCESS]
 	var cliDefaultModeLbl *corev1.Text
 	dm := lists.DefaultModeOf(m, agent)
-	if dm.Mode == v1.ApprovalMode_APPROVAL_MODE_ASK || dm.Mode == v1.ApprovalMode_APPROVAL_MODE_AUTO {
+	if dm.Mode == v1.ApprovalMode_APPROVAL_MODE_ASK ||
+		dm.Mode == v1.ApprovalMode_APPROVAL_MODE_AUTO ||
+		dm.Mode == v1.ApprovalMode_APPROVAL_MODE_FULL_ACCESS {
 		cliDefaultModeLbl = modeNameText(dm.Mode)
 	}
 	var followLbl *corev1.Text
@@ -799,6 +1008,12 @@ func buildAgentDefaultsView(st *State, m *lists.Machine, ds *v1.DaemonSettings, 
 			Disabled:       autoUnavail,
 			DisabledReason: autoReason,
 		},
+		{
+			Mode:     v1.ApprovalMode_APPROVAL_MODE_FULL_ACCESS,
+			Label:    text.Msg(text.KeyModesFullAccess),
+			Selected: selMode == v1.ApprovalMode_APPROVAL_MODE_FULL_ACCESS,
+			Danger:   true,
+		},
 	}
 
 	return &corev1.MachineAgentDefaultsView{
@@ -816,11 +1031,86 @@ func buildAgentDefaultsView(st *State, m *lists.Machine, ds *v1.DaemonSettings, 
 	}
 }
 
-func buildAttachmentStorageView(quotaBytes int64, extra *MachineSettingsExtra) *corev1.AttachmentStorageView {
+func summarizeDefaultMode(_ *State, m *lists.Machine, agent v1.Agent, def *corev1.MachineAgentDefaultsView) (*corev1.Text, bool) {
+	if def != nil && def.SelectedMode != v1.ApprovalMode_APPROVAL_MODE_UNSPECIFIED {
+		return modeNameText(def.SelectedMode), def.SelectedMode == v1.ApprovalMode_APPROVAL_MODE_FULL_ACCESS
+	}
+	dm := lists.DefaultModeOf(m, agent)
+	if dm.Known && dm.Mode != v1.ApprovalMode_APPROVAL_MODE_UNSPECIFIED && !dm.Varies {
+		return modeNameText(dm.Mode), dm.Mode == v1.ApprovalMode_APPROVAL_MODE_FULL_ACCESS
+	}
+	return text.Msg(text.KeySettingsFollowConfiguration, text.Str("value", lists.AgentInfo(agent).Name)), false
+}
+
+func sumEnabledUsageTokens(meta *v1.MachineMeta, snap *v1.UsageStatsResponse) uint64 {
+	if snap == nil {
+		return 0
+	}
+	disabled := lists.MachineDisabledSet(meta)
+	var total uint64
+	for _, s := range snap.Series {
+		if s == nil || s.Current == nil || s.Current.UsageRequestCount == 0 {
+			continue
+		}
+		if disabled != nil && disabled[lists.EffectiveAgent(s.Agent)] {
+			continue
+		}
+		total += usage.TotalTokens(s.Current)
+	}
+	return total
+}
+
+func storagePercents(upBytes, preBytes, resBytes, limitBytes int64) (int32, int32, int32) {
+	if limitBytes <= 0 {
+		return 0, 0, 0
+	}
+	calc := func(b int64) int32 {
+		if b <= 0 {
+			return 0
+		}
+		p := int32(math.Round(float64(b) * 100.0 / float64(limitBytes)))
+		if p < 2 {
+			return 2
+		}
+		if p > 100 {
+			return 100
+		}
+		return p
+	}
+	up, pre, res := calc(upBytes), calc(preBytes), calc(resBytes)
+	sum := up + pre + res
+	if sum > 100 {
+		scale := 100.0 / float64(sum)
+		scaleVal := func(v int32) int32 {
+			if v == 0 {
+				return 0
+			}
+			sv := int32(math.Floor(float64(v) * scale))
+			if sv < 1 {
+				return 1
+			}
+			return sv
+		}
+		up, pre, res = scaleVal(up), scaleVal(pre), scaleVal(res)
+	}
+	return up, pre, res
+}
+
+func buildAttachmentStorageView(quotaBytes int64, extra *MachineSettingsExtra, activeMember bool) *corev1.AttachmentStorageView {
+	effLimit := quotaBytes
+	if effLimit <= 0 {
+		effLimit = machine.DefaultUploadQuotaBytes
+	}
+	limitLbl := machine.FormatBinarySize(uint64(effLimit))
 	v := &corev1.AttachmentStorageView{
 		SelectedQuotaBytes: quotaBytes,
 		QuotaChoices:       machine.BuildImageQuotaChoices(quotaBytes),
+		LimitLabel:         limitLbl,
 		FooterText:         text.Msg(text.KeySettingsAttachmentsAreStoredOnThisComputerSessionFilesRemain),
+	}
+	if !activeMember {
+		v.SummaryText = text.Plain("—")
+		return v
 	}
 	if extra == nil || extra.ImageStorage == nil {
 		return v
@@ -830,6 +1120,19 @@ func buildAttachmentStorageView(quotaBytes int64, extra *MachineSettingsExtra) *
 	v.Cleaning = extra.CleaningImages
 	v.UploadedText = machine.FormatAttachmentSize(st.UploadBytes)
 	v.PreviewCacheText = machine.FormatAttachmentSize(st.CacheBytes)
+
+	usedTotal := st.UploadBytes + st.CacheBytes
+	usedTxt := machine.FormatAttachmentSize(usedTotal)
+	v.UsedTotalText = usedTxt
+	v.UploadedPercent, v.PreviewPercent, v.ReservePercent = storagePercents(st.UploadBytes, st.CacheBytes, st.EmergencyReserveBytes, effLimit)
+
+	nearFull := effLimit > 0 && float64(st.UploadBytes+st.EmergencyReserveBytes)/float64(effLimit) >= 0.85
+	v.SummaryWarn = st.EmergencyReserveBytes > 0 || nearFull
+	if st.EmergencyReserveBytes > 0 {
+		v.SummaryText = text.Msg(text.KeySettingsStorageSummaryReserve, text.ArgText("used", usedTxt), text.ArgText("limit", limitLbl))
+	} else {
+		v.SummaryText = text.Msg(text.KeySettingsStorageSummaryPair, text.ArgText("used", usedTxt), text.ArgText("limit", limitLbl))
+	}
 
 	reclaim := st.ReclaimableBytes + st.CacheBytes
 	v.CanClear = reclaim > 0 && !extra.CleaningImages
@@ -871,6 +1174,9 @@ func BuildDevices(st *State, syncView *corev1.SyncStateView, extra *SettingsExtr
 		Computers:          buildMachineListCards(st, st.World.Machines, extra, false),
 		Clients:            clients,
 		UnfinishedPairings: unfinished,
+	}
+	if len(clients) > 0 {
+		vm.ClientCountText = text.Msg(text.KeySettingsClientsCount, text.Int("count", int64(len(clients))))
 	}
 	if len(vm.Computers) == 0 {
 		if waitingForMachineList(st) {

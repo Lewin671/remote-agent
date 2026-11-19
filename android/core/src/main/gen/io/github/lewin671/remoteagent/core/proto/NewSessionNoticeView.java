@@ -508,6 +508,48 @@ public  final class NewSessionNoticeView extends
     bitField0_ = (bitField0_ & ~0x00000008);
   }
 
+  public static final int TARGET_AGENT_FIELD_NUMBER = 11;
+  private int targetAgent_;
+  /**
+   * <code>.remoteagent.v1.Agent target_agent = 11 [json_name = "targetAgent"];</code>
+   * @return The enum numeric value on the wire for targetAgent.
+   */
+  @java.lang.Override
+  public int getTargetAgentValue() {
+    return targetAgent_;
+  }
+  /**
+   * <code>.remoteagent.v1.Agent target_agent = 11 [json_name = "targetAgent"];</code>
+   * @return The targetAgent.
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.proto.Agent getTargetAgent() {
+    io.github.lewin671.remoteagent.proto.Agent result = io.github.lewin671.remoteagent.proto.Agent.forNumber(targetAgent_);
+    return result == null ? io.github.lewin671.remoteagent.proto.Agent.UNRECOGNIZED : result;
+  }
+  /**
+   * <code>.remoteagent.v1.Agent target_agent = 11 [json_name = "targetAgent"];</code>
+   * @param value The enum numeric value on the wire for targetAgent to set.
+   */
+  private void setTargetAgentValue(int value) {
+      targetAgent_ = value;
+  }
+  /**
+   * <code>.remoteagent.v1.Agent target_agent = 11 [json_name = "targetAgent"];</code>
+   * @param value The targetAgent to set.
+   */
+  private void setTargetAgent(io.github.lewin671.remoteagent.proto.Agent value) {
+    targetAgent_ = value.getNumber();
+
+  }
+  /**
+   * <code>.remoteagent.v1.Agent target_agent = 11 [json_name = "targetAgent"];</code>
+   */
+  private void clearTargetAgent() {
+
+    targetAgent_ = 0;
+  }
+
   public static io.github.lewin671.remoteagent.core.proto.NewSessionNoticeView parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -1110,6 +1152,52 @@ public  final class NewSessionNoticeView extends
       return this;
     }
 
+    /**
+     * <code>.remoteagent.v1.Agent target_agent = 11 [json_name = "targetAgent"];</code>
+     * @return The enum numeric value on the wire for targetAgent.
+     */
+    @java.lang.Override
+    public int getTargetAgentValue() {
+      return instance.getTargetAgentValue();
+    }
+    /**
+     * <code>.remoteagent.v1.Agent target_agent = 11 [json_name = "targetAgent"];</code>
+     * @param value The targetAgent to set.
+     * @return This builder for chaining.
+     */
+    public Builder setTargetAgentValue(int value) {
+      copyOnWrite();
+      instance.setTargetAgentValue(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.Agent target_agent = 11 [json_name = "targetAgent"];</code>
+     * @return The targetAgent.
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.proto.Agent getTargetAgent() {
+      return instance.getTargetAgent();
+    }
+    /**
+     * <code>.remoteagent.v1.Agent target_agent = 11 [json_name = "targetAgent"];</code>
+     * @param value The enum numeric value on the wire for targetAgent to set.
+     * @return This builder for chaining.
+     */
+    public Builder setTargetAgent(io.github.lewin671.remoteagent.proto.Agent value) {
+      copyOnWrite();
+      instance.setTargetAgent(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.Agent target_agent = 11 [json_name = "targetAgent"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearTargetAgent() {
+      copyOnWrite();
+      instance.clearTargetAgent();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.NewSessionNoticeView)
   }
   @java.lang.Override
@@ -1138,11 +1226,12 @@ public  final class NewSessionNoticeView extends
             "draftChoices_",
             io.github.lewin671.remoteagent.core.proto.OfflineMachineChoiceView.class,
             "draftNoneText_",
+            "targetAgent_",
           };
           java.lang.String info =
-              "\u0000\n\u0000\u0001\u0001\n\n\u0000\u0001\u0000\u0001\f\u0002\f\u0003\u1009\u0000" +
-              "\u0004\f\u0005\u0208\u0006\u0007\u0007\u1009\u0001\b\u1009\u0002\t\u001b\n\u1009" +
-              "\u0003";
+              "\u0000\u000b\u0000\u0001\u0001\u000b\u000b\u0000\u0001\u0000\u0001\f\u0002\f\u0003" +
+              "\u1009\u0000\u0004\f\u0005\u0208\u0006\u0007\u0007\u1009\u0001\b\u1009\u0002\t\u001b" +
+              "\n\u1009\u0003\u000b\f";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

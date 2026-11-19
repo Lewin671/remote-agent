@@ -79,4 +79,54 @@ public interface CliVersionViewOrBuilder extends
    * @return The saving.
    */
   boolean getSaving();
+
+  /**
+   * <code>.remoteagent.core.v1.Text default_model_label = 9 [json_name = "defaultModelLabel"];</code>
+   * @return Whether the defaultModelLabel field is set.
+   */
+  boolean hasDefaultModelLabel();
+  /**
+   * <code>.remoteagent.core.v1.Text default_model_label = 9 [json_name = "defaultModelLabel"];</code>
+   * @return The defaultModelLabel.
+   */
+  io.github.lewin671.remoteagent.core.proto.Text getDefaultModelLabel();
+
+  /**
+   * <code>.remoteagent.core.v1.Text default_mode_label = 10 [json_name = "defaultModeLabel"];</code>
+   * @return Whether the defaultModeLabel field is set.
+   */
+  boolean hasDefaultModeLabel();
+  /**
+   * <code>.remoteagent.core.v1.Text default_mode_label = 10 [json_name = "defaultModeLabel"];</code>
+   * @return The defaultModeLabel.
+   */
+  io.github.lewin671.remoteagent.core.proto.Text getDefaultModeLabel();
+
+  /**
+   * <code>bool default_mode_danger = 11 [json_name = "defaultModeDanger"];</code>
+   * @return The defaultModeDanger.
+   */
+  boolean getDefaultModeDanger();
+
+  /**
+   * <code>.remoteagent.core.v1.Text disabled_label = 12 [json_name = "disabledLabel"];</code>
+   * @return Whether the disabledLabel field is set.
+   */
+  boolean hasDisabledLabel();
+  /**
+   * <code>.remoteagent.core.v1.Text disabled_label = 12 [json_name = "disabledLabel"];</code>
+   * @return The disabledLabel.
+   */
+  io.github.lewin671.remoteagent.core.proto.Text getDisabledLabel();
+
+  /**
+   * <code>.remoteagent.core.v1.MachineAgentDefaultsView defaults = 13 [json_name = "defaults"];</code>
+   * @return Whether the defaults field is set.
+   */
+  boolean hasDefaults();
+  /**
+   * <code>.remoteagent.core.v1.MachineAgentDefaultsView defaults = 13 [json_name = "defaults"];</code>
+   * @return The defaults.
+   */
+  io.github.lewin671.remoteagent.core.proto.MachineAgentDefaultsView getDefaults();
 }

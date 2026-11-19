@@ -33,4 +33,16 @@ public interface ProjectScreenRequestOrBuilder extends
    * @return The endedLimit.
    */
   int getEndedLimit();
+
+  /**
+   * <code>string machine_id = 4 [json_name = "machineId"];</code>
+   * @return The machineId.
+   */
+  java.lang.String getMachineId();
+  /**
+   * <code>string machine_id = 4 [json_name = "machineId"];</code>
+   * @return The bytes for machineId.
+   */
+  com.google.protobuf.ByteString
+      getMachineIdBytes();
 }
