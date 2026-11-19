@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>remote-agent 客户端设计稿 v64 · 2026-11-19</title>
+<title>remote-agent 客户端设计稿 v65 · 2026-11-19</title>
 <style>
 
   /* 颜色各有一个意思：墨色 = 这屏最该做的事；蓝色 = 能点的文字；橙色 = 等你；绿色 = 在线；黄色 = 只作内存压力条中段；红色 = 危险。
@@ -603,17 +603,14 @@
 
 <div class="wrap">
 <div class="head">
-  <div><h1>remote-agent 客户端</h1><p>网页 / Android / iOS 设计稿 · v64 · 2026-11-19 · 上一版 v63 在 git 历史里</p></div>
+  <div><h1>remote-agent 客户端</h1><p>网页 / Android / iOS 设计稿 · v65 · 2026-11-19 · 上一版 v64 在 git 历史里</p></div>
   <span class="sp"></span>
   <div class="seg" id="themeseg"><button data-t="auto" class="on">自动</button><button data-t="light">亮色</button><button data-t="dark">暗色</button></div>
 </div>
 <div class="note">本稿只表达界面长什么样，画面里的数值都是示例。做不做以 <a href="../scope.md">scope.md</a> 为准，技术决策见 <a href="../architecture.md">architecture.md</a>，颜色、字号、组件等视觉规则见 <a href="../design-system.md">design-system.md</a>，还没定的问题见 <a href="../plan.md">plan.md</a>。</div>
-<div class="note" id="v64-changelog">
-  <h4>相对 v63 的改动</h4><ul>
-  <li><b><a href="#settings">设置页 4 组收敛</a> + <a href="#devices">纯「客户端」二级页</a></b>：原 8 个碎片分组收敛为 <code>电脑 / 本机 / 账户与设备 / 关于</code> 4 组加底部独立退出危险卡，移除首页常驻推送长段排障说明；电脑改为统一圆角分组列表行（行首 20px <code>laptop</code> 标，文字与分隔线统一对齐 <code>46px</code>），管理端同组末行放 <code>＋ 添加设备</code>；新增纯「通知」二级页；「客户端」改为纯客户端列表（废除把电脑重复列第二遍的混合「设备」页及「全部设备 / 全部客户端」双入口）；合并「服务器与连接」；Web 补齐「开源许可」二级页。</li>
-  <li><b><a href="#machine-detail">电脑页 4 模块收敛</a> + <a href="#cli-switches">CLI 单行设置弹层</a></b>：顶栏固定展示状态点 + daemon 协议/版本副标题；首屏由<code>电脑状态</code>概览卡（带标题栏与实时/紧张状态）、<code>额度与用量</code>（<code>剩 N%</code> / <code>已用尽</code> 局部染橙 + <code>用量与速度</code> 一级直达）、<code>编程 CLI</code>（每个已装 CLI 只占 1 行、含模型与审批模式摘要及红色不折行 <code>完全放行</code>，点开单 CLI 设置弹层切换启用与新项目默认值）、<code>运行与存储</code>（<code>直连</code> / <code>审批超时</code> / <code>空闲自动结束</code> / <code>附件存储</code> 二级页，淘汰原生下拉框）与<code>管理</code>（<code>项目 N 个 ›</code> 跳转按电脑筛选 + <code>设备 ID</code> + 独立红字移除卡）构成。</li>
+<div class="note" id="v65-changelog">
+  <h4>相对 v64 的改动</h4><ul>
   <li><b><a href="#schedule-run">对话里的通知回执</a></b>：定时任务推送后对话里的「通知你：…」工具行改成一行灰字回执（14 的 <code>bell</code>、13 号 <code>ink2</code>，不上色）：电脑代发的只写「已通知你 · 时间」并排回「本轮用时」之前，agent 写的写「已通知你 · 第一行」，有换行或超过 40 个半角宽时点开就地看全文。</li>
-  <li><b><a href="#direct">「直连」统一弹层与跨页入口</a></b>：取消电脑页与排障单的双层套弹层，点「直连」摘要行直接打开统一「直连」弹层（开关与路由延迟在上，未连通时三行人话自检对齐 <code>34px</code> 与重试/复制在下）；主页磁盘提醒与电脑状态磁盘卡直跳电脑附件存储，会话 <code>⚡ 直连</code> 轻气泡直跳直连弹层，新任务「去启用」直跳对应 CLI 设置弹层。</li>
   </ul>
 </div>
 <nav class="review-nav" aria-label="设计稿章节"><a href="#account-management">账户管理</a><a href="#home">主页</a><a href="#new">新建</a><a href="#conversation">会话</a><a href="#reply">回复正文</a><a href="#input">输入区</a><a href="#boundaries">边界状态</a><a href="#link">断线</a><a href="#conncheck">连接检测</a><a href="#direct">电脑 › 连接</a><a href="#update">App 更新</a><a href="#states">状态集</a><a href="#tools">工具执行</a><a href="#files">文件</a><a href="#shared-files">Agent 发来的文件</a><a href="#images">图片</a><a href="#cli">多 CLI</a><a href="#rename">重命名</a><a href="#fork">分叉</a><a href="#approval-mode">审批模式</a><a href="#models">模型与上下文</a><a href="#quota">额度</a><a href="#projects">项目</a><a href="#devices">设备</a><a href="#device-security">账户安全</a><a href="#settings">设置与配对</a><a href="#machine-status">电脑状态与磁盘</a><a href="#usage">用量与速度</a><a href="#cli-switches">启用 CLI</a><a href="#wide">宽屏</a><a href="#schedules">定时任务</a><a href="#terminal-history">终端回看</a></nav>
