@@ -1213,6 +1213,9 @@ actor CoreHost: SyncEngine {
                     screens.pendingCleanup = CoreScreens.PendingCleanup(effect: eff)
                 }
 
+            case .usageCacheWrite:
+                break
+
             case nil:
                 break
             }
