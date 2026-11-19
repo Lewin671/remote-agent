@@ -150,16 +150,16 @@ class AddDeviceEntryTest {
         }
         ui.waitUntil(3000) { !remote.settingsView.value.isManager && remote.settingsView.value.authorityName == "Desk Browser" }
         ui.onNodeWithText("添加设备").assertDoesNotExist()
-        ui.onNodeWithText(addHintText).assertExists()
+        ui.onNodeWithText(messageTextForTest(UiMessages.settingsEmptyComputersMemberBody("Desk Browser"))).assertExists()
     }
 
     @Test
-    fun devicesPageNamesItsEntryAsSettingsDoes() {
+    fun devicesPageNamesItsEntryAsClientsDo() {
         show(withMachine.copy(isAuthority = true)) {
             DevicesScreenContent(devicesVm(canAdd = true), onPair = { nav.pair() })
         }
         ui.onNodeWithText("添加电脑或客户端").assertDoesNotExist()
-        ui.onNodeWithText("添加设备").performScrollTo().performClick()
+        ui.onNodeWithText("添加新客户端").performScrollTo().performClick()
         assertEquals(1, paired)
         ui.onNodeWithText(addHintText).assertDoesNotExist()
     }
@@ -169,6 +169,7 @@ class AddDeviceEntryTest {
         show(withMachine) {
             DevicesScreenContent(devicesVm(canAdd = false), onPair = { nav.pair() })
         }
+        ui.onNodeWithText("添加新客户端").assertDoesNotExist()
         ui.onNodeWithText("添加设备").assertDoesNotExist()
         ui.onNodeWithText(addHintText).performScrollTo().assertExists()
     }

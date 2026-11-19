@@ -41,7 +41,7 @@ fun DiskReminderCards(reminders: List<DiskReminderView>, modifier: Modifier = Mo
     if (reminders.isEmpty()) return
     val nav = LocalNav.current
     Column(modifier.padding(start = 16.dp, end = 16.dp, top = 14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        for (c in reminders) androidx.compose.runtime.key(c.machineId) { DiskReminderCard(c) { nav.machineStatus(c.machineId) } }
+        for (c in reminders) androidx.compose.runtime.key(c.machineId) { DiskReminderCard(c) { nav.deviceStorage(c.machineId) } }
     }
 }
 

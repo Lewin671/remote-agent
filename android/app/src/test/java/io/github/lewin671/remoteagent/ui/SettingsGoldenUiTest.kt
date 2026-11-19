@@ -50,7 +50,8 @@ class SettingsGoldenUiTest {
         val checkingVm = ScreenGoldenLoader.settingsView("settings_overview", "checkingUpdate")
         val vmState = mutableStateOf(settingsVm)
         var pickedTheme: ThemePreference? = null
-        var toggledAttention: Boolean? = null
+        var openedNotifications = 0
+        var openedClients = 0
         var openedConnCheck = 0
         ui.setContent {
             RaTheme(ThemeMode.LIGHT) {
@@ -58,28 +59,41 @@ class SettingsGoldenUiTest {
                     SettingsScreenContent(
                         vm = vmState.value,
                         serverDisplay = "example.com",
+                        localCacheText = "12.0 MiB",
                         updaterEnabled = true,
-                        onNotifyAttention = { toggledAttention = it },
+                        onNotifications = { openedNotifications++ },
+                        onDevices = { openedClients++ },
                         onTheme = { pickedTheme = it },
                         onOpenConnCheck = { openedConnCheck++ },
                     )
                 }
             }
         }
+        ui.onNodeWithText("电脑").assertIsDisplayed()
         ui.onNodeWithText("BuildBox").assertIsDisplayed()
         ui.onNodeWithText("BackupMac").assertIsDisplayed()
-        ui.onNodeWithText("剩 10", substring = true).performScrollTo().assertIsDisplayed()
-        ui.onNodeWithText("My Phone").performScrollTo().assertIsDisplayed()
-        ui.onNodeWithText("iPad Pro").performScrollTo().assertIsDisplayed()
+        ui.onNodeWithText("本机").performScrollTo().assertIsDisplayed()
+        ui.onNodeWithText("本机缓存").performScrollTo().assertIsDisplayed()
+        ui.onNodeWithText("12.0 MiB").performScrollTo().assertIsDisplayed()
+        ui.onNodeWithText("账户与设备").performScrollTo().assertIsDisplayed()
+        ui.onNodeWithText("关于").performScrollTo().assertIsDisplayed()
         ui.onNodeWithText("v0.32.4").performScrollTo().assertIsDisplayed()
 
-        ui.onNodeWithText("等我处理时").performScrollTo().performClick()
-        assertEquals(!settingsVm.notifications.notifyAttention, toggledAttention)
+        // No dual "全部设备 / 全部客户端" entries and no raw client rows on main Settings.
+        ui.onAllNodesWithText("全部设备").assertCountEquals(0)
+        ui.onAllNodesWithText("全部客户端").assertCountEquals(0)
+        ui.onAllNodesWithText("iPad Pro").assertCountEquals(0)
+
+        ui.onNodeWithText("通知").performScrollTo().performClick()
+        assertEquals(1, openedNotifications)
+
+        ui.onNodeWithText("客户端").performScrollTo().performClick()
+        assertEquals(1, openedClients)
 
         ui.onNodeWithText("暗色").performScrollTo().performClick()
         assertEquals(ThemePreference.THEME_PREFERENCE_DARK, pickedTheme)
 
-        ui.onNodeWithText("连接检测").performScrollTo().performClick()
+        ui.onNodeWithText("服务器与连接").performScrollTo().performClick()
         assertEquals(1, openedConnCheck)
 
         ui.runOnUiThread { vmState.value = checkingVm }
@@ -111,10 +125,11 @@ class SettingsGoldenUiTest {
                 }
             }
         }
-        ui.onNodeWithText("BuildBox").assertIsDisplayed()
-        ui.onNodeWithText("BackupMac").assertIsDisplayed()
+        // Pure Clients screen: no computer rows!
+        ui.onAllNodesWithText("BuildBox").assertCountEquals(0)
+        ui.onAllNodesWithText("BackupMac").assertCountEquals(0)
         ui.onNodeWithText("My Phone").assertIsDisplayed()
-        ui.onNodeWithText("Pixel 9 · …self").assertIsDisplayed()
+        ui.onNodeWithText("Pixel 9 · …self · 当前").assertIsDisplayed()
 
         ui.runOnUiThread { showDevices.value = false }
         ui.waitForIdle()
@@ -158,15 +173,20 @@ class SettingsGoldenUiTest {
             }
         }
         ui.onNodeWithText("MacStudio").assertIsDisplayed()
+        ui.onNodeWithText("电脑状态").assertIsDisplayed()
+        ui.onNodeWithText("用量与速度").performScrollTo().assertIsDisplayed()
         ui.onAllNodesWithText("Claude Code").onLast().performScrollTo().performClick()
         assertEquals(Agent.AGENT_CLAUDE, selectedAgent)
 
-        ui.onNodeWithText("模型").performScrollTo().performClick()
-        val firstModelLabel = initial.agentDefaults.modelChoicesList.first().label.let {
+        ui.onNodeWithText("模型").performClick()
+        val claudeDefaults = initial.cliVersionsList.firstOrNull { it.agent == Agent.AGENT_CLAUDE }
+            ?.takeIf { it.hasDefaults() }?.defaults ?: initial.agentDefaults
+        val firstModelLabel = claudeDefaults.modelChoicesList.first().label.let {
             sessionText(io.github.lewin671.remoteagent.core.UiMessages.modelsDefault())
         }
         ui.onAllNodesWithText(firstModelLabel).onLast().performClick()
-        assertEquals(initial.agentDefaults.modelChoicesList.first().id, updatedModel)
+        assertEquals(claudeDefaults.modelChoicesList.first().id, updatedModel)
+        ui.onNodeWithText("完成").performClick()
 
         ui.onNodeWithText("审批超时").performScrollTo().performClick()
         ui.onNodeWithText("10 分钟").performClick()
@@ -183,6 +203,7 @@ class SettingsGoldenUiTest {
         ui.runOnUiThread { vmState.value = relayFailed }
         ui.waitForIdle()
         ui.onNodeWithText("直连").performScrollTo().performClick()
+        ui.onNodeWithText("允许直连").performClick()
         assertFalse(toggledDirect!!)
     }
 

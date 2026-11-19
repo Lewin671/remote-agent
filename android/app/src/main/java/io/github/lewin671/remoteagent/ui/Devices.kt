@@ -3,6 +3,7 @@ package io.github.lewin671.remoteagent.ui
 import io.github.lewin671.remoteagent.core.UiMessages
 
 import android.content.Intent
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -13,6 +14,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
@@ -26,7 +29,10 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
 import io.github.lewin671.remoteagent.core.ConnState
@@ -40,8 +46,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /**
- * 设备: computers, where the CLIs run, apart from clients, which operate them. A computer's online
- * state says nothing about the clients, and a paired client is not shown as watching or online.
+ * 客户端: paired clients and unfinished pairings on this account. Computers are managed from Settings.
  */
 @Composable
 fun DevicesScreen() {
@@ -66,7 +71,6 @@ fun DevicesScreen() {
         leaseEndMs = state.leaseEndMs,
         nowMs = t,
         onRecovery = { nav.recovery() },
-        onMachineClick = { nav.device(it) },
         onClientClick = { nav.client(it) },
         onPair = { nav.pair() },
         onExportGenesis = {
@@ -91,22 +95,26 @@ internal fun DevicesScreenContent(
     leaseEndMs: Long = 0L,
     nowMs: Long = System.currentTimeMillis(),
     onRecovery: () -> Unit = {},
-    onMachineClick: (String) -> Unit = {},
     onClientClick: (String) -> Unit = {},
     onPair: () -> Unit = {},
     onExportGenesis: () -> Unit = {},
 ) {
     val copy = uiText()
     val p = pal
-    PageScaffold(copy(UiMessages.settingsDevices())) {
-        Column(Modifier.weight(1f).verticalScrollFaded()) {
-            if (clockWarning)
+    PageScaffold(copy(UiMessages.settingsClientsTitle())) {
+        Column(
+            Modifier.weight(1f)
+                .settingsReadableColumn()
+                .verticalScrollFaded(),
+        ) {
+            if (clockWarning) {
                 Notice(
                     copy(UiMessages.settingsAndroidThePhoneClockIsAheadOfTheServerRemoteControl()),
                     Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                     NoticeTone.WARN,
                 )
-            if (recoveryPending)
+            }
+            if (recoveryPending) {
                 Notice(
                     copy(UiMessages.securityAndroidSomeoneIsRequestingManagementTakeoverWithARecoveryCodeVeto()),
                     Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
@@ -114,82 +122,71 @@ internal fun DevicesScreenContent(
                     action = copy(UiMessages.securityAndroidView()),
                     onAction = onRecovery,
                 )
+            }
             val err = uiText(vm.errorText)
-            if (err.isNotEmpty())
+            if (err.isNotEmpty()) {
                 Notice(
                     err,
                     Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                     NoticeTone.ERROR,
                 )
-            GLabel(copy(UiMessages.settingsComputersRunClis()))
-            if (vm.computersList.isEmpty())
-                Hint(copy(UiMessages.securityAndroidNoComputersYet()), Modifier.padding(bottom = 12.dp))
-            else
-                Group(
-                    rows =
-                        vm.computersList.map { m ->
-                            @Composable {
-                                GRow(
-                                    m.name,
-                                    onClick = { onMachineClick(m.machineId) },
-                                    trailing = {
-                                        Row(
-                                            verticalAlignment = Alignment.CenterVertically,
-                                            horizontalArrangement = Arrangement.spacedBy(5.dp),
-                                        ) {
-                                            if (m.online) StatusMark(MarkKind.ONLINE)
-                                            ArrowText(
-                                                uiText(m.statusText),
-                                                p.ink2,
-                                                T.s13,
-                                            )
-                                        }
-                                    },
-                                )
-                            }
-                        },
-                )
-            GLabel(copy(UiMessages.settingsClientsControlSessions()))
-            val clientRows = vm.clientsList + vm.unfinishedPairingsList
-            Group(
-                rows =
-                    clientRows.map { c ->
-                        @Composable {
-                            DeviceClientRow(c, onClick = { onClientClick(c.deviceId) })
-                        }
-                    },
-            )
-            if (vm.isManager) {
-                GLabel(copy(UiMessages.securityAndroidRemoteControl()))
-                Hint(
-                    if (leaseEndMs > 0)
-                        copy(UiMessages.securityAndroidControlValidityAdvice(io.github.lewin671.remoteagent.core.securityTime(leaseEndMs, nowMs, copy = copy)))
-                    else copy(UiMessages.securityAndroidReadingMembershipState()),
-                )
             }
-            Text(
-                copy(UiMessages.securityAndroidLastUsedTimesAreOnTheRightEachDeviceChanges()),
-                style = T.s13,
-                color = p.ink2,
-                modifier = Modifier.padding(horizontal = 16.dp),
+
+            SectionLabel(
+                copy(UiMessages.settingsClientsGroupPaired()),
+                trailing = uiText(vm.clientCountText),
             )
-            if (vm.canAddDevice)
-                Box(
-                    Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-                        .heightIn(min = 44.dp)
-                        .clickable { onPair() },
-                    contentAlignment = Alignment.CenterStart,
-                ) {
-                    IconText(Lucide.Plus, copy(UiMessages.homeAddDevice()), p.blue, T.s15)
+            val pairedRows: List<@Composable () -> Unit> = buildList {
+                for (c in vm.clientsList) {
+                    add { DeviceClientRow(c, unfinished = false, onClick = { onClientClick(c.deviceId) }) }
                 }
-            else {
-                val addHint = uiText(vm.addDeviceHint)
-                if (addHint.isNotEmpty())
-                    Hint(
-                        addHint,
-                        Modifier.padding(bottom = 8.dp),
-                    )
+                if (vm.canAddDevice) {
+                    add {
+                        Row(
+                            Modifier.fillMaxWidth().heightIn(min = 50.dp)
+                                .clickable(role = androidx.compose.ui.semantics.Role.Button, onClick = onPair)
+                                .padding(horizontal = 16.dp, vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        ) {
+                            Box(Modifier.size(20.dp), contentAlignment = Alignment.Center) {
+                                Ic(Lucide.Plus, 18.dp, p.blue)
+                            }
+                            Text(copy(UiMessages.settingsClientsAddClient()), style = T.s17, color = p.blue)
+                        }
+                    }
+                }
             }
+            if (pairedRows.isNotEmpty()) {
+                ClientsAlignedCard(rows = pairedRows)
+            }
+            if (!vm.canAddDevice) {
+                val addHint = uiText(vm.addDeviceHint)
+                if (addHint.isNotEmpty()) {
+                    Hint(addHint, Modifier.padding(bottom = 8.dp), inset = 32.dp)
+                }
+            }
+
+            if (vm.unfinishedPairingsList.isNotEmpty()) {
+                ClientsAlignedCard(
+                    rows = vm.unfinishedPairingsList.map { u ->
+                        @Composable { DeviceClientRow(u, unfinished = true, onClick = { onClientClick(u.deviceId) }) }
+                    },
+                )
+            }
+
+            if (vm.isManager) {
+                Hint(
+                    if (leaseEndMs > 0) {
+                        copy(UiMessages.securityAndroidControlValidityAdvice(io.github.lewin671.remoteagent.core.securityTime(leaseEndMs, nowMs, copy = copy)))
+                    } else {
+                        copy(UiMessages.securityAndroidReadingMembershipState())
+                    },
+                    inset = 32.dp,
+                )
+            }
+            Hint(copy(UiMessages.settingsClientsFooterRedesign()), Modifier.padding(bottom = 8.dp), inset = 32.dp)
+
             if (vm.isManager) {
                 Box(Modifier.padding(horizontal = 16.dp)) {
                     TextAction(
@@ -201,6 +198,7 @@ internal fun DevicesScreenContent(
                 Hint(
                     copy(UiMessages.securityAndroidThisPublicGenesisStateContainsNoKeysUseItOnly()),
                     Modifier.padding(bottom = 4.dp),
+                    inset = 32.dp,
                 )
             }
             Spacer(Modifier.height(24.dp))
@@ -209,36 +207,77 @@ internal fun DevicesScreenContent(
 }
 
 @Composable
-private fun DeviceClientRow(c: ClientRowView, onClick: () -> Unit) {
+internal fun ClientsAlignedCard(rows: List<@Composable () -> Unit>) {
     val p = pal
-    val detail = listOfNotNull(
-        c.description.ifEmpty { null },
-        c.shortId.ifEmpty { null },
-    ).joinToString(" · ")
+    Column(
+        Modifier.fillMaxWidth()
+            .padding(start = 16.dp, end = 16.dp, bottom = 12.dp)
+            .clip(Radii.R18)
+            .background(if (LocalOnSoft.current) p.raised else p.gbg),
+    ) {
+        rows.forEachIndexed { i, r ->
+            Box(if (i > 0) Modifier.topLine(p.sep, 46.dp) else Modifier) { r() }
+        }
+    }
+}
+
+@Composable
+private fun DeviceClientRow(c: ClientRowView, unfinished: Boolean, onClick: () -> Unit) {
+    val p = pal
+    val copy = uiText()
     val role = uiText(c.roleLabel)
     val used = uiText(c.lastUsedText)
+    val subtitle = if (unfinished) {
+        listOfNotNull(
+            copy(UiMessages.settingsClientsPairingIncompleteDesc()),
+            c.shortId.ifEmpty { null },
+        ).joinToString(" · ")
+    } else {
+        listOfNotNull(
+            c.description.ifEmpty { null },
+            c.shortId.ifEmpty { null },
+            role.ifEmpty { null },
+        ).joinToString(" · ")
+    }
     Row(
         Modifier.fillMaxWidth()
-            .heightIn(min = 44.dp)
+            .heightIn(min = 50.dp)
             .clickable(onClick = onClick)
-            .padding(horizontal = 14.dp, vertical = 8.dp),
+            .padding(horizontal = 16.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
+        Box(Modifier.size(20.dp), contentAlignment = Alignment.Center) {
+            Ic(clientIconForDescription(c.description), 20.dp, p.ink2)
+        }
         Column(Modifier.weight(1f)) {
-            Text(c.displayName, style = T.s15, color = p.ink)
-            if (detail.isNotEmpty())
+            Text(c.displayName, style = T.s17m, color = p.ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            if (subtitle.isNotEmpty()) {
                 Text(
-                    detail,
+                    subtitle,
                     style = T.s13,
                     color = p.ink2,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.padding(top = 2.dp),
                 )
+            }
         }
-        if (role.isNotEmpty())
-            Text(role, style = T.s13, color = p.ink2)
-        else
-            ArrowText(used, p.ink2, T.s13)
+        if (unfinished) {
+            Text(
+                copy(UiMessages.settingsClientsPairingIncompleteBadge()),
+                style = T.s13b,
+                color = p.orangeInk,
+                maxLines = 1,
+            )
+            Arrow(p.ink3, T.s15)
+        } else {
+            val trail = used.ifEmpty { role }
+            if (trail.isNotEmpty()) {
+                Text(trail, style = T.s13, color = p.ink2, maxLines = 1)
+            }
+            Arrow(p.ink3, T.s15)
+        }
     }
 }
 

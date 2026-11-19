@@ -179,6 +179,7 @@ class CoreHost(
     private var homeEndedLimit: Int = CORE_ENDED_PAGE
     private var projectKey: String = ""
     private var projectManage: Boolean = true
+    private var projectMachineId: String = ""
     private var projectEndedLimit: Int = CORE_ENDED_PAGE
     private var newSessionProjectKey: String = ""
     private var machineStatusId: String = ""
@@ -208,7 +209,15 @@ class CoreHost(
 
     private val projectSlot = registerScreen(
         ScreenTarget.SCREEN_TARGET_PROJECT, ProjectViewModel.getDefaultInstance(),
-        { Screen.newBuilder().setProject(ProjectScreenRequest.newBuilder().setProjectKey(projectKey).setManage(projectManage).setEndedLimit(projectEndedLimit)).build() },
+        {
+            Screen.newBuilder().setProject(
+                ProjectScreenRequest.newBuilder()
+                    .setProjectKey(projectKey)
+                    .setManage(projectManage)
+                    .setEndedLimit(projectEndedLimit)
+                    .setMachineId(projectMachineId),
+            ).build()
+        },
         { if (it.viewCase == ViewModel.ViewCase.PROJECT) it.project else null },
     )
     val projectView: StateFlow<ProjectViewModel> = projectSlot.flow.asStateFlow()
@@ -849,12 +858,20 @@ class CoreHost(
         extract = { if (it.viewCase == ViewModel.ViewCase.SCHEDULE_DETAIL) it.scheduleDetail else null },
     )
 
-    fun snapshotProjectView(manage: Boolean = true): ProjectViewModel = snapshotSlot(
+    fun snapshotProjectView(manage: Boolean = true, machineId: String = ""): ProjectViewModel = snapshotSlot(
         ScreenTarget.SCREEN_TARGET_PROJECT,
         projectSlot,
+        matches = {
+            if (!manage) !it.hasManage()
+            else it.hasManage() && it.manage.filterMachineId == machineId
+        },
         screen = {
             Screen.newBuilder().setProject(
-                ProjectScreenRequest.newBuilder().setProjectKey("").setManage(manage).setEndedLimit(projectEndedLimit),
+                ProjectScreenRequest.newBuilder()
+                    .setProjectKey("")
+                    .setManage(manage)
+                    .setEndedLimit(projectEndedLimit)
+                    .setMachineId(machineId),
             ).build()
         },
         extract = { if (it.viewCase == ViewModel.ViewCase.PROJECT) it.project else null },
@@ -982,9 +999,10 @@ class CoreHost(
     fun selectHomeSession(sessionId: String) =
         send { setHomeSelectSession(HomeSelectSessionAction.newBuilder().setSessionId(sessionId)) }
 
-    fun openManageProjects() = dispatchAction {
+    fun openManageProjects(machineId: String = "") = dispatchAction {
         projectKey = ""
         projectManage = true
+        projectMachineId = machineId
         refreshScreenOnWorker(ScreenTarget.SCREEN_TARGET_PROJECT)
     }
 

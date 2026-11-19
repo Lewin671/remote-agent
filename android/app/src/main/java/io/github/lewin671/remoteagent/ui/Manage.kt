@@ -16,6 +16,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import io.github.lewin671.remoteagent.core.UiMessages
 import io.github.lewin671.remoteagent.core.listProjectName
+import io.github.lewin671.remoteagent.core.proto.ManageProjectsView
 import io.github.lewin671.remoteagent.core.proto.ProjectListingView
 import io.github.lewin671.remoteagent.core.proto.ProjectRowView
 
@@ -128,24 +129,75 @@ fun RemoveProjectConfirm(key: String, onDismiss: () -> Unit, projectName: String
 
 /** 项目管理: renders Core's [io.github.lewin671.remoteagent.core.proto.ManageProjectsView]. */
 @Composable
-fun ManageProjectsScreen() {
+fun ManageProjectsScreen(machineId: String = "") {
     val remote = LocalRemote.current
     val nav = LocalNav.current
-    val initialView = remember(remote) { remote.coreHost.snapshotProjectView(manage = true) }
+    var activeMachineId by remember(machineId) { mutableStateOf(machineId) }
+    val initialView = remember(remote, activeMachineId) { remote.coreHost.snapshotProjectView(manage = true, machineId = activeMachineId) }
     val rawView by remote.projectView.collectAsState()
-    val projectView = if (rawView.hasManage()) rawView else initialView
-    LaunchedEffect(Unit) { remote.coreHost.openManageProjects() }
-    val manage = projectView.manage
+    val projectView = if (rawView.hasManage() && rawView.manage.filterMachineId == activeMachineId) rawView else initialView
+    LaunchedEffect(activeMachineId) { remote.coreHost.openManageProjects(activeMachineId) }
+    ManageProjectsScreenContent(
+        manage = projectView.manage,
+        onShowAllMachines = { activeMachineId = "" },
+        onSearch = { remote.coreHost.setProjectSearch(it) },
+        onSelectProject = { key -> remote.coreHost.setHomeScope(key); nav.home() },
+        onOpenDirPicker = { remote.coreHost.openDirPicker(forNewTask = false) },
+        onCloseDirPicker = { remote.coreHost.closeDirPicker() },
+        onAddProject = { path -> remote.coreHost.addProject(path) },
+        onTogglePin = { key -> remote.coreHost.toggleProjectPin(key) },
+        onToggleHide = { key -> remote.coreHost.toggleProjectHide(key) },
+    )
+}
+
+@Composable
+internal fun ManageProjectsScreenContent(
+    manage: ManageProjectsView,
+    onShowAllMachines: () -> Unit = {},
+    onSearch: (String) -> Unit = {},
+    onSelectProject: (String) -> Unit = {},
+    onOpenDirPicker: () -> Unit = {},
+    onCloseDirPicker: () -> Unit = {},
+    onAddProject: (String) -> Unit = {},
+    onTogglePin: (String) -> Unit = {},
+    onToggleHide: (String) -> Unit = {},
+) {
     val p = pal
     var menu by remember { mutableStateOf<ProjectRowView?>(null) }
     var removing by remember { mutableStateOf<ProjectRowView?>(null) }
     var adding by remember { mutableStateOf(false) }
+    val filterLabel = if (manage.filterMachineId.isNotEmpty()) {
+        uiText(UiMessages.projectsFilterMachineSubtitle(manage.filterMachineName.ifEmpty { manage.filterMachineId }))
+    } else null
 
-    PageScaffold(uiText(UiMessages.homeManageProjects())) {
+    PageScaffold(uiText(UiMessages.homeManageProjects()), subtitle = filterLabel) {
         LazyColumn(
             Modifier.weight(1f).padding(horizontal = 16.dp).testTag("manage-projects-list"),
             contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 24.dp),
         ) {
+            if (filterLabel != null) {
+                item(key = "machine-filter") {
+                    Row(
+                        Modifier.fillMaxWidth().padding(start = 12.dp, end = 4.dp, bottom = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        Text(
+                            filterLabel,
+                            style = T.s13,
+                            color = p.ink2,
+                            modifier = Modifier.weight(1f),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                        TextAction(
+                            uiText(UiMessages.projectsFilterShowAll()),
+                            onClick = onShowAllMachines,
+                            style = T.s13b,
+                        )
+                    }
+                }
+            }
             if (!manage.canEdit && manage.blockedReason.isCoreTextNotEmpty()) {
                 item(key = "blocked") { Notice(uiText(manage.blockedReason), Modifier.padding(bottom = 12.dp)) }
             }
@@ -155,18 +207,18 @@ fun ManageProjectsScreen() {
             item(key = "list") {
                 CoreProjectList(
                     manage.listing,
-                    onSearch = { remote.coreHost.setProjectSearch(it) },
-                    onNew = { remote.coreHost.openDirPicker(forNewTask = false); adding = true },
+                    onSearch = onSearch,
+                    onNew = { onOpenDirPicker(); adding = true },
                     card = p.gbg,
                 ) { pr ->
                     CoreProjectRow(
                         pr,
                         retryEnabled = manage.canEdit,
-                        onClick = { remote.coreHost.setHomeScope(pr.key); nav.home() },
+                        onClick = { onSelectProject(pr.key) },
                         clickLabel = uiText(UiMessages.projectsAndroidViewHome()),
                         onRetry = {
-                            if (pr.pinned) remote.coreHost.toggleProjectPin(pr.key)
-                            else remote.coreHost.toggleProjectHide(pr.key)
+                            if (pr.pinned) onTogglePin(pr.key)
+                            else onToggleHide(pr.key)
                         },
                     ) {
                         val name = uiText(pr.name)
@@ -192,7 +244,7 @@ fun ManageProjectsScreen() {
                         enabled = manage.canEdit,
                         note = if (!manage.canEdit) uiText(manage.blockedReason) else "",
                     ) {
-                        remote.coreHost.toggleProjectPin(pr.key)
+                        onTogglePin(pr.key)
                     },
                 ),
                 listOf(
@@ -206,15 +258,15 @@ fun ManageProjectsScreen() {
     }
     removing?.let { pr ->
         RemoveProjectConfirm(pr.key, onDismiss = { removing = null }, projectName = uiText(pr.name)) {
-            remote.coreHost.toggleProjectHide(pr.key)
+            onToggleHide(pr.key)
         }
     }
-    if (adding) Sheet({ remote.coreHost.closeDirPicker(); adding = false }, scroll = false) {
+    if (adding) Sheet({ onCloseDirPicker(); adding = false }, scroll = false) {
         CoreDirPickerBody(
             manage.dirPicker,
-            onBack = { remote.coreHost.closeDirPicker(); adding = false },
+            onBack = { onCloseDirPicker(); adding = false },
         ) { _, path ->
-            remote.coreHost.addProject(path)
+            onAddProject(path)
             adding = false
         }
     }

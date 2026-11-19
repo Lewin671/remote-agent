@@ -98,46 +98,75 @@ private fun MachineRingKind.icon(): ImageVector = when (this) {
     else -> Lucide.HardDrive
 }
 
-/** Entrance card shown on the computer's settings page: three small ring gauges that open the status page. */
+/** Entrance card shown on the computer's settings page: header + three small ring gauges that open the status page. */
 @Composable
 fun MachineRingsCard(
     rings: List<MachineRingView>,
     online: Boolean,
     onOpen: () -> Unit,
     modifier: Modifier = Modifier,
+    dot: MachineStatusDot = if (online) MachineStatusDot.MACHINE_STATUS_DOT_GREEN_LIVE else MachineStatusDot.MACHINE_STATUS_DOT_GRAY_STATIC,
+    badge: String = "",
+    warn: Boolean = false,
 ) {
     val p = pal
-    val open = uiText(UiMessages.machineStatusTitle())
-    StatusAdaptiveRow(
+    val copy = uiText()
+    val open = copy(UiMessages.machineStatusTitle())
+    val badgeLabel = badge.ifEmpty { if (online) copy(UiMessages.machineStatusLive()) else copy(UiMessages.settingsOffline()) }
+    Column(
         modifier
-            .padding(horizontal = 16.dp).padding(bottom = 22.dp)
-            .clip(Radii.R22).background(p.gbg)
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp)
+            .padding(bottom = 14.dp)
+            .clip(Radii.R22)
+            .background(p.gbg)
             .let { if (online) it.clickable(onClickLabel = open, role = Role.Button, onClick = onOpen) else it }
-            .padding(horizontal = 14.dp, vertical = 14.dp),
-    ) { itemMod ->
-        for (r in rings) {
-            val accent = p.ringToneInk(r.tone, p.ink)
-            val labelStr = uiText(r.label)
-            val valueStr = uiText(r.valueText).ifEmpty { "—" }
-            val spoken = uiText(r.a11YLabel).ifEmpty { listOf(labelStr, valueStr).filter { it.isNotEmpty() }.joinToString(" ") }
-            Row(
-                itemMod.semantics(mergeDescendants = true) { contentDescription = spoken },
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
-                StatusRing(if (r.hasValue) r.fraction.toFloat() else null, r.tone, r.kind.icon())
-                Column(Modifier.weight(1f)) {
-                    Text(
-                        valueStr,
-                        style = ts(16.sp, FontWeight.SemiBold).digits(),
-                        color = if (r.hasValue && online) accent else p.ink3,
-                        maxLines = 1,
-                    )
-                    Text(labelStr, style = T.s12, color = p.ink2, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            .padding(horizontal = 16.dp, vertical = 14.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Row(
+            Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            Text(copy(UiMessages.settingsStatusCardTitle()), style = T.s15b, color = p.ink, modifier = Modifier.weight(1f))
+            if (dot != MachineStatusDot.MACHINE_STATUS_DOT_UNSPECIFIED) {
+                StatusDotView(dot, size = 7.dp)
+            }
+            if (badgeLabel.isNotEmpty()) {
+                Text(
+                    badgeLabel,
+                    style = T.s13,
+                    color = if (warn) p.orangeInk else p.ink2,
+                    maxLines = 1,
+                )
+            }
+            if (online) Arrow(p.ink3, T.s15)
+        }
+        StatusAdaptiveRow { itemMod ->
+            for (r in rings) {
+                val accent = p.ringToneInk(r.tone, p.ink)
+                val labelStr = uiText(r.label)
+                val valueStr = uiText(r.valueText).ifEmpty { "—" }
+                val spoken = uiText(r.a11YLabel).ifEmpty { listOf(labelStr, valueStr).filter { it.isNotEmpty() }.joinToString(" ") }
+                Row(
+                    itemMod.semantics(mergeDescendants = true) { contentDescription = spoken },
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    StatusRing(if (r.hasValue) r.fraction.toFloat() else null, r.tone, r.kind.icon())
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            valueStr,
+                            style = ts(16.sp, FontWeight.SemiBold).digits(),
+                            color = if (r.hasValue && online) accent else p.ink3,
+                            maxLines = 1,
+                        )
+                        Text(labelStr, style = T.s12, color = p.ink2, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    }
                 }
             }
         }
-        if (online) Arrow(p.ink3, T.s15)
     }
 }
 
@@ -167,26 +196,6 @@ private fun StatusAdaptiveRow(
 }
 
 @Composable
-private fun LiveDot(dot: MachineStatusDot) {
-    val p = pal
-    val color = when (dot) {
-        MachineStatusDot.MACHINE_STATUS_DOT_GREEN_LIVE -> p.green
-        MachineStatusDot.MACHINE_STATUS_DOT_ORANGE_STATIC -> p.orange
-        MachineStatusDot.MACHINE_STATUS_DOT_RED_STATIC -> p.red
-        else -> p.ink3
-    }
-    val live = dot == MachineStatusDot.MACHINE_STATUS_DOT_GREEN_LIVE && !Motion.reduced && !LocalChartFrozen.current
-    val pulse = if (live) {
-        rememberInfiniteTransition().animateFloat(
-            1f,
-            0.35f,
-            infiniteRepeatable(tween(1100), RepeatMode.Reverse),
-        ).value
-    } else 1f
-    Box(Modifier.size(7.dp).clip(CircleShape).background(color.copy(alpha = pulse)))
-}
-
-@Composable
 private fun StatusHeader(name: String, badgeText: String, dot: MachineStatusDot, p: Palette) {
     Column(Modifier.fillMaxWidth()) {
         Text(
@@ -203,7 +212,7 @@ private fun StatusHeader(name: String, badgeText: String, dot: MachineStatusDot,
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
             ) {
-                LiveDot(dot)
+                StatusDotView(dot)
                 Text(badgeText, style = T.s13.digits(), color = p.ink2, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
         }

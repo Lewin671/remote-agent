@@ -27,6 +27,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
@@ -130,6 +131,7 @@ fun PageBar(
     right: (@Composable () -> Unit)? = null,
     subtitleColor: Color? = null,
     wrapTitle: Boolean = false,
+    subtitleDot: io.github.lewin671.remoteagent.core.proto.MachineStatusDot? = null,
 ) {
     val p = pal
     Row(
@@ -140,7 +142,17 @@ fun PageBar(
         Box(Modifier.widthIn(min = 44.dp)) { if (onBack != null) GlassButton(Lucide.ChevronLeft, uiText(UiMessages.commonBack()), onBack) }
         Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
             if (title.isNotEmpty()) Text(title, style = T.s17b, color = p.ink, maxLines = if (wrapTitle) Int.MAX_VALUE else 1, overflow = TextOverflow.Ellipsis)
-            if (subtitle != null) Text(subtitle, style = T.s12, color = subtitleColor ?: p.ink2, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            if (subtitle != null) {
+                val showDot = subtitleDot != null && subtitleDot != io.github.lewin671.remoteagent.core.proto.MachineStatusDot.MACHINE_STATUS_DOT_UNSPECIFIED
+                if (showDot) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                        StatusDotView(subtitleDot!!, size = 6.dp)
+                        Text(subtitle, style = T.s12, color = subtitleColor ?: p.ink2, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    }
+                } else {
+                    Text(subtitle, style = T.s12, color = subtitleColor ?: p.ink2, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+            }
         }
         Box(Modifier.widthIn(min = 44.dp), contentAlignment = Alignment.CenterEnd) {
             if (right != null) right()
@@ -284,6 +296,20 @@ fun GLabel(text: String, action: String? = null, onAction: (() -> Unit)? = null)
         if (action != null) Box(Modifier.heightIn(min = 32.dp).tap { onAction?.invoke() }, contentAlignment = Alignment.Center) { ArrowText(action, p.blue, T.s13) }
     }
 }
+
+/** Section header aligned with 32 dp inset (matching 16 dp card outer + 16 dp inner icon start), with optional trailing count/label. */
+@Composable
+internal fun SectionLabel(text: String, trailing: String = "", modifier: Modifier = Modifier) {
+    val p = pal
+    Row(modifier.fillMaxWidth().padding(start = 32.dp, end = 32.dp, top = 12.dp, bottom = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+        Text(text, style = T.s13, color = p.ink2, modifier = Modifier.weight(1f))
+        if (trailing.isNotEmpty()) Text(trailing, style = T.s13.digits(), color = p.ink2)
+    }
+}
+
+/** Constrains Settings / Computer screens to a centered 640 dp column on wide/tablet displays. */
+internal fun Modifier.settingsReadableColumn(): Modifier =
+    this.fillMaxWidth().wrapContentWidth(Alignment.CenterHorizontally).widthIn(max = 640.dp)
 
 /** The grab handle and title row of a bottom sheet. */
 @Composable
@@ -562,4 +588,96 @@ fun Mark(icon: ImageVector, color: Color, size: Dp = 12.dp) {
         androidx.compose.animation.core.infiniteRepeatable(androidx.compose.animation.core.tween(900, easing = androidx.compose.animation.core.LinearEasing)),
         label = "rotation")
     Ic(icon, size, color, Modifier.rotate(if (Motion.reduced) 0f else angle))
+}
+
+@Composable
+internal fun StatusDotView(
+    dot: io.github.lewin671.remoteagent.core.proto.MachineStatusDot,
+    size: Dp = 7.dp,
+    modifier: Modifier = Modifier,
+) {
+    val p = pal
+    val color = when (dot) {
+        io.github.lewin671.remoteagent.core.proto.MachineStatusDot.MACHINE_STATUS_DOT_GREEN_LIVE -> p.green
+        io.github.lewin671.remoteagent.core.proto.MachineStatusDot.MACHINE_STATUS_DOT_ORANGE_STATIC -> p.orange
+        io.github.lewin671.remoteagent.core.proto.MachineStatusDot.MACHINE_STATUS_DOT_RED_STATIC -> p.red
+        else -> p.ink3
+    }
+    val live = dot == io.github.lewin671.remoteagent.core.proto.MachineStatusDot.MACHINE_STATUS_DOT_GREEN_LIVE &&
+        !Motion.reduced && !LocalChartFrozen.current
+    val pulse = if (live) {
+        androidx.compose.animation.core.rememberInfiniteTransition(label = "status-dot")
+            .animateFloat(
+                1f,
+                0.35f,
+                androidx.compose.animation.core.infiniteRepeatable(
+                    androidx.compose.animation.core.tween(1100),
+                    androidx.compose.animation.core.RepeatMode.Reverse,
+                ),
+                label = "pulse",
+            ).value
+    } else 1f
+    Box(modifier.size(size).clip(CircleShape).background(color.copy(alpha = pulse)))
+}
+
+/**
+ * Shows [Sheet] on phones and a centered floating [Dialog] (`<= maxWidth`) on wide/tablet windows (`>= 840dp`).
+ */
+@Composable
+fun AdaptiveSheet(
+    onClose: () -> Unit,
+    scroll: Boolean = true,
+    canDismiss: Boolean = true,
+    dirty: Boolean = false,
+    maxWidth: Dp = 460.dp,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    if (!wideWindow()) {
+        Sheet(onClose = onClose, scroll = scroll, canDismiss = canDismiss, dirty = dirty, content = content)
+        return
+    }
+    val p = pal
+    val copy = uiText()
+    var confirmDiscard by remember { mutableStateOf(false) }
+    val currentDirty by rememberUpdatedState(dirty)
+    val currentCanDismiss by rememberUpdatedState(canDismiss)
+    Dialog(
+        onDismissRequest = {
+            when {
+                currentDirty -> confirmDiscard = true
+                currentCanDismiss -> onClose()
+            }
+        },
+        properties = DialogProperties(usePlatformDefaultWidth = false),
+    ) {
+        Box(Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 20.dp).imePadding(), contentAlignment = Alignment.Center) {
+            androidx.compose.runtime.CompositionLocalProvider(LocalOnSoft provides true, LocalHintInset provides 12.dp) {
+                Column(
+                    Modifier
+                        .widthIn(max = maxWidth)
+                        .fillMaxWidth()
+                        .floating(p, Radii.R24)
+                        .clip(Radii.R24)
+                        .background(p.gbg)
+                        .padding(start = 18.dp, end = 18.dp, top = 18.dp, bottom = 20.dp)
+                        .then(if (scroll) Modifier.verticalScroll(rememberScrollState()) else Modifier),
+                    content = content,
+                )
+            }
+        }
+    }
+    if (confirmDiscard) {
+        Alert(
+            title = copy(UiMessages.commonDiscardChangesTitle()),
+            text = "",
+            confirm = copy(UiMessages.commonDiscardChanges()),
+            danger = true,
+            cancel = copy(UiMessages.commonKeepEditing()),
+            onDismiss = { confirmDiscard = false },
+            onConfirm = {
+                confirmDiscard = false
+                onClose()
+            },
+        )
+    }
 }

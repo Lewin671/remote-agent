@@ -149,7 +149,7 @@ class I18nBatchCTest(private val locale: String) {
     @Test fun settings() {
         show { SettingsScreen() }; shot("settings")
         ui.onNodeWithText(text(UiMessages.settingsAppearance())).performScrollTo(); shot("appearance-notifications")
-        ui.onNodeWithText(text(UiMessages.settingsAndroidOpenSourceLicenses())).performScrollTo(); shot("about")
+        ui.onNodeWithText(text(UiMessages.settingsOpenSourceLicenses())).performScrollTo(); shot("about")
     }
     private fun machineSettingsFixture(): io.github.lewin671.remoteagent.core.proto.MachineSettingsViewModel {
         fun keyText(msg: UiMessage) = io.github.lewin671.remoteagent.core.proto.Text.newBuilder().apply {
@@ -220,7 +220,11 @@ class I18nBatchCTest(private val locale: String) {
     @Test fun machine() {
         show { DeviceScreenContent(machineSettingsFixture()) }; shot("computer-settings")
         ui.onNodeWithText(text(UiMessages.settingsApprovalTimeout())).performScrollTo(); shot("daemon-settings")
-        ui.onNodeWithText(text(UiMessages.settingsPreviewCache())).performScrollTo(); shot("computer-storage")
+        ui.onNodeWithText(text(UiMessages.settingsAttachmentStorage())).performScrollTo(); shot("computer-storage-row")
+    }
+    @Test fun machineStorage() {
+        show { MachineAttachmentStorageScreenContent(machineSettingsFixture()) }
+        ui.onAllNodesWithText(text(UiMessages.settingsPreviewCache())).onLast().performScrollTo(); shot("computer-storage")
     }
     @Test fun approvalTimeout() {
         show { DeviceScreenContent(machineSettingsFixture()) }

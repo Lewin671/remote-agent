@@ -589,13 +589,14 @@ fun PageScaffold(
     action: (@Composable () -> Unit)? = null,
     onBack: (() -> Unit)? = null,
     wrapTitle: Boolean = false,
+    subtitleDot: io.github.lewin671.remoteagent.core.proto.MachineStatusDot? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val back = onBack ?: LocalNav.current.back
     if (onBack != null) androidx.activity.compose.BackHandler(onBack = onBack)
     val p = pal
     Column(Modifier.fillMaxSize().background(p.paper).imePadding()) {
-        PageBar(title, back, subtitle = subtitle, right = action, wrapTitle = wrapTitle)
+        PageBar(title, back, subtitle = subtitle, right = action, wrapTitle = wrapTitle, subtitleDot = subtitleDot)
         if (readable) Column(Modifier.weight(1f).fillMaxWidth().readableColumn()) { content() }
         else content()
     }

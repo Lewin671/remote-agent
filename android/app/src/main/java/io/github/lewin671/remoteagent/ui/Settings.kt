@@ -15,18 +15,22 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -54,9 +58,15 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.toggleableState
 import androidx.compose.ui.state.ToggleableState
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.google.zxing.BarcodeFormat
@@ -65,13 +75,19 @@ import com.google.zxing.qrcode.QRCodeWriter
 import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel
 import io.github.lewin671.remoteagent.RaApp
 import androidx.compose.foundation.relocation.bringIntoViewRequester
+import io.github.lewin671.remoteagent.core.ConnState
 import io.github.lewin671.remoteagent.core.PairingUiState
 import io.github.lewin671.remoteagent.core.RemoteState
 import io.github.lewin671.remoteagent.core.agentName
 import io.github.lewin671.remoteagent.core.proto.AttachmentStorageView
+import io.github.lewin671.remoteagent.core.proto.CliVersionView
+import io.github.lewin671.remoteagent.core.proto.ConnProbeState
+import io.github.lewin671.remoteagent.core.proto.MachineAgentDefaultsView
 import io.github.lewin671.remoteagent.core.proto.MachineListCardView
 import io.github.lewin671.remoteagent.core.proto.MachinePollMode
 import io.github.lewin671.remoteagent.core.proto.MachineSettingsViewModel
+import io.github.lewin671.remoteagent.core.proto.MachineStatusDot
+import io.github.lewin671.remoteagent.core.proto.NotificationsView
 import io.github.lewin671.remoteagent.core.proto.QuotaTone
 import io.github.lewin671.remoteagent.core.proto.SettingsViewModel
 import io.github.lewin671.remoteagent.core.proto.ThemePreference
@@ -108,7 +124,7 @@ fun ToggleRow(title: String, sub: String, value: Boolean, enabled: Boolean = tru
     Row(
         Modifier.fillMaxWidth()
             .heightIn(min = 50.dp)
-            .clickable(enabled = enabled) { onChange(!value) }
+            .toggleable(value = value, enabled = enabled, role = Role.Switch, onValueChange = onChange)
             .padding(start = 18.dp, end = 16.dp, top = 8.dp, bottom = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -134,7 +150,7 @@ internal fun clientIcon(meta: io.github.lewin671.remoteagent.proto.DeviceMeta?):
     else -> Lucide.Smartphone
 }
 
-private fun clientIconForDescription(desc: String): ImageVector = when {
+internal fun clientIconForDescription(desc: String): ImageVector = when {
     desc.contains("iPad", ignoreCase = true) -> Lucide.Tablet
     desc.contains("Web", ignoreCase = true) ||
         desc.contains("Chrome", ignoreCase = true) ||
@@ -153,6 +169,7 @@ fun SettingsScreen() {
     val app = RaApp.instance
     val remote = LocalRemote.current
     val nav = LocalNav.current
+    val copy = uiText()
     val state by remote.state.collectAsState()
     val initialVm = remember(remote) { remote.coreHost.snapshotSettingsView() }
     val rawVm by remote.settingsView.collectAsState()
@@ -160,7 +177,30 @@ fun SettingsScreen() {
     val push by Push.status.collectAsState()
     var checking by remember { mutableStateOf(false) }
     var updating by remember { mutableStateOf(false) }
-    LaunchedEffect(Unit) { remote.coreHost.openSettings() }
+    var localCacheBytes by remember { mutableStateOf<Long?>(null) }
+    val scope = rememberCoroutineScope()
+    val owner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    LaunchedEffect(Unit) {
+        remote.coreHost.openSettings()
+        localCacheBytes = withContext(Dispatchers.IO) {
+            app.pendingStore.expire()
+            app.pendingStore.used + app.imageEnvelopes.used + app.sharedFiles.usedBytes()
+        }
+    }
+    DisposableEffect(owner) {
+        val obs = androidx.lifecycle.LifecycleEventObserver { _, ev ->
+            if (ev == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
+                scope.launch {
+                    localCacheBytes = withContext(Dispatchers.IO) {
+                        app.pendingStore.expire()
+                        app.pendingStore.used + app.imageEnvelopes.used + app.sharedFiles.usedBytes()
+                    }
+                }
+            }
+        }
+        owner.lifecycle.addObserver(obs)
+        onDispose { owner.lifecycle.removeObserver(obs) }
+    }
     val version =
         app.versionName.let { v ->
             val c = app.buildCommit.take(7)
@@ -171,19 +211,15 @@ fun SettingsScreen() {
         state = state,
         push = push,
         serverDisplay = remote.account.server.removePrefix("https://"),
+        localCacheText = localCacheBytes?.let { imageBytes(it, copy) }.orEmpty(),
         versionFallback = version,
         updaterEnabled = Updater.enabled(app),
         onBack = nav.back,
         onRecovery = { nav.recovery() },
         onDevices = { nav.devices() },
         onDevice = { nav.device(it) },
-        onClient = { nav.client(it) },
+        onNotifications = { nav.notifications() },
         onPair = { nav.pair() },
-        onNotifyAttention = { remote.coreHost.reportNotificationPrefs(notifyAttention = it) },
-        onNotifyTurnEnded = { remote.coreHost.reportNotificationPrefs(notifyTurnEnded = it) },
-        onNotifyScheduled = { remote.coreHost.reportNotificationPrefs(notifyScheduled = it) },
-        onShowContent = { remote.coreHost.reportNotificationPrefs(showContent = it) },
-        onFixPush = { Push.fix(app, remote) },
         onPhoneStorage = nav.phoneStorage,
         onTheme = { remote.coreHost.setAppearancePref(it) },
         onOpenUpdate = { updating = true },
@@ -196,25 +232,30 @@ fun SettingsScreen() {
     if (updating) UpdateSheet { updating = false }
 }
 
+private fun connDotFor(vm: SettingsViewModel): MachineStatusDot = when {
+    !vm.online || vm.connCheck.serverState == ConnProbeState.CONN_PROBE_STATE_UNAVAILABLE ->
+        MachineStatusDot.MACHINE_STATUS_DOT_RED_STATIC
+    vm.connCheck.serverState == ConnProbeState.CONN_PROBE_STATE_SLOW ||
+        vm.connCheck.serverState == ConnProbeState.CONN_PROBE_STATE_CHECKING ->
+        MachineStatusDot.MACHINE_STATUS_DOT_ORANGE_STATIC
+    else -> MachineStatusDot.MACHINE_STATUS_DOT_GREEN_LIVE
+}
+
 @Composable
 internal fun SettingsScreenContent(
     vm: SettingsViewModel,
     state: RemoteState = RemoteState(),
     push: PushStatus = PushStatus(),
     serverDisplay: String = "",
+    localCacheText: String = "",
     versionFallback: String = "",
     updaterEnabled: Boolean = false,
     onBack: () -> Unit = {},
     onRecovery: () -> Unit = {},
     onDevices: () -> Unit = {},
     onDevice: (String) -> Unit = {},
-    onClient: (String) -> Unit = {},
+    onNotifications: () -> Unit = {},
     onPair: () -> Unit = {},
-    onNotifyAttention: (Boolean) -> Unit = {},
-    onNotifyTurnEnded: (Boolean) -> Unit = {},
-    onNotifyScheduled: (Boolean) -> Unit = {},
-    onShowContent: (Boolean) -> Unit = {},
-    onFixPush: () -> Unit = {},
     onPhoneStorage: () -> Unit = {},
     onTheme: (ThemePreference) -> Unit = {},
     onOpenUpdate: () -> Unit = {},
@@ -230,11 +271,26 @@ internal fun SettingsScreenContent(
             Modifier.fillMaxSize()
                 .background(p.paper)
                 .verticalScrollFaded()
-                .readableColumn(),
+                .settingsReadableColumn(),
         ) {
             BackRow(onBack)
             LargeTitle(copy(UiMessages.commonSettings()))
             ConnBanner(state)
+            if (vm.recoveryPending) {
+                val recMsg = uiText(vm.recoveryBannerText).ifEmpty {
+                    if (vm.isManager) copy(UiMessages.securityAndroidSomeoneIsRequestingManagementTakeoverWithARecoveryCodeVeto())
+                    else copy(UiMessages.settingsRecoveryWaitingBanner())
+                }
+                if (recMsg.isNotEmpty()) {
+                    Notice(
+                        recMsg,
+                        Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
+                        NoticeTone.WARN,
+                        action = if (vm.isManager) copy(UiMessages.dockHandle()) else null,
+                        onAction = if (vm.isManager) onRecovery else null,
+                    )
+                }
+            }
             if (vm.clockSkewed) {
                 val skewMsg = uiText(vm.clockSkewBannerText).ifEmpty {
                     copy(UiMessages.settingsAndroidThePhoneClockIsAheadOfTheServerRemoteControl())
@@ -245,240 +301,384 @@ internal fun SettingsScreenContent(
                     NoticeTone.WARN,
                 )
             }
-            if (vm.isManager && vm.recoveryPending) {
-                val recMsg = uiText(vm.recoveryBannerText)
-                if (recMsg.isNotEmpty())
-                    Notice(
-                        recMsg,
-                        Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
-                        NoticeTone.ERROR,
-                        action = copy(UiMessages.dockHandle()),
-                        onAction = onRecovery,
-                    )
+            if (vm.unlinked) {
+                val unlinkedMsg = uiText(vm.unlinkedBannerText).ifEmpty {
+                    copy(UiMessages.settingsThisDeviceWasRemovedFromTheAccount())
+                }
+                Notice(
+                    unlinkedMsg,
+                    Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
+                    NoticeTone.WARN,
+                )
             }
-            MachinesGroup(vm, onDevices = onDevices, onDevice = onDevice, onPair = onPair)
-            GLabel(copy(UiMessages.securityClient()))
-            Group(
-                rows =
-                    vm.recentClientsList.map { c ->
-                        @Composable {
-                            val sub = uiText(c.roleLabel).ifEmpty { uiText(c.lastUsedText) }
-                            GRow(
-                                c.displayName,
-                                sub,
-                                lead = { Ico(clientIconForDescription(c.description)) },
-                                onClick = { onClient(c.deviceId) },
-                                chevron = !c.isSelf,
-                            )
-                        }
-                    } +
-                        listOf(
-                            @Composable {
-                                GRow(
-                                    copy(UiMessages.settingsAllClients()),
-                                    onClick = onDevices,
-                                    action = true,
-                                    chevron = true,
-                                )
-                            },
-                        ),
-            )
-            GLabel(copy(UiMessages.securityAccountSecurity()))
-            Group(
-                rows = listOf {
-                    GRow(
-                        copy(UiMessages.securityAccountSecurity()),
-                        uiText(vm.security.summaryText),
-                        onClick = onRecovery,
-                        chevron = true,
-                    )
-                },
-            )
-            GLabel(copy(UiMessages.settingsNotificationsOnThisClient()))
+
+            // Group 1: 电脑
+            MachinesGroup(vm, onDevice = onDevice, onPair = onPair)
+
+            // Group 2: 本机
+            SectionLabel(copy(UiMessages.settingsSectionThisDevice()))
             val n = vm.notifications
-            Group(
-                rows =
-                    listOf(
-                        {
-                            ToggleRow(copy(UiMessages.settingsWhenINeedToAct()), "", n.notifyAttention, onChange = onNotifyAttention)
-                        },
-                        {
-                            ToggleRow(copy(UiMessages.settingsWhenATurnEnds()), "", n.notifyTurnEnded, onChange = onNotifyTurnEnded)
-                        },
-                        {
-                            ToggleRow(copy(UiMessages.settingsScheduledTaskResults()), "", n.notifyScheduled, onChange = onNotifyScheduled)
-                        },
-                        {
-                            ToggleRow(
-                                copy(UiMessages.settingsAndroidShowContentAndApproveInNotifications()),
-                                copy(UiMessages.settingsAndroidApprovalCommandsWillAppearInSystemNotificationsAndMayRemain()),
-                                n.showContent,
-                                onChange = onShowContent,
-                            )
-                        },
-                    ),
+            val pushUnreachable = push.problem.isNotEmpty()
+            val notifSummary = if (pushUnreachable) {
+                copy(UiMessages.settingsNotificationsSummaryUnreachable())
+            } else {
+                uiText(n.summaryText)
+            }
+            val notifWarn = pushUnreachable || n.summaryWarn
+            val appearanceOpts = listOf(
+                ThemePreference.THEME_PREFERENCE_AUTO to copy(UiMessages.modesAuto()),
+                ThemePreference.THEME_PREFERENCE_LIGHT to copy(UiMessages.settingsLight()),
+                ThemePreference.THEME_PREFERENCE_DARK to copy(UiMessages.settingsDark()),
             )
-            PushNotice(push, onAction = onFixPush)
-            GLabel(copy(UiMessages.settingsAndroidLocalStorage()))
-            Group(rows = listOf { GRow(copy(UiMessages.settingsAttachmentStorage()), onClick = onPhoneStorage, chevron = true) })
-            GLabel(copy(UiMessages.settingsAppearance()))
             Group(
-                rows =
-                    listOf {
-                        val opts =
-                            listOf(
-                                ThemePreference.THEME_PREFERENCE_AUTO to copy(UiMessages.modesAuto()),
-                                ThemePreference.THEME_PREFERENCE_LIGHT to copy(UiMessages.settingsLight()),
-                                ThemePreference.THEME_PREFERENCE_DARK to copy(UiMessages.settingsDark()),
-                            )
+                rows = listOf(
+                    {
+                        GRow(
+                            copy(UiMessages.settingsNotificationsTitle()),
+                            notifSummary,
+                            valueColor = if (notifWarn) p.orangeInk else null,
+                            singleLineValue = true,
+                            onClick = onNotifications,
+                            chevron = true,
+                        )
+                    },
+                    {
                         Row(
                             Modifier.fillMaxWidth()
                                 .heightIn(min = 50.dp)
-                                .padding(horizontal = 14.dp),
+                                .padding(start = 18.dp, end = 16.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Text(
-                                copy(UiMessages.settingsTheme()),
-                                style = T.s15,
-                                color = pal.ink,
+                                copy(UiMessages.settingsAppearance()),
+                                style = T.s17,
+                                color = p.ink,
                                 modifier = Modifier.weight(1f),
                             )
                             SegPick(
-                                opts.map { it.second },
-                                opts.indexOfFirst { it.first == vm.appearance.theme }.coerceAtLeast(0),
+                                appearanceOpts.map { it.second },
+                                appearanceOpts.indexOfFirst { it.first == vm.appearance.theme }.coerceAtLeast(0),
                             ) { i ->
-                                onTheme(opts[i].first)
+                                onTheme(appearanceOpts[i].first)
                             }
                         }
                     },
+                    {
+                        GRow(
+                            copy(UiMessages.settingsLocalCache()),
+                            localCacheText,
+                            singleLineValue = true,
+                            onClick = onPhoneStorage,
+                            chevron = true,
+                        )
+                    },
+                ),
             )
-            GLabel(copy(UiMessages.settingsAndroidVersion()))
+
+            // Group 3: 账户与设备
+            SectionLabel(copy(UiMessages.settingsSectionAccountAndDevices()))
+            val clientsSummary = uiText(vm.clientsSummaryText)
+            Group(
+                rows = listOf(
+                    {
+                        GRow(
+                            copy(UiMessages.settingsClientsTitle()),
+                            clientsSummary,
+                            valueColor = if (vm.clientsSummaryWarn) p.orangeInk else null,
+                            singleLineValue = true,
+                            onClick = onDevices,
+                            chevron = true,
+                        )
+                    },
+                    {
+                        GRow(
+                            copy(UiMessages.settingsAccountSecurityTitle()),
+                            uiText(vm.security.summaryText),
+                            valueColor = if (vm.security.recoveryPending) p.orangeInk else null,
+                            singleLineValue = true,
+                            onClick = onRecovery,
+                            chevron = true,
+                        )
+                    },
+                    {
+                        GRow(
+                            copy(UiMessages.settingsServerAndConnection()),
+                            onClick = onOpenConnCheck,
+                            trailing = {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                ) {
+                                    StatusDotView(connDotFor(vm), size = 7.dp)
+                                    if (serverDisplay.isNotEmpty()) {
+                                        Text(
+                                            serverDisplay,
+                                            style = T.s15,
+                                            color = p.ink2,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis,
+                                            modifier = Modifier.widthIn(max = 180.dp),
+                                        )
+                                    }
+                                    Arrow(p.ink3, T.s15)
+                                }
+                            },
+                        )
+                    },
+                ),
+            )
+
+            // Group 4: 关于
+            SectionLabel(copy(UiMessages.settingsAbout()))
             val u = vm.update
             val version = u.currentVersion.ifEmpty { versionFallback }
             val updateStatus = if (u.checking || u.hasUpdate) uiText(u.statusText) else ""
             Group(
-                rows =
-                    listOf(
-                        {
-                            // A development copy does not update itself: its row only says what it is.
-                            if (!updaterEnabled) GRow("remote-agent", version)
-                            else
-                                GRow(
-                                    "remote-agent",
-                                    updateStatus.ifEmpty { version },
-                                    onClick = onOpenUpdate,
-                                    chevron = true,
-                                    valueColor = if (updateStatus.isNotEmpty()) p.blue else null,
-                                )
-                        },
-                        { GRow(copy(UiMessages.settingsAndroidOpenSourceLicenses()), onClick = onLicenses, chevron = true) },
-                    ),
-            )
-            GLabel(copy(UiMessages.settingsAccount()))
-            val cc = vm.connCheck
-            val connValue = listOf(uiText(cc.statusWord), uiText(cc.summaryText))
-                .filter { it.isNotEmpty() }
-                .joinToString(" · ")
-            Group(
-                rows =
-                    listOf(
-                        { GRow(copy(UiMessages.securityServer()), serverDisplay) },
-                        {
+                rows = listOf(
+                    {
+                        if (!updaterEnabled) {
+                            GRow(copy(UiMessages.settingsVersionLabel()), version, singleLineValue = true)
+                        } else {
                             GRow(
-                                copy(UiMessages.homeConnectionCheck()),
-                                connValue,
-                                onClick = onOpenConnCheck,
+                                copy(UiMessages.settingsVersionLabel()),
+                                updateStatus.ifEmpty { version },
+                                onClick = onOpenUpdate,
                                 chevron = true,
+                                singleLineValue = true,
+                                valueColor = if (updateStatus.isNotEmpty()) p.blue else null,
                             )
-                        },
-                        {
-                            AccountExitAction(
-                                state,
-                                readPending = readExitPending,
-                                exit = onExitAccount,
-                            )
-                        },
-                    ),
+                        }
+                    },
+                    { GRow(copy(UiMessages.settingsOpenSourceLicenses()), onClick = onLicenses, chevron = true) },
+                ),
             )
+
+            // Separated danger card
+            if (vm.canExitAccount) {
+                Group(
+                    rows = listOf {
+                        AccountExitAction(
+                            state,
+                            readPending = readExitPending,
+                            exit = onExitAccount,
+                        )
+                    },
+                )
+            }
             Spacer(Modifier.height(24.dp))
         }
     }
 }
 
+/** Notifications secondary screen (`只影响这台设备`). */
+@Composable
+fun NotificationsScreen() {
+    val app = RaApp.instance
+    val remote = LocalRemote.current
+    val initialVm = remember(remote) { remote.coreHost.snapshotSettingsView() }
+    val rawVm by remote.settingsView.collectAsState()
+    val vm = if (rawVm != SettingsViewModel.getDefaultInstance()) rawVm else initialVm
+    val push by Push.status.collectAsState()
+    LaunchedEffect(Unit) { remote.coreHost.openSettings() }
+    NotificationsScreenContent(
+        notifications = vm.notifications,
+        push = push,
+        onNotifyAttention = { remote.coreHost.reportNotificationPrefs(notifyAttention = it) },
+        onNotifyTurnEnded = { remote.coreHost.reportNotificationPrefs(notifyTurnEnded = it) },
+        onNotifyScheduled = { remote.coreHost.reportNotificationPrefs(notifyScheduled = it) },
+        onShowContent = { remote.coreHost.reportNotificationPrefs(showContent = it) },
+        onFixPush = { Push.fix(app, remote) },
+    )
+}
+
+@Composable
+internal fun NotificationsScreenContent(
+    notifications: NotificationsView,
+    push: PushStatus = PushStatus(),
+    onNotifyAttention: (Boolean) -> Unit = {},
+    onNotifyTurnEnded: (Boolean) -> Unit = {},
+    onNotifyScheduled: (Boolean) -> Unit = {},
+    onShowContent: (Boolean) -> Unit = {},
+    onFixPush: () -> Unit = {},
+) {
+    val copy = uiText()
+    PageScaffold(
+        copy(UiMessages.settingsNotificationsTitle()),
+        subtitle = copy(UiMessages.settingsNotificationsSubtitle()),
+    ) {
+        Column(Modifier.weight(1f).settingsReadableColumn().verticalScrollFaded()) {
+            PushNotice(push, onAction = onFixPush)
+            SectionLabel(copy(UiMessages.settingsNotificationsGroupAlerts()))
+            Group(
+                rows = listOf(
+                    {
+                        ToggleRow(
+                            copy(UiMessages.settingsWhenINeedToAct()),
+                            copy(UiMessages.settingsNotificationsWhenINeedToActDesc()),
+                            notifications.notifyAttention,
+                            onChange = onNotifyAttention,
+                        )
+                    },
+                    {
+                        ToggleRow(
+                            copy(UiMessages.settingsWhenATurnEnds()),
+                            copy(UiMessages.settingsNotificationsWhenATurnEndsDesc()),
+                            notifications.notifyTurnEnded,
+                            onChange = onNotifyTurnEnded,
+                        )
+                    },
+                    {
+                        ToggleRow(
+                            copy(UiMessages.settingsScheduledTaskResults()),
+                            copy(UiMessages.settingsNotificationsScheduledResultsDesc()),
+                            notifications.notifyScheduled,
+                            onChange = onNotifyScheduled,
+                        )
+                    },
+                ),
+            )
+            SectionLabel(copy(UiMessages.settingsNotificationsGroupPrivacy()))
+            Group(
+                rows = listOf {
+                    ToggleRow(
+                        copy(UiMessages.settingsNotificationsShowContentTitle()),
+                        copy(UiMessages.settingsNotificationsShowContentDesc()),
+                        notifications.showContent,
+                        onChange = onShowContent,
+                    )
+                },
+            )
+            Hint(copy(UiMessages.settingsNotificationsSecurityFooter()), Modifier.padding(bottom = 24.dp), inset = 32.dp)
+        }
+    }
+}
+
 /**
- * Settings' 电脑 (design-system §6 设置): each computer a card with its name,
- * whether it is online, and a line per CLI of how much quota is left with a
- * thin bar, orange at 20% or less. 添加设备 is the row after them; only the
- * authority has it, other clients name it.
+ * Settings Group 1 `电脑`: unified rounded card with 20 dp laptop icons (`46 dp` text/divider inset)
+ * and optional inline `＋ 添加设备` row when [SettingsViewModel.canAddDevice] is true.
  */
 @Composable
 internal fun MachinesGroup(
     vm: SettingsViewModel,
-    onDevices: () -> Unit = {},
     onDevice: (String) -> Unit = {},
     onPair: () -> Unit = {},
 ) {
     val copy = uiText()
     val p = pal
-    GLabel(copy(UiMessages.settingsComputer()), copy(UiMessages.settingsAllDevices()), onAction = onDevices)
-    for (m in vm.machinesList) MachineCard(m) { onDevice(m.machineId) }
-    val emptyHint = if (vm.machinesList.isEmpty()) uiText(vm.emptyMachinesText) else ""
-    if (emptyHint.isNotEmpty()) Hint(emptyHint)
-    if (vm.canAddDevice)
-        Row(
-            Modifier.fillMaxWidth().padding(horizontal = 16.dp).heightIn(min = 52.dp).clip(Radii.Pill).background(p.gbg)
-                .clickable(role = androidx.compose.ui.semantics.Role.Button) { onPair() },
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+    SectionLabel(copy(UiMessages.settingsSectionComputers()), trailing = uiText(vm.machineCountText))
+    if (vm.machinesList.isEmpty()) {
+        val emptyTitle = uiText(vm.emptyMachinesText).ifEmpty { copy(UiMessages.settingsEmptyComputersTitle()) }
+        val emptyBody = uiText(vm.emptyMachinesBody)
+        Column(
+            Modifier.fillMaxWidth()
+                .padding(start = 16.dp, end = 16.dp, bottom = 12.dp)
+                .clip(Radii.R18)
+                .background(p.gbg)
+                .padding(18.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Ic(Lucide.Plus, 20.dp, p.blue)
-            Text(copy(UiMessages.homeAddDevice()), style = T.s17b, color = p.blue)
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                Box(Modifier.size(20.dp), contentAlignment = Alignment.Center) {
+                    Ic(Lucide.Laptop, 20.dp, p.ink2)
+                }
+                Text(emptyTitle, style = T.s17m, color = p.ink)
+            }
+            if (emptyBody.isNotEmpty()) {
+                Text(emptyBody, style = T.s13, color = p.ink2)
+            }
+            if (!vm.machinesLoading && vm.canAddDevice) {
+                PillButton(
+                    copy(UiMessages.settingsAddDeviceItem()),
+                    onPair,
+                    Modifier.fillMaxWidth().padding(top = 4.dp),
+                    ButtonKind.INK,
+                )
+            }
         }
-    else {
-        val addHint = uiText(vm.addDeviceHint)
-        if (addHint.isNotEmpty() && addHint !in emptyHint) Hint(addHint)
+        return
     }
-    Spacer(Modifier.height(12.dp))
+
+    val rows: List<@Composable () -> Unit> = buildList {
+        for (m in vm.machinesList) {
+            add { MachineCard(m) { onDevice(m.machineId) } }
+        }
+        if (vm.canAddDevice) {
+            add {
+                Row(
+                    Modifier.fillMaxWidth()
+                        .heightIn(min = 50.dp)
+                        .clickable(role = Role.Button, onClick = onPair)
+                        .padding(horizontal = 16.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    Box(Modifier.size(20.dp), contentAlignment = Alignment.Center) {
+                        Ic(Lucide.Plus, 18.dp, p.blue)
+                    }
+                    Text(copy(UiMessages.settingsAddDeviceItem()), style = T.s17, color = p.blue)
+                }
+            }
+        }
+    }
+    ClientsAlignedCard(rows = rows)
+    if (!vm.canAddDevice) {
+        val addHint = uiText(vm.addDeviceHint)
+        if (addHint.isNotEmpty()) Hint(addHint, Modifier.padding(bottom = 8.dp), inset = 32.dp)
+    }
 }
 
-/** One computer's card: gbg, radius 24, outlined only when it is away. */
 @Composable
 private fun MachineCard(m: MachineListCardView, onClick: () -> Unit) {
     val p = pal
-    Column(
-        Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, bottom = 10.dp).clip(Radii.R24)
-            .then(if (m.online) Modifier.background(p.gbg) else Modifier.border(0.5.dp, p.sep, Radii.R24))
-            .clickable(onClick = onClick).padding(18.dp),
+    val statusStr = uiText(m.statusText)
+    Row(
+        Modifier.fillMaxWidth()
+            .heightIn(min = 50.dp)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(m.name, style = T.h20, color = p.ink, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
-            Arrow(p.ink3, T.s17)
+        Box(Modifier.size(20.dp), contentAlignment = Alignment.Center) {
+            Ic(Lucide.Laptop, 20.dp, p.ink2)
         }
-        Row(Modifier.padding(top = 3.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            StatusMark(if (m.online) MarkKind.ONLINE else MarkKind.OFF, size = 8.dp)
-            Text(
-                uiText(m.statusText),
-                style = T.s13, color = p.ink2, maxLines = 1,
-            )
-        }
-        if (m.online) for (sec in m.quotaSummariesList) {
-            val row = sec.takeIf { it.hasSummaryRow() }?.summaryRow?.takeIf { it.hasPercent } ?: continue
-            val left = row.remainingPercent.coerceIn(0, 100)
-            val low = row.tone == QuotaTone.QUOTA_TONE_WARN || row.tone == QuotaTone.QUOTA_TONE_FULL
-            Column(Modifier.padding(top = 14.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
-                        AgentMarkLead(sec.agent, T.s15b, p.ink)
-                        Text(sec.agentName, style = T.s15b, color = p.ink, maxLines = 1)
+        Column(Modifier.weight(1f)) {
+            Text(m.name, style = T.s17m, color = p.ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            if (m.subtitlePartsList.isNotEmpty()) {
+                val sub = buildAnnotatedString {
+                    m.subtitlePartsList.forEachIndexed { idx, seg ->
+                        if (idx > 0) {
+                            withStyle(SpanStyle(color = p.ink2)) { append(" · ") }
+                        }
+                        if (seg.warn) {
+                            withStyle(SpanStyle(color = p.orangeInk, fontWeight = FontWeight.SemiBold)) {
+                                append(uiText(seg.text))
+                            }
+                        } else {
+                            withStyle(SpanStyle(color = p.ink2)) { append(uiText(seg.text)) }
+                        }
                     }
-                    Text(uiText(row.remainingText), style = if (low) T.s13b else T.s13, color = if (low) p.orangeInk else p.ink2)
                 }
-                Box(Modifier.padding(top = 6.dp).fillMaxWidth().height(4.dp).clip(Radii.Pill).background(p.fill)) {
-                    Box(Modifier.fillMaxWidth((left / 100f).coerceIn(0f, 1f)).height(4.dp).clip(Radii.Pill).background(if (low) p.orange else p.ink.copy(alpha = if (p.dark) 0.32f else 0.30f)))
-                }
-                val reset = uiText(row.resetText)
-                if (reset.isNotEmpty()) Text(reset, style = T.s13, color = p.ink2, modifier = Modifier.padding(top = 4.dp))
+                Text(
+                    sub,
+                    style = T.s13,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(top = 2.dp),
+                )
             }
+        }
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            StatusDotView(m.statusDot, size = 7.dp)
+            if (statusStr.isNotEmpty()) {
+                Text(
+                    statusStr,
+                    style = T.s15,
+                    color = if (m.statusWarn) p.orangeInk else p.ink2,
+                    maxLines = 1,
+                )
+            }
+            Arrow(p.ink3, T.s15)
         }
     }
 }
@@ -503,7 +703,7 @@ internal fun PushNotice(
 }
 
 /**
- * One setting's few values at the right of its row (主题): a grey capsule with the chosen one raised.
+ * One setting's few values at the right of its row (外观): a grey capsule with the chosen one raised.
  */
 @Composable
 fun SegPick(items: List<String>, selected: Int, enabled: Boolean = true, onSelect: (Int) -> Unit) {
@@ -532,18 +732,20 @@ fun SegPick(items: List<String>, selected: Int, enabled: Boolean = true, onSelec
     }
 }
 
-/** A choice from a few options in a sheet: a mode, a timeout, a limit. */
+/** A choice from a few options in an adaptive sheet/dialog: a mode, a timeout, a limit. */
 @Composable
 private fun ChoiceSheet(
     title: String,
     options: List<Pair<String, String?>>,
     selected: Int,
     enabled: (Int) -> Boolean = { true },
+    danger: (Int) -> Boolean = { false },
+    footer: String? = null,
     onPick: (Int) -> Unit,
     onClose: () -> Unit,
 ) {
-    Sheet(onClose) {
-        SheetHead(title)
+    AdaptiveSheet(onClose) {
+        SheetHead(title, if (wideWindow()) uiText(UiMessages.commonCancel()) else null, onClose)
         SheetList { options.forEachIndexed { i, (label, desc) ->
             val ok = enabled(i)
             ListItem(
@@ -551,22 +753,26 @@ private fun ChoiceSheet(
                 desc,
                 checked = i == selected,
                 enabled = ok,
+                danger = danger(i),
                 last = i == options.size - 1,
                 onClick = if (ok) ({ onPick(i) }) else null,
             )
         } }
+        if (!footer.isNullOrEmpty()) {
+            Hint(footer)
+        }
     }
 }
 
 /**
- * 设备详情 (client-v7): quota, CLI versions, the defaults for new sessions, image storage, projects,
- * remove. Renders Core's [MachineSettingsViewModel] directly.
+ * 电脑详情: 4 core modules (电脑状态, 额度与用量, 编程 CLI, 运行与存储) + 管理.
+ * Renders Core's [MachineSettingsViewModel] directly.
  */
 @Composable
 fun DeviceScreen(
     id: String,
-    scrollToStorage: Boolean = false,
-    scrollToConnection: Boolean = false,
+    openDirect: Boolean = false,
+    initialAgent: Agent? = null,
 ) {
     val remote = LocalRemote.current
     val nav = LocalNav.current
@@ -575,7 +781,6 @@ fun DeviceScreen(
     val rawVm by remote.machineSettingsView.collectAsState()
     val vm = if (rawVm.machineId == id) rawVm else initialVm
     val remove = rememberAction(authority = true)
-    var showDirectDiag by remember { mutableStateOf(false) }
     LaunchedEffect(id) { remote.coreHost.openMachineSettings(id) }
     if (vm.showStatusEntry) {
         val owner = androidx.lifecycle.compose.LocalLifecycleOwner.current
@@ -601,16 +806,20 @@ fun DeviceScreen(
     }
     DeviceScreenContent(
         vm = vm,
-        scrollToStorage = scrollToStorage,
-        scrollToConnection = scrollToConnection,
+        state = state,
+        openDirect = openDirect,
+        initialAgent = initialAgent,
         isAuthority = state.isAuthority,
-        appOnline = state.conn == io.github.lewin671.remoteagent.core.ConnState.ONLINE,
+        appOnline = state.conn == ConnState.ONLINE,
         removeRunning = remove.running,
         removeError = remove.error,
         onOpenStatus = { nav.machineStatus(id) },
         onOpenQuota = { nav.quota(id) },
+        onOpenUsage = { nav.openUsage(id, Agent.AGENT_UNSPECIFIED, "") },
         onToggleDirect = { enabled -> remote.coreHost.updateDirectPreference(id, enabled) },
-        onOpenDiagnostics = { showDirectDiag = true },
+        onRetryDirect = { remote.retryDirect(id) },
+        onOpenStorage = { nav.deviceStorage(id) },
+        onOpenProjects = { nav.manageMachineProjects(id) },
         onRetrySettings = { remote.coreHost.openMachineSettings(id) },
         onSelectAgent = { agent -> remote.coreHost.selectMachineSettingsAgent(id, agent) },
         onToggleAgent = { agent, enabled -> remote.coreHost.toggleMachineAgent(id, agent, enabled) },
@@ -626,7 +835,6 @@ fun DeviceScreen(
                 cleanImages = clean,
             )
         },
-        onProject = { path -> nav.project(path) },
         onRejoin = { nav.rejoin(id) },
         onRemove = {
             remove.run(
@@ -637,58 +845,65 @@ fun DeviceScreen(
             )
         },
     )
-    if (showDirectDiag) {
-        DirectDiagSheet(
-            machineId = id,
-            state = state,
-            onRetry = { remote.retryDirect(id) },
-            onClose = { showDirectDiag = false },
-        )
-    }
 }
 
 @Composable
 internal fun DeviceScreenContent(
     vm: MachineSettingsViewModel,
-    scrollToStorage: Boolean = false,
-    scrollToConnection: Boolean = false,
+    state: RemoteState = RemoteState(),
+    openDirect: Boolean = false,
+    initialAgent: Agent? = null,
     isAuthority: Boolean = false,
     appOnline: Boolean = true,
     removeRunning: Boolean = false,
     removeError: String = "",
     onOpenStatus: () -> Unit = {},
     onOpenQuota: () -> Unit = {},
+    onOpenUsage: () -> Unit = {},
     onToggleDirect: (Boolean) -> Unit = {},
-    onOpenDiagnostics: (() -> Unit)? = null,
+    onRetryDirect: () -> Boolean = { false },
+    onOpenStorage: () -> Unit = {},
+    onOpenProjects: (String) -> Unit = {},
     onRetrySettings: () -> Unit = {},
     onSelectAgent: (Agent) -> Unit = {},
     onUpdateAgentDefaults: (agent: Agent, model: String?, effort: String?, mode: ApprovalMode?) -> Unit = { _, _, _, _ -> },
     onUpdateDaemonSettings: (approvalTimeoutSeconds: Int?, idleCloseMinutes: Int?, imageUploadQuotaBytes: Long?, cleanImages: Boolean) -> Unit = { _, _, _, _ -> },
-    onProject: (String) -> Unit = {},
     onRejoin: () -> Unit = {},
     onRemove: () -> Unit = {},
+    onDeleteRecords: (() -> Unit)? = null,
     onToggleAgent: ((Agent, Boolean) -> Unit)? = null,
+    directDiagLinesOverride: List<String>? = null,
 ) {
     val copy = uiText()
     val p = pal
-    var confirm by remember(vm.machineId) { mutableStateOf(false) }
-    var pickModel by remember(vm.machineId) { mutableStateOf(false) }
-    var pickEffort by remember(vm.machineId) { mutableStateOf(false) }
-    var pickMode by remember(vm.machineId) { mutableStateOf(false) }
+    var confirmRemove by remember(vm.machineId) { mutableStateOf(false) }
+    var showDirectSheet by remember(vm.machineId, openDirect) { mutableStateOf(openDirect) }
+    var openCliAgent by remember(vm.machineId, initialAgent) {
+        mutableStateOf(
+            initialAgent?.takeIf {
+                it != Agent.AGENT_UNSPECIFIED && it != Agent.UNRECOGNIZED
+            },
+        )
+    }
+    var pickModelAgent by remember(vm.machineId) { mutableStateOf<Agent?>(null) }
+    var pickEffortAgent by remember(vm.machineId) { mutableStateOf<Agent?>(null) }
+    var pickModeAgent by remember(vm.machineId) { mutableStateOf<Agent?>(null) }
     var pickTimeout by remember(vm.machineId) { mutableStateOf(false) }
     var pickIdleClose by remember(vm.machineId) { mutableStateOf(false) }
-    val storageAt = remember { androidx.compose.foundation.relocation.BringIntoViewRequester() }
-    val connectionAt = remember { androidx.compose.foundation.relocation.BringIntoViewRequester() }
+
     val title = vm.name.ifEmpty { vm.machineId }
-    PageScaffold(title, readable = true) {
+    val headerSub = uiText(vm.headerSubtitle).ifEmpty { null }
+    val headerDot = vm.headerDot.takeIf { it != MachineStatusDot.MACHINE_STATUS_DOT_UNSPECIFIED }
+    PageScaffold(title, subtitle = headerSub, subtitleDot = headerDot) {
         if (!vm.found) {
-            PageNote(copy(UiMessages.settingsAndroidThisComputerIsOutsideTheCurrentTrustedDirectoryCheckThe()))
+            val missingMsg = uiText(vm.offlineOrMismatchBanner).ifEmpty {
+                if (vm.loading) copy(UiMessages.commonLoading())
+                else copy(UiMessages.settingsAndroidThisComputerIsOutsideTheCurrentTrustedDirectoryCheckThe())
+            }
+            PageNote(missingMsg)
             return@PageScaffold
         }
-        Column(Modifier.verticalScrollFaded()) {
-            if (vm.showStatusEntry) {
-                MachineRingsCard(vm.statusRingsList, vm.online, onOpen = onOpenStatus)
-            }
+        Column(Modifier.weight(1f).settingsReadableColumn().verticalScrollFaded()) {
             val removedText = uiText(vm.removedBanner)
             val offlineOrMismatch = uiText(vm.offlineOrMismatchBanner)
             if (removedText.isNotEmpty()) {
@@ -702,61 +917,118 @@ internal fun DeviceScreenContent(
                     Modifier.padding(horizontal = 16.dp).padding(bottom = 12.dp),
                 )
             }
-            if (vm.quotaRowsList.isNotEmpty()) {
-                GLabel(copy(UiMessages.settingsAccountQuota()))
-                Group(
-                    rows =
-                        vm.quotaRowsList.map { sec ->
-                            @Composable {
-                                val summary = sec.takeIf { it.hasSummaryRow() }?.summaryRow
-                                val rem = summary?.let { uiText(it.remainingText) }.orEmpty()
-                                val win = summary?.let { uiText(it.label) }.orEmpty()
-                                val hasSplitSummary = rem.isNotEmpty() && win.isNotEmpty()
-                                val fallback = uiText(sec.emptyOrErrorText)
-                                GRow(
-                                    sec.agentName,
-                                    icon = AgentMarks.of(sec.agent),
-                                    value = if (hasSplitSummary) null else rem.ifEmpty { fallback },
-                                    singleLineValue = !hasSplitSummary,
-                                    trailing =
-                                        if (hasSplitSummary) {
-                                            {
-                                                Text(
-                                                    androidx.compose.ui.text.buildAnnotatedString {
-                                                        append(rem)
-                                                        pushStyle(androidx.compose.ui.text.SpanStyle(color = p.ink2))
-                                                        append(" · ")
-                                                        append(win)
-                                                        pop()
-                                                    },
-                                                    style = T.s13,
-                                                    color = p.ink,
-                                                    maxLines = 1,
-                                                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                                                )
-                                            }
-                                        } else {
-                                            null
-                                        },
-                                    onClick = onOpenQuota,
-                                    chevron = true,
-                                )
-                            }
-                        },
+
+            // Module 0: 电脑状态
+            if (vm.showStatusEntry) {
+                MachineRingsCard(
+                    vm.statusRingsList,
+                    vm.online,
+                    onOpen = onOpenStatus,
+                    dot = vm.statusCardDot,
+                    badge = uiText(vm.statusCardBadge),
+                    warn = vm.statusCardWarn,
                 )
             }
-            if (vm.member && vm.hasConnection()) {
-                Box(Modifier.bringIntoViewRequester(connectionAt)) {
-                    Column {
-                        DirectConnectionGroup(vm.connection, onToggle = onToggleDirect, onDiagnostics = onOpenDiagnostics)
+
+            // Module 1: 额度与用量
+            if (vm.quotaRowsList.isNotEmpty() || vm.showUsageEntry) {
+                SectionLabel(copy(UiMessages.settingsSectionQuotaAndUsage()))
+                val rows: List<@Composable () -> Unit> = buildList {
+                    for (sec in vm.quotaRowsList) {
+                        add {
+                            val primary = uiText(sec.summaryPrimaryText).ifEmpty {
+                                sec.takeIf { it.hasSummaryRow() }?.let { uiText(it.summaryRow.remainingText) }.orEmpty()
+                            }
+                            val window = uiText(sec.summaryWindowText).ifEmpty {
+                                sec.takeIf { it.hasSummaryRow() }?.let { uiText(it.summaryRow.label) }.orEmpty()
+                            }
+                            val fallback = uiText(sec.emptyOrErrorText)
+                            val trailingText = when {
+                                primary.isNotEmpty() -> buildAnnotatedString {
+                                    withStyle(
+                                        SpanStyle(
+                                            color = if (sec.summaryPrimaryWarn) p.orangeInk else p.ink2,
+                                            fontWeight = if (sec.summaryPrimaryWarn) FontWeight.SemiBold else FontWeight.Normal,
+                                        ),
+                                    ) {
+                                        append(primary)
+                                    }
+                                    if (window.isNotEmpty()) {
+                                        withStyle(SpanStyle(color = p.ink2)) {
+                                            append(" · ")
+                                            append(window)
+                                        }
+                                    }
+                                }
+                                fallback.isNotEmpty() -> buildAnnotatedString {
+                                    withStyle(SpanStyle(color = p.ink2)) { append(fallback) }
+                                }
+                                else -> AnnotatedString("")
+                            }
+                            GRow(
+                                sec.agentName,
+                                lead = {
+                                    Box(Modifier.size(20.dp), contentAlignment = Alignment.Center) {
+                                        AgentMarks.of(sec.agent)?.let { Icon(it, null, Modifier.size(20.dp), p.ink2) }
+                                    }
+                                },
+                                trailing = {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                    ) {
+                                        if (trailingText.isNotEmpty()) {
+                                            Text(
+                                                trailingText,
+                                                style = T.s15.digits(),
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis,
+                                                modifier = Modifier.widthIn(max = 200.dp),
+                                            )
+                                        }
+                                        Arrow(p.ink3, T.s15)
+                                    }
+                                },
+                                onClick = onOpenQuota,
+                            )
+                        }
+                    }
+                    if (vm.showUsageEntry) {
+                        add {
+                            val usageEmpty = uiText(vm.usageEmptyText)
+                            val usageSummary = when {
+                                usageEmpty.isNotEmpty() -> usageEmpty
+                                vm.usageTotalTokens > 0L -> {
+                                    val tok = formatUsageTokens(vm.usageTotalTokens, copy)
+                                    when {
+                                        vm.usageCachedOffline -> copy(UiMessages.settingsUsageSummaryCached(tok))
+                                        vm.usageFallbackThirtyDays -> copy(UiMessages.settingsUsageSummary30D(tok))
+                                        else -> copy(UiMessages.settingsUsageSummary7D(tok))
+                                    }
+                                }
+                                else -> copy(UiMessages.settingsUsageSummaryEmpty())
+                            }
+                            GRow(
+                                copy(UiMessages.settingsUsageAndSpeed()),
+                                usageSummary,
+                                singleLineValue = true,
+                                lead = {
+                                    Box(Modifier.size(20.dp), contentAlignment = Alignment.Center) {
+                                        Ic(Lucide.Gauge, 20.dp, p.ink2)
+                                    }
+                                },
+                                onClick = onOpenUsage,
+                                chevron = true,
+                            )
+                        }
                     }
                 }
-                LaunchedEffect(scrollToConnection) {
-                    if (scrollToConnection) { androidx.compose.runtime.withFrameNanos { }; connectionAt.bringIntoView() }
-                }
+                Group(rows = rows)
             }
-            if (vm.showCliSwitches) {
-                GLabel(copy(UiMessages.settingsCliSwitchesTitle()))
+
+            // Module 2: 编程 CLI
+            if (vm.cliVersionsList.isNotEmpty()) {
+                SectionLabel(copy(UiMessages.settingsSectionCodingClis()))
                 val conflictBanner = if (vm.hasCliSwitchesConflictBanner()) uiText(vm.cliSwitchesConflictBanner) else ""
                 if (conflictBanner.isNotEmpty()) {
                     Notice(
@@ -765,378 +1037,369 @@ internal fun DeviceScreenContent(
                         tone = NoticeTone.WARN,
                     )
                 }
-                val disabledReason = if (vm.hasCliSwitchesDisabledReason()) uiText(vm.cliSwitchesDisabledReason) else ""
-                if (disabledReason.isNotEmpty()) {
-                    Notice(
-                        disabledReason,
-                        Modifier.padding(horizontal = 16.dp).padding(bottom = 8.dp),
-                        tone = NoticeTone.WARN,
-                    )
-                }
-                if (vm.cliVersionsList.isNotEmpty()) {
-                    Group(
-                        rows = vm.cliVersionsList.map { a ->
-                            @Composable {
-                                val unverifiedWord =
-                                    uiText(a.unverifiedLabel)
-                                        .ifEmpty { copy(UiMessages.settingsAndroidUnverified()) }
-                                        .trimEnd()
-                                        .removeSuffix("·")
-                                        .trimEnd()
-                                val verText = a.version.ifEmpty { copy(UiMessages.settingsAndroidUnknown()) }
-                                val locked = a.lockedLastEnabled
-                                val canTap = vm.cliSwitchesEditable && !locked && !a.saving && onToggleAgent != null
-                                val a11yText =
-                                    if (locked) {
-                                        copy(UiMessages.settingsCliSwitchesA11YLocked(a.name, verText))
-                                    } else {
-                                        copy(
-                                            UiMessages.settingsCliSwitchesA11YRow(
-                                                name = a.name,
-                                                state =
-                                                    if (a.enabled) copy(UiMessages.settingsCliSwitchesStateOn())
-                                                    else copy(UiMessages.settingsCliSwitchesStateOff()),
-                                                version = verText,
-                                            ),
-                                        )
+                Group(
+                    rows = vm.cliVersionsList.map { cli ->
+                        @Composable {
+                            val unverifiedWord = uiText(cli.unverifiedLabel)
+                                .ifEmpty { copy(UiMessages.settingsCliUnverifiedShort()) }
+                                .trimEnd()
+                                .removeSuffix("·")
+                                .trimEnd()
+                            val verText = cli.version.ifEmpty { copy(UiMessages.settingsAndroidUnknown()) }
+                            val effDefaults = effectiveDefaultsFor(cli, vm)
+                            val modelLbl = uiText(cli.defaultModelLabel).ifEmpty {
+                                effDefaults?.let { uiText(it.selectedModelLabel).ifEmpty { it.selectedModel } }.orEmpty()
+                            }
+                            val modeLbl = uiText(cli.defaultModeLabel).ifEmpty {
+                                effDefaults?.modeChoicesList?.firstOrNull { it.selected }?.let { uiText(it.label) }.orEmpty()
+                            }
+                            val modeDanger = cli.defaultModeDanger ||
+                                effDefaults?.selectedMode == ApprovalMode.APPROVAL_MODE_FULL_ACCESS
+                            Row(
+                                Modifier.fillMaxWidth()
+                                    .heightIn(min = 50.dp)
+                                    .clickable {
+                                        onSelectAgent(cli.agent)
+                                        openCliAgent = cli.agent
                                     }
-                                Row(
-                                    Modifier.fillMaxWidth()
-                                        .heightIn(min = 50.dp)
-                                        .clickable(enabled = canTap, role = Role.Switch) {
-                                            onToggleAgent?.invoke(a.agent, !a.enabled)
-                                        }
-                                        .semantics(mergeDescendants = true) {
-                                            contentDescription = a11yText
-                                            toggleableState =
-                                                if (a.enabled) ToggleableState.On else ToggleableState.Off
-                                        }
-                                        .alpha(if (vm.cliSwitchesEditable && !a.saving) 1f else 0.65f)
-                                        .padding(start = 18.dp, end = 16.dp, top = 8.dp, bottom = 8.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                                ) {
-                                    AgentMarkLead(a.agent, T.s17, if (a.enabled) p.ink else p.ink2)
-                                    Column(Modifier.weight(1f)) {
-                                        Text(
-                                            a.name,
-                                            style = T.s17,
-                                            color = p.ink,
-                                            maxLines = 1,
-                                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                                        )
-                                        Text(
-                                            androidx.compose.ui.text.buildAnnotatedString {
-                                                if (!a.verified) {
-                                                    pushStyle(androidx.compose.ui.text.SpanStyle(color = p.orangeInk))
-                                                    append(unverifiedWord)
-                                                    pop()
-                                                    append(" · ")
-                                                }
-                                                append(verText)
-                                                if (locked) {
-                                                    append(" · ")
-                                                    append(copy(UiMessages.settingsCliSwitchesKeepOne()))
-                                                }
-                                            },
-                                            style = T.s13,
-                                            color = p.ink2,
-                                        )
-                                    }
-                                    Box(Modifier.alpha(if (locked || !vm.cliSwitchesEditable || a.saving) 0.5f else 1f)) {
-                                        Sw(a.enabled)
+                                    .padding(start = 16.dp, end = 16.dp, top = 10.dp, bottom = 10.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            ) {
+                                Box(Modifier.size(20.dp), contentAlignment = Alignment.Center) {
+                                    AgentMarks.of(cli.agent)?.let {
+                                        Icon(it, null, Modifier.size(20.dp), if (cli.enabled) p.ink2 else p.ink3)
                                     }
                                 }
-                            }
-                        },
-                    )
-                }
-                val footerText =
-                    (if (vm.hasCliSwitchesFooter()) uiText(vm.cliSwitchesFooter) else "").ifEmpty {
-                        if (vm.cliSwitchesLeaseExpired) copy(UiMessages.settingsCliSwitchesLeaseExpiredFooter())
-                        else copy(UiMessages.settingsCliSwitchesFooter())
-                    }
-                if (footerText.isNotEmpty()) {
-                    Hint(footerText, Modifier.padding(bottom = if (vm.hasUnverifiedCli) 4.dp else 12.dp))
-                }
-                if (vm.hasUnverifiedCli) {
-                    Hint(
-                        copy(UiMessages.settingsAndroidForAnUnverifiedVersionRunRemoteAgentDoctorOnThe()),
-                        Modifier.padding(bottom = 12.dp),
-                    )
-                }
-            } else if (vm.cliVersionsList.isNotEmpty()) {
-                Group(
-                    rows =
-                        vm.cliVersionsList.map { a ->
-                            @Composable {
-                                val unverifiedWord =
-                                    uiText(a.unverifiedLabel)
-                                        .ifEmpty { copy(UiMessages.settingsAndroidUnverified()) }
-                                        .trimEnd()
-                                        .removeSuffix("·")
-                                        .trimEnd()
-                                GRow(
-                                    copy(UiMessages.settingsCliVersion(a.name)),
-                                    trailing = {
+                                Column(Modifier.weight(1f)) {
+                                    Text(
+                                        cli.name,
+                                        style = T.s17,
+                                        color = if (cli.enabled) p.ink else p.ink2,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                    )
+                                    if (!cli.verified) {
                                         Text(
-                                            androidx.compose.ui.text.buildAnnotatedString {
-                                                if (!a.verified) {
-                                                    pushStyle(
-                                                        androidx.compose.ui.text.SpanStyle(
-                                                            color = p.orangeInk,
-                                                        ),
-                                                    )
+                                            buildAnnotatedString {
+                                                withStyle(SpanStyle(color = p.orangeInk, fontWeight = FontWeight.SemiBold)) {
                                                     append(unverifiedWord)
-                                                    pop()
-                                                    append(" · ")
                                                 }
-                                                append(a.version.ifEmpty { copy(UiMessages.settingsAndroidUnknown()) })
+                                                withStyle(SpanStyle(color = p.ink2)) {
+                                                    append(" · ")
+                                                    append(verText)
+                                                }
                                             },
                                             style = T.s13,
-                                            color = p.ink2,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis,
+                                            modifier = Modifier.padding(top = 2.dp),
                                         )
-                                    },
-                                )
-                            }
-                        },
-                )
-                if (vm.hasUnverifiedCli)
-                    Hint(
-                        copy(UiMessages.settingsAndroidForAnUnverifiedVersionRunRemoteAgentDoctorOnThe()),
-                        Modifier.padding(bottom = 12.dp),
-                    )
-            }
-            val readError = uiText(vm.settingsError)
-            val editableControls = vm.online && vm.editable && !vm.savePending
-            when {
-                !vm.online ->
-                    Hint(
-                        copy(UiMessages.settingsAndroidValue1IsOfflineConnectToReadAndEditNewSession(title)),
-                        Modifier.padding(bottom = 12.dp),
-                    )
-                readError.isNotEmpty() ->
-                    Notice(
-                        readError,
-                        Modifier.padding(horizontal = 16.dp).padding(bottom = 12.dp),
-                        NoticeTone.ERROR,
-                        action = uiText(UiMessages.commonRetry()),
-                        onAction = onRetrySettings,
-                    )
-                vm.settingsLoading ->
-                    Hint(copy(UiMessages.projectsReadingDirectory()), Modifier.padding(bottom = 12.dp))
-                vm.hasAgentDefaults() -> {
-                    val agents = vm.availableAgentsList
-                    val d = vm.agentDefaults
-                    val currentAgent = if (vm.selectedAgent in agents) vm.selectedAgent else agents.firstOrNull() ?: d.agent
-                    GLabel(
-                        if (agents.size > 1) copy(UiMessages.settingsNewProjectDefaults())
-                        else copy(UiMessages.settingsNewProjectDefaultsSettings(d.agentName))
-                    )
-                    if (agents.size > 1) {
-                        Segmented(
-                            agents.map { agentName(it, copy = copy) },
-                            agents.indexOf(currentAgent).coerceAtLeast(0),
-                            { onSelectAgent(agents[it]) },
-                            Modifier.padding(start = 16.dp, end = 16.dp, bottom = 10.dp).fillMaxWidth(),
-                        )
-                    }
-                    val modelLabel = uiText(d.selectedModelLabel).ifEmpty {
-                        d.selectedModel.ifEmpty { copy(UiMessages.modelsDefault()) }
-                    }
-                    val selectedEffort = d.effortChoicesList.firstOrNull { it.selected }
-                    val effortLabel = selectedEffort?.let { uiText(it.label) }?.ifEmpty { null }
-                        ?: d.selectedEffort.ifEmpty { copy(UiMessages.modelsDefault()) }
-                    val selectedMode = d.modeChoicesList.firstOrNull { it.selected }
-                    val modeLabel = selectedMode?.let { uiText(it.label) }.orEmpty()
-                    Group(
-                        rows = listOf(
-                            @Composable {
-                                GRow(
-                                    copy(UiMessages.modelsTitle()),
-                                    modelLabel,
-                                    onClick = if (editableControls) ({ pickModel = true }) else null,
-                                    chevron = true,
-                                )
-                            },
-                            @Composable {
-                                GRow(
-                                    copy(UiMessages.modelsEffort()),
-                                    effortLabel,
-                                    onClick = if (editableControls) {
-                                        {
-                                            if (d.effortChoicesList.size > 1) pickEffort = true
-                                            else pickModel = true
+                                    }
+                                }
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                ) {
+                                    if (!cli.enabled) {
+                                        Text(
+                                            uiText(cli.disabledLabel).ifEmpty { copy(UiMessages.settingsCliDisabled()) },
+                                            style = T.s13,
+                                            color = p.ink2,
+                                            softWrap = false,
+                                            maxLines = 1,
+                                        )
+                                    } else {
+                                        if (modelLbl.isNotEmpty()) {
+                                            Text(
+                                                modelLbl,
+                                                style = T.s13,
+                                                color = p.ink2,
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis,
+                                                modifier = Modifier.widthIn(max = 110.dp),
+                                            )
                                         }
-                                    } else null,
-                                    chevron = true,
-                                )
-                            },
-                            @Composable {
-                                GRow(
-                                    copy(UiMessages.modesTitle()),
-                                    modeLabel,
-                                    onClick = if (editableControls) ({ pickMode = true }) else null,
-                                    valueColor = if (d.selectedMode == ApprovalMode.APPROVAL_MODE_FULL_ACCESS) p.red else null,
-                                    chevron = true,
-                                )
-                            },
-                        ),
-                    )
-                    val selectedTimeout = vm.approvalTimeoutChoicesList.firstOrNull { it.selected }
-                    val timeoutLabel = selectedTimeout?.let { uiText(it.label) }
-                        ?: copy(UiMessages.quotaMin(vm.selectedApprovalTimeoutSeconds / 60))
-                    Group(
-                        rows = listOf(
-                            @Composable {
-                                GRow(
-                                    copy(UiMessages.settingsApprovalTimeout()),
-                                    timeoutLabel,
-                                    onClick = if (editableControls) ({ pickTimeout = true }) else null,
-                                    chevron = true,
-                                )
-                            },
-                        ),
-                    )
-                    val selectedIdle = vm.idleCloseChoicesList.firstOrNull { it.selected }
-                    val idleLabel = selectedIdle?.let { uiText(it.label) }.orEmpty()
-                    Group(
-                        rows = listOf(
-                            @Composable {
-                                GRow(
-                                    copy(UiMessages.settingsAutomaticallyEndIdleSessions()),
-                                    idleLabel,
-                                    onClick = if (editableControls) ({ pickIdleClose = true }) else null,
-                                    chevron = true,
-                                )
-                            },
-                        ),
-                    )
-                    Text(
-                        copy(UiMessages.settingsAndroidSessionsEndAutomaticallyAfterProlongedInactivityNotRunningNoPending()),
-                        style = T.s13,
-                        color = p.ink2,
-                        modifier = Modifier.padding(start = 30.dp, end = 30.dp, bottom = 12.dp),
-                    )
-                }
+                                        if (modelLbl.isNotEmpty() && modeLbl.isNotEmpty()) {
+                                            Text("·", style = T.s13, color = p.ink2, softWrap = false, maxLines = 1)
+                                        }
+                                        if (modeLbl.isNotEmpty()) {
+                                            Text(
+                                                modeLbl,
+                                                style = T.s13,
+                                                color = if (modeDanger) p.red else p.ink2,
+                                                softWrap = false,
+                                                maxLines = 1,
+                                            )
+                                        }
+                                    }
+                                    Arrow(p.ink3, T.s15)
+                                }
+                            }
+                        }
+                    },
+                )
             }
+
+            // Module 3: 运行与存储
+            val readError = uiText(vm.settingsError)
             val saveErr = uiText(vm.saveError)
-            if (saveErr.isNotEmpty())
+            val editableControls = vm.online && vm.editable && !vm.savePending
+            if (vm.online && readError.isNotEmpty()) {
+                Notice(
+                    readError,
+                    Modifier.padding(horizontal = 16.dp).padding(bottom = 8.dp),
+                    NoticeTone.ERROR,
+                    action = copy(UiMessages.commonRetry()),
+                    onAction = onRetrySettings,
+                )
+            }
+            if (saveErr.isNotEmpty()) {
                 Notice(
                     saveErr,
-                    Modifier.padding(horizontal = 16.dp).padding(bottom = 12.dp),
+                    Modifier.padding(horizontal = 16.dp).padding(bottom = 8.dp),
                     NoticeTone.ERROR,
                 )
-            if (vm.hasAttachmentStorage() && vm.attachmentStorage.loaded) {
-                Box(Modifier.bringIntoViewRequester(storageAt)) {
-                    Column {
-                        MachineAttachmentStorage(
-                            storage = vm.attachmentStorage,
-                            enabled = editableControls && !vm.attachmentStorage.cleaning,
-                            onQuota = { bytes -> onUpdateDaemonSettings(null, null, bytes, false) },
-                            onClean = { onUpdateDaemonSettings(null, null, null, true) },
-                        )
+            }
+            SectionLabel(copy(UiMessages.settingsSectionRuntimeAndStorage()))
+            val timeoutLabel = vm.approvalTimeoutChoicesList.firstOrNull { it.selected }?.let { uiText(it.label) }
+                ?: when {
+                    vm.settingsLoading && vm.approvalTimeoutChoicesList.isEmpty() -> copy(UiMessages.projectsReadingDirectory())
+                    vm.selectedApprovalTimeoutSeconds > 0 -> copy(UiMessages.quotaMin(vm.selectedApprovalTimeoutSeconds / 60))
+                    else -> "—"
+                }
+            val idleLabel = vm.idleCloseChoicesList.firstOrNull { it.selected }?.let { uiText(it.label) }
+                ?: if (vm.settingsLoading && vm.idleCloseChoicesList.isEmpty()) copy(UiMessages.projectsReadingDirectory()) else "—"
+            val storageSummary = if (vm.hasAttachmentStorage()) {
+                uiText(vm.attachmentStorage.summaryText).ifEmpty { "—" }
+            } else {
+                "—"
+            }
+            val runtimeRows: List<@Composable () -> Unit> = buildList {
+                if (vm.member && vm.hasConnection()) {
+                    add {
+                        val conn = vm.connection
+                        val rowVal = uiText(conn.rowValueText).ifEmpty { uiText(conn.statusText) }
+                        val rowSub = uiText(conn.rowSubtitleText)
+                        Row(
+                            Modifier.fillMaxWidth()
+                                .heightIn(min = 50.dp)
+                                .clickable { showDirectSheet = true }
+                                .padding(start = 18.dp, end = 16.dp, top = 10.dp, bottom = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        ) {
+                            Column(Modifier.weight(1f)) {
+                                Text(copy(UiMessages.transportDirect()), style = T.s17, color = p.ink, maxLines = 1)
+                                if (rowSub.isNotEmpty()) {
+                                    Text(rowSub, style = T.s13, color = p.ink2, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                }
+                            }
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            ) {
+                                when {
+                                    conn.rowSpinning -> Spinner(p.ink2, size = 12.dp)
+                                    conn.rowDot != MachineStatusDot.MACHINE_STATUS_DOT_UNSPECIFIED ->
+                                        StatusDotView(conn.rowDot, size = 7.dp)
+                                }
+                                if (rowVal.isNotEmpty()) {
+                                    Text(rowVal, style = T.s15.digits(), color = p.ink2, maxLines = 1)
+                                }
+                                Arrow(p.ink3, T.s15)
+                            }
+                        }
                     }
                 }
-                // 电脑状态 › 磁盘 and 「remote-agent 的占用」 lead here (ui-spec A3).
-                LaunchedEffect(scrollToStorage) {
-                    if (scrollToStorage) { androidx.compose.runtime.withFrameNanos { }; storageAt.bringIntoView() }
+                add {
+                    GRow(
+                        copy(UiMessages.settingsApprovalTimeout()),
+                        timeoutLabel,
+                        singleLineValue = true,
+                        onClick = if (editableControls && vm.approvalTimeoutChoicesList.isNotEmpty()) ({ pickTimeout = true }) else null,
+                        chevron = true,
+                    )
+                }
+                add {
+                    GRow(
+                        copy(UiMessages.settingsAutomaticallyEndIdleSessions()),
+                        idleLabel,
+                        singleLineValue = true,
+                        onClick = if (editableControls && vm.idleCloseChoicesList.isNotEmpty()) ({ pickIdleClose = true }) else null,
+                        chevron = true,
+                    )
+                }
+                add {
+                    GRow(
+                        copy(UiMessages.settingsAttachmentStorage()),
+                        storageSummary,
+                        valueColor = if (vm.attachmentStorage.summaryWarn) p.orangeInk else null,
+                        singleLineValue = true,
+                        onClick = if (vm.hasAttachmentStorage() || vm.member) onOpenStorage else null,
+                        chevron = true,
+                    )
                 }
             }
-            if (vm.projectsList.isNotEmpty()) {
-                GLabel(copy(UiMessages.scheduleProject()))
-                Group(
-                    rows =
-                        vm.projectsList.map { proj ->
-                            @Composable {
-                                val sub = uiText(proj.lastActiveText).ifEmpty { proj.path }
-                                GRow(
-                                    proj.name,
-                                    sub,
-                                    onClick = { onProject(proj.path) },
-                                )
-                            }
-                        },
-                )
+            Group(rows = runtimeRows)
+
+            // Module 4: 管理 + Bottom Danger
+            SectionLabel(copy(UiMessages.settingsSectionManagement()))
+            val projectCountLabel = uiText(vm.projectCountText).ifEmpty {
+                copy(UiMessages.settingsProjectCountValue(vm.projectCount))
             }
+            Group(
+                rows = listOf(
+                    {
+                        GRow(
+                            copy(UiMessages.settingsProjectsRow()),
+                            projectCountLabel,
+                            singleLineValue = true,
+                            onClick = { onOpenProjects(vm.machineId) },
+                            chevron = true,
+                        )
+                    },
+                    {
+                        GRow(
+                            copy(UiMessages.settingsDeviceId()),
+                            trailing = {
+                                Text(
+                                    vm.shortId.ifEmpty { vm.machineId.take(8) },
+                                    style = T.s13.copy(fontFamily = FontFamily.Monospace),
+                                    color = p.ink2,
+                                    maxLines = 1,
+                                )
+                            },
+                        )
+                    },
+                ),
+            )
+
             val mgmt = vm.management
             if (mgmt.canRejoin) {
                 Group(
-                    rows =
-                        listOf {
-                            GRow(
-                                copy(UiMessages.settingsAndroidRejoinThisComputerAndResumeSessions()),
-                                onClick = onRejoin,
-                                enabled = appOnline,
-                            )
-                        },
+                    rows = listOf {
+                        GRow(
+                            copy(UiMessages.settingsAndroidRejoinThisComputerAndResumeSessions()),
+                            onClick = onRejoin,
+                            enabled = appOnline,
+                        )
+                    },
                 )
             }
-            DeleteMachineRecordsAction(vm.machineId, isAuthority)
-            val expHint = uiText(mgmt.explanationText)
+            if (onDeleteRecords != null && mgmt.canDeleteRecords) {
+                Group(
+                    rows = listOf {
+                        GRow(
+                            copy(UiMessages.settingsDeleteComputerRecordsEllipsis()),
+                            onClick = onDeleteRecords,
+                            danger = true,
+                        )
+                    },
+                )
+            } else {
+                DeleteMachineRecordsAction(vm.machineId, isAuthority)
+            }
             if (mgmt.canRemove) {
                 Group(
-                    rows =
-                        listOf {
-                            GRow(
-                                // It asks first, as every row that ends in an ellipsis does (design-system §8).
-                                copy(UiMessages.settingsAndroidRemoveThisMachine()),
-                                onClick = { confirm = true },
-                                danger = true,
-                                enabled = !removeRunning && appOnline,
-                            )
-                        },
+                    rows = listOf {
+                        GRow(
+                            copy(UiMessages.settingsRemoveComputerEllipsis()),
+                            onClick = { confirmRemove = true },
+                            danger = true,
+                            enabled = !removeRunning && appOnline,
+                        )
+                    },
                 )
             }
+            val expHint = uiText(mgmt.explanationText)
             if (expHint.isNotEmpty()) {
-                Hint(expHint, Modifier.padding(bottom = 8.dp))
+                Hint(expHint, Modifier.padding(bottom = 8.dp), inset = 32.dp)
             }
-            if (removeError.isNotEmpty())
+            if (removeError.isNotEmpty()) {
                 Notice(removeError, Modifier.padding(16.dp), NoticeTone.ERROR)
+            }
             Spacer(Modifier.height(24.dp))
         }
     }
-    if (confirm && vm.member) {
+
+    if (confirmRemove && vm.member) {
         val (titleText, text) = removalDialog(title, machine = true, copy = copy)
         Alert(
             titleText,
             text,
             uiText(UiMessages.commonRemove()),
             danger = true,
-            onDismiss = { confirm = false },
+            onDismiss = { confirmRemove = false },
         ) {
             onRemove()
         }
     }
-    val d = vm.agentDefaults
-    val currentAgent = if (vm.selectedAgent != Agent.AGENT_UNSPECIFIED) vm.selectedAgent else d.agent
-    if (pickModel && vm.hasAgentDefaults() && d.modelChoicesList.isNotEmpty()) {
+
+    val openCli = openCliAgent?.let { ag -> vm.cliVersionsList.firstOrNull { it.agent == ag } }
+    if (openCli != null) {
+        val editableControls = vm.online && vm.editable && !vm.savePending
+        CliSettingsSheet(
+            vm = vm,
+            cli = openCli,
+            editableDefaults = editableControls,
+            readError = uiText(vm.settingsError),
+            onRetrySettings = onRetrySettings,
+            onToggleAgent = onToggleAgent,
+            onPickModel = { pickModelAgent = openCli.agent },
+            onPickEffort = { pickEffortAgent = openCli.agent },
+            onPickMode = { pickModeAgent = openCli.agent },
+            onClose = { openCliAgent = null },
+        )
+    }
+
+    if (showDirectSheet && vm.hasConnection()) {
+        DirectConnectionSheet(
+            machineId = vm.machineId,
+            state = state,
+            view = vm.connection,
+            onToggle = onToggleDirect,
+            onRetry = onRetryDirect,
+            onClose = { showDirectSheet = false },
+            diagLinesOverride = directDiagLinesOverride,
+        )
+    }
+
+    val modelTarget = pickModelAgent?.let { ag -> vm.cliVersionsList.firstOrNull { it.agent == ag }?.let { effectiveDefaultsFor(it, vm) }?.let { ag to it } }
+    if (modelTarget != null && modelTarget.second.modelChoicesList.isNotEmpty()) {
+        val (targetAgent, d) = modelTarget
         val opts = d.modelChoicesList.map { uiText(it.label) to it.desc.ifEmpty { null } }
         ChoiceSheet(
             copy(UiMessages.settingsAndroidValue1DefaultModelForNewSessions(d.agentName)),
             opts,
             d.modelChoicesList.indexOfFirst { it.selected }.coerceAtLeast(0),
             onPick = { i ->
-                pickModel = false
-                onUpdateAgentDefaults(currentAgent, d.modelChoicesList[i].id, "", null)
+                pickModelAgent = null
+                onUpdateAgentDefaults(targetAgent, d.modelChoicesList[i].id, "", null)
             },
-            onClose = { pickModel = false },
+            onClose = { pickModelAgent = null },
         )
     }
-    if (pickEffort && vm.hasAgentDefaults() && d.effortChoicesList.isNotEmpty()) {
+
+    val effortTarget = pickEffortAgent?.let { ag -> vm.cliVersionsList.firstOrNull { it.agent == ag }?.let { effectiveDefaultsFor(it, vm) }?.let { ag to it } }
+    if (effortTarget != null && effortTarget.second.effortChoicesList.isNotEmpty()) {
+        val (targetAgent, d) = effortTarget
         val opts = d.effortChoicesList.map { uiText(it.label) to null }
         ChoiceSheet(
             copy(UiMessages.modelsEffort()),
             opts,
             d.effortChoicesList.indexOfFirst { it.selected }.coerceAtLeast(0),
             onPick = { i ->
-                pickEffort = false
-                onUpdateAgentDefaults(currentAgent, d.selectedModel, d.effortChoicesList[i].id, null)
+                pickEffortAgent = null
+                onUpdateAgentDefaults(targetAgent, d.selectedModel, d.effortChoicesList[i].id, null)
             },
-            onClose = { pickEffort = false },
+            onClose = { pickEffortAgent = null },
         )
     }
-    if (pickMode && vm.hasAgentDefaults() && d.modeChoicesList.isNotEmpty()) {
+
+    val modeTarget = pickModeAgent?.let { ag -> vm.cliVersionsList.firstOrNull { it.agent == ag }?.let { effectiveDefaultsFor(it, vm) }?.let { ag to it } }
+    if (modeTarget != null && modeTarget.second.modeChoicesList.isNotEmpty()) {
+        val (targetAgent, d) = modeTarget
         val autoNotice = uiText(d.autoUnavailableNotice)
         val opts = d.modeChoicesList.map { c ->
             val reason = uiText(c.disabledReason).ifEmpty {
@@ -1149,18 +1412,21 @@ internal fun DeviceScreenContent(
             opts,
             d.modeChoicesList.indexOfFirst { it.selected }.coerceAtLeast(0),
             enabled = { i -> !d.modeChoicesList[i].disabled },
+            danger = { i -> d.modeChoicesList[i].danger || d.modeChoicesList[i].mode == ApprovalMode.APPROVAL_MODE_FULL_ACCESS },
             onPick = { i ->
-                pickMode = false
-                onUpdateAgentDefaults(currentAgent, null, null, d.modeChoicesList[i].mode)
+                pickModeAgent = null
+                onUpdateAgentDefaults(targetAgent, null, null, d.modeChoicesList[i].mode)
             },
-            onClose = { pickMode = false },
+            onClose = { pickModeAgent = null },
         )
     }
+
     if (pickTimeout && vm.approvalTimeoutChoicesList.isNotEmpty()) {
         ChoiceSheet(
             copy(UiMessages.settingsApprovalTimeout()),
             vm.approvalTimeoutChoicesList.map { uiText(it.label) to null },
             vm.approvalTimeoutChoicesList.indexOfFirst { it.selected }.coerceAtLeast(0),
+            footer = copy(UiMessages.settingsTimeoutFooter()),
             onPick = { i ->
                 pickTimeout = false
                 onUpdateDaemonSettings(vm.approvalTimeoutChoicesList[i].seconds, null, null, false)
@@ -1173,12 +1439,190 @@ internal fun DeviceScreenContent(
             copy(UiMessages.settingsAutomaticallyEndIdleSessions()),
             vm.idleCloseChoicesList.map { uiText(it.label) to null },
             vm.idleCloseChoicesList.indexOfFirst { it.selected }.coerceAtLeast(0),
+            footer = copy(UiMessages.settingsAndroidSessionsEndAutomaticallyAfterProlongedInactivityNotRunningNoPending()),
             onPick = { i ->
                 pickIdleClose = false
                 onUpdateDaemonSettings(null, vm.idleCloseChoicesList[i].minutes, null, false)
             },
             onClose = { pickIdleClose = false },
         )
+    }
+}
+
+private fun effectiveDefaultsFor(cli: CliVersionView, vm: MachineSettingsViewModel): MachineAgentDefaultsView? = when {
+    cli.hasDefaults() -> cli.defaults
+    vm.hasAgentDefaults() && (vm.agentDefaults.agent == cli.agent || vm.cliVersionsCount == 1) -> vm.agentDefaults
+    else -> null
+}
+
+@Composable
+private fun CliSettingsSheet(
+    vm: MachineSettingsViewModel,
+    cli: CliVersionView,
+    editableDefaults: Boolean,
+    readError: String,
+    onRetrySettings: () -> Unit,
+    onToggleAgent: ((Agent, Boolean) -> Unit)?,
+    onPickModel: () -> Unit,
+    onPickEffort: () -> Unit,
+    onPickMode: () -> Unit,
+    onClose: () -> Unit,
+) {
+    val copy = uiText()
+    val p = pal
+    val showToggle = vm.cliVersionsCount >= 2 && vm.showCliSwitches
+    val locked = cli.lockedLastEnabled
+    val toggleInteractive = vm.cliSwitchesEditable && !locked && !cli.saving && onToggleAgent != null
+    val verText = cli.version.ifEmpty { copy(UiMessages.settingsAndroidUnknown()) }
+    val unverifiedWord = uiText(cli.unverifiedLabel)
+        .ifEmpty { copy(UiMessages.settingsCliUnverifiedShort()) }
+        .trimEnd()
+        .removeSuffix("·")
+        .trimEnd()
+
+    AdaptiveSheet(onClose = onClose) {
+        SheetHead(cli.name, copy(UiMessages.commonDone()), onClose)
+        if (vm.hasCliSwitchesDisabledReason() && uiText(vm.cliSwitchesDisabledReason).isNotEmpty()) {
+            Notice(
+                uiText(vm.cliSwitchesDisabledReason),
+                Modifier.padding(bottom = 10.dp),
+                NoticeTone.WARN,
+            )
+        }
+        SheetList {
+            if (showToggle) {
+                val sub = when {
+                    locked -> copy(UiMessages.settingsCliSwitchesKeepOne())
+                    else -> ""
+                }
+                val a11yText = if (locked) {
+                    copy(UiMessages.settingsCliSwitchesA11YLocked(cli.name, verText))
+                } else {
+                    copy(
+                        UiMessages.settingsCliSwitchesA11YRow(
+                            name = cli.name,
+                            state = if (cli.enabled) copy(UiMessages.settingsCliSwitchesStateOn()) else copy(UiMessages.settingsCliSwitchesStateOff()),
+                            version = verText,
+                        ),
+                    )
+                }
+                Row(
+                    Modifier.fillMaxWidth()
+                        .heightIn(min = 50.dp)
+                        .toggleable(
+                            value = cli.enabled,
+                            enabled = toggleInteractive,
+                            role = Role.Switch,
+                            onValueChange = { next -> onToggleAgent?.invoke(cli.agent, next) },
+                        )
+                        .semantics(mergeDescendants = true) {
+                            contentDescription = a11yText
+                            toggleableState = if (cli.enabled) ToggleableState.On else ToggleableState.Off
+                        }
+                        .padding(start = 18.dp, end = 16.dp, top = 8.dp, bottom = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    Column(Modifier.weight(1f)) {
+                        Text(copy(UiMessages.settingsCliEnableOnComputer()), style = T.s17, color = p.ink)
+                        if (sub.isNotEmpty()) {
+                            Text(sub, style = T.s13, color = p.ink2)
+                        }
+                    }
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        if (cli.saving) Spinner(p.ink2, size = 16.dp)
+                        Box(Modifier.alpha(if (locked) 0.4f else if (vm.cliSwitchesEditable) 1f else 0.5f)) {
+                            Sw(cli.enabled)
+                        }
+                    }
+                }
+            }
+            Box(if (showToggle) Modifier.topLine(p.sep, 18.dp) else Modifier) {
+                GRow(
+                    copy(UiMessages.settingsCliInstalledVersion()),
+                    trailing = {
+                        Text(
+                            buildAnnotatedString {
+                                if (!cli.verified) {
+                                    withStyle(SpanStyle(color = p.orangeInk, fontWeight = FontWeight.SemiBold)) {
+                                        append(unverifiedWord)
+                                    }
+                                    withStyle(SpanStyle(color = p.ink2)) { append(" · ") }
+                                }
+                                withStyle(SpanStyle(color = p.ink2)) { append(verText) }
+                            },
+                            style = T.s15.copy(fontFamily = FontFamily.Monospace),
+                            maxLines = 1,
+                        )
+                    },
+                )
+            }
+        }
+
+        if (vm.cliSwitchesLeaseExpired) {
+            Hint(copy(UiMessages.settingsCliSwitchesLeaseExpiredFooter()))
+        }
+        if (!cli.verified) {
+            Hint(copy(UiMessages.settingsVersionUnverifiedRunRemoteAgentDoctorOnThisComputer()))
+        }
+
+        val d = effectiveDefaultsFor(cli, vm)
+        if (!cli.enabled) {
+            Hint(copy(UiMessages.settingsCliDisabledExplanation()))
+        } else if (d != null) {
+            FieldLabel(copy(UiMessages.settingsNewProjectDefaults()))
+            val modelLabel = uiText(d.selectedModelLabel).ifEmpty {
+                d.selectedModel.ifEmpty { copy(UiMessages.modelsDefault()) }
+            }
+            val selectedEffort = d.effortChoicesList.firstOrNull { it.selected }
+            val effortLabel = selectedEffort?.let { uiText(it.label) }?.ifEmpty { null }
+                ?: d.selectedEffort.ifEmpty { copy(UiMessages.modelsDefault()) }
+            val selectedMode = d.modeChoicesList.firstOrNull { it.selected }
+            val modeLabel = selectedMode?.let { uiText(it.label) }.orEmpty()
+            val modeDanger = d.selectedMode == ApprovalMode.APPROVAL_MODE_FULL_ACCESS || selectedMode?.danger == true
+
+            SheetList {
+                GRow(
+                    copy(UiMessages.settingsCliSheetModel()),
+                    modelLabel,
+                    singleLineValue = true,
+                    onClick = if (editableDefaults && d.modelChoicesList.isNotEmpty()) onPickModel else null,
+                    chevron = true,
+                )
+                Box(Modifier.topLine(p.sep, 18.dp)) {
+                    GRow(
+                        copy(UiMessages.settingsCliSheetEffort()),
+                        effortLabel,
+                        singleLineValue = true,
+                        onClick = if (editableDefaults) {
+                            if (d.effortChoicesList.size > 1) onPickEffort else if (d.modelChoicesList.isNotEmpty()) onPickModel else null
+                        } else null,
+                        chevron = true,
+                    )
+                }
+                Box(Modifier.topLine(p.sep, 18.dp)) {
+                    GRow(
+                        copy(UiMessages.settingsCliSheetMode()),
+                        modeLabel,
+                        singleLineValue = true,
+                        valueColor = if (modeDanger) p.red else null,
+                        onClick = if (editableDefaults && d.modeChoicesList.isNotEmpty()) onPickMode else null,
+                        chevron = true,
+                    )
+                }
+            }
+            Hint(copy(UiMessages.settingsCliNewProjectDefaultsFooter()))
+        } else if (vm.online && readError.isNotEmpty()) {
+            Spacer(Modifier.height(10.dp))
+            Notice(
+                readError,
+                tone = NoticeTone.ERROR,
+                action = copy(UiMessages.commonRetry()),
+                onAction = onRetrySettings,
+            )
+        } else if (!vm.online) {
+            Hint(copy(UiMessages.settingsAndroidValue1IsOfflineConnectToReadAndEditNewSession(vm.name.ifEmpty { vm.machineId })))
+        }
     }
 }
 
@@ -1595,6 +2039,57 @@ private fun imageBytes(n: Long, copy: io.github.lewin671.remoteagent.core.Messag
     else "%.1f MiB".format(n / 1048576.0)
 
 @Composable
+fun MachineAttachmentStorageScreen(id: String) {
+    val remote = LocalRemote.current
+    val initialVm = remember(remote, id) { remote.coreHost.snapshotMachineSettingsView(id) }
+    val rawVm by remote.machineSettingsView.collectAsState()
+    val vm = if (rawVm.machineId == id) rawVm else initialVm
+    LaunchedEffect(id) { remote.coreHost.openMachineSettings(id) }
+    MachineAttachmentStorageScreenContent(
+        vm = vm,
+        onQuota = { bytes -> remote.coreHost.updateMachineDaemonSettings(id, imageUploadQuotaBytes = bytes) },
+        onClean = { remote.coreHost.updateMachineDaemonSettings(id, cleanImages = true) },
+    )
+}
+
+@Composable
+internal fun MachineAttachmentStorageScreenContent(
+    vm: MachineSettingsViewModel,
+    onQuota: (Long) -> Unit = {},
+    onClean: () -> Unit = {},
+) {
+    val copy = uiText()
+    val subtitle = vm.name.ifEmpty { null }
+    PageScaffold(copy(UiMessages.settingsAttachmentStorage()), subtitle = subtitle) {
+        if (!vm.found && vm.loading) {
+            PageNote(copy(UiMessages.commonLoading()))
+            return@PageScaffold
+        }
+        Column(Modifier.weight(1f).settingsReadableColumn().verticalScrollFaded()) {
+            val removedText = uiText(vm.removedBanner)
+            val offlineOrMismatch = uiText(vm.offlineOrMismatchBanner)
+            if (removedText.isNotEmpty()) {
+                Notice(removedText, Modifier.padding(horizontal = 16.dp).padding(bottom = 12.dp))
+            } else if (offlineOrMismatch.isNotEmpty()) {
+                Notice(offlineOrMismatch, Modifier.padding(horizontal = 16.dp).padding(bottom = 12.dp))
+            }
+            val saveErr = uiText(vm.saveError)
+            if (saveErr.isNotEmpty()) {
+                Notice(saveErr, Modifier.padding(horizontal = 16.dp).padding(bottom = 12.dp), NoticeTone.ERROR)
+            }
+            val editableControls = vm.online && vm.editable && !vm.savePending
+            MachineAttachmentStorage(
+                storage = vm.attachmentStorage,
+                enabled = editableControls && !vm.attachmentStorage.cleaning,
+                onQuota = onQuota,
+                onClean = onClean,
+            )
+            Spacer(Modifier.height(24.dp))
+        }
+    }
+}
+
+@Composable
 internal fun MachineAttachmentStorage(
     storage: AttachmentStorageView,
     enabled: Boolean,
@@ -1602,63 +2097,117 @@ internal fun MachineAttachmentStorage(
     onClean: () -> Unit,
 ) {
     val copy = uiText()
+    val p = pal
     var clean by remember { mutableStateOf(false) }
     var limit by remember { mutableStateOf(false) }
-    val uploaded = uiText(storage.uploadedText).ifEmpty { copy(UiMessages.projectsReadingDirectory()) }
+    val uploaded = uiText(storage.uploadedText).ifEmpty {
+        if (storage.loaded) "0 B" else copy(UiMessages.projectsReadingDirectory())
+    }
     val detail = uiText(storage.uploadedDetail)
     val uploadedValue = listOf(uploaded, detail).filter { it.isNotEmpty() }.joinToString(" · ")
     val quotaLabel =
-        storage.quotaChoicesList.firstOrNull { it.selected }?.let { uiText(it.label) }.orEmpty()
+        storage.quotaChoicesList.firstOrNull { it.selected }?.let { uiText(it.label) }
+            ?: uiText(storage.limitLabel)
     val previewCache = uiText(storage.previewCacheText).ifEmpty { "—" }
     val emergencyText = uiText(storage.emergencyReserveText)
     val clearLabel = uiText(storage.clearButtonLabel)
-    val footerText = uiText(storage.footerText).ifEmpty {
-        copy(UiMessages.settingsAttachmentsAreStoredOnThisComputerSessionFilesRemain())
+    val usedTotal = uiText(storage.usedTotalText).ifEmpty { "—" }
+    val limitHeadline = uiText(storage.limitLabel).ifEmpty { quotaLabel }.ifEmpty { "—" }
+
+    val upPct = storage.uploadedPercent.coerceIn(0, 100)
+    val prePct = storage.previewPercent.coerceIn(0, 100 - upPct)
+    val resPct = storage.reservePercent.coerceIn(0, 100 - upPct - prePct)
+    val remPct = (100 - upPct - prePct - resPct).coerceAtLeast(0)
+
+    // Composition stacked bar card
+    Column(
+        Modifier.fillMaxWidth()
+            .padding(start = 16.dp, end = 16.dp, bottom = 12.dp)
+            .clip(Radii.R18)
+            .background(p.gbg)
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Bottom) {
+            Text(
+                copy(UiMessages.settingsStorageUsedHeadline(usedTotal)),
+                style = T.s17b.digits(),
+                color = p.ink,
+                modifier = Modifier.weight(1f),
+            )
+            Text(
+                copy(UiMessages.settingsStorageLimitHeadline(limitHeadline)),
+                style = T.s13.digits(),
+                color = p.ink2,
+            )
+        }
+        Box(
+            Modifier.fillMaxWidth()
+                .height(10.dp)
+                .clip(RoundedCornerShape(5.dp))
+                .background(p.fill2),
+        ) {
+            Row(Modifier.fillMaxSize()) {
+                if (upPct > 0) Box(Modifier.weight(upPct.toFloat()).fillMaxHeight().background(p.blue))
+                if (prePct > 0) Box(Modifier.weight(prePct.toFloat()).fillMaxHeight().background(p.ink3))
+                if (resPct > 0) Box(Modifier.weight(resPct.toFloat()).fillMaxHeight().background(p.orange))
+                if (remPct > 0) Spacer(Modifier.weight(remPct.toFloat()))
+            }
+        }
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+            StorageLegendDot(p.blue, copy(UiMessages.settingsStorageLegendUploaded()))
+            StorageLegendDot(p.ink3, copy(UiMessages.settingsStorageLegendPreview()))
+            if (storage.showEmergencyReserve || resPct > 0) {
+                StorageLegendDot(p.orange, copy(UiMessages.settingsStorageLegendReserve()))
+            }
+        }
     }
-    GLabel(copy(UiMessages.settingsAttachmentStorage()))
+
+    SectionLabel(copy(UiMessages.settingsStorageSectionDetails()))
     Group(
-        rows =
-            listOf(
-                { GRow(copy(UiMessages.settingsUploadedImagesAndFiles()), uploadedValue) },
-                {
-                    GRow(
-                        copy(UiMessages.settingsStorageLimit()),
-                        quotaLabel,
-                        onClick = if (enabled && storage.quotaChoicesList.isNotEmpty()) ({ limit = true }) else null,
-                        chevron = true,
-                    )
-                },
-                { GRow(copy(UiMessages.settingsPreviewCache()), previewCache) },
-                *(if (storage.showEmergencyReserve && emergencyText.isNotEmpty()) arrayOf<@Composable () -> Unit>({
-                    // 应急预留 (ui-spec B2): not clearable, so no action; the line under it says why it is there.
+        rows = buildList {
+            add { GRow(copy(UiMessages.settingsUploadedImagesAndFiles()), uploadedValue, singleLineValue = true) }
+            add { GRow(copy(UiMessages.settingsPreviewCache()), previewCache, singleLineValue = true) }
+            if (storage.showEmergencyReserve && emergencyText.isNotEmpty()) {
+                add {
                     Column(Modifier.fillMaxWidth().padding(start = 18.dp, end = 16.dp, top = 11.dp, bottom = 11.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                            Text(copy(UiMessages.machineStatusEmergencyReserve()), style = T.s17, color = pal.ink, modifier = Modifier.weight(1f))
-                            Text(emergencyText, style = T.s17, color = pal.ink2)
+                            Text(copy(UiMessages.machineStatusEmergencyReserve()), style = T.s17, color = p.ink, modifier = Modifier.weight(1f))
+                            Text(emergencyText, style = T.s17.digits(), color = p.ink2)
                         }
-                        Text(copy(UiMessages.machineStatusEmergencyReserveNote()), style = T.s13, color = pal.ink2, modifier = Modifier.padding(top = 2.dp))
+                        Text(copy(UiMessages.machineStatusEmergencyReserveNote()), style = T.s13, color = p.ink2, modifier = Modifier.padding(top = 2.dp))
                     }
-                }) else emptyArray()),
-                {
-                    GRow(
-                        copy(UiMessages.settingsClear()),
-                        clearLabel,
-                        onClick = if (enabled && storage.canClear && !storage.cleaning) ({ clean = true }) else null,
-                        action = true,
-                        enabled = enabled && storage.canClear && !storage.cleaning,
-                    )
-                },
-            ),
+                }
+            }
+            add {
+                GRow(
+                    copy(UiMessages.settingsStorageLimitRow()),
+                    quotaLabel,
+                    singleLineValue = true,
+                    onClick = if (enabled && storage.quotaChoicesList.isNotEmpty()) ({ limit = true }) else null,
+                    chevron = true,
+                )
+            }
+        },
     )
-    Text(
-        footerText,
-        style = T.s13,
-        color = pal.ink2,
-        modifier = Modifier.padding(start = 30.dp, end = 30.dp, bottom = 12.dp),
+
+    Group(
+        rows = listOf {
+            GRow(
+                copy(UiMessages.settingsStorageClearRow()),
+                clearLabel,
+                singleLineValue = true,
+                onClick = if (enabled && storage.canClear && !storage.cleaning) ({ clean = true }) else null,
+                action = true,
+                enabled = enabled && storage.canClear && !storage.cleaning,
+            )
+        },
     )
+    Hint(copy(UiMessages.settingsStoragePageFooter()), Modifier.padding(bottom = 12.dp), inset = 32.dp)
+
     if (limit && storage.quotaChoicesList.isNotEmpty()) {
         ChoiceSheet(
-            copy(UiMessages.settingsStorageLimit()),
+            copy(UiMessages.settingsStorageLimitRow()),
             storage.quotaChoicesList.map { uiText(it.label) to null },
             storage.quotaChoicesList.indexOfFirst { it.selected }.coerceAtLeast(0),
             onPick = { i ->
@@ -1668,7 +2217,7 @@ internal fun MachineAttachmentStorage(
             onClose = { limit = false },
         )
     }
-    if (clean)
+    if (clean) {
         Confirm(
             copy(UiMessages.settingsAndroidCleanUpReclaimableImages()),
             copy(UiMessages.settingsAndroidRemoveReclaimableOriginalsAndCacheLargeImagesNotYetSynced()),
@@ -1678,6 +2227,15 @@ internal fun MachineAttachmentStorage(
             clean = false
             onClean()
         }
+    }
+}
+
+@Composable
+private fun StorageLegendDot(color: Color, label: String) {
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+        Box(Modifier.size(7.dp).clip(CircleShape).background(color))
+        Text(label, style = T.s12, color = pal.ink2, maxLines = 1)
+    }
 }
 
 /**

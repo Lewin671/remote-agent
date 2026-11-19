@@ -279,6 +279,12 @@ class UsageAndCliSwitchesTest {
     fun cliSwitchesRenderToggleLockConflictAndLegacyFallback() {
         val toggles = mutableListOf<Pair<Agent, Boolean>>()
         val conflictBanner = "该电脑设置刚被其他端更新，已同步最新状态。"
+        val claudeDefaults = MachineAgentDefaultsView.newBuilder()
+            .setAgent(Agent.AGENT_CLAUDE)
+            .setAgentName("Claude Code")
+            .setSelectedModel("claude-sonnet-4-6")
+            .setSelectedModelLabel(coreLit("Sonnet 4.6"))
+            .build()
         val cliVm = MachineSettingsViewModel.newBuilder()
             .setMachineId("m1")
             .setName("Mac Studio")
@@ -295,7 +301,8 @@ class UsageAndCliSwitchesTest {
                     .setVersion("1.0.50")
                     .setVerified(true)
                     .setEnabled(true)
-                    .setLockedLastEnabled(true),
+                    .setLockedLastEnabled(true)
+                    .setDefaults(claudeDefaults),
             )
             .addCliVersions(
                 CliVersionView.newBuilder()
@@ -308,13 +315,7 @@ class UsageAndCliSwitchesTest {
             )
             .addAvailableAgents(Agent.AGENT_CLAUDE)
             .setSelectedAgent(Agent.AGENT_CLAUDE)
-            .setAgentDefaults(
-                MachineAgentDefaultsView.newBuilder()
-                    .setAgent(Agent.AGENT_CLAUDE)
-                    .setAgentName("Claude Code")
-                    .setSelectedModel("claude-sonnet-4-6")
-                    .build(),
-            )
+            .setAgentDefaults(claudeDefaults)
             .build()
         val legacyVm = MachineSettingsViewModel.newBuilder()
             .setMachineId("m2")
@@ -346,8 +347,10 @@ class UsageAndCliSwitchesTest {
         }
         ui.waitForIdle()
 
-        val titleText = messageTextForTest(UiMessages.settingsCliSwitchesTitle())
-        val singleDefaultsHeader = messageTextForTest(UiMessages.settingsNewProjectDefaultsSettings("Claude Code"))
+        val enableLabel = messageTextForTest(UiMessages.settingsCliEnableOnComputer())
+        val keepOneText = messageTextForTest(UiMessages.settingsCliSwitchesKeepOne())
+        val installedLabel = messageTextForTest(UiMessages.settingsCliInstalledVersion())
+        val defaultsSection = messageTextForTest(UiMessages.settingsNewProjectDefaults())
         val lockedA11y = messageTextForTest(UiMessages.settingsCliSwitchesA11YLocked("Claude Code", "1.0.50"))
         val codexA11y = messageTextForTest(
             UiMessages.settingsCliSwitchesA11YRow(
@@ -357,21 +360,32 @@ class UsageAndCliSwitchesTest {
             ),
         )
 
-        ui.onNodeWithText(titleText).performScrollTo().assertIsDisplayed()
         ui.onNodeWithText(conflictBanner).performScrollTo().assertIsDisplayed()
-        ui.onNodeWithContentDescription(lockedA11y).performScrollTo().assertIsNotEnabled()
-        ui.onNodeWithContentDescription(codexA11y).performScrollTo().performClick()
+        ui.onNodeWithText("Claude Code").performScrollTo().performClick()
+        ui.waitForIdle()
+        ui.onNodeWithContentDescription(lockedA11y).assertIsNotEnabled()
+        ui.onNodeWithText(keepOneText).assertIsDisplayed()
+        ui.onNodeWithText(defaultsSection).assertIsDisplayed()
+        ui.onNodeWithText(messageTextForTest(UiMessages.commonDone())).performClick()
+        ui.waitForIdle()
+
+        ui.onNodeWithText("Codex").performScrollTo().performClick()
+        ui.waitForIdle()
+        ui.onNodeWithText(messageTextForTest(UiMessages.settingsCliDisabledExplanation())).assertIsDisplayed()
+        ui.onNodeWithContentDescription(codexA11y).performClick()
         ui.waitForIdle()
         assertEquals(listOf(Agent.AGENT_CODEX to true), toggles)
+        ui.onNodeWithText(messageTextForTest(UiMessages.commonDone())).performClick()
+        ui.waitForIdle()
 
-        ui.onNodeWithText(singleDefaultsHeader).performScrollTo().assertIsDisplayed()
-
-        // Switching to a pre-v17 daemon falls back to read-only CLI version row
+        // Single-CLI or legacy pre-v17 daemon hides the enable switch inside CLI settings sheet.
         stateVm.value = legacyVm
         ui.waitForIdle()
-        val legacyRowTitle = messageTextForTest(UiMessages.settingsCliVersion("Claude Code"))
-        ui.onNodeWithText(legacyRowTitle).performScrollTo().assertIsDisplayed()
-        assertEquals(0, ui.onAllNodesWithText(titleText).fetchSemanticsNodes().size)
+        ui.onNodeWithText("Claude Code").performScrollTo().performClick()
+        ui.waitForIdle()
+        ui.onNodeWithText(installedLabel).assertIsDisplayed()
+        ui.onNodeWithText("1.0.10").assertIsDisplayed()
+        assertEquals(0, ui.onAllNodesWithText(enableLabel).fetchSemanticsNodes().size)
     }
 
     @Test

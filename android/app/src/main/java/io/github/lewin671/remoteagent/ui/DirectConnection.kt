@@ -65,13 +65,27 @@ import java.util.Locale
 private val IP_PORT_STRIP = Regex("""(\b\d{1,3}(?:\.\d{1,3}){3}(?::\d+)?\b|\[[0-9a-fA-F:]+\](?::\d+)?)""")
 
 /**
- * Renders Core's 「连接」 group ([ConnectionGroupView]) directly inside [DeviceScreen].
+ * Unified direct-connection sheet/dialog rendered from Core's [ConnectionGroupView] and live
+ * [DirectDiag] diagnostics inside [DeviceScreen] (phone modal sheet / wide tablet centered dialog).
  */
+private data class PlainDiagCheckRow(
+    val mark: MarkKind,
+    val label: String,
+    val detail: String?,
+    val status: String,
+)
+
+private enum class CopyFeedback { IDLE, OK, FAIL }
+
 @Composable
-internal fun DirectConnectionGroup(
+internal fun DirectConnectionSheet(
+    machineId: String,
+    state: RemoteState,
     view: ConnectionGroupView,
-    onDiagnostics: (() -> Unit)? = null,
     onToggle: (Boolean) -> Unit,
+    onRetry: () -> Boolean,
+    onClose: () -> Unit,
+    diagLinesOverride: List<String>? = null,
 ) {
     val copy = uiText()
     val p = pal
@@ -87,82 +101,26 @@ internal fun DirectConnectionGroup(
     val enter = if (Motion.reduced) fadeIn(tween(150)) else expandVertically(tween(200)) + fadeIn(tween(200))
     val exit = if (Motion.reduced) fadeOut(tween(150)) else shrinkVertically(tween(200)) + fadeOut(tween(200))
 
-    GLabel(copy(UiMessages.transportGroup()))
-    Column(
-        Modifier.fillMaxWidth()
-            .padding(start = 16.dp, end = 16.dp, bottom = 6.dp)
-            .clip(Radii.R18)
-            .background(if (LocalOnSoft.current) p.raised else p.gbg),
-    ) {
-        Box(Modifier.alpha(if (supported) 1f else 0.4f)) {
-            ToggleRow(
-                copy(UiMessages.transportDirect()),
-                "",
-                value = supported && view.toggleChecked,
-                enabled = view.toggleEnabled,
-                onChange = onToggle,
-            )
-        }
-        AnimatedVisibility(visible = showStatus, enter = enter, exit = exit) {
-            Box(Modifier.topLine(p.sep, 18.dp)) {
-                DirectStatusRow(view.stage, view.tone, statusText, detailText, metricText)
-            }
-        }
-        if (view.showDiagnosticsEntry && onDiagnostics != null) {
-            Box(Modifier.topLine(p.sep, 18.dp)) {
-                GRow(
-                    copy(UiMessages.transportWhyNotConnected()),
-                    onClick = onDiagnostics,
-                    chevron = true,
-                )
-            }
-        }
-    }
-    Hint(footerText, Modifier.padding(bottom = 12.dp))
-}
-
-private data class PlainDiagCheckRow(
-    val mark: MarkKind,
-    val label: String,
-    val detail: String?,
-    val status: String,
-)
-
-private enum class CopyFeedback { IDLE, OK, FAIL }
-
-@Composable
-internal fun DirectDiagSheet(
-    machineId: String,
-    state: RemoteState,
-    onRetry: () -> Boolean,
-    onClose: () -> Unit,
-) {
-    val copy = uiText()
-    val p = pal
     val clipboard = LocalClipboardManager.current
     var copyFeedback by remember { mutableStateOf(CopyFeedback.IDLE) }
     var cooldown by remember { mutableStateOf(false) }
     var retryInitiated by remember { mutableStateOf(false) }
     var prevRunning by remember { mutableStateOf(false) }
-    var diagLines by remember(machineId, state) { mutableStateOf(DirectDiag.lines()) }
+    var diagLines by remember(machineId, state, diagLinesOverride) {
+        mutableStateOf(diagLinesOverride ?: DirectDiag.lines())
+    }
 
     val status = state.machines[machineId]?.pathState?.directStatus
     val connected = status?.stage == DirectStage.DIRECT_ACTIVE && (status.readDirect || status.fileDirect)
     val running = status?.stage == DirectStage.TRYING
 
-    LaunchedEffect(machineId, running) {
-        diagLines = DirectDiag.lines()
+    LaunchedEffect(machineId, running, diagLinesOverride) {
+        diagLines = diagLinesOverride ?: DirectDiag.lines()
         if (running) {
             while (true) {
                 delay(1000)
-                diagLines = DirectDiag.lines()
+                diagLines = diagLinesOverride ?: DirectDiag.lines()
             }
-        }
-    }
-    LaunchedEffect(connected, retryInitiated) {
-        if (connected && retryInitiated) {
-            delay(600)
-            onClose()
         }
     }
     LaunchedEffect(running, connected) {
@@ -171,6 +129,7 @@ internal fun DirectDiagSheet(
             delay(2000)
             cooldown = false
         }
+        if (connected) retryInitiated = false
         prevRunning = running
     }
     LaunchedEffect(cooldown) {
@@ -248,100 +207,104 @@ internal fun DirectDiagSheet(
         }.trim()
     }
 
-    val content: @Composable ColumnScope.(surfaceBg: Color) -> Unit = { cardBg ->
-        Column(Modifier.semantics { liveRegion = LiveRegionMode.Polite }.padding(bottom = 14.dp)) {
-            Text(title, style = T.h20, color = p.ink)
+    AdaptiveSheet(onClose = onClose, scroll = true) {
+        SheetHead(copy(UiMessages.transportDirect()), copy(UiMessages.commonDone()), onClose)
+        SheetList {
+            if (view.toggleVisible) {
+                Box(Modifier.alpha(if (supported) 1f else 0.4f)) {
+                    ToggleRow(
+                        copy(UiMessages.transportRowAllowDirect()),
+                        "",
+                        value = supported && view.toggleChecked,
+                        enabled = view.toggleEnabled,
+                        onChange = onToggle,
+                    )
+                }
+            }
+            AnimatedVisibility(visible = showStatus, enter = enter, exit = exit) {
+                Box(if (view.toggleVisible) Modifier.topLine(p.sep, 18.dp) else Modifier) {
+                    DirectStatusRow(view.stage, view.tone, statusText, detailText, metricText)
+                }
+            }
+        }
+        if (view.showDiagnosticsEntry) {
+            FieldLabel(copy(UiMessages.transportDiagSectionAuto()))
+            Column(Modifier.semantics { liveRegion = LiveRegionMode.Polite }.padding(horizontal = 12.dp, vertical = 2.dp)) {
+                Text(body, style = T.s13, color = p.ink2)
+            }
             Spacer(Modifier.height(6.dp))
-            Text(body, style = T.s15.copy(lineHeight = 21.sp), color = p.ink2)
-        }
-        Column(Modifier.fillMaxWidth().clip(Radii.R18).background(cardBg)) {
-            checks.forEachIndexed { idx, row ->
-                Row(
-                    Modifier.fillMaxWidth().heightIn(min = 50.dp)
-                        .then(if (idx > 0) Modifier.topLine(p.sep, 18.dp) else Modifier)
-                        .padding(horizontal = 16.dp, vertical = 10.dp)
-                        .semantics(mergeDescendants = true) {},
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                ) {
-                    StatusMark(row.mark, color = if (row.mark == MarkKind.ONLINE) p.green else if (row.mark == MarkKind.RUNNING) p.ink else p.faint)
-                    Column(Modifier.weight(1f)) {
-                        Text(row.label, style = T.s15, color = p.ink)
-                        if (!row.detail.isNullOrEmpty()) Text(row.detail, style = T.s13, color = p.ink2)
-                    }
-                    Text(row.status, style = T.s13, color = p.ink2)
-                }
-            }
-        }
-        Spacer(Modifier.height(14.dp))
-        Row(
-            Modifier.fillMaxWidth().heightIn(min = 48.dp)
-                .disabledAlpha(!retryDisabled)
-                .clip(Radii.Pill)
-                .background(p.btn)
-                .clickable(enabled = !retryDisabled, role = Role.Button) {
-                    retryInitiated = true
-                    if (!onRetry()) cooldown = true
-                    diagLines = DirectDiag.lines()
-                }
-                .padding(horizontal = 22.dp, vertical = 6.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
-        ) {
-            if (running) Spinner(p.btnFg, size = 16.dp)
-            Text(
-                if (running) copy(UiMessages.transportDiagRetrying()) else copy(UiMessages.transportDiagRetry()),
-                style = T.s17b,
-                color = p.btnFg,
-                textAlign = TextAlign.Center,
-                maxLines = 2,
-            )
-        }
-        Box(
-            Modifier.fillMaxWidth().heightIn(min = 44.dp).clickable(role = Role.Button) {
-                runCatching { clipboard.setText(AnnotatedString(reportPayload)) }
-                    .onSuccess { copyFeedback = CopyFeedback.OK }
-                    .onFailure { copyFeedback = CopyFeedback.FAIL }
-            },
-            contentAlignment = Alignment.Center,
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                when (copyFeedback) {
-                    CopyFeedback.OK -> {
-                        Ic(Lucide.Check, 15.dp, p.ink2)
-                        Text(copy(UiMessages.commonCopied()), style = T.s15, color = p.ink2)
-                    }
-                    CopyFeedback.FAIL -> {
-                        Text(copy(UiMessages.transportDiagCopyPermission()), style = T.s15, color = p.red)
-                    }
-                    CopyFeedback.IDLE -> {
-                        Ic(Lucide.Copy, 15.dp, p.blue)
-                        Text(copy(UiMessages.transportDiagCopySupport()), style = T.s15b, color = p.blue)
+            SheetList {
+                checks.forEachIndexed { idx, row ->
+                    Row(
+                        Modifier.fillMaxWidth().heightIn(min = 50.dp)
+                            .then(if (idx > 0) Modifier.topLine(p.sep, 34.dp) else Modifier)
+                            .padding(horizontal = 16.dp, vertical = 10.dp)
+                            .semantics(mergeDescendants = true) {},
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        Box(Modifier.width(8.dp), contentAlignment = Alignment.Center) {
+                            StatusMark(row.mark, color = if (row.mark == MarkKind.ONLINE) p.green else if (row.mark == MarkKind.RUNNING) p.ink else p.faint)
+                        }
+                        Column(Modifier.weight(1f)) {
+                            Text(row.label, style = T.s15, color = p.ink)
+                            if (!row.detail.isNullOrEmpty()) Text(row.detail, style = T.s13, color = p.ink2)
+                        }
+                        Text(row.status, style = T.s13, color = p.ink2)
                     }
                 }
             }
-        }
-        Hint(copy(UiMessages.transportDiagPrivacyFooter()))
-    }
-
-    if (wideWindow()) {
-        Dialog(onDismissRequest = onClose, properties = DialogProperties(usePlatformDefaultWidth = false)) {
-            Box(Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) {
-                Column(
-                    Modifier.widthIn(max = 460.dp).fillMaxWidth()
-                        .floating(p, Radii.R18).clip(Radii.R18)
-                        .background(p.gbg).border(0.5.dp, p.sep, Radii.R18)
-                        .padding(horizontal = 20.dp, vertical = 18.dp),
-                ) {
-                    SheetHead(copy(UiMessages.transportWhyNotConnected()), copy(UiMessages.commonDone()), onClose)
-                    content(p.raised)
+            Spacer(Modifier.height(14.dp))
+            Row(
+                Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                    .disabledAlpha(!retryDisabled)
+                    .clip(Radii.Pill)
+                    .background(p.btn)
+                    .clickable(enabled = !retryDisabled, role = Role.Button) {
+                        retryInitiated = true
+                        if (!onRetry()) cooldown = true
+                        diagLines = diagLinesOverride ?: DirectDiag.lines()
+                    }
+                    .padding(horizontal = 22.dp, vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+            ) {
+                if (running) Spinner(p.btnFg, size = 16.dp)
+                Text(
+                    if (running) copy(UiMessages.transportDiagRetrying()) else copy(UiMessages.transportRowRetryDirect()),
+                    style = T.s17b,
+                    color = p.btnFg,
+                    textAlign = TextAlign.Center,
+                    maxLines = 2,
+                )
+            }
+            Box(
+                Modifier.fillMaxWidth().heightIn(min = 44.dp).clickable(role = Role.Button) {
+                    runCatching { clipboard.setText(AnnotatedString(reportPayload)) }
+                        .onSuccess { copyFeedback = CopyFeedback.OK }
+                        .onFailure { copyFeedback = CopyFeedback.FAIL }
+                },
+                contentAlignment = Alignment.Center,
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    when (copyFeedback) {
+                        CopyFeedback.OK -> {
+                            Ic(Lucide.Check, 15.dp, p.ink2)
+                            Text(copy(UiMessages.transportRowDiagCopied()), style = T.s15, color = p.ink2)
+                        }
+                        CopyFeedback.FAIL -> {
+                            Text(copy(UiMessages.transportDiagCopyPermission()), style = T.s15, color = p.red)
+                        }
+                        CopyFeedback.IDLE -> {
+                            Ic(Lucide.Copy, 15.dp, p.blue)
+                            Text(copy(UiMessages.transportRowDiagCopySupport()), style = T.s15b, color = p.blue)
+                        }
+                    }
                 }
             }
-        }
-    } else {
-        Sheet(onClose) {
-            SheetHead(copy(UiMessages.transportWhyNotConnected()), copy(UiMessages.commonDone()), onClose)
-            content(p.raised)
+            Hint(copy(UiMessages.transportDiagPrivacyFooter()))
+        } else {
+            Hint(footerText)
         }
     }
 }

@@ -112,20 +112,19 @@ class DirectTransportUiTest {
             ui.waitUntil(3000) {
                 val vm = remote.machineSettingsView.value
                 vm.found && vm.member && vm.hasConnection() && vm.connection.toggleEnabled &&
-                    ui.onAllNodesWithText("连接").fetchSemanticsNodes().isNotEmpty() &&
-                    ui.onAllNodesWithText("直连").fetchSemanticsNodes().isNotEmpty() &&
-                    ui.onAllNodesWithText("正在用直连").fetchSemanticsNodes().isNotEmpty()
+                    ui.onAllNodesWithText("直连").fetchSemanticsNodes().isNotEmpty()
             }
             ui.waitForIdle()
-            ui.onNodeWithText("连接").performScrollTo().assertIsDisplayed()
-            ui.onNodeWithText("直连").performScrollTo().assertIsDisplayed()
-            ui.onNodeWithText("正在用直连").performScrollTo().assertIsDisplayed()
-            ui.onNodeWithText("12 ms").performScrollTo().assertIsDisplayed()
+            ui.onNodeWithText("直连").performScrollTo().performClick()
+            ui.waitUntil(3000) { ui.onAllNodesWithText("允许直连").fetchSemanticsNodes().isNotEmpty() }
+            ui.onNodeWithText("允许直连").assertIsDisplayed()
+            ui.onNodeWithText("正在用直连").assertIsDisplayed()
+            ui.onNodeWithText("12 ms").assertIsDisplayed()
             ui.onAllNodesWithText("文件传输").assertCountEquals(0)
             ui.onAllNodesWithText("响应时间").assertCountEquals(0)
             ui.onNodeWithText("发消息和审批同时经直连和中继发出，以先到的为准；后台时只用中继。").performScrollTo().assertIsDisplayed()
 
-            ui.onNodeWithText("直连").performScrollTo().performClick()
+            ui.onNodeWithText("允许直连").performClick()
             ui.waitUntil(3000) { !remote.directEnabled(machineId) }
             assertFalse(remote.directEnabled(machineId))
             assertFalse(SharedPrefsDirectPreferenceStore(context).isEnabled("https://example.com", acct.deviceId, machineId))
@@ -137,7 +136,7 @@ class DirectTransportUiTest {
             ui.onAllNodesWithText("正在用直连").assertCountEquals(0)
             ui.onAllNodesWithText("文件传输").assertCountEquals(0)
 
-            ui.onNodeWithText("直连").performScrollTo().performClick()
+            ui.onNodeWithText("允许直连").performClick()
             ui.waitUntil(3000) { remote.directEnabled(machineId) }
             assertTrue(remote.directEnabled(machineId))
         } finally {
@@ -146,18 +145,24 @@ class DirectTransportUiTest {
     }
 
     @Test
-    fun directConnectionGroupCoversGoldenRelayDiagAndCoreStates() {
+    fun directConnectionSheetCoversGoldenRelayDiagAndCoreStates() {
         val relayFailedVm = ScreenGoldenLoader.machineSettingsView("machine_settings_edit", "relayFailedDiag")
         val viewState = mutableStateOf(relayFailedVm.connection)
         var toggledTo: Boolean? = null
         ui.setContent {
             RaTheme(ThemeMode.LIGHT) {
-                DirectConnectionGroup(viewState.value) { toggledTo = it }
+                DirectConnectionSheet(
+                    machineId = "m1",
+                    state = RemoteState(),
+                    view = viewState.value,
+                    onToggle = { toggledTo = it },
+                    onRetry = { true },
+                    onClose = {},
+                )
             }
         }
-        ui.onNodeWithText("连接").assertIsDisplayed()
-        ui.onNodeWithText("直连").assertIsDisplayed()
-        ui.onNodeWithText("直连").performClick()
+        ui.onNodeWithText("允许直连").assertIsDisplayed()
+        ui.onNodeWithText("允许直连").performClick()
         assertFalse(toggledTo!!)
 
         fun lit(s: String) = io.github.lewin671.remoteagent.core.proto.Text.newBuilder().setLiteral(s).build()
@@ -337,9 +342,8 @@ class DirectTransportUiTest {
     }
 
     @Test
-    fun directDiagEntryOpensSheetAndTriggersRetry() {
+    fun unifiedDirectSheetShowsInlineDiagnosticsAndTriggersRetry() {
         val vm = ScreenGoldenLoader.machineSettingsView("machine_settings_edit", "relayFailedDiag")
-        var openedDiag = false
         var retried = false
         val state = RemoteState(
             conn = ConnState.ONLINE,
@@ -362,44 +366,33 @@ class DirectTransportUiTest {
                 ),
             ),
         )
-        val showDiag = androidx.compose.runtime.mutableStateOf(false)
         ui.setContent {
             RaTheme(ThemeMode.LIGHT) {
-                if (!showDiag.value) {
-                    DirectConnectionGroup(
-                        vm.connection,
-                        onDiagnostics = {
-                            openedDiag = true
-                            showDiag.value = true
-                        },
-                    ) {}
-                } else {
-                    DirectDiagSheet(
-                        machineId = "m1",
-                        state = state,
-                        onRetry = {
-                            retried = true
-                            true
-                        },
-                        onClose = { showDiag.value = false },
-                    )
-                }
+                DirectConnectionSheet(
+                    machineId = "m1",
+                    state = state,
+                    view = vm.connection,
+                    onToggle = {},
+                    onRetry = {
+                        retried = true
+                        true
+                    },
+                    onClose = {},
+                )
             }
         }
-        ui.onNodeWithText("为什么没连上").performClick()
-        assertTrue(openedDiag)
         ui.waitForIdle()
-        ui.onNodeWithText("两边的网络隔开了，不能直接连通").performScrollTo().assertIsDisplayed()
+        ui.onNodeWithText("自动排障检查").performScrollTo().assertIsDisplayed()
         ui.onNodeWithText("电脑在线并响应").performScrollTo().assertIsDisplayed()
         ui.onNodeWithText("局域网或公网直通").performScrollTo().assertIsDisplayed()
         ui.onNodeWithText("后台自动重试").performScrollTo().assertIsDisplayed()
         ui.onNodeWithText("复制诊断给支持").performScrollTo().assertIsDisplayed()
-        ui.onNodeWithText("重新尝试").performScrollTo().performClick()
+        ui.onNodeWithText("重新尝试直连").performScrollTo().performClick()
         assertTrue(retried)
     }
 
     @Test
-    fun directDiagSheetShowsActiveDirectVerdictWhenActive() {
+    fun unifiedDirectSheetShowsConnectedPathCheckWhenActive() {
         val state = RemoteState(
             conn = ConnState.ONLINE,
             link = Link.ONLINE,
@@ -423,18 +416,28 @@ class DirectTransportUiTest {
                 ),
             ),
         )
+        val diagView = io.github.lewin671.remoteagent.core.proto.ConnectionGroupView.newBuilder()
+            .setToggleVisible(true)
+            .setToggleEnabled(true)
+            .setToggleChecked(true)
+            .setStage(io.github.lewin671.remoteagent.core.proto.ConnectionGroupStage.CONNECTION_GROUP_STAGE_DIRECT)
+            .setTone(io.github.lewin671.remoteagent.core.proto.ConnectionGroupTone.CONNECTION_GROUP_TONE_LIVE)
+            .setShowDiagnosticsEntry(true)
+            .build()
         ui.setContent {
             RaTheme(ThemeMode.LIGHT) {
-                DirectDiagSheet(
+                DirectConnectionSheet(
                     machineId = "m1",
                     state = state,
+                    view = diagView,
+                    onToggle = {},
                     onRetry = { true },
                     onClose = {},
                 )
             }
         }
         ui.waitForIdle()
-        ui.onNodeWithText("直连已连上").assertIsDisplayed()
+        ui.onNodeWithText("已连通").performScrollTo().assertIsDisplayed()
     }
 
     @Test

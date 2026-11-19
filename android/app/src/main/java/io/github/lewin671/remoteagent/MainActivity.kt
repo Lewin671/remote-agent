@@ -328,6 +328,7 @@ class MainActivity : ComponentActivity() {
                 page("task/{machine}/{id}") { io.github.lewin671.remoteagent.ui.ScheduleDetailScreen(it.arguments?.getString("machine").orEmpty(), it.arguments?.getString("id").orEmpty()) }
                 page("newtask?session={session}") { io.github.lewin671.remoteagent.ui.NewScheduleScreen(it.arguments?.getString("session").orEmpty()) }
                 page("settings") { SettingsScreen() }
+                page("notifications") { io.github.lewin671.remoteagent.ui.NotificationsScreen() }
                 // Its own edges: the terminal is dark up to the screen's, under the system bars.
                 composable("session/{id}") { SessionScreen(it.arguments?.getString("id").orEmpty()) }
                 page("project/{key}?focus={focus}") {
@@ -336,11 +337,19 @@ class MainActivity : ComponentActivity() {
                         it.arguments?.getString("focus") == "1",
                     )
                 }
-                page("device/{id}?storage={storage}&connection={connection}") {
+                page("device/{id}?connection={connection}&agent={agent}") {
+                    val agentNum = it.arguments?.getString("agent")?.toIntOrNull() ?: 0
+                    val initialAgent = io.github.lewin671.remoteagent.proto.Agent.forNumber(agentNum)
+                        ?.takeIf { a -> a != io.github.lewin671.remoteagent.proto.Agent.AGENT_UNSPECIFIED }
                     DeviceScreen(
                         it.arguments?.getString("id").orEmpty(),
-                        scrollToStorage = it.arguments?.getString("storage") == "1",
-                        scrollToConnection = it.arguments?.getString("connection") == "1",
+                        openDirect = it.arguments?.getString("connection") == "1",
+                        initialAgent = initialAgent,
+                    )
+                }
+                page("device/{id}/storage") {
+                    io.github.lewin671.remoteagent.ui.MachineAttachmentStorageScreen(
+                        it.arguments?.getString("id").orEmpty(),
                     )
                 }
                 page("machine/{id}") { io.github.lewin671.remoteagent.ui.MachineStatusScreen(it.arguments?.getString("id").orEmpty()) }
@@ -365,7 +374,9 @@ class MainActivity : ComponentActivity() {
                     )
                 }
                 page("pick") { PickProjectScreen() }
-                page("projects") { ManageProjectsScreen() }
+                page("projects?machine={machine}") {
+                    ManageProjectsScreen(routeValue(it.arguments?.getString("machine")))
+                }
                 page("quota/{id}") {
                     io.github.lewin671.remoteagent.ui.QuotaScreen(
                         it.arguments?.getString("id").orEmpty(),
@@ -455,8 +466,18 @@ class MainActivity : ComponentActivity() {
             },
             device = { go("device/$it") },
             deviceConnection = { go("device/$it?connection=1") },
+            deviceForAgent = { id, agent ->
+                if (agent != io.github.lewin671.remoteagent.proto.Agent.AGENT_UNSPECIFIED &&
+                    agent != io.github.lewin671.remoteagent.proto.Agent.UNRECOGNIZED
+                ) {
+                    go("device/$id?agent=${agent.number}")
+                } else {
+                    go("device/$id")
+                }
+            },
             machineStatus = { go("machine/$it", single = true) },
-            deviceStorage = { go("device/$it?storage=1") },
+            deviceStorage = { go("device/$it/storage") },
+            notifications = { go("notifications") },
             cleanup = { machine -> remote.coreHost.prepareCleanupSession(machine) },
             pair = { go("pair") },
             rejoin = { go("pair?replace=$it") },
@@ -468,6 +489,10 @@ class MainActivity : ComponentActivity() {
             newProject = { go("newproject") },
             pickProject = { go("pick") },
             manageProjects = { go("projects") },
+            manageMachineProjects = { machineId ->
+                if (machineId.isNotEmpty()) go("projects?machine=${routeArg(machineId)}")
+                else go("projects")
+            },
             devices = { go("devices") },
             quota = { go("quota/$it") },
             question = { sid, qid -> go("question/$sid/${routeArg(qid)}") },

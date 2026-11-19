@@ -210,7 +210,7 @@ fun NewSessionBox(
                                 NoticeActionKind.NOTICE_ACTION_KIND_READD_PROJECT -> remote.coreHost.addProject(key)
                                 NoticeActionKind.NOTICE_ACTION_KIND_OPEN_DISK_USAGE -> nav.machineStatus(n.targetMachineId.ifEmpty { cfg.machineId })
                                 NoticeActionKind.NOTICE_ACTION_KIND_RETRY_READ_SETTINGS -> remote.coreHost.retryNewSessionModels(key)
-                                NoticeActionKind.NOTICE_ACTION_KIND_ENABLE_AGENT -> nav.device(n.targetMachineId.ifEmpty { cfg.machineId })
+                                NoticeActionKind.NOTICE_ACTION_KIND_ENABLE_AGENT -> nav.deviceForAgent(n.targetMachineId.ifEmpty { cfg.machineId }, n.targetAgent)
                                 else -> {}
                             }
                         },
