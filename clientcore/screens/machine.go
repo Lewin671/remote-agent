@@ -195,18 +195,6 @@ func buildMachineModelUsagePreview(st *State, m *lists.Machine) *corev1.MachineM
 		Supported: true,
 	}
 
-	// Collect enabled CLIs lacking usage telemetry (Antigravity).
-	enabled := lists.MachineAgents(m.Meta)
-	var availCount int
-	var unavailNames []string
-	for _, a := range enabled {
-		if a == v1.Agent_AGENT_ANTIGRAVITY {
-			unavailNames = append(unavailNames, lists.AgentInfo(a).Name)
-		} else {
-			availCount++
-		}
-	}
-
 	snap7, cachedOffline7, cachedAt7, loading7 := lookupUsageSnapshot(st, m.ID, v1.UsageRangePreset_USAGE_RANGE_PRESET_SEVEN_DAYS, 0, 0, online)
 	active7 := filterDisabledSeries(m.Meta, usage.ActiveSeries(snap7))
 	selected := active7
@@ -228,6 +216,22 @@ func buildMachineModelUsagePreview(st *State, m *lists.Machine) *corev1.MachineM
 		loading = loading || loading30
 	}
 
+	var availCount int
+	var unavailNames []string
+	if usedSnap != nil {
+		disabled := lists.MachineDisabledSet(m.Meta)
+		for _, src := range usedSnap.Sources {
+			if src == nil || (disabled != nil && disabled[lists.EffectiveAgent(src.Agent)]) {
+				continue
+			}
+			if src.State == v1.UsageSourceState_USAGE_SOURCE_STATE_UNAVAILABLE {
+				unavailNames = append(unavailNames, lists.AgentInfo(src.Agent).Name)
+			} else {
+				availCount++
+			}
+		}
+	}
+
 	preview.Loading = loading && len(selected) == 0
 	preview.CachedOffline = cachedOffline
 	preview.CachedAtMs = cachedAt
@@ -235,7 +239,7 @@ func buildMachineModelUsagePreview(st *State, m *lists.Machine) *corev1.MachineM
 		preview.Backfilling = usedSnap.Backfilling
 	}
 
-	if availCount == 0 && len(unavailNames) > 0 {
+	if availCount == 0 && len(unavailNames) > 0 && len(selected) == 0 {
 		preview.EmptyText = text.Msg(text.KeyMachineStatusModelUsageOnlyUnavailable)
 		return preview
 	}

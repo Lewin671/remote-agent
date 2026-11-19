@@ -1094,7 +1094,10 @@ Antigravity 接入将协议从 12 提升为 13：`Agent` 枚举加 `AGENT_ANTIGR
 - **Codex**：读取 rollout JSONL 的 `event_msg` `token_count` 与 `token_usage_record`（见 `internal/usagestats/codex_parser.go`）：
   - **已核实恒等式**：`input_tokens == uncached + cached_input_tokens + cache_write_input_tokens`、`output_tokens` **已包含** `reasoning_output_tokens`，因此解析器按 `cache_read = min(inTotal, cached_input_tokens)`、`cache_write = min(inTotal - cache_read, cache_write_input_tokens)`、`uncached = inTotal - cache_read - cache_write` 拆解，避免重复计算；当 `cache_write_input_tokens > 0` 时标记 `cache_write_supported = true`，缺省或 `0` 时按未单独拆出处理（`cache_write_supported = false`）；
   - **空值跳过与重复事件去重**：`token_count` 里 `info == null` / `info.last_token_usage == null` 或 `{in: 0, out: 0}` 的状态快照直接跳过；同一模型请求的重复快照按 `response_id`（`token_usage_record`）或单调递进的 `info.total_token_usage.total_tokens`（`token_count`）去重。
-- **Antigravity（`agy`）**：当前本地 statusline 与 brain 快照仅给出会话累计 `context_window` token 计数，未记录单次模型请求的缓存读写拆分与请求/首字/完成时间戳（见 [antigravity-notes §7](antigravity-notes.md) 与 [plan.md](plan.md#待确认)）；采集器将 `agy` 标为 `USAGE_SOURCE_STATE_UNAVAILABLE`，不伪造 `0` 值，界面在混合启用时于表底附注、仅启用 `agy` 或在 `agy` 会话设置里如实说明暂不支持统计。
+- **Antigravity（`agy`）**：读取 `brain/<conversation-id>/.system_generated/logs/transcript.jsonl` 中的已完成 `PLANNER_RESPONSE` 行（按 `(conversation_id, step_index)` 去重，忽略 `CHECKPOINT`、`RUNNING` 与未写模型名的早期旧日志，见 `internal/usagestats/agy_parser.go` 与 [antigravity-notes §16](antigravity-notes.md#16-transcriptjsonl-用量字段实测15x2026-11-18)）：
+  - `input_tokens` 为未缓存输入（与 `cache_read_tokens` 互斥），单独记录 `cache_read_tokens` 与 `output_tokens`；不提供缓存写入拆分（`cache_write_supported = false`）及独立推理 token（`reasoning_output_tokens = 0`）；
+  - 模型字段去除末尾思考强度后缀（`-low`/`-medium`/`-high`/`-xhigh`/`-max`），与会话模型 slug 一致聚合；
+  - `transcript.jsonl` 仅记录单次时间戳 `created_at`（无首字到达与完成耗时），因此跳过测速与首字延迟（`speed_valid = false`，界面输出速度与首字延迟展示 `—`）。
 
 ### 本机保存、时区分桶与历史补算
 
@@ -1104,7 +1107,7 @@ Antigravity 接入将协议从 12 提升为 13：`Agent` 枚举加 `AGENT_ANTIGR
 - **第 8 天至 90 天**：按 UTC 自然小时桶汇总保存（每对 `(agent, model)` 每小时的 `usage_request_count`、四项 token 累加值、推理 token 累加值、`cache_write_supported`，以及 `speed_request_count` 和输出速度 / 首字延迟各自的 `p10 / p50 / p90`），满 90 天自动淘汰。由于消耗量与加权缓存命中率只依赖分子分母 token 累加和，从 UTC 小时桶聚合成任意客户端时区的自然日桶或多日汇总完全精确无损。
 - **时区、跨天与夏令时**：自然日边界（「今天」`00:00` 起、「7 天」含今天共 7 个本地自然日、「30 天」含今天共 30 个本地自然日、自定义起止日期）一律按**发起查询的客户端本地时区**（传 IANA 时区名或显式桶起止 UTC 边界）切分；跨夏令时的 23 小时或 25 小时自然日按真实挂钟自然日聚合。分桶粒度固定为：单日（今天或起止同日）按 **1 小时桶**（24 桶），2–3 天自定义按 **6 小时桶**，4–90 天（含「7 天」「30 天」）按 **1 自然日桶**。没有请求的时间桶原样返回 `usage_request_count = 0`，不插值填零。
 - **自定义区间与上期对比**：自定义最早可选客户端本地今天往前第 90 天，最晚为今天，结束日期不得早于开始日期，单次跨度 1–90 天。「较上期」取紧邻在起点之前的等长时间段（`[start - span, start)`）；只有本段与上期各自的对应请求数（消耗量与缓存命中率看 `usage_request_count`，速度与首字延迟看 `speed_request_count`）均 `>= 3` 时才计算变化量，任一侧 `< 3` 返回缺失（界面显示 `—`）。
-- **上线补算**：首次升级到支持该功能的版本时，daemon 在后台低优先级扫描本机已有的 Claude Code transcript 与 Codex rollout（限于 90 天内修改过的文件，按单请求唯一定位去重），边补算边开放已算出的部分；客户端查询返回 `backfilling` 进度（已扫描天数 / 总天数），跨越尚未扫完区段的「较上期」返回 `backfilling`，不阻塞正常使用。
+- **上线补算**：首次升级到支持该功能的版本时，daemon 在后台低优先级扫描本机已有的 Claude Code transcript、Codex rollout 与 Antigravity transcript（限于 90 天内修改过的文件，按单请求唯一定位去重），边补算边开放已算出的部分；客户端查询返回 `backfilling` 进度（已扫描天数 / 总天数），跨越尚未扫完区段的「较上期」返回 `backfilling`，不阻塞正常使用。
 
 ### 查询与入口
 

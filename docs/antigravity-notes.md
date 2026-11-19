@@ -606,3 +606,12 @@ Gemini Flash 随后达到额度上限。分别用新会话请求 Claude Sonnet 5
 - 返回结构包含 `"status": "SUCCESS"` 与 `"command": {"name": "usage", "data": {"groups": [...]}}`；每个 group 下的 `buckets` 数组携带 `id`（如 `gemini-weekly`、`gemini-5h`、`3p-weekly`、`3p-5h`）、`window`（`weekly` / `5h`）、`remaining_fraction` 和 `reset_time`。由于 proto3 JSON 会省略 `0` 值浮点字段，当 `status == "SUCCESS"` 且桶对象存在但缺少 `remaining_fraction` 时，表示剩余比例为 `0`（已用 `100%`）。
 - 每次 `agy` 运行（交互或无头，含 `-p /usage`）都会在 `~/.gemini/antigravity-cli/log/` 新建 `cli-YYYYMMDD_HHMMSS.log`；`/usage` JSON 输出不含 `email`，登录邮箱仅记录在 CLI 日志中的 `applyAuthResult: email=..., authMethod=consumer, quotaProject=` 行内。
 - 禁用自动更新的环境变量 `AGY_CLI_DISABLE_AUTO_UPDATE` 必须为小写 `true`。
+
+## 16. `transcript.jsonl` 用量字段实测（1.5.x，2026-11-18）
+
+基于本机 492 个真实 `brain/<conversation-id>/.system_generated/logs/transcript.jsonl` 会话日志核对：
+
+- **记录位置与格式**：每个已完成的模型步骤为一条 `type == "PLANNER_RESPONSE"`、`status == "DONE"` 的 JSONL 行（`step_index` 在单文件内唯一，`created_at` 为 RFC3339 秒级时间戳）。`transcript.jsonl`（紧凑版）与 `transcript_full.jsonl` 的 token/模型元数据一致，无需读取后者。
+- **Token 互斥语义**：同一对话连续步骤中，`input_tokens` 随上下文建立从冷启动 `23,389` 降至续传 `2,275`、`cache_read_tokens` 同步增至 `23,390`，实证 **`input_tokens` 不包含 `cache_read_tokens`**（二者互斥）；未记录 `cache_write_tokens` 与独立的 `thinking_tokens` 字段。
+- **版本差异与特殊行**：2026-11-14 起的日志均包含带思考强度后缀的 `model` 字段（如 `gemini-4-hydrogen-high`、`gemini-4-carbon-medium`、`gemini-flash-worker-agy`）；更早旧版本日志的 `model` 为空字符串 `""`。系统摘要压缩行 `type == "CHECKPOINT"` 也不含 `model` 字段。
+- **无生成耗时字段**：`transcript.jsonl`、`transcript_full.jsonl` 与 `log/cli-*.log` 均不提供模型请求发出/首字到达/末块完成时间戳，仅靠 1 秒粒度的 `created_at` 无法可靠推算输出速度（`tok/s`）与 TTFT。

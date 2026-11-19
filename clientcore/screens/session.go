@@ -707,6 +707,19 @@ func buildSessionActions(
 	return out
 }
 
+func isAgentSourceUnavailable(snap *v1.UsageStatsResponse, agent v1.Agent) bool {
+	if snap == nil {
+		return false
+	}
+	eff := lists.EffectiveAgent(agent)
+	for _, src := range snap.Sources {
+		if src != nil && lists.EffectiveAgent(src.Agent) == eff && src.State == v1.UsageSourceState_USAGE_SOURCE_STATE_UNAVAILABLE {
+			return true
+		}
+	}
+	return false
+}
+
 func buildSessionUsageEntry(st *State, lm *lists.Machine, caps lists.AgentCapabilities, model string) *corev1.SessionUsageEntryView {
 	if lm == nil || lm.Meta == nil || lm.Meta.Capabilities == nil || !lm.Meta.Capabilities.UsageStats {
 		return &corev1.SessionUsageEntryView{Visible: false, Supported: false}
@@ -714,11 +727,6 @@ func buildSessionUsageEntry(st *State, lm *lists.Machine, caps lists.AgentCapabi
 	entry := &corev1.SessionUsageEntryView{
 		Visible:   true,
 		Supported: true,
-	}
-	if caps.Agent == v1.Agent_AGENT_ANTIGRAVITY {
-		entry.SourceUnavailable = true
-		entry.Subtitle = text.Msg(text.KeySessionUsageEntryUnavailable, text.Str("agent", caps.Name))
-		return entry
 	}
 	if lm.ID == "" {
 		return entry
@@ -732,6 +740,11 @@ func buildSessionUsageEntry(st *State, lm *lists.Machine, caps lists.AgentCapabi
 	snap, cachedOffline, cachedAt, loading := lookupUsageSnapshot(st, lm.ID, v1.UsageRangePreset_USAGE_RANGE_PRESET_SEVEN_DAYS, 0, 0, online)
 	if !online && snap == nil {
 		entry.Subtitle = text.Msg(text.KeySessionUsageEntryOfflineNone)
+		return entry
+	}
+	if isAgentSourceUnavailable(snap, caps.Agent) {
+		entry.SourceUnavailable = true
+		entry.Subtitle = text.Msg(text.KeySessionUsageEntryUnavailable, text.Str("agent", caps.Name))
 		return entry
 	}
 	matchSeries := func(s *v1.UsageStatsResponse) *v1.UsageSeries {
@@ -755,6 +768,11 @@ func buildSessionUsageEntry(st *State, lm *lists.Machine, caps lists.AgentCapabi
 	matched := matchSeries(snap)
 	if matched == nil && !loading {
 		snap30, cachedOff30, cachedAt30, loading30 := lookupUsageSnapshot(st, lm.ID, v1.UsageRangePreset_USAGE_RANGE_PRESET_THIRTY_DAYS, 0, 0, online)
+		if isAgentSourceUnavailable(snap30, caps.Agent) {
+			entry.SourceUnavailable = true
+			entry.Subtitle = text.Msg(text.KeySessionUsageEntryUnavailable, text.Str("agent", caps.Name))
+			return entry
+		}
 		if m30 := matchSeries(snap30); m30 != nil {
 			matched = m30
 			snap = snap30

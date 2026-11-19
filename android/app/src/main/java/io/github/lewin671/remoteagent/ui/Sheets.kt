@@ -406,8 +406,39 @@ fun ModelSheet(sid: String, vm: SessionViewModel, onOpenUsage: (() -> Unit)? = n
         if (actions.hasUsageEntry() && actions.usageEntry.visible) {
             val ue = actions.usageEntry
             val titleText = copy(UiMessages.sessionUsageEntryTitle())
-            val sub = uiText(ue.subtitle)
-            val valText = uiText(ue.valueText)
+            val rawSub = uiText(ue.subtitle)
+            val rawVal = uiText(ue.valueText)
+            val valText =
+                if (ue.hasData && rawVal.isEmpty()) formatUsageTokens(ue.totalTokens, copy)
+                else rawVal
+            val sub =
+                if (ue.hasData && rawSub.isEmpty()) {
+                    val windowLabel =
+                        if (ue.fallbackThirtyDays) copy(UiMessages.usageEntryLast30D())
+                        else copy(UiMessages.usageEntryLast7D())
+                    val hitPart =
+                        if (ue.hasCacheHit) copy(UiMessages.usageEntryCachePct(formatUsageCacheHit(ue.cacheHitRate)))
+                        else ""
+                    val speedPart =
+                        if (ue.hasSpeed) "${formatUsageSpeed(ue.recent10SpeedP50)} ${copy(UiMessages.usageKpiUnitToks())}"
+                        else ""
+                    when {
+                        ue.hasSpeed && ue.fewSpeedSamples -> copy(
+                            UiMessages.usageEntryFewSamples(
+                                count = ue.recent10SpeedCount.toInt(),
+                                detail = listOf(windowLabel, hitPart, speedPart).filter { it.isNotEmpty() }.joinToString(" · "),
+                            ),
+                        )
+                        ue.hasSpeed -> listOf(windowLabel, hitPart, speedPart).filter { it.isNotEmpty() }.joinToString(" · ")
+                        else -> copy(
+                            UiMessages.usageEntryNoSpeed(
+                                listOf(windowLabel, hitPart).filter { it.isNotEmpty() }.joinToString(" · "),
+                            ),
+                        )
+                    }
+                } else {
+                    rawSub
+                }
             val foot = uiText(ue.footnote)
             val canNav = ue.supported && onOpenUsage != null
             val a11yLabel = listOf(titleText, sub, valText).filter { it.isNotEmpty() }.joinToString(" · ")

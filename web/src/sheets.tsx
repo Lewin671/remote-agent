@@ -19,6 +19,7 @@ import {
 } from "./gen/remoteagent/v1/remote_pb";
 import { Check, ChevronRight, LoaderCircle } from "./icons";
 import { Alert, Banner, Segmented, Sheet, useDialogFocus, useEscape, useOverlayExit } from "./ui";
+import { formatCacheHit, formatSpeedValue, formatTokens } from "./usageFormat";
 
 const CONTEXT_WARN = 70;
 
@@ -278,9 +279,34 @@ function SessionUsageEntryRow({
   onClose: () => void;
   onOpenUsage?: () => void;
 }) {
+  const locale = i18n.useLocale();
   const titleText = i18n.t("session.usage_entry_title");
-  const sub = renderText(ue.subtitle);
-  const val = renderText(ue.valueText);
+  const rawSub = renderText(ue.subtitle);
+  const rawVal = renderText(ue.valueText);
+  let sub = rawSub;
+  let val = rawVal;
+  if (ue.hasData) {
+    if (!val) {
+      val = formatTokens(ue.totalTokens, locale);
+    }
+    if (!sub) {
+      const windowLabel = ue.fallbackThirtyDays ? i18n.t("usage.entry_last_30d") : i18n.t("usage.entry_last_7d");
+      const hitPart = ue.hasCacheHit ? i18n.t("usage.entry_cache_pct", { pct: formatCacheHit(ue.cacheHitRate) }) : "";
+      const speedPart = ue.hasSpeed ? `${formatSpeedValue(ue.recent10SpeedP50)} ${i18n.t("usage.kpi_unit_toks")}` : "";
+      if (ue.hasSpeed && ue.fewSpeedSamples) {
+        sub = i18n.t("usage.entry_few_samples", {
+          detail: [windowLabel, hitPart, speedPart].filter(Boolean).join(" · "),
+          count: Number(ue.recent10SpeedCount),
+        });
+      } else if (ue.hasSpeed) {
+        sub = [windowLabel, hitPart, speedPart].filter(Boolean).join(" · ");
+      } else {
+        sub = i18n.t("usage.entry_no_speed", {
+          detail: [windowLabel, hitPart].filter(Boolean).join(" · "),
+        });
+      }
+    }
+  }
   const foot = renderText(ue.footnote);
   const canNav = ue.supported && !!onOpenUsage;
   const a11yLabel = [titleText, sub, val].filter(Boolean).join(" · ");

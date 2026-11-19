@@ -74,15 +74,127 @@ func TestClaudeParserDedupAndThinkingInclusion(t *testing.T) {
 	if !cur.HasTtft || cur.TtftP50Ms < 499 || cur.TtftP50Ms > 501 {
 		t.Fatalf("unexpected ttft p50: %v", cur.TtftP50Ms)
 	}
-	// Antigravity must report UNAVAILABLE source state.
+	// Antigravity must report OK source state when HasAntigravity is true.
 	var agySrc *pb.UsageAgentSource
 	for _, src := range resp.Sources {
 		if src.Agent == pb.Agent_AGENT_ANTIGRAVITY {
 			agySrc = src
 		}
 	}
-	if agySrc == nil || agySrc.State != pb.UsageSourceState_USAGE_SOURCE_STATE_UNAVAILABLE {
-		t.Fatalf("expected antigravity source unavailable, got %+v", agySrc)
+	if agySrc == nil || agySrc.State != pb.UsageSourceState_USAGE_SOURCE_STATE_OK {
+		t.Fatalf("expected antigravity source OK, got %+v", agySrc)
+	}
+}
+
+func TestAntigravityParserUsageCacheNormalizationAndNoSpeed(t *testing.T) {
+	dir := t.TempDir()
+	agyLogs := filepath.Join(dir, "agy", "brain", "conv-123", ".system_generated", "logs")
+	if err := os.MkdirAll(agyLogs, 0o700); err != nil {
+		t.Fatal(err)
+	}
+
+	transcript := "" +
+		`{"step_index":0,"source":"USER_EXPLICIT","type":"USER_INPUT","status":"DONE","created_at":"2026-11-18T10:00:00Z","content":"hi"}` + "\n" +
+		// Pre-1.5.x step without model field -> skipped.
+		`{"step_index":1,"source":"MODEL","type":"PLANNER_RESPONSE","status":"DONE","created_at":"2026-11-18T10:00:01Z","model":"","input_tokens":500,"cache_read_tokens":0,"output_tokens":50}` + "\n" +
+		// Still running step -> skipped.
+		`{"step_index":2,"source":"MODEL","type":"PLANNER_RESPONSE","status":"RUNNING","created_at":"2026-11-18T10:00:02Z","model":"gemini-4-hydrogen-high","input_tokens":100,"cache_read_tokens":0,"output_tokens":10}` + "\n" +
+		// Two efforts of gemini-4-hydrogen normalize into "gemini-4-hydrogen".
+		`{"step_index":3,"source":"MODEL","type":"PLANNER_RESPONSE","status":"DONE","created_at":"2026-11-18T10:00:05Z","model":"gemini-4-hydrogen-high","input_tokens":2000,"cache_read_tokens":0,"output_tokens":500}` + "\n" +
+		`{"step_index":4,"source":"SYSTEM","type":"CHECKPOINT","status":"DONE","created_at":"2026-11-18T10:00:06Z","input_tokens":999,"cache_read_tokens":999,"output_tokens":99}` + "\n" +
+		`{"step_index":5,"source":"MODEL","type":"PLANNER_RESPONSE","status":"DONE","created_at":"2026-11-18T10:01:05Z","model":"gemini-4-hydrogen-medium","input_tokens":1000,"cache_read_tokens":7000,"output_tokens":300}` + "\n" +
+		// Non-effort hyphenated suffix stays intact.
+		`{"step_index":6,"source":"MODEL","type":"PLANNER_RESPONSE","status":"DONE","created_at":"2026-11-18T10:02:05Z","model":"gemini-flash-worker-agy","input_tokens":400,"cache_read_tokens":600,"output_tokens":100}` + "\n" +
+		// Incomplete trailing line without newline -> ignored safely.
+		`{"step_index":7,"source":"MODEL","type":"PLANNER_RESPONSE","status":"DONE","model":"gemini-4-hydrogen-low"`
+
+	logPath := filepath.Join(agyLogs, "transcript.jsonl")
+	if err := os.WriteFile(logPath, []byte(transcript), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	now := time.Date(2026, 11, 18, 12, 0, 0, 0, time.UTC)
+	c, err := New(Config{
+		StateDir:        filepath.Join(dir, "state"),
+		AntigravityHome: filepath.Join(dir, "agy"),
+		HasAntigravity:  true,
+		Now:             func() time.Time { return now },
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer c.Close()
+
+	resp, err := c.Query(context.Background(), &pb.GetUsageStatsRequest{
+		Preset:   pb.UsageRangePreset_USAGE_RANGE_PRESET_TODAY,
+		Timezone: "UTC",
+	}, QueryOptions{
+		Installed: []pb.Agent{pb.Agent_AGENT_ANTIGRAVITY},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(resp.Sources) != 1 || resp.Sources[0].Agent != pb.Agent_AGENT_ANTIGRAVITY || resp.Sources[0].State != pb.UsageSourceState_USAGE_SOURCE_STATE_OK {
+		t.Fatalf("expected Antigravity source OK, got %+v", resp.Sources)
+	}
+	if len(resp.Series) != 2 {
+		t.Fatalf("expected 2 antigravity series, got %d: %+v", len(resp.Series), resp.Series)
+	}
+
+	byModel := map[string]*pb.UsageSeries{}
+	for _, s := range resp.Series {
+		byModel[s.Model] = s
+	}
+	h := byModel["gemini-4-hydrogen"]
+	if h == nil {
+		t.Fatalf("expected normalized model gemini-4-hydrogen, got keys: %+v", byModel)
+	}
+	if h.CacheWriteSupported {
+		t.Fatalf("expected CacheWriteSupported=false for Antigravity")
+	}
+	cur := h.Current
+	if cur.UncachedInputTokens != 3000 || cur.CacheReadTokens != 7000 || cur.CacheWriteTokens != 0 || cur.OutputTokens != 800 || cur.ReasoningOutputTokens != 0 {
+		t.Fatalf("unexpected antigravity token breakdown: %+v", cur)
+	}
+	if cur.UsageRequestCount != 2 || cur.SpeedRequestCount != 0 {
+		t.Fatalf("unexpected antigravity request counts: usage=%d speed=%d", cur.UsageRequestCount, cur.SpeedRequestCount)
+	}
+	if !cur.HasCacheHitRate || cur.CacheHitRate < 0.699 || cur.CacheHitRate > 0.701 {
+		t.Fatalf("unexpected antigravity cache hit rate: %v", cur.CacheHitRate)
+	}
+	if cur.HasSpeed || cur.HasTtft {
+		t.Fatalf("expected HasSpeed=false and HasTtft=false for Antigravity, got %+v", cur)
+	}
+
+	worker := byModel["gemini-flash-worker-agy"]
+	if worker == nil || worker.Current.UsageRequestCount != 1 {
+		t.Fatalf("expected gemini-flash-worker-agy preserved intact, got %+v", worker)
+	}
+
+	// Complete the trailing line and verify earlier steps are NOT double-counted across rescans.
+	completed := transcript + `,"created_at":"2026-11-18T10:03:05Z","input_tokens":100,"cache_read_tokens":0,"output_tokens":50}` + "\n"
+	if err := os.WriteFile(logPath, []byte(completed), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	futureMtime := now.Add(3 * time.Second)
+	_ = os.Chtimes(logPath, futureMtime, futureMtime)
+
+	c.scanOnce(context.Background())
+	resp2, err := c.Query(context.Background(), &pb.GetUsageStatsRequest{
+		Preset:   pb.UsageRangePreset_USAGE_RANGE_PRESET_TODAY,
+		Timezone: "UTC",
+	}, QueryOptions{
+		Installed: []pb.Agent{pb.Agent_AGENT_ANTIGRAVITY},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, s := range resp2.Series {
+		if s.Model == "gemini-4-hydrogen" {
+			if s.Current.UsageRequestCount != 3 || s.Current.UncachedInputTokens != 3100 || s.Current.OutputTokens != 850 {
+				t.Fatalf("unexpected rescan totals after appending step 7: %+v", s.Current)
+			}
+		}
 	}
 }
 

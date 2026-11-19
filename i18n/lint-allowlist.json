@@ -4198,5 +4198,15 @@
     "path": "internal/daemon/rpc.go",
     "literal": "toggle_enabled is required with toggle_agent",
     "reason": "Internal daemon RPC validation error message, never rendered raw in UI."
+  },
+  {
+    "path": "internal/usagestats/agy_parser.go",
+    "literal": "agy-line:%s:%d",
+    "reason": "Internal deduplication key format for Antigravity transcript lines missing step_index, never displayed."
+  },
+  {
+    "path": "internal/usagestats/agy_parser.go",
+    "literal": "agy:%s:%d",
+    "reason": "Internal deduplication key format for Antigravity transcript steps, never displayed."
   }
 ]

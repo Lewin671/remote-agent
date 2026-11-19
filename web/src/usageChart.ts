@@ -34,8 +34,12 @@ export function bucketHasTtft(b: UsageBucketPoint): boolean {
 
 export function seriesIsFewSamples(s: UsageSeriesView, metric: UsageMetricTab): boolean {
   if (metric === Metric.TOKENS) return false;
-  if (metric === Metric.CACHE_HIT) return (s.current?.usageRequestCount ?? 0n) < FEW_SAMPLES_MIN;
-  return s.fewSpeedSamples || (s.current?.speedRequestCount ?? 0n) < FEW_SAMPLES_MIN;
+  if (metric === Metric.CACHE_HIT) {
+    const n = s.current?.usageRequestCount ?? 0n;
+    return n > 0n && n < FEW_SAMPLES_MIN;
+  }
+  const n = s.current?.speedRequestCount ?? 0n;
+  return s.fewSpeedSamples || (n > 0n && n < FEW_SAMPLES_MIN);
 }
 
 export function formatDateLabel(ms: bigint, gran: UsageBucketGranularity): string {

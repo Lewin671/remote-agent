@@ -635,6 +635,35 @@ class UsageAndCliSwitchesTest {
             .build()
         ui.waitForIdle()
         assertTrue(ui.onAllNodesWithText(messageTextForTest(UiMessages.usageOnlyUnavailableTitle("Antigravity")), substring = true).fetchSemanticsNodes().isNotEmpty())
+
+        // Zero speed samples (e.g. Antigravity): Speed tab shows "—" cleanly without few-samples notice
+        vmState.value = UsageViewModel.newBuilder()
+            .setMachineId("m1")
+            .setMachineName("Mac Studio")
+            .setFound(true)
+            .setSupported(true)
+            .setOnline(true)
+            .setGranularity(UsageBucketGranularity.USAGE_BUCKET_GRANULARITY_DAY)
+            .setPreset(UsageRangePreset.USAGE_RANGE_PRESET_SEVEN_DAYS)
+            .setMetric(UsageMetricTab.USAGE_METRIC_TAB_OUTPUT_SPEED)
+            .addSeries(
+                sampleSeries(
+                    Agent.AGENT_ANTIGRAVITY,
+                    "Antigravity",
+                    "gemini-4-hydrogen",
+                    0,
+                    speedReqs = 0L,
+                    speedP50 = 0.0,
+                    ttftP50Ms = 0.0,
+                    cacheWriteSupported = false,
+                ).toBuilder().apply {
+                    current = current.toBuilder().setHasSpeed(false).setHasTtft(false).build()
+                }.build(),
+            )
+            .build()
+        ui.waitForIdle()
+        assertEquals(0, ui.onAllNodesWithText(messageTextForTest(UiMessages.usageFewSamplesCount(0)), substring = true).fetchSemanticsNodes().size)
+        assertEquals(0, ui.onAllNodesWithText(messageTextForTest(UiMessages.usageFewSamplesHint()), substring = true).fetchSemanticsNodes().size)
     }
 
     @Test

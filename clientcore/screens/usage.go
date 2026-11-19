@@ -142,21 +142,6 @@ func BuildUsageView(st *State, syncView *corev1.SyncStateView, req *corev1.Usage
 				vm.UnsupportedFootnote = text.Msg(text.KeyUsageMixedUnavailableFootnote, text.Str("agents", joined))
 			}
 		}
-	} else {
-		// No snapshot yet: still derive Antigravity-only notice if only unavailable CLI is enabled.
-		enabled := lists.MachineAgents(m.Meta)
-		var avail int
-		var unavail []string
-		for _, a := range enabled {
-			if a == v1.Agent_AGENT_ANTIGRAVITY {
-				unavail = append(unavail, lists.AgentInfo(a).Name)
-			} else {
-				avail++
-			}
-		}
-		if avail == 0 && len(unavail) > 0 && !vm.Loading {
-			vm.UnsupportedFootnote = text.Msg(text.KeyUsageOnlyUnavailableTitle, text.Str("agents", strings.Join(unavail, ", ")))
-		}
 	}
 	return vm
 }

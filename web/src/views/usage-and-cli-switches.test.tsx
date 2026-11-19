@@ -10,6 +10,9 @@ import { DemoRemote } from "../dev/demo";
 import { NewSessionNoticeViewSchema, NoticeActionKind, NoticeKind, NoticeSeverity, NewSessionViewModelSchema } from "../gen/remoteagent/core/v1/new_session_view_pb";
 import { ScheduleDetailViewModelSchema } from "../gen/remoteagent/core/v1/schedules_view_pb";
 import { TextSchema } from "../gen/remoteagent/core/v1/text_pb";
+import { UsageSeriesViewSchema } from "../gen/remoteagent/core/v1/usage_view_pb";
+import { UsagePeriodSummarySchema } from "../gen/remoteagent/v1/local_pb";
+import { seriesIsFewSamples } from "../usageChart";
 import {
   SessionActionsViewSchema,
   SessionHeaderViewSchema,
@@ -382,5 +385,52 @@ describe("Usage & Output Speed screen", () => {
     expect(UsageMetricTab.TOKENS).toBe(1);
     expect(UsageRangePreset.SEVEN_DAYS).toBe(2);
     expect(getCoreHost(rOfflineNone)).toBeTruthy();
+
+    const agyZeroSpeed = create(UsageSeriesViewSchema, {
+      agent: Agent.ANTIGRAVITY,
+      agentName: "Antigravity",
+      model: "gemini-4-hydrogen",
+      seriesKey: "agy:gemini-4-hydrogen",
+      current: create(UsagePeriodSummarySchema, {
+        uncachedInputTokens: 30_000n,
+        cacheReadTokens: 70_000n,
+        outputTokens: 10_000n,
+        usageRequestCount: 5n,
+        speedRequestCount: 0n,
+      }),
+    });
+    expect(seriesIsFewSamples(agyZeroSpeed, UsageMetricTab.OUTPUT_SPEED)).toBe(false);
+    expect(seriesIsFewSamples(agyZeroSpeed, UsageMetricTab.TTFT)).toBe(false);
+
+    act(() => root?.unmount());
+    hostEl.remove();
+
+    await mountAsync(
+      <SessionSheet
+        sessionId="s-agy"
+        header={create(SessionHeaderViewSchema, { machineId: "mac", agent: Agent.ANTIGRAVITY, agentName: "Antigravity", model: "gemini-4-hydrogen" })}
+        actions={create(SessionActionsViewSchema, {
+          usageEntry: create(SessionUsageEntryViewSchema, {
+            visible: true,
+            supported: true,
+            hasData: true,
+            totalTokens: 110_000n,
+            hasCacheHit: true,
+            cacheHitRate: 0.7,
+            hasSpeed: false,
+          }),
+        })}
+        onClose={() => undefined}
+        onRefreshModels={() => undefined}
+        onSubmitCommand={() => undefined}
+        onOpenUsage={() => undefined}
+      />,
+    );
+    expect(hostEl.textContent).toContain("11万");
+    expect(hostEl.textContent).toContain(
+      message("usage.entry_no_speed", {
+        detail: `${message("usage.entry_last_7d")} · ${message("usage.entry_cache_pct", { pct: "70%" })}`,
+      }),
+    );
   });
 });

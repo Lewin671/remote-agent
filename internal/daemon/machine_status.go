@@ -63,12 +63,13 @@ func (d *Daemon) newUsageCollector() *usagestats.Collector {
 	codexCfg := d.cfg.Agents[pb.Agent_AGENT_CODEX]
 	agyCfg := d.cfg.Agents[pb.Agent_AGENT_ANTIGRAVITY]
 	uc, err := usagestats.New(usagestats.Config{
-		StateDir:       d.dir,
-		ClaudeHome:     claudeCfg.Home,
-		CodexHome:      codexCfg.Home,
-		HasClaude:      d.agents[pb.Agent_AGENT_CLAUDE] != nil && (d.agents[pb.Agent_AGENT_CLAUDE].Bin() != "" || claudeCfg.Home != ""),
-		HasCodex:       d.agents[pb.Agent_AGENT_CODEX] != nil && (d.agents[pb.Agent_AGENT_CODEX].Bin() != "" || codexCfg.Home != ""),
-		HasAntigravity: d.agents[pb.Agent_AGENT_ANTIGRAVITY] != nil && (d.agents[pb.Agent_AGENT_ANTIGRAVITY].Bin() != "" || agyCfg.Bin != ""),
+		StateDir:        d.dir,
+		ClaudeHome:      claudeCfg.Home,
+		CodexHome:       codexCfg.Home,
+		AntigravityHome: agyCfg.Home,
+		HasClaude:       d.agents[pb.Agent_AGENT_CLAUDE] != nil && (d.agents[pb.Agent_AGENT_CLAUDE].Bin() != "" || claudeCfg.Home != ""),
+		HasCodex:        d.agents[pb.Agent_AGENT_CODEX] != nil && (d.agents[pb.Agent_AGENT_CODEX].Bin() != "" || codexCfg.Home != ""),
+		HasAntigravity:  d.agents[pb.Agent_AGENT_ANTIGRAVITY] != nil && (d.agents[pb.Agent_AGENT_ANTIGRAVITY].Bin() != "" || agyCfg.Bin != ""),
 	})
 	if err != nil {
 		slog.Warn("init usage stats collector", "err", errClass(err))

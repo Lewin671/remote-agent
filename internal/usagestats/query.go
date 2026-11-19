@@ -225,16 +225,15 @@ func buildAgentSources(c *Collector, enabled map[pb.Agent]bool) []*pb.UsageAgent
 		}
 		src := &pb.UsageAgentSource{Agent: ag}
 		switch ag {
-		case pb.Agent_AGENT_ANTIGRAVITY:
-			src.State = pb.UsageSourceState_USAGE_SOURCE_STATE_UNAVAILABLE
-			src.Detail = "antigravity transcript lacks per-request usage and timing telemetry"
-		default:
+		case pb.Agent_AGENT_CLAUDE, pb.Agent_AGENT_CODEX, pb.Agent_AGENT_ANTIGRAVITY:
 			if msg := c.agentErr(ag); msg != "" {
 				src.State = pb.UsageSourceState_USAGE_SOURCE_STATE_FAILED
 				src.Detail = msg
 			} else {
 				src.State = pb.UsageSourceState_USAGE_SOURCE_STATE_OK
 			}
+		default:
+			src.State = pb.UsageSourceState_USAGE_SOURCE_STATE_UNAVAILABLE
 		}
 		out = append(out, src)
 	}

@@ -555,3 +555,123 @@ func TestUsageOfflineCacheAndMachineStatus30dFallback(t *testing.T) {
 		t.Fatalf("unexpected offline UsageViewModel: offline=%v cachedAt=%d series=%d", u.GetCachedOffline(), u.GetCachedAtMs(), len(u.GetSeries()))
 	}
 }
+
+func TestAntigravityUsageWithoutSpeedInUsageMachineAndSession(t *testing.T) {
+	c := New()
+	defer c.Close()
+	seedDualCLIMachine(t, c)
+
+	// Switch session s-1 to Antigravity gemini-4-hydrogen (matching normalized transcript model).
+	c.Dispatch(&corev1.Event{
+		NowMs: 1_791_633_600_045,
+		Event: &corev1.Event_StreamFrame{
+			StreamFrame: &corev1.StreamFrameEvent{
+				LegId: 1,
+				Frame: &corev1.StreamFrameEvent_SessionUpdated{
+					SessionUpdated: &corev1.PlainSession{
+						SessionId: "s-1",
+						MachineId: "m-1",
+						UpdatedMs: 1_791_633_500_100,
+						Meta:      &v1.Session{Id: "s-1", Cwd: "/Users/me/proj", Agent: v1.Agent_AGENT_ANTIGRAVITY, Model: "gemini-4-hydrogen"},
+					},
+				},
+			},
+		},
+	})
+
+	// Before any snapshot arrives, Usage view must not hardcode Antigravity as unavailable.
+	preVM, err := c.View(&corev1.Screen{Screen: &corev1.Screen_Usage{Usage: &corev1.UsageScreenRequest{MachineId: "m-1"}}})
+	if err != nil {
+		t.Fatalf("View(Usage before snapshot): %v", err)
+	}
+	if preVM.GetUsage().GetUnsupportedFootnote() != nil {
+		t.Fatalf("expected no hardcoded unsupported footnote before snapshot, got %+v", preVM.GetUsage().GetUnsupportedFootnote())
+	}
+
+	uBatch := c.Dispatch(&corev1.Event{
+		NowMs: 1_791_633_600_050,
+		Event: &corev1.Event_UsageScreenOpen{
+			UsageScreenOpen: &corev1.UsageScreenOpenEvent{
+				MachineId:       "m-1",
+				Preset:          v1.UsageRangePreset_USAGE_RANGE_PRESET_SEVEN_DAYS,
+				Timezone:        "Asia/Shanghai",
+				TzOffsetMinutes: 480,
+				BucketBoundsMs:  []int64{1_791_000_000_000, 1_791_086_400_000},
+				PrevStartMs:     1_790_400_000_000,
+			},
+		},
+	})
+	var dc *corev1.DispatchCommandEffect
+	for _, eff := range uBatch.Effects {
+		if eff.GetDispatchCommand() != nil {
+			var cmd v1.Command
+			if err := cmd.Unmarshal(eff.GetDispatchCommand().CommandBytes); err == nil && cmd.GetGetUsageStats() != nil {
+				dc = eff.GetDispatchCommand()
+			}
+		}
+	}
+	if dc == nil {
+		t.Fatal("expected GetUsageStats DispatchCommand")
+	}
+
+	settleUpdateSettings(c, dc, 1_791_633_600_060, &v1.CommandResult{
+		Outcome:         "executed",
+		ResultAvailable: true,
+		Kind: &v1.CommandResult_UsageStats{
+			UsageStats: &v1.UsageStatsResponse{
+				Preset:        v1.UsageRangePreset_USAGE_RANGE_PRESET_SEVEN_DAYS,
+				Granularity:   v1.UsageBucketGranularity_USAGE_BUCKET_GRANULARITY_DAY,
+				GeneratedAtMs: 1_791_633_600_055,
+				Sources: []*v1.UsageAgentSource{
+					{Agent: v1.Agent_AGENT_ANTIGRAVITY, State: v1.UsageSourceState_USAGE_SOURCE_STATE_OK},
+				},
+				Series: []*v1.UsageSeries{
+					{
+						Agent:               v1.Agent_AGENT_ANTIGRAVITY,
+						Model:               "gemini-4-hydrogen",
+						CacheWriteSupported: false,
+						Current: &v1.UsagePeriodSummary{
+							UncachedInputTokens: 30_000,
+							CacheReadTokens:     70_000,
+							CacheWriteTokens:    0,
+							OutputTokens:        10_000,
+							UsageRequestCount:   5,
+							SpeedRequestCount:   0,
+							HasCacheHitRate:     true,
+							CacheHitRate:        0.7,
+							HasSpeed:            false,
+							HasTtft:             false,
+						},
+					},
+				},
+			},
+		},
+	}, "")
+
+	uVM, err := c.View(&corev1.Screen{Screen: &corev1.Screen_Usage{Usage: &corev1.UsageScreenRequest{MachineId: "m-1", Preset: v1.UsageRangePreset_USAGE_RANGE_PRESET_SEVEN_DAYS}}})
+	if err != nil {
+		t.Fatalf("View(Usage): %v", err)
+	}
+	u := uVM.GetUsage()
+	if !u.GetHasAnyUsage() || u.GetHasAnySpeed() || !u.GetShowCacheWriteFootnote() || u.GetUnsupportedFootnote() != nil || len(u.GetSeries()) != 1 {
+		t.Fatalf("unexpected Antigravity UsageViewModel: hasUsage=%v hasSpeed=%v cwFoot=%v unavail=%+v len=%d", u.GetHasAnyUsage(), u.GetHasAnySpeed(), u.GetShowCacheWriteFootnote(), u.GetUnsupportedFootnote(), len(u.GetSeries()))
+	}
+
+	msVM, err := c.View(&corev1.Screen{Screen: &corev1.Screen_MachineStatus{MachineStatus: &corev1.MachineStatusScreenRequest{MachineId: "m-1"}}})
+	if err != nil {
+		t.Fatalf("View(MachineStatus): %v", err)
+	}
+	mu := msVM.GetMachineStatus().GetModelUsage()
+	if mu == nil || !mu.GetHasData() || mu.GetUnsupportedFootnote() != nil || len(mu.GetRows()) != 1 || mu.GetRows()[0].GetHasSpeed() {
+		t.Fatalf("unexpected Antigravity MachineStatus preview: %+v", mu)
+	}
+
+	sessVM, err := c.View(&corev1.Screen{Screen: &corev1.Screen_Session{Session: &corev1.SessionScreenRequest{SessionId: "s-1"}}})
+	if err != nil {
+		t.Fatalf("View(Session): %v", err)
+	}
+	ue := sessVM.GetSession().GetActions().GetUsageEntry()
+	if ue == nil || ue.GetSourceUnavailable() || !ue.GetHasData() || ue.GetTotalTokens() != 110_000 || !ue.GetHasCacheHit() || ue.GetHasSpeed() {
+		t.Fatalf("unexpected Antigravity Session UsageEntry: %+v", ue)
+	}
+}

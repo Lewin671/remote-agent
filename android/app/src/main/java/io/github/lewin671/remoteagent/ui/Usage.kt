@@ -268,8 +268,8 @@ private fun bucketHasTtft(b: UsageBucketPoint): Boolean = b.speedRequestCount > 
 
 private fun seriesIsFewSamples(s: UsageSeriesView, metric: UsageMetricTab): Boolean = when (metric) {
     UsageMetricTab.USAGE_METRIC_TAB_TOKENS -> false
-    UsageMetricTab.USAGE_METRIC_TAB_CACHE_HIT -> s.current.usageRequestCount < USAGE_FEW_SAMPLES_MIN
-    else -> s.fewSpeedSamples || s.current.speedRequestCount < USAGE_FEW_SAMPLES_MIN
+    UsageMetricTab.USAGE_METRIC_TAB_CACHE_HIT -> s.current.usageRequestCount in 1L until USAGE_FEW_SAMPLES_MIN
+    else -> s.fewSpeedSamples || s.current.speedRequestCount in 1L until USAGE_FEW_SAMPLES_MIN
 }
 
 private fun formatBucketAxisTime(ms: Long, gran: UsageBucketGranularity, zone: ZoneId = ZoneId.systemDefault()): String {

@@ -18,6 +18,7 @@ type Config struct {
 	StateDir         string
 	ClaudeHome       string
 	CodexHome        string
+	AntigravityHome  string
 	HasClaude        bool
 	HasCodex         bool
 	HasAntigravity   bool
@@ -121,6 +122,7 @@ func (c *Collector) scanOnce(ctx context.Context) {
 	var files []logCandidate
 	c.setAgentErr(pb.Agent_AGENT_CLAUDE, "")
 	c.setAgentErr(pb.Agent_AGENT_CODEX, "")
+	c.setAgentErr(pb.Agent_AGENT_ANTIGRAVITY, "")
 
 	if c.cfg.HasClaude && c.cfg.ClaudeHome != "" {
 		found, err := discoverClaudeLogs(c.cfg.ClaudeHome, cutoff)
@@ -134,6 +136,14 @@ func (c *Collector) scanOnce(ctx context.Context) {
 		found, err := discoverCodexLogs(c.cfg.CodexHome, cutoff)
 		if err != nil {
 			c.setAgentErr(pb.Agent_AGENT_CODEX, err.Error())
+		} else {
+			files = append(files, found...)
+		}
+	}
+	if c.cfg.HasAntigravity && c.cfg.AntigravityHome != "" {
+		found, err := discoverAntigravityLogs(c.cfg.AntigravityHome, cutoff)
+		if err != nil {
+			c.setAgentErr(pb.Agent_AGENT_ANTIGRAVITY, err.Error())
 		} else {
 			files = append(files, found...)
 		}
@@ -182,6 +192,8 @@ func (c *Collector) scanOnce(ctx context.Context) {
 			samples, nextOff, err = scanClaudeFile(fc.path, 0)
 		case pb.Agent_AGENT_CODEX:
 			samples, nextOff, lastModel, lastTotal, err = scanCodexFile(fc.path)
+		case pb.Agent_AGENT_ANTIGRAVITY:
+			samples, nextOff, err = scanAntigravityFile(fc.path)
 		}
 		if err != nil {
 			logWarn("scan usage log", err)
