@@ -162,6 +162,15 @@ struct MessageCapsule<Tray: View, Top: View, Plus: View, Trailing: View>: View {
         let shape = RoundedRectangle(cornerRadius: radius, style: .continuous)
         VStack(spacing: 0) {
             tray
+                .clipShape(
+                    UnevenRoundedRectangle(
+                        topLeadingRadius: radius,
+                        bottomLeadingRadius: 0,
+                        bottomTrailingRadius: 0,
+                        topTrailingRadius: radius,
+                        style: .continuous
+                    )
+                )
             top
             CapsuleInputLayout(twoRows: twoRows) {
                 plus.dynamicTypeSize(...DynamicTypeSize.xxxLarge)
@@ -183,7 +192,6 @@ struct MessageCapsule<Tray: View, Top: View, Plus: View, Trailing: View>: View {
             }
             .padding(4)
         }
-        .clipShape(shape)
         .animation(Motion.enter(), value: heightChanges)
         .glass(shape, interactive: false)
         .padding(.horizontal, DS.Space.m)

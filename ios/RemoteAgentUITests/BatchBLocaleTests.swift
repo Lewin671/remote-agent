@@ -44,10 +44,9 @@ final class BatchBLocaleTests: XCTestCase {
             app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.2)).tap()
             let send = app.buttons[try text("composer_send", locale: locale)].firstMatch
             XCTAssertTrue(send.present(timeout: 5))
-            send.press(forDuration: 1)
-            let afterTurn = try text("composer_after_turn", locale: locale)
-            XCTAssertTrue(app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", afterTurn)).firstMatch.present(timeout: 5))
-            try capture(app, name: "final-\(locale)-send-menu")
+            let sendAfter = app.buttons[try text("composer_send_after", locale: locale)].firstMatch
+            XCTAssertTrue(sendAfter.present(timeout: 5))
+            try capture(app, name: "final-\(locale)-send-controls")
             XCTAssertTrue(app.keyboards.firstMatch.exists)
             app.terminate()
         }
