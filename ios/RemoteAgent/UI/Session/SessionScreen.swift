@@ -139,6 +139,16 @@ struct SessionScreen: View {
             }
             context.core.consumeComposerRestores(Set(matching.map(\.id)))
         }
+        .onChange(of: context.core.pendingResendAttachments, initial: true) { _, resends in
+            let matching = resends.filter { $0.effect.sessionID == id }
+            guard !matching.isEmpty else { return }
+            for item in matching {
+                SessionImages.resendAttachments(item.effect, context: context) { message in
+                    ImageCenter.of(context.remote).say(ImageCenter.sessionKey(id), message)
+                }
+            }
+            context.core.consumeResendAttachments(Set(matching.map(\.id)))
+        }
     }
 
     @ViewBuilder private func sessionBody(vm: PBSessionViewModel, header: PBSessionHeaderView) -> some View {

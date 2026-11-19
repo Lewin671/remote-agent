@@ -139,14 +139,14 @@ import UIKit
 
     @Test func emptyComposerShowsTheWholeHintAndTypingReleasesItsSpace() async throws {
         let typed = try await fitted(ComposerHint(hint: "", text: "x"), width: 320)
-        for hint in [L10n.composerQueueAfterAnswer(locale: "en"), L10n.composerPlanPlaceholder(locale: "en")] {
+        for hint in ["Add a follow-up note for after this answer…", L10n.composerPlanPlaceholder(locale: "en")] {
             let empty = try await fitted(ComposerHint(hint: hint), width: 320, settle: true)
             #expect(empty.width <= 320.5)
             #expect(empty.height > typed.height + 15)
             #expect(abs(try await fitted(ComposerHint(hint: hint, text: "x"), width: 320).height - typed.height) < 0.5)
         }
         let wideTyped = try await fitted(ComposerHint(hint: "", text: "x"), width: 390)
-        for hint in [L10n.composerQueueAfterAnswer(locale: "zh-CN"), L10n.composerPlanPlaceholder(locale: "zh-CN")] {
+        for hint in [L10n.composerAnswerFirstPlaceholder(locale: "zh-CN"), L10n.composerPlanPlaceholder(locale: "zh-CN")] {
             #expect(abs(try await fitted(ComposerHint(hint: hint), width: 390).height - wideTyped.height) < 0.5)
         }
     }

@@ -193,7 +193,7 @@ private struct ComposerWrapper: View {
         #expect(qp.contains { $0.dock.kind == .plan })
 
         let queueRetry = ScreenGoldens.sessions("session_queue_retry")
-        #expect(queueRetry.contains { !$0.composer.pendingInputs.isEmpty || !$0.composer.outgoing.isEmpty })
+        #expect(queueRetry.contains { $0.composer.pendingTray.totalCount > 0 })
 
         let folded = ScreenGoldens.sessions("session_scheduled_fold")
         #expect(folded.contains { vm in

@@ -53,6 +53,51 @@ enum SessionImages {
         )
     }
 
+    static func resendAttachments(
+        _ effect: PBSessionResendAttachmentsEffect,
+        context: AccountContext,
+        onError: @escaping @MainActor (String) -> Void = { _ in }
+    ) {
+        let submit: @MainActor @Sendable ([String], [String]) -> Void = { imageIds, fileIds in
+            Task {
+                await context.coreHost.submitSessionCommand(
+                    sessionID: effect.sessionID,
+                    command: .with {
+                        $0.send = .with {
+                            $0.sessionID = effect.sessionID
+                            $0.requestID = effect.newRequestID
+                            $0.text = effect.text
+                            $0.imageIds = imageIds
+                            $0.fileIds = fileIds
+                            $0.mode = effect.mode
+                        }
+                    },
+                    machineID: effect.machineID
+                )
+            }
+        }
+        if effect.imageIds.isEmpty && effect.fileIds.isEmpty {
+            submit([], [])
+            return
+        }
+        ImageCenter.of(context.remote).resend(
+            sid: effect.sessionID,
+            machineId: effect.machineID,
+            sourceRequestId: effect.sourceRequestID,
+            newRequestId: effect.newRequestID,
+            text: effect.text,
+            mode: effect.mode,
+            submit: { o in
+                submit(o.imageIds, o.fileIds)
+            },
+            done: { result in
+                if case .failure(let error) = result {
+                    onError(error.localizedDescription)
+                }
+            }
+        )
+    }
+
     /// Checks before asking Core to restore an outgoing/canceled message whether its images fit back into the draft.
     static func canPutBack(
         requestId: String, files: [PBSessionFileRefView] = [], session: String, state: RemoteState, remote: Remote

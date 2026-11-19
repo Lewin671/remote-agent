@@ -15,6 +15,11 @@ final class CoreScreens {
         let effect: PBSessionRestoreComposerEffect
     }
 
+    struct ResendAttachments: Identifiable, Equatable, Sendable {
+        let id = UUID()
+        let effect: PBSessionResendAttachmentsEffect
+    }
+
     struct PendingCleanup: Identifiable, Equatable, Sendable {
         let id = UUID()
         let effect: PBPrepareCleanupSessionEffect
@@ -39,11 +44,17 @@ final class CoreScreens {
     var clientDetail = PBClientDetailViewModel()
     var directReports: [String: PBDirectRouteReport] = [:]
     var pendingComposerRestores: [RestoredComposer] = []
+    var pendingResendAttachments: [ResendAttachments] = []
     var pendingCleanup: PendingCleanup?
 
     func consumeComposerRestores(_ ids: Set<UUID>) {
         guard !ids.isEmpty else { return }
         pendingComposerRestores.removeAll { ids.contains($0.id) }
+    }
+
+    func consumeResendAttachments(_ ids: Set<UUID>) {
+        guard !ids.isEmpty else { return }
+        pendingResendAttachments.removeAll { ids.contains($0.id) }
     }
 
     func consumeCleanup(_ id: UUID) {
@@ -1092,22 +1103,80 @@ actor CoreHost: SyncEngine {
         }
     }
 
-    func dismissOutgoing(sessionID: String, requestID: String) async {
+    func cancelTrayItem(sessionID: String, requestID: String) async {
         guard !closed else { return }
         await dispatch {
-            $0.sessionDismissOutgoing = .with {
+            $0.sessionCancelTrayItem = .with {
                 $0.sessionID = sessionID
                 $0.requestID = requestID
             }
         }
     }
 
-    func restoreOutgoing(sessionID: String, requestID: String) async {
+    func ignoreTrayItem(sessionID: String, requestID: String) async {
         guard !closed else { return }
         await dispatch {
-            $0.sessionRestoreOutgoing = .with {
+            $0.sessionIgnoreTrayItem = .with {
                 $0.sessionID = sessionID
                 $0.requestID = requestID
+            }
+        }
+    }
+
+    func promoteTrayItem(sessionID: String, requestID: String) async {
+        guard !closed else { return }
+        await dispatch {
+            $0.sessionPromoteTrayItem = .with {
+                $0.sessionID = sessionID
+                $0.requestID = requestID
+            }
+        }
+    }
+
+    func restoreTrayItem(sessionID: String, requestID: String) async {
+        guard !closed else { return }
+        await dispatch {
+            $0.sessionRestoreTrayItem = .with {
+                $0.sessionID = sessionID
+                $0.requestID = requestID
+            }
+        }
+    }
+
+    func retryTrayItem(sessionID: String, requestID: String) async {
+        guard !closed else { return }
+        await dispatch {
+            $0.sessionRetryTrayItem = .with {
+                $0.sessionID = sessionID
+                $0.requestID = requestID
+            }
+        }
+    }
+
+    func resumeTrayItem(sessionID: String, requestID: String) async {
+        guard !closed else { return }
+        await dispatch {
+            $0.sessionResumeTrayItem = .with {
+                $0.sessionID = sessionID
+                $0.requestID = requestID
+            }
+        }
+    }
+
+    func cancelAllPaused(sessionID: String) async {
+        guard !closed else { return }
+        await dispatch {
+            $0.sessionCancelAllPaused = .with {
+                $0.sessionID = sessionID
+            }
+        }
+    }
+
+    func undoCancel(sessionID: String) async {
+        guard !closed else { return }
+        await dispatch {
+            $0.sessionUndoCancel = .with {
+                $0.sessionID = sessionID
             }
         }
     }
@@ -1281,6 +1350,7 @@ actor CoreHost: SyncEngine {
     private func handleEffects(_ effects: [PBCoreEffect]) async {
         var renderTargets: Set<PBCoreScreenTarget> = []
         var restoredComposers: [PBSessionRestoreComposerEffect] = []
+        var resendAttachments: [PBSessionResendAttachmentsEffect] = []
         var demoReplies: [PBCoreEvent] = []
         for eff in effects {
             guard !closed else { return }
@@ -1420,6 +1490,9 @@ actor CoreHost: SyncEngine {
             case .sessionRestoreComposer(let r):
                 restoredComposers.append(r)
 
+            case .sessionResendAttachments(let r):
+                resendAttachments.append(r)
+
             case .scheduleReadCache(let r):
                 if demoMode {
                     demoReplies.append(.with {
@@ -1523,10 +1596,13 @@ actor CoreHost: SyncEngine {
                 break
             }
         }
-        if !restoredComposers.isEmpty {
-            await MainActor.run { [screens, restoredComposers] in
+        if !restoredComposers.isEmpty || !resendAttachments.isEmpty {
+            await MainActor.run { [screens, restoredComposers, resendAttachments] in
                 for r in restoredComposers {
                     screens.pendingComposerRestores.append(CoreScreens.RestoredComposer(effect: r))
+                }
+                for r in resendAttachments {
+                    screens.pendingResendAttachments.append(CoreScreens.ResendAttachments(effect: r))
                 }
             }
         }

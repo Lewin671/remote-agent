@@ -182,7 +182,7 @@ extension Ref<LiveAnnouncer> {
 
 @Suite struct SessionWordsTests {
     @Test func moreThanThreeWaitingMessagesFoldToTwo() {
-        let four = (0..<4).map { n in PBSessionPendingInputView.with { $0.requestID = "\(n)" } }
+        let four = (0..<4).map { n in PBSessionTrayItemView.with { $0.requestID = "\(n)" } }
         #expect(shownPending(four, expanded: false).count == 2)
         #expect(shownPending(four, expanded: true).count == 4)
         #expect(shownPending(Array(four.prefix(3)), expanded: false).count == 3)

@@ -644,6 +644,103 @@ final class ImageCenter {
         return true
     }
 
+    /// Re-uploads locally held attachments under `newRequestId` for promote / retry / undo,
+    /// saves the new outgoing record, holds it in memory, and then invokes `submit`.
+    func resend(
+        sid: String,
+        machineId: String,
+        sourceRequestId: String,
+        newRequestId: String,
+        text: String,
+        mode: PBSendMode,
+        keep: (@Sendable (String, OutgoingRecord, Bool) throws -> Void)? = nil,
+        submit: @escaping @MainActor @Sendable (Outgoing) -> Void,
+        done: @escaping @MainActor (Result<Void, Error>) -> Void
+    ) {
+        Task { [weak self] in
+            guard let self, !closed else { return }
+            var base = heldOutgoing(sid, requestId: sourceRequestId)
+            if base == nil {
+                let rec = try? await Task.detached { [records = self.records] in
+                    try records.loadRecords(sid: sid).first { $0.requestId == sourceRequestId }
+                }.value
+                base = rec.map(OutgoingRecords.revive)
+            }
+            guard let base else {
+                done(.failure(UserError(L10nMessage.imageIosAttachmentsNeedUploadingAgainCompleteTheUploadBeforeSending())))
+                return
+            }
+            do {
+                try remote.requireFileCapability(machineId: machineId, hasFiles: base.images.contains(where: \.isFile))
+                var newImageIds: [String] = []
+                var newFileIds: [String] = []
+                var newImages: [PendingImage] = []
+                let ch: any UploadChannel = {
+                    #if DEBUG
+                    if !live { return SampleUploads() }
+                    #endif
+                    return remote.uploadChannel(machineId: machineId)
+                }()
+                for img in base.images {
+                    let tid = RACore.newRequestId()
+                    let clone = PendingImage(id: RACore.newRequestId(), uri: img.uri)
+                    if img.isFile {
+                        guard let file = img.file, file.hasSource else {
+                            throw AttachmentFailure(kind: .sourceMissing)
+                        }
+                        let up = try await uploadFile(ch, transferId: tid, source: file)
+                        var copied = file
+                        copied.machineId = machineId
+                        copied.transfers = [:]
+                        clone.file = copied
+                        clone.transferId = tid
+                        clone.machineId = machineId
+                        clone.imageId = up.imageId
+                        clone.expiresMs = up.expiresMs
+                        clone.state = .ready
+                        clone.protectUpload(machineId: machineId, transferId: tid, requestId: newRequestId)
+                        newFileIds.append(up.imageId)
+                    } else {
+                        guard let processed = img.processed else {
+                            throw UserError(L10nMessage.imageIosAttachmentsNeedUploadingAgainCompleteTheUploadBeforeSending())
+                        }
+                        let up = try await uploadImage(ch, transferId: tid, data: processed.bytes)
+                        clone.processed = processed
+                        clone.transferId = tid
+                        clone.machineId = machineId
+                        clone.imageId = up.imageId
+                        clone.expiresMs = up.expiresMs
+                        clone.state = .ready
+                        clone.protectUpload(machineId: machineId, transferId: tid, requestId: newRequestId)
+                        newImageIds.append(up.imageId)
+                    }
+                    newImages.append(clone)
+                }
+                let o = Outgoing(
+                    requestId: newRequestId, text: text, imageIds: newImageIds, fileIds: newFileIds,
+                    images: newImages, original: base.original, mode: mode
+                )
+                let record = o.record
+                let original = o.original
+                try await Task.detached { [records = self.records] in
+                    try (keep ?? { try records.save(sid: $0, $1, original: $2) })(sid, record, original)
+                }.value
+                guard !closed && !forgottenSessions.contains(sid) else {
+                    try? await Task.detached { [records = self.records] in
+                        try records.remove(sid: sid, requestId: o.requestId)
+                    }.value
+                    throw UserError(closed ? L10nMessage.attachmentIosSignedOutOfTheAccount() : L10nMessage.imageIosSessionRemoved())
+                }
+                for img in o.images where thumb(img) == nil { makeThumb(img) }
+                hold(sid, o)
+                done(.success(()))
+                submit(o)
+            } catch {
+                done(.failure(error))
+            }
+        }
+    }
+
     /// Brings back the messages with images a run that ended left behind, once per session and run.
     func restoreOutgoing(_ sid: String) {
         guard restored.insert(sid).inserted else { return }

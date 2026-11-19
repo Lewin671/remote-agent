@@ -501,7 +501,7 @@
             } trailing: {
                 InkCircle(symbol: "arrow.up")
             }
-            MessageCapsule(text: $message, placeholder: "插入这一轮…", label: "消息", focus: $typing) {
+            MessageCapsule(text: $message, placeholder: L10n.composerRunningPlaceholder(), label: L10n.composerMessage(), focus: $typing) {
                 EmptyView()
             } plus: {
                 PlusCircle()

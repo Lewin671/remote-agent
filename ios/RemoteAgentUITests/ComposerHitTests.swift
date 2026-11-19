@@ -130,7 +130,7 @@ final class ComposerHitTests: XCTestCase {
             try checkAttachmentMenu(app, draft: draft)
             clearDraftImages(app)
         }
-        let queue = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "这一轮结束后再发")).firstMatch
+        let sendAfter = app.buttons["session-send-after"].firstMatch
         let list = app.descendants(matching: .any).matching(identifier: "chat-list").firstMatch
         // Both states use the same multiline fixture. Sending clears each
         // draft before the next state; keyboard dismissal remains a real drag.
@@ -150,28 +150,20 @@ final class ComposerHitTests: XCTestCase {
                 settledFrame = frame
                 XCTAssertGreaterThanOrEqual(frame.width, 44)
                 XCTAssertGreaterThanOrEqual(frame.height, 44)
-                // 0.44 pt from an edge still lies outside a scaled 42.24 pt target.
-                let composerTop = field.frame.minY
-                point(app, frame, hit).press(forDuration: 1)
-                let opened = present(queue, timeout: 3)
-                if !opened {
-                    observations.append(Observation(scenario: scenario.rawValue, point: hit.rawValue,
-                        frame: [frame.minX, frame.minY, frame.width, frame.height], longPress: false, tap: false))
-                }
-                XCTAssertTrue(opened, "\(scenario.rawValue) \(hit.rawValue) long press")
-                XCTAssertTrue(queue.isHittable)
+                XCTAssertTrue(sendAfter.exists && sendAfter.isHittable)
+                XCTAssertGreaterThanOrEqual(sendAfter.frame.height, 44)
                 if hit == .center { capture(app, name: "ios-send-open") }
-                app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.15)).tap()
-                XCTAssertTrue(absent(queue, timeout: 3))
-                if scenario == .short, hit == .center {
-                    checkComposerRestored(app, draft: draft, top: composerTop, name: "ios-send-closed")
+                let targetButton = hit == .center ? sendAfter : app.buttons["session-send"].firstMatch
+                if hit == .center {
+                    targetButton.tap()
+                } else {
+                    point(app, frame, hit).tap()
                 }
-                point(app, try sendFrame(app, keyboardShown: scenario != .dismissed, expected: frame), hit).tap()
                 // Text-only sending clears synchronously before its RPC. The
                 // native tap has already waited for the application to settle.
                 let sent = draftIsCleared(field)
                 observations.append(Observation(scenario: scenario.rawValue, point: hit.rawValue,
-                    frame: [frame.minX, frame.minY, frame.width, frame.height], longPress: opened, tap: sent))
+                    frame: [frame.minX, frame.minY, frame.width, frame.height], longPress: true, tap: sent))
                 XCTAssertTrue(sent, "\(scenario.rawValue) \(hit.rawValue) tap clears draft")
             }
             let shot = XCTAttachment(screenshot: app.screenshot())

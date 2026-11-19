@@ -102,7 +102,7 @@ final class ChatCollectionController: UIViewController, UICollectionViewDelegate
         configuration.backgroundColor = .clear
         let layout = UICollectionViewCompositionalLayout { _, layoutEnvironment in
             let section = NSCollectionLayoutSection.list(using: configuration, layoutEnvironment: layoutEnvironment)
-            let margin = max(0, (layoutEnvironment.container.effectiveContentSize.width - 760) / 2)
+            let margin = max(0, (layoutEnvironment.container.effectiveContentSize.width - 720) / 2)
             section.contentInsets = NSDirectionalEdgeInsets(top: 0, leading: margin, bottom: 0, trailing: margin)
             return section
         }

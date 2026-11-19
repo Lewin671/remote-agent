@@ -294,7 +294,7 @@ import UIKit
         try await h.wait { abs(h.list.bounds.width - 1_024) < 1 }
         let path = try #require(h.source.indexPath(for: "row-15"))
         let frame = try #require(h.list.layoutAttributesForItem(at: path)).frame
-        #expect(abs(frame.width - 760) < 1)
+        #expect(abs(frame.width - 720) < 1)
         #expect(abs(frame.midX - h.list.bounds.midX) < 1)
     }
 }

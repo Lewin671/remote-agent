@@ -7,7 +7,7 @@ import SwiftUI
 import UIKit
 
 /// The box itself, without what it sends to.
-struct SessionComposeBox<Top: View>: View {
+struct SessionComposeBox<Tray: View, Top: View>: View {
     @Binding var text: String
     let placeholder: String
     let canSend: Bool
@@ -17,18 +17,46 @@ struct SessionComposeBox<Top: View>: View {
     var onInterrupt: (() -> Void)?
     var canInterrupt = false
     var hasDraft: Bool
+    var hasTray = false
     var focus: FocusState<Bool>.Binding
     var sendHint = ""
+    @ViewBuilder var tray: Tray
     @ViewBuilder var top: Top
 
-    private enum Kind { case interrupt, menu, send }
+    private enum Kind { case interrupt, send }
     private var kind: Kind {
-        if !hasDraft, onInterrupt != nil { .interrupt } else if onQueue != nil, canSend { .menu } else { .send }
+        if !hasDraft, onInterrupt != nil { .interrupt } else { .send }
+    }
+
+    private var twoRows: Bool {
+        (hasDraft && onQueue != nil) || text.contains("\n") || text.count > 20
     }
 
     private var button: some View {
-        ZStack { choice.id(kind).transition(.opacity) }
-            .animation(Motion.enter(Motion.fast), value: kind)
+        HStack(spacing: 6) {
+            if hasDraft, let onQueue {
+                Button(action: onQueue) {
+                    Text(L10n.composerSendAfter())
+                        .font(.subheadline.weight(.medium))
+                        .foregroundStyle(DS.ink)
+                        .lineLimit(1)
+                        .padding(.horizontal, 14)
+                        .frame(height: 36)
+                        .background(DS.fill2, in: Capsule())
+                        .frame(minHeight: DS.minHit)
+                        .contentShape(Capsule())
+                }
+                .buttonStyle(PressScale())
+                .disabled(!canSend)
+                .opacity(canSend ? 1 : 0.35)
+                .accessibilityIdentifier("session-send-after")
+                .accessibilityHint(sendHint)
+                .transition(.opacity)
+            }
+            ZStack { choice.id(kind).transition(.opacity) }
+                .animation(Motion.enter(Motion.fast), value: kind)
+        }
+        .animation(Motion.enter(Motion.fast), value: hasDraft && onQueue != nil)
     }
 
     @ViewBuilder private var choice: some View {
@@ -37,27 +65,6 @@ struct SessionComposeBox<Top: View>: View {
                 .buttonStyle(PressScale())
                 .disabled(!canInterrupt)
                 .accessibilityLabel(L10n.sessionInterrupt())
-        } else if let onQueue, canSend {
-            Menu {
-                Button(action: onSend) {
-                    Text(L10n.composerInsertNow())
-                    Text(L10n.composerInsertHint())
-                }
-                Button(action: onQueue) {
-                    Text(L10n.composerAfterTurn())
-                    Text(L10n.composerQueueHint())
-                }
-            } label: {
-                InkCircle(symbol: "arrow.up")
-            } primaryAction: {
-                onSend()
-            }
-            .menuOrder(.fixed)
-            .buttonStyle(PressScale())
-            .accessibilityLabel(L10n.composerSend())
-            .accessibilityIdentifier("session-send")
-            .accessibilityHint(L10n.queueInsert())
-            .accessibilityAction(named: L10n.composerAfterTurn(), onQueue)
         } else {
             Button(action: onSend) { InkCircle(symbol: "arrow.up", enabled: canSend) }
                 .buttonStyle(PressScale())
@@ -69,7 +76,17 @@ struct SessionComposeBox<Top: View>: View {
     }
 
     var body: some View {
-        MessageCapsule(text: $text, placeholder: placeholder, label: L10n.composerMessage(), focus: focus, heightChanges: "\(hasDraft)\(text)") {
+        MessageCapsule(
+            text: $text,
+            placeholder: placeholder,
+            label: L10n.composerMessage(),
+            focus: focus,
+            heightChanges: "\(hasTray)\(twoRows)\(hasDraft)\(text)",
+            hasTray: hasTray,
+            twoRows: twoRows
+        ) {
+            tray
+        } top: {
             top
         } plus: {
             attach
@@ -77,8 +94,13 @@ struct SessionComposeBox<Top: View>: View {
             button
         }
         .background {
-            Button(L10n.composerSend(), action: onSend).keyboardShortcut(.return, modifiers: .command).disabled(!canSend)
-                .opacity(0).accessibilityHidden(true)
+            Group {
+                Button(L10n.composerSend(), action: onSend).keyboardShortcut(.return, modifiers: .command).disabled(!canSend)
+                if let onQueue {
+                    Button(L10n.composerSendAfter(), action: onQueue).keyboardShortcut(.return, modifiers: .option).disabled(!canSend)
+                }
+            }
+            .opacity(0).accessibilityHidden(true)
         }
     }
 }
@@ -120,6 +142,9 @@ struct SessionComposer: View {
     let composer: PBSessionComposerView
     let actions: PBSessionActionsView
     var focus: FocusState<Bool>.Binding
+    var keyboardOpen = false
+    var maxTrayHeight: CGFloat = 340
+    var onTerminal: () -> Void = {}
     /// A message is being sent from this box, with or without images.
     var onSent: () -> Void = {}
     @Environment(AppModel.self) private var model
@@ -201,6 +226,8 @@ struct SessionComposer: View {
             if s.hasErrorText { return s.errorText.rendered() }
             return s.errorCode
         }()
+        let tray = composer.pendingTray
+        let showTray = tray.totalCount > 0 || (tray.hasUndo && tray.undo.visible)
         VStack(spacing: 0) {
             SessionComposeBox(
                 text: Binding(get: { store.draft(sessionID) }, set: { store.setDraft(sessionID, $0) }),
@@ -212,9 +239,19 @@ struct SessionComposer: View {
                 onInterrupt: composer.interruptVisible ? { sendInterrupt() } : nil,
                 canInterrupt: actions.canInterrupt && !interruptBusy,
                 hasDraft: !text.jvmIsBlank || attached,
+                hasTray: showTray,
                 focus: focus,
                 sendHint: composer.enabled ? "" : (composer.hasDisabledReason ? composer.disabledReason.rendered() : L10n.composerIosConnectSend())
             ) {
+                PendingTrayView(
+                    sessionID: sessionID,
+                    state: model.state,
+                    tray: tray,
+                    keyboardOpen: keyboardOpen,
+                    maxHeight: maxTrayHeight,
+                    onTerminal: onTerminal
+                )
+            } top: {
                 images.strip(focus: focus, session: (sessionID, store))
             }
             Color.clear.frame(height: 0)

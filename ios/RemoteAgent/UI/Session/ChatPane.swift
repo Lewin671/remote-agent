@@ -328,7 +328,6 @@ struct ChatPane: View {
     @State private var tracker = ChatScrollTracker()
     @State private var keyboard = KeyboardTrack()
     @State private var cache = MarkdownBlockCache()
-    @State private var allPending = false
     @State private var selecting: SelectedText?
     @State private var announcer = LiveAnnouncer()
     @State private var appliedScheduledJump: String?
@@ -372,7 +371,7 @@ struct ChatPane: View {
         actions: PBSessionActionsView
     ) -> some View {
         bottom(header: header, dock: dock, composer: composer, actions: actions)
-            .frame(maxWidth: 760)
+            .frame(maxWidth: 720)
             .frame(maxWidth: .infinity)
             .background { EdgeFade(edge: .bottom) }
             .overlay(alignment: .top) {
@@ -390,8 +389,8 @@ struct ChatPane: View {
     }
 
     private func settleAttachmentsAndTracking(_ vm: PBSessionViewModel) {
-        let outgoingIDs = Set(vm.composer.outgoing.map(\.requestID))
-        let pendingIDs = Set(vm.composer.pendingInputs.map(\.requestID))
+        let retainedIDs = Set(vm.composer.retainedAttachmentRequestIds)
+        let trayIDs = Set(vm.composer.pendingTray.orderedItems.map(\.requestID))
         var unsentIDs = Set<String>()
         var settledIDs = Set<String>()
         for item in vm.timeline.items {
@@ -400,7 +399,7 @@ struct ChatPane: View {
                 else if !st.requestID.isEmpty { settledIDs.insert(st.requestID) }
             }
         }
-        let activeIDs = outgoingIDs.union(pendingIDs).union(unsentIDs)
+        let activeIDs = retainedIDs.union(trayIDs).union(unsentIDs)
         ImageCenter.of(context.remote).pruneSettled(
             sessionID,
             activeRequestIDs: activeIDs,
@@ -416,11 +415,6 @@ struct ChatPane: View {
         let actions = vm?.actions ?? PBSessionActionsView()
         let dock = vm?.dock
         let rows = cache.syncBuild(items: tl.items)
-        let restored = ImageCenter.of(context.remote).restoredOutgoing[sessionID] ?? []
-        let filteredRestored = restored.filter { r in
-            !composer.outgoing.contains(where: { $0.requestID == r.requestId })
-                && !composer.pendingInputs.contains(where: { $0.requestID == r.requestId })
-        }
         let online = (header.computerOnline && !header.computerUnlinked) || header.computerReachability == .unknown
         let env = ChatEnv(
             agent: header.agent != .unspecified ? header.agent : (state.sessions[sessionID]?.agent ?? defaultAgent),
@@ -432,16 +426,14 @@ struct ChatPane: View {
         )
         let jump = context.sessionStore.scheduledJump(sessionID)
         let ready = vm != nil && (!tl.loading || tl.loaded || !rows.isEmpty)
-        let pending = composer.pendingInputs
-        let outgoing = composer.outgoing
         ChatCollection(
-            items: listItems(tl: tl, rows: rows, env: env, pending: pending, outgoing: outgoing, restored: filteredRestored, header: header, online: online),
+            items: listItems(tl: tl, rows: rows, env: env, online: online),
             env: env,
             tracker: tracker,
             ready: ready,
             joins: joins,
             prepended: prepended,
-            count: rows.count + pending.count + outgoing.count + filteredRestored.count,
+            count: rows.count,
             interaction: { _ in },
             onNearTop: {
                 if !tl.backfilling && !tl.fetching && (tl.hasEarlier_p || tl.canLoadEarlier) {
@@ -465,10 +457,10 @@ struct ChatPane: View {
             lastRowIDs = newIDs
             if let vm { settleAttachmentsAndTracking(vm) }
         }
-        .onChange(of: composer.outgoing) { _, _ in
+        .onChange(of: composer.pendingTray.orderedItems.map(\.requestID)) { _, _ in
             if let vm { settleAttachmentsAndTracking(vm) }
         }
-        .onChange(of: composer.pendingInputs) { _, _ in
+        .onChange(of: composer.retainedAttachmentRequestIds) { _, _ in
             if let vm { settleAttachmentsAndTracking(vm) }
         }
         .modifier(ScheduledJumpObserver(rowIDs: rows.map(\.id), loaded: tl.loaded, jump: jump, anchorID: tl.anchorItemID) {
@@ -544,10 +536,6 @@ struct ChatPane: View {
         tl: PBSessionTimelineView,
         rows: [ChatTimelineRow],
         env: ChatEnv,
-        pending: [PBSessionPendingInputView],
-        outgoing: [PBSessionOutgoingView],
-        restored: [Outgoing],
-        header: PBSessionHeaderView,
         online: Bool
     ) -> [ChatCollectionItem] {
         var items = [ChatCollectionItem("chat-top") { Color.clear.frame(height: 6) }]
@@ -595,28 +583,6 @@ struct ChatPane: View {
                     Task { await context.coreHost.loadEarlierSessionHistory(sessionID) }
                 }
                 .padding(.horizontal, chatMargin).padding(.vertical, 8)
-            })
-        }
-        let visible = shownPending(pending, expanded: allPending)
-        for p in visible {
-            items.append(ChatCollectionItem("pending-" + p.requestID) {
-                PendingBubble(sessionID: sessionID, header: header, pending: p, online: online)
-            })
-        }
-        if visible.count < pending.count {
-            items.append(ChatCollectionItem("chat-more-pending") {
-                TextAction(L10n.queueMore(count: Int(pending.count - 2)), style: .footnote.weight(.semibold), alignment: .trailing) { allPending = true }
-                    .frame(maxWidth: .infinity, alignment: .trailing).padding(.horizontal, chatMargin)
-            })
-        }
-        for o in outgoing {
-            items.append(ChatCollectionItem("out-" + o.requestID) {
-                CoreOutgoingBubble(sessionID: sessionID, machineID: header.machineID, outgoing: o)
-            })
-        }
-        for r in restored {
-            items.append(ChatCollectionItem("out-" + r.requestId) {
-                RestoredOutgoingBubble(sessionID: sessionID, machineID: header.machineID, message: r)
             })
         }
         items.append(ChatCollectionItem("chat-end") { Color.clear.frame(height: 8) })
@@ -676,7 +642,7 @@ struct ChatPane: View {
                 if taskOwned { Text(L10n.sessionReplyMoves()).font(.footnote).foregroundStyle(DS.ink2).padding(8) }
                 EndedCard(sessionID: sessionID, header: header, actions: actions)
             }
-        } else if (!header.computerOnline || header.computerUnlinked) && header.computerReachability != .unknown {
+        } else if header.computerUnlinked && header.computerReachability != .unknown {
             let name = header.hasComputerName ? header.computerName.rendered() : machineLabel(model.state, id: header.machineID)
             let offlineDesc = header.hasOfflineText ? header.offlineText.rendered() : L10n.projectsComputerOffline()
             SessionEndCard(
@@ -749,238 +715,14 @@ struct ChatPane: View {
                     composer: composer,
                     actions: actions,
                     focus: $typing,
+                    keyboardOpen: typing || keyboard.inset > keyboard.base + 1,
+                    maxTrayHeight: paneHeight > 0 ? max(180, paneHeight * 0.5) : 340,
+                    onTerminal: onTerminal,
                     onSent: followEnd
                 )
             }
             .animation(dock?.hasItem_p != true ? Motion.exit() : Motion.enter(), value: dock?.itemID ?? "")
         }
-    }
-}
-
-// MARK: Under the rows
-
-private struct PendingBubble: View {
-    let sessionID: String
-    let header: PBSessionHeaderView
-    let pending: PBSessionPendingInputView
-    let online: Bool
-    @Environment(AccountContext.self) private var context
-    @State private var expanded = false
-
-    private func sendResume() {
-        Task {
-            await context.coreHost.submitSessionCommand(
-                sessionID: sessionID,
-                command: .with {
-                    $0.resumeInput = .with {
-                        $0.sessionID = sessionID
-                        $0.requestID = pending.requestID
-                    }
-                },
-                machineID: header.machineID,
-                slotKey: pending.resume.slotKey
-            )
-        }
-    }
-
-    private func sendCancel() {
-        Task {
-            await context.coreHost.submitSessionCommand(
-                sessionID: sessionID,
-                command: .with {
-                    $0.cancelInput = .with {
-                        $0.sessionID = sessionID
-                        $0.requestID = pending.requestID
-                    }
-                },
-                machineID: header.machineID,
-                slotKey: pending.cancel.slotKey
-            )
-        }
-    }
-
-    var body: some View {
-        let cancelBusy = pending.cancel.status == .pending || pending.cancel.busy
-        let resumeBusy = pending.resume.status == .pending || pending.resume.busy
-        let cancelFailed = !cancelBusy && (pending.cancel.status == .failed || pending.cancel.status == .unknown)
-        let resumeFailed = !resumeBusy && (pending.resume.status == .failed || pending.resume.status == .unknown)
-        let labelText = pending.hasLabel ? pending.label.rendered() : ""
-        let captionText = pending.hasCaption ? pending.caption.rendered() : labelText
-        let bodyText = pending.text.isEmpty ? L10n.imageIosPlaceholder() : pending.text
-        VStack(alignment: .trailing, spacing: 0) {
-            Button {
-                expanded.toggle()
-            } label: {
-                ChatBubble(
-                    bodyText,
-                    pending: true,
-                    lines: expanded ? nil : 4,
-                    padded: false
-                ) {
-                    SessionImages.PendingThumbs(session: sessionID, requestId: pending.requestID)
-                }
-                .padding(.vertical, -8)
-                .opacity(cancelBusy ? 0.5 : 1)
-            }
-            .buttonStyle(PressStyle())
-            .accessibilityHint(expanded ? L10n.markdownCollapse() : L10n.markdownExpand())
-            HStack(spacing: 6) {
-                Text(captionText)
-                    .font(.footnote).ink(cancelFailed || pending.feedbackUncertain ? DS.red : DS.ink2).lineLimit(1)
-                    .frame(maxWidth: .infinity, alignment: .trailing)
-                if pending.canResume && !cancelBusy {
-                    TextAction(
-                        resumeFailed ? L10n.commonRetry() : L10n.composerSend(),
-                        style: .footnote.weight(.semibold),
-                        enabled: online && !resumeBusy,
-                        alignment: .center
-                    ) {
-                        sendResume()
-                    }
-                }
-                if pending.canCancel && !cancelBusy {
-                    TextAction(
-                        cancelFailed ? L10n.commonRetry() : L10n.commonCancel(),
-                        style: .footnote.weight(.semibold),
-                        enabled: online,
-                        alignment: .trailing
-                    ) {
-                        sendCancel()
-                    }
-                }
-            }
-            .frame(minHeight: 36)
-        }
-        .frame(maxWidth: .infinity, alignment: .trailing)
-        .padding(.horizontal, chatMargin).padding(.vertical, 6)
-        .debugSignal("session.cancel") { sendCancel() }
-        .debugSignal("session.resume") { sendResume() }
-    }
-}
-
-private struct CoreOutgoingBubble: View {
-    let sessionID: String
-    let machineID: String
-    let outgoing: PBSessionOutgoingView
-    @Environment(AppModel.self) private var model
-    @Environment(AccountContext.self) private var context
-
-    private func retrySend() {
-        Task {
-            await context.coreHost.submitSessionCommand(
-                sessionID: sessionID,
-                command: .with {
-                    $0.send = .with {
-                        $0.sessionID = sessionID
-                        $0.requestID = outgoing.requestID
-                        $0.text = outgoing.text
-                        $0.imageIds = outgoing.imageIds
-                        $0.fileIds = outgoing.fileIds
-                        $0.mode = outgoing.mode
-                    }
-                },
-                machineID: machineID,
-                slotKey: outgoing.slotKey
-            )
-        }
-    }
-
-    var body: some View {
-        let isSending = outgoing.state == .sending
-        let isFailed = outgoing.state == .failed
-        let isUnknown = outgoing.state == .unknown
-        let toneColor: Color = isFailed ? DS.red : (isUnknown || outgoing.feedbackUncertain ? DS.orangeInk : DS.ink2)
-        let captionText: String = {
-            if outgoing.hasFeedback {
-                let fb = outgoing.feedback.rendered()
-                if !fb.isEmpty { return fb }
-            }
-            return outgoing.caption.rendered()
-        }()
-        let canRestoreAttachments = (outgoing.imageIds.isEmpty && outgoing.fileIds.isEmpty)
-            || ImageCenter.of(context.remote).heldOutgoing(sessionID, requestId: outgoing.requestID)?.hasLocalAttachments == true
-        var links: [ChatLink] = []
-        if outgoing.canRestore && canRestoreAttachments {
-            links.append(ChatLink(L10n.composerRestore()) {
-                guard SessionImages.canPutBack(
-                    requestId: outgoing.requestID, session: sessionID, state: model.state, remote: context.remote
-                ) else { return }
-                Task { await context.coreHost.restoreOutgoing(sessionID: sessionID, requestID: outgoing.requestID) }
-            })
-        }
-        if outgoing.canRetry {
-            links.append(ChatLink(L10n.commonRetry()) { retrySend() })
-        }
-        if outgoing.canDismiss {
-            links.append(ChatLink(L10n.sessionDismissNotice()) {
-                ImageCenter.of(context.remote).release(sid: sessionID, requestId: outgoing.requestID)
-                Task { await context.coreHost.dismissOutgoing(sessionID: sessionID, requestID: outgoing.requestID) }
-            })
-        }
-        return ChatBubble(
-            outgoing.text.isEmpty ? nil : outgoing.text,
-            caption: captionText.isEmpty ? nil : captionText,
-            captionColor: toneColor,
-            captionIcon: isSending ? Mark.progress : nil,
-            failed: isFailed || isUnknown,
-            links: links
-        ) {
-            SessionImages.OutgoingThumbs(session: sessionID, requestId: outgoing.requestID)
-        }
-        .accessibilityElement(children: .contain)
-    }
-}
-
-private struct RestoredOutgoingBubble: View {
-    let sessionID: String
-    let machineID: String
-    let message: Outgoing
-    @Environment(AppModel.self) private var model
-    @Environment(AccountContext.self) private var context
-
-    var body: some View {
-        let links: [ChatLink] = [
-            ChatLink(L10n.composerRestore()) {
-                if SessionImages.putBack(
-                    message, session: sessionID, state: model.state, remote: context.remote,
-                    store: context.sessionStore, releaseFailure: true
-                ) {
-                    ImageCenter.of(context.remote).adoptRestored(sessionID, requestId: message.requestId)
-                }
-            },
-            ChatLink(L10n.commonRetry()) {
-                ImageCenter.of(context.remote).adoptRestored(sessionID, requestId: message.requestId)
-                Task {
-                    await context.coreHost.submitSessionCommand(
-                        sessionID: sessionID,
-                        command: .with {
-                            $0.send = .with {
-                                $0.sessionID = sessionID
-                                $0.requestID = message.requestId
-                                $0.text = message.text
-                                $0.imageIds = message.imageIds
-                                $0.fileIds = message.fileIds
-                                $0.mode = message.mode
-                            }
-                        },
-                        machineID: machineID
-                    )
-                }
-            },
-            ChatLink(L10n.sessionDismissNotice()) {
-                ImageCenter.of(context.remote).dismissRestored(sessionID, requestId: message.requestId)
-            },
-        ]
-        ChatBubble(
-            message.text.isEmpty ? nil : message.text,
-            caption: message.error.isEmpty ? L10n.attachmentIosTheAppRestartedDeliveryOfThisMessageIsUnconfirmed() : message.error,
-            captionColor: message.state == .failed ? DS.red : DS.orangeInk,
-            failed: true,
-            links: links
-        ) {
-            SessionImages.OutgoingThumbs(session: sessionID, requestId: message.requestId)
-        }
-        .accessibilityElement(children: .contain)
     }
 }
 
