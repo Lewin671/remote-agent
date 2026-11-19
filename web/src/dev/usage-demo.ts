@@ -25,7 +25,20 @@ function defaultBounds(preset: UsageRangePreset, nowMs: number): { bounds: bigin
     bounds.push(BigInt(tomorrowStart.getTime()));
     return { bounds, gran: UsageBucketGranularity.HOUR };
   }
-  const days = preset === UsageRangePreset.THIRTY_DAYS ? 30 : 7;
+  if (preset === UsageRangePreset.SEVEN_DAYS) {
+    const bounds: bigint[] = [];
+    for (let i = 6; i >= 0; i--) {
+      const day = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i);
+      const next = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i + 1);
+      const span = next.getTime() - day.getTime();
+      for (let q = 0; q < 4; q++) {
+        bounds.push(BigInt(Math.round(day.getTime() + (span * q) / 4)));
+      }
+    }
+    bounds.push(BigInt(tomorrowStart.getTime()));
+    return { bounds, gran: UsageBucketGranularity.SIX_HOURS };
+  }
+  const days = preset === UsageRangePreset.THIRTY_DAYS ? 30 : 15;
   const bounds: bigint[] = [];
   for (let i = days - 1; i >= 0; i--) {
     bounds.push(BigInt(new Date(now.getFullYear(), now.getMonth(), now.getDate() - i).getTime()));
@@ -79,11 +92,11 @@ function summarize(buckets: UsageBucketPoint[], recentSpeedP50: number, recentSp
     speedRequestCount: sReqs,
     hasCacheHitRate: inDenom > 0n,
     cacheHitRate: inDenom > 0n ? Number(r) / Number(inDenom) : 0,
-    hasSpeed: sp50.length > 0,
+    hasSpeed: sp50.length > 0 && sReqs >= 3n,
     speedP10: sp10.length ? Math.min(...sp10) : 0,
     speedP50: avg(sp50),
     speedP90: sp90.length ? Math.max(...sp90) : 0,
-    hasTtft: tp50.length > 0,
+    hasTtft: tp50.length > 0 && sReqs >= 3n,
     ttftP10Ms: tp10.length ? Math.min(...tp10) : 0,
     ttftP50Ms: avg(tp50),
     ttftP90Ms: tp90.length ? Math.max(...tp90) : 0,
@@ -113,6 +126,7 @@ function makeSeries(
     prevTtftRatio?: number;
     hitDeltaAdjust?: number;
     outlierIdx?: number;
+    noCacheHit?: boolean;
   },
 ): UsageSeries {
   const n = Math.max(1, bounds.length - 1);
@@ -129,7 +143,7 @@ function makeSeries(
     const reqs = Math.max(1, Math.round(opts.baseReqs * wave));
     const speedReqs = opts.speedP50 > 0 ? Math.max(1, Math.round(reqs * 0.85)) : 0;
     const u = BigInt(Math.round(opts.baseUncached * mult * wave));
-    const r = BigInt(Math.round(opts.baseRead * mult * wave));
+    const r = opts.noCacheHit ? 0n : BigInt(Math.round(opts.baseRead * mult * wave));
     const w = opts.cacheWriteSupported ? BigInt(Math.round(opts.baseWrite * mult * wave)) : 0n;
     const o = BigInt(Math.round(opts.baseOut * mult * wave));
     const reas = opts.baseReas ? BigInt(Math.round(opts.baseReas * mult * wave)) : 0n;
@@ -157,32 +171,38 @@ function makeSeries(
     );
   }
   const current = summarize(buckets, opts.speedP50, opts.speedP50 > 0 ? 10n : 0n);
+  if (opts.noCacheHit) {
+    current.hasCacheHitRate = false;
+  }
   const pr = opts.prevRatio ?? 0.84;
-  const pSr = opts.prevSpeedRatio ?? 0.94;
-  const pTr = opts.prevTtftRatio ?? 1.12;
-  const prevU = BigInt(Math.round(Number(current.uncachedInputTokens) * pr));
-  const prevR = BigInt(Math.round(Number(current.cacheReadTokens) * pr));
-  const prevW = BigInt(Math.round(Number(current.cacheWriteTokens) * pr));
-  const prevO = BigInt(Math.round(Number(current.outputTokens) * pr));
-  const prevDen = prevU + prevR + prevW;
-  const previous = create(UsagePeriodSummarySchema, {
-    uncachedInputTokens: prevU,
-    cacheReadTokens: prevR,
-    cacheWriteTokens: prevW,
-    outputTokens: prevO,
-    usageRequestCount: BigInt(Math.max(4, Math.round(Number(current.usageRequestCount) * pr))),
-    speedRequestCount: BigInt(current.speedRequestCount > 0n ? Math.max(3, Math.round(Number(current.speedRequestCount) * pr)) : 0),
-    hasCacheHitRate: prevDen > 0n,
-    cacheHitRate: Math.min(1, Math.max(0, current.cacheHitRate - (opts.hitDeltaAdjust ?? 0.04))),
-    hasSpeed: current.hasSpeed,
-    speedP10: current.speedP10 * pSr,
-    speedP50: current.speedP50 * pSr,
-    speedP90: current.speedP90 * pSr,
-    hasTtft: current.hasTtft,
-    ttftP10Ms: current.ttftP10Ms * pTr,
-    ttftP50Ms: current.ttftP50Ms * pTr,
-    ttftP90Ms: current.ttftP90Ms * pTr,
-  });
+  let previous: ReturnType<typeof summarize> | undefined;
+  if (pr > 0) {
+    const pSr = opts.prevSpeedRatio ?? 0.94;
+    const pTr = opts.prevTtftRatio ?? 1.12;
+    const prevU = BigInt(Math.round(Number(current.uncachedInputTokens) * pr));
+    const prevR = BigInt(Math.round(Number(current.cacheReadTokens) * pr));
+    const prevW = BigInt(Math.round(Number(current.cacheWriteTokens) * pr));
+    const prevO = BigInt(Math.round(Number(current.outputTokens) * pr));
+    const prevDen = prevU + prevR + prevW;
+    previous = create(UsagePeriodSummarySchema, {
+      uncachedInputTokens: prevU,
+      cacheReadTokens: prevR,
+      cacheWriteTokens: prevW,
+      outputTokens: prevO,
+      usageRequestCount: BigInt(Math.max(4, Math.round(Number(current.usageRequestCount) * pr))),
+      speedRequestCount: BigInt(current.speedRequestCount > 0n ? Math.max(3, Math.round(Number(current.speedRequestCount) * pr)) : 0),
+      hasCacheHitRate: !opts.noCacheHit && prevDen > 0n,
+      cacheHitRate: Math.min(1, Math.max(0, current.cacheHitRate - (opts.hitDeltaAdjust ?? 0.04))),
+      hasSpeed: current.hasSpeed,
+      speedP10: current.speedP10 * pSr,
+      speedP50: current.speedP50 * pSr,
+      speedP90: current.speedP90 * pSr,
+      hasTtft: current.hasTtft,
+      ttftP10Ms: current.ttftP10Ms * pTr,
+      ttftP50Ms: current.ttftP50Ms * pTr,
+      ttftP90Ms: current.ttftP90Ms * pTr,
+    });
+  }
   return create(UsageSeriesSchema, {
     agent: opts.agent,
     model: opts.model,
@@ -226,8 +246,83 @@ export function buildDemoUsageResponse(
   const scaleMult = preset === UsageRangePreset.TODAY ? 0.25 : preset === UsageRangePreset.THIRTY_DAYS ? 1.4 : 1;
   let series: UsageSeries[] = [];
 
+  const todayGaps = gran === UsageBucketGranularity.HOUR ? new Set([5, 6, 7, 8, 22, 23]) : undefined;
+
   if (mode === "empty") {
     series = [];
+  } else if (mode === "single") {
+    const n = Math.max(2, bounds.length - 1);
+    const skip = new Set<number>();
+    for (let i = 0; i < n; i++) {
+      if (i !== 11 && i !== 14 && i !== 15 && i !== n - 2) skip.add(i);
+    }
+    if (!disabled.has(Agent.CLAUDE)) {
+      series.push(
+        makeSeries(bounds, {
+          agent: Agent.CLAUDE,
+          model: "claude-sonnet-4-6-202611",
+          cacheWriteSupported: true,
+          skipBuckets: skip,
+          baseUncached: 120_000,
+          baseRead: 720_000,
+          baseWrite: 32_000,
+          baseOut: 18_000,
+          baseReqs: 3,
+          speedP50: 74,
+          ttftP50Ms: 1_500,
+          prevRatio: 0,
+        }),
+      );
+    }
+  } else if (mode === "crowd") {
+    const specs: Array<[Agent, string, number, number, number, number, number, boolean]> = [
+      [Agent.CODEX, "gpt-6-astra-workhorse-preview-2026-11-12", 180_000_000, 97, 1420, 300, 0.075, false],
+      [Agent.CLAUDE, "claude-opus-4-6-thinking-max-budget-20261101", 112_000_000, 95, 58, 2600, 0.19, true],
+      [Agent.CODEX, "gpt-5.4-codex-spec-writer-long-context-preview-11", 70_000_000, 93, 96, 800, 0.35, false],
+      [Agent.CODEX, "gpt-5.4-codex-hydra-preview-2026-10-28", 38_000_000, 94, 82, 900, 1.72, false],
+      [Agent.CLAUDE, "claude-sonnet-4-6-20261101", 25_000_000, 92, 78, 1300, 0.61, true],
+      [Agent.CODEX, "gpt-5.4-codex-orchestrator-bigctx-2026-11", 18_500_000, 90, 46, 2200, 0, false],
+      [Agent.CODEX, "gpt-5.4-codex-high-2026-10", 14_000_000, 89, 90, 1000, 0.85, false],
+      [Agent.CODEX, "gpt-5.4-codex-carbon-preview-11-05", 9_400_000, 93, 70, 1200, 50.0, false],
+      [Agent.CLAUDE, "claude-opus-4-6-20261101", 7_100_000, 91, 60, 2200, 1.0, true],
+      [Agent.CODEX, "gpt-5.4-codex-medium-2026-10", 4_800_000, 87, 104, 700, 0.89, false],
+      [Agent.CLAUDE, "claude-sonnet-4-6-alt-20261101", 3_300_000, 85, 66, 1600, 0, true],
+      [Agent.CLAUDE, "claude-haiku-4-5-202610", 2_200_000, 82, 142, 500, 1.16, true],
+      [Agent.CODEX, "gpt-5.4-codex-mini", 1_540_000, 80, 168, 400, 0.95, false],
+      [Agent.CODEX, "gpt-5.4-flash-lite-batch-eval-v2", 980_000, 78, 210, 300, 0.52, false],
+      [Agent.CLAUDE, "claude-sonnet-4-5-legacy-202509", 640_000, 84, 72, 1500, 4.16, true],
+      [Agent.CODEX, "o4-mini-codex-fast-2026-06", 370_000, 74, 126, 600, 0, false],
+      [Agent.CODEX, "o4-neon-research-preview-11-18", 200_000, 71, 88, 1100, 0, false],
+      [Agent.CODEX, "gpt-5.3-codex-nano", 74_000, 0, 190, 300, 1.45, false],
+      [Agent.CLAUDE, "claude-haiku-4-5-subagent-router", 17_000, 0, 0, 0, 0, true],
+      [Agent.CODEX, "gpt-5.4-codex-smoke-check-tiny", 350, 0, 0, 0, 0, false],
+    ];
+    for (const [ag, mdl, perBucketTot, hitPct, sp, tt, pr, cwSup] of specs) {
+      if (disabled.has(ag)) continue;
+      const outTok = Math.max(10, Math.round(perBucketTot * 0.005));
+      const writeTok = cwSup ? Math.round(perBucketTot * 0.02) : 0;
+      const inTot = Math.max(20, perBucketTot - outTok - writeTok);
+      const hitFrac = hitPct > 0 ? hitPct / 100 : 0;
+      const readTok = Math.round(inTot * hitFrac);
+      const uncachedTok = Math.max(10, inTot - readTok);
+      series.push(
+        makeSeries(bounds, {
+          agent: ag,
+          model: mdl,
+          cacheWriteSupported: cwSup,
+          baseUncached: uncachedTok,
+          baseRead: readTok,
+          baseWrite: writeTok,
+          baseOut: outTok,
+          baseReas: Math.round(outTok * 0.42),
+          baseReqs: Math.max(1, Math.round(perBucketTot / 500_000)),
+          speedP50: sp,
+          ttftP50Ms: tt,
+          prevRatio: pr,
+          noCacheHit: hitPct === 0,
+        }),
+      );
+    }
   } else if (mode === "few") {
     const n = Math.max(2, bounds.length - 1);
     const skip = new Set<number>();
@@ -318,7 +413,7 @@ export function buildDemoUsageResponse(
           agent: Agent.CODEX,
           model: "gpt-6-astra",
           cacheWriteSupported: false,
-          skipBuckets: bounds.length > 5 ? new Set([2]) : undefined,
+          skipBuckets: todayGaps ?? (bounds.length > 5 ? new Set([2]) : undefined),
           mult: scaleMult,
           baseUncached: 280_000,
           baseRead: 2_400_000,
@@ -327,7 +422,7 @@ export function buildDemoUsageResponse(
           baseReqs: 32,
           speedP50: 118,
           ttftP50Ms: 620,
-          prevRatio: 0.85,
+          prevRatio: 1.38,
           prevSpeedRatio: 0.93,
           prevTtftRatio: 1.15,
           outlierIdx: bounds.length > 4 ? 3 : undefined,
@@ -340,6 +435,7 @@ export function buildDemoUsageResponse(
           agent: Agent.CLAUDE,
           model: "claude-opus-5-5",
           cacheWriteSupported: true,
+          skipBuckets: todayGaps,
           mult: scaleMult,
           baseUncached: 62_000,
           baseRead: 490_000,
@@ -360,6 +456,7 @@ export function buildDemoUsageResponse(
           agent: Agent.CODEX,
           model: "gpt-5.4-mini",
           cacheWriteSupported: false,
+          skipBuckets: todayGaps,
           mult: scaleMult,
           baseUncached: 34_000,
           baseRead: 165_000,
@@ -368,7 +465,7 @@ export function buildDemoUsageResponse(
           baseReqs: 9,
           speedP50: 164,
           ttftP50Ms: 410,
-          prevRatio: 1.04,
+          prevRatio: 1.0,
           prevTtftRatio: 1.01,
         }),
       );
@@ -379,6 +476,7 @@ export function buildDemoUsageResponse(
           agent: Agent.CLAUDE,
           model: "claude-sonnet-5-5",
           cacheWriteSupported: true,
+          skipBuckets: todayGaps,
           mult: scaleMult,
           baseUncached: 22_000,
           baseRead: 98_000,
@@ -387,7 +485,7 @@ export function buildDemoUsageResponse(
           baseReqs: 6,
           speedP50: 102,
           ttftP50Ms: 680,
-          prevRatio: 0.96,
+          prevRatio: 0.85,
         }),
       );
     }
@@ -397,6 +495,7 @@ export function buildDemoUsageResponse(
           agent: Agent.CODEX,
           model: "gpt-5.3-legacy",
           cacheWriteSupported: false,
+          skipBuckets: todayGaps,
           mult: scaleMult,
           baseUncached: 8_000,
           baseRead: 24_000,
@@ -406,6 +505,24 @@ export function buildDemoUsageResponse(
           speedP50: 66,
           ttftP50Ms: 1_240,
           prevRatio: 1.12,
+        }),
+      );
+      series.push(
+        makeSeries(bounds, {
+          agent: Agent.CODEX,
+          model: "gpt-5.4-codex-mini",
+          cacheWriteSupported: false,
+          skipBuckets: todayGaps,
+          mult: scaleMult,
+          baseUncached: 1_800,
+          baseRead: 0,
+          baseWrite: 0,
+          baseOut: 600,
+          baseReqs: 2,
+          speedP50: 0,
+          ttftP50Ms: 0,
+          prevRatio: 0,
+          noCacheHit: true,
         }),
       );
     }

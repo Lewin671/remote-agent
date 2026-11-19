@@ -5,14 +5,19 @@ import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { create } from "@bufbuild/protobuf";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { clampUsageCustomRange, getCoreHost, localTzOffsetMinutes, routeForUsage, UsageMetricTab, UsageRangePreset } from "../core/host";
+import {
+  buildUsageOpenParams,
+  clampUsageCustomRange,
+  getCoreHost,
+  localTzOffsetMinutes,
+  routeForUsage,
+  UsageRangePreset,
+  UsageSortColumn,
+} from "../core/host";
 import { DemoRemote } from "../dev/demo";
 import { NewSessionNoticeViewSchema, NoticeActionKind, NoticeKind, NoticeSeverity, NewSessionViewModelSchema } from "../gen/remoteagent/core/v1/new_session_view_pb";
 import { ScheduleDetailViewModelSchema } from "../gen/remoteagent/core/v1/schedules_view_pb";
 import { TextSchema } from "../gen/remoteagent/core/v1/text_pb";
-import { UsageSeriesViewSchema } from "../gen/remoteagent/core/v1/usage_view_pb";
-import { UsagePeriodSummarySchema } from "../gen/remoteagent/v1/local_pb";
-import { seriesIsFewSamples } from "../usageChart";
 import {
   SessionActionsViewSchema,
   SessionHeaderViewSchema,
@@ -21,7 +26,13 @@ import {
 import { Agent } from "../gen/remoteagent/v1/event_pb";
 import { localeStore, t as message } from "../i18n";
 import { SessionSheet } from "../sheets";
-import { formatCacheHit, formatTokens, formatTtftDelta } from "../usageFormat";
+import {
+  formatCacheHit,
+  formatDeltaTriangle,
+  formatTokens,
+  formatTtftSeconds,
+  middleEllipsis,
+} from "../usageFormat";
 import { MachineStatusPage } from "./MachineStatus";
 import { NewBoxView } from "./NewSession";
 import { ScheduleDetailView, type ScheduleDetailActions } from "./Schedules";
@@ -81,16 +92,22 @@ describe("Phase 2 formatters and bounds", () => {
     expect(formatTokens(999_600, "en")).toBe("1M");
     expect(formatTokens(99_960_000, "zh-CN")).toBe("1亿");
     expect(formatTokens(3_480_000_000, "zh-CN")).toBe("34.8亿");
+    expect(formatTokens(12_860_000_000, "zh-CN")).toBe("128.6亿");
     expect(formatTokens(3_480_000_000, "en")).toBe("3.5B");
     expect(formatCacheHit(0.004)).toBe("0.4%");
     expect(formatCacheHit(0.884)).toBe("88%");
     expect(formatCacheHit(0.996)).toBe("99.6%");
-    expect(formatTtftDelta(520, 500, "zh-CN")).toBe(message("usage.flat"));
-    expect(formatTtftDelta(300, 500, "zh-CN")).toBe("−200 ms");
-    expect(formatTtftDelta(2_200, 1_000, "zh-CN")).toBe("+1.2 s");
+    expect(formatTtftSeconds(400)).toBe("0.4s");
+    expect(formatTtftSeconds(1_240)).toBe("1.2s");
+    expect(formatTtftSeconds(14_200)).toBe("14s");
+    expect(formatDeltaTriangle(1240, "zh-CN")).toBe("▲1,240%");
+    expect(formatDeltaTriangle(-72, "zh-CN")).toBe("▼72%");
+    expect(formatDeltaTriangle(0.2, "zh-CN")).toBe(message("usage.flat"));
+    expect(middleEllipsis("gemini-flash-workhorse-preview-2026-11-12", 24)).toContain("…");
+    expect(middleEllipsis("short-model", 24)).toBe("short-model");
   });
 
-  it("clamps custom date ranges to 90 days and reports east-of-UTC offset sign", () => {
+  it("clamps custom date ranges to 90 days, uses 28 6-hour buckets for 7d, and reports east-of-UTC offset sign", () => {
     const now = new Date(2026, 10, 18, 12, 0, 0).getTime();
     const veryOld = new Date(2026, 0, 1).getTime();
     const clamped = clampUsageCustomRange(BigInt(veryOld), BigInt(now + 10 * 86_400_000), now);
@@ -99,6 +116,11 @@ describe("Phase 2 formatters and bounds", () => {
     expect(Number(clamped.startMs)).toBe(minDay);
     expect(Number(clamped.endMs)).toBe(todayStart);
     expect(localTzOffsetMinutes(now)).toBe(-new Date(now).getTimezoneOffset());
+
+    const open7d = buildUsageOpenParams(UsageRangePreset.SEVEN_DAYS, 0n, 0n, now);
+    expect(open7d.bucketBoundsMs).toHaveLength(29);
+    const open30d = buildUsageOpenParams(UsageRangePreset.THIRTY_DAYS, 0n, 0n, now);
+    expect(open30d.bucketBoundsMs).toHaveLength(31);
   });
 });
 
@@ -310,59 +332,80 @@ describe("Per-machine CLI switches and entry points", () => {
 });
 
 describe("Usage & Output Speed screen", () => {
-  it("renders 4 metrics, composition bar, max-4 row overlay replacement, and en formatting", async () => {
+  it("renders all 4 metrics simultaneously, composition, sorting, single-model focus, scrub, and en formatting", async () => {
     const r = createDemo("usage=normal");
     await mountAsync(<UsagePage remote={r} machineId="mac" wide={true} go={() => undefined} onBack={() => undefined} />);
     await flushUi(10);
 
-    // Tokens tab initially active with stacked bars and composition bar
-    expect(hostEl.querySelectorAll(".u-bar1").length).toBeGreaterThan(0);
-    expect(hostEl.querySelector(".u-cbar")).toBeTruthy();
-    // Top 3 rows selected by default, 4th & 5th unselected
-    expect(hostEl.querySelectorAll(".u-tbl tbody tr:not(.off-s)")).toHaveLength(3);
-    expect(hostEl.querySelectorAll(".u-tbl tbody tr.off-s")).toHaveLength(2);
+    // 4 stacked charts (1 bar chart + 3 strips), composition rows, and 6-row table rendered simultaneously
+    expect(hostEl.querySelectorAll(".u-bar").length).toBeGreaterThan(0);
+    expect(hostEl.querySelectorAll(".u-strip")).toHaveLength(3);
+    expect(hostEl.querySelector(".u-comp")).toBeTruthy();
+    expect(hostEl.querySelector(".u-comp-row.in2")?.textContent).toContain(message("usage.comp_reasoning_label"));
+    expect(hostEl.querySelectorAll(".u-trow")).toHaveLength(6);
 
-    // Click 4th row -> 4 selected
-    const rows = [...hostEl.querySelectorAll<HTMLTableRowElement>(".u-tbl tbody tr")];
-    await act(async () => rows[3].click());
-    expect(hostEl.querySelectorAll(".u-tbl tbody tr:not(.off-s)")).toHaveLength(4);
+    // Row without speed samples renders en-dash
+    expect(hostEl.querySelector(".u-l2 .na")?.textContent).toBe("–");
 
-    // Click 5th row -> still 4 selected, 5th active and 4th replaced
-    await act(async () => rows[4].click());
-    const afterRows = [...hostEl.querySelectorAll<HTMLTableRowElement>(".u-tbl tbody tr")];
-    expect(afterRows[3].classList.contains("off-s")).toBe(true);
-    expect(afterRows[4].classList.contains("off-s")).toBe(false);
-
-    // Switch to Output Speed tab -> line SVG paths rendered
-    const speedTab = [...hostEl.querySelectorAll("button")].find((b) => b.textContent === message("usage.tab_speed"))!;
-    await act(async () => speedTab.click());
+    // Click TTFT column header -> sorts ascending (fastest first, missing last)
+    const ttftBtn = [...hostEl.querySelectorAll<HTMLButtonElement>(".u-thead button")].find((b) =>
+      b.textContent?.includes(message("usage.col_ttft")),
+    )!;
+    await act(async () => ttftBtn.click());
     await flushUi();
-    expect(hostEl.querySelectorAll(".u-l1").length).toBeGreaterThan(0);
+    expect(ttftBtn.textContent).toBe(`${message("usage.col_ttft")} ↑`);
+    const sortedModels = [...hostEl.querySelectorAll(".u-trow .nm")].map((n) => n.textContent);
+    expect(sortedModels[0]).toBe("gpt-5.4-mini");
+    expect(sortedModels[sortedModels.length - 1]).toBe("gpt-5.4-codex-mini");
 
-    // Switch to TTFT tab
-    const ttftTab = [...hostEl.querySelectorAll("button")].find((b) => b.textContent === message("usage.tab_ttft"))!;
-    await act(async () => ttftTab.click());
+    // Click a row -> selects single model (ghost bars, back sparkline, × button in scope)
+    const periodBigBeforeFocus = hostEl.querySelector(".u-big")?.textContent;
+    const targetRow = [...hostEl.querySelectorAll<HTMLButtonElement>(".u-trow")].find((b) =>
+      b.textContent?.includes("claude-opus-5-5"),
+    )!;
+    await act(async () => targetRow.click());
     await flushUi();
-    expect(hostEl.textContent).toContain(message("usage.col_ttft_median"));
+    expect(hostEl.querySelector(".u-scope .u-x")).toBeTruthy();
+    expect(hostEl.querySelectorAll(".u-bar.ghost").length).toBeGreaterThan(0);
+    expect(hostEl.querySelectorAll(".u-ln.back").length).toBeGreaterThan(0);
+    expect(hostEl.querySelector(".u-big")?.textContent).not.toBe(periodBigBeforeFocus);
 
-    // Switch locale to en -> k/M/B units
-    const backToTok = [...hostEl.querySelectorAll("button")].find((b) => b.textContent === message("usage.tab_tokens"))!;
-    await act(async () => backToTok.click());
+    // Keyboard scrub with ArrowRight then Escape
+    const chartsEl = hostEl.querySelector<HTMLDivElement>(".u-charts")!;
+    await act(async () => {
+      chartsEl.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowLeft", bubbles: true }));
+    });
+    await flushUi();
+    expect(hostEl.querySelector(".u-cursor")).toBeTruthy();
+    expect(hostEl.querySelector(".u-sub")?.textContent).toBe("");
+
+    await act(async () => {
+      chartsEl.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+    });
+    await flushUi();
+    expect(hostEl.querySelector(".u-cursor")).toBeNull();
+    expect(hostEl.querySelector(".u-sub")?.textContent).toContain("次");
+
+    // Clear selected model via × button
+    await act(async () => hostEl.querySelector<HTMLButtonElement>(".u-scope .u-x")!.click());
+    await flushUi();
+    expect(hostEl.querySelector(".u-scope .u-x")).toBeNull();
+    expect(hostEl.querySelector(".u-big")?.textContent).toBe(periodBigBeforeFocus);
+
+    // Switch locale to en -> k/M/B units and English strip labels
     await act(async () => localeStore.overrideForTesting("en"));
     await flushUi();
+    expect(hostEl.textContent).toContain("Cache hit");
+    expect(hostEl.textContent).toContain("Output speed");
     expect(hostEl.textContent).toMatch(/\d+(?:\.\d+)?[kMB]/);
   });
 
-  it("handles few-samples scatter-only mode and all edge states", async () => {
-    const rFew = createDemo("usage=few");
-    await mountAsync(<UsagePage remote={rFew} machineId="mac" go={() => undefined} onBack={() => undefined} />);
+  it("handles 20-model crowd, empty state, and all edge states", async () => {
+    const rCrowd = createDemo("usage=crowd");
+    await mountAsync(<UsagePage remote={rCrowd} machineId="mac" go={() => undefined} onBack={() => undefined} />);
     await flushUi(10);
-    const hitTab = [...hostEl.querySelectorAll("button")].find((b) => b.textContent === message("usage.tab_cache_hit"))!;
-    await act(async () => hitTab.click());
-    await flushUi();
-    expect(hostEl.querySelectorAll(".u-svg .u-l1")).toHaveLength(0);
-    expect(hostEl.querySelectorAll(".u-svg .u-m1").length).toBeGreaterThan(0);
-    expect(hostEl.textContent).toContain(message("usage.few_samples_hint"));
+    expect(hostEl.querySelectorAll(".u-trow")).toHaveLength(20);
+    expect(hostEl.querySelector(".u-big")?.textContent).toContain("亿");
 
     act(() => root?.unmount());
     hostEl.remove();
@@ -370,7 +413,11 @@ describe("Usage & Output Speed screen", () => {
     const rEmpty = createDemo("usage=empty");
     await mountAsync(<UsagePage remote={rEmpty} machineId="mac" go={() => undefined} onBack={() => undefined} />);
     await flushUi(10);
-    expect(hostEl.textContent).toContain(message("usage.empty_title"));
+    expect(hostEl.textContent).toContain(message("usage.empty_no_records"));
+    expect(hostEl.textContent).toContain(message("usage.scope_all_empty"));
+    expect(hostEl.querySelectorAll(".u-trow")).toHaveLength(0);
+    expect(hostEl.querySelectorAll(".u-strip")).toHaveLength(0);
+    expect(hostEl.querySelector(".u-axis")).toBeTruthy();
 
     act(() => root?.unmount());
     hostEl.remove();
@@ -416,25 +463,9 @@ describe("Usage & Output Speed screen", () => {
 
     // Sanity check CoreHost usage exports
     expect(routeForUsage("mac", Agent.CODEX, "gpt-6")).toBe("u/mac/1/gpt-6");
-    expect(UsageMetricTab.TOKENS).toBe(1);
+    expect(UsageSortColumn.TOKENS).toBe(1);
     expect(UsageRangePreset.SEVEN_DAYS).toBe(2);
     expect(getCoreHost(rOfflineNone)).toBeTruthy();
-
-    const agyZeroSpeed = create(UsageSeriesViewSchema, {
-      agent: Agent.ANTIGRAVITY,
-      agentName: "Antigravity",
-      model: "gemini-4-hydrogen",
-      seriesKey: "agy:gemini-4-hydrogen",
-      current: create(UsagePeriodSummarySchema, {
-        uncachedInputTokens: 30_000n,
-        cacheReadTokens: 70_000n,
-        outputTokens: 10_000n,
-        usageRequestCount: 5n,
-        speedRequestCount: 0n,
-      }),
-    });
-    expect(seriesIsFewSamples(agyZeroSpeed, UsageMetricTab.OUTPUT_SPEED)).toBe(false);
-    expect(seriesIsFewSamples(agyZeroSpeed, UsageMetricTab.TTFT)).toBe(false);
 
     act(() => root?.unmount());
     hostEl.remove();

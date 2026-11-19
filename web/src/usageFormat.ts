@@ -6,8 +6,8 @@ export function formatCommaUint(n: number | bigint): string {
   return Math.round(num).toLocaleString("en-US");
 }
 
-function formatScaled(val: number, unit: string): string {
-  if (val < 100) {
+function formatScaled(val: number, unit: string, maxOneDec = 100): string {
+  if (val < maxOneDec) {
     const rounded = Math.round(val * 10) / 10;
     const str = Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1);
     return str + unit;
@@ -28,9 +28,14 @@ export function formatTokens(n: number | bigint, locale: Locale = localeStore.sn
   const wan = t("usage.unit_wan", undefined, locale);
   const yi = t("usage.unit_yi", undefined, locale);
   if (val < 10_000) return formatCommaUint(val);
-  if (val < 99_950_000) return formatScaled(val / 10_000, wan);
+  if (val < 99_950_000) {
+    const w = val / 10_000;
+    if (w < 100) return formatScaled(w, wan, 100);
+    return formatCommaUint(Math.round(w)) + wan;
+  }
   if (val < 100_000_000) return "1" + yi;
-  return formatScaled(val / 100_000_000, yi);
+  if (val < 99_995_000_000) return formatScaled(val / 100_000_000, yi, 1000);
+  return formatCommaUint(Math.round(val / 100_000_000)) + yi;
 }
 
 export function formatCacheHit(rate: number): string {
@@ -54,32 +59,24 @@ export function formatSpeedValue(tokPerSec: number): string {
   return formatCommaUint(Math.round(tokPerSec));
 }
 
-export function formatTtftValue(ms: number): string {
-  if (!Number.isFinite(ms) || ms <= 0) return "0 ms";
-  if (ms < 1000) return `${Math.round(ms)} ms`;
-  if (ms < 10_000) return `${(Math.round(ms / 100) / 10).toFixed(1)} s`;
-  return `${Math.round(ms / 1000)} s`;
+export function formatTtftSeconds(ms: number): string {
+  if (!Number.isFinite(ms) || ms <= 0) return "0.0s";
+  if (ms < 10_000) {
+    const sec = Math.max(0.1, Math.round(ms / 100) / 10);
+    return `${sec.toFixed(1)}s`;
+  }
+  return `${Math.round(ms / 1000)}s`;
 }
 
-export function formatSignedPercent(pct: number, locale: Locale = localeStore.snapshot()): string {
+export function formatDeltaTriangle(pct: number, locale: Locale = localeStore.snapshot()): string {
   if (!Number.isFinite(pct) || Math.abs(pct) < 0.5) return t("usage.flat", undefined, locale);
-  const r = Math.round(pct);
-  return r > 0 ? `+${r}%` : `−${Math.abs(r)}%`;
+  const rounded = Math.round(Math.abs(pct));
+  return `${pct > 0 ? "▲" : "▼"}${formatCommaUint(rounded)}%`;
 }
 
-export function formatSignedPoints(pts: number, locale: Locale = localeStore.snapshot()): string {
-  if (!Number.isFinite(pts) || Math.abs(pts) < 0.5) return t("usage.flat", undefined, locale);
-  const r = Math.round(pts);
-  return r > 0 ? `+${r} pt` : `−${Math.abs(r)} pt`;
-}
-
-export function formatTtftDelta(curMs: number, prevMs: number, locale: Locale = localeStore.snapshot()): string {
-  if (!Number.isFinite(curMs) || !Number.isFinite(prevMs) || prevMs <= 0) return "—";
-  const diff = curMs - prevMs;
-  if (Math.abs(diff) < 50) return t("usage.flat", undefined, locale);
-  const sign = diff > 0 ? "+" : "−";
-  const abs = Math.abs(diff);
-  if (abs < 1000) return `${sign}${Math.round(abs)} ms`;
-  if (abs < 10_000) return `${sign}${(Math.round(abs / 100) / 10).toFixed(1)} s`;
-  return `${sign}${Math.round(abs / 1000)} s`;
+export function middleEllipsis(name: string, max = 38): string {
+  if (name.length <= max || max < 8) return name;
+  const tail = Math.min(12, Math.max(4, Math.floor((max - 3) / 3)));
+  const head = max - tail - 1;
+  return `${name.slice(0, head)}…${name.slice(-tail)}`;
 }

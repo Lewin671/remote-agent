@@ -1,5 +1,5 @@
 import { create, fromBinary, toBinary } from "@bufbuild/protobuf";
-import { useCallback, useEffect, useMemo, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useMemo, useRef, useSyncExternalStore } from "react";
 import type { Tray, TrayItem } from "../attach";
 import { newRequestID } from "../crypto";
 import * as l10n from "../i18n";
@@ -176,10 +176,13 @@ import {
 } from "../gen/remoteagent/core/v1/settings_view_pb";
 import {
   UsageCacheLoadedEventSchema,
-  UsageMetricTab,
   UsageScreenOpenEventSchema,
   UsageScreenRequestSchema,
   UsageScreenRetryEventSchema,
+  UsageScreenScrubEventSchema,
+  UsageScreenSelectSeriesEventSchema,
+  UsageScreenSelectSortEventSchema,
+  UsageSortColumn,
   type UsageViewModel,
 } from "../gen/remoteagent/core/v1/usage_view_pb";
 import type { SyncStateView } from "../gen/remoteagent/core/v1/sync_view_pb";
@@ -489,7 +492,7 @@ export function buildUsageOpenParams(
       bounds.push(BigInt(cur));
     }
     bounds.push(BigInt(endMs));
-  } else if (numDays <= 3) {
+  } else if (numDays <= 7) {
     let day = new Date(startDayDate.getFullYear(), startDayDate.getMonth(), startDayDate.getDate());
     while (day.getTime() < endExclDate.getTime()) {
       const nextDay = new Date(day.getFullYear(), day.getMonth(), day.getDate() + 1);
@@ -1357,7 +1360,13 @@ export class CoreHost {
     }
   }
 
-  openUsageScreen(machineId: string, preset: UsageRangePreset, customStartMs = 0n, customEndMs = 0n) {
+  openUsageScreen(
+    machineId: string,
+    preset: UsageRangePreset,
+    customStartMs = 0n,
+    customEndMs = 0n,
+    opts?: { applyFocus?: boolean; focusAgent?: Agent; focusModel?: string },
+  ) {
     if (!machineId || this.closed) return;
     this.hydrateUsageCache(machineId);
     const params = buildUsageOpenParams(preset, customStartMs, customEndMs);
@@ -1372,6 +1381,9 @@ export class CoreHost {
         tzOffsetMinutes: params.tzOffsetMinutes,
         bucketBoundsMs: params.bucketBoundsMs,
         prevStartMs: params.prevStartMs,
+        applyFocus: opts?.applyFocus ?? false,
+        focusAgent: opts?.focusAgent ?? (0 as Agent),
+        focusModel: opts?.focusModel ?? "",
       }),
     });
   }
@@ -1379,6 +1391,33 @@ export class CoreHost {
   retryUsageScreen(machineId: string) {
     if (machineId && !this.closed) {
       this.emit({ case: "usageScreenRetry", value: create(UsageScreenRetryEventSchema, { machineId }) });
+    }
+  }
+
+  selectUsageSort(machineId: string, sortBy: UsageSortColumn) {
+    if (machineId && !this.closed) {
+      this.emit({
+        case: "usageScreenSelectSort",
+        value: create(UsageScreenSelectSortEventSchema, { machineId, sortBy }),
+      });
+    }
+  }
+
+  selectUsageSeries(machineId: string, seriesKey: string, toggle = true) {
+    if (machineId && !this.closed) {
+      this.emit({
+        case: "usageScreenSelectSeries",
+        value: create(UsageScreenSelectSeriesEventSchema, { machineId, seriesKey, toggle }),
+      });
+    }
+  }
+
+  scrubUsage(machineId: string, bucketIndex: number, clear = false) {
+    if (machineId && !this.closed) {
+      this.emit({
+        case: "usageScreenScrub",
+        value: create(UsageScreenScrubEventSchema, { machineId, bucketIndex, clear }),
+      });
     }
   }
 
@@ -1676,15 +1715,13 @@ export class CoreHost {
     preset?: UsageRangePreset;
     customStartMs?: bigint;
     customEndMs?: bigint;
-    metric?: UsageMetricTab;
   }): UsageViewModel {
     const ver = this.version(ScreenTarget.USAGE);
     const preset = !req.preset ? UsageRangePreset.SEVEN_DAYS : req.preset;
     const clamped = preset === UsageRangePreset.CUSTOM ? clampUsageCustomRange(req.customStartMs ?? 0n, req.customEndMs ?? 0n) : { startMs: 0n, endMs: 0n };
-    const metric = !req.metric ? UsageMetricTab.TOKENS : req.metric;
     const focusAgent = req.focusAgent ?? (0 as Agent);
     const focusModel = req.focusModel ?? "";
-    const cacheKey = `${req.machineId}:${focusAgent}:${focusModel}:${preset}:${clamped.startMs}:${clamped.endMs}:${metric}`;
+    const cacheKey = `${req.machineId}:${focusAgent}:${focusModel}:${preset}:${clamped.startMs}:${clamped.endMs}`;
     const cached = this.usageCache.get(cacheKey);
     if (cached?.version === ver) return cached.vm;
     const vm = this.readView<UsageViewModel>("usage", {
@@ -1696,7 +1733,6 @@ export class CoreHost {
         preset,
         customStartMs: clamped.startMs,
         customEndMs: clamped.endMs,
-        metric,
       }),
     });
     this.usageCache.set(cacheKey, { version: ver, vm });
@@ -2546,15 +2582,23 @@ export function useUsageView(
     preset?: UsageRangePreset;
     customStartMs?: bigint;
     customEndMs?: bigint;
-    metric?: UsageMetricTab;
   },
 ): UsageViewModel {
   const preset = !req.preset ? UsageRangePreset.SEVEN_DAYS : req.preset;
   const customStartMs = req.customStartMs ?? 0n;
   const customEndMs = req.customEndMs ?? 0n;
+  const appliedFocusRef = useRef("");
+  const focusSig = `${req.machineId}:${req.focusAgent ?? 0}:${req.focusModel ?? ""}`;
   useEffect(() => {
-    if (req.machineId) host.openUsageScreen(req.machineId, preset, customStartMs, customEndMs);
-  }, [host, req.machineId, preset, customStartMs, customEndMs]);
+    if (!req.machineId) return;
+    const applyFocus = appliedFocusRef.current !== focusSig;
+    appliedFocusRef.current = focusSig;
+    host.openUsageScreen(req.machineId, preset, customStartMs, customEndMs, {
+      applyFocus,
+      focusAgent: req.focusAgent,
+      focusModel: req.focusModel,
+    });
+  }, [host, focusSig, req.machineId, req.focusAgent, req.focusModel, preset, customStartMs, customEndMs]);
   const version = useScreenVersion(host, ScreenTarget.USAGE);
   return useMemo(
     () =>
@@ -2565,9 +2609,8 @@ export function useUsageView(
         preset,
         customStartMs,
         customEndMs,
-        metric: req.metric,
       }),
-    [host, version, req.machineId, req.focusAgent, req.focusModel, preset, customStartMs, customEndMs, req.metric],
+    [host, version, req.machineId, req.focusAgent, req.focusModel, preset, customStartMs, customEndMs],
   );
 }
 
@@ -2590,6 +2633,6 @@ export {
   NotificationPermissionState,
   PushRegistrationState,
   ThemePreference,
-  UsageMetricTab,
   UsageRangePreset,
+  UsageSortColumn,
 };

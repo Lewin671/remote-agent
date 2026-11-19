@@ -1,219 +1,209 @@
-import type { Locale } from "./i18n";
-import { UsageMetricTab as Metric } from "./gen/remoteagent/core/v1/usage_view_pb";
-import type { UsageMetricTab, UsageSeriesView } from "./gen/remoteagent/core/v1/usage_view_pb";
-import { UsageBucketGranularity, type UsageBucketPoint } from "./gen/remoteagent/v1/local_pb";
-import { formatSpeedValue, formatTokens, formatTtftValue } from "./usageFormat";
+import { t, type Locale } from "./i18n";
+import type { UsageBarBucketView, UsageStripPointView } from "./gen/remoteagent/core/v1/usage_view_pb";
+import { UsageBucketGranularity, UsageRangePreset } from "./gen/remoteagent/v1/local_pb";
 
-export const MAX_OVERLAY_SERIES = 4;
-export const DEFAULT_OVERLAY_SERIES = 3;
-const FEW_SAMPLES_MIN = 3n;
-
-export function bucketTokens(b: UsageBucketPoint): number {
-  return Number(b.uncachedInputTokens + b.cacheReadTokens + b.cacheWriteTokens + b.outputTokens);
+export interface StripPaths {
+  d: string;
+  dots: Array<{ x: number; y: number }>;
+  coords: Array<{ x: number; y: number } | null>;
 }
 
-export function seriesTotalTokens(s: UsageSeriesView): number {
-  const c = s.current;
-  if (!c) return 0;
-  return Number(c.uncachedInputTokens + c.cacheReadTokens + c.cacheWriteTokens + c.outputTokens);
-}
-
-export function bucketCacheHit(b: UsageBucketPoint): number | null {
-  const denom = Number(b.uncachedInputTokens + b.cacheReadTokens + b.cacheWriteTokens);
-  if (denom <= 0) return null;
-  return Number(b.cacheReadTokens) / denom;
-}
-
-export function bucketHasSpeed(b: UsageBucketPoint): boolean {
-  return b.speedRequestCount > 0n && b.speedP50 > 0;
-}
-
-export function bucketHasTtft(b: UsageBucketPoint): boolean {
-  return b.speedRequestCount > 0n && b.ttftP50Ms > 0;
-}
-
-export function seriesIsFewSamples(s: UsageSeriesView, metric: UsageMetricTab): boolean {
-  if (metric === Metric.TOKENS) return false;
-  if (metric === Metric.CACHE_HIT) {
-    const n = s.current?.usageRequestCount ?? 0n;
-    return n > 0n && n < FEW_SAMPLES_MIN;
+export function buildStripPaths(
+  points: readonly UsageStripPointView[],
+  scaleMin: number,
+  scaleMax: number,
+  width: number,
+  height: number,
+): StripPaths {
+  const n = points.length;
+  if (n === 0 || width <= 0 || height <= 0) {
+    return { d: "", dots: [], coords: [] };
   }
-  const n = s.current?.speedRequestCount ?? 0n;
-  return s.fewSpeedSamples || (n > 0n && n < FEW_SAMPLES_MIN);
-}
-
-export function formatDateLabel(ms: bigint, gran: UsageBucketGranularity): string {
-  const d = new Date(Number(ms));
-  if (gran === UsageBucketGranularity.HOUR) {
-    return `${String(d.getHours()).padStart(2, "0")}:00`;
-  }
-  return `${d.getMonth() + 1}/${d.getDate()}`;
-}
-
-export type ChartTick = { y: number; label: string };
-export type BarSegment = { slot: number; y: number; h: number; key: string; val: number };
-export type BarColumn = { bi: number; cx: number; bx: number; barW: number; total: number; segments: BarSegment[] };
-export type LinePt = { bi: number; x: number; y: number; lowY?: number; highY?: number; val: number };
-export type LineSeriesGeom = {
-  series: UsageSeriesView;
-  slot: number;
-  few: boolean;
-  linePaths: string[];
-  bandPolygons: string[];
-  points: LinePt[];
-};
-
-export type BuiltChart =
-  | { kind: "bars"; xW: number; y0: number; yH: number; base: number; step: number; yTicks: ChartTick[]; bars: BarColumn[]; xLabels: string[] }
-  | { kind: "lines"; xW: number; y0: number; yH: number; base: number; xAt: (bi: number) => number; yTicks: ChartTick[]; lines: LineSeriesGeom[]; xLabels: string[] };
-
-export function buildUsageChart(
-  selectedSeries: UsageSeriesView[],
-  bucketCount: number,
-  metric: UsageMetricTab,
-  granularity: UsageBucketGranularity,
-  locale: Locale,
-): BuiltChart | null {
-  const x0 = 0;
-  const xW = 294;
-  const y0 = 10;
-  const yH = 128;
-  const base = y0 + yH;
-
-  if (bucketCount <= 0 || selectedSeries.length === 0) return null;
-
-  const firstBuckets = selectedSeries[0].buckets;
-  const xLabels =
-    firstBuckets.length > 0
-      ? [
-          formatDateLabel(firstBuckets[0].startMs, granularity),
-          formatDateLabel(firstBuckets[Math.floor((firstBuckets.length - 1) / 2)].startMs, granularity),
-          formatDateLabel(firstBuckets[firstBuckets.length - 1].startMs, granularity),
-        ]
-      : [];
-
-  if (metric === Metric.TOKENS) {
-    const totals = Array.from({ length: bucketCount }, (_, bi) =>
-      selectedSeries.reduce((acc, s) => acc + (s.buckets[bi] ? bucketTokens(s.buckets[bi]) : 0), 0),
-    );
-    const maxVal = Math.max(1, ...totals);
-    const yMax = Math.ceil(maxVal * 1.12);
-    const yTicks: ChartTick[] = [yMax, Math.round(yMax / 2), 0].map((v, idx) => ({
-      y: idx === 0 ? y0 : idx === 1 ? y0 + yH / 2 : base,
-      label: v === 0 ? "0" : formatTokens(v, locale),
-    }));
-    const step = xW / Math.max(1, bucketCount);
-    const barW = Math.max(3, Math.min(18, step * 0.62));
-    const bars: BarColumn[] = Array.from({ length: bucketCount }, (_, bi) => {
-      const cx = x0 + (bi + 0.5) * step;
-      const bx = cx - barW / 2;
-      let curY = base;
-      const segments: BarSegment[] = [];
-      for (let si = 0; si < selectedSeries.length; si++) {
-        const s = selectedSeries[si];
-        const b = s.buckets[bi];
-        const val = b ? bucketTokens(b) : 0;
-        if (val <= 0) continue;
-        const h = Math.max(1.5, (val / yMax) * yH);
-        curY -= h;
-        segments.push({ slot: si, y: curY, h, key: s.seriesKey, val });
-      }
-      return { bi, cx, bx, barW, total: totals[bi], segments };
-    });
-    return { kind: "bars", xW, y0, yH, base, step, yTicks, bars, xLabels };
-  }
-
-  let maxY = metric === Metric.CACHE_HIT ? 100 : 10;
-  if (metric !== Metric.CACHE_HIT) {
-    let peak = 0;
-    for (const s of selectedSeries) {
-      const few = seriesIsFewSamples(s, metric);
-      for (const b of s.buckets) {
-        if (metric === Metric.OUTPUT_SPEED && bucketHasSpeed(b)) {
-          peak = Math.max(peak, !few && b.speedP90 > 0 ? b.speedP90 : b.speedP50);
-        } else if (metric === Metric.TTFT && bucketHasTtft(b)) {
-          peak = Math.max(peak, !few && b.ttftP90Ms > 0 ? b.ttftP90Ms : b.ttftP50Ms);
-        }
-      }
-    }
-    maxY = Math.max(metric === Metric.TTFT ? 200 : 10, Math.ceil(peak * 1.15));
-  }
-
-  const yTicks: ChartTick[] =
-    metric === Metric.CACHE_HIT
-      ? [100, 50, 0].map((v, idx) => ({ y: idx === 0 ? y0 : idx === 1 ? y0 + yH / 2 : base, label: `${v}%` }))
-      : [maxY, maxY / 2, 0].map((v, idx) => ({
-          y: idx === 0 ? y0 : idx === 1 ? y0 + yH / 2 : base,
-          label: v === 0 ? "0" : metric === Metric.TTFT ? formatTtftValue(v) : formatSpeedValue(v),
-        }));
-
-  const xAt = (bi: number) => (bucketCount <= 1 ? xW / 2 : x0 + (bi / (bucketCount - 1)) * xW);
-  const yAt = (v: number) => base - Math.max(0, Math.min(1, v / maxY)) * yH;
-
-  const lines: LineSeriesGeom[] = selectedSeries.map((s, slot) => {
-    const few = seriesIsFewSamples(s, metric);
-    const segments: LinePt[][] = [];
-    let curSeg: LinePt[] = [];
-    for (let bi = 0; bi < bucketCount; bi++) {
-      const b = s.buckets[bi];
-      let val: number | null = null;
-      let low: number | null = null;
-      let high: number | null = null;
-      if (b) {
-        if (metric === Metric.CACHE_HIT) {
-          const r = bucketCacheHit(b);
-          if (r !== null) val = r * 100;
-        } else if (metric === Metric.OUTPUT_SPEED && bucketHasSpeed(b)) {
-          val = b.speedP50;
-          if (!few && b.speedP10 > 0 && b.speedP90 >= b.speedP10) {
-            low = b.speedP10;
-            high = b.speedP90;
-          }
-        } else if (metric === Metric.TTFT && bucketHasTtft(b)) {
-          val = b.ttftP50Ms;
-          if (!few && b.ttftP10Ms > 0 && b.ttftP90Ms >= b.ttftP10Ms) {
-            low = b.ttftP10Ms;
-            high = b.ttftP90Ms;
-          }
-        }
-      }
-      if (val === null) {
-        if (curSeg.length > 0) {
-          segments.push(curSeg);
-          curSeg = [];
-        }
-      } else {
-        curSeg.push({
-          bi,
-          x: xAt(bi),
-          y: yAt(val),
-          lowY: low !== null ? yAt(low) : undefined,
-          highY: high !== null ? yAt(high) : undefined,
-          val,
-        });
-      }
-    }
-    if (curSeg.length > 0) segments.push(curSeg);
-
-    const linePaths = few
-      ? []
-      : segments
-          .filter((seg) => seg.length >= 2)
-          .map((seg) => seg.map((p, idx) => `${idx === 0 ? "M" : "L"}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" "));
-
-    const bandPolygons =
-      few || slot >= 3 || metric === Metric.CACHE_HIT
-        ? []
-        : segments
-            .filter((seg) => seg.length >= 2 && seg.every((p) => p.lowY !== undefined && p.highY !== undefined))
-            .map((seg) => {
-              const top = seg.map((p) => `${p.x.toFixed(1)},${p.highY!.toFixed(1)}`);
-              const bot = [...seg].reverse().map((p) => `${p.x.toFixed(1)},${p.lowY!.toFixed(1)}`);
-              return [...top, ...bot].join(" ");
-            });
-
-    return { series: s, slot, few, linePaths, bandPolygons, points: segments.flat() };
+  const span = Math.max(scaleMax - scaleMin, 1e-9);
+  const innerH = Math.max(1, height - 6);
+  const coords = points.map((pt, i) => {
+    if (!pt.hasValue) return null;
+    const x = ((i + 0.5) / n) * width;
+    const y = height - 3 - ((pt.value - scaleMin) / span) * innerH;
+    return { x, y };
   });
 
-  return { kind: "lines", xW, y0, yH, base, xAt, yTicks, lines, xLabels };
+  let d = "";
+  const dots: Array<{ x: number; y: number }> = [];
+  let pen = false;
+  for (let i = 0; i < coords.length; i++) {
+    const c = coords[i];
+    if (!c) {
+      pen = false;
+      continue;
+    }
+    const prev = i > 0 ? coords[i - 1] : null;
+    const next = i + 1 < coords.length ? coords[i + 1] : null;
+    if (!prev && !next) {
+      dots.push(c);
+      pen = false;
+      continue;
+    }
+    d += `${pen ? "L" : "M"}${c.x.toFixed(1)} ${c.y.toFixed(1)}`;
+    pen = true;
+  }
+  return { d, dots, coords };
+}
+
+export interface UsageAxisTick {
+  pct: number;
+  label: string;
+  align: "s" | "" | "e";
+}
+
+function fmtMonthDay(dt: Date): string {
+  return [dt.getMonth() + 1, dt.getDate()].join("/");
+}
+
+function effectiveGranularity(granularity: UsageBucketGranularity, preset: UsageRangePreset): UsageBucketGranularity {
+  if (granularity !== UsageBucketGranularity.UNSPECIFIED) return granularity;
+  if (preset === UsageRangePreset.TODAY) return UsageBucketGranularity.HOUR;
+  if (preset === UsageRangePreset.SEVEN_DAYS) return UsageBucketGranularity.SIX_HOURS;
+  return UsageBucketGranularity.DAY;
+}
+
+export function buildUsageAxisTicks(
+  granularity: UsageBucketGranularity,
+  buckets: readonly UsageBarBucketView[],
+  startMs: bigint,
+  endMs: bigint,
+  preset: UsageRangePreset,
+  locale: Locale,
+): UsageAxisTick[] {
+  const gran = effectiveGranularity(granularity, preset);
+  if (gran === UsageBucketGranularity.HOUR) {
+    return [
+      { pct: 0, label: "0", align: "s" },
+      { pct: 25, label: "6", align: "" },
+      { pct: 50, label: "12", align: "" },
+      { pct: 75, label: "18", align: "" },
+      { pct: 100, label: t("usage.axis_24h", undefined, locale), align: "e" },
+    ];
+  }
+
+  const now = new Date();
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  const fallbackDays = preset === UsageRangePreset.THIRTY_DAYS ? 30 : 7;
+  const effStartMs =
+    startMs > 0n
+      ? Number(startMs)
+      : buckets.length > 0 && buckets[0].startMs > 0n
+        ? Number(buckets[0].startMs)
+        : todayStart - (fallbackDays - 1) * 86_400_000;
+
+  if (gran === UsageBucketGranularity.SIX_HOURS) {
+    const n = buckets.length > 0 ? buckets.length : 28;
+    const days = Math.max(1, Math.round(n / 4));
+    const ticks: UsageAxisTick[] = [];
+    let prevMonth = -1;
+    for (let d = 0; d < days; d++) {
+      const idx = d * 4;
+      const ms = idx < buckets.length && buckets[idx].startMs > 0n ? Number(buckets[idx].startMs) : effStartMs + d * 86_400_000;
+      const dt = new Date(ms);
+      const m = dt.getMonth() + 1;
+      const day = dt.getDate();
+      const tickLabel = d === 0 || m !== prevMonth ? fmtMonthDay(dt) : String(day);
+      prevMonth = m;
+      ticks.push({
+        pct: ((d * 4 + 2) / n) * 100,
+        label: tickLabel,
+        align: "",
+      });
+    }
+    return ticks;
+  }
+
+  const derivedDays =
+    endMs > startMs && startMs > 0n
+      ? Math.max(1, Math.round((Number(endMs) - Number(startMs)) / 86_400_000))
+      : fallbackDays;
+  const n = buckets.length > 0 ? buckets.length : derivedDays;
+  if (n <= 1) {
+    const dt = new Date(effStartMs);
+    return [{ pct: 50, label: fmtMonthDay(dt), align: "" }];
+  }
+
+  const lastMs =
+    buckets.length > 0 && buckets[buckets.length - 1].startMs > 0n
+      ? Number(buckets[buckets.length - 1].startMs)
+      : endMs > 0n
+        ? Number(endMs) - 1
+        : effStartMs + (n - 1) * 86_400_000;
+
+  const tickCount = n <= 4 ? n : n <= 18 ? 4 : 5;
+  const ticks: UsageAxisTick[] = [];
+  for (let k = 0; k < tickCount; k++) {
+    const last = k === tickCount - 1;
+    const posIdx = last ? n : Math.round((k * n) / (tickCount - 1));
+    let ms: number;
+    if (last) {
+      ms = lastMs;
+    } else if (posIdx < buckets.length && buckets[posIdx].startMs > 0n) {
+      ms = Number(buckets[posIdx].startMs);
+    } else {
+      ms = effStartMs + posIdx * 86_400_000;
+    }
+    const dt = new Date(ms);
+    ticks.push({
+      pct: (posIdx / n) * 100,
+      label: fmtMonthDay(dt),
+      align: k === 0 ? "s" : last ? "e" : "",
+    });
+  }
+  return ticks;
+}
+
+export function formatUsageBucketLabel(
+  startMs: bigint,
+  endMs: bigint,
+  granularity: UsageBucketGranularity,
+  locale: Locale,
+): string {
+  const s = new Date(Number(startMs));
+  const e = new Date(Number(endMs > startMs ? endMs : startMs + 3_600_000n));
+  const startH = s.getHours();
+  let endH = e.getHours();
+  if (endH <= startH && endMs > startMs) endH = 24;
+  if (granularity === UsageBucketGranularity.HOUR) {
+    return t("usage.scrub_hour_range", { start: startH, end: endH }, locale);
+  }
+  if (granularity === UsageBucketGranularity.SIX_HOURS) {
+    return t(
+      "usage.scrub_day_hour_range",
+      { month: s.getMonth() + 1, day: s.getDate(), start: startH, end: endH },
+      locale,
+    );
+  }
+  return t("usage.scrub_day", { month: s.getMonth() + 1, day: s.getDate() }, locale);
+}
+
+export function formatUsageCustomRange(startMs: bigint, inclusiveEndMs: bigint, locale: Locale): string {
+  const s = new Date(Number(startMs));
+  const e = new Date(Number(inclusiveEndMs));
+  const sy = s.getFullYear();
+  const sm = s.getMonth() + 1;
+  const sd = s.getDate();
+  const ey = e.getFullYear();
+  const em = e.getMonth() + 1;
+  const ed = e.getDate();
+  if (sy === ey && sm === em && sd === ed) {
+    return t("usage.custom_range_single_day", { year: sy, month: sm, day: sd }, locale);
+  }
+  if (sy === ey) {
+    return t(
+      "usage.custom_range_same_year",
+      { year: sy, startMonth: sm, startDay: sd, endMonth: em, endDay: ed },
+      locale,
+    );
+  }
+  return t(
+    "usage.custom_range_cross_year",
+    { startYear: sy, startMonth: sm, startDay: sd, endYear: ey, endMonth: em, endDay: ed },
+    locale,
+  );
 }
