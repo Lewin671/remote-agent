@@ -4583,5 +4583,95 @@
     "path": "android/app/src/main/java/io/github/lewin671/remoteagent/ui/Chat.kt",
     "literal": "receipt-chevron",
     "reason": "Compose animation debug label, never rendered to users."
+  },
+  {
+    "path": "clientcore/screens/session.go",
+    "literal": "image_not_recognized",
+    "reason": "Daemon raw failure code matched in switch statement, never rendered directly."
+  },
+  {
+    "path": "ios/RemoteAgent/UI/Session/PendingTrayView.swift",
+    "literal": "chevron.down",
+    "reason": "SF Symbol system icon name passed to Image(systemName:), never rendered as text."
+  },
+  {
+    "path": "ios/RemoteAgent/UI/Session/PendingTrayView.swift",
+    "literal": "chevron.up",
+    "reason": "SF Symbol system icon name passed to Image(systemName:), never rendered as text."
+  },
+  {
+    "path": "ios/RemoteAgent/UI/Session/PendingTrayView.swift",
+    "literal": "xmark",
+    "reason": "SF Symbol system icon name passed to Image(systemName:), never rendered as text."
+  },
+  {
+    "path": "android/app/src/main/java/io/github/lewin671/remoteagent/ui/ComposeBox.kt",
+    "literal": "later-press",
+    "reason": "Compose animation debug label for press feedback, never displayed to users."
+  },
+  {
+    "path": "web/src/views/Queue.tsx",
+    "literal": "button",
+    "reason": "HTML button type attribute value, never displayed to users."
+  },
+  {
+    "path": "web/src/views/Queue.tsx",
+    "literal": "void; rowRefs?: MutableRefObject",
+    "reason": "Lexical JSX scanner false positive: TypeScript type signature between angle brackets, not rendered text."
+  },
+  {
+    "path": "web/src/views/Queue.tsx",
+    "literal": "it.requestId)); return (",
+    "reason": "Lexical JSX scanner false positive: TypeScript/JSX control flow between angle brackets, not rendered text."
+  },
+  {
+    "path": "web/src/views/Queue.tsx",
+    "literal": "visibleIDs.has(it.requestId)); if (visibleItems.length === 0) return null; const gTone = toneClass(group.tone); return (",
+    "reason": "Lexical JSX scanner false positive: TypeScript/JSX control flow between angle brackets, not rendered text."
+  },
+  {
+    "path": "web/src/views/Queue.tsx",
+    "literal": "(prev === id ? null : id)); const hasExpandOpts = isOpen && it.activity === SessionTrayRowActivity.IDLE && (it.canPromote || it.canRestore); return (",
+    "reason": "Lexical JSX scanner false positive: TypeScript/JSX control flow between angle brackets, not rendered text."
+  },
+  {
+    "path": "web/src/views/Queue.tsx",
+    "literal": ") : it.activity === SessionTrayRowActivity.SENDING ? (",
+    "reason": "Lexical JSX scanner false positive: TypeScript/JSX conditional expression between angle brackets, not rendered text."
+  },
+  {
+    "path": "web/src/views/Queue.tsx",
+    "literal": ") : it.canIgnore ? (",
+    "reason": "Lexical JSX scanner false positive: TypeScript/JSX conditional expression between angle brackets, not rendered text."
+  },
+  {
+    "path": "web/src/views/Session.tsx",
+    "literal": "(); const [colRef, colHeight] = useHeight(); const colNodeRef = useRef",
+    "reason": "Lexical JSX scanner false positive: TypeScript generic type brackets around hook code, not rendered text."
+  },
+  {
+    "path": "web/src/views/Session.tsx",
+    "literal": "()); const prevTraySnapRef = useRef",
+    "reason": "Lexical JSX scanner false positive: TypeScript generic type brackets around hook code, not rendered text."
+  },
+  {
+    "path": "web/src/views/Session.tsx",
+    "literal": "([]); const prevUserIDsRef = useRef",
+    "reason": "Lexical JSX scanner false positive: TypeScript generic type brackets around hook code, not rendered text."
+  },
+  {
+    "path": "web/src/views/Session.tsx",
+    "literal": "(); const newUserMsgs: Array",
+    "reason": "Lexical JSX scanner false positive: TypeScript generic type brackets around code, not rendered text."
+  },
+  {
+    "path": "web/src/views/Session.tsx",
+    "literal": "!activeTrayIDs.has(s.id) && ((msg.reqId && s.id === msg.reqId) || (!msg.reqId && msg.text && s.text === msg.text)), ); if (!snap) continue; const msgEl = colEl.querySelector",
+    "reason": "Lexical JSX scanner false positive: TypeScript expression between arrow/generic brackets, not rendered text."
+  },
+  {
+    "path": "web/src/views/Composer.tsx",
+    "literal": "void; tray?: Tray; trayView?: ReactNode; pendingTray?: ReactNode; attach?: ReactNode; cardProps?: HTMLAttributes",
+    "reason": "Lexical JSX scanner false positive: TypeScript prop type signature between angle brackets, not rendered text."
   }
 ]

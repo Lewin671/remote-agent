@@ -335,54 +335,84 @@ message SessionTerminalPopupDockView {
   bool can_go_terminal = 3;
 }
 
-enum SessionOutgoingState {
-  SESSION_OUTGOING_STATE_UNSPECIFIED = 0;
-  SESSION_OUTGOING_STATE_SENDING = 1;
-  SESSION_OUTGOING_STATE_SENT = 2;
-  SESSION_OUTGOING_STATE_FAILED = 3;
-  SESSION_OUTGOING_STATE_UNKNOWN = 4;
+enum SessionTrayGroupKind {
+  SESSION_TRAY_GROUP_KIND_UNSPECIFIED = 0;
+  SESSION_TRAY_GROUP_KIND_FAILED = 1;
+  SESSION_TRAY_GROUP_KIND_UNSURE = 2;
+  SESSION_TRAY_GROUP_KIND_WAIT_READY = 3;
+  SESSION_TRAY_GROUP_KIND_WAIT_ANSWER = 4;
+  SESSION_TRAY_GROUP_KIND_STEER = 5;
+  SESSION_TRAY_GROUP_KIND_QUEUE = 6;
+  SESSION_TRAY_GROUP_KIND_PAUSED = 7;
 }
 
-message SessionPendingInputView {
-  string request_id = 1;
-  string text = 2;
-  int32 image_count = 3;
-  int32 file_count = 4;
-  remoteagent.v1.SendMode mode = 5;
-  remoteagent.v1.InputStatus status = 6;
-  bool held = 7;
-  bool paused = 8;
-  int32 rank = 9;
-  int32 total_pending = 10;
-  Text label = 11;
-  Text caption = 12;
-  Text origin_label = 13;
-  string scheduled_run_id = 14;
-  bool can_cancel = 15;
-  bool can_resume = 16;
-  SessionCommandState cancel = 17;
-  SessionCommandState resume = 18;
-  Text feedback = 19;
-  bool feedback_uncertain = 20;
+enum SessionTrayTone {
+  SESSION_TRAY_TONE_UNSPECIFIED = 0;
+  SESSION_TRAY_TONE_NEUTRAL = 1;
+  SESSION_TRAY_TONE_RED = 2;
+  SESSION_TRAY_TONE_ORANGE = 3;
 }
 
-message SessionOutgoingView {
+enum SessionTrayRowActivity {
+  SESSION_TRAY_ROW_ACTIVITY_UNSPECIFIED = 0;
+  SESSION_TRAY_ROW_ACTIVITY_IDLE = 1;
+  SESSION_TRAY_ROW_ACTIVITY_SENDING = 2;
+  SESSION_TRAY_ROW_ACTIVITY_CANCELING = 3;
+}
+
+message SessionTrayItemView {
   string request_id = 1;
   string slot_key = 2;
-  string text = 3;
-  repeated string image_ids = 4;
-  repeated string file_ids = 5;
-  remoteagent.v1.SendMode mode = 6;
-  SessionOutgoingState state = 7;
-  bool frozen = 8;
-  bool expired = 9;
-  bool can_retry = 10;
-  bool can_restore = 11;
-  bool can_dismiss = 12;
-  Text caption = 13;
-  Text feedback = 14;
-  bool feedback_uncertain = 15;
-  int64 created_ms = 16;
+  SessionTrayGroupKind group = 3;
+  SessionTrayTone tone = 4;
+  SessionTrayRowActivity activity = 5;
+  int32 queue_number = 6;
+  bool show_spinner = 7;
+  string text = 8;
+  Text source_label = 9;
+  bool foreign_dimmed = 10;
+  int32 attachment_count = 11;
+  int32 image_count = 12;
+  int32 file_count = 13;
+  repeated string image_ids = 14;
+  repeated string file_ids = 15;
+  remoteagent.v1.SendMode mode = 16;
+  Text reason_text = 17;
+  bool can_cancel = 18;
+  bool can_resume = 19;
+  bool can_retry = 20;
+  bool can_open_terminal = 21;
+  bool can_ignore = 22;
+  bool can_promote = 23;
+  bool can_restore = 24;
+  bool network_actions_disabled = 25;
+  bool server_backed = 26;
+}
+
+message SessionTrayGroupView {
+  SessionTrayGroupKind kind = 1;
+  SessionTrayTone tone = 2;
+  Text title = 3;
+  Text header_text = 4;
+  int32 total_count = 5;
+  bool can_cancel_all = 6;
+  repeated SessionTrayItemView items = 7;
+}
+
+message SessionTrayUndoView {
+  bool visible = 1;
+  int32 count = 2;
+  Text label = 3;
+  bool can_undo = 4;
+}
+
+message SessionPendingTrayView {
+  repeated SessionTrayGroupView groups = 1;
+  repeated SessionTrayItemView ordered_items = 2;
+  int32 total_count = 3;
+  int32 failed_count = 4;
+  bool offline = 5;
+  SessionTrayUndoView undo = 6;
 }
 
 message SessionComposerView {
@@ -390,13 +420,12 @@ message SessionComposerView {
   Text disabled_reason = 2;
   Text placeholder = 3;
   bool has_active_turn = 4;
-  bool steer_mode_default = 5;
-  bool supports_queue_mode = 6;
-  bool can_attach_images = 7;
-  bool can_attach_files = 8;
-  bool interrupt_visible = 9;
-  repeated SessionPendingInputView pending_inputs = 10;
-  repeated SessionOutgoingView outgoing = 11;
+  bool supports_queue_mode = 5;
+  bool can_attach_images = 6;
+  bool can_attach_files = 7;
+  bool interrupt_visible = 8;
+  SessionPendingTrayView pending_tray = 9;
+  repeated string retained_attachment_request_ids = 10;
 }
 
 message SessionTimelineView {
@@ -675,10 +704,15 @@ message SessionOpenAction {
   bool refresh_settings = 3;
 }
 
-// SessionOutgoingAction acts on an outgoing message entry (dismiss / restore to composer).
-message SessionOutgoingAction {
+// SessionTrayItemAction acts on a single item inside the composer's pending tray.
+message SessionTrayItemAction {
   string session_id = 1;
   string request_id = 2;
+}
+
+// SessionTraySessionAction acts on session-wide pending tray state (cancel all paused / undo).
+message SessionTraySessionAction {
+  string session_id = 1;
 }
 
 // SessionQuestionStepAction sets or moves the active step index on a multi-question dock item.
@@ -693,12 +727,24 @@ message SessionRefreshHistoryAction {
   string session_id = 1;
 }
 
-// SessionRestoreComposerEffect instructs the shell to restore a failed/unknown message draft into the composer.
+// SessionRestoreComposerEffect instructs the shell to restore a message draft into the composer.
 message SessionRestoreComposerEffect {
   string session_id = 1;
   string request_id = 2;
   string text = 3;
   repeated string image_ids = 4;
   repeated string file_ids = 5;
+}
+
+// SessionResendAttachmentsEffect instructs the shell to re-upload locally retained attachments and resend.
+message SessionResendAttachmentsEffect {
+  string session_id = 1;
+  string machine_id = 2;
+  string source_request_id = 3;
+  string new_request_id = 4;
+  string text = 5;
+  remoteagent.v1.SendMode mode = 6;
+  repeated string image_ids = 7;
+  repeated string file_ids = 8;
 }
 

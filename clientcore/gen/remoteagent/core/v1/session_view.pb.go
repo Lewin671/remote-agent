@@ -37,14 +37,35 @@ const (
 	SessionDockKind_SESSION_DOCK_KIND_TERMINAL_POPUP SessionDockKind = 4
 )
 
-type SessionOutgoingState int32
+type SessionTrayGroupKind int32
 
 const (
-	SessionOutgoingState_SESSION_OUTGOING_STATE_UNSPECIFIED SessionOutgoingState = 0
-	SessionOutgoingState_SESSION_OUTGOING_STATE_SENDING     SessionOutgoingState = 1
-	SessionOutgoingState_SESSION_OUTGOING_STATE_SENT        SessionOutgoingState = 2
-	SessionOutgoingState_SESSION_OUTGOING_STATE_FAILED      SessionOutgoingState = 3
-	SessionOutgoingState_SESSION_OUTGOING_STATE_UNKNOWN     SessionOutgoingState = 4
+	SessionTrayGroupKind_SESSION_TRAY_GROUP_KIND_UNSPECIFIED SessionTrayGroupKind = 0
+	SessionTrayGroupKind_SESSION_TRAY_GROUP_KIND_FAILED      SessionTrayGroupKind = 1
+	SessionTrayGroupKind_SESSION_TRAY_GROUP_KIND_UNSURE      SessionTrayGroupKind = 2
+	SessionTrayGroupKind_SESSION_TRAY_GROUP_KIND_WAIT_READY  SessionTrayGroupKind = 3
+	SessionTrayGroupKind_SESSION_TRAY_GROUP_KIND_WAIT_ANSWER SessionTrayGroupKind = 4
+	SessionTrayGroupKind_SESSION_TRAY_GROUP_KIND_STEER       SessionTrayGroupKind = 5
+	SessionTrayGroupKind_SESSION_TRAY_GROUP_KIND_QUEUE       SessionTrayGroupKind = 6
+	SessionTrayGroupKind_SESSION_TRAY_GROUP_KIND_PAUSED      SessionTrayGroupKind = 7
+)
+
+type SessionTrayTone int32
+
+const (
+	SessionTrayTone_SESSION_TRAY_TONE_UNSPECIFIED SessionTrayTone = 0
+	SessionTrayTone_SESSION_TRAY_TONE_NEUTRAL     SessionTrayTone = 1
+	SessionTrayTone_SESSION_TRAY_TONE_RED         SessionTrayTone = 2
+	SessionTrayTone_SESSION_TRAY_TONE_ORANGE      SessionTrayTone = 3
+)
+
+type SessionTrayRowActivity int32
+
+const (
+	SessionTrayRowActivity_SESSION_TRAY_ROW_ACTIVITY_UNSPECIFIED SessionTrayRowActivity = 0
+	SessionTrayRowActivity_SESSION_TRAY_ROW_ACTIVITY_IDLE        SessionTrayRowActivity = 1
+	SessionTrayRowActivity_SESSION_TRAY_ROW_ACTIVITY_SENDING     SessionTrayRowActivity = 2
+	SessionTrayRowActivity_SESSION_TRAY_ROW_ACTIVITY_CANCELING   SessionTrayRowActivity = 3
 )
 
 type SessionToolStatus int32
@@ -2978,389 +2999,235 @@ func (m *SessionTerminalPopupDockView) AppendMarshal(b []byte) []byte {
 	return b
 }
 
-type SessionPendingInputView struct {
-	RequestId         string
-	Text              string
-	ImageCount        int32
-	FileCount         int32
-	Mode              v1.SendMode
-	Status            v1.InputStatus
-	Held              bool
-	Paused            bool
-	Rank              int32
-	TotalPending      int32
-	Label             *Text
-	Caption           *Text
-	OriginLabel       *Text
-	ScheduledRunId    string
-	CanCancel         bool
-	CanResume         bool
-	Cancel            *SessionCommandState
-	Resume            *SessionCommandState
-	Feedback          *Text
-	FeedbackUncertain bool
+type SessionTrayItemView struct {
+	RequestId              string
+	SlotKey                string
+	Group                  SessionTrayGroupKind
+	Tone                   SessionTrayTone
+	Activity               SessionTrayRowActivity
+	QueueNumber            int32
+	ShowSpinner            bool
+	Text                   string
+	SourceLabel            *Text
+	ForeignDimmed          bool
+	AttachmentCount        int32
+	ImageCount             int32
+	FileCount              int32
+	ImageIds               []string
+	FileIds                []string
+	Mode                   v1.SendMode
+	ReasonText             *Text
+	CanCancel              bool
+	CanResume              bool
+	CanRetry               bool
+	CanOpenTerminal        bool
+	CanIgnore              bool
+	CanPromote             bool
+	CanRestore             bool
+	NetworkActionsDisabled bool
+	ServerBacked           bool
 }
 
-func (m *SessionPendingInputView) GetRequestId() string {
+func (m *SessionTrayItemView) GetRequestId() string {
 	if m != nil {
 		return m.RequestId
 	}
 	return ""
 }
-func (m *SessionPendingInputView) GetText() string {
-	if m != nil {
-		return m.Text
-	}
-	return ""
-}
-func (m *SessionPendingInputView) GetImageCount() int32 {
-	if m != nil {
-		return m.ImageCount
-	}
-	return 0
-}
-func (m *SessionPendingInputView) GetFileCount() int32 {
-	if m != nil {
-		return m.FileCount
-	}
-	return 0
-}
-func (m *SessionPendingInputView) GetMode() v1.SendMode {
-	if m != nil {
-		return m.Mode
-	}
-	return 0
-}
-func (m *SessionPendingInputView) GetStatus() v1.InputStatus {
-	if m != nil {
-		return m.Status
-	}
-	return 0
-}
-func (m *SessionPendingInputView) GetHeld() bool {
-	if m != nil {
-		return m.Held
-	}
-	return false
-}
-func (m *SessionPendingInputView) GetPaused() bool {
-	if m != nil {
-		return m.Paused
-	}
-	return false
-}
-func (m *SessionPendingInputView) GetRank() int32 {
-	if m != nil {
-		return m.Rank
-	}
-	return 0
-}
-func (m *SessionPendingInputView) GetTotalPending() int32 {
-	if m != nil {
-		return m.TotalPending
-	}
-	return 0
-}
-func (m *SessionPendingInputView) GetLabel() *Text {
-	if m != nil {
-		return m.Label
-	}
-	return nil
-}
-func (m *SessionPendingInputView) GetCaption() *Text {
-	if m != nil {
-		return m.Caption
-	}
-	return nil
-}
-func (m *SessionPendingInputView) GetOriginLabel() *Text {
-	if m != nil {
-		return m.OriginLabel
-	}
-	return nil
-}
-func (m *SessionPendingInputView) GetScheduledRunId() string {
-	if m != nil {
-		return m.ScheduledRunId
-	}
-	return ""
-}
-func (m *SessionPendingInputView) GetCanCancel() bool {
-	if m != nil {
-		return m.CanCancel
-	}
-	return false
-}
-func (m *SessionPendingInputView) GetCanResume() bool {
-	if m != nil {
-		return m.CanResume
-	}
-	return false
-}
-func (m *SessionPendingInputView) GetCancel() *SessionCommandState {
-	if m != nil {
-		return m.Cancel
-	}
-	return nil
-}
-func (m *SessionPendingInputView) GetResume() *SessionCommandState {
-	if m != nil {
-		return m.Resume
-	}
-	return nil
-}
-func (m *SessionPendingInputView) GetFeedback() *Text {
-	if m != nil {
-		return m.Feedback
-	}
-	return nil
-}
-func (m *SessionPendingInputView) GetFeedbackUncertain() bool {
-	if m != nil {
-		return m.FeedbackUncertain
-	}
-	return false
-}
-
-func (m *SessionPendingInputView) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeString(1, m.RequestId)
-	n += litewire.SizeString(2, m.Text)
-	n += litewire.SizeInt32(3, int32(m.ImageCount))
-	n += litewire.SizeInt32(4, int32(m.FileCount))
-	n += litewire.SizeInt32(5, int32(m.Mode))
-	n += litewire.SizeInt32(6, int32(m.Status))
-	n += litewire.SizeBool(7, m.Held)
-	n += litewire.SizeBool(8, m.Paused)
-	n += litewire.SizeInt32(9, int32(m.Rank))
-	n += litewire.SizeInt32(10, int32(m.TotalPending))
-	if m.Label != nil {
-		n += litewire.SizeMessage(11, m.Label.Size())
-	}
-	if m.Caption != nil {
-		n += litewire.SizeMessage(12, m.Caption.Size())
-	}
-	if m.OriginLabel != nil {
-		n += litewire.SizeMessage(13, m.OriginLabel.Size())
-	}
-	n += litewire.SizeString(14, m.ScheduledRunId)
-	n += litewire.SizeBool(15, m.CanCancel)
-	n += litewire.SizeBool(16, m.CanResume)
-	if m.Cancel != nil {
-		n += litewire.SizeMessage(17, m.Cancel.Size())
-	}
-	if m.Resume != nil {
-		n += litewire.SizeMessage(18, m.Resume.Size())
-	}
-	if m.Feedback != nil {
-		n += litewire.SizeMessage(19, m.Feedback.Size())
-	}
-	n += litewire.SizeBool(20, m.FeedbackUncertain)
-	return n
-}
-
-func (m *SessionPendingInputView) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
-}
-
-func (m *SessionPendingInputView) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendString(b, 1, m.RequestId)
-	b = litewire.AppendString(b, 2, m.Text)
-	b = litewire.AppendInt32(b, 3, int32(m.ImageCount))
-	b = litewire.AppendInt32(b, 4, int32(m.FileCount))
-	b = litewire.AppendInt32(b, 5, int32(m.Mode))
-	b = litewire.AppendInt32(b, 6, int32(m.Status))
-	b = litewire.AppendBool(b, 7, m.Held)
-	b = litewire.AppendBool(b, 8, m.Paused)
-	b = litewire.AppendInt32(b, 9, int32(m.Rank))
-	b = litewire.AppendInt32(b, 10, int32(m.TotalPending))
-	if m.Label != nil {
-		b = litewire.AppendMessage(b, 11, m.Label)
-	}
-	if m.Caption != nil {
-		b = litewire.AppendMessage(b, 12, m.Caption)
-	}
-	if m.OriginLabel != nil {
-		b = litewire.AppendMessage(b, 13, m.OriginLabel)
-	}
-	b = litewire.AppendString(b, 14, m.ScheduledRunId)
-	b = litewire.AppendBool(b, 15, m.CanCancel)
-	b = litewire.AppendBool(b, 16, m.CanResume)
-	if m.Cancel != nil {
-		b = litewire.AppendMessage(b, 17, m.Cancel)
-	}
-	if m.Resume != nil {
-		b = litewire.AppendMessage(b, 18, m.Resume)
-	}
-	if m.Feedback != nil {
-		b = litewire.AppendMessage(b, 19, m.Feedback)
-	}
-	b = litewire.AppendBool(b, 20, m.FeedbackUncertain)
-	return b
-}
-
-type SessionOutgoingView struct {
-	RequestId         string
-	SlotKey           string
-	Text              string
-	ImageIds          []string
-	FileIds           []string
-	Mode              v1.SendMode
-	State             SessionOutgoingState
-	Frozen            bool
-	Expired           bool
-	CanRetry          bool
-	CanRestore        bool
-	CanDismiss        bool
-	Caption           *Text
-	Feedback          *Text
-	FeedbackUncertain bool
-	CreatedMs         int64
-}
-
-func (m *SessionOutgoingView) GetRequestId() string {
-	if m != nil {
-		return m.RequestId
-	}
-	return ""
-}
-func (m *SessionOutgoingView) GetSlotKey() string {
+func (m *SessionTrayItemView) GetSlotKey() string {
 	if m != nil {
 		return m.SlotKey
 	}
 	return ""
 }
-func (m *SessionOutgoingView) GetText() string {
+func (m *SessionTrayItemView) GetGroup() SessionTrayGroupKind {
+	if m != nil {
+		return m.Group
+	}
+	return 0
+}
+func (m *SessionTrayItemView) GetTone() SessionTrayTone {
+	if m != nil {
+		return m.Tone
+	}
+	return 0
+}
+func (m *SessionTrayItemView) GetActivity() SessionTrayRowActivity {
+	if m != nil {
+		return m.Activity
+	}
+	return 0
+}
+func (m *SessionTrayItemView) GetQueueNumber() int32 {
+	if m != nil {
+		return m.QueueNumber
+	}
+	return 0
+}
+func (m *SessionTrayItemView) GetShowSpinner() bool {
+	if m != nil {
+		return m.ShowSpinner
+	}
+	return false
+}
+func (m *SessionTrayItemView) GetText() string {
 	if m != nil {
 		return m.Text
 	}
 	return ""
 }
-func (m *SessionOutgoingView) GetImageIds() []string {
+func (m *SessionTrayItemView) GetSourceLabel() *Text {
+	if m != nil {
+		return m.SourceLabel
+	}
+	return nil
+}
+func (m *SessionTrayItemView) GetForeignDimmed() bool {
+	if m != nil {
+		return m.ForeignDimmed
+	}
+	return false
+}
+func (m *SessionTrayItemView) GetAttachmentCount() int32 {
+	if m != nil {
+		return m.AttachmentCount
+	}
+	return 0
+}
+func (m *SessionTrayItemView) GetImageCount() int32 {
+	if m != nil {
+		return m.ImageCount
+	}
+	return 0
+}
+func (m *SessionTrayItemView) GetFileCount() int32 {
+	if m != nil {
+		return m.FileCount
+	}
+	return 0
+}
+func (m *SessionTrayItemView) GetImageIds() []string {
 	if m != nil {
 		return m.ImageIds
 	}
 	return nil
 }
-func (m *SessionOutgoingView) GetFileIds() []string {
+func (m *SessionTrayItemView) GetFileIds() []string {
 	if m != nil {
 		return m.FileIds
 	}
 	return nil
 }
-func (m *SessionOutgoingView) GetMode() v1.SendMode {
+func (m *SessionTrayItemView) GetMode() v1.SendMode {
 	if m != nil {
 		return m.Mode
 	}
 	return 0
 }
-func (m *SessionOutgoingView) GetState() SessionOutgoingState {
+func (m *SessionTrayItemView) GetReasonText() *Text {
 	if m != nil {
-		return m.State
+		return m.ReasonText
 	}
-	return 0
+	return nil
 }
-func (m *SessionOutgoingView) GetFrozen() bool {
+func (m *SessionTrayItemView) GetCanCancel() bool {
 	if m != nil {
-		return m.Frozen
-	}
-	return false
-}
-func (m *SessionOutgoingView) GetExpired() bool {
-	if m != nil {
-		return m.Expired
+		return m.CanCancel
 	}
 	return false
 }
-func (m *SessionOutgoingView) GetCanRetry() bool {
+func (m *SessionTrayItemView) GetCanResume() bool {
+	if m != nil {
+		return m.CanResume
+	}
+	return false
+}
+func (m *SessionTrayItemView) GetCanRetry() bool {
 	if m != nil {
 		return m.CanRetry
 	}
 	return false
 }
-func (m *SessionOutgoingView) GetCanRestore() bool {
+func (m *SessionTrayItemView) GetCanOpenTerminal() bool {
+	if m != nil {
+		return m.CanOpenTerminal
+	}
+	return false
+}
+func (m *SessionTrayItemView) GetCanIgnore() bool {
+	if m != nil {
+		return m.CanIgnore
+	}
+	return false
+}
+func (m *SessionTrayItemView) GetCanPromote() bool {
+	if m != nil {
+		return m.CanPromote
+	}
+	return false
+}
+func (m *SessionTrayItemView) GetCanRestore() bool {
 	if m != nil {
 		return m.CanRestore
 	}
 	return false
 }
-func (m *SessionOutgoingView) GetCanDismiss() bool {
+func (m *SessionTrayItemView) GetNetworkActionsDisabled() bool {
 	if m != nil {
-		return m.CanDismiss
+		return m.NetworkActionsDisabled
 	}
 	return false
 }
-func (m *SessionOutgoingView) GetCaption() *Text {
+func (m *SessionTrayItemView) GetServerBacked() bool {
 	if m != nil {
-		return m.Caption
-	}
-	return nil
-}
-func (m *SessionOutgoingView) GetFeedback() *Text {
-	if m != nil {
-		return m.Feedback
-	}
-	return nil
-}
-func (m *SessionOutgoingView) GetFeedbackUncertain() bool {
-	if m != nil {
-		return m.FeedbackUncertain
+		return m.ServerBacked
 	}
 	return false
-}
-func (m *SessionOutgoingView) GetCreatedMs() int64 {
-	if m != nil {
-		return m.CreatedMs
-	}
-	return 0
 }
 
-func (m *SessionOutgoingView) Size() int {
+func (m *SessionTrayItemView) Size() int {
 	if m == nil {
 		return 0
 	}
 	n := 0
 	n += litewire.SizeString(1, m.RequestId)
 	n += litewire.SizeString(2, m.SlotKey)
-	n += litewire.SizeString(3, m.Text)
+	n += litewire.SizeInt32(3, int32(m.Group))
+	n += litewire.SizeInt32(4, int32(m.Tone))
+	n += litewire.SizeInt32(5, int32(m.Activity))
+	n += litewire.SizeInt32(6, int32(m.QueueNumber))
+	n += litewire.SizeBool(7, m.ShowSpinner)
+	n += litewire.SizeString(8, m.Text)
+	if m.SourceLabel != nil {
+		n += litewire.SizeMessage(9, m.SourceLabel.Size())
+	}
+	n += litewire.SizeBool(10, m.ForeignDimmed)
+	n += litewire.SizeInt32(11, int32(m.AttachmentCount))
+	n += litewire.SizeInt32(12, int32(m.ImageCount))
+	n += litewire.SizeInt32(13, int32(m.FileCount))
 	for _, v := range m.ImageIds {
-		n += litewire.SizeStringAlways(4, v)
+		n += litewire.SizeStringAlways(14, v)
 	}
 	for _, v := range m.FileIds {
-		n += litewire.SizeStringAlways(5, v)
+		n += litewire.SizeStringAlways(15, v)
 	}
-	n += litewire.SizeInt32(6, int32(m.Mode))
-	n += litewire.SizeInt32(7, int32(m.State))
-	n += litewire.SizeBool(8, m.Frozen)
-	n += litewire.SizeBool(9, m.Expired)
-	n += litewire.SizeBool(10, m.CanRetry)
-	n += litewire.SizeBool(11, m.CanRestore)
-	n += litewire.SizeBool(12, m.CanDismiss)
-	if m.Caption != nil {
-		n += litewire.SizeMessage(13, m.Caption.Size())
+	n += litewire.SizeInt32(16, int32(m.Mode))
+	if m.ReasonText != nil {
+		n += litewire.SizeMessage(17, m.ReasonText.Size())
 	}
-	if m.Feedback != nil {
-		n += litewire.SizeMessage(14, m.Feedback.Size())
-	}
-	n += litewire.SizeBool(15, m.FeedbackUncertain)
-	n += litewire.SizeVarintField(16, uint64(m.CreatedMs))
+	n += litewire.SizeBool(18, m.CanCancel)
+	n += litewire.SizeBool(19, m.CanResume)
+	n += litewire.SizeBool(20, m.CanRetry)
+	n += litewire.SizeBool(21, m.CanOpenTerminal)
+	n += litewire.SizeBool(22, m.CanIgnore)
+	n += litewire.SizeBool(23, m.CanPromote)
+	n += litewire.SizeBool(24, m.CanRestore)
+	n += litewire.SizeBool(25, m.NetworkActionsDisabled)
+	n += litewire.SizeBool(26, m.ServerBacked)
 	return n
 }
 
-func (m *SessionOutgoingView) Marshal() ([]byte, error) {
+func (m *SessionTrayItemView) Marshal() ([]byte, error) {
 	if m == nil {
 		return nil, nil
 	}
@@ -3371,49 +3238,341 @@ func (m *SessionOutgoingView) Marshal() ([]byte, error) {
 	return m.AppendMarshal(make([]byte, 0, sz)), nil
 }
 
-func (m *SessionOutgoingView) AppendMarshal(b []byte) []byte {
+func (m *SessionTrayItemView) AppendMarshal(b []byte) []byte {
 	if m == nil {
 		return b
 	}
 	b = litewire.AppendString(b, 1, m.RequestId)
 	b = litewire.AppendString(b, 2, m.SlotKey)
-	b = litewire.AppendString(b, 3, m.Text)
+	b = litewire.AppendInt32(b, 3, int32(m.Group))
+	b = litewire.AppendInt32(b, 4, int32(m.Tone))
+	b = litewire.AppendInt32(b, 5, int32(m.Activity))
+	b = litewire.AppendInt32(b, 6, int32(m.QueueNumber))
+	b = litewire.AppendBool(b, 7, m.ShowSpinner)
+	b = litewire.AppendString(b, 8, m.Text)
+	if m.SourceLabel != nil {
+		b = litewire.AppendMessage(b, 9, m.SourceLabel)
+	}
+	b = litewire.AppendBool(b, 10, m.ForeignDimmed)
+	b = litewire.AppendInt32(b, 11, int32(m.AttachmentCount))
+	b = litewire.AppendInt32(b, 12, int32(m.ImageCount))
+	b = litewire.AppendInt32(b, 13, int32(m.FileCount))
 	for _, v := range m.ImageIds {
-		b = litewire.AppendStringAlways(b, 4, v)
+		b = litewire.AppendStringAlways(b, 14, v)
 	}
 	for _, v := range m.FileIds {
-		b = litewire.AppendStringAlways(b, 5, v)
+		b = litewire.AppendStringAlways(b, 15, v)
 	}
-	b = litewire.AppendInt32(b, 6, int32(m.Mode))
-	b = litewire.AppendInt32(b, 7, int32(m.State))
-	b = litewire.AppendBool(b, 8, m.Frozen)
-	b = litewire.AppendBool(b, 9, m.Expired)
-	b = litewire.AppendBool(b, 10, m.CanRetry)
-	b = litewire.AppendBool(b, 11, m.CanRestore)
-	b = litewire.AppendBool(b, 12, m.CanDismiss)
-	if m.Caption != nil {
-		b = litewire.AppendMessage(b, 13, m.Caption)
+	b = litewire.AppendInt32(b, 16, int32(m.Mode))
+	if m.ReasonText != nil {
+		b = litewire.AppendMessage(b, 17, m.ReasonText)
 	}
-	if m.Feedback != nil {
-		b = litewire.AppendMessage(b, 14, m.Feedback)
+	b = litewire.AppendBool(b, 18, m.CanCancel)
+	b = litewire.AppendBool(b, 19, m.CanResume)
+	b = litewire.AppendBool(b, 20, m.CanRetry)
+	b = litewire.AppendBool(b, 21, m.CanOpenTerminal)
+	b = litewire.AppendBool(b, 22, m.CanIgnore)
+	b = litewire.AppendBool(b, 23, m.CanPromote)
+	b = litewire.AppendBool(b, 24, m.CanRestore)
+	b = litewire.AppendBool(b, 25, m.NetworkActionsDisabled)
+	b = litewire.AppendBool(b, 26, m.ServerBacked)
+	return b
+}
+
+type SessionTrayGroupView struct {
+	Kind         SessionTrayGroupKind
+	Tone         SessionTrayTone
+	Title        *Text
+	HeaderText   *Text
+	TotalCount   int32
+	CanCancelAll bool
+	Items        []*SessionTrayItemView
+}
+
+func (m *SessionTrayGroupView) GetKind() SessionTrayGroupKind {
+	if m != nil {
+		return m.Kind
 	}
-	b = litewire.AppendBool(b, 15, m.FeedbackUncertain)
-	b = litewire.AppendVarint(b, 16, uint64(m.CreatedMs))
+	return 0
+}
+func (m *SessionTrayGroupView) GetTone() SessionTrayTone {
+	if m != nil {
+		return m.Tone
+	}
+	return 0
+}
+func (m *SessionTrayGroupView) GetTitle() *Text {
+	if m != nil {
+		return m.Title
+	}
+	return nil
+}
+func (m *SessionTrayGroupView) GetHeaderText() *Text {
+	if m != nil {
+		return m.HeaderText
+	}
+	return nil
+}
+func (m *SessionTrayGroupView) GetTotalCount() int32 {
+	if m != nil {
+		return m.TotalCount
+	}
+	return 0
+}
+func (m *SessionTrayGroupView) GetCanCancelAll() bool {
+	if m != nil {
+		return m.CanCancelAll
+	}
+	return false
+}
+func (m *SessionTrayGroupView) GetItems() []*SessionTrayItemView {
+	if m != nil {
+		return m.Items
+	}
+	return nil
+}
+
+func (m *SessionTrayGroupView) Size() int {
+	if m == nil {
+		return 0
+	}
+	n := 0
+	n += litewire.SizeInt32(1, int32(m.Kind))
+	n += litewire.SizeInt32(2, int32(m.Tone))
+	if m.Title != nil {
+		n += litewire.SizeMessage(3, m.Title.Size())
+	}
+	if m.HeaderText != nil {
+		n += litewire.SizeMessage(4, m.HeaderText.Size())
+	}
+	n += litewire.SizeInt32(5, int32(m.TotalCount))
+	n += litewire.SizeBool(6, m.CanCancelAll)
+	for _, v := range m.Items {
+		if v != nil {
+			n += litewire.SizeMessage(7, v.Size())
+		}
+	}
+	return n
+}
+
+func (m *SessionTrayGroupView) Marshal() ([]byte, error) {
+	if m == nil {
+		return nil, nil
+	}
+	sz := m.Size()
+	if sz == 0 {
+		return nil, nil
+	}
+	return m.AppendMarshal(make([]byte, 0, sz)), nil
+}
+
+func (m *SessionTrayGroupView) AppendMarshal(b []byte) []byte {
+	if m == nil {
+		return b
+	}
+	b = litewire.AppendInt32(b, 1, int32(m.Kind))
+	b = litewire.AppendInt32(b, 2, int32(m.Tone))
+	if m.Title != nil {
+		b = litewire.AppendMessage(b, 3, m.Title)
+	}
+	if m.HeaderText != nil {
+		b = litewire.AppendMessage(b, 4, m.HeaderText)
+	}
+	b = litewire.AppendInt32(b, 5, int32(m.TotalCount))
+	b = litewire.AppendBool(b, 6, m.CanCancelAll)
+	for _, v := range m.Items {
+		if v != nil {
+			b = litewire.AppendMessage(b, 7, v)
+		}
+	}
+	return b
+}
+
+type SessionTrayUndoView struct {
+	Visible bool
+	Count   int32
+	Label   *Text
+	CanUndo bool
+}
+
+func (m *SessionTrayUndoView) GetVisible() bool {
+	if m != nil {
+		return m.Visible
+	}
+	return false
+}
+func (m *SessionTrayUndoView) GetCount() int32 {
+	if m != nil {
+		return m.Count
+	}
+	return 0
+}
+func (m *SessionTrayUndoView) GetLabel() *Text {
+	if m != nil {
+		return m.Label
+	}
+	return nil
+}
+func (m *SessionTrayUndoView) GetCanUndo() bool {
+	if m != nil {
+		return m.CanUndo
+	}
+	return false
+}
+
+func (m *SessionTrayUndoView) Size() int {
+	if m == nil {
+		return 0
+	}
+	n := 0
+	n += litewire.SizeBool(1, m.Visible)
+	n += litewire.SizeInt32(2, int32(m.Count))
+	if m.Label != nil {
+		n += litewire.SizeMessage(3, m.Label.Size())
+	}
+	n += litewire.SizeBool(4, m.CanUndo)
+	return n
+}
+
+func (m *SessionTrayUndoView) Marshal() ([]byte, error) {
+	if m == nil {
+		return nil, nil
+	}
+	sz := m.Size()
+	if sz == 0 {
+		return nil, nil
+	}
+	return m.AppendMarshal(make([]byte, 0, sz)), nil
+}
+
+func (m *SessionTrayUndoView) AppendMarshal(b []byte) []byte {
+	if m == nil {
+		return b
+	}
+	b = litewire.AppendBool(b, 1, m.Visible)
+	b = litewire.AppendInt32(b, 2, int32(m.Count))
+	if m.Label != nil {
+		b = litewire.AppendMessage(b, 3, m.Label)
+	}
+	b = litewire.AppendBool(b, 4, m.CanUndo)
+	return b
+}
+
+type SessionPendingTrayView struct {
+	Groups       []*SessionTrayGroupView
+	OrderedItems []*SessionTrayItemView
+	TotalCount   int32
+	FailedCount  int32
+	Offline      bool
+	Undo         *SessionTrayUndoView
+}
+
+func (m *SessionPendingTrayView) GetGroups() []*SessionTrayGroupView {
+	if m != nil {
+		return m.Groups
+	}
+	return nil
+}
+func (m *SessionPendingTrayView) GetOrderedItems() []*SessionTrayItemView {
+	if m != nil {
+		return m.OrderedItems
+	}
+	return nil
+}
+func (m *SessionPendingTrayView) GetTotalCount() int32 {
+	if m != nil {
+		return m.TotalCount
+	}
+	return 0
+}
+func (m *SessionPendingTrayView) GetFailedCount() int32 {
+	if m != nil {
+		return m.FailedCount
+	}
+	return 0
+}
+func (m *SessionPendingTrayView) GetOffline() bool {
+	if m != nil {
+		return m.Offline
+	}
+	return false
+}
+func (m *SessionPendingTrayView) GetUndo() *SessionTrayUndoView {
+	if m != nil {
+		return m.Undo
+	}
+	return nil
+}
+
+func (m *SessionPendingTrayView) Size() int {
+	if m == nil {
+		return 0
+	}
+	n := 0
+	for _, v := range m.Groups {
+		if v != nil {
+			n += litewire.SizeMessage(1, v.Size())
+		}
+	}
+	for _, v := range m.OrderedItems {
+		if v != nil {
+			n += litewire.SizeMessage(2, v.Size())
+		}
+	}
+	n += litewire.SizeInt32(3, int32(m.TotalCount))
+	n += litewire.SizeInt32(4, int32(m.FailedCount))
+	n += litewire.SizeBool(5, m.Offline)
+	if m.Undo != nil {
+		n += litewire.SizeMessage(6, m.Undo.Size())
+	}
+	return n
+}
+
+func (m *SessionPendingTrayView) Marshal() ([]byte, error) {
+	if m == nil {
+		return nil, nil
+	}
+	sz := m.Size()
+	if sz == 0 {
+		return nil, nil
+	}
+	return m.AppendMarshal(make([]byte, 0, sz)), nil
+}
+
+func (m *SessionPendingTrayView) AppendMarshal(b []byte) []byte {
+	if m == nil {
+		return b
+	}
+	for _, v := range m.Groups {
+		if v != nil {
+			b = litewire.AppendMessage(b, 1, v)
+		}
+	}
+	for _, v := range m.OrderedItems {
+		if v != nil {
+			b = litewire.AppendMessage(b, 2, v)
+		}
+	}
+	b = litewire.AppendInt32(b, 3, int32(m.TotalCount))
+	b = litewire.AppendInt32(b, 4, int32(m.FailedCount))
+	b = litewire.AppendBool(b, 5, m.Offline)
+	if m.Undo != nil {
+		b = litewire.AppendMessage(b, 6, m.Undo)
+	}
 	return b
 }
 
 type SessionComposerView struct {
-	Enabled           bool
-	DisabledReason    *Text
-	Placeholder       *Text
-	HasActiveTurn     bool
-	SteerModeDefault  bool
-	SupportsQueueMode bool
-	CanAttachImages   bool
-	CanAttachFiles    bool
-	InterruptVisible  bool
-	PendingInputs     []*SessionPendingInputView
-	Outgoing          []*SessionOutgoingView
+	Enabled                      bool
+	DisabledReason               *Text
+	Placeholder                  *Text
+	HasActiveTurn                bool
+	SupportsQueueMode            bool
+	CanAttachImages              bool
+	CanAttachFiles               bool
+	InterruptVisible             bool
+	PendingTray                  *SessionPendingTrayView
+	RetainedAttachmentRequestIds []string
 }
 
 func (m *SessionComposerView) GetEnabled() bool {
@@ -3437,12 +3596,6 @@ func (m *SessionComposerView) GetPlaceholder() *Text {
 func (m *SessionComposerView) GetHasActiveTurn() bool {
 	if m != nil {
 		return m.HasActiveTurn
-	}
-	return false
-}
-func (m *SessionComposerView) GetSteerModeDefault() bool {
-	if m != nil {
-		return m.SteerModeDefault
 	}
 	return false
 }
@@ -3470,15 +3623,15 @@ func (m *SessionComposerView) GetInterruptVisible() bool {
 	}
 	return false
 }
-func (m *SessionComposerView) GetPendingInputs() []*SessionPendingInputView {
+func (m *SessionComposerView) GetPendingTray() *SessionPendingTrayView {
 	if m != nil {
-		return m.PendingInputs
+		return m.PendingTray
 	}
 	return nil
 }
-func (m *SessionComposerView) GetOutgoing() []*SessionOutgoingView {
+func (m *SessionComposerView) GetRetainedAttachmentRequestIds() []string {
 	if m != nil {
-		return m.Outgoing
+		return m.RetainedAttachmentRequestIds
 	}
 	return nil
 }
@@ -3496,20 +3649,15 @@ func (m *SessionComposerView) Size() int {
 		n += litewire.SizeMessage(3, m.Placeholder.Size())
 	}
 	n += litewire.SizeBool(4, m.HasActiveTurn)
-	n += litewire.SizeBool(5, m.SteerModeDefault)
-	n += litewire.SizeBool(6, m.SupportsQueueMode)
-	n += litewire.SizeBool(7, m.CanAttachImages)
-	n += litewire.SizeBool(8, m.CanAttachFiles)
-	n += litewire.SizeBool(9, m.InterruptVisible)
-	for _, v := range m.PendingInputs {
-		if v != nil {
-			n += litewire.SizeMessage(10, v.Size())
-		}
+	n += litewire.SizeBool(5, m.SupportsQueueMode)
+	n += litewire.SizeBool(6, m.CanAttachImages)
+	n += litewire.SizeBool(7, m.CanAttachFiles)
+	n += litewire.SizeBool(8, m.InterruptVisible)
+	if m.PendingTray != nil {
+		n += litewire.SizeMessage(9, m.PendingTray.Size())
 	}
-	for _, v := range m.Outgoing {
-		if v != nil {
-			n += litewire.SizeMessage(11, v.Size())
-		}
+	for _, v := range m.RetainedAttachmentRequestIds {
+		n += litewire.SizeStringAlways(10, v)
 	}
 	return n
 }
@@ -3537,20 +3685,15 @@ func (m *SessionComposerView) AppendMarshal(b []byte) []byte {
 		b = litewire.AppendMessage(b, 3, m.Placeholder)
 	}
 	b = litewire.AppendBool(b, 4, m.HasActiveTurn)
-	b = litewire.AppendBool(b, 5, m.SteerModeDefault)
-	b = litewire.AppendBool(b, 6, m.SupportsQueueMode)
-	b = litewire.AppendBool(b, 7, m.CanAttachImages)
-	b = litewire.AppendBool(b, 8, m.CanAttachFiles)
-	b = litewire.AppendBool(b, 9, m.InterruptVisible)
-	for _, v := range m.PendingInputs {
-		if v != nil {
-			b = litewire.AppendMessage(b, 10, v)
-		}
+	b = litewire.AppendBool(b, 5, m.SupportsQueueMode)
+	b = litewire.AppendBool(b, 6, m.CanAttachImages)
+	b = litewire.AppendBool(b, 7, m.CanAttachFiles)
+	b = litewire.AppendBool(b, 8, m.InterruptVisible)
+	if m.PendingTray != nil {
+		b = litewire.AppendMessage(b, 9, m.PendingTray)
 	}
-	for _, v := range m.Outgoing {
-		if v != nil {
-			b = litewire.AppendMessage(b, 11, v)
-		}
+	for _, v := range m.RetainedAttachmentRequestIds {
+		b = litewire.AppendStringAlways(b, 10, v)
 	}
 	return b
 }
@@ -6048,25 +6191,25 @@ func (m *SessionOpenAction) Unmarshal(b []byte) error {
 	return nil
 }
 
-type SessionOutgoingAction struct {
+type SessionTrayItemAction struct {
 	SessionId string
 	RequestId string
 }
 
-func (m *SessionOutgoingAction) GetSessionId() string {
+func (m *SessionTrayItemAction) GetSessionId() string {
 	if m != nil {
 		return m.SessionId
 	}
 	return ""
 }
-func (m *SessionOutgoingAction) GetRequestId() string {
+func (m *SessionTrayItemAction) GetRequestId() string {
 	if m != nil {
 		return m.RequestId
 	}
 	return ""
 }
 
-func (m *SessionOutgoingAction) Unmarshal(b []byte) error {
+func (m *SessionTrayItemAction) Unmarshal(b []byte) error {
 	for len(b) > 0 {
 		num, wtyp, err := litewire.ReadTag(&b)
 		if err != nil {
@@ -6089,6 +6232,41 @@ func (m *SessionOutgoingAction) Unmarshal(b []byte) error {
 					return err
 				}
 				m.RequestId = v
+				continue
+			}
+		}
+		if err := litewire.Skip(&b, num, wtyp); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+type SessionTraySessionAction struct {
+	SessionId string
+}
+
+func (m *SessionTraySessionAction) GetSessionId() string {
+	if m != nil {
+		return m.SessionId
+	}
+	return ""
+}
+
+func (m *SessionTraySessionAction) Unmarshal(b []byte) error {
+	for len(b) > 0 {
+		num, wtyp, err := litewire.ReadTag(&b)
+		if err != nil {
+			return err
+		}
+		switch num {
+		case 1:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadString(&b)
+				if err != nil {
+					return err
+				}
+				m.SessionId = v
 				continue
 			}
 		}
@@ -6280,6 +6458,116 @@ func (m *SessionRestoreComposerEffect) AppendMarshal(b []byte) []byte {
 	}
 	for _, v := range m.FileIds {
 		b = litewire.AppendStringAlways(b, 5, v)
+	}
+	return b
+}
+
+type SessionResendAttachmentsEffect struct {
+	SessionId       string
+	MachineId       string
+	SourceRequestId string
+	NewRequestId    string
+	Text            string
+	Mode            v1.SendMode
+	ImageIds        []string
+	FileIds         []string
+}
+
+func (m *SessionResendAttachmentsEffect) GetSessionId() string {
+	if m != nil {
+		return m.SessionId
+	}
+	return ""
+}
+func (m *SessionResendAttachmentsEffect) GetMachineId() string {
+	if m != nil {
+		return m.MachineId
+	}
+	return ""
+}
+func (m *SessionResendAttachmentsEffect) GetSourceRequestId() string {
+	if m != nil {
+		return m.SourceRequestId
+	}
+	return ""
+}
+func (m *SessionResendAttachmentsEffect) GetNewRequestId() string {
+	if m != nil {
+		return m.NewRequestId
+	}
+	return ""
+}
+func (m *SessionResendAttachmentsEffect) GetText() string {
+	if m != nil {
+		return m.Text
+	}
+	return ""
+}
+func (m *SessionResendAttachmentsEffect) GetMode() v1.SendMode {
+	if m != nil {
+		return m.Mode
+	}
+	return 0
+}
+func (m *SessionResendAttachmentsEffect) GetImageIds() []string {
+	if m != nil {
+		return m.ImageIds
+	}
+	return nil
+}
+func (m *SessionResendAttachmentsEffect) GetFileIds() []string {
+	if m != nil {
+		return m.FileIds
+	}
+	return nil
+}
+
+func (m *SessionResendAttachmentsEffect) Size() int {
+	if m == nil {
+		return 0
+	}
+	n := 0
+	n += litewire.SizeString(1, m.SessionId)
+	n += litewire.SizeString(2, m.MachineId)
+	n += litewire.SizeString(3, m.SourceRequestId)
+	n += litewire.SizeString(4, m.NewRequestId)
+	n += litewire.SizeString(5, m.Text)
+	n += litewire.SizeInt32(6, int32(m.Mode))
+	for _, v := range m.ImageIds {
+		n += litewire.SizeStringAlways(7, v)
+	}
+	for _, v := range m.FileIds {
+		n += litewire.SizeStringAlways(8, v)
+	}
+	return n
+}
+
+func (m *SessionResendAttachmentsEffect) Marshal() ([]byte, error) {
+	if m == nil {
+		return nil, nil
+	}
+	sz := m.Size()
+	if sz == 0 {
+		return nil, nil
+	}
+	return m.AppendMarshal(make([]byte, 0, sz)), nil
+}
+
+func (m *SessionResendAttachmentsEffect) AppendMarshal(b []byte) []byte {
+	if m == nil {
+		return b
+	}
+	b = litewire.AppendString(b, 1, m.SessionId)
+	b = litewire.AppendString(b, 2, m.MachineId)
+	b = litewire.AppendString(b, 3, m.SourceRequestId)
+	b = litewire.AppendString(b, 4, m.NewRequestId)
+	b = litewire.AppendString(b, 5, m.Text)
+	b = litewire.AppendInt32(b, 6, int32(m.Mode))
+	for _, v := range m.ImageIds {
+		b = litewire.AppendStringAlways(b, 7, v)
+	}
+	for _, v := range m.FileIds {
+		b = litewire.AppendStringAlways(b, 8, v)
 	}
 	return b
 }

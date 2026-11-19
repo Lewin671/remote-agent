@@ -286,6 +286,17 @@ public interface EffectOrBuilder extends
   io.github.lewin671.remoteagent.core.proto.SessionRestoreComposerEffect getSessionRestoreComposer();
 
   /**
+   * <code>.remoteagent.core.v1.SessionResendAttachmentsEffect session_resend_attachments = 41 [json_name = "sessionResendAttachments"];</code>
+   * @return Whether the sessionResendAttachments field is set.
+   */
+  boolean hasSessionResendAttachments();
+  /**
+   * <code>.remoteagent.core.v1.SessionResendAttachmentsEffect session_resend_attachments = 41 [json_name = "sessionResendAttachments"];</code>
+   * @return The sessionResendAttachments.
+   */
+  io.github.lewin671.remoteagent.core.proto.SessionResendAttachmentsEffect getSessionResendAttachments();
+
+  /**
    * <code>.remoteagent.core.v1.ScheduleReadCacheEffect schedule_read_cache = 60 [json_name = "scheduleReadCache"];</code>
    * @return Whether the scheduleReadCache field is set.
    */

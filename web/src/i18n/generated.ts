@@ -130,33 +130,25 @@ export interface MessageArgs {
   "common.saving": { [name: string]: never };
   "common.settings": { [name: string]: never };
   "common.unknown_computer": { [name: string]: never };
-  "composer.after_turn": { [name: string]: never };
   "composer.android_unknown_reason": { [name: string]: never };
-  "composer.await_record": { agent: string };
+  "composer.answer_first_placeholder": { [name: string]: never };
   "composer.computer_restarted": { [name: string]: never };
   "composer.images_unrecognized": { agent: string };
   "composer.input_unconfirmed": { [name: string]: never };
-  "composer.insert_hint": { [name: string]: never };
-  "composer.insert_now": { [name: string]: never };
   "composer.ios_connect_send": { [name: string]: never };
-  "composer.maybe_failure": { reason: string };
   "composer.message": { [name: string]: never };
   "composer.message_fallback": { [name: string]: never };
   "composer.message_unconfirmed": { [name: string]: never };
-  "composer.mode_insert_short": { [name: string]: never };
-  "composer.mode_picker_label": { [name: string]: never };
-  "composer.mode_queue_short": { [name: string]: never };
   "composer.not_written": { [name: string]: never };
   "composer.plan_placeholder": { [name: string]: never };
-  "composer.queue_after_answer": { [name: string]: never };
-  "composer.queue_hint": { [name: string]: never };
   "composer.ready_timeout": { [name: string]: never };
   "composer.restore": { [name: string]: never };
   "composer.restore_files_full": { count: number };
   "composer.restore_images_full": { count: number; existing: number };
+  "composer.running_placeholder": { [name: string]: never };
   "composer.send": { [name: string]: never };
+  "composer.send_after": { [name: string]: never };
   "composer.send_failure": { reason: string };
-  "composer.sending": { [name: string]: never };
   "composer.shortcut": { keys: string };
   "composer.slash_note": { [name: string]: never };
   "composer.slash_title": { [name: string]: never };
@@ -653,22 +645,34 @@ export interface MessageArgs {
   "projects.unpin": { [name: string]: never };
   "projects.use_directory": { name: string };
   "projects.view_sessions": { name: string };
-  "queue.after_turn": { [name: string]: never };
-  "queue.android_agent_note": { agent: string };
   "queue.android_scheduled": { [name: string]: never };
-  "queue.android_sending_soon": { [name: string]: never };
-  "queue.android_unconfirmed": { [name: string]: never };
+  "queue.attachments_a11y": { count: number };
+  "queue.cancel_all": { [name: string]: never };
   "queue.cancel_failed": { [name: string]: never };
   "queue.canceled": { [name: string]: never };
-  "queue.canceled_record": { [name: string]: never };
+  "queue.canceled_count": { count: number };
   "queue.canceling": { [name: string]: never };
-  "queue.insert": { [name: string]: never };
-  "queue.more": { count: number };
+  "queue.collapse": { [name: string]: never };
+  "queue.group_count": { count: number; title: string };
+  "queue.group_failed": { [name: string]: never };
+  "queue.group_paused": { [name: string]: never };
+  "queue.group_queue": { [name: string]: never };
+  "queue.group_steer": { [name: string]: never };
+  "queue.group_unsure": { [name: string]: never };
+  "queue.group_wait_answer": { [name: string]: never };
+  "queue.group_wait_ready": { agent: string };
+  "queue.ignore": { [name: string]: never };
+  "queue.keyboard_failed": { count: number };
+  "queue.keyboard_summary": { count: number };
+  "queue.more_items": { count: number };
   "queue.other_message": { [name: string]: never };
   "queue.paused": { [name: string]: never };
-  "queue.rank": { rank: number };
   "queue.resume_failed": { [name: string]: never };
   "queue.resuming": { [name: string]: never };
+  "queue.scheduled_time": { time: string };
+  "queue.send_now": { [name: string]: never };
+  "queue.unconfirmed_reason": { [name: string]: never };
+  "queue.undo": { [name: string]: never };
   "quota.agy_waiting": { [name: string]: never };
   "quota.awaiting_update": { [name: string]: never };
   "quota.days": { count: number };
@@ -1168,8 +1172,6 @@ export interface MessageArgs {
   "session.context": { [name: string]: never };
   "session.context_tokens": { total: string; used: string };
   "session.context_used": { percent: number };
-  "session.disconnected_ago": { time: string };
-  "session.dismiss_notice": { [name: string]: never };
   "session.effort_locked": { [name: string]: never };
   "session.end": { [name: string]: never };
   "session.end_action": { [name: string]: never };
@@ -1947,26 +1949,17 @@ export const messages = {
     "common.saving": "Saving…",
     "common.settings": "Settings",
     "common.unknown_computer": "Unknown computer",
-    "composer.after_turn": "Send after this turn",
     "composer.android_unknown_reason": "Unknown reason",
-    "composer.await_record": "Written to terminal, waiting for {agent} to record it",
+    "composer.answer_first_placeholder": "Seen after you answer",
     "composer.computer_restarted": "remote-agent on the computer restarted while writing",
     "composer.images_unrecognized": "{agent} did not recognize the images",
     "composer.input_unconfirmed": "Could not confirm terminal input",
-    "composer.insert_hint": "This is what ↑ does",
-    "composer.insert_now": "Insert into this turn now",
     "composer.ios_connect_send": "Connect to the server to send",
-    "composer.maybe_failure": "Possibly not sent: {reason}",
     "composer.message": "Message",
     "composer.message_fallback": "A message",
     "composer.message_unconfirmed": "A message may not have been sent: written to terminal but unconfirmed",
-    "composer.mode_insert_short": "Insert into turn",
-    "composer.mode_picker_label": "Send timing",
-    "composer.mode_queue_short": "After this turn",
     "composer.not_written": "Not written to terminal",
     "composer.plan_placeholder": "Add requirements for the plan…",
-    "composer.queue_after_answer": "Queue message; continue after answering",
-    "composer.queue_hint": "Queue first, then send in order after this turn",
     "composer.ready_timeout": "Timed out waiting for the terminal",
     "composer.restore": "Restore to input",
     "composer.restore_files_full": {
@@ -1983,9 +1976,10 @@ export const messages = {
       },
       "plural": "count"
     },
+    "composer.running_placeholder": "Add a note…",
     "composer.send": "Send",
+    "composer.send_after": "Send after",
     "composer.send_failure": "Not sent: {reason}",
-    "composer.sending": "Sending…",
     "composer.shortcut": "Message · {keys} to send",
     "composer.slash_note": "Content starting with / will be sent to the model as a regular message instead of running a slash command.",
     "composer.slash_title": "Send as a regular message?",
@@ -2698,28 +2692,64 @@ export const messages = {
     "projects.unpin": "Unpin",
     "projects.use_directory": "Use folder {name}",
     "projects.view_sessions": "View sessions in {name}",
-    "queue.after_turn": "Send after this turn",
-    "queue.android_agent_note": "Waiting for {agent} to be ready",
     "queue.android_scheduled": "Scheduled task",
-    "queue.android_sending_soon": "Sending soon",
-    "queue.android_unconfirmed": "Written to the terminal but unconfirmed",
-    "queue.cancel_failed": "Could not cancel; still queued",
-    "queue.canceled": "Canceled",
-    "queue.canceled_record": "Canceled a queued message",
-    "queue.canceling": "Canceling…",
-    "queue.insert": "Insert into this turn",
-    "queue.more": {
+    "queue.attachments_a11y": {
       "forms": {
-        "one": "{count} more queued message · Expand",
-        "other": "{count} more queued messages · Expand"
+        "one": "{count} attachment",
+        "other": "{count} attachments"
+      },
+      "plural": "count"
+    },
+    "queue.cancel_all": "Cancel all",
+    "queue.cancel_failed": "Could not cancel; still waiting",
+    "queue.canceled": "Canceled",
+    "queue.canceled_count": {
+      "forms": {
+        "one": "Canceled {count} message",
+        "other": "Canceled {count} messages"
+      },
+      "plural": "count"
+    },
+    "queue.canceling": "Canceling…",
+    "queue.collapse": "Collapse",
+    "queue.group_count": "{title} · {count}",
+    "queue.group_failed": "Not sent",
+    "queue.group_paused": "Interrupted, paused",
+    "queue.group_queue": "Send after",
+    "queue.group_steer": "Sent after this step",
+    "queue.group_unsure": "May not have sent",
+    "queue.group_wait_answer": "Sent after you answer",
+    "queue.group_wait_ready": "Waiting for {agent}",
+    "queue.ignore": "Ignore",
+    "queue.keyboard_failed": {
+      "forms": {
+        "one": "{count} not sent",
+        "other": "{count} not sent"
+      },
+      "plural": "count"
+    },
+    "queue.keyboard_summary": {
+      "forms": {
+        "one": "{count} pending",
+        "other": "{count} pending"
+      },
+      "plural": "count"
+    },
+    "queue.more_items": {
+      "forms": {
+        "one": "{count} more",
+        "other": "{count} more"
       },
       "plural": "count"
     },
     "queue.other_message": "A message from another client",
     "queue.paused": "Paused",
-    "queue.rank": " · #{rank}",
     "queue.resume_failed": "Could not send; still paused",
     "queue.resuming": "Sending…",
+    "queue.scheduled_time": "Scheduled {time}",
+    "queue.send_now": "Send now",
+    "queue.unconfirmed_reason": "Sent to terminal, unconfirmed",
+    "queue.undo": "Undo",
     "quota.agy_waiting": "No quota received from Antigravity. Quota is checked automatically after Antigravity runs on this computer.",
     "quota.awaiting_update": "Awaiting update",
     "quota.days": {
@@ -3423,8 +3453,6 @@ export const messages = {
     "session.context": "Context",
     "session.context_tokens": "Context {used} / {total}",
     "session.context_used": "{percent}% used",
-    "session.disconnected_ago": "Disconnected {time}. ",
-    "session.dismiss_notice": "Dismiss this notice",
     "session.effort_locked": "Reasoning effort cannot be changed while running",
     "session.end": "End",
     "session.end_action": "End session…",
@@ -4315,26 +4343,17 @@ export const messages = {
     "common.saving": "保存中…",
     "common.settings": "设置",
     "common.unknown_computer": "未知电脑",
-    "composer.after_turn": "这一轮结束后再发",
     "composer.android_unknown_reason": "原因未知",
-    "composer.await_record": "已送入终端，等 {agent} 记录",
+    "composer.answer_first_placeholder": "回答后它才会看到",
     "composer.computer_restarted": "电脑上的 remote-agent 写入时重启了",
     "composer.images_unrecognized": "{agent} 没认出图片",
     "composer.input_unconfirmed": "无法确认终端输入框的内容",
-    "composer.insert_hint": "点 ↑ 就是这个",
-    "composer.insert_now": "现在插入这一轮",
     "composer.ios_connect_send": "连上服务器后才能发送",
-    "composer.maybe_failure": "可能没发出去：{reason}",
     "composer.message": "消息",
     "composer.message_fallback": "一条消息",
     "composer.message_unconfirmed": "有一条消息可能没发出去：已送到终端但没确认",
-    "composer.mode_insert_short": "插入这一轮",
-    "composer.mode_picker_label": "发送时机",
-    "composer.mode_queue_short": "本轮结束后发",
     "composer.not_written": "没有写进终端",
     "composer.plan_placeholder": "补充你对计划的要求…",
-    "composer.queue_after_answer": "排队发送，回答后继续",
-    "composer.queue_hint": "先排队，结束后按顺序发出",
     "composer.ready_timeout": "等终端就绪超时",
     "composer.restore": "放回输入框",
     "composer.restore_files_full": {
@@ -4349,9 +4368,10 @@ export const messages = {
       },
       "plural": "count"
     },
+    "composer.running_placeholder": "补充一句…",
     "composer.send": "发送",
+    "composer.send_after": "做完再发",
     "composer.send_failure": "没发出去：{reason}",
-    "composer.sending": "发送中…",
     "composer.shortcut": "消息 · {keys} 发送",
     "composer.slash_note": "以 / 开头的内容会作为普通消息发给模型，而不是执行斜杠命令。",
     "composer.slash_title": "作为普通消息发送？",
@@ -5028,27 +5048,59 @@ export const messages = {
     "projects.unpin": "取消常用",
     "projects.use_directory": "用 {name} 这个目录",
     "projects.view_sessions": "看 {name} 的会话",
-    "queue.after_turn": "这一轮结束后发",
-    "queue.android_agent_note": "等 {agent} 就绪",
     "queue.android_scheduled": "定时任务",
-    "queue.android_sending_soon": "即将发送",
-    "queue.android_unconfirmed": "已送到终端但没确认",
-    "queue.cancel_failed": "取消没成功，仍在排队",
-    "queue.canceled": "已取消",
-    "queue.canceled_record": "取消了一条排队的消息",
-    "queue.canceling": "正在取消…",
-    "queue.insert": "插入这一轮",
-    "queue.more": {
+    "queue.attachments_a11y": {
       "forms": {
-        "other": "还有 {count} 条排队 展开"
+        "other": "{count} 个附件"
+      },
+      "plural": "count"
+    },
+    "queue.cancel_all": "全部取消",
+    "queue.cancel_failed": "取消没成功，还在排队",
+    "queue.canceled": "已取消",
+    "queue.canceled_count": {
+      "forms": {
+        "other": "已取消 {count} 条"
+      },
+      "plural": "count"
+    },
+    "queue.canceling": "正在取消…",
+    "queue.collapse": "收起",
+    "queue.group_count": "{title} · {count}",
+    "queue.group_failed": "没发出去",
+    "queue.group_paused": "已中断，先不发",
+    "queue.group_queue": "做完再发",
+    "queue.group_steer": "这一步结束就送达",
+    "queue.group_unsure": "可能没发出去",
+    "queue.group_wait_answer": "等你回答后送达",
+    "queue.group_wait_ready": "等 {agent} 就绪后发",
+    "queue.ignore": "忽略",
+    "queue.keyboard_failed": {
+      "forms": {
+        "other": "{count} 条没发出去"
+      },
+      "plural": "count"
+    },
+    "queue.keyboard_summary": {
+      "forms": {
+        "other": "{count} 条待发"
+      },
+      "plural": "count"
+    },
+    "queue.more_items": {
+      "forms": {
+        "other": "还有 {count} 条"
       },
       "plural": "count"
     },
     "queue.other_message": "另一客户端的消息",
     "queue.paused": "已暂停",
-    "queue.rank": " · 第 {rank} 条",
     "queue.resume_failed": "发送没成功，仍已暂停",
     "queue.resuming": "正在发送…",
+    "queue.scheduled_time": "定时 {time}",
+    "queue.send_now": "现在发",
+    "queue.unconfirmed_reason": "已送到终端，但没确认",
+    "queue.undo": "撤销",
     "quota.agy_waiting": "尚未收到 Antigravity 的额度。Antigravity 在这台电脑上运行后会自动查询额度。",
     "quota.awaiting_update": "等待更新",
     "quota.days": {
@@ -5718,8 +5770,6 @@ export const messages = {
     "session.context": "上下文占用",
     "session.context_tokens": "上下文占用 {used} / {total}",
     "session.context_used": "已用 {percent}%",
-    "session.disconnected_ago": "{time}断开，",
-    "session.dismiss_notice": "移除此提示",
     "session.effort_locked": "运行中不能换推理强度",
     "session.end": "结束",
     "session.end_action": "结束会话…",

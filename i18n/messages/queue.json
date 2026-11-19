@@ -1,28 +1,34 @@
 [
   {
-    "en": "Send after this turn",
-    "key": "queue.after_turn",
-    "notes": "排队消息气泡的状态/操作文字。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "en": "Scheduled task",
+    "key": "queue.android_scheduled",
+    "notes": "Android 批次 B：Delivery.kt 的现有显示文案，保留原中文措辞与标点。无变量。短标签保持紧凑；说明正文可多行。英文初稿待审。",
     "params": {},
     "platforms": [
-      "web",
       "android",
+      "web",
       "ios"
     ],
     "status": {
       "en": "draft",
       "zh-CN": "source"
     },
-    "zh-CN": "这一轮结束后发"
+    "zh-CN": "定时任务"
   },
   {
-    "en": "Waiting for {agent} to be ready",
-    "key": "queue.android_agent_note",
-    "notes": "Android 会话排队/工具状态 helper 的现有显示原句，返回延迟消息，不以文字判断状态。参数为 CLI/工具原名，不翻译。英文初稿待审。",
+    "en": {
+      "forms": {
+        "one": "{count} attachment",
+        "other": "{count} attachments"
+      },
+      "plural": "count"
+    },
+    "key": "queue.attachments_a11y",
+    "notes": "待发区行内附件图标的无障碍说明。",
     "params": {
-      "agent": {
-        "example": "Example",
-        "type": "string"
+      "count": {
+        "example": 2,
+        "type": "integer"
       }
     },
     "platforms": [
@@ -34,27 +40,17 @@
       "en": "draft",
       "zh-CN": "source"
     },
-    "zh-CN": "等 {agent} 就绪"
+    "zh-CN": {
+      "forms": {
+        "other": "{count} 个附件"
+      },
+      "plural": "count"
+    }
   },
   {
-    "en": "Scheduled task",
-    "key": "queue.android_scheduled",
-    "notes": "Android 批次 B：Delivery.kt 的现有显示文案，保留原中文措辞与标点。无变量。短标签保持紧凑；说明正文可多行。英文初稿待审。",
-    "params": {},
-    "platforms": [
-      "android",
-      "web"
-    ],
-    "status": {
-      "en": "draft",
-      "zh-CN": "source"
-    },
-    "zh-CN": "定时任务"
-  },
-  {
-    "en": "Sending soon",
-    "key": "queue.android_sending_soon",
-    "notes": "Android 会话排队/工具状态 helper 的现有显示原句，返回延迟消息，不以文字判断状态。无变量。英文初稿待审。",
+    "en": "Cancel all",
+    "key": "queue.cancel_all",
+    "notes": "已暂停待发分组右上角的操作按钮：一次取消全部已暂停消息。",
     "params": {},
     "platforms": [
       "web",
@@ -65,28 +61,12 @@
       "en": "draft",
       "zh-CN": "source"
     },
-    "zh-CN": "即将发送"
+    "zh-CN": "全部取消"
   },
   {
-    "en": "Written to the terminal but unconfirmed",
-    "key": "queue.android_unconfirmed",
-    "notes": "Android 会话与聊天显示边界使用；保留当前中文标点。无变量。英文初稿待审。",
-    "params": {},
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "en": "draft",
-      "zh-CN": "source"
-    },
-    "zh-CN": "已送到终端但没确认"
-  },
-  {
-    "en": "Could not cancel; still queued",
+    "en": "Could not cancel; still waiting",
     "key": "queue.cancel_failed",
-    "notes": "排队消息气泡的状态/操作文字。说明/反馈正文，允许多行。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "notes": "待发区取消失败原因，放在消息正文下方。英文不用 steer/queue 等内部词。",
     "params": {},
     "platforms": [
       "web",
@@ -97,7 +77,7 @@
       "en": "draft",
       "zh-CN": "source"
     },
-    "zh-CN": "取消没成功，仍在排队"
+    "zh-CN": "取消没成功，还在排队"
   },
   {
     "en": "Canceled",
@@ -116,10 +96,21 @@
     "zh-CN": "已取消"
   },
   {
-    "en": "Canceled a queued message",
-    "key": "queue.canceled_record",
-    "notes": "排队消息气泡的状态/操作文字。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
-    "params": {},
+    "en": {
+      "forms": {
+        "one": "Canceled {count} message",
+        "other": "Canceled {count} messages"
+      },
+      "plural": "count"
+    },
+    "key": "queue.canceled_count",
+    "notes": "待发区底部 5 秒撤销提示条左侧文案。",
+    "params": {
+      "count": {
+        "example": 1,
+        "type": "integer"
+      }
+    },
     "platforms": [
       "web",
       "android",
@@ -129,7 +120,12 @@
       "en": "draft",
       "zh-CN": "source"
     },
-    "zh-CN": "取消了一条排队的消息"
+    "zh-CN": {
+      "forms": {
+        "other": "已取消 {count} 条"
+      },
+      "plural": "count"
+    }
   },
   {
     "en": "Canceling…",
@@ -148,9 +144,9 @@
     "zh-CN": "正在取消…"
   },
   {
-    "en": "Insert into this turn",
-    "key": "queue.insert",
-    "notes": "排队消息气泡的状态/操作文字。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "en": "Collapse",
+    "key": "queue.collapse",
+    "notes": "待发区展开全部后的收起按钮。",
     "params": {},
     "platforms": [
       "web",
@@ -161,7 +157,165 @@
       "en": "draft",
       "zh-CN": "source"
     },
-    "zh-CN": "插入这一轮"
+    "zh-CN": "收起"
+  },
+  {
+    "en": "{title} · {count}",
+    "key": "queue.group_count",
+    "notes": "待发区分组标题含多条时的带数量后缀格式。",
+    "params": {
+      "count": {
+        "example": 2,
+        "type": "integer"
+      },
+      "title": {
+        "example": "Send after",
+        "type": "string"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "{title} · {count}"
+  },
+  {
+    "en": "Not sent",
+    "key": "queue.group_failed",
+    "notes": "待发区红色分组标题：确定没发出去。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "没发出去"
+  },
+  {
+    "en": "Interrupted, paused",
+    "key": "queue.group_paused",
+    "notes": "待发区分组标题：本轮被中断后暂停的待发消息。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "已中断，先不发"
+  },
+  {
+    "en": "Send after",
+    "key": "queue.group_queue",
+    "notes": "待发区分组标题：排在当前轮次之后依次发出。英文不用 queue。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "做完再发"
+  },
+  {
+    "en": "Sent after this step",
+    "key": "queue.group_steer",
+    "notes": "待发区分组标题：等当前步骤结束就送达。英文不用 steer。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "这一步结束就送达"
+  },
+  {
+    "en": "May not have sent",
+    "key": "queue.group_unsure",
+    "notes": "待发区橙色分组标题：已写入终端或断线前未确认，可能没发出去。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "可能没发出去"
+  },
+  {
+    "en": "Sent after you answer",
+    "key": "queue.group_wait_answer",
+    "notes": "待发区分组标题：Agent 正等你批准或回答，回答后送达。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "等你回答后送达"
+  },
+  {
+    "en": "Waiting for {agent}",
+    "key": "queue.group_wait_ready",
+    "notes": "待发区分组标题：新会话 CLI 还在启动，就绪后发出。参数 agent 为 CLI 名称，保持原文。",
+    "params": {
+      "agent": {
+        "example": "Codex",
+        "type": "string"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "等 {agent} 就绪后发"
+  },
+  {
+    "en": "Ignore",
+    "key": "queue.ignore",
+    "notes": "「可能没发出去」行右侧操作：忽略此条提示（不用 ×）。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "忽略"
   },
   {
     "en": "A queued message",
@@ -180,16 +334,16 @@
   {
     "en": {
       "forms": {
-        "one": "{count} more queued message · Expand",
-        "other": "{count} more queued messages · Expand"
+        "one": "{count} not sent",
+        "other": "{count} not sent"
       },
       "plural": "count"
     },
-    "key": "queue.more",
-    "notes": "会话排队消息气泡。完整提示/历史行；参数可重排，不翻译用户内容。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：count 为非负数量（控制复数规则）。",
+    "key": "queue.keyboard_failed",
+    "notes": "键盘弹出时待发区折叠为一行，若存在没发出去的消息则在摘要后用红字追加的后缀。",
     "params": {
       "count": {
-        "example": 2,
+        "example": 1,
         "type": "integer"
       }
     },
@@ -204,7 +358,71 @@
     },
     "zh-CN": {
       "forms": {
-        "other": "还有 {count} 条排队 展开"
+        "other": "{count} 条没发出去"
+      },
+      "plural": "count"
+    }
+  },
+  {
+    "en": {
+      "forms": {
+        "one": "{count} pending",
+        "other": "{count} pending"
+      },
+      "plural": "count"
+    },
+    "key": "queue.keyboard_summary",
+    "notes": "键盘弹出时待发区折叠为一行摘要左侧文案。",
+    "params": {
+      "count": {
+        "example": 3,
+        "type": "integer"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": {
+      "forms": {
+        "other": "{count} 条待发"
+      },
+      "plural": "count"
+    }
+  },
+  {
+    "en": {
+      "forms": {
+        "one": "{count} more",
+        "other": "{count} more"
+      },
+      "plural": "count"
+    },
+    "key": "queue.more_items",
+    "notes": "待发区超过 3 条时只显示前 2 条，底部折叠行提示。",
+    "params": {
+      "count": {
+        "example": 5,
+        "type": "integer"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": {
+      "forms": {
+        "other": "还有 {count} 条"
       },
       "plural": "count"
     }
@@ -228,7 +446,7 @@
   {
     "en": "Paused",
     "key": "queue.paused",
-    "notes": "排队消息气泡的状态/操作文字。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "notes": "定时任务状态文字（已暂停）。保留供 schedules 使用。",
     "params": {},
     "platforms": [
       "web",
@@ -242,30 +460,9 @@
     "zh-CN": "已暂停"
   },
   {
-    "en": " · #{rank}",
-    "key": "queue.rank",
-    "notes": "会话排队消息气泡。排队气泡顺序元信息；rank 为从 1 开始的队列序号。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：rank 为从 1 开始的队列序号。",
-    "params": {
-      "rank": {
-        "example": 2,
-        "type": "integer"
-      }
-    },
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "en": "draft",
-      "zh-CN": "source"
-    },
-    "zh-CN": " · 第 {rank} 条"
-  },
-  {
     "en": "Could not send; still paused",
     "key": "queue.resume_failed",
-    "notes": "排队消息气泡的状态/操作文字。说明/反馈正文，允许多行。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "notes": "已暂停消息点发送失败的原因，放在消息正文下方。",
     "params": {},
     "platforms": [
       "web",
@@ -293,5 +490,74 @@
       "zh-CN": "source"
     },
     "zh-CN": "正在发送…"
+  },
+  {
+    "en": "Scheduled {time}",
+    "key": "queue.scheduled_time",
+    "notes": "待发区定时任务消息正文前缀，time 为 HH:mm。",
+    "params": {
+      "time": {
+        "example": "15:00",
+        "type": "string"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "定时 {time}"
+  },
+  {
+    "en": "Send now",
+    "key": "queue.send_now",
+    "notes": "点开做完再发那组的待发消息后的操作：改成立刻插入当前这一轮发。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "现在发"
+  },
+  {
+    "en": "Sent to terminal, unconfirmed",
+    "key": "queue.unconfirmed_reason",
+    "notes": "「可能没发出去」行下的短原因，与设计稿 s7 对齐。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "已送到终端，但没确认"
+  },
+  {
+    "en": "Undo",
+    "key": "queue.undo",
+    "notes": "待发区底部 5 秒撤销提示条右侧动作。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "撤销"
   }
 ]

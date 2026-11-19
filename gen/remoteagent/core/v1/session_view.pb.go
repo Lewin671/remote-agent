@@ -184,59 +184,172 @@ func (SessionDockKind) EnumDescriptor() ([]byte, []int) {
 	return file_remoteagent_core_v1_session_view_proto_rawDescGZIP(), []int{2}
 }
 
-type SessionOutgoingState int32
+type SessionTrayGroupKind int32
 
 const (
-	SessionOutgoingState_SESSION_OUTGOING_STATE_UNSPECIFIED SessionOutgoingState = 0
-	SessionOutgoingState_SESSION_OUTGOING_STATE_SENDING     SessionOutgoingState = 1
-	SessionOutgoingState_SESSION_OUTGOING_STATE_SENT        SessionOutgoingState = 2
-	SessionOutgoingState_SESSION_OUTGOING_STATE_FAILED      SessionOutgoingState = 3
-	SessionOutgoingState_SESSION_OUTGOING_STATE_UNKNOWN     SessionOutgoingState = 4
+	SessionTrayGroupKind_SESSION_TRAY_GROUP_KIND_UNSPECIFIED SessionTrayGroupKind = 0
+	SessionTrayGroupKind_SESSION_TRAY_GROUP_KIND_FAILED      SessionTrayGroupKind = 1
+	SessionTrayGroupKind_SESSION_TRAY_GROUP_KIND_UNSURE      SessionTrayGroupKind = 2
+	SessionTrayGroupKind_SESSION_TRAY_GROUP_KIND_WAIT_READY  SessionTrayGroupKind = 3
+	SessionTrayGroupKind_SESSION_TRAY_GROUP_KIND_WAIT_ANSWER SessionTrayGroupKind = 4
+	SessionTrayGroupKind_SESSION_TRAY_GROUP_KIND_STEER       SessionTrayGroupKind = 5
+	SessionTrayGroupKind_SESSION_TRAY_GROUP_KIND_QUEUE       SessionTrayGroupKind = 6
+	SessionTrayGroupKind_SESSION_TRAY_GROUP_KIND_PAUSED      SessionTrayGroupKind = 7
 )
 
-// Enum value maps for SessionOutgoingState.
+// Enum value maps for SessionTrayGroupKind.
 var (
-	SessionOutgoingState_name = map[int32]string{
-		0: "SESSION_OUTGOING_STATE_UNSPECIFIED",
-		1: "SESSION_OUTGOING_STATE_SENDING",
-		2: "SESSION_OUTGOING_STATE_SENT",
-		3: "SESSION_OUTGOING_STATE_FAILED",
-		4: "SESSION_OUTGOING_STATE_UNKNOWN",
+	SessionTrayGroupKind_name = map[int32]string{
+		0: "SESSION_TRAY_GROUP_KIND_UNSPECIFIED",
+		1: "SESSION_TRAY_GROUP_KIND_FAILED",
+		2: "SESSION_TRAY_GROUP_KIND_UNSURE",
+		3: "SESSION_TRAY_GROUP_KIND_WAIT_READY",
+		4: "SESSION_TRAY_GROUP_KIND_WAIT_ANSWER",
+		5: "SESSION_TRAY_GROUP_KIND_STEER",
+		6: "SESSION_TRAY_GROUP_KIND_QUEUE",
+		7: "SESSION_TRAY_GROUP_KIND_PAUSED",
 	}
-	SessionOutgoingState_value = map[string]int32{
-		"SESSION_OUTGOING_STATE_UNSPECIFIED": 0,
-		"SESSION_OUTGOING_STATE_SENDING":     1,
-		"SESSION_OUTGOING_STATE_SENT":        2,
-		"SESSION_OUTGOING_STATE_FAILED":      3,
-		"SESSION_OUTGOING_STATE_UNKNOWN":     4,
+	SessionTrayGroupKind_value = map[string]int32{
+		"SESSION_TRAY_GROUP_KIND_UNSPECIFIED": 0,
+		"SESSION_TRAY_GROUP_KIND_FAILED":      1,
+		"SESSION_TRAY_GROUP_KIND_UNSURE":      2,
+		"SESSION_TRAY_GROUP_KIND_WAIT_READY":  3,
+		"SESSION_TRAY_GROUP_KIND_WAIT_ANSWER": 4,
+		"SESSION_TRAY_GROUP_KIND_STEER":       5,
+		"SESSION_TRAY_GROUP_KIND_QUEUE":       6,
+		"SESSION_TRAY_GROUP_KIND_PAUSED":      7,
 	}
 )
 
-func (x SessionOutgoingState) Enum() *SessionOutgoingState {
-	p := new(SessionOutgoingState)
+func (x SessionTrayGroupKind) Enum() *SessionTrayGroupKind {
+	p := new(SessionTrayGroupKind)
 	*p = x
 	return p
 }
 
-func (x SessionOutgoingState) String() string {
+func (x SessionTrayGroupKind) String() string {
 	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
 }
 
-func (SessionOutgoingState) Descriptor() protoreflect.EnumDescriptor {
+func (SessionTrayGroupKind) Descriptor() protoreflect.EnumDescriptor {
 	return file_remoteagent_core_v1_session_view_proto_enumTypes[3].Descriptor()
 }
 
-func (SessionOutgoingState) Type() protoreflect.EnumType {
+func (SessionTrayGroupKind) Type() protoreflect.EnumType {
 	return &file_remoteagent_core_v1_session_view_proto_enumTypes[3]
 }
 
-func (x SessionOutgoingState) Number() protoreflect.EnumNumber {
+func (x SessionTrayGroupKind) Number() protoreflect.EnumNumber {
 	return protoreflect.EnumNumber(x)
 }
 
-// Deprecated: Use SessionOutgoingState.Descriptor instead.
-func (SessionOutgoingState) EnumDescriptor() ([]byte, []int) {
+// Deprecated: Use SessionTrayGroupKind.Descriptor instead.
+func (SessionTrayGroupKind) EnumDescriptor() ([]byte, []int) {
 	return file_remoteagent_core_v1_session_view_proto_rawDescGZIP(), []int{3}
+}
+
+type SessionTrayTone int32
+
+const (
+	SessionTrayTone_SESSION_TRAY_TONE_UNSPECIFIED SessionTrayTone = 0
+	SessionTrayTone_SESSION_TRAY_TONE_NEUTRAL     SessionTrayTone = 1
+	SessionTrayTone_SESSION_TRAY_TONE_RED         SessionTrayTone = 2
+	SessionTrayTone_SESSION_TRAY_TONE_ORANGE      SessionTrayTone = 3
+)
+
+// Enum value maps for SessionTrayTone.
+var (
+	SessionTrayTone_name = map[int32]string{
+		0: "SESSION_TRAY_TONE_UNSPECIFIED",
+		1: "SESSION_TRAY_TONE_NEUTRAL",
+		2: "SESSION_TRAY_TONE_RED",
+		3: "SESSION_TRAY_TONE_ORANGE",
+	}
+	SessionTrayTone_value = map[string]int32{
+		"SESSION_TRAY_TONE_UNSPECIFIED": 0,
+		"SESSION_TRAY_TONE_NEUTRAL":     1,
+		"SESSION_TRAY_TONE_RED":         2,
+		"SESSION_TRAY_TONE_ORANGE":      3,
+	}
+)
+
+func (x SessionTrayTone) Enum() *SessionTrayTone {
+	p := new(SessionTrayTone)
+	*p = x
+	return p
+}
+
+func (x SessionTrayTone) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (SessionTrayTone) Descriptor() protoreflect.EnumDescriptor {
+	return file_remoteagent_core_v1_session_view_proto_enumTypes[4].Descriptor()
+}
+
+func (SessionTrayTone) Type() protoreflect.EnumType {
+	return &file_remoteagent_core_v1_session_view_proto_enumTypes[4]
+}
+
+func (x SessionTrayTone) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use SessionTrayTone.Descriptor instead.
+func (SessionTrayTone) EnumDescriptor() ([]byte, []int) {
+	return file_remoteagent_core_v1_session_view_proto_rawDescGZIP(), []int{4}
+}
+
+type SessionTrayRowActivity int32
+
+const (
+	SessionTrayRowActivity_SESSION_TRAY_ROW_ACTIVITY_UNSPECIFIED SessionTrayRowActivity = 0
+	SessionTrayRowActivity_SESSION_TRAY_ROW_ACTIVITY_IDLE        SessionTrayRowActivity = 1
+	SessionTrayRowActivity_SESSION_TRAY_ROW_ACTIVITY_SENDING     SessionTrayRowActivity = 2
+	SessionTrayRowActivity_SESSION_TRAY_ROW_ACTIVITY_CANCELING   SessionTrayRowActivity = 3
+)
+
+// Enum value maps for SessionTrayRowActivity.
+var (
+	SessionTrayRowActivity_name = map[int32]string{
+		0: "SESSION_TRAY_ROW_ACTIVITY_UNSPECIFIED",
+		1: "SESSION_TRAY_ROW_ACTIVITY_IDLE",
+		2: "SESSION_TRAY_ROW_ACTIVITY_SENDING",
+		3: "SESSION_TRAY_ROW_ACTIVITY_CANCELING",
+	}
+	SessionTrayRowActivity_value = map[string]int32{
+		"SESSION_TRAY_ROW_ACTIVITY_UNSPECIFIED": 0,
+		"SESSION_TRAY_ROW_ACTIVITY_IDLE":        1,
+		"SESSION_TRAY_ROW_ACTIVITY_SENDING":     2,
+		"SESSION_TRAY_ROW_ACTIVITY_CANCELING":   3,
+	}
+)
+
+func (x SessionTrayRowActivity) Enum() *SessionTrayRowActivity {
+	p := new(SessionTrayRowActivity)
+	*p = x
+	return p
+}
+
+func (x SessionTrayRowActivity) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (SessionTrayRowActivity) Descriptor() protoreflect.EnumDescriptor {
+	return file_remoteagent_core_v1_session_view_proto_enumTypes[5].Descriptor()
+}
+
+func (SessionTrayRowActivity) Type() protoreflect.EnumType {
+	return &file_remoteagent_core_v1_session_view_proto_enumTypes[5]
+}
+
+func (x SessionTrayRowActivity) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use SessionTrayRowActivity.Descriptor instead.
+func (SessionTrayRowActivity) EnumDescriptor() ([]byte, []int) {
+	return file_remoteagent_core_v1_session_view_proto_rawDescGZIP(), []int{5}
 }
 
 type SessionToolStatus int32
@@ -284,11 +397,11 @@ func (x SessionToolStatus) String() string {
 }
 
 func (SessionToolStatus) Descriptor() protoreflect.EnumDescriptor {
-	return file_remoteagent_core_v1_session_view_proto_enumTypes[4].Descriptor()
+	return file_remoteagent_core_v1_session_view_proto_enumTypes[6].Descriptor()
 }
 
 func (SessionToolStatus) Type() protoreflect.EnumType {
-	return &file_remoteagent_core_v1_session_view_proto_enumTypes[4]
+	return &file_remoteagent_core_v1_session_view_proto_enumTypes[6]
 }
 
 func (x SessionToolStatus) Number() protoreflect.EnumNumber {
@@ -297,7 +410,7 @@ func (x SessionToolStatus) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use SessionToolStatus.Descriptor instead.
 func (SessionToolStatus) EnumDescriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_session_view_proto_rawDescGZIP(), []int{4}
+	return file_remoteagent_core_v1_session_view_proto_rawDescGZIP(), []int{6}
 }
 
 type SessionNoteTone int32
@@ -339,11 +452,11 @@ func (x SessionNoteTone) String() string {
 }
 
 func (SessionNoteTone) Descriptor() protoreflect.EnumDescriptor {
-	return file_remoteagent_core_v1_session_view_proto_enumTypes[5].Descriptor()
+	return file_remoteagent_core_v1_session_view_proto_enumTypes[7].Descriptor()
 }
 
 func (SessionNoteTone) Type() protoreflect.EnumType {
-	return &file_remoteagent_core_v1_session_view_proto_enumTypes[5]
+	return &file_remoteagent_core_v1_session_view_proto_enumTypes[7]
 }
 
 func (x SessionNoteTone) Number() protoreflect.EnumNumber {
@@ -352,7 +465,7 @@ func (x SessionNoteTone) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use SessionNoteTone.Descriptor instead.
 func (SessionNoteTone) EnumDescriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_session_view_proto_rawDescGZIP(), []int{5}
+	return file_remoteagent_core_v1_session_view_proto_rawDescGZIP(), []int{7}
 }
 
 type SessionNoteKind int32
@@ -403,11 +516,11 @@ func (x SessionNoteKind) String() string {
 }
 
 func (SessionNoteKind) Descriptor() protoreflect.EnumDescriptor {
-	return file_remoteagent_core_v1_session_view_proto_enumTypes[6].Descriptor()
+	return file_remoteagent_core_v1_session_view_proto_enumTypes[8].Descriptor()
 }
 
 func (SessionNoteKind) Type() protoreflect.EnumType {
-	return &file_remoteagent_core_v1_session_view_proto_enumTypes[6]
+	return &file_remoteagent_core_v1_session_view_proto_enumTypes[8]
 }
 
 func (x SessionNoteKind) Number() protoreflect.EnumNumber {
@@ -416,7 +529,7 @@ func (x SessionNoteKind) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use SessionNoteKind.Descriptor instead.
 func (SessionNoteKind) EnumDescriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_session_view_proto_rawDescGZIP(), []int{6}
+	return file_remoteagent_core_v1_session_view_proto_rawDescGZIP(), []int{8}
 }
 
 type SessionInputNoticeKind int32
@@ -461,11 +574,11 @@ func (x SessionInputNoticeKind) String() string {
 }
 
 func (SessionInputNoticeKind) Descriptor() protoreflect.EnumDescriptor {
-	return file_remoteagent_core_v1_session_view_proto_enumTypes[7].Descriptor()
+	return file_remoteagent_core_v1_session_view_proto_enumTypes[9].Descriptor()
 }
 
 func (SessionInputNoticeKind) Type() protoreflect.EnumType {
-	return &file_remoteagent_core_v1_session_view_proto_enumTypes[7]
+	return &file_remoteagent_core_v1_session_view_proto_enumTypes[9]
 }
 
 func (x SessionInputNoticeKind) Number() protoreflect.EnumNumber {
@@ -474,7 +587,7 @@ func (x SessionInputNoticeKind) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use SessionInputNoticeKind.Descriptor instead.
 func (SessionInputNoticeKind) EnumDescriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_session_view_proto_rawDescGZIP(), []int{7}
+	return file_remoteagent_core_v1_session_view_proto_rawDescGZIP(), []int{9}
 }
 
 // SessionScreenRequest requests the computed view model for one session.
@@ -2921,46 +3034,52 @@ func (x *SessionTerminalPopupDockView) GetCanGoTerminal() bool {
 	return false
 }
 
-type SessionPendingInputView struct {
-	state             protoimpl.MessageState `protogen:"open.v1"`
-	RequestId         string                 `protobuf:"bytes,1,opt,name=request_id,json=requestId,proto3" json:"request_id,omitempty"`
-	Text              string                 `protobuf:"bytes,2,opt,name=text,proto3" json:"text,omitempty"`
-	ImageCount        int32                  `protobuf:"varint,3,opt,name=image_count,json=imageCount,proto3" json:"image_count,omitempty"`
-	FileCount         int32                  `protobuf:"varint,4,opt,name=file_count,json=fileCount,proto3" json:"file_count,omitempty"`
-	Mode              v1.SendMode            `protobuf:"varint,5,opt,name=mode,proto3,enum=remoteagent.v1.SendMode" json:"mode,omitempty"`
-	Status            v1.InputStatus         `protobuf:"varint,6,opt,name=status,proto3,enum=remoteagent.v1.InputStatus" json:"status,omitempty"`
-	Held              bool                   `protobuf:"varint,7,opt,name=held,proto3" json:"held,omitempty"`
-	Paused            bool                   `protobuf:"varint,8,opt,name=paused,proto3" json:"paused,omitempty"`
-	Rank              int32                  `protobuf:"varint,9,opt,name=rank,proto3" json:"rank,omitempty"`
-	TotalPending      int32                  `protobuf:"varint,10,opt,name=total_pending,json=totalPending,proto3" json:"total_pending,omitempty"`
-	Label             *Text                  `protobuf:"bytes,11,opt,name=label,proto3" json:"label,omitempty"`
-	Caption           *Text                  `protobuf:"bytes,12,opt,name=caption,proto3" json:"caption,omitempty"`
-	OriginLabel       *Text                  `protobuf:"bytes,13,opt,name=origin_label,json=originLabel,proto3" json:"origin_label,omitempty"`
-	ScheduledRunId    string                 `protobuf:"bytes,14,opt,name=scheduled_run_id,json=scheduledRunId,proto3" json:"scheduled_run_id,omitempty"`
-	CanCancel         bool                   `protobuf:"varint,15,opt,name=can_cancel,json=canCancel,proto3" json:"can_cancel,omitempty"`
-	CanResume         bool                   `protobuf:"varint,16,opt,name=can_resume,json=canResume,proto3" json:"can_resume,omitempty"`
-	Cancel            *SessionCommandState   `protobuf:"bytes,17,opt,name=cancel,proto3" json:"cancel,omitempty"`
-	Resume            *SessionCommandState   `protobuf:"bytes,18,opt,name=resume,proto3" json:"resume,omitempty"`
-	Feedback          *Text                  `protobuf:"bytes,19,opt,name=feedback,proto3" json:"feedback,omitempty"`
-	FeedbackUncertain bool                   `protobuf:"varint,20,opt,name=feedback_uncertain,json=feedbackUncertain,proto3" json:"feedback_uncertain,omitempty"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
+type SessionTrayItemView struct {
+	state                  protoimpl.MessageState `protogen:"open.v1"`
+	RequestId              string                 `protobuf:"bytes,1,opt,name=request_id,json=requestId,proto3" json:"request_id,omitempty"`
+	SlotKey                string                 `protobuf:"bytes,2,opt,name=slot_key,json=slotKey,proto3" json:"slot_key,omitempty"`
+	Group                  SessionTrayGroupKind   `protobuf:"varint,3,opt,name=group,proto3,enum=remoteagent.core.v1.SessionTrayGroupKind" json:"group,omitempty"`
+	Tone                   SessionTrayTone        `protobuf:"varint,4,opt,name=tone,proto3,enum=remoteagent.core.v1.SessionTrayTone" json:"tone,omitempty"`
+	Activity               SessionTrayRowActivity `protobuf:"varint,5,opt,name=activity,proto3,enum=remoteagent.core.v1.SessionTrayRowActivity" json:"activity,omitempty"`
+	QueueNumber            int32                  `protobuf:"varint,6,opt,name=queue_number,json=queueNumber,proto3" json:"queue_number,omitempty"`
+	ShowSpinner            bool                   `protobuf:"varint,7,opt,name=show_spinner,json=showSpinner,proto3" json:"show_spinner,omitempty"`
+	Text                   string                 `protobuf:"bytes,8,opt,name=text,proto3" json:"text,omitempty"`
+	SourceLabel            *Text                  `protobuf:"bytes,9,opt,name=source_label,json=sourceLabel,proto3" json:"source_label,omitempty"`
+	ForeignDimmed          bool                   `protobuf:"varint,10,opt,name=foreign_dimmed,json=foreignDimmed,proto3" json:"foreign_dimmed,omitempty"`
+	AttachmentCount        int32                  `protobuf:"varint,11,opt,name=attachment_count,json=attachmentCount,proto3" json:"attachment_count,omitempty"`
+	ImageCount             int32                  `protobuf:"varint,12,opt,name=image_count,json=imageCount,proto3" json:"image_count,omitempty"`
+	FileCount              int32                  `protobuf:"varint,13,opt,name=file_count,json=fileCount,proto3" json:"file_count,omitempty"`
+	ImageIds               []string               `protobuf:"bytes,14,rep,name=image_ids,json=imageIds,proto3" json:"image_ids,omitempty"`
+	FileIds                []string               `protobuf:"bytes,15,rep,name=file_ids,json=fileIds,proto3" json:"file_ids,omitempty"`
+	Mode                   v1.SendMode            `protobuf:"varint,16,opt,name=mode,proto3,enum=remoteagent.v1.SendMode" json:"mode,omitempty"`
+	ReasonText             *Text                  `protobuf:"bytes,17,opt,name=reason_text,json=reasonText,proto3" json:"reason_text,omitempty"`
+	CanCancel              bool                   `protobuf:"varint,18,opt,name=can_cancel,json=canCancel,proto3" json:"can_cancel,omitempty"`
+	CanResume              bool                   `protobuf:"varint,19,opt,name=can_resume,json=canResume,proto3" json:"can_resume,omitempty"`
+	CanRetry               bool                   `protobuf:"varint,20,opt,name=can_retry,json=canRetry,proto3" json:"can_retry,omitempty"`
+	CanOpenTerminal        bool                   `protobuf:"varint,21,opt,name=can_open_terminal,json=canOpenTerminal,proto3" json:"can_open_terminal,omitempty"`
+	CanIgnore              bool                   `protobuf:"varint,22,opt,name=can_ignore,json=canIgnore,proto3" json:"can_ignore,omitempty"`
+	CanPromote             bool                   `protobuf:"varint,23,opt,name=can_promote,json=canPromote,proto3" json:"can_promote,omitempty"`
+	CanRestore             bool                   `protobuf:"varint,24,opt,name=can_restore,json=canRestore,proto3" json:"can_restore,omitempty"`
+	NetworkActionsDisabled bool                   `protobuf:"varint,25,opt,name=network_actions_disabled,json=networkActionsDisabled,proto3" json:"network_actions_disabled,omitempty"`
+	ServerBacked           bool                   `protobuf:"varint,26,opt,name=server_backed,json=serverBacked,proto3" json:"server_backed,omitempty"`
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
 }
 
-func (x *SessionPendingInputView) Reset() {
-	*x = SessionPendingInputView{}
+func (x *SessionTrayItemView) Reset() {
+	*x = SessionTrayItemView{}
 	mi := &file_remoteagent_core_v1_session_view_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *SessionPendingInputView) String() string {
+func (x *SessionTrayItemView) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*SessionPendingInputView) ProtoMessage() {}
+func (*SessionTrayItemView) ProtoMessage() {}
 
-func (x *SessionPendingInputView) ProtoReflect() protoreflect.Message {
+func (x *SessionTrayItemView) ProtoReflect() protoreflect.Message {
 	mi := &file_remoteagent_core_v1_session_view_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -2972,335 +3091,456 @@ func (x *SessionPendingInputView) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use SessionPendingInputView.ProtoReflect.Descriptor instead.
-func (*SessionPendingInputView) Descriptor() ([]byte, []int) {
+// Deprecated: Use SessionTrayItemView.ProtoReflect.Descriptor instead.
+func (*SessionTrayItemView) Descriptor() ([]byte, []int) {
 	return file_remoteagent_core_v1_session_view_proto_rawDescGZIP(), []int{19}
 }
 
-func (x *SessionPendingInputView) GetRequestId() string {
+func (x *SessionTrayItemView) GetRequestId() string {
 	if x != nil {
 		return x.RequestId
 	}
 	return ""
 }
 
-func (x *SessionPendingInputView) GetText() string {
-	if x != nil {
-		return x.Text
-	}
-	return ""
-}
-
-func (x *SessionPendingInputView) GetImageCount() int32 {
-	if x != nil {
-		return x.ImageCount
-	}
-	return 0
-}
-
-func (x *SessionPendingInputView) GetFileCount() int32 {
-	if x != nil {
-		return x.FileCount
-	}
-	return 0
-}
-
-func (x *SessionPendingInputView) GetMode() v1.SendMode {
-	if x != nil {
-		return x.Mode
-	}
-	return v1.SendMode(0)
-}
-
-func (x *SessionPendingInputView) GetStatus() v1.InputStatus {
-	if x != nil {
-		return x.Status
-	}
-	return v1.InputStatus(0)
-}
-
-func (x *SessionPendingInputView) GetHeld() bool {
-	if x != nil {
-		return x.Held
-	}
-	return false
-}
-
-func (x *SessionPendingInputView) GetPaused() bool {
-	if x != nil {
-		return x.Paused
-	}
-	return false
-}
-
-func (x *SessionPendingInputView) GetRank() int32 {
-	if x != nil {
-		return x.Rank
-	}
-	return 0
-}
-
-func (x *SessionPendingInputView) GetTotalPending() int32 {
-	if x != nil {
-		return x.TotalPending
-	}
-	return 0
-}
-
-func (x *SessionPendingInputView) GetLabel() *Text {
-	if x != nil {
-		return x.Label
-	}
-	return nil
-}
-
-func (x *SessionPendingInputView) GetCaption() *Text {
-	if x != nil {
-		return x.Caption
-	}
-	return nil
-}
-
-func (x *SessionPendingInputView) GetOriginLabel() *Text {
-	if x != nil {
-		return x.OriginLabel
-	}
-	return nil
-}
-
-func (x *SessionPendingInputView) GetScheduledRunId() string {
-	if x != nil {
-		return x.ScheduledRunId
-	}
-	return ""
-}
-
-func (x *SessionPendingInputView) GetCanCancel() bool {
-	if x != nil {
-		return x.CanCancel
-	}
-	return false
-}
-
-func (x *SessionPendingInputView) GetCanResume() bool {
-	if x != nil {
-		return x.CanResume
-	}
-	return false
-}
-
-func (x *SessionPendingInputView) GetCancel() *SessionCommandState {
-	if x != nil {
-		return x.Cancel
-	}
-	return nil
-}
-
-func (x *SessionPendingInputView) GetResume() *SessionCommandState {
-	if x != nil {
-		return x.Resume
-	}
-	return nil
-}
-
-func (x *SessionPendingInputView) GetFeedback() *Text {
-	if x != nil {
-		return x.Feedback
-	}
-	return nil
-}
-
-func (x *SessionPendingInputView) GetFeedbackUncertain() bool {
-	if x != nil {
-		return x.FeedbackUncertain
-	}
-	return false
-}
-
-type SessionOutgoingView struct {
-	state             protoimpl.MessageState `protogen:"open.v1"`
-	RequestId         string                 `protobuf:"bytes,1,opt,name=request_id,json=requestId,proto3" json:"request_id,omitempty"`
-	SlotKey           string                 `protobuf:"bytes,2,opt,name=slot_key,json=slotKey,proto3" json:"slot_key,omitempty"`
-	Text              string                 `protobuf:"bytes,3,opt,name=text,proto3" json:"text,omitempty"`
-	ImageIds          []string               `protobuf:"bytes,4,rep,name=image_ids,json=imageIds,proto3" json:"image_ids,omitempty"`
-	FileIds           []string               `protobuf:"bytes,5,rep,name=file_ids,json=fileIds,proto3" json:"file_ids,omitempty"`
-	Mode              v1.SendMode            `protobuf:"varint,6,opt,name=mode,proto3,enum=remoteagent.v1.SendMode" json:"mode,omitempty"`
-	State             SessionOutgoingState   `protobuf:"varint,7,opt,name=state,proto3,enum=remoteagent.core.v1.SessionOutgoingState" json:"state,omitempty"`
-	Frozen            bool                   `protobuf:"varint,8,opt,name=frozen,proto3" json:"frozen,omitempty"`
-	Expired           bool                   `protobuf:"varint,9,opt,name=expired,proto3" json:"expired,omitempty"`
-	CanRetry          bool                   `protobuf:"varint,10,opt,name=can_retry,json=canRetry,proto3" json:"can_retry,omitempty"`
-	CanRestore        bool                   `protobuf:"varint,11,opt,name=can_restore,json=canRestore,proto3" json:"can_restore,omitempty"`
-	CanDismiss        bool                   `protobuf:"varint,12,opt,name=can_dismiss,json=canDismiss,proto3" json:"can_dismiss,omitempty"`
-	Caption           *Text                  `protobuf:"bytes,13,opt,name=caption,proto3" json:"caption,omitempty"`
-	Feedback          *Text                  `protobuf:"bytes,14,opt,name=feedback,proto3" json:"feedback,omitempty"`
-	FeedbackUncertain bool                   `protobuf:"varint,15,opt,name=feedback_uncertain,json=feedbackUncertain,proto3" json:"feedback_uncertain,omitempty"`
-	CreatedMs         int64                  `protobuf:"varint,16,opt,name=created_ms,json=createdMs,proto3" json:"created_ms,omitempty"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
-}
-
-func (x *SessionOutgoingView) Reset() {
-	*x = SessionOutgoingView{}
-	mi := &file_remoteagent_core_v1_session_view_proto_msgTypes[20]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *SessionOutgoingView) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*SessionOutgoingView) ProtoMessage() {}
-
-func (x *SessionOutgoingView) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_session_view_proto_msgTypes[20]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use SessionOutgoingView.ProtoReflect.Descriptor instead.
-func (*SessionOutgoingView) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_session_view_proto_rawDescGZIP(), []int{20}
-}
-
-func (x *SessionOutgoingView) GetRequestId() string {
-	if x != nil {
-		return x.RequestId
-	}
-	return ""
-}
-
-func (x *SessionOutgoingView) GetSlotKey() string {
+func (x *SessionTrayItemView) GetSlotKey() string {
 	if x != nil {
 		return x.SlotKey
 	}
 	return ""
 }
 
-func (x *SessionOutgoingView) GetText() string {
+func (x *SessionTrayItemView) GetGroup() SessionTrayGroupKind {
+	if x != nil {
+		return x.Group
+	}
+	return SessionTrayGroupKind_SESSION_TRAY_GROUP_KIND_UNSPECIFIED
+}
+
+func (x *SessionTrayItemView) GetTone() SessionTrayTone {
+	if x != nil {
+		return x.Tone
+	}
+	return SessionTrayTone_SESSION_TRAY_TONE_UNSPECIFIED
+}
+
+func (x *SessionTrayItemView) GetActivity() SessionTrayRowActivity {
+	if x != nil {
+		return x.Activity
+	}
+	return SessionTrayRowActivity_SESSION_TRAY_ROW_ACTIVITY_UNSPECIFIED
+}
+
+func (x *SessionTrayItemView) GetQueueNumber() int32 {
+	if x != nil {
+		return x.QueueNumber
+	}
+	return 0
+}
+
+func (x *SessionTrayItemView) GetShowSpinner() bool {
+	if x != nil {
+		return x.ShowSpinner
+	}
+	return false
+}
+
+func (x *SessionTrayItemView) GetText() string {
 	if x != nil {
 		return x.Text
 	}
 	return ""
 }
 
-func (x *SessionOutgoingView) GetImageIds() []string {
+func (x *SessionTrayItemView) GetSourceLabel() *Text {
+	if x != nil {
+		return x.SourceLabel
+	}
+	return nil
+}
+
+func (x *SessionTrayItemView) GetForeignDimmed() bool {
+	if x != nil {
+		return x.ForeignDimmed
+	}
+	return false
+}
+
+func (x *SessionTrayItemView) GetAttachmentCount() int32 {
+	if x != nil {
+		return x.AttachmentCount
+	}
+	return 0
+}
+
+func (x *SessionTrayItemView) GetImageCount() int32 {
+	if x != nil {
+		return x.ImageCount
+	}
+	return 0
+}
+
+func (x *SessionTrayItemView) GetFileCount() int32 {
+	if x != nil {
+		return x.FileCount
+	}
+	return 0
+}
+
+func (x *SessionTrayItemView) GetImageIds() []string {
 	if x != nil {
 		return x.ImageIds
 	}
 	return nil
 }
 
-func (x *SessionOutgoingView) GetFileIds() []string {
+func (x *SessionTrayItemView) GetFileIds() []string {
 	if x != nil {
 		return x.FileIds
 	}
 	return nil
 }
 
-func (x *SessionOutgoingView) GetMode() v1.SendMode {
+func (x *SessionTrayItemView) GetMode() v1.SendMode {
 	if x != nil {
 		return x.Mode
 	}
 	return v1.SendMode(0)
 }
 
-func (x *SessionOutgoingView) GetState() SessionOutgoingState {
+func (x *SessionTrayItemView) GetReasonText() *Text {
 	if x != nil {
-		return x.State
+		return x.ReasonText
 	}
-	return SessionOutgoingState_SESSION_OUTGOING_STATE_UNSPECIFIED
+	return nil
 }
 
-func (x *SessionOutgoingView) GetFrozen() bool {
+func (x *SessionTrayItemView) GetCanCancel() bool {
 	if x != nil {
-		return x.Frozen
-	}
-	return false
-}
-
-func (x *SessionOutgoingView) GetExpired() bool {
-	if x != nil {
-		return x.Expired
+		return x.CanCancel
 	}
 	return false
 }
 
-func (x *SessionOutgoingView) GetCanRetry() bool {
+func (x *SessionTrayItemView) GetCanResume() bool {
+	if x != nil {
+		return x.CanResume
+	}
+	return false
+}
+
+func (x *SessionTrayItemView) GetCanRetry() bool {
 	if x != nil {
 		return x.CanRetry
 	}
 	return false
 }
 
-func (x *SessionOutgoingView) GetCanRestore() bool {
+func (x *SessionTrayItemView) GetCanOpenTerminal() bool {
+	if x != nil {
+		return x.CanOpenTerminal
+	}
+	return false
+}
+
+func (x *SessionTrayItemView) GetCanIgnore() bool {
+	if x != nil {
+		return x.CanIgnore
+	}
+	return false
+}
+
+func (x *SessionTrayItemView) GetCanPromote() bool {
+	if x != nil {
+		return x.CanPromote
+	}
+	return false
+}
+
+func (x *SessionTrayItemView) GetCanRestore() bool {
 	if x != nil {
 		return x.CanRestore
 	}
 	return false
 }
 
-func (x *SessionOutgoingView) GetCanDismiss() bool {
+func (x *SessionTrayItemView) GetNetworkActionsDisabled() bool {
 	if x != nil {
-		return x.CanDismiss
+		return x.NetworkActionsDisabled
 	}
 	return false
 }
 
-func (x *SessionOutgoingView) GetCaption() *Text {
+func (x *SessionTrayItemView) GetServerBacked() bool {
 	if x != nil {
-		return x.Caption
-	}
-	return nil
-}
-
-func (x *SessionOutgoingView) GetFeedback() *Text {
-	if x != nil {
-		return x.Feedback
-	}
-	return nil
-}
-
-func (x *SessionOutgoingView) GetFeedbackUncertain() bool {
-	if x != nil {
-		return x.FeedbackUncertain
+		return x.ServerBacked
 	}
 	return false
 }
 
-func (x *SessionOutgoingView) GetCreatedMs() int64 {
+type SessionTrayGroupView struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Kind          SessionTrayGroupKind   `protobuf:"varint,1,opt,name=kind,proto3,enum=remoteagent.core.v1.SessionTrayGroupKind" json:"kind,omitempty"`
+	Tone          SessionTrayTone        `protobuf:"varint,2,opt,name=tone,proto3,enum=remoteagent.core.v1.SessionTrayTone" json:"tone,omitempty"`
+	Title         *Text                  `protobuf:"bytes,3,opt,name=title,proto3" json:"title,omitempty"`
+	HeaderText    *Text                  `protobuf:"bytes,4,opt,name=header_text,json=headerText,proto3" json:"header_text,omitempty"`
+	TotalCount    int32                  `protobuf:"varint,5,opt,name=total_count,json=totalCount,proto3" json:"total_count,omitempty"`
+	CanCancelAll  bool                   `protobuf:"varint,6,opt,name=can_cancel_all,json=canCancelAll,proto3" json:"can_cancel_all,omitempty"`
+	Items         []*SessionTrayItemView `protobuf:"bytes,7,rep,name=items,proto3" json:"items,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SessionTrayGroupView) Reset() {
+	*x = SessionTrayGroupView{}
+	mi := &file_remoteagent_core_v1_session_view_proto_msgTypes[20]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SessionTrayGroupView) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SessionTrayGroupView) ProtoMessage() {}
+
+func (x *SessionTrayGroupView) ProtoReflect() protoreflect.Message {
+	mi := &file_remoteagent_core_v1_session_view_proto_msgTypes[20]
 	if x != nil {
-		return x.CreatedMs
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SessionTrayGroupView.ProtoReflect.Descriptor instead.
+func (*SessionTrayGroupView) Descriptor() ([]byte, []int) {
+	return file_remoteagent_core_v1_session_view_proto_rawDescGZIP(), []int{20}
+}
+
+func (x *SessionTrayGroupView) GetKind() SessionTrayGroupKind {
+	if x != nil {
+		return x.Kind
+	}
+	return SessionTrayGroupKind_SESSION_TRAY_GROUP_KIND_UNSPECIFIED
+}
+
+func (x *SessionTrayGroupView) GetTone() SessionTrayTone {
+	if x != nil {
+		return x.Tone
+	}
+	return SessionTrayTone_SESSION_TRAY_TONE_UNSPECIFIED
+}
+
+func (x *SessionTrayGroupView) GetTitle() *Text {
+	if x != nil {
+		return x.Title
+	}
+	return nil
+}
+
+func (x *SessionTrayGroupView) GetHeaderText() *Text {
+	if x != nil {
+		return x.HeaderText
+	}
+	return nil
+}
+
+func (x *SessionTrayGroupView) GetTotalCount() int32 {
+	if x != nil {
+		return x.TotalCount
 	}
 	return 0
 }
 
+func (x *SessionTrayGroupView) GetCanCancelAll() bool {
+	if x != nil {
+		return x.CanCancelAll
+	}
+	return false
+}
+
+func (x *SessionTrayGroupView) GetItems() []*SessionTrayItemView {
+	if x != nil {
+		return x.Items
+	}
+	return nil
+}
+
+type SessionTrayUndoView struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Visible       bool                   `protobuf:"varint,1,opt,name=visible,proto3" json:"visible,omitempty"`
+	Count         int32                  `protobuf:"varint,2,opt,name=count,proto3" json:"count,omitempty"`
+	Label         *Text                  `protobuf:"bytes,3,opt,name=label,proto3" json:"label,omitempty"`
+	CanUndo       bool                   `protobuf:"varint,4,opt,name=can_undo,json=canUndo,proto3" json:"can_undo,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SessionTrayUndoView) Reset() {
+	*x = SessionTrayUndoView{}
+	mi := &file_remoteagent_core_v1_session_view_proto_msgTypes[21]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SessionTrayUndoView) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SessionTrayUndoView) ProtoMessage() {}
+
+func (x *SessionTrayUndoView) ProtoReflect() protoreflect.Message {
+	mi := &file_remoteagent_core_v1_session_view_proto_msgTypes[21]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SessionTrayUndoView.ProtoReflect.Descriptor instead.
+func (*SessionTrayUndoView) Descriptor() ([]byte, []int) {
+	return file_remoteagent_core_v1_session_view_proto_rawDescGZIP(), []int{21}
+}
+
+func (x *SessionTrayUndoView) GetVisible() bool {
+	if x != nil {
+		return x.Visible
+	}
+	return false
+}
+
+func (x *SessionTrayUndoView) GetCount() int32 {
+	if x != nil {
+		return x.Count
+	}
+	return 0
+}
+
+func (x *SessionTrayUndoView) GetLabel() *Text {
+	if x != nil {
+		return x.Label
+	}
+	return nil
+}
+
+func (x *SessionTrayUndoView) GetCanUndo() bool {
+	if x != nil {
+		return x.CanUndo
+	}
+	return false
+}
+
+type SessionPendingTrayView struct {
+	state         protoimpl.MessageState  `protogen:"open.v1"`
+	Groups        []*SessionTrayGroupView `protobuf:"bytes,1,rep,name=groups,proto3" json:"groups,omitempty"`
+	OrderedItems  []*SessionTrayItemView  `protobuf:"bytes,2,rep,name=ordered_items,json=orderedItems,proto3" json:"ordered_items,omitempty"`
+	TotalCount    int32                   `protobuf:"varint,3,opt,name=total_count,json=totalCount,proto3" json:"total_count,omitempty"`
+	FailedCount   int32                   `protobuf:"varint,4,opt,name=failed_count,json=failedCount,proto3" json:"failed_count,omitempty"`
+	Offline       bool                    `protobuf:"varint,5,opt,name=offline,proto3" json:"offline,omitempty"`
+	Undo          *SessionTrayUndoView    `protobuf:"bytes,6,opt,name=undo,proto3" json:"undo,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SessionPendingTrayView) Reset() {
+	*x = SessionPendingTrayView{}
+	mi := &file_remoteagent_core_v1_session_view_proto_msgTypes[22]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SessionPendingTrayView) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SessionPendingTrayView) ProtoMessage() {}
+
+func (x *SessionPendingTrayView) ProtoReflect() protoreflect.Message {
+	mi := &file_remoteagent_core_v1_session_view_proto_msgTypes[22]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SessionPendingTrayView.ProtoReflect.Descriptor instead.
+func (*SessionPendingTrayView) Descriptor() ([]byte, []int) {
+	return file_remoteagent_core_v1_session_view_proto_rawDescGZIP(), []int{22}
+}
+
+func (x *SessionPendingTrayView) GetGroups() []*SessionTrayGroupView {
+	if x != nil {
+		return x.Groups
+	}
+	return nil
+}
+
+func (x *SessionPendingTrayView) GetOrderedItems() []*SessionTrayItemView {
+	if x != nil {
+		return x.OrderedItems
+	}
+	return nil
+}
+
+func (x *SessionPendingTrayView) GetTotalCount() int32 {
+	if x != nil {
+		return x.TotalCount
+	}
+	return 0
+}
+
+func (x *SessionPendingTrayView) GetFailedCount() int32 {
+	if x != nil {
+		return x.FailedCount
+	}
+	return 0
+}
+
+func (x *SessionPendingTrayView) GetOffline() bool {
+	if x != nil {
+		return x.Offline
+	}
+	return false
+}
+
+func (x *SessionPendingTrayView) GetUndo() *SessionTrayUndoView {
+	if x != nil {
+		return x.Undo
+	}
+	return nil
+}
+
 type SessionComposerView struct {
-	state             protoimpl.MessageState     `protogen:"open.v1"`
-	Enabled           bool                       `protobuf:"varint,1,opt,name=enabled,proto3" json:"enabled,omitempty"`
-	DisabledReason    *Text                      `protobuf:"bytes,2,opt,name=disabled_reason,json=disabledReason,proto3" json:"disabled_reason,omitempty"`
-	Placeholder       *Text                      `protobuf:"bytes,3,opt,name=placeholder,proto3" json:"placeholder,omitempty"`
-	HasActiveTurn     bool                       `protobuf:"varint,4,opt,name=has_active_turn,json=hasActiveTurn,proto3" json:"has_active_turn,omitempty"`
-	SteerModeDefault  bool                       `protobuf:"varint,5,opt,name=steer_mode_default,json=steerModeDefault,proto3" json:"steer_mode_default,omitempty"`
-	SupportsQueueMode bool                       `protobuf:"varint,6,opt,name=supports_queue_mode,json=supportsQueueMode,proto3" json:"supports_queue_mode,omitempty"`
-	CanAttachImages   bool                       `protobuf:"varint,7,opt,name=can_attach_images,json=canAttachImages,proto3" json:"can_attach_images,omitempty"`
-	CanAttachFiles    bool                       `protobuf:"varint,8,opt,name=can_attach_files,json=canAttachFiles,proto3" json:"can_attach_files,omitempty"`
-	InterruptVisible  bool                       `protobuf:"varint,9,opt,name=interrupt_visible,json=interruptVisible,proto3" json:"interrupt_visible,omitempty"`
-	PendingInputs     []*SessionPendingInputView `protobuf:"bytes,10,rep,name=pending_inputs,json=pendingInputs,proto3" json:"pending_inputs,omitempty"`
-	Outgoing          []*SessionOutgoingView     `protobuf:"bytes,11,rep,name=outgoing,proto3" json:"outgoing,omitempty"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
+	state                        protoimpl.MessageState  `protogen:"open.v1"`
+	Enabled                      bool                    `protobuf:"varint,1,opt,name=enabled,proto3" json:"enabled,omitempty"`
+	DisabledReason               *Text                   `protobuf:"bytes,2,opt,name=disabled_reason,json=disabledReason,proto3" json:"disabled_reason,omitempty"`
+	Placeholder                  *Text                   `protobuf:"bytes,3,opt,name=placeholder,proto3" json:"placeholder,omitempty"`
+	HasActiveTurn                bool                    `protobuf:"varint,4,opt,name=has_active_turn,json=hasActiveTurn,proto3" json:"has_active_turn,omitempty"`
+	SupportsQueueMode            bool                    `protobuf:"varint,5,opt,name=supports_queue_mode,json=supportsQueueMode,proto3" json:"supports_queue_mode,omitempty"`
+	CanAttachImages              bool                    `protobuf:"varint,6,opt,name=can_attach_images,json=canAttachImages,proto3" json:"can_attach_images,omitempty"`
+	CanAttachFiles               bool                    `protobuf:"varint,7,opt,name=can_attach_files,json=canAttachFiles,proto3" json:"can_attach_files,omitempty"`
+	InterruptVisible             bool                    `protobuf:"varint,8,opt,name=interrupt_visible,json=interruptVisible,proto3" json:"interrupt_visible,omitempty"`
+	PendingTray                  *SessionPendingTrayView `protobuf:"bytes,9,opt,name=pending_tray,json=pendingTray,proto3" json:"pending_tray,omitempty"`
+	RetainedAttachmentRequestIds []string                `protobuf:"bytes,10,rep,name=retained_attachment_request_ids,json=retainedAttachmentRequestIds,proto3" json:"retained_attachment_request_ids,omitempty"`
+	unknownFields                protoimpl.UnknownFields
+	sizeCache                    protoimpl.SizeCache
 }
 
 func (x *SessionComposerView) Reset() {
 	*x = SessionComposerView{}
-	mi := &file_remoteagent_core_v1_session_view_proto_msgTypes[21]
+	mi := &file_remoteagent_core_v1_session_view_proto_msgTypes[23]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3312,7 +3552,7 @@ func (x *SessionComposerView) String() string {
 func (*SessionComposerView) ProtoMessage() {}
 
 func (x *SessionComposerView) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_session_view_proto_msgTypes[21]
+	mi := &file_remoteagent_core_v1_session_view_proto_msgTypes[23]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3325,7 +3565,7 @@ func (x *SessionComposerView) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SessionComposerView.ProtoReflect.Descriptor instead.
 func (*SessionComposerView) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_session_view_proto_rawDescGZIP(), []int{21}
+	return file_remoteagent_core_v1_session_view_proto_rawDescGZIP(), []int{23}
 }
 
 func (x *SessionComposerView) GetEnabled() bool {
@@ -3352,13 +3592,6 @@ func (x *SessionComposerView) GetPlaceholder() *Text {
 func (x *SessionComposerView) GetHasActiveTurn() bool {
 	if x != nil {
 		return x.HasActiveTurn
-	}
-	return false
-}
-
-func (x *SessionComposerView) GetSteerModeDefault() bool {
-	if x != nil {
-		return x.SteerModeDefault
 	}
 	return false
 }
@@ -3391,16 +3624,16 @@ func (x *SessionComposerView) GetInterruptVisible() bool {
 	return false
 }
 
-func (x *SessionComposerView) GetPendingInputs() []*SessionPendingInputView {
+func (x *SessionComposerView) GetPendingTray() *SessionPendingTrayView {
 	if x != nil {
-		return x.PendingInputs
+		return x.PendingTray
 	}
 	return nil
 }
 
-func (x *SessionComposerView) GetOutgoing() []*SessionOutgoingView {
+func (x *SessionComposerView) GetRetainedAttachmentRequestIds() []string {
 	if x != nil {
-		return x.Outgoing
+		return x.RetainedAttachmentRequestIds
 	}
 	return nil
 }
@@ -3437,7 +3670,7 @@ type SessionTimelineView struct {
 
 func (x *SessionTimelineView) Reset() {
 	*x = SessionTimelineView{}
-	mi := &file_remoteagent_core_v1_session_view_proto_msgTypes[22]
+	mi := &file_remoteagent_core_v1_session_view_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3449,7 +3682,7 @@ func (x *SessionTimelineView) String() string {
 func (*SessionTimelineView) ProtoMessage() {}
 
 func (x *SessionTimelineView) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_session_view_proto_msgTypes[22]
+	mi := &file_remoteagent_core_v1_session_view_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3462,7 +3695,7 @@ func (x *SessionTimelineView) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SessionTimelineView.ProtoReflect.Descriptor instead.
 func (*SessionTimelineView) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_session_view_proto_rawDescGZIP(), []int{22}
+	return file_remoteagent_core_v1_session_view_proto_rawDescGZIP(), []int{24}
 }
 
 func (x *SessionTimelineView) GetItems() []*SessionTimelineItem {
@@ -3666,7 +3899,7 @@ type SessionTimelineItem struct {
 
 func (x *SessionTimelineItem) Reset() {
 	*x = SessionTimelineItem{}
-	mi := &file_remoteagent_core_v1_session_view_proto_msgTypes[23]
+	mi := &file_remoteagent_core_v1_session_view_proto_msgTypes[25]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3678,7 +3911,7 @@ func (x *SessionTimelineItem) String() string {
 func (*SessionTimelineItem) ProtoMessage() {}
 
 func (x *SessionTimelineItem) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_session_view_proto_msgTypes[23]
+	mi := &file_remoteagent_core_v1_session_view_proto_msgTypes[25]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3691,7 +3924,7 @@ func (x *SessionTimelineItem) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SessionTimelineItem.ProtoReflect.Descriptor instead.
 func (*SessionTimelineItem) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_session_view_proto_rawDescGZIP(), []int{23}
+	return file_remoteagent_core_v1_session_view_proto_rawDescGZIP(), []int{25}
 }
 
 func (x *SessionTimelineItem) GetId() string {
@@ -4007,7 +4240,7 @@ type SessionFileRefView struct {
 
 func (x *SessionFileRefView) Reset() {
 	*x = SessionFileRefView{}
-	mi := &file_remoteagent_core_v1_session_view_proto_msgTypes[24]
+	mi := &file_remoteagent_core_v1_session_view_proto_msgTypes[26]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4019,7 +4252,7 @@ func (x *SessionFileRefView) String() string {
 func (*SessionFileRefView) ProtoMessage() {}
 
 func (x *SessionFileRefView) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_session_view_proto_msgTypes[24]
+	mi := &file_remoteagent_core_v1_session_view_proto_msgTypes[26]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4032,7 +4265,7 @@ func (x *SessionFileRefView) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SessionFileRefView.ProtoReflect.Descriptor instead.
 func (*SessionFileRefView) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_session_view_proto_rawDescGZIP(), []int{24}
+	return file_remoteagent_core_v1_session_view_proto_rawDescGZIP(), []int{26}
 }
 
 func (x *SessionFileRefView) GetName() string {
@@ -4080,7 +4313,7 @@ type SessionUserMessageItem struct {
 
 func (x *SessionUserMessageItem) Reset() {
 	*x = SessionUserMessageItem{}
-	mi := &file_remoteagent_core_v1_session_view_proto_msgTypes[25]
+	mi := &file_remoteagent_core_v1_session_view_proto_msgTypes[27]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4092,7 +4325,7 @@ func (x *SessionUserMessageItem) String() string {
 func (*SessionUserMessageItem) ProtoMessage() {}
 
 func (x *SessionUserMessageItem) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_session_view_proto_msgTypes[25]
+	mi := &file_remoteagent_core_v1_session_view_proto_msgTypes[27]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4105,7 +4338,7 @@ func (x *SessionUserMessageItem) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SessionUserMessageItem.ProtoReflect.Descriptor instead.
 func (*SessionUserMessageItem) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_session_view_proto_rawDescGZIP(), []int{25}
+	return file_remoteagent_core_v1_session_view_proto_rawDescGZIP(), []int{27}
 }
 
 func (x *SessionUserMessageItem) GetText() string {
@@ -4181,7 +4414,7 @@ type SessionAgentMessageItem struct {
 
 func (x *SessionAgentMessageItem) Reset() {
 	*x = SessionAgentMessageItem{}
-	mi := &file_remoteagent_core_v1_session_view_proto_msgTypes[26]
+	mi := &file_remoteagent_core_v1_session_view_proto_msgTypes[28]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4193,7 +4426,7 @@ func (x *SessionAgentMessageItem) String() string {
 func (*SessionAgentMessageItem) ProtoMessage() {}
 
 func (x *SessionAgentMessageItem) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_session_view_proto_msgTypes[26]
+	mi := &file_remoteagent_core_v1_session_view_proto_msgTypes[28]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4206,7 +4439,7 @@ func (x *SessionAgentMessageItem) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SessionAgentMessageItem.ProtoReflect.Descriptor instead.
 func (*SessionAgentMessageItem) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_session_view_proto_rawDescGZIP(), []int{26}
+	return file_remoteagent_core_v1_session_view_proto_rawDescGZIP(), []int{28}
 }
 
 func (x *SessionAgentMessageItem) GetMarkdown() string {
@@ -4233,7 +4466,7 @@ type SessionReasoningItem struct {
 
 func (x *SessionReasoningItem) Reset() {
 	*x = SessionReasoningItem{}
-	mi := &file_remoteagent_core_v1_session_view_proto_msgTypes[27]
+	mi := &file_remoteagent_core_v1_session_view_proto_msgTypes[29]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4245,7 +4478,7 @@ func (x *SessionReasoningItem) String() string {
 func (*SessionReasoningItem) ProtoMessage() {}
 
 func (x *SessionReasoningItem) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_session_view_proto_msgTypes[27]
+	mi := &file_remoteagent_core_v1_session_view_proto_msgTypes[29]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4258,7 +4491,7 @@ func (x *SessionReasoningItem) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SessionReasoningItem.ProtoReflect.Descriptor instead.
 func (*SessionReasoningItem) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_session_view_proto_rawDescGZIP(), []int{27}
+	return file_remoteagent_core_v1_session_view_proto_rawDescGZIP(), []int{29}
 }
 
 func (x *SessionReasoningItem) GetMarkdown() string {
@@ -4304,7 +4537,7 @@ type SessionToolCallItem struct {
 
 func (x *SessionToolCallItem) Reset() {
 	*x = SessionToolCallItem{}
-	mi := &file_remoteagent_core_v1_session_view_proto_msgTypes[28]
+	mi := &file_remoteagent_core_v1_session_view_proto_msgTypes[30]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4316,7 +4549,7 @@ func (x *SessionToolCallItem) String() string {
 func (*SessionToolCallItem) ProtoMessage() {}
 
 func (x *SessionToolCallItem) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_session_view_proto_msgTypes[28]
+	mi := &file_remoteagent_core_v1_session_view_proto_msgTypes[30]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4329,7 +4562,7 @@ func (x *SessionToolCallItem) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SessionToolCallItem.ProtoReflect.Descriptor instead.
 func (*SessionToolCallItem) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_session_view_proto_rawDescGZIP(), []int{28}
+	return file_remoteagent_core_v1_session_view_proto_rawDescGZIP(), []int{30}
 }
 
 func (x *SessionToolCallItem) GetCallId() string {
@@ -4493,7 +4726,7 @@ type SessionToolGroupItem struct {
 
 func (x *SessionToolGroupItem) Reset() {
 	*x = SessionToolGroupItem{}
-	mi := &file_remoteagent_core_v1_session_view_proto_msgTypes[29]
+	mi := &file_remoteagent_core_v1_session_view_proto_msgTypes[31]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4505,7 +4738,7 @@ func (x *SessionToolGroupItem) String() string {
 func (*SessionToolGroupItem) ProtoMessage() {}
 
 func (x *SessionToolGroupItem) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_session_view_proto_msgTypes[29]
+	mi := &file_remoteagent_core_v1_session_view_proto_msgTypes[31]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4518,7 +4751,7 @@ func (x *SessionToolGroupItem) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SessionToolGroupItem.ProtoReflect.Descriptor instead.
 func (*SessionToolGroupItem) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_session_view_proto_rawDescGZIP(), []int{29}
+	return file_remoteagent_core_v1_session_view_proto_rawDescGZIP(), []int{31}
 }
 
 func (x *SessionToolGroupItem) GetCalls() []*SessionToolCallItem {
@@ -4577,7 +4810,7 @@ type SessionSharedFileItem struct {
 
 func (x *SessionSharedFileItem) Reset() {
 	*x = SessionSharedFileItem{}
-	mi := &file_remoteagent_core_v1_session_view_proto_msgTypes[30]
+	mi := &file_remoteagent_core_v1_session_view_proto_msgTypes[32]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4589,7 +4822,7 @@ func (x *SessionSharedFileItem) String() string {
 func (*SessionSharedFileItem) ProtoMessage() {}
 
 func (x *SessionSharedFileItem) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_session_view_proto_msgTypes[30]
+	mi := &file_remoteagent_core_v1_session_view_proto_msgTypes[32]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4602,7 +4835,7 @@ func (x *SessionSharedFileItem) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SessionSharedFileItem.ProtoReflect.Descriptor instead.
 func (*SessionSharedFileItem) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_session_view_proto_rawDescGZIP(), []int{30}
+	return file_remoteagent_core_v1_session_view_proto_rawDescGZIP(), []int{32}
 }
 
 func (x *SessionSharedFileItem) GetPath() string {
@@ -4656,7 +4889,7 @@ type SessionSharedFilesItem struct {
 
 func (x *SessionSharedFilesItem) Reset() {
 	*x = SessionSharedFilesItem{}
-	mi := &file_remoteagent_core_v1_session_view_proto_msgTypes[31]
+	mi := &file_remoteagent_core_v1_session_view_proto_msgTypes[33]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4668,7 +4901,7 @@ func (x *SessionSharedFilesItem) String() string {
 func (*SessionSharedFilesItem) ProtoMessage() {}
 
 func (x *SessionSharedFilesItem) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_session_view_proto_msgTypes[31]
+	mi := &file_remoteagent_core_v1_session_view_proto_msgTypes[33]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4681,7 +4914,7 @@ func (x *SessionSharedFilesItem) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SessionSharedFilesItem.ProtoReflect.Descriptor instead.
 func (*SessionSharedFilesItem) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_session_view_proto_rawDescGZIP(), []int{31}
+	return file_remoteagent_core_v1_session_view_proto_rawDescGZIP(), []int{33}
 }
 
 func (x *SessionSharedFilesItem) GetFiles() []*SessionSharedFileItem {
@@ -4701,7 +4934,7 @@ type SessionGeneratedImagesItem struct {
 
 func (x *SessionGeneratedImagesItem) Reset() {
 	*x = SessionGeneratedImagesItem{}
-	mi := &file_remoteagent_core_v1_session_view_proto_msgTypes[32]
+	mi := &file_remoteagent_core_v1_session_view_proto_msgTypes[34]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4713,7 +4946,7 @@ func (x *SessionGeneratedImagesItem) String() string {
 func (*SessionGeneratedImagesItem) ProtoMessage() {}
 
 func (x *SessionGeneratedImagesItem) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_session_view_proto_msgTypes[32]
+	mi := &file_remoteagent_core_v1_session_view_proto_msgTypes[34]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4726,7 +4959,7 @@ func (x *SessionGeneratedImagesItem) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SessionGeneratedImagesItem.ProtoReflect.Descriptor instead.
 func (*SessionGeneratedImagesItem) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_session_view_proto_rawDescGZIP(), []int{32}
+	return file_remoteagent_core_v1_session_view_proto_rawDescGZIP(), []int{34}
 }
 
 func (x *SessionGeneratedImagesItem) GetRevisedPrompt() string {
@@ -4753,7 +4986,7 @@ type SessionAsyncQuestionItem struct {
 
 func (x *SessionAsyncQuestionItem) Reset() {
 	*x = SessionAsyncQuestionItem{}
-	mi := &file_remoteagent_core_v1_session_view_proto_msgTypes[33]
+	mi := &file_remoteagent_core_v1_session_view_proto_msgTypes[35]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4765,7 +4998,7 @@ func (x *SessionAsyncQuestionItem) String() string {
 func (*SessionAsyncQuestionItem) ProtoMessage() {}
 
 func (x *SessionAsyncQuestionItem) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_session_view_proto_msgTypes[33]
+	mi := &file_remoteagent_core_v1_session_view_proto_msgTypes[35]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4778,7 +5011,7 @@ func (x *SessionAsyncQuestionItem) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SessionAsyncQuestionItem.ProtoReflect.Descriptor instead.
 func (*SessionAsyncQuestionItem) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_session_view_proto_rawDescGZIP(), []int{33}
+	return file_remoteagent_core_v1_session_view_proto_rawDescGZIP(), []int{35}
 }
 
 func (x *SessionAsyncQuestionItem) GetQuestionId() string {
@@ -4804,7 +5037,7 @@ type SessionPlanItem struct {
 
 func (x *SessionPlanItem) Reset() {
 	*x = SessionPlanItem{}
-	mi := &file_remoteagent_core_v1_session_view_proto_msgTypes[34]
+	mi := &file_remoteagent_core_v1_session_view_proto_msgTypes[36]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4816,7 +5049,7 @@ func (x *SessionPlanItem) String() string {
 func (*SessionPlanItem) ProtoMessage() {}
 
 func (x *SessionPlanItem) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_session_view_proto_msgTypes[34]
+	mi := &file_remoteagent_core_v1_session_view_proto_msgTypes[36]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4829,7 +5062,7 @@ func (x *SessionPlanItem) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SessionPlanItem.ProtoReflect.Descriptor instead.
 func (*SessionPlanItem) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_session_view_proto_rawDescGZIP(), []int{34}
+	return file_remoteagent_core_v1_session_view_proto_rawDescGZIP(), []int{36}
 }
 
 func (x *SessionPlanItem) GetMarkdown() string {
@@ -4853,7 +5086,7 @@ type SessionNoteItem struct {
 
 func (x *SessionNoteItem) Reset() {
 	*x = SessionNoteItem{}
-	mi := &file_remoteagent_core_v1_session_view_proto_msgTypes[35]
+	mi := &file_remoteagent_core_v1_session_view_proto_msgTypes[37]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4865,7 +5098,7 @@ func (x *SessionNoteItem) String() string {
 func (*SessionNoteItem) ProtoMessage() {}
 
 func (x *SessionNoteItem) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_session_view_proto_msgTypes[35]
+	mi := &file_remoteagent_core_v1_session_view_proto_msgTypes[37]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4878,7 +5111,7 @@ func (x *SessionNoteItem) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SessionNoteItem.ProtoReflect.Descriptor instead.
 func (*SessionNoteItem) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_session_view_proto_rawDescGZIP(), []int{35}
+	return file_remoteagent_core_v1_session_view_proto_rawDescGZIP(), []int{37}
 }
 
 func (x *SessionNoteItem) GetKind() SessionNoteKind {
@@ -4947,7 +5180,7 @@ type SessionNotifyReceiptItem struct {
 
 func (x *SessionNotifyReceiptItem) Reset() {
 	*x = SessionNotifyReceiptItem{}
-	mi := &file_remoteagent_core_v1_session_view_proto_msgTypes[36]
+	mi := &file_remoteagent_core_v1_session_view_proto_msgTypes[38]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4959,7 +5192,7 @@ func (x *SessionNotifyReceiptItem) String() string {
 func (*SessionNotifyReceiptItem) ProtoMessage() {}
 
 func (x *SessionNotifyReceiptItem) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_session_view_proto_msgTypes[36]
+	mi := &file_remoteagent_core_v1_session_view_proto_msgTypes[38]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4972,7 +5205,7 @@ func (x *SessionNotifyReceiptItem) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SessionNotifyReceiptItem.ProtoReflect.Descriptor instead.
 func (*SessionNotifyReceiptItem) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_session_view_proto_rawDescGZIP(), []int{36}
+	return file_remoteagent_core_v1_session_view_proto_rawDescGZIP(), []int{38}
 }
 
 func (x *SessionNotifyReceiptItem) GetLabel() *Text {
@@ -5031,7 +5264,7 @@ type SessionTurnEndItem struct {
 
 func (x *SessionTurnEndItem) Reset() {
 	*x = SessionTurnEndItem{}
-	mi := &file_remoteagent_core_v1_session_view_proto_msgTypes[37]
+	mi := &file_remoteagent_core_v1_session_view_proto_msgTypes[39]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5043,7 +5276,7 @@ func (x *SessionTurnEndItem) String() string {
 func (*SessionTurnEndItem) ProtoMessage() {}
 
 func (x *SessionTurnEndItem) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_session_view_proto_msgTypes[37]
+	mi := &file_remoteagent_core_v1_session_view_proto_msgTypes[39]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5056,7 +5289,7 @@ func (x *SessionTurnEndItem) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SessionTurnEndItem.ProtoReflect.Descriptor instead.
 func (*SessionTurnEndItem) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_session_view_proto_rawDescGZIP(), []int{37}
+	return file_remoteagent_core_v1_session_view_proto_rawDescGZIP(), []int{39}
 }
 
 func (x *SessionTurnEndItem) GetOutcome() v1.TurnOutcome {
@@ -5111,7 +5344,7 @@ type SessionErrorLineItem struct {
 
 func (x *SessionErrorLineItem) Reset() {
 	*x = SessionErrorLineItem{}
-	mi := &file_remoteagent_core_v1_session_view_proto_msgTypes[38]
+	mi := &file_remoteagent_core_v1_session_view_proto_msgTypes[40]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5123,7 +5356,7 @@ func (x *SessionErrorLineItem) String() string {
 func (*SessionErrorLineItem) ProtoMessage() {}
 
 func (x *SessionErrorLineItem) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_session_view_proto_msgTypes[38]
+	mi := &file_remoteagent_core_v1_session_view_proto_msgTypes[40]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5136,7 +5369,7 @@ func (x *SessionErrorLineItem) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SessionErrorLineItem.ProtoReflect.Descriptor instead.
 func (*SessionErrorLineItem) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_session_view_proto_rawDescGZIP(), []int{38}
+	return file_remoteagent_core_v1_session_view_proto_rawDescGZIP(), []int{40}
 }
 
 func (x *SessionErrorLineItem) GetRawReason() string {
@@ -5164,7 +5397,7 @@ type SessionForkItem struct {
 
 func (x *SessionForkItem) Reset() {
 	*x = SessionForkItem{}
-	mi := &file_remoteagent_core_v1_session_view_proto_msgTypes[39]
+	mi := &file_remoteagent_core_v1_session_view_proto_msgTypes[41]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5176,7 +5409,7 @@ func (x *SessionForkItem) String() string {
 func (*SessionForkItem) ProtoMessage() {}
 
 func (x *SessionForkItem) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_session_view_proto_msgTypes[39]
+	mi := &file_remoteagent_core_v1_session_view_proto_msgTypes[41]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5189,7 +5422,7 @@ func (x *SessionForkItem) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SessionForkItem.ProtoReflect.Descriptor instead.
 func (*SessionForkItem) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_session_view_proto_rawDescGZIP(), []int{39}
+	return file_remoteagent_core_v1_session_view_proto_rawDescGZIP(), []int{41}
 }
 
 func (x *SessionForkItem) GetSourceSessionId() string {
@@ -5226,7 +5459,7 @@ type SessionInputStateItem struct {
 
 func (x *SessionInputStateItem) Reset() {
 	*x = SessionInputStateItem{}
-	mi := &file_remoteagent_core_v1_session_view_proto_msgTypes[40]
+	mi := &file_remoteagent_core_v1_session_view_proto_msgTypes[42]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5238,7 +5471,7 @@ func (x *SessionInputStateItem) String() string {
 func (*SessionInputStateItem) ProtoMessage() {}
 
 func (x *SessionInputStateItem) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_session_view_proto_msgTypes[40]
+	mi := &file_remoteagent_core_v1_session_view_proto_msgTypes[42]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5251,7 +5484,7 @@ func (x *SessionInputStateItem) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SessionInputStateItem.ProtoReflect.Descriptor instead.
 func (*SessionInputStateItem) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_session_view_proto_rawDescGZIP(), []int{40}
+	return file_remoteagent_core_v1_session_view_proto_rawDescGZIP(), []int{42}
 }
 
 func (x *SessionInputStateItem) GetKind() SessionInputNoticeKind {
@@ -5305,7 +5538,7 @@ type SessionQuietScheduledGroupItem struct {
 
 func (x *SessionQuietScheduledGroupItem) Reset() {
 	*x = SessionQuietScheduledGroupItem{}
-	mi := &file_remoteagent_core_v1_session_view_proto_msgTypes[41]
+	mi := &file_remoteagent_core_v1_session_view_proto_msgTypes[43]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5317,7 +5550,7 @@ func (x *SessionQuietScheduledGroupItem) String() string {
 func (*SessionQuietScheduledGroupItem) ProtoMessage() {}
 
 func (x *SessionQuietScheduledGroupItem) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_session_view_proto_msgTypes[41]
+	mi := &file_remoteagent_core_v1_session_view_proto_msgTypes[43]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5330,7 +5563,7 @@ func (x *SessionQuietScheduledGroupItem) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SessionQuietScheduledGroupItem.ProtoReflect.Descriptor instead.
 func (*SessionQuietScheduledGroupItem) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_session_view_proto_rawDescGZIP(), []int{41}
+	return file_remoteagent_core_v1_session_view_proto_rawDescGZIP(), []int{43}
 }
 
 func (x *SessionQuietScheduledGroupItem) GetGroupId() string {
@@ -5398,7 +5631,7 @@ type SessionSkeletonItem struct {
 
 func (x *SessionSkeletonItem) Reset() {
 	*x = SessionSkeletonItem{}
-	mi := &file_remoteagent_core_v1_session_view_proto_msgTypes[42]
+	mi := &file_remoteagent_core_v1_session_view_proto_msgTypes[44]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5410,7 +5643,7 @@ func (x *SessionSkeletonItem) String() string {
 func (*SessionSkeletonItem) ProtoMessage() {}
 
 func (x *SessionSkeletonItem) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_session_view_proto_msgTypes[42]
+	mi := &file_remoteagent_core_v1_session_view_proto_msgTypes[44]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5423,7 +5656,7 @@ func (x *SessionSkeletonItem) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SessionSkeletonItem.ProtoReflect.Descriptor instead.
 func (*SessionSkeletonItem) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_session_view_proto_rawDescGZIP(), []int{42}
+	return file_remoteagent_core_v1_session_view_proto_rawDescGZIP(), []int{44}
 }
 
 func (x *SessionSkeletonItem) GetText() *Text {
@@ -5446,7 +5679,7 @@ type SessionSubmitCommandAction struct {
 
 func (x *SessionSubmitCommandAction) Reset() {
 	*x = SessionSubmitCommandAction{}
-	mi := &file_remoteagent_core_v1_session_view_proto_msgTypes[43]
+	mi := &file_remoteagent_core_v1_session_view_proto_msgTypes[45]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5458,7 +5691,7 @@ func (x *SessionSubmitCommandAction) String() string {
 func (*SessionSubmitCommandAction) ProtoMessage() {}
 
 func (x *SessionSubmitCommandAction) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_session_view_proto_msgTypes[43]
+	mi := &file_remoteagent_core_v1_session_view_proto_msgTypes[45]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5471,7 +5704,7 @@ func (x *SessionSubmitCommandAction) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SessionSubmitCommandAction.ProtoReflect.Descriptor instead.
 func (*SessionSubmitCommandAction) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_session_view_proto_rawDescGZIP(), []int{43}
+	return file_remoteagent_core_v1_session_view_proto_rawDescGZIP(), []int{45}
 }
 
 func (x *SessionSubmitCommandAction) GetSlotKey() string {
@@ -5513,7 +5746,7 @@ type SessionSlotAction struct {
 
 func (x *SessionSlotAction) Reset() {
 	*x = SessionSlotAction{}
-	mi := &file_remoteagent_core_v1_session_view_proto_msgTypes[44]
+	mi := &file_remoteagent_core_v1_session_view_proto_msgTypes[46]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5525,7 +5758,7 @@ func (x *SessionSlotAction) String() string {
 func (*SessionSlotAction) ProtoMessage() {}
 
 func (x *SessionSlotAction) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_session_view_proto_msgTypes[44]
+	mi := &file_remoteagent_core_v1_session_view_proto_msgTypes[46]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5538,7 +5771,7 @@ func (x *SessionSlotAction) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SessionSlotAction.ProtoReflect.Descriptor instead.
 func (*SessionSlotAction) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_session_view_proto_rawDescGZIP(), []int{44}
+	return file_remoteagent_core_v1_session_view_proto_rawDescGZIP(), []int{46}
 }
 
 func (x *SessionSlotAction) GetSlotKey() string {
@@ -5567,7 +5800,7 @@ type SessionOpenAction struct {
 
 func (x *SessionOpenAction) Reset() {
 	*x = SessionOpenAction{}
-	mi := &file_remoteagent_core_v1_session_view_proto_msgTypes[45]
+	mi := &file_remoteagent_core_v1_session_view_proto_msgTypes[47]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5579,7 +5812,7 @@ func (x *SessionOpenAction) String() string {
 func (*SessionOpenAction) ProtoMessage() {}
 
 func (x *SessionOpenAction) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_session_view_proto_msgTypes[45]
+	mi := &file_remoteagent_core_v1_session_view_proto_msgTypes[47]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5592,7 +5825,7 @@ func (x *SessionOpenAction) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SessionOpenAction.ProtoReflect.Descriptor instead.
 func (*SessionOpenAction) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_session_view_proto_rawDescGZIP(), []int{45}
+	return file_remoteagent_core_v1_session_view_proto_rawDescGZIP(), []int{47}
 }
 
 func (x *SessionOpenAction) GetSessionId() string {
@@ -5616,8 +5849,8 @@ func (x *SessionOpenAction) GetRefreshSettings() bool {
 	return false
 }
 
-// SessionOutgoingAction acts on an outgoing message entry (dismiss / restore to composer).
-type SessionOutgoingAction struct {
+// SessionTrayItemAction acts on a single item inside the composer's pending tray.
+type SessionTrayItemAction struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	SessionId     string                 `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
 	RequestId     string                 `protobuf:"bytes,2,opt,name=request_id,json=requestId,proto3" json:"request_id,omitempty"`
@@ -5625,21 +5858,21 @@ type SessionOutgoingAction struct {
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *SessionOutgoingAction) Reset() {
-	*x = SessionOutgoingAction{}
-	mi := &file_remoteagent_core_v1_session_view_proto_msgTypes[46]
+func (x *SessionTrayItemAction) Reset() {
+	*x = SessionTrayItemAction{}
+	mi := &file_remoteagent_core_v1_session_view_proto_msgTypes[48]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *SessionOutgoingAction) String() string {
+func (x *SessionTrayItemAction) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*SessionOutgoingAction) ProtoMessage() {}
+func (*SessionTrayItemAction) ProtoMessage() {}
 
-func (x *SessionOutgoingAction) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_session_view_proto_msgTypes[46]
+func (x *SessionTrayItemAction) ProtoReflect() protoreflect.Message {
+	mi := &file_remoteagent_core_v1_session_view_proto_msgTypes[48]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5650,21 +5883,66 @@ func (x *SessionOutgoingAction) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use SessionOutgoingAction.ProtoReflect.Descriptor instead.
-func (*SessionOutgoingAction) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_session_view_proto_rawDescGZIP(), []int{46}
+// Deprecated: Use SessionTrayItemAction.ProtoReflect.Descriptor instead.
+func (*SessionTrayItemAction) Descriptor() ([]byte, []int) {
+	return file_remoteagent_core_v1_session_view_proto_rawDescGZIP(), []int{48}
 }
 
-func (x *SessionOutgoingAction) GetSessionId() string {
+func (x *SessionTrayItemAction) GetSessionId() string {
 	if x != nil {
 		return x.SessionId
 	}
 	return ""
 }
 
-func (x *SessionOutgoingAction) GetRequestId() string {
+func (x *SessionTrayItemAction) GetRequestId() string {
 	if x != nil {
 		return x.RequestId
+	}
+	return ""
+}
+
+// SessionTraySessionAction acts on session-wide pending tray state (cancel all paused / undo).
+type SessionTraySessionAction struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	SessionId     string                 `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SessionTraySessionAction) Reset() {
+	*x = SessionTraySessionAction{}
+	mi := &file_remoteagent_core_v1_session_view_proto_msgTypes[49]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SessionTraySessionAction) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SessionTraySessionAction) ProtoMessage() {}
+
+func (x *SessionTraySessionAction) ProtoReflect() protoreflect.Message {
+	mi := &file_remoteagent_core_v1_session_view_proto_msgTypes[49]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SessionTraySessionAction.ProtoReflect.Descriptor instead.
+func (*SessionTraySessionAction) Descriptor() ([]byte, []int) {
+	return file_remoteagent_core_v1_session_view_proto_rawDescGZIP(), []int{49}
+}
+
+func (x *SessionTraySessionAction) GetSessionId() string {
+	if x != nil {
+		return x.SessionId
 	}
 	return ""
 }
@@ -5681,7 +5959,7 @@ type SessionQuestionStepAction struct {
 
 func (x *SessionQuestionStepAction) Reset() {
 	*x = SessionQuestionStepAction{}
-	mi := &file_remoteagent_core_v1_session_view_proto_msgTypes[47]
+	mi := &file_remoteagent_core_v1_session_view_proto_msgTypes[50]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5693,7 +5971,7 @@ func (x *SessionQuestionStepAction) String() string {
 func (*SessionQuestionStepAction) ProtoMessage() {}
 
 func (x *SessionQuestionStepAction) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_session_view_proto_msgTypes[47]
+	mi := &file_remoteagent_core_v1_session_view_proto_msgTypes[50]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5706,7 +5984,7 @@ func (x *SessionQuestionStepAction) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SessionQuestionStepAction.ProtoReflect.Descriptor instead.
 func (*SessionQuestionStepAction) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_session_view_proto_rawDescGZIP(), []int{47}
+	return file_remoteagent_core_v1_session_view_proto_rawDescGZIP(), []int{50}
 }
 
 func (x *SessionQuestionStepAction) GetSessionId() string {
@@ -5740,7 +6018,7 @@ type SessionRefreshHistoryAction struct {
 
 func (x *SessionRefreshHistoryAction) Reset() {
 	*x = SessionRefreshHistoryAction{}
-	mi := &file_remoteagent_core_v1_session_view_proto_msgTypes[48]
+	mi := &file_remoteagent_core_v1_session_view_proto_msgTypes[51]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5752,7 +6030,7 @@ func (x *SessionRefreshHistoryAction) String() string {
 func (*SessionRefreshHistoryAction) ProtoMessage() {}
 
 func (x *SessionRefreshHistoryAction) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_session_view_proto_msgTypes[48]
+	mi := &file_remoteagent_core_v1_session_view_proto_msgTypes[51]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5765,7 +6043,7 @@ func (x *SessionRefreshHistoryAction) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SessionRefreshHistoryAction.ProtoReflect.Descriptor instead.
 func (*SessionRefreshHistoryAction) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_session_view_proto_rawDescGZIP(), []int{48}
+	return file_remoteagent_core_v1_session_view_proto_rawDescGZIP(), []int{51}
 }
 
 func (x *SessionRefreshHistoryAction) GetSessionId() string {
@@ -5775,7 +6053,7 @@ func (x *SessionRefreshHistoryAction) GetSessionId() string {
 	return ""
 }
 
-// SessionRestoreComposerEffect instructs the shell to restore a failed/unknown message draft into the composer.
+// SessionRestoreComposerEffect instructs the shell to restore a message draft into the composer.
 type SessionRestoreComposerEffect struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	SessionId     string                 `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
@@ -5789,7 +6067,7 @@ type SessionRestoreComposerEffect struct {
 
 func (x *SessionRestoreComposerEffect) Reset() {
 	*x = SessionRestoreComposerEffect{}
-	mi := &file_remoteagent_core_v1_session_view_proto_msgTypes[49]
+	mi := &file_remoteagent_core_v1_session_view_proto_msgTypes[52]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5801,7 +6079,7 @@ func (x *SessionRestoreComposerEffect) String() string {
 func (*SessionRestoreComposerEffect) ProtoMessage() {}
 
 func (x *SessionRestoreComposerEffect) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_session_view_proto_msgTypes[49]
+	mi := &file_remoteagent_core_v1_session_view_proto_msgTypes[52]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5814,7 +6092,7 @@ func (x *SessionRestoreComposerEffect) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SessionRestoreComposerEffect.ProtoReflect.Descriptor instead.
 func (*SessionRestoreComposerEffect) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_session_view_proto_rawDescGZIP(), []int{49}
+	return file_remoteagent_core_v1_session_view_proto_rawDescGZIP(), []int{52}
 }
 
 func (x *SessionRestoreComposerEffect) GetSessionId() string {
@@ -5846,6 +6124,107 @@ func (x *SessionRestoreComposerEffect) GetImageIds() []string {
 }
 
 func (x *SessionRestoreComposerEffect) GetFileIds() []string {
+	if x != nil {
+		return x.FileIds
+	}
+	return nil
+}
+
+// SessionResendAttachmentsEffect instructs the shell to re-upload locally retained attachments and resend.
+type SessionResendAttachmentsEffect struct {
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	SessionId       string                 `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
+	MachineId       string                 `protobuf:"bytes,2,opt,name=machine_id,json=machineId,proto3" json:"machine_id,omitempty"`
+	SourceRequestId string                 `protobuf:"bytes,3,opt,name=source_request_id,json=sourceRequestId,proto3" json:"source_request_id,omitempty"`
+	NewRequestId    string                 `protobuf:"bytes,4,opt,name=new_request_id,json=newRequestId,proto3" json:"new_request_id,omitempty"`
+	Text            string                 `protobuf:"bytes,5,opt,name=text,proto3" json:"text,omitempty"`
+	Mode            v1.SendMode            `protobuf:"varint,6,opt,name=mode,proto3,enum=remoteagent.v1.SendMode" json:"mode,omitempty"`
+	ImageIds        []string               `protobuf:"bytes,7,rep,name=image_ids,json=imageIds,proto3" json:"image_ids,omitempty"`
+	FileIds         []string               `protobuf:"bytes,8,rep,name=file_ids,json=fileIds,proto3" json:"file_ids,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *SessionResendAttachmentsEffect) Reset() {
+	*x = SessionResendAttachmentsEffect{}
+	mi := &file_remoteagent_core_v1_session_view_proto_msgTypes[53]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SessionResendAttachmentsEffect) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SessionResendAttachmentsEffect) ProtoMessage() {}
+
+func (x *SessionResendAttachmentsEffect) ProtoReflect() protoreflect.Message {
+	mi := &file_remoteagent_core_v1_session_view_proto_msgTypes[53]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SessionResendAttachmentsEffect.ProtoReflect.Descriptor instead.
+func (*SessionResendAttachmentsEffect) Descriptor() ([]byte, []int) {
+	return file_remoteagent_core_v1_session_view_proto_rawDescGZIP(), []int{53}
+}
+
+func (x *SessionResendAttachmentsEffect) GetSessionId() string {
+	if x != nil {
+		return x.SessionId
+	}
+	return ""
+}
+
+func (x *SessionResendAttachmentsEffect) GetMachineId() string {
+	if x != nil {
+		return x.MachineId
+	}
+	return ""
+}
+
+func (x *SessionResendAttachmentsEffect) GetSourceRequestId() string {
+	if x != nil {
+		return x.SourceRequestId
+	}
+	return ""
+}
+
+func (x *SessionResendAttachmentsEffect) GetNewRequestId() string {
+	if x != nil {
+		return x.NewRequestId
+	}
+	return ""
+}
+
+func (x *SessionResendAttachmentsEffect) GetText() string {
+	if x != nil {
+		return x.Text
+	}
+	return ""
+}
+
+func (x *SessionResendAttachmentsEffect) GetMode() v1.SendMode {
+	if x != nil {
+		return x.Mode
+	}
+	return v1.SendMode(0)
+}
+
+func (x *SessionResendAttachmentsEffect) GetImageIds() []string {
+	if x != nil {
+		return x.ImageIds
+	}
+	return nil
+}
+
+func (x *SessionResendAttachmentsEffect) GetFileIds() []string {
 	if x != nil {
 		return x.FileIds
 	}
@@ -6132,69 +6511,79 @@ const file_remoteagent_core_v1_session_view_proto_rawDesc = "" +
 	"\vpopup_title\x18\x01 \x01(\v2\x19.remoteagent.core.v1.TextR\n" +
 	"popupTitle\x12-\n" +
 	"\x04hint\x18\x02 \x01(\v2\x19.remoteagent.core.v1.TextR\x04hint\x12&\n" +
-	"\x0fcan_go_terminal\x18\x03 \x01(\bR\rcanGoTerminal\"\xca\x06\n" +
-	"\x17SessionPendingInputView\x12\x1d\n" +
-	"\n" +
-	"request_id\x18\x01 \x01(\tR\trequestId\x12\x12\n" +
-	"\x04text\x18\x02 \x01(\tR\x04text\x12\x1f\n" +
-	"\vimage_count\x18\x03 \x01(\x05R\n" +
-	"imageCount\x12\x1d\n" +
-	"\n" +
-	"file_count\x18\x04 \x01(\x05R\tfileCount\x12,\n" +
-	"\x04mode\x18\x05 \x01(\x0e2\x18.remoteagent.v1.SendModeR\x04mode\x123\n" +
-	"\x06status\x18\x06 \x01(\x0e2\x1b.remoteagent.v1.InputStatusR\x06status\x12\x12\n" +
-	"\x04held\x18\a \x01(\bR\x04held\x12\x16\n" +
-	"\x06paused\x18\b \x01(\bR\x06paused\x12\x12\n" +
-	"\x04rank\x18\t \x01(\x05R\x04rank\x12#\n" +
-	"\rtotal_pending\x18\n" +
-	" \x01(\x05R\ftotalPending\x12/\n" +
-	"\x05label\x18\v \x01(\v2\x19.remoteagent.core.v1.TextR\x05label\x123\n" +
-	"\acaption\x18\f \x01(\v2\x19.remoteagent.core.v1.TextR\acaption\x12<\n" +
-	"\forigin_label\x18\r \x01(\v2\x19.remoteagent.core.v1.TextR\voriginLabel\x12(\n" +
-	"\x10scheduled_run_id\x18\x0e \x01(\tR\x0escheduledRunId\x12\x1d\n" +
-	"\n" +
-	"can_cancel\x18\x0f \x01(\bR\tcanCancel\x12\x1d\n" +
-	"\n" +
-	"can_resume\x18\x10 \x01(\bR\tcanResume\x12@\n" +
-	"\x06cancel\x18\x11 \x01(\v2(.remoteagent.core.v1.SessionCommandStateR\x06cancel\x12@\n" +
-	"\x06resume\x18\x12 \x01(\v2(.remoteagent.core.v1.SessionCommandStateR\x06resume\x125\n" +
-	"\bfeedback\x18\x13 \x01(\v2\x19.remoteagent.core.v1.TextR\bfeedback\x12-\n" +
-	"\x12feedback_uncertain\x18\x14 \x01(\bR\x11feedbackUncertain\"\xd5\x04\n" +
-	"\x13SessionOutgoingView\x12\x1d\n" +
+	"\x0fcan_go_terminal\x18\x03 \x01(\bR\rcanGoTerminal\"\xa6\b\n" +
+	"\x13SessionTrayItemView\x12\x1d\n" +
 	"\n" +
 	"request_id\x18\x01 \x01(\tR\trequestId\x12\x19\n" +
-	"\bslot_key\x18\x02 \x01(\tR\aslotKey\x12\x12\n" +
-	"\x04text\x18\x03 \x01(\tR\x04text\x12\x1b\n" +
-	"\timage_ids\x18\x04 \x03(\tR\bimageIds\x12\x19\n" +
-	"\bfile_ids\x18\x05 \x03(\tR\afileIds\x12,\n" +
-	"\x04mode\x18\x06 \x01(\x0e2\x18.remoteagent.v1.SendModeR\x04mode\x12?\n" +
-	"\x05state\x18\a \x01(\x0e2).remoteagent.core.v1.SessionOutgoingStateR\x05state\x12\x16\n" +
-	"\x06frozen\x18\b \x01(\bR\x06frozen\x12\x18\n" +
-	"\aexpired\x18\t \x01(\bR\aexpired\x12\x1b\n" +
-	"\tcan_retry\x18\n" +
-	" \x01(\bR\bcanRetry\x12\x1f\n" +
-	"\vcan_restore\x18\v \x01(\bR\n" +
-	"canRestore\x12\x1f\n" +
-	"\vcan_dismiss\x18\f \x01(\bR\n" +
-	"canDismiss\x123\n" +
-	"\acaption\x18\r \x01(\v2\x19.remoteagent.core.v1.TextR\acaption\x125\n" +
-	"\bfeedback\x18\x0e \x01(\v2\x19.remoteagent.core.v1.TextR\bfeedback\x12-\n" +
-	"\x12feedback_uncertain\x18\x0f \x01(\bR\x11feedbackUncertain\x12\x1d\n" +
+	"\bslot_key\x18\x02 \x01(\tR\aslotKey\x12?\n" +
+	"\x05group\x18\x03 \x01(\x0e2).remoteagent.core.v1.SessionTrayGroupKindR\x05group\x128\n" +
+	"\x04tone\x18\x04 \x01(\x0e2$.remoteagent.core.v1.SessionTrayToneR\x04tone\x12G\n" +
+	"\bactivity\x18\x05 \x01(\x0e2+.remoteagent.core.v1.SessionTrayRowActivityR\bactivity\x12!\n" +
+	"\fqueue_number\x18\x06 \x01(\x05R\vqueueNumber\x12!\n" +
+	"\fshow_spinner\x18\a \x01(\bR\vshowSpinner\x12\x12\n" +
+	"\x04text\x18\b \x01(\tR\x04text\x12<\n" +
+	"\fsource_label\x18\t \x01(\v2\x19.remoteagent.core.v1.TextR\vsourceLabel\x12%\n" +
+	"\x0eforeign_dimmed\x18\n" +
+	" \x01(\bR\rforeignDimmed\x12)\n" +
+	"\x10attachment_count\x18\v \x01(\x05R\x0fattachmentCount\x12\x1f\n" +
+	"\vimage_count\x18\f \x01(\x05R\n" +
+	"imageCount\x12\x1d\n" +
 	"\n" +
-	"created_ms\x18\x10 \x01(\x03R\tcreatedMs\"\xd4\x04\n" +
+	"file_count\x18\r \x01(\x05R\tfileCount\x12\x1b\n" +
+	"\timage_ids\x18\x0e \x03(\tR\bimageIds\x12\x19\n" +
+	"\bfile_ids\x18\x0f \x03(\tR\afileIds\x12,\n" +
+	"\x04mode\x18\x10 \x01(\x0e2\x18.remoteagent.v1.SendModeR\x04mode\x12:\n" +
+	"\vreason_text\x18\x11 \x01(\v2\x19.remoteagent.core.v1.TextR\n" +
+	"reasonText\x12\x1d\n" +
+	"\n" +
+	"can_cancel\x18\x12 \x01(\bR\tcanCancel\x12\x1d\n" +
+	"\n" +
+	"can_resume\x18\x13 \x01(\bR\tcanResume\x12\x1b\n" +
+	"\tcan_retry\x18\x14 \x01(\bR\bcanRetry\x12*\n" +
+	"\x11can_open_terminal\x18\x15 \x01(\bR\x0fcanOpenTerminal\x12\x1d\n" +
+	"\n" +
+	"can_ignore\x18\x16 \x01(\bR\tcanIgnore\x12\x1f\n" +
+	"\vcan_promote\x18\x17 \x01(\bR\n" +
+	"canPromote\x12\x1f\n" +
+	"\vcan_restore\x18\x18 \x01(\bR\n" +
+	"canRestore\x128\n" +
+	"\x18network_actions_disabled\x18\x19 \x01(\bR\x16networkActionsDisabled\x12#\n" +
+	"\rserver_backed\x18\x1a \x01(\bR\fserverBacked\"\x83\x03\n" +
+	"\x14SessionTrayGroupView\x12=\n" +
+	"\x04kind\x18\x01 \x01(\x0e2).remoteagent.core.v1.SessionTrayGroupKindR\x04kind\x128\n" +
+	"\x04tone\x18\x02 \x01(\x0e2$.remoteagent.core.v1.SessionTrayToneR\x04tone\x12/\n" +
+	"\x05title\x18\x03 \x01(\v2\x19.remoteagent.core.v1.TextR\x05title\x12:\n" +
+	"\vheader_text\x18\x04 \x01(\v2\x19.remoteagent.core.v1.TextR\n" +
+	"headerText\x12\x1f\n" +
+	"\vtotal_count\x18\x05 \x01(\x05R\n" +
+	"totalCount\x12$\n" +
+	"\x0ecan_cancel_all\x18\x06 \x01(\bR\fcanCancelAll\x12>\n" +
+	"\x05items\x18\a \x03(\v2(.remoteagent.core.v1.SessionTrayItemViewR\x05items\"\x91\x01\n" +
+	"\x13SessionTrayUndoView\x12\x18\n" +
+	"\avisible\x18\x01 \x01(\bR\avisible\x12\x14\n" +
+	"\x05count\x18\x02 \x01(\x05R\x05count\x12/\n" +
+	"\x05label\x18\x03 \x01(\v2\x19.remoteagent.core.v1.TextR\x05label\x12\x19\n" +
+	"\bcan_undo\x18\x04 \x01(\bR\acanUndo\"\xc6\x02\n" +
+	"\x16SessionPendingTrayView\x12A\n" +
+	"\x06groups\x18\x01 \x03(\v2).remoteagent.core.v1.SessionTrayGroupViewR\x06groups\x12M\n" +
+	"\rordered_items\x18\x02 \x03(\v2(.remoteagent.core.v1.SessionTrayItemViewR\forderedItems\x12\x1f\n" +
+	"\vtotal_count\x18\x03 \x01(\x05R\n" +
+	"totalCount\x12!\n" +
+	"\ffailed_count\x18\x04 \x01(\x05R\vfailedCount\x12\x18\n" +
+	"\aoffline\x18\x05 \x01(\bR\aoffline\x12<\n" +
+	"\x04undo\x18\x06 \x01(\v2(.remoteagent.core.v1.SessionTrayUndoViewR\x04undo\"\xa2\x04\n" +
 	"\x13SessionComposerView\x12\x18\n" +
 	"\aenabled\x18\x01 \x01(\bR\aenabled\x12B\n" +
 	"\x0fdisabled_reason\x18\x02 \x01(\v2\x19.remoteagent.core.v1.TextR\x0edisabledReason\x12;\n" +
 	"\vplaceholder\x18\x03 \x01(\v2\x19.remoteagent.core.v1.TextR\vplaceholder\x12&\n" +
-	"\x0fhas_active_turn\x18\x04 \x01(\bR\rhasActiveTurn\x12,\n" +
-	"\x12steer_mode_default\x18\x05 \x01(\bR\x10steerModeDefault\x12.\n" +
-	"\x13supports_queue_mode\x18\x06 \x01(\bR\x11supportsQueueMode\x12*\n" +
-	"\x11can_attach_images\x18\a \x01(\bR\x0fcanAttachImages\x12(\n" +
-	"\x10can_attach_files\x18\b \x01(\bR\x0ecanAttachFiles\x12+\n" +
-	"\x11interrupt_visible\x18\t \x01(\bR\x10interruptVisible\x12S\n" +
-	"\x0epending_inputs\x18\n" +
-	" \x03(\v2,.remoteagent.core.v1.SessionPendingInputViewR\rpendingInputs\x12D\n" +
-	"\boutgoing\x18\v \x03(\v2(.remoteagent.core.v1.SessionOutgoingViewR\boutgoing\"\xc6\a\n" +
+	"\x0fhas_active_turn\x18\x04 \x01(\bR\rhasActiveTurn\x12.\n" +
+	"\x13supports_queue_mode\x18\x05 \x01(\bR\x11supportsQueueMode\x12*\n" +
+	"\x11can_attach_images\x18\x06 \x01(\bR\x0fcanAttachImages\x12(\n" +
+	"\x10can_attach_files\x18\a \x01(\bR\x0ecanAttachFiles\x12+\n" +
+	"\x11interrupt_visible\x18\b \x01(\bR\x10interruptVisible\x12N\n" +
+	"\fpending_tray\x18\t \x01(\v2+.remoteagent.core.v1.SessionPendingTrayViewR\vpendingTray\x12E\n" +
+	"\x1fretained_attachment_request_ids\x18\n" +
+	" \x03(\tR\x1cretainedAttachmentRequestIds\"\xc6\a\n" +
 	"\x13SessionTimelineView\x12>\n" +
 	"\x05items\x18\x01 \x03(\v2(.remoteagent.core.v1.SessionTimelineItemR\x05items\x12\x1f\n" +
 	"\vhas_earlier\x18\x02 \x01(\bR\n" +
@@ -6400,11 +6789,14 @@ const file_remoteagent_core_v1_session_view_proto_rawDesc = "" +
 	"session_id\x18\x01 \x01(\tR\tsessionId\x12%\n" +
 	"\x0erefresh_models\x18\x02 \x01(\bR\rrefreshModels\x12)\n" +
 	"\x10refresh_settings\x18\x03 \x01(\bR\x0frefreshSettings\"U\n" +
-	"\x15SessionOutgoingAction\x12\x1d\n" +
+	"\x15SessionTrayItemAction\x12\x1d\n" +
 	"\n" +
 	"session_id\x18\x01 \x01(\tR\tsessionId\x12\x1d\n" +
 	"\n" +
-	"request_id\x18\x02 \x01(\tR\trequestId\"\x82\x01\n" +
+	"request_id\x18\x02 \x01(\tR\trequestId\"9\n" +
+	"\x18SessionTraySessionAction\x12\x1d\n" +
+	"\n" +
+	"session_id\x18\x01 \x01(\tR\tsessionId\"\x82\x01\n" +
 	"\x19SessionQuestionStepAction\x12\x1d\n" +
 	"\n" +
 	"session_id\x18\x01 \x01(\tR\tsessionId\x12\x1f\n" +
@@ -6421,7 +6813,18 @@ const file_remoteagent_core_v1_session_view_proto_rawDesc = "" +
 	"request_id\x18\x02 \x01(\tR\trequestId\x12\x12\n" +
 	"\x04text\x18\x03 \x01(\tR\x04text\x12\x1b\n" +
 	"\timage_ids\x18\x04 \x03(\tR\bimageIds\x12\x19\n" +
-	"\bfile_ids\x18\x05 \x03(\tR\afileIds*\xca\x01\n" +
+	"\bfile_ids\x18\x05 \x03(\tR\afileIds\"\xaa\x02\n" +
+	"\x1eSessionResendAttachmentsEffect\x12\x1d\n" +
+	"\n" +
+	"session_id\x18\x01 \x01(\tR\tsessionId\x12\x1d\n" +
+	"\n" +
+	"machine_id\x18\x02 \x01(\tR\tmachineId\x12*\n" +
+	"\x11source_request_id\x18\x03 \x01(\tR\x0fsourceRequestId\x12$\n" +
+	"\x0enew_request_id\x18\x04 \x01(\tR\fnewRequestId\x12\x12\n" +
+	"\x04text\x18\x05 \x01(\tR\x04text\x12,\n" +
+	"\x04mode\x18\x06 \x01(\x0e2\x18.remoteagent.v1.SendModeR\x04mode\x12\x1b\n" +
+	"\timage_ids\x18\a \x03(\tR\bimageIds\x12\x19\n" +
+	"\bfile_ids\x18\b \x03(\tR\afileIds*\xca\x01\n" +
 	"\x14SessionCommandStatus\x12&\n" +
 	"\"SESSION_COMMAND_STATUS_UNSPECIFIED\x10\x00\x12\x1f\n" +
 	"\x1bSESSION_COMMAND_STATUS_IDLE\x10\x01\x12\"\n" +
@@ -6438,13 +6841,26 @@ const file_remoteagent_core_v1_session_view_proto_rawDesc = "" +
 	"\x1aSESSION_DOCK_KIND_APPROVAL\x10\x01\x12\x1e\n" +
 	"\x1aSESSION_DOCK_KIND_QUESTION\x10\x02\x12\x1a\n" +
 	"\x16SESSION_DOCK_KIND_PLAN\x10\x03\x12$\n" +
-	" SESSION_DOCK_KIND_TERMINAL_POPUP\x10\x04*\xca\x01\n" +
-	"\x14SessionOutgoingState\x12&\n" +
-	"\"SESSION_OUTGOING_STATE_UNSPECIFIED\x10\x00\x12\"\n" +
-	"\x1eSESSION_OUTGOING_STATE_SENDING\x10\x01\x12\x1f\n" +
-	"\x1bSESSION_OUTGOING_STATE_SENT\x10\x02\x12!\n" +
-	"\x1dSESSION_OUTGOING_STATE_FAILED\x10\x03\x12\"\n" +
-	"\x1eSESSION_OUTGOING_STATE_UNKNOWN\x10\x04*\xfd\x01\n" +
+	" SESSION_DOCK_KIND_TERMINAL_POPUP\x10\x04*\xc2\x02\n" +
+	"\x14SessionTrayGroupKind\x12'\n" +
+	"#SESSION_TRAY_GROUP_KIND_UNSPECIFIED\x10\x00\x12\"\n" +
+	"\x1eSESSION_TRAY_GROUP_KIND_FAILED\x10\x01\x12\"\n" +
+	"\x1eSESSION_TRAY_GROUP_KIND_UNSURE\x10\x02\x12&\n" +
+	"\"SESSION_TRAY_GROUP_KIND_WAIT_READY\x10\x03\x12'\n" +
+	"#SESSION_TRAY_GROUP_KIND_WAIT_ANSWER\x10\x04\x12!\n" +
+	"\x1dSESSION_TRAY_GROUP_KIND_STEER\x10\x05\x12!\n" +
+	"\x1dSESSION_TRAY_GROUP_KIND_QUEUE\x10\x06\x12\"\n" +
+	"\x1eSESSION_TRAY_GROUP_KIND_PAUSED\x10\a*\x8c\x01\n" +
+	"\x0fSessionTrayTone\x12!\n" +
+	"\x1dSESSION_TRAY_TONE_UNSPECIFIED\x10\x00\x12\x1d\n" +
+	"\x19SESSION_TRAY_TONE_NEUTRAL\x10\x01\x12\x19\n" +
+	"\x15SESSION_TRAY_TONE_RED\x10\x02\x12\x1c\n" +
+	"\x18SESSION_TRAY_TONE_ORANGE\x10\x03*\xb7\x01\n" +
+	"\x16SessionTrayRowActivity\x12)\n" +
+	"%SESSION_TRAY_ROW_ACTIVITY_UNSPECIFIED\x10\x00\x12\"\n" +
+	"\x1eSESSION_TRAY_ROW_ACTIVITY_IDLE\x10\x01\x12%\n" +
+	"!SESSION_TRAY_ROW_ACTIVITY_SENDING\x10\x02\x12'\n" +
+	"#SESSION_TRAY_ROW_ACTIVITY_CANCELING\x10\x03*\xfd\x01\n" +
 	"\x11SessionToolStatus\x12#\n" +
 	"\x1fSESSION_TOOL_STATUS_UNSPECIFIED\x10\x00\x12\x1f\n" +
 	"\x1bSESSION_TOOL_STATUS_RUNNING\x10\x01\x12\x1a\n" +
@@ -6489,242 +6905,250 @@ func file_remoteagent_core_v1_session_view_proto_rawDescGZIP() []byte {
 	return file_remoteagent_core_v1_session_view_proto_rawDescData
 }
 
-var file_remoteagent_core_v1_session_view_proto_enumTypes = make([]protoimpl.EnumInfo, 8)
-var file_remoteagent_core_v1_session_view_proto_msgTypes = make([]protoimpl.MessageInfo, 50)
+var file_remoteagent_core_v1_session_view_proto_enumTypes = make([]protoimpl.EnumInfo, 10)
+var file_remoteagent_core_v1_session_view_proto_msgTypes = make([]protoimpl.MessageInfo, 54)
 var file_remoteagent_core_v1_session_view_proto_goTypes = []any{
 	(SessionCommandStatus)(0),              // 0: remoteagent.core.v1.SessionCommandStatus
 	(ComputerReachability)(0),              // 1: remoteagent.core.v1.ComputerReachability
 	(SessionDockKind)(0),                   // 2: remoteagent.core.v1.SessionDockKind
-	(SessionOutgoingState)(0),              // 3: remoteagent.core.v1.SessionOutgoingState
-	(SessionToolStatus)(0),                 // 4: remoteagent.core.v1.SessionToolStatus
-	(SessionNoteTone)(0),                   // 5: remoteagent.core.v1.SessionNoteTone
-	(SessionNoteKind)(0),                   // 6: remoteagent.core.v1.SessionNoteKind
-	(SessionInputNoticeKind)(0),            // 7: remoteagent.core.v1.SessionInputNoticeKind
-	(*SessionScreenRequest)(nil),           // 8: remoteagent.core.v1.SessionScreenRequest
-	(*SessionWindowRequest)(nil),           // 9: remoteagent.core.v1.SessionWindowRequest
-	(*SessionViewModel)(nil),               // 10: remoteagent.core.v1.SessionViewModel
-	(*SessionCommandState)(nil),            // 11: remoteagent.core.v1.SessionCommandState
-	(*SessionCapabilitiesView)(nil),        // 12: remoteagent.core.v1.SessionCapabilitiesView
-	(*SessionHeaderView)(nil),              // 13: remoteagent.core.v1.SessionHeaderView
-	(*SessionModelChoiceView)(nil),         // 14: remoteagent.core.v1.SessionModelChoiceView
-	(*SessionEffortChoiceView)(nil),        // 15: remoteagent.core.v1.SessionEffortChoiceView
-	(*SessionModeChoiceView)(nil),          // 16: remoteagent.core.v1.SessionModeChoiceView
-	(*SessionUsageEntryView)(nil),          // 17: remoteagent.core.v1.SessionUsageEntryView
-	(*SessionActionsView)(nil),             // 18: remoteagent.core.v1.SessionActionsView
-	(*SessionDockView)(nil),                // 19: remoteagent.core.v1.SessionDockView
-	(*SessionApprovalDockView)(nil),        // 20: remoteagent.core.v1.SessionApprovalDockView
-	(*SessionQuestionOptionView)(nil),      // 21: remoteagent.core.v1.SessionQuestionOptionView
-	(*SessionQuestionStepView)(nil),        // 22: remoteagent.core.v1.SessionQuestionStepView
-	(*SessionQuestionDockView)(nil),        // 23: remoteagent.core.v1.SessionQuestionDockView
-	(*SessionPlanChoiceOptionView)(nil),    // 24: remoteagent.core.v1.SessionPlanChoiceOptionView
-	(*SessionPlanDockView)(nil),            // 25: remoteagent.core.v1.SessionPlanDockView
-	(*SessionTerminalPopupDockView)(nil),   // 26: remoteagent.core.v1.SessionTerminalPopupDockView
-	(*SessionPendingInputView)(nil),        // 27: remoteagent.core.v1.SessionPendingInputView
-	(*SessionOutgoingView)(nil),            // 28: remoteagent.core.v1.SessionOutgoingView
-	(*SessionComposerView)(nil),            // 29: remoteagent.core.v1.SessionComposerView
-	(*SessionTimelineView)(nil),            // 30: remoteagent.core.v1.SessionTimelineView
-	(*SessionTimelineItem)(nil),            // 31: remoteagent.core.v1.SessionTimelineItem
-	(*SessionFileRefView)(nil),             // 32: remoteagent.core.v1.SessionFileRefView
-	(*SessionUserMessageItem)(nil),         // 33: remoteagent.core.v1.SessionUserMessageItem
-	(*SessionAgentMessageItem)(nil),        // 34: remoteagent.core.v1.SessionAgentMessageItem
-	(*SessionReasoningItem)(nil),           // 35: remoteagent.core.v1.SessionReasoningItem
-	(*SessionToolCallItem)(nil),            // 36: remoteagent.core.v1.SessionToolCallItem
-	(*SessionToolGroupItem)(nil),           // 37: remoteagent.core.v1.SessionToolGroupItem
-	(*SessionSharedFileItem)(nil),          // 38: remoteagent.core.v1.SessionSharedFileItem
-	(*SessionSharedFilesItem)(nil),         // 39: remoteagent.core.v1.SessionSharedFilesItem
-	(*SessionGeneratedImagesItem)(nil),     // 40: remoteagent.core.v1.SessionGeneratedImagesItem
-	(*SessionAsyncQuestionItem)(nil),       // 41: remoteagent.core.v1.SessionAsyncQuestionItem
-	(*SessionPlanItem)(nil),                // 42: remoteagent.core.v1.SessionPlanItem
-	(*SessionNoteItem)(nil),                // 43: remoteagent.core.v1.SessionNoteItem
-	(*SessionNotifyReceiptItem)(nil),       // 44: remoteagent.core.v1.SessionNotifyReceiptItem
-	(*SessionTurnEndItem)(nil),             // 45: remoteagent.core.v1.SessionTurnEndItem
-	(*SessionErrorLineItem)(nil),           // 46: remoteagent.core.v1.SessionErrorLineItem
-	(*SessionForkItem)(nil),                // 47: remoteagent.core.v1.SessionForkItem
-	(*SessionInputStateItem)(nil),          // 48: remoteagent.core.v1.SessionInputStateItem
-	(*SessionQuietScheduledGroupItem)(nil), // 49: remoteagent.core.v1.SessionQuietScheduledGroupItem
-	(*SessionSkeletonItem)(nil),            // 50: remoteagent.core.v1.SessionSkeletonItem
-	(*SessionSubmitCommandAction)(nil),     // 51: remoteagent.core.v1.SessionSubmitCommandAction
-	(*SessionSlotAction)(nil),              // 52: remoteagent.core.v1.SessionSlotAction
-	(*SessionOpenAction)(nil),              // 53: remoteagent.core.v1.SessionOpenAction
-	(*SessionOutgoingAction)(nil),          // 54: remoteagent.core.v1.SessionOutgoingAction
-	(*SessionQuestionStepAction)(nil),      // 55: remoteagent.core.v1.SessionQuestionStepAction
-	(*SessionRefreshHistoryAction)(nil),    // 56: remoteagent.core.v1.SessionRefreshHistoryAction
-	(*SessionRestoreComposerEffect)(nil),   // 57: remoteagent.core.v1.SessionRestoreComposerEffect
-	(*Text)(nil),                           // 58: remoteagent.core.v1.Text
-	(v1.Agent)(0),                          // 59: remoteagent.v1.Agent
-	(SessionDisplayStatus)(0),              // 60: remoteagent.core.v1.SessionDisplayStatus
-	(SessionTone)(0),                       // 61: remoteagent.core.v1.SessionTone
-	(v1.ApprovalMode)(0),                   // 62: remoteagent.v1.ApprovalMode
-	(ConnState)(0),                         // 63: remoteagent.core.v1.ConnState
-	(AlwaysAllowKind)(0),                   // 64: remoteagent.core.v1.AlwaysAllowKind
-	(v1.PlanChoice)(0),                     // 65: remoteagent.v1.PlanChoice
-	(v1.SendMode)(0),                       // 66: remoteagent.v1.SendMode
-	(v1.InputStatus)(0),                    // 67: remoteagent.v1.InputStatus
-	(*v1.ImageRef)(nil),                    // 68: remoteagent.v1.ImageRef
-	(*v1.Origin)(nil),                      // 69: remoteagent.v1.Origin
-	(v1.ToolKind)(0),                       // 70: remoteagent.v1.ToolKind
-	(v1.ToolBackground)(0),                 // 71: remoteagent.v1.ToolBackground
-	(v1.TurnOutcome)(0),                    // 72: remoteagent.v1.TurnOutcome
-	(*v1.Command)(nil),                     // 73: remoteagent.v1.Command
+	(SessionTrayGroupKind)(0),              // 3: remoteagent.core.v1.SessionTrayGroupKind
+	(SessionTrayTone)(0),                   // 4: remoteagent.core.v1.SessionTrayTone
+	(SessionTrayRowActivity)(0),            // 5: remoteagent.core.v1.SessionTrayRowActivity
+	(SessionToolStatus)(0),                 // 6: remoteagent.core.v1.SessionToolStatus
+	(SessionNoteTone)(0),                   // 7: remoteagent.core.v1.SessionNoteTone
+	(SessionNoteKind)(0),                   // 8: remoteagent.core.v1.SessionNoteKind
+	(SessionInputNoticeKind)(0),            // 9: remoteagent.core.v1.SessionInputNoticeKind
+	(*SessionScreenRequest)(nil),           // 10: remoteagent.core.v1.SessionScreenRequest
+	(*SessionWindowRequest)(nil),           // 11: remoteagent.core.v1.SessionWindowRequest
+	(*SessionViewModel)(nil),               // 12: remoteagent.core.v1.SessionViewModel
+	(*SessionCommandState)(nil),            // 13: remoteagent.core.v1.SessionCommandState
+	(*SessionCapabilitiesView)(nil),        // 14: remoteagent.core.v1.SessionCapabilitiesView
+	(*SessionHeaderView)(nil),              // 15: remoteagent.core.v1.SessionHeaderView
+	(*SessionModelChoiceView)(nil),         // 16: remoteagent.core.v1.SessionModelChoiceView
+	(*SessionEffortChoiceView)(nil),        // 17: remoteagent.core.v1.SessionEffortChoiceView
+	(*SessionModeChoiceView)(nil),          // 18: remoteagent.core.v1.SessionModeChoiceView
+	(*SessionUsageEntryView)(nil),          // 19: remoteagent.core.v1.SessionUsageEntryView
+	(*SessionActionsView)(nil),             // 20: remoteagent.core.v1.SessionActionsView
+	(*SessionDockView)(nil),                // 21: remoteagent.core.v1.SessionDockView
+	(*SessionApprovalDockView)(nil),        // 22: remoteagent.core.v1.SessionApprovalDockView
+	(*SessionQuestionOptionView)(nil),      // 23: remoteagent.core.v1.SessionQuestionOptionView
+	(*SessionQuestionStepView)(nil),        // 24: remoteagent.core.v1.SessionQuestionStepView
+	(*SessionQuestionDockView)(nil),        // 25: remoteagent.core.v1.SessionQuestionDockView
+	(*SessionPlanChoiceOptionView)(nil),    // 26: remoteagent.core.v1.SessionPlanChoiceOptionView
+	(*SessionPlanDockView)(nil),            // 27: remoteagent.core.v1.SessionPlanDockView
+	(*SessionTerminalPopupDockView)(nil),   // 28: remoteagent.core.v1.SessionTerminalPopupDockView
+	(*SessionTrayItemView)(nil),            // 29: remoteagent.core.v1.SessionTrayItemView
+	(*SessionTrayGroupView)(nil),           // 30: remoteagent.core.v1.SessionTrayGroupView
+	(*SessionTrayUndoView)(nil),            // 31: remoteagent.core.v1.SessionTrayUndoView
+	(*SessionPendingTrayView)(nil),         // 32: remoteagent.core.v1.SessionPendingTrayView
+	(*SessionComposerView)(nil),            // 33: remoteagent.core.v1.SessionComposerView
+	(*SessionTimelineView)(nil),            // 34: remoteagent.core.v1.SessionTimelineView
+	(*SessionTimelineItem)(nil),            // 35: remoteagent.core.v1.SessionTimelineItem
+	(*SessionFileRefView)(nil),             // 36: remoteagent.core.v1.SessionFileRefView
+	(*SessionUserMessageItem)(nil),         // 37: remoteagent.core.v1.SessionUserMessageItem
+	(*SessionAgentMessageItem)(nil),        // 38: remoteagent.core.v1.SessionAgentMessageItem
+	(*SessionReasoningItem)(nil),           // 39: remoteagent.core.v1.SessionReasoningItem
+	(*SessionToolCallItem)(nil),            // 40: remoteagent.core.v1.SessionToolCallItem
+	(*SessionToolGroupItem)(nil),           // 41: remoteagent.core.v1.SessionToolGroupItem
+	(*SessionSharedFileItem)(nil),          // 42: remoteagent.core.v1.SessionSharedFileItem
+	(*SessionSharedFilesItem)(nil),         // 43: remoteagent.core.v1.SessionSharedFilesItem
+	(*SessionGeneratedImagesItem)(nil),     // 44: remoteagent.core.v1.SessionGeneratedImagesItem
+	(*SessionAsyncQuestionItem)(nil),       // 45: remoteagent.core.v1.SessionAsyncQuestionItem
+	(*SessionPlanItem)(nil),                // 46: remoteagent.core.v1.SessionPlanItem
+	(*SessionNoteItem)(nil),                // 47: remoteagent.core.v1.SessionNoteItem
+	(*SessionNotifyReceiptItem)(nil),       // 48: remoteagent.core.v1.SessionNotifyReceiptItem
+	(*SessionTurnEndItem)(nil),             // 49: remoteagent.core.v1.SessionTurnEndItem
+	(*SessionErrorLineItem)(nil),           // 50: remoteagent.core.v1.SessionErrorLineItem
+	(*SessionForkItem)(nil),                // 51: remoteagent.core.v1.SessionForkItem
+	(*SessionInputStateItem)(nil),          // 52: remoteagent.core.v1.SessionInputStateItem
+	(*SessionQuietScheduledGroupItem)(nil), // 53: remoteagent.core.v1.SessionQuietScheduledGroupItem
+	(*SessionSkeletonItem)(nil),            // 54: remoteagent.core.v1.SessionSkeletonItem
+	(*SessionSubmitCommandAction)(nil),     // 55: remoteagent.core.v1.SessionSubmitCommandAction
+	(*SessionSlotAction)(nil),              // 56: remoteagent.core.v1.SessionSlotAction
+	(*SessionOpenAction)(nil),              // 57: remoteagent.core.v1.SessionOpenAction
+	(*SessionTrayItemAction)(nil),          // 58: remoteagent.core.v1.SessionTrayItemAction
+	(*SessionTraySessionAction)(nil),       // 59: remoteagent.core.v1.SessionTraySessionAction
+	(*SessionQuestionStepAction)(nil),      // 60: remoteagent.core.v1.SessionQuestionStepAction
+	(*SessionRefreshHistoryAction)(nil),    // 61: remoteagent.core.v1.SessionRefreshHistoryAction
+	(*SessionRestoreComposerEffect)(nil),   // 62: remoteagent.core.v1.SessionRestoreComposerEffect
+	(*SessionResendAttachmentsEffect)(nil), // 63: remoteagent.core.v1.SessionResendAttachmentsEffect
+	(*Text)(nil),                           // 64: remoteagent.core.v1.Text
+	(v1.Agent)(0),                          // 65: remoteagent.v1.Agent
+	(SessionDisplayStatus)(0),              // 66: remoteagent.core.v1.SessionDisplayStatus
+	(SessionTone)(0),                       // 67: remoteagent.core.v1.SessionTone
+	(v1.ApprovalMode)(0),                   // 68: remoteagent.v1.ApprovalMode
+	(ConnState)(0),                         // 69: remoteagent.core.v1.ConnState
+	(AlwaysAllowKind)(0),                   // 70: remoteagent.core.v1.AlwaysAllowKind
+	(v1.PlanChoice)(0),                     // 71: remoteagent.v1.PlanChoice
+	(v1.SendMode)(0),                       // 72: remoteagent.v1.SendMode
+	(*v1.ImageRef)(nil),                    // 73: remoteagent.v1.ImageRef
+	(*v1.Origin)(nil),                      // 74: remoteagent.v1.Origin
+	(v1.ToolKind)(0),                       // 75: remoteagent.v1.ToolKind
+	(v1.ToolBackground)(0),                 // 76: remoteagent.v1.ToolBackground
+	(v1.TurnOutcome)(0),                    // 77: remoteagent.v1.TurnOutcome
+	(*v1.Command)(nil),                     // 78: remoteagent.v1.Command
 }
 var file_remoteagent_core_v1_session_view_proto_depIdxs = []int32{
-	9,   // 0: remoteagent.core.v1.SessionScreenRequest.window:type_name -> remoteagent.core.v1.SessionWindowRequest
-	13,  // 1: remoteagent.core.v1.SessionViewModel.header:type_name -> remoteagent.core.v1.SessionHeaderView
-	18,  // 2: remoteagent.core.v1.SessionViewModel.actions:type_name -> remoteagent.core.v1.SessionActionsView
-	19,  // 3: remoteagent.core.v1.SessionViewModel.dock:type_name -> remoteagent.core.v1.SessionDockView
-	29,  // 4: remoteagent.core.v1.SessionViewModel.composer:type_name -> remoteagent.core.v1.SessionComposerView
-	30,  // 5: remoteagent.core.v1.SessionViewModel.timeline:type_name -> remoteagent.core.v1.SessionTimelineView
+	11,  // 0: remoteagent.core.v1.SessionScreenRequest.window:type_name -> remoteagent.core.v1.SessionWindowRequest
+	15,  // 1: remoteagent.core.v1.SessionViewModel.header:type_name -> remoteagent.core.v1.SessionHeaderView
+	20,  // 2: remoteagent.core.v1.SessionViewModel.actions:type_name -> remoteagent.core.v1.SessionActionsView
+	21,  // 3: remoteagent.core.v1.SessionViewModel.dock:type_name -> remoteagent.core.v1.SessionDockView
+	33,  // 4: remoteagent.core.v1.SessionViewModel.composer:type_name -> remoteagent.core.v1.SessionComposerView
+	34,  // 5: remoteagent.core.v1.SessionViewModel.timeline:type_name -> remoteagent.core.v1.SessionTimelineView
 	0,   // 6: remoteagent.core.v1.SessionCommandState.status:type_name -> remoteagent.core.v1.SessionCommandStatus
-	58,  // 7: remoteagent.core.v1.SessionCommandState.error_text:type_name -> remoteagent.core.v1.Text
-	58,  // 8: remoteagent.core.v1.SessionCommandState.status_text:type_name -> remoteagent.core.v1.Text
-	58,  // 9: remoteagent.core.v1.SessionCapabilitiesView.terminal_hint:type_name -> remoteagent.core.v1.Text
-	58,  // 10: remoteagent.core.v1.SessionHeaderView.title:type_name -> remoteagent.core.v1.Text
-	58,  // 11: remoteagent.core.v1.SessionHeaderView.project_name:type_name -> remoteagent.core.v1.Text
-	59,  // 12: remoteagent.core.v1.SessionHeaderView.agent:type_name -> remoteagent.v1.Agent
-	60,  // 13: remoteagent.core.v1.SessionHeaderView.status:type_name -> remoteagent.core.v1.SessionDisplayStatus
-	61,  // 14: remoteagent.core.v1.SessionHeaderView.tone:type_name -> remoteagent.core.v1.SessionTone
-	58,  // 15: remoteagent.core.v1.SessionHeaderView.status_text:type_name -> remoteagent.core.v1.Text
-	58,  // 16: remoteagent.core.v1.SessionHeaderView.live_summary:type_name -> remoteagent.core.v1.Text
-	62,  // 17: remoteagent.core.v1.SessionHeaderView.approval_mode:type_name -> remoteagent.v1.ApprovalMode
-	58,  // 18: remoteagent.core.v1.SessionHeaderView.approval_mode_label:type_name -> remoteagent.core.v1.Text
-	58,  // 19: remoteagent.core.v1.SessionHeaderView.effort_label:type_name -> remoteagent.core.v1.Text
-	58,  // 20: remoteagent.core.v1.SessionHeaderView.context_text:type_name -> remoteagent.core.v1.Text
-	58,  // 21: remoteagent.core.v1.SessionHeaderView.computer_name:type_name -> remoteagent.core.v1.Text
-	58,  // 22: remoteagent.core.v1.SessionHeaderView.offline_text:type_name -> remoteagent.core.v1.Text
-	63,  // 23: remoteagent.core.v1.SessionHeaderView.conn_state:type_name -> remoteagent.core.v1.ConnState
-	58,  // 24: remoteagent.core.v1.SessionHeaderView.protocol_mismatch_text:type_name -> remoteagent.core.v1.Text
-	58,  // 25: remoteagent.core.v1.SessionHeaderView.ended_text:type_name -> remoteagent.core.v1.Text
-	58,  // 26: remoteagent.core.v1.SessionHeaderView.forked_from_title:type_name -> remoteagent.core.v1.Text
-	12,  // 27: remoteagent.core.v1.SessionHeaderView.capabilities:type_name -> remoteagent.core.v1.SessionCapabilitiesView
-	58,  // 28: remoteagent.core.v1.SessionHeaderView.missing_text:type_name -> remoteagent.core.v1.Text
+	64,  // 7: remoteagent.core.v1.SessionCommandState.error_text:type_name -> remoteagent.core.v1.Text
+	64,  // 8: remoteagent.core.v1.SessionCommandState.status_text:type_name -> remoteagent.core.v1.Text
+	64,  // 9: remoteagent.core.v1.SessionCapabilitiesView.terminal_hint:type_name -> remoteagent.core.v1.Text
+	64,  // 10: remoteagent.core.v1.SessionHeaderView.title:type_name -> remoteagent.core.v1.Text
+	64,  // 11: remoteagent.core.v1.SessionHeaderView.project_name:type_name -> remoteagent.core.v1.Text
+	65,  // 12: remoteagent.core.v1.SessionHeaderView.agent:type_name -> remoteagent.v1.Agent
+	66,  // 13: remoteagent.core.v1.SessionHeaderView.status:type_name -> remoteagent.core.v1.SessionDisplayStatus
+	67,  // 14: remoteagent.core.v1.SessionHeaderView.tone:type_name -> remoteagent.core.v1.SessionTone
+	64,  // 15: remoteagent.core.v1.SessionHeaderView.status_text:type_name -> remoteagent.core.v1.Text
+	64,  // 16: remoteagent.core.v1.SessionHeaderView.live_summary:type_name -> remoteagent.core.v1.Text
+	68,  // 17: remoteagent.core.v1.SessionHeaderView.approval_mode:type_name -> remoteagent.v1.ApprovalMode
+	64,  // 18: remoteagent.core.v1.SessionHeaderView.approval_mode_label:type_name -> remoteagent.core.v1.Text
+	64,  // 19: remoteagent.core.v1.SessionHeaderView.effort_label:type_name -> remoteagent.core.v1.Text
+	64,  // 20: remoteagent.core.v1.SessionHeaderView.context_text:type_name -> remoteagent.core.v1.Text
+	64,  // 21: remoteagent.core.v1.SessionHeaderView.computer_name:type_name -> remoteagent.core.v1.Text
+	64,  // 22: remoteagent.core.v1.SessionHeaderView.offline_text:type_name -> remoteagent.core.v1.Text
+	69,  // 23: remoteagent.core.v1.SessionHeaderView.conn_state:type_name -> remoteagent.core.v1.ConnState
+	64,  // 24: remoteagent.core.v1.SessionHeaderView.protocol_mismatch_text:type_name -> remoteagent.core.v1.Text
+	64,  // 25: remoteagent.core.v1.SessionHeaderView.ended_text:type_name -> remoteagent.core.v1.Text
+	64,  // 26: remoteagent.core.v1.SessionHeaderView.forked_from_title:type_name -> remoteagent.core.v1.Text
+	14,  // 27: remoteagent.core.v1.SessionHeaderView.capabilities:type_name -> remoteagent.core.v1.SessionCapabilitiesView
+	64,  // 28: remoteagent.core.v1.SessionHeaderView.missing_text:type_name -> remoteagent.core.v1.Text
 	1,   // 29: remoteagent.core.v1.SessionHeaderView.computer_reachability:type_name -> remoteagent.core.v1.ComputerReachability
-	58,  // 30: remoteagent.core.v1.SessionModelChoiceView.fixed_effort_note:type_name -> remoteagent.core.v1.Text
-	58,  // 31: remoteagent.core.v1.SessionEffortChoiceView.label:type_name -> remoteagent.core.v1.Text
-	62,  // 32: remoteagent.core.v1.SessionModeChoiceView.mode:type_name -> remoteagent.v1.ApprovalMode
-	58,  // 33: remoteagent.core.v1.SessionModeChoiceView.label:type_name -> remoteagent.core.v1.Text
-	58,  // 34: remoteagent.core.v1.SessionModeChoiceView.note:type_name -> remoteagent.core.v1.Text
-	58,  // 35: remoteagent.core.v1.SessionModeChoiceView.unavailable_reason:type_name -> remoteagent.core.v1.Text
-	58,  // 36: remoteagent.core.v1.SessionUsageEntryView.subtitle:type_name -> remoteagent.core.v1.Text
-	58,  // 37: remoteagent.core.v1.SessionUsageEntryView.value_text:type_name -> remoteagent.core.v1.Text
-	58,  // 38: remoteagent.core.v1.SessionUsageEntryView.footnote:type_name -> remoteagent.core.v1.Text
-	11,  // 39: remoteagent.core.v1.SessionActionsView.interrupt:type_name -> remoteagent.core.v1.SessionCommandState
-	11,  // 40: remoteagent.core.v1.SessionActionsView.end:type_name -> remoteagent.core.v1.SessionCommandState
-	58,  // 41: remoteagent.core.v1.SessionActionsView.end_confirm_note:type_name -> remoteagent.core.v1.Text
-	11,  // 42: remoteagent.core.v1.SessionActionsView.resume:type_name -> remoteagent.core.v1.SessionCommandState
-	58,  // 43: remoteagent.core.v1.SessionActionsView.resume_note:type_name -> remoteagent.core.v1.Text
-	11,  // 44: remoteagent.core.v1.SessionActionsView.rename:type_name -> remoteagent.core.v1.SessionCommandState
-	58,  // 45: remoteagent.core.v1.SessionActionsView.fork_blocked_reason:type_name -> remoteagent.core.v1.Text
-	11,  // 46: remoteagent.core.v1.SessionActionsView.fork:type_name -> remoteagent.core.v1.SessionCommandState
-	58,  // 47: remoteagent.core.v1.SessionActionsView.compact_blocked_reason:type_name -> remoteagent.core.v1.Text
-	11,  // 48: remoteagent.core.v1.SessionActionsView.compact:type_name -> remoteagent.core.v1.SessionCommandState
-	58,  // 49: remoteagent.core.v1.SessionActionsView.model_switch_blocked_reason:type_name -> remoteagent.core.v1.Text
-	11,  // 50: remoteagent.core.v1.SessionActionsView.set_model:type_name -> remoteagent.core.v1.SessionCommandState
-	58,  // 51: remoteagent.core.v1.SessionActionsView.models_error:type_name -> remoteagent.core.v1.Text
-	14,  // 52: remoteagent.core.v1.SessionActionsView.model_choices:type_name -> remoteagent.core.v1.SessionModelChoiceView
-	15,  // 53: remoteagent.core.v1.SessionActionsView.effort_choices:type_name -> remoteagent.core.v1.SessionEffortChoiceView
-	58,  // 54: remoteagent.core.v1.SessionActionsView.mode_switch_blocked_reason:type_name -> remoteagent.core.v1.Text
-	11,  // 55: remoteagent.core.v1.SessionActionsView.set_mode:type_name -> remoteagent.core.v1.SessionCommandState
-	16,  // 56: remoteagent.core.v1.SessionActionsView.mode_choices:type_name -> remoteagent.core.v1.SessionModeChoiceView
-	17,  // 57: remoteagent.core.v1.SessionActionsView.usage_entry:type_name -> remoteagent.core.v1.SessionUsageEntryView
+	64,  // 30: remoteagent.core.v1.SessionModelChoiceView.fixed_effort_note:type_name -> remoteagent.core.v1.Text
+	64,  // 31: remoteagent.core.v1.SessionEffortChoiceView.label:type_name -> remoteagent.core.v1.Text
+	68,  // 32: remoteagent.core.v1.SessionModeChoiceView.mode:type_name -> remoteagent.v1.ApprovalMode
+	64,  // 33: remoteagent.core.v1.SessionModeChoiceView.label:type_name -> remoteagent.core.v1.Text
+	64,  // 34: remoteagent.core.v1.SessionModeChoiceView.note:type_name -> remoteagent.core.v1.Text
+	64,  // 35: remoteagent.core.v1.SessionModeChoiceView.unavailable_reason:type_name -> remoteagent.core.v1.Text
+	64,  // 36: remoteagent.core.v1.SessionUsageEntryView.subtitle:type_name -> remoteagent.core.v1.Text
+	64,  // 37: remoteagent.core.v1.SessionUsageEntryView.value_text:type_name -> remoteagent.core.v1.Text
+	64,  // 38: remoteagent.core.v1.SessionUsageEntryView.footnote:type_name -> remoteagent.core.v1.Text
+	13,  // 39: remoteagent.core.v1.SessionActionsView.interrupt:type_name -> remoteagent.core.v1.SessionCommandState
+	13,  // 40: remoteagent.core.v1.SessionActionsView.end:type_name -> remoteagent.core.v1.SessionCommandState
+	64,  // 41: remoteagent.core.v1.SessionActionsView.end_confirm_note:type_name -> remoteagent.core.v1.Text
+	13,  // 42: remoteagent.core.v1.SessionActionsView.resume:type_name -> remoteagent.core.v1.SessionCommandState
+	64,  // 43: remoteagent.core.v1.SessionActionsView.resume_note:type_name -> remoteagent.core.v1.Text
+	13,  // 44: remoteagent.core.v1.SessionActionsView.rename:type_name -> remoteagent.core.v1.SessionCommandState
+	64,  // 45: remoteagent.core.v1.SessionActionsView.fork_blocked_reason:type_name -> remoteagent.core.v1.Text
+	13,  // 46: remoteagent.core.v1.SessionActionsView.fork:type_name -> remoteagent.core.v1.SessionCommandState
+	64,  // 47: remoteagent.core.v1.SessionActionsView.compact_blocked_reason:type_name -> remoteagent.core.v1.Text
+	13,  // 48: remoteagent.core.v1.SessionActionsView.compact:type_name -> remoteagent.core.v1.SessionCommandState
+	64,  // 49: remoteagent.core.v1.SessionActionsView.model_switch_blocked_reason:type_name -> remoteagent.core.v1.Text
+	13,  // 50: remoteagent.core.v1.SessionActionsView.set_model:type_name -> remoteagent.core.v1.SessionCommandState
+	64,  // 51: remoteagent.core.v1.SessionActionsView.models_error:type_name -> remoteagent.core.v1.Text
+	16,  // 52: remoteagent.core.v1.SessionActionsView.model_choices:type_name -> remoteagent.core.v1.SessionModelChoiceView
+	17,  // 53: remoteagent.core.v1.SessionActionsView.effort_choices:type_name -> remoteagent.core.v1.SessionEffortChoiceView
+	64,  // 54: remoteagent.core.v1.SessionActionsView.mode_switch_blocked_reason:type_name -> remoteagent.core.v1.Text
+	13,  // 55: remoteagent.core.v1.SessionActionsView.set_mode:type_name -> remoteagent.core.v1.SessionCommandState
+	18,  // 56: remoteagent.core.v1.SessionActionsView.mode_choices:type_name -> remoteagent.core.v1.SessionModeChoiceView
+	19,  // 57: remoteagent.core.v1.SessionActionsView.usage_entry:type_name -> remoteagent.core.v1.SessionUsageEntryView
 	2,   // 58: remoteagent.core.v1.SessionDockView.kind:type_name -> remoteagent.core.v1.SessionDockKind
-	58,  // 59: remoteagent.core.v1.SessionDockView.title:type_name -> remoteagent.core.v1.Text
-	58,  // 60: remoteagent.core.v1.SessionDockView.summary:type_name -> remoteagent.core.v1.Text
-	58,  // 61: remoteagent.core.v1.SessionDockView.meta:type_name -> remoteagent.core.v1.Text
-	58,  // 62: remoteagent.core.v1.SessionDockView.time_left:type_name -> remoteagent.core.v1.Text
-	11,  // 63: remoteagent.core.v1.SessionDockView.command:type_name -> remoteagent.core.v1.SessionCommandState
-	20,  // 64: remoteagent.core.v1.SessionDockView.approval:type_name -> remoteagent.core.v1.SessionApprovalDockView
-	23,  // 65: remoteagent.core.v1.SessionDockView.question:type_name -> remoteagent.core.v1.SessionQuestionDockView
-	25,  // 66: remoteagent.core.v1.SessionDockView.plan:type_name -> remoteagent.core.v1.SessionPlanDockView
-	26,  // 67: remoteagent.core.v1.SessionDockView.terminal_popup:type_name -> remoteagent.core.v1.SessionTerminalPopupDockView
-	64,  // 68: remoteagent.core.v1.SessionApprovalDockView.always_kind:type_name -> remoteagent.core.v1.AlwaysAllowKind
-	58,  // 69: remoteagent.core.v1.SessionApprovalDockView.always_label:type_name -> remoteagent.core.v1.Text
-	58,  // 70: remoteagent.core.v1.SessionApprovalDockView.deny_reason_placeholder:type_name -> remoteagent.core.v1.Text
-	58,  // 71: remoteagent.core.v1.SessionApprovalDockView.delivery_failed_note:type_name -> remoteagent.core.v1.Text
-	21,  // 72: remoteagent.core.v1.SessionQuestionStepView.options:type_name -> remoteagent.core.v1.SessionQuestionOptionView
-	58,  // 73: remoteagent.core.v1.SessionQuestionDockView.progress_text:type_name -> remoteagent.core.v1.Text
-	22,  // 74: remoteagent.core.v1.SessionQuestionDockView.question:type_name -> remoteagent.core.v1.SessionQuestionStepView
-	65,  // 75: remoteagent.core.v1.SessionPlanChoiceOptionView.choice:type_name -> remoteagent.v1.PlanChoice
-	58,  // 76: remoteagent.core.v1.SessionPlanChoiceOptionView.label:type_name -> remoteagent.core.v1.Text
-	58,  // 77: remoteagent.core.v1.SessionPlanDockView.note:type_name -> remoteagent.core.v1.Text
-	24,  // 78: remoteagent.core.v1.SessionPlanDockView.choices:type_name -> remoteagent.core.v1.SessionPlanChoiceOptionView
-	58,  // 79: remoteagent.core.v1.SessionTerminalPopupDockView.popup_title:type_name -> remoteagent.core.v1.Text
-	58,  // 80: remoteagent.core.v1.SessionTerminalPopupDockView.hint:type_name -> remoteagent.core.v1.Text
-	66,  // 81: remoteagent.core.v1.SessionPendingInputView.mode:type_name -> remoteagent.v1.SendMode
-	67,  // 82: remoteagent.core.v1.SessionPendingInputView.status:type_name -> remoteagent.v1.InputStatus
-	58,  // 83: remoteagent.core.v1.SessionPendingInputView.label:type_name -> remoteagent.core.v1.Text
-	58,  // 84: remoteagent.core.v1.SessionPendingInputView.caption:type_name -> remoteagent.core.v1.Text
-	58,  // 85: remoteagent.core.v1.SessionPendingInputView.origin_label:type_name -> remoteagent.core.v1.Text
-	11,  // 86: remoteagent.core.v1.SessionPendingInputView.cancel:type_name -> remoteagent.core.v1.SessionCommandState
-	11,  // 87: remoteagent.core.v1.SessionPendingInputView.resume:type_name -> remoteagent.core.v1.SessionCommandState
-	58,  // 88: remoteagent.core.v1.SessionPendingInputView.feedback:type_name -> remoteagent.core.v1.Text
-	66,  // 89: remoteagent.core.v1.SessionOutgoingView.mode:type_name -> remoteagent.v1.SendMode
-	3,   // 90: remoteagent.core.v1.SessionOutgoingView.state:type_name -> remoteagent.core.v1.SessionOutgoingState
-	58,  // 91: remoteagent.core.v1.SessionOutgoingView.caption:type_name -> remoteagent.core.v1.Text
-	58,  // 92: remoteagent.core.v1.SessionOutgoingView.feedback:type_name -> remoteagent.core.v1.Text
-	58,  // 93: remoteagent.core.v1.SessionComposerView.disabled_reason:type_name -> remoteagent.core.v1.Text
-	58,  // 94: remoteagent.core.v1.SessionComposerView.placeholder:type_name -> remoteagent.core.v1.Text
-	27,  // 95: remoteagent.core.v1.SessionComposerView.pending_inputs:type_name -> remoteagent.core.v1.SessionPendingInputView
-	28,  // 96: remoteagent.core.v1.SessionComposerView.outgoing:type_name -> remoteagent.core.v1.SessionOutgoingView
-	31,  // 97: remoteagent.core.v1.SessionTimelineView.items:type_name -> remoteagent.core.v1.SessionTimelineItem
-	58,  // 98: remoteagent.core.v1.SessionTimelineView.history_notice:type_name -> remoteagent.core.v1.Text
-	58,  // 99: remoteagent.core.v1.SessionTimelineView.error:type_name -> remoteagent.core.v1.Text
-	58,  // 100: remoteagent.core.v1.SessionTimelineView.fetch_error:type_name -> remoteagent.core.v1.Text
-	33,  // 101: remoteagent.core.v1.SessionTimelineItem.user_message:type_name -> remoteagent.core.v1.SessionUserMessageItem
-	34,  // 102: remoteagent.core.v1.SessionTimelineItem.agent_message:type_name -> remoteagent.core.v1.SessionAgentMessageItem
-	35,  // 103: remoteagent.core.v1.SessionTimelineItem.reasoning:type_name -> remoteagent.core.v1.SessionReasoningItem
-	36,  // 104: remoteagent.core.v1.SessionTimelineItem.tool_call:type_name -> remoteagent.core.v1.SessionToolCallItem
-	37,  // 105: remoteagent.core.v1.SessionTimelineItem.tool_group:type_name -> remoteagent.core.v1.SessionToolGroupItem
-	39,  // 106: remoteagent.core.v1.SessionTimelineItem.shared_files:type_name -> remoteagent.core.v1.SessionSharedFilesItem
-	40,  // 107: remoteagent.core.v1.SessionTimelineItem.generated_images:type_name -> remoteagent.core.v1.SessionGeneratedImagesItem
-	41,  // 108: remoteagent.core.v1.SessionTimelineItem.async_question:type_name -> remoteagent.core.v1.SessionAsyncQuestionItem
-	42,  // 109: remoteagent.core.v1.SessionTimelineItem.plan:type_name -> remoteagent.core.v1.SessionPlanItem
-	43,  // 110: remoteagent.core.v1.SessionTimelineItem.note:type_name -> remoteagent.core.v1.SessionNoteItem
-	45,  // 111: remoteagent.core.v1.SessionTimelineItem.turn_end:type_name -> remoteagent.core.v1.SessionTurnEndItem
-	46,  // 112: remoteagent.core.v1.SessionTimelineItem.error_line:type_name -> remoteagent.core.v1.SessionErrorLineItem
-	47,  // 113: remoteagent.core.v1.SessionTimelineItem.fork_marker:type_name -> remoteagent.core.v1.SessionForkItem
-	48,  // 114: remoteagent.core.v1.SessionTimelineItem.input_state:type_name -> remoteagent.core.v1.SessionInputStateItem
-	49,  // 115: remoteagent.core.v1.SessionTimelineItem.quiet_scheduled_group:type_name -> remoteagent.core.v1.SessionQuietScheduledGroupItem
-	50,  // 116: remoteagent.core.v1.SessionTimelineItem.skeleton:type_name -> remoteagent.core.v1.SessionSkeletonItem
-	44,  // 117: remoteagent.core.v1.SessionTimelineItem.notify_receipt:type_name -> remoteagent.core.v1.SessionNotifyReceiptItem
-	68,  // 118: remoteagent.core.v1.SessionUserMessageItem.images:type_name -> remoteagent.v1.ImageRef
-	32,  // 119: remoteagent.core.v1.SessionUserMessageItem.files:type_name -> remoteagent.core.v1.SessionFileRefView
-	69,  // 120: remoteagent.core.v1.SessionUserMessageItem.origin:type_name -> remoteagent.v1.Origin
-	58,  // 121: remoteagent.core.v1.SessionUserMessageItem.origin_caption:type_name -> remoteagent.core.v1.Text
-	70,  // 122: remoteagent.core.v1.SessionToolCallItem.tool_kind:type_name -> remoteagent.v1.ToolKind
-	4,   // 123: remoteagent.core.v1.SessionToolCallItem.status:type_name -> remoteagent.core.v1.SessionToolStatus
-	71,  // 124: remoteagent.core.v1.SessionToolCallItem.background_kind:type_name -> remoteagent.v1.ToolBackground
-	58,  // 125: remoteagent.core.v1.SessionToolCallItem.background_label:type_name -> remoteagent.core.v1.Text
-	58,  // 126: remoteagent.core.v1.SessionToolCallItem.decision_label:type_name -> remoteagent.core.v1.Text
-	68,  // 127: remoteagent.core.v1.SessionToolCallItem.images:type_name -> remoteagent.v1.ImageRef
-	36,  // 128: remoteagent.core.v1.SessionToolGroupItem.calls:type_name -> remoteagent.core.v1.SessionToolCallItem
-	58,  // 129: remoteagent.core.v1.SessionToolGroupItem.summary:type_name -> remoteagent.core.v1.Text
-	38,  // 130: remoteagent.core.v1.SessionSharedFilesItem.files:type_name -> remoteagent.core.v1.SessionSharedFileItem
-	68,  // 131: remoteagent.core.v1.SessionGeneratedImagesItem.images:type_name -> remoteagent.v1.ImageRef
-	22,  // 132: remoteagent.core.v1.SessionAsyncQuestionItem.questions:type_name -> remoteagent.core.v1.SessionQuestionStepView
-	6,   // 133: remoteagent.core.v1.SessionNoteItem.kind:type_name -> remoteagent.core.v1.SessionNoteKind
-	5,   // 134: remoteagent.core.v1.SessionNoteItem.tone:type_name -> remoteagent.core.v1.SessionNoteTone
-	58,  // 135: remoteagent.core.v1.SessionNoteItem.text:type_name -> remoteagent.core.v1.Text
-	58,  // 136: remoteagent.core.v1.SessionNoteItem.meta:type_name -> remoteagent.core.v1.Text
-	58,  // 137: remoteagent.core.v1.SessionNoteItem.emphasis:type_name -> remoteagent.core.v1.Text
-	58,  // 138: remoteagent.core.v1.SessionNotifyReceiptItem.label:type_name -> remoteagent.core.v1.Text
-	58,  // 139: remoteagent.core.v1.SessionNotifyReceiptItem.time:type_name -> remoteagent.core.v1.Text
-	72,  // 140: remoteagent.core.v1.SessionTurnEndItem.outcome:type_name -> remoteagent.v1.TurnOutcome
-	58,  // 141: remoteagent.core.v1.SessionTurnEndItem.label:type_name -> remoteagent.core.v1.Text
-	58,  // 142: remoteagent.core.v1.SessionErrorLineItem.text:type_name -> remoteagent.core.v1.Text
-	58,  // 143: remoteagent.core.v1.SessionForkItem.source_title:type_name -> remoteagent.core.v1.Text
-	58,  // 144: remoteagent.core.v1.SessionForkItem.text:type_name -> remoteagent.core.v1.Text
-	7,   // 145: remoteagent.core.v1.SessionInputStateItem.kind:type_name -> remoteagent.core.v1.SessionInputNoticeKind
-	58,  // 146: remoteagent.core.v1.SessionInputStateItem.status_text:type_name -> remoteagent.core.v1.Text
-	58,  // 147: remoteagent.core.v1.SessionInputStateItem.reason_text:type_name -> remoteagent.core.v1.Text
-	58,  // 148: remoteagent.core.v1.SessionQuietScheduledGroupItem.title:type_name -> remoteagent.core.v1.Text
-	31,  // 149: remoteagent.core.v1.SessionQuietScheduledGroupItem.items:type_name -> remoteagent.core.v1.SessionTimelineItem
-	58,  // 150: remoteagent.core.v1.SessionSkeletonItem.text:type_name -> remoteagent.core.v1.Text
-	73,  // 151: remoteagent.core.v1.SessionSubmitCommandAction.command:type_name -> remoteagent.v1.Command
-	152, // [152:152] is the sub-list for method output_type
-	152, // [152:152] is the sub-list for method input_type
-	152, // [152:152] is the sub-list for extension type_name
-	152, // [152:152] is the sub-list for extension extendee
-	0,   // [0:152] is the sub-list for field type_name
+	64,  // 59: remoteagent.core.v1.SessionDockView.title:type_name -> remoteagent.core.v1.Text
+	64,  // 60: remoteagent.core.v1.SessionDockView.summary:type_name -> remoteagent.core.v1.Text
+	64,  // 61: remoteagent.core.v1.SessionDockView.meta:type_name -> remoteagent.core.v1.Text
+	64,  // 62: remoteagent.core.v1.SessionDockView.time_left:type_name -> remoteagent.core.v1.Text
+	13,  // 63: remoteagent.core.v1.SessionDockView.command:type_name -> remoteagent.core.v1.SessionCommandState
+	22,  // 64: remoteagent.core.v1.SessionDockView.approval:type_name -> remoteagent.core.v1.SessionApprovalDockView
+	25,  // 65: remoteagent.core.v1.SessionDockView.question:type_name -> remoteagent.core.v1.SessionQuestionDockView
+	27,  // 66: remoteagent.core.v1.SessionDockView.plan:type_name -> remoteagent.core.v1.SessionPlanDockView
+	28,  // 67: remoteagent.core.v1.SessionDockView.terminal_popup:type_name -> remoteagent.core.v1.SessionTerminalPopupDockView
+	70,  // 68: remoteagent.core.v1.SessionApprovalDockView.always_kind:type_name -> remoteagent.core.v1.AlwaysAllowKind
+	64,  // 69: remoteagent.core.v1.SessionApprovalDockView.always_label:type_name -> remoteagent.core.v1.Text
+	64,  // 70: remoteagent.core.v1.SessionApprovalDockView.deny_reason_placeholder:type_name -> remoteagent.core.v1.Text
+	64,  // 71: remoteagent.core.v1.SessionApprovalDockView.delivery_failed_note:type_name -> remoteagent.core.v1.Text
+	23,  // 72: remoteagent.core.v1.SessionQuestionStepView.options:type_name -> remoteagent.core.v1.SessionQuestionOptionView
+	64,  // 73: remoteagent.core.v1.SessionQuestionDockView.progress_text:type_name -> remoteagent.core.v1.Text
+	24,  // 74: remoteagent.core.v1.SessionQuestionDockView.question:type_name -> remoteagent.core.v1.SessionQuestionStepView
+	71,  // 75: remoteagent.core.v1.SessionPlanChoiceOptionView.choice:type_name -> remoteagent.v1.PlanChoice
+	64,  // 76: remoteagent.core.v1.SessionPlanChoiceOptionView.label:type_name -> remoteagent.core.v1.Text
+	64,  // 77: remoteagent.core.v1.SessionPlanDockView.note:type_name -> remoteagent.core.v1.Text
+	26,  // 78: remoteagent.core.v1.SessionPlanDockView.choices:type_name -> remoteagent.core.v1.SessionPlanChoiceOptionView
+	64,  // 79: remoteagent.core.v1.SessionTerminalPopupDockView.popup_title:type_name -> remoteagent.core.v1.Text
+	64,  // 80: remoteagent.core.v1.SessionTerminalPopupDockView.hint:type_name -> remoteagent.core.v1.Text
+	3,   // 81: remoteagent.core.v1.SessionTrayItemView.group:type_name -> remoteagent.core.v1.SessionTrayGroupKind
+	4,   // 82: remoteagent.core.v1.SessionTrayItemView.tone:type_name -> remoteagent.core.v1.SessionTrayTone
+	5,   // 83: remoteagent.core.v1.SessionTrayItemView.activity:type_name -> remoteagent.core.v1.SessionTrayRowActivity
+	64,  // 84: remoteagent.core.v1.SessionTrayItemView.source_label:type_name -> remoteagent.core.v1.Text
+	72,  // 85: remoteagent.core.v1.SessionTrayItemView.mode:type_name -> remoteagent.v1.SendMode
+	64,  // 86: remoteagent.core.v1.SessionTrayItemView.reason_text:type_name -> remoteagent.core.v1.Text
+	3,   // 87: remoteagent.core.v1.SessionTrayGroupView.kind:type_name -> remoteagent.core.v1.SessionTrayGroupKind
+	4,   // 88: remoteagent.core.v1.SessionTrayGroupView.tone:type_name -> remoteagent.core.v1.SessionTrayTone
+	64,  // 89: remoteagent.core.v1.SessionTrayGroupView.title:type_name -> remoteagent.core.v1.Text
+	64,  // 90: remoteagent.core.v1.SessionTrayGroupView.header_text:type_name -> remoteagent.core.v1.Text
+	29,  // 91: remoteagent.core.v1.SessionTrayGroupView.items:type_name -> remoteagent.core.v1.SessionTrayItemView
+	64,  // 92: remoteagent.core.v1.SessionTrayUndoView.label:type_name -> remoteagent.core.v1.Text
+	30,  // 93: remoteagent.core.v1.SessionPendingTrayView.groups:type_name -> remoteagent.core.v1.SessionTrayGroupView
+	29,  // 94: remoteagent.core.v1.SessionPendingTrayView.ordered_items:type_name -> remoteagent.core.v1.SessionTrayItemView
+	31,  // 95: remoteagent.core.v1.SessionPendingTrayView.undo:type_name -> remoteagent.core.v1.SessionTrayUndoView
+	64,  // 96: remoteagent.core.v1.SessionComposerView.disabled_reason:type_name -> remoteagent.core.v1.Text
+	64,  // 97: remoteagent.core.v1.SessionComposerView.placeholder:type_name -> remoteagent.core.v1.Text
+	32,  // 98: remoteagent.core.v1.SessionComposerView.pending_tray:type_name -> remoteagent.core.v1.SessionPendingTrayView
+	35,  // 99: remoteagent.core.v1.SessionTimelineView.items:type_name -> remoteagent.core.v1.SessionTimelineItem
+	64,  // 100: remoteagent.core.v1.SessionTimelineView.history_notice:type_name -> remoteagent.core.v1.Text
+	64,  // 101: remoteagent.core.v1.SessionTimelineView.error:type_name -> remoteagent.core.v1.Text
+	64,  // 102: remoteagent.core.v1.SessionTimelineView.fetch_error:type_name -> remoteagent.core.v1.Text
+	37,  // 103: remoteagent.core.v1.SessionTimelineItem.user_message:type_name -> remoteagent.core.v1.SessionUserMessageItem
+	38,  // 104: remoteagent.core.v1.SessionTimelineItem.agent_message:type_name -> remoteagent.core.v1.SessionAgentMessageItem
+	39,  // 105: remoteagent.core.v1.SessionTimelineItem.reasoning:type_name -> remoteagent.core.v1.SessionReasoningItem
+	40,  // 106: remoteagent.core.v1.SessionTimelineItem.tool_call:type_name -> remoteagent.core.v1.SessionToolCallItem
+	41,  // 107: remoteagent.core.v1.SessionTimelineItem.tool_group:type_name -> remoteagent.core.v1.SessionToolGroupItem
+	43,  // 108: remoteagent.core.v1.SessionTimelineItem.shared_files:type_name -> remoteagent.core.v1.SessionSharedFilesItem
+	44,  // 109: remoteagent.core.v1.SessionTimelineItem.generated_images:type_name -> remoteagent.core.v1.SessionGeneratedImagesItem
+	45,  // 110: remoteagent.core.v1.SessionTimelineItem.async_question:type_name -> remoteagent.core.v1.SessionAsyncQuestionItem
+	46,  // 111: remoteagent.core.v1.SessionTimelineItem.plan:type_name -> remoteagent.core.v1.SessionPlanItem
+	47,  // 112: remoteagent.core.v1.SessionTimelineItem.note:type_name -> remoteagent.core.v1.SessionNoteItem
+	49,  // 113: remoteagent.core.v1.SessionTimelineItem.turn_end:type_name -> remoteagent.core.v1.SessionTurnEndItem
+	50,  // 114: remoteagent.core.v1.SessionTimelineItem.error_line:type_name -> remoteagent.core.v1.SessionErrorLineItem
+	51,  // 115: remoteagent.core.v1.SessionTimelineItem.fork_marker:type_name -> remoteagent.core.v1.SessionForkItem
+	52,  // 116: remoteagent.core.v1.SessionTimelineItem.input_state:type_name -> remoteagent.core.v1.SessionInputStateItem
+	53,  // 117: remoteagent.core.v1.SessionTimelineItem.quiet_scheduled_group:type_name -> remoteagent.core.v1.SessionQuietScheduledGroupItem
+	54,  // 118: remoteagent.core.v1.SessionTimelineItem.skeleton:type_name -> remoteagent.core.v1.SessionSkeletonItem
+	48,  // 119: remoteagent.core.v1.SessionTimelineItem.notify_receipt:type_name -> remoteagent.core.v1.SessionNotifyReceiptItem
+	73,  // 120: remoteagent.core.v1.SessionUserMessageItem.images:type_name -> remoteagent.v1.ImageRef
+	36,  // 121: remoteagent.core.v1.SessionUserMessageItem.files:type_name -> remoteagent.core.v1.SessionFileRefView
+	74,  // 122: remoteagent.core.v1.SessionUserMessageItem.origin:type_name -> remoteagent.v1.Origin
+	64,  // 123: remoteagent.core.v1.SessionUserMessageItem.origin_caption:type_name -> remoteagent.core.v1.Text
+	75,  // 124: remoteagent.core.v1.SessionToolCallItem.tool_kind:type_name -> remoteagent.v1.ToolKind
+	6,   // 125: remoteagent.core.v1.SessionToolCallItem.status:type_name -> remoteagent.core.v1.SessionToolStatus
+	76,  // 126: remoteagent.core.v1.SessionToolCallItem.background_kind:type_name -> remoteagent.v1.ToolBackground
+	64,  // 127: remoteagent.core.v1.SessionToolCallItem.background_label:type_name -> remoteagent.core.v1.Text
+	64,  // 128: remoteagent.core.v1.SessionToolCallItem.decision_label:type_name -> remoteagent.core.v1.Text
+	73,  // 129: remoteagent.core.v1.SessionToolCallItem.images:type_name -> remoteagent.v1.ImageRef
+	40,  // 130: remoteagent.core.v1.SessionToolGroupItem.calls:type_name -> remoteagent.core.v1.SessionToolCallItem
+	64,  // 131: remoteagent.core.v1.SessionToolGroupItem.summary:type_name -> remoteagent.core.v1.Text
+	42,  // 132: remoteagent.core.v1.SessionSharedFilesItem.files:type_name -> remoteagent.core.v1.SessionSharedFileItem
+	73,  // 133: remoteagent.core.v1.SessionGeneratedImagesItem.images:type_name -> remoteagent.v1.ImageRef
+	24,  // 134: remoteagent.core.v1.SessionAsyncQuestionItem.questions:type_name -> remoteagent.core.v1.SessionQuestionStepView
+	8,   // 135: remoteagent.core.v1.SessionNoteItem.kind:type_name -> remoteagent.core.v1.SessionNoteKind
+	7,   // 136: remoteagent.core.v1.SessionNoteItem.tone:type_name -> remoteagent.core.v1.SessionNoteTone
+	64,  // 137: remoteagent.core.v1.SessionNoteItem.text:type_name -> remoteagent.core.v1.Text
+	64,  // 138: remoteagent.core.v1.SessionNoteItem.meta:type_name -> remoteagent.core.v1.Text
+	64,  // 139: remoteagent.core.v1.SessionNoteItem.emphasis:type_name -> remoteagent.core.v1.Text
+	64,  // 140: remoteagent.core.v1.SessionNotifyReceiptItem.label:type_name -> remoteagent.core.v1.Text
+	64,  // 141: remoteagent.core.v1.SessionNotifyReceiptItem.time:type_name -> remoteagent.core.v1.Text
+	77,  // 142: remoteagent.core.v1.SessionTurnEndItem.outcome:type_name -> remoteagent.v1.TurnOutcome
+	64,  // 143: remoteagent.core.v1.SessionTurnEndItem.label:type_name -> remoteagent.core.v1.Text
+	64,  // 144: remoteagent.core.v1.SessionErrorLineItem.text:type_name -> remoteagent.core.v1.Text
+	64,  // 145: remoteagent.core.v1.SessionForkItem.source_title:type_name -> remoteagent.core.v1.Text
+	64,  // 146: remoteagent.core.v1.SessionForkItem.text:type_name -> remoteagent.core.v1.Text
+	9,   // 147: remoteagent.core.v1.SessionInputStateItem.kind:type_name -> remoteagent.core.v1.SessionInputNoticeKind
+	64,  // 148: remoteagent.core.v1.SessionInputStateItem.status_text:type_name -> remoteagent.core.v1.Text
+	64,  // 149: remoteagent.core.v1.SessionInputStateItem.reason_text:type_name -> remoteagent.core.v1.Text
+	64,  // 150: remoteagent.core.v1.SessionQuietScheduledGroupItem.title:type_name -> remoteagent.core.v1.Text
+	35,  // 151: remoteagent.core.v1.SessionQuietScheduledGroupItem.items:type_name -> remoteagent.core.v1.SessionTimelineItem
+	64,  // 152: remoteagent.core.v1.SessionSkeletonItem.text:type_name -> remoteagent.core.v1.Text
+	78,  // 153: remoteagent.core.v1.SessionSubmitCommandAction.command:type_name -> remoteagent.v1.Command
+	72,  // 154: remoteagent.core.v1.SessionResendAttachmentsEffect.mode:type_name -> remoteagent.v1.SendMode
+	155, // [155:155] is the sub-list for method output_type
+	155, // [155:155] is the sub-list for method input_type
+	155, // [155:155] is the sub-list for extension type_name
+	155, // [155:155] is the sub-list for extension extendee
+	0,   // [0:155] is the sub-list for field type_name
 }
 
 func init() { file_remoteagent_core_v1_session_view_proto_init() }
@@ -6740,7 +7164,7 @@ func file_remoteagent_core_v1_session_view_proto_init() {
 		(*SessionDockView_Plan)(nil),
 		(*SessionDockView_TerminalPopup)(nil),
 	}
-	file_remoteagent_core_v1_session_view_proto_msgTypes[23].OneofWrappers = []any{
+	file_remoteagent_core_v1_session_view_proto_msgTypes[25].OneofWrappers = []any{
 		(*SessionTimelineItem_UserMessage)(nil),
 		(*SessionTimelineItem_AgentMessage)(nil),
 		(*SessionTimelineItem_Reasoning)(nil),
@@ -6764,8 +7188,8 @@ func file_remoteagent_core_v1_session_view_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_remoteagent_core_v1_session_view_proto_rawDesc), len(file_remoteagent_core_v1_session_view_proto_rawDesc)),
-			NumEnums:      8,
-			NumMessages:   50,
+			NumEnums:      10,
+			NumMessages:   54,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

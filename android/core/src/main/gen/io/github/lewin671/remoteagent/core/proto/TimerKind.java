@@ -51,6 +51,14 @@ public enum TimerKind
    * <code>TIMER_KIND_COMMAND_RETRY = 9;</code>
    */
   TIMER_KIND_COMMAND_RETRY(9),
+  /**
+   * <code>TIMER_KIND_SESSION_UNDO = 10;</code>
+   */
+  TIMER_KIND_SESSION_UNDO(10),
+  /**
+   * <code>TIMER_KIND_SESSION_STEER_GRACE = 11;</code>
+   */
+  TIMER_KIND_SESSION_STEER_GRACE(11),
   UNRECOGNIZED(-1),
   ;
 
@@ -94,6 +102,14 @@ public enum TimerKind
    * <code>TIMER_KIND_COMMAND_RETRY = 9;</code>
    */
   public static final int TIMER_KIND_COMMAND_RETRY_VALUE = 9;
+  /**
+   * <code>TIMER_KIND_SESSION_UNDO = 10;</code>
+   */
+  public static final int TIMER_KIND_SESSION_UNDO_VALUE = 10;
+  /**
+   * <code>TIMER_KIND_SESSION_STEER_GRACE = 11;</code>
+   */
+  public static final int TIMER_KIND_SESSION_STEER_GRACE_VALUE = 11;
 
 
   @java.lang.Override
@@ -127,6 +143,8 @@ public enum TimerKind
       case 7: return TIMER_KIND_HISTORY_SWEEP;
       case 8: return TIMER_KIND_LIVE_POLL;
       case 9: return TIMER_KIND_COMMAND_RETRY;
+      case 10: return TIMER_KIND_SESSION_UNDO;
+      case 11: return TIMER_KIND_SESSION_STEER_GRACE;
       default: return null;
     }
   }

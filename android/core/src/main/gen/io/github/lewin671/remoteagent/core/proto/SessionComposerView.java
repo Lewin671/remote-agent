@@ -15,8 +15,7 @@ public  final class SessionComposerView extends
     // @@protoc_insertion_point(message_implements:remoteagent.core.v1.SessionComposerView)
     SessionComposerViewOrBuilder {
   private SessionComposerView() {
-    pendingInputs_ = emptyProtobufList();
-    outgoing_ = emptyProtobufList();
+    retainedAttachmentRequestIds_ = com.google.protobuf.GeneratedMessageLite.emptyProtobufList();
   }
   private int bitField0_;
   public static final int ENABLED_FIELD_NUMBER = 1;
@@ -167,36 +166,10 @@ public  final class SessionComposerView extends
     hasActiveTurn_ = false;
   }
 
-  public static final int STEER_MODE_DEFAULT_FIELD_NUMBER = 5;
-  private boolean steerModeDefault_;
-  /**
-   * <code>bool steer_mode_default = 5 [json_name = "steerModeDefault"];</code>
-   * @return The steerModeDefault.
-   */
-  @java.lang.Override
-  public boolean getSteerModeDefault() {
-    return steerModeDefault_;
-  }
-  /**
-   * <code>bool steer_mode_default = 5 [json_name = "steerModeDefault"];</code>
-   * @param value The steerModeDefault to set.
-   */
-  private void setSteerModeDefault(boolean value) {
-    
-    steerModeDefault_ = value;
-  }
-  /**
-   * <code>bool steer_mode_default = 5 [json_name = "steerModeDefault"];</code>
-   */
-  private void clearSteerModeDefault() {
-
-    steerModeDefault_ = false;
-  }
-
-  public static final int SUPPORTS_QUEUE_MODE_FIELD_NUMBER = 6;
+  public static final int SUPPORTS_QUEUE_MODE_FIELD_NUMBER = 5;
   private boolean supportsQueueMode_;
   /**
-   * <code>bool supports_queue_mode = 6 [json_name = "supportsQueueMode"];</code>
+   * <code>bool supports_queue_mode = 5 [json_name = "supportsQueueMode"];</code>
    * @return The supportsQueueMode.
    */
   @java.lang.Override
@@ -204,7 +177,7 @@ public  final class SessionComposerView extends
     return supportsQueueMode_;
   }
   /**
-   * <code>bool supports_queue_mode = 6 [json_name = "supportsQueueMode"];</code>
+   * <code>bool supports_queue_mode = 5 [json_name = "supportsQueueMode"];</code>
    * @param value The supportsQueueMode to set.
    */
   private void setSupportsQueueMode(boolean value) {
@@ -212,17 +185,17 @@ public  final class SessionComposerView extends
     supportsQueueMode_ = value;
   }
   /**
-   * <code>bool supports_queue_mode = 6 [json_name = "supportsQueueMode"];</code>
+   * <code>bool supports_queue_mode = 5 [json_name = "supportsQueueMode"];</code>
    */
   private void clearSupportsQueueMode() {
 
     supportsQueueMode_ = false;
   }
 
-  public static final int CAN_ATTACH_IMAGES_FIELD_NUMBER = 7;
+  public static final int CAN_ATTACH_IMAGES_FIELD_NUMBER = 6;
   private boolean canAttachImages_;
   /**
-   * <code>bool can_attach_images = 7 [json_name = "canAttachImages"];</code>
+   * <code>bool can_attach_images = 6 [json_name = "canAttachImages"];</code>
    * @return The canAttachImages.
    */
   @java.lang.Override
@@ -230,7 +203,7 @@ public  final class SessionComposerView extends
     return canAttachImages_;
   }
   /**
-   * <code>bool can_attach_images = 7 [json_name = "canAttachImages"];</code>
+   * <code>bool can_attach_images = 6 [json_name = "canAttachImages"];</code>
    * @param value The canAttachImages to set.
    */
   private void setCanAttachImages(boolean value) {
@@ -238,17 +211,17 @@ public  final class SessionComposerView extends
     canAttachImages_ = value;
   }
   /**
-   * <code>bool can_attach_images = 7 [json_name = "canAttachImages"];</code>
+   * <code>bool can_attach_images = 6 [json_name = "canAttachImages"];</code>
    */
   private void clearCanAttachImages() {
 
     canAttachImages_ = false;
   }
 
-  public static final int CAN_ATTACH_FILES_FIELD_NUMBER = 8;
+  public static final int CAN_ATTACH_FILES_FIELD_NUMBER = 7;
   private boolean canAttachFiles_;
   /**
-   * <code>bool can_attach_files = 8 [json_name = "canAttachFiles"];</code>
+   * <code>bool can_attach_files = 7 [json_name = "canAttachFiles"];</code>
    * @return The canAttachFiles.
    */
   @java.lang.Override
@@ -256,7 +229,7 @@ public  final class SessionComposerView extends
     return canAttachFiles_;
   }
   /**
-   * <code>bool can_attach_files = 8 [json_name = "canAttachFiles"];</code>
+   * <code>bool can_attach_files = 7 [json_name = "canAttachFiles"];</code>
    * @param value The canAttachFiles to set.
    */
   private void setCanAttachFiles(boolean value) {
@@ -264,17 +237,17 @@ public  final class SessionComposerView extends
     canAttachFiles_ = value;
   }
   /**
-   * <code>bool can_attach_files = 8 [json_name = "canAttachFiles"];</code>
+   * <code>bool can_attach_files = 7 [json_name = "canAttachFiles"];</code>
    */
   private void clearCanAttachFiles() {
 
     canAttachFiles_ = false;
   }
 
-  public static final int INTERRUPT_VISIBLE_FIELD_NUMBER = 9;
+  public static final int INTERRUPT_VISIBLE_FIELD_NUMBER = 8;
   private boolean interruptVisible_;
   /**
-   * <code>bool interrupt_visible = 9 [json_name = "interruptVisible"];</code>
+   * <code>bool interrupt_visible = 8 [json_name = "interruptVisible"];</code>
    * @return The interruptVisible.
    */
   @java.lang.Override
@@ -282,7 +255,7 @@ public  final class SessionComposerView extends
     return interruptVisible_;
   }
   /**
-   * <code>bool interrupt_visible = 9 [json_name = "interruptVisible"];</code>
+   * <code>bool interrupt_visible = 8 [json_name = "interruptVisible"];</code>
    * @param value The interruptVisible to set.
    */
   private void setInterruptVisible(boolean value) {
@@ -290,205 +263,154 @@ public  final class SessionComposerView extends
     interruptVisible_ = value;
   }
   /**
-   * <code>bool interrupt_visible = 9 [json_name = "interruptVisible"];</code>
+   * <code>bool interrupt_visible = 8 [json_name = "interruptVisible"];</code>
    */
   private void clearInterruptVisible() {
 
     interruptVisible_ = false;
   }
 
-  public static final int PENDING_INPUTS_FIELD_NUMBER = 10;
-  private com.google.protobuf.Internal.ProtobufList<io.github.lewin671.remoteagent.core.proto.SessionPendingInputView> pendingInputs_;
+  public static final int PENDING_TRAY_FIELD_NUMBER = 9;
+  private io.github.lewin671.remoteagent.core.proto.SessionPendingTrayView pendingTray_;
   /**
-   * <code>repeated .remoteagent.core.v1.SessionPendingInputView pending_inputs = 10 [json_name = "pendingInputs"];</code>
+   * <code>.remoteagent.core.v1.SessionPendingTrayView pending_tray = 9 [json_name = "pendingTray"];</code>
    */
   @java.lang.Override
-  public java.util.List<io.github.lewin671.remoteagent.core.proto.SessionPendingInputView> getPendingInputsList() {
-    return pendingInputs_;
+  public boolean hasPendingTray() {
+    return ((bitField0_ & 0x00000004) != 0);
   }
   /**
-   * <code>repeated .remoteagent.core.v1.SessionPendingInputView pending_inputs = 10 [json_name = "pendingInputs"];</code>
-   */
-  public java.util.List<? extends io.github.lewin671.remoteagent.core.proto.SessionPendingInputViewOrBuilder> 
-      getPendingInputsOrBuilderList() {
-    return pendingInputs_;
-  }
-  /**
-   * <code>repeated .remoteagent.core.v1.SessionPendingInputView pending_inputs = 10 [json_name = "pendingInputs"];</code>
+   * <code>.remoteagent.core.v1.SessionPendingTrayView pending_tray = 9 [json_name = "pendingTray"];</code>
    */
   @java.lang.Override
-  public int getPendingInputsCount() {
-    return pendingInputs_.size();
+  public io.github.lewin671.remoteagent.core.proto.SessionPendingTrayView getPendingTray() {
+    return pendingTray_ == null ? io.github.lewin671.remoteagent.core.proto.SessionPendingTrayView.getDefaultInstance() : pendingTray_;
   }
   /**
-   * <code>repeated .remoteagent.core.v1.SessionPendingInputView pending_inputs = 10 [json_name = "pendingInputs"];</code>
+   * <code>.remoteagent.core.v1.SessionPendingTrayView pending_tray = 9 [json_name = "pendingTray"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setPendingTray(io.github.lewin671.remoteagent.core.proto.SessionPendingTrayView value) {
+    value.getClass();  // minimal bytecode null check
+    pendingTray_ = value;
+    bitField0_ |= 0x00000004;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionPendingTrayView pending_tray = 9 [json_name = "pendingTray"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergePendingTray(io.github.lewin671.remoteagent.core.proto.SessionPendingTrayView value) {
+    value.getClass();  // minimal bytecode null check
+    if (pendingTray_ != null &&
+        pendingTray_ != io.github.lewin671.remoteagent.core.proto.SessionPendingTrayView.getDefaultInstance()) {
+      pendingTray_ =
+        io.github.lewin671.remoteagent.core.proto.SessionPendingTrayView.newBuilder(pendingTray_).mergeFrom(value).buildPartial();
+    } else {
+      pendingTray_ = value;
+    }
+    bitField0_ |= 0x00000004;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionPendingTrayView pending_tray = 9 [json_name = "pendingTray"];</code>
+   */
+  private void clearPendingTray() {
+    pendingTray_ = null;
+    bitField0_ = (bitField0_ & ~0x00000004);
+  }
+
+  public static final int RETAINED_ATTACHMENT_REQUEST_IDS_FIELD_NUMBER = 10;
+  private com.google.protobuf.Internal.ProtobufList<java.lang.String> retainedAttachmentRequestIds_;
+  /**
+   * <code>repeated string retained_attachment_request_ids = 10 [json_name = "retainedAttachmentRequestIds"];</code>
+   * @return A list containing the retainedAttachmentRequestIds.
    */
   @java.lang.Override
-  public io.github.lewin671.remoteagent.core.proto.SessionPendingInputView getPendingInputs(int index) {
-    return pendingInputs_.get(index);
+  public java.util.List<java.lang.String> getRetainedAttachmentRequestIdsList() {
+    return retainedAttachmentRequestIds_;
   }
   /**
-   * <code>repeated .remoteagent.core.v1.SessionPendingInputView pending_inputs = 10 [json_name = "pendingInputs"];</code>
+   * <code>repeated string retained_attachment_request_ids = 10 [json_name = "retainedAttachmentRequestIds"];</code>
+   * @return The count of retainedAttachmentRequestIds.
    */
-  public io.github.lewin671.remoteagent.core.proto.SessionPendingInputViewOrBuilder getPendingInputsOrBuilder(
-      int index) {
-    return pendingInputs_.get(index);
+  @java.lang.Override
+  public int getRetainedAttachmentRequestIdsCount() {
+    return retainedAttachmentRequestIds_.size();
   }
-  private void ensurePendingInputsIsMutable() {
-    com.google.protobuf.Internal.ProtobufList<io.github.lewin671.remoteagent.core.proto.SessionPendingInputView> tmp = pendingInputs_;
-    if (!tmp.isModifiable()) {
-      pendingInputs_ =
+  /**
+   * <code>repeated string retained_attachment_request_ids = 10 [json_name = "retainedAttachmentRequestIds"];</code>
+   * @param index The index of the element to return.
+   * @return The retainedAttachmentRequestIds at the given index.
+   */
+  @java.lang.Override
+  public java.lang.String getRetainedAttachmentRequestIds(int index) {
+    return retainedAttachmentRequestIds_.get(index);
+  }
+  /**
+   * <code>repeated string retained_attachment_request_ids = 10 [json_name = "retainedAttachmentRequestIds"];</code>
+   * @param index The index of the value to return.
+   * @return The bytes of the retainedAttachmentRequestIds at the given index.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString
+      getRetainedAttachmentRequestIdsBytes(int index) {
+    return com.google.protobuf.ByteString.copyFromUtf8(
+        retainedAttachmentRequestIds_.get(index));
+  }
+  private void ensureRetainedAttachmentRequestIdsIsMutable() {
+    com.google.protobuf.Internal.ProtobufList<java.lang.String> tmp =
+        retainedAttachmentRequestIds_;  if (!tmp.isModifiable()) {
+      retainedAttachmentRequestIds_ =
           com.google.protobuf.GeneratedMessageLite.mutableCopy(tmp);
      }
   }
-
   /**
-   * <code>repeated .remoteagent.core.v1.SessionPendingInputView pending_inputs = 10 [json_name = "pendingInputs"];</code>
+   * <code>repeated string retained_attachment_request_ids = 10 [json_name = "retainedAttachmentRequestIds"];</code>
+   * @param index The index to set the value at.
+   * @param value The retainedAttachmentRequestIds to set.
    */
   @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void setPendingInputs(
-      int index, io.github.lewin671.remoteagent.core.proto.SessionPendingInputView value) {
+  private void setRetainedAttachmentRequestIds(
+      int index, java.lang.String value) {
     value.getClass();  // minimal bytecode null check
-    ensurePendingInputsIsMutable();
-    pendingInputs_.set(index, value);
+    ensureRetainedAttachmentRequestIdsIsMutable();
+    retainedAttachmentRequestIds_.set(index, value);
   }
   /**
-   * <code>repeated .remoteagent.core.v1.SessionPendingInputView pending_inputs = 10 [json_name = "pendingInputs"];</code>
+   * <code>repeated string retained_attachment_request_ids = 10 [json_name = "retainedAttachmentRequestIds"];</code>
+   * @param value The retainedAttachmentRequestIds to add.
    */
   @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void addPendingInputs(io.github.lewin671.remoteagent.core.proto.SessionPendingInputView value) {
+  private void addRetainedAttachmentRequestIds(
+      java.lang.String value) {
     value.getClass();  // minimal bytecode null check
-    ensurePendingInputsIsMutable();
-    pendingInputs_.add(value);
+    ensureRetainedAttachmentRequestIdsIsMutable();
+    retainedAttachmentRequestIds_.add(value);
   }
   /**
-   * <code>repeated .remoteagent.core.v1.SessionPendingInputView pending_inputs = 10 [json_name = "pendingInputs"];</code>
+   * <code>repeated string retained_attachment_request_ids = 10 [json_name = "retainedAttachmentRequestIds"];</code>
+   * @param values The retainedAttachmentRequestIds to add.
    */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void addPendingInputs(
-      int index, io.github.lewin671.remoteagent.core.proto.SessionPendingInputView value) {
-    value.getClass();  // minimal bytecode null check
-    ensurePendingInputsIsMutable();
-    pendingInputs_.add(index, value);
-  }
-  /**
-   * <code>repeated .remoteagent.core.v1.SessionPendingInputView pending_inputs = 10 [json_name = "pendingInputs"];</code>
-   */
-  private void addAllPendingInputs(
-      java.lang.Iterable<? extends io.github.lewin671.remoteagent.core.proto.SessionPendingInputView> values) {
-    ensurePendingInputsIsMutable();
+  private void addAllRetainedAttachmentRequestIds(
+      java.lang.Iterable<java.lang.String> values) {
+    ensureRetainedAttachmentRequestIdsIsMutable();
     com.google.protobuf.AbstractMessageLite.addAll(
-        values, pendingInputs_);
+        values, retainedAttachmentRequestIds_);
   }
   /**
-   * <code>repeated .remoteagent.core.v1.SessionPendingInputView pending_inputs = 10 [json_name = "pendingInputs"];</code>
+   * <code>repeated string retained_attachment_request_ids = 10 [json_name = "retainedAttachmentRequestIds"];</code>
    */
-  private void clearPendingInputs() {
-    pendingInputs_ = emptyProtobufList();
+  private void clearRetainedAttachmentRequestIds() {
+    retainedAttachmentRequestIds_ = com.google.protobuf.GeneratedMessageLite.emptyProtobufList();
   }
   /**
-   * <code>repeated .remoteagent.core.v1.SessionPendingInputView pending_inputs = 10 [json_name = "pendingInputs"];</code>
+   * <code>repeated string retained_attachment_request_ids = 10 [json_name = "retainedAttachmentRequestIds"];</code>
+   * @param value The bytes of the retainedAttachmentRequestIds to add.
    */
-  private void removePendingInputs(int index) {
-    ensurePendingInputsIsMutable();
-    pendingInputs_.remove(index);
-  }
-
-  public static final int OUTGOING_FIELD_NUMBER = 11;
-  private com.google.protobuf.Internal.ProtobufList<io.github.lewin671.remoteagent.core.proto.SessionOutgoingView> outgoing_;
-  /**
-   * <code>repeated .remoteagent.core.v1.SessionOutgoingView outgoing = 11 [json_name = "outgoing"];</code>
-   */
-  @java.lang.Override
-  public java.util.List<io.github.lewin671.remoteagent.core.proto.SessionOutgoingView> getOutgoingList() {
-    return outgoing_;
-  }
-  /**
-   * <code>repeated .remoteagent.core.v1.SessionOutgoingView outgoing = 11 [json_name = "outgoing"];</code>
-   */
-  public java.util.List<? extends io.github.lewin671.remoteagent.core.proto.SessionOutgoingViewOrBuilder> 
-      getOutgoingOrBuilderList() {
-    return outgoing_;
-  }
-  /**
-   * <code>repeated .remoteagent.core.v1.SessionOutgoingView outgoing = 11 [json_name = "outgoing"];</code>
-   */
-  @java.lang.Override
-  public int getOutgoingCount() {
-    return outgoing_.size();
-  }
-  /**
-   * <code>repeated .remoteagent.core.v1.SessionOutgoingView outgoing = 11 [json_name = "outgoing"];</code>
-   */
-  @java.lang.Override
-  public io.github.lewin671.remoteagent.core.proto.SessionOutgoingView getOutgoing(int index) {
-    return outgoing_.get(index);
-  }
-  /**
-   * <code>repeated .remoteagent.core.v1.SessionOutgoingView outgoing = 11 [json_name = "outgoing"];</code>
-   */
-  public io.github.lewin671.remoteagent.core.proto.SessionOutgoingViewOrBuilder getOutgoingOrBuilder(
-      int index) {
-    return outgoing_.get(index);
-  }
-  private void ensureOutgoingIsMutable() {
-    com.google.protobuf.Internal.ProtobufList<io.github.lewin671.remoteagent.core.proto.SessionOutgoingView> tmp = outgoing_;
-    if (!tmp.isModifiable()) {
-      outgoing_ =
-          com.google.protobuf.GeneratedMessageLite.mutableCopy(tmp);
-     }
-  }
-
-  /**
-   * <code>repeated .remoteagent.core.v1.SessionOutgoingView outgoing = 11 [json_name = "outgoing"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void setOutgoing(
-      int index, io.github.lewin671.remoteagent.core.proto.SessionOutgoingView value) {
-    value.getClass();  // minimal bytecode null check
-    ensureOutgoingIsMutable();
-    outgoing_.set(index, value);
-  }
-  /**
-   * <code>repeated .remoteagent.core.v1.SessionOutgoingView outgoing = 11 [json_name = "outgoing"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void addOutgoing(io.github.lewin671.remoteagent.core.proto.SessionOutgoingView value) {
-    value.getClass();  // minimal bytecode null check
-    ensureOutgoingIsMutable();
-    outgoing_.add(value);
-  }
-  /**
-   * <code>repeated .remoteagent.core.v1.SessionOutgoingView outgoing = 11 [json_name = "outgoing"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void addOutgoing(
-      int index, io.github.lewin671.remoteagent.core.proto.SessionOutgoingView value) {
-    value.getClass();  // minimal bytecode null check
-    ensureOutgoingIsMutable();
-    outgoing_.add(index, value);
-  }
-  /**
-   * <code>repeated .remoteagent.core.v1.SessionOutgoingView outgoing = 11 [json_name = "outgoing"];</code>
-   */
-  private void addAllOutgoing(
-      java.lang.Iterable<? extends io.github.lewin671.remoteagent.core.proto.SessionOutgoingView> values) {
-    ensureOutgoingIsMutable();
-    com.google.protobuf.AbstractMessageLite.addAll(
-        values, outgoing_);
-  }
-  /**
-   * <code>repeated .remoteagent.core.v1.SessionOutgoingView outgoing = 11 [json_name = "outgoing"];</code>
-   */
-  private void clearOutgoing() {
-    outgoing_ = emptyProtobufList();
-  }
-  /**
-   * <code>repeated .remoteagent.core.v1.SessionOutgoingView outgoing = 11 [json_name = "outgoing"];</code>
-   */
-  private void removeOutgoing(int index) {
-    ensureOutgoingIsMutable();
-    outgoing_.remove(index);
+  private void addRetainedAttachmentRequestIdsBytes(
+      com.google.protobuf.ByteString value) {
+    checkByteStringIsUtf8(value);
+    ensureRetainedAttachmentRequestIdsIsMutable();
+    retainedAttachmentRequestIds_.add(value.toStringUtf8());
   }
 
   public static io.github.lewin671.remoteagent.core.proto.SessionComposerView parseFrom(
@@ -739,35 +661,7 @@ public  final class SessionComposerView extends
     }
 
     /**
-     * <code>bool steer_mode_default = 5 [json_name = "steerModeDefault"];</code>
-     * @return The steerModeDefault.
-     */
-    @java.lang.Override
-    public boolean getSteerModeDefault() {
-      return instance.getSteerModeDefault();
-    }
-    /**
-     * <code>bool steer_mode_default = 5 [json_name = "steerModeDefault"];</code>
-     * @param value The steerModeDefault to set.
-     * @return This builder for chaining.
-     */
-    public Builder setSteerModeDefault(boolean value) {
-      copyOnWrite();
-      instance.setSteerModeDefault(value);
-      return this;
-    }
-    /**
-     * <code>bool steer_mode_default = 5 [json_name = "steerModeDefault"];</code>
-     * @return This builder for chaining.
-     */
-    public Builder clearSteerModeDefault() {
-      copyOnWrite();
-      instance.clearSteerModeDefault();
-      return this;
-    }
-
-    /**
-     * <code>bool supports_queue_mode = 6 [json_name = "supportsQueueMode"];</code>
+     * <code>bool supports_queue_mode = 5 [json_name = "supportsQueueMode"];</code>
      * @return The supportsQueueMode.
      */
     @java.lang.Override
@@ -775,7 +669,7 @@ public  final class SessionComposerView extends
       return instance.getSupportsQueueMode();
     }
     /**
-     * <code>bool supports_queue_mode = 6 [json_name = "supportsQueueMode"];</code>
+     * <code>bool supports_queue_mode = 5 [json_name = "supportsQueueMode"];</code>
      * @param value The supportsQueueMode to set.
      * @return This builder for chaining.
      */
@@ -785,7 +679,7 @@ public  final class SessionComposerView extends
       return this;
     }
     /**
-     * <code>bool supports_queue_mode = 6 [json_name = "supportsQueueMode"];</code>
+     * <code>bool supports_queue_mode = 5 [json_name = "supportsQueueMode"];</code>
      * @return This builder for chaining.
      */
     public Builder clearSupportsQueueMode() {
@@ -795,7 +689,7 @@ public  final class SessionComposerView extends
     }
 
     /**
-     * <code>bool can_attach_images = 7 [json_name = "canAttachImages"];</code>
+     * <code>bool can_attach_images = 6 [json_name = "canAttachImages"];</code>
      * @return The canAttachImages.
      */
     @java.lang.Override
@@ -803,7 +697,7 @@ public  final class SessionComposerView extends
       return instance.getCanAttachImages();
     }
     /**
-     * <code>bool can_attach_images = 7 [json_name = "canAttachImages"];</code>
+     * <code>bool can_attach_images = 6 [json_name = "canAttachImages"];</code>
      * @param value The canAttachImages to set.
      * @return This builder for chaining.
      */
@@ -813,7 +707,7 @@ public  final class SessionComposerView extends
       return this;
     }
     /**
-     * <code>bool can_attach_images = 7 [json_name = "canAttachImages"];</code>
+     * <code>bool can_attach_images = 6 [json_name = "canAttachImages"];</code>
      * @return This builder for chaining.
      */
     public Builder clearCanAttachImages() {
@@ -823,7 +717,7 @@ public  final class SessionComposerView extends
     }
 
     /**
-     * <code>bool can_attach_files = 8 [json_name = "canAttachFiles"];</code>
+     * <code>bool can_attach_files = 7 [json_name = "canAttachFiles"];</code>
      * @return The canAttachFiles.
      */
     @java.lang.Override
@@ -831,7 +725,7 @@ public  final class SessionComposerView extends
       return instance.getCanAttachFiles();
     }
     /**
-     * <code>bool can_attach_files = 8 [json_name = "canAttachFiles"];</code>
+     * <code>bool can_attach_files = 7 [json_name = "canAttachFiles"];</code>
      * @param value The canAttachFiles to set.
      * @return This builder for chaining.
      */
@@ -841,7 +735,7 @@ public  final class SessionComposerView extends
       return this;
     }
     /**
-     * <code>bool can_attach_files = 8 [json_name = "canAttachFiles"];</code>
+     * <code>bool can_attach_files = 7 [json_name = "canAttachFiles"];</code>
      * @return This builder for chaining.
      */
     public Builder clearCanAttachFiles() {
@@ -851,7 +745,7 @@ public  final class SessionComposerView extends
     }
 
     /**
-     * <code>bool interrupt_visible = 9 [json_name = "interruptVisible"];</code>
+     * <code>bool interrupt_visible = 8 [json_name = "interruptVisible"];</code>
      * @return The interruptVisible.
      */
     @java.lang.Override
@@ -859,7 +753,7 @@ public  final class SessionComposerView extends
       return instance.getInterruptVisible();
     }
     /**
-     * <code>bool interrupt_visible = 9 [json_name = "interruptVisible"];</code>
+     * <code>bool interrupt_visible = 8 [json_name = "interruptVisible"];</code>
      * @param value The interruptVisible to set.
      * @return This builder for chaining.
      */
@@ -869,7 +763,7 @@ public  final class SessionComposerView extends
       return this;
     }
     /**
-     * <code>bool interrupt_visible = 9 [json_name = "interruptVisible"];</code>
+     * <code>bool interrupt_visible = 8 [json_name = "interruptVisible"];</code>
      * @return This builder for chaining.
      */
     public Builder clearInterruptVisible() {
@@ -879,206 +773,141 @@ public  final class SessionComposerView extends
     }
 
     /**
-     * <code>repeated .remoteagent.core.v1.SessionPendingInputView pending_inputs = 10 [json_name = "pendingInputs"];</code>
+     * <code>.remoteagent.core.v1.SessionPendingTrayView pending_tray = 9 [json_name = "pendingTray"];</code>
      */
     @java.lang.Override
-    public java.util.List<io.github.lewin671.remoteagent.core.proto.SessionPendingInputView> getPendingInputsList() {
-      return java.util.Collections.unmodifiableList(
-          instance.getPendingInputsList());
+    public boolean hasPendingTray() {
+      return instance.hasPendingTray();
     }
     /**
-     * <code>repeated .remoteagent.core.v1.SessionPendingInputView pending_inputs = 10 [json_name = "pendingInputs"];</code>
+     * <code>.remoteagent.core.v1.SessionPendingTrayView pending_tray = 9 [json_name = "pendingTray"];</code>
      */
     @java.lang.Override
-    public int getPendingInputsCount() {
-      return instance.getPendingInputsCount();
-    }/**
-     * <code>repeated .remoteagent.core.v1.SessionPendingInputView pending_inputs = 10 [json_name = "pendingInputs"];</code>
-     */
-    @java.lang.Override
-    public io.github.lewin671.remoteagent.core.proto.SessionPendingInputView getPendingInputs(int index) {
-      return instance.getPendingInputs(index);
+    public io.github.lewin671.remoteagent.core.proto.SessionPendingTrayView getPendingTray() {
+      return instance.getPendingTray();
     }
     /**
-     * <code>repeated .remoteagent.core.v1.SessionPendingInputView pending_inputs = 10 [json_name = "pendingInputs"];</code>
+     * <code>.remoteagent.core.v1.SessionPendingTrayView pending_tray = 9 [json_name = "pendingTray"];</code>
      */
-    public Builder setPendingInputs(
-        int index, io.github.lewin671.remoteagent.core.proto.SessionPendingInputView value) {
+    public Builder setPendingTray(io.github.lewin671.remoteagent.core.proto.SessionPendingTrayView value) {
       copyOnWrite();
-      instance.setPendingInputs(index, value);
+      instance.setPendingTray(value);
+      return this;
+      }
+    /**
+     * <code>.remoteagent.core.v1.SessionPendingTrayView pending_tray = 9 [json_name = "pendingTray"];</code>
+     */
+    public Builder setPendingTray(
+        io.github.lewin671.remoteagent.core.proto.SessionPendingTrayView.Builder builderForValue) {
+      copyOnWrite();
+      instance.setPendingTray(builderForValue.build());
       return this;
     }
     /**
-     * <code>repeated .remoteagent.core.v1.SessionPendingInputView pending_inputs = 10 [json_name = "pendingInputs"];</code>
+     * <code>.remoteagent.core.v1.SessionPendingTrayView pending_tray = 9 [json_name = "pendingTray"];</code>
      */
-    public Builder setPendingInputs(
-        int index, io.github.lewin671.remoteagent.core.proto.SessionPendingInputView.Builder builderForValue) {
+    public Builder mergePendingTray(io.github.lewin671.remoteagent.core.proto.SessionPendingTrayView value) {
       copyOnWrite();
-      instance.setPendingInputs(index,
-          builderForValue.build());
+      instance.mergePendingTray(value);
       return this;
     }
     /**
-     * <code>repeated .remoteagent.core.v1.SessionPendingInputView pending_inputs = 10 [json_name = "pendingInputs"];</code>
+     * <code>.remoteagent.core.v1.SessionPendingTrayView pending_tray = 9 [json_name = "pendingTray"];</code>
      */
-    public Builder addPendingInputs(io.github.lewin671.remoteagent.core.proto.SessionPendingInputView value) {
-      copyOnWrite();
-      instance.addPendingInputs(value);
-      return this;
-    }
-    /**
-     * <code>repeated .remoteagent.core.v1.SessionPendingInputView pending_inputs = 10 [json_name = "pendingInputs"];</code>
-     */
-    public Builder addPendingInputs(
-        int index, io.github.lewin671.remoteagent.core.proto.SessionPendingInputView value) {
-      copyOnWrite();
-      instance.addPendingInputs(index, value);
-      return this;
-    }
-    /**
-     * <code>repeated .remoteagent.core.v1.SessionPendingInputView pending_inputs = 10 [json_name = "pendingInputs"];</code>
-     */
-    public Builder addPendingInputs(
-        io.github.lewin671.remoteagent.core.proto.SessionPendingInputView.Builder builderForValue) {
-      copyOnWrite();
-      instance.addPendingInputs(builderForValue.build());
-      return this;
-    }
-    /**
-     * <code>repeated .remoteagent.core.v1.SessionPendingInputView pending_inputs = 10 [json_name = "pendingInputs"];</code>
-     */
-    public Builder addPendingInputs(
-        int index, io.github.lewin671.remoteagent.core.proto.SessionPendingInputView.Builder builderForValue) {
-      copyOnWrite();
-      instance.addPendingInputs(index,
-          builderForValue.build());
-      return this;
-    }
-    /**
-     * <code>repeated .remoteagent.core.v1.SessionPendingInputView pending_inputs = 10 [json_name = "pendingInputs"];</code>
-     */
-    public Builder addAllPendingInputs(
-        java.lang.Iterable<? extends io.github.lewin671.remoteagent.core.proto.SessionPendingInputView> values) {
-      copyOnWrite();
-      instance.addAllPendingInputs(values);
-      return this;
-    }
-    /**
-     * <code>repeated .remoteagent.core.v1.SessionPendingInputView pending_inputs = 10 [json_name = "pendingInputs"];</code>
-     */
-    public Builder clearPendingInputs() {
-      copyOnWrite();
-      instance.clearPendingInputs();
-      return this;
-    }
-    /**
-     * <code>repeated .remoteagent.core.v1.SessionPendingInputView pending_inputs = 10 [json_name = "pendingInputs"];</code>
-     */
-    public Builder removePendingInputs(int index) {
-      copyOnWrite();
-      instance.removePendingInputs(index);
+    public Builder clearPendingTray() {  copyOnWrite();
+      instance.clearPendingTray();
       return this;
     }
 
     /**
-     * <code>repeated .remoteagent.core.v1.SessionOutgoingView outgoing = 11 [json_name = "outgoing"];</code>
+     * <code>repeated string retained_attachment_request_ids = 10 [json_name = "retainedAttachmentRequestIds"];</code>
+     * @return A list containing the retainedAttachmentRequestIds.
      */
     @java.lang.Override
-    public java.util.List<io.github.lewin671.remoteagent.core.proto.SessionOutgoingView> getOutgoingList() {
+    public java.util.List<java.lang.String>
+        getRetainedAttachmentRequestIdsList() {
       return java.util.Collections.unmodifiableList(
-          instance.getOutgoingList());
+          instance.getRetainedAttachmentRequestIdsList());
     }
     /**
-     * <code>repeated .remoteagent.core.v1.SessionOutgoingView outgoing = 11 [json_name = "outgoing"];</code>
+     * <code>repeated string retained_attachment_request_ids = 10 [json_name = "retainedAttachmentRequestIds"];</code>
+     * @return The count of retainedAttachmentRequestIds.
      */
     @java.lang.Override
-    public int getOutgoingCount() {
-      return instance.getOutgoingCount();
-    }/**
-     * <code>repeated .remoteagent.core.v1.SessionOutgoingView outgoing = 11 [json_name = "outgoing"];</code>
+    public int getRetainedAttachmentRequestIdsCount() {
+      return instance.getRetainedAttachmentRequestIdsCount();
+    }
+    /**
+     * <code>repeated string retained_attachment_request_ids = 10 [json_name = "retainedAttachmentRequestIds"];</code>
+     * @param index The index of the element to return.
+     * @return The retainedAttachmentRequestIds at the given index.
      */
     @java.lang.Override
-    public io.github.lewin671.remoteagent.core.proto.SessionOutgoingView getOutgoing(int index) {
-      return instance.getOutgoing(index);
+    public java.lang.String getRetainedAttachmentRequestIds(int index) {
+      return instance.getRetainedAttachmentRequestIds(index);
     }
     /**
-     * <code>repeated .remoteagent.core.v1.SessionOutgoingView outgoing = 11 [json_name = "outgoing"];</code>
+     * <code>repeated string retained_attachment_request_ids = 10 [json_name = "retainedAttachmentRequestIds"];</code>
+     * @param index The index of the value to return.
+     * @return The bytes of the retainedAttachmentRequestIds at the given index.
      */
-    public Builder setOutgoing(
-        int index, io.github.lewin671.remoteagent.core.proto.SessionOutgoingView value) {
+    @java.lang.Override
+    public com.google.protobuf.ByteString
+        getRetainedAttachmentRequestIdsBytes(int index) {
+      return instance.getRetainedAttachmentRequestIdsBytes(index);
+    }
+    /**
+     * <code>repeated string retained_attachment_request_ids = 10 [json_name = "retainedAttachmentRequestIds"];</code>
+     * @param index The index to set the value at.
+     * @param value The retainedAttachmentRequestIds to set.
+     * @return This builder for chaining.
+     */
+    public Builder setRetainedAttachmentRequestIds(
+        int index, java.lang.String value) {
       copyOnWrite();
-      instance.setOutgoing(index, value);
+      instance.setRetainedAttachmentRequestIds(index, value);
       return this;
     }
     /**
-     * <code>repeated .remoteagent.core.v1.SessionOutgoingView outgoing = 11 [json_name = "outgoing"];</code>
+     * <code>repeated string retained_attachment_request_ids = 10 [json_name = "retainedAttachmentRequestIds"];</code>
+     * @param value The retainedAttachmentRequestIds to add.
+     * @return This builder for chaining.
      */
-    public Builder setOutgoing(
-        int index, io.github.lewin671.remoteagent.core.proto.SessionOutgoingView.Builder builderForValue) {
+    public Builder addRetainedAttachmentRequestIds(
+        java.lang.String value) {
       copyOnWrite();
-      instance.setOutgoing(index,
-          builderForValue.build());
+      instance.addRetainedAttachmentRequestIds(value);
       return this;
     }
     /**
-     * <code>repeated .remoteagent.core.v1.SessionOutgoingView outgoing = 11 [json_name = "outgoing"];</code>
+     * <code>repeated string retained_attachment_request_ids = 10 [json_name = "retainedAttachmentRequestIds"];</code>
+     * @param values The retainedAttachmentRequestIds to add.
+     * @return This builder for chaining.
      */
-    public Builder addOutgoing(io.github.lewin671.remoteagent.core.proto.SessionOutgoingView value) {
+    public Builder addAllRetainedAttachmentRequestIds(
+        java.lang.Iterable<java.lang.String> values) {
       copyOnWrite();
-      instance.addOutgoing(value);
+      instance.addAllRetainedAttachmentRequestIds(values);
       return this;
     }
     /**
-     * <code>repeated .remoteagent.core.v1.SessionOutgoingView outgoing = 11 [json_name = "outgoing"];</code>
+     * <code>repeated string retained_attachment_request_ids = 10 [json_name = "retainedAttachmentRequestIds"];</code>
+     * @return This builder for chaining.
      */
-    public Builder addOutgoing(
-        int index, io.github.lewin671.remoteagent.core.proto.SessionOutgoingView value) {
+    public Builder clearRetainedAttachmentRequestIds() {
       copyOnWrite();
-      instance.addOutgoing(index, value);
+      instance.clearRetainedAttachmentRequestIds();
       return this;
     }
     /**
-     * <code>repeated .remoteagent.core.v1.SessionOutgoingView outgoing = 11 [json_name = "outgoing"];</code>
+     * <code>repeated string retained_attachment_request_ids = 10 [json_name = "retainedAttachmentRequestIds"];</code>
+     * @param value The bytes of the retainedAttachmentRequestIds to add.
+     * @return This builder for chaining.
      */
-    public Builder addOutgoing(
-        io.github.lewin671.remoteagent.core.proto.SessionOutgoingView.Builder builderForValue) {
+    public Builder addRetainedAttachmentRequestIdsBytes(
+        com.google.protobuf.ByteString value) {
       copyOnWrite();
-      instance.addOutgoing(builderForValue.build());
-      return this;
-    }
-    /**
-     * <code>repeated .remoteagent.core.v1.SessionOutgoingView outgoing = 11 [json_name = "outgoing"];</code>
-     */
-    public Builder addOutgoing(
-        int index, io.github.lewin671.remoteagent.core.proto.SessionOutgoingView.Builder builderForValue) {
-      copyOnWrite();
-      instance.addOutgoing(index,
-          builderForValue.build());
-      return this;
-    }
-    /**
-     * <code>repeated .remoteagent.core.v1.SessionOutgoingView outgoing = 11 [json_name = "outgoing"];</code>
-     */
-    public Builder addAllOutgoing(
-        java.lang.Iterable<? extends io.github.lewin671.remoteagent.core.proto.SessionOutgoingView> values) {
-      copyOnWrite();
-      instance.addAllOutgoing(values);
-      return this;
-    }
-    /**
-     * <code>repeated .remoteagent.core.v1.SessionOutgoingView outgoing = 11 [json_name = "outgoing"];</code>
-     */
-    public Builder clearOutgoing() {
-      copyOnWrite();
-      instance.clearOutgoing();
-      return this;
-    }
-    /**
-     * <code>repeated .remoteagent.core.v1.SessionOutgoingView outgoing = 11 [json_name = "outgoing"];</code>
-     */
-    public Builder removeOutgoing(int index) {
-      copyOnWrite();
-      instance.removeOutgoing(index);
+      instance.addRetainedAttachmentRequestIdsBytes(value);
       return this;
     }
 
@@ -1103,20 +932,17 @@ public  final class SessionComposerView extends
             "disabledReason_",
             "placeholder_",
             "hasActiveTurn_",
-            "steerModeDefault_",
             "supportsQueueMode_",
             "canAttachImages_",
             "canAttachFiles_",
             "interruptVisible_",
-            "pendingInputs_",
-            io.github.lewin671.remoteagent.core.proto.SessionPendingInputView.class,
-            "outgoing_",
-            io.github.lewin671.remoteagent.core.proto.SessionOutgoingView.class,
+            "pendingTray_",
+            "retainedAttachmentRequestIds_",
           };
           java.lang.String info =
-              "\u0000\u000b\u0000\u0001\u0001\u000b\u000b\u0000\u0002\u0000\u0001\u0007\u0002\u1009" +
-              "\u0000\u0003\u1009\u0001\u0004\u0007\u0005\u0007\u0006\u0007\u0007\u0007\b\u0007" +
-              "\t\u0007\n\u001b\u000b\u001b";
+              "\u0000\n\u0000\u0001\u0001\n\n\u0000\u0001\u0000\u0001\u0007\u0002\u1009\u0000\u0003" +
+              "\u1009\u0001\u0004\u0007\u0005\u0007\u0006\u0007\u0007\u0007\b\u0007\t\u1009\u0002" +
+              "\n\u021a";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

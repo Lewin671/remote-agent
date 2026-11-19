@@ -45,60 +45,62 @@ public interface SessionComposerViewOrBuilder extends
   boolean getHasActiveTurn();
 
   /**
-   * <code>bool steer_mode_default = 5 [json_name = "steerModeDefault"];</code>
-   * @return The steerModeDefault.
-   */
-  boolean getSteerModeDefault();
-
-  /**
-   * <code>bool supports_queue_mode = 6 [json_name = "supportsQueueMode"];</code>
+   * <code>bool supports_queue_mode = 5 [json_name = "supportsQueueMode"];</code>
    * @return The supportsQueueMode.
    */
   boolean getSupportsQueueMode();
 
   /**
-   * <code>bool can_attach_images = 7 [json_name = "canAttachImages"];</code>
+   * <code>bool can_attach_images = 6 [json_name = "canAttachImages"];</code>
    * @return The canAttachImages.
    */
   boolean getCanAttachImages();
 
   /**
-   * <code>bool can_attach_files = 8 [json_name = "canAttachFiles"];</code>
+   * <code>bool can_attach_files = 7 [json_name = "canAttachFiles"];</code>
    * @return The canAttachFiles.
    */
   boolean getCanAttachFiles();
 
   /**
-   * <code>bool interrupt_visible = 9 [json_name = "interruptVisible"];</code>
+   * <code>bool interrupt_visible = 8 [json_name = "interruptVisible"];</code>
    * @return The interruptVisible.
    */
   boolean getInterruptVisible();
 
   /**
-   * <code>repeated .remoteagent.core.v1.SessionPendingInputView pending_inputs = 10 [json_name = "pendingInputs"];</code>
+   * <code>.remoteagent.core.v1.SessionPendingTrayView pending_tray = 9 [json_name = "pendingTray"];</code>
+   * @return Whether the pendingTray field is set.
    */
-  java.util.List<io.github.lewin671.remoteagent.core.proto.SessionPendingInputView> 
-      getPendingInputsList();
+  boolean hasPendingTray();
   /**
-   * <code>repeated .remoteagent.core.v1.SessionPendingInputView pending_inputs = 10 [json_name = "pendingInputs"];</code>
+   * <code>.remoteagent.core.v1.SessionPendingTrayView pending_tray = 9 [json_name = "pendingTray"];</code>
+   * @return The pendingTray.
    */
-  io.github.lewin671.remoteagent.core.proto.SessionPendingInputView getPendingInputs(int index);
-  /**
-   * <code>repeated .remoteagent.core.v1.SessionPendingInputView pending_inputs = 10 [json_name = "pendingInputs"];</code>
-   */
-  int getPendingInputsCount();
+  io.github.lewin671.remoteagent.core.proto.SessionPendingTrayView getPendingTray();
 
   /**
-   * <code>repeated .remoteagent.core.v1.SessionOutgoingView outgoing = 11 [json_name = "outgoing"];</code>
+   * <code>repeated string retained_attachment_request_ids = 10 [json_name = "retainedAttachmentRequestIds"];</code>
+   * @return A list containing the retainedAttachmentRequestIds.
    */
-  java.util.List<io.github.lewin671.remoteagent.core.proto.SessionOutgoingView> 
-      getOutgoingList();
+  java.util.List<java.lang.String>
+      getRetainedAttachmentRequestIdsList();
   /**
-   * <code>repeated .remoteagent.core.v1.SessionOutgoingView outgoing = 11 [json_name = "outgoing"];</code>
+   * <code>repeated string retained_attachment_request_ids = 10 [json_name = "retainedAttachmentRequestIds"];</code>
+   * @return The count of retainedAttachmentRequestIds.
    */
-  io.github.lewin671.remoteagent.core.proto.SessionOutgoingView getOutgoing(int index);
+  int getRetainedAttachmentRequestIdsCount();
   /**
-   * <code>repeated .remoteagent.core.v1.SessionOutgoingView outgoing = 11 [json_name = "outgoing"];</code>
+   * <code>repeated string retained_attachment_request_ids = 10 [json_name = "retainedAttachmentRequestIds"];</code>
+   * @param index The index of the element to return.
+   * @return The retainedAttachmentRequestIds at the given index.
    */
-  int getOutgoingCount();
+  java.lang.String getRetainedAttachmentRequestIds(int index);
+  /**
+   * <code>repeated string retained_attachment_request_ids = 10 [json_name = "retainedAttachmentRequestIds"];</code>
+   * @param index The index of the element to return.
+   * @return The retainedAttachmentRequestIds at the given index.
+   */
+  com.google.protobuf.ByteString
+      getRetainedAttachmentRequestIdsBytes(int index);
 }

@@ -869,28 +869,6 @@ public interface EventOrBuilder extends
   io.github.lewin671.remoteagent.core.proto.SessionOpenAction getSessionOpen();
 
   /**
-   * <code>.remoteagent.core.v1.SessionOutgoingAction session_dismiss_outgoing = 203 [json_name = "sessionDismissOutgoing"];</code>
-   * @return Whether the sessionDismissOutgoing field is set.
-   */
-  boolean hasSessionDismissOutgoing();
-  /**
-   * <code>.remoteagent.core.v1.SessionOutgoingAction session_dismiss_outgoing = 203 [json_name = "sessionDismissOutgoing"];</code>
-   * @return The sessionDismissOutgoing.
-   */
-  io.github.lewin671.remoteagent.core.proto.SessionOutgoingAction getSessionDismissOutgoing();
-
-  /**
-   * <code>.remoteagent.core.v1.SessionOutgoingAction session_restore_outgoing = 204 [json_name = "sessionRestoreOutgoing"];</code>
-   * @return Whether the sessionRestoreOutgoing field is set.
-   */
-  boolean hasSessionRestoreOutgoing();
-  /**
-   * <code>.remoteagent.core.v1.SessionOutgoingAction session_restore_outgoing = 204 [json_name = "sessionRestoreOutgoing"];</code>
-   * @return The sessionRestoreOutgoing.
-   */
-  io.github.lewin671.remoteagent.core.proto.SessionOutgoingAction getSessionRestoreOutgoing();
-
-  /**
    * <code>.remoteagent.core.v1.SessionQuestionStepAction session_set_question_index = 205 [json_name = "sessionSetQuestionIndex"];</code>
    * @return Whether the sessionSetQuestionIndex field is set.
    */
@@ -911,6 +889,94 @@ public interface EventOrBuilder extends
    * @return The sessionLoadEarlier.
    */
   io.github.lewin671.remoteagent.core.proto.SessionRefreshHistoryAction getSessionLoadEarlier();
+
+  /**
+   * <code>.remoteagent.core.v1.SessionTrayItemAction session_cancel_tray_item = 207 [json_name = "sessionCancelTrayItem"];</code>
+   * @return Whether the sessionCancelTrayItem field is set.
+   */
+  boolean hasSessionCancelTrayItem();
+  /**
+   * <code>.remoteagent.core.v1.SessionTrayItemAction session_cancel_tray_item = 207 [json_name = "sessionCancelTrayItem"];</code>
+   * @return The sessionCancelTrayItem.
+   */
+  io.github.lewin671.remoteagent.core.proto.SessionTrayItemAction getSessionCancelTrayItem();
+
+  /**
+   * <code>.remoteagent.core.v1.SessionTrayItemAction session_ignore_tray_item = 208 [json_name = "sessionIgnoreTrayItem"];</code>
+   * @return Whether the sessionIgnoreTrayItem field is set.
+   */
+  boolean hasSessionIgnoreTrayItem();
+  /**
+   * <code>.remoteagent.core.v1.SessionTrayItemAction session_ignore_tray_item = 208 [json_name = "sessionIgnoreTrayItem"];</code>
+   * @return The sessionIgnoreTrayItem.
+   */
+  io.github.lewin671.remoteagent.core.proto.SessionTrayItemAction getSessionIgnoreTrayItem();
+
+  /**
+   * <code>.remoteagent.core.v1.SessionTrayItemAction session_promote_tray_item = 209 [json_name = "sessionPromoteTrayItem"];</code>
+   * @return Whether the sessionPromoteTrayItem field is set.
+   */
+  boolean hasSessionPromoteTrayItem();
+  /**
+   * <code>.remoteagent.core.v1.SessionTrayItemAction session_promote_tray_item = 209 [json_name = "sessionPromoteTrayItem"];</code>
+   * @return The sessionPromoteTrayItem.
+   */
+  io.github.lewin671.remoteagent.core.proto.SessionTrayItemAction getSessionPromoteTrayItem();
+
+  /**
+   * <code>.remoteagent.core.v1.SessionTrayItemAction session_restore_tray_item = 210 [json_name = "sessionRestoreTrayItem"];</code>
+   * @return Whether the sessionRestoreTrayItem field is set.
+   */
+  boolean hasSessionRestoreTrayItem();
+  /**
+   * <code>.remoteagent.core.v1.SessionTrayItemAction session_restore_tray_item = 210 [json_name = "sessionRestoreTrayItem"];</code>
+   * @return The sessionRestoreTrayItem.
+   */
+  io.github.lewin671.remoteagent.core.proto.SessionTrayItemAction getSessionRestoreTrayItem();
+
+  /**
+   * <code>.remoteagent.core.v1.SessionTrayItemAction session_retry_tray_item = 211 [json_name = "sessionRetryTrayItem"];</code>
+   * @return Whether the sessionRetryTrayItem field is set.
+   */
+  boolean hasSessionRetryTrayItem();
+  /**
+   * <code>.remoteagent.core.v1.SessionTrayItemAction session_retry_tray_item = 211 [json_name = "sessionRetryTrayItem"];</code>
+   * @return The sessionRetryTrayItem.
+   */
+  io.github.lewin671.remoteagent.core.proto.SessionTrayItemAction getSessionRetryTrayItem();
+
+  /**
+   * <code>.remoteagent.core.v1.SessionTrayItemAction session_resume_tray_item = 212 [json_name = "sessionResumeTrayItem"];</code>
+   * @return Whether the sessionResumeTrayItem field is set.
+   */
+  boolean hasSessionResumeTrayItem();
+  /**
+   * <code>.remoteagent.core.v1.SessionTrayItemAction session_resume_tray_item = 212 [json_name = "sessionResumeTrayItem"];</code>
+   * @return The sessionResumeTrayItem.
+   */
+  io.github.lewin671.remoteagent.core.proto.SessionTrayItemAction getSessionResumeTrayItem();
+
+  /**
+   * <code>.remoteagent.core.v1.SessionTraySessionAction session_cancel_all_paused = 213 [json_name = "sessionCancelAllPaused"];</code>
+   * @return Whether the sessionCancelAllPaused field is set.
+   */
+  boolean hasSessionCancelAllPaused();
+  /**
+   * <code>.remoteagent.core.v1.SessionTraySessionAction session_cancel_all_paused = 213 [json_name = "sessionCancelAllPaused"];</code>
+   * @return The sessionCancelAllPaused.
+   */
+  io.github.lewin671.remoteagent.core.proto.SessionTraySessionAction getSessionCancelAllPaused();
+
+  /**
+   * <code>.remoteagent.core.v1.SessionTraySessionAction session_undo_cancel = 214 [json_name = "sessionUndoCancel"];</code>
+   * @return Whether the sessionUndoCancel field is set.
+   */
+  boolean hasSessionUndoCancel();
+  /**
+   * <code>.remoteagent.core.v1.SessionTraySessionAction session_undo_cancel = 214 [json_name = "sessionUndoCancel"];</code>
+   * @return The sessionUndoCancel.
+   */
+  io.github.lewin671.remoteagent.core.proto.SessionTraySessionAction getSessionUndoCancel();
 
   /**
    * <code>.remoteagent.core.v1.ScheduleCacheLoadedEvent schedule_cache_loaded = 300 [json_name = "scheduleCacheLoaded"];</code>

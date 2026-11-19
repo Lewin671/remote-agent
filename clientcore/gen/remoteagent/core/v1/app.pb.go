@@ -24,16 +24,18 @@ const (
 type TimerKind int32
 
 const (
-	TimerKind_TIMER_KIND_UNSPECIFIED   TimerKind = 0
-	TimerKind_TIMER_KIND_RECONNECT     TimerKind = 1
-	TimerKind_TIMER_KIND_STREAM_OPEN   TimerKind = 2
-	TimerKind_TIMER_KIND_LIVENESS      TimerKind = 3
-	TimerKind_TIMER_KIND_LINK_GRACE    TimerKind = 4
-	TimerKind_TIMER_KIND_LIST_RETRY    TimerKind = 5
-	TimerKind_TIMER_KIND_PREFS_RETRY   TimerKind = 6
-	TimerKind_TIMER_KIND_HISTORY_SWEEP TimerKind = 7
-	TimerKind_TIMER_KIND_LIVE_POLL     TimerKind = 8
-	TimerKind_TIMER_KIND_COMMAND_RETRY TimerKind = 9
+	TimerKind_TIMER_KIND_UNSPECIFIED         TimerKind = 0
+	TimerKind_TIMER_KIND_RECONNECT           TimerKind = 1
+	TimerKind_TIMER_KIND_STREAM_OPEN         TimerKind = 2
+	TimerKind_TIMER_KIND_LIVENESS            TimerKind = 3
+	TimerKind_TIMER_KIND_LINK_GRACE          TimerKind = 4
+	TimerKind_TIMER_KIND_LIST_RETRY          TimerKind = 5
+	TimerKind_TIMER_KIND_PREFS_RETRY         TimerKind = 6
+	TimerKind_TIMER_KIND_HISTORY_SWEEP       TimerKind = 7
+	TimerKind_TIMER_KIND_LIVE_POLL           TimerKind = 8
+	TimerKind_TIMER_KIND_COMMAND_RETRY       TimerKind = 9
+	TimerKind_TIMER_KIND_SESSION_UNDO        TimerKind = 10
+	TimerKind_TIMER_KIND_SESSION_STEER_GRACE TimerKind = 11
 )
 
 type OutcomeSource int32
@@ -5806,14 +5808,6 @@ type Event_SessionOpen struct{ SessionOpen *SessionOpenAction }
 
 func (*Event_SessionOpen) isEvent_Event() {}
 
-type Event_SessionDismissOutgoing struct{ SessionDismissOutgoing *SessionOutgoingAction }
-
-func (*Event_SessionDismissOutgoing) isEvent_Event() {}
-
-type Event_SessionRestoreOutgoing struct{ SessionRestoreOutgoing *SessionOutgoingAction }
-
-func (*Event_SessionRestoreOutgoing) isEvent_Event() {}
-
 type Event_SessionSetQuestionIndex struct{ SessionSetQuestionIndex *SessionQuestionStepAction }
 
 func (*Event_SessionSetQuestionIndex) isEvent_Event() {}
@@ -5821,6 +5815,38 @@ func (*Event_SessionSetQuestionIndex) isEvent_Event() {}
 type Event_SessionLoadEarlier struct{ SessionLoadEarlier *SessionRefreshHistoryAction }
 
 func (*Event_SessionLoadEarlier) isEvent_Event() {}
+
+type Event_SessionCancelTrayItem struct{ SessionCancelTrayItem *SessionTrayItemAction }
+
+func (*Event_SessionCancelTrayItem) isEvent_Event() {}
+
+type Event_SessionIgnoreTrayItem struct{ SessionIgnoreTrayItem *SessionTrayItemAction }
+
+func (*Event_SessionIgnoreTrayItem) isEvent_Event() {}
+
+type Event_SessionPromoteTrayItem struct{ SessionPromoteTrayItem *SessionTrayItemAction }
+
+func (*Event_SessionPromoteTrayItem) isEvent_Event() {}
+
+type Event_SessionRestoreTrayItem struct{ SessionRestoreTrayItem *SessionTrayItemAction }
+
+func (*Event_SessionRestoreTrayItem) isEvent_Event() {}
+
+type Event_SessionRetryTrayItem struct{ SessionRetryTrayItem *SessionTrayItemAction }
+
+func (*Event_SessionRetryTrayItem) isEvent_Event() {}
+
+type Event_SessionResumeTrayItem struct{ SessionResumeTrayItem *SessionTrayItemAction }
+
+func (*Event_SessionResumeTrayItem) isEvent_Event() {}
+
+type Event_SessionCancelAllPaused struct{ SessionCancelAllPaused *SessionTraySessionAction }
+
+func (*Event_SessionCancelAllPaused) isEvent_Event() {}
+
+type Event_SessionUndoCancel struct{ SessionUndoCancel *SessionTraySessionAction }
+
+func (*Event_SessionUndoCancel) isEvent_Event() {}
 
 type Event_ScheduleCacheLoaded struct{ ScheduleCacheLoaded *ScheduleCacheLoadedEvent }
 
@@ -6444,18 +6470,6 @@ func (m *Event) GetSessionOpen() *SessionOpenAction {
 	}
 	return nil
 }
-func (m *Event) GetSessionDismissOutgoing() *SessionOutgoingAction {
-	if x, ok := m.GetEvent().(*Event_SessionDismissOutgoing); ok && x != nil {
-		return x.SessionDismissOutgoing
-	}
-	return nil
-}
-func (m *Event) GetSessionRestoreOutgoing() *SessionOutgoingAction {
-	if x, ok := m.GetEvent().(*Event_SessionRestoreOutgoing); ok && x != nil {
-		return x.SessionRestoreOutgoing
-	}
-	return nil
-}
 func (m *Event) GetSessionSetQuestionIndex() *SessionQuestionStepAction {
 	if x, ok := m.GetEvent().(*Event_SessionSetQuestionIndex); ok && x != nil {
 		return x.SessionSetQuestionIndex
@@ -6465,6 +6479,54 @@ func (m *Event) GetSessionSetQuestionIndex() *SessionQuestionStepAction {
 func (m *Event) GetSessionLoadEarlier() *SessionRefreshHistoryAction {
 	if x, ok := m.GetEvent().(*Event_SessionLoadEarlier); ok && x != nil {
 		return x.SessionLoadEarlier
+	}
+	return nil
+}
+func (m *Event) GetSessionCancelTrayItem() *SessionTrayItemAction {
+	if x, ok := m.GetEvent().(*Event_SessionCancelTrayItem); ok && x != nil {
+		return x.SessionCancelTrayItem
+	}
+	return nil
+}
+func (m *Event) GetSessionIgnoreTrayItem() *SessionTrayItemAction {
+	if x, ok := m.GetEvent().(*Event_SessionIgnoreTrayItem); ok && x != nil {
+		return x.SessionIgnoreTrayItem
+	}
+	return nil
+}
+func (m *Event) GetSessionPromoteTrayItem() *SessionTrayItemAction {
+	if x, ok := m.GetEvent().(*Event_SessionPromoteTrayItem); ok && x != nil {
+		return x.SessionPromoteTrayItem
+	}
+	return nil
+}
+func (m *Event) GetSessionRestoreTrayItem() *SessionTrayItemAction {
+	if x, ok := m.GetEvent().(*Event_SessionRestoreTrayItem); ok && x != nil {
+		return x.SessionRestoreTrayItem
+	}
+	return nil
+}
+func (m *Event) GetSessionRetryTrayItem() *SessionTrayItemAction {
+	if x, ok := m.GetEvent().(*Event_SessionRetryTrayItem); ok && x != nil {
+		return x.SessionRetryTrayItem
+	}
+	return nil
+}
+func (m *Event) GetSessionResumeTrayItem() *SessionTrayItemAction {
+	if x, ok := m.GetEvent().(*Event_SessionResumeTrayItem); ok && x != nil {
+		return x.SessionResumeTrayItem
+	}
+	return nil
+}
+func (m *Event) GetSessionCancelAllPaused() *SessionTraySessionAction {
+	if x, ok := m.GetEvent().(*Event_SessionCancelAllPaused); ok && x != nil {
+		return x.SessionCancelAllPaused
+	}
+	return nil
+}
+func (m *Event) GetSessionUndoCancel() *SessionTraySessionAction {
+	if x, ok := m.GetEvent().(*Event_SessionUndoCancel); ok && x != nil {
+		return x.SessionUndoCancel
 	}
 	return nil
 }
@@ -7880,36 +7942,6 @@ func (m *Event) Unmarshal(b []byte) error {
 				m.Event = &Event_SessionOpen{SessionOpen: sub}
 				continue
 			}
-		case 203:
-			if wtyp == litewire.BytesType {
-				var sub *SessionOutgoingAction
-				if cur, ok := m.Event.(*Event_SessionDismissOutgoing); ok && cur != nil {
-					sub = cur.SessionDismissOutgoing
-				}
-				if sub == nil {
-					sub = &SessionOutgoingAction{}
-				}
-				if err := litewire.ReadMessage(&b, sub); err != nil {
-					return err
-				}
-				m.Event = &Event_SessionDismissOutgoing{SessionDismissOutgoing: sub}
-				continue
-			}
-		case 204:
-			if wtyp == litewire.BytesType {
-				var sub *SessionOutgoingAction
-				if cur, ok := m.Event.(*Event_SessionRestoreOutgoing); ok && cur != nil {
-					sub = cur.SessionRestoreOutgoing
-				}
-				if sub == nil {
-					sub = &SessionOutgoingAction{}
-				}
-				if err := litewire.ReadMessage(&b, sub); err != nil {
-					return err
-				}
-				m.Event = &Event_SessionRestoreOutgoing{SessionRestoreOutgoing: sub}
-				continue
-			}
 		case 205:
 			if wtyp == litewire.BytesType {
 				var sub *SessionQuestionStepAction
@@ -7938,6 +7970,126 @@ func (m *Event) Unmarshal(b []byte) error {
 					return err
 				}
 				m.Event = &Event_SessionLoadEarlier{SessionLoadEarlier: sub}
+				continue
+			}
+		case 207:
+			if wtyp == litewire.BytesType {
+				var sub *SessionTrayItemAction
+				if cur, ok := m.Event.(*Event_SessionCancelTrayItem); ok && cur != nil {
+					sub = cur.SessionCancelTrayItem
+				}
+				if sub == nil {
+					sub = &SessionTrayItemAction{}
+				}
+				if err := litewire.ReadMessage(&b, sub); err != nil {
+					return err
+				}
+				m.Event = &Event_SessionCancelTrayItem{SessionCancelTrayItem: sub}
+				continue
+			}
+		case 208:
+			if wtyp == litewire.BytesType {
+				var sub *SessionTrayItemAction
+				if cur, ok := m.Event.(*Event_SessionIgnoreTrayItem); ok && cur != nil {
+					sub = cur.SessionIgnoreTrayItem
+				}
+				if sub == nil {
+					sub = &SessionTrayItemAction{}
+				}
+				if err := litewire.ReadMessage(&b, sub); err != nil {
+					return err
+				}
+				m.Event = &Event_SessionIgnoreTrayItem{SessionIgnoreTrayItem: sub}
+				continue
+			}
+		case 209:
+			if wtyp == litewire.BytesType {
+				var sub *SessionTrayItemAction
+				if cur, ok := m.Event.(*Event_SessionPromoteTrayItem); ok && cur != nil {
+					sub = cur.SessionPromoteTrayItem
+				}
+				if sub == nil {
+					sub = &SessionTrayItemAction{}
+				}
+				if err := litewire.ReadMessage(&b, sub); err != nil {
+					return err
+				}
+				m.Event = &Event_SessionPromoteTrayItem{SessionPromoteTrayItem: sub}
+				continue
+			}
+		case 210:
+			if wtyp == litewire.BytesType {
+				var sub *SessionTrayItemAction
+				if cur, ok := m.Event.(*Event_SessionRestoreTrayItem); ok && cur != nil {
+					sub = cur.SessionRestoreTrayItem
+				}
+				if sub == nil {
+					sub = &SessionTrayItemAction{}
+				}
+				if err := litewire.ReadMessage(&b, sub); err != nil {
+					return err
+				}
+				m.Event = &Event_SessionRestoreTrayItem{SessionRestoreTrayItem: sub}
+				continue
+			}
+		case 211:
+			if wtyp == litewire.BytesType {
+				var sub *SessionTrayItemAction
+				if cur, ok := m.Event.(*Event_SessionRetryTrayItem); ok && cur != nil {
+					sub = cur.SessionRetryTrayItem
+				}
+				if sub == nil {
+					sub = &SessionTrayItemAction{}
+				}
+				if err := litewire.ReadMessage(&b, sub); err != nil {
+					return err
+				}
+				m.Event = &Event_SessionRetryTrayItem{SessionRetryTrayItem: sub}
+				continue
+			}
+		case 212:
+			if wtyp == litewire.BytesType {
+				var sub *SessionTrayItemAction
+				if cur, ok := m.Event.(*Event_SessionResumeTrayItem); ok && cur != nil {
+					sub = cur.SessionResumeTrayItem
+				}
+				if sub == nil {
+					sub = &SessionTrayItemAction{}
+				}
+				if err := litewire.ReadMessage(&b, sub); err != nil {
+					return err
+				}
+				m.Event = &Event_SessionResumeTrayItem{SessionResumeTrayItem: sub}
+				continue
+			}
+		case 213:
+			if wtyp == litewire.BytesType {
+				var sub *SessionTraySessionAction
+				if cur, ok := m.Event.(*Event_SessionCancelAllPaused); ok && cur != nil {
+					sub = cur.SessionCancelAllPaused
+				}
+				if sub == nil {
+					sub = &SessionTraySessionAction{}
+				}
+				if err := litewire.ReadMessage(&b, sub); err != nil {
+					return err
+				}
+				m.Event = &Event_SessionCancelAllPaused{SessionCancelAllPaused: sub}
+				continue
+			}
+		case 214:
+			if wtyp == litewire.BytesType {
+				var sub *SessionTraySessionAction
+				if cur, ok := m.Event.(*Event_SessionUndoCancel); ok && cur != nil {
+					sub = cur.SessionUndoCancel
+				}
+				if sub == nil {
+					sub = &SessionTraySessionAction{}
+				}
+				if err := litewire.ReadMessage(&b, sub); err != nil {
+					return err
+				}
+				m.Event = &Event_SessionUndoCancel{SessionUndoCancel: sub}
 				continue
 			}
 		case 300:
@@ -10514,6 +10666,12 @@ type Effect_SessionRestoreComposer struct{ SessionRestoreComposer *SessionRestor
 
 func (*Effect_SessionRestoreComposer) isEffect_Effect() {}
 
+type Effect_SessionResendAttachments struct {
+	SessionResendAttachments *SessionResendAttachmentsEffect
+}
+
+func (*Effect_SessionResendAttachments) isEffect_Effect() {}
+
 type Effect_ScheduleReadCache struct{ ScheduleReadCache *ScheduleReadCacheEffect }
 
 func (*Effect_ScheduleReadCache) isEffect_Effect() {}
@@ -10693,6 +10851,12 @@ func (m *Effect) GetUsageCacheWrite() *UsageCacheWriteEffect {
 func (m *Effect) GetSessionRestoreComposer() *SessionRestoreComposerEffect {
 	if x, ok := m.GetEffect().(*Effect_SessionRestoreComposer); ok && x != nil {
 		return x.SessionRestoreComposer
+	}
+	return nil
+}
+func (m *Effect) GetSessionResendAttachments() *SessionResendAttachmentsEffect {
+	if x, ok := m.GetEffect().(*Effect_SessionResendAttachments); ok && x != nil {
+		return x.SessionResendAttachments
 	}
 	return nil
 }
@@ -10887,6 +11051,12 @@ func (m *Effect) Size() int {
 		if x != nil {
 			if x.SessionRestoreComposer != nil {
 				n += litewire.SizeMessage(40, x.SessionRestoreComposer.Size())
+			}
+		}
+	case *Effect_SessionResendAttachments:
+		if x != nil {
+			if x.SessionResendAttachments != nil {
+				n += litewire.SizeMessage(41, x.SessionResendAttachments.Size())
 			}
 		}
 	case *Effect_ScheduleReadCache:
@@ -11093,6 +11263,12 @@ func (m *Effect) AppendMarshal(b []byte) []byte {
 		if x != nil {
 			if x.SessionRestoreComposer != nil {
 				b = litewire.AppendMessage(b, 40, x.SessionRestoreComposer)
+			}
+		}
+	case *Effect_SessionResendAttachments:
+		if x != nil {
+			if x.SessionResendAttachments != nil {
+				b = litewire.AppendMessage(b, 41, x.SessionResendAttachments)
 			}
 		}
 	case *Effect_ScheduleReadCache:

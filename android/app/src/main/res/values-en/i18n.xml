@@ -134,27 +134,18 @@
     <string name="common_saving" formatted="false">"Saving…"</string>
     <string name="common_settings" formatted="false">"Settings"</string>
     <string name="common_unknown_computer" formatted="false">"Unknown computer"</string>
-    <string name="composer_after_turn" formatted="false">"Send after this turn"</string>
     <string name="composer_android_not_sent">"This message was not sent: %1$s"</string>
     <string name="composer_android_unknown_reason" formatted="false">"Unknown reason"</string>
-    <string name="composer_await_record">"Written to terminal, waiting for %1$s to record it"</string>
+    <string name="composer_answer_first_placeholder" formatted="false">"Seen after you answer"</string>
     <string name="composer_computer_restarted" formatted="false">"remote-agent on the computer restarted while writing"</string>
     <string name="composer_images_unrecognized">"%1$s did not recognize the images"</string>
     <string name="composer_input_unconfirmed" formatted="false">"Could not confirm terminal input"</string>
-    <string name="composer_insert_hint" formatted="false">"This is what ↑ does"</string>
-    <string name="composer_insert_now" formatted="false">"Insert into this turn now"</string>
     <string name="composer_ios_connect_send" formatted="false">"Connect to the server to send"</string>
-    <string name="composer_maybe_failure">"Possibly not sent: %1$s"</string>
     <string name="composer_message" formatted="false">"Message"</string>
     <string name="composer_message_fallback" formatted="false">"A message"</string>
     <string name="composer_message_unconfirmed" formatted="false">"A message may not have been sent: written to terminal but unconfirmed"</string>
-    <string name="composer_mode_insert_short" formatted="false">"Insert into turn"</string>
-    <string name="composer_mode_picker_label" formatted="false">"Send timing"</string>
-    <string name="composer_mode_queue_short" formatted="false">"After this turn"</string>
     <string name="composer_not_written" formatted="false">"Not written to terminal"</string>
     <string name="composer_plan_placeholder" formatted="false">"Add requirements for the plan…"</string>
-    <string name="composer_queue_after_answer" formatted="false">"Queue message; continue after answering"</string>
-    <string name="composer_queue_hint" formatted="false">"Queue first, then send in order after this turn"</string>
     <string name="composer_ready_timeout" formatted="false">"Timed out waiting for the terminal"</string>
     <string name="composer_restore" formatted="false">"Restore to input"</string>
     <plurals name="composer_restore_files_full">
@@ -165,9 +156,10 @@
         <item quantity="one">"The input already has %2$d image(s) and cannot fit this message’s %1$d image. Remove some first."</item>
         <item quantity="other">"The input already has %2$d image(s) and cannot fit this message’s %1$d images. Remove some first."</item>
     </plurals>
+    <string name="composer_running_placeholder" formatted="false">"Add a note…"</string>
     <string name="composer_send" formatted="false">"Send"</string>
+    <string name="composer_send_after" formatted="false">"Send after"</string>
     <string name="composer_send_failure">"Not sent: %1$s"</string>
-    <string name="composer_sending" formatted="false">"Sending…"</string>
     <string name="composer_shortcut">"Message · %1$s to send"</string>
     <string name="composer_slash_note" formatted="false">"Content starting with / will be sent to the model as a regular message instead of running a slash command."</string>
     <string name="composer_slash_title" formatted="false">"Send as a regular message?"</string>
@@ -472,7 +464,6 @@
         <item quantity="other">"%1$d items need you"</item>
     </plurals>
     <string name="image_add" formatted="false">"Add image"</string>
-    <string name="image_android_bubble" formatted="false">"(Image)"</string>
     <string name="image_android_cannot_decode_image" formatted="false">"Cannot decode image"</string>
     <string name="image_android_cannot_decode_this_image" formatted="false">"Cannot decode this image"</string>
     <string name="image_android_cannot_read_this_image" formatted="false">"Cannot read this image"</string>
@@ -928,25 +919,49 @@
     <string name="projects_unpin" formatted="false">"Unpin"</string>
     <string name="projects_use_directory">"Use folder %1$s"</string>
     <string name="projects_view_sessions">"View sessions in %1$s"</string>
-    <string name="queue_after_turn" formatted="false">"Send after this turn"</string>
-    <string name="queue_android_agent_note">"Waiting for %1$s to be ready"</string>
     <string name="queue_android_scheduled" formatted="false">"Scheduled task"</string>
-    <string name="queue_android_sending_soon" formatted="false">"Sending soon"</string>
-    <string name="queue_android_unconfirmed" formatted="false">"Written to the terminal but unconfirmed"</string>
-    <string name="queue_cancel_failed" formatted="false">"Could not cancel; still queued"</string>
+    <plurals name="queue_attachments_a11y">
+        <item quantity="one">"%1$d attachment"</item>
+        <item quantity="other">"%1$d attachments"</item>
+    </plurals>
+    <string name="queue_cancel_all" formatted="false">"Cancel all"</string>
+    <string name="queue_cancel_failed" formatted="false">"Could not cancel; still waiting"</string>
     <string name="queue_canceled" formatted="false">"Canceled"</string>
-    <string name="queue_canceled_record" formatted="false">"Canceled a queued message"</string>
+    <plurals name="queue_canceled_count">
+        <item quantity="one">"Canceled %1$d message"</item>
+        <item quantity="other">"Canceled %1$d messages"</item>
+    </plurals>
     <string name="queue_canceling" formatted="false">"Canceling…"</string>
-    <string name="queue_insert" formatted="false">"Insert into this turn"</string>
-    <plurals name="queue_more">
-        <item quantity="one">"%1$d more queued message · Expand"</item>
-        <item quantity="other">"%1$d more queued messages · Expand"</item>
+    <string name="queue_collapse" formatted="false">"Collapse"</string>
+    <string name="queue_group_count">"%2$s · %1$d"</string>
+    <string name="queue_group_failed" formatted="false">"Not sent"</string>
+    <string name="queue_group_paused" formatted="false">"Interrupted, paused"</string>
+    <string name="queue_group_queue" formatted="false">"Send after"</string>
+    <string name="queue_group_steer" formatted="false">"Sent after this step"</string>
+    <string name="queue_group_unsure" formatted="false">"May not have sent"</string>
+    <string name="queue_group_wait_answer" formatted="false">"Sent after you answer"</string>
+    <string name="queue_group_wait_ready">"Waiting for %1$s"</string>
+    <string name="queue_ignore" formatted="false">"Ignore"</string>
+    <plurals name="queue_keyboard_failed">
+        <item quantity="one">"%1$d not sent"</item>
+        <item quantity="other">"%1$d not sent"</item>
+    </plurals>
+    <plurals name="queue_keyboard_summary">
+        <item quantity="one">"%1$d pending"</item>
+        <item quantity="other">"%1$d pending"</item>
+    </plurals>
+    <plurals name="queue_more_items">
+        <item quantity="one">"%1$d more"</item>
+        <item quantity="other">"%1$d more"</item>
     </plurals>
     <string name="queue_other_message" formatted="false">"A message from another client"</string>
     <string name="queue_paused" formatted="false">"Paused"</string>
-    <string name="queue_rank">" · #%1$d"</string>
     <string name="queue_resume_failed" formatted="false">"Could not send; still paused"</string>
     <string name="queue_resuming" formatted="false">"Sending…"</string>
+    <string name="queue_scheduled_time">"Scheduled %1$s"</string>
+    <string name="queue_send_now" formatted="false">"Send now"</string>
+    <string name="queue_unconfirmed_reason" formatted="false">"Sent to terminal, unconfirmed"</string>
+    <string name="queue_undo" formatted="false">"Undo"</string>
     <string name="quota_agy_waiting" formatted="false">"No quota received from Antigravity. Quota is checked automatically after Antigravity runs on this computer."</string>
     <string name="quota_android_you_can_view_usage_in_claude_code_on_this_computer" formatted="false">" You can view /usage in Claude Code on this computer."</string>
     <string name="quota_awaiting_update" formatted="false">"Awaiting update"</string>
@@ -1722,8 +1737,6 @@
     <string name="session_context" formatted="false">"Context"</string>
     <string name="session_context_tokens">"Context %2$s / %1$s"</string>
     <string name="session_context_used">"%1$d%% used"</string>
-    <string name="session_disconnected_ago">"Disconnected %1$s. "</string>
-    <string name="session_dismiss_notice" formatted="false">"Dismiss this notice"</string>
     <string name="session_effort_locked" formatted="false">"Reasoning effort cannot be changed while running"</string>
     <string name="session_end" formatted="false">"End"</string>
     <string name="session_end_action" formatted="false">"End session…"</string>

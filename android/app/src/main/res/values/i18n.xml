@@ -127,27 +127,18 @@
     <string name="common_saving" formatted="false">"保存中…"</string>
     <string name="common_settings" formatted="false">"设置"</string>
     <string name="common_unknown_computer" formatted="false">"未知电脑"</string>
-    <string name="composer_after_turn" formatted="false">"这一轮结束后再发"</string>
     <string name="composer_android_not_sent">"没发出去：%1$s"</string>
     <string name="composer_android_unknown_reason" formatted="false">"原因未知"</string>
-    <string name="composer_await_record">"已送入终端，等 %1$s 记录"</string>
+    <string name="composer_answer_first_placeholder" formatted="false">"回答后它才会看到"</string>
     <string name="composer_computer_restarted" formatted="false">"电脑上的 remote-agent 写入时重启了"</string>
     <string name="composer_images_unrecognized">"%1$s 没认出图片"</string>
     <string name="composer_input_unconfirmed" formatted="false">"无法确认终端输入框的内容"</string>
-    <string name="composer_insert_hint" formatted="false">"点 ↑ 就是这个"</string>
-    <string name="composer_insert_now" formatted="false">"现在插入这一轮"</string>
     <string name="composer_ios_connect_send" formatted="false">"连上服务器后才能发送"</string>
-    <string name="composer_maybe_failure">"可能没发出去：%1$s"</string>
     <string name="composer_message" formatted="false">"消息"</string>
     <string name="composer_message_fallback" formatted="false">"一条消息"</string>
     <string name="composer_message_unconfirmed" formatted="false">"有一条消息可能没发出去：已送到终端但没确认"</string>
-    <string name="composer_mode_insert_short" formatted="false">"插入这一轮"</string>
-    <string name="composer_mode_picker_label" formatted="false">"发送时机"</string>
-    <string name="composer_mode_queue_short" formatted="false">"本轮结束后发"</string>
     <string name="composer_not_written" formatted="false">"没有写进终端"</string>
     <string name="composer_plan_placeholder" formatted="false">"补充你对计划的要求…"</string>
-    <string name="composer_queue_after_answer" formatted="false">"排队发送，回答后继续"</string>
-    <string name="composer_queue_hint" formatted="false">"先排队，结束后按顺序发出"</string>
     <string name="composer_ready_timeout" formatted="false">"等终端就绪超时"</string>
     <string name="composer_restore" formatted="false">"放回输入框"</string>
     <plurals name="composer_restore_files_full">
@@ -156,9 +147,10 @@
     <plurals name="composer_restore_images_full">
         <item quantity="other">"输入框里已有 %2$d 张图，放不下这条消息的 %1$d 张；先移除一些再放回"</item>
     </plurals>
+    <string name="composer_running_placeholder" formatted="false">"补充一句…"</string>
     <string name="composer_send" formatted="false">"发送"</string>
+    <string name="composer_send_after" formatted="false">"做完再发"</string>
     <string name="composer_send_failure">"没发出去：%1$s"</string>
-    <string name="composer_sending" formatted="false">"发送中…"</string>
     <string name="composer_shortcut">"消息 · %1$s 发送"</string>
     <string name="composer_slash_note" formatted="false">"以 / 开头的内容会作为普通消息发给模型，而不是执行斜杠命令。"</string>
     <string name="composer_slash_title" formatted="false">"作为普通消息发送？"</string>
@@ -443,7 +435,6 @@
         <item quantity="other">"%1$d 件事等你"</item>
     </plurals>
     <string name="image_add" formatted="false">"添加图片"</string>
-    <string name="image_android_bubble" formatted="false">"（图片）"</string>
     <string name="image_android_cannot_decode_image" formatted="false">"解不出图片"</string>
     <string name="image_android_cannot_decode_this_image" formatted="false">"解不出这张图片"</string>
     <string name="image_android_cannot_read_this_image" formatted="false">"读不到这张图片"</string>
@@ -881,24 +872,44 @@
     <string name="projects_unpin" formatted="false">"取消常用"</string>
     <string name="projects_use_directory">"用 %1$s 这个目录"</string>
     <string name="projects_view_sessions">"看 %1$s 的会话"</string>
-    <string name="queue_after_turn" formatted="false">"这一轮结束后发"</string>
-    <string name="queue_android_agent_note">"等 %1$s 就绪"</string>
     <string name="queue_android_scheduled" formatted="false">"定时任务"</string>
-    <string name="queue_android_sending_soon" formatted="false">"即将发送"</string>
-    <string name="queue_android_unconfirmed" formatted="false">"已送到终端但没确认"</string>
-    <string name="queue_cancel_failed" formatted="false">"取消没成功，仍在排队"</string>
+    <plurals name="queue_attachments_a11y">
+        <item quantity="other">"%1$d 个附件"</item>
+    </plurals>
+    <string name="queue_cancel_all" formatted="false">"全部取消"</string>
+    <string name="queue_cancel_failed" formatted="false">"取消没成功，还在排队"</string>
     <string name="queue_canceled" formatted="false">"已取消"</string>
-    <string name="queue_canceled_record" formatted="false">"取消了一条排队的消息"</string>
+    <plurals name="queue_canceled_count">
+        <item quantity="other">"已取消 %1$d 条"</item>
+    </plurals>
     <string name="queue_canceling" formatted="false">"正在取消…"</string>
-    <string name="queue_insert" formatted="false">"插入这一轮"</string>
-    <plurals name="queue_more">
-        <item quantity="other">"还有 %1$d 条排队 展开"</item>
+    <string name="queue_collapse" formatted="false">"收起"</string>
+    <string name="queue_group_count">"%2$s · %1$d"</string>
+    <string name="queue_group_failed" formatted="false">"没发出去"</string>
+    <string name="queue_group_paused" formatted="false">"已中断，先不发"</string>
+    <string name="queue_group_queue" formatted="false">"做完再发"</string>
+    <string name="queue_group_steer" formatted="false">"这一步结束就送达"</string>
+    <string name="queue_group_unsure" formatted="false">"可能没发出去"</string>
+    <string name="queue_group_wait_answer" formatted="false">"等你回答后送达"</string>
+    <string name="queue_group_wait_ready">"等 %1$s 就绪后发"</string>
+    <string name="queue_ignore" formatted="false">"忽略"</string>
+    <plurals name="queue_keyboard_failed">
+        <item quantity="other">"%1$d 条没发出去"</item>
+    </plurals>
+    <plurals name="queue_keyboard_summary">
+        <item quantity="other">"%1$d 条待发"</item>
+    </plurals>
+    <plurals name="queue_more_items">
+        <item quantity="other">"还有 %1$d 条"</item>
     </plurals>
     <string name="queue_other_message" formatted="false">"另一客户端的消息"</string>
     <string name="queue_paused" formatted="false">"已暂停"</string>
-    <string name="queue_rank">" · 第 %1$d 条"</string>
     <string name="queue_resume_failed" formatted="false">"发送没成功，仍已暂停"</string>
     <string name="queue_resuming" formatted="false">"正在发送…"</string>
+    <string name="queue_scheduled_time">"定时 %1$s"</string>
+    <string name="queue_send_now" formatted="false">"现在发"</string>
+    <string name="queue_unconfirmed_reason" formatted="false">"已送到终端，但没确认"</string>
+    <string name="queue_undo" formatted="false">"撤销"</string>
     <string name="quota_agy_waiting" formatted="false">"尚未收到 Antigravity 的额度。Antigravity 在这台电脑上运行后会自动查询额度。"</string>
     <string name="quota_android_you_can_view_usage_in_claude_code_on_this_computer" formatted="false">" 可在本机 Claude Code 中查看 /usage。"</string>
     <string name="quota_awaiting_update" formatted="false">"等待更新"</string>
@@ -1640,8 +1651,6 @@
     <string name="session_context" formatted="false">"上下文占用"</string>
     <string name="session_context_tokens">"上下文占用 %2$s / %1$s"</string>
     <string name="session_context_used">"已用 %1$d%%"</string>
-    <string name="session_disconnected_ago">"%1$s断开，"</string>
-    <string name="session_dismiss_notice" formatted="false">"移除此提示"</string>
     <string name="session_effort_locked" formatted="false">"运行中不能换推理强度"</string>
     <string name="session_end" formatted="false">"结束"</string>
     <string name="session_end_action" formatted="false">"结束会话…"</string>

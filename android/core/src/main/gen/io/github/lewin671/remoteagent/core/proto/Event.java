@@ -99,10 +99,16 @@ public  final class Event extends
     SESSION_SUBMIT_COMMAND(200),
     SESSION_ABANDON_COMMAND(201),
     SESSION_OPEN(202),
-    SESSION_DISMISS_OUTGOING(203),
-    SESSION_RESTORE_OUTGOING(204),
     SESSION_SET_QUESTION_INDEX(205),
     SESSION_LOAD_EARLIER(206),
+    SESSION_CANCEL_TRAY_ITEM(207),
+    SESSION_IGNORE_TRAY_ITEM(208),
+    SESSION_PROMOTE_TRAY_ITEM(209),
+    SESSION_RESTORE_TRAY_ITEM(210),
+    SESSION_RETRY_TRAY_ITEM(211),
+    SESSION_RESUME_TRAY_ITEM(212),
+    SESSION_CANCEL_ALL_PAUSED(213),
+    SESSION_UNDO_CANCEL(214),
     SCHEDULE_CACHE_LOADED(300),
     SCHEDULE_SEEN_LOADED(301),
     SCHEDULE_LOCAL_CONTEXT(302),
@@ -231,10 +237,16 @@ public  final class Event extends
         case 200: return SESSION_SUBMIT_COMMAND;
         case 201: return SESSION_ABANDON_COMMAND;
         case 202: return SESSION_OPEN;
-        case 203: return SESSION_DISMISS_OUTGOING;
-        case 204: return SESSION_RESTORE_OUTGOING;
         case 205: return SESSION_SET_QUESTION_INDEX;
         case 206: return SESSION_LOAD_EARLIER;
+        case 207: return SESSION_CANCEL_TRAY_ITEM;
+        case 208: return SESSION_IGNORE_TRAY_ITEM;
+        case 209: return SESSION_PROMOTE_TRAY_ITEM;
+        case 210: return SESSION_RESTORE_TRAY_ITEM;
+        case 211: return SESSION_RETRY_TRAY_ITEM;
+        case 212: return SESSION_RESUME_TRAY_ITEM;
+        case 213: return SESSION_CANCEL_ALL_PAUSED;
+        case 214: return SESSION_UNDO_CANCEL;
         case 300: return SCHEDULE_CACHE_LOADED;
         case 301: return SCHEDULE_SEEN_LOADED;
         case 302: return SCHEDULE_LOCAL_CONTEXT;
@@ -4347,110 +4359,6 @@ public  final class Event extends
     }
   }
 
-  public static final int SESSION_DISMISS_OUTGOING_FIELD_NUMBER = 203;
-  /**
-   * <code>.remoteagent.core.v1.SessionOutgoingAction session_dismiss_outgoing = 203 [json_name = "sessionDismissOutgoing"];</code>
-   */
-  @java.lang.Override
-  public boolean hasSessionDismissOutgoing() {
-    return eventCase_ == 203;
-  }
-  /**
-   * <code>.remoteagent.core.v1.SessionOutgoingAction session_dismiss_outgoing = 203 [json_name = "sessionDismissOutgoing"];</code>
-   */
-  @java.lang.Override
-  public io.github.lewin671.remoteagent.core.proto.SessionOutgoingAction getSessionDismissOutgoing() {
-    if (eventCase_ == 203) {
-       return (io.github.lewin671.remoteagent.core.proto.SessionOutgoingAction) event_;
-    }
-    return io.github.lewin671.remoteagent.core.proto.SessionOutgoingAction.getDefaultInstance();
-  }
-  /**
-   * <code>.remoteagent.core.v1.SessionOutgoingAction session_dismiss_outgoing = 203 [json_name = "sessionDismissOutgoing"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void setSessionDismissOutgoing(io.github.lewin671.remoteagent.core.proto.SessionOutgoingAction value) {
-    value.getClass();  // minimal bytecode null check
-    event_ = value;
-    eventCase_ = 203;
-  }
-  /**
-   * <code>.remoteagent.core.v1.SessionOutgoingAction session_dismiss_outgoing = 203 [json_name = "sessionDismissOutgoing"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void mergeSessionDismissOutgoing(io.github.lewin671.remoteagent.core.proto.SessionOutgoingAction value) {
-    value.getClass();  // minimal bytecode null check
-    if (eventCase_ == 203 &&
-        event_ != io.github.lewin671.remoteagent.core.proto.SessionOutgoingAction.getDefaultInstance()) {
-      event_ = io.github.lewin671.remoteagent.core.proto.SessionOutgoingAction.newBuilder((io.github.lewin671.remoteagent.core.proto.SessionOutgoingAction) event_)
-          .mergeFrom(value).buildPartial();
-    } else {
-      event_ = value;
-    }
-    eventCase_ = 203;
-  }
-  /**
-   * <code>.remoteagent.core.v1.SessionOutgoingAction session_dismiss_outgoing = 203 [json_name = "sessionDismissOutgoing"];</code>
-   */
-  private void clearSessionDismissOutgoing() {
-    if (eventCase_ == 203) {
-      eventCase_ = 0;
-      event_ = null;
-    }
-  }
-
-  public static final int SESSION_RESTORE_OUTGOING_FIELD_NUMBER = 204;
-  /**
-   * <code>.remoteagent.core.v1.SessionOutgoingAction session_restore_outgoing = 204 [json_name = "sessionRestoreOutgoing"];</code>
-   */
-  @java.lang.Override
-  public boolean hasSessionRestoreOutgoing() {
-    return eventCase_ == 204;
-  }
-  /**
-   * <code>.remoteagent.core.v1.SessionOutgoingAction session_restore_outgoing = 204 [json_name = "sessionRestoreOutgoing"];</code>
-   */
-  @java.lang.Override
-  public io.github.lewin671.remoteagent.core.proto.SessionOutgoingAction getSessionRestoreOutgoing() {
-    if (eventCase_ == 204) {
-       return (io.github.lewin671.remoteagent.core.proto.SessionOutgoingAction) event_;
-    }
-    return io.github.lewin671.remoteagent.core.proto.SessionOutgoingAction.getDefaultInstance();
-  }
-  /**
-   * <code>.remoteagent.core.v1.SessionOutgoingAction session_restore_outgoing = 204 [json_name = "sessionRestoreOutgoing"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void setSessionRestoreOutgoing(io.github.lewin671.remoteagent.core.proto.SessionOutgoingAction value) {
-    value.getClass();  // minimal bytecode null check
-    event_ = value;
-    eventCase_ = 204;
-  }
-  /**
-   * <code>.remoteagent.core.v1.SessionOutgoingAction session_restore_outgoing = 204 [json_name = "sessionRestoreOutgoing"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void mergeSessionRestoreOutgoing(io.github.lewin671.remoteagent.core.proto.SessionOutgoingAction value) {
-    value.getClass();  // minimal bytecode null check
-    if (eventCase_ == 204 &&
-        event_ != io.github.lewin671.remoteagent.core.proto.SessionOutgoingAction.getDefaultInstance()) {
-      event_ = io.github.lewin671.remoteagent.core.proto.SessionOutgoingAction.newBuilder((io.github.lewin671.remoteagent.core.proto.SessionOutgoingAction) event_)
-          .mergeFrom(value).buildPartial();
-    } else {
-      event_ = value;
-    }
-    eventCase_ = 204;
-  }
-  /**
-   * <code>.remoteagent.core.v1.SessionOutgoingAction session_restore_outgoing = 204 [json_name = "sessionRestoreOutgoing"];</code>
-   */
-  private void clearSessionRestoreOutgoing() {
-    if (eventCase_ == 204) {
-      eventCase_ = 0;
-      event_ = null;
-    }
-  }
-
   public static final int SESSION_SET_QUESTION_INDEX_FIELD_NUMBER = 205;
   /**
    * <code>.remoteagent.core.v1.SessionQuestionStepAction session_set_question_index = 205 [json_name = "sessionSetQuestionIndex"];</code>
@@ -4550,6 +4458,422 @@ public  final class Event extends
    */
   private void clearSessionLoadEarlier() {
     if (eventCase_ == 206) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int SESSION_CANCEL_TRAY_ITEM_FIELD_NUMBER = 207;
+  /**
+   * <code>.remoteagent.core.v1.SessionTrayItemAction session_cancel_tray_item = 207 [json_name = "sessionCancelTrayItem"];</code>
+   */
+  @java.lang.Override
+  public boolean hasSessionCancelTrayItem() {
+    return eventCase_ == 207;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionTrayItemAction session_cancel_tray_item = 207 [json_name = "sessionCancelTrayItem"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.SessionTrayItemAction getSessionCancelTrayItem() {
+    if (eventCase_ == 207) {
+       return (io.github.lewin671.remoteagent.core.proto.SessionTrayItemAction) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.SessionTrayItemAction.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionTrayItemAction session_cancel_tray_item = 207 [json_name = "sessionCancelTrayItem"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setSessionCancelTrayItem(io.github.lewin671.remoteagent.core.proto.SessionTrayItemAction value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 207;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionTrayItemAction session_cancel_tray_item = 207 [json_name = "sessionCancelTrayItem"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeSessionCancelTrayItem(io.github.lewin671.remoteagent.core.proto.SessionTrayItemAction value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 207 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.SessionTrayItemAction.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.SessionTrayItemAction.newBuilder((io.github.lewin671.remoteagent.core.proto.SessionTrayItemAction) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 207;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionTrayItemAction session_cancel_tray_item = 207 [json_name = "sessionCancelTrayItem"];</code>
+   */
+  private void clearSessionCancelTrayItem() {
+    if (eventCase_ == 207) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int SESSION_IGNORE_TRAY_ITEM_FIELD_NUMBER = 208;
+  /**
+   * <code>.remoteagent.core.v1.SessionTrayItemAction session_ignore_tray_item = 208 [json_name = "sessionIgnoreTrayItem"];</code>
+   */
+  @java.lang.Override
+  public boolean hasSessionIgnoreTrayItem() {
+    return eventCase_ == 208;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionTrayItemAction session_ignore_tray_item = 208 [json_name = "sessionIgnoreTrayItem"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.SessionTrayItemAction getSessionIgnoreTrayItem() {
+    if (eventCase_ == 208) {
+       return (io.github.lewin671.remoteagent.core.proto.SessionTrayItemAction) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.SessionTrayItemAction.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionTrayItemAction session_ignore_tray_item = 208 [json_name = "sessionIgnoreTrayItem"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setSessionIgnoreTrayItem(io.github.lewin671.remoteagent.core.proto.SessionTrayItemAction value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 208;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionTrayItemAction session_ignore_tray_item = 208 [json_name = "sessionIgnoreTrayItem"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeSessionIgnoreTrayItem(io.github.lewin671.remoteagent.core.proto.SessionTrayItemAction value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 208 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.SessionTrayItemAction.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.SessionTrayItemAction.newBuilder((io.github.lewin671.remoteagent.core.proto.SessionTrayItemAction) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 208;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionTrayItemAction session_ignore_tray_item = 208 [json_name = "sessionIgnoreTrayItem"];</code>
+   */
+  private void clearSessionIgnoreTrayItem() {
+    if (eventCase_ == 208) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int SESSION_PROMOTE_TRAY_ITEM_FIELD_NUMBER = 209;
+  /**
+   * <code>.remoteagent.core.v1.SessionTrayItemAction session_promote_tray_item = 209 [json_name = "sessionPromoteTrayItem"];</code>
+   */
+  @java.lang.Override
+  public boolean hasSessionPromoteTrayItem() {
+    return eventCase_ == 209;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionTrayItemAction session_promote_tray_item = 209 [json_name = "sessionPromoteTrayItem"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.SessionTrayItemAction getSessionPromoteTrayItem() {
+    if (eventCase_ == 209) {
+       return (io.github.lewin671.remoteagent.core.proto.SessionTrayItemAction) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.SessionTrayItemAction.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionTrayItemAction session_promote_tray_item = 209 [json_name = "sessionPromoteTrayItem"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setSessionPromoteTrayItem(io.github.lewin671.remoteagent.core.proto.SessionTrayItemAction value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 209;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionTrayItemAction session_promote_tray_item = 209 [json_name = "sessionPromoteTrayItem"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeSessionPromoteTrayItem(io.github.lewin671.remoteagent.core.proto.SessionTrayItemAction value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 209 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.SessionTrayItemAction.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.SessionTrayItemAction.newBuilder((io.github.lewin671.remoteagent.core.proto.SessionTrayItemAction) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 209;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionTrayItemAction session_promote_tray_item = 209 [json_name = "sessionPromoteTrayItem"];</code>
+   */
+  private void clearSessionPromoteTrayItem() {
+    if (eventCase_ == 209) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int SESSION_RESTORE_TRAY_ITEM_FIELD_NUMBER = 210;
+  /**
+   * <code>.remoteagent.core.v1.SessionTrayItemAction session_restore_tray_item = 210 [json_name = "sessionRestoreTrayItem"];</code>
+   */
+  @java.lang.Override
+  public boolean hasSessionRestoreTrayItem() {
+    return eventCase_ == 210;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionTrayItemAction session_restore_tray_item = 210 [json_name = "sessionRestoreTrayItem"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.SessionTrayItemAction getSessionRestoreTrayItem() {
+    if (eventCase_ == 210) {
+       return (io.github.lewin671.remoteagent.core.proto.SessionTrayItemAction) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.SessionTrayItemAction.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionTrayItemAction session_restore_tray_item = 210 [json_name = "sessionRestoreTrayItem"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setSessionRestoreTrayItem(io.github.lewin671.remoteagent.core.proto.SessionTrayItemAction value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 210;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionTrayItemAction session_restore_tray_item = 210 [json_name = "sessionRestoreTrayItem"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeSessionRestoreTrayItem(io.github.lewin671.remoteagent.core.proto.SessionTrayItemAction value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 210 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.SessionTrayItemAction.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.SessionTrayItemAction.newBuilder((io.github.lewin671.remoteagent.core.proto.SessionTrayItemAction) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 210;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionTrayItemAction session_restore_tray_item = 210 [json_name = "sessionRestoreTrayItem"];</code>
+   */
+  private void clearSessionRestoreTrayItem() {
+    if (eventCase_ == 210) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int SESSION_RETRY_TRAY_ITEM_FIELD_NUMBER = 211;
+  /**
+   * <code>.remoteagent.core.v1.SessionTrayItemAction session_retry_tray_item = 211 [json_name = "sessionRetryTrayItem"];</code>
+   */
+  @java.lang.Override
+  public boolean hasSessionRetryTrayItem() {
+    return eventCase_ == 211;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionTrayItemAction session_retry_tray_item = 211 [json_name = "sessionRetryTrayItem"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.SessionTrayItemAction getSessionRetryTrayItem() {
+    if (eventCase_ == 211) {
+       return (io.github.lewin671.remoteagent.core.proto.SessionTrayItemAction) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.SessionTrayItemAction.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionTrayItemAction session_retry_tray_item = 211 [json_name = "sessionRetryTrayItem"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setSessionRetryTrayItem(io.github.lewin671.remoteagent.core.proto.SessionTrayItemAction value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 211;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionTrayItemAction session_retry_tray_item = 211 [json_name = "sessionRetryTrayItem"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeSessionRetryTrayItem(io.github.lewin671.remoteagent.core.proto.SessionTrayItemAction value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 211 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.SessionTrayItemAction.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.SessionTrayItemAction.newBuilder((io.github.lewin671.remoteagent.core.proto.SessionTrayItemAction) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 211;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionTrayItemAction session_retry_tray_item = 211 [json_name = "sessionRetryTrayItem"];</code>
+   */
+  private void clearSessionRetryTrayItem() {
+    if (eventCase_ == 211) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int SESSION_RESUME_TRAY_ITEM_FIELD_NUMBER = 212;
+  /**
+   * <code>.remoteagent.core.v1.SessionTrayItemAction session_resume_tray_item = 212 [json_name = "sessionResumeTrayItem"];</code>
+   */
+  @java.lang.Override
+  public boolean hasSessionResumeTrayItem() {
+    return eventCase_ == 212;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionTrayItemAction session_resume_tray_item = 212 [json_name = "sessionResumeTrayItem"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.SessionTrayItemAction getSessionResumeTrayItem() {
+    if (eventCase_ == 212) {
+       return (io.github.lewin671.remoteagent.core.proto.SessionTrayItemAction) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.SessionTrayItemAction.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionTrayItemAction session_resume_tray_item = 212 [json_name = "sessionResumeTrayItem"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setSessionResumeTrayItem(io.github.lewin671.remoteagent.core.proto.SessionTrayItemAction value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 212;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionTrayItemAction session_resume_tray_item = 212 [json_name = "sessionResumeTrayItem"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeSessionResumeTrayItem(io.github.lewin671.remoteagent.core.proto.SessionTrayItemAction value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 212 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.SessionTrayItemAction.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.SessionTrayItemAction.newBuilder((io.github.lewin671.remoteagent.core.proto.SessionTrayItemAction) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 212;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionTrayItemAction session_resume_tray_item = 212 [json_name = "sessionResumeTrayItem"];</code>
+   */
+  private void clearSessionResumeTrayItem() {
+    if (eventCase_ == 212) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int SESSION_CANCEL_ALL_PAUSED_FIELD_NUMBER = 213;
+  /**
+   * <code>.remoteagent.core.v1.SessionTraySessionAction session_cancel_all_paused = 213 [json_name = "sessionCancelAllPaused"];</code>
+   */
+  @java.lang.Override
+  public boolean hasSessionCancelAllPaused() {
+    return eventCase_ == 213;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionTraySessionAction session_cancel_all_paused = 213 [json_name = "sessionCancelAllPaused"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.SessionTraySessionAction getSessionCancelAllPaused() {
+    if (eventCase_ == 213) {
+       return (io.github.lewin671.remoteagent.core.proto.SessionTraySessionAction) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.SessionTraySessionAction.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionTraySessionAction session_cancel_all_paused = 213 [json_name = "sessionCancelAllPaused"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setSessionCancelAllPaused(io.github.lewin671.remoteagent.core.proto.SessionTraySessionAction value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 213;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionTraySessionAction session_cancel_all_paused = 213 [json_name = "sessionCancelAllPaused"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeSessionCancelAllPaused(io.github.lewin671.remoteagent.core.proto.SessionTraySessionAction value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 213 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.SessionTraySessionAction.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.SessionTraySessionAction.newBuilder((io.github.lewin671.remoteagent.core.proto.SessionTraySessionAction) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 213;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionTraySessionAction session_cancel_all_paused = 213 [json_name = "sessionCancelAllPaused"];</code>
+   */
+  private void clearSessionCancelAllPaused() {
+    if (eventCase_ == 213) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int SESSION_UNDO_CANCEL_FIELD_NUMBER = 214;
+  /**
+   * <code>.remoteagent.core.v1.SessionTraySessionAction session_undo_cancel = 214 [json_name = "sessionUndoCancel"];</code>
+   */
+  @java.lang.Override
+  public boolean hasSessionUndoCancel() {
+    return eventCase_ == 214;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionTraySessionAction session_undo_cancel = 214 [json_name = "sessionUndoCancel"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.SessionTraySessionAction getSessionUndoCancel() {
+    if (eventCase_ == 214) {
+       return (io.github.lewin671.remoteagent.core.proto.SessionTraySessionAction) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.SessionTraySessionAction.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionTraySessionAction session_undo_cancel = 214 [json_name = "sessionUndoCancel"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setSessionUndoCancel(io.github.lewin671.remoteagent.core.proto.SessionTraySessionAction value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 214;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionTraySessionAction session_undo_cancel = 214 [json_name = "sessionUndoCancel"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeSessionUndoCancel(io.github.lewin671.remoteagent.core.proto.SessionTraySessionAction value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 214 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.SessionTraySessionAction.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.SessionTraySessionAction.newBuilder((io.github.lewin671.remoteagent.core.proto.SessionTraySessionAction) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 214;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionTraySessionAction session_undo_cancel = 214 [json_name = "sessionUndoCancel"];</code>
+   */
+  private void clearSessionUndoCancel() {
+    if (eventCase_ == 214) {
       eventCase_ = 0;
       event_ = null;
     }
@@ -10447,102 +10771,6 @@ public  final class Event extends
     }
 
     /**
-     * <code>.remoteagent.core.v1.SessionOutgoingAction session_dismiss_outgoing = 203 [json_name = "sessionDismissOutgoing"];</code>
-     */
-    @java.lang.Override
-    public boolean hasSessionDismissOutgoing() {
-      return instance.hasSessionDismissOutgoing();
-    }
-    /**
-     * <code>.remoteagent.core.v1.SessionOutgoingAction session_dismiss_outgoing = 203 [json_name = "sessionDismissOutgoing"];</code>
-     */
-    @java.lang.Override
-    public io.github.lewin671.remoteagent.core.proto.SessionOutgoingAction getSessionDismissOutgoing() {
-      return instance.getSessionDismissOutgoing();
-    }
-    /**
-     * <code>.remoteagent.core.v1.SessionOutgoingAction session_dismiss_outgoing = 203 [json_name = "sessionDismissOutgoing"];</code>
-     */
-    public Builder setSessionDismissOutgoing(io.github.lewin671.remoteagent.core.proto.SessionOutgoingAction value) {
-      copyOnWrite();
-      instance.setSessionDismissOutgoing(value);
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.SessionOutgoingAction session_dismiss_outgoing = 203 [json_name = "sessionDismissOutgoing"];</code>
-     */
-    public Builder setSessionDismissOutgoing(
-        io.github.lewin671.remoteagent.core.proto.SessionOutgoingAction.Builder builderForValue) {
-      copyOnWrite();
-      instance.setSessionDismissOutgoing(builderForValue.build());
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.SessionOutgoingAction session_dismiss_outgoing = 203 [json_name = "sessionDismissOutgoing"];</code>
-     */
-    public Builder mergeSessionDismissOutgoing(io.github.lewin671.remoteagent.core.proto.SessionOutgoingAction value) {
-      copyOnWrite();
-      instance.mergeSessionDismissOutgoing(value);
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.SessionOutgoingAction session_dismiss_outgoing = 203 [json_name = "sessionDismissOutgoing"];</code>
-     */
-    public Builder clearSessionDismissOutgoing() {
-      copyOnWrite();
-      instance.clearSessionDismissOutgoing();
-      return this;
-    }
-
-    /**
-     * <code>.remoteagent.core.v1.SessionOutgoingAction session_restore_outgoing = 204 [json_name = "sessionRestoreOutgoing"];</code>
-     */
-    @java.lang.Override
-    public boolean hasSessionRestoreOutgoing() {
-      return instance.hasSessionRestoreOutgoing();
-    }
-    /**
-     * <code>.remoteagent.core.v1.SessionOutgoingAction session_restore_outgoing = 204 [json_name = "sessionRestoreOutgoing"];</code>
-     */
-    @java.lang.Override
-    public io.github.lewin671.remoteagent.core.proto.SessionOutgoingAction getSessionRestoreOutgoing() {
-      return instance.getSessionRestoreOutgoing();
-    }
-    /**
-     * <code>.remoteagent.core.v1.SessionOutgoingAction session_restore_outgoing = 204 [json_name = "sessionRestoreOutgoing"];</code>
-     */
-    public Builder setSessionRestoreOutgoing(io.github.lewin671.remoteagent.core.proto.SessionOutgoingAction value) {
-      copyOnWrite();
-      instance.setSessionRestoreOutgoing(value);
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.SessionOutgoingAction session_restore_outgoing = 204 [json_name = "sessionRestoreOutgoing"];</code>
-     */
-    public Builder setSessionRestoreOutgoing(
-        io.github.lewin671.remoteagent.core.proto.SessionOutgoingAction.Builder builderForValue) {
-      copyOnWrite();
-      instance.setSessionRestoreOutgoing(builderForValue.build());
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.SessionOutgoingAction session_restore_outgoing = 204 [json_name = "sessionRestoreOutgoing"];</code>
-     */
-    public Builder mergeSessionRestoreOutgoing(io.github.lewin671.remoteagent.core.proto.SessionOutgoingAction value) {
-      copyOnWrite();
-      instance.mergeSessionRestoreOutgoing(value);
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.SessionOutgoingAction session_restore_outgoing = 204 [json_name = "sessionRestoreOutgoing"];</code>
-     */
-    public Builder clearSessionRestoreOutgoing() {
-      copyOnWrite();
-      instance.clearSessionRestoreOutgoing();
-      return this;
-    }
-
-    /**
      * <code>.remoteagent.core.v1.SessionQuestionStepAction session_set_question_index = 205 [json_name = "sessionSetQuestionIndex"];</code>
      */
     @java.lang.Override
@@ -10635,6 +10863,390 @@ public  final class Event extends
     public Builder clearSessionLoadEarlier() {
       copyOnWrite();
       instance.clearSessionLoadEarlier();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.SessionTrayItemAction session_cancel_tray_item = 207 [json_name = "sessionCancelTrayItem"];</code>
+     */
+    @java.lang.Override
+    public boolean hasSessionCancelTrayItem() {
+      return instance.hasSessionCancelTrayItem();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionTrayItemAction session_cancel_tray_item = 207 [json_name = "sessionCancelTrayItem"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.SessionTrayItemAction getSessionCancelTrayItem() {
+      return instance.getSessionCancelTrayItem();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionTrayItemAction session_cancel_tray_item = 207 [json_name = "sessionCancelTrayItem"];</code>
+     */
+    public Builder setSessionCancelTrayItem(io.github.lewin671.remoteagent.core.proto.SessionTrayItemAction value) {
+      copyOnWrite();
+      instance.setSessionCancelTrayItem(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionTrayItemAction session_cancel_tray_item = 207 [json_name = "sessionCancelTrayItem"];</code>
+     */
+    public Builder setSessionCancelTrayItem(
+        io.github.lewin671.remoteagent.core.proto.SessionTrayItemAction.Builder builderForValue) {
+      copyOnWrite();
+      instance.setSessionCancelTrayItem(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionTrayItemAction session_cancel_tray_item = 207 [json_name = "sessionCancelTrayItem"];</code>
+     */
+    public Builder mergeSessionCancelTrayItem(io.github.lewin671.remoteagent.core.proto.SessionTrayItemAction value) {
+      copyOnWrite();
+      instance.mergeSessionCancelTrayItem(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionTrayItemAction session_cancel_tray_item = 207 [json_name = "sessionCancelTrayItem"];</code>
+     */
+    public Builder clearSessionCancelTrayItem() {
+      copyOnWrite();
+      instance.clearSessionCancelTrayItem();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.SessionTrayItemAction session_ignore_tray_item = 208 [json_name = "sessionIgnoreTrayItem"];</code>
+     */
+    @java.lang.Override
+    public boolean hasSessionIgnoreTrayItem() {
+      return instance.hasSessionIgnoreTrayItem();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionTrayItemAction session_ignore_tray_item = 208 [json_name = "sessionIgnoreTrayItem"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.SessionTrayItemAction getSessionIgnoreTrayItem() {
+      return instance.getSessionIgnoreTrayItem();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionTrayItemAction session_ignore_tray_item = 208 [json_name = "sessionIgnoreTrayItem"];</code>
+     */
+    public Builder setSessionIgnoreTrayItem(io.github.lewin671.remoteagent.core.proto.SessionTrayItemAction value) {
+      copyOnWrite();
+      instance.setSessionIgnoreTrayItem(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionTrayItemAction session_ignore_tray_item = 208 [json_name = "sessionIgnoreTrayItem"];</code>
+     */
+    public Builder setSessionIgnoreTrayItem(
+        io.github.lewin671.remoteagent.core.proto.SessionTrayItemAction.Builder builderForValue) {
+      copyOnWrite();
+      instance.setSessionIgnoreTrayItem(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionTrayItemAction session_ignore_tray_item = 208 [json_name = "sessionIgnoreTrayItem"];</code>
+     */
+    public Builder mergeSessionIgnoreTrayItem(io.github.lewin671.remoteagent.core.proto.SessionTrayItemAction value) {
+      copyOnWrite();
+      instance.mergeSessionIgnoreTrayItem(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionTrayItemAction session_ignore_tray_item = 208 [json_name = "sessionIgnoreTrayItem"];</code>
+     */
+    public Builder clearSessionIgnoreTrayItem() {
+      copyOnWrite();
+      instance.clearSessionIgnoreTrayItem();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.SessionTrayItemAction session_promote_tray_item = 209 [json_name = "sessionPromoteTrayItem"];</code>
+     */
+    @java.lang.Override
+    public boolean hasSessionPromoteTrayItem() {
+      return instance.hasSessionPromoteTrayItem();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionTrayItemAction session_promote_tray_item = 209 [json_name = "sessionPromoteTrayItem"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.SessionTrayItemAction getSessionPromoteTrayItem() {
+      return instance.getSessionPromoteTrayItem();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionTrayItemAction session_promote_tray_item = 209 [json_name = "sessionPromoteTrayItem"];</code>
+     */
+    public Builder setSessionPromoteTrayItem(io.github.lewin671.remoteagent.core.proto.SessionTrayItemAction value) {
+      copyOnWrite();
+      instance.setSessionPromoteTrayItem(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionTrayItemAction session_promote_tray_item = 209 [json_name = "sessionPromoteTrayItem"];</code>
+     */
+    public Builder setSessionPromoteTrayItem(
+        io.github.lewin671.remoteagent.core.proto.SessionTrayItemAction.Builder builderForValue) {
+      copyOnWrite();
+      instance.setSessionPromoteTrayItem(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionTrayItemAction session_promote_tray_item = 209 [json_name = "sessionPromoteTrayItem"];</code>
+     */
+    public Builder mergeSessionPromoteTrayItem(io.github.lewin671.remoteagent.core.proto.SessionTrayItemAction value) {
+      copyOnWrite();
+      instance.mergeSessionPromoteTrayItem(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionTrayItemAction session_promote_tray_item = 209 [json_name = "sessionPromoteTrayItem"];</code>
+     */
+    public Builder clearSessionPromoteTrayItem() {
+      copyOnWrite();
+      instance.clearSessionPromoteTrayItem();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.SessionTrayItemAction session_restore_tray_item = 210 [json_name = "sessionRestoreTrayItem"];</code>
+     */
+    @java.lang.Override
+    public boolean hasSessionRestoreTrayItem() {
+      return instance.hasSessionRestoreTrayItem();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionTrayItemAction session_restore_tray_item = 210 [json_name = "sessionRestoreTrayItem"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.SessionTrayItemAction getSessionRestoreTrayItem() {
+      return instance.getSessionRestoreTrayItem();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionTrayItemAction session_restore_tray_item = 210 [json_name = "sessionRestoreTrayItem"];</code>
+     */
+    public Builder setSessionRestoreTrayItem(io.github.lewin671.remoteagent.core.proto.SessionTrayItemAction value) {
+      copyOnWrite();
+      instance.setSessionRestoreTrayItem(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionTrayItemAction session_restore_tray_item = 210 [json_name = "sessionRestoreTrayItem"];</code>
+     */
+    public Builder setSessionRestoreTrayItem(
+        io.github.lewin671.remoteagent.core.proto.SessionTrayItemAction.Builder builderForValue) {
+      copyOnWrite();
+      instance.setSessionRestoreTrayItem(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionTrayItemAction session_restore_tray_item = 210 [json_name = "sessionRestoreTrayItem"];</code>
+     */
+    public Builder mergeSessionRestoreTrayItem(io.github.lewin671.remoteagent.core.proto.SessionTrayItemAction value) {
+      copyOnWrite();
+      instance.mergeSessionRestoreTrayItem(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionTrayItemAction session_restore_tray_item = 210 [json_name = "sessionRestoreTrayItem"];</code>
+     */
+    public Builder clearSessionRestoreTrayItem() {
+      copyOnWrite();
+      instance.clearSessionRestoreTrayItem();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.SessionTrayItemAction session_retry_tray_item = 211 [json_name = "sessionRetryTrayItem"];</code>
+     */
+    @java.lang.Override
+    public boolean hasSessionRetryTrayItem() {
+      return instance.hasSessionRetryTrayItem();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionTrayItemAction session_retry_tray_item = 211 [json_name = "sessionRetryTrayItem"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.SessionTrayItemAction getSessionRetryTrayItem() {
+      return instance.getSessionRetryTrayItem();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionTrayItemAction session_retry_tray_item = 211 [json_name = "sessionRetryTrayItem"];</code>
+     */
+    public Builder setSessionRetryTrayItem(io.github.lewin671.remoteagent.core.proto.SessionTrayItemAction value) {
+      copyOnWrite();
+      instance.setSessionRetryTrayItem(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionTrayItemAction session_retry_tray_item = 211 [json_name = "sessionRetryTrayItem"];</code>
+     */
+    public Builder setSessionRetryTrayItem(
+        io.github.lewin671.remoteagent.core.proto.SessionTrayItemAction.Builder builderForValue) {
+      copyOnWrite();
+      instance.setSessionRetryTrayItem(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionTrayItemAction session_retry_tray_item = 211 [json_name = "sessionRetryTrayItem"];</code>
+     */
+    public Builder mergeSessionRetryTrayItem(io.github.lewin671.remoteagent.core.proto.SessionTrayItemAction value) {
+      copyOnWrite();
+      instance.mergeSessionRetryTrayItem(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionTrayItemAction session_retry_tray_item = 211 [json_name = "sessionRetryTrayItem"];</code>
+     */
+    public Builder clearSessionRetryTrayItem() {
+      copyOnWrite();
+      instance.clearSessionRetryTrayItem();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.SessionTrayItemAction session_resume_tray_item = 212 [json_name = "sessionResumeTrayItem"];</code>
+     */
+    @java.lang.Override
+    public boolean hasSessionResumeTrayItem() {
+      return instance.hasSessionResumeTrayItem();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionTrayItemAction session_resume_tray_item = 212 [json_name = "sessionResumeTrayItem"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.SessionTrayItemAction getSessionResumeTrayItem() {
+      return instance.getSessionResumeTrayItem();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionTrayItemAction session_resume_tray_item = 212 [json_name = "sessionResumeTrayItem"];</code>
+     */
+    public Builder setSessionResumeTrayItem(io.github.lewin671.remoteagent.core.proto.SessionTrayItemAction value) {
+      copyOnWrite();
+      instance.setSessionResumeTrayItem(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionTrayItemAction session_resume_tray_item = 212 [json_name = "sessionResumeTrayItem"];</code>
+     */
+    public Builder setSessionResumeTrayItem(
+        io.github.lewin671.remoteagent.core.proto.SessionTrayItemAction.Builder builderForValue) {
+      copyOnWrite();
+      instance.setSessionResumeTrayItem(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionTrayItemAction session_resume_tray_item = 212 [json_name = "sessionResumeTrayItem"];</code>
+     */
+    public Builder mergeSessionResumeTrayItem(io.github.lewin671.remoteagent.core.proto.SessionTrayItemAction value) {
+      copyOnWrite();
+      instance.mergeSessionResumeTrayItem(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionTrayItemAction session_resume_tray_item = 212 [json_name = "sessionResumeTrayItem"];</code>
+     */
+    public Builder clearSessionResumeTrayItem() {
+      copyOnWrite();
+      instance.clearSessionResumeTrayItem();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.SessionTraySessionAction session_cancel_all_paused = 213 [json_name = "sessionCancelAllPaused"];</code>
+     */
+    @java.lang.Override
+    public boolean hasSessionCancelAllPaused() {
+      return instance.hasSessionCancelAllPaused();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionTraySessionAction session_cancel_all_paused = 213 [json_name = "sessionCancelAllPaused"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.SessionTraySessionAction getSessionCancelAllPaused() {
+      return instance.getSessionCancelAllPaused();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionTraySessionAction session_cancel_all_paused = 213 [json_name = "sessionCancelAllPaused"];</code>
+     */
+    public Builder setSessionCancelAllPaused(io.github.lewin671.remoteagent.core.proto.SessionTraySessionAction value) {
+      copyOnWrite();
+      instance.setSessionCancelAllPaused(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionTraySessionAction session_cancel_all_paused = 213 [json_name = "sessionCancelAllPaused"];</code>
+     */
+    public Builder setSessionCancelAllPaused(
+        io.github.lewin671.remoteagent.core.proto.SessionTraySessionAction.Builder builderForValue) {
+      copyOnWrite();
+      instance.setSessionCancelAllPaused(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionTraySessionAction session_cancel_all_paused = 213 [json_name = "sessionCancelAllPaused"];</code>
+     */
+    public Builder mergeSessionCancelAllPaused(io.github.lewin671.remoteagent.core.proto.SessionTraySessionAction value) {
+      copyOnWrite();
+      instance.mergeSessionCancelAllPaused(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionTraySessionAction session_cancel_all_paused = 213 [json_name = "sessionCancelAllPaused"];</code>
+     */
+    public Builder clearSessionCancelAllPaused() {
+      copyOnWrite();
+      instance.clearSessionCancelAllPaused();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.SessionTraySessionAction session_undo_cancel = 214 [json_name = "sessionUndoCancel"];</code>
+     */
+    @java.lang.Override
+    public boolean hasSessionUndoCancel() {
+      return instance.hasSessionUndoCancel();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionTraySessionAction session_undo_cancel = 214 [json_name = "sessionUndoCancel"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.SessionTraySessionAction getSessionUndoCancel() {
+      return instance.getSessionUndoCancel();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionTraySessionAction session_undo_cancel = 214 [json_name = "sessionUndoCancel"];</code>
+     */
+    public Builder setSessionUndoCancel(io.github.lewin671.remoteagent.core.proto.SessionTraySessionAction value) {
+      copyOnWrite();
+      instance.setSessionUndoCancel(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionTraySessionAction session_undo_cancel = 214 [json_name = "sessionUndoCancel"];</code>
+     */
+    public Builder setSessionUndoCancel(
+        io.github.lewin671.remoteagent.core.proto.SessionTraySessionAction.Builder builderForValue) {
+      copyOnWrite();
+      instance.setSessionUndoCancel(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionTraySessionAction session_undo_cancel = 214 [json_name = "sessionUndoCancel"];</code>
+     */
+    public Builder mergeSessionUndoCancel(io.github.lewin671.remoteagent.core.proto.SessionTraySessionAction value) {
+      copyOnWrite();
+      instance.mergeSessionUndoCancel(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionTraySessionAction session_undo_cancel = 214 [json_name = "sessionUndoCancel"];</code>
+     */
+    public Builder clearSessionUndoCancel() {
+      copyOnWrite();
+      instance.clearSessionUndoCancel();
       return this;
     }
 
@@ -12610,10 +13222,16 @@ public  final class Event extends
             io.github.lewin671.remoteagent.core.proto.SessionSubmitCommandAction.class,
             io.github.lewin671.remoteagent.core.proto.SessionSlotAction.class,
             io.github.lewin671.remoteagent.core.proto.SessionOpenAction.class,
-            io.github.lewin671.remoteagent.core.proto.SessionOutgoingAction.class,
-            io.github.lewin671.remoteagent.core.proto.SessionOutgoingAction.class,
             io.github.lewin671.remoteagent.core.proto.SessionQuestionStepAction.class,
             io.github.lewin671.remoteagent.core.proto.SessionRefreshHistoryAction.class,
+            io.github.lewin671.remoteagent.core.proto.SessionTrayItemAction.class,
+            io.github.lewin671.remoteagent.core.proto.SessionTrayItemAction.class,
+            io.github.lewin671.remoteagent.core.proto.SessionTrayItemAction.class,
+            io.github.lewin671.remoteagent.core.proto.SessionTrayItemAction.class,
+            io.github.lewin671.remoteagent.core.proto.SessionTrayItemAction.class,
+            io.github.lewin671.remoteagent.core.proto.SessionTrayItemAction.class,
+            io.github.lewin671.remoteagent.core.proto.SessionTraySessionAction.class,
+            io.github.lewin671.remoteagent.core.proto.SessionTraySessionAction.class,
             io.github.lewin671.remoteagent.core.proto.ScheduleCacheLoadedEvent.class,
             io.github.lewin671.remoteagent.core.proto.ScheduleSeenLoadedEvent.class,
             io.github.lewin671.remoteagent.core.proto.ScheduleLocalContextEvent.class,
@@ -12676,24 +13294,25 @@ public  final class Event extends
             io.github.lewin671.remoteagent.core.proto.UsageScreenScrubEvent.class,
           };
           java.lang.String info =
-              "\u0000y\u0001\u0000\u0001\u0181y\u0000\u0002\u0000\u0001<\u0000\u0002<\u0000\u0003" +
+              "\u0000\u0001\u0000\u0001\u0181\u0000\u0002\u0000\u0001<\u0000\u0002<\u0000\u0003" +
               "<\u0000\u0004<\u0000\u0005<\u0000\u0006<\u0000\u0007<\u0000\b<\u0000\t<\u0000\n<" +
               "\u0000\u000b<\u0000\f<\u0000\r<\u0000\u000e<\u0000\u000f<\u0000\u0010<\u0000\u0011" +
               "<\u0000\u0012<\u0000\u0013<\u0000\u0014<\u0000\u0015<\u0000\u0016<\u0000\u0017<\u0000" +
               "\u0018<\u0000\u0019<\u0000\u001a<\u0000\u001b<\u0000\u001e<\u0000\u001f<\u0000 <" +
               "\u0000!<\u0000\"<\u0000(<\u0000)<\u0000*<\u0000+<\u0000,<\u0000-<\u0000.<\u0000/" +
               "<\u00002<\u00003<\u00004<\u00005<\u00006<\u00007<\u00008<\u00009<\u0000:<\u0000;" +
-              "<\u0000b\u0002c\u0002d\u021ae#\u00c8<\u0000\u00c9<\u0000\u00ca<\u0000\u00cb<\u0000" +
-              "\u00cc<\u0000\u00cd<\u0000\u00ce<\u0000\u012c<\u0000\u012d<\u0000\u012e<\u0000\u012f" +
-              "<\u0000\u0130<\u0000\u0136<\u0000\u0137<\u0000\u0138<\u0000\u0139<\u0000\u013a<\u0000" +
-              "\u0140<\u0000\u0141<\u0000\u0142<\u0000\u0143<\u0000\u0144<\u0000\u0145<\u0000\u0146" +
-              "<\u0000\u014a<\u0000\u014b<\u0000\u014c<\u0000\u014d<\u0000\u014e<\u0000\u014f<\u0000" +
-              "\u0152<\u0000\u0153<\u0000\u0154<\u0000\u0155<\u0000\u0156<\u0000\u0157<\u0000\u0158" +
-              "<\u0000\u0159<\u0000\u015a<\u0000\u015b<\u0000\u015c<\u0000\u015d<\u0000\u015e<\u0000" +
-              "\u015f<\u0000\u0160<\u0000\u0161<\u0000\u0162<\u0000\u0163<\u0000\u0168<\u0000\u0169" +
-              "<\u0000\u016a<\u0000\u016b<\u0000\u016c<\u0000\u016d<\u0000\u016e<\u0000\u0172<\u0000" +
-              "\u0177<\u0000\u0178<\u0000\u0179<\u0000\u017a<\u0000\u017b<\u0000\u017c<\u0000\u017d" +
-              "<\u0000\u017e<\u0000\u017f<\u0000\u0180<\u0000\u0181<\u0000";
+              "<\u0000b\u0002c\u0002d\u021ae#\u00c8<\u0000\u00c9<\u0000\u00ca<\u0000\u00cd<\u0000" +
+              "\u00ce<\u0000\u00cf<\u0000\u00d0<\u0000\u00d1<\u0000\u00d2<\u0000\u00d3<\u0000\u00d4" +
+              "<\u0000\u00d5<\u0000\u00d6<\u0000\u012c<\u0000\u012d<\u0000\u012e<\u0000\u012f<\u0000" +
+              "\u0130<\u0000\u0136<\u0000\u0137<\u0000\u0138<\u0000\u0139<\u0000\u013a<\u0000\u0140" +
+              "<\u0000\u0141<\u0000\u0142<\u0000\u0143<\u0000\u0144<\u0000\u0145<\u0000\u0146<\u0000" +
+              "\u014a<\u0000\u014b<\u0000\u014c<\u0000\u014d<\u0000\u014e<\u0000\u014f<\u0000\u0152" +
+              "<\u0000\u0153<\u0000\u0154<\u0000\u0155<\u0000\u0156<\u0000\u0157<\u0000\u0158<\u0000" +
+              "\u0159<\u0000\u015a<\u0000\u015b<\u0000\u015c<\u0000\u015d<\u0000\u015e<\u0000\u015f" +
+              "<\u0000\u0160<\u0000\u0161<\u0000\u0162<\u0000\u0163<\u0000\u0168<\u0000\u0169<\u0000" +
+              "\u016a<\u0000\u016b<\u0000\u016c<\u0000\u016d<\u0000\u016e<\u0000\u0172<\u0000\u0177" +
+              "<\u0000\u0178<\u0000\u0179<\u0000\u017a<\u0000\u017b<\u0000\u017c<\u0000\u017d<\u0000" +
+              "\u017e<\u0000\u017f<\u0000\u0180<\u0000\u0181<\u0000";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

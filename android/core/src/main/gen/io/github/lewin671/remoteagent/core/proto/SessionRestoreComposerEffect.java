@@ -7,7 +7,7 @@ package io.github.lewin671.remoteagent.core.proto;
 
 /**
  * <pre>
- * SessionRestoreComposerEffect instructs the shell to restore a failed/unknown message draft into the composer.
+ * SessionRestoreComposerEffect instructs the shell to restore a message draft into the composer.
  * </pre>
  *
  * Protobuf type {@code remoteagent.core.v1.SessionRestoreComposerEffect}
@@ -444,7 +444,7 @@ public  final class SessionRestoreComposerEffect extends
 
   /**
    * <pre>
-   * SessionRestoreComposerEffect instructs the shell to restore a failed/unknown message draft into the composer.
+   * SessionRestoreComposerEffect instructs the shell to restore a message draft into the composer.
    * </pre>
    *
    * Protobuf type {@code remoteagent.core.v1.SessionRestoreComposerEffect}

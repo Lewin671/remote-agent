@@ -16,20 +16,6 @@
     }
   },
   {
-    "key": "image.android_bubble",
-    "zh-CN": "（图片）",
-    "en": "(Image)",
-    "notes": "Android 批次 B：Session.kt 的现有显示文案，保留原中文措辞与标点。无变量。短标签保持紧凑；说明正文可多行。英文初稿待审。",
-    "params": {},
-    "platforms": [
-      "android"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
     "key": "image.android_cannot_decode_image",
     "zh-CN": "解不出图片",
     "en": "Cannot decode image",
@@ -1631,20 +1617,6 @@
         "example": "Example"
       }
     },
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "image.ios_placeholder",
-    "zh-CN": "（图片）",
-    "en": "（Image）",
-    "notes": "ChatPane.swift。 iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 无变量。",
-    "params": {},
     "platforms": [
       "ios"
     ],

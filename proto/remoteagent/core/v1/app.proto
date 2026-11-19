@@ -139,6 +139,8 @@ enum TimerKind {
   TIMER_KIND_HISTORY_SWEEP = 7;
   TIMER_KIND_LIVE_POLL = 8;
   TIMER_KIND_COMMAND_RETRY = 9;
+  TIMER_KIND_SESSION_UNDO = 10;
+  TIMER_KIND_SESSION_STEER_GRACE = 11;
 }
 
 message TimerFiredEvent {
@@ -565,10 +567,16 @@ message Event {
     SessionSubmitCommandAction session_submit_command = 200;
     SessionSlotAction session_abandon_command = 201;
     SessionOpenAction session_open = 202;
-    SessionOutgoingAction session_dismiss_outgoing = 203;
-    SessionOutgoingAction session_restore_outgoing = 204;
     SessionQuestionStepAction session_set_question_index = 205;
     SessionRefreshHistoryAction session_load_earlier = 206;
+    SessionTrayItemAction session_cancel_tray_item = 207;
+    SessionTrayItemAction session_ignore_tray_item = 208;
+    SessionTrayItemAction session_promote_tray_item = 209;
+    SessionTrayItemAction session_restore_tray_item = 210;
+    SessionTrayItemAction session_retry_tray_item = 211;
+    SessionTrayItemAction session_resume_tray_item = 212;
+    SessionTraySessionAction session_cancel_all_paused = 213;
+    SessionTraySessionAction session_undo_cancel = 214;
     ScheduleCacheLoadedEvent schedule_cache_loaded = 300;
     ScheduleSeenLoadedEvent schedule_seen_loaded = 301;
     ScheduleLocalContextEvent schedule_local_context = 302;
@@ -852,6 +860,7 @@ message Effect {
     PrepareCleanupSessionEffect prepare_cleanup_session = 75;
     UsageCacheWriteEffect usage_cache_write = 76;
     SessionRestoreComposerEffect session_restore_composer = 40;
+    SessionResendAttachmentsEffect session_resend_attachments = 41;
     ScheduleReadCacheEffect schedule_read_cache = 60;
     ScheduleDeleteCacheEffect schedule_delete_cache = 61;
     ScheduleLoadSeenEffect schedule_load_seen = 62;

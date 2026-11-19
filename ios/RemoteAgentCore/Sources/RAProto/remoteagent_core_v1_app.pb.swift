@@ -87,6 +87,8 @@ public enum PBCoreTimerKind: SwiftProtobuf.Enum, Swift.CaseIterable {
   case historySweep // = 7
   case livePoll // = 8
   case commandRetry // = 9
+  case sessionUndo // = 10
+  case sessionSteerGrace // = 11
   case UNRECOGNIZED(Int)
 
   public init() {
@@ -105,6 +107,8 @@ public enum PBCoreTimerKind: SwiftProtobuf.Enum, Swift.CaseIterable {
     case 7: self = .historySweep
     case 8: self = .livePoll
     case 9: self = .commandRetry
+    case 10: self = .sessionUndo
+    case 11: self = .sessionSteerGrace
     default: self = .UNRECOGNIZED(rawValue)
     }
   }
@@ -121,6 +125,8 @@ public enum PBCoreTimerKind: SwiftProtobuf.Enum, Swift.CaseIterable {
     case .historySweep: return 7
     case .livePoll: return 8
     case .commandRetry: return 9
+    case .sessionUndo: return 10
+    case .sessionSteerGrace: return 11
     case .UNRECOGNIZED(let i): return i
     }
   }
@@ -137,6 +143,8 @@ public enum PBCoreTimerKind: SwiftProtobuf.Enum, Swift.CaseIterable {
     .historySweep,
     .livePoll,
     .commandRetry,
+    .sessionUndo,
+    .sessionSteerGrace,
   ]
 
 }
@@ -2645,22 +2653,6 @@ public struct PBCoreEvent: @unchecked Sendable {
     set {_uniqueStorage()._event = .sessionOpen(newValue)}
   }
 
-  public var sessionDismissOutgoing: PBSessionOutgoingAction {
-    get {
-      if case .sessionDismissOutgoing(let v)? = _storage._event {return v}
-      return PBSessionOutgoingAction()
-    }
-    set {_uniqueStorage()._event = .sessionDismissOutgoing(newValue)}
-  }
-
-  public var sessionRestoreOutgoing: PBSessionOutgoingAction {
-    get {
-      if case .sessionRestoreOutgoing(let v)? = _storage._event {return v}
-      return PBSessionOutgoingAction()
-    }
-    set {_uniqueStorage()._event = .sessionRestoreOutgoing(newValue)}
-  }
-
   public var sessionSetQuestionIndex: PBSessionQuestionStepAction {
     get {
       if case .sessionSetQuestionIndex(let v)? = _storage._event {return v}
@@ -2675,6 +2667,70 @@ public struct PBCoreEvent: @unchecked Sendable {
       return PBSessionRefreshHistoryAction()
     }
     set {_uniqueStorage()._event = .sessionLoadEarlier(newValue)}
+  }
+
+  public var sessionCancelTrayItem: PBSessionTrayItemAction {
+    get {
+      if case .sessionCancelTrayItem(let v)? = _storage._event {return v}
+      return PBSessionTrayItemAction()
+    }
+    set {_uniqueStorage()._event = .sessionCancelTrayItem(newValue)}
+  }
+
+  public var sessionIgnoreTrayItem: PBSessionTrayItemAction {
+    get {
+      if case .sessionIgnoreTrayItem(let v)? = _storage._event {return v}
+      return PBSessionTrayItemAction()
+    }
+    set {_uniqueStorage()._event = .sessionIgnoreTrayItem(newValue)}
+  }
+
+  public var sessionPromoteTrayItem: PBSessionTrayItemAction {
+    get {
+      if case .sessionPromoteTrayItem(let v)? = _storage._event {return v}
+      return PBSessionTrayItemAction()
+    }
+    set {_uniqueStorage()._event = .sessionPromoteTrayItem(newValue)}
+  }
+
+  public var sessionRestoreTrayItem: PBSessionTrayItemAction {
+    get {
+      if case .sessionRestoreTrayItem(let v)? = _storage._event {return v}
+      return PBSessionTrayItemAction()
+    }
+    set {_uniqueStorage()._event = .sessionRestoreTrayItem(newValue)}
+  }
+
+  public var sessionRetryTrayItem: PBSessionTrayItemAction {
+    get {
+      if case .sessionRetryTrayItem(let v)? = _storage._event {return v}
+      return PBSessionTrayItemAction()
+    }
+    set {_uniqueStorage()._event = .sessionRetryTrayItem(newValue)}
+  }
+
+  public var sessionResumeTrayItem: PBSessionTrayItemAction {
+    get {
+      if case .sessionResumeTrayItem(let v)? = _storage._event {return v}
+      return PBSessionTrayItemAction()
+    }
+    set {_uniqueStorage()._event = .sessionResumeTrayItem(newValue)}
+  }
+
+  public var sessionCancelAllPaused: PBSessionTraySessionAction {
+    get {
+      if case .sessionCancelAllPaused(let v)? = _storage._event {return v}
+      return PBSessionTraySessionAction()
+    }
+    set {_uniqueStorage()._event = .sessionCancelAllPaused(newValue)}
+  }
+
+  public var sessionUndoCancel: PBSessionTraySessionAction {
+    get {
+      if case .sessionUndoCancel(let v)? = _storage._event {return v}
+      return PBSessionTraySessionAction()
+    }
+    set {_uniqueStorage()._event = .sessionUndoCancel(newValue)}
   }
 
   public var scheduleCacheLoaded: PBScheduleCacheLoadedEvent {
@@ -3058,10 +3114,16 @@ public struct PBCoreEvent: @unchecked Sendable {
     case sessionSubmitCommand(PBSessionSubmitCommandAction)
     case sessionAbandonCommand(PBSessionSlotAction)
     case sessionOpen(PBSessionOpenAction)
-    case sessionDismissOutgoing(PBSessionOutgoingAction)
-    case sessionRestoreOutgoing(PBSessionOutgoingAction)
     case sessionSetQuestionIndex(PBSessionQuestionStepAction)
     case sessionLoadEarlier(PBSessionRefreshHistoryAction)
+    case sessionCancelTrayItem(PBSessionTrayItemAction)
+    case sessionIgnoreTrayItem(PBSessionTrayItemAction)
+    case sessionPromoteTrayItem(PBSessionTrayItemAction)
+    case sessionRestoreTrayItem(PBSessionTrayItemAction)
+    case sessionRetryTrayItem(PBSessionTrayItemAction)
+    case sessionResumeTrayItem(PBSessionTrayItemAction)
+    case sessionCancelAllPaused(PBSessionTraySessionAction)
+    case sessionUndoCancel(PBSessionTraySessionAction)
     case scheduleCacheLoaded(PBScheduleCacheLoadedEvent)
     case scheduleSeenLoaded(PBScheduleSeenLoadedEvent)
     case scheduleLocalContext(PBScheduleLocalContextEvent)
@@ -3935,6 +3997,14 @@ public struct PBCoreEffect: Sendable {
     set {effect = .sessionRestoreComposer(newValue)}
   }
 
+  public var sessionResendAttachments: PBSessionResendAttachmentsEffect {
+    get {
+      if case .sessionResendAttachments(let v)? = effect {return v}
+      return PBSessionResendAttachmentsEffect()
+    }
+    set {effect = .sessionResendAttachments(newValue)}
+  }
+
   public var scheduleReadCache: PBScheduleReadCacheEffect {
     get {
       if case .scheduleReadCache(let v)? = effect {return v}
@@ -4011,6 +4081,7 @@ public struct PBCoreEffect: Sendable {
     case prepareCleanupSession(PBPrepareCleanupSessionEffect)
     case usageCacheWrite(PBCoreUsageCacheWriteEffect)
     case sessionRestoreComposer(PBSessionRestoreComposerEffect)
+    case sessionResendAttachments(PBSessionResendAttachmentsEffect)
     case scheduleReadCache(PBScheduleReadCacheEffect)
     case scheduleDeleteCache(PBScheduleDeleteCacheEffect)
     case scheduleLoadSeen(PBScheduleLoadSeenEffect)
@@ -4044,7 +4115,7 @@ extension PBCoreSyncLifecycleKind: SwiftProtobuf._ProtoNameProviding {
 }
 
 extension PBCoreTimerKind: SwiftProtobuf._ProtoNameProviding {
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0TIMER_KIND_UNSPECIFIED\0\u{1}TIMER_KIND_RECONNECT\0\u{1}TIMER_KIND_STREAM_OPEN\0\u{1}TIMER_KIND_LIVENESS\0\u{1}TIMER_KIND_LINK_GRACE\0\u{1}TIMER_KIND_LIST_RETRY\0\u{1}TIMER_KIND_PREFS_RETRY\0\u{1}TIMER_KIND_HISTORY_SWEEP\0\u{1}TIMER_KIND_LIVE_POLL\0\u{1}TIMER_KIND_COMMAND_RETRY\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0TIMER_KIND_UNSPECIFIED\0\u{1}TIMER_KIND_RECONNECT\0\u{1}TIMER_KIND_STREAM_OPEN\0\u{1}TIMER_KIND_LIVENESS\0\u{1}TIMER_KIND_LINK_GRACE\0\u{1}TIMER_KIND_LIST_RETRY\0\u{1}TIMER_KIND_PREFS_RETRY\0\u{1}TIMER_KIND_HISTORY_SWEEP\0\u{1}TIMER_KIND_LIVE_POLL\0\u{1}TIMER_KIND_COMMAND_RETRY\0\u{1}TIMER_KIND_SESSION_UNDO\0\u{1}TIMER_KIND_SESSION_STEER_GRACE\0")
 }
 
 extension PBCoreOutcomeSource: SwiftProtobuf._ProtoNameProviding {
@@ -7468,7 +7539,7 @@ extension PBCoreNewSessionSubmitAction: SwiftProtobuf.Message, SwiftProtobuf._Me
 
 extension PBCoreEvent: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".Event"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}clock_updated\0\u{3}entropy_provided\0\u{3}sync_lifecycle\0\u{3}network_changed\0\u{3}timer_fired\0\u{3}cache_bootstrap_loaded\0\u{3}cache_events_loaded\0\u{3}token_result\0\u{3}security_snapshot\0\u{3}stream_ready\0\u{3}stream_closed\0\u{3}stream_frame\0\u{3}lists_fetched\0\u{3}sessions_page_fetched\0\u{3}session_by_id_fetched\0\u{3}events_page_fetched\0\u{3}account_prefs_fetched\0\u{3}account_prefs_put_result\0\u{3}devices_fetched\0\u{3}command_outcome\0\u{3}session_watch\0\u{3}session_pin\0\u{3}retry_session_events\0\u{3}fetch_session\0\u{3}machine_route_status\0\u{3}session_schedule_hints\0\u{3}direct_events_received\0\u{4}\u{3}home_set_scope\0\u{3}home_set_filter\0\u{3}home_load_more_ended\0\u{3}home_retry_load\0\u{3}home_select_session\0\u{4}\u{6}project_set_search\0\u{3}project_toggle_pin\0\u{3}project_toggle_hide\0\u{3}project_add\0\u{3}project_load_more_ended\0\u{3}project_open_dir_picker\0\u{3}project_dir_navigate\0\u{3}project_close_dir_picker\0\u{4}\u{3}new_session_open\0\u{3}new_session_select_project\0\u{3}new_session_select_machine\0\u{3}new_session_select_agent\0\u{3}new_session_select_model\0\u{3}new_session_set_prompt\0\u{3}new_session_retry_models\0\u{3}new_session_retry_save_config\0\u{3}new_session_submit\0\u{3}new_session_abandon_start\0\u{4}'now_ms\0\u{3}mono_ms\0\u{3}random_ids\0\u{3}unit_floats\0\u{4}c\u{1}session_submit_command\0\u{3}session_abandon_command\0\u{3}session_open\0\u{3}session_dismiss_outgoing\0\u{3}session_restore_outgoing\0\u{3}session_set_question_index\0\u{3}session_load_earlier\0\u{4}^\u{1}schedule_cache_loaded\0\u{3}schedule_seen_loaded\0\u{3}schedule_local_context\0\u{3}schedule_refresh\0\u{3}schedule_set_visible_session\0\u{4}\u{6}schedule_list_open\0\u{3}schedule_select_task\0\u{3}schedule_toggle_ended\0\u{3}schedule_mark_read\0\u{3}schedule_mark_unread\0\u{4}\u{6}schedule_detail_open\0\u{3}schedule_detail_hide\0\u{3}schedule_detail_close\0\u{3}schedule_detail_show_latest_result\0\u{3}schedule_detail_toggle_quiet_group\0\u{3}schedule_detail_show_all_runs\0\u{3}schedule_detail_open_run\0\u{4}\u{4}schedule_operate\0\u{3}schedule_rename\0\u{3}schedule_set_notify\0\u{3}schedule_update_message\0\u{3}schedule_abandon_mutation\0\u{3}schedule_retry_mutation\0\u{4}\u{3}schedule_form_open\0\u{3}schedule_form_close\0\u{3}schedule_form_set_message\0\u{3}schedule_form_set_title\0\u{3}schedule_form_set_notify\0\u{3}schedule_form_select_project\0\u{3}schedule_form_select_machine\0\u{3}schedule_form_select_agent\0\u{3}schedule_form_select_model\0\u{3}schedule_form_update_timing\0\u{3}schedule_form_submit\0\u{3}schedule_form_retry_models\0\u{3}machine_status_watch\0\u{3}machine_status_retry\0\u{3}machine_status_tab\0\u{3}machine_status_scrub\0\u{3}machine_status_cleanup\0\u{3}machine_status_poll_tick\0\u{4}\u{5}machine_settings_open\0\u{3}machine_settings_select_agent\0\u{3}update_machine_agent_defaults\0\u{3}update_machine_daemon_settings\0\u{3}update_direct_preference\0\u{3}machine_direct_status\0\u{3}toggle_machine_agent\0\u{4}\u{4}update_client_name\0\u{4}\u{5}set_notification_pref\0\u{3}set_appearance_pref\0\u{3}conn_check_status\0\u{3}client_update_state\0\u{3}check_for_updates\0\u{3}usage_screen_open\0\u{3}usage_screen_retry\0\u{3}usage_cache_loaded\0\u{3}usage_screen_select_sort\0\u{3}usage_screen_select_series\0\u{3}usage_screen_scrub\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}clock_updated\0\u{3}entropy_provided\0\u{3}sync_lifecycle\0\u{3}network_changed\0\u{3}timer_fired\0\u{3}cache_bootstrap_loaded\0\u{3}cache_events_loaded\0\u{3}token_result\0\u{3}security_snapshot\0\u{3}stream_ready\0\u{3}stream_closed\0\u{3}stream_frame\0\u{3}lists_fetched\0\u{3}sessions_page_fetched\0\u{3}session_by_id_fetched\0\u{3}events_page_fetched\0\u{3}account_prefs_fetched\0\u{3}account_prefs_put_result\0\u{3}devices_fetched\0\u{3}command_outcome\0\u{3}session_watch\0\u{3}session_pin\0\u{3}retry_session_events\0\u{3}fetch_session\0\u{3}machine_route_status\0\u{3}session_schedule_hints\0\u{3}direct_events_received\0\u{4}\u{3}home_set_scope\0\u{3}home_set_filter\0\u{3}home_load_more_ended\0\u{3}home_retry_load\0\u{3}home_select_session\0\u{4}\u{6}project_set_search\0\u{3}project_toggle_pin\0\u{3}project_toggle_hide\0\u{3}project_add\0\u{3}project_load_more_ended\0\u{3}project_open_dir_picker\0\u{3}project_dir_navigate\0\u{3}project_close_dir_picker\0\u{4}\u{3}new_session_open\0\u{3}new_session_select_project\0\u{3}new_session_select_machine\0\u{3}new_session_select_agent\0\u{3}new_session_select_model\0\u{3}new_session_set_prompt\0\u{3}new_session_retry_models\0\u{3}new_session_retry_save_config\0\u{3}new_session_submit\0\u{3}new_session_abandon_start\0\u{4}'now_ms\0\u{3}mono_ms\0\u{3}random_ids\0\u{3}unit_floats\0\u{4}c\u{1}session_submit_command\0\u{3}session_abandon_command\0\u{3}session_open\0\u{4}\u{3}session_set_question_index\0\u{3}session_load_earlier\0\u{3}session_cancel_tray_item\0\u{3}session_ignore_tray_item\0\u{3}session_promote_tray_item\0\u{3}session_restore_tray_item\0\u{3}session_retry_tray_item\0\u{3}session_resume_tray_item\0\u{3}session_cancel_all_paused\0\u{3}session_undo_cancel\0\u{4}V\u{1}schedule_cache_loaded\0\u{3}schedule_seen_loaded\0\u{3}schedule_local_context\0\u{3}schedule_refresh\0\u{3}schedule_set_visible_session\0\u{4}\u{6}schedule_list_open\0\u{3}schedule_select_task\0\u{3}schedule_toggle_ended\0\u{3}schedule_mark_read\0\u{3}schedule_mark_unread\0\u{4}\u{6}schedule_detail_open\0\u{3}schedule_detail_hide\0\u{3}schedule_detail_close\0\u{3}schedule_detail_show_latest_result\0\u{3}schedule_detail_toggle_quiet_group\0\u{3}schedule_detail_show_all_runs\0\u{3}schedule_detail_open_run\0\u{4}\u{4}schedule_operate\0\u{3}schedule_rename\0\u{3}schedule_set_notify\0\u{3}schedule_update_message\0\u{3}schedule_abandon_mutation\0\u{3}schedule_retry_mutation\0\u{4}\u{3}schedule_form_open\0\u{3}schedule_form_close\0\u{3}schedule_form_set_message\0\u{3}schedule_form_set_title\0\u{3}schedule_form_set_notify\0\u{3}schedule_form_select_project\0\u{3}schedule_form_select_machine\0\u{3}schedule_form_select_agent\0\u{3}schedule_form_select_model\0\u{3}schedule_form_update_timing\0\u{3}schedule_form_submit\0\u{3}schedule_form_retry_models\0\u{3}machine_status_watch\0\u{3}machine_status_retry\0\u{3}machine_status_tab\0\u{3}machine_status_scrub\0\u{3}machine_status_cleanup\0\u{3}machine_status_poll_tick\0\u{4}\u{5}machine_settings_open\0\u{3}machine_settings_select_agent\0\u{3}update_machine_agent_defaults\0\u{3}update_machine_daemon_settings\0\u{3}update_direct_preference\0\u{3}machine_direct_status\0\u{3}toggle_machine_agent\0\u{4}\u{4}update_client_name\0\u{4}\u{5}set_notification_pref\0\u{3}set_appearance_pref\0\u{3}conn_check_status\0\u{3}client_update_state\0\u{3}check_for_updates\0\u{3}usage_screen_open\0\u{3}usage_screen_retry\0\u{3}usage_cache_loaded\0\u{3}usage_screen_select_sort\0\u{3}usage_screen_select_series\0\u{3}usage_screen_scrub\0")
 
   fileprivate class _StorageClass {
     var _event: PBCoreEvent.OneOf_Event?
@@ -8202,32 +8273,6 @@ extension PBCoreEvent: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementati
             _storage._event = .sessionOpen(v)
           }
         }()
-        case 203: try {
-          var v: PBSessionOutgoingAction?
-          var hadOneofValue = false
-          if let current = _storage._event {
-            hadOneofValue = true
-            if case .sessionDismissOutgoing(let m) = current {v = m}
-          }
-          try decoder.decodeSingularMessageField(value: &v)
-          if let v = v {
-            if hadOneofValue {try decoder.handleConflictingOneOf()}
-            _storage._event = .sessionDismissOutgoing(v)
-          }
-        }()
-        case 204: try {
-          var v: PBSessionOutgoingAction?
-          var hadOneofValue = false
-          if let current = _storage._event {
-            hadOneofValue = true
-            if case .sessionRestoreOutgoing(let m) = current {v = m}
-          }
-          try decoder.decodeSingularMessageField(value: &v)
-          if let v = v {
-            if hadOneofValue {try decoder.handleConflictingOneOf()}
-            _storage._event = .sessionRestoreOutgoing(v)
-          }
-        }()
         case 205: try {
           var v: PBSessionQuestionStepAction?
           var hadOneofValue = false
@@ -8252,6 +8297,110 @@ extension PBCoreEvent: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementati
           if let v = v {
             if hadOneofValue {try decoder.handleConflictingOneOf()}
             _storage._event = .sessionLoadEarlier(v)
+          }
+        }()
+        case 207: try {
+          var v: PBSessionTrayItemAction?
+          var hadOneofValue = false
+          if let current = _storage._event {
+            hadOneofValue = true
+            if case .sessionCancelTrayItem(let m) = current {v = m}
+          }
+          try decoder.decodeSingularMessageField(value: &v)
+          if let v = v {
+            if hadOneofValue {try decoder.handleConflictingOneOf()}
+            _storage._event = .sessionCancelTrayItem(v)
+          }
+        }()
+        case 208: try {
+          var v: PBSessionTrayItemAction?
+          var hadOneofValue = false
+          if let current = _storage._event {
+            hadOneofValue = true
+            if case .sessionIgnoreTrayItem(let m) = current {v = m}
+          }
+          try decoder.decodeSingularMessageField(value: &v)
+          if let v = v {
+            if hadOneofValue {try decoder.handleConflictingOneOf()}
+            _storage._event = .sessionIgnoreTrayItem(v)
+          }
+        }()
+        case 209: try {
+          var v: PBSessionTrayItemAction?
+          var hadOneofValue = false
+          if let current = _storage._event {
+            hadOneofValue = true
+            if case .sessionPromoteTrayItem(let m) = current {v = m}
+          }
+          try decoder.decodeSingularMessageField(value: &v)
+          if let v = v {
+            if hadOneofValue {try decoder.handleConflictingOneOf()}
+            _storage._event = .sessionPromoteTrayItem(v)
+          }
+        }()
+        case 210: try {
+          var v: PBSessionTrayItemAction?
+          var hadOneofValue = false
+          if let current = _storage._event {
+            hadOneofValue = true
+            if case .sessionRestoreTrayItem(let m) = current {v = m}
+          }
+          try decoder.decodeSingularMessageField(value: &v)
+          if let v = v {
+            if hadOneofValue {try decoder.handleConflictingOneOf()}
+            _storage._event = .sessionRestoreTrayItem(v)
+          }
+        }()
+        case 211: try {
+          var v: PBSessionTrayItemAction?
+          var hadOneofValue = false
+          if let current = _storage._event {
+            hadOneofValue = true
+            if case .sessionRetryTrayItem(let m) = current {v = m}
+          }
+          try decoder.decodeSingularMessageField(value: &v)
+          if let v = v {
+            if hadOneofValue {try decoder.handleConflictingOneOf()}
+            _storage._event = .sessionRetryTrayItem(v)
+          }
+        }()
+        case 212: try {
+          var v: PBSessionTrayItemAction?
+          var hadOneofValue = false
+          if let current = _storage._event {
+            hadOneofValue = true
+            if case .sessionResumeTrayItem(let m) = current {v = m}
+          }
+          try decoder.decodeSingularMessageField(value: &v)
+          if let v = v {
+            if hadOneofValue {try decoder.handleConflictingOneOf()}
+            _storage._event = .sessionResumeTrayItem(v)
+          }
+        }()
+        case 213: try {
+          var v: PBSessionTraySessionAction?
+          var hadOneofValue = false
+          if let current = _storage._event {
+            hadOneofValue = true
+            if case .sessionCancelAllPaused(let m) = current {v = m}
+          }
+          try decoder.decodeSingularMessageField(value: &v)
+          if let v = v {
+            if hadOneofValue {try decoder.handleConflictingOneOf()}
+            _storage._event = .sessionCancelAllPaused(v)
+          }
+        }()
+        case 214: try {
+          var v: PBSessionTraySessionAction?
+          var hadOneofValue = false
+          if let current = _storage._event {
+            hadOneofValue = true
+            if case .sessionUndoCancel(let m) = current {v = m}
+          }
+          try decoder.decodeSingularMessageField(value: &v)
+          if let v = v {
+            if hadOneofValue {try decoder.handleConflictingOneOf()}
+            _storage._event = .sessionUndoCancel(v)
           }
         }()
         case 300: try {
@@ -9274,14 +9423,6 @@ extension PBCoreEvent: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementati
         guard case .sessionOpen(let v)? = _storage._event else { preconditionFailure() }
         try visitor.visitSingularMessageField(value: v, fieldNumber: 202)
       }()
-      case .sessionDismissOutgoing?: try {
-        guard case .sessionDismissOutgoing(let v)? = _storage._event else { preconditionFailure() }
-        try visitor.visitSingularMessageField(value: v, fieldNumber: 203)
-      }()
-      case .sessionRestoreOutgoing?: try {
-        guard case .sessionRestoreOutgoing(let v)? = _storage._event else { preconditionFailure() }
-        try visitor.visitSingularMessageField(value: v, fieldNumber: 204)
-      }()
       case .sessionSetQuestionIndex?: try {
         guard case .sessionSetQuestionIndex(let v)? = _storage._event else { preconditionFailure() }
         try visitor.visitSingularMessageField(value: v, fieldNumber: 205)
@@ -9289,6 +9430,38 @@ extension PBCoreEvent: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementati
       case .sessionLoadEarlier?: try {
         guard case .sessionLoadEarlier(let v)? = _storage._event else { preconditionFailure() }
         try visitor.visitSingularMessageField(value: v, fieldNumber: 206)
+      }()
+      case .sessionCancelTrayItem?: try {
+        guard case .sessionCancelTrayItem(let v)? = _storage._event else { preconditionFailure() }
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 207)
+      }()
+      case .sessionIgnoreTrayItem?: try {
+        guard case .sessionIgnoreTrayItem(let v)? = _storage._event else { preconditionFailure() }
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 208)
+      }()
+      case .sessionPromoteTrayItem?: try {
+        guard case .sessionPromoteTrayItem(let v)? = _storage._event else { preconditionFailure() }
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 209)
+      }()
+      case .sessionRestoreTrayItem?: try {
+        guard case .sessionRestoreTrayItem(let v)? = _storage._event else { preconditionFailure() }
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 210)
+      }()
+      case .sessionRetryTrayItem?: try {
+        guard case .sessionRetryTrayItem(let v)? = _storage._event else { preconditionFailure() }
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 211)
+      }()
+      case .sessionResumeTrayItem?: try {
+        guard case .sessionResumeTrayItem(let v)? = _storage._event else { preconditionFailure() }
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 212)
+      }()
+      case .sessionCancelAllPaused?: try {
+        guard case .sessionCancelAllPaused(let v)? = _storage._event else { preconditionFailure() }
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 213)
+      }()
+      case .sessionUndoCancel?: try {
+        guard case .sessionUndoCancel(let v)? = _storage._event else { preconditionFailure() }
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 214)
       }()
       case .scheduleCacheLoaded?: try {
         guard case .scheduleCacheLoaded(let v)? = _storage._event else { preconditionFailure() }
@@ -10905,7 +11078,7 @@ extension PBCoreRequestEntropyEffect: SwiftProtobuf.Message, SwiftProtobuf._Mess
 
 extension PBCoreEffect: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".Effect"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}render\0\u{3}open_stream\0\u{3}close_stream\0\u{3}ensure_token\0\u{3}discard_token\0\u{3}sync_security\0\u{3}schedule_timer\0\u{3}cancel_timer\0\u{3}cache_read\0\u{3}cache_write\0\u{3}cache_delete\0\u{1}rpc\0\u{3}dispatch_command\0\u{3}save_home_scope\0\u{1}navigate\0\u{3}attachments_settled\0\u{3}request_entropy\0\u{4}\u{17}session_restore_composer\0\u{4}\u{14}schedule_read_cache\0\u{3}schedule_delete_cache\0\u{3}schedule_load_seen\0\u{3}schedule_save_seen\0\u{3}schedule_dismiss_notifications\0\u{3}schedule_navigate\0\u{4}\u{5}schedule_machine_poll\0\u{3}direct_preference\0\u{3}rename_client\0\u{3}check_updates\0\u{3}persist_client_prefs\0\u{3}prepare_cleanup_session\0\u{3}usage_cache_write\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}render\0\u{3}open_stream\0\u{3}close_stream\0\u{3}ensure_token\0\u{3}discard_token\0\u{3}sync_security\0\u{3}schedule_timer\0\u{3}cancel_timer\0\u{3}cache_read\0\u{3}cache_write\0\u{3}cache_delete\0\u{1}rpc\0\u{3}dispatch_command\0\u{3}save_home_scope\0\u{1}navigate\0\u{3}attachments_settled\0\u{3}request_entropy\0\u{4}\u{17}session_restore_composer\0\u{3}session_resend_attachments\0\u{4}\u{13}schedule_read_cache\0\u{3}schedule_delete_cache\0\u{3}schedule_load_seen\0\u{3}schedule_save_seen\0\u{3}schedule_dismiss_notifications\0\u{3}schedule_navigate\0\u{4}\u{5}schedule_machine_poll\0\u{3}direct_preference\0\u{3}rename_client\0\u{3}check_updates\0\u{3}persist_client_prefs\0\u{3}prepare_cleanup_session\0\u{3}usage_cache_write\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -11145,6 +11318,19 @@ extension PBCoreEffect: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementat
         if let v = v {
           if hadOneofValue {try decoder.handleConflictingOneOf()}
           self.effect = .sessionRestoreComposer(v)
+        }
+      }()
+      case 41: try {
+        var v: PBSessionResendAttachmentsEffect?
+        var hadOneofValue = false
+        if let current = self.effect {
+          hadOneofValue = true
+          if case .sessionResendAttachments(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.effect = .sessionResendAttachments(v)
         }
       }()
       case 60: try {
@@ -11398,6 +11584,10 @@ extension PBCoreEffect: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementat
     case .sessionRestoreComposer?: try {
       guard case .sessionRestoreComposer(let v)? = self.effect else { preconditionFailure() }
       try visitor.visitSingularMessageField(value: v, fieldNumber: 40)
+    }()
+    case .sessionResendAttachments?: try {
+      guard case .sessionResendAttachments(let v)? = self.effect else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 41)
     }()
     case .scheduleReadCache?: try {
       guard case .scheduleReadCache(let v)? = self.effect else { preconditionFailure() }

@@ -1,21 +1,5 @@
 [
   {
-    "en": "Send after this turn",
-    "key": "composer.after_turn",
-    "notes": "会话输入框的操作/状态提示。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
-    "params": {},
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "en": "draft",
-      "zh-CN": "source"
-    },
-    "zh-CN": "这一轮结束后再发"
-  },
-  {
     "en": "This message was not sent: {reason}",
     "key": "composer.android_not_sent",
     "notes": "Android 批次 B：Session.kt 的现有显示文案，保留原中文措辞与标点。参数：reason 为显示值/原始内容，不翻译用户或 CLI 内容。短标签保持紧凑；说明正文可多行。英文初稿待审。",
@@ -35,6 +19,22 @@
     "zh-CN": "没发出去：{reason}"
   },
   {
+    "en": "Seen after you answer",
+    "key": "composer.answer_first_placeholder",
+    "notes": "等待批准或提问时输入框占位文字。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "回答后它才会看到"
+  },
+  {
     "en": "Unknown reason",
     "key": "composer.android_unknown_reason",
     "notes": "Android 原有完整句；参数保留原始详情或已经本地化的字段，英文初稿待审。",
@@ -49,27 +49,6 @@
       "zh-CN": "source"
     },
     "zh-CN": "原因未知"
-  },
-  {
-    "en": "Written to terminal, waiting for {agent} to record it",
-    "key": "composer.await_record",
-    "notes": "会话输入框与发送菜单。完整句，保持变量位置和原有标点。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：agent 为CLI 品牌名，保持原文。",
-    "params": {
-      "agent": {
-        "example": "Example",
-        "type": "string"
-      }
-    },
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "en": "draft",
-      "zh-CN": "source"
-    },
-    "zh-CN": "已送入终端，等 {agent} 记录"
   },
   {
     "en": "remote-agent on the computer restarted while writing",
@@ -123,38 +102,6 @@
       "zh-CN": "source"
     },
     "zh-CN": "无法确认终端输入框的内容"
-  },
-  {
-    "en": "This is what ↑ does",
-    "key": "composer.insert_hint",
-    "notes": "会话输入框的操作/状态提示。说明/反馈正文，允许多行。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
-    "params": {},
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "en": "draft",
-      "zh-CN": "source"
-    },
-    "zh-CN": "点 ↑ 就是这个"
-  },
-  {
-    "en": "Insert into this turn now",
-    "key": "composer.insert_now",
-    "notes": "会话输入框的操作/状态提示。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
-    "params": {},
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "en": "draft",
-      "zh-CN": "source"
-    },
-    "zh-CN": "现在插入这一轮"
   },
   {
     "en": "Connect to the server to send",
@@ -218,27 +165,6 @@
       "zh-CN": "source"
     },
     "zh-CN": "没发出去：{reason}"
-  },
-  {
-    "en": "Possibly not sent: {reason}",
-    "key": "composer.maybe_failure",
-    "notes": "会话输入框与发送菜单。完整提示/历史行；参数可重排，不翻译用户内容。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：reason 为当前操作的失败详情，保持原文。",
-    "params": {
-      "reason": {
-        "example": "Example",
-        "type": "string"
-      }
-    },
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "en": "draft",
-      "zh-CN": "source"
-    },
-    "zh-CN": "可能没发出去：{reason}"
   },
   {
     "en": "Message",
@@ -319,38 +245,6 @@
       "zh-CN": "source"
     },
     "zh-CN": "补充你对计划的要求…"
-  },
-  {
-    "en": "Queue message; continue after answering",
-    "key": "composer.queue_after_answer",
-    "notes": "会话输入框的操作/状态提示。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
-    "params": {},
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "en": "draft",
-      "zh-CN": "source"
-    },
-    "zh-CN": "排队发送，回答后继续"
-  },
-  {
-    "en": "Queue first, then send in order after this turn",
-    "key": "composer.queue_hint",
-    "notes": "会话输入框的操作/状态提示。说明/反馈正文，允许多行。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
-    "params": {},
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "en": "draft",
-      "zh-CN": "source"
-    },
-    "zh-CN": "先排队，结束后按顺序发出"
   },
   {
     "en": "Timed out waiting for the terminal",
@@ -453,6 +347,22 @@
     }
   },
   {
+    "en": "Add a note…",
+    "key": "composer.running_placeholder",
+    "notes": "Agent 运行中时输入框占位文字。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "补充一句…"
+  },
+  {
     "en": "Send",
     "key": "composer.send",
     "notes": "会话输入框的操作/状态提示。按钮/菜单项，描述该操作。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
@@ -467,6 +377,22 @@
       "zh-CN": "source"
     },
     "zh-CN": "发送"
+  },
+  {
+    "en": "Send after",
+    "key": "composer.send_after",
+    "notes": "Agent 运行中有草稿时，发送键左侧的按钮：点按按这一轮做完后再发。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "做完再发"
   },
   {
     "en": "Not sent: {reason}",
@@ -488,22 +414,6 @@
       "zh-CN": "source"
     },
     "zh-CN": "没发出去：{reason}"
-  },
-  {
-    "en": "Sending…",
-    "key": "composer.sending",
-    "notes": "会话输入框的操作/状态提示。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
-    "params": {},
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "en": "draft",
-      "zh-CN": "source"
-    },
-    "zh-CN": "发送中…"
   },
   {
     "en": "Message · {keys} to send",
@@ -589,50 +499,5 @@
       "zh-CN": "source"
     },
     "zh-CN": "写入终端失败"
-  },
-  {
-    "en": "Insert into turn",
-    "key": "composer.mode_insert_short",
-    "notes": "运行中草稿发送时机胶囊按钮文案，紧凑短语。无变量。",
-    "params": {},
-    "platforms": [
-      "web",
-      "android"
-    ],
-    "status": {
-      "en": "draft",
-      "zh-CN": "source"
-    },
-    "zh-CN": "插入这一轮"
-  },
-  {
-    "en": "After this turn",
-    "key": "composer.mode_queue_short",
-    "notes": "运行中草稿发送时机胶囊按钮文案，紧凑短语。无变量。",
-    "params": {},
-    "platforms": [
-      "web",
-      "android"
-    ],
-    "status": {
-      "en": "draft",
-      "zh-CN": "source"
-    },
-    "zh-CN": "本轮结束后发"
-  },
-  {
-    "en": "Send timing",
-    "key": "composer.mode_picker_label",
-    "notes": "运行中草稿发送时机选择菜单的无障碍标签。无变量。",
-    "params": {},
-    "platforms": [
-      "web",
-      "android"
-    ],
-    "status": {
-      "en": "draft",
-      "zh-CN": "source"
-    },
-    "zh-CN": "发送时机"
   }
 ]

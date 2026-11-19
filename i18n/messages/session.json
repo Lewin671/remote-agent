@@ -469,43 +469,6 @@
     "zh-CN": "已用 {percent}%"
   },
   {
-    "en": "Disconnected {time}. ",
-    "key": "session.disconnected_ago",
-    "notes": "会话页顶栏、菜单、历史行或恢复卡。断线时间的完整前置句；time 为已格式化相对时间。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：time 为已按当前界面语言格式化的本地时间。",
-    "params": {
-      "time": {
-        "example": "Example",
-        "type": "string"
-      }
-    },
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "en": "draft",
-      "zh-CN": "source"
-    },
-    "zh-CN": "{time}断开，"
-  },
-  {
-    "en": "Dismiss this notice",
-    "key": "session.dismiss_notice",
-    "notes": "会话页的可视状态、历史提示或操作标签。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
-    "params": {},
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "en": "draft",
-      "zh-CN": "source"
-    },
-    "zh-CN": "移除此提示"
-  },
-  {
     "en": "Reasoning effort cannot be changed while running",
     "key": "session.effort_locked",
     "notes": "会话页的可视状态、历史提示或操作标签。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",

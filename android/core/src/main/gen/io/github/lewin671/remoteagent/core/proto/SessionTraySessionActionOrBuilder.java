@@ -6,8 +6,8 @@
 package io.github.lewin671.remoteagent.core.proto;
 
 @com.google.protobuf.Generated
-public interface SessionOutgoingActionOrBuilder extends
-    // @@protoc_insertion_point(interface_extends:remoteagent.core.v1.SessionOutgoingAction)
+public interface SessionTraySessionActionOrBuilder extends
+    // @@protoc_insertion_point(interface_extends:remoteagent.core.v1.SessionTraySessionAction)
     com.google.protobuf.MessageLiteOrBuilder {
 
   /**
@@ -21,16 +21,4 @@ public interface SessionOutgoingActionOrBuilder extends
    */
   com.google.protobuf.ByteString
       getSessionIdBytes();
-
-  /**
-   * <code>string request_id = 2 [json_name = "requestId"];</code>
-   * @return The requestId.
-   */
-  java.lang.String getRequestId();
-  /**
-   * <code>string request_id = 2 [json_name = "requestId"];</code>
-   * @return The bytes for requestId.
-   */
-  com.google.protobuf.ByteString
-      getRequestIdBytes();
 }

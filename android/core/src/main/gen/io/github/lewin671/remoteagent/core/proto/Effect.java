@@ -44,6 +44,7 @@ public  final class Effect extends
     PREPARE_CLEANUP_SESSION(75),
     USAGE_CACHE_WRITE(76),
     SESSION_RESTORE_COMPOSER(40),
+    SESSION_RESEND_ATTACHMENTS(41),
     SCHEDULE_READ_CACHE(60),
     SCHEDULE_DELETE_CACHE(61),
     SCHEDULE_LOAD_SEEN(62),
@@ -90,6 +91,7 @@ public  final class Effect extends
         case 75: return PREPARE_CLEANUP_SESSION;
         case 76: return USAGE_CACHE_WRITE;
         case 40: return SESSION_RESTORE_COMPOSER;
+        case 41: return SESSION_RESEND_ATTACHMENTS;
         case 60: return SCHEDULE_READ_CACHE;
         case 61: return SCHEDULE_DELETE_CACHE;
         case 62: return SCHEDULE_LOAD_SEEN;
@@ -1412,6 +1414,58 @@ public  final class Effect extends
    */
   private void clearSessionRestoreComposer() {
     if (effectCase_ == 40) {
+      effectCase_ = 0;
+      effect_ = null;
+    }
+  }
+
+  public static final int SESSION_RESEND_ATTACHMENTS_FIELD_NUMBER = 41;
+  /**
+   * <code>.remoteagent.core.v1.SessionResendAttachmentsEffect session_resend_attachments = 41 [json_name = "sessionResendAttachments"];</code>
+   */
+  @java.lang.Override
+  public boolean hasSessionResendAttachments() {
+    return effectCase_ == 41;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionResendAttachmentsEffect session_resend_attachments = 41 [json_name = "sessionResendAttachments"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.SessionResendAttachmentsEffect getSessionResendAttachments() {
+    if (effectCase_ == 41) {
+       return (io.github.lewin671.remoteagent.core.proto.SessionResendAttachmentsEffect) effect_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.SessionResendAttachmentsEffect.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionResendAttachmentsEffect session_resend_attachments = 41 [json_name = "sessionResendAttachments"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setSessionResendAttachments(io.github.lewin671.remoteagent.core.proto.SessionResendAttachmentsEffect value) {
+    value.getClass();  // minimal bytecode null check
+    effect_ = value;
+    effectCase_ = 41;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionResendAttachmentsEffect session_resend_attachments = 41 [json_name = "sessionResendAttachments"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeSessionResendAttachments(io.github.lewin671.remoteagent.core.proto.SessionResendAttachmentsEffect value) {
+    value.getClass();  // minimal bytecode null check
+    if (effectCase_ == 41 &&
+        effect_ != io.github.lewin671.remoteagent.core.proto.SessionResendAttachmentsEffect.getDefaultInstance()) {
+      effect_ = io.github.lewin671.remoteagent.core.proto.SessionResendAttachmentsEffect.newBuilder((io.github.lewin671.remoteagent.core.proto.SessionResendAttachmentsEffect) effect_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      effect_ = value;
+    }
+    effectCase_ = 41;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionResendAttachmentsEffect session_resend_attachments = 41 [json_name = "sessionResendAttachments"];</code>
+   */
+  private void clearSessionResendAttachments() {
+    if (effectCase_ == 41) {
       effectCase_ = 0;
       effect_ = null;
     }
@@ -3039,6 +3093,54 @@ public  final class Effect extends
     }
 
     /**
+     * <code>.remoteagent.core.v1.SessionResendAttachmentsEffect session_resend_attachments = 41 [json_name = "sessionResendAttachments"];</code>
+     */
+    @java.lang.Override
+    public boolean hasSessionResendAttachments() {
+      return instance.hasSessionResendAttachments();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionResendAttachmentsEffect session_resend_attachments = 41 [json_name = "sessionResendAttachments"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.SessionResendAttachmentsEffect getSessionResendAttachments() {
+      return instance.getSessionResendAttachments();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionResendAttachmentsEffect session_resend_attachments = 41 [json_name = "sessionResendAttachments"];</code>
+     */
+    public Builder setSessionResendAttachments(io.github.lewin671.remoteagent.core.proto.SessionResendAttachmentsEffect value) {
+      copyOnWrite();
+      instance.setSessionResendAttachments(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionResendAttachmentsEffect session_resend_attachments = 41 [json_name = "sessionResendAttachments"];</code>
+     */
+    public Builder setSessionResendAttachments(
+        io.github.lewin671.remoteagent.core.proto.SessionResendAttachmentsEffect.Builder builderForValue) {
+      copyOnWrite();
+      instance.setSessionResendAttachments(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionResendAttachmentsEffect session_resend_attachments = 41 [json_name = "sessionResendAttachments"];</code>
+     */
+    public Builder mergeSessionResendAttachments(io.github.lewin671.remoteagent.core.proto.SessionResendAttachmentsEffect value) {
+      copyOnWrite();
+      instance.mergeSessionResendAttachments(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionResendAttachmentsEffect session_resend_attachments = 41 [json_name = "sessionResendAttachments"];</code>
+     */
+    public Builder clearSessionResendAttachments() {
+      copyOnWrite();
+      instance.clearSessionResendAttachments();
+      return this;
+    }
+
+    /**
      * <code>.remoteagent.core.v1.ScheduleReadCacheEffect schedule_read_cache = 60 [json_name = "scheduleReadCache"];</code>
      */
     @java.lang.Override
@@ -3362,6 +3464,7 @@ public  final class Effect extends
             io.github.lewin671.remoteagent.core.proto.AttachmentsSettledEffect.class,
             io.github.lewin671.remoteagent.core.proto.RequestEntropyEffect.class,
             io.github.lewin671.remoteagent.core.proto.SessionRestoreComposerEffect.class,
+            io.github.lewin671.remoteagent.core.proto.SessionResendAttachmentsEffect.class,
             io.github.lewin671.remoteagent.core.proto.ScheduleReadCacheEffect.class,
             io.github.lewin671.remoteagent.core.proto.ScheduleDeleteCacheEffect.class,
             io.github.lewin671.remoteagent.core.proto.ScheduleLoadSeenEffect.class,
@@ -3377,11 +3480,11 @@ public  final class Effect extends
             io.github.lewin671.remoteagent.core.proto.UsageCacheWriteEffect.class,
           };
           java.lang.String info =
-              "\u0000\u001f\u0001\u0000\u0001L\u001f\u0000\u0000\u0000\u0001<\u0000\u0002<\u0000" +
-              "\u0003<\u0000\u0004<\u0000\u0005<\u0000\u0006<\u0000\u0007<\u0000\b<\u0000\t<\u0000" +
-              "\n<\u0000\u000b<\u0000\f<\u0000\r<\u0000\u000e<\u0000\u000f<\u0000\u0010<\u0000\u0011" +
-              "<\u0000(<\u0000<<\u0000=<\u0000><\u0000?<\u0000@<\u0000A<\u0000F<\u0000G<\u0000H" +
-              "<\u0000I<\u0000J<\u0000K<\u0000L<\u0000";
+              "\u0000 \u0001\u0000\u0001L \u0000\u0000\u0000\u0001<\u0000\u0002<\u0000\u0003<\u0000" +
+              "\u0004<\u0000\u0005<\u0000\u0006<\u0000\u0007<\u0000\b<\u0000\t<\u0000\n<\u0000\u000b" +
+              "<\u0000\f<\u0000\r<\u0000\u000e<\u0000\u000f<\u0000\u0010<\u0000\u0011<\u0000(<\u0000" +
+              ")<\u0000<<\u0000=<\u0000><\u0000?<\u0000@<\u0000A<\u0000F<\u0000G<\u0000H<\u0000" +
+              "I<\u0000J<\u0000K<\u0000L<\u0000";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

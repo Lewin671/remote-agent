@@ -7,20 +7,19 @@ package io.github.lewin671.remoteagent.core.proto;
 
 /**
  * <pre>
- * SessionOutgoingAction acts on an outgoing message entry (dismiss / restore to composer).
+ * SessionTraySessionAction acts on session-wide pending tray state (cancel all paused / undo).
  * </pre>
  *
- * Protobuf type {@code remoteagent.core.v1.SessionOutgoingAction}
+ * Protobuf type {@code remoteagent.core.v1.SessionTraySessionAction}
  */
 @com.google.protobuf.Generated
-public  final class SessionOutgoingAction extends
+public  final class SessionTraySessionAction extends
     com.google.protobuf.GeneratedMessageLite<
-        SessionOutgoingAction, SessionOutgoingAction.Builder> implements
-    // @@protoc_insertion_point(message_implements:remoteagent.core.v1.SessionOutgoingAction)
-    SessionOutgoingActionOrBuilder {
-  private SessionOutgoingAction() {
+        SessionTraySessionAction, SessionTraySessionAction.Builder> implements
+    // @@protoc_insertion_point(message_implements:remoteagent.core.v1.SessionTraySessionAction)
+    SessionTraySessionActionOrBuilder {
+  private SessionTraySessionAction() {
     sessionId_ = "";
-    requestId_ = "";
   }
   public static final int SESSION_ID_FIELD_NUMBER = 1;
   private java.lang.String sessionId_;
@@ -70,98 +69,50 @@ public  final class SessionOutgoingAction extends
 
   }
 
-  public static final int REQUEST_ID_FIELD_NUMBER = 2;
-  private java.lang.String requestId_;
-  /**
-   * <code>string request_id = 2 [json_name = "requestId"];</code>
-   * @return The requestId.
-   */
-  @java.lang.Override
-  public java.lang.String getRequestId() {
-    return requestId_;
-  }
-  /**
-   * <code>string request_id = 2 [json_name = "requestId"];</code>
-   * @return The bytes for requestId.
-   */
-  @java.lang.Override
-  public com.google.protobuf.ByteString
-      getRequestIdBytes() {
-    return com.google.protobuf.ByteString.copyFromUtf8(requestId_);
-  }
-  /**
-   * <code>string request_id = 2 [json_name = "requestId"];</code>
-   * @param value The requestId to set.
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void setRequestId(
-      java.lang.String value) {
-    value.getClass();  // minimal bytecode null check
-
-    requestId_ = value;
-  }
-  /**
-   * <code>string request_id = 2 [json_name = "requestId"];</code>
-   */
-  private void clearRequestId() {
-
-    requestId_ = getDefaultInstance().getRequestId();
-  }
-  /**
-   * <code>string request_id = 2 [json_name = "requestId"];</code>
-   * @param value The bytes for requestId to set.
-   */
-  private void setRequestIdBytes(
-      com.google.protobuf.ByteString value) {
-    checkByteStringIsUtf8(value);
-    requestId_ = value.toStringUtf8();
-
-  }
-
-  public static io.github.lewin671.remoteagent.core.proto.SessionOutgoingAction parseFrom(
+  public static io.github.lewin671.remoteagent.core.proto.SessionTraySessionAction parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
     return com.google.protobuf.GeneratedMessageLite.parseFrom(
         DEFAULT_INSTANCE, data);
   }
-  public static io.github.lewin671.remoteagent.core.proto.SessionOutgoingAction parseFrom(
+  public static io.github.lewin671.remoteagent.core.proto.SessionTraySessionAction parseFrom(
       java.nio.ByteBuffer data,
       com.google.protobuf.ExtensionRegistryLite extensionRegistry)
       throws com.google.protobuf.InvalidProtocolBufferException {
     return com.google.protobuf.GeneratedMessageLite.parseFrom(
         DEFAULT_INSTANCE, data, extensionRegistry);
   }
-  public static io.github.lewin671.remoteagent.core.proto.SessionOutgoingAction parseFrom(
+  public static io.github.lewin671.remoteagent.core.proto.SessionTraySessionAction parseFrom(
       com.google.protobuf.ByteString data)
       throws com.google.protobuf.InvalidProtocolBufferException {
     return com.google.protobuf.GeneratedMessageLite.parseFrom(
         DEFAULT_INSTANCE, data);
   }
-  public static io.github.lewin671.remoteagent.core.proto.SessionOutgoingAction parseFrom(
+  public static io.github.lewin671.remoteagent.core.proto.SessionTraySessionAction parseFrom(
       com.google.protobuf.ByteString data,
       com.google.protobuf.ExtensionRegistryLite extensionRegistry)
       throws com.google.protobuf.InvalidProtocolBufferException {
     return com.google.protobuf.GeneratedMessageLite.parseFrom(
         DEFAULT_INSTANCE, data, extensionRegistry);
   }
-  public static io.github.lewin671.remoteagent.core.proto.SessionOutgoingAction parseFrom(byte[] data)
+  public static io.github.lewin671.remoteagent.core.proto.SessionTraySessionAction parseFrom(byte[] data)
       throws com.google.protobuf.InvalidProtocolBufferException {
     return com.google.protobuf.GeneratedMessageLite.parseFrom(
         DEFAULT_INSTANCE, data);
   }
-  public static io.github.lewin671.remoteagent.core.proto.SessionOutgoingAction parseFrom(
+  public static io.github.lewin671.remoteagent.core.proto.SessionTraySessionAction parseFrom(
       byte[] data,
       com.google.protobuf.ExtensionRegistryLite extensionRegistry)
       throws com.google.protobuf.InvalidProtocolBufferException {
     return com.google.protobuf.GeneratedMessageLite.parseFrom(
         DEFAULT_INSTANCE, data, extensionRegistry);
   }
-  public static io.github.lewin671.remoteagent.core.proto.SessionOutgoingAction parseFrom(java.io.InputStream input)
+  public static io.github.lewin671.remoteagent.core.proto.SessionTraySessionAction parseFrom(java.io.InputStream input)
       throws java.io.IOException {
     return com.google.protobuf.GeneratedMessageLite.parseFrom(
         DEFAULT_INSTANCE, input);
   }
-  public static io.github.lewin671.remoteagent.core.proto.SessionOutgoingAction parseFrom(
+  public static io.github.lewin671.remoteagent.core.proto.SessionTraySessionAction parseFrom(
       java.io.InputStream input,
       com.google.protobuf.ExtensionRegistryLite extensionRegistry)
       throws java.io.IOException {
@@ -169,24 +120,24 @@ public  final class SessionOutgoingAction extends
         DEFAULT_INSTANCE, input, extensionRegistry);
   }
 
-  public static io.github.lewin671.remoteagent.core.proto.SessionOutgoingAction parseDelimitedFrom(java.io.InputStream input)
+  public static io.github.lewin671.remoteagent.core.proto.SessionTraySessionAction parseDelimitedFrom(java.io.InputStream input)
       throws java.io.IOException {
     return parseDelimitedFrom(DEFAULT_INSTANCE, input);
   }
 
-  public static io.github.lewin671.remoteagent.core.proto.SessionOutgoingAction parseDelimitedFrom(
+  public static io.github.lewin671.remoteagent.core.proto.SessionTraySessionAction parseDelimitedFrom(
       java.io.InputStream input,
       com.google.protobuf.ExtensionRegistryLite extensionRegistry)
       throws java.io.IOException {
     return parseDelimitedFrom(DEFAULT_INSTANCE, input, extensionRegistry);
   }
-  public static io.github.lewin671.remoteagent.core.proto.SessionOutgoingAction parseFrom(
+  public static io.github.lewin671.remoteagent.core.proto.SessionTraySessionAction parseFrom(
       com.google.protobuf.CodedInputStream input)
       throws java.io.IOException {
     return com.google.protobuf.GeneratedMessageLite.parseFrom(
         DEFAULT_INSTANCE, input);
   }
-  public static io.github.lewin671.remoteagent.core.proto.SessionOutgoingAction parseFrom(
+  public static io.github.lewin671.remoteagent.core.proto.SessionTraySessionAction parseFrom(
       com.google.protobuf.CodedInputStream input,
       com.google.protobuf.ExtensionRegistryLite extensionRegistry)
       throws java.io.IOException {
@@ -197,23 +148,23 @@ public  final class SessionOutgoingAction extends
   public static Builder newBuilder() {
     return (Builder) DEFAULT_INSTANCE.createBuilder();
   }
-  public static Builder newBuilder(io.github.lewin671.remoteagent.core.proto.SessionOutgoingAction prototype) {
+  public static Builder newBuilder(io.github.lewin671.remoteagent.core.proto.SessionTraySessionAction prototype) {
     return DEFAULT_INSTANCE.createBuilder(prototype);
   }
 
   /**
    * <pre>
-   * SessionOutgoingAction acts on an outgoing message entry (dismiss / restore to composer).
+   * SessionTraySessionAction acts on session-wide pending tray state (cancel all paused / undo).
    * </pre>
    *
-   * Protobuf type {@code remoteagent.core.v1.SessionOutgoingAction}
+   * Protobuf type {@code remoteagent.core.v1.SessionTraySessionAction}
    */
   public static final class Builder extends
       com.google.protobuf.GeneratedMessageLite.Builder<
-        io.github.lewin671.remoteagent.core.proto.SessionOutgoingAction, Builder> implements
-      // @@protoc_insertion_point(builder_implements:remoteagent.core.v1.SessionOutgoingAction)
-      io.github.lewin671.remoteagent.core.proto.SessionOutgoingActionOrBuilder {
-    // Construct using io.github.lewin671.remoteagent.core.proto.SessionOutgoingAction.newBuilder()
+        io.github.lewin671.remoteagent.core.proto.SessionTraySessionAction, Builder> implements
+      // @@protoc_insertion_point(builder_implements:remoteagent.core.v1.SessionTraySessionAction)
+      io.github.lewin671.remoteagent.core.proto.SessionTraySessionActionOrBuilder {
+    // Construct using io.github.lewin671.remoteagent.core.proto.SessionTraySessionAction.newBuilder()
     private Builder() {
       super(DEFAULT_INSTANCE);
     }
@@ -268,56 +219,7 @@ public  final class SessionOutgoingAction extends
       return this;
     }
 
-    /**
-     * <code>string request_id = 2 [json_name = "requestId"];</code>
-     * @return The requestId.
-     */
-    @java.lang.Override
-    public java.lang.String getRequestId() {
-      return instance.getRequestId();
-    }
-    /**
-     * <code>string request_id = 2 [json_name = "requestId"];</code>
-     * @return The bytes for requestId.
-     */
-    @java.lang.Override
-    public com.google.protobuf.ByteString
-        getRequestIdBytes() {
-      return instance.getRequestIdBytes();
-    }
-    /**
-     * <code>string request_id = 2 [json_name = "requestId"];</code>
-     * @param value The requestId to set.
-     * @return This builder for chaining.
-     */
-    public Builder setRequestId(
-        java.lang.String value) {
-      copyOnWrite();
-      instance.setRequestId(value);
-      return this;
-    }
-    /**
-     * <code>string request_id = 2 [json_name = "requestId"];</code>
-     * @return This builder for chaining.
-     */
-    public Builder clearRequestId() {
-      copyOnWrite();
-      instance.clearRequestId();
-      return this;
-    }
-    /**
-     * <code>string request_id = 2 [json_name = "requestId"];</code>
-     * @param value The bytes for requestId to set.
-     * @return This builder for chaining.
-     */
-    public Builder setRequestIdBytes(
-        com.google.protobuf.ByteString value) {
-      copyOnWrite();
-      instance.setRequestIdBytes(value);
-      return this;
-    }
-
-    // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.SessionOutgoingAction)
+    // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.SessionTraySessionAction)
   }
   @java.lang.Override
   @java.lang.SuppressWarnings({"ThrowNull"})
@@ -326,7 +228,7 @@ public  final class SessionOutgoingAction extends
       java.lang.Object arg0, java.lang.Object arg1) {
     switch (method) {
       case NEW_MUTABLE_INSTANCE: {
-        return new io.github.lewin671.remoteagent.core.proto.SessionOutgoingAction();
+        return new io.github.lewin671.remoteagent.core.proto.SessionTraySessionAction();
       }
       case NEW_BUILDER: {
         return new Builder();
@@ -334,24 +236,22 @@ public  final class SessionOutgoingAction extends
       case BUILD_MESSAGE_INFO: {
           java.lang.Object[] objects = new java.lang.Object[] {
             "sessionId_",
-            "requestId_",
           };
           java.lang.String info =
-              "\u0000\u0002\u0000\u0000\u0001\u0002\u0002\u0000\u0000\u0000\u0001\u0208\u0002\u0208" +
-              "";
+              "\u0000\u0001\u0000\u0000\u0001\u0001\u0001\u0000\u0000\u0000\u0001\u0208";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {
         return DEFAULT_INSTANCE;
       }
       case GET_PARSER: {
-        com.google.protobuf.Parser<io.github.lewin671.remoteagent.core.proto.SessionOutgoingAction> parser = PARSER;
+        com.google.protobuf.Parser<io.github.lewin671.remoteagent.core.proto.SessionTraySessionAction> parser = PARSER;
         if (parser == null) {
-          synchronized (io.github.lewin671.remoteagent.core.proto.SessionOutgoingAction.class) {
+          synchronized (io.github.lewin671.remoteagent.core.proto.SessionTraySessionAction.class) {
             parser = PARSER;
             if (parser == null) {
               parser =
-                  new DefaultInstanceBasedParser<io.github.lewin671.remoteagent.core.proto.SessionOutgoingAction>(
+                  new DefaultInstanceBasedParser<io.github.lewin671.remoteagent.core.proto.SessionTraySessionAction>(
                       DEFAULT_INSTANCE);
               PARSER = parser;
             }
@@ -371,24 +271,24 @@ public  final class SessionOutgoingAction extends
   }
 
 
-  // @@protoc_insertion_point(class_scope:remoteagent.core.v1.SessionOutgoingAction)
-  private static final io.github.lewin671.remoteagent.core.proto.SessionOutgoingAction DEFAULT_INSTANCE;
+  // @@protoc_insertion_point(class_scope:remoteagent.core.v1.SessionTraySessionAction)
+  private static final io.github.lewin671.remoteagent.core.proto.SessionTraySessionAction DEFAULT_INSTANCE;
   static {
-    SessionOutgoingAction defaultInstance = new SessionOutgoingAction();
+    SessionTraySessionAction defaultInstance = new SessionTraySessionAction();
     // New instances are implicitly immutable so no need to make
     // immutable.
     DEFAULT_INSTANCE = defaultInstance;
     com.google.protobuf.GeneratedMessageLite.registerDefaultInstance(
-      SessionOutgoingAction.class, defaultInstance);
+      SessionTraySessionAction.class, defaultInstance);
   }
 
-  public static io.github.lewin671.remoteagent.core.proto.SessionOutgoingAction getDefaultInstance() {
+  public static io.github.lewin671.remoteagent.core.proto.SessionTraySessionAction getDefaultInstance() {
     return DEFAULT_INSTANCE;
   }
 
-  private static volatile com.google.protobuf.Parser<SessionOutgoingAction> PARSER;
+  private static volatile com.google.protobuf.Parser<SessionTraySessionAction> PARSER;
 
-  public static com.google.protobuf.Parser<SessionOutgoingAction> parser() {
+  public static com.google.protobuf.Parser<SessionTraySessionAction> parser() {
     return DEFAULT_INSTANCE.getParserForType();
   }
 }

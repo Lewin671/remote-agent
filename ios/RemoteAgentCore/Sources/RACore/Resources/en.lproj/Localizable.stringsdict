@@ -850,7 +850,7 @@
 			<string>%1$lld pending</string>
 		</dict>
 	</dict>
-	<key>queue_more</key>
+	<key>queue_attachments_a11y</key>
 	<dict>
 		<key>NSStringLocalizedFormatKey</key>
 		<string>%1$#@count@</string>
@@ -861,9 +861,73 @@
 			<key>NSStringFormatValueTypeKey</key>
 			<string>lld</string>
 			<key>one</key>
-			<string>%1$lld more queued message · Expand</string>
+			<string>%1$lld attachment</string>
 			<key>other</key>
-			<string>%1$lld more queued messages · Expand</string>
+			<string>%1$lld attachments</string>
+		</dict>
+	</dict>
+	<key>queue_canceled_count</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>Canceled %1$lld message</string>
+			<key>other</key>
+			<string>Canceled %1$lld messages</string>
+		</dict>
+	</dict>
+	<key>queue_keyboard_failed</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%1$lld not sent</string>
+			<key>other</key>
+			<string>%1$lld not sent</string>
+		</dict>
+	</dict>
+	<key>queue_keyboard_summary</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%1$lld pending</string>
+			<key>other</key>
+			<string>%1$lld pending</string>
+		</dict>
+	</dict>
+	<key>queue_more_items</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%1$lld more</string>
+			<key>other</key>
+			<string>%1$lld more</string>
 		</dict>
 	</dict>
 	<key>quota_days</key>
