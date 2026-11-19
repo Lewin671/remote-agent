@@ -248,4 +248,28 @@ message HomeViewModel {
   bool can_start = 26;
   string selected_session_id = 27;
   bool has_more_ended = 28;
+  HomeQuestionCardView top_attention_question = 29;
+}
+
+message HomeQuestionOptionView {
+  int32 option_num = 1;
+  string label = 2;
+  string description = 3;
+  bool recommended = 4;
+}
+
+message HomeQuestionCardView {
+  string session_id = 1;
+  string machine_id = 2;
+  string question_id = 3;
+  uint64 observed_event_seq = 4;
+  Text badge_text = 5;
+  Text time_text = 6;
+  Text title = 7;
+  Text where = 8;
+  string header = 9;
+  string question_text = 10;
+  repeated HomeQuestionOptionView options = 11;
+  bool can_answer = 12;
+  Text offline_note = 13;
 }

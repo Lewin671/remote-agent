@@ -153,10 +153,10 @@ func TestBuildDirectViews(t *testing.T) {
 	if err := proto.Unmarshal(respBytes, &resp); err != nil {
 		t.Fatalf("unmarshal DirectViewsResponse: %v", err)
 	}
-	if resp.GetConnection().GetStage() != stdcorev1.ConnectionGroupStage_CONNECTION_GROUP_STAGE_DIRECT {
-		t.Fatalf("expected DIRECT stage, got %+v", resp.GetConnection())
+	if resp.GetConnection().GetStage() != stdcorev1.ConnectionGroupStage_CONNECTION_GROUP_STAGE_DIRECT || resp.GetConnection().GetMetricText().GetKey() != "transport.rtt_ms" {
+		t.Fatalf("expected DIRECT stage with bare rtt_ms metric, got %+v", resp.GetConnection())
 	}
-	if !resp.GetConnCheckDirect().GetVisible() || resp.GetConnCheckDirect().GetMetricText().GetKey() != "transport.read_latency_direct" {
+	if !resp.GetConnCheckDirect().GetVisible() || resp.GetConnCheckDirect().GetMetricText() != nil {
 		t.Fatalf("unexpected ConnCheckDirect row: %+v", resp.GetConnCheckDirect())
 	}
 }

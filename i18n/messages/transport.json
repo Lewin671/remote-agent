@@ -177,7 +177,7 @@
   },
   {
     "key": "transport.reason_no_traversal",
-    "zh-CN": "两边的网络不能直接连通",
+    "zh-CN": "两边的网络隔开了，不能直接连通",
     "en": "The two networks can't reach each other directly",
     "notes": "接在「直连不可用：」后面的原因（状态行第二行和连接检测摘要共用），必须是能单独读懂的短句，可换行。",
     "params": {},
@@ -2283,6 +2283,851 @@
       "web",
       "android",
       "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.rtt_ms",
+    "zh-CN": "{ms} ms",
+    "en": "{ms} ms",
+    "notes": "收敛后的连接组和气泡使用的纯往返毫秒数，不含路径前缀。",
+    "params": {
+      "ms": {
+        "type": "string",
+        "example": "14"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.reason_at_cap_detail",
+    "zh-CN": "同时直连的电脑已达上限，进入这台电脑的会话时自动切换",
+    "en": "Direct connection limit reached; switches automatically when you open a session on this computer",
+    "notes": "设置连接组里达到并发上限时的完整第二行说明。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.status_daemon_disabled",
+    "zh-CN": "电脑上已关闭直连",
+    "en": "Direct connection is off on this computer",
+    "notes": "设置连接组状态 5c：电脑本机或策略关闭直连时的主状态行。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.detail_daemon_disabled",
+    "zh-CN": "在这台电脑上开启后可用",
+    "en": "Turn it on from this computer to use direct connections",
+    "notes": "设置连接组状态 5c 第二行说明。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.status_unsupported_app",
+    "zh-CN": "当前应用版本暂不支持直连",
+    "en": "This app version does not support direct connections yet",
+    "notes": "Android 设置连接组状态 5e：应用版本暂不支持直连。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.detail_relay_only",
+    "zh-CN": "已全部经中继连接，不影响正常使用",
+    "en": "Everything connects via relay as usual",
+    "notes": "设置连接组状态 5d/5e 第二行说明。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.conn_footer_unsupported_app",
+    "zh-CN": "当前应用版本暂不支持直连，已全部经中继连接。",
+    "en": "This app version does not support direct connections yet; everything connects via relay.",
+    "notes": "Android 连接检测页面整体不支持直连时的末尾补充说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.conn_footer_unsupported_browser",
+    "zh-CN": "这个浏览器不支持直连，已全部经中继连接。",
+    "en": "This browser does not support direct connections; everything connects via relay.",
+    "notes": "Web 连接检测页面浏览器不支持直连时的末尾补充说明。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.popover_a11y",
+    "zh-CN": "直连已生效，点按查看连接详情",
+    "en": "Direct connection active, tap for details",
+    "notes": "会话顶栏直连标记的无障碍按钮标签。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.popover_direct_title",
+    "zh-CN": "直连 {name}",
+    "en": "Direct to {name}",
+    "notes": "直连轻气泡样本未满 3 个时的首行标题。",
+    "params": {
+      "name": {
+        "type": "string",
+        "example": "MacBook"
+      }
+    },
+    "platforms": [
+      "web",
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.popover_direct_title_rtt",
+    "zh-CN": "直连 {name} · {ms} ms",
+    "en": "Direct to {name} · {ms} ms",
+    "notes": "直连轻气泡样本满 3 个时的首行标题，带毫秒延迟。",
+    "params": {
+      "name": {
+        "type": "string",
+        "example": "MacBook"
+      },
+      "ms": {
+        "type": "string",
+        "example": "14"
+      }
+    },
+    "platforms": [
+      "web",
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.popover_relay_title",
+    "zh-CN": "经中继连接 {name}",
+    "en": "Via relay to {name}",
+    "notes": "轻气泡打开期间直连切回中继且无延迟样本时的首行标题。",
+    "params": {
+      "name": {
+        "type": "string",
+        "example": "MacBook"
+      }
+    },
+    "platforms": [
+      "web",
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.popover_relay_title_rtt",
+    "zh-CN": "经中继连接 {name} · {ms} ms",
+    "en": "Via relay to {name} · {ms} ms",
+    "notes": "轻气泡打开期间直连切回中继且有延迟样本时的首行标题。",
+    "params": {
+      "name": {
+        "type": "string",
+        "example": "MacBook"
+      },
+      "ms": {
+        "type": "string",
+        "example": "168"
+      }
+    },
+    "platforms": [
+      "web",
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.popover_direct_body",
+    "zh-CN": "加载与文件走直连；发消息和审批同时经直连和中继发出，以先到的为准。",
+    "en": "Loading and files use direct; messages and approvals are sent over both direct and relay, whichever arrives first.",
+    "notes": "直连轻气泡第二行路由说明。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.popover_relay_body",
+    "zh-CN": "当前所有操作都经中继连接电脑，不影响正常使用。",
+    "en": "Everything currently connects via relay, with no impact on use.",
+    "notes": "轻气泡打开期间直连切回中继时的第二行说明。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.popover_stable",
+    "zh-CN": "连接稳定",
+    "en": "Connection stable",
+    "notes": "双通道均直连时气泡底栏左侧状态。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.popover_read_only",
+    "zh-CN": "仅加载走直连",
+    "en": "Loading only over direct",
+    "notes": "仅加载通道直连时气泡底栏左侧状态。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.popover_file_only",
+    "zh-CN": "仅文件走直连",
+    "en": "Files only over direct",
+    "notes": "仅文件通道直连时气泡底栏左侧状态。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.popover_switched_relay",
+    "zh-CN": "已切回中继",
+    "en": "Switched to relay",
+    "notes": "气泡打开期间直连切回中继时底栏左侧状态。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.popover_settings",
+    "zh-CN": "连接设置",
+    "en": "Connection settings",
+    "notes": "直连轻气泡底栏右侧跳转电脑设置连接组的链接。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.why_not_connected",
+    "zh-CN": "为什么没连上",
+    "en": "Why it didn’t connect",
+    "notes": "直连排障入口与排障单标题。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_copy_support",
+    "zh-CN": "复制诊断给支持",
+    "en": "Copy diagnostics for support",
+    "notes": "人话排障单的复制纯文本按钮文字。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_copy_permission",
+    "zh-CN": "没能复制，请检查剪贴板权限",
+    "en": "Couldn’t copy; check clipboard permission",
+    "notes": "人话排障单复制失败时按钮原位红字提示。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_retrying",
+    "zh-CN": "正在尝试…",
+    "en": "Trying…",
+    "notes": "点击重新尝试探测期间主按钮文字。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_connected_title",
+    "zh-CN": "直连已连上",
+    "en": "Direct connected",
+    "notes": "在排障单里重试连上时的结论标题。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_connected_body",
+    "zh-CN": "加载与文件现在已恢复直连。",
+    "en": "Loading and files are back on a direct connection.",
+    "notes": "在排障单里重试连上时的短说明。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_privacy_footer",
+    "zh-CN": "复制的诊断只含地址类型和范围，不含具体地址、端口或对话内容。",
+    "en": "Copied diagnostics include address types and ranges only—no IP addresses, ports, or chat content.",
+    "notes": "人话排障单底部隐私说明。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_explain_nat",
+    "zh-CN": "本机与电脑各自处在限制直连的网络里，常见于蜂窝网络或公司内网。当前所有操作都已自动走中继，不影响正常使用。",
+    "en": "Both devices are behind restrictive networks such as cellular NAT or a corporate LAN. Everything currently uses relay automatically with no impact on use.",
+    "notes": "人话排障单：两侧网络隔离或穿透失败说明。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_explain_probe_blocked",
+    "zh-CN": "当前网络限制了直连探测所需的 UDP 通信。当前所有操作都已自动走中继，不影响正常使用。",
+    "en": "This network appears to block UDP packets needed for direct probing. Everything currently uses relay automatically with no impact on use.",
+    "notes": "人话排障单：UDP 探测被拦说明。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_explain_no_reply",
+    "zh-CN": "电脑没有回应直连握手，可能在电脑上关闭了直连或防火墙拦下了请求。当前所有操作都已自动走中继，不影响正常使用。",
+    "en": "The computer did not reply to the direct handshake; direct connections may be off there or blocked by a firewall. Everything currently uses relay automatically with no impact on use.",
+    "notes": "人话排障单：电脑无应答说明。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_explain_peer_old",
+    "zh-CN": "电脑上安装的 remote-agent 版本暂不支持直连，更新后即可自动使用。当前所有操作都已自动走中继，不影响正常使用。",
+    "en": "The remote-agent version on the computer does not support direct connections yet; update it to enable direct paths. Everything currently uses relay automatically with no impact on use.",
+    "notes": "人话排障单：电脑端版本过旧说明。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_explain_generic",
+    "zh-CN": "本次协商没有在时限内完成，网络稳定后会自动再试。当前所有操作都已自动走中继，不影响正常使用。",
+    "en": "Direct negotiation did not finish within the time budget and will retry when the network changes. Everything currently uses relay automatically with no impact on use.",
+    "notes": "人话排障单：通用未连上说明。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_title_probe_blocked",
+    "zh-CN": "所在网络限制了直连探测，不能直接连通",
+    "en": "Current network restricts direct probing",
+    "notes": "人话排障单结论标题：探测包被拦。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_title_no_reply",
+    "zh-CN": "电脑没有回应直连握手，可能在电脑上关了直连",
+    "en": "Computer didn’t reply to handshake",
+    "notes": "人话排障单结论标题：电脑未应答。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_title_generic",
+    "zh-CN": "暂时没连上，稍后会自动再试",
+    "en": "Couldn’t connect; will try again shortly",
+    "notes": "人话排障单结论标题：通用暂时失败。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_check_peer",
+    "zh-CN": "电脑在线并响应",
+    "en": "Computer reachable & responding",
+    "notes": "三行人话自检第 1 行标题。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_check_path",
+    "zh-CN": "局域网或公网直通",
+    "en": "Local or public direct path",
+    "notes": "三行人话自检第 2 行标题。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_check_retry",
+    "zh-CN": "后台自动重试",
+    "en": "Background auto-retry",
+    "notes": "三行人话自检第 3 行标题。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_status_ok",
+    "zh-CN": "正常",
+    "en": "OK",
+    "notes": "自检行尾中性灰状态词：正常。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_status_no_reply",
+    "zh-CN": "未响应",
+    "en": "No reply",
+    "notes": "自检行尾中性灰状态词：未响应。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_status_peer_old",
+    "zh-CN": "版本过旧",
+    "en": "Outdated",
+    "notes": "自检行尾中性灰状态词：版本过旧。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_status_blocked",
+    "zh-CN": "未通",
+    "en": "Unreachable",
+    "notes": "自检行尾中性灰状态词：未通。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_status_not_started",
+    "zh-CN": "未开始",
+    "en": "Not started",
+    "notes": "自检行尾中性灰状态词：未开始。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_status_checking",
+    "zh-CN": "正在检查…",
+    "en": "Checking…",
+    "notes": "自检行尾中性灰状态词：正在检查…。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_status_connected",
+    "zh-CN": "已连通",
+    "en": "Connected",
+    "notes": "自检行尾中性灰状态词：已连通。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_status_enabled",
+    "zh-CN": "已开启",
+    "en": "On",
+    "notes": "自检行尾中性灰状态词：已开启。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_status_wait_update",
+    "zh-CN": "等待更新",
+    "en": "Needs update",
+    "notes": "自检行尾中性灰状态词：等待更新。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_path_nat",
+    "zh-CN": "两边都在运营商共享网关后，未能直通",
+    "en": "Both sides are behind shared NAT; direct traversal failed",
+    "notes": "自检第 2 行第二行说明：对称 NAT / 共享网关。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_path_udp_blocked",
+    "zh-CN": "UDP 直连探测被当前网络拦截",
+    "en": "UDP direct probing appears blocked on this network",
+    "notes": "自检第 2 行第二行说明：UDP 被拦截。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_path_failed",
+    "zh-CN": "未能建立直连通道",
+    "en": "Could not establish a direct path",
+    "notes": "自检第 2 行第二行说明：通道未建通。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_retry_auto_desc",
+    "zh-CN": "切换 Wi-Fi 或网络变化时会自动再试",
+    "en": "Retries automatically when Wi-Fi or network changes",
+    "notes": "自检第 3 行第二行说明：自动重试已开启。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_retry_wait_desc",
+    "zh-CN": "更新电脑上的 remote-agent 后自动恢复",
+    "en": "Resumes automatically after updating remote-agent on the computer",
+    "notes": "自检第 3 行第二行说明：等待电脑端更新。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_peer_no_reply_desc",
+    "zh-CN": "握手等待超时，未收到电脑应答",
+    "en": "Timed out waiting for the computer to respond",
+    "notes": "自检第 1 行第二行说明：电脑未应答。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_peer_old_desc",
+    "zh-CN": "电脑上的 remote-agent 暂不支持直连",
+    "en": "remote-agent on this computer doesn’t support direct yet",
+    "notes": "自检第 1 行第二行说明：电脑版本太旧。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android"
     ],
     "status": {
       "zh-CN": "source",

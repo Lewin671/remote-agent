@@ -484,5 +484,65 @@
       "zh-CN": "source"
     },
     "zh-CN": "内容被截断，请在终端查看"
+  },
+  {
+    "en": "Scroll to view full command",
+    "key": "approval.scroll_to_view",
+    "notes": "停靠区长命令滑到底才可批准的按钮文字。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android"
+    ],
+    "status": {
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "往下看完整命令"
+  },
+  {
+    "en": "Denying…",
+    "key": "approval.denying",
+    "notes": "提交拒绝期间按钮状态文字。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android"
+    ],
+    "status": {
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "正在拒绝…"
+  },
+  {
+    "en": "Retry deny",
+    "key": "approval.retry_deny",
+    "notes": "拒绝提交失败后保留理由并重试的按钮文字。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android"
+    ],
+    "status": {
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "重试拒绝"
+  },
+  {
+    "en": "Handled in terminal",
+    "key": "approval.handled_in_terminal",
+    "notes": "拒绝输入或查看期间对端已在终端处理的提示文字。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android"
+    ],
+    "status": {
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "已在终端处理"
   }
 ]

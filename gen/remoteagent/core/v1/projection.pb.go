@@ -186,6 +186,8 @@ type PendingQuestion struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	QuestionId    string                 `protobuf:"bytes,1,opt,name=question_id,json=questionId,proto3" json:"question_id,omitempty"`
 	Request       *v1.QuestionAsked      `protobuf:"bytes,2,opt,name=request,proto3" json:"request,omitempty"`
+	Seq           uint64                 `protobuf:"varint,3,opt,name=seq,proto3" json:"seq,omitempty"`
+	AskedAtMs     int64                  `protobuf:"varint,4,opt,name=asked_at_ms,json=askedAtMs,proto3" json:"asked_at_ms,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -232,6 +234,20 @@ func (x *PendingQuestion) GetRequest() *v1.QuestionAsked {
 		return x.Request
 	}
 	return nil
+}
+
+func (x *PendingQuestion) GetSeq() uint64 {
+	if x != nil {
+		return x.Seq
+	}
+	return 0
+}
+
+func (x *PendingQuestion) GetAskedAtMs() int64 {
+	if x != nil {
+		return x.AskedAtMs
+	}
+	return 0
 }
 
 // AnsweredQuestion records the flattened answer strings for a question and who answered it.
@@ -1298,11 +1314,13 @@ const file_remoteagent_core_v1_projection_proto_rawDesc = "" +
 	"\x10ResolvedApproval\x12<\n" +
 	"\bdecision\x18\x01 \x01(\x0e2 .remoteagent.v1.ApprovalDecisionR\bdecision\x12\x18\n" +
 	"\amessage\x18\x02 \x01(\tR\amessage\x12.\n" +
-	"\x06origin\x18\x03 \x01(\v2\x16.remoteagent.v1.OriginR\x06origin\"k\n" +
+	"\x06origin\x18\x03 \x01(\v2\x16.remoteagent.v1.OriginR\x06origin\"\x9d\x01\n" +
 	"\x0fPendingQuestion\x12\x1f\n" +
 	"\vquestion_id\x18\x01 \x01(\tR\n" +
 	"questionId\x127\n" +
-	"\arequest\x18\x02 \x01(\v2\x1d.remoteagent.v1.QuestionAskedR\arequest\"\\\n" +
+	"\arequest\x18\x02 \x01(\v2\x1d.remoteagent.v1.QuestionAskedR\arequest\x12\x10\n" +
+	"\x03seq\x18\x03 \x01(\x04R\x03seq\x12\x1e\n" +
+	"\vasked_at_ms\x18\x04 \x01(\x03R\taskedAtMs\"\\\n" +
 	"\x10AnsweredQuestion\x12\x18\n" +
 	"\aanswers\x18\x01 \x03(\tR\aanswers\x12.\n" +
 	"\x06origin\x18\x02 \x01(\v2\x16.remoteagent.v1.OriginR\x06origin\"\xeb\x01\n" +

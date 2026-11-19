@@ -10,6 +10,25 @@ import "remoteagent/v1/local.proto";
 import "remoteagent/v1/relay.proto";
 import "remoteagent/v1/remote.proto";
 
+message SyncPendingQuestionOption {
+  string label = 1;
+  string description = 2;
+}
+
+message SyncPendingQuestion {
+  string question_id = 1;
+  string question_key = 2;
+  string header = 3;
+  string text = 4;
+  bool multi_select = 5;
+  int32 question_count = 6;
+  repeated SyncPendingQuestionOption options = 7;
+  bool can_free_text = 8;
+  bool async = 9;
+  uint64 observed_event_seq = 10;
+  int64 asked_at_ms = 11;
+}
+
 // Pending action summary derived by Core for Home, Session, and transition views.
 // Transitional helper shared by SyncSessionView and SessionDataView; delete with SyncStateView/SessionDataView after Steps 3-4.
 message SyncPendingAction {
@@ -24,6 +43,7 @@ message SyncPendingAction {
   bool has_plan = 9;
   bool has_popup = 10;
   string popup_preview = 11;
+  SyncPendingQuestion question = 12;
 }
 
 // Machine snapshot for unmigrated Step 3-4 screens (machine status, settings, schedules, session header).

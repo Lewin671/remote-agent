@@ -22,25 +22,25 @@ func BuildConnectionGroup(online bool, prefEnabled bool, report *corev1.DirectRo
 	}
 
 	view := &corev1.ConnectionGroupView{
-		ToggleVisible:        report.Capable,
-		ToggleEnabled:        online && report.Capable && !report.DaemonDisabled,
-		ToggleChecked:        checked,
-		ShowDiagnosticsEntry: report.HasDiagnostics,
+		ToggleVisible: true,
+		ToggleEnabled: online && report.Capable && !report.DaemonDisabled,
+		ToggleChecked: report.Capable && !report.DaemonDisabled && checked,
+		FooterText:    text.Msg(text.KeyTransportFooter),
 	}
 
 	if !report.Capable {
 		view.Stage = corev1.ConnectionGroupStage_CONNECTION_GROUP_STAGE_UNSUPPORTED
 		view.Tone = corev1.ConnectionGroupTone_CONNECTION_GROUP_TONE_MUTED
 		view.StatusText = text.Msg(text.KeyConnectionUnavailable)
-		view.FooterText = text.Msg(text.KeyTransportFooter)
+		view.DetailText = text.Msg(text.KeyTransportDetailRelayOnly)
 		return view
 	}
 
 	if !online {
 		view.Stage = corev1.ConnectionGroupStage_CONNECTION_GROUP_STAGE_OFFLINE
 		view.Tone = corev1.ConnectionGroupTone_CONNECTION_GROUP_TONE_MUTED
+		view.ToggleChecked = checked
 		view.StatusText = text.Msg(text.KeySettingsOffline)
-		view.FooterText = text.Msg(text.KeyTransportFooter)
 		return view
 	}
 
@@ -51,36 +51,34 @@ func BuildConnectionGroup(online bool, prefEnabled bool, report *corev1.DirectRo
 	if !checked || report.Reason == corev1.DirectRouteReason_DIRECT_ROUTE_REASON_DISABLED {
 		view.Stage = corev1.ConnectionGroupStage_CONNECTION_GROUP_STAGE_DISABLED
 		view.Tone = corev1.ConnectionGroupTone_CONNECTION_GROUP_TONE_MUTED
+		view.ToggleChecked = false
 		view.StatusText = text.Msg(text.KeyTransportStatusRelay)
-		view.FooterText = text.Msg(text.KeyTransportSummaryOff)
 		return view
 	}
 
 	if report.DaemonDisabled || report.Reason == corev1.DirectRouteReason_DIRECT_ROUTE_REASON_DAEMON_DISABLED {
 		view.Stage = corev1.ConnectionGroupStage_CONNECTION_GROUP_STAGE_DISABLED
 		view.Tone = corev1.ConnectionGroupTone_CONNECTION_GROUP_TONE_MUTED
-		view.StatusText = text.Msg(text.KeyTransportStatusRelay)
-		view.DetailText = text.Msg(text.KeyTransportReasonDaemonDisabled)
-		view.FooterText = text.Msg(text.KeyTransportSummaryOff)
+		view.ToggleChecked = false
+		view.StatusText = text.Msg(text.KeyTransportStatusDaemonDisabled)
+		view.DetailText = text.Msg(text.KeyTransportDetailDaemonDisabled)
 		return view
 	}
 
 	switch report.State {
 	case corev1.DirectRouteState_DIRECT_ROUTE_STATE_UNSUPPORTED:
-		view.Stage = corev1.ConnectionGroupStage_CONNECTION_GROUP_STAGE_UNSUPPORTED
+		view.Stage = corev1.ConnectionGroupStage_CONNECTION_GROUP_STAGE_RELAY_FAILED
 		view.Tone = corev1.ConnectionGroupTone_CONNECTION_GROUP_TONE_MUTED
-		view.StatusText = text.Msg(text.KeyTransportUnavailable, text.ArgText("reason", text.Msg(text.KeyTransportReasonPeerUnsupported)))
+		view.StatusText = text.Msg(text.KeyTransportStatusRelay)
 		view.DetailText = text.Msg(text.KeyTransportReasonPeerUnsupported)
-		view.FooterText = text.Msg(text.KeyTransportFooter)
+		view.ShowDiagnosticsEntry = true
 
 	case corev1.DirectRouteState_DIRECT_ROUTE_STATE_CONNECTING:
 		view.Stage = corev1.ConnectionGroupStage_CONNECTION_GROUP_STAGE_CONNECTING
 		view.Tone = corev1.ConnectionGroupTone_CONNECTION_GROUP_TONE_MUTED
 		view.StatusText = text.Msg(text.KeyTransportStatusConnecting)
-		view.FooterText = text.Msg(text.KeyTransportFooter)
 
 	case corev1.DirectRouteState_DIRECT_ROUTE_STATE_CONNECTED:
-		view.FooterText = text.Msg(text.KeyTransportFooter)
 		readDirect := report.ReadRoute == corev1.DirectPathChoice_DIRECT_PATH_CHOICE_DIRECT
 		fileDirect := report.FileRoute == corev1.DirectPathChoice_DIRECT_PATH_CHOICE_DIRECT
 		if readDirect || fileDirect {
@@ -88,18 +86,18 @@ func BuildConnectionGroup(online bool, prefEnabled bool, report *corev1.DirectRo
 			view.Tone = corev1.ConnectionGroupTone_CONNECTION_GROUP_TONE_LIVE
 			view.StatusText = text.Msg(text.KeyTransportStatusDirect)
 			if fileDirect && !readDirect {
-				if report.ReadSlow {
-					view.DetailText = text.Msg(text.KeyTransportReadFallback)
-				} else {
-					view.DetailText = text.Msg(text.KeyTransportUseFile)
-				}
+				view.DetailText = text.Msg(text.KeyTransportUseFile)
 			} else if readDirect && !fileDirect {
-				if report.FileSlow {
-					view.DetailText = text.Msg(text.KeyTransportFileFallback)
-				} else {
-					view.DetailText = text.Msg(text.KeyTransportUseRead)
-				}
+				view.DetailText = text.Msg(text.KeyTransportUseRead)
 			}
+			return view
+		}
+		if isFailureDirectReason(report.Reason) {
+			view.Stage = corev1.ConnectionGroupStage_CONNECTION_GROUP_STAGE_RELAY_FAILED
+			view.Tone = corev1.ConnectionGroupTone_CONNECTION_GROUP_TONE_MUTED
+			view.StatusText = text.Msg(text.KeyTransportStatusRelay)
+			view.DetailText = directReasonText(report.Reason)
+			view.ShowDiagnosticsEntry = true
 			return view
 		}
 		view.Stage = corev1.ConnectionGroupStage_CONNECTION_GROUP_STAGE_RELAY
@@ -108,32 +106,30 @@ func BuildConnectionGroup(online bool, prefEnabled bool, report *corev1.DirectRo
 		switch {
 		case report.ReadSlow || report.FileSlow:
 			view.DetailText = text.Msg(text.KeyTransportDirectSlow)
+		case report.Reason == corev1.DirectRouteReason_DIRECT_ROUTE_REASON_AT_CAP:
+			view.DetailText = text.Msg(text.KeyTransportReasonAtCapDetail)
 		case directReasonText(report.Reason) != nil:
 			view.DetailText = directReasonText(report.Reason)
 		default:
 			view.DetailText = text.Msg(text.KeyTransportReasonChannelPending)
 		}
-		if isFailureDirectReason(report.Reason) {
-			view.ShowDiagnosticsEntry = true
-		}
 
 	default:
-		view.FooterText = text.Msg(text.KeyTransportFooter)
 		switch report.Reason {
-		case corev1.DirectRouteReason_DIRECT_ROUTE_REASON_PEER_UNSUPPORTED:
-			view.Stage = corev1.ConnectionGroupStage_CONNECTION_GROUP_STAGE_UNSUPPORTED
-			view.Tone = corev1.ConnectionGroupTone_CONNECTION_GROUP_TONE_MUTED
-			view.StatusText = text.Msg(text.KeyTransportUnavailable, text.ArgText("reason", text.Msg(text.KeyTransportReasonPeerUnsupported)))
-			view.DetailText = text.Msg(text.KeyTransportReasonPeerUnsupported)
-			view.FooterText = text.Msg(text.KeyTransportFooter)
-		case corev1.DirectRouteReason_DIRECT_ROUTE_REASON_NO_RESPONSE,
+		case corev1.DirectRouteReason_DIRECT_ROUTE_REASON_PEER_UNSUPPORTED,
+			corev1.DirectRouteReason_DIRECT_ROUTE_REASON_NO_RESPONSE,
 			corev1.DirectRouteReason_DIRECT_ROUTE_REASON_NO_TRAVERSAL,
 			corev1.DirectRouteReason_DIRECT_ROUTE_REASON_FAILED:
 			view.Stage = corev1.ConnectionGroupStage_CONNECTION_GROUP_STAGE_RELAY_FAILED
-			view.Tone = corev1.ConnectionGroupTone_CONNECTION_GROUP_TONE_WARN
+			view.Tone = corev1.ConnectionGroupTone_CONNECTION_GROUP_TONE_MUTED
 			view.StatusText = text.Msg(text.KeyTransportStatusRelay)
 			view.DetailText = directReasonText(report.Reason)
 			view.ShowDiagnosticsEntry = true
+		case corev1.DirectRouteReason_DIRECT_ROUTE_REASON_AT_CAP:
+			view.Stage = corev1.ConnectionGroupStage_CONNECTION_GROUP_STAGE_RELAY
+			view.Tone = corev1.ConnectionGroupTone_CONNECTION_GROUP_TONE_MUTED
+			view.StatusText = text.Msg(text.KeyTransportStatusRelay)
+			view.DetailText = text.Msg(text.KeyTransportReasonAtCapDetail)
 		default:
 			view.Stage = corev1.ConnectionGroupStage_CONNECTION_GROUP_STAGE_RELAY
 			view.Tone = corev1.ConnectionGroupTone_CONNECTION_GROUP_TONE_MUTED
@@ -170,13 +166,13 @@ func BuildConnCheckDirectRow(online bool, prefEnabled bool, report *corev1.Direc
 	detail := cg.DetailText
 	switch cg.Stage {
 	case corev1.ConnectionGroupStage_CONNECTION_GROUP_STAGE_DISABLED:
-		if !cg.ToggleChecked {
+		if !report.DaemonDisabled && report.Reason != corev1.DirectRouteReason_DIRECT_ROUTE_REASON_DAEMON_DISABLED {
 			status = text.Msg(text.KeyTransportSummaryOff)
 			detail = nil
 		}
-	case corev1.ConnectionGroupStage_CONNECTION_GROUP_STAGE_UNSUPPORTED:
-		status = text.Msg(text.KeyTransportStatusRelay)
-		detail = text.Msg(text.KeyTransportUnavailable, text.ArgText("reason", text.Msg(text.KeyTransportReasonPeerUnsupported)))
+	}
+	if report.Reason == corev1.DirectRouteReason_DIRECT_ROUTE_REASON_AT_CAP && cg.Stage == corev1.ConnectionGroupStage_CONNECTION_GROUP_STAGE_RELAY {
+		detail = text.Msg(text.KeyTransportReasonAtCap)
 	}
 	return &corev1.ConnCheckDirectRowView{
 		Visible:    true,
@@ -185,13 +181,13 @@ func BuildConnCheckDirectRow(online bool, prefEnabled bool, report *corev1.Direc
 		LabelText:  text.Msg(text.KeyTransportDirect),
 		StatusText: status,
 		DetailText: detail,
-		MetricText: cg.MetricText,
 	}
 }
 
 func isFailureDirectReason(r corev1.DirectRouteReason) bool {
 	switch r {
-	case corev1.DirectRouteReason_DIRECT_ROUTE_REASON_NO_RESPONSE,
+	case corev1.DirectRouteReason_DIRECT_ROUTE_REASON_PEER_UNSUPPORTED,
+		corev1.DirectRouteReason_DIRECT_ROUTE_REASON_NO_RESPONSE,
 		corev1.DirectRouteReason_DIRECT_ROUTE_REASON_NO_TRAVERSAL,
 		corev1.DirectRouteReason_DIRECT_ROUTE_REASON_FAILED:
 		return true
@@ -225,19 +221,16 @@ func directReasonText(r corev1.DirectRouteReason) *corev1.Text {
 
 func activeRttText(r *corev1.DirectRouteReport) *corev1.Text {
 	if r.HasActiveRttMs && r.ActiveRttMs >= 0 {
-		if r.ReadRoute == corev1.DirectPathChoice_DIRECT_PATH_CHOICE_DIRECT {
-			return text.Msg(text.KeyTransportReadLatencyDirect, text.Str("direct", strconv.FormatInt(int64(r.ActiveRttMs), 10)))
-		}
-		return text.Msg(text.KeyTransportReadLatencyRelay, text.Str("relay", strconv.FormatInt(int64(r.ActiveRttMs), 10)))
+		return text.Msg(text.KeyTransportRttMs, text.Str("ms", strconv.FormatInt(int64(r.ActiveRttMs), 10)))
 	}
 	if r.ReadRoute == corev1.DirectPathChoice_DIRECT_PATH_CHOICE_DIRECT && r.HasDirectReadMs {
-		return text.Msg(text.KeyTransportReadLatencyDirect, text.Str("direct", strconv.FormatInt(int64(r.DirectReadMs), 10)))
+		return text.Msg(text.KeyTransportRttMs, text.Str("ms", strconv.FormatInt(int64(r.DirectReadMs), 10)))
 	}
 	if r.HasRelayReadMs && r.State != corev1.DirectRouteState_DIRECT_ROUTE_STATE_CONNECTED {
-		return text.Msg(text.KeyTransportReadLatencyRelay, text.Str("relay", strconv.FormatInt(int64(r.RelayReadMs), 10)))
+		return text.Msg(text.KeyTransportRttMs, text.Str("ms", strconv.FormatInt(int64(r.RelayReadMs), 10)))
 	}
 	if r.ReadRoute == corev1.DirectPathChoice_DIRECT_PATH_CHOICE_RELAY && r.HasRelayReadMs {
-		return text.Msg(text.KeyTransportReadLatencyRelay, text.Str("relay", strconv.FormatInt(int64(r.RelayReadMs), 10)))
+		return text.Msg(text.KeyTransportRttMs, text.Str("ms", strconv.FormatInt(int64(r.RelayReadMs), 10)))
 	}
 	return nil
 }

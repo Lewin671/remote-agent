@@ -27,6 +27,29 @@ func protoConnState(c lists.ConnectionKind) corev1.ConnState {
 }
 
 func syncPendingFromLists(p lists.PendingAction) *corev1.SyncPendingAction {
+	var q *corev1.SyncPendingQuestion
+	if p.Question != nil {
+		opts := make([]*corev1.SyncPendingQuestionOption, 0, len(p.Question.Options))
+		for _, opt := range p.Question.Options {
+			opts = append(opts, &corev1.SyncPendingQuestionOption{
+				Label:       opt.Label,
+				Description: opt.Description,
+			})
+		}
+		q = &corev1.SyncPendingQuestion{
+			QuestionId:       p.Question.QuestionID,
+			QuestionKey:      p.Question.QuestionKey,
+			Header:           p.Question.Header,
+			Text:             p.Question.Text,
+			MultiSelect:      p.Question.MultiSelect,
+			QuestionCount:    p.Question.QuestionCount,
+			Options:          opts,
+			CanFreeText:      p.Question.CanFreeText,
+			Async:            p.Question.Async,
+			ObservedEventSeq: p.Question.ObservedEventSeq,
+			AskedAtMs:        p.Question.AskedAtMs,
+		}
+	}
 	return &corev1.SyncPendingAction{
 		HasApproval:        p.HasApproval,
 		ApprovalId:         p.ApprovalID,
@@ -39,6 +62,7 @@ func syncPendingFromLists(p lists.PendingAction) *corev1.SyncPendingAction {
 		HasPlan:            p.HasPlan,
 		HasPopup:           p.HasPopup,
 		PopupPreview:       p.PopupPreview,
+		Question:           q,
 	}
 }
 

@@ -1327,5 +1327,75 @@
       "zh-CN": "source",
       "en": "draft"
     }
+  },
+  {
+    "key": "home.question_answer_in_terminal",
+    "zh-CN": "去终端回答",
+    "en": "Answer in terminal",
+    "notes": "首页内联单选提问卡底部兜底链接文字。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "home.question_answered_line",
+    "zh-CN": "已回答 · {answer}",
+    "en": "Answered · {answer}",
+    "notes": "首页内联单选提问提交确认后缩成一行的确认文字。",
+    "params": {
+      "answer": {
+        "type": "string",
+        "example": "Yes"
+      }
+    },
+    "platforms": [
+      "web",
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "home.question_answered_elsewhere",
+    "zh-CN": "已在另一端回答",
+    "en": "Answered on another device",
+    "notes": "首页内联单选提问已在对端或其他设备处理时的收拢提示。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "home.question_send_failed",
+    "zh-CN": "没送到：{reason}",
+    "en": "Not delivered: {reason}",
+    "notes": "首页内联单选提问送达失败的错误提示；reason 为失败原因原文。",
+    "params": {
+      "reason": {
+        "type": "string",
+        "example": "Disconnected"
+      }
+    },
+    "platforms": [
+      "web",
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
   }
 ]

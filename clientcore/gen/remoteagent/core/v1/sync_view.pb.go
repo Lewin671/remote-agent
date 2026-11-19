@@ -8,6 +8,191 @@ import (
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
 )
 
+type SyncPendingQuestionOption struct {
+	Label       string
+	Description string
+}
+
+func (m *SyncPendingQuestionOption) GetLabel() string {
+	if m != nil {
+		return m.Label
+	}
+	return ""
+}
+func (m *SyncPendingQuestionOption) GetDescription() string {
+	if m != nil {
+		return m.Description
+	}
+	return ""
+}
+
+func (m *SyncPendingQuestionOption) Size() int {
+	if m == nil {
+		return 0
+	}
+	n := 0
+	n += litewire.SizeString(1, m.Label)
+	n += litewire.SizeString(2, m.Description)
+	return n
+}
+
+func (m *SyncPendingQuestionOption) Marshal() ([]byte, error) {
+	if m == nil {
+		return nil, nil
+	}
+	sz := m.Size()
+	if sz == 0 {
+		return nil, nil
+	}
+	return m.AppendMarshal(make([]byte, 0, sz)), nil
+}
+
+func (m *SyncPendingQuestionOption) AppendMarshal(b []byte) []byte {
+	if m == nil {
+		return b
+	}
+	b = litewire.AppendString(b, 1, m.Label)
+	b = litewire.AppendString(b, 2, m.Description)
+	return b
+}
+
+type SyncPendingQuestion struct {
+	QuestionId       string
+	QuestionKey      string
+	Header           string
+	Text             string
+	MultiSelect      bool
+	QuestionCount    int32
+	Options          []*SyncPendingQuestionOption
+	CanFreeText      bool
+	Async            bool
+	ObservedEventSeq uint64
+	AskedAtMs        int64
+}
+
+func (m *SyncPendingQuestion) GetQuestionId() string {
+	if m != nil {
+		return m.QuestionId
+	}
+	return ""
+}
+func (m *SyncPendingQuestion) GetQuestionKey() string {
+	if m != nil {
+		return m.QuestionKey
+	}
+	return ""
+}
+func (m *SyncPendingQuestion) GetHeader() string {
+	if m != nil {
+		return m.Header
+	}
+	return ""
+}
+func (m *SyncPendingQuestion) GetText() string {
+	if m != nil {
+		return m.Text
+	}
+	return ""
+}
+func (m *SyncPendingQuestion) GetMultiSelect() bool {
+	if m != nil {
+		return m.MultiSelect
+	}
+	return false
+}
+func (m *SyncPendingQuestion) GetQuestionCount() int32 {
+	if m != nil {
+		return m.QuestionCount
+	}
+	return 0
+}
+func (m *SyncPendingQuestion) GetOptions() []*SyncPendingQuestionOption {
+	if m != nil {
+		return m.Options
+	}
+	return nil
+}
+func (m *SyncPendingQuestion) GetCanFreeText() bool {
+	if m != nil {
+		return m.CanFreeText
+	}
+	return false
+}
+func (m *SyncPendingQuestion) GetAsync() bool {
+	if m != nil {
+		return m.Async
+	}
+	return false
+}
+func (m *SyncPendingQuestion) GetObservedEventSeq() uint64 {
+	if m != nil {
+		return m.ObservedEventSeq
+	}
+	return 0
+}
+func (m *SyncPendingQuestion) GetAskedAtMs() int64 {
+	if m != nil {
+		return m.AskedAtMs
+	}
+	return 0
+}
+
+func (m *SyncPendingQuestion) Size() int {
+	if m == nil {
+		return 0
+	}
+	n := 0
+	n += litewire.SizeString(1, m.QuestionId)
+	n += litewire.SizeString(2, m.QuestionKey)
+	n += litewire.SizeString(3, m.Header)
+	n += litewire.SizeString(4, m.Text)
+	n += litewire.SizeBool(5, m.MultiSelect)
+	n += litewire.SizeInt32(6, int32(m.QuestionCount))
+	for _, v := range m.Options {
+		if v != nil {
+			n += litewire.SizeMessage(7, v.Size())
+		}
+	}
+	n += litewire.SizeBool(8, m.CanFreeText)
+	n += litewire.SizeBool(9, m.Async)
+	n += litewire.SizeVarintField(10, uint64(m.ObservedEventSeq))
+	n += litewire.SizeVarintField(11, uint64(m.AskedAtMs))
+	return n
+}
+
+func (m *SyncPendingQuestion) Marshal() ([]byte, error) {
+	if m == nil {
+		return nil, nil
+	}
+	sz := m.Size()
+	if sz == 0 {
+		return nil, nil
+	}
+	return m.AppendMarshal(make([]byte, 0, sz)), nil
+}
+
+func (m *SyncPendingQuestion) AppendMarshal(b []byte) []byte {
+	if m == nil {
+		return b
+	}
+	b = litewire.AppendString(b, 1, m.QuestionId)
+	b = litewire.AppendString(b, 2, m.QuestionKey)
+	b = litewire.AppendString(b, 3, m.Header)
+	b = litewire.AppendString(b, 4, m.Text)
+	b = litewire.AppendBool(b, 5, m.MultiSelect)
+	b = litewire.AppendInt32(b, 6, int32(m.QuestionCount))
+	for _, v := range m.Options {
+		if v != nil {
+			b = litewire.AppendMessage(b, 7, v)
+		}
+	}
+	b = litewire.AppendBool(b, 8, m.CanFreeText)
+	b = litewire.AppendBool(b, 9, m.Async)
+	b = litewire.AppendVarint(b, 10, uint64(m.ObservedEventSeq))
+	b = litewire.AppendVarint(b, 11, uint64(m.AskedAtMs))
+	return b
+}
+
 type SyncPendingAction struct {
 	HasApproval        bool
 	ApprovalId         string
@@ -20,6 +205,7 @@ type SyncPendingAction struct {
 	HasPlan            bool
 	HasPopup           bool
 	PopupPreview       string
+	Question           *SyncPendingQuestion
 }
 
 func (m *SyncPendingAction) GetHasApproval() bool {
@@ -88,6 +274,12 @@ func (m *SyncPendingAction) GetPopupPreview() string {
 	}
 	return ""
 }
+func (m *SyncPendingAction) GetQuestion() *SyncPendingQuestion {
+	if m != nil {
+		return m.Question
+	}
+	return nil
+}
 
 func (m *SyncPendingAction) Size() int {
 	if m == nil {
@@ -105,6 +297,9 @@ func (m *SyncPendingAction) Size() int {
 	n += litewire.SizeBool(9, m.HasPlan)
 	n += litewire.SizeBool(10, m.HasPopup)
 	n += litewire.SizeString(11, m.PopupPreview)
+	if m.Question != nil {
+		n += litewire.SizeMessage(12, m.Question.Size())
+	}
 	return n
 }
 
@@ -134,6 +329,9 @@ func (m *SyncPendingAction) AppendMarshal(b []byte) []byte {
 	b = litewire.AppendBool(b, 9, m.HasPlan)
 	b = litewire.AppendBool(b, 10, m.HasPopup)
 	b = litewire.AppendString(b, 11, m.PopupPreview)
+	if m.Question != nil {
+		b = litewire.AppendMessage(b, 12, m.Question)
+	}
 	return b
 }
 

@@ -76,9 +76,15 @@ func BuildHome(st *State, endedLimit int) *corev1.HomeViewModel {
 		case lists.HomeRowAttention:
 			if vm.TopAttentionSessionId == "" && row.Item != nil {
 				vm.TopAttentionSessionId = row.Item.ID
-				if row.Item.RawStatus == lists.StatusApproval {
+				switch row.Item.RawStatus {
+				case lists.StatusApproval:
 					vm.TopAttentionActionable = true
 					vm.TopAttentionCard = buildAttentionCardView(row.Item, st)
+				case lists.StatusQuestion:
+					if qCard := buildHomeQuestionCardView(row.Item, st); qCard != nil {
+						vm.TopAttentionActionable = true
+						vm.TopAttentionQuestion = qCard
+					}
 				}
 			}
 			vm.Attention = append(vm.Attention, buildAttentionRowView(row.Item, homeData.Meta))

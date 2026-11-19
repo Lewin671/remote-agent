@@ -22,6 +22,182 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+type SyncPendingQuestionOption struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Label         string                 `protobuf:"bytes,1,opt,name=label,proto3" json:"label,omitempty"`
+	Description   string                 `protobuf:"bytes,2,opt,name=description,proto3" json:"description,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SyncPendingQuestionOption) Reset() {
+	*x = SyncPendingQuestionOption{}
+	mi := &file_remoteagent_core_v1_sync_view_proto_msgTypes[0]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SyncPendingQuestionOption) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SyncPendingQuestionOption) ProtoMessage() {}
+
+func (x *SyncPendingQuestionOption) ProtoReflect() protoreflect.Message {
+	mi := &file_remoteagent_core_v1_sync_view_proto_msgTypes[0]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SyncPendingQuestionOption.ProtoReflect.Descriptor instead.
+func (*SyncPendingQuestionOption) Descriptor() ([]byte, []int) {
+	return file_remoteagent_core_v1_sync_view_proto_rawDescGZIP(), []int{0}
+}
+
+func (x *SyncPendingQuestionOption) GetLabel() string {
+	if x != nil {
+		return x.Label
+	}
+	return ""
+}
+
+func (x *SyncPendingQuestionOption) GetDescription() string {
+	if x != nil {
+		return x.Description
+	}
+	return ""
+}
+
+type SyncPendingQuestion struct {
+	state            protoimpl.MessageState       `protogen:"open.v1"`
+	QuestionId       string                       `protobuf:"bytes,1,opt,name=question_id,json=questionId,proto3" json:"question_id,omitempty"`
+	QuestionKey      string                       `protobuf:"bytes,2,opt,name=question_key,json=questionKey,proto3" json:"question_key,omitempty"`
+	Header           string                       `protobuf:"bytes,3,opt,name=header,proto3" json:"header,omitempty"`
+	Text             string                       `protobuf:"bytes,4,opt,name=text,proto3" json:"text,omitempty"`
+	MultiSelect      bool                         `protobuf:"varint,5,opt,name=multi_select,json=multiSelect,proto3" json:"multi_select,omitempty"`
+	QuestionCount    int32                        `protobuf:"varint,6,opt,name=question_count,json=questionCount,proto3" json:"question_count,omitempty"`
+	Options          []*SyncPendingQuestionOption `protobuf:"bytes,7,rep,name=options,proto3" json:"options,omitempty"`
+	CanFreeText      bool                         `protobuf:"varint,8,opt,name=can_free_text,json=canFreeText,proto3" json:"can_free_text,omitempty"`
+	Async            bool                         `protobuf:"varint,9,opt,name=async,proto3" json:"async,omitempty"`
+	ObservedEventSeq uint64                       `protobuf:"varint,10,opt,name=observed_event_seq,json=observedEventSeq,proto3" json:"observed_event_seq,omitempty"`
+	AskedAtMs        int64                        `protobuf:"varint,11,opt,name=asked_at_ms,json=askedAtMs,proto3" json:"asked_at_ms,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *SyncPendingQuestion) Reset() {
+	*x = SyncPendingQuestion{}
+	mi := &file_remoteagent_core_v1_sync_view_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SyncPendingQuestion) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SyncPendingQuestion) ProtoMessage() {}
+
+func (x *SyncPendingQuestion) ProtoReflect() protoreflect.Message {
+	mi := &file_remoteagent_core_v1_sync_view_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SyncPendingQuestion.ProtoReflect.Descriptor instead.
+func (*SyncPendingQuestion) Descriptor() ([]byte, []int) {
+	return file_remoteagent_core_v1_sync_view_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *SyncPendingQuestion) GetQuestionId() string {
+	if x != nil {
+		return x.QuestionId
+	}
+	return ""
+}
+
+func (x *SyncPendingQuestion) GetQuestionKey() string {
+	if x != nil {
+		return x.QuestionKey
+	}
+	return ""
+}
+
+func (x *SyncPendingQuestion) GetHeader() string {
+	if x != nil {
+		return x.Header
+	}
+	return ""
+}
+
+func (x *SyncPendingQuestion) GetText() string {
+	if x != nil {
+		return x.Text
+	}
+	return ""
+}
+
+func (x *SyncPendingQuestion) GetMultiSelect() bool {
+	if x != nil {
+		return x.MultiSelect
+	}
+	return false
+}
+
+func (x *SyncPendingQuestion) GetQuestionCount() int32 {
+	if x != nil {
+		return x.QuestionCount
+	}
+	return 0
+}
+
+func (x *SyncPendingQuestion) GetOptions() []*SyncPendingQuestionOption {
+	if x != nil {
+		return x.Options
+	}
+	return nil
+}
+
+func (x *SyncPendingQuestion) GetCanFreeText() bool {
+	if x != nil {
+		return x.CanFreeText
+	}
+	return false
+}
+
+func (x *SyncPendingQuestion) GetAsync() bool {
+	if x != nil {
+		return x.Async
+	}
+	return false
+}
+
+func (x *SyncPendingQuestion) GetObservedEventSeq() uint64 {
+	if x != nil {
+		return x.ObservedEventSeq
+	}
+	return 0
+}
+
+func (x *SyncPendingQuestion) GetAskedAtMs() int64 {
+	if x != nil {
+		return x.AskedAtMs
+	}
+	return 0
+}
+
 // Pending action summary derived by Core for Home, Session, and transition views.
 // Transitional helper shared by SyncSessionView and SessionDataView; delete with SyncStateView/SessionDataView after Steps 3-4.
 type SyncPendingAction struct {
@@ -37,13 +213,14 @@ type SyncPendingAction struct {
 	HasPlan            bool                   `protobuf:"varint,9,opt,name=has_plan,json=hasPlan,proto3" json:"has_plan,omitempty"`
 	HasPopup           bool                   `protobuf:"varint,10,opt,name=has_popup,json=hasPopup,proto3" json:"has_popup,omitempty"`
 	PopupPreview       string                 `protobuf:"bytes,11,opt,name=popup_preview,json=popupPreview,proto3" json:"popup_preview,omitempty"`
+	Question           *SyncPendingQuestion   `protobuf:"bytes,12,opt,name=question,proto3" json:"question,omitempty"`
 	unknownFields      protoimpl.UnknownFields
 	sizeCache          protoimpl.SizeCache
 }
 
 func (x *SyncPendingAction) Reset() {
 	*x = SyncPendingAction{}
-	mi := &file_remoteagent_core_v1_sync_view_proto_msgTypes[0]
+	mi := &file_remoteagent_core_v1_sync_view_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -55,7 +232,7 @@ func (x *SyncPendingAction) String() string {
 func (*SyncPendingAction) ProtoMessage() {}
 
 func (x *SyncPendingAction) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_sync_view_proto_msgTypes[0]
+	mi := &file_remoteagent_core_v1_sync_view_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -68,7 +245,7 @@ func (x *SyncPendingAction) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SyncPendingAction.ProtoReflect.Descriptor instead.
 func (*SyncPendingAction) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_sync_view_proto_rawDescGZIP(), []int{0}
+	return file_remoteagent_core_v1_sync_view_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *SyncPendingAction) GetHasApproval() bool {
@@ -148,6 +325,13 @@ func (x *SyncPendingAction) GetPopupPreview() string {
 	return ""
 }
 
+func (x *SyncPendingAction) GetQuestion() *SyncPendingQuestion {
+	if x != nil {
+		return x.Question
+	}
+	return nil
+}
+
 // Machine snapshot for unmigrated Step 3-4 screens (machine status, settings, schedules, session header).
 // Delete after Steps 3-4 finish migrating those screens into Core.
 type SyncMachineView struct {
@@ -171,7 +355,7 @@ type SyncMachineView struct {
 
 func (x *SyncMachineView) Reset() {
 	*x = SyncMachineView{}
-	mi := &file_remoteagent_core_v1_sync_view_proto_msgTypes[1]
+	mi := &file_remoteagent_core_v1_sync_view_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -183,7 +367,7 @@ func (x *SyncMachineView) String() string {
 func (*SyncMachineView) ProtoMessage() {}
 
 func (x *SyncMachineView) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_sync_view_proto_msgTypes[1]
+	mi := &file_remoteagent_core_v1_sync_view_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -196,7 +380,7 @@ func (x *SyncMachineView) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SyncMachineView.ProtoReflect.Descriptor instead.
 func (*SyncMachineView) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_sync_view_proto_rawDescGZIP(), []int{1}
+	return file_remoteagent_core_v1_sync_view_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *SyncMachineView) GetMachineId() string {
@@ -316,7 +500,7 @@ type SyncSessionView struct {
 
 func (x *SyncSessionView) Reset() {
 	*x = SyncSessionView{}
-	mi := &file_remoteagent_core_v1_sync_view_proto_msgTypes[2]
+	mi := &file_remoteagent_core_v1_sync_view_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -328,7 +512,7 @@ func (x *SyncSessionView) String() string {
 func (*SyncSessionView) ProtoMessage() {}
 
 func (x *SyncSessionView) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_sync_view_proto_msgTypes[2]
+	mi := &file_remoteagent_core_v1_sync_view_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -341,7 +525,7 @@ func (x *SyncSessionView) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SyncSessionView.ProtoReflect.Descriptor instead.
 func (*SyncSessionView) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_sync_view_proto_rawDescGZIP(), []int{2}
+	return file_remoteagent_core_v1_sync_view_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *SyncSessionView) GetSessionId() string {
@@ -474,7 +658,7 @@ type SyncDeviceView struct {
 
 func (x *SyncDeviceView) Reset() {
 	*x = SyncDeviceView{}
-	mi := &file_remoteagent_core_v1_sync_view_proto_msgTypes[3]
+	mi := &file_remoteagent_core_v1_sync_view_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -486,7 +670,7 @@ func (x *SyncDeviceView) String() string {
 func (*SyncDeviceView) ProtoMessage() {}
 
 func (x *SyncDeviceView) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_sync_view_proto_msgTypes[3]
+	mi := &file_remoteagent_core_v1_sync_view_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -499,7 +683,7 @@ func (x *SyncDeviceView) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SyncDeviceView.ProtoReflect.Descriptor instead.
 func (*SyncDeviceView) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_sync_view_proto_rawDescGZIP(), []int{3}
+	return file_remoteagent_core_v1_sync_view_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *SyncDeviceView) GetDeviceId() string {
@@ -608,7 +792,7 @@ type SyncStateView struct {
 
 func (x *SyncStateView) Reset() {
 	*x = SyncStateView{}
-	mi := &file_remoteagent_core_v1_sync_view_proto_msgTypes[4]
+	mi := &file_remoteagent_core_v1_sync_view_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -620,7 +804,7 @@ func (x *SyncStateView) String() string {
 func (*SyncStateView) ProtoMessage() {}
 
 func (x *SyncStateView) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_sync_view_proto_msgTypes[4]
+	mi := &file_remoteagent_core_v1_sync_view_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -633,7 +817,7 @@ func (x *SyncStateView) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SyncStateView.ProtoReflect.Descriptor instead.
 func (*SyncStateView) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_sync_view_proto_rawDescGZIP(), []int{4}
+	return file_remoteagent_core_v1_sync_view_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *SyncStateView) GetConnection() ConnState {
@@ -946,7 +1130,7 @@ type SessionDataView struct {
 
 func (x *SessionDataView) Reset() {
 	*x = SessionDataView{}
-	mi := &file_remoteagent_core_v1_sync_view_proto_msgTypes[5]
+	mi := &file_remoteagent_core_v1_sync_view_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -958,7 +1142,7 @@ func (x *SessionDataView) String() string {
 func (*SessionDataView) ProtoMessage() {}
 
 func (x *SessionDataView) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_sync_view_proto_msgTypes[5]
+	mi := &file_remoteagent_core_v1_sync_view_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -971,7 +1155,7 @@ func (x *SessionDataView) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SessionDataView.ProtoReflect.Descriptor instead.
 func (*SessionDataView) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_sync_view_proto_rawDescGZIP(), []int{5}
+	return file_remoteagent_core_v1_sync_view_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *SessionDataView) GetSessionId() string {
@@ -1139,7 +1323,24 @@ var File_remoteagent_core_v1_sync_view_proto protoreflect.FileDescriptor
 
 const file_remoteagent_core_v1_sync_view_proto_rawDesc = "" +
 	"\n" +
-	"#remoteagent/core/v1/sync_view.proto\x12\x13remoteagent.core.v1\x1a#remoteagent/core/v1/home_view.proto\x1a$remoteagent/core/v1/projection.proto\x1a\x1eremoteagent/core/v1/text.proto\x1a\x1aremoteagent/v1/event.proto\x1a\x1aremoteagent/v1/local.proto\x1a\x1aremoteagent/v1/relay.proto\x1a\x1bremoteagent/v1/remote.proto\"\xc1\x03\n" +
+	"#remoteagent/core/v1/sync_view.proto\x12\x13remoteagent.core.v1\x1a#remoteagent/core/v1/home_view.proto\x1a$remoteagent/core/v1/projection.proto\x1a\x1eremoteagent/core/v1/text.proto\x1a\x1aremoteagent/v1/event.proto\x1a\x1aremoteagent/v1/local.proto\x1a\x1aremoteagent/v1/relay.proto\x1a\x1bremoteagent/v1/remote.proto\"S\n" +
+	"\x19SyncPendingQuestionOption\x12\x14\n" +
+	"\x05label\x18\x01 \x01(\tR\x05label\x12 \n" +
+	"\vdescription\x18\x02 \x01(\tR\vdescription\"\xa1\x03\n" +
+	"\x13SyncPendingQuestion\x12\x1f\n" +
+	"\vquestion_id\x18\x01 \x01(\tR\n" +
+	"questionId\x12!\n" +
+	"\fquestion_key\x18\x02 \x01(\tR\vquestionKey\x12\x16\n" +
+	"\x06header\x18\x03 \x01(\tR\x06header\x12\x12\n" +
+	"\x04text\x18\x04 \x01(\tR\x04text\x12!\n" +
+	"\fmulti_select\x18\x05 \x01(\bR\vmultiSelect\x12%\n" +
+	"\x0equestion_count\x18\x06 \x01(\x05R\rquestionCount\x12H\n" +
+	"\aoptions\x18\a \x03(\v2..remoteagent.core.v1.SyncPendingQuestionOptionR\aoptions\x12\"\n" +
+	"\rcan_free_text\x18\b \x01(\bR\vcanFreeText\x12\x14\n" +
+	"\x05async\x18\t \x01(\bR\x05async\x12,\n" +
+	"\x12observed_event_seq\x18\n" +
+	" \x01(\x04R\x10observedEventSeq\x12\x1e\n" +
+	"\vasked_at_ms\x18\v \x01(\x03R\taskedAtMs\"\x87\x04\n" +
 	"\x11SyncPendingAction\x12!\n" +
 	"\fhas_approval\x18\x01 \x01(\bR\vhasApproval\x12\x1f\n" +
 	"\vapproval_id\x18\x02 \x01(\tR\n" +
@@ -1153,7 +1354,8 @@ const file_remoteagent_core_v1_sync_view_proto_rawDesc = "" +
 	"\bhas_plan\x18\t \x01(\bR\ahasPlan\x12\x1b\n" +
 	"\thas_popup\x18\n" +
 	" \x01(\bR\bhasPopup\x12#\n" +
-	"\rpopup_preview\x18\v \x01(\tR\fpopupPreview\"\xec\x03\n" +
+	"\rpopup_preview\x18\v \x01(\tR\fpopupPreview\x12D\n" +
+	"\bquestion\x18\f \x01(\v2(.remoteagent.core.v1.SyncPendingQuestionR\bquestion\"\xec\x03\n" +
 	"\x0fSyncMachineView\x12\x1d\n" +
 	"\n" +
 	"machine_id\x18\x01 \x01(\tR\tmachineId\x12\x16\n" +
@@ -1300,55 +1502,59 @@ func file_remoteagent_core_v1_sync_view_proto_rawDescGZIP() []byte {
 	return file_remoteagent_core_v1_sync_view_proto_rawDescData
 }
 
-var file_remoteagent_core_v1_sync_view_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
+var file_remoteagent_core_v1_sync_view_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
 var file_remoteagent_core_v1_sync_view_proto_goTypes = []any{
-	(*SyncPendingAction)(nil), // 0: remoteagent.core.v1.SyncPendingAction
-	(*SyncMachineView)(nil),   // 1: remoteagent.core.v1.SyncMachineView
-	(*SyncSessionView)(nil),   // 2: remoteagent.core.v1.SyncSessionView
-	(*SyncDeviceView)(nil),    // 3: remoteagent.core.v1.SyncDeviceView
-	(*SyncStateView)(nil),     // 4: remoteagent.core.v1.SyncStateView
-	(*SessionDataView)(nil),   // 5: remoteagent.core.v1.SessionDataView
-	(*v1.MachineMeta)(nil),    // 6: remoteagent.v1.MachineMeta
-	(*v1.Session)(nil),        // 7: remoteagent.v1.Session
-	(*v1.LiveSnapshot)(nil),   // 8: remoteagent.v1.LiveSnapshot
-	(v1.DeviceKind)(0),        // 9: remoteagent.v1.DeviceKind
-	(*v1.DeviceMeta)(nil),     // 10: remoteagent.v1.DeviceMeta
-	(ConnState)(0),            // 11: remoteagent.core.v1.ConnState
-	(*Text)(nil),              // 12: remoteagent.core.v1.Text
-	(*v1.SessionCursor)(nil),  // 13: remoteagent.v1.SessionCursor
-	(*v1.ProjectPrefs)(nil),   // 14: remoteagent.v1.ProjectPrefs
-	(*ProjectionState)(nil),   // 15: remoteagent.core.v1.ProjectionState
-	(*v1.Event)(nil),          // 16: remoteagent.v1.Event
+	(*SyncPendingQuestionOption)(nil), // 0: remoteagent.core.v1.SyncPendingQuestionOption
+	(*SyncPendingQuestion)(nil),       // 1: remoteagent.core.v1.SyncPendingQuestion
+	(*SyncPendingAction)(nil),         // 2: remoteagent.core.v1.SyncPendingAction
+	(*SyncMachineView)(nil),           // 3: remoteagent.core.v1.SyncMachineView
+	(*SyncSessionView)(nil),           // 4: remoteagent.core.v1.SyncSessionView
+	(*SyncDeviceView)(nil),            // 5: remoteagent.core.v1.SyncDeviceView
+	(*SyncStateView)(nil),             // 6: remoteagent.core.v1.SyncStateView
+	(*SessionDataView)(nil),           // 7: remoteagent.core.v1.SessionDataView
+	(*v1.MachineMeta)(nil),            // 8: remoteagent.v1.MachineMeta
+	(*v1.Session)(nil),                // 9: remoteagent.v1.Session
+	(*v1.LiveSnapshot)(nil),           // 10: remoteagent.v1.LiveSnapshot
+	(v1.DeviceKind)(0),                // 11: remoteagent.v1.DeviceKind
+	(*v1.DeviceMeta)(nil),             // 12: remoteagent.v1.DeviceMeta
+	(ConnState)(0),                    // 13: remoteagent.core.v1.ConnState
+	(*Text)(nil),                      // 14: remoteagent.core.v1.Text
+	(*v1.SessionCursor)(nil),          // 15: remoteagent.v1.SessionCursor
+	(*v1.ProjectPrefs)(nil),           // 16: remoteagent.v1.ProjectPrefs
+	(*ProjectionState)(nil),           // 17: remoteagent.core.v1.ProjectionState
+	(*v1.Event)(nil),                  // 18: remoteagent.v1.Event
 }
 var file_remoteagent_core_v1_sync_view_proto_depIdxs = []int32{
-	6,  // 0: remoteagent.core.v1.SyncMachineView.meta:type_name -> remoteagent.v1.MachineMeta
-	7,  // 1: remoteagent.core.v1.SyncSessionView.info:type_name -> remoteagent.v1.Session
-	8,  // 2: remoteagent.core.v1.SyncSessionView.checkpoint:type_name -> remoteagent.v1.LiveSnapshot
-	0,  // 3: remoteagent.core.v1.SyncSessionView.pending:type_name -> remoteagent.core.v1.SyncPendingAction
-	9,  // 4: remoteagent.core.v1.SyncDeviceView.kind:type_name -> remoteagent.v1.DeviceKind
-	10, // 5: remoteagent.core.v1.SyncDeviceView.meta:type_name -> remoteagent.v1.DeviceMeta
-	11, // 6: remoteagent.core.v1.SyncStateView.connection:type_name -> remoteagent.core.v1.ConnState
-	12, // 7: remoteagent.core.v1.SyncStateView.connection_reason:type_name -> remoteagent.core.v1.Text
-	12, // 8: remoteagent.core.v1.SyncStateView.connection_step:type_name -> remoteagent.core.v1.Text
-	12, // 9: remoteagent.core.v1.SyncStateView.manager_name:type_name -> remoteagent.core.v1.Text
-	1,  // 10: remoteagent.core.v1.SyncStateView.machines:type_name -> remoteagent.core.v1.SyncMachineView
-	2,  // 11: remoteagent.core.v1.SyncStateView.sessions:type_name -> remoteagent.core.v1.SyncSessionView
-	13, // 12: remoteagent.core.v1.SyncStateView.next_cursor:type_name -> remoteagent.v1.SessionCursor
-	12, // 13: remoteagent.core.v1.SyncStateView.session_list_error:type_name -> remoteagent.core.v1.Text
-	14, // 14: remoteagent.core.v1.SyncStateView.prefs:type_name -> remoteagent.v1.ProjectPrefs
-	3,  // 15: remoteagent.core.v1.SyncStateView.devices:type_name -> remoteagent.core.v1.SyncDeviceView
-	2,  // 16: remoteagent.core.v1.SessionDataView.session:type_name -> remoteagent.core.v1.SyncSessionView
-	12, // 17: remoteagent.core.v1.SessionDataView.error:type_name -> remoteagent.core.v1.Text
-	12, // 18: remoteagent.core.v1.SessionDataView.fetch_error:type_name -> remoteagent.core.v1.Text
-	15, // 19: remoteagent.core.v1.SessionDataView.projection:type_name -> remoteagent.core.v1.ProjectionState
-	8,  // 20: remoteagent.core.v1.SessionDataView.live_snapshot:type_name -> remoteagent.v1.LiveSnapshot
-	0,  // 21: remoteagent.core.v1.SessionDataView.pending:type_name -> remoteagent.core.v1.SyncPendingAction
-	16, // 22: remoteagent.core.v1.SessionDataView.events:type_name -> remoteagent.v1.Event
-	23, // [23:23] is the sub-list for method output_type
-	23, // [23:23] is the sub-list for method input_type
-	23, // [23:23] is the sub-list for extension type_name
-	23, // [23:23] is the sub-list for extension extendee
-	0,  // [0:23] is the sub-list for field type_name
+	0,  // 0: remoteagent.core.v1.SyncPendingQuestion.options:type_name -> remoteagent.core.v1.SyncPendingQuestionOption
+	1,  // 1: remoteagent.core.v1.SyncPendingAction.question:type_name -> remoteagent.core.v1.SyncPendingQuestion
+	8,  // 2: remoteagent.core.v1.SyncMachineView.meta:type_name -> remoteagent.v1.MachineMeta
+	9,  // 3: remoteagent.core.v1.SyncSessionView.info:type_name -> remoteagent.v1.Session
+	10, // 4: remoteagent.core.v1.SyncSessionView.checkpoint:type_name -> remoteagent.v1.LiveSnapshot
+	2,  // 5: remoteagent.core.v1.SyncSessionView.pending:type_name -> remoteagent.core.v1.SyncPendingAction
+	11, // 6: remoteagent.core.v1.SyncDeviceView.kind:type_name -> remoteagent.v1.DeviceKind
+	12, // 7: remoteagent.core.v1.SyncDeviceView.meta:type_name -> remoteagent.v1.DeviceMeta
+	13, // 8: remoteagent.core.v1.SyncStateView.connection:type_name -> remoteagent.core.v1.ConnState
+	14, // 9: remoteagent.core.v1.SyncStateView.connection_reason:type_name -> remoteagent.core.v1.Text
+	14, // 10: remoteagent.core.v1.SyncStateView.connection_step:type_name -> remoteagent.core.v1.Text
+	14, // 11: remoteagent.core.v1.SyncStateView.manager_name:type_name -> remoteagent.core.v1.Text
+	3,  // 12: remoteagent.core.v1.SyncStateView.machines:type_name -> remoteagent.core.v1.SyncMachineView
+	4,  // 13: remoteagent.core.v1.SyncStateView.sessions:type_name -> remoteagent.core.v1.SyncSessionView
+	15, // 14: remoteagent.core.v1.SyncStateView.next_cursor:type_name -> remoteagent.v1.SessionCursor
+	14, // 15: remoteagent.core.v1.SyncStateView.session_list_error:type_name -> remoteagent.core.v1.Text
+	16, // 16: remoteagent.core.v1.SyncStateView.prefs:type_name -> remoteagent.v1.ProjectPrefs
+	5,  // 17: remoteagent.core.v1.SyncStateView.devices:type_name -> remoteagent.core.v1.SyncDeviceView
+	4,  // 18: remoteagent.core.v1.SessionDataView.session:type_name -> remoteagent.core.v1.SyncSessionView
+	14, // 19: remoteagent.core.v1.SessionDataView.error:type_name -> remoteagent.core.v1.Text
+	14, // 20: remoteagent.core.v1.SessionDataView.fetch_error:type_name -> remoteagent.core.v1.Text
+	17, // 21: remoteagent.core.v1.SessionDataView.projection:type_name -> remoteagent.core.v1.ProjectionState
+	10, // 22: remoteagent.core.v1.SessionDataView.live_snapshot:type_name -> remoteagent.v1.LiveSnapshot
+	2,  // 23: remoteagent.core.v1.SessionDataView.pending:type_name -> remoteagent.core.v1.SyncPendingAction
+	18, // 24: remoteagent.core.v1.SessionDataView.events:type_name -> remoteagent.v1.Event
+	25, // [25:25] is the sub-list for method output_type
+	25, // [25:25] is the sub-list for method input_type
+	25, // [25:25] is the sub-list for extension type_name
+	25, // [25:25] is the sub-list for extension extendee
+	0,  // [0:25] is the sub-list for field type_name
 }
 
 func init() { file_remoteagent_core_v1_sync_view_proto_init() }
@@ -1365,7 +1571,7 @@ func file_remoteagent_core_v1_sync_view_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_remoteagent_core_v1_sync_view_proto_rawDesc), len(file_remoteagent_core_v1_sync_view_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   6,
+			NumMessages:   8,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

@@ -52,9 +52,13 @@ export interface MessageArgs {
   "approval.denial_reason": { [name: string]: never };
   "approval.denied": { [name: string]: never };
   "approval.deny": { [name: string]: never };
+  "approval.denying": { [name: string]: never };
   "approval.details": { [name: string]: never };
   "approval.full_command": { [name: string]: never };
+  "approval.handled_in_terminal": { [name: string]: never };
   "approval.reason_placeholder": { [name: string]: never };
+  "approval.retry_deny": { [name: string]: never };
+  "approval.scroll_to_view": { [name: string]: never };
   "approval.seconds_left": { count: number };
   "approval.timed_out": { [name: string]: never };
   "approval.timeout_note": { remaining: string };
@@ -101,6 +105,8 @@ export interface MessageArgs {
   "common.copied": { [name: string]: never };
   "common.copy": { [name: string]: never };
   "common.details": { [name: string]: never };
+  "common.discard_changes": { [name: string]: never };
+  "common.discard_changes_title": { [name: string]: never };
   "common.done": { [name: string]: never };
   "common.got_it": { [name: string]: never };
   "common.ios_more": { [name: string]: never };
@@ -109,6 +115,7 @@ export interface MessageArgs {
   "common.ios_save_failed": { reason: string };
   "common.ios_saving": { [name: string]: never };
   "common.ios_spoken_separator": { [name: string]: never };
+  "common.keep_editing": { [name: string]: never };
   "common.list_separator": { [name: string]: never };
   "common.loading": { [name: string]: never };
   "common.machine": { [name: string]: never };
@@ -136,6 +143,9 @@ export interface MessageArgs {
   "composer.message": { [name: string]: never };
   "composer.message_fallback": { [name: string]: never };
   "composer.message_unconfirmed": { [name: string]: never };
+  "composer.mode_insert_short": { [name: string]: never };
+  "composer.mode_picker_label": { [name: string]: never };
+  "composer.mode_queue_short": { [name: string]: never };
   "composer.not_written": { [name: string]: never };
   "composer.plan_placeholder": { [name: string]: never };
   "composer.queue_after_answer": { [name: string]: never };
@@ -323,6 +333,10 @@ export interface MessageArgs {
   "home.other_idle": { count: number };
   "home.pending_label": { count: number };
   "home.project_no_sessions": { [name: string]: never };
+  "home.question_answer_in_terminal": { [name: string]: never };
+  "home.question_answered_elsewhere": { [name: string]: never };
+  "home.question_answered_line": { answer: string };
+  "home.question_send_failed": { reason: string };
   "home.running_and_idle": { count: number; idle: number };
   "home.running_count": { count: number };
   "home.scheduled_frequency": { frequency: string };
@@ -1443,14 +1457,29 @@ export interface MessageArgs {
   "tools.tool": { [name: string]: never };
   "tools.waiting_sync": { [name: string]: never };
   "transport.conn_footer_unsupported": { [name: string]: never };
+  "transport.conn_footer_unsupported_browser": { [name: string]: never };
+  "transport.detail_daemon_disabled": { [name: string]: never };
+  "transport.detail_relay_only": { [name: string]: never };
   "transport.diag": { [name: string]: never };
   "transport.diag_at": { seconds: string; state: string };
   "transport.diag_cand": { count: number; kind: string; scope: string };
   "transport.diag_channel": { [name: string]: never };
+  "transport.diag_check_path": { [name: string]: never };
+  "transport.diag_check_peer": { [name: string]: never };
+  "transport.diag_check_retry": { [name: string]: never };
+  "transport.diag_connected_body": { [name: string]: never };
+  "transport.diag_connected_title": { [name: string]: never };
   "transport.diag_copy": { [name: string]: never };
   "transport.diag_copy_failed": { [name: string]: never };
+  "transport.diag_copy_permission": { [name: string]: never };
+  "transport.diag_copy_support": { [name: string]: never };
   "transport.diag_count": { count: number };
   "transport.diag_dtls": { [name: string]: never };
+  "transport.diag_explain_generic": { [name: string]: never };
+  "transport.diag_explain_nat": { [name: string]: never };
+  "transport.diag_explain_no_reply": { [name: string]: never };
+  "transport.diag_explain_peer_old": { [name: string]: never };
+  "transport.diag_explain_probe_blocked": { [name: string]: never };
   "transport.diag_family_unknown": { [name: string]: never };
   "transport.diag_footer": { [name: string]: never };
   "transport.diag_g_checks": { [name: string]: never };
@@ -1470,6 +1499,12 @@ export interface MessageArgs {
   "transport.diag_pair_ok": { count: number };
   "transport.diag_pair_traffic": { got: number; sent: number };
   "transport.diag_pair_wait": { count: number };
+  "transport.diag_path_failed": { [name: string]: never };
+  "transport.diag_path_nat": { [name: string]: never };
+  "transport.diag_path_udp_blocked": { [name: string]: never };
+  "transport.diag_peer_no_reply_desc": { [name: string]: never };
+  "transport.diag_peer_old_desc": { [name: string]: never };
+  "transport.diag_privacy_footer": { [name: string]: never };
   "transport.diag_range_cgnat": { [name: string]: never };
   "transport.diag_range_global": { [name: string]: never };
   "transport.diag_range_link_local": { [name: string]: never };
@@ -1499,6 +1534,9 @@ export interface MessageArgs {
   "transport.diag_result_timeout": { [name: string]: never };
   "transport.diag_result_trying": { [name: string]: never };
   "transport.diag_retry": { [name: string]: never };
+  "transport.diag_retry_auto_desc": { [name: string]: never };
+  "transport.diag_retry_wait_desc": { [name: string]: never };
+  "transport.diag_retrying": { [name: string]: never };
   "transport.diag_round": { result: string; seconds: string };
   "transport.diag_rtt": { ms: number };
   "transport.diag_sig_limited": { count: number };
@@ -1519,8 +1557,20 @@ export interface MessageArgs {
   "transport.diag_state_failed": { [name: string]: never };
   "transport.diag_state_none": { [name: string]: never };
   "transport.diag_state_ok": { [name: string]: never };
+  "transport.diag_status_blocked": { [name: string]: never };
+  "transport.diag_status_checking": { [name: string]: never };
+  "transport.diag_status_connected": { [name: string]: never };
+  "transport.diag_status_enabled": { [name: string]: never };
+  "transport.diag_status_no_reply": { [name: string]: never };
+  "transport.diag_status_not_started": { [name: string]: never };
+  "transport.diag_status_ok": { [name: string]: never };
+  "transport.diag_status_peer_old": { [name: string]: never };
+  "transport.diag_status_wait_update": { [name: string]: never };
   "transport.diag_stun_error": { code: number; count: number; family: string };
   "transport.diag_stun_errors": { [name: string]: never };
+  "transport.diag_title_generic": { [name: string]: never };
+  "transport.diag_title_no_reply": { [name: string]: never };
+  "transport.diag_title_probe_blocked": { [name: string]: never };
   "transport.diag_type_host": { [name: string]: never };
   "transport.diag_type_other": { [name: string]: never };
   "transport.diag_type_prflx": { [name: string]: never };
@@ -1557,11 +1607,24 @@ export interface MessageArgs {
   "transport.file_speed_relay": { relay: string };
   "transport.footer": { [name: string]: never };
   "transport.group": { [name: string]: never };
+  "transport.popover_a11y": { [name: string]: never };
+  "transport.popover_direct_body": { [name: string]: never };
+  "transport.popover_direct_title": { name: string };
+  "transport.popover_direct_title_rtt": { ms: string; name: string };
+  "transport.popover_file_only": { [name: string]: never };
+  "transport.popover_read_only": { [name: string]: never };
+  "transport.popover_relay_body": { [name: string]: never };
+  "transport.popover_relay_title": { name: string };
+  "transport.popover_relay_title_rtt": { ms: string; name: string };
+  "transport.popover_settings": { [name: string]: never };
+  "transport.popover_stable": { [name: string]: never };
+  "transport.popover_switched_relay": { [name: string]: never };
   "transport.read_fallback": { [name: string]: never };
   "transport.read_latency_both": { direct: string; relay: string };
   "transport.read_latency_direct": { direct: string };
   "transport.read_latency_relay": { relay: string };
   "transport.reason_at_cap": { [name: string]: never };
+  "transport.reason_at_cap_detail": { [name: string]: never };
   "transport.reason_channel_pending": { [name: string]: never };
   "transport.reason_daemon_disabled": { [name: string]: never };
   "transport.reason_failed": { [name: string]: never };
@@ -1570,9 +1633,11 @@ export interface MessageArgs {
   "transport.reason_peer_unsupported": { [name: string]: never };
   "transport.reason_security_pending": { [name: string]: never };
   "transport.reason_starting": { [name: string]: never };
+  "transport.rtt_ms": { ms: string };
   "transport.speed_file": { [name: string]: never };
   "transport.speed_read": { [name: string]: never };
   "transport.status_connecting": { [name: string]: never };
+  "transport.status_daemon_disabled": { [name: string]: never };
   "transport.status_direct": { [name: string]: never };
   "transport.status_relay": { [name: string]: never };
   "transport.status_unsupported": { [name: string]: never };
@@ -1580,6 +1645,7 @@ export interface MessageArgs {
   "transport.unavailable": { reason: string };
   "transport.use_file": { [name: string]: never };
   "transport.use_read": { [name: string]: never };
+  "transport.why_not_connected": { [name: string]: never };
 }
 export type MessageKey = keyof MessageArgs;
 export const messages = {
@@ -1605,9 +1671,13 @@ export const messages = {
     "approval.denial_reason": "Reason for denial",
     "approval.denied": "Denied",
     "approval.deny": "Deny",
+    "approval.denying": "Denying…",
     "approval.details": "Approval details",
     "approval.full_command": "View full command",
+    "approval.handled_in_terminal": "Handled in terminal",
     "approval.reason_placeholder": "Suggest what to do instead (optional)",
+    "approval.retry_deny": "Retry deny",
+    "approval.scroll_to_view": "Scroll to view full command",
     "approval.seconds_left": {
       "forms": {
         "one": "{count} second left",
@@ -1678,6 +1748,8 @@ export const messages = {
     "common.copied": "Copied",
     "common.copy": "Copy",
     "common.details": "Details",
+    "common.discard_changes": "Discard",
+    "common.discard_changes_title": "Discard unsaved changes?",
     "common.done": "Done",
     "common.got_it": "Got it",
     "common.ios_more": "More",
@@ -1686,6 +1758,7 @@ export const messages = {
     "common.ios_save_failed": "Could not save: {reason}",
     "common.ios_saving": "Saving…",
     "common.ios_spoken_separator": ", ",
+    "common.keep_editing": "Keep editing",
     "common.list_separator": ", ",
     "common.loading": "Loading",
     "common.machine": "Computer",
@@ -1713,6 +1786,9 @@ export const messages = {
     "composer.message": "Message",
     "composer.message_fallback": "A message",
     "composer.message_unconfirmed": "A message may not have been sent: written to terminal but unconfirmed",
+    "composer.mode_insert_short": "Insert into turn",
+    "composer.mode_picker_label": "Send timing",
+    "composer.mode_queue_short": "After this turn",
     "composer.not_written": "Not written to terminal",
     "composer.plan_placeholder": "Add requirements for the plan…",
     "composer.queue_after_answer": "Queue message; continue after answering",
@@ -1996,6 +2072,10 @@ export const messages = {
       "plural": "count"
     },
     "home.project_no_sessions": "No sessions in this project yet",
+    "home.question_answer_in_terminal": "Answer in terminal",
+    "home.question_answered_elsewhere": "Answered on another device",
+    "home.question_answered_line": "Answered · {answer}",
+    "home.question_send_failed": "Not delivered: {reason}",
     "home.running_and_idle": {
       "forms": {
         "one": "{count} session running, {idle} idle",
@@ -3554,14 +3634,29 @@ export const messages = {
     "tools.tool": "Tool",
     "tools.waiting_sync": "Waiting to sync",
     "transport.conn_footer_unsupported": "This browser doesn't support direct connections.",
+    "transport.conn_footer_unsupported_browser": "This browser does not support direct connections; everything connects via relay.",
+    "transport.detail_daemon_disabled": "Turn it on from this computer to use direct connections",
+    "transport.detail_relay_only": "Everything connects via relay as usual",
     "transport.diag": "Diagnostics",
     "transport.diag_at": "{state} {seconds} s",
     "transport.diag_cand": "{kind} ×{count} ({scope})",
     "transport.diag_channel": "Data channel",
+    "transport.diag_check_path": "Local or public direct path",
+    "transport.diag_check_peer": "Computer reachable & responding",
+    "transport.diag_check_retry": "Background auto-retry",
+    "transport.diag_connected_body": "Loading and files are back on a direct connection.",
+    "transport.diag_connected_title": "Direct connected",
     "transport.diag_copy": "Copy diagnostics",
     "transport.diag_copy_failed": "Couldn't copy",
+    "transport.diag_copy_permission": "Couldn’t copy; check clipboard permission",
+    "transport.diag_copy_support": "Copy diagnostics for support",
     "transport.diag_count": "×{count}",
     "transport.diag_dtls": "Encryption handshake",
+    "transport.diag_explain_generic": "Direct negotiation did not finish within the time budget and will retry when the network changes. Everything currently uses relay automatically with no impact on use.",
+    "transport.diag_explain_nat": "Both devices are behind restrictive networks such as cellular NAT or a corporate LAN. Everything currently uses relay automatically with no impact on use.",
+    "transport.diag_explain_no_reply": "The computer did not reply to the direct handshake; direct connections may be off there or blocked by a firewall. Everything currently uses relay automatically with no impact on use.",
+    "transport.diag_explain_peer_old": "The remote-agent version on the computer does not support direct connections yet; update it to enable direct paths. Everything currently uses relay automatically with no impact on use.",
+    "transport.diag_explain_probe_blocked": "This network appears to block UDP packets needed for direct probing. Everything currently uses relay automatically with no impact on use.",
     "transport.diag_family_unknown": "unknown",
     "transport.diag_footer": "Diagnostics show address types and ranges only, never the addresses themselves.",
     "transport.diag_g_checks": "Connectivity checks",
@@ -3581,6 +3676,12 @@ export const messages = {
     "transport.diag_pair_ok": "{count} succeeded",
     "transport.diag_pair_traffic": "sent {sent} · got {got}",
     "transport.diag_pair_wait": "{count} pending",
+    "transport.diag_path_failed": "Could not establish a direct path",
+    "transport.diag_path_nat": "Both sides are behind shared NAT; direct traversal failed",
+    "transport.diag_path_udp_blocked": "UDP direct probing appears blocked on this network",
+    "transport.diag_peer_no_reply_desc": "Timed out waiting for the computer to respond",
+    "transport.diag_peer_old_desc": "remote-agent on this computer doesn’t support direct yet",
+    "transport.diag_privacy_footer": "Copied diagnostics include address types and ranges only—no IP addresses, ports, or chat content.",
     "transport.diag_range_cgnat": "carrier-shared",
     "transport.diag_range_global": "global",
     "transport.diag_range_link_local": "link-local",
@@ -3610,6 +3711,9 @@ export const messages = {
     "transport.diag_result_timeout": "Didn't connect",
     "transport.diag_result_trying": "In progress",
     "transport.diag_retry": "Try again",
+    "transport.diag_retry_auto_desc": "Retries automatically when Wi-Fi or network changes",
+    "transport.diag_retry_wait_desc": "Resumes automatically after updating remote-agent on the computer",
+    "transport.diag_retrying": "Trying…",
     "transport.diag_round": "{result} · {seconds} s",
     "transport.diag_rtt": "{ms} ms",
     "transport.diag_sig_limited": "Rate-limited by the relay ×{count}",
@@ -3630,8 +3734,20 @@ export const messages = {
     "transport.diag_state_failed": "Failed",
     "transport.diag_state_none": "Not started",
     "transport.diag_state_ok": "Done",
+    "transport.diag_status_blocked": "Unreachable",
+    "transport.diag_status_checking": "Checking…",
+    "transport.diag_status_connected": "Connected",
+    "transport.diag_status_enabled": "On",
+    "transport.diag_status_no_reply": "No reply",
+    "transport.diag_status_not_started": "Not started",
+    "transport.diag_status_ok": "OK",
+    "transport.diag_status_peer_old": "Outdated",
+    "transport.diag_status_wait_update": "Needs update",
     "transport.diag_stun_error": "{code} · {family} ×{count}",
     "transport.diag_stun_errors": "STUN errors",
+    "transport.diag_title_generic": "Couldn’t connect; will try again shortly",
+    "transport.diag_title_no_reply": "Computer didn’t reply to handshake",
+    "transport.diag_title_probe_blocked": "Current network restricts direct probing",
     "transport.diag_type_host": "Local interface",
     "transport.diag_type_other": "Other",
     "transport.diag_type_prflx": "Peer-learned",
@@ -3668,11 +3784,24 @@ export const messages = {
     "transport.file_speed_relay": "Relay {relay} MiB/s",
     "transport.footer": "Messages and approvals are sent over both direct and relay, taking whichever arrives first; only relay is used in the background.",
     "transport.group": "Connection",
+    "transport.popover_a11y": "Direct connection active, tap for details",
+    "transport.popover_direct_body": "Loading and files use direct; messages and approvals are sent over both direct and relay, whichever arrives first.",
+    "transport.popover_direct_title": "Direct to {name}",
+    "transport.popover_direct_title_rtt": "Direct to {name} · {ms} ms",
+    "transport.popover_file_only": "Files only over direct",
+    "transport.popover_read_only": "Loading only over direct",
+    "transport.popover_relay_body": "Everything currently connects via relay, with no impact on use.",
+    "transport.popover_relay_title": "Via relay to {name}",
+    "transport.popover_relay_title_rtt": "Via relay to {name} · {ms} ms",
+    "transport.popover_settings": "Connection settings",
+    "transport.popover_stable": "Connection stable",
+    "transport.popover_switched_relay": "Switched to relay",
     "transport.read_fallback": "Loading using relay for now",
     "transport.read_latency_both": "Direct {direct} · Relay {relay} ms",
     "transport.read_latency_direct": "Direct {direct} ms",
     "transport.read_latency_relay": "Relay {relay} ms",
     "transport.reason_at_cap": "Direct connection limit reached",
+    "transport.reason_at_cap_detail": "Direct connection limit reached; switches automatically when you open a session on this computer",
     "transport.reason_channel_pending": "Direct channel not ready yet",
     "transport.reason_daemon_disabled": "Direct is off on this computer",
     "transport.reason_failed": "Couldn't connect; will try again shortly",
@@ -3681,16 +3810,19 @@ export const messages = {
     "transport.reason_peer_unsupported": "The computer's version is too old; update it to use direct",
     "transport.reason_security_pending": "Waiting for security refresh",
     "transport.reason_starting": "Preparing direct connection",
+    "transport.rtt_ms": "{ms} ms",
     "transport.speed_file": "File transfer",
     "transport.speed_read": "Response time",
     "transport.status_connecting": "Setting up direct…",
+    "transport.status_daemon_disabled": "Direct connection is off on this computer",
     "transport.status_direct": "Using direct",
     "transport.status_relay": "Using relay",
     "transport.status_unsupported": "This browser doesn't support direct connections",
     "transport.summary_off": "Direct is off",
     "transport.unavailable": "Direct unavailable: {reason}",
     "transport.use_file": "Used for files",
-    "transport.use_read": "Used for loading"
+    "transport.use_read": "Used for loading",
+    "transport.why_not_connected": "Why it didn’t connect"
   },
   "zh-CN": {
     "approval.allow": "允许",
@@ -3713,9 +3845,13 @@ export const messages = {
     "approval.denial_reason": "拒绝的理由",
     "approval.denied": "已拒绝",
     "approval.deny": "拒绝",
+    "approval.denying": "正在拒绝…",
     "approval.details": "审批详情",
     "approval.full_command": "看完整命令",
+    "approval.handled_in_terminal": "已在终端处理",
     "approval.reason_placeholder": "说说该怎么做，可以不填",
+    "approval.retry_deny": "重试拒绝",
+    "approval.scroll_to_view": "往下看完整命令",
     "approval.seconds_left": {
       "forms": {
         "other": "剩 {count} 秒"
@@ -3782,6 +3918,8 @@ export const messages = {
     "common.copied": "已复制",
     "common.copy": "复制",
     "common.details": "详情",
+    "common.discard_changes": "放弃修改",
+    "common.discard_changes_title": "放弃还没保存的修改？",
     "common.done": "完成",
     "common.got_it": "知道了",
     "common.ios_more": "更多",
@@ -3790,6 +3928,7 @@ export const messages = {
     "common.ios_save_failed": "没能保存：{reason}",
     "common.ios_saving": "保存中…",
     "common.ios_spoken_separator": "，",
+    "common.keep_editing": "继续编辑",
     "common.list_separator": "、",
     "common.loading": "读取中",
     "common.machine": "电脑",
@@ -3817,6 +3956,9 @@ export const messages = {
     "composer.message": "消息",
     "composer.message_fallback": "一条消息",
     "composer.message_unconfirmed": "有一条消息可能没发出去：已送到终端但没确认",
+    "composer.mode_insert_short": "插入这一轮",
+    "composer.mode_picker_label": "发送时机",
+    "composer.mode_queue_short": "本轮结束后发",
     "composer.not_written": "没有写进终端",
     "composer.plan_placeholder": "补充你对计划的要求…",
     "composer.queue_after_answer": "排队发送，回答后继续",
@@ -4084,6 +4226,10 @@ export const messages = {
       "plural": "count"
     },
     "home.project_no_sessions": "这个项目还没有会话",
+    "home.question_answer_in_terminal": "去终端回答",
+    "home.question_answered_elsewhere": "已在另一端回答",
+    "home.question_answered_line": "已回答 · {answer}",
+    "home.question_send_failed": "没送到：{reason}",
     "home.running_and_idle": {
       "forms": {
         "other": "{count} 个会话在运行，{idle} 个空闲"
@@ -5571,14 +5717,29 @@ export const messages = {
     "tools.tool": "工具",
     "tools.waiting_sync": "等待同步",
     "transport.conn_footer_unsupported": "这个浏览器不支持直连。",
+    "transport.conn_footer_unsupported_browser": "这个浏览器不支持直连，已全部经中继连接。",
+    "transport.detail_daemon_disabled": "在这台电脑上开启后可用",
+    "transport.detail_relay_only": "已全部经中继连接，不影响正常使用",
     "transport.diag": "诊断信息",
     "transport.diag_at": "{state} {seconds} 秒",
     "transport.diag_cand": "{kind} ×{count}（{scope}）",
     "transport.diag_channel": "数据通道",
+    "transport.diag_check_path": "局域网或公网直通",
+    "transport.diag_check_peer": "电脑在线并响应",
+    "transport.diag_check_retry": "后台自动重试",
+    "transport.diag_connected_body": "加载与文件现在已恢复直连。",
+    "transport.diag_connected_title": "直连已连上",
     "transport.diag_copy": "复制诊断信息",
     "transport.diag_copy_failed": "没能复制",
+    "transport.diag_copy_permission": "没能复制，请检查剪贴板权限",
+    "transport.diag_copy_support": "复制诊断给支持",
     "transport.diag_count": "×{count}",
     "transport.diag_dtls": "加密握手",
+    "transport.diag_explain_generic": "本次协商没有在时限内完成，网络稳定后会自动再试。当前所有操作都已自动走中继，不影响正常使用。",
+    "transport.diag_explain_nat": "本机与电脑各自处在限制直连的网络里，常见于蜂窝网络或公司内网。当前所有操作都已自动走中继，不影响正常使用。",
+    "transport.diag_explain_no_reply": "电脑没有回应直连握手，可能在电脑上关闭了直连或防火墙拦下了请求。当前所有操作都已自动走中继，不影响正常使用。",
+    "transport.diag_explain_peer_old": "电脑上安装的 remote-agent 版本暂不支持直连，更新后即可自动使用。当前所有操作都已自动走中继，不影响正常使用。",
+    "transport.diag_explain_probe_blocked": "当前网络限制了直连探测所需的 UDP 通信。当前所有操作都已自动走中继，不影响正常使用。",
     "transport.diag_family_unknown": "未知",
     "transport.diag_footer": "诊断信息只包含地址的类型和范围，不含具体地址。",
     "transport.diag_g_checks": "连通检查",
@@ -5598,6 +5759,12 @@ export const messages = {
     "transport.diag_pair_ok": "成功 {count}",
     "transport.diag_pair_traffic": "发出 {sent} · 收到 {got}",
     "transport.diag_pair_wait": "进行中 {count}",
+    "transport.diag_path_failed": "未能建立直连通道",
+    "transport.diag_path_nat": "两边都在运营商共享网关后，未能直通",
+    "transport.diag_path_udp_blocked": "UDP 直连探测被当前网络拦截",
+    "transport.diag_peer_no_reply_desc": "握手等待超时，未收到电脑应答",
+    "transport.diag_peer_old_desc": "电脑上的 remote-agent 暂不支持直连",
+    "transport.diag_privacy_footer": "复制的诊断只含地址类型和范围，不含具体地址、端口或对话内容。",
     "transport.diag_range_cgnat": "运营商共享",
     "transport.diag_range_global": "全球",
     "transport.diag_range_link_local": "链路本地",
@@ -5627,6 +5794,9 @@ export const messages = {
     "transport.diag_result_timeout": "没连上",
     "transport.diag_result_trying": "进行中",
     "transport.diag_retry": "重新尝试",
+    "transport.diag_retry_auto_desc": "切换 Wi-Fi 或网络变化时会自动再试",
+    "transport.diag_retry_wait_desc": "更新电脑上的 remote-agent 后自动恢复",
+    "transport.diag_retrying": "正在尝试…",
     "transport.diag_round": "{result} · {seconds} 秒",
     "transport.diag_rtt": "{ms} ms",
     "transport.diag_sig_limited": "被中继限速 ×{count}",
@@ -5647,8 +5817,20 @@ export const messages = {
     "transport.diag_state_failed": "失败",
     "transport.diag_state_none": "未开始",
     "transport.diag_state_ok": "已完成",
+    "transport.diag_status_blocked": "未通",
+    "transport.diag_status_checking": "正在检查…",
+    "transport.diag_status_connected": "已连通",
+    "transport.diag_status_enabled": "已开启",
+    "transport.diag_status_no_reply": "未响应",
+    "transport.diag_status_not_started": "未开始",
+    "transport.diag_status_ok": "正常",
+    "transport.diag_status_peer_old": "版本过旧",
+    "transport.diag_status_wait_update": "等待更新",
     "transport.diag_stun_error": "{code} · {family} ×{count}",
     "transport.diag_stun_errors": "STUN 错误",
+    "transport.diag_title_generic": "暂时没连上，稍后会自动再试",
+    "transport.diag_title_no_reply": "电脑没有回应直连握手，可能在电脑上关了直连",
+    "transport.diag_title_probe_blocked": "所在网络限制了直连探测，不能直接连通",
     "transport.diag_type_host": "本机网卡",
     "transport.diag_type_other": "其他",
     "transport.diag_type_prflx": "对端发现",
@@ -5685,28 +5867,44 @@ export const messages = {
     "transport.file_speed_relay": "中继 {relay} MiB/s",
     "transport.footer": "发消息和审批同时经直连和中继发出，以先到的为准；后台时只用中继。",
     "transport.group": "连接",
+    "transport.popover_a11y": "直连已生效，点按查看连接详情",
+    "transport.popover_direct_body": "加载与文件走直连；发消息和审批同时经直连和中继发出，以先到的为准。",
+    "transport.popover_direct_title": "直连 {name}",
+    "transport.popover_direct_title_rtt": "直连 {name} · {ms} ms",
+    "transport.popover_file_only": "仅文件走直连",
+    "transport.popover_read_only": "仅加载走直连",
+    "transport.popover_relay_body": "当前所有操作都经中继连接电脑，不影响正常使用。",
+    "transport.popover_relay_title": "经中继连接 {name}",
+    "transport.popover_relay_title_rtt": "经中继连接 {name} · {ms} ms",
+    "transport.popover_settings": "连接设置",
+    "transport.popover_stable": "连接稳定",
+    "transport.popover_switched_relay": "已切回中继",
     "transport.read_fallback": "加载暂时用中继",
     "transport.read_latency_both": "直连 {direct} · 中继 {relay} ms",
     "transport.read_latency_direct": "直连 {direct} ms",
     "transport.read_latency_relay": "中继 {relay} ms",
     "transport.reason_at_cap": "同时直连的电脑已达上限",
+    "transport.reason_at_cap_detail": "同时直连的电脑已达上限，进入这台电脑的会话时自动切换",
     "transport.reason_channel_pending": "直连通道尚未就绪",
     "transport.reason_daemon_disabled": "电脑未开直连",
     "transport.reason_failed": "没连上，稍后会自动再试",
     "transport.reason_no_response": "电脑没有回应，可能在电脑上关了直连",
-    "transport.reason_no_traversal": "两边的网络不能直接连通",
+    "transport.reason_no_traversal": "两边的网络隔开了，不能直接连通",
     "transport.reason_peer_unsupported": "电脑上的版本太旧，更新后可用",
     "transport.reason_security_pending": "安全状态待刷新",
     "transport.reason_starting": "正在准备直连",
+    "transport.rtt_ms": "{ms} ms",
     "transport.speed_file": "文件传输",
     "transport.speed_read": "响应时间",
     "transport.status_connecting": "正在建立直连…",
+    "transport.status_daemon_disabled": "电脑上已关闭直连",
     "transport.status_direct": "正在用直连",
     "transport.status_relay": "正在用中继",
     "transport.status_unsupported": "这个浏览器不支持直连",
     "transport.summary_off": "直连已关闭",
     "transport.unavailable": "直连不可用：{reason}",
     "transport.use_file": "用于文件",
-    "transport.use_read": "用于加载"
+    "transport.use_read": "用于加载",
+    "transport.why_not_connected": "为什么没连上"
   }
 } as const;

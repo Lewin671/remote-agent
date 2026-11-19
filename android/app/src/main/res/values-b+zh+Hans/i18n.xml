@@ -19,9 +19,13 @@
     <string name="approval_denial_reason" formatted="false">"拒绝的理由"</string>
     <string name="approval_denied" formatted="false">"已拒绝"</string>
     <string name="approval_deny" formatted="false">"拒绝"</string>
+    <string name="approval_denying" formatted="false">"正在拒绝…"</string>
     <string name="approval_details" formatted="false">"审批详情"</string>
     <string name="approval_full_command" formatted="false">"看完整命令"</string>
+    <string name="approval_handled_in_terminal" formatted="false">"已在终端处理"</string>
     <string name="approval_reason_placeholder" formatted="false">"说说该怎么做，可以不填"</string>
+    <string name="approval_retry_deny" formatted="false">"重试拒绝"</string>
+    <string name="approval_scroll_to_view" formatted="false">"往下看完整命令"</string>
     <plurals name="approval_seconds_left">
         <item quantity="other">"剩 %1$d 秒"</item>
     </plurals>
@@ -103,9 +107,12 @@
     <string name="common_copied" formatted="false">"已复制"</string>
     <string name="common_copy" formatted="false">"复制"</string>
     <string name="common_details" formatted="false">"详情"</string>
+    <string name="common_discard_changes" formatted="false">"放弃修改"</string>
+    <string name="common_discard_changes_title" formatted="false">"放弃还没保存的修改？"</string>
     <string name="common_done" formatted="false">"完成"</string>
     <string name="common_got_it" formatted="false">"知道了"</string>
     <string name="common_ios_spoken_separator" formatted="false">"，"</string>
+    <string name="common_keep_editing" formatted="false">"继续编辑"</string>
     <string name="common_list_separator" formatted="false">"、"</string>
     <string name="common_loading" formatted="false">"读取中"</string>
     <string name="common_machine" formatted="false">"电脑"</string>
@@ -134,6 +141,9 @@
     <string name="composer_message" formatted="false">"消息"</string>
     <string name="composer_message_fallback" formatted="false">"一条消息"</string>
     <string name="composer_message_unconfirmed" formatted="false">"有一条消息可能没发出去：已送到终端但没确认"</string>
+    <string name="composer_mode_insert_short" formatted="false">"插入这一轮"</string>
+    <string name="composer_mode_picker_label" formatted="false">"发送时机"</string>
+    <string name="composer_mode_queue_short" formatted="false">"本轮结束后发"</string>
     <string name="composer_not_written" formatted="false">"没有写进终端"</string>
     <string name="composer_plan_placeholder" formatted="false">"补充你对计划的要求…"</string>
     <string name="composer_queue_after_answer" formatted="false">"排队发送，回答后继续"</string>
@@ -405,6 +415,10 @@
         <item quantity="other">"%1$d 件等你处理"</item>
     </plurals>
     <string name="home_project_no_sessions" formatted="false">"这个项目还没有会话"</string>
+    <string name="home_question_answer_in_terminal" formatted="false">"去终端回答"</string>
+    <string name="home_question_answered_elsewhere" formatted="false">"已在另一端回答"</string>
+    <string name="home_question_answered_line">"已回答 · %1$s"</string>
+    <string name="home_question_send_failed">"没送到：%1$s"</string>
     <plurals name="home_running_and_idle">
         <item quantity="other">"%1$d 个会话在运行，%2$d 个空闲"</item>
     </plurals>
@@ -2055,12 +2069,48 @@
     <string name="tools_exit_code">"退出码 %1$s"</string>
     <string name="tools_tool" formatted="false">"工具"</string>
     <string name="tools_waiting_sync" formatted="false">"等待同步"</string>
+    <string name="transport_conn_footer_unsupported_app" formatted="false">"当前应用版本暂不支持直连，已全部经中继连接。"</string>
     <string name="transport_conn_footer_unsupported_device" formatted="false">"这台设备不支持直连。"</string>
+    <string name="transport_detail_daemon_disabled" formatted="false">"在这台电脑上开启后可用"</string>
+    <string name="transport_detail_relay_only" formatted="false">"已全部经中继连接，不影响正常使用"</string>
     <string name="transport_diag" formatted="false">"诊断信息"</string>
+    <string name="transport_diag_check_path" formatted="false">"局域网或公网直通"</string>
+    <string name="transport_diag_check_peer" formatted="false">"电脑在线并响应"</string>
+    <string name="transport_diag_check_retry" formatted="false">"后台自动重试"</string>
+    <string name="transport_diag_connected_body" formatted="false">"加载与文件现在已恢复直连。"</string>
+    <string name="transport_diag_connected_title" formatted="false">"直连已连上"</string>
     <string name="transport_diag_copy" formatted="false">"复制诊断信息"</string>
     <string name="transport_diag_copy_failed" formatted="false">"没能复制"</string>
+    <string name="transport_diag_copy_permission" formatted="false">"没能复制，请检查剪贴板权限"</string>
+    <string name="transport_diag_copy_support" formatted="false">"复制诊断给支持"</string>
+    <string name="transport_diag_explain_generic" formatted="false">"本次协商没有在时限内完成，网络稳定后会自动再试。当前所有操作都已自动走中继，不影响正常使用。"</string>
+    <string name="transport_diag_explain_nat" formatted="false">"本机与电脑各自处在限制直连的网络里，常见于蜂窝网络或公司内网。当前所有操作都已自动走中继，不影响正常使用。"</string>
+    <string name="transport_diag_explain_no_reply" formatted="false">"电脑没有回应直连握手，可能在电脑上关闭了直连或防火墙拦下了请求。当前所有操作都已自动走中继，不影响正常使用。"</string>
+    <string name="transport_diag_explain_peer_old" formatted="false">"电脑上安装的 remote-agent 版本暂不支持直连，更新后即可自动使用。当前所有操作都已自动走中继，不影响正常使用。"</string>
+    <string name="transport_diag_explain_probe_blocked" formatted="false">"当前网络限制了直连探测所需的 UDP 通信。当前所有操作都已自动走中继，不影响正常使用。"</string>
     <string name="transport_diag_footer" formatted="false">"诊断信息只包含地址的类型和范围，不含具体地址。"</string>
+    <string name="transport_diag_path_failed" formatted="false">"未能建立直连通道"</string>
+    <string name="transport_diag_path_nat" formatted="false">"两边都在运营商共享网关后，未能直通"</string>
+    <string name="transport_diag_path_udp_blocked" formatted="false">"UDP 直连探测被当前网络拦截"</string>
+    <string name="transport_diag_peer_no_reply_desc" formatted="false">"握手等待超时，未收到电脑应答"</string>
+    <string name="transport_diag_peer_old_desc" formatted="false">"电脑上的 remote-agent 暂不支持直连"</string>
+    <string name="transport_diag_privacy_footer" formatted="false">"复制的诊断只含地址类型和范围，不含具体地址、端口或对话内容。"</string>
     <string name="transport_diag_retry" formatted="false">"重新尝试"</string>
+    <string name="transport_diag_retry_auto_desc" formatted="false">"切换 Wi-Fi 或网络变化时会自动再试"</string>
+    <string name="transport_diag_retry_wait_desc" formatted="false">"更新电脑上的 remote-agent 后自动恢复"</string>
+    <string name="transport_diag_retrying" formatted="false">"正在尝试…"</string>
+    <string name="transport_diag_status_blocked" formatted="false">"未通"</string>
+    <string name="transport_diag_status_checking" formatted="false">"正在检查…"</string>
+    <string name="transport_diag_status_connected" formatted="false">"已连通"</string>
+    <string name="transport_diag_status_enabled" formatted="false">"已开启"</string>
+    <string name="transport_diag_status_no_reply" formatted="false">"未响应"</string>
+    <string name="transport_diag_status_not_started" formatted="false">"未开始"</string>
+    <string name="transport_diag_status_ok" formatted="false">"正常"</string>
+    <string name="transport_diag_status_peer_old" formatted="false">"版本过旧"</string>
+    <string name="transport_diag_status_wait_update" formatted="false">"等待更新"</string>
+    <string name="transport_diag_title_generic" formatted="false">"暂时没连上，稍后会自动再试"</string>
+    <string name="transport_diag_title_no_reply" formatted="false">"电脑没有回应直连握手，可能在电脑上关了直连"</string>
+    <string name="transport_diag_title_probe_blocked" formatted="false">"所在网络限制了直连探测，不能直接连通"</string>
     <string name="transport_diag_verdict_none" formatted="false">"还没有直连尝试的记录"</string>
     <string name="transport_direct" formatted="false">"直连"</string>
     <string name="transport_direct_slow" formatted="false">"直连较慢，暂时改用中继"</string>
@@ -2071,26 +2121,43 @@
     <string name="transport_file_speed_relay">"中继 %1$s MiB/s"</string>
     <string name="transport_footer" formatted="false">"发消息和审批同时经直连和中继发出，以先到的为准；后台时只用中继。"</string>
     <string name="transport_group" formatted="false">"连接"</string>
+    <string name="transport_popover_a11y" formatted="false">"直连已生效，点按查看连接详情"</string>
+    <string name="transport_popover_direct_body" formatted="false">"加载与文件走直连；发消息和审批同时经直连和中继发出，以先到的为准。"</string>
+    <string name="transport_popover_direct_title">"直连 %1$s"</string>
+    <string name="transport_popover_direct_title_rtt">"直连 %2$s · %1$s ms"</string>
+    <string name="transport_popover_file_only" formatted="false">"仅文件走直连"</string>
+    <string name="transport_popover_read_only" formatted="false">"仅加载走直连"</string>
+    <string name="transport_popover_relay_body" formatted="false">"当前所有操作都经中继连接电脑，不影响正常使用。"</string>
+    <string name="transport_popover_relay_title">"经中继连接 %1$s"</string>
+    <string name="transport_popover_relay_title_rtt">"经中继连接 %2$s · %1$s ms"</string>
+    <string name="transport_popover_settings" formatted="false">"连接设置"</string>
+    <string name="transport_popover_stable" formatted="false">"连接稳定"</string>
+    <string name="transport_popover_switched_relay" formatted="false">"已切回中继"</string>
     <string name="transport_read_fallback" formatted="false">"加载暂时用中继"</string>
     <string name="transport_read_latency_both">"直连 %1$s · 中继 %2$s ms"</string>
     <string name="transport_read_latency_direct">"直连 %1$s ms"</string>
     <string name="transport_read_latency_relay">"中继 %1$s ms"</string>
     <string name="transport_reason_at_cap" formatted="false">"同时直连的电脑已达上限"</string>
+    <string name="transport_reason_at_cap_detail" formatted="false">"同时直连的电脑已达上限，进入这台电脑的会话时自动切换"</string>
     <string name="transport_reason_channel_pending" formatted="false">"直连通道尚未就绪"</string>
     <string name="transport_reason_daemon_disabled" formatted="false">"电脑未开直连"</string>
     <string name="transport_reason_failed" formatted="false">"没连上，稍后会自动再试"</string>
     <string name="transport_reason_no_response" formatted="false">"电脑没有回应，可能在电脑上关了直连"</string>
-    <string name="transport_reason_no_traversal" formatted="false">"两边的网络不能直接连通"</string>
+    <string name="transport_reason_no_traversal" formatted="false">"两边的网络隔开了，不能直接连通"</string>
     <string name="transport_reason_peer_unsupported" formatted="false">"电脑上的版本太旧，更新后可用"</string>
     <string name="transport_reason_security_pending" formatted="false">"安全状态待刷新"</string>
     <string name="transport_reason_starting" formatted="false">"正在准备直连"</string>
+    <string name="transport_rtt_ms">"%1$s ms"</string>
     <string name="transport_speed_file" formatted="false">"文件传输"</string>
     <string name="transport_speed_read" formatted="false">"响应时间"</string>
     <string name="transport_status_connecting" formatted="false">"正在建立直连…"</string>
+    <string name="transport_status_daemon_disabled" formatted="false">"电脑上已关闭直连"</string>
     <string name="transport_status_direct" formatted="false">"正在用直连"</string>
     <string name="transport_status_relay" formatted="false">"正在用中继"</string>
+    <string name="transport_status_unsupported_app" formatted="false">"当前应用版本暂不支持直连"</string>
     <string name="transport_summary_off" formatted="false">"直连已关闭"</string>
     <string name="transport_unavailable">"直连不可用：%1$s"</string>
     <string name="transport_use_file" formatted="false">"用于文件"</string>
     <string name="transport_use_read" formatted="false">"用于加载"</string>
+    <string name="transport_why_not_connected" formatted="false">"为什么没连上"</string>
 </resources>

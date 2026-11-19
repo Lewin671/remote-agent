@@ -398,10 +398,10 @@
                 "key": "transport.status_direct"
               },
               "metricText": {
-                "key": "transport.read_latency_direct",
+                "key": "transport.rtt_ms",
                 "args": [
                   {
-                    "name": "direct",
+                    "name": "ms",
                     "strValue": "12"
                   }
                 ]
@@ -991,10 +991,10 @@
                 "key": "transport.status_direct"
               },
               "metricText": {
-                "key": "transport.read_latency_direct",
+                "key": "transport.rtt_ms",
                 "args": [
                   {
-                    "name": "direct",
+                    "name": "ms",
                     "strValue": "12"
                   }
                 ]
@@ -1543,10 +1543,10 @@
                 "key": "transport.status_direct"
               },
               "metricText": {
-                "key": "transport.read_latency_direct",
+                "key": "transport.rtt_ms",
                 "args": [
                   {
-                    "name": "direct",
+                    "name": "ms",
                     "strValue": "12"
                   }
                 ]
@@ -2073,7 +2073,7 @@
               "toggleEnabled": true,
               "toggleChecked": true,
               "stage": "CONNECTION_GROUP_STAGE_RELAY_FAILED",
-              "tone": "CONNECTION_GROUP_TONE_WARN",
+              "tone": "CONNECTION_GROUP_TONE_MUTED",
               "statusText": {
                 "key": "transport.status_relay"
               },

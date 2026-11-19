@@ -1551,6 +1551,7 @@ type HomeViewModel struct {
 	CanStart               bool
 	SelectedSessionId      string
 	HasMoreEnded           bool
+	TopAttentionQuestion   *HomeQuestionCardView
 }
 
 func (m *HomeViewModel) GetScopeSelectable() bool {
@@ -1715,6 +1716,12 @@ func (m *HomeViewModel) GetHasMoreEnded() bool {
 	}
 	return false
 }
+func (m *HomeViewModel) GetTopAttentionQuestion() *HomeQuestionCardView {
+	if m != nil {
+		return m.TopAttentionQuestion
+	}
+	return nil
+}
 
 func (m *HomeViewModel) Size() int {
 	if m == nil {
@@ -1780,6 +1787,9 @@ func (m *HomeViewModel) Size() int {
 	n += litewire.SizeBool(26, m.CanStart)
 	n += litewire.SizeString(27, m.SelectedSessionId)
 	n += litewire.SizeBool(28, m.HasMoreEnded)
+	if m.TopAttentionQuestion != nil {
+		n += litewire.SizeMessage(29, m.TopAttentionQuestion.Size())
+	}
 	return n
 }
 
@@ -1857,5 +1867,249 @@ func (m *HomeViewModel) AppendMarshal(b []byte) []byte {
 	b = litewire.AppendBool(b, 26, m.CanStart)
 	b = litewire.AppendString(b, 27, m.SelectedSessionId)
 	b = litewire.AppendBool(b, 28, m.HasMoreEnded)
+	if m.TopAttentionQuestion != nil {
+		b = litewire.AppendMessage(b, 29, m.TopAttentionQuestion)
+	}
+	return b
+}
+
+type HomeQuestionOptionView struct {
+	OptionNum   int32
+	Label       string
+	Description string
+	Recommended bool
+}
+
+func (m *HomeQuestionOptionView) GetOptionNum() int32 {
+	if m != nil {
+		return m.OptionNum
+	}
+	return 0
+}
+func (m *HomeQuestionOptionView) GetLabel() string {
+	if m != nil {
+		return m.Label
+	}
+	return ""
+}
+func (m *HomeQuestionOptionView) GetDescription() string {
+	if m != nil {
+		return m.Description
+	}
+	return ""
+}
+func (m *HomeQuestionOptionView) GetRecommended() bool {
+	if m != nil {
+		return m.Recommended
+	}
+	return false
+}
+
+func (m *HomeQuestionOptionView) Size() int {
+	if m == nil {
+		return 0
+	}
+	n := 0
+	n += litewire.SizeInt32(1, int32(m.OptionNum))
+	n += litewire.SizeString(2, m.Label)
+	n += litewire.SizeString(3, m.Description)
+	n += litewire.SizeBool(4, m.Recommended)
+	return n
+}
+
+func (m *HomeQuestionOptionView) Marshal() ([]byte, error) {
+	if m == nil {
+		return nil, nil
+	}
+	sz := m.Size()
+	if sz == 0 {
+		return nil, nil
+	}
+	return m.AppendMarshal(make([]byte, 0, sz)), nil
+}
+
+func (m *HomeQuestionOptionView) AppendMarshal(b []byte) []byte {
+	if m == nil {
+		return b
+	}
+	b = litewire.AppendInt32(b, 1, int32(m.OptionNum))
+	b = litewire.AppendString(b, 2, m.Label)
+	b = litewire.AppendString(b, 3, m.Description)
+	b = litewire.AppendBool(b, 4, m.Recommended)
+	return b
+}
+
+type HomeQuestionCardView struct {
+	SessionId        string
+	MachineId        string
+	QuestionId       string
+	ObservedEventSeq uint64
+	BadgeText        *Text
+	TimeText         *Text
+	Title            *Text
+	Where            *Text
+	Header           string
+	QuestionText     string
+	Options          []*HomeQuestionOptionView
+	CanAnswer        bool
+	OfflineNote      *Text
+}
+
+func (m *HomeQuestionCardView) GetSessionId() string {
+	if m != nil {
+		return m.SessionId
+	}
+	return ""
+}
+func (m *HomeQuestionCardView) GetMachineId() string {
+	if m != nil {
+		return m.MachineId
+	}
+	return ""
+}
+func (m *HomeQuestionCardView) GetQuestionId() string {
+	if m != nil {
+		return m.QuestionId
+	}
+	return ""
+}
+func (m *HomeQuestionCardView) GetObservedEventSeq() uint64 {
+	if m != nil {
+		return m.ObservedEventSeq
+	}
+	return 0
+}
+func (m *HomeQuestionCardView) GetBadgeText() *Text {
+	if m != nil {
+		return m.BadgeText
+	}
+	return nil
+}
+func (m *HomeQuestionCardView) GetTimeText() *Text {
+	if m != nil {
+		return m.TimeText
+	}
+	return nil
+}
+func (m *HomeQuestionCardView) GetTitle() *Text {
+	if m != nil {
+		return m.Title
+	}
+	return nil
+}
+func (m *HomeQuestionCardView) GetWhere() *Text {
+	if m != nil {
+		return m.Where
+	}
+	return nil
+}
+func (m *HomeQuestionCardView) GetHeader() string {
+	if m != nil {
+		return m.Header
+	}
+	return ""
+}
+func (m *HomeQuestionCardView) GetQuestionText() string {
+	if m != nil {
+		return m.QuestionText
+	}
+	return ""
+}
+func (m *HomeQuestionCardView) GetOptions() []*HomeQuestionOptionView {
+	if m != nil {
+		return m.Options
+	}
+	return nil
+}
+func (m *HomeQuestionCardView) GetCanAnswer() bool {
+	if m != nil {
+		return m.CanAnswer
+	}
+	return false
+}
+func (m *HomeQuestionCardView) GetOfflineNote() *Text {
+	if m != nil {
+		return m.OfflineNote
+	}
+	return nil
+}
+
+func (m *HomeQuestionCardView) Size() int {
+	if m == nil {
+		return 0
+	}
+	n := 0
+	n += litewire.SizeString(1, m.SessionId)
+	n += litewire.SizeString(2, m.MachineId)
+	n += litewire.SizeString(3, m.QuestionId)
+	n += litewire.SizeVarintField(4, uint64(m.ObservedEventSeq))
+	if m.BadgeText != nil {
+		n += litewire.SizeMessage(5, m.BadgeText.Size())
+	}
+	if m.TimeText != nil {
+		n += litewire.SizeMessage(6, m.TimeText.Size())
+	}
+	if m.Title != nil {
+		n += litewire.SizeMessage(7, m.Title.Size())
+	}
+	if m.Where != nil {
+		n += litewire.SizeMessage(8, m.Where.Size())
+	}
+	n += litewire.SizeString(9, m.Header)
+	n += litewire.SizeString(10, m.QuestionText)
+	for _, v := range m.Options {
+		if v != nil {
+			n += litewire.SizeMessage(11, v.Size())
+		}
+	}
+	n += litewire.SizeBool(12, m.CanAnswer)
+	if m.OfflineNote != nil {
+		n += litewire.SizeMessage(13, m.OfflineNote.Size())
+	}
+	return n
+}
+
+func (m *HomeQuestionCardView) Marshal() ([]byte, error) {
+	if m == nil {
+		return nil, nil
+	}
+	sz := m.Size()
+	if sz == 0 {
+		return nil, nil
+	}
+	return m.AppendMarshal(make([]byte, 0, sz)), nil
+}
+
+func (m *HomeQuestionCardView) AppendMarshal(b []byte) []byte {
+	if m == nil {
+		return b
+	}
+	b = litewire.AppendString(b, 1, m.SessionId)
+	b = litewire.AppendString(b, 2, m.MachineId)
+	b = litewire.AppendString(b, 3, m.QuestionId)
+	b = litewire.AppendVarint(b, 4, uint64(m.ObservedEventSeq))
+	if m.BadgeText != nil {
+		b = litewire.AppendMessage(b, 5, m.BadgeText)
+	}
+	if m.TimeText != nil {
+		b = litewire.AppendMessage(b, 6, m.TimeText)
+	}
+	if m.Title != nil {
+		b = litewire.AppendMessage(b, 7, m.Title)
+	}
+	if m.Where != nil {
+		b = litewire.AppendMessage(b, 8, m.Where)
+	}
+	b = litewire.AppendString(b, 9, m.Header)
+	b = litewire.AppendString(b, 10, m.QuestionText)
+	for _, v := range m.Options {
+		if v != nil {
+			b = litewire.AppendMessage(b, 11, v)
+		}
+	}
+	b = litewire.AppendBool(b, 12, m.CanAnswer)
+	if m.OfflineNote != nil {
+		b = litewire.AppendMessage(b, 13, m.OfflineNote)
+	}
 	return b
 }

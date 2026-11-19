@@ -159,6 +159,8 @@ func (m *ResolvedApproval) AppendMarshal(b []byte) []byte {
 type PendingQuestion struct {
 	QuestionId string
 	Request    *v1.QuestionAsked
+	Seq        uint64
+	AskedAtMs  int64
 }
 
 func (m *PendingQuestion) GetQuestionId() string {
@@ -173,6 +175,18 @@ func (m *PendingQuestion) GetRequest() *v1.QuestionAsked {
 	}
 	return nil
 }
+func (m *PendingQuestion) GetSeq() uint64 {
+	if m != nil {
+		return m.Seq
+	}
+	return 0
+}
+func (m *PendingQuestion) GetAskedAtMs() int64 {
+	if m != nil {
+		return m.AskedAtMs
+	}
+	return 0
+}
 
 func (m *PendingQuestion) Size() int {
 	if m == nil {
@@ -183,6 +197,8 @@ func (m *PendingQuestion) Size() int {
 	if m.Request != nil {
 		n += litewire.SizeMessage(2, m.Request.Size())
 	}
+	n += litewire.SizeVarintField(3, uint64(m.Seq))
+	n += litewire.SizeVarintField(4, uint64(m.AskedAtMs))
 	return n
 }
 
@@ -205,6 +221,8 @@ func (m *PendingQuestion) AppendMarshal(b []byte) []byte {
 	if m.Request != nil {
 		b = litewire.AppendMessage(b, 2, m.Request)
 	}
+	b = litewire.AppendVarint(b, 3, uint64(m.Seq))
+	b = litewire.AppendVarint(b, 4, uint64(m.AskedAtMs))
 	return b
 }
 

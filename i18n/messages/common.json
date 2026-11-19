@@ -769,5 +769,50 @@
       "zh-CN": "source",
       "en": "draft"
     }
+  },
+  {
+    "key": "common.discard_changes_title",
+    "zh-CN": "放弃还没保存的修改？",
+    "en": "Discard unsaved changes?",
+    "notes": "有未提交表单修改的弹层尝试关闭时的确认标题。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "common.keep_editing",
+    "zh-CN": "继续编辑",
+    "en": "Keep editing",
+    "notes": "放弃未保存修改确认窗的次按钮。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "common.discard_changes",
+    "zh-CN": "放弃修改",
+    "en": "Discard",
+    "notes": "放弃未保存修改确认窗的危险红按钮。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
   }
 ]

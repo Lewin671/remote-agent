@@ -794,6 +794,42 @@ func pendingFromProjection(ps *corev1.ProjectionState, meta *v1.Session) lists.P
 	}
 	if len(ps.Questions) > 0 {
 		p.HasQuestion = true
+		if pq := ps.Questions[0]; pq != nil {
+			qData := &lists.PendingQuestionData{
+				QuestionID:       pq.QuestionId,
+				CanFreeText:      meta != nil && meta.Agent == v1.Agent_AGENT_CODEX,
+				ObservedEventSeq: pq.Seq,
+				AskedAtMs:        pq.AskedAtMs,
+			}
+			if req := pq.Request; req != nil {
+				qData.Async = req.Async
+				qData.QuestionCount = int32(len(req.Questions))
+				if len(req.Questions) > 0 && req.Questions[0] != nil {
+					q0 := req.Questions[0]
+					key := q0.Id
+					if key == "" {
+						key = q0.Text
+					}
+					qData.QuestionKey = key
+					qData.Header = q0.Header
+					qData.Text = q0.Text
+					qData.MultiSelect = q0.MultiSelect
+					if len(q0.Options) > 0 {
+						qData.Options = make([]lists.PendingQuestionOption, 0, len(q0.Options))
+						for _, opt := range q0.Options {
+							if opt == nil {
+								continue
+							}
+							qData.Options = append(qData.Options, lists.PendingQuestionOption{
+								Label:       opt.Label,
+								Description: opt.Description,
+							})
+						}
+					}
+				}
+			}
+			p.Question = qData
+		}
 	}
 	if ps.Plan != nil {
 		p.HasPlan = true

@@ -26,6 +26,8 @@ message ResolvedApproval {
 message PendingQuestion {
   string question_id = 1;
   remoteagent.v1.QuestionAsked request = 2;
+  uint64 seq = 3;
+  int64 asked_at_ms = 4;
 }
 
 // AnsweredQuestion records the flattened answer strings for a question and who answered it.

@@ -44,8 +44,10 @@ type Reducer struct {
 	approvals orderedMap[string, *v1.ApprovalRequested]
 	resolved  map[string]*corev1.ResolvedApproval
 
-	questions orderedMap[string, *v1.QuestionAsked]
-	answered  map[string]*corev1.AnsweredQuestion
+	questions     orderedMap[string, *v1.QuestionAsked]
+	questionSeqs  map[string]uint64
+	questionTimes map[string]int64
+	answered      map[string]*corev1.AnsweredQuestion
 
 	inputs       orderedMap[string, v1.InputStatus]
 	inputSeqs    map[string]uint64
@@ -110,6 +112,8 @@ func (r *Reducer) Reset(agent v1.Agent) {
 	r.approvals.clear()
 	r.resolved = make(map[string]*corev1.ResolvedApproval)
 	r.questions.clear()
+	r.questionSeqs = make(map[string]uint64)
+	r.questionTimes = make(map[string]int64)
 	r.answered = make(map[string]*corev1.AnsweredQuestion)
 	r.inputs.clear()
 	r.inputSeqs = make(map[string]uint64)
@@ -188,11 +192,15 @@ func (r *Reducer) reduceOne(e *v1.Event) {
 		q := k.QuestionAsked
 		if !q.Async {
 			r.questions.set(q.QuestionId, q)
+			r.questionSeqs[q.QuestionId] = e.Seq
+			r.questionTimes[q.QuestionId] = EventTimeMs(e)
 		}
 
 	case *v1.Event_QuestionAnswered:
 		qa := k.QuestionAnswered
 		r.questions.delete(qa.QuestionId)
+		delete(r.questionSeqs, qa.QuestionId)
+		delete(r.questionTimes, qa.QuestionId)
 		var flat []string
 		for _, ans := range qa.Answers {
 			flat = append(flat, ans.Answers...)
@@ -211,6 +219,8 @@ func (r *Reducer) reduceOne(e *v1.Event) {
 		r.running = false
 		r.runningSeq = e.Seq
 		r.questions.clear()
+		clear(r.questionSeqs)
+		clear(r.questionTimes)
 		aborted := k.TurnEnded.Outcome == v1.TurnOutcome_TURN_OUTCOME_ABORTED
 		for _, t := range r.tools {
 			if aborted {
@@ -487,6 +497,8 @@ func (r *Reducer) endOpenState(seq uint64) {
 	r.runningSeq = seq
 	r.approvals.clear()
 	r.questions.clear()
+	clear(r.questionSeqs)
+	clear(r.questionTimes)
 	for _, t := range r.tools {
 		r.unfinished[t.Seq] = struct{}{}
 		r.noResult[t.Seq] = struct{}{}
@@ -536,6 +548,8 @@ func (r *Reducer) Snapshot() *corev1.ProjectionState {
 			out.Questions[i] = &corev1.PendingQuestion{
 				QuestionId: id,
 				Request:    r.questions.vals[i],
+				Seq:        r.questionSeqs[id],
+				AskedAtMs:  r.questionTimes[id],
 			}
 		}
 	}
@@ -813,6 +827,8 @@ func applyLiveSnapshot(out *corev1.ProjectionState, live *v1.LiveSnapshot, planT
 
 	var approvals orderedMap[string, *v1.ApprovalRequested]
 	var questions orderedMap[string, *v1.QuestionAsked]
+	questionSeqs := make(map[string]uint64)
+	questionTimes := make(map[string]int64)
 	for _, e := range live.Actions {
 		if e == nil {
 			continue
@@ -823,6 +839,8 @@ func applyLiveSnapshot(out *corev1.ProjectionState, live *v1.LiveSnapshot, planT
 		case *v1.Event_QuestionAsked:
 			if !k.QuestionAsked.Async {
 				questions.set(k.QuestionAsked.QuestionId, k.QuestionAsked)
+				questionSeqs[k.QuestionAsked.QuestionId] = e.Seq
+				questionTimes[k.QuestionAsked.QuestionId] = EventTimeMs(e)
 			}
 		}
 	}
@@ -841,6 +859,8 @@ func applyLiveSnapshot(out *corev1.ProjectionState, live *v1.LiveSnapshot, planT
 			out.Questions[i] = &corev1.PendingQuestion{
 				QuestionId: id,
 				Request:    questions.vals[i],
+				Seq:        questionSeqs[id],
+				AskedAtMs:  questionTimes[id],
 			}
 		}
 	}

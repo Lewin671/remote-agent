@@ -109,6 +109,27 @@ type Machine struct {
 	Meta            *v1.MachineMeta
 }
 
+// PendingQuestionOption captures one option from a live unanswered question.
+type PendingQuestionOption struct {
+	Label       string
+	Description string
+}
+
+// PendingQuestionData captures details of the active unanswered question on a session.
+type PendingQuestionData struct {
+	QuestionID       string
+	QuestionKey      string
+	Header           string
+	Text             string
+	MultiSelect      bool
+	QuestionCount    int32
+	Options          []PendingQuestionOption
+	CanFreeText      bool
+	Async            bool
+	ObservedEventSeq uint64
+	AskedAtMs        int64
+}
+
 // PendingAction captures unresolved interactive state on a live session.
 type PendingAction struct {
 	HasApproval        bool
@@ -122,6 +143,7 @@ type PendingAction struct {
 	HasPlan            bool
 	HasPopup           bool
 	PopupPreview       string
+	Question           *PendingQuestionData
 }
 
 // Session represents one session known to the client core.

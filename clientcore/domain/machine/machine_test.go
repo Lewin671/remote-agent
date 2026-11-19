@@ -163,22 +163,22 @@ func TestDirectConnectionAndClientsAndUpdates(t *testing.T) {
 		HasActiveRttMs: true,
 		ActiveRttMs:    14,
 	})
-	if cg.Stage != corev1.ConnectionGroupStage_CONNECTION_GROUP_STAGE_DIRECT || keyOf(cg.MetricText) != text.KeyTransportReadLatencyDirect {
+	if cg.Stage != corev1.ConnectionGroupStage_CONNECTION_GROUP_STAGE_DIRECT || keyOf(cg.MetricText) != text.KeyTransportRttMs {
 		t.Fatalf("unexpected direct connection view: %+v", cg)
 	}
 
-	// Failed direct shows diagnostics entry ("为什么没连上")
+	// Failed direct shows diagnostics entry ("为什么没连上") without orange warning tone
 	failed := BuildConnectionGroup(true, true, &corev1.DirectRouteReport{
 		Enabled: true,
 		Capable: true,
 		State:   corev1.DirectRouteState_DIRECT_ROUTE_STATE_NONE,
 		Reason:  corev1.DirectRouteReason_DIRECT_ROUTE_REASON_NO_TRAVERSAL,
 	})
-	if failed.Stage != corev1.ConnectionGroupStage_CONNECTION_GROUP_STAGE_RELAY_FAILED || !failed.ShowDiagnosticsEntry {
-		t.Fatalf("failed direct should expose diagnostics entry, got %+v", failed)
+	if failed.Stage != corev1.ConnectionGroupStage_CONNECTION_GROUP_STAGE_RELAY_FAILED || failed.Tone != corev1.ConnectionGroupTone_CONNECTION_GROUP_TONE_MUTED || !failed.ShowDiagnosticsEntry {
+		t.Fatalf("failed direct should expose diagnostics entry with muted tone, got %+v", failed)
 	}
 
-	// Single-channel direct & connected relay match web/android rules without assuming slow fallback.
+	// Single-channel direct & connected relay match v63 5-state convergence rules.
 	readOnlyDirect := BuildConnectionGroup(true, true, &corev1.DirectRouteReport{
 		Enabled:   true,
 		Capable:   true,
@@ -237,8 +237,8 @@ func TestDirectConnectionAndClientsAndUpdates(t *testing.T) {
 		FileRoute: corev1.DirectPathChoice_DIRECT_PATH_CHOICE_DIRECT,
 		ReadSlow:  true,
 	})
-	if keyOf(readFallback.DetailText) != text.KeyTransportReadFallback {
-		t.Fatalf("expected ReadFallback when file is direct and read fell back slow, got %q", keyOf(readFallback.DetailText))
+	if keyOf(readFallback.DetailText) != text.KeyTransportUseFile {
+		t.Fatalf("expected UseFile when file is direct and read fell back, got %q", keyOf(readFallback.DetailText))
 	}
 
 	fileFallback := BuildConnectionGroup(true, true, &corev1.DirectRouteReport{
@@ -249,8 +249,8 @@ func TestDirectConnectionAndClientsAndUpdates(t *testing.T) {
 		FileRoute: corev1.DirectPathChoice_DIRECT_PATH_CHOICE_RELAY,
 		FileSlow:  true,
 	})
-	if keyOf(fileFallback.DetailText) != text.KeyTransportFileFallback {
-		t.Fatalf("expected FileFallback when read is direct and file fell back slow, got %q", keyOf(fileFallback.DetailText))
+	if keyOf(fileFallback.DetailText) != text.KeyTransportUseRead {
+		t.Fatalf("expected UseRead when read is direct and file fell back, got %q", keyOf(fileFallback.DetailText))
 	}
 
 	bothSlow := BuildConnectionGroup(true, true, &corev1.DirectRouteReport{
@@ -272,11 +272,12 @@ func TestDirectConnectionAndClientsAndUpdates(t *testing.T) {
 		want   string
 		diag   bool
 	}{
-		{"daemon_disabled", &corev1.DirectRouteReport{Enabled: true, Capable: true, DaemonDisabled: true, State: corev1.DirectRouteState_DIRECT_ROUTE_STATE_NONE, Reason: corev1.DirectRouteReason_DIRECT_ROUTE_REASON_DAEMON_DISABLED}, text.KeyTransportReasonDaemonDisabled, false},
-		{"at_cap", &corev1.DirectRouteReport{Enabled: true, Capable: true, State: corev1.DirectRouteState_DIRECT_ROUTE_STATE_NONE, Reason: corev1.DirectRouteReason_DIRECT_ROUTE_REASON_AT_CAP}, text.KeyTransportReasonAtCap, false},
+		{"daemon_disabled", &corev1.DirectRouteReport{Enabled: true, Capable: true, DaemonDisabled: true, State: corev1.DirectRouteState_DIRECT_ROUTE_STATE_NONE, Reason: corev1.DirectRouteReason_DIRECT_ROUTE_REASON_DAEMON_DISABLED}, text.KeyTransportDetailDaemonDisabled, false},
+		{"at_cap", &corev1.DirectRouteReport{Enabled: true, Capable: true, State: corev1.DirectRouteState_DIRECT_ROUTE_STATE_NONE, Reason: corev1.DirectRouteReason_DIRECT_ROUTE_REASON_AT_CAP}, text.KeyTransportReasonAtCapDetail, false},
 		{"security_pending", &corev1.DirectRouteReport{Enabled: true, Capable: true, State: corev1.DirectRouteState_DIRECT_ROUTE_STATE_NONE, Reason: corev1.DirectRouteReason_DIRECT_ROUTE_REASON_SECURITY_PENDING}, text.KeyTransportReasonSecurityPending, false},
 		{"starting", &corev1.DirectRouteReport{Enabled: true, Capable: true, State: corev1.DirectRouteState_DIRECT_ROUTE_STATE_NONE, Reason: corev1.DirectRouteReason_DIRECT_ROUTE_REASON_STARTING}, text.KeyTransportReasonStarting, false},
 		{"unspecified_when_enabled", &corev1.DirectRouteReport{Enabled: true, Capable: true, State: corev1.DirectRouteState_DIRECT_ROUTE_STATE_NONE}, text.KeyTransportReasonStarting, false},
+		{"peer_unsupported", &corev1.DirectRouteReport{Enabled: true, Capable: true, State: corev1.DirectRouteState_DIRECT_ROUTE_STATE_UNSUPPORTED}, text.KeyTransportReasonPeerUnsupported, true},
 		{"no_response", &corev1.DirectRouteReport{Enabled: true, Capable: true, State: corev1.DirectRouteState_DIRECT_ROUTE_STATE_NONE, Reason: corev1.DirectRouteReason_DIRECT_ROUTE_REASON_NO_RESPONSE}, text.KeyTransportReasonNoResponse, true},
 		{"failed", &corev1.DirectRouteReport{Enabled: true, Capable: true, State: corev1.DirectRouteState_DIRECT_ROUTE_STATE_NONE, Reason: corev1.DirectRouteReason_DIRECT_ROUTE_REASON_FAILED}, text.KeyTransportReasonFailed, true},
 	} {
@@ -295,11 +296,14 @@ func TestDirectConnectionAndClientsAndUpdates(t *testing.T) {
 	if row := BuildConnCheckDirectRow(true, false, &corev1.DirectRouteReport{Enabled: false, Capable: true, State: corev1.DirectRouteState_DIRECT_ROUTE_STATE_NONE, Reason: corev1.DirectRouteReason_DIRECT_ROUTE_REASON_DISABLED}); !row.Visible || keyOf(row.StatusText) != text.KeyTransportSummaryOff || row.DetailText != nil {
 		t.Fatalf("unexpected disabled ConnCheck direct row: %+v", row)
 	}
-	if row := BuildConnCheckDirectRow(true, true, &corev1.DirectRouteReport{Enabled: true, Capable: true, State: corev1.DirectRouteState_DIRECT_ROUTE_STATE_CONNECTED, ReadRoute: corev1.DirectPathChoice_DIRECT_PATH_CHOICE_DIRECT, HasActiveRttMs: true, ActiveRttMs: 14}); !row.Visible || keyOf(row.StatusText) != text.KeyTransportStatusDirect || keyOf(row.MetricText) != text.KeyTransportReadLatencyDirect {
-		t.Fatalf("unexpected connected ConnCheck direct row: %+v", row)
+	if row := BuildConnCheckDirectRow(true, true, &corev1.DirectRouteReport{Enabled: true, Capable: true, State: corev1.DirectRouteState_DIRECT_ROUTE_STATE_CONNECTED, ReadRoute: corev1.DirectPathChoice_DIRECT_PATH_CHOICE_DIRECT, HasActiveRttMs: true, ActiveRttMs: 14}); !row.Visible || keyOf(row.StatusText) != text.KeyTransportStatusDirect || row.MetricText != nil {
+		t.Fatalf("unexpected connected ConnCheck direct row (no speed/latency allowed in v63): %+v", row)
 	}
 	if row := BuildConnCheckDirectRow(true, true, &corev1.DirectRouteReport{Enabled: true, Capable: true, State: corev1.DirectRouteState_DIRECT_ROUTE_STATE_NONE, Reason: corev1.DirectRouteReason_DIRECT_ROUTE_REASON_SECURITY_PENDING}); !row.Visible || keyOf(row.StatusText) != text.KeyTransportStatusRelay || keyOf(row.DetailText) != text.KeyTransportReasonSecurityPending {
 		t.Fatalf("unexpected security-pending ConnCheck direct row: %+v", row)
+	}
+	if row := BuildConnCheckDirectRow(true, true, &corev1.DirectRouteReport{Enabled: true, Capable: true, State: corev1.DirectRouteState_DIRECT_ROUTE_STATE_NONE, Reason: corev1.DirectRouteReason_DIRECT_ROUTE_REASON_AT_CAP}); !row.Visible || keyOf(row.DetailText) != text.KeyTransportReasonAtCap {
+		t.Fatalf("unexpected at-cap ConnCheck direct row: %+v", row)
 	}
 
 	// Client sort puts self first, then LastSeen desc
