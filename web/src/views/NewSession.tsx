@@ -35,6 +35,7 @@ const NOTICE_ACTION_LABEL: Partial<Record<NoticeActionKind, () => string>> = {
   [NoticeActionKind.CHANGE_MACHINE]: () => t("new_session.change_machine"),
   [NoticeActionKind.CHANGE_MODEL]: () => t("new_session.change_model"),
   [NoticeActionKind.OPEN_MACHINE_SETTINGS]: () => t("new_session.change_defaults"),
+  [NoticeActionKind.ENABLE_AGENT]: () => t("new_session.enable_agent"),
   [NoticeActionKind.RETRY_SAVE_CONFIG]: () => t("new_session.retry_save"),
   [NoticeActionKind.READD_PROJECT]: () => t("projects.add_again"),
 };
@@ -227,6 +228,7 @@ export function NewBoxView(p: {
         case NoticeActionKind.CHANGE_MACHINE: setConfig("machine"); break;
         case NoticeActionKind.CHANGE_MODEL: setChoosing(false); setConfig("model"); p.onRetryModels(); break;
         case NoticeActionKind.OPEN_MACHINE_SETTINGS: p.onOpenMachineSettings(n.targetMachineId || machineId); break;
+        case NoticeActionKind.ENABLE_AGENT: p.onOpenMachineSettings(n.targetMachineId || machineId); break;
         case NoticeActionKind.RETRY_SAVE_CONFIG: p.onRetrySaveConfig(); break;
         case NoticeActionKind.READD_PROJECT: p.onReaddProject(); break;
         case NoticeActionKind.RETRY_READ_SETTINGS: p.onRetryModels(); break;

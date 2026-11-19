@@ -11,7 +11,7 @@ import {
 } from "../gen/remoteagent/core/v1/schedules_view_pb";
 import { ConnState } from "../gen/remoteagent/core/v1/home_view_pb";
 import {
-  routeForSession, routeForTask, useCoreHost, useProjectView, useScheduleDetailView,
+  routeForMachineSettings, routeForSession, routeForTask, useCoreHost, useProjectView, useScheduleDetailView,
   useScheduleFormView, useScheduleSessionStripView, useSchedulesView, type CoreHost, type Go,
 } from "../core/host";
 import { renderText } from "../core/text";
@@ -771,7 +771,11 @@ export interface ScheduleDetailActions {
   onOpenEdit(mode: ScheduleFormMode): void;
   onRetryMutation(): void;
   onAbandonMutation(): void;
+  onOpenMachineSettings?(): void;
 }
+
+const ATTN_BANNER_CLS = "schedule-attention";
+const AGENT_DISABLED_PRE_RUN_KEY = "schedule.agent_disabled_pre_run";
 
 export function ScheduleDetailView({ vm, actions }: { vm: ScheduleDetailViewModel; actions: ScheduleDetailActions }) {
   const [menuOpen, setMenuOpen] = useState(false), moreRef = useRef<HTMLButtonElement>(null);
@@ -812,10 +816,18 @@ export function ScheduleDetailView({ vm, actions }: { vm: ScheduleDetailViewMode
           {machineErr && <Banner kind="err" action={vm.canRetryMachineList ? t("common.retry") : undefined} onAction={actions.onRetryMachine}>{machineErr}</Banner>}
           {frozen && <Banner kind="warn" action={t("schedule.retry_same_request")} onAction={actions.onRetryMutation}>{t("schedule.the_previous_operation_s_result_is_unconfirmed_verify_the")}</Banner>}
           {mutErr && !frozen && <Banner kind="err">{mutErr}</Banner>}
-          {vm.attention?.show && (
+          {(vm.attention?.show || renderText(vm.attention?.message)) && (
             <>
-              <div className="schedule-attention"><Banner kind="warn"><Info className="lead" />{renderText(vm.attention.message)}</Banner></div>
-              {vm.attention.showPrimaryAction && (
+              <div className={ATTN_BANNER_CLS}>
+                <Banner
+                  kind="warn"
+                  action={vm.attention?.message?.key === AGENT_DISABLED_PRE_RUN_KEY && actions.onOpenMachineSettings ? t("schedule.enable_cli") : undefined}
+                  onAction={vm.attention?.message?.key === AGENT_DISABLED_PRE_RUN_KEY ? actions.onOpenMachineSettings : undefined}
+                >
+                  <Info className="lead" />{renderText(vm.attention?.message)}
+                </Banner>
+              </div>
+              {vm.attention?.show && vm.attention.showPrimaryAction && (
                 <div className="schedule-recovery">
                   <button className="btn pri" disabled={!vm.attention.primaryActionEnabled || busy || frozen} onClick={() => actions.onOperate(ScheduleOperationKind.RECOVER)}>
                     {renderText(vm.attention.primaryActionLabel)}
@@ -930,6 +942,7 @@ export function ScheduleDetail({ remote, machineId, id, go, onBack }: { remote: 
     onOpenEdit: (mode) => { setEditFormKey(host.scheduleFormOpen(mode, { machineId, taskId: id })); setEditMode(mode); },
     onRetryMutation: () => host.scheduleRetryMutation(machineId, id, ""),
     onAbandonMutation: () => host.scheduleAbandonMutation(machineId, id, ""),
+    onOpenMachineSettings: () => go(routeForMachineSettings(machineId)),
   };
   return (
     <>

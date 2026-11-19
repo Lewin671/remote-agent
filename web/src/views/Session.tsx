@@ -1,7 +1,7 @@
 import * as i18n from "../i18n";
 import { t } from "../i18n";
 import { AgentMark } from "../agent-mark";
-import { routeForTask, useCoreHost, useScheduleSessionStripView, useSessionView, type Go, type SessionWindowOptions } from "../core/host";
+import { routeForTask, routeForUsage, useCoreHost, useScheduleSessionStripView, useSessionView, type Go, type SessionWindowOptions } from "../core/host";
 import { renderText } from "../core/text";
 import { newRequestID } from "../crypto";
 import {
@@ -1072,6 +1072,14 @@ export function SessionScreenView({
               onRefreshModels={() => onRefreshModels?.()}
               onSubmitCommand={onSubmitCommand}
               onAbandonCommand={onAbandonCommand}
+              onOpenUsage={
+                header?.machineId && go
+                  ? () => {
+                      setSheet("");
+                      go(routeForUsage(header.machineId, header.agent, header.model));
+                    }
+                  : undefined
+              }
             />
           )}
           {viewing !== undefined && remote && (

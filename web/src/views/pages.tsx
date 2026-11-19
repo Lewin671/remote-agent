@@ -54,6 +54,7 @@ const settings = () => import("./Settings");
 const security = () => import("./Security");
 const schedules = () => import("./Schedules");
 const machineStatus = () => import("./MachineStatus");
+const usage = () => import("./Usage");
 
 /** Whether a route's page is in a file of its own, which the page has to
  * wait for even if it has the file already: a lazy part suspends the first
@@ -62,7 +63,7 @@ const machineStatus = () => import("./MachineStatus");
  * (the page being left stays until the new one is ready). */
 export function inOwnFile(route: string): boolean {
   const [kind] = route.split("/");
-  return kind === "tasks" || kind === "settings" || kind === "devices" || kind === "q" || kind === "c" || kind === "m" || kind === "machine-status";
+  return kind === "tasks" || kind === "settings" || kind === "devices" || kind === "q" || kind === "c" || kind === "m" || kind === "machine-status" || kind === "u";
 }
 
 export const SettingsPage = page(() => settings().then((m) => ({ default: m.Settings })));
@@ -70,6 +71,7 @@ export const ClientPage = page(() => settings().then((m) => ({ default: m.Client
 export const DevicesPage = page(() => settings().then((m) => ({ default: m.DevicesPage })));
 export const MachinePage = page(() => settings().then((m) => ({ default: m.MachinePage })));
 export const MachineStatusPage = page(() => machineStatus().then((m) => ({ default: m.MachineStatusPage })));
+export const UsagePage = page(() => usage().then((m) => ({ default: m.UsagePage })));
 export const QuotaPage = page(() => settings().then((m) => ({ default: m.QuotaPage })));
 export const RemovedScreen = page(() => settings().then((m) => ({ default: m.RemovedScreen })));
 export const SecurityPage = page(() => security().then((m) => ({ default: m.SecurityPage })));
@@ -97,6 +99,8 @@ export function preloadRoute(route: string): Promise<void> {
     tasks.push(SettingsPage.preload(), DevicesPage.preload(), QuotaPage.preload(), ClientPage.preload(), MachinePage.preload());
   } else if (kind === "machine-status") {
     tasks.push(MachineStatusPage.preload());
+  } else if (kind === "u") {
+    tasks.push(UsagePage.preload());
   }
   return tasks.length > 0 ? Promise.all(tasks).then(() => undefined) : Promise.resolve();
 }

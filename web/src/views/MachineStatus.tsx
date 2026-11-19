@@ -5,8 +5,9 @@
 // this file renders the MachineStatusViewModel and SVG curve geometry.
 
 import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent, type PointerEvent, type ReactNode } from "react";
-import { t } from "../i18n";
+import { t, useLocale } from "../i18n";
 import { AgentMark } from "../agent-mark";
+import { formatCacheHit, formatSpeedValue, formatTokens } from "../usageFormat";
 import {
   MachineChartKind,
   MachinePollMode,
@@ -23,6 +24,7 @@ import { Agent } from "../gen/remoteagent/v1/event_pb";
 import { CpuIcon, DiskIcon, MemoryIcon, TerminalIcon, ChevronRight } from "../icons";
 import {
   routeForProject,
+  routeForUsage,
   useCoreHost,
   useMachineStatusView,
 } from "../core/host";
@@ -321,6 +323,66 @@ function Ranking({ vm, stale, main, go }: { vm: MachineStatusViewModel; stale: b
   );
 }
 
+function ModelUsagePreviewCard({ id, vm, go }: { id: string; vm: MachineStatusViewModel; go: Go }) {
+  const locale = useLocale();
+  const mu = vm.modelUsage;
+  if (!mu?.supported) return null;
+  const secCls = "ms-sec";
+  const windowLabel = mu.fallbackThirtyDays ? t("usage.entry_last_30d") : t("usage.entry_last_7d");
+  const unavail = renderText(mu.unsupportedFootnote);
+  return (
+    <>
+      <div className={secCls}>
+        <h2>{t("machine_status.model_usage_title")}</h2>
+        <button type="button" className="link" onClick={() => go(routeForUsage(id))}>
+          {t("machine_status.model_usage_view_trends")}
+        </button>
+      </div>
+      {mu.hasData ? (
+        <ul className="ms-card ms-list ms-mu-list">
+          {mu.rows.map((row) => {
+            const hitPart = row.hasCacheHit ? t("usage.entry_cache_pct", { pct: formatCacheHit(row.cacheHitRate) }) : "";
+            const speedPart = row.hasSpeed ? `${formatSpeedValue(row.speedP50)} ${t("usage.kpi_unit_toks")}` : "";
+            let meta = "";
+            if (row.hasSpeed) {
+              meta = [hitPart, speedPart, t("usage.entry_reqs", { count: Number(row.usageRequestCount) }), windowLabel].filter(Boolean).join(" · ");
+            } else if (row.fewSpeedSamples) {
+              meta = t("usage.entry_few_samples", { count: Number(row.speedRequestCount), detail: hitPart || windowLabel });
+            } else {
+              meta = t("usage.entry_no_speed", { detail: hitPart || windowLabel });
+            }
+            const titleText = `${row.agentName} · ${row.model}`;
+            const tokenStr = formatTokens(row.totalTokens, locale);
+            return (
+              <li key={`${row.agent}:${row.model}`} className="ms-mu-row">
+                <button
+                  type="button"
+                  className="ms-mu-btn"
+                  onClick={() => go(routeForUsage(id, row.agent, row.model))}
+                >
+                  <AgentMark agent={row.agent} named />
+                  <span className="ms-rb">
+                    <span className="ms-rt">
+                      <span>{titleText}</span>
+                      <span>{tokenStr}</span>
+                    </span>
+                    <span className="ms-rm">
+                      <small>{meta}</small>
+                    </span>
+                  </span>
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      ) : (
+        <div className="ms-card ms-list ms-none">{renderText(mu.emptyText) || t("machine_status.model_usage_empty")}</div>
+      )}
+      {unavail && <div className="ms-mu-foot">{unavail}</div>}
+    </>
+  );
+}
+
 function Skeleton({ name }: { name: string }) {
   return (
     <div className="body ms-body" role="region" aria-label={t("machine_status.title")}>
@@ -401,6 +463,7 @@ export function MachineStatusScreenView({ id, vm, visible = true, reduced = fals
             </button>
           </div>
           <Ranking vm={vm} stale={stale} main={main} go={go} />
+          <ModelUsagePreviewCard id={id} vm={vm} go={go} />
           {foot && <div className="ms-foot">{foot}</div>}
         </div>
       </div>

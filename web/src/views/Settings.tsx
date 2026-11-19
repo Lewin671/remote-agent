@@ -882,9 +882,10 @@ export function ClientPage({
 
 type MachineSheet = "model" | "effort" | "mode" | "timeout" | "idle" | "image-quota";
 
-export function MachineSettingsScreenView({ id, vm, section, go, onBack, onRetrySettings, onSelectAgent, onUpdateAgentDefaults, onUpdateDaemonSettings, removedSlot, ringsSlot, connectionSlot, rejoinSlot, deviceActionsSlot }: {
+export function MachineSettingsScreenView({ id, vm, section, go, onBack, onRetrySettings, onSelectAgent, onToggleAgent, onUpdateAgentDefaults, onUpdateDaemonSettings, removedSlot, ringsSlot, connectionSlot, rejoinSlot, deviceActionsSlot }: {
   id: string; vm: MachineSettingsViewModel; section?: string; go: Go; onBack: () => void; onRetrySettings: () => void;
   onSelectAgent: (agent: Agent) => void;
+  onToggleAgent?: (agent: Agent, enabled: boolean) => void;
   onUpdateAgentDefaults: (agent: Agent, patch: { model?: string; effort?: string; mode?: ApprovalMode }) => void;
   onUpdateDaemonSettings: (patch: { approvalTimeoutSeconds?: number; idleCloseMinutes?: number; imageUploadQuotaBytes?: bigint; cleanImages?: boolean }) => void;
   removedSlot?: ReactNode; ringsSlot?: ReactNode; connectionSlot?: ReactNode; rejoinSlot?: ReactNode; deviceActionsSlot?: ReactNode;
@@ -928,13 +929,27 @@ export function MachineSettingsScreenView({ id, vm, section, go, onBack, onRetry
         {vm.showStatusEntry && ringsSlot}
         <QuotaSummary sections={vm.quotaRows} go={go} machineId={id} />
         {connectionSlot}
-        {vm.cliVersions.length > 0 && (
-          <div className="grp">
-            {vm.cliVersions.map((v) => (
-              <div className="row" key={v.agent}>{l10n.t("settings.cli_version", { name: v.name })}<span className="v">{!v.verified && l10n.t("settings.unverified")}{v.version}</span></div>
-            ))}
-            {vm.hasUnverifiedCli && <div className="row help">{l10n.t("settings.version_unverified_run_remote_agent_doctor_on_this_computer")}</div>}
-          </div>
+        {vm.showCliSwitches ? (
+          <>
+            <div className="label">{l10n.t("settings.cli_switches_title")}</div>
+            {renderText(vm.cliSwitchesConflictBanner) && (
+              <div className="set-banners"><Banner kind="warn">{renderText(vm.cliSwitchesConflictBanner)}</Banner></div>
+            )}
+            {renderText(vm.cliSwitchesDisabledReason) && (
+              <div className="set-banners"><Banner kind="warn">{renderText(vm.cliSwitchesDisabledReason)}</Banner></div>
+            )}
+            <CliSwitchGroup vm={vm} onToggleAgent={onToggleAgent} />
+            {renderText(vm.cliSwitchesFooter) && <div className="gf">{renderText(vm.cliSwitchesFooter)}</div>}
+          </>
+        ) : (
+          vm.cliVersions.length > 0 && (
+            <div className="grp">
+              {vm.cliVersions.map((v) => (
+                <div className="row" key={v.agent}>{l10n.t("settings.cli_version", { name: v.name })}<span className="v">{!v.verified && l10n.t("settings.unverified")}{v.version}</span></div>
+              ))}
+              {vm.hasUnverifiedCli && <div className="row help">{l10n.t("settings.version_unverified_run_remote_agent_doctor_on_this_computer")}</div>}
+            </div>
+          )
         )}
         {vm.availableAgents.length > 0 && (
           <div className="label">{vm.availableAgents.length > 1 ? l10n.t("settings.new_project_defaults") : l10n.t("settings.new_project_defaults_settings", { value: agentDisplayName(vm.availableAgents[0]) })}</div>
@@ -1010,6 +1025,7 @@ export function MachinePage({ remote, id, section, go, onBack }: { remote: Remot
   return (
     <MachineSettingsScreenView id={id} vm={vm} section={section} go={go} onBack={onBack}
       onRetrySettings={() => host.machineSettingsOpen(id)} onSelectAgent={(a) => host.machineSettingsSelectAgent(id, a)}
+      onToggleAgent={(a, enabled) => host.toggleMachineAgent(id, a, enabled)}
       onUpdateAgentDefaults={(a, p) => host.updateMachineAgentDefaults(id, a, p)}
       onUpdateDaemonSettings={(p) => host.updateMachineDaemonSettings(id, p)}
       removedSlot={<RemovedScreen remote={remote} />} ringsSlot={<MachineRings remote={remote} id={id} go={go} />}
@@ -1063,6 +1079,57 @@ function renderMachineSheet(
       items={vm.idleCloseChoices.map((c) => ({ key: c.minutes, label: renderText(c.label), selected: c.selected, onPick: () => onSelectIdle(c.minutes) }))} />;
   }
   return null;
+}
+
+function CliSwitchGroup({
+  vm,
+  onToggleAgent,
+}: {
+  vm: MachineSettingsViewModel;
+  onToggleAgent?: (agent: Agent, enabled: boolean) => void;
+}) {
+  const grpCls = "grp cli-sw-grp";
+  const rowClsBase = "row cli-sw-row";
+  return (
+    <div className={grpCls}>
+      {vm.cliVersions.map((v) => {
+        const locked = v.lockedLastEnabled;
+        const rowCls = locked ? `${rowClsBase} locked` : rowClsBase;
+        const swCls = `sw${v.enabled ? "" : " off"}${locked ? " locked" : ""}`;
+        const a11y = locked
+          ? l10n.t("settings.cli_switches_a11y_locked", { name: v.name, version: v.version })
+          : l10n.t("settings.cli_switches_a11y_row", {
+              name: v.name,
+              version: v.version,
+              state: v.enabled ? l10n.t("settings.cli_switches_state_on") : l10n.t("settings.cli_switches_state_off"),
+            });
+        return (
+          <button
+            key={v.agent}
+            type="button"
+            role="switch"
+            aria-checked={v.enabled}
+            aria-label={a11y}
+            className={rowCls}
+            disabled={!vm.cliSwitchesEditable || locked || v.saving || !onToggleAgent}
+            onClick={() => onToggleAgent?.(v.agent, !v.enabled)}
+          >
+            <span className="cli-sw-ic"><AgentMark agent={v.agent} named /></span>
+            <span className="row-name cli-sw-nm">
+              <b>{v.name}</b>
+              <small>
+                {!v.verified && <span className="unver">{l10n.t("settings.unverified")}</span>}
+                {v.version}
+                {locked ? ` · ${l10n.t("settings.cli_switches_keep_one")}` : ""}
+              </small>
+            </span>
+            <span className={swCls} aria-hidden="true" />
+          </button>
+        );
+      })}
+      {vm.hasUnverifiedCli && <div className="row help">{l10n.t("settings.version_unverified_run_remote_agent_doctor_on_this_computer")}</div>}
+    </div>
+  );
 }
 
 function agentDisplayName(a: Agent): string {

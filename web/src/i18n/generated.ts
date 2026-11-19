@@ -463,6 +463,11 @@ export interface MessageArgs {
   "machine_status.load": { load: string };
   "machine_status.loading": { [name: string]: never };
   "machine_status.memory": { [name: string]: never };
+  "machine_status.model_usage_empty": { [name: string]: never };
+  "machine_status.model_usage_mixed_unavailable": { agents: string };
+  "machine_status.model_usage_only_unavailable": { [name: string]: never };
+  "machine_status.model_usage_title": { [name: string]: never };
+  "machine_status.model_usage_view_trends": { [name: string]: never };
   "machine_status.no_running_sessions": { [name: string]: never };
   "machine_status.notify_critical": { computer: string; size: string };
   "machine_status.notify_critical_body": { [name: string]: never };
@@ -553,11 +558,13 @@ export interface MessageArgs {
   "new_session.change_machine": { [name: string]: never };
   "new_session.change_model": { [name: string]: never };
   "new_session.choose_cli": { [name: string]: never };
+  "new_session.cli_disabled_fallback": { agent: string; missing: string; name: string };
   "new_session.cli_fallback": { agent: string; missing: string; name: string };
   "new_session.cli_label": { agent: string };
   "new_session.cli_picker_label": { [name: string]: never };
   "new_session.default_model": { [name: string]: never };
   "new_session.draft_kept": { [name: string]: never };
+  "new_session.enable_agent": { [name: string]: never };
   "new_session.expired_start": { [name: string]: never };
   "new_session.expired_start_prompt": { prompt: string };
   "new_session.first_message": { [name: string]: never };
@@ -698,6 +705,8 @@ export interface MessageArgs {
   "schedule.after_current_turn": { count: number };
   "schedule.after_each_turn": { count: number };
   "schedule.after_turn_ends": { [name: string]: never };
+  "schedule.agent_disabled_list_note": { agent: string; machine: string };
+  "schedule.agent_disabled_pre_run": { agent: string; machine: string };
   "schedule.android_agent_notification": { [name: string]: never };
   "schedule.android_agent_notification_completion_notification": { [name: string]: never };
   "schedule.android_cannot_request_notification": { [name: string]: never };
@@ -755,6 +764,7 @@ export interface MessageArgs {
   "schedule.each_run_opens_a_new_conversation_grouped_under_this": { [name: string]: never };
   "schedule.each_run_opens_a_new_conversation_grouped_under_this_schedules": { [name: string]: never };
   "schedule.earlier": { [name: string]: never };
+  "schedule.enable_cli": { [name: string]: never };
   "schedule.end_date": { [name: string]: never };
   "schedule.end_time": { [name: string]: never };
   "schedule.ended": { [name: string]: never };
@@ -1239,6 +1249,13 @@ export interface MessageArgs {
   "session.turn_duration": { duration: string };
   "session.turn_error": { reason: string };
   "session.update_computer": { [name: string]: never };
+  "session.usage_entry_empty_hint": { [name: string]: never };
+  "session.usage_entry_no_data": { [name: string]: never };
+  "session.usage_entry_offline_cached": { time: string };
+  "session.usage_entry_offline_none": { [name: string]: never };
+  "session.usage_entry_read_failed": { [name: string]: never };
+  "session.usage_entry_title": { [name: string]: never };
+  "session.usage_entry_unavailable": { agent: string };
   "session.view": { [name: string]: never };
   "settings.about": { [name: string]: never };
   "settings.account": { [name: string]: never };
@@ -1261,6 +1278,17 @@ export interface MessageArgs {
   "settings.clear_reclaimable_attachments_and_cache": { [name: string]: never };
   "settings.clear_settings": { [name: string]: never };
   "settings.clears_reclaimable_originals_previews_and_unsynced_large_image_cache": { [name: string]: never };
+  "settings.cli_switches_a11y_locked": { name: string; version: string };
+  "settings.cli_switches_a11y_row": { name: string; state: string; version: string };
+  "settings.cli_switches_conflict": { [name: string]: never };
+  "settings.cli_switches_footer": { [name: string]: never };
+  "settings.cli_switches_keep_one": { [name: string]: never };
+  "settings.cli_switches_lease_expired_footer": { [name: string]: never };
+  "settings.cli_switches_offline_reason": { name: string };
+  "settings.cli_switches_state_off": { [name: string]: never };
+  "settings.cli_switches_state_on": { [name: string]: never };
+  "settings.cli_switches_title": { [name: string]: never };
+  "settings.cli_switches_update_error": { reason: string };
   "settings.cli_version": { name: string };
   "settings.client_name": { [name: string]: never };
   "settings.clients_control_sessions": { [name: string]: never };
@@ -1640,6 +1668,92 @@ export interface MessageArgs {
   "transport.use_file": { [name: string]: never };
   "transport.use_read": { [name: string]: never };
   "transport.why_not_connected": { [name: string]: never };
+  "usage.backfilled_summary": { name: string; scanned: number };
+  "usage.backfilling_banner": { scanned: number; total: number };
+  "usage.backfilling_cell": { [name: string]: never };
+  "usage.backfilling_zone": { [name: string]: never };
+  "usage.cache_formula_footnote": { [name: string]: never };
+  "usage.cache_write_footnote": { [name: string]: never };
+  "usage.chart_a11y_line": { count: number; metric: string; name: string };
+  "usage.chart_a11y_tokens": { count: number; name: string; total: string };
+  "usage.col_cache_read": { [name: string]: never };
+  "usage.col_cache_write": { [name: string]: never };
+  "usage.col_hit_rate": { [name: string]: never };
+  "usage.col_median": { [name: string]: never };
+  "usage.col_output": { [name: string]: never };
+  "usage.col_pair": { [name: string]: never };
+  "usage.col_reqs": { [name: string]: never };
+  "usage.col_total": { [name: string]: never };
+  "usage.col_ttft_median": { [name: string]: never };
+  "usage.col_uncached": { [name: string]: never };
+  "usage.col_valid_reqs": { [name: string]: never };
+  "usage.col_vs_prev": { [name: string]: never };
+  "usage.comp_cache_read": { [name: string]: never };
+  "usage.comp_cache_write": { [name: string]: never };
+  "usage.comp_output": { [name: string]: never };
+  "usage.comp_reasoning": { value: string };
+  "usage.comp_uncached": { [name: string]: never };
+  "usage.custom_end_label": { [name: string]: never };
+  "usage.custom_range_change": { [name: string]: never };
+  "usage.custom_range_limit_hint": { [name: string]: never };
+  "usage.custom_range_summary": { days: number; end: string; start: string };
+  "usage.custom_start_label": { [name: string]: never };
+  "usage.duration_min_sec": { min: number; sec: number };
+  "usage.empty_body": { [name: string]: never };
+  "usage.empty_title": { [name: string]: never };
+  "usage.entry_cache_pct": { pct: string };
+  "usage.entry_few_samples": { count: number; detail: string };
+  "usage.entry_last_30d": { [name: string]: never };
+  "usage.entry_last_7d": { [name: string]: never };
+  "usage.entry_no_speed": { detail: string };
+  "usage.entry_reqs": { count: number };
+  "usage.few_samples_count": { count: number };
+  "usage.few_samples_hint": { [name: string]: never };
+  "usage.filter_all": { [name: string]: never };
+  "usage.flat": { [name: string]: never };
+  "usage.kpi_unit_tokens": { [name: string]: never };
+  "usage.kpi_unit_toks": { [name: string]: never };
+  "usage.load_error_title": { [name: string]: never };
+  "usage.mixed_unavailable_footnote": { agents: string };
+  "usage.offline_banner": { name: string; time: string };
+  "usage.offline_empty_body": { name: string };
+  "usage.offline_empty_title": { name: string };
+  "usage.only_unavailable_body": { agents: string };
+  "usage.only_unavailable_title": { agents: string };
+  "usage.outlier_note": { [name: string]: never };
+  "usage.pairs_capped_summary": { count: number };
+  "usage.pairs_summary": { count: number; name: string };
+  "usage.passive_footnote": { [name: string]: never };
+  "usage.range_30d": { [name: string]: never };
+  "usage.range_7d": { [name: string]: never };
+  "usage.range_custom": { [name: string]: never };
+  "usage.range_today": { [name: string]: never };
+  "usage.row_sub_cache": { inp: string; read: string; write: string };
+  "usage.row_sub_speed": { high: string; low: string; ttft: string };
+  "usage.row_sub_tap_overlay": { [name: string]: never };
+  "usage.row_sub_tokens": { inp: string; out: string; read: string; write: string };
+  "usage.row_sub_tokens_reasoning": { inp: string; out: string; read: string; reas: string; write: string };
+  "usage.scrub_total": { total: string };
+  "usage.speed_threshold_footnote": { [name: string]: never };
+  "usage.sub_median_p10_p90": { high: string; low: string };
+  "usage.sub_p10_p90": { high: string; low: string };
+  "usage.sub_recent10": { speed: string };
+  "usage.sub_vs_prev_30d": { [name: string]: never };
+  "usage.sub_vs_prev_7d": { [name: string]: never };
+  "usage.sub_vs_prev_generic": { [name: string]: never };
+  "usage.sub_weighted_cache": { [name: string]: never };
+  "usage.subtitle_live": { name: string };
+  "usage.subtitle_offline": { name: string };
+  "usage.tab_cache_hit": { [name: string]: never };
+  "usage.tab_speed": { [name: string]: never };
+  "usage.tab_tokens": { [name: string]: never };
+  "usage.tab_ttft": { [name: string]: never };
+  "usage.title": { [name: string]: never };
+  "usage.unit_wan": { [name: string]: never };
+  "usage.unit_yi": { [name: string]: never };
+  "usage.unreported_aria": { [name: string]: never };
+  "usage.unsupported_body": { name: string };
+  "usage.unsupported_title": { [name: string]: never };
 }
 export type MessageKey = keyof MessageArgs;
 export const messages = {
@@ -2274,6 +2388,11 @@ export const messages = {
     "machine_status.load": "{load} load",
     "machine_status.loading": "Loading",
     "machine_status.memory": "Memory",
+    "machine_status.model_usage_empty": "No usage or speed records yet",
+    "machine_status.model_usage_mixed_unavailable": "{agents} usage and speed telemetry unavailable",
+    "machine_status.model_usage_only_unavailable": "Enabled CLIs do not support usage and speed telemetry yet",
+    "machine_status.model_usage_title": "Usage & speed",
+    "machine_status.model_usage_view_trends": "Trends",
     "machine_status.no_running_sessions": "No running sessions",
     "machine_status.notify_critical": "{computer} disk is almost full, only {size} left",
     "machine_status.notify_critical_body": "Clean up now or sessions may not start.",
@@ -2394,11 +2513,13 @@ export const messages = {
     "new_session.change_machine": "Change computer",
     "new_session.change_model": "Change model",
     "new_session.choose_cli": "Which CLI?",
+    "new_session.cli_disabled_fallback": "{missing} is disabled on {name}. Using {agent} for this session",
     "new_session.cli_fallback": "{name} does not have {missing}. Using {agent} for this session",
     "new_session.cli_label": "CLI: {agent}",
     "new_session.cli_picker_label": "CLI",
     "new_session.default_model": "Default model",
     "new_session.draft_kept": "Your draft is saved. Choose an online computer; the computer and CLI will not switch automatically.",
+    "new_session.enable_agent": "Enable",
     "new_session.expired_start": "The start is unconfirmed. Check the session list first. This request has expired and will not be retried or replaced.",
     "new_session.expired_start_prompt": "It is unclear whether “{prompt}” started. The request has expired and will not be resent. Check active sessions first.",
     "new_session.first_message": "First message of the new session",
@@ -2641,6 +2762,8 @@ export const messages = {
       "plural": "count"
     },
     "schedule.after_turn_ends": "After turn ends",
+    "schedule.agent_disabled_list_note": "{agent} is disabled on {machine}; enable it or switch CLI to resume",
+    "schedule.agent_disabled_pre_run": "{agent} is disabled on {machine}. Enable that CLI or edit the task to use another CLI before resuming",
     "schedule.android_agent_notification": "agent notification",
     "schedule.android_agent_notification_completion_notification": "agent notification, completion notification",
     "schedule.android_cannot_request_notification": "Cannot request notification",
@@ -2740,6 +2863,7 @@ export const messages = {
     "schedule.each_run_opens_a_new_conversation_grouped_under_this": "Each run opens a new conversation grouped under this task.",
     "schedule.each_run_opens_a_new_conversation_grouped_under_this_schedules": "Each run opens a new conversation grouped under this task, outside the session list.",
     "schedule.earlier": "Earlier",
+    "schedule.enable_cli": "Enable CLI",
     "schedule.end_date": "End date",
     "schedule.end_time": "End time",
     "schedule.ended": "Ended ",
@@ -3338,6 +3462,13 @@ export const messages = {
     "session.turn_duration": "Turn took {duration}",
     "session.turn_error": "Turn failed: {reason}",
     "session.update_computer": "Update remote-agent on the computer",
+    "session.usage_entry_empty_hint": "Usage, cache hit rate, and speed are recorded after conversations",
+    "session.usage_entry_no_data": "No records",
+    "session.usage_entry_offline_cached": "Last record · {time} (computer offline)",
+    "session.usage_entry_offline_none": "Computer offline",
+    "session.usage_entry_read_failed": "Read failed",
+    "session.usage_entry_title": "Usage & speed",
+    "session.usage_entry_unavailable": "{agent} usage and speed telemetry unavailable",
     "session.view": "View",
     "settings.about": "About",
     "settings.account": "Account",
@@ -3360,6 +3491,17 @@ export const messages = {
     "settings.clear_reclaimable_attachments_and_cache": "Clear reclaimable attachments and cache?",
     "settings.clear_settings": "Clear",
     "settings.clears_reclaimable_originals_previews_and_unsynced_large_image_cache": "Clears reclaimable originals, previews, and unsynced large image cache. Queued and active originals, session files, and history remain; unsynced large images will show only previews.",
+    "settings.cli_switches_a11y_locked": "{name}, version {version}, on, locked: keep at least one on",
+    "settings.cli_switches_a11y_row": "{name}, version {version}, {state}",
+    "settings.cli_switches_conflict": "Another client updated enabled CLIs; synced to the latest state",
+    "settings.cli_switches_footer": "Disabled CLIs are hidden from new tasks, schedules, quota, and usage & speed. Existing sessions and history remain available.",
+    "settings.cli_switches_keep_one": "Keep at least one on",
+    "settings.cli_switches_lease_expired_footer": "Remote control is paused; renew on the managing device to make changes.",
+    "settings.cli_switches_offline_reason": "{name} is offline. Showing the last synced state",
+    "settings.cli_switches_state_off": "off",
+    "settings.cli_switches_state_on": "on",
+    "settings.cli_switches_title": "Enabled CLIs",
+    "settings.cli_switches_update_error": "Could not update enabled CLIs: {reason}",
     "settings.cli_version": "{name} version",
     "settings.client_name": "Client name",
     "settings.clients_control_sessions": "Clients · Control sessions",
@@ -3810,7 +3952,93 @@ export const messages = {
     "transport.summary_off": "Direct is off",
     "transport.use_file": "Used for files",
     "transport.use_read": "Used for loading",
-    "transport.why_not_connected": "Why it didn’t connect"
+    "transport.why_not_connected": "Why it didn’t connect",
+    "usage.backfilled_summary": "{name} · {scanned}d indexed",
+    "usage.backfilling_banner": "Indexing local history · {scanned} / {total} days",
+    "usage.backfilling_cell": "Indexing",
+    "usage.backfilling_zone": "Indexing earlier history…",
+    "usage.cache_formula_footnote": "Cache hit rate = cache read ÷ (uncached input + cache read + cache write), weighted by input tokens.",
+    "usage.cache_write_footnote": "Note: “—” means the CLI or model did not report cache write separately; those input tokens are included in uncached input and do not affect total input or hit rate.",
+    "usage.chart_a11y_line": "{name} {metric} trend chart with {count} series",
+    "usage.chart_a11y_tokens": "Bar chart of {name} token usage, {total} tokens across {count} agent-model pairs; full breakdown in the table below",
+    "usage.col_cache_read": "Cache read",
+    "usage.col_cache_write": "Cache write",
+    "usage.col_hit_rate": "Cache hit",
+    "usage.col_median": "Median",
+    "usage.col_output": "Output",
+    "usage.col_pair": "Agent · Model",
+    "usage.col_reqs": "Reqs",
+    "usage.col_total": "Total",
+    "usage.col_ttft_median": "TTFT med",
+    "usage.col_uncached": "Uncached",
+    "usage.col_valid_reqs": "Valid",
+    "usage.col_vs_prev": "vs prev",
+    "usage.comp_cache_read": "Read",
+    "usage.comp_cache_write": "Write",
+    "usage.comp_output": "Output",
+    "usage.comp_reasoning": "incl. {value} reasoning",
+    "usage.comp_uncached": "Uncached",
+    "usage.custom_end_label": "End date",
+    "usage.custom_range_change": "Dates",
+    "usage.custom_range_limit_hint": "Up to 90 days ago, 1–90d span",
+    "usage.custom_range_summary": "{start} – {end} ({days}d)",
+    "usage.custom_start_label": "Start date",
+    "usage.duration_min_sec": "{min}m {sec}s",
+    "usage.empty_body": "After using CLIs on this computer, per-request token usage, cache hit rate, and output speed appear here automatically. remote-agent never sends extra requests.",
+    "usage.empty_title": "No usage or speed records in this period",
+    "usage.entry_cache_pct": "Cache {pct}",
+    "usage.entry_few_samples": "{detail} ({count} only)",
+    "usage.entry_last_30d": "Last 30d",
+    "usage.entry_last_7d": "Last 7d",
+    "usage.entry_no_speed": "{detail} (no speed samples yet)",
+    "usage.entry_reqs": "{count} reqs",
+    "usage.few_samples_count": "Only {count} requests",
+    "usage.few_samples_hint": "Trend starts at 3 requests",
+    "usage.filter_all": "All",
+    "usage.flat": "Flat",
+    "usage.kpi_unit_tokens": "tokens",
+    "usage.kpi_unit_toks": "tok/s",
+    "usage.load_error_title": "Could not load usage and speed",
+    "usage.mixed_unavailable_footnote": "Enabled {agents} has no local usage source and is excluded above.",
+    "usage.offline_banner": "{name} is offline. Showing cached data from {time}",
+    "usage.offline_empty_body": "No cached usage records for {name} on this device yet. Data will load automatically when online.",
+    "usage.offline_empty_title": "{name} is currently offline",
+    "usage.only_unavailable_body": "Only {agents} is currently enabled on this computer. Local telemetry for Claude Code and Codex is collected automatically.",
+    "usage.only_unavailable_title": "{agents} usage and speed telemetry unavailable",
+    "usage.outlier_note": "High variance from long reasoning",
+    "usage.pairs_capped_summary": "Max 4 overlaid ({count} total)",
+    "usage.pairs_summary": "{name} · {count} pairs",
+    "usage.passive_footnote": "Passively collected from local CLI logs; no monetary conversion.",
+    "usage.range_30d": "30d",
+    "usage.range_7d": "7d",
+    "usage.range_custom": "Custom",
+    "usage.range_today": "Today",
+    "usage.row_sub_cache": "Read {read} · Uncached {inp} · Write {write}",
+    "usage.row_sub_speed": "p10–p90 {low}–{high} · TTFT {ttft}",
+    "usage.row_sub_tap_overlay": "Tap to overlay",
+    "usage.row_sub_tokens": "In {inp} · Read {read} · Write {write} · Out {out}",
+    "usage.row_sub_tokens_reasoning": "In {inp} · Read {read} · Write {write} · Out {out} ({reas} reasoning)",
+    "usage.scrub_total": "Total {total}",
+    "usage.speed_threshold_footnote": "Speed and TTFT count only responses with ≥ 16 output tokens and ≥ 200 ms generation duration; shorter tool replies still count in Tokens and Cache Hit.",
+    "usage.sub_median_p10_p90": "Median · p10–p90 {low}–{high}",
+    "usage.sub_p10_p90": "p10–p90 {low}–{high}",
+    "usage.sub_recent10": "Last 10 p50 {speed} tok/s",
+    "usage.sub_vs_prev_30d": "vs prev 30d",
+    "usage.sub_vs_prev_7d": "vs prev 7d",
+    "usage.sub_vs_prev_generic": "vs prev",
+    "usage.sub_weighted_cache": "Weighted by input tokens",
+    "usage.subtitle_live": "{name} · Passive log",
+    "usage.subtitle_offline": "{name} · Offline",
+    "usage.tab_cache_hit": "Cache Hit",
+    "usage.tab_speed": "Speed",
+    "usage.tab_tokens": "Tokens",
+    "usage.tab_ttft": "TTFT",
+    "usage.title": "Usage & speed",
+    "usage.unit_wan": "10k",
+    "usage.unit_yi": "100M",
+    "usage.unreported_aria": "not reported separately",
+    "usage.unsupported_body": "Update remote-agent on {name} to view token consumption, cache hit rate, and output speed.",
+    "usage.unsupported_title": "remote-agent on this computer is older"
   },
   "zh-CN": {
     "approval.allow": "允许",
@@ -4409,6 +4637,11 @@ export const messages = {
     "machine_status.load": "{load} 负载",
     "machine_status.loading": "正在读取",
     "machine_status.memory": "内存",
+    "machine_status.model_usage_empty": "还没有用量与速度记录",
+    "machine_status.model_usage_mixed_unavailable": "{agents} 暂不支持统计用量与速度",
+    "machine_status.model_usage_only_unavailable": "当前启用的 CLI 暂不支持统计用量与速度",
+    "machine_status.model_usage_title": "用量与速度",
+    "machine_status.model_usage_view_trends": "查看趋势",
     "machine_status.no_running_sessions": "没有正在运行的会话",
     "machine_status.notify_critical": "{computer} 磁盘快满了，只剩 {size}",
     "machine_status.notify_critical_body": "现在清理，否则会话可能启动不了。",
@@ -4524,11 +4757,13 @@ export const messages = {
     "new_session.change_machine": "换电脑",
     "new_session.change_model": "换模型",
     "new_session.choose_cli": "用哪个 CLI",
+    "new_session.cli_disabled_fallback": "{name} 已停用 {missing}，这次用 {agent}",
     "new_session.cli_fallback": "{name} 没有 {missing}，这次用 {agent}",
     "new_session.cli_label": "CLI：{agent}",
     "new_session.cli_picker_label": "CLI",
     "new_session.default_model": "默认模型",
     "new_session.draft_kept": "草稿已保留，请选择在线电脑；不自动换电脑或 CLI。",
+    "new_session.enable_agent": "去启用",
     "new_session.expired_start": "不确定是否已经启动，请先看会话列表。这个请求已经过期，不会再发，也不会换成新的请求",
     "new_session.expired_start_prompt": "不确定「{prompt}」有没有启动，它已过期，不会再重发。请先看看进行中的会话",
     "new_session.first_message": "新会话的第一句话",
@@ -4754,6 +4989,8 @@ export const messages = {
       "plural": "count"
     },
     "schedule.after_turn_ends": "轮结束后",
+    "schedule.agent_disabled_list_note": "{machine} 已停用 {agent}，启用或改用其他 CLI 后可恢复",
+    "schedule.agent_disabled_pre_run": "{machine} 已停用 {agent}，启用该 CLI 或编辑改用其他 CLI 后才能继续自动运行",
     "schedule.android_agent_notification": "agent 通知",
     "schedule.android_agent_notification_completion_notification": "agent 通知、完成后通知",
     "schedule.android_cannot_request_notification": "无法请求通知",
@@ -4846,6 +5083,7 @@ export const messages = {
     "schedule.each_run_opens_a_new_conversation_grouped_under_this": "每次新开一个对话，归在这个任务下面。",
     "schedule.each_run_opens_a_new_conversation_grouped_under_this_schedules": "每次运行新开一个对话，归在这个任务下面，不进会话列表。",
     "schedule.earlier": "更早",
+    "schedule.enable_cli": "去启用 CLI",
     "schedule.end_date": "截止日期",
     "schedule.end_time": "截止时间",
     "schedule.ended": "已结束 ",
@@ -5425,6 +5663,13 @@ export const messages = {
     "session.turn_duration": "本轮用时 {duration}",
     "session.turn_error": "本轮出错：{reason}",
     "session.update_computer": "请更新电脑上的 remote-agent",
+    "session.usage_entry_empty_hint": "对话后自动统计消耗、缓存与速度",
+    "session.usage_entry_no_data": "暂无记录",
+    "session.usage_entry_offline_cached": "上次记录 · {time}（电脑不在线）",
+    "session.usage_entry_offline_none": "电脑不在线",
+    "session.usage_entry_read_failed": "读取失败",
+    "session.usage_entry_title": "用量与速度",
+    "session.usage_entry_unavailable": "{agent} 暂不支持统计用量与速度",
     "session.view": "视图",
     "settings.about": "关于",
     "settings.account": "账户",
@@ -5447,6 +5692,17 @@ export const messages = {
     "settings.clear_reclaimable_attachments_and_cache": "清理可回收附件和缓存？",
     "settings.clear_settings": "清理",
     "settings.clears_reclaimable_originals_previews_and_unsynced_large_image_cache": "清除可回收原图、预览和待同步的大图缓存。排队与当前执行中的原图、会话文件和历史保留；尚未同步的大图会只显示预览。",
+    "settings.cli_switches_a11y_locked": "{name}，版本 {version}，已开启，不可关闭：至少保留一个启用",
+    "settings.cli_switches_a11y_row": "{name}，版本 {version}，{state}",
+    "settings.cli_switches_conflict": "另一台客户端刚刚修改了启用的 CLI，已同步为最新状态",
+    "settings.cli_switches_footer": "停用的 CLI 不出现在新任务、新定时、额度和用量与速度里；已有会话和历史照常可用。",
+    "settings.cli_switches_keep_one": "至少保留一个启用",
+    "settings.cli_switches_lease_expired_footer": "远程控制已暂停，在管理端续期后可修改。",
+    "settings.cli_switches_offline_reason": "{name} 未连接，显示的是上次的状态",
+    "settings.cli_switches_state_off": "已停用",
+    "settings.cli_switches_state_on": "已开启",
+    "settings.cli_switches_title": "启用的 CLI",
+    "settings.cli_switches_update_error": "没能更新启用的 CLI：{reason}",
     "settings.cli_version": "{name} 版本",
     "settings.client_name": "客户端名称",
     "settings.clients_control_sessions": "客户端 · 操作会话",
@@ -5887,6 +6143,92 @@ export const messages = {
     "transport.summary_off": "直连已关闭",
     "transport.use_file": "用于文件",
     "transport.use_read": "用于加载",
-    "transport.why_not_connected": "为什么没连上"
+    "transport.why_not_connected": "为什么没连上",
+    "usage.backfilled_summary": "{name} · 已算近 {scanned} 天",
+    "usage.backfilling_banner": "正在从本机记录补算历史 · 已算 {scanned} / {total} 天",
+    "usage.backfilling_cell": "补算中",
+    "usage.backfilling_zone": "更早记录补算中…",
+    "usage.cache_formula_footnote": "命中率 = 缓存读取 ÷（未缓存输入 + 缓存读取 + 缓存写入），按输入 token 加权。",
+    "usage.cache_write_footnote": "注：「—」表示该 CLI 或模型未单独上报缓存写入量，对应输入已计入未缓存输入，不影响总输入与命中率计算。",
+    "usage.chart_a11y_line": "{name} {metric}趋势图，含 {count} 条序列",
+    "usage.chart_a11y_tokens": "{name} 消耗量柱状图，共 {total} tokens，含 {count} 对模型；下方表格含全部拆分数值",
+    "usage.col_cache_read": "缓存读取",
+    "usage.col_cache_write": "缓存写入",
+    "usage.col_hit_rate": "命中率",
+    "usage.col_median": "中位",
+    "usage.col_output": "输出",
+    "usage.col_pair": "Agent · 模型",
+    "usage.col_reqs": "次数",
+    "usage.col_total": "总量",
+    "usage.col_ttft_median": "首字中位",
+    "usage.col_uncached": "未缓存输入",
+    "usage.col_valid_reqs": "有效次",
+    "usage.col_vs_prev": "较上期",
+    "usage.comp_cache_read": "缓存读",
+    "usage.comp_cache_write": "缓存写",
+    "usage.comp_output": "输出",
+    "usage.comp_reasoning": "含推理 {value}",
+    "usage.comp_uncached": "输入",
+    "usage.custom_end_label": "结束日期",
+    "usage.custom_range_change": "改日期",
+    "usage.custom_range_limit_hint": "可选近 90 天内，跨度 1–90 天",
+    "usage.custom_range_summary": "{start} – {end}（{days} 天）",
+    "usage.custom_start_label": "开始日期",
+    "usage.duration_min_sec": "{min} 分 {sec} 秒",
+    "usage.empty_body": "在电脑上正常使用 CLI 对话后，这里会自动统计每次模型请求的 token 消耗、缓存命中率与输出速度。remote-agent 不会主动发请求。",
+    "usage.empty_title": "这段时间没有用量与速度记录",
+    "usage.entry_cache_pct": "缓存 {pct}",
+    "usage.entry_few_samples": "{detail}（仅 {count} 次）",
+    "usage.entry_last_30d": "近 30 天",
+    "usage.entry_last_7d": "近 7 天",
+    "usage.entry_no_speed": "{detail}（尚无测速样本）",
+    "usage.entry_reqs": "{count} 次",
+    "usage.few_samples_count": "仅 {count} 次请求",
+    "usage.few_samples_hint": "满 3 次后画趋势线",
+    "usage.filter_all": "全部",
+    "usage.flat": "持平",
+    "usage.kpi_unit_tokens": "tokens",
+    "usage.kpi_unit_toks": "tok/s",
+    "usage.load_error_title": "没能读取用量与速度",
+    "usage.mixed_unavailable_footnote": "已启用的 {agents} 暂无本地用量来源，未计入上表。",
+    "usage.offline_banner": "{name} 不在线，下面是 {time} 的记录",
+    "usage.offline_empty_body": "这台设备还没有缓存过 {name} 的用量与速度记录，等电脑连上后自动读取。",
+    "usage.offline_empty_title": "{name} 当前不在线",
+    "usage.only_unavailable_body": "这台电脑当前只启用了 {agents}；Claude Code 与 Codex 的本地记录会自动统计。",
+    "usage.only_unavailable_title": "{agents} 暂不支持统计用量与速度",
+    "usage.outlier_note": "含长思考高波动样本",
+    "usage.pairs_capped_summary": "已叠满 4 对上限（共 {count} 对）",
+    "usage.pairs_summary": "{name} · 共 {count} 对",
+    "usage.passive_footnote": "数据基于本机 CLI 日志被动采集，不换算货币金额。",
+    "usage.range_30d": "30 天",
+    "usage.range_7d": "7 天",
+    "usage.range_custom": "自定义",
+    "usage.range_today": "今天",
+    "usage.row_sub_cache": "读 {read} · 未缓存 {inp} · 写 {write}",
+    "usage.row_sub_speed": "p10–p90 {low}–{high} · 首字 {ttft}",
+    "usage.row_sub_tap_overlay": "点按叠加上图",
+    "usage.row_sub_tokens": "入 {inp} · 读 {read} · 写 {write} · 出 {out}",
+    "usage.row_sub_tokens_reasoning": "入 {inp} · 读 {read} · 写 {write} · 出 {out}（推理 {reas}）",
+    "usage.scrub_total": "共 {total}",
+    "usage.speed_threshold_footnote": "速度与首字延迟仅计单次输出满 16 token 且生成耗时 ≥ 200 ms 的请求；极短工具回复仍计入消耗量与缓存命中率。",
+    "usage.sub_median_p10_p90": "中位数 · p10–p90 {low}–{high}",
+    "usage.sub_p10_p90": "p10–p90 {low}–{high}",
+    "usage.sub_recent10": "近 10 次 p50 {speed} tok/s",
+    "usage.sub_vs_prev_30d": "较上个 30 天",
+    "usage.sub_vs_prev_7d": "较上个 7 天",
+    "usage.sub_vs_prev_generic": "较上期",
+    "usage.sub_weighted_cache": "按输入 token 加权",
+    "usage.subtitle_live": "{name} · 被动记录",
+    "usage.subtitle_offline": "{name} · 离线",
+    "usage.tab_cache_hit": "缓存命中",
+    "usage.tab_speed": "输出速度",
+    "usage.tab_tokens": "消耗量",
+    "usage.tab_ttft": "首字延迟",
+    "usage.title": "用量与速度",
+    "usage.unit_wan": "万",
+    "usage.unit_yi": "亿",
+    "usage.unreported_aria": "未单独上报",
+    "usage.unsupported_body": "更新 {name} 上的 remote-agent 后，可查看 token 消耗量、缓存命中率与输出速度。",
+    "usage.unsupported_title": "电脑上的 remote-agent 版本较旧"
   }
 } as const;

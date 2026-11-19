@@ -8,7 +8,7 @@ import { ManagePage } from "./views/Projects";
 import { SessionPage } from "./views/Session";
 import {
   ClientPage, DevicesPage, MachinePage, MachineStatusPage, PairCodePage, QuotaPage, RemovedScreen,
-  ScheduleCreate, ScheduleDetail, SchedulesPage, SecurityPage, SettingsPage, inOwnFile, page,
+  ScheduleCreate, ScheduleDetail, SchedulesPage, SecurityPage, SettingsPage, UsagePage, inOwnFile, page,
 } from "./views/pages";
 import { routeForTask, useCoreHost, useSchedulesView } from "./core/host";
 import { Plus } from "./icons";
@@ -158,6 +158,15 @@ export default function Workspace({ remote }: { remote: Remote }) {
     page = <MachinePage remote={remote} id={arg.split("/")[0]} section={arg.split("/")[1]} go={go} onBack={back} />;
   else if (kind === "machine-status")
     page = <MachineStatusPage key={arg} remote={remote} id={arg} go={go} onBack={back} />;
+  else if (kind === "u") {
+    const [machineRaw = "", agentRaw = "", modelRaw = ""] = rest;
+    const decode = (s: string) => { try { return decodeURIComponent(s); } catch { return s; } };
+    const machineId = decode(machineRaw);
+    const parsedAgent = agentRaw ? Number(decode(agentRaw)) : 0;
+    const focusAgent = Number.isFinite(parsedAgent) ? (parsedAgent as import("./gen/remoteagent/v1/event_pb").Agent) : undefined;
+    const focusModel = modelRaw ? decode(modelRaw) : undefined;
+    page = <UsagePage key={`${machineId}/${focusAgent ?? ""}/${focusModel ?? ""}`} remote={remote} machineId={machineId} focusAgent={focusAgent} focusModel={focusModel} wide={wide} go={go} onBack={back} />;
+  }
   else if (kind.startsWith("pair"))
     page = (
       <div className="center muted">

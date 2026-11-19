@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file remoteagent/v1/capabilities.proto.
  */
 export const file_remoteagent_v1_capabilities: GenFile = /*@__PURE__*/
-  fileDesc("CiFyZW1vdGVhZ2VudC92MS9jYXBhYmlsaXRpZXMucHJvdG8SDnJlbW90ZWFnZW50LnYxIsQDChNNYWNoaW5lQ2FwYWJpbGl0aWVzEhQKDGltYWdlX3VwbG9hZBgCIAEoCBIeChZtYXhfaW1hZ2VzX3Blcl9tZXNzYWdlGAMgASgFEhgKEG1heF91cGxvYWRfYnl0ZXMYBCABKAMSFwoPbWF4X2NodW5rX2J5dGVzGAUgASgFEjMKDnVwbG9hZF9mb3JtYXRzGAYgAygOMhsucmVtb3RlYWdlbnQudjEuSW1hZ2VGb3JtYXQSFwoPYXBwcm92YWxfYWx3YXlzGAogASgIEhcKD3NjaGVkdWxlZF90YXNrcxgMIAEoCBITCgtmaWxlX3VwbG9hZBgNIAEoCBIdChVtYXhfZmlsZV91cGxvYWRfYnl0ZXMYDiABKAMSHQoVbWF4X2ZpbGVzX3Blcl9tZXNzYWdlGA8gASgFEhQKDHNoYXJlZF9maWxlcxgQIAEoCBIdChVtYXhfc2hhcmVkX2ZpbGVfYnl0ZXMYESABKAMSHwoXc2hhcmVkX2ZpbGVfY2h1bmtfYnl0ZXMYEiABKAUSFgoObWFjaGluZV9zdGF0dXMYEyABKAhKBAgBEAJKBAgHEAhKBAgIEAlKBAgJEApKBAgLEAxiBnByb3RvMw", [file_remoteagent_v1_event]);
+  fileDesc("CiFyZW1vdGVhZ2VudC92MS9jYXBhYmlsaXRpZXMucHJvdG8SDnJlbW90ZWFnZW50LnYxIu8DChNNYWNoaW5lQ2FwYWJpbGl0aWVzEhQKDGltYWdlX3VwbG9hZBgCIAEoCBIeChZtYXhfaW1hZ2VzX3Blcl9tZXNzYWdlGAMgASgFEhgKEG1heF91cGxvYWRfYnl0ZXMYBCABKAMSFwoPbWF4X2NodW5rX2J5dGVzGAUgASgFEjMKDnVwbG9hZF9mb3JtYXRzGAYgAygOMhsucmVtb3RlYWdlbnQudjEuSW1hZ2VGb3JtYXQSFwoPYXBwcm92YWxfYWx3YXlzGAogASgIEhcKD3NjaGVkdWxlZF90YXNrcxgMIAEoCBITCgtmaWxlX3VwbG9hZBgNIAEoCBIdChVtYXhfZmlsZV91cGxvYWRfYnl0ZXMYDiABKAMSHQoVbWF4X2ZpbGVzX3Blcl9tZXNzYWdlGA8gASgFEhQKDHNoYXJlZF9maWxlcxgQIAEoCBIdChVtYXhfc2hhcmVkX2ZpbGVfYnl0ZXMYESABKAMSHwoXc2hhcmVkX2ZpbGVfY2h1bmtfYnl0ZXMYEiABKAUSFgoObWFjaGluZV9zdGF0dXMYEyABKAgSEwoLdXNhZ2Vfc3RhdHMYFCABKAgSFAoMY2xpX3N3aXRjaGVzGBUgASgISgQIARACSgQIBxAISgQICBAJSgQICRAKSgQICxAMYgZwcm90bzM", [file_remoteagent_v1_event]);
 
 /**
  * @generated from message remoteagent.v1.MachineCapabilities
@@ -105,6 +105,20 @@ export type MachineCapabilities = Message<"remoteagent.v1.MachineCapabilities"> 
    * @generated from field: bool machine_status = 19;
    */
   machineStatus: boolean;
+
+  /**
+   * Passive local model token usage, cache hit rate, speed and TTFT statistics.
+   *
+   * @generated from field: bool usage_stats = 20;
+   */
+  usageStats: boolean;
+
+  /**
+   * Per-machine CLI enable/disable configuration with revision conflict checks.
+   *
+   * @generated from field: bool cli_switches = 21;
+   */
+  cliSwitches: boolean;
 };
 
 /**

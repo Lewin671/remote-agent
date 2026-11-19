@@ -301,7 +301,7 @@ export type Link = "online" | "waiting" | "no-network" | "no-server";
 
 export function readOnlyCommand(cmd: CommandKind): boolean {
   return !!cmd && (
-    ["getSettings", "listModels", "listDirectories", "getLiveSnapshot", "getMachineStatus", "getImageUploadStatus", "getSharedFileChunk"].includes(cmd.case ?? "") ||
+    ["getSettings", "listModels", "listDirectories", "getLiveSnapshot", "getMachineStatus", "getUsageStats", "getImageUploadStatus", "getSharedFileChunk"].includes(cmd.case ?? "") ||
     (cmd.case === "schedule" && ["list", "get"].includes(cmd.value.operation ?? ""))
   );
 }

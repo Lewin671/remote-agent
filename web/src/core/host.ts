@@ -78,6 +78,7 @@ import {
   type ViewModel,
 } from "../gen/remoteagent/core/v1/app_pb";
 import { ApprovalMode, type Agent } from "../gen/remoteagent/v1/event_pb";
+import { UsageRangePreset, UsageStatsResponseSchema, type UsageStatsResponse } from "../gen/remoteagent/v1/local_pb";
 import { ConnState, type HomeViewModel } from "../gen/remoteagent/core/v1/home_view_pb";
 import { CommandResultSchema, type Command } from "../gen/remoteagent/v1/remote_pb";
 import {
@@ -160,6 +161,7 @@ import {
   SetAppearancePrefEventSchema,
   SetNotificationPrefEventSchema,
   ThemePreference,
+  ToggleMachineAgentEventSchema,
   UpdateClientNameEventSchema,
   UpdateDirectPreferenceEventSchema,
   UpdateMachineAgentDefaultsEventSchema,
@@ -172,6 +174,14 @@ import {
   type SetNotificationPrefEvent,
   type SettingsViewModel,
 } from "../gen/remoteagent/core/v1/settings_view_pb";
+import {
+  UsageCacheLoadedEventSchema,
+  UsageMetricTab,
+  UsageScreenOpenEventSchema,
+  UsageScreenRequestSchema,
+  UsageScreenRetryEventSchema,
+  type UsageViewModel,
+} from "../gen/remoteagent/core/v1/usage_view_pb";
 import type { SyncStateView } from "../gen/remoteagent/core/v1/sync_view_pb";
 import type { Remote } from "../remote";
 import type { WasmAppCore } from "./projection";
@@ -376,6 +386,144 @@ export function routeForTask(machineId: string, taskId: string): string {
   return "tasks/" + encodeURIComponent(machineId) + "/" + encodeURIComponent(taskId);
 }
 
+export function routeForUsage(machineId: string, focusAgent?: Agent, focusModel?: string): string {
+  const base = "u/" + encodeURIComponent(machineId);
+  if (focusAgent && focusModel) {
+    return `${base}/${encodeURIComponent(String(focusAgent))}/${encodeURIComponent(focusModel)}`;
+  }
+  return base;
+}
+
+const USAGE_RETENTION_DAYS = 90;
+
+export function localTzOffsetMinutes(nowMs = Date.now()): number {
+  return -new Date(nowMs).getTimezoneOffset();
+}
+
+export function clampUsageCustomRange(
+  customStartMs: bigint,
+  customEndMs: bigint,
+  nowMs = Date.now(),
+): { startMs: bigint; endMs: bigint } {
+  const now = new Date(nowMs);
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  const minDay = new Date(now.getFullYear(), now.getMonth(), now.getDate() - (USAGE_RETENTION_DAYS - 1)).getTime();
+  const sDate = customStartMs > 0n ? new Date(Number(customStartMs)) : new Date(now.getFullYear(), now.getMonth(), now.getDate() - 6);
+  const eDate = customEndMs > 0n ? new Date(Number(customEndMs)) : new Date(todayStart);
+  let sDay = new Date(sDate.getFullYear(), sDate.getMonth(), sDate.getDate()).getTime();
+  let eDay = new Date(eDate.getFullYear(), eDate.getMonth(), eDate.getDate()).getTime();
+  if (eDay < sDay) eDay = sDay;
+  if (sDay < minDay) sDay = minDay;
+  if (eDay > todayStart) eDay = todayStart;
+  if (eDay < sDay) sDay = eDay;
+  return { startMs: BigInt(sDay), endMs: BigInt(eDay) };
+}
+
+export function buildUsageOpenParams(
+  preset: UsageRangePreset,
+  customStartMs = 0n,
+  customEndMs = 0n,
+  nowMs = Date.now(),
+): {
+  preset: UsageRangePreset;
+  customStartMs: bigint;
+  customEndMs: bigint;
+  timezone: string;
+  tzOffsetMinutes: number;
+  bucketBoundsMs: bigint[];
+  prevStartMs: bigint;
+} {
+  const effectivePreset = preset === UsageRangePreset.UNSPECIFIED ? UsageRangePreset.SEVEN_DAYS : preset;
+  const now = new Date(nowMs);
+  const todayStartDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const tomorrowStartDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+
+  let startDayDate: Date;
+  let endExclDate: Date;
+  let normCustomStart = 0n;
+  let normCustomEnd = 0n;
+
+  if (effectivePreset === UsageRangePreset.TODAY) {
+    startDayDate = todayStartDate;
+    endExclDate = tomorrowStartDate;
+  } else if (effectivePreset === UsageRangePreset.THIRTY_DAYS) {
+    startDayDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 29);
+    endExclDate = tomorrowStartDate;
+  } else if (effectivePreset === UsageRangePreset.CUSTOM) {
+    const clamped = clampUsageCustomRange(customStartMs, customEndMs, nowMs);
+    normCustomStart = clamped.startMs;
+    normCustomEnd = clamped.endMs;
+    startDayDate = new Date(Number(clamped.startMs));
+    const endIncDate = new Date(Number(clamped.endMs));
+    endExclDate = new Date(endIncDate.getFullYear(), endIncDate.getMonth(), endIncDate.getDate() + 1);
+  } else {
+    startDayDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 6);
+    endExclDate = tomorrowStartDate;
+  }
+
+  let numDays = 0;
+  for (let d = new Date(startDayDate.getFullYear(), startDayDate.getMonth(), startDayDate.getDate()); d.getTime() < endExclDate.getTime() && numDays <= USAGE_RETENTION_DAYS + 2; d = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1)) {
+    numDays++;
+  }
+
+  const bounds: bigint[] = [];
+  if (numDays <= 1) {
+    const endMs = endExclDate.getTime();
+    for (let cur = startDayDate.getTime(); cur < endMs; cur += 3600_000) {
+      bounds.push(BigInt(cur));
+    }
+    bounds.push(BigInt(endMs));
+  } else if (numDays <= 3) {
+    let day = new Date(startDayDate.getFullYear(), startDayDate.getMonth(), startDayDate.getDate());
+    while (day.getTime() < endExclDate.getTime()) {
+      const nextDay = new Date(day.getFullYear(), day.getMonth(), day.getDate() + 1);
+      const span = nextDay.getTime() - day.getTime();
+      for (let q = 0; q < 4; q++) {
+        bounds.push(BigInt(Math.round(day.getTime() + (span * q) / 4)));
+      }
+      day = nextDay;
+    }
+    bounds.push(BigInt(endExclDate.getTime()));
+  } else {
+    let cur = new Date(startDayDate.getFullYear(), startDayDate.getMonth(), startDayDate.getDate());
+    while (cur.getTime() < endExclDate.getTime()) {
+      bounds.push(BigInt(cur.getTime()));
+      cur = new Date(cur.getFullYear(), cur.getMonth(), cur.getDate() + 1);
+    }
+    bounds.push(BigInt(endExclDate.getTime()));
+  }
+
+  const prevStartDate = new Date(startDayDate.getFullYear(), startDayDate.getMonth(), startDayDate.getDate() - numDays);
+  return {
+    preset: effectivePreset,
+    customStartMs: normCustomStart,
+    customEndMs: normCustomEnd,
+    timezone: localTimeZoneId(),
+    tzOffsetMinutes: localTzOffsetMinutes(nowMs),
+    bucketBoundsMs: bounds,
+    prevStartMs: BigInt(prevStartDate.getTime()),
+  };
+}
+
+function encodeBytesBase64(bytes: Uint8Array): string {
+  let bin = "";
+  for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+  return btoa(bin);
+}
+
+function decodeBytesBase64(b64: string): Uint8Array {
+  const bin = atob(b64);
+  const out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out;
+}
+
+const USAGE_CACHE_PRESETS: UsageRangePreset[] = [
+  UsageRangePreset.TODAY,
+  UsageRangePreset.SEVEN_DAYS,
+  UsageRangePreset.THIRTY_DAYS,
+];
+
 const SETTINGS_TARGETS = [
   ScreenTarget.SETTINGS,
   ScreenTarget.MACHINE_STATUS,
@@ -383,6 +531,7 @@ const SETTINGS_TARGETS = [
   ScreenTarget.QUOTA,
   ScreenTarget.DEVICES,
   ScreenTarget.CLIENT_DETAIL,
+  ScreenTarget.USAGE,
 ];
 
 const ALL_TARGETS = [
@@ -487,6 +636,8 @@ export class CoreHost {
   private quotaCache = new Map<string, { version: number; vm: QuotaViewModel }>();
   private devicesCache?: { version: number; vm: DevicesViewModel };
   private clientDetailCache = new Map<string, { version: number; vm: ClientDetailViewModel }>();
+  private usageCache = new Map<string, { version: number; vm: UsageViewModel }>();
+  private usageHydratedMachines = new Set<string>();
 
   private started = false;
   private closed = false;
@@ -643,6 +794,18 @@ export class CoreHost {
           CoreHost.WARM_SCHEDULE_CACHE_TIMEOUT_MS,
         );
       }
+    } else if (kind === "machine-status" && rest[0]) {
+      try {
+        this.hydrateUsageCache(decodeURIComponent(rest[0]));
+      } catch {
+        this.hydrateUsageCache(rest[0]);
+      }
+    } else if (kind === "u" && rest[0]) {
+      try {
+        this.hydrateUsageCache(decodeURIComponent(rest[0]));
+      } catch {
+        this.hydrateUsageCache(rest[0]);
+      }
     }
   }
 
@@ -777,6 +940,8 @@ export class CoreHost {
     this.watchCounts.set(sessionId, prev + 1);
     if (prev === 0) {
       this.sessionCache.delete(sessionId);
+      const mid = this.remote?.sessions.get(sessionId)?.machineId;
+      if (mid) this.hydrateUsageCache(mid);
       this.executor?.setWatchedSessions?.([...this.watchCounts.keys()].reverse());
       this.emit({ case: "sessionWatch", value: create(SessionWatchEventSchema, { sessionId, watched: true }) });
     }
@@ -1089,6 +1254,7 @@ export class CoreHost {
 
   watchMachineStatus(machineId: string, mode: MachinePollMode): () => void {
     if (!machineId || mode === MachinePollMode.OFF) return () => {};
+    this.hydrateUsageCache(machineId);
     let entry = this.machineWatchCounts.get(machineId);
     if (!entry) {
       entry = { live: 0, overview: 0 };
@@ -1132,6 +1298,72 @@ export class CoreHost {
 
   machineSettingsSelectAgent(machineId: string, agent: Agent) {
     if (machineId && !this.closed) this.emit({ case: "machineSettingsSelectAgent", value: create(MachineSettingsSelectAgentEventSchema, { machineId, agent }) });
+  }
+
+  toggleMachineAgent(machineId: string, agent: Agent, enabled: boolean) {
+    if (machineId && !this.closed) {
+      this.emit({ case: "toggleMachineAgent", value: create(ToggleMachineAgentEventSchema, { machineId, agent, enabled }) });
+    }
+  }
+
+  private usageCacheStorageKey(machineId: string, preset: UsageRangePreset): string {
+    const scope = this.remote?.account ? `${this.remote.account.server}|${this.remote.account.deviceId}` : "local";
+    return `ra-usage-cache:${scope}:${machineId}:${preset}`;
+  }
+
+  hydrateUsageCache(machineId: string) {
+    if (!machineId || this.closed || this.usageHydratedMachines.has(machineId)) return;
+    this.usageHydratedMachines.add(machineId);
+    if (typeof localStorage === "undefined") return;
+    for (const preset of USAGE_CACHE_PRESETS) {
+      try {
+        const raw = localStorage.getItem(this.usageCacheStorageKey(machineId, preset));
+        if (!raw) continue;
+        const snapshot = fromBinary(UsageStatsResponseSchema, decodeBytesBase64(raw));
+        this.emit({
+          case: "usageCacheLoaded",
+          value: create(UsageCacheLoadedEventSchema, { machineId, snapshot }),
+        });
+      } catch {
+        // Ignore corrupt or inaccessible local cache entries.
+      }
+    }
+  }
+
+  private persistUsageCache(machineId: string, snapshot?: UsageStatsResponse) {
+    if (!machineId || !snapshot || snapshot.preset === UsageRangePreset.CUSTOM || snapshot.preset === UsageRangePreset.UNSPECIFIED) return;
+    if (typeof localStorage === "undefined") return;
+    try {
+      const encoded = encodeBytesBase64(toBinary(UsageStatsResponseSchema, snapshot));
+      localStorage.setItem(this.usageCacheStorageKey(machineId, snapshot.preset), encoded);
+    } catch {
+      // Storage may be full or restricted.
+    }
+  }
+
+  openUsageScreen(machineId: string, preset: UsageRangePreset, customStartMs = 0n, customEndMs = 0n) {
+    if (!machineId || this.closed) return;
+    this.hydrateUsageCache(machineId);
+    const params = buildUsageOpenParams(preset, customStartMs, customEndMs);
+    this.emit({
+      case: "usageScreenOpen",
+      value: create(UsageScreenOpenEventSchema, {
+        machineId,
+        preset: params.preset,
+        customStartMs: params.customStartMs,
+        customEndMs: params.customEndMs,
+        timezone: params.timezone,
+        tzOffsetMinutes: params.tzOffsetMinutes,
+        bucketBoundsMs: params.bucketBoundsMs,
+        prevStartMs: params.prevStartMs,
+      }),
+    });
+  }
+
+  retryUsageScreen(machineId: string) {
+    if (machineId && !this.closed) {
+      this.emit({ case: "usageScreenRetry", value: create(UsageScreenRetryEventSchema, { machineId }) });
+    }
   }
 
   updateMachineAgentDefaults(machineId: string, agent: Agent, patch: { model?: string; effort?: string; mode?: ApprovalMode }) {
@@ -1417,6 +1649,40 @@ export class CoreHost {
     if (cached?.version === ver) return cached.vm;
     const vm = this.readView<ClientDetailViewModel>("clientDetail", { case: "clientDetail", value: create(ClientDetailScreenRequestSchema, { deviceId }) });
     this.clientDetailCache.set(deviceId, { version: ver, vm });
+    return vm;
+  }
+
+  viewUsage(req: {
+    machineId: string;
+    focusAgent?: Agent;
+    focusModel?: string;
+    preset?: UsageRangePreset;
+    customStartMs?: bigint;
+    customEndMs?: bigint;
+    metric?: UsageMetricTab;
+  }): UsageViewModel {
+    const ver = this.version(ScreenTarget.USAGE);
+    const preset = !req.preset ? UsageRangePreset.SEVEN_DAYS : req.preset;
+    const clamped = preset === UsageRangePreset.CUSTOM ? clampUsageCustomRange(req.customStartMs ?? 0n, req.customEndMs ?? 0n) : { startMs: 0n, endMs: 0n };
+    const metric = !req.metric ? UsageMetricTab.TOKENS : req.metric;
+    const focusAgent = req.focusAgent ?? (0 as Agent);
+    const focusModel = req.focusModel ?? "";
+    const cacheKey = `${req.machineId}:${focusAgent}:${focusModel}:${preset}:${clamped.startMs}:${clamped.endMs}:${metric}`;
+    const cached = this.usageCache.get(cacheKey);
+    if (cached?.version === ver) return cached.vm;
+    const vm = this.readView<UsageViewModel>("usage", {
+      case: "usage",
+      value: create(UsageScreenRequestSchema, {
+        machineId: req.machineId,
+        focusAgent,
+        focusModel,
+        preset,
+        customStartMs: clamped.startMs,
+        customEndMs: clamped.endMs,
+        metric,
+      }),
+    });
+    this.usageCache.set(cacheKey, { version: ver, vm });
     return vm;
   }
 
@@ -1945,6 +2211,10 @@ export class CoreHost {
         break;
       }
 
+      case "usageCacheWrite":
+        this.persistUsageCache(val.value.machineId, val.value.snapshot);
+        break;
+
       case undefined:
         break;
 
@@ -2027,6 +2297,7 @@ export class CoreHost {
     else if (target === ScreenTarget.QUOTA) this.quotaCache.clear();
     else if (target === ScreenTarget.DEVICES) this.devicesCache = undefined;
     else if (target === ScreenTarget.CLIENT_DETAIL) this.clientDetailCache.clear();
+    else if (target === ScreenTarget.USAGE) this.usageCache.clear();
   }
 
   private flushRenders() {
@@ -2249,6 +2520,40 @@ export function useClientDetailView(host: CoreHost, deviceId: string): ClientDet
   return useMemo(() => host.viewClientDetail(deviceId), [host, version, deviceId]);
 }
 
+export function useUsageView(
+  host: CoreHost,
+  req: {
+    machineId: string;
+    focusAgent?: Agent;
+    focusModel?: string;
+    preset?: UsageRangePreset;
+    customStartMs?: bigint;
+    customEndMs?: bigint;
+    metric?: UsageMetricTab;
+  },
+): UsageViewModel {
+  const preset = !req.preset ? UsageRangePreset.SEVEN_DAYS : req.preset;
+  const customStartMs = req.customStartMs ?? 0n;
+  const customEndMs = req.customEndMs ?? 0n;
+  useEffect(() => {
+    if (req.machineId) host.openUsageScreen(req.machineId, preset, customStartMs, customEndMs);
+  }, [host, req.machineId, preset, customStartMs, customEndMs]);
+  const version = useScreenVersion(host, ScreenTarget.USAGE);
+  return useMemo(
+    () =>
+      host.viewUsage({
+        machineId: req.machineId,
+        focusAgent: req.focusAgent,
+        focusModel: req.focusModel,
+        preset,
+        customStartMs,
+        customEndMs,
+        metric: req.metric,
+      }),
+    [host, version, req.machineId, req.focusAgent, req.focusModel, preset, customStartMs, customEndMs, req.metric],
+  );
+}
+
 export function useDirectError(host: CoreHost, machineId: string): string {
   useExtraVersion(host);
   return host.directError(machineId);
@@ -2268,4 +2573,6 @@ export {
   NotificationPermissionState,
   PushRegistrationState,
   ThemePreference,
+  UsageMetricTab,
+  UsageRangePreset,
 };

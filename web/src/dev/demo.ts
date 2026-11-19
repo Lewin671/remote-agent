@@ -32,7 +32,8 @@
 
 import { localeStore, t, type Locale } from "../i18n";
 import { seedDirect } from "./direct-demo";
-import { create, fromBinary, type MessageInitShape } from "@bufbuild/protobuf";
+import { buildDemoUsageResponse } from "./usage-demo";
+import { create, fromBinary, toBinary, type MessageInitShape } from "@bufbuild/protobuf";
 import { timestampFromMs } from "@bufbuild/protobuf/wkt";
 import {
   Agent,
@@ -58,6 +59,8 @@ import {
   DaemonSettingsSchema,
   ListModelsResponseSchema,
   SessionSchema,
+  UsageRangePreset,
+  UsageStatsResponseSchema,
   type Session,
 } from "../gen/remoteagent/v1/local_pb";
 import {
@@ -1607,6 +1610,7 @@ export class DemoRemote extends Remote {
       trustedClientIds: [ME, ANDROID, BROWSER].filter((id) => !this.removedDemoDevices.has(id)),
       archiveMachineIds: [...this.demoMachines.keys()],
       headEpoch: 1n,
+      leaseEndMs: this.opts.get("cliswitches") === "lease" ? BigInt(Date.now() - 60_000) : 0n,
       recoveryPending: this.security.recoveryPending,
       recoveryReadyMs: this.security.recoveryReadyMs,
     });
@@ -2166,6 +2170,7 @@ export class DemoRemote extends Remote {
   }
 
   private opts = new URLSearchParams();
+  private demoSwitchConflictFired = false;
 
   private removedDemoDevices = new Set<string>();
   private seedAuthority() {
@@ -2336,7 +2341,15 @@ export class DemoRemote extends Remote {
           maxUploadBytes: 20n * 1024n * 1024n,
           maxChunkBytes: 786432,
           approvalAlways: true,
+          cliSwitches: true,
+          usageStats: this.opts.get("usage") !== "old",
         },
+        disabledAgents:
+          this.opts.get("cliswitches") === "oneleft"
+            ? [Agent.CLAUDE, Agent.ANTIGRAVITY]
+            : this.opts.get("cliswitches") === "offline" || this.opts.get("cliswitches") === "conflict"
+              ? [Agent.CLAUDE]
+              : [],
       });
       if (!empty) {
         machine("vps", "VPS-dev", true, {
@@ -2373,6 +2386,39 @@ export class DemoRemote extends Remote {
           })];
         }
         machine("mini", "Mac mini", false);
+      }
+      const mac = this.demoMachines.get("mac");
+      if (mac?.meta) {
+        const csMode = this.opts.get("cliswitches");
+        const usageMode = this.opts.get("usage");
+        if (csMode === "offline" || usageMode === "offline" || usageMode === "offline-none") {
+          mac.online = false;
+        }
+        if (usageMode === "only-unavail") {
+          mac.meta.disabledAgents = [Agent.CODEX, Agent.CLAUDE];
+        }
+        if (usageMode === "offline" && typeof localStorage !== "undefined") {
+          try {
+            const snap = buildDemoUsageResponse(this.opts, mac.meta.disabledAgents);
+            const bytes = toBinary(UsageStatsResponseSchema, snap);
+            let bin = "";
+            for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+            localStorage.setItem(
+              `ra-usage-cache:https://ra.example.com|${ME}:mac:${UsageRangePreset.SEVEN_DAYS}`,
+              btoa(bin),
+            );
+          } catch {
+            // ignore storage failure
+          }
+        } else if (usageMode === "offline-none" && typeof localStorage !== "undefined") {
+          try {
+            localStorage.removeItem(`ra-usage-cache:https://ra.example.com|${ME}:mac:${UsageRangePreset.TODAY}`);
+            localStorage.removeItem(`ra-usage-cache:https://ra.example.com|${ME}:mac:${UsageRangePreset.SEVEN_DAYS}`);
+            localStorage.removeItem(`ra-usage-cache:https://ra.example.com|${ME}:mac:${UsageRangePreset.THIRTY_DAYS}`);
+          } catch {
+            // ignore storage failure
+          }
+        }
       }
     }
     if (empty) return;
@@ -3082,12 +3128,15 @@ export class DemoRemote extends Remote {
                   : models,
           },
         });
-      case "getSettings":
+      case "getSettings": {
+        const st = this.settingsFor();
+        st.disabledAgents = [...(m.meta?.disabledAgents ?? [])];
+        st.revision = m.meta?.settingsRevision || st.revision || 1n;
         return create(CommandResultSchema, {
           kind: {
             case: "getSettings",
             value: {
-              settings: this.settingsFor(),
+              settings: st,
               imageStorage: {
                 uploadBytes: 200n << 20n,
                 reservedBytes: 12n << 20n,
@@ -3100,10 +3149,47 @@ export class DemoRemote extends Remote {
             },
           },
         });
-      case "updateSettings":
+      }
+      case "updateSettings": {
         if (cmd.value.settings?.approvalTimeoutSeconds === 3000)
           throw new CommandError("unavailable", `${m.meta?.hostname} 不在线`);
-        this.saved = create(DaemonSettingsSchema, cmd.value.settings);
+        const cur = this.settingsFor();
+        if (cmd.value.toggleAgent !== undefined && cmd.value.toggleAgent !== Agent.UNSPECIFIED) {
+          const targetAgent = cmd.value.toggleAgent;
+          const enable = !!cmd.value.toggleEnabled;
+          const installed = (m.meta?.agents ?? []).map((a) => a.agent);
+          if (this.opts.get("cliswitches") === "conflict" && !this.demoSwitchConflictFired) {
+            this.demoSwitchConflictFired = true;
+            const nextDisabled = [Agent.ANTIGRAVITY];
+            cur.disabledAgents = nextDisabled;
+            cur.revision = (cur.revision || 1n) + 1n;
+            if (m.meta) {
+              m.meta.disabledAgents = [...nextDisabled];
+              m.meta.settingsRevision = cur.revision;
+              this.syncDemoToCore();
+            }
+            throw new CommandError("settings_revision_conflict", "conflict", true, false, "conflict", "business");
+          }
+          const nextDisabledSet = new Set<Agent>(m.meta?.disabledAgents ?? cur.disabledAgents);
+          if (enable) nextDisabledSet.delete(targetAgent);
+          else nextDisabledSet.add(targetAgent);
+          if (!enable && installed.filter((a) => !nextDisabledSet.has(a)).length === 0) {
+            throw new CommandError("cannot_disable_last_agent", "cannot_disable_last_agent", true, false, "rejected");
+          }
+          cur.disabledAgents = [...nextDisabledSet];
+          cur.revision = (cur.revision || 1n) + 1n;
+          if (m.meta) {
+            m.meta.disabledAgents = [...cur.disabledAgents];
+            m.meta.settingsRevision = cur.revision;
+            this.syncDemoToCore();
+          }
+        } else if (cmd.value.settings) {
+          this.saved = create(DaemonSettingsSchema, {
+            ...cmd.value.settings,
+            disabledAgents: cur.disabledAgents,
+            revision: (cur.revision || 1n) + 1n,
+          });
+        }
         return create(CommandResultSchema, {
           kind: {
             case: "updateSettings",
@@ -3121,6 +3207,19 @@ export class DemoRemote extends Remote {
             },
           },
         });
+      }
+      case "getUsageStats": {
+        const usageMode = this.opts.get("usage");
+        if (usageMode === "loading") await this.pause(15_000);
+        if (usageMode === "error") {
+          throw new CommandError("internal", "usage stats query failed", true, true, "unknown");
+        }
+        const disabled = m.meta?.disabledAgents ?? [];
+        const resp = buildDemoUsageResponse(this.opts, disabled, cmd.value);
+        return create(CommandResultSchema, {
+          kind: { case: "usageStats", value: resp },
+        });
+      }
       case "getMachineStatus":
         // ms-slow=<ms>: the answer takes that long, to look at the page before its first one.
         await this.pause(Number(this.opts.get("ms-slow")) || 120);

@@ -269,6 +269,57 @@ export function tokens(n: bigint): string {
   return n >= 1000n ? `${Math.round(Number(n) / 1000)}k` : String(n);
 }
 
+function SessionUsageEntryRow({
+  ue,
+  onClose,
+  onOpenUsage,
+}: {
+  ue: NonNullable<SessionActionsView["usageEntry"]>;
+  onClose: () => void;
+  onOpenUsage?: () => void;
+}) {
+  const titleText = i18n.t("session.usage_entry_title");
+  const sub = renderText(ue.subtitle);
+  const val = renderText(ue.valueText);
+  const foot = renderText(ue.footnote);
+  const canNav = ue.supported && !!onOpenUsage;
+  const a11yLabel = [titleText, sub, val].filter(Boolean).join(" · ");
+  const mtCls = "mt";
+  return (
+    <>
+      <div className="list session-usage-entry">
+        {canNav ? (
+          <button
+            type="button"
+            className="mi"
+            aria-label={a11yLabel}
+            onClick={() => {
+              onClose();
+              onOpenUsage();
+            }}
+          >
+            <div className={mtCls}>
+              <b>{titleText}</b>
+              {sub && <div className="md">{sub}</div>}
+            </div>
+            {val && <span className="mv">{val}</span>}
+            <ChevronRight />
+          </button>
+        ) : (
+          <div className="mi dis" aria-disabled="true" aria-label={a11yLabel}>
+            <div className={mtCls}>
+              <b>{titleText}</b>
+              {sub && <div className="md">{sub}</div>}
+            </div>
+            {val && <span className="mv">{val}</span>}
+          </div>
+        )}
+      </div>
+      {foot && <div className="hint">{foot}</div>}
+    </>
+  );
+}
+
 export function SessionSheet({
   sessionId,
   header,
@@ -277,6 +328,7 @@ export function SessionSheet({
   onRefreshModels,
   onSubmitCommand,
   onAbandonCommand,
+  onOpenUsage,
 }: {
   sessionId: string;
   header?: SessionHeaderView;
@@ -285,6 +337,7 @@ export function SessionSheet({
   onRefreshModels: () => void;
   onSubmitCommand: (slotKey: string, cmd: Command) => void;
   onAbandonCommand?: (slotKey: string) => void;
+  onOpenUsage?: () => void;
 }) {
   const [all, setAll] = useState(false);
   const [switchingName, setSwitchingName] = useState("");
@@ -475,6 +528,9 @@ export function SessionSheet({
       )}
       {canSwitch && (
         <div className="hint">{renderText(actions?.modelSwitchBlockedReason) || i18n.t("session.switch_idle")}</div>
+      )}
+      {actions?.usageEntry?.visible && (
+        <SessionUsageEntryRow ue={actions.usageEntry} onClose={onClose} onOpenUsage={onOpenUsage} />
       )}
     </Sheet>
   );
